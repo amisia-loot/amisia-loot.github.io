@@ -276,7 +276,7 @@ tr.skip td{opacity:.55}
   <div class="panel" id="loginBox" hidden style="margin-top:14px">
     <div class="panel-h">Sign in to edit<span class="grow"></span><button class="btn sm ghost" id="loginClose">Close</button></div>
     <div class="panel-b stack">
-      <div class="row"><button class="btn primary" id="discordBtn">Sign in with Discord</button><span class="muted" style="font-size:13px">Officers the owner has added as editors can change the ledger. Everyone else can look.</span></div>
+      <div class="row"><button class="btn primary" id="discordBtn">Sign in with Discord</button><span class="muted" style="font-size:13px">Officers the owner has added as editors (by Discord name or e-mail) can change the ledger. Everyone else can look.</span></div>
       <div class="row"><input class="inp" id="loginEmail" type="email" placeholder="or your e-mail address"><button class="btn" id="magicBtn">Send sign-in link</button></div>
       <div class="muted" id="loginMsg" style="font-size:13px"></div>
     </div>
@@ -386,9 +386,9 @@ tr.skip td{opacity:.55}
         <div class="panel" id="editorsPanel" hidden>
           <div class="panel-h">Editors</div>
           <div class="panel-b stack">
-            <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. They sign in with Discord or an e-mail link using the address listed here.</p>
+            <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. Enter their <b>Discord username</b> (as shown in their Discord profile, without the @) or their e-mail address. They sign in with Discord, or with an e-mail link if you entered an address.</p>
             <div id="editorsList" class="stack"></div>
-            <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="email" placeholder="officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
+            <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="text" placeholder="discordname or officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
           </div>
         </div>
         <div class="panel">
@@ -568,7 +568,7 @@ function setBar(kind, msg){
   const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
   $('#publishBtn').hidden = !(dirty && isEditor);
   $('#loginBtn').hidden = !!user; $('#logoutBtn').hidden = !user;
-  $('#who').innerHTML = user ? esc(user.email || user.user_metadata?.full_name || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : 'viewer') + '</span>' : '';
+  $('#who').innerHTML = user ? esc(user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : 'viewer') + '</span>' : '';
 }
 function refreshBar(){
   if (!SUPA) setBar('err', 'Could not load the database client. Check your connection and reload.');
@@ -652,7 +652,7 @@ $('#magicBtn').addEventListener('click', async () => {
   $('#loginMsg').textContent = error ? 'Could not send the link: ' + error.message : 'Check your inbox and open the sign-in link.';
 });
 $('#edAdd').addEventListener('click', async () => {
-  const email = $('#edEmail').value.trim().toLowerCase(); if (!email) return;
+  const email = $('#edEmail').value.trim().toLowerCase().replace(/^@/, ''); if (!email) return;
   const {error} = await SUPA.from('editors').insert({email});
   if (error) return say('Could not add: ' + error.message);
   $('#edEmail').value = ''; say('Added ' + email + ' as editor.'); renderEditors();
