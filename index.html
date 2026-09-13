@@ -467,6 +467,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:null, soon:true, classes:MOP_CLASSES, blurb:'loot tables coming soon'},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
+const BUILD_ID = '1789330416';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -489,7 +490,7 @@ function loadGame(key){
   if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
   dataState = 'loading'; applyData(null); renderAll();
-  const s = document.createElement('script'); s.src = g.file + '?v=' + encodeURIComponent(g.key);
+  const s = document.createElement('script'); s.src = g.file + '?v=' + BUILD_ID;
   s.onload = () => { dataState = window.__LOOT && window.__LOOT[g.key] ? 'ok' : 'error'; applyData(window.__LOOT && window.__LOOT[g.key]); renderAll(); };
   s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
   document.head.appendChild(s);
