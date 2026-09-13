@@ -411,7 +411,7 @@ tr.skip td{opacity:.55}
   <section class="view" id="view-import" hidden>
     <div class="two" style="grid-template-columns:1fr 340px">
       <div class="stack">
-        <div class="panel">
+        <div class="panel" id="glPanel">
           <div class="panel-h">Paste a loot export</div>
           <div class="panel-b stack">
             <textarea class="inp" id="glText" spellcheck="false" style="min-height:170px" placeholder="dateTime,character,itemID,offspec,id&#10;2026-09-04,Dixie,32837,0,7f3a…"></textarea>
@@ -467,7 +467,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:null, soon:true, classes:MOP_CLASSES, blurb:'loot tables coming soon'},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789330416';
+const BUILD_ID = '1789330682';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -726,6 +726,8 @@ function renderHeader(){
   $('#bulkAdd').classList.toggle('hidden', readOnly);
   $('#saveSettings').classList.toggle('hidden', readOnly);
   $('#importBtn').classList.toggle('hidden', readOnly);
+  $('#glPanel').classList.toggle('hidden', readOnly); $('#glResult').classList.toggle('hidden', readOnly);
+  $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
     const n = t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
