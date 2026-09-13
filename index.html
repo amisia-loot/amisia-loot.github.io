@@ -1,0 +1,1196 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head><body><title>Guild Loot Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root{
+  --bg:#0e0a15; --panel:#150f1f; --panel-2:#1c1529; --panel-3:#241b33; --line:#2a2138; --line-2:#3a2f4b;
+  --text:#ece6f4; --muted:#8f86a3; --faint:#5e5670;
+  --gold:#e2b857; --gold-2:#f3d585; --gold-ink:#1a1206;
+  --epic:#a335ee; --epic-soft:rgba(163,53,238,.16);
+  --good:#4fbf7a; --warn:#e0a344; --bad:#e35d6a;
+  --z-kara:#a98be0; --z-gruul:#b9915a; --z-mag:#d2694f; --z-ssc:#4fb3d4; --z-tk:#d6b04a; --z-hyjal:#5db8a5; --z-bt:#c26a4a; --z-za:#7fbf5a; --z-swp:#e8a33d;
+  --c-warrior:#C69B6D; --c-paladin:#F48CBA; --c-hunter:#AAD372; --c-rogue:#FFF468; --c-priest:#FFFFFF; --c-shaman:#3d8be6; --c-mage:#3FC7EB; --c-warlock:#8788EE; --c-druid:#FF7C0A; --c-deathknight:#C41E3A; --c-monk:#00FF98; --c-unknown:#8f86a3;
+  --shadow:0 18px 40px rgba(0,0,0,.45);
+  --display:"Cinzel",Georgia,"Times New Roman",serif;
+  --label:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
+    --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
+    --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
+    --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12);
+    --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
+    --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
+    --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
+    --shadow:0 14px 30px rgba(60,40,20,.15);
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
+  --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
+  --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
+  --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12);
+  --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
+  --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
+  --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
+  --shadow:0 14px 30px rgba(60,40,20,.15);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 28px 80px}
+@media (max-width:720px){.wrap{padding:16px 12px 80px}}
+
+/* ---------- header ---------- */
+.hdr{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.eyebrow{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:4px 0 0;color:var(--gold);letter-spacing:.01em;text-wrap:balance}
+.guild{font-family:var(--label);font-weight:600;font-size:20px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin-top:6px}
+.guild .realm{color:var(--muted);font-weight:500}
+.fac{display:inline-block;vertical-align:middle;margin-right:10px;padding:2px 9px;border-radius:3px;font-size:12px;letter-spacing:.14em;border:1px solid;line-height:1.5}
+.fac.alliance{color:#5b9cf0;border-color:#5b9cf0;background:rgba(91,156,240,.12)}
+.fac.horde{color:#e0523f;border-color:#e0523f;background:rgba(224,82,63,.12)}
+.guild .hint{font-size:13px;letter-spacing:.06em;text-transform:none;color:var(--muted);font-weight:500}
+.guild .hint a{color:var(--gold);cursor:pointer}
+.stats{text-align:right;font-family:var(--label);font-size:15px;color:var(--muted);letter-spacing:.03em;font-variant-numeric:tabular-nums}
+.stats b{color:var(--text);font-weight:600}
+.stats div+div{margin-top:2px}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:4px;margin:24px 0 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{font-family:var(--label);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:none;border:0;padding:12px 14px 10px;cursor:pointer;position:relative;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab[aria-selected="true"]{color:var(--gold)}
+.tab[aria-selected="true"]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;background:var(--gold)}
+.tab .n{margin-left:6px;font-size:12px;color:var(--faint);letter-spacing:0}
+
+/* ---------- status bar ---------- */
+.bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:14px 0 0;padding:10px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:14px;color:var(--muted)}
+.bar .dot{width:9px;height:9px;border-radius:50%;background:var(--good);flex:none}
+.bar.dirty .dot{background:var(--warn)}
+.bar.local .dot{background:var(--faint)}
+.bar.err .dot{background:var(--bad)}
+.bar.ro .dot{background:var(--faint)}
+.bar .grow{flex:1}
+.bar[hidden]{display:none}
+.who{font-family:var(--label);letter-spacing:.06em;color:var(--text)}
+.who .role{color:var(--gold);margin-left:6px}
+#loginBox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#loginBox input{max-width:280px}
+
+/* ---------- controls ---------- */
+.btn{font-family:var(--label);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:14px;padding:8px 14px;border-radius:4px;border:1px solid var(--line-2);background:var(--panel-2);color:var(--text);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--gold-ink);border-color:var(--gold)}
+.btn.primary:hover{background:var(--gold-2);color:var(--gold-ink)}
+.btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--gold);border-color:transparent}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.inp{background:var(--panel);border:1px solid var(--line-2);border-radius:4px;padding:8px 10px;color:var(--text);min-width:0;width:100%}
+.inp::placeholder{color:var(--faint)}
+select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 55%,calc(100% - 11px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+.toolbar{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin:22px 0 14px}
+.toolbar .field{flex:1 1 160px;max-width:260px}
+.toolbar .spacer{flex:1}
+.toolbar .count{font-family:var(--label);color:var(--muted);letter-spacing:.06em;font-size:15px;align-self:flex-end;padding-bottom:8px;font-variant-numeric:tabular-nums}
+
+/* ---------- panels ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.panel-h{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);font-family:var(--label);font-weight:600;letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.panel-h .grow{flex:1}
+.panel-b{padding:16px}
+.notice{padding:12px 16px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:6px;background:var(--panel);margin-top:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:14px}
+.notice .grow{flex:1}
+.notice[hidden]{display:none}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);font-family:var(--display);font-size:18px;margin-bottom:6px}
+
+/* ---------- award form ---------- */
+.award{margin-top:22px}
+.award .grid{display:grid;grid-template-columns:150px 200px minmax(240px,1.6fr) minmax(180px,1fr) 140px auto;gap:12px;align-items:end}
+@media (max-width:1000px){.award .grid{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.award .grid{grid-template-columns:1fr}}
+.combo{position:relative}
+.combo .pick{display:flex;align-items:center;gap:8px}
+.combo .pick .ico{width:26px;height:26px;flex:none}
+.combo .list{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 4px);max-height:320px;overflow:auto;background:var(--panel-2);border:1px solid var(--line-2);border-radius:4px;box-shadow:var(--shadow)}
+.combo .list[hidden]{display:none}
+.combo .opt{display:flex;align-items:center;gap:10px;padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--line)}
+.combo .opt:last-child{border-bottom:0}
+.combo .opt:hover,.combo .opt.active{background:var(--panel-3)}
+.combo .opt .ico{width:28px;height:28px}
+.combo .opt .nm{color:var(--epic);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.combo .opt .sl{font-family:var(--label);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.combo .opt .bs{font-size:12px;color:var(--faint);white-space:nowrap}
+.combo .none{padding:10px;color:var(--muted);font-size:14px}
+.newraider{display:grid;grid-template-columns:1fr 160px;gap:12px;margin-top:12px}
+.newraider[hidden]{display:none}
+
+/* ---------- icons ---------- */
+.ico{display:inline-block;width:30px;height:30px;border-radius:4px;border:1px solid var(--epic);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 8px var(--epic-soft);background:#000;overflow:hidden;vertical-align:middle;position:relative;flex:none}
+.ico img{width:100%;height:100%;display:block;object-fit:cover}
+.ico .sp{display:block;width:100%;height:100%;background-repeat:no-repeat;background-color:#000}
+.ico.token{border-color:var(--gold)}
+.ico .n{position:absolute;right:-1px;bottom:-1px;min-width:14px;height:14px;padding:0 3px;border-radius:3px 0 3px 0;background:var(--epic);color:#fff;font-family:var(--label);font-weight:600;font-size:11px;line-height:14px;text-align:center}
+.ico.hot{cursor:pointer}
+.ico.hot:hover{border-color:var(--gold-2);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 10px var(--gold)}
+.ico.small{width:22px;height:22px}
+
+/* ---------- armory ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:border-color .12s}
+.card:hover{border-color:var(--line-2)}
+.card.open{border-color:var(--gold);grid-column:1/-1}
+.card .top{display:flex;align-items:baseline;gap:10px}
+.card .name{font-family:var(--display);font-weight:600;font-size:18px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .cls{font-family:var(--label);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.card .big{font-family:var(--label);font-weight:600;font-size:26px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.card .big small{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-left:4px;font-weight:600}
+.card .icons{display:flex;flex-wrap:wrap;gap:5px;min-height:30px}
+.card .meta{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--label);font-size:13px;letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums}
+.card .meta b{color:var(--text);font-weight:600}
+.zone{display:inline-block;padding:1px 7px;border-radius:3px;font-family:var(--label);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;border:1px solid}
+.zone.kara{color:var(--z-kara);border-color:var(--z-kara)}.zone.gruul{color:var(--z-gruul);border-color:var(--z-gruul)}.zone.mag{color:var(--z-mag);border-color:var(--z-mag)}.zone.ssc{color:var(--z-ssc);border-color:var(--z-ssc)}.zone.tk{color:var(--z-tk);border-color:var(--z-tk)}.zone.hyjal{color:var(--z-hyjal);border-color:var(--z-hyjal)}.zone.bt{color:var(--z-bt);border-color:var(--z-bt)}.zone.za{color:var(--z-za);border-color:var(--z-za)}.zone.swp{color:var(--z-swp);border-color:var(--z-swp)}
+.zone.soon{opacity:.7}
+.card .detail{border-top:1px solid var(--line);padding-top:10px;display:none}
+.card.open .detail{display:block}
+.card .detail table{width:100%}
+
+/* ---------- tables ---------- */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel);position:sticky;top:0;z-index:2}
+th.sortable{cursor:pointer;user-select:none}
+th.sortable:hover{color:var(--text)}
+th.sorted{color:var(--gold)}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--panel-2)}
+td.num,th.num{text-align:right}
+td.c,th.c{text-align:center}
+.item{display:flex;align-items:center;gap:10px;min-width:0}
+.item .nm{color:var(--epic);font-weight:600;white-space:nowrap}
+.item .sl{font-family:var(--label);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.rname{font-weight:600;white-space:nowrap}
+.night td{background:var(--panel-2);font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--gold);padding:8px 12px}
+.night td .n{color:var(--muted);margin-left:10px}
+.night td .bz{margin-left:10px}
+.acts{white-space:nowrap;text-align:right}
+.acts .btn{margin-left:4px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.note{color:var(--muted);font-style:italic}
+
+/* ---------- matrix ---------- */
+.matrix th{padding:8px 4px;text-align:center;font-size:11px;line-height:1.15}
+.matrix th:first-child,.matrix td:first-child{text-align:left;padding-left:14px;position:sticky;left:0;background:var(--panel);z-index:3}
+.matrix th:first-child{z-index:4}
+.matrix tbody tr:hover td:first-child{background:var(--panel-2)}
+.matrix td{padding:5px 4px;text-align:center;height:42px}
+.matrix td.dash{color:var(--faint)}
+.matrix td.rn{white-space:nowrap;font-weight:600}
+.matrix td.num{padding-right:14px;font-family:var(--label);font-size:16px;color:var(--text)}
+.matrix .ico{width:30px;height:30px}
+.matrix td.open{background:var(--panel-2)}
+.matrix .stack{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:220px}
+.matrix .stack .btn{padding:0 5px;font-size:13px;line-height:22px}
+
+/* ---------- roster ---------- */
+.two{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:22px;align-items:start}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:12px}
+textarea.inp{min-height:130px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical}
+.rowedit{display:flex;gap:8px;align-items:center}
+.rowedit .inp{padding:5px 8px}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed;z-index:100;pointer-events:none;background:var(--panel-2);border:1px solid var(--line-2);border-radius:5px;padding:10px 12px;box-shadow:var(--shadow);max-width:300px;font-size:13px;line-height:1.4}
+#tip[hidden]{display:none}
+#tip .t{color:var(--epic);font-weight:600;font-size:15px}
+#tip .s{color:var(--muted);font-family:var(--label);letter-spacing:.08em;text-transform:uppercase;font-size:12px;margin-top:2px}
+#tip .l{margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+#tip .l div{display:flex;justify-content:space-between;gap:12px}
+#tip .l div span:last-child{color:var(--muted);white-space:nowrap}
+
+/* ---------- dialog / toast ---------- */
+#dlg{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+#dlg[hidden]{display:none}
+#dlg .box{background:var(--panel);border:1px solid var(--line-2);border-radius:6px;box-shadow:var(--shadow);padding:20px 22px;max-width:440px;width:100%}
+#dlg .msg{font-size:15px;line-height:1.5}
+#dlg .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:210;background:var(--panel-2);border:1px solid var(--warn);color:var(--text);padding:10px 16px;border-radius:5px;box-shadow:var(--shadow);font-size:14px;max-width:min(520px,90vw)}
+#toast[hidden]{display:none}
+/* ---------- import ---------- */
+.st{display:inline-block;padding:1px 8px;border-radius:3px;font-family:var(--label);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;border:1px solid;white-space:nowrap}
+.st.ok{color:var(--good);border-color:var(--good)}
+.st.dup{color:var(--warn);border-color:var(--warn)}
+.st.skip{color:var(--faint);border-color:var(--line-2)}
+.st.new{color:var(--gold);border-color:var(--gold)}
+tr.skip td{opacity:.55}
+.steps{margin:0;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:8px}
+.steps code,.help code{font-family:ui-monospace,Consolas,monospace;font-size:13px;background:var(--panel-3);padding:1px 6px;border-radius:3px}
+.mini{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+/* ---------- difficulty ---------- */
+.diff{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:4px;vertical-align:middle}
+/* ---------- misc ---------- */
+.view[hidden]{display:none}
+.hidden{display:none!important}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:2px 8px;border-radius:12px;background:var(--panel-3);font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap" id="app">
+  <header class="hdr">
+    <div>
+      <div class="eyebrow" id="eyebrow">Burning Crusade raids · TBC Anniversary</div>
+      <h1>Guild Loot Ledger</h1>
+      <div class="guild" id="guildLine"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-view="armory">Armory</button>
+    <button class="tab" role="tab" data-view="log">Loot Log</button>
+    <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
+    <button class="tab" role="tab" data-view="roster">Roster</button>
+    <button class="tab" role="tab" data-view="import">Import</button>
+  </nav>
+
+  <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
+  <div class="panel" id="loginBox" hidden style="margin-top:14px">
+    <div class="panel-h">Sign in to edit<span class="grow"></span><button class="btn sm ghost" id="loginClose">Close</button></div>
+    <div class="panel-b stack">
+      <div class="row"><button class="btn primary" id="discordBtn">Sign in with Discord</button><span class="muted" style="font-size:13px">Officers the owner has added as editors can change the ledger. Everyone else can look.</span></div>
+      <div class="row"><input class="inp" id="loginEmail" type="email" placeholder="or your e-mail address"><button class="btn" id="magicBtn">Send sign-in link</button></div>
+      <div class="muted" id="loginMsg" style="font-size:13px"></div>
+    </div>
+  </div>
+
+  <div class="notice" id="exampleNotice" hidden>
+    <span class="grow"><b>Example ledger.</b> The raiders and awards shown are placeholders so you can see how the page works. Clear them to start your guild's own ledger.</span>
+    <button class="btn sm" id="clearExample">Clear examples</button>
+  </div>
+
+  <!-- ============ ARMORY ============ -->
+  <section class="view" id="view-armory" hidden>
+    <div class="toolbar">
+      <div class="field"><label for="armSearch">Search</label><input class="inp" id="armSearch" placeholder="Find a raider…"></div>
+      <div class="field"><label for="armZone">Show</label><select class="inp" id="armZone"><option value="">Every raid</option></select></div>
+      <div class="spacer"></div>
+      <div class="count" id="armCount"></div>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <!-- ============ LOOT LOG ============ -->
+  <section class="view" id="view-log" hidden>
+    <div class="panel award" id="awardPanel">
+      <div class="panel-h"><span id="awardTitle">Award loot</span><span class="grow"></span><button class="btn sm ghost" id="awardCancel" hidden>Cancel edit</button></div>
+      <div class="panel-b">
+        <form id="awardForm" autocomplete="off">
+          <div class="grid">
+            <div class="field"><label for="fDate">Raid night</label><input class="inp" type="date" id="fDate" required></div>
+            <div class="field"><label for="fBoss">Boss</label><select class="inp" id="fBoss"></select></div>
+            <div class="field combo" id="itemCombo">
+              <label for="fItem">Item</label>
+              <div class="pick"><span class="ico hidden" id="fItemIco"><i class="sp"></i></span><input class="inp" id="fItem" placeholder="Type to search items…"></div>
+              <div class="list" id="itemList" hidden></div>
+            </div>
+            <div class="field"><label for="fRaider">Raider</label><select class="inp" id="fRaider"></select></div>
+            <div class="field"><label for="fNote">Note</label><input class="inp" id="fNote" placeholder="MS / OS / DE"></div>
+            <button class="btn primary" type="submit" id="awardSubmit">Add award</button>
+          </div>
+          <div class="newraider" id="newRaider" hidden>
+            <div class="field"><label for="fNewName">New raider name</label><input class="inp" id="fNewName" placeholder="Character name"></div>
+            <div class="field"><label for="fNewCls">Class</label><select class="inp" id="fNewCls"></select></div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="field"><label for="logSearch">Search</label><input class="inp" id="logSearch" placeholder="Item, raider or boss…"></div>
+      <div class="field"><label for="logRaider">Raider</label><select class="inp" id="logRaider"></select></div>
+      <div class="field"><label for="logBoss">Boss</label><select class="inp" id="logBoss"></select></div>
+      <div class="field"><label for="logSlot">Slot</label><select class="inp" id="logSlot"></select></div>
+      <div class="spacer"></div>
+      <div class="count" id="logCount"></div>
+    </div>
+    <div class="tblwrap"><table id="logTable"><thead><tr><th>Date</th><th>Boss</th><th>Item</th><th>Raider</th><th>Note</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ MATRIX ============ -->
+  <section class="view" id="view-matrix" hidden>
+    <div class="toolbar">
+      <div class="field"><label for="mxSearch">Search</label><input class="inp" id="mxSearch" placeholder="Find a raider…"></div>
+      <div class="field"><label for="mxShow">Show</label><select class="inp" id="mxShow"><option value="all">Every raider</option><option value="none">Raiders without loot</option></select></div>
+      <div class="spacer"></div>
+      <div class="count" id="mxCount"></div>
+    </div>
+    <div class="tblwrap"><table class="matrix" id="mxTable"><thead id="mxHead"></thead><tbody id="mxBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ ROSTER ============ -->
+  <section class="view" id="view-roster" hidden>
+    <div class="two">
+      <div class="tblwrap"><table id="rosterTable"><thead><tr><th>Raider</th><th>Class</th><th class="num">Items</th><th>Raids</th><th>First award</th><th>Last award</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-h">Add raider</div>
+          <div class="panel-b"><form id="rosterForm" class="stack" autocomplete="off">
+            <div class="field"><label for="rName">Name</label><input class="inp" id="rName" placeholder="Character name" required></div>
+            <div class="field"><label for="rCls">Class</label><select class="inp" id="rCls"></select></div>
+            <button class="btn primary" type="submit">Add to roster</button>
+          </form></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Add many raiders</div>
+          <div class="panel-b stack help">
+            <p class="muted" style="margin:0;font-size:13px">Paste a list, one raider per line or all in one line. <code>Name:CLASS</code>, <code>Name Warrior</code>, <code>Name,Priest</code> or just <code>Name</code> all work. Raiders already on the roster are skipped.</p>
+            <textarea class="inp" id="bulkText" spellcheck="false" style="min-height:110px" placeholder="Dixie:WARRIOR Mevbear:DRUID Buck:HUNTER&#10;Kessa Priest&#10;Gnail"></textarea>
+            <button class="btn primary" id="bulkAdd">Add raiders</button>
+            <details>
+              <summary class="muted" style="cursor:pointer;font-size:13px">Get the list from the game with a macro</summary>
+              <p class="muted" style="font-size:13px;margin:10px 0 6px">Create a macro with one of these, run it while in the raid (or anywhere for the guild list). Your chat box fills with the names and classes: press <code>Ctrl+C</code>, then <code>Escape</code>, and paste above.</p>
+              <div class="field"><label>Current raid group</label><textarea class="inp" id="macroRaid" readonly spellcheck="false" style="min-height:70px"></textarea><button class="btn sm" data-copy="macroRaid" style="align-self:flex-start">Copy macro</button></div>
+              <div class="field" style="margin-top:8px"><label>Guild members at level 70</label><textarea class="inp" id="macroGuild" readonly spellcheck="false" style="min-height:70px"></textarea><button class="btn sm" data-copy="macroGuild" style="align-self:flex-start">Copy macro</button></div>
+            </details>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Guild &amp; ledger settings</div>
+          <div class="panel-b stack">
+            <div class="field"><label for="gName">Guild name</label><input class="inp" id="gName" placeholder="Shown in the header"></div>
+            <div class="field"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
+            <div class="field"><label for="gFaction">Faction</label><select class="inp" id="gFaction"><option value="">Not set</option><option value="alliance">Alliance</option><option value="horde">Horde</option></select></div>
+            <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame"></select></div>
+            <button class="btn" id="saveSettings">Save settings</button>
+          </div>
+        </div>
+        <div class="panel" id="editorsPanel" hidden>
+          <div class="panel-h">Editors</div>
+          <div class="panel-b stack">
+            <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. They sign in with Discord or an e-mail link using the address listed here.</p>
+            <div id="editorsList" class="stack"></div>
+            <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="email" placeholder="officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Backup</div>
+          <div class="panel-b stack">
+            <p class="muted" style="margin:0;font-size:13px">Copy the ledger as JSON to keep a backup, or paste a backup below to restore it.</p>
+            <textarea class="inp" id="backup" spellcheck="false"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="exportBtn">Export to box</button><button class="btn sm" id="copyBtn">Copy</button><button class="btn sm danger" id="importBtn">Restore from box</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ IMPORT ============ -->
+  <section class="view" id="view-import" hidden>
+    <div class="two" style="grid-template-columns:1fr 340px">
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-h">Paste a loot export</div>
+          <div class="panel-b stack">
+            <textarea class="inp" id="glText" spellcheck="false" style="min-height:170px" placeholder="dateTime,character,itemID,offspec,id&#10;2026-09-04,Dixie,32837,0,7f3a…"></textarea>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+              <button class="btn primary" id="glPreview">Preview import</button>
+              <label class="mini"><input type="checkbox" id="glDups"> Also import entries the ledger already has</label>
+              <label class="mini">Dates like 04/09/2026 are <select class="inp" id="glDateOrder" style="width:auto;padding:3px 26px 3px 8px"><option value="dmy">day/month/year</option><option value="mdy">month/day/year</option></select></label>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="glResult" hidden>
+          <div class="panel-h"><span id="glSummary"></span><span class="grow"></span><button class="btn sm primary" id="glImport">Import</button></div>
+          <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table id="glTable"><thead><tr><th>Status</th><th>Date</th><th>Item</th><th>Boss</th><th>Raider</th><th>Class</th><th>Note</th></tr></thead><tbody id="glBody"></tbody></table></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h">How to export from your loot addon</div>
+        <div class="panel-b help">
+          <p class="muted" style="font-size:13px;margin:0 0 8px"><b>Gargul</b></p>
+          <ol class="steps">
+            <li>Type <code>/gl export</code>, select the raid dates on the left (nothing selected exports everything).</li>
+            <li>Click into the text box, <code>Ctrl+A</code>, <code>Ctrl+C</code>, paste it here.</li>
+          </ol>
+          <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>RCLootCouncil</b></p>
+          <ol class="steps">
+            <li>Type <code>/rc history</code>, click <b>Export</b> and choose <b>CSV</b> or <b>JSON</b>.</li>
+            <li><code>Ctrl+A</code>, <code>Ctrl+C</code>, paste it here.</li>
+          </ol>
+          <p class="muted" style="font-size:13px;margin:14px 0 0">Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
+          <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and drops that are not from one of the nine Burning Crusade raids are ignored.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="tip" hidden></div>
+<style id="zoneStyle"></style>
+<div id="dlg" hidden role="dialog" aria-modal="true"><div class="box"><div class="msg" id="dlgMsg"></div><div class="btns"><button class="btn" id="dlgNo">Cancel</button><button class="btn primary" id="dlgYes">Confirm</button></div></div></div>
+<div id="toast" hidden role="status"></div>
+
+<script id="ledger-data" type="application/json">{"version":1,"guild":"Amisia","realm":"Thunderstrike","example":false,"savedAt":0,"raiders":[{"id":"mu063444uh261","name":"Frostknirps","cls":"Mage"},{"id":"mu063444clgvb","name":"Fraktur","cls":"Shaman"},{"id":"mu063444rqikz","name":"Ziepel","cls":"Hunter"},{"id":"mu063444vii8n","name":"Abunazir","cls":"Paladin"},{"id":"mu06344468fhd","name":"Corruptix","cls":"Warlock"},{"id":"mu063444lgrr2","name":"Klötenbernie","cls":"Rogue"},{"id":"mu063444fop28","name":"Chorf","cls":"Warrior"},{"id":"mu063444yi0xy","name":"Funte","cls":"Warrior"},{"id":"mu063444nv3sx","name":"Aarox","cls":"Druid"},{"id":"mu063444of81x","name":"Kveykva","cls":"Shaman"},{"id":"mu063444kmx48","name":"Buxxbaum","cls":"Druid"},{"id":"mu063444o35cm","name":"Goodoldcrack","cls":"Paladin"},{"id":"mu0634441v7l4","name":"Herrmaier","cls":"Paladin"},{"id":"mu0634448ncrf","name":"Medienmogul","cls":"Paladin"},{"id":"mu063444n4mkg","name":"Shamplunge","cls":"Shaman"},{"id":"mu063444u09b5","name":"Vuloo","cls":"Priest"},{"id":"mu063444lh3z4","name":"Salamitöff","cls":"Shaman"},{"id":"mu06agh6oa0da","name":"Geunja","cls":"Priest"},{"id":"mu06c1pbjb0ll","name":"Strikerzero","cls":"Rogue"},{"id":"mu06cp1irr7a2","name":"Jugô","cls":"Mage"},{"id":"mu06d4rgx0xt8","name":"Bossbobby","cls":"Mage"},{"id":"mu06dk7joe3ro","name":"Corpina","cls":"Warlock"},{"id":"mu06e17d25h4b","name":"Derken","cls":"Paladin"},{"id":"mu06eaqzoiirv","name":"Thyrella","cls":"Warlock"},{"id":"mu06em4txg1xe","name":"Tandoran","cls":"Mage"},{"id":"mu06ft1p1mdgh","name":"Traxés","cls":"Hunter"},{"id":"mu06gm51bnk6f","name":"Yaracko","cls":"Warrior"},{"id":"mu06jr3yfwiwq","name":"Ndabou","cls":"Druid"},{"id":"mu06jr3ya4g45","name":"Buregar","cls":"Hunter"},{"id":"mu06jr3yel5py","name":"Schamless","cls":"Shaman"}],"awards":[{"id":"mu063444fbhhq","date":"2026-09-09","boss":"Rage Winterchill","item":30872,"raider":"mu063444uh261","note":"","ts":1789325303188,"gargul":"40737373653408850566"},{"id":"mu063444x3f8k","date":"2026-09-09","boss":"Anetheron","item":30882,"raider":"mu063444clgvb","note":"","ts":1789325303189,"gargul":"40195177481483778539"},{"id":"mu0634447hx1r","date":"2026-09-09","boss":"Azgalor","item":31094,"raider":"mu063444rqikz","note":"","ts":1789325303190,"gargul":"17745414324070355148"},{"id":"mu063444m7pnq","date":"2026-09-09","boss":"Azgalor","item":30900,"raider":"mu063444vii8n","note":"","ts":1789325303191,"gargul":"25008608339200974620"},{"id":"mu063444bd0dj","date":"2026-09-09","boss":"Azgalor","item":31092,"raider":"mu06344468fhd","note":"","ts":1789325303192,"gargul":"50466734133643417920"},{"id":"mu063444k39cp","date":"2026-09-09","boss":"Azgalor","item":31093,"raider":"mu063444lgrr2","note":"","ts":1789325303193,"gargul":"40886284742769838068"},{"id":"mu063444bl2b6","date":"2026-09-09","boss":"Rage Winterchill","item":30866,"raider":"mu063444fop28","note":"OS","ts":1789325303194,"gargul":"37543888722546748386"},{"id":"mu063444v8gee","date":"2026-09-09","boss":"Kaz'rogal","item":30889,"raider":"mu063444yi0xy","note":"OS","ts":1789325303195,"gargul":"38714218373288808620"},{"id":"mu063444n3wy2","date":"2026-09-09","boss":"Anetheron","item":30883,"raider":"mu063444nv3sx","note":"OS","ts":1789325303196,"gargul":"94420469337225238390"},{"id":"mu063444yuow0","date":"2026-09-09","boss":"Archimonde","item":31095,"raider":"mu063444of81x","note":"","ts":1789325303197,"gargul":"16285088010438739670"},{"id":"mu063444hru5i","date":"2026-09-09","boss":"Archimonde","item":31096,"raider":"mu063444kmx48","note":"","ts":1789325303198,"gargul":"20728387112532748857"},{"id":"mu063444f5bcy","date":"2026-09-09","boss":"Archimonde","item":31096,"raider":"mu063444lgrr2","note":"","ts":1789325303199,"gargul":"24845932502769838068"},{"id":"mu0634449t88m","date":"2026-09-09","boss":"Kaz'rogal","item":30915,"raider":"mu063444o35cm","note":"OS","ts":1789325303200,"gargul":"25509691262454139946"},{"id":"mu06344470stf","date":"2026-09-09","boss":"Supremus","item":32261,"raider":"mu0634441v7l4","note":"","ts":1789325303201,"gargul":"13082494102481851431"},{"id":"mu063444jpwma","date":"2026-09-09","boss":"Supremus","item":32255,"raider":"mu0634448ncrf","note":"","ts":1789325303202,"gargul":"22247396942523790644"},{"id":"mu063444490k4","date":"2026-09-09","boss":"Teron Gorefiend","item":32510,"raider":"mu063444n4mkg","note":"","ts":1789325303203,"gargul":"39616063881447896357"},{"id":"mu063444zw2jr","date":"2026-09-09","boss":"Teron Gorefiend","item":32329,"raider":"mu063444u09b5","note":"OS","ts":1789325303204,"gargul":"30386488303397286573"},{"id":"mu063444w8cul","date":"2026-09-09","boss":"High Warlord Naj'entus","item":32236,"raider":"mu063444lh3z4","note":"","ts":1789325303205,"gargul":"16734095994213478390"},{"id":"mu06agh5m0hmf","date":"2026-09-07","boss":"Teron Gorefiend","item":32323,"raider":"mu063444n4mkg","note":"","ts":1789325645801,"gargul":"38824984441447896357"},{"id":"mu06agh5n69mm","date":"2026-09-07","boss":"Shade of Akama","item":32513,"raider":"mu063444kmx48","note":"OS","ts":1789325645802,"gargul":"27012387382532748857"},{"id":"mu06agh55f4ev","date":"2026-09-07","boss":"Shade of Akama","item":32271,"raider":"mu063444nv3sx","note":"","ts":1789325645803,"gargul":"33977836273722523839"},{"id":"mu06agh5qnpgz","date":"2026-09-07","boss":"Trash (Black Temple)","item":34011,"raider":"mu0634441v7l4","note":"","ts":1789325645804,"gargul":"48729654624818514310"},{"id":"mu06agh5s84b5","date":"2026-09-07","boss":"Teron Gorefiend","item":32329,"raider":"mu063444nv3sx","note":"","ts":1789325645805,"gargul":"37934211503722523839"},{"id":"mu06agh5effk5","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444lgrr2","note":"","ts":1789325645806,"gargul":"24581198752769838068"},{"id":"mu06agh5dtewl","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444kmx48","note":"","ts":1789325645807,"gargul":"38606082512532748857"},{"id":"mu06agh5bmnyi","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444uh261","note":"","ts":1789325645808,"gargul":"28879897433408850566"},{"id":"mu06agh6eb2qd","date":"2026-09-07","boss":"Mother Shahraz","item":32370,"raider":"mu0634448ncrf","note":"","ts":1789325645809,"gargul":"15203357932523790644"},{"id":"mu06agh6sr3iu","date":"2026-09-07","boss":"Gurtogg Bloodboil","item":32335,"raider":"mu063444lh3z4","note":"","ts":1789325645810,"gargul":"23112322804213478390"},{"id":"mu06agh6iqw09","date":"2026-09-07","boss":"Trash (Black Temple)","item":32606,"raider":"mu0634448ncrf","note":"OS","ts":1789325645811,"gargul":"15072587932523790644"},{"id":"mu06agh6knk2c","date":"2026-09-07","boss":"The Illidari Council","item":31100,"raider":"mu063444of81x","note":"","ts":1789325645812,"gargul":"11749270331043873967"},{"id":"mu06agh6vy9tk","date":"2026-09-07","boss":"The Illidari Council","item":31098,"raider":"mu0634448ncrf","note":"","ts":1789325645813,"gargul":"25567330125237906440"},{"id":"mu06agh6tih21","date":"2026-09-07","boss":"The Illidari Council","item":31098,"raider":"mu06agh6oa0da","note":"","ts":1789325645814,"gargul":"14566328854063530249"},{"id":"mu06iect26lrq","date":"2026-09-02","boss":"Kaz'rogal","item":30914,"raider":"mu063444kmx48","note":"","ts":1789326016301,"gargul":"19044532502532748857"},{"id":"mu06iect01il5","date":"2026-09-02","boss":"Azgalor","item":31094,"raider":"mu063444yi0xy","note":"","ts":1789326016302,"gargul":"26260472813288808620"},{"id":"mu06iectpr4yk","date":"2026-09-02","boss":"Azgalor","item":31094,"raider":"mu06ft1p1mdgh","note":"","ts":1789326016303,"gargul":"19184853476253083990"},{"id":"mu06iecto7tlq","date":"2026-09-02","boss":"Azgalor","item":31092,"raider":"mu06dk7joe3ro","note":"","ts":1789326016304,"gargul":"21278999424474735100"},{"id":"mu06iect73dye","date":"2026-09-02","boss":"Rage Winterchill","item":30872,"raider":"mu06344468fhd","note":"","ts":1789326016305,"gargul":"14962537103364341792"},{"id":"mu06iectx80co","date":"2026-09-02","boss":"Rage Winterchill","item":30863,"raider":"mu063444n4mkg","note":"","ts":1789326016306,"gargul":"35916326831447896357"},{"id":"mu06iect7uz4x","date":"2026-09-02","boss":"Anetheron","item":30881,"raider":"mu06ft1p1mdgh","note":"","ts":1789326016307,"gargul":"14299367936253083990"},{"id":"mu06iectkqgsg","date":"2026-09-02","boss":"Anetheron","item":30886,"raider":"mu063444nv3sx","note":"","ts":1789326016308,"gargul":"12322524423722523839"},{"id":"mu06iectwxcgo","date":"2026-09-02","boss":"Kaz'rogal","item":30919,"raider":"mu063444n4mkg","note":"","ts":1789326016309,"gargul":"40832401414478963570"},{"id":"mu06iectgh092","date":"2026-09-02","boss":"Azgalor","item":30896,"raider":"mu0634441v7l4","note":"","ts":1789326016310,"gargul":"11533034624818514310"},{"id":"mu06iect5wked","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu06eaqzoiirv","note":"","ts":1789326016311,"gargul":"10168097911677928325"},{"id":"mu06iect4yydy","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu06344468fhd","note":"","ts":1789326016312,"gargul":"21120930163364341792"},{"id":"mu06iectec08e","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu0634448ncrf","note":"","ts":1789326016313,"gargul":"26864474222523790644"},{"id":"mu06iect3ii5c","date":"2026-09-02","boss":"Archimonde","item":30906,"raider":"mu063444rqikz","note":"","ts":1789326016314,"gargul":"32107570564070355148"},{"id":"mu06iectf9vhl","date":"2026-09-02","boss":"Archimonde","item":30908,"raider":"mu063444u09b5","note":"OS","ts":1789326016315,"gargul":"83582967433972865730"},{"id":"mu06iect7zm86","date":"2026-09-02","boss":"High Warlord Naj'entus","item":32238,"raider":"mu0634448ncrf","note":"","ts":1789326016316,"gargul":"38678156193722523839"},{"id":"mu06iectpsdiu","date":"2026-09-02","boss":"High Warlord Naj'entus","item":32243,"raider":"mu0634448ncrf","note":"","ts":1789326016317,"gargul":"33937678682523790644"},{"id":"mu06jr3y918lf","date":"2026-08-31","boss":"Rage Winterchill","item":30863,"raider":"mu06gm51bnk6f","note":"","ts":1789326079486,"gargul":"36163343143213827862"},{"id":"mu06jr3y8kq1s","date":"2026-08-31","boss":"Azgalor","item":31093,"raider":"mu06jr3yfwiwq","note":"","ts":1789326079487,"gargul":"14835782262235450471"},{"id":"mu06jr3yykexz","date":"2026-08-31","boss":"Azgalor","item":31093,"raider":"mu06c1pbjb0ll","note":"","ts":1789326079488,"gargul":"33931457713374556949"},{"id":"mu06jr3y3461q","date":"2026-08-31","boss":"Azgalor","item":31092,"raider":"mu06eaqzoiirv","note":"","ts":1789326079489,"gargul":"39101325961677928325"},{"id":"mu06jr3y1chwy","date":"2026-08-31","boss":"Rage Winterchill","item":30871,"raider":"mu063444clgvb","note":"","ts":1789326079490,"gargul":"32466688541483778539"},{"id":"mu06jr3y0uo90","date":"2026-08-31","boss":"Archimonde","item":31097,"raider":"mu06dk7joe3ro","note":"","ts":1789326079491,"gargul":"14246337282447473510"},{"id":"mu06jr3ym8eye","date":"2026-08-31","boss":"Archimonde","item":31095,"raider":"mu063444fop28","note":"","ts":1789326079492,"gargul":"33837561632546748386"},{"id":"mu06jr3yhxvk8","date":"2026-08-31","boss":"Archimonde","item":31095,"raider":"mu063444yi0xy","note":"","ts":1789326079493,"gargul":"77177785632888086200"},{"id":"mu06jr3yvbr18","date":"2026-08-31","boss":"Anetheron","item":30881,"raider":"mu063444rqikz","note":"","ts":1789326079494,"gargul":"92166005440703551480"},{"id":"mu06jr3yym57a","date":"2026-08-31","boss":"Anetheron","item":30887,"raider":"mu063444of81x","note":"","ts":1789326079495,"gargul":"20851432610438739670"},{"id":"mu06jr3yd041n","date":"2026-08-31","boss":"Kaz'rogal","item":30894,"raider":"mu06344468fhd","note":"","ts":1789326079496,"gargul":"34372302723364341792"},{"id":"mu06jr3yo3bh4","date":"2026-08-31","boss":"Kaz'rogal","item":30889,"raider":"mu063444fop28","note":"","ts":1789326079497,"gargul":"38787502392546748386"},{"id":"mu06jr3yfnqqm","date":"2026-08-31","boss":"Azgalor","item":30901,"raider":"mu06jr3ya4g45","note":"","ts":1789326079498,"gargul":"87672783098282754400"},{"id":"mu06jr3ybxf05","date":"2026-08-31","boss":"Archimonde","item":30908,"raider":"mu063444nv3sx","note":"","ts":1789326079499,"gargul":"55558106037225238390"},{"id":"mu06jr3y0mzyw","date":"2026-08-31","boss":"High King Maulgar","item":28797,"raider":"mu063444kmx48","note":"","ts":1789326079500,"gargul":"61139503725327488570"},{"id":"mu06jr3y3lzp2","date":"2026-08-31","boss":"Gruul the Dragonkiller","item":28822,"raider":"mu06jr3yel5py","note":"OS","ts":1789326079501,"gargul":"29156705963489387060"}],"faction":"alliance","game":"tbc"}</script>
+<script>
+(function(){
+'use strict';
+/* ---------------- static data ---------------- */
+const CLASSIC_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Shaman','Mage','Warlock','Druid'];
+const MOP_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Death Knight','Shaman','Mage','Warlock','Monk','Druid'];
+const GAMES = [
+  {key:'classic', name:'Classic Era', short:'Era', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
+  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
+  {key:'sod', name:'Season of Discovery', short:'SoD', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
+  {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
+  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:null, soon:true, classes:MOP_CLASSES, blurb:'loot tables coming soon'},
+  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
+];
+const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
+let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
+function applyData(d){
+  DATA = d || {zones:[], bosses:[], items:[]};
+  ITEM = Object.fromEntries(DATA.items.map(i => [i.id, i]));
+  BOSSES = DATA.bosses; BOSSZONE = Object.fromEntries(BOSSES.map(b => [b.name, b.zone]));
+  ZONES = DATA.zones; ZONE = Object.fromEntries(ZONES.map(z => [z.key, z.name]));
+  ZSHORT = Object.fromEntries(ZONES.map(z => [z.key, z.short])); ZSOON = Object.fromEntries(ZONES.map(z => [z.key, !!z.soon]));
+  let css = ':root{' + ZONES.map(z => '--z-'+z.key+':'+(z.color ? z.color[0] : '#8f86a3')).join(';') + '}';
+  const light = ZONES.map(z => '--z-'+z.key+':'+(z.color ? z.color[1] : '#6a617a')).join(';');
+  css += '@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){' + light + '}}:root[data-theme="light"]{' + light + '}';
+  css += ZONES.map(z => '.zone.'+z.key+'{color:var(--z-'+z.key+');border-color:var(--z-'+z.key+')}').join('');
+  if (DATA.sprite) css += '.ico .sp{background-image:url("' + DATA.sprite.file + '");background-size:' + (DATA.sprite.cols*100) + '% ' + (DATA.sprite.rows*100) + '%}';
+  $('#zoneStyle').textContent = css;
+  $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
+  $('#mxShow').innerHTML = '<option value="all">Every raider</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
+}
+function loadGame(key){
+  const g = GAME[key] || GAME.tbc; gameKey = g.key; CLASSES = g.classes;
+  if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
+  if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
+  dataState = 'loading'; applyData(null); renderAll();
+  const s = document.createElement('script'); s.src = g.file + '?v=' + encodeURIComponent(g.key);
+  s.onload = () => { dataState = window.__LOOT && window.__LOOT[g.key] ? 'ok' : 'error'; applyData(window.__LOOT && window.__LOOT[g.key]); renderAll(); };
+  s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
+  document.head.appendChild(s);
+}
+const SLOTNAME = {mount:'Mount',other:'Other',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
+const MXCOLS = [['head','Helm'],['neck','Neck'],['shoulder','Shoulder'],['back','Back'],['chest','Chest'],['wrist','Wrist'],['weapon','Weapon'],['offhand','Off hand'],['rr','Relic / Ranged'],['hands','Gloves'],['waist','Belt'],['legs','Legs'],['feet','Boots'],['finger1','Ring 1'],['finger2','Ring 2'],['trinket1','Trinket 1'],['trinket2','Trinket 2']];
+const LS_KEY = 'guild-loot-ledger.site.v1';
+
+/* ---------------- state ---------------- */
+let state = JSON.parse(document.getElementById('ledger-data').textContent);
+let dirty = false, readOnly = false, art = null, artResolved = false, saveTimer = null;
+let ui = {view:'armory', openCard:null, editing:null, mxSort:'items', logSort:'date', mxOpen:{}};
+try { const u = JSON.parse(sessionStorage.getItem(LS_KEY+'.ui')||'null'); if (u) ui = Object.assign(ui, u); sessionStorage.removeItem(LS_KEY+'.ui'); } catch(e){}
+ui.mxOpen = ui.mxOpen || {};
+try {
+  const loc = JSON.parse(localStorage.getItem(LS_KEY)||'null');
+  if (loc && loc.dirty && (loc.savedAt||0) > (state.savedAt||0)) { state = loc; dirty = true; }   // unsaved edits from a previous visit
+} catch(e){}
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const fmtDate = d => { if(!d) return '—'; const [y,m,dd] = d.split('-').map(Number); return new Date(y,m-1,dd).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+const fmtShort = d => { const [y,m,dd] = d.split('-').map(Number); return new Date(y,m-1,dd).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
+const clsVar = c => 'var(--c-' + (MOP_CLASSES.includes(c) ? c.toLowerCase().replace(/\s+/g,'') : 'unknown') + ')';
+const raiderById = id => state.raiders.find(r => r.id === id);
+const awardsOf = (rid, zone) => state.awards.filter(a => a.raider === rid && (!zone || BOSSZONE[a.boss] === zone)).sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts||0)-(b.ts||0));
+const slotOf = it => it ? (it.slot==='ranged'||it.slot==='relic' ? 'rr' : it.slot) : 'other';
+const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+
+function spriteStyle(it){
+  const sp = DATA.sprite; if (!sp || it.s == null) return '';
+  const c = it.s % sp.cols, r = Math.floor(it.s / sp.cols);
+  const x = sp.cols > 1 ? (c / (sp.cols - 1) * 100) : 0, y = sp.rows > 1 ? (r / (sp.rows - 1) * 100) : 0;
+  return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
+}
+function icoInner(it){ return it.img ? '<img src="'+it.img+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
+const WOWHEAD_DB = {classic:'classic', hardcore:'classic', sod:'classic', tbc:'tbc', mop:'mop-classic', forever:'classic'};
+function icoHTML(it, extra, count, link){
+  if(!it) return '<span class="ico"><i class="sp"></i></span>';
+  const tag = link === false ? 'span' : 'a';
+  return '<'+tag+' class="ico hot'+(it.token?' token':'')+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
+}
+function dTag(it){ return it && it.diff ? '<span class="diff">'+esc(it.diff)+'</span>' : ''; }
+function zTag(z){ return '<span class="zone '+z+(ZSOON[z]?' soon':'')+'">'+esc(ZSHORT[z]||z)+'</span>'; }
+function rName(r){ return '<span class="rname" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'; }
+function bossOptions(sel, withAll){
+  let h = withAll ? '<option value="">Every boss</option>' : '';
+  for (const z of ZONES.map(x => x.key)) {
+    h += '<optgroup label="'+esc(ZONE[z])+(ZSOON[z]?' · coming soon':'')+'">';
+    for (const b of BOSSES.filter(b => b.zone===z)) h += '<option value="'+esc(b.name)+'"'+(b.name===sel?' selected':'')+'>'+esc(b.name)+'</option>';
+    h += '</optgroup>';
+  }
+  return h;
+}
+function raiderOptions(sel, first){
+  const rs = [...state.raiders].sort((a,b)=>a.name.localeCompare(b.name));
+  return (first||'') + rs.map(r => '<option value="'+r.id+'"'+(r.id===sel?' selected':'')+'>'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('');
+}
+function classOptions(sel){ return CLASSES.concat(sel && !CLASSES.includes(sel) ? [sel] : []).map(c => '<option'+(c===sel?' selected':'')+'>'+c+'</option>').join(''); }
+
+/* ---------------- dialogs (browser alert/confirm are blocked inside the artifact frame) ---------------- */
+let dlgResolve = null, toastTimer = null;
+function ask(msg, yes){
+  return new Promise(res => { dlgResolve = res; $('#dlgMsg').textContent = msg; $('#dlgYes').textContent = yes || 'Confirm'; $('#dlg').hidden = false; $('#dlgYes').focus(); });
+}
+function closeDlg(v){ $('#dlg').hidden = true; if (dlgResolve) { const r = dlgResolve; dlgResolve = null; r(v); } }
+$('#dlgYes').addEventListener('click', () => closeDlg(true));
+$('#dlgNo').addEventListener('click', () => closeDlg(false));
+$('#dlg').addEventListener('click', ev => { if (ev.target === $('#dlg')) closeDlg(false); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('#dlg').hidden) closeDlg(false); });
+function say(msg){ const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 3500); }
+
+/* ---------------- persistence (Supabase) ---------------- */
+const SUPA = window.supabase ? window.supabase.createClient("https://pxqqiqlnfmmalqcqnakq.supabase.co", "sb_publishable_gfWG3hDY8V_EFrIRwG85_A_7Jtx_uZ1") : null;
+let user = null, isEditor = false, isOwner = false, serverVersion = 0, saving = false;
+readOnly = true;   // everyone is a viewer until the server says otherwise
+function setBar(kind, msg){
+  const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
+  $('#publishBtn').hidden = !(dirty && isEditor);
+  $('#loginBtn').hidden = !!user; $('#logoutBtn').hidden = !user;
+  $('#who').innerHTML = user ? esc(user.email || user.user_metadata?.full_name || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : 'viewer') + '</span>' : '';
+}
+function refreshBar(){
+  if (!SUPA) setBar('err', 'Could not load the database client. Check your connection and reload.');
+  else if (!user) setBar('ro', 'Viewing. Sign in to edit.');
+  else if (!isEditor) setBar('ro', 'Signed in as a viewer. Ask the owner to add you as an editor.');
+  else if (saving) setBar('dirty', 'Saving…');
+  else if (dirty) setBar('dirty', 'Unsaved changes. They save automatically in a moment, or press Save.');
+  else setBar('ok', 'Everything is saved. Anyone with the link sees this version.');
+}
+function markDirty(){
+  dirty = true; state.savedAt = Date.now();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true}))); } catch(e){}
+  refreshBar(); renderAll();
+  clearTimeout(saveTimer); saveTimer = setTimeout(publish, 4000);
+}
+async function publish(){
+  clearTimeout(saveTimer);
+  if (!dirty || !isEditor || !SUPA || saving) return;
+  saving = true; refreshBar(); $('#publishBtn').disabled = true;
+  const clean = Object.assign({}, state); delete clean.dirty;
+  try {
+    const {data, error} = await SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: serverVersion});
+    if (error) throw error;
+    serverVersion = Number(data && data[0] ? data[0].version : serverVersion + 1);
+    dirty = false; try { localStorage.setItem(LS_KEY, JSON.stringify(clean)); } catch(e){}
+  } catch (e) {
+    const msg = String(e && (e.message || e.code) || e);
+    if (/conflict|40001/.test(msg)) { setBar('err', 'Someone else saved first. Reloading their version…'); await loadFromServer(true); saving = false; return; }
+    if (/not an editor|42501|permission/i.test(msg)) { isEditor = false; saving = false; renderAll(); refreshBar(); return; }
+    saving = false; setBar('err', 'Save failed (' + msg + '). Your changes are kept in this browser. Press Save to retry.'); return;
+  }
+  saving = false; refreshBar();
+}
+async function loadFromServer(force){
+  if (!SUPA) return;
+  const {data, error} = await SUPA.from('ledgers').select('state,version').eq('id', 'main').maybeSingle();
+  if (error || !data) return;
+  if (force || !dirty || !isEditor) {   // unsaved local edits only survive for someone who can actually save them
+    serverVersion = Number(data.version); state = data.state || state; dirty = false;
+    if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll();
+  } else serverVersion = Number(data.version);
+  refreshBar();
+}
+async function refreshRole(){
+  isEditor = false; isOwner = false;
+  if (SUPA && user) {
+    try {
+      const [e, o] = await Promise.all([SUPA.rpc('is_editor'), SUPA.rpc('is_owner')]);
+      isEditor = !!e.data; isOwner = !!o.data;
+    } catch (err) {}
+  }
+  readOnly = !isEditor;
+}
+async function renderEditors(){
+  const panel = $('#editorsPanel'); panel.hidden = !isOwner; if (!isOwner) return;
+  const {data} = await SUPA.from('editors').select('email,label').order('email');
+  $('#editorsList').innerHTML = (data||[]).length ? data.map(e => '<div style="display:flex;gap:8px;align-items:center"><span style="flex:1">'+esc(e.email)+'</span><button class="btn sm ghost danger" data-edrm="'+esc(e.email)+'">Remove</button></div>').join('') : '<span class="muted">No editors yet. Only you can edit.</span>';
+}
+async function initCapability(){
+  if (!SUPA) { refreshBar(); return; }
+  const { data: { session } } = await SUPA.auth.getSession();
+  user = session ? session.user : null;
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors();
+  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); });
+  SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
+    const v = Number(payload.new && payload.new.version);
+    if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; state = payload.new.state; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll(); refreshBar(); }
+  }).subscribe();
+  if (dirty && isEditor) saveTimer = setTimeout(publish, 2000);
+}
+$('#loginBtn').addEventListener('click', () => { $('#loginBox').hidden = false; $('#loginMsg').textContent = ''; });
+$('#loginClose').addEventListener('click', () => { $('#loginBox').hidden = true; });
+$('#logoutBtn').addEventListener('click', async () => { await SUPA.auth.signOut(); });
+$('#discordBtn').addEventListener('click', async () => {
+  const {error} = await SUPA.auth.signInWithOAuth({provider: 'discord', options: {redirectTo: location.origin + location.pathname}});
+  if (error) $('#loginMsg').textContent = 'Discord sign-in is not set up yet: ' + error.message;
+});
+$('#magicBtn').addEventListener('click', async () => {
+  const email = $('#loginEmail').value.trim(); if (!email) return;
+  const {error} = await SUPA.auth.signInWithOtp({email, options: {emailRedirectTo: location.origin + location.pathname}});
+  $('#loginMsg').textContent = error ? 'Could not send the link: ' + error.message : 'Check your inbox and open the sign-in link.';
+});
+$('#edAdd').addEventListener('click', async () => {
+  const email = $('#edEmail').value.trim().toLowerCase(); if (!email) return;
+  const {error} = await SUPA.from('editors').insert({email});
+  if (error) return say('Could not add: ' + error.message);
+  $('#edEmail').value = ''; say('Added ' + email + ' as editor.'); renderEditors();
+});
+$('#editorsList').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-edrm]'); if (!b) return;
+  if (!await ask('Remove ' + b.dataset.edrm + ' from the editors?', 'Remove')) return;
+  const {error} = await SUPA.from('editors').delete().eq('email', b.dataset.edrm);
+  if (error) return say('Could not remove: ' + error.message);
+  renderEditors();
+});
+
+/* ---------------- header ---------------- */
+function renderHeader(){
+  const nights = new Set(state.awards.map(a => a.date));
+  const dates = [...nights].sort();
+  const g = (state.guild||'').trim(), realm = (state.realm||'').trim();
+  const gm = GAME[gameKey] || GAME.tbc; $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
+  const fac = state.faction === 'alliance' ? '<span class="fac alliance">Alliance</span>' : state.faction === 'horde' ? '<span class="fac horde">Horde</span>' : '';
+  $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="roster">set guild, realm and faction</a></span>');
+  document.title = g ? g + (realm ? ' – ' + realm : '') + ' · Guild Loot Ledger' : 'Guild Loot Ledger';
+  $('#stats').innerHTML = '<div><b>'+state.awards.length+'</b> awards · <b>'+state.raiders.length+'</b> raiders</div>'
+    + '<div><b>'+nights.size+'</b> raid night'+(nights.size===1?'':'s')+(dates.length ? ' · '+fmtShort(dates[0])+(dates.length>1?' – '+fmtDate(dates[dates.length-1]):' '+dates[0].slice(0,4)) : '')+'</div>';
+  $('#exampleNotice').hidden = !state.example || readOnly;
+  $('#awardPanel').classList.toggle('hidden', readOnly);
+  $('#rosterForm').classList.toggle('hidden', readOnly);
+  $('#bulkAdd').classList.toggle('hidden', readOnly);
+  $('#saveSettings').classList.toggle('hidden', readOnly);
+  $('#importBtn').classList.toggle('hidden', readOnly);
+  $('#clearExample').classList.toggle('hidden', readOnly);
+  document.querySelectorAll('.tab').forEach(t => {
+    const n = t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
+  });
+}
+
+/* ---------------- armory ---------------- */
+function renderArmory(){
+  const q = $('#armSearch').value.trim().toLowerCase(), zone = $('#armZone').value;
+  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone)}))
+    .filter(x => !q || x.r.name.toLowerCase().includes(q))
+    .sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
+  $('#armCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
+  if (!rows.length) { $('#cards').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>No raiders yet</b>Add raiders on the Roster tab, or award the first item on the Loot Log tab.</div>'; return; }
+  $('#cards').innerHTML = rows.map(({r,aw}) => {
+    const perZone = ZONES.map(z => [z.key, aw.filter(a => BOSSZONE[a.boss]===z.key).length]).filter(x => x[1]);
+    const nights = new Set(aw.map(a => a.date)).size;
+    const last = aw.length ? aw[aw.length-1] : null;
+    const open = ui.openCard === r.id;
+    return '<article class="card'+(open?' open':'')+'" data-card="'+r.id+'">'
+      + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span><span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
+      + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
+      + '<div class="meta">'+perZone.map(([z,n]) => '<span><b>'+n+'</b> '+zTag(z)+'</span>').join('')+'<span><b>'+nights+'</b> night'+(nights===1?'':'s')+'</span>'+(last?'<span>last: <b>'+fmtShort(last.date)+'</b></span>':'')+'</div>'
+      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+(it?SLOTNAME[it.slot]:'')+'</span></span></span></td><td class="note">'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
+      + '</article>';
+  }).join('');
+}
+
+/* ---------------- loot log ---------------- */
+function renderLogFilters(){
+  const keep = id => $(id).value;
+  const r = keep('#logRaider'), b = keep('#logBoss'), s = keep('#logSlot');
+  $('#logRaider').innerHTML = raiderOptions(r, '<option value="">Every raider</option>');
+  $('#logBoss').innerHTML = bossOptions(b, true);
+  const slots = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket'];
+  $('#logSlot').innerHTML = '<option value="">Every slot</option>' + slots.map(x => '<option value="'+x+'"'+(x===s?' selected':'')+'>'+SLOTNAME[x]+'</option>').join('');
+}
+function renderLog(){
+  const q = $('#logSearch').value.trim().toLowerCase(), rf = $('#logRaider').value, bf = $('#logBoss').value, sf = $('#logSlot').value;
+  const rows = state.awards.filter(a => {
+    const it = ITEM[a.item], r = raiderById(a.raider);
+    if (rf && a.raider !== rf) return false;
+    if (bf && a.boss !== bf) return false;
+    if (sf && (!it || it.slot !== sf)) return false;
+    if (q) { const hay = ((it&&it.name)||'')+' '+((r&&r.name)||'')+' '+a.boss+' '+(a.note||''); if (!hay.toLowerCase().includes(q)) return false; }
+    return true;
+  }).sort((a,b) => b.date < a.date ? -1 : b.date > a.date ? 1 : (b.ts||0)-(a.ts||0));
+  $('#logCount').textContent = rows.length + ' of ' + state.awards.length + ' awards';
+  if (!rows.length) { $('#logBody').innerHTML = '<tr><td colspan="6"><div class="empty"><b>'+(state.awards.length?'No awards match':'No loot awarded yet')+'</b>'+(state.awards.length?'Try a different filter.':'Use the form above to record the first drop.')+'</div></td></tr>'; return; }
+  let h = '', lastDate = null;
+  for (const a of rows) {
+    if (a.date !== lastDate) {
+      lastDate = a.date;
+      const nightAll = state.awards.filter(x => x.date === a.date);
+      const zones = [...new Set(nightAll.map(x => BOSSZONE[x.boss]))];
+      h += '<tr class="night"><td colspan="6">Raid night · '+fmtDate(a.date)+zones.map(z => '<span class="zone '+z+' bz">'+ZONE[z]+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+'</span></td></tr>';
+    }
+    const it = ITEM[a.item], r = raiderById(a.raider);
+    h += '<tr>'
+      + '<td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td>'
+      + '<td style="white-space:nowrap">'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td>'
+      + '<td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+(it?SLOTNAME[it.slot]:'')+'</span></span></span></td>'
+      + '<td>'+(r ? rName(r) : '<span class="faint">Removed raider</span>')+'</td>'
+      + '<td class="note">'+esc(a.note||'')+'</td>'
+      + '<td class="acts">'+(readOnly?'':'<button class="btn sm ghost" data-edit="'+a.id+'">Edit</button><button class="btn sm ghost danger" data-del="'+a.id+'">Remove</button>')+'</td>'
+      + '</tr>';
+  }
+  $('#logBody').innerHTML = h;
+}
+
+/* ---- award form ---- */
+let comboActive = -1, comboRows = [];
+function itemMatches(){
+  const q = $('#fItem').value.trim().toLowerCase(), boss = $('#fBoss').value;
+  let list = DATA.items.filter(i => !boss || i.sources.includes(boss));
+  if (q) list = list.filter(i => i.name.toLowerCase().includes(q));
+  if (!boss && !q) list = [];
+  return list.sort((a,b) => a.name.localeCompare(b.name)).slice(0, 60);
+}
+function renderCombo(){
+  comboRows = itemMatches();
+  const box = $('#itemList');
+  if (!comboRows.length) { box.innerHTML = '<div class="none">'+(dataState === 'soon' ? 'No loot tables for this game version yet. Switch the game version on the Roster tab.' : dataState === 'loading' ? 'Loading loot tables…' : dataState === 'error' ? 'Loot tables could not be loaded. Reload the page.' : ($('#fBoss').value||$('#fItem').value ? 'No item matches.' : 'Choose a boss or start typing.'))+'</div>'; return; }
+  box.innerHTML = comboRows.map((i,k) => '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+'</span>'+dTag(i)+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>').join('');
+}
+function pickItem(id){
+  const it = ITEM[id]; $('#fItem').dataset.id = id; $('#fItem').value = it.name;
+  const ico = $('#fItemIco'); ico.classList.remove('hidden'); ico.innerHTML = icoInner(it); ico.classList.toggle('token', !!it.token);
+  $('#itemList').hidden = true;
+  if (!$('#fBoss').value && it.sources.length === 1) $('#fBoss').value = it.sources[0];
+}
+function clearItem(){ delete $('#fItem').dataset.id; $('#fItemIco').classList.add('hidden'); }
+function resetForm(keepNight){
+  ui.editing = null; $('#awardTitle').textContent = 'Award loot'; $('#awardSubmit').textContent = 'Add award'; $('#awardCancel').hidden = true;
+  if (!keepNight) $('#fDate').value = $('#fDate').value || (state.awards.length ? state.awards.map(a=>a.date).sort().pop() : today());
+  $('#fItem').value = ''; clearItem(); $('#fNote').value = ''; $('#fRaider').value = $('#fRaider').value || '';
+  $('#newRaider').hidden = $('#fRaider').value !== '__new';
+}
+function fillForm(a){
+  ui.editing = a.id; $('#awardTitle').textContent = 'Edit award'; $('#awardSubmit').textContent = 'Save award'; $('#awardCancel').hidden = false;
+  $('#fDate').value = a.date; $('#fBoss').value = a.boss; if (ITEM[a.item]) pickItem(a.item); else { $('#fItem').value=''; clearItem(); }
+  $('#fRaider').value = a.raider; $('#fNote').value = a.note||''; $('#newRaider').hidden = true;
+  $('#awardPanel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function renderForm(){
+  const b = $('#fBoss').value, r = $('#fRaider').value;
+  $('#fBoss').innerHTML = '<option value="">Any boss</option>' + bossOptions(b, false);
+  $('#fRaider').innerHTML = raiderOptions(r, '<option value="">Choose a raider…</option>') + '<option value="__new"'+(r==='__new'?' selected':'')+'>+ New raider…</option>';
+  if (!$('#fNewCls').options.length) $('#fNewCls').innerHTML = classOptions('Warrior');
+  if (!$('#fDate').value) $('#fDate').value = state.awards.length ? state.awards.map(a=>a.date).sort().pop() : today();
+}
+function submitAward(ev){
+  ev.preventDefault();
+  if (dataState !== 'ok') return say(dataState === 'soon' ? 'No loot tables for this game version yet.' : dataState === 'loading' ? 'Loot tables are still loading.' : 'Loot tables could not be loaded. Reload the page.');
+  const date = $('#fDate').value, boss = $('#fBoss').value, itemId = Number($('#fItem').dataset.id||0);
+  let raider = $('#fRaider').value;
+  if (!date) return say('Pick the raid night.');
+  if (!itemId) return say('Pick an item from the list.');
+  if (raider === '__new') {
+    const name = $('#fNewName').value.trim(); if (!name) return say('Enter the new raider\'s name.');
+    const existing = state.raiders.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (existing) raider = existing.id; else { const nr = {id: uid(), name, cls: $('#fNewCls').value}; state.raiders.push(nr); raider = nr.id; }
+  }
+  if (!raider) return say('Choose who received the item.');
+  const it = ITEM[itemId];
+  const finalBoss = boss || (it.sources.length === 1 ? it.sources[0] : '');
+  if (!finalBoss) return say('This item drops from several bosses. Pick the boss.');
+  const note = $('#fNote').value.trim();
+  if (ui.editing) {
+    const a = state.awards.find(x => x.id === ui.editing); if (a) Object.assign(a, {date, boss: finalBoss, item: itemId, raider, note});
+  } else state.awards.push({id: uid(), date, boss: finalBoss, item: itemId, raider, note, ts: Date.now()});
+  if (state.example && !ui.editing) { /* keep examples until cleared explicitly */ }
+  const wasEditing = !!ui.editing;
+  $('#fRaider').value = raider; $('#fNewName').value = '';
+  markDirty();
+  resetForm(true);
+  if (wasEditing) $('#fRaider').value = '';
+  $('#fItem').focus();
+}
+
+/* ---------------- matrix ---------------- */
+function renderMatrix(){
+  const q = $('#mxSearch').value.trim().toLowerCase(), show = $('#mxShow').value;
+  const zone = ZONE[show] ? show : '';
+  let rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
+  if (show === 'none') rows = rows.filter(x => !x.aw.length);
+  rows.sort((a,b) => ui.mxSort==='name' ? a.r.name.localeCompare(b.r.name) : (b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name)));
+  $('#mxCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
+  $('#mxHead').innerHTML = '<tr><th class="sortable'+(ui.mxSort==='name'?' sorted':'')+'" data-sort="name">Raider '+(ui.mxSort==='name'?'▼':'')+'</th><th class="num sortable'+(ui.mxSort==='items'?' sorted':'')+'" data-sort="items">Items '+(ui.mxSort==='items'?'▼':'')+'</th>'
+    + MXCOLS.map(c => '<th>'+c[1].replace(' / ','<br>')+'</th>').join('') + '</tr>';
+  if (!rows.length) { $('#mxBody').innerHTML = '<tr><td colspan="'+(MXCOLS.length+2)+'"><div class="empty"><b>Nobody to show</b>Add raiders on the Roster tab.</div></td></tr>'; return; }
+  $('#mxBody').innerHTML = rows.map(({r,aw}) => {
+    const cells = {}; MXCOLS.forEach(c => cells[c[0]] = []);
+    const counters = {finger:0, trinket:0};
+    for (const a of aw) {
+      const it = ITEM[a.item]; if (!it) continue;
+      let key = slotOf(it);
+      if (key === 'finger' || key === 'trinket') { key = key + (counters[key] % 2 + 1); counters[it.slot]++; }
+      if (cells[key]) cells[key].push(a); else (cells.other = cells.other || []).push(a);
+    }
+    return '<tr><td class="rn" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</td><td class="num">'+aw.length+'</td>'
+      + MXCOLS.map(c => {
+          const list = cells[c[0]]; if (!list.length) return '<td class="dash">–</td>';
+          const last = list[list.length-1], key = r.id + '|' + c[0];
+          if (list.length === 1) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+last.id+'"')+'</td>';
+          if (!ui.mxOpen[key]) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+last.id+'" data-stack="'+list.map(x=>x.id).join(',')+'" data-open="'+esc(key)+'" title="Click to show all '+list.length+'"', list.length, false)+'</td>';
+          return '<td class="open"><div class="stack">'+list.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('')+'<button class="btn sm ghost" data-close="'+esc(key)+'" title="Collapse">×</button></div></td>';
+        }).join('')
+      + '</tr>';
+  }).join('');
+}
+
+/* ---------------- roster ---------------- */
+function renderRoster(){
+  if (!$('#rCls').options.length) $('#rCls').innerHTML = classOptions('Warrior');
+  $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
+  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
+  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
+  if (!rows.length) { $('#rosterBody').innerHTML = '<tr><td colspan="7"><div class="empty"><b>Empty roster</b>Add your raiders with the form on the right.</div></td></tr>'; return; }
+  $('#rosterBody').innerHTML = rows.map(({r,aw}) => {
+    const perZone = ZONES.map(z => [z.key, aw.filter(a => BOSSZONE[a.boss]===z.key).length]).filter(x => x[1]);
+    const editing = ui.editRaider === r.id;
+    return '<tr>'
+      + (editing ? '<td colspan="2"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select></div></td>'
+                 : '<td>'+rName(r)+'</td><td class="muted">'+esc(r.cls)+'</td>')
+      + '<td class="num">'+aw.length+'</td><td><span class="chips">'+perZone.map(([z,n]) => zTag(z).replace('</span>', ' '+n+'</span>')).join('')+'</span></td>'
+      + '<td class="muted">'+(aw.length?fmtDate(aw[0].date):'—')+'</td><td class="muted">'+(aw.length?fmtDate(aw[aw.length-1].date):'—')+'</td>'
+      + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+r.id+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+r.id+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+r.id+'">Remove</button>'))+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ---------------- bulk roster ---------------- */
+const RAID_MACRO = "/run local s=\"\"for i=1,GetNumGroupMembers()do local n,_,_,_,_,c=GetRaidRosterInfo(i)s=s..(n or\"\")..\":\"..(c or\"\")..\" \"end local e=ChatFrame1EditBox e:SetMaxLetters(0)ChatEdit_ActivateChat(e)e:SetText(s)e:HighlightText()";
+const GUILD_MACRO = "/run local s=\"\"for i=1,GetNumGuildMembers()do local n,_,_,l,_,_,_,_,_,_,c=GetGuildRosterInfo(i)if l==70 then s=s..n..\":\"..c..\" \"end end local e=ChatFrame1EditBox e:SetMaxLetters(0)ChatEdit_ActivateChat(e)e:SetText(s)e:HighlightText()";
+$('#macroRaid').value = RAID_MACRO; $('#macroGuild').value = GUILD_MACRO;
+const CLASS_ALIAS = {warrior:'Warrior',krieger:'Warrior',paladin:'Paladin',pala:'Paladin',hunter:'Hunter',jäger:'Hunter',jaeger:'Hunter',rogue:'Rogue',schurke:'Rogue',priest:'Priest',priester:'Priest',shaman:'Shaman',schamane:'Shaman',mage:'Mage',magier:'Mage',warlock:'Warlock',hexenmeister:'Warlock',hexer:'Warlock',druid:'Druid',druide:'Druid',deathknight:'Death Knight',dk:'Death Knight',todesritter:'Death Knight',monk:'Monk',mönch:'Monk',moench:'Monk'};
+const classOf = s => CLASS_ALIAS[String(s||'').trim().toLowerCase()] || null;
+function parseBulk(text){
+  const out = [], toks = text.split(/[\s,;]+/).filter(Boolean);
+  for (let i = 0; i < toks.length; i++) {
+    let tok = toks[i], name = tok, cls = null;
+    const parts = tok.split(':'); name = parts[0]; if (parts[1]) cls = classOf(parts[1]);   // Name:CLASS
+    const dm = name.match(/^(.+?)-(.+)$/); if (dm) { if (!cls && classOf(dm[2])) cls = classOf(dm[2]); name = dm[1]; }   // Name-Class or Name-Realm
+    if (name.startsWith('_')) continue;                                // Gargul's _disenchanted
+    if (!cls && toks[i+1] && classOf(toks[i+1])) { cls = classOf(toks[i+1]); i++; }
+    name = name.replace(/[^\p{L}\p{M}'’]/gu, '');
+    if (!name || name.length < 2 || classOf(name)) continue;
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    out.push({name, cls: cls || 'Unknown'});
+  }
+  return out;
+}
+$('#bulkAdd').addEventListener('click', () => {
+  const rows = parseBulk($('#bulkText').value);
+  if (!rows.length) return say('No names found. One raider per line, for example "Dixie:WARRIOR".');
+  let added = 0, updated = 0, skipped = 0;
+  for (const r of rows) {
+    const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
+    if (ex) { if (ex.cls === 'Unknown' && r.cls !== 'Unknown') { ex.cls = r.cls; updated++; } else skipped++; continue; }
+    if (state.raiders.some(x => x.name.toLowerCase() === r.name.toLowerCase())) { skipped++; continue; }
+    state.raiders.push({id: uid(), name: r.name, cls: r.cls}); added++;
+  }
+  $('#bulkText').value = '';
+  if (added || updated) markDirty();
+  say('Added ' + added + ' raider' + (added===1?'':'s') + (updated ? ', set the class of ' + updated : '') + (skipped ? ', ' + skipped + ' already on the roster' : '') + '.');
+});
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-copy]'); if (!b) return;
+  const ta = $('#' + b.dataset.copy); ta.select();
+  try { await navigator.clipboard.writeText(ta.value); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy macro', 1500); } catch (e) { say('Press Ctrl+C to copy the selected macro.'); }
+});
+
+/* ---------------- Gargul import ---------------- */
+const GL_CLASS = {1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',10:'Monk',11:'Druid'};
+let glRows = [];
+function glCleanName(n){ n = String(n||'').trim().split('-')[0].trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
+function glDate(p){
+  let m = p.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) return {date: m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'), time: m[4] ? m[4].padStart(2,'0')+':'+m[5] : null};
+  m = p.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) {
+    let a = +m[1], b = +m[2], dmy = $('#glDateOrder').value === 'dmy';
+    if (a > 12) dmy = true; else if (b > 12) dmy = false;
+    const day = dmy ? a : b, mon = dmy ? b : a, year = m[3].length === 2 ? '20' + m[3] : m[3];
+    return {date: year+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0'), time: m[4] ? m[4].padStart(2,'0')+':'+m[5] : null};
+  }
+  return null;
+}
+function splitDelimited(line, delim){
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === '"') { if (line[i+1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur); return out;
+}
+const SKIP_RESPONSE = /disenchant|bank|guild vault|entzaubern/i;
+function classFromAny(v){
+  if (v == null || v === '') return '';
+  if (typeof v === 'number' || /^\d+$/.test(String(v))) return GL_CLASS[Number(v)] || '';
+  return CLASS_ALIAS[String(v).trim().toLowerCase()] || CLASS_ALIAS[String(v).trim().toLowerCase().replace(/\s+/g,'')] || '';
+}
+function itemIdFrom(v){
+  if (v == null) return null; const s = String(v);
+  const m = s.match(/item:(\d+)/) || s.match(/^\[?(\d{3,7})\]?$/); return m ? Number(m[1]) : null;
+}
+function glParse(text){
+  text = text.trim(); const rows = [];
+  if (text[0] === '[' || text[0] === '{') {
+    try {
+      let j = JSON.parse(text); if (!Array.isArray(j)) j = Object.values(j);
+      for (const e of j) {
+        if (!e || typeof e !== 'object') continue;
+        const item = itemIdFrom(e.itemID != null ? e.itemID : (e.itemString || e.item || e.lootWon || e.link));
+        if (!item) continue;
+        const who = e.awardedTo != null ? e.awardedTo : (e.player != null ? e.player : (e.winner != null ? e.winner : e.character));
+        let date = null, ts = null;
+        const tsn = Number(e.timestamp) * 1000;
+        if (isFinite(tsn) && tsn > 0) { const d = new Date(tsn); ts = tsn; date = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+        else if (e.date) { const d = glDate(String(e.date) + (e.time ? ' ' + e.time : '')); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } } }
+        const response = e.response != null ? String(e.response) : '';
+        if (SKIP_RESPONSE.test(response)) continue;
+        rows.push({item, rawName: String(who||''), name: glCleanName(who), date: date || today(), ts, os: e.OS === true || e.OS === 1 || /off.?spec|greed/i.test(response), key: e.checksum || (e.id != null ? String(e.id) : null), cls: classFromAny(e.winnerClass != null ? e.winnerClass : e.class), boss: e.boss || null, note: response && !/main.?spec|need|^ms$/i.test(response) && !/off.?spec|greed/i.test(response) ? response : ''});
+      }
+      return rows;
+    } catch (err) { /* not JSON, fall through to line parsing */ }
+  }
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length && /player|character|winner|name/i.test(lines[0]) && /item/i.test(lines[0])) {
+    const delim = lines[0].includes('\t') ? '\t' : (lines[0].split(';').length > lines[0].split(',').length ? ';' : ',');
+    const head = splitDelimited(lines[0], delim).map(h => h.trim().toLowerCase());
+    const col = n => head.indexOf(n);
+    const cPlayer = [col('player'), col('character'), col('winner'), col('name')].find(i => i >= 0);
+    const cItemId = col('itemid'), cItem = [col('item'), col('itemstring'), col('itemlink'), col('link')].find(i => i >= 0);
+    const cDate = col('date'), cTime = col('time'), cDateTime = col('datetime'), cClass = col('class'), cBoss = col('boss'), cResp = [col('response'), col('note')].find(i => i >= 0), cId = col('id'), cOff = [col('offspec'), col('os')].find(i => i >= 0);
+    for (const line of lines.slice(1)) {
+      const f = splitDelimited(line, delim);
+      const item = itemIdFrom(cItemId >= 0 ? f[cItemId] : null) || itemIdFrom(cItem != null ? f[cItem] : null);
+      if (!item) continue;
+      const who = cPlayer != null ? f[cPlayer] : '';
+      const response = cResp != null ? (f[cResp] || '') : '';
+      if (SKIP_RESPONSE.test(response)) continue;
+      let date = null, ts = null;
+      const dstr = (cDateTime >= 0 ? f[cDateTime] : (cDate >= 0 ? f[cDate] : '')) + (cTime >= 0 && f[cTime] ? ' ' + f[cTime] : '');
+      const d = glDate(dstr.trim()); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } }
+      rows.push({item, rawName: String(who||''), name: glCleanName(who), date: date || today(), ts, os: (cOff != null && /^(1|true)$/i.test(f[cOff]||'')) || /off.?spec|greed/i.test(response), key: cId >= 0 && f[cId] ? f[cId] : null, cls: classFromAny(cClass >= 0 ? f[cClass] : ''), boss: cBoss >= 0 ? (f[cBoss] || null) : null, note: response && !/main.?spec|need|^ms$/i.test(response) && !/off.?spec|greed/i.test(response) ? response : ''});
+    }
+    return rows;
+  }
+  for (let line of lines) {
+    if (/^dateTime\s*,\s*character/i.test(line)) continue;
+    let item = null, date = null, time = null, name = null, os = null, key = null;
+    const lm = line.match(/Hitem:(\d+)/); if (lm) item = Number(lm[1]);
+    const clean = line.replace(/\|c[0-9a-f]{8}\|Hitem:[^|]*\|h\[[^\]]*\]\|h\|r/gi, '');
+    for (let p of clean.split(/[;,\t]/)) {
+      p = p.trim(); if (!p) continue;
+      const num = p.match(/^\[?(\d{3,6})\]?$/);
+      if (num && item === null && (ITEM[+num[1]] || p.startsWith('['))) { item = +num[1]; continue; }
+      if (!date) { const d = glDate(p); if (d) { date = d.date; time = d.time; continue; } }
+      if (key === null && /^[a-z0-9]{20}$/i.test(p)) { key = p; continue; }
+      if (os === null && /^[01]$/.test(p)) { os = p === '1'; continue; }
+      if (num && item === null) { item = +num[1]; continue; }
+      if (!name && /^[^\d\s\/\\:]{2,}(-[^\d\s]+)?$/u.test(p)) { name = p; continue; }
+    }
+    if (item === null && name === null) continue;
+    let ts = null; if (date && time) { const [y,mo,d] = date.split('-').map(Number); const [h,mi] = time.split(':').map(Number); ts = new Date(y,mo-1,d,h,mi).getTime(); }
+    rows.push({item, rawName: name||'', name: glCleanName(name), date: date || today(), ts, os, key, cls: ''});
+  }
+  return rows;
+}
+function glResolve(rows){
+  const dups = $('#glDups').checked, seen = new Set();
+  return rows.map(r => {
+    const it = ITEM[r.item]; const out = Object.assign({}, r, {it});
+    if (!r.rawName || /^_/.test(r.rawName)) { out.status = 'skip'; out.why = 'disenchanted or no winner'; return out; }
+    if (!it) { out.status = 'skip'; out.why = r.item ? 'not a drop from a supported raid' : 'no item id found'; return out; }
+    out.boss = it.sources[0];
+    if (r.boss) { const known = BOSSES.find(b => b.name.toLowerCase() === String(r.boss).trim().toLowerCase() && it.sources.includes(b.name)); if (known) out.boss = known.name; }
+    const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
+    out.raider = ex || null;
+    const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase();
+    const already = state.awards.some(a => (r.key && a.gargul === r.key) || (ex && a.raider === ex.id && a.item === r.item && a.date === r.date)) || seen.has(r.key ? 'k'+r.key : sig);
+    seen.add(r.key ? 'k'+r.key : sig);
+    out.status = already && !dups ? 'dup' : 'ok';
+    return out;
+  });
+}
+function glRender(){
+  const ok = glRows.filter(r => r.status === 'ok'), dup = glRows.filter(r => r.status === 'dup'), skip = glRows.filter(r => r.status === 'skip');
+  const newNames = [...new Set(ok.filter(r => !r.raider).map(r => r.name))];
+  $('#glSummary').textContent = ok.length + ' to import · ' + dup.length + ' already in ledger · ' + skip.length + ' ignored' + (newNames.length ? ' · ' + newNames.length + ' new raider' + (newNames.length===1?'':'s') : '');
+  $('#glImport').disabled = !ok.length; $('#glImport').textContent = 'Import ' + ok.length + ' award' + (ok.length===1?'':'s');
+  const clsPicked = {}; ok.forEach(r => { if (!r.raider && r.cls && !clsPicked[r.name]) clsPicked[r.name] = r.cls; });
+  const clsDone = new Set();
+  $('#glBody').innerHTML = glRows.map(r => {
+    const st = r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? '<span class="st dup">Exists</span>' : '<span class="st skip">Ignored</span>';
+    let cls;
+    if (r.status !== 'ok') cls = '<span class="muted">'+esc(r.raider ? r.raider.cls : '')+'</span>';
+    else if (r.raider) cls = '<span class="muted">'+esc(r.raider.cls)+'</span>';
+    else if (clsDone.has(r.name)) cls = '<span class="faint">as above</span>';
+    else { clsDone.add(r.name); cls = '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glcls="'+esc(r.name)+'">'+CLASSES.map(c => '<option'+(c===clsPicked[r.name]?' selected':'')+'>'+c+'</option>').join('')+'<option'+(!clsPicked[r.name]?' selected':'')+'>Unknown</option></select>'; }
+    return '<tr class="'+r.status+'"><td>'+st+'</td><td class="muted" style="white-space:nowrap">'+esc(fmtDate(r.date))+'</td>'
+      + '<td>'+(r.it ? '<span class="item">'+icoHTML(r.it,'',0,false)+'<span><span class="nm">'+esc(r.it.name)+'</span> <span class="sl">'+SLOTNAME[r.it.slot]+'</span>'+dTag(r.it)+'</span></span>' : '<span class="faint">'+(r.item ? 'Item '+r.item : '—')+'</span>')+'</td>'
+      + '<td style="white-space:nowrap">'+(r.boss ? zTag(BOSSZONE[r.boss])+' '+(r.status==='ok' && r.it.sources.length>1 ? '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glboss="'+glRows.indexOf(r)+'">'+r.it.sources.map(s => '<option'+(s===r.boss?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>' : esc(r.boss)) : '')+'</td>'
+      + '<td>'+(r.raider ? rName(r.raider) : '<span class="rname">'+esc(r.name || r.rawName)+'</span>')+'</td>'
+      + '<td>'+cls+'</td><td class="note">'+esc(r.status === 'skip' ? r.why : [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '))+'</td></tr>';
+  }).join('');
+  $('#glResult').hidden = false;
+}
+$('#glPreview').addEventListener('click', () => {
+  const txt = $('#glText').value; if (!txt.trim()) return say('Paste the Gargul export first.');
+  glRows = glResolve(glParse(txt));
+  if (!glRows.length) return say('Nothing recognisable in the text. Copy the whole export window from Gargul.');
+  glRender();
+});
+$('#glDups').addEventListener('change', () => { if (glRows.length) { glRows = glResolve(glRows); glRender(); } });
+$('#glImport').addEventListener('click', () => {
+  const ok = glRows.filter(r => r.status === 'ok'); if (!ok.length) return;
+  const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
+  document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
+  let created = 0, base = Date.now();
+  for (const r of ok) {
+    let raider = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
+    if (!raider) { raider = {id: uid(), name: r.name, cls: clsFor[r.name] || r.cls || 'Unknown'}; state.raiders.push(raider); created++; }
+    const a = {id: uid(), date: r.date, boss: r.boss, item: r.item, raider: raider.id, note: [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '), ts: r.ts || (base++)};
+    if (r.key) a.gargul = r.key;
+    state.awards.push(a);
+  }
+  glRows = []; $('#glText').value = ''; $('#glResult').hidden = true;
+  markDirty();
+  say('Imported ' + ok.length + ' award' + (ok.length===1?'':'s') + (created ? ' and ' + created + ' new raider' + (created===1?'':'s') : '') + '.');
+});
+
+/* ---------------- tooltip ---------------- */
+const tip = $('#tip');
+function showTip(el, ev){
+  const it = ITEM[el.dataset.item]; if (!it) return;
+  let h = '<div class="t">'+esc(it.name)+'</div><div class="s">'+SLOTNAME[it.slot]+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')+' · '+esc((ZONE[BOSSZONE[it.sources[0]]]||'')+' · '+it.sources.join(' / '))+'</div>';
+  const ids = (el.dataset.stack || el.dataset.award || '').split(',').filter(Boolean);
+  if (ids.length) {
+    h += '<div class="l">' + ids.map(id => { const a = state.awards.find(x => x.id === id); if (!a) return ''; const r = raiderById(a.raider); const i2 = ITEM[a.item]; return '<div><span>'+(ids.length>1 && i2 ? esc(i2.name) : (r ? esc(r.name) : ''))+(a.note?' <i class="muted">'+esc(a.note)+'</i>':'')+'</span><span>'+fmtShort(a.date)+' · '+esc(a.boss)+'</span></div>'; }).join('') + '</div>';
+  }
+  tip.innerHTML = h; tip.hidden = false; moveTip(ev);
+}
+function moveTip(ev){
+  const w = tip.offsetWidth, hgt = tip.offsetHeight; let x = ev.clientX + 16, y = ev.clientY + 16;
+  if (x + w > innerWidth - 8) x = ev.clientX - w - 12; if (y + hgt > innerHeight - 8) y = ev.clientY - hgt - 12;
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+}
+document.addEventListener('mouseover', ev => { const el = ev.target.closest('[data-item]'); if (el && !el.closest('.opt')) showTip(el, ev); else tip.hidden = true; });
+document.addEventListener('mousemove', ev => { if (!tip.hidden) moveTip(ev); });
+document.addEventListener('mouseout', ev => { if (ev.target.closest && ev.target.closest('[data-item]')) tip.hidden = true; });
+document.addEventListener('click', ev => { const ico = ev.target.closest('a.ico[data-item]'); if (ico) ev.stopPropagation(); }, true);
+
+/* ---------------- render orchestration ---------------- */
+function showView(v){
+  ui.view = v;
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-'+v);
+  renderAll();
+}
+function renderAll(){
+  renderHeader();
+  if (ui.view === 'armory') renderArmory();
+  if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
+  if (ui.view === 'matrix') renderMatrix();
+  if (ui.view === 'roster') renderRoster();
+}
+
+/* ---------------- events ---------------- */
+$('#tabs').addEventListener('click', ev => { const t = ev.target.closest('.tab'); if (t) showView(t.dataset.view); });
+$('#guildLine').addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { showView(a.dataset.goto); $('#gName').focus(); } });
+$('#publishBtn').addEventListener('click', publish);
+$('#clearExample').addEventListener('click', async () => {
+  if (!await ask('Remove all example raiders and awards? Your ledger starts empty.', 'Clear examples')) return;
+  state.raiders = []; state.awards = []; state.example = false; ui.openCard = null; markDirty();
+});
+['#armSearch','#armZone'].forEach(s => $(s).addEventListener('input', renderArmory));
+$('#cards').addEventListener('click', ev => {
+  if (ev.target.closest('.ico')) return;
+  const c = ev.target.closest('.card'); if (!c) return;
+  ui.openCard = ui.openCard === c.dataset.card ? null : c.dataset.card; renderArmory();
+});
+['#logSearch','#logRaider','#logBoss','#logSlot'].forEach(s => $(s).addEventListener('input', renderLog));
+$('#logBody').addEventListener('click', async ev => {
+  const e = ev.target.closest('[data-edit]'), d = ev.target.closest('[data-del]');
+  if (e) { const a = state.awards.find(x => x.id === e.dataset.edit); if (a) fillForm(a); }
+  if (d) { const a = state.awards.find(x => x.id === d.dataset.del); const r = a && raiderById(a.raider); if (a && await ask('Remove '+(ITEM[a.item]?ITEM[a.item].name:'this item')+' from '+(r?r.name:'this raider')+'?', 'Remove')) { state.awards = state.awards.filter(x => x !== a); if (ui.editing === a.id) resetForm(true); markDirty(); } }
+});
+$('#awardForm').addEventListener('submit', submitAward);
+$('#awardCancel').addEventListener('click', () => { resetForm(true); });
+$('#fRaider').addEventListener('change', () => { $('#newRaider').hidden = $('#fRaider').value !== '__new'; if ($('#fRaider').value === '__new') $('#fNewName').focus(); });
+$('#fBoss').addEventListener('change', () => { const id = $('#fItem').dataset.id; if (id && $('#fBoss').value && !ITEM[id].sources.includes($('#fBoss').value)) { $('#fItem').value=''; clearItem(); } comboActive = -1; if (document.activeElement === $('#fItem')) { renderCombo(); $('#itemList').hidden = false; } });
+$('#fItem').addEventListener('focus', () => { comboActive = -1; renderCombo(); $('#itemList').hidden = false; });
+$('#fItem').addEventListener('input', () => { clearItem(); comboActive = -1; renderCombo(); $('#itemList').hidden = false; });
+$('#fItem').addEventListener('keydown', ev => {
+  if ($('#itemList').hidden) return;
+  if (ev.key === 'ArrowDown') { comboActive = Math.min(comboRows.length-1, comboActive+1); renderCombo(); ev.preventDefault(); const a = $('#itemList .active'); if (a) a.scrollIntoView({block:'nearest'}); }
+  else if (ev.key === 'ArrowUp') { comboActive = Math.max(0, comboActive-1); renderCombo(); ev.preventDefault(); }
+  else if (ev.key === 'Enter') { if (comboRows[comboActive]) { pickItem(comboRows[comboActive].id); ev.preventDefault(); } else if (comboRows.length === 1) { pickItem(comboRows[0].id); ev.preventDefault(); } }
+  else if (ev.key === 'Escape') { $('#itemList').hidden = true; }
+});
+$('#itemList').addEventListener('mousedown', ev => { const o = ev.target.closest('[data-pick]'); if (o) { pickItem(Number(o.dataset.pick)); ev.preventDefault(); $('#fRaider').focus(); } });
+document.addEventListener('click', ev => { if (!ev.target.closest('#itemCombo')) $('#itemList').hidden = true; });
+['#mxSearch','#mxShow'].forEach(s => $(s).addEventListener('input', renderMatrix));
+$('#mxHead').addEventListener('click', ev => { const th = ev.target.closest('[data-sort]'); if (th) { ui.mxSort = th.dataset.sort; renderMatrix(); } });
+$('#mxBody').addEventListener('click', ev => {
+  const o = ev.target.closest('[data-open]'), c = ev.target.closest('[data-close]');
+  if (o) { ui.mxOpen[o.dataset.open] = true; tip.hidden = true; renderMatrix(); }
+  else if (c) { delete ui.mxOpen[c.dataset.close]; renderMatrix(); }
+});
+$('#rosterForm').addEventListener('submit', ev => {
+  ev.preventDefault(); const name = $('#rName').value.trim(); if (!name) return;
+  if (state.raiders.some(r => r.name.toLowerCase() === name.toLowerCase())) return say(name + ' is already on the roster.');
+  state.raiders.push({id: uid(), name, cls: $('#rCls').value}); $('#rName').value = ''; markDirty(); $('#rName').focus();
+});
+$('#rosterBody').addEventListener('click', async ev => {
+  const e = ev.target.closest('[data-redit]'), d = ev.target.closest('[data-rdel]'), s = ev.target.closest('[data-rsave]'), c = ev.target.closest('[data-rcancel]');
+  if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
+  if (c) { ui.editRaider = null; renderRoster(); }
+  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; } ui.editRaider = null; markDirty(); }
+  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); markDirty(); } }
+});
+$('#saveSettings').addEventListener('click', async () => {
+  const newGame = $('#gGame').value;
+  if (newGame !== (state.game || 'tbc') && state.awards.length && !await ask('Switch the game version to ' + GAME[newGame].name + '? Existing awards from ' + GAME[state.game || 'tbc'].name + ' stay in the ledger but their items belong to the other loot tables.', 'Switch')) { $('#gGame').value = state.game || 'tbc'; return; }
+  state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); state.faction = $('#gFaction').value; state.game = newGame;
+  markDirty(); if (newGame !== gameKey) loadGame(newGame);
+});
+$('#exportBtn').addEventListener('click', () => { const c = Object.assign({}, state); delete c.dirty; $('#backup').value = JSON.stringify(c, null, 1); });
+$('#copyBtn').addEventListener('click', async () => { const c = Object.assign({}, state); delete c.dirty; const txt = JSON.stringify(c); $('#backup').value = txt; try { await navigator.clipboard.writeText(txt); $('#copyBtn').textContent = 'Copied'; setTimeout(() => $('#copyBtn').textContent = 'Copy', 1500); } catch(e) { $('#backup').select(); } });
+$('#importBtn').addEventListener('click', async () => {
+  let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
+  if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
+  if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+});
+window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
+
+/* ---------------- boot ---------------- */
+showView(ui.view || 'armory');
+refreshBar();
+loadGame(state.game || 'tbc');
+initCapability();
+})();
+</script>
+</body></html>
