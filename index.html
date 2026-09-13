@@ -494,7 +494,7 @@ function loadGame(key){
   s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
   document.head.appendChild(s);
 }
-const SLOTNAME = {mount:'Mount',other:'Other',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
+const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
 const MXCOLS = [['head','Helm'],['neck','Neck'],['shoulder','Shoulder'],['back','Back'],['chest','Chest'],['wrist','Wrist'],['weapon','Weapon'],['offhand','Off hand'],['rr','Relic / Ranged'],['hands','Gloves'],['waist','Belt'],['legs','Legs'],['feet','Boots'],['finger1','Ring 1'],['finger2','Ring 2'],['trinket1','Trinket 1'],['trinket2','Trinket 2']];
 const LS_KEY = 'guild-loot-ledger.site.v1';
 
@@ -760,7 +760,7 @@ function renderLogFilters(){
   const r = keep('#logRaider'), b = keep('#logBoss'), s = keep('#logSlot');
   $('#logRaider').innerHTML = raiderOptions(r, '<option value="">Every raider</option>');
   $('#logBoss').innerHTML = bossOptions(b, true);
-  const slots = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket'];
+  const slots = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket','recipe'];
   $('#logSlot').innerHTML = '<option value="">Every slot</option>' + slots.map(x => '<option value="'+x+'"'+(x===s?' selected':'')+'>'+SLOTNAME[x]+'</option>').join('');
 }
 function renderLog(){
