@@ -460,14 +460,14 @@ tr.skip td{opacity:.55}
 const CLASSIC_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Shaman','Mage','Warlock','Druid'];
 const MOP_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Death Knight','Shaman','Mage','Warlock','Monk','Druid'];
 const GAMES = [
-  {key:'classic', name:'Classic Era', short:'Era', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
-  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
-  {key:'sod', name:'Season of Discovery', short:'SoD', file:null, soon:true, classes:CLASSIC_CLASSES, blurb:'loot tables coming soon'},
+  {key:'classic', name:'Classic Era', short:'Era', file:'data/classic.js', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
+  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:'data/classic.js', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
+  {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
   {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
-  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:null, soon:true, classes:MOP_CLASSES, blurb:'loot tables coming soon'},
+  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789330682';
+const BUILD_ID = '1789332615';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -495,7 +495,7 @@ function loadGame(key){
   s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
   document.head.appendChild(s);
 }
-const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
+const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',token:'Token',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
 const MXCOLS = [['head','Helm'],['neck','Neck'],['shoulder','Shoulder'],['back','Back'],['chest','Chest'],['wrist','Wrist'],['weapon','Weapon'],['offhand','Off hand'],['rr','Relic / Ranged'],['hands','Gloves'],['waist','Belt'],['legs','Legs'],['feet','Boots'],['finger1','Ring 1'],['finger2','Ring 2'],['trinket1','Trinket 1'],['trinket2','Trinket 2']];
 const LS_KEY = 'guild-loot-ledger.site.v1';
 
