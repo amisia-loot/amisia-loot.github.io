@@ -389,6 +389,10 @@ tr.skip td{opacity:.55}
             <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. Enter their <b>Discord username</b> (as shown in their Discord profile, without the @) or their e-mail address. They sign in with Discord, or with an e-mail link if you entered an address.</p>
             <div id="editorsList" class="stack"></div>
             <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="text" placeholder="discordname or officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
+            <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Online now</div>
+            <div id="onlineList" class="muted" style="font-size:13px">–</div>
+            <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Accounts that signed in</div>
+            <div id="accountsList" class="stack" style="font-size:13px"></div>
           </div>
         </div>
         <div class="panel">
@@ -625,14 +629,47 @@ async function refreshRole(){
 async function renderEditors(){
   const panel = $('#editorsPanel'); panel.hidden = !isOwner; if (!isOwner) return;
   const {data} = await SUPA.from('editors').select('email,label').order('email');
+  editorSet = new Set((data||[]).map(e => e.email.toLowerCase()));
   $('#editorsList').innerHTML = (data||[]).length ? data.map(e => '<div style="display:flex;gap:8px;align-items:center"><span style="flex:1">'+esc(e.email)+'</span><button class="btn sm ghost danger" data-edrm="'+esc(e.email)+'">Remove</button></div>').join('') : '<span class="muted">No editors yet. Only you can edit.</span>';
+  renderAccounts();
+}
+let editorSet = new Set();
+async function renderAccounts(){
+  if (!isOwner) return;
+  const {data, error} = await SUPA.rpc('list_accounts');
+  if (error) { $('#accountsList').innerHTML = '<span class="muted">Could not load accounts.</span>'; return; }
+  const fmt = ts => ts ? new Date(ts).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '–';
+  $('#accountsList').innerHTML = (data||[]).length ? data.map(a => {
+    const ids = [a.name, a.email].filter(Boolean).map(x => x.toLowerCase());
+    const isEd = ids.some(x => editorSet.has(x)), isOw = ids.includes((ownerEmail||'').toLowerCase());
+    const label = esc(a.name || a.email) + (a.email && a.name ? ' <span class="faint">' + esc(a.email) + '</span>' : '');
+    const role = isOw ? '<span class="st ok">owner</span>' : isEd ? '<span class="st ok">editor</span>' : '<button class="btn sm ghost" data-mkeditor="' + esc(a.name || a.email) + '">Make editor</button>';
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + '</div>';
+  }).join('') : '<span class="muted">Nobody has signed in yet.</span>';
+}
+let ownerEmail = '', presence = null;
+function renderOnline(){
+  if (!presence) return;
+  const st = presence.presenceState(); const names = [];
+  Object.values(st).forEach(list => list.forEach(p => names.push(p.name)));
+  const seen = {}; names.forEach(n => seen[n] = (seen[n]||0) + 1);
+  const parts = Object.keys(seen).sort().map(n => esc(n) + (seen[n] > 1 ? ' ×' + seen[n] : ''));
+  $('#onlineList').innerHTML = parts.length ? parts.join(', ') : '–';
+}
+async function startPresence(){
+  if (!SUPA || presence) return;
+  presence = SUPA.channel('online', {config: {presence: {key: Math.random().toString(36).slice(2)}}});
+  presence.on('presence', {event: 'sync'}, renderOnline).subscribe(async status => {
+    if (status === 'SUBSCRIBED') await presence.track({name: user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : 'viewer'});
+  });
 }
 async function initCapability(){
   if (!SUPA) { refreshBar(); return; }
+  try { const {data} = await SUPA.from('app_config').select('owner_email').maybeSingle(); ownerEmail = data ? data.owner_email : ''; } catch(e) {}
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
-  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors();
-  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); });
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence();
+  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); if (presence) presence.track({name: user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : 'viewer'}); });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
     if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; state = payload.new.state; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll(); refreshBar(); }
@@ -656,6 +693,12 @@ $('#edAdd').addEventListener('click', async () => {
   const {error} = await SUPA.from('editors').insert({email});
   if (error) return say('Could not add: ' + error.message);
   $('#edEmail').value = ''; say('Added ' + email + ' as editor.'); renderEditors();
+});
+$('#accountsList').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-mkeditor]'); if (!b) return;
+  const {error} = await SUPA.from('editors').insert({email: b.dataset.mkeditor.toLowerCase()});
+  if (error) return say('Could not add: ' + error.message);
+  say('Added ' + b.dataset.mkeditor + ' as editor.'); renderEditors();
 });
 $('#editorsList').addEventListener('click', async ev => {
   const b = ev.target.closest('[data-edrm]'); if (!b) return;
