@@ -42,6 +42,7 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -275,6 +276,16 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 tr.done td{opacity:.5}
 .kind{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:6px;vertical-align:middle}
 .matform .row{display:grid;grid-template-columns:1fr 90px;gap:10px}
+/* ---------- online ---------- */
+.online{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center}
+.online[hidden]{display:none}
+.onl{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:12px;background:var(--panel-3);font-family:var(--label);font-size:13px;letter-spacing:.04em;color:var(--text)}
+.onl i{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 6px var(--good)}
+.onl em{font-style:normal;color:var(--gold);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.onl.v{color:var(--muted)}.onl.v i{background:var(--faint);box-shadow:none}
+.edrow{display:flex;gap:8px;align-items:center}
+.pres{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
+.pres.on{background:var(--good);box-shadow:0 0 6px var(--good)}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -306,7 +317,7 @@ tr.done td{opacity:.5}
     <button class="tab" role="tab" data-view="import">Import</button>
   </nav>
 
-  <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
+  <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="online" id="onlineBar" hidden></span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
   <div class="panel" id="loginBox" hidden style="margin-top:14px">
     <div class="panel-h">Sign in to edit<span class="grow"></span><button class="btn sm ghost" id="loginClose">Close</button></div>
     <div class="panel-b stack">
@@ -402,7 +413,7 @@ tr.done td{opacity:.5}
         <div class="toolbar" style="margin:4px 0 0">
           <div class="field"><label for="matSearch">Search</label><input class="inp" id="matSearch" placeholder="Raider, purpose or material…"></div>
           <div class="field"><label for="matItem">Material</label><select class="inp" id="matItem"><option value="">Every material</option></select></div>
-          <div class="field"><label for="matShow">Show</label><select class="inp" id="matShow"><option value="all">Requests and handouts</option><option value="open">Open requests</option><option value="received">Received only</option><option value="stock">Stock corrections</option></select></div>
+          <div class="field"><label for="matShow">Show</label><select class="inp" id="matShow"><option value="all">Requests and handouts</option><option value="open">Open requests</option><option value="received">Received only</option><option value="declined">Declined only</option><option value="stock">Stock corrections</option></select></div>
           <div class="spacer"></div>
           <div class="count" id="matCount"></div>
         </div>
@@ -551,7 +562,7 @@ tr.done td{opacity:.5}
 </div>
 <div id="tip" hidden></div>
 <style id="zoneStyle"></style><style id="craftStyle"></style>
-<div id="dlg" hidden role="dialog" aria-modal="true"><div class="box"><div class="msg" id="dlgMsg"></div><div class="btns"><button class="btn" id="dlgNo">Cancel</button><button class="btn primary" id="dlgYes">Confirm</button></div></div></div>
+<div id="dlg" hidden role="dialog" aria-modal="true"><div class="box"><div class="msg" id="dlgMsg"></div><input class="inp" id="dlgInput" hidden style="margin-top:12px" maxlength="120"><div class="btns"><button class="btn" id="dlgNo">Cancel</button><button class="btn primary" id="dlgYes">Confirm</button></div></div></div>
 <div id="toast" hidden role="status"></div>
 
 <script id="ledger-data" type="application/json">{"version":1,"guild":"Amisia","realm":"Thunderstrike","example":false,"savedAt":0,"raiders":[{"id":"mu063444uh261","name":"Frostknirps","cls":"Mage"},{"id":"mu063444clgvb","name":"Fraktur","cls":"Shaman"},{"id":"mu063444rqikz","name":"Ziepel","cls":"Hunter"},{"id":"mu063444vii8n","name":"Abunazir","cls":"Paladin"},{"id":"mu06344468fhd","name":"Corruptix","cls":"Warlock"},{"id":"mu063444lgrr2","name":"Klötenbernie","cls":"Rogue"},{"id":"mu063444fop28","name":"Chorf","cls":"Warrior"},{"id":"mu063444yi0xy","name":"Funte","cls":"Warrior"},{"id":"mu063444nv3sx","name":"Aarox","cls":"Druid"},{"id":"mu063444of81x","name":"Kveykva","cls":"Shaman"},{"id":"mu063444kmx48","name":"Buxxbaum","cls":"Druid"},{"id":"mu063444o35cm","name":"Goodoldcrack","cls":"Paladin"},{"id":"mu0634441v7l4","name":"Herrmaier","cls":"Paladin"},{"id":"mu0634448ncrf","name":"Medienmogul","cls":"Paladin"},{"id":"mu063444n4mkg","name":"Shamplunge","cls":"Shaman"},{"id":"mu063444u09b5","name":"Vuloo","cls":"Priest"},{"id":"mu063444lh3z4","name":"Salamitöff","cls":"Shaman"},{"id":"mu06agh6oa0da","name":"Geunja","cls":"Priest"},{"id":"mu06c1pbjb0ll","name":"Strikerzero","cls":"Rogue"},{"id":"mu06cp1irr7a2","name":"Jugô","cls":"Mage"},{"id":"mu06d4rgx0xt8","name":"Bossbobby","cls":"Mage"},{"id":"mu06dk7joe3ro","name":"Corpina","cls":"Warlock"},{"id":"mu06e17d25h4b","name":"Derken","cls":"Paladin"},{"id":"mu06eaqzoiirv","name":"Thyrella","cls":"Warlock"},{"id":"mu06em4txg1xe","name":"Tandoran","cls":"Mage"},{"id":"mu06ft1p1mdgh","name":"Traxés","cls":"Hunter"},{"id":"mu06gm51bnk6f","name":"Yaracko","cls":"Warrior"},{"id":"mu06jr3yfwiwq","name":"Ndabou","cls":"Druid"},{"id":"mu06jr3ya4g45","name":"Buregar","cls":"Hunter"},{"id":"mu06jr3yel5py","name":"Schamless","cls":"Shaman"}],"awards":[{"id":"mu063444fbhhq","date":"2026-09-09","boss":"Rage Winterchill","item":30872,"raider":"mu063444uh261","note":"","ts":1789325303188,"gargul":"40737373653408850566"},{"id":"mu063444x3f8k","date":"2026-09-09","boss":"Anetheron","item":30882,"raider":"mu063444clgvb","note":"","ts":1789325303189,"gargul":"40195177481483778539"},{"id":"mu0634447hx1r","date":"2026-09-09","boss":"Azgalor","item":31094,"raider":"mu063444rqikz","note":"","ts":1789325303190,"gargul":"17745414324070355148"},{"id":"mu063444m7pnq","date":"2026-09-09","boss":"Azgalor","item":30900,"raider":"mu063444vii8n","note":"","ts":1789325303191,"gargul":"25008608339200974620"},{"id":"mu063444bd0dj","date":"2026-09-09","boss":"Azgalor","item":31092,"raider":"mu06344468fhd","note":"","ts":1789325303192,"gargul":"50466734133643417920"},{"id":"mu063444k39cp","date":"2026-09-09","boss":"Azgalor","item":31093,"raider":"mu063444lgrr2","note":"","ts":1789325303193,"gargul":"40886284742769838068"},{"id":"mu063444bl2b6","date":"2026-09-09","boss":"Rage Winterchill","item":30866,"raider":"mu063444fop28","note":"OS","ts":1789325303194,"gargul":"37543888722546748386"},{"id":"mu063444v8gee","date":"2026-09-09","boss":"Kaz'rogal","item":30889,"raider":"mu063444yi0xy","note":"OS","ts":1789325303195,"gargul":"38714218373288808620"},{"id":"mu063444n3wy2","date":"2026-09-09","boss":"Anetheron","item":30883,"raider":"mu063444nv3sx","note":"OS","ts":1789325303196,"gargul":"94420469337225238390"},{"id":"mu063444yuow0","date":"2026-09-09","boss":"Archimonde","item":31095,"raider":"mu063444of81x","note":"","ts":1789325303197,"gargul":"16285088010438739670"},{"id":"mu063444hru5i","date":"2026-09-09","boss":"Archimonde","item":31096,"raider":"mu063444kmx48","note":"","ts":1789325303198,"gargul":"20728387112532748857"},{"id":"mu063444f5bcy","date":"2026-09-09","boss":"Archimonde","item":31096,"raider":"mu063444lgrr2","note":"","ts":1789325303199,"gargul":"24845932502769838068"},{"id":"mu0634449t88m","date":"2026-09-09","boss":"Kaz'rogal","item":30915,"raider":"mu063444o35cm","note":"OS","ts":1789325303200,"gargul":"25509691262454139946"},{"id":"mu06344470stf","date":"2026-09-09","boss":"Supremus","item":32261,"raider":"mu0634441v7l4","note":"","ts":1789325303201,"gargul":"13082494102481851431"},{"id":"mu063444jpwma","date":"2026-09-09","boss":"Supremus","item":32255,"raider":"mu0634448ncrf","note":"","ts":1789325303202,"gargul":"22247396942523790644"},{"id":"mu063444490k4","date":"2026-09-09","boss":"Teron Gorefiend","item":32510,"raider":"mu063444n4mkg","note":"","ts":1789325303203,"gargul":"39616063881447896357"},{"id":"mu063444zw2jr","date":"2026-09-09","boss":"Teron Gorefiend","item":32329,"raider":"mu063444u09b5","note":"OS","ts":1789325303204,"gargul":"30386488303397286573"},{"id":"mu063444w8cul","date":"2026-09-09","boss":"High Warlord Naj'entus","item":32236,"raider":"mu063444lh3z4","note":"","ts":1789325303205,"gargul":"16734095994213478390"},{"id":"mu06agh5m0hmf","date":"2026-09-07","boss":"Teron Gorefiend","item":32323,"raider":"mu063444n4mkg","note":"","ts":1789325645801,"gargul":"38824984441447896357"},{"id":"mu06agh5n69mm","date":"2026-09-07","boss":"Shade of Akama","item":32513,"raider":"mu063444kmx48","note":"OS","ts":1789325645802,"gargul":"27012387382532748857"},{"id":"mu06agh55f4ev","date":"2026-09-07","boss":"Shade of Akama","item":32271,"raider":"mu063444nv3sx","note":"","ts":1789325645803,"gargul":"33977836273722523839"},{"id":"mu06agh5qnpgz","date":"2026-09-07","boss":"Trash (Black Temple)","item":34011,"raider":"mu0634441v7l4","note":"","ts":1789325645804,"gargul":"48729654624818514310"},{"id":"mu06agh5s84b5","date":"2026-09-07","boss":"Teron Gorefiend","item":32329,"raider":"mu063444nv3sx","note":"","ts":1789325645805,"gargul":"37934211503722523839"},{"id":"mu06agh5effk5","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444lgrr2","note":"","ts":1789325645806,"gargul":"24581198752769838068"},{"id":"mu06agh5dtewl","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444kmx48","note":"","ts":1789325645807,"gargul":"38606082512532748857"},{"id":"mu06agh5bmnyi","date":"2026-09-07","boss":"Mother Shahraz","item":31102,"raider":"mu063444uh261","note":"","ts":1789325645808,"gargul":"28879897433408850566"},{"id":"mu06agh6eb2qd","date":"2026-09-07","boss":"Mother Shahraz","item":32370,"raider":"mu0634448ncrf","note":"","ts":1789325645809,"gargul":"15203357932523790644"},{"id":"mu06agh6sr3iu","date":"2026-09-07","boss":"Gurtogg Bloodboil","item":32335,"raider":"mu063444lh3z4","note":"","ts":1789325645810,"gargul":"23112322804213478390"},{"id":"mu06agh6iqw09","date":"2026-09-07","boss":"Trash (Black Temple)","item":32606,"raider":"mu0634448ncrf","note":"OS","ts":1789325645811,"gargul":"15072587932523790644"},{"id":"mu06agh6knk2c","date":"2026-09-07","boss":"The Illidari Council","item":31100,"raider":"mu063444of81x","note":"","ts":1789325645812,"gargul":"11749270331043873967"},{"id":"mu06agh6vy9tk","date":"2026-09-07","boss":"The Illidari Council","item":31098,"raider":"mu0634448ncrf","note":"","ts":1789325645813,"gargul":"25567330125237906440"},{"id":"mu06agh6tih21","date":"2026-09-07","boss":"The Illidari Council","item":31098,"raider":"mu06agh6oa0da","note":"","ts":1789325645814,"gargul":"14566328854063530249"},{"id":"mu06iect26lrq","date":"2026-09-02","boss":"Kaz'rogal","item":30914,"raider":"mu063444kmx48","note":"","ts":1789326016301,"gargul":"19044532502532748857"},{"id":"mu06iect01il5","date":"2026-09-02","boss":"Azgalor","item":31094,"raider":"mu063444yi0xy","note":"","ts":1789326016302,"gargul":"26260472813288808620"},{"id":"mu06iectpr4yk","date":"2026-09-02","boss":"Azgalor","item":31094,"raider":"mu06ft1p1mdgh","note":"","ts":1789326016303,"gargul":"19184853476253083990"},{"id":"mu06iecto7tlq","date":"2026-09-02","boss":"Azgalor","item":31092,"raider":"mu06dk7joe3ro","note":"","ts":1789326016304,"gargul":"21278999424474735100"},{"id":"mu06iect73dye","date":"2026-09-02","boss":"Rage Winterchill","item":30872,"raider":"mu06344468fhd","note":"","ts":1789326016305,"gargul":"14962537103364341792"},{"id":"mu06iectx80co","date":"2026-09-02","boss":"Rage Winterchill","item":30863,"raider":"mu063444n4mkg","note":"","ts":1789326016306,"gargul":"35916326831447896357"},{"id":"mu06iect7uz4x","date":"2026-09-02","boss":"Anetheron","item":30881,"raider":"mu06ft1p1mdgh","note":"","ts":1789326016307,"gargul":"14299367936253083990"},{"id":"mu06iectkqgsg","date":"2026-09-02","boss":"Anetheron","item":30886,"raider":"mu063444nv3sx","note":"","ts":1789326016308,"gargul":"12322524423722523839"},{"id":"mu06iectwxcgo","date":"2026-09-02","boss":"Kaz'rogal","item":30919,"raider":"mu063444n4mkg","note":"","ts":1789326016309,"gargul":"40832401414478963570"},{"id":"mu06iectgh092","date":"2026-09-02","boss":"Azgalor","item":30896,"raider":"mu0634441v7l4","note":"","ts":1789326016310,"gargul":"11533034624818514310"},{"id":"mu06iect5wked","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu06eaqzoiirv","note":"","ts":1789326016311,"gargul":"10168097911677928325"},{"id":"mu06iect4yydy","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu06344468fhd","note":"","ts":1789326016312,"gargul":"21120930163364341792"},{"id":"mu06iectec08e","date":"2026-09-02","boss":"Archimonde","item":31097,"raider":"mu0634448ncrf","note":"","ts":1789326016313,"gargul":"26864474222523790644"},{"id":"mu06iect3ii5c","date":"2026-09-02","boss":"Archimonde","item":30906,"raider":"mu063444rqikz","note":"","ts":1789326016314,"gargul":"32107570564070355148"},{"id":"mu06iectf9vhl","date":"2026-09-02","boss":"Archimonde","item":30908,"raider":"mu063444u09b5","note":"OS","ts":1789326016315,"gargul":"83582967433972865730"},{"id":"mu06iect7zm86","date":"2026-09-02","boss":"High Warlord Naj'entus","item":32238,"raider":"mu0634448ncrf","note":"","ts":1789326016316,"gargul":"38678156193722523839"},{"id":"mu06iectpsdiu","date":"2026-09-02","boss":"High Warlord Naj'entus","item":32243,"raider":"mu0634448ncrf","note":"","ts":1789326016317,"gargul":"33937678682523790644"},{"id":"mu06jr3y918lf","date":"2026-08-31","boss":"Rage Winterchill","item":30863,"raider":"mu06gm51bnk6f","note":"","ts":1789326079486,"gargul":"36163343143213827862"},{"id":"mu06jr3y8kq1s","date":"2026-08-31","boss":"Azgalor","item":31093,"raider":"mu06jr3yfwiwq","note":"","ts":1789326079487,"gargul":"14835782262235450471"},{"id":"mu06jr3yykexz","date":"2026-08-31","boss":"Azgalor","item":31093,"raider":"mu06c1pbjb0ll","note":"","ts":1789326079488,"gargul":"33931457713374556949"},{"id":"mu06jr3y3461q","date":"2026-08-31","boss":"Azgalor","item":31092,"raider":"mu06eaqzoiirv","note":"","ts":1789326079489,"gargul":"39101325961677928325"},{"id":"mu06jr3y1chwy","date":"2026-08-31","boss":"Rage Winterchill","item":30871,"raider":"mu063444clgvb","note":"","ts":1789326079490,"gargul":"32466688541483778539"},{"id":"mu06jr3y0uo90","date":"2026-08-31","boss":"Archimonde","item":31097,"raider":"mu06dk7joe3ro","note":"","ts":1789326079491,"gargul":"14246337282447473510"},{"id":"mu06jr3ym8eye","date":"2026-08-31","boss":"Archimonde","item":31095,"raider":"mu063444fop28","note":"","ts":1789326079492,"gargul":"33837561632546748386"},{"id":"mu06jr3yhxvk8","date":"2026-08-31","boss":"Archimonde","item":31095,"raider":"mu063444yi0xy","note":"","ts":1789326079493,"gargul":"77177785632888086200"},{"id":"mu06jr3yvbr18","date":"2026-08-31","boss":"Anetheron","item":30881,"raider":"mu063444rqikz","note":"","ts":1789326079494,"gargul":"92166005440703551480"},{"id":"mu06jr3yym57a","date":"2026-08-31","boss":"Anetheron","item":30887,"raider":"mu063444of81x","note":"","ts":1789326079495,"gargul":"20851432610438739670"},{"id":"mu06jr3yd041n","date":"2026-08-31","boss":"Kaz'rogal","item":30894,"raider":"mu06344468fhd","note":"","ts":1789326079496,"gargul":"34372302723364341792"},{"id":"mu06jr3yo3bh4","date":"2026-08-31","boss":"Kaz'rogal","item":30889,"raider":"mu063444fop28","note":"","ts":1789326079497,"gargul":"38787502392546748386"},{"id":"mu06jr3yfnqqm","date":"2026-08-31","boss":"Azgalor","item":30901,"raider":"mu06jr3ya4g45","note":"","ts":1789326079498,"gargul":"87672783098282754400"},{"id":"mu06jr3ybxf05","date":"2026-08-31","boss":"Archimonde","item":30908,"raider":"mu063444nv3sx","note":"","ts":1789326079499,"gargul":"55558106037225238390"},{"id":"mu06jr3y0mzyw","date":"2026-08-31","boss":"High King Maulgar","item":28797,"raider":"mu063444kmx48","note":"","ts":1789326079500,"gargul":"61139503725327488570"},{"id":"mu06jr3y3lzp2","date":"2026-08-31","boss":"Gruul the Dragonkiller","item":28822,"raider":"mu06jr3yel5py","note":"OS","ts":1789326079501,"gargul":"29156705963489387060"}],"faction":"alliance","game":"tbc"}</script>
@@ -569,7 +580,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789397248';
+const BUILD_ID = '1789399403';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -691,10 +702,11 @@ function classOptions(sel){ return CLASSES.concat(sel && !CLASSES.includes(sel) 
 
 /* ---------------- dialogs (browser alert/confirm are blocked inside the artifact frame) ---------------- */
 let dlgResolve = null, toastTimer = null;
-function ask(msg, yes){
-  return new Promise(res => { dlgResolve = res; $('#dlgMsg').textContent = msg; $('#dlgYes').textContent = yes || 'Confirm'; $('#dlg').hidden = false; $('#dlgYes').focus(); });
+function ask(msg, yes, input){
+  return new Promise(res => { dlgResolve = res; $('#dlgMsg').textContent = msg; $('#dlgYes').textContent = yes || 'Confirm'; const inp = $('#dlgInput'); inp.hidden = input == null; inp.value = ''; inp.placeholder = input || ''; $('#dlg').hidden = false; (input != null ? inp : $('#dlgYes')).focus(); });
 }
-function closeDlg(v){ $('#dlg').hidden = true; if (dlgResolve) { const r = dlgResolve; dlgResolve = null; r(v); } }
+function closeDlg(v){ $('#dlg').hidden = true; if (dlgResolve) { const r = dlgResolve; dlgResolve = null; r(v && !$('#dlgInput').hidden ? $('#dlgInput').value.trim() : v); } }
+$('#dlgInput').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); closeDlg(true); } });
 $('#dlgYes').addEventListener('click', () => closeDlg(true));
 $('#dlgNo').addEventListener('click', () => closeDlg(false));
 $('#dlg').addEventListener('click', ev => { if (ev.target === $('#dlg')) closeDlg(false); });
@@ -767,7 +779,9 @@ async function renderEditors(){
   const panel = $('#editorsPanel'); panel.hidden = !isOwner; if (!isOwner) return;
   const {data} = await SUPA.from('editors').select('email,label').order('email');
   editorSet = new Set((data||[]).map(e => e.email.toLowerCase()));
-  $('#editorsList').innerHTML = (data||[]).length ? data.map(e => '<div style="display:flex;gap:8px;align-items:center"><span style="flex:1">'+esc(e.email)+'</span><button class="btn sm ghost danger" data-edrm="'+esc(e.email)+'">Remove</button></div>').join('') : '<span class="muted">No editors yet. Only you can edit.</span>';
+  const edRow = (id, label, role, rm) => '<div class="edrow"><i class="pres" data-pres="'+esc(id)+'" title="offline"></i><span style="flex:1">'+label+'</span><span class="st ok">'+role+'</span>'+(rm ? '<button class="btn sm ghost danger" data-edrm="'+esc(rm)+'">Remove</button>' : '')+'</div>';
+  $('#editorsList').innerHTML = edRow((ownerEmail||'').toLowerCase(), esc(ownerEmail || 'you'), 'owner', '') + (data||[]).map(e => edRow(e.email.toLowerCase(), esc(e.email), 'editor', e.email)).join('') + ((data||[]).length ? '' : '<span class="muted">No editors yet. Only you can edit.</span>');
+  renderOnline();
   renderAccounts();
 }
 let editorSet = new Set();
@@ -784,21 +798,40 @@ async function renderAccounts(){
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + '</div>';
   }).join('') : '<span class="muted">Nobody has signed in yet.</span>';
 }
-let ownerEmail = '', presence = null;
+let ownerEmail = '', presence = null, PRESENCE = [], presenceTimer = null;
+const SID = (() => { try { let s = sessionStorage.getItem('gll.sid'); if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('gll.sid', s); } return s; } catch(e) { return Math.random().toString(36).slice(2); } })();
+async function heartbeat(){
+  if (!SUPA || !user || document.hidden) return;
+  try { await SUPA.rpc('touch_presence', {p_sid: SID, p_name: userName()}); } catch(e) {}
+}
+async function loadPresence(){
+  if (!SUPA) return;
+  const {data} = await SUPA.from('presence').select('sid,name,role,last_seen').gt('last_seen', new Date(Date.now() - 75000).toISOString());
+  PRESENCE = data || []; renderOnline();
+}
 function renderOnline(){
-  if (!presence) return;
-  const st = presence.presenceState(); const names = [];
-  Object.values(st).forEach(list => list.forEach(p => names.push(p.name)));
-  const seen = {}; names.forEach(n => seen[n] = (seen[n]||0) + 1);
-  const parts = Object.keys(seen).sort().map(n => esc(n) + (seen[n] > 1 ? ' ×' + seen[n] : ''));
-  $('#onlineList').innerHTML = parts.length ? parts.join(', ') : '–';
+  const officers = {}; let viewers = 0;
+  for (const p of PRESENCE) {
+    if (p.role === 'owner' || p.role === 'editor') { const k = String(p.name||'').toLowerCase(); if (!officers[k]) officers[k] = {name: p.name || '?', role: p.role, n: 0}; officers[k].n++; }
+    else viewers++;
+  }
+  const offs = Object.values(officers).sort((a, b) => (a.role === 'owner' ? 0 : 1) - (b.role === 'owner' ? 0 : 1) || a.name.localeCompare(b.name));
+  const bar = $('#onlineBar'); bar.hidden = !PRESENCE.length;
+  bar.innerHTML = offs.map(o => '<span class="onl" title="'+esc(o.name)+' is on the page now"><i></i>'+esc(o.name)+'<em>'+o.role+'</em></span>').join('')
+    + (viewers ? '<span class="onl v" title="signed-in people on the page without editor rights"><i></i>'+viewers+' viewer'+(viewers===1?'':'s')+'</span>' : '');
+  $('#onlineList').innerHTML = (offs.length ? offs.map(o => esc(o.name)+' <span class="faint">'+o.role+(o.n > 1 ? ' ×'+o.n : '')+'</span>').join(', ') : '<span class="faint">no officer on the page</span>') + (viewers ? ' · '+viewers+' signed-in viewer'+(viewers===1?'':'s') : '');
+  document.querySelectorAll('.pres').forEach(el => {
+    const id = el.dataset.pres;
+    const on = id && id === (ownerEmail||'').toLowerCase() ? offs.some(o => o.role === 'owner') : offs.some(o => o.name.toLowerCase() === id);
+    el.classList.toggle('on', on); el.title = on ? 'on the page now' : 'offline';
+  });
 }
 async function startPresence(){
   if (!SUPA || presence) return;
-  presence = SUPA.channel('online', {config: {presence: {key: Math.random().toString(36).slice(2)}}});
-  presence.on('presence', {event: 'sync'}, renderOnline).subscribe(async status => {
-    if (status === 'SUBSCRIBED') await presence.track({name: user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : 'viewer'});
-  });
+  presence = SUPA.channel('presence-rows').on('postgres_changes', {event: '*', schema: 'public', table: 'presence'}, () => { clearTimeout(presenceTimer); presenceTimer = setTimeout(loadPresence, 300); }).subscribe();
+  await heartbeat(); loadPresence();
+  setInterval(() => { heartbeat(); loadPresence(); }, 25000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) heartbeat(); });
 }
 async function initCapability(){
   if (!SUPA) { refreshBar(); return; }
@@ -806,7 +839,7 @@ async function initCapability(){
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
   await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence(); loadMats();
-  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); if (presence) presence.track({name: user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : 'viewer'}); });
+  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); heartbeat(); });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
     if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; state = payload.new.state; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll(); refreshBar(); }
@@ -815,7 +848,7 @@ async function initCapability(){
 }
 $('#loginBtn').addEventListener('click', () => { $('#loginBox').hidden = false; $('#loginMsg').textContent = ''; });
 $('#loginClose').addEventListener('click', () => { $('#loginBox').hidden = true; });
-$('#logoutBtn').addEventListener('click', async () => { await SUPA.auth.signOut(); });
+$('#logoutBtn').addEventListener('click', async () => { try { await SUPA.rpc('leave_presence', {p_sid: SID}); } catch(e) {} await SUPA.auth.signOut(); loadPresence(); });
 $('#discordBtn').addEventListener('click', async () => {
   const {error} = await SUPA.auth.signInWithOAuth({provider: 'discord', options: {redirectTo: location.origin + location.pathname}});
   if (error) $('#loginMsg').textContent = 'Discord sign-in is not set up yet: ' + error.message;
@@ -1078,6 +1111,7 @@ function renderCraft(){
 const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'}]};
 let MATROWS = [], matState = 'loading', matChannel = null;
 const matsHere = () => MATS[gameKey] || [];
+const ORDER = {open: 0, received: 1, declined: 2};
 const matName = id => { const m = matsHere().find(x => x.id === id); return m ? m.name : (ITEM[id] ? ITEM[id].name : 'Item ' + id); };
 const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : '';
 async function loadMats(){
@@ -1112,9 +1146,11 @@ function renderMats(){
     if (show === 'stock' ? r.kind !== 'stock' : r.kind === 'stock') return false;
     if (show === 'open' && r.status !== 'open') return false;
     if (show === 'received' && r.status !== 'received') return false;
+    if (show === 'declined' && r.status !== 'declined') return false;
     if (q) { const hay = r.raider_name + ' ' + r.purpose + ' ' + matName(r.item) + ' ' + r.requested_name; if (!hay.toLowerCase().includes(q)) return false; }
     return true;
-  }).sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || (b.created_at > a.created_at ? 1 : -1));
+  }).sort((a, b) => ORDER[a.status] - ORDER[b.status] || (b.created_at > a.created_at ? 1 : -1));
+  const grpOf = x => x.kind === 'stock' ? 'Stock corrections' : x.status === 'open' ? 'Open' : x.status === 'declined' ? 'Declined' : 'Received';
   $('#matCount').textContent = rows.length + ' of ' + MATROWS.length + ' entries';
   if (!rows.length) {
     const msg = matState === 'loading' ? ['Loading…', ''] : matState === 'error' ? ['Could not load the requests', 'Reload the page.'] : MATROWS.length ? ['Nothing matches', 'Try a different filter.'] : ['No requests yet', user ? 'Use the form to request materials from the guild bank.' : 'Sign in to request materials from the guild bank.'];
@@ -1122,22 +1158,22 @@ function renderMats(){
   } else {
     let h = '', last = null;
     for (const r of rows) {
-      const grp = r.kind === 'stock' ? 'Stock corrections' : r.status === 'open' ? 'Open' : 'Received';
-      if (grp !== last) { last = grp; const n = rows.filter(x => (x.kind === 'stock' ? 'Stock corrections' : x.status === 'open' ? 'Open' : 'Received') === grp).length; h += '<tr class="night"><td colspan="7">'+grp+'<span class="n">'+n+'</span></td></tr>'; }
+      const grp = grpOf(r);
+      if (grp !== last) { last = grp; const n = rows.filter(x => grpOf(x) === grp).length; h += '<tr class="night"><td colspan="7">'+grp+'<span class="n">'+n+'</span></td></tr>'; }
       const rd = r.raider ? raiderById(r.raider) : null;
       const mine = user && r.requested_by === user.id;
       const date = new Date(r.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
       let acts = '';
-      if (r.kind === 'request' && r.status === 'open' && isEditor) acts += '<button class="btn sm primary" data-mrecv="'+r.id+'">Handed out</button>';
-      if (r.status === 'received' && r.kind === 'request' && isEditor) acts += '<button class="btn sm ghost" data-mopen="'+r.id+'" title="Set back to open">Reopen</button>';
+      if (r.kind === 'request' && r.status === 'open' && isEditor) acts += '<button class="btn sm primary" data-mrecv="'+r.id+'">Handed out</button><button class="btn sm ghost danger" data-mdecl="'+r.id+'">Decline</button>';
+      if (r.status !== 'open' && r.kind === 'request' && isEditor) acts += '<button class="btn sm ghost" data-mopen="'+r.id+'" title="Set back to open">Reopen</button>';
       if (isEditor || (mine && r.status === 'open')) acts += '<button class="btn sm ghost danger" data-mdel="'+r.id+'">Remove</button>';
-      h += '<tr class="'+(r.status === 'received' && r.kind !== 'stock' ? 'done' : '')+'">'
-        + '<td class="muted" style="white-space:nowrap">'+date+(r.received_at ? '<div class="faint" style="font-size:12px">got '+new Date(r.received_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})+'</div>' : '')+'</td>'
+      h += '<tr class="'+(r.status !== 'open' && r.kind !== 'stock' ? 'done' : '')+'">'
+        + '<td class="muted" style="white-space:nowrap">'+date+(r.received_at && r.kind === 'request' ? '<div class="faint" style="font-size:12px">'+(r.status === 'declined' ? 'declined ' : 'got ')+new Date(r.received_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})+'</div>' : '')+'</td>'
         + '<td>'+(rd ? rName(rd) : r.raider_name ? '<span class="rname">'+esc(r.raider_name)+'</span>' : '<span class="faint">—</span>')+(r.kind === 'handout' ? '<span class="kind">handout</span>' : r.kind === 'stock' ? '<span class="kind">stock</span>' : '')+'</td>'
         + '<td><span class="item">'+icoHTML(ITEM[r.item])+'<span class="nm q'+(ITEM[r.item] ? ITEM[r.item].q || 4 : 4)+'">'+esc(matName(r.item))+'</span></span></td>'
         + '<td class="num">'+(r.qty > 0 && r.kind === 'stock' ? '+' : '')+r.qty+'</td>'
-        + '<td class="note">'+esc(r.purpose || '')+'</td>'
-        + '<td class="muted">'+esc(r.requested_name || '')+(r.received_by && r.status === 'received' && r.kind === 'request' ? '<div class="faint" style="font-size:12px">ticked by '+esc(r.received_by)+'</div>' : '')+'</td>'
+        + '<td class="note">'+esc(r.purpose || '')+(r.reply ? '<div class="faint" style="font-size:12px;font-style:normal">Reply: '+esc(r.reply)+'</div>' : '')+'</td>'
+        + '<td class="muted">'+esc(r.requested_name || '')+(r.received_by && r.status !== 'open' && r.kind === 'request' ? '<div class="faint" style="font-size:12px">'+(r.status === 'declined' ? 'declined by ' : 'ticked by ')+esc(r.received_by)+'</div>' : '')+'</td>'
         + '<td class="acts">'+acts+'</td></tr>';
     }
     $('#matBody').innerHTML = h;
@@ -1181,9 +1217,10 @@ $('#matStockForm').addEventListener('submit', ev => {
 });
 ['#matSearch','#matItem','#matShow'].forEach(s => $(s).addEventListener('input', renderMats));
 $('#matBody').addEventListener('click', async ev => {
-  const rc = ev.target.closest('[data-mrecv]'), ro = ev.target.closest('[data-mopen]'), rd = ev.target.closest('[data-mdel]');
+  const rc = ev.target.closest('[data-mrecv]'), ro = ev.target.closest('[data-mopen]'), rd = ev.target.closest('[data-mdel]'), rx = ev.target.closest('[data-mdecl]');
+  if (rx) { const why = await ask('Decline this request? The raider sees the reply on the request.', 'Decline', 'Reply for the raider (optional)'); if (why === false) return; matWrite(() => SUPA.from('mat_requests').update({status: 'declined', received_at: new Date().toISOString(), received_by: userName(), reply: why || ''}).eq('id', rx.dataset.mdecl)); }
   if (rc) matWrite(() => SUPA.from('mat_requests').update({status: 'received', received_at: new Date().toISOString(), received_by: userName()}).eq('id', rc.dataset.mrecv));
-  if (ro) matWrite(() => SUPA.from('mat_requests').update({status: 'open', received_at: null, received_by: null}).eq('id', ro.dataset.mopen));
+  if (ro) matWrite(() => SUPA.from('mat_requests').update({status: 'open', received_at: null, received_by: null, reply: ''}).eq('id', ro.dataset.mopen));
   if (rd) { const r = MATROWS.find(x => x.id === rd.dataset.mdel); if (r && await ask('Remove this entry ('+r.qty+' × '+matName(r.item)+(r.raider_name ? ' for '+r.raider_name : '')+')?', 'Remove')) matWrite(() => SUPA.from('mat_requests').delete().eq('id', r.id)); }
 });
 
