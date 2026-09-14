@@ -67,8 +67,8 @@ function ns.Refresh()
     local act = ns.Active()
     if act then
         local c = ns.MatCounts(act)
-        statusText:SetText(("|cff4fbf7aAufnahme läuft:|r %s · %d Raider · %s %d · %s %d"):format(
-            act.zone, ns.MemberCount(act), ns.ItemName(32897), c[32897] or 0, ns.ItemName(32428), c[32428] or 0))
+        statusText:SetText(("|cff4fbf7aAufnahme läuft:|r %s · %d Raider · Mal %d · Herz %d · Edelsteine %d"):format(
+            act.zone, ns.MemberCount(act), c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
     elseif ns.IsEnabled() then
         statusText:SetText("|cff8f86a3Keine Aufnahme.|r Sie startet von selbst in einer Raidinstanz mit Raidgruppe.")
     else
@@ -93,15 +93,18 @@ function ns.Refresh()
         if s then
             local c = ns.MatCounts(s)
             r.sessionId = s.id
+            r.session = s
             r.date:SetText(s.date)
             r.zone:SetText((s == act and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
             r.raiders:SetText(ns.MemberCount(s))
             r.mark:SetText(c[32897] or 0)
             r.heart:SetText(c[32428] or 0)
+            r.gems:SetText(ns.GemCount(c))
             if selected[s.id] then r.sel:Show() else r.sel:Hide() end
             r:Show()
         else
             r.sessionId = nil
+            r.session = nil
             r.sel:Hide()
             r:Hide()
         end
@@ -164,11 +167,12 @@ local function build()
         if label then fs:SetText(label) end
         return fs
     end
-    col(head, 6, 90, "Datum")
-    col(head, 100, 230, "Raid")
-    col(head, 336, 70, "Raider")
-    col(head, 410, 80, ns.ItemName(32897))
-    col(head, 494, 70, ns.ItemName(32428))
+    col(head, 6, 86, "Datum")
+    col(head, 94, 196, "Raid")
+    col(head, 294, 52, "Raider")
+    col(head, 350, 56, "Mal")
+    col(head, 410, 56, "Herz")
+    col(head, 470, 92, "Edelsteine")
 
     list = CreateFrame("Frame", nil, W)
     list:SetSize(568, ROWS * ROW_H)
@@ -193,11 +197,30 @@ local function build()
         local hl = r:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(1, 1, 1, 0.08)
-        r.date = col(r, 6, 90, nil, "GameFontHighlightSmall")
-        r.zone = col(r, 100, 230, nil, "GameFontHighlightSmall")
-        r.raiders = col(r, 336, 70, nil, "GameFontHighlightSmall")
-        r.mark = col(r, 410, 80, nil, "GameFontHighlightSmall")
-        r.heart = col(r, 494, 70, nil, "GameFontHighlightSmall")
+        r.date = col(r, 6, 86, nil, "GameFontHighlightSmall")
+        r.zone = col(r, 94, 196, nil, "GameFontHighlightSmall")
+        r.raiders = col(r, 294, 52, nil, "GameFontHighlightSmall")
+        r.mark = col(r, 350, 56, nil, "GameFontHighlightSmall")
+        r.heart = col(r, 410, 56, nil, "GameFontHighlightSmall")
+        r.gems = col(r, 470, 92, nil, "GameFontHighlightSmall")
+        r:SetScript("OnEnter", function(self)
+            local s = self.session
+            if not s then return end
+            local c = ns.MatCounts(s)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(s.zone or "?", 1, 0.82, 0)
+            GameTooltip:AddLine(s.date, 0.7, 0.7, 0.7)
+            local any = false
+            for _, id in ipairs(ns.MAT_ORDER) do
+                if (c[id] or 0) > 0 then
+                    any = true
+                    GameTooltip:AddDoubleLine(ns.ItemName(id), tostring(c[id]), 1, 1, 1, 1, 1, 1)
+                end
+            end
+            if not any then GameTooltip:AddLine("Keine Materialien gelootet.", 0.6, 0.6, 0.6) end
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() GameTooltip:Hide() end)
         r:SetScript("OnClick", function(self)
             local id = self.sessionId
             if not id then return end

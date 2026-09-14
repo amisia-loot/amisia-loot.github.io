@@ -722,7 +722,7 @@ tr.got td{opacity:.5}
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>Amisia addon</b> <a href="addon/Amisia.zip" download>download</a></p>
           <ol class="steps">
-            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group and who looted Mark of the Illidari or Heart of Darkness.</li>
+            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group and who looted Mark of the Illidari, Heart of Darkness or one of the six epic raid gems.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Both exports can go into the box at the same time. Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
@@ -1619,7 +1619,9 @@ function renderCraft(){
 }
 
 /* ---------------- mats (guild bank materials) ---------------- */
-const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'}]};
+const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'},
+  {id: 32227, name: 'Crimson Spinel'}, {id: 32228, name: 'Empyrean Sapphire'}, {id: 32229, name: 'Lionseye'},
+  {id: 32230, name: 'Shadowsong Amethyst'}, {id: 32231, name: 'Pyrestone'}, {id: 32249, name: 'Seaspray Emerald'}]};
 let MATROWS = [], matState = 'loading', matChannel = null;
 const matsHere = () => MATS[gameKey] || [];
 const ORDER = {open: 0, received: 1, declined: 2};
@@ -1633,7 +1635,12 @@ async function loadMats(){
   if (!matChannel) matChannel = SUPA.channel('mats').on('postgres_changes', {event: '*', schema: 'public', table: 'mat_requests'}, () => loadMats()).subscribe();
 }
 function matStock(id){
-  const looted = state.awards.filter(a => a.item === id).length + (state.matloot || []).filter(x => x.item === id).reduce((s, x) => s + x.count, 0);
+  // A drop can be in the ledger twice: awarded through Gargul and seen by the Amisia addon.
+  // Per night, raider and item the larger of the two counts is the real number.
+  const per = {};
+  for (const a of state.awards) if (a.item === id) { const k = a.date + '|' + a.raider; (per[k] = per[k] || {aw: 0, ml: 0}).aw++; }
+  for (const x of (state.matloot || [])) if (x.item === id) { const k = x.date + '|' + x.raider; (per[k] = per[k] || {aw: 0, ml: 0}).ml += x.count; }
+  const looted = Object.values(per).reduce((s, v) => s + Math.max(v.aw, v.ml), 0);
   const rows = MATROWS.filter(r => r.item === id);
   const adjust = rows.filter(r => r.kind === 'stock').reduce((s, r) => s + r.qty, 0);
   const handed = rows.filter(r => r.kind !== 'stock' && r.status === 'received').reduce((s, r) => s + r.qty, 0);

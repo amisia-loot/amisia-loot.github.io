@@ -8,8 +8,22 @@ ns.VERSION = "1.0.0"
 ns.MATS = {
     [32897] = "Mal der Illidari",
     [32428] = "Herz der Dunkelheit",
+    -- epic raw gems from Black Temple and Sunwell Plateau trash
+    [32227] = "Crimson Spinel",
+    [32228] = "Empyrean Sapphire",
+    [32229] = "Lionseye",
+    [32230] = "Shadowsong Amethyst",
+    [32231] = "Pyrestone",
+    [32249] = "Seaspray Emerald",
 }
-ns.MAT_ORDER = { 32897, 32428 }
+ns.MAT_ORDER = { 32897, 32428, 32227, 32228, 32229, 32230, 32231, 32249 }
+ns.GEMS = { [32227] = true, [32228] = true, [32229] = true, [32230] = true, [32231] = true, [32249] = true }
+
+function ns.GemCount(counts)
+    local n = 0
+    for id in pairs(ns.GEMS) do n = n + (counts[id] or 0) end
+    return n
+end
 
 local REUSE_WINDOW  = 2 * 60 * 60  -- re-entering the same raid within 2 hours continues its session
 local NIGHT_START   = 6 * 60 * 60  -- a session starting before 06:00 belongs to the previous raid night
@@ -377,8 +391,8 @@ SlashCmdList.AMISIA = function(input)
     elseif cmd == "status" then
         if active then
             local c = ns.MatCounts(active)
-            msg(("Aufnahme: %s, %d Raider, %s %d, %s %d."):format(active.zone, ns.MemberCount(active),
-                ns.ItemName(32897), c[32897] or 0, ns.ItemName(32428), c[32428] or 0))
+            msg(("Aufnahme: %s, %d Raider, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
+                c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
         else
             msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
         end
