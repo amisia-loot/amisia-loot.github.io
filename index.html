@@ -7,7 +7,7 @@
   --bg:#0e0a15; --panel:#150f1f; --panel-2:#1c1529; --panel-3:#241b33; --line:#2a2138; --line-2:#3a2f4b;
   --text:#ece6f4; --muted:#8f86a3; --faint:#5e5670;
   --gold:#e2b857; --gold-2:#f3d585; --gold-ink:#1a1206;
-  --epic:#a335ee; --epic-soft:rgba(163,53,238,.16);
+  --epic:#a335ee; --epic-soft:rgba(163,53,238,.16); --rare:#4a9be8;
   --good:#4fbf7a; --warn:#e0a344; --bad:#e35d6a;
   --z-kara:#a98be0; --z-gruul:#b9915a; --z-mag:#d2694f; --z-ssc:#4fb3d4; --z-tk:#d6b04a; --z-hyjal:#5db8a5; --z-bt:#c26a4a; --z-za:#7fbf5a; --z-swp:#e8a33d;
   --c-warrior:#C69B6D; --c-paladin:#F48CBA; --c-hunter:#AAD372; --c-rogue:#FFF468; --c-priest:#FFFFFF; --c-shaman:#3d8be6; --c-mage:#3FC7EB; --c-warlock:#8788EE; --c-druid:#FF7C0A; --c-deathknight:#C41E3A; --c-monk:#00FF98; --c-unknown:#8f86a3;
@@ -22,7 +22,7 @@
     --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
     --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
     --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
-    --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12);
+    --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8;
     --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
     --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
     --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
@@ -34,7 +34,7 @@
   --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
   --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
   --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
-  --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12);
+  --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8;
   --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
   --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
   --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
@@ -246,6 +246,17 @@ tr.skip td{opacity:.55}
 .mini{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
 /* ---------- difficulty ---------- */
 .diff{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:4px;vertical-align:middle}
+/* ---------- crafting ---------- */
+.ico.q3{border-color:var(--rare);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.ico .cp{display:block;width:100%;height:100%;background-repeat:no-repeat;background-color:#000}
+.item .nm.q3,#tip .t.q3{color:var(--rare)}
+.crafter{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;background:var(--panel-3);font-weight:600;font-size:13px;white-space:nowrap}
+.crafter.inferred{background:none;border:1px dashed var(--line-2)}
+.crafter .x{background:none;border:0;color:var(--muted);cursor:pointer;padding:0 0 0 2px;font-size:15px;line-height:1}
+.crafter .x:hover{color:var(--bad)}
+select.inp.craddr{width:auto;padding:2px 26px 2px 8px;font-size:13px;background-color:transparent;border-style:dashed;color:var(--muted)}
+select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
+.crhint{font-size:13px;color:var(--muted);margin:-6px 0 12px}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -268,6 +279,7 @@ tr.skip td{opacity:.55}
     <button class="tab" role="tab" data-view="armory">Armory</button>
     <button class="tab" role="tab" data-view="log">Loot Log</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
+    <button class="tab" role="tab" data-view="craft">Crafting</button>
     <button class="tab" role="tab" data-view="roster">Roster</button>
     <button class="tab" role="tab" data-view="import">Import</button>
   </nav>
@@ -344,6 +356,20 @@ tr.skip td{opacity:.55}
       <div class="count" id="mxCount"></div>
     </div>
     <div class="tblwrap"><table class="matrix" id="mxTable"><thead id="mxHead"></thead><tbody id="mxBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ CRAFTING ============ -->
+  <section class="view" id="view-craft" hidden>
+    <div class="toolbar">
+      <div class="field"><label for="crSearch">Search</label><input class="inp" id="crSearch" placeholder="Item, enchant or crafter…"></div>
+      <div class="field"><label for="crProf">Profession</label><select class="inp" id="crProf"><option value="">Every profession</option></select></div>
+      <div class="field"><label for="crSlot">Slot</label><select class="inp" id="crSlot"><option value="">Every slot</option></select></div>
+      <div class="field"><label for="crShow">Show</label><select class="inp" id="crShow"><option value="all">Every recipe</option><option value="have">Recipes with a crafter</option><option value="none">Recipes without a crafter</option><option value="raid">Recipes that drop in raids</option></select></div>
+      <div class="spacer"></div>
+      <div class="count" id="crCount"></div>
+    </div>
+    <p class="crhint" id="crHint">Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.</p>
+    <div class="tblwrap"><table id="crTable"><thead><tr><th>Item</th><th>Profession</th><th>Recipe from</th><th>Crafters</th></tr></thead><tbody id="crBody"></tbody></table></div>
   </section>
 
   <!-- ============ ROSTER ============ -->
@@ -448,7 +474,7 @@ tr.skip td{opacity:.55}
   </section>
 </div>
 <div id="tip" hidden></div>
-<style id="zoneStyle"></style>
+<style id="zoneStyle"></style><style id="craftStyle"></style>
 <div id="dlg" hidden role="dialog" aria-modal="true"><div class="box"><div class="msg" id="dlgMsg"></div><div class="btns"><button class="btn" id="dlgNo">Cancel</button><button class="btn primary" id="dlgYes">Confirm</button></div></div></div>
 <div id="toast" hidden role="status"></div>
 
@@ -460,14 +486,14 @@ tr.skip td{opacity:.55}
 const CLASSIC_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Shaman','Mage','Warlock','Druid'];
 const MOP_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Death Knight','Shaman','Mage','Warlock','Monk','Druid'];
 const GAMES = [
-  {key:'classic', name:'Classic Era', short:'Era', file:'data/classic.js', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
-  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:'data/classic.js', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
-  {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
-  {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
-  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
+  {key:'classic', name:'Classic Era', short:'Era', file:'data/classic.js', craft:'classic', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
+  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:'data/classic.js', craft:'classic', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
+  {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', craft:'sod', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
+  {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
+  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789332615';
+const BUILD_ID = '1789395962';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -485,8 +511,30 @@ function applyData(d){
   $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
   $('#mxShow').innerHTML = '<option value="all">Every raider</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
 }
+let CRAFT = {profs:[], items:[]}, CITEM = {}, CRECIPE = {}, craftState = 'loading';
+const CSLOTS = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket','enchant','other'];
+function applyCraft(d){
+  CRAFT = d || {profs:[], items:[]}; CITEM = Object.fromEntries(CRAFT.items.map(c => [c.id, c]));
+  CRECIPE = {}; CRAFT.items.forEach(c => { if (c.recipe) CRECIPE[c.recipe] = c; });
+  $('#craftStyle').textContent = CRAFT.sprite ? '.ico .cp{background-image:url("' + CRAFT.sprite.file + '");background-size:' + (CRAFT.sprite.cols*100) + '% ' + (CRAFT.sprite.rows*100) + '%}' : '';
+  const kp = $('#crProf').value, ks = $('#crSlot').value;
+  $('#crProf').innerHTML = '<option value="">Every profession</option>' + CRAFT.profs.map(p => '<option'+(p===kp?' selected':'')+'>'+esc(p)+'</option>').join('');
+  const have = new Set(CRAFT.items.map(c => c.slot));
+  $('#crSlot').innerHTML = '<option value="">Every slot</option>' + CSLOTS.filter(s => have.has(s)).map(s => '<option value="'+s+'"'+(s===ks?' selected':'')+'>'+CSLOTNAME[s]+'</option>').join('');
+}
+function loadCraft(g){
+  const key = g.craft;
+  if (!key) { craftState = 'soon'; applyCraft(null); return; }
+  if (window.__CRAFT && window.__CRAFT[key]) { craftState = 'ok'; applyCraft(window.__CRAFT[key]); return; }
+  craftState = 'loading'; applyCraft(null);
+  const s = document.createElement('script'); s.src = 'data/craft-' + key + '.js?v=' + BUILD_ID;
+  s.onload = () => { craftState = window.__CRAFT && window.__CRAFT[key] ? 'ok' : 'error'; applyCraft(window.__CRAFT && window.__CRAFT[key]); renderAll(); };
+  s.onerror = () => { craftState = 'error'; applyCraft(null); renderAll(); };
+  document.head.appendChild(s);
+}
 function loadGame(key){
   const g = GAME[key] || GAME.tbc; gameKey = g.key; CLASSES = g.classes;
+  loadCraft(g);
   if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
   dataState = 'loading'; applyData(null); renderAll();
@@ -496,6 +544,7 @@ function loadGame(key){
   document.head.appendChild(s);
 }
 const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',token:'Token',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
+const CSLOTNAME = Object.assign({enchant:'Enchant'}, SLOTNAME);
 const MXCOLS = [['head','Helm'],['neck','Neck'],['shoulder','Shoulder'],['back','Back'],['chest','Chest'],['wrist','Wrist'],['weapon','Weapon'],['offhand','Off hand'],['rr','Relic / Ranged'],['hands','Gloves'],['waist','Belt'],['legs','Legs'],['feet','Boots'],['finger1','Ring 1'],['finger2','Ring 2'],['trinket1','Trinket 1'],['trinket2','Trinket 2']];
 const LS_KEY = 'guild-loot-ledger.site.v1';
 
@@ -522,8 +571,8 @@ const awardsOf = (rid, zone) => state.awards.filter(a => a.raider === rid && (!z
 const slotOf = it => it ? (it.slot==='ranged'||it.slot==='relic' ? 'rr' : it.slot) : 'other';
 const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 
-function spriteStyle(it){
-  const sp = DATA.sprite; if (!sp || it.s == null) return '';
+function spriteStyle(it, sheet){
+  const sp = sheet || DATA.sprite; if (!sp || it.s == null) return '';
   const c = it.s % sp.cols, r = Math.floor(it.s / sp.cols);
   const x = sp.cols > 1 ? (c / (sp.cols - 1) * 100) : 0, y = sp.rows > 1 ? (r / (sp.rows - 1) * 100) : 0;
   return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
@@ -534,6 +583,17 @@ function icoHTML(it, extra, count, link){
   if(!it) return '<span class="ico"><i class="sp"></i></span>';
   const tag = link === false ? 'span' : 'a';
   return '<'+tag+' class="ico hot'+(it.token?' token':'')+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
+}
+const crafters = () => state.crafters || (state.crafters = []);
+function craftersOf(c){
+  const out = [], seen = new Set();
+  for (const x of crafters()) if (x.craft === c.id) { const r = raiderById(x.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, id: x.id}); } }
+  if (c.recipe) for (const a of state.awards) if (a.item === c.recipe) { const r = raiderById(a.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, award: a}); } }
+  return out.sort((a,b) => a.r.name.localeCompare(b.r.name));
+}
+function cicoHTML(c){
+  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey]||'tbc') + '/' + (c.item ? 'item=' + c.item : 'spell=' + c.id);
+  return '<a class="ico hot q'+c.q+'" data-craft="'+c.id+'" href="'+href+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
 }
 function dTag(it){ return it && it.diff ? '<span class="diff">'+esc(it.diff)+'</span>' : ''; }
 function zTag(z){ return '<span class="zone '+z+(ZSOON[z]?' soon':'')+'">'+esc(ZSHORT[z]||z)+'</span>'; }
@@ -730,7 +790,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='craft' ? CRAFT.items.filter(c => craftersOf(c).length).length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -899,6 +959,42 @@ function renderMatrix(){
         }).join('')
       + '</tr>';
   }).join('');
+}
+
+/* ---------------- crafting ---------------- */
+function renderCraft(){
+  const q = $('#crSearch').value.trim().toLowerCase(), pf = $('#crProf').value, sf = $('#crSlot').value, show = $('#crShow').value;
+  $('#crHint').hidden = readOnly;
+  const rows = CRAFT.items.map(c => ({c, cr: craftersOf(c)})).filter(({c, cr}) => {
+    if (pf && c.prof !== pf) return false;
+    if (sf && c.slot !== sf) return false;
+    if (show === 'have' && !cr.length) return false;
+    if (show === 'none' && cr.length) return false;
+    if (show === 'raid' && !c.src) return false;
+    if (q) { const hay = c.name + ' ' + c.prof + ' ' + cr.map(x => x.r.name).join(' ') + ' ' + (c.src||[]).join(' '); if (!hay.toLowerCase().includes(q)) return false; }
+    return true;
+  });
+  $('#crCount').textContent = rows.length + ' of ' + CRAFT.items.length + ' recipes';
+  if (!rows.length) {
+    const msg = craftState === 'soon' ? ['No crafting tables for this game version yet', 'Switch the game version on the Roster tab.'] : craftState === 'loading' ? ['Loading crafting tables…', ''] : craftState === 'error' ? ['Crafting tables could not be loaded', 'Reload the page.'] : ['No recipes match', 'Try a different filter.'];
+    $('#crBody').innerHTML = '<tr><td colspan="4"><div class="empty"><b>'+msg[0]+'</b>'+msg[1]+'</div></td></tr>'; return;
+  }
+  let h = '', lastProf = null;
+  for (const {c, cr} of rows) {
+    if (c.prof !== lastProf) { lastProf = c.prof; const n = rows.filter(x => x.c.prof === c.prof).length; h += '<tr class="night"><td colspan="4">'+esc(c.prof)+'<span class="n">'+n+' recipe'+(n===1?'':'s')+'</span></td></tr>'; }
+    const listed = new Set(cr.map(x => x.r.id));
+    const chips = cr.map(x => x.award
+      ? '<span class="crafter inferred" style="color:'+clsVar(x.r.cls)+'" title="Received '+esc(ITEM[x.award.item] ? ITEM[x.award.item].name : 'the recipe')+' on '+esc(fmtDate(x.award.date))+'">'+esc(x.r.name)+'</span>'
+      : '<span class="crafter" style="color:'+clsVar(x.r.cls)+'">'+esc(x.r.name)+(readOnly ? '' : '<button class="x" data-crrm="'+x.id+'" title="Remove crafter">×</button>')+'</span>').join('');
+    const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+c.id+'"><option value="">+ Crafter…</option>'+[...state.raiders].filter(r => !listed.has(r.id)).sort((a,b) => a.name.localeCompare(b.name)).map(r => '<option value="'+r.id+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('')+'</select>';
+    h += '<tr>'
+      + '<td><span class="item">'+cicoHTML(c)+'<span><span class="nm q'+c.q+'">'+esc(c.name)+'</span> <span class="sl">'+(CSLOTNAME[c.slot]||c.slot)+(c.ilvl ? ' · '+c.ilvl : '')+'</span>'+(c.bop ? '<span class="diff" title="Binds when picked up: the crafter keeps it">BoP</span>' : '')+'</span></span></td>'
+      + '<td class="muted" style="white-space:nowrap">'+esc(c.prof)+'</td>'
+      + '<td style="white-space:nowrap">'+(c.src ? c.src.map(b => (BOSSZONE[b] ? zTag(BOSSZONE[b])+' ' : '')+esc(b)).join('<br>') : '<span class="faint">Not a raid drop</span>')+'</td>'
+      + '<td><span class="chips">'+chips+add+'</span></td>'
+      + '</tr>';
+  }
+  $('#crBody').innerHTML = h;
 }
 
 /* ---------------- roster ---------------- */
@@ -1129,8 +1225,17 @@ $('#glImport').addEventListener('click', () => {
 /* ---------------- tooltip ---------------- */
 const tip = $('#tip');
 function showTip(el, ev){
+  const c = el.dataset.craft && CITEM[el.dataset.craft];
+  if (c) {
+    let h = '<div class="t q'+c.q+'">'+esc(c.name)+'</div><div class="s">'+(CSLOTNAME[c.slot]||c.slot)+' · '+esc(c.prof)+(c.ilvl ? ' · item level '+c.ilvl : '')+(c.bop ? ' · binds when picked up' : '')+'</div>';
+    if (c.src) h += '<div class="l"><div><span>Recipe drops from</span><span>'+esc(c.src.join(' / '))+'</span></div></div>';
+    const cr = craftersOf(c);
+    h += '<div class="l">' + (cr.length ? cr.map(x => '<div><span>'+esc(x.r.name)+'</span><span>'+(x.award ? 'recipe · '+fmtShort(x.award.date) : 'crafter')+'</span></div>').join('') : '<div><span class="muted">No crafter on the roster yet</span></div>') + '</div>';
+    tip.innerHTML = h; tip.hidden = false; moveTip(ev); return;
+  }
   const it = ITEM[el.dataset.item]; if (!it) return;
   let h = '<div class="t">'+esc(it.name)+'</div><div class="s">'+SLOTNAME[it.slot]+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')+' · '+esc((ZONE[BOSSZONE[it.sources[0]]]||'')+' · '+it.sources.join(' / '))+'</div>';
+  if (CRECIPE[it.id]) h += '<div class="s">Teaches '+esc(CRECIPE[it.id].name)+'</div>';
   const ids = (el.dataset.stack || el.dataset.award || '').split(',').filter(Boolean);
   if (ids.length) {
     h += '<div class="l">' + ids.map(id => { const a = state.awards.find(x => x.id === id); if (!a) return ''; const r = raiderById(a.raider); const i2 = ITEM[a.item]; return '<div><span>'+(ids.length>1 && i2 ? esc(i2.name) : (r ? esc(r.name) : ''))+(a.note?' <i class="muted">'+esc(a.note)+'</i>':'')+'</span><span>'+fmtShort(a.date)+' · '+esc(a.boss)+'</span></div>'; }).join('') + '</div>';
@@ -1142,10 +1247,10 @@ function moveTip(ev){
   if (x + w > innerWidth - 8) x = ev.clientX - w - 12; if (y + hgt > innerHeight - 8) y = ev.clientY - hgt - 12;
   tip.style.left = x+'px'; tip.style.top = y+'px';
 }
-document.addEventListener('mouseover', ev => { const el = ev.target.closest('[data-item]'); if (el && !el.closest('.opt')) showTip(el, ev); else tip.hidden = true; });
+document.addEventListener('mouseover', ev => { const el = ev.target.closest('[data-item],[data-craft]'); if (el && !el.closest('.opt')) showTip(el, ev); else tip.hidden = true; });
 document.addEventListener('mousemove', ev => { if (!tip.hidden) moveTip(ev); });
-document.addEventListener('mouseout', ev => { if (ev.target.closest && ev.target.closest('[data-item]')) tip.hidden = true; });
-document.addEventListener('click', ev => { const ico = ev.target.closest('a.ico[data-item]'); if (ico) ev.stopPropagation(); }, true);
+document.addEventListener('mouseout', ev => { if (ev.target.closest && ev.target.closest('[data-item],[data-craft]')) tip.hidden = true; });
+document.addEventListener('click', ev => { const ico = ev.target.closest('a.ico[data-item],a.ico[data-craft]'); if (ico) ev.stopPropagation(); }, true);
 
 /* ---------------- render orchestration ---------------- */
 function showView(v){
@@ -1159,6 +1264,7 @@ function renderAll(){
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
   if (ui.view === 'matrix') renderMatrix();
+  if (ui.view === 'craft') renderCraft();
   if (ui.view === 'roster') renderRoster();
 }
 
@@ -1204,6 +1310,20 @@ $('#mxBody').addEventListener('click', ev => {
   if (o) { ui.mxOpen[o.dataset.open] = true; tip.hidden = true; renderMatrix(); }
   else if (c) { delete ui.mxOpen[c.dataset.close]; renderMatrix(); }
 });
+['#crSearch','#crProf','#crSlot','#crShow'].forEach(s => $(s).addEventListener('input', renderCraft));
+$('#crBody').addEventListener('change', ev => {
+  const s = ev.target.closest('[data-craddr]'); if (!s || !s.value) return;
+  const craft = Number(s.dataset.craddr), raider = s.value;
+  if (!CITEM[craft] || !raiderById(raider)) return;
+  if (!crafters().some(x => x.craft === craft && x.raider === raider)) { crafters().push({id: uid(), craft, raider, ts: Date.now()}); markDirty(); }
+});
+$('#crBody').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-crrm]'); if (!b) return;
+  const x = crafters().find(y => y.id === b.dataset.crrm); if (!x) return;
+  const r = raiderById(x.raider), c = CITEM[x.craft];
+  if (!await ask('Remove '+(r ? r.name : 'this raider')+' as crafter of '+(c ? c.name : 'this recipe')+'?', 'Remove')) return;
+  state.crafters = crafters().filter(y => y !== x); markDirty();
+});
 $('#rosterForm').addEventListener('submit', ev => {
   ev.preventDefault(); const name = $('#rName').value.trim(); if (!name) return;
   if (state.raiders.some(r => r.name.toLowerCase() === name.toLowerCase())) return say(name + ' is already on the roster.');
@@ -1214,7 +1334,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); markDirty(); } }
+  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); markDirty(); } }
 });
 $('#saveSettings').addEventListener('click', async () => {
   const newGame = $('#gGame').value;
@@ -1228,7 +1348,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
