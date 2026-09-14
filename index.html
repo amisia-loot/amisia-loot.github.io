@@ -286,6 +286,10 @@ tr.done td{opacity:.5}
 .edrow{display:flex;gap:8px;align-items:center}
 .pres{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
 .pres.on{background:var(--good);box-shadow:0 0 6px var(--good)}
+.twoup{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cancraft{font-size:12px;color:var(--muted);margin-top:5px}
+.cancraft b{color:var(--text);font-weight:600}
+.profs{font-family:var(--label);font-size:12px;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -397,11 +401,11 @@ tr.done td{opacity:.5}
       <div class="field"><label for="crSearch">Search</label><input class="inp" id="crSearch" placeholder="Item, enchant or crafter…"></div>
       <div class="field"><label for="crProf">Profession</label><select class="inp" id="crProf"><option value="">Every profession</option></select></div>
       <div class="field"><label for="crSlot">Slot</label><select class="inp" id="crSlot"><option value="">Every slot</option></select></div>
-      <div class="field"><label for="crShow">Show</label><select class="inp" id="crShow"><option value="all">Every recipe</option><option value="have">Recipes with a crafter</option><option value="none">Recipes without a crafter</option><option value="raid">Recipes that drop in raids</option></select></div>
+      <div class="field"><label for="crShow">Show</label><select class="inp" id="crShow"><option value="all">Every recipe</option><option value="have">Recipes with a crafter</option><option value="none">Recipes without a crafter</option><option value="raid">Recipes that drop in raids</option><option value="noprof">Nobody has the profession</option></select></div>
       <div class="spacer"></div>
       <div class="count" id="crCount"></div>
     </div>
-    <p class="crhint" id="crHint">Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.</p>
+    <p class="crhint" id="crHint"></p>
     <div class="tblwrap"><table id="crTable"><thead><tr><th>Item</th><th>Profession</th><th>Recipe from</th><th>Crafters</th></tr></thead><tbody id="crBody"></tbody></table></div>
   </section>
 
@@ -462,13 +466,14 @@ tr.done td{opacity:.5}
   <!-- ============ ROSTER ============ -->
   <section class="view" id="view-roster" hidden>
     <div class="two">
-      <div class="tblwrap"><table id="rosterTable"><thead><tr><th>Raider</th><th>Class</th><th class="num">Items</th><th>Raids</th><th>First award</th><th>Last award</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
+      <div class="tblwrap"><table id="rosterTable"><thead><tr><th>Raider</th><th>Class</th><th>Professions</th><th class="num">Items</th><th>Raids</th><th>First award</th><th>Last award</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
       <div class="stack" id="rosterSide">
         <div class="panel">
           <div class="panel-h">Add raider</div>
           <div class="panel-b"><form id="rosterForm" class="stack" autocomplete="off">
             <div class="field"><label for="rName">Name</label><input class="inp" id="rName" placeholder="Character name" required></div>
             <div class="field"><label for="rCls">Class</label><select class="inp" id="rCls"></select></div>
+            <div class="twoup"><div class="field"><label for="rP1">Profession</label><select class="inp" id="rP1"></select></div><div class="field"><label for="rP2">Second profession</label><select class="inp" id="rP2"></select></div></div>
             <button class="btn primary" type="submit">Add to roster</button>
           </form></div>
         </div>
@@ -580,7 +585,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789399403';
+const BUILD_ID = '1789400505';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -630,6 +635,12 @@ function loadGame(key){
   s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
   document.head.appendChild(s);
 }
+const BASE_PROFS = ['Alchemy','Blacksmithing','Enchanting','Engineering','Herbalism','Leatherworking','Mining','Skinning','Tailoring'];
+const PROF_LIST = {classic: BASE_PROFS, sod: BASE_PROFS, tbc: BASE_PROFS.concat('Jewelcrafting').sort(), mop: BASE_PROFS.concat(['Jewelcrafting','Inscription']).sort()};
+const profsHere = () => PROF_LIST[(GAME[gameKey] || {}).craft] || BASE_PROFS;
+const profsOf = r => Array.isArray(r && r.profs) ? r.profs : [];
+const profOptions = sel => '<option value="">–</option>' + profsHere().concat(sel && !profsHere().includes(sel) ? [sel] : []).map(x => '<option'+(x===sel?' selected':'')+'>'+x+'</option>').join('');
+const readProfs = (a, b) => [...new Set([$(a).value, $(b).value].filter(Boolean))];
 const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',token:'Token',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
 const CSLOTNAME = Object.assign({enchant:'Enchant'}, SLOTNAME);
 const MXCOLS = [['head','Helm'],['neck','Neck'],['shoulder','Shoulder'],['back','Back'],['chest','Chest'],['wrist','Wrist'],['weapon','Weapon'],['offhand','Off hand'],['rr','Relic / Ranged'],['hands','Gloves'],['waist','Belt'],['legs','Legs'],['feet','Boots'],['finger1','Ring 1'],['finger2','Ring 2'],['trinket1','Trinket 1'],['trinket2','Trinket 2']];
@@ -678,6 +689,11 @@ function craftersOf(c){
   if (c.recipe) for (const a of state.awards) if (a.item === c.recipe) { const r = raiderById(a.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, award: a}); } }
   return out.sort((a,b) => a.r.name.localeCompare(b.r.name));
 }
+function canCraft(c){
+  const has = new Set(craftersOf(c).map(x => x.r.id));
+  return state.raiders.filter(r => !has.has(r.id) && profsOf(r).includes(c.prof)).sort((a,b) => a.name.localeCompare(b.name));
+}
+const anyProfs = () => state.raiders.some(r => profsOf(r).length);
 function cicoHTML(c){
   const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey]||'tbc') + '/' + (c.item ? 'item=' + c.item : 'spell=' + c.id);
   return '<a class="ico hot q'+c.q+'" data-craft="'+c.id+'" href="'+href+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
@@ -900,7 +916,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.filter(c => craftersOf(c).length).length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -1075,13 +1091,16 @@ function renderMatrix(){
 function renderCraft(){
   const q = $('#crSearch').value.trim().toLowerCase(), pf = $('#crProf').value, sf = $('#crSlot').value, show = $('#crShow').value;
   $('#crHint').hidden = readOnly;
-  const rows = CRAFT.items.map(c => ({c, cr: craftersOf(c)})).filter(({c, cr}) => {
+  $('#crHint').innerHTML = 'Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.'
+    + (anyProfs() ? ' <b>Can craft</b> lists everyone whose profession matches.' : ' Set a profession per raider on the <a data-goto="roster">Roster tab</a> to see who can craft what.');
+  const rows = CRAFT.items.map(c => ({c, cr: craftersOf(c), can: canCraft(c)})).filter(({c, cr, can}) => {
     if (pf && c.prof !== pf) return false;
     if (sf && c.slot !== sf) return false;
     if (show === 'have' && !cr.length) return false;
     if (show === 'none' && cr.length) return false;
     if (show === 'raid' && !c.src) return false;
-    if (q) { const hay = c.name + ' ' + c.prof + ' ' + cr.map(x => x.r.name).join(' ') + ' ' + (c.src||[]).join(' '); if (!hay.toLowerCase().includes(q)) return false; }
+    if (show === 'noprof' && (cr.length || can.length)) return false;
+    if (q) { const hay = c.name + ' ' + c.prof + ' ' + cr.map(x => x.r.name).join(' ') + ' ' + can.map(r => r.name).join(' ') + ' ' + (c.src||[]).join(' '); if (!hay.toLowerCase().includes(q)) return false; }
     return true;
   });
   $('#crCount').textContent = rows.length + ' of ' + CRAFT.items.length + ' recipes';
@@ -1090,18 +1109,23 @@ function renderCraft(){
     $('#crBody').innerHTML = '<tr><td colspan="4"><div class="empty"><b>'+msg[0]+'</b>'+msg[1]+'</div></td></tr>'; return;
   }
   let h = '', lastProf = null;
-  for (const {c, cr} of rows) {
+  for (const {c, cr, can} of rows) {
     if (c.prof !== lastProf) { lastProf = c.prof; const n = rows.filter(x => x.c.prof === c.prof).length; h += '<tr class="night"><td colspan="4">'+esc(c.prof)+'<span class="n">'+n+' recipe'+(n===1?'':'s')+'</span></td></tr>'; }
     const listed = new Set(cr.map(x => x.r.id));
     const chips = cr.map(x => x.award
       ? '<span class="crafter inferred" style="color:'+clsVar(x.r.cls)+'" title="Received '+esc(ITEM[x.award.item] ? ITEM[x.award.item].name : 'the recipe')+' on '+esc(fmtDate(x.award.date))+'">'+esc(x.r.name)+'</span>'
       : '<span class="crafter" style="color:'+clsVar(x.r.cls)+'">'+esc(x.r.name)+(readOnly ? '' : '<button class="x" data-crrm="'+x.id+'" title="Remove crafter">×</button>')+'</span>').join('');
-    const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+c.id+'"><option value="">+ Crafter…</option>'+[...state.raiders].filter(r => !listed.has(r.id)).sort((a,b) => a.name.localeCompare(b.name)).map(r => '<option value="'+r.id+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('')+'</select>';
+    const opt = r => '<option value="'+r.id+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>';
+    const others = [...state.raiders].filter(r => !listed.has(r.id) && !profsOf(r).includes(c.prof)).sort((a,b) => a.name.localeCompare(b.name));
+    const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+c.id+'"><option value="">+ Crafter…</option>'
+      + (can.length ? '<optgroup label="Has '+esc(c.prof)+'">'+can.map(opt).join('')+'</optgroup>' : '')
+      + (others.length ? '<optgroup label="Other raiders">'+others.map(opt).join('')+'</optgroup>' : '') + '</select>';
+    const canLine = can.length ? '<div class="cancraft" title="'+esc(can.map(r => r.name).join(', '))+'">Can craft: '+can.slice(0, 5).map(r => '<b style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</b>').join(', ')+(can.length > 5 ? ' <span class="faint">+'+(can.length-5)+' more</span>' : '')+'</div>' : '';
     h += '<tr>'
       + '<td><span class="item">'+cicoHTML(c)+'<span><span class="nm q'+c.q+'">'+esc(c.name)+'</span> <span class="sl">'+(CSLOTNAME[c.slot]||c.slot)+(c.ilvl ? ' · '+c.ilvl : '')+'</span>'+(c.bop ? '<span class="diff" title="Binds when picked up: the crafter keeps it">BoP</span>' : '')+'</span></span></td>'
       + '<td class="muted" style="white-space:nowrap">'+esc(c.prof)+'</td>'
       + '<td style="white-space:nowrap">'+(c.src ? c.src.map(b => (BOSSZONE[b] ? zTag(BOSSZONE[b])+' ' : '')+esc(b)).join('<br>') : '<span class="faint">Not a raid drop</span>')+'</td>'
-      + '<td><span class="chips">'+chips+add+'</span></td>'
+      + '<td><span class="chips">'+chips+add+'</span>'+canLine+'</td>'
       + '</tr>';
   }
   $('#crBody').innerHTML = h;
@@ -1227,16 +1251,17 @@ $('#matBody').addEventListener('click', async ev => {
 /* ---------------- roster ---------------- */
 function renderRoster(){
   if (!$('#rCls').options.length) $('#rCls').innerHTML = classOptions('Warrior');
+  if ($('#rP1').dataset.game !== gameKey) { $('#rP1').dataset.game = gameKey; $('#rP1').innerHTML = profOptions(''); $('#rP2').innerHTML = profOptions(''); }
   $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
   $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
   const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
-  if (!rows.length) { $('#rosterBody').innerHTML = '<tr><td colspan="7"><div class="empty"><b>Empty roster</b>Add your raiders with the form on the right.</div></td></tr>'; return; }
+  if (!rows.length) { $('#rosterBody').innerHTML = '<tr><td colspan="8"><div class="empty"><b>Empty roster</b>Add your raiders with the form on the right.</div></td></tr>'; return; }
   $('#rosterBody').innerHTML = rows.map(({r,aw}) => {
     const perZone = ZONES.map(z => [z.key, aw.filter(a => BOSSZONE[a.boss]===z.key).length]).filter(x => x[1]);
     const editing = ui.editRaider === r.id;
     return '<tr>'
-      + (editing ? '<td colspan="2"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select></div></td>'
-                 : '<td>'+rName(r)+'</td><td class="muted">'+esc(r.cls)+'</td>')
+      + (editing ? '<td colspan="3"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select><select class="inp" id="erP1">'+profOptions(profsOf(r)[0]||'')+'</select><select class="inp" id="erP2">'+profOptions(profsOf(r)[1]||'')+'</select></div></td>'
+                 : '<td>'+rName(r)+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
       + '<td class="num">'+aw.length+'</td><td><span class="chips">'+perZone.map(([z,n]) => zTag(z).replace('</span>', ' '+n+'</span>')).join('')+'</span></td>'
       + '<td class="muted">'+(aw.length?fmtDate(aw[0].date):'—')+'</td><td class="muted">'+(aw.length?fmtDate(aw[aw.length-1].date):'—')+'</td>'
       + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+r.id+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+r.id+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+r.id+'">Remove</button>'))+'</td>'
@@ -1498,7 +1523,7 @@ function renderAll(){
 
 /* ---------------- events ---------------- */
 $('#tabs').addEventListener('click', ev => { const t = ev.target.closest('.tab'); if (t) showView(t.dataset.view); });
-$('#guildLine').addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { showView(a.dataset.goto); $('#gName').focus(); } });
+document.addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { ev.preventDefault(); showView(a.dataset.goto); if (a.closest('#guildLine')) $('#gName').focus(); } });
 $('#publishBtn').addEventListener('click', publish);
 $('#clearExample').addEventListener('click', async () => {
   if (!await ask('Remove all example raiders and awards? Your ledger starts empty.', 'Clear examples')) return;
@@ -1555,13 +1580,13 @@ $('#crBody').addEventListener('click', async ev => {
 $('#rosterForm').addEventListener('submit', ev => {
   ev.preventDefault(); const name = $('#rName').value.trim(); if (!name) return;
   if (state.raiders.some(r => r.name.toLowerCase() === name.toLowerCase())) return say(name + ' is already on the roster.');
-  state.raiders.push({id: uid(), name, cls: $('#rCls').value}); $('#rName').value = ''; markDirty(); $('#rName').focus();
+  state.raiders.push({id: uid(), name, cls: $('#rCls').value, profs: readProfs('#rP1', '#rP2')}); $('#rName').value = ''; $('#rP1').value = ''; $('#rP2').value = ''; markDirty(); $('#rName').focus();
 });
 $('#rosterBody').addEventListener('click', async ev => {
   const e = ev.target.closest('[data-redit]'), d = ev.target.closest('[data-rdel]'), s = ev.target.closest('[data-rsave]'), c = ev.target.closest('[data-rcancel]');
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
-  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; } ui.editRaider = null; markDirty(); }
+  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); } ui.editRaider = null; markDirty(); }
   if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); markDirty(); } }
 });
 $('#saveSettings').addEventListener('click', async () => {
