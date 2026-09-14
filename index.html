@@ -376,7 +376,7 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
   <section class="view" id="view-roster" hidden>
     <div class="two">
       <div class="tblwrap"><table id="rosterTable"><thead><tr><th>Raider</th><th>Class</th><th class="num">Items</th><th>Raids</th><th>First award</th><th>Last award</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
-      <div class="stack">
+      <div class="stack" id="rosterSide">
         <div class="panel">
           <div class="panel-h">Add raider</div>
           <div class="panel-b"><form id="rosterForm" class="stack" autocomplete="off">
@@ -783,6 +783,7 @@ function renderHeader(){
   $('#exampleNotice').hidden = !state.example || readOnly;
   $('#awardPanel').classList.toggle('hidden', readOnly);
   $('#rosterForm').classList.toggle('hidden', readOnly);
+  $('#rosterSide').classList.toggle('hidden', readOnly); $('#view-roster').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#bulkAdd').classList.toggle('hidden', readOnly);
   $('#saveSettings').classList.toggle('hidden', readOnly);
   $('#importBtn').classList.toggle('hidden', readOnly);
