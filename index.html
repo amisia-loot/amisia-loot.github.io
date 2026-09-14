@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head><body><title>Guild Loot Ledger</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="favicon.png"></head><body><title>Guild Loot Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Barlow+Condensed:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
@@ -53,6 +53,9 @@ a:hover{text-decoration:underline}
 
 /* ---------- header ---------- */
 .hdr{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:22px}
+.logo{height:118px;width:auto;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))}
+@media (max-width:720px){.brand{gap:14px}.logo{height:78px}}
 .eyebrow{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:4px 0 0;color:var(--gold);letter-spacing:.01em;text-wrap:balance}
 .guild{font-family:var(--label);font-weight:600;font-size:20px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin-top:6px}
@@ -267,10 +270,13 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 
 <div class="wrap" id="app">
   <header class="hdr">
+    <div class="brand">
+    <img class="logo" src="logo.png" alt="Amisia" width="392" height="320">
     <div>
       <div class="eyebrow" id="eyebrow">Burning Crusade raids · TBC Anniversary</div>
       <h1>Guild Loot Ledger</h1>
       <div class="guild" id="guildLine"></div>
+    </div>
     </div>
     <div class="stats" id="stats"></div>
   </header>
@@ -493,7 +499,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789395962';
+const BUILD_ID = '1789396846';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
