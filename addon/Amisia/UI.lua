@@ -94,7 +94,7 @@ function ns.Refresh()
             local c = ns.MatCounts(s)
             r.sessionId = s.id
             r.date:SetText(s.date)
-            r.zone:SetText((s == act and "|cff4fbf7a● |r" or "") .. (s.zone or "?"))
+            r.zone:SetText((s == act and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
             r.raiders:SetText(ns.MemberCount(s))
             r.mark:SetText(c[32897] or 0)
             r.heart:SetText(c[32428] or 0)
@@ -110,7 +110,7 @@ function ns.Refresh()
     if #all == 0 then
         pageText:SetText("Noch keine Raids aufgezeichnet.")
     else
-        pageText:SetText(("%d–%d von %d"):format(offset + 1, math.min(offset + ROWS, #all), #all))
+        pageText:SetText(("%d-%d von %d"):format(offset + 1, math.min(offset + ROWS, #all), #all))
     end
 end
 
