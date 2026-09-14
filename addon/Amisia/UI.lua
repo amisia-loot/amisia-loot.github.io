@@ -134,8 +134,13 @@ local function build()
     bg:SetColorTexture(0.055, 0.04, 0.08, 0.96)
     border(W, GOLD[1], GOLD[2], GOLD[3], 0.6)
 
+    local logo = W:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(30, 30)
+    logo:SetPoint("TOPLEFT", 12, -7)
+    logo:SetTexture("Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
+
     local title = text(W, "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 16, -14)
+    title:SetPoint("LEFT", logo, "RIGHT", 6, 0)
     title:SetText("Amisia")
     title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
 
