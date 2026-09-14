@@ -685,7 +685,7 @@ tr.got td{opacity:.5}
     <div class="two" style="grid-template-columns:1fr 340px">
       <div class="stack">
         <div class="panel" id="glPanel">
-          <div class="panel-h">Paste a loot export</div>
+          <div class="panel-h">Paste a Gargul or Amisia export</div>
           <div class="panel-b stack">
             <textarea class="inp" id="glText" spellcheck="false" style="min-height:170px" placeholder="dateTime,character,itemID,offspec,id&#10;2026-09-04,Dixie,32837,0,7f3a…"></textarea>
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
@@ -695,8 +695,15 @@ tr.got td{opacity:.5}
             </div>
           </div>
         </div>
+        <div class="panel" id="impBar" hidden>
+          <div class="panel-h"><span id="impSummary"></span><span class="grow"></span><button class="btn sm primary" id="glImport">Import</button></div>
+        </div>
+        <div class="panel" id="amResult" hidden>
+          <div class="panel-h">Raid sessions from the Amisia addon<span class="grow"></span><span class="muted" id="amSummary" style="text-transform:none;letter-spacing:0"></span></div>
+          <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table><thead><tr><th>Status</th><th>Date</th><th>Raid</th><th class="num">Raiders</th><th>New raiders</th><th>Materials looted</th></tr></thead><tbody id="amBody"></tbody></table></div>
+        </div>
         <div class="panel" id="glResult" hidden>
-          <div class="panel-h"><span id="glSummary"></span><span class="grow"></span><button class="btn sm primary" id="glImport">Import</button></div>
+          <div class="panel-h"><span id="glSummary"></span></div>
           <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table id="glTable"><thead><tr><th>Status</th><th>Date</th><th>Item</th><th>Boss</th><th>Raider</th><th>Class</th><th>Note</th></tr></thead><tbody id="glBody"></tbody></table></div>
         </div>
       </div>
@@ -713,7 +720,12 @@ tr.got td{opacity:.5}
             <li>Type <code>/rc history</code>, click <b>Export</b> and choose <b>CSV</b> or <b>JSON</b>.</li>
             <li><code>Ctrl+A</code>, <code>Ctrl+C</code>, paste it here.</li>
           </ol>
-          <p class="muted" style="font-size:13px;margin:14px 0 0">Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
+          <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>Amisia addon</b> <a href="addon/Amisia.zip" download>download</a></p>
+          <ol class="steps">
+            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group and who looted Mark of the Illidari or Heart of Darkness.</li>
+            <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
+          </ol>
+          <p class="muted" style="font-size:13px;margin:14px 0 0">Both exports can go into the box at the same time. Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and drops that are not from one of the nine Burning Crusade raids are ignored.</p>
         </div>
       </div>
@@ -740,7 +752,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789403413';
+const BUILD_ID = '1789405765';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1110,7 +1122,7 @@ function renderHeader(){
   $('#bulkAdd').classList.toggle('hidden', readOnly);
   $('#saveSettings').classList.toggle('hidden', readOnly);
   $('#importBtn').classList.toggle('hidden', readOnly);
-  $('#glPanel').classList.toggle('hidden', readOnly); $('#glResult').classList.toggle('hidden', readOnly);
+  $('#glPanel').classList.toggle('hidden', readOnly); $('#glResult').classList.toggle('hidden', readOnly); $('#amResult').classList.toggle('hidden', readOnly); $('#impBar').classList.toggle('hidden', readOnly);
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
@@ -1269,7 +1281,10 @@ function nightData(date){
   const here = [...presentOn(date)].map(raiderById).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   const away = state.raiders.filter(r => !presentOn(date).has(r.id)).sort((a, b) => a.name.localeCompare(b.name));
   const zones = [...new Set(aw.map(a => BOSSZONE[a.boss]).filter(Boolean))];
-  return {aw, bosses, byBoss, people, here, away, zones};
+  const matsBy = {};
+  for (const x of (state.matloot || []).filter(x => x.date === date)) { const k = x.raider; (matsBy[k] = matsBy[k] || {})[x.item] = (matsBy[k][x.item] || 0) + x.count; }
+  const matPeople = Object.entries(matsBy).map(([rid, per]) => ({r: raiderById(rid), per})).filter(x => x.r).sort((a, b) => a.r.name.localeCompare(b.r.name));
+  return {aw, bosses, byBoss, people, here, away, zones, matPeople};
 }
 function renderNight(){
   const list = allNights();
@@ -1292,7 +1307,7 @@ function renderNight(){
     + '<div class="ntcols"><div class="tblwrap"><table><thead><tr><th>Item</th><th>Raider</th><th>Note</th></tr></thead><tbody>' + loot + '</tbody></table></div>'
     + '<div class="stack"><div class="panel"><div class="panel-h">Items per raider</div><div class="panel-b">'
     + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + a.id + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
-    + '</div></div><div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
+    + '</div></div>' + (d.matPeople.length ? '<div class="panel"><div class="panel-h">Materials looted</div><div class="panel-b">' + d.matPeople.map(x => '<div class="ntper"><span class="who" style="color:' + clsVar(x.r.cls) + '">' + esc(x.r.name) + '</span><span class="ic">' + Object.entries(x.per).map(([id, n]) => icoHTML(ITEM[Number(id)]) + '<b style="margin:0 8px 0 2px">' + n + '</b>').join('') + '</span></div>').join('') + '</div></div>' : '') + '<div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
     + (d.here.length ? d.here.map(r => '<span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span>').join('') : '<span class="muted">Nobody recorded.</span>')
     + '</div>' + (d.away.length ? '<div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:10px">Missing</div><div class="ntwho">' + d.away.map(r => '<span class="off">' + esc(r.name) + '</span>').join('') + '</div>' : '')
     + '</div></div></div></div>';
@@ -1307,6 +1322,7 @@ function nightText(){
     for (const a of d.byBoss[b]) { const it = ITEM[a.item], r = raiderById(a.raider); L.push('  ' + (it ? it.name : 'Unknown item') + ' - ' + (r ? r.name : 'removed') + (a.note ? ' (' + a.note + ')' : '')); }
   }
   if (d.people.length) { L.push(''); L.push('Items per raider'); L.push('  ' + d.people.map(x => (x.r ? x.r.name : '—') + ' ' + x.list.length).join(', ')); }
+  if (d.matPeople.length) { L.push(''); L.push('Materials looted'); for (const x of d.matPeople) L.push('  ' + x.r.name + ': ' + Object.entries(x.per).map(([id, n]) => n + ' ' + matName(Number(id))).join(', ')); }
   if (d.away.length) { L.push(''); L.push('Missing: ' + d.away.map(r => r.name).join(', ')); }
   return L.join('\n');
 }
@@ -1617,7 +1633,7 @@ async function loadMats(){
   if (!matChannel) matChannel = SUPA.channel('mats').on('postgres_changes', {event: '*', schema: 'public', table: 'mat_requests'}, () => loadMats()).subscribe();
 }
 function matStock(id){
-  const looted = state.awards.filter(a => a.item === id).length;
+  const looted = state.awards.filter(a => a.item === id).length + (state.matloot || []).filter(x => x.item === id).reduce((s, x) => s + x.count, 0);
   const rows = MATROWS.filter(r => r.item === id);
   const adjust = rows.filter(r => r.kind === 'stock').reduce((s, r) => s + r.qty, 0);
   const handed = rows.filter(r => r.kind !== 'stock' && r.status === 'received').reduce((s, r) => s + r.qty, 0);
@@ -1783,7 +1799,107 @@ document.addEventListener('click', async ev => {
 
 /* ---------------- Gargul import ---------------- */
 const GL_CLASS = {1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',10:'Monk',11:'Druid'};
-let glRows = [];
+let glRows = [], amRows = [];
+const INSTANCE_ZONE = {532: 'kara', 565: 'gruul', 544: 'mag', 548: 'ssc', 550: 'tk', 534: 'hyjal', 564: 'bt', 568: 'za', 580: 'swp'};
+const matloot = () => state.matloot || (state.matloot = []);
+// Pulls every #AMISIA ... #END block out of the pasted text; the rest goes to the Gargul parser.
+function amSplit(text){
+  const blocks = [];
+  const rest = text.replace(/#AMISIA[^\n]*\n[\s\S]*?#END/g, m => { blocks.push(m); return '\n'; });
+  return {blocks, rest};
+}
+function amParse(blocks){
+  const out = [];
+  for (const b of blocks) {
+    let cur = null;
+    for (const raw of b.split(/\r?\n/)) {
+      const line = raw.trim(); if (!line || line[0] === '#') continue;
+      const f = line.split(/\s+/);
+      if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) {
+        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: []};
+        out.push(cur);
+      } else if (f[0] === 'M' && cur && f[1]) {
+        const name = glCleanName(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || ''});
+      } else if (f[0] === 'L' && cur && f.length >= 4) {
+        const name = glCleanName(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
+        if (name && item) cur.loot.push({name, item, count});
+      } else if (f[0] === 'E') cur = null;
+    }
+  }
+  return out;
+}
+function amResolve(sessions){
+  const dups = $('#glDups').checked, seen = new Set(), done = new Set(state.addonSessions || []);
+  return sessions.filter(s => !seen.has(s.sid) && seen.add(s.sid)).map(s => {
+    const names = [...new Set([...s.members.map(m => m.name), ...s.loot.map(l => l.name)])];
+    const newNames = names.filter(nm => !state.raiders.some(r => r.name.toLowerCase() === nm.toLowerCase()));
+    const mats = {}; for (const l of s.loot) mats[l.item] = (mats[l.item] || 0) + l.count;
+    // A session counts as new whenever it would add someone or raise a count, so a later export
+    // of the same raid with more loot is picked up instead of being skipped by its session id.
+    const byName = nm => state.raiders.find(r => r.name.toLowerCase() === nm.toLowerCase());
+    const night = nightOn(s.date), present = new Set(night && Array.isArray(night.present) ? night.present : []);
+    const addsPeople = names.some(nm => { const r = byName(nm); return !r || !present.has(r.id); });
+    const addsLoot = s.loot.some(l => { const r = byName(l.name); if (!r) return true; const ex = (state.matloot || []).find(x => x.key === s.date + '|' + s.instance + '|' + r.id + '|' + l.item); return !ex || ex.count < l.count; });
+    return Object.assign({}, s, {people: names.length, newNames, mats, again: done.has(s.sid), status: addsPeople || addsLoot || dups ? 'ok' : 'dup'});
+  }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+}
+function amRender(){
+  if (!amRows.length) { $('#amResult').hidden = true; return; }
+  const ok = amRows.filter(s => s.status === 'ok').length;
+  $('#amSummary').textContent = ok + ' to import · ' + (amRows.length - ok) + ' already imported';
+  $('#amBody').innerHTML = amRows.map(s => {
+    const z = INSTANCE_ZONE[s.instance];
+    const mats = Object.entries(s.mats).map(([id, n]) => n + ' × ' + esc(matName(Number(id)))).join(', ');
+    return '<tr class="' + (s.status === 'ok' ? '' : 'skip') + '"><td>' + (s.status === 'ok' ? '<span class="st ok">' + (s.again ? 'Update' : 'Import') + '</span>' : '<span class="st dup">Imported</span>') + '</td>'
+      + '<td class="muted" style="white-space:nowrap">' + esc(fmtDate(s.date)) + '</td>'
+      + '<td style="white-space:nowrap">' + (z && ZONE[z] ? zTag(z) + ' ' + esc(ZONE[z]) : esc(s.zone || '?')) + '</td>'
+      + '<td class="num">' + s.people + '</td>'
+      + '<td>' + (s.newNames.length ? '<span class="st new">' + s.newNames.length + ' new</span> <span class="muted" style="font-size:13px">' + esc(s.newNames.slice(0, 6).join(', ')) + (s.newNames.length > 6 ? ' …' : '') + '</span>' : '<span class="faint">–</span>') + '</td>'
+      + '<td>' + (mats || '<span class="faint">none</span>') + '</td></tr>';
+  }).join('');
+  $('#amResult').hidden = false;
+}
+function impRender(){
+  const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length;
+  $('#glResult').hidden = !glRows.length;
+  $('#impBar').hidden = !(glRows.length || amRows.length);
+  const parts = [];
+  if (okG) parts.push(okG + ' award' + (okG === 1 ? '' : 's'));
+  if (okA) parts.push(okA + ' raid session' + (okA === 1 ? '' : 's'));
+  $('#impSummary').textContent = parts.length ? parts.join(' and ') + ' ready to import' : 'Nothing new, everything in this export is already in the ledger';
+  $('#glImport').disabled = !parts.length;
+  $('#glImport').textContent = parts.length ? 'Import ' + parts.join(' and ') : 'Import';
+}
+function importAmisia(){
+  const sessions = amRows.filter(s => s.status === 'ok');
+  let created = 0, looted = 0;
+  const findOrAdd = (name, cls) => {
+    let r = state.raiders.find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (!r) { r = {id: uid(), name, cls: cls || 'Unknown'}; state.raiders.push(r); created++; }
+    else if ((!r.cls || r.cls === 'Unknown') && cls) r.cls = cls;
+    return r;
+  };
+  for (const s of sessions) {
+    const ids = s.members.map(m => findOrAdd(m.name, m.cls).id);
+    let n = nightOn(s.date);
+    if (!n) { n = {id: uid(), date: s.date, present: []}; nights().push(n); }
+    n.present = [...new Set([...(Array.isArray(n.present) ? n.present : []), ...ids])];
+    for (const l of s.loot) {
+      const r = findOrAdd(l.name, '');
+      if (!n.present.includes(r.id)) n.present.push(r.id);
+      // Two officers recording the same raid must not double the count: keep the larger number.
+      const key = s.date + '|' + s.instance + '|' + r.id + '|' + l.item;
+      const ex = matloot().find(x => x.key === key);
+      if (ex) ex.count = Math.max(ex.count, l.count);
+      else matloot().push({key, date: s.date, instance: s.instance, raider: r.id, item: l.item, count: l.count});
+      looted += l.count;
+    }
+    state.addonSessions = state.addonSessions || [];
+    if (!state.addonSessions.includes(s.sid)) state.addonSessions.push(s.sid);
+  }
+  return {sessions: sessions.length, created, looted};
+}
+
 function glCleanName(n){ n = String(n||'').trim().split('-')[0].trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
 function glDate(p){
   let m = p.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
@@ -1922,14 +2038,22 @@ function glRender(){
   $('#glResult').hidden = false;
 }
 $('#glPreview').addEventListener('click', () => {
-  const txt = $('#glText').value; if (!txt.trim()) return say('Paste the Gargul export first.');
-  glRows = glResolve(glParse(txt));
-  if (!glRows.length) return say('Nothing recognisable in the text. Copy the whole export window from Gargul.');
-  glRender();
+  const txt = $('#glText').value; if (!txt.trim()) return say('Paste a Gargul or Amisia export first.');
+  const {blocks, rest} = amSplit(txt);
+  amRows = blocks.length ? amResolve(amParse(blocks)) : [];
+  glRows = rest.trim() ? glResolve(glParse(rest)) : [];
+  if (!glRows.length && !amRows.length) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
+  if (glRows.length) glRender();
+  amRender(); impRender();
 });
-$('#glDups').addEventListener('change', () => { if (glRows.length) { glRows = glResolve(glRows); glRender(); } });
+$('#glDups').addEventListener('change', () => {
+  if (glRows.length) { glRows = glResolve(glRows); glRender(); }
+  if (amRows.length) { amRows = amResolve(amRows); amRender(); }
+  impRender();
+});
 $('#glImport').addEventListener('click', () => {
-  const ok = glRows.filter(r => r.status === 'ok'); if (!ok.length) return;
+  const ok = glRows.filter(r => r.status === 'ok');
+  if (!ok.length && !amRows.some(s => s.status === 'ok')) return;
   const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
   document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
   let created = 0, base = Date.now();
@@ -1940,9 +2064,14 @@ $('#glImport').addEventListener('click', () => {
     if (r.key) a.gargul = r.key;
     state.awards.push(a);
   }
-  glRows = []; $('#glText').value = ''; $('#glResult').hidden = true;
+  const am = importAmisia();
+  created += am.created;
+  glRows = []; amRows = []; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true;
   markDirty();
-  say('Imported ' + ok.length + ' award' + (ok.length===1?'':'s') + (created ? ' and ' + created + ' new raider' + (created===1?'':'s') : '') + '.');
+  const said = [];
+  if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
+  if (am.sessions) said.push(am.sessions + ' raid session' + (am.sessions===1?'':'s') + (am.looted ? ' with ' + am.looted + ' material' + (am.looted===1?'':'s') : ''));
+  say('Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.');
 });
 
 /* ---------------- tooltip ---------------- */
@@ -2062,7 +2191,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); markDirty(); } }
+  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
 });
 $('#saveSettings').addEventListener('click', async () => {
   const newGame = $('#gGame').value;
@@ -2076,7 +2205,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
