@@ -260,6 +260,21 @@ tr.skip td{opacity:.55}
 select.inp.craddr{width:auto;padding:2px 26px 2px 8px;font-size:13px;background-color:transparent;border-style:dashed;color:var(--muted)}
 select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 .crhint{font-size:13px;color:var(--muted);margin:-6px 0 12px}
+/* ---------- mats ---------- */
+.mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:22px}
+.mat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;gap:14px;align-items:center}
+.mat .ico{width:44px;height:44px}
+.mat .nm{font-family:var(--display);font-weight:600;font-size:17px}
+.mat .nums{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;font-family:var(--label);font-size:13px;letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums}
+.mat .nums b{color:var(--text);font-size:18px;font-weight:600;display:block;line-height:1.1}
+.mat .nums .bank b{color:var(--gold)}
+.mat .nums .open b{color:var(--warn)}
+.matgrid{display:grid;grid-template-columns:1fr 340px;gap:18px;margin-top:18px;align-items:start}
+@media (max-width:900px){.matgrid{grid-template-columns:1fr}}
+.matgrid.solo{grid-template-columns:1fr}
+tr.done td{opacity:.5}
+.kind{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:6px;vertical-align:middle}
+.matform .row{display:grid;grid-template-columns:1fr 90px;gap:10px}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -286,6 +301,7 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
     <button class="tab" role="tab" data-view="log">Loot Log</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
     <button class="tab" role="tab" data-view="craft">Crafting</button>
+    <button class="tab" role="tab" data-view="mats">Mats</button>
     <button class="tab" role="tab" data-view="roster">Roster</button>
     <button class="tab" role="tab" data-view="import">Import</button>
   </nav>
@@ -376,6 +392,60 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
     </div>
     <p class="crhint" id="crHint">Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.</p>
     <div class="tblwrap"><table id="crTable"><thead><tr><th>Item</th><th>Profession</th><th>Recipe from</th><th>Crafters</th></tr></thead><tbody id="crBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ MATS ============ -->
+  <section class="view" id="view-mats" hidden>
+    <div class="mats" id="matStock"></div>
+    <div class="matgrid" id="matGrid">
+      <div class="stack">
+        <div class="toolbar" style="margin:4px 0 0">
+          <div class="field"><label for="matSearch">Search</label><input class="inp" id="matSearch" placeholder="Raider, purpose or material…"></div>
+          <div class="field"><label for="matItem">Material</label><select class="inp" id="matItem"><option value="">Every material</option></select></div>
+          <div class="field"><label for="matShow">Show</label><select class="inp" id="matShow"><option value="all">Requests and handouts</option><option value="open">Open requests</option><option value="received">Received only</option><option value="stock">Stock corrections</option></select></div>
+          <div class="spacer"></div>
+          <div class="count" id="matCount"></div>
+        </div>
+        <div class="tblwrap"><table id="matTable"><thead><tr><th>Date</th><th>Raider</th><th>Material</th><th class="num">Qty</th><th>Purpose</th><th>Entered by</th><th></th></tr></thead><tbody id="matBody"></tbody></table></div>
+        <div class="panel">
+          <div class="panel-h">Received per raider</div>
+          <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table id="matRaiderTable"><thead id="matRaiderHead"></thead><tbody id="matRaiderBody"></tbody></table></div>
+        </div>
+      </div>
+      <div class="stack" id="matSide">
+        <div class="panel" id="matReqPanel">
+          <div class="panel-h">Request materials</div>
+          <div class="panel-b stack matform" id="matReqBody">
+            <form id="matReqForm" class="stack" autocomplete="off">
+              <div class="field"><label for="mqRaider">Raider</label><select class="inp" id="mqRaider"></select></div>
+              <div class="row"><div class="field"><label for="mqItem">Material</label><select class="inp" id="mqItem"></select></div><div class="field"><label for="mqQty">Quantity</label><input class="inp" id="mqQty" type="number" min="1" max="1000" value="1" required></div></div>
+              <div class="field"><label for="mqPurpose">What for</label><input class="inp" id="mqPurpose" placeholder="e.g. Sunfire enchant, Belt of Blasting" maxlength="120" required></div>
+              <button class="btn primary" type="submit">Send request</button>
+              <p class="muted" style="margin:0;font-size:13px">The request stays <b>open</b> until an officer hands the materials out and ticks it off.</p>
+            </form>
+            <div id="matReqLogin" hidden><p class="muted" style="margin:0 0 10px;font-size:13px">Sign in with Discord to request materials from the guild bank. Anyone in the guild can do this, no editor rights needed.</p><button class="btn primary" id="matSignIn">Sign in</button></div>
+          </div>
+        </div>
+        <div class="panel" id="matGivePanel" hidden>
+          <div class="panel-h">Hand out without a request</div>
+          <div class="panel-b matform"><form id="matGiveForm" class="stack" autocomplete="off">
+            <div class="field"><label for="mgRaider">Raider</label><select class="inp" id="mgRaider"></select></div>
+            <div class="row"><div class="field"><label for="mgItem">Material</label><select class="inp" id="mgItem"></select></div><div class="field"><label for="mgQty">Quantity</label><input class="inp" id="mgQty" type="number" min="1" max="1000" value="1" required></div></div>
+            <div class="field"><label for="mgNote">Note</label><input class="inp" id="mgNote" placeholder="optional" maxlength="120"></div>
+            <button class="btn" type="submit">Record handout</button>
+          </form></div>
+        </div>
+        <div class="panel" id="matStockPanel" hidden>
+          <div class="panel-h">Correct the bank stock</div>
+          <div class="panel-b matform"><form id="matStockForm" class="stack" autocomplete="off">
+            <p class="muted" style="margin:0;font-size:13px">The stock counts every drop of the material in the loot log (import your Gargul export with the bank character as winner), minus everything handed out. Use a correction when the bank holds more or less than that, for example a starting count. Negative numbers remove.</p>
+            <div class="row"><div class="field"><label for="msItem">Material</label><select class="inp" id="msItem"></select></div><div class="field"><label for="msQty">± Quantity</label><input class="inp" id="msQty" type="number" min="-10000" max="10000" value="1" required></div></div>
+            <div class="field"><label for="msNote">Note</label><input class="inp" id="msNote" placeholder="e.g. counted in the bank" maxlength="120"></div>
+            <button class="btn" type="submit">Apply correction</button>
+          </form></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ============ ROSTER ============ -->
@@ -499,7 +569,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789396846';
+const BUILD_ID = '1789397248';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -735,7 +805,7 @@ async function initCapability(){
   try { const {data} = await SUPA.from('app_config').select('owner_email').maybeSingle(); ownerEmail = data ? data.owner_email : ''; } catch(e) {}
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
-  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence();
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence(); loadMats();
   SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); if (presence) presence.track({name: user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : 'viewer'}); });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
@@ -797,7 +867,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='craft' ? CRAFT.items.filter(c => craftersOf(c).length).length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.filter(c => craftersOf(c).length).length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -1003,6 +1073,119 @@ function renderCraft(){
   }
   $('#crBody').innerHTML = h;
 }
+
+/* ---------------- mats (guild bank materials) ---------------- */
+const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'}]};
+let MATROWS = [], matState = 'loading', matChannel = null;
+const matsHere = () => MATS[gameKey] || [];
+const matName = id => { const m = matsHere().find(x => x.id === id); return m ? m.name : (ITEM[id] ? ITEM[id].name : 'Item ' + id); };
+const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : '';
+async function loadMats(){
+  if (!SUPA) { matState = 'error'; return; }
+  const {data, error} = await SUPA.from('mat_requests').select('*').order('created_at');
+  if (error) { matState = 'error'; console.warn(error); } else { MATROWS = data || []; matState = 'ok'; }
+  renderAll();
+  if (!matChannel) matChannel = SUPA.channel('mats').on('postgres_changes', {event: '*', schema: 'public', table: 'mat_requests'}, () => loadMats()).subscribe();
+}
+function matStock(id){
+  const looted = state.awards.filter(a => a.item === id).length;
+  const rows = MATROWS.filter(r => r.item === id);
+  const adjust = rows.filter(r => r.kind === 'stock').reduce((s, r) => s + r.qty, 0);
+  const handed = rows.filter(r => r.kind !== 'stock' && r.status === 'received').reduce((s, r) => s + r.qty, 0);
+  const open = rows.filter(r => r.kind === 'request' && r.status === 'open').reduce((s, r) => s + r.qty, 0);
+  return {looted, adjust, handed, open, bank: looted + adjust - handed};
+}
+function matOptions(sel){ return matsHere().map(m => '<option value="'+m.id+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
+function renderMats(){
+  const mats = matsHere();
+  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div></div></div>'; }).join('')
+    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials for '+esc((GAME[gameKey]||GAME.tbc).name)+'</b>Materials are tracked for TBC Anniversary so far.</div>';
+  for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
+  for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
+  $('#matReqForm').hidden = !user; $('#matReqLogin').hidden = !!user;
+  $('#matGivePanel').hidden = !isEditor; $('#matStockPanel').hidden = !isEditor;
+  $('#matGrid').classList.toggle('solo', !mats.length);
+  $('#matSide').hidden = !mats.length;
+  const q = $('#matSearch').value.trim().toLowerCase(), fi = Number($('#matItem').value || 0), show = $('#matShow').value;
+  const rows = MATROWS.filter(r => {
+    if (fi && r.item !== fi) return false;
+    if (show === 'stock' ? r.kind !== 'stock' : r.kind === 'stock') return false;
+    if (show === 'open' && r.status !== 'open') return false;
+    if (show === 'received' && r.status !== 'received') return false;
+    if (q) { const hay = r.raider_name + ' ' + r.purpose + ' ' + matName(r.item) + ' ' + r.requested_name; if (!hay.toLowerCase().includes(q)) return false; }
+    return true;
+  }).sort((a, b) => (a.status === 'open' ? 0 : 1) - (b.status === 'open' ? 0 : 1) || (b.created_at > a.created_at ? 1 : -1));
+  $('#matCount').textContent = rows.length + ' of ' + MATROWS.length + ' entries';
+  if (!rows.length) {
+    const msg = matState === 'loading' ? ['Loading…', ''] : matState === 'error' ? ['Could not load the requests', 'Reload the page.'] : MATROWS.length ? ['Nothing matches', 'Try a different filter.'] : ['No requests yet', user ? 'Use the form to request materials from the guild bank.' : 'Sign in to request materials from the guild bank.'];
+    $('#matBody').innerHTML = '<tr><td colspan="7"><div class="empty"><b>'+msg[0]+'</b>'+msg[1]+'</div></td></tr>';
+  } else {
+    let h = '', last = null;
+    for (const r of rows) {
+      const grp = r.kind === 'stock' ? 'Stock corrections' : r.status === 'open' ? 'Open' : 'Received';
+      if (grp !== last) { last = grp; const n = rows.filter(x => (x.kind === 'stock' ? 'Stock corrections' : x.status === 'open' ? 'Open' : 'Received') === grp).length; h += '<tr class="night"><td colspan="7">'+grp+'<span class="n">'+n+'</span></td></tr>'; }
+      const rd = r.raider ? raiderById(r.raider) : null;
+      const mine = user && r.requested_by === user.id;
+      const date = new Date(r.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+      let acts = '';
+      if (r.kind === 'request' && r.status === 'open' && isEditor) acts += '<button class="btn sm primary" data-mrecv="'+r.id+'">Handed out</button>';
+      if (r.status === 'received' && r.kind === 'request' && isEditor) acts += '<button class="btn sm ghost" data-mopen="'+r.id+'" title="Set back to open">Reopen</button>';
+      if (isEditor || (mine && r.status === 'open')) acts += '<button class="btn sm ghost danger" data-mdel="'+r.id+'">Remove</button>';
+      h += '<tr class="'+(r.status === 'received' && r.kind !== 'stock' ? 'done' : '')+'">'
+        + '<td class="muted" style="white-space:nowrap">'+date+(r.received_at ? '<div class="faint" style="font-size:12px">got '+new Date(r.received_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})+'</div>' : '')+'</td>'
+        + '<td>'+(rd ? rName(rd) : r.raider_name ? '<span class="rname">'+esc(r.raider_name)+'</span>' : '<span class="faint">—</span>')+(r.kind === 'handout' ? '<span class="kind">handout</span>' : r.kind === 'stock' ? '<span class="kind">stock</span>' : '')+'</td>'
+        + '<td><span class="item">'+icoHTML(ITEM[r.item])+'<span class="nm q'+(ITEM[r.item] ? ITEM[r.item].q || 4 : 4)+'">'+esc(matName(r.item))+'</span></span></td>'
+        + '<td class="num">'+(r.qty > 0 && r.kind === 'stock' ? '+' : '')+r.qty+'</td>'
+        + '<td class="note">'+esc(r.purpose || '')+'</td>'
+        + '<td class="muted">'+esc(r.requested_name || '')+(r.received_by && r.status === 'received' && r.kind === 'request' ? '<div class="faint" style="font-size:12px">ticked by '+esc(r.received_by)+'</div>' : '')+'</td>'
+        + '<td class="acts">'+acts+'</td></tr>';
+    }
+    $('#matBody').innerHTML = h;
+  }
+  // per-raider totals
+  const got = {};
+  for (const r of MATROWS) if (r.kind !== 'stock' && r.status === 'received') { const k = r.raider || r.raider_name; if (!k) continue; const g = got[k] = got[k] || {rd: r.raider ? raiderById(r.raider) : null, name: r.raider_name, per: {}, last: ''}; g.per[r.item] = (g.per[r.item] || 0) + r.qty; const d = (r.received_at || r.created_at); if (d > g.last) g.last = d; }
+  const list = Object.values(got).sort((a, b) => (a.rd ? a.rd.name : a.name).localeCompare(b.rd ? b.rd.name : b.name));
+  $('#matRaiderHead').innerHTML = '<tr><th>Raider</th>' + mats.map(m => '<th class="num">'+esc(m.name)+'</th>').join('') + '<th>Last</th></tr>';
+  $('#matRaiderBody').innerHTML = list.length ? list.map(g => '<tr><td>'+(g.rd ? rName(g.rd) : '<span class="rname">'+esc(g.name)+'</span>')+'</td>'+mats.map(m => '<td class="num">'+(g.per[m.id] ? g.per[m.id] : '<span class="faint">–</span>')+'</td>').join('')+'<td class="muted">'+new Date(g.last).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'})+'</td></tr>').join('')
+    : '<tr><td colspan="'+(mats.length+2)+'"><div class="empty" style="padding:24px"><b>Nothing handed out yet</b>Raiders appear here once a request is ticked off or a handout is recorded.</div></td></tr>';
+}
+async function matWrite(fn, okMsg){
+  if (!SUPA || !user) return say('Sign in first.');
+  const {error} = await fn();
+  if (error) return say('Could not save: ' + (error.message || error.code));
+  if (okMsg) say(okMsg);
+  loadMats();
+}
+$('#matSignIn').addEventListener('click', () => { $('#loginBox').hidden = false; $('#loginBox').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+$('#matReqForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const raider = raiderById($('#mqRaider').value), item = Number($('#mqItem').value), qty = Number($('#mqQty').value), purpose = $('#mqPurpose').value.trim();
+  if (!raider) return say('Choose the raider who needs the materials.');
+  if (!item || !(qty > 0)) return say('Pick a material and a quantity.');
+  if (!purpose) return say('Say what the materials are for.');
+  matWrite(() => SUPA.from('mat_requests').insert({kind: 'request', item, qty, raider: raider.id, raider_name: raider.name, purpose, requested_by: user.id, requested_name: userName()}), 'Request sent.').then(() => { $('#mqPurpose').value = ''; $('#mqQty').value = 1; });
+});
+$('#matGiveForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const raider = raiderById($('#mgRaider').value), item = Number($('#mgItem').value), qty = Number($('#mgQty').value), note = $('#mgNote').value.trim();
+  if (!raider) return say('Choose the raider.');
+  if (!item || !(qty > 0)) return say('Pick a material and a quantity.');
+  matWrite(() => SUPA.from('mat_requests').insert({kind: 'handout', item, qty, raider: raider.id, raider_name: raider.name, purpose: note, status: 'received', received_at: new Date().toISOString(), received_by: userName(), requested_by: user.id, requested_name: userName()}), 'Handout recorded.').then(() => { $('#mgNote').value = ''; $('#mgQty').value = 1; });
+});
+$('#matStockForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const item = Number($('#msItem').value), qty = Number($('#msQty').value), note = $('#msNote').value.trim();
+  if (!item || !qty) return say('Pick a material and a quantity other than 0.');
+  matWrite(() => SUPA.from('mat_requests').insert({kind: 'stock', item, qty, purpose: note, status: 'received', received_at: new Date().toISOString(), received_by: userName(), requested_by: user.id, requested_name: userName()}), 'Stock corrected.').then(() => { $('#msNote').value = ''; });
+});
+['#matSearch','#matItem','#matShow'].forEach(s => $(s).addEventListener('input', renderMats));
+$('#matBody').addEventListener('click', async ev => {
+  const rc = ev.target.closest('[data-mrecv]'), ro = ev.target.closest('[data-mopen]'), rd = ev.target.closest('[data-mdel]');
+  if (rc) matWrite(() => SUPA.from('mat_requests').update({status: 'received', received_at: new Date().toISOString(), received_by: userName()}).eq('id', rc.dataset.mrecv));
+  if (ro) matWrite(() => SUPA.from('mat_requests').update({status: 'open', received_at: null, received_by: null}).eq('id', ro.dataset.mopen));
+  if (rd) { const r = MATROWS.find(x => x.id === rd.dataset.mdel); if (r && await ask('Remove this entry ('+r.qty+' × '+matName(r.item)+(r.raider_name ? ' for '+r.raider_name : '')+')?', 'Remove')) matWrite(() => SUPA.from('mat_requests').delete().eq('id', r.id)); }
+});
 
 /* ---------------- roster ---------------- */
 function renderRoster(){
@@ -1272,6 +1455,7 @@ function renderAll(){
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
   if (ui.view === 'matrix') renderMatrix();
   if (ui.view === 'craft') renderCraft();
+  if (ui.view === 'mats') renderMats();
   if (ui.view === 'roster') renderRoster();
 }
 
