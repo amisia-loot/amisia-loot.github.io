@@ -323,6 +323,30 @@ tr.got td{opacity:.5}
 .topwish:last-child{border-bottom:0}
 .topwish .n{font-family:var(--label);font-weight:600;color:var(--gold);min-width:18px}
 .topwish .nm{flex:1;color:var(--epic);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ---------- history ---------- */
+.hrow{display:flex;gap:10px;align-items:center;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.hrow:last-child{border-bottom:0}
+.hrow .v{font-family:var(--label);font-weight:600;color:var(--gold);min-width:34px}
+.hrow .w{flex:1;min-width:0;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hrow .c{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.hrow.now{background:var(--panel-2)}
+/* ---------- raid night ---------- */
+.ntsum{display:flex;gap:26px;flex-wrap:wrap;align-items:baseline;padding:16px;border:1px solid var(--line);border-radius:6px;background:var(--panel);margin-bottom:16px}
+.ntsum .big{font-family:var(--display);font-size:22px;color:var(--gold)}
+.ntsum .k{font-family:var(--label);font-size:13px;letter-spacing:.06em;color:var(--muted)}
+.ntsum .k b{display:block;color:var(--text);font-size:20px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.ntcols{display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start}
+@media (max-width:900px){.ntcols{grid-template-columns:1fr}}
+.ntboss{font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--gold);padding:10px 12px;background:var(--panel-2)}
+.ntper{display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.ntper:last-child{border-bottom:0}
+.ntper .n{font-family:var(--label);font-weight:600;font-size:17px;color:var(--gold);min-width:20px;text-align:right}
+.ntper .who{min-width:120px;font-weight:600}
+.ntper .ic{display:flex;gap:4px;flex-wrap:wrap}
+.ntper .ico{width:24px;height:24px}
+.ntwho{display:flex;gap:6px;flex-wrap:wrap}
+.ntwho span{padding:2px 9px;border-radius:12px;background:var(--panel-3);font-size:13px;font-weight:600}
+.ntwho span.off{background:none;border:1px dashed var(--line-2);color:var(--faint);font-weight:400}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -347,6 +371,7 @@ tr.got td{opacity:.5}
   <nav class="tabs" role="tablist" id="tabs">
     <button class="tab" role="tab" data-view="armory">Armory</button>
     <button class="tab" role="tab" data-view="log">Loot Log</button>
+    <button class="tab" role="tab" data-view="night">Nights</button>
     <button class="tab" role="tab" data-view="att">Attendance</button>
     <button class="tab" role="tab" data-view="wish">Wishlist</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
@@ -418,6 +443,18 @@ tr.got td{opacity:.5}
       <div class="count" id="logCount"></div>
     </div>
     <div class="tblwrap"><table id="logTable"><thead><tr><th>Date</th><th>Boss</th><th>Item</th><th>Raider</th><th>Note</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
+  </section>
+
+  <!-- ============ RAID NIGHT ============ -->
+  <section class="view" id="view-night" hidden>
+    <div class="toolbar">
+      <div class="field"><label for="ntPick">Raid night</label><select class="inp" id="ntPick"></select></div>
+      <button class="btn" id="ntPrev" title="Earlier night">&larr;</button>
+      <button class="btn" id="ntNext" title="Later night">&rarr;</button>
+      <div class="spacer"></div>
+      <button class="btn" id="ntCopy">Copy as text</button>
+    </div>
+    <div id="ntBody"></div>
   </section>
 
   <!-- ============ ATTENDANCE ============ -->
@@ -624,6 +661,13 @@ tr.got td{opacity:.5}
             <div id="accountsList" class="stack" style="font-size:13px"></div>
           </div>
         </div>
+        <div class="panel" id="histPanel" hidden>
+          <div class="panel-h">Earlier versions<span class="grow"></span><button class="btn sm ghost" id="histReload">Refresh</button></div>
+          <div class="panel-b stack">
+            <p class="muted" style="margin:0;font-size:13px">Every save keeps the version it replaced, the newest 40. Restoring writes a new version, so a restore can itself be undone.</p>
+            <div id="histList"></div>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-h">Backup</div>
           <div class="panel-b stack">
@@ -696,7 +740,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789401940';
+const BUILD_ID = '1789403413';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -899,7 +943,7 @@ async function publish(){
     if (/not an editor|42501|permission/i.test(msg)) { isEditor = false; saving = false; renderAll(); refreshBar(); return; }
     saving = false; setBar('err', 'Save failed (' + msg + '). Your changes are kept in this browser. Press Save to retry.'); return;
   }
-  saving = false; refreshBar();
+  saving = false; refreshBar(); renderHistory(true);
 }
 async function loadFromServer(force){
   if (!SUPA) return;
@@ -944,6 +988,30 @@ async function renderAccounts(){
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + '</div>';
   }).join('') : '<span class="muted">Nobody has signed in yet.</span>';
 }
+let HIST = [], histState = 'idle';
+async function renderHistory(force){
+  const panel = $('#histPanel'); panel.hidden = !isEditor || !SUPA;
+  if (panel.hidden) return;
+  if (force || histState === 'idle') {
+    histState = 'loading'; $('#histList').innerHTML = '<span class="muted" style="font-size:13px">Loading…</span>';
+    const {data, error} = await SUPA.rpc('list_ledger_history', {p_id: 'main'});
+    HIST = error ? [] : (data || []); histState = error ? 'error' : 'ok';
+    if (error) { $('#histList').innerHTML = '<span class="muted" style="font-size:13px">Could not load the history.</span>'; return; }
+  }
+  const fmt = ts => new Date(ts).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+  $('#histList').innerHTML = '<div class="hrow now"><span class="v">now</span><span class="w">' + esc(state.guild || 'current version') + '</span><span class="c">' + state.raiders.length + ' / ' + state.awards.length + '</span></div>'
+    + (HIST.length ? HIST.map(h => '<div class="hrow"><span class="v">v' + h.version + '</span><span class="w">' + fmt(h.saved_at) + (h.saved_by ? ' · ' + esc(h.saved_by) : '') + '</span><span class="c" title="raiders / awards">' + h.raiders + ' / ' + h.awards + '</span><button class="btn sm ghost" data-hres="' + h.version + '">Restore</button></div>').join('')
+      : '<span class="muted" style="font-size:13px">No earlier version yet. The first one appears after the next save.</span>');
+}
+$('#histReload').addEventListener('click', () => renderHistory(true));
+$('#histList').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-hres]'); if (!b) return;
+  const v = Number(b.dataset.hres), h = HIST.find(x => x.version === v); if (!h) return;
+  if (!await ask('Go back to version ' + v + ' with ' + h.raiders + ' raiders and ' + h.awards + ' awards? The current version is kept, so this can be undone.', 'Restore')) return;
+  const {error} = await SUPA.rpc('restore_ledger', {p_id: 'main', p_version: v});
+  if (error) return say('Could not restore: ' + (error.message || error.code));
+  await loadFromServer(true); renderHistory(true); say('Restored version ' + v + '.');
+});
 let ownerEmail = '', presence = null, PRESENCE = [], presenceTimer = null;
 const SID = (() => { try { let s = sessionStorage.getItem('gll.sid'); if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('gll.sid', s); } return s; } catch(e) { return Math.random().toString(36).slice(2); } })();
 async function heartbeat(){
@@ -984,7 +1052,7 @@ async function initCapability(){
   try { const {data} = await SUPA.from('app_config').select('owner_email').maybeSingle(); ownerEmail = data ? data.owner_email : ''; } catch(e) {}
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
-  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence(); loadMats(); loadWishes();
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); renderHistory(true); startPresence(); loadMats(); loadWishes();
   SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); heartbeat(); });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
@@ -1046,7 +1114,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? allNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? allNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -1100,7 +1168,7 @@ function renderLog(){
       lastDate = a.date;
       const nightAll = state.awards.filter(x => x.date === a.date);
       const zones = [...new Set(nightAll.map(x => BOSSZONE[x.boss]))];
-      h += '<tr class="night"><td colspan="6">Raid night · '+fmtDate(a.date)+zones.map(z => '<span class="zone '+z+' bz">'+ZONE[z]+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
+      h += '<tr class="night"><td colspan="6"><a data-goto="night" data-date="'+a.date+'" style="cursor:pointer">Raid night · '+fmtDate(a.date)+'</a>'+''+zones.map(z => '<span class="zone '+z+' bz">'+ZONE[z]+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
     }
     const it = ITEM[a.item], r = raiderById(a.raider);
     h += '<tr>'
@@ -1186,6 +1254,70 @@ function submitAward(ev){
   if (wasEditing) $('#fRaider').value = '';
   $('#fItem').focus();
 }
+
+/* ---------------- raid night ---------------- */
+function nightData(date){
+  const aw = state.awards.filter(a => a.date === date).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  const order = {}; BOSSES.forEach((b, i) => order[b.name] = i);
+  const byBoss = {};
+  for (const a of aw) (byBoss[a.boss] = byBoss[a.boss] || []).push(a);
+  const bosses = Object.keys(byBoss).sort((a, b) => (order[a] ?? 999) - (order[b] ?? 999));
+  const per = {};
+  for (const a of aw) (per[a.raider] = per[a.raider] || []).push(a);
+  const people = Object.entries(per).map(([rid, list]) => ({r: raiderById(rid), list}))
+    .sort((a, b) => b.list.length - a.list.length || (a.r ? a.r.name : '').localeCompare(b.r ? b.r.name : ''));
+  const here = [...presentOn(date)].map(raiderById).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+  const away = state.raiders.filter(r => !presentOn(date).has(r.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const zones = [...new Set(aw.map(a => BOSSZONE[a.boss]).filter(Boolean))];
+  return {aw, bosses, byBoss, people, here, away, zones};
+}
+function renderNight(){
+  const list = allNights();
+  if (!list.length) { $('#ntPick').innerHTML = ''; $('#ntBody').innerHTML = '<div class="empty"><b>No raid nights yet</b>They appear once loot is recorded or a night is entered on the Attendance tab.</div>'; return; }
+  if (!ui.night || !list.some(n => n.date === ui.night)) ui.night = list[0].date;
+  $('#ntPick').innerHTML = list.map(n => '<option value="' + n.date + '"' + (n.date === ui.night ? ' selected' : '') + '>' + fmtDate(n.date) + '</option>').join('');
+  const i = list.findIndex(n => n.date === ui.night);
+  $('#ntNext').disabled = i <= 0; $('#ntPrev').disabled = i >= list.length - 1;
+  const d = nightData(ui.night);
+  const loot = d.bosses.length ? d.bosses.map(b => '<tr class="night"><td colspan="3">' + (BOSSZONE[b] ? zTag(BOSSZONE[b]) + ' ' : '') + esc(b) + '<span class="n">' + d.byBoss[b].length + '</span></td></tr>'
+      + d.byBoss[b].map(a => { const it = ITEM[a.item], r = raiderById(a.raider);
+          return '<tr><td><span class="item">' + icoHTML(it, 'data-award="' + a.id + '"') + '<span><span class="nm">' + esc(it ? it.name : 'Unknown item') + '</span> <span class="sl">' + (it ? SLOTNAME[it.slot] : '') + '</span></span></span></td>'
+            + '<td>' + (r ? rName(r) : '<span class="faint">removed</span>') + '</td><td class="note">' + esc(a.note || '') + '</td></tr>'; }).join('')).join('')
+    : '<tr><td colspan="3"><div class="empty" style="padding:26px"><b>No loot recorded</b>The night is on the books, nothing was awarded.</div></td></tr>';
+  $('#ntBody').innerHTML =
+    '<div class="ntsum"><span class="big">' + fmtDate(ui.night) + '</span>'
+    + (d.zones.length ? '<span class="k">' + d.zones.map(z => zTag(z)).join(' ') + '</span>' : '')
+    + '<span class="k"><b>' + d.here.length + '</b>there</span><span class="k"><b>' + d.aw.length + '</b>item' + (d.aw.length === 1 ? '' : 's') + '</span>'
+    + '<span class="k"><b>' + d.people.length + '</b>got loot</span></div>'
+    + '<div class="ntcols"><div class="tblwrap"><table><thead><tr><th>Item</th><th>Raider</th><th>Note</th></tr></thead><tbody>' + loot + '</tbody></table></div>'
+    + '<div class="stack"><div class="panel"><div class="panel-h">Items per raider</div><div class="panel-b">'
+    + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + a.id + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
+    + '</div></div><div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
+    + (d.here.length ? d.here.map(r => '<span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span>').join('') : '<span class="muted">Nobody recorded.</span>')
+    + '</div>' + (d.away.length ? '<div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:10px">Missing</div><div class="ntwho">' + d.away.map(r => '<span class="off">' + esc(r.name) + '</span>').join('') + '</div>' : '')
+    + '</div></div></div></div>';
+}
+function nightText(){
+  const d = nightData(ui.night);
+  const L = [];
+  L.push((state.guild || 'Guild') + ' · raid night ' + fmtDate(ui.night) + (d.zones.length ? ' · ' + d.zones.map(z => ZONE[z]).join(', ') : ''));
+  L.push(d.here.length + ' there · ' + d.aw.length + ' item' + (d.aw.length === 1 ? '' : 's') + ' to ' + d.people.length + ' raider' + (d.people.length === 1 ? '' : 's'));
+  for (const b of d.bosses) {
+    L.push(''); L.push(b);
+    for (const a of d.byBoss[b]) { const it = ITEM[a.item], r = raiderById(a.raider); L.push('  ' + (it ? it.name : 'Unknown item') + ' - ' + (r ? r.name : 'removed') + (a.note ? ' (' + a.note + ')' : '')); }
+  }
+  if (d.people.length) { L.push(''); L.push('Items per raider'); L.push('  ' + d.people.map(x => (x.r ? x.r.name : '—') + ' ' + x.list.length).join(', ')); }
+  if (d.away.length) { L.push(''); L.push('Missing: ' + d.away.map(r => r.name).join(', ')); }
+  return L.join('\n');
+}
+$('#ntPick').addEventListener('change', () => { ui.night = $('#ntPick').value; renderNight(); });
+$('#ntPrev').addEventListener('click', () => { const l = allNights(), i = l.findIndex(n => n.date === ui.night); if (i < l.length - 1) { ui.night = l[i + 1].date; renderNight(); } });
+$('#ntNext').addEventListener('click', () => { const l = allNights(), i = l.findIndex(n => n.date === ui.night); if (i > 0) { ui.night = l[i - 1].date; renderNight(); } });
+$('#ntCopy').addEventListener('click', async ev => {
+  const txt = nightText();
+  try { await navigator.clipboard.writeText(txt); ev.target.textContent = 'Copied'; setTimeout(() => ev.target.textContent = 'Copy as text', 1500); }
+  catch (e) { $('#backup').value = txt; say('Copying was blocked. The text is in the Backup box on the Roster tab.'); }
+});
 
 /* ---------------- attendance ---------------- */
 const ATT_MAX = 24;
@@ -1848,12 +1980,14 @@ function showView(v){
   ui.view = v;
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
   document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-'+v);
+  if (v === 'roster') renderHistory();
   renderAll();
 }
 function renderAll(){
   renderHeader();
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
+  if (ui.view === 'night') renderNight();
   if (ui.view === 'att') renderAttendance();
   if (ui.view === 'wish') renderWishes();
   if (ui.view === 'matrix') renderMatrix();
@@ -1864,7 +1998,7 @@ function renderAll(){
 
 /* ---------------- events ---------------- */
 $('#tabs').addEventListener('click', ev => { const t = ev.target.closest('.tab'); if (t) showView(t.dataset.view); });
-document.addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { ev.preventDefault(); showView(a.dataset.goto); if (a.closest('#guildLine')) $('#gName').focus(); } });
+document.addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { ev.preventDefault(); if (a.dataset.date) ui.night = a.dataset.date; showView(a.dataset.goto); if (a.closest('#guildLine')) $('#gName').focus(); } });
 $('#publishBtn').addEventListener('click', publish);
 $('#clearExample').addEventListener('click', async () => {
   if (!await ask('Remove all example raiders and awards? Your ledger starts empty.', 'Clear examples')) return;
