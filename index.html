@@ -304,6 +304,25 @@ tr.done td{opacity:.5}
 .nightrow:last-child{border-bottom:0}
 .nightrow .d{font-family:var(--label);letter-spacing:.06em;min-width:74px}
 .nightrow .n{color:var(--muted);flex:1}
+/* ---------- wishlist ---------- */
+.prio{display:inline-block;min-width:62px;text-align:center;padding:1px 8px;border-radius:3px;font-family:var(--label);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;border:1px solid}
+.prio.p3{color:var(--gold);border-color:var(--gold)}
+.prio.p2{color:var(--text);border-color:var(--line-2)}
+.prio.p1{color:var(--faint);border-color:var(--line)}
+tr.got td{opacity:.5}
+.want{margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:4px;background:var(--panel-2);font-size:14px}
+.want[hidden]{display:none}
+.want .t{font-family:var(--label);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.want .w{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.want .w+.w{margin-top:6px;padding-top:6px;border-top:1px solid var(--line)}
+.want .it{font-weight:600;color:var(--epic);min-width:170px}
+.want button{font-family:var(--label);font-size:13px;letter-spacing:.04em;font-weight:600;padding:2px 9px;border-radius:12px;border:1px solid var(--line-2);background:var(--panel-3);cursor:pointer}
+.want button:hover{border-color:var(--gold)}
+.want button .p{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-left:5px}
+.topwish{display:flex;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
+.topwish:last-child{border-bottom:0}
+.topwish .n{font-family:var(--label);font-weight:600;color:var(--gold);min-width:18px}
+.topwish .nm{flex:1;color:var(--epic);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -329,6 +348,7 @@ tr.done td{opacity:.5}
     <button class="tab" role="tab" data-view="armory">Armory</button>
     <button class="tab" role="tab" data-view="log">Loot Log</button>
     <button class="tab" role="tab" data-view="att">Attendance</button>
+    <button class="tab" role="tab" data-view="wish">Wishlist</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
     <button class="tab" role="tab" data-view="craft">Crafting</button>
     <button class="tab" role="tab" data-view="mats">Mats</button>
@@ -380,6 +400,7 @@ tr.done td{opacity:.5}
             <div class="field"><label for="fNote">Note</label><input class="inp" id="fNote" placeholder="MS / OS / DE"></div>
             <button class="btn primary" type="submit" id="awardSubmit">Add award</button>
           </div>
+          <div class="want" id="wantLine" hidden></div>
           <div class="newraider" id="newRaider" hidden>
             <div class="field"><label for="fNewName">New raider name</label><input class="inp" id="fNewName" placeholder="Character name"></div>
             <div class="field"><label for="fNewCls">Class</label><select class="inp" id="fNewCls"></select></div>
@@ -431,6 +452,44 @@ tr.done td{opacity:.5}
         <div class="panel">
           <div class="panel-h">Raid nights</div>
           <div class="panel-b" id="nightList"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WISHLIST ============ -->
+  <section class="view" id="view-wish" hidden>
+    <div class="matgrid" id="wishGrid">
+      <div class="stack">
+        <div class="toolbar" style="margin:4px 0 0">
+          <div class="field"><label for="wiSearch">Search</label><input class="inp" id="wiSearch" placeholder="Item, raider or boss…"></div>
+          <div class="field"><label for="wiRaider">Raider</label><select class="inp" id="wiRaider"></select></div>
+          <div class="field"><label for="wiGroup">Group by</label><select class="inp" id="wiGroup"><option value="boss">Boss</option><option value="raider">Raider</option></select></div>
+          <div class="field"><label for="wiShow">Show</label><select class="inp" id="wiShow"><option value="open">Still needed</option><option value="all">Everything</option><option value="got">Already received</option></select></div>
+          <div class="spacer"></div>
+          <div class="count" id="wiCount"></div>
+        </div>
+        <p class="crhint" id="wiHint"></p>
+        <div class="tblwrap"><table id="wishTable"><thead><tr><th>Item</th><th>Boss</th><th>Raider</th><th>Priority</th><th>Note</th><th></th></tr></thead><tbody id="wishBody"></tbody></table></div>
+      </div>
+      <div class="stack" id="wishSide">
+        <div class="panel">
+          <div class="panel-h">Add to a wishlist</div>
+          <div class="panel-b stack matform">
+            <form id="wishForm" class="stack" autocomplete="off">
+              <div class="field"><label for="wfRaider">Raider</label><select class="inp" id="wfRaider"></select></div>
+              <div class="field"><label for="wfBoss">Boss</label><select class="inp" id="wfBoss"></select></div>
+              <div class="field"><label for="wfItem">Item</label><select class="inp" id="wfItem"></select></div>
+              <div class="row"><div class="field"><label for="wfPrio">Priority</label><select class="inp" id="wfPrio"><option value="3">High</option><option value="2" selected>Medium</option><option value="1">Low</option></select></div><div class="field"><label for="wfNote">Note</label><input class="inp" id="wfNote" placeholder="optional" maxlength="80"></div></div>
+              <button class="btn primary" type="submit">Add to wishlist</button>
+            </form>
+            <div id="wishLogin" hidden><p class="muted" style="margin:0 0 10px;font-size:13px">Sign in with Discord to put items on a wishlist. Anyone in the guild can do this, no editor rights needed.</p><button class="btn primary" id="wishSignIn">Sign in</button></div>
+            <p class="muted" style="margin:0;font-size:13px">An item you were already awarded counts as received and drops out of the list.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Most wanted</div>
+          <div class="panel-b" id="wishTop"></div>
         </div>
       </div>
     </div>
@@ -637,14 +696,15 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789401142';
+const BUILD_ID = '1789401940';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
-let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
+let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
   DATA = d || {zones:[], bosses:[], items:[]};
   ITEM = Object.fromEntries(DATA.items.map(i => [i.id, i]));
   BOSSES = DATA.bosses; BOSSZONE = Object.fromEntries(BOSSES.map(b => [b.name, b.zone]));
   ZONES = DATA.zones; ZONE = Object.fromEntries(ZONES.map(z => [z.key, z.name]));
+  ZORDER = Object.fromEntries(ZONES.map((z, i) => [z.key, i]));
   ZSHORT = Object.fromEntries(ZONES.map(z => [z.key, z.short])); ZSOON = Object.fromEntries(ZONES.map(z => [z.key, !!z.soon]));
   let css = ':root{' + ZONES.map(z => '--z-'+z.key+':'+(z.color ? z.color[0] : '#8f86a3')).join(';') + '}';
   const light = ZONES.map(z => '--z-'+z.key+':'+(z.color ? z.color[1] : '#6a617a')).join(';');
@@ -924,7 +984,7 @@ async function initCapability(){
   try { const {data} = await SUPA.from('app_config').select('owner_email').maybeSingle(); ownerEmail = data ? data.owner_email : ''; } catch(e) {}
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
-  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence(); loadMats();
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); startPresence(); loadMats(); loadWishes();
   SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); heartbeat(); });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
@@ -986,7 +1046,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='att' ? allNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? allNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -1068,15 +1128,16 @@ function renderCombo(){
   comboRows = itemMatches();
   const box = $('#itemList');
   if (!comboRows.length) { box.innerHTML = '<div class="none">'+(dataState === 'soon' ? 'No loot tables for this game version yet. Switch the game version on the Roster tab.' : dataState === 'loading' ? 'Loading loot tables…' : dataState === 'error' ? 'Loot tables could not be loaded. Reload the page.' : ($('#fBoss').value||$('#fItem').value ? 'No item matches.' : 'Choose a boss or start typing.'))+'</div>'; return; }
-  box.innerHTML = comboRows.map((i,k) => '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+'</span>'+dTag(i)+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>').join('');
+  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+'</span>'+dTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
 }
 function pickItem(id){
   const it = ITEM[id]; $('#fItem').dataset.id = id; $('#fItem').value = it.name;
   const ico = $('#fItemIco'); ico.classList.remove('hidden'); ico.innerHTML = icoInner(it); ico.classList.toggle('token', !!it.token);
   $('#itemList').hidden = true;
   if (!$('#fBoss').value && it.sources.length === 1) $('#fBoss').value = it.sources[0];
+  renderWantLine();
 }
-function clearItem(){ delete $('#fItem').dataset.id; $('#fItemIco').classList.add('hidden'); }
+function clearItem(){ delete $('#fItem').dataset.id; $('#fItemIco').classList.add('hidden'); renderWantLine(); }
 function resetForm(keepNight){
   ui.editing = null; $('#awardTitle').textContent = 'Award loot'; $('#awardSubmit').textContent = 'Add award'; $('#awardCancel').hidden = true;
   if (!keepNight) $('#fDate').value = $('#fDate').value || (state.awards.length ? state.awards.map(a=>a.date).sort().pop() : today());
@@ -1095,6 +1156,7 @@ function renderForm(){
   $('#fRaider').innerHTML = raiderOptions(r, '<option value="">Choose a raider…</option>') + '<option value="__new"'+(r==='__new'?' selected':'')+'>+ New raider…</option>';
   if (!$('#fNewCls').options.length) $('#fNewCls').innerHTML = classOptions('Warrior');
   if (!$('#fDate').value) $('#fDate').value = state.awards.length ? state.awards.map(a=>a.date).sort().pop() : today();
+  renderWantLine();
 }
 function submitAward(ev){
   ev.preventDefault();
@@ -1209,6 +1271,128 @@ $('#nightList').addEventListener('click', async ev => {
   state.nights = nights().filter(n => n.date !== date); markDirty();
 });
 ['#attSearch','#attShow'].forEach(s => $(s).addEventListener('input', renderAttendance));
+
+/* ---------------- wishlist ---------------- */
+let WISHES = [], wishState = 'loading', wishChannel = null;
+const PRIO = {3: 'High', 2: 'Medium', 1: 'Low'};
+const wishesHere = () => WISHES.filter(w => w.game === gameKey);
+const wishGot = w => state.awards.some(a => a.raider === w.raider && a.item === w.item);
+const wishesFor = id => wishesHere().filter(w => w.item === id && !wishGot(w)).sort((a, b) => b.prio - a.prio || a.raider_name.localeCompare(b.raider_name));
+async function loadWishes(){
+  if (!SUPA) { wishState = 'error'; return; }
+  const {data, error} = await SUPA.from('wishlist').select('*');
+  if (error) { wishState = 'error'; } else { WISHES = data || []; wishState = 'ok'; }
+  renderAll();
+  if (!wishChannel) wishChannel = SUPA.channel('wishes').on('postgres_changes', {event: '*', schema: 'public', table: 'wishlist'}, () => loadWishes()).subscribe();
+}
+function prioTag(p){ return '<span class="prio p' + p + '">' + (PRIO[p] || 'Medium') + '</span>'; }
+function renderWishForm(){
+  const kr = $('#wfRaider').value, kb = $('#wfBoss').value, ki = $('#wfItem').value;
+  $('#wfRaider').innerHTML = raiderOptions(kr, '<option value="">Choose a raider…</option>');
+  $('#wfBoss').innerHTML = '<option value="">Choose a boss…</option>' + bossOptions(kb, false);
+  const items = kb ? DATA.items.filter(i => i.sources.includes(kb)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+  $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + SLOTNAME[i.slot] + '</option>').join('')
+    : '<option value="">Pick the boss first</option>';
+  $('#wishForm').hidden = !user; $('#wishLogin').hidden = !!user;
+}
+function renderWishes(){
+  renderWishForm();
+  const all = wishesHere();
+  const q = $('#wiSearch').value.trim().toLowerCase(), rf = $('#wiRaider').value, grp = $('#wiGroup').value, show = $('#wiShow').value;
+  const keep = $('#wiRaider').value;
+  $('#wiRaider').innerHTML = raiderOptions(keep, '<option value="">Every raider</option>');
+  $('#wishSide').hidden = false;
+  $('#wiHint').innerHTML = all.length
+    ? 'What raiders still need from ' + esc((GAME[gameKey] || GAME.tbc).name) + '. When a boss is picked on the Loot Log tab, everyone who wants one of its drops is listed right under the form.'
+    : (user ? 'No wishes yet. Put the first item on a wishlist with the form on the right.' : 'No wishes yet. Sign in to put items on a wishlist.');
+  const rows = all.map(w => ({w, got: wishGot(w), it: ITEM[w.item]})).filter(({w, got, it}) => {
+    if (rf && w.raider !== rf) return false;
+    if (show === 'open' && got) return false;
+    if (show === 'got' && !got) return false;
+    if (q) { const hay = ((it && it.name) || '') + ' ' + w.raider_name + ' ' + w.boss + ' ' + w.note; if (!hay.toLowerCase().includes(q)) return false; }
+    return true;
+  });
+  $('#wiCount').textContent = rows.length + ' of ' + all.length + ' wishes';
+  renderWishTop(all);
+  if (!rows.length) {
+    const msg = wishState === 'loading' ? ['Loading…', ''] : wishState === 'error' ? ['Could not load the wishlists', 'Reload the page.'] : all.length ? ['Nothing matches', 'Try a different filter.'] : ['No wishes yet', user ? 'Add the first one on the right.' : 'Sign in to add yours.'];
+    $('#wishBody').innerHTML = '<tr><td colspan="6"><div class="empty"><b>' + msg[0] + '</b>' + msg[1] + '</div></td></tr>'; return;
+  }
+  const zoneOf = w => BOSSZONE[w.boss] || '';
+  if (grp === 'boss') rows.sort((a, b) => (ZORDER[zoneOf(a.w)] ?? 99) - (ZORDER[zoneOf(b.w)] ?? 99) || String(a.w.boss).localeCompare(String(b.w.boss)) || b.w.prio - a.w.prio || a.w.raider_name.localeCompare(b.w.raider_name));
+  else rows.sort((a, b) => a.w.raider_name.localeCompare(b.w.raider_name) || b.w.prio - a.w.prio);
+  let h = '', last = null;
+  for (const {w, got, it} of rows) {
+    const key = grp === 'boss' ? (w.boss || 'Unknown boss') : (w.raider_name || 'Unknown raider');
+    if (key !== last) {
+      last = key; const n = rows.filter(x => (grp === 'boss' ? (x.w.boss || 'Unknown boss') : (x.w.raider_name || 'Unknown raider')) === key).length;
+      const rd = grp === 'raider' ? raiderById(w.raider) : null;
+      h += '<tr class="night"><td colspan="6">' + (grp === 'boss' && zoneOf(w) ? zTag(zoneOf(w)) + ' ' : '') + esc(key) + '<span class="n">' + n + ' wish' + (n === 1 ? '' : 'es') + (rd ? ' · ' + esc(rd.cls) : '') + '</span></td></tr>';
+    }
+    const rd = raiderById(w.raider);
+    const mine = user && w.created_by === user.id;
+    h += '<tr class="' + (got ? 'got' : '') + '">'
+      + '<td><span class="item">' + icoHTML(it) + '<span><span class="nm">' + esc(it ? it.name : 'Item ' + w.item) + '</span> <span class="sl">' + (it ? SLOTNAME[it.slot] : '') + '</span>' + (it ? dTag(it) : '') + '</span></span></td>'
+      + '<td style="white-space:nowrap">' + (zoneOf(w) ? zTag(zoneOf(w)) + ' ' : '') + esc(w.boss || '') + '</td>'
+      + '<td>' + (rd ? rName(rd) : '<span class="rname">' + esc(w.raider_name) + '</span>') + '</td>'
+      + '<td>' + prioTag(w.prio) + (got ? '<span class="st ok" style="margin-left:6px">got it</span>' : '') + '</td>'
+      + '<td class="note">' + esc(w.note || '') + (w.created_name && w.created_name !== w.raider_name ? '<div class="faint" style="font-size:12px;font-style:normal">by ' + esc(w.created_name) + '</div>' : '') + '</td>'
+      + '<td class="acts">' + (isEditor || mine ? '<button class="btn sm ghost danger" data-wrm="' + w.id + '">Remove</button>' : '') + '</td></tr>';
+  }
+  $('#wishBody').innerHTML = h;
+}
+function renderWishTop(all){
+  const open = all.filter(w => !wishGot(w));
+  const byItem = {};
+  for (const w of open) (byItem[w.item] = byItem[w.item] || []).push(w);
+  const top = Object.entries(byItem).map(([id, ws]) => ({id: Number(id), ws})).sort((a, b) => b.ws.length - a.ws.length || (ITEM[a.id] ? ITEM[a.id].name : '').localeCompare(ITEM[b.id] ? ITEM[b.id].name : '')).slice(0, 10);
+  $('#wishTop').innerHTML = top.length ? top.map(x => '<div class="topwish"><span class="n">' + x.ws.length + '</span>' + icoHTML(ITEM[x.id]) + '<span class="nm" title="' + esc(x.ws.map(w => w.raider_name).join(', ')) + '">' + esc(ITEM[x.id] ? ITEM[x.id].name : 'Item ' + x.id) + '</span></div>').join('')
+    : '<span class="muted" style="font-size:13px">Nothing on a wishlist yet.</span>';
+}
+function renderWantLine(){
+  const el = $('#wantLine'); if (!el) return;
+  if (readOnly) { el.hidden = true; return; }
+  const id = Number($('#fItem').dataset.id || 0), boss = $('#fBoss').value;
+  let groups = [];
+  if (id) { const ws = wishesFor(id); if (ws.length) groups = [{item: ITEM[id], ws}]; }
+  else if (boss) {
+    const seen = {};
+    for (const w of wishesHere()) { if (wishGot(w)) continue; const it = ITEM[w.item]; if (!it || !it.sources.includes(boss)) continue; (seen[w.item] = seen[w.item] || []).push(w); }
+    groups = Object.entries(seen).map(([k, ws]) => ({item: ITEM[k], ws: ws.sort((a, b) => b.prio - a.prio)})).sort((a, b) => b.ws.length - a.ws.length || a.item.name.localeCompare(b.item.name));
+  }
+  if (!groups.length) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = '<div class="t">' + (id ? 'Who wants this item' : 'Wishes for this boss') + '</div>'
+    + groups.map(g => '<div class="w">' + (id ? '' : '<span class="it">' + esc(g.item.name) + '</span>')
+        + g.ws.map(w => { const rd = raiderById(w.raider); return '<button type="button" data-wpick="' + w.raider + '" title="' + esc(w.note || 'pick this raider') + '" style="color:' + (rd ? clsVar(rd.cls) : 'inherit') + '">' + esc(w.raider_name) + '<span class="p">' + PRIO[w.prio] + '</span></button>'; }).join('')
+      + '</div>').join('');
+}
+$('#wantLine').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-wpick]'); if (!b) return;
+  $('#fRaider').value = b.dataset.wpick; $('#newRaider').hidden = true;
+});
+$('#wishSignIn').addEventListener('click', () => { $('#loginBox').hidden = false; $('#loginBox').scrollIntoView({behavior: 'smooth', block: 'start'}); });
+$('#wfBoss').addEventListener('change', renderWishForm);
+$('#wishForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if (!SUPA || !user) return say('Sign in first.');
+  const raider = raiderById($('#wfRaider').value), item = Number($('#wfItem').value), boss = $('#wfBoss').value;
+  if (!raider) return say('Choose the raider.');
+  if (!item) return say('Choose the item.');
+  if (wishesHere().filter(w => w.raider === raider.id && !wishGot(w)).length >= 30) return say(raider.name + ' already has 30 open wishes.');
+  const {error} = await SUPA.from('wishlist').insert({game: gameKey, raider: raider.id, raider_name: raider.name, item, boss, prio: Number($('#wfPrio').value), note: $('#wfNote').value.trim(), created_by: user.id, created_name: userName()});
+  if (error) return say(/duplicate|unique/i.test(error.message || '') ? raider.name + ' already has that item on the wishlist.' : 'Could not save: ' + (error.message || error.code));
+  $('#wfNote').value = ''; say('Added ' + (ITEM[item] ? ITEM[item].name : 'the item') + ' to ' + raider.name + "'s wishlist."); loadWishes();
+});
+$('#wishBody').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-wrm]'); if (!b) return;
+  const w = WISHES.find(x => x.id === b.dataset.wrm); if (!w) return;
+  if (!await ask('Take ' + (ITEM[w.item] ? ITEM[w.item].name : 'this item') + ' off ' + w.raider_name + "'s wishlist?", 'Remove')) return;
+  const {error} = await SUPA.from('wishlist').delete().eq('id', w.id);
+  if (error) return say('Could not remove: ' + (error.message || error.code));
+  loadWishes();
+});
+['#wiSearch','#wiRaider','#wiGroup','#wiShow'].forEach(s => $(s).addEventListener('input', renderWishes));
 
 /* ---------------- matrix ---------------- */
 function renderMatrix(){
@@ -1671,6 +1855,7 @@ function renderAll(){
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
   if (ui.view === 'att') renderAttendance();
+  if (ui.view === 'wish') renderWishes();
   if (ui.view === 'matrix') renderMatrix();
   if (ui.view === 'craft') renderCraft();
   if (ui.view === 'mats') renderMats();
@@ -1700,7 +1885,7 @@ $('#logBody').addEventListener('click', async ev => {
 $('#awardForm').addEventListener('submit', submitAward);
 $('#awardCancel').addEventListener('click', () => { resetForm(true); });
 $('#fRaider').addEventListener('change', () => { $('#newRaider').hidden = $('#fRaider').value !== '__new'; if ($('#fRaider').value === '__new') $('#fNewName').focus(); });
-$('#fBoss').addEventListener('change', () => { const id = $('#fItem').dataset.id; if (id && $('#fBoss').value && !ITEM[id].sources.includes($('#fBoss').value)) { $('#fItem').value=''; clearItem(); } comboActive = -1; if (document.activeElement === $('#fItem')) { renderCombo(); $('#itemList').hidden = false; } });
+$('#fBoss').addEventListener('change', () => { renderWantLine(); const id = $('#fItem').dataset.id; if (id && $('#fBoss').value && !ITEM[id].sources.includes($('#fBoss').value)) { $('#fItem').value=''; clearItem(); } comboActive = -1; if (document.activeElement === $('#fItem')) { renderCombo(); $('#itemList').hidden = false; } });
 $('#fItem').addEventListener('focus', () => { comboActive = -1; renderCombo(); $('#itemList').hidden = false; });
 $('#fItem').addEventListener('input', () => { clearItem(); comboActive = -1; renderCombo(); $('#itemList').hidden = false; });
 $('#fItem').addEventListener('keydown', ev => {
