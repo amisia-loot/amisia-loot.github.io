@@ -307,6 +307,13 @@ tr.done td{opacity:.5}
 .nightrow:last-child{border-bottom:0}
 .nightrow .d{font-family:var(--label);letter-spacing:.06em;min-width:74px}
 .nightrow .n{color:var(--muted);flex:1}
+.wclitem{border-bottom:1px solid var(--line)}
+.wclitem:last-child{border-bottom:0}
+.wclitem .nightrow{border-bottom:0}
+.wclitem details{margin:0 0 8px 22px;font-size:12px;color:var(--muted)}
+.wclitem summary{cursor:pointer}
+.wclnew{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
+.wclnew label{display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--text)}
 /* ---------- wishlist ---------- */
 .prio{display:inline-block;min-width:62px;text-align:center;padding:1px 8px;border-radius:3px;font-family:var(--label);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;border:1px solid}
 .prio.p3{color:var(--gold);border-color:var(--gold)}
@@ -384,7 +391,7 @@ tr.got td{opacity:.5}
     <button class="tab" role="tab" data-view="import">Import</button>
   </nav>
 
-  <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="online" id="onlineBar" hidden></span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
+  <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="online" id="onlineBar" hidden></span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm ghost" id="discardBtn" hidden title="Go back to the last saved version">Discard</button><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
   <div class="panel" id="loginBox" hidden style="margin-top:14px">
     <div class="panel-h">Sign in to edit<span class="grow"></span><button class="btn sm ghost" id="loginClose">Close</button></div>
     <div class="panel-b stack">
@@ -767,7 +774,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789485495';
+const BUILD_ID = '1789486374';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -937,6 +944,7 @@ readOnly = true;   // everyone is a viewer until the server says otherwise
 function setBar(kind, msg){
   const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
   $('#publishBtn').hidden = !(dirty && isEditor);
+  $('#discardBtn').hidden = !(dirty && isEditor);
   $('#loginBtn').hidden = !!user; $('#logoutBtn').hidden = !user;
   $('#who').innerHTML = user ? esc(user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : 'viewer') + '</span>' : '';
 }
@@ -951,8 +959,8 @@ function refreshBar(){
 function markDirty(){
   dirty = true; state.savedAt = Date.now();
   try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true}))); } catch(e){}
-  refreshBar(); renderAll();
   clearTimeout(saveTimer); saveTimer = setTimeout(publish, 4000);
+  refreshBar(); renderAll();
 }
 async function publish(){
   clearTimeout(saveTimer);
@@ -1436,7 +1444,7 @@ $('#nightList').addEventListener('click', async ev => {
 ['#attSearch','#attShow'].forEach(s => $(s).addEventListener('input', renderAttendance));
 
 /* ---------------- warcraft logs ---------------- */
-let wclRaw = [], wclRows = [], wclHost = 'fresh.warcraftlogs.com', wclBusy = false, wclFirst = '', wclPick = {};
+let wclRaw = [], wclRows = [], wclHost = 'fresh.warcraftlogs.com', wclBusy = false, wclFirst = '', wclPick = {}, wclNew = {}, wclOpen = new Set();
 const WCL_ERR = {
   missing_secrets: 'Warcraft Logs is not connected yet: add WCL_CLIENT_ID and WCL_CLIENT_SECRET under Edge Functions, Secrets in Supabase.',
   bad_secrets: 'Warcraft Logs refused the API client. Check WCL_CLIENT_ID and WCL_CLIENT_SECRET in Supabase.',
@@ -1463,42 +1471,62 @@ function wclResolve(reports){
     }
     const present = presentOn(date);
     const newNames = players.filter(pl => !byName(pl.name)).map(pl => pl.name);
-    const adds = players.some(pl => { const r = byName(pl.name); return !r || !present.has(r.id); });
+    // roster raiders in the log who are not ticked on that night yet
+    const missing = players.filter(pl => { const r = byName(pl.name); return r && !present.has(r.id); }).length;
     const known = players.length - newNames.length;
-    return {code: rep.code, date, zone: rep.zone || '', players, benched: all.filter(pl => pl.presence === 2).length, newNames, known,
+    return {code: rep.code, date, zone: rep.zone || '', players, benched: all.filter(pl => pl.presence === 2).length, newNames, known, missing,
       odd: players.length >= 5 && known / players.length < 0.3, big: players.length > 30,
-      again: done.has(rep.code), status: adds ? 'ok' : 'dup'};
+      again: done.has(rep.code), status: missing || newNames.length ? 'ok' : 'dup'};
   }).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
 // Ticked by default: logs with new attendance on nights since the ledger's first raid night,
 // unless hardly anyone in the log is on the roster. The officer's own ticks always win.
-const wclDefault = r => r.status === 'ok' && (!wclFirst || r.date >= wclFirst) && !r.odd;
+// Names not on the roster are never added unless the officer ticks them one by one.
+const wclDefault = r => r.status === 'ok' && r.missing > 0 && (!wclFirst || r.date >= wclFirst) && !r.odd;
 const wclPicked = r => r.status === 'ok' && (r.code in wclPick ? wclPick[r.code] : wclDefault(r));
+const wclTicks = r => r.missing + r.newNames.filter(nm => wclNew[nm.toLowerCase()]).length;
 function wclLoad(reports, host){
-  wclHost = host || wclHost; wclRaw = reports || []; wclPick = {};
+  wclHost = host || wclHost; wclRaw = reports || []; wclPick = {}; wclNew = {}; wclOpen = new Set();
   wclFirst = allNights().map(n => n.date).sort()[0] || '';
   wclRows = wclResolve(wclRaw); wclRender();
 }
 function wclRender(){
-  const open = wclRows.filter(r => r.status === 'ok').length, pick = wclRows.filter(wclPicked).length;
+  const open = wclRows.filter(r => r.status === 'ok').length, picked = wclRows.filter(wclPicked);
+  const ticks = picked.reduce((s, r) => s + wclTicks(r), 0);
   const warn = s => ' · <span style="color:var(--warn)">' + s + '</span>';
   $('#wclList').hidden = !wclRows.length;
-  $('#wclList').innerHTML = (open ? '<p class="muted" style="margin:0 0 6px;font-size:12px">Tick the logs to import' + (wclFirst ? '. Nights before ' + fmtShort(wclFirst) + ', your first night in the ledger, start unticked' : '') + '. Tick <a href="#" data-wclall="1">all</a> · <a href="#" data-wclall="0">none</a></p>' : '')
-    + wclRows.map(r => '<label class="nightrow" style="cursor:' + (r.status === 'ok' ? 'pointer' : 'default;opacity:.55') + '">'
+  $('#wclList').innerHTML = (open ? '<p class="muted" style="margin:0 0 6px;font-size:12px">Tick the logs to import. Only raiders already on the roster are ticked; names that are not on the roster stay out unless you tick them under the log' + (wclFirst ? '. Nights before ' + fmtShort(wclFirst) + ', your first night in the ledger, start unticked' : '') + '. Tick <a href="#" data-wclall="1">all</a> · <a href="#" data-wclall="0">none</a></p>' : '')
+    + wclRows.map(r => '<div class="wclitem"><label class="nightrow" style="cursor:' + (r.status === 'ok' ? 'pointer' : 'default;opacity:.55') + '">'
     + '<input type="checkbox" data-wcl="' + esc(r.code) + '"' + (wclPicked(r) ? ' checked' : '') + (r.status === 'ok' ? '' : ' disabled') + ' style="margin:0 8px 0 0;flex:none">'
     + '<span class="d">' + fmtShort(r.date) + '</span>'
     + '<span class="n">' + (r.status === 'ok' ? (r.again ? '<span class="st ok">Update</span> ' : '') : '<span class="st dup">Imported</span> ')
-    + esc(r.zone || '?') + ' · ' + r.players.length + ' there' + (r.benched && !$('#wclBench').checked ? ' · ' + r.benched + ' bench' : '') + (r.newNames.length ? ' · ' + r.newNames.length + ' new' : '')
+    + esc(r.zone || '?') + ' · ' + r.players.length + ' there' + (r.missing ? ' · ' + r.missing + ' to tick' : '') + (r.benched && !$('#wclBench').checked ? ' · ' + r.benched + ' bench' : '')
     + (r.odd ? warn('only ' + r.known + ' on the roster') : '') + (r.big ? warn('more than one raid?') : '') + '</span>'
-    + '<a class="muted" style="font-size:12px" href="https://' + wclHost + '/reports/' + encodeURIComponent(r.code) + '" target="_blank" rel="noopener">log</a></label>').join('');
+    + '<a class="muted" style="font-size:12px" href="https://' + wclHost + '/reports/' + encodeURIComponent(r.code) + '" target="_blank" rel="noopener">log</a></label>'
+    + (r.newNames.length ? '<details data-wclopen="' + esc(r.code) + '"' + (wclOpen.has(r.code) ? ' open' : '') + '><summary>' + r.newNames.length + ' not on the roster'
+        + (r.newNames.some(nm => wclNew[nm.toLowerCase()]) ? ' · ' + r.newNames.filter(nm => wclNew[nm.toLowerCase()]).length + ' to add' : '') + '</summary>'
+        + '<div class="wclnew">' + r.newNames.map(nm => '<label><input type="checkbox" data-wclnew="' + esc(nm) + '" data-code="' + esc(r.code) + '"' + (wclNew[nm.toLowerCase()] ? ' checked' : '') + '>' + esc(nm) + '</label>').join('') + '</div></details>' : '')
+    + '</div>').join('');
   $('#wclImport').hidden = !wclRows.length;
-  $('#wclImport').disabled = !pick;
-  $('#wclImport').textContent = pick ? 'Import ' + pick + ' log' + (pick === 1 ? '' : 's') : open ? 'Tick a log to import' : 'Nothing new in these logs';
+  $('#wclImport').disabled = !ticks;
+  $('#wclImport').textContent = ticks ? 'Import ' + picked.length + ' log' + (picked.length === 1 ? '' : 's') + ' · ' + ticks + ' tick' + (ticks === 1 ? '' : 's')
+    : picked.length ? 'Nobody to tick in the ticked logs' : open ? 'Tick a log to import' : 'Nothing new in these logs';
 }
 $('#wclList').addEventListener('change', ev => {
+  const nw = ev.target.closest('[data-wclnew]');
+  if (nw) {
+    wclNew[nw.dataset.wclnew.toLowerCase()] = nw.checked;
+    if (nw.checked) wclPick[nw.dataset.code] = true;
+    wclOpen.add(nw.dataset.code); wclRender(); return;
+  }
   const c = ev.target.closest('[data-wcl]'); if (!c) return;
   wclPick[c.dataset.wcl] = c.checked; wclRender();
 });
+// remember which name lists are open, so re-rendering does not close them
+$('#wclList').addEventListener('toggle', ev => {
+  const d = ev.target.closest && ev.target.closest('[data-wclopen]'); if (!d) return;
+  if (d.open) wclOpen.add(d.dataset.wclopen); else wclOpen.delete(d.dataset.wclopen);
+}, true);
 $('#wclList').addEventListener('click', ev => {
   const a = ev.target.closest('[data-wclall]'); if (!a) return;
   ev.preventDefault();
@@ -1525,7 +1553,7 @@ $('#wclFetch').addEventListener('click', async () => {
 });
 $('#wclBench').addEventListener('change', () => { if (wclRaw.length) { wclRows = wclResolve(wclRaw); wclRender(); } });
 $('#wclImport').addEventListener('click', () => {
-  const ok = wclRows.filter(wclPicked); if (!ok.length || readOnly) return;
+  const ok = wclRows.filter(r => wclPicked(r) && wclTicks(r) > 0); if (!ok.length || readOnly) return;
   let created = 0, ticked = 0;
   for (const rep of ok) {
     let n = nightOn(rep.date);
@@ -1533,6 +1561,7 @@ $('#wclImport').addEventListener('click', () => {
     n.present = Array.isArray(n.present) ? n.present : [];
     for (const pl of rep.players) {
       let r = state.raiders.find(x => x.name.toLowerCase() === pl.name.toLowerCase());
+      if (!r && !wclNew[pl.name.toLowerCase()]) continue;   // not on the roster and not picked: left out
       if (!r) { r = {id: uid(), name: pl.name, cls: pl.cls || 'Unknown'}; state.raiders.push(r); created++; }
       else if ((!r.cls || r.cls === 'Unknown') && pl.cls) r.cls = pl.cls;
       if (!n.present.includes(r.id)) { n.present.push(r.id); ticked++; }
@@ -2322,6 +2351,21 @@ function renderAll(){
 $('#tabs').addEventListener('click', ev => { const t = ev.target.closest('.tab'); if (t) showView(t.dataset.view); });
 document.addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { ev.preventDefault(); if (a.dataset.date) ui.night = a.dataset.date; showView(a.dataset.goto); if (a.closest('#guildLine')) $('#gName').focus(); } });
 $('#publishBtn').addEventListener('click', publish);
+$('#discardBtn').addEventListener('click', async () => {
+  if (!dirty) return;
+  if (saving) return say('Saving right now, try again in a moment.');
+  clearTimeout(saveTimer);   // no autosave while the question is open
+  if (!await ask('Throw away the changes that are not saved yet? The page goes back to the last saved version.', 'Discard')) {
+    if (dirty && isEditor) saveTimer = setTimeout(publish, 4000);
+    return;
+  }
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  if (!SUPA) { dirty = false; location.reload(); return; }
+  await loadFromServer(true);
+  renderHistory(true);
+  if (wclRaw.length) { wclRows = wclResolve(wclRaw); wclRender(); }
+  say('Unsaved changes discarded.');
+});
 $('#clearExample').addEventListener('click', async () => {
   if (!await ask('Remove all example raiders and awards? Your ledger starts empty.', 'Clear examples')) return;
   state.raiders = []; state.awards = []; state.example = false; ui.openCard = null; markDirty();
