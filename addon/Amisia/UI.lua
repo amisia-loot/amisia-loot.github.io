@@ -4,7 +4,7 @@ local ADDON, ns = ...
 local ROWS = 8
 local ROW_H = 21
 
-local W, list, statusText, pauseBtn, exportBox, exportScroll, pageText
+local W, list, statusText, bankText, pauseBtn, exportBox, exportScroll, pageText
 local rows = {}
 local selected = {}   -- session id -> true
 local offset = 0      -- rows scrolled away from the newest session
@@ -75,6 +75,15 @@ function ns.Refresh()
         statusText:SetText("|cffe0a344Aufnahme pausiert.|r")
     end
     pauseBtn:SetText(ns.IsEnabled() and "Pausieren" or "Fortsetzen")
+
+    local bank = ns.Bank()
+    if bank and bank.counts then
+        local bc = bank.counts
+        bankText:SetText(("|cffe2b857Gildenbank:|r %s · Mal %d · Herz %d · Edelsteine %d"):format(
+            date("%d.%m. %H:%M", bank.at), bc[32897] or 0, bc[32428] or 0, ns.GemCount(bc)))
+    else
+        bankText:SetText("|cff8f86a3Gildenbank noch nicht gezählt.|r Öffne sie einmal, dann zählt Amisia die Materialien.")
+    end
 
     local all = ordered()
     local maxOffset = math.max(0, #all - ROWS)
@@ -157,10 +166,33 @@ local function build()
     statusText = text(W, "GameFontHighlightSmall", 560)
     statusText:SetPoint("TOPLEFT", 16, -40)
 
+    bankText = text(W, "GameFontHighlightSmall", 560)
+    bankText:SetPoint("TOPLEFT", 16, -56)
+    local bankHover = CreateFrame("Frame", nil, W)
+    bankHover:SetPoint("TOPLEFT", bankText, "TOPLEFT", 0, 2)
+    bankHover:SetSize(560, 16)
+    bankHover:EnableMouse(true)
+    bankHover:SetScript("OnEnter", function(self)
+        local bank = ns.Bank()
+        if not (bank and bank.counts) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:AddLine("Gildenbank", 1, 0.82, 0)
+        GameTooltip:AddLine(("%s · %s"):format(date("%d.%m.%Y %H:%M", bank.at), bank.by or "?"), 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(("%d von %d sichtbaren Tabs mit Gegenständen"):format(bank.filled or 0, bank.tabs or 0), 0.7, 0.7, 0.7)
+        if (bank.total or 0) > (bank.tabs or 0) then
+            GameTooltip:AddLine(("%d Tabs waren beim Zählen nicht sichtbar"):format(bank.total - bank.tabs), 1, 0.6, 0.2)
+        end
+        for _, id in ipairs(ns.MAT_ORDER) do
+            GameTooltip:AddDoubleLine(ns.ItemName(id), tostring(bank.counts[id] or 0), 1, 1, 1, 1, 1, 1)
+        end
+        GameTooltip:Show()
+    end)
+    bankHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     -- list header
     local head = CreateFrame("Frame", nil, W)
     head:SetSize(568, 18)
-    head:SetPoint("TOPLEFT", 16, -66)
+    head:SetPoint("TOPLEFT", 16, -80)
     local function col(parent, x, w, label, template)
         local fs = text(parent, template or "GameFontNormalSmall", w)
         fs:SetPoint("LEFT", x, 0)
@@ -311,9 +343,9 @@ function ns.ShowExport(latestOnly)
     else
         for _, s in ipairs(src) do list[#list + 1] = s end
     end
-    if #list == 0 then
+    if #list == 0 and not ns.Bank() then
         setExport("")
-        ns.msg("Noch keine Raids zum Exportieren.")
+        ns.msg("Noch keine Raids und keine Gildenbank-Zählung zum Exportieren.")
         return
     end
     setExport(ns.ExportText(list))

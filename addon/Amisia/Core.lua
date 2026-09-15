@@ -266,6 +266,118 @@ local function onLoot(text)
 end
 
 ---------------------------------------------------------------------------
+-- Guild bank count
+-- Counts the tracked materials in every guild bank tab the player may view.
+-- A tab's items only arrive after QueryGuildBankTab, announced by
+-- GUILDBANKBAGSLOTS_CHANGED, so every such event triggers a fresh count.
+---------------------------------------------------------------------------
+local BANK_SLOTS = 98
+local HAS_BANK_API = GetGuildBankItemInfo and GetGuildBankItemLink and QueryGuildBankTab
+    and GetNumGuildBankTabs and GetGuildBankTabInfo
+local bankOpen, bankCounted, bankPending, bankNeedTabs = false, false, false, false
+
+-- minFilled: when counting while the bank closes, a result with fewer tabs holding items than
+-- the last count means the client already dropped tab data, so it is thrown away.
+local function countBank(minFilled)
+    bankPending = false
+    if not bankOpen or not DB then return end
+    local tabs = GetNumGuildBankTabs() or 0
+    if tabs == 0 then return end -- tab list not here yet, GUILDBANK_UPDATE_TABS retries
+    local counts, viewable, filled = {}, 0, 0
+    for id in pairs(ns.MATS) do counts[id] = 0 end
+    for tab = 1, tabs do
+        local _, _, isViewable = GetGuildBankTabInfo(tab)
+        if isViewable then
+            viewable = viewable + 1
+            local any = false
+            for slot = 1, BANK_SLOTS do
+                local link = GetGuildBankItemLink(tab, slot)
+                if link then
+                    any = true
+                    local id = tonumber(link:match("item:(%d+)"))
+                    if id and counts[id] then
+                        local _, count = GetGuildBankItemInfo(tab, slot)
+                        counts[id] = counts[id] + (tonumber(count) or 1)
+                    end
+                end
+            end
+            if any then filled = filled + 1 end
+        end
+    end
+    -- No tab has delivered items yet: keep the last good count instead of storing zeros.
+    if filled == 0 then return end
+    if minFilled and filled < minFilled then return end
+    DB.bank = {
+        at = time(),
+        by = UnitName("player") or "?",
+        guild = (GetGuildInfo("player")) or "",
+        counts = counts,
+        tabs = viewable,
+        filled = filled,
+        total = tabs,
+    }
+    bankCounted = true
+    refresh()
+end
+
+local function scheduleBankCount()
+    if bankPending then return end
+    bankPending = true
+    C_Timer.After(0.5, countBank)
+end
+
+local function queryBankTabs()
+    local tabs = GetNumGuildBankTabs() or 0
+    if tabs == 0 then
+        bankNeedTabs = true
+        return
+    end
+    bankNeedTabs = false
+    local current = GetCurrentGuildBankTab and GetCurrentGuildBankTab()
+    for tab = 1, tabs do
+        local _, _, isViewable = GetGuildBankTabInfo(tab)
+        if isViewable and tab ~= current then QueryGuildBankTab(tab) end
+    end
+    if current and current >= 1 and current <= tabs then QueryGuildBankTab(current) end
+    scheduleBankCount()
+end
+
+local function bankOpened(frame)
+    if not HAS_BANK_API then return end
+    if not bankOpen then bankCounted = false end
+    bankOpen = true
+    frame:RegisterEvent("GUILDBANKBAGSLOTS_CHANGED")
+    frame:RegisterEvent("GUILDBANK_UPDATE_TABS")
+    queryBankTabs()
+end
+
+local function bankClosed(frame, quiet)
+    if not bankOpen then return end
+    -- a change from the last moments is still waiting for the debounce: count it before closing
+    if bankPending and not quiet then
+        countBank((bankCounted and DB and DB.bank and DB.bank.filled) or 1)
+    end
+    bankOpen, bankNeedTabs = false, false
+    frame:UnregisterEvent("GUILDBANKBAGSLOTS_CHANGED")
+    frame:UnregisterEvent("GUILDBANK_UPDATE_TABS")
+    if not quiet and bankCounted and DB and DB.bank then
+        local c = DB.bank.counts
+        msg(("Gildenbank gezählt: Mal %d, Herz %d, Edelsteine %d (%d Tabs)."):format(
+            c[32897] or 0, c[32428] or 0, ns.GemCount(c), DB.bank.tabs or 0))
+        if (DB.bank.total or 0) > (DB.bank.tabs or 0) then
+            msg(("%d von %d Tabs sind für dich nicht sichtbar. Ihr Inhalt fehlt in dieser Zählung."):format(
+                (DB.bank.total or 0) - (DB.bank.tabs or 0), DB.bank.total or 0))
+        end
+        if (DB.bank.filled or 0) < (DB.bank.tabs or 0) then
+            msg(("Nur %d von %d Tabs haben Gegenstände geliefert. Sind die übrigen nicht leer, die Bank beim nächsten Mal länger offen lassen."):format(
+                DB.bank.filled or 0, DB.bank.tabs or 0))
+        end
+    end
+end
+
+function ns.Bank() return DB and DB.bank end
+
+---------------------------------------------------------------------------
 -- Public helpers for the window
 ---------------------------------------------------------------------------
 function ns.Sessions() return DB and DB.sessions or {} end
@@ -311,6 +423,15 @@ end
 -- Text block for the ledger's Import tab. One S..E block per session.
 function ns.ExportText(list)
     local lines = { "#AMISIA 1 " .. (UnitName("player") or "?") }
+    local bank = DB and DB.bank
+    if bank and bank.counts then
+        -- K <epoch seconds> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>
+        lines[#lines + 1] = ("K %d %s %s %d %d %d %s"):format(bank.at or 0, date("%Y-%m-%d", bank.at), date("%H:%M", bank.at),
+            bank.filled or 0, bank.tabs or 0, bank.total or bank.tabs or 0, bank.by or "?")
+        for _, id in ipairs(ns.MAT_ORDER) do
+            lines[#lines + 1] = ("B %d %d"):format(id, bank.counts[id] or 0)
+        end
+    end
     for _, s in ipairs(list) do
         lines[#lines + 1] = ("S %s %s %d %s"):format(s.id, s.date, tonumber(s.instanceID) or 0, s.zone or "?")
         local names = {}
@@ -362,6 +483,13 @@ events:SetScript("OnEvent", function(self, event, arg1)
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         self:RegisterEvent("GROUP_ROSTER_UPDATE")
         self:RegisterEvent("CHAT_MSG_LOOT")
+        if HAS_BANK_API then
+            -- pcall: a client without one of these events must not break loading
+            for _, ev in ipairs({ "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "PLAYER_INTERACTION_MANAGER_FRAME_HIDE",
+                                  "GUILDBANKFRAME_OPENED", "GUILDBANKFRAME_CLOSED" }) do
+                pcall(self.RegisterEvent, self, ev)
+            end
+        end
     elseif event == "CHAT_MSG_LOOT" then
         if active and type(arg1) == "string" and mentionsMat(arg1) then
             onLoot(arg1)
@@ -374,7 +502,23 @@ events:SetScript("OnEvent", function(self, event, arg1)
                 evaluate()
             end)
         end
+    elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" or event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" then
+        if Enum and Enum.PlayerInteractionType and arg1 == Enum.PlayerInteractionType.GuildBanker then
+            if event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" then bankOpened(self) else bankClosed(self) end
+        end
+    elseif event == "GUILDBANKFRAME_OPENED" then
+        bankOpened(self)
+    elseif event == "GUILDBANKFRAME_CLOSED" then
+        bankClosed(self)
+    elseif event == "GUILDBANK_UPDATE_TABS" then
+        if bankOpen then
+            if bankNeedTabs then queryBankTabs() else scheduleBankCount() end
+        end
+    elseif event == "GUILDBANKBAGSLOTS_CHANGED" then
+        if bankOpen then scheduleBankCount() end
     else
+        -- a loading screen always leaves the bank
+        if event == "PLAYER_ENTERING_WORLD" then bankClosed(self, true) end
         -- instance information settles a moment after the loading screen
         C_Timer.After(1, evaluate)
     end
@@ -395,6 +539,14 @@ SlashCmdList.AMISIA = function(input)
                 c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
         else
             msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
+        end
+        local bank = ns.Bank()
+        if bank and bank.counts then
+            local c = bank.counts
+            msg(("Gildenbank vom %s: Mal %d, Herz %d, Edelsteine %d."):format(date("%d.%m. %H:%M", bank.at),
+                c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+        else
+            msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
         end
     elseif ns.Toggle then
         ns.Toggle(cmd == "export")

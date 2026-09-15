@@ -270,6 +270,9 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 .mat .nums b{color:var(--text);font-size:18px;font-weight:600;display:block;line-height:1.1}
 .mat .nums .bank b{color:var(--gold)}
 .mat .nums .open b{color:var(--warn)}
+.mat .counted{margin-top:6px;font-size:13px;color:var(--muted)}
+.mat .counted b{color:var(--gold);font-variant-numeric:tabular-nums}
+.mat .counted .warn{color:var(--warn)}
 .matgrid{display:grid;grid-template-columns:1fr 340px;gap:18px;margin-top:18px;align-items:start}
 @media (max-width:900px){.matgrid{grid-template-columns:1fr}}
 .matgrid.solo{grid-template-columns:1fr}
@@ -700,6 +703,7 @@ tr.got td{opacity:.5}
         </div>
         <div class="panel" id="amResult" hidden>
           <div class="panel-h">Raid sessions from the Amisia addon<span class="grow"></span><span class="muted" id="amSummary" style="text-transform:none;letter-spacing:0"></span></div>
+          <div id="amBank" hidden></div>
           <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table><thead><tr><th>Status</th><th>Date</th><th>Raid</th><th class="num">Raiders</th><th>New raiders</th><th>Materials looted</th></tr></thead><tbody id="amBody"></tbody></table></div>
         </div>
         <div class="panel" id="glResult" hidden>
@@ -724,6 +728,7 @@ tr.got td{opacity:.5}
           <ol class="steps">
             <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group and who looted Mark of the Illidari, Heart of Darkness or one of the six epic raid gems.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
+            <li>Open the guild bank before exporting and leave it open for a few seconds. The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Both exports can go into the box at the same time. Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and drops that are not from one of the nine Burning Crusade raids are ignored.</p>
@@ -752,7 +757,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789405765';
+const BUILD_ID = '1789483983';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1647,10 +1652,17 @@ function matStock(id){
   const open = rows.filter(r => r.kind === 'request' && r.status === 'open').reduce((s, r) => s + r.qty, 0);
   return {looted, adjust, handed, open, bank: looted + adjust - handed};
 }
+// The last guild bank count from the Amisia addon. It is a separate number: loot and handouts since the count are not in it.
+function bankLine(id){
+  const b = state.bank;
+  if (!b || !b.items || !(id in b.items)) return '';
+  return '<div class="counted" title="Counted in the guild bank by the Amisia addon. Loot deposited or handed out after '+esc(fmtShort(b.date)+' '+b.time)+' is not in this number.">Counted in the bank: <b>'+b.items[id]+'</b> · '+esc(fmtShort(b.date))+' '+esc(b.time)+' · '+esc(b.by)
+    + (bankIncomplete(b) ? ' · <span class="warn">'+(b.total > b.tabs ? (b.total - b.tabs)+' tab'+(b.total - b.tabs === 1 ? '' : 's')+' hidden' : 'not every tab loaded')+'</span>' : '') + '</div>';
+}
 function matOptions(sel){ return matsHere().map(m => '<option value="'+m.id+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
 function renderMats(){
   const mats = matsHere();
-  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div></div></div>'; }).join('')
+  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
     : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials for '+esc((GAME[gameKey]||GAME.tbc).name)+'</b>Materials are tracked for TBC Anniversary so far.</div>';
   for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
   for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
@@ -1806,7 +1818,7 @@ document.addEventListener('click', async ev => {
 
 /* ---------------- Gargul import ---------------- */
 const GL_CLASS = {1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',10:'Monk',11:'Druid'};
-let glRows = [], amRows = [];
+let glRows = [], amRows = [], amBank = null;
 const INSTANCE_ZONE = {532: 'kara', 565: 'gruul', 544: 'mag', 548: 'ssc', 550: 'tk', 534: 'hyjal', 564: 'bt', 568: 'za', 580: 'swp'};
 const matloot = () => state.matloot || (state.matloot = []);
 // Pulls every #AMISIA ... #END block out of the pasted text; the rest goes to the Gargul parser.
@@ -1835,6 +1847,52 @@ function amParse(blocks){
   }
   return out;
 }
+// The newest guild bank count in the pasted export:
+// "K <epoch> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>", then "B <itemID> <count>" per material.
+function amParseBank(blocks){
+  let best = null;
+  for (const b of blocks) {
+    let snap = null;
+    for (const raw of b.split(/\r?\n/)) {
+      const f = raw.trim().split(/\s+/);
+      if (f[0] === 'K' && f.length >= 7 && /^\d+$/.test(f[1]) && /^\d{4}-\d{2}-\d{2}$/.test(f[2]) && /^\d{2}:\d{2}$/.test(f[3])) {
+        const n = x => Math.max(0, Math.floor(Number(x) || 0));
+        snap = {at: Number(f[1]), date: f[2], time: f[3], filled: n(f[4]), tabs: n(f[5]), total: n(f[6]), by: f[7] ? glCleanName(f[7]) : '?', items: {}};
+      } else if (f[0] === 'B' && snap && f.length >= 3 && /^\d+$/.test(f[1])) {
+        snap.items[Number(f[1])] = Math.max(0, Math.floor(Number(f[2]) || 0));
+      }
+    }
+    if (snap && Object.keys(snap.items).length && (!best || snap.at > best.at)) best = snap;
+  }
+  return best;
+}
+// A count only replaces an older one, so pasting an old export never rolls the bank back.
+function amBankResolve(snap){
+  if (!snap) return null;
+  const cur = state.bank;
+  return Object.assign({}, snap, {status: !cur || snap.at > cur.at ? 'ok' : snap.at === cur.at ? 'dup' : 'old'});
+}
+const bankIncomplete = b => (b.tabs && b.filled < b.tabs) || b.total > b.tabs;
+function amBankRender(){
+  const el = $('#amBank');
+  if (!amBank) { el.hidden = true; el.innerHTML = ''; return; }
+  const cur = state.bank, st = amBank.status;
+  el.hidden = false;
+  el.innerHTML = '<div style="padding:12px 16px;border-bottom:1px solid var(--line)">'
+    + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (st === 'ok' ? '<span class="st ok">Import</span>' : '<span class="st dup">' + (st === 'dup' ? 'Imported' : 'Older') + '</span>')
+    + '<b>Guild bank count</b><span class="muted">' + esc(fmtDate(amBank.date)) + ' ' + esc(amBank.time) + ' · ' + esc(amBank.by) + '</span></div>'
+    + '<div class="chips" style="margin-top:8px">' + matsHere().filter(m => m.id in amBank.items).map(m => {
+        const n = amBank.items[m.id], d = st === 'ok' && cur && cur.items && m.id in cur.items ? n - cur.items[m.id] : 0;
+        return '<span class="chip">' + esc(m.name) + ' <b>' + n + '</b>' + (d ? ' <span style="color:' + (d > 0 ? 'var(--good)' : 'var(--bad)') + '">' + (d > 0 ? '+' : '') + d + '</span>' : '') + '</span>';
+      }).join('') + '</div>'
+    + (amBank.tabs && amBank.filled < amBank.tabs ? '<p style="margin:8px 0 0;font-size:13px;color:var(--warn)">Only ' + amBank.filled + ' of ' + amBank.tabs + ' bank tabs delivered items. If the others are not empty, open the bank again for a few seconds and export once more.</p>' : '')
+    + (amBank.total > amBank.tabs ? '<p style="margin:8px 0 0;font-size:13px;color:var(--warn)">' + (amBank.total - amBank.tabs) + ' of ' + amBank.total + ' bank tabs were hidden from ' + esc(amBank.by) + ', so their contents are missing. Count with a character that can see every tab.</p>' : '')
+    + '<p class="muted" style="margin:8px 0 0;font-size:13px">' + (st === 'old'
+        ? 'A newer count from ' + esc(fmtDate(cur.date)) + ' ' + esc(cur.time) + ' is already saved, so this one is skipped.'
+        : st === 'dup' ? 'This count is already saved.'
+        : 'Importing saves this as the current guild bank count and shows it on the Mats tab next to the ledger stock.' + (cur ? ' The coloured number is the change since the count from ' + esc(fmtDate(cur.date)) + ' ' + esc(cur.time) + '.' : ''))
+    + '</p></div>';
+}
 function amResolve(sessions){
   const dups = $('#glDups').checked, seen = new Set(), done = new Set(state.addonSessions || []);
   return sessions.filter(s => !seen.has(s.sid) && seen.add(s.sid)).map(s => {
@@ -1851,9 +1909,10 @@ function amResolve(sessions){
   }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 }
 function amRender(){
-  if (!amRows.length) { $('#amResult').hidden = true; return; }
+  amBankRender();
+  if (!amRows.length && !amBank) { $('#amResult').hidden = true; return; }
   const ok = amRows.filter(s => s.status === 'ok').length;
-  $('#amSummary').textContent = ok + ' to import · ' + (amRows.length - ok) + ' already imported';
+  $('#amSummary').textContent = amRows.length ? ok + ' to import · ' + (amRows.length - ok) + ' already imported' : 'no raid sessions in this export';
   $('#amBody').innerHTML = amRows.map(s => {
     const z = INSTANCE_ZONE[s.instance];
     const mats = Object.entries(s.mats).map(([id, n]) => n + ' × ' + esc(matName(Number(id)))).join(', ');
@@ -1869,10 +1928,11 @@ function amRender(){
 function impRender(){
   const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length;
   $('#glResult').hidden = !glRows.length;
-  $('#impBar').hidden = !(glRows.length || amRows.length);
+  $('#impBar').hidden = !(glRows.length || amRows.length || amBank);
   const parts = [];
   if (okG) parts.push(okG + ' award' + (okG === 1 ? '' : 's'));
   if (okA) parts.push(okA + ' raid session' + (okA === 1 ? '' : 's'));
+  if (amBank && amBank.status === 'ok') parts.push('the guild bank count');
   $('#impSummary').textContent = parts.length ? parts.join(' and ') + ' ready to import' : 'Nothing new, everything in this export is already in the ledger';
   $('#glImport').disabled = !parts.length;
   $('#glImport').textContent = parts.length ? 'Import ' + parts.join(' and ') : 'Import';
@@ -2048,19 +2108,21 @@ $('#glPreview').addEventListener('click', () => {
   const txt = $('#glText').value; if (!txt.trim()) return say('Paste a Gargul or Amisia export first.');
   const {blocks, rest} = amSplit(txt);
   amRows = blocks.length ? amResolve(amParse(blocks)) : [];
+  amBank = blocks.length ? amBankResolve(amParseBank(blocks)) : null;
   glRows = rest.trim() ? glResolve(glParse(rest)) : [];
-  if (!glRows.length && !amRows.length) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
+  if (!glRows.length && !amRows.length && !amBank) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
 });
 $('#glDups').addEventListener('change', () => {
   if (glRows.length) { glRows = glResolve(glRows); glRender(); }
   if (amRows.length) { amRows = amResolve(amRows); amRender(); }
+  if (amBank) { amBank = amBankResolve(amBank); amRender(); }
   impRender();
 });
 $('#glImport').addEventListener('click', () => {
   const ok = glRows.filter(r => r.status === 'ok');
-  if (!ok.length && !amRows.some(s => s.status === 'ok')) return;
+  if (!ok.length && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
   const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
   document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
   let created = 0, base = Date.now();
@@ -2073,12 +2135,16 @@ $('#glImport').addEventListener('click', () => {
   }
   const am = importAmisia();
   created += am.created;
-  glRows = []; amRows = []; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true;
+  // checked again at import time: another officer may have saved a newer count since the preview
+  const bank = amBank && amBank.status === 'ok' && (!state.bank || amBank.at > state.bank.at) ? amBank : null;
+  if (bank) state.bank = {at: bank.at, date: bank.date, time: bank.time, by: bank.by, filled: bank.filled, tabs: bank.tabs, total: bank.total, items: bank.items};
+  glRows = []; amRows = []; amBank = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true;
   markDirty();
   const said = [];
   if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
   if (am.sessions) said.push(am.sessions + ' raid session' + (am.sessions===1?'':'s') + (am.looted ? ' with ' + am.looted + ' material' + (am.looted===1?'':'s') : ''));
-  say('Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.');
+  if (bank) said.push('the guild bank count');
+  say(said.length ? 'Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.' : 'Nothing new to import.');
 });
 
 /* ---------------- tooltip ---------------- */
@@ -2212,7 +2278,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
