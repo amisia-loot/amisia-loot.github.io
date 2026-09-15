@@ -774,7 +774,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789487894';
+const BUILD_ID = '1789488716';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -877,17 +877,19 @@ const nights = () => state.nights || (state.nights = []);
 const nightOn = d => nights().find(n => n.date === d);
 function allNights(){
   const byDate = {};
-  for (const n of nights()) byDate[n.date] = {date: n.date, present: Array.isArray(n.present) ? n.present : [], rec: n};
-  for (const a of state.awards) if (!byDate[a.date]) byDate[a.date] = {date: a.date, present: [], rec: null};
+  for (const n of nights()) byDate[n.date] = {date: n.date, present: Array.isArray(n.present) ? n.present : [], rec: n, off: !!n.off};
+  for (const a of state.awards) if (!byDate[a.date]) byDate[a.date] = {date: a.date, present: [], rec: null, off: false};
   return Object.values(byDate).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
+// Nights that count for attendance: an officer can take out an evening that was no real raid, its loot stays.
+const countedNights = () => allNights().filter(n => !n.off);
 function presentOn(date){
   const n = nightOn(date), s = new Set(n && Array.isArray(n.present) ? n.present : []);
   for (const a of state.awards) if (a.date === date) s.add(a.raider);
   return s;
 }
 function attendance(rid){
-  const list = allNights(); let was = 0;
+  const list = countedNights(); let was = 0;
   for (const n of list) if (presentOn(n.date).has(rid)) was++;
   return {was, total: list.length, rate: list.length ? was / list.length : 0};
 }
@@ -1140,7 +1142,7 @@ $('#editorsList').addEventListener('click', async ev => {
 
 /* ---------------- header ---------------- */
 function renderHeader(){
-  const nightList = allNights();
+  const nightList = countedNights();
   const dates = nightList.map(n => n.date).sort();
   const g = (state.guild||'').trim(), realm = (state.realm||'').trim();
   const gm = GAME[gameKey] || GAME.tbc; $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
@@ -1160,7 +1162,7 @@ function renderHeader(){
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
   document.querySelectorAll('.tab').forEach(t => {
-    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? allNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -1324,7 +1326,7 @@ function renderNight(){
   const list = allNights();
   if (!list.length) { $('#ntPick').innerHTML = ''; $('#ntBody').innerHTML = '<div class="empty"><b>No raid nights yet</b>They appear once loot is recorded or a night is entered on the Attendance tab.</div>'; return; }
   if (!ui.night || !list.some(n => n.date === ui.night)) ui.night = list[0].date;
-  $('#ntPick').innerHTML = list.map(n => '<option value="' + n.date + '"' + (n.date === ui.night ? ' selected' : '') + '>' + fmtDate(n.date) + '</option>').join('');
+  $('#ntPick').innerHTML = list.map(n => '<option value="' + n.date + '"' + (n.date === ui.night ? ' selected' : '') + '>' + fmtDate(n.date) + (n.off ? ' (not counted for attendance)' : '') + '</option>').join('');
   const i = list.findIndex(n => n.date === ui.night);
   $('#ntNext').disabled = i <= 0; $('#ntPrev').disabled = i >= list.length - 1;
   const d = nightData(ui.night);
@@ -1372,10 +1374,10 @@ $('#ntCopy').addEventListener('click', async ev => {
 /* ---------------- attendance ---------------- */
 const ATT_MAX = 24;
 function renderAttendance(){
-  const list = allNights().slice(0, ATT_MAX), q = $('#attSearch').value.trim().toLowerCase(), show = $('#attShow').value;
+  const list = countedNights().slice(0, ATT_MAX), q = $('#attSearch').value.trim().toLowerCase(), show = $('#attShow').value;
   $('#attSide').hidden = readOnly; $('#attGrid').classList.toggle('solo', readOnly);
   if (!$('#anDate').value) $('#anDate').value = list.length ? list[0].date : today();
-  const total = allNights().length;
+  const total = countedNights().length, skipped = allNights().length - total;
   let rows = state.raiders.map(r => ({r, at: attendance(r.id), aw: awardsOf(r.id)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
   if (show === 'low') rows = rows.filter(x => x.at.rate < 0.5);
   if (show === 'none') rows = rows.filter(x => !x.at.was);
@@ -1384,7 +1386,7 @@ function renderAttendance(){
   $('#attCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
   $('#attHint').hidden = false;
   $('#attHint').innerHTML = total
-    ? 'A star means the raider won loot that night, a tick means they were there without winning anything' + (allNights().length > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
+    ? 'A star means the raider won loot that night, a tick means they were there without winning anything' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
     : (readOnly ? 'No raid nights yet.' : 'No raid nights yet. Record one on the right, or import a loot export on the <a data-goto="import">Import tab</a>.');
   $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num">Items</th><th class="num">Per raid</th>'
     + list.map(n => '<th class="d">' + fmtShort(n.date).replace(' ', '<br>') + '</th>').join('') + '</tr>';
@@ -1415,7 +1417,8 @@ function renderNightList(){
   $('#nightList').innerHTML = list.length ? list.map(n => {
     const p = presentOn(n.date).size, aw = state.awards.filter(a => a.date === n.date).length;
     const zones = [...new Set(state.awards.filter(a => a.date === n.date).map(a => BOSSZONE[a.boss]).filter(Boolean))];
-    return '<div class="nightrow"><span class="d">' + fmtShort(n.date) + '</span><span class="n">' + p + ' there · ' + aw + ' item' + (aw === 1 ? '' : 's') + ' ' + zones.map(z => zTag(z)).join(' ') + '</span>'
+    return '<div class="nightrow"' + (n.off ? ' style="opacity:.6"' : '') + '><span class="d">' + fmtShort(n.date) + '</span><span class="n">' + (n.off ? '<span class="st dup">Not counted</span> ' : '') + p + ' there · ' + aw + ' item' + (aw === 1 ? '' : 's') + ' ' + zones.map(z => zTag(z)).join(' ') + '</span>'
+      + (readOnly ? '' : '<button class="btn sm ghost" data-noff="' + n.date + '" title="' + (n.off ? 'Count this night for attendance again' : 'Not a raid night, e.g. trash only: leave it out of attendance, the loot stays') + '">' + (n.off ? 'Count' : 'Don\'t count') + '</button>')
       + (readOnly || !n.rec ? '' : '<button class="btn sm ghost danger" data-nrm="' + n.date + '">Remove</button>') + '</div>';
   }).join('') : '<span class="muted" style="font-size:13px">No raid nights yet.</span>';
 }
@@ -1447,6 +1450,16 @@ $('#attBody').addEventListener('click', ev => {
   markDirty();
 });
 $('#nightList').addEventListener('click', async ev => {
+  const off = ev.target.closest('[data-noff]');
+  if (off) {
+    if (readOnly) return;
+    const date = off.dataset.noff;
+    let n = nightOn(date);
+    if (!n) { n = {id: uid(), date, present: []}; nights().push(n); }
+    if (n.off) delete n.off; else n.off = true;
+    markDirty();
+    return say(fmtShort(date) + (n.off ? ' no longer counts for attendance. Its loot stays.' : ' counts for attendance again.'));
+  }
   const b = ev.target.closest('[data-nrm]'); if (!b) return;
   const date = b.dataset.nrm, aw = state.awards.filter(a => a.date === date).length;
   if (!await ask('Remove the attendance record for ' + fmtShort(date) + '?' + (aw ? ' The ' + aw + ' award' + (aw === 1 ? '' : 's') + ' of that night stay, so the night keeps its loot winners.' : ''), 'Remove')) return;
