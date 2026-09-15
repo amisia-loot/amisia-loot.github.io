@@ -767,7 +767,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789484565';
+const BUILD_ID = '1789485495';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1436,7 +1436,7 @@ $('#nightList').addEventListener('click', async ev => {
 ['#attSearch','#attShow'].forEach(s => $(s).addEventListener('input', renderAttendance));
 
 /* ---------------- warcraft logs ---------------- */
-let wclRaw = [], wclRows = [], wclHost = 'fresh.warcraftlogs.com', wclBusy = false;
+let wclRaw = [], wclRows = [], wclHost = 'fresh.warcraftlogs.com', wclBusy = false, wclFirst = '', wclPick = {};
 const WCL_ERR = {
   missing_secrets: 'Warcraft Logs is not connected yet: add WCL_CLIENT_ID and WCL_CLIENT_SECRET under Edge Functions, Secrets in Supabase.',
   bad_secrets: 'Warcraft Logs refused the API client. Check WCL_CLIENT_ID and WCL_CLIENT_SECRET in Supabase.',
@@ -1464,20 +1464,47 @@ function wclResolve(reports){
     const present = presentOn(date);
     const newNames = players.filter(pl => !byName(pl.name)).map(pl => pl.name);
     const adds = players.some(pl => { const r = byName(pl.name); return !r || !present.has(r.id); });
-    return {code: rep.code, date, zone: rep.zone || '', players, benched: all.filter(pl => pl.presence === 2).length, newNames, again: done.has(rep.code), status: adds ? 'ok' : 'dup'};
+    const known = players.length - newNames.length;
+    return {code: rep.code, date, zone: rep.zone || '', players, benched: all.filter(pl => pl.presence === 2).length, newNames, known,
+      odd: players.length >= 5 && known / players.length < 0.3, big: players.length > 30,
+      again: done.has(rep.code), status: adds ? 'ok' : 'dup'};
   }).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 }
-function wclRender(){
-  const ok = wclRows.filter(r => r.status === 'ok').length;
-  $('#wclList').hidden = !wclRows.length;
-  $('#wclList').innerHTML = wclRows.map(r => '<div class="nightrow"' + (r.status === 'ok' ? '' : ' style="opacity:.55"') + '><span class="d">' + fmtShort(r.date) + '</span>'
-    + '<span class="n">' + (r.status === 'ok' ? '<span class="st ok">' + (r.again ? 'Update' : 'Import') + '</span> ' : '<span class="st dup">Imported</span> ')
-    + esc(r.zone || '?') + ' · ' + r.players.length + ' there' + (r.benched && !$('#wclBench').checked ? ' · ' + r.benched + ' bench' : '') + (r.newNames.length ? ' · ' + r.newNames.length + ' new' : '') + '</span>'
-    + '<a class="muted" style="font-size:12px" href="https://' + wclHost + '/reports/' + encodeURIComponent(r.code) + '" target="_blank" rel="noopener">log</a></div>').join('');
-  $('#wclImport').hidden = !wclRows.length;
-  $('#wclImport').disabled = !ok;
-  $('#wclImport').textContent = ok ? 'Import ' + ok + ' log' + (ok === 1 ? '' : 's') : 'Nothing new in these logs';
+// Ticked by default: logs with new attendance on nights since the ledger's first raid night,
+// unless hardly anyone in the log is on the roster. The officer's own ticks always win.
+const wclDefault = r => r.status === 'ok' && (!wclFirst || r.date >= wclFirst) && !r.odd;
+const wclPicked = r => r.status === 'ok' && (r.code in wclPick ? wclPick[r.code] : wclDefault(r));
+function wclLoad(reports, host){
+  wclHost = host || wclHost; wclRaw = reports || []; wclPick = {};
+  wclFirst = allNights().map(n => n.date).sort()[0] || '';
+  wclRows = wclResolve(wclRaw); wclRender();
 }
+function wclRender(){
+  const open = wclRows.filter(r => r.status === 'ok').length, pick = wclRows.filter(wclPicked).length;
+  const warn = s => ' · <span style="color:var(--warn)">' + s + '</span>';
+  $('#wclList').hidden = !wclRows.length;
+  $('#wclList').innerHTML = (open ? '<p class="muted" style="margin:0 0 6px;font-size:12px">Tick the logs to import' + (wclFirst ? '. Nights before ' + fmtShort(wclFirst) + ', your first night in the ledger, start unticked' : '') + '. Tick <a href="#" data-wclall="1">all</a> · <a href="#" data-wclall="0">none</a></p>' : '')
+    + wclRows.map(r => '<label class="nightrow" style="cursor:' + (r.status === 'ok' ? 'pointer' : 'default;opacity:.55') + '">'
+    + '<input type="checkbox" data-wcl="' + esc(r.code) + '"' + (wclPicked(r) ? ' checked' : '') + (r.status === 'ok' ? '' : ' disabled') + ' style="margin:0 8px 0 0;flex:none">'
+    + '<span class="d">' + fmtShort(r.date) + '</span>'
+    + '<span class="n">' + (r.status === 'ok' ? (r.again ? '<span class="st ok">Update</span> ' : '') : '<span class="st dup">Imported</span> ')
+    + esc(r.zone || '?') + ' · ' + r.players.length + ' there' + (r.benched && !$('#wclBench').checked ? ' · ' + r.benched + ' bench' : '') + (r.newNames.length ? ' · ' + r.newNames.length + ' new' : '')
+    + (r.odd ? warn('only ' + r.known + ' on the roster') : '') + (r.big ? warn('more than one raid?') : '') + '</span>'
+    + '<a class="muted" style="font-size:12px" href="https://' + wclHost + '/reports/' + encodeURIComponent(r.code) + '" target="_blank" rel="noopener">log</a></label>').join('');
+  $('#wclImport').hidden = !wclRows.length;
+  $('#wclImport').disabled = !pick;
+  $('#wclImport').textContent = pick ? 'Import ' + pick + ' log' + (pick === 1 ? '' : 's') : open ? 'Tick a log to import' : 'Nothing new in these logs';
+}
+$('#wclList').addEventListener('change', ev => {
+  const c = ev.target.closest('[data-wcl]'); if (!c) return;
+  wclPick[c.dataset.wcl] = c.checked; wclRender();
+});
+$('#wclList').addEventListener('click', ev => {
+  const a = ev.target.closest('[data-wclall]'); if (!a) return;
+  ev.preventDefault();
+  for (const r of wclRows) if (r.status === 'ok') wclPick[r.code] = a.dataset.wclall === '1';
+  wclRender();
+});
 $('#wclFetch').addEventListener('click', async () => {
   if (!SUPA || !user || !isEditor) return say('Sign in as an editor to load Warcraft Logs.');
   if (wclBusy) return;
@@ -1487,10 +1514,9 @@ $('#wclFetch').addEventListener('click', async () => {
     let err = data && data.error;
     if (error) { err = error.message; try { const b = await error.context.json(); if (b && b.error) err = b.error; } catch (e) {} }
     if (err) return say(WCL_ERR[err] || 'Could not load Warcraft Logs: ' + err);
-    wclHost = data.host || wclHost; wclRaw = data.reports || [];
-    wclRows = wclResolve(wclRaw); wclRender();
-    const ok = wclRows.filter(r => r.status === 'ok').length;
-    say(wclRows.length ? 'Loaded ' + wclRows.length + ' log' + (wclRows.length === 1 ? '' : 's') + ', ' + (ok ? ok + ' with someone new to tick' : 'everything already ticked') + '.' : 'Warcraft Logs has no attendance for the guild yet.');
+    wclLoad(data.reports, data.host);
+    const ok = wclRows.filter(r => r.status === 'ok').length, pick = wclRows.filter(wclPicked).length;
+    say(wclRows.length ? 'Loaded ' + wclRows.length + ' log' + (wclRows.length === 1 ? '' : 's') + ', ' + (ok ? ok + ' with someone new to tick, ' + pick + ' ticked' : 'everything already ticked') + '.' : 'Warcraft Logs has no attendance for the guild yet.');
   } catch (e) {
     say('Could not load Warcraft Logs: ' + (e.message || e));
   } finally {
@@ -1499,7 +1525,7 @@ $('#wclFetch').addEventListener('click', async () => {
 });
 $('#wclBench').addEventListener('change', () => { if (wclRaw.length) { wclRows = wclResolve(wclRaw); wclRender(); } });
 $('#wclImport').addEventListener('click', () => {
-  const ok = wclRows.filter(r => r.status === 'ok'); if (!ok.length || readOnly) return;
+  const ok = wclRows.filter(wclPicked); if (!ok.length || readOnly) return;
   let created = 0, ticked = 0;
   for (const rep of ok) {
     let n = nightOn(rep.date);
