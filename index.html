@@ -774,7 +774,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789486374';
+const BUILD_ID = '1789487894';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -964,7 +964,8 @@ function markDirty(){
 }
 async function publish(){
   clearTimeout(saveTimer);
-  if (!dirty || !isEditor || !SUPA || saving) return;
+  if (dirty && SUPA && user && !isEditor && !saving) await refreshRole();
+  if (!dirty || !isEditor || !SUPA || saving) { refreshBar(); return; }
   saving = true; refreshBar(); $('#publishBtn').disabled = true;
   const clean = Object.assign({}, state); delete clean.dirty;
   try {
@@ -990,14 +991,24 @@ async function loadFromServer(force){
   } else serverVersion = Number(data.version);
   refreshBar();
 }
+// Supabase re-announces the session on tab focus and token refresh. The role stays as it is
+// while the server is asked, and a failed check keeps the last role of the same account,
+// so a click or an autosave in that moment is not refused.
+let roleUser = null;
 async function refreshRole(){
-  isEditor = false; isOwner = false;
-  if (SUPA && user) {
+  const me = SUPA && user ? user.id : null;
+  let ed = false, own = false;
+  if (me) {
     try {
       const [e, o] = await Promise.all([SUPA.rpc('is_editor'), SUPA.rpc('is_owner')]);
-      isEditor = !!e.data; isOwner = !!o.data;
-    } catch (err) {}
+      if (e.error || o.error) throw e.error || o.error;
+      ed = !!e.data; own = !!o.data;
+    } catch (err) {
+      if (roleUser === me) return;
+    }
   }
+  if ((SUPA && user ? user.id : null) !== me) return;   // signed in or out while asking: that call decides
+  isEditor = ed; isOwner = own; roleUser = me;
   readOnly = !isEditor;
 }
 async function renderEditors(){
@@ -1534,6 +1545,7 @@ $('#wclList').addEventListener('click', ev => {
   wclRender();
 });
 $('#wclFetch').addEventListener('click', async () => {
+  if (SUPA && user && !isEditor) await refreshRole();
   if (!SUPA || !user || !isEditor) return say('Sign in as an editor to load Warcraft Logs.');
   if (wclBusy) return;
   wclBusy = true; $('#wclFetch').disabled = true; $('#wclFetch').textContent = 'Loading…';
