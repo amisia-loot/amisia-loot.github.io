@@ -489,6 +489,16 @@ tr.got td{opacity:.5}
             <p class="muted" style="margin:0;font-size:13px">Anyone who won loot on a night counts as present automatically. Click a cell in the table to tick someone off by hand.</p>
           </div>
         </div>
+        <div class="panel" id="wclPanel">
+          <div class="panel-h">Warcraft Logs</div>
+          <div class="panel-b stack matform">
+            <p class="muted" style="margin:0;font-size:13px">Loads the attendance of the guild logs for Amisia on Thunderstrike EU. Everyone in a log is ticked as present on that raid night, new names join the roster.</p>
+            <label class="muted" style="font-size:13px;display:flex;gap:8px;align-items:center"><input type="checkbox" id="wclBench"> Count benched players as present</label>
+            <button class="btn" id="wclFetch">Load logs</button>
+            <div id="wclList" hidden></div>
+            <button class="btn primary" id="wclImport" hidden>Import</button>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-h">Raid nights</div>
           <div class="panel-b" id="nightList"></div>
@@ -757,7 +767,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789483983';
+const BUILD_ID = '1789484565';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1424,6 +1434,90 @@ $('#nightList').addEventListener('click', async ev => {
   state.nights = nights().filter(n => n.date !== date); markDirty();
 });
 ['#attSearch','#attShow'].forEach(s => $(s).addEventListener('input', renderAttendance));
+
+/* ---------------- warcraft logs ---------------- */
+let wclRaw = [], wclRows = [], wclHost = 'fresh.warcraftlogs.com', wclBusy = false;
+const WCL_ERR = {
+  missing_secrets: 'Warcraft Logs is not connected yet: add WCL_CLIENT_ID and WCL_CLIENT_SECRET under Edge Functions, Secrets in Supabase.',
+  bad_secrets: 'Warcraft Logs refused the API client. Check WCL_CLIENT_ID and WCL_CLIENT_SECRET in Supabase.',
+  not_editor: 'Only editors can load Warcraft Logs.',
+  guild_not_found: 'Warcraft Logs has no guild Amisia on Thunderstrike EU.',
+  rate_limited: 'Warcraft Logs is limiting requests, try again in a few minutes.'
+};
+// The raid night of a log: a start before 06:00 counts for the day before, like the Amisia addon.
+function wclNight(ms){
+  const d = new Date(Number(ms) - 6 * 3600e3);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function wclResolve(reports){
+  const bench = $('#wclBench').checked, done = new Set(state.wclReports || []);
+  const byName = nm => state.raiders.find(r => r.name.toLowerCase() === nm.toLowerCase());
+  return (reports || []).filter(rep => rep && rep.code && Number(rep.startTime) > 0).map(rep => {
+    const date = wclNight(rep.startTime), all = Array.isArray(rep.players) ? rep.players : [];
+    const seen = new Set(), players = [];
+    for (const pl of all) {
+      if (!(pl.presence === 1 || (bench && pl.presence === 2))) continue;
+      const name = glCleanName(pl.name);
+      if (!name || seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase()); players.push({name, cls: classFromAny(pl.cls)});
+    }
+    const present = presentOn(date);
+    const newNames = players.filter(pl => !byName(pl.name)).map(pl => pl.name);
+    const adds = players.some(pl => { const r = byName(pl.name); return !r || !present.has(r.id); });
+    return {code: rep.code, date, zone: rep.zone || '', players, benched: all.filter(pl => pl.presence === 2).length, newNames, again: done.has(rep.code), status: adds ? 'ok' : 'dup'};
+  }).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+}
+function wclRender(){
+  const ok = wclRows.filter(r => r.status === 'ok').length;
+  $('#wclList').hidden = !wclRows.length;
+  $('#wclList').innerHTML = wclRows.map(r => '<div class="nightrow"' + (r.status === 'ok' ? '' : ' style="opacity:.55"') + '><span class="d">' + fmtShort(r.date) + '</span>'
+    + '<span class="n">' + (r.status === 'ok' ? '<span class="st ok">' + (r.again ? 'Update' : 'Import') + '</span> ' : '<span class="st dup">Imported</span> ')
+    + esc(r.zone || '?') + ' · ' + r.players.length + ' there' + (r.benched && !$('#wclBench').checked ? ' · ' + r.benched + ' bench' : '') + (r.newNames.length ? ' · ' + r.newNames.length + ' new' : '') + '</span>'
+    + '<a class="muted" style="font-size:12px" href="https://' + wclHost + '/reports/' + encodeURIComponent(r.code) + '" target="_blank" rel="noopener">log</a></div>').join('');
+  $('#wclImport').hidden = !wclRows.length;
+  $('#wclImport').disabled = !ok;
+  $('#wclImport').textContent = ok ? 'Import ' + ok + ' log' + (ok === 1 ? '' : 's') : 'Nothing new in these logs';
+}
+$('#wclFetch').addEventListener('click', async () => {
+  if (!SUPA || !user || !isEditor) return say('Sign in as an editor to load Warcraft Logs.');
+  if (wclBusy) return;
+  wclBusy = true; $('#wclFetch').disabled = true; $('#wclFetch').textContent = 'Loading…';
+  try {
+    const {data, error} = await SUPA.functions.invoke('wcl-attendance', {body: {pages: 2}});
+    let err = data && data.error;
+    if (error) { err = error.message; try { const b = await error.context.json(); if (b && b.error) err = b.error; } catch (e) {} }
+    if (err) return say(WCL_ERR[err] || 'Could not load Warcraft Logs: ' + err);
+    wclHost = data.host || wclHost; wclRaw = data.reports || [];
+    wclRows = wclResolve(wclRaw); wclRender();
+    const ok = wclRows.filter(r => r.status === 'ok').length;
+    say(wclRows.length ? 'Loaded ' + wclRows.length + ' log' + (wclRows.length === 1 ? '' : 's') + ', ' + (ok ? ok + ' with someone new to tick' : 'everything already ticked') + '.' : 'Warcraft Logs has no attendance for the guild yet.');
+  } catch (e) {
+    say('Could not load Warcraft Logs: ' + (e.message || e));
+  } finally {
+    wclBusy = false; $('#wclFetch').disabled = false; $('#wclFetch').textContent = 'Load logs';
+  }
+});
+$('#wclBench').addEventListener('change', () => { if (wclRaw.length) { wclRows = wclResolve(wclRaw); wclRender(); } });
+$('#wclImport').addEventListener('click', () => {
+  const ok = wclRows.filter(r => r.status === 'ok'); if (!ok.length || readOnly) return;
+  let created = 0, ticked = 0;
+  for (const rep of ok) {
+    let n = nightOn(rep.date);
+    if (!n) { n = {id: uid(), date: rep.date, present: []}; nights().push(n); }
+    n.present = Array.isArray(n.present) ? n.present : [];
+    for (const pl of rep.players) {
+      let r = state.raiders.find(x => x.name.toLowerCase() === pl.name.toLowerCase());
+      if (!r) { r = {id: uid(), name: pl.name, cls: pl.cls || 'Unknown'}; state.raiders.push(r); created++; }
+      else if ((!r.cls || r.cls === 'Unknown') && pl.cls) r.cls = pl.cls;
+      if (!n.present.includes(r.id)) { n.present.push(r.id); ticked++; }
+    }
+    state.wclReports = state.wclReports || [];
+    if (!state.wclReports.includes(rep.code)) state.wclReports.push(rep.code);
+  }
+  markDirty();
+  wclRows = wclResolve(wclRaw); wclRender();
+  say('Imported ' + ok.length + ' log' + (ok.length === 1 ? '' : 's') + ': ' + ticked + ' attendance tick' + (ticked === 1 ? '' : 's') + (created ? ', ' + created + ' new raider' + (created === 1 ? '' : 's') : '') + '.');
+});
 
 /* ---------------- wishlist ---------------- */
 let WISHES = [], wishState = 'loading', wishChannel = null;
@@ -2278,7 +2372,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
