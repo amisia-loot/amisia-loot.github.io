@@ -803,7 +803,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789587258';
+const BUILD_ID = '1789593205';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -987,6 +987,9 @@ function say(msg){ const el = $('#toast'); el.textContent = msg; el.hidden = fal
 /* ---------------- persistence (Supabase) ---------------- */
 const SUPA = window.supabase ? window.supabase.createClient("https://pxqqiqlnfmmalqcqnakq.supabase.co", "sb_publishable_gfWG3hDY8V_EFrIRwG85_A_7Jtx_uZ1") : null;
 let user = null, isEditor = false, isOwner = false, serverVersion = 0, saving = false;
+// Set when the browser could not reach the database at all (usually an ad blocker or privacy add-on).
+let netError = false;
+const isNetError = e => /failed to fetch|networkerror|load failed|fetch failed|network request failed/i.test(String(e && (e.message || e)));
 readOnly = true;   // everyone is a viewer until the server says otherwise
 function setBar(kind, msg){
   const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
@@ -997,6 +1000,7 @@ function setBar(kind, msg){
 }
 function refreshBar(){
   if (!SUPA) setBar('err', 'Could not load the database client. Check your connection and reload.');
+  else if (netError) setBar('err', 'Your browser cannot reach the ledger database (supabase.co), so signing in and saving do not work. An ad blocker or privacy add-on usually causes this: allow supabase.co on this page, then reload.');
   else if (!user) setBar('ro', 'Viewing. Sign in to edit.');
   else if (!isEditor) setBar('ro', 'Signed in as a viewer. Ask the owner to add you as an editor.');
   else if (saving) setBar('dirty', 'Saving…');
@@ -1037,8 +1041,11 @@ async function publish(){
 }
 async function loadFromServer(force){
   if (!SUPA) return false;
-  const {data, error} = await SUPA.from('ledgers').select('state,version').eq('id', 'main').maybeSingle();
+  let data = null, error = null;
+  try { ({data, error} = await SUPA.from('ledgers').select('state,version').eq('id', 'main').maybeSingle()); } catch (e) { error = e; }
+  if (error && isNetError(error)) { netError = true; refreshBar(); }
   if (error || !data) return false;
+  netError = false;
   if (force || !dirty || !isEditor) {   // unsaved local edits only survive for someone who can actually save them
     serverVersion = Number(data.version); state = data.state || state; dirty = false; draftBase = null;
     clearTimeout(saveTimer);
@@ -1059,8 +1066,9 @@ async function refreshRole(){
     try {
       const [e, o] = await Promise.all([SUPA.rpc('is_editor'), SUPA.rpc('is_owner')]);
       if (e.error || o.error) throw e.error || o.error;
-      ed = !!e.data; own = !!o.data;
+      ed = !!e.data; own = !!o.data; netError = false;
     } catch (err) {
+      if (isNetError(err)) netError = true;
       if (roleUser === me) return;
     }
   }
