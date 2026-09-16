@@ -774,7 +774,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789567956';
+const BUILD_ID = '1789568371';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -996,7 +996,7 @@ async function loadFromServer(force){
 // Supabase re-announces the session on tab focus and token refresh. The role stays as it is
 // while the server is asked, and a failed check keeps the last role of the same account,
 // so a click or an autosave in that moment is not refused.
-let roleUser = null;
+let roleUser = null, roleKnown = false;
 async function refreshRole(){
   const me = SUPA && user ? user.id : null;
   let ed = false, own = false;
@@ -1010,7 +1010,7 @@ async function refreshRole(){
     }
   }
   if ((SUPA && user ? user.id : null) !== me) return;   // signed in or out while asking: that call decides
-  isEditor = ed; isOwner = own; roleUser = me;
+  isEditor = ed; isOwner = own; roleUser = me; roleKnown = true;
   readOnly = !isEditor;
 }
 async function renderEditors(){
@@ -1161,6 +1161,8 @@ function renderHeader(){
   $('#glPanel').classList.toggle('hidden', readOnly); $('#glResult').classList.toggle('hidden', readOnly); $('#amResult').classList.toggle('hidden', readOnly); $('#impBar').classList.toggle('hidden', readOnly);
   $('#view-import').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
   $('#clearExample').classList.toggle('hidden', readOnly);
+  // importing is for owner and editors only
+  document.querySelector('.tab[data-view="import"]').hidden = readOnly;
   document.querySelectorAll('.tab').forEach(t => {
     const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
@@ -2361,6 +2363,8 @@ function showView(v){
   renderAll();
 }
 function renderAll(){
+  // a viewer never stays on the Import tab, once the server has said what the role is
+  if (readOnly && roleKnown && ui.view === 'import') { showView('armory'); return; }
   renderHeader();
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
