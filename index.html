@@ -778,7 +778,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789568481';
+const BUILD_ID = '1789568623';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -2246,8 +2246,17 @@ function glParse(text){
   }
   return rows;
 }
+// Where an imported award came from: the Gargul checksum, or date, item and the winner named in the export.
+// An award handed to someone else keeps it, and a removed one is remembered, so importing the same export
+// again neither gives the item back to the first winner nor brings a removed item back.
+const importSig = a => a.gargul ? 'k' + a.gargul : a.src || '';
+function forgetImport(a){
+  const s = importSig(a); if (!s) return;
+  state.dropped = state.dropped || [];
+  if (!state.dropped.includes(s)) state.dropped.push(s);
+}
 function glResolve(rows){
-  const dups = $('#glDups').checked, seen = new Set();
+  const dups = $('#glDups').checked, seen = new Set(), dropped = new Set(state.dropped || []);
   return rows.map(r => {
     const it = ITEM[r.item]; const out = Object.assign({}, r, {it});
     if (!r.rawName || /^_/.test(r.rawName)) { out.status = 'skip'; out.why = 'disenchanted or no winner'; return out; }
@@ -2256,9 +2265,10 @@ function glResolve(rows){
     if (r.boss) { const known = BOSSES.find(b => b.name.toLowerCase() === String(r.boss).trim().toLowerCase() && it.sources.includes(b.name)); if (known) out.boss = known.name; }
     const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     out.raider = ex || null;
-    const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase();
-    const already = state.awards.some(a => (r.key && a.gargul === r.key) || (ex && a.raider === ex.id && a.item === r.item && a.date === r.date)) || seen.has(r.key ? 'k'+r.key : sig);
-    seen.add(r.key ? 'k'+r.key : sig);
+    const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase(), own = r.key ? 'k'+r.key : sig;
+    out.removed = dropped.has(own) || dropped.has(sig);
+    const already = out.removed || state.awards.some(a => (r.key && a.gargul === r.key) || a.src === sig || (ex && a.raider === ex.id && a.item === r.item && a.date === r.date)) || seen.has(own);
+    seen.add(own);
     out.status = already && !dups ? 'dup' : 'ok';
     return out;
   });
@@ -2271,7 +2281,7 @@ function glRender(){
   const clsPicked = {}; ok.forEach(r => { if (!r.raider && r.cls && !clsPicked[r.name]) clsPicked[r.name] = r.cls; });
   const clsDone = new Set();
   $('#glBody').innerHTML = glRows.map(r => {
-    const st = r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? '<span class="st dup">Exists</span>' : '<span class="st skip">Ignored</span>';
+    const st = r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? (r.removed ? '<span class="st skip" title="removed from the ledger after an earlier import">Removed</span>' : '<span class="st dup">Exists</span>') : '<span class="st skip">Ignored</span>';
     let cls;
     if (r.status !== 'ok') cls = '<span class="muted">'+esc(r.raider ? r.raider.cls : '')+'</span>';
     else if (r.raider) cls = '<span class="muted">'+esc(r.raider.cls)+'</span>';
@@ -2312,6 +2322,7 @@ $('#glImport').addEventListener('click', () => {
     if (!raider) { raider = {id: uid(), name: r.name, cls: clsFor[r.name] || r.cls || 'Unknown'}; state.raiders.push(raider); created++; }
     const a = {id: uid(), date: r.date, boss: r.boss, item: r.item, raider: raider.id, note: [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '), ts: r.ts || (base++)};
     if (r.key) a.gargul = r.key;
+    a.src = r.date + '|' + r.item + '|' + r.name.toLowerCase();
     state.awards.push(a);
   }
   const am = importAmisia();
@@ -2414,7 +2425,7 @@ $('#cards').addEventListener('click', ev => {
 $('#logBody').addEventListener('click', async ev => {
   const e = ev.target.closest('[data-edit]'), d = ev.target.closest('[data-del]');
   if (e) { const a = state.awards.find(x => x.id === e.dataset.edit); if (a) fillForm(a); }
-  if (d) { const a = state.awards.find(x => x.id === d.dataset.del); const r = a && raiderById(a.raider); if (a && await ask('Remove '+(ITEM[a.item]?ITEM[a.item].name:'this item')+' from '+(r?r.name:'this raider')+'?', 'Remove')) { state.awards = state.awards.filter(x => x !== a); if (ui.editing === a.id) resetForm(true); markDirty(); } }
+  if (d) { const a = state.awards.find(x => x.id === d.dataset.del); const r = a && raiderById(a.raider); if (a && await ask('Remove '+(ITEM[a.item]?ITEM[a.item].name:'this item')+' from '+(r?r.name:'this raider')+'?', 'Remove')) { state.awards = state.awards.filter(x => x !== a); forgetImport(a); if (ui.editing === a.id) resetForm(true); markDirty(); } }
 });
 $('#awardForm').addEventListener('submit', submitAward);
 $('#awardCancel').addEventListener('click', () => { resetForm(true); });
@@ -2476,7 +2487,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[]}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
