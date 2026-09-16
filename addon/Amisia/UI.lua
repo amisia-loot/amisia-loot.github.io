@@ -250,6 +250,11 @@ local function build()
                 end
             end
             if not any then GameTooltip:AddLine("Keine Materialien gelootet.", 0.6, 0.6, 0.6) end
+            local items, drops = ns.ItemCount(s), ns.DropCount(s)
+            if items > 0 or drops > 0 then
+                GameTooltip:AddLine(("Blaue und epische Items gelootet: %d"):format(items), 0.6, 0.8, 1)
+                GameTooltip:AddLine(("In geöffneten Lootfenstern gesehen: %d"):format(drops), 0.6, 0.8, 1)
+            end
             GameTooltip:Show()
         end)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)

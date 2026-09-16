@@ -1,8 +1,9 @@
--- Amisia: records who was in each raid and which guild materials were looted,
--- and exports it as text for the Import tab of the Amisia loot ledger.
+-- Amisia: records who was in each raid, which guild materials and which blue or better items
+-- were looted and what lay in opened loot windows, and exports it as text for the Import tab
+-- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.0.0"
+ns.VERSION = "1.1.0"
 
 -- Tracked guild bank materials. Names are fallbacks until the client has the item cached.
 ns.MATS = {
@@ -23,6 +24,31 @@ function ns.GemCount(counts)
     local n = 0
     for id in pairs(ns.GEMS) do n = n + (counts[id] or 0) end
     return n
+end
+
+-- Loot of this quality or better is recorded besides the materials: 3 rare (blue), 4 epic, 5 legendary.
+ns.MIN_QUALITY = 3
+-- Blue or better items that are no raid loot worth listing: disenchanting results and Badges of Justice,
+-- which every raider loots from every boss.
+ns.IGNORE = {
+    [29434] = true, -- Badge of Justice
+    [22450] = true, -- Void Crystal
+    [22449] = true, -- Large Prismatic Shard
+    [22448] = true, -- Small Prismatic Shard
+    [20725] = true, -- Nexus Crystal
+    [14344] = true, -- Large Brilliant Shard
+    [14343] = true, -- Small Brilliant Shard
+}
+local LINK_QUALITY = { ["9d9d9d"] = 0, ["ffffff"] = 1, ["1eff00"] = 2, ["0070dd"] = 3, ["a335ee"] = 4, ["ff8000"] = 5, ["e6cc80"] = 6 }
+
+-- Quality from the colour of an item link, so items the client has not cached yet still count.
+function ns.LinkQuality(link)
+    if type(link) ~= "string" then return nil end
+    local hex = link:match("|c%x%x(%x%x%x%x%x%x)")
+    local q = hex and LINK_QUALITY[hex:lower()]
+    if q then return q end
+    local _, _, itemQuality = GetItemInfo(link)
+    return itemQuality
 end
 
 local REUSE_WINDOW  = 2 * 60 * 60  -- re-entering the same raid within 2 hours continues its session
@@ -103,8 +129,8 @@ local function getMatchers()
     return matchers
 end
 
--- Returns name, itemID, count for a loot chat line, or nil.
-function ns.ParseLoot(text)
+-- Returns name, itemID, count and the item link for a loot chat line, or nil.
+local function parseLoot(text)
     if type(text) ~= "string" then return nil end
     for _, entry in ipairs(getMatchers()) do
         local a = entry.match(text)
@@ -121,18 +147,18 @@ function ns.ParseLoot(text)
             end
             local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
             if who and who ~= "" and id then
-                return who, id, tonumber(count) or 1
+                return who, id, tonumber(count) or 1, link
             end
         end
     end
     return nil
 end
 
-local function mentionsMat(text)
-    for id in pairs(ns.MATS) do
-        if text:find("item:" .. id .. ":", 1, true) then return true end
-    end
-    return false
+-- Returns name, itemID, count for a loot chat line, or nil.
+function ns.ParseLoot(text)
+    local who, id, count = parseLoot(text)
+    if not who then return nil end
+    return who, id, count
 end
 
 ---------------------------------------------------------------------------
@@ -154,6 +180,8 @@ local function newSession(zone, instanceID)
         instanceID = instanceID or 0,
         members = {},
         loot = {},
+        items = {},   -- blue or better loot: { name, item, count, t }
+        drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
     }
     DB.sessions[#DB.sessions + 1] = s
     while #DB.sessions > KEEP_SESSIONS do
@@ -255,14 +283,68 @@ local function evaluate()
     refresh()
 end
 
+-- Remembers an item's name and quality from its link for the export.
+local function rememberItem(id, link, q)
+    if not DB then return end
+    local name = type(link) == "string" and link:match("|h%[(.-)%]|h")
+    local known = DB.itemNames[id]
+    DB.itemNames[id] = { n = name or (known and known.n) or ("Item " .. id), q = q or (known and known.q) or 0 }
+end
+
 local function onLoot(text)
     if not active then return end
-    local who, id, count = ns.ParseLoot(text)
-    if not who or not ns.MATS[id] then return end
+    local who, id, count, link = parseLoot(text)
+    if not who then return end
     local t = time()
-    active.loot[#active.loot + 1] = { name = who, item = id, count = count, t = t }
+    if ns.MATS[id] then
+        active.loot[#active.loot + 1] = { name = who, item = id, count = count, t = t }
+    else
+        local q = ns.LinkQuality(link)
+        if not q or q < ns.MIN_QUALITY or ns.IGNORE[id] then return end
+        rememberItem(id, link, q)
+        active.items[#active.items + 1] = { name = who, item = id, count = count, t = t }
+    end
     noteMember(active, who, nil, t)
     refresh()
+end
+
+-- What lies in a loot window the recorder opens: a boss or trash corpse, or a chest in the raid.
+-- The slots of one window are added up (a boss can drop the same token twice); reopening the
+-- same corpse keeps the larger total instead of adding it again.
+local function onLootOpened()
+    if not active or not GetNumLootItems or not GetLootSlotLink then return end
+    local targetGUID = UnitGUID and UnitGUID("target")
+    local targetName = UnitName("target")
+    local seen = {}   -- source -> { [itemID] = count in this window }
+    for slot = 1, GetNumLootItems() or 0 do
+        local link = GetLootSlotLink(slot)
+        local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+        local q = id and ns.LinkQuality(link)
+        if id and q and q >= ns.MIN_QUALITY and not ns.MATS[id] and not ns.IGNORE[id] then
+            local source = (GetLootSourceInfo and GetLootSourceInfo(slot)) or targetGUID or ("?" .. (targetName or ""))
+            -- a container opened from the bags is not a drop
+            if type(source) == "string" and not source:find("^Item%-") then
+                local _, _, qty = GetLootSlotInfo(slot)
+                seen[source] = seen[source] or {}
+                seen[source][id] = (seen[source][id] or 0) + (tonumber(qty) or 1)
+                rememberItem(id, link, q)
+            end
+        end
+    end
+    local t, any = time(), false
+    for source, items in pairs(seen) do
+        local d = active.drops[source]
+        if not d then
+            d = { src = "?", t = t, items = {} }
+            active.drops[source] = d
+        end
+        if d.src == "?" and targetName and source == targetGUID then d.src = targetName end
+        for id, n in pairs(items) do
+            d.items[id] = math.max(d.items[id] or 0, n)
+        end
+        any = true
+    end
+    if any then refresh() end
 end
 
 ---------------------------------------------------------------------------
@@ -397,6 +479,20 @@ function ns.MemberCount(s)
     return n
 end
 
+function ns.ItemCount(s)
+    local n = 0
+    for _, l in ipairs(s.items or {}) do n = n + (l.count or 1) end
+    return n
+end
+
+function ns.DropCount(s)
+    local n = 0
+    for _, d in pairs(s.drops or {}) do
+        for _, c in pairs(d.items or {}) do n = n + c end
+    end
+    return n
+end
+
 function ns.MatCounts(s)
     local c = {}
     for _, l in ipairs(s.loot) do
@@ -423,6 +519,7 @@ end
 -- Text block for the ledger's Import tab. One S..E block per session.
 function ns.ExportText(list)
     local lines = { "#AMISIA 1 " .. (UnitName("player") or "?") }
+    local used = {}   -- item ids of I and D lines, named in N lines at the end
     local bank = DB and DB.bank
     if bank and bank.counts then
         -- K <epoch seconds> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>
@@ -455,7 +552,49 @@ function ns.ExportText(list)
             local e = sum[key]
             lines[#lines + 1] = ("L %s %d %d"):format(e.name, e.item, e.count)
         end
+        -- I <name> <itemID> <count>: blue or better loot
+        local isum, ikeys = {}, {}
+        for _, l in ipairs(s.items or {}) do
+            local key = l.name .. "\t" .. l.item
+            if not isum[key] then
+                isum[key] = { name = l.name, item = l.item, count = 0 }
+                ikeys[#ikeys + 1] = key
+            end
+            isum[key].count = isum[key].count + (l.count or 1)
+        end
+        table.sort(ikeys)
+        for _, key in ipairs(ikeys) do
+            local e = isum[key]
+            lines[#lines + 1] = ("I %s %d %d"):format(e.name, e.item, e.count)
+            used[e.item] = true
+        end
+        -- D <itemID> <count> <source name>: blue or better items seen in loot windows
+        local dsum, dkeys = {}, {}
+        for _, d in pairs(s.drops or {}) do
+            for id, c in pairs(d.items or {}) do
+                local key = (d.src or "?") .. "\t" .. id
+                if not dsum[key] then
+                    dsum[key] = { item = id, src = d.src or "?", count = 0 }
+                    dkeys[#dkeys + 1] = key
+                end
+                dsum[key].count = dsum[key].count + c
+            end
+        end
+        table.sort(dkeys)
+        for _, key in ipairs(dkeys) do
+            local e = dsum[key]
+            lines[#lines + 1] = ("D %d %d %s"):format(e.item, e.count, e.src)
+            used[e.item] = true
+        end
         lines[#lines + 1] = "E"
+    end
+    -- N <itemID> <quality> <item name>
+    local ids = {}
+    for id in pairs(used) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+        local known = DB and DB.itemNames[id]
+        lines[#lines + 1] = ("N %d %d %s"):format(id, (known and known.q) or 0, GetItemInfo(id) or (known and known.n) or ("Item " .. id))
     end
     lines[#lines + 1] = "#END"
     return table.concat(lines, "\n")
@@ -473,16 +612,20 @@ events:SetScript("OnEvent", function(self, event, arg1)
         DB = AmisiaDB
         DB.sessions = DB.sessions or {}
         DB.settings = DB.settings or {}
+        DB.itemNames = DB.itemNames or {}
         if DB.settings.enabled == nil then DB.settings.enabled = true end
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
             s.loot = s.loot or {}
+            s.items = s.items or {}
+            s.drops = s.drops or {}
         end
         self:UnregisterEvent("ADDON_LOADED")
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
         self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         self:RegisterEvent("GROUP_ROSTER_UPDATE")
         self:RegisterEvent("CHAT_MSG_LOOT")
+        self:RegisterEvent("LOOT_OPENED")
         if HAS_BANK_API then
             -- pcall: a client without one of these events must not break loading
             for _, ev in ipairs({ "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "PLAYER_INTERACTION_MANAGER_FRAME_HIDE",
@@ -491,9 +634,11 @@ events:SetScript("OnEvent", function(self, event, arg1)
             end
         end
     elseif event == "CHAT_MSG_LOOT" then
-        if active and type(arg1) == "string" and mentionsMat(arg1) then
+        if active and type(arg1) == "string" then
             onLoot(arg1)
         end
+    elseif event == "LOOT_OPENED" then
+        onLootOpened()
     elseif event == "GROUP_ROSTER_UPDATE" then
         if not rosterPending then
             rosterPending = true

@@ -2,7 +2,7 @@
 ## Title: Amisia
 ## Notes: Zeichnet pro Raid die Raidmitglieder und gelootete Gildenmaterialien auf und exportiert sie für die Amisia-Loot-Seite.
 ## Author: mrvulo
-## Version: 1.0.0
+## Version: 1.1.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 
