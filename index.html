@@ -564,7 +564,7 @@ tr.got td{opacity:.5}
   <section class="view" id="view-matrix" hidden>
     <div class="toolbar">
       <div class="field"><label for="mxSearch">Search</label><input class="inp" id="mxSearch" placeholder="Find a raider…"></div>
-      <div class="field"><label for="mxShow">Show</label><select class="inp" id="mxShow"><option value="all">Every raider</option><option value="none">Raiders without loot</option></select></div>
+      <div class="field"><label for="mxShow">Show</label><select class="inp" id="mxShow"><option value="all">Every raid</option><option value="none">Raiders without loot</option></select></div>
       <div class="field" id="mxPhaseField" hidden><label for="mxPhase">Phase</label><select class="inp" id="mxPhase"><option value="">Every phase</option></select></div>
       <div class="spacer"></div>
       <div class="count" id="mxCount"></div>
@@ -795,7 +795,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789569547';
+const BUILD_ID = '1789569623';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -820,7 +820,7 @@ function applyData(d){
   if (DATA.sprite) css += '.ico .sp{background-image:url("' + DATA.sprite.file + '");background-size:' + (DATA.sprite.cols*100) + '% ' + (DATA.sprite.rows*100) + '%}';
   $('#zoneStyle').textContent = css;
   $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
-  $('#mxShow').innerHTML = '<option value="all">Every raider</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
+  $('#mxShow').innerHTML = '<option value="all">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
   const phases = (PHASES[gameKey] || []).map(p => ({name: p.name, zones: p.zones.filter(z => ZONE[z])})).filter(p => p.zones.length);
   const phaseOpts = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+i+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
   for (const id of ['mxPhase', 'armPhase']) { $('#'+id).innerHTML = phaseOpts; $('#'+id+'Field').hidden = !phases.length; }
