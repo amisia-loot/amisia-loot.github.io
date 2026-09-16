@@ -308,7 +308,7 @@ tr.done td{opacity:.5}
 .att .no{color:var(--faint)}
 /* missed the raid: a glowing hot potato */
 .potato{display:inline-flex;vertical-align:middle;line-height:0}
-.potato svg{filter:drop-shadow(0 0 2px rgba(255,40,30,.8))}
+.potato svg{filter:drop-shadow(0 0 2px rgba(230,80,60,.55))}
 .ntwho .potato{margin-right:5px}
 .att td.rate{font-family:var(--label);font-size:15px;font-weight:600}
 .att .bad{color:var(--bad)}.att .mid{color:var(--warn)}.att .good{color:var(--good)}
@@ -803,7 +803,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789586234';
+const BUILD_ID = '1789587258';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1517,10 +1517,10 @@ $('#ntCopy').addEventListener('click', async ev => {
 /* ---------------- attendance ---------------- */
 // A missed raid: a red hot potato, drawn here so it is red in every browser (the emoji is brown).
 const potato = size => '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true">'
-  + '<path d="M6.2 5.4C9 2.6 14.6 2.2 18 4.6c3.3 2.3 3.7 7 1.9 10.9-1.9 4.1-6 6.8-10.2 6.4C5.6 21.5 3 18.4 2.8 14.6 2.6 11 3.8 7.8 6.2 5.4z" fill="#e3262d"/>'
-  + '<path d="M7.4 6.6c1.8-1.7 4.6-2.3 6.6-1.5" stroke="#ff8a80" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".75"/>'
-  + '<circle cx="9" cy="11" r="1.1" fill="#8e0f16"/><circle cx="14.6" cy="9.4" r=".9" fill="#8e0f16"/><circle cx="12.2" cy="15.6" r="1" fill="#8e0f16"/>'
-  + '<circle cx="16.4" cy="14.2" r=".8" fill="#8e0f16"/><circle cx="7.4" cy="16.2" r=".7" fill="#8e0f16"/></svg>';
+  + '<path d="M6.2 5.4C9 2.6 14.6 2.2 18 4.6c3.3 2.3 3.7 7 1.9 10.9-1.9 4.1-6 6.8-10.2 6.4C5.6 21.5 3 18.4 2.8 14.6 2.6 11 3.8 7.8 6.2 5.4z" fill="#d0493d"/>'
+  + '<path d="M7.4 6.6c1.8-1.7 4.6-2.3 6.6-1.5" stroke="#ffb3a6" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".75"/>'
+  + '<circle cx="9" cy="11" r="1.1" fill="#8a2a22"/><circle cx="14.6" cy="9.4" r=".9" fill="#8a2a22"/><circle cx="12.2" cy="15.6" r="1" fill="#8a2a22"/>'
+  + '<circle cx="16.4" cy="14.2" r=".8" fill="#8a2a22"/><circle cx="7.4" cy="16.2" r=".7" fill="#8a2a22"/></svg>';
 const ATT_MAX = 24;
 function renderAttendance(){
   const list = countedNights().slice(0, ATT_MAX), q = $('#attSearch').value.trim().toLowerCase(), show = $('#attShow').value;
