@@ -803,7 +803,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789593872';
+const BUILD_ID = '1789594768';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -990,6 +990,8 @@ let user = null, isEditor = false, isOwner = false, serverVersion = 0, saving = 
 // Set when the browser could not reach the database at all (usually an ad blocker or privacy add-on).
 let netError = false;
 const isNetError = e => /failed to fetch|networkerror|load failed|fetch failed|network request failed/i.test(String(e && (e.message || e)));
+// A request that never answers must not leave the page waiting forever.
+const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('no answer')), ms))]);
 readOnly = true;   // everyone is a viewer until the server says otherwise
 function setBar(kind, msg){
   const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
@@ -1020,7 +1022,7 @@ async function publish(){
   saving = true; refreshBar(); $('#publishBtn').disabled = true;
   const seq = editSeq, clean = Object.assign({}, state); delete clean.dirty; delete clean.baseVersion;
   try {
-    const {data, error} = await SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: draftBase != null ? draftBase : serverVersion});
+    const {data, error} = await withTimeout(SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: draftBase != null ? draftBase : serverVersion}), 20000);
     if (error) throw error;
     serverVersion = Number(data && data[0] ? data[0].version : serverVersion + 1); draftBase = null;
     if (editSeq === seq) { dirty = false; try { localStorage.setItem(LS_KEY, JSON.stringify(clean)); } catch(e){} }
@@ -1033,6 +1035,7 @@ async function publish(){
     saving = false;
     if (/conflict|40001/.test(msg)) { setBar('err', 'Someone else saved first. Reloading their version…'); await loadFromServer(true); say('Someone else saved the ledger first, their version is shown now.'); return; }
     if (/not an editor|42501|permission/i.test(msg)) { isEditor = false; renderAll(); refreshBar(); return; }
+    if (msg === 'no answer') { setBar('err', 'Saving got no answer from the database. Reload the page (F5): your changes are kept in this browser and save again after the reload.'); return; }
     setBar('err', 'Save failed (' + msg + '). Your changes are kept in this browser. Press Save to retry.'); return;
   } finally {
     saving = false; $('#publishBtn').disabled = false;
@@ -1166,7 +1169,13 @@ async function initCapability(){
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
   await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); renderHistory(true); startPresence(); loadMats(); loadWishes();
-  SUPA.auth.onAuthStateChange(async (_ev, s) => { user = s ? s.user : null; await refreshRole(); renderAll(); refreshBar(); renderEditors(); heartbeat(); });
+  // Supabase runs this callback while it holds its session lock. Asking the database from inside it
+  // waits for that same lock, and every later request hangs (seen as a save stuck on "Saving…" and as a
+  // login that never loads). So only note the user here and do the work once the callback has returned.
+  SUPA.auth.onAuthStateChange((_ev, s) => {
+    user = s ? s.user : null;
+    setTimeout(async () => { await refreshRole(); renderAll(); refreshBar(); renderEditors(); heartbeat(); }, 0);
+  });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
     if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; state = payload.new.state; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll(); refreshBar(); }
