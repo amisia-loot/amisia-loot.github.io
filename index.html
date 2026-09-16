@@ -418,6 +418,7 @@ tr.got td{opacity:.5}
     <div class="toolbar">
       <div class="field"><label for="armSearch">Search</label><input class="inp" id="armSearch" placeholder="Find a raider…"></div>
       <div class="field"><label for="armZone">Show</label><select class="inp" id="armZone"><option value="">Every raid</option></select></div>
+      <div class="field" id="armPhaseField" hidden><label for="armPhase">Phase</label><select class="inp" id="armPhase"><option value="">Every phase</option></select></div>
       <div class="spacer"></div>
       <div class="count" id="armCount"></div>
     </div>
@@ -794,7 +795,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789569415';
+const BUILD_ID = '1789569547';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -821,8 +822,8 @@ function applyData(d){
   $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
   $('#mxShow').innerHTML = '<option value="all">Every raider</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
   const phases = (PHASES[gameKey] || []).map(p => ({name: p.name, zones: p.zones.filter(z => ZONE[z])})).filter(p => p.zones.length);
-  $('#mxPhase').innerHTML = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+i+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
-  $('#mxPhaseField').hidden = !phases.length;
+  const phaseOpts = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+i+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
+  for (const id of ['mxPhase', 'armPhase']) { $('#'+id).innerHTML = phaseOpts; $('#'+id+'Field').hidden = !phases.length; }
 }
 let CRAFT = {profs:[], items:[]}, CITEM = {}, CRECIPE = {}, craftState = 'loading';
 const CSLOTS = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket','enchant','other'];
@@ -1205,7 +1206,8 @@ function renderHeader(){
 /* ---------------- armory ---------------- */
 function renderArmory(){
   const q = $('#armSearch').value.trim().toLowerCase(), zone = $('#armZone').value;
-  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone)}))
+  const phase = (PHASES[gameKey] || [])[$('#armPhase').value], inPhase = a => !phase || phase.zones.includes(BOSSZONE[a.boss]);
+  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone).filter(inPhase)}))
     .filter(x => !q || x.r.name.toLowerCase().includes(q))
     .sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
   $('#armCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
@@ -2448,7 +2450,7 @@ $('#clearExample').addEventListener('click', async () => {
   if (!await ask('Remove all example raiders and awards? Your ledger starts empty.', 'Clear examples')) return;
   state.raiders = []; state.awards = []; state.example = false; ui.openCard = null; markDirty();
 });
-['#armSearch','#armZone'].forEach(s => $(s).addEventListener('input', renderArmory));
+['#armSearch','#armZone','#armPhase'].forEach(s => $(s).addEventListener('input', renderArmory));
 $('#cards').addEventListener('click', ev => {
   if (ev.target.closest('.ico')) return;
   const c = ev.target.closest('.card'); if (!c) return;
