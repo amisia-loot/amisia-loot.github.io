@@ -564,6 +564,7 @@ tr.got td{opacity:.5}
     <div class="toolbar">
       <div class="field"><label for="mxSearch">Search</label><input class="inp" id="mxSearch" placeholder="Find a raider…"></div>
       <div class="field"><label for="mxShow">Show</label><select class="inp" id="mxShow"><option value="all">Every raider</option><option value="none">Raiders without loot</option></select></div>
+      <div class="field" id="mxPhaseField" hidden><label for="mxPhase">Phase</label><select class="inp" id="mxPhase"><option value="">Every phase</option></select></div>
       <div class="spacer"></div>
       <div class="count" id="mxCount"></div>
     </div>
@@ -793,8 +794,16 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789568834';
+const BUILD_ID = '1789569415';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
+// Content phases per game version: which raids' loot belongs to which phase.
+const PHASES = {tbc: [
+  {name: 'Phase 1', zones: ['kara', 'gruul', 'mag']},
+  {name: 'Phase 2', zones: ['ssc', 'tk']},
+  {name: 'Phase 3', zones: ['hyjal', 'bt']},
+  {name: 'Phase 4', zones: ['za']},
+  {name: 'Phase 5', zones: ['swp']}
+]};
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
   DATA = d || {zones:[], bosses:[], items:[]};
@@ -811,6 +820,9 @@ function applyData(d){
   $('#zoneStyle').textContent = css;
   $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
   $('#mxShow').innerHTML = '<option value="all">Every raider</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
+  const phases = (PHASES[gameKey] || []).map(p => ({name: p.name, zones: p.zones.filter(z => ZONE[z])})).filter(p => p.zones.length);
+  $('#mxPhase').innerHTML = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+i+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
+  $('#mxPhaseField').hidden = !phases.length;
 }
 let CRAFT = {profs:[], items:[]}, CITEM = {}, CRECIPE = {}, craftState = 'loading';
 const CSLOTS = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket','enchant','other'];
@@ -1748,7 +1760,8 @@ $('#wishBody').addEventListener('click', async ev => {
 function renderMatrix(){
   const q = $('#mxSearch').value.trim().toLowerCase(), show = $('#mxShow').value;
   const zone = ZONE[show] ? show : '';
-  let rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
+  const phase = (PHASES[gameKey] || [])[$('#mxPhase').value], inPhase = a => !phase || phase.zones.includes(BOSSZONE[a.boss]);
+  let rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone).filter(inPhase)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
   if (show === 'none') rows = rows.filter(x => !x.aw.length);
   rows.sort((a,b) => ui.mxSort==='name' ? a.r.name.localeCompare(b.r.name) : (b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name)));
   $('#mxCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
@@ -2462,7 +2475,7 @@ $('#fItem').addEventListener('keydown', ev => {
 });
 $('#itemList').addEventListener('mousedown', ev => { const o = ev.target.closest('[data-pick]'); if (o) { pickItem(Number(o.dataset.pick)); ev.preventDefault(); $('#fRaider').focus(); } });
 document.addEventListener('click', ev => { if (!ev.target.closest('#itemCombo')) $('#itemList').hidden = true; });
-['#mxSearch','#mxShow'].forEach(s => $(s).addEventListener('input', renderMatrix));
+['#mxSearch','#mxShow','#mxPhase'].forEach(s => $(s).addEventListener('input', renderMatrix));
 $('#mxHead').addEventListener('click', ev => { const th = ev.target.closest('[data-sort]'); if (th) { ui.mxSort = th.dataset.sort; renderMatrix(); } });
 $('#mxBody').addEventListener('click', ev => {
   const o = ev.target.closest('[data-open]'), c = ev.target.closest('[data-close]');
