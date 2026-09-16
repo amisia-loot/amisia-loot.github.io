@@ -307,8 +307,9 @@ tr.done td{opacity:.5}
 .att .won{color:var(--gold)}
 .att .no{color:var(--faint)}
 /* missed the raid: a glowing hot potato */
-.att .potato{display:inline-block;font-size:15px;line-height:1;filter:drop-shadow(0 0 3px rgba(255,120,30,.85))}
-.ntwho .potato{margin-right:4px;filter:drop-shadow(0 0 2px rgba(255,120,30,.8))}
+.potato{display:inline-flex;vertical-align:middle;line-height:0}
+.potato svg{filter:drop-shadow(0 0 2px rgba(255,40,30,.8))}
+.ntwho .potato{margin-right:5px}
 .att td.rate{font-family:var(--label);font-size:15px;font-weight:600}
 .att .bad{color:var(--bad)}.att .mid{color:var(--warn)}.att .good{color:var(--good)}
 .att th.d{font-size:11px;line-height:1.15;white-space:nowrap}
@@ -802,7 +803,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789582222';
+const BUILD_ID = '1789586234';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1484,7 +1485,7 @@ function renderNight(){
     + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + a.id + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
     + '</div></div>' + extraLootPanels(ui.night) + (d.matPeople.length ? '<div class="panel"><div class="panel-h">Materials looted</div><div class="panel-b">' + d.matPeople.map(x => '<div class="ntper"><span class="who" style="color:' + clsVar(x.r.cls) + '">' + esc(x.r.name) + '</span><span class="ic">' + Object.entries(x.per).map(([id, n]) => icoHTML(ITEM[Number(id)]) + '<b style="margin:0 8px 0 2px">' + n + '</b>').join('') + '</span></div>').join('') + '</div></div>' : '') + '<div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
     + (d.here.length ? d.here.map(r => '<span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span>').join('') : '<span class="muted">Nobody recorded.</span>')
-    + '</div>' + (d.away.length ? '<div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:10px">Missing</div><div class="ntwho">' + d.away.map(r => '<span class="off"><span class="potato" aria-hidden="true">&#x1F954;</span>' + esc(r.name) + '</span>').join('') + '</div>' : '')
+    + '</div>' + (d.away.length ? '<div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:10px">Missing</div><div class="ntwho">' + d.away.map(r => '<span class="off"><span class="potato">' + potato(13) + '</span>' + esc(r.name) + '</span>').join('') + '</div>' : '')
     + '</div></div></div></div>';
 }
 function nightText(){
@@ -1514,6 +1515,12 @@ $('#ntCopy').addEventListener('click', async ev => {
 });
 
 /* ---------------- attendance ---------------- */
+// A missed raid: a red hot potato, drawn here so it is red in every browser (the emoji is brown).
+const potato = size => '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true">'
+  + '<path d="M6.2 5.4C9 2.6 14.6 2.2 18 4.6c3.3 2.3 3.7 7 1.9 10.9-1.9 4.1-6 6.8-10.2 6.4C5.6 21.5 3 18.4 2.8 14.6 2.6 11 3.8 7.8 6.2 5.4z" fill="#e3262d"/>'
+  + '<path d="M7.4 6.6c1.8-1.7 4.6-2.3 6.6-1.5" stroke="#ff8a80" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".75"/>'
+  + '<circle cx="9" cy="11" r="1.1" fill="#8e0f16"/><circle cx="14.6" cy="9.4" r=".9" fill="#8e0f16"/><circle cx="12.2" cy="15.6" r="1" fill="#8e0f16"/>'
+  + '<circle cx="16.4" cy="14.2" r=".8" fill="#8e0f16"/><circle cx="7.4" cy="16.2" r=".7" fill="#8e0f16"/></svg>';
 const ATT_MAX = 24;
 function renderAttendance(){
   const list = countedNights().slice(0, ATT_MAX), q = $('#attSearch').value.trim().toLowerCase(), show = $('#attShow').value;
@@ -1528,7 +1535,7 @@ function renderAttendance(){
   $('#attCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
   $('#attHint').hidden = false;
   $('#attHint').innerHTML = total
-    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a hot potato &#x1F954; means they missed the raid' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
+    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
     : (readOnly ? 'No raid nights yet.' : 'No raid nights yet. Record one on the right, or import a loot export on the <a data-goto="import">Import tab</a>.');
   $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num">Items</th><th class="num">Per raid</th>'
     + list.map(n => '<th class="d">' + fmtShort(n.date).replace(' ', '<br>') + '</th>').join('') + '</tr>';
@@ -1549,7 +1556,7 @@ function renderAttendance(){
           const here = won || presentOn(n.date).has(r.id);
           const lock = won ? ' title="won loot that night"' : readOnly ? '' : ' title="click to change"';
           return '<td class="c' + (readOnly || won ? '' : ' hot" data-att="' + r.id + '|' + n.date) + '"' + lock + '>'
-            + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="yes">&#10003;</span>' : '<span class="potato" title="missed this raid">&#x1F954;</span>') + '</td>';
+            + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="yes">&#10003;</span>' : '<span class="potato" title="missed this raid">' + potato(16) + '</span>') + '</td>';
         }).join('') + '</tr>';
   }).join('');
   renderNightList();
