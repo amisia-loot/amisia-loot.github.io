@@ -795,7 +795,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789569623';
+const BUILD_ID = '1789570054';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -871,12 +871,17 @@ const LS_KEY = 'guild-loot-ledger.site.v1';
 /* ---------------- state ---------------- */
 let state = JSON.parse(document.getElementById('ledger-data').textContent);
 let dirty = false, readOnly = false, art = null, artResolved = false, saveTimer = null;
+// draftBase: the server version an unsaved draft from an earlier visit was based on. editSeq counts edits.
+let draftBase = null, editSeq = 0;
 let ui = {view:'armory', openCard:null, editing:null, mxSort:'items', logSort:'date', mxOpen:{}};
 try { const u = JSON.parse(sessionStorage.getItem(LS_KEY+'.ui')||'null'); if (u) ui = Object.assign(ui, u); sessionStorage.removeItem(LS_KEY+'.ui'); } catch(e){}
 ui.mxOpen = ui.mxOpen || {};
 try {
   const loc = JSON.parse(localStorage.getItem(LS_KEY)||'null');
-  if (loc && loc.dirty && (loc.savedAt||0) > (state.savedAt||0)) { state = loc; dirty = true; }   // unsaved edits from a previous visit
+  if (loc && loc.dirty && (loc.savedAt||0) > (state.savedAt||0)) {   // unsaved edits from a previous visit
+    draftBase = Number.isFinite(loc.baseVersion) ? loc.baseVersion : -1;
+    delete loc.dirty; delete loc.baseVersion; state = loc; dirty = true;
+  }
 } catch(e){}
 
 /* ---------------- helpers ---------------- */
@@ -991,8 +996,8 @@ function refreshBar(){
   else setBar('ok', 'Everything is saved. Anyone with the link sees this version.');
 }
 function markDirty(){
-  dirty = true; state.savedAt = Date.now();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true}))); } catch(e){}
+  dirty = true; state.savedAt = Date.now(); editSeq++;
+  try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true, baseVersion: draftBase != null ? draftBase : serverVersion}))); } catch(e){}
   clearTimeout(saveTimer); saveTimer = setTimeout(publish, 4000);
   refreshBar(); renderAll();
 }
@@ -1001,29 +1006,39 @@ async function publish(){
   if (dirty && SUPA && user && !isEditor && !saving) await refreshRole();
   if (!dirty || !isEditor || !SUPA || saving) { refreshBar(); return; }
   saving = true; refreshBar(); $('#publishBtn').disabled = true;
-  const clean = Object.assign({}, state); delete clean.dirty;
+  const seq = editSeq, clean = Object.assign({}, state); delete clean.dirty; delete clean.baseVersion;
   try {
-    const {data, error} = await SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: serverVersion});
+    const {data, error} = await SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: draftBase != null ? draftBase : serverVersion});
     if (error) throw error;
-    serverVersion = Number(data && data[0] ? data[0].version : serverVersion + 1);
-    dirty = false; try { localStorage.setItem(LS_KEY, JSON.stringify(clean)); } catch(e){}
+    serverVersion = Number(data && data[0] ? data[0].version : serverVersion + 1); draftBase = null;
+    if (editSeq === seq) { dirty = false; try { localStorage.setItem(LS_KEY, JSON.stringify(clean)); } catch(e){} }
+    else {   // something changed while saving: keep it as a draft and save again
+      try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true, baseVersion: serverVersion}))); } catch(e){}
+      saveTimer = setTimeout(publish, 1500);
+    }
   } catch (e) {
     const msg = String(e && (e.message || e.code) || e);
-    if (/conflict|40001/.test(msg)) { setBar('err', 'Someone else saved first. Reloading their version…'); await loadFromServer(true); saving = false; return; }
-    if (/not an editor|42501|permission/i.test(msg)) { isEditor = false; saving = false; renderAll(); refreshBar(); return; }
-    saving = false; setBar('err', 'Save failed (' + msg + '). Your changes are kept in this browser. Press Save to retry.'); return;
+    saving = false;
+    if (/conflict|40001/.test(msg)) { setBar('err', 'Someone else saved first. Reloading their version…'); await loadFromServer(true); say('Someone else saved the ledger first, their version is shown now.'); return; }
+    if (/not an editor|42501|permission/i.test(msg)) { isEditor = false; renderAll(); refreshBar(); return; }
+    setBar('err', 'Save failed (' + msg + '). Your changes are kept in this browser. Press Save to retry.'); return;
+  } finally {
+    saving = false; $('#publishBtn').disabled = false;
   }
-  saving = false; refreshBar(); renderHistory(true);
+  refreshBar(); renderHistory(true);
 }
 async function loadFromServer(force){
-  if (!SUPA) return;
+  if (!SUPA) return false;
   const {data, error} = await SUPA.from('ledgers').select('state,version').eq('id', 'main').maybeSingle();
-  if (error || !data) return;
+  if (error || !data) return false;
   if (force || !dirty || !isEditor) {   // unsaved local edits only survive for someone who can actually save them
-    serverVersion = Number(data.version); state = data.state || state; dirty = false;
+    serverVersion = Number(data.version); state = data.state || state; dirty = false; draftBase = null;
+    clearTimeout(saveTimer);
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
     if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll();
-  } else serverVersion = Number(data.version);
+  } else serverVersion = Number(data.version);   // a kept draft still saves against draftBase, so newer saves by others end in a conflict
   refreshBar();
+  return true;
 }
 // Supabase re-announces the session on tab focus and token refresh. The role stays as it is
 // while the server is asked, and a failed check keeps the last role of the same account,
@@ -1252,8 +1267,8 @@ function renderLog(){
     if (a.date !== lastDate) {
       lastDate = a.date;
       const nightAll = state.awards.filter(x => x.date === a.date);
-      const zones = [...new Set(nightAll.map(x => BOSSZONE[x.boss]))];
-      h += '<tr class="night"><td colspan="6"><a data-goto="night" data-date="'+a.date+'" style="cursor:pointer">Raid night · '+fmtDate(a.date)+'</a>'+''+zones.map(z => '<span class="zone '+z+' bz">'+ZONE[z]+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
+      const zones = [...new Set(nightAll.map(x => BOSSZONE[x.boss]).filter(Boolean))];
+      h += '<tr class="night"><td colspan="6"><a data-goto="night" data-date="'+a.date+'" style="cursor:pointer">Raid night · '+fmtDate(a.date)+'</a>'+''+zones.map(z => '<span class="zone '+z+' bz">'+esc(ZONE[z] || z)+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
     }
     const it = ITEM[a.item], r = raiderById(a.raider);
     h += '<tr>'
@@ -1318,15 +1333,15 @@ function submitAward(ev){
   let raider = $('#fRaider').value;
   if (!date) return say('Pick the raid night.');
   if (!itemId) return say('Pick an item from the list.');
+  const it = ITEM[itemId];
+  const finalBoss = boss || (it.sources.length === 1 ? it.sources[0] : '');
+  if (!finalBoss) return say('This item drops from several bosses. Pick the boss.');
   if (raider === '__new') {
     const name = $('#fNewName').value.trim(); if (!name) return say('Enter the new raider\'s name.');
     const existing = state.raiders.find(x => x.name.toLowerCase() === name.toLowerCase());
     if (existing) raider = existing.id; else { const nr = {id: uid(), name, cls: $('#fNewCls').value}; state.raiders.push(nr); raider = nr.id; }
   }
   if (!raider) return say('Choose who received the item.');
-  const it = ITEM[itemId];
-  const finalBoss = boss || (it.sources.length === 1 ? it.sources[0] : '');
-  if (!finalBoss) return say('This item drops from several bosses. Pick the boss.');
   const note = $('#fNote').value.trim();
   if (ui.editing) {
     const a = state.awards.find(x => x.id === ui.editing); if (a) Object.assign(a, {date, boss: finalBoss, item: itemId, raider, note});
@@ -1500,7 +1515,10 @@ $('#nightList').addEventListener('click', async ev => {
   const b = ev.target.closest('[data-nrm]'); if (!b) return;
   const date = b.dataset.nrm, aw = state.awards.filter(a => a.date === date).length;
   if (!await ask('Remove the attendance record for ' + fmtShort(date) + '?' + (aw ? ' The ' + aw + ' award' + (aw === 1 ? '' : 's') + ' of that night stay, so the night keeps its loot winners.' : ''), 'Remove')) return;
-  state.nights = nights().filter(n => n.date !== date); markDirty();
+  const wasOff = !!(nightOn(date) || {}).off;
+  state.nights = nights().filter(n => n.date !== date);
+  if (wasOff && aw) nights().push({id: uid(), date, present: [], off: true});   // the loot keeps the night listed, it still does not count
+  markDirty();
 });
 ['#attSearch','#attShow'].forEach(s => $(s).addEventListener('input', renderAttendance));
 
@@ -1701,7 +1719,7 @@ function renderWishes(){
       + '<td>' + (rd ? rName(rd) : '<span class="rname">' + esc(w.raider_name) + '</span>') + '</td>'
       + '<td>' + prioTag(w.prio) + (got ? '<span class="st ok" style="margin-left:6px">got it</span>' : '') + '</td>'
       + '<td class="note">' + esc(w.note || '') + (w.created_name && w.created_name !== w.raider_name ? '<div class="faint" style="font-size:12px;font-style:normal">by ' + esc(w.created_name) + '</div>' : '') + '</td>'
-      + '<td class="acts">' + (isEditor || mine ? '<button class="btn sm ghost danger" data-wrm="' + w.id + '">Remove</button>' : '') + '</td></tr>';
+      + '<td class="acts">' + (isEditor || mine ? '<button class="btn sm ghost danger" data-wrm="' + esc(w.id) + '">Remove</button>' : '') + '</td></tr>';
   }
   $('#wishBody').innerHTML = h;
 }
@@ -1728,7 +1746,7 @@ function renderWantLine(){
   el.hidden = false;
   el.innerHTML = '<div class="t">' + (id ? 'Who wants this item' : 'Wishes for this boss') + '</div>'
     + groups.map(g => '<div class="w">' + (id ? '' : '<span class="it">' + esc(g.item.name) + '</span>')
-        + g.ws.map(w => { const rd = raiderById(w.raider); return '<button type="button" data-wpick="' + w.raider + '" title="' + esc(w.note || 'pick this raider') + '" style="color:' + (rd ? clsVar(rd.cls) : 'inherit') + '">' + esc(w.raider_name) + '<span class="p">' + PRIO[w.prio] + '</span></button>'; }).join('')
+        + g.ws.map(w => { const rd = raiderById(w.raider); return '<button type="button" data-wpick="' + esc(w.raider) + '" title="' + esc(w.note || 'pick this raider') + '" style="color:' + (rd ? clsVar(rd.cls) : 'inherit') + '">' + esc(w.raider_name) + '<span class="p">' + PRIO[w.prio] + '</span></button>'; }).join('')
       + '</div>').join('');
 }
 $('#wantLine').addEventListener('click', ev => {
@@ -1907,9 +1925,9 @@ function renderMats(){
       const mine = user && r.requested_by === user.id;
       const date = new Date(r.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
       let acts = '';
-      if (r.kind === 'request' && r.status === 'open' && isEditor) acts += '<button class="btn sm primary" data-mrecv="'+r.id+'">Handed out</button><button class="btn sm ghost danger" data-mdecl="'+r.id+'">Decline</button>';
-      if (r.status !== 'open' && r.kind === 'request' && isEditor) acts += '<button class="btn sm ghost" data-mopen="'+r.id+'" title="Set back to open">Reopen</button>';
-      if (isEditor || (mine && r.status === 'open')) acts += '<button class="btn sm ghost danger" data-mdel="'+r.id+'">Remove</button>';
+      if (r.kind === 'request' && r.status === 'open' && isEditor) acts += '<button class="btn sm primary" data-mrecv="'+esc(r.id)+'">Handed out</button><button class="btn sm ghost danger" data-mdecl="'+esc(r.id)+'">Decline</button>';
+      if (r.status !== 'open' && r.kind === 'request' && isEditor) acts += '<button class="btn sm ghost" data-mopen="'+esc(r.id)+'" title="Set back to open">Reopen</button>';
+      if (isEditor || (mine && r.status === 'open')) acts += '<button class="btn sm ghost danger" data-mdel="'+esc(r.id)+'">Remove</button>';
       h += '<tr class="'+(r.status !== 'open' && r.kind !== 'stock' ? 'done' : '')+'">'
         + '<td class="muted" style="white-space:nowrap">'+date+(r.received_at && r.kind === 'request' ? '<div class="faint" style="font-size:12px">'+(r.status === 'declined' ? 'declined ' : 'got ')+new Date(r.received_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})+'</div>' : '')+'</td>'
         + '<td>'+(rd ? rName(rd) : r.raider_name ? '<span class="rname">'+esc(r.raider_name)+'</span>' : '<span class="faint">—</span>')+(r.kind === 'handout' ? '<span class="kind">handout</span>' : r.kind === 'stock' ? '<span class="kind">stock</span>' : '')+'</td>'
@@ -2183,6 +2201,14 @@ function importAmisia(){
 }
 
 function glCleanName(n){ n = String(n||'').trim().split('-')[0].trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
+// A raid night runs past midnight: a time before 06:00 belongs to the night before, like the Amisia addon and Warcraft Logs.
+function nightOf(date, time){
+  if (!date || !time) return date;
+  const h = Number(String(time).split(':')[0]);
+  if (!(h >= 0 && h < 6)) return date;
+  const [y, mo, d] = date.split('-').map(Number), p = new Date(y, mo - 1, d - 1);
+  return p.getFullYear() + '-' + String(p.getMonth() + 1).padStart(2, '0') + '-' + String(p.getDate()).padStart(2, '0');
+}
 function glDate(p){
   let m = p.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
   if (m) return {date: m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0'), time: m[4] ? m[4].padStart(2,'0')+':'+m[5] : null};
@@ -2228,8 +2254,8 @@ function glParse(text){
         const who = e.awardedTo != null ? e.awardedTo : (e.player != null ? e.player : (e.winner != null ? e.winner : e.character));
         let date = null, ts = null;
         const tsn = Number(e.timestamp) * 1000;
-        if (isFinite(tsn) && tsn > 0) { const d = new Date(tsn); ts = tsn; date = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-        else if (e.date) { const d = glDate(String(e.date) + (e.time ? ' ' + e.time : '')); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } } }
+        if (isFinite(tsn) && tsn > 0) { const d = new Date(tsn); ts = tsn; date = nightOf(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'), String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')); }
+        else if (e.date) { const d = glDate(String(e.date) + (e.time ? ' ' + e.time : '')); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } date = nightOf(date, d.time); } }
         const response = e.response != null ? String(e.response) : '';
         if (SKIP_RESPONSE.test(response)) continue;
         rows.push({item, rawName: String(who||''), name: glCleanName(who), date: date || today(), ts, os: e.OS === true || e.OS === 1 || /off.?spec|greed/i.test(response), key: e.checksum || (e.id != null ? String(e.id) : null), cls: classFromAny(e.winnerClass != null ? e.winnerClass : e.class), boss: e.boss || null, note: response && !/main.?spec|need|^ms$/i.test(response) && !/off.?spec|greed/i.test(response) ? response : ''});
@@ -2254,7 +2280,7 @@ function glParse(text){
       if (SKIP_RESPONSE.test(response)) continue;
       let date = null, ts = null;
       const dstr = (cDateTime >= 0 ? f[cDateTime] : (cDate >= 0 ? f[cDate] : '')) + (cTime >= 0 && f[cTime] ? ' ' + f[cTime] : '');
-      const d = glDate(dstr.trim()); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } }
+      const d = glDate(dstr.trim()); if (d) { date = d.date; if (d.time) { const [y,mo,dd] = date.split('-').map(Number); const [h,mi] = d.time.split(':').map(Number); ts = new Date(y,mo-1,dd,h,mi).getTime(); } date = nightOf(date, d.time); }
       rows.push({item, rawName: String(who||''), name: glCleanName(who), date: date || today(), ts, os: (cOff != null && /^(1|true)$/i.test(f[cOff]||'')) || /off.?spec|greed/i.test(response), key: cId >= 0 && f[cId] ? f[cId] : null, cls: classFromAny(cClass >= 0 ? f[cClass] : ''), boss: cBoss >= 0 ? (f[cBoss] || null) : null, note: response && !/main.?spec|need|^ms$/i.test(response) && !/off.?spec|greed/i.test(response) ? response : ''});
     }
     return rows;
@@ -2275,7 +2301,7 @@ function glParse(text){
       if (!name && /^[^\d\s\/\\:]{2,}(-[^\d\s]+)?$/u.test(p)) { name = p; continue; }
     }
     if (item === null && name === null) continue;
-    let ts = null; if (date && time) { const [y,mo,d] = date.split('-').map(Number); const [h,mi] = time.split(':').map(Number); ts = new Date(y,mo-1,d,h,mi).getTime(); }
+    let ts = null; if (date && time) { const [y,mo,d] = date.split('-').map(Number); const [h,mi] = time.split(':').map(Number); ts = new Date(y,mo-1,d,h,mi).getTime(); date = nightOf(date, time); }
     rows.push({item, rawName: name||'', name: glCleanName(name), date: date || today(), ts, os, key, cls: ''});
   }
   return rows;
@@ -2441,7 +2467,7 @@ $('#discardBtn').addEventListener('click', async () => {
   }
   try { localStorage.removeItem(LS_KEY); } catch (e) {}
   if (!SUPA) { dirty = false; location.reload(); return; }
-  await loadFromServer(true);
+  if (!await loadFromServer(true)) return say('Could not reach the saved version. Reload the page to finish discarding.');
   renderHistory(true);
   if (wclRaw.length) { wclRows = wclResolve(wclRaw); wclRender(); }
   say('Unsaved changes discarded.');
@@ -2508,7 +2534,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); const n = awardsOf(r.id).length; if (r && await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
+  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
 });
 $('#saveSettings').addEventListener('click', async () => {
   const newGame = $('#gGame').value;
