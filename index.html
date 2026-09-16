@@ -263,19 +263,23 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 .crhint{font-size:13px;color:var(--muted);margin:-6px 0 12px}
 /* ---------- mats ---------- */
 .mats{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:22px}
-.mat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;gap:14px;align-items:center}
+.mat{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start;min-width:0}
+.mat > div{flex:1;min-width:0}
 .mat .ico{width:44px;height:44px}
-.mat .nm{font-family:var(--display);font-weight:600;font-size:17px}
-.mat .nums{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;font-family:var(--label);font-size:13px;letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums}
+.mat .nm{font-family:var(--display);font-weight:600;font-size:17px;line-height:1.2}
+/* the four numbers sit in a fixed 2 by 2 grid instead of wrapping unevenly */
+.mat .nums{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-top:8px;font-family:var(--label);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
+.mat .nums span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mat .nums b{color:var(--text);font-size:18px;font-weight:600;display:block;line-height:1.1}
 .mat .nums .bank b{color:var(--gold)}
 .mat .nums .open b{color:var(--warn)}
-.mat .counted{margin-top:6px;font-size:13px;color:var(--muted)}
+.mat .counted{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .mat .counted b{color:var(--gold);font-variant-numeric:tabular-nums}
 .mat .counted .warn{color:var(--warn)}
-.matgrid{display:grid;grid-template-columns:1fr 340px;gap:18px;margin-top:18px;align-items:start}
-@media (max-width:900px){.matgrid{grid-template-columns:1fr}}
-.matgrid.solo{grid-template-columns:1fr}
+.matgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;margin-top:18px;align-items:start}
+.matgrid > *{min-width:0}
+@media (max-width:900px){.matgrid{grid-template-columns:minmax(0,1fr)}}
+.matgrid.solo{grid-template-columns:minmax(0,1fr)}
 tr.done td{opacity:.5}
 .kind{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:6px;vertical-align:middle}
 .matform .row{display:grid;grid-template-columns:1fr 90px;gap:10px}
@@ -774,7 +778,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789568371';
+const BUILD_ID = '1789568481';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
