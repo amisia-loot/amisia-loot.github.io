@@ -774,7 +774,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789488716';
+const BUILD_ID = '1789567956';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1805,7 +1805,8 @@ let MATROWS = [], matState = 'loading', matChannel = null;
 const matsHere = () => MATS[gameKey] || [];
 const ORDER = {open: 0, received: 1, declined: 2};
 const matName = id => { const m = matsHere().find(x => x.id === id); return m ? m.name : (ITEM[id] ? ITEM[id].name : 'Item ' + id); };
-const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') : '';
+// Shown to other people: never the e-mail address. The database sets the same name on its side.
+const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.preferred_username || 'Member') : '';
 async function loadMats(){
   if (!SUPA) { matState = 'error'; return; }
   const {data, error} = await SUPA.from('mat_requests').select('*').order('created_at');
