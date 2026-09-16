@@ -280,6 +280,8 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 .matgrid > *{min-width:0}
 @media (max-width:900px){.matgrid{grid-template-columns:minmax(0,1fr)}}
 .matgrid.solo{grid-template-columns:minmax(0,1fr)}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:22px;align-items:start}
+.setgrid > *{min-width:0}
 tr.done td{opacity:.5}
 .kind{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:6px;vertical-align:middle}
 .matform .row{display:grid;grid-template-columns:1fr 90px;gap:10px}
@@ -393,6 +395,7 @@ tr.got td{opacity:.5}
     <button class="tab" role="tab" data-view="mats">Mats</button>
     <button class="tab" role="tab" data-view="roster">Roster</button>
     <button class="tab" role="tab" data-view="import">Import</button>
+    <button class="tab" role="tab" data-view="settings">Settings</button>
   </nav>
 
   <div class="bar" id="bar"><span class="dot"></span><span id="barmsg">Loading…</span><span class="online" id="onlineBar" hidden></span><span class="grow"></span><span class="who" id="who"></span><button class="btn sm ghost" id="discardBtn" hidden title="Go back to the last saved version">Discard</button><button class="btn sm primary" id="publishBtn" hidden>Save changes</button><button class="btn sm" id="loginBtn">Sign in</button><button class="btn sm ghost" id="logoutBtn" hidden>Sign out</button></div>
@@ -663,43 +666,6 @@ tr.got td{opacity:.5}
             </details>
           </div>
         </div>
-        <div class="panel">
-          <div class="panel-h">Guild &amp; ledger settings</div>
-          <div class="panel-b stack">
-            <div class="field"><label for="gName">Guild name</label><input class="inp" id="gName" placeholder="Shown in the header"></div>
-            <div class="field"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
-            <div class="field"><label for="gFaction">Faction</label><select class="inp" id="gFaction"><option value="">Not set</option><option value="alliance">Alliance</option><option value="horde">Horde</option></select></div>
-            <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame"></select></div>
-            <button class="btn" id="saveSettings">Save settings</button>
-          </div>
-        </div>
-        <div class="panel" id="editorsPanel" hidden>
-          <div class="panel-h">Editors</div>
-          <div class="panel-b stack">
-            <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. Enter their <b>Discord username</b> (as shown in their Discord profile, without the @) or their e-mail address. They sign in with Discord, or with an e-mail link if you entered an address.</p>
-            <div id="editorsList" class="stack"></div>
-            <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="text" placeholder="discordname or officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
-            <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Online now</div>
-            <div id="onlineList" class="muted" style="font-size:13px">–</div>
-            <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Accounts that signed in</div>
-            <div id="accountsList" class="stack" style="font-size:13px"></div>
-          </div>
-        </div>
-        <div class="panel" id="histPanel" hidden>
-          <div class="panel-h">Earlier versions<span class="grow"></span><button class="btn sm ghost" id="histReload">Refresh</button></div>
-          <div class="panel-b stack">
-            <p class="muted" style="margin:0;font-size:13px">Every save keeps the version it replaced, the newest 40. Restoring writes a new version, so a restore can itself be undone.</p>
-            <div id="histList"></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-h">Backup</div>
-          <div class="panel-b stack">
-            <p class="muted" style="margin:0;font-size:13px">Copy the ledger as JSON to keep a backup, or paste a backup below to restore it.</p>
-            <textarea class="inp" id="backup" spellcheck="false"></textarea>
-            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="exportBtn">Export to box</button><button class="btn sm" id="copyBtn">Copy</button><button class="btn sm danger" id="importBtn">Restore from box</button></div>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -757,6 +723,55 @@ tr.got td{opacity:.5}
       </div>
     </div>
   </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="view" id="view-settings" hidden>
+    <div class="setgrid">
+      <div class="stack">
+          <div class="panel">
+            <div class="panel-h">Guild &amp; ledger settings</div>
+            <div class="panel-b stack">
+              <div class="field"><label for="gName">Guild name</label><input class="inp" id="gName" placeholder="Shown in the header"></div>
+              <div class="field"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
+              <div class="field"><label for="gFaction">Faction</label><select class="inp" id="gFaction"><option value="">Not set</option><option value="alliance">Alliance</option><option value="horde">Horde</option></select></div>
+              <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame"></select></div>
+              <button class="btn" id="saveSettings">Save settings</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h">Backup</div>
+            <div class="panel-b stack">
+              <p class="muted" style="margin:0;font-size:13px">Copy the ledger as JSON to keep a backup, or paste a backup below to restore it.</p>
+              <textarea class="inp" id="backup" spellcheck="false"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="exportBtn">Export to box</button><button class="btn sm" id="copyBtn">Copy</button><button class="btn sm danger" id="importBtn">Restore from box</button></div>
+            </div>
+          </div>
+      </div>
+      <div class="stack">
+          <div class="panel" id="editorsPanel" hidden>
+            <div class="panel-h">Editors</div>
+            <div class="panel-b stack">
+              <p class="muted" style="margin:0;font-size:13px">People who may change the ledger. Enter their <b>Discord username</b> (as shown in their Discord profile, without the @) or their e-mail address. They sign in with Discord, or with an e-mail link if you entered an address.</p>
+              <div id="editorsList" class="stack"></div>
+              <div style="display:flex;gap:8px"><input class="inp" id="edEmail" type="text" placeholder="discordname or officer@example.com"><button class="btn sm primary" id="edAdd">Add</button></div>
+              <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Online now</div>
+              <div id="onlineList" class="muted" style="font-size:13px">–</div>
+              <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Accounts that signed in</div>
+              <div id="accountsList" class="stack" style="font-size:13px"></div>
+            </div>
+          </div>
+      </div>
+      <div class="stack">
+          <div class="panel" id="histPanel" hidden>
+            <div class="panel-h">Earlier versions<span class="grow"></span><button class="btn sm ghost" id="histReload">Refresh</button></div>
+            <div class="panel-b stack">
+              <p class="muted" style="margin:0;font-size:13px">Every save keeps the version it replaced, the newest 40. Restoring writes a new version, so a restore can itself be undone.</p>
+              <div id="histList"></div>
+            </div>
+          </div>
+      </div>
+    </div>
+  </section>
 </div>
 <div id="tip" hidden></div>
 <style id="zoneStyle"></style><style id="craftStyle"></style>
@@ -778,7 +793,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789568623';
+const BUILD_ID = '1789568834';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
 function applyData(d){
@@ -1151,7 +1166,7 @@ function renderHeader(){
   const g = (state.guild||'').trim(), realm = (state.realm||'').trim();
   const gm = GAME[gameKey] || GAME.tbc; $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
   const fac = state.faction === 'alliance' ? '<span class="fac alliance">Alliance</span>' : state.faction === 'horde' ? '<span class="fac horde">Horde</span>' : '';
-  $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="roster">set guild, realm and faction</a></span>');
+  $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="settings">set guild, realm and faction</a></span>');
   document.title = g ? g + (realm ? ' – ' + realm : '') + ' · Guild Loot Ledger' : 'Guild Loot Ledger';
   $('#stats').innerHTML = '<div><b>'+state.awards.length+'</b> awards · <b>'+state.raiders.length+'</b> raiders</div>'
     + '<div><b>'+nightList.length+'</b> raid night'+(nightList.length===1?'':'s')+(dates.length ? ' · '+fmtShort(dates[0])+(dates.length>1?' – '+fmtDate(dates[dates.length-1]):' '+dates[0].slice(0,4)) : '')+'</div>';
@@ -1167,7 +1182,9 @@ function renderHeader(){
   $('#clearExample').classList.toggle('hidden', readOnly);
   // importing is for owner and editors only
   document.querySelector('.tab[data-view="import"]').hidden = readOnly;
+  document.querySelector('.tab[data-view="settings"]').hidden = readOnly;
   document.querySelectorAll('.tab').forEach(t => {
+    if (t.dataset.view === 'settings') return;   // no count on this tab
     const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
@@ -1936,11 +1953,13 @@ $('#matBody').addEventListener('click', async ev => {
 });
 
 /* ---------------- roster ---------------- */
+function renderSettings(){
+  $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
+  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
+}
 function renderRoster(){
   if (!$('#rCls').options.length) $('#rCls').innerHTML = classOptions('Warrior');
   if ($('#rP1').dataset.game !== gameKey) { $('#rP1').dataset.game = gameKey; $('#rP1').innerHTML = profOptions(''); $('#rP2').innerHTML = profOptions(''); }
-  $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
-  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
   const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
   if (!rows.length) { $('#rosterBody').innerHTML = '<tr><td colspan="8"><div class="empty"><b>Empty roster</b>Add your raiders with the form on the right.</div></td></tr>'; return; }
   $('#rosterBody').innerHTML = rows.map(({r,aw}) => {
@@ -2374,12 +2393,12 @@ function showView(v){
   ui.view = v;
   document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
   document.querySelectorAll('.view').forEach(s => s.hidden = s.id !== 'view-'+v);
-  if (v === 'roster') renderHistory();
+  if (v === 'settings') renderHistory();
   renderAll();
 }
 function renderAll(){
   // a viewer never stays on the Import tab, once the server has said what the role is
-  if (readOnly && roleKnown && ui.view === 'import') { showView('armory'); return; }
+  if (readOnly && roleKnown && (ui.view === 'import' || ui.view === 'settings')) { showView('armory'); return; }
   renderHeader();
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
@@ -2390,6 +2409,7 @@ function renderAll(){
   if (ui.view === 'craft') renderCraft();
   if (ui.view === 'mats') renderMats();
   if (ui.view === 'roster') renderRoster();
+  if (ui.view === 'settings') renderSettings();
 }
 
 /* ---------------- events ---------------- */
