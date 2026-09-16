@@ -803,7 +803,7 @@ const GAMES = [
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789593205';
+const BUILD_ID = '1789593872';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1092,8 +1092,10 @@ async function renderAccounts(){
   if (error) { $('#accountsList').innerHTML = '<span class="muted">Could not load accounts.</span>'; return; }
   const fmt = ts => ts ? new Date(ts).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '–';
   $('#accountsList').innerHTML = (data||[]).length ? data.map(a => {
+    // the database works out the role with the same identity rules it uses for saving (Discord name, display name, e-mail)
     const ids = [a.name, a.email].filter(Boolean).map(x => x.toLowerCase());
-    const isEd = ids.some(x => editorSet.has(x)), isOw = ids.includes((ownerEmail||'').toLowerCase());
+    const isOw = a.role ? a.role === 'owner' : ids.includes((ownerEmail||'').toLowerCase());
+    const isEd = a.role ? a.role === 'editor' : ids.some(x => editorSet.has(x));
     const label = esc(a.name || a.email) + (a.email && a.name ? ' <span class="faint">' + esc(a.email) + '</span>' : '');
     const role = isOw ? '<span class="st ok">owner</span>' : isEd ? '<span class="st ok">editor</span>' : '<button class="btn sm ghost" data-mkeditor="' + esc(a.name || a.email) + '">Make editor</button>';
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + '</div>';
