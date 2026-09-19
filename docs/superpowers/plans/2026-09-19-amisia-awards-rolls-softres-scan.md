@@ -17,7 +17,7 @@
 - Export header stays `#AMISIA 1`.
 - Roll ranges: `1-100` = MS, `1-99` = OS, anything else invalid.
 - Commit messages: English, no third-party addon names, end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
-- Tests run with `python addon/tests/run.py` from the repo root; syntax check with `node addon/tests/syntax.js`.
+- Tests run with `python addon/tests/run.py` from the repo root; syntax check with `node addon/tests/syntax.cjs`.
 
 ---
 
@@ -238,7 +238,7 @@ assert(#s.items == 1 and s.items[1].name == "Fraktur", "epic loot recorded")
 
 - [ ] **Step 5: Run both**
 
-Run: `python addon/tests/run.py` and `node addon/tests/syntax.js`
+Run: `python addon/tests/run.py` and `node addon/tests/syntax.cjs`
 Expected: `ok test_core.lua`, every file `ok`. Fix the stub (not the addon) until this passes.
 
 - [ ] **Step 6: Commit**
