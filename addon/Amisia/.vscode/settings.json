@@ -22,6 +22,10 @@
         "StaticPopup_Show",
         "RANDOM_ROLL_RESULT",
         "RAID_CLASS_COLORS",
-        "HandleModifiedItemClick"
+        "HandleModifiedItemClick",
+        "TooltipDataProcessor",
+        "ItemRefTooltip",
+        "LootFrame",
+        "TooltipUtil"
     ]
 }
