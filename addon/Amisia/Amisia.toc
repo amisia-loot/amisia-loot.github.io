@@ -1,10 +1,15 @@
-## Interface: 20506
+## Interface: 20506, 16001
 ## Title: Amisia
-## Notes: Zeichnet pro Raid die Raidmitglieder und gelootete Gildenmaterialien auf und exportiert sie für die Amisia-Loot-Seite.
+## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves und exportiert alles für die Amisia-Loot-Seite.
 ## Author: mrvulo
-## Version: 1.1.0
+## Version: 1.2.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 
 Core.lua
+Awards.lua
+Rolls.lua
+RollFrame.lua
+SoftRes.lua
+Scan.lua
 UI.lua

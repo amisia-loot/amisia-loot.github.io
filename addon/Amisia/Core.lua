@@ -3,7 +3,16 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.1.0"
+ns.VERSION = "1.2.0"
+
+-- Forever has no GetItemInfo global; both clients have C_Item.
+local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+ns.GetItemInfo = GetItemInfo
+
+-- Item id from a link or an "item:1234" string, or nil.
+function ns.ItemID(link)
+    return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+end
 
 -- Tracked guild bank materials. Names are fallbacks until the client has the item cached.
 ns.MATS = {
@@ -108,6 +117,8 @@ local function buildMatcher(fmt)
     end
 end
 
+ns.BuildMatcher = buildMatcher
+
 local matchers -- built on first use, when the global strings are certainly loaded
 
 local function getMatchers()
@@ -182,6 +193,7 @@ local function newSession(zone, instanceID)
         loot = {},
         items = {},   -- blue or better loot: { name, item, count, t }
         drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
+        awards = {},  -- master loot hand-outs: { name, item, t, kind = MS|OS|SR|-, src }
     }
     DB.sessions[#DB.sessions + 1] = s
     while #DB.sessions > KEEP_SESSIONS do
@@ -289,6 +301,66 @@ local function rememberItem(id, link, q)
     local name = type(link) == "string" and link:match("|h%[(.-)%]|h")
     local known = DB.itemNames[id]
     DB.itemNames[id] = { n = name or (known and known.n) or ("Item " .. id), q = q or (known and known.q) or 0 }
+end
+ns.RememberItem = rememberItem
+
+---------------------------------------------------------------------------
+-- Awards: what the master looter hands out, written by Awards.lua
+---------------------------------------------------------------------------
+local VALID_KIND = { MS = true, OS = true, SR = true, ["-"] = true }
+
+function ns.AddAward(name, item, kind, src, t)
+    if not active then
+        return nil, "Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."
+    end
+    item = tonumber(item)
+    if type(name) ~= "string" or name == "" or not item then return nil, "Name oder Item fehlt." end
+    t = t or time()
+    local a = {
+        name = name, item = item, t = t,
+        kind = VALID_KIND[kind] and kind or "-",
+        src = (type(src) == "string" and src ~= "") and src or "?",
+    }
+    active.awards[#active.awards + 1] = a
+    noteMember(active, name, nil, t)
+    if not DB.itemNames[item] then
+        local _, ilink, q = GetItemInfo(item)
+        rememberItem(item, ilink, q)
+    end
+    active.last = t
+    refresh()
+    return a
+end
+
+function ns.RemoveLastAward()
+    if not active or #active.awards == 0 then return nil end
+    local a = table.remove(active.awards)
+    refresh()
+    return a
+end
+
+function ns.AwardCount(s)
+    return #(s.awards or {})
+end
+
+-- Chat announcement for the group: raid warning for leader or assistant, else raid, else party.
+function ns.Announce(text)
+    if not IsInGroup() then return end
+    local chan = "PARTY"
+    if IsInRaid() then
+        chan = (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) and "RAID_WARNING" or "RAID"
+    end
+    SendChatMessage(text, chan)
+end
+
+-- Modules add handlers for events; the core frame registers them.
+local extra = {}
+local events -- the event frame, created below
+
+function ns.OnEvent(event, fn)
+    extra[event] = extra[event] or {}
+    extra[event][#extra[event] + 1] = fn
+    if events then events:RegisterEvent(event) end
 end
 
 local function onLoot(text)
@@ -586,6 +658,11 @@ function ns.ExportText(list)
             lines[#lines + 1] = ("D %d %d %s"):format(e.item, e.count, e.src)
             used[e.item] = true
         end
+        -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: master loot hand-outs
+        for _, a in ipairs(s.awards or {}) do
+            lines[#lines + 1] = ("A %s %d %d %s %s"):format(a.name, a.item, a.t or 0, a.kind or "-", a.src or "?")
+            used[a.item] = true
+        end
         lines[#lines + 1] = "E"
     end
     -- N <itemID> <quality> <item name>
@@ -603,9 +680,10 @@ end
 ---------------------------------------------------------------------------
 -- Events
 ---------------------------------------------------------------------------
-local events = CreateFrame("Frame")
+events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
-events:SetScript("OnEvent", function(self, event, arg1)
+for ev in pairs(extra) do events:RegisterEvent(ev) end
+events:SetScript("OnEvent", function(self, event, arg1, ...)
     if event == "ADDON_LOADED" then
         if arg1 ~= ADDON then return end
         AmisiaDB = AmisiaDB or {}
@@ -614,11 +692,13 @@ events:SetScript("OnEvent", function(self, event, arg1)
         DB.settings = DB.settings or {}
         DB.itemNames = DB.itemNames or {}
         if DB.settings.enabled == nil then DB.settings.enabled = true end
+        DB.settings.rollSeconds = tonumber(DB.settings.rollSeconds) or 20
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
             s.loot = s.loot or {}
             s.items = s.items or {}
             s.drops = s.drops or {}
+            s.awards = s.awards or {}
         end
         self:UnregisterEvent("ADDON_LOADED")
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -661,11 +741,15 @@ events:SetScript("OnEvent", function(self, event, arg1)
         end
     elseif event == "GUILDBANKBAGSLOTS_CHANGED" then
         if bankOpen then scheduleBankCount() end
-    else
+    elseif event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
         -- a loading screen always leaves the bank
         if event == "PLAYER_ENTERING_WORLD" then bankClosed(self, true) end
         -- instance information settles a moment after the loading screen
         C_Timer.After(1, evaluate)
+    end
+    local list = extra[event]
+    if list then
+        for _, fn in ipairs(list) do fn(arg1, ...) end
     end
 end)
 
@@ -674,8 +758,33 @@ end)
 ---------------------------------------------------------------------------
 SLASH_AMISIA1 = "/amisia"
 SlashCmdList.AMISIA = function(input)
-    local cmd = ((input or ""):match("^%s*(.-)%s*$") or ""):lower()
-    if cmd == "pause" then
+    local raw = (input or ""):match("^%s*(.-)%s*$") or ""
+    local cmd = raw:lower()
+    local word, rest = raw:match("^(%S+)%s*(.*)$")
+    word = (word or ""):lower()
+    if word == "award" or word == "unaward" then
+        if ns.AwardCommand then ns.AwardCommand(word == "unaward" and "unaward" or rest) end
+    elseif word == "roll" then
+        if ns.StartRoll then
+            local link, secs = rest:match("^(.-)%s*(%d*)$")
+            local ok, why = ns.StartRoll(link, tonumber(secs))
+            if not ok then msg(why or "Aufruf: /amisia roll <Item-Link> [Sekunden]") elseif ns.ShowRollFrame then ns.ShowRollFrame() end
+        end
+    elseif word == "rollzeit" then
+        local n = tonumber(rest)
+        if n and n >= 5 and n <= 120 then
+            DB.settings.rollSeconds = math.floor(n)
+            msg(("Roll-Dauer: %d Sekunden."):format(DB.settings.rollSeconds))
+        else
+            msg("Aufruf: /amisia rollzeit <5-120>")
+        end
+    elseif word == "rolls" then
+        if ns.ToggleRollFrame then ns.ToggleRollFrame() end
+    elseif word == "sr" then
+        if ns.ToggleSoftResFrame then ns.ToggleSoftResFrame() end
+    elseif word == "scan" then
+        if ns.ScanCommand then ns.ScanCommand(rest) end
+    elseif cmd == "pause" then
         ns.SetEnabled(not ns.IsEnabled())
     elseif cmd == "status" then
         if active then
