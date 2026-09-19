@@ -15,6 +15,11 @@ assert(NS.RemoveLastAward() == a and #s.awards == 0)
 assert(NS.AddAward("Fraktur", 32235, "MS", "?") and s.awards[1].src == "?")
 assert(NS.AddAward("Fraktur", "32235", "bogus") and s.awards[2].kind == "-" and s.awards[2].item == 32235)
 assert(NS.AwardCount(s) == 2)
+-- a name outside the group gets the award but no attendance
+assert(NS.AddAward("Frakturr", 32235, "MS", "?"))
+assert(not s.members.Frakturr, "typo does not invent a raider")
+assert(STUB.messages[#STUB.messages]:find("nicht in der Gruppe", 1, true))
+NS.RemoveLastAward()
 -- no session: refused
 NS.SetEnabled(false)
 local ok, why = NS.AddAward("Fraktur", 32235, "-", "?")

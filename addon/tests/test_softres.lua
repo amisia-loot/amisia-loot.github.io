@@ -10,6 +10,12 @@ assert(#bad == 1 and bad[1]:find("Broken", 1, true), "row without item id report
 assert(#byItem[32235] == 1 and byItem[32235][1] == "Fraktur", "realm stripped, duplicate merged, capitalised")
 assert(byItem[32837][1] == "Chorf")
 
+-- header with a space in "Item ID"
+byItem, n = NS.ParseSoftRes([[Item;Item ID;Name
+X;32235;Vuloo
+]])
+assert(n == 1 and byItem[32235][1] == "Vuloo", "spaced header")
+
 -- semicolon CSV
 byItem, n = NS.ParseSoftRes("ID;Item;ItemId;Name\n1;X;32235;Vuloo\n")
 assert(n == 1 and byItem[32235][1] == "Vuloo")

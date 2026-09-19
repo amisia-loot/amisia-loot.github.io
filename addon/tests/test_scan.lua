@@ -57,6 +57,14 @@ NS.ScanCommand("5000 5000"); STUB.tick(0.1)
 STUB.fire("ITEM_DATA_LOAD_RESULT", 5000, true)
 assert(not NS.ScanRunning() and AmisiaDB.scan.retry[#AmisiaDB.scan.retry] == 5000)
 
+-- ids the client knows to be missing are skipped without a request
+C_Item.DoesItemExistByID = function(id) return id ~= 7001 end
+NS.ScanCommand("7000 7002"); STUB.requested = {}
+STUB.tick(0.1); assert(#STUB.requested == 2 and STUB.requested[2] == 7002, "7001 skipped")
+STUB.fire("ITEM_DATA_LOAD_RESULT", 7000, false); STUB.fire("ITEM_DATA_LOAD_RESULT", 7002, false)
+assert(not NS.ScanRunning() and AmisiaDB.scan.next == 7003)
+C_Item.DoesItemExistByID = nil
+
 -- combat pauses the ticks
 NS.ScanCommand("6000 6001"); STUB.requested = {}
 STUB.combat = true; STUB.tick(0.3); assert(#STUB.requested == 0)

@@ -60,11 +60,11 @@ function ns.ParseSoftRes(text)
         return true
     end
     local all = lines(text)
-    if #all > 0 and all[1]:lower():find("itemid", 1, true) then
+    if #all > 0 and all[1]:lower():gsub("%s", ""):find("itemid", 1, true) then
         local head = all[1]
         local delim = (select(2, head:gsub(";", "")) > select(2, head:gsub(",", ""))) and ";" or ","
         local cols = {}
-        for i, h in ipairs(splitCsv(head, delim)) do cols[h:match("^%s*(.-)%s*$"):lower()] = i end
+        for i, h in ipairs(splitCsv(head, delim)) do cols[(h:lower():gsub("%s", ""))] = i end
         local cItem = cols["itemid"]
         local cName = cols["name"] or cols["character"] or cols["player"]
         for i = 2, #all do

@@ -89,8 +89,12 @@ local function tick()
     end
     local batch = math.max(1, math.floor(s.rate / 10))
     while batch > 0 and pendingCount < MAX_PENDING and s.next <= s.to do
-        send(s.next, 1)
-        pendingCount = pendingCount + 1
+        -- an id the client's own data does not know needs no server request
+        local exists = C_Item and C_Item.DoesItemExistByID
+        if not exists or exists(s.next) then
+            send(s.next, 1)
+            pendingCount = pendingCount + 1
+        end
         s.next = s.next + 1
         batch = batch - 1
         if s.next > nextReport then

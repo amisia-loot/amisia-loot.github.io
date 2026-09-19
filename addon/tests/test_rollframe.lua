@@ -9,6 +9,8 @@ STUB.alt = true; HandleModifiedItemClick(link); STUB.alt = false
 assert(NS.CurrentRoll() == nil, "no round without a loot window")
 
 STUB.fire("LOOT_OPENED")
+STUB.alt = true; HandleModifiedItemClick(STUB.item(777, "Bag Item", 4)); STUB.alt = false
+assert(NS.CurrentRoll() == nil, "alt-click on an item outside the loot window does nothing")
 HandleModifiedItemClick(link)
 assert(NS.CurrentRoll() == nil, "plain modified click without alt does nothing")
 STUB.alt = true; HandleModifiedItemClick(link); STUB.alt = false

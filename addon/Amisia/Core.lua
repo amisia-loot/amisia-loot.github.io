@@ -322,7 +322,12 @@ function ns.AddAward(name, item, kind, src, t)
         src = (type(src) == "string" and src ~= "") and src or "?",
     }
     active.awards[#active.awards + 1] = a
-    noteMember(active, name, nil, t)
+    -- Only someone in the group counts as present; a typo in a manual award must not invent a raider.
+    if active.members[name] or ns.InGroup(name) then
+        noteMember(active, name, nil, t)
+    else
+        msg(("Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."):format(name))
+    end
     if not DB.itemNames[item] then
         local _, ilink, q = GetItemInfo(item)
         rememberItem(item, ilink, q)
@@ -330,6 +335,15 @@ function ns.AddAward(name, item, kind, src, t)
     active.last = t
     refresh()
     return a
+end
+
+-- Whether a short name belongs to the current group; returns true and the class token.
+function ns.InGroup(name)
+    for i = 1, GetNumGroupMembers() or 0 do
+        local n, _, _, _, _, class = GetRaidRosterInfo(i)
+        if n and (n == name or n:match("^([^%-]+)") == name) then return true, class end
+    end
+    return false
 end
 
 function ns.RemoveLastAward()

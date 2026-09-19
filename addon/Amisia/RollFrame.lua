@@ -23,6 +23,14 @@ local function classColor(class)
     return c and c.colorStr or "ffffffff"
 end
 
+-- Whether an item currently lies in the open loot window.
+function ns.InLootWindow(id)
+    for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
+        if ns.ItemID(GetLootSlotLink(i)) == id then return true end
+    end
+    return false
+end
+
 -- Hands the current round's item to a name through master loot, when the loot window still holds it.
 function ns.AwardFromRoll(name)
     local r = ns.CurrentRoll() or ns.LastRoll()
@@ -200,7 +208,8 @@ ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
 -- Alt-click on an item in the open loot window starts a round for it.
 if type(HandleModifiedItemClick) == "function" then
     hooksecurefunc("HandleModifiedItemClick", function(link)
-        if lootOpen and IsAltKeyDown() and ns.ItemID(link) then
+        local id = ns.ItemID(link)
+        if lootOpen and IsAltKeyDown() and id and ns.InLootWindow(id) then
             local ok, why = ns.StartRoll(link)
             if ok then ns.ShowRollFrame() elseif why then ns.msg(why) end
         end
