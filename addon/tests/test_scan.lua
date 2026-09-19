@@ -18,10 +18,12 @@ assert(AmisiaDB.scan.items[100]:match("^Hundred\t2\t141\t70\t4\t1\tINVTYPE_HEAD\
 assert(AmisiaDB.scan.items[102]:find("\tINVTYPE_WEAPON\t", 1, true))
 assert(not AmisiaDB.scan.items[101] and AmisiaDB.scan.count == 2)
 assert(NS.ScanRunning(), "105 still open")
-STUB.tick(3.5)
-assert(#STUB.requested == 7 and STUB.requested[7] == 105, "timeout retried once")
-STUB.tick(3.5)
-assert(AmisiaDB.scan.retry[1] == 105 and not NS.ScanRunning(), "second timeout parks the id and the scan ends")
+STUB.tick(6.5)
+assert(#STUB.requested == 7 and STUB.requested[7] == 105, "timeout retried")
+STUB.tick(6.5)
+assert(#STUB.requested == 8, "second retry")
+STUB.tick(6.5)
+assert(AmisiaDB.scan.retry[1] == 105 and not NS.ScanRunning(), "third timeout parks the id and the scan ends")
 assert(AmisiaDB.scan.next == 106)
 assert(NS.ScanStatus():find("2 Items", 1, true) and NS.ScanStatus():find("1 offen", 1, true), NS.ScanStatus())
 
@@ -64,6 +66,17 @@ STUB.tick(0.1); assert(#STUB.requested == 2 and STUB.requested[2] == 7002, "7001
 STUB.fire("ITEM_DATA_LOAD_RESULT", 7000, false); STUB.fire("ITEM_DATA_LOAD_RESULT", 7002, false)
 assert(not NS.ScanRunning() and AmisiaDB.scan.next == 7003)
 C_Item.DoesItemExistByID = nil
+
+-- retry asks the parked ids again at a lower rate and keeps the stored rate afterwards
+AmisiaDB.scan.retry = { 105, 5000 }
+NS.ScanCommand("rate 100")
+STUB.item(105, "Late", 3)
+assert(NS.ScanRetry()); STUB.requested = {}
+STUB.tick(0.1); assert(#STUB.requested == 2 and STUB.requested[1] == 105, "both parked ids requested")
+STUB.fire("ITEM_DATA_LOAD_RESULT", 105, true); STUB.fire("ITEM_DATA_LOAD_RESULT", 5000, false)
+assert(not NS.ScanRunning() and AmisiaDB.scan.items[105] and #AmisiaDB.scan.retry == 0)
+STUB.tick(0.1); assert(AmisiaDB.scan.rate == 100, "rate restored")
+assert(NS.ScanRetry() == nil, "nothing to retry")
 
 -- combat pauses the ticks
 NS.ScanCommand("6000 6001"); STUB.requested = {}

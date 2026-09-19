@@ -3,8 +3,8 @@
 local ADDON, ns = ...
 
 local MAX_PENDING = 200
-local TIMEOUT = 3
-local MAX_TRIES = 2
+local TIMEOUT = 6
+local MAX_TRIES = 3
 local DEFAULT_TO = 250000
 local DEFAULT_RATE = 100
 local REPORT_EVERY = 5000
@@ -14,6 +14,8 @@ local ticker
 local pending, pendingCount = {}, 0
 local clock = 0
 local nextReport
+local queue   -- ids from the retry list while /amisia scan retry runs, else nil
+local savedRate   -- the rate to put back after a retry run
 
 local GetItemInfoAny = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
 local GetItemInfoInstantAny = (C_Item and C_Item.GetItemInfoInstant) or _G.GetItemInfoInstant
@@ -56,6 +58,8 @@ end
 
 local function finish(why)
     running = false
+    queue = nil
+    if savedRate then scanDB().rate = savedRate; savedRate = nil end
     if ticker then ticker:Cancel(); ticker = nil end
     pending, pendingCount = {}, 0
     local s = scanDB()
@@ -88,6 +92,15 @@ local function tick()
         end
     end
     local batch = math.max(1, math.floor(s.rate / 10))
+    if queue then
+        while batch > 0 and pendingCount < MAX_PENDING and #queue > 0 do
+            send(table.remove(queue, 1), 1)
+            pendingCount = pendingCount + 1
+            batch = batch - 1
+        end
+        if #queue == 0 and pendingCount == 0 then finish("fertig") end
+        return
+    end
     while batch > 0 and pendingCount < MAX_PENDING and s.next <= s.to do
         -- an id the client's own data does not know needs no server request
         local exists = C_Item and C_Item.DoesItemExistByID
@@ -117,7 +130,8 @@ local function onResult(id, success)
             s.retry[#s.retry + 1] = id
         end
     end
-    if scanDB().next > scanDB().to and pendingCount == 0 then finish("fertig") end
+    local s = scanDB()
+    if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish("fertig") end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", onResult)
@@ -142,6 +156,26 @@ function ns.ScanStart(from, to)
     return true
 end
 
+-- Asks again for every id that got no usable answer, at a quarter of the rate.
+function ns.ScanRetry()
+    if not request then return nil, "Dieser Client kann keine Items nachladen." end
+    if running then return nil, "Der Scan laeuft schon. /amisia scan stop haelt ihn an." end
+    if inInstance() then return nil, "Der Scan laeuft nur ausserhalb von Instanzen." end
+    local s = scanDB()
+    if #s.retry == 0 then return nil, "Keine offenen IDs." end
+    queue = s.retry
+    s.retry = {}
+    pending, pendingCount = {}, 0
+    nextReport = math.huge
+    running = true
+    local slow = math.max(10, math.floor(s.rate / 4))
+    savedRate = s.rate
+    s.rate = slow
+    ticker = C_Timer.NewTicker(0.1, tick)
+    ns.msg(("Wiederholung gestartet: %d IDs mit %d Anfragen pro Sekunde."):format(#queue, slow))
+    return true
+end
+
 function ns.ScanStop()
     if not running then return end
     finish("angehalten")
@@ -163,6 +197,9 @@ function ns.ScanCommand(rest)
     word = (word or ""):lower()
     if word == "stop" then
         ns.ScanStop()
+    elseif word == "retry" then
+        local ok, why = ns.ScanRetry()
+        if not ok and why then ns.msg(why) end
     elseif word == "status" then
         ns.msg(ns.ScanStatus())
     elseif word == "rate" then
@@ -176,7 +213,7 @@ function ns.ScanCommand(rest)
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg("Aufruf: /amisia scan [<von> <bis>] | stop | status | rate <n>")
+            ns.msg("Aufruf: /amisia scan [<von> <bis>] | retry | stop | status | rate <n>")
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))
