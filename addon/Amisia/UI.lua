@@ -74,6 +74,9 @@ function ns.Refresh()
     else
         statusText:SetText("|cffe0a344Aufnahme pausiert.|r")
     end
+    if ns.ScanRunning and ns.ScanRunning() then
+        statusText:SetText(statusText:GetText() .. " · " .. ns.ScanStatus())
+    end
     pauseBtn:SetText(ns.IsEnabled() and "Pausieren" or "Fortsetzen")
 
     local bank = ns.Bank()
@@ -255,6 +258,10 @@ local function build()
                 GameTooltip:AddLine(("Blaue und epische Items gelootet: %d"):format(items), 0.6, 0.8, 1)
                 GameTooltip:AddLine(("In geöffneten Lootfenstern gesehen: %d"):format(drops), 0.6, 0.8, 1)
             end
+            local awards = ns.AwardCount and ns.AwardCount(s) or 0
+            if awards > 0 then
+                GameTooltip:AddLine(("Vergaben: %d"):format(awards), 0.89, 0.72, 0.34)
+            end
             GameTooltip:Show()
         end)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -293,13 +300,21 @@ local function build()
     end)
 
     -- export
-    local exportLabel = text(W, "GameFontNormal", 400)
+    local exportLabel = text(W, "GameFontNormal", 220)
     exportLabel:SetPoint("TOPLEFT", list, "BOTTOMLEFT", 0, -36)
     exportLabel:SetText("Export für die Amisia-Loot-Seite")
 
-    local makeBtn = button(W, "Export erstellen", 140)
+    local makeBtn = button(W, "Export erstellen", 130)
     makeBtn:SetPoint("TOPRIGHT", list, "BOTTOMRIGHT", 0, -32)
     makeBtn:SetScript("OnClick", function() ns.ShowExport(false) end)
+
+    local srBtn = button(W, "Soft-Reserves", 110)
+    srBtn:SetPoint("RIGHT", makeBtn, "LEFT", -6, 0)
+    srBtn:SetScript("OnClick", function() if ns.ToggleSoftResFrame then ns.ToggleSoftResFrame() end end)
+
+    local rollBtn = button(W, "Rolls", 70)
+    rollBtn:SetPoint("RIGHT", srBtn, "LEFT", -6, 0)
+    rollBtn:SetScript("OnClick", function() if ns.ToggleRollFrame then ns.ToggleRollFrame() end end)
 
     local boxBg = CreateFrame("Frame", nil, W)
     boxBg:SetPoint("TOPLEFT", exportLabel, "BOTTOMLEFT", 0, -8)
@@ -333,7 +348,7 @@ local function build()
 
     local hint = text(W, "GameFontDisableSmall", 568)
     hint:SetPoint("BOTTOMLEFT", 16, 16)
-    hint:SetText("Strg+A, dann Strg+C. Auf der Seite im Import-Tab einfügen, gerne zusammen mit dem Gargul-Export.")
+    hint:SetText("Strg+A, dann Strg+C, auf der Seite im Import-Tab einfügen. /amisia roll, award, sr, scan: siehe Import-Tab.")
 end
 
 -- Fills the export box. Uses the selected sessions, or every session when none is selected.
