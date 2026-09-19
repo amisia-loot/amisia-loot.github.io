@@ -12,4 +12,5 @@ Rolls.lua
 RollFrame.lua
 SoftRes.lua
 Scan.lua
+Collect.lua
 UI.lua

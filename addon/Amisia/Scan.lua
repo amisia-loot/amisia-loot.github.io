@@ -41,6 +41,8 @@ local function inInstance()
 end
 
 local function store(id)
+    id = tonumber(id)
+    if not id then return false end
     local name, _, q, ilvl, minLevel, _, _, _, equipLoc, icon, _, classID, subclassID, bindType = GetItemInfoAny(id)
     if not name then return false end
     if GetItemInfoInstantAny and (not icon or not classID) then
@@ -55,6 +57,8 @@ local function store(id)
     }, "\t")
     return true
 end
+ns.StoreItem = store
+ns.ScanDB = scanDB
 
 local function finish(why)
     running = false
@@ -183,12 +187,15 @@ end
 
 function ns.ScanStatus()
     local s = AmisiaDB and AmisiaDB.scan
-    if not s or not s.next then return "Noch kein Scan. /amisia scan <von> <bis> startet einen." end
+    if not s or not s.next then
+        return ("Noch kein Scan. /amisia scan <von> <bis> startet einen. %d Items gesammelt."):format(s and s.count or 0)
+    end
     if running then
         return ("Scan laeuft: ID %d von %d, %d Items."):format(s.next - 1, s.to, s.count or 0)
     end
-    return ("Scan: %d Items, naechste ID %d von %d%s."):format(s.count or 0, s.next, s.to or 0,
-        (#(s.retry or {}) > 0) and (", " .. #s.retry .. " offen") or "")
+    return ("Scan: %d Items, naechste ID %d von %d%s%s."):format(s.count or 0, s.next, s.to or 0,
+        (#(s.retry or {}) > 0) and (", " .. #s.retry .. " offen") or "",
+        ns.CollectCount and (", " .. ns.CollectCount() .. " Quellen gesammelt") or "")
 end
 
 function ns.ScanCommand(rest)

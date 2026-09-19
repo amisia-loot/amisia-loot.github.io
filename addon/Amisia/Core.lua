@@ -374,7 +374,8 @@ local events -- the event frame, created below
 function ns.OnEvent(event, fn)
     extra[event] = extra[event] or {}
     extra[event][#extra[event] + 1] = fn
-    if events then events:RegisterEvent(event) end
+    -- pcall: an event one client does not know must not stop the addon
+    if events then pcall(events.RegisterEvent, events, event) end
 end
 
 local function onLoot(text)
@@ -696,7 +697,7 @@ end
 ---------------------------------------------------------------------------
 events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
-for ev in pairs(extra) do events:RegisterEvent(ev) end
+for ev in pairs(extra) do pcall(events.RegisterEvent, events, ev) end
 events:SetScript("OnEvent", function(self, event, arg1, ...)
     if event == "ADDON_LOADED" then
         if arg1 ~= ADDON then return end
@@ -707,6 +708,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.itemNames = DB.itemNames or {}
         if DB.settings.enabled == nil then DB.settings.enabled = true end
         DB.settings.rollSeconds = tonumber(DB.settings.rollSeconds) or 20
+        if DB.settings.collect == nil then DB.settings.collect = true end
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
             s.loot = s.loot or {}
@@ -798,6 +800,10 @@ SlashCmdList.AMISIA = function(input)
         if ns.ToggleSoftResFrame then ns.ToggleSoftResFrame() end
     elseif word == "scan" then
         if ns.ScanCommand then ns.ScanCommand(rest) end
+    elseif word == "sammeln" or word == "collect" then
+        DB.settings.collect = not DB.settings.collect
+        msg(DB.settings.collect and "Item-Sammler an: Taschen, Haendler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."
+            or "Item-Sammler aus.")
     elseif cmd == "pause" then
         ns.SetEnabled(not ns.IsEnabled())
     elseif cmd == "status" then

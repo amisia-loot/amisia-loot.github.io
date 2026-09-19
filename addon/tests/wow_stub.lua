@@ -13,7 +13,7 @@ _G.time = function() return STUB.now end
 _G.date = function(fmt, t) return os.date(fmt, t or STUB.now) end
 _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
-_G.UnitName = function(u) if u == "target" then return STUB.target end return STUB.player end
+_G.UnitName = function(u) if u == "target" then return STUB.target end if u == "npc" then return STUB.npc end return STUB.player end
 _G.UnitGUID = function(u) if u == "target" then return STUB.targetGUID end return "Player-1-1" end
 _G.IsInRaid = function() return #STUB.roster > 0 end
 _G.IsInGroup = function() return #STUB.roster > 0 end
