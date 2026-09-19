@@ -801,9 +801,10 @@ const GAMES = [
   {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', craft:'sod', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
   {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
+  // Forever: set file:'data/forever.js' and drop soon:true once tools/build_scan.py has produced the file (see tools/README.md).
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
 ];
-const BUILD_ID = '1789594768';
+const BUILD_ID = '1789809265';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [

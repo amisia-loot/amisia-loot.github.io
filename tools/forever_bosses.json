@@ -1,0 +1,3 @@
+{
+  "_comment": "Drop source name as the addon records it -> \"trash\" (folded into Trash (Zone)) or the boss name to use instead. Sources not listed here count as bosses and are reported by build_scan.py."
+}

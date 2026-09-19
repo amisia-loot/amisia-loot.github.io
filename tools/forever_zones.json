@@ -1,0 +1,10 @@
+{
+  "_comment": "Instance name as the addon records it (GetInstanceInfo) -> zone key, short name and [dark, light] colours for the site. Unknown zones get a default and are reported by build_scan.py.",
+  "Molten Core": {"key": "mc", "short": "MC", "color": ["#d2694f", "#a83f27"]},
+  "Onyxia's Lair": {"key": "ony", "short": "Ony", "color": ["#b9915a", "#8a6428"]},
+  "Blackwing Lair": {"key": "bwl", "short": "BWL", "color": ["#c26a4a", "#a6482a"]},
+  "Zul'Gurub": {"key": "zg", "short": "ZG", "color": ["#7fbf5a", "#3f8a25"]},
+  "Ruins of Ahn'Qiraj": {"key": "aq20", "short": "AQ20", "color": ["#d6b04a", "#8f6f0c"]},
+  "Temple of Ahn'Qiraj": {"key": "aq40", "short": "AQ40", "color": ["#e8a33d", "#a86a0a"]},
+  "Naxxramas": {"key": "naxx", "short": "Naxx", "color": ["#4fb3d4", "#1f7d99"]}
+}
