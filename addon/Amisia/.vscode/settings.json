@@ -19,6 +19,9 @@
         "DEFAULT_CHAT_FRAME",
         "StaticPopupDialogs",
         "UISpecialFrames",
-        "StaticPopup_Show"
+        "StaticPopup_Show",
+        "RANDOM_ROLL_RESULT",
+        "RAID_CLASS_COLORS",
+        "HandleModifiedItemClick"
     ]
 }

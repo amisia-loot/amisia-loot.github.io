@@ -723,7 +723,7 @@ tr.got td{opacity:.5}
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>Amisia addon</b> <a href="addon/Amisia.zip" download>download</a></p>
           <ol class="steps">
-            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group, who looted Mark of the Illidari, Heart of Darkness or one of the six epic raid gems, every blue and epic item looted, and what lay in the loot windows you open. Loot without a Gargul award shows up as Other loot on the Nights tab and in the Loot Log.</li>
+            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group, who looted Mark of the Illidari, Heart of Darkness or one of the six epic raid gems, every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
             <li>Open the guild bank before exporting and leave it open for a few seconds. The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
           </ol>
@@ -2188,7 +2188,7 @@ function amParse(blocks){
       const line = raw.trim(); if (!line || line[0] === '#') continue;
       const f = line.split(/\s+/);
       if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) {
-        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], names};
+        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], names};
         out.push(cur);
       } else if (f[0] === 'M' && cur && f[1]) {
         const name = glCleanName(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || ''});
@@ -2201,12 +2201,28 @@ function amParse(blocks){
       } else if (f[0] === 'D' && cur && f.length >= 3) {
         const item = Number(f[1]), count = Math.max(1, Math.floor(Number(f[2]) || 1)), source = (f.slice(3).join(' ') || '?').slice(0, 60);
         if (item) cur.drops.push({item, count, source});
+      } else if (f[0] === 'A' && cur && f.length >= 5) {
+        // A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: a master loot hand-out
+        const name = glCleanName(f[1]), item = Number(f[2]), at = Number(f[3]) || 0, kind = f[4].toUpperCase();
+        if (name && item) cur.awards.push({name, item, at, kind: ['MS', 'OS', 'SR'].includes(kind) ? kind : '', source: (f.slice(5).join(' ') || '?').slice(0, 60)});
       } else if (f[0] === 'N' && f.length >= 3 && /^\d+$/.test(f[1])) {
         names[Number(f[1])] = {n: (f.slice(3).join(' ') || 'Item ' + f[1]).slice(0, 80), q: Math.max(0, Math.min(7, Math.floor(Number(f[2]) || 0)))};
       } else if (f[0] === 'E') cur = null;
     }
   }
   return out;
+}
+// Awards the Amisia addon recorded, as rows of the award preview. The addon dates a session by
+// raid night already, so the session date is used as it is.
+function amAwardRows(sessions){
+  const rows = [], seen = new Set();
+  for (const s of sessions) for (const a of (s.awards || [])) {
+    const own = s.date + '|' + a.item + '|' + a.name.toLowerCase() + '|' + a.at;
+    if (seen.has(own)) continue; seen.add(own);
+    const m = s.members.find(x => x.name.toLowerCase() === a.name.toLowerCase());
+    rows.push({item: a.item, rawName: a.name, name: a.name, date: s.date, ts: a.at ? a.at * 1000 : null, os: a.kind === 'OS', key: null, cls: m ? m.cls : '', boss: a.source !== '?' ? a.source : null, note: a.kind === 'SR' ? 'SR' : ''});
+  }
+  return rows;
 }
 // The newest guild bank count in the pasted export:
 // "K <epoch> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>", then "B <itemID> <count>" per material.
@@ -2506,9 +2522,11 @@ function glRender(){
 $('#glPreview').addEventListener('click', () => {
   const txt = $('#glText').value; if (!txt.trim()) return say('Paste a Gargul or Amisia export first.');
   const {blocks, rest} = amSplit(txt);
-  amRows = blocks.length ? amResolve(amParse(blocks)) : [];
+  const amSessions = blocks.length ? amParse(blocks) : [];
+  amRows = amSessions.length ? amResolve(amSessions) : [];
   amBank = blocks.length ? amBankResolve(amParseBank(blocks)) : null;
-  glRows = rest.trim() ? glResolve(glParse(rest)) : [];
+  const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
+  glRows = rawRows.length ? glResolve(rawRows) : [];
   if (!glRows.length && !amRows.length && !amBank) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
