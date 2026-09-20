@@ -89,6 +89,9 @@ h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);lin
 .bar[hidden]{display:none}
 .who{font-family:var(--label);letter-spacing:.06em;color:var(--text)}
 .who .role{color:var(--gold);margin-left:6px}
+.rank{display:inline-block;margin-left:7px;padding:0 6px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;border:1px solid;vertical-align:middle}
+.rank.raider{color:var(--good);border-color:var(--good)}
+.rank.trial{color:var(--warn);border-color:var(--warn)}
 #loginBox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 #loginBox input{max-width:280px}
 
@@ -650,6 +653,15 @@ tr.got td{opacity:.5}
 
   <!-- ============ ROSTER ============ -->
   <section class="view" id="view-roster" hidden>
+    <div class="panel" id="myCharPanel" hidden style="margin-top:22px">
+      <div class="panel-h">Your character<span class="grow"></span><span id="myCharName" style="text-transform:none;letter-spacing:0"></span></div>
+      <div class="panel-b" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:1 1 170px;max-width:240px"><label for="myP1">Profession</label><select class="inp" id="myP1"></select></div>
+        <div class="field" style="flex:1 1 170px;max-width:240px"><label for="myP2">Second profession</label><select class="inp" id="myP2"></select></div>
+        <button class="btn primary" id="myProfSave">Save professions</button>
+        <span class="muted" style="font-size:13px;flex:1 1 220px">They show on the Roster and tell the Crafting tab what you could craft.</span>
+      </div>
+    </div>
     <div class="two">
       <div class="tblwrap"><table id="rosterTable"><thead><tr><th>Raider</th><th>Class</th><th>Professions</th><th class="num">Items</th><th>Raids</th><th>First award</th><th>Last award</th><th></th></tr></thead><tbody id="rosterBody"></tbody></table></div>
       <div class="stack" id="rosterSide">
@@ -767,6 +779,7 @@ tr.got td{opacity:.5}
               <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Online now</div>
               <div id="onlineList" class="muted" style="font-size:13px">–</div>
               <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Accounts that signed in</div>
+            <p class="muted" style="margin:0;font-size:13px">Link an account to its character to give it the rank <b>Raider</b> or <b>Trial</b>. Linked members can set their own professions on the Roster tab.</p>
               <div id="accountsList" class="stack" style="font-size:13px"></div>
             </div>
           </div>
@@ -804,7 +817,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789925350';
+const BUILD_ID = '1789925865';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -869,8 +882,15 @@ function loadGame(key){
 const BASE_PROFS = ['Alchemy','Blacksmithing','Enchanting','Engineering','Herbalism','Leatherworking','Mining','Skinning','Tailoring'];
 const PROF_LIST = {classic: BASE_PROFS, sod: BASE_PROFS, tbc: BASE_PROFS.concat('Jewelcrafting').sort(), mop: BASE_PROFS.concat(['Jewelcrafting','Inscription']).sort()};
 const profsHere = () => PROF_LIST[(GAME[gameKey] || {}).craft] || BASE_PROFS;
-const profsOf = r => Array.isArray(r && r.profs) ? r.profs : [];
-const profOptions = sel => '<option value="">–</option>' + profsHere().concat(sel && !profsHere().includes(sel) ? [sel] : []).map(x => '<option'+(x===sel?' selected':'')+'>'+x+'</option>').join('');
+// Accounts the owner linked to a character: {user_id, raider, rank: 'raider'|'trial', profs}. A linked
+// member sets the professions of that character, and those win over the ones in the ledger.
+let MEMBERS = [], memberChannel = null;
+const memberOf = rid => MEMBERS.find(m => m.raider === rid);
+const myMember = () => user ? MEMBERS.find(m => m.user_id === user.id) : null;
+const RANKNAME = {raider: 'Raider', trial: 'Trial'};
+const rankTag = rid => { const m = memberOf(rid); return m && RANKNAME[m.rank] ? '<span class="rank ' + m.rank + '">' + RANKNAME[m.rank] + '</span>' : ''; };
+const profsOf = r => { const m = r && memberOf(r.id); return m && Array.isArray(m.profs) ? m.profs : Array.isArray(r && r.profs) ? r.profs : []; };
+const profOptions = sel => '<option value="">–</option>' + profsHere().concat(sel && !profsHere().includes(sel) ? [sel] : []).map(x => '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>').join('');
 const readProfs = (a, b) => [...new Set([$(a).value, $(b).value].filter(Boolean))];
 const SLOTNAME = {mount:'Mount',other:'Other',recipe:'Recipe',token:'Token',head:'Helm',neck:'Neck',shoulder:'Shoulder',back:'Back',chest:'Chest',wrist:'Wrist',weapon:'Weapon',offhand:'Off hand',ranged:'Ranged',relic:'Relic',hands:'Gloves',waist:'Belt',legs:'Legs',feet:'Boots',finger:'Ring',trinket:'Trinket',other:'Other'};
 const CSLOTNAME = Object.assign({enchant:'Enchant'}, SLOTNAME);
@@ -999,7 +1019,7 @@ function setBar(kind, msg){
   $('#publishBtn').hidden = !(dirty && isEditor);
   $('#discardBtn').hidden = !(dirty && isEditor);
   $('#loginBtn').hidden = !!user; $('#logoutBtn').hidden = !user;
-  $('#who').innerHTML = user ? esc(user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : 'viewer') + '</span>' : '';
+  $('#who').innerHTML = user ? esc(user.user_metadata?.name || user.user_metadata?.full_name || user.email || 'signed in') + '<span class="role">' + (isOwner ? 'owner' : isEditor ? 'editor' : myMember() ? myMember().rank : 'viewer') + '</span>' + (myMember() && raiderById(myMember().raider) ? '<a class="muted" data-goto="roster" style="margin-left:8px;cursor:pointer">' + esc(raiderById(myMember().raider).name) + '</a>' : '') : '';
 }
 function refreshBar(){
   if (!SUPA) setBar('err', 'Could not load the database client. Check your connection and reload.');
@@ -1102,7 +1122,14 @@ async function renderAccounts(){
     const isEd = a.role ? a.role === 'editor' : ids.some(x => editorSet.has(x));
     const label = esc(a.name || a.email) + (a.email && a.name ? ' <span class="faint">' + esc(a.email) + '</span>' : '');
     const role = isOw ? '<span class="st ok">owner</span>' : isEd ? '<span class="st ok">editor</span>' : '<button class="btn sm ghost" data-mkeditor="' + esc(a.name || a.email) + '">Make editor</button>';
-    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + '</div>';
+    // link the account to a character with the rank Raider or Trial
+    const m = a.id ? MEMBERS.find(x => x.user_id === a.id) : null, gone = m && !raiderById(m.raider);
+    const link = !a.id ? '' : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;padding:2px 0 8px;border-bottom:1px solid var(--line)">'
+      + '<select class="inp" data-mlraider="' + esc(a.id) + '" style="flex:1 1 130px;padding:4px 26px 4px 8px">' + raiderOptions(m ? m.raider : '', '<option value="">' + (gone ? 'Removed character' : 'No character') + '</option>') + '</select>'
+      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px"><option value="raider"' + (m && m.rank === 'raider' ? ' selected' : '') + '>Raider</option><option value="trial"' + (m && m.rank === 'trial' ? ' selected' : '') + '>Trial</option></select>'
+      + '<button class="btn sm" data-mlsave="' + esc(a.id) + '">' + (m ? 'Save' : 'Link') + '</button>'
+      + (m ? '<button class="btn sm ghost danger" data-mlrm="' + esc(a.id) + '">Unlink</button>' : '') + '</div>';
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + link + '</div>';
   }).join('') : '<span class="muted">Nobody has signed in yet.</span>';
 }
 let HIST = [], histState = 'idle';
@@ -1129,6 +1156,13 @@ $('#histList').addEventListener('click', async ev => {
   if (error) return say('Could not restore: ' + (error.message || error.code));
   await loadFromServer(true); renderHistory(true); say('Restored version ' + v + '.');
 });
+async function loadMembers(){
+  if (!SUPA) return;
+  const {data, error} = await SUPA.from('members').select('user_id,raider,rank,profs');
+  if (!error) MEMBERS = data || [];
+  renderAll(); refreshBar(); if (isOwner) renderAccounts();
+  if (!memberChannel) memberChannel = SUPA.channel('members').on('postgres_changes', {event: '*', schema: 'public', table: 'members'}, () => loadMembers()).subscribe();
+}
 let ownerEmail = '', presence = null, PRESENCE = [], presenceTimer = null;
 const SID = (() => { try { let s = sessionStorage.getItem('gll.sid'); if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('gll.sid', s); } return s; } catch(e) { return Math.random().toString(36).slice(2); } })();
 async function heartbeat(){
@@ -1169,7 +1203,7 @@ async function initCapability(){
   try { const {data} = await SUPA.from('app_config').select('owner_email').maybeSingle(); ownerEmail = data ? data.owner_email : ''; } catch(e) {}
   const { data: { session } } = await SUPA.auth.getSession();
   user = session ? session.user : null;
-  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); renderHistory(true); startPresence(); loadMats(); loadWishes();
+  await refreshRole(); await loadFromServer(false); renderAll(); refreshBar(); renderEditors(); renderHistory(true); startPresence(); loadMats(); loadWishes(); loadMembers();
   // Supabase runs this callback while it holds its session lock. Asking the database from inside it
   // waits for that same lock, and every later request hangs (seen as a save stuck on "Saving…" and as a
   // login that never loads). So only note the user here and do the work once the callback has returned.
@@ -1202,6 +1236,22 @@ $('#edAdd').addEventListener('click', async () => {
   $('#edEmail').value = ''; say('Added ' + email + ' as editor.'); renderEditors();
 });
 $('#accountsList').addEventListener('click', async ev => {
+  const sv = ev.target.closest('[data-mlsave]'), rm = ev.target.closest('[data-mlrm]');
+  if (sv) {
+    const id = sv.dataset.mlsave, raider = $('[data-mlraider="' + id + '"]').value, rank = $('[data-mlrank="' + id + '"]').value;
+    if (!raider) return say('Choose the character of this account first.');
+    const other = MEMBERS.find(x => x.raider === raider && x.user_id !== id);
+    if (other) return say(raiderById(raider).name + ' is already linked to another account. Unlink it there first.');
+    const {error} = await SUPA.from('members').upsert({user_id: id, raider, rank, updated_at: new Date().toISOString()}, {onConflict: 'user_id'});
+    if (error) return say('Could not link: ' + (error.message || error.code));
+    say('Linked to ' + raiderById(raider).name + ' as ' + RANKNAME[rank] + '.'); return loadMembers();
+  }
+  if (rm) {
+    if (!await ask('Unlink this account from its character? The rank and the professions the member set are removed.', 'Unlink')) return;
+    const {error} = await SUPA.from('members').delete().eq('user_id', rm.dataset.mlrm);
+    if (error) return say('Could not unlink: ' + (error.message || error.code));
+    return loadMembers();
+  }
   const b = ev.target.closest('[data-mkeditor]'); if (!b) return;
   const {error} = await SUPA.from('editors').insert({email: b.dataset.mkeditor.toLowerCase()});
   if (error) return say('Could not add: ' + error.message);
@@ -1261,7 +1311,7 @@ function renderArmory(){
     const last = aw.length ? aw[aw.length-1] : null;
     const open = ui.openCard === r.id;
     return '<article class="card'+(open?' open':'')+'" data-card="'+r.id+'">'
-      + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span><span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
+      + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'+rankTag(r.id)+'<span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
       + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
       + '<div class="meta">'+perZone.map(([z,n]) => '<span><b>'+n+'</b> '+zTag(z)+'</span>').join('')+'<span><b>'+at.was+'</b> of '+at.total+' raid'+(at.total===1?'':'s')+'</span>'+(last?'<span>last: <b>'+fmtShort(last.date)+'</b></span>':'')+'</div>'
       + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+(it?SLOTNAME[it.slot]:'')+'</span></span></span></td><td class="note">'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
@@ -2109,7 +2159,16 @@ function renderSettings(){
   $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
   $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
 }
+function renderMyChar(){
+  const m = myMember(), r = m && raiderById(m.raider);
+  $('#myCharPanel').hidden = !r;
+  if (!r) return;
+  $('#myCharName').innerHTML = rName(r) + rankTag(r.id);
+  const key = gameKey + '|' + profsOf(r).join('|');
+  if ($('#myP1').dataset.key !== key) { $('#myP1').dataset.key = key; $('#myP1').innerHTML = profOptions(profsOf(r)[0] || ''); $('#myP2').innerHTML = profOptions(profsOf(r)[1] || ''); }
+}
 function renderRoster(){
+  renderMyChar();
   if (!$('#rCls').options.length) $('#rCls').innerHTML = classOptions('Warrior');
   if ($('#rP1').dataset.game !== gameKey) { $('#rP1').dataset.game = gameKey; $('#rP1').innerHTML = profOptions(''); $('#rP2').innerHTML = profOptions(''); }
   const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
@@ -2119,7 +2178,7 @@ function renderRoster(){
     const editing = ui.editRaider === r.id;
     return '<tr>'
       + (editing ? '<td colspan="3"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select><select class="inp" id="erP1">'+profOptions(profsOf(r)[0]||'')+'</select><select class="inp" id="erP2">'+profOptions(profsOf(r)[1]||'')+'</select></div></td>'
-                 : '<td>'+rName(r)+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
+                 : '<td>'+rName(r)+rankTag(r.id)+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
       + '<td class="num">'+aw.length+'</td><td><span class="chips">'+perZone.map(([z,n]) => zTag(z).replace('</span>', ' '+n+'</span>')).join('')+'</span></td>'
       + '<td class="muted">'+(aw.length?fmtDate(aw[0].date):'—')+'</td><td class="muted">'+(aw.length?fmtDate(aw[aw.length-1].date):'—')+'</td>'
       + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+r.id+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+r.id+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+r.id+'">Remove</button>'))+'</td>'
@@ -2707,6 +2766,16 @@ $('#crBody').addEventListener('click', async ev => {
   if (!await ask('Remove '+(r ? r.name : 'this raider')+' as crafter of '+(c ? c.name : 'this recipe')+'?', 'Remove')) return;
   state.crafters = crafters().filter(y => y !== x); markDirty();
 });
+$('#myProfSave').addEventListener('click', async () => {
+  const m = myMember(); if (!m || !SUPA) return;
+  const profs = readProfs('#myP1', '#myP2');
+  $('#myProfSave').disabled = true;
+  const {error} = await SUPA.rpc('set_member_profs', {p_raider: m.raider, p_profs: profs});
+  $('#myProfSave').disabled = false;
+  if (error) return say('Could not save your professions: ' + (error.message || error.code));
+  say(profs.length ? 'Professions saved: ' + profs.join(' and ') + '.' : 'Professions cleared.');
+  loadMembers();
+});
 $('#rosterForm').addEventListener('submit', ev => {
   ev.preventDefault(); const name = $('#rName').value.trim(); if (!name) return;
   if (state.raiders.some(r => r.name.toLowerCase() === name.toLowerCase())) return say(name + ' is already on the roster.');
@@ -2716,7 +2785,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   const e = ev.target.closest('[data-redit]'), d = ev.target.closest('[data-rdel]'), s = ev.target.closest('[data-rsave]'), c = ev.target.closest('[data-rcancel]');
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
-  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); } ui.editRaider = null; markDirty(); }
+  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
   if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
 });
 $('#saveSettings').addEventListener('click', async () => {
