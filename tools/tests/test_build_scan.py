@@ -12,6 +12,12 @@ AmisiaDB = {
     [32235] = "Cursed Vision of Sargeras\t4\t141\t70\t4\t1\tINVTYPE_HEAD\t134\t1",
     [32837] = "Warglaive\t5\t156\t70\t2\t7\tINVTYPE_WEAPONMAINHAND\t135\t1",
     [30000] = "Pattern: Thing\t3\t70\t70\t9\t2\t\t136\t0",
+    [31000] = "World Drop Cloak\t4\t120\t70\t4\t1\tINVTYPE_CLOAK\t137\t2",
+  },
+  ["sources"] = {
+    [31000] = { "Drop: Fel Reaver", "Haendler: Thrallmar Quartermaster" },
+    [32235] = { "Quest: The Fall of the Betrayer" },
+    [39999] = { "Auktionshaus" },
   } },
   ["itemNames"] = { [40000] = { ["n"] = "Only Seen", ["q"] = 4 } },
   ["sessions"] = {
@@ -32,8 +38,9 @@ def test_pipeline(tmp_path):
     p = tmp_path / 'Amisia.lua'
     p.write_text(SV, encoding='utf-8')
     db = b.load_sv(str(p))
-    items, sessions = b.collect([db])
+    items, sessions, collected = b.collect([db])
     assert items[32235]['name'] == 'Cursed Vision of Sargeras' and items[32235]['q'] == 4
+    assert collected[31000] == ['Drop: Fel Reaver', 'Haendler: Thrallmar Quartermaster']
     assert items[40000]['name'] == 'Only Seen', 'names from the export fallback'
     assert len(sessions) == 2 and len(sessions[0]['drops']) == 5
     zones_cfg = {'Black Temple': {'key': 'bt', 'short': 'BT', 'color': ['#c26a4a', '#a6482a']}}
@@ -49,12 +56,22 @@ def test_pipeline(tmp_path):
     assert byid[32837]['slot'] == 'weapon' and byid[32837]['sources'] == ['Illidan Stormrage', 'New Name']
     assert byid[30000]['slot'] == 'recipe' and byid[30000]['sources'] == ['Trash (Black Temple)']
     assert byid[40000]['name'] == 'Only Seen' and byid[40000]['slot'] == 'other'
+    assert byid[32235]['sub'] == 'Cloth' and byid[32235]['bind'] == 'BoP' and byid[32235]['lvl'] == 70
+    assert byid[32837]['sub'] == 'Sword' and 'sub' not in byid[30000], 'a recipe has no armour or weapon type'
+    assert b.add_field_sources(out, items, collected, zones, bosses) == 1
+    field = {i['id']: i for i in out}[31000]
+    assert field['sources'] == ['Fel Reaver'] and field['bind'] == 'BoE'
+    assert zones[-1]['key'] == 'field' and bosses[-1] == {'name': 'Fel Reaver', 'zone': 'field'}
+    b.add_via(out, collected)
+    assert field['via'] == ['Haendler: Thrallmar Quartermaster'], 'the drop became a boss, the rest stays a note'
+    assert byid[32235]['via'] == ['Quest: The Fall of the Betrayer']
+    assert 'via' not in byid[32837]
     js = tmp_path / 'forever.js'
     b.write_js(str(js), zones, bosses, out, None)
     txt = js.read_text(encoding='utf-8')
     assert txt.startswith('window.__LOOT=window.__LOOT||{};window.__LOOT["forever"]=')
     data = json.loads(txt.split('=', 2)[2].rstrip(';\n'))
-    assert data['zones'][0]['name'] == 'Black Temple' and len(data['items']) == 4 and 'sprite' not in data
+    assert data['zones'][0]['name'] == 'Black Temple' and len(data['items']) == 5 and 'sprite' not in data
 
 
 def test_icon_names_keeps_names_and_caches(tmp_path, monkeypatch):

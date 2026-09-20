@@ -11,6 +11,10 @@ tools/forever_zones.json maps instance names to zone keys, short names and colou
 tools/forever_bosses.json marks sources as "trash" or renames them. Unknown zones and sources
 are reported and given defaults so the file still builds.
 
+The item collector writes down where an item was met (`scan.sources`): a drop outside a recorded
+raid, a merchant, a quest or the auction house. A "Drop: <name>" source becomes a boss in the zone
+"Seen in the world"; the other sources are kept as the item's `via` line, which the site shows.
+
 --catalog adds every scanned item worth awarding (epic or better, or rare from --catalog-ilvl up)
 that has no observed drop yet, under the boss "Unknown source", so loot can be recorded before
 the boss tables exist. The boss tables replace that source as raids get recorded.
@@ -39,6 +43,8 @@ ICON_FILEIDS = os.path.join(HERE, 'icon-fileids.json')
 DEFAULT_COLOR = ['#8f86a3', '#6a617a']
 UNKNOWN_ZONE = {'key': 'unknown', 'name': 'Unknown source', 'short': '?', 'color': DEFAULT_COLOR}
 UNKNOWN_BOSS = 'Unknown source'
+FIELD_ZONE = {'key': 'field', 'name': 'Seen in the world', 'short': 'World', 'color': ['#7c9a6d', '#5d7452']}
+DROP_PREFIX = 'Drop: '
 JUNK_NAME = re.compile(r'\(test\)|\btest\b|deprecated|^monster - |\[ph\]|^zz|\(old\)|^old |unused|^qa', re.I)
 SPRITE_COLS = 24
 SPRITE_CELL = 40
@@ -52,6 +58,18 @@ SLOT_BY_EQUIP = {
     'INVTYPE_HOLDABLE': 'offhand', 'INVTYPE_RANGED': 'ranged', 'INVTYPE_RANGEDRIGHT': 'ranged',
     'INVTYPE_THROWN': 'ranged', 'INVTYPE_RELIC': 'relic',
 }
+
+# The scan stores the client's item class and subclass. They name what an item is beyond its slot,
+# which decides who may wear it: a warrior wants plate, a rogue wants leather and a dagger.
+WEAPON_TYPE = {
+    0: 'Axe', 1: 'Two-hand axe', 2: 'Bow', 3: 'Gun', 4: 'Mace', 5: 'Two-hand mace', 6: 'Polearm',
+    7: 'Sword', 8: 'Two-hand sword', 9: 'Warglaive', 10: 'Staff', 13: 'Fist weapon', 15: 'Dagger',
+    16: 'Thrown', 18: 'Crossbow', 19: 'Wand', 20: 'Fishing pole',
+}
+ARMOR_TYPE = {1: 'Cloth', 2: 'Leather', 3: 'Mail', 4: 'Plate', 6: 'Shield', 7: 'Libram', 8: 'Idol', 9: 'Totem', 10: 'Sigil', 11: 'Relic'}
+CLASS_WEAPON, CLASS_ARMOR = 2, 4
+# bindType 1 binds when picked up, 2 when equipped, 3 when used.
+BIND_NAME = {1: 'BoP', 2: 'BoE', 3: 'BoU'}
 
 
 # ---------------------------------------------------------------- SavedVariables
@@ -85,8 +103,8 @@ def parse_item_line(line):
 
 
 def collect(dbs):
-    """Union of the scans (a later file wins) and every session with its drops."""
-    items, sessions, names = {}, [], {}
+    """Union of the scans (a later file wins), the collector's sources, and every session with its drops."""
+    items, sessions, names, collected = {}, [], {}, {}
     for db in dbs:
         scan = (db.get('scan') or {}).get('items') or {}
         for k, line in scan.items():
@@ -94,6 +112,16 @@ def collect(dbs):
                 items[int(k)] = parse_item_line(line)
             except (TypeError, ValueError):
                 continue
+        for k, v in ((db.get('scan') or {}).get('sources') or {}).items():
+            try:
+                item = int(k)
+            except (TypeError, ValueError):
+                continue
+            seen = collected.setdefault(item, [])
+            for src in (v if isinstance(v, list) else [v]):
+                src = str(src).strip()
+                if src and src not in seen:
+                    seen.append(src)
         for k, v in (db.get('itemNames') or {}).items():
             try:
                 names[int(k)] = {'name': str(v.get('n') or ''), 'q': int(v.get('q') or 0)}
@@ -109,7 +137,7 @@ def collect(dbs):
     for k, v in names.items():
         if k not in items:
             items[k] = {'name': v['name'], 'q': v['q'], 'ilvl': 0, 'min': 0, 'classID': 0, 'subclassID': 0, 'equipLoc': '', 'icon': '', 'bind': 0}
-    return items, sessions
+    return items, sessions, collected
 
 
 # ---------------------------------------------------------------- zones and bosses
@@ -164,6 +192,30 @@ def slot_of(it):
     return SLOT_BY_EQUIP.get(it['equipLoc'], 'other')
 
 
+def type_of(it):
+    """Armour or weapon type, or '' when the slot already says everything (rings, trinkets, necks)."""
+    if it['classID'] == CLASS_WEAPON:
+        return WEAPON_TYPE.get(it['subclassID'], '')
+    if it['classID'] == CLASS_ARMOR:
+        return ARMOR_TYPE.get(it['subclassID'], '')
+    return ''
+
+
+def item_row(item, items, sources):
+    it = items.get(item) or {'name': f'Item {item}', 'q': 0, 'ilvl': 0, 'min': 0, 'classID': 0, 'subclassID': 0, 'equipLoc': '', 'icon': '', 'bind': 0}
+    row = {'id': item, 'name': it['name'] or f'Item {item}', 'slot': slot_of(it), 'icon': it['icon'],
+           'sources': sources, 'q': it['q'], 'ilvl': it['ilvl']}
+    sub = type_of(it)
+    if sub:
+        row['sub'] = sub
+    bind = BIND_NAME.get(it['bind'])
+    if bind:
+        row['bind'] = bind
+    if it['min']:
+        row['lvl'] = it['min']
+    return row
+
+
 def build_items(items, sessions, bosses, zones, bosses_cfg=None):
     bosses_cfg = bosses_cfg or {}
     known = {b['name'] for b in bosses}
@@ -179,12 +231,44 @@ def build_items(items, sessions, bosses, zones, bosses_cfg=None):
                 lst.append(name)
             if d['item'] not in order:
                 order.append(d['item'])
-    out = []
-    for item in sorted(order):
-        it = items.get(item) or {'name': f'Item {item}', 'q': 0, 'ilvl': 0, 'min': 0, 'classID': 0, 'subclassID': 0, 'equipLoc': '', 'icon': '', 'bind': 0}
-        out.append({'id': item, 'name': it['name'] or f'Item {item}', 'slot': slot_of(it), 'icon': it['icon'],
-                    'sources': sources[item], 'q': it['q'], 'ilvl': it['ilvl']})
-    return out
+    return [item_row(item, items, sources[item]) for item in sorted(order)]
+
+
+def add_field_sources(out_items, items, collected, zones, bosses, min_quality=3):
+    """Items the collector saw drop outside a recorded raid: one boss per mob, in its own zone.
+
+    The collector notes every item it meets, down to grey quest litter, so only loot worth awarding
+    gets in — blue or better, the same line the addon draws for the loot windows in a raid.
+    """
+    have = {it['id'] for it in out_items}
+    rows, seen = [], []
+    for item in sorted(collected):
+        it = items.get(item)
+        if item in have or not it or it['q'] < min_quality or JUNK_NAME.search(it['name'] or ''):
+            continue
+        mobs = [s[len(DROP_PREFIX):].strip() for s in collected[item] if s.startswith(DROP_PREFIX)]
+        mobs = [m for m in mobs if m and m != '?']
+        if not mobs:
+            continue
+        rows.append(item_row(item, items, mobs))
+        for m in mobs:
+            if m not in seen:
+                seen.append(m)
+    if not rows:
+        return 0
+    zones.append(dict(FIELD_ZONE))
+    for m in seen:
+        bosses.append({'name': m, 'zone': FIELD_ZONE['key']})
+    out_items.extend(rows)
+    return len(rows)
+
+
+def add_via(out_items, collected):
+    """The collector's other notes — merchant, quest, auction house — as the item's `via` line."""
+    for it in out_items:
+        via = [s for s in collected.get(it['id'], []) if not s.startswith(DROP_PREFIX)]
+        if via:
+            it['via'] = via
 
 
 def add_catalog(out_items, items, zones, bosses, min_rare_ilvl=60):
@@ -200,8 +284,7 @@ def add_catalog(out_items, items, zones, bosses, min_rare_ilvl=60):
             continue
         if not (it['q'] >= 4 or (it['q'] == 3 and it['ilvl'] >= min_rare_ilvl)):
             continue
-        out_items.append({'id': item, 'name': it['name'], 'slot': slot, 'icon': it['icon'],
-                          'sources': [UNKNOWN_BOSS], 'q': it['q'], 'ilvl': it['ilvl']})
+        out_items.append(item_row(item, items, [UNKNOWN_BOSS]))
         added += 1
     if added:
         zones.append(dict(UNKNOWN_ZONE))
@@ -330,24 +413,28 @@ def main(argv=None):
     ap.add_argument('--no-icons', action='store_true', help='skip Wowhead lookups and the sprite')
     ap.add_argument('--catalog', action='store_true', help='add awardable scanned items without a drop under "Unknown source"')
     ap.add_argument('--catalog-ilvl', type=int, default=60, help='lowest item level for rare items in the catalog (default 60)')
+    ap.add_argument('--field-quality', type=int, default=3, help='lowest quality for a drop the collector saw outside a raid (default 3, blue)')
     ap.add_argument('--listfile', help='community-listfile.csv from wowdev/wow-listfile, names the icon file ids')
     ap.add_argument('--no-wowhead', action='store_true', help='never ask Wowhead for an icon name')
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     dbs = [load_sv(p) for p in args.files]
-    items, sessions = collect(dbs)
+    items, sessions, collected = collect(dbs)
     zones_cfg = load_json(ZONES_CFG, {})
     bosses_cfg = load_json(BOSSES_CFG, {})
     zones, bosses, warnings = zones_and_bosses(sessions, zones_cfg, bosses_cfg)
     out_items = build_items(items, sessions, bosses, zones, bosses_cfg)
+    field = add_field_sources(out_items, items, collected, zones, bosses, args.field_quality)
     catalog = add_catalog(out_items, items, zones, bosses, args.catalog_ilvl) if args.catalog else 0
+    add_via(out_items, collected)
     sprite = None
     if not args.no_icons:
         icon_names(out_items, fileids=fileid_names(out_items, args.listfile), wowhead=not args.no_wowhead)
         sprite = build_sprite(out_items, os.path.dirname(os.path.abspath(args.out)))
     write_js(args.out, zones, bosses, out_items, sprite)
-    print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(zones)} zones, {len(bosses)} bosses, {len(out_items) - catalog} items with drops, {catalog} catalog items -> {args.out}')
+    print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(collected)} collected sources, {len(zones)} zones, {len(bosses)} bosses, '
+          f'{len(out_items) - catalog - field} items with raid drops, {field} seen in the world, {catalog} catalog items -> {args.out}')
     if not args.no_icons:
         print(f'  {sum(1 for it in out_items if "s" not in it)} items without a picture')
     for w in warnings:

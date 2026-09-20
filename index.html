@@ -8,6 +8,7 @@
   --text:#ece6f4; --muted:#8f86a3; --faint:#5e5670;
   --gold:#e2b857; --gold-2:#f3d585; --gold-ink:#1a1206;
   --epic:#a335ee; --epic-soft:rgba(163,53,238,.16); --rare:#4a9be8;
+  --uncommon:#4cc22e; --legendary:#ff8000; --heirloom:#e6cc80;
   --good:#4fbf7a; --warn:#e0a344; --bad:#e35d6a;
   --z-kara:#a98be0; --z-gruul:#b9915a; --z-mag:#d2694f; --z-ssc:#4fb3d4; --z-tk:#d6b04a; --z-hyjal:#5db8a5; --z-bt:#c26a4a; --z-za:#7fbf5a; --z-swp:#e8a33d;
   --c-warrior:#C69B6D; --c-paladin:#F48CBA; --c-hunter:#AAD372; --c-rogue:#FFF468; --c-priest:#FFFFFF; --c-shaman:#3d8be6; --c-mage:#3FC7EB; --c-warlock:#8788EE; --c-druid:#FF7C0A; --c-deathknight:#C41E3A; --c-monk:#00FF98; --c-unknown:#8f86a3;
@@ -22,7 +23,7 @@
     --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
     --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
     --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
-    --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8;
+    --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8; --uncommon:#2a8a18; --legendary:#c05a00; --heirloom:#8a6f2a;
     --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
     --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
     --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
@@ -34,7 +35,7 @@
   --bg:#efe9dc; --panel:#f9f6ee; --panel-2:#f1ecdf; --panel-3:#e8e1d0; --line:#d8cfba; --line-2:#c6bba3;
   --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
   --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
-  --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8;
+  --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8; --uncommon:#2a8a18; --legendary:#c05a00; --heirloom:#8a6f2a;
   --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
   --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
   --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
@@ -140,7 +141,7 @@ select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradi
 .combo .opt:last-child{border-bottom:0}
 .combo .opt:hover,.combo .opt.active{background:var(--panel-3)}
 .combo .opt .ico{width:28px;height:28px}
-.combo .opt .nm{color:var(--epic);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.combo .opt .nm{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .combo .opt .sl{font-family:var(--label);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 .combo .opt .bs{font-size:12px;color:var(--faint);white-space:nowrap}
 .combo .none{padding:10px;color:var(--muted);font-size:14px}
@@ -256,7 +257,15 @@ tr.skip td{opacity:.55}
 /* ---------- crafting ---------- */
 .ico.q3{border-color:var(--rare);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
 .ico .cp{display:block;width:100%;height:100%;background-repeat:no-repeat;background-color:#000}
-.item .nm.q3,#tip .t.q3{color:var(--rare)}
+/* Item quality colours. Without a class an item name stays epic purple, which is right for
+   raid loot but wrong for the scanned catalog, where blue and legendary both turn up. */
+.nm.q0,#tip .t.q0{color:var(--muted)}
+.nm.q1,#tip .t.q1{color:var(--text)}
+.nm.q2,#tip .t.q2{color:var(--uncommon)}
+.nm.q3,#tip .t.q3{color:var(--rare)}
+.nm.q4,#tip .t.q4{color:var(--epic)}
+.nm.q5,#tip .t.q5{color:var(--legendary)}
+.nm.q6,#tip .t.q6{color:var(--heirloom)}
 .crafter{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:12px;background:var(--panel-3);font-weight:600;font-size:13px;white-space:nowrap}
 .crafter.inferred{background:none;border:1px dashed var(--line-2)}
 .crafter .x{background:none;border:0;color:var(--muted);cursor:pointer;padding:0 0 0 2px;font-size:15px;line-height:1}
