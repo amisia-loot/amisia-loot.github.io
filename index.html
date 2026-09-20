@@ -804,7 +804,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789925180';
+const BUILD_ID = '1789925350';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1409,6 +1409,8 @@ function submitAward(ev){
   const wasEditing = !!ui.editing;
   $('#fRaider').value = raider; $('#fNewName').value = '';
   markDirty();
+  const who = raiderById(raider);
+  say((wasEditing ? 'Award updated: ' : 'Item added: ') + it.name + (who ? ' for ' + who.name : '') + '.');
   resetForm(true);
   if (wasEditing) $('#fRaider').value = '';
   $('#fItem').focus();
