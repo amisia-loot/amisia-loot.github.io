@@ -764,7 +764,8 @@ tr.got td{opacity:.5}
             <div class="panel-h">Guild &amp; ledger settings</div>
             <div class="panel-b stack">
               <div class="field"><label for="gName">Guild name</label><input class="inp" id="gName" placeholder="Shown in the header"></div>
-              <div class="field"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
+              <div class="field" id="gRealmField"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
+              <div class="field" id="gRulesetField" hidden><label for="gRuleset">Rule set</label><select class="inp" id="gRuleset"></select></div>
               <div class="field"><label for="gFaction">Faction</label><select class="inp" id="gFaction"><option value="">Not set</option><option value="alliance">Alliance</option><option value="horde">Horde</option></select></div>
               <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame"></select></div>
               <button class="btn" id="saveSettings">Save settings</button>
@@ -825,9 +826,9 @@ const GAMES = [
   {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
-  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
+  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789926724';
+const BUILD_ID = '1789926915';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1288,10 +1289,11 @@ $('#editorsList').addEventListener('click', async ev => {
 function renderHeader(){
   const nightList = countedNights();
   const dates = nightList.map(n => n.date).sort();
-  const g = (state.guild||'').trim(), realm = (state.realm||'').trim();
-  const gm = GAME[gameKey] || GAME.tbc; $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
+  const gm = GAME[gameKey] || GAME.tbc;
+  // a game without realms (World of Warcraft Forever) shows its rule set where the realm would stand
+  const g = (state.guild||'').trim(), realm = (gm.rulesets ? (gm.rulesets.includes(state.ruleset) ? state.ruleset : '') : (state.realm||'')).trim(); $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
   const fac = state.faction === 'alliance' ? '<span class="fac alliance">Alliance</span>' : state.faction === 'horde' ? '<span class="fac horde">Horde</span>' : '';
-  $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="settings">set guild, realm and faction</a></span>');
+  $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="settings">set guild, realm or rule set, and faction</a></span>');
   document.title = g ? g + (realm ? ' – ' + realm : '') + ' · Guild Loot Ledger' : 'Guild Loot Ledger';
   $('#stats').innerHTML = '<div><b>'+state.awards.length+'</b> awards · <b>'+state.raiders.length+'</b> raiders</div>'
     + '<div><b>'+nightList.length+'</b> raid night'+(nightList.length===1?'':'s')+(dates.length ? ' · '+fmtShort(dates[0])+(dates.length>1?' – '+fmtDate(dates[dates.length-1]):' '+dates[0].slice(0,4)) : '')+'</div>';
@@ -2188,6 +2190,13 @@ $('#matBody').addEventListener('click', async ev => {
 function renderSettings(){
   $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
   $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
+  renderPlaceField();
+}
+// Realm for games with realms, rule set for the ones without.
+function renderPlaceField(){
+  const sets = (GAME[$('#gGame').value] || {}).rulesets;
+  $('#gRealmField').hidden = !!sets; $('#gRulesetField').hidden = !sets;
+  if (sets) $('#gRuleset').innerHTML = '<option value="">Not set</option>' + sets.map(x => '<option'+(x===state.ruleset?' selected':'')+'>'+esc(x)+'</option>').join('');
 }
 function renderMyChar(){
   const m = myMember(), r = m && raiderById(m.raider);
@@ -2833,10 +2842,11 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
   if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
 });
+$('#gGame').addEventListener('change', renderPlaceField);
 $('#saveSettings').addEventListener('click', async () => {
   const newGame = $('#gGame').value;
   if (newGame !== (state.game || 'tbc') && state.awards.length && !await ask('Switch the game version to ' + GAME[newGame].name + '? Existing awards from ' + GAME[state.game || 'tbc'].name + ' stay in the ledger but their items belong to the other loot tables.', 'Switch')) { $('#gGame').value = state.game || 'tbc'; return; }
-  state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); state.faction = $('#gFaction').value; state.game = newGame;
+  state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); if (GAME[newGame] && GAME[newGame].rulesets) state.ruleset = $('#gRuleset').value; state.faction = $('#gFaction').value; state.game = newGame;
   markDirty(); if (newGame !== gameKey) loadGame(newGame);
 });
 $('#exportBtn').addEventListener('click', () => { const c = Object.assign({}, state); delete c.dirty; $('#backup').value = JSON.stringify(c, null, 1); });
@@ -2845,7 +2855,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
