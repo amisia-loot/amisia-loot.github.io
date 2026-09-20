@@ -93,6 +93,7 @@ h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);lin
 .rank{display:inline-block;margin-left:7px;padding:0 6px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;border:1px solid;vertical-align:middle}
 .rank.raider{color:var(--good);border-color:var(--good)}
 .rank.trial{color:var(--warn);border-color:var(--warn)}
+.rank.officer{color:var(--gold);border-color:var(--gold)}
 #loginBox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 #loginBox input{max-width:280px}
 
@@ -788,7 +789,7 @@ tr.got td{opacity:.5}
               <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Online now</div>
               <div id="onlineList" class="muted" style="font-size:13px">–</div>
               <div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:6px">Accounts that signed in</div>
-            <p class="muted" style="margin:0;font-size:13px">Link an account to its character to give it the rank <b>Raider</b> or <b>Trial</b>. Linked members can set their own professions on the Roster tab.</p>
+            <p class="muted" style="margin:0;font-size:13px">Link an account to its character to give it a rank: <b>Officer</b>, <b>Raider</b> or <b>Trial</b>. Linked members can set their own professions on the Roster tab.</p>
               <div id="accountsList" class="stack" style="font-size:13px"></div>
             </div>
           </div>
@@ -826,7 +827,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789926177';
+const BUILD_ID = '1789926724';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -896,7 +897,7 @@ const profsHere = () => PROF_LIST[(GAME[gameKey] || {}).craft] || BASE_PROFS;
 let MEMBERS = [], memberChannel = null;
 const memberOf = rid => MEMBERS.find(m => m.raider === rid);
 const myMember = () => user ? MEMBERS.find(m => m.user_id === user.id) : null;
-const RANKNAME = {raider: 'Raider', trial: 'Trial'};
+const RANKNAME = {officer: 'Officer', raider: 'Raider', trial: 'Trial'};
 const rankTag = rid => { const m = memberOf(rid); return m && RANKNAME[m.rank] ? '<span class="rank ' + m.rank + '">' + RANKNAME[m.rank] + '</span>' : ''; };
 const profsOf = r => { const m = r && memberOf(r.id); return m && Array.isArray(m.profs) ? m.profs : Array.isArray(r && r.profs) ? r.profs : []; };
 const profOptions = sel => '<option value="">–</option>' + profsHere().concat(sel && !profsHere().includes(sel) ? [sel] : []).map(x => '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>').join('');
@@ -1144,7 +1145,7 @@ async function renderAccounts(){
     const m = a.id ? MEMBERS.find(x => x.user_id === a.id) : null, gone = m && !raiderById(m.raider);
     const link = !a.id ? '' : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;padding:2px 0 8px;border-bottom:1px solid var(--line)">'
       + '<select class="inp" data-mlraider="' + esc(a.id) + '" style="flex:1 1 130px;padding:4px 26px 4px 8px">' + raiderOptions(m ? m.raider : '', '<option value="">' + (gone ? 'Removed character' : 'No character') + '</option>') + '</select>'
-      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px"><option value="raider"' + (m && m.rank === 'raider' ? ' selected' : '') + '>Raider</option><option value="trial"' + (m && m.rank === 'trial' ? ' selected' : '') + '>Trial</option></select>'
+      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px">' + Object.keys(RANKNAME).map(k => '<option value="' + k + '"' + ((m ? m.rank : isOw || isEd ? 'officer' : 'raider') === k ? ' selected' : '') + '>' + RANKNAME[k] + '</option>').join('') + '</select>'
       + '<button class="btn sm" data-mlsave="' + esc(a.id) + '">' + (m ? 'Save' : 'Link') + '</button>'
       + (m ? '<button class="btn sm ghost danger" data-mlrm="' + esc(a.id) + '">Unlink</button>' : '') + '</div>';
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + link + '</div>';
