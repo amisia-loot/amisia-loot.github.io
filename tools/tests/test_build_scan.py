@@ -70,3 +70,33 @@ def test_icon_names_keeps_names_and_caches(tmp_path, monkeypatch):
     assert items[0]['icon'] == 'inv_helmet_01' and items[1]['icon'] == 'inv_sword_01' and items[2]['icon'] == 'inv_helmet_01'
     assert len(calls) == 1, 'second lookup of the same id comes from the cache'
     assert json.loads(cache.read_text())['1'] == 'inv_helmet_01'
+
+
+def test_catalog_adds_awardable_items_without_drops(tmp_path):
+    items = {
+        1: {'name': 'Epic Helm', 'q': 4, 'ilvl': 30, 'min': 0, 'classID': 4, 'subclassID': 1, 'equipLoc': 'INVTYPE_HEAD', 'icon': '133076', 'bind': 1},
+        2: {'name': 'Low Rare Ring', 'q': 3, 'ilvl': 40, 'min': 0, 'classID': 4, 'subclassID': 0, 'equipLoc': 'INVTYPE_FINGER', 'icon': '1', 'bind': 1},
+        3: {'name': 'High Rare Ring', 'q': 3, 'ilvl': 63, 'min': 0, 'classID': 4, 'subclassID': 0, 'equipLoc': 'INVTYPE_FINGER', 'icon': '2', 'bind': 1},
+        4: {'name': "Tigole's Boomstick (TEST)", 'q': 6, 'ilvl': 100, 'min': 0, 'classID': 2, 'subclassID': 3, 'equipLoc': 'INVTYPE_RANGED', 'icon': '3', 'bind': 1},
+        5: {'name': 'Epic Gem', 'q': 4, 'ilvl': 70, 'min': 0, 'classID': 3, 'subclassID': 0, 'equipLoc': '', 'icon': '4', 'bind': 0},
+        6: {'name': 'Already Dropped', 'q': 4, 'ilvl': 70, 'min': 0, 'classID': 4, 'subclassID': 1, 'equipLoc': 'INVTYPE_HEAD', 'icon': '5', 'bind': 1},
+    }
+    out = [{'id': 6, 'name': 'Already Dropped', 'slot': 'head', 'icon': '5', 'sources': ['Boss'], 'q': 4, 'ilvl': 70}]
+    zones, bosses = [], [{'name': 'Boss', 'zone': 'z'}]
+    n = b.add_catalog(out, items, zones, bosses, 60)
+    assert n == 2 and sorted(i['id'] for i in out) == [1, 3, 6]
+    assert all(i['sources'] == ['Unknown source'] for i in out if i['id'] != 6)
+    assert zones[-1]['key'] == 'unknown' and bosses[-1] == {'name': 'Unknown source', 'zone': 'unknown'}
+    assert b.add_catalog(out, items, [], [], 60) == 0, 'a second run adds nothing twice'
+
+
+def test_fileid_names_from_listfile_and_cache(tmp_path):
+    lf = tmp_path / 'listfile.csv'
+    lf.write_text('133076;interface/icons/INV_Helmet_08.blp\n9;world/other.m2\n2;Interface/Icons/inv_ring_02.blp\n', encoding='utf-8')
+    cache = tmp_path / 'fileids.json'
+    items = [{'id': 1, 'icon': '133076'}, {'id': 2, 'icon': '2'}, {'id': 3, 'icon': '9'}, {'id': 4, 'icon': 'named'}]
+    m = b.fileid_names(items, str(lf), str(cache))
+    assert m == {'133076': 'inv_helmet_08', '2': 'inv_ring_02'}
+    assert b.fileid_names(items, None, str(cache)) == m, 'works from the cache without the listfile'
+    b.icon_names(items, cache_path=str(tmp_path / 'icons.json'), fileids=m, wowhead=False)
+    assert [i['icon'] for i in items] == ['inv_helmet_08', 'inv_ring_02', '', 'named']

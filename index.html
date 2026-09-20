@@ -801,10 +801,10 @@ const GAMES = [
   {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', craft:'sod', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
   {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
   {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
-  // Forever: set file:'data/forever.js' and drop soon:true once tools/build_scan.py has produced the file (see tools/README.md).
-  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:null, classes:MOP_CLASSES, soon:true, blurb:'coming soon · no loot tables yet'},
+  // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
+  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789809265';
+const BUILD_ID = '1789925180';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -906,7 +906,7 @@ const slotOf = it => it ? (it.slot==='ranged'||it.slot==='relic' ? 'rr' : it.slo
 const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 
 function spriteStyle(it, sheet){
-  const sp = sheet || DATA.sprite; if (!sp || it.s == null) return '';
+  const sp = sheet || DATA.sprite; if (!sp) return ''; if (it.s == null) return 'background-image:none';
   const c = it.s % sp.cols, r = Math.floor(it.s / sp.cols);
   const x = sp.cols > 1 ? (c / (sp.cols - 1) * 100) : 0, y = sp.rows > 1 ? (r / (sp.rows - 1) * 100) : 0;
   return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
@@ -1355,7 +1355,7 @@ function renderCombo(){
   comboRows = itemMatches();
   const box = $('#itemList');
   if (!comboRows.length) { box.innerHTML = '<div class="none">'+(dataState === 'soon' ? 'No loot tables for this game version yet. Switch the game version on the Roster tab.' : dataState === 'loading' ? 'Loading loot tables…' : dataState === 'error' ? 'Loot tables could not be loaded. Reload the page.' : ($('#fBoss').value||$('#fItem').value ? 'No item matches.' : 'Choose a boss or start typing.'))+'</div>'; return; }
-  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+'</span>'+dTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
+  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+(i.ilvl ? ' · ilvl '+i.ilvl : '')+'</span>'+dTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
 }
 function pickItem(id){
   const it = ITEM[id]; $('#fItem').dataset.id = id; $('#fItem').value = it.name;

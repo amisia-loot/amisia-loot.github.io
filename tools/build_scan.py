@@ -11,7 +11,13 @@ tools/forever_zones.json maps instance names to zone keys, short names and colou
 tools/forever_bosses.json marks sources as "trash" or renames them. Unknown zones and sources
 are reported and given defaults so the file still builds.
 
-Icons come from Wowhead by item id (cached in tools/icon-cache.json) and are packed into a
+--catalog adds every scanned item worth awarding (epic or better, or rare from --catalog-ilvl up)
+that has no observed drop yet, under the boss "Unknown source", so loot can be recorded before
+the boss tables exist. The boss tables replace that source as raids get recorded.
+
+Icons: the scan stores icon file ids. --listfile <community-listfile.csv> (wowdev/wow-listfile)
+turns them into icon names; the ones used are kept in tools/icon-fileids.json, so later builds
+work without the big file. Anything still unnamed falls back to Wowhead by item id (cached in tools/icon-cache.json) and are packed into a
 sprite next to the data file with Pillow. --no-icons skips that and writes the icon names only.
 """
 import argparse
@@ -21,6 +27,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,9 +35,13 @@ ROOT = os.path.dirname(HERE)
 ZONES_CFG = os.path.join(HERE, 'forever_zones.json')
 BOSSES_CFG = os.path.join(HERE, 'forever_bosses.json')
 ICON_CACHE = os.path.join(HERE, 'icon-cache.json')
+ICON_FILEIDS = os.path.join(HERE, 'icon-fileids.json')
 DEFAULT_COLOR = ['#8f86a3', '#6a617a']
+UNKNOWN_ZONE = {'key': 'unknown', 'name': 'Unknown source', 'short': '?', 'color': DEFAULT_COLOR}
+UNKNOWN_BOSS = 'Unknown source'
+JUNK_NAME = re.compile(r'\(test\)|\btest\b|deprecated|^monster - |\[ph\]|^zz|\(old\)|^old |unused|^qa', re.I)
 SPRITE_COLS = 24
-SPRITE_CELL = 56
+SPRITE_CELL = 40
 
 SLOT_BY_EQUIP = {
     'INVTYPE_HEAD': 'head', 'INVTYPE_NECK': 'neck', 'INVTYPE_SHOULDER': 'shoulder', 'INVTYPE_CLOAK': 'back',
@@ -176,7 +187,43 @@ def build_items(items, sessions, bosses, zones, bosses_cfg=None):
     return out
 
 
+def add_catalog(out_items, items, zones, bosses, min_rare_ilvl=60):
+    """Adds awardable scanned items without an observed drop under the "Unknown source" boss."""
+    have = {it['id'] for it in out_items}
+    added = 0
+    for item in sorted(items):
+        it = items[item]
+        if item in have or not it['name'] or JUNK_NAME.search(it['name']):
+            continue
+        slot = slot_of(it)
+        if slot in ('other', 'mount') or (slot == 'recipe' and it['q'] < 4):
+            continue
+        if not (it['q'] >= 4 or (it['q'] == 3 and it['ilvl'] >= min_rare_ilvl)):
+            continue
+        out_items.append({'id': item, 'name': it['name'], 'slot': slot, 'icon': it['icon'],
+                          'sources': [UNKNOWN_BOSS], 'q': it['q'], 'ilvl': it['ilvl']})
+        added += 1
+    if added:
+        zones.append(dict(UNKNOWN_ZONE))
+        bosses.append({'name': UNKNOWN_BOSS, 'zone': UNKNOWN_ZONE['key']})
+    return added
+
+
 # ---------------------------------------------------------------- icons
+def fileid_names(items, listfile=None, cache_path=ICON_FILEIDS):
+    """Icon name per icon file id: from the cache, topped up from the community listfile when given."""
+    cache = load_json(cache_path, {})
+    want = {str(it['icon']) for it in items if str(it.get('icon') or '').isdigit()} - set(cache)
+    if want and listfile:
+        with open(listfile, encoding='utf-8', errors='replace') as fh:
+            for line in fh:
+                fid, _, path = line.partition(';')
+                if fid in want and path.lower().startswith('interface/icons/'):
+                    cache[fid] = os.path.splitext(os.path.basename(path.strip()))[0].lower()
+        save_json(cache_path, cache)
+    return cache
+
+
 def load_json(path, default):
     if os.path.exists(path):
         with open(path, encoding='utf-8') as fh:
@@ -195,15 +242,22 @@ def fetch(url):
         return r.read()
 
 
-def icon_names(items, cache_path=ICON_CACHE, log=print):
-    """Wowhead icon name per item id, cached; items whose icon is already a name keep it."""
+def icon_names(items, cache_path=ICON_CACHE, log=print, fileids=None, wowhead=True):
+    """Icon name per item: a name stays, a file id is looked up in `fileids`, the rest asks Wowhead (cached)."""
     cache = load_json(cache_path, {})
+    fileids = fileids or {}
     for it in items:
         icon = str(it.get('icon') or '')
         if icon and not icon.isdigit():
             it['icon'] = icon.lower()
             continue
+        if icon in fileids:
+            it['icon'] = fileids[icon]
+            continue
         key = str(it['id'])
+        if key not in cache and not wowhead:
+            it['icon'] = ''
+            continue
         if key not in cache:
             try:
                 xml = fetch(f'https://www.wowhead.com/item={it["id"]}&xml').decode('utf-8', 'replace')
@@ -235,7 +289,7 @@ def build_sprite(items, out_dir, log=print):
         if not os.path.exists(path):
             try:
                 with open(path, 'wb') as fh:
-                    fh.write(fetch(f'https://wow.zamimg.com/images/wow/icons/large/{name}.jpg'))
+                    fh.write(fetch('https://wow.zamimg.com/images/wow/icons/large/' + urllib.parse.quote(name) + '.jpg'))
             except Exception as exc:  # noqa: BLE001
                 log(f'icon download failed for {name}: {exc}')
                 continue
@@ -253,7 +307,10 @@ def build_sprite(items, out_dir, log=print):
     with open(os.path.join(out_dir, file_name), 'wb') as fh:
         fh.write(buf.getvalue())
     for it in items:
-        it['s'] = index.get(it['icon'], 0)
+        if it['icon'] in index:
+            it['s'] = index[it['icon']]
+        else:
+            it.pop('s', None)   # no picture: the site shows an empty frame instead of someone else's icon
     return {'file': f'data/{file_name}', 'cols': cols, 'rows': rows, 'n': len(names)}
 
 
@@ -271,6 +328,10 @@ def main(argv=None):
     ap.add_argument('files', nargs='+', help='Amisia.lua SavedVariables files')
     ap.add_argument('--out', default=os.path.join(ROOT, 'data', 'forever.js'))
     ap.add_argument('--no-icons', action='store_true', help='skip Wowhead lookups and the sprite')
+    ap.add_argument('--catalog', action='store_true', help='add awardable scanned items without a drop under "Unknown source"')
+    ap.add_argument('--catalog-ilvl', type=int, default=60, help='lowest item level for rare items in the catalog (default 60)')
+    ap.add_argument('--listfile', help='community-listfile.csv from wowdev/wow-listfile, names the icon file ids')
+    ap.add_argument('--no-wowhead', action='store_true', help='never ask Wowhead for an icon name')
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -280,12 +341,15 @@ def main(argv=None):
     bosses_cfg = load_json(BOSSES_CFG, {})
     zones, bosses, warnings = zones_and_bosses(sessions, zones_cfg, bosses_cfg)
     out_items = build_items(items, sessions, bosses, zones, bosses_cfg)
+    catalog = add_catalog(out_items, items, zones, bosses, args.catalog_ilvl) if args.catalog else 0
     sprite = None
     if not args.no_icons:
-        icon_names(out_items)
+        icon_names(out_items, fileids=fileid_names(out_items, args.listfile), wowhead=not args.no_wowhead)
         sprite = build_sprite(out_items, os.path.dirname(os.path.abspath(args.out)))
     write_js(args.out, zones, bosses, out_items, sprite)
-    print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(zones)} zones, {len(bosses)} bosses, {len(out_items)} items with drops -> {args.out}')
+    print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(zones)} zones, {len(bosses)} bosses, {len(out_items) - catalog} items with drops, {catalog} catalog items -> {args.out}')
+    if not args.no_icons:
+        print(f'  {sum(1 for it in out_items if "s" not in it)} items without a picture')
     for w in warnings:
         print('  ' + w)
     return 0
