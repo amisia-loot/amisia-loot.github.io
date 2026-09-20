@@ -94,6 +94,7 @@ h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);lin
 .rank.raider{color:var(--good);border-color:var(--good)}
 .rank.trial{color:var(--warn);border-color:var(--warn)}
 .rank.officer{color:var(--gold);border-color:var(--gold)}
+.rank.spgod{color:#1a1206;border-color:#f3d585;background:linear-gradient(100deg,#e2b857,#fff1b8 45%,#e2b857);box-shadow:0 0 8px rgba(226,184,87,.65);letter-spacing:.14em}
 #loginBox .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 #loginBox input{max-width:280px}
 
@@ -828,7 +829,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789926915';
+const BUILD_ID = '1789927054';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -898,7 +899,7 @@ const profsHere = () => PROF_LIST[(GAME[gameKey] || {}).craft] || BASE_PROFS;
 let MEMBERS = [], memberChannel = null;
 const memberOf = rid => MEMBERS.find(m => m.raider === rid);
 const myMember = () => user ? MEMBERS.find(m => m.user_id === user.id) : null;
-const RANKNAME = {officer: 'Officer', raider: 'Raider', trial: 'Trial'};
+const RANKNAME = {spgod: 'SP God', officer: 'Officer', raider: 'Raider', trial: 'Trial'};   // spgod is the owner's own rank
 const rankTag = rid => { const m = memberOf(rid); return m && RANKNAME[m.rank] ? '<span class="rank ' + m.rank + '">' + RANKNAME[m.rank] + '</span>' : ''; };
 const profsOf = r => { const m = r && memberOf(r.id); return m && Array.isArray(m.profs) ? m.profs : Array.isArray(r && r.profs) ? r.profs : []; };
 const profOptions = sel => '<option value="">–</option>' + profsHere().concat(sel && !profsHere().includes(sel) ? [sel] : []).map(x => '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>').join('');
@@ -1146,7 +1147,7 @@ async function renderAccounts(){
     const m = a.id ? MEMBERS.find(x => x.user_id === a.id) : null, gone = m && !raiderById(m.raider);
     const link = !a.id ? '' : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;padding:2px 0 8px;border-bottom:1px solid var(--line)">'
       + '<select class="inp" data-mlraider="' + esc(a.id) + '" style="flex:1 1 130px;padding:4px 26px 4px 8px">' + raiderOptions(m ? m.raider : '', '<option value="">' + (gone ? 'Removed character' : 'No character') + '</option>') + '</select>'
-      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px">' + Object.keys(RANKNAME).map(k => '<option value="' + k + '"' + ((m ? m.rank : isOw || isEd ? 'officer' : 'raider') === k ? ' selected' : '') + '>' + RANKNAME[k] + '</option>').join('') + '</select>'
+      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px">' + Object.keys(RANKNAME).filter(k => k !== 'spgod' || isOw).map(k => '<option value="' + k + '"' + ((m ? m.rank : isOw ? 'spgod' : isEd ? 'officer' : 'raider') === k ? ' selected' : '') + '>' + RANKNAME[k] + '</option>').join('') + '</select>'
       + '<button class="btn sm" data-mlsave="' + esc(a.id) + '">' + (m ? 'Save' : 'Link') + '</button>'
       + (m ? '<button class="btn sm ghost danger" data-mlrm="' + esc(a.id) + '">Unlink</button>' : '') + '</div>';
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + link + '</div>';
