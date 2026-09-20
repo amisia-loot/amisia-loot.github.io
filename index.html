@@ -659,7 +659,7 @@ tr.got td{opacity:.5}
         <div class="field" style="flex:1 1 170px;max-width:240px"><label for="myP1">Profession</label><select class="inp" id="myP1"></select></div>
         <div class="field" style="flex:1 1 170px;max-width:240px"><label for="myP2">Second profession</label><select class="inp" id="myP2"></select></div>
         <button class="btn primary" id="myProfSave">Save professions</button>
-        <span class="muted" style="font-size:13px;flex:1 1 220px">They show on the Roster and tell the Crafting tab what you could craft.</span>
+        <span class="muted" style="font-size:13px;flex:1 1 220px" id="myCraftLine"></span>
       </div>
     </div>
     <div class="two">
@@ -817,7 +817,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789925865';
+const BUILD_ID = '1789926177';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -962,6 +962,7 @@ function attendance(rid){
 function craftersOf(c){
   const out = [], seen = new Set();
   for (const x of crafters()) if (x.craft === c.id) { const r = raiderById(x.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, id: x.id}); } }
+  for (const m of MEMBERS) if (Array.isArray(m.crafts) && m.crafts.includes(c.id)) { const r = raiderById(m.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, member: m}); } }
   if (c.recipe) for (const a of state.awards) if (a.item === c.recipe) { const r = raiderById(a.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, award: a}); } }
   return out.sort((a,b) => a.r.name.localeCompare(b.r.name));
 }
@@ -975,6 +976,14 @@ function cicoHTML(c){
   return '<a class="ico hot q'+c.q+'" data-craft="'+c.id+'" href="'+href+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
 }
 function dTag(it){ return it && it.diff ? '<span class="diff">'+esc(it.diff)+'</span>' : ''; }
+// What an item is beyond its slot, as far as the loot table knows: armour or weapon type, item
+// level, and how it binds. Only the scanned Forever items carry all of it, so every part is optional.
+function itemKind(it){
+  if (!it) return '';
+  return [SLOTNAME[it.slot] || it.slot, it.sub, it.ilvl ? 'ilvl '+it.ilvl : ''].filter(Boolean).join(' · ');
+}
+const BINDNAME = {BoP: 'Binds when picked up', BoE: 'Binds when equipped', BoU: 'Binds when used'};
+function bindTag(it){ return it && it.bind ? '<span class="diff" title="'+esc(BINDNAME[it.bind] || it.bind)+'">'+esc(it.bind)+'</span>' : ''; }
 function zTag(z){ return '<span class="zone '+z+(ZSOON[z]?' soon':'')+'">'+esc(ZSHORT[z]||z)+'</span>'; }
 function rName(r){ return '<span class="rname" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'; }
 function bossOptions(sel, withAll){
@@ -1158,7 +1167,7 @@ $('#histList').addEventListener('click', async ev => {
 });
 async function loadMembers(){
   if (!SUPA) return;
-  const {data, error} = await SUPA.from('members').select('user_id,raider,rank,profs');
+  const {data, error} = await SUPA.from('members').select('user_id,raider,rank,profs,crafts');
   if (!error) MEMBERS = data || [];
   renderAll(); refreshBar(); if (isOwner) renderAccounts();
   if (!memberChannel) memberChannel = SUPA.channel('members').on('postgres_changes', {event: '*', schema: 'public', table: 'members'}, () => loadMembers()).subscribe();
@@ -1314,7 +1323,7 @@ function renderArmory(){
       + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'+rankTag(r.id)+'<span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
       + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
       + '<div class="meta">'+perZone.map(([z,n]) => '<span><b>'+n+'</b> '+zTag(z)+'</span>').join('')+'<span><b>'+at.was+'</b> of '+at.total+' raid'+(at.total===1?'':'s')+'</span>'+(last?'<span>last: <b>'+fmtShort(last.date)+'</b></span>':'')+'</div>'
-      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+(it?SLOTNAME[it.slot]:'')+'</span></span></span></td><td class="note">'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
+      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td><td class="note">'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
       + '</article>';
   }).join('');
 }
@@ -1383,7 +1392,7 @@ function renderLog(){
     h += '<tr>'
       + '<td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td>'
       + '<td style="white-space:nowrap">'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td>'
-      + '<td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+(it?SLOTNAME[it.slot]:'')+'</span></span></span></td>'
+      + '<td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td>'
       + '<td>'+(r ? rName(r) : '<span class="faint">Removed raider</span>')+'</td>'
       + '<td class="note">'+esc(a.note||'')+'</td>'
       + '<td class="acts">'+(readOnly?'':'<button class="btn sm ghost" data-edit="'+a.id+'">Edit</button><button class="btn sm ghost danger" data-del="'+a.id+'">Remove</button>')+'</td>'
@@ -1397,7 +1406,8 @@ let comboActive = -1, comboRows = [];
 function itemMatches(){
   const q = $('#fItem').value.trim().toLowerCase(), boss = $('#fBoss').value;
   let list = DATA.items.filter(i => !boss || i.sources.includes(boss));
-  if (q) list = list.filter(i => i.name.toLowerCase().includes(q));
+  // "plate", "dagger" or "cloth" find every item of that type, not only the ones named after it
+  if (q) list = list.filter(i => i.name.toLowerCase().includes(q) || (i.sub && i.sub.toLowerCase().includes(q)));
   if (!boss && !q) list = [];
   return list.sort((a,b) => a.name.localeCompare(b.name)).slice(0, 60);
 }
@@ -1405,7 +1415,7 @@ function renderCombo(){
   comboRows = itemMatches();
   const box = $('#itemList');
   if (!comboRows.length) { box.innerHTML = '<div class="none">'+(dataState === 'soon' ? 'No loot tables for this game version yet. Switch the game version on the Roster tab.' : dataState === 'loading' ? 'Loading loot tables…' : dataState === 'error' ? 'Loot tables could not be loaded. Reload the page.' : ($('#fBoss').value||$('#fItem').value ? 'No item matches.' : 'Choose a boss or start typing.'))+'</div>'; return; }
-  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm">'+esc(i.name)+'</span><span class="sl">'+SLOTNAME[i.slot]+(i.ilvl ? ' · ilvl '+i.ilvl : '')+'</span>'+dTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
+  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm q'+(i.q||0)+'">'+esc(i.name)+'</span><span class="sl">'+esc(itemKind(i))+'</span>'+dTag(i)+bindTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
 }
 function pickItem(id){
   const it = ITEM[id]; $('#fItem').dataset.id = id; $('#fItem').value = it.name;
@@ -1544,7 +1554,7 @@ function renderNight(){
   const d = nightData(ui.night);
   const loot = d.bosses.length ? d.bosses.map(b => '<tr class="night"><td colspan="3">' + (BOSSZONE[b] ? zTag(BOSSZONE[b]) + ' ' : '') + esc(b) + '<span class="n">' + d.byBoss[b].length + '</span></td></tr>'
       + d.byBoss[b].map(a => { const it = ITEM[a.item], r = raiderById(a.raider);
-          return '<tr><td><span class="item">' + icoHTML(it, 'data-award="' + a.id + '"') + '<span><span class="nm">' + esc(it ? it.name : 'Unknown item') + '</span> <span class="sl">' + (it ? SLOTNAME[it.slot] : '') + '</span></span></span></td>'
+          return '<tr><td><span class="item">' + icoHTML(it, 'data-award="' + a.id + '"') + '<span><span class="nm">' + esc(it ? it.name : 'Unknown item') + '</span> <span class="sl">' + esc(itemKind(it)) + '</span></span></span></td>'
             + '<td>' + (r ? rName(r) : '<span class="faint">removed</span>') + '</td><td class="note">' + esc(a.note || '') + '</td></tr>'; }).join('')).join('')
     : '<tr><td colspan="3"><div class="empty" style="padding:26px"><b>No loot recorded</b>The night is on the books, nothing was awarded.</div></td></tr>';
   $('#ntBody').innerHTML =
@@ -1842,7 +1852,7 @@ function renderWishForm(){
   $('#wfRaider').innerHTML = raiderOptions(kr, '<option value="">Choose a raider…</option>');
   $('#wfBoss').innerHTML = '<option value="">Choose a boss…</option>' + bossOptions(kb, false);
   const items = kb ? DATA.items.filter(i => i.sources.includes(kb)).sort((a, b) => a.name.localeCompare(b.name)) : [];
-  $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + SLOTNAME[i.slot] + '</option>').join('')
+  $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + itemKind(i) + '</option>').join('')
     : '<option value="">Pick the boss first</option>';
   $('#wishForm').hidden = !user; $('#wishLogin').hidden = !!user;
 }
@@ -1883,7 +1893,7 @@ function renderWishes(){
     const rd = raiderById(w.raider);
     const mine = user && w.created_by === user.id;
     h += '<tr class="' + (got ? 'got' : '') + '">'
-      + '<td><span class="item">' + icoHTML(it) + '<span><span class="nm">' + esc(it ? it.name : 'Item ' + w.item) + '</span> <span class="sl">' + (it ? SLOTNAME[it.slot] : '') + '</span>' + (it ? dTag(it) : '') + '</span></span></td>'
+      + '<td><span class="item">' + icoHTML(it) + '<span><span class="nm">' + esc(it ? it.name : 'Item ' + w.item) + '</span> <span class="sl">' + esc(itemKind(it)) + '</span>' + (it ? dTag(it) : '') + '</span></span></td>'
       + '<td style="white-space:nowrap">' + (zoneOf(w) ? zTag(zoneOf(w)) + ' ' : '') + esc(w.boss || '') + '</td>'
       + '<td>' + (rd ? rName(rd) : '<span class="rname">' + esc(w.raider_name) + '</span>') + '</td>'
       + '<td>' + prioTag(w.prio) + (got ? '<span class="st ok" style="margin-left:6px">got it</span>' : '') + '</td>'
@@ -1981,8 +1991,12 @@ function renderMatrix(){
 /* ---------------- crafting ---------------- */
 function renderCraft(){
   const q = $('#crSearch').value.trim().toLowerCase(), pf = $('#crProf').value, sf = $('#crSlot').value, show = $('#crShow').value;
-  $('#crHint').hidden = readOnly;
-  $('#crHint').innerHTML = 'Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.'
+  const me = myMember(), meR = me && raiderById(me.raider), myProfs = meR ? profsOf(meR) : [];
+  const mineOpt = $('#crShow').querySelector('option[value="mine"]');
+  if (meR && !mineOpt) $('#crShow').insertAdjacentHTML('beforeend', '<option value="mine">Recipes I can craft</option><option value="myprof">Recipes of my professions</option>');
+  if (!meR && mineOpt) { if (/^(mine|myprof)$/.test($('#crShow').value)) $('#crShow').value = 'all'; $('#crShow').querySelectorAll('option[value="mine"],option[value="myprof"]').forEach(o => o.remove()); }
+  $('#crHint').hidden = readOnly && !meR;
+  $('#crHint').innerHTML = (meR ? 'Press <b>I can craft this</b> on every recipe ' + esc(meR.name) + ' knows, so the raid sees who to ask. ' : '') + 'Raid-worthy crafted gear and enchants for this game version. Raiders who were awarded a pattern or formula in the loot log are listed as crafters automatically; editors can add the others with the <b>+ Crafter</b> box in each row.'
     + (anyProfs() ? ' <b>Can craft</b> lists everyone whose profession matches.' : ' Set a profession per raider on the <a data-goto="roster">Roster tab</a> to see who can craft what.');
   const rows = CRAFT.items.map(c => ({c, cr: craftersOf(c), can: canCraft(c)})).filter(({c, cr, can}) => {
     if (pf && c.prof !== pf) return false;
@@ -1991,6 +2005,8 @@ function renderCraft(){
     if (show === 'none' && cr.length) return false;
     if (show === 'raid' && !c.src) return false;
     if (show === 'noprof' && (cr.length || can.length)) return false;
+    if (show === 'mine' && !(me && Array.isArray(me.crafts) && me.crafts.includes(c.id))) return false;
+    if (show === 'myprof' && !myProfs.includes(c.prof)) return false;
     if (q) { const hay = c.name + ' ' + c.prof + ' ' + cr.map(x => x.r.name).join(' ') + ' ' + can.map(r => r.name).join(' ') + ' ' + (c.src||[]).join(' '); if (!hay.toLowerCase().includes(q)) return false; }
     return true;
   });
@@ -2003,7 +2019,9 @@ function renderCraft(){
   for (const {c, cr, can} of rows) {
     if (c.prof !== lastProf) { lastProf = c.prof; const n = rows.filter(x => x.c.prof === c.prof).length; h += '<tr class="night"><td colspan="4">'+esc(c.prof)+'<span class="n">'+n+' recipe'+(n===1?'':'s')+'</span></td></tr>'; }
     const listed = new Set(cr.map(x => x.r.id));
-    const chips = cr.map(x => x.award
+    const chips = cr.map(x => x.member
+      ? '<span class="crafter" style="color:'+clsVar(x.r.cls)+'" title="Listed by the raider">'+esc(x.r.name)+(!readOnly || (me && x.member.user_id === me.user_id) ? '<button class="x" data-mcoff="'+c.id+'|'+esc(x.r.id)+'" title="Remove">×</button>' : '')+'</span>'
+      : x.award
       ? '<span class="crafter inferred" style="color:'+clsVar(x.r.cls)+'" title="Received '+esc(ITEM[x.award.item] ? ITEM[x.award.item].name : 'the recipe')+' on '+esc(fmtDate(x.award.date))+'">'+esc(x.r.name)+'</span>'
       : '<span class="crafter" style="color:'+clsVar(x.r.cls)+'">'+esc(x.r.name)+(readOnly ? '' : '<button class="x" data-crrm="'+x.id+'" title="Remove crafter">×</button>')+'</span>').join('');
     const opt = r => '<option value="'+r.id+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>';
@@ -2011,12 +2029,14 @@ function renderCraft(){
     const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+c.id+'"><option value="">+ Crafter…</option>'
       + (can.length ? '<optgroup label="Has '+esc(c.prof)+'">'+can.map(opt).join('')+'</optgroup>' : '')
       + (others.length ? '<optgroup label="Other raiders">'+others.map(opt).join('')+'</optgroup>' : '') + '</select>';
+    const iCan = meR && !listed.has(meR.id) && (!myProfs.length || myProfs.includes(c.prof))
+      ? '<button class="btn sm ghost" data-mcon="'+c.id+'|'+esc(meR.id)+'">I can craft this</button>' : '';
     const canLine = can.length ? '<div class="cancraft" title="'+esc(can.map(r => r.name).join(', '))+'">Can craft: '+can.slice(0, 5).map(r => '<b style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</b>').join(', ')+(can.length > 5 ? ' <span class="faint">+'+(can.length-5)+' more</span>' : '')+'</div>' : '';
     h += '<tr>'
       + '<td><span class="item">'+cicoHTML(c)+'<span><span class="nm q'+c.q+'">'+esc(c.name)+'</span> <span class="sl">'+(CSLOTNAME[c.slot]||c.slot)+(c.ilvl ? ' · '+c.ilvl : '')+'</span>'+(c.bop ? '<span class="diff" title="Binds when picked up: the crafter keeps it">BoP</span>' : '')+'</span></span></td>'
       + '<td class="muted" style="white-space:nowrap">'+esc(c.prof)+'</td>'
       + '<td style="white-space:nowrap">'+(c.src ? c.src.map(b => (BOSSZONE[b] ? zTag(BOSSZONE[b])+' ' : '')+esc(b)).join('<br>') : '<span class="faint">Not a raid drop</span>')+'</td>'
-      + '<td><span class="chips">'+chips+add+'</span>'+canLine+'</td>'
+      + '<td><span class="chips">'+chips+add+iCan+'</span>'+canLine+'</td>'
       + '</tr>';
   }
   $('#crBody').innerHTML = h;
@@ -2164,6 +2184,8 @@ function renderMyChar(){
   $('#myCharPanel').hidden = !r;
   if (!r) return;
   $('#myCharName').innerHTML = rName(r) + rankTag(r.id);
+  const n = (Array.isArray(m.crafts) ? m.crafts : []).filter(id => CITEM[id]).length;
+  $('#myCraftLine').innerHTML = 'Your professions show on the Roster. ' + (n ? 'You are listed as crafter of <b>' + n + '</b> recipe' + (n === 1 ? '' : 's') + '. ' : '') + '<a data-goto="craft" style="cursor:pointer">Mark the recipes you can craft</a> on the Crafting tab.';
   const key = gameKey + '|' + profsOf(r).join('|');
   if ($('#myP1').dataset.key !== key) { $('#myP1').dataset.key = key; $('#myP1').innerHTML = profOptions(profsOf(r)[0] || ''); $('#myP2').innerHTML = profOptions(profsOf(r)[1] || ''); }
 }
@@ -2639,7 +2661,10 @@ function showTip(el, ev){
     tip.innerHTML = h; tip.hidden = false; moveTip(ev); return;
   }
   const it = ITEM[el.dataset.item]; if (!it) return;
-  let h = '<div class="t">'+esc(it.name)+'</div><div class="s">'+SLOTNAME[it.slot]+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')+' · '+esc((ZONE[BOSSZONE[it.sources[0]]]||'')+' · '+it.sources.join(' / '))+'</div>';
+  let h = '<div class="t q'+(it.q||0)+'">'+esc(it.name)+'</div><div class="s">'+esc(itemKind(it))+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')
+    +(it.bind?' · '+esc(BINDNAME[it.bind] || it.bind):'')+(it.lvl?' · needs level '+it.lvl:'')+'</div>'
+    + '<div class="s">'+esc((ZONE[BOSSZONE[it.sources[0]]]||'')+' · '+it.sources.join(' / '))+'</div>';
+  if (it.via) h += '<div class="s">Also seen: '+esc(it.via.join(' · '))+'</div>';
   if (CRECIPE[it.id]) h += '<div class="s">Teaches '+esc(CRECIPE[it.id].name)+'</div>';
   const ids = (el.dataset.stack || el.dataset.award || '').split(',').filter(Boolean);
   if (ids.length) {
@@ -2760,6 +2785,16 @@ $('#crBody').addEventListener('change', ev => {
   if (!crafters().some(x => x.craft === craft && x.raider === raider)) { crafters().push({id: uid(), craft, raider, ts: Date.now()}); markDirty(); }
 });
 $('#crBody').addEventListener('click', async ev => {
+  const mc = ev.target.closest('[data-mcon],[data-mcoff]');
+  if (mc) {
+    const on = mc.dataset.mcon != null, [craft, raider] = (on ? mc.dataset.mcon : mc.dataset.mcoff).split('|');
+    mc.disabled = true;
+    const {error} = await SUPA.rpc('set_member_craft', {p_raider: raider, p_craft: Number(craft), p_on: on});
+    if (error) { mc.disabled = false; return say('Could not save: ' + (error.message || error.code)); }
+    const c = CITEM[craft];
+    say(on ? 'Listed as crafter of ' + (c ? c.name : 'the recipe') + '.' : 'Removed from ' + (c ? c.name : 'the recipe') + '.');
+    return loadMembers();
+  }
   const b = ev.target.closest('[data-crrm]'); if (!b) return;
   const x = crafters().find(y => y.id === b.dataset.crrm); if (!x) return;
   const r = raiderById(x.raider), c = CITEM[x.craft];
