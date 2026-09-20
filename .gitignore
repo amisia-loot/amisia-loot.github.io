@@ -3,3 +3,4 @@ __pycache__/
 tools/icons/
 .vscode/
 Amisia_teil*.lua
+.claude/settings.local.json
