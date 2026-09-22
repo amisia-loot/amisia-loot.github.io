@@ -67,8 +67,10 @@ function ns.Refresh()
     local act = ns.Active()
     if act then
         local c = ns.MatCounts(act)
-        statusText:SetText(("|cff4fbf7aAufnahme läuft:|r %s · %d Raider · Mal %d · Herz %d · Edelsteine %d"):format(
-            act.zone, ns.MemberCount(act), c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+        local late = ns.LateCount and ns.LateCount(act) or 0
+        statusText:SetText(("|cff4fbf7aAufnahme läuft:|r %s · %d Raider%s · Mal %d · Herz %d · Edelsteine %d"):format(
+            act.zone, ns.MemberCount(act), late > 0 and (" · |cffe0a344" .. late .. " zu spät|r") or "",
+            c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
     elseif ns.IsEnabled() then
         statusText:SetText("|cff8f86a3Keine Aufnahme.|r Sie startet von selbst in einer Raidinstanz mit Raidgruppe.")
     else
@@ -108,7 +110,8 @@ function ns.Refresh()
             r.session = s
             r.date:SetText(s.date)
             r.zone:SetText((s == act and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
-            r.raiders:SetText(ns.MemberCount(s))
+            local late = ns.LateCount and ns.LateCount(s) or 0
+            r.raiders:SetText(ns.MemberCount(s) .. (late > 0 and ("  |cffe0a344+" .. late .. "|r") or ""))
             r.mark:SetText(c[32897] or 0)
             r.heart:SetText(c[32428] or 0)
             r.gems:SetText(ns.GemCount(c))
@@ -261,6 +264,20 @@ local function build()
             local awards = ns.AwardCount and ns.AwardCount(s) or 0
             if awards > 0 then
                 GameTooltip:AddLine(("Vergaben: %d"):format(awards), 0.89, 0.72, 0.34)
+            end
+            local after = ns.LateAfter and ns.LateAfter(s)
+            if after then
+                local names = {}
+                for name, m in pairs(s.members or {}) do
+                    if m.late then names[#names + 1] = ("%s (%s)"):format(name, date("%H:%M", m.first or 0)) end
+                end
+                table.sort(names)
+                if #names > 0 then
+                    GameTooltip:AddLine(("Zu spät ab %s: %d"):format(date("%H:%M", after), #names), 0.88, 0.64, 0.27)
+                    for _, line in ipairs(names) do
+                        GameTooltip:AddLine(line, 0.88, 0.64, 0.27)
+                    end
+                end
             end
             GameTooltip:Show()
         end)

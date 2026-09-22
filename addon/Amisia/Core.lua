@@ -63,6 +63,7 @@ end
 local REUSE_WINDOW  = 2 * 60 * 60  -- re-entering the same raid within 2 hours continues its session
 local NIGHT_START   = 6 * 60 * 60  -- a session starting before 06:00 belongs to the previous raid night
 local ROSTER_EVERY  = 60           -- seconds between roster snapshots while recording
+local LATE_DEFAULT  = 20 * 60      -- minutes after midnight: a raider first seen after 20:00 is late
 local KEEP_SESSIONS = 60           -- oldest sessions beyond this are dropped
 
 local DB            -- AmisiaDB, set on ADDON_LOADED
@@ -180,6 +181,26 @@ local function raidInstance()
     return instanceType == "raid", name, instanceID
 end
 
+-- The moment a raider still counts as punctual: the raid start time set in the settings,
+-- on the calendar day of this raid night. A time before 06:00 means the night after it.
+local function lateCutoff(t)
+    local mins = DB and DB.settings and DB.settings.lateAt
+    if not mins then return nil end
+    local d = date("*t", t - NIGHT_START)
+    local midnight = time({ year = d.year, month = d.month, day = d.day, hour = 0, min = 0, sec = 0 })
+    if not midnight then return nil end
+    return midnight + mins * 60 + ((mins * 60 < NIGHT_START) and (24 * 60 * 60) or 0)
+end
+ns.LateCutoff = lateCutoff
+
+-- Nobody counts as late before the recording itself was running: starting the raid late must not
+-- mark the whole group, so the first roster snapshot moves the line if it comes after the cutoff.
+local function lateAfter(s)
+    if not s or not s.lateAt then return nil end
+    return math.max(s.lateAt, s.firstScan or s.start or 0)
+end
+ns.LateAfter = lateAfter
+
 local function newSession(zone, instanceID)
     local t = time()
     local s = {
@@ -192,6 +213,7 @@ local function newSession(zone, instanceID)
         members = {},
         loot = {},
         items = {},   -- blue or better loot: { name, item, count, t }
+        lateAt = lateCutoff(t),   -- epoch seconds: whoever shows up after this is marked late
         drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
         awards = {},  -- master loot hand-outs: { name, item, t, kind = MS|OS|SR|-, src }
     }
@@ -219,13 +241,15 @@ local function noteMember(s, name, class, t)
         m.last = t
         if class and class ~= "" then m.class = class end
     else
-        s.members[name] = { class = class or "", first = t, last = t }
+        local after = lateAfter(s)
+        s.members[name] = { class = class or "", first = t, last = t, late = (after and t > after) or nil }
     end
 end
 
 local function snapshotRoster()
     if not active then return end
     local t = time()
+    active.firstScan = active.firstScan or t
     local n = GetNumGroupMembers() or 0
     -- The recorder's own roster line gives the zone string that means "inside the raid".
     local me, here = UnitName("player"), nil
@@ -560,6 +584,36 @@ function ns.SetEnabled(on)
     evaluate()
 end
 
+-- Raid start as HH:MM, or nil when the late marker is switched off.
+function ns.LateTime()
+    local mins = DB and DB.settings and DB.settings.lateAt
+    if not mins then return nil end
+    return ("%02d:%02d"):format(math.floor(mins / 60), mins % 60)
+end
+
+function ns.SetLateTime(text)
+    if not DB then return nil end
+    text = (text or ""):lower()
+    if text == "aus" or text == "off" then
+        DB.settings.lateAt = false
+        return true
+    end
+    local h, m = text:match("^(%d%d?)[:.](%d%d)$")
+    if not h then h, m = text:match("^(%d%d?)$"), "0" end
+    h, m = tonumber(h), tonumber(m)
+    if not h or not m or h > 23 or m > 59 then return nil end
+    DB.settings.lateAt = h * 60 + m
+    return true
+end
+
+function ns.LateCount(s)
+    local n = 0
+    for _, m in pairs(s.members or {}) do
+        if m.late then n = n + 1 end
+    end
+    return n
+end
+
 function ns.MemberCount(s)
     local n = 0
     for _ in pairs(s.members) do n = n + 1 end
@@ -622,8 +676,10 @@ function ns.ExportText(list)
         for name in pairs(s.members) do names[#names + 1] = name end
         table.sort(names)
         for _, name in ipairs(names) do
-            local class = s.members[name].class
-            lines[#lines + 1] = ("M %s %s"):format(name, (class and class ~= "") and class or "UNKNOWN")
+            -- M <name> <class> <first seen epoch> <1 late, 0 punctual>
+            local m = s.members[name]
+            lines[#lines + 1] = ("M %s %s %d %d"):format(name, (m.class and m.class ~= "") and m.class or "UNKNOWN",
+                m.first or 0, m.late and 1 or 0)
         end
         local sum, keys = {}, {}
         for _, l in ipairs(s.loot) do
@@ -708,6 +764,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.itemNames = DB.itemNames or {}
         if DB.settings.enabled == nil then DB.settings.enabled = true end
         DB.settings.rollSeconds = tonumber(DB.settings.rollSeconds) or 20
+        if DB.settings.lateAt == nil then DB.settings.lateAt = LATE_DEFAULT end
         if DB.settings.collect == nil then DB.settings.collect = true end
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
@@ -794,6 +851,18 @@ SlashCmdList.AMISIA = function(input)
         else
             msg("Aufruf: /amisia rollzeit <5-120>")
         end
+    elseif word == "spaet" or word == "late" then
+        if rest == "" then
+            local at = ns.LateTime()
+            msg(at and ("Raidbeginn %s. Wer danach zum ersten Mal im Raid steht, wird als zu spaet vermerkt. /amisia spaet aus schaltet es ab."):format(at)
+                or "Verspaetungen werden nicht vermerkt. /amisia spaet 20:00 schaltet sie ein.")
+        elseif ns.SetLateTime(rest) then
+            local at = ns.LateTime()
+            msg(at and ("Raidbeginn %s: wer danach zum ersten Mal im Raid steht, ist zu spaet."):format(at)
+                or "Verspaetungen werden nicht mehr vermerkt.")
+        else
+            msg("Aufruf: /amisia spaet <HH:MM> | aus")
+        end
     elseif word == "rolls" then
         if ns.ToggleRollFrame then ns.ToggleRollFrame() end
     elseif word == "sr" then
@@ -809,8 +878,9 @@ SlashCmdList.AMISIA = function(input)
     elseif cmd == "status" then
         if active then
             local c = ns.MatCounts(active)
-            msg(("Aufnahme: %s, %d Raider, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
-                c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+            local late = ns.LateCount(active)
+            msg(("Aufnahme: %s, %d Raider%s, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
+                late > 0 and (", " .. late .. " zu spaet") or "", c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
         else
             msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
         end

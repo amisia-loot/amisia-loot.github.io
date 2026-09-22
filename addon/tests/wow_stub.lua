@@ -9,7 +9,7 @@ STUB = {
 _G.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 _G.tinsert = table.insert
 _G.strmatch = string.match
-_G.time = function() return STUB.now end
+_G.time = function(t) if type(t) == "table" then return os.time(t) end return STUB.now end
 _G.date = function(fmt, t) return os.date(fmt, t or STUB.now) end
 _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
