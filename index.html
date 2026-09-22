@@ -257,7 +257,20 @@ tr.skip td{opacity:.55}
 /* ---------- difficulty ---------- */
 .diff{display:inline-block;padding:0 5px;border-radius:3px;font-family:var(--label);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;background:var(--panel-3);color:var(--muted);margin-left:4px;vertical-align:middle}
 /* ---------- crafting ---------- */
+/* An item in its own quality: the frame on the icon, the name beside it follows along. */
+.ico.q0{border-color:var(--faint);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.ico.q1{border-color:var(--line-2);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.ico.q2{border-color:var(--uncommon);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
 .ico.q3{border-color:var(--rare);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.ico.q5{border-color:var(--legendary);box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 9px rgba(255,128,0,.35)}
+.ico.q6{border-color:var(--heirloom);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.ico.q5 .n{background:var(--legendary)}
+.ico.q0 ~ .nm,.ico.q0 ~ span .nm,.ico.q0 ~ div .nm{color:var(--muted)}
+.ico.q1 ~ .nm,.ico.q1 ~ span .nm,.ico.q1 ~ div .nm{color:var(--text)}
+.ico.q2 ~ .nm,.ico.q2 ~ span .nm,.ico.q2 ~ div .nm{color:var(--uncommon)}
+.ico.q3 ~ .nm,.ico.q3 ~ span .nm,.ico.q3 ~ div .nm{color:var(--rare)}
+.ico.q5 ~ .nm,.ico.q5 ~ span .nm,.ico.q5 ~ div .nm{color:var(--legendary)}
+.ico.q6 ~ .nm,.ico.q6 ~ span .nm,.ico.q6 ~ div .nm{color:var(--heirloom)}
 .ico .cp{display:block;width:100%;height:100%;background-repeat:no-repeat;background-color:#000}
 /* Item quality colours. Without a class an item name stays epic purple, which is right for
    raid loot but wrong for the scanned catalog, where blue and legendary both turn up. */
@@ -396,7 +409,7 @@ tr.got td{opacity:.5}
 .xloot:last-child{border-bottom:0}
 .xloot .ico{grid-row:span 2;align-self:start}
 .xloot .nm{font-weight:600;line-height:1.3;overflow-wrap:break-word;color:var(--epic)}
-.xloot .nm.q3{color:var(--rare)}
+.xloot .nm{color:var(--epic)}
 .xloot .nm .x{color:var(--muted);margin-left:5px}
 .xloot .foot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;min-width:0}
 .xloot .who{font-weight:600}
@@ -849,7 +862,7 @@ const GAMES = [
   // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1789927054';
+const BUILD_ID = '1790101610';
 const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -985,10 +998,20 @@ function spriteStyle(it, sheet){
 }
 function icoInner(it){ return it.img ? '<img src="'+it.img+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
 const WOWHEAD_DB = {classic:'classic', hardcore:'classic', sod:'classic', tbc:'tbc', mop:'mop-classic', forever:'classic'};
+// The loot tables carry a quality only where it is not epic, and what the addon reported about
+// an item outside them counts too. qCls turns it into the class the colours hang on.
+function itemQ(x){
+  const id = x && typeof x === 'object' ? x.id : x;
+  const it = typeof x === 'object' ? x : ITEM[id];
+  if (it && it.q != null) return it.q;
+  const seen = (state.itemNames || {})[id];
+  return seen && seen.q != null ? seen.q : 4;
+}
+const qCls = x => { const q = itemQ(x); return q === 4 ? '' : ' q' + q; };
 function icoHTML(it, extra, count, link){
   if(!it) return '<span class="ico"><i class="sp"></i></span>';
   const tag = link === false ? 'span' : 'a';
-  return '<'+tag+' class="ico hot'+(it.token?' token':'')+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
+  return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
 }
 const crafters = () => state.crafters || (state.crafters = []);
 const nights = () => state.nights || (state.nights = []);
@@ -1579,7 +1602,7 @@ function anyItemName(id){
   const n = (state.itemNames || {})[id];
   return n ? n.n : 'Item ' + id;
 }
-const anyItemQuality = id => ITEM[id] ? 4 : (((state.itemNames || {})[id] || {}).q || 4);
+const anyItemQuality = id => itemQ(id);
 // An item outside the loot tables has no icon, so its slot stays empty and only the name shows.
 function anyItemIcon(id){ return ITEM[id] ? icoHTML(ITEM[id]) : '<span class="ico"><i class="sp"></i></span>'; }
 function anyItemLink(id){
@@ -1592,12 +1615,12 @@ function anyItemHTML(id){
   const it = ITEM[id];
   if (it) return '<span class="item">' + icoHTML(it) + '<span class="nm">' + esc(it.name) + '</span></span>';
   const n = (state.itemNames || {})[id] || {};
-  return '<span class="item"><a class="nm' + (n.q === 3 ? ' q3' : '') + '" href="https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id) + '" target="_blank" rel="noopener">' + esc(n.n || 'Item ' + id) + '</a></span>';
+  return '<span class="item"><a class="nm' + qCls(id) + '" href="https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id) + '" target="_blank" rel="noopener">' + esc(n.n || 'Item ' + id) + '</a></span>';
 }
 // One row: the icon on the left, the item name on its own line, who and the buttons below it.
 function xlootRow(id, count, foot){
   return '<div class="xloot">' + anyItemIcon(id)
-    + '<div class="nm' + (anyItemQuality(id) === 3 ? ' q3' : '') + '">' + anyItemLink(id) + (count > 1 ? '<span class="x">×' + count + '</span>' : '') + '</div>'
+    + '<div class="nm' + qCls(id) + '">' + anyItemLink(id) + (count > 1 ? '<span class="x">×' + count + '</span>' : '') + '</div>'
     + '<div class="foot">' + foot + '</div></div>';
 }
 function extraLootPanels(date){
@@ -2831,7 +2854,7 @@ function showTip(el, ev){
     tip.innerHTML = h; tip.hidden = false; moveTip(ev); return;
   }
   const it = ITEM[el.dataset.item]; if (!it) return;
-  let h = '<div class="t q'+(it.q||0)+'">'+esc(it.name)+'</div><div class="s">'+esc(itemKind(it))+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')
+  let h = '<div class="t q'+itemQ(it)+'">'+esc(it.name)+'</div><div class="s">'+esc(itemKind(it))+(it.token?' token':'')+(it.diff?' · '+esc(it.diff):'')
     +(it.bind?' · '+esc(BINDNAME[it.bind] || it.bind):'')+(it.lvl?' · needs level '+it.lvl:'')+'</div>'
     + '<div class="s">'+esc((ZONE[BOSSZONE[it.sources[0]]]||'')+' · '+it.sources.join(' / '))+'</div>';
   if (it.via) h += '<div class="s">Also seen: '+esc(it.via.join(' · '))+'</div>';
