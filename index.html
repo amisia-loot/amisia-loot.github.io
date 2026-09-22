@@ -968,6 +968,11 @@ const fmtDate = d => { if(!d) return '—'; const [y,m,dd] = d.split('-').map(Nu
 const fmtShort = d => { const [y,m,dd] = d.split('-').map(Number); return new Date(y,m-1,dd).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
 const clsVar = c => 'var(--c-' + (MOP_CLASSES.includes(c) ? c.toLowerCase().replace(/\s+/g,'') : 'unknown') + ')';
 const raiderById = id => state.raiders.find(r => r.id === id);
+// An imported award only ever got the first source of its item as the boss when no export named
+// one, so for an item several bosses drop that boss is a guess and an export may still correct it.
+// Working it out instead of storing it covers everything imported before this was written.
+// bq: 0 is set when a person picked the boss, and that is never overwritten.
+const bossGuessed = a => a && a.bq !== 0 && (a.gargul || a.src) && ITEM[a.item] && ITEM[a.item].sources.length > 1 && a.boss === ITEM[a.item].sources[0];
 const awardsOf = (rid, zone) => state.awards.filter(a => a.raider === rid && (!zone || BOSSZONE[a.boss] === zone)).sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts||0)-(b.ts||0));
 const slotOf = it => it ? (it.slot==='ranged'||it.slot==='relic' ? 'rr' : it.slot) : 'other';
 const today = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
@@ -1520,7 +1525,7 @@ function submitAward(ev){
   if (!raider) return say('Choose who received the item.');
   const note = $('#fNote').value.trim();
   if (ui.editing) {
-    const a = state.awards.find(x => x.id === ui.editing); if (a) Object.assign(a, {date, boss: finalBoss, item: itemId, raider, note});
+    const a = state.awards.find(x => x.id === ui.editing); if (a) Object.assign(a, {date, boss: finalBoss, item: itemId, raider, note, bq: 0});
   } else state.awards.push({id: uid(), date, boss: finalBoss, item: itemId, raider, note, ts: Date.now()});
   if (state.example && !ui.editing) { /* keep examples until cleared explicitly */ }
   const wasEditing = !!ui.editing;
@@ -2710,7 +2715,7 @@ function glResolve(rows){
       const note = [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · ');
       const fill = {};
       if (a && note && !a.note) fill.note = note;
-      if (a && a.bq && !out.bq && out.boss !== a.boss) fill.boss = out.boss;
+      if (bossGuessed(a) && !out.bq && out.boss !== a.boss) fill.boss = out.boss;
       if (a && Object.keys(fill).length) { out.status = 'fill'; out.awardId = a.id; out.fill = fill; return out; }
     }
     out.status = already && !dups ? 'dup' : 'ok';
@@ -2768,7 +2773,6 @@ $('#glImport').addEventListener('click', () => {
     let raider = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     if (!raider) { raider = {id: uid(), name: r.name, cls: clsFor[r.name] || r.cls || 'Unknown'}; state.raiders.push(raider); created++; }
     const a = {id: uid(), date: r.date, boss: r.boss, item: r.item, raider: raider.id, note: [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '), ts: r.ts || (base++)};
-    if (r.bq) a.bq = 1;   // the boss is a guess until an export names it
     if (r.key) a.gargul = r.key;
     a.src = r.date + '|' + r.item + '|' + r.name.toLowerCase();
     state.awards.push(a);
@@ -2777,7 +2781,7 @@ $('#glImport').addEventListener('click', () => {
   let filled = 0;
   for (const r of glRows.filter(x => x.status === 'fill')) {
     const a = state.awards.find(x => x.id === r.awardId); if (!a) continue;
-    if (r.fill.boss) { a.boss = r.fill.boss; delete a.bq; }
+    if (r.fill.boss) { a.boss = r.fill.boss; a.bq = 0; }
     if (r.fill.note) a.note = r.fill.note;
     filled++;
   }
@@ -2987,7 +2991,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); markDirty(); } }
+  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); state.otherLoot = (state.otherLoot || []).filter(x => x.raider !== r.id); state.lootOk = lootOk().filter(sig => sig.split('|')[1] !== r.id); nights().forEach(n => { if (n.late) { delete n.late[r.id]; if (!Object.keys(n.late).length) delete n.late; } }); markDirty(); } }
 });
 $('#gGame').addEventListener('change', renderPlaceField);
 $('#saveSettings').addEventListener('click', async () => {
