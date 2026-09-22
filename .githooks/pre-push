@@ -1,0 +1,10 @@
+#!/bin/sh
+# Warns when the claude.ai twin of the ledger is behind what is being pushed. Never blocks:
+# publishing the twin needs the Artifact tool, not git. Turned on with
+#   git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel)
+py=$(command -v python || command -v python3) || exit 0
+if ! out=$("$py" "$root/tools/twin_stamp.py" 2>&1); then
+  printf '\n%s\n\n' "$out" >&2
+fi
+exit 0
