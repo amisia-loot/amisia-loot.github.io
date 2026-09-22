@@ -9,7 +9,7 @@
   --gold:#e2b857; --gold-2:#f3d585; --gold-ink:#1a1206;
   --epic:#a335ee; --epic-soft:rgba(163,53,238,.16); --rare:#4a9be8;
   --uncommon:#4cc22e; --legendary:#ff8000; --heirloom:#e6cc80;
-  --good:#4fbf7a; --warn:#e0a344; --bad:#e35d6a;
+  --good:#4fbf7a; --warn:#e0a344; --warn-soft:rgba(224,163,68,.16); --bad:#e35d6a;
   --z-kara:#a98be0; --z-gruul:#b9915a; --z-mag:#d2694f; --z-ssc:#4fb3d4; --z-tk:#d6b04a; --z-hyjal:#5db8a5; --z-bt:#c26a4a; --z-za:#7fbf5a; --z-swp:#e8a33d;
   --c-warrior:#C69B6D; --c-paladin:#F48CBA; --c-hunter:#AAD372; --c-rogue:#FFF468; --c-priest:#FFFFFF; --c-shaman:#3d8be6; --c-mage:#3FC7EB; --c-warlock:#8788EE; --c-druid:#FF7C0A; --c-deathknight:#C41E3A; --c-monk:#00FF98; --c-unknown:#8f86a3;
   --shadow:0 18px 40px rgba(0,0,0,.45);
@@ -24,7 +24,7 @@
     --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
     --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
     --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8; --uncommon:#2a8a18; --legendary:#c05a00; --heirloom:#8a6f2a;
-    --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
+    --good:#2f8f57; --warn:#b07a1c; --warn-soft:rgba(176,122,28,.14); --bad:#c23a47;
     --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
     --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
     --shadow:0 14px 30px rgba(60,40,20,.15);
@@ -36,7 +36,7 @@
   --text:#241b31; --muted:#6a617a; --faint:#9a92a8;
   --gold:#9a6b0f; --gold-2:#7a520a; --gold-ink:#fff8e6;
   --epic:#7b2fc9; --epic-soft:rgba(123,47,201,.12); --rare:#1f63b8; --uncommon:#2a8a18; --legendary:#c05a00; --heirloom:#8a6f2a;
-  --good:#2f8f57; --warn:#b07a1c; --bad:#c23a47;
+  --good:#2f8f57; --warn:#b07a1c; --warn-soft:rgba(176,122,28,.14); --bad:#c23a47;
   --z-kara:#6b48b8; --z-gruul:#8a6428; --z-mag:#a83f27; --z-ssc:#1f7d99; --z-tk:#8f6f0c; --z-hyjal:#2e8a76; --z-bt:#a6482a; --z-za:#3f8a25; --z-swp:#a86a0a;
   --c-priest:#7d7d7d; --c-rogue:#b39a00; --c-monk:#0a9a5c; --c-unknown:#6a617a;
   --shadow:0 14px 30px rgba(60,40,20,.15);
@@ -318,6 +318,13 @@ tr.done td{opacity:.5}
 .att td.c.hot{cursor:pointer}
 .att td.c.hot:hover{background:var(--panel-3)}
 .att .yes{color:var(--good)}
+.att td.c.lt{background:var(--warn-soft)}
+.att td.c.lt .won,.att td.c.lt .late{color:var(--warn)}
+/* Who was there: a raider the addon first saw after the raid start */
+.ntwho .late{display:inline-flex;align-items:center;gap:6px;background:var(--warn-soft)}
+.ntwho .late>span{padding:0;background:none}
+.ntwho .late b{font-family:var(--label);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
+.ntsum .k.warn b{color:var(--warn)}
 .att .won{color:var(--gold)}
 .att .no{color:var(--faint)}
 /* missed the raid: a glowing hot potato */
@@ -966,6 +973,15 @@ function presentOn(date){
   for (const a of state.awards) if (a.date === date) s.add(a.raider);
   return s;
 }
+// Who came in after the raid start, as {raiderId: first sighting in epoch seconds}. The addon
+// decides who is late, the ledger only keeps and shows it.
+function lateOn(date){
+  const n = nightOn(date), l = n && n.late;
+  if (!l || typeof l !== 'object') return {};
+  return Array.isArray(l) ? Object.fromEntries(l.map(id => [id, 0])) : l;
+}
+const lateTime = t => t ? new Date(t * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : '';
+
 function attendance(rid){
   const list = countedNights(); let was = 0;
   for (const n of list) if (presentOn(n.date).has(rid)) was++;
@@ -1549,13 +1565,14 @@ function nightData(date){
   for (const a of aw) (per[a.raider] = per[a.raider] || []).push(a);
   const people = Object.entries(per).map(([rid, list]) => ({r: raiderById(rid), list}))
     .sort((a, b) => b.list.length - a.list.length || (a.r ? a.r.name : '').localeCompare(b.r ? b.r.name : ''));
+  const late = lateOn(date);
   const here = [...presentOn(date)].map(raiderById).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   const away = state.raiders.filter(r => !presentOn(date).has(r.id)).sort((a, b) => a.name.localeCompare(b.name));
   const zones = [...new Set(aw.map(a => BOSSZONE[a.boss]).filter(Boolean))];
   const matsBy = {};
   for (const x of (state.matloot || []).filter(x => x.date === date)) { const k = x.raider; (matsBy[k] = matsBy[k] || {})[x.item] = (matsBy[k][x.item] || 0) + x.count; }
   const matPeople = Object.entries(matsBy).map(([rid, per]) => ({r: raiderById(rid), per})).filter(x => x.r).sort((a, b) => a.r.name.localeCompare(b.r.name));
-  return {aw, bosses, byBoss, people, here, away, zones, matPeople};
+  return {aw, bosses, byBoss, people, here, away, zones, matPeople, late};
 }
 function renderNight(){
   const list = allNights();
@@ -1573,13 +1590,17 @@ function renderNight(){
   $('#ntBody').innerHTML =
     '<div class="ntsum"><span class="big">' + fmtDate(ui.night) + '</span>'
     + (d.zones.length ? '<span class="k">' + d.zones.map(z => zTag(z)).join(' ') + '</span>' : '')
-    + '<span class="k"><b>' + d.here.length + '</b>there</span><span class="k"><b>' + d.aw.length + '</b>item' + (d.aw.length === 1 ? '' : 's') + '</span>'
+    + '<span class="k"><b>' + d.here.length + '</b>there</span>'
+    + (Object.keys(d.late).length ? '<span class="k warn"><b>' + Object.keys(d.late).length + '</b>late</span>' : '')
+    + '<span class="k"><b>' + d.aw.length + '</b>item' + (d.aw.length === 1 ? '' : 's') + '</span>'
     + '<span class="k"><b>' + d.people.length + '</b>got loot</span></div>'
     + '<div class="ntcols"><div class="tblwrap"><table><thead><tr><th>Item</th><th>Raider</th><th>Note</th></tr></thead><tbody>' + loot + '</tbody></table></div>'
     + '<div class="stack"><div class="panel"><div class="panel-h">Items per raider</div><div class="panel-b">'
     + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + a.id + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
     + '</div></div>' + extraLootPanels(ui.night) + (d.matPeople.length ? '<div class="panel"><div class="panel-h">Materials looted</div><div class="panel-b">' + d.matPeople.map(x => '<div class="ntper"><span class="who" style="color:' + clsVar(x.r.cls) + '">' + esc(x.r.name) + '</span><span class="ic">' + Object.entries(x.per).map(([id, n]) => icoHTML(ITEM[Number(id)]) + '<b style="margin:0 8px 0 2px">' + n + '</b>').join('') + '</span></div>').join('') + '</div></div>' : '') + '<div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
-    + (d.here.length ? d.here.map(r => '<span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span>').join('') : '<span class="muted">Nobody recorded.</span>')
+    + (d.here.length ? d.here.map(r => r.id in d.late
+        ? '<span class="late" title="joined after the raid start' + (lateTime(d.late[r.id]) ? ', first seen at ' + lateTime(d.late[r.id]) : '') + '"><span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span><b>late' + (lateTime(d.late[r.id]) ? ' ' + lateTime(d.late[r.id]) : '') + '</b></span>'
+        : '<span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span>').join('') : '<span class="muted">Nobody recorded.</span>')
     + '</div>' + (d.away.length ? '<div class="panel-h" style="padding:10px 0 6px;border:0;border-top:1px solid var(--line);margin-top:10px">Missing</div><div class="ntwho">' + d.away.map(r => '<span class="off"><span class="potato">' + potato(13) + '</span>' + esc(r.name) + '</span>').join('') + '</div>' : '')
     + '</div></div></div></div>';
 }
@@ -1597,6 +1618,8 @@ function nightText(){
   const ex = nightExtraLoot(ui.night);
   if (ex.other.length) { L.push(''); L.push('Other loot'); for (const o of ex.other) { const r = raiderById(o.raider); L.push('  ' + anyItemName(o.item) + (o.count > 1 ? ' x' + o.count : '') + ' - ' + (r ? r.name : 'removed')); } }
   if (ex.left.length) { L.push(''); L.push('Dropped, not handed out'); for (const l of ex.left) L.push('  ' + anyItemName(l.item) + (l.count > 1 ? ' x' + l.count : '') + ' (' + l.sources.join(', ') + ')'); }
+  const lateNames = d.here.filter(r => r.id in d.late).map(r => r.name + (lateTime(d.late[r.id]) ? ' (' + lateTime(d.late[r.id]) + ')' : ''));
+  if (lateNames.length) { L.push(''); L.push('Late: ' + lateNames.join(', ')); }
   if (d.away.length) { L.push(''); L.push('Missing: ' + d.away.map(r => r.name).join(', ')); }
   return L.join('\n');
 }
@@ -1630,7 +1653,7 @@ function renderAttendance(){
   $('#attCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
   $('#attHint').hidden = false;
   $('#attHint').innerHTML = total
-    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
+    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid, and an amber tick on an amber cell means they came in after the raid start' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
     : (readOnly ? 'No raid nights yet.' : 'No raid nights yet. Record one on the right, or import a loot export on the <a data-goto="import">Import tab</a>.');
   $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num">Items</th><th class="num">Per raid</th>'
     + list.map(n => '<th class="d">' + fmtShort(n.date).replace(' ', '<br>') + '</th>').join('') + '</tr>';
@@ -1638,6 +1661,8 @@ function renderAttendance(){
     $('#attBody').innerHTML = '<tr><td colspan="' + (list.length + 5) + '"><div class="empty"><b>' + (!list.length ? 'No raid nights yet' : 'Nobody matches') + '</b>' + (!list.length ? 'Record the first one on the right.' : 'Try a different filter.') + '</div></td></tr>';
     renderNightList(); return;
   }
+  const lateBy = {};   // one lookup per night instead of one per cell
+  for (const n of list) lateBy[n.date] = lateOn(n.date);
   $('#attBody').innerHTML = rows.map(({r, at, aw}) => {
     const cls = at.rate >= 0.75 ? 'good' : at.rate >= 0.4 ? 'mid' : 'bad';
     const per = at.was ? (aw.length / at.was).toFixed(1) : '–';
@@ -1649,9 +1674,12 @@ function renderAttendance(){
       + list.map(n => {
           const won = state.awards.some(a => a.date === n.date && a.raider === r.id);
           const here = won || presentOn(n.date).has(r.id);
-          const lock = won ? ' title="won loot that night"' : readOnly ? '' : ' title="click to change"';
-          return '<td class="c' + (readOnly || won ? '' : ' hot" data-att="' + r.id + '|' + n.date) + '"' + lock + '>'
-            + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="yes">&#10003;</span>' : '<span class="potato" title="missed this raid">' + potato(16) + '</span>') + '</td>';
+          const late = here && r.id in lateBy[n.date];
+          const when = late ? lateTime(lateBy[n.date][r.id]) : '';
+          const lock = late ? ' title="there, but late' + (when ? ' - first seen at ' + when : '') + '"'
+            : won ? ' title="won loot that night"' : readOnly ? '' : ' title="click to change"';
+          return '<td class="c' + (late ? ' lt' : '') + (readOnly || won ? '' : ' hot" data-att="' + r.id + '|' + n.date) + '"' + lock + '>'
+            + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="' + (late ? 'late' : 'yes') + '">&#10003;</span>' : '<span class="potato" title="missed this raid">' + potato(16) + '</span>') + '</td>';
         }).join('') + '</tr>';
   }).join('');
   renderNightList();
@@ -2295,7 +2323,8 @@ function amParse(blocks){
         cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], names};
         out.push(cur);
       } else if (f[0] === 'M' && cur && f[1]) {
-        const name = glCleanName(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || ''});
+        // M <name> <class> [<first seen epoch> <1 late, 0 punctual>] - the two last fields are newer
+        const name = glCleanName(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || '', first: Number(f[3]) || 0, late: f[4] === '1'});
       } else if (f[0] === 'L' && cur && f.length >= 4) {
         const name = glCleanName(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
         if (name && item) cur.loot.push({name, item, count});
@@ -2435,6 +2464,11 @@ function importAmisia(){
     let n = nightOn(s.date);
     if (!n) { n = {id: uid(), date: s.date, present: []}; nights().push(n); }
     n.present = [...new Set([...(Array.isArray(n.present) ? n.present : []), ...ids])];
+    // Who came in after the raid start, as {raiderId: first sighting}. A later export of the same
+    // night corrects an earlier one, so a punctual line clears a mark from before.
+    n.late = (n.late && typeof n.late === 'object' && !Array.isArray(n.late)) ? n.late : {};
+    s.members.forEach((m, i) => { if (m.late) n.late[ids[i]] = m.first || 0; else delete n.late[ids[i]]; });
+    if (!Object.keys(n.late).length) delete n.late;
     for (const l of s.loot) {
       const r = findOrAdd(l.name, '');
       if (!n.present.includes(r.id)) n.present.push(r.id);
