@@ -743,6 +743,7 @@ tr.got td{opacity:.5}
         <div class="panel" id="amResult" hidden>
           <div class="panel-h">Raid sessions from the Amisia addon<span class="grow"></span><span class="muted" id="amSummary" style="text-transform:none;letter-spacing:0"></span></div>
           <div id="amBank" hidden></div>
+          <div id="amStrange" hidden></div>
           <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table><thead><tr><th>Status</th><th>Date</th><th>Raid</th><th class="num">Raiders</th><th>New raiders</th><th>Loot recorded</th></tr></thead><tbody id="amBody"></tbody></table></div>
         </div>
         <div class="panel" id="glResult" hidden>
@@ -899,9 +900,24 @@ function loadCraft(g){
   s.onerror = () => { craftState = 'error'; applyCraft(null); renderAll(); };
   document.head.appendChild(s);
 }
+// The Amisia addon records the boss name its own client showed, so a German client writes
+// "Illidan Sturmgrimm" where the loot tables say "Illidan Stormrage". data/bossnames.js pairs them
+// up for every language the loot addon is translated into.
+let BOSSNAME = {}, bossNameState = 'idle';
+function applyBossNames(){ BOSSNAME = (window.__BOSSNAMES || {})[gameKey] || {}; }
+const bossHere = name => { const n = String(name == null ? '' : name).trim(); return BOSSNAME[n] || n; };
+function loadBossNames(){
+  applyBossNames();
+  if (bossNameState !== 'idle') return;
+  bossNameState = 'loading';
+  const s = document.createElement('script'); s.src = 'data/bossnames.js?v=' + BUILD_ID;
+  s.onload = () => { bossNameState = 'ok'; applyBossNames(); renderAll(); };
+  s.onerror = () => { bossNameState = 'error'; };   // the names stay as the client wrote them
+  document.head.appendChild(s);
+}
 function loadGame(key){
   const g = GAME[key] || GAME.tbc; gameKey = g.key; CLASSES = g.classes;
-  loadCraft(g);
+  loadCraft(g); loadBossNames();
   if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
   dataState = 'loading'; applyData(null); renderAll();
@@ -1542,7 +1558,7 @@ function nightExtraLoot(date){
   const taken = {};
   for (const k of new Set([...Object.keys(awarded), ...Object.keys(looted)])) { const item = k.split('|')[1]; taken[item] = (taken[item] || 0) + Math.max(awarded[k] || 0, looted[k] || 0); }
   const dropped = {};
-  for (const d of (state.lootDrops || [])) if (d.date === date) { const e = dropped[d.item] = dropped[d.item] || {count: 0, sources: new Set()}; e.count += d.count; e.sources.add(d.source); }
+  for (const d of (state.lootDrops || [])) if (d.date === date) { const e = dropped[d.item] = dropped[d.item] || {count: 0, sources: new Set()}; e.count += d.count; e.sources.add(bossHere(d.source)); }
   const left = [];
   for (const [item, e] of Object.entries(dropped)) { const rest = e.count - (taken[item] || 0); if (rest > 0) left.push({item: Number(item), count: rest, sources: [...e.sources]}); }
   const rn = id => { const r = raiderById(id); return r ? r.name : ''; };
@@ -2472,6 +2488,15 @@ function amRender(){
   if (!amRows.length && !amBank) { $('#amResult').hidden = true; return; }
   const ok = amRows.filter(s => s.status === 'ok').length;
   $('#amSummary').textContent = amRows.length ? ok + ' to import · ' + (amRows.length - ok) + ' already imported' : 'no raid sessions in this export';
+  // A hand-out whose boss the tables do not know keeps the first source of the item as its boss,
+  // so the officer is told which names to pick by hand in the award list.
+  const strange = [...new Set(amRows.flatMap(s => (s.awards || []).map(a => a.source))
+    .filter(n => n && n !== '?' && !BOSSES.some(b => b.name === bossHere(n))))];
+  $('#amStrange').hidden = !strange.length;
+  $('#amStrange').innerHTML = strange.length ? '<p class="muted" style="margin:0;padding:10px 16px 0;font-size:13px">'
+    + strange.length + ' boss name' + (strange.length === 1 ? '' : 's') + ' from the addon ' + (strange.length === 1 ? 'is' : 'are') + ' not in the loot tables: '
+    + strange.slice(0, 8).map(n => '<b>' + esc(n) + '</b>').join(', ') + (strange.length > 8 ? ' \u2026' : '')
+    + '. Those hand-outs keep the first boss the item drops from, so pick the right one in the award list below.</p>' : '';
   $('#amBody').innerHTML = amRows.map(s => {
     const z = INSTANCE_ZONE[s.instance];
     const mats = Object.entries(s.mats).map(([id, n]) => n + ' × ' + esc(matName(Number(id)))).join(', ');
@@ -2672,7 +2697,7 @@ function glResolve(rows){
     if (!it) { out.status = 'skip'; out.why = r.item ? 'not a drop from a supported raid' : 'no item id found'; return out; }
     // bq: the boss is only the first source of the item, nobody said which one it really was
     out.boss = it.sources[0]; out.bq = it.sources.length > 1;
-    if (r.boss) { const known = BOSSES.find(b => b.name.toLowerCase() === String(r.boss).trim().toLowerCase() && it.sources.includes(b.name)); if (known) { out.boss = known.name; out.bq = false; } }
+    if (r.boss) { const want = bossHere(r.boss).toLowerCase(); const known = BOSSES.find(b => b.name.toLowerCase() === want && it.sources.includes(b.name)); if (known) { out.boss = known.name; out.bq = false; } }
     const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     out.raider = ex || null;
     const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase(), own = r.key ? 'k'+r.key : sig;
