@@ -391,6 +391,18 @@ tr.got td{opacity:.5}
 .ntwho{display:flex;gap:6px;flex-wrap:wrap}
 .ntwho span{padding:2px 9px;border-radius:12px;background:var(--panel-3);font-size:13px;font-weight:600}
 .ntwho span.off{background:none;border:1px dashed var(--line-2);color:var(--faint);font-weight:400}
+/* Loot the addon saw beside the awards: one row per item, the name gets the whole width */
+.xloot{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.xloot:last-child{border-bottom:0}
+.xloot .ico{grid-row:span 2;align-self:start}
+.xloot .nm{font-weight:600;line-height:1.3;overflow-wrap:break-word;color:var(--epic)}
+.xloot .nm.q3{color:var(--rare)}
+.xloot .nm .x{color:var(--muted);margin-left:5px}
+.xloot .foot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;min-width:0}
+.xloot .who{font-weight:600}
+.xloot .src{color:var(--muted);font-size:12px;min-width:0;overflow-wrap:break-word}
+.xloot .foot .btn{margin-left:auto;padding:2px 8px}
+.xloot .was{color:var(--warn)}
 /* ---------- misc ---------- */
 .view[hidden]{display:none}
 .hidden{display:none!important}
@@ -1372,7 +1384,7 @@ function renderExtraLog(kind){
   const rows = [];
   for (const date of dates) {
     const ex = nightExtraLoot(date);
-    for (const e of (kind === 'other' ? ex.other : ex.left)) {
+    for (const e of (kind === 'other' ? [...ex.clash, ...ex.other] : ex.left)) {
       const r = e.raider ? raiderById(e.raider) : null;
       if (rf && e.raider !== rf) continue;
       if (q) { const hay = anyItemName(e.item) + ' ' + (r ? r.name : '') + ' ' + (e.sources || []).join(' '); if (!hay.toLowerCase().includes(q)) continue; }
@@ -1509,13 +1521,22 @@ function submitAward(ev){
 // What the Amisia addon saw on a night, set against the awards:
 // other = looted by a raider without a matching award, left = lay in a loot window but reached nobody.
 function nightExtraLoot(date){
-  const awarded = {}, looted = {};
-  for (const a of state.awards) if (a.date === date) awarded[a.raider + '|' + a.item] = (awarded[a.raider + '|' + a.item] || 0) + 1;
+  const awarded = {}, looted = {}, awardsOfItem = {};
+  for (const a of state.awards) if (a.date === date) {
+    awarded[a.raider + '|' + a.item] = (awarded[a.raider + '|' + a.item] || 0) + 1;
+    (awardsOfItem[a.item] = awardsOfItem[a.item] || []).push(a);
+  }
   for (const x of (state.otherLoot || [])) if (x.date === date) looted[x.raider + '|' + x.item] = (looted[x.raider + '|' + x.item] || 0) + x.count;
-  const other = [];
+  // Lines the officer has ticked off stay away for good, whichever panel they were in.
+  const settled = new Set(state.lootOk || []);
+  const other = [], clash = [];
   for (const [k, n] of Object.entries(looted)) {
     const [raider, item] = k.split('|'), rest = n - (awarded[k] || 0);
-    if (rest > 0) other.push({raider, item: Number(item), count: rest});
+    if (rest <= 0 || settled.has(date + '|' + k)) continue;
+    // The addon saw this raider loot it, but the item was awarded to somebody else that night.
+    const theirs = (awardsOfItem[item] || []).filter(a => a.raider !== raider);
+    if (theirs.length) clash.push({raider, item: Number(item), count: rest, ids: theirs.map(a => a.id), to: [...new Set(theirs.map(a => a.raider))]});
+    else other.push({raider, item: Number(item), count: rest});
   }
   // per raider an item reached them as often as the larger of awards and addon loot says
   const taken = {};
@@ -1525,14 +1546,25 @@ function nightExtraLoot(date){
   const left = [];
   for (const [item, e] of Object.entries(dropped)) { const rest = e.count - (taken[item] || 0); if (rest > 0) left.push({item: Number(item), count: rest, sources: [...e.sources]}); }
   const rn = id => { const r = raiderById(id); return r ? r.name : ''; };
-  other.sort((a, b) => rn(a.raider).localeCompare(rn(b.raider)) || anyItemName(a.item).localeCompare(anyItemName(b.item)));
+  const byName = (a, b) => rn(a.raider).localeCompare(rn(b.raider)) || anyItemName(a.item).localeCompare(anyItemName(b.item));
+  other.sort(byName); clash.sort(byName);
   left.sort((a, b) => anyItemName(a.item).localeCompare(anyItemName(b.item)));
-  return {other, left};
+  return {other, left, clash};
 }
+// date|raider|item of a line the officer has ticked off as settled
+const lootOk = () => state.lootOk || (state.lootOk = []);
 function anyItemName(id){
   if (ITEM[id]) return ITEM[id].name;
   const n = (state.itemNames || {})[id];
   return n ? n.n : 'Item ' + id;
+}
+const anyItemQuality = id => ITEM[id] ? 4 : (((state.itemNames || {})[id] || {}).q || 4);
+// An item outside the loot tables has no icon, so its slot stays empty and only the name shows.
+function anyItemIcon(id){ return ITEM[id] ? icoHTML(ITEM[id]) : '<span class="ico"><i class="sp"></i></span>'; }
+function anyItemLink(id){
+  const it = ITEM[id];
+  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id);
+  return '<a href="' + href + '" target="_blank" rel="noopener"' + (it ? ' data-item="' + it.id + '"' : '') + '>' + esc(anyItemName(id)) + '</a>';
 }
 // Items outside the loot tables have no icon here: their name links to Wowhead in its quality colour.
 function anyItemHTML(id){
@@ -1541,16 +1573,30 @@ function anyItemHTML(id){
   const n = (state.itemNames || {})[id] || {};
   return '<span class="item"><a class="nm' + (n.q === 3 ? ' q3' : '') + '" href="https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id) + '" target="_blank" rel="noopener">' + esc(n.n || 'Item ' + id) + '</a></span>';
 }
+// One row: the icon on the left, the item name on its own line, who and the buttons below it.
+function xlootRow(id, count, foot){
+  return '<div class="xloot">' + anyItemIcon(id)
+    + '<div class="nm' + (anyItemQuality(id) === 3 ? ' q3' : '') + '">' + anyItemLink(id) + (count > 1 ? '<span class="x">×' + count + '</span>' : '') + '</div>'
+    + '<div class="foot">' + foot + '</div></div>';
+}
 function extraLootPanels(date){
   const ex = nightExtraLoot(date);
-  const count = n => n > 1 ? ' <b style="margin-left:4px">×' + n + '</b>' : '';
-  return (ex.other.length ? '<div class="panel"><div class="panel-h">Other loot<span class="grow"></span><span class="muted" style="text-transform:none;letter-spacing:0">looted without an award</span></div><div class="panel-b">'
-      + ex.other.map(o => { const r = raiderById(o.raider);
-          return '<div class="ntper"><span class="who" style="color:' + (r ? clsVar(r.cls) : 'inherit') + '">' + esc(r ? r.name : 'removed') + '</span><span class="ic" style="flex:1;min-width:0">' + anyItemHTML(o.item) + count(o.count) + '</span>'
-            + (!readOnly && ITEM[o.item] && r ? '<button class="btn sm ghost" data-mkaward="' + esc(date + '|' + o.raider + '|' + o.item) + '">Make award</button>' : '') + '</div>'; }).join('')
+  const who = rid => { const r = raiderById(rid); return '<span class="who" style="color:' + (r ? clsVar(r.cls) : 'inherit') + '">' + esc(r ? r.name : 'removed') + '</span>'; };
+  const tick = o => readOnly ? '' : '<button class="btn sm ghost" data-lootok="' + esc(date + '|' + o.raider + '|' + o.item) + '" title="Tick this line off: it is settled and stops showing up here">Settle</button>';
+  return (ex.clash.length ? '<div class="panel"><div class="panel-h">Who got it?<span class="grow"></span><span class="muted" style="text-transform:none;letter-spacing:0">the addon saw someone else loot it</span></div><div class="panel-b">'
+      + ex.clash.map(c => xlootRow(c.item, c.count,
+          who(c.raider) + '<span class="was">looted it</span><span class="src">awarded to ' + c.to.map(x => esc((raiderById(x) || {}).name || 'removed')).join(', ') + '</span>'
+          + (readOnly ? '' : (c.ids.length === 1 ? '<button class="btn sm ghost" data-lootmove="' + esc(date + '|' + c.raider + '|' + c.item) + '" title="Write the award over to the raider the addon saw loot it">Move award</button>' : '')
+             + '<button class="btn sm ghost" data-lootok="' + esc(date + '|' + c.raider + '|' + c.item) + '" title="The award is right: tick this line off">Award is right</button>'))).join('')
+      + '<p class="muted" style="margin:8px 0 0;font-size:12px">The master looter gave the item to one raider, the addon saw another one loot it – traded on, or picked up for someone. Move the award or tick the line off.</p></div></div>' : '')
+    + (ex.other.length ? '<div class="panel"><div class="panel-h">Other loot<span class="grow"></span><span class="muted" style="text-transform:none;letter-spacing:0">looted without an award</span></div><div class="panel-b">'
+      + ex.other.map(o => xlootRow(o.item, o.count,
+          who(o.raider)
+          + (!readOnly && ITEM[o.item] && raiderById(o.raider) ? '<button class="btn sm ghost" data-mkaward="' + esc(date + '|' + o.raider + '|' + o.item) + '">Make award</button>' : '')
+          + tick(o))).join('')
       + '</div></div>' : '')
     + (ex.left.length ? '<div class="panel"><div class="panel-h">Dropped, not handed out</div><div class="panel-b">'
-      + ex.left.map(l => '<div class="ntper"><span class="ic" style="flex:1;min-width:0">' + anyItemHTML(l.item) + count(l.count) + '</span><span class="muted" style="font-size:12px;text-align:right">' + esc(l.sources.join(', ')) + '</span></div>').join('')
+      + ex.left.map(l => xlootRow(l.item, l.count, '<span class="src">' + esc(l.sources.join(', ')) + '</span>')).join('')
       + '<p class="muted" style="margin:8px 0 0;font-size:12px">In a loot window the Amisia addon saw, but nobody looted it: left on the corpse, or picked up out of the recorder\'s reach.</p></div></div>' : '');
 }
 
@@ -2439,11 +2485,12 @@ function amRender(){
   $('#amResult').hidden = false;
 }
 function impRender(){
-  const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length;
+  const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length, fills = glRows.filter(r => r.status === 'fill').length;
   $('#glResult').hidden = !glRows.length;
   $('#impBar').hidden = !(glRows.length || amRows.length || amBank);
   const parts = [];
   if (okG) parts.push(okG + ' award' + (okG === 1 ? '' : 's'));
+  if (fills) parts.push('more detail for ' + fills + ' award' + (fills === 1 ? '' : 's') + ' already in the ledger');
   if (okA) parts.push(okA + ' raid session' + (okA === 1 ? '' : 's'));
   if (amBank && amBank.status === 'ok') parts.push('the guild bank count');
   $('#impSummary').textContent = parts.length ? parts.join(' and ') + ' ready to import' : 'Nothing new, everything in this export is already in the ledger';
@@ -2623,27 +2670,38 @@ function glResolve(rows){
     const it = ITEM[r.item]; const out = Object.assign({}, r, {it});
     if (!r.rawName || /^_/.test(r.rawName)) { out.status = 'skip'; out.why = 'disenchanted or no winner'; return out; }
     if (!it) { out.status = 'skip'; out.why = r.item ? 'not a drop from a supported raid' : 'no item id found'; return out; }
-    out.boss = it.sources[0];
-    if (r.boss) { const known = BOSSES.find(b => b.name.toLowerCase() === String(r.boss).trim().toLowerCase() && it.sources.includes(b.name)); if (known) out.boss = known.name; }
+    // bq: the boss is only the first source of the item, nobody said which one it really was
+    out.boss = it.sources[0]; out.bq = it.sources.length > 1;
+    if (r.boss) { const known = BOSSES.find(b => b.name.toLowerCase() === String(r.boss).trim().toLowerCase() && it.sources.includes(b.name)); if (known) { out.boss = known.name; out.bq = false; } }
     const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     out.raider = ex || null;
     const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase(), own = r.key ? 'k'+r.key : sig;
     out.removed = dropped.has(own) || dropped.has(sig);
     const already = out.removed || state.awards.some(a => (r.key && a.gargul === r.key) || a.src === sig || (ex && a.raider === ex.id && a.item === r.item && a.date === r.date)) || seen.has(own);
     seen.add(own);
+    // The same hand-out out of the other export: the entry stays, only what it still lacks is filled in.
+    if (already && !dups && !out.removed && ex) {
+      const a = state.awards.find(x => x.date === r.date && x.item === r.item && x.raider === ex.id);
+      const note = [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · ');
+      const fill = {};
+      if (a && note && !a.note) fill.note = note;
+      if (a && a.bq && !out.bq && out.boss !== a.boss) fill.boss = out.boss;
+      if (a && Object.keys(fill).length) { out.status = 'fill'; out.awardId = a.id; out.fill = fill; return out; }
+    }
     out.status = already && !dups ? 'dup' : 'ok';
     return out;
   });
 }
+const fillText = f => [f.boss ? 'the boss (' + f.boss + ')' : '', f.note ? 'the note ' + f.note : ''].filter(Boolean).join(' and ');
 function glRender(){
-  const ok = glRows.filter(r => r.status === 'ok'), dup = glRows.filter(r => r.status === 'dup'), skip = glRows.filter(r => r.status === 'skip');
+  const ok = glRows.filter(r => r.status === 'ok'), dup = glRows.filter(r => r.status === 'dup'), skip = glRows.filter(r => r.status === 'skip'), fills = glRows.filter(r => r.status === 'fill');
   const newNames = [...new Set(ok.filter(r => !r.raider).map(r => r.name))];
-  $('#glSummary').textContent = ok.length + ' to import · ' + dup.length + ' already in ledger · ' + skip.length + ' ignored' + (newNames.length ? ' · ' + newNames.length + ' new raider' + (newNames.length===1?'':'s') : '');
-  $('#glImport').disabled = !ok.length; $('#glImport').textContent = 'Import ' + ok.length + ' award' + (ok.length===1?'':'s');
+  $('#glSummary').textContent = ok.length + ' to import · ' + (fills.length ? fills.length + ' to fill in · ' : '') + dup.length + ' already in ledger · ' + skip.length + ' ignored' + (newNames.length ? ' · ' + newNames.length + ' new raider' + (newNames.length===1?'':'s') : '');
+  $('#glImport').disabled = !ok.length && !fills.length; $('#glImport').textContent = 'Import ' + ok.length + ' award' + (ok.length===1?'':'s');
   const clsPicked = {}; ok.forEach(r => { if (!r.raider && r.cls && !clsPicked[r.name]) clsPicked[r.name] = r.cls; });
   const clsDone = new Set();
   $('#glBody').innerHTML = glRows.map(r => {
-    const st = r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? (r.removed ? '<span class="st skip" title="removed from the ledger after an earlier import">Removed</span>' : '<span class="st dup">Exists</span>') : '<span class="st skip">Ignored</span>';
+    const st = r.status === 'fill' ? '<span class="st new" title="This hand-out is already in the ledger. The import only fills in what it does not know yet.">Fills in</span>' : r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? (r.removed ? '<span class="st skip" title="removed from the ledger after an earlier import">Removed</span>' : '<span class="st dup">Exists</span>') : '<span class="st skip">Ignored</span>';
     let cls;
     if (r.status !== 'ok') cls = '<span class="muted">'+esc(r.raider ? r.raider.cls : '')+'</span>';
     else if (r.raider) cls = '<span class="muted">'+esc(r.raider.cls)+'</span>';
@@ -2653,7 +2711,7 @@ function glRender(){
       + '<td>'+(r.it ? '<span class="item">'+icoHTML(r.it,'',0,false)+'<span><span class="nm">'+esc(r.it.name)+'</span> <span class="sl">'+SLOTNAME[r.it.slot]+'</span>'+dTag(r.it)+'</span></span>' : '<span class="faint">'+(r.item ? 'Item '+r.item : '—')+'</span>')+'</td>'
       + '<td style="white-space:nowrap">'+(r.boss ? zTag(BOSSZONE[r.boss])+' '+(r.status==='ok' && r.it.sources.length>1 ? '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glboss="'+glRows.indexOf(r)+'">'+r.it.sources.map(s => '<option'+(s===r.boss?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>' : esc(r.boss)) : '')+'</td>'
       + '<td>'+(r.raider ? rName(r.raider) : '<span class="rname">'+esc(r.name || r.rawName)+'</span>')+'</td>'
-      + '<td>'+cls+'</td><td class="note">'+esc(r.status === 'skip' ? r.why : [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '))+'</td></tr>';
+      + '<td>'+cls+'</td><td class="note">'+esc(r.status === 'skip' ? r.why : r.status === 'fill' ? 'adds ' + fillText(r.fill) : [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '))+'</td></tr>';
   }).join('');
   $('#glResult').hidden = false;
 }
@@ -2677,7 +2735,7 @@ $('#glDups').addEventListener('change', () => {
 });
 $('#glImport').addEventListener('click', () => {
   const ok = glRows.filter(r => r.status === 'ok');
-  if (!ok.length && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
+  if (!ok.length && !glRows.some(r => r.status === 'fill') && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
   const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
   document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
   let created = 0, base = Date.now();
@@ -2685,9 +2743,18 @@ $('#glImport').addEventListener('click', () => {
     let raider = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     if (!raider) { raider = {id: uid(), name: r.name, cls: clsFor[r.name] || r.cls || 'Unknown'}; state.raiders.push(raider); created++; }
     const a = {id: uid(), date: r.date, boss: r.boss, item: r.item, raider: raider.id, note: [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '), ts: r.ts || (base++)};
+    if (r.bq) a.bq = 1;   // the boss is a guess until an export names it
     if (r.key) a.gargul = r.key;
     a.src = r.date + '|' + r.item + '|' + r.name.toLowerCase();
     state.awards.push(a);
+  }
+  // What the other export knows better goes into the entry that is already there.
+  let filled = 0;
+  for (const r of glRows.filter(x => x.status === 'fill')) {
+    const a = state.awards.find(x => x.id === r.awardId); if (!a) continue;
+    if (r.fill.boss) { a.boss = r.fill.boss; delete a.bq; }
+    if (r.fill.note) a.note = r.fill.note;
+    filled++;
   }
   const am = importAmisia();
   created += am.created;
@@ -2699,8 +2766,28 @@ $('#glImport').addEventListener('click', () => {
   const said = [];
   if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
   if (am.sessions) said.push(am.sessions + ' raid session' + (am.sessions===1?'':'s') + (am.looted ? ' with ' + am.looted + ' material' + (am.looted===1?'':'s') : ''));
+  if (filled) said.push('more detail for ' + filled + ' award' + (filled === 1 ? '' : 's'));
   if (bank) said.push('the guild bank count');
   say(said.length ? 'Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.' : 'Nothing new to import.');
+});
+
+// Ticking a line of the addon's loot off, or writing an award over to the raider who looted it.
+document.addEventListener('click', ev => {
+  const okBtn = ev.target.closest('[data-lootok]'), mvBtn = ev.target.closest('[data-lootmove]');
+  if (readOnly || (!okBtn && !mvBtn)) return;
+  const sig = okBtn ? okBtn.dataset.lootok : mvBtn.dataset.lootmove;
+  const [date, rid, item] = sig.split('|'), r = raiderById(rid);
+  if (okBtn) {
+    if (!lootOk().includes(sig)) lootOk().push(sig);
+    markDirty();
+    return say('Ticked off: ' + anyItemName(Number(item)) + ' for ' + (r ? r.name : 'that raider') + '.');
+  }
+  const theirs = state.awards.filter(a => a.date === date && a.item === Number(item) && a.raider !== rid);
+  if (theirs.length !== 1) return say('That item was awarded more than once that night. Change it on the Loot Log.');
+  const from = raiderById(theirs[0].raider);
+  theirs[0].raider = rid;
+  markDirty();
+  say(anyItemName(Number(item)) + ' now counts for ' + (r ? r.name : 'the looter') + ' instead of ' + (from ? from.name : 'the raider before') + '.');
 });
 
 /* ---------------- tooltip ---------------- */
@@ -2890,7 +2977,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
