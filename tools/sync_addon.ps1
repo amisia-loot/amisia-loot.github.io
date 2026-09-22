@@ -18,6 +18,10 @@ Stop it with Ctrl+C.
 .PARAMETER Quiet
 Print nothing when there was nothing to copy. The Claude Code hook uses this.
 
+.PARAMETER NoCheck
+Copy even when the Lua files do not parse. Without it a syntax error stops the copy, because one
+broken file keeps the whole addon from loading in the game.
+
 .EXAMPLE
 pwsh -File tools/sync_addon.ps1
 pwsh -File tools/sync_addon.ps1 -Watch
@@ -25,7 +29,8 @@ pwsh -File tools/sync_addon.ps1 -Watch
 [CmdletBinding()]
 param(
     [switch]$Watch,
-    [switch]$Quiet
+    [switch]$Quiet,
+    [switch]$NoCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +39,21 @@ $Source = Join-Path (Split-Path -Parent $PSScriptRoot) 'addon\Amisia'
 # Both clients get the same files; the TOC lists an interface version for each of them.
 $WowRoot = if ($env:AMISIA_WOW_ROOT) { $env:AMISIA_WOW_ROOT } else { 'C:\Program Files (x86)\World of Warcraft' }
 $Flavors = @('_anniversary_', '_classic_beta_')
+
+# One syntax error keeps the whole addon from loading, and the error is then only visible in the
+# client's log. So the files are parsed before they leave the repository. Node or the parser being
+# absent must not block the copy, which is what exit code 2 from the checker means.
+function Test-Lua {
+    if ($NoCheck) { return $true }
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    $checker = Join-Path (Split-Path -Parent $PSScriptRoot) 'addon\tests\syntax.cjs'
+    if (-not $node -or -not (Test-Path -LiteralPath $checker -PathType Leaf)) { return $true }
+    $out = & $node.Source $checker 2>$null
+    if ($LASTEXITCODE -ne 1) { return $true }
+    Write-Host 'Nicht kopiert, Lua-Syntaxfehler:' -ForegroundColor Red
+    foreach ($line in $out) { if ($line -like 'FAIL*') { Write-Host "  $line" -ForegroundColor Red } }
+    return $false
+}
 
 function Get-Targets {
     foreach ($flavor in $Flavors) {
@@ -90,6 +110,7 @@ function Sync-Once {
 }
 
 if (-not $Watch) {
+    if (-not (Test-Lua)) { exit 1 }
     $n = Sync-Once
     if (-not $Quiet) {
         if ($n -eq 0) { Write-Host 'Nichts zu tun, beide Ordner sind aktuell.' -ForegroundColor DarkGray }
@@ -99,7 +120,7 @@ if (-not $Watch) {
 }
 
 Write-Host "Beobachte $Source. Ctrl+C beendet." -ForegroundColor Cyan
-Sync-Once | Out-Null
+if (Test-Lua) { Sync-Once | Out-Null }
 # Polling instead of a FileSystemWatcher: a handful of files, and an editor that writes through a
 # temporary file fires events the watcher reports for names that are already gone again.
 $last = ''
@@ -109,6 +130,7 @@ while ($true) {
     $stamp = ($src.Keys | Sort-Object | ForEach-Object { "$_|$($src[$_].Length)|$($src[$_].LastWriteTimeUtc.Ticks)" }) -join ';'
     if ($stamp -eq $last) { continue }
     $last = $stamp
+    if (-not (Test-Lua)) { continue }
     try {
         $n = Sync-Once
         if ($n) { Write-Host ("  {0}  {1} Dateien" -f (Get-Date -Format 'HH:mm:ss'), $n) -ForegroundColor DarkGray }
