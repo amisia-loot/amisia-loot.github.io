@@ -345,6 +345,7 @@ tr.done td{opacity:.5}
 .potato svg{filter:drop-shadow(0 0 2px rgba(230,80,60,.55))}
 .ntwho .potato{margin-right:5px}
 .att td.rate{font-family:var(--label);font-size:15px;font-weight:600}
+.att td.lates{color:var(--warn);font-weight:600}
 .att .bad{color:var(--bad)}.att .mid{color:var(--warn)}.att .good{color:var(--good)}
 .att th.d{font-size:11px;line-height:1.15;white-space:nowrap}
 .nightrow{display:flex;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
@@ -535,7 +536,7 @@ tr.got td{opacity:.5}
       <div class="stack">
         <div class="toolbar" style="margin:4px 0 0">
           <div class="field"><label for="attSearch">Search</label><input class="inp" id="attSearch" placeholder="Find a raider…"></div>
-          <div class="field"><label for="attShow">Show</label><select class="inp" id="attShow"><option value="all">Every raider</option><option value="low">Below half the raids</option><option value="none">Never signed in</option><option value="last">Missed the last raid</option></select></div>
+          <div class="field"><label for="attShow">Show</label><select class="inp" id="attShow"><option value="all">Every raider</option><option value="low">Below half the raids</option><option value="none">Never signed in</option><option value="last">Missed the last raid</option><option value="late">Came in late</option></select></div>
           <div class="spacer"></div>
           <div class="count" id="attCount"></div>
         </div>
@@ -1039,9 +1040,9 @@ function lateOn(date){
 const lateTime = t => t ? new Date(t * 1000).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : '';
 
 function attendance(rid){
-  const list = countedNights(); let was = 0;
-  for (const n of list) if (presentOn(n.date).has(rid)) was++;
-  return {was, total: list.length, rate: list.length ? was / list.length : 0};
+  const list = countedNights(); let was = 0, late = 0;
+  for (const n of list) if (presentOn(n.date).has(rid)) { was++; if (rid in lateOn(n.date)) late++; }
+  return {was, late, total: list.length, rate: list.length ? was / list.length : 0};
 }
 function craftersOf(c){
   const out = [], seen = new Set();
@@ -1739,16 +1740,17 @@ function renderAttendance(){
   if (show === 'low') rows = rows.filter(x => x.at.rate < 0.5);
   if (show === 'none') rows = rows.filter(x => !x.at.was);
   if (show === 'last') rows = rows.filter(x => list.length && !presentOn(list[0].date).has(x.r.id));
-  rows.sort((a, b) => b.at.was - a.at.was || a.r.name.localeCompare(b.r.name));
+  if (show === 'late') rows = rows.filter(x => x.at.late);
+  rows.sort((a, b) => (show === 'late' ? b.at.late - a.at.late : 0) || b.at.was - a.at.was || a.r.name.localeCompare(b.r.name));
   $('#attCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
   $('#attHint').hidden = false;
   $('#attHint').innerHTML = total
-    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid, and an amber tick on an amber cell means they came in after the raid start' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
+    ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid, and an amber tick on an amber cell means they came in after the raid start; the Late column counts those nights' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '.' + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
     : (readOnly ? 'No raid nights yet.' : 'No raid nights yet. Record one on the right, or import a loot export on the <a data-goto="import">Import tab</a>.');
-  $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num">Items</th><th class="num">Per raid</th>'
+  $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num" title="Raids they came in after the start">Late</th><th class="num">Items</th><th class="num">Per raid</th>'
     + list.map(n => '<th class="d">' + fmtShort(n.date).replace(' ', '<br>') + '</th>').join('') + '</tr>';
   if (!rows.length || !list.length) {
-    $('#attBody').innerHTML = '<tr><td colspan="' + (list.length + 5) + '"><div class="empty"><b>' + (!list.length ? 'No raid nights yet' : 'Nobody matches') + '</b>' + (!list.length ? 'Record the first one on the right.' : 'Try a different filter.') + '</div></td></tr>';
+    $('#attBody').innerHTML = '<tr><td colspan="' + (list.length + 6) + '"><div class="empty"><b>' + (!list.length ? 'No raid nights yet' : 'Nobody matches') + '</b>' + (!list.length ? 'Record the first one on the right.' : 'Try a different filter.') + '</div></td></tr>';
     renderNightList(); return;
   }
   const lateBy = {};   // one lookup per night instead of one per cell
@@ -1759,6 +1761,7 @@ function renderAttendance(){
     return '<tr><td class="rn" style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</td>'
       + '<td class="num">' + at.was + '<span class="faint"> / ' + at.total + '</span></td>'
       + '<td class="num rate ' + cls + '">' + Math.round(at.rate * 100) + '%</td>'
+      + (at.late ? '<td class="num lates" title="came in after the raid start on ' + at.late + ' of ' + at.was + ' raid' + (at.was === 1 ? '' : 's') + '">' + at.late + '&times;</td>' : '<td class="num faint">–</td>')
       + '<td class="num">' + aw.length + '</td>'
       + '<td class="num muted">' + per + '</td>'
       + list.map(n => {
