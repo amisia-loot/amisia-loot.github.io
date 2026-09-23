@@ -28,6 +28,12 @@ NS.SetEnabled(true)
 -- announce channel
 NS.Announce("hi"); assert(STUB.chat[1].chan == "RAID_WARNING")
 STUB.leader = false; NS.Announce("hi"); assert(STUB.chat[2].chan == "RAID")
+-- Forever: C_ChatInfo.SendChatMessage wins over the deprecated global
+local viaInfo = {}
+C_ChatInfo = { SendChatMessage = function(text, chan) viaInfo[#viaInfo + 1] = { text = text, chan = chan } end }
+NS.Announce("forever"); C_ChatInfo = nil
+assert(#viaInfo == 1 and viaInfo[1].text == "forever" and viaInfo[1].chan == "RAID")
+assert(#STUB.chat == 2, "global not used when C_ChatInfo has it")
 STUB.roster = {}; NS.Announce("hi"); assert(#STUB.chat == 2, "no announce when alone")
 -- extra event handlers registered by modules
 local got

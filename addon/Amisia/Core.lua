@@ -388,7 +388,9 @@ function ns.Announce(text)
     if IsInRaid() then
         chan = (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) and "RAID_WARNING" or "RAID"
     end
-    SendChatMessage(text, chan)
+    -- Forever keeps the global only as a deprecated alias; Anniversary has no C_ChatInfo version.
+    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    send(text, chan)
 end
 
 -- Modules add handlers for events; the core frame registers them.
