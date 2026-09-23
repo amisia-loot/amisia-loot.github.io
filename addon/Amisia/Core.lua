@@ -3,7 +3,7 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.2.0"
+ns.VERSION = "1.2.1"
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
