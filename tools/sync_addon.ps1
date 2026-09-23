@@ -66,20 +66,33 @@ function Get-Targets {
     }
 }
 
-# Relative path -> file, for source and target alike.
-function Get-Files($root) {
+# Relative path -> file, for source and target alike. -SkipHidden leaves out every file under a
+# folder or with a name starting with a dot (editor and Claude Code settings): the source lists
+# them so, and the mirror then deletes what an older copy put into the AddOns folder.
+function Get-Files($root, [switch]$SkipHidden) {
     $map = @{}
     if (Test-Path -LiteralPath $root -PathType Container) {
         $prefix = (Resolve-Path -LiteralPath $root).Path.TrimEnd('\') + '\'
-        foreach ($f in Get-ChildItem -LiteralPath $root -Recurse -File) {
-            $map[$f.FullName.Substring($prefix.Length)] = $f
+        foreach ($f in Get-ChildItem -LiteralPath $root -Recurse -File -Force) {
+            $rel = $f.FullName.Substring($prefix.Length)
+            if ($SkipHidden -and ($rel -split '\\' | Where-Object { $_.StartsWith('.') })) { continue }
+            $map[$rel] = $f
         }
     }
     return $map
 }
 
+# Folders the mirror emptied, deepest first.
+function Remove-EmptyDirs($root) {
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
+    Get-ChildItem -LiteralPath $root -Recurse -Directory -Force |
+        Sort-Object { $_.FullName.Length } -Descending |
+        Where-Object { -not (Get-ChildItem -LiteralPath $_.FullName -Force) } |
+        ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
+}
+
 function Sync-Once {
-    $src = Get-Files $Source
+    $src = Get-Files $Source -SkipHidden
     if ($src.Count -eq 0) { throw "Keine Dateien in $Source" }
     $total = 0
     foreach ($target in Get-Targets) {
@@ -101,6 +114,7 @@ function Sync-Once {
                 $removed++
             }
         }
+        Remove-EmptyDirs $target.Path
         $total += $copied + $removed
         if (($copied -or $removed) -and -not $Quiet) {
             Write-Host ("{0}: {1} kopiert, {2} geloescht" -f $target.Flavor, $copied, $removed) -ForegroundColor Green
@@ -126,7 +140,7 @@ if (Test-Lua) { Sync-Once | Out-Null }
 $last = ''
 while ($true) {
     Start-Sleep -Seconds 1
-    $src = Get-Files $Source
+    $src = Get-Files $Source -SkipHidden
     $stamp = ($src.Keys | Sort-Object | ForEach-Object { "$_|$($src[$_].Length)|$($src[$_].LastWriteTimeUtc.Ticks)" }) -join ';'
     if ($stamp -eq $last) { continue }
     $last = $stamp
