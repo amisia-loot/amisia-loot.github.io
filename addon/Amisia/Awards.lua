@@ -1,12 +1,16 @@
 -- Amisia awards: what the master looter hands out. A hand-out is remembered when GiveMasterLoot
 -- runs and written as an award once the client confirms it: the loot chat line for that player
 -- and item, or the loot slot being emptied. Without confirmation it is dropped after a few seconds.
+-- Every loot slot keeps its own open hand-out, so a second one before the first is confirmed does
+-- not push the first out.
 local ADDON, ns = ...
 
 local PENDING_TTL = 5
-local pending   -- { slot, name, item, link, src, t, token }
+local pending = {}   -- loot slot -> { slot, name, item, link, src, t, token }
+local lastSlot       -- slot of the latest hand-out
 
-function ns.PendingAward() return pending end
+-- The open hand-out of a loot slot, or of the latest hand-out when no slot is given.
+function ns.PendingAward(slot) return pending[slot or lastSlot or 0] end
 
 -- Short name without the realm part.
 local function shortName(name)
@@ -23,9 +27,6 @@ function ns.LootSourceName(slot)
     return "?"
 end
 
-local function clearPending()
-    pending = nil
-end
 
 local function commit(a)
     local kind = ns.RollKind and ns.RollKind(a.item, a.name) or "-"
@@ -43,9 +44,11 @@ local function onGive(slot, candidate)
     local name = shortName(GetMasterLootCandidate and GetMasterLootCandidate(slot, candidate))
     if not id or not name then return end
     local token = {}
-    pending = { slot = slot, name = name, item = id, link = link, src = ns.LootSourceName(slot), t = time(), token = token }
+    -- a new hand-out of the same slot replaces the old one: that one never arrived
+    pending[slot] = { slot = slot, name = name, item = id, link = link, src = ns.LootSourceName(slot), t = time(), token = token }
+    lastSlot = slot
     C_Timer.After(PENDING_TTL, function()
-        if pending and pending.token == token then clearPending() end
+        if pending[slot] and pending[slot].token == token then pending[slot] = nil end
     end)
 end
 
@@ -54,24 +57,32 @@ if type(GiveMasterLoot) == "function" then
 end
 
 ns.OnEvent("CHAT_MSG_LOOT", function(text)
-    if not pending then return end
+    if not next(pending) then return end
     local who, id = ns.ParseLoot(text)
-    if who and shortName(who) == pending.name and id == pending.item then
-        local a = pending
-        clearPending()
-        commit(a)
+    who = shortName(who)
+    if not who then return end
+    -- the oldest open hand-out of that item to that player: two copies of one token leave in order
+    local found
+    for _, a in pairs(pending) do
+        if a.name == who and a.item == id and (not found or a.t < found.t or (a.t == found.t and a.slot < found.slot)) then
+            found = a
+        end
+    end
+    if found then
+        pending[found.slot] = nil
+        commit(found)
     end
 end)
 
 ns.OnEvent("LOOT_SLOT_CLEARED", function(slot)
-    if pending and slot == pending.slot then
-        local a = pending
-        clearPending()
+    local a = slot and pending[slot]
+    if a then
+        pending[slot] = nil
         commit(a)
     end
 end)
 
-ns.OnEvent("LOOT_CLOSED", function() clearPending() end)
+ns.OnEvent("LOOT_CLOSED", function() wipe(pending) end)
 
 -- "/amisia award <Name> <Item-Link oder ID> [ms|os|sr]" and "/amisia unaward"
 function ns.AwardCommand(rest)

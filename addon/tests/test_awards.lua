@@ -34,6 +34,34 @@ assert(#s.awards == 2 and NS.PendingAward())
 GiveMasterLoot(1, 1); assert(NS.PendingAward().name == "Vuloo")
 STUB.fire("LOOT_CLOSED")
 
+-- two hand-outs from different slots before either is confirmed: both are kept
+local link2 = STUB.item(32837, "Warglaive of Azzinoth", 5)
+STUB.loot = { { link = link, name = "Cursed Vision of Sargeras", src = "Creature-0-1-1-1-22917-1" },
+              { link = link2, name = "Warglaive of Azzinoth", src = "Creature-0-1-1-1-22917-1" } }
+GiveMasterLoot(1, 2); GiveMasterLoot(2, 1)
+assert(NS.PendingAward(1).name == "Fraktur" and NS.PendingAward(2).name == "Vuloo", "one open hand-out per slot")
+STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Vuloo", link2))
+STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur", link))
+assert(#s.awards == 4 and s.awards[3].item == 32837 and s.awards[3].name == "Vuloo" and s.awards[4].name == "Fraktur", "both written")
+assert(NS.PendingAward(1) == nil and NS.PendingAward(2) == nil)
+-- confirmation by slot only touches that slot
+GiveMasterLoot(1, 2); GiveMasterLoot(2, 1); STUB.fire("LOOT_SLOT_CLEARED", 2)
+assert(#s.awards == 5 and s.awards[5].name == "Vuloo" and NS.PendingAward(1).name == "Fraktur")
+-- each slot expires on its own
+STUB.tick(6); assert(NS.PendingAward(1) == nil)
+-- two copies of one item to the same player: one chat line confirms one of them
+STUB.loot[2] = { link = link, name = "Cursed Vision of Sargeras", src = "Creature-0-1-1-1-22917-1" }
+GiveMasterLoot(1, 2); GiveMasterLoot(2, 2)
+STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur", link))
+assert(#s.awards == 6 and (NS.PendingAward(1) == nil) ~= (NS.PendingAward(2) == nil), "one line, one award")
+STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur", link))
+assert(#s.awards == 7 and NS.PendingAward(1) == nil and NS.PendingAward(2) == nil)
+-- loot closed drops every open hand-out
+GiveMasterLoot(1, 2); GiveMasterLoot(2, 1); STUB.fire("LOOT_CLOSED")
+assert(NS.PendingAward(1) == nil and NS.PendingAward(2) == nil)
+for _ = 1, 5 do table.remove(s.awards) end
+STUB.loot = { STUB.loot[1] }
+
 -- the realm suffix of a candidate is dropped
 STUB.roster[2].name = "Fraktur-Thunderstrike"
 GiveMasterLoot(1, 2); assert(NS.PendingAward().name == "Fraktur")

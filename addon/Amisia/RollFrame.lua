@@ -1,5 +1,7 @@
 -- Amisia roll window: the running round with its rolls in winning order, a hand-out button per
 -- row, stop, tie-break and close. Alt-click on an item in the loot window starts a round.
+-- A hand-out is only offered once the round is over, and always asks first: while rolls come in
+-- the rows re-sort, so a click could land on the row that just moved up.
 local ADDON, ns = ...
 
 local ROWS = 12
@@ -31,17 +33,20 @@ function ns.InLootWindow(id)
     return false
 end
 
--- Hands the current round's item to a name through master loot, when the loot window still holds it.
-function ns.AwardFromRoll(name)
+-- Hands an item (by default the current round's) to a name through master loot, when the loot
+-- window still holds it.
+function ns.AwardFromRoll(name, item, link)
     local r = ns.CurrentRoll() or ns.LastRoll()
-    if not r or not name then return end
+    item = item or (r and r.item)
+    link = link or (r and r.item == item and r.link) or nil
+    if not item or not name then return end
     if not lootOpen or type(GiveMasterLoot) ~= "function" or not GetMasterLootCandidate then
-        ns.msg(("Lootfenster öffnen und Master Loot nutzen, oder /amisia award %s %s"):format(name, r.link or tostring(r.item)))
+        ns.msg(("Lootfenster öffnen und Master Loot nutzen, oder /amisia award %s %s"):format(name, link or tostring(item)))
         return
     end
     local slot
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
-        if ns.ItemID(GetLootSlotLink(i)) == r.item then slot = i break end
+        if ns.ItemID(GetLootSlotLink(i)) == item then slot = i break end
     end
     if not slot then
         ns.msg("Das Item liegt nicht mehr im Lootfenster.")
@@ -56,6 +61,31 @@ function ns.AwardFromRoll(name)
     end
     ns.msg(name .. " ist kein Kandidat für dieses Item (zu weit weg?).")
 end
+
+-- The row button: asks before handing out. The item travels with the question, so a round started
+-- while the question is open cannot swap the item.
+local function confirmGive(name)
+    local r = ns.CurrentRoll() or ns.LastRoll()
+    if not r or not name then return end
+    if not r.done then
+        ns.msg("Erst vergeben, wenn die Runde beendet ist (Stopp oder Zeit abgelaufen).")
+        return
+    end
+    StaticPopup_Show("AMISIA_GIVE", r.link or r.name, name, { name = name, item = r.item, link = r.link })
+end
+
+StaticPopupDialogs["AMISIA_GIVE"] = {
+    text = "%s an %s vergeben?",
+    button1 = "Vergeben",
+    button2 = "Abbrechen",
+    OnAccept = function(_, data)
+        if data then ns.AwardFromRoll(data.name, data.item, data.link) end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
 
 local function refresh()
     if not F or not F:IsShown() then return end
@@ -87,6 +117,7 @@ local function refresh()
         row.kind:SetText(e.rank or e.kind or "")
         row.value:SetText(tostring(e.value))
         row.why:SetText(r.winner == e.name and "|cff4fbf7aGewinner|r" or "")
+        row.award:SetEnabled(r.done and true or false)
         row.award:Show()
         row:Show()
     end
@@ -165,7 +196,7 @@ local function build()
         row.award:SetSize(64, ROW_H - 2)
         row.award:SetPoint("RIGHT", -2, 0)
         row.award:SetText("Vergeben")
-        row.award:SetScript("OnClick", function() if row.who then ns.AwardFromRoll(row.who) end end)
+        row.award:SetScript("OnClick", function() if row.who then confirmGive(row.who) end end)
         row:Hide()
         rows[i] = row
     end

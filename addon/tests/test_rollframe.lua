@@ -24,24 +24,44 @@ assert(NS.RollFrame.rows[1].who == "Fraktur" and NS.RollFrame.rows[1].kind:GetTe
 assert(NS.RollFrame.rows[2].who == nil and NS.RollFrame.rows[2].why:GetText():find("Bereich 1-50", 1, true))
 assert(not NS.RollFrame.rows[3]:IsShown())
 
+-- no hand-out while the round runs: the rows still re-sort
+assert(not NS.RollFrame.rows[1].award:IsEnabled(), "button disabled during the round")
 NS.RollFrame.rows[1].award:Click()
-assert(STUB.given and STUB.given.slot == 2 and STUB.given.i == 2, "GiveMasterLoot called with the item's slot and candidate")
+assert(STUB.given == nil and STUB.popup == nil, "nothing given or asked during the round")
+NS.StopRoll()
+assert(r.done and NS.RollFrame.rows[1].award:IsEnabled(), "button enabled once the round is over")
+
+-- the button asks first; cancelling gives nothing
+NS.RollFrame.rows[1].award:Click()
+assert(STUB.popup and STUB.popup.which == "AMISIA_GIVE" and STUB.popup.a2 == "Fraktur" and STUB.popup.a1 == link, "asks with item and name")
+STUB.popup = nil
+assert(STUB.given == nil, "no hand-out without accepting")
+
+-- the question keeps its item even when a new round starts before it is answered
+NS.RollFrame.rows[1].award:Click()
+local asked = STUB.popup
+local other = STUB.loot[1].link
+STUB.alt = true; HandleModifiedItemClick(other); STUB.alt = false
+assert(NS.CurrentRoll().item == 30000, "second round running")
+STUB.popup = asked; STUB.acceptPopup()
+assert(STUB.given and STUB.given.slot == 2 and STUB.given.i == 2, "GiveMasterLoot called with the asked item's slot and candidate")
+NS.StopRoll()
 STUB.fire("LOOT_SLOT_CLEARED", 2)
 local s = NS.Active()
-assert(#s.awards == 1 and s.awards[1].name == "Fraktur" and s.awards[1].kind == "MS", "hand-out recorded with the roll kind")
+assert(#s.awards == 1 and s.awards[1].name == "Fraktur" and s.awards[1].item == 32235, "hand-out recorded for the asked item")
 
 STUB.given = nil
 STUB.loot = { STUB.loot[1] }
-NS.AwardFromRoll("Fraktur")
+NS.AwardFromRoll("Fraktur", 32235)
 assert(STUB.given == nil and STUB.messages[#STUB.messages]:find("nicht mehr im Lootfenster", 1, true))
 
 STUB.fire("LOOT_CLOSED")
 NS.AwardFromRoll("Fraktur")
 assert(STUB.messages[#STUB.messages]:find("Lootfenster", 1, true), "hint without loot window")
 
--- stop button and timer text
-NS.RollFrame.rows[1].award:Click()
-STUB.tick(20)
-assert(r.done)
+-- the round ends by itself when the time is up
+local r2 = NS.StartRoll(link, 5) and NS.CurrentRoll()
+STUB.tick(5)
+assert(r2.done)
 NS.ToggleRollFrame(); assert(not NS.RollFrame:IsShown())
 NS.ToggleRollFrame(); assert(NS.RollFrame:IsShown())

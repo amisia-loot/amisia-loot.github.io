@@ -138,7 +138,13 @@ function _G.CreateFrame(kind, name, parent, template)
     f.AddDoubleLine = NOOP
     f.NumLines = function() return 0 end
     f.GetItem = function() return nil end
-    f.Click = function(self) if self.scripts.OnClick then self.scripts.OnClick(self) end end
+    -- a disabled button ignores clicks, as in the client
+    f.enabled = true
+    f.Enable = function(self) self.enabled = true end
+    f.Disable = function(self) self.enabled = false end
+    f.SetEnabled = function(self, on) self.enabled = on and true or false end
+    f.IsEnabled = function(self) return self.enabled end
+    f.Click = function(self) if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
     if name then _G[name] = f end
     return f
 end
@@ -154,7 +160,17 @@ _G.GameTooltip = CreateFrame("GameTooltip", "GameTooltip")
 _G.ItemRefTooltip = CreateFrame("GameTooltip", "ItemRefTooltip")
 _G.UISpecialFrames = {}
 _G.StaticPopupDialogs = {}
-_G.StaticPopup_Show = NOOP
+-- The last dialog shown; STUB.acceptPopup() presses its first button.
+_G.StaticPopup_Show = function(which, a1, a2, data)
+    STUB.popup = { which = which, a1 = a1, a2 = a2, data = data }
+    return STUB.popup
+end
+function STUB.acceptPopup()
+    local p = STUB.popup
+    STUB.popup = nil
+    local d = p and StaticPopupDialogs[p.which]
+    if d and d.OnAccept then d.OnAccept(p, p.data) end
+end
 _G.SlashCmdList = {}
 _G.ChatFontNormal = {}
 _G.GameFontNormal = {}

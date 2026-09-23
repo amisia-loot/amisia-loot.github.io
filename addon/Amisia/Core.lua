@@ -3,11 +3,10 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.2.1"
+ns.VERSION = "1.2.2"
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
-ns.GetItemInfo = GetItemInfo
 
 -- Item id from a link or an "item:1234" string, or nil.
 function ns.ItemID(link)
@@ -326,7 +325,6 @@ local function rememberItem(id, link, q)
     local known = DB.itemNames[id]
     DB.itemNames[id] = { n = name or (known and known.n) or ("Item " .. id), q = q or (known and known.q) or 0 }
 end
-ns.RememberItem = rememberItem
 
 ---------------------------------------------------------------------------
 -- Awards: what the master looter hands out, written by Awards.lua
@@ -659,6 +657,128 @@ function ns.DeleteSessions(ids)
     return removed
 end
 
+-- The S..E block of one session, appended to lines; used collects the item ids to name in N lines.
+local function sessionLines(s, lines, used)
+    lines[#lines + 1] = ("S %s %s %d %s"):format(s.id, s.date, tonumber(s.instanceID) or 0, s.zone or "?")
+    local names = {}
+    for name in pairs(s.members) do names[#names + 1] = name end
+    table.sort(names)
+    for _, name in ipairs(names) do
+        -- M <name> <class> <first seen epoch> <1 late, 0 punctual>
+        local m = s.members[name]
+        lines[#lines + 1] = ("M %s %s %d %d"):format(name, (m.class and m.class ~= "") and m.class or "UNKNOWN",
+            m.first or 0, m.late and 1 or 0)
+    end
+    local sum, keys = {}, {}
+    for _, l in ipairs(s.loot) do
+        local key = l.name .. "\t" .. l.item
+        if not sum[key] then
+            sum[key] = { name = l.name, item = l.item, count = 0 }
+            keys[#keys + 1] = key
+        end
+        sum[key].count = sum[key].count + (l.count or 1)
+    end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        local e = sum[key]
+        lines[#lines + 1] = ("L %s %d %d"):format(e.name, e.item, e.count)
+    end
+    -- I <name> <itemID> <count>: blue or better loot
+    local isum, ikeys = {}, {}
+    for _, l in ipairs(s.items or {}) do
+        local key = l.name .. "\t" .. l.item
+        if not isum[key] then
+            isum[key] = { name = l.name, item = l.item, count = 0 }
+            ikeys[#ikeys + 1] = key
+        end
+        isum[key].count = isum[key].count + (l.count or 1)
+    end
+    table.sort(ikeys)
+    for _, key in ipairs(ikeys) do
+        local e = isum[key]
+        lines[#lines + 1] = ("I %s %d %d"):format(e.name, e.item, e.count)
+        used[e.item] = true
+    end
+    -- D <itemID> <count> <source name>: blue or better items seen in loot windows
+    local dsum, dkeys = {}, {}
+    for _, d in pairs(s.drops or {}) do
+        for id, c in pairs(d.items or {}) do
+            local key = (d.src or "?") .. "\t" .. id
+            if not dsum[key] then
+                dsum[key] = { item = id, src = d.src or "?", count = 0 }
+                dkeys[#dkeys + 1] = key
+            end
+            dsum[key].count = dsum[key].count + c
+        end
+    end
+    table.sort(dkeys)
+    for _, key in ipairs(dkeys) do
+        local e = dsum[key]
+        lines[#lines + 1] = ("D %d %d %s"):format(e.item, e.count, e.src)
+        used[e.item] = true
+    end
+    -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: master loot hand-outs
+    for _, a in ipairs(s.awards or {}) do
+        lines[#lines + 1] = ("A %s %d %d %s %s"):format(a.name, a.item, a.t or 0, a.kind or "-", a.src or "?")
+        used[a.item] = true
+    end
+    lines[#lines + 1] = "E"
+    return lines
+end
+
+-- A short fingerprint of a string: two running sums, each kept below 2^32.
+local function checksum(str)
+    local h1, h2 = 5381, 0
+    for i = 1, #str do
+        h1 = (h1 * 33 + str:byte(i)) % 4294967296
+        h2 = (h2 + h1) % 4294967296
+    end
+    return ("%08x%08x"):format(h1, h2)
+end
+
+-- Fingerprint of what a session would export; it changes whenever the export of it would.
+function ns.SessionHash(s)
+    return checksum(table.concat(sessionLines(s, {}, {}), "\n"))
+end
+
+-- "new" (never exported), "changed" (exported, but more was recorded since) or "done".
+function ns.ExportState(s)
+    local e = DB and DB.exported and DB.exported[s.id]
+    if not e then return "new" end
+    return e.h == ns.SessionHash(s) and "done" or "changed"
+end
+
+function ns.ExportedAt(s)
+    local e = DB and DB.exported and DB.exported[s.id]
+    return e and e.at
+end
+
+-- Sessions to export when none is selected: everything new or changed since its last export.
+function ns.PendingExport()
+    local out = {}
+    for _, s in ipairs(ns.Sessions()) do
+        if ns.ExportState(s) ~= "done" then out[#out + 1] = s end
+    end
+    return out
+end
+
+-- Whether the guild bank count is newer than the last export that carried it.
+function ns.BankPending()
+    local bank = DB and DB.bank
+    return (bank and bank.counts and (bank.at or 0) > (DB.exportedBank or 0)) and true or false
+end
+
+-- Remembers what an export carried, so the next one without a selection can leave it out.
+function ns.MarkExported(list)
+    if not DB then return end
+    local t = time()
+    for _, s in ipairs(list) do
+        DB.exported[s.id] = { h = ns.SessionHash(s), at = t }
+    end
+    if DB.bank and DB.bank.counts then DB.exportedBank = DB.bank.at or 0 end
+    refresh()
+end
+
 -- Text block for the ledger's Import tab. One S..E block per session.
 function ns.ExportText(list)
     local lines = { "#AMISIA 1 " .. (UnitName("player") or "?") }
@@ -673,70 +793,7 @@ function ns.ExportText(list)
         end
     end
     for _, s in ipairs(list) do
-        lines[#lines + 1] = ("S %s %s %d %s"):format(s.id, s.date, tonumber(s.instanceID) or 0, s.zone or "?")
-        local names = {}
-        for name in pairs(s.members) do names[#names + 1] = name end
-        table.sort(names)
-        for _, name in ipairs(names) do
-            -- M <name> <class> <first seen epoch> <1 late, 0 punctual>
-            local m = s.members[name]
-            lines[#lines + 1] = ("M %s %s %d %d"):format(name, (m.class and m.class ~= "") and m.class or "UNKNOWN",
-                m.first or 0, m.late and 1 or 0)
-        end
-        local sum, keys = {}, {}
-        for _, l in ipairs(s.loot) do
-            local key = l.name .. "\t" .. l.item
-            if not sum[key] then
-                sum[key] = { name = l.name, item = l.item, count = 0 }
-                keys[#keys + 1] = key
-            end
-            sum[key].count = sum[key].count + (l.count or 1)
-        end
-        table.sort(keys)
-        for _, key in ipairs(keys) do
-            local e = sum[key]
-            lines[#lines + 1] = ("L %s %d %d"):format(e.name, e.item, e.count)
-        end
-        -- I <name> <itemID> <count>: blue or better loot
-        local isum, ikeys = {}, {}
-        for _, l in ipairs(s.items or {}) do
-            local key = l.name .. "\t" .. l.item
-            if not isum[key] then
-                isum[key] = { name = l.name, item = l.item, count = 0 }
-                ikeys[#ikeys + 1] = key
-            end
-            isum[key].count = isum[key].count + (l.count or 1)
-        end
-        table.sort(ikeys)
-        for _, key in ipairs(ikeys) do
-            local e = isum[key]
-            lines[#lines + 1] = ("I %s %d %d"):format(e.name, e.item, e.count)
-            used[e.item] = true
-        end
-        -- D <itemID> <count> <source name>: blue or better items seen in loot windows
-        local dsum, dkeys = {}, {}
-        for _, d in pairs(s.drops or {}) do
-            for id, c in pairs(d.items or {}) do
-                local key = (d.src or "?") .. "\t" .. id
-                if not dsum[key] then
-                    dsum[key] = { item = id, src = d.src or "?", count = 0 }
-                    dkeys[#dkeys + 1] = key
-                end
-                dsum[key].count = dsum[key].count + c
-            end
-        end
-        table.sort(dkeys)
-        for _, key in ipairs(dkeys) do
-            local e = dsum[key]
-            lines[#lines + 1] = ("D %d %d %s"):format(e.item, e.count, e.src)
-            used[e.item] = true
-        end
-        -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: master loot hand-outs
-        for _, a in ipairs(s.awards or {}) do
-            lines[#lines + 1] = ("A %s %d %d %s %s"):format(a.name, a.item, a.t or 0, a.kind or "-", a.src or "?")
-            used[a.item] = true
-        end
-        lines[#lines + 1] = "E"
+        sessionLines(s, lines, used)
     end
     -- N <itemID> <quality> <item name>
     local ids = {}
@@ -764,6 +821,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.sessions = DB.sessions or {}
         DB.settings = DB.settings or {}
         DB.itemNames = DB.itemNames or {}
+        DB.exported = DB.exported or {}   -- session id -> { h = fingerprint, at = epoch } of its last export
         if DB.settings.enabled == nil then DB.settings.enabled = true end
         DB.settings.rollSeconds = tonumber(DB.settings.rollSeconds) or 20
         if DB.settings.lateAt == nil then DB.settings.lateAt = LATE_DEFAULT end
@@ -774,6 +832,12 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             s.items = s.items or {}
             s.drops = s.drops or {}
             s.awards = s.awards or {}
+        end
+        -- forget the export marks of sessions that were dropped or deleted
+        local ids = {}
+        for _, s in ipairs(DB.sessions) do ids[s.id] = true end
+        for id in pairs(DB.exported) do
+            if not ids[id] then DB.exported[id] = nil end
         end
         self:UnregisterEvent("ADDON_LOADED")
         self:RegisterEvent("PLAYER_ENTERING_WORLD")

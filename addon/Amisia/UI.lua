@@ -108,7 +108,8 @@ function ns.Refresh()
             local c = ns.MatCounts(s)
             r.sessionId = s.id
             r.session = s
-            r.date:SetText(s.date)
+            -- exported and unchanged since: greyed, so what still needs exporting stands out
+            r.date:SetText(ns.ExportState(s) == "done" and ("|cff8f86a3" .. s.date .. "|r") or s.date)
             r.zone:SetText((s == act and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
             local late = ns.LateCount and ns.LateCount(s) or 0
             r.raiders:SetText(ns.MemberCount(s) .. (late > 0 and ("  |cffe0a344+" .. late .. "|r") or ""))
@@ -159,7 +160,8 @@ local function build()
 
     local title = text(W, "GameFontNormalLarge")
     title:SetPoint("LEFT", logo, "RIGHT", 6, 0)
-    title:SetText("Amisia")
+    -- the version beside the name, so an officer can see who still runs an old copy
+    title:SetText("Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r")
     title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
 
     local close = CreateFrame("Button", nil, W, "UIPanelCloseButton")
@@ -265,6 +267,14 @@ local function build()
             if awards > 0 then
                 GameTooltip:AddLine(("Vergaben: %d"):format(awards), 0.89, 0.72, 0.34)
             end
+            local state, at = ns.ExportState(s), ns.ExportedAt(s)
+            if state == "new" then
+                GameTooltip:AddLine("Noch nicht exportiert.", 0.31, 0.75, 0.48)
+            elseif state == "changed" then
+                GameTooltip:AddLine(("Seit dem Export am %s geändert."):format(date("%d.%m. %H:%M", at)), 0.31, 0.75, 0.48)
+            else
+                GameTooltip:AddLine(("Exportiert am %s."):format(date("%d.%m. %H:%M", at)), 0.56, 0.53, 0.64)
+            end
             local after = ns.LateAfter and ns.LateAfter(s)
             if after then
                 local names = {}
@@ -365,27 +375,41 @@ local function build()
 
     local hint = text(W, "GameFontDisableSmall", 568)
     hint:SetPoint("BOTTOMLEFT", 16, 16)
-    hint:SetText("Strg+A, dann Strg+C, auf der Seite im Import-Tab einfügen. /amisia roll, award, sr, scan: siehe Import-Tab.")
+    hint:SetText("Ohne Auswahl nur neue und geänderte Raids. Strg+A, Strg+C, im Import-Tab einfügen. Befehle: siehe Import-Tab.")
 end
 
--- Fills the export box. Uses the selected sessions, or every session when none is selected.
+-- Fills the export box. Uses the selected sessions; without a selection every session that is new
+-- or changed since its last export. What the box shows counts as exported from then on.
 function ns.ShowExport(latestOnly)
     if not W then build() end
     W:Show()
     local src, list = ns.Sessions(), {}
+    local onlyNew = false
     if latestOnly then
         if src[#src] then list[1] = src[#src] end
     elseif anySelected() then
         for _, s in ipairs(src) do if selected[s.id] then list[#list + 1] = s end end
     else
-        for _, s in ipairs(src) do list[#list + 1] = s end
+        list = ns.PendingExport()
+        onlyNew = true
     end
-    if #list == 0 and not ns.Bank() then
-        setExport("")
-        ns.msg("Noch keine Raids und keine Gildenbank-Zählung zum Exportieren.")
-        return
+    if #list == 0 then
+        local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and ns.Bank())
+        if not bankOnly then
+            setExport("")
+            if #src == 0 and not ns.Bank() then
+                ns.msg("Noch keine Raids und keine Gildenbank-Zählung zum Exportieren.")
+            else
+                ns.msg("Nichts Neues seit dem letzten Export. Raids anklicken oder \"Alle wählen\", um sie noch einmal zu exportieren.")
+            end
+            return
+        end
     end
     setExport(ns.ExportText(list))
+    ns.MarkExported(list)
+    if onlyNew then
+        ns.msg(("Export: %d neue oder geänderte Raid(s)%s."):format(#list, ns.Bank() and " und die Gildenbank" or ""))
+    end
     exportBox:SetFocus()
     exportBox:HighlightText()
 end
