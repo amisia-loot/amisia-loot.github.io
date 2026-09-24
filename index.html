@@ -1602,8 +1602,36 @@ function anyItemName(id){
   const n = (state.itemNames || {})[id];
   return n ? n.n : 'Item ' + id;
 }
-// An item outside the loot tables has no icon, so its slot stays empty and only the name shows.
-function anyItemIcon(id){ return ITEM[id] ? icoHTML(ITEM[id]) : '<span class="ico"><i class="sp"></i></span>'; }
+// An item outside the loot tables has no place in the icon sheet. Its icon name comes from Wowhead's
+// tooltip data the first time the item shows up and is kept in this browser; until then, or when
+// Wowhead does not know the item, the slot stays empty instead of showing the sheet's first icon.
+const ICON_KEY = 'guild-loot-ledger.icons.v1', WOWHEAD_ENV = {classic: 4, hardcore: 4, sod: 4, tbc: 5, mop: 15};
+let extIcons = {}, iconTimer = null;
+try { extIcons = JSON.parse(localStorage.getItem(ICON_KEY) || '{}') || {}; } catch (e) {}
+const iconAsked = new Set();
+function extIcon(id){
+  if (extIcons[id]) return extIcons[id];
+  const env = WOWHEAD_ENV[gameKey];
+  if (!env || iconAsked.has(id)) return null;
+  iconAsked.add(id);
+  fetch('https://nether.wowhead.com/tooltip/item/' + Number(id) + '?dataEnv=' + env)
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !/^[a-z0-9_]+$/i.test(j.icon || '')) return;
+      extIcons[id] = j.icon.toLowerCase();
+      try { localStorage.setItem(ICON_KEY, JSON.stringify(extIcons)); } catch (e) {}
+      clearTimeout(iconTimer); iconTimer = setTimeout(renderAll, 150);   // one redraw for a batch of answers
+    })
+    .catch(() => {});
+  return null;
+}
+function anyItemIcon(id){
+  if (ITEM[id]) return icoHTML(ITEM[id]);
+  const icon = extIcon(id);
+  return '<span class="ico' + qCls(id) + '">' + (icon
+    ? '<img src="https://wow.zamimg.com/images/wow/icons/medium/' + icon + '.jpg" alt="" onerror="this.remove()">'
+    : '<i class="sp" style="background-image:none"></i>') + '</span>';
+}
 function anyItemLink(id){
   const it = ITEM[id];
   const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id);
@@ -2494,6 +2522,17 @@ function amBankRender(){
         : 'Importing saves this as the current guild bank count and shows it on the Mats tab next to the ledger stock.' + (cur ? ' The coloured number is the change since the count from ' + esc(fmtDate(cur.date)) + ' ' + esc(cur.time) + '.' : ''))
     + '</p></div>';
 }
+// Only the first raid of a night decides who came in late: on a night of Hyjal and then Black Temple,
+// joining Black Temple after its start is no delay. A session id begins with its start time
+// (YYYYMMDDhhmmss), so the ids of one night sort by when each raid began. Gives the night's late
+// marks and deciding raid after this session, or null when a raid that began earlier decides.
+function amLate(n, s, ids){
+  const start = String(s.sid || '').slice(0, 14), first = n && n.lateRaid, same = !!first && first.instance === s.instance;
+  if (first && !same && !(start < first.start)) return null;
+  const late = same ? Object.assign({}, lateOn(n.date)) : {};
+  s.members.forEach((m, i) => { if (m.late) late[ids[i]] = m.first || 0; else delete late[ids[i]]; });
+  return {late, lateRaid: {instance: s.instance, start: same && first.start < start ? first.start : start}};
+}
 function amResolve(sessions){
   const dups = $('#glDups').checked, seen = new Set(), done = new Set(state.addonSessions || []);
   return sessions.filter(s => !seen.has(s.sid) && seen.add(s.sid)).map(s => {
@@ -2508,8 +2547,12 @@ function amResolve(sessions){
     const addsLoot = s.loot.some(l => { const r = byName(l.name); if (!r) return true; const ex = (state.matloot || []).find(x => x.key === s.date + '|' + s.instance + '|' + r.id + '|' + l.item); return !ex || ex.count < l.count; });
     const addsItems = (s.items || []).some(l => { const r = byName(l.name); if (!r) return true; const ex = (state.otherLoot || []).find(x => x.key === s.date + '|' + s.instance + '|' + r.id + '|' + l.item); return !ex || ex.count < l.count; });
     const addsDrops = (s.drops || []).some(d => { const ex = (state.lootDrops || []).find(x => x.key === s.date + '|' + s.instance + '|' + d.item + '|' + d.source); return !ex || ex.count < d.count; });
+    // a session whose late marks would change the night counts as new too, e.g. the first raid of a
+    // night pasted again after a later raid of that night had left its own marks
+    const ids = s.members.map(m => byName(m.name)), lt = ids.every(Boolean) && amLate(night, s, ids.map(r => r.id));
+    const was = lateOn(s.date), addsLate = !!lt && (Object.keys(lt.late).length !== Object.keys(was).length || Object.keys(lt.late).some(id => lt.late[id] !== was[id]));
     const itemCount = (s.items || []).reduce((n, l) => n + l.count, 0), dropCount = (s.drops || []).reduce((n, d) => n + d.count, 0);
-    return Object.assign({}, s, {people: names.length, newNames, mats, itemCount, dropCount, again: done.has(s.sid), status: addsPeople || addsLoot || addsItems || addsDrops || dups ? 'ok' : 'dup'});
+    return Object.assign({}, s, {people: names.length, newNames, mats, itemCount, dropCount, again: done.has(s.sid), status: addsPeople || addsLoot || addsItems || addsDrops || addsLate || dups ? 'ok' : 'dup'});
   }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 }
 function amRender(){
@@ -2567,9 +2610,8 @@ function importAmisia(){
     n.present = [...new Set([...(Array.isArray(n.present) ? n.present : []), ...ids])];
     // Who came in after the raid start, as {raiderId: first sighting}. A later export of the same
     // night corrects an earlier one, so a punctual line clears a mark from before.
-    n.late = (n.late && typeof n.late === 'object' && !Array.isArray(n.late)) ? n.late : {};
-    s.members.forEach((m, i) => { if (m.late) n.late[ids[i]] = m.first || 0; else delete n.late[ids[i]]; });
-    if (!Object.keys(n.late).length) delete n.late;
+    const lt = amLate(n, s, ids);
+    if (lt) { n.lateRaid = lt.lateRaid; if (Object.keys(lt.late).length) n.late = lt.late; else delete n.late; }
     for (const l of s.loot) {
       const r = findOrAdd(l.name, '');
       if (!n.present.includes(r.id)) n.present.push(r.id);

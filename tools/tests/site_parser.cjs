@@ -22,6 +22,9 @@ function grab(name) {
   }
   throw new Error('index.html has no ' + name + ' to test against');
 }
+// Other drivers borrow grab; only a direct run reads an export from stdin.
+module.exports = {grab};
+if (require.main !== module) return;
 
 const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSplit', 'amParse', 'amParseBank', 'amAwardRows'];
 const parts = NEEDED.map(grab);

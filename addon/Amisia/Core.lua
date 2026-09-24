@@ -3,7 +3,7 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.2.2"
+ns.VERSION = "1.2.3"
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
@@ -200,19 +200,30 @@ local function lateAfter(s)
 end
 ns.LateAfter = lateAfter
 
+-- Only the first raid of a night decides who is late: a second raid the same evening
+-- (Hyjal, then Black Temple) marks nobody.
+local function firstRaidOfNight(night, instanceID)
+    for _, o in ipairs(DB.sessions) do
+        if o.date == night and o.instanceID ~= instanceID then return false end
+    end
+    return true
+end
+
 local function newSession(zone, instanceID)
     local t = time()
+    local night = date("%Y-%m-%d", t - NIGHT_START)
     local s = {
         id = date("%Y%m%d%H%M%S", t) .. "-" .. tostring(instanceID or 0),
         start = t,
         last = t,
-        date = date("%Y-%m-%d", t - NIGHT_START),
+        date = night,
         zone = zone or "?",
         instanceID = instanceID or 0,
         members = {},
         loot = {},
         items = {},   -- blue or better loot: { name, item, count, t }
-        lateAt = lateCutoff(t),   -- epoch seconds: whoever shows up after this is marked late
+        -- epoch seconds: whoever shows up after this is marked late
+        lateAt = firstRaidOfNight(night, instanceID or 0) and lateCutoff(t) or nil,
         drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
         awards = {},  -- master loot hand-outs: { name, item, t, kind = MS|OS|SR|-, src }
     }

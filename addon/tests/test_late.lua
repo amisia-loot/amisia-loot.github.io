@@ -34,10 +34,9 @@ STUB.roster[2].online = true
 STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
 assert(not s.members.Fraktur.late, "a short disconnect is no delay")
 
--- a recording that only starts at 21:00 marks nobody who is already there
-NS.DeleteSessions({ [s.id] = true })
+-- a recording that only starts at 21:00 on the next night marks nobody who is already there
 STUB.instance = { name = "Sunwell Plateau", type = "raid", id = 580 }
-STUB.now = dayAt(21, 0)
+STUB.now = dayAt(21, 0) + 24 * 60 * 60
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 local late = NS.Active()
 assert(late and late ~= s, "a second session")
@@ -46,6 +45,20 @@ STUB.now = dayAt(21, 10)
 STUB.roster[4] = { name = "Nachzuegler", class = "ROGUE" }
 STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
 assert(late.members.Nachzuegler.late, "whoever joins after the first scan is still late")
+
+-- a second raid that night marks nobody: only the first raid of a night decides who is late
+STUB.instance = { name = "Hyjal Summit", type = "raid", id = 534 }
+STUB.now = dayAt(22, 0)
+STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+local second = NS.Active()
+assert(second and second ~= late and second.date == late.date, "a second raid on the same night")
+assert(second.lateAt == nil, "the second raid has no cutoff")
+STUB.now = dayAt(22, 15)
+STUB.roster[5] = { name = "Zweitraid", class = "WARLOCK" }
+STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
+assert(second.members.Zweitraid and not second.members.Zweitraid.late, "joining the second raid late is no delay")
+assert(NS.LateCount(second) == 0, "nobody is late in the second raid")
+assert(NS.ExportText({ second }):find("\nM Zweitraid WARLOCK %d+ 0\n"), "exported as punctual")
 
 -- the setting can be switched off and set to another time
 assert(NS.SetLateTime("aus"), "off is accepted")
