@@ -1009,12 +1009,33 @@ function itemQ(x){
 }
 const qCls = x => { const q = itemQ(x); return q === 4 ? '' : ' q' + q; };
 function icoHTML(it, extra, count, link){
-  if(!it) return '<span class="ico"><i class="sp"></i></span>';
+  if(!it) return '<span class="ico"><i class="sp" style="background-image:none"></i></span>';
   const tag = link === false ? 'span' : 'a';
   return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
 }
 const crafters = () => state.crafters || (state.crafters = []);
 const nights = () => state.nights || (state.nights = []);
+// Every game version keeps its own loot and raid nights; the roster and the guild settings are
+// shared. The game in use has its data at the top of the ledger, where every view reads it, the
+// others wait in state.shelf until the game is switched back. shelfGame names the game the top
+// belongs to: a ledger from before this has none, and all of it was TBC.
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped'];
+function fitShelf(s){
+  const want = s.game || 'tbc', have = s.shelfGame || 'tbc';
+  if (want !== have) {
+    const shelf = s.shelf = s.shelf && typeof s.shelf === 'object' && !Array.isArray(s.shelf) ? s.shelf : {};
+    const put = {};
+    for (const k of PER_GAME) if (k in s) { put[k] = s[k]; delete s[k]; }
+    shelf[have] = put;
+    const back = shelf[want] || {};
+    for (const k of PER_GAME) if (k in back) s[k] = back[k];
+    delete shelf[want];
+  }
+  if (!Array.isArray(s.awards)) s.awards = [];
+  s.shelfGame = want;
+}
+// The per-game data of every game version: the one in use and the ones on the shelf.
+const allBuckets = () => [state, ...Object.values(state.shelf || {})];
 const nightOn = d => nights().find(n => n.date === d);
 function allNights(){
   const byDate = {};
@@ -2755,10 +2776,22 @@ function glParse(text){
 // An award handed to someone else keeps it, and a removed one is remembered, so importing the same export
 // again neither gives the item back to the first winner nor brings a removed item back.
 const importSig = a => a.gargul ? 'k' + a.gargul : a.src || '';
-function forgetImport(a){
+function forgetImport(a, b){
   const s = importSig(a); if (!s) return;
-  state.dropped = state.dropped || [];
-  if (!state.dropped.includes(s)) state.dropped.push(s);
+  b = b || state; b.dropped = b.dropped || [];
+  if (!b.dropped.includes(s)) b.dropped.push(s);
+}
+// A raider leaves the roster, so their trace goes in every game version, not only the one in use.
+function forgetRaider(b, rid){
+  (b.awards || []).filter(a => a.raider === rid).forEach(a => forgetImport(a, b));
+  b.awards = (b.awards || []).filter(a => a.raider !== rid);
+  if (b.crafters) b.crafters = b.crafters.filter(c => c.raider !== rid);
+  for (const k of ['matloot', 'otherLoot']) if (b[k]) b[k] = b[k].filter(x => x.raider !== rid);
+  if (b.lootOk) b.lootOk = b.lootOk.filter(sig => sig.split('|')[1] !== rid);
+  for (const n of (b.nights || [])) {
+    if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== rid);
+    if (n.late) { delete n.late[rid]; if (!Object.keys(n.late).length) delete n.late; }
+  }
 }
 function glResolve(rows){
   const dups = $('#glDups').checked, seen = new Set(), dropped = new Set(state.dropped || []);
@@ -2927,6 +2960,7 @@ function showView(v){
   renderAll();
 }
 function renderAll(){
+  fitShelf(state);
   // a viewer never stays on the Import tab, once the server has said what the role is
   if (readOnly && roleKnown && (ui.view === 'import' || ui.view === 'settings')) { showView('armory'); return; }
   renderHeader();
@@ -3057,13 +3091,14 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const mine = awardsOf(r.id), n = mine.length; if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?', 'Remove')) { mine.forEach(forgetImport); state.raiders = state.raiders.filter(x => x !== r); state.awards = state.awards.filter(a => a.raider !== r.id); state.crafters = crafters().filter(c => c.raider !== r.id); nights().forEach(n => { if (Array.isArray(n.present)) n.present = n.present.filter(x => x !== r.id); }); state.matloot = (state.matloot || []).filter(x => x.raider !== r.id); state.otherLoot = (state.otherLoot || []).filter(x => x.raider !== r.id); state.lootOk = lootOk().filter(sig => sig.split('|')[1] !== r.id); nights().forEach(n => { if (n.late) { delete n.late[r.id]; if (!Object.keys(n.late).length) delete n.late; } }); markDirty(); } }
+  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const n = allBuckets().reduce((t, b) => t + (b.awards || []).filter(a => a.raider === r.id).length, 0); if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s')+(Object.keys(state.shelf || {}).length ? ' in every game version' : ''):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); allBuckets().forEach(b => forgetRaider(b, r.id)); markDirty(); } }
 });
 $('#gGame').addEventListener('change', renderPlaceField);
 $('#saveSettings').addEventListener('click', async () => {
   const newGame = $('#gGame').value;
-  if (newGame !== (state.game || 'tbc') && state.awards.length && !await ask('Switch the game version to ' + GAME[newGame].name + '? Existing awards from ' + GAME[state.game || 'tbc'].name + ' stay in the ledger but their items belong to the other loot tables.', 'Switch')) { $('#gGame').value = state.game || 'tbc'; return; }
+  if (newGame !== (state.game || 'tbc') && !await ask('Switch the game version to ' + GAME[newGame].name + '? The loot, raid nights and imports of ' + GAME[state.game || 'tbc'].name + ' are put aside and come back when you switch back. The roster and the guild settings stay.', 'Switch')) { $('#gGame').value = state.game || 'tbc'; return; }
   state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); if (GAME[newGame] && GAME[newGame].rulesets) state.ruleset = $('#gRuleset').value; state.faction = $('#gFaction').value; state.game = newGame;
+  fitShelf(state); ui.openCard = null;
   markDirty(); if (newGame !== gameKey) loadGame(newGame);
 });
 $('#exportBtn').addEventListener('click', () => { const c = Object.assign({}, state); delete c.dirty; $('#backup').value = JSON.stringify(c, null, 1); });
@@ -3072,7 +3107,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc'}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
