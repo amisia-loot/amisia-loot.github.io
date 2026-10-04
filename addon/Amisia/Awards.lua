@@ -1,12 +1,408 @@
--- Amisia awards: what the master looter hands out. A hand-out is remembered when GiveMasterLoot
--- runs and written as an award once the client confirms it: the loot chat line for that player
--- and item, or the loot slot being emptied. Without confirmation it is dropped after a few seconds.
--- Every loot slot keeps its own open hand-out, so a second one before the first is confirmed does
--- not push the first out.
+-- Amisia awards: the book of what the master looter hands out, and how a hand-out gets in.
+--
+-- The book: every award has a fixed id (12 hex characters, unique in its raid) so the ledger
+-- recognises the same award on a second import. A deleted award moves to s.gone as a tombstone
+-- with deleted = epoch, so s.awards only ever holds living awards and the export can tell the
+-- site what vanished. Every change fires DATA_CHANGED and lands on an undo stack of 20 steps that
+-- lives until logout.
+--
+-- The hand-out: remembered when GiveMasterLoot runs and written as an award once the client
+-- confirms it: the loot chat line for that player and item, or the loot slot being emptied.
+-- Without confirmation it is dropped after a few seconds. Every loot slot keeps its own open
+-- hand-out, so a second one before the first is confirmed does not push the first out. A hand-out
+-- to the bank or disenchant character of the settings is written with to = "bank" or "de".
 local ADDON, ns = ...
 
+-- Forever has no GetItemInfo global; both clients have C_Item.
+local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+
+local VALID_KIND = { MS = true, OS = true, SR = true, ["-"] = true }
+local VALID_TO = { player = true, bank = true, de = true }
+local NOTE_MAX = 60
+local UNDO_MAX = 20
+local GONE = "Vergabe nicht mehr vorhanden."
+
+local undo = {}   -- { op = "add"|"edit"|"delete"|"restore"|"rename", s, id, before = copy, item, name, ... }
+
+---------------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------------
+local function copy(a)
+    local c = {}
+    for k, v in pairs(a) do c[k] = v end
+    return c
+end
+
+-- Puts the fields of src into a, dropping what src does not have.
+local function assign(a, src)
+    for k in pairs(a) do a[k] = nil end
+    for k, v in pairs(src) do a[k] = v end
+end
+
+-- A note without bars and line breaks, trimmed and cut to NOTE_MAX bytes without splitting a
+-- character; nil when nothing is left.
+local function cleanNote(text)
+    if type(text) ~= "string" then return nil end
+    text = text:gsub("[\r\n]+", " "):gsub("|", ""):match("^%s*(.-)%s*$")
+    if #text > NOTE_MAX then
+        local cut = NOTE_MAX
+        -- a byte 10xxxxxx continues a character: step back to the character's start
+        while cut > 0 do
+            local b = text:byte(cut + 1)
+            if not b or b < 0x80 or b >= 0xC0 then break end
+            cut = cut - 1
+        end
+        text = text:sub(1, cut):match("^(.-)%s*$")
+    end
+    if text == "" then return nil end
+    return text
+end
+ns.CleanNote = cleanNote
+
+local function idUsed(s, id)
+    for _, a in ipairs(s.awards or {}) do if a.id == id then return true end end
+    for _, a in ipairs(s.gone or {}) do if a.id == id then return true end end
+    return false
+end
+
+-- A new id: the time and a random part, rolled again while the raid already has it.
+local function newId(s, t)
+    local id
+    repeat
+        id = ("%08x%04x"):format(t % 4294967296, math.random(0, 65535))
+    until not idUsed(s, id)
+    return id
+end
+
+-- The id of an award from 1.4: the same raid, name, item and time give the same id on every load.
+local function legacyId(s, a)
+    local key = table.concat({ tostring(s.id), tostring(a.name), tostring(a.item), tostring(a.t) }, "\t")
+    local id, n = ns.Checksum(key):sub(1, 12), 0
+    while idUsed(s, id) do
+        n = n + 1
+        id = ns.Checksum(key .. "\t" .. n):sub(1, 12)
+    end
+    return id
+end
+
+local function alive(s)
+    for _, o in ipairs(ns.Sessions()) do
+        if o == s then return true end
+    end
+    return false
+end
+
+-- Attendance for an award: a name already in the raid's members, or (in the running recording)
+-- in the group, is noted; any other name is left alone, so a typo does not invent a raider.
+local function noteWinner(s, name, t)
+    if s.members[name] or (s == ns.Active() and ns.InGroup(name)) then
+        ns.NoteMember(s, name, nil, t)
+        return true
+    end
+    return false
+end
+
+local function push(entry)
+    undo[#undo + 1] = entry
+    while #undo > UNDO_MAX do table.remove(undo, 1) end
+end
+
+local function changed()
+    ns.Fire("DATA_CHANGED")
+end
+
+---------------------------------------------------------------------------
+-- The book
+---------------------------------------------------------------------------
+-- The award with this id: the award, its index and whether it lies among the tombstones.
+function ns.FindAward(s, id)
+    if not s or not id then return nil end
+    for i, a in ipairs(s.awards or {}) do
+        if a.id == id then return a, i, false end
+    end
+    for i, a in ipairs(s.gone or {}) do
+        if a.id == id then return a, i, true end
+    end
+    return nil
+end
+
+-- A new award in raid s: { name, item, kind, src, t, to, note, manual }. A bank or disenchant
+-- award has kind "-" and, without a receiver, the name "-".
+function ns.AddAwardTo(s, f)
+    if type(s) ~= "table" or type(s.awards) ~= "table" then
+        return nil, "Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."
+    end
+    f = f or {}
+    local item = tonumber(f.item)
+    local to = VALID_TO[f.to] and f.to or "player"
+    local name = f.name
+    if to ~= "player" and (type(name) ~= "string" or name == "") then name = "-" end
+    if type(name) ~= "string" or name == "" or not item then return nil, "Name oder Item fehlt." end
+    local t = tonumber(f.t) or time()
+    local a = {
+        id = newId(s, t), name = name, item = item, t = t,
+        kind = (to == "player" and VALID_KIND[f.kind]) and f.kind or "-",
+        src = (type(f.src) == "string" and f.src ~= "") and f.src or "?",
+        to = to, note = cleanNote(f.note), manual = f.manual and true or nil,
+    }
+    s.gone = s.gone or {}
+    s.awards[#s.awards + 1] = a
+    if to == "player" and not noteWinner(s, name, t) and s == ns.Active() then
+        ns.msg(("Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."):format(name))
+    end
+    if not ns.KnownItem(item) then
+        local _, ilink, q = GetItemInfo(item)
+        ns.RememberItem(item, ilink, q)
+    end
+    -- only the running recording moves on; an old raid must not become resumable
+    if s == ns.Active() then s.last = t end
+    push({ op = "add", s = s, id = a.id })
+    changed()
+    return a
+end
+
+-- Changes { name, kind, note, to } of a living award. A new name keeps the first one in orig;
+-- bank or disenchant means kind "-".
+function ns.EditAward(s, id, f)
+    local a, _, inGone = ns.FindAward(s, id)
+    if not a or inGone then return nil, GONE end
+    f = f or {}
+    local before = copy(a)
+    if f.to ~= nil and VALID_TO[f.to] then a.to = f.to end
+    if a.to ~= "player" then
+        a.kind = "-"
+    elseif f.kind ~= nil and VALID_KIND[f.kind] then
+        a.kind = f.kind
+    end
+    if f.name ~= nil then
+        local name = ns.FullName(f.name)
+        if not name then
+            assign(a, before)
+            return nil, "Name oder Item fehlt."
+        end
+        if name ~= a.name then
+            a.orig = a.orig or a.name
+            a.name = name
+            noteWinner(s, name, a.t)
+        end
+    end
+    if f.note ~= nil then a.note = cleanNote(f.note) end
+    local same = true
+    for k, v in pairs(a) do if before[k] ~= v then same = false end end
+    for k, v in pairs(before) do if a[k] ~= v then same = false end end
+    if same then return a end
+    a.edited = time()
+    push({ op = "edit", s = s, id = id, before = before })
+    changed()
+    return a
+end
+
+-- Takes a living award out of the raid; it stays as a tombstone in s.gone.
+local function remove(s, id)
+    local a, i, inGone = ns.FindAward(s, id)
+    if not a or inGone then return nil end
+    table.remove(s.awards, i)
+    a.deleted = time()
+    s.gone = s.gone or {}
+    s.gone[#s.gone + 1] = a
+    return a
+end
+
+-- Brings a tombstone back into s.awards, in order of its time.
+local function revive(s, id)
+    local a, i, inGone = ns.FindAward(s, id)
+    if not a or not inGone then return nil end
+    table.remove(s.gone, i)
+    a.deleted = nil
+    local pos = #s.awards + 1
+    for j, o in ipairs(s.awards) do
+        if (o.t or 0) > (a.t or 0) then pos = j break end
+    end
+    table.insert(s.awards, pos, a)
+    return a
+end
+
+function ns.DeleteAward(s, id)
+    local a = remove(s, id)
+    if not a then return nil, GONE end
+    push({ op = "delete", s = s, id = id })
+    changed()
+    return a
+end
+
+function ns.RestoreAward(s, id)
+    local a = revive(s, id)
+    if not a then return nil, GONE end
+    push({ op = "restore", s = s, id = id })
+    changed()
+    return a
+end
+
+-- Renames every living award of raid s from one name to another, as one undo step.
+function ns.RenameAwards(s, from, to)
+    to = ns.FullName(to)
+    if not s or not to or type(from) ~= "string" or from == to then return 0 end
+    local before, t = {}, time()
+    for _, a in ipairs(s.awards or {}) do
+        if a.name == from then
+            before[#before + 1] = copy(a)
+            a.orig = a.orig or a.name
+            a.name = to
+            a.edited = t
+        end
+    end
+    if #before == 0 then return 0 end
+    noteWinner(s, to, t)
+    push({ op = "rename", s = s, before = before, from = from, to = to })
+    changed()
+    return #before
+end
+
+-- Members of raid s that may be meant by a name not among them: the same character by
+-- ns.SameName or the same first name, sorted. A name that is a member needs no suggestion.
+function ns.NameSuggestions(s, name)
+    local out = {}
+    name = ns.FullName(name)
+    if not s or not name then return out end
+    local lower = name:lower()
+    for m in pairs(s.members or {}) do
+        if m:lower() == lower then return {} end
+    end
+    local first = name:match("^(%S+)"):lower()
+    for m in pairs(s.members or {}) do
+        if ns.SameName(m, name) or m:match("^(%S+)"):lower() == first then out[#out + 1] = m end
+    end
+    table.sort(out)
+    return out
+end
+
+-- "bank" or "de" when the name is the bank or disenchant character of the settings.
+function ns.IsSpecialName(name)
+    if type(name) ~= "string" or name == "" then return nil end
+    local bank, de = ns.Get("awards.bankName"), ns.Get("awards.deName")
+    if type(bank) == "string" and bank ~= "" and ns.SameName(name, bank) then return "bank" end
+    if type(de) == "string" and de ~= "" and ns.SameName(name, de) then return "de" end
+    return nil
+end
+
+---------------------------------------------------------------------------
+-- Undo
+---------------------------------------------------------------------------
+local VERB = { add = "Hinzufügen", edit = "Ändern", delete = "Löschen", restore = "Wiederherstellen" }
+
+local function label(e)
+    if e.op == "rename" then
+        return ("Umbenennen von %s in %s (%d)"):format(e.from, e.to, #e.before)
+    end
+    local a = ns.FindAward(e.s, e.id)
+    local b = a or (e.before) or {}
+    return ("%s von %s an %s"):format(VERB[e.op] or e.op, ns.ItemName(b.item), tostring(b.name or "?"))
+end
+
+-- What the next undo would take back, or nil.
+function ns.UndoLabel()
+    local e = undo[#undo]
+    return e and label(e) or nil
+end
+
+-- Takes back the last change. A step whose raid or award no longer exists is skipped.
+function ns.UndoAward()
+    while #undo > 0 do
+        local e = table.remove(undo)
+        if alive(e.s) then
+            local text = label(e)
+            local done
+            if e.op == "add" or e.op == "restore" then
+                done = remove(e.s, e.id)
+            elseif e.op == "delete" then
+                done = revive(e.s, e.id)
+            elseif e.op == "edit" then
+                local a, _, inGone = ns.FindAward(e.s, e.id)
+                if a and not inGone then
+                    assign(a, e.before)
+                    -- stamped anew, so the site takes the reverted award as the newer state
+                    a.edited = time()
+                    done = a
+                end
+            elseif e.op == "rename" then
+                for _, b in ipairs(e.before) do
+                    local a, _, inGone = ns.FindAward(e.s, b.id)
+                    if a and not inGone then
+                        assign(a, b)
+                        a.edited = time()
+                        done = a
+                    end
+                end
+            end
+            if done then
+                changed()
+                return text
+            end
+        end
+    end
+    return nil
+end
+
+---------------------------------------------------------------------------
+-- The move of 1.4 data: ids and to for every award, tombstone lists, and the export marks
+-- carried over so an exported raid stays "done" instead of turning "changed".
+---------------------------------------------------------------------------
+function ns.MigrateAwards(DB)
+    if (tonumber(DB.awardsVersion) or 0) >= 1 then return end
+    DB.sessions = DB.sessions or {}
+    DB.exported = DB.exported or {}
+    -- 1. which raids were exported as they are, by the old form of the fingerprint
+    local matched = {}
+    for _, s in ipairs(DB.sessions) do
+        local e = DB.exported[s.id]
+        if e and e.h == ns.SessionHash(s, true) then matched[#matched + 1] = s end
+    end
+    -- 2. ids and targets
+    for _, s in ipairs(DB.sessions) do
+        s.gone = s.gone or {}
+        for _, a in ipairs(s.awards or {}) do
+            if type(a.id) ~= "string" then a.id = legacyId(s, a) end
+            if not VALID_TO[a.to] then a.to = "player" end
+        end
+    end
+    -- 3. the new fingerprint for what was exported
+    for _, s in ipairs(matched) do
+        DB.exported[s.id].h = ns.SessionHash(s)
+    end
+    -- 4.
+    DB.awardsVersion = 1
+end
+
+---------------------------------------------------------------------------
+-- Settings
+---------------------------------------------------------------------------
+-- A character name: no digits, at most one space (a Forever surname); empty switches it off.
+local function validName(v)
+    local name = ns.FullName(v)
+    if not name then return "" end
+    if name:find("%d") then return nil end
+    if select(2, name:gsub(" ", "")) > 1 then return nil end
+    return name
+end
+
+ns.RegisterSettings{ key = "awards", label = "Vergaben", order = 25, officer = true, items = {
+    { key = "awards.plusScope", type = "choice", label = "Plus-Eins zählt", default = "raid",
+      values = { { "raid", "Dieser Raid" }, { "week", "Diese ID-Woche" } },
+      tip = "Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden." },
+    { key = "awards.plusOrder", type = "toggle", label = "Plus-Eins in der Roll-Reihenfolge", default = false,
+      tip = "Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec." },
+    { key = "awards.modClick", type = "toggle", label = "Alt+Shift-Klick auf ein Item öffnet die Vergabe", default = true },
+    { key = "awards.bankName", type = "text", label = "Bank-Charakter", default = "", validate = validName,
+      tip = "Master Loot an diesen Namen zählt als Bank.", invalid = "Name ohne Ziffern, höchstens ein Leerzeichen." },
+    { key = "awards.deName", type = "text", label = "Entzauberer", default = "", validate = validName,
+      tip = "Master Loot an diesen Namen zählt als Entzaubern.", invalid = "Name ohne Ziffern, höchstens ein Leerzeichen." },
+}}
+
+---------------------------------------------------------------------------
+-- Hand-outs through master loot
+---------------------------------------------------------------------------
 local PENDING_TTL = 5
-local pending = {}   -- loot slot -> { slot, name, item, link, src, t, token }
+local pending = {}   -- loot slot -> { slot, name, item, link, src, t, token, kind, note }
 local lastSlot       -- slot of the latest hand-out
 
 -- The open hand-out of a loot slot, or of the latest hand-out when no slot is given.
@@ -27,12 +423,22 @@ function ns.LootSourceName(slot)
     return "?"
 end
 
+local TO_TEXT = { bank = "an die Bank (%s)", de = "zum Entzaubern (%s)" }
 
 local function commit(a)
-    local kind = ns.RollKind and ns.RollKind(a.item, a.name) or "-"
-    local ok, why = ns.AddAward(a.name, a.item, kind, a.src, time())
+    local to = ns.IsSpecialName(a.name) or "player"
+    local kind = "-"
+    if to == "player" then
+        kind = a.kind or (ns.RollKind and ns.RollKind(a.item, a.name)) or "-"
+    end
+    local ok, why = ns.AddAwardTo(ns.Active(), { name = a.name, item = a.item, kind = kind, src = a.src, t = time(), to = to, note = a.note })
     if ok then
-        ns.msg(("Vergabe gespeichert: %s an %s (%s)."):format(a.link or ("Item " .. a.item), a.name, kind))
+        local item = a.link or ("Item " .. a.item)
+        if to == "player" then
+            ns.msg(("Vergabe gespeichert: %s an %s (%s)."):format(item, a.name, kind))
+        else
+            ns.msg(("Vergabe gespeichert: %s %s."):format(item, TO_TEXT[to]:format(a.name)))
+        end
     elseif why then
         ns.msg(why)
     end
@@ -84,12 +490,15 @@ end)
 
 ns.OnEvent("LOOT_CLOSED", function() wipe(pending) end)
 
+---------------------------------------------------------------------------
+-- Commands
+---------------------------------------------------------------------------
 -- "/amisia award <Name> <Item-Link oder ID> [ms|os|sr]" and "/amisia unaward"
 function ns.AwardCommand(rest)
     rest = (rest or ""):match("^%s*(.-)%s*$")
     if rest:lower() == "unaward" then
         local a = ns.RemoveLastAward()
-        ns.msg(a and ("Vergabe entfernt: Item %d an %s."):format(a.item, a.name) or "Keine Vergabe in der laufenden Aufnahme.")
+        ns.msg(a and ("Vergabe entfernt: Item %d an %s. /amisia undo holt sie zurück."):format(a.item, a.name) or "Keine Vergabe in der laufenden Aufnahme.")
         return
     end
     -- the name runs up to the item link or the item id, so a Forever surname fits
@@ -107,7 +516,7 @@ function ns.AwardCommand(rest)
     end
     local kind = (tail:match("%s(%a%a)%s*$") or ""):upper()
     if kind ~= "MS" and kind ~= "OS" and kind ~= "SR" then kind = "-" end
-    local ok, why = ns.AddAward(shortName(name), id, kind, ns.LootSourceName(0), time())
+    local ok, why = ns.AddAwardTo(ns.Active(), { name = shortName(name), item = id, kind = kind, src = ns.LootSourceName(0), t = time(), manual = true })
     if ok then
         ns.msg(("Vergabe gespeichert: Item %d an %s (%s)."):format(id, shortName(name), kind))
     else
@@ -118,3 +527,7 @@ end
 ns.RegisterSlash("award", { officer = true, args = "<Name> <Item-Link|ID> [ms|os|sr]", desc = "Vergabe von Hand eintragen",
     run = function(rest) ns.AwardCommand(rest) end })
 ns.RegisterSlash("unaward", { officer = true, desc = "letzte Vergabe zurücknehmen", run = function() ns.AwardCommand("unaward") end })
+ns.RegisterSlash("rueckgaengig", { aliases = { "undo" }, officer = true, desc = "letzte Änderung an Vergaben zurücknehmen", run = function()
+    local text = ns.UndoAward()
+    ns.msg(text and ("Rückgängig: %s."):format(text) or "Nichts rückgängig zu machen.")
+end })

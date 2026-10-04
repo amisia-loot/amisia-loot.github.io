@@ -227,7 +227,8 @@ local function newSession(zone, instanceID)
         -- epoch seconds: whoever shows up after this is marked late
         lateAt = firstRaidOfNight(night, instanceID or 0) and lateCutoff(t) or nil,
         drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
-        awards = {},  -- master loot hand-outs: { name, item, t, kind = MS|OS|SR|-, src }
+        awards = {},  -- hand-outs, kept by Awards.lua: { id, name, item, t, kind = MS|OS|SR|-, src, to, note, edited, orig, manual }
+        gone = {},    -- deleted hand-outs with deleted = epoch, for undo and the export's tombstone line
     }
     DB.sessions[#DB.sessions + 1] = s
     while #DB.sessions > (ns.Get("record.keepSessions") or 60) do
@@ -257,6 +258,7 @@ local function noteMember(s, name, class, t)
         s.members[name] = { class = class or "", first = t, last = t, late = (after and t > after) or nil }
     end
 end
+ns.NoteMember = noteMember
 
 local function snapshotRoster()
     if not active then return end
@@ -338,38 +340,18 @@ local function rememberItem(id, link, q)
     local known = DB.itemNames[id]
     DB.itemNames[id] = { n = name or (known and known.n) or ("Item " .. id), q = q or (known and known.q) or 0 }
 end
+ns.RememberItem = rememberItem
+
+-- Whether an item's name is already on record for the export.
+function ns.KnownItem(id) return DB and DB.itemNames[id] ~= nil end
 
 ---------------------------------------------------------------------------
--- Awards: what the master looter hands out, written by Awards.lua
+-- Awards: what the master looter hands out. The book itself lives in Awards.lua; these are the
+-- entry points the recording offers.
 ---------------------------------------------------------------------------
-local VALID_KIND = { MS = true, OS = true, SR = true, ["-"] = true }
-
+-- An award into the running recording, as 1.4 wrote it.
 function ns.AddAward(name, item, kind, src, t)
-    if not active then
-        return nil, "Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."
-    end
-    item = tonumber(item)
-    if type(name) ~= "string" or name == "" or not item then return nil, "Name oder Item fehlt." end
-    t = t or time()
-    local a = {
-        name = name, item = item, t = t,
-        kind = VALID_KIND[kind] and kind or "-",
-        src = (type(src) == "string" and src ~= "") and src or "?",
-    }
-    active.awards[#active.awards + 1] = a
-    -- Only someone in the group counts as present; a typo in a manual award must not invent a raider.
-    if active.members[name] or ns.InGroup(name) then
-        noteMember(active, name, nil, t)
-    else
-        msg(("Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."):format(name))
-    end
-    if not DB.itemNames[item] then
-        local _, ilink, q = GetItemInfo(item)
-        rememberItem(item, ilink, q)
-    end
-    active.last = t
-    refresh()
-    return a
+    return ns.AddAwardTo(active, { name = name, item = item, kind = kind, src = src, t = t })
 end
 
 -- Whether a short name belongs to the current group; returns true and the class token.
@@ -381,11 +363,10 @@ function ns.InGroup(name)
     return false
 end
 
+-- Deletes the newest living award of the running recording (a tombstone, so it can be undone).
 function ns.RemoveLastAward()
     if not active or #active.awards == 0 then return nil end
-    local a = table.remove(active.awards)
-    refresh()
-    return a
+    return (ns.DeleteAward(active, active.awards[#active.awards].id))
 end
 
 function ns.AwardCount(s)
@@ -679,7 +660,8 @@ function ns.DeleteSessions(ids)
 end
 
 -- The S..E block of one session, appended to lines; used collects the item ids to name in N lines.
-local function sessionLines(s, lines, used)
+-- legacy: the form of 1.4, every award as an A line and nothing else (the old export marks).
+local function sessionLines(s, lines, used, legacy)
     lines[#lines + 1] = ("S %s %s %d %s"):format(s.id, s.date, tonumber(s.instanceID) or 0, s.zone or "?")
     local names = {}
     for name in pairs(s.members) do names[#names + 1] = name end
@@ -743,6 +725,7 @@ local function sessionLines(s, lines, used)
         lines[#lines + 1] = ("A %s %d %d %s %s"):format(ns.ExportName(a.name), a.item, a.t or 0, a.kind or "-", a.src or "?")
         used[a.item] = true
     end
+    -- the lines of 1.5 (AX, AS, AD) follow here when not legacy
     lines[#lines + 1] = "E"
     return lines
 end
@@ -756,10 +739,12 @@ local function checksum(str)
     end
     return ("%08x%08x"):format(h1, h2)
 end
+ns.Checksum = checksum
 
 -- Fingerprint of what a session would export; it changes whenever the export of it would.
-function ns.SessionHash(s)
-    return checksum(table.concat(sessionLines(s, {}, {}), "\n"))
+-- legacy: the fingerprint 1.4 stored, used once to move its export marks.
+function ns.SessionHash(s, legacy)
+    return checksum(table.concat(sessionLines(s, {}, {}, legacy), "\n"))
 end
 
 -- "new" (never exported), "changed" (exported, but more was recorded since) or "done".
@@ -850,7 +835,10 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             s.items = s.items or {}
             s.drops = s.drops or {}
             s.awards = s.awards or {}
+            s.gone = s.gone or {}
         end
+        -- awards of 1.4 get their ids, and the export marks of 1.4 are carried over
+        ns.MigrateAwards(DB)
         -- forget the export marks of sessions that were dropped or deleted
         local ids = {}
         for _, s in ipairs(DB.sessions) do ids[s.id] = true end

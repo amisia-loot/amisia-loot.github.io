@@ -39,6 +39,22 @@ _G.MouseIsOver = function() return false end
 _G.IsShiftKeyDown = function() return STUB.shift and true or false end
 _G.IsControlKeyDown = function() return false end
 
+-- math.random is fixed: a small generator with a known seed, so ids and draws repeat from run to
+-- run. Values put into STUB.randomQueue come out first (to force a collision in a test).
+STUB.seed, STUB.randomQueue = 12345, {}
+math.random = function(lo, hi)
+    local r
+    if #STUB.randomQueue > 0 then
+        r = table.remove(STUB.randomQueue, 1)
+    else
+        STUB.seed = (STUB.seed * 16807) % 2147483647
+        r = STUB.seed
+    end
+    if not lo then return (r % 1000000) / 1000000 end
+    if not hi then lo, hi = 1, lo end
+    return lo + (r % (hi - lo + 1))
+end
+
 local function itemId(x) return tonumber(x) or tonumber(tostring(x):match("item:(%d+)")) end
 _G.GetItemInfo = function(x)
     local it = STUB.items[itemId(x)]
