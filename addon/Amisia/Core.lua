@@ -374,17 +374,16 @@ function ns.AwardCount(s)
 end
 
 -- Chat announcement for the group: raid warning for leader or assistant (unless rolls.channel says
--- raid), else raid, else party.
-function ns.Announce(text)
+-- raid), else raid, else party. Goes through the chat queue (Chat.lua); ttl: seconds the line may
+-- wait there (a countdown is worthless later).
+function ns.Announce(text, ttl)
     if not IsInGroup() then return end
     local chan = "PARTY"
     if IsInRaid() then
         local warn = ns.Get("rolls.channel") ~= "RAID" and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player"))
         chan = warn and "RAID_WARNING" or "RAID"
     end
-    -- Forever keeps the global only as a deprecated alias; Anniversary has no C_ChatInfo version.
-    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    send(text, chan)
+    return ns.Say(text, chan, nil, ttl and { ttl = ttl } or nil)
 end
 
 -- Modules add handlers for events; the core frame registers them.

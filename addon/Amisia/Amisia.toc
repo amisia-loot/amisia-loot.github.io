@@ -12,6 +12,7 @@
 Registry.lua
 Core.lua
 Names.lua
+Chat.lua
 Widgets.lua
 Awards.lua
 Rolls.lua

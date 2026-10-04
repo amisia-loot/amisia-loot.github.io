@@ -95,7 +95,14 @@ _G.HandleModifiedItemClick = function(link)
     if IsShiftKeyDown() then return ChatFrameUtil.InsertLink(link) end
     return false
 end
-_G.SendChatMessage = function(text, chan) STUB.chat[#STUB.chat + 1] = { text = text, chan = chan } end
+_G.SendChatMessage = function(text, chan, lang, target)
+    if STUB.sendError then error(STUB.sendError) end
+    STUB.chat[#STUB.chat + 1] = { text = text, chan = chan, target = target }
+end
+-- The chat lockdown of a boss fight on the Forever client: STUB.chatLock. The client announces a
+-- change with ADDON_RESTRICTION_STATE_CHANGED (a test fires it through STUB.fire).
+_G.C_ChatInfo = { InChatMessagingLockdown = function() return STUB.chatLock and true or false end }
+_G.UnitIsUnit = function(a, b) return a == b end
 
 _G.hooksecurefunc = function(a, b, c)
     if type(a) == "string" then
