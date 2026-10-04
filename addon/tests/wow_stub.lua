@@ -179,7 +179,20 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetWidth = function(self, w) self._w = w end
     f.SetHeight = function(self, h) self._h = h end
     f.GetChecked = function(self) return self.checked end
-    f.HasFocus = function() return false end
+    -- one edit box holds the keyboard focus; gaining and losing it runs the scripts, as in the client
+    f.SetFocus = function(self)
+        local old = STUB.focus
+        if old == self then return end
+        STUB.focus = self
+        if old and old.scripts.OnEditFocusLost then old.scripts.OnEditFocusLost(old) end
+        if self.scripts.OnEditFocusGained then self.scripts.OnEditFocusGained(self) end
+    end
+    f.ClearFocus = function(self)
+        if STUB.focus ~= self then return end
+        STUB.focus = nil
+        if self.scripts.OnEditFocusLost then self.scripts.OnEditFocusLost(self) end
+    end
+    f.HasFocus = function(self) return STUB.focus == self end
     f.IsMouseOver = function() return false end
     f.SetOwner = NOOP
     f.AddLine = NOOP

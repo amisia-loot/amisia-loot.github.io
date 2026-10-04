@@ -51,6 +51,26 @@ NS.Reset("record.enabled")
 NS.Refresh()
 assert(rows["record.enabled"].control:GetChecked() == true)
 
+-- a text row writes its setting on Enter, refuses what validate refuses, and keeps the typed text
+-- while it has the focus
+local bank = rows["awards.bankName"]
+assert(bank and bank.control and bank.control:GetText() == "", "the text row is built for officers")
+bank.control:SetFocus(); bank.control:SetText("Vulobank"); bank.control.scripts.OnEnterPressed(bank.control)
+assert(NS.Get("awards.bankName") == "Vulobank", tostring(NS.Get("awards.bankName")))
+assert(bank.control:GetText() == "Vulobank" and bank.dot:IsShown(), "the row shows the stored value and the changed dot")
+local msgs = #STUB.messages
+bank.control:SetFocus(); bank.control:SetText("Vulo1"); bank.control.scripts.OnEnterPressed(bank.control)
+assert(NS.Get("awards.bankName") == "Vulobank", "a name with digits is refused")
+assert(#STUB.messages == msgs + 1 and STUB.messages[#STUB.messages]:find("Ziffern", 1, true), "the reason goes to the chat")
+assert(bank.control:GetText() == "Vulobank", "the refresh puts the stored value back")
+bank.control:SetFocus(); bank.control:SetText("Vul")
+NS.Refresh()
+assert(bank.control:GetText() == "Vul", "a refresh leaves a focused box alone")
+bank.control:ClearFocus()
+assert(NS.Get("awards.bankName") == "Vul", "leaving the box commits")
+bank.reset:Click()
+assert(NS.Get("awards.bankName") == "" and bank.control:GetText() == "", "reset empties the box")
+
 -- roll history feeds the rolls page
 local link = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 assert(NS.StartRoll(link, 5)); NS.StopRoll()

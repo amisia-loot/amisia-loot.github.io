@@ -140,13 +140,14 @@ function W.Stepper(parent, width, onChange)
     return f
 end
 
--- A one-line edit box; Enter or leaving the box hands the text to onCommit.
-function W.TimeBox(parent, width, onCommit)
+-- A one-line edit box on a dark field; Enter or leaving the box hands the text to onCommit once.
+-- With restore, Escape puts back what the box held when it took the focus, without a commit.
+local function editBox(parent, width, justify, onCommit, restore)
     local e = CreateFrame("EditBox", nil, parent)
     e:SetSize(width or 60, 20)
     e:SetAutoFocus(false)
     e:SetFontObject(ChatFontNormal)
-    e:SetJustifyH("CENTER")
+    e:SetJustifyH(justify)
     e:SetTextInsets(4, 4, 0, 0)
     W.Flat(e, 0, 0, 0, 0.5)
     W.Border(e, 1, 1, 1, 0.2)
@@ -156,16 +157,38 @@ function W.TimeBox(parent, width, onCommit)
         if onCommit then onCommit(self:GetText()) end
         self.committing = false
     end
-    e:SetScript("OnEnterPressed", function(self)
-        commit(self)
-        -- losing the focus would commit the same text a second time
+    -- leaving the box on purpose must not commit a second time (Enter) or at all (Escape)
+    local function leave(self)
         self.committing = true
         self:ClearFocus()
         self.committing = false
+    end
+    -- the focus goes first, so a refresh from the commit may write the stored value back into the box
+    e:SetScript("OnEnterPressed", function(self)
+        leave(self)
+        commit(self)
     end)
     e:SetScript("OnEditFocusLost", commit)
-    e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    if restore then
+        e:SetScript("OnEditFocusGained", function(self) self.before = self:GetText() end)
+        e:SetScript("OnEscapePressed", function(self)
+            if self.before ~= nil then self:SetText(self.before) end
+            leave(self)
+        end)
+    else
+        e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    end
     return e
+end
+
+-- A centred box for a time of day.
+function W.TimeBox(parent, width, onCommit)
+    return editBox(parent, width or 60, "CENTER", onCommit, false)
+end
+
+-- A left-aligned box for a name or a note; Escape restores the text.
+function W.LineEdit(parent, width, onCommit)
+    return editBox(parent, width or 150, "LEFT", onCommit, true)
 end
 
 -- A chip that cycles through its values on click.
@@ -367,4 +390,166 @@ function W.Menu(owner, entries)
     end
     menu:Show()
     return menu
+end
+
+-- A pick from a list. The widget shows the current text; a click opens the shared panel under it
+-- with a filter box and a scrolling list. values = { { value = x, text = "..." } }, onPick(value,
+-- isFree). An optional last entry (freeText, "Anderer Name") takes the filter text as a value of
+-- its own. Enter in the filter picks the single match, or the typed text when nothing matches and
+-- free text is allowed. Escape, a pick or a second click on the widget close the panel.
+local picker
+local PICK_ROWS, PICK_ROW_H = 8, 20
+
+local function pickerChoose(entry)
+    local owner = picker.owner
+    if not owner or not entry then return end
+    local value, free = entry.value, false
+    if entry.free then
+        value = (picker.filter:GetText() or ""):match("^%s*(.-)%s*$")
+        if value == "" then
+            picker.filter:SetFocus()
+            return
+        end
+        free = true
+    end
+    picker:Hide()
+    owner:SetValue(value)
+    if owner.onPick then owner.onPick(value, free) end
+end
+
+local function pickerPanel()
+    if picker then return picker end
+    picker = CreateFrame("Frame", "AmisiaPicker", UIParent)
+    picker:SetFrameStrata("FULLSCREEN_DIALOG")
+    picker:SetClampedToScreen(true)
+    picker:EnableMouse(true)
+    W.Flat(picker, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
+    W.Border(picker, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaPicker") end
+
+    local filter = CreateFrame("EditBox", nil, picker)
+    filter:SetHeight(20)
+    filter:SetPoint("TOPLEFT", 6, -6)
+    filter:SetPoint("TOPRIGHT", -6, -6)
+    filter:SetAutoFocus(false)
+    filter:SetFontObject(ChatFontNormal)
+    filter:SetJustifyH("LEFT")
+    filter:SetTextInsets(4, 4, 0, 0)
+    W.Flat(filter, 0, 0, 0, 0.5)
+    W.Border(filter, 1, 1, 1, 0.2)
+    filter:SetScript("OnTextChanged", function() picker:Fill() end)
+    filter:SetScript("OnEscapePressed", function() picker:Hide() end)
+    filter:SetScript("OnEnterPressed", function()
+        local real, free = {}, nil
+        for _, e in ipairs(picker.shown or {}) do
+            if e.free then free = e else real[#real + 1] = e end
+        end
+        if #real == 1 then
+            pickerChoose(real[1])
+        elseif #real == 0 and free then
+            pickerChoose(free)
+        end
+    end)
+    picker.filter = filter
+
+    picker.list = W.List(picker, PICK_ROWS, PICK_ROW_H, function(r)
+        r.text = W.Text(r, "GameFontHighlightSmall")
+        r.text:SetPoint("LEFT", 6, 0)
+        r.text:SetPoint("RIGHT", -6, 0)
+        r:SetScript("OnClick", function(self) pickerChoose(self.item) end)
+    end, function(r, e)
+        r.text:SetText(e.text or "")
+        local owner = picker.owner
+        if e.free then
+            r.text:SetTextColor(0.56, 0.53, 0.64)
+        elseif owner and e.value == owner.current then
+            r.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+        else
+            r.text:SetTextColor(1, 1, 1)
+        end
+    end)
+    picker.list:SetPoint("TOPLEFT", 6, -30)
+    picker.list:SetPoint("TOPRIGHT", -6, -30)
+
+    -- the entries the filter leaves, the free entry always last
+    function picker:Fill()
+        local owner = self.owner
+        if not owner then return end
+        local q = (self.filter:GetText() or ""):lower():match("^%s*(.-)%s*$")
+        local shown = {}
+        for _, e in ipairs(owner.values or {}) do
+            if q == "" or tostring(e.text or ""):lower():find(q, 1, true) then shown[#shown + 1] = e end
+        end
+        if owner.freeText then shown[#shown + 1] = { free = true, text = owner.freeText } end
+        self.shown = shown
+        self.list.offset = 0
+        self.list:SetItems(shown)
+    end
+    -- closes when the mouse stays away for two seconds without the filter in use, or when the
+    -- widget it belongs to disappears
+    picker:SetScript("OnUpdate", function(self, elapsed)
+        local owner = self.owner
+        if owner and not owner:IsVisible() then self:Hide() return end
+        if self:IsMouseOver() or (owner and owner:IsMouseOver()) or self.filter:HasFocus() then
+            self.away = 0
+        else
+            self.away = (self.away or 0) + (elapsed or 0)
+            if self.away > 2 then self:Hide() end
+        end
+    end)
+    picker:SetScript("OnHide", function(self) self.filter:ClearFocus() end)
+    picker:Hide()
+    return picker
+end
+
+function W.Picker(parent, width, onPick)
+    local p = CreateFrame("Button", nil, parent)
+    p:SetSize(width or 150, 20)
+    W.Flat(p, 0, 0, 0, 0.5)
+    W.Border(p, 1, 1, 1, 0.2)
+    local hl = p:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.08)
+    p.label = W.Text(p, "GameFontHighlightSmall")
+    p.label:SetPoint("LEFT", 6, 0)
+    p.label:SetPoint("RIGHT", -16, 0)
+    p.arrow = W.Text(p, "GameFontDisableSmall", 10)
+    p.arrow:SetPoint("RIGHT", -4, 0)
+    p.arrow:SetText("v")
+    p.onPick = onPick
+    p.values = {}
+    -- the list to pick from; freeText names the optional free-text entry at its end
+    function p:SetValues(values, freeText)
+        self.values, self.freeText = values or {}, freeText
+        if picker and picker:IsShown() and picker.owner == self then picker:Fill() end
+    end
+    function p:SetValue(v)
+        self.current = v
+        local text
+        for _, e in ipairs(self.values) do
+            if e.value == v then text = e.text break end
+        end
+        self.label:SetText(text or (v ~= nil and tostring(v)) or "")
+    end
+    function p:GetValue() return self.current end
+    function p:Open()
+        local panel = pickerPanel()
+        panel.owner = self
+        panel.away = 0
+        panel:SetSize(math.max(180, self:GetWidth() or 0), 36 + PICK_ROWS * PICK_ROW_H + 6)
+        panel:ClearAllPoints()
+        panel:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
+        panel.filter:SetText("")
+        panel:Fill()
+        panel:Show()
+        panel.filter:SetFocus()
+    end
+    function p:Close()
+        if picker and picker.owner == self then picker:Hide() end
+    end
+    p:SetScript("OnClick", function(self)
+        if picker and picker:IsShown() and picker.owner == self then picker:Hide() else self:Open() end
+    end)
+    p:SetScript("OnHide", function(self) self:Close() end)
+    return p
 end

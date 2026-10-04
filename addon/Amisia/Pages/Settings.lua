@@ -12,6 +12,7 @@ function ns.SettingsRows() return rows end
 local function valueText(it, v)
     if it.type == "time" then return ns.FormatTime(v) end
     if it.type == "toggle" then return v and "an" or "aus" end
+    if it.type == "text" then return (v == nil or v == "") and "leer" or tostring(v) end
     if it.type == "choice" then
         for _, c in ipairs(it.values) do if c[1] == v then return c[2] end end
     end
@@ -39,6 +40,12 @@ local function makeRow(it)
         r.control = W.TimeBox(r, 70, function(text)
             local ok, why = ns.Set(path, text)
             if not ok then ns.msg(why .. " Beispiel: 20:00" .. (it.allowOff and " oder aus" or "")) end
+            ns.Refresh()
+        end)
+    elseif it.type == "text" then
+        r.control = W.LineEdit(r, 150, function(text)
+            local ok, why = ns.Set(path, text)
+            if not ok then ns.msg(why) end
             ns.Refresh()
         end)
     elseif it.type == "choice" then
@@ -72,6 +79,7 @@ local function fillRow(r)
     if it.type == "toggle" then r.control:SetChecked(v)
     elseif it.type == "slider" then r.control:SetValue(v)
     elseif it.type == "time" then if not r.control:HasFocus() then r.control:SetText(ns.FormatTime(v)) end
+    elseif it.type == "text" then if not r.control:HasFocus() then r.control:SetText(v ~= nil and tostring(v) or "") end
     elseif it.type == "choice" then r.control:SetValue(v) end
     local changed = it.type ~= "button" and not ns.IsDefault(it.key)
     if changed then r.dot:Show() else r.dot:Hide() end
