@@ -58,8 +58,14 @@ function Test-Lua {
 function Get-Targets {
     foreach ($flavor in $Flavors) {
         $addons = Join-Path $WowRoot "$flavor\Interface\AddOns"
-        if (Test-Path -LiteralPath $addons -PathType Container) {
-            [pscustomobject]@{ Flavor = $flavor; Path = (Join-Path $addons 'Amisia') }
+        $target = Join-Path $addons 'Amisia'
+        $item = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+        if ($item -and $item.LinkType) {
+            # Since 2026-10-04 the AddOns folder is a junction on the Syncthing copy the N100 sends;
+            # writing into it would fight that sync, so this machine leaves it alone.
+            if (-not $Quiet) { Write-Host "uebersprungen: $flavor ist mit $($item.Target) verknuepft (Syncthing vom N100)" -ForegroundColor DarkGray }
+        } elseif (Test-Path -LiteralPath $addons -PathType Container) {
+            [pscustomobject]@{ Flavor = $flavor; Path = $target }
         } elseif (-not $Quiet) {
             Write-Host "uebersprungen: $flavor hat keinen AddOns-Ordner" -ForegroundColor DarkGray
         }
