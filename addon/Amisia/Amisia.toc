@@ -23,6 +23,15 @@ GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
-UI.lua
 MainFrame.lua
+Pages\Overview.lua
+Pages\Raids.lua
+Pages\Rolls.lua
+Pages\SoftRes.lua
+Pages\Gear.lua
+Pages\Export.lua
+Pages\Bank.lua
+Pages\Tools.lua
+Pages\Settings.lua
+Pages\About.lua
 Minimap.lua

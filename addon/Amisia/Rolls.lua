@@ -5,6 +5,7 @@ local ADDON, ns = ...
 
 local KEEP = 10 * 60   -- a finished round answers ns.RollKind for this long
 local current, last, ticker
+local history = {}   -- finished rounds, newest first (this session only)
 local matcher
 
 -- Round: { item, link, name, started, seconds, leftAt, only = {[name]=true}|nil,
@@ -82,6 +83,8 @@ local function finish()
         end
     end
     last = current
+    table.insert(history, 1, current)
+    while #history > 10 do table.remove(history) end
     changed()
 end
 
@@ -126,6 +129,7 @@ end
 function ns.StopRoll() finish() end
 function ns.CurrentRoll() return current end
 function ns.LastRoll() return last end
+function ns.RollHistory() return history end
 
 -- Starts the tie-break of the current round, if it ended in a tie.
 function ns.RerollTie()

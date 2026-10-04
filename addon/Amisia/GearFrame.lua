@@ -754,6 +754,35 @@ local function build()
     statusText:SetPoint("BOTTOMLEFT", 14, 10)
 end
 
+-- The upgrades the player can get at their own level, against what they wear, best first.
+function ns.GearMyUpgrades()
+    if not Gear.Available() then return {}, nil, nil end
+    local g = settings()
+    local _, myClass = UnitClass("player")
+    local o = {
+        class = myClass, spec = g.specs[myClass] or (Gear.Specs(myClass)[1] or {}).key, kind = ns.Get("gear.kind"),
+        faction = g.faction ~= "both" and g.faction or nil, sources = g.sources, level = UnitLevel("player") or 1,
+    }
+    local res = Gear.Best(o)
+    local out = {}
+    for _, slot in ipairs(Gear.SLOTS) do
+        local e = res[slot.key] and res[slot.key][1]
+        if e then
+            local link = GetInventoryItemLink and GetInventoryItemLink("player", slot.inv)
+            local mine = link and Gear.ScoreLink(link, slot.key, o) or 0
+            if (not link or ns.ItemID(link) ~= e[1]) and e[2] - mine > math.max(1, math.abs(mine) * 0.02) then
+                out[#out + 1] = { slot = slot, id = e[1], score = e[2], gain = e[2] - mine, mine = mine }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.gain > b.gain end)
+    return out, res, o
+end
+
+function ns.ResetGearPosition()
+    if F then F:ClearAllPoints(); F:SetPoint("CENTER") end
+end
+
 function ns.ToggleGearFrame()
     if not Gear.Available() then
         ns.msg("Die Ausrüstungstabelle gibt es nur in WoW Forever.")

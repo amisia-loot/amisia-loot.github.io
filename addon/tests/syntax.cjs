@@ -15,8 +15,10 @@ try {
 }
 
 const dir = path.join(__dirname, '..', 'Amisia');
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.lua'))
+  .concat(fs.readdirSync(path.join(dir, 'Pages')).filter(f => f.endsWith('.lua')).map(f => path.join('Pages', f)));
 let bad = 0;
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.lua'))) {
+for (const f of files) {
   try {
     lp.parse(fs.readFileSync(path.join(dir, f), 'utf8'), { luaVersion: '5.1' });
     console.log('ok   ', f);

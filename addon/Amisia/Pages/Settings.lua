@@ -1,0 +1,128 @@
+-- Settings: built from the registered sections; changed rows carry a dot and a reset button.
+local ADDON, ns = ...
+local W = ns.W
+local GOLD = W.GOLD
+local ROW_H, LABEL_W = 26, 300
+
+local rows = {}   -- path -> row
+local scroll, child
+
+function ns.SettingsRows() return rows end
+
+local function valueText(it, v)
+    if it.type == "time" then return ns.FormatTime(v) end
+    if it.type == "toggle" then return v and "an" or "aus" end
+    if it.type == "choice" then
+        for _, c in ipairs(it.values) do if c[1] == v then return c[2] end end
+    end
+    return tostring(v)
+end
+
+local function makeRow(it)
+    local r = CreateFrame("Frame", nil, child)
+    r:SetSize(560, ROW_H)
+    r:EnableMouse(true)
+    r.dot = r:CreateTexture(nil, "ARTWORK")
+    r.dot:SetSize(6, 6)
+    r.dot:SetPoint("LEFT", 0, 0)
+    r.dot:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 1)
+    r.label = W.Text(r, "GameFontHighlightSmall", LABEL_W)
+    r.label:SetPoint("LEFT", 12, 0)
+    r.label:SetText(it.label or it.key)
+    local path = it.key
+    if it.type == "toggle" then
+        r.control = W.Toggle(r, function(v) ns.Set(path, v) end)
+    elseif it.type == "slider" then
+        r.control = W.Stepper(r, 130, function(v) ns.Set(path, v) end)
+        r.control:Configure(it.min, it.max, it.step)
+    elseif it.type == "time" then
+        r.control = W.TimeBox(r, 70, function(text)
+            local ok, why = ns.Set(path, text)
+            if not ok then ns.msg(why .. " Beispiel: 20:00" .. (it.allowOff and " oder aus" or "")) end
+            ns.Refresh()
+        end)
+    elseif it.type == "choice" then
+        r.control = W.Choice(r, 150, function(v) ns.Set(path, v) end)
+        r.control:SetValues(it.values)
+    elseif it.type == "button" then
+        r.control = W.Button(r, it.label, 230, function() it.run() end)
+        r.label:SetText("")
+    end
+    if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
+    if it.type ~= "button" and it.type ~= "desc" then
+        r.reset = W.Chip(r, "x", 20, function() ns.Reset(path) end)
+        r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
+        W.Tooltip(r.reset, "Zurücksetzen", "Auf den Standard zurück.")
+    end
+    r:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(it.label or it.key, 1, 0.82, 0)
+        if it.tip then GameTooltip:AddLine(it.tip, 0.85, 0.85, 0.85, true) end
+        if it.default ~= nil then GameTooltip:AddLine("Standard: " .. valueText(it, it.default), 0.6, 0.6, 0.6) end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    r.it = it
+    rows[path] = r
+    return r
+end
+
+local function fillRow(r)
+    local it, v = r.it, ns.Get(r.it.key)
+    if it.type == "toggle" then r.control:SetChecked(v)
+    elseif it.type == "slider" then r.control:SetValue(v)
+    elseif it.type == "time" then if not r.control:HasFocus() then r.control:SetText(ns.FormatTime(v)) end
+    elseif it.type == "choice" then r.control:SetValue(v) end
+    local changed = it.type ~= "button" and not ns.IsDefault(it.key)
+    if changed then r.dot:Show() else r.dot:Hide() end
+    if r.reset then if changed then r.reset:Show() else r.reset:Hide() end end
+end
+
+local headers = {}
+
+ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\Icons\\Trade_Engineering", order = 900, bottom = true,
+    create = function(parent)
+        local f = CreateFrame("Frame", nil, parent)
+        scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT")
+        scroll:SetPoint("BOTTOMRIGHT", -24, 0)
+        child = CreateFrame("Frame", nil, scroll)
+        child:SetSize(560, 10)
+        scroll:SetScrollChild(child)
+        return f
+    end,
+    refresh = function()
+        local y = 0
+        for _, h in pairs(headers) do h:Hide() end
+        for _, r in pairs(rows) do r:Hide() end
+        for _, section in ipairs(ns.schema) do
+            if ns.Visible(section) then
+                local shown = {}
+                for _, it in ipairs(section.items) do
+                    if it.key and ns.Visible(it) then shown[#shown + 1] = it end
+                end
+                if #shown > 0 then
+                    local h = headers[section.key]
+                    if not h then
+                        h = W.Text(child, "GameFontNormal", 500)
+                        h:SetText(section.label)
+                        headers[section.key] = h
+                    end
+                    h:ClearAllPoints()
+                    h:SetPoint("TOPLEFT", 0, -y)
+                    h:Show()
+                    y = y + 24
+                    for _, it in ipairs(shown) do
+                        local r = rows[it.key] or makeRow(it)
+                        r:ClearAllPoints()
+                        r:SetPoint("TOPLEFT", 0, -y)
+                        fillRow(r)
+                        r:Show()
+                        y = y + ROW_H
+                    end
+                    y = y + 12
+                end
+            end
+        end
+        child:SetHeight(math.max(10, y))
+    end }
