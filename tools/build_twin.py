@@ -7,7 +7,7 @@ requests, wishlists, member ranks and the Warcraft Logs import.
 """
 import pathlib, sys
 
-SRC = pathlib.Path(r"C:\Users\aobiw\Desktop\Amisia\index.html")
+SRC = pathlib.Path(__file__).resolve().parent.parent / "index.html"
 OUT = pathlib.Path(sys.argv[1])
 DATA_JSON = pathlib.Path(sys.argv[2])          # the twin's own ledger, kept as the inline copy
 
