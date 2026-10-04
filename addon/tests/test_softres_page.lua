@@ -158,7 +158,7 @@ local function row(name, ...)
 end
 row("head", f.state, f.import, f.clear)
 row("check line", f.check)
-row("views", f.views.items, f.views.raider, f.views.check)
+row("views", f.views.items, f.views.raider, f.views.check, f.remind, f.post)
 -- a check row with the widest suggestions
 AmisiaDB.srAliases = {}
 NS.SetSoftRes("Kara Sehrlangernam 32235\n")

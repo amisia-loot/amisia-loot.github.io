@@ -2,6 +2,9 @@
 -- tooltips and on the loot window, and ranked first in roll rounds.
 local ADDON, ns = ...
 
+-- Forever has no GetItemInfo global; both clients have C_Item.
+local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+
 local F, editBox, resultText, dateText, previewText
 local previewGen = 0   -- the newest pending preview; older timers do nothing
 local marks = {}   -- loot button -> "SR" font string
@@ -533,6 +536,244 @@ if type(LootFrame_Update) == "function" then
 end
 
 ---------------------------------------------------------------------------
+-- Chat: reminders, the raid summary and !sr for raiders without the addon
+---------------------------------------------------------------------------
+local REPLY_GAP = 15       -- seconds between two answers to one sender
+local REPLY_PER_MIN = 20   -- answers a minute in all
+local REPLY_LINES = 3      -- lines of one answer
+local SUMMARY_LINES = 2
+local REMIND_TEXT = "Amisia: Du hast für heute noch nichts reserviert."
+
+-- Lines of head and parts (ns.ChatLines) within maxLines: the parts that do not fit become
+-- "und n weitere" at the end of the last part kept. suffix goes after the last part.
+local function cappedLines(head, parts, maxLines, sep, suffix)
+    suffix = suffix or ""
+    local function build(list)
+        if #list == 0 then return ns.ChatLines(head .. suffix, {}, sep) end
+        local copy = {}
+        for i, p in ipairs(list) do copy[i] = p end
+        copy[#copy] = copy[#copy] .. suffix
+        return ns.ChatLines(head, copy, sep)
+    end
+    local lines = build(parts)
+    if #lines <= maxLines then return lines end
+    for k = #parts - 1, 0, -1 do
+        local cut = {}
+        for i = 1, k do cut[i] = parts[i] end
+        local more = ("und %d weitere"):format(#parts - k)
+        if k > 0 then cut[k] = cut[k] .. " " .. more else cut[1] = more end
+        lines = build(cut)
+        if #lines <= maxLines then return lines end
+    end
+    return { lines[1] }
+end
+
+-- The raw name of a raid member as the roster gives it (Anniversary may add a realm), for whispers.
+local function rawRosterName(name)
+    for i = 1, GetNumGroupMembers() or 0 do
+        local raw = ns.Plain((GetRaidRosterInfo(i)))
+        if type(raw) == "string" and ns.FullName(raw) == name then return raw end
+    end
+    return name
+end
+
+-- Raid members without a reservation who were not reminded for this list yet; never oneself.
+function ns.SoftResReminders()
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not sr or not IsInRaid() then return {} end
+    local c = ns.SoftResCheck(sr)
+    local me = ns.UnitFullName("player")
+    local out = {}
+    for _, name in ipairs(c and c.missing or {}) do
+        if not (sr.reminded and sr.reminded[name]) and not ns.SameName(name, me) then out[#out + 1] = name end
+    end
+    return out
+end
+
+-- Whispers everyone of ns.SoftResReminders() once (ttl 120) and marks them. Returns the number.
+function ns.SendSoftResReminders()
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not sr then return 0 end
+    local extra = ns.Get("softres.remindText")
+    local text = REMIND_TEXT .. ((type(extra) == "string" and extra ~= "") and (" " .. extra) or "")
+    local n = 0
+    sr.reminded = sr.reminded or {}
+    for _, name in ipairs(ns.SoftResReminders()) do
+        if ns.Say(text, "WHISPER", rawRosterName(name), { ttl = 120 }) then
+            sr.reminded[name] = time()
+            n = n + 1
+        end
+    end
+    if ns.Refresh then ns.Refresh() end
+    return n
+end
+
+-- Asks before whispering (officers, in a raid). The dialog is lifted above the main window.
+function ns.ConfirmSoftResReminders()
+    if not ns.IsOfficerView() then ns.msg("Erinnern nur in der Offiziersansicht.") return end
+    if not (AmisiaDB and AmisiaDB.softres) then ns.msg("Keine Soft-Reserves geladen.") return end
+    if not IsInRaid() then ns.msg("Erinnern geht nur im Raid.") return end
+    local n = #ns.SoftResReminders()
+    if n == 0 then ns.msg("Alle ohne Reserve wurden schon erinnert.") return end
+    local d = StaticPopup_Show("AMISIA_SR_REMIND", n)
+    if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
+end
+
+StaticPopupDialogs["AMISIA_SR_REMIND"] = {
+    text = "%d Raidern ohne Reserve flüstern?",
+    button1 = "Flüstern",
+    button2 = "Abbrechen",
+    OnAccept = function()
+        local n = ns.SendSoftResReminders()
+        ns.msg(("%d Raider erinnert."):format(n))
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+-- "Soft-Reserves: 22 von 25 haben reserviert. Ohne Reserve: ..." in the raid chat, two lines at
+-- most. Returns the number of lines, or nil and the reason.
+function ns.PostSoftResSummary()
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not sr then return nil, "Keine Soft-Reserves geladen." end
+    if not IsInRaid() then return nil, "Posten geht nur im Raid." end
+    local c = ns.SoftResCheck(sr)
+    local lines
+    if #c.missing == 0 then
+        lines = { ("Soft-Reserves: alle %d haben reserviert."):format(c.roster) }
+    else
+        lines = cappedLines(("Soft-Reserves: %d von %d haben reserviert. Ohne Reserve: "):format(#c.ok, c.roster),
+            c.missing, SUMMARY_LINES, ", ", ".")
+    end
+    for _, line in ipairs(lines) do ns.Say(line, "RAID") end
+    return #lines
+end
+
+-- The check as lines for one's own chat (/amisia sr pruefen).
+function ns.SoftResCheckLines()
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not sr then return { "Keine Soft-Reserves geladen." } end
+    local roster, label = ns.SoftResRoster()
+    if not label then return { "Kein Raid zum Abgleichen." } end
+    local c = ns.SoftResCheck(sr, roster)
+    local out = { ("Abgleich mit %s: %d reserviert, %d ohne Reserve, %d nicht im Raid, %d unklar%s."):format(
+        (label:gsub("^letzter ", "letztem ")), #c.ok, #c.missing, #c.absent, #c.unclear,
+        #c.over > 0 and (", " .. #c.over .. " zu viel") or "") }
+    if #c.missing > 0 then out[#out + 1] = "Ohne Reserve: " .. table.concat(c.missing, ", ") end
+    if #c.absent > 0 then out[#out + 1] = "Nicht im Raid: " .. table.concat(c.absent, ", ") end
+    for _, u in ipairs(c.unclear) do
+        out[#out + 1] = ("Unklar: %s (%s?)"):format(u.name, table.concat(u.suggest, ", "))
+    end
+    for _, o in ipairs(c.over) do out[#out + 1] = ("Zu viele: %s (%d)"):format(o.name, o.n) end
+    for _, m in ipairs(c.multi) do out[#out + 1] = ("Mehrfach: %s, %s x%d"):format(m.name, ns.ItemName(m.item), m.n) end
+    return out
+end
+
+-- !sr answers ------------------------------------------------------------
+local lastReply = {}   -- lower-case sender -> GetTime() of the last answer
+local replies = {}     -- GetTime() of every answer in the last minute
+local warnedBusy
+
+-- A link to put into the chat: the client's link when it knows the item, else the name in brackets.
+local function chatLink(id)
+    local _, link = GetItemInfo(id)
+    if type(link) == "string" and link:find("|Hitem:", 1, true) then return link end
+    return "[" .. ns.ItemName(id) .. "]"
+end
+
+local function reserversText(sr, item)
+    local names = ns.ReservedBy(item)
+    if #names == 0 then return "niemand" end
+    local parts = {}
+    for _, name in ipairs(names) do
+        local n = timesOf(sr, item, name)
+        parts[#parts + 1] = n > 1 and ("%s x%d"):format(name, n) or name
+    end
+    return table.concat(parts, ", ")
+end
+
+-- The answer to "!sr" (rest empty) or "!sr <link or part of a name>" as chat lines.
+local function answer(sr, sender, rest)
+    local age = ns.SoftResAge(sr) or 0
+    local suffix = age > (tonumber(ns.Get("softres.warnDays")) or 7) and (" (Liste ist %d Tage alt)"):format(age) or ""
+    local when = ns.SoftResShortDate(sr.date)
+    if rest == "" then
+        local mine = ns.ReservesOf(sender)
+        if #mine == 0 then
+            return { ("Amisia: Du hast nichts reserviert (Liste vom %s).%s"):format(when, suffix) }
+        end
+        local parts = {}
+        for _, e in ipairs(mine) do
+            parts[#parts + 1] = chatLink(e.item) .. (e.n > 1 and (" x" .. e.n) or "")
+        end
+        return cappedLines(("Amisia: Deine Reservierungen (Liste vom %s): "):format(when), parts, REPLY_LINES, ", ", suffix)
+    end
+    local id = ns.ItemID(rest)
+    if id then
+        local link = rest:match("(|c%x+|Hitem:.-|h|r)") or chatLink(id)
+        local who = reserversText(sr, id)
+        return { ("Amisia: %s reserviert von %s%s%s"):format(link, who, who == "niemand" and "." or "", suffix) }
+    end
+    local q = rest:gsub("|", ""):lower():sub(1, 40)
+    local hits = {}
+    for item in pairs(sr.byItem or {}) do
+        local name = ns.ItemName(item)
+        if name:lower():find(q, 1, true) then hits[#hits + 1] = { item = item, sort = name } end
+    end
+    if #hits == 0 then
+        return { ("Amisia: Kein reserviertes Item passt zu \"%s\".%s"):format(q, suffix) }
+    end
+    table.sort(hits, function(a, b) if a.sort ~= b.sort then return a.sort < b.sort end return a.item < b.item end)
+    local parts = {}
+    for i = 1, math.min(3, #hits) do
+        parts[i] = ("%s reserviert von %s"):format(chatLink(hits[i].item), reserversText(sr, hits[i].item))
+    end
+    if #hits > 3 then suffix = (" (%d weitere Treffer)"):format(#hits - 3) .. suffix end
+    return cappedLines("Amisia: ", parts, REPLY_LINES, "; ", suffix)
+end
+
+local function inGroup(name)
+    for i = 1, GetNumGroupMembers() or 0 do
+        local member = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
+        if member and ns.SameName(member, name) then return true end
+    end
+    return false
+end
+
+-- sender is the raw text the client gave (already plain); the answer goes back to it by whisper.
+local function onSoftResCommand(sender, rest)
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not sr or not ns.Get("softres.chat") or not ns.IsLootLead() then return end
+    local name = ns.FullName(sender)
+    if not name or not inGroup(name) then return end
+    local t = GetTime()
+    local key = name:lower()
+    if lastReply[key] and t - lastReply[key] < REPLY_GAP then return end
+    local keep = {}
+    for _, at in ipairs(replies) do
+        if t - at < 60 then keep[#keep + 1] = at end
+    end
+    replies = keep
+    if #replies >= REPLY_PER_MIN then
+        if not warnedBusy or t - warnedBusy >= 60 then
+            warnedBusy = t
+            ns.msg("Viele !sr-Anfragen: weitere bleiben bis zu einer Minute unbeantwortet.")
+        end
+        return
+    end
+    lastReply[key] = t
+    replies[#replies + 1] = t
+    for _, line in ipairs(answer(sr, name, rest or "")) do
+        ns.Say(line, "WHISPER", sender, { ttl = 120 })
+    end
+end
+
+ns.RegisterChatCommand("sr", onSoftResCommand)
+ns.RegisterChatCommand("softres", onSoftResCommand)
+
+---------------------------------------------------------------------------
 -- Import window
 ---------------------------------------------------------------------------
 local function plural(n, one, many) return n == 1 and one or many end
@@ -729,6 +970,26 @@ ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items
     { key = "softres.remindText", type = "text", label = "Zusatz in der Erinnerung", default = "", officer = true,
       tip = "Z. B. Link zur Liste.", validate = cleanRemindText },
 }}
-ns.RegisterSlash("sr", { desc = "Soft-Reserves anzeigen", run = function()
-    if ns.ShowPage then ns.ShowPage("softres") else ns.ToggleSoftResFrame() end
+local SUBWORDS = { pruefen = "check", ["prüfen"] = "check", check = "check", erinnern = "remind", remind = "remind",
+                   posten = "post", post = "post" }
+ns.RegisterSlash("sr", { args = "[pruefen|erinnern|posten]", desc = "Soft-Reserves anzeigen", run = function(rest)
+    local word = (rest or ""):match("^(%S+)")
+    local sub = word and SUBWORDS[word:lower()]
+    if word and not sub then
+        ns.msg("Aufruf: /amisia sr [pruefen|erinnern|posten]")
+        return
+    end
+    if sub == "check" then
+        for _, line in ipairs(ns.SoftResCheckLines()) do ns.msg(line) end
+    elseif sub == "remind" then
+        ns.ConfirmSoftResReminders()
+    elseif sub == "post" then
+        if not ns.IsOfficerView() then ns.msg("Posten nur in der Offiziersansicht.") return end
+        local n, why = ns.PostSoftResSummary()
+        if not n then ns.msg(why) end
+    elseif ns.ShowPage then
+        ns.ShowPage("softres")
+    else
+        ns.ToggleSoftResFrame()
+    end
 end })

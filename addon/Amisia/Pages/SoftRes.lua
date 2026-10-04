@@ -342,6 +342,16 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         f.views.raider:SetPoint("LEFT", f.views.items, "RIGHT", 4, 0)
         f.views.check = W.Chip(f, "Abgleich", 70, function() chooseView("check") end)
         f.views.check:SetPoint("LEFT", f.views.raider, "RIGHT", 4, 0)
+        -- officers: remind and post on the right of the views
+        f.post = W.Button(f, "Im Raid posten", 120, function()
+            local n, why = ns.PostSoftResSummary()
+            if not n and why then ns.msg(why) end
+        end)
+        f.post:SetPoint("TOPRIGHT", 0, -49)
+        f.remind = W.Button(f, "Erinnern", 110, function() ns.ConfirmSoftResReminders() end)
+        f.remind:SetPoint("RIGHT", f.post, "LEFT", -6, 0)
+        W.Tooltip(f.remind, "Erinnern", "Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage.")
+        W.Tooltip(f.post, "Im Raid posten", "Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat.")
         -- column heads
         local head = CreateFrame("Frame", nil, f)
         head:SetHeight(18)
@@ -377,9 +387,16 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
             f.import:Show(); f.clear:Show()
             f.clear:SetEnabled(sr ~= nil)
             f.views.check:Show()
+            local raid = IsInRaid() and sr ~= nil
+            local open = raid and #ns.SoftResReminders() or 0
+            f.remind:SetText(("Erinnern (%d)"):format(open))
+            f.remind:SetEnabled(raid and open > 0)
+            f.post:SetEnabled(raid)
+            f.remind:Show(); f.post:Show()
         else
             f.import:Hide(); f.clear:Hide()
             f.views.check:Hide()
+            f.remind:Hide(); f.post:Hide()
         end
         local shown = view
         if shown == "check" and not officer then shown = "items" end

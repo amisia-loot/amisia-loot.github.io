@@ -102,7 +102,15 @@ end
 -- The chat lockdown of a boss fight on the Forever client: STUB.chatLock. The client announces a
 -- change with ADDON_RESTRICTION_STATE_CHANGED (a test fires it through STUB.fire).
 _G.C_ChatInfo = { InChatMessagingLockdown = function() return STUB.chatLock and true or false end }
-_G.UnitIsUnit = function(a, b) return a == b end
+-- "raid<STUB.playerRaidIndex>" is the player, as the raid unit of one's own character is.
+_G.UnitIsUnit = function(a, b)
+    if a == b then return true end
+    local me = STUB.playerRaidIndex and ("raid" .. STUB.playerRaidIndex)
+    return me ~= nil and ((a == me and b == "player") or (a == "player" and b == me))
+end
+-- The loot method: STUB.lootMethod (Enum.LootMethod.Masterlooter = 2) with the master looter's
+-- party (STUB.mlPartyID) and raid index (STUB.mlRaidID).
+_G.C_PartyInfo = { GetLootMethod = function() return STUB.lootMethod or 0, STUB.mlPartyID, STUB.mlRaidID end }
 
 _G.hooksecurefunc = function(a, b, c)
     if type(a) == "string" then
@@ -301,7 +309,7 @@ _G.LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d."
 _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
-_G.Enum = { TooltipDataType = { Item = 0 } }
+_G.Enum = { TooltipDataType = { Item = 0 }, LootMethod = { Freeforall = 0, Masterlooter = 2 } }
 
 local QCOLOR = { [2] = "ff1eff00", [3] = "ff0070dd", [4] = "ffa335ee", [5] = "ffff8000" }
 function STUB.link(id, name, q)
