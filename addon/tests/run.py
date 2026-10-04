@@ -38,6 +38,8 @@ def fresh(source=''):
     pre = PRELOAD.match(source)
     if pre:
         lua.execute(pre.group(1))
+    # the addon folder, for a test that loads one file again (a /reload of it)
+    lua.globals().ADDON_DIR = ADDON
     ns = lua.eval('{}')
     loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
     for name in toc_files():

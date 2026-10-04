@@ -111,6 +111,9 @@ end
 -- The loot method: STUB.lootMethod (Enum.LootMethod.Masterlooter = 2) with the master looter's
 -- party (STUB.mlPartyID) and raid index (STUB.mlRaidID).
 _G.C_PartyInfo = { GetLootMethod = function() return STUB.lootMethod or 0, STUB.mlPartyID, STUB.mlRaidID end }
+-- Group loot: the item link of a roll (STUB.rolls[rollID]).
+STUB.rolls = {}
+_G.GetLootRollItemLink = function(rollID) return STUB.rolls[rollID] end
 
 _G.hooksecurefunc = function(a, b, c)
     if type(a) == "string" then
@@ -280,6 +283,12 @@ _G.UIParent = CreateFrame("Frame", "UIParent")
 _G.GameTooltip = CreateFrame("GameTooltip", "GameTooltip")
 _G.ItemRefTooltip = CreateFrame("GameTooltip", "ItemRefTooltip")
 _G.UISpecialFrames = {}
+-- The client's four group loot roll frames, each with its item icon and the rollID it shows.
+_G.NUM_GROUP_LOOT_FRAMES = 4
+for i = 1, 4 do
+    local f = CreateFrame("Frame", "GroupLootFrame" .. i, UIParent)
+    f.IconFrame = CreateFrame("Button", nil, f)
+end
 _G.StaticPopupDialogs = {}
 -- The last dialog shown; STUB.acceptPopup() presses its first button.
 _G.StaticPopup_Show = function(which, a1, a2, data)
