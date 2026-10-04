@@ -857,6 +857,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         end
         -- awards of 1.4 get their ids, and the export marks of 1.4 are carried over
         ns.MigrateAwards(DB)
+        -- soft-reserve lists of 1.5 get data model 2
+        if ns.MigrateSoftRes then ns.MigrateSoftRes(DB) end
         -- forget the export marks of sessions that were dropped or deleted
         local ids = {}
         for _, s in ipairs(DB.sessions) do ids[s.id] = true end

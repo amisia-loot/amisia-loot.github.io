@@ -68,3 +68,45 @@ assert(NS.SoftResFrame.resultText:GetText():find("1 Reservierungen", 1, true) an
 assert(#NS.ReservedBy(32235) == 1)
 NS.SoftResFrame.clearBtn:Click()
 assert(#NS.ReservedBy(32235) == 0)
+
+-- tooltip in a group: only reservers from the group, the count, "du" for oneself, the rest counted
+NS.SetSoftRes("Fraktur 32235\nVuloo 32235\nVuloo 32235\nAnna 32235\nBob 32235\n")
+STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur-Realm", class = "SHAMAN" } }
+lines = {}
+GameTooltip.GetItem = function() return "Cursed Vision of Sargeras", link end
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(lines[1] == "Reserviert: Fraktur, du x2 (+2 außerhalb)", tostring(lines[1]))
+-- a second call for the same build adds nothing
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(#lines == 1, "one line per tooltip build: " .. #lines)
+-- a cleared tooltip gets it again
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(#lines == 2)
+-- the setting off: everyone
+assert(NS.Set("softres.tooltipGroup", false))
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(lines[3] == "Reserviert: Anna, Bob, Fraktur, du x2", tostring(lines[3]))
+NS.Reset("softres.tooltipGroup")
+-- alone: everyone
+STUB.roster = {}
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(lines[4] == "Reserviert: Anna, Bob, Fraktur, du x2", tostring(lines[4]))
+-- in a group without any reserver from it
+STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Chorf", class = "WARRIOR" } }
+NS.SetSoftRes("Anna 32235\nBob 32235\n")
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+assert(lines[5] and lines[5]:find("+2 außerhalb", 1, true), tostring(lines[5]))
+-- an error in the body goes to the error handler and breaks nothing
+GameTooltip.AddLine = function() error("kaputt") end
+local errh, caught = geterrorhandler, nil
+geterrorhandler = function() return function(e) caught = e end end
+GameTooltip.scripts.OnTooltipCleared(GameTooltip)
+local ok = pcall(GameTooltip.scripts.OnTooltipSetItem, GameTooltip)
+geterrorhandler = errh
+assert(ok, "the hook does not raise")
+assert(caught and tostring(caught):find("kaputt", 1, true), tostring(caught))

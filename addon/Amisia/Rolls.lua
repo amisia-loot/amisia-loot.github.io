@@ -33,9 +33,19 @@ local function kindOf(low, high)
     return nil
 end
 
+-- Whether name reserved the item of round r: exactly, else over SameName ("Vulo" on the list,
+-- the roll from "Vulo Sturmwind").
+local function reservedIn(r, name)
+    if r.reservedSet[name] then return true end
+    for _, n in ipairs(r.reserved or {}) do
+        if ns.SameName(n, name) then return true end
+    end
+    return false
+end
+
 local RANK = { MS = 2, OS = 1 }
 local function rankOf(r, e)
-    if r.reservedSet[e.name] then return 3 end
+    if reservedIn(r, e.name) then return 3 end
     return RANK[e.kind] or 0
 end
 
@@ -225,7 +235,7 @@ ns.OnEvent("CHAT_MSG_SYSTEM", onSystem)
 function ns.RollKind(item, name)
     local r = (current and current.item == item) and current or ((last and last.item == item) and last or nil)
     if not r or (time() - r.started) > KEEP then return "-" end
-    if r.reservedSet[name] then return "SR" end
+    if reservedIn(r, name) then return "SR" end
     local e = r.rolls[name]
     return e and e.kind or "-"
 end
