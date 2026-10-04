@@ -253,3 +253,12 @@ assert(scanned and scanned.STR == 12 and scanned.DPS == 21.5 and scanned.HIT == 
 STUB.tick(0.2)
 assert(#STUB.requested == 0, "no request for a scanned item")
 NS.GEAR.ST = nil
+
+-- the player's own column plans for the player's level, not the column's upper end
+_G.UnitClass = function() return "Krieger", "WARRIOR" end
+_G.UnitLevel = function() return 13 end
+assert(Gear.ColumnLevel(Gear.ColumnOf(13), "WARRIOR") == 13, "own column capped at own level")
+assert(Gear.ColumnLevel(Gear.ColumnOf(13), "MAGE") == 14, "another class keeps the upper end")
+assert(Gear.ColumnLevel(Gear.ColumnOf(20), "WARRIOR") == 24, "other columns keep the upper end")
+_G.UnitLevel = function() return 14 end
+assert(Gear.ColumnLevel(Gear.ColumnOf(14), "WARRIOR") == 14)

@@ -49,12 +49,22 @@ function Gear.ColumnOf(level)
     return #Gear.COLUMNS
 end
 
+-- The level a column is planned for: its upper end, but in the column the player is in, the
+-- player's own level, so nothing shows that needs a level (or a quest) they have not reached yet.
+function Gear.ColumnLevel(col, class)
+    local lo, hi = Gear.COLUMNS[col][1], Gear.COLUMNS[col][2]
+    local my = UnitLevel and UnitLevel("player") or 0
+    local _, myClass = UnitClass("player")
+    if class == myClass and my >= lo and my < hi then return my end
+    return hi
+end
+
 local function opts(col)
     local g = settings()
     local spec = g.specs[g.class] or (Gear.Specs(g.class)[1] or {}).key
     return {
         class = g.class, spec = spec, kind = ns.Get("gear.kind"), faction = g.faction ~= "both" and g.faction or nil,
-        sources = g.sources, level = Gear.COLUMNS[col][2],
+        sources = g.sources, level = Gear.ColumnLevel(col, g.class),
     }
 end
 
@@ -462,7 +472,8 @@ local function fillList()
     local res = results[g.col]
     local o = opts(g.col)
     local lo, hi = Gear.COLUMNS[g.col][1], Gear.COLUMNS[g.col][2]
-    colLabel:SetText(lo == hi and ("Level " .. lo) or ("Level " .. lo .. "-" .. hi))
+    colLabel:SetText((lo == hi and ("Level " .. lo) or ("Level " .. lo .. "-" .. hi))
+        .. (o.level < hi and (" |cff8f86a3(bis Level %d, deine Stufe)|r"):format(o.level) or ""))
     for r, slot in ipairs(Gear.SLOTS) do
         local b = listRows[r]
         local list = res and res[slot.key]
