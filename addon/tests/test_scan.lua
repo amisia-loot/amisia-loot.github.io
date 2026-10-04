@@ -105,3 +105,12 @@ STUB.fire("ITEM_DATA_LOAD_RESULT", 121, false)
 STUB.fire("ITEM_DATA_LOAD_RESULT", 122, false)
 assert(not NS.ScanRunning(), "the list scan ends when every id answered")
 NS.GEAR = nil
+
+-- the retry rate holds while the retry runs, a tick does not put the full rate back
+AmisiaDB.scan.retry = {}
+for i = 6000, 6099 do AmisiaDB.scan.retry[#AmisiaDB.scan.retry + 1] = i end
+assert(NS.ScanRetry()); STUB.requested = {}
+STUB.tick(0.1); assert(#STUB.requested <= 3, "slow retry rate: " .. #STUB.requested)
+assert(AmisiaDB.scan.rate == 25)
+NS.ScanCommand("stop")
+assert(AmisiaDB.scan.rate == 100, "rate restored after stop")

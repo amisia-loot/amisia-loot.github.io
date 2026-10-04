@@ -92,7 +92,10 @@ function ns.AwardCommand(rest)
         ns.msg(a and ("Vergabe entfernt: Item %d an %s."):format(a.item, a.name) or "Keine Vergabe in der laufenden Aufnahme.")
         return
     end
-    local name, tail = rest:match("^(%S+)%s*(.*)$")
+    -- the name runs up to the item link or the item id, so a Forever surname fits
+    local name, tail = rest:match("^(.-)%s*(|c.*)$")
+    if not name then name, tail = rest:match("^(%D-)%s+(%d.*)$") end
+    if not name then name, tail = rest:match("^(%S+)%s*(.*)$") end
     if not name or name == "" then
         ns.msg("Aufruf: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]")
         return

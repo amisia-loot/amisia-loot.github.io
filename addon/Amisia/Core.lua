@@ -3,7 +3,7 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.3.0"
+ns.VERSION = "1.4.0"
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
@@ -376,7 +376,7 @@ end
 function ns.InGroup(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        if n and (n == name or n:match("^([^%-]+)") == name) then return true, class end
+        if n and ns.SameName(n, name) then return true, class end
     end
     return false
 end

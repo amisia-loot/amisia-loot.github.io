@@ -17,6 +17,8 @@ end
 -- as exported from then on.
 function ns.ShowExport(latestOnly)
     ns.ShowPage("export")
+    -- hidden from raiders: nothing is shown, so nothing counts as exported
+    if ns.CurrentPage() ~= "export" then return end
     local src, list = ns.Sessions(), {}
     local onlyNew = false
     if latestOnly then
@@ -44,7 +46,6 @@ function ns.ShowExport(latestOnly)
     if onlyNew then
         ns.msg(("Export: %d neue oder geänderte Raid(s)%s."):format(#list, ns.Bank() and " und die Gildenbank" or ""))
     end
-    -- the page may not exist yet when the export page is hidden from a raider
     if area then
         area.box:SetFocus()
         area.box:HighlightText()

@@ -53,6 +53,7 @@ end
 
 local function changed()
     if ns.OnRollChanged then ns.OnRollChanged(current) end
+    if ns.CurrentPage and ns.CurrentPage() == "rolls" then ns.Refresh() end
 end
 
 local function finish()

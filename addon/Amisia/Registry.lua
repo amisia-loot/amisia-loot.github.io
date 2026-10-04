@@ -125,7 +125,7 @@ local function normalize(it, v)
         return type(v) == "boolean", v
     elseif t == "slider" then
         local n = tonumber(v)
-        if not n or n < it.min or n > it.max then return false end
+        if not n or n ~= n or n < it.min or n > it.max then return false end
         local step = it.step or 1
         return true, it.min + math.floor((n - it.min) / step + 0.5) * step
     elseif t == "time" then

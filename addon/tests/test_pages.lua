@@ -56,3 +56,28 @@ local link = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 assert(NS.StartRoll(link, 5)); NS.StopRoll()
 assert(#NS.RollHistory() >= 1)
 NS.ShowPage("rolls")
+
+-- the soft-reserves page fills its list without losing the row text
+local errs = {}
+local oldHandler = geterrorhandler
+_G.geterrorhandler = function() return function(e) errs[#errs + 1] = e end end
+NS.SetSoftRes("Vuloo " .. link .. "\nFraktur 32235\n")
+NS.ShowPage("softres"); NS.Refresh(); NS.Refresh()
+assert(#errs == 0, "softres page: " .. tostring(errs[1]))
+_G.geterrorhandler = oldHandler
+NS.ClearSoftRes()
+
+-- a raider's /amisia export shows nothing, so nothing is marked as exported
+NS.Set("ui.view", "raider")
+AmisiaDB.exported = {}
+local before = NS.ExportState(NS.Active())
+assert(before == "new")
+NS.ShowExport(true)
+assert(NS.ExportState(NS.Active()) == before, "raider export marks nothing")
+NS.Reset("ui.view")
+
+-- the quick menu closes on a second click from the same owner
+local m = NS.W.Menu(UIParent, { { "Eins", function() end } })
+assert(m:IsShown())
+NS.W.Menu(UIParent, { { "Eins", function() end } })
+assert(not m:IsShown(), "second click closes the menu")

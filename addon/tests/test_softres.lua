@@ -27,6 +27,9 @@ assert(n == 4 and #bad == 1 and bad[1] == "Nobody", "plain lines: " .. n .. " " 
 assert(#byItem[32235] == 2 and byItem[32235][1] == "Chorf" and byItem[32235][2] == "Fraktur", "sorted")
 assert(byItem[32837][2] == "Vuloo" and byItem[32837][1] == "Anna")
 assert(NS.ParseSoftRes("") and select(2, NS.ParseSoftRes("")) == 0)
+-- two numbers on a line are no name with one item
+byItem, n, bad = NS.ParseSoftRes("Amy 32235 32236\nBob: 30000, 30001\nAmy Smith 32235\n")
+assert(n == 1 and #bad == 2 and byItem[32235][1] == "Amy Smith", "junk names: " .. n .. " " .. #bad)
 
 -- storage
 local count, badLines = NS.SetSoftRes("Chorf " .. link)

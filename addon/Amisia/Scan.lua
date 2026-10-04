@@ -30,7 +30,8 @@ local function scanDB()
     local s = AmisiaDB.scan
     s.items = s.items or {}
     s.retry = s.retry or {}
-    s.rate = ns.Get("tools.scanRate") or DEFAULT_RATE
+    -- a retry run slows the rate down until it ends; keep that instead of the setting
+    if not savedRate then s.rate = ns.Get("tools.scanRate") or DEFAULT_RATE end
     s.count = s.count or 0
     return s
 end

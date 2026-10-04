@@ -156,7 +156,13 @@ function W.TimeBox(parent, width, onCommit)
         if onCommit then onCommit(self:GetText()) end
         self.committing = false
     end
-    e:SetScript("OnEnterPressed", function(self) commit(self); self:ClearFocus() end)
+    e:SetScript("OnEnterPressed", function(self)
+        commit(self)
+        -- losing the focus would commit the same text a second time
+        self.committing = true
+        self:ClearFocus()
+        self.committing = false
+    end)
     e:SetScript("OnEditFocusLost", commit)
     e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     return e
@@ -303,6 +309,10 @@ end
 -- or Escape closes it too.
 local menu
 function W.Menu(owner, entries)
+    if menu and menu:IsShown() and menu.owner == owner then
+        menu:Hide()
+        return menu
+    end
     if not menu then
         menu = CreateFrame("Frame", "AmisiaMenu", UIParent)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -313,7 +323,8 @@ function W.Menu(owner, entries)
         menu.buttons = {}
         if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaMenu") end
         menu:SetScript("OnUpdate", function(self, elapsed)
-            if MouseIsOver and (MouseIsOver(self) or (self.owner and MouseIsOver(self.owner))) then
+            local owner = self.owner ~= UIParent and self.owner or nil
+            if self:IsMouseOver() or (owner and owner:IsMouseOver()) then
                 self.away = 0
             else
                 self.away = (self.away or 0) + (elapsed or 0)
@@ -346,7 +357,14 @@ function W.Menu(owner, entries)
     for i = #entries + 1, #menu.buttons do menu.buttons[i]:Hide() end
     menu:SetSize(182, 12 + #entries * 20)
     menu:ClearAllPoints()
-    menu:SetPoint("TOPRIGHT", owner, "BOTTOMLEFT", 0, 0)
+    if owner == UIParent and GetCursorPosition then
+        -- no button to hang it on (the compartment entry with the minimap button hidden): at the cursor
+        local x, y = GetCursorPosition()
+        local s = UIParent:GetEffectiveScale()
+        menu:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", x / s, y / s)
+    else
+        menu:SetPoint("TOPRIGHT", owner, "BOTTOMLEFT", 0, 0)
+    end
     menu:Show()
     return menu
 end

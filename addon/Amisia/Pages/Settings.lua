@@ -92,9 +92,8 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
         return f
     end,
     refresh = function()
-        local y = 0
-        for _, h in pairs(headers) do h:Hide() end
-        for _, r in pairs(rows) do r:Hide() end
+        -- hide only what this pass leaves out: hiding a row would take the focus from its edit box
+        local y, placed = 0, {}
         for _, section in ipairs(ns.schema) do
             if ns.Visible(section) then
                 local shown = {}
@@ -111,6 +110,7 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
                     h:ClearAllPoints()
                     h:SetPoint("TOPLEFT", 0, -y)
                     h:Show()
+                    placed[h] = true
                     y = y + 24
                     for _, it in ipairs(shown) do
                         local r = rows[it.key] or makeRow(it)
@@ -118,11 +118,14 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
                         r:SetPoint("TOPLEFT", 0, -y)
                         fillRow(r)
                         r:Show()
+                        placed[r] = true
                         y = y + ROW_H
                     end
                     y = y + 12
                 end
             end
         end
+        for _, h in pairs(headers) do if not placed[h] then h:Hide() end end
+        for _, r in pairs(rows) do if not placed[r] then r:Hide() end end
         child:SetHeight(math.max(10, y))
     end }

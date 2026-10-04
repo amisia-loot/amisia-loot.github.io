@@ -84,6 +84,8 @@ function ns.ParseSoftRes(text)
                 name, item = n, tonumber(num)
             end
             name = name and name:gsub("[%s,;:\t]+$", "")
+            -- "Amy 32235 32236" or "Bob: 1, 2" is no name with one item: names hold no digits or separators
+            if name and name:find("[%d,;:\t]") then name = nil end
             if not add(item, shortName(name)) then bad[#bad + 1] = line end
         end
     end
@@ -95,12 +97,14 @@ function ns.SetSoftRes(text)
     local byItem, count, bad = ns.ParseSoftRes(text)
     AmisiaDB.softres = { date = date("%Y-%m-%d"), byItem = byItem, raw = text or "", count = count }
     ns.MarkLootButtons()
+    if ns.Refresh then ns.Refresh() end
     return count, bad
 end
 
 function ns.ClearSoftRes()
     AmisiaDB.softres = nil
     ns.MarkLootButtons()
+    if ns.Refresh then ns.Refresh() end
 end
 
 function ns.ReservedBy(item)

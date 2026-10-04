@@ -158,6 +158,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetHeight = function(self, h) self._h = h end
     f.GetChecked = function(self) return self.checked end
     f.HasFocus = function() return false end
+    f.IsMouseOver = function() return false end
     f.SetOwner = NOOP
     f.AddLine = NOOP
     f.AddDoubleLine = NOOP

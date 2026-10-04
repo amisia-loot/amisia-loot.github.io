@@ -105,7 +105,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
                 ns.msg("Zuerst Raids in der Liste ankreuzen.")
                 return
             end
-            StaticPopup_Show("AMISIA_DELETE")
+            -- the dialog strata is below the main window's; lift it so it is not hidden behind
+            local d = StaticPopup_Show("AMISIA_DELETE")
+            if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
         end)
         f.del:SetPoint("TOPRIGHT", f.list, "BOTTOMRIGHT", 0, -4)
         f.all = W.Button(f, "Alle wählen", 100, function()

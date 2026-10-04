@@ -75,6 +75,12 @@ NS.AwardCommand("Fraktur 32235"); assert(s.awards[5].kind == "-" and s.awards[5]
 NS.AwardCommand("Fraktur"); assert(#s.awards == 5, "missing item refused")
 NS.AwardCommand(""); assert(#s.awards == 5)
 NS.AwardCommand("unaward"); assert(#s.awards == 4)
+-- a Forever surname: the name runs up to the item
+STUB.roster[2].name = "Fraktur Stein"
+NS.AwardCommand("Fraktur Stein 32235 ms"); assert(s.awards[5].name == "Fraktur Stein" and s.awards[5].kind == "MS", tostring(s.awards[5].name))
+assert(NS.InGroup("Fraktur Stein") and NS.InGroup("Fraktur"), "first name and full name are in the group")
+NS.AwardCommand("unaward"); assert(#s.awards == 4)
+STUB.roster[2].name = "Fraktur"
 
 -- roll context feeds the kind
 NS.RollKind = function(item, name) return item == 32235 and name == "Fraktur" and "MS" or "-" end

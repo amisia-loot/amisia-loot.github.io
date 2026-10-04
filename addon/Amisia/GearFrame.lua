@@ -610,7 +610,12 @@ function ns.GearRefresh(recompute)
 end
 
 -- While item data arrives, redraw at most once a second.
+local pagePending
 Gear.OnData(function()
+    if not pagePending and ns.CurrentPage and ns.CurrentPage() == "gear" then
+        pagePending = true
+        C_Timer.After(1, function() pagePending = false; ns.Refresh() end)
+    end
     if not F or not F:IsShown() or refreshPending then return end
     refreshPending = true
     C_Timer.After(1, function()
@@ -766,10 +771,15 @@ function ns.GearMyUpgrades()
         faction = g.faction ~= "both" and g.faction or nil, sources = g.sources, level = UnitLevel("player") or 1,
     }
     local res = Gear.Best(o)
-    local out = {}
+    local out, worn = {}, {}
+    -- a ring or trinket worn in the other slot is no upgrade for this one
+    for _, slot in ipairs(Gear.SLOTS) do
+        local link = GetInventoryItemLink and GetInventoryItemLink("player", slot.inv)
+        if link then worn[ns.ItemID(link) or 0] = true end
+    end
     for _, slot in ipairs(Gear.SLOTS) do
         local e = res[slot.key] and res[slot.key][1]
-        if e then
+        if e and not worn[e[1]] then
             local link = GetInventoryItemLink and GetInventoryItemLink("player", slot.inv)
             local mine = link and Gear.ScoreLink(link, slot.key, o) or 0
             if (not link or ns.ItemID(link) ~= e[1]) and e[2] - mine > math.max(1, math.abs(mine) * 0.02) then
