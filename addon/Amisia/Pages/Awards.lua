@@ -9,6 +9,9 @@ local KINDS = { "MS", "OS", "SR", "-" }
 local MAX_SUGGEST = 3
 local TO_TEXT = { bank = "Bank", de = "Entzaubern" }
 
+-- Forever has no GetItemInfo global; both clients have C_Item.
+local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+
 local page
 local chosenRaid        -- session id, "all", or nil for the default
 local chosenId          -- id of the award in the edit panel
@@ -74,6 +77,15 @@ end
 local function itemLink(id)
     local _, link = GetItemInfo(id)
     return link or ("item:" .. tostring(id))
+end
+
+-- Puts a link into the chat the way the client does: ChatFrameUtil.InsertLink, else the old global.
+local function insertLink(link)
+    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+        return ChatFrameUtil.InsertLink(link)
+    elseif type(ChatEdit_InsertLink) == "function" then
+        return ChatEdit_InsertLink(link)
+    end
 end
 
 -- The member record of a name: the exact spelling, else the same character by ns.SameName.
@@ -189,6 +201,19 @@ local function edit(fields)
     if not ok and why then ns.msg(why) end
 end
 
+-- A note typed into the edit panel but not committed yet belongs to the award it was typed for:
+-- before another award is chosen it is committed (keep) or, before a deletion, thrown away.
+local function settleNote(O, keep)
+    local box = O and O.edit and O.edit.note
+    if not box or not box:HasFocus() then return end
+    if keep then
+        box:ClearFocus()
+    else
+        local escape = box:GetScript("OnEscapePressed")
+        if escape then escape(box) else box:ClearFocus() end
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Officer view
 ---------------------------------------------------------------------------
@@ -197,17 +222,19 @@ local function buildOfficer(parent)
     O:SetAllPoints(parent)
 
     O.raid = W.Picker(O, 210, function(v)
+        settleNote(O, true)
         chosenRaid = v
         chosenId = nil
         ns.Refresh()
     end)
     O.raid:SetPoint("TOPLEFT", 0, -2)
-    O.search = W.LineEdit(O, 200, function(text)
+    -- the head line fills the 602 px of the content: raid 210, search 172, two buttons of 100
+    O.search = W.LineEdit(O, 172, function(text)
         query = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
     end)
     O.search:SetPoint("LEFT", O.raid, "RIGHT", 8, 0)
-    O.searchHint = W.Text(O, "GameFontDisableSmall", 190)
+    O.searchHint = W.Text(O, "GameFontDisableSmall", 160)
     O.searchHint:SetPoint("LEFT", O.search, "LEFT", 6, 0)
     O.searchHint:SetText("Suche: Name oder Item")
     O.search:HookScript("OnEditFocusGained", function() O.searchHint:Hide() end)
@@ -266,9 +293,10 @@ local function buildOfficer(parent)
             local e = self.item
             if not e then return end
             if IsShiftKeyDown and IsShiftKeyDown() then
-                if type(ChatEdit_InsertLink) == "function" then ChatEdit_InsertLink(itemLink(e.a.item)) end
+                insertLink(itemLink(e.a.item))
                 return
             end
+            if e.a.id ~= chosenId then settleNote(O, true) end
             chosenId = e.a.id
             ns.Refresh()
         end)
@@ -321,7 +349,8 @@ local function buildOfficer(parent)
     local noteLab = W.Text(E, "GameFontHighlightSmall", 32)
     noteLab:SetPoint("LEFT", prev, "RIGHT", 12, 0)
     noteLab:SetText("Notiz")
-    E.note = W.LineEdit(E, 180, function(text) edit({ note = text }) end)
+    -- up to 6 px before the panel's right edge (602 px of content)
+    E.note = W.LineEdit(E, 150, function(text) edit({ note = text }) end)
     E.note:SetPoint("LEFT", noteLab, "RIGHT", 4, 0)
 
     E.bank = W.Button(E, "Bank", 90, function()
@@ -339,6 +368,7 @@ local function buildOfficer(parent)
     E.del = W.Button(E, "Löschen", 90, function()
         local s, a = editTarget()
         if not s then return end
+        settleNote(O, false)
         local ok, why = ns.DeleteAward(s, a.id)
         if not ok and why then ns.msg(why) end
         chosenId = nil
@@ -525,9 +555,7 @@ local function buildRaider(parent)
         r.kind = col(r, 510, 40, nil, "GameFontHighlightSmall")
         r:SetScript("OnClick", function(self)
             local e = self.item
-            if e and IsShiftKeyDown and IsShiftKeyDown() and type(ChatEdit_InsertLink) == "function" then
-                ChatEdit_InsertLink(itemLink(e.item))
-            end
+            if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.item)) end
         end)
         r:SetScript("OnEnter", function(self)
             local e = self.item
@@ -559,6 +587,7 @@ function ns.AwardsPageFrame() return page end
 -- Opens the page on one raid.
 function ns.ShowAwards(sessionId)
     if sessionId then
+        settleNote(page and page.officer, true)
         chosenRaid = sessionId
         chosenId = nil
     end

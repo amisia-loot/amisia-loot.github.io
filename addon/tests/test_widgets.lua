@@ -100,6 +100,48 @@ AmisiaPicker.list.scripts.OnMouseWheel(AmisiaPicker.list, -1)
 assert(prow[1].text:GetText() == "Name 2", "the wheel scrolls the list")
 prow[1]:Click(); assert(picked == 2)
 
+-- a refresh of the owner keeps the scroll position and the filter of the open panel
+local same = {}
+for i = 1, 20 do same[i] = { value = i, text = "Name " .. i } end
+p2:Click()
+AmisiaPicker.list.scripts.OnMouseWheel(AmisiaPicker.list, -1)
+AmisiaPicker.list.scripts.OnMouseWheel(AmisiaPicker.list, -1)
+assert(prow[1].text:GetText() == "Name 3")
+p2:SetValues(same)
+assert(AmisiaPicker:IsShown() and prow[1].text:GetText() == "Name 3", "same values: the scroll stays, got " .. tostring(prow[1].text:GetText()))
+filter:SetText("Name 1"); filter.scripts.OnTextChanged(filter, true)
+assert(prow[1].text:GetText() == "Name 1" and prow[2].text:GetText() == "Name 10", "a new filter starts at the top")
+AmisiaPicker.list.scripts.OnMouseWheel(AmisiaPicker.list, -1)
+p2:SetValues(same)
+assert(filter:GetText() == "Name 1" and prow[1].text:GetText() == "Name 10", "the filter and the scroll stay")
+-- changed values while open: the list follows, the position is kept as far as it goes
+local fewer = {}
+for i = 1, 19 do fewer[i] = { value = i, text = "Name " .. i } end
+p2:SetValues(fewer)
+assert(prow[1].text:GetText() == "Name 10" and prow[#prow].text:GetText() == "Name 17", "the list follows, the position kept")
+filter:SetText(""); filter.scripts.OnTextChanged(filter, true)
+assert(prow[1].text:GetText() == "Name 1")
+p2:Click()
+assert(not AmisiaPicker:IsShown())
+
+-- the panel opens above the window its widget lives in, even above a top-level dialog
+local dlg = CreateFrame("Frame", "AmisiaTestDialog", UIParent)
+dlg:SetFrameStrata("FULLSCREEN_DIALOG")
+dlg:SetToplevel(true)
+dlg:SetFrameLevel(40)
+local inner = CreateFrame("Frame", nil, dlg)
+local p3 = W.Picker(inner, 150, function() end)
+p3:SetValues({ { value = 1, text = "Eins" } })
+AmisiaPicker.raised = 0
+p3:Click()
+assert(AmisiaPicker:IsShown() and AmisiaPicker.owner == p3)
+assert(AmisiaPicker.strata == "FULLSCREEN_DIALOG", tostring(AmisiaPicker.strata))
+assert(AmisiaPicker.toplevel == true, "the panel is top-level")
+assert((AmisiaPicker.raised or 0) > 0, "the panel is raised on open")
+assert(AmisiaPicker:GetFrameLevel() > p3:GetFrameLevel() and AmisiaPicker:GetFrameLevel() > dlg:GetFrameLevel(),
+    ("the panel's level %d is above the dialog %d and the widget %d"):format(AmisiaPicker:GetFrameLevel(), dlg:GetFrameLevel(), p3:GetFrameLevel()))
+p3:Click()
+
 local filled = {}
 local list = W.List(root, 3, 20, function(r) r.text = W.Text(r) end, function(r, item) r.text:SetText(item); filled[#filled + 1] = item end)
 list:SetItems({ "a", "b", "c", "d", "e" })

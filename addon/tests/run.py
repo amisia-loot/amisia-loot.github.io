@@ -1,7 +1,9 @@
 """Runs every addon/tests/test_*.lua under Lua 5.1 with the small client stub.
 
-Each test file gets a fresh runtime: the stub, then every addon file in TOC order,
-then ADDON_LOADED. Inside a test `NS` is the addon namespace and `AmisiaDB` the saved table.
+Each test file gets a fresh runtime: the stub, then the test's preload block, then every addon
+file in TOC order, then ADDON_LOADED. A preload block is a comment at the very top of a test file,
+"--[[preload" up to "]]", run before the addon loads (to take away globals a client lacks).
+Inside a test `NS` is the addon namespace and `AmisiaDB` the saved table.
 """
 import glob
 import os
@@ -26,10 +28,16 @@ def toc_files():
     return out
 
 
-def fresh():
+PRELOAD = re.compile(r'\A--\[\[preload\n(.*?)\n\]\]', re.S)
+
+
+def fresh(source=''):
     lua = LuaRuntime(unpack_returned_tuples=True)
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
+    pre = PRELOAD.match(source)
+    if pre:
+        lua.execute(pre.group(1))
     ns = lua.eval('{}')
     loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
     for name in toc_files():
@@ -50,10 +58,11 @@ def main(argv):
         base = os.path.basename(path)
         if only and only not in base:
             continue
-        lua = fresh()
+        with open(path, encoding='utf-8') as fh:
+            source = fh.read()
+        lua = fresh(source)
         try:
-            with open(path, encoding='utf-8') as fh:
-                lua.execute(fh.read())
+            lua.execute(source)
             print('ok   ', base)
         except Exception as exc:  # noqa: BLE001 - report every failure the same way
             failed += 1

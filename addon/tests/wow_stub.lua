@@ -76,6 +76,7 @@ _G.C_Item = {
     GetItemInfo = _G.GetItemInfo,
     GetItemInfoInstant = _G.GetItemInfoInstant,
     RequestLoadItemDataByID = function(id) STUB.requested[#STUB.requested + 1] = id end,
+    GetItemIconByID = function(x) local it = STUB.items[itemId(x)]; return it and it.icon or 134 end,
 }
 _G.GetNumLootItems = function() return #STUB.loot end
 _G.GetLootSlotLink = function(s) return STUB.loot[s] and STUB.loot[s].link end
@@ -83,9 +84,17 @@ _G.GetLootSlotInfo = function(s) local l = STUB.loot[s]; return "icon", l and l.
 _G.GetLootSourceInfo = function(s) local l = STUB.loot[s]; return l and l.src or "Creature-0-1-1-1-22917-1", l and l.qty or 1 end
 _G.GetMasterLootCandidate = function(slot, i) return STUB.roster[i] and STUB.roster[i].name end
 _G.GiveMasterLoot = function(slot, i) STUB.given = { slot = slot, i = i } end
-_G.HandleModifiedItemClick = function(link) STUB.modifiedClick = link end
--- The chat's link insertion: remembers the last link handed to it.
-_G.ChatEdit_InsertLink = function(link) STUB.inserted = link; return true end
+-- The chat's link insertion: remembers the last link handed to it. Both clients call
+-- ChatFrameUtil.InsertLink; ChatEdit_InsertLink is only the deprecated alias of the same function,
+-- which a client without the deprecation fallbacks lacks (a test's preload may remove it).
+_G.ChatFrameUtil = { InsertLink = function(link) STUB.inserted = link; return true end }
+_G.ChatEdit_InsertLink = ChatFrameUtil.InsertLink
+-- A modified click on an item: shift puts the link into the chat, as the client does.
+_G.HandleModifiedItemClick = function(link)
+    STUB.modifiedClick = link
+    if IsShiftKeyDown() then return ChatFrameUtil.InsertLink(link) end
+    return false
+end
 _G.SendChatMessage = function(text, chan) STUB.chat[#STUB.chat + 1] = { text = text, chan = chan } end
 
 _G.hooksecurefunc = function(a, b, c)
@@ -126,13 +135,37 @@ function STUB.tick(seconds)
 end
 
 local NOOP = function() end
-local function region()
-    local f = { text = "", shown = true }
+-- Anchors are recorded (points[point] = { rel, relPoint, x, y }, rel nil for the parent), so a test
+-- can lay out a row and check that nothing overlaps or leaves its frame.
+local function setPoint(self, point, a, b, c, d)
+    local rel, relPoint, x, y
+    if type(a) == "table" then
+        rel = a
+        if type(b) == "string" then relPoint, x, y = b, c, d else relPoint, x, y = point, b, c end
+    else
+        relPoint, x, y = point, a, b
+    end
+    self.points = self.points or {}
+    self.points[point] = { rel = rel, relPoint = relPoint, x = x or 0, y = y or 0 }
+end
+local function setAllPoints(self, rel)
+    self.points = { TOPLEFT = { rel = rel, relPoint = "TOPLEFT", x = 0, y = 0 },
+                    BOTTOMRIGHT = { rel = rel, relPoint = "BOTTOMRIGHT", x = 0, y = 0 } }
+end
+local function region(parent)
+    local f = { text = "", shown = true, parent = parent }
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
                           "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
                           "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines" }) do
         f[m] = NOOP
     end
+    f.SetPoint = setPoint
+    f.SetAllPoints = setAllPoints
+    f.ClearAllPoints = function(self) self.points = {} end
+    f.SetWidth = function(self, w) self._w = w end
+    f.SetHeight = function(self, h) self._h = h end
+    f.SetSize = function(self, w, h) self._w, self._h = w, h end
+    f.SetTexture = function(self, t) self.texture = t end
     f.SetText = function(self, t) self.text = t end
     f.GetText = function(self) return self.text end
     f.Show = function(self) self.shown = true end
@@ -168,11 +201,19 @@ function _G.CreateFrame(kind, name, parent, template)
     f.IsVisible = f.IsShown
     f.SetText = function(self, t) self.text = t end
     f.GetText = function(self) return self.text end
-    f.CreateFontString = function() return region() end
-    f.CreateTexture = function() return region() end
+    f.CreateFontString = function(self) return region(self) end
+    f.CreateTexture = function(self) return region(self) end
     f.GetParent = function() return parent end
     f.GetName = function() return name end
-    f.GetFrameLevel = function() return 1 end
+    f.SetPoint = setPoint
+    f.SetAllPoints = setAllPoints
+    f.ClearAllPoints = function(self) self.points = {} end
+    -- level, top-level flag and raises are recorded for the stacking tests
+    f.SetFrameLevel = function(self, l) self._level = l end
+    f.GetFrameLevel = function(self) return self._level or (parent and parent.GetFrameLevel and parent:GetFrameLevel() + 1) or 1 end
+    f.SetToplevel = function(self, on) self.toplevel = on and true or false end
+    f.Raise = function(self) self.raised = (self.raised or 0) + 1 end
+    f.GetFrameStrata = function(self) return self.strata or (parent and parent.GetFrameStrata and parent:GetFrameStrata()) or "MEDIUM" end
     f.GetPoint = function(self) return self._point or "CENTER", nil, self._point or "CENTER", self._x or 0, self._y or 0 end
     f.GetWidth = function(self) return self._w or 400 end
     f.GetHeight = function(self) return self._h or 300 end

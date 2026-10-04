@@ -421,6 +421,8 @@ local function pickerPanel()
     if picker then return picker end
     picker = CreateFrame("Frame", "AmisiaPicker", UIParent)
     picker:SetFrameStrata("FULLSCREEN_DIALOG")
+    -- the owner may sit in a top-level dialog of the same strata; the panel must come out on top
+    picker:SetToplevel(true)
     picker:SetClampedToScreen(true)
     picker:EnableMouse(true)
     W.Flat(picker, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
@@ -437,7 +439,7 @@ local function pickerPanel()
     filter:SetTextInsets(4, 4, 0, 0)
     W.Flat(filter, 0, 0, 0, 0.5)
     W.Border(filter, 1, 1, 1, 0.2)
-    filter:SetScript("OnTextChanged", function() picker:Fill() end)
+    filter:SetScript("OnTextChanged", function() picker:Fill(false) end)
     filter:SetScript("OnEscapePressed", function() picker:Hide() end)
     filter:SetScript("OnEnterPressed", function()
         local real, free = {}, nil
@@ -471,8 +473,8 @@ local function pickerPanel()
     picker.list:SetPoint("TOPLEFT", 6, -30)
     picker.list:SetPoint("TOPRIGHT", -6, -30)
 
-    -- the entries the filter leaves, the free entry always last
-    function picker:Fill()
+    -- the entries the filter leaves, the free entry always last; keep holds the scroll position
+    function picker:Fill(keep)
         local owner = self.owner
         if not owner then return end
         local q = (self.filter:GetText() or ""):lower():match("^%s*(.-)%s*$")
@@ -482,7 +484,7 @@ local function pickerPanel()
         end
         if owner.freeText then shown[#shown + 1] = { free = true, text = owner.freeText } end
         self.shown = shown
-        self.list.offset = 0
+        if not keep then self.list.offset = 0 end
         self.list:SetItems(shown)
     end
     -- closes when the mouse stays away for two seconds without the filter in use, or when the
@@ -518,10 +520,19 @@ function W.Picker(parent, width, onPick)
     p.arrow:SetText("v")
     p.onPick = onPick
     p.values = {}
-    -- the list to pick from; freeText names the optional free-text entry at its end
+    -- the list to pick from; freeText names the optional free-text entry at its end. A page
+    -- refresh hands the same list again: the open panel keeps its filter and scroll position.
     function p:SetValues(values, freeText)
-        self.values, self.freeText = values or {}, freeText
-        if picker and picker:IsShown() and picker.owner == self then picker:Fill() end
+        values = values or {}
+        local same = freeText == self.freeText and #values == #self.values
+        if same then
+            for i, e in ipairs(values) do
+                local o = self.values[i]
+                if e.value ~= o.value or e.text ~= o.text then same = false break end
+            end
+        end
+        self.values, self.freeText = values, freeText
+        if not same and picker and picker:IsShown() and picker.owner == self then picker:Fill(true) end
     end
     function p:SetValue(v)
         self.current = v
@@ -539,9 +550,15 @@ function W.Picker(parent, width, onPick)
         panel:SetSize(math.max(180, self:GetWidth() or 0), 36 + PICK_ROWS * PICK_ROW_H + 6)
         panel:ClearAllPoints()
         panel:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
+        -- above the window the widget lives in: its top frame under UIParent, and the widget itself
+        local top = self
+        while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+        panel:SetFrameStrata("FULLSCREEN_DIALOG")
+        panel:SetFrameLevel(math.min(9000, math.max(top:GetFrameLevel() or 1, self:GetFrameLevel() or 1) + 10))
         panel.filter:SetText("")
-        panel:Fill()
+        panel:Fill(false)
         panel:Show()
+        panel:Raise()
         panel.filter:SetFocus()
     end
     function p:Close()

@@ -14,6 +14,11 @@ local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
 local WIDTH, HEIGHT = 380, 230
 
+-- Forever has no GetItemInfo or GetItemInfoInstant global; both clients have C_Item.
+local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemInfoInstant = _G.GetItemInfoInstant or (C_Item and C_Item.GetItemInfoInstant)
+local GetItemIconByID = C_Item and C_Item.GetItemIconByID
+
 local D
 local st = {}                -- s, item, link, winner, kind, note
 local lootOpen = false
@@ -33,9 +38,11 @@ local function newest()
     return all[#all]
 end
 
--- The loot slot of the item in the open loot window, when master loot has candidates for it.
+-- The loot slot of the item in the open loot window, when master loot has candidates for it. Only
+-- for the running recording: the confirmed hand-out is written there, so for another raid (or with
+-- the recording stopped) the dialog enters the award directly instead.
 local function lootSlot(item)
-    if not item or not lootOpen or type(GiveMasterLoot) ~= "function" or type(GetMasterLootCandidate) ~= "function" then return nil end
+    if not item or not st.s or st.s ~= ns.Active() or not lootOpen or type(GiveMasterLoot) ~= "function" or type(GetMasterLootCandidate) ~= "function" then return nil end
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
         if ns.ItemID(GetLootSlotLink(i)) == item then
             return GetMasterLootCandidate(i, 1) and i or nil
@@ -105,6 +112,12 @@ local function roundFor(item)
     return nil
 end
 
+local function itemIcon(id)
+    local icon = GetItemInfoInstant and select(5, GetItemInfoInstant(id))
+    if not icon and GetItemIconByID then icon = GetItemIconByID(id) end
+    return icon
+end
+
 local function itemLabel()
     if not st.item then return "" end
     return st.link or ("Item " .. tostring(st.item))
@@ -126,8 +139,22 @@ local function giveML(slot, name, kind, note)
     return false
 end
 
+-- Whether raid s still exists: the recording or a saved raid (it may be deleted while the dialog is open).
+local function alive(s)
+    if not s then return false end
+    if s == ns.Active() then return true end
+    for _, x in ipairs(ns.Sessions()) do
+        if x == s then return true end
+    end
+    return false
+end
+
 -- Writes the award directly into the chosen raid, as a manual entry.
 local function direct(name, to, hint)
+    if not alive(st.s) then
+        ns.msg("Der Raid wurde inzwischen gelöscht.")
+        return false
+    end
     local a, why = ns.AddAwardTo(st.s, {
         name = name, item = st.item, kind = to == "player" and st.kind or "-", src = sourceOf(st.s, st.item),
         t = time(), to = to, note = st.note, manual = true,
@@ -147,8 +174,14 @@ local function direct(name, to, hint)
     return true
 end
 
+-- The note as it stands in the box, also when it was typed without Enter.
+local function takeNote()
+    st.note = ns.CleanNote(D.note:GetText())
+end
+
 local function give()
     if not st.item then return end
+    takeNote()
     if not ns.FullName(st.winner) then
         ns.msg("Zuerst einen Gewinner wählen.")
         return
@@ -171,6 +204,7 @@ end
 -- direct entry with the receiver "-".
 local function giveTo(to)
     if not st.item then return end
+    takeNote()
     local who = ns.Get(to == "bank" and "awards.bankName" or "awards.deName")
     local slot = lootSlot(st.item)
     local done
@@ -193,7 +227,7 @@ local function setItem(x)
     local id = ns.ItemID(x) or tonumber(x)
     if not id then return false end
     local link = (type(x) == "string" and x:find("|H", 1, true)) and x or nil
-    if not link then
+    if not link and GetItemInfo then
         local _, l = GetItemInfo(id)
         link = l
     end
@@ -237,10 +271,10 @@ local function build()
     D.icon:SetSize(22, 22)
     D.icon:SetPoint("TOPLEFT", 12, -32)
     D.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    D.itemText = W.Text(D, "GameFontHighlight", 190)
+    D.itemText = W.Text(D, "GameFontHighlight", 180)
     D.itemText:SetPoint("LEFT", D.icon, "RIGHT", 6, 0)
     -- without an item: a box for a link (shift-click in the chat) or an item id
-    D.itemEdit = W.LineEdit(D, 190, function(text)
+    D.itemEdit = W.LineEdit(D, 180, function(text)
         if setItem((text or ""):match("^%s*(.-)%s*$")) then
             refresh()
         elseif (text or "") ~= "" then
@@ -255,8 +289,9 @@ local function build()
     local lab = W.Text(D, "GameFontHighlightSmall", 56)
     lab:SetPoint("TOPLEFT", 12, -66)
     lab:SetText("Gewinner")
-    D.winner = W.Picker(D, 150, function(v)
-        st.winner = v
+    D.winner = W.Picker(D, 140, function(v)
+        -- a typed name is cleaned like an edit on the page does it
+        st.winner = ns.FullName(v)
         refresh()
     end)
     D.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
@@ -266,7 +301,7 @@ local function build()
     D.kinds = {}
     local prev = artLab
     for i, k in ipairs(KINDS) do
-        local chip = W.Chip(D, k, 30, function()
+        local chip = W.Chip(D, k, 28, function()
             st.kind = k
             refresh()
         end)
@@ -291,13 +326,14 @@ local function build()
     D.hint:SetHeight(40)
     D.hint:SetJustifyV("TOP")
 
-    D.give = W.Button(D, "Vergeben", 96, give)
+    -- 90 + 60 + 90 + 86 and the gaps fit the 356 px between the margins
+    D.give = W.Button(D, "Vergeben", 90, give)
     D.give:SetPoint("BOTTOMLEFT", 12, 12)
-    D.bank = W.Button(D, "Bank", 70, function() giveTo("bank") end)
+    D.bank = W.Button(D, "Bank", 60, function() giveTo("bank") end)
     D.bank:SetPoint("LEFT", D.give, "RIGHT", 6, 0)
     D.de = W.Button(D, "Entzaubern", 90, function() giveTo("de") end)
     D.de:SetPoint("LEFT", D.bank, "RIGHT", 6, 0)
-    D.cancel = W.Button(D, "Abbrechen", 90, function() D:Hide() end)
+    D.cancel = W.Button(D, "Abbrechen", 86, function() D:Hide() end)
     D.cancel:SetPoint("BOTTOMRIGHT", -12, 12)
 end
 
@@ -309,8 +345,7 @@ refresh = function()
         D.itemEdit:Hide()
         D.itemText:Show()
         D.itemText:SetText(itemLabel())
-        local icon = GetItemInfoInstant and select(5, GetItemInfoInstant(st.item))
-        D.icon:SetTexture(icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        D.icon:SetTexture(itemIcon(st.item) or "Interface\\Icons\\INV_Misc_QuestionMark")
     else
         D.itemText:Hide()
         D.itemEdit:Show()
@@ -371,11 +406,17 @@ ns.OnEvent("LOOT_CLOSED", function()
     refresh()
 end)
 
--- A link shift-clicked into the chat lands in the item box of an open dialog without an item.
+-- A link shift-clicked into the chat lands in the item box of an open dialog without an item. Both
+-- clients call ChatFrameUtil.InsertLink; ChatEdit_InsertLink is only a deprecated alias of the
+-- unhooked function, which some clients lack, so it gets a hook of its own for callers that use it.
+local function onInsertLink(link)
+    if D and D:IsShown() and not st.item and ns.ItemID(link) and setItem(link) then refresh() end
+end
+if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+    hooksecurefunc(ChatFrameUtil, "InsertLink", onInsertLink)
+end
 if type(ChatEdit_InsertLink) == "function" then
-    hooksecurefunc("ChatEdit_InsertLink", function(link)
-        if D and D:IsShown() and not st.item and ns.ItemID(link) and setItem(link) then refresh() end
-    end)
+    hooksecurefunc("ChatEdit_InsertLink", onInsertLink)
 end
 
 -- Alt+Shift-click on an item link opens the dialog, in the officer view and with awards.modClick.
