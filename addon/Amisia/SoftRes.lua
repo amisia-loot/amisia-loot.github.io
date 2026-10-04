@@ -2,7 +2,8 @@
 -- tooltips and on the loot window, and ranked first in roll rounds.
 local ADDON, ns = ...
 
-local F, editBox, resultText, dateText
+local F, editBox, resultText, dateText, previewText
+local previewGen = 0   -- the newest pending preview; older timers do nothing
 local marks = {}   -- loot button -> "SR" font string
 
 local function shortName(name)
@@ -363,6 +364,21 @@ function ns.ReservedBy(item)
     return names or {}
 end
 
+-- "05.10." from the list's "2026-10-05".
+function ns.SoftResShortDate(iso)
+    local m, d = tostring(iso or ""):match("^%d+%-(%d+)%-(%d+)$")
+    return d and (d .. "." .. m .. ".") or tostring(iso or "?")
+end
+
+-- Whole days since the list was loaded, or nil without a list or date.
+function ns.SoftResAge(sr)
+    sr = sr or (AmisiaDB and AmisiaDB.softres)
+    local y, m, d = tostring(sr and sr.date or ""):match("^(%d+)-(%d+)-(%d+)$")
+    if not y then return nil end
+    local t = time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })
+    return t and math.max(0, math.floor((time() - t) / 86400)) or nil
+end
+
 function ns.SoftResInfo()
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr then return nil end
@@ -519,6 +535,51 @@ end
 ---------------------------------------------------------------------------
 -- Import window
 ---------------------------------------------------------------------------
+local function plural(n, one, many) return n == 1 and one or many end
+
+-- The preview line for a pasted text: parsed with the remembered fixes and checked against
+-- ns.SoftResRoster(); nothing is stored. "" for an empty text.
+function ns.SoftResPreviewText(text)
+    if not (text or ""):find("%S") then return "" end
+    local byItem, _, bad, times, total = ns.ParseSoftRes(text)
+    local roster, label = ns.SoftResRoster()
+    local c = ns.SoftResCheck({ byItem = byItem, times = times }, roster)
+    local head = ("%d Raider, %d %s"):format(c.reservers, total, plural(total, "Reservierung", "Reservierungen"))
+    local parts = {}
+    if label then
+        head = ("Vorschau gegen %s: %s"):format(label:gsub("^letzter ", "letzten "), head)
+        if #c.missing > 0 then parts[#parts + 1] = ("%d ohne Reserve"):format(#c.missing) end
+        if #c.absent > 0 then parts[#parts + 1] = ("%d nicht im Raid"):format(#c.absent) end
+        if #c.unclear > 0 then parts[#parts + 1] = ("%d %s unklar"):format(#c.unclear, plural(#c.unclear, "Name", "Namen")) end
+        if #c.over > 0 then parts[#parts + 1] = ("%d zu viel"):format(#c.over) end
+    else
+        head = "Vorschau: " .. head
+        parts[#parts + 1] = "kein Raid zum Abgleichen"
+    end
+    if #bad > 0 then parts[#parts + 1] = ("%d %s nicht erkannt"):format(#bad, plural(#bad, "Zeile", "Zeilen")) end
+    if #parts == 0 then return head end
+    return head .. " · " .. table.concat(parts, " · ")
+end
+
+local function updatePreview()
+    if not F or not previewText then return end
+    local ok, text = pcall(ns.SoftResPreviewText, editBox:GetText())
+    previewText:SetText(ok and text or "")
+    if not ok then
+        local handler = geterrorhandler and geterrorhandler()
+        if handler then handler(text) end
+    end
+end
+
+-- Recomputes the preview 0.3 s after the last change of the text.
+local function schedulePreview()
+    previewGen = previewGen + 1
+    local gen = previewGen
+    C_Timer.After(0.3, function()
+        if gen == previewGen then updatePreview() end
+    end)
+end
+
 local function refresh()
     if not F or not F:IsShown() then return end
     local sr = AmisiaDB.softres
@@ -526,16 +587,16 @@ local function refresh()
         local today = date("%Y-%m-%d")
         dateText:SetText(sr.date == today
             and ("|cff4fbf7aListe von heute:|r %d Reservierungen"):format(sr.count or 0)
-            or ("|cffe0a344Liste vom %s:|r %d Reservierungen. Fuer einen neuen Raid neu einfuegen."):format(sr.date, sr.count or 0))
+            or ("|cffe0a344Liste vom %s:|r %d Reservierungen. Für einen neuen Raid neu einfügen."):format(ns.SoftResShortDate(sr.date), sr.count or 0))
         if editBox:GetText() == "" then editBox:SetText(sr.raw or "") end
     else
-        dateText:SetText("|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV oder Zeilen wie 'Name [Item-Link]' einfuegen.")
+        dateText:SetText("|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV oder Zeilen wie 'Name [Item-Link]' einfügen.")
     end
 end
 
 local function build()
     F = CreateFrame("Frame", "AmisiaSoftResFrame", UIParent)
-    F:SetSize(440, 340)
+    F:SetSize(440, 360)
     F:SetPoint("CENTER", 0, 40)
     F:SetFrameStrata("FULLSCREEN_DIALOG")
     F:SetToplevel(true)
@@ -576,7 +637,7 @@ local function build()
 
     local boxBg = CreateFrame("Frame", nil, F)
     boxBg:SetPoint("TOPLEFT", 12, -50)
-    boxBg:SetPoint("BOTTOMRIGHT", -12, 64)
+    boxBg:SetPoint("BOTTOMRIGHT", -12, 84)
     local bb = boxBg:CreateTexture(nil, "BACKGROUND")
     bb:SetAllPoints()
     bb:SetColorTexture(0, 0, 0, 0.45)
@@ -592,9 +653,19 @@ local function build()
     editBox:SetWidth(380)
     editBox:SetHeight(200)
     editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    editBox:SetScript("OnTextChanged", schedulePreview)
     scroll:SetScrollChild(editBox)
     boxBg:EnableMouse(true)
     boxBg:SetScript("OnMouseDown", function() editBox:SetFocus() end)
+
+    -- the preview sits above the result of the last import
+    previewText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    previewText:SetPoint("BOTTOMLEFT", 12, 58)
+    previewText:SetWidth(416)
+    previewText:SetJustifyH("LEFT")
+    previewText:SetWordWrap(true)
+    previewText:SetTextColor(0.89, 0.72, 0.34)
+    previewText:SetText("")
 
     resultText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     resultText:SetPoint("BOTTOMLEFT", 12, 40)
@@ -604,10 +675,10 @@ local function build()
     local apply = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
     apply:SetSize(110, 22)
     apply:SetPoint("BOTTOMLEFT", 12, 10)
-    apply:SetText("Uebernehmen")
+    apply:SetText("Übernehmen")
     apply:SetScript("OnClick", function()
         local count, bad = ns.SetSoftRes(editBox:GetText())
-        resultText:SetText(("%d Reservierungen uebernommen, %d Zeilen nicht erkannt."):format(count, #bad)
+        resultText:SetText(("%d Reservierungen übernommen, %d Zeilen nicht erkannt."):format(count, #bad)
             .. (#bad > 0 and (" Erste: " .. bad[1]:sub(1, 40)) or ""))
         refresh()
     end)
@@ -619,10 +690,11 @@ local function build()
     clear:SetScript("OnClick", function()
         ns.ClearSoftRes()
         editBox:SetText("")
+        previewText:SetText("")
         resultText:SetText("Liste geleert.")
         refresh()
     end)
-    F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn = editBox, resultText, dateText, apply, clear
+    F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn, F.previewText = editBox, resultText, dateText, apply, clear, previewText
     ns.SoftResFrame = F
 end
 
@@ -631,14 +703,31 @@ function ns.ToggleSoftResFrame()
     if F:IsShown() then F:Hide() else F:Show() end
 end
 
+-- softres.remindText: no escape codes or line breaks, at most 120 characters (UTF-8 kept whole).
+local function cleanRemindText(v)
+    v = tostring(v or ""):gsub("|", ""):gsub("[\r\n]+", " ")
+    v = v:match("^%s*(.-)%s*$")
+    local out, n = {}, 0
+    for ch in v:gmatch("[%z\1-\127\192-\253][\128-\191]*") do
+        n = n + 1
+        if n > 120 then break end
+        out[n] = ch
+    end
+    return table.concat(out)
+end
+
 ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items = {
     { key = "softres.tooltip", type = "toggle", label = "Tooltip-Zeile \"Reserviert: ...\"", default = true },
-    { key = "softres.lootMark", type = "toggle", label = "SR-Markierung im Lootfenster", default = true,
+    { key = "softres.lootMark", type = "toggle", label = "SR-Markierung im Lootfenster und an den Würfelfenstern", default = true,
       onChange = function() ns.MarkLootButtons() end },
     { key = "softres.warnDays", type = "slider", label = "Warnen, wenn die Liste älter ist als (Tage)", default = 7, min = 1, max = 30, step = 1 },
     { key = "softres.tooltipGroup", type = "toggle", label = "Im Tooltip nur Reservierungen aus der Gruppe", default = true },
     { key = "softres.limit", type = "slider", label = "Reservierungen pro Raider (0 = keine Prüfung)", default = 0, min = 0, max = 6, step = 1,
       officer = true },
+    { key = "softres.chat", type = "toggle", label = "Auf !sr antworten", default = true, officer = true,
+      tip = "Nur als Lootleitung, per Flüsterung." },
+    { key = "softres.remindText", type = "text", label = "Zusatz in der Erinnerung", default = "", officer = true,
+      tip = "Z. B. Link zur Liste.", validate = cleanRemindText },
 }}
 ns.RegisterSlash("sr", { desc = "Soft-Reserves anzeigen", run = function()
     if ns.ShowPage then ns.ShowPage("softres") else ns.ToggleSoftResFrame() end
