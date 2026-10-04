@@ -40,7 +40,7 @@ process.stdin.on('end', () => {
   const {blocks, rest} = api.amSplit(text);
   const sessions = api.amParse(blocks);
   // Which line letters the parser knows, to hold against the ones the addon writes.
-  const letters = [...new Set([...api.source.matchAll(/f\[0\] === '([A-Z])'/g)].map(m => m[1]))].sort();
+  const letters = [...new Set([...api.source.matchAll(/f\[0\] === '([A-Z]{1,2})'/g)].map(m => m[1]))].sort();
   process.stdout.write(JSON.stringify({
     blocks: blocks.length,
     rest: rest.trim(),

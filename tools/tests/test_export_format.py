@@ -81,7 +81,7 @@ def parsed():
 def test_every_line_the_addon_writes_is_read(parsed):
     text, out = parsed
     import re
-    written = set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z])', open(CORE, encoding='utf-8').read(), re.M))
+    written = set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(CORE, encoding='utf-8').read(), re.M))
     read = set(out['letters'])
     assert not (written - read), 'the addon writes lines the site throws away: ' + ', '.join(sorted(written - read))
 

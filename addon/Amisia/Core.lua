@@ -720,12 +720,31 @@ local function sessionLines(s, lines, used, legacy)
         lines[#lines + 1] = ("D %d %d %s"):format(e.item, e.count, e.src)
         used[e.item] = true
     end
-    -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: master loot hand-outs
+    -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: hand-outs to players, as 1.4 wrote them
+    -- AS <id> <itemID> <epoch> <BANK|DE> <receiver|-> <source name>: hand-outs to the bank or for disenchanting
+    -- AX <id> <edited epoch|0> <first winner|-> [<note>]: the id and history of the A or AS line before it
     for _, a in ipairs(s.awards or {}) do
-        lines[#lines + 1] = ("A %s %d %d %s %s"):format(ns.ExportName(a.name), a.item, a.t or 0, a.kind or "-", a.src or "?")
+        local to = legacy and "player" or a.to or "player"
+        if to == "player" then
+            lines[#lines + 1] = ("A %s %d %d %s %s"):format(ns.ExportName(a.name), a.item, a.t or 0, a.kind or "-", a.src or "?")
+        else
+            lines[#lines + 1] = ("AS %s %d %d %s %s %s"):format(a.id or "?", a.item, a.t or 0, to == "bank" and "BANK" or "DE",
+                a.name ~= "-" and ns.ExportName(a.name) or "-", a.src or "?")
+        end
+        -- an award of 1.4 has no id until the move on load, and until then no history line either
+        if not legacy and a.id then
+            lines[#lines + 1] = ("AX %s %d %s%s"):format(a.id, a.edited or 0, a.orig and ns.ExportName(a.orig) or "-",
+                a.note and (" " .. a.note) or "")
+        end
         used[a.item] = true
     end
-    -- the lines of 1.5 (AX, AS, AD) follow here when not legacy
+    -- AD <id> <itemID> <epoch> <deleted epoch>: a hand-out deleted after the fact
+    if not legacy then
+        for _, a in ipairs(s.gone or {}) do
+            lines[#lines + 1] = ("AD %s %d %d %d"):format(a.id or "?", a.item, a.t or 0, a.deleted or 0)
+            used[a.item] = true
+        end
+    end
     lines[#lines + 1] = "E"
     return lines
 end
