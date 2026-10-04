@@ -123,3 +123,81 @@ def test_bank_and_disenchant_create_no_raider_and_count_as_handed_out(out):
     assert 'Vulo Bank' not in w['raiders'], 'the bank character is no raider'
     assert w['after'] == [], 'the cloak counts as handed out'
     assert w['secondStatus'] == 'dup' and w['lootAwayAfterTwice'] == 2
+
+
+def test_a_marker_inside_a_note_does_not_cut_the_block(out):
+    want = [['2026-09-09', [['Fraktur', 'aaaaaaaaaaaa', 'bis #END fertig #AMISIA 2 x'], ['Vuloo', 'bbbbbbbbbbbb', '#END']]], ['2026-09-10', []]]
+    for k in ('lf', 'crlf'):
+        m = out['marker'][k]
+        assert m['blocks'] == 1 and m['rest'] == '', (k, m['rest'])
+        assert m['sessions'] == want, k
+    assert out['marker']['twice']['blocks'] == 2 and out['marker']['twice']['rest'] == ''
+
+
+def test_two_officers_exports_of_one_raid_import_one_award(out):
+    o = out['officers']
+    assert o['both'] == ['ok', 'dup'], 'the second recorder\'s id names the same hand-out'
+    assert o['twoCopies'] == ['ok', 'ok'], 'two copies in one recording stay two'
+    assert o['twoCopiesBoth'] == ['ok', 'ok', 'dup', 'dup']
+
+
+def test_a_rename_by_the_other_officer_changes_the_award_in_the_ledger(out):
+    r = out['renamedByOther']
+    assert r['row']['status'] == 'change' and r['row']['awardId'] == 'a1' and r['row']['change'] == {'raider': 'Vuloo'}
+    assert r['result'] == {'changed': 1, 'gone': 0}
+    assert r['awards'] == [{'id': 'a1', 'raider': 'r2', 'am': 'aaaaaaaaaaaa', 'amEdited': 1757448000}], 'no second award, the id stays'
+    assert r['again'] == ['dup', 'dup']
+    assert r['older']['row']['status'] == 'dup' and r['older']['result'] == {'changed': 0, 'gone': 0}
+    assert r['older']['awards'] == [{'id': 'a1', 'raider': 'r1', 'am': 'aaaaaaaaaaaa'}]
+
+
+def test_a_player_award_moves_to_the_bank_and_back(out):
+    t = out['toAway']
+    sig = DATE + '|32235|fraktur'
+    first = t['first']['rows']
+    assert len(first) == 1 and first[0]['status'] == 'change' and first[0]['awardId'] == 'a1' and first[0]['change'] == {'away': 'bank'}
+    assert t['first']['result'] == {'changed': 1, 'gone': 0}
+    s = t['firstState']
+    assert s['awards'] == []
+    assert s['lootAway'] == [{'key': 'cccccccccccc', 'date': DATE, 'instance': 564, 'item': 32235, 'to': 'bank', 'amEdited': 1757450000}]
+    assert sig in s['dropped'] and 'mcccccccccccc' not in s['dropped']
+    # the same export again changes nothing
+    assert [r['status'] for r in t['again']['rows']] == ['skip'] and t['again']['result'] == {'changed': 0, 'gone': 0}
+    assert t['again']['session'] == ['dup'] and t['againState'] == s
+    # bank to disenchant
+    assert t['de']['session'] == ['ok']
+    assert t['deState']['lootAway'] == [{'key': 'cccccccccccc', 'date': DATE, 'instance': 564, 'item': 32235, 'to': 'de', 'amEdited': 1757451000}]
+    # an export from before the move does not undo it
+    assert [r['status'] for r in t['old']['rows']] == ['skip'] and t['old']['session'] == ['dup']
+    assert t['oldState']['awards'] == [] and len(t['oldState']['lootAway']) == 1
+    # back to Fraktur in game
+    b = t['back']['rows']
+    assert b[0]['status'] == 'change' and b[0]['change'] == {'back': 'de', 'raider': 'Fraktur'}
+    assert t['back']['result'] == {'changed': 1, 'gone': 0}
+    bs = t['backState']
+    assert [(x['raider'], x['am'], x['amEdited'], x['item']) for x in bs['awards']] == [('r1', 'cccccccccccc', 1757452000, 32235)]
+    assert bs['lootAway'] == [] and sig not in bs['dropped'] and 'mcccccccccccc' not in bs['dropped']
+    assert [r['status'] for r in t['backAgain']['rows']] == ['dup'] and t['backAgain']['result'] == {'changed': 0, 'gone': 0}
+    assert t['backAgainState'] == bs
+    # a newer state on the site stays over an older bank export
+    assert [r['status'] for r in t['olderBank']['rows']] == ['dup']
+    assert len(t['olderBankState']['awards']) == 1 and t['olderBankState']['lootAway'] == []
+
+
+def test_a_bank_entry_deleted_in_game_leaves_the_ledger(out):
+    t = out['toAway']
+    g = t['gone']['rows']
+    assert len(g) == 1 and g[0]['status'] == 'gone' and g[0]['amKey'] == 'dddddddddddd' and g[0]['away'] == 'de'
+    assert t['gone']['result'] == {'changed': 0, 'gone': 1}
+    assert t['goneState']['lootAway'] == [] and 'mdddddddddddd' in t['goneState']['dropped']
+    assert t['goneAgain']['rows'] == [] and t['goneAgain']['result'] == {'changed': 0, 'gone': 0}
+    assert t['goneOldState']['lootAway'] == [], 'an older export does not bring it back'
+
+
+def test_a_bank_copy_looted_by_the_bank_character_counts_once(out):
+    b = out['bankLoot']
+    assert [(x['raider'], x['item'], x['count']) for x in b['without']['other']] == [('rb', 32235, 1)]
+    one = b['oneLeft']
+    assert one['other'] == [] and one['clash'] == [], 'the bank character\'s copy is the bank entry'
+    assert one['left'] == [{'item': 32235, 'count': 1, 'sources': ['Illidan Stormrage']}], 'two dropped, one to the bank, one left'
+    assert b['allOut'] == {'other': [], 'left': [], 'clash': []}

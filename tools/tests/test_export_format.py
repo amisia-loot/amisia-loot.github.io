@@ -220,3 +220,25 @@ def test_version_one_exports_still_read():
                       'M Vuloo PRIEST 1 0', 'E', '#END', ''])
     out = read_back(text)
     assert [m['name'] for m in out['sessions'][0]['members']] == ['Vuloo']
+
+
+def test_a_marker_in_a_note_survives_the_round_trip():
+    """A note is free text on the AX line: "#END" or "#AMISIA" inside it must not end the block."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
+        STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+        STUB.item(32235, "Cursed Vision of Sargeras", 4)
+        STUB.item(32837, "Warglaive of Azzinoth", 5)
+        local s = NS.Active()
+        NS.AddAwardTo(s, { name = "Fraktur", item = 32235, kind = "MS", src = "Illidan Sturmgrimm", note = "bis #END fertig" })
+        NS.AddAwardTo(s, { name = "Vuloo", item = 32837, kind = "OS", src = "Illidan Sturmgrimm", note = "#AMISIA 2 #END" })
+        EXPORT = NS.ExportText({ s })
+    ''')
+    text = lua.eval('EXPORT')
+    out = read_back(text)
+    assert out['blocks'] == 1 and out['rest'] == '', out['rest']
+    awards = out['sessions'][0]['awards']
+    assert [(a['name'], a['note']) for a in awards] == [('Fraktur', 'bis #END fertig'), ('Vuloo', '#AMISIA 2 #END')]
+    assert '32837' in out['sessions'][0]['names'], 'the item names after the awards are read too'

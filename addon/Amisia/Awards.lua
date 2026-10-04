@@ -176,6 +176,8 @@ function ns.EditAward(s, id, f)
     end
     if f.name ~= nil then
         local name = ns.FullName(f.name)
+        -- the bank or the disenchanter may go without a receiver, written as "-"
+        if not name and a.to ~= "player" then name = "-" end
         if not name then
             assign(a, before)
             return nil, "Name oder Item fehlt."
@@ -183,8 +185,13 @@ function ns.EditAward(s, id, f)
         if name ~= a.name then
             a.orig = a.orig or a.name
             a.name = name
-            noteWinner(s, name, a.t)
+            if a.to == "player" then noteWinner(s, name, a.t) end
         end
+    end
+    -- a player needs a name: back from the bank without a receiver is refused
+    if a.to == "player" and a.name == "-" then
+        assign(a, before)
+        return nil, "Name oder Item fehlt."
     end
     if f.note ~= nil then a.note = cleanNote(f.note) end
     local same = true
@@ -299,17 +306,35 @@ local function label(e)
     return ("%s von %s an %s"):format(VERB[e.op] or e.op, ns.ItemName(b.item), tostring(b.name or "?"))
 end
 
--- What the next undo would take back, or nil.
+-- Whether step e can still be taken back: its raid exists and its award is where the step left it.
+local function doable(e)
+    if not alive(e.s) then return false end
+    if e.op == "rename" then
+        for _, b in ipairs(e.before) do
+            local a, _, inGone = ns.FindAward(e.s, b.id)
+            if a and not inGone then return true end
+        end
+        return false
+    end
+    local a, _, inGone = ns.FindAward(e.s, e.id)
+    if not a then return false end
+    if e.op == "delete" then return inGone end
+    return not inGone
+end
+
+-- What the next undo would take back, or nil. Steps undo would skip are skipped here as well.
 function ns.UndoLabel()
-    local e = undo[#undo]
-    return e and label(e) or nil
+    for i = #undo, 1, -1 do
+        if doable(undo[i]) then return label(undo[i]) end
+    end
+    return nil
 end
 
 -- Takes back the last change. A step whose raid or award no longer exists is skipped.
 function ns.UndoAward()
     while #undo > 0 do
         local e = table.remove(undo)
-        if alive(e.s) then
+        if doable(e) then
             local text = label(e)
             local done
             if e.op == "add" or e.op == "restore" then

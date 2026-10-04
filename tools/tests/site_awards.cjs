@@ -165,4 +165,104 @@ api.run(a => {
   out.away.lootAwayAfterTwice = a.getState().lootAway.length;
 });
 
+// 7. Review fixes. A note may carry "#END" or "#AMISIA": only a line that is exactly the marker
+// ends or starts a block, with LF or CRLF.
+const NOTED = ['#AMISIA 2 Vuloo', 'S 20260909200001-564 2026-09-09 564 Black Temple', 'M Fraktur SHAMAN 1 0', 'M Vuloo PRIEST 1 0',
+  'A Fraktur 32235 1757444401 MS Illidan_Sturmgrimm', 'AX aaaaaaaaaaaa 0 - bis #END fertig #AMISIA 2 x',
+  'A Vuloo 32837 1757444402 MS Illidan_Sturmgrimm', 'AX bbbbbbbbbbbb 0 - #END', 'E',
+  'S 20260910200001-564 2026-09-10 564 Black Temple', 'M Vuloo PRIEST 1 0', 'E', 'N 32235 4 Cursed', '#END'].join('\n');
+api.run(a => {
+  out.marker = {};
+  for (const [k, t] of [['lf', NOTED], ['crlf', NOTED.replace(/\n/g, '\r\n') + '\r\n'], ['twice', NOTED + '\n' + NOTED.replace(/aaaa/g, 'cccc')]]) {
+    const sp = a.amSplit(t), ss = a.amParse(sp.blocks);
+    out.marker[k] = {blocks: sp.blocks.length, rest: sp.rest.trim(), sessions: ss.map(z => [z.date, z.awards.map(x => [x.name, x.uid, x.note || null])])};
+  }
+});
+
+// 8. Two officers' 1.5 exports of the same raid pasted together: one award, not two. Two copies
+// of the same item to the same raider within one recording stay two.
+const officer = (who, id, t, extra) => ['#AMISIA 2 ' + who, 'S 2026090920000' + t + '-564 2026-09-09 564 Black Temple', 'M Fraktur SHAMAN 1 0',
+  'A Fraktur 32235 175744440' + t + ' MS Illidan_Sturmgrimm', 'AX ' + id + ' 0 -', ...(extra || []), 'E', '#END'].join('\n');
+api.run(a => {
+  a.setState(ledger([]));
+  const rowsOf = t => a.glResolve(a.amAwardRows(a.amParse(a.amSplit(t).blocks)));
+  out.officers = {
+    both: rowsOf(officer('Vuloo', 'aaaaaaaaaaaa', '1') + '\n' + officer('Other', 'bbbbbbbbbbbb', '2')).map(r => r.status),
+    twoCopies: rowsOf(officer('Vuloo', 'aaaaaaaaaaaa', '1', ['A Fraktur 32235 1757444409 MS Illidan_Sturmgrimm', 'AX dddddddddddd 0 -'])).map(r => r.status),
+    twoCopiesBoth: rowsOf(officer('Vuloo', 'aaaaaaaaaaaa', '1', ['A Fraktur 32235 1757444409 MS Illidan_Sturmgrimm', 'AX dddddddddddd 0 -'])
+      + '\n' + officer('Other', 'bbbbbbbbbbbb', '2', ['A Fraktur 32235 1757444408 MS Illidan_Sturmgrimm', 'AX eeeeeeeeeeee 0 -'])).map(r => r.status),
+  };
+});
+// 8b. Officer A's copy is in the ledger; officer B renamed the winner in game under B's own id.
+api.run(a => {
+  a.setState(ledger([award({am: 'aaaaaaaaaaaa', amEdited: 0})]));
+  const r = a.glResolve([row({name: 'Vuloo', rawName: 'Vuloo', cls: 'Priest', orig: 'Fraktur', amKey: 'bbbbbbbbbbbb', amEdited: 1757448000})]);
+  const res = a.amApplyAwardChanges(r);
+  const st = a.getState();
+  out.renamedByOther = {row: pick(r[0], RESOLVED), result: res, awards: st.awards.map(x => pick(x, ['id', 'raider', 'am', 'amEdited'])),
+    again: a.glResolve([row({name: 'Vuloo', rawName: 'Vuloo', cls: 'Priest', orig: 'Fraktur', amKey: 'bbbbbbbbbbbb', amEdited: 1757448000}), row({amKey: 'aaaaaaaaaaaa'})]).map(x => x.status)};
+  // the rename by B is older than what the ledger knows of the award: nothing changes
+  a.setState(ledger([award({am: 'aaaaaaaaaaaa', amEdited: 1757450000})]));
+  const o = a.glResolve([row({name: 'Vuloo', rawName: 'Vuloo', cls: 'Priest', orig: 'Fraktur', amKey: 'bbbbbbbbbbbb', amEdited: 1757448000})]);
+  out.renamedByOther.older = {row: pick(o[0], RESOLVED), result: a.amApplyAwardChanges(o), awards: a.getState().awards.map(x => pick(x, ['id', 'raider', 'am']))};
+});
+
+// 9. Player, bank and disenchant: a change of target and a deletion reach the ledger, both ways,
+// and a second import of the same export changes nothing.
+const awayExport = lines => ['#AMISIA 2 V', 'S 20260909200001-564 2026-09-09 564 Black Temple', 'M Fraktur SHAMAN 1 0', ...lines, 'E', '#END'].join('\n');
+// what the import button does: changes and deletions first, then the sessions
+const importAll = (a, t) => {
+  const ss = a.amParse(a.amSplit(t).blocks);
+  const rows = a.glResolve(a.amAwardRows(ss)).concat(a.amGoneRows(ss));
+  const res = a.amApplyAwardChanges(rows.filter(x => x.status === 'change' || x.status === 'gone'));
+  const sess = a.amResolve(ss); a.setAmRows(sess); a.importAmisia();
+  return {rows: rows.map(x => pick(x, [...RESOLVED, 'away'])), result: res, session: sess.map(x => x.status)};
+};
+const looks = a => { const st = a.getState(); return JSON.parse(JSON.stringify({awards: st.awards.map(x => pick(x, ['id', 'raider', 'am', 'amEdited', 'item'])), lootAway: st.lootAway || [], dropped: st.dropped})); };
+api.run(a => {
+  out.toAway = {};
+  // a player award moved to the bank in game
+  a.setState(ledger([award({am: 'cccccccccccc', amEdited: 0})]));
+  const toBank = awayExport(['AS cccccccccccc 32235 1757444401 BANK - Illidan_Sturmgrimm', 'AX cccccccccccc 1757450000 Fraktur']);
+  out.toAway.first = importAll(a, toBank); out.toAway.firstState = looks(a);
+  out.toAway.again = importAll(a, toBank); out.toAway.againState = looks(a);
+  // then to the disenchanter
+  const toDe = awayExport(['AS cccccccccccc 32235 1757444401 DE - Illidan_Sturmgrimm', 'AX cccccccccccc 1757451000 Fraktur']);
+  out.toAway.de = importAll(a, toDe); out.toAway.deState = looks(a);
+  // an export from before the move still names Fraktur: it does not bring the award back
+  const before = awayExport(['A Fraktur 32235 1757444401 MS Illidan_Sturmgrimm', 'AX cccccccccccc 0 -']);
+  out.toAway.old = importAll(a, before); out.toAway.oldState = looks(a);
+  // back to Fraktur in game: the award returns, the bank entry goes
+  const back = awayExport(['A Fraktur 32235 1757444401 MS Illidan_Sturmgrimm', 'AX cccccccccccc 1757452000 Fraktur']);
+  out.toAway.back = importAll(a, back); out.toAway.backState = looks(a);
+  out.toAway.backAgain = importAll(a, back); out.toAway.backAgainState = looks(a);
+  // a site change kept over an older bank export
+  a.setState(ledger([award({am: 'cccccccccccc', amEdited: 1757460000})]));
+  out.toAway.olderBank = importAll(a, toBank); out.toAway.olderBankState = looks(a);
+  // a bank entry deleted in game
+  a.setState(ledger([], {lootAway: [{key: 'dddddddddddd', date: DATE, instance: 564, item: 32235, to: 'de'}]}));
+  const del = awayExport(['AD dddddddddddd 32235 1757444401 1757450000']);
+  out.toAway.gone = importAll(a, del); out.toAway.goneState = looks(a);
+  out.toAway.goneAgain = importAll(a, del);
+  // the export from before the deletion does not bring it back
+  out.toAway.goneOld = importAll(a, awayExport(['AS dddddddddddd 32235 1757444401 DE - Illidan_Sturmgrimm', 'AX dddddddddddd 0 -']));
+  out.toAway.goneOldState = looks(a);
+});
+
+// 10. A hand-out to the bank by master loot: the bank character looted it as well. Each copy counts once.
+api.run(a => {
+  const base = {raiders: [{id: 'r1', name: 'Fraktur', cls: 'Shaman'}, {id: 'rb', name: 'Bankchar', cls: 'Mage'}],
+    otherLoot: [{key: 'k', date: DATE, instance: 564, raider: 'rb', item: 32235, count: 1}],
+    lootDrops: [{key: 'd', date: DATE, instance: 564, item: 32235, count: 2, source: 'Illidan Stormrage'}]};
+  const away = [{key: 'u1', date: DATE, instance: 564, item: 32235, to: 'bank'}];
+  a.setState(ledger([], Object.assign({}, base)));
+  out.bankLoot = {without: a.nightExtraLoot(DATE)};
+  a.setState(ledger([], Object.assign({}, base, {lootAway: away})));
+  out.bankLoot.oneLeft = a.nightExtraLoot(DATE);
+  // the other copy went to Fraktur: nothing left, and the bank character's copy is no clash
+  a.setState(ledger([award({})], Object.assign({}, base, {lootAway: away,
+    otherLoot: base.otherLoot.concat([{key: 'k2', date: DATE, instance: 564, raider: 'r1', item: 32235, count: 1}])})));
+  out.bankLoot.allOut = a.nightExtraLoot(DATE);
+});
+
 process.stdout.write(JSON.stringify(out));
