@@ -78,6 +78,6 @@ assert(AmisiaDB.scan.items[108], "stored on arrival")
 -- counts and the switch
 assert(NS.CollectCount() == 4, "four items with sources: " .. NS.CollectCount())
 assert(NS.ScanStatus():find("Quellen gesammelt", 1, true) or NS.ScanStatus():find("gesammelt", 1, true), NS.ScanStatus())
-AmisiaDB.settings.collect = false
+NS.Set("tools.collect", false)
 STUB.fire("CHAT_MSG_GUILD", STUB.item(109, "Off", 4))
 assert(not AmisiaDB.scan.items[109], "collector off")

@@ -34,6 +34,6 @@ assert(not b.scripts.OnUpdate)
 
 -- hide and show by command; the choice is kept
 SlashCmdList.AMISIA("minimap")
-assert(not b:IsShown() and AmisiaDB.settings.minimap.hide)
+assert(not b:IsShown() and NS.Get("ui.minimap") == false)
 SlashCmdList.AMISIA("minimap")
-assert(b:IsShown() and not AmisiaDB.settings.minimap.hide)
+assert(b:IsShown() and NS.Get("ui.minimap") == true)

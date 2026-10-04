@@ -241,9 +241,11 @@ ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
 if type(HandleModifiedItemClick) == "function" then
     hooksecurefunc("HandleModifiedItemClick", function(link)
         local id = ns.ItemID(link)
-        if lootOpen and IsAltKeyDown() and id and ns.InLootWindow(id) then
+        if ns.Get("rolls.altClick") and lootOpen and IsAltKeyDown() and id and ns.InLootWindow(id) then
             local ok, why = ns.StartRoll(link)
             if ok then ns.ShowRollFrame() elseif why then ns.msg(why) end
         end
     end)
 end
+
+ns.RegisterSlash("rolls", { officer = true, desc = "Roll-Fenster öffnen oder schließen", run = function() ns.ToggleRollFrame() end })

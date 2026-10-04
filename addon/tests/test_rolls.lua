@@ -62,7 +62,7 @@ assert(r.rolls.Fraktur and r.rolls.Fraktur.value == 42)
 NS.StopRoll()
 
 -- default duration from the settings
-AmisiaDB.settings.rollSeconds = 30
+NS.Set("rolls.seconds", 30)
 assert(NS.StartRoll(link)); assert(NS.CurrentRoll().seconds == 30); NS.StopRoll()
 
 -- alone: no announcement, the round still runs

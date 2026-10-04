@@ -131,6 +131,7 @@ end
 
 local function addLine(tip)
     if not tip or not tip.AddLine then return end
+    if not ns.Get("softres.tooltip") then return end
     local id = ns.ItemID(tooltipLink(tip))
     if not id then return end
     local names = ns.ReservedBy(id)
@@ -149,6 +150,10 @@ end
 -- Loot window marks
 ---------------------------------------------------------------------------
 local function markButton(btn, slot)
+    if not ns.Get("softres.lootMark") then
+        if marks[btn] then marks[btn]:Hide() end
+        return
+    end
     local link = slot and GetLootSlotLink and GetLootSlotLink(slot)
     local reserved = link and #ns.ReservedBy(ns.ItemID(link)) > 0
     local mark = marks[btn]
@@ -308,3 +313,13 @@ function ns.ToggleSoftResFrame()
     if not F then build() end
     if F:IsShown() then F:Hide() else F:Show() end
 end
+
+ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items = {
+    { key = "softres.tooltip", type = "toggle", label = "Tooltip-Zeile \"Reserviert: ...\"", default = true },
+    { key = "softres.lootMark", type = "toggle", label = "SR-Markierung im Lootfenster", default = true,
+      onChange = function() ns.MarkLootButtons() end },
+    { key = "softres.warnDays", type = "slider", label = "Warnen, wenn die Liste älter ist als (Tage)", default = 7, min = 1, max = 30, step = 1 },
+}}
+ns.RegisterSlash("sr", { desc = "Soft-Reserves anzeigen", run = function()
+    if ns.ShowPage then ns.ShowPage("softres") else ns.ToggleSoftResFrame() end
+end })

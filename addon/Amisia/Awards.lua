@@ -111,3 +111,7 @@ function ns.AwardCommand(rest)
         ns.msg(why)
     end
 end
+
+ns.RegisterSlash("award", { officer = true, args = "<Name> <Item-Link|ID> [ms|os|sr]", desc = "Vergabe von Hand eintragen",
+    run = function(rest) ns.AwardCommand(rest) end })
+ns.RegisterSlash("unaward", { officer = true, desc = "letzte Vergabe zurücknehmen", run = function() ns.AwardCommand("unaward") end })

@@ -90,7 +90,7 @@ function ns.StartRoll(link, seconds, onlyNames)
     local id = ns.ItemID(link)
     if not id then return nil, "Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]" end
     if current and not current.done then finish() end
-    seconds = tonumber(seconds) or (AmisiaDB and AmisiaDB.settings and tonumber(AmisiaDB.settings.rollSeconds)) or 20
+    seconds = tonumber(seconds) or ns.Get("rolls.seconds") or 20
     seconds = math.max(5, math.min(120, math.floor(seconds)))
     local reserved = ns.ReservedBy and ns.ReservedBy(id) or {}
     current = {
@@ -114,7 +114,7 @@ function ns.StartRoll(link, seconds, onlyNames)
     ticker = C_Timer.NewTicker(1, function()
         left = left - 1
         if current then current.leftAt = left end
-        if (left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3) then
+        if ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
             ns.Announce(("%d Sekunden."):format(left))
         end
         if left <= 0 then finish() else changed() end
@@ -170,3 +170,23 @@ function ns.RollKind(item, name)
     local e = r.rolls[name]
     return e and e.kind or "-"
 end
+
+ns.RegisterSettings{ key = "rolls", label = "Rolls und Vergabe", order = 20, officer = true, items = {
+    { key = "rolls.seconds", type = "slider", label = "Roll-Dauer (Sekunden)", default = 20, min = 5, max = 120, step = 1 },
+    { key = "rolls.countdown", type = "toggle", label = "Countdown ansagen", default = true,
+      tip = "Sagt bei 10, 5 und 3 Sekunden die Restzeit an." },
+    { key = "rolls.channel", type = "choice", label = "Ansagekanal", default = "RAID_WARNING",
+      values = { { "RAID_WARNING", "Schlachtzugswarnung" }, { "RAID", "Schlachtzug" } },
+      tip = "Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug." },
+    { key = "rolls.altClick", type = "toggle", label = "Alt-Klick im Lootfenster startet einen Roll", default = true,
+      tip = "Ausschalten, wenn ein anderes Loot-Addon Alt-Klick selbst benutzt." },
+}}
+ns.RegisterSlash("roll", { officer = true, args = "<Item-Link> [Sekunden]", desc = "Roll-Runde starten", run = function(rest)
+    local link, secs = rest:match("^(.-)%s*(%d*)$")
+    local ok, why = ns.StartRoll(link, tonumber(secs))
+    if not ok then ns.msg(why or "Aufruf: /amisia roll <Item-Link> [Sekunden]") elseif ns.ShowRollFrame then ns.ShowRollFrame() end
+end })
+ns.RegisterSlash("rollzeit", { officer = true, args = "<5-120>", desc = "Standard-Dauer einer Roll-Runde", run = function(rest)
+    local ok = ns.Set("rolls.seconds", tonumber(rest))
+    ns.msg(ok and ("Roll-Dauer: %d Sekunden."):format(ns.Get("rolls.seconds")) or "Aufruf: /amisia rollzeit <5-120>")
+end })

@@ -31,7 +31,6 @@ local function settings()
     local g = AmisiaDB.settings.gear
     local _, myClass = UnitClass("player")
     g.class = g.class or myClass or "WARRIOR"
-    g.kind = g.kind or "Speedrun"
     g.view = g.view or "overview"
     if g.sources == nil then g.sources = { Q = true, D = true, C = true, V = true, W = true, A = true, P = false, B = false } end
     if g.faction == nil then
@@ -54,7 +53,7 @@ local function opts(col)
     local g = settings()
     local spec = g.specs[g.class] or (Gear.Specs(g.class)[1] or {}).key
     return {
-        class = g.class, spec = spec, kind = g.kind, faction = g.faction ~= "both" and g.faction or nil,
+        class = g.class, spec = spec, kind = ns.Get("gear.kind"), faction = g.faction ~= "both" and g.faction or nil,
         sources = g.sources, level = Gear.COLUMNS[col][2],
     }
 end
@@ -341,7 +340,7 @@ local function fillOverview()
                 -- only upgrades over what the player wears, in the player's own range
                 local mine, link = nil, nil
                 if c == myCol then mine, link = equippedScore(slot, c) end
-                if mine and e[2] - mine > math.abs(mine) * 0.02 and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end
+                if ns.Get("gear.upgradeDot") and mine and e[2] - mine > math.abs(mine) * 0.02 and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end
             else
                 b.id, b.score = nil, nil
                 b.icon:Hide()
@@ -565,7 +564,7 @@ local function updateControls()
         end
     end
     local sp = Gear.SpecInfo(g.class, cur)
-    kindButton.label:SetText(sp and sp.all and "Gewichtung: eigene" or ("Gewichtung: " .. g.kind))
+    kindButton.label:SetText(sp and sp.all and "Gewichtung: eigene" or ("Gewichtung: " .. ns.Get("gear.kind")))
     kindButton:SetOn(true)
     factionButton.label:SetText(g.faction == "A" and "Allianz" or g.faction == "H" and "Horde" or "Beide")
     factionButton:SetOn(true)
@@ -682,8 +681,7 @@ local function build()
 
     -- second row: weighting, faction, sources
     kindButton = chip(F, "", 140, function()
-        local g = settings()
-        g.kind = g.kind == "Speedrun" and "Hardcore" or "Speedrun"
+        ns.Set("gear.kind", ns.Get("gear.kind") == "Speedrun" and "Hardcore" or "Speedrun")
         ns.GearRefresh(true)
     end)
     kindButton:SetPoint("TOPLEFT", 14, -82)
@@ -802,3 +800,16 @@ function ns.GearDebug(arg)
     ns.msg(("Wertung %s/%s bei Level %d: %.1f%s"):format(o.class, o.spec or "?", o.level, Gear.Score(s, w, o.level, kind, o.class),
         row and "" or " (nicht in der Tabelle)"))
 end
+
+ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.Available() end, items = {
+    { key = "gear.kind", type = "choice", label = "Gewichtung", default = "Speedrun",
+      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
+      tip = "Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung." },
+    { key = "gear.upgradeDot", type = "toggle", label = "Upgrade-Punkt in der Tabelle", default = true,
+      tip = "Grüner Punkt an Items, die besser sind als das, was du trägst." },
+}}
+ns.RegisterSlash("gear", { aliases = { "ausruestung" }, args = "[item <Link>]", desc = "Ausrüstungstabelle (WoW Forever)",
+    run = function(rest)
+        local sub, arg = rest:match("^(%S+)%s*(.*)$")
+        if sub and sub:lower() == "item" then ns.GearDebug(arg) else ns.ToggleGearFrame() end
+    end })

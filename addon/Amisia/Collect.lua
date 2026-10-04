@@ -14,7 +14,7 @@ local MAX_SOURCES = 6
 local wanted = {}   -- itemID -> source text, waiting for the client's item data
 
 local function enabled()
-    return AmisiaDB and AmisiaDB.settings and AmisiaDB.settings.collect and ns.StoreItem
+    return AmisiaDB ~= nil and ns.Get("tools.collect") and ns.StoreItem
 end
 
 local function sourcesOf(id)
@@ -241,3 +241,9 @@ for _, ev in ipairs({ "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_M
                       "CHAT_MSG_RAID_WARNING", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_WHISPER", "CHAT_MSG_CHANNEL", "CHAT_MSG_SYSTEM" }) do
     ns.OnEvent(ev, chatLinks)
 end
+
+ns.RegisterSlash("sammeln", { aliases = { "collect" }, desc = "Item-Sammler an oder aus", run = function()
+    ns.Set("tools.collect", not ns.Get("tools.collect"))
+    ns.msg(ns.Get("tools.collect") and "Item-Sammler an: Taschen, Händler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."
+        or "Item-Sammler aus.")
+end })

@@ -98,20 +98,20 @@ local function build()
     button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
 
     place()
-    if settings().hide then button:Hide() else button:Show() end
+    ns.ShowMinimapButton(ns.Get("ui.minimap"))
 end
 ns.OnEvent("PLAYER_LOGIN", build)
 
--- /amisia minimap
-function ns.ToggleMinimapButton()
-    local m = settings()
-    m.hide = not m.hide
+function ns.ShowMinimapButton(on)
     if not button then build() end
-    if button then
-        if m.hide then button:Hide() else button:Show() end
-    end
-    ns.msg(m.hide and "Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück." or "Minimap-Button eingeblendet.")
+    if not button then return end
+    if on then button:Show() else button:Hide() end
 end
+
+ns.RegisterSlash("minimap", { desc = "Minimap-Button ein- oder ausblenden", run = function()
+    ns.Set("ui.minimap", not ns.Get("ui.minimap"))
+    ns.msg(ns.Get("ui.minimap") and "Minimap-Button eingeblendet." or "Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück.")
+end })
 
 -- The addon compartment (the addon menu at the minimap) calls these by name, from the TOC.
 function Amisia_OnAddonCompartmentClick(_, mouse) click(mouse) end

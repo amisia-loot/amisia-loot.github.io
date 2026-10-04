@@ -59,11 +59,12 @@ function ns.LinkQuality(link)
     return itemQuality
 end
 
-local REUSE_WINDOW  = 2 * 60 * 60  -- re-entering the same raid within 2 hours continues its session
-local NIGHT_START   = 6 * 60 * 60  -- a session starting before 06:00 belongs to the previous raid night
 local ROSTER_EVERY  = 60           -- seconds between roster snapshots while recording
-local LATE_DEFAULT  = 20 * 60      -- minutes after midnight: a raider first seen after 20:00 is late
-local KEEP_SESSIONS = 60           -- oldest sessions beyond this are dropped
+
+-- Seconds after midnight before which a raid counts for the night before (record.nightStart).
+local function nightStart()
+    return (ns.Get("record.nightStart") or 360) * 60
+end
 
 local DB            -- AmisiaDB, set on ADDON_LOADED
 local active        -- the session currently being recorded, or nil
@@ -184,12 +185,12 @@ end
 -- The moment a raider still counts as punctual: the raid start time set in the settings,
 -- on the calendar day of this raid night. A time before 06:00 means the night after it.
 local function lateCutoff(t)
-    local mins = DB and DB.settings and DB.settings.lateAt
+    local mins = ns.Get("record.lateAt")
     if not mins then return nil end
-    local d = date("*t", t - NIGHT_START)
+    local d = date("*t", t - nightStart())
     local midnight = time({ year = d.year, month = d.month, day = d.day, hour = 0, min = 0, sec = 0 })
     if not midnight then return nil end
-    return midnight + mins * 60 + ((mins * 60 < NIGHT_START) and (24 * 60 * 60) or 0)
+    return midnight + mins * 60 + ((mins * 60 < nightStart()) and (24 * 60 * 60) or 0)
 end
 ns.LateCutoff = lateCutoff
 
@@ -212,7 +213,7 @@ end
 
 local function newSession(zone, instanceID)
     local t = time()
-    local night = date("%Y-%m-%d", t - NIGHT_START)
+    local night = date("%Y-%m-%d", t - nightStart())
     local s = {
         id = date("%Y%m%d%H%M%S", t) .. "-" .. tostring(instanceID or 0),
         start = t,
@@ -229,7 +230,7 @@ local function newSession(zone, instanceID)
         awards = {},  -- master loot hand-outs: { name, item, t, kind = MS|OS|SR|-, src }
     }
     DB.sessions[#DB.sessions + 1] = s
-    while #DB.sessions > KEEP_SESSIONS do
+    while #DB.sessions > (ns.Get("record.keepSessions") or 60) do
         table.remove(DB.sessions, 1)
     end
     return s
@@ -239,7 +240,7 @@ local function findReusable(instanceID)
     local t = time()
     for i = #DB.sessions, 1, -1 do
         local s = DB.sessions[i]
-        if s.instanceID == instanceID and (t - (s.last or s.start or 0)) <= REUSE_WINDOW then
+        if s.instanceID == instanceID and (t - (s.last or s.start or 0)) <= (ns.Get("record.resumeHours") or 2) * 3600 then
             return s
         end
     end
@@ -305,7 +306,7 @@ end
 
 local function evaluate()
     if not DB then return end
-    if not DB.settings.enabled then
+    if not ns.Get("record.enabled") then
         stopRecording()
         return
     end
@@ -391,12 +392,14 @@ function ns.AwardCount(s)
     return #(s.awards or {})
 end
 
--- Chat announcement for the group: raid warning for leader or assistant, else raid, else party.
+-- Chat announcement for the group: raid warning for leader or assistant (unless rolls.channel says
+-- raid), else raid, else party.
 function ns.Announce(text)
     if not IsInGroup() then return end
     local chan = "PARTY"
     if IsInRaid() then
-        chan = (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) and "RAID_WARNING" or "RAID"
+        local warn = ns.Get("rolls.channel") ~= "RAID" and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player"))
+        chan = warn and "RAID_WARNING" or "RAID"
     end
     -- Forever keeps the global only as a deprecated alias; Anniversary has no C_ChatInfo version.
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
@@ -548,6 +551,7 @@ local function queryBankTabs()
 end
 
 local function bankOpened(frame)
+    if not ns.Get("bank.count") then return end
     if not HAS_BANK_API then return end
     if not bankOpen then bankCounted = false end
     bankOpen = true
@@ -587,36 +591,41 @@ function ns.Bank() return DB and DB.bank end
 ---------------------------------------------------------------------------
 function ns.Sessions() return DB and DB.sessions or {} end
 function ns.Active() return active end
-function ns.IsEnabled() return DB and DB.settings.enabled end
+function ns.IsEnabled() return DB ~= nil and ns.Get("record.enabled") end
 
 function ns.SetEnabled(on)
     if not DB then return end
-    DB.settings.enabled = on and true or false
+    ns.Set("record.enabled", on and true or false)
     msg(on and "Aufnahme aktiv." or "Aufnahme pausiert.")
-    evaluate()
 end
 
 -- Raid start as HH:MM, or nil when the late marker is switched off.
 function ns.LateTime()
-    local mins = DB and DB.settings and DB.settings.lateAt
+    local mins = ns.Get("record.lateAt")
     if not mins then return nil end
     return ("%02d:%02d"):format(math.floor(mins / 60), mins % 60)
 end
 
 function ns.SetLateTime(text)
-    if not DB then return nil end
-    text = (text or ""):lower()
-    if text == "aus" or text == "off" then
-        DB.settings.lateAt = false
-        return true
-    end
-    local h, m = text:match("^(%d%d?)[:.](%d%d)$")
-    if not h then h, m = text:match("^(%d%d?)$"), "0" end
-    h, m = tonumber(h), tonumber(m)
-    if not h or not m or h > 23 or m > 59 then return nil end
-    DB.settings.lateAt = h * 60 + m
-    return true
+    return (ns.Set("record.lateAt", text)) or nil
 end
+
+ns.RegisterSettings{ key = "record", label = "Aufnahme", order = 10, items = {
+    { key = "record.enabled", type = "toggle", label = "Aufnahme im Raid", default = true,
+      tip = "Zeichnet in Raidinstanzen mit Raidgruppe Anwesenheit und Loot auf.",
+      onChange = function() evaluate() end },
+    { key = "record.lateAt", type = "time", allowOff = true, label = "Raidbeginn (zu spät ab)", default = 20 * 60,
+      tip = "Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab." },
+    { key = "record.keepSessions", type = "slider", label = "Raids aufbewahren", default = 60, min = 10, max = 200, step = 10 },
+    { key = "record.resumeHours", type = "slider", label = "Fortsetzen innerhalb von (Std.)", default = 2, min = 1, max = 6,
+      expert = true, tip = "Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort." },
+    { key = "record.nightStart", type = "time", label = "Raidnacht beginnt um", default = 6 * 60, expert = true,
+      tip = "Ein Raid vor dieser Uhrzeit zählt zur Nacht davor." },
+}}
+ns.RegisterSettings{ key = "bank", label = "Gildenbank", order = 40, officer = true, items = {
+    { key = "bank.count", type = "toggle", label = "Beim Öffnen der Gildenbank zählen", default = true,
+      tip = "Zählt die Gildenmaterialien in allen sichtbaren Tabs." },
+}}
 
 function ns.LateCount(s)
     local n = 0
@@ -834,10 +843,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.settings = DB.settings or {}
         DB.itemNames = DB.itemNames or {}
         DB.exported = DB.exported or {}   -- session id -> { h = fingerprint, at = epoch } of its last export
-        if DB.settings.enabled == nil then DB.settings.enabled = true end
-        DB.settings.rollSeconds = tonumber(DB.settings.rollSeconds) or 20
-        if DB.settings.lateAt == nil then DB.settings.lateAt = LATE_DEFAULT end
-        if DB.settings.collect == nil then DB.settings.collect = true end
+        ns.ApplySettings(DB)
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
             s.loot = s.loot or {}
@@ -907,84 +913,39 @@ end)
 ---------------------------------------------------------------------------
 -- Slash command
 ---------------------------------------------------------------------------
-local function oldSlash(input)
-    local raw = (input or ""):match("^%s*(.-)%s*$") or ""
-    local cmd = raw:lower()
-    local word, rest = raw:match("^(%S+)%s*(.*)$")
-    word = (word or ""):lower()
-    if word == "award" or word == "unaward" then
-        if ns.AwardCommand then ns.AwardCommand(word == "unaward" and "unaward" or rest) end
-    elseif word == "roll" then
-        if ns.StartRoll then
-            local link, secs = rest:match("^(.-)%s*(%d*)$")
-            local ok, why = ns.StartRoll(link, tonumber(secs))
-            if not ok then msg(why or "Aufruf: /amisia roll <Item-Link> [Sekunden]") elseif ns.ShowRollFrame then ns.ShowRollFrame() end
-        end
-    elseif word == "rollzeit" then
-        local n = tonumber(rest)
-        if n and n >= 5 and n <= 120 then
-            DB.settings.rollSeconds = math.floor(n)
-            msg(("Roll-Dauer: %d Sekunden."):format(DB.settings.rollSeconds))
-        else
-            msg("Aufruf: /amisia rollzeit <5-120>")
-        end
-    elseif word == "spaet" or word == "late" then
+ns.RegisterSlash("pause", { desc = "Aufnahme pausieren oder fortsetzen", run = function() ns.SetEnabled(not ns.IsEnabled()) end })
+ns.RegisterSlash("spaet", { aliases = { "late" }, args = "<HH:MM>|aus", desc = "Raidbeginn für die Zu-spät-Markierung",
+    run = function(rest)
         if rest == "" then
             local at = ns.LateTime()
-            msg(at and ("Raidbeginn %s. Wer danach zum ersten Mal im Raid steht, wird als zu spaet vermerkt. /amisia spaet aus schaltet es ab."):format(at)
-                or "Verspaetungen werden nicht vermerkt. /amisia spaet 20:00 schaltet sie ein.")
+            msg(at and ("Raidbeginn %s. Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. /amisia spaet aus schaltet es ab."):format(at)
+                or "Verspätungen werden nicht vermerkt. /amisia spaet 20:00 schaltet sie ein.")
         elseif ns.SetLateTime(rest) then
             local at = ns.LateTime()
-            msg(at and ("Raidbeginn %s: wer danach zum ersten Mal im Raid steht, ist zu spaet."):format(at)
-                or "Verspaetungen werden nicht mehr vermerkt.")
+            msg(at and ("Raidbeginn %s: wer danach zum ersten Mal im Raid steht, ist zu spät."):format(at)
+                or "Verspätungen werden nicht mehr vermerkt.")
         else
             msg("Aufruf: /amisia spaet <HH:MM> | aus")
         end
-    elseif word == "gear" or word == "ausruestung" then
-        local sub, arg = rest:match("^(%S+)%s*(.*)$")
-        if sub and sub:lower() == "item" then
-            if ns.GearDebug then ns.GearDebug(arg) end
-        elseif ns.ToggleGearFrame then
-            ns.ToggleGearFrame()
-        end
-    elseif word == "minimap" then
-        if ns.ToggleMinimapButton then ns.ToggleMinimapButton() end
-    elseif word == "rolls" then
-        if ns.ToggleRollFrame then ns.ToggleRollFrame() end
-    elseif word == "sr" then
-        if ns.ToggleSoftResFrame then ns.ToggleSoftResFrame() end
-    elseif word == "scan" then
-        if ns.ScanCommand then ns.ScanCommand(rest) end
-    elseif word == "sammeln" or word == "collect" then
-        DB.settings.collect = not DB.settings.collect
-        msg(DB.settings.collect and "Item-Sammler an: Taschen, Haendler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."
-            or "Item-Sammler aus.")
-    elseif cmd == "pause" then
-        ns.SetEnabled(not ns.IsEnabled())
-    elseif cmd == "status" then
-        if active then
-            local c = ns.MatCounts(active)
-            local late = ns.LateCount(active)
-            msg(("Aufnahme: %s, %d Raider%s, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
-                late > 0 and (", " .. late .. " zu spaet") or "", c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
-        else
-            msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
-        end
-        local bank = ns.Bank()
-        if bank and bank.counts then
-            local c = bank.counts
-            msg(("Gildenbank vom %s: Mal %d, Herz %d, Edelsteine %d."):format(date("%d.%m. %H:%M", bank.at),
-                c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
-        else
-            msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
-        end
-    elseif ns.Toggle then
-        ns.Toggle(cmd == "export")
+    end })
+ns.RegisterSlash("status", { desc = "Stand der Aufnahme und der Gildenbank", run = function()
+    if active then
+        local c = ns.MatCounts(active)
+        local late = ns.LateCount(active)
+        msg(("Aufnahme: %s, %d Raider%s, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
+            late > 0 and (", " .. late .. " zu spät") or "", c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+    else
+        msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
     end
-end
-
--- Until every feature registers its own commands, unknown words fall back to the old handler.
-for _, w in ipairs({ "award", "unaward", "roll", "rollzeit", "spaet", "late", "rolls", "sr", "scan", "sammeln",
-                     "collect", "pause", "status", "export", "gear", "ausruestung", "minimap" }) do
-    ns.RegisterSlash(w, { desc = "", run = function(rest, word) oldSlash(word .. (rest ~= "" and (" " .. rest) or "")) end })
-end
+    local bank = ns.Bank()
+    if bank and bank.counts then
+        local c = bank.counts
+        msg(("Gildenbank vom %s: Mal %d, Herz %d, Edelsteine %d."):format(date("%d.%m. %H:%M", bank.at),
+            c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+    else
+        msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
+    end
+end })
+ns.RegisterSlash("export", { officer = true, desc = "den neuesten Raid exportieren", run = function()
+    if ns.ShowExport then ns.ShowExport(true) end
+end })

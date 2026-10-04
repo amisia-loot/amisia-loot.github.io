@@ -30,7 +30,7 @@ local function scanDB()
     local s = AmisiaDB.scan
     s.items = s.items or {}
     s.retry = s.retry or {}
-    s.rate = tonumber(s.rate) or DEFAULT_RATE
+    s.rate = ns.Get("tools.scanRate") or DEFAULT_RATE
     s.count = s.count or 0
     return s
 end
@@ -268,10 +268,9 @@ function ns.ScanCommand(rest)
         local ok, why = ns.ScanList(ids, "Ausrüstungs-Scan")
         if not ok and why then ns.msg(why) end
     elseif word == "rate" then
-        local n = tonumber(arg)
-        if n and n >= 10 and n <= 1000 then
-            scanDB().rate = math.floor(n)
-            ns.msg(("Scan-Rate: %d Anfragen pro Sekunde."):format(scanDB().rate))
+        if ns.Set("tools.scanRate", tonumber(arg)) then
+            scanDB()
+            ns.msg(("Scan-Rate: %d Anfragen pro Sekunde."):format(ns.Get("tools.scanRate")))
         else
             ns.msg("Aufruf: /amisia scan rate <10-1000>")
         end
@@ -285,3 +284,12 @@ function ns.ScanCommand(rest)
         if not ok and why then ns.msg(why) end
     end
 end
+
+ns.RegisterSettings{ key = "tools", label = "Werkzeuge", order = 95, expert = true, items = {
+    { key = "tools.collect", type = "toggle", label = "Item-Sammler", default = true,
+      tip = "Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle." },
+    { key = "tools.scanRate", type = "slider", label = "Scan-Rate (Anfragen pro Sekunde)", default = 100, min = 10, max = 1000, step = 10 },
+}}
+ns.RegisterSlash("scan", { args = "[von bis] | gear | retry | stop | status | rate <n>", desc = "Item-Scan", run = function(rest)
+    ns.ScanCommand(rest)
+end })
