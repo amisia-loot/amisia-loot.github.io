@@ -10,10 +10,14 @@ local history = {}   -- finished rounds, newest first (this session only)
 local matcher
 
 -- Round: { item, link, name, started, seconds, leftAt, only = {[name]=true}|nil,
---          rolls = { [name] = { name, value, low, high, kind, t, class } }, order = { names },
+--          rolls = { [name] = { name, value, low, high, kind, t, class, manual } }, order = { names },
 --          ignored = { { name, value, low, high, why } }, reserved = { names }, reservedSet = {},
 --          plus = { [name] = n }   -- plus-one of every roller, frozen when the round starts
---          done, winner, tie = { names }|nil }
+--          done, ended, winner, tie = { names }|nil,
+--          lockdown = true   -- ran wholly or partly in the chat lockdown of a boss fight
+--          hidden = n        -- secret system lines during the round (not all of them rolls)
+--          dirty = true      -- changed by hand after the end, result not announced yet
+--          seq = n }         -- running number for the order of equal rolls
 
 local function shortName(name)
     return ns.FullName(name)
@@ -109,35 +113,55 @@ local function changed()
     if ns.CurrentPage and ns.CurrentPage() == "rolls" then ns.Refresh() end
 end
 
+-- Winner or tie of round r from its ranking, without announcing (finish and hand rolls use it).
+-- Returns the ranking, its top entry and the standing text ("95, MS" or "95, MS, +1").
+function ns.RollDecide(r)
+    r.winner, r.tie = nil, nil
+    local list = ns.RollRanking(r)
+    local top = list[1]
+    if not top then return list end
+    local tie = { top.name }
+    for i = 2, #list do
+        local e = list[i]
+        if sameStanding(r, e, top) then
+            tie[#tie + 1] = e.name
+        else
+            break
+        end
+    end
+    if #tie > 1 then r.tie = tie else r.winner = top.name end
+    local plus = ns.PlusLabel(r, top.name)
+    local standing = plus and ("%d, %s, %s"):format(top.value, top.rank, plus) or ("%d, %s"):format(top.value, top.rank)
+    return list, top, standing
+end
+
+-- Announces the result of round r (default the newest); prefix starts the line ("Stopp! " when
+-- the round ends, else the item). Clears r.dirty.
+function ns.AnnounceRollResult(r, prefix)
+    r = r or current or last
+    if not r then return nil, "Keine Runde." end
+    if not r.done then return nil, "Die Runde läuft noch." end
+    local list, _, standing = ns.RollDecide(r)
+    prefix = prefix or ("Ergebnis %s: "):format(r.link or r.name or "?")
+    if #list == 0 then
+        ns.Announce(prefix .. "Niemand hat gewürfelt.")
+    elseif r.tie then
+        ns.Announce(("%sGleichstand: %s (%s). Bitte nochmal würfeln."):format(prefix, table.concat(r.tie, " und "), standing))
+    else
+        ns.Announce(("%sGewinner: %s (%s)."):format(prefix, r.winner, standing))
+    end
+    r.dirty = nil
+    changed()
+    return true
+end
+
 local function finish()
     if not current or current.done then return end
     if ticker then ticker:Cancel(); ticker = nil end
     current.done = true
+    current.ended = time()
     current.leftAt = 0
-    local list = ns.RollRanking(current)
-    if #list == 0 then
-        ns.Announce("Stopp! Niemand hat gewürfelt.")
-    else
-        local top = list[1]
-        local tie = { top.name }
-        for i = 2, #list do
-            local e = list[i]
-            if sameStanding(current, e, top) then
-                tie[#tie + 1] = e.name
-            else
-                break
-            end
-        end
-        local plus = ns.PlusLabel(current, top.name)
-        local standing = plus and ("%d, %s, %s"):format(top.value, top.rank, plus) or ("%d, %s"):format(top.value, top.rank)
-        if #tie > 1 then
-            current.tie = tie
-            ns.Announce(("Stopp! Gleichstand: %s (%s). Bitte nochmal würfeln."):format(table.concat(tie, " und "), standing))
-        else
-            current.winner = top.name
-            ns.Announce(("Stopp! Gewinner: %s (%s)."):format(top.name, standing))
-        end
-    end
+    ns.AnnounceRollResult(current, "Stopp! ")
     last = current
     table.insert(history, 1, current)
     while #history > 10 do table.remove(history) end
@@ -156,6 +180,7 @@ function ns.StartRoll(link, seconds, onlyNames)
         item = id, link = link, name = link:match("|h%[(.-)%]|h") or ("Item " .. id),
         started = time(), seconds = seconds, leftAt = seconds,
         rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {}, plus = {},
+        lockdown = ns.ChatLocked and ns.ChatLocked() or nil, hidden = 0, seq = 0,
     }
     for _, n in ipairs(reserved) do current.reservedSet[n] = true end
     -- the plus-one of everyone in the group as of now; whoever is missing here is counted on the roll
@@ -179,7 +204,8 @@ function ns.StartRoll(link, seconds, onlyNames)
         left = left - 1
         if current then current.leftAt = left end
         if ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
-            ns.Announce(("%d Sekunden."):format(left))
+            -- a countdown is worthless after a few seconds (it waits during the chat lockdown)
+            ns.Announce(("%d Sekunden."):format(left), 3)
         end
         if left <= 0 then finish() else changed() end
     end)
@@ -199,11 +225,22 @@ function ns.RerollTie()
     return ns.StartRoll(r.link, 10, r.tie)
 end
 
+local function nextSeq(r)
+    r.seq = (r.seq or #r.order) + 1
+    return r.seq
+end
+
 local function onSystem(text)
     if not current or current.done or not matcher then return end
-    -- a secret line (boss fight on the Forever client) cannot be read and is left alone
+    -- a secret line (boss fight on the Forever client) cannot be read: counted, so the window can
+    -- say that rolls may be missing and are to be entered by hand
     text = ns.Plain(text)
-    if type(text) ~= "string" then return end
+    if type(text) ~= "string" then
+        current.hidden = (current.hidden or 0) + 1
+        current.lockdown = true
+        changed()
+        return
+    end
     local a = matcher(text)
     if not a then return end
     local name = shortName(a[1])
@@ -223,13 +260,108 @@ local function onSystem(text)
     if why then
         current.ignored[#current.ignored + 1] = { name = name, value = value, low = low, high = high, why = why }
     else
-        current.rolls[name] = { name = name, value = value, low = low, high = high, kind = kindOf(low, high), t = #current.order + 1, class = class }
+        current.rolls[name] = { name = name, value = value, low = low, high = high, kind = kindOf(low, high), t = nextSeq(current), class = class }
         current.order[#current.order + 1] = name
         plusOf(current, name)
     end
     changed()
 end
 ns.OnEvent("CHAT_MSG_SYSTEM", onSystem)
+
+-- The lockdown began during the round: the state is final only after the dispatch.
+local function noteLockdown()
+    if current and not current.done and ns.ChatLocked and ns.ChatLocked() and not current.lockdown then
+        current.lockdown = true
+        changed()
+    end
+end
+ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function()
+    noteLockdown()
+    C_Timer.After(0, noteLockdown)
+end)
+
+---------------------------------------------------------------------------
+-- Rolls by hand: when the roll chat is secret (boss fight on Forever), the loot master enters them
+---------------------------------------------------------------------------
+local RANGE = "Wurf 1-100 (MS) oder 1-99 (OS)."
+local HIGH = { MS = 100, OS = 99 }
+
+-- The round a hand roll goes to: the running one, else the last one up to 10 minutes after its end.
+local function handRound()
+    if current and not current.done then return current end
+    if last and last.done and time() - (last.ended or last.started or 0) <= KEEP then return last end
+    return nil
+end
+
+-- A name of the group (its spelling, with class) or of the running recording, or nil.
+local function knownName(name)
+    for i = 1, GetNumGroupMembers() or 0 do
+        local n, _, _, _, _, class = GetRaidRosterInfo(i)
+        n = ns.FullName(ns.Plain(n))
+        if n and ns.SameName(n, name) then return n, class end
+    end
+    local s = ns.Active and ns.Active()
+    for n, m in pairs(s and s.members or {}) do
+        if ns.SameName(n, name) then return n, m.class ~= "" and m.class or nil end
+    end
+    return nil
+end
+
+-- Enters a roll by hand into the running round or the last finished one (up to 10 minutes):
+-- kind "MS" (1-100) or "OS" (1-99), replacing a roll of the same name. A finished round is decided
+-- anew and marked dirty; its result is announced only through ns.AnnounceRollResult.
+function ns.AddManualRoll(name, value, kind)
+    local r = handRound()
+    if not r then return nil, "Keine Runde." end
+    kind = tostring(kind or "MS"):upper()
+    local high = HIGH[kind]
+    value = tonumber(value)
+    if not high or not value or value % 1 ~= 0 or value < 1 or value > high then return nil, RANGE end
+    local typed = ns.FullName(ns.Plain(name))
+    if not typed then return nil, "Kein Name." end
+    local full, class = knownName(typed)
+    if not full then return nil, ("%s ist nicht in der Gruppe."):format(typed) end
+    if r.only and not r.only[full] then return nil, ("%s ist nicht am Stechen beteiligt."):format(full) end
+    local e = { name = full, value = value, low = 1, high = high, kind = kind, t = nextSeq(r), class = class, manual = true }
+    if not r.rolls[full] then r.order[#r.order + 1] = full end
+    r.rolls[full] = e
+    plusOf(r, full)
+    if r.done then
+        ns.RollDecide(r)
+        r.dirty = true
+    end
+    changed()
+    return e
+end
+
+-- Hand rolls of a round.
+function ns.ManualRollCount(r)
+    local n = 0
+    for _, e in pairs(r and r.rolls or {}) do
+        if e.manual then n = n + 1 end
+    end
+    return n
+end
+
+-- /amisia wurf <Name> <Zahl> [os]: the number is the first purely numeric word, the name all
+-- before it (Forever names hold a space).
+local function rollCommand(rest)
+    if not ns.IsOfficerView() then ns.msg("Würfe von Hand nur in der Offiziersansicht.") return end
+    local words = {}
+    for w in (rest or ""):gmatch("%S+") do words[#words + 1] = w end
+    local at
+    for i, w in ipairs(words) do
+        if w:match("^%d+$") then at = i break end
+    end
+    if not at or at == 1 then ns.msg("Aufruf: /amisia wurf <Name> <Zahl> [os]") return end
+    local name = table.concat(words, " ", 1, at - 1)
+    local kind = (words[at + 1] or "ms"):upper()
+    local e, why = ns.AddManualRoll(name, words[at], kind)
+    if not e then ns.msg(why) return end
+    ns.msg(("Wurf eingetragen: %s %d (%s)."):format(e.name, e.value, e.kind))
+    local r = handRound()
+    if r and r.done and r.dirty then ns.msg("Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an.") end
+end
 
 -- MS, OS or SR for an award: what the recipient reserved or rolled in the last round for this item.
 function ns.RollKind(item, name)
@@ -255,6 +387,8 @@ ns.RegisterSlash("roll", { officer = true, args = "<Item-Link> [Sekunden]", desc
     local ok, why = ns.StartRoll(link, tonumber(secs))
     if not ok then ns.msg(why or "Aufruf: /amisia roll <Item-Link> [Sekunden]") elseif ns.ShowRollFrame then ns.ShowRollFrame() end
 end })
+ns.RegisterSlash("wurf", { aliases = { "addroll" }, officer = true, args = "<Name> <Zahl> [os]", desc = "Wurf von Hand in die Runde eintragen",
+    run = rollCommand })
 ns.RegisterSlash("rollzeit", { officer = true, args = "<5-120>", desc = "Standard-Dauer einer Roll-Runde", run = function(rest)
     local ok = ns.Set("rolls.seconds", tonumber(rest))
     ns.msg(ok and ("Roll-Dauer: %d Sekunden."):format(ns.Get("rolls.seconds")) or "Aufruf: /amisia rollzeit <5-120>")

@@ -2,7 +2,8 @@
 local ADDON, ns = ...
 local W = ns.W
 
--- One line for a round: time, item, and the winner with kind and plus-one, the tie, or the state.
+-- One line for a round: time, item, and the winner with kind and plus-one, the tie, or the state;
+-- then the boss fight lockdown and the rolls entered by hand.
 local function roundLine(r)
     local list = ns.RollRanking(r)
     local who
@@ -16,9 +17,18 @@ local function roundLine(r)
     else
         who = ("läuft, noch %d s, %d Würfe"):format(r.leftAt or 0, #list)
     end
-    return ("%s  %s  %s"):format(date("%H:%M", r.started or 0), r.name or "?", who)
+    local extra = ""
+    if r.lockdown then extra = extra .. ("  |cffe0a344Bosskampf, %d Zeilen nicht lesbar|r"):format(r.hidden or 0) end
+    local hand = ns.ManualRollCount and ns.ManualRollCount(r) or 0
+    if hand > 0 then extra = extra .. ("  %d von Hand"):format(hand) end
+    if r.dirty then extra = extra .. "  |cffe0a344Ergebnis nicht angesagt|r" end
+    return ("%s  %s  %s%s"):format(date("%H:%M", r.started or 0), r.name or "?", who, extra)
 end
 ns.RoundLine = roundLine
+
+local page
+-- For tests: the page frame once built.
+function ns.RollsPageFrame() return page end
 
 ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, officer = true,
     create = function(parent)
@@ -38,12 +48,14 @@ ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI
         end, function(r, round) r.text:SetText(roundLine(round)) end)
         f.list:SetPoint("TOPLEFT", 0, -80)
         f.list:SetPoint("TOPRIGHT", 0, -80)
+        page = f
         return f
     end,
     refresh = function(f)
         local cur = ns.CurrentRoll()
         f.current:SetText(cur and not cur.done and ("Laufende Runde: " .. roundLine(cur)) or "Keine laufende Runde.")
-        f.hint:SetText(ns.Get("rolls.altClick") and "Alt-Klick auf ein Item im Lootfenster startet eine Runde."
+        f.hint:SetText((ns.Get("rolls.altClick") and "Alt-Klick auf ein Item im Lootfenster startet eine Runde."
             or "Alt-Klick ist ausgeschaltet. /amisia roll <Item-Link> startet eine Runde.")
+            .. " Im Bosskampf Würfe im Roll-Fenster von Hand eintragen.")
         f.list:SetItems(ns.RollHistory())
     end }
