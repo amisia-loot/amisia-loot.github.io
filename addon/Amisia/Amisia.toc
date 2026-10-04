@@ -9,6 +9,7 @@
 ## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 
+Registry.lua
 Core.lua
 Awards.lua
 Rolls.lua

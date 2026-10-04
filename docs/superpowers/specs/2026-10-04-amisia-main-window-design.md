@@ -61,7 +61,7 @@ tools/build_gear.py           Testitems ausschließen
 addon/tests/*                 neue Tests, Stub ergänzt
 ```
 
-Die TOC lädt Registry und Widgets direkt nach Core, die Feature-Dateien danach, MainFrame und
+Die TOC lädt Registry vor Core (Core meldet beim Laden schon an), Widgets direkt nach Core, die Feature-Dateien danach, MainFrame und
 die Seiten zuletzt. Seiten werden nur angemeldet; gebaut werden sie beim ersten Öffnen.
 
 ## Registry (Registry.lua)

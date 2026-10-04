@@ -29,6 +29,15 @@ _G.GetInstanceInfo = function() local i = STUB.instance; return i.name, i.type, 
 _G.InCombatLockdown = function() return STUB.combat and true or false end
 _G.IsAltKeyDown = function() return STUB.alt end
 _G.GetGuildInfo = function() return "Amisia" end
+-- errors inside protected handlers still fail the test
+_G.geterrorhandler = function() return function(e) error(e, 0) end end
+STUB.toc = 20506
+_G.GetBuildInfo = function() return "2.5.6", "99999", "Oct 1 2026", STUB.toc end
+STUB.officer = true
+_G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
+_G.MouseIsOver = function() return false end
+_G.IsShiftKeyDown = function() return STUB.shift and true or false end
+_G.IsControlKeyDown = function() return false end
 
 local function itemId(x) return tonumber(x) or tonumber(tostring(x):match("item:(%d+)")) end
 _G.GetItemInfo = function(x)
@@ -97,7 +106,7 @@ local function region()
     local f = { text = "", shown = true }
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
                           "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
-                          "SetDesaturated", "SetVertexColor", "ClearAllPoints" }) do
+                          "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines" }) do
         f[m] = NOOP
     end
     f.SetText = function(self, t) self.text = t end
@@ -107,13 +116,15 @@ local function region()
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) self.shown = on and true or false end
     f.GetStringWidth = function(self) return #tostring(self.text or "") * 6 end
+    f.GetStringHeight = function(self) return 14 end
     return f
 end
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
     "RegisterForDrag", "SetAllPoints", "SetScrollChild", "SetVerticalScroll", "SetMultiLine", "SetMaxLetters", "SetAutoFocus", "SetFontObject",
     "SetCursorPosition", "HighlightText", "SetFocus", "ClearFocus", "EnableMouseWheel", "SetFrameLevel", "SetToplevel", "StartMoving",
     "StopMovingOrSizing", "SetBackdrop", "SetBackdropColor", "SetNormalTexture", "SetHighlightTexture", "SetPushedTexture", "SetScale", "SetID",
-    "SetEnabled", "Disable", "Enable", "SetTextColor", "ClearAllPoints", "SetResizable", "SetHitRectInsets", "RegisterForClicks" }
+    "SetEnabled", "Disable", "Enable", "SetTextColor", "ClearAllPoints", "SetResizable", "SetHitRectInsets", "RegisterForClicks",
+    "Raise", "Lower", "SetUserPlaced", "SetJustifyH", "SetJustifyV", "SetTextInsets", "SetNumeric", "SetHighlightFontObject", "SetNormalFontObject" }
 function _G.CreateFrame(kind, name, parent, template)
     local f = { kind = kind, name = name, shown = false, scripts = {}, events = {}, text = "", parent = parent }
     for _, m in ipairs(frameMethods) do f[m] = NOOP end
@@ -137,6 +148,15 @@ function _G.CreateFrame(kind, name, parent, template)
     f.GetParent = function() return parent end
     f.GetName = function() return name end
     f.GetFrameLevel = function() return 1 end
+    f.GetPoint = function(self) return self._point or "CENTER", nil, self._point or "CENTER", self._x or 0, self._y or 0 end
+    f.GetWidth = function(self) return self._w or 400 end
+    f.GetHeight = function(self) return self._h or 300 end
+    f.GetScale = function(self) return self._scale or 1 end
+    f.SetScale = function(self, s) self._scale = s end
+    f.SetSize = function(self, w, h) self._w, self._h = w, h end
+    f.SetWidth = function(self, w) self._w = w end
+    f.SetHeight = function(self, h) self._h = h end
+    f.GetChecked = function(self) return self.checked end
     f.SetOwner = NOOP
     f.AddLine = NOOP
     f.AddDoubleLine = NOOP

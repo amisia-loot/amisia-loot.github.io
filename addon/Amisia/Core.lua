@@ -906,8 +906,7 @@ end)
 ---------------------------------------------------------------------------
 -- Slash command
 ---------------------------------------------------------------------------
-SLASH_AMISIA1 = "/amisia"
-SlashCmdList.AMISIA = function(input)
+local function oldSlash(input)
     local raw = (input or ""):match("^%s*(.-)%s*$") or ""
     local cmd = raw:lower()
     local word, rest = raw:match("^(%S+)%s*(.*)$")
@@ -981,4 +980,10 @@ SlashCmdList.AMISIA = function(input)
     elseif ns.Toggle then
         ns.Toggle(cmd == "export")
     end
+end
+
+-- Until every feature registers its own commands, unknown words fall back to the old handler.
+for _, w in ipairs({ "award", "unaward", "roll", "rollzeit", "spaet", "late", "rolls", "sr", "scan", "sammeln",
+                     "collect", "pause", "status", "export", "gear", "ausruestung", "minimap" }) do
+    ns.RegisterSlash(w, { desc = "", run = function(rest, word) oldSlash(word .. (rest ~= "" and (" " .. rest) or "")) end })
 end
