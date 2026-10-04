@@ -5,6 +5,7 @@ then ADDON_LOADED. Inside a test `NS` is the addon namespace and `AmisiaDB` the 
 """
 import glob
 import os
+import re
 import sys
 
 from lupa.lua51 import LuaRuntime
@@ -19,7 +20,9 @@ def toc_files():
         for line in fh:
             line = line.strip()
             if line and not line.startswith('#'):
-                out.append(line)
+                # load conditions like "[AllowLoadGameType camelot]" stay out of the file name;
+                # the tests load every file
+                out.append(re.sub(r'\s*\[[^\]]*\]', '', line))
     return out
 
 

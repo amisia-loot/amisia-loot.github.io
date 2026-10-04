@@ -171,6 +171,13 @@ local function build()
     pauseBtn:SetPoint("TOPRIGHT", -34, -12)
     pauseBtn:SetScript("OnClick", function() ns.SetEnabled(not ns.IsEnabled()) end)
 
+    -- the gear planner only has data in WoW Forever
+    if ns.Gear and ns.Gear.Available() then
+        local gearBtn = button(W, "Ausrüstung", 100)
+        gearBtn:SetPoint("RIGHT", pauseBtn, "LEFT", -6, 0)
+        gearBtn:SetScript("OnClick", function() if ns.ToggleGearFrame then ns.ToggleGearFrame() end end)
+    end
+
     statusText = text(W, "GameFontHighlightSmall", 560)
     statusText:SetPoint("TOPLEFT", 16, -40)
 
@@ -342,6 +349,7 @@ local function build()
     local rollBtn = button(W, "Rolls", 70)
     rollBtn:SetPoint("RIGHT", srBtn, "LEFT", -6, 0)
     rollBtn:SetScript("OnClick", function() if ns.ToggleRollFrame then ns.ToggleRollFrame() end end)
+
 
     local boxBg = CreateFrame("Frame", nil, W)
     boxBg:SetPoint("TOPLEFT", exportLabel, "BOTTOMLEFT", 0, -8)

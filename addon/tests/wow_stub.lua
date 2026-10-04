@@ -96,7 +96,8 @@ local NOOP = function() end
 local function region()
     local f = { text = "", shown = true }
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
-                          "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset" }) do
+                          "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
+                          "SetDesaturated", "SetVertexColor", "ClearAllPoints" }) do
         f[m] = NOOP
     end
     f.SetText = function(self, t) self.text = t end
@@ -104,6 +105,8 @@ local function region()
     f.Show = function(self) self.shown = true end
     f.Hide = function(self) self.shown = false end
     f.IsShown = function(self) return self.shown end
+    f.SetShown = function(self, on) self.shown = on and true or false end
+    f.GetStringWidth = function(self) return #tostring(self.text or "") * 6 end
     return f
 end
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
@@ -125,6 +128,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.Show = function(self) self.shown = true; if self.scripts.OnShow then self.scripts.OnShow(self) end end
     f.Hide = function(self) self.shown = false; if self.scripts.OnHide then self.scripts.OnHide(self) end end
     f.IsShown = function(self) return self.shown end
+    f.SetShown = function(self, on) if on then self:Show() else self:Hide() end end
     f.IsVisible = f.IsShown
     f.SetText = function(self, t) self.text = t end
     f.GetText = function(self) return self.text end

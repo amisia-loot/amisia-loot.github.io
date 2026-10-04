@@ -31,6 +31,45 @@ listed under its source. Requires `lupa`; icons need `Pillow` and internet acces
 
 Tests: `python -m pytest tools/tests -q`.
 
+## build_gear.py
+
+Builds `addon/Amisia/GearData.lua` and `addon/Amisia/GearWeights.lua` for the addon's gear window
+(`/amisia gear`, WoW Forever only): every item a levelling character can wear, where it comes from,
+and the stat weights per class, spec and level.
+
+```
+python tools/build_gear.py
+```
+
+- What an item is (slot, armour or weapon type, required level, quality) comes from the Amisia item
+  scan: the scan dumps in the repo root plus the installed Forever client's SavedVariables, or the
+  files given with `--sv`. Items without a scan are left out.
+- Where it comes from is joined from QuestieDB's Forever database (quests, vendors, NPC drops; read
+  from the Classic Era AddOns folder), OneForAll (Forever dungeons, dungeon quests, Merchant's Favor
+  recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes), the wowsrc.com dungeon pages
+  (kept in `tools/gear_wowsrc.json`, `--refresh-wowsrc` downloads them again) and the Amisia item
+  collector.
+- The DPS weights come from RestedXP's Forever `StatWeights.lua` (CC BY-NC-SA 4.0, so
+  `GearWeights.lua` carries that licence); healer and tank weights are defined in the script.
+- In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
+  plus the ids its sources name but no scan has seen (`M` in GearData.lua, items Forever still
+  hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go
+  into `GearData.lua` (`ST`), so the window needs no loading, and newly revealed items join.
+- Items without scanned stats are read from the client when the window opens.
+- The collector notes drops with NPC id and dungeon (`Drop: <mob> [<npcID>] @<place> #party:<instanceID>`)
+  and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
+  in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.
+- Rebuild after a scan, when the source addons update, or to pick up what the collector saw.
+
+`AMISIA_WOW_ROOT` overrides the WoW install path. Requires `lupa`.
+
+## make_minimap_icon.py
+
+Draws `addon/Amisia/Media/Icons/Minimap.tga`, the round minimap button icon: the golden A of
+`Amisia.tga` on the guild's turquoise stone with a gold rim, as a genuine 64x64 32-bit TGA.
+`--preview out.png` writes an enlarged PNG to look at. A new or renamed texture needs a full client
+restart before WoW shows it; `/reload` is not enough. Requires Pillow.
+
 ## build_twin.py and twin_stamp.py
 
 The claude.ai copy of the ledger (the "twin") is built from `index.html`, never edited by hand.

@@ -3,7 +3,7 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "1.2.3"
+ns.VERSION = "1.3.0"
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
@@ -940,6 +940,15 @@ SlashCmdList.AMISIA = function(input)
         else
             msg("Aufruf: /amisia spaet <HH:MM> | aus")
         end
+    elseif word == "gear" or word == "ausruestung" then
+        local sub, arg = rest:match("^(%S+)%s*(.*)$")
+        if sub and sub:lower() == "item" then
+            if ns.GearDebug then ns.GearDebug(arg) end
+        elseif ns.ToggleGearFrame then
+            ns.ToggleGearFrame()
+        end
+    elseif word == "minimap" then
+        if ns.ToggleMinimapButton then ns.ToggleMinimapButton() end
     elseif word == "rolls" then
         if ns.ToggleRollFrame then ns.ToggleRollFrame() end
     elseif word == "sr" then

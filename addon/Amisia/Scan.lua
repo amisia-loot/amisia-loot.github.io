@@ -40,6 +40,23 @@ local function inInstance()
     return kind == "raid" or kind == "party"
 end
 
+-- The client's stats of a weapon or armour piece, as "KEY=value;..." with the ITEM_MOD_ prefix cut
+-- off: the gear planner's build reads them, so the planner needs no loading in game.
+local function statText(id, classID)
+    local getStats = (C_Item and C_Item.GetItemStats) or _G.GetItemStats
+    if (classID ~= 2 and classID ~= 4) or not getStats then return "" end
+    local raw = getStats("item:" .. id)
+    if not raw then return "" end
+    local parts = {}
+    for k, v in pairs(raw) do
+        if type(v) == "number" and v ~= 0 then
+            parts[#parts + 1] = tostring(k):gsub("^ITEM_MOD_", "") .. "=" .. tostring(v)
+        end
+    end
+    table.sort(parts)
+    return table.concat(parts, ";")
+end
+
 local function store(id)
     id = tonumber(id)
     if not id then return false end
@@ -51,10 +68,14 @@ local function store(id)
     end
     local s = scanDB()
     if not s.items[id] then s.count = s.count + 1 end
-    s.items[id] = table.concat({
+    local fields = {
         (name:gsub("[\t\n]", " ")), tostring(q or 0), tostring(ilvl or 0), tostring(minLevel or 0),
         tostring(classID or ""), tostring(subclassID or ""), tostring(equipLoc or ""), tostring(icon or ""), tostring(bindType or ""),
-    }, "\t")
+    }
+    -- a tenth field with the stats, only for gear
+    local st = statText(id, tonumber(classID))
+    if st ~= "" then fields[#fields + 1] = st end
+    s.items[id] = table.concat(fields, "\t")
     return true
 end
 ns.StoreItem = store
@@ -180,6 +201,35 @@ function ns.ScanRetry()
     return true
 end
 
+-- Scans a list of ids, e.g. everything the gear planner lists plus what its sources name but no scan
+-- has seen yet (items Forever only reveals later).
+function ns.ScanList(ids, label)
+    if not request then return nil, "Dieser Client kann keine Items nachladen." end
+    if running then return nil, "Der Scan laeuft schon. /amisia scan stop haelt ihn an." end
+    if inInstance() then return nil, "Der Scan laeuft nur ausserhalb von Instanzen." end
+    if not ids or #ids == 0 then return nil, "Keine IDs zu scannen." end
+    local s = scanDB()
+    queue = {}
+    for i = 1, #ids do queue[i] = ids[i] end
+    pending, pendingCount = {}, 0
+    nextReport = math.huge
+    running = true
+    ticker = C_Timer.NewTicker(0.1, tick)
+    ns.msg(("%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."):format(label or "Scan", #ids, s.rate))
+    return true
+end
+
+-- The ids the gear planner wants scanned: its items and the ones its sources name but lack.
+function ns.GearScanIDs()
+    local d = ns.GEAR
+    if not d then return nil end
+    local ids = {}
+    for id in pairs(d.I) do ids[#ids + 1] = id end
+    for _, id in ipairs(d.M or {}) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return ids
+end
+
 function ns.ScanStop()
     if not running then return end
     finish("angehalten")
@@ -209,6 +259,14 @@ function ns.ScanCommand(rest)
         if not ok and why then ns.msg(why) end
     elseif word == "status" then
         ns.msg(ns.ScanStatus())
+    elseif word == "gear" then
+        local ids = ns.GearScanIDs()
+        if not ids then
+            ns.msg("Die Ausrüstungstabelle gibt es nur in WoW Forever.")
+            return
+        end
+        local ok, why = ns.ScanList(ids, "Ausrüstungs-Scan")
+        if not ok and why then ns.msg(why) end
     elseif word == "rate" then
         local n = tonumber(arg)
         if n and n >= 10 and n <= 1000 then
@@ -220,7 +278,7 @@ function ns.ScanCommand(rest)
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg("Aufruf: /amisia scan [<von> <bis>] | retry | stop | status | rate <n>")
+            ns.msg("Aufruf: /amisia scan [<von> <bis>] | gear | retry | stop | status | rate <n>")
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))

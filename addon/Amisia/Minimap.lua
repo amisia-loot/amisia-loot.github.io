@@ -1,0 +1,121 @@
+-- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
+-- the gear planner (WoW Forever) or the roll window. Drag the button around the minimap;
+-- /amisia minimap hides or shows it.
+local ADDON, ns = ...
+
+local ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\Minimap"
+local DEFAULT_ANGLE = 200
+local button
+
+local function settings()
+    AmisiaDB.settings.minimap = AmisiaDB.settings.minimap or {}
+    local m = AmisiaDB.settings.minimap
+    m.angle = tonumber(m.angle) or DEFAULT_ANGLE
+    return m
+end
+
+local function gearAvailable()
+    return ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame
+end
+
+-- What both the button and the compartment entry do on a click.
+local function click(mouse)
+    if mouse == "RightButton" then
+        if gearAvailable() then ns.ToggleGearFrame() elseif ns.ToggleRollFrame then ns.ToggleRollFrame() end
+    elseif ns.Toggle then
+        ns.Toggle(false)
+    end
+end
+
+local function tooltip(owner, anchor)
+    GameTooltip:SetOwner(owner, anchor or "ANCHOR_LEFT")
+    GameTooltip:AddLine("Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r", 0.89, 0.72, 0.34)
+    local act = ns.Active and ns.Active()
+    if act then
+        GameTooltip:AddLine(("Aufnahme läuft: %s"):format(act.zone or "?"), 0.31, 0.75, 0.48)
+    elseif ns.IsEnabled and not ns.IsEnabled() then
+        GameTooltip:AddLine("Aufnahme pausiert", 0.88, 0.64, 0.27)
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddDoubleLine("Linksklick", "Amisia-Fenster", 1, 1, 1, 0.8, 0.8, 0.8)
+    GameTooltip:AddDoubleLine("Rechtsklick", gearAvailable() and "Ausrüstung" or "Rolls", 1, 1, 1, 0.8, 0.8, 0.8)
+    if owner == button then
+        GameTooltip:AddDoubleLine("Ziehen", "Verschieben", 1, 1, 1, 0.8, 0.8, 0.8)
+    end
+    GameTooltip:Show()
+end
+
+local function place()
+    if not button then return end
+    local angle = math.rad(settings().angle)
+    local radius = (Minimap:GetWidth() or 140) / 2 + 5
+    button:ClearAllPoints()
+    button:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+end
+
+-- While dragging, the button follows the cursor around the minimap's edge.
+local function follow()
+    local mx, my = Minimap:GetCenter()
+    if not mx then return end
+    local cx, cy = GetCursorPosition()
+    local scale = Minimap:GetEffectiveScale() or 1
+    settings().angle = math.deg(math.atan2(cy / scale - my, cx / scale - mx)) % 360
+    place()
+end
+
+local function build()
+    if button or not Minimap then return end
+    button = CreateFrame("Button", "AmisiaMinimapButton", Minimap)
+    button:SetSize(31, 31)
+    button:SetFrameStrata("MEDIUM")
+    button:SetFrameLevel((Minimap:GetFrameLevel() or 0) + 8)
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:RegisterForDrag("LeftButton")
+    button:SetMovable(true)
+
+    local bg = button:CreateTexture(nil, "BACKGROUND")
+    bg:SetSize(24, 24)
+    bg:SetPoint("CENTER", 0, 1)
+    bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(21, 21)
+    icon:SetPoint("CENTER", 0, 1)
+    icon:SetTexture(ICON)
+    button.icon = icon
+    local border = button:CreateTexture(nil, "OVERLAY")
+    border:SetSize(53, 53)
+    border:SetPoint("TOPLEFT")
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    button:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+
+    button:SetScript("OnClick", function(_, mouse) click(mouse) end)
+    button:SetScript("OnEnter", function(self) tooltip(self, "ANCHOR_LEFT") end)
+    button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    button:SetScript("OnDragStart", function(self)
+        GameTooltip:Hide()
+        self:SetScript("OnUpdate", follow)
+    end)
+    button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+
+    place()
+    if settings().hide then button:Hide() else button:Show() end
+end
+ns.OnEvent("PLAYER_LOGIN", build)
+
+-- /amisia minimap
+function ns.ToggleMinimapButton()
+    local m = settings()
+    m.hide = not m.hide
+    if not button then build() end
+    if button then
+        if m.hide then button:Hide() else button:Show() end
+    end
+    ns.msg(m.hide and "Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück." or "Minimap-Button eingeblendet.")
+end
+
+-- The addon compartment (the addon menu at the minimap) calls these by name, from the TOC.
+function Amisia_OnAddonCompartmentClick(_, mouse) click(mouse) end
+function Amisia_OnAddonCompartmentEnter(_, frame) tooltip(frame, "ANCHOR_LEFT") end
+function Amisia_OnAddonCompartmentLeave() GameTooltip:Hide() end
+
+ns._minimap = { place = place, follow = follow, button = function() return button end }

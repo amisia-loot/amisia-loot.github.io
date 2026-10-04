@@ -1,6 +1,13 @@
 -- Amisia item collector: every item the player meets is stored like a scanned item, with where it
 -- was seen: bags and equipment, merchants, quest rewards, auction house pages, loot windows,
 -- tooltips and chat links. Items the client has not cached yet are requested and stored on arrival.
+--
+-- Source notes, read by tools/build_scan.py and tools/build_gear.py:
+--   "Drop: <mob> [<npcID>] @<zone or instance> #<instance type>:<instanceID>"   (# part only inside instances)
+--   "Haendler: <name> [<npcID>] @<zone>"
+--   "Quest: <title> [<questID>] L<player level>"
+--   "Auktionshaus"
+-- Older notes have only the name; every part after it is optional.
 local ADDON, ns = ...
 
 local MAX_SOURCES = 6
@@ -57,6 +64,34 @@ end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onLoaded)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", onLoaded)
 
+-- NPC id from a creature GUID ("Creature-0-3110-0-47-644-00002E7CF2" -> 644).
+function ns.NpcID(guid)
+    if type(guid) ~= "string" then return nil end
+    local kind, id = guid:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+    if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
+    return nil
+end
+
+-- " @<zone>", plus " #<type>:<instanceID>" inside a dungeon or raid.
+local function placeTag()
+    local name, kind, _, _, _, _, _, instanceID = GetInstanceInfo()
+    if kind == "party" or kind == "raid" then
+        return (" @%s #%s:%d"):format(name or "?", kind, tonumber(instanceID) or 0)
+    end
+    local zone = (GetRealZoneText and GetRealZoneText()) or (GetZoneText and GetZoneText()) or ""
+    return zone ~= "" and (" @" .. zone) or ""
+end
+ns.PlaceTag = placeTag
+
+-- The name of a unit token whose GUID is the given one, if any.
+local function nameOfGUID(guid)
+    if not guid then return nil end
+    for _, unit in ipairs({ "target", "mouseover", "focus" }) do
+        if UnitGUID(unit) == guid then return UnitName(unit) end
+    end
+    return nil
+end
+
 ---------------------------------------------------------------------------
 -- Bags and equipment
 ---------------------------------------------------------------------------
@@ -94,9 +129,11 @@ ns.OnEvent("BANKFRAME_OPENED", function() scanBags(-1, -1); scanBags(5, 11) end)
 ns.OnEvent("MERCHANT_SHOW", function()
     if not enabled() or not GetMerchantNumItems or not GetMerchantItemLink then return end
     local who = UnitName("npc") or UnitName("target") or "?"
+    local npc = ns.NpcID(UnitGUID("npc"))
+    local note = "Haendler: " .. who .. (npc and (" [" .. npc .. "]") or "") .. placeTag()
     for i = 1, GetMerchantNumItems() or 0 do
         local link = GetMerchantItemLink(i)
-        if link then ns.NoteItem(link, "Haendler: " .. who) end
+        if link then ns.NoteItem(link, note) end
     end
 end)
 
@@ -106,11 +143,14 @@ end)
 local function questRewards()
     if not enabled() or not GetQuestItemLink then return end
     local title = (GetTitleText and GetTitleText()) or "?"
+    local qid = GetQuestID and GetQuestID()
+    local level = UnitLevel and UnitLevel("player")
+    local note = "Quest: " .. title .. ((qid and qid > 0) and (" [" .. qid .. "]") or "") .. ((level and level > 0) and (" L" .. level) or "")
     for _, kind in ipairs({ "reward", "choice" }) do
         local n = kind == "reward" and (GetNumQuestRewards and GetNumQuestRewards() or 0) or (GetNumQuestChoices and GetNumQuestChoices() or 0)
         for i = 1, n do
             local link = GetQuestItemLink(kind, i)
-            if link then ns.NoteItem(link, "Quest: " .. title) end
+            if link then ns.NoteItem(link, note) end
         end
     end
 end
@@ -149,12 +189,19 @@ end)
 ---------------------------------------------------------------------------
 ns.OnEvent("LOOT_OPENED", function()
     if not enabled() or not GetNumLootItems or not GetLootSlotLink then return end
-    local who = UnitName("target")
+    local place = placeTag()
     for slot = 1, GetNumLootItems() or 0 do
         local link = GetLootSlotLink(slot)
         local src = GetLootSourceInfo and GetLootSourceInfo(slot)
         if link and not (type(src) == "string" and src:find("^Item%-")) then
-            ns.NoteItem(link, who and ("Drop: " .. who) or nil)
+            -- the corpse this slot came from: its NPC id always, its name when it is targeted
+            local npc = ns.NpcID(src)
+            local who = nameOfGUID(src) or (not npc and UnitName("target")) or nil
+            if who or npc then
+                ns.NoteItem(link, "Drop: " .. (who or "?") .. (npc and (" [" .. npc .. "]") or "") .. place)
+            else
+                ns.NoteItem(link)
+            end
         end
     end
 end)

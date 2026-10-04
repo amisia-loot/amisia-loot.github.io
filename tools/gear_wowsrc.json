@@ -1,0 +1,9045 @@
+{
+ "fetched": "2026-10-04",
+ "dungeons": [
+  {
+   "slug": "blackfathom-deeps",
+   "name": "Blackfathom Deeps",
+   "bosses": [
+    {
+     "name": "Ghamoo-ra",
+     "items": [
+      {
+       "n": "Tortoise Armor",
+       "l": 27,
+       "d": "37.4%",
+       "nw": false
+      },
+      {
+       "n": "Ghamoo-ra's Bind",
+       "l": 27,
+       "d": "56.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lady Sarevess",
+     "items": [
+      {
+       "n": "Naga Battle Gloves",
+       "l": 27,
+       "d": "38.1%",
+       "nw": false
+      },
+      {
+       "n": "Naga Heartpiercer",
+       "l": 27,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Darkwater Talwar",
+       "l": 27,
+       "d": "38.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Gelihast",
+     "items": [
+      {
+       "n": "Algae Fists",
+       "l": 28,
+       "d": "44.7%",
+       "nw": false
+      },
+      {
+       "n": "Reef Axe",
+       "l": 27,
+       "d": "47.2%",
+       "nw": false
+      },
+      {
+       "n": "Cursed Murloc Eye",
+       "l": 29,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Twilight Lord Kelris",
+     "items": [
+      {
+       "n": "Rod of the Sleepwalker",
+       "l": 29,
+       "d": "49.4%",
+       "nw": false
+      },
+      {
+       "n": "Gaze Dreamer Pants",
+       "l": 28,
+       "d": "34.1%",
+       "nw": false
+      },
+      {
+       "n": "Twilight Lord Girdle",
+       "l": 30,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Old Serra'kis",
+     "items": [
+      {
+       "n": "Glowing Thresher Cape",
+       "l": 29,
+       "d": "40.3%",
+       "nw": false
+      },
+      {
+       "n": "Bite of Serra'kis",
+       "l": 28,
+       "d": "21.0%",
+       "nw": false
+      },
+      {
+       "n": "Bands of Serra'kis",
+       "l": 27,
+       "d": "32.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Aku'mai",
+     "items": [
+      {
+       "n": "Strike of the Hydra",
+       "l": 31,
+       "d": "19.9%",
+       "nw": false
+      },
+      {
+       "n": "Leech Pants",
+       "l": 29,
+       "d": "36.8%",
+       "nw": false
+      },
+      {
+       "n": "Moss Cinch",
+       "l": 30,
+       "d": "38.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Onyx Claymore",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Grimclaw",
+       "l": 27,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Doomspike",
+       "l": 27,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scholarly Robes",
+       "l": 25,
+       "d": "1.8%",
+       "nw": false
+      },
+      {
+       "n": "Evocator's Blade",
+       "l": 25,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Axe of the Enforcer",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tree Bark Jacket",
+       "l": 26,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ring of Precision",
+       "l": 27,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Staff of the Blessed Seer",
+       "l": 25,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Crested Scepter",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Staff of the Friar",
+       "l": 26,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Martyr's Chain",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lorgus Jett",
+     "items": [
+      {
+       "n": "Treacherous Treads",
+       "l": 28,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Fallenroot Longbow",
+       "l": 28,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Twilight Maul",
+       "l": 28,
+       "d": null,
+       "nw": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "blackrock-depths",
+   "name": "Blackrock Depths",
+   "bosses": [
+    {
+     "name": "Lord Roccor",
+     "items": [
+      {
+       "n": "Stoneshell Guard",
+       "l": null,
+       "d": "22.8%",
+       "nw": false
+      },
+      {
+       "n": "Earthslag Shoulders",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      },
+      {
+       "n": "Mantle of Lost Hope",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      },
+      {
+       "n": "Idol of Ferocity",
+       "l": null,
+       "d": "22.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "High Interrogator Gerstahn",
+     "items": [
+      {
+       "n": "Kentic Amice",
+       "l": null,
+       "d": "22.3%",
+       "nw": false
+      },
+      {
+       "n": "Enthralled Sphere",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Blackveil Cape",
+       "l": null,
+       "d": "17.4%",
+       "nw": false
+      },
+      {
+       "n": "Greaves of Withering Despair",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Houndmaster Grebmar",
+     "items": [
+      {
+       "n": "Spritecaster Cape",
+       "l": null,
+       "d": "29.6%",
+       "nw": false
+      },
+      {
+       "n": "Fleetfoot Greaves",
+       "l": null,
+       "d": "34.5%",
+       "nw": false
+      },
+      {
+       "n": "Houndmaster's Bow",
+       "l": null,
+       "d": "12.7%",
+       "nw": false
+      },
+      {
+       "n": "Houndmaster's Rifle",
+       "l": null,
+       "d": "12.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Anub'shiah",
+     "items": [
+      {
+       "n": "Shadefiend Boots",
+       "l": null,
+       "d": "33.3%",
+       "nw": false
+      },
+      {
+       "n": "Graverot Cape",
+       "l": null,
+       "d": "31.1%",
+       "nw": false
+      },
+      {
+       "n": "Carapace of Anub'shiah",
+       "l": null,
+       "d": "19.0%",
+       "nw": false
+      },
+      {
+       "n": "Savage Gladiator Greaves",
+       "l": null,
+       "d": "12.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Eviscerator",
+     "items": [
+      {
+       "n": "Rubicund Armguards",
+       "l": null,
+       "d": "30.3%",
+       "nw": false
+      },
+      {
+       "n": "Splinthide Shoulders",
+       "l": null,
+       "d": "29.1%",
+       "nw": false
+      },
+      {
+       "n": "Girdle of Beastial Fury",
+       "l": null,
+       "d": "19.5%",
+       "nw": false
+      },
+      {
+       "n": "Savage Gladiator Grips",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Gorosh the Dervish",
+     "items": [
+      {
+       "n": "Savage Gladiator Chain",
+       "l": null,
+       "d": "15.5%",
+       "nw": false
+      },
+      {
+       "n": "Bloodclot Band",
+       "l": null,
+       "d": "23.1%",
+       "nw": false
+      },
+      {
+       "n": "Flarethorn",
+       "l": null,
+       "d": "17.1%",
+       "nw": false
+      },
+      {
+       "n": "Leggings of Frenzied Magic",
+       "l": null,
+       "d": "21.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Grizzle",
+     "items": [
+      {
+       "n": "Grizzle's Skinner",
+       "l": null,
+       "d": "30.1%",
+       "nw": false
+      },
+      {
+       "n": "Stonewall Girdle",
+       "l": null,
+       "d": "30.4%",
+       "nw": false
+      },
+      {
+       "n": "Dregmetal Spaulders",
+       "l": null,
+       "d": "20.4%",
+       "nw": false
+      },
+      {
+       "n": "Entrenching Boots",
+       "l": null,
+       "d": "15.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Hedrum the Creeper",
+     "items": [
+      {
+       "n": "Spiderfang Carapace",
+       "l": null,
+       "d": "31.0%",
+       "nw": false
+      },
+      {
+       "n": "Silkweb Gloves",
+       "l": null,
+       "d": "28.2%",
+       "nw": false
+      },
+      {
+       "n": "Hookfang Shanker",
+       "l": null,
+       "d": "20.8%",
+       "nw": false
+      },
+      {
+       "n": "Savage Gladiator Helm",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ok'thor the Breaker",
+     "items": [
+      {
+       "n": "Ban'thok Sash",
+       "l": null,
+       "d": "31.1%",
+       "nw": false
+      },
+      {
+       "n": "Ogreseer Fists",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      },
+      {
+       "n": "Savage Gladiator Leggings",
+       "l": null,
+       "d": "16.7%",
+       "nw": false
+      },
+      {
+       "n": "Cyclopean Band",
+       "l": null,
+       "d": "19.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Pyromancer Loregrain",
+     "items": [
+      {
+       "n": "Flamestrider Robes",
+       "l": null,
+       "d": "24.2%",
+       "nw": false
+      },
+      {
+       "n": "Pyric Caduceus",
+       "l": null,
+       "d": "28.6%",
+       "nw": false
+      },
+      {
+       "n": "Searingscale Leggings",
+       "l": null,
+       "d": "23.7%",
+       "nw": false
+      },
+      {
+       "n": "Kindling Stave",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Incendius",
+     "items": [
+      {
+       "n": "Cinderhide Armsplints",
+       "l": null,
+       "d": "14.2%",
+       "nw": false
+      },
+      {
+       "n": "Pyremail Wristguards",
+       "l": null,
+       "d": "13.6%",
+       "nw": false
+      },
+      {
+       "n": "Flameweave Cuffs",
+       "l": null,
+       "d": "14.0%",
+       "nw": false
+      },
+      {
+       "n": "Emberplate Armguards",
+       "l": null,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Incendic Bracers",
+       "l": null,
+       "d": "40.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Warder Stilgiss",
+     "items": [
+      {
+       "n": "Boreal Mantle",
+       "l": null,
+       "d": "23.0%",
+       "nw": false
+      },
+      {
+       "n": "Chillsteel Girdle",
+       "l": null,
+       "d": "25.2%",
+       "nw": false
+      },
+      {
+       "n": "Arbiter's Blade",
+       "l": null,
+       "d": "23.0%",
+       "nw": false
+      },
+      {
+       "n": "Dark Warder's Pauldrons",
+       "l": null,
+       "d": "21.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Verek",
+     "items": [
+      {
+       "n": "Verek's Collar",
+       "l": null,
+       "d": "14.5%",
+       "nw": false
+      },
+      {
+       "n": "Verek's Leash",
+       "l": null,
+       "d": "11.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Fineous Darkvire",
+     "items": [
+      {
+       "n": "Chief Architect's Monocle",
+       "l": null,
+       "d": "20.9%",
+       "nw": false
+      },
+      {
+       "n": "Senior Designer's Pantaloons",
+       "l": null,
+       "d": "24.0%",
+       "nw": false
+      },
+      {
+       "n": "Lead Surveyor's Mantle",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      },
+      {
+       "n": "Foreman's Head Protector",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Bael'Gar",
+     "items": [
+      {
+       "n": "Lavacrest Leggings",
+       "l": null,
+       "d": "34.5%",
+       "nw": false
+      },
+      {
+       "n": "Force of Magma",
+       "l": null,
+       "d": "33.0%",
+       "nw": false
+      },
+      {
+       "n": "Rubidium Hammer",
+       "l": null,
+       "d": "7.0%",
+       "nw": false
+      },
+      {
+       "n": "Sash of the Burning Heart",
+       "l": null,
+       "d": "19.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "General Angerforge",
+     "items": [
+      {
+       "n": "Force of Will",
+       "l": null,
+       "d": "11.4%",
+       "nw": false
+      },
+      {
+       "n": "Angerforge's Battle Axe",
+       "l": null,
+       "d": "22.8%",
+       "nw": false
+      },
+      {
+       "n": "Lord General's Sword",
+       "l": null,
+       "d": "13.0%",
+       "nw": false
+      },
+      {
+       "n": "Royal Decorated Armor",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      },
+      {
+       "n": "Warstrife Leggings",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Golem Lord Argelmach",
+     "items": [
+      {
+       "n": "Naglering",
+       "l": null,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Second Wind",
+       "l": null,
+       "d": "9.0%",
+       "nw": false
+      },
+      {
+       "n": "Omnicast Boots",
+       "l": null,
+       "d": "35.9%",
+       "nw": false
+      },
+      {
+       "n": "Luminary Kilt",
+       "l": null,
+       "d": "36.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Hurley Blackbreath",
+     "items": [
+      {
+       "n": "Ragefury Eyepatch",
+       "l": null,
+       "d": "9.2%",
+       "nw": false
+      },
+      {
+       "n": "Coal Miner Boots",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Hurley's Tankard",
+       "l": null,
+       "d": "26.0%",
+       "nw": false
+      },
+      {
+       "n": "Firemoss Boots",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Phalanx",
+     "items": [
+      {
+       "n": "Rockfist",
+       "l": null,
+       "d": "2.6%",
+       "nw": false
+      },
+      {
+       "n": "Bloodfist",
+       "l": null,
+       "d": "31.1%",
+       "nw": false
+      },
+      {
+       "n": "Fists of Phalanx",
+       "l": null,
+       "d": "30.5%",
+       "nw": false
+      },
+      {
+       "n": "Golem Fitted Pauldrons",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Plugger Spazzring",
+     "items": [
+      {
+       "n": "Barman Shanker",
+       "l": null,
+       "d": "10.3%",
+       "nw": false
+      },
+      {
+       "n": "Mixologist's Tunic",
+       "l": null,
+       "d": "29.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ambassador Flamelash",
+     "items": [
+      {
+       "n": "Circle of Flame",
+       "l": null,
+       "d": "0.4%",
+       "nw": false
+      },
+      {
+       "n": "Flame Wrath",
+       "l": null,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Cape of the Fire Salamander",
+       "l": null,
+       "d": "38.0%",
+       "nw": false
+      },
+      {
+       "n": "Molten Fists",
+       "l": null,
+       "d": "37.1%",
+       "nw": false
+      },
+      {
+       "n": "Burst of Knowledge",
+       "l": null,
+       "d": "10.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Panzor the Invincible",
+     "items": [
+      {
+       "n": "Rock Golem Bulwark",
+       "l": null,
+       "d": "22.7%",
+       "nw": false
+      },
+      {
+       "n": "Stone of the Earth",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      },
+      {
+       "n": "Shalehusk Boots",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      },
+      {
+       "n": "Soot Encrusted Footwear",
+       "l": null,
+       "d": "19.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Doom'rel",
+     "items": [
+      {
+       "n": "Deathdealer Breastplate",
+       "l": null,
+       "d": "26.7%",
+       "nw": false
+      },
+      {
+       "n": "Legplates of the Eternal Guardian",
+       "l": null,
+       "d": "46.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Anger'rel",
+     "items": [
+      {
+       "n": "Ghostshroud",
+       "l": null,
+       "d": "25.0%",
+       "nw": false
+      },
+      {
+       "n": "Haunting Specter Leggings",
+       "l": null,
+       "d": "50.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Magmus",
+     "items": [
+      {
+       "n": "Magmus Stone",
+       "l": null,
+       "d": "20.9%",
+       "nw": false
+      },
+      {
+       "n": "Lavastone Hammer",
+       "l": null,
+       "d": "21.9%",
+       "nw": false
+      },
+      {
+       "n": "Totem of Rage",
+       "l": null,
+       "d": "12.0%",
+       "nw": false
+      },
+      {
+       "n": "Libram of Truth",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Princess Moira Bronzebeard",
+     "items": [
+      {
+       "n": "Swiftwalker Boots",
+       "l": null,
+       "d": "22.7%",
+       "nw": false
+      },
+      {
+       "n": "Hands of the Exalted Herald",
+       "l": null,
+       "d": "23.3%",
+       "nw": false
+      },
+      {
+       "n": "High Priestess Boots",
+       "l": null,
+       "d": "21.6%",
+       "nw": false
+      },
+      {
+       "n": "Ebonsteel Spaulders",
+       "l": null,
+       "d": "22.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Emperor Dagran Thaurissan",
+     "items": [
+      {
+       "n": "Ironfoe",
+       "l": null,
+       "d": "1.0%",
+       "nw": false
+      },
+      {
+       "n": "Hand of Justice",
+       "l": null,
+       "d": "15.2%",
+       "nw": false
+      },
+      {
+       "n": "Robes of the Royal Crown",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Thaurissan's Royal Scepter",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      },
+      {
+       "n": "The Emperor's New Cape",
+       "l": null,
+       "d": "19.3%",
+       "nw": false
+      },
+      {
+       "n": "Dreadforge Retaliator",
+       "l": null,
+       "d": "18.2%",
+       "nw": false
+      },
+      {
+       "n": "Guiding Stave of Wisdom",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Imperial Jewel",
+       "l": null,
+       "d": "16.7%",
+       "nw": false
+      },
+      {
+       "n": "Emperor's Seal",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      },
+      {
+       "n": "Wristguards of Renown",
+       "l": null,
+       "d": "18.5%",
+       "nw": false
+      },
+      {
+       "n": "Sash of the Grand Hunt",
+       "l": null,
+       "d": "17.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Golem Skull Helm",
+       "l": null,
+       "d": "11.9%",
+       "nw": false
+      },
+      {
+       "n": "Wraith Scythe",
+       "l": null,
+       "d": "28.3%",
+       "nw": false
+      },
+      {
+       "n": "Impervious Giant",
+       "l": null,
+       "d": "26.1%",
+       "nw": false
+      },
+      {
+       "n": "Blood-etched Blade",
+       "l": null,
+       "d": "21.7%",
+       "nw": false
+      },
+      {
+       "n": "Ribsplitter",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Judge's Gavel",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Searing Needle",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Spire of the Stoneshaper",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Doomforged Straightedge",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Funeral Pyre Vestment",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Aristocratic Cuffs",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mar Alom's Grip",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Braincage",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Runed Golem Shackles",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Stoneshield Cloak",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Blisterbane Wrap",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Battlechaser's Greaves",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ironweave Mantle",
+       "l": null,
+       "d": "100.0%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "blackrock-spire-lower",
+   "name": "Lower Blackrock Spire",
+   "bosses": [
+    {
+     "name": "Highlord Omokk",
+     "items": [
+      {
+       "n": "Boots of Elements",
+       "l": 59,
+       "d": "15.8%",
+       "nw": false
+      },
+      {
+       "n": "Slamshot Shoulders",
+       "l": null,
+       "d": "12.8%",
+       "nw": false
+      },
+      {
+       "n": "Fist of Omokk",
+       "l": null,
+       "d": "13.4%",
+       "nw": false
+      },
+      {
+       "n": "Plate of the Shaman King",
+       "l": null,
+       "d": "12.9%",
+       "nw": false
+      },
+      {
+       "n": "Tressermane Leggings",
+       "l": null,
+       "d": "13.2%",
+       "nw": false
+      },
+      {
+       "n": "Skyshroud Leggings",
+       "l": null,
+       "d": "13.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Shadow Hunter Vosh'gajin",
+     "items": [
+      {
+       "n": "Shadowcraft Gloves",
+       "l": 59,
+       "d": "17.4%",
+       "nw": false
+      },
+      {
+       "n": "Funeral Cuffs",
+       "l": null,
+       "d": "18.5%",
+       "nw": false
+      },
+      {
+       "n": "Blackcrow",
+       "l": null,
+       "d": "7.3%",
+       "nw": false
+      },
+      {
+       "n": "Riphook",
+       "l": null,
+       "d": "7.3%",
+       "nw": false
+      },
+      {
+       "n": "Trueaim Gauntlets",
+       "l": null,
+       "d": "34.5%",
+       "nw": false
+      },
+      {
+       "n": "Demonic Runed Spaulders",
+       "l": null,
+       "d": "8.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "War Master Voone",
+     "items": [
+      {
+       "n": "Beaststalker's Gloves",
+       "l": 59,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Keris of Zul'Serak",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      },
+      {
+       "n": "Flightblade Throwing Axe",
+       "l": null,
+       "d": "75.4%",
+       "nw": false
+      },
+      {
+       "n": "Voone's Twitchbow",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Talisman of Evasion",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      },
+      {
+       "n": "Brazecore Armguards",
+       "l": null,
+       "d": "19.7%",
+       "nw": false
+      },
+      {
+       "n": "Kayser's Boots of Precision",
+       "l": null,
+       "d": "17.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mother Smolderweb",
+     "items": [
+      {
+       "n": "Wildheart Boots",
+       "l": 59,
+       "d": "15.7%",
+       "nw": false
+      },
+      {
+       "n": "Venomspitter",
+       "l": null,
+       "d": "3.7%",
+       "nw": false
+      },
+      {
+       "n": "Smolderweb's Eye",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      },
+      {
+       "n": "Gilded Gauntlets",
+       "l": null,
+       "d": "26.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Urok Doomhowl",
+     "items": [
+      {
+       "n": "Rosewine Circle",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Slaghide Gauntlets",
+       "l": null,
+       "d": "20.5%",
+       "nw": false
+      },
+      {
+       "n": "Ribsteel Footguards",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Marksman's Girdle",
+       "l": null,
+       "d": "20.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Quartermaster Zigris",
+     "items": [
+      {
+       "n": "Cloudrunner Girdle",
+       "l": null,
+       "d": "19.2%",
+       "nw": false
+      },
+      {
+       "n": "Hands of Power",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Halycon",
+     "items": [
+      {
+       "n": "Pads of the Dread Wolf",
+       "l": null,
+       "d": "17.4%",
+       "nw": false
+      },
+      {
+       "n": "Slashclaw Bracers",
+       "l": null,
+       "d": "26.0%",
+       "nw": false
+      },
+      {
+       "n": "Halycon's Spiked Collar",
+       "l": null,
+       "d": "25.7%",
+       "nw": false
+      },
+      {
+       "n": "Ironweave Bracers",
+       "l": null,
+       "d": "21.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Gizrul the Slavener",
+     "items": [
+      {
+       "n": "Wildheart Spaulders",
+       "l": 60,
+       "d": "18.4%",
+       "nw": false
+      },
+      {
+       "n": "Rhombeard Protector",
+       "l": null,
+       "d": "24.9%",
+       "nw": false
+      },
+      {
+       "n": "Wolfshear Leggings",
+       "l": null,
+       "d": "25.7%",
+       "nw": false
+      },
+      {
+       "n": "Bleak Howler Armguards",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Overlord Wyrmthalak",
+     "items": [
+      {
+       "n": "Heart of the Scale",
+       "l": 61,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Mantle",
+       "l": 60,
+       "d": "16.4%",
+       "nw": false
+      },
+      {
+       "n": "Mark of the Dragon Lord",
+       "l": null,
+       "d": "4.5%",
+       "nw": false
+      },
+      {
+       "n": "Chillpike",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      },
+      {
+       "n": "Trindlehaven Staff",
+       "l": null,
+       "d": "14.6%",
+       "nw": false
+      },
+      {
+       "n": "Reiver Claws",
+       "l": null,
+       "d": "14.9%",
+       "nw": false
+      },
+      {
+       "n": "Relentless Scythe",
+       "l": null,
+       "d": "15.2%",
+       "nw": false
+      },
+      {
+       "n": "Heart of Wyrmthalak",
+       "l": null,
+       "d": "15.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Spirestone Butcher",
+     "items": [
+      {
+       "n": "Butcher's Apron",
+       "l": null,
+       "d": "58.5%",
+       "nw": false
+      },
+      {
+       "n": "Rivenspike",
+       "l": null,
+       "d": "37.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Spirestone Lord Magus",
+     "items": [
+      {
+       "n": "Globe of D'sak",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      },
+      {
+       "n": "Ogreseer Tower Boots",
+       "l": null,
+       "d": "24.7%",
+       "nw": false
+      },
+      {
+       "n": "Magus Ring",
+       "l": null,
+       "d": "47.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Spirestone Battle Lord",
+     "items": [
+      {
+       "n": "Swiftdart Battleboots",
+       "l": null,
+       "d": "57.0%",
+       "nw": false
+      },
+      {
+       "n": "The Blackrock Slicer",
+       "l": null,
+       "d": "37.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Bannok Grimaxe",
+     "items": [
+      {
+       "n": "Demonfork",
+       "l": null,
+       "d": "28.9%",
+       "nw": false
+      },
+      {
+       "n": "Chiselbrand Girdle",
+       "l": null,
+       "d": "32.2%",
+       "nw": false
+      },
+      {
+       "n": "Backusarian Gauntlets",
+       "l": null,
+       "d": "32.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Crystal Fang",
+     "items": [
+      {
+       "n": "Fallbrush Handgrips",
+       "l": null,
+       "d": "32.7%",
+       "nw": false
+      },
+      {
+       "n": "Sunderseer Mantle",
+       "l": null,
+       "d": "33.4%",
+       "nw": false
+      },
+      {
+       "n": "Fang of the Crystal Spider",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ghok Bashguud",
+     "items": [
+      {
+       "n": "Hurd Smasher",
+       "l": null,
+       "d": "23.0%",
+       "nw": false
+      },
+      {
+       "n": "Armswake Cloak",
+       "l": null,
+       "d": "38.2%",
+       "nw": false
+      },
+      {
+       "n": "Bashguuder",
+       "l": null,
+       "d": "34.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Burning Felguard",
+     "items": [
+      {
+       "n": "Demonskin Gloves",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      },
+      {
+       "n": "Phase Blade",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mor Grayhoof",
+     "items": [
+      {
+       "n": "Ironweave Belt",
+       "l": null,
+       "d": "22.4%",
+       "nw": false
+      },
+      {
+       "n": "Tome of Divine Right",
+       "l": null,
+       "d": "20.1%",
+       "nw": false
+      },
+      {
+       "n": "The Jaw Breaker",
+       "l": null,
+       "d": "21.5%",
+       "nw": false
+      },
+      {
+       "n": "Belt of the Trickster",
+       "l": null,
+       "d": "18.2%",
+       "nw": false
+      },
+      {
+       "n": "Idol of Rejuvenation",
+       "l": null,
+       "d": "17.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Cord of Elements",
+       "l": 58,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Belt",
+       "l": 58,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Devout Belt",
+       "l": 58,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Shadowcraft Belt",
+       "l": 58,
+       "d": "2.7%",
+       "nw": false
+      },
+      {
+       "n": "Magister's Bindings",
+       "l": 57,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Bracers",
+       "l": 57,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of Valor",
+       "l": 57,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Wind Dancer Boots",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "blackrock-spire-upper",
+   "name": "Upper Blackrock Spire",
+   "bosses": [
+    {
+     "name": "Pyroguard Emberseer",
+     "items": [
+      {
+       "n": "Gauntlets of Elements",
+       "l": 59,
+       "d": "18.4%",
+       "nw": false
+      },
+      {
+       "n": "Wildfire Cape",
+       "l": null,
+       "d": "26.0%",
+       "nw": false
+      },
+      {
+       "n": "Flaming Band",
+       "l": null,
+       "d": "26.9%",
+       "nw": false
+      },
+      {
+       "n": "Truestrike Shoulders",
+       "l": null,
+       "d": "12.2%",
+       "nw": false
+      },
+      {
+       "n": "Emberfury Talisman",
+       "l": null,
+       "d": "13.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Solakar Flamewreath",
+     "items": [
+      {
+       "n": "Devout Mantle",
+       "l": 60,
+       "d": "18.5%",
+       "nw": false
+      },
+      {
+       "n": "Dustfeather Sash",
+       "l": null,
+       "d": "19.2%",
+       "nw": false
+      },
+      {
+       "n": "Nightbrace Tunic",
+       "l": null,
+       "d": "18.0%",
+       "nw": false
+      },
+      {
+       "n": "Crystallized Girdle",
+       "l": null,
+       "d": "17.2%",
+       "nw": false
+      },
+      {
+       "n": "Polychromatic Visionwrap",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Goraluk Anvilcrack",
+     "items": [
+      {
+       "n": "Handcrafted Mastersmith Leggings",
+       "l": null,
+       "d": "28.0%",
+       "nw": false
+      },
+      {
+       "n": "Handcrafted Mastersmith Girdle",
+       "l": null,
+       "d": "8.0%",
+       "nw": false
+      },
+      {
+       "n": "Flame Walkers",
+       "l": null,
+       "d": "17.0%",
+       "nw": false
+      },
+      {
+       "n": "Mastersmith's Hammer",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Jed Runewatcher",
+     "items": [
+      {
+       "n": "Starfire Tiara",
+       "l": null,
+       "d": "32.8%",
+       "nw": false
+      },
+      {
+       "n": "Serpentine Skuller",
+       "l": null,
+       "d": "33.2%",
+       "nw": false
+      },
+      {
+       "n": "Briarwood Reed",
+       "l": null,
+       "d": "30.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Warchief Rend Blackhand",
+     "items": [
+      {
+       "n": "Spaulders of Valor",
+       "l": 60,
+       "d": "19.7%",
+       "nw": false
+      },
+      {
+       "n": "Blackhand Doomsaw",
+       "l": null,
+       "d": "9.3%",
+       "nw": false
+      },
+      {
+       "n": "Eye of Rend",
+       "l": null,
+       "d": "19.2%",
+       "nw": false
+      },
+      {
+       "n": "Bonespike Shoulder",
+       "l": null,
+       "d": "1.0%",
+       "nw": false
+      },
+      {
+       "n": "Felstriker",
+       "l": null,
+       "d": "2.0%",
+       "nw": false
+      },
+      {
+       "n": "Warmaster Legguards",
+       "l": null,
+       "d": "21.9%",
+       "nw": false
+      },
+      {
+       "n": "Battleborn Armbraces",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      },
+      {
+       "n": "Dal'Rend's Tribal Guardian",
+       "l": null,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Dal'Rend's Sacred Charge",
+       "l": null,
+       "d": "12.5%",
+       "nw": false
+      },
+      {
+       "n": "Dragonrider Boots",
+       "l": null,
+       "d": "21.0%",
+       "nw": false
+      },
+      {
+       "n": "Band of Rumination",
+       "l": null,
+       "d": "19.1%",
+       "nw": false
+      },
+      {
+       "n": "Feralsurge Girdle",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Faith Healer's Boots",
+       "l": null,
+       "d": "15.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Gyth",
+     "items": [
+      {
+       "n": "Pauldrons of Elements",
+       "l": 60,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Gyth's Skull",
+       "l": null,
+       "d": "18.0%",
+       "nw": false
+      },
+      {
+       "n": "Dragoneye Coif",
+       "l": null,
+       "d": "19.0%",
+       "nw": false
+      },
+      {
+       "n": "Tribal War Feathers",
+       "l": null,
+       "d": "19.8%",
+       "nw": false
+      },
+      {
+       "n": "Dragonskin Cowl",
+       "l": null,
+       "d": "16.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "The Beast",
+     "items": [
+      {
+       "n": "Lightforge Spaulders",
+       "l": 60,
+       "d": "18.2%",
+       "nw": false
+      },
+      {
+       "n": "Pip's Skinner",
+       "l": null,
+       "d": "13.8%",
+       "nw": false
+      },
+      {
+       "n": "Blademaster Leggings",
+       "l": null,
+       "d": "19.9%",
+       "nw": false
+      },
+      {
+       "n": "Tristam Legguards",
+       "l": null,
+       "d": "26.7%",
+       "nw": false
+      },
+      {
+       "n": "Spiritshroud Leggings",
+       "l": null,
+       "d": "20.2%",
+       "nw": false
+      },
+      {
+       "n": "Blackmist Armguards",
+       "l": null,
+       "d": "20.2%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmoon Cloak",
+       "l": null,
+       "d": "24.6%",
+       "nw": false
+      },
+      {
+       "n": "Frostweaver Cape",
+       "l": null,
+       "d": "20.0%",
+       "nw": false
+      },
+      {
+       "n": "Seeping Willow",
+       "l": null,
+       "d": "14.4%",
+       "nw": false
+      },
+      {
+       "n": "Ironweave Boots",
+       "l": null,
+       "d": "17.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Valthalak",
+     "items": [
+      {
+       "n": "Ironweave Cowl",
+       "l": null,
+       "d": "22.0%",
+       "nw": false
+      },
+      {
+       "n": "Lord Valthalak's Staff of Command",
+       "l": null,
+       "d": "26.1%",
+       "nw": false
+      },
+      {
+       "n": "Draconian Aegis of the Legion",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Shroud of Domination",
+       "l": null,
+       "d": "25.6%",
+       "nw": false
+      },
+      {
+       "n": "Rune Band of Wizardry",
+       "l": null,
+       "d": "24.4%",
+       "nw": false
+      },
+      {
+       "n": "Pendant of Celerity",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Leggings of Torment",
+       "l": null,
+       "d": "22.0%",
+       "nw": false
+      },
+      {
+       "n": "Handguards of Savagery",
+       "l": null,
+       "d": "24.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "General Drakkisath",
+     "items": [
+      {
+       "n": "Vest of Elements",
+       "l": 63,
+       "d": "5.7%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Tunic",
+       "l": 63,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Magister's Robes",
+       "l": 63,
+       "d": "10.8%",
+       "nw": false
+      },
+      {
+       "n": "Devout Robe",
+       "l": 63,
+       "d": "10.8%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Robe",
+       "l": 63,
+       "d": "12.3%",
+       "nw": false
+      },
+      {
+       "n": "Wildheart Vest",
+       "l": 63,
+       "d": "11.8%",
+       "nw": false
+      },
+      {
+       "n": "Shadowcraft Tunic",
+       "l": 63,
+       "d": "10.0%",
+       "nw": false
+      },
+      {
+       "n": "Lightforge Breastplate",
+       "l": 63,
+       "d": "7.3%",
+       "nw": false
+      },
+      {
+       "n": "Breastplate of Valor",
+       "l": 63,
+       "d": "12.1%",
+       "nw": false
+      },
+      {
+       "n": "Blackblade of Shahram",
+       "l": null,
+       "d": "1.7%",
+       "nw": false
+      },
+      {
+       "n": "Draconian Deflector",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      },
+      {
+       "n": "Painweaver Band",
+       "l": null,
+       "d": "22.7%",
+       "nw": false
+      },
+      {
+       "n": "Tooth of Gnarr",
+       "l": null,
+       "d": "27.8%",
+       "nw": false
+      },
+      {
+       "n": "Brigam Girdle",
+       "l": null,
+       "d": "22.3%",
+       "nw": false
+      },
+      {
+       "n": "Tome of the Lost",
+       "l": null,
+       "d": "25.7%",
+       "nw": false
+      },
+      {
+       "n": "Spellweaver's Turban",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      },
+      {
+       "n": "Draconic Infused Emblem",
+       "l": null,
+       "d": "7.6%",
+       "nw": false
+      },
+      {
+       "n": "Shadow Prowler's Cloak",
+       "l": null,
+       "d": "20.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Cord of Elements",
+       "l": 58,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Belt",
+       "l": 58,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Devout Belt",
+       "l": 58,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Shadowcraft Belt",
+       "l": 58,
+       "d": "2.7%",
+       "nw": false
+      },
+      {
+       "n": "Magister's Bindings",
+       "l": 57,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Bracers",
+       "l": 57,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of Valor",
+       "l": 57,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Wind Dancer Boots",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "dire-maul",
+   "name": "Dire Maul",
+   "bosses": [
+    {
+     "name": "Zevrim Thornhoof (East)",
+     "items": [
+      {
+       "n": "Gloves of Shadowy Mist",
+       "l": null,
+       "d": "24.7%",
+       "nw": false
+      },
+      {
+       "n": "Clever Hat",
+       "l": null,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Helm of Awareness",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Fervent Helm",
+       "l": null,
+       "d": "10.0%",
+       "nw": false
+      },
+      {
+       "n": "Satyr's Bow",
+       "l": null,
+       "d": "19.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Hydrospawn (East)",
+     "items": [
+      {
+       "n": "Breakwater Legguards",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Riptide Shoes",
+       "l": null,
+       "d": "23.7%",
+       "nw": false
+      },
+      {
+       "n": "Tempest Talisman",
+       "l": null,
+       "d": "19.0%",
+       "nw": false
+      },
+      {
+       "n": "Waterspout Boots",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Waveslicer",
+       "l": null,
+       "d": "9.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lethtendris (East)",
+     "items": [
+      {
+       "n": "Lethtendris's Wand",
+       "l": null,
+       "d": "28.0%",
+       "nw": false
+      },
+      {
+       "n": "Band of Vigor",
+       "l": null,
+       "d": "28.9%",
+       "nw": false
+      },
+      {
+       "n": "Quel'dorai Channeling Rod",
+       "l": null,
+       "d": "9.3%",
+       "nw": false
+      },
+      {
+       "n": "Felhide Cap",
+       "l": null,
+       "d": "28.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Alzzin the Wildshaper (East)",
+     "items": [
+      {
+       "n": "Gloves of Restoration",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Fiendish Machete",
+       "l": null,
+       "d": "19.1%",
+       "nw": false
+      },
+      {
+       "n": "Energized Chestplate",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Ring of Demonic Guile",
+       "l": null,
+       "d": "19.1%",
+       "nw": false
+      },
+      {
+       "n": "Ring of Demonic Potency",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      },
+      {
+       "n": "Merciful Greaves",
+       "l": null,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Energetic Rod",
+       "l": null,
+       "d": "19.1%",
+       "nw": false
+      },
+      {
+       "n": "Razor Gauntlets",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Whipvine Cord",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Shadewood Cloak",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Isalien (East)",
+     "items": [
+      {
+       "n": "Ironweave Gloves",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Huntsman's Harpoon",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      },
+      {
+       "n": "Hammer of Revitalization",
+       "l": null,
+       "d": "14.4%",
+       "nw": false
+      },
+      {
+       "n": "Totem of Rebirth",
+       "l": null,
+       "d": "10.3%",
+       "nw": false
+      },
+      {
+       "n": "Libram of Hope",
+       "l": null,
+       "d": "12.1%",
+       "nw": false
+      },
+      {
+       "n": "Boots of Ferocity",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash (East)",
+     "items": [
+      {
+       "n": "Barbed Thorn Necklace",
+       "l": null,
+       "d": "1.7%",
+       "nw": false
+      },
+      {
+       "n": "Phasing Boots",
+       "l": null,
+       "d": "1.3%",
+       "nw": false
+      },
+      {
+       "n": "Marksman Bands",
+       "l": null,
+       "d": "0.6%",
+       "nw": false
+      },
+      {
+       "n": "Unbridled Leggings",
+       "l": null,
+       "d": "0.7%",
+       "nw": false
+      },
+      {
+       "n": "Orphic Bracers",
+       "l": null,
+       "d": "0.8%",
+       "nw": false
+      },
+      {
+       "n": "Wand of Arcane Potency",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Cloak",
+       "l": null,
+       "d": "1.0%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Talisman",
+       "l": null,
+       "d": "1.2%",
+       "nw": false
+      },
+      {
+       "n": "Petrified Band",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      },
+      {
+       "n": "Stonebark Gauntlets",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Pimgib's Collar",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Robe of Combustion",
+       "l": null,
+       "d": "9.9%",
+       "nw": false
+      },
+      {
+       "n": "Hyena Hide Belt",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Modest Armguards",
+       "l": null,
+       "d": "9.0%",
+       "nw": false
+      },
+      {
+       "n": "Gallant's Wristguards",
+       "l": null,
+       "d": "9.6%",
+       "nw": false
+      },
+      {
+       "n": "Unsophisticated Hand Cannon",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Jagged Bone Fist",
+       "l": null,
+       "d": "9.2%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Pocket Knife",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Gordok Nose Ring",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Bulky Iron Spaulders",
+       "l": null,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Denwatcher's Shoulders",
+       "l": null,
+       "d": "6.9%",
+       "nw": false
+      },
+      {
+       "n": "Heliotrope Cloak",
+       "l": null,
+       "d": "6.5%",
+       "nw": false
+      },
+      {
+       "n": "Sublime Wristguards",
+       "l": null,
+       "d": "5.9%",
+       "nw": false
+      },
+      {
+       "n": "Hedgecutter",
+       "l": null,
+       "d": "6.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Tendris Warpwood (West)",
+     "items": [
+      {
+       "n": "Petrified Bark Shield",
+       "l": null,
+       "d": "24.2%",
+       "nw": false
+      },
+      {
+       "n": "Stoneflower Staff",
+       "l": null,
+       "d": "23.9%",
+       "nw": false
+      },
+      {
+       "n": "Tanglemoss Leggings",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Warpwood Binding",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Illyanna Ravenoak (West)",
+     "items": [
+      {
+       "n": "Well Balanced Axe",
+       "l": null,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Gauntlets of Accuracy",
+       "l": null,
+       "d": "24.1%",
+       "nw": false
+      },
+      {
+       "n": "Force Imbued Gauntlets",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      },
+      {
+       "n": "Padre's Trousers",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Magister Kalendris (West)",
+     "items": [
+      {
+       "n": "Amplifying Cloak",
+       "l": null,
+       "d": "25.3%",
+       "nw": false
+      },
+      {
+       "n": "Magically Sealed Bracers",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Mindtap Talisman",
+       "l": null,
+       "d": "8.7%",
+       "nw": false
+      },
+      {
+       "n": "Flamescarred Shoulders",
+       "l": null,
+       "d": "19.7%",
+       "nw": false
+      },
+      {
+       "n": "Elder Magus Pendant",
+       "l": null,
+       "d": "19.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Tsu'zee (West)",
+     "items": [
+      {
+       "n": "Murmuring Ring",
+       "l": null,
+       "d": "32.9%",
+       "nw": false
+      },
+      {
+       "n": "Threadbare Trousers",
+       "l": null,
+       "d": "29.1%",
+       "nw": false
+      },
+      {
+       "n": "Brightspark Gloves",
+       "l": null,
+       "d": "30.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Immol'thar (West)",
+     "items": [
+      {
+       "n": "Vigilance Charm",
+       "l": null,
+       "d": "8.7%",
+       "nw": false
+      },
+      {
+       "n": "Blade of the New Moon",
+       "l": null,
+       "d": "9.6%",
+       "nw": false
+      },
+      {
+       "n": "Quickdraw Gloves",
+       "l": null,
+       "d": "25.7%",
+       "nw": false
+      },
+      {
+       "n": "Odious Greaves",
+       "l": null,
+       "d": "24.7%",
+       "nw": false
+      },
+      {
+       "n": "Evil Eye Pendant",
+       "l": null,
+       "d": "23.9%",
+       "nw": false
+      },
+      {
+       "n": "Bile-etched Spaulders",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Robe of Everlasting Night",
+       "l": null,
+       "d": "21.2%",
+       "nw": false
+      },
+      {
+       "n": "Cloak of the Cosmos",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Eyestalk Cord",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      },
+      {
+       "n": "Demon Howl Wristguards",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Prince Tortheldrin (West)",
+     "items": [
+      {
+       "n": "Chestplate of Tranquility",
+       "l": null,
+       "d": "9.3%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of the Eclipse",
+       "l": null,
+       "d": "17.2%",
+       "nw": false
+      },
+      {
+       "n": "Timeworn Mace",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Silvermoon Leggings",
+       "l": null,
+       "d": "21.3%",
+       "nw": false
+      },
+      {
+       "n": "Eldritch Reinforced Legplates",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      },
+      {
+       "n": "Fluctuating Cloak",
+       "l": null,
+       "d": "23.6%",
+       "nw": false
+      },
+      {
+       "n": "Stoneshatter",
+       "l": null,
+       "d": "10.5%",
+       "nw": false
+      },
+      {
+       "n": "Distracting Dagger",
+       "l": null,
+       "d": "19.3%",
+       "nw": false
+      },
+      {
+       "n": "Emerald Flame Ring",
+       "l": null,
+       "d": "24.0%",
+       "nw": false
+      },
+      {
+       "n": "Mind Carver",
+       "l": null,
+       "d": "20.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Hel'nurath (West)",
+     "items": [
+      {
+       "n": "Fel Hardened Bracers",
+       "l": null,
+       "d": "22.4%",
+       "nw": false
+      },
+      {
+       "n": "Xorothian Firestick",
+       "l": null,
+       "d": "25.1%",
+       "nw": false
+      },
+      {
+       "n": "Dreadguard's Protector",
+       "l": null,
+       "d": "24.8%",
+       "nw": false
+      },
+      {
+       "n": "Diabolic Mantle",
+       "l": null,
+       "d": "24.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Revanchion (West)",
+     "items": [
+      {
+       "n": "Cloak of Revanchion",
+       "l": null,
+       "d": "33.3%",
+       "nw": false
+      },
+      {
+       "n": "The Shadow's Grasp",
+       "l": null,
+       "d": "55.6%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of Mending",
+       "l": null,
+       "d": "11.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash (West)",
+     "items": [
+      {
+       "n": "Barbed Thorn Necklace",
+       "l": null,
+       "d": "1.7%",
+       "nw": false
+      },
+      {
+       "n": "Phasing Boots",
+       "l": null,
+       "d": "1.3%",
+       "nw": false
+      },
+      {
+       "n": "Marksman Bands",
+       "l": null,
+       "d": "0.6%",
+       "nw": false
+      },
+      {
+       "n": "Unbridled Leggings",
+       "l": null,
+       "d": "0.7%",
+       "nw": false
+      },
+      {
+       "n": "Orphic Bracers",
+       "l": null,
+       "d": "0.8%",
+       "nw": false
+      },
+      {
+       "n": "Wand of Arcane Potency",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Cloak",
+       "l": null,
+       "d": "1.0%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Talisman",
+       "l": null,
+       "d": "1.2%",
+       "nw": false
+      },
+      {
+       "n": "Petrified Band",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      },
+      {
+       "n": "Stonebark Gauntlets",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Pimgib's Collar",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Robe of Combustion",
+       "l": null,
+       "d": "9.9%",
+       "nw": false
+      },
+      {
+       "n": "Hyena Hide Belt",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Modest Armguards",
+       "l": null,
+       "d": "9.0%",
+       "nw": false
+      },
+      {
+       "n": "Gallant's Wristguards",
+       "l": null,
+       "d": "9.6%",
+       "nw": false
+      },
+      {
+       "n": "Unsophisticated Hand Cannon",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Jagged Bone Fist",
+       "l": null,
+       "d": "9.2%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Pocket Knife",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Gordok Nose Ring",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Bulky Iron Spaulders",
+       "l": null,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Denwatcher's Shoulders",
+       "l": null,
+       "d": "6.9%",
+       "nw": false
+      },
+      {
+       "n": "Heliotrope Cloak",
+       "l": null,
+       "d": "6.5%",
+       "nw": false
+      },
+      {
+       "n": "Sublime Wristguards",
+       "l": null,
+       "d": "5.9%",
+       "nw": false
+      },
+      {
+       "n": "Hedgecutter",
+       "l": null,
+       "d": "6.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Stomper Kreeg (North)",
+     "items": [
+      {
+       "n": "Kreeg's Mug",
+       "l": null,
+       "d": "55.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Captain Kromcrush (North)",
+     "items": [
+      {
+       "n": "Monstrous Glaive",
+       "l": null,
+       "d": "22.1%",
+       "nw": false
+      },
+      {
+       "n": "Kromcrush's Chestplate",
+       "l": null,
+       "d": "23.0%",
+       "nw": false
+      },
+      {
+       "n": "Mugger's Belt",
+       "l": null,
+       "d": "22.3%",
+       "nw": false
+      },
+      {
+       "n": "Boots of the Full Moon",
+       "l": null,
+       "d": "22.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Cho'Rush the Observer (North)",
+     "items": [
+      {
+       "n": "Mana Channeling Wand",
+       "l": null,
+       "d": "42.5%",
+       "nw": false
+      },
+      {
+       "n": "Cho'Rush's Blade",
+       "l": null,
+       "d": "43.8%",
+       "nw": false
+      },
+      {
+       "n": "Observer's Shield",
+       "l": null,
+       "d": "42.4%",
+       "nw": false
+      },
+      {
+       "n": "Insightful Hood",
+       "l": null,
+       "d": "42.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "King Gordok (North)",
+     "items": [
+      {
+       "n": "Barbarous Blade",
+       "l": null,
+       "d": "23.7%",
+       "nw": false
+      },
+      {
+       "n": "Grimy Metal Boots",
+       "l": null,
+       "d": "24.7%",
+       "nw": false
+      },
+      {
+       "n": "Band of the Ogre King",
+       "l": null,
+       "d": "23.6%",
+       "nw": false
+      },
+      {
+       "n": "Brightly Glowing Stone",
+       "l": null,
+       "d": "24.1%",
+       "nw": false
+      },
+      {
+       "n": "Leggings of Destruction",
+       "l": null,
+       "d": "24.2%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of Prosperity",
+       "l": null,
+       "d": "23.9%",
+       "nw": false
+      },
+      {
+       "n": "Crown of the Ogre King",
+       "l": null,
+       "d": "23.6%",
+       "nw": false
+      },
+      {
+       "n": "Harmonious Gauntlets",
+       "l": null,
+       "d": "24.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mizzle the Crafty (North)",
+     "items": [
+      {
+       "n": "Oddly Magical Belt",
+       "l": null,
+       "d": "3.4%",
+       "nw": false
+      },
+      {
+       "n": "Mud Stained Boots",
+       "l": null,
+       "d": "1.5%",
+       "nw": false
+      },
+      {
+       "n": "Shaggy Leggings",
+       "l": null,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Hyena Hide Jerkin",
+       "l": null,
+       "d": "3.2%",
+       "nw": false
+      },
+      {
+       "n": "Carrion Scorpid Helm",
+       "l": null,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Scarab Plate Helm",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Skullcracking Mace",
+       "l": null,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Toothpick Shooter",
+       "l": null,
+       "d": "1.8%",
+       "nw": false
+      },
+      {
+       "n": "Redoubt Cloak",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      },
+      {
+       "n": "Barrier Shield",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Tarnished Elven Ring",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Cyclone Spaulders",
+       "l": null,
+       "d": "3.2%",
+       "nw": false
+      },
+      {
+       "n": "Elemental Plate Girdle",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Forged Hauberk",
+       "l": null,
+       "d": "1.3%",
+       "nw": false
+      },
+      {
+       "n": "Unyielding Maul",
+       "l": null,
+       "d": "1.8%",
+       "nw": false
+      },
+      {
+       "n": "Mindsurge Robe",
+       "l": null,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Gordok Bracers of Power",
+       "l": null,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Rod of the Ogre Magi",
+       "l": null,
+       "d": "1.6%",
+       "nw": false
+      },
+      {
+       "n": "Counterattack Lodestone",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash (North)",
+     "items": [
+      {
+       "n": "Barbed Thorn Necklace",
+       "l": null,
+       "d": "1.7%",
+       "nw": false
+      },
+      {
+       "n": "Phasing Boots",
+       "l": null,
+       "d": "1.3%",
+       "nw": false
+      },
+      {
+       "n": "Marksman Bands",
+       "l": null,
+       "d": "0.6%",
+       "nw": false
+      },
+      {
+       "n": "Unbridled Leggings",
+       "l": null,
+       "d": "0.7%",
+       "nw": false
+      },
+      {
+       "n": "Orphic Bracers",
+       "l": null,
+       "d": "0.8%",
+       "nw": false
+      },
+      {
+       "n": "Wand of Arcane Potency",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Cloak",
+       "l": null,
+       "d": "1.0%",
+       "nw": false
+      },
+      {
+       "n": "Eidolon Talisman",
+       "l": null,
+       "d": "1.2%",
+       "nw": false
+      },
+      {
+       "n": "Petrified Band",
+       "l": null,
+       "d": "1.1%",
+       "nw": false
+      },
+      {
+       "n": "Stonebark Gauntlets",
+       "l": null,
+       "d": "0.9%",
+       "nw": false
+      },
+      {
+       "n": "Pimgib's Collar",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Robe of Combustion",
+       "l": null,
+       "d": "9.9%",
+       "nw": false
+      },
+      {
+       "n": "Hyena Hide Belt",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Modest Armguards",
+       "l": null,
+       "d": "9.0%",
+       "nw": false
+      },
+      {
+       "n": "Gallant's Wristguards",
+       "l": null,
+       "d": "9.6%",
+       "nw": false
+      },
+      {
+       "n": "Unsophisticated Hand Cannon",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Jagged Bone Fist",
+       "l": null,
+       "d": "9.2%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Pocket Knife",
+       "l": null,
+       "d": "9.1%",
+       "nw": false
+      },
+      {
+       "n": "Gordok Nose Ring",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      },
+      {
+       "n": "Bulky Iron Spaulders",
+       "l": null,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Denwatcher's Shoulders",
+       "l": null,
+       "d": "6.9%",
+       "nw": false
+      },
+      {
+       "n": "Heliotrope Cloak",
+       "l": null,
+       "d": "6.5%",
+       "nw": false
+      },
+      {
+       "n": "Sublime Wristguards",
+       "l": null,
+       "d": "5.9%",
+       "nw": false
+      },
+      {
+       "n": "Hedgecutter",
+       "l": null,
+       "d": "6.8%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "excavation-site-wetlands",
+   "name": "Excavation Site: Wetlands",
+   "bosses": [
+    {
+     "name": "Saltspine",
+     "items": [
+      {
+       "n": "Supple Bellyskin Leggings",
+       "l": 31,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Saltscale Girdle",
+       "l": 31,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Glinteye Slippers",
+       "l": 31,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Shadetooth",
+     "items": [
+      {
+       "n": "Raptorclaw Greaves",
+       "l": 31,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Garb of Florid Feathers",
+       "l": 31,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Raptor's Gaze",
+       "l": 31,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Relic Guardian",
+     "items": [
+      {
+       "n": "Reliquary Mantle",
+       "l": 33,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Ring of Power Regulation",
+       "l": 33,
+       "d": null,
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "gnomeregan",
+   "name": "Gnomeregan",
+   "bosses": [
+    {
+     "name": "Grubbis",
+     "items": [
+      {
+       "n": "Grubbis Paws",
+       "l": 34,
+       "d": "8.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Viscous Fallout",
+     "items": [
+      {
+       "n": "Hydrocane",
+       "l": 32,
+       "d": "19.5%",
+       "nw": false
+      },
+      {
+       "n": "Toxic Revenger",
+       "l": 32,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Acidic Walkers",
+       "l": 32,
+       "d": "59.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Electrocutioner 6000",
+     "items": [
+      {
+       "n": "Electrocutioner Leg",
+       "l": 34,
+       "d": "16.1%",
+       "nw": false
+      },
+      {
+       "n": "Electrocutioner Lagnut",
+       "l": 34,
+       "d": "31.9%",
+       "nw": false
+      },
+      {
+       "n": "Spidertank Oilrag",
+       "l": 34,
+       "d": "39.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Crowd Pummeler 9-60",
+     "items": [
+      {
+       "n": "Manual Crowd Pummeler",
+       "l": 34,
+       "d": "33.3%",
+       "nw": false
+      },
+      {
+       "n": "Gnomebot Operating Boots",
+       "l": 34,
+       "d": "64.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Dark Iron Ambassador",
+     "items": [
+      {
+       "n": "Emissary Cuffs",
+       "l": 35,
+       "d": "42.8%",
+       "nw": false
+      },
+      {
+       "n": "Glass Shooter",
+       "l": 35,
+       "d": "33.5%",
+       "nw": false
+      },
+      {
+       "n": "Royal Diplomatic Scepter",
+       "l": 35,
+       "d": "20.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mekgineer Thermaplugg",
+     "items": [
+      {
+       "n": "Thermaplugg's Central Core",
+       "l": 36,
+       "d": "32.0%",
+       "nw": false
+      },
+      {
+       "n": "Thermaplugg's Left Arm",
+       "l": 36,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Charged Gear",
+       "l": null,
+       "d": "32.9%",
+       "nw": false
+      },
+      {
+       "n": "Electromagnetic Gigaflux Reactivator",
+       "l": 36,
+       "d": "9.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Vibroblade",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Supercharger Battle Axe",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Hi-Tech Supergun",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Oscillating Power Hammer",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Gyromatic Icemaker",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Gizmotron Megachopper",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Hotshot Pilot's Gloves",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mechbuilder's Overalls",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Petrolspill Leggings",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Caverndeep Trudgers",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "hall-of-thanes",
+   "name": "Hall of Thanes",
+   "bosses": [
+    {
+     "name": "Faldrim Anvilmar",
+     "items": [
+      {
+       "n": "Ephemeral Choker",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Aetherwisp Bracers",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Spiritwraith Drape",
+       "l": 18,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Magmatus",
+     "items": [
+      {
+       "n": "Kindlegem Girdle",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Flamefist Grips",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Fang of Magmatus",
+       "l": 18,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Plunder",
+     "items": [
+      {
+       "n": "Golemheart Stave",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Golemguard Chest",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Treads of the Protector Golem",
+       "l": 18,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Durgen Dirgehammer",
+     "items": [
+      {
+       "n": "Durgen's Crescent Axe",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Direhammer Leggings",
+       "l": 18,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Robes of the Disgraced Thane",
+       "l": 18,
+       "d": null,
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "maraudon",
+   "name": "Maraudon",
+   "bosses": [
+    {
+     "name": "Noxxion",
+     "items": [
+      {
+       "n": "Heart of Noxxion",
+       "l": null,
+       "d": "35.9%",
+       "nw": false
+      },
+      {
+       "n": "Noxious Shooter",
+       "l": null,
+       "d": "18.0%",
+       "nw": false
+      },
+      {
+       "n": "Noxxion's Shackles",
+       "l": null,
+       "d": "36.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Razorlash",
+     "items": [
+      {
+       "n": "Vinerot Sandals",
+       "l": null,
+       "d": "24.0%",
+       "nw": false
+      },
+      {
+       "n": "Phytoskin Spaulders",
+       "l": null,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Chloromesh Girdle",
+       "l": null,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Brusslehide Leggings",
+       "l": null,
+       "d": "23.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Vyletongue",
+     "items": [
+      {
+       "n": "Satyr's Lash",
+       "l": null,
+       "d": "28.6%",
+       "nw": false
+      },
+      {
+       "n": "Infernal Trickster Leggings",
+       "l": null,
+       "d": "29.2%",
+       "nw": false
+      },
+      {
+       "n": "Satyrmane Sash",
+       "l": null,
+       "d": "27.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Celebras the Cursed",
+     "items": [
+      {
+       "n": "Claw of Celebras",
+       "l": null,
+       "d": "32.1%",
+       "nw": false
+      },
+      {
+       "n": "Grovekeeper's Drape",
+       "l": null,
+       "d": "32.3%",
+       "nw": false
+      },
+      {
+       "n": "Soothsayer's Headdress",
+       "l": null,
+       "d": "30.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Landslide",
+     "items": [
+      {
+       "n": "Helm of the Mountain",
+       "l": null,
+       "d": "23.1%",
+       "nw": false
+      },
+      {
+       "n": "Rockgrip Gauntlets",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      },
+      {
+       "n": "Cloud Stone",
+       "l": null,
+       "d": "24.0%",
+       "nw": false
+      },
+      {
+       "n": "Fist of Stone",
+       "l": null,
+       "d": "25.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Tinkerer Gizlock",
+     "items": [
+      {
+       "n": "Megashot Rifle",
+       "l": null,
+       "d": "32.7%",
+       "nw": false
+      },
+      {
+       "n": "Gizlock's Hypertech Buckler",
+       "l": null,
+       "d": "32.8%",
+       "nw": false
+      },
+      {
+       "n": "Inventor's Focal Sword",
+       "l": null,
+       "d": "33.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Rotgrip",
+     "items": [
+      {
+       "n": "Albino Crocscale Boots",
+       "l": null,
+       "d": "35.0%",
+       "nw": false
+      },
+      {
+       "n": "Gatorbite Axe",
+       "l": null,
+       "d": "24.1%",
+       "nw": false
+      },
+      {
+       "n": "Rotgrip Mantle",
+       "l": null,
+       "d": "35.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Princess Theradras",
+     "items": [
+      {
+       "n": "Gemshard Heart",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Charstone Dirk",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Elemental Rockridge Leggings",
+       "l": null,
+       "d": "19.5%",
+       "nw": false
+      },
+      {
+       "n": "Blackstone Ring",
+       "l": null,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Bracers of the Stone Princess",
+       "l": null,
+       "d": "24.3%",
+       "nw": false
+      },
+      {
+       "n": "Eye of Theradras",
+       "l": null,
+       "d": "19.4%",
+       "nw": false
+      },
+      {
+       "n": "Princess Theradras' Scepter",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Blade of Eternal Darkness",
+       "l": null,
+       "d": "0.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Meshlok the Harvester",
+     "items": [
+      {
+       "n": "Nature's Embrace",
+       "l": null,
+       "d": "28.6%",
+       "nw": false
+      },
+      {
+       "n": "Fungus Shroud Armor",
+       "l": null,
+       "d": "27.8%",
+       "nw": false
+      },
+      {
+       "n": "Bloomsprout Headpiece",
+       "l": null,
+       "d": "29.3%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "ragefire-chasm",
+   "name": "Ragefire Chasm",
+   "bosses": [
+    {
+     "name": "Taragaman the Hungerer",
+     "items": [
+      {
+       "n": "Cursed Felblade",
+       "l": 18,
+       "d": "16.4%",
+       "nw": false
+      },
+      {
+       "n": "Crystalline Cuffs",
+       "l": 18,
+       "d": "30.9%",
+       "nw": false
+      },
+      {
+       "n": "Subterranean Cape",
+       "l": 18,
+       "d": "32.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Jergosh the Invoker",
+     "items": [
+      {
+       "n": "Cavedweller Bracers",
+       "l": 18,
+       "d": "34.0%",
+       "nw": false
+      },
+      {
+       "n": "Robe of Evocation",
+       "l": 18,
+       "d": "36.5%",
+       "nw": false
+      },
+      {
+       "n": "Chanting Blade",
+       "l": 18,
+       "d": "16.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Bazzalan",
+     "items": [
+      {
+       "n": "Searing Dagger",
+       "l": 18,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Chasm Walkers",
+       "l": 18,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Satyrskin Cloak",
+       "l": 18,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Oggleflint",
+     "items": [
+      {
+       "n": "Trogg Scepter",
+       "l": 18,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Bone Knuckles",
+       "l": 18,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Barbaric Crossbow",
+       "l": 18,
+       "d": null,
+       "nw": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "razorfen-downs",
+   "name": "Razorfen Downs",
+   "bosses": [
+    {
+     "name": "Tuten'kash",
+     "items": [
+      {
+       "n": "Carapace of Tuten'kash",
+       "l": null,
+       "d": "32.1%",
+       "nw": false
+      },
+      {
+       "n": "Silky Spider Cape",
+       "l": null,
+       "d": "34.1%",
+       "nw": false
+      },
+      {
+       "n": "Arachnid Gloves",
+       "l": null,
+       "d": "30.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mordresh Fire Eye",
+     "items": [
+      {
+       "n": "Glowing Eye of Mordresh",
+       "l": null,
+       "d": "32.2%",
+       "nw": false
+      },
+      {
+       "n": "Mordresh's Lifeless Skull",
+       "l": null,
+       "d": "33.0%",
+       "nw": false
+      },
+      {
+       "n": "Deathmage Sash",
+       "l": null,
+       "d": "32.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Glutton",
+     "items": [
+      {
+       "n": "Glutton's Cleaver",
+       "l": null,
+       "d": "50.0%",
+       "nw": false
+      },
+      {
+       "n": "Fleshhide Shoulders",
+       "l": null,
+       "d": "48.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ragglesnout",
+     "items": [
+      {
+       "n": "X'caliboar",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Savage Boar's Guard",
+       "l": null,
+       "d": "40.4%",
+       "nw": false
+      },
+      {
+       "n": "Boar Champion's Belt",
+       "l": null,
+       "d": "38.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Plaguemaw the Rotting",
+     "items": [
+      {
+       "n": "Swine Fists",
+       "l": null,
+       "d": "62.7%",
+       "nw": false
+      },
+      {
+       "n": "Plaguerot Sprig",
+       "l": null,
+       "d": "32.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Amnennar the Coldbringer",
+     "items": [
+      {
+       "n": "Coldrage Dagger",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Robes of the Lich",
+       "l": null,
+       "d": "39.2%",
+       "nw": false
+      },
+      {
+       "n": "Icemetal Barbute",
+       "l": null,
+       "d": "36.9%",
+       "nw": false
+      },
+      {
+       "n": "Deathchill Armor",
+       "l": null,
+       "d": "28.6%",
+       "nw": false
+      },
+      {
+       "n": "Bonefingers",
+       "l": null,
+       "d": "27.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lady Falther'ess",
+     "items": [
+      {
+       "n": "Lady Falther'ess' Finger",
+       "l": null,
+       "d": "53.8%",
+       "nw": false
+      },
+      {
+       "n": "Mantle of Lady Falther'ess",
+       "l": null,
+       "d": "42.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Quillshooter",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Manslayer",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Freezing Shard",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Corpseshroud",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Thoughtcast Boots",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Death's Head Vestment",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Quillward Harness",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "razorfen-kraul",
+   "name": "Razorfen Kraul",
+   "bosses": [
+    {
+     "name": "Death Speaker Jargba",
+     "items": [
+      {
+       "n": "Death Speaker Scepter",
+       "l": 33,
+       "d": "10.1%",
+       "nw": false
+      },
+      {
+       "n": "Death Speaker Robes",
+       "l": 31,
+       "d": "42.5%",
+       "nw": false
+      },
+      {
+       "n": "Death Speaker Mantle",
+       "l": 32,
+       "d": "44.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Overlord Ramtusk",
+     "items": [
+      {
+       "n": "Tusken Helm",
+       "l": 34,
+       "d": "62.0%",
+       "nw": false
+      },
+      {
+       "n": "Corpsemaker",
+       "l": 34,
+       "d": "34.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Agathelos the Raging",
+     "items": [
+      {
+       "n": "Ferine Leggings",
+       "l": 34,
+       "d": "62.7%",
+       "nw": false
+      },
+      {
+       "n": "Swinetusk Shank",
+       "l": 35,
+       "d": "33.1%",
+       "nw": false
+      },
+      {
+       "n": "Death Prophet Spine",
+       "l": 31,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Blind Hunter",
+     "items": [
+      {
+       "n": "Stygian Bone Amulet",
+       "l": 34,
+       "d": "26.9%",
+       "nw": false
+      },
+      {
+       "n": "Nightstalker Bow",
+       "l": 34,
+       "d": "32.5%",
+       "nw": false
+      },
+      {
+       "n": "Batwing Mantle",
+       "l": 34,
+       "d": "34.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Earthcaller Halmgar",
+     "items": [
+      {
+       "n": "Whisperwind Headdress",
+       "l": 34,
+       "d": "45.6%",
+       "nw": false
+      },
+      {
+       "n": "Wind Spirit Staff",
+       "l": 34,
+       "d": "48.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Charlga Razorflank",
+     "items": [
+      {
+       "n": "Pronged Reaver",
+       "l": 35,
+       "d": "17.7%",
+       "nw": false
+      },
+      {
+       "n": "Agamaggan's Clutch",
+       "l": 35,
+       "d": "35.1%",
+       "nw": false
+      },
+      {
+       "n": "Heart of Agamaggan",
+       "l": 35,
+       "d": "33.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Vendetta",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Avenger's Armor",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sword of Decay",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Pysan's Old Greatsword",
+       "l": 28,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Slaghammer",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Wolfclaw Gloves",
+       "l": 27,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Plains Ring",
+       "l": 29,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mantle of Thieves",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Staff of the Shade",
+       "l": 27,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Vicar's Robe",
+       "l": 26,
+       "d": "2.9%",
+       "nw": false
+      },
+      {
+       "n": "Pugilist Bracers",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Armor Piercer",
+       "l": 29,
+       "d": "60.8%",
+       "nw": false
+      },
+      {
+       "n": "Thornspike",
+       "l": 32,
+       "d": "53.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Roogug",
+     "items": [
+      {
+       "n": "Roogug's Severed Head",
+       "l": 30,
+       "d": null,
+       "nw": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "ruins-of-lordaeron",
+   "name": "Ruins of Lordaeron",
+   "bosses": [
+    {
+     "name": "The Baron",
+     "items": [
+      {
+       "n": "Meathook Slicer",
+       "l": 20,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Abomination Bones",
+       "l": 20,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Leftover Abomination Skin",
+       "l": 20,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Witherfang",
+     "items": [
+      {
+       "n": "Atrophic Girdle",
+       "l": 20,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Witherbite Bracers",
+       "l": 20,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Segmented Spider Leg",
+       "l": 20,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "The Abandoned",
+     "items": [
+      {
+       "n": "Rotmender's Leggings",
+       "l": 22,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Grip of Fear",
+       "l": 22,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Scepter of the Abandoned",
+       "l": 22,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Bjork",
+     "items": [
+      {
+       "n": "Bonerust Leggings",
+       "l": 21,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Tuskwrap Belt",
+       "l": 21,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Corpse Chopper",
+       "l": 21,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Rath'mael",
+     "items": [
+      {
+       "n": "Mirror of Rath'mael",
+       "l": 24,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Rotmender's Treads",
+       "l": 24,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Coldspire Staff",
+       "l": 24,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Viktor the Vile",
+     "items": [
+      {
+       "n": "Vilewalkers",
+       "l": 22,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Bloodied Chestwraps",
+       "l": 22,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Vileblood Scimitar",
+       "l": 22,
+       "d": null,
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lordaeron Captain",
+     "items": []
+    },
+    {
+     "name": "Remember That I Love You",
+     "items": []
+    },
+    {
+     "name": "Deathsworn Captain",
+     "items": [
+      {
+       "n": "Haunting Blade",
+       "l": 27,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Phantom Armor",
+       "l": 27,
+       "d": null,
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "scarlet-monastery-armory",
+   "name": "Scarlet Monastery - Armory",
+   "bosses": [
+    {
+     "name": "Herod",
+     "items": [
+      {
+       "n": "Ravager",
+       "l": null,
+       "d": "13.8%",
+       "nw": false
+      },
+      {
+       "n": "Herod's Shoulder",
+       "l": null,
+       "d": "32.9%",
+       "nw": false
+      },
+      {
+       "n": "Raging Berserker's Helm",
+       "l": null,
+       "d": "32.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Swampchill Fetish",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mark of Kern",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sliverblade",
+       "l": 37,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sunblaze Coif",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Watchman Pauldrons",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Beguiler Robes",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Chesterfall Musket",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Cobalt Crusher",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Fight Club",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Dreamslayer",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodspiller",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Harbinger Boots",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Flintrock Shoulders",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Windweaver Staff",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ruthless Shiv",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Archon Chestpiece",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Warchief Kilt",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Steelclaw Reaver",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Headsplitter",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Resplendent Guardian",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tainted Pierce",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Butcher",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Chestpiece",
+       "l": 39,
+       "d": "0.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Belt",
+       "l": 37,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Leggings",
+       "l": 44,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Gauntlets",
+       "l": 38,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Boots",
+       "l": 35,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Wristguards",
+       "l": 36,
+       "d": "2.3%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "scarlet-monastery-cathedral",
+   "name": "Scarlet Monastery - Cathedral",
+   "bosses": [
+    {
+     "name": "High Inquisitor Fairbanks",
+     "items": [
+      {
+       "n": "Inquisitor's Shawl",
+       "l": null,
+       "d": "34.1%",
+       "nw": false
+      },
+      {
+       "n": "Branded Leather Bracers",
+       "l": null,
+       "d": "32.2%",
+       "nw": false
+      },
+      {
+       "n": "Dusty Mail Boots",
+       "l": null,
+       "d": "31.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Scarlet Commander Mograine",
+     "items": [
+      {
+       "n": "Aegis of the Scarlet Commander",
+       "l": 44,
+       "d": "42.3%",
+       "nw": false
+      },
+      {
+       "n": "Mograine's Might",
+       "l": null,
+       "d": "19.1%",
+       "nw": false
+      },
+      {
+       "n": "Gauntlets of Divinity",
+       "l": null,
+       "d": "19.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "High Inquisitor Whitemane",
+     "items": [
+      {
+       "n": "Whitemane's Chapeau",
+       "l": null,
+       "d": "37.0%",
+       "nw": false
+      },
+      {
+       "n": "Hand of Righteousness",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Triune Amulet",
+       "l": null,
+       "d": "37.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Swampchill Fetish",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mark of Kern",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sliverblade",
+       "l": 37,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sunblaze Coif",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Watchman Pauldrons",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Beguiler Robes",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Chesterfall Musket",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Cobalt Crusher",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Fight Club",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Dreamslayer",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodspiller",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Harbinger Boots",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Flintrock Shoulders",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Windweaver Staff",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ruthless Shiv",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Archon Chestpiece",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Warchief Kilt",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Steelclaw Reaver",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Headsplitter",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Resplendent Guardian",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tainted Pierce",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Butcher",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Chestpiece",
+       "l": 39,
+       "d": "0.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Belt",
+       "l": 37,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Leggings",
+       "l": 44,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Gauntlets",
+       "l": 38,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Boots",
+       "l": 35,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Wristguards",
+       "l": 36,
+       "d": "2.3%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "scarlet-monastery-graveyard",
+   "name": "Scarlet Monastery - Graveyard",
+   "bosses": [
+    {
+     "name": "Interrogator Vishas",
+     "items": [
+      {
+       "n": "Torturing Poker",
+       "l": 34,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Bloody Brass Knuckles",
+       "l": 34,
+       "d": "55.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Bloodmage Thalnos",
+     "items": [
+      {
+       "n": "Bloodmage Mantle",
+       "l": 35,
+       "d": "47.7%",
+       "nw": false
+      },
+      {
+       "n": "Orb of the Forgotten Seer",
+       "l": 37,
+       "d": "49.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ironspine",
+     "items": [
+      {
+       "n": "Ironspine's Eye",
+       "l": 35,
+       "d": "40.4%",
+       "nw": false
+      },
+      {
+       "n": "Ironspine's Fist",
+       "l": 35,
+       "d": "20.3%",
+       "nw": false
+      },
+      {
+       "n": "Ironspine's Ribcage",
+       "l": 35,
+       "d": "35.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Azshir the Sleepless",
+     "items": [
+      {
+       "n": "Necrotic Wand",
+       "l": 35,
+       "d": "32.0%",
+       "nw": false
+      },
+      {
+       "n": "Blighted Leggings",
+       "l": 35,
+       "d": "31.3%",
+       "nw": false
+      },
+      {
+       "n": "Ghostshard Talisman",
+       "l": 35,
+       "d": "34.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Fallen Champion",
+     "items": [
+      {
+       "n": "Morbid Dawn",
+       "l": 35,
+       "d": "17.8%",
+       "nw": false
+      },
+      {
+       "n": "Ebon Vise",
+       "l": 35,
+       "d": "39.5%",
+       "nw": false
+      },
+      {
+       "n": "Embalmed Shroud",
+       "l": 35,
+       "d": "39.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Scorn",
+     "items": [
+      {
+       "n": "Scorn's Icy Choker",
+       "l": 35,
+       "d": "38.3%",
+       "nw": false
+      },
+      {
+       "n": "Scorn's Focal Dagger",
+       "l": null,
+       "d": "31.5%",
+       "nw": false
+      },
+      {
+       "n": "The Frozen Clutch",
+       "l": null,
+       "d": "28.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Swampchill Fetish",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mark of Kern",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sliverblade",
+       "l": 37,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sunblaze Coif",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Watchman Pauldrons",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Beguiler Robes",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Chesterfall Musket",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Cobalt Crusher",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Fight Club",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Dreamslayer",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodspiller",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Harbinger Boots",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Flintrock Shoulders",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Windweaver Staff",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ruthless Shiv",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Archon Chestpiece",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Warchief Kilt",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Steelclaw Reaver",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Headsplitter",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Resplendent Guardian",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tainted Pierce",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Butcher",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Chestpiece",
+       "l": 39,
+       "d": "0.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Belt",
+       "l": 37,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Leggings",
+       "l": 44,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Gauntlets",
+       "l": 38,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Boots",
+       "l": 35,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Wristguards",
+       "l": 36,
+       "d": "2.3%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "scarlet-monastery-library",
+   "name": "Scarlet Monastery - Library",
+   "bosses": [
+    {
+     "name": "Houndmaster Loksey",
+     "items": [
+      {
+       "n": "Dog Whistle",
+       "l": 30,
+       "d": "24.7%",
+       "nw": false
+      },
+      {
+       "n": "Loksey's Training Stick",
+       "l": 36,
+       "d": "14.3%",
+       "nw": false
+      },
+      {
+       "n": "Dog Training Gloves",
+       "l": 36,
+       "d": "56.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Arcanist Doan",
+     "items": [
+      {
+       "n": "Robe of Doan",
+       "l": 39,
+       "d": "46.5%",
+       "nw": false
+      },
+      {
+       "n": "Mantle of Doan",
+       "l": 39,
+       "d": "47.3%",
+       "nw": false
+      },
+      {
+       "n": "Illusionary Rod",
+       "l": 39,
+       "d": "46.7%",
+       "nw": false
+      },
+      {
+       "n": "Hypnotic Blade",
+       "l": 39,
+       "d": "47.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Swampchill Fetish",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mark of Kern",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sliverblade",
+       "l": 37,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sunblaze Coif",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Watchman Pauldrons",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Beguiler Robes",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Chesterfall Musket",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Cobalt Crusher",
+       "l": 34,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Fight Club",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Dreamslayer",
+       "l": 33,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodspiller",
+       "l": 32,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Harbinger Boots",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Flintrock Shoulders",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Windweaver Staff",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ruthless Shiv",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Archon Chestpiece",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Warchief Kilt",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Steelclaw Reaver",
+       "l": 38,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Headsplitter",
+       "l": 30,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Resplendent Guardian",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tainted Pierce",
+       "l": 36,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Butcher",
+       "l": 31,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Chestpiece",
+       "l": 39,
+       "d": "0.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Belt",
+       "l": 37,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Leggings",
+       "l": 44,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Gauntlets",
+       "l": 38,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Boots",
+       "l": 35,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Scarlet Wristguards",
+       "l": 36,
+       "d": "2.3%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "scholomance",
+   "name": "Scholomance",
+   "bosses": [
+    {
+     "name": "Kirtonos the Herald",
+     "items": [
+      {
+       "n": "Boots of Valor",
+       "l": 59,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Stoneform Shoulders",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Clutch of Andros",
+       "l": null,
+       "d": "18.5%",
+       "nw": false
+      },
+      {
+       "n": "Gargoyle Slashers",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Heart of the Fiend",
+       "l": null,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Windreaver Greaves",
+       "l": null,
+       "d": "18.7%",
+       "nw": false
+      },
+      {
+       "n": "Loomguard Armbraces",
+       "l": null,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Gravestone War Axe",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      },
+      {
+       "n": "Frightalon",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Jandice Barov",
+     "items": [
+      {
+       "n": "Dreadmist Mantle",
+       "l": 60,
+       "d": "15.9%",
+       "nw": false
+      },
+      {
+       "n": "Barovian Family Sword",
+       "l": null,
+       "d": "10.2%",
+       "nw": false
+      },
+      {
+       "n": "Darkshade Gloves",
+       "l": null,
+       "d": "0.5%",
+       "nw": false
+      },
+      {
+       "n": "Ghostloom Leggings",
+       "l": null,
+       "d": "12.8%",
+       "nw": false
+      },
+      {
+       "n": "Royal Cap Spaulders",
+       "l": null,
+       "d": "11.8%",
+       "nw": false
+      },
+      {
+       "n": "Phantasmal Cloak",
+       "l": null,
+       "d": "9.9%",
+       "nw": false
+      },
+      {
+       "n": "Wraithplate Leggings",
+       "l": null,
+       "d": "11.5%",
+       "nw": false
+      },
+      {
+       "n": "Staff of Metanoia",
+       "l": null,
+       "d": "10.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Rattlegore",
+     "items": [
+      {
+       "n": "Shadowcraft Boots",
+       "l": 59,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Rattlecage Buckler",
+       "l": null,
+       "d": "12.1%",
+       "nw": false
+      },
+      {
+       "n": "Frightskull Shaft",
+       "l": null,
+       "d": "12.2%",
+       "nw": false
+      },
+      {
+       "n": "Corpselight Greaves",
+       "l": null,
+       "d": "12.2%",
+       "nw": false
+      },
+      {
+       "n": "Deadwalker Mantle",
+       "l": null,
+       "d": "11.9%",
+       "nw": false
+      },
+      {
+       "n": "Bone Ring Helm",
+       "l": null,
+       "d": "12.4%",
+       "nw": false
+      },
+      {
+       "n": "Bone Golem Shoulders",
+       "l": null,
+       "d": "11.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Marduk Blackpool",
+     "items": [
+      {
+       "n": "Ebon Hilt of Marduk",
+       "l": null,
+       "d": "6.7%",
+       "nw": false
+      },
+      {
+       "n": "Death Knight Sabatons",
+       "l": null,
+       "d": "7.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Vectus",
+     "items": [
+      {
+       "n": "Skullsmoke Pants",
+       "l": null,
+       "d": "7.7%",
+       "nw": false
+      },
+      {
+       "n": "Dark Advisor's Pendant",
+       "l": null,
+       "d": "6.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ras Frostwhisper",
+     "items": [
+      {
+       "n": "Magister's Mantle",
+       "l": 60,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Alanna's Embrace",
+       "l": null,
+       "d": "0.7%",
+       "nw": false
+      },
+      {
+       "n": "Iceblade Hacker",
+       "l": null,
+       "d": "15.0%",
+       "nw": false
+      },
+      {
+       "n": "Freezing Lich Robes",
+       "l": null,
+       "d": "14.5%",
+       "nw": false
+      },
+      {
+       "n": "Bonechill Hammer",
+       "l": null,
+       "d": "15.7%",
+       "nw": false
+      },
+      {
+       "n": "Frostbite Girdle",
+       "l": null,
+       "d": "15.6%",
+       "nw": false
+      },
+      {
+       "n": "Death's Clutch",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      },
+      {
+       "n": "Maelstrom Leggings",
+       "l": null,
+       "d": "14.9%",
+       "nw": false
+      },
+      {
+       "n": "Boneclenched Gauntlets",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      },
+      {
+       "n": "Shivery Handwraps",
+       "l": null,
+       "d": "15.3%",
+       "nw": false
+      },
+      {
+       "n": "Shadowy Mail Greaves",
+       "l": null,
+       "d": "15.7%",
+       "nw": false
+      },
+      {
+       "n": "Spellbound Tome",
+       "l": null,
+       "d": "15.3%",
+       "nw": false
+      },
+      {
+       "n": "Intricately Runed Shield",
+       "l": null,
+       "d": "15.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Blackwood",
+     "items": [
+      {
+       "n": "Lord Blackwood's Blade",
+       "l": null,
+       "d": "30.0%",
+       "nw": false
+      },
+      {
+       "n": "Lord Blackwood's Buckler",
+       "l": null,
+       "d": "29.4%",
+       "nw": false
+      },
+      {
+       "n": "Blackwood's Thigh",
+       "l": null,
+       "d": "25.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Kormok",
+     "items": [
+      {
+       "n": "Ironweave Pants",
+       "l": null,
+       "d": "15.2%",
+       "nw": false
+      },
+      {
+       "n": "Amalgam's Band",
+       "l": null,
+       "d": "11.4%",
+       "nw": false
+      },
+      {
+       "n": "Band of the Steadfast Hero",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      },
+      {
+       "n": "Blade of Necromancy",
+       "l": null,
+       "d": "14.3%",
+       "nw": false
+      },
+      {
+       "n": "Hammer of Divine Might",
+       "l": null,
+       "d": "32.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Death Knight Darkreaver",
+     "items": [
+      {
+       "n": "Necromantic Band",
+       "l": 62,
+       "d": "24.5%",
+       "nw": false
+      },
+      {
+       "n": "Specter's Blade",
+       "l": null,
+       "d": "24.4%",
+       "nw": false
+      },
+      {
+       "n": "Malicious Axe",
+       "l": null,
+       "d": "22.3%",
+       "nw": false
+      },
+      {
+       "n": "Oblivion's Touch",
+       "l": null,
+       "d": "23.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Darkmaster Gandling",
+     "items": [
+      {
+       "n": "Coif of Elements",
+       "l": 62,
+       "d": "5.7%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Cap",
+       "l": 62,
+       "d": "12.5%",
+       "nw": false
+      },
+      {
+       "n": "Magister's Crown",
+       "l": 62,
+       "d": "13.0%",
+       "nw": false
+      },
+      {
+       "n": "Devout Crown",
+       "l": 62,
+       "d": "11.5%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Mask",
+       "l": 62,
+       "d": "11.4%",
+       "nw": false
+      },
+      {
+       "n": "Shadowcraft Cap",
+       "l": 62,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Wildheart Cowl",
+       "l": 62,
+       "d": "11.2%",
+       "nw": false
+      },
+      {
+       "n": "Lightforge Helm",
+       "l": 62,
+       "d": "6.8%",
+       "nw": false
+      },
+      {
+       "n": "Helm of Valor",
+       "l": 62,
+       "d": "12.0%",
+       "nw": false
+      },
+      {
+       "n": "Boots of the Shrieker",
+       "l": null,
+       "d": "13.0%",
+       "nw": false
+      },
+      {
+       "n": "Headmaster's Charge",
+       "l": null,
+       "d": "1.9%",
+       "nw": false
+      },
+      {
+       "n": "Bonecreeper Stylus",
+       "l": null,
+       "d": "12.9%",
+       "nw": false
+      },
+      {
+       "n": "Tombstone Breastplate",
+       "l": null,
+       "d": "13.1%",
+       "nw": false
+      },
+      {
+       "n": "Detention Strap",
+       "l": null,
+       "d": "0.7%",
+       "nw": false
+      },
+      {
+       "n": "Vigorsteel Vambraces",
+       "l": null,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Silent Fang",
+       "l": null,
+       "d": "13.1%",
+       "nw": false
+      },
+      {
+       "n": "Witchblade",
+       "l": null,
+       "d": "13.0%",
+       "nw": false
+      },
+      {
+       "n": "Don Mauricio's Band of Domination",
+       "l": null,
+       "d": "13.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Magister's Gloves",
+       "l": 59,
+       "d": "4.7%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Wraps",
+       "l": 59,
+       "d": "4.5%",
+       "nw": false
+      },
+      {
+       "n": "Lightforge Bracers",
+       "l": 57,
+       "d": "3.2%",
+       "nw": false
+      },
+      {
+       "n": "Bonebrace Hauberk",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmail Hauberk",
+       "l": null,
+       "d": "2.2%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmail Legguards",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmail Belt",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmail Gauntlets",
+       "l": null,
+       "d": "3.2%",
+       "nw": false
+      },
+      {
+       "n": "Bloodmail Boots",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Deathbone Girdle",
+       "l": null,
+       "d": "3.2%",
+       "nw": false
+      },
+      {
+       "n": "Deathbone Sabatons",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Deathbone Gauntlets",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Deathbone Legguards",
+       "l": null,
+       "d": "3.0%",
+       "nw": false
+      },
+      {
+       "n": "Deathbone Chestplate",
+       "l": null,
+       "d": "2.3%",
+       "nw": false
+      },
+      {
+       "n": "Necropile Robe",
+       "l": null,
+       "d": "2.5%",
+       "nw": false
+      },
+      {
+       "n": "Necropile Cuffs",
+       "l": null,
+       "d": "3.3%",
+       "nw": false
+      },
+      {
+       "n": "Necropile Boots",
+       "l": null,
+       "d": "3.4%",
+       "nw": false
+      },
+      {
+       "n": "Necropile Leggings",
+       "l": null,
+       "d": "3.3%",
+       "nw": false
+      },
+      {
+       "n": "Necropile Mantle",
+       "l": null,
+       "d": "3.3%",
+       "nw": false
+      },
+      {
+       "n": "Cadaverous Belt",
+       "l": null,
+       "d": "3.4%",
+       "nw": false
+      },
+      {
+       "n": "Cadaverous Armor",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Cadaverous Leggings",
+       "l": null,
+       "d": "3.4%",
+       "nw": false
+      },
+      {
+       "n": "Cadaverous Gloves",
+       "l": null,
+       "d": "3.3%",
+       "nw": false
+      },
+      {
+       "n": "Cadaverous Walkers",
+       "l": null,
+       "d": "3.3%",
+       "nw": false
+      },
+      {
+       "n": "Ancient Bone Bow",
+       "l": null,
+       "d": "2.5%",
+       "nw": false
+      },
+      {
+       "n": "Burial Shawl",
+       "l": null,
+       "d": "2.5%",
+       "nw": false
+      },
+      {
+       "n": "Ghoul Skin Leggings",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Hammer of the Vesper",
+       "l": null,
+       "d": "2.5%",
+       "nw": false
+      },
+      {
+       "n": "Dimly Opalescent Ring",
+       "l": null,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Coldstone Slippers",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Tattered Leather Hood",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Icy Tomb Spaulders",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Malefic Bracers",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Innervating Band",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Belt of the Ordained",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Totem of Sustaining",
+       "l": null,
+       "d": "1.2%",
+       "nw": false
+      },
+      {
+       "n": "Libram of Divinity",
+       "l": null,
+       "d": "1.6%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "shadowfang-keep",
+   "name": "Shadowfang Keep",
+   "bosses": [
+    {
+     "name": "Rethilgore",
+     "items": [
+      {
+       "n": "Rugged Spaulders",
+       "l": 22,
+       "d": "85.8%",
+       "nw": false
+      },
+      {
+       "n": "Sorcerer Collar",
+       "l": 22,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Cell Keeper's Claws",
+       "l": 22,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Razorclaw the Butcher",
+     "items": [
+      {
+       "n": "Butcher's Cleaver",
+       "l": 25,
+       "d": "8.8%",
+       "nw": false
+      },
+      {
+       "n": "Bloody Apron",
+       "l": 24,
+       "d": "42.3%",
+       "nw": false
+      },
+      {
+       "n": "Butcher's Slicer",
+       "l": 23,
+       "d": "39.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Baron Silverlaine",
+     "items": [
+      {
+       "n": "Silverlaine's Family Seal",
+       "l": 26,
+       "d": "19.2%",
+       "nw": false
+      },
+      {
+       "n": "Baron's Scepter",
+       "l": 26,
+       "d": "38.4%",
+       "nw": false
+      },
+      {
+       "n": "Blade of Silverlaine",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Commander Springvale",
+     "items": [
+      {
+       "n": "Arced War Axe",
+       "l": 26,
+       "d": "35.7%",
+       "nw": false
+      },
+      {
+       "n": "Commander's Crest",
+       "l": 26,
+       "d": "30.3%",
+       "nw": false
+      },
+      {
+       "n": "Worgenbane Talisman",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Odo the Blindwatcher",
+     "items": [
+      {
+       "n": "Odo's Ley Staff",
+       "l": 26,
+       "d": "33.2%",
+       "nw": false
+      },
+      {
+       "n": "Girdle of the Blindwatcher",
+       "l": 26,
+       "d": "58.2%",
+       "nw": false
+      },
+      {
+       "n": "Blindwatcher's Sight",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Fenrus the Devourer",
+     "items": [
+      {
+       "n": "Black Wolf Bracers",
+       "l": 27,
+       "d": "17.3%",
+       "nw": false
+      },
+      {
+       "n": "Fenrus' Hide",
+       "l": 27,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Half-Eaten Boots",
+       "l": 27,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Wolf Master Nandos",
+     "items": [
+      {
+       "n": "Feline Mantle",
+       "l": 28,
+       "d": "56.9%",
+       "nw": false
+      },
+      {
+       "n": "Wolfmaster Cape",
+       "l": 27,
+       "d": "38.4%",
+       "nw": false
+      },
+      {
+       "n": "Worgpelt Leggings",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Archmage Arugal",
+     "items": [
+      {
+       "n": "Meteor Shard",
+       "l": 28,
+       "d": "17.7%",
+       "nw": false
+      },
+      {
+       "n": "Robes of Arugal",
+       "l": 28,
+       "d": "35.4%",
+       "nw": false
+      },
+      {
+       "n": "Belt of Arugal",
+       "l": 28,
+       "d": "34.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Deathsworn Captain",
+     "items": []
+    },
+    {
+     "name": "Sever",
+     "items": [
+      {
+       "n": "The Axe of Severing",
+       "l": null,
+       "d": "44.4%",
+       "nw": false
+      },
+      {
+       "n": "Abomination Skin Leggings",
+       "l": null,
+       "d": "51.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Gloomshroud Armor",
+       "l": 25,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Duskbringer",
+       "l": 25,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Necrology Robes",
+       "l": 25,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Rift Bracers",
+       "l": 25,
+       "d": "2.4%",
+       "nw": false
+      },
+      {
+       "n": "Shadowfang",
+       "l": 24,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Assassin's Blade",
+       "l": 24,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Night Reaver",
+       "l": 23,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Guillotine Axe",
+       "l": 23,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Witching Stave",
+       "l": 22,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mindthrust Bracers",
+       "l": 22,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Face Smasher",
+       "l": 21,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Black Malice",
+       "l": 21,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Eerie Stable Lantern",
+       "l": 21,
+       "d": "7.8%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "stratholme",
+   "name": "Stratholme",
+   "bosses": [
+    {
+     "name": "Hearthsinger Forresten",
+     "items": [
+      {
+       "n": "Magister's Boots",
+       "l": 59,
+       "d": "13.9%",
+       "nw": false
+      },
+      {
+       "n": "Songbird Blouse",
+       "l": null,
+       "d": "15.1%",
+       "nw": false
+      },
+      {
+       "n": "Woollies of the Prancing Minstrel",
+       "l": null,
+       "d": "13.5%",
+       "nw": false
+      },
+      {
+       "n": "Rainbow Girdle",
+       "l": null,
+       "d": "13.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Timmy the Cruel",
+     "items": [
+      {
+       "n": "Vambraces of the Sadist",
+       "l": null,
+       "d": "19.5%",
+       "nw": false
+      },
+      {
+       "n": "The Cruel Hand of Timmy",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      },
+      {
+       "n": "Timmy's Galoshes",
+       "l": null,
+       "d": "19.3%",
+       "nw": false
+      },
+      {
+       "n": "Grimgore Noose",
+       "l": null,
+       "d": "18.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Cannon Master Willey",
+     "items": [
+      {
+       "n": "Shadowcraft Spaulders",
+       "l": 60,
+       "d": "16.2%",
+       "nw": false
+      },
+      {
+       "n": "Willey's Portable Howitzer",
+       "l": null,
+       "d": "18.9%",
+       "nw": false
+      },
+      {
+       "n": "Master Cannoneer Boots",
+       "l": null,
+       "d": "17.8%",
+       "nw": false
+      },
+      {
+       "n": "Cannonball Runner",
+       "l": null,
+       "d": "18.2%",
+       "nw": false
+      },
+      {
+       "n": "Barrage Girdle",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Nacreous Shell Necklace",
+       "l": null,
+       "d": "23.3%",
+       "nw": false
+      },
+      {
+       "n": "Willey's Back Scratcher",
+       "l": null,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Mantle of the Scarlet Crusade",
+       "l": null,
+       "d": "18.8%",
+       "nw": false
+      },
+      {
+       "n": "Redemption",
+       "l": null,
+       "d": "9.3%",
+       "nw": false
+      },
+      {
+       "n": "Helm of the New Moon",
+       "l": null,
+       "d": "21.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Archivist Galford",
+     "items": [
+      {
+       "n": "Devout Gloves",
+       "l": 59,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Tome of Knowledge",
+       "l": null,
+       "d": "13.7%",
+       "nw": false
+      },
+      {
+       "n": "Archivist Cape",
+       "l": null,
+       "d": "21.4%",
+       "nw": false
+      },
+      {
+       "n": "Foresight Girdle",
+       "l": null,
+       "d": "21.1%",
+       "nw": false
+      },
+      {
+       "n": "Ash Covered Boots",
+       "l": null,
+       "d": "21.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Grand Crusader Dathrohan",
+     "items": [
+      {
+       "n": "Book of the Dead",
+       "l": null,
+       "d": "1.8%",
+       "nw": false
+      },
+      {
+       "n": "Band of Mending",
+       "l": null,
+       "d": "2.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Postmaster Malown",
+     "items": [
+      {
+       "n": "The Postmaster's Tunic",
+       "l": null,
+       "d": "22.8%",
+       "nw": false
+      },
+      {
+       "n": "The Postmaster's Trousers",
+       "l": null,
+       "d": "13.0%",
+       "nw": false
+      },
+      {
+       "n": "The Postmaster's Band",
+       "l": null,
+       "d": "6.2%",
+       "nw": false
+      },
+      {
+       "n": "The Postmaster's Treads",
+       "l": null,
+       "d": "15.4%",
+       "nw": false
+      },
+      {
+       "n": "The Postmaster's Seal",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Malown's Slam",
+       "l": null,
+       "d": "16.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Skul",
+     "items": [
+      {
+       "n": "Skul's Cold Embrace",
+       "l": null,
+       "d": "26.6%",
+       "nw": false
+      },
+      {
+       "n": "Skul's Fingerbone Claws",
+       "l": null,
+       "d": "26.1%",
+       "nw": false
+      },
+      {
+       "n": "Skul's Ghastly Touch",
+       "l": null,
+       "d": "26.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Stonespine",
+     "items": [
+      {
+       "n": "Stoneskin Gargoyle Cape",
+       "l": null,
+       "d": "31.2%",
+       "nw": false
+      },
+      {
+       "n": "Gargoyle Shredder Talons",
+       "l": null,
+       "d": "33.6%",
+       "nw": false
+      },
+      {
+       "n": "Verdant Footpads",
+       "l": null,
+       "d": "29.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Baroness Anastari",
+     "items": [
+      {
+       "n": "Dreadmist Sandals",
+       "l": 59,
+       "d": "17.8%",
+       "nw": false
+      },
+      {
+       "n": "Banshee Finger",
+       "l": null,
+       "d": "17.6%",
+       "nw": false
+      },
+      {
+       "n": "Coldtouch Phantom Wraps",
+       "l": null,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Chillhide Bracers",
+       "l": null,
+       "d": "10.6%",
+       "nw": false
+      },
+      {
+       "n": "Windshrieker Pauldrons",
+       "l": null,
+       "d": "10.4%",
+       "nw": false
+      },
+      {
+       "n": "Banshee's Touch",
+       "l": null,
+       "d": "10.8%",
+       "nw": false
+      },
+      {
+       "n": "Anastari Heirloom",
+       "l": null,
+       "d": "17.8%",
+       "nw": false
+      },
+      {
+       "n": "Screeching Bow",
+       "l": null,
+       "d": "17.4%",
+       "nw": false
+      },
+      {
+       "n": "Shadowy Laced Handwraps",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Nerub'enkan",
+     "items": [
+      {
+       "n": "Beaststalker's Boots",
+       "l": 59,
+       "d": "17.6%",
+       "nw": false
+      },
+      {
+       "n": "Husk of Nerub'enkan",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      },
+      {
+       "n": "Fangdrip Runners",
+       "l": null,
+       "d": "11.2%",
+       "nw": false
+      },
+      {
+       "n": "Crypt Stalker Leggings",
+       "l": null,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Darkspinner Claws",
+       "l": null,
+       "d": "10.7%",
+       "nw": false
+      },
+      {
+       "n": "Acid-etched Pauldrons",
+       "l": null,
+       "d": "10.6%",
+       "nw": false
+      },
+      {
+       "n": "Carapace Spine Crossbow",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Chitinous Plate Legguards",
+       "l": null,
+       "d": "17.6%",
+       "nw": false
+      },
+      {
+       "n": "Thuzadin Sash",
+       "l": null,
+       "d": "18.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Maleki the Pallid",
+     "items": [
+      {
+       "n": "Devout Sandals",
+       "l": 59,
+       "d": "18.1%",
+       "nw": false
+      },
+      {
+       "n": "Skull of Burning Shadows",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Darkbind Fingers",
+       "l": null,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Flamescarred Girdle",
+       "l": null,
+       "d": "11.3%",
+       "nw": false
+      },
+      {
+       "n": "Lavawalker Greaves",
+       "l": null,
+       "d": "11.0%",
+       "nw": false
+      },
+      {
+       "n": "Twilight Void Bracers",
+       "l": null,
+       "d": "10.8%",
+       "nw": false
+      },
+      {
+       "n": "Pale Moon Cloak",
+       "l": null,
+       "d": "18.1%",
+       "nw": false
+      },
+      {
+       "n": "Maleki's Footwraps",
+       "l": null,
+       "d": "17.7%",
+       "nw": false
+      },
+      {
+       "n": "Bone Slicing Hatchet",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Magistrate Barthilas",
+     "items": [
+      {
+       "n": "Royal Tribunal Cloak",
+       "l": null,
+       "d": "14.5%",
+       "nw": false
+      },
+      {
+       "n": "Death Grips",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      },
+      {
+       "n": "Peacemaker",
+       "l": null,
+       "d": "14.8%",
+       "nw": false
+      },
+      {
+       "n": "Magistrate's Cuffs",
+       "l": null,
+       "d": "14.4%",
+       "nw": false
+      },
+      {
+       "n": "Crimson Felt Hat",
+       "l": null,
+       "d": "15.1%",
+       "nw": false
+      },
+      {
+       "n": "Idol of Brutality",
+       "l": null,
+       "d": "4.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ramstein the Gorger",
+     "items": [
+      {
+       "n": "Gauntlets of Valor",
+       "l": 59,
+       "d": "17.0%",
+       "nw": false
+      },
+      {
+       "n": "Slavedriver's Cane",
+       "l": null,
+       "d": "11.7%",
+       "nw": false
+      },
+      {
+       "n": "Band of Flesh",
+       "l": null,
+       "d": "11.8%",
+       "nw": false
+      },
+      {
+       "n": "Soulstealer Mantle",
+       "l": null,
+       "d": "12.1%",
+       "nw": false
+      },
+      {
+       "n": "Crest of Retribution",
+       "l": null,
+       "d": "11.9%",
+       "nw": false
+      },
+      {
+       "n": "Ramstein's Lightning Bolts",
+       "l": null,
+       "d": "12.4%",
+       "nw": false
+      },
+      {
+       "n": "Animated Chain Necklace",
+       "l": null,
+       "d": "11.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Baron Rivendare",
+     "items": [
+      {
+       "n": "Kilt of Elements",
+       "l": 61,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Beaststalker's Pants",
+       "l": 61,
+       "d": "10.4%",
+       "nw": false
+      },
+      {
+       "n": "Magister's Leggings",
+       "l": 61,
+       "d": "11.1%",
+       "nw": false
+      },
+      {
+       "n": "Devout Skirt",
+       "l": 61,
+       "d": "10.5%",
+       "nw": false
+      },
+      {
+       "n": "Dreadmist Leggings",
+       "l": 61,
+       "d": "10.6%",
+       "nw": false
+      },
+      {
+       "n": "Shadowcraft Pants",
+       "l": 61,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Wildheart Kilt",
+       "l": 61,
+       "d": "9.8%",
+       "nw": false
+      },
+      {
+       "n": "Lightforge Legplates",
+       "l": 61,
+       "d": "7.1%",
+       "nw": false
+      },
+      {
+       "n": "Legplates of Valor",
+       "l": 61,
+       "d": "10.4%",
+       "nw": false
+      },
+      {
+       "n": "Cape of the Black Baron",
+       "l": null,
+       "d": "14.9%",
+       "nw": false
+      },
+      {
+       "n": "Dracorian Gauntlets",
+       "l": null,
+       "d": "14.5%",
+       "nw": false
+      },
+      {
+       "n": "Seal of Rivendare",
+       "l": null,
+       "d": "13.8%",
+       "nw": false
+      },
+      {
+       "n": "Robes of the Exalted",
+       "l": null,
+       "d": "14.2%",
+       "nw": false
+      },
+      {
+       "n": "Scepter of the Unholy",
+       "l": null,
+       "d": "15.1%",
+       "nw": false
+      },
+      {
+       "n": "Skullforge Reaver",
+       "l": null,
+       "d": "7.0%",
+       "nw": false
+      },
+      {
+       "n": "Bonescraper",
+       "l": null,
+       "d": "7.1%",
+       "nw": false
+      },
+      {
+       "n": "Runeblade of Baron Rivendare",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ritssyn's Wand of Bad Mojo",
+       "l": null,
+       "d": "18.3%",
+       "nw": false
+      },
+      {
+       "n": "Tunic of the Crescent Moon",
+       "l": null,
+       "d": "18.0%",
+       "nw": false
+      },
+      {
+       "n": "Gauntlets of Deftness",
+       "l": null,
+       "d": "15.8%",
+       "nw": false
+      },
+      {
+       "n": "Helm of the Executioner",
+       "l": null,
+       "d": "15.7%",
+       "nw": false
+      },
+      {
+       "n": "Thuzadin Mantle",
+       "l": null,
+       "d": "16.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "The Unforgiven",
+     "items": [
+      {
+       "n": "Mask of the Unforgiven",
+       "l": null,
+       "d": "15.5%",
+       "nw": false
+      },
+      {
+       "n": "Wailing Nightbane Pauldrons",
+       "l": null,
+       "d": "15.5%",
+       "nw": false
+      },
+      {
+       "n": "Soul Breaker",
+       "l": null,
+       "d": "15.6%",
+       "nw": false
+      },
+      {
+       "n": "Tearfall Bracers",
+       "l": null,
+       "d": "15.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Balzaphon",
+     "items": [
+      {
+       "n": "Chains of the Lich",
+       "l": 60,
+       "d": "127.8%",
+       "nw": false
+      },
+      {
+       "n": "Staff of Balzaphon",
+       "l": null,
+       "d": "29.0%",
+       "nw": false
+      },
+      {
+       "n": "Waistband of Balzaphon",
+       "l": null,
+       "d": "31.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Lightforge Boots",
+       "l": 59,
+       "d": "14.2%",
+       "nw": false
+      },
+      {
+       "n": "Lightforge Belt",
+       "l": 58,
+       "d": "2.1%",
+       "nw": false
+      },
+      {
+       "n": "Devout Bracers",
+       "l": 57,
+       "d": "1.3%",
+       "nw": false
+      },
+      {
+       "n": "Star of Mystaria",
+       "l": null,
+       "d": "15.6%",
+       "nw": false
+      },
+      {
+       "n": "Demonshear",
+       "l": null,
+       "d": "15.6%",
+       "nw": false
+      },
+      {
+       "n": "Wyrmtongue Shoulders",
+       "l": null,
+       "d": "13.6%",
+       "nw": false
+      },
+      {
+       "n": "Crown of Tyranny",
+       "l": null,
+       "d": "15.5%",
+       "nw": false
+      },
+      {
+       "n": "Gift of the Elven Magi",
+       "l": null,
+       "d": "14.6%",
+       "nw": false
+      },
+      {
+       "n": "Fire Striders",
+       "l": null,
+       "d": "16.0%",
+       "nw": false
+      },
+      {
+       "n": "Juno's Shadow",
+       "l": null,
+       "d": null,
+       "nw": false
+      },
+      {
+       "n": "Hammer of the Grand Crusader",
+       "l": null,
+       "d": "14.1%",
+       "nw": false
+      },
+      {
+       "n": "Grand Crusader's Helm",
+       "l": null,
+       "d": "12.0%",
+       "nw": false
+      },
+      {
+       "n": "Shroud of the Nathrezim",
+       "l": null,
+       "d": "11.8%",
+       "nw": false
+      },
+      {
+       "n": "Plaguehound Leggings",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Morlune's Bracer",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Stratholme Militia Shoulderguard",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Gracious Cape",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Plaguebat Fur Gloves",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Sacred Cloth Leggings",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "the-deadmines",
+   "name": "The Deadmines",
+   "bosses": [
+    {
+     "name": "Rhahk'Zor",
+     "items": [
+      {
+       "n": "Rockslicer",
+       "l": 23,
+       "d": "3.7%",
+       "nw": false
+      },
+      {
+       "n": "Ogre Loincloth",
+       "l": 22,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Rhahk'Zor's Hammer",
+       "l": 21,
+       "d": "75.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Miner Johnson",
+     "items": [
+      {
+       "n": "Gold-plated Buckler",
+       "l": 22,
+       "d": "41.4%",
+       "nw": false
+      },
+      {
+       "n": "Miner's Cape",
+       "l": 22,
+       "d": "54.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Sneed's Shredder",
+     "items": [
+      {
+       "n": "Buzz Saw",
+       "l": 23,
+       "d": "10.0%",
+       "nw": false
+      },
+      {
+       "n": "Buzzer Blade",
+       "l": 21,
+       "d": "56.8%",
+       "nw": false
+      },
+      {
+       "n": "Dull Sawblade",
+       "l": 21,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Sneed",
+     "items": [
+      {
+       "n": "Taskmaster Axe",
+       "l": 23,
+       "d": "27.6%",
+       "nw": false
+      },
+      {
+       "n": "Gold-flecked Gloves",
+       "l": 22,
+       "d": "67.6%",
+       "nw": false
+      },
+      {
+       "n": "Bandsaw Wristbands",
+       "l": 21,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Gilnid",
+     "items": [
+      {
+       "n": "Goblin Hammer",
+       "l": 23,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Lavishly Jeweled Ring",
+       "l": 22,
+       "d": "37.1%",
+       "nw": false
+      },
+      {
+       "n": "Smelting Pants",
+       "l": 21,
+       "d": "56.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mr. Smite",
+     "items": [
+      {
+       "n": "Smite's Mighty Hammer",
+       "l": 23,
+       "d": "18.6%",
+       "nw": false
+      },
+      {
+       "n": "Thief's Blade",
+       "l": 22,
+       "d": "38.3%",
+       "nw": false
+      },
+      {
+       "n": "First Mate Band",
+       "l": 22,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Smite's Reaver",
+       "l": 21,
+       "d": "37.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Cookie",
+     "items": [
+      {
+       "n": "Lookie's Spyglass",
+       "l": 23,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Cookie's Stirring Rod",
+       "l": 22,
+       "d": "34.0%",
+       "nw": false
+      },
+      {
+       "n": "Cookie's Tenderizer",
+       "l": 21,
+       "d": "54.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Captain Greenskin",
+     "items": [
+      {
+       "n": "Impaling Harpoon",
+       "l": 22,
+       "d": "28.2%",
+       "nw": false
+      },
+      {
+       "n": "Emberstone Staff",
+       "l": 22,
+       "d": "38.1%",
+       "nw": false
+      },
+      {
+       "n": "Blackened Defias Belt",
+       "l": 22,
+       "d": "26.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Edwin VanCleef",
+     "items": [
+      {
+       "n": "Cruel Barb",
+       "l": 24,
+       "d": "15.9%",
+       "nw": false
+      },
+      {
+       "n": "Cape of the Brotherhood",
+       "l": 24,
+       "d": "23.0%",
+       "nw": false
+      },
+      {
+       "n": "Corsair's Overshirt",
+       "l": 22,
+       "d": "23.7%",
+       "nw": false
+      },
+      {
+       "n": "Blackened Defias Armor",
+       "l": 22,
+       "d": "15.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Stonemason Trousers",
+       "l": 20,
+       "d": "5.5%",
+       "nw": false
+      },
+      {
+       "n": "Blackened Defias Boots",
+       "l": 20,
+       "d": "2.7%",
+       "nw": false
+      },
+      {
+       "n": "Goblin Mail Leggings",
+       "l": 19,
+       "d": "6.2%",
+       "nw": false
+      },
+      {
+       "n": "Blackwater Cutlass",
+       "l": 19,
+       "d": "6.0%",
+       "nw": false
+      },
+      {
+       "n": "Blackened Defias Leggings",
+       "l": 19,
+       "d": "3.4%",
+       "nw": false
+      },
+      {
+       "n": "Blackened Defias Gloves",
+       "l": 19,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "Silk-threaded Trousers",
+       "l": 18,
+       "d": "5.8%",
+       "nw": false
+      },
+      {
+       "n": "Stonemason Cloak",
+       "l": 18,
+       "d": "2.5%",
+       "nw": false
+      },
+      {
+       "n": "Goblin Screwdriver",
+       "l": 18,
+       "d": "5.6%",
+       "nw": false
+      },
+      {
+       "n": "Metalworking Gloves",
+       "l": 18,
+       "d": "5.1%",
+       "nw": false
+      },
+      {
+       "n": "Woodworking Gloves",
+       "l": 18,
+       "d": "6.5%",
+       "nw": false
+      },
+      {
+       "n": "Defias Rapier",
+       "l": 16,
+       "d": "6.6%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "the-stockade",
+   "name": "The Stockade",
+   "bosses": [
+    {
+     "name": "Kam Deepfury",
+     "items": [
+      {
+       "n": "Kam's Walking Stick",
+       "l": 29,
+       "d": "1.4%",
+       "nw": false
+      },
+      {
+       "n": "Bridgebreaker Bindings",
+       "l": 29,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Demolition Girdle",
+       "l": 29,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Bruegal Ironknuckle",
+     "items": [
+      {
+       "n": "Prison Shank",
+       "l": 28,
+       "d": "19.0%",
+       "nw": false
+      },
+      {
+       "n": "Iron Knuckles",
+       "l": 28,
+       "d": "17.7%",
+       "nw": false
+      },
+      {
+       "n": "Jimmied Handcuffs",
+       "l": 28,
+       "d": "55.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Sharpened Cutlery",
+       "l": 26,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Defias Renegade Ring",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Targorr the Dread",
+     "items": [
+      {
+       "n": "Executioner Mantle",
+       "l": 26,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Dark Horde Band",
+       "l": 26,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Blackrock Harness",
+       "l": 26,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Bazil Thredd",
+     "items": [
+      {
+       "n": "Debt Collector",
+       "l": 31,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Defias Jailbreakers",
+       "l": 31,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Red Wool Cloak",
+       "l": 31,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Concealed Hand Crossbow",
+       "l": 31,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Hamhock",
+     "items": [
+      {
+       "n": "Hamhock's Cleaver",
+       "l": 30,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Ogre Grips",
+       "l": 30,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Repurposed Rack",
+       "l": 30,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Dextren Ward",
+     "items": [
+      {
+       "n": "Graverobber's Shovel",
+       "l": 28,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Boneslicer",
+       "l": 28,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Nightskulker Ring",
+       "l": 28,
+       "d": null,
+       "nw": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "the-temple-of-atal-hakkar",
+   "name": "The Temple of Atal'Hakkar",
+   "bosses": [
+    {
+     "name": "Atal'alarion",
+     "items": [
+      {
+       "n": "Atal'alarion's Tusk Ring",
+       "l": null,
+       "d": "37.0%",
+       "nw": false
+      },
+      {
+       "n": "Headspike",
+       "l": null,
+       "d": "18.1%",
+       "nw": false
+      },
+      {
+       "n": "Darkwater Bracers",
+       "l": null,
+       "d": "37.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Spawn of Hakkar",
+     "items": [
+      {
+       "n": "Slitherscale Boots",
+       "l": null,
+       "d": "46.9%",
+       "nw": false
+      },
+      {
+       "n": "Wingveil Cloak",
+       "l": null,
+       "d": "23.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Jammal'an the Prophet",
+     "items": [
+      {
+       "n": "Vestments of the Atal'ai Prophet",
+       "l": null,
+       "d": "27.3%",
+       "nw": false
+      },
+      {
+       "n": "Kilt of the Atal'ai Prophet",
+       "l": null,
+       "d": "27.2%",
+       "nw": false
+      },
+      {
+       "n": "Gloves of the Atal'ai Prophet",
+       "l": null,
+       "d": "29.8%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ogom the Wretched",
+     "items": [
+      {
+       "n": "Blade of the Wretched",
+       "l": null,
+       "d": "30.5%",
+       "nw": false
+      },
+      {
+       "n": "Fist of the Damned",
+       "l": null,
+       "d": "31.0%",
+       "nw": false
+      },
+      {
+       "n": "Eater of the Dead",
+       "l": null,
+       "d": "30.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Shade of Hakkar",
+     "items": [
+      {
+       "n": "Embrace of the Wind Serpent",
+       "l": null,
+       "d": "0.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Shade of Eranikus",
+     "items": [
+      {
+       "n": "Dire Nail",
+       "l": null,
+       "d": "16.9%",
+       "nw": false
+      },
+      {
+       "n": "Dragon's Eye",
+       "l": null,
+       "d": "32.0%",
+       "nw": false
+      },
+      {
+       "n": "Horns of Eranikus",
+       "l": null,
+       "d": "31.7%",
+       "nw": false
+      },
+      {
+       "n": "Crest of Supremacy",
+       "l": null,
+       "d": "28.8%",
+       "nw": false
+      },
+      {
+       "n": "Rod of Corrosion",
+       "l": null,
+       "d": "27.1%",
+       "nw": false
+      },
+      {
+       "n": "Tooth of Eranikus",
+       "l": null,
+       "d": "14.5%",
+       "nw": false
+      },
+      {
+       "n": "Dragon's Call",
+       "l": null,
+       "d": "0.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Stinging Bow",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Stealthblade",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ragehammer",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Mistwalker Boots",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Soulcatcher Halo",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Murkwater Gauntlets",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Slimescale Bracers",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Silvershell Leggings",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Spaulders",
+       "l": null,
+       "d": "4.2%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Breastplate",
+       "l": null,
+       "d": "2.8%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Leggings",
+       "l": null,
+       "d": "5.6%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Boots",
+       "l": null,
+       "d": "8.3%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Gloves",
+       "l": null,
+       "d": "7.0%",
+       "nw": false
+      },
+      {
+       "n": "Atal'ai Girdle",
+       "l": null,
+       "d": "9.7%",
+       "nw": false
+      },
+      {
+       "n": "Drakeclaw Band",
+       "l": null,
+       "d": "8.9%",
+       "nw": false
+      },
+      {
+       "n": "Drakestone",
+       "l": null,
+       "d": "8.8%",
+       "nw": false
+      },
+      {
+       "n": "Firebreather",
+       "l": null,
+       "d": "8.9%",
+       "nw": false
+      },
+      {
+       "n": "Might of Hakkar",
+       "l": null,
+       "d": "16.5%",
+       "nw": false
+      },
+      {
+       "n": "Windscale Sarong",
+       "l": null,
+       "d": "32.8%",
+       "nw": false
+      },
+      {
+       "n": "Featherskin Cape",
+       "l": null,
+       "d": "31.9%",
+       "nw": false
+      },
+      {
+       "n": "Spire of Hakkar",
+       "l": null,
+       "d": "15.9%",
+       "nw": false
+      },
+      {
+       "n": "Warrior's Embrace",
+       "l": null,
+       "d": "30.8%",
+       "nw": false
+      },
+      {
+       "n": "Bloodshot Greaves",
+       "l": null,
+       "d": "33.2%",
+       "nw": false
+      },
+      {
+       "n": "Smoldering Claw",
+       "l": null,
+       "d": "8.6%",
+       "nw": false
+      },
+      {
+       "n": "Drakefang Butcher",
+       "l": null,
+       "d": "8.9%",
+       "nw": false
+      },
+      {
+       "n": "Bloodfire Talons",
+       "l": null,
+       "d": "7.9%",
+       "nw": false
+      },
+      {
+       "n": "Nightfall Drape",
+       "l": null,
+       "d": "8.7%",
+       "nw": false
+      },
+      {
+       "n": "Dawnspire Cord",
+       "l": null,
+       "d": "8.8%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "uldaman",
+   "name": "Uldaman",
+   "bosses": [
+    {
+     "name": "Revelosh",
+     "items": [
+      {
+       "n": "Revelosh's Boots",
+       "l": null,
+       "d": "22.9%",
+       "nw": false
+      },
+      {
+       "n": "Revelosh's Armguards",
+       "l": null,
+       "d": "21.2%",
+       "nw": false
+      },
+      {
+       "n": "Revelosh's Spaulders",
+       "l": null,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Revelosh's Gloves",
+       "l": null,
+       "d": "21.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Baelog",
+     "items": [
+      {
+       "n": "Nordic Longshank",
+       "l": null,
+       "d": "9.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Eric \"The Swift\"",
+     "items": [
+      {
+       "n": "Horned Viking Helmet",
+       "l": null,
+       "d": "8.0%",
+       "nw": false
+      },
+      {
+       "n": "Worn Running Boots",
+       "l": null,
+       "d": "80.5%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Olaf",
+     "items": [
+      {
+       "n": "Olaf's All Purpose Shield",
+       "l": null,
+       "d": "12.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ironaya",
+     "items": [
+      {
+       "n": "Stoneweaver Leggings",
+       "l": null,
+       "d": "38.0%",
+       "nw": false
+      },
+      {
+       "n": "Ironshod Bludgeon",
+       "l": null,
+       "d": "20.4%",
+       "nw": false
+      },
+      {
+       "n": "Ironaya's Bracers",
+       "l": null,
+       "d": "37.6%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Ancient Stone Keeper",
+     "items": [
+      {
+       "n": "Cragfists",
+       "l": null,
+       "d": "47.7%",
+       "nw": false
+      },
+      {
+       "n": "Rockshard Pauldrons",
+       "l": null,
+       "d": "47.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Galgann Firehammer",
+     "items": [
+      {
+       "n": "Galgann's Fireblaster",
+       "l": null,
+       "d": "17.5%",
+       "nw": false
+      },
+      {
+       "n": "Galgann's Firehammer",
+       "l": null,
+       "d": "19.9%",
+       "nw": false
+      },
+      {
+       "n": "Flameseer Mantle",
+       "l": null,
+       "d": "19.6%",
+       "nw": false
+      },
+      {
+       "n": "Emberscale Cape",
+       "l": null,
+       "d": "38.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Grimlok",
+     "items": [
+      {
+       "n": "Oilskin Leggings",
+       "l": null,
+       "d": "29.6%",
+       "nw": false
+      },
+      {
+       "n": "Grimlok's Tribal Vestments",
+       "l": null,
+       "d": "39.8%",
+       "nw": false
+      },
+      {
+       "n": "Grimlok's Charge",
+       "l": null,
+       "d": "19.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Archaedas",
+     "items": [
+      {
+       "n": "The Rockpounder",
+       "l": null,
+       "d": "13.7%",
+       "nw": false
+      },
+      {
+       "n": "Stoneslayer",
+       "l": null,
+       "d": "13.6%",
+       "nw": false
+      },
+      {
+       "n": "Archaedic Stone",
+       "l": null,
+       "d": "62.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Obsidian Cleaver",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Annealed Blade",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Shadowforge Bushmaster",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "The Jackhammer",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Ginn-su Sword",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Pendulum of Doom",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Monolithic Bow",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Stonevault Bonebreaker",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Miner's Hat of the Deep",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Spaulders of a Lost Age",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Papal Fez",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Skullplate Bracers",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      },
+      {
+       "n": "Digmaster 5000",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "wailing-caverns",
+   "name": "Wailing Caverns",
+   "bosses": [
+    {
+     "name": "Lady Anacondra",
+     "items": [
+      {
+       "n": "Serpent's Shoulders",
+       "l": 23,
+       "d": "47.0%",
+       "nw": false
+      },
+      {
+       "n": "Snake Eye Kaleidoscope",
+       "l": 22,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Belt of the Fang",
+       "l": 21,
+       "d": "9.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Cobrahn",
+     "items": [
+      {
+       "n": "Cobrahn's Grasp",
+       "l": 22,
+       "d": "17.8%",
+       "nw": false
+      },
+      {
+       "n": "Robe of the Moccasin",
+       "l": 22,
+       "d": "54.9%",
+       "nw": false
+      },
+      {
+       "n": "Leggings of the Fang",
+       "l": 22,
+       "d": "17.7%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Kresh",
+     "items": [
+      {
+       "n": "Kresh's Back",
+       "l": 23,
+       "d": "12.8%",
+       "nw": false
+      },
+      {
+       "n": "Worn Turtle Shell Shield",
+       "l": 21,
+       "d": "69.5%",
+       "nw": false
+      },
+      {
+       "n": "Cloak of Hermitic Bliss",
+       "l": 22,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Lord Pythas",
+     "items": [
+      {
+       "n": "Stinging Viper",
+       "l": 24,
+       "d": "29.6%",
+       "nw": false
+      },
+      {
+       "n": "Armor of the Fang",
+       "l": 23,
+       "d": "55.3%",
+       "nw": false
+      },
+      {
+       "n": "Slither Cord",
+       "l": 22,
+       "d": null,
+       "nw": true
+      }
+     ]
+    },
+    {
+     "name": "Skum",
+     "items": [
+      {
+       "n": "Glowing Lizardscale Cloak",
+       "l": 23,
+       "d": "45.7%",
+       "nw": false
+      },
+      {
+       "n": "Skum's Bucket",
+       "l": 22,
+       "d": null,
+       "nw": true
+      },
+      {
+       "n": "Tail Spike",
+       "l": 21,
+       "d": "46.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Lord Serpentis",
+     "items": [
+      {
+       "n": "Venomstrike",
+       "l": 24,
+       "d": "17.1%",
+       "nw": false
+      },
+      {
+       "n": "Serpent Gloves",
+       "l": 23,
+       "d": "19.8%",
+       "nw": false
+      },
+      {
+       "n": "Savage Trodders",
+       "l": 23,
+       "d": "23.4%",
+       "nw": false
+      },
+      {
+       "n": "Footpads of the Fang",
+       "l": 22,
+       "d": "21.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Verdan the Everliving",
+     "items": [
+      {
+       "n": "Seedcloud Buckler",
+       "l": 24,
+       "d": "39.0%",
+       "nw": false
+      },
+      {
+       "n": "Living Root",
+       "l": 23,
+       "d": "38.3%",
+       "nw": false
+      },
+      {
+       "n": "Sporid Cape",
+       "l": 22,
+       "d": "19.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Mutanus the Devourer",
+     "items": [
+      {
+       "n": "Slime-encrusted Pads",
+       "l": 25,
+       "d": "29.4%",
+       "nw": false
+      },
+      {
+       "n": "Deep Fathom Ring",
+       "l": 24,
+       "d": "30.3%",
+       "nw": false
+      },
+      {
+       "n": "Mutant Scale Breastplate",
+       "l": 23,
+       "d": "23.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Deviate Faerie Dragon",
+     "items": [
+      {
+       "n": "Firebelcher",
+       "l": 23,
+       "d": "41.8%",
+       "nw": false
+      },
+      {
+       "n": "Feyscale Cloak",
+       "l": 21,
+       "d": "45.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Gloves of the Fang",
+       "l": 19,
+       "d": "2.4%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "slug": "zul-farrak",
+   "name": "Zul'Farrak",
+   "bosses": [
+    {
+     "name": "Antu'sul",
+     "items": [
+      {
+       "n": "Sang'thraze the Deflector",
+       "l": null,
+       "d": "3.1%",
+       "nw": false
+      },
+      {
+       "n": "The Hand of Antu'sul",
+       "l": null,
+       "d": "17.9%",
+       "nw": false
+      },
+      {
+       "n": "Vice Grips",
+       "l": null,
+       "d": "31.7%",
+       "nw": false
+      },
+      {
+       "n": "Lifeblood Amulet",
+       "l": null,
+       "d": "34.2%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Witch Doctor Zum'rah",
+     "items": [
+      {
+       "n": "Zum'rah's Vexing Cane",
+       "l": null,
+       "d": "15.3%",
+       "nw": false
+      },
+      {
+       "n": "Jumanza Grips",
+       "l": null,
+       "d": "35.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Gahz'rilla",
+     "items": [
+      {
+       "n": "Gahz'rilla Fang",
+       "l": null,
+       "d": "45.8%",
+       "nw": false
+      },
+      {
+       "n": "Gahz'rilla Scale Armor",
+       "l": null,
+       "d": "44.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Sergeant Bly",
+     "items": [
+      {
+       "n": "Gutwrencher",
+       "l": null,
+       "d": "<0.1%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Shadowpriest Sezz'ziz",
+     "items": [
+      {
+       "n": "Bad Mojo Mask",
+       "l": null,
+       "d": "23.2%",
+       "nw": false
+      },
+      {
+       "n": "Jinxed Hoodoo Skin",
+       "l": null,
+       "d": "22.0%",
+       "nw": false
+      },
+      {
+       "n": "Jinxed Hoodoo Kilt",
+       "l": null,
+       "d": "21.6%",
+       "nw": false
+      },
+      {
+       "n": "Diabolic Skiver",
+       "l": null,
+       "d": "22.0%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Chief Ukorz Sandscalp",
+     "items": [
+      {
+       "n": "Big Bad Pauldrons",
+       "l": null,
+       "d": "32.3%",
+       "nw": false
+      },
+      {
+       "n": "The Chief's Enforcer",
+       "l": null,
+       "d": "22.9%",
+       "nw": false
+      },
+      {
+       "n": "Ripsaw",
+       "l": null,
+       "d": "22.6%",
+       "nw": false
+      },
+      {
+       "n": "Embrace of the Lycan",
+       "l": null,
+       "d": "10.9%",
+       "nw": false
+      },
+      {
+       "n": "Jang'thraze the Protector",
+       "l": null,
+       "d": "2.9%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Dustwraith",
+     "items": [
+      {
+       "n": "Desertwalker Cane",
+       "l": null,
+       "d": "21.3%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Zerillis",
+     "items": [
+      {
+       "n": "Sandstalker Ankleguards",
+       "l": null,
+       "d": "18.4%",
+       "nw": false
+      }
+     ]
+    },
+    {
+     "name": "Trash",
+     "items": [
+      {
+       "n": "Shriveled Heart",
+       "l": null,
+       "d": "1.4%",
+       "nw": false
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -83,3 +83,25 @@ NS.ScanCommand("6000 6001"); STUB.requested = {}
 STUB.combat = true; STUB.tick(0.3); assert(#STUB.requested == 0)
 STUB.combat = false; STUB.tick(0.1); assert(#STUB.requested == 2)
 NS.ScanCommand("stop")
+
+-- gear stats ride along as a tenth field; the gear list scan asks for exactly the planner's ids
+C_Item.GetItemStats = function(link)
+    if tostring(link):match("item:(%d+)") == "120" then return { ITEM_MOD_STRENGTH_SHORT = 5, RESISTANCE0_NAME = 40, ITEM_MOD_AGILITY_SHORT = 0 } end
+end
+STUB.item(120, "Gear Piece", 2)
+STUB.items[120].classID = 4
+assert(NS.StoreItem(120))
+assert(AmisiaDB.scan.items[120]:match("\tRESISTANCE0_NAME=40;STRENGTH_SHORT=5$"), AmisiaDB.scan.items[120])
+NS.GEAR = { I = { [120] = {}, [121] = {} }, M = { 122 } }
+local ids = NS.GearScanIDs()
+assert(#ids == 3 and ids[1] == 120 and ids[3] == 122)
+STUB.requested = {}
+NS.ScanCommand("gear")
+assert(NS.ScanRunning())
+STUB.tick(0.1)
+assert(#STUB.requested == 3, "three requested: " .. #STUB.requested)
+STUB.fire("ITEM_DATA_LOAD_RESULT", 120, true)
+STUB.fire("ITEM_DATA_LOAD_RESULT", 121, false)
+STUB.fire("ITEM_DATA_LOAD_RESULT", 122, false)
+assert(not NS.ScanRunning(), "the list scan ends when every id answered")
+NS.GEAR = nil

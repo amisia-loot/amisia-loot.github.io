@@ -96,10 +96,44 @@ def load_sv(path):
 
 def parse_item_line(line):
     f = str(line).split('\t')
-    f += [''] * (9 - len(f))
+    f += [''] * (10 - len(f))
     num = lambda x: int(x) if str(x).lstrip('-').isdigit() else 0
+    # the tenth field, only on gear from Amisia 1.3.0 on, holds the client's stats: "KEY=value;..."
     return {'name': f[0], 'q': num(f[1]), 'ilvl': num(f[2]), 'min': num(f[3]), 'classID': num(f[4]),
-            'subclassID': num(f[5]), 'equipLoc': f[6], 'icon': f[7], 'bind': num(f[8])}
+            'subclassID': num(f[5]), 'equipLoc': f[6], 'icon': f[7], 'bind': num(f[8]), 'stats': f[9]}
+
+
+NOTE_RE = re.compile(r'^(?P<kind>Drop|Haendler|Händler|Quest): (?P<name>.*?)'
+                     r'(?: \[(?P<id>\d+)\])?(?: L(?P<level>\d+))?'
+                     r'(?: @(?P<place>.*?))?(?: #(?P<itype>[a-z]+):(?P<instance>\d+))?$')
+
+
+def parse_note(text):
+    """A collector note as a dict: kind (drop, vendor, quest, ah), name, id (NPC or quest), level
+    (the player's, on quests), place (zone or instance name), itype (party/raid) and instance id.
+    Older notes carry only the name."""
+    text = str(text).strip()
+    if text in ('Auktionshaus', 'Auction House'):
+        return {'kind': 'ah'}
+    m = NOTE_RE.match(text)
+    if not m:
+        return None
+    kind = {'Drop': 'drop', 'Haendler': 'vendor', 'Händler': 'vendor', 'Quest': 'quest'}[m.group('kind')]
+    num = lambda x: int(x) if x else None
+    name = m.group('name').strip()
+    return {'kind': kind, 'name': None if name in ('', '?') else name, 'id': num(m.group('id')),
+            'level': num(m.group('level')), 'place': m.group('place'), 'itype': m.group('itype'),
+            'instance': num(m.group('instance'))}
+
+
+def note_label(text):
+    """A note for people: the name with the place, without ids."""
+    n = parse_note(text)
+    if not n or n['kind'] == 'ah':
+        return str(text)
+    prefix = str(text).split(':', 1)[0]
+    who = n['name'] or (f"NPC {n['id']}" if n['id'] and n['kind'] != 'quest' else '?')
+    return f"{prefix}: {who}" + (f" ({n['place']})" if n['place'] else '')
 
 
 def collect(dbs):
@@ -246,8 +280,8 @@ def add_field_sources(out_items, items, collected, zones, bosses, min_quality=3)
         it = items.get(item)
         if item in have or not it or it['q'] < min_quality or JUNK_NAME.search(it['name'] or ''):
             continue
-        mobs = [s[len(DROP_PREFIX):].strip() for s in collected[item] if s.startswith(DROP_PREFIX)]
-        mobs = [m for m in mobs if m and m != '?']
+        notes = [parse_note(s) for s in collected[item] if s.startswith(DROP_PREFIX)]
+        mobs = [n['name'] for n in notes if n and n['name'] and n.get('itype') != 'raid']
         if not mobs:
             continue
         rows.append(item_row(item, items, mobs))
@@ -266,7 +300,7 @@ def add_field_sources(out_items, items, collected, zones, bosses, min_quality=3)
 def add_via(out_items, collected):
     """The collector's other notes — merchant, quest, auction house — as the item's `via` line."""
     for it in out_items:
-        via = [s for s in collected.get(it['id'], []) if not s.startswith(DROP_PREFIX)]
+        via = [note_label(s) for s in collected.get(it['id'], []) if not s.startswith(DROP_PREFIX)]
         if via:
             it['via'] = via
 

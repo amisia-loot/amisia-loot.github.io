@@ -1,10 +1,13 @@
 ## Interface: 20506, 16001
 ## Title: Amisia
-## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves und exportiert alles für die Amisia-Loot-Seite.
+## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt in WoW Forever die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
-## Version: 1.2.3
+## Version: 1.3.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
+## AddonCompartmentFunc: Amisia_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 
 Core.lua
 Awards.lua
@@ -13,4 +16,9 @@ RollFrame.lua
 SoftRes.lua
 Scan.lua
 Collect.lua
+GearData.lua [AllowLoadGameType camelot]
+GearWeights.lua [AllowLoadGameType camelot]
+Gear.lua
+GearFrame.lua
 UI.lua
+Minimap.lua

@@ -30,6 +30,11 @@ _G.GetNumQuestChoices = function() return 0 end
 _G.GetQuestItemLink = function(kind, i) return kind == "reward" and c or nil end
 STUB.fire("QUEST_COMPLETE")
 assert(AmisiaDB.scan.sources[102][1] == "Quest: Die Fackel")
+-- with quest id and the player's level, which stands in for the quest level of new quests
+_G.GetQuestID = function() return 4711 end
+_G.UnitLevel = function() return 23 end
+STUB.fire("QUEST_DETAIL")
+assert(AmisiaDB.scan.sources[102][2] == "Quest: Die Fackel [4711] L23", tostring(AmisiaDB.scan.sources[102][2]))
 
 -- auction house, retail style
 _G.C_AuctionHouse = { GetBrowseResults = function() return { { itemKey = { itemID = 103 } } } end }
@@ -41,8 +46,18 @@ assert(#AmisiaDB.scan.sources[103] == 1, "same source once")
 -- loot window
 STUB.loot = { { link = e, name = "Drop Thing" } }
 STUB.target = "Wolf"
+STUB.targetGUID = "Creature-0-1-1-1-22917-1"
+_G.GetRealZoneText = function() return "Wald von Elwynn" end
 STUB.fire("LOOT_OPENED")
-assert(AmisiaDB.scan.sources[104][1] == "Drop: Wolf")
+assert(AmisiaDB.scan.sources[104][1] == "Drop: Wolf [22917] @Wald von Elwynn", AmisiaDB.scan.sources[104][1])
+-- a corpse that is not the target keeps its NPC id, and a dungeon its instance id
+STUB.targetGUID = "Creature-0-1-1-1-1-1"
+STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }
+STUB.loot = { { link = e, name = "Drop Thing", src = "Creature-0-3110-36-47-639-00002E7CF2" } }
+STUB.fire("LOOT_OPENED")
+assert(AmisiaDB.scan.sources[104][2] == "Drop: ? [639] @Die Todesminen #party:36", AmisiaDB.scan.sources[104][2])
+STUB.instance = { name = "Shattrath", type = "none", id = 0 }
+assert(NS.NpcID("Player-1-1") == nil and NS.NpcID("Vehicle-0-1-1-1-55-2") == 55)
 
 -- tooltip and chat link
 local f = STUB.item(106, "Linked", 4)
