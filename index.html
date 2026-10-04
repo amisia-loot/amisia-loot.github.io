@@ -1019,7 +1019,7 @@ const nights = () => state.nights || (state.nights = []);
 // shared. The game in use has its data at the top of the ledger, where every view reads it, the
 // others wait in state.shelf until the game is switched back. shelfGame names the game the top
 // belongs to: a ledger from before this has none, and all of it was TBC.
-const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped'];
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped'];
 function fitShelf(s){
   const want = s.game || 'tbc', have = s.shelfGame || 'tbc';
   if (want !== have) {
@@ -1606,6 +1606,8 @@ function nightExtraLoot(date){
   // per raider an item reached them as often as the larger of awards and addon loot says
   const taken = {};
   for (const k of new Set([...Object.keys(awarded), ...Object.keys(looted)])) { const item = k.split('|')[1]; taken[item] = (taken[item] || 0) + Math.max(awarded[k] || 0, looted[k] || 0); }
+  // what went to the guild bank or the disenchanter reached nobody on the roster, but was handed out
+  for (const x of (state.lootAway || [])) if (x.date === date) taken[x.item] = (taken[x.item] || 0) + 1;
   const dropped = {};
   for (const d of (state.lootDrops || [])) if (d.date === date) { const e = dropped[d.item] = dropped[d.item] || {count: 0, sources: new Set()}; e.count += d.count; e.sources.add(bossHere(d.source)); }
   const left = [];
@@ -2445,6 +2447,8 @@ const matloot = () => state.matloot || (state.matloot = []);
 // Blue and better loot the Amisia addon saw, what lay in loot windows, and names of items outside the loot tables.
 const otherLoot = () => state.otherLoot || (state.otherLoot = []);
 const lootDrops = () => state.lootDrops || (state.lootDrops = []);
+// Items the master looter gave to the guild bank or the disenchanter, by the addon's award id.
+const lootAway = () => state.lootAway || (state.lootAway = []);
 const itemNames = () => state.itemNames || (state.itemNames = {});
 // Pulls every #AMISIA ... #END block out of the pasted text; the rest goes to the Gargul parser.
 function amSplit(text){
@@ -2455,14 +2459,14 @@ function amSplit(text){
 function amParse(blocks){
   const out = [];
   for (const b of blocks) {
-    let cur = null; const names = {};   // N lines follow the sessions, so every session of the block shares this map
+    let cur = null, last = null; const names = {};   // N lines follow the sessions, so every session of the block shares this map
     for (const raw of b.split(/\r?\n/)) {
       const line = raw.trim(); if (!line || line[0] === '#') continue;
       const f = line.split(/\s+/);
       // export version 2 writes a Forever surname with "_" for the space; no WoW name holds an underscore
       const nm = s => glCleanName(String(s || '').replace(/_/g, ' '));
       if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) {
-        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], names};
+        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], away: [], gone: [], names};
         out.push(cur);
       } else if (f[0] === 'M' && cur && f[1]) {
         // M <name> <class> [<first seen epoch> <1 late, 0 punctual>] - the two last fields are newer
@@ -2479,7 +2483,27 @@ function amParse(blocks){
       } else if (f[0] === 'A' && cur && f.length >= 5) {
         // A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: a master loot hand-out
         const name = nm(f[1]), item = Number(f[2]), at = Number(f[3]) || 0, kind = f[4].toUpperCase();
-        if (name && item) cur.awards.push({name, item, at, kind: ['MS', 'OS', 'SR'].includes(kind) ? kind : '', source: (f.slice(5).join(' ') || '?').slice(0, 60)});
+        last = null;
+        if (name && item) cur.awards.push(last = {name, item, at, kind: ['MS', 'OS', 'SR'].includes(kind) ? kind : '', source: (f.slice(5).join(' ') || '?').slice(0, 60)});
+      } else if (f[0] === 'AS' && cur && f.length >= 6) {
+        // AS <id> <itemID> <epoch> <BANK|DE> <receiver|-> <source name>: a hand-out to the guild bank or the disenchanter
+        const item = Number(f[2]), at = Number(f[3]) || 0, to = f[4].toUpperCase() === 'BANK' ? 'bank' : f[4].toUpperCase() === 'DE' ? 'de' : null;
+        last = null;
+        if (item && to) cur.away.push(last = {uid: f[1], item, at, to, receiver: f[5] === '-' ? null : nm(f[5]) || null, source: (f.slice(6).join(' ') || '?').slice(0, 60)});
+      } else if (f[0] === 'AX' && cur && f.length >= 4) {
+        // AX <id> <edited epoch|0> <first winner|-> [<note>]: the id and history of the A or AS line right before it
+        const a = last && (!last.uid || last.uid === f[1]) ? last : null;
+        if (a) {
+          a.uid = f[1]; a.edited = Number(f[2]) || 0;
+          if (f[3] !== '-') { const orig = nm(f[3]); if (orig) a.orig = orig; }
+          const note = f.slice(4).join(' ').trim().slice(0, 60); if (note) a.note = note;
+        }
+        last = null;
+      } else if (f[0] === 'AD' && cur && f.length >= 5) {
+        // AD <id> <itemID> <epoch> <deleted epoch>: a hand-out deleted in the addon after the fact
+        const item = Number(f[2]);
+        if (item) cur.gone.push({uid: f[1], item, at: Number(f[3]) || 0, deleted: Number(f[4]) || 0});
+        last = null;
       } else if (f[0] === 'N' && f.length >= 3 && /^\d+$/.test(f[1])) {
         names[Number(f[1])] = {n: (f.slice(3).join(' ') || 'Item ' + f[1]).slice(0, 80), q: Math.max(0, Math.min(7, Math.floor(Number(f[2]) || 0)))};
       } else if (f[0] === 'E') cur = null;
@@ -2488,14 +2512,34 @@ function amParse(blocks){
   return out;
 }
 // Awards the Amisia addon recorded, as rows of the award preview. The addon dates a session by
-// raid night already, so the session date is used as it is.
+// raid night already, so the session date is used as it is. An award with an id (export of 1.5)
+// carries it as amKey with the time of its last edit and the first winner; one without (1.4) reads
+// as before. Hand-outs to the guild bank or the disenchanter follow as rows with away set.
 function amAwardRows(sessions){
   const rows = [], seen = new Set();
   for (const s of sessions) for (const a of (s.awards || [])) {
-    const own = s.date + '|' + a.item + '|' + a.name.toLowerCase() + '|' + a.at;
+    const own = a.uid ? 'm' + a.uid : s.date + '|' + a.item + '|' + a.name.toLowerCase() + '|' + a.at;
     if (seen.has(own)) continue; seen.add(own);
     const m = s.members.find(x => x.name.toLowerCase() === a.name.toLowerCase());
-    rows.push({item: a.item, rawName: a.name, name: a.name, date: s.date, ts: a.at ? a.at * 1000 : null, os: a.kind === 'OS', key: null, cls: m ? m.cls : '', boss: a.source !== '?' ? a.source : null, note: a.kind === 'SR' ? 'SR' : ''});
+    const r = {item: a.item, rawName: a.name, name: a.name, date: s.date, ts: a.at ? a.at * 1000 : null, os: a.kind === 'OS', key: null, cls: m ? m.cls : '', boss: a.source !== '?' ? a.source : null, note: [a.kind === 'SR' ? 'SR' : '', a.note || ''].filter(Boolean).join(' · ')};
+    if (a.uid) { r.amKey = a.uid; r.amEdited = a.edited || 0; if (a.orig) r.orig = a.orig; }
+    rows.push(r);
+  }
+  for (const s of sessions) for (const a of (s.away || [])) {
+    if (seen.has('m' + a.uid)) continue; seen.add('m' + a.uid);
+    rows.push({item: a.item, rawName: a.receiver || '', name: a.receiver || '', date: s.date, ts: a.at ? a.at * 1000 : null, os: false, key: null, cls: '', boss: a.source !== '?' ? a.source : null, note: a.note || '', amKey: a.uid, amEdited: a.edited || 0, away: a.to});
+  }
+  return rows;
+}
+// Awards deleted in the addon after the ledger got them: one row per tombstone whose id the ledger
+// knows. A tombstone of an award the ledger never had is nothing to show.
+function amGoneRows(sessions){
+  const rows = [], seen = new Set();
+  for (const s of sessions) for (const g of (s.gone || [])) {
+    if (seen.has(g.uid)) continue; seen.add(g.uid);
+    const a = state.awards.find(x => x.am === g.uid); if (!a) continue;
+    const r = raiderById(a.raider) || null;
+    rows.push({gone: true, status: 'gone', item: g.item, it: ITEM[g.item], rawName: r ? r.name : '', name: r ? r.name : '', date: s.date, ts: g.at ? g.at * 1000 : null, os: false, key: null, cls: r ? r.cls : '', boss: a.boss, note: '', amKey: g.uid, awardId: a.id, raider: r, deleted: g.deleted});
   }
   return rows;
 }
@@ -2570,12 +2614,13 @@ function amResolve(sessions){
     const addsLoot = s.loot.some(l => { const r = byName(l.name); if (!r) return true; const ex = (state.matloot || []).find(x => x.key === s.date + '|' + s.instance + '|' + r.id + '|' + l.item); return !ex || ex.count < l.count; });
     const addsItems = (s.items || []).some(l => { const r = byName(l.name); if (!r) return true; const ex = (state.otherLoot || []).find(x => x.key === s.date + '|' + s.instance + '|' + r.id + '|' + l.item); return !ex || ex.count < l.count; });
     const addsDrops = (s.drops || []).some(d => { const ex = (state.lootDrops || []).find(x => x.key === s.date + '|' + s.instance + '|' + d.item + '|' + d.source); return !ex || ex.count < d.count; });
+    const addsAway = (s.away || []).some(a => !(state.lootAway || []).some(x => x.key === a.uid));
     // a session whose late marks would change the night counts as new too, e.g. the first raid of a
     // night pasted again after a later raid of that night had left its own marks
     const ids = s.members.map(m => byName(m.name)), lt = ids.every(Boolean) && amLate(night, s, ids.map(r => r.id));
     const was = lateOn(s.date), addsLate = !!lt && (Object.keys(lt.late).length !== Object.keys(was).length || Object.keys(lt.late).some(id => lt.late[id] !== was[id]));
     const itemCount = (s.items || []).reduce((n, l) => n + l.count, 0), dropCount = (s.drops || []).reduce((n, d) => n + d.count, 0);
-    return Object.assign({}, s, {people: names.length, newNames, mats, itemCount, dropCount, again: done.has(s.sid), status: addsPeople || addsLoot || addsItems || addsDrops || addsLate || dups ? 'ok' : 'dup'});
+    return Object.assign({}, s, {people: names.length, newNames, mats, itemCount, dropCount, again: done.has(s.sid), status: addsPeople || addsLoot || addsItems || addsDrops || addsAway || addsLate || dups ? 'ok' : 'dup'});
   }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 }
 // A full Forever name nobody on the roster carries, whose first name exactly one raider has: that
@@ -2592,7 +2637,7 @@ function amRender(){
   $('#amSummary').textContent = amRows.length ? ok + ' to import · ' + (amRows.length - ok) + ' already imported' : 'no raid sessions in this export';
   // A hand-out whose boss the tables do not know keeps the first source of the item as its boss,
   // so the officer is told which names to pick by hand in the award list.
-  const strange = [...new Set(amRows.flatMap(s => (s.awards || []).map(a => a.source))
+  const strange = [...new Set(amRows.flatMap(s => [...(s.awards || []), ...(s.away || [])].map(a => a.source))
     .filter(n => n && n !== '?' && !BOSSES.some(b => b.name === bossHere(n))))];
   $('#amStrange').hidden = !strange.length;
   $('#amStrange').innerHTML = strange.length ? '<p class="muted" style="margin:0;padding:10px 16px 0;font-size:13px">'
@@ -2613,11 +2658,14 @@ function amRender(){
 }
 function impRender(){
   const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length, fills = glRows.filter(r => r.status === 'fill').length;
+  const changes = glRows.filter(r => r.status === 'change').length, gone = glRows.filter(r => r.status === 'gone').length;
   $('#glResult').hidden = !glRows.length;
   $('#impBar').hidden = !(glRows.length || amRows.length || amBank);
   const parts = [];
   if (okG) parts.push(okG + ' award' + (okG === 1 ? '' : 's'));
   if (fills) parts.push('more detail for ' + fills + ' award' + (fills === 1 ? '' : 's') + ' already in the ledger');
+  if (changes) parts.push(changes + ' change' + (changes === 1 ? '' : 's') + ' from the addon');
+  if (gone) parts.push(gone + ' award' + (gone === 1 ? '' : 's') + ' removed in game');
   if (okA) parts.push(okA + ' raid session' + (okA === 1 ? '' : 's'));
   if (amBank && amBank.status === 'ok') parts.push('the guild bank count');
   $('#impSummary').textContent = parts.length ? parts.join(' and ') + ' ready to import' : 'Nothing new, everything in this export is already in the ledger';
@@ -2667,6 +2715,10 @@ function importAmisia(){
       const ex = lootDrops().find(x => x.key === key);
       if (ex) ex.count = Math.max(ex.count, d.count);
       else lootDrops().push({key, date: s.date, instance: s.instance, item: d.item, count: d.count, source: d.source});
+    }
+    // to the guild bank or the disenchanter: no raider, no award, but the item counts as handed out
+    for (const a of (s.away || [])) {
+      if (!lootAway().some(x => x.key === a.uid)) lootAway().push({key: a.uid, date: s.date, instance: s.instance, item: a.item, to: a.to});
     }
     for (const [id, v] of Object.entries(s.names || {})) if (!ITEM[id]) itemNames()[id] = v;
     state.addonSessions = state.addonSessions || [];
@@ -2783,12 +2835,12 @@ function glParse(text){
 }
 // Where an imported award came from: the Gargul checksum, or date, item and the winner named in the export.
 // An award handed to someone else keeps it, and a removed one is remembered, so importing the same export
-// again neither gives the item back to the first winner nor brings a removed item back.
+// again neither gives the item back to the first winner nor brings a removed item back. An award the
+// Amisia addon exported with an id is remembered by that id as well (m<id>).
 const importSig = a => a.gargul ? 'k' + a.gargul : a.src || '';
 function forgetImport(a, b){
-  const s = importSig(a); if (!s) return;
   b = b || state; b.dropped = b.dropped || [];
-  if (!b.dropped.includes(s)) b.dropped.push(s);
+  for (const s of [importSig(a), a.am ? 'm' + a.am : '']) if (s && !b.dropped.includes(s)) b.dropped.push(s);
 }
 // A raider leaves the roster, so their trace goes in every game version, not only the one in use.
 function forgetRaider(b, rid){
@@ -2805,7 +2857,11 @@ function forgetRaider(b, rid){
 function glResolve(rows){
   const dups = $('#glDups').checked, seen = new Set(), dropped = new Set(state.dropped || []);
   return rows.map(r => {
+    // a deletion in the addon, found by amGoneRows: nothing to resolve
+    if (r.gone) return Object.assign({}, r, {status: 'gone'});
     const it = ITEM[r.item]; const out = Object.assign({}, r, {it});
+    // to the guild bank or the disenchanter: shown, never a raider or an award
+    if (r.away) { out.status = 'skip'; out.why = r.away === 'bank' ? 'to the guild bank' : 'disenchanted'; return out; }
     if (!r.rawName || /^_/.test(r.rawName)) { out.status = 'skip'; out.why = 'disenchanted or no winner'; return out; }
     if (!it) { out.status = 'skip'; out.why = r.item ? 'not a drop from a supported raid' : 'no item id found'; return out; }
     // bq: the boss is only the first source of the item, nobody said which one it really was
@@ -2813,14 +2869,51 @@ function glResolve(rows){
     if (r.boss) { const want = bossHere(r.boss).toLowerCase(); const known = BOSSES.find(b => b.name.toLowerCase() === want && it.sources.includes(b.name)); if (known) { out.boss = known.name; out.bq = false; } }
     const ex = state.raiders.find(x => x.name.toLowerCase() === r.name.toLowerCase());
     out.raider = ex || null;
-    const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase(), own = r.key ? 'k'+r.key : sig;
+    const sig = r.date + '|' + r.item + '|' + r.name.toLowerCase(), own = r.amKey ? 'm' + r.amKey : r.key ? 'k'+r.key : sig;
     out.removed = dropped.has(own) || dropped.has(sig);
+    const note = [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · ');
+    if (r.amKey && !out.removed) {
+      // 1. The addon's id names an award of the ledger: the same hand-out again, or, when the addon
+      // changed winner, OS or note since the ledger last heard of it, a change to take over. A change
+      // made on the site is the newer one until the addon edits the award again.
+      const byId = state.awards.find(x => x.am === r.amKey);
+      if (byId) {
+        seen.add(own); out.awardId = byId.id;
+        const cur = raiderById(byId.raider), change = {};
+        if (!cur || cur.name.toLowerCase() !== r.name.toLowerCase()) change.raider = r.name;
+        if ((byId.note || '') !== note) change.note = note;
+        if (Object.keys(change).length && (r.amEdited || 0) > (byId.amEdited || 0)) { out.status = 'change'; out.change = change; }
+        else out.status = 'dup';
+        return out;
+      }
+      // 2. The ledger got the award before the addon wrote ids: by date, item and winner it takes the
+      // id now; by the first winner (renamed in the addon since) it moves to the winner named today.
+      const same = x => !x.am && x.date === r.date && x.item === r.item;
+      const mine = state.awards.find(x => same(x) && ((ex && x.raider === ex.id) || x.src === sig));
+      if (mine) {
+        seen.add(own); out.awardId = mine.id;
+        const fill = {am: r.amKey};
+        if (note && !mine.note) fill.note = note;
+        if (bossGuessed(mine) && !out.bq && out.boss !== mine.boss) fill.boss = out.boss;
+        out.status = 'fill'; out.fill = fill;
+        return out;
+      }
+      if (r.orig) {
+        const oex = state.raiders.find(x => x.name.toLowerCase() === r.orig.toLowerCase()), osig = r.date + '|' + r.item + '|' + r.orig.toLowerCase();
+        const theirs = state.awards.find(x => same(x) && ((oex && x.raider === oex.id) || x.src === osig));
+        if (theirs) {
+          seen.add(own); out.awardId = theirs.id;
+          out.status = 'change'; out.change = {raider: r.name};
+          if (note && (theirs.note || '') !== note) out.change.note = note;
+          return out;
+        }
+      }
+    }
     const already = out.removed || state.awards.some(a => (r.key && a.gargul === r.key) || a.src === sig || (ex && a.raider === ex.id && a.item === r.item && a.date === r.date)) || seen.has(own);
     seen.add(own);
     // The same hand-out out of the other export: the entry stays, only what it still lacks is filled in.
     if (already && !dups && !out.removed && ex) {
       const a = state.awards.find(x => x.date === r.date && x.item === r.item && x.raider === ex.id);
-      const note = [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · ');
       const fill = {};
       if (a && note && !a.note) fill.note = note;
       if (bossGuessed(a) && !out.bq && out.boss !== a.boss) fill.boss = out.boss;
@@ -2830,16 +2923,46 @@ function glResolve(rows){
     return out;
   });
 }
-const fillText = f => [f.boss ? 'the boss (' + f.boss + ')' : '', f.note ? 'the note ' + f.note : ''].filter(Boolean).join(' and ');
+const fillText = f => [f.boss ? 'the boss (' + f.boss + ')' : '', f.note ? 'the note ' + f.note : '', f.am ? 'the id from the addon' : ''].filter(Boolean).join(' and ');
+const changeText = c => [c.raider ? 'the winner (' + c.raider + ')' : '', 'note' in c ? (c.note ? 'the note (' + c.note + ')' : 'no note any more') : ''].filter(Boolean).join(' and ');
+// What the addon changed since the import. A change row moves the award to the winner named in
+// game, takes its note and remembers the old winner's signature as dropped, so the export of a
+// second recorder that still names the old winner shows as removed. A gone row removes the award,
+// and its id and signature stay dropped so no export brings it back.
+function amApplyAwardChanges(rows){
+  let changed = 0, gone = 0;
+  for (const r of rows) {
+    const a = state.awards.find(x => x.id === r.awardId); if (!a) continue;
+    if (r.status === 'gone') { forgetImport(a); state.awards = state.awards.filter(x => x !== a); gone++; continue; }
+    if (r.status !== 'change') continue;
+    const c = r.change || {};
+    if (c.raider) {
+      let raider = state.raiders.find(x => x.name.toLowerCase() === c.raider.toLowerCase());
+      if (!raider) { raider = {id: uid(), name: c.raider, cls: r.cls || 'Unknown'}; state.raiders.push(raider); }
+      const old = importSig(a); state.dropped = state.dropped || [];
+      if (old && !state.dropped.includes(old)) state.dropped.push(old);
+      a.raider = raider.id;
+      a.src = r.date + '|' + r.item + '|' + c.raider.toLowerCase();
+    }
+    if ('note' in c) a.note = c.note;
+    a.am = r.amKey; a.amEdited = r.amEdited || 0;
+    changed++;
+  }
+  return {changed, gone};
+}
 function glRender(){
   const ok = glRows.filter(r => r.status === 'ok'), dup = glRows.filter(r => r.status === 'dup'), skip = glRows.filter(r => r.status === 'skip'), fills = glRows.filter(r => r.status === 'fill');
+  const changes = glRows.filter(r => r.status === 'change').length, gone = glRows.filter(r => r.status === 'gone').length;
   const newNames = [...new Set(ok.filter(r => !r.raider).map(r => r.name))];
-  $('#glSummary').textContent = ok.length + ' to import · ' + (fills.length ? fills.length + ' to fill in · ' : '') + dup.length + ' already in ledger · ' + skip.length + ' ignored' + (newNames.length ? ' · ' + newNames.length + ' new raider' + (newNames.length===1?'':'s') : '');
-  $('#glImport').disabled = !ok.length && !fills.length; $('#glImport').textContent = 'Import ' + ok.length + ' award' + (ok.length===1?'':'s');
+  $('#glSummary').textContent = ok.length + ' to import · ' + (fills.length ? fills.length + ' to fill in · ' : '') + (changes ? changes + ' changed in game · ' : '') + (gone ? gone + ' removed in game · ' : '') + dup.length + ' already in ledger · ' + skip.length + ' ignored' + (newNames.length ? ' · ' + newNames.length + ' new raider' + (newNames.length===1?'':'s') : '');
+  $('#glImport').disabled = !ok.length && !fills.length && !changes && !gone; $('#glImport').textContent = 'Import ' + ok.length + ' award' + (ok.length===1?'':'s');
   const clsPicked = {}; ok.forEach(r => { if (!r.raider && r.cls && !clsPicked[r.name]) clsPicked[r.name] = r.cls; });
   const clsDone = new Set();
   $('#glBody').innerHTML = glRows.map(r => {
-    const st = r.status === 'fill' ? '<span class="st new" title="This hand-out is already in the ledger. The import only fills in what it does not know yet.">Fills in</span>' : r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? (r.removed ? '<span class="st skip" title="removed from the ledger after an earlier import">Removed</span>' : '<span class="st dup">Exists</span>') : '<span class="st skip">Ignored</span>';
+    const st = r.status === 'fill' ? '<span class="st new" title="This hand-out is already in the ledger. The import only fills in what it does not know yet.">Fills in</span>'
+      : r.status === 'change' ? '<span class="st new" title="Changed in the Amisia addon since the import. The import takes the change over.">Changes</span>'
+      : r.status === 'gone' ? '<span class="st new" title="Deleted in the Amisia addon after the import. The import removes the award from the ledger.">Removed in game</span>'
+      : r.status === 'ok' ? (r.raider ? '<span class="st ok">Import</span>' : '<span class="st new">New raider</span>') : r.status === 'dup' ? (r.removed ? '<span class="st skip" title="removed from the ledger after an earlier import">Removed</span>' : '<span class="st dup">Exists</span>') : '<span class="st skip">Ignored</span>';
     let cls;
     if (r.status !== 'ok') cls = '<span class="muted">'+esc(r.raider ? r.raider.cls : '')+'</span>';
     else if (r.raider) cls = '<span class="muted">'+esc(r.raider.cls)+'</span>';
@@ -2849,7 +2972,7 @@ function glRender(){
       + '<td>'+(r.it ? '<span class="item">'+icoHTML(r.it,'',0,false)+'<span><span class="nm">'+esc(r.it.name)+'</span> <span class="sl">'+SLOTNAME[r.it.slot]+'</span>'+dTag(r.it)+'</span></span>' : '<span class="faint">'+(r.item ? 'Item '+r.item : '—')+'</span>')+'</td>'
       + '<td style="white-space:nowrap">'+(r.boss ? zTag(BOSSZONE[r.boss])+' '+(r.status==='ok' && r.it.sources.length>1 ? '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glboss="'+glRows.indexOf(r)+'">'+r.it.sources.map(s => '<option'+(s===r.boss?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>' : esc(r.boss)) : '')+'</td>'
       + '<td>'+(r.raider ? rName(r.raider) : '<span class="rname">'+esc(r.name || r.rawName)+'</span>')+'</td>'
-      + '<td>'+cls+'</td><td class="note">'+esc(r.status === 'skip' ? r.why : r.status === 'fill' ? 'adds ' + fillText(r.fill) : [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '))+'</td></tr>';
+      + '<td>'+cls+'</td><td class="note">'+esc(r.status === 'skip' ? r.why : r.status === 'fill' ? 'adds ' + fillText(r.fill) : r.status === 'change' ? 'changes ' + changeText(r.change) : r.status === 'gone' ? 'removed in game' : [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '))+'</td></tr>';
   }).join('');
   $('#glResult').hidden = false;
 }
@@ -2860,7 +2983,7 @@ $('#glPreview').addEventListener('click', () => {
   amRows = amSessions.length ? amResolve(amSessions) : [];
   amBank = blocks.length ? amBankResolve(amParseBank(blocks)) : null;
   const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
-  glRows = rawRows.length ? glResolve(rawRows) : [];
+  glRows = (rawRows.length ? glResolve(rawRows) : []).concat(amGoneRows(amSessions));
   if (!glRows.length && !amRows.length && !amBank) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
@@ -2873,7 +2996,7 @@ $('#glDups').addEventListener('change', () => {
 });
 $('#glImport').addEventListener('click', () => {
   const ok = glRows.filter(r => r.status === 'ok');
-  if (!ok.length && !glRows.some(r => r.status === 'fill') && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
+  if (!ok.length && !glRows.some(r => r.status === 'fill' || r.status === 'change' || r.status === 'gone') && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
   const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
   document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
   let created = 0, base = Date.now();
@@ -2882,6 +3005,7 @@ $('#glImport').addEventListener('click', () => {
     if (!raider) { raider = {id: uid(), name: r.name, cls: clsFor[r.name] || r.cls || 'Unknown'}; state.raiders.push(raider); created++; }
     const a = {id: uid(), date: r.date, boss: r.boss, item: r.item, raider: raider.id, note: [r.os ? 'OS' : '', r.note || ''].filter(Boolean).join(' · '), ts: r.ts || (base++)};
     if (r.key) a.gargul = r.key;
+    if (r.amKey) { a.am = r.amKey; a.amEdited = r.amEdited || 0; }
     a.src = r.date + '|' + r.item + '|' + r.name.toLowerCase();
     state.awards.push(a);
   }
@@ -2891,8 +3015,13 @@ $('#glImport').addEventListener('click', () => {
     const a = state.awards.find(x => x.id === r.awardId); if (!a) continue;
     if (r.fill.boss) { a.boss = r.fill.boss; a.bq = 0; }
     if (r.fill.note) a.note = r.fill.note;
+    if (r.fill.am) { a.am = r.fill.am; a.amEdited = r.amEdited || 0; }
     filled++;
   }
+  // what the addon changed or deleted since the ledger last heard of these awards
+  const before = state.raiders.length;
+  const ch = amApplyAwardChanges(glRows.filter(x => x.status === 'change' || x.status === 'gone'));
+  created += state.raiders.length - before;
   const am = importAmisia();
   created += am.created;
   // checked again at import time: another officer may have saved a newer count since the preview
@@ -2904,6 +3033,8 @@ $('#glImport').addEventListener('click', () => {
   if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
   if (am.sessions) said.push(am.sessions + ' raid session' + (am.sessions===1?'':'s') + (am.looted ? ' with ' + am.looted + ' material' + (am.looted===1?'':'s') : ''));
   if (filled) said.push('more detail for ' + filled + ' award' + (filled === 1 ? '' : 's'));
+  if (ch.changed) said.push(ch.changed + ' change' + (ch.changed === 1 ? '' : 's') + ' from the addon');
+  if (ch.gone) said.push(ch.gone + ' award' + (ch.gone === 1 ? '' : 's') + ' removed in game');
   if (bank) said.push('the guild bank count');
   say(said.length ? 'Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.' : 'Nothing new to import.');
 });
@@ -3116,7 +3247,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc'}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc'}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 

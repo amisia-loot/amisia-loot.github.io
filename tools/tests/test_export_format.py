@@ -143,6 +143,78 @@ def test_a_surname_survives_the_round_trip(parsed):
     assert 'Vulo Sturmwind' in names, names
 
 
+def export_awards_from_addon():
+    """Records a raid whose awards carry the history of 1.5: a renamed award with a note, one to the
+    guild bank, one disenchanted and one deleted."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        STUB.roster = {
+            { name = "Vuloo", class = "PRIEST" },
+            { name = "Fraktur", class = "SHAMAN" },
+            { name = "Vulo Sturmwind", class = "MAGE" },
+        }
+        STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+        STUB.item(32235, "Cursed Vision of Sargeras", 4)
+        STUB.item(32837, "Warglaive of Azzinoth", 5)
+        STUB.item(32838, "Warglaive of Azzinoth", 5)
+        STUB.item(32524, "Shroud of the Highborne", 4)
+        local s = NS.Active()
+        local a = NS.AddAwardTo(s, { name = "Fraktur", item = 32235, kind = "MS", src = "Illidan Sturmgrimm", t = 1757444400 })
+        STUB.tick(60)
+        NS.EditAward(s, a.id, { name = "Vulo Sturmwind", note = "Tausch mit Fraktur" })
+        local b = NS.AddAwardTo(s, { name = "Vulo Bank", item = 32837, kind = "MS", src = "Illidan Sturmgrimm", t = 1757444460, to = "bank" })
+        local d = NS.AddAwardTo(s, { item = 32838, src = "Illidan Sturmgrimm", t = 1757444520, to = "de" })
+        local g = NS.AddAwardTo(s, { name = "Vuloo", item = 32524, kind = "OS", src = "Mutter Shahraz", t = 1757444580 })
+        STUB.tick(60)
+        NS.DeleteAward(s, g.id)
+        IDS = { a = a.id, b = b.id, d = d.id, g = g.id, edited = a.edited, deleted = g.deleted }
+        EXPORT = NS.ExportText({ s })
+    ''')
+    ids = lua.eval('IDS')
+    return lua.eval('EXPORT'), {k: ids[k] for k in ('a', 'b', 'd', 'g', 'edited', 'deleted')}
+
+
+@pytest.fixture(scope='module')
+def parsed15():
+    text, ids = export_awards_from_addon()
+    return text, ids, read_back(text)
+
+
+def test_the_history_lines_reach_the_site(parsed15):
+    text, ids, out = parsed15
+    s = out['sessions'][0]
+    assert 'A Vulo_Sturmwind 32235 1757444400 MS Illidan Sturmgrimm\nAX %s %d Fraktur Tausch mit Fraktur\n' % (ids['a'], ids['edited']) in text
+    a = s['awards'][0]
+    assert a['name'] == 'Vulo Sturmwind' and a['uid'] == ids['a'] and a['edited'] == ids['edited']
+    assert a['orig'] == 'Fraktur' and a['note'] == 'Tausch mit Fraktur'
+    assert [(x['uid'], x['item'], x['to'], x['receiver'], x['source']) for x in s['away']] == [
+        (ids['b'], 32837, 'bank', 'Vulo Bank', 'Illidan Sturmgrimm'), (ids['d'], 32838, 'de', None, 'Illidan Sturmgrimm')]
+    assert s['gone'] == [{'uid': ids['g'], 'item': 32524, 'at': 1757444580, 'deleted': ids['deleted']}]
+    assert set(s['names']) >= {'32235', '32837', '32838', '32524'}, 'bank, disenchant and tombstone items are named'
+    rows = out['awardRows']
+    assert [(r['item'], r['name'], r.get('amKey'), r.get('away')) for r in rows] == [
+        (32235, 'Vulo Sturmwind', ids['a'], None), (32837, 'Vulo Bank', ids['b'], 'bank'), (32838, '', ids['d'], 'de')]
+    assert rows[0]['orig'] == 'Fraktur' and rows[0]['amEdited'] == ids['edited'] and rows[0]['note'] == 'Tausch mit Fraktur'
+    assert rows[0]['cls'] == 'Mage', 'the class of the new winner'
+
+
+def test_an_export_of_1_4_reads_as_before(parsed):
+    text, out = parsed
+    old = '\n'.join(l for l in text.split('\n') if not l.startswith(('AX ', 'AS ', 'AD ')))
+    assert old != text and 'AX ' not in old
+    out14 = read_back(old)
+    s = out14['sessions'][0]
+    assert s['awards'] == [{'name': 'Fraktur', 'item': 32235, 'at': s['awards'][0]['at'], 'kind': 'SR', 'source': 'Illidan Sturmgrimm'}], 'no uid, edited, orig or note'
+    assert s['away'] == [] and s['gone'] == []
+    rows = out14['awardRows']
+    assert len(rows) == 1 and not any(k in rows[0] for k in ('amKey', 'amEdited', 'orig', 'away'))
+    assert rows[0]['note'] == 'SR'
+    # the same export with the history lines reads the same award, now with its id
+    with_id = out['sessions'][0]['awards'][0]
+    assert {k: v for k, v in with_id.items() if k not in ('uid', 'edited')} == s['awards'][0]
+
+
 def test_version_one_exports_still_read():
     text = '\n'.join(['#AMISIA 1 Vuloo', 'S 20260901200000-564 2026-09-01 564 Der Schwarze Tempel',
                       'M Vuloo PRIEST 1 0', 'E', '#END', ''])
