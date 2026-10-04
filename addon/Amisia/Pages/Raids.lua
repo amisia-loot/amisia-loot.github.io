@@ -32,9 +32,17 @@ local function detailText(s)
         end
     end
     table.sort(drops)
+    -- living awards only: "Item an Name (MS)", bank and disenchant with their receiver, notes in brackets
     local awards = {}
     for _, a in ipairs(s.awards or {}) do
-        awards[#awards + 1] = ("%s an %s%s"):format(ns.ItemName(a.item), a.name, (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
+        local text
+        if a.to == "bank" or a.to == "de" then
+            local who = (a.name and a.name ~= "-") and (" (" .. a.name .. ")") or ""
+            text = ("%s: %s%s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or "entzaubert", who)
+        else
+            text = ("%s an %s%s"):format(ns.ItemName(a.item), a.name, (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
+        end
+        awards[#awards + 1] = text .. (a.note and (" (" .. a.note .. ")") or "")
     end
     return table.concat({
         ("|cffe2b857%s, %s|r"):format(s.zone or "?", s.date or "?"),
@@ -44,6 +52,7 @@ local function detailText(s)
         "|cffe2b857Vergaben:|r " .. (#awards > 0 and table.concat(awards, ", ") or "keine"),
     }, "\n\n")
 end
+ns.RaidDetailText = detailText
 
 local function col(parent, x, w, label, template)
     local fs = W.Text(parent, template or "GameFontNormalSmall", w)
@@ -169,20 +178,4 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     if mats > 0 then parts[#parts + 1] = ("Mal %d · Herz %d · Edelsteine %d"):format(m[32897] or 0, m[32428] or 0, ns.GemCount(m)) end
     c.line2:SetText(table.concat(parts, " · "))
     if ns.IsOfficerView() then c:SetAction("Raids", function() ns.ShowPage("raids") end) end
-end }
-
-ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
-    local all = ns.Sessions()
-    local last = all[#all]
-    c.title:SetText("Vergaben letzte Nacht")
-    if not last then
-        c.line1:SetText("Keine")
-        return
-    end
-    local n = 0
-    for _, s in ipairs(all) do
-        if s.date == last.date then n = n + ns.AwardCount(s) end
-    end
-    c.line1:SetText(("%d Items am %s"):format(n, last.date))
-    c.line2:SetText(n > 0 and "Details auf der Seite Raids." or "Master Loot hat nichts vergeben.")
 end }

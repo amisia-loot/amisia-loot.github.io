@@ -84,6 +84,8 @@ _G.GetLootSourceInfo = function(s) local l = STUB.loot[s]; return l and l.src or
 _G.GetMasterLootCandidate = function(slot, i) return STUB.roster[i] and STUB.roster[i].name end
 _G.GiveMasterLoot = function(slot, i) STUB.given = { slot = slot, i = i } end
 _G.HandleModifiedItemClick = function(link) STUB.modifiedClick = link end
+-- The chat's link insertion: remembers the last link handed to it.
+_G.ChatEdit_InsertLink = function(link) STUB.inserted = link; return true end
 _G.SendChatMessage = function(text, chan) STUB.chat[#STUB.chat + 1] = { text = text, chan = chan } end
 
 _G.hooksecurefunc = function(a, b, c)
@@ -146,7 +148,8 @@ local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrame
     "SetCursorPosition", "HighlightText", "SetFocus", "ClearFocus", "EnableMouseWheel", "SetFrameLevel", "SetToplevel", "StartMoving",
     "StopMovingOrSizing", "SetBackdrop", "SetBackdropColor", "SetNormalTexture", "SetHighlightTexture", "SetPushedTexture", "SetScale", "SetID",
     "SetEnabled", "Disable", "Enable", "SetTextColor", "ClearAllPoints", "SetResizable", "SetHitRectInsets", "RegisterForClicks",
-    "Raise", "Lower", "SetUserPlaced", "SetJustifyH", "SetJustifyV", "SetTextInsets", "SetNumeric", "SetHighlightFontObject", "SetNormalFontObject" }
+    "Raise", "Lower", "SetUserPlaced", "SetJustifyH", "SetJustifyV", "SetTextInsets", "SetNumeric", "SetHighlightFontObject", "SetNormalFontObject",
+    "SetHyperlink" }
 function _G.CreateFrame(kind, name, parent, template)
     local f = { kind = kind, name = name, shown = false, scripts = {}, events = {}, text = "", parent = parent }
     for _, m in ipairs(frameMethods) do f[m] = NOOP end

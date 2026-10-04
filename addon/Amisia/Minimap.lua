@@ -23,6 +23,7 @@ function ns.MinimapMenuEntries()
     local e = {}
     if gearAvailable() then e[#e + 1] = { "Ausrüstung", function() ns.ToggleGearFrame() end } end
     if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
+    if officer then e[#e + 1] = { "Vergaben", function() ns.ShowPage("awards") end } end
     e[#e + 1] = { "Soft-Reserves", function() ns.ShowPage("softres") end }
     if officer then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
     e[#e + 1] = { "Einstellungen", function() ns.ShowPage("settings") end }

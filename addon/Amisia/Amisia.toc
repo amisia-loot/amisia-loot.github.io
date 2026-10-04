@@ -27,6 +27,7 @@ MainFrame.lua
 Pages\Overview.lua
 Pages\Raids.lua
 Pages\Rolls.lua
+Pages\Awards.lua
 Pages\SoftRes.lua
 Pages\Gear.lua
 Pages\Export.lua
