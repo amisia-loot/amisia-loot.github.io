@@ -238,11 +238,12 @@ ns.OnRollChanged = function() refresh() end
 ns.OnEvent("LOOT_OPENED", function() lootOpen = true end)
 ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
 
--- Alt-click on an item in the open loot window starts a round for it.
+-- Alt-click on an item in the open loot window starts a round for it; Alt+Shift belongs to the
+-- award dialog.
 if type(HandleModifiedItemClick) == "function" then
     hooksecurefunc("HandleModifiedItemClick", function(link)
         local id = ns.ItemID(link)
-        if ns.Get("rolls.altClick") and lootOpen and IsAltKeyDown() and id and ns.InLootWindow(id) then
+        if ns.Get("rolls.altClick") and lootOpen and IsAltKeyDown() and not IsShiftKeyDown() and id and ns.InLootWindow(id) then
             local ok, why = ns.StartRoll(link)
             if ok then ns.ShowRollFrame() elseif why then ns.msg(why) end
         end

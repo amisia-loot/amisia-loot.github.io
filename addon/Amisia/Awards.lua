@@ -591,12 +591,20 @@ ns.OnEvent("LOOT_CLOSED", function() wipe(pending) end)
 ---------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------
--- "/amisia award <Name> <Item-Link oder ID> [ms|os|sr]" and "/amisia unaward"
+-- "/amisia award <Name|bank|de> <Item-Link oder ID> [ms|os|sr]" and "/amisia unaward"; without
+-- anything the award dialog opens.
+local SPECIAL_TO = { bank = "bank", de = "de" }
+local SPECIAL_TEXT = { bank = "an die Bank", de = "zum Entzaubern" }
+
 function ns.AwardCommand(rest)
     rest = (rest or ""):match("^%s*(.-)%s*$")
     if rest:lower() == "unaward" then
         local a = ns.RemoveLastAward()
         ns.msg(a and ("Vergabe entfernt: Item %d an %s. /amisia undo holt sie zurück."):format(a.item, a.name) or "Keine Vergabe in der laufenden Aufnahme.")
+        return
+    end
+    if rest == "" and ns.ShowAwardDialog then
+        ns.ShowAwardDialog(nil, ns.Active())
         return
     end
     -- the name runs up to the item link or the item id, so a Forever surname fits
@@ -614,15 +622,19 @@ function ns.AwardCommand(rest)
     end
     local kind = (tail:match("%s(%a%a)%s*$") or ""):upper()
     if kind ~= "MS" and kind ~= "OS" and kind ~= "SR" then kind = "-" end
-    local ok, why = ns.AddAwardTo(ns.Active(), { name = shortName(name), item = id, kind = kind, src = ns.LootSourceName(0), t = time(), manual = true })
-    if ok then
-        ns.msg(("Vergabe gespeichert: Item %d an %s (%s)."):format(id, shortName(name), kind))
-    else
+    local to = SPECIAL_TO[name:lower()]
+    local ok, why = ns.AddAwardTo(ns.Active(), { name = to and "-" or shortName(name), item = id, kind = to and "-" or kind,
+        src = ns.LootSourceName(0), t = time(), to = to, manual = true })
+    if not ok then
         ns.msg(why)
+    elseif to then
+        ns.msg(("Vergabe gespeichert: Item %d %s."):format(id, SPECIAL_TEXT[to]))
+    else
+        ns.msg(("Vergabe gespeichert: Item %d an %s (%s)."):format(id, shortName(name), kind))
     end
 end
 
-ns.RegisterSlash("award", { officer = true, args = "<Name> <Item-Link|ID> [ms|os|sr]", desc = "Vergabe von Hand eintragen",
+ns.RegisterSlash("award", { officer = true, args = "<Name|bank|de> <Item-Link|ID> [ms|os|sr]", desc = "Vergabe von Hand eintragen, ohne Angaben öffnet der Dialog",
     run = function(rest) ns.AwardCommand(rest) end })
 ns.RegisterSlash("unaward", { officer = true, desc = "letzte Vergabe zurücknehmen", run = function() ns.AwardCommand("unaward") end })
 ns.RegisterSlash("rueckgaengig", { aliases = { "undo" }, officer = true, desc = "letzte Änderung an Vergaben zurücknehmen", run = function()

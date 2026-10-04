@@ -16,6 +16,7 @@ Widgets.lua
 Awards.lua
 Rolls.lua
 RollFrame.lua
+AwardDialog.lua
 SoftRes.lua
 Scan.lua
 Collect.lua
