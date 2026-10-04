@@ -77,6 +77,8 @@ RAIDS = {"Molten Core", "Onyxia's Lair", "Blackwing Lair", "Zul'Gurub", "Ruins o
 # Protector, Darkmoon decks); Forever's own items (id 200000 and up) are not capped.
 CLASSIC_MAX_ILVL = 65
 FOREVER_IDS = 200000
+# GM and test items the client knows but no player gets (names come in the client's language, so by id).
+TEST_ITEMS = {8350}   # The 1 Ring
 # AtlasLoot profession numbers -> the key the addon translates.
 ATLAS_PROF = {1: 'firstaid', 2: 'blacksmithing', 3: 'leatherworking', 4: 'alchemy', 6: 'cooking',
               8: 'tailoring', 9: 'engineering', 10: 'enchanting', 14: 'jewelcrafting'}
@@ -775,7 +777,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
         if it['equipLoc'] not in EQUIP or it['classID'] not in (build_scan.CLASS_WEAPON, build_scan.CLASS_ARMOR):
             dropped['not gear'] += 1
             continue
-        if build_scan.JUNK_NAME.search(it['name'] or ''):
+        if iid in TEST_ITEMS or build_scan.JUNK_NAME.search(it['name'] or ''):
             dropped['junk'] += 1
             continue
         kinds = {src.rows[n - 1][0] for n in nums}

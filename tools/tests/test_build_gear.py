@@ -183,3 +183,11 @@ def test_collector_drops_become_dungeon_world_and_quest_sources():
     assert rec(3) == ('Q', 'The Quest', 26, 24, 'A', None, 500, 0)
     assert rec(4) == ('Q', 'Neue Quest', 31, 0, None, None, 99999)
     assert 5 not in keep, 'raid drops stay out'
+
+
+def test_test_items_stay_out():
+    assert 8350 in build_gear.TEST_ITEMS
+    questie = {'Item': {8350: {1: 'The 1 Ring', 6: [500]}}, 'Quest': {500: {1: 'Q', 4: 1, 5: 2}}, 'Npc': {}}
+    scan = {8350: scan_item('Der Eine Ring', loc='INVTYPE_FINGER')}
+    _, keep, _, _, dropped, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {})
+    assert 8350 not in keep and dropped['junk'] == 1

@@ -479,10 +479,12 @@ local function fillList()
             b.lvl:SetText(row and row[4] > 0 and row[4] or "-")
             b.src:SetText(bestSourceText(e[1], o))
             local mine, link = equippedScore(slot, g.col)
-            if mine and mine > 0 and link and ns.ItemID(link) ~= e[1] then
-                local gain = (e[2] - mine) / mine * 100
-                b.score:SetText(gain >= 2 and ("|cff4fd06a+%d%%|r"):format(gain) or ("%.0f"):format(e[2]))
-                b.note = ("Angelegt: %.0f, dieses Item: %.0f"):format(mine, e[2])
+            if mine and link and ns.ItemID(link) ~= e[1] then
+                local gain = e[2] - mine
+                b.score:SetText(gain >= 1 and ("|cff4fd06a+%d|r"):format(math.floor(gain + 0.5)) or ("%.0f"):format(e[2]))
+                -- a percentage only means something when the worn item scores at all
+                b.note = ("Angelegt: %.0f, dieses Item: %.0f%s"):format(mine, e[2],
+                    mine >= 20 and ("  (%+d %%)"):format(math.floor(gain / mine * 100 + 0.5)) or "")
             else
                 b.score:SetText(("%.0f"):format(e[2]))
             end
