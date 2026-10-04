@@ -22,7 +22,7 @@ def toc_files():
             if line and not line.startswith('#'):
                 # load conditions like "[AllowLoadGameType camelot]" stay out of the file name;
                 # the tests load every file
-                out.append(re.sub(r'\s*\[[^\]]*\]', '', line))
+                out.append(re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep))
     return out
 
 

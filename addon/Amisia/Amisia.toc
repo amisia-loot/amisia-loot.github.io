@@ -24,4 +24,5 @@ GearWeights.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
 UI.lua
+MainFrame.lua
 Minimap.lua
