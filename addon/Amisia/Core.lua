@@ -148,7 +148,7 @@ local function parseLoot(text)
         if a then
             local who, link, count
             if entry.mine then
-                who = UnitName("player")
+                who = ns.UnitFullName("player")
                 link = a[1]
                 count = entry.hasCount and a[2] or 1
             else
@@ -158,6 +158,7 @@ local function parseLoot(text)
             end
             local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
             if who and who ~= "" and id then
+                who = ns.FullName(who)
                 return who, id, tonumber(count) or 1, link
             end
         end
@@ -262,10 +263,10 @@ local function snapshotRoster()
     active.firstScan = active.firstScan or t
     local n = GetNumGroupMembers() or 0
     -- The recorder's own roster line gives the zone string that means "inside the raid".
-    local me, here = UnitName("player"), nil
+    local me, here = ns.UnitFullName("player"), nil
     for i = 1, n do
         local name, _, _, _, _, _, zone = GetRaidRosterInfo(i)
-        if name == me then
+        if ns.SameName(name, me) then
             here = zone
             break
         end
@@ -274,7 +275,7 @@ local function snapshotRoster()
         local name, _, _, _, _, class, zone, online = GetRaidRosterInfo(i)
         -- Offline members and members waiting outside (bench, city) are not in the raid.
         if name and name ~= "" and online and (not here or zone == here) then
-            noteMember(active, name, class, t)
+            noteMember(active, ns.FullName(name), class, t)
         end
     end
     active.last = t
@@ -677,7 +678,7 @@ local function sessionLines(s, lines, used)
     for _, name in ipairs(names) do
         -- M <name> <class> <first seen epoch> <1 late, 0 punctual>
         local m = s.members[name]
-        lines[#lines + 1] = ("M %s %s %d %d"):format(name, (m.class and m.class ~= "") and m.class or "UNKNOWN",
+        lines[#lines + 1] = ("M %s %s %d %d"):format(ns.ExportName(name), (m.class and m.class ~= "") and m.class or "UNKNOWN",
             m.first or 0, m.late and 1 or 0)
     end
     local sum, keys = {}, {}
@@ -692,7 +693,7 @@ local function sessionLines(s, lines, used)
     table.sort(keys)
     for _, key in ipairs(keys) do
         local e = sum[key]
-        lines[#lines + 1] = ("L %s %d %d"):format(e.name, e.item, e.count)
+        lines[#lines + 1] = ("L %s %d %d"):format(ns.ExportName(e.name), e.item, e.count)
     end
     -- I <name> <itemID> <count>: blue or better loot
     local isum, ikeys = {}, {}
@@ -707,7 +708,7 @@ local function sessionLines(s, lines, used)
     table.sort(ikeys)
     for _, key in ipairs(ikeys) do
         local e = isum[key]
-        lines[#lines + 1] = ("I %s %d %d"):format(e.name, e.item, e.count)
+        lines[#lines + 1] = ("I %s %d %d"):format(ns.ExportName(e.name), e.item, e.count)
         used[e.item] = true
     end
     -- D <itemID> <count> <source name>: blue or better items seen in loot windows
@@ -730,7 +731,7 @@ local function sessionLines(s, lines, used)
     end
     -- A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: master loot hand-outs
     for _, a in ipairs(s.awards or {}) do
-        lines[#lines + 1] = ("A %s %d %d %s %s"):format(a.name, a.item, a.t or 0, a.kind or "-", a.src or "?")
+        lines[#lines + 1] = ("A %s %d %d %s %s"):format(ns.ExportName(a.name), a.item, a.t or 0, a.kind or "-", a.src or "?")
         used[a.item] = true
     end
     lines[#lines + 1] = "E"
@@ -792,7 +793,7 @@ end
 
 -- Text block for the ledger's Import tab. One S..E block per session.
 function ns.ExportText(list)
-    local lines = { "#AMISIA 1 " .. (UnitName("player") or "?") }
+    local lines = { "#AMISIA 2 " .. ns.ExportName(ns.UnitFullName("player") or "?") }
     local used = {}   -- item ids of I and D lines, named in N lines at the end
     local bank = DB and DB.bank
     if bank and bank.counts then

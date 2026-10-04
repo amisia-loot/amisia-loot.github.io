@@ -11,6 +11,7 @@
 
 Registry.lua
 Core.lua
+Names.lua
 Awards.lua
 Rolls.lua
 RollFrame.lua

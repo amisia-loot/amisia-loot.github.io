@@ -6,9 +6,8 @@ local F, editBox, resultText, dateText
 local marks = {}   -- loot button -> "SR" font string
 
 local function shortName(name)
-    name = type(name) == "string" and name:match("^%s*(.-)%s*$") or ""
-    name = name:match("^([^%-]+)") or name
-    if name == "" then return nil end
+    name = ns.FullName(name)
+    if not name then return nil end
     return name:sub(1, 1):upper() .. name:sub(2)
 end
 
@@ -75,8 +74,16 @@ function ns.ParseSoftRes(text)
         end
     else
         for _, line in ipairs(all) do
-            local name, rest = line:match("^([^%s,;:\t]+)[%s,;:\t]*(.*)$")
-            local item = rest and (ns.ItemID(rest) or tonumber(rest:match("^%s*(%d+)%s*$")))
+            -- "Name [Item-Link]" or "Name 32235"; the name may hold a space (Forever surnames)
+            local item = ns.ItemID(line)
+            local name
+            if item then
+                name = line:match("^(.-)%s*|c") or line:match("^(.-)%s*|H")
+            else
+                local n, num = line:match("^(.-)[%s,;:\t]+(%d+)%s*$")
+                name, item = n, tonumber(num)
+            end
+            name = name and name:gsub("[%s,;:\t]+$", "")
             if not add(item, shortName(name)) then bad[#bad + 1] = line end
         end
     end

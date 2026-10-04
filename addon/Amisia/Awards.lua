@@ -14,7 +14,7 @@ function ns.PendingAward(slot) return pending[slot or lastSlot or 0] end
 
 -- Short name without the realm part.
 local function shortName(name)
-    return type(name) == "string" and (name:match("^([^%-]+)") or name) or nil
+    return ns.FullName(name)
 end
 
 -- Name of what a loot slot came from: the drop recorded for its source, else the current target.

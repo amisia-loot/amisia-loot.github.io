@@ -2459,24 +2459,26 @@ function amParse(blocks){
     for (const raw of b.split(/\r?\n/)) {
       const line = raw.trim(); if (!line || line[0] === '#') continue;
       const f = line.split(/\s+/);
+      // export version 2 writes a Forever surname with "_" for the space; no WoW name holds an underscore
+      const nm = s => glCleanName(String(s || '').replace(/_/g, ' '));
       if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) {
         cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], names};
         out.push(cur);
       } else if (f[0] === 'M' && cur && f[1]) {
         // M <name> <class> [<first seen epoch> <1 late, 0 punctual>] - the two last fields are newer
-        const name = glCleanName(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || '', first: Number(f[3]) || 0, late: f[4] === '1'});
+        const name = nm(f[1]); if (name) cur.members.push({name, cls: classFromAny(f[2]) || '', first: Number(f[3]) || 0, late: f[4] === '1'});
       } else if (f[0] === 'L' && cur && f.length >= 4) {
-        const name = glCleanName(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
+        const name = nm(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
         if (name && item) cur.loot.push({name, item, count});
       } else if (f[0] === 'I' && cur && f.length >= 4) {
-        const name = glCleanName(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
+        const name = nm(f[1]), item = Number(f[2]), count = Math.max(1, Math.floor(Number(f[3]) || 1));
         if (name && item) cur.items.push({name, item, count});
       } else if (f[0] === 'D' && cur && f.length >= 3) {
         const item = Number(f[1]), count = Math.max(1, Math.floor(Number(f[2]) || 1)), source = (f.slice(3).join(' ') || '?').slice(0, 60);
         if (item) cur.drops.push({item, count, source});
       } else if (f[0] === 'A' && cur && f.length >= 5) {
         // A <name> <itemID> <epoch> <MS|OS|SR|-> <source name>: a master loot hand-out
-        const name = glCleanName(f[1]), item = Number(f[2]), at = Number(f[3]) || 0, kind = f[4].toUpperCase();
+        const name = nm(f[1]), item = Number(f[2]), at = Number(f[3]) || 0, kind = f[4].toUpperCase();
         if (name && item) cur.awards.push({name, item, at, kind: ['MS', 'OS', 'SR'].includes(kind) ? kind : '', source: (f.slice(5).join(' ') || '?').slice(0, 60)});
       } else if (f[0] === 'N' && f.length >= 3 && /^\d+$/.test(f[1])) {
         names[Number(f[1])] = {n: (f.slice(3).join(' ') || 'Item ' + f[1]).slice(0, 80), q: Math.max(0, Math.min(7, Math.floor(Number(f[2]) || 0)))};
@@ -2576,6 +2578,13 @@ function amResolve(sessions){
     return Object.assign({}, s, {people: names.length, newNames, mats, itemCount, dropCount, again: done.has(s.sid), status: addsPeople || addsLoot || addsItems || addsDrops || addsLate || dups ? 'ok' : 'dup'});
   }).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 }
+// A full Forever name nobody on the roster carries, whose first name exactly one raider has: that
+// raider was probably entered without the surname.
+function amLikely(name){
+  if (!name.includes(' ')) return null;
+  const first = name.split(' ')[0].toLowerCase(), hits = state.raiders.filter(r => r.name.toLowerCase() === first);
+  return hits.length === 1 ? hits[0].name : null;
+}
 function amRender(){
   amBankRender();
   if (!amRows.length && !amBank) { $('#amResult').hidden = true; return; }
@@ -2597,7 +2606,7 @@ function amRender(){
       + '<td class="muted" style="white-space:nowrap">' + esc(fmtDate(s.date)) + '</td>'
       + '<td style="white-space:nowrap">' + (z && ZONE[z] ? zTag(z) + ' ' + esc(ZONE[z]) : esc(s.zone || '?')) + '</td>'
       + '<td class="num">' + s.people + '</td>'
-      + '<td>' + (s.newNames.length ? '<span class="st new">' + s.newNames.length + ' new</span> <span class="muted" style="font-size:13px">' + esc(s.newNames.slice(0, 6).join(', ')) + (s.newNames.length > 6 ? ' …' : '') + '</span>' : '<span class="faint">–</span>') + '</td>'
+      + '<td>' + (s.newNames.length ? '<span class="st new">' + s.newNames.length + ' new</span> <span class="muted" style="font-size:13px">' + s.newNames.slice(0, 6).map(n => esc(n) + (amLikely(n) ? ' <span class="faint">(= ' + esc(amLikely(n)) + '?)</span>' : '')).join(', ') + (s.newNames.length > 6 ? ' …' : '') + '</span>' : '<span class="faint">–</span>') + '</td>'
       + '<td>' + (mats || '<span class="faint">no materials</span>') + (s.itemCount ? '<div class="muted" style="font-size:13px">' + s.itemCount + ' blue or epic item' + (s.itemCount === 1 ? '' : 's') + ' looted' + (s.dropCount ? ' · ' + s.dropCount + ' in loot windows' : '') + '</div>' : s.dropCount ? '<div class="muted" style="font-size:13px">' + s.dropCount + ' in loot windows</div>' : '') + '</td></tr>';
   }).join('');
   $('#amResult').hidden = false;
@@ -2666,7 +2675,7 @@ function importAmisia(){
   return {sessions: sessions.length, created, looted, items};
 }
 
-function glCleanName(n){ n = String(n||'').trim().split('-')[0].trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
+function glCleanName(n){ n = String(n||'').trim().replace(/\s+/g, ' '); if (!n.includes(' ')) n = n.split('-')[0].trim(); return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; }
 // A raid night runs past midnight: a time before 06:00 belongs to the night before, like the Amisia addon and Warcraft Logs.
 function nightOf(date, time){
   if (!date || !time) return date;

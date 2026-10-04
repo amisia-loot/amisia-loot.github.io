@@ -13,13 +13,13 @@ local matcher
 --          done, winner, tie = { names }|nil }
 
 local function shortName(name)
-    return type(name) == "string" and (name:match("^([^%-]+)") or name) or nil
+    return ns.FullName(name)
 end
 
 local function inGroup(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        if n and shortName(n) == name then return true, class end
+        if n and ns.SameName(n, name) then return true, class end
     end
     return false
 end

@@ -31,6 +31,7 @@ def export_from_addon():
         STUB.roster = {
             { name = "Vuloo", class = "PRIEST" },
             { name = "Fraktur", class = "SHAMAN" },
+            { name = "Vulo Sturmwind", class = "MAGE" },
         }
         STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 
@@ -97,7 +98,7 @@ def test_the_session_comes_across(parsed):
 def test_the_roster_keeps_class_and_delay(parsed):
     text, out = parsed
     m = {x['name']: x for x in out['sessions'][0]['members']}
-    assert set(m) == {'Vuloo', 'Fraktur', 'Spaetling'}
+    assert set(m) == {'Vuloo', 'Fraktur', 'Spaetling', 'Vulo Sturmwind'}
     assert m['Fraktur']['cls'] == 'Shaman', 'the class of the export reaches the ledger'
     assert m['Spaetling']['late'] is True and m['Spaetling']['first'] > 0
     assert m['Fraktur']['late'] is False
@@ -132,3 +133,18 @@ def test_the_guild_bank_count(parsed):
     assert bank['at'] == 1789400000 and bank['by'] == 'Vuloo' and bank['time'] == '21:30'
     assert bank['filled'] == 6 and bank['tabs'] == 6 and bank['total'] == 6
     assert bank['items'] == {'32897': 120, '32428': 44}
+
+
+def test_a_surname_survives_the_round_trip(parsed):
+    text, out = parsed
+    assert '\nM Vulo_Sturmwind MAGE ' in text, 'the export writes the space as an underscore'
+    assert text.startswith('#AMISIA 2 ')
+    names = {m['name'] for m in out['sessions'][0]['members']}
+    assert 'Vulo Sturmwind' in names, names
+
+
+def test_version_one_exports_still_read():
+    text = '\n'.join(['#AMISIA 1 Vuloo', 'S 20260901200000-564 2026-09-01 564 Der Schwarze Tempel',
+                      'M Vuloo PRIEST 1 0', 'E', '#END', ''])
+    out = read_back(text)
+    assert [m['name'] for m in out['sessions'][0]['members']] == ['Vuloo']

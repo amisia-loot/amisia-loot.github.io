@@ -54,7 +54,7 @@ function ns.AwardFromRoll(name, item, link)
     end
     for i = 1, 40 do
         local c = GetMasterLootCandidate(slot, i)
-        if c and (c == name or c:match("^([^%-]+)") == name) then
+        if c and ns.SameName(c, name) then
             GiveMasterLoot(slot, i)
             return
         end
