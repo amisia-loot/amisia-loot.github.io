@@ -1,5 +1,5 @@
 -- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
--- the gear planner (WoW Forever) or the roll window. Drag the button around the minimap;
+-- a quick menu with the pages and the recording switch. Drag the button around the minimap;
 -- /amisia minimap hides or shows it.
 local ADDON, ns = ...
 
@@ -18,12 +18,24 @@ local function gearAvailable()
     return ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame
 end
 
+function ns.MinimapMenuEntries()
+    local officer = ns.IsOfficerView()
+    local e = {}
+    if gearAvailable() then e[#e + 1] = { "Ausrüstung", function() ns.ToggleGearFrame() end } end
+    if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
+    e[#e + 1] = { "Soft-Reserves", function() ns.ShowPage("softres") end }
+    if officer then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
+    e[#e + 1] = { "Einstellungen", function() ns.ShowPage("settings") end }
+    e[#e + 1] = { ns.IsEnabled() and "Aufnahme pausieren" or "Aufnahme fortsetzen", function() ns.SetEnabled(not ns.IsEnabled()) end }
+    return e
+end
+
 -- What both the button and the compartment entry do on a click.
 local function click(mouse)
     if mouse == "RightButton" then
-        if gearAvailable() then ns.ToggleGearFrame() elseif ns.ToggleRollFrame then ns.ToggleRollFrame() end
-    elseif ns.Toggle then
-        ns.Toggle(false)
+        ns.W.Menu((button and button:IsShown()) and button or UIParent, ns.MinimapMenuEntries())
+    else
+        ns.ToggleMain()
     end
 end
 
@@ -38,7 +50,7 @@ local function tooltip(owner, anchor)
     end
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine("Linksklick", "Amisia-Fenster", 1, 1, 1, 0.8, 0.8, 0.8)
-    GameTooltip:AddDoubleLine("Rechtsklick", gearAvailable() and "Ausrüstung" or "Rolls", 1, 1, 1, 0.8, 0.8, 0.8)
+    GameTooltip:AddDoubleLine("Rechtsklick", "Schnellmenü", 1, 1, 1, 0.8, 0.8, 0.8)
     if owner == button then
         GameTooltip:AddDoubleLine("Ziehen", "Verschieben", 1, 1, 1, 0.8, 0.8, 0.8)
     end

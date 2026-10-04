@@ -11,18 +11,26 @@ local b = AmisiaMinimapButton
 assert(b and b:IsShown(), "button built and shown")
 assert(AmisiaDB.settings.minimap.angle == 200, "default place")
 
--- left click opens the main window, right click the gear planner (data is loaded in tests)
+-- left click opens the main window, right click the quick menu
+local origMain = NS.ToggleMain
 local opened
-local origToggle, origGear = NS.Toggle, NS.ToggleGearFrame
-NS.Toggle = function() opened = "main" end
-NS.ToggleGearFrame = function() opened = "gear" end
+NS.ToggleMain = function() opened = "main" end
 b.scripts.OnClick(b, "LeftButton"); assert(opened == "main")
-b.scripts.OnClick(b, "RightButton"); assert(opened == "gear")
 Amisia_OnAddonCompartmentClick("Amisia", "LeftButton"); assert(opened == "main", "the compartment entry clicks the same")
+NS.ToggleMain = origMain
+b.scripts.OnClick(b, "RightButton"); assert(AmisiaMenu and AmisiaMenu:IsShown(), "right click opens the menu")
+local labels = {}
+for _, e in ipairs(NS.MinimapMenuEntries()) do labels[#labels + 1] = e[1] end
+local all = table.concat(labels, "|")
+assert(all:find("Einstellungen", 1, true) and all:find("Soft-Reserves", 1, true) and all:find("Export", 1, true), all)
+NS.Set("ui.view", "raider")
+all = ""
+for _, e in ipairs(NS.MinimapMenuEntries()) do all = all .. e[1] .. "|" end
+assert(not all:find("Export", 1, true), "raiders see no officer entries")
+NS.Reset("ui.view")
 Amisia_OnAddonCompartmentEnter("Amisia", b)
 Amisia_OnAddonCompartmentLeave("Amisia", b)
 b.scripts.OnEnter(b); b.scripts.OnLeave(b)
-NS.Toggle, NS.ToggleGearFrame = origToggle, origGear
 
 -- dragging: the cursor straight above the minimap's centre puts the button at 90 degrees
 b.scripts.OnDragStart(b)
