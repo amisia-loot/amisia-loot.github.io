@@ -1,6 +1,7 @@
 -- Amisia rolls: one round at a time. Results are read from the system chat through the client's
 -- own RANDOM_ROLL_RESULT string, so the range of every roll is known: 1-100 is mainspec,
--- 1-99 offspec. Reserved names rank first, then MS, then OS, then the higher roll.
+-- 1-99 offspec. Reserved names rank first, then MS, then OS, then the higher roll. With the
+-- plus-one in the order (awards.plusOrder), fewer mainspec wins rank first among the MS rolls.
 local ADDON, ns = ...
 
 local KEEP = 10 * 60   -- a finished round answers ns.RollKind for this long
@@ -11,6 +12,7 @@ local matcher
 -- Round: { item, link, name, started, seconds, leftAt, only = {[name]=true}|nil,
 --          rolls = { [name] = { name, value, low, high, kind, t, class } }, order = { names },
 --          ignored = { { name, value, low, high, why } }, reserved = { names }, reservedSet = {},
+--          plus = { [name] = n }   -- plus-one of every roller, frozen when the round starts
 --          done, winner, tie = { names }|nil }
 
 local function shortName(name)
@@ -37,18 +39,59 @@ local function rankOf(r, e)
     return RANK[e.kind] or 0
 end
 
--- Entries of a round in winning order; each gets .rank = "SR", "MS" or "OS".
+-- The plus-one of a name in round r, frozen the first time it is asked for: an award during the
+-- round must not move the order.
+local function plusOf(r, name)
+    r.plus = r.plus or {}
+    local n = r.plus[name]
+    if n == nil then
+        n = ns.PlusCount and ns.PlusCount(name) or 0
+        r.plus[name] = n
+    end
+    return n
+end
+
+-- Whether the plus-one decides between mainspec rolls (setting awards.plusOrder).
+local function plusOrder()
+    return ns.Get("awards.plusOrder") and true or false
+end
+
+-- Two entries of the same rank are equal when their rolls match and, among mainspec rolls with
+-- the plus-one in the order, their plus-one too.
+local function sameStanding(r, a, b)
+    if a.value ~= b.value or rankOf(r, a) ~= rankOf(r, b) then return false end
+    if rankOf(r, a) == RANK.MS and plusOrder() then return plusOf(r, a.name) == plusOf(r, b.name) end
+    return true
+end
+
+-- Entries of a round in winning order; each gets .rank = "SR", "MS" or "OS". With awards.plusOrder
+-- fewer plus-one ranks first among the mainspec rolls; reservations stay first, offspec untouched.
 function ns.RollRanking(r)
     local list = {}
     for _, name in ipairs(r.order) do list[#list + 1] = r.rolls[name] end
+    local byPlus = plusOrder()
     table.sort(list, function(a, b)
         local ra, rb = rankOf(r, a), rankOf(r, b)
         if ra ~= rb then return ra > rb end
+        if byPlus and ra == RANK.MS then
+            local pa, pb = plusOf(r, a.name), plusOf(r, b.name)
+            if pa ~= pb then return pa < pb end
+        end
         if a.value ~= b.value then return a.value > b.value end
         return a.t < b.t
     end)
     for _, e in ipairs(list) do e.rank = rankOf(r, e) == 3 and "SR" or e.kind end
     return list
+end
+
+-- "+n" for a mainspec roller of round r: when the count is above zero, or always while the
+-- plus-one is in the order. Nothing for a reservation or an offspec roll.
+function ns.PlusLabel(r, name)
+    local e = r and r.rolls and r.rolls[name]
+    if not e or rankOf(r, e) ~= RANK.MS then return nil end
+    local n = plusOf(r, name)
+    if n > 0 or plusOrder() then return ("+%d"):format(n) end
+    return nil
 end
 
 local function changed()
@@ -69,18 +112,20 @@ local function finish()
         local tie = { top.name }
         for i = 2, #list do
             local e = list[i]
-            if e.value == top.value and rankOf(current, e) == rankOf(current, top) then
+            if sameStanding(current, e, top) then
                 tie[#tie + 1] = e.name
             else
                 break
             end
         end
+        local plus = ns.PlusLabel(current, top.name)
+        local standing = plus and ("%d, %s, %s"):format(top.value, top.rank, plus) or ("%d, %s"):format(top.value, top.rank)
         if #tie > 1 then
             current.tie = tie
-            ns.Announce(("Stopp! Gleichstand: %s (%d, %s). Bitte nochmal würfeln."):format(table.concat(tie, " und "), top.value, top.rank))
+            ns.Announce(("Stopp! Gleichstand: %s (%s). Bitte nochmal würfeln."):format(table.concat(tie, " und "), standing))
         else
             current.winner = top.name
-            ns.Announce(("Stopp! Gewinner: %s (%d, %s)."):format(top.name, top.value, top.rank))
+            ns.Announce(("Stopp! Gewinner: %s (%s)."):format(top.name, standing))
         end
     end
     last = current
@@ -100,9 +145,14 @@ function ns.StartRoll(link, seconds, onlyNames)
     current = {
         item = id, link = link, name = link:match("|h%[(.-)%]|h") or ("Item " .. id),
         started = time(), seconds = seconds, leftAt = seconds,
-        rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {},
+        rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {}, plus = {},
     }
     for _, n in ipairs(reserved) do current.reservedSet[n] = true end
+    -- the plus-one of everyone in the group as of now; whoever is missing here is counted on the roll
+    for i = 1, GetNumGroupMembers() or 0 do
+        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
+        if n then plusOf(current, n) end
+    end
     if onlyNames then
         current.only = {}
         for _, n in ipairs(onlyNames) do current.only[n] = true end
@@ -140,7 +190,10 @@ function ns.RerollTie()
 end
 
 local function onSystem(text)
-    if not current or current.done or not matcher or type(text) ~= "string" then return end
+    if not current or current.done or not matcher then return end
+    -- a secret line (boss fight on the Forever client) cannot be read and is left alone
+    text = ns.Plain(text)
+    if type(text) ~= "string" then return end
     local a = matcher(text)
     if not a then return end
     local name = shortName(a[1])
@@ -162,6 +215,7 @@ local function onSystem(text)
     else
         current.rolls[name] = { name = name, value = value, low = low, high = high, kind = kindOf(low, high), t = #current.order + 1, class = class }
         current.order[#current.order + 1] = name
+        plusOf(current, name)
     end
     changed()
 end

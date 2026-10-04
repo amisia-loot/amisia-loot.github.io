@@ -42,6 +42,14 @@ function ns.SameName(a, b)
     return false
 end
 
+-- A value as it is, or nil when the client marks it secret (chat and unit names in a boss fight
+-- on the Forever client). A secret value is never compared, only skipped.
+function ns.Plain(v)
+    local secret = _G.issecretvalue
+    if type(secret) == "function" and secret(v) then return nil end
+    return v
+end
+
 function ns.ExportName(name)
     return (tostring(name or "?"):gsub(" ", "_"))
 end

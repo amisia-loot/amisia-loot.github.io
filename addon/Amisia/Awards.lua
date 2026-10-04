@@ -374,6 +374,104 @@ function ns.MigrateAwards(DB)
 end
 
 ---------------------------------------------------------------------------
+-- Plus-one: mainspec wins of a player in this raid or this ID week. Only living awards to a
+-- player with kind MS count; SR, OS, bank and disenchant do not.
+---------------------------------------------------------------------------
+-- The raid with the latest start, the running recording included.
+local function newestSession()
+    local best
+    for _, s in ipairs(ns.Sessions()) do
+        if not best or (s.start or 0) > (best.start or 0) then best = s end
+    end
+    return best
+end
+
+-- Start of the ID week: a week before the next weekly reset, or nil when the client cannot say.
+local function weekStart()
+    local api = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset
+    if type(api) ~= "function" then return nil end
+    local left = api()
+    if type(left) ~= "number" then return nil end
+    return time() + left - 7 * 86400
+end
+
+-- The raids a scope covers and the scope that applied: "week" falls back to "raid" when the
+-- client does not know the weekly reset.
+local function plusSessions(scope)
+    scope = scope or ns.Get("awards.plusScope")
+    if scope == "week" then
+        local from = weekStart()
+        if from then
+            local out = {}
+            for _, s in ipairs(ns.Sessions()) do
+                if (s.start or 0) >= from then out[#out + 1] = s end
+            end
+            return out, "week"
+        end
+    end
+    local s = ns.Active() or newestSession()
+    return { s }, "raid"
+end
+
+local function plusAward(a)
+    return a.kind == "MS" and (a.to == nil or a.to == "player")
+end
+
+function ns.PlusCount(name, scope)
+    if not ns.FullName(name) then return 0 end
+    local n = 0
+    for _, s in ipairs((plusSessions(scope))) do
+        for _, a in ipairs(s and s.awards or {}) do
+            if plusAward(a) and ns.SameName(a.name, name) then n = n + 1 end
+        end
+    end
+    return n
+end
+
+-- Everyone with a plus-one in the scope: { { name, n } }, most first, then by name. Spellings of
+-- one character (with and without surname) are counted together under the first one seen.
+function ns.PlusList(scope)
+    local out, sessions = {}, plusSessions(scope)
+    for _, s in ipairs(sessions) do
+        for _, a in ipairs(s and s.awards or {}) do
+            if plusAward(a) then
+                local hit
+                for _, e in ipairs(out) do
+                    if ns.SameName(e.name, a.name) then hit = e break end
+                end
+                if hit then hit.n = hit.n + 1 else out[#out + 1] = { name = a.name, n = 1 } end
+            end
+        end
+    end
+    table.sort(out, function(x, y)
+        if x.n ~= y.n then return x.n > y.n end
+        return x.name < y.name
+    end)
+    return out
+end
+
+local SCOPE_TEXT = { raid = "dieser Raid", week = "diese ID-Woche" }
+
+-- "/amisia plus [Name]": the plus-one of everyone in the scope, or of one name.
+local function plusCommand(rest)
+    local name = ns.FullName(rest)
+    local _, scope = plusSessions()
+    if name then
+        ns.msg(("Plus-Eins von %s (%s): %d."):format(name, SCOPE_TEXT[scope], ns.PlusCount(name)))
+        return
+    end
+    local list, parts = ns.PlusList(), {}
+    for _, e in ipairs(list) do parts[#parts + 1] = ("%s %d"):format(e.name, e.n) end
+    if #parts == 0 then
+        ns.msg(("Plus-Eins (%s): noch niemand."):format(SCOPE_TEXT[scope]))
+    else
+        ns.msg(("Plus-Eins (%s): %s."):format(SCOPE_TEXT[scope], table.concat(parts, ", ")))
+    end
+end
+
+ns.RegisterSlash("plus", { officer = true, args = "[Name]", desc = "Plus-Eins der Gewinner im Chat", run = plusCommand })
+
+---------------------------------------------------------------------------
 -- Settings
 ---------------------------------------------------------------------------
 -- A character name: no digits, at most one space (a Forever surname); empty switches it off.
@@ -388,7 +486,7 @@ end
 ns.RegisterSettings{ key = "awards", label = "Vergaben", order = 25, officer = true, items = {
     { key = "awards.plusScope", type = "choice", label = "Plus-Eins zählt", default = "raid",
       values = { { "raid", "Dieser Raid" }, { "week", "Diese ID-Woche" } },
-      tip = "Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden." },
+      tip = "Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid." },
     { key = "awards.plusOrder", type = "toggle", label = "Plus-Eins in der Roll-Reihenfolge", default = false,
       tip = "Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec." },
     { key = "awards.modClick", type = "toggle", label = "Alt+Shift-Klick auf ein Item öffnet die Vergabe", default = true },

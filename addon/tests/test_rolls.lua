@@ -65,6 +65,26 @@ NS.StopRoll()
 NS.Set("rolls.seconds", 30)
 assert(NS.StartRoll(link)); assert(NS.CurrentRoll().seconds == 30); NS.StopRoll()
 
+-- a secret roll line (boss fight on Forever) is ignored without an error
+STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
+assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
+local secretLine = (RANDOM_ROLL_RESULT):format("Fraktur", 66, 1, 100)
+STUB.secret[secretLine] = true
+STUB.fire("CHAT_MSG_SYSTEM", secretLine)
+assert(not r.rolls.Fraktur and #r.ignored == 0, "a secret line is neither a roll nor listed as ignored")
+STUB.secret[secretLine] = nil
+STUB.fire("CHAT_MSG_SYSTEM", secretLine)
+assert(r.rolls.Fraktur and r.rolls.Fraktur.value == 66, "the same line in the open is read")
+assert(NS.Plain("x") == "x" and NS.Plain(nil) == nil and NS.Plain(5) == 5)
+STUB.secret.hidden = true
+assert(NS.Plain("hidden") == nil, "a secret value reads as nil")
+STUB.secret.hidden = nil
+local isSecret = issecretvalue
+_G.issecretvalue = nil
+assert(NS.Plain("hidden") == "hidden", "without the global nothing is secret")
+_G.issecretvalue = isSecret
+NS.StopRoll()
+
 -- alone: no announcement, the round still runs
 STUB.roster = {}
 local n = #STUB.chat

@@ -2,11 +2,13 @@
 local ADDON, ns = ...
 local W = ns.W
 
+-- One line for a round: time, item, and the winner with kind and plus-one, the tie, or the state.
 local function roundLine(r)
     local list = ns.RollRanking(r)
     local who
     if r.winner then
-        who = ("|cff4fbf7a%s|r (%s)"):format(r.winner, list[1] and list[1].rank or "?")
+        local plus = ns.PlusLabel(r, r.winner)
+        who = ("|cff4fbf7a%s|r (%s%s)"):format(r.winner, list[1] and list[1].rank or "?", plus and (", " .. plus) or "")
     elseif r.tie then
         who = "|cffe0a344Gleichstand: " .. table.concat(r.tie, ", ") .. "|r"
     elseif r.done then
@@ -16,6 +18,7 @@ local function roundLine(r)
     end
     return ("%s  %s  %s"):format(date("%H:%M", r.started or 0), r.name or "?", who)
 end
+ns.RoundLine = roundLine
 
 ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, officer = true,
     create = function(parent)

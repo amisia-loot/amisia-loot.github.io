@@ -38,6 +38,12 @@ _G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
 _G.MouseIsOver = function() return false end
 _G.IsShiftKeyDown = function() return STUB.shift and true or false end
 _G.IsControlKeyDown = function() return false end
+-- Seconds until the weekly reset; nil means the client does not know (the fallback is tested).
+STUB.weekReset = nil
+_G.C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return STUB.weekReset end }
+-- Values a test puts into STUB.secret count as secret, as in a boss fight on the Forever client.
+STUB.secret = {}
+_G.issecretvalue = function(v) return STUB.secret[v] == true end
 
 -- math.random is fixed: a small generator with a known seed, so ids and draws repeat from run to
 -- run. Values put into STUB.randomQueue come out first (to force a collision in a test).
