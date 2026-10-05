@@ -659,6 +659,7 @@ end
 local function wishOf(c, id) return c and c.wish[id] ~= nil or false end
 
 local targetKey, targetRes
+local targetOwnStamp   -- the stamp at which targetRes was made with the own options, else nil
 -- Per slot up to three options { id, score, gain, mine, owned, wished, worn, upgrade, switch },
 -- best first; r.state[slot] "done" (option 1 worn), "bag"/"bank" (option 1 owned, not worn),
 -- "switch", "upgrade", "none" or nil (no option); r.mine[slot] the worn score; r.upgrades; the
@@ -668,7 +669,10 @@ function ns.BisTargets(opts)
     local o = opts or ns.BisOpts()
     if not o.class then return emptyResult() end
     local key = optsKey(o)
-    if key == targetKey then return targetRes end
+    if key == targetKey then
+        if not opts then targetOwnStamp = stamp end
+        return targetRes
+    end
     local best = Gear.Best(o)
     local r = emptyResult()
     r.plan, r.missing, r.total = best.plan, best.missing, best.total
@@ -701,7 +705,15 @@ function ns.BisTargets(opts)
         r.state[sl.key] = state
     end
     targetKey, targetRes = key, r
+    targetOwnStamp = (not opts) and stamp or nil
     return r
+end
+
+-- The targets of the own character when they are at hand for the current state, else nil; never
+-- computes them.
+function ns.BisTargetsCached()
+    if targetOwnStamp ~= nil and targetOwnStamp == stamp then return targetRes end
+    return nil
 end
 
 ---------------------------------------------------------------------------
@@ -896,6 +908,126 @@ ns.OnEvent("SKILL_LINES_CHANGED", function() skills = nil; bump() end)
 ns.Listen("SETTING", bump)
 ns.Listen("BIS_CHANGED", function() guess = nil; bump() end)
 Gear.OnData(bump)
+
+---------------------------------------------------------------------------
+-- Tooltip line
+---------------------------------------------------------------------------
+
+local TIP_GREEN = { 0.31, 0.82, 0.42 }
+local TIP_GREY = { 0.56, 0.53, 0.64 }
+local TIP_PARTS = 4             -- explanation lines on Shift
+local TIP_CACHE_MAX = 200       -- links kept per state
+local WARM_GAP = 2              -- seconds between two deferred target computations
+
+-- The rows an item of a group competes for in the targets.
+local RANK_SLOTS = { FINGER = { "FINGER1", "FINGER2" }, TRINKET = { "TRINKET1", "TRINKET2" },
+    ["2H"] = { "MAINHAND" }, ["1H"] = { "MAINHAND", "OFFHAND" }, MH = { "MAINHAND" }, OHW = { "OFFHAND" },
+    SHIELD = { "OFFHAND" }, HELD = { "OFFHAND" } }
+
+-- The targets are never computed inside a hover: when they are missing, once after it (at most
+-- every WARM_GAP seconds), so the next hover has them.
+local warmPending, warmAt = false, nil
+local function warmTargets()
+    if warmPending then return end
+    warmPending = true
+    local t = GetTime and GetTime() or 0
+    local wait = warmAt and math.max(0, WARM_GAP - (t - warmAt)) or 0
+    C_Timer.After(wait, function()
+        warmPending = false
+        warmAt = GetTime and GetTime() or 0
+        if ns.BisTargetsCached() then return end
+        local ok, err = pcall(ns.BisTargets)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then handler(err) end
+        end
+    end)
+end
+
+-- Rank (1-3) and row of an item among the cached targets.
+local function targetRank(res, id, group)
+    for _, slotKey in ipairs(RANK_SLOTS[group] or { SLOT_OF[group] }) do
+        for i, e in ipairs(res[slotKey] or {}) do
+            if e.id == id then return i, slotKey end
+        end
+    end
+    return nil
+end
+
+-- The line (and on Shift the explanation) for one link: { { text, color }, ... }, plus whether it
+-- was made without the targets and whether it may be kept (not while stats are still loading).
+local function tipLines(link, id, shift)
+    local gain, slotKey, mine = ns.BisGain(link)
+    if gain == nil then
+        local code = mine
+        if code == "switch" then return { { "Waffenwechsel für dich", TIP_GREY } }, false, true end
+        return {}, false, code ~= "loading"
+    end
+    local c = ns.BisChar()
+    local isWorn = worn().ids[id] ~= nil
+    local up = not isWorn and ns.BisIsUpgrade(gain, mine)
+    local text, color, noTargets = nil, TIP_GREY, false
+    if up then
+        text, color = ("Upgrade für dich: %+d (%s)"):format(math.floor(gain + 0.5), SLOT_NAME[slotKey] or ""), TIP_GREEN
+    else
+        local res = ns.BisTargetsCached()
+        local rank, rankSlot
+        if res then
+            local loc = rowType(id)
+            rank, rankSlot = targetRank(res, id, loc and Gear.GROUP[loc])
+        else
+            noTargets = true
+            warmTargets()
+        end
+        if rank then
+            text = (isWorn and "angelegt, " or "") .. ("Option %d für %s"):format(rank, SLOT_NAME[rankSlot] or "")
+        elseif not isWorn and ns.Get("bis.tooltipNone") then
+            text = ("Kein Upgrade für dich (%+d)"):format(math.floor(gain + 0.5))
+        end
+    end
+    if not text then return {}, noTargets, true end
+    if c and c.wish[id] then text = text .. " · auf deiner Wunschliste" end
+    local out = { { text, color } }
+    if shift then
+        local ex = ns.BisExplain(link)
+        -- the first line is the head (spec, slot, scores); the parts follow, biggest first
+        for i = 2, math.min(#ex, TIP_PARTS + 1) do out[#out + 1] = { ex[i], TIP_GREY } end
+    end
+    return out, noTargets, true
+end
+
+-- Lines per link and Shift state, kept until anything changes (the stamp); an entry made without
+-- the targets is made again once they are there.
+local tipCache, tipCacheStamp, tipCacheN = {}, nil, 0
+
+function ns.BisTooltipLines(link)
+    if not ns.Get("bis.tooltip") or not Gear.Available() then return nil end
+    local id = ns.ItemID(link)
+    if not id then return nil end
+    local shift = IsShiftKeyDown and IsShiftKeyDown() and true or false
+    if tipCacheStamp ~= stamp or tipCacheN >= TIP_CACHE_MAX then
+        tipCache, tipCacheStamp, tipCacheN = {}, stamp, 0
+    end
+    local key = shift and (link .. "|S") or link
+    local e = tipCache[key]
+    if e and e.noTargets and ns.BisTargetsCached() then e = nil end
+    if not e then
+        local lines, noTargets, keep = tipLines(link, id, shift)
+        e = { lines = lines, noTargets = noTargets }
+        if keep then
+            tipCache[key] = e
+            tipCacheN = tipCacheN + 1
+        end
+    end
+    return e.lines
+end
+
+ns.OnItemTooltip("bis", function(tip, link)
+    local lines = ns.BisTooltipLines(link)
+    if not lines or #lines == 0 then return false end
+    for _, l in ipairs(lines) do tip:AddLine(l[1], l[2][1], l[2][2], l[2][3]) end
+    return true
+end)
 
 ---------------------------------------------------------------------------
 -- Wishlist

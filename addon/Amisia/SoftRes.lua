@@ -412,17 +412,6 @@ end
 ---------------------------------------------------------------------------
 -- Tooltip
 ---------------------------------------------------------------------------
-local function tooltipLink(tip)
-    if TooltipUtil and TooltipUtil.GetDisplayedItem then
-        local _, link = TooltipUtil.GetDisplayedItem(tip)
-        return link
-    end
-    if tip.GetItem then
-        local _, link = tip:GetItem()
-        return link
-    end
-end
-
 -- The group as plain names (secret ones left out), or nil when alone.
 local function groupNames()
     if not IsInGroup() then return nil end
@@ -465,45 +454,14 @@ function ns.SoftResTooltipText(id)
     return text
 end
 
--- One line per tooltip build: a tooltip can be handed to the hook twice for the same item.
--- The mark goes when the tooltip is cleared.
-local marked = setmetatable({}, { __mode = "k" })
-local watched = setmetatable({}, { __mode = "k" })
-
-local function addLineBody(tip)
-    if not tip or not tip.AddLine then return end
-    if not ns.Get("softres.tooltip") then return end
-    local link = tooltipLink(tip)
-    local id = ns.ItemID(link)
-    if not id then return end
-    if not watched[tip] and tip.HookScript then
-        watched[tip] = true
-        tip:HookScript("OnTooltipCleared", function(self) marked[self] = nil end)
-    end
-    if marked[tip] == link then return end
+-- Through the shared item tooltip hook (Core.lua): protected, one line per tooltip build.
+ns.OnItemTooltip("softres", function(tip, _, id)
+    if not ns.Get("softres.tooltip") then return false end
     local text = ns.SoftResTooltipText(id)
-    if not text then return end
-    marked[tip] = link
+    if not text then return false end
     tip:AddLine(text, 0.89, 0.72, 0.34)
-end
-
--- Protected: an error here must never break the tooltip or other addons' lines.
-local function addLine(tip)
-    local ok, err = pcall(addLineBody, tip)
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(err) end
-    end
-end
-
--- Both clients have the tooltip data processor (it also serves SetLootRollItem and SetHyperlink);
--- the item script is the fallback for a client without it.
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, addLine)
-else
-    GameTooltip:HookScript("OnTooltipSetItem", addLine)
-    if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", addLine) end
-end
+    return true
+end)
 
 ---------------------------------------------------------------------------
 -- Loot window marks

@@ -214,24 +214,10 @@ end)
 ---------------------------------------------------------------------------
 -- Tooltips and chat links
 ---------------------------------------------------------------------------
-local function tooltipItem(tip)
-    if not enabled() or not tip then return end
-    local link
-    if TooltipUtil and TooltipUtil.GetDisplayedItem then
-        local _, l = TooltipUtil.GetDisplayedItem(tip)
-        link = l
-    elseif tip.GetItem then
-        local _, l = tip:GetItem()
-        link = l
-    end
-    if link then ns.NoteItem(link) end
-end
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, tooltipItem)
-else
-    GameTooltip:HookScript("OnTooltipSetItem", tooltipItem)
-    if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", tooltipItem) end
-end
+-- through the shared item tooltip hook (Core.lua); it adds no line
+ns.OnItemTooltip("collect", function(_, link)
+    if enabled() then ns.NoteItem(link) end
+end)
 
 local function chatLinks(text)
     if not enabled() or type(text) ~= "string" then return end

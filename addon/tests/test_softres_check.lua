@@ -140,13 +140,15 @@ assert(round.winner == "Vulo Sturmwind", tostring(round.winner))
 assert(NS.RollRanking(round)[1].rank == "SR")
 assert(NS.RollKind(32235, "Vulo Sturmwind") == "SR" and NS.RollKind(32235, "Fraktur") == "MS")
 
--- the tooltip processor: registered once for items, one line per tooltip build
+-- the tooltip processor: registered once for items (the hook all of Amisia shares, in Core.lua),
+-- one line per tooltip build
 local tdp
 for _, e in ipairs(STUB.tdp) do
     local info = debug.getinfo(e.fn, "S")
-    if info.source:find("SoftRes", 1, true) then tdp = e end
+    if info.source:find("Core", 1, true) then tdp = e end
 end
 assert(tdp and tdp.kind == Enum.TooltipDataType.Item, "post call registered")
+assert(#STUB.tdp == 1, "one post call for all of Amisia: " .. #STUB.tdp)
 assert(GameTooltip.scripts.OnTooltipSetItem == nil, "no second path")
 NS.SetSoftRes("Fraktur 32235")
 local tip = CreateFrame("GameTooltip", "AmisiaTestTip")

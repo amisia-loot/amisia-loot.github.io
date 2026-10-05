@@ -13,6 +13,81 @@ function ns.ItemID(link)
     return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
 end
 
+---------------------------------------------------------------------------
+-- Item tooltips: one hook for every part of Amisia
+---------------------------------------------------------------------------
+-- fn(tip, link, id) runs for every item tooltip and returns true when it added a line; it then
+-- runs no more for that tooltip until the tooltip is cleared (a tooltip can be handed to the hook
+-- twice for one item). Every part runs protected: an error goes to the error handler, the tooltip
+-- and the other parts' lines stay. Parts only ever add lines, never set, clear or show a tooltip.
+local tipParts = {}
+function ns.OnItemTooltip(key, fn)
+    tipParts[#tipParts + 1] = { key = key, fn = fn }
+end
+
+local tipDone = setmetatable({}, { __mode = "k" })     -- tooltip -> { link, [key] = true }
+local tipWatched = setmetatable({}, { __mode = "k" })
+local tipBusy = false
+
+local function tipLink(tip)
+    if TooltipUtil and TooltipUtil.GetDisplayedItem then
+        local _, link = TooltipUtil.GetDisplayedItem(tip)
+        return link
+    end
+    if tip.GetItem then
+        local _, link = tip:GetItem()
+        return link
+    end
+end
+
+local function tipReport(err)
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(err) end
+end
+
+local function onItemTooltip(tip)
+    -- a part that reads an item through the hidden scan tooltip comes back here: nothing then
+    if tipBusy or type(tip) ~= "table" or not tip.AddLine then return end
+    if tip == _G.AmisiaScanTip then return end
+    local ok, link = pcall(tipLink, tip)
+    link = ok and ns.Plain(link) or nil
+    local id = ns.ItemID(link)
+    if not id then return end
+    if not tipWatched[tip] and tip.HookScript then
+        tipWatched[tip] = true
+        tip:HookScript("OnTooltipCleared", function(self) tipDone[self] = nil end)
+    end
+    local done = tipDone[tip]
+    if not done or done.link ~= link then
+        done = { link = link }
+        tipDone[tip] = done
+    end
+    local errors
+    tipBusy = true
+    for _, part in ipairs(tipParts) do
+        if not done[part.key] then
+            local ok2, added = pcall(part.fn, tip, link, id)
+            if not ok2 then
+                errors = errors or {}
+                errors[#errors + 1] = added
+            elseif added then
+                done[part.key] = true
+            end
+        end
+    end
+    tipBusy = false
+    for _, err in ipairs(errors or {}) do tipReport(err) end
+end
+
+-- Both clients have the tooltip data processor (it also serves SetLootRollItem and SetHyperlink);
+-- the item script is the fallback for a client without it.
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, onItemTooltip)
+elseif GameTooltip and GameTooltip.HookScript then
+    GameTooltip:HookScript("OnTooltipSetItem", onItemTooltip)
+    if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", onItemTooltip) end
+end
+
 -- Tracked guild bank materials. Names are fallbacks until the client has the item cached.
 ns.MATS = {
     [32897] = "Mal der Illidari",
