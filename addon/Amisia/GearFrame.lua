@@ -807,8 +807,11 @@ function ns.ResetGearPosition()
 end
 
 function ns.ToggleGearFrame()
-    if not Gear.Available() then
-        ns.msg("Die Ausrüstungstabelle gibt es nur in WoW Forever.")
+    if not Gear.PlannerAvailable() then
+        -- TBC has the gear page, but no level-range table
+        if Gear.Available() and ns.ShowPage then ns.ShowPage("gear") end
+        ns.msg(Gear.Available() and "Die Ausrüstungstabelle gibt es nur in WoW Forever, hier die Seite."
+            or "Die Ausrüstungstabelle gibt es nur in WoW Forever.")
         return
     end
     if not F then build() end
@@ -853,7 +856,7 @@ function ns.GearDebug(arg)
         row and "" or " (nicht in der Tabelle)"))
 end
 
-ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.Available() end, items = {
+ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.PlannerAvailable() end, items = {
     { key = "gear.kind", type = "choice", label = "Gewichtung", default = "Speedrun",
       values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
       tip = "Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung." },

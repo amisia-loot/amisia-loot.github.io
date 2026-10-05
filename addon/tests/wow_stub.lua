@@ -72,12 +72,23 @@ _G.GetItemInfoInstant = function(x)
     local it = STUB.items[id]
     return id, "Armor", "Cloth", it and it.equipLoc or "INVTYPE_HEAD", it and it.icon or 134, it and it.classID or 4, it and it.subclassID or 1
 end
+-- The client's stats of an item: STUB.items[id].stats as GetItemStats answers ({ ITEM_MOD_..._SHORT = n }).
+-- Forever has C_Item.GetItemStats; a preload may take either spelling away.
+_G.GetItemStats = function(x)
+    local it = STUB.items[itemId(x)]
+    return it and it.stats
+end
 _G.C_Item = {
     GetItemInfo = _G.GetItemInfo,
     GetItemInfoInstant = _G.GetItemInfoInstant,
+    GetItemStats = _G.GetItemStats,
     RequestLoadItemDataByID = function(id) STUB.requested[#STUB.requested + 1] = id end,
     GetItemIconByID = function(x) local it = STUB.items[itemId(x)]; return it and it.icon or 134 end,
 }
+-- Area names (C_Map.GetAreaInfo) and faction names (GetFactionInfoByID) the client knows.
+STUB.areas, STUB.factions = {}, {}
+_G.C_Map = { GetAreaInfo = function(id) return STUB.areas[id] end }
+_G.GetFactionInfoByID = function(id) return STUB.factions[id] end
 _G.GetNumLootItems = function() return #STUB.loot end
 _G.GetLootSlotLink = function(s) return STUB.loot[s] and STUB.loot[s].link end
 _G.GetLootSlotInfo = function(s) local l = STUB.loot[s]; return "icon", l and l.name, l and l.qty or 1 end
