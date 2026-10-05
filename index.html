@@ -2475,7 +2475,7 @@ function amParse(blocks){
       // export version 2 writes a Forever surname with "_" for the space; no WoW name holds an underscore
       const nm = s => glCleanName(String(s || '').replace(/_/g, ' '));
       if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) {
-        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], away: [], gone: [], names};
+        cur = {sid: f[1], date: f[2], instance: Number(f[3]) || 0, zone: f.slice(4).join(' '), members: [], loot: [], items: [], drops: [], awards: [], away: [], gone: [], kills: [], bench: [], names};
         out.push(cur);
       } else if (f[0] === 'M' && cur && f[1]) {
         // M <name> <class> [<first seen epoch> <1 late, 0 punctual>] - the two last fields are newer
@@ -2512,6 +2512,24 @@ function amParse(blocks){
         // AD <id> <itemID> <epoch> <deleted epoch>: a hand-out deleted in the addon after the fact
         const item = Number(f[2]);
         if (item) cur.gone.push({uid: f[1], item, at: Number(f[3]) || 0, deleted: Number(f[4]) || 0});
+        last = null;
+      } else if (f[0] === 'EK' && cur && f.length >= 9 && /^\d+$/.test(f[1]) && /^\d+$/.test(f[3])) {
+        // EK <encounterID|0> <start epoch> <end epoch> <K|W> <size> <difficulty> <E|B|L|H> <boss name>: a boss attempt
+        const end = Number(f[3]), src = f[7].toUpperCase();
+        cur.kills.push({enc: Number(f[1]), start: Number(f[2]) || end, end, ok: f[4].toUpperCase() === 'K', size: Number(f[5]) || 0, diff: Number(f[6]) || 0,
+          src: ['E', 'B', 'L', 'H'].includes(src) ? src : 'H', name: f.slice(8).join(' ').slice(0, 60)});
+        last = null;
+      } else if (f[0] === 'EP' && cur && f.length >= 4) {
+        // EP <encounterID|0> <end epoch> <name> ...: who was there at the kill of the EK with that id and end
+        const enc = Number(f[1]), end = Number(f[2]);
+        const k = [...cur.kills].reverse().find(x => x.ok && x.enc === enc && x.end === end);
+        if (k) k.present = [...new Set(f.slice(3).map(nm).filter(Boolean))];
+        last = null;
+      } else if (f[0] === 'BN' && cur && f.length >= 6) {
+        // BN <name> <class|UNKNOWN> <epoch> <S|O> <officer|-> [<note>]: on the bench of this raid
+        const name = nm(f[1]);
+        if (name) cur.bench.push({name, cls: classFromAny(f[2]) || '', at: Number(f[3]) || 0, self: f[4].toUpperCase() === 'S',
+          by: f[5] === '-' ? null : nm(f[5]) || null, note: f.slice(6).join(' ').trim().slice(0, 40)});
         last = null;
       } else if (f[0] === 'N' && f.length >= 3 && /^\d+$/.test(f[1])) {
         names[Number(f[1])] = {n: (f.slice(3).join(' ') || 'Item ' + f[1]).slice(0, 80), q: Math.max(0, Math.min(7, Math.floor(Number(f[2]) || 0)))};

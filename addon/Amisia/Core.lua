@@ -689,6 +689,13 @@ function ns.DeleteSessions(ids)
     return removed
 end
 
+-- Where a boss attempt came from, as the letter of its EK line.
+local SRC_LETTER = { enc = "E", kill = "B", loot = "L", hand = "H" }
+-- A free text as the last field of a line: no line break or pipe can cut the block.
+local function oneLine(text)
+    return (tostring(text or "?"):gsub("[%c|]", " "))
+end
+
 -- The S..E block of one session, appended to lines; used collects the item ids to name in N lines.
 -- legacy: the form of 1.4, every award as an A line and nothing else (the old export marks).
 local function sessionLines(s, lines, used, legacy)
@@ -773,6 +780,35 @@ local function sessionLines(s, lines, used, legacy)
         for _, a in ipairs(s.gone or {}) do
             lines[#lines + 1] = ("AD %s %d %d %d"):format(a.id or "?", a.item, a.t or 0, a.deleted or 0)
             used[a.item] = true
+        end
+        -- EK <encounterID|0> <start epoch> <end epoch> <K|W> <size> <difficulty> <E|B|L|H> <boss name>
+        -- EP <encounterID|0> <end epoch> <name> <name> ...: who was there, right after the EK of a kill
+        local kills = {}
+        for i, k in ipairs(s.kills or {}) do kills[i] = k end
+        table.sort(kills, function(a, b)
+            if (a.t or 0) ~= (b.t or 0) then return (a.t or 0) < (b.t or 0) end
+            return (a.start or a.t or 0) < (b.start or b.t or 0)
+        end)
+        for _, k in ipairs(kills) do
+            local t = k.t or 0
+            lines[#lines + 1] = ("EK %d %d %d %s %d %d %s %s"):format(tonumber(k.enc) or 0, k.start or t, t, k.ok and "K" or "W",
+                tonumber(k.size) or 0, tonumber(k.diff) or 0, SRC_LETTER[k.src] or "H", oneLine(k.name))
+            if k.ok and not k.wait and type(k.who) == "table" and #k.who > 0 then
+                local who = {}
+                for i, name in ipairs(k.who) do who[i] = name end
+                table.sort(who)
+                for i, name in ipairs(who) do who[i] = ns.ExportName(name) end
+                lines[#lines + 1] = ("EP %d %d %s"):format(tonumber(k.enc) or 0, t, table.concat(who, " "))
+            end
+        end
+        -- BN <name> <class|UNKNOWN> <epoch> <S|O> <officer|-> [<note>]: the bench, by name
+        local benched = {}
+        for name in pairs(s.bench or {}) do benched[#benched + 1] = name end
+        table.sort(benched)
+        for _, name in ipairs(benched) do
+            local e = s.bench[name]
+            lines[#lines + 1] = ("BN %s %s %d %s %s%s"):format(ns.ExportName(name), (e.class and e.class ~= "") and e.class or "UNKNOWN",
+                e.t or 0, e.self and "S" or "O", e.by and ns.ExportName(e.by) or "-", e.note and (" " .. oneLine(e.note)) or "")
         end
     end
     lines[#lines + 1] = "E"

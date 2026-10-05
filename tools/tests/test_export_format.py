@@ -242,3 +242,82 @@ def test_a_marker_in_a_note_survives_the_round_trip():
     awards = out['sessions'][0]['awards']
     assert [(a['name'], a['note']) for a in awards] == [('Fraktur', 'bis #END fertig'), ('Vuloo', '#AMISIA 2 #END')]
     assert '32837' in out['sessions'][0]['names'], 'the item names after the awards are read too'
+
+
+def export_log_from_addon():
+    """Records a raid of 1.7 with the real addon: a boss fight (START/END) with who was there, a
+    wipe, a bench entry with a note from an officer and one the raider made himself."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        STUB.roster = {
+            { name = "Vuloo", class = "PRIEST" },
+            { name = "Fraktur", class = "SHAMAN" },
+            { name = "Vulo Sturmwind", class = "MAGE" },
+        }
+        STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+        local s = NS.Active()
+        STUB.fire("ENCOUNTER_START", 602, "Supremus", 4, 25)
+        STUB.tick(121)
+        STUB.fire("ENCOUNTER_END", 602, "Supremus", 4, 25, 0)
+        STUB.tick(300)
+        STUB.fire("ENCOUNTER_START", 601, "Hochkriegsfürst Naj'entus", 4, 25)
+        STUB.tick(192)
+        STUB.fire("ENCOUNTER_END", 601, "Hochkriegsfürst Naj'entus", 4, 25, 1, {})
+        STUB.tick(2)
+        assert(not s.kills[2].wait, "names read")
+        assert(NS.BenchAdd(s, "Bob", { note = "ab 21 Uhr", class = "MAGE" }))
+        assert(NS.BenchAdd(s, "Kim Eisherz", { self = true }))
+        KILLS = { wipeStart = s.kills[1].start, wipeEnd = s.kills[1].t, start = s.kills[2].start, t = s.kills[2].t }
+        EXPORT = NS.ExportText({ s })
+    ''')
+    k = lua.eval('KILLS')
+    return lua.eval('EXPORT'), {x: k[x] for x in ('wipeStart', 'wipeEnd', 'start', 't')}
+
+
+@pytest.fixture(scope='module')
+def parsed17():
+    text, k = export_log_from_addon()
+    return text, k, read_back(text)
+
+
+def test_boss_attempts_reach_the_site(parsed17):
+    text, k, out = parsed17
+    assert out['blocks'] == 1 and out['rest'] == ''
+    s = out['sessions'][0]
+    assert s['kills'] == [
+        {'enc': 602, 'start': k['wipeStart'], 'end': k['wipeEnd'], 'ok': False, 'size': 25, 'diff': 4, 'src': 'E', 'name': 'Supremus'},
+        {'enc': 601, 'start': k['start'], 'end': k['t'], 'ok': True, 'size': 25, 'diff': 4, 'src': 'E',
+         'name': "Hochkriegsfürst Naj'entus", 'present': ['Fraktur', 'Vulo Sturmwind', 'Vuloo']},
+    ], s['kills']
+
+
+def test_the_bench_reaches_the_site(parsed17):
+    text, k, out = parsed17
+    bench = {b['name']: b for b in out['sessions'][0]['bench']}
+    assert set(bench) == {'Bob', 'Kim Eisherz'}
+    assert bench['Bob']['cls'] == 'Mage' and bench['Bob']['self'] is False and bench['Bob']['by'] == 'Vuloo'
+    assert bench['Bob']['note'] == 'ab 21 Uhr' and bench['Bob']['at'] > 0
+    assert bench['Kim Eisherz']['self'] is True and bench['Kim Eisherz']['by'] is None
+    assert bench['Kim Eisherz']['note'] == '' and bench['Kim Eisherz']['cls'] == ''
+    assert '\nBN Kim_Eisherz ' in text
+
+
+def test_the_old_lines_read_the_same_with_and_without_the_new_ones(parsed17):
+    text, k, out = parsed17
+    old = '\n'.join(l for l in text.split('\n') if not l.startswith(('EK ', 'EP ', 'BN ')))
+    assert old != text
+    s16 = read_back(old)['sessions'][0]
+    s17 = out['sessions'][0]
+    for key in ('sid', 'date', 'instance', 'zone', 'members', 'loot', 'items', 'drops', 'awards', 'away', 'gone', 'names'):
+        assert s16[key] == s17[key], key
+    assert s16['kills'] == [] and s16['bench'] == []
+
+
+def test_strange_log_lines_are_ignored():
+    text = '\n'.join(['#AMISIA 2 Vuloo', 'S 20260901200000-564 2026-09-01 564 Der Schwarze Tempel',
+                      'M Vuloo PRIEST 1 0', 'EP 999 5 Vuloo', 'BN', 'BN Bob', 'EK 601 1 2 K 25 4 E Supremus',
+                      'EP 601 3 Vuloo', 'E', '#END', ''])
+    s = read_back(text)['sessions'][0]
+    assert [x['name'] for x in s['kills']] == ['Supremus'] and 'present' not in s['kills'][0], 'an EP without its EK is dropped'
+    assert s['bench'] == [], 'a BN without a name or its fields is dropped'

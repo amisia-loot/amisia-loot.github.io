@@ -130,3 +130,91 @@ local legacy = NS.SessionHash(s, true)
 NS.EditAward(s, plain.id, { note = "anders" })
 assert(NS.SessionHash(s, true) == legacy, "the 1.4 form ignores notes")
 assert(NS.SessionHash(s) ~= h2)
+
+---------------------------------------------------------------------------
+-- The lines of 1.7: EK per boss attempt after the AD lines, EP right after a kill with names, BN
+-- per bench entry. A raid without kills and bench exports what 1.6 wrote, fingerprint included.
+---------------------------------------------------------------------------
+local plain16 = { id = "20260902200000-564", date = "2026-09-02", zone = "Der Schwarze Tempel", instanceID = 564,
+                  start = 1, last = 1, members = { Vuloo = { class = "PRIEST", first = 100, last = 100 } },
+                  loot = {}, items = {}, drops = {}, awards = {} }
+local block16 = "S 20260902200000-564 2026-09-02 564 Der Schwarze Tempel\nM Vuloo PRIEST 100 0\nE"
+assert(NS.SessionHash(plain16) == NS.Checksum(block16), "a raid of 1.6 without the new fields")
+local text16 = NS.ExportText({ plain16 })
+plain16.kills, plain16.bench, plain16.outside = {}, {}, {}
+assert(NS.ExportText({ plain16 }) == text16, "empty kills and bench write nothing new")
+assert(NS.SessionHash(plain16) == NS.Checksum(block16), "and keep the fingerprint of 1.6")
+assert(text16:find("\n" .. block16:gsub("%-", "%%-") .. "\n"), text16)
+
+local r17 = { id = "20260903200000-564", date = "2026-09-03", zone = "Der Schwarze Tempel", instanceID = 564,
+              start = 1, last = 1,
+              members = { Vuloo = { class = "PRIEST", first = 100, last = 3000 },
+                          ["Vulo Sturmwind"] = { class = "MAGE", first = 100, last = 3000 } },
+              loot = {}, items = {}, drops = {}, awards = {},
+              gone = { { id = "0000aaaa0001", item = 32235, t = 500, deleted = 600 } },
+              kills = {
+                  { enc = 602, name = "Supremus", start = 1300, t = 1421, ok = false, size = 25, diff = 4, src = "enc", n = 2 },
+                  { enc = 601, name = "Hochkriegsfürst Naj'entus", start = 1000, t = 1192, ok = true, size = 25, diff = 4,
+                    src = "enc", who = { "Vuloo", "Vulo Sturmwind" }, n = 2 },
+                  { enc = 0, name = "Mutter Shahraz", start = 2000, t = 2000, ok = true, size = 0, diff = 0, src = "loot",
+                    who = { "Vuloo" }, n = 1 },
+                  { enc = 603, name = "Schattenmond", start = 2500, t = 2600, ok = true, size = 25, diff = 4, src = "kill",
+                    wait = true, n = 2 },
+                  { enc = 0, name = "Teron Blutschatten", start = 3000, t = 3000, ok = true, size = 0, diff = 0, src = "hand",
+                    who = {}, n = 0 },
+              },
+              bench = { Bob = { t = 900, class = "MAGE", self = true, note = "ab 21 Uhr" },
+                        ["Kim Eisherz"] = { t = 950, class = "", by = "Vuloo" } },
+              outside = { Bob = 2900 } }
+out = lines(NS.ExportText({ r17 }))
+local iS = find(out, "S 20260903200000-564 ")
+local block = {}
+for i = iS, #out do block[#block + 1] = out[i]; if out[i] == "E" then break end end
+local want = {
+    "S 20260903200000-564 2026-09-03 564 Der Schwarze Tempel",
+    "M Vulo_Sturmwind MAGE 100 0",
+    "M Vuloo PRIEST 100 0",
+    "AD 0000aaaa0001 32235 500 600",
+    "EK 601 1000 1192 K 25 4 E Hochkriegsfürst Naj'entus",
+    "EP 601 1192 Vulo_Sturmwind Vuloo",
+    "EK 602 1300 1421 W 25 4 E Supremus",
+    "EK 0 2000 2000 K 0 0 L Mutter Shahraz",
+    "EP 0 2000 Vuloo",
+    "EK 603 2500 2600 K 25 4 B Schattenmond",
+    "EK 0 3000 3000 K 0 0 H Teron Blutschatten",
+    "BN Bob MAGE 900 S - ab 21 Uhr",
+    "BN Kim_Eisherz UNKNOWN 950 O Vuloo",
+    "E",
+}
+assert(table.concat(block, "\n") == table.concat(want, "\n"), "the block of 1.7:\n" .. table.concat(block, "\n"))
+assert(not table.concat(out, "\n"):find("2900"), "the group outside stays out of the export")
+
+-- the legacy form writes none of the new lines
+local legacy17 = NS.SessionHash(r17, true)
+local keepK, keepB = r17.kills, r17.bench
+r17.kills, r17.bench = {}, {}
+assert(NS.SessionHash(r17, true) == legacy17, "the 1.4 form ignores kills and bench")
+r17.kills, r17.bench = keepK, keepB
+
+-- the fingerprint moves with a new kill, a deleted kill, a bench change and names read after a fight
+local hk = NS.SessionHash(r17)
+local last17 = r17.last
+local added = NS.AddKill(r17, { name = "Illidan Sturmgrimm", t = 4000 })
+assert(added and r17.last == last17)
+local hk2 = NS.SessionHash(r17)
+assert(hk2 ~= hk, "a new kill changes the fingerprint")
+assert(NS.DeleteKill(r17, added) and NS.SessionHash(r17) == hk, "deleting it restores it")
+assert(NS.BenchAdd(r17, "Fred"))
+local hb = NS.SessionHash(r17)
+assert(hb ~= hk, "a bench entry changes the fingerprint")
+r17.bench.Bob.note = "ab 22 Uhr"
+assert(NS.SessionHash(r17) ~= hb, "a bench note changes the fingerprint")
+r17.bench.Bob.note = "ab 21 Uhr"
+assert(NS.BenchRemove(r17, "Fred") and NS.SessionHash(r17) == hk, "removing it restores it")
+local waiting = r17.kills[4]
+assert(waiting.name == "Schattenmond" and waiting.wait)
+waiting.who = { "Vuloo" }
+assert(NS.SessionHash(r17) == hk, "names still waiting write no EP")
+waiting.wait = nil
+assert(NS.SessionHash(r17) ~= hk, "the EP once the names are read")
+assert(find(lines(NS.ExportText({ r17 })), "EP 603 2600 Vuloo"))
