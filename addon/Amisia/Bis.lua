@@ -438,7 +438,7 @@ local function scheduleBags()
 end
 
 -- The bank's containers: the purchased tabs of the character bank (C_Bank; there is no bank -1).
-local function bankList()
+function ns.BankTabs()
     local B = _G.C_Bank
     local kind = Enum and Enum.BankType and Enum.BankType.Character
     if type(B) ~= "table" or type(B.FetchPurchasedBankTabIDs) ~= "function" or kind == nil then return nil end
@@ -454,7 +454,7 @@ local function scanBank()
     bankPending = false
     if not bankOpen then return end
     local c = ns.BisChar()
-    local list = c and bankList()
+    local list = c and ns.BankTabs()
     local set = list and readContainers(list, c)
     if not set then return end
     c.bankAt = time()

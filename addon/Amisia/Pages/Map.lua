@@ -14,8 +14,7 @@ local ROWS, ROW_H = 12, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local TICK = 0.5         -- seconds between two updates of the target line's distance
 local ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
-local KIND = { Q = "Quest", V = "Händler", P = "PvP-Händler", R = "Rar", W = "Gegner", X = "Eingang", D = "Eingang",
-    F = "Rüstmeister" }
+local KIND = { Q = "Quest", V = "Händler", P = "PvP-Händler", R = "Rar", W = "Gegner", X = "Eingang", D = "Eingang" }
 local NO_PLACE_WHY = { C = "Berufe", A = "Auktionshaus" }
 local ROW_HINT = "Klick: Ziel setzen. Shift-Klick: Weltkarte. Rechtsklick: mehr."
 

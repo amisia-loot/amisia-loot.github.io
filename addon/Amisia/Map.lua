@@ -76,7 +76,7 @@ function ns.MapKeyOf(rec)
         return (type(rec[5]) == "number" and rec[5] ~= 0) and ("W:" .. name) or nil
     elseif k == "X" or k == "D" then
         local place = Gear.PlaceOf(rec)
-        return place and (place:gsub("/H$", "")) or nil
+        return place
     end
     return nil
 end

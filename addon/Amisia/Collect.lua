@@ -121,7 +121,10 @@ ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", scanEquipment)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(3, function() scanBags(0, 4); scanEquipment() end)
 end)
-ns.OnEvent("BANKFRAME_OPENED", function() scanBags(-1, -1); scanBags(5, 11) end)
+-- The bank tabs of the character bank (ns.BankTabs, Bis.lua); -1 is the keyring and 5 the reagent bag.
+ns.OnEvent("BANKFRAME_OPENED", function()
+    for _, bag in ipairs(ns.BankTabs and ns.BankTabs() or {}) do scanBags(bag, bag) end
+end)
 
 ---------------------------------------------------------------------------
 -- Merchants

@@ -7,7 +7,7 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, "GameFontHighlight", 590, true)
         f.state:SetPoint("TOPLEFT", 0, -2)
-        f.list = W.List(f, math.max(#ns.MAT_ORDER, 1), 22, function(r)
+        f.list = W.List(f, 1, 22, function(r)
             r.name = W.Text(r, "GameFontHighlightSmall", 300)
             r.name:SetPoint("LEFT", 6, 0)
             r.count = W.Text(r, "GameFontHighlightSmall", 80)
@@ -39,6 +39,7 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
             hidden > 0 and (" · |cffe0a344" .. hidden .. " Tabs nicht sichtbar|r") or ""))
         local items = {}
         for _, id in ipairs(ns.MAT_ORDER) do items[#items + 1] = { id = id, count = bank.counts[id] or 0 } end
+        f.list:Grow(#items)   -- the material list can be filled after the page was made
         f.list:SetItems(items)
     end }
 

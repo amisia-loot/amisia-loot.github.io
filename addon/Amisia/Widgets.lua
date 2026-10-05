@@ -263,20 +263,27 @@ end
 -- parts once, fill(row, item, index) shows an item in it.
 function W.List(parent, rowCount, rowHeight, build, fill)
     local f = CreateFrame("Frame", nil, parent)
-    f.rows, f.items, f.offset = {}, {}, 0
-    f:SetHeight(rowCount * rowHeight)
-    for i = 1, rowCount do
-        local r = CreateFrame("Button", nil, f)
-        r:SetHeight(rowHeight - 1)
-        r:SetPoint("TOPLEFT", 0, -(i - 1) * rowHeight)
-        r:SetPoint("TOPRIGHT", 0, -(i - 1) * rowHeight)
-        W.Flat(r, 1, 1, 1, (i % 2 == 0) and 0.03 or 0.06)
-        local hl = r:CreateTexture(nil, "HIGHLIGHT")
-        hl:SetAllPoints()
-        hl:SetColorTexture(1, 1, 1, 0.08)
-        build(r, i)
-        f.rows[i] = r
+    f.rows, f.items, f.offset, f.rowCount = {}, {}, 0, 0
+    -- More rows can be added later (Grow); a list never gets shorter.
+    function f:Grow(n)
+        for i = self.rowCount + 1, n do
+            local r = CreateFrame("Button", nil, self)
+            r:SetHeight(rowHeight - 1)
+            r:SetPoint("TOPLEFT", 0, -(i - 1) * rowHeight)
+            r:SetPoint("TOPRIGHT", 0, -(i - 1) * rowHeight)
+            W.Flat(r, 1, 1, 1, (i % 2 == 0) and 0.03 or 0.06)
+            local hl = r:CreateTexture(nil, "HIGHLIGHT")
+            hl:SetAllPoints()
+            hl:SetColorTexture(1, 1, 1, 0.08)
+            build(r, i)
+            self.rows[i] = r
+        end
+        if n > self.rowCount then
+            self.rowCount = n
+            self:SetHeight(n * rowHeight)
+        end
     end
+    f:Grow(rowCount)
     function f:Redraw()
         for i, r in ipairs(self.rows) do
             local item = self.items[i + self.offset]
@@ -291,12 +298,12 @@ function W.List(parent, rowCount, rowHeight, build, fill)
     end
     function f:SetItems(list)
         self.items = list or {}
-        self.offset = math.max(0, math.min(self.offset, #self.items - rowCount))
+        self.offset = math.max(0, math.min(self.offset, #self.items - self.rowCount))
         self:Redraw()
     end
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
-        self.offset = math.max(0, math.min(math.max(0, #self.items - rowCount), self.offset - delta))
+        self.offset = math.max(0, math.min(math.max(0, #self.items - self.rowCount), self.offset - delta))
         self:Redraw()
     end)
     return f
