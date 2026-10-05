@@ -6,7 +6,7 @@ process.env.TZ = 'UTC';
 const {grab} = require('./site_parser.cjs');
 
 const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSplit', 'amParse', 'amParseWishes',
-  'wishesHere', 'wishGot', 'wishImportPlan', 'wishAddonText'];
+  'wishesHere', 'wishGot', 'amLikely', 'wishImportPlan', 'wishAddonText'];
 // What else the code reaches for on the page, kept as small as the code allows.
 const STUBS = `
 let state = {raiders: [], awards: []}, WISHES = [], ITEM = {}, gameKey = 'tbc';
@@ -61,6 +61,18 @@ const pasted = [
 ];
 out.plan = api.wishImportPlan(pasted).map(p => ({item: p.item, name: p.name, status: p.status, raider: p.raider ? p.raider.id : null,
   boss: p.boss || null, prio: p.prio, note: p.note}));
+
+// Forever names "First_Last" against a roster that has the first name only: the same name first,
+// then the one raider of that first name
+api.set({raiders: raiders.concat([{id: 'k', name: 'Kim', cls: 'Mage'}, {id: 'k2', name: 'Kim Eisherz', cls: 'Mage'}]), awards: []},
+  [], items, 'tbc');
+out.planNames = api.wishImportPlan([
+  {item: 30001, prio: 2, at: 1, name: 'Bob Baumann', note: ''},     // Bob on the roster
+  {item: 30001, prio: 2, at: 1, name: 'Vulo Sturmwind', note: ''},  // the full name is on the roster
+  {item: 30001, prio: 2, at: 1, name: 'Kim Eisherz', note: ''},     // the same name wins over "Kim"
+  {item: 30001, prio: 2, at: 1, name: 'Kim Feuerherz', note: ''},   // first name Kim: only "Kim" carries it exactly
+  {item: 30001, prio: 2, at: 1, name: 'Zed Zorn', note: ''},        // nobody
+]).map(p => [p.name, p.raider ? p.raider.id : null, p.status]);
 
 // the text for the addon: open wishes of this game only, by item, then priority; names with "_"
 const forText = [

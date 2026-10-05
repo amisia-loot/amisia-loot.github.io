@@ -2266,14 +2266,17 @@ $('#wishBody').addEventListener('click', async ev => {
 });
 ['#wiSearch','#wiRaider','#wiGroup','#wiShow'].forEach(s => $(s).addEventListener('input', renderWishes));
 // What "Paste from the addon" would do with the wishes of the addon's text (amParseWishes): per wish
-// the raider by name (as the award import finds one), the item, the boss it drops from and a status:
+// the raider by name (the same name in any case, else a Forever "First Last" whose first name exactly
+// one raider carries, as amLikely), the item, the boss it drops from and a status:
 // new, dup (on the raider's list already, or twice in this paste), got (already received), noitem
 // (not in the loot tables), noraider (not on the roster) or limit (over 30 open wishes).
 function wishImportPlan(wishes){
   const open = {}, seen = new Set(), here = wishesHere();
   for (const w of here) if (!wishGot(w)) open[w.raider] = (open[w.raider] || 0) + 1;
+  const byName = n => state.raiders.find(r => r.name.toLowerCase() === String(n).toLowerCase()) || null;
   return wishes.map(x => {
-    const raider = state.raiders.find(r => r.name.toLowerCase() === String(x.name).toLowerCase()) || null;
+    const likely = amLikely(String(x.name));
+    const raider = byName(x.name) || (likely ? byName(likely) : null);
     const it = ITEM[x.item] || null, key = raider ? raider.id + '|' + x.item : '';
     let status = 'new';
     if (!it) status = 'noitem';

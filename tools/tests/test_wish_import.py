@@ -70,6 +70,16 @@ def test_the_import_plan(out):
     assert new[0]['note'] == 'only MS' and new[0]['prio'] == 2
 
 
+def test_forever_full_names_find_a_raider_by_first_name(out):
+    assert out['planNames'] == [
+        ['Bob Baumann', 'b', 'new'],
+        ['Vulo Sturmwind', 'v', 'new'],
+        ['Kim Eisherz', 'k2', 'new'],
+        ['Kim Feuerherz', 'k', 'new'],
+        ['Zed Zorn', None, 'noraider'],
+    ], out['planNames']
+
+
 def test_the_text_for_the_addon(out):
     assert out['text'].split('\n') == [
         '#AMISIA-WL 1 tbc 2026-10-05',
