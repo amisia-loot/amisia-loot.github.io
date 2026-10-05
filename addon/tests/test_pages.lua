@@ -114,6 +114,26 @@ for _, view in ipairs({ "officer", "raider" }) do
     end
 end
 NS.Reset("ui.view")
+-- the map page with the real TBC map data: builds and refreshes for officers and raiders, in the
+-- quick menu for both, and its parts fit the content at 602 x 478
+assert(NS.MAP and NS.Visible(NS.Panel("map")), "the map page on TBC")
+for _, view in ipairs({ "officer", "raider" }) do
+    NS.Set("ui.view", view)
+    NS.ShowMap()
+    NS.Refresh()
+    assert(NS.CurrentPage() == "map", "the map page for " .. view)
+    local quick = {}
+    for _, e in ipairs(NS.MinimapMenuEntries()) do quick[#quick + 1] = e[1] end
+    assert(table.concat(quick, "|"):find("Ausrüstung|Karte|", 1, true), "the quick menu for " .. view)
+    local mf = NS.MapPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(mf, 602, 478)
+    L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.open)
+    L.row(view .. " map target", mf.target, mf.clear)
+    L.row(view .. " map columns", mf.head.kind, mf.head.src, mf.head.where, mf.head.items, mf.head.go)
+    L.column(view .. " map page", mf.zone, mf.counts, mf.target, mf.head.kind, mf.list, mf.hint, mf.data, mf.showHidden)
+    L.fits(mf.hint); L.fits(mf.data); L.fits(mf.counts); L.fits(mf.target)
+end
+NS.Reset("ui.view")
 local gp = NS.GearPageFrame()
 assert(gp and gp.goals and #gp.goals.list.items == 17, "all slots on the real data")
 NS.ShowPage("overview")

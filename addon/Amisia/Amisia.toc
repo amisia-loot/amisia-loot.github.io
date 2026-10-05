@@ -46,6 +46,7 @@ Pages\Rolls.lua
 Pages\Awards.lua
 Pages\SoftRes.lua
 Pages\Gear.lua
+Pages\Map.lua
 Pages\Export.lua
 Pages\Bank.lua
 Pages\Tools.lua

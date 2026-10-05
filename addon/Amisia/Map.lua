@@ -84,6 +84,8 @@ end
 
 local parsed = {}        -- key -> list of points, parsed once
 local unknownMaps = {}   -- uiMapIDs the client does not know, noted once per session
+local placeCache = {}    -- item id -> { gen, wish, map, gear, list }: ns.MapItemPlaces with the page's filters
+local whereCache = {}    -- item id -> { list, m, cx, cy, text, line }: the nearest place as text
 
 local function knownMap(id)
     if unknownMaps[id] then return false end
@@ -128,7 +130,7 @@ end
 
 -- Test hook: forget the parsed points (after the data changed).
 function Map._reset()
-    parsed, unknownMaps = {}, {}
+    parsed, unknownMaps, placeCache, whereCache = {}, {}, {}, {}
 end
 
 ---------------------------------------------------------------------------
@@ -155,15 +157,38 @@ local function placesOf(list)
     return out
 end
 
+-- The gear page's options (ns.BisOpts), made once per state of Bis.lua (its stamp) and of what the
+-- stamp does not follow (faction, level, class), and a number that changes with them. The caches
+-- of the places and their texts go with every new set of options.
+local opts, optsGen, optsStamp, optsFac, optsLevel, optsClass = nil, 0, nil, nil, nil, nil
+function Map.PageOpts()
+    local st = ns.BisStamp()
+    local fac = UnitFactionGroup and UnitFactionGroup("player")
+    local level = UnitLevel and UnitLevel("player")
+    local _, class = UnitClass("player")
+    if not opts or st ~= optsStamp or fac ~= optsFac or level ~= optsLevel or class ~= optsClass then
+        opts, optsStamp, optsFac, optsLevel, optsClass = ns.BisOpts(), st, fac, level, class
+        optsGen = optsGen + 1
+        placeCache, whereCache = {}, {}
+    end
+    return opts, optsGen
+end
+
 -- The sources of an item that have a place: { { key, rec, points, giver }, ... } in the order of
 -- Gear.Sources, one entry per key. Without opts the gear page's own filters (ns.BisOpts); a wish
--- whose sources the filters all leave out takes every source.
-function ns.MapItemPlaces(id, opts)
+-- whose sources the filters all leave out takes every source. Without opts the list is kept until
+-- the options, the wish or the data change: callers must not change it.
+function ns.MapItemPlaces(id, o)
     id = tonumber(id)
     if not id or not ns.MAP or not Gear.Available() or not Gear.Item(id) then return {} end
-    if opts then return placesOf(Gear.Sources(id, opts)) end
-    local out = placesOf(Gear.Sources(id, ns.BisOpts()))
-    if #out == 0 and isWish(id) then out = placesOf(Gear.Sources(id)) end
+    if o then return placesOf(Gear.Sources(id, o)) end
+    local page, gen = Map.PageOpts()
+    local wish = isWish(id)
+    local e = placeCache[id]
+    if e and e.gen == gen and e.wish == wish and e.map == ns.MAP and e.gear == ns.GEAR then return e.list end
+    local out = placesOf(Gear.Sources(id, page))
+    if #out == 0 and wish then out = placesOf(Gear.Sources(id)) end
+    placeCache[id] = { gen = gen, wish = wish, map = ns.MAP, gear = ns.GEAR, list = out }
     return out
 end
 
@@ -237,6 +262,42 @@ function ns.MapNearest(points)
     if best then return best, bestD end
     return points[1], nil
 end
+
+-- The nearest point of a list of places (only key's, when given): point, its place, yards (or nil).
+local function nearestOf(places, key)
+    local all, owner = {}, {}
+    for _, p in ipairs(places) do
+        if not key or p.key == key then
+            for _, pt in ipairs(p.points) do
+                all[#all + 1] = pt
+                owner[pt] = p
+            end
+        end
+    end
+    local point, d = ns.MapNearest(all)
+    if not point then return nil end
+    return point, owner[point], d
+end
+
+-- The nearest place of an item (with the page's filters; only the source key's, when given):
+-- point, place, yards; nil without a place.
+function Map.ItemNearest(id, key)
+    return nearestOf(ns.MapItemPlaces(id), key)
+end
+
+-- The player's map and the cell of 2 % he stands in, for caches that follow him; nil inside an
+-- instance or without a map (the cell is -1, -1 without a position on it).
+local function playerCell()
+    if inInstance() or not (C_Map and C_Map.GetBestMapForUnit) then return nil end
+    local map = ns.Plain(C_Map.GetBestMapForUnit("player"))
+    if type(map) ~= "number" then return nil end
+    local pos = C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(map, "player")
+    local x, y
+    if pos then x, y = ns.Plain(pos.x), ns.Plain(pos.y) end
+    if type(x) ~= "number" or type(y) ~= "number" then return map, -1, -1 end
+    return map, math.floor(x * 50), math.floor(y * 50)
+end
+Map.PlayerCell = playerCell
 
 ---------------------------------------------------------------------------
 -- Texts
@@ -401,24 +462,8 @@ end
 function ns.MapSetTarget(id, key)
     if not ns.MAP then return nil, NO_DATA end
     id = tonumber(id)
-    local places = id and ns.MapItemPlaces(id) or {}
-    if key then
-        local only = {}
-        for _, p in ipairs(places) do
-            if p.key == key then only[#only + 1] = p end
-        end
-        places = only
-    end
-    if #places == 0 then return nil, NO_PLACE end
-    local all, owner = {}, {}
-    for _, p in ipairs(places) do
-        for _, pt in ipairs(p.points) do
-            all[#all + 1] = pt
-            owner[pt] = p
-        end
-    end
-    local point = ns.MapNearest(all)
-    local place = owner[point]
+    local point, place = nearestOf(id and ns.MapItemPlaces(id) or {}, key)
+    if not point then return nil, NO_PLACE end
     return ns.MapSetPoint(point, labelOf(place), place.key, id)
 end
 
@@ -746,21 +791,36 @@ ns.OnEvent("ZONE_CHANGED", Map.UpdateArrow)
 -- Tooltip line
 ---------------------------------------------------------------------------
 
--- "Fundort: Gorn One Eye, Durotar 47, 33" for an item with a place (the nearest), with map.tooltip.
-function ns.MapTooltipLine(id)
-    if not ns.MAP or not ns.Get("map.tooltip") then return nil end
+-- The nearest place of an item as text, kept per item until its places change or, for an item with
+-- more than one point, the player moves to another 2 % cell (the hover path reads only the cell).
+local function whereEntry(id)
     local places = ns.MapItemPlaces(id)
     if #places == 0 then return nil end
-    local all, owner = {}, {}
-    for _, p in ipairs(places) do
-        for _, pt in ipairs(p.points) do
-            all[#all + 1] = pt
-            owner[pt] = p
-        end
-    end
-    local point = ns.MapNearest(all)
-    local place = owner[point]
-    return "Fundort: " .. whereText(placeName(place), point, isEntrance(place.key))
+    local m, cx, cy
+    if #places > 1 or #places[1].points > 1 then m, cx, cy = playerCell() end
+    local e = whereCache[id]
+    if e and e.list == places and e.m == m and e.cx == cx and e.cy == cy then return e end
+    local point, place = nearestOf(places)
+    if not point then return nil end
+    local text = whereText(placeName(place), point, isEntrance(place.key))
+    e = { list = places, m = m, cx = cx, cy = cy, text = text, line = "Fundort: " .. text }
+    whereCache[id] = e
+    return e
+end
+
+-- "Gorn One Eye, Durotar 47, 33" (the nearest place of an item), or nil.
+function Map.Where(id)
+    id = tonumber(id)
+    local e = id and ns.MAP and whereEntry(id)
+    return e and e.text or nil
+end
+
+-- "Fundort: Gorn One Eye, Durotar 47, 33" for an item with a place (the nearest), with map.tooltip.
+function ns.MapTooltipLine(id)
+    id = tonumber(id)
+    if not id or not ns.MAP or not ns.Get("map.tooltip") then return nil end
+    local e = whereEntry(id)
+    return e and e.line or nil
 end
 
 ---------------------------------------------------------------------------

@@ -995,14 +995,38 @@ end
 -- Lines per link and Shift state, kept until anything changes (the stamp); an entry made without
 -- the targets is made again once they are there.
 local tipCache, tipCacheStamp, tipCacheN = {}, nil, 0
+local placeOnly = {}            -- the place line alone (upgrade line off), per text
+
+-- On Shift the place of the item (Map.lua's "Fundort" line, cached there per item and state), or
+-- nil; an error goes to the error handler and leaves the other lines.
+local function placeLine(id, shift)
+    if not shift or not ns.MapTooltipLine then return nil end
+    local ok, line = pcall(ns.MapTooltipLine, id)
+    if not ok then
+        local handler = geterrorhandler and geterrorhandler()
+        if handler then handler(line) end
+        return nil
+    end
+    return line
+end
 
 function ns.BisTooltipLines(link)
-    if not ns.Get("bis.tooltip") or not Gear.Available() then return nil end
+    if not Gear.Available() then return nil end
     local id = ns.ItemID(link)
     if not id then return nil end
     local shift = IsShiftKeyDown and IsShiftKeyDown() and true or false
+    local place = placeLine(id, shift)
     if tipCacheStamp ~= stamp or tipCacheN >= TIP_CACHE_MAX then
-        tipCache, tipCacheStamp, tipCacheN = {}, stamp, 0
+        tipCache, tipCacheStamp, tipCacheN, placeOnly = {}, stamp, 0, {}
+    end
+    if not ns.Get("bis.tooltip") then
+        if not place then return nil end
+        local only = placeOnly[place]
+        if not only then
+            only = { { place, TIP_GREY } }
+            placeOnly[place] = only
+        end
+        return only
     end
     local key = shift and (link .. "|S") or link
     local e = tipCache[key]
@@ -1015,7 +1039,15 @@ function ns.BisTooltipLines(link)
             tipCacheN = tipCacheN + 1
         end
     end
-    return e.lines
+    if not place then return e.lines end
+    -- the place goes under the lines, kept with them until it changes
+    if e.place ~= place then
+        local full = {}
+        for i, l in ipairs(e.lines) do full[i] = l end
+        full[#full + 1] = { place, TIP_GREY }
+        e.place, e.full = place, full
+    end
+    return e.full
 end
 
 ns.OnItemTooltip("bis", function(tip, link)

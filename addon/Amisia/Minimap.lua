@@ -27,6 +27,10 @@ function ns.MinimapMenuEntries()
         if ns.Gear.PlannerAvailable() and ns.ToggleGearFrame then
             e[#e + 1] = { "Ausrüstungstabelle", function() ns.ToggleGearFrame() end }
         end
+        -- the map page goes with the gear page
+        if ns.ShowMap and ns.Visible(ns.Panel("map")) then
+            e[#e + 1] = { "Karte", function() ns.ShowMap() end }
+        end
     end
     if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
     if officer then e[#e + 1] = { "Vergaben", function() ns.ShowPage("awards") end } end

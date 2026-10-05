@@ -91,6 +91,8 @@ local function wantedItems()
     end)
     return order
 end
+-- For the map page: the same items, by the same switches.
+Map.WantedItems = wantedItems
 
 local rects = {}   -- [continent][zone] = { left, right, top, bottom } or false; fixed per session
 local function rectOn(zone, continent)
@@ -248,9 +250,8 @@ local function insertPlace(e)
     insert(("%s %s %s"):format(name, Map.ZoneName(e.point.map), Map.Coords(e.point)))
 end
 
-local function pinMenu(self)
-    local e = self.entry
-    if not e then return end
+-- The menu of a place (a pin, a row of the map page); a hidden place offers to show it again.
+local function placeMenu(e)
     local entries = {
         { "Ziel setzen", function() setTarget(e) end },
         { "Item auf der Seite zeigen", function()
@@ -259,16 +260,24 @@ local function pinMenu(self)
         end },
     }
     if e.key then
-        entries[#entries + 1] = { "Diesen Ort ausblenden", function()
-            local m = AmisiaDB and AmisiaDB.map
-            if m and type(m.hidden) == "table" then
-                m.hidden[e.key] = true
+        local m = AmisiaDB and AmisiaDB.map
+        local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
+        entries[#entries + 1] = { hidden and "Wieder einblenden" or "Diesen Ort ausblenden", function()
+            local mm = AmisiaDB and AmisiaDB.map
+            if mm and type(mm.hidden) == "table" then
+                mm.hidden[e.key] = (not hidden) or nil
                 ns.Fire("MAP_TARGET")
             end
         end }
     end
     entries[#entries + 1] = { "Alle Pins aus", function() ns.Set("map.pins", false) end }
-    W.Menu(self, entries)
+    return entries
+end
+
+local function pinMenu(self)
+    local e = self.entry
+    if not e then return end
+    W.Menu(self, placeMenu(e))
 end
 
 local function click(self, button)
@@ -282,10 +291,10 @@ local function click(self, button)
     end
 end
 
-local function tooltip(self)
-    local e = self.entry
-    if not e then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+-- The tooltip of a place at owner: the source, the coordinates, every item with its gain or wish,
+-- and the hint (the pin's by default).
+local function placeTooltip(owner, e, hint)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local title
     if e.rec then
         title = Gear.SourceText(e.rec, true)
@@ -305,9 +314,18 @@ local function tooltip(self)
         end
         GameTooltip:AddDoubleLine(itemText(it.id), right, 1, 1, 1, color[1], color[2], color[3])
     end
-    GameTooltip:AddLine("Klick: Ziel setzen. Rechtsklick: mehr.", 0.6, 0.6, 0.6)
+    GameTooltip:AddLine(hint or "Klick: Ziel setzen. Rechtsklick: mehr.", 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
+
+local function tooltip(self)
+    local e = self.entry
+    if not e then return end
+    placeTooltip(self, e)
+end
+
+-- For the map page: a place's target, menu entries and tooltip, as on the pin.
+Map.SetPlaceTarget, Map.PlaceMenu, Map.PlaceTooltip = setTarget, placeMenu, placeTooltip
 
 function Pin:OnLoad()
     self:SetSize(20, 20)

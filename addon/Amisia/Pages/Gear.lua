@@ -159,6 +159,101 @@ local function say(ok, why)
     if not ok and why then ns.msg(why) end
 end
 
+---------------------------------------------------------------------------
+-- Map: the button before a source and the menu entries, only for items with a place
+---------------------------------------------------------------------------
+
+local MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+
+-- Whether an item has a place on the map (with the page's filters), kept until the state changes.
+local function hasPlace(id)
+    if not id or not ns.MAP or not ns.MapItemPlaces then return false end
+    local c = cached()
+    c.places = c.places or {}
+    local v = c.places[id]
+    if v == nil then
+        v = #ns.MapItemPlaces(id) > 0
+        c.places[id] = v
+    end
+    return v
+end
+
+-- The source key of a record, when it has a place (else the nearest of all sources is taken).
+local function placeKey(rec)
+    local key = rec and ns.MapKeyOf and ns.MapKeyOf(rec)
+    if key and #ns.MapPoints(key) > 0 then return key end
+    return nil
+end
+
+local function showOnMap(id, key)
+    local point = ns.Map.ItemNearest(id, key)
+    if not point and key then point = ns.Map.ItemNearest(id) end
+    if point then ns.MapShowOnWorldMap(point) end
+end
+
+local function setTarget(id, key)
+    local ok, why = ns.MapSetTarget(id, key)
+    if not ok and key then ok, why = ns.MapSetTarget(id) end
+    say(ok, why)
+end
+
+-- Click: the target to the source (the nearest place); Shift: the place on the world map.
+local function mapClick(self)
+    if not self.id then return end
+    if IsShiftKeyDown and IsShiftKeyDown() then showOnMap(self.id, self.key) else setTarget(self.id, self.key) end
+end
+
+local function mapTip(self)
+    if not self.id then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine("Wegpunkt zur Quelle", 1, 0.82, 0)
+    local where = ns.Map.Where(self.id)
+    if where then GameTooltip:AddLine("Fundort: " .. where, 0.85, 0.85, 0.85) end
+    GameTooltip:AddLine("Klick: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen.", 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+-- A 16 px map button at x in its row.
+local function mapButton(parent, x)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(16, 16)
+    b:SetPoint("LEFT", x, 0)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    b.icon:SetTexture(MAP_ICON)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 1, 1, 0.25)
+    b:SetScript("OnClick", mapClick)
+    b:SetScript("OnEnter", mapTip)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:Hide()
+    return b
+end
+
+-- Shows the button for an item with a place (rows are pooled: every field is set again).
+local function setMapButton(b, id, rec, hide)
+    if id and not hide and hasPlace(id) then
+        b.id, b.key = id, placeKey(rec)
+        b:Show()
+    else
+        b.id, b.key = nil, nil
+        b:Hide()
+    end
+end
+
+-- "Wegpunkt setzen" and "Auf der Karte zeigen", for an item with a place.
+local function mapEntries(out, id)
+    if not hasPlace(id) then return end
+    out[#out + 1] = { "Wegpunkt setzen", function() setTarget(id) end }
+    out[#out + 1] = { "Auf der Karte zeigen", function() showOnMap(id) end }
+end
+
+local function inInstance()
+    return IsInInstance and ns.Plain(IsInInstance()) and true or false
+end
+
 local function lift(d)
     -- the dialog strata is below the main window's; lift it so it is not hidden behind
     if d and d.SetFrameStrata then
@@ -338,6 +433,7 @@ local function menuEntries(e, o)
     else
         out[#out + 1] = { "Auf die Wunschliste", function() say(ns.WishAdd(id)) end }
     end
+    mapEntries(out, id)
     out[#out + 1] = { "Link in den Chat", function() insertLink(linkOf(id)) end }
     return out
 end
@@ -409,7 +505,9 @@ local function buildGoals(f)
         hl:SetColorTexture(1, 1, 1, 0.08)
         b.rank = col(b, 4, 12, nil, "GameFontNormalSmall")
         b.name = col(b, 20, 212, nil, "GameFontHighlightSmall")
-        b.src = col(b, 236, 192, nil, "GameFontHighlightSmall")
+        -- the map button sits in the 18 px before the source
+        b.map = mapButton(b, 236)
+        b.src = col(b, 254, 174, nil, "GameFontHighlightSmall")
         b.gain = col(b, 432, 46, nil, "GameFontHighlightSmall")
         b.gain:SetJustifyH("RIGHT")
         b.wish = W.Button(b, "Wunsch", 78, function(self)
@@ -519,6 +617,7 @@ local function fillGoals(G, o, res)
             b.rank:SetText(tostring(i))
             b.name:SetText(marks(e) .. itemText(e.id))
             b.src:SetText(e.owned and OWNED_TEXT[e.owned] or sourceText(e.id, o))
+            setMapButton(b.map, e.id, nil, e.owned)
             b.gain:SetText(gainText(e))
             if e.worn then
                 b.wish:Hide()
@@ -530,6 +629,7 @@ local function fillGoals(G, o, res)
             end
             b:Show()
         else
+            setMapButton(b.map, nil)
             b:Hide()
         end
     end
@@ -548,6 +648,8 @@ end
 
 local function fillHereRow(r, e)
     r.boss:SetText(bossText(e.rec))
+    -- an entrance means nothing inside the instance
+    setMapButton(r.map, e.id, e.rec, inInstance())
     r.name:SetText(marks(e) .. itemText(e.id))
     r.slot:SetText(ns.BIS_SLOT_NAME[e.slotKey] or "")
     r.gain:SetText(gainText(e))
@@ -574,7 +676,8 @@ local function buildHere(f)
         gain = col(h, 454, 56, "Zuwachs") }
     Hh.head.gain:SetJustifyH("RIGHT")
     Hh.list = W.List(Hh, HERE_ROWS, ROW_H, function(r)
-        r.boss = col(r, 4, 146, nil, "GameFontHighlightSmall")
+        r.map = mapButton(r, 4)
+        r.boss = col(r, 22, 128, nil, "GameFontHighlightSmall")
         r.name = col(r, 154, 216, nil, "GameFontHighlightSmall")
         r.slot = col(r, 374, 76, nil, "GameFontHighlightSmall")
         r.gain = col(r, 454, 56, nil, "GameFontHighlightSmall")
@@ -584,7 +687,16 @@ local function buildHere(f)
             if e then toggleWish(e.id, e.wished) end
         end)
         r.wishBtn:SetPoint("LEFT", 520, 0)
-        r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e then return end
+            if button == "RightButton" then
+                W.Menu(self, menuEntries(e, ns.BisOpts()))
+                return
+            end
+            modifiedClick(e.id)
+        end)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
     end, fillHereRow)
@@ -637,6 +749,7 @@ local function fillWishRow(r, e)
     r.name:SetText(itemText(e.id))
     r.slot:SetText(e.slot or "")
     r.src:SetText(e.src or "")
+    setMapButton(r.map, e.id, nil, e.owned)
     r.prio.label:SetText(PRIO_TEXT[e.e.prio] or "mittel")
     r.prio:SetOn(e.e.prio == 3)
     if e.owned then
@@ -665,7 +778,8 @@ local function buildWish(f)
     V.list = W.List(V, WISH_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 216, nil, "GameFontHighlightSmall")
         r.slot = col(r, 224, 76, nil, "GameFontHighlightSmall")
-        r.src = col(r, 304, 166, nil, "GameFontHighlightSmall")
+        r.map = mapButton(r, 304)
+        r.src = col(r, 322, 148, nil, "GameFontHighlightSmall")
         r.prio = W.Chip(r, "", 58, function(self)
             local e = self:GetParent().item
             if e then ns.WishSetPrio(e.id, PRIO_NEXT[e.e.prio] or 2) end
@@ -677,7 +791,16 @@ local function buildWish(f)
             if e then ns.WishRemove(e.id) end
         end)
         r.del:SetPoint("LEFT", 584, 0)
-        r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e then return end
+            if button == "RightButton" then
+                W.Menu(self, menuEntries({ id = e.id, wished = true }, ns.BisOpts()))
+                return
+            end
+            modifiedClick(e.id)
+        end)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
     end, fillWishRow)
