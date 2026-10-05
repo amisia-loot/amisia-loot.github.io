@@ -438,3 +438,73 @@ function STUB.item(id, name, q)
     STUB.items[id] = { name = name, quality = q or 4, link = STUB.link(id, name, q) }
     return STUB.items[id].link
 end
+
+-- The map. Where the player stands on STUB.place.map: STUB.map.pos = { x, y } (0-1; nil = unknown,
+-- as in an instance). Where a map lies in the world: STUB.maps[id].world = { continent, x0, y0, w, h }
+-- (world x = x0 + x * w, world y = y0 + y * h, in yards). Zone rectangles on a continent:
+-- STUB.map.rects["<zone>><continent>"] = { left, right, top, bottom }.
+STUB.map = { pos = nil, rects = {} }
+_G.CreateVector2D = function(x, y) return { x = x, y = y, GetXY = function(self) return self.x, self.y end } end
+C_Map.GetPlayerMapPosition = function(mapID, unit)
+    local p = STUB.map.pos
+    if unit ~= "player" or not p or mapID ~= STUB.place.map then return nil end
+    return CreateVector2D(p.x, p.y)
+end
+C_Map.GetWorldPosFromMapPos = function(mapID, pos)
+    local m = STUB.maps[mapID]
+    local w = m and m.world
+    if not w then return nil end
+    return w[1], CreateVector2D(w[2] + pos.x * w[4], w[3] + pos.y * w[5])
+end
+C_Map.GetMapRectOnMap = function(mapID, top)
+    local r = STUB.map.rects[tostring(mapID) .. ">" .. tostring(top)]
+    if not r then return nil end
+    return r[1], r[2], r[3], r[4]
+end
+-- The client's user waypoint (Forever): STUB.waypoint.point = { uiMapID, position } or nil;
+-- STUB.waypoint.blocked[uiMapID] = true for a map that takes none; superTracked is the guide arrow.
+-- Setting or clearing it fires USER_WAYPOINT_UPDATED, as the client does; sets and clears count the
+-- calls. A test's preload takes these away for TBC Anniversary.
+STUB.waypoint = { point = nil, blocked = {}, superTracked = false, sets = 0, clears = 0 }
+C_Map.CanSetUserWaypointOnMap = function(id) return not STUB.waypoint.blocked[id] end
+C_Map.SetUserWaypoint = function(point)
+    if STUB.waypoint.blocked[point.uiMapID] then return false end
+    STUB.waypoint.point = { uiMapID = point.uiMapID, position = CreateVector2D(point.position.x, point.position.y) }
+    STUB.waypoint.sets = STUB.waypoint.sets + 1
+    STUB.fire("USER_WAYPOINT_UPDATED")
+    return true
+end
+C_Map.ClearUserWaypoint = function()
+    STUB.waypoint.point, STUB.waypoint.superTracked = nil, false
+    STUB.waypoint.clears = STUB.waypoint.clears + 1
+    STUB.fire("USER_WAYPOINT_UPDATED")
+end
+C_Map.GetUserWaypoint = function() return STUB.waypoint.point end
+C_Map.HasUserWaypoint = function() return STUB.waypoint.point ~= nil end
+C_Map.GetUserWaypointPositionForMap = function(id)
+    local p = STUB.waypoint.point
+    if p and p.uiMapID == id then return CreateVector2D(p.position.x, p.position.y) end
+    return nil
+end
+C_Map.GetUserWaypointHyperlink = function()
+    local p = STUB.waypoint.point
+    if not p then return nil end
+    return ("|cffffff00|Hworldmap:%d:%d:%d|h[Kartenmarkierung]|h|r"):format(p.uiMapID,
+        math.floor(p.position.x * 10000 + 0.5), math.floor(p.position.y * 10000 + 0.5))
+end
+_G.UiMapPoint = { CreateFromCoordinates = function(id, x, y, z) return { uiMapID = id, position = CreateVector2D(x, y), z = z } end }
+_G.C_SuperTrack = {
+    SetSuperTrackedUserWaypoint = function(on) STUB.waypoint.superTracked = on and true or false end,
+    IsSuperTrackingUserWaypoint = function() return STUB.waypoint.superTracked end,
+}
+-- The player's facing in radians (STUB.facing; nil = unknown).
+_G.GetPlayerFacing = function() return STUB.facing end
+-- The world map: shown or not and the map it shows (mapID); OpenWorldMap opens it on a map.
+_G.WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
+WorldMapFrame.SetMapID = function(self, id) self.mapID = id end
+WorldMapFrame.GetMapID = function(self) return self.mapID end
+_G.OpenWorldMap = function(id)
+    WorldMapFrame:Show()
+    if id then WorldMapFrame:SetMapID(id) end
+end
+_G.ToggleWorldMap = function() WorldMapFrame:SetShown(not WorldMapFrame:IsShown()) end
