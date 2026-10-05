@@ -114,6 +114,36 @@ _G.C_PartyInfo = { GetLootMethod = function() return STUB.lootMethod or 0, STUB.
 -- Group loot: the item link of a roll (STUB.rolls[rollID]).
 STUB.rolls = {}
 _G.GetLootRollItemLink = function(rollID) return STUB.rolls[rollID] end
+-- The target's classification ("worldboss", "elite", ...) and death: STUB.targetClass, STUB.targetDead.
+_G.UnitClassification = function(u) if u == "target" then return STUB.targetClass or "normal" end return "normal" end
+_G.UnitIsDead = function(u) if u == "target" then return STUB.targetDead and true or false end return false end
+-- A boss fight in progress (STUB.encounter) and the addon restriction of an encounter (STUB.restricted,
+-- restriction type 1); the client announces a change with ADDON_RESTRICTION_STATE_CHANGED.
+_G.C_InstanceEncounter = { IsEncounterInProgress = function() return STUB.encounter and true or false end }
+_G.C_RestrictedActions = { IsAddOnRestrictionActive = function(kind) return (STUB.restricted and kind == 1) and true or false end }
+-- The guild roster: STUB.guild = { { name, class (token), online } }; requests are counted.
+STUB.guild, STUB.guildRequests = {}, 0
+C_GuildInfo.GuildRoster = function() STUB.guildRequests = STUB.guildRequests + 1 end
+_G.GetNumGuildMembers = function()
+    local online = 0
+    for _, m in ipairs(STUB.guild) do if m.online ~= false then online = online + 1 end end
+    return #STUB.guild, online, online
+end
+_G.GetGuildRosterInfo = function(i)
+    local m = STUB.guild[i]
+    if not m then return nil end
+    return m.name, "Mitglied", 2, 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
+end
+-- Friends: STUB.friends = { { name, className (localized), online } }.
+STUB.friends = {}
+_G.C_FriendList = {
+    GetNumFriends = function() return #STUB.friends end,
+    GetFriendInfoByIndex = function(i)
+        local f = STUB.friends[i]
+        if not f then return nil end
+        return { name = f.name, className = f.className, connected = f.online ~= false, level = 70 }
+    end,
+}
 
 _G.hooksecurefunc = function(a, b, c)
     if type(a) == "string" then

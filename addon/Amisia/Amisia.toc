@@ -20,6 +20,7 @@ RollFrame.lua
 AwardDialog.lua
 SoftRes.lua
 LootAnnounce.lua
+RaidLog.lua
 Scan.lua
 Collect.lua
 GearData.lua [AllowLoadGameType camelot]

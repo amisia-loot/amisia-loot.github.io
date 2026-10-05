@@ -229,6 +229,9 @@ local function newSession(zone, instanceID)
         drops = {},   -- opened loot windows by source GUID: { src, t, items = { [itemID] = count } }
         awards = {},  -- hand-outs, kept by Awards.lua: { id, name, item, t, kind = MS|OS|SR|-, src, to, note, edited, orig, manual }
         gone = {},    -- deleted hand-outs with deleted = epoch, for undo and the export's tombstone line
+        kills = {},   -- boss attempts, kept by RaidLog.lua: { enc, name, start, t, ok, size, diff, src, who, wait, n }
+        bench = {},   -- the bench of this raid, kept by Bench.lua: name -> { t, class, self, by, note }
+        outside = {}, -- in the group, online, not in the instance: name -> last seen epoch
     }
     DB.sessions[#DB.sessions + 1] = s
     while #DB.sessions > (ns.Get("record.keepSessions") or 60) do
@@ -265,20 +268,34 @@ local function snapshotRoster()
     local t = time()
     active.firstScan = active.firstScan or t
     local n = GetNumGroupMembers() or 0
-    -- The recorder's own roster line gives the zone string that means "inside the raid".
-    local me, here = ns.UnitFullName("player"), nil
+    -- The recorder's own roster line gives the zone string that means "inside the raid". Names and
+    -- zones go through ns.Plain: in a boss fight on Forever they may be secret, and such a line is
+    -- skipped (never compared or cut), while the readable ones still count.
+    local me, here, hereSecret = ns.UnitFullName("player"), nil, false
     for i = 1, n do
         local name, _, _, _, _, _, zone = GetRaidRosterInfo(i)
-        if ns.SameName(name, me) then
-            here = zone
+        name = ns.Plain(name)
+        if name and ns.SameName(name, me) then
+            here = ns.Plain(zone)
+            hereSecret = here == nil and zone ~= nil
             break
         end
     end
+    active.outside = active.outside or {}
     for i = 1, n do
         local name, _, _, _, _, class, zone, online = GetRaidRosterInfo(i)
+        name, zone, online, class = ns.Plain(name), ns.Plain(zone), ns.Plain(online), ns.Plain(class)
+        local full = type(name) == "string" and ns.FullName(name)
         -- Offline members and members waiting outside (bench, city) are not in the raid.
-        if name and name ~= "" and online and (not here or zone == here) then
-            noteMember(active, ns.FullName(name), class, t)
+        if full and online then
+            if hereSecret then
+                -- the own zone cannot be compared: only raiders already counted stay counted
+                if active.members[full] then noteMember(active, full, nil, t) end
+            elseif not here or zone == here then
+                noteMember(active, full, type(class) == "string" and class or nil, t)
+            elseif type(zone) == "string" then
+                active.outside[full] = t
+            end
         end
     end
     active.last = t
@@ -854,7 +871,12 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             s.drops = s.drops or {}
             s.awards = s.awards or {}
             s.gone = s.gone or {}
+            s.kills = s.kills or {}
+            s.bench = s.bench or {}
+            s.outside = s.outside or {}
         end
+        -- open boss attempts of an earlier session, kills still waiting for their names
+        if ns.RaidLogLoaded then ns.RaidLogLoaded() end
         -- awards of 1.4 get their ids, and the export marks of 1.4 are carried over
         ns.MigrateAwards(DB)
         -- soft-reserve lists of 1.5 get data model 2
