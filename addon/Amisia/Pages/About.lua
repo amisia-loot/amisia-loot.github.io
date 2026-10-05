@@ -80,7 +80,7 @@ end
 
 function ns.AboutPageFrame() return page end
 
-ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, bottom = true,
+ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.head = W.Text(f, "GameFontNormal", 590)

@@ -1016,7 +1016,7 @@ StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
     preferredIndex = 3,
 }
 
-ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50,
+ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "gear",
     available = function() return Gear.Available() end,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)

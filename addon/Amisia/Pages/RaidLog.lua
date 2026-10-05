@@ -720,7 +720,7 @@ function ns.ShowRaidLog(v, sessionId)
     ns.ShowPage("raidlog")
 end
 
-ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25,
+ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f

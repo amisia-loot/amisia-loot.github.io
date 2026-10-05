@@ -89,7 +89,7 @@ local function shortName(id)
     return (ns.ItemName(id):match("%S+")) or "?"
 end
 
-ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 20, officer = true,
+ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 20, group = "raid", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f

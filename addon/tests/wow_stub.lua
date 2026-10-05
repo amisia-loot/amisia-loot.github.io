@@ -867,6 +867,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetHeight = function(self, h) self._h = h end
     f.GetChecked = function(self) return self.checked end
     f.SetFrameStrata = function(self, s) self.strata = s end
+    f.SetClampRectInsets = function(self, l, r, t, b) self.clampInsets = { l, r, t, b } end
     -- one edit box holds the keyboard focus; gaining and losing it runs the scripts, as in the client
     f.SetFocus = function(self)
         local old = STUB.focus

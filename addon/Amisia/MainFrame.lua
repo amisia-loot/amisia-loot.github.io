@@ -1,15 +1,33 @@
--- Amisia main window: a header with the recording state, a sidebar of the registered pages and
--- the page itself. Pages are built the first time they are opened and refreshed only while shown.
+-- Amisia main window in the look of Forever's profession window: the client's portrait frame, a
+-- status bar with the recording state, a list of the registered pages in collapsible sections on
+-- the left, the page itself in an inset on the right, and side tabs on the right edge for the side
+-- windows. Pages are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
 
 local W = ns.W
-local GOLD = W.GOLD
-local WIDTH, HEIGHT, SIDE, NAV_MAX = 800, 540, 160, 14
+local WIDTH, HEIGHT = 806, 560
+local NAV_W, NAV_MAX, HEAD_MAX = 164, 14, 4
+local HEAD_H, ROW_H, GAP, INDENT = 25, 22, 4, 8
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
+local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
 local F, nav, content, statusText, pauseBtn
 local built, current = {}, nil
-local navButtons = {}
+local navButtons, navHeaders = {}, {}
+local sideTabs, hookedWindows = {}, {}
+
+-- The side windows the tabs on the right edge open and close, top to bottom.
+local SIDE_TABS = {
+    { key = "gear", label = "Ausrüstungstabelle", icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
+      visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
+      toggle = function() ns.ToggleGearFrame() end },
+    { key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", frame = "AmisiaRollFrame",
+      visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
+      toggle = function() ns.ToggleRollFrame() end },
+    { key = "softres", label = "Soft-Reserve-Import", icon = "Interface\\Icons\\INV_Scroll_03", frame = "AmisiaSoftResFrame",
+      visible = function() return ns.IsOfficerView() and ns.ToggleSoftResFrame ~= nil end,
+      toggle = function() ns.ToggleSoftResFrame() end },
+}
 
 local function windowState()
     AmisiaDB.settings.window = AmisiaDB.settings.window or {}
@@ -36,6 +54,7 @@ function ns.ApplyScale(v)
     if F then F:SetScale((v or ns.Get("ui.scale") or 100) / 100) end
 end
 
+-- The collapsed sections stay (settings.window.collapsed), only the position goes.
 function ns.ResetPositions()
     windowState().point = nil
     if F then restorePosition() end
@@ -70,105 +89,208 @@ local function updateHeader()
     pauseBtn:SetText(ns.IsEnabled() and "Pausieren" or "Fortsetzen")
 end
 
+-- The page list: per section of ns.PANEL_GROUPS with a visible page a bar, under it the visible
+-- pages as indented rows unless the section is collapsed; 4 px after each section. F.navOrder
+-- holds what is shown, top to bottom ({ header = bar } or { button = row }).
 local function updateNav()
-    local top, bottom = {}, {}
-    for _, p in ipairs(ns.panels) do
-        if ns.Visible(p) then
-            if p.bottom then bottom[#bottom + 1] = p else top[#top + 1] = p end
+    local collapsed = windowState().collapsed or {}
+    local order, y, usedRows, usedHeads = {}, 0, 0, 0
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local pages = {}
+        for _, p in ipairs(ns.panels) do
+            if ns.PanelGroup(p) == g.key and ns.Visible(p) then pages[#pages + 1] = p end
+        end
+        local h = #pages > 0 and navHeaders[usedHeads + 1]
+        if h then
+            usedHeads = usedHeads + 1
+            if #order > 0 then y = y - GAP end
+            h.group = g.key
+            h:SetHeaderText(g.label)
+            h:SetCollapsed(collapsed[g.key] and true or false)
+            h:ClearAllPoints()
+            h:SetPoint("TOPLEFT", nav, "TOPLEFT", 0, y)
+            h:SetPoint("TOPRIGHT", nav, "TOPRIGHT", 0, y)
+            h:Show()
+            order[#order + 1] = { header = h }
+            y = y - HEAD_H
+            if not collapsed[g.key] then
+                for _, p in ipairs(pages) do
+                    local b = navButtons[usedRows + 1]
+                    if not b then break end
+                    usedRows = usedRows + 1
+                    b.key = p.key
+                    b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+                    b.label:SetText(p.label)
+                    b:ClearAllPoints()
+                    b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
+                    if p.key == current then b.sel:Show() else b.sel:Hide() end
+                    b:Show()
+                    order[#order + 1] = { button = b }
+                    y = y - ROW_H
+                end
+            end
         end
     end
-    local used = 0
-    local function place(p, anchor, y)
-        used = used + 1
-        local b = navButtons[used]
-        if not b then return end
-        b.key = p.key
-        b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        b.label:SetText(p.label)
-        b:ClearAllPoints()
-        b:SetPoint(anchor, nav, anchor, 0, y)
-        if p.key == current then b.sel:Show() else b.sel:Hide() end
-        b:Show()
+    for i = usedRows + 1, NAV_MAX do navButtons[i]:Hide() end
+    for i = usedHeads + 1, HEAD_MAX do navHeaders[i]:Hide() end
+    F.navOrder = order
+end
+
+local function toggleGroup(group, isCollapsed)
+    if not group then return end
+    local w = windowState()
+    w.collapsed = w.collapsed or {}
+    w.collapsed[group] = isCollapsed and true or nil
+    updateNav()
+end
+
+-- Shows, places (one under the other, no gaps) and marks the side tabs. Runs in ns.Refresh and
+-- whenever a side window shows or hides (hooked here the first time the window exists).
+function ns.UpdateSideTabs()
+    if not F then return end
+    local prev
+    for _, def in ipairs(SIDE_TABS) do
+        local tab = sideTabs[def.key]
+        if tab then
+            local win = _G[def.frame]
+            if win and win.HookScript and not hookedWindows[win] then
+                hookedWindows[win] = true
+                win:HookScript("OnShow", function() ns.UpdateSideTabs() end)
+                win:HookScript("OnHide", function() ns.UpdateSideTabs() end)
+            end
+            if def.visible() then
+                tab:ClearAllPoints()
+                if prev then
+                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -2)
+                else
+                    tab:SetPoint("TOPLEFT", F, "TOPRIGHT", 0, -60)
+                end
+                tab:Show()
+                prev = tab
+            else
+                tab:Hide()
+            end
+            tab:SetChecked(win ~= nil and win:IsShown() and true or false)
+        end
     end
-    for i, p in ipairs(top) do place(p, "TOPLEFT", -(i - 1) * 30) end
-    for i, p in ipairs(bottom) do place(p, "BOTTOMLEFT", (#bottom - i) * 30) end
-    for i = used + 1, NAV_MAX do navButtons[i]:Hide() end
+end
+
+local function navRow()
+    local b = CreateFrame("Button", nil, nav)
+    b:SetSize(NAV_W - INDENT, ROW_H)
+    b.sel = W.SelectBar(b)
+    b.hover = b:CreateTexture(nil, "HIGHLIGHT")
+    b.hover:SetAllPoints()
+    if W.HasAtlas("Professions_Recipe_Hover") then
+        b.hover:SetAtlas("Professions_Recipe_Hover")
+        b.hover:SetAlpha(0.5)
+    else
+        b.hover:SetColorTexture(1, 1, 1, 0.08)
+    end
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetSize(16, 16)
+    b.icon:SetPoint("LEFT", 4, 0)
+    b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    b.label = W.Text(b, "GameFontHighlight", 130)
+    b.label:SetPoint("LEFT", 26, 0)
+    b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
+    b:Hide()
+    return b
+end
+
+local function navHeader()
+    local h
+    h = W.SectionHeader(nav, "", true, function(isCollapsed) toggleGroup(h.group, isCollapsed) end)
+    h:Hide()
+    return h
+end
+
+-- A side tab as on the profession window (LargeSideTabButtonTemplate); nil without the template,
+-- the side windows stay reachable from the pages and the quick menu.
+local function sideTab(def)
+    local ok, tab = pcall(CreateFrame, "Frame", nil, F, "LargeSideTabButtonTemplate")
+    if not ok or not tab or not tab.SetCustomOnMouseUpHandler or not tab.Icon or not tab.SetChecked then
+        if ok and tab then tab:Hide() end
+        return nil
+    end
+    tab.fillToInterior = true
+    tab.tooltipText = def.label
+    tab.Icon:SetTexture(def.icon)
+    tab:SetCustomOnMouseUpHandler(function(self, button, upInside)
+        if button ~= "LeftButton" or not upInside then return end
+        def.toggle()
+        ns.UpdateSideTabs()
+    end)
+    tab:Hide()
+    return tab
 end
 
 local function build()
-    F = CreateFrame("Frame", "AmisiaFrame", UIParent)
-    F:SetSize(WIDTH, HEIGHT)
-    F:SetFrameStrata("FULLSCREEN")
-    F:SetToplevel(true)
-    F:SetClampedToScreen(true)
-    F:SetMovable(true)
-    F:EnableMouse(true)
-    F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    F:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); savePosition() end)
-    F:SetScript("OnShow", function(self)
-        if self.Raise then self:Raise() end
-        ns.Refresh()
-    end)
-    F:Hide()
-    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaFrame") end
-    W.Flat(F, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
-    W.Border(F, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { portrait = PORTRAIT, strata = "FULLSCREEN",
+        title = "Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r", background = "Profession-Background-Overview",
+        onShow = function(self)
+            if self.Raise then self:Raise() end
+            ns.Refresh()
+        end,
+        onDragStop = function() savePosition() end })
     restorePosition()
     ns.ApplyScale()
 
-    local logo = F:CreateTexture(nil, "ARTWORK")
-    logo:SetSize(30, 30)
-    logo:SetPoint("TOPLEFT", 12, -7)
-    logo:SetTexture("Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
-    local title = W.Text(F, "GameFontNormalLarge", 220)
-    title:SetPoint("LEFT", logo, "RIGHT", 6, 0)
-    title:SetText("Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r")
-    title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    local close = CreateFrame("Button", nil, F, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
-    pauseBtn = W.Button(F, "Pausieren", 100, function() ns.SetEnabled(not ns.IsEnabled()) end)
-    pauseBtn:SetPoint("TOPRIGHT", -34, -12)
-    statusText = W.Text(F, "GameFontHighlightSmall", 320)
-    statusText:SetPoint("RIGHT", pauseBtn, "LEFT", -10, 0)
-    statusText:SetJustifyH("RIGHT")
-    local line = F:CreateTexture(nil, "ARTWORK")
-    line:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.3)
-    line:SetPoint("TOPLEFT", 10, -44)
-    line:SetPoint("TOPRIGHT", -10, -44)
-    line:SetHeight(1)
-
-    nav = CreateFrame("Frame", nil, F)
-    nav:SetPoint("TOPLEFT", 10, -52)
-    nav:SetPoint("BOTTOMLEFT", 10, 10)
-    nav:SetWidth(SIDE)
-    for i = 1, NAV_MAX do
-        local b = CreateFrame("Button", nil, nav)
-        b:SetSize(SIDE, 28)
-        b.sel = W.Flat(b, GOLD[1], GOLD[2], GOLD[3], 0.25, "BORDER")
-        b.sel:Hide()
-        local hl = b:CreateTexture(nil, "HIGHLIGHT")
-        hl:SetAllPoints()
-        hl:SetColorTexture(1, 1, 1, 0.08)
-        b.icon = b:CreateTexture(nil, "ARTWORK")
-        b.icon:SetSize(20, 20)
-        b.icon:SetPoint("LEFT", 6, 0)
-        b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        b.label = W.Text(b, "GameFontNormal", SIDE - 36)
-        b.label:SetPoint("LEFT", 32, 0)
-        b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
-        b:Hide()
-        navButtons[i] = b
+    -- the head: the profession window's skill bar as the frame of the recording state
+    local bar = CreateFrame("Frame", nil, F)
+    bar:SetSize(453, 18)
+    bar:SetPoint("TOPLEFT", 66, -28)
+    bar.bg = bar:CreateTexture(nil, "ARTWORK", nil, 1)
+    bar.bg:SetPoint("TOPLEFT")
+    bar.bg:SetSize(453, 18)
+    bar.frame = bar:CreateTexture(nil, "ARTWORK", nil, 3)
+    bar.frame:SetPoint("TOPLEFT")
+    bar.frame:SetSize(451, 29)
+    if W.HasAtlas("Professions-skillbar-bg") then
+        bar.bg:SetAtlas("Professions-skillbar-bg")
+    else
+        bar.bg:SetColorTexture(0, 0, 0, 0.35)
     end
-    local sep = F:CreateTexture(nil, "ARTWORK")
-    sep:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.2)
-    sep:SetPoint("TOPLEFT", SIDE + 16, -52)
-    sep:SetPoint("BOTTOMLEFT", SIDE + 16, 10)
-    sep:SetWidth(1)
+    if W.HasAtlas("Professions-skillbar-frame") then bar.frame:SetAtlas("Professions-skillbar-frame") else bar.frame:Hide() end
+    statusText = W.Text(bar, "GameFontHighlightSmall", 433)
+    statusText:SetPoint("CENTER", bar, "CENTER", 0, -3)
+    statusText:SetJustifyH("CENTER")
+    pauseBtn = W.Button(F, "Pausieren", 110, function() ns.SetEnabled(not ns.IsEnabled()) end)
+    pauseBtn:SetPoint("TOPRIGHT", -10, -26)
 
-    content = CreateFrame("Frame", nil, F)
-    content:SetPoint("TOPLEFT", SIDE + 26, -52)
-    content:SetPoint("BOTTOMRIGHT", -12, 10)
+    -- the page list in an inset with the recipe list's ground, the page in an inset beside it
+    local listInset = W.Inset(F)
+    listInset:SetPoint("TOPLEFT", 6, -62)
+    listInset:SetPoint("BOTTOMLEFT", 6, 6)
+    listInset:SetWidth(176)
+    listInset.fill("Professions-background-summarylist")
+    local contentInset = W.Inset(F)
+    contentInset:SetPoint("TOPLEFT", 184, -62)
+    contentInset:SetPoint("BOTTOMRIGHT", -6, 6)
+
+    nav = CreateFrame("Frame", nil, listInset)
+    nav:SetPoint("TOPLEFT", 6, -6)
+    nav:SetPoint("BOTTOMRIGHT", -6, 6)
+    for i = 1, HEAD_MAX do navHeaders[i] = navHeader() end
+    for i = 1, NAV_MAX do navButtons[i] = navRow() end
+
+    -- 602 x 478, as before: the pages keep their layout
+    content = CreateFrame("Frame", nil, contentInset)
+    content:SetPoint("TOPLEFT", 7, -7)
+    content:SetPoint("BOTTOMRIGHT", -7, 7)
+
+    for _, def in ipairs(SIDE_TABS) do
+        local tab = sideTab(def)
+        if tab then sideTabs[def.key] = tab end
+    end
+    local first = sideTabs[SIDE_TABS[1].key] or sideTabs[SIDE_TABS[2].key] or sideTabs[SIDE_TABS[3].key]
+    -- the tabs hang outside the frame on the right: keep them on the screen when moving it
+    if first and F.SetClampRectInsets then F:SetClampRectInsets(0, first:GetWidth(), 0, 0) end
+
+    -- test hooks and the parts the layout tests read
+    F.statusBar, F.statusText, F.pauseBtn = bar, statusText, pauseBtn
+    F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
+    F.sideTabs, F.navOrder = sideTabs, {}
 end
 
 function ns.CurrentPage() return current end
@@ -209,6 +331,7 @@ function ns.Refresh()
     end
     updateHeader()
     updateNav()
+    ns.UpdateSideTabs()
     local frame = built[current]
     if p.refresh and frame then
         local ok, err = pcall(p.refresh, frame)

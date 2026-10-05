@@ -47,11 +47,32 @@ end
 ---------------------------------------------------------------------------
 -- Pages and overview cards
 ---------------------------------------------------------------------------
--- Page: { key, label, icon, order, bottom, officer, expert, available = fn, create = fn(parent) -> frame,
+-- Page: { key, label, icon, order, group, officer, expert, available = fn, create = fn(parent) -> frame,
 --         refresh = fn(frame) }. Built the first time it is opened, refreshed only while shown.
+-- group names the section of the page list (ns.PANEL_GROUPS); bottom (the old sidebar) is still
+-- allowed but no longer read.
 function ns.RegisterPanel(spec)
     assert(type(spec.key) == "string" and type(spec.create) == "function", "RegisterPanel needs key and create")
     upsert(ns.panels, spec, "key")
+end
+
+-- The sections of the page list, top to bottom.
+ns.PANEL_GROUPS = {
+    { key = "raid", label = "Raid" },
+    { key = "gear", label = "Ausrüstung" },
+    { key = "guild", label = "Gilde" },
+    { key = "amisia", label = "Amisia" },
+}
+
+-- The section of a page: its group, else by its order (a page without one or with an unknown one,
+-- a test page).
+function ns.PanelGroup(p)
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        if g.key == p.group then return p.group end
+    end
+    local o = p.order or 99
+    if o < 50 then return "raid" elseif o < 60 then return "gear" elseif o < 900 then return "guild" end
+    return "amisia"
 end
 
 function ns.Panel(key)

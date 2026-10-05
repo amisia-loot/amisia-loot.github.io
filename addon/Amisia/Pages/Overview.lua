@@ -3,7 +3,7 @@ local ADDON, ns = ...
 local W = ns.W
 local CARD_W, CARD_H, GAP, SLOTS = 296, 112, 12, 6
 
-ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10,
+ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.cards = {}

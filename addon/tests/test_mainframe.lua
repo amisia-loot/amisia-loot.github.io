@@ -9,6 +9,14 @@ NS.RegisterPanel{ key = "tpbad", label = "Kaputt", order = 7, create = function(
 
 NS.ShowPage("tp1")
 assert(AmisiaFrame and AmisiaFrame:IsShown() and NS.CurrentPage() == "tp1")
+-- Forever's frame: 806 x 560, the page area stays 602 x 478
+assert(AmisiaFrame._w == 806 and AmisiaFrame._h == 560, "806 x 560")
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(AmisiaFrame, 806, 560)
+local cl, cr = ML.span(AmisiaFrame.content)
+local ct, cb = ML.vspan(AmisiaFrame.content)
+assert(cr - cl == 602 and ct - cb == 478, ("the page area 602 x 478: %d x %d"):format(cr - cl, ct - cb))
+-- a test page without a group lands by its order: order 5 is "raid"
+assert(NS.PanelGroup(NS.Panel("tp1")) == "raid")
 assert(built == 1 and refreshed >= 1)
 NS.ShowPage("tp1"); assert(built == 1, "built once")
 local r = refreshed

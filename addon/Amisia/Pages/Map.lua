@@ -453,7 +453,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "map", label = "Karte", icon = ICON, order = 55,
+ns.RegisterPanel{ key = "map", label = "Karte", icon = ICON, order = 55, group = "gear",
     available = function() return Gear.Available() and ns.MAP ~= nil end,
     create = create, refresh = refresh }
 

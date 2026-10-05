@@ -343,6 +343,193 @@ assert(AmisiaMenu:GetFrameLevel() > 510, "the menu above the dialog's frame: " .
 AmisiaMenu:Hide()
 
 ---------------------------------------------------------------------------
+-- the main window: Forever's frame, the status bar, the page list, the side tabs
+---------------------------------------------------------------------------
+STUB.officer = true
+NS.ShowPage("overview")
+local MF = AmisiaFrame
+assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 560)
+assert(MF.strata == "FULLSCREEN")
+assert(MF.portraitAsset == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia", "the Amisia portrait")
+local mtitle = MF:GetTitleText():GetText()
+assert(mtitle:sub(1, 7) == "Amisia " and mtitle:find(NS.VERSION, 1, true), mtitle)
+assert(MF.Bg.atlas == "Profession-Background-Overview" and not MF.TopTileStreaks:IsShown())
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 560)
+-- the head: the status bar right of the portrait, below the title bar, the button beside it
+local status, pause = MF.statusBar, MF.pauseBtn
+assert(status._w == 453 and status._h == 18 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -28)
+assert(status.bg.atlas == "Professions-skillbar-bg" and status.frame.atlas == "Professions-skillbar-frame")
+assert(status.frame._w == 451 and status.frame._h == 29 and status.frame.points.TOPLEFT)
+ML.row("head", status, pause)
+local sl = ML.span(status)
+local st = ML.vspan(status)
+assert(sl >= 58 and st <= -W.TITLE_H, "right of the portrait and below the title bar")
+assert(pause._w == 110 and pause._h == 22 and pause.points.TOPRIGHT.x == -10 and pause.points.TOPRIGHT.y == -26)
+assert(pause.inherits.SharedButtonSmallTemplate and pause:GetText() == "Pausieren")
+assert(MF.statusText._w == 433 and MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == -3)
+NS.SetEnabled(false); assert(pause:GetText() == "Fortsetzen" and MF.statusText:GetText():find("pausiert", 1, true))
+pause:Click(); assert(NS.IsEnabled() and pause:GetText() == "Pausieren")
+-- the page list and the content field side by side, the page area exactly 602 x 478 at (191, -69)
+local listIn, contentIn = MF.listInset, MF.contentInset
+assert(listIn.border.atlas == "common-insideframe" and listIn.ground.atlas == "Professions-background-summarylist")
+assert(contentIn.border.atlas == "common-insideframe")
+ML.row("columns", listIn, contentIn)
+local ll, lr = ML.span(listIn)
+local lt, lb = ML.vspan(listIn)
+assert(ll == 6 and lr == 182 and lt == -62 and lb == -554, ("the list 176 x 492: %d..%d, %d..%d"):format(ll, lr, lt, lb))
+local il, ir = ML.span(contentIn)
+local it, ib = ML.vspan(contentIn)
+assert(il == 184 and ir == 800 and it == -62 and ib == -554, ("the field 616 x 492: %d..%d, %d..%d"):format(il, ir, it, ib))
+local cl, cr = ML.span(MF.content)
+local ct, cb = ML.vspan(MF.content)
+assert(cl == 191 and ct == -69 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
+ML.inside("content", MF.content)
+
+-- the sections and their order for a raider, an officer, an expert
+local function navShown()
+    local out = {}
+    for _, e in ipairs(MF.navOrder) do
+        out[#out + 1] = e.header and ("#" .. e.header.group) or e.button.key
+    end
+    return table.concat(out, " ")
+end
+NS.Set("ui.view", "raider")
+NS.Refresh()
+assert(navShown() == "#raid overview raidlog awards softres #gear gear map #amisia settings about", navShown())
+NS.Set("ui.view", "officer")
+NS.Refresh()
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map #guild export bank #amisia settings about", navShown())
+NS.Set("ui.expert", true)
+NS.Refresh()
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map #guild export bank tools #amisia settings about", navShown())
+-- the labels of the sections
+local labels = {}
+for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
+assert(table.concat(labels, ",") == "Raid,Ausrüstung,Gilde,Amisia", table.concat(labels, ","))
+-- 4 bars and 13 rows fit the list: headers 25 high, rows 22, 4 px after each section
+local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
+local parts = {}
+for _, e in ipairs(MF.navOrder) do
+    local fr = e.header or e.button
+    parts[#parts + 1] = fr
+    NL.inside("nav part", fr)
+    if e.header then assert(fr._h == 25) else assert(fr._h == 22 and fr.points.TOPLEFT.x == 8, "rows 22 high, 8 indented") end
+end
+NL.column("nav", unpack(parts))
+local _, lastB = NL.vspan(parts[#parts])
+assert(lastB == -(4 * 25 + 13 * 22 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
+-- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
+local ovRow
+for _, e in ipairs(MF.navOrder) do if e.button and e.button.key == "overview" then ovRow = e.button end end
+assert(ovRow.icon._w == 16 and ovRow.icon.points.LEFT.x == 4)
+assert(ovRow.label._w == 130 and ovRow.label.points.LEFT.x == 26)
+assert(ovRow.sel.atlas == "Professions_Recipe_Active" and ovRow.sel:IsShown(), "the shown page glows")
+assert(ovRow.hover.atlas == "Professions_Recipe_Hover" and ovRow.hover.alpha == 0.5)
+-- a click on a row shows its page
+local raidsRow
+for _, e in ipairs(MF.navOrder) do if e.button and e.button.key == "raids" then raidsRow = e.button end end
+raidsRow:Click(); assert(NS.CurrentPage() == "raids" and raidsRow.sel:IsShown() and not ovRow.sel:IsShown())
+-- collapsing a section: a click on its bar, the state is kept, the shown page stays open
+local raidHdr
+for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
+raidHdr:Click()
+assert(AmisiaDB.settings.window.collapsed.raid == true, "the state is saved")
+assert(NS.CurrentPage() == "raids", "the shown page stays")
+assert(navShown() == "#raid #gear gear map #guild export bank tools #amisia settings about", navShown())
+raidHdr = nil
+for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
+assert(raidHdr.collapsed == true, "the bar shows the plus")
+-- kept over a refresh and a new build of the list
+NS.Refresh(); assert(navShown():sub(1, 12) == "#raid #gear ", navShown())
+raidHdr:Click()
+assert(not AmisiaDB.settings.window.collapsed.raid and navShown():sub(1, 15) == "#raid overview ", navShown())
+NS.Reset("ui.expert")
+NS.Reset("ui.view")
+
+-- the side tabs: the gear table, the rolls, the soft-reserve import, right outside the frame
+local tabs = MF.sideTabs
+assert(tabs.gear and tabs.rolls and tabs.softres)
+for _, k in ipairs({ "gear", "rolls", "softres" }) do
+    assert(tabs[k].inherits.LargeSideTabButtonTemplate and tabs[k].fillToInterior == true, k)
+end
+assert(tabs.gear.tooltipText == "Ausrüstungstabelle" and tabs.rolls.tooltipText == "Rolls"
+    and tabs.softres.tooltipText == "Soft-Reserve-Import")
+assert(tabs.gear.Icon.texture == "Interface\\Icons\\INV_Chest_Chain_05"
+    and tabs.rolls.Icon.texture == "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
+    and tabs.softres.Icon.texture == "Interface\\Icons\\INV_Scroll_03")
+NS.Set("ui.view", "officer")
+local function tabsShown()
+    local out = {}
+    for _, k in ipairs({ "gear", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
+    return table.concat(out, " ")
+end
+assert(tabsShown() == "gear rolls softres", tabsShown())
+-- one under the other, the first at the frame's top right, outside the frame
+local p1 = tabs.gear.points.TOPLEFT
+assert(p1.rel == MF and p1.relPoint == "TOPRIGHT" and p1.x == 0 and p1.y == -60, "the first at the top right")
+local p2 = tabs.rolls.points.TOPLEFT
+assert(p2.rel == tabs.gear and p2.relPoint == "BOTTOMLEFT" and p2.y == -2)
+assert(MF.clampInsets and MF.clampInsets[2] == tabs.gear:GetWidth(), "the tabs stay on the screen")
+-- a raider sees the gear tab only; without gear data a raider sees none, an officer two without gaps
+NS.Set("ui.view", "raider")
+assert(tabsShown() == "gear", tabsShown())
+local keepGear = NS.GEAR
+NS.GEAR = nil
+NS.UpdateSideTabs()
+assert(tabsShown() == "", tabsShown())
+NS.Set("ui.view", "officer")
+assert(tabsShown() == "rolls softres", tabsShown())
+assert(tabs.rolls.points.TOPLEFT.rel == MF and tabs.rolls.points.TOPLEFT.y == -60, "no gap for the hidden tab")
+assert(tabs.softres.points.TOPLEFT.rel == tabs.rolls)
+NS.GEAR = keepGear
+NS.UpdateSideTabs()
+-- a click opens and closes the window, the tab of an open window is marked
+assert(not tabs.rolls.checked)
+STUB.clickTab(tabs.rolls)
+assert(AmisiaRollFrame and AmisiaRollFrame:IsShown() and tabs.rolls.checked == true, "open and marked")
+STUB.clickTab(tabs.rolls)
+assert(not AmisiaRollFrame:IsShown() and tabs.rolls.checked == false, "closed and unmarked")
+STUB.clickTab(tabs.softres)
+assert(AmisiaSoftResFrame:IsShown() and tabs.softres.checked == true)
+-- the marking follows the window when it is closed elsewhere
+AmisiaSoftResFrame:Hide(); assert(tabs.softres.checked == false, "unmarked on hide")
+AmisiaSoftResFrame:Show(); assert(tabs.softres.checked == true, "marked on show")
+AmisiaSoftResFrame:Hide()
+STUB.clickTab(tabs.gear)
+assert(AmisiaGearFrame:IsShown() and tabs.gear.checked == true)
+STUB.clickTab(tabs.gear)
+assert(not AmisiaGearFrame:IsShown() and not tabs.gear.checked)
+-- only the left button
+tabs.rolls.scripts.OnMouseUp(tabs.rolls, "RightButton", true)
+assert(not AmisiaRollFrame:IsShown())
+NS.Reset("ui.view")
+
+-- the close button hides the main window in combat, without HideUIPanel
+MF:Show()
+STUB.combat = true
+MF.CloseButton:Click()
+STUB.combat = false
+assert(not MF:IsShown(), "closed in combat")
+
+-- the new texts are Latin-1
+local MainFrameFile = ADDON_DIR .. "/MainFrame.lua"
+for _, file in ipairs({ MainFrameFile }) do
+    local fh2 = assert(io.open(file, "rb"))
+    local s = fh2:read("*a")
+    fh2:close()
+    for lead in s:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in " .. file) end
+end
+local rfh = assert(io.open(ADDON_DIR .. "/Registry.lua", "rb"))
+local rsrc = rfh:read("*a")
+rfh:close()
+for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Registry.lua") end
+assert(NS.PANEL_GROUPS[2].label == "Ausrüstung")
+-- every page names its section
+for _, p in ipairs(NS.panels) do
+    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "amisia", "a group for " .. p.key)
+end
+
+---------------------------------------------------------------------------
 -- every atlas Amisia sets is one of the design's
 ---------------------------------------------------------------------------
 local ALLOWED = {

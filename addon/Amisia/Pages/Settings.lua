@@ -88,7 +88,7 @@ end
 
 local headers = {}
 
-ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\Icons\\Trade_Engineering", order = 900, bottom = true,
+ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")

@@ -30,7 +30,7 @@ local page
 -- For tests: the page frame once built.
 function ns.RollsPageFrame() return page end
 
-ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, officer = true,
+ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, group = "raid", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.current = W.Text(f, "GameFontHighlight", 590, true)

@@ -6,7 +6,7 @@ local W = ns.W
 local box   -- the link box of the editor, for the shift-click hook below
 local BANK_ROWS = 18
 
-ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, officer = true,
+ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, group = "guild", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, "GameFontHighlight", 590, true)

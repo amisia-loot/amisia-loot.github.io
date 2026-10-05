@@ -2,7 +2,7 @@
 local ADDON, ns = ...
 local W = ns.W
 
-ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, expert = true,
+ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, "GameFontHighlight", 590, true)

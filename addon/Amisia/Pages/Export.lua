@@ -53,7 +53,7 @@ function ns.ShowExport(latestOnly)
     ns.Refresh()
 end
 
-ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 60, officer = true,
+ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 60, group = "guild", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         local intro = W.Text(f, "GameFontHighlight", 590, true)

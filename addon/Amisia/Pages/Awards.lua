@@ -925,7 +925,7 @@ function ns.ShowAwards(sessionId)
     ns.ShowPage("awards")
 end
 
-ns.RegisterPanel{ key = "awards", label = "Vergaben", icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35,
+ns.RegisterPanel{ key = "awards", label = "Vergaben", icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
