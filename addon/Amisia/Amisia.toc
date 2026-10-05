@@ -15,6 +15,7 @@ Names.lua
 Mats.lua
 Chat.lua
 Comm.lua
+Trust.lua
 Widgets.lua
 Awards.lua
 Rolls.lua
