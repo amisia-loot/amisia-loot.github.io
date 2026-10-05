@@ -2,8 +2,10 @@
 local ADDON, ns = ...
 local W = ns.W
 
-local area
+local area, page
 local exportText = ""
+
+function ns.ExportPageFrame() return page end
 
 local function setExport(txt)
     exportText = txt or ""
@@ -86,6 +88,9 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
         local hint = W.Text(f, "GameFontDisableSmall", 590)
         hint:SetPoint("BOTTOMLEFT", 0, 4)
         hint:SetText("Strg+A, Strg+C, im Import-Tab einfügen.")
+        -- the parts the layout tests read
+        f.intro, f.newBtn, f.selBtn, f.area, f.hint = intro, newBtn, selBtn, area, hint
+        page = f
         return f
     end,
     refresh = function(f)

@@ -459,6 +459,13 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " target", f.target, f.clear)
     L.row(view .. " columns", f.head.kind, f.head.src, f.head.where, f.head.items, f.head.go)
     L.row(view .. " row", rows[1].kind, rows[1].src, rows[1].where, rows[1].items, rows[1].go)
+    -- the list ends 12 px before the edge; the button and the "Weg" head end before its bar
+    L.row(view .. " list", f.list, f.list.bar)
+    L.inside(view .. " list bar", f.list.bar)
+    local _, lr = L.span(f.list)
+    local _, gor = L.span(rows[1].go)
+    local _, ghr = L.span(f.head.go)
+    assert(lr == 590 and gor <= 590 and ghr <= 590, ("the list 590, the button %d, the head %d"):format(gor, ghr))
     L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.hint, f.data, f.showHidden)
     L.column(view .. " target", f.counts, f.clear, f.head.kind)
     for _, fs in ipairs({ f.target, f.counts, f.hint, f.data, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
@@ -468,10 +475,11 @@ for _, view in ipairs({ "officer", "raider" }) do
     local G2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(gp, 602, 478)
     G2.row(view .. " option", O[1].rank, O[1].name, O[1].map, O[1].src, O[1].gain, O[1].wish, O[1].ex)
     NS.ShowGear("here")
-    G2.row(view .. " here row", hr[1].map, hr[1].boss, hr[1].name, hr[1].slot, hr[1].gain, hr[1].wishBtn)
+    G2.row(view .. " here row", hr[1].map, hr[1].boss, hr[1].name, hr[1].slot, hr[1].gain, hr[1].wishBtn, Hh.list.bar)
     NS.ShowGear("wish")
     local wr = V.list.rows
-    G2.row(view .. " wish row", wr[1].name, wr[1].slot, wr[1].map, wr[1].src, wr[1].prio, wr[1].state, wr[1].del)
+    G2.row(view .. " wish row", wr[1].name, wr[1].slot, wr[1].map, wr[1].src, wr[1].prio, wr[1].state, wr[1].del, V.list.bar)
+    G2.inside(view .. " wish bar", V.list.bar)
 end
 NS.Reset("ui.view")
 NS.MapClearTarget()

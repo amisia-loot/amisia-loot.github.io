@@ -127,6 +127,104 @@ do
     L.inside("rolls list", rf.list)
 end
 
+-- 2.2 layout of the guild and Amisia pages at 602 x 478
+-- export: the edit area with its thin bar inside the page
+NS.ShowPage("export")
+do
+    local ef = NS.ExportPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(ef, 602, 478)
+    L.row("export buttons", ef.newBtn, ef.selBtn, ef.state)
+    L.column("export page", ef.intro, ef.newBtn, ef.area, ef.hint)
+    L.inside("export area", ef.area)
+    assert(ef.area.bar and ef.area.bar.inherits.MinimalScrollBar, "the export text scrolls with the thin bar")
+    L.inside("export bar", ef.area.bar)
+    assert(ef.area.border.atlas == "common-insideframe", "the export text lies in an inset")
+    assert(ef.newBtn.inherits.SharedButtonSmallTemplate and ef.selBtn.inherits.SharedButtonSmallTemplate)
+end
+-- guild bank: the list ends 12 px before the edge, the count and the button move with it
+NS.ShowPage("bank")
+do
+    local bf = NS.BankPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(bf, 602, 478)
+    L.row("bank editor", bf.add.box, bf.add.button, bf.add.hint)
+    L.row("bank list", bf.list, bf.list.bar)
+    L.inside("bank list bar", bf.list.bar)
+    local _, lr = L.span(bf.list)
+    assert(lr == 590, "the bank list is 590 wide: " .. lr)
+    local r1 = bf.list.rows[1]
+    L.row("bank row", r1.name, r1.count, r1.remove)
+    local _, rr = L.span(r1.remove)
+    assert(rr == 586, "the button keeps its 4 px to the row's end: " .. rr)
+    L.column("bank page", bf.state, bf.add.box, bf.list)
+    L.inside("bank list", bf.list)
+    assert(bf.add.box.inherits.InputBoxTemplate, "the link box is the client's input box")
+end
+-- tools: the red buttons in a row
+NS.Set("ui.expert", true)
+NS.ShowPage("tools")
+do
+    local tf = NS.ToolsPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
+    L.row("tools buttons", unpack(tf.buttons))
+    L.column("tools page", tf.state, tf.buttons[1], tf.hint)
+    for _, b in ipairs(tf.buttons) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+end
+NS.Reset("ui.expert")
+-- settings: a plain scroll frame with the thin bar, the sections under the client's list header
+NS.ShowPage("settings")
+do
+    local sp = NS.SettingsPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(sp, 602, 478)
+    assert(sp.scroll.inherits == nil, "no old scroll frame template")
+    assert(sp.bar and sp.bar.inherits.MinimalScrollBar and sp.scroll.bar == sp.bar)
+    L.row("settings scroll", sp.scroll, sp.bar)
+    L.inside("settings bar", sp.bar)
+    local _, sr = L.span(sp.scroll)
+    assert(sr == 586, "the rows' frame ends 16 px before the edge: " .. sr)
+    local CL = dofile(ADDON_DIR .. "/../tests/layout.lua")(sp.child, 560, sp.child._h)
+    local parts, heads = {}, 0
+    for _, h in pairs(sp.headers) do
+        if h:IsShown() then
+            heads = heads + 1
+            parts[#parts + 1] = h
+            assert(h.inherits.ListHeaderVisualTemplate and h.inherits.ListHeaderCodeTemplate and h._h == 25, "a list header, 25 high")
+            assert(not h.CollapseButton:IsShown(), "a settings section does not collapse")
+            assert(h.titleColors[false] == NORMAL_FONT_COLOR, "gold like the recipe list's")
+            local hl, hr = CL.span(h)
+            assert(hl == 0 and hr == 560, "the bar over the row width: " .. hl .. ".." .. hr)
+        end
+    end
+    for _, r in pairs(NS.SettingsRows()) do
+        if r:IsShown() then
+            parts[#parts + 1] = r
+            assert(r._w == 560, "rows stay 560 wide")
+            if r.reset then local _, rr = CL.span(r.reset); assert(rr <= 560) end
+        end
+    end
+    assert(heads >= 3, "the sections show: " .. heads)
+    table.sort(parts, function(a, b) return a.points.TOPLEFT.y > b.points.TOPLEFT.y end)
+    CL.column("settings sections", unpack(parts))
+    -- the first section starts with its bar, its first row right under it
+    assert(parts[1].inherits and parts[1].points.TOPLEFT.y == 0 and parts[2].points.TOPLEFT.y == -25, "a bar of 25, then the rows")
+end
+-- about: the list and the commands end 12 px before the edge, their bars inside the page
+NS.ShowPage("about")
+do
+    local af = NS.AboutPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(af, 602, 478)
+    L.row("about head", af.title, af.askRaid, af.askGuild)
+    L.row("about list", af.list, af.list.bar)
+    L.inside("about list bar", af.list.bar)
+    local _, lr = L.span(af.list)
+    assert(lr == 590, "the about list is 590 wide: " .. lr)
+    local _, cr = L.span(af.list.rows[1].last)
+    assert(cr <= 590, "the last column ends in the row: " .. cr)
+    L.row("about commands", af.text, af.text.bar)
+    L.inside("about commands bar", af.text.bar)
+    L.column("about page", af.head, af.sub, af.title, af.summary, af.cols[1], af.list, af.cmdTitle, af.text)
+end
+NS.ShowPage("overview")
+
 -- the soft-reserves page fills its list without losing the row text
 local errs = {}
 local oldHandler = geterrorhandler
@@ -178,6 +276,8 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.open)
     L.row(view .. " map target", mf.target, mf.clear)
     L.row(view .. " map columns", mf.head.kind, mf.head.src, mf.head.where, mf.head.items, mf.head.go)
+    L.row(view .. " map list", mf.list, mf.list.bar)
+    L.inside(view .. " map list bar", mf.list.bar)
     L.column(view .. " map page", mf.zone, mf.counts, mf.target, mf.head.kind, mf.list, mf.hint, mf.data, mf.showHidden)
     L.fits(mf.hint); L.fits(mf.data); L.fits(mf.counts); L.fits(mf.target)
 end

@@ -107,8 +107,9 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
             f.cols[#f.cols + 1] = fs
         end
         f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
+        -- 12 px short of the right edge: room for the thin scroll bar (the old bar needed 24)
         f.list:SetPoint("TOPLEFT", 0, -122)
-        f.list:SetPoint("TOPRIGHT", -24, -122)
+        f.list:SetPoint("TOPRIGHT", -12, -122)
         f.empty = W.Text(f, "GameFontDisableSmall", 560)
         f.empty:SetPoint("TOPLEFT", 6, -126)
         f.cmdTitle = W.Text(f, "GameFontNormal", 300)
@@ -116,7 +117,8 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.cmdTitle:SetText("Befehle")
         f.text = W.ScrollText(f)
         f.text:SetPoint("TOPLEFT", 0, -308)
-        f.text:SetPoint("BOTTOMRIGHT", -24, 0)
+        -- the text ends with the list; its bar lies under the list's
+        f.text:SetPoint("BOTTOMRIGHT", -12, 0)
         page = f
         return f
     end,

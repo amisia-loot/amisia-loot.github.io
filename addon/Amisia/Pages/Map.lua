@@ -399,15 +399,16 @@ local function create(parent)
     h:SetHeight(14)
     h:SetPoint("TOPLEFT", 0, -76)
     h:SetPoint("TOPRIGHT", 0, -76)
+    -- the list is 590 wide (12 px for its scroll bar): the items give them, the button moves left
     f.head = { kind = col(h, 4, 66, "Art"), src = col(h, 74, 186, "Quelle"), where = col(h, 264, 100, "Ort"),
-        items = col(h, 368, 176, "Items"), go = col(h, 552, 46, "Weg") }
+        items = col(h, 368, 164, "Items"), go = col(h, 540, 46, "Weg") }
     f.list = W.List(f, ROWS, ROW_H, function(r)
         r.kind = col(r, 4, 66, nil, "GameFontHighlightSmall")
         r.src = col(r, 74, 186, nil, "GameFontHighlightSmall")
         r.where = col(r, 264, 100, nil, "GameFontHighlightSmall")
-        r.items = col(r, 368, 176, nil, "GameFontHighlightSmall")
+        r.items = col(r, 368, 164, nil, "GameFontHighlightSmall")
         r.go = W.Button(r, "Weg", 54, function(self) go(self:GetParent().item) end)
-        r.go:SetPoint("LEFT", 548, 0)
+        r.go:SetPoint("LEFT", 536, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -424,7 +425,7 @@ local function create(parent)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
     f.list:SetPoint("TOPLEFT", 0, -92)
-    f.list:SetPoint("TOPRIGHT", 0, -92)
+    f.list:SetPoint("TOPRIGHT", -12, -92)
     f.empty = W.Text(f, "GameFontDisableSmall", 590, true)
     f.empty:SetPoint("TOPLEFT", 6, -100)
     f.empty:Hide()

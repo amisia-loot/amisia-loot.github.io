@@ -5,9 +5,10 @@ local GOLD = W.GOLD
 local ROW_H, LABEL_W = 26, 300
 
 local rows = {}   -- path -> row
-local scroll, child
+local scroll, child, page
 
 function ns.SettingsRows() return rows end
+function ns.SettingsPageFrame() return page end
 
 local function valueText(it, v)
     if it.type == "time" then return ns.FormatTime(v) end
@@ -91,12 +92,17 @@ local headers = {}
 ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        -- a plain scroll frame with the client's thin bar 4 px to its right (inside the page)
+        scroll = CreateFrame("ScrollFrame", nil, f)
         scroll:SetPoint("TOPLEFT")
-        scroll:SetPoint("BOTTOMRIGHT", -24, 0)
+        scroll:SetPoint("BOTTOMRIGHT", -16, 0)
         child = CreateFrame("Frame", nil, scroll)
         child:SetSize(560, 10)
         scroll:SetScrollChild(child)
+        f.scroll, f.child = scroll, child
+        f.bar = W.Scroll(scroll, f)
+        f.headers = headers
+        page = f
         return f
     end,
     refresh = function()
@@ -111,15 +117,16 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
                 if #shown > 0 then
                     local h = headers[section.key]
                     if not h then
-                        h = W.Text(child, "GameFontNormal", 500)
-                        h:SetText(section.label)
+                        -- the client's list header as the section's bar, without collapsing
+                        h = W.SectionHeader(child, section.label, false)
                         headers[section.key] = h
                     end
                     h:ClearAllPoints()
                     h:SetPoint("TOPLEFT", 0, -y)
+                    h:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, -y)
                     h:Show()
                     placed[h] = true
-                    y = y + 24
+                    y = y + 25
                     for _, it in ipairs(shown) do
                         local r = rows[it.key] or makeRow(it)
                         r:ClearAllPoints()

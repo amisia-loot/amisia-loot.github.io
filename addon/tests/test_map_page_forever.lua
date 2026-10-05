@@ -82,7 +82,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " head", f.zone, f.targets, f.wishes, f.open)
     L.row(view .. " target", f.target, f.clear)
     L.row(view .. " columns", f.head.kind, f.head.src, f.head.where, f.head.items, f.head.go)
-    L.row(view .. " row", rows[1].kind, rows[1].src, rows[1].where, rows[1].items, rows[1].go)
+    L.row(view .. " row", rows[1].kind, rows[1].src, rows[1].where, rows[1].items, rows[1].go, f.list.bar)
+    L.row(view .. " list", f.list, f.list.bar)
+    L.inside(view .. " list bar", f.list.bar)
     L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.hint, f.data, f.showHidden)
     for _, fs in ipairs({ f.target, f.counts, f.hint, f.data, rows[1].where }) do L.fits(fs) end
     local gp = NS.GearPageFrame and NS.GearPageFrame()

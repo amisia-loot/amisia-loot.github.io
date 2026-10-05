@@ -321,77 +321,18 @@ assert(NS.CurrentPage() == "gear" and f.views.guild.on and U:IsShown(), "the com
 ---------------------------------------------------------------------------
 -- layout at the main window's size (content 602 x 478)
 ---------------------------------------------------------------------------
-local Hx = { LEFT = "L", TOPLEFT = "L", BOTTOMLEFT = "L", RIGHT = "R", TOPRIGHT = "R", BOTTOMRIGHT = "R" }
-local Vx = { TOP = "T", TOPLEFT = "T", TOPRIGHT = "T", BOTTOM = "B", BOTTOMLEFT = "B", BOTTOMRIGHT = "B" }
-local root, rootW, rootH = f, 602, 478
-local span, vspan
-local function edge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local l, r = span(rel)
-    local c = Hx[relPoint] or "C"
-    if c == "L" then return l elseif c == "R" then return r end
-    return (l + r) / 2
-end
-span = function(fr)
-    if fr == root then return 0, rootW end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local Lx, R, C
-    for p, a in pairs(fr.points or {}) do
-        local x = edge(a.rel, a.relPoint, fr) + a.x
-        local c = Hx[p] or "C"
-        if c == "L" then Lx = x elseif c == "R" then R = x else C = x end
-    end
-    local w = fr._w
-    if Lx and R then return Lx, R end
-    assert(w, "a width for " .. tostring(fr.name or fr.text))
-    if Lx then return Lx, Lx + w end
-    if R then return R - w, R end
-    assert(C, "an anchor for " .. tostring(fr.name or fr.text))
-    return C - w / 2, C + w / 2
-end
-local function vedge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local t, b = vspan(rel)
-    local c = Vx[relPoint] or "C"
-    if c == "T" then return t elseif c == "B" then return b end
-    return (t + b) / 2
-end
-vspan = function(fr)
-    if fr == root then return 0, -rootH end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local T, Bt, C
-    for p, a in pairs(fr.points or {}) do
-        local y = vedge(a.rel, a.relPoint, fr) + a.y
-        local c = Vx[p] or "C"
-        if c == "T" then T = y elseif c == "B" then Bt = y else C = y end
-    end
-    local h = fr._h or 14
-    if T and Bt then return T, Bt end
-    if T then return T, T - h end
-    if Bt then return Bt + h, Bt end
-    assert(C, "an anchor for " .. tostring(fr.name or fr.text))
-    return C + h / 2, C - h / 2
-end
-local function row(name, ...)
-    local prevR
-    for i, fr in ipairs({ ... }) do
-        local l, r = span(fr)
-        assert(l >= 0 and r <= rootW, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, l, r, rootW))
-        if prevR then assert(l >= prevR, ("%s #%d overlaps #%d: %d < %d"):format(name, i, i - 1, l, prevR)) end
-        prevR = r
-    end
-end
-local function column(name, ...)
-    local prevB
-    for i, fr in ipairs({ ... }) do
-        local t, b = vspan(fr)
-        assert(t <= 0 and b >= -rootH, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, t, b, rootH))
-        if prevB then assert(t <= prevB, ("%s #%d overlaps #%d: %d > %d"):format(name, i, i - 1, t, prevB)) end
-        prevB = b
-    end
-end
-local function fits(fs)
-    assert(fs:GetStringWidth() <= fs._w, ("'%s' fits %s px"):format(tostring(fs:GetText()), tostring(fs._w)))
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local span, row, column, fits = Lay.span, Lay.row, Lay.column, Lay.fits
+
+-- a list of the page: 590 wide, its thin bar in the 12 px before the edge, the last part of a row
+-- (row parts or a column head) ends inside the list
+local function listWithBar(name, list, last)
+    row(name .. " list", list, list.bar)
+    Lay.inside(name .. " list bar", list.bar)
+    local _, r = span(list)
+    assert(r == 590, name .. " list is 590 wide: " .. r)
+    local _, lr = span(last)
+    assert(lr <= 590, name .. " row ends before the bar: " .. lr)
 end
 
 local function layoutAll(who)
@@ -401,28 +342,41 @@ local function layoutAll(who)
     row(who .. " sources", f.src.X, f.src.Q, f.src.D, f.src.C, f.src.V, f.src.W, f.src.A, f.src.P)
     row(who .. " goal columns", G.head.slot, G.head.worn, G.head.best, G.head.src, G.head.gain)
     row(who .. " goal row", rows[1].slot, rows[1].worn, rows[1].best, rows[1].src, rows[1].gain)
+    listWithBar(who .. " goal", G.list, rows[1].gain)
+    listWithBar(who .. " goal head", G.list, G.head.gain)
+    -- 11 of 17 slots: the bar shows
+    assert(G.list.bar:IsShown() and math.abs(G.list.bar.visible - 11 / 17) < 1e-9, "the goals scroll")
     row(who .. " option", O[1].rank, O[1].name, O[1].src, O[1].gain, O[1].wish, O[1].ex)
+    for i = 1, 3 do Lay.inside(who .. " option " .. i, O[i]) end
+    assert(O[1].hover.atlas == "Professions_Recipe_Hover" and O[1].hover.alpha == 0.5, "the option lights up like a recipe")
     column(who .. " goals", f.spec, f.counts, f.src.X, G.head.slot, G.list, G.title, O[1], O[2], O[3], G.explain)
     f.views.here:Click()
     row(who .. " here columns", Hh.head.boss, Hh.head.name, Hh.head.slot, Hh.head.gain)
     row(who .. " here row", hr[1].boss, hr[1].name, hr[1].slot, hr[1].gain, hr[1].wishBtn)
+    listWithBar(who .. " here", Hh.list, hr[1].wishBtn)
     column(who .. " here", f.src.X, Hh.pick, Hh.head.boss, Hh.list, Hh.hint)
     f.views.wish:Click()
     row(who .. " wish columns", V.head.name, V.head.slot, V.head.src, V.head.prio, V.head.state)
     row(who .. " wish row", wr[1].name, wr[1].slot, wr[1].src, wr[1].prio, wr[1].state, wr[1].del)
+    listWithBar(who .. " wish", V.list, wr[1].del)
     row(who .. " wish buttons", V.web, V.clean)
     column(who .. " wish", f.src.X, V.head.name, V.list, V.web, V.hint)
     V.web:Click()
     column(who .. " wish box", V.head.name, V.area, V.areaHint, V.web)
+    Lay.inside(who .. " wish box", V.area)
+    Lay.inside(who .. " wish box bar", V.area.bar)
     V.web:Click()
     if f.views.guild:IsShown() then
         f.views.guild:Click()
         row(who .. " guild top", U.info, U.group)
         row(who .. " guild columns", U.head.name, U.head.who)
         row(who .. " guild row", gr[1].name, gr[1].who)
+        listWithBar(who .. " guild", U.list, gr[1].who)
+        listWithBar(who .. " guild head", U.list, U.head.who)
         if U.area:IsShown() then
             row(who .. " guild buttons", U.importBtn, U.clearBtn, U.hint)
             column(who .. " guild", f.src.X, U.info, U.head.name, U.list, U.area, U.importBtn)
+            Lay.inside(who .. " guild box bar", U.area.bar)
         else
             column(who .. " guild", f.src.X, U.info, U.head.name, U.list, U.hint)
         end

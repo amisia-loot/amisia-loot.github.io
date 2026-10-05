@@ -4,7 +4,10 @@ local ADDON, ns = ...
 local W = ns.W
 
 local box   -- the link box of the editor, for the shift-click hook below
+local page
 local BANK_ROWS = 18
+
+function ns.BankPageFrame() return page end
 
 ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, group = "guild", officer = true,
     create = function(parent)
@@ -28,7 +31,8 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         end)
         f.add.button = W.Button(f, "Hinzufügen", 110, add)
         f.add.button:SetPoint("LEFT", f.add.box, "RIGHT", 6, 0)
-        f.add.hint = W.Text(f, "GameFontDisableSmall", 220)
+        -- ends at 594, inside the page (220 reached 2 px past it)
+        f.add.hint = W.Text(f, "GameFontDisableSmall", 210)
         f.add.hint:SetPoint("LEFT", f.add.button, "RIGHT", 8, 0)
         f.add.hint:SetText("Link mit Shift-Klick einfügen")
         -- 18 rows fit the page under the editor (70 + 18 * 22 = 466 of 478 px); the wheel scrolls the rest
@@ -51,8 +55,11 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
             r.name:SetText(ns.ItemName(e.id) .. (e.manual and " |cff8f86a3(von Hand)|r" or ""))
             r.count:SetText(e.count and tostring(e.count) or "-")
         end)
+        -- 12 px short of the right edge: room for the list's scroll bar; the count and the button
+        -- hang on the row's right and move with it
         f.list:SetPoint("TOPLEFT", 0, -70)
-        f.list:SetPoint("TOPRIGHT", 0, -70)
+        f.list:SetPoint("TOPRIGHT", -12, -70)
+        page = f
         return f
     end,
     refresh = function(f)

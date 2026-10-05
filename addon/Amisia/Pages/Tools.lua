@@ -1,6 +1,9 @@
 -- Tools (expert mode): the item scan and the collector that build the data files.
 local ADDON, ns = ...
 local W = ns.W
+local page
+
+function ns.ToolsPageFrame() return page end
 
 ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
@@ -19,6 +22,9 @@ ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\
         hint:SetPoint("TOPLEFT", 0, -76)
         hint:SetText("Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; "
             .. "tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen.")
+        -- the parts the layout tests read
+        f.buttons, f.hint = { gear, resume, retry, stop }, hint
+        page = f
         return f
     end,
     refresh = function(f)

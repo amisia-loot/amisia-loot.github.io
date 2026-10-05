@@ -97,46 +97,19 @@ assert(AmisiaGearFrame:IsShown(), "the table from the quick menu")
 AmisiaGearFrame:Hide()
 
 -- layout at the main window's size, officer and raider view
-local Hx = { LEFT = "L", TOPLEFT = "L", BOTTOMLEFT = "L", RIGHT = "R", TOPRIGHT = "R", BOTTOMRIGHT = "R" }
-local root, rootW = f, 602
-local span
-local function edge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local l, r = span(rel)
-    local cx = Hx[relPoint] or "C"
-    if cx == "L" then return l elseif cx == "R" then return r end
-    return (l + r) / 2
-end
-span = function(fr)
-    if fr == root then return 0, rootW end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local Lx, R, C
-    for p, a in pairs(fr.points or {}) do
-        local x = edge(a.rel, a.relPoint, fr) + a.x
-        local cx = Hx[p] or "C"
-        if cx == "L" then Lx = x elseif cx == "R" then R = x else C = x end
-    end
-    local w = fr._w
-    if Lx and R then return Lx, R end
-    assert(w, "a width for " .. tostring(fr.name or fr.text))
-    if Lx then return Lx, Lx + w end
-    if R then return R - w, R end
-    return C - w / 2, C + w / 2
-end
-local function row(name, ...)
-    local prevR
-    for i, fr in ipairs({ ... }) do
-        local l, r = span(fr)
-        assert(l >= 0 and r <= rootW, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, l, r, rootW))
-        if prevR then assert(l >= prevR, ("%s #%d overlaps #%d: %d < %d"):format(name, i, i - 1, l, prevR)) end
-        prevR = r
-    end
-end
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local row = Lay.row
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowGear("goals")
     row(view .. " head", f.spec, f.views.goals, f.views.here, f.views.wish, f.views.guild, f.open)
     row(view .. " sources", f.src.Q, f.src.D, f.src.C, f.src.V, f.src.W, f.src.A, f.src.P)
+    -- the goals end 12 px before the edge, their bar inside the page
+    local gl = f.goals.list
+    row(view .. " goal list", gl, gl.bar)
+    Lay.inside(view .. " goal list bar", gl.bar)
+    local _, gr = Lay.span(gl.rows[1].gain)
+    assert(gr <= 590, "the gain ends in the row: " .. gr)
     assert(f.views.guild:IsShown() == (view == "officer"), "the guild view for officers only, without a list")
 end
 NS.Reset("ui.view")

@@ -7,7 +7,6 @@
 local ADDON, ns = ...
 local W = ns.W
 local Gear = ns.Gear
-local GOLD = W.GOLD
 local GREY, GREEN = "|cff8f86a3", "|cff4fd06a"
 local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
@@ -447,17 +446,17 @@ local function buildGoals(f)
     G:SetPoint("TOPLEFT", 0, -72)
     G:SetPoint("BOTTOMRIGHT", 0, 0)
     local h = head(G, 0)
+    -- the list is 590 wide (12 px for its scroll bar): the source gives them, the gain moves left
     G.head = { slot = col(h, 4, 66, "Slot"), worn = col(h, 74, 156, "Angelegt"), best = col(h, 234, 186, "Bestes"),
-        src = col(h, 424, 126, "Quelle"), gain = col(h, 554, 44, "Zuwachs") }
+        src = col(h, 424, 114, "Quelle"), gain = col(h, 542, 44, "Zuwachs") }
     G.head.gain:SetJustifyH("RIGHT")
     G.list = W.List(G, GOAL_ROWS, ROW_H, function(r)
-        r.sel = W.Flat(r, GOLD[1], GOLD[2], GOLD[3], 0.22, "BORDER")
-        r.sel:Hide()
+        r.sel = W.SelectBar(r)
         r.slot = col(r, 4, 66)
         r.worn = col(r, 74, 156, nil, "GameFontHighlightSmall")
         r.best = col(r, 234, 186, nil, "GameFontHighlightSmall")
-        r.src = col(r, 424, 126, nil, "GameFontHighlightSmall")
-        r.gain = col(r, 554, 44, nil, "GameFontHighlightSmall")
+        r.src = col(r, 424, 114, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 542, 44, nil, "GameFontHighlightSmall")
         r.gain:SetJustifyH("RIGHT")
         r:SetScript("OnClick", function(self)
             local e = self.item
@@ -471,8 +470,9 @@ local function buildGoals(f)
         end)
         r:SetScript("OnLeave", hideTip)
     end, fillGoalRow)
+    -- 11 of 17 slots: 12 px short of the right edge, room for the list's scroll bar
     G.list:SetPoint("TOPLEFT", 0, -16)
-    G.list:SetPoint("TOPRIGHT", 0, -16)
+    G.list:SetPoint("TOPRIGHT", -12, -16)
 
     G.title = W.Text(G, "GameFontNormal", 598)
     G.title:SetPoint("TOPLEFT", 4, -284)
@@ -483,9 +483,15 @@ local function buildGoals(f)
         b:SetPoint("TOPLEFT", 0, -300 - (i - 1) * 26)
         b:SetPoint("TOPRIGHT", 0, -300 - (i - 1) * 26)
         W.Flat(b, 1, 1, 1, 0.04)
-        local hl = b:CreateTexture(nil, "HIGHLIGHT")
-        hl:SetAllPoints()
-        hl:SetColorTexture(1, 1, 1, 0.08)
+        -- lights up as the recipe list's rows do
+        b.hover = b:CreateTexture(nil, "HIGHLIGHT")
+        b.hover:SetAllPoints()
+        if W.HasAtlas("Professions_Recipe_Hover") then
+            b.hover:SetAtlas("Professions_Recipe_Hover")
+            b.hover:SetAlpha(0.5)
+        else
+            b.hover:SetColorTexture(1, 1, 1, 0.08)
+        end
         b.rank = col(b, 4, 12, nil, "GameFontNormalSmall")
         b.name = col(b, 20, 212, nil, "GameFontHighlightSmall")
         -- the map button sits in the 18 px before the source
@@ -652,21 +658,22 @@ local function buildHere(f)
     end)
     Hh.pick:SetPoint("TOPLEFT", 0, -2)
     local h = head(Hh, -26)
+    -- the list is 590 wide (12 px for its scroll bar): the gain gives 6, the button moves left
     Hh.head = { boss = col(h, 4, 146, "Boss"), name = col(h, 154, 216, "Item"), slot = col(h, 374, 76, "Slot"),
-        gain = col(h, 454, 56, "Zuwachs") }
+        gain = col(h, 454, 50, "Zuwachs") }
     Hh.head.gain:SetJustifyH("RIGHT")
     Hh.list = W.List(Hh, HERE_ROWS, ROW_H, function(r)
         r.map = mapButton(r, 4)
         r.boss = col(r, 22, 128, nil, "GameFontHighlightSmall")
         r.name = col(r, 154, 216, nil, "GameFontHighlightSmall")
         r.slot = col(r, 374, 76, nil, "GameFontHighlightSmall")
-        r.gain = col(r, 454, 56, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 454, 50, nil, "GameFontHighlightSmall")
         r.gain:SetJustifyH("RIGHT")
         r.wishBtn = W.Button(r, "Wunsch", 82, function(self)
             local e = self:GetParent().item
             if e then toggleWish(e.id, e.wished) end
         end)
-        r.wishBtn:SetPoint("LEFT", 520, 0)
+        r.wishBtn:SetPoint("LEFT", 508, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -681,7 +688,7 @@ local function buildHere(f)
         r:SetScript("OnLeave", hideTip)
     end, fillHereRow)
     Hh.list:SetPoint("TOPLEFT", 0, -42)
-    Hh.list:SetPoint("TOPRIGHT", 0, -42)
+    Hh.list:SetPoint("TOPRIGHT", -12, -42)
     Hh.hint = W.Text(Hh, "GameFontDisableSmall", 598)
     Hh.hint:SetPoint("TOPLEFT", 4, -384)
     return Hh
@@ -753,24 +760,25 @@ local function buildWish(f)
     V:SetPoint("TOPLEFT", 0, -72)
     V:SetPoint("BOTTOMRIGHT", 0, 0)
     local h = head(V, 0)
-    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 166, "Quelle"),
-        prio = col(h, 474, 58, "Priorität"), state = col(h, 536, 44, "") }
+    -- the list is 590 wide (12 px for its scroll bar): the source gives them, what follows moves left
+    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 154, "Quelle"),
+        prio = col(h, 462, 58, "Priorität"), state = col(h, 524, 44, "") }
     V.list = W.List(V, WISH_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 216, nil, "GameFontHighlightSmall")
         r.slot = col(r, 224, 76, nil, "GameFontHighlightSmall")
         r.map = mapButton(r, 304)
-        r.src = col(r, 322, 148, nil, "GameFontHighlightSmall")
+        r.src = col(r, 322, 136, nil, "GameFontHighlightSmall")
         r.prio = W.Chip(r, "", 58, function(self)
             local e = self:GetParent().item
             if e then ns.WishSetPrio(e.id, PRIO_NEXT[e.e.prio] or 2) end
         end)
-        r.prio:SetPoint("LEFT", 474, 0)
-        r.state = col(r, 536, 44, nil, "GameFontHighlightSmall")
+        r.prio:SetPoint("LEFT", 462, 0)
+        r.state = col(r, 524, 44, nil, "GameFontHighlightSmall")
         r.del = W.Chip(r, "x", 18, function(self)
             local e = self:GetParent().item
             if e then ns.WishRemove(e.id) end
         end)
-        r.del:SetPoint("LEFT", 584, 0)
+        r.del:SetPoint("LEFT", 572, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -785,7 +793,7 @@ local function buildWish(f)
         r:SetScript("OnLeave", hideTip)
     end, fillWishRow)
     V.list:SetPoint("TOPLEFT", 0, -16)
-    V.list:SetPoint("TOPRIGHT", 0, -16)
+    V.list:SetPoint("TOPRIGHT", -12, -16)
 
     V.area = W.EditArea(V)
     V.area:SetPoint("TOPLEFT", 0, -16)
@@ -937,10 +945,11 @@ local function buildGuild(f)
     end)
     U.group:SetPoint("TOPRIGHT", 0, -2)
     local h = head(U, -26)
-    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 334, "Wünschende") }
+    -- the list is 590 wide (12 px for its scroll bar), the wishers give them
+    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 322, "Wünschende") }
     U.list = W.List(U, GUILD_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 256, nil, "GameFontHighlightSmall")
-        r.who = col(r, 264, 334, nil, "GameFontHighlightSmall")
+        r.who = col(r, 264, 322, nil, "GameFontHighlightSmall")
         r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
@@ -949,7 +958,7 @@ local function buildGuild(f)
         r.who:SetText(e.who)
     end)
     U.list:SetPoint("TOPLEFT", 0, -40)
-    U.list:SetPoint("TOPRIGHT", 0, -40)
+    U.list:SetPoint("TOPRIGHT", -12, -40)
     U.area = W.EditArea(U)
     U.area:SetPoint("TOPLEFT", 0, -308)
     U.area:SetPoint("TOPRIGHT", 0, -308)
