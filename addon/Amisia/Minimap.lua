@@ -25,6 +25,7 @@ function ns.MinimapMenuEntries()
     if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
     if officer then e[#e + 1] = { "Vergaben", function() ns.ShowPage("awards") end } end
     e[#e + 1] = { "Soft-Reserves", function() ns.ShowPage("softres") end }
+    e[#e + 1] = { "Raid-Log", function() ns.ShowPage("raidlog") end }
     if officer then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
     e[#e + 1] = { "Einstellungen", function() ns.ShowPage("settings") end }
     e[#e + 1] = { ns.IsEnabled() and "Aufnahme pausieren" or "Aufnahme fortsetzen", function() ns.SetEnabled(not ns.IsEnabled()) end }

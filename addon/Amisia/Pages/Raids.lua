@@ -44,9 +44,22 @@ local function detailText(s)
         end
         awards[#awards + 1] = text .. (a.note and (" (" .. a.note .. ")") or "")
     end
+    -- the bosses in order, wipes before a kill counted with it, bosses only wiped on at their last wipe
+    local bosses = {}
+    for _, r in ipairs(ns.BossRuns and ns.BossRuns(s, true) or {}) do
+        if r.kill then
+            bosses[#bosses + 1] = ("%s %s%s"):format(r.name, date("%H:%M", r.t), r.wipes > 0 and (" (" .. ns.WipeText(r.wipes) .. ")") or "")
+        else
+            bosses[#bosses + 1] = ("%s (%s, kein Kill)"):format(r.name, ns.WipeText(r.wipes))
+        end
+    end
+    local bench = {}
+    for _, x in ipairs(ns.BenchList and ns.BenchList(s) or {}) do bench[#bench + 1] = x.name end
     return table.concat({
         ("|cffe2b857%s, %s|r"):format(s.zone or "?", s.date or "?"),
         ("|cffe2b857Raider (%d):|r %s"):format(#names, #people > 0 and table.concat(people, ", ") or "keine"),
+        "|cffe2b857Bosse:|r " .. (#bosses > 0 and table.concat(bosses, ", ") or "keine"),
+        "|cffe2b857Ersatzbank:|r " .. (#bench > 0 and table.concat(bench, ", ") or "keine"),
         "|cffe2b857Loot:|r " .. (#loot > 0 and table.concat(loot, ", ") or "keiner"),
         "|cffe2b857In Lootfenstern:|r " .. (#drops > 0 and table.concat(drops, ", ") or "nichts"),
         "|cffe2b857Vergaben:|r " .. (#awards > 0 and table.concat(awards, ", ") or "keine"),
@@ -173,6 +186,8 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     local m = ns.MatCounts(s)
     local late = ns.LateCount(s)
     local parts = { ("%d Raider"):format(ns.MemberCount(s)) }
+    local _, _, bosses = ns.KillCount(s)
+    if bosses > 0 then parts[#parts + 1] = bosses == 1 and "1 Boss" or (bosses .. " Bosse") end
     if late > 0 then parts[#parts + 1] = late .. " zu spät" end
     local mats = (m[32897] or 0) + (m[32428] or 0) + ns.GemCount(m)
     if mats > 0 then parts[#parts + 1] = ("Mal %d · Herz %d · Edelsteine %d"):format(m[32897] or 0, m[32428] or 0, ns.GemCount(m)) end

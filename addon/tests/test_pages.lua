@@ -6,7 +6,7 @@ _G.UnitLevel = function() return 24 end
 _G.UnitFactionGroup = function() return "Alliance" end
 _G.GetInventoryItemLink = function() return nil end
 
-for _, key in ipairs({ "overview", "raids", "export", "rolls", "softres", "bank", "settings", "about" }) do
+for _, key in ipairs({ "overview", "raids", "raidlog", "export", "rolls", "softres", "bank", "settings", "about" }) do
     NS.ShowPage(key)
     assert(NS.CurrentPage() == key, "opens " .. key)
 end
@@ -21,6 +21,8 @@ NS.Reset("ui.expert")
 NS.Set("ui.view", "raider")
 NS.ShowPage("raids"); assert(NS.CurrentPage() == "overview")
 NS.ShowPage("export"); assert(NS.CurrentPage() == "overview")
+NS.ShowPage("raidlog"); assert(NS.CurrentPage() == "raidlog", "the raid log is for everyone")
+assert(NS.RaidLogPageFrame() and NS.RaidLogPageFrame().log, "the raid log page builds")
 NS.Reset("ui.view")
 
 -- the overview shows cards
