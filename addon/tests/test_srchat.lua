@@ -261,7 +261,7 @@ assert(NS.PostSoftResSummary() == nil and #STUB.chat == 0, "only in a raid")
 later()
 roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
 local help = table.concat(NS.SlashHelpLines(true), "\n")
-assert(has(help, "/amisia sr [pruefen|erinnern|posten]"), help)
+assert(has(help, "/amisia sr [pruefen|erinnern|posten|vergessen [Name]]"), help)
 msgs = #STUB.messages
 NS.Dispatch("sr pruefen")
 local out = table.concat(STUB.messages, "\n", msgs + 1)

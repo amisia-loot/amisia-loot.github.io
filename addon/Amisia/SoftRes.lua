@@ -287,13 +287,15 @@ function ns.SoftResCheck(sr, roster)
     return out
 end
 
--- The reservations of a name (over ns.SameName): { { item, n } }, by item name.
-function ns.ReservesOf(name)
+-- The reservations of a name (over ns.SameNameIn with roster, default the group): { { item, n } },
+-- by item name. A bare first name on the list counts only while one raider carries it.
+function ns.ReservesOf(name, roster)
     local sr = AmisiaDB and AmisiaDB.softres
+    roster = roster or ns.GroupRoster()
     local out, at = {}, {}
     for item, names in pairs(sr and sr.byItem or {}) do
         for _, n in ipairs(names) do
-            if ns.SameName(n, name) then
+            if ns.SameNameIn(n, name, roster) then
                 if at[item] then
                     at[item].n = at[item].n + timesOf(sr, item, n)
                 else
@@ -315,25 +317,39 @@ function ns.RenameReserve(from, to, remember)
     local sr = AmisiaDB and AmisiaDB.softres
     to = ns.FullName(to)
     if not sr or type(from) ~= "string" or not to or from == to then return 0 end
-    local n = 0
+    local lowFrom, lowTo = from:lower(), to:lower()
+    local n, listName = 0, nil
     for item, names in pairs(sr.byItem or {}) do
         local at, has
         for i, name in ipairs(names) do
-            if name == from then at = i elseif name == to then has = true end
+            local low = name:lower()
+            if not at and low == lowFrom then at = i elseif low == lowTo then has = name end
         end
         if at then
             n = n + 1
-            local count = timesOf(sr, item, from)
+            -- the spellings as the list holds them; "vulo" finds "Vulo"
+            local old = names[at]
+            listName = listName or old
+            local count = timesOf(sr, item, old)
             table.remove(names, at)
             if has then
-                count = count + timesOf(sr, item, to)
+                count = count + timesOf(sr, item, has)
+                if has ~= to then
+                    for i, name in ipairs(names) do
+                        if name == has then names[i] = to end
+                    end
+                    table.sort(names)
+                end
             else
                 names[#names + 1] = to
                 table.sort(names)
             end
             sr.times = sr.times or {}
             local t = sr.times[item]
-            if t then t[from] = nil end
+            if t then
+                t[old] = nil
+                if has then t[has] = nil end
+            end
             if count > 1 then
                 sr.times[item] = t or {}
                 sr.times[item][to] = count
@@ -344,8 +360,13 @@ function ns.RenameReserve(from, to, remember)
     end
     if n == 0 then return 0 end
     sr.renamed = sr.renamed or {}
-    sr.renamed[to] = sr.renamed[to] or sr.renamed[from] or from
-    sr.renamed[from] = nil
+    for k, v in pairs(sr.renamed) do
+        if k:lower() == lowFrom and k ~= to then
+            sr.renamed[to] = sr.renamed[to] or v
+            sr.renamed[k] = nil
+        end
+    end
+    if listName ~= to then sr.renamed[to] = sr.renamed[to] or listName end
     if remember and AmisiaDB then
         AmisiaDB.srAliases = AmisiaDB.srAliases or {}
         AmisiaDB.srAliases[from:lower()] = to
@@ -421,6 +442,8 @@ function ns.SoftResTooltipText(id)
     if #names == 0 then return nil end
     local group = ns.Get("softres.tooltipGroup") and groupNames() or nil
     local me = ns.UnitFullName("player")
+    -- "du" for a bare first name only while no one else in the group carries it
+    local roster = group or groupNames() or {}
     local shown, outside = {}, 0
     for _, name in ipairs(names) do
         local inGroup = not group
@@ -430,7 +453,7 @@ function ns.SoftResTooltipText(id)
             end
         end
         if inGroup then
-            local label = ns.SameName(name, me) and "du" or name
+            local label = ns.SameNameIn(name, me, roster) and "du" or name
             local n = timesOf(sr, id, name)
             shown[#shown + 1] = n > 1 and ("%s x%d"):format(label, n) or label
         else
@@ -578,10 +601,11 @@ local function rawRosterName(name)
 end
 
 -- Raid members without a reservation who were not reminded for this list yet; never oneself.
-function ns.SoftResReminders()
+-- check: a ns.SoftResCheck of the list against the raid, when the caller has one already.
+function ns.SoftResReminders(check)
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr or not IsInRaid() then return {} end
-    local c = ns.SoftResCheck(sr)
+    local c = check or ns.SoftResCheck(sr)
     local me = ns.UnitFullName("player")
     local out = {}
     for _, name in ipairs(c and c.missing or {}) do
@@ -590,10 +614,15 @@ function ns.SoftResReminders()
     return out
 end
 
--- Whispers everyone of ns.SoftResReminders() once (ttl 120) and marks them. Returns the number.
+local LOCKED = "Chat ist gerade gesperrt (Bosskampf). Nach dem Kampf erneut."
+
+-- Whispers everyone of ns.SoftResReminders() once (ttl 120) and marks them. Returns the number,
+-- and the reason when nothing could be sent. Never in the chat lockdown: a whisper queued there
+-- may run out unsent, and the raider would count as reminded.
 function ns.SendSoftResReminders()
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr then return 0 end
+    if ns.ChatLocked and ns.ChatLocked() then return 0, LOCKED end
     local extra = ns.Get("softres.remindText")
     local text = REMIND_TEXT .. ((type(extra) == "string" and extra ~= "") and (" " .. extra) or "")
     local n = 0
@@ -613,6 +642,7 @@ function ns.ConfirmSoftResReminders()
     if not ns.IsOfficerView() then ns.msg("Erinnern nur in der Offiziersansicht.") return end
     if not (AmisiaDB and AmisiaDB.softres) then ns.msg("Keine Soft-Reserves geladen.") return end
     if not IsInRaid() then ns.msg("Erinnern geht nur im Raid.") return end
+    if ns.ChatLocked and ns.ChatLocked() then ns.msg(LOCKED) return end
     local n = #ns.SoftResReminders()
     if n == 0 then ns.msg("Alle ohne Reserve wurden schon erinnert.") return end
     local d = StaticPopup_Show("AMISIA_SR_REMIND", n)
@@ -624,8 +654,8 @@ StaticPopupDialogs["AMISIA_SR_REMIND"] = {
     button1 = "Flüstern",
     button2 = "Abbrechen",
     OnAccept = function()
-        local n = ns.SendSoftResReminders()
-        ns.msg(("%d Raider erinnert."):format(n))
+        local n, why = ns.SendSoftResReminders()
+        ns.msg(why or ("%d Raider erinnert."):format(n))
     end,
     timeout = 0,
     whileDead = true,
@@ -970,16 +1000,54 @@ ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items
     { key = "softres.remindText", type = "text", label = "Zusatz in der Erinnerung", default = "", officer = true,
       tip = "Z. B. Link zur Liste.", validate = cleanRemindText },
 }}
+-- Forgets the remembered name fixes (AmisiaDB.srAliases): all of them, or the ones of name (as
+-- written in a list or as fixed). The loaded list stays as it is. Returns the number forgotten.
+function ns.ForgetSoftResAliases(name)
+    local aliases = AmisiaDB and AmisiaDB.srAliases
+    if type(aliases) ~= "table" then return 0 end
+    local low = type(name) == "string" and name:match("^%s*(.-)%s*$"):lower() or ""
+    local n = 0
+    for from, to in pairs(aliases) do
+        if low == "" or from:lower() == low or (type(to) == "string" and to:lower() == low) then
+            aliases[from] = nil
+            n = n + 1
+        end
+    end
+    if n > 0 and ns.Refresh then ns.Refresh() end
+    return n
+end
+
+-- The remembered fix for a list name, or nil.
+function ns.SoftResAlias(listName)
+    local aliases = AmisiaDB and AmisiaDB.srAliases
+    local to = type(aliases) == "table" and type(listName) == "string" and aliases[listName:lower()]
+    return type(to) == "string" and to or nil
+end
+
+local function forgetCommand(name)
+    name = (name or ""):match("^%s*(.-)%s*$")
+    local n = ns.ForgetSoftResAliases(name)
+    if name == "" then
+        ns.msg(n > 0 and ("%d gemerkte Namenskorrekturen vergessen. Die geladene Liste bleibt, wie sie ist."):format(n)
+            or "Keine gemerkten Namenskorrekturen.")
+    else
+        ns.msg(n > 0 and ("Gemerkte Namenskorrektur für %s vergessen. Die geladene Liste bleibt, wie sie ist."):format(name)
+            or ("Keine gemerkte Namenskorrektur für %s."):format(name))
+    end
+end
+
 local SUBWORDS = { pruefen = "check", ["prüfen"] = "check", check = "check", erinnern = "remind", remind = "remind",
-                   posten = "post", post = "post" }
-ns.RegisterSlash("sr", { args = "[pruefen|erinnern|posten]", desc = "Soft-Reserves anzeigen", run = function(rest)
-    local word = (rest or ""):match("^(%S+)")
+                   posten = "post", post = "post", vergessen = "forget", forget = "forget" }
+ns.RegisterSlash("sr", { args = "[pruefen|erinnern|posten|vergessen [Name]]", desc = "Soft-Reserves anzeigen", run = function(rest)
+    local word, tail = (rest or ""):match("^(%S+)%s*(.-)$")
     local sub = word and SUBWORDS[word:lower()]
     if word and not sub then
-        ns.msg("Aufruf: /amisia sr [pruefen|erinnern|posten]")
+        ns.msg("Aufruf: /amisia sr [pruefen|erinnern|posten|vergessen [Name]]")
         return
     end
-    if sub == "check" then
+    if sub == "forget" then
+        forgetCommand(tail)
+    elseif sub == "check" then
         for _, line in ipairs(ns.SoftResCheckLines()) do ns.msg(line) end
     elseif sub == "remind" then
         ns.ConfirmSoftResReminders()

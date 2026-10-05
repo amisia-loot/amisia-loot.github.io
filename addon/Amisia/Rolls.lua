@@ -12,6 +12,7 @@ local matcher
 -- Round: { item, link, name, started, seconds, leftAt, only = {[name]=true}|nil,
 --          rolls = { [name] = { name, value, low, high, kind, t, class, manual } }, order = { names },
 --          ignored = { { name, value, low, high, why } }, reserved = { names }, reservedSet = {},
+--          roster = { names }   -- the group when the round starts (who a bare first name means)
 --          plus = { [name] = n }   -- plus-one of every roller, frozen when the round starts
 --          done, ended, winner, tie = { names }|nil,
 --          lockdown = true   -- ran wholly or partly in the chat lockdown of a boss fight
@@ -37,14 +38,31 @@ local function kindOf(low, high)
     return nil
 end
 
--- Whether name reserved the item of round r: exactly, else over SameName ("Vulo" on the list,
--- the roll from "Vulo Sturmwind").
+-- The names a bare first name is checked against in round r: its roster, else the group now.
+local function rosterOf(r)
+    return r.roster or ns.GroupRoster()
+end
+
+-- Whether name reserved the item of round r: exactly, else over ns.SameNameIn ("Vulo" on the
+-- list, the roll from "Vulo Sturmwind", only while one raider of the round is called Vulo).
 local function reservedIn(r, name)
     if r.reservedSet[name] then return true end
+    local roster = rosterOf(r)
     for _, n in ipairs(r.reserved or {}) do
-        if ns.SameName(n, name) then return true end
+        if ns.SameNameIn(n, name, roster) then return true end
     end
     return false
+end
+
+-- The key of set (a round's rolls or tie-break names) that means name: the same spelling, else
+-- one that ns.SameNameIn takes for it ("Vulo" from the chat, "Vulo Sturmwind" from the roster).
+local function keyIn(r, set, name)
+    if set[name] then return name end
+    local roster = rosterOf(r)
+    for k in pairs(set) do
+        if ns.SameNameIn(k, name, roster) then return k end
+    end
+    return nil
 end
 
 local RANK = { MS = 2, OS = 1 }
@@ -173,20 +191,30 @@ function ns.StartRoll(link, seconds, onlyNames)
     local id = ns.ItemID(link)
     if not id then return nil, "Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]" end
     if current and not current.done then finish() end
+    -- a round changed by hand and not announced cannot be announced any more once a newer one runs
+    for _, old in ipairs(history) do
+        if old.dirty then
+            old.dirty = nil
+            ns.msg(("Das geänderte Ergebnis für %s wurde nicht angesagt; die neue Runde ersetzt es."):format(old.link or old.name or "?"))
+        end
+    end
     seconds = tonumber(seconds) or ns.Get("rolls.seconds") or 20
     seconds = math.max(5, math.min(120, math.floor(seconds)))
     local reserved = ns.ReservedBy and ns.ReservedBy(id) or {}
     current = {
         item = id, link = link, name = link:match("|h%[(.-)%]|h") or ("Item " .. id),
         started = time(), seconds = seconds, leftAt = seconds,
-        rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {}, plus = {},
+        rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {}, plus = {}, roster = {},
         lockdown = ns.ChatLocked and ns.ChatLocked() or nil, hidden = 0, seq = 0,
     }
     for _, n in ipairs(reserved) do current.reservedSet[n] = true end
     -- the plus-one of everyone in the group as of now; whoever is missing here is counted on the roll
     for i = 1, GetNumGroupMembers() or 0 do
         local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then plusOf(current, n) end
+        if n then
+            plusOf(current, n)
+            current.roster[#current.roster + 1] = n
+        end
     end
     if onlyNames then
         current.only = {}
@@ -250,9 +278,9 @@ local function onSystem(text)
     local why
     if not ok then
         why = "nicht in der Gruppe"
-    elseif current.only and not current.only[name] then
-        why = "nicht am Stechen beteiligt"
-    elseif current.rolls[name] then
+    elseif current.only and not keyIn(current, current.only, name) then
+        why = "nicht im Stechen"
+    elseif keyIn(current, current.rolls, name) then
         why = "schon gewürfelt"
     elseif not kindOf(low, high) then
         why = ("Bereich %d-%d"):format(low or 0, high or 0)
@@ -293,18 +321,46 @@ local function handRound()
     return nil
 end
 
--- A name of the group (its spelling, with class) or of the running recording, or nil.
+-- A name of the group (its spelling, with class) or of the running recording, or nil. A first
+-- name that several of them carry is refused: nil and "Name nicht eindeutig: A, B".
 local function knownName(name)
+    local cands, seen = {}, {}
+    local function add(n, class)
+        if not n or seen[n:lower()] then return end
+        seen[n:lower()] = true
+        if n:lower() == name:lower() then
+            cands.exact = cands.exact or { n, class }
+        elseif ns.SameName(n, name) then
+            cands[#cands + 1] = { n, class }
+        end
+    end
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        n = ns.FullName(ns.Plain(n))
-        if n and ns.SameName(n, name) then return n, class end
+        add(ns.FullName(ns.Plain(n)), ns.Plain(class))
     end
     local s = ns.Active and ns.Active()
     for n, m in pairs(s and s.members or {}) do
-        if ns.SameName(n, name) then return n, m.class ~= "" and m.class or nil end
+        add(ns.FullName(ns.Plain(n)), (m.class ~= "" and m.class) or nil)
+    end
+    if cands.exact then return cands.exact[1], cands.exact[2] end
+    if #cands == 1 then return cands[1][1], cands[1][2] end
+    if #cands > 1 then
+        local list = {}
+        for i, c in ipairs(cands) do list[i] = c[1] end
+        table.sort(list)
+        return nil, nil, ("Name nicht eindeutig: %s"):format(table.concat(list, ", "))
     end
     return nil
+end
+
+-- Whether the item of finished round r was handed out in the running recording after the round.
+local function awardedAfter(r)
+    local s = ns.Active and ns.Active()
+    if not (r.done and s and type(s.awards) == "table") then return false end
+    for _, a in ipairs(s.awards) do
+        if a.item == r.item and (a.t or 0) >= (r.ended or r.started or 0) then return true end
+    end
+    return false
 end
 
 -- Enters a roll by hand into the running round or the last finished one (up to 10 minutes):
@@ -319,13 +375,21 @@ function ns.AddManualRoll(name, value, kind)
     if not high or not value or value % 1 ~= 0 or value < 1 or value > high then return nil, RANGE end
     local typed = ns.FullName(ns.Plain(name))
     if not typed then return nil, "Kein Name." end
-    local full, class = knownName(typed)
-    if not full then return nil, ("%s ist nicht in der Gruppe."):format(typed) end
-    if r.only and not r.only[full] then return nil, ("%s ist nicht am Stechen beteiligt."):format(full) end
-    local e = { name = full, value = value, low = 1, high = high, kind = kind, t = nextSeq(r), class = class, manual = true }
-    if not r.rolls[full] then r.order[#r.order + 1] = full end
-    r.rolls[full] = e
-    plusOf(r, full)
+    local full, class, ambiguous = knownName(typed)
+    if not full then return nil, ambiguous or ("%s ist nicht in der Gruppe."):format(typed) end
+    -- one player, one entry: a roll from the chat or a tie-break name in another spelling keeps its key
+    local key = keyIn(r, r.rolls, full)
+    if r.only then
+        local tied = keyIn(r, r.only, full)
+        if not tied then return nil, ("%s ist nicht am Stechen beteiligt."):format(full) end
+        key = key or tied
+    end
+    key = key or full
+    if awardedAfter(r) then return nil, "Das Item ist schon vergeben; erst die Vergabe ändern." end
+    local e = { name = key, value = value, low = 1, high = high, kind = kind, t = nextSeq(r), class = class, manual = true }
+    if not r.rolls[key] then r.order[#r.order + 1] = key end
+    r.rolls[key] = e
+    plusOf(r, key)
     if r.done then
         ns.RollDecide(r)
         r.dirty = true

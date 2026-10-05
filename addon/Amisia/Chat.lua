@@ -114,7 +114,8 @@ end
 local function send(e)
     local chan = resolveChannel(e.chan)
     if not chan then return false end
-    -- Forever keeps the global only as a deprecated alias; Anniversary has no C_ChatInfo version.
+    -- Both clients have C_ChatInfo.SendChatMessage and keep the global only as a deprecated alias;
+    -- the global is the fallback for a client without the namespace function.
     local info = _G.C_ChatInfo
     local fn = (type(info) == "table" and type(info.SendChatMessage) == "function") and info.SendChatMessage or _G.SendChatMessage
     if type(fn) ~= "function" then return false end

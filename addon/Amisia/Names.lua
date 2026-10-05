@@ -42,6 +42,38 @@ function ns.SameName(a, b)
     return false
 end
 
+-- The plain names of the group (secret ones left out); {} when alone.
+function ns.GroupRoster()
+    local out = {}
+    for i = 1, GetNumGroupMembers() or 0 do
+        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
+        if n then out[#out + 1] = n end
+    end
+    return out
+end
+
+-- How many names of roster carry the first name of name.
+local function firstNameCount(name, roster)
+    local first = name:match("^(%S+)"):lower()
+    local n = 0
+    for _, r in ipairs(roster or {}) do
+        r = ns.FullName(r)
+        if r and r:match("^(%S+)"):lower() == first then n = n + 1 end
+    end
+    return n
+end
+
+-- ns.SameName within a group: a match on the first name alone (one side without surname) holds
+-- only when no more than one name of roster carries that first name. "Vulo" on a list is no one
+-- when "Vulo Sturmwind" and "Vulo Eisherz" are both in the raid.
+function ns.SameNameIn(a, b, roster)
+    a, b = ns.FullName(a), ns.FullName(b)
+    if not a or not b then return false end
+    if a:lower() == b:lower() then return true end
+    if not ns.SameName(a, b) then return false end
+    return firstNameCount(a, roster) <= 1
+end
+
 -- A value as it is, or nil when the client marks it secret (chat and unit names in a boss fight
 -- on the Forever client). A secret value is never compared, only skipped.
 function ns.Plain(v)

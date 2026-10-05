@@ -6,21 +6,32 @@
 -- Every client marks reserved items on the roll frames with "SR".
 local ADDON, ns = ...
 
-local MASTER = (Enum and Enum.LootMethod and Enum.LootMethod.Masterlooter) or 2
+local LM = Enum and Enum.LootMethod or {}
+local MASTER = LM.Masterlooter or 2
+local FREE = LM.Freeforall or 0
+local PERSONAL = LM.Personal or 5
 
--- The loot method as a flag for master loot, with the master looter's party and raid index.
--- Both clients have C_PartyInfo.GetLootMethod; an older one the global with "master".
+-- The loot method as a flag for master loot, with the master looter's party and raid index, and
+-- a flag for a method that hands out items over group loot rolls (group loot, need before greed,
+-- round robin: not master loot, free-for-all or personal loot). Both clients have
+-- C_PartyInfo.GetLootMethod; an older one the global with "master".
 local function lootMethod()
     local info = _G.C_PartyInfo
     if type(info) == "table" and type(info.GetLootMethod) == "function" then
         local ok, method, partyID, raidID = pcall(info.GetLootMethod)
-        if ok then return method == MASTER, partyID, raidID end
+        if ok then
+            local rolls = type(method) == "number" and method ~= MASTER and method ~= FREE and method ~= PERSONAL
+            return method == MASTER, partyID, raidID, rolls
+        end
         return nil
     end
     local old = _G.GetLootMethod
     if type(old) == "function" then
         local ok, method, partyID, raidID = pcall(old)
-        if ok then return method == "master", partyID, raidID end
+        if ok then
+            local rolls = type(method) == "string" and method ~= "master" and method ~= "freeforall" and method ~= "personalloot"
+            return method == "master", partyID, raidID, rolls
+        end
     end
     return nil
 end
@@ -218,6 +229,8 @@ local function onLootOpened(_, isFromItem)
     -- Forever: loot from an item (a container, a bag) is no corpse
     if isFromItem == true then return end
     if not ns.Get("loot.announce") or not ns.IsLootLead() then return end
+    -- under group loot the items are rolled for, and START_LOOT_ROLL announces them already
+    if ns.Get("loot.groupLoot") and select(4, lootMethod()) then return end
     for _, g in ipairs(lootGroups()) do
         if not seen(g.key) then
             announce(lootHead(g), g.links)
@@ -315,9 +328,9 @@ local function markRoll(frame)
         local names = id and ns.ReservedBy(id) or {}
         if #names > 0 then
             text = "SR"
-            local me = ns.UnitFullName("player")
+            local me, roster = ns.UnitFullName("player"), ns.GroupRoster()
             for _, n in ipairs(names) do
-                if ns.SameName(n, me) then text = "SR (du)" break end
+                if ns.SameNameIn(n, me, roster) then text = "SR (du)" break end
             end
         end
     end
