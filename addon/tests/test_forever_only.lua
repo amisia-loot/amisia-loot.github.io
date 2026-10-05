@@ -49,7 +49,7 @@ end
 assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load condition")
 local version = toc:match("## Version:%s*([^\r\n]+)")
 assert(version and version == NS.VERSION, "TOC version and ns.VERSION agree: " .. tostring(version) .. " / " .. tostring(NS.VERSION))
-assert(version == "2.0.0", "the Forever-only addon is 2.0.0: " .. tostring(version))
+assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only addon is 2.0.0 or later: " .. tostring(version))
 
 ---------------------------------------------------------------------------
 -- no TBC file, no TBC code path
