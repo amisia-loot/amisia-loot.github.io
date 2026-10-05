@@ -730,7 +730,9 @@ ns.RegisterSettings(ns.SYNC_SETTINGS)
 local syncWords = {}
 function ns.RegisterSyncCommand(word, fn) syncWords[word] = fn end
 
-ns.RegisterSlash("sync", { args = "[raenge|debug]", desc = "Stand des Abgleichs", run = function(rest)
+local SYNC_USAGE = "[jetzt|an|aus|raenge|debug|selbsttest]"
+
+ns.RegisterSlash("sync", { args = SYNC_USAGE, desc = "Stand des Abgleichs", run = function(rest)
     local word, more = (rest or ""):match("^(%S*)%s*(.-)$")
     word = (word or ""):lower()
     if word == "" then
@@ -738,19 +740,25 @@ ns.RegisterSlash("sync", { args = "[raenge|debug]", desc = "Stand des Abgleichs"
             ns.msg("Addon-Nachrichten sind nicht verfügbar.")
             return
         end
+        -- the raid sync tells its state itself (word ""); the layer alone says its queue
+        if syncWords[""] then return syncWords[""](more) end
         ns.msg(("Sync %s · %d Nachrichten warten%s."):format(ns.Get("sync.enabled") ~= false and "an" or "aus",
             #queue, ns.CommHeld() and " (Sperre)" or ""))
         return
     end
     local fn = syncWords[word]
     if not fn then
-        ns.msg("Aufruf: /amisia sync [raenge|debug]")
+        ns.msg("Aufruf: /amisia sync " .. SYNC_USAGE)
         return
     end
     fn(more)
 end })
 
 ns.RegisterSyncCommand("debug", function()
+    if not ns.Get("ui.expert") then
+        ns.msg("Nur im Expertenmodus.")
+        return
+    end
     local on = not ns.Get("sync.debug")
     ns.Set("sync.debug", on)
     ns.msg(on and "Sync-Fehlersuche an." or "Sync-Fehlersuche aus.")

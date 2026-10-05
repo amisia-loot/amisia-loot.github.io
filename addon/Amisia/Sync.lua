@@ -1804,5 +1804,83 @@ do
     end
     table.insert(items, before, { key = "sync.notify", type = "toggle", label = "Hüterwechsel und Konflikte im Chat melden", default = true,
         officer = true })
+    -- the switches of "Wer braucht das?" belong to the section too
+    local have = {}
+    for _, it in ipairs(items) do have[it.key] = true end
+    for _, it in ipairs({
+        { key = "sync.shareUpgrades", type = "toggle", label = "Der Lootleitung sagen, für welche Items ich ein Upgrade habe", default = true },
+        { key = "sync.askUpgrades", type = "toggle", label = "Beim Ansagen fragen, für wen ein Item ein Upgrade ist", default = true, officer = true },
+        { key = "sync.needTooltip", type = "toggle", label = "Tooltip-Zeile Upgrade für", default = true, officer = true },
+    }) do
+        if not have[it.key] then items[#items + 1] = it end
+    end
+    -- the order of the section
+    local ORDER = { "sync.enabled", "sync.raiderAwards", "sync.shareUpgrades", "sync.versionCheck", "sync.outdatedWarn", "sync.askUpgrades",
+                    "sync.needTooltip", "sync.notify", "sync.officerRanks", "sync.debug" }
+    local rank = {}
+    for i, key in ipairs(ORDER) do rank[key] = i end
+    for i, it in ipairs(items) do it.at = i end
+    table.sort(items, function(x, y)
+        local a, b = rank[x.key] or (100 + x.at), rank[y.key] or (100 + y.at)
+        return a < b
+    end)
+    for _, it in ipairs(items) do it.at = nil end
     ns.RegisterSettings(ns.SYNC_SETTINGS)
 end
+
+---------------------------------------------------------------------------
+-- The command
+---------------------------------------------------------------------------
+-- "/amisia sync": the state in the chat.
+ns.RegisterSyncCommand("", function()
+    local text, _, tip = ns.SyncStatus()
+    ns.msg(text)
+    for _, l in ipairs(tip or {}) do DEFAULT_CHAT_FRAME:AddMessage("  " .. l) end
+end)
+
+ns.RegisterSyncCommand("an", function()
+    ns.Set("sync.enabled", true)
+    ns.msg("Raid-Abgleich an.")
+end)
+
+ns.RegisterSyncCommand("aus", function()
+    ns.Set("sync.enabled", false)
+    ns.msg("Raid-Abgleich aus.")
+end)
+
+-- "/amisia sync selbsttest": packs the snapshot of the running or newest raid, unpacks it again
+-- and compares; says the size and the parts (checks the client's pack functions in the game).
+ns.RegisterSyncCommand("selbsttest", function()
+    if not ns.Get("ui.expert") then
+        ns.msg("Nur im Expertenmodus.")
+        return
+    end
+    if not ns.CommPacking() then
+        ns.msg("Selbsttest: dieser Client kann nicht packen (C_EncodingUtil fehlt). Der Raid-Abgleich ist aus.")
+        return
+    end
+    local s = ns.Active()
+    if not s then
+        local list = ns.Sessions()
+        s = list[#list]
+    end
+    if not s then
+        ns.msg("Selbsttest: noch kein Raid aufgezeichnet.")
+        return
+    end
+    local sp, so = ns.SyncBuild(s)
+    local pp, err = ns.CommPack(sp)
+    local po = pp and ns.CommPack(so)
+    if not pp or not po then
+        ns.msg("Selbsttest: Packen fehlgeschlagen" .. (err and (" (" .. err .. ")") or "") .. ".")
+        return
+    end
+    local bp, bo = ns.CommUnpack(pp), ns.CommUnpack(po)
+    local same = type(bp) == "table" and type(bo) == "table" and ns.SyncHashOf(bp, bo) == sp.h
+    local valid, why = false, nil
+    if same then valid, why = ns.SyncCheck(bp, bo, s) end
+    local np, no = #ns.CommChunks(pp), #ns.CommChunks(po)
+    ns.msg(("Selbsttest: Abbild gepackt und entpackt, %s. Öffentlicher Teil %d Zeichen in %d Teilen, Offiziersteil %d Zeichen in %d Teilen%s."):format(
+        same and "gleich" or "NICHT gleich", #pp, np, #po, no,
+        same and not valid and (", aber ungültig (" .. tostring(why) .. ")") or ""))
+end)

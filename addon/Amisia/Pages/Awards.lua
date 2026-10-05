@@ -264,8 +264,23 @@ local function buildOfficer(parent)
     end)
     O.add:SetPoint("RIGHT", O.undo, "LEFT", -6, 0)
 
-    O.head = W.Text(O, "GameFontDisableSmall", 590)
+    -- the counts on the left (330 px), the sync state right-aligned (260 px) with its details as tooltip
+    O.head = W.Text(O, "GameFontDisableSmall", 330)
     O.head:SetPoint("TOPLEFT", 6, -28)
+    O.sync = W.Text(O, "GameFontDisableSmall", 260)
+    O.sync:SetPoint("TOPRIGHT", -6, -28)
+    O.sync:SetJustifyH("RIGHT")
+    O.syncHit = CreateFrame("Frame", nil, O)
+    O.syncHit:SetSize(260, 16)
+    O.syncHit:SetPoint("TOPRIGHT", -6, -27)
+    O.syncHit:EnableMouse(true)
+    O.syncHit:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:AddLine("Abgleich des Raid-Stands", 1, 0.82, 0)
+        for _, l in ipairs(self.tip or {}) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    O.syncHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     local head = CreateFrame("Frame", nil, O)
     head:SetHeight(18)
@@ -309,7 +324,9 @@ local function buildOfficer(parent)
         local a = e.a
         r.time:SetText(date(O.list.all and "%d.%m." or "%H:%M", a.t or 0))
         r.itemText:SetText(itemText(a.item))
-        r.name:SetText(winnerText(e.s, a))
+        -- a change of this officer the keeper has not confirmed yet
+        local waiting = ns.SyncWaiting and ns.SyncWaiting(e.s, a.id)
+        r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. " · wartet|r") or ""))
         r.kind:SetText(a.kind or "-")
         r.plus:SetText((a.kind == "MS" and (a.to == nil or a.to == "player")) and tostring(ns.PlusCount(a.name)) or "")
         r.src:SetText(a.src or "?")
@@ -397,7 +414,116 @@ local function buildOfficer(parent)
     end
     E:Hide()
     O.edit = E
+
+    -- the conflict bar: in place of the name hint, also while no award is chosen
+    local B = CreateFrame("Button", nil, O)
+    B:SetSize(602, 40)
+    B:SetPoint("TOPLEFT", E, "TOPLEFT", 0, -80)
+    W.Flat(B, GOLD[1], GOLD[2], GOLD[3], 0.16)
+    W.Border(B, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    B.text = W.Text(B, "GameFontHighlightSmall", 590)
+    B.text:SetPoint("TOPLEFT", 6, -5)
+    B.mine = W.Text(B, "GameFontHighlightSmall", 318)
+    B.mine:SetPoint("BOTTOMLEFT", 6, 7)
+    B.drop = W.Button(B, "Verwerfen", 90, function(self)
+        local c = B.conflict
+        if c then ns.SyncResolve(c.s, c.opid, false) end
+        ns.Refresh()
+    end)
+    B.drop:SetPoint("BOTTOMRIGHT", -6, 2)
+    B.take = W.Button(B, "Meine übernehmen", 130, function(self)
+        local c = B.conflict
+        if not c then return end
+        local ok, why = ns.SyncResolve(c.s, c.opid, true)
+        if not ok and why then ns.msg(why) end
+        ns.Refresh()
+    end)
+    B.take:SetPoint("RIGHT", B.drop, "LEFT", -6, 0)
+    B:SetScript("OnClick", function(self)
+        local c = self.conflict
+        if not c or not c.id then return end
+        if c.id ~= chosenId then settleNote(O, true) end
+        chosenId = c.id
+        ns.Refresh()
+    end)
+    B:Hide()
+    O.conflict = B
     return O
+end
+
+-- What a change does, in words: "an Vulo (OS)", "an die Bank", "Notiz ..." (f: the fields, a: the
+-- award for what f leaves out).
+local function changeText(a, f)
+    local parts = {}
+    if f.name ~= nil or f.kind ~= nil or f.to ~= nil then
+        local to = f.to or a.to
+        if to == "bank" then
+            parts[1] = "an die Bank"
+        elseif to == "de" then
+            parts[1] = "zum Entzaubern"
+        else
+            parts[1] = ("an %s (%s)"):format(tostring(f.name or a.name or "?"), tostring(f.kind or a.kind or "-"))
+        end
+    end
+    if f.note ~= nil then
+        parts[#parts + 1] = (f.note and f.note ~= "") and ("Notiz \"%s\""):format(f.note) or "Notiz gelöscht"
+    end
+    return #parts > 0 and table.concat(parts, ", ") or "geändert"
+end
+
+-- The bar of the first conflict of raid s, or hidden.
+local function fillConflict(O, s)
+    local B = O.conflict
+    local list = (s and ns.SyncConflicts) and ns.SyncConflicts(s) or {}
+    local c = list[1]
+    if not c then
+        B.conflict = nil
+        B:Hide()
+        return
+    end
+    B.conflict = { s = s, opid = c.opid, id = c.id }
+    local a = c.id and ns.FindAward(s, c.id) or {}
+    local mine = type(c.mine) == "table" and c.mine or {}
+    local n = #list > 1 and (" (1 von %d)"):format(#list) or ""
+    local by = tostring(c.by or "?")
+    if c.why == "GONE" then
+        B.text:SetText(("Konflikt%s: %s hat diese Vergabe gelöscht."):format(n, by))
+    else
+        -- the keeper's state of what the own change touched
+        local theirs = {}
+        for _, k in ipairs({ "name", "kind", "note", "to" }) do
+            if mine[k] ~= nil or mine.deleted then theirs[k] = a[k] == nil and false or a[k] end
+        end
+        if mine.deleted then theirs.note = nil end
+        B.text:SetText(("Konflikt%s: %s hat diese Vergabe zuerst geändert: %s."):format(n, by, changeText(a, theirs)))
+    end
+    B.mine:SetText(("Deine Änderung: %s."):format(mine.deleted and "gelöscht" or changeText(a, mine)))
+    if c.why == "GONE" then
+        B.take:SetText("Wiederherstellen und ändern")
+        B.take:SetWidth(170)
+    else
+        B.take:SetText("Meine übernehmen")
+        B.take:SetWidth(130)
+    end
+    B:Show()
+end
+
+local SYNC_COLOR = { green = { 0.31, 0.82, 0.42 }, gold = { GOLD[1], GOLD[2], GOLD[3] }, grey = { 0.56, 0.53, 0.64 } }
+
+-- The sync line of the head: the state of the chosen raid ("Alle Raids": none).
+local function fillSync(O, s, all)
+    if all or not s or not ns.SyncStatus then
+        O.sync:SetText("")
+        O.sync.color = nil
+        O.syncHit.tip = nil
+        return
+    end
+    local text, color, tip = ns.SyncStatus(s)
+    O.sync:SetText(text)
+    O.sync.color = color
+    local c = SYNC_COLOR[color] or SYNC_COLOR.grey
+    O.sync:SetTextColor(c[1], c[2], c[3])
+    O.syncHit.tip = tip
 end
 
 local function fillEdit(E)
@@ -421,6 +547,9 @@ local function fillEdit(E)
     elseif a.orig then
         parts[#parts + 1] = "zuerst an " .. a.orig
     end
+    -- the keeper took this change from an officer's wish
+    local by = type(s.sync) == "table" and type(s.sync.by) == "table" and s.sync.by[a.id]
+    if type(by) == "string" then parts[#parts + 1] = "geändert von " .. by end
     if a.manual then parts[#parts + 1] = "von Hand eingetragen" end
     if a.note then parts[#parts + 1] = ("Notiz %d/60"):format(#a.note) end
     E.status:SetText(table.concat(parts, " · "))
@@ -497,7 +626,14 @@ local function refreshOfficer(O)
     end
     O.head:SetText(table.concat(parts, " · "))
     O.undo:SetEnabled(ns.UndoLabel() ~= nil)
+    fillSync(O, s, all)
     fillEdit(O.edit)
+    fillConflict(O, not all and s or nil)
+    -- the bar takes the place of the name hint
+    if O.conflict:IsShown() then
+        O.edit.hint:Hide()
+        for _, c in ipairs(O.edit.chips) do c:Hide() end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -531,13 +667,141 @@ local function myItems()
     return out
 end
 
+-- The raider's view of the page (window state settings.awards.raiderView): "mine" or "all".
+local function raiderView()
+    local st = AmisiaDB and AmisiaDB.settings
+    local v = st and type(st.awards) == "table" and st.awards.raiderView
+    return v == "all" and "all" or "mine"
+end
+
+local function setRaiderView(v)
+    local st = AmisiaDB and AmisiaDB.settings
+    if not st then return end
+    st.awards = type(st.awards) == "table" and st.awards or {}
+    st.awards.raiderView = v
+    ns.Refresh()
+end
+
+-- The raids with a snapshot of the loot lead, newest first.
+local function syncedRaids()
+    local out = {}
+    for _, s in ipairs(ordered()) do
+        if type(s.sync) == "table" and type(s.sync.keeper) == "string" then out[#out + 1] = s end
+    end
+    return out
+end
+
+-- The keeper's plus-one of a name in raid s, or nil.
+local function keeperPlus(s, name)
+    local p = type(s.sync) == "table" and type(s.sync.plus) == "table" and type(s.sync.plus.n) == "table" and s.sync.plus.n
+    if not p then return nil end
+    for who, n in pairs(p) do
+        if ns.SameName(who, name) then return tonumber(n) or 0 end
+    end
+    return 0
+end
+
+-- A winner for raiders: bank and disenchant grey, the own name gold, others in their class colour.
+local function raiderWinner(s, a)
+    if a.to == "bank" or a.to == "de" then
+        local who = (a.name and a.name ~= "-") and (" (" .. a.name .. ")") or ""
+        return GREY .. TO_TEXT[a.to] .. who .. "|r"
+    end
+    local name = tostring(a.name or "?")
+    if ns.SameName(name, ns.UnitFullName("player")) then return "|cffe2b857" .. name .. "|r" end
+    return ("|c%s%s|r"):format(classColor((memberOf(s, name))), name)
+end
+
+local chosenAll   -- session id of the raid in "Alle Vergaben"
+
+local function buildAll(R)
+    local A = CreateFrame("Frame", nil, R)
+    A:SetAllPoints(R)
+    A.raid = W.Picker(A, 240, function(v)
+        chosenAll = v
+        ns.Refresh()
+    end)
+    A.raid:SetPoint("TOPLEFT", 0, -26)
+    local head = CreateFrame("Frame", nil, A)
+    head:SetHeight(18)
+    head:SetPoint("TOPLEFT", 0, -50)
+    head:SetPoint("TOPRIGHT", 0, -50)
+    A.cols = {
+        time = col(head, 6, 54, "Zeit"), item = col(head, 64, 226, "Item"), name = col(head, 294, 176, "Gewinner"),
+        kind = col(head, 474, 46, "Art"), plus = col(head, 524, 36, "+1"),
+    }
+    A.list = W.List(A, ROWS, ROW_H, function(r)
+        r.time = col(r, 6, 54, nil, "GameFontHighlightSmall")
+        r.itemText = col(r, 64, 226, nil, "GameFontHighlightSmall")
+        r.name = col(r, 294, 176, nil, "GameFontHighlightSmall")
+        r.kind = col(r, 474, 46, nil, "GameFontHighlightSmall")
+        r.plus = col(r, 524, 36, nil, "GameFontHighlightSmall")
+        r:SetScript("OnClick", function(self)
+            local e = self.item
+            if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.a.item)) end
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if not e or not GameTooltip.SetHyperlink then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetHyperlink(itemLink(e.a.item))
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end, function(r, e)
+        -- read-only, never a note: raiders get the awards without them
+        local a = e.a
+        r.time:SetText(date("%H:%M", a.t or 0))
+        r.itemText:SetText(itemText(a.item))
+        r.name:SetText(raiderWinner(e.s, a))
+        r.kind:SetText((a.kind and a.kind ~= "-") and a.kind or "")
+        local plus = (a.kind == "MS" and (a.to == nil or a.to == "player")) and keeperPlus(e.s, a.name) or nil
+        r.plus:SetText(plus and tostring(plus) or "")
+    end)
+    A.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
+    A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    A.empty = W.Text(A, "GameFontDisable", 590)
+    A.empty:SetPoint("TOPLEFT", A.list, "TOPLEFT", 6, -6)
+    A.empty:SetText("Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen.")
+    A.foot = W.Text(A, "GameFontDisableSmall", 590)
+    A.foot:SetPoint("TOPLEFT", A.list, "BOTTOMLEFT", 6, -10)
+    A:Hide()
+    return A
+end
+
+local function fillAll(A, raids)
+    local values, s = {}, nil
+    for _, r in ipairs(raids) do
+        values[#values + 1] = { value = r.id, text = raidText(r) }
+        if r.id == chosenAll then s = r end
+    end
+    s = s or raids[1]
+    chosenAll = s and s.id or nil
+    A.raid:SetValues(values)
+    A.raid:SetValue(chosenAll)
+    local rows = {}
+    for _, a in ipairs(s and s.awards or {}) do rows[#rows + 1] = { s = s, a = a } end
+    A.list:SetItems(rows)
+    if #rows == 0 then A.empty:Show() else A.empty:Hide() end
+    local sync = s and s.sync
+    A.foot:SetText(sync and ("Stand von %s, %s · Notizen sehen nur Offiziere."):format(tostring(sync.keeper), date("%H:%M", tonumber(sync.at) or 0)) or "")
+end
+
 local function buildRaider(parent)
     local R = CreateFrame("Frame", nil, parent)
     R:SetAllPoints(parent)
     R.title = W.Text(R, "GameFontNormal", 300)
     R.title:SetPoint("TOPLEFT", 0, -2)
     R.title:SetText("Deine Items")
-    local head = CreateFrame("Frame", nil, R)
+    R.mineChip = W.Chip(R, "Deine Items", 100, function() setRaiderView("mine") end)
+    R.mineChip:SetPoint("LEFT", R.title, "RIGHT", 6, 0)
+    R.allChip = W.Chip(R, "Alle Vergaben", 110, function() setRaiderView("all") end)
+    R.allChip:SetPoint("LEFT", R.mineChip, "RIGHT", 6, 0)
+    -- "Deine Items": the own loot of every saved raid
+    local M = CreateFrame("Frame", nil, R)
+    M:SetAllPoints(R)
+    R.mine = M
+    local head = CreateFrame("Frame", nil, M)
     head:SetHeight(18)
     head:SetPoint("TOPLEFT", 0, -24)
     head:SetPoint("TOPRIGHT", 0, -24)
@@ -545,7 +809,7 @@ local function buildRaider(parent)
     col(head, 70, 230, "Item")
     col(head, 306, 200, "Raid")
     col(head, 510, 40, "Art")
-    R.list = W.List(R, ROWS, ROW_H, function(r)
+    R.list = W.List(M, ROWS, ROW_H, function(r)
         r.date = col(r, 6, 60, nil, "GameFontHighlightSmall")
         r.itemText = col(r, 70, 230, nil, "GameFontHighlightSmall")
         r.zone = col(r, 306, 200, nil, "GameFontHighlightSmall")
@@ -570,10 +834,34 @@ local function buildRaider(parent)
     end)
     R.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
     R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
-    R.text = W.Text(R, "GameFontDisableSmall", 590, true)
+    R.text = W.Text(M, "GameFontDisableSmall", 590, true)
     R.text:SetPoint("TOPLEFT", R.list, "BOTTOMLEFT", 6, -10)
     R.text:SetText("Vergaben anderer siehst du auf der Amisia-Loot-Seite.")
+    -- "Alle Vergaben": every award of a raid as the loot lead sent it
+    R.all = buildAll(R)
     return R
+end
+
+local function refreshRaider(R)
+    local raids = syncedRaids()
+    local any = #raids > 0
+    local view = (any and raiderView() == "all") and "all" or "mine"
+    R.mineChip:SetShown(any)
+    R.allChip:SetShown(any)
+    R.mineChip:SetOn(view == "mine")
+    R.allChip:SetOn(view == "all")
+    R.title:SetText(view == "all" and "Alle Vergaben" or "Deine Items")
+    if view == "all" then
+        R.mine:Hide()
+        R.all:Show()
+        fillAll(R.all, raids)
+        return
+    end
+    R.all:Hide()
+    R.mine:Show()
+    R.list:SetItems(myItems())
+    R.text:SetText(any and "Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."
+        or "Vergaben anderer siehst du auf der Amisia-Loot-Seite.")
 end
 
 ---------------------------------------------------------------------------
@@ -609,9 +897,25 @@ ns.RegisterPanel{ key = "awards", label = "Vergaben", icon = "Interface\\Icons\\
         else
             f.officer:Hide()
             f.raider:Show()
-            f.raider.list:SetItems(myItems())
+            refreshRaider(f.raider)
         end
     end }
+
+-- A new sync state: the page (or the overview with its card) builds again, at most once a second,
+-- only while shown. Snapshots fire DATA_CHANGED themselves.
+local syncPending, syncAt
+ns.Listen("SYNC_STATE", function()
+    if syncPending then return end
+    local cur = ns.CurrentPage and ns.CurrentPage()
+    if cur ~= "awards" and cur ~= "overview" then return end
+    syncPending = true
+    C_Timer.After(syncAt and math.max(0, 1 - (GetTime() - syncAt)) or 0, function()
+        syncPending = false
+        syncAt = GetTime()
+        local now = ns.CurrentPage and ns.CurrentPage()
+        if now == "awards" or now == "overview" then ns.Refresh() end
+    end)
+end)
 
 ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
     local all = ns.Sessions()
@@ -632,6 +936,15 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
             if e.s.date == last.date then n = n + 1 end
         end
         c.line1:SetText(("%d Items am %s"):format(n, last.date))
+        -- with a snapshot of the loot lead: the own plus-one as he counts it
+        local me = ns.UnitFullName("player")
+        for i = #night, 1, -1 do
+            local plus = me and keeperPlus(night[i], me)
+            if plus then
+                c.line2:SetText(("Dein Plus-Eins: %d"):format(plus))
+                break
+            end
+        end
         c:SetAction("Öffnen", function() ns.ShowPage("awards") end)
         return
     end
