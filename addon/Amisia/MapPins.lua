@@ -10,8 +10,8 @@ local TEMPLATE = "AmisiaMapPinTemplate"
 local MAX_PINS = 60
 local DOT = "Interface\\AddOns\\Amisia\\Media\\Icons\\dot"
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
--- frame level types both world maps define (TBC and Forever Blizzard_WorldMap); an unknown type
--- would fall back to the canvas default
+-- frame level types the world map defines (Blizzard_WorldMap); an unknown type would fall back to
+-- the canvas default
 local LEVEL, TARGET_LEVEL = "PIN_FRAME_LEVEL_AREA_POI", "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST"
 local MAP_TYPE = Enum and Enum.UIMapType
 local ZONE = MAP_TYPE and MAP_TYPE.Zone or 3
@@ -395,7 +395,8 @@ function Pin:CheckMouseButtonPassthrough() end
 Pin.OnMouseClickAction = click
 
 -- Completes the mixin with the client's pin mixin, once; the own methods stay. Where the base
--- OnClick is the empty one to override (TBC), the click goes there.
+-- OnClick is the empty one to override (a pin mixin without the passthrough buttons), the click
+-- goes there.
 local function fillMixin(pinBase)
     if base then return end
     base = pinBase

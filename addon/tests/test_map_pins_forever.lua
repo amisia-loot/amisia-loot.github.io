@@ -22,7 +22,7 @@ end
 -- the client's waypoint and shift puts the waypoint link into the chat. No GetItemInfo globals.
 local Map = NS.Map
 local TEMPLATE = "AmisiaMapPinTemplate"
-assert(NS.IsForever() and GetItemInfo == nil)
+assert(NS.MAP and NS.MAP.game == "forever" and GetItemInfo == nil, "the Forever data, no GetItemInfo global")
 local fh = assert(io.open(ADDON_DIR .. "/MapPin.xml", "rb"))
 local xml = fh:read("*a")
 fh:close()

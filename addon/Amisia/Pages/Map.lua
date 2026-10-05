@@ -1,4 +1,4 @@
--- Map page, on both clients: the places of the own upgrades ("Ziele") and wishes in one zone (the
+-- Map page: the places of the own upgrades ("Ziele") and wishes in one zone (the
 -- player's own by default) with their source, coordinates and items, a button to set the target
 -- and the target line. It lists what the world map pins show, by the same switches. The index of
 -- all zones is built once per change of what it depends on; a refresh only picks the zone, and a

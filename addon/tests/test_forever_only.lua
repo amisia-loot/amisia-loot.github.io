@@ -61,24 +61,21 @@ for line in toc:gmatch("[^\r\n]+") do
     end
 end
 assert(#files > 30, "the addon files: " .. #files)
-local MAP_LATER = { ["MapDataTBC.lua"] = true }   -- the map goes Forever only in its own step
 for _, name in ipairs({ "BisDataTBC.lua", "BisWeightsTBC.lua", "MapDataTBC.lua" }) do
-    if not MAP_LATER[name] then assert(io.open(ADDON_DIR .. "/" .. name, "rb") == nil, name .. " is gone") end
+    assert(io.open(ADDON_DIR .. "/" .. name, "rb") == nil, name .. " is gone")
 end
 for _, name in ipairs(files) do
-    if not MAP_LATER[name] then
-        assert(not name:find("TBC", 1, true), "a file with TBC in its name: " .. name)
-        if name:find("%.lua$") then
-            local src = readFile(ADDON_DIR .. "/" .. name)
-            for _, word in ipairs({ "IsForever", "LootButton", "LootFrame_Update", "BANK_CONTAINER", "OnTooltipSetItem", "20506",
-                                    "NUM_BANKBAGSLOTS", "LOOTFRAME_NUMBUTTONS", "AmisiaScanTip" }) do
-                assert(not src:find(word, 1, true), name .. " still has " .. word)
-            end
-            assert(not src:find("[^%.:%w_]GetSkillLineInfo%(") and not src:find("_G%.GetSkillLineInfo"),
-                name .. " calls the global GetSkillLineInfo")
-            assert(not src:find("_G%.GetItemInfo") and not src:find("_G%.GetItemStats") and not src:find("_G%.SendChatMessage")
-                and not src:find("_G%.ChatEdit_InsertLink") and not src:find("_G%.GetContainer"), name .. " falls back to a global")
+    assert(not name:find("TBC", 1, true), "a file with TBC in its name: " .. name)
+    if name:find("%.lua$") then
+        local src = readFile(ADDON_DIR .. "/" .. name)
+        for _, word in ipairs({ "IsForever", "LootButton", "LootFrame_Update", "BANK_CONTAINER", "OnTooltipSetItem", "20506",
+                                "NUM_BANKBAGSLOTS", "LOOTFRAME_NUMBUTTONS", "AmisiaScanTip" }) do
+            assert(not src:find(word, 1, true), name .. " still has " .. word)
         end
+        assert(not src:find("[^%.:%w_]GetSkillLineInfo%(") and not src:find("_G%.GetSkillLineInfo"),
+            name .. " calls the global GetSkillLineInfo")
+        assert(not src:find("_G%.GetItemInfo") and not src:find("_G%.GetItemStats") and not src:find("_G%.SendChatMessage")
+            and not src:find("_G%.ChatEdit_InsertLink") and not src:find("_G%.GetContainer"), name .. " falls back to a global")
     end
 end
 
@@ -89,6 +86,20 @@ assert(NS.IsForever == nil and NS.Gear.Game == nil and NS.Gear.PlannerAvailable 
 assert(NS.Gear.PhaseOf == nil and NS.Gear.FillRow == nil and NS.Gear.TooltipStats == nil, "no TBC data helpers")
 assert(NS.SettingItem("bis.phase") == nil, "no phase setting")
 assert(NS.Gear.Available(), "the Forever data loads")
+
+---------------------------------------------------------------------------
+-- the map: one data file without guard, no reputation keys, the arrow's tip
+---------------------------------------------------------------------------
+assert(NS.MAP and NS.MAP.game == "forever", "MapData.lua loads")
+local mapSrc = readFile(ADDON_DIR .. "/MapData.lua")
+assert(not mapSrc:find("then return end", 1, true) and not mapSrc:find("quartermaster", 1, true), "no guard, no quartermaster list")
+for key in pairs(NS.MAP.P) do assert(not key:find("^F:"), "no reputation key: " .. key) end
+assert(NS.MapKeyOf({ "F", "Thrallmar", 5, 947, "H" }) == nil, "no key for a reputation source")
+assert(NS.SettingItem("map.arrow").tip == "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann.")
+for _, name in ipairs({ "Map.lua", "MapPins.lua", "Pages/Map.lua" }) do
+    local src = readFile(ADDON_DIR .. "/" .. name)
+    assert(not src:find("TBC", 1, true) and not src:find("both clients", 1, true), name .. " still names a second client")
+end
 
 ---------------------------------------------------------------------------
 -- the move on load

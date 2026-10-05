@@ -4,8 +4,8 @@
 -- waypoint; a map without waypoints or a refusing client falls back to Amisia's own target;
 -- arriving within 15 yards; the target after /reload; the commands; Latin-1 only.
 local Map = NS.Map
-assert(NS.IsForever() and Map.ClientWaypoints(), "the Forever client has the user waypoint")
-assert(NS.MAP and NS.MAP.game == "forever", "MapData.lua loads on Forever")
+assert(Map.ClientWaypoints(), "the client has the user waypoint")
+assert(NS.MAP and NS.MAP.game == "forever", "MapData.lua loads")
 local function near(a, b) return math.abs(a - b) < 1e-9 end
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end

@@ -9,25 +9,26 @@ C_Map.GetUserWaypointHyperlink = nil
 UiMapPoint = nil
 C_SuperTrack = nil
 ]]
--- Amisia's own arrow on TBC Anniversary, which has no user waypoint: shown with a target, outside
--- instances and while the position is readable; turned by the player's facing, or the direction in
--- words where the client cannot turn it; the distance; another continent; the tick at most ten
--- times a second; arriving; the setting map.arrow; the menu, the tooltip, dragging and the saved
--- position; the target after /reload; Latin-1 only.
+-- Amisia's own arrow on a client without the user waypoint functions (the preload takes them away;
+-- Map.ClientWaypoints checks their types): shown with a target, outside instances and while the
+-- position is readable; turned by the player's facing, or the direction in words where the client
+-- cannot turn it; the distance; another continent; the tick at most ten times a second; arriving;
+-- the setting map.arrow; the menu, the tooltip, dragging and the saved position; the target after
+-- /reload; Latin-1 only. The arrow next to a refused waypoint is in test_map_waypoint.lua.
 local Map = NS.Map
-assert(not NS.IsForever() and not Map.ClientWaypoints(), "TBC: no user waypoint")
+assert(not Map.ClientWaypoints(), "no user waypoint functions")
 local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
 
 STUB.instance = { type = "none" }
 STUB.item(100, "Lederhose der Wildnis", 2)
-NS.GEAR = { game = "tbc", cap = 70, built = "t-arrow", Z = {}, S = {
+NS.GEAR = { game = "forever", cap = 60, built = "t-arrow", Z = {}, S = {
     { "V", "Gorn One Eye", 1411, nil, "Armorer" },
 }, I = {
     [100] = { "LEGS", 4, 2, 10, 2, 1, 20, 0, 0, 0, 1 },
 } }
-NS.MAP = { game = "tbc", built = "2026-10-05", G = {}, P = { ["V:Gorn One Eye"] = "1411:4720:3310" } }
+NS.MAP = { game = "forever", built = "2026-10-05", G = {}, P = { ["V:Gorn One Eye"] = "1411:4720:3310" } }
 STUB.maps[1411] = { name = "Durotar", world = { 1, 0, 0, 1000, 1000 } }
 STUB.maps[1429] = { name = "Wald von Elwynn", world = { 0, 0, 0, 1000, 1000 } }
 STUB.place.map = 1411
@@ -40,7 +41,7 @@ assert(_G.AmisiaArrow == nil or not AmisiaArrow:IsShown(), "no arrow without a t
 
 assert(NS.MapSetTarget(100))
 local t = NS.MapTarget()
-assert(t and t.ours == false, "TBC: Amisia's own target")
+assert(t and t.ours == false, "no waypoint functions: Amisia's own target")
 local a = _G.AmisiaArrow
 assert(a and a:IsShown(), "the arrow shows with a target")
 assert(a.icon and a.icon.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow", tostring(a.icon and a.icon.texture))
@@ -116,7 +117,7 @@ STUB.map.pos = { x = 0.1, y = 0.1 }
 STUB.fire("ZONE_CHANGED_NEW_AREA")
 assert(a:IsShown())
 
--- the setting: off, on, auto (TBC: on)
+-- the setting: off, on, auto (without the client's waypoint: on)
 NS.Set("map.arrow", "off")
 assert(not a:IsShown(), "off")
 NS.Set("map.arrow", "on")

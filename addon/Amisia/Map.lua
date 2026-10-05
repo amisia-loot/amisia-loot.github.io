@@ -1,8 +1,9 @@
--- Amisia map: where the sources of an item stand (quest givers, vendors, quartermasters, rare and
--- named mobs, raid and dungeon entrances), from the generated MapData.lua / MapDataTBC.lua, and one
--- target at a time. On a client with the user waypoint (Forever) the target becomes the client's
--- waypoint with its guide arrow; elsewhere Amisia shows it itself. Only fixed places from the data
--- are shown; nothing here reads other units or works inside instances.
+-- Amisia map: where the sources of an item stand (quest givers, vendors, rare and named mobs, raid
+-- and dungeon entrances), from the generated MapData.lua, and one target at a time. The target
+-- becomes the client's user waypoint with its guide arrow; where the client cannot set it (a map
+-- without waypoints, a refusal, a client without the waypoint functions) Amisia shows it itself.
+-- Only fixed places from the data are shown; nothing here reads other units or works inside
+-- instances.
 local ADDON, ns = ...
 local Gear = ns.Gear
 
@@ -54,7 +55,7 @@ local function posNum(v) return type(v) == "number" and v > 0 end
 
 -- The stable key of a source record (tools/build_map.py's key_of does the same): Q:<quest id>,
 -- U:<NPC id> where the record carries one, else V:/R:/W:<name>, I:<instance id> or N:<dungeon> for
--- raids, dungeons and dungeon trash, F:<faction id>; nil for sources without a place.
+-- raids, dungeons and dungeon trash; nil for sources without a place.
 function ns.MapKeyOf(rec)
     if type(rec) ~= "table" then return nil end
     local k = rec[1]
@@ -76,8 +77,6 @@ function ns.MapKeyOf(rec)
     elseif k == "X" or k == "D" then
         local place = Gear.PlaceOf(rec)
         return place and (place:gsub("/H$", "")) or nil
-    elseif k == "F" then
-        return posNum(rec[4]) and ("F:" .. rec[4]) or nil
     end
     return nil
 end
@@ -123,7 +122,7 @@ Map.Points = ns.MapPoints
 -- uiMapIDs of the data the client did not know this session.
 function Map.UnknownMaps() return unknownMaps end
 
--- Who stands at a key (quest giver, quartermaster), English, or nil.
+-- Who stands at a key (the quest giver), English, or nil.
 function Map.Giver(key)
     return ns.MAP and ns.MAP.G and ns.MAP.G[key] or nil
 end
@@ -306,8 +305,8 @@ Map.PlayerCell = playerCell
 
 local function isEntrance(key) return type(key) == "string" and (key:sub(1, 2) == "I:" or key:sub(1, 2) == "N:") end
 
--- The name a place shows: the quest giver or quest, the vendor or mob, the quartermaster, the raid
--- or dungeon (client name by area id).
+-- The name a place shows: the quest giver or quest, the vendor or mob, the raid or dungeon (client
+-- name by area id).
 local function placeName(place)
     local rec, key = place.rec, place.key
     if isEntrance(key) then
@@ -613,7 +612,7 @@ function Map.DirectionWord(bearing)
 end
 
 ---------------------------------------------------------------------------
--- The arrow (AmisiaArrow): Amisia's own pointer to the target where the client has no guide
+-- The arrow (AmisiaArrow): Amisia's own pointer to the target where the client's guide cannot carry it
 ---------------------------------------------------------------------------
 
 local ARROW_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow"
@@ -621,7 +620,7 @@ local TICK = 0.1                  -- seconds between two updates of the arrow
 local arrow                       -- the frame, made the first time it is needed
 
 -- Whether the arrow should show: map.arrow "on", or "auto" while the client's own guide does not
--- carry the target (TBC always, Forever when its waypoint could not be set); only with a target,
+-- carry the target (its waypoint could not be set); only with a target,
 -- outside instances and with a readable position. Returns the position (Map.PlayerPosition) or nil.
 local function arrowWanted()
     local t = ns.MapTarget()
@@ -844,7 +843,7 @@ ns.RegisterSettings{ key = "map", label = "Karte und Wegpunkt", order = 47, avai
     { key = "map.pinScale", type = "slider", label = "Pin-Größe (%)", default = 100, min = 60, max = 160, step = 10, expert = true },
     { key = "map.arrow", type = "choice", label = "Pfeil zum Ziel", default = "auto",
       values = { { "auto", "Automatisch" }, { "on", "Immer" }, { "off", "Aus" } },
-      tip = "Automatisch: nur wo der Client keinen eigenen Wegweiser hat (TBC)." },
+      tip = "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann." },
     { key = "map.autoClear", type = "toggle", label = "Ziel beim Ankommen löschen", default = true },
     { key = "map.tooltip", type = "toggle", label = "Fundort im Tooltip (mit Shift)", default = true },
     { key = "map.resetHidden", type = "button", label = "Ausgeblendete Orte wieder zeigen",

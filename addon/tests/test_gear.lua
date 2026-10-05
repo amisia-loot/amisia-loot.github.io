@@ -1,6 +1,5 @@
 -- The gear planner: generated data, rating conversion, scoring, who may wear what, weapon plans,
--- filters, loading item data and the window. It is a Forever thing, so this runs as the Forever
--- client (on TBC the TBC data set loads instead).
+-- filters, loading item data and the window.
 local Gear = NS.Gear
 assert(Gear and Gear.Available(), "GearData.lua and GearWeights.lua load")
 

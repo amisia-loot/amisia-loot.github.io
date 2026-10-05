@@ -1,4 +1,4 @@
--- The map page (Pages/Map.lua) on TBC Anniversary: the panel and /amisia karte; the zone picker with
+-- The map page (Pages/Map.lua) on small Forever data: the panel and /amisia karte; the zone picker with
 -- "Hier" (sub zones, instances) and the zones with a count; the list sorted by distance, the hidden
 -- places grey at the bottom; "Weg", a click, shift-click and the menu; the target line with "Ziel
 -- löschen" and its tick; the empty states; the switches shared with the pins; a refresh rebuilds
@@ -13,15 +13,15 @@ local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 
 ---------------------------------------------------------------------------
--- data: a warrior at 70, vendors in Durotar and Elwynn (as in the pins test)
+-- data: a warrior at 60, vendors in Durotar and Elwynn (as in the pins test)
 ---------------------------------------------------------------------------
 AmisiaDB.settings.gear = { specs = { WARRIOR = "dps" } }
-STUB.class, STUB.level, STUB.faction = "WARRIOR", 70, "Alliance"
+STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
 STUB.instance = { type = "none" }
 STUB.maps[1411] = { name = "Durotar", parent = 1414, mapType = 3, world = { 1, 0, 0, 1000, 1000 } }
 STUB.maps[1429] = { name = "Wald von Elwynn", parent = 1415, mapType = 3, world = { 0, 0, 0, 1000, 1000 } }
 STUB.maps[1440] = { name = "Eschental", parent = 1414, mapType = 3, world = { 1, 2000, 0, 1000, 1000 } }
-STUB.maps[1430] = { name = "Gebirgspass der Totenwinde", parent = 1415, mapType = 3, world = { 0, 3000, 0, 1000, 1000 } }
+STUB.maps[1428] = { name = "Brennende Steppe", parent = 1415, mapType = 3, world = { 0, 3000, 0, 1000, 1000 } }
 STUB.maps[1500] = { name = "Klingenhügel", parent = 1411, mapType = 5 }
 STUB.maps[1414] = { name = "Kalimdor", parent = 947, mapType = 2 }
 STUB.maps[947] = { name = "Azeroth", mapType = 1 }
@@ -32,8 +32,8 @@ local function gear(id, name, loc, str, sources)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID, it.icon = "INVTYPE_" .. loc, 4, 4, 1000 + id
-    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 70
-    I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 60
+    I[id] = { loc, 4, 4, 60, 4, 1, 70, 0, 0, 0 }
     for _, n in ipairs(sources) do I[id][#I[id] + 1] = n end
 end
 local S = {
@@ -41,8 +41,8 @@ local S = {
     { "V", "Second Vendor", 1411, "", "" },           -- 2
     { "V", "Elwynn Guy", 1429, "", "" },              -- 3
     { "V", "Many Spots", 1411, "", "" },              -- 4 (no place in the map data)
-    { "C", "tailoring", 375 },                        -- 5
-    { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 },   -- 6 (entrance in the Deadwind Pass)
+    { "C", "tailoring", 300 },                        -- 5
+    { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 0, 0 },   -- 6 (entrance in the Burning Steppes)
 }
 gear(201, "Helm Gorn", "HEAD", 40, { 1 })
 gear(202, "Brust Gorn", "CHEST", 30, { 1 })
@@ -51,15 +51,15 @@ gear(204, "Stiefel Elwynn", "FEET", 10, { 3 })
 gear(205, "Handschuhe Wunsch", "HAND", 15, { 2 })
 gear(206, "Schultern Schneider", "SHOULDER", 25, { 5 })
 gear(207, "Gürtel Viele", "WAIST", 12, { 4 })
-gear(208, "Armschienen Kara", "WRIST", 30, { 6 })
-STUB.areas[3457] = "Karazhan"
-NS.GEAR = { game = "tbc", cap = 70, built = "t-page", S = S, I = I, Z = {} }
+gear(208, "Armschienen Kern", "WRIST", 30, { 6 })
+STUB.areas[2717] = "Geschmolzener Kern"
+NS.GEAR = { game = "forever", cap = 60, built = "t-page", S = S, I = I, Z = {} }
 Gear._reset()
-NS.MAP = { game = "tbc", built = "2026-10-05", G = {}, P = {
+NS.MAP = { game = "forever", built = "2026-10-05", G = {}, P = {
     ["V:Gorn One Eye"] = "1411:4720:3310",
     ["V:Second Vendor"] = "1411:6000:7000 1429:1000:1000",
     ["V:Elwynn Guy"] = "1429:4000:4000",
-    ["I:532"] = "1430:4670:7020",
+    ["I:409"] = "1428:4670:7020",
 } }
 Map._reset()
 local me = NS.BisChar()
@@ -90,7 +90,7 @@ local function values()
     for _, v in ipairs(f.zone.values) do out[#out + 1] = tostring(v.value) .. "=" .. v.text end
     return table.concat(out, "|")
 end
-assert(values() == "here=Hier: Durotar|1411=Durotar (2)|1430=Gebirgspass der Totenwinde (1)|1429=Wald von Elwynn (2)", values())
+assert(values() == "here=Hier: Durotar|1428=Brennende Steppe (1)|1411=Durotar (2)|1429=Wald von Elwynn (2)", values())
 assert(f.zone.label:GetText() == "Hier: Durotar", f.zone.label:GetText())
 
 ---------------------------------------------------------------------------
@@ -252,9 +252,9 @@ STUB.tick(1.1)
 assert(f.zone.label:GetText() == "Hier: Eschental" and #f.list.items == 0, "a new zone follows the player: " .. f.zone.label:GetText())
 assert(f.empty:IsShown() and f.empty:GetText() == "In dieser Zone liegt nichts aus deinen Zielen und Wünschen.", f.empty:GetText())
 STUB.place.map = 1411
-STUB.instance = { type = "raid", id = 532, name = "Karazhan" }
+STUB.instance = { type = "raid", id = 409, name = "Geschmolzener Kern" }
 NS.Refresh()
-assert(f.zone.label:GetText() == "Hier: Gebirgspass der Totenwinde", "in an instance: the zone of its entrance: " .. f.zone.label:GetText())
+assert(f.zone.label:GetText() == "Hier: Brennende Steppe", "in an instance: the zone of its entrance: " .. f.zone.label:GetText())
 STUB.instance = { type = "party", id = 999, name = "Unbekannt" }
 NS.Refresh()
 assert(f.zone.label:GetText() == "Hier: in einer Instanz" and #f.list.items == 0, f.zone.label:GetText())
@@ -334,9 +334,9 @@ NS.MapClearTarget()
 hrow.scripts.OnClick(hrow, "RightButton")
 assert(has(menuLabels(), "Wegpunkt setzen") and has(menuLabels(), "Auf der Karte zeigen"), "Hier: the menu " .. menuLabels())
 AmisiaMenu:Hide()
-STUB.instance = { type = "raid", id = 532, name = "Karazhan" }
+STUB.instance = { type = "raid", id = 409, name = "Geschmolzener Kern" }
 NS.ShowGear("here")
-assert(Hh.list.items[1] and Hh.list.items[1].id == 208 and hr[1].item, "Karazhan's bracers inside")
+assert(Hh.list.items[1] and Hh.list.items[1].id == 208 and hr[1].item, "Molten Core's bracers inside")
 for _, r in ipairs(hr) do if r.item then assert(not r.map:IsShown(), "no map button inside an instance") end end
 STUB.instance = { type = "none" }
 NS.ShowGear("here")
@@ -433,11 +433,11 @@ local function quick()
     for _, e in ipairs(NS.MinimapMenuEntries()) do out[#out + 1] = e[1] end
     return table.concat(out, "|")
 end
-assert(has(quick(), "Ausrüstung|Karte|"), quick())
+assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|Karte|"), quick())
 for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Karte" then e[2]() end end
 assert(NS.CurrentPage() == "map", "the quick menu opens the page")
 NS.Set("ui.view", "raider")
-assert(has(quick(), "Ausrüstung|Karte|"), "raiders too: " .. quick())
+assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|Karte|"), "raiders too: " .. quick())
 NS.Reset("ui.view")
 NS.MAP = nil
 assert(not has(quick(), "Karte"), "no map data, no entry")

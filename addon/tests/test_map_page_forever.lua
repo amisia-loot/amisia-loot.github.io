@@ -3,7 +3,7 @@
 -- menu keeps the page and the table together; the layout at 602 x 478 for officers and raiders.
 local Gear, Map = NS.Gear, NS.Map
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
-assert(NS.IsForever() and GetItemInfo == nil and Map.ClientWaypoints(), "Forever without the item globals")
+assert(NS.MAP and NS.MAP.game == "forever" and GetItemInfo == nil and Map.ClientWaypoints(), "Forever without the item globals")
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
 STUB.instance = { type = "none" }
 STUB.maps[1429] = { name = "Wald von Elwynn", parent = 1415, mapType = 3, world = { 0, 0, 0, 1000, 1000 } }
@@ -14,7 +14,7 @@ local function gear(id, name, loc, str, sources)
     STUB.item(id, name, 3)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID, it.stats, it.minLevel = "INVTYPE_" .. loc, 4, 4, { ITEM_MOD_STRENGTH_SHORT = str }, 55
-    NS.GEAR.I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    NS.GEAR.I[id] = { loc, 4, 4, 55, 3, 1, 60, 0, 0, 0 }
     for _, n in ipairs(sources) do NS.GEAR.I[id][#NS.GEAR.I[id] + 1] = n end
 end
 NS.GEAR = { game = "forever", cap = 60, built = "t-map-page-fe", Z = { [1429] = "Wald von Elwynn" }, I = {}, S = {

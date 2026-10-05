@@ -1,8 +1,10 @@
 """tools/build_map.py: reading the public quest database's Lua tables, turning spawns into map points,
-resolving every source kind to a place and writing MapData.lua / MapDataTBC.lua."""
+resolving every source kind to a place and writing MapData.lua (WoW Forever only)."""
 import json
 import os
 import sys
+
+import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -19,13 +21,12 @@ QuestieDB.npcData = [[return {
 [102] = {'Gorn One Eye',1,1,30,30,0,{[14]={{10,10}}},nil,14,nil,nil,29,"H",nil,4},
 [103] = {'Muad',1,1,10,10,4,{[85]={{35.1,55.2},{35.15,55.25},{38.2,50.1},{90,90},{10,90},{90,10}}},nil,85,nil,nil,14,nil,nil,0},
 [104] = {'Edwin VanCleef',1,1,21,21,1,{[1581]={{-1,-1}}},nil,1581,nil,nil,14,nil,nil,0},
-[105] = {'Quartermaster Urgronn',1,1,70,70,0,{[3483]={{54.9,37.8}}},nil,3483,nil,nil,1,"H","Thrallmar Quartermaster",4},
 [106] = {'Okuno',1,1,70,70,0,{[3959]={{60,60}}},nil,3959,nil,nil,1,"AH","Ashtongue Deathsworn Quartermaster",4},
 [107] = {'Jho\'nass',1,1,70,70,0,{[3522]={{28.0,58.0}}},nil,3522,nil,nil,1,"AH","Ogri'la Quartermaster",4},
-[108] = {'Archmage Leryda',1,1,70,70,0,{[41]={{47.0,75.6}}},nil,41,nil,nil,1,"AH",nil,4},
 [109] = {'Wanderer',1,1,10,10,0,{[9999]={{1,1}},[12]={{-1,-1}}},nil,12,nil,nil,1,nil,nil,0},
 [110] = {'Twin',1,1,10,10,0,{[12]={{20,20}}},nil,12,nil,nil,1,nil,nil,0},
 [111] = {'Twin',1,1,10,10,0,{[361]={{30,30}}},nil,361,nil,nil,1,nil,nil,0},
+[112] = {'Ragnaros',1,1,63,63,1,{[2717]={{50,50}}},nil,2717,nil,nil,14,nil,nil,0},
 }]]
 """
 
@@ -51,32 +52,33 @@ ZoneDB.private.areaIdToUiMapId = [[return {
     [12] = 1429,
     [14] = 1411,
     [40] = 1436,
-    [41] = 1430,
+    [46] = 1428,
     [85] = 1420,
     [99] = 5,
     [361] = 1,
-    [3483] = 1944,
+    [1377] = 1451,
     [3520] = 1948,
-    [3522] = 1949,
     [1581] = 291,
 }]]
 """
 
+# The Deadmines carry a correction line for TBC and a Wotlk line for Molten Core; Forever counts as
+# Era, so neither applies.
 DUNGEONS = r"""local ZoneDB = QuestieLoader:ImportModule("ZoneDB")
 local Expansions = QuestieLoader:ImportModule("Expansions")
 local isHorde = UnitFactionGroup("Player") == "Horde"
 local dungeons = {
     [1581] = {"The Deadmines",{10029},40,{{40, 42.5, 71.7}}},
-    [3457] = {"Karazhan",{10103},41,{{41, 46.7, 70.2},{41, 46.9, 74.7}}},
+    [2717] = {"Molten Core",nil,46,{{46, 54.8, 83.5},{46, 54.9, 88.0}}},
+    [3428] = {"Temple of Ahn'Qiraj",nil,1377,{{1377, 46.6, 7.4}}},
     [3959] = {"Black Temple",nil,3520,{{3520, 71, 46.4}}},
-    [3607] = {"Serpentshire Cavern",nil,3521,{{3521, 50.4, 40.9}}},
     [2597] = {"Alterac Valley",nil,36,{(isHorde and {36, 39.5, 80.2}) or {36, 63.6, 58.8}}},
 }
 if Expansions.Current >= Expansions.Tbc then
     dungeons[1581][4] = {{40, 42.6, 71.8}} -- The Deadmines
 end
 if Expansions.Current >= Expansions.Wotlk then
-    dungeons[3457][4] = {{41, 1, 1}} -- Karazhan
+    dungeons[2717][4] = {{46, 1, 1}} -- Molten Core
 end
 ZoneDB.private.dungeons = dungeons
 """
@@ -84,7 +86,8 @@ ZoneDB.private.dungeons = dungeons
 INSTANCES = r"""local ZoneDB = QuestieLoader:ImportModule("ZoneDB")
 ZoneDB.instanceIdToAreaId = {
     [36] = ZoneDB.zoneIDs.THE_DEADMINES,
-    [532] = ZoneDB.zoneIDs.KARAZHAN,
+    [409] = ZoneDB.zoneIDs.MOLTEN_CORE,
+    [531] = ZoneDB.zoneIDs.AHN_QIRAJ,
     [548] = ZoneDB.zoneIDs.SERPENTSHRINE_CAVERN,
     [999] = ZoneDB.zoneIDs.NOWHERE,
 }
@@ -112,7 +115,7 @@ ns.GEAR = {
         {"W", "Twin", 10, 10, 1411},
         {"W", nil, 10, 20},
         {"D", "Deadmines", "Cookie", nil, 291},
-        {"X", "Karazhan", "Prince", 532, 3457, 1, 0},
+        {"X", "Molten Core", "Ragnaros", 409, 2717, 0, 0},
         {"C", "tailoring", 50},
         {"A"},
     },
@@ -123,20 +126,15 @@ ns.GEAR = {
 }
 """
 
-GEAR_TBC = r"""local _, ns = ...
-if ns.IsForever and ns.IsForever() then return end
+# data as build_gear.py writes it now: the game field, instance ids in dungeon records
+GEAR_NEW = r"""local _, ns = ...
 ns.GEAR = {
-    game = "tbc", cap = 70, built = "2026-10-05",
+    game = "forever", cap = 60, built = "2026-10-05",
     S = {
-        {"D", "The Deadmines", "Cookie", nil, 36, 1581, 0},
-        {"X", "Black Temple", "Supremus", 564, 3959, 3, 0},
-        {"X", "Serpentshrine Cavern", "Lurker", 548, 0, 2, 0},
-        {"F", "Thrallmar", 5, 947, "H"},
-        {"F", "Ogri'la", 5, 1038, ""},
-        {"F", "Ashtongue Deathsworn", 8, 1012, ""},
-        {"F", "Tranquillien", 5, 922, "H"},
-        {"V", "G'eras", 111, "", "Abzeichen der Gerechtigkeit", 1},
-        {"W", nil, 70, 73, 0},
+        {"D", "The Deadmines", "Cookie", nil, 36, 1581},
+        {"X", "Ruins of Ahn'Qiraj", "Ossirian", 531, 0, 0, 0},
+        {"X", "Serpentshrine Cavern", "Lurker", 548, 0, 0, 0},
+        {"W", nil, 50, 60, 0},
     },
     Z = {},
     I = {},
@@ -144,16 +142,10 @@ ns.GEAR = {
 """
 
 
-def write(tmp_path, name, text):
-    p = tmp_path / name
-    p.write_text(text, encoding='utf-8')
-    return str(p)
-
-
-def parsed(game='forever', gear=GEAR_FOREVER, tmp_path=None):
-    recs, has_game = build_map.load_gear_text(gear, game)
+def parsed(gear=GEAR_FOREVER):
+    recs, has_game = build_map.load_gear_text(gear)
     needed = build_map.needed_keys(recs, has_game)
-    return build_map.parse_questie(TEXTS, game, needed), needed
+    return build_map.parse_questie(TEXTS, needed), needed
 
 
 # ---------------------------------------------------------------- reading the Lua tables
@@ -172,33 +164,32 @@ def test_area_table_overrides_win_and_zero_drops():
     assert 0 not in areas
 
 
-def test_dungeons_take_the_corrections_of_their_expansion():
-    tbc = build_map.read_dungeons(DUNGEONS, build_map.EXPANSION['tbc'])
-    era = build_map.read_dungeons(DUNGEONS, build_map.EXPANSION['forever'])
-    assert era[1581]['entrances'] == [(40, 42.5, 71.7)], 'Forever is Era: no TBC correction'
-    assert tbc[1581]['entrances'] == [(40, 42.6, 71.8)], 'the TBC correction line wins'
-    assert tbc[3457]['entrances'] == [(41, 46.7, 70.2), (41, 46.9, 74.7)], 'Karazhan keeps both entrances, no Wotlk line'
-    assert tbc[1581]['alt'] == [10029] and tbc[1581]['name'] == 'The Deadmines'
-    assert tbc[2597]['entrances'] == [(36, 63.6, 58.8)]
+def test_dungeons_read_as_era():
+    assert build_map.EXPANSION == 1, 'Forever counts as Era'
+    era = build_map.read_dungeons(DUNGEONS, build_map.EXPANSION)
+    assert era[1581]['entrances'] == [(40, 42.5, 71.7)], 'the Era line, no TBC correction'
+    assert era[2717]['entrances'] == [(46, 54.8, 83.5), (46, 54.9, 88.0)], 'Molten Core keeps both entrances, no Wotlk line'
+    assert era[1581]['alt'] == [10029] and era[1581]['name'] == 'The Deadmines'
+    assert era[2597]['entrances'] == [(36, 63.6, 58.8)]
 
 
 def test_instances_resolve_by_dungeon_name():
-    d = build_map.read_dungeons(DUNGEONS, 2)
+    d = build_map.read_dungeons(DUNGEONS, build_map.EXPANSION)
     inst, unknown = build_map.read_instances(INSTANCES, d)
-    assert inst == {36: 1581, 532: 3457, 548: 3607}
-    assert unknown == ['NOWHERE']
+    assert inst == {36: 1581, 409: 2717, 531: 3428}, 'with the alias of the Temple of Ahn\'Qiraj'
+    assert unknown == ['SERPENTSHRINE_CAVERN', 'NOWHERE'], 'no alias for a TBC raid any more'
 
 
 # ---------------------------------------------------------------- points
 def test_spawns_become_points_in_hundredths():
     areas = build_map.area_to_ui(AREAS)
-    dungeons = build_map.read_dungeons(DUNGEONS, 2)
+    dungeons = build_map.read_dungeons(DUNGEONS, build_map.EXPANSION)
     unknown = set()
     pts = build_map.spawn_points({12: [[42.326, 65.104], [-1, -1]], 9999: [[1, 1]]}, areas, dungeons, unknown)
     assert pts == [(1429, 4233, 6510)], 'rounded, -1/-1 and unknown areas dropped'
     assert unknown == {9999}
-    inside = build_map.spawn_points({3959: [[60, 60]], 10029: [[-1, -1]]}, areas, dungeons, unknown)
-    assert inside == [(1948, 7100, 4640), (1436, 4260, 7180)], 'inside an instance: its entrance'
+    inside = build_map.spawn_points({2717: [[50, 50]], 10029: [[-1, -1]]}, areas, dungeons, unknown)
+    assert inside == [(1428, 5480, 8350), (1428, 5490, 8800), (1436, 4250, 7170)], 'inside an instance: its entrance'
 
 
 def test_at_most_four_points_far_apart():
@@ -225,24 +216,24 @@ def test_keys_per_source_kind():
     assert k(['W', 'Twin', 10, 10], False) is None, 'a named mob without zone has no place'
     assert k(['W', None, 10, 20], False) is None
     assert k(['D', 'Deadmines', 'Cookie', None, 291], False) == 'N:Deadmines', 'old Forever data: by name'
-    assert k(['D', 'The Deadmines', 'Cookie', None, 36, 1581, 0], True) == 'I:36'
-    assert k(['X', 'Karazhan', 'Prince', 532, 3457, 1, 0], False) == 'I:532'
-    assert k(['F', 'Thrallmar', 5, 947, 'H'], True) == 'F:947'
+    assert k(['D', 'The Deadmines', 'Cookie', None, 36, 1581], True) == 'I:36'
+    assert k(['X', 'Molten Core', 'Ragnaros', 409, 2717, 0, 0], False) == 'I:409'
+    assert k(['F', 'Thrallmar', 5, 947, 'H'], True) is None, 'no reputation sources in Forever data'
     assert k(['C', 'tailoring', 50], False) is None and k(['A'], False) is None
 
 
-def test_gear_data_is_read_through_its_guard():
-    recs, has_game = build_map.load_gear_text(GEAR_FOREVER, 'forever')
+def test_gear_data_is_read_with_and_without_the_game_field():
+    recs, has_game = build_map.load_gear_text(GEAR_FOREVER)
     assert not has_game and recs[0] == ['Q', 'Kobold Camp Cleanup', 2, 1, 'A', 1429, 7, 0]
     assert recs[6] == ['P', 'Gorn One Eye', 1448, 'H', 'Armorer', None, 101]
-    recs, has_game = build_map.load_gear_text(GEAR_TBC, 'tbc')
-    assert has_game and recs[3] == ['F', 'Thrallmar', 5, 947, 'H']
+    recs, has_game = build_map.load_gear_text(GEAR_NEW)
+    assert has_game and recs[0] == ['D', 'The Deadmines', 'Cookie', None, 36, 1581]
 
 
 # ---------------------------------------------------------------- resolving
 def test_quests_by_npc_and_object_and_item_starters():
     subset, needed = parsed()
-    P, G, report = build_map.resolve(subset, needed, 'forever')
+    P, G, report = build_map.resolve(subset, needed)
     assert P['Q:7'] == [(1429, 4232, 6510)] and G['Q:7'] == 'Marshal McBride'
     assert P['Q:8'] == [(1429, 5050, 5050)] and 'Q:8' not in G, 'object starter, no giver name'
     assert P['Q:9'] == [] and report['quest item start'] == 1
@@ -250,68 +241,40 @@ def test_quests_by_npc_and_object_and_item_starters():
 
 def test_vendors_by_name_prefer_their_zone_and_npc_ids_win():
     subset, needed = parsed()
-    P, G, report = build_map.resolve(subset, needed, 'forever')
+    P, G, report = build_map.resolve(subset, needed)
     assert P['V:Gorn One Eye'] == [(1448, 4720, 3310)], 'the one in the source zone'
     assert P['U:101'] == [(1448, 4720, 3310)]
     assert len(P['R:Muad']) == 4 and P['R:Muad'] == P['U:103']
     assert P['N:The Deadmines'] == [(1436, 4250, 7170)] and P['N:Deadmines'] == P['N:The Deadmines']
-    assert P['I:532'] == [(1430, 4670, 7020), (1430, 4690, 7470)], 'by the record area: two entrances'
+    assert P['I:409'] == [(1428, 5480, 8350), (1428, 5490, 8800)], 'by the record area: two entrances'
     assert P['W:Wanderer'] == [], 'only spawns in unknown areas'
     assert report['unknown areas'] == [9999]
     assert set(P['W:Twin']) == {(1429, 2000, 2000), (1448, 3000, 3000)}
     assert report['ambiguous'] == ['W:Twin'], 'two Twins, none in the source zone'
+    assert 'factions without quartermaster' not in report
 
 
-def test_quartermasters_and_entrances_on_tbc():
-    subset, needed = parsed('tbc', GEAR_TBC)
-    P, G, report = build_map.resolve(subset, needed, 'tbc')
-    assert P['F:947'] == [(1944, 5490, 3780)] and G['F:947'] == 'Quartermaster Urgronn'
-    assert P['F:1038'] == [(1949, 2800, 5800)] and G['F:1038'] == "Jho'nass"
-    assert P['F:1012'] == [(1948, 7100, 4640)], 'Okuno stands in Black Temple: its entrance'
-    assert P['F:922'] == [] and report['factions without quartermaster'] == [922]
-    assert P['I:36'] == [(1436, 4260, 7180)], 'with the TBC correction'
-    assert P['I:564'] == [(1948, 7100, 4640)]
-    assert P['I:548'] == [], 'the entrance zone has no map: counted, not invented'
-    assert report['kinds']['F'] == (3, 1)
-
-
-def test_every_quartermaster_is_one():
-    npcs = build_map.read_table(build_map.return_blocks(NPCS)['QuestieDB.npcData'])
-    by_name = {row[1]: row for row in npcs.values()}
-    checked = 0
-    for fid, name in build_map.QUARTERMASTERS.items():
-        row = by_name.get(name)
-        if row is None:
-            continue
-        checked += 1
-        assert 'Quartermaster' in (row.get(14) or '') or name in build_map.QUARTERMASTER_EXCEPTIONS, name
-    assert checked == 4
-
-
-def test_the_real_quartermasters_stand_in_the_data():
-    path = build_map.MAP_JSON
-    if not os.path.exists(path):
-        return
-    with open(path, encoding='utf-8') as fh:
-        data = json.load(fh)
-    npcs = data['tbc']['npcs']
-    names = {v[0]: v for v in npcs.values()}
-    for fid, name in build_map.QUARTERMASTERS.items():
-        assert name in names, name
-        assert 'Quartermaster' in (names[name][2] or '') or name in build_map.QUARTERMASTER_EXCEPTIONS, name
+def test_entrances_by_instance_id():
+    subset, needed = parsed(GEAR_NEW)
+    P, G, report = build_map.resolve(subset, needed)
+    assert P['I:36'] == [(1436, 4250, 7170)], 'the Era entrance of the Deadmines'
+    assert P['I:531'] == [(1451, 4660, 740)], 'found through the instance table and its alias'
+    assert P['I:548'] == [], 'an instance the data does not know: counted, not invented'
+    assert report['kinds']['X'] == (1, 1)
 
 
 # ---------------------------------------------------------------- output
-def test_output_header_guard_sorted_and_repeatable(tmp_path):
+def test_output_header_without_guard_sorted_and_repeatable(tmp_path):
     subset, needed = parsed()
-    P, G, _ = build_map.resolve(subset, needed, 'forever')
+    P, G, _ = build_map.resolve(subset, needed)
     out = tmp_path / 'MapData.lua'
-    build_map.write_lua(str(out), 'forever', P, G, '9d39232dab48e35811a7cc02473c2f4e42b62ab6', '2026-10-05')
+    build_map.write_lua(str(out), P, G, '9d39232dab48e35811a7cc02473c2f4e42b62ab6', '2026-10-05')
     text = out.read_text(encoding='utf-8')
     lines = text.split('\n')
     assert lines[0] == '-- GENERATED by tools/build_map.py. Do not edit; rebuild instead.'
     assert '(' + build_map.QUESTIE_LICENSE + ')' in lines[1] and 'QuestieDB' in lines[1] and '9d39232dab' in lines[1]
-    assert lines[2] == 'local _, ns = ...' and lines[3] == 'if not (ns.IsForever and ns.IsForever()) then return end'
+    assert lines[2] == 'local _, ns = ...' and lines[3] == '', 'no guard line'
+    assert 'IsForever' not in text and 'quartermaster' not in text.lower() and 'F:<faction' not in text
     assert '    game = "forever", built = "2026-10-05", questie = "9d39232dab",' in lines
     keys = [ln.split('"')[1] for ln in lines if ln.startswith('        ["')]
     pkeys = keys[:len([k for k in P if P[k]])]
@@ -319,32 +282,51 @@ def test_output_header_guard_sorted_and_repeatable(tmp_path):
     assert '["W:Wanderer"]' not in text, 'keys without points stay out'
     assert '["Q:7"] = "1429:4232:6510",' in text
     first = text
-    build_map.write_lua(str(out), 'forever', P, G, '9d39232dab48e35811a7cc02473c2f4e42b62ab6', '2026-10-05')
+    build_map.write_lua(str(out), P, G, '9d39232dab48e35811a7cc02473c2f4e42b62ab6', '2026-10-05')
     assert out.read_text(encoding='utf-8') == first
 
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(unpack_returned_tuples=True)
     chunk = lua.eval('function(s) return assert(loadstring(s, "@MapData.lua")) end')(text)
-    ns = lua.eval('{ IsForever = function() return true end }')
+    ns = lua.eval('{}')
     chunk('Amisia', ns)
     assert ns.MAP.P['Q:7'] == '1429:4232:6510' and ns.MAP.G['Q:7'] == 'Marshal McBride' and ns.MAP.game == 'forever'
-    ns2 = lua.eval('{ IsForever = function() return false end }')
-    chunk('Amisia', ns2)
-    assert ns2.MAP is None, 'the guard keeps it off TBC'
-
-    tout = tmp_path / 'MapDataTBC.lua'
-    sub, need = parsed('tbc', GEAR_TBC)
-    P2, G2, _ = build_map.resolve(sub, need, 'tbc')
-    build_map.write_lua(str(tout), 'tbc', P2, G2, 'abc', '2026-10-05')
-    tl = tout.read_text(encoding='utf-8').split('\n')
-    assert tl[3] == 'if ns.IsForever and ns.IsForever() then return end'
 
 
 def test_only_needed_keys_and_offline_subset_gives_the_same(tmp_path):
     subset, needed = parsed()
-    P, G, _ = build_map.resolve(subset, needed, 'forever')
+    P, G, _ = build_map.resolve(subset, needed)
     assert set(P) == set(needed)
     again = json.loads(json.dumps(subset))
-    P2, G2, _ = build_map.resolve(again, needed, 'forever')
+    P2, G2, _ = build_map.resolve(again, needed)
     assert P2 == P and G2 == G, 'the subset kept in map_questie.json builds the same'
     assert 'Marshal McBride' in json.dumps(subset) and 'Okuno' not in json.dumps(subset), 'only what the data needs'
+
+
+def test_the_json_is_written_whole_from_one_download():
+    recs, has_game = build_map.load_gear_text(GEAR_FOREVER)
+    needed = build_map.needed_keys(recs, has_game)
+    old = {'commit': 'aaa', 'fetched': '2026-01-01', 'forever': {'npcs': {'1': ['Old', None, None, '']}}, 'tbc': {'npcs': {}},
+           'source': 'x', 'license': 'y'}
+    same = build_map.questie_json(old, TEXTS, 'aaa', needed)
+    assert set(same) == {'source', 'license', 'commit', 'fetched', 'forever'}, 'only the Forever data, no other game kept'
+    assert same['fetched'] == '2026-01-01' and same['commit'] == 'aaa', 'the same download keeps its date'
+    assert same['forever'] == build_map.parse_questie(TEXTS, needed), 'nothing of the old subset is kept'
+    newer = build_map.questie_json(old, TEXTS, 'bbb', needed)
+    assert newer['commit'] == 'bbb' and newer['fetched'] != '2026-01-01', 'a newer download: a new date'
+    assert newer['source'] == 'https://github.com/' + build_map.QUESTIE_REPO and newer['license'] == build_map.QUESTIE_LICENSE
+
+
+def test_the_real_json_is_forever_only():
+    if not os.path.exists(build_map.MAP_JSON):
+        pytest.skip('no tools/map_questie.json')
+    with open(build_map.MAP_JSON, encoding='utf-8') as fh:
+        data = json.load(fh)
+    assert set(data) == {'source', 'license', 'commit', 'fetched', 'forever'}, sorted(data)
+
+
+def test_there_is_no_game_switch():
+    with pytest.raises(SystemExit):
+        build_map.main(['--game', 'tbc'])
+    assert not hasattr(build_map, 'QUARTERMASTERS')
+    assert isinstance(build_map.FILES, dict) and 'npc' in build_map.FILES and 'tbc' not in build_map.FILES

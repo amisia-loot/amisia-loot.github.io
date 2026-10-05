@@ -1,19 +1,18 @@
-"""Builds addon/Amisia/MapData.lua (WoW Forever) and addon/Amisia/MapDataTBC.lua (TBC Anniversary):
-where the sources of the gear data stand on the world map. Quest givers and start objects, vendors,
-rare and named mobs come from NPC and object spawns, raids and dungeons from their entrances,
-reputation rewards from the faction's quartermaster. Runs without a WoW install (on the N100).
+"""Builds addon/Amisia/MapData.lua (WoW Forever): where the sources of the gear data stand on the
+world map. Quest givers and start objects, vendors, rare and named mobs come from NPC and object
+spawns, raids and dungeons from their entrances. Runs without a WoW install (on the N100).
 
-    python tools/build_map.py [--refresh-questie] [--game forever|tbc|both]
+    python tools/build_map.py [--refresh-questie] [--questie-ref REF]
 
-Sources (named with their licence in tools/README.md and in the header of the generated files):
-  - QuestieDB on GitHub (QUESTIE_REPO): the Forever and TBC npc, object and quest databases and the
-    zone tables (dungeon entrances, area id -> uiMapID, instance id -> area id). Every database file
+Sources (named with their licence in tools/README.md and in the header of the generated file):
+  - QuestieDB on GitHub (QUESTIE_REPO): the Forever npc, object and quest databases and the zone
+    tables (dungeon entrances, area id -> uiMapID, instance id -> area id). Every database file
     holds its table as a "[[return {...}]]" string; only that block is run.
-    --refresh-questie downloads them into tools/cache/questiedb/ (not in git). Whenever that download
-    is complete, what the gear data needs from it is kept in tools/map_questie.json, so a build
-    without network repeats exactly.
-  - The generated gear data (GearData.lua, BisDataTBC.lua): which places are needed at all.
-  - Amisia's own list of the TBC quartermasters (QUARTERMASTERS).
+    --refresh-questie downloads them into tools/cache/questiedb/forever/ (not in git). Whenever a
+    complete download is there, what the gear data needs from it is written to
+    tools/map_questie.json (the whole file, for that download's commit), so a build without
+    network repeats exactly.
+  - The generated gear data (GearData.lua): which places are needed at all.
 
 Points are "uiMapID:x:y" with x and y in hundredths of a percent (0-10000), at most four per key.
 """
@@ -36,42 +35,23 @@ QUESTIE_REPO = 'Questie/QuestieDB'
 QUESTIE_LICENSE = 'GPL-3.0'
 RAW = 'https://raw.githubusercontent.com/{repo}/{ref}/{path}'
 FILES = {
-    'forever': {
-        'npc': 'data/Forever/foreverNpcDB.lua', 'quest': 'data/Forever/foreverQuestDB.lua',
-        'object': 'data/Forever/foreverObjectDB.lua', 'dungeons': 'support/Forever/Zones/dungeons.lua',
-        'area': 'support/Forever/Zones/areaIdToUiMapId.lua', 'instance': 'support/Forever/Zones/instanceIdToAreaId.lua',
-    },
-    'tbc': {
-        'npc': 'data/TBC/tbcNpcDB.lua', 'quest': 'data/TBC/tbcQuestDB.lua', 'object': 'data/TBC/tbcObjectDB.lua',
-        'dungeons': 'support/Zones/dungeons.lua', 'area': 'support/Zones/areaIdToUiMapId.lua',
-        'instance': 'support/Zones/instanceIdToAreaId.lua',
-    },
+    'npc': 'data/Forever/foreverNpcDB.lua', 'quest': 'data/Forever/foreverQuestDB.lua',
+    'object': 'data/Forever/foreverObjectDB.lua', 'dungeons': 'support/Forever/Zones/dungeons.lua',
+    'area': 'support/Forever/Zones/areaIdToUiMapId.lua', 'instance': 'support/Forever/Zones/instanceIdToAreaId.lua',
 }
 # The data's expansion order (Era 1, Tbc 2, Wotlk 3, ...); Forever counts as Era. The dungeon file
 # corrects entrances for later expansions, and only the corrections of the own one apply.
-EXPANSION = {'forever': 1, 'tbc': 2}
+EXPANSION = 1
 CACHE_DIR = os.path.join(HERE, 'cache', 'questiedb')
 MAP_JSON = os.path.join(HERE, 'map_questie.json')
-GEAR = {'forever': os.path.join(ROOT, 'addon', 'Amisia', 'GearData.lua'),
-        'tbc': os.path.join(ROOT, 'addon', 'Amisia', 'BisDataTBC.lua')}
-OUT = {'forever': os.path.join(ROOT, 'addon', 'Amisia', 'MapData.lua'),
-       'tbc': os.path.join(ROOT, 'addon', 'Amisia', 'MapDataTBC.lua')}
+GEAR = os.path.join(ROOT, 'addon', 'Amisia', 'GearData.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'MapData.lua')
 USER_AGENT = build_gear.USER_AGENT
 MAX_POINTS = 4
 MERGE = 200          # spawns closer than 2 % (in hundredths of a percent) are one point
 
-# Amisia's own list: who hands out the reputation rewards of a TBC faction (faction id -> NPC name).
-# Tranquillien (922) has no quartermaster in the data and no pin.
-QUARTERMASTERS = {
-    946: 'Logistics Officer Ulrike', 947: 'Quartermaster Urgronn', 942: 'Fedryen Swiftspear', 1011: 'Nakodu',
-    935: 'Almaador', 989: 'Alurmi', 932: 'Quartermaster Endarin', 934: 'Quartermaster Enuril', 978: 'Trader Narasu',
-    941: 'Provisioner Nasela', 933: 'Karaaz', 967: 'Archmage Leryda', 1015: 'Yarzill the Merc', 1031: 'Grella',
-    1038: "Jho'nass", 1077: 'Eldara Dawnrunner', 1012: 'Okuno', 990: 'Indormi', 970: 'Mycah',
-}
-# Quartermasters whose title in the data does not say so.
-QUARTERMASTER_EXCEPTIONS = {'Archmage Leryda', 'Yarzill the Merc', 'Indormi'}
 # Instance keys whose dungeon the data spells differently.
-INSTANCE_ALIASES = {'SERPENTSHRINE_CAVERN': 'Serpentshire Cavern', 'AHN_QIRAJ': "Temple of Ahn'Qiraj"}
+INSTANCE_ALIASES = {'AHN_QIRAJ': "Temple of Ahn'Qiraj"}
 
 
 def log(*a):
@@ -80,7 +60,7 @@ def log(*a):
 
 # ---------------------------------------------------------------- download and cache
 def refresh_questie(dest=CACHE_DIR, ref='master'):
-    """Downloads the database files of both games. Returns {game: {name: text}} and the commit."""
+    """Downloads the Forever database files. Returns {name: text} and the commit."""
     def get(url):
         req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
         with urllib.request.urlopen(req, timeout=120) as r:
@@ -92,32 +72,27 @@ def refresh_questie(dest=CACHE_DIR, ref='master'):
     except Exception as exc:  # noqa: BLE001 - the commit is only recorded, the files are what counts
         log(f'quest database: could not read the commit of {ref}: {exc}')
     texts = {}
-    for game, files in FILES.items():
-        os.makedirs(os.path.join(dest, game), exist_ok=True)
-        texts[game] = {}
-        for name, path in files.items():
-            text = get(RAW.format(repo=QUESTIE_REPO, ref=commit, path=path))
-            with open(os.path.join(dest, game, name + '.lua'), 'w', encoding='utf-8', newline='\n') as fh:
-                fh.write(text)
-            texts[game][name] = text
+    os.makedirs(os.path.join(dest, 'forever'), exist_ok=True)
+    for name, path in FILES.items():
+        text = get(RAW.format(repo=QUESTIE_REPO, ref=commit, path=path))
+        with open(os.path.join(dest, 'forever', name + '.lua'), 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write(text)
+        texts[name] = text
     with open(os.path.join(dest, 'COMMIT'), 'w', encoding='utf-8') as fh:
         fh.write(commit + '\n')
-    log(f'quest database: {sum(len(f) for f in FILES.values())} files of {QUESTIE_REPO}@{commit[:10]} '
-        f'-> {os.path.relpath(dest, ROOT)}')
+    log(f'quest database: {len(FILES)} files of {QUESTIE_REPO}@{commit[:10]} -> {os.path.relpath(dest, ROOT)}')
     return texts, commit
 
 
 def load_cached(dest=CACHE_DIR):
     """The downloaded files and their commit, or (None, None) when the download is incomplete."""
     texts = {}
-    for game, files in FILES.items():
-        texts[game] = {}
-        for name in files:
-            p = os.path.join(dest, game, name + '.lua')
-            if not os.path.exists(p):
-                return None, None
-            with open(p, encoding='utf-8') as fh:
-                texts[game][name] = fh.read()
+    for name in FILES:
+        p = os.path.join(dest, 'forever', name + '.lua')
+        if not os.path.exists(p):
+            return None, None
+        with open(p, encoding='utf-8') as fh:
+            texts[name] = fh.read()
     commit = None
     if os.path.exists(os.path.join(dest, 'COMMIT')):
         with open(os.path.join(dest, 'COMMIT'), encoding='utf-8') as fh:
@@ -306,8 +281,8 @@ def parse_points(text):
 
 # ---------------------------------------------------------------- the gear data and its keys
 GEAR_STUB = r'''
-return function(src, forever)
-    local ns = { IsForever = function() return forever end }
+return function(src)
+    local ns = {}
     assert(loadstring(src, "@gear"))("Amisia", ns)
     local out = {}
     local d = ns.GEAR
@@ -322,20 +297,20 @@ end
 '''
 
 
-def load_gear_text(text, game):
+def load_gear_text(text):
     """The source records of a gear data file (as lists, trailing nils dropped) and whether it has
-    the game field."""
+    the game field (data built before it holds a zone in a dungeon record's instance field)."""
     lua = _lua()
-    recs, has_game = lua.execute(GEAR_STUB)(text, game == 'forever')
+    recs, has_game = lua.execute(GEAR_STUB)(text)
     out = []
     for rec in seq(py(recs)):
         out.append([None if v == '\0nil' else v for v in seq(rec)])
     return out, bool(has_game)
 
 
-def load_gear(path, game):
+def load_gear(path=GEAR):
     with open(path, encoding='utf-8') as fh:
-        return load_gear_text(fh.read(), game)
+        return load_gear_text(fh.read())
 
 
 def _at(rec, i):
@@ -382,9 +357,6 @@ def key_of(rec, has_game):
         if _num(inst):
             return f'I:{int(inst)}'
         return f'N:{rec[1]}' if _at(rec, 2) else None
-    if k == 'F':
-        fid = _at(rec, 4)
-        return f'F:{int(fid)}' if _num(fid) else None
     return None
 
 
@@ -420,14 +392,14 @@ def _rec_areas(recs):
 
 
 # ---------------------------------------------------------------- the subset the data needs
-def parse_questie(texts, game, needed):
+def parse_questie(texts, needed):
     """What the needed keys use from the database files, as plain JSON-ready data:
     npcs {id: [name, zone uiMapID, title, points]}, objects {id: [name, points]} (points as in the output),
     quests {id: [npc starters, object starters, item start 1/0]}, dungeons {area: [name, points]},
     instances {id: area}, areas (area -> uiMapID for the records' negative zones), unknown areas."""
     lua = _lua()
     areas = area_to_ui(texts['area'])
-    dungeons = read_dungeons(texts['dungeons'], EXPANSION[game])
+    dungeons = read_dungeons(texts['dungeons'], EXPANSION)
     instances, _ = read_instances(texts['instance'], dungeons)
     unknown = set()
 
@@ -444,8 +416,6 @@ def parse_questie(texts, game, needed):
             ids.add(int(rest))
         elif kind == 'Q':
             qids.add(int(rest))
-        elif kind == 'F' and int(rest) in QUARTERMASTERS:
-            names.add(QUARTERMASTERS[int(rest)])
 
     quests, objects_needed = {}, set()
     for qid in sorted(qids):
@@ -499,7 +469,7 @@ def parse_questie(texts, game, needed):
 
 
 # ---------------------------------------------------------------- resolving keys to points
-def resolve(subset, needed, game):
+def resolve(subset, needed):
     """{key: [points]} for every needed key (empty where no place is known), {key: who stands there}
     and a report."""
     npcs = {int(k): v for k, v in subset['npcs'].items()}
@@ -525,7 +495,7 @@ def resolve(subset, needed, game):
         return near[0][1] if near else None
 
     report = {'kinds': {}, 'ambiguous': [], 'quest item start': 0, 'quest without starter': 0,
-              'unknown quests': 0, 'factions without quartermaster': [], 'unknown areas': list(subset.get('unknown', []))}
+              'unknown quests': 0, 'unknown areas': list(subset.get('unknown', []))}
     P, G = {}, {}
     for key in sorted(needed):
         recs = needed[key]
@@ -567,14 +537,6 @@ def resolve(subset, needed, game):
             area = dungeon_by_name(rest)
             if area:
                 points = pts(dungeons[area][1])
-        elif kind == 'F':
-            name = QUARTERMASTERS.get(int(rest))
-            if not name:
-                report['factions without quartermaster'].append(int(rest))
-            else:
-                G[key] = name
-                for n in by_name.get(name, []):
-                    points += pts(npcs[n][3])
         P[key] = pick_points(points)
         for k in sorted({r[0] for r in recs}):
             w, wo = report['kinds'].get(k, (0, 0))
@@ -583,24 +545,20 @@ def resolve(subset, needed, game):
 
 
 # ---------------------------------------------------------------- output
-def write_lua(out, game, P, G, commit, built):
+def write_lua(out, P, G, commit, built):
     lua_str = build_gear.lua_str
     commit = (commit or 'master')[:10]
-    guard = ('if not (ns.IsForever and ns.IsForever()) then return end' if game == 'forever'
-             else 'if ns.IsForever and ns.IsForever() then return end')
     lines = [
         '-- GENERATED by tools/build_map.py. Do not edit; rebuild instead.',
-        f'-- Sources: QuestieDB ({QUESTIE_LICENSE}) npc, object, quest and zone data at {commit}; '
-        f"Amisia's quartermaster list.",
+        f'-- Sources: QuestieDB ({QUESTIE_LICENSE}) npc, object, quest and zone data at {commit}.',
         'local _, ns = ...',
-        guard,
         '',
         '-- P: [source key] = up to four points "uiMapID:x:y" (x, y in hundredths of a percent, 0-10000),',
         '-- separated by spaces. Keys: Q:<quest id> (where the quest starts), V:, R:, W:<NPC name> (vendor,',
-        '-- rare, named mob), U:<NPC id>, I:<instance id> and N:<dungeon name> (entrance), F:<faction id>',
-        '-- (quartermaster). G: [source key] = who stands there (quest giver, quartermaster), English.',
+        '-- rare, named mob), U:<NPC id>, I:<instance id> and N:<dungeon name> (entrance).',
+        '-- G: [source key] = who stands there (the quest giver), English.',
         'ns.MAP = {',
-        f'    game = {lua_str(game)}, built = {lua_str(built)}, questie = {lua_str(commit)},',
+        f'    game = "forever", built = {lua_str(built)}, questie = {lua_str(commit)},',
         '    P = {',
     ]
     for key in sorted(P):
@@ -625,14 +583,10 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--refresh-questie', action='store_true', help='download the database files again (see tools/README.md)')
     ap.add_argument('--questie-ref', default='master', help='branch, tag or commit to download (default master)')
-    ap.add_argument('--game', choices=('forever', 'tbc', 'both'), default='both')
     args = ap.parse_args(argv)
-    games = ['forever', 'tbc'] if args.game == 'both' else [args.game]
 
-    gear = {}
-    for game in games:
-        recs, has_game = load_gear(GEAR[game], game)
-        gear[game] = needed_keys(recs, has_game)
+    recs, has_game = load_gear()
+    needed = needed_keys(recs, has_game)
 
     texts, commit = (None, None) if args.refresh_questie else load_cached()
     if args.refresh_questie:
@@ -642,49 +596,46 @@ def main(argv=None):
         with open(MAP_JSON, encoding='utf-8') as fh:
             stored = json.load(fh)
     if texts is not None:
-        fresh = dict(stored)
-        if stored.get('commit') != commit:
-            fresh = {}
-        fresh.update({'source': f'https://github.com/{QUESTIE_REPO}', 'license': QUESTIE_LICENSE,
-                      'commit': commit or args.questie_ref,
-                      'fetched': stored.get('fetched') if stored.get('commit') == commit and stored.get('fetched')
-                      else time.strftime('%Y-%m-%d')})
-        for game in games:
-            fresh[game] = parse_questie(texts[game], game, gear[game])
+        stored = questie_json(stored, texts, commit or args.questie_ref, needed)
         with open(MAP_JSON, 'w', encoding='utf-8', newline='\n') as fh:
-            json.dump(fresh, fh, ensure_ascii=False, indent=1, sort_keys=True)
+            json.dump(stored, fh, ensure_ascii=False, indent=1, sort_keys=True)
             fh.write('\n')
         log(f'quest database: read -> {os.path.relpath(MAP_JSON, ROOT)} ({os.path.getsize(MAP_JSON) // 1024} KB)')
-        stored = fresh
     elif not stored:
         raise SystemExit('no tools/map_questie.json and no download in tools/cache/questiedb: run with --refresh-questie')
     else:
         log('quest database: no complete download in tools/cache/questiedb, building from tools/map_questie.json')
+    if 'forever' not in stored:
+        raise SystemExit('tools/map_questie.json has no forever data: run with --refresh-questie')
 
-    for game in games:
-        if game not in stored:
-            raise SystemExit(f'tools/map_questie.json has no {game} data: run with --refresh-questie')
-        P, G, report = resolve(stored[game], gear[game], game)
-        n = write_lua(OUT[game], game, P, G, stored.get('commit'), stored.get('fetched') or time.strftime('%Y-%m-%d'))
-        log(f'{game}: places per source kind (with / without): '
-            + ', '.join(f'{k} {w}/{wo}' for k, (w, wo) in sorted(report['kinds'].items())))
-        for kind in ('Q', 'V', 'R', 'W', 'U', 'I', 'N', 'F'):
-            keys = [k for k in P if k.startswith(kind + ':')]
-            if keys:
-                log(f'  keys {kind}: {sum(1 for k in keys if P[k])} of {len(keys)} with a place')
-        if report['unknown areas']:
-            log(f'  areas without a map: {len(report["unknown areas"])} ({report["unknown areas"][:12]})')
-        if report['ambiguous']:
-            log(f'  names in more than one zone, none in the source zone: {len(report["ambiguous"])} '
-                f'({report["ambiguous"][:8]})')
-        log(f'  quests started by an item: {report["quest item start"]}, without starter: '
-            f'{report["quest without starter"]}, unknown: {report["unknown quests"]}')
-        if report['factions without quartermaster']:
-            log(f'  factions without quartermaster: {report["factions without quartermaster"]}')
-        missing = [k for k in P if not P[k]]
-        if missing:
-            log(f'  without a place: {missing[:20]}{" ..." if len(missing) > 20 else ""}')
-        log(f'{os.path.relpath(OUT[game], ROOT)}: {n} keys with a place, {os.path.getsize(OUT[game]) // 1024} KB')
+    P, G, report = resolve(stored['forever'], needed)
+    n = write_lua(OUT, P, G, stored.get('commit'), stored.get('fetched') or time.strftime('%Y-%m-%d'))
+    log('places per source kind (with / without): '
+        + ', '.join(f'{k} {w}/{wo}' for k, (w, wo) in sorted(report['kinds'].items())))
+    for kind in ('Q', 'V', 'R', 'W', 'U', 'I', 'N'):
+        keys = [k for k in P if k.startswith(kind + ':')]
+        if keys:
+            log(f'  keys {kind}: {sum(1 for k in keys if P[k])} of {len(keys)} with a place')
+    if report['unknown areas']:
+        log(f'  areas without a map: {len(report["unknown areas"])} ({report["unknown areas"][:12]})')
+    if report['ambiguous']:
+        log(f'  names in more than one zone, none in the source zone: {len(report["ambiguous"])} '
+            f'({report["ambiguous"][:8]})')
+    log(f'  quests started by an item: {report["quest item start"]}, without starter: '
+        f'{report["quest without starter"]}, unknown: {report["unknown quests"]}')
+    missing = [k for k in P if not P[k]]
+    if missing:
+        log(f'  without a place: {missing[:20]}{" ..." if len(missing) > 20 else ""}')
+    log(f'{os.path.relpath(OUT, ROOT)}: {n} keys with a place, {os.path.getsize(OUT) // 1024} KB')
+
+
+def questie_json(stored, texts, commit, needed):
+    """The content of tools/map_questie.json for a complete download: always written whole from that
+    download (nothing is kept from an older one); the fetch date stays while the commit is the same."""
+    same = stored.get('commit') == commit and stored.get('fetched')
+    return {'source': f'https://github.com/{QUESTIE_REPO}', 'license': QUESTIE_LICENSE, 'commit': commit,
+            'fetched': stored['fetched'] if same else time.strftime('%Y-%m-%d'),
+            'forever': parse_questie(texts, needed)}
 
 
 if __name__ == '__main__':

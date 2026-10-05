@@ -1,20 +1,10 @@
---[[preload
-C_Map.SetUserWaypoint = nil
-C_Map.ClearUserWaypoint = nil
-C_Map.GetUserWaypoint = nil
-C_Map.HasUserWaypoint = nil
-C_Map.CanSetUserWaypointOnMap = nil
-C_Map.GetUserWaypointPositionForMap = nil
-C_Map.GetUserWaypointHyperlink = nil
-UiMapPoint = nil
-C_SuperTrack = nil
-]]
--- Pins on the world map (MapPins.lua, MapPin.xml) on TBC Anniversary: the template and the TOC,
--- the data provider added once at login, pins only for the shown zone, the continent with its zone
--- rectangles and only with map.pinsContinent, one pin per spot with a count, at most 60 with wishes
--- first, the switches for targets, wishes and all pins, owned items and hidden places left out, the
--- target's own pin, the tooltip, a click sets the target, shift inserts the place, the right-click
--- menu, refreshes only on a change while the map shows (throttled), errors to the error handler.
+-- Pins on the world map (MapPins.lua, MapPin.xml): the template and the TOC, the data provider
+-- added once at login, pins only for the shown zone, the continent with its zone rectangles and
+-- only with map.pinsContinent, one pin per spot with a count, at most 60 with wishes first, the
+-- switches for targets, wishes and all pins, owned items and hidden places left out, the target's
+-- own pin where the client's waypoint fails (Durotar takes no waypoint here), the tooltip, a click
+-- sets the target, shift inserts the place, the right-click menu, refreshes only on a change while
+-- the map shows (throttled), errors to the error handler.
 local Gear, Map = NS.Gear, NS.Map
 local TEMPLATE = "AmisiaMapPinTemplate"
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
@@ -45,10 +35,11 @@ assert(iPins and iXml and iWish and iWish < iPins and iPins < iXml, "MapPins.lua
 assert(type(AmisiaMapPinMixin) == "table" and AmisiaMapPinMixin.OnAcquired, "the mixin is a global for the XML")
 
 ---------------------------------------------------------------------------
--- data: a warrior at 70, vendors in Durotar and Elwynn
+-- data: a warrior at 60, vendors in Durotar and Elwynn; Durotar takes no client waypoint
 ---------------------------------------------------------------------------
 AmisiaDB.settings.gear = { specs = { WARRIOR = "dps" } }
-STUB.class, STUB.level, STUB.faction = "WARRIOR", 70, "Alliance"
+STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
+STUB.waypoint.blocked[1411] = true
 STUB.instance = { type = "none" }
 STUB.maps[1411] = { name = "Durotar", parent = 1414, mapType = 3, world = { 1, 0, 0, 1000, 1000 } }
 STUB.maps[1429] = { name = "Wald von Elwynn", parent = 1415, mapType = 3, world = { 0, 0, 0, 1000, 1000 } }
@@ -62,8 +53,8 @@ local function gear(id, name, loc, str, sources)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID, it.icon = "INVTYPE_" .. loc, 4, 4, 1000 + id
-    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 70
-    I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 60
+    I[id] = { loc, 4, 4, 60, 4, 1, 70, 0, 0, 0 }
     for _, n in ipairs(sources) do I[id][#I[id] + 1] = n end
 end
 local S = {
@@ -71,7 +62,7 @@ local S = {
     { "V", "Second Vendor", 1411, "", "" },           -- 2
     { "V", "Elwynn Guy", 1429, "", "" },              -- 3
     { "V", "Many Spots", 1411, "", "" },              -- 4
-    { "C", "tailoring", 375 },                        -- 5
+    { "C", "tailoring", 300 },                        -- 5
 }
 gear(201, "Helm Gorn", "HEAD", 40, { 1 })
 gear(202, "Brust Gorn", "CHEST", 30, { 1 })
@@ -80,11 +71,11 @@ gear(204, "Stiefel Elwynn", "FEET", 10, { 3 })
 gear(205, "Handschuhe Wunsch", "HAND", 15, { 2 })
 gear(206, "Schultern Schneider", "SHOULDER", 25, { 5 })
 gear(207, "Gürtel Viele", "WAIST", 12, { 4 })
-NS.GEAR = { game = "tbc", cap = 70, built = "t-pins", S = S, I = I, Z = {} }
+NS.GEAR = { game = "forever", cap = 60, built = "t-pins", S = S, I = I, Z = {} }
 Gear._reset()
 local many = {}
 for i = 1, 70 do many[i] = ("1411:%d:%d"):format(100 + (i % 10) * 900, 100 + math.floor(i / 10) * 1200) end
-NS.MAP = { game = "tbc", built = "2026-10-05", G = {}, P = {
+NS.MAP = { game = "forever", built = "2026-10-05", G = {}, P = {
     ["V:Gorn One Eye"] = "1411:4720:3310",
     ["V:Second Vendor"] = "1411:6000:7000 1429:1000:1000",
     ["V:Elwynn Guy"] = "1429:4000:4000",
@@ -251,7 +242,9 @@ assert(#pins() == 2)
 ---------------------------------------------------------------------------
 -- the target
 ---------------------------------------------------------------------------
+assert(Map.ClientWaypoints(), "the client has the waypoint functions")
 assert(NS.MapSetTarget(201))
+assert(NS.MapTarget().ours == false and STUB.waypoint.point == nil, "Durotar refuses the waypoint: Amisia's own target")
 STUB.tick(0.6)
 assert(#pins() == 2, "the target's place is the same pin")
 p = pinOf("V:Gorn One Eye")
