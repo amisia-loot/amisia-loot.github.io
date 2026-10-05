@@ -1229,9 +1229,17 @@ end
 
 local function buildToast()
     -- the client's tooltip ground and border (TooltipBackdropTemplate); the flat ground with a gold
-    -- frame of before when the template is missing
-    local ok, f = pcall(CreateFrame, "Button", "AmisiaBisToast", UIParent, "TooltipBackdropTemplate")
-    if not ok or not f then
+    -- frame of before when the template is missing or lacks its NineSlice. Made without a name so a
+    -- rejected try leaves no frame under it; the name is set after the probe.
+    local ok, f = pcall(CreateFrame, "Button", nil, UIParent, "TooltipBackdropTemplate")
+    if ok and f and not f.NineSlice then
+        f:Hide()
+        f:ClearAllPoints()
+        ok = false
+    end
+    if ok and f then
+        _G.AmisiaBisToast = f
+    else
         f = CreateFrame("Button", "AmisiaBisToast", UIParent)
         local bg = f:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()

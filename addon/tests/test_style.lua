@@ -62,10 +62,22 @@ local seenChecked
 cb:SetScript("OnClick", function(self) seenChecked = self:GetChecked() end)
 cb:Click(); assert(seenChecked == true and cb:GetChecked() == true, "toggled before OnClick")
 cb:SetChecked(nil); assert(cb:GetChecked() == false)
+-- the addon's toggle: 18 x 18, its state textures pinned to the button (they come in atlas size)
+local tg = NS.W.Toggle(root)
+assert(tg._w == 18 and tg._h == 18)
+for _, key in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "DisabledCheckedTexture" }) do
+    local t = tg[key]
+    assert(t and t.points.TOPLEFT and t.points.TOPLEFT.rel == tg and t.points.BOTTOMRIGHT and t.points.BOTTOMRIGHT.rel == tg,
+        key .. " fills the button")
+end
 -- edit boxes
 local sb = CreateFrame("EditBox", nil, root, "SearchBoxTemplate")
 assert(sb.Left and sb.Middle and sb.Right and sb.Instructions and sb.searchIcon and sb.clearButton)
 assert(sb.Instructions:GetText() == SEARCH and SEARCH == "Suchen")
+-- the addon's search box: the cap moves in by 5, the magnifier with it
+local asb = NS.W.SearchBox(root, 150)
+assert(asb.Left.points.LEFT.x == 0 and asb.searchIcon.points.LEFT.x == 6 and asb.searchIcon.points.LEFT.y == -1,
+    "the magnifier sits inside the field")
 local ib = CreateFrame("EditBox", nil, root, "InputBoxTemplate")
 assert(ib.Left and ib.Middle and ib.Right and ib.Left.points.LEFT.x == -5, "the left edge sits 5 px outside")
 -- the minimal scroll bar
@@ -225,6 +237,11 @@ hdr2:SetCollapsed(true); assert(hdr2.CollapseButton.collapsed == true)
 local fixed = W.SectionHeader(page, "Oberfläche", false)
 assert(not fixed.CollapseButton:IsShown(), "no minus without collapsing")
 fixed:Click(); assert(not fixed.collapsed)
+-- a plain bar takes no mouse: no hover, no call into the shared tooltip
+assert(fixed.mouseEnabled == false, "a non-collapsible bar ignores the mouse")
+fixed.scripts.OnEnter(fixed); fixed.scripts.OnLeave(fixed)
+assert(fixed.tplRuns == nil or (not fixed.tplRuns.OnEnter and not fixed.tplRuns.OnLeave), "the template's hover scripts are gone")
+assert(hdr2.mouseEnabled ~= false and hdr2.scripts.OnEnter, "a collapsible bar keeps its hover")
 STUB.missingTemplates.ListHeaderVisualTemplate = true
 local hdr3 = W.SectionHeader(page, "Gilde", true, function(c) toggled = c end)
 STUB.missingTemplates.ListHeaderVisualTemplate = nil
@@ -271,6 +288,15 @@ STUB.scrollBar(bar, 1)
 assert(list.offset == 18 and list.rows[1].text:GetText() == "Eintrag 19" and list.rows[12].text:GetText() == "Eintrag 30", "the bar shows the end")
 STUB.scrollBar(bar, 0.5)
 assert(list.offset == 9, "rounded: " .. list.offset)
+-- one wheel notch is one row over the list and over its bar alike (the controller's scalar is 2.0)
+STUB.scrollBar(bar, 0)
+assert(list.offset == 0)
+bar.scripts.OnMouseWheel(bar, -1)
+assert(list.offset == 1, "the bar's wheel steps one row, not two: " .. list.offset)
+list.scripts.OnMouseWheel(list, -1)
+assert(list.offset == 2, "the list's wheel steps one row")
+bar.scripts.OnMouseWheel(bar, 1)
+assert(list.offset == 1, "and back one row")
 list:SetItems({ "a", "b", "c", "d", "e" })
 assert(not bar:IsShown() and list.offset == 0 and list.rows[1].text:GetText() == "a", "all fits: no bar")
 list:SetItems({})
@@ -454,10 +480,24 @@ assert(navShown() == "#raid #gear gear map #guild export bank tools #amisia sett
 raidHdr = nil
 for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
 assert(raidHdr.collapsed == true, "the bar shows the plus")
+-- the collapsed section holding the open page names it in grey; cleared when expanded or elsewhere
+do
+    local label = raidHdr.ButtonText:GetText()
+    assert(label:find("^Raid") and label:find("\194\183", 1, true) and label:find(NS.Panel("raids").label, 1, true)
+        and label:find("|cff8f86a3", 1, true), "the collapsed bar names the open page: " .. label)
+    NS.ShowPage("settings")
+    for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
+    assert(not raidHdr.ButtonText:GetText():find("\194\183", 1, true), "no marker when the open page is elsewhere")
+    NS.ShowPage("raids")
+    for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
+    assert(raidHdr.ButtonText:GetText():find("\194\183", 1, true))
+end
 -- kept over a refresh and a new build of the list
 NS.Refresh(); assert(navShown():sub(1, 12) == "#raid #gear ", navShown())
 raidHdr:Click()
 assert(not AmisiaDB.settings.window.collapsed.raid and navShown():sub(1, 15) == "#raid overview ", navShown())
+for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
+assert(raidHdr.ButtonText:GetText() == "Raid", "expanded: the plain name, " .. tostring(raidHdr.ButtonText:GetText()))
 NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
@@ -492,7 +532,9 @@ local keepGear = NS.GEAR
 NS.GEAR = nil
 NS.UpdateSideTabs()
 assert(tabsShown() == "", tabsShown())
+assert(MF.clampInsets[2] == 0, "no tab shown: no inset on the right")
 NS.Set("ui.view", "officer")
+assert(MF.clampInsets[2] == tabs.rolls:GetWidth(), "tabs shown again: the inset is back")
 assert(tabsShown() == "rolls softres", tabsShown())
 assert(tabs.rolls.points.TOPLEFT.rel == MF and tabs.rolls.points.TOPLEFT.y == -60, "no gap for the hidden tab")
 assert(tabs.softres.points.TOPLEFT.rel == tabs.rolls)

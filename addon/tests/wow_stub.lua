@@ -759,6 +759,7 @@ TEMPLATES.SearchBoxTemplate = function(f)
     f.Instructions:SetPoint("BOTTOMRIGHT", -20, 0)
     f.Instructions:SetText(SEARCH)
     f.searchIcon = f:CreateTexture(nil, "OVERLAY")
+    f.searchIcon:SetPoint("LEFT", 1, -1)
     f.clearButton = CreateFrame("Button", nil, f)
     f.clearButton:SetSize(17, 17)
     f.clearButton:SetPoint("RIGHT", -3, 0)
@@ -805,11 +806,22 @@ TEMPLATES.MinimalScrollBar = function(f)
         end
     end
     f.ScrollStepInDirection = function(self, dir) self:SetScrollPercentage(self.scroll + self.pan * dir) end
+    -- the controller's wheel: the pan extent times wheelPanScalar (2.0 unless the owner sets one)
+    f.wheelPanScalar = 2.0
+    tplScript(f, "OnMouseWheel", function(self, value)
+        local step = clamp01(self.pan * self.wheelPanScalar)
+        self:SetScrollPercentage(self.scroll + (value < 0 and step or -step))
+    end)
 end
 function STUB.scrollBar(bar, pct) bar:SetScrollPercentage(pct) end
 TEMPLATES.MinimalCheckboxTemplate = function(f, kind)
     if kind ~= "CheckButton" then error("MinimalCheckboxTemplate needs a CheckButton", 3) end
     f.tplW, f.tplH = 30, 29
+    -- the state textures come with useAtlasSize: the atlas's own 30 x 29, no anchors
+    for _, key in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "DisabledCheckedTexture" }) do
+        local t = part(f, key, "ARTWORK")
+        t._w, t._h = 30, 29
+    end
 end
 TEMPLATES.TooltipBackdropTemplate = function(f)
     f.NineSlice = CreateFrame("Frame", nil, f)
@@ -867,6 +879,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetHeight = function(self, h) self._h = h end
     f.GetChecked = function(self) return self.checked end
     f.SetFrameStrata = function(self, s) self.strata = s end
+    f.EnableMouse = function(self, on) self.mouseEnabled = on and true or false end
     f.SetClampRectInsets = function(self, l, r, t, b) self.clampInsets = { l, r, t, b } end
     -- one edit box holds the keyboard focus; gaining and losing it runs the scripts, as in the client
     f.SetFocus = function(self)

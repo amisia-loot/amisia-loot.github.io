@@ -277,13 +277,21 @@ function W.Tooltip(frame, title, text)
     end)
 end
 
--- The check box of the profession window (MinimalCheckboxTemplate). A CheckButton turns itself
--- over before OnClick runs; OnClick only reads the state. The field checked mirrors it. Without
--- the template the gold square of before.
+-- The client's minimal check box (MinimalCheckboxTemplate, as the add-on list's force-load box).
+-- A CheckButton turns itself over before OnClick runs; OnClick only reads the state. The field
+-- checked mirrors it. The template's textures keep the atlas size (30 x 29), so they are pinned
+-- to the 18 x 18 button. Without the template the gold square of before.
 function W.Toggle(parent, onChange)
     local b = inherit("CheckButton", nil, parent, "MinimalCheckboxTemplate", function(f) return f.SetChecked and f.GetChecked end)
     if b then
         b:SetSize(18, 18)
+        for _, key in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "DisabledCheckedTexture" }) do
+            local t = b[key]
+            if t and t.SetAllPoints then
+                t:ClearAllPoints()
+                t:SetAllPoints(b)
+            end
+        end
         local setChecked = b.SetChecked
         function b:SetChecked(on)
             self.checked = on and true or false
@@ -454,6 +462,11 @@ function W.SearchBox(parent, width, onCommit, hint)
     e:SetAutoFocus(false)
     e.Left:ClearAllPoints()
     e.Left:SetPoint("LEFT", 0, 0)
+    -- the cap moved 5 px in from the template's -5: the magnifier moves with it (template: x 1)
+    if e.searchIcon then
+        e.searchIcon:ClearAllPoints()
+        e.searchIcon:SetPoint("LEFT", 6, -1)
+    end
     e.Instructions:SetText(hint)
     local commit = wireCommit(e, onCommit, true, true)
     e.clearButton:HookScript("OnClick", function()
@@ -521,7 +534,14 @@ function W.SectionHeader(parent, label, collapsible, onToggle)
         h:SetHeight(25)
         h:SetHeaderText(label or "")
         if h.SetTitleColor and NORMAL_FONT_COLOR then h:SetTitleColor(false, NORMAL_FONT_COLOR) end
-        if h.CollapseButton and not collapsible then h.CollapseButton:Hide() end
+        if not collapsible then
+            -- a plain bar: no hover glow, and the template's OnEnter/OnLeave must not reach the shared
+            -- tooltip (it hides whatever another frame shows there)
+            if h.CollapseButton then h.CollapseButton:Hide() end
+            h:EnableMouse(false)
+            h:SetScript("OnEnter", function() end)
+            h:SetScript("OnLeave", function() end)
+        end
         function h:SetCollapsed(on)
             self.collapsed = on and true or false
             if self.UpdateCollapsedState then self:UpdateCollapsedState(self.collapsed) end
@@ -666,6 +686,8 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
             bar:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, 0)
             bar:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 4, 0)
             bar:SetHideIfUnscrollable(true)
+            -- the controller's wheel steps pan extent x 2.0; one notch is one row here, as on the list
+            bar.wheelPanScalar = 1
             bar:RegisterCallback(BaseScrollBoxEvents and BaseScrollBoxEvents.OnScroll or "OnScroll", function(_, pct)
                 if f.syncing then return end
                 local span = #f.items - f.rowCount

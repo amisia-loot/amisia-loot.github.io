@@ -105,7 +105,12 @@ local function updateNav()
             usedHeads = usedHeads + 1
             if #order > 0 then y = y - GAP end
             h.group = g.key
-            h:SetHeaderText(g.label)
+            -- a collapsed section hides its rows, so its bar names the open page in grey
+            local openPage
+            if collapsed[g.key] then
+                for _, p in ipairs(pages) do if p.key == current then openPage = p end end
+            end
+            h:SetHeaderText(openPage and (g.label .. " |cff8f86a3\194\183 " .. openPage.label .. "|r") or g.label)
             h:SetCollapsed(collapsed[g.key] and true or false)
             h:ClearAllPoints()
             h:SetPoint("TOPLEFT", nav, "TOPLEFT", 0, y)
@@ -149,12 +154,13 @@ end
 -- the windows need not know this file).
 function ns.UpdateSideTabs()
     if not F then return end
-    local prev
+    local prev, firstShown
     for _, def in ipairs(SIDE_TABS) do
         local tab = sideTabs[def.key]
         if tab then
             local win = _G[def.frame]
             if def.visible() then
+                firstShown = firstShown or tab
                 tab:ClearAllPoints()
                 if prev then
                     tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -2)
@@ -169,6 +175,9 @@ function ns.UpdateSideTabs()
             tab:SetChecked(win ~= nil and win:IsShown() and true or false)
         end
     end
+    -- the tabs hang outside the frame on the right: keep them on the screen when moving it, but only
+    -- while at least one is shown
+    if F.SetClampRectInsets then F:SetClampRectInsets(0, firstShown and firstShown:GetWidth() or 0, 0, 0) end
 end
 
 local function navRow()
@@ -279,10 +288,6 @@ local function build()
         local tab = sideTab(def)
         if tab then sideTabs[def.key] = tab end
     end
-    local first = sideTabs[SIDE_TABS[1].key] or sideTabs[SIDE_TABS[2].key] or sideTabs[SIDE_TABS[3].key]
-    -- the tabs hang outside the frame on the right: keep them on the screen when moving it
-    if first and F.SetClampRectInsets then F:SetClampRectInsets(0, first:GetWidth(), 0, 0) end
-
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.pauseBtn = bar, statusText, pauseBtn
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
