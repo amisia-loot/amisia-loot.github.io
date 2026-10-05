@@ -1,6 +1,21 @@
 -- The look of Forever's own windows: the stub knows the client's templates and atlases, and every
 -- widget inherits the template the client draws it with.
 
+-- every frame and region made from here on, with its parent: the head checks of the side windows
+-- look at what a window holds directly
+local made = {}
+do
+    local create = CreateFrame
+    _G.CreateFrame = function(kind, name, parent, template)
+        local f = create(kind, name, parent, template)
+        made[#made + 1] = f
+        local fs, tx = f.CreateFontString, f.CreateTexture
+        f.CreateFontString = function(self, ...) local r = fs(self, ...); made[#made + 1] = r; return r end
+        f.CreateTexture = function(self, ...) local r = tx(self, ...); made[#made + 1] = r; return r end
+        return f
+    end
+end
+
 ---------------------------------------------------------------------------
 -- the stub: templates, atlases, check buttons, scroll bars
 ---------------------------------------------------------------------------
@@ -511,9 +526,191 @@ MF.CloseButton:Click()
 STUB.combat = false
 assert(not MF:IsShown(), "closed in combat")
 
+---------------------------------------------------------------------------
+-- the side windows: the client's frame, the gear table with the portrait, the dialogs without
+---------------------------------------------------------------------------
+-- nothing a window holds directly starts in its title bar (above W.TITLE_H), but the template's
+-- own parts (title, close button, frame, ground, portrait)
+local function headClear(label, win, w, h)
+    local WL = dofile(ADDON_DIR .. "/../tests/layout.lua")(win, w, h)
+    local own = { [win.TitleContainer] = true, [win.CloseButton] = true, [win.NineSlice or 0] = true,
+                  [win.Bg or 0] = true, [win.TopTileStreaks or 0] = true, [win.PortraitContainer or 0] = true }
+    local n = 0
+    for _, m in ipairs(made) do
+        if m.parent == win and not own[m] and m.points and next(m.points) then
+            n = n + 1
+            local t = WL.vspan(m)
+            assert(t <= -W.TITLE_H, ("%s: '%s' starts in the title bar at %d"):format(label, tostring(m.text ~= "" and m.text or m.name), t))
+        end
+    end
+    assert(n > 3, label .. ": the window's parts were seen")
+    return WL
+end
+local function special(name)
+    for _, n in ipairs(UISpecialFrames) do if n == name then return true end end
+    return false
+end
+local function closesInCombat(label, win)
+    win:Show()
+    STUB.combat = true
+    win.CloseButton:Click()
+    STUB.combat = false
+    assert(not win:IsShown(), label .. " closes in combat")
+end
+local function dialogFrame(label, win, title)
+    assert(win.inherits.PortraitFrameTemplate and win.border == "ButtonFrameTemplateNoPortrait", label .. ": the frame without a portrait")
+    assert(not win.PortraitContainer.portrait:IsShown() and win.portraitAsset == nil, label .. ": no portrait")
+    assert(win.TitleContainer.points.TOPLEFT.x == 0 and win.TitleContainer.points.TOPRIGHT.x == 0, label .. ": the title over the whole bar")
+    assert(win:GetTitleText():GetText() == title, label .. ": " .. tostring(win:GetTitleText():GetText()))
+    assert(win.strata == "FULLSCREEN_DIALOG", label .. " keeps its strata")
+end
+STUB.officer = true
+NS.Set("ui.view", "officer")
+
+-- the gear table: portrait, the profession ground, the class row right of the portrait
+if not AmisiaGearFrame or not AmisiaGearFrame:IsShown() then NS.ToggleGearFrame() end
+local GF = AmisiaGearFrame
+assert(GF:IsShown() and GF.inherits.PortraitFrameTemplate and GF._w == 820 and GF._h == 640 and GF.strata == "FULLSCREEN")
+assert(GF.portraitAsset == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia" and GF.border == nil, "the Amisia portrait")
+assert(GF.Bg.atlas == "Profession-Background-Overview" and not GF.TopTileStreaks:IsShown())
+assert(GF:GetTitleText():GetText():find("^Ausrüstung |c"), "the class in the title: " .. GF:GetTitleText():GetText())
+assert(special("AmisiaGearFrame"), "Escape closes the gear table")
+local GL = headClear("gear table", GF, 820, 640)
+local classes = {}
+for _, token in ipairs(NS.GEAR_WEIGHTS.order) do classes[#classes + 1] = GF.classButtons[token] end
+assert(#classes == 9 and classes[1].points.TOPLEFT.x == 64 and classes[1].points.TOPLEFT.y == -42, "the class row from x 64")
+local cl1 = GL.span(classes[1])
+assert(cl1 >= 58, "right of the portrait: " .. cl1)
+local _, clr = GL.span(classes[9])
+-- 9 steps of 36 from 64 reach 388; the last button is 30 wide and ends 6 px before that
+assert(clr == 382, "8 x 36 + 30 from 64: " .. clr)
+for _, b in ipairs(classes) do assert(b.edges and #b.edges == 4, "class buttons keep their class-coloured frame") end
+-- every class: the class row and its spec chips side by side, inside the frame's border
+local keepClass = AmisiaDB.settings.gear.class
+for _, token in ipairs(NS.GEAR_WEIGHTS.order) do
+    AmisiaDB.settings.gear.class = token
+    NS.GearRefresh(true)
+    local parts = {}
+    for _, b in ipairs(classes) do parts[#parts + 1] = b end
+    for _, b in ipairs(GF.specButtons) do if b:IsShown() then parts[#parts + 1] = b end end
+    GL.row("class and spec row " .. token, unpack(parts))
+    local _, sr = GL.span(parts[#parts])
+    assert(sr <= 806, token .. ": the spec chips end inside the frame: " .. sr)
+end
+AmisiaDB.settings.gear.class = keepClass
+NS.GearRefresh(true)
+local row2 = { GF.kindButton, GF.factionButton }
+for _, b in ipairs(GF.filterButtons) do row2[#row2 + 1] = b end
+GL.row("gear second row", unpack(row2))
+for _, b in ipairs(row2) do assert(b.bg.atlas and b.bg.atlas:find("^common%-dropdown%-b%-button"), "the shared chips") end
+AmisiaDB.settings.gear.view = "list"
+NS.GearRefresh(true)
+GL.row("gear third row", GF.viewButtons.overview, GF.viewButtons.list, GF.prevCol, GF.colLabel, GF.nextCol, GF.mine)
+assert(GF.listRows[1].sel.atlas == "Professions_Recipe_Active", "the chosen slot glows like a recipe")
+assert(GF.altPanel.border and GF.altPanel.border.atlas == "common-insideframe", "the alternatives in Forever's inset")
+GL.row("gear list and alternatives", GF.listRows[1], GF.altPanel)
+GL.inside("gear alternatives", GF.altPanel)
+GL.column("gear list view", GF.viewButtons.overview, GF.listRows[1], GF.listRows[17], GF.statusText)
+AmisiaDB.settings.gear.view = "overview"
+NS.GearRefresh(true)
+assert(GF.colHeads[1].mark.atlas == "Professions_Recipe_Active", "the own level range glows")
+GL.column("gear overview", GF.viewButtons.overview, GF.colHeads[1], GF.statusText)
+-- the own copies of the widgets are gone
+do
+    local fh2 = assert(io.open(ADDON_DIR .. "/GearFrame.lua", "rb"))
+    local gsrc = fh2:read("*a")
+    fh2:close()
+    for _, fn in ipairs({ "text", "flat", "border", "setBorderColor", "chip" }) do
+        assert(not gsrc:find("local function " .. fn .. "%("), "no own copy of " .. fn)
+    end
+    assert(not gsrc:find("UIPanelCloseButton", 1, true), "the frame's own close button")
+end
+assert(MF.sideTabs.gear.checked == true, "the gear tab is marked while the table shows")
+closesInCombat("the gear table", GF)
+assert(MF.sideTabs.gear.checked == false, "the gear tab follows the hide")
+
+-- the roll window: a dialog, the time beside the item under the bar, red buttons
+NS.ToggleRollFrame()
+local RF = AmisiaRollFrame
+assert(RF:IsShown())
+dialogFrame("roll window", RF, "Amisia Rolls")
+assert(RF._w == 360 and not special("AmisiaRollFrame"), "Escape leaves the roll window open, as before")
+local RL = headClear("roll window", RF, 360, RF._h)
+assert(RF.header._w == 220 and RF.header.points.TOPLEFT.x == 12 and RF.header.points.TOPLEFT.y == -30)
+assert(RF.timer.points.TOPRIGHT.x == -12 and RF.timer.points.TOPRIGHT.y == -28 and RF.timer._w == 110)
+RL.row("roll head", RF.header, RF.timer)
+local rr1 = RF.rows[1]
+assert(rr1.award.inherits.SharedButtonSmallTemplate and rr1.award._w == 64 and rr1.award._h == 18 and rr1.award:GetText() == "Vergeben")
+RL.row("roll row", rr1.name, rr1.kind, rr1.value, rr1.hand, rr1.why, rr1.award)
+assert(RF.addBtn.inherits.SharedButtonSmallTemplate and RF.addBtn._h == 20 and RF.addBtn:GetText() == "Eintragen")
+RL.row("roll entry", RF.namePick, RF.valueEdit, RF.msChip, RF.osChip, RF.addBtn)
+for _, b in ipairs({ RF.stopBtn, RF.againBtn, RF.resultBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+RL.row("roll buttons", RF.stopBtn, RF.againBtn, RF.resultBtn)
+RL.column("roll window", RF.header, rr1, RF.addBtn, RF.note, RF.stopBtn)
+assert(MF.sideTabs.rolls.checked == true, "the rolls tab is marked while the window shows")
+closesInCombat("the roll window", RF)
+assert(MF.sideTabs.rolls.checked == false, "the rolls tab follows the hide")
+
+-- the award dialog: a dialog, everything under the bar as before
+STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
+STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+local AD = NS.ShowAwardDialog(STUB.item(32235, "Cursed Vision of Sargeras", 4), NS.Active() or NS.Sessions()[#NS.Sessions()])
+assert(AD and AD == AmisiaAwardDialog and AD:IsShown(), "the award dialog opens")
+dialogFrame("award dialog", AD, "Vergabe")
+assert(AD._w == 380 and AD._h == 248 and special("AmisiaAwardDialog"))
+headClear("award dialog", AD, 380, 248)
+-- its winner picker opens above the dialog's frame and title
+AD.winner:SetValues({ { value = "Fraktur", text = "Fraktur" } })
+AD.winner:Click()
+assert(AmisiaPicker:IsShown() and AmisiaPicker:GetFrameLevel() > AD.TitleContainer:GetFrameLevel(), "the picker above the dialog")
+AD.winner:Click()
+closesInCombat("the award dialog", AD)
+
+-- the soft-reserve import: a dialog, the shared edit area, red buttons
+NS.ToggleSoftResFrame()
+local SF = AmisiaSoftResFrame
+assert(SF:IsShown())
+dialogFrame("soft-reserve import", SF, "Soft-Reserves")
+assert(SF._w == 440 and SF._h == 380 and special("AmisiaSoftResFrame"))
+local SL = headClear("soft-reserve import", SF, 440, 380)
+assert(SF.box.border and SF.box.border.atlas == "common-insideframe" and SF.box.ground.color[4] == 0.35, "an edit area: inset, dark ground")
+assert(SF.editBox == SF.box.box and SF.box.scroll.inherits == nil, "the edit area's own box, no old scroll template")
+assert(SF.box.bar and SF.box.bar.inherits.MinimalScrollBar, "the thin bar")
+assert(_G.AmisiaSoftResScroll == nil, "the global scroll name is gone")
+local bl, bt = SF.box.points.TOPLEFT.x, SF.box.points.TOPLEFT.y
+assert(bl == 12 and bt == -50 and SF.box.points.BOTTOMRIGHT.x == -12, "the same place as before")
+SL.inside("soft-reserve box", SF.box)
+SL.inside("soft-reserve bar", SF.box.bar)
+for _, b in ipairs({ SF.applyBtn, SF.clearBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+SL.row("soft-reserve buttons", SF.applyBtn, SF.clearBtn)
+SL.column("soft-reserve import", SF.dateText, SF.box, SF.previewText, SF.resultText, SF.applyBtn)
+-- typing still schedules the preview
+SF.editBox:SetText("Vuloo 32235")
+SF.editBox.scripts.OnTextChanged(SF.editBox, true)
+STUB.tick(1)
+assert(SF.previewText:GetText():find("Vorschau", 1, true), "the preview follows the text: " .. tostring(SF.previewText:GetText()))
+SF.editBox:SetText("")
+assert(MF.sideTabs.softres.checked == true, "the soft-reserve tab is marked while the import shows")
+closesInCombat("the soft-reserve import", SF)
+assert(MF.sideTabs.softres.checked == false, "the soft-reserve tab follows the hide")
+
+-- the upgrade toast: without the template the flat ground of before
+STUB.missingTemplates.TooltipBackdropTemplate = true
+NS.BisToast(32235, "wish", STUB.items[32235].link, "Test")
+STUB.missingTemplates.TooltipBackdropTemplate = nil
+local toast = AmisiaBisToast
+assert(toast and toast:IsShown() and toast.inherits == nil and toast.NineSlice == nil, "a flat toast")
+assert(toast._w == 320 and toast._h == 58 and toast.strata == "FULLSCREEN_DIALOG")
+assert(toast.title:GetText() == "Wunsch droppt!" and toast.source:GetText() == "Test")
+toast.scripts.OnClick(toast, "RightButton")
+NS.Reset("ui.view")
+
 -- the new texts are Latin-1
 local MainFrameFile = ADDON_DIR .. "/MainFrame.lua"
-for _, file in ipairs({ MainFrameFile }) do
+for _, file in ipairs({ MainFrameFile, ADDON_DIR .. "/GearFrame.lua", ADDON_DIR .. "/RollFrame.lua", ADDON_DIR .. "/AwardDialog.lua",
+                        ADDON_DIR .. "/SoftRes.lua", ADDON_DIR .. "/Bis.lua", ADDON_DIR .. "/Pages/Settings.lua",
+                        ADDON_DIR .. "/Pages/Gear.lua", ADDON_DIR .. "/Pages/Map.lua", ADDON_DIR .. "/Pages/Bank.lua",
+                        ADDON_DIR .. "/Pages/About.lua", ADDON_DIR .. "/Pages/Export.lua", ADDON_DIR .. "/Pages/Tools.lua" }) do
     local fh2 = assert(io.open(file, "rb"))
     local s = fh2:read("*a")
     fh2:close()

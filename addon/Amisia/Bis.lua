@@ -1228,7 +1228,23 @@ local function closeToast()
 end
 
 local function buildToast()
-    local f = CreateFrame("Button", "AmisiaBisToast", UIParent)
+    -- the client's tooltip ground and border (TooltipBackdropTemplate); the flat ground with a gold
+    -- frame of before when the template is missing
+    local ok, f = pcall(CreateFrame, "Button", "AmisiaBisToast", UIParent, "TooltipBackdropTemplate")
+    if not ok or not f then
+        f = CreateFrame("Button", "AmisiaBisToast", UIParent)
+        local bg = f:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.055, 0.04, 0.08, 0.94)
+        for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+                             { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+            local t = f:CreateTexture(nil, "BORDER")
+            t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.7)
+            t:SetPoint(e[1]); t:SetPoint(e[2])
+            if e[3] then t:SetWidth(e[3]) end
+            if e[4] then t:SetHeight(e[4]) end
+        end
+    end
     f:SetSize(320, 58)
     -- high up, 60-118 px below the top: clear of the award dialog and the roll window (from about
     -- 124 px down on the smallest screen) and above the client's error line (122 px down)
@@ -1238,17 +1254,6 @@ local function buildToast()
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
     f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    local bg = f:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.055, 0.04, 0.08, 0.94)
-    for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
-                         { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
-        local t = f:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.7)
-        t:SetPoint(e[1]); t:SetPoint(e[2])
-        if e[3] then t:SetWidth(e[3]) end
-        if e[4] then t:SetHeight(e[4]) end
-    end
     f.icon = f:CreateTexture(nil, "ARTWORK")
     f.icon:SetSize(36, 36)
     f.icon:SetPoint("LEFT", 11, 0)

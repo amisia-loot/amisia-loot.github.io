@@ -14,7 +14,7 @@ local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 local F, nav, content, statusText, pauseBtn
 local built, current = {}, nil
 local navButtons, navHeaders = {}, {}
-local sideTabs, hookedWindows = {}, {}
+local sideTabs = {}
 
 -- The side windows the tabs on the right edge open and close, top to bottom.
 local SIDE_TABS = {
@@ -145,7 +145,8 @@ local function toggleGroup(group, isCollapsed)
 end
 
 -- Shows, places (one under the other, no gaps) and marks the side tabs. Runs in ns.Refresh and
--- whenever a side window shows or hides (hooked here the first time the window exists).
+-- whenever a side window shows or hides (each window calls it through W.Window's onVisibility, so
+-- the windows need not know this file).
 function ns.UpdateSideTabs()
     if not F then return end
     local prev
@@ -153,11 +154,6 @@ function ns.UpdateSideTabs()
         local tab = sideTabs[def.key]
         if tab then
             local win = _G[def.frame]
-            if win and win.HookScript and not hookedWindows[win] then
-                hookedWindows[win] = true
-                win:HookScript("OnShow", function() ns.UpdateSideTabs() end)
-                win:HookScript("OnHide", function() ns.UpdateSideTabs() end)
-            end
             if def.visible() then
                 tab:ClearAllPoints()
                 if prev then

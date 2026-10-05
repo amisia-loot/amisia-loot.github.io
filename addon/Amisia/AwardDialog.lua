@@ -8,7 +8,6 @@
 -- ns.Plain and a secret one is left out of the list.
 local ADDON, ns = ...
 local W = ns.W
-local GOLD = W.GOLD
 
 local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
@@ -250,29 +249,11 @@ local function setItem(x)
 end
 
 local function build()
-    D = CreateFrame("Frame", "AmisiaAwardDialog", UIParent)
-    D:SetSize(WIDTH, HEIGHT)
+    -- a dialog in the client's frame without a portrait, the title in its bar; everything below
+    -- starts at y -32, under the bar
+    D = W.Window("AmisiaAwardDialog", WIDTH, HEIGHT, { title = "Vergabe", strata = "FULLSCREEN_DIALOG" })
     D:SetPoint("CENTER", 0, 120)
-    D:SetFrameStrata("FULLSCREEN_DIALOG")
-    D:SetToplevel(true)
-    D:SetClampedToScreen(true)
-    D:SetMovable(true)
-    D:EnableMouse(true)
-    D:RegisterForDrag("LeftButton")
-    D:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    D:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
     D:SetScript("OnHide", function() st = {} end)
-    D:Hide()
-    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaAwardDialog") end
-    W.Flat(D, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
-    W.Border(D, GOLD[1], GOLD[2], GOLD[3], 0.6)
-
-    local title = W.Text(D, "GameFontNormal", 200)
-    title:SetPoint("TOPLEFT", 12, -10)
-    title:SetText("Vergabe")
-    title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    local close = CreateFrame("Button", nil, D, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
 
     D.icon = D:CreateTexture(nil, "ARTWORK")
     D.icon:SetSize(22, 22)

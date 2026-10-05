@@ -826,68 +826,26 @@ local PREVIEW_Y = RESULT_Y + TEXT_H + 4
 local BOX_BOTTOM = PREVIEW_Y + TEXT_H + 4
 
 local function build()
-    F = CreateFrame("Frame", "AmisiaSoftResFrame", UIParent)
-    F:SetSize(440, 380)
+    -- a dialog in the client's frame without a portrait, the title in its bar; the side tab of the
+    -- main window follows it
+    local W = ns.W
+    F = W.Window("AmisiaSoftResFrame", 440, 380, { title = "Soft-Reserves", strata = "FULLSCREEN_DIALOG",
+        onShow = refresh,
+        onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     F:SetPoint("CENTER", 0, 40)
-    F:SetFrameStrata("FULLSCREEN_DIALOG")
-    F:SetToplevel(true)
-    F:SetClampedToScreen(true)
-    F:SetMovable(true)
-    F:EnableMouse(true)
-    F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    F:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    F:SetScript("OnShow", refresh)
-    F:Hide()
-    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaSoftResFrame") end
-
-    local bg = F:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.055, 0.04, 0.08, 0.96)
-    for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 }, { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
-        local t = F:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(0.89, 0.72, 0.34, 0.6)
-        t:SetPoint(e[1])
-        t:SetPoint(e[2])
-        if e[3] then t:SetWidth(e[3]) end
-        if e[4] then t:SetHeight(e[4]) end
-    end
-
-    local title = F:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", 12, -10)
-    title:SetText("Soft-Reserves")
-    title:SetTextColor(0.89, 0.72, 0.34)
-
-    local close = CreateFrame("Button", nil, F, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
 
     dateText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     dateText:SetPoint("TOPLEFT", 12, -32)
     dateText:SetWidth(410)
     dateText:SetJustifyH("LEFT")
 
-    local boxBg = CreateFrame("Frame", nil, F)
+    -- the pasted text: the shared edit area (an inset, the thin bar inside its right edge; a click
+    -- anywhere in it focuses the text)
+    local boxBg = W.EditArea(F)
     boxBg:SetPoint("TOPLEFT", 12, -50)
     boxBg:SetPoint("BOTTOMRIGHT", -12, BOX_BOTTOM)
-    local bb = boxBg:CreateTexture(nil, "BACKGROUND")
-    bb:SetAllPoints()
-    bb:SetColorTexture(0, 0, 0, 0.45)
-
-    local scroll = CreateFrame("ScrollFrame", "AmisiaSoftResScroll", boxBg, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 6, -6)
-    scroll:SetPoint("BOTTOMRIGHT", -28, 6)
-    editBox = CreateFrame("EditBox", nil, scroll)
-    editBox:SetMultiLine(true)
-    editBox:SetMaxLetters(0)
-    editBox:SetAutoFocus(false)
-    editBox:SetFontObject(ChatFontNormal)
-    editBox:SetWidth(380)
-    editBox:SetHeight(200)
-    editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    editBox = boxBg.box
     editBox:SetScript("OnTextChanged", schedulePreview)
-    scroll:SetScrollChild(editBox)
-    boxBg:EnableMouse(true)
-    boxBg:SetScript("OnMouseDown", function() editBox:SetFocus() end)
 
     -- the preview sits above the result of the last import; each has a fixed room of two lines,
     -- so a long text is cut instead of growing into the other
@@ -909,28 +867,22 @@ local function build()
     resultText:SetWordWrap(true)
     resultText:SetMaxLines(2)
 
-    local apply = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    apply:SetSize(110, 22)
-    apply:SetPoint("BOTTOMLEFT", 12, 10)
-    apply:SetText("Übernehmen")
-    apply:SetScript("OnClick", function()
+    local apply = W.Button(F, "Übernehmen", 110, function()
         local count, bad = ns.SetSoftRes(editBox:GetText())
         resultText:SetText(("%d Reservierungen übernommen, %d Zeilen nicht erkannt."):format(count, #bad)
             .. (#bad > 0 and (" Erste: " .. bad[1]:sub(1, 40)) or ""))
         refresh()
     end)
+    apply:SetPoint("BOTTOMLEFT", 12, 10)
 
-    local clear = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    clear:SetSize(90, 22)
-    clear:SetPoint("LEFT", apply, "RIGHT", 6, 0)
-    clear:SetText("Leeren")
-    clear:SetScript("OnClick", function()
+    local clear = W.Button(F, "Leeren", 90, function()
         ns.ClearSoftRes()
         editBox:SetText("")
         previewText:SetText("")
         resultText:SetText("Liste geleert.")
         refresh()
     end)
+    clear:SetPoint("LEFT", apply, "RIGHT", 6, 0)
     F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn, F.previewText, F.box = editBox, resultText, dateText, apply, clear, previewText, boxBg
     ns.SoftResFrame = F
 end

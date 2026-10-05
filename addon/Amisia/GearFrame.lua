@@ -3,8 +3,12 @@
 local ADDON, ns = ...
 
 local Gear = ns.Gear
-local GOLD = { 0.89, 0.72, 0.34 }
+local W = ns.W
+local GOLD = W.GOLD
 local W_WIDTH, W_HEIGHT = 820, 640
+local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
+-- the class row starts right of the portrait (it reaches x 57, y -55), the spec chips 26 px after it
+local CLASS_X, SPEC_X = 64, 408
 local ROW_H = 26
 local SLOT_W = 92
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
@@ -18,7 +22,7 @@ local CLASS_ICON = {
     SHAMAN = "Shaman", MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid",
 }
 
-local F, overview, listView, altPanel, statusText, titleText
+local F, overview, listView, altPanel, statusText
 local classButtons, specButtons, filterButtons = {}, {}, {}
 local kindButton, factionButton, viewButtons, colLabel = nil, nil, {}, nil
 local cells, colHeads, listRows, altRows = {}, {}, {}, {}
@@ -90,64 +94,10 @@ local function coloredName(id)
 end
 
 ---------------------------------------------------------------------------
--- Widgets
+-- Widgets (Widgets.lua loads before this file)
 ---------------------------------------------------------------------------
 
-local function text(parent, template, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
-    if width then fs:SetWidth(width) end
-    fs:SetJustifyH("LEFT")
-    fs:SetWordWrap(false)
-    return fs
-end
-
-local function flat(parent, r, g, b, a, layer)
-    local t = parent:CreateTexture(nil, layer or "BACKGROUND")
-    t:SetAllPoints()
-    t:SetColorTexture(r, g, b, a)
-    return t
-end
-
-local function border(frame, r, g, b, a)
-    local function edge(p1, p2, w, h)
-        local t = frame:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(r, g, b, a)
-        t:SetPoint(p1)
-        t:SetPoint(p2)
-        if w then t:SetWidth(w) end
-        if h then t:SetHeight(h) end
-        return t
-    end
-    return { edge("TOPLEFT", "TOPRIGHT", nil, 1), edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1),
-             edge("TOPLEFT", "BOTTOMLEFT", 1, nil), edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil) }
-end
-
-local function setBorderColor(edges, r, g, b, a)
-    for _, e in ipairs(edges) do e:SetColorTexture(r, g, b, a) end
-end
-
--- A flat toggle chip: gold when on.
-local function chip(parent, label, width, onClick)
-    local b = CreateFrame("Button", nil, parent)
-    b:SetSize(width, 20)
-    b.bg = flat(b, 1, 1, 1, 0.06)
-    b.edges = border(b, GOLD[1], GOLD[2], GOLD[3], 0.35)
-    b.label = text(b, "GameFontHighlightSmall")
-    b.label:SetPoint("CENTER")
-    b.label:SetJustifyH("CENTER")
-    b.label:SetText(label)
-    local hl = b:CreateTexture(nil, "HIGHLIGHT")
-    hl:SetAllPoints()
-    hl:SetColorTexture(1, 1, 1, 0.08)
-    function b:SetOn(on)
-        self.on = on
-        self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
-        self.label:SetTextColor(on and 1 or 0.6, on and 0.92 or 0.6, on and 0.7 or 0.6)
-        setBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
-    end
-    b:SetScript("OnClick", onClick)
-    return b
-end
+local text, flat, border, setBorderColor, chip = W.Text, W.Flat, W.Border, W.SetBorderColor, W.Chip
 
 local function quality(id)
     local _, _, q = itemInfo(id)
@@ -241,8 +191,8 @@ local function buildOverview(parent)
         h.label:SetJustifyH("CENTER")
         local lo, hi = Gear.COLUMNS[c][1], Gear.COLUMNS[c][2]
         h.label:SetText(lo == hi and tostring(lo) or (lo .. "-" .. hi))
-        h.mark = flat(h, GOLD[1], GOLD[2], GOLD[3], 0.25, "ARTWORK")
-        h.mark:Hide()
+        -- the own level range glows like a chosen row of the recipe list
+        h.mark = W.SelectBar(h)
         local hl = h:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(1, 1, 1, 0.08)
@@ -402,8 +352,7 @@ local function buildList(parent)
         b:SetSize(LIST_W, ROW_H - 1)
         b:SetPoint("TOPLEFT", 0, -20 - (r - 1) * ROW_H)
         flat(b, 1, 1, 1, (r % 2 == 0) and 0.03 or 0.055)
-        b.sel = flat(b, GOLD[1], GOLD[2], GOLD[3], 0.22, "BORDER")
-        b.sel:Hide()
+        b.sel = W.SelectBar(b)
         local hl = b:CreateTexture(nil, "HIGHLIGHT")
         hl:SetAllPoints()
         hl:SetColorTexture(1, 1, 1, 0.08)
@@ -427,11 +376,11 @@ local function buildList(parent)
         listRows[r] = b
     end
 
-    altPanel = CreateFrame("Frame", nil, f)
+    -- the details beside the list in Forever's inset, as the profession window's
+    altPanel = W.Inset(f)
     altPanel:SetPoint("TOPLEFT", LIST_W + 10, 0)
     altPanel:SetPoint("BOTTOMRIGHT", 0, 0)
-    flat(altPanel, 1, 1, 1, 0.03)
-    border(altPanel, GOLD[1], GOLD[2], GOLD[3], 0.3)
+    altPanel.fill(1, 1, 1, 0.03)
     altPanel.title = text(altPanel, "GameFontNormal", 230)
     altPanel.title:SetPoint("TOPLEFT", 8, -6)
     altPanel.note = text(altPanel, "GameFontDisableSmall", 230)
@@ -572,7 +521,7 @@ local function updateControls()
             local w = math.max(60, b.label:GetStringWidth() + 16)
             b:SetWidth(w)
             b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", F, "TOPLEFT", 358 + x, -46)
+            b:SetPoint("TOPLEFT", F, "TOPLEFT", SPEC_X + x, -46)
             x = x + w + 4
             b:SetOn(sp.key == cur)
             b:Show()
@@ -589,7 +538,7 @@ local function updateControls()
     viewButtons.overview:SetOn(g.view == "overview")
     viewButtons.list:SetOn(g.view == "list")
     local r, gg, bb = classColor(g.class)
-    titleText:SetText(("Ausrüstung |cff%02x%02x%02x%s|r"):format(r * 255, gg * 255, bb * 255, Gear.CLASS_NAMES[g.class] or g.class))
+    F:SetTitle(("Ausrüstung |cff%02x%02x%02x%s|r"):format(r * 255, gg * 255, bb * 255, Gear.CLASS_NAMES[g.class] or g.class))
     colLabel:SetShown(g.view == "list")
     F.prevCol:SetShown(g.view == "list")
     F.nextCol:SetShown(g.view == "list")
@@ -642,39 +591,20 @@ Gear.OnData(function()
 end)
 
 local function build()
-    F = CreateFrame("Frame", "AmisiaGearFrame", UIParent)
-    F:SetSize(W_WIDTH, W_HEIGHT)
+    -- the client's portrait frame with the Amisia portrait and the profession ground; the strata of
+    -- the main window (FULLSCREEN), below roll and soft-reserve windows (FULLSCREEN_DIALOG). The
+    -- side tab of the main window follows it.
+    F = W.Window("AmisiaGearFrame", W_WIDTH, W_HEIGHT, { portrait = PORTRAIT, strata = "FULLSCREEN",
+        background = "Profession-Background-Overview",
+        onShow = function() ns.GearRefresh(true) end,
+        onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     F:SetPoint("CENTER")
-    -- one layer above the main window (DIALOG), below roll and soft-reserve windows (FULLSCREEN_DIALOG)
-    F:SetFrameStrata("FULLSCREEN")
-    F:SetToplevel(true)
-    F:SetClampedToScreen(true)
-    F:SetMovable(true)
-    F:EnableMouse(true)
-    F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    F:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    F:SetScript("OnShow", function() ns.GearRefresh(true) end)
-    F:Hide()
-    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaGearFrame") end
-    flat(F, 0.055, 0.04, 0.08, 0.96)
-    border(F, GOLD[1], GOLD[2], GOLD[3], 0.6)
 
-    local logo = F:CreateTexture(nil, "ARTWORK")
-    logo:SetSize(30, 30)
-    logo:SetPoint("TOPLEFT", 12, -7)
-    logo:SetTexture("Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
-    titleText = text(F, "GameFontNormalLarge", 400)
-    titleText:SetPoint("LEFT", logo, "RIGHT", 6, 0)
-    titleText:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    local close = CreateFrame("Button", nil, F, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
-
-    -- class row
+    -- class row, right of the portrait
     for i, token in ipairs(ns.GEAR_WEIGHTS.order) do
         local b = CreateFrame("Button", nil, F)
         b:SetSize(30, 30)
-        b:SetPoint("TOPLEFT", 14 + (i - 1) * 36, -42)
+        b:SetPoint("TOPLEFT", CLASS_X + (i - 1) * 36, -42)
         b.icon = b:CreateTexture(nil, "ARTWORK")
         b.icon:SetPoint("TOPLEFT", 2, -2)
         b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
@@ -709,13 +639,18 @@ local function build()
         ns.GearRefresh(true)
     end)
     kindButton:SetPoint("TOPLEFT", 14, -82)
+    -- the chip's own hover look stays
     kindButton:SetScript("OnEnter", function(self)
+        self:SetOver(true)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine("Gewichtung", 1, 0.82, 0)
         GameTooltip:AddLine("Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung. Heiler und Tanks haben eigene Gewichte.", 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    kindButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    kindButton:SetScript("OnLeave", function(self)
+        self:SetOver(false)
+        GameTooltip:Hide()
+    end)
     factionButton = chip(F, "", 70, function()
         local g = settings()
         g.faction = g.faction == "A" and "H" or g.faction == "H" and "both" or "A"
@@ -777,6 +712,12 @@ local function build()
 
     statusText = text(F, "GameFontDisableSmall", W_WIDTH - 28)
     statusText:SetPoint("BOTTOMLEFT", 14, 10)
+
+    -- the parts the layout tests read
+    F.classButtons, F.specButtons, F.filterButtons = classButtons, specButtons, filterButtons
+    F.kindButton, F.factionButton, F.viewButtons, F.mine = kindButton, factionButton, viewButtons, mine
+    F.colLabel, F.statusText, F.overview, F.listView = colLabel, statusText, overview, listView
+    F.altPanel, F.colHeads, F.listRows = altPanel, colHeads, listRows
 end
 
 -- The upgrades of the own character, best first: option 1 of every slot that beats what is worn,

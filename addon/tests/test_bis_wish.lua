@@ -140,6 +140,7 @@ assert(#toasts == 1 and toasts[1].id == 201 and toasts[1].why == "wish" and toas
 assert(#STUB.sounds == sounds + 1 and STUB.sounds[#STUB.sounds] == SOUNDKIT.RAID_WARNING, "with the raid warning sound")
 local f = AmisiaBisToast
 assert(f and f:IsShown() and f.strata == "FULLSCREEN_DIALOG" and f._w == 320 and f._h == 58, "the toast frame")
+assert(f.inherits and f.inherits.TooltipBackdropTemplate and f.NineSlice, "the client's tooltip ground and border")
 assert(f.title:GetText() == "Wunsch droppt!" and has(f.item:GetText(), "Krone") and f.source:GetText() == "Prinz Malchezaar")
 assert(not f.keyboard, "no keyboard input taken")
 -- the same item again within two minutes: nothing

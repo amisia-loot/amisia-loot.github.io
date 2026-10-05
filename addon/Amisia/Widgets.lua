@@ -1025,7 +1025,8 @@ end
 -- with the gold title in the middle and the red close button, the portrait at the top left).
 -- opts: portrait (a texture; none makes a dialog without one, title over the whole bar), title,
 -- strata, background (an atlas stretched over the ground, or the template's rock), onShow,
--- onVisibility (runs on show and hide). The close button hides the window directly: the
+-- onVisibility (runs on show and hide), onDragStop, escape (false: Escape does not close it). The
+-- close button hides the window directly: the
 -- template's goes through HideUIPanel, which is blocked in combat for an addon's button. Without
 -- the template the flat window of before, with the same fields and methods.
 function W.Window(name, width, height, opts)
@@ -1096,6 +1097,7 @@ function W.Window(name, width, height, opts)
         F:HookScript("OnShow", opts.onVisibility)
         F:HookScript("OnHide", opts.onVisibility)
     end
-    if name and UISpecialFrames then tinsert(UISpecialFrames, name) end
+    -- Escape closes it, unless opts.escape is false (a window that stays through Escape)
+    if name and UISpecialFrames and opts.escape ~= false then tinsert(UISpecialFrames, name) end
     return F
 end

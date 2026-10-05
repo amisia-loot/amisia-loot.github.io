@@ -14,7 +14,6 @@ local LIST_TOP = 50
 local ENTRY_Y = -(LIST_TOP + ROWS * ROW_H + 4)   -- the entry row under the list
 local HINT_Y = ENTRY_Y - 24                      -- the hint under it, two lines
 local HEIGHT = -HINT_Y + 26 + 10 + 22 + 8        -- hint, gap, buttons, margin
-local GOLD = { 0.89, 0.72, 0.34 }
 local GREY = "|cff8f86a3"
 
 local F, header, timer, stopBtn, againBtn, hint
@@ -207,44 +206,18 @@ refresh = function()
 end
 
 local function build()
-    F = CreateFrame("Frame", "AmisiaRollFrame", UIParent)
-    F:SetSize(WIDTH, HEIGHT)
+    -- a dialog in the client's frame without a portrait, the title in its bar; Escape leaves it open
+    -- as before (it stays through the loot), the side tab of the main window follows it
+    F = W.Window("AmisiaRollFrame", WIDTH, HEIGHT, { title = "Amisia Rolls", strata = "FULLSCREEN_DIALOG",
+        onShow = refresh, escape = false,
+        onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     F:SetPoint("CENTER", 260, 80)
-    F:SetFrameStrata("FULLSCREEN_DIALOG")
-    F:SetToplevel(true)
-    F:SetClampedToScreen(true)
-    F:SetMovable(true)
-    F:EnableMouse(true)
-    F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    F:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    F:SetScript("OnShow", refresh)
-    F:Hide()
 
-    local bg = F:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.055, 0.04, 0.08, 0.96)
-    for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 }, { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
-        local t = F:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.6)
-        t:SetPoint(e[1])
-        t:SetPoint(e[2])
-        if e[3] then t:SetWidth(e[3]) end
-        if e[4] then t:SetHeight(e[4]) end
-    end
-
-    local title = text(F, "GameFontNormal", 200)
-    title:SetPoint("TOPLEFT", 12, -10)
-    title:SetText("Amisia Rolls")
-    title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-
-    local close = CreateFrame("Button", nil, F, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
-
-    header = text(F, "GameFontHighlight", 330)
+    -- the item on the left, the time (it sat under the close button) on the right of the same line
+    header = text(F, "GameFontHighlight", 220)
     header:SetPoint("TOPLEFT", 12, -30)
-    timer = text(F, "GameFontNormalLarge", 120)
-    timer:SetPoint("TOPRIGHT", -40, -8)
+    timer = text(F, "GameFontNormalLarge", 110)
+    timer:SetPoint("TOPRIGHT", -12, -28)
     timer:SetJustifyH("RIGHT")
 
     for i = 1, ROWS do
@@ -267,11 +240,8 @@ local function build()
         -- why a roll was not counted, on rows without a button
         row.reason = text(row, "GameFontDisableSmall", 336 - 190 - 4)
         row.reason:SetPoint("LEFT", 190, 0)
-        row.award = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        row.award:SetSize(64, ROW_H - 2)
+        row.award = W.Button(row, "Vergeben", 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         row.award:SetPoint("RIGHT", -2, 0)
-        row.award:SetText("Vergeben")
-        row.award:SetScript("OnClick", function() if row.who then confirmGive(row.who) end end)
         row:Hide()
         rows[i] = row
     end
@@ -291,11 +261,8 @@ local function build()
     F.msChip:SetPoint("TOPLEFT", 180, ENTRY_Y)
     F.osChip = W.Chip(F, "OS", 30, function() setKind("OS") end)
     F.osChip:SetPoint("TOPLEFT", 212, ENTRY_Y)
-    F.addBtn = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    F.addBtn:SetSize(76, 20)
+    F.addBtn = W.Button(F, "Eintragen", 76, addEntry, { height = 20 })
     F.addBtn:SetPoint("TOPLEFT", 248, ENTRY_Y)
-    F.addBtn:SetText("Eintragen")
-    F.addBtn:SetScript("OnClick", addEntry)
     setKind("MS")
 
     hint = text(F, "GameFontDisableSmall", WIDTH - 24)
@@ -304,24 +271,17 @@ local function build()
     F.lockHint = hint
     F.note = hint
 
-    stopBtn = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    stopBtn:SetSize(80, 22)
+    stopBtn = W.Button(F, "Stopp", 80, function() ns.StopRoll() end)
     stopBtn:SetPoint("BOTTOMLEFT", 12, 10)
-    stopBtn:SetText("Stopp")
-    stopBtn:SetScript("OnClick", function() ns.StopRoll() end)
 
-    againBtn = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    againBtn:SetSize(80, 22)
+    againBtn = W.Button(F, "Nochmal", 80, function() ns.RerollTie() end)
     againBtn:SetPoint("LEFT", stopBtn, "RIGHT", 6, 0)
-    againBtn:SetText("Nochmal")
-    againBtn:SetScript("OnClick", function() ns.RerollTie() end)
 
-    F.resultBtn = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    F.resultBtn:SetSize(120, 22)
+    F.resultBtn = W.Button(F, "Ergebnis ansagen", 120, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.resultBtn:SetPoint("BOTTOMRIGHT", -12, 10)
-    F.resultBtn:SetText("Ergebnis ansagen")
-    F.resultBtn:SetScript("OnClick", function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.rows = rows
+    -- the parts the layout tests read
+    F.header, F.timer, F.stopBtn, F.againBtn = header, timer, stopBtn, againBtn
     ns.RollFrame = F
 end
 
