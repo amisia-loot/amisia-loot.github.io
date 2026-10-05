@@ -13,8 +13,7 @@
 -- to the bank or disenchant character of the settings is written with to = "bank" or "de".
 local ADDON, ns = ...
 
--- Forever has no GetItemInfo global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemInfo = C_Item.GetItemInfo
 
 local VALID_KIND = { MS = true, OS = true, SR = true, ["-"] = true }
 local VALID_TO = { player = true, bank = true, de = true }

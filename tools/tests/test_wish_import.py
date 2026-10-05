@@ -93,9 +93,18 @@ def test_the_text_for_the_addon(out):
     assert out['empty'].split('\n') == ['#AMISIA-WL 1 tbc 2026-10-05', '#END']
 
 
-def parse_in_addon(text, toc=20506):
+def as_game(text, game):
+    """The site's text with the game of its head line set (the addon reads only WoW Forever lists)."""
+    head, sep, rest = text.partition('\n')
+    parts = head.split(' ')
+    assert parts[:2] == ['#AMISIA-WL', '1'] and len(parts) == 4, head
+    parts[2] = game
+    return ' '.join(parts) + sep + rest
+
+
+def parse_in_addon(text):
     run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
-    lua = run.fresh('--[[preload\nSTUB.toc = %d\n]]' % toc)
+    lua = run.fresh('')
     parse = lua.eval('function(t) local res, why = NS.ParseGuildWishes(t); return res, why end')
     res, why = parse(text)
     if res is None:
@@ -107,9 +116,9 @@ def parse_in_addon(text, toc=20506):
 
 
 def test_the_addon_reads_the_text_back(out):
-    res, why = parse_in_addon(out['text'])
+    res, why = parse_in_addon(as_game(out['text'], 'forever'))
     assert res, why
-    assert res['game'] == 'tbc' and res['date'] == '2026-10-05' and res['n'] == 4 and res['skipped'] == 0
+    assert res['game'] == 'forever' and res['date'] == '2026-10-05' and res['n'] == 4 and res['skipped'] == 0
     assert res['list'] == {
         28830: [('Bob', 3, 'nur MS'), ('Anna', 2, '')],
         29434: [('Alt Name', 2, '')],
@@ -118,9 +127,10 @@ def test_the_addon_reads_the_text_back(out):
 
 
 def test_the_addon_refuses_the_other_game(out):
+    # the addon is WoW Forever only: a TBC list is refused in words, a Forever list is read
+    res, why = parse_in_addon(as_game(out['textForever'], 'tbc'))
+    assert res is None and why == 'Diese Wunschliste ist für TBC Anniversary, du bist in WoW Forever.', why
     res, why = parse_in_addon(out['textForever'])
-    assert res is None and 'WoW Forever' in why
-    res, why = parse_in_addon(out['textForever'], toc=16001)
     assert res and res['list'] == {18832: [('Anna', 3, '')]}
-    res, why = parse_in_addon(out['empty'])
+    res, why = parse_in_addon(as_game(out['empty'], 'forever'))
     assert res is None and why == 'Die Liste ist leer.'

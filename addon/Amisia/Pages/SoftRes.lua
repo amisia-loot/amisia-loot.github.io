@@ -9,8 +9,7 @@ local MAX_CHIPS, CHIP_MAX_W = 3, 104
 -- the columns of a row; the content is 602 px wide
 local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 324
 
--- Forever has no GetItemInfo global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemInfo = C_Item.GetItemInfo
 
 local page
 local view = "items"   -- the chosen view, kept until logout
@@ -40,12 +39,10 @@ local function itemLink(id)
     return link or ("item:" .. tostring(id))
 end
 
--- Puts a link into the chat the way the client does: ChatFrameUtil.InsertLink, else the old global.
+-- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
 local function insertLink(link)
     if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
         return ChatFrameUtil.InsertLink(link)
-    elseif type(ChatEdit_InsertLink) == "function" then
-        return ChatEdit_InsertLink(link)
     end
 end
 

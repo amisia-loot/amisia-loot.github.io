@@ -127,136 +127,24 @@ do
 end
 Gear.STAT = STAT
 
--- Rating needed for 1 % (1 skill point for defence) at level 60. Forever uses TBC-style ratings:
+-- Rating needed for 1 % (1 skill point for defence) at level 60. Forever's ratings come from TBC:
 -- Lionheart Helm's Classic 2 % crit became 28 crit rating. Below 60 a point of rating is worth
--- more, on TBC's curve; above 60 (TBC only, Forever ends at 60) less, on 82 / (262 - 3 * level).
+-- more, on TBC's curve (level - 8) / 52; Forever ends at 60, so higher levels count as 60.
 local RATING_60 = { HIT = 10, SHIT = 8, CRIT = 14, HASTE = 10, EXP = 10, DODGE = 12, PARRY = 15, BLOCK = 5, DEF = 1.5 }
 
 local function ratingPerPoint(kind, level)
     local scale
     if level <= 10 then scale = 2 / 52
-    elseif level <= 60 then scale = (level - 8) / 52
-    else scale = 82 / (262 - 3 * math.min(level, 80)) end
+    else scale = (math.min(level, 60) - 8) / 52 end
     return 1 / (RATING_60[kind] * scale)
 end
 Gear.RatingPerPoint = ratingPerPoint
 
--- A client format string ("%c%s Strength", "Improves hit rating by %s.") as an anchored Lua pattern:
--- %c captures the sign, %s, %d and %.1f capture a number. Without a number nil, except for the
--- socket lines, which are matched as they are. With text, %s captures any text instead.
-local function formatPattern(fmt, exact, text)
-    local out, i, n, caps = { "^" }, 1, #fmt, 0
-    while i <= n do
-        local c = fmt:sub(i, i)
-        if c == "%" then
-            local spec = fmt:match("^%%[%d%$]*[%-%.%d]*[a-zA-Z%%]", i)
-            if not spec then return nil end
-            local conv = spec:sub(-1)
-            if conv == "%" then out[#out + 1] = "%%"
-            elseif conv == "c" then out[#out + 1] = "([%+%-])"; caps = caps + 1
-            elseif conv == "s" and text then out[#out + 1] = "(.-)"; caps = caps + 1
-            elseif conv == "s" or conv == "d" or conv == "f" or conv == "g" then out[#out + 1] = "([%d%.,]+)"; caps = caps + 1
-            else return nil end
-            i = i + #spec
-        else
-            out[#out + 1] = c:find("[%^%$%(%)%%%.%[%]%*%+%-%?]") and ("%" .. c) or c
-            i = i + 1
-        end
-    end
-    if caps == 0 and not exact then return nil end
-    out[#out + 1] = "$"
-    return table.concat(out)
-end
-
-local function tipNumber(text)
-    return tonumber((tostring(text):gsub(",", ".")))
-end
-
--- Patterns from the client's own stat texts, built on first use: { pattern, raw key }. The raw keys
--- are the ones GetItemStats would answer, so both paths share STAT.
-local tipPatterns
-local function tooltipPatterns()
-    if tipPatterns then return tipPatterns end
-    tipPatterns = {}
-    local function add(global, key, exact)
-        local fmt = _G[global]
-        local p = type(fmt) == "string" and fmt ~= "" and formatPattern(fmt, exact)
-        if p then tipPatterns[#tipPatterns + 1] = { p, key, exact } end
-    end
-    local names = {}
-    for k in pairs(STAT) do names[#names + 1] = k end
-    table.sort(names)
-    for _, k in ipairs(names) do
-        if k:find("^EMPTY_SOCKET_") then add(k, k, true)
-        elseif not k:find("_SHORT$") then add(k, k) end
-    end
-    add("ARMOR_TEMPLATE", "RESISTANCE0_NAME")
-    add("DPS_TEMPLATE", "ITEM_MOD_DAMAGE_PER_SECOND_SHORT")
-    return tipPatterns
-end
-
--- Fallback for a client without GetItemStats: a hidden tooltip shows the item and its lines are
--- read with the patterns above. Only what the tooltip shows is read. Returns the raw stats (as
--- GetItemStats would) and the lines, or nil while the client has no data for the item.
-local scanTip
-function Gear.TooltipStats(link)
-    if not scanTip then
-        local ok, f = pcall(CreateFrame, "GameTooltip", "AmisiaScanTip", nil, "GameTooltipTemplate")
-        if not ok or not f then return nil end
-        scanTip = f
-    end
-    local tip = scanTip
-    if tip.SetOwner then tip:SetOwner(_G.WorldFrame or UIParent, "ANCHOR_NONE") end
-    if tip.ClearLines then tip:ClearLines() end
-    if not pcall(tip.SetHyperlink, tip, link) then return nil end
-    local n = tip.NumLines and tip:NumLines() or 0
-    if n == 0 then return nil end
-    local onEquip = type(ITEM_SPELL_TRIGGER_ONEQUIP) == "string" and ITEM_SPELL_TRIGGER_ONEQUIP ~= "" and ITEM_SPELL_TRIGGER_ONEQUIP or nil
-    local raw, lines = {}, {}
-    local patterns = tooltipPatterns()
-    for i = 1, n do
-        local left = _G["AmisiaScanTipTextLeft" .. i]
-        local right = _G["AmisiaScanTipTextRight" .. i]
-        local l = left and left.GetText and left:GetText()
-        local r = right and right.GetText and right:GetText()
-        lines[#lines + 1] = { leftText = l, rightText = r }
-        if type(l) == "string" then
-            local text = l:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):match("^%s*(.-)%s*$")
-            if onEquip and text:sub(1, #onEquip) == onEquip then text = text:sub(#onEquip + 1):match("^%s*(.-)$") end
-            for _, p in ipairs(patterns) do
-                local v
-                if p[3] then
-                    if text:find(p[1]) then v = 1 end
-                else
-                    local a, b = text:match(p[1])
-                    if a == "+" or a == "-" then
-                        v = tipNumber(b)
-                        if v and a == "-" then v = -v end
-                    elseif a then
-                        v = tipNumber(a)
-                    end
-                end
-                if v then
-                    raw[p[2]] = (raw[p[2]] or 0) + v
-                    break
-                end
-            end
-        end
-    end
-    return raw, lines
-end
-
--- The client's stats of an item, turned into scoring keys, plus the weapon speed and the classes the
--- item is limited to (both only appear in the tooltip).
+-- The client's stats of an item (C_Item.GetItemStats), turned into scoring keys, plus the weapon
+-- speed and the classes the item is limited to (both only appear in the tooltip).
 function Gear.ReadStats(item)
-    local getStats = C_Item and C_Item.GetItemStats or _G.GetItemStats
     local link = type(item) == "number" and ("item:" .. item) or item
-    local raw, tipLines
-    if getStats then
-        raw = getStats(link)
-    else
-        raw, tipLines = Gear.TooltipStats(link)
-    end
+    local raw = C_Item.GetItemStats(link)
     if not raw then return nil end
     local s = {}
     for k, v in pairs(raw) do
@@ -265,14 +153,12 @@ function Gear.ReadStats(item)
     end
     local id = type(item) == "number" and item or ns.ItemID(item)
     local row = id and Gear.Item(id)
-    if row and not tipLines then
+    if row then
         -- the generated data knows class limits and weapon speed, which saves a tooltip per item
         if (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
         return s
     end
-    if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
-    local tip = tipLines and { lines = tipLines }
-        or (id and C_TooltipInfo and C_TooltipInfo.GetItemByID and C_TooltipInfo.GetItemByID(id))
+    local tip = id and C_TooltipInfo and C_TooltipInfo.GetItemByID and C_TooltipInfo.GetItemByID(id)
     if tip and tip.lines then
         local classesPrefix = ITEM_CLASSES_ALLOWED and ITEM_CLASSES_ALLOWED:match("^(.-)%%s")
         for _, line in ipairs(tip.lines) do
@@ -364,26 +250,18 @@ local function terms(s, w, level, kind, class, add)
         add(school, s[school], W(school))
     end
     -- ratings in percent at this level. Forever's hit, crit and haste work for weapons and spells
-    -- alike; TBC has separate spell ratings, so its plain hit, crit and haste are physical only, at
-    -- every level (a TBC character at 58 too). Only TBC data goes above 60.
-    local tbc = Gear.Game() == "tbc" or level > 60
+    -- alike; the melee and spell kinds count for their own side only.
     local critW = W("CRIT") + W("SCRIT")
-    add("HIT", s.HIT, tbc and W("HIT") or (W("HIT") + W("SHIT")), "HIT")
+    add("HIT", s.HIT, W("HIT") + W("SHIT"), "HIT")
     add("MHIT", s.MHIT, W("HIT"), "HIT")
     add("SHIT", s.SHIT, W("SHIT"), "SHIT")
-    add("CRIT", s.CRIT, tbc and W("CRIT") or critW, "CRIT")
+    add("CRIT", s.CRIT, critW, "CRIT")
     add("MCRIT", s.MCRIT, W("CRIT"), "CRIT")
     add("SCRIT", s.SCRIT, W("SCRIT"), "CRIT")
-    if tbc then
-        -- physical haste for weapon fighters, spell haste for casters and healers (their weights
-        -- carry SHASTE); without a weight four fifths of the matching crit weight
-        add("HASTE", s.HASTE, w.HASTE or 0.8 * W("CRIT"), "HASTE")
-        add("SHASTE", s.SHASTE, w.SHASTE or 0.8 * W("SCRIT"), "HASTE")
-    else
-        local hasteW = w.HASTE or 0.8 * critW
-        add("HASTE", s.HASTE, hasteW, "HASTE")
-        add("SHASTE", s.SHASTE, hasteW, "HASTE")
-    end
+    -- without a haste weight four fifths of the crit weight
+    local hasteW = w.HASTE or 0.8 * critW
+    add("HASTE", s.HASTE, hasteW, "HASTE")
+    add("SHASTE", s.SHASTE, hasteW, "HASTE")
     add("EXP", s.EXP, w.EXP or 0.8 * W("HIT"), "EXP")
     add("DODGE", s.DODGE, W("DODGE"), "DODGE")
     add("PARRY", s.PARRY, W("PARRY"), "PARRY")
@@ -480,23 +358,10 @@ end
 local function data() return ns.GEAR end
 function Gear.Available() return ns.GEAR ~= nil and ns.GEAR_WEIGHTS ~= nil end
 
--- The game the loaded data set is for: "forever" (GearData.lua, also when it predates the field)
--- or "tbc" (BisDataTBC.lua); nil without data. Only one set loads per client.
-function Gear.Game()
-    local d = data()
-    if not d then return nil end
-    return d.game or "forever"
-end
-
 -- The level cap of the loaded data set.
 function Gear.Cap()
     local d = data()
     return d and d.cap or 60
-end
-
--- The level-range planner (/amisia gear, its window and settings) is a Forever thing.
-function Gear.PlannerAvailable()
-    return Gear.Available() and Gear.Game() == "forever"
 end
 
 -- The item's row: equip location, class, subclass, level, quality, bind, item level, class mask
@@ -524,13 +389,9 @@ function Gear.Usable(class, row, level, spec)
     return false
 end
 
--- TBC enhancement shamans dual wield through their talent tree.
-local DUAL_WIELD_SPEC = { SHAMAN = { enh = 40 } }
-
+-- Whether a class dual wields at a level (spec is kept for the callers; no Forever spec adds it).
 function Gear.CanDualWield(class, level, spec)
-    if DUAL_WIELD[class] ~= nil and level >= DUAL_WIELD[class] then return true end
-    local from = spec and DUAL_WIELD_SPEC[class] and DUAL_WIELD_SPEC[class][spec]
-    return from ~= nil and level >= from and Gear.Game() == "tbc"
+    return DUAL_WIELD[class] ~= nil and level >= DUAL_WIELD[class]
 end
 
 -- Professions by the client's skill names (German and English, lower case; Juwelenschleifen is an
@@ -545,98 +406,12 @@ Gear.PROF_BY_NAME = {
 Gear.PROF_ID = { tailoring = 197, leatherworking = 165, blacksmithing = 164, engineering = 202, jewelcrafting = 755,
     alchemy = 171, enchanting = 333 }
 
--- The profession an item needs to be worn: skill line and rank (0: any rank), or nil. Field 10 of a
--- row is 0, a skill line (Forever data) or { skill line, rank } (TBC data, filled from the tooltip).
+-- The profession an item needs to be worn: skill line and rank (always 0, any rank), or nil.
+-- Field 10 of a row is 0 or the skill line.
 function Gear.WearProf(row)
     local p = row and row[10]
-    if type(p) == "table" then
-        if (tonumber(p[1]) or 0) > 0 then return p[1], tonumber(p[2]) or 0 end
-        return nil
-    end
     if type(p) == "number" and p > 0 then return p, 0 end
     return nil
-end
-
--- "Requires Engineering (350)" / "Benötigt Ingenieurskunst (350)" from the client's own text
--- (ITEM_MIN_SKILL; ITEM_REQ_SKILL without a rank): { skill line, rank } or nil.
-function Gear.ReadWearProf(lines)
-    if type(lines) ~= "table" then return nil end
-    local withRank = type(ITEM_MIN_SKILL) == "string" and ITEM_MIN_SKILL ~= "" and formatPattern(ITEM_MIN_SKILL, false, true)
-    local plain = type(ITEM_REQ_SKILL) == "string" and ITEM_REQ_SKILL ~= "" and formatPattern(ITEM_REQ_SKILL, false, true)
-    for _, line in ipairs(lines) do
-        local left = type(line) == "table" and line.leftText or line
-        if type(left) == "string" then
-            local text = left:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):match("^%s*(.-)%s*$")
-            local name, rank
-            if withRank then name, rank = text:match(withRank) end
-            if not name and plain then name = text:match(plain) end
-            local key = name and Gear.PROF_BY_NAME[name:lower()]
-            if key and Gear.PROF_ID[key] then return { Gear.PROF_ID[key], tonumber(rank) or 0 } end
-        end
-    end
-    return nil
-end
-
--- Whether an item row has a crafting source (only crafted gear needs a profession to be worn).
-local function crafted(row)
-    local d = ns.GEAR
-    for i = Gear.FIRST_SOURCE, #row do
-        local rec = d and d.S[row[i]]
-        if rec and rec[1] == "C" then return true end
-    end
-    return false
-end
-
--- The tooltip lines of an item: C_TooltipInfo where the client has it, else the hidden tooltip.
-local function tooltipLines(id)
-    if C_TooltipInfo and C_TooltipInfo.GetItemByID then
-        local ok, tip = pcall(C_TooltipInfo.GetItemByID, id)
-        if ok and type(tip) == "table" and tip.lines then return tip.lines end
-    end
-    local _, lines = Gear.TooltipStats("item:" .. id)
-    return lines
-end
-
--- Rows the TBC data leaves without item type are filled from the client on first use: equip
--- location and type at once (GetItemInfoInstant reads the client's own tables), level, quality,
--- bind and item level once the item is loaded, and for crafted gear the profession it needs to be
--- worn (the tooltip's requirement line). A row the client calls no armour or weapon is marked
--- NOT_GEAR and never asked about again.
-Gear.NOT_GEAR = "-"
-local blankRows, infoDone = {}, {}
-function Gear.FillRow(id)
-    local row = Gear.Item(id)
-    if not row then return nil end
-    if row[1] == "" then
-        local getInstant = C_Item and C_Item.GetItemInfoInstant or _G.GetItemInfoInstant
-        if not getInstant then return row end
-        local _, _, _, loc, _, classID, sub = getInstant(id)
-        local key = type(loc) == "string" and loc:gsub("^INVTYPE_", "") or ""
-        blankRows[id] = true
-        if GROUP[key] and (classID == 2 or classID == 4) then
-            row[1], row[2], row[3] = key, classID, sub or 0
-        else
-            row[1] = Gear.NOT_GEAR
-            return row
-        end
-    end
-    if blankRows[id] and not infoDone[id] and row[1] ~= Gear.NOT_GEAR then
-        local getInfo = C_Item and C_Item.GetItemInfo or _G.GetItemInfo
-        if getInfo then
-            local name, _, q, ilvl, minLevel, _, _, _, _, _, _, _, _, bind = getInfo(id)
-            if name then
-                if (row[4] or 0) == 0 then row[4] = minLevel or 0 end
-                if (row[5] or 0) == 0 then row[5] = q or 0 end
-                if (row[6] or 0) == 0 then row[6] = bind or 0 end
-                if (row[7] or 0) == 0 then row[7] = ilvl or 0 end
-                if not Gear.WearProf(row) and crafted(row) then
-                    row[10] = Gear.ReadWearProf(tooltipLines(id)) or row[10] or 0
-                end
-                infoDone[id] = true
-            end
-        end
-    end
-    return row
 end
 
 -- The source record by number: kind first, then fields as described in GearData.lua.
@@ -668,14 +443,6 @@ local function sourceFaction(rec)
     return f
 end
 
--- The content phase of a source (TBC raids, badge vendors, later dungeons); 1 when it has none.
-function Gear.PhaseOf(rec)
-    local k, p = rec[1], nil
-    if k == "X" or k == "V" then p = rec[6]
-    elseif k == "D" then p = rec[8] end
-    return (type(p) == "number" and p > 0) and p or 1
-end
-
 -- The place a source is at, for "here" and for excluding a place: "I:<instance id>" for raids and
 -- dungeons ("N:<name>" for dungeon records without one), "Z:<zone>" for quests, vendors, rare
 -- mobs and world drops with a zone; nil for crafting, reputation and the auction house.
@@ -696,8 +463,8 @@ function Gear.PlaceOf(rec)
     return nil
 end
 
--- Whether one source passes the filters: kind switched on, faction and class fit, the phase is
--- reached (opts.phase, 0 or nil for all) and neither its boss nor its place is excluded
+-- Whether one source passes the filters: kind switched on, faction and class fit, and neither its
+-- boss nor its place is excluded
 -- (opts.exclude = { boss = { [name] = true }, place = { [Gear.PlaceOf key] = true } }). With
 -- opts.prof "mine" and the own professions in opts.skills ({ tailoring = 375, ... }), a crafted
 -- item that binds on pickup (row given) counts only with that profession and skill.
@@ -712,7 +479,6 @@ function Gear.SourceOk(rec, opts, row)
     if rec[1] == "Q" and (rec[8] or 0) > 0 and opts.class and not Gear.HasClassBit(rec[8], opts.class) then
         return false
     end
-    if opts.phase and opts.phase > 0 and Gear.PhaseOf(rec) > opts.phase then return false end
     local ex = opts.exclude
     if ex then
         if ex.boss and (rec[1] == "X" or rec[1] == "D") and rec[3] and ex.boss[rec[3]] then return false end
@@ -829,8 +595,7 @@ end
 
 local function cached(id)
     if C_Item and C_Item.IsItemDataCachedByID then return C_Item.IsItemDataCachedByID(id) end
-    local getInfo = C_Item and C_Item.GetItemInfo or _G.GetItemInfo
-    return getInfo and getInfo(id) ~= nil
+    return C_Item.GetItemInfo(id) ~= nil
 end
 
 local function tick()
@@ -933,8 +698,6 @@ function Gear._reset()
     wipe(stats); wipe(pending); wipe(queue); wipe(queued)
     arrived = false
     memo, memoKey = {}, nil
-    wipe(blankRows); wipe(infoDone)
-    tipPatterns = nil
     if ticker then ticker:Cancel(); ticker = nil end
 end
 
@@ -985,7 +748,7 @@ end
 
 -- Best items per slot for one level range.
 -- opts: class, spec, kind ("Speedrun"/"Hardcore"), faction ("Alliance"/"Horde" short A/H or nil),
--- sources (set of filter keys), level (upper end of the range); optional phase (0/nil all) and
+-- sources (set of filter keys), level (upper end of the range); optional
 -- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }).
 -- Returns { [slotKey] = { {id, score}, ... best first }, plan = "2H" or "1H", missing = n, total = n }.
 function Gear.Best(opts)
@@ -1004,7 +767,6 @@ function Gear.Best(opts)
     local exItem = opts.exclude and opts.exclude.item
 
     for id, row in pairs(d.I) do
-        if row[1] == "" or blankRows[id] then Gear.FillRow(id) end
         if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
             local ok = false
             for i = Gear.FIRST_SOURCE, #row do
@@ -1114,8 +876,7 @@ function Gear.ScoreLink(link, slotKey, opts)
     local w = Gear.Weights(opts.class, opts.spec, opts.kind, opts.level)
     if not w then return nil end
     local kind
-    local getInstant = C_Item and C_Item.GetItemInfoInstant or _G.GetItemInfoInstant
-    local loc = getInstant and select(4, getInstant(link)) or nil
+    local loc = select(4, C_Item.GetItemInfoInstant(link))
     local group = loc and GROUP[(loc:gsub("^INVTYPE_", ""))]
     if slotKey == "MAINHAND" then kind = group == "2H" and "2H" or "MH"
     elseif slotKey == "OFFHAND" then kind = (group == "1H" or group == "OHW") and "OH" or nil
@@ -1137,8 +898,8 @@ Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = "Beruf", V = "H�
 -- Reputation standings 5 friendly .. 8 exalted.
 Gear.STANDINGS = { [4] = "neutral", [5] = "freundlich", [6] = "wohlwollend", [7] = "respektvoll", [8] = "ehrfürchtig" }
 
--- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised
--- on both clients), else the source's own name.
+-- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised),
+-- else the source's own name.
 function Gear.PlaceName(rec)
     local area = rec[1] == "X" and rec[5] or rec[1] == "D" and rec[6] or nil
     if type(area) == "number" and area > 0 and C_Map and C_Map.GetAreaInfo then

@@ -17,8 +17,8 @@ local nextReport
 local queue   -- ids from the retry list while /amisia scan retry runs, else nil
 local savedRate   -- the rate to put back after a retry run
 
-local GetItemInfoAny = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
-local GetItemInfoInstantAny = (C_Item and C_Item.GetItemInfoInstant) or _G.GetItemInfoInstant
+local GetItemInfoAny = C_Item.GetItemInfo
+local GetItemInfoInstantAny = C_Item.GetItemInfoInstant
 local request = C_Item and C_Item.RequestLoadItemDataByID
 
 local function now()
@@ -44,7 +44,7 @@ end
 -- The client's stats of a weapon or armour piece, as "KEY=value;..." with the ITEM_MOD_ prefix cut
 -- off: the gear planner's build reads them, so the planner needs no loading in game.
 local function statText(id, classID)
-    local getStats = (C_Item and C_Item.GetItemStats) or _G.GetItemStats
+    local getStats = C_Item.GetItemStats
     if (classID ~= 2 and classID ~= 4) or not getStats then return "" end
     local raw = getStats("item:" .. id)
     if not raw then return "" end

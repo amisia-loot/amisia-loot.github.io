@@ -8,11 +8,11 @@ local function has(text, part) return type(text) == "string" and text:find(part,
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 
 AmisiaDB.settings.gear = { specs = { WARRIOR = "dps" } }
-STUB.class, STUB.level, STUB.faction = "WARRIOR", 70, "Alliance"
+STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
 STUB.instance = { type = "none" }
 STUB.maps[1411] = { name = "Durotar", parent = 1414, mapType = 3, world = { 1, 0, 0, 1000, 1000 } }
 STUB.maps[1429] = { name = "Wald von Elwynn", parent = 1415, mapType = 3, world = { 0, 0, 0, 1000, 1000 } }
-STUB.maps[1430] = { name = "Gebirgspass der Totenwinde", parent = 1415, mapType = 3, world = { 0, 3000, 0, 1000, 1000 } }
+STUB.maps[1428] = { name = "Brennende Steppe", parent = 1415, mapType = 3, world = { 0, 3000, 0, 1000, 1000 } }
 STUB.maps[1414] = { name = "Kalimdor", parent = 947, mapType = 2 }
 STUB.maps[947] = { name = "Azeroth", mapType = 1 }
 STUB.place.map = 1411
@@ -22,22 +22,22 @@ local function gear(id, name, loc, str, sources)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID, it.icon = "INVTYPE_" .. loc, 4, 4, 1000 + id
-    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 70
-    I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+    it.stats, it.bind, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = str }, 1, 60
+    I[id] = { loc, 4, 4, 60, 4, 1, 60, 0, 0, 0 }
     for _, n in ipairs(sources) do I[id][#I[id] + 1] = n end
 end
 local S = {
     { "V", "Gorn One Eye", 1411, "", "Armorer" },     -- 1
-    { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 },   -- 2 (entrance in the Deadwind Pass)
+    { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 1, 0 },   -- 2 (entrance in the Burning Steppes)
 }
 gear(201, "Helm Gorn", "HEAD", 40, { 1 })
 gear(209, "Ring Doppel", "HEAD", 90, { 2, 1 })
-STUB.areas[3457] = "Karazhan"
-NS.GEAR = { game = "tbc", cap = 70, built = "t-r19", S = S, I = I, Z = {} }
+STUB.areas[2717] = "Geschmolzener Kern"
+NS.GEAR = { game = "forever", cap = 60, built = "t-r19", S = S, I = I, Z = {} }
 Gear._reset()
-NS.MAP = { game = "tbc", built = "2026-10-05", G = {}, P = {
+NS.MAP = { game = "forever", built = "2026-10-05", G = {}, P = {
     ["V:Gorn One Eye"] = "1411:4720:3310",
-    ["I:532"] = "1430:4670:7020",
+    ["I:409"] = "1428:4670:7020",
 } }
 Map._reset()
 local me = NS.BisChar()
@@ -79,8 +79,8 @@ NS.ShowMap()
 ---------------------------------------------------------------------------
 do
     local key
-    for _, p in ipairs(NS.BisPlaces()) do if has(p.text, "Karazhan") then key = p.key end end
-    assert(key, "the place Karazhan")
+    for _, p in ipairs(NS.BisPlaces()) do if has(p.text, "Geschmolzener Kern") then key = p.key end end
+    assert(key, "the place Geschmolzener Kern")
     AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
     NS.ShowGear("here")
     AmisiaDB.settings.bis.place = key
@@ -97,7 +97,7 @@ do
     row.map.scripts.OnEnter(row.map)
     GameTooltip.AddLine = addLine
     local tip = table.concat(lines, "|")
-    assert(has(tip, "Karazhan") and not has(tip, "Gorn"), "tooltip: this row's place: " .. tip)
+    assert(has(tip, "Geschmolzener Kern") and not has(tip, "Gorn"), "tooltip: this row's place: " .. tip)
     row.map.scripts.OnClick(row.map)
     assert(NS.MapTarget() and NS.MapTarget().key == key, "click: this place")
     NS.MapClearTarget()
@@ -114,7 +114,7 @@ do
     row.scripts.OnClick(row, "RightButton")
     WorldMapFrame:Hide()
     menuClick("Auf der Karte zeigen")
-    assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1430, "menu: the map of this place: " .. tostring(WorldMapFrame:GetMapID()))
+    assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1428, "menu: the map of this place: " .. tostring(WorldMapFrame:GetMapID()))
     WorldMapFrame:Hide()
     AmisiaDB.settings.bis.place = nil
     NS.ShowMap()

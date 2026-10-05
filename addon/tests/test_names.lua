@@ -1,19 +1,20 @@
--- Names: Forever "First Surname", Anniversary "Name-Realm", the same name compared everywhere,
--- and the export writing "_" for the space.
+-- Names: WoW Forever's "First Surname" (a dash belongs to the surname), the same name compared
+-- everywhere, and the export writing "_" for the space.
 assert(NS.FullName, "Names.lua loaded")
+assert(NS.IsForever == nil, "one client, no client test")
 
-STUB.toc = 20506
-assert(NS.FullName("Fraktur-Thunderstrike") == "Fraktur", "Anniversary drops the realm")
 assert(NS.FullName("  Vuloo ") == "Vuloo")
 assert(NS.FullName("") == nil and NS.FullName(nil) == nil)
-assert(NS.FullName("Vulo", "Thunderstrike") == "Vulo", "the second UnitName value is a realm there")
-
-STUB.toc = 16001
-assert(NS.IsForever())
-assert(NS.FullName("Vulo", "Sturmwind") == "Vulo Sturmwind", "Forever adds the surname")
-assert(NS.FullName("Vulo  Stein-Herz") == "Vulo Stein-Herz", "dashes belong to the surname there")
+assert(NS.FullName("Vulo", "Sturmwind") == "Vulo Sturmwind", "the surname is added")
+assert(NS.FullName("Vulo  Stein-Herz") == "Vulo Stein-Herz", "dashes belong to the surname")
+assert(NS.FullName("Anna Berg-Tal") == "Anna Berg-Tal", "a dashed surname stays whole")
+assert(NS.FullName("Fraktur-Thunderstrike") == "Fraktur-Thunderstrike", "no realm is cut off")
 assert(NS.FullName("Vulo Sturmwind", "Sturmwind") == "Vulo Sturmwind", "no surname twice")
-STUB.toc = 20506
+-- UnitName's second value is the surname
+local savedUnitName = UnitName
+UnitName = function() return "Anna", "Berg-Tal" end
+assert(NS.UnitFullName("player") == "Anna Berg-Tal", "Anna with the surname from UnitName")
+UnitName = savedUnitName
 
 assert(NS.SameName("Vulo Sturmwind", "vulo sturmwind"))
 assert(NS.SameName("Vulo", "Vulo Sturmwind"), "a side without surname matches on the first name")

@@ -7,7 +7,7 @@
 -- snapshots of the recording after 60 s).
 local ADDON, ns = ...
 
-local RESTRICTION_ENCOUNTER = 1   -- Enum.AddOnRestrictionType.Encounter on both clients
+local RESTRICTION_ENCOUNTER = 1   -- Enum.AddOnRestrictionType.Encounter
 local SAME_FIGHT = 120            -- seconds: two kill events of one encounter this close are one kill
 local LOOT_WINDOW = 600           -- seconds between a kill and the loot window of its corpse
 local READ_FOR = 60               -- seconds to wait for a readable roster after a kill

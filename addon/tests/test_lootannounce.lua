@@ -10,8 +10,11 @@ local l1 = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 local l2 = STUB.item(32837, "Warglaive of Azzinoth", 5)
 local l3 = STUB.item(32373, "Helm of the Illidari Shatterer", 4)
 local blue = STUB.item(30000, "Blue Thing", 3)
+-- a tracked guild material (the list is empty until the guild names its materials) and an ignored
+-- disenchanting result
 local mat = STUB.item(32897, "Mark of the Illidari", 4)
-local badge = STUB.item(29434, "Badge of Justice", 4)
+NS.MATS[32897], NS.MAT_ORDER[1] = "Mark of the Illidari", 32897
+local badge = STUB.item(20725, "Nexus Crystal", 4)
 NS.SetSoftRes("Fraktur 32235\nVulo Sturmwind 32235\nVulo Sturmwind 32235\nGustav 32235\nChorf 32373\nAnna 32373\nVuloo 32373\n")
 
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end

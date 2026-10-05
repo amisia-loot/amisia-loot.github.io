@@ -20,14 +20,13 @@ local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335e
 local GOLD = W.GOLD
 local GREEN = { 0.3, 0.85, 0.3 }
 
--- Forever has no GetItemInfo global; both clients have C_Item.
 local function itemInfo(x)
-    local f = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+    local f = C_Item and C_Item.GetItemInfo
     if f then return f(x) end
     return nil
 end
 local function itemIcon(id)
-    local f = (C_Item and C_Item.GetItemIconByID) or _G.GetItemIcon
+    local f = C_Item and C_Item.GetItemIconByID
     if not f then return nil end
     local ok, icon = pcall(f, id)
     return ok and ns.Plain(icon) or nil
@@ -236,7 +235,7 @@ end
 
 -- Shift: the place into the chat input; on Forever the client's waypoint link, else as text.
 local function insertPlace(e)
-    local insert = (ChatFrameUtil and ChatFrameUtil.InsertLink) or _G.ChatEdit_InsertLink
+    local insert = ChatFrameUtil and ChatFrameUtil.InsertLink
     if not insert then return end
     local t = ns.MapTarget()
     if t and t.ours and C_Map and C_Map.GetUserWaypointHyperlink then

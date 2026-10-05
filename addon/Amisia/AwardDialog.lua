@@ -14,10 +14,9 @@ local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
 local WIDTH, HEIGHT = 380, 230
 
--- Forever has no GetItemInfo or GetItemInfoInstant global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
-local GetItemInfoInstant = _G.GetItemInfoInstant or (C_Item and C_Item.GetItemInfoInstant)
-local GetItemIconByID = C_Item and C_Item.GetItemIconByID
+local GetItemInfo = C_Item.GetItemInfo
+local GetItemInfoInstant = C_Item.GetItemInfoInstant
+local GetItemIconByID = C_Item.GetItemIconByID
 
 local D
 local st = {}                -- s, item, link, winner, kind, note
@@ -409,9 +408,10 @@ ns.OnEvent("LOOT_CLOSED", function()
     refresh()
 end)
 
--- A link shift-clicked into the chat lands in the item box of an open dialog without an item. Both
--- clients call ChatFrameUtil.InsertLink; ChatEdit_InsertLink is only a deprecated alias of the
--- unhooked function, which some clients lack, so it gets a hook of its own for callers that use it.
+-- A link shift-clicked into the chat lands in the item box of an open dialog without an item. The
+-- client calls ChatFrameUtil.InsertLink. ChatEdit_InsertLink is its deprecated alias, defined only
+-- with the client's deprecation fallbacks switched on and bound to the unhooked function, so it
+-- gets a hook of its own for callers that still use it.
 local function onInsertLink(link)
     if D and D:IsShown() and not st.item and ns.ItemID(link) and setItem(link) then refresh() end
 end

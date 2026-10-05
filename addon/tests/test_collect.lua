@@ -1,5 +1,5 @@
 -- The item collector: bags, merchants, quests, auction house, loot, tooltips, chat links.
-STUB.instance = { name = "Shattrath", type = "none", id = 0 }
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
 local a = STUB.item(100, "Bag Thing", 2)
 local b = STUB.item(101, "Vendor Thing", 1)
 local c = STUB.item(102, "Quest Thing", 3)
@@ -56,13 +56,13 @@ STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }
 STUB.loot = { { link = e, name = "Drop Thing", src = "Creature-0-3110-36-47-639-00002E7CF2" } }
 STUB.fire("LOOT_OPENED")
 assert(AmisiaDB.scan.sources[104][2] == "Drop: ? [639] @Die Todesminen #party:36", AmisiaDB.scan.sources[104][2])
-STUB.instance = { name = "Shattrath", type = "none", id = 0 }
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
 assert(NS.NpcID("Player-1-1") == nil and NS.NpcID("Vehicle-0-1-1-1-55-2") == 55)
 
 -- tooltip and chat link
 local f = STUB.item(106, "Linked", 4)
 GameTooltip.GetItem = function() return "Linked", f end
-GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+STUB.showTooltip(GameTooltip)
 assert(AmisiaDB.scan.items[106])
 STUB.fire("CHAT_MSG_GUILD", "schaut mal " .. STUB.item(107, "Chatted", 4))
 assert(AmisiaDB.scan.items[107])

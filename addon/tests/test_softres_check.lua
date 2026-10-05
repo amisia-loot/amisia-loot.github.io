@@ -43,7 +43,7 @@ assert(next(AmisiaDB.softres.reminded) == nil)
 -- remembered name fixes act while parsing (after the name is cleaned up)
 AmisiaDB.srAliases["vulo sturmwnd"] = "Vulo Sturmwind"
 local renamed
-byItem, count, bad, times, total, renamed = NS.ParseSoftRes("vulo sturmwnd 32235\nvulo sturmwnd-Realm 32837\n")
+byItem, count, bad, times, total, renamed = NS.ParseSoftRes("vulo sturmwnd 32235\nvulo   sturmwnd 32837\n")
 assert(byItem[32235][1] == "Vulo Sturmwind" and byItem[32837][1] == "Vulo Sturmwind", byItem[32235][1])
 assert(renamed["Vulo Sturmwind"] == "Vulo sturmwnd", tostring(renamed["Vulo Sturmwind"]))
 NS.SetSoftRes("vulo sturmwnd 32235")
@@ -83,10 +83,10 @@ c = NS.SoftResCheck({ byItem = {}, times = {} }, {})
 assert(c.roster == 0 and c.reservers == 0)
 
 -- roster: the raid, else the last raid
-STUB.roster = { { name = "Fraktur-Realm", class = "SHAMAN" }, { name = "Geheim", class = "PRIEST" }, { name = "Chorf", class = "WARRIOR" } }
+STUB.roster = { { name = "Fraktur Berg", class = "SHAMAN" }, { name = "Geheim", class = "PRIEST" }, { name = "Chorf", class = "WARRIOR" } }
 STUB.secret.Geheim = true
 local r, label = NS.SoftResRoster()
-assert(names(r) == "Chorf,Fraktur" and label == "Raid (3)", names(r) .. " " .. tostring(label))
+assert(names(r) == "Chorf,Fraktur Berg" and label == "Raid (3)", names(r) .. " " .. tostring(label))
 STUB.secret.Geheim = nil
 STUB.roster = {}
 r, label = NS.SoftResRoster()

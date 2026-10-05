@@ -77,12 +77,8 @@ local function classColor(token)
 end
 
 local function itemInfo(id)
-    local getInfo = C_Item and C_Item.GetItemInfo or _G.GetItemInfo
-    local name, link, q, _, _, _, _, _, _, icon = getInfo(id)
-    if not icon then
-        local getInstant = C_Item and C_Item.GetItemInfoInstant or _G.GetItemInfoInstant
-        if getInstant then icon = select(5, getInstant(id)) end
-    end
+    local name, link, q, _, _, _, _, _, _, icon = C_Item.GetItemInfo(id)
+    if not icon then icon = select(5, C_Item.GetItemInfoInstant(id)) end
     return name, link, q, icon
 end
 
@@ -809,11 +805,9 @@ function ns.ResetGearPosition()
 end
 
 function ns.ToggleGearFrame()
-    if not Gear.PlannerAvailable() then
-        -- TBC has the gear page, but no level-range table
-        if Gear.Available() and ns.ShowPage then ns.ShowPage("gear") end
-        ns.msg(Gear.Available() and "Die Ausrüstungstabelle gibt es nur in WoW Forever, hier die Seite."
-            or "Die Ausrüstungstabelle gibt es nur in WoW Forever.")
+    if not Gear.Available() then
+        -- the data files load only in WoW Forever (TOC load condition)
+        ns.msg("Die Ausrüstungstabelle ist nicht verfügbar.")
         return
     end
     if not F then build() end
@@ -841,8 +835,7 @@ function ns.GearDebug(arg)
     table.sort(parts)
     ns.msg(("%d: %s"):format(id, table.concat(parts, " ")))
     -- what the client itself answered, so a stat name the planner does not know shows up
-    local getStats = C_Item and C_Item.GetItemStats or _G.GetItemStats
-    local raw = getStats and getStats(arg:find("item:") and arg or ("item:" .. id))
+    local raw = C_Item.GetItemStats(arg:find("item:") and arg or ("item:" .. id))
     if raw then
         local rawParts = {}
         for k, v in pairs(raw) do rawParts[#rawParts + 1] = (Gear.STAT[k] and "" or "|cffe0a344?|r") .. k .. "=" .. tostring(v) end
@@ -858,7 +851,7 @@ function ns.GearDebug(arg)
         row and "" or " (nicht in der Tabelle)"))
 end
 
-ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.PlannerAvailable() end, items = {
+ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.Available() end, items = {
     { key = "gear.kind", type = "choice", label = "Gewichtung", default = "Speedrun",
       values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
       tip = "Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung." },

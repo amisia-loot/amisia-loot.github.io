@@ -143,7 +143,7 @@ STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
 assert(s.outside.Bob and s.outside["Alt Draussen"])
 s.outside["Alt Draussen"] = STUB.now - 700
 STUB.guild = {
-    { name = "Gildi-Realm", class = "ROGUE" }, { name = "Bob", class = "MAGE" }, { name = "Schlaefer", class = "DRUID", online = false },
+    { name = "Gildi", class = "ROGUE" }, { name = "Bob", class = "MAGE" }, { name = "Schlaefer", class = "DRUID", online = false },
     { name = "Fraktur", class = "SHAMAN" }, { name = "Fred", class = "HUNTER" }, { name = "Vulo Sturmwind", class = "WARRIOR" },
     { name = "Gast", class = "WARLOCK" }, { name = "Gastzwei", class = "WARLOCK" }, { name = "Gastdrei", class = "WARLOCK" },
 }
@@ -197,15 +197,15 @@ assert(NS.ReplyGate("probe", "k23") == true, "the next minute")
 ---------------------------------------------------------------------------
 later()
 STUB.chat = {}
-ask("!bench", "Gast-Realm")
-assert(#STUB.chat == 1 and last().chan == "WHISPER" and last().target == "Gast-Realm", "a whisper to the sender as given")
+ask("!bench", "Gast")
+assert(#STUB.chat == 1 and last().chan == "WHISPER" and last().target == "Gast", "a whisper to the sender as given")
 assert(last().text == ("Amisia: Du stehst auf der Ersatzbank (Black Temple, %s). Mit !bench aus trägst du dich aus."):format(short(s.date)), last().text)
 assert(s.bench.Gast and s.bench.Gast.self and not s.bench.Gast.by and s.bench.Gast.class == "WARLOCK")
 assert(has(lastMsg(), "Gast steht auf der Ersatzbank (selbst eingetragen)."), lastMsg())
-ask("!bench nochmal", "Gast-Realm")
+ask("!bench nochmal", "Gast")
 assert(#STUB.chat == 1, "one answer per sender every 15 s")
 later()
-ask("!bench ab 21 Uhr", "Gast-Realm")
+ask("!bench ab 21 Uhr", "Gast")
 assert(last().text == ("Amisia: Du stehst auf der Ersatzbank (Black Temple, %s). Mit !bench aus trägst du dich aus. Notiz: ab 21 Uhr."):format(short(s.date)), last().text)
 assert(s.bench.Gast.note == "ab 21 Uhr")
 later()

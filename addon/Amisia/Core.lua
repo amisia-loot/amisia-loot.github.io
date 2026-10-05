@@ -5,8 +5,8 @@ local ADDON, ns = ...
 
 ns.VERSION = "1.9.0"
 
--- Forever has no GetItemInfo global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+-- The item functions live in C_Item (WoW Forever has no GetItemInfo global).
+local GetItemInfo = C_Item.GetItemInfo
 
 -- Item id from a link or an "item:1234" string, or nil.
 function ns.ItemID(link)
@@ -46,9 +46,8 @@ local function tipReport(err)
 end
 
 local function onItemTooltip(tip)
-    -- a part that reads an item through the hidden scan tooltip comes back here: nothing then
+    -- a part that builds another item tooltip comes back here: nothing then
     if tipBusy or type(tip) ~= "table" or not tip.AddLine then return end
-    if tip == _G.AmisiaScanTip then return end
     local ok, link = pcall(tipLink, tip)
     link = ok and ns.Plain(link) or nil
     local id = ns.ItemID(link)
@@ -79,29 +78,33 @@ local function onItemTooltip(tip)
     for _, err in ipairs(errors or {}) do tipReport(err) end
 end
 
--- Both clients have the tooltip data processor (it also serves SetLootRollItem and SetHyperlink);
--- the item script is the fallback for a client without it.
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
+-- The tooltip data processor serves every item tooltip (also SetLootRollItem and SetHyperlink).
+-- Without it (a client that lacks it) there are no Amisia lines, and no error.
+if type(TooltipDataProcessor) == "table" and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
+    and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, onItemTooltip)
-elseif GameTooltip and GameTooltip.HookScript then
-    GameTooltip:HookScript("OnTooltipSetItem", onItemTooltip)
-    if ItemRefTooltip then ItemRefTooltip:HookScript("OnTooltipSetItem", onItemTooltip) end
 end
 
--- Tracked guild bank materials. Names are fallbacks until the client has the item cached.
-ns.MATS = {
-    [32897] = "Mal der Illidari",
-    [32428] = "Herz der Dunkelheit",
-    -- epic raw gems from Black Temple and Sunwell Plateau trash
-    [32227] = "Crimson Spinel",
-    [32228] = "Empyrean Sapphire",
-    [32229] = "Lionseye",
-    [32230] = "Shadowsong Amethyst",
-    [32231] = "Pyrestone",
-    [32249] = "Seaspray Emerald",
-}
-ns.MAT_ORDER = { 32897, 32428, 32227, 32228, 32229, 32230, 32231, 32249 }
-ns.GEMS = { [32227] = true, [32228] = true, [32229] = true, [32230] = true, [32231] = true, [32249] = true }
+-- Tracked guild bank materials: [itemID] = fallback name until the client has the item cached;
+-- MAT_ORDER is the order of the counts and the export's B lines, GEMS the ids summed as gems.
+-- Empty for WoW Forever until the guild names its materials: then nothing is counted, looted
+-- materials are not recorded apart and the export writes no B lines. Filling the tables brings the
+-- whole mechanism back.
+ns.MATS = {}
+ns.MAT_ORDER = {}
+ns.GEMS = {}
+
+-- Whether any material is tracked.
+function ns.HasMats() return ns.MAT_ORDER[1] ~= nil end
+
+-- "Name n, Name n" over the tracked materials of counts.
+function ns.MatSummary(counts)
+    local parts = {}
+    for _, id in ipairs(ns.MAT_ORDER) do
+        parts[#parts + 1] = ("%s %d"):format(ns.ItemName(id), counts and counts[id] or 0)
+    end
+    return table.concat(parts, ", ")
+end
 
 function ns.GemCount(counts)
     local n = 0
@@ -111,13 +114,8 @@ end
 
 -- Loot of this quality or better is recorded besides the materials: 3 rare (blue), 4 epic, 5 legendary.
 ns.MIN_QUALITY = 3
--- Blue or better items that are no raid loot worth listing: disenchanting results and Badges of Justice,
--- which every raider loots from every boss.
+-- Blue or better items that are no raid loot worth listing: disenchanting results.
 ns.IGNORE = {
-    [29434] = true, -- Badge of Justice
-    [22450] = true, -- Void Crystal
-    [22449] = true, -- Large Prismatic Shard
-    [22448] = true, -- Small Prismatic Shard
     [20725] = true, -- Nexus Crystal
     [14344] = true, -- Large Brilliant Shard
     [14343] = true, -- Small Brilliant Shard
@@ -575,7 +573,7 @@ local bankOpen, bankCounted, bankPending, bankNeedTabs = false, false, false, fa
 -- the last count means the client already dropped tab data, so it is thrown away.
 local function countBank(minFilled)
     bankPending = false
-    if not bankOpen or not DB then return end
+    if not bankOpen or not DB or not ns.HasMats() then return end
     local tabs = GetNumGuildBankTabs() or 0
     if tabs == 0 then return end -- tab list not here yet, GUILDBANK_UPDATE_TABS retries
     local counts, viewable, filled = {}, 0, 0
@@ -639,7 +637,7 @@ end
 
 local function bankOpened(frame)
     if not ns.Get("bank.count") then return end
-    if not HAS_BANK_API then return end
+    if not HAS_BANK_API or not ns.HasMats() then return end
     if not bankOpen then bankCounted = false end
     bankOpen = true
     frame:RegisterEvent("GUILDBANKBAGSLOTS_CHANGED")
@@ -657,9 +655,7 @@ local function bankClosed(frame, quiet)
     frame:UnregisterEvent("GUILDBANKBAGSLOTS_CHANGED")
     frame:UnregisterEvent("GUILDBANK_UPDATE_TABS")
     if not quiet and bankCounted and DB and DB.bank then
-        local c = DB.bank.counts
-        msg(("Gildenbank gezählt: Mal %d, Herz %d, Edelsteine %d (%d Tabs)."):format(
-            c[32897] or 0, c[32428] or 0, ns.GemCount(c), DB.bank.tabs or 0))
+        msg(("Gildenbank gezählt: %s (%d Tabs)."):format(ns.MatSummary(DB.bank.counts), DB.bank.tabs or 0))
         if (DB.bank.total or 0) > (DB.bank.tabs or 0) then
             msg(("%d von %d Tabs sind für dich nicht sichtbar. Ihr Inhalt fehlt in dieser Zählung."):format(
                 (DB.bank.total or 0) - (DB.bank.tabs or 0), DB.bank.total or 0))
@@ -671,7 +667,12 @@ local function bankClosed(frame, quiet)
     end
 end
 
-function ns.Bank() return DB and DB.bank end
+-- The last guild bank count, or nil when there is none or no material is tracked (a count of
+-- materials no longer tracked is kept in AmisiaDB.bank, but neither shown nor exported).
+function ns.Bank()
+    if not (DB and DB.bank and ns.HasMats()) then return nil end
+    return DB.bank
+end
 
 ---------------------------------------------------------------------------
 -- Public helpers for the window
@@ -931,7 +932,7 @@ end
 
 -- Whether the guild bank count is newer than the last export that carried it.
 function ns.BankPending()
-    local bank = DB and DB.bank
+    local bank = ns.Bank()
     return (bank and bank.counts and (bank.at or 0) > (DB.exportedBank or 0)) and true or false
 end
 
@@ -950,7 +951,7 @@ end
 function ns.ExportText(list)
     local lines = { "#AMISIA 2 " .. ns.ExportName(ns.UnitFullName("player") or "?") }
     local used = {}   -- item ids of I and D lines, named in N lines at the end
-    local bank = DB and DB.bank
+    local bank = ns.Bank()
     if bank and bank.counts then
         -- K <epoch seconds> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>
         lines[#lines + 1] = ("K %d %s %s %d %d %d %s"):format(bank.at or 0, date("%Y-%m-%d", bank.at), date("%H:%M", bank.at),
@@ -1105,16 +1106,17 @@ ns.RegisterSlash("status", { desc = "Stand der Aufnahme und der Gildenbank", run
     if active then
         local c = ns.MatCounts(active)
         local late = ns.LateCount(active)
-        msg(("Aufnahme: %s, %d Raider%s, Mal %d, Herz %d, Edelsteine %d."):format(active.zone, ns.MemberCount(active),
-            late > 0 and (", " .. late .. " zu spät") or "", c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+        local mats = ns.HasMats() and (", " .. ns.MatSummary(c)) or ""
+        msg(("Aufnahme: %s, %d Raider%s%s."):format(active.zone, ns.MemberCount(active),
+            late > 0 and (", " .. late .. " zu spät") or "", mats))
     else
         msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
     end
+    -- the guild bank only while materials are tracked
+    if not ns.HasMats() then return end
     local bank = ns.Bank()
     if bank and bank.counts then
-        local c = bank.counts
-        msg(("Gildenbank vom %s: Mal %d, Herz %d, Edelsteine %d."):format(date("%d.%m. %H:%M", bank.at),
-            c[32897] or 0, c[32428] or 0, ns.GemCount(c)))
+        msg(("Gildenbank vom %s: %s."):format(date("%d.%m. %H:%M", bank.at), ns.MatSummary(bank.counts)))
     else
         msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
     end

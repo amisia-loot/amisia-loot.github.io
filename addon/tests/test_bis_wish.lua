@@ -6,24 +6,24 @@
 -- /amisia wunsch.
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
-STUB.class, STUB.level = "WARRIOR", 70
-STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
+STUB.class, STUB.level = "WARRIOR", 60
+STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
 
--- a small TBC data set; the client describes every item
+-- a small Forever data set; the client describes every item
 local LINKS = {}
 local function gear(id, name, loc, strength, sources, sub)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID = "INVTYPE_" .. loc, 4, sub or 4
-    it.stats, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = strength }, 70
+    it.stats, it.minLevel = { ITEM_MOD_STRENGTH_SHORT = strength }, 60
     if sources then
-        NS.GEAR.I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+        NS.GEAR.I[id] = { loc, 4, sub or 4, 60, 4, 1, 70, 0, 0, 0 }
         for _, n in ipairs(sources) do NS.GEAR.I[id][#NS.GEAR.I[id] + 1] = n end
     end
     return LINKS[id]
 end
-NS.GEAR = { game = "tbc", cap = 70, built = "test-wish", I = {}, Z = {},
-    S = { { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 }, { "X", "Gruul's Lair", "Gruul", 565, 3923, 1, 0 } } }
+NS.GEAR = { game = "forever", cap = 60, built = "test-wish", I = {}, Z = {},
+    S = { { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 0, 0 }, { "X", "Pechschwingenhort", "Nefarian", 469, 2677, 0, 0 } } }
 Gear._reset()
 gear(201, "Krone", "HEAD", 40, { 1 })
 gear(202, "Gürtel der Hoffnung", "WAIST", 30, { 2 })
@@ -70,7 +70,7 @@ NS.WishAdd(202, 1)
 NS.WishAdd(203, 3)
 local list = NS.Wishes()
 assert(#list == 3 and list[1].id == 203 and list[2].id == 201 and list[3].id == 202, "by priority, then name")
-assert(list[1].slot == "Brust" and has(list[1].src, "Karazhan"), tostring(list[1].src))
+assert(list[1].slot == "Brust" and has(list[1].src, "Geschmolzener Kern"), tostring(list[1].src))
 
 ---------------------------------------------------------------------------
 -- the export for the website
@@ -206,7 +206,7 @@ STUB.fire("BAG_UPDATE_DELAYED"); STUB.tick(1.1)
 STUB.instance = { name = "Arathibecken", type = "pvp", id = 529 }
 STUB.fire("CHAT_MSG_RAID", "1. " .. LINKS[201] .. " frei", "Vulo")
 assert(#toasts == 0, "not in a battleground")
-STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
+STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
 assert(NS.Set("bis.toast", false))
 STUB.fire("CHAT_MSG_RAID", "1. " .. LINKS[201] .. " frei", "Vulo")
 assert(#toasts == 0, "toasts switched off")
@@ -268,7 +268,7 @@ AmisiaDB.bis = { v = 1, chars = {
                  bag = { [1] = 5, [2] = "x" } },
     [7] = { class = "MAGE" },
     ["Kaputt"] = "nein",
-}, guild = { list = { [28830] = { { name = "Anna", prio = 3 } }, abc = {} } } }
+}, guild = { game = "forever", list = { [28830] = { { name = "Anna", prio = 3 } }, abc = {} } } }
 NS.BisMigrate(AmisiaDB)
 local anna = AmisiaDB.bis.chars.Anna
 local n = 0

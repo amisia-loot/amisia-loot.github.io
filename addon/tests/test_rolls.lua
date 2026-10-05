@@ -55,10 +55,10 @@ roll("Fraktur", 100, 1, 100); roll("Chorf", 3, 1, 99); STUB.tick(10)
 assert(r.winner == "Chorf" and NS.RollKind(32235, "Chorf") == "SR")
 assert(NS.RollRanking(r)[1].rank == "SR")
 
--- realm suffix in the roll line
+-- a surname with a dash in the roll line stays whole
 assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
-roll("Fraktur-Thunderstrike", 42, 1, 100)
-assert(r.rolls.Fraktur and r.rolls.Fraktur.value == 42)
+roll("Fraktur Berg-Tal", 42, 1, 100)
+assert(r.rolls["Fraktur Berg-Tal"] and r.rolls["Fraktur Berg-Tal"].value == 42)
 NS.StopRoll()
 
 -- default duration from the settings

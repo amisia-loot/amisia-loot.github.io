@@ -157,7 +157,7 @@ local requestedAt
 -- Asks the client for a fresh guild roster, at most every 10 s; true when asked.
 function ns.RequestGuildRoster()
     local api = _G.C_GuildInfo
-    local fn = (type(api) == "table" and api.GuildRoster) or _G.GuildRoster
+    local fn = type(api) == "table" and api.GuildRoster
     if type(fn) ~= "function" then return false end
     local t = GetTime()
     if requestedAt and t - requestedAt < GUILD_EVERY then return false end

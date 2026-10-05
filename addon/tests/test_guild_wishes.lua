@@ -18,7 +18,7 @@ local plain = STUB.item(31001, "Ohne Wunsch", 4)
 ---------------------------------------------------------------------------
 local TEXT = table.concat({
     "",
-    "#AMISIA-WL 1 tbc 2026-10-05",
+    "#AMISIA-WL 1 forever 2026-10-05",
     "W 28830 3 Anna nur MS",
     "W 28830 2 Bob",
     "W 28830 1 Vulo_Sturmwind",
@@ -35,7 +35,7 @@ local TEXT = table.concat({
 }, "\r\n")
 local res, why = NS.ParseGuildWishes(TEXT)
 assert(res, tostring(why))
-assert(res.game == "tbc" and res.date == "2026-10-05", "head read")
+assert(res.game == "forever" and res.date == "2026-10-05", "head read")
 assert(res.n == 6 and res.skipped == 4, ("six wishes, four lines skipped: %s %s"):format(tostring(res.n), tostring(res.skipped)))
 local l = res.list[28830]
 assert(l and #l == 3, "three wishers, the double counts once")
@@ -56,18 +56,18 @@ local function reason(text)
 end
 assert(reason("hallo\nW 1 2 Anna") == "Das ist keine Wunschliste der Amisia-Seite.")
 assert(reason("#AMISIA 2 Vuloo\nWL 1 2 3 Vuloo\n#END") == "Das ist keine Wunschliste der Amisia-Seite.", "the own export is no guild list")
-assert(reason("#AMISIA-WL 1 forever 2026-10-05\nW 1 2 Anna\n#END") == "Diese Wunschliste ist für WoW Forever, du bist in TBC Anniversary.")
-assert(reason("#AMISIA-WL 1 tbc 2026-10-05\nkaputt\n#END") == "Die Liste ist leer.")
+assert(reason("#AMISIA-WL 1 tbc 2026-10-05\nW 1 2 Anna\n#END") == "Diese Wunschliste ist für TBC Anniversary, du bist in WoW Forever.")
+assert(reason("#AMISIA-WL 1 forever 2026-10-05\nkaputt\n#END") == "Die Liste ist leer.")
 assert(reason("") == "Das ist keine Wunschliste der Amisia-Seite.")
 assert(reason(nil) == "Das ist keine Wunschliste der Amisia-Seite.")
 -- at most 2000 lines are read
-local many = { "#AMISIA-WL 1 tbc 2026-10-05" }
+local many = { "#AMISIA-WL 1 forever 2026-10-05" }
 for i = 1, 2100 do many[#many + 1] = ("W %d 2 Anna"):format(40000 + i) end
 many[#many + 1] = "#END"
 local big = NS.ParseGuildWishes(table.concat(many, "\n"))
 assert(big and big.n == 1999 and big.skipped >= 101, ("2000 lines: %s %s"):format(tostring(big and big.n), tostring(big and big.skipped)))
 -- one endless line is cut, not read
-local long = NS.ParseGuildWishes("#AMISIA-WL 1 tbc 2026-10-05\nW 28830 2 Anna " .. ("x"):rep(100000) .. "\n#END")
+local long = NS.ParseGuildWishes("#AMISIA-WL 1 forever 2026-10-05\nW 28830 2 Anna " .. ("x"):rep(100000) .. "\n#END")
 assert(long and long.n == 1 and #long.list[28830][1].note <= 40, "an endless note is cut")
 
 ---------------------------------------------------------------------------
@@ -76,13 +76,13 @@ assert(long and long.n == 1 and #long.list[28830][1].note <= 40, "an endless not
 local stored, w2 = NS.SetGuildWishes(TEXT)
 assert(stored and stored.n == 6, tostring(w2))
 local g = AmisiaDB.bis.guild
-assert(g and g.game == "tbc" and g.date == "2026-10-05" and g.at == STUB.now and g.by == "Vuloo" and g.n == 6, "stored with who and when")
+assert(g and g.game == "forever" and g.date == "2026-10-05" and g.at == STUB.now and g.by == "Vuloo" and g.n == 6, "stored with who and when")
 assert(g.list[28830] and #g.list[28830] == 3)
 assert(not NS.SetGuildWishes("hallo") and AmisiaDB.bis.guild == g, "a bad paste keeps the old list")
 NS.BisMigrate(AmisiaDB)
 assert(AmisiaDB.bis.guild.list[28830] and #AmisiaDB.bis.guild.list[28830] == 3, "the move keeps the list")
 local info = NS.GuildWishesInfo()
-assert(info and info.n == 6 and info.date == "2026-10-05" and info.game == "tbc", "info")
+assert(info and info.n == 6 and info.date == "2026-10-05" and info.game == "forever", "info")
 
 ---------------------------------------------------------------------------
 -- wishers, with the group
@@ -116,7 +116,7 @@ local function hover(l, again)
         wipe(lines)
         if GameTooltip.scripts.OnTooltipCleared then GameTooltip.scripts.OnTooltipCleared(GameTooltip) end
     end
-    GameTooltip.scripts.OnTooltipSetItem(GameTooltip)
+    STUB.showTooltip(GameTooltip)
 end
 hover(link)
 assert(#lines == 1 and lines[1] == "Gewünscht: Anna (hoch), Vulo Sturmwind (niedrig) (+1 außerhalb)", tostring(lines[1]))
@@ -150,13 +150,14 @@ NS.Reset("ui.view")
 ---------------------------------------------------------------------------
 STUB.roster = { { name = "Vuloo", class = "WARRIOR" }, { name = "Anna", class = "PRIEST" }, { name = "Chorf", class = "WARRIOR" } }
 STUB.loot = { { link = link, name = "Trophäe" }, { link = plain, name = "Ohne" } }
-local b1 = CreateFrame("Button", "LootButton1"); b1.slot = 1; b1:Show()
-local b2 = CreateFrame("Button", "LootButton2"); b2.slot = 2; b2:Show()
+local box = LootFrame.ScrollBox
+local b1, b2 = box.frames[1], box.frames[2]
+box:ShowFrom(1)
 STUB.fire("LOOT_OPENED"); STUB.tick(0)
 assert(NS.GuildWishMarkShown(b1) and not NS.GuildWishMarkShown(b2), "W only where someone in the group wishes")
 assert(NS.SoftResMarkShown(b1), "SR stays")
 local m = NS.GuildWishMark(b1)
-assert(m and m:GetText() == "W" and m.points.TOPRIGHT, "W at the top right, SR keeps the top left")
+assert(m and m:GetText() == "W" and m.points.TOPRIGHT and m.parent == b1.Item, "W at the top right of the item icon, SR keeps the top left")
 assert(NS.Set("bis.guildLootMark", false))
 NS.MarkGuildWishLoot()
 assert(not NS.GuildWishMarkShown(b1), "switched off")
@@ -223,7 +224,7 @@ NS.ClearSoftRes()
 ---------------------------------------------------------------------------
 assert(NS.GuildWishesAgeText() == nil and NS.GuildWishesInfo().age <= 14, "young lists need no hint")
 local old = os.date("%Y-%m-%d", STUB.now - 16 * 86400 - 12 * 3600)   -- the age counts from noon of the date
-assert(NS.SetGuildWishes("#AMISIA-WL 1 tbc " .. old .. "\nW 28830 3 Anna\n#END"))
+assert(NS.SetGuildWishes("#AMISIA-WL 1 forever " .. old .. "\nW 28830 3 Anna\n#END"))
 assert(NS.GuildWishesInfo().age == 16 and NS.GuildWishesAgeText() == "Die Wunschliste ist 16 Tage alt.", tostring(NS.GuildWishesAgeText()))
 
 assert(NS.Set("ui.view", "raider"))
@@ -242,9 +243,9 @@ assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "guild" and 
     "the command opens the guild view of the gear page")
 assert(U.area:IsShown() and U.importBtn:IsShown() and U.clearBtn:IsShown(), "officers get the import")
 -- a list of the other game is refused with the reason, the stored list stays
-U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 1 2 Anna\n#END")
+U.area.box:SetText("#AMISIA-WL 1 tbc 2026-10-05\nW 1 2 Anna\n#END")
 U.importBtn:Click()
-assert(U.hint:GetText() == "Diese Wunschliste ist für WoW Forever, du bist in TBC Anniversary.", tostring(U.hint:GetText()))
+assert(U.hint:GetText() == "Diese Wunschliste ist für TBC Anniversary, du bist in WoW Forever.", tostring(U.hint:GetText()))
 assert(AmisiaDB.bis.guild.n == 1, "the old list stays")
 U.area.box:SetText(TEXT)
 U.importBtn:Click()

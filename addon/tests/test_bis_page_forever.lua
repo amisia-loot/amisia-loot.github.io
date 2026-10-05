@@ -6,7 +6,7 @@
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-assert(NS.IsForever() and Gear.Game() == "forever" and Gear.PlannerAvailable(), "the Forever client with its data")
+assert(Gear.Available() and Gear.Game == nil and Gear.PlannerAvailable == nil, "the one data set, no game switch")
 STUB.class, STUB.level = "WARRIOR", 60
 STUB.instance = { name = "Elwynn", type = "none", id = 0 }
 STUB.place.map = 1429
@@ -27,7 +27,7 @@ local function gear(id, name, loc, stats, sources)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID, it.stats, it.minLevel = "INVTYPE_" .. loc, 4, 4, stats, 55
     if sources then
-        NS.GEAR.I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+        NS.GEAR.I[id] = { loc, 4, 4, 55, 3, 1, 141, 0, 0, 0 }
         for _, n in ipairs(sources) do NS.GEAR.I[id][#NS.GEAR.I[id] + 1] = n end
     end
 end
@@ -41,8 +41,9 @@ local f = NS.GearPageFrame()
 assert(NS.CurrentPage() == "gear" and f:IsShown())
 assert(f.open:IsShown(), "the table button on Forever")
 for _, k in ipairs({ "Q", "D", "C", "V", "W", "A", "P" }) do assert(f.src[k]:IsShown(), "Forever chip " .. k) end
-for _, k in ipairs({ "X", "H", "F" }) do assert(not f.src[k]:IsShown(), "no TBC chip " .. k) end
-assert(not f.phase:IsShown() and not f.phaseText:IsShown(), "no phase on Forever")
+assert(not f.src.X:IsShown(), "no raid chip while the data has no raid")
+assert(f.src.H == nil and f.src.F == nil, "no chips for heroic dungeons or reputation")
+assert(f.phase == nil and f.phaseText == nil, "no phase picker")
 assert(not f.src.A.on and not f.src.P.on and f.src.Q.on, "auction house and PvP start off")
 assert(has(f.counts:GetText(), "Level 60") and has(f.counts:GetText(), "2 Upgrades"), f.counts:GetText())
 local G = f.goals

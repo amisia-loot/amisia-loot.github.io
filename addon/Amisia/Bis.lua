@@ -1,4 +1,4 @@
--- Amisia best items for the own character, on both clients: the three best options per slot from
+-- Amisia best items for the own character: the three best options per slot from
 -- the loaded data set (Gear.lua scores them with Amisia's own weights), held against what the
 -- character wears, carries and keeps in the bank; exclusions by item, boss and place; what a place
 -- still offers. Everything per character in AmisiaDB.bis. Nothing here reads combat data: only the
@@ -6,14 +6,13 @@
 local ADDON, ns = ...
 local Gear = ns.Gear
 
--- Forever has no GetItemInfo/GetItemInfoInstant globals; both clients have C_Item.
 local function itemInfo(x)
-    local f = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+    local f = C_Item and C_Item.GetItemInfo
     if f then return f(x) end
     return nil
 end
 local function itemInstant(x)
-    local f = (C_Item and C_Item.GetItemInfoInstant) or _G.GetItemInfoInstant
+    local f = C_Item and C_Item.GetItemInfoInstant
     if f then return f(x) end
     return nil
 end
@@ -92,10 +91,24 @@ local function cleanChar(c)
     if c.class ~= nil and type(c.class) ~= "string" then c.class = nil end
 end
 
+-- Settings of the TBC data that WoW Forever has no use for: the content phase, and the source
+-- switches for heroic dungeons (H) and reputation (F).
+local function dropTbcSettings(root)
+    local s = type(root.settings) == "table" and root.settings
+    local bis = s and type(s.bis) == "table" and s.bis
+    if not bis then return end
+    bis.phase = nil
+    if type(bis.sources) == "table" then
+        bis.sources.H = nil
+        bis.sources.F = nil
+    end
+end
+
 -- Called on ADDON_LOADED (and whenever the table is missing): the shape of AmisiaDB.bis, checked
--- entries, wishes capped at 50; the guild wishes without numeric keys fall away. Running it twice
--- changes nothing.
+-- entries, wishes capped at 50; the guild wishes without numeric keys fall away, and so does a
+-- guild list for another game. Running it twice changes nothing.
 function ns.BisMigrate(root)
+    dropTbcSettings(root)
     local b = type(root.bis) == "table" and root.bis or {}
     root.bis = b
     b.v = 1
@@ -106,7 +119,7 @@ function ns.BisMigrate(root)
     end
     for _, k in ipairs(drop) do b.chars[k] = nil end
     if b.guild ~= nil then
-        if type(b.guild) ~= "table" then
+        if type(b.guild) ~= "table" or b.guild.game ~= "forever" then
             b.guild = nil
         else
             b.guild.list = fixSet(b.guild.list, numKey, function(v) return type(v) == "table" and v or nil end)
@@ -156,8 +169,8 @@ end
 -- Spec: chosen, else guessed from the talent trees
 ---------------------------------------------------------------------------
 
--- Talent tree -> spec keys of the weights, the first that exists wins (TBC has one healing priest,
--- Forever a discipline and a holy one; demonology plays like destruction here).
+-- Talent tree -> spec keys of the weights, the first that exists wins (a discipline priest falls
+-- back to holy where the weights have no discipline; demonology plays like destruction here).
 local TREE = {
     WARRIOR = { { "dps" }, { "dps" }, { "tank" } },
     PALADIN = { { "holy" }, { "tank" }, { "ret" } },
@@ -240,7 +253,7 @@ local function addSkill(out, key, rank)
 end
 
 -- The own professions with skill, or nil when the client offers no skill list (the chip "nur
--- meine" then has no use). Forever has C_SkillInfo (a table per line), Anniversary the globals.
+-- meine" then has no use). C_SkillInfo gives a table per line (SkillLineAttributes).
 function ns.BisSkills()
     if skills ~= nil then return skills or nil end
     local out, readable = {}, false
@@ -253,13 +266,6 @@ function ns.BisSkills()
             if ok2 and type(s) == "table" and not s.isHeader then
                 addSkill(out, PROF_BY_ID[s.skillID] or (type(s.name) == "string" and PROF_BY_NAME[s.name:lower()]), s.rank)
             end
-        end
-    elseif type(_G.GetNumSkillLines) == "function" and type(_G.GetSkillLineInfo) == "function" then
-        readable = true
-        local ok, n = pcall(_G.GetNumSkillLines)
-        for i = 1, (ok and tonumber(n)) or 0 do
-            local ok2, name, header, _, rank = pcall(_G.GetSkillLineInfo, i)
-            if ok2 and type(name) == "string" and not header then addSkill(out, PROF_BY_NAME[name:lower()], rank) end
         end
     end
     skills = readable and out or false
@@ -274,17 +280,17 @@ end
 -- house and PvP vendors.
 local function sourceState()
     local s = AmisiaDB and AmisiaDB.settings
-    if not s then return { X = true, H = true, D = true, F = true, V = true, C = true, W = true, Q = true } end
+    if not s then return { X = true, D = true, V = true, C = true, W = true, Q = true } end
     s.bis = type(s.bis) == "table" and s.bis or {}
     if type(s.bis.sources) ~= "table" then
-        s.bis.sources = { X = true, H = true, D = true, F = true, V = true, C = true, W = true, Q = true, A = false, P = false }
+        s.bis.sources = { X = true, D = true, V = true, C = true, W = true, Q = true, A = false, P = false }
     end
     return s.bis.sources
 end
 
 -- The options of the own character: class, spec (guessed), weighting kind, faction (A/H), level up
--- to the data's cap, source switches, phase (TBC), professions ("all"/"mine") with the own skills,
--- and the exclusions.
+-- to the data's cap, source switches, professions ("all"/"mine") with the own skills, and the
+-- exclusions.
 function ns.BisOpts()
     local c = ns.BisChar()
     local _, class = UnitClass("player")
@@ -295,7 +301,6 @@ function ns.BisOpts()
         faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil,
         level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())),
         sources = sourceState(),
-        phase = Gear.Game() == "tbc" and (tonumber(ns.Get("bis.phase")) or 0) or 0,
         prof = ns.Get("bis.prof") or "all", skills = ns.BisSkills(),
         exclude = c and c.ex or nil,
     }
@@ -315,7 +320,7 @@ end
 local function optsKey(o)
     local ex = o.exclude or {}
     return table.concat({ tostring(ns.GEAR), stamp, tostring(o.class), tostring(o.spec), tostring(o.level), tostring(o.kind),
-        tostring(o.faction), tostring(o.phase), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
+        tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true) }, "|")
 end
 
@@ -364,7 +369,7 @@ function ns.BisOwned(item)
     if c and c.bag[id] then return "bag" end
     if c and c.bank[id] then return "bank" end
     -- without a bank visit: the client's count with the bank against the one without
-    local count = (C_Item and C_Item.GetItemCount) or _G.GetItemCount
+    local count = C_Item and C_Item.GetItemCount
     if type(count) == "function" then
         local ok, inBags = pcall(count, id)
         local ok2, all = pcall(count, id, true)
@@ -384,8 +389,8 @@ end
 
 local function readContainers(bags, c)
     local C = _G.C_Container
-    local numSlots = (type(C) == "table" and C.GetContainerNumSlots) or _G.GetContainerNumSlots
-    local itemID = (type(C) == "table" and C.GetContainerItemID) or _G.GetContainerItemID
+    local numSlots = type(C) == "table" and C.GetContainerNumSlots
+    local itemID = type(C) == "table" and C.GetContainerItemID
     if type(numSlots) ~= "function" or type(itemID) ~= "function" then return nil end
     local out = {}
     for _, bag in ipairs(bags) do
@@ -432,22 +437,15 @@ local function scheduleBags()
     C_Timer.After(1, scanBags)
 end
 
--- The bank's containers: Anniversary the bank (-1) and the bank bags after the bag slots (as the
--- client's TBC bank frame); Forever the purchased tabs of the character bank (it has no -1).
+-- The bank's containers: the purchased tabs of the character bank (C_Bank; there is no bank -1).
 local function bankList()
-    if ns.IsForever() then
-        local B = _G.C_Bank
-        local kind = Enum and Enum.BankType and Enum.BankType.Character
-        if type(B) ~= "table" or type(B.FetchPurchasedBankTabIDs) ~= "function" or kind == nil then return nil end
-        local ok, tabs = pcall(B.FetchPurchasedBankTabIDs, kind)
-        if not ok or type(tabs) ~= "table" then return nil end
-        local out = {}
-        for _, id in ipairs(tabs) do out[#out + 1] = id end
-        return out
-    end
-    local out = { (Enum and Enum.BagIndex and Enum.BagIndex.Bank) or _G.BANK_CONTAINER or -1 }
-    local first = (tonumber(_G.NUM_BAG_SLOTS) or 4) + 1
-    for b = first, first + (tonumber(_G.NUM_BANKBAGSLOTS) or 7) - 1 do out[#out + 1] = b end
+    local B = _G.C_Bank
+    local kind = Enum and Enum.BankType and Enum.BankType.Character
+    if type(B) ~= "table" or type(B.FetchPurchasedBankTabIDs) ~= "function" or kind == nil then return nil end
+    local ok, tabs = pcall(B.FetchPurchasedBankTabIDs, kind)
+    if not ok or type(tabs) ~= "table" then return nil end
+    local out = {}
+    for _, id in ipairs(tabs) do out[#out + 1] = id end
     return out
 end
 
@@ -564,11 +562,7 @@ end
 
 local function rowType(id)
     local row = Gear.Item(id)
-    if row then
-        if row[1] == "" then Gear.FillRow(id) end
-        if row[1] ~= "" and row[1] ~= Gear.NOT_GEAR then return row[1], row[2], row[3], row end
-        if row[1] == Gear.NOT_GEAR then return nil end
-    end
+    if row and row[1] ~= "" then return row[1], row[2], row[3], row end
     local _, _, _, loc, _, classID, sub = itemInstant(id)
     if type(loc) ~= "string" or loc == "" then return nil end
     return (loc:gsub("^INVTYPE_", "")), classID, sub, row
@@ -616,7 +610,7 @@ function ns.BisGain(item, opts)
 end
 
 -- The score of an item explained as German lines: what it scores against what is worn, then every
--- part ("30 Stärke x 2,0 = 60"), and on TBC the note that hit counts without a cap.
+-- part ("30 Stärke x 2,0 = 60").
 function ns.BisExplain(item, opts)
     local o = opts or ns.BisOpts()
     local ev = evaluate(item, o)
@@ -631,12 +625,9 @@ function ns.BisExplain(item, opts)
         lines[1] = ("%s · %s: Wertung %s, angelegt %s, %s"):format(who, SLOT_NAME[ev.slotKey], Gear.Num(ev.score),
             Gear.Num(ev.mine or 0), Gear.UnitText(ev.gain, ev.w))
     end
-    local hit = false
     for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class)) do
         lines[#lines + 1] = Gear.PartText(p)
-        if p.key == "HIT" or p.key == "MHIT" or p.key == "SHIT" then hit = true end
     end
-    if hit and Gear.Game() == "tbc" then lines[#lines + 1] = "Trefferwertung zählt ohne Obergrenze." end
     return lines
 end
 
@@ -863,7 +854,6 @@ function ns.BisHere(placeKey, opts)
                 if rec and Gear.SourceOk(rec, o, row) then hit = rec break end
             end
             if hit and not exItem[id] then
-                if row[1] == "" then Gear.FillRow(id) end
                 if (row[4] or 0) <= o.level then
                     local ev = evaluate(id, o)
                     if ev.code == "loading" then loading = loading + 1 end
@@ -1300,9 +1290,9 @@ local function buildToast()
             -- into the open chat box, else a chat box opened with it (a modified click only
             -- inserts into one that is open)
             local util = type(ChatFrameUtil) == "table" and ChatFrameUtil or {}
-            local insert = util.InsertLink or _G.ChatEdit_InsertLink
+            local insert = util.InsertLink
             if not (type(insert) == "function" and insert(self.link)) then
-                local open = util.OpenChat or _G.ChatFrame_OpenChat
+                local open = util.OpenChat
                 if type(open) == "function" then open(self.link) end
             end
             return
@@ -1517,19 +1507,15 @@ function ns.BisItemReport(arg)
     local item = arg:find("item:", 1, true) and arg or id
     for _, line in ipairs(ns.BisExplain(item)) do ns.msg(line) end
     -- what the client itself answered, so a stat name Amisia does not know shows up
-    local getStats = (C_Item and C_Item.GetItemStats) or _G.GetItemStats
-    local raw = getStats and getStats(type(item) == "string" and item or ("item:" .. id))
+    local raw = C_Item.GetItemStats(type(item) == "string" and item or ("item:" .. id))
     if type(raw) == "table" then
         local parts = {}
         for k, v in pairs(raw) do parts[#parts + 1] = (Gear.STAT[k] and "" or "|cffe0a344?|r") .. k .. "=" .. tostring(v) end
         table.sort(parts)
         ns.msg("Client: " .. table.concat(parts, " "))
-    elseif not getStats then
-        ns.msg("Client: kein GetItemStats, Werte aus dem Tooltip.")
     end
 end
 
-local PHASES = { { 0, "alle" }, { 1, "bis 1" }, { 2, "bis 2" }, { 3, "bis 3" }, { 4, "bis 4" }, { 5, "bis 5" } }
 ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45, available = function() return Gear.Available() end, items = {
     { key = "bis.tooltip", type = "toggle", label = "Tooltip-Zeile \"Upgrade für dich\"", default = true },
     { key = "bis.tooltipNone", type = "toggle", label = "Auch \"Kein Upgrade\" im Tooltip zeigen", default = false },
@@ -1540,8 +1526,6 @@ ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45
     { key = "bis.toastUpgrade", type = "toggle", label = "Hinweis auch für andere Upgrades", default = true },
     { key = "bis.toastSound", type = "toggle", label = "Ton beim Wunsch-Hinweis", default = true },
     { key = "bis.wishAutoRemove", type = "toggle", label = "Erhaltene Wünsche von der Liste nehmen", default = true },
-    { key = "bis.phase", type = "choice", label = "Inhalte bis Phase", default = 0, values = PHASES,
-      available = function() return Gear.Game() == "tbc" end },
     { key = "bis.prof", type = "choice", label = "Hergestellte Items", default = "all",
       values = { { "all", "alle" }, { "mine", "nur meine Berufe" } } },
     { key = "bis.guildTooltip", type = "toggle", label = "Gildenwünsche im Tooltip", default = true, officer = true },

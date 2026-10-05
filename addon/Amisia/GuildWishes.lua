@@ -15,8 +15,9 @@ local NOTE_MAX = 40
 local MAX_ID = 9999999
 local OLD_DAYS = 14
 local TIP_NAMES = 8         -- names in the tooltip line, the rest counted
-local GAME_NAMES = { tbc = "TBC Anniversary", forever = "WoW Forever", classic = "Classic Era", hardcore = "Classic Hardcore",
-    sod = "Season of Discovery", mop = "Mists of Pandaria Classic" }
+-- The own game is always WoW Forever; "tbc" is named so that an old list is refused in words.
+local OWN_GAME = "forever"
+local GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary" }
 local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
 local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
 local BLUE = { 0.55, 0.75, 1 }
@@ -31,8 +32,6 @@ local function stripCodes(s)
     s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", "")
     return s
 end
-
-local function clientGame() return ns.IsForever() and "forever" or "tbc" end
 
 local function gameName(key)
     return GAME_NAMES[key] or stripCodes(tostring(key)):sub(1, 24)
@@ -68,8 +67,8 @@ function ns.ParseGuildWishes(text)
                 local ver, game, day = line:match("^#AMISIA%-WL%s+(%d+)%s+(%S+)%s+(%S+)")
                 if ver ~= "1" or not day or not day:match("^%d%d%d%d%-%d%d%-%d%d$") then return nil, HEAD_FAIL end
                 game = game:lower()
-                if game ~= clientGame() then
-                    return nil, ("Diese Wunschliste ist für %s, du bist in %s."):format(gameName(game), gameName(clientGame()))
+                if game ~= OWN_GAME then
+                    return nil, ("Diese Wunschliste ist für %s, du bist in %s."):format(gameName(game), gameName(OWN_GAME))
                 end
                 res.game, res.date, head = game, day, true
                 read = 1
@@ -265,24 +264,16 @@ local function setMark(store, owner, parent, on)
     end
 end
 
--- btn: a loot button (Anniversary: the icon button itself) or a scrolling loot element (Forever:
--- its icon is btn.Item).
+-- btn: an element of the scrolling loot window; the mark sits on its icon button, btn.Item.
 local function markButton(btn, slot, on)
+    local icon = btn.Item
+    if type(icon) ~= "table" or type(icon.CreateFontString) ~= "function" then return end
     local wished = on and slot and GetLootSlotLink and wishedInGroup(GetLootSlotLink(slot)) or false
-    local icon = type(btn.Item) == "table" and type(btn.Item.CreateFontString) == "function" and btn.Item or btn
     setMark(lootMarks, btn, icon, wished)
 end
 
 local function markLoot()
     local on = officerOn("bis.guildLootMark")
-    for i = 1, tonumber(_G.LOOTFRAME_NUMBUTTONS) or 4 do
-        local btn = _G["LootButton" .. i]
-        if btn and btn.slot and btn.IsShown and btn:IsShown() then
-            markButton(btn, btn.slot, on)
-        elseif btn and lootMarks[btn] then
-            lootMarks[btn]:Hide()
-        end
-    end
     local box = LootFrame and LootFrame.ScrollBox
     if box and box.ForEachFrame then
         box:ForEachFrame(function(frame)
@@ -297,8 +288,8 @@ function ns.MarkGuildWishLoot()
     if not ok then report(err) end
 end
 
--- Forever's loot window is a scroll box that hands its element frames to other slots while it
--- scrolls: every element it sets up is marked again (the client's initialised-frame callback).
+-- The loot window is a scroll box that hands its element frames to other slots while it scrolls:
+-- every element it sets up is marked again (the client's initialised-frame callback).
 local scrollHooked
 local function onLootElement(_, frame)
     if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
@@ -355,7 +346,6 @@ ns.OnEvent("LOOT_OPENED", function()
     C_Timer.After(0, ns.MarkGuildWishLoot)
 end)
 ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkGuildWishLoot) end)
-if type(LootFrame_Update) == "function" then hooksecurefunc("LootFrame_Update", ns.MarkGuildWishLoot) end
 ns.Listen("SETTING", function(path)
     if path == "bis.guildLootMark" or path == "ui.view" then refreshMarks() end
 end)

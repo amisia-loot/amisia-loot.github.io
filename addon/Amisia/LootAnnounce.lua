@@ -140,7 +140,8 @@ local function announce(head, links)
     end
 end
 
--- An item worth announcing: a link at loot.quality or better, no guild material, nothing ignored.
+-- An item worth announcing: a link at loot.quality or better, no guild material (ns.MATS, empty
+-- until the guild names its materials), nothing ignored.
 local function worth(link)
     link = ns.Plain(link)
     local id = ns.ItemID(link)

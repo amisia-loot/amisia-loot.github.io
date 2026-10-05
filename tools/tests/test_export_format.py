@@ -40,7 +40,8 @@ def export_from_addon():
         STUB.roster[3] = { name = "Spaetling", class = "MAGE" }
         STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
 
-        -- three of a material
+        -- three of a material (the addon tracks none until the guild names some; the test sets one)
+        NS.MATS[32897], NS.MAT_ORDER[1] = "Mark of the Illidari", 32897
         local mark = STUB.item(32897, "Mark of the Illidari", 4)
         STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %sx3."):format("Fraktur", mark))
 

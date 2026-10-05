@@ -248,14 +248,17 @@ def test_the_real_zone_list_marks_forever_raids():
     assert cfg["Onyxia's Lair"].get('raid') is True and cfg["Onyxia's Lair"].get('instance') == 249
 
 
-def test_output_is_guarded_for_forever(tmp_path):
+def test_output_has_no_client_guard(tmp_path):
+    # the addon is WoW Forever only: the TOC load condition is the one lock, no IsForever guard
     src = build_gear.Sources()
     n = src.add('Q', 'Q', 1, 1, None, None, 5)
     keep = {10: (scan_item('Helm'), [n], 1, 0, 0.0, 0)}
     out = tmp_path / 'GearData.lua'
     build_gear.write_lua(str(out), src, keep, {}, {'built': '2026-10-05'})
-    lines = out.read_text(encoding='utf-8').split('\n')
-    assert lines[2] == 'local _, ns = ...' and lines[3] == 'if not ns.IsForever() then return end'
+    text = out.read_text(encoding='utf-8')
+    lines = text.split('\n')
+    assert lines[2] == 'local _, ns = ...' and lines[3] == ''
+    assert 'IsForever' not in text
     assert '    game = "forever", cap = 60, built = "2026-10-05",' in lines
 
     class AnyWeights(dict):
@@ -263,9 +266,11 @@ def test_output_is_guarded_for_forever(tmp_path):
             return {'STR': 1}
     wout = tmp_path / 'GearWeights.lua'
     build_gear.write_weights(str(wout), AnyWeights())
-    wlines = wout.read_text(encoding='utf-8').split('\n')
+    wtext = wout.read_text(encoding='utf-8')
+    wlines = wtext.split('\n')
     i = wlines.index('local _, ns = ...')
-    assert wlines[i + 1] == 'if not ns.IsForever() then return end'
+    assert wlines[i + 1] == ''
+    assert 'IsForever' not in wtext
 
 
 def test_lua_strings_escape_control_characters():

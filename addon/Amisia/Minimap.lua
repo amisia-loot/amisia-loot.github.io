@@ -23,8 +23,7 @@ function ns.MinimapMenuEntries()
     local e = {}
     if gearAvailable() then
         e[#e + 1] = { "Ausrüstung", function() ns.ShowGear("goals") end }
-        -- the level-range table is a Forever thing
-        if ns.Gear.PlannerAvailable() and ns.ToggleGearFrame then
+        if ns.ToggleGearFrame then
             e[#e + 1] = { "Ausrüstungstabelle", function() ns.ToggleGearFrame() end }
         end
         -- the map page goes with the gear page

@@ -25,7 +25,7 @@ assert(NS.PlusCount("Fraktur") == 2, "two MS wins: " .. NS.PlusCount("Fraktur"))
 assert(NS.PlusCount("Vuloo") == 1 and NS.PlusCount("Chorf") == 0)
 NS.DeleteAward(s, m2.id)
 assert(NS.PlusCount("Fraktur") == 1, "a tombstone does not count")
-assert(NS.PlusCount("fraktur") == 1 and NS.PlusCount("Fraktur-Thunderstrike") == 1, "the same character by SameName")
+assert(NS.PlusCount("fraktur") == 1 and NS.PlusCount("Fraktur Berg") == 1, "the same character by SameName")
 assert(NS.PlusCount(nil) == 0 and NS.PlusCount("") == 0)
 -- editing the kind moves the count
 NS.EditAward(s, m1.id, { kind = "OS" }); assert(NS.PlusCount("Fraktur") == 0)

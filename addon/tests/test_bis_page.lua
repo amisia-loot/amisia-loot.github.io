@@ -1,5 +1,5 @@
--- The gear page on TBC Anniversary (Pages/Gear.lua): the head with the spec, the views, the counts
--- and the source chips; the targets with the slot details, the buttons "Wunsch" and "Aus", the
+-- The gear page (Pages/Gear.lua) on a small Forever data set: the head with the spec, the views,
+-- the counts, the source chips and the table button; the targets with the slot details, the buttons "Wunsch" and "Aus", the
 -- right-click menu and the explanation; "Hier" with the place picker; the wishlist with priority,
 -- removal, the self clean-up and the text for the website; the guild wishes with import and clear
 -- for officers; the raider view; /amisia wuensche; the overview card; the quick menu; the layout
@@ -7,20 +7,20 @@
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-STUB.class, STUB.level = "WARRIOR", 70
-STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
-STUB.areas[3457], STUB.areas[3923] = "Karazhan", "Gruuls Unterschlupf"
+STUB.class, STUB.level = "WARRIOR", 60
+STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
+STUB.areas[2717], STUB.areas[2677], STUB.areas[2017] = "Geschmolzener Kern", "Pechschwingenhort", "Stratholme"
 STUB.roster = { { name = "Vuloo", class = "WARRIOR" }, { name = "Anna", class = "PRIEST" } }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 
 ---------------------------------------------------------------------------
--- a small TBC data set; the client describes every item
+-- a small Forever data set (as build_gear.py writes it now); the client describes every item
 ---------------------------------------------------------------------------
-NS.GEAR = { game = "tbc", cap = 70, built = "test-page", I = {}, Z = {}, S = {
-    { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 },   -- 1
-    { "X", "Karazhan", "Moroes", 532, 3457, 1, 0 },             -- 2
-    { "X", "Gruul's Lair", "Gruul", 565, 3923, 1, 0 },          -- 3
-    { "D", "Shattered Halls", "Kargath", nil, 540, 3714, 1 },   -- 4 (heroic)
+NS.GEAR = { game = "forever", cap = 60, built = "test-page", I = {}, Z = {}, S = {
+    { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 1, 0 },   -- 1
+    { "X", "Geschmolzener Kern", "Lucifron", 409, 2717, 1, 0 },   -- 2
+    { "X", "Pechschwingenhort", "Nefarian", 469, 2677, 1, 0 },    -- 3
+    { "D", "Stratholme", "Baron Totenschwur", nil, 329, 2017 },   -- 4
 } }
 Gear._reset()
 local LINKS = {}
@@ -29,9 +29,9 @@ local function gear(id, name, loc, stats, sources, o)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID = "INVTYPE_" .. loc, o.classID or 4, o.sub or 4
-    it.stats, it.minLevel = stats, 70
+    it.stats, it.minLevel = stats, 60
     if sources then
-        NS.GEAR.I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+        NS.GEAR.I[id] = { loc, o.classID or 4, o.sub or 4, 60, 4, 1, 141, 0, 0, 0 }
         for _, n in ipairs(sources) do NS.GEAR.I[id][#NS.GEAR.I[id] + 1] = n end
     end
     return LINKS[id]
@@ -40,9 +40,9 @@ local function str(n) return { ITEM_MOD_STRENGTH_SHORT = n } end
 gear(301, "Helm A", "HEAD", str(40), { 1 })
 gear(302, "Helm B", "HEAD", str(30), { 2 })
 gear(303, "Helm C", "HEAD", str(20), { 3 })
-gear(304, "Brust Kara", "CHEST", str(50), { 2 })
-gear(305, "Ring Gruul", "FINGER", str(20), { 3 }, { sub = 0 })
-gear(306, "Helm Heroisch", "HEAD", str(25), { 4 })
+gear(304, "Brust Kern", "CHEST", str(50), { 2 })
+gear(305, "Ring Hort", "FINGER", str(20), { 3 }, { sub = 0 })
+gear(306, "Helm Dungeon", "HEAD", str(25), { 4 })
 gear(310, "Alter Helm", "HEAD", str(10))
 STUB.worn[1] = LINKS[310]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
@@ -55,16 +55,15 @@ assert(NS.CurrentPage() == "gear")
 local f = NS.GearPageFrame()
 assert(f and f:IsShown(), "the page frame is reachable")
 assert(plain(f.spec.label:GetText()) == "Waffen/Furor (geraten)", f.spec.label:GetText())
-assert(not f.open:IsShown(), "no planner table on TBC")
+assert(f.open:IsShown(), "the button for the level-range table")
 assert(f.views.goals.on and not f.views.here.on, "the targets first")
 assert(f.views.guild:IsShown(), "officers see the guild view")
 assert(f.views.wish.label:GetText() == "Wunschliste (0)", f.views.wish.label:GetText())
 local counts = f.counts:GetText()
-assert(has(counts, "Level 70") and has(counts, "3 Upgrades") and has(counts, "Bank noch nicht geöffnet"), counts)
+assert(has(counts, "Level 60") and has(counts, "3 Upgrades") and has(counts, "Bank noch nicht geöffnet"), counts)
 assert(not has(counts, "ausgeschlossen") and not f.reset:IsShown(), "no exclusions: " .. counts)
-for _, k in ipairs({ "X", "H", "D", "F", "V", "C", "W" }) do assert(f.src[k]:IsShown(), "TBC chip " .. k) end
-for _, k in ipairs({ "Q", "A", "P" }) do assert(not f.src[k]:IsShown(), "no Forever chip " .. k) end
-assert(f.phase:IsShown() and f.phase.label:GetText() == "alle", "the phase picker")
+for _, k in ipairs({ "X", "Q", "D", "C", "V", "W", "A", "P" }) do assert(f.src[k]:IsShown(), "chip " .. k) end
+assert(f.src.X.on and f.src.Q.on and not f.src.A.on and not f.src.P.on, "auction house and PvP start off")
 assert(f.src.C.label:GetText() == "Berufe: alle")
 
 ---------------------------------------------------------------------------
@@ -76,17 +75,17 @@ assert(G:IsShown() and #G.list.items == 17, "all 17 slots")
 assert(plain(rows[1].slot:GetText()) == "Kopf")
 assert(has(rows[1].worn:GetText(), "Alter Helm"), rows[1].worn:GetText())
 assert(has(rows[1].best:GetText(), "Helm A") and has(rows[1].best:GetText(), "a335ee"), rows[1].best:GetText())
-assert(rows[1].src:GetText() == "Karazhan: Prinz Malchezaar", rows[1].src:GetText())
+assert(rows[1].src:GetText() == "Geschmolzener Kern: Ragnaros", rows[1].src:GetText())
 assert(has(rows[1].gain:GetText(), "+60"), rows[1].gain:GetText())
 assert(has(rows[2].best:GetText(), "keine Option") and has(rows[2].worn:GetText(), "nichts"), "an empty neck")
-assert(has(rows[5].best:GetText(), "Brust Kara") and has(rows[5].gain:GetText(), "+100"), rows[5].gain:GetText())
+assert(has(rows[5].best:GetText(), "Brust Kern") and has(rows[5].gain:GetText(), "+100"), rows[5].gain:GetText())
 -- the details of the chosen slot (the head first)
 assert(rows[1].sel:IsShown() and not rows[5].sel:IsShown(), "the head is chosen")
 assert(G.title:GetText() == "Kopf · Bestes für Waffen/Furor (geraten)", G.title:GetText())
 local O = G.opts
 assert(has(O[1].name:GetText(), "Helm A") and has(O[1].gain:GetText(), "+60") and O[1].rank:GetText() == "1")
-assert(has(O[2].name:GetText(), "Helm B") and has(O[3].name:GetText(), "Helm Heroisch"), "three options, best first")
-assert(O[1].src:GetText() == "Karazhan: Prinz Malchezaar")
+assert(has(O[2].name:GetText(), "Helm B") and has(O[3].name:GetText(), "Helm Dungeon"), "three options, best first")
+assert(O[1].src:GetText() == "Geschmolzener Kern: Ragnaros")
 assert(O[1].wish:GetText() == "Wunsch" and O[1].wish:IsShown() and O[1].ex:IsShown())
 local ex = G.explain:GetText()
 assert(has(ex, "+60 Punkte, so viel wie 60 Angriffskraft") and has(ex, "40 Stärke x 2,0 = 80"), ex)
@@ -134,10 +133,10 @@ O[1].scripts.OnClick(O[1], "RightButton")
 assert(AmisiaMenu:IsShown())
 assert(menuLabels() == "Item ausschließen|Boss ausschließen|Ort ausschließen|Auf die Wunschliste|Link in den Chat", menuLabels())
 menuClick("Boss ausschließen")
-assert(NS.BisChar().ex.boss["Prinz Malchezaar"] and has(O[1].name:GetText(), "Helm B"), "the boss is out")
+assert(NS.BisChar().ex.boss["Ragnaros"] and has(O[1].name:GetText(), "Helm B"), "the boss is out")
 O[1].scripts.OnClick(O[1], "RightButton")
 menuClick("Ort ausschließen")
-assert(NS.BisChar().ex.place["I:532"] and has(O[1].name:GetText(), "Helm Heroisch"), "Karazhan is out: " .. O[1].name:GetText())
+assert(NS.BisChar().ex.place["I:409"] and has(O[1].name:GetText(), "Helm Dungeon"), "Geschmolzener Kern is out: " .. O[1].name:GetText())
 O[1].scripts.OnClick(O[1], "RightButton")
 menuClick("Link in den Chat")
 assert(STUB.inserted == LINKS[306], "the link goes into the chat")
@@ -176,10 +175,10 @@ assert(G.title:GetText() == "Kopf · Bestes für Schutz", G.title:GetText())
 f.spec.onPick("")
 assert(select(2, NS.BisSpec()) == true and plain(f.spec.label:GetText()) == "Waffen/Furor (geraten)", "the guess again")
 
--- source chips, the professions chip in three steps, the phase
+-- source chips, the professions chip in three steps
 f.src.X:Click()
 assert(AmisiaDB.settings.bis.sources.X == false and not f.src.X.on)
-assert(has(rows[1].best:GetText(), "Helm Heroisch"), "without raids the heroic helm: " .. rows[1].best:GetText())
+assert(has(rows[1].best:GetText(), "Helm Dungeon"), "without raids the dungeon helm: " .. rows[1].best:GetText())
 f.src.X:Click()
 assert(AmisiaDB.settings.bis.sources.X == true and has(rows[1].best:GetText(), "Helm A"))
 f.src.C:Click()
@@ -188,9 +187,6 @@ f.src.C:Click()
 assert(f.src.C.label:GetText() == "Berufe" and AmisiaDB.settings.bis.sources.C == false and not f.src.C.on)
 f.src.C:Click()
 assert(f.src.C.label:GetText() == "Berufe: alle" and AmisiaDB.settings.bis.sources.C == true and NS.Get("bis.prof") == "all")
-f.phase.onPick(1)
-assert(NS.Get("bis.phase") == 1 and f.phase.label:GetText() == "bis 1")
-f.phase.onPick(0)
 
 ---------------------------------------------------------------------------
 -- here
@@ -198,10 +194,10 @@ f.phase.onPick(0)
 f.views.here:Click()
 local Hh = f.here
 assert(f.views.here.on and Hh:IsShown() and not G:IsShown(), "the here view")
-assert(Hh.pick.label:GetText() == "Hier: Karazhan", Hh.pick.label:GetText())
+assert(Hh.pick.label:GetText() == "Hier: Geschmolzener Kern", Hh.pick.label:GetText())
 local hr = Hh.list.rows
 assert(#Hh.list.items == 3, "chest, helm A and the wished helm B: " .. #Hh.list.items)
-assert(has(hr[1].name:GetText(), "Brust Kara") and hr[1].boss:GetText() == "Moroes" and plain(hr[1].slot:GetText()) == "Brust")
+assert(has(hr[1].name:GetText(), "Brust Kern") and hr[1].boss:GetText() == "Lucifron" and plain(hr[1].slot:GetText()) == "Brust")
 assert(has(hr[1].gain:GetText(), "+100") and hr[1].wishBtn:GetText() == "Wunsch")
 assert(has(hr[3].name:GetText(), "Helm B") and has(hr[3].name:GetText(), "UI-RaidTargetingIcon_1") and hr[3].wishBtn:GetText() == "Wunsch weg")
 assert(has(Hh.hint:GetText(), "Was du an diesem Ort noch holen kannst"), Hh.hint:GetText())
@@ -211,10 +207,10 @@ assert(NS.BisChar().wish[304] and hr[1].wishBtn:GetText() == "Wunsch weg", "a wi
 local vals = {}
 for i, v in ipairs(Hh.pick.values) do vals[i] = v.value .. "=" .. plain(v.text) end
 vals = table.concat(vals, ",")
-assert(has(vals, "here=Hier: Karazhan,") and has(vals, "I:565=Gruuls Unterschlupf") and has(vals, "I:540/H=Shattered Halls (heroisch)"), vals)
-Hh.pick.onPick("I:565")
-assert(AmisiaDB.settings.bis.place == "I:565" and plain(Hh.pick.label:GetText()) == "Gruuls Unterschlupf", Hh.pick.label:GetText())
-assert(#Hh.list.items == 2 and has(hr[1].name:GetText(), "Ring Gruul") and has(hr[2].name:GetText(), "Helm C"), "the chosen place")
+assert(has(vals, "here=Hier: Geschmolzener Kern,") and has(vals, "I:469=Pechschwingenhort") and has(vals, "I:329=Stratholme"), vals)
+Hh.pick.onPick("I:469")
+assert(AmisiaDB.settings.bis.place == "I:469" and plain(Hh.pick.label:GetText()) == "Pechschwingenhort", Hh.pick.label:GetText())
+assert(#Hh.list.items == 2 and has(hr[1].name:GetText(), "Ring Hort") and has(hr[2].name:GetText(), "Helm C"), "the chosen place")
 Hh.pick.onPick("here")
 assert(AmisiaDB.settings.bis.place == nil and #Hh.list.items == 3)
 -- a place the data does not know
@@ -222,8 +218,8 @@ STUB.instance = { name = "Dalaran", type = "none", id = 0 }
 NS.Refresh()
 assert(Hh.pick.label:GetText() == "Hier: unbekannt" and #Hh.list.items == 0, Hh.pick.label:GetText())
 assert(Hh.hint:GetText() == "Diesen Ort kennen die Daten nicht.", Hh.hint:GetText())
--- nothing left: the heroic helm is worn
-Hh.pick.onPick("I:540/H")
+-- nothing left: the dungeon helm is worn
+Hh.pick.onPick("I:329")
 assert(#Hh.list.items == 1)
 STUB.worn[1] = LINKS[306]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
@@ -231,10 +227,10 @@ NS.Refresh()
 assert(#Hh.list.items == 0 and Hh.hint:GetText() == "Hier gibt es nichts mehr für dich.", Hh.hint:GetText())
 STUB.worn[1] = LINKS[310]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
-STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
+STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
 -- /amisia bis hier goes back to the current place
 NS.Dispatch("bis hier")
-assert(NS.CurrentPage() == "gear" and f.views.here.on and Hh.pick.label:GetText() == "Hier: Karazhan")
+assert(NS.CurrentPage() == "gear" and f.views.here.on and Hh.pick.label:GetText() == "Hier: Geschmolzener Kern")
 
 ---------------------------------------------------------------------------
 -- wishlist
@@ -243,13 +239,13 @@ f.views.wish:Click()
 local V = f.wish
 local wr = V.list.rows
 assert(V:IsShown() and not Hh:IsShown() and #V.list.items == 2, "two wishes")
-assert(has(wr[1].name:GetText(), "Brust Kara") and plain(wr[1].slot:GetText()) == "Brust" and wr[1].src:GetText() == "Karazhan: Moroes")
+assert(has(wr[1].name:GetText(), "Brust Kern") and plain(wr[1].slot:GetText()) == "Brust" and wr[1].src:GetText() == "Geschmolzener Kern: Lucifron")
 assert(wr[1].prio.label:GetText() == "mittel" and wr[1].state:GetText() == "")
 wr[1].prio:Click()
 assert(NS.BisChar().wish[304].prio == 1, "medium to low")
 assert(has(wr[1].name:GetText(), "Helm B") and wr[2].prio.label:GetText() == "niedrig", "sorted by priority again")
 wr[2].prio:Click()
-assert(NS.BisChar().wish[304].prio == 3 and has(wr[1].name:GetText(), "Brust Kara") and wr[1].prio.label:GetText() == "hoch")
+assert(NS.BisChar().wish[304].prio == 3 and has(wr[1].name:GetText(), "Brust Kern") and wr[1].prio.label:GetText() == "hoch")
 -- an excluded wish says so
 NS.BisExclude("item", 302)
 assert(has(wr[2].state:GetText(), "aus"), wr[2].state:GetText())
@@ -299,7 +295,7 @@ local U = f.guild
 assert(U:IsShown() and U.area:IsShown() and U.importBtn:IsShown() and U.clearBtn:IsShown(), "officers import")
 assert(has(U.info:GetText(), "Keine Gildenwünsche geladen"), U.info:GetText())
 assert(has(U.hint:GetText(), "Copy for the addon"))
-U.area.box:SetText("#AMISIA-WL 1 tbc 2026-10-05\nW 301 3 Anna nur MS\nW 301 2 Bob\nW 304 1 Vuloo\n#END")
+U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 301 3 Anna nur MS\nW 301 2 Bob\nW 304 1 Vuloo\n#END")
 U.importBtn:Click()
 assert(AmisiaDB.bis.guild and AmisiaDB.bis.guild.n == 3, "imported")
 assert(has(U.hint:GetText(), "3 Wünsche übernommen"), U.hint:GetText())
@@ -314,9 +310,9 @@ U.group:Click()
 assert(not U.group.on and has(gr[1].who:GetText(), "Bob"), gr[1].who:GetText())
 U.group:Click()
 -- the wrong game
-U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 1 2 Anna\n#END")
+U.area.box:SetText("#AMISIA-WL 1 tbc 2026-10-05\nW 1 2 Anna\n#END")
 U.importBtn:Click()
-assert(has(U.hint:GetText(), "WoW Forever") and AmisiaDB.bis.guild.n == 3, U.hint:GetText())
+assert(has(U.hint:GetText(), "TBC Anniversary") and AmisiaDB.bis.guild.n == 3, U.hint:GetText())
 -- /amisia wuensche opens this view
 f.views.goals:Click()
 NS.Dispatch("wuensche")
@@ -402,7 +398,7 @@ local function layoutAll(who)
     f.views.goals:Click()
     row(who .. " head", f.spec, f.views.goals, f.views.here, f.views.wish, f.views.guild, f.open)
     row(who .. " counts", f.counts, f.reset)
-    row(who .. " sources", f.src.X, f.src.H, f.src.D, f.src.F, f.src.V, f.src.C, f.src.W, f.phaseText, f.phase)
+    row(who .. " sources", f.src.X, f.src.Q, f.src.D, f.src.C, f.src.V, f.src.W, f.src.A, f.src.P)
     row(who .. " goal columns", G.head.slot, G.head.worn, G.head.best, G.head.src, G.head.gain)
     row(who .. " goal row", rows[1].slot, rows[1].worn, rows[1].best, rows[1].src, rows[1].gain)
     row(who .. " option", O[1].rank, O[1].name, O[1].src, O[1].gain, O[1].wish, O[1].ex)
@@ -458,7 +454,7 @@ NS.Dispatch("wuensche")
 assert(has(STUB.messages[#STUB.messages], "Offiziersansicht"), "the command stays for officers")
 NS.Reset("ui.view")
 -- officers clear with a question
-assert(NS.SetGuildWishes("#AMISIA-WL 1 tbc 2026-10-05\nW 301 3 Anna\n#END"))
+assert(NS.SetGuildWishes("#AMISIA-WL 1 forever 2026-10-05\nW 301 3 Anna\n#END"))
 NS.ShowGear("guild")
 U.clearBtn:Click()
 assert(STUB.popup and STUB.popup.which == "AMISIA_GUILDWISH_CLEAR", "asks first")
@@ -471,15 +467,15 @@ NS.Reset("bis.wishAutoRemove")
 ---------------------------------------------------------------------------
 local card
 for _, c in ipairs(NS.cards) do if c.key == "gear" then card = c end end
-assert(card and card.available(), "the card on TBC")
+assert(card and card.available(), "the card with the data")
 local c = NS.W.Card(UIParent, 296, 112)
 card.fill(c)
 assert(c.title:GetText() == "Deine Ausrüstung")
-assert(has(c.line1:GetText(), "Level 70") and has(c.line1:GetText(), "Upgrades") and has(c.line1:GetText(), "Wünsche"), c.line1:GetText())
-assert(has(c.line2:GetText(), "Hier: ") and has(c.line2:GetText(), "(Karazhan)"), "in a raid the place: " .. c.line2:GetText())
-STUB.instance = { name = "Shattrath", type = "none", id = 530 }
+assert(has(c.line1:GetText(), "Level 60") and has(c.line1:GetText(), "Upgrades") and has(c.line1:GetText(), "Wünsche"), c.line1:GetText())
+assert(has(c.line2:GetText(), "Hier: ") and has(c.line2:GetText(), "(Geschmolzener Kern)"), "in a raid the place: " .. c.line2:GetText())
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
 card.fill(c)
-assert(has(c.line2:GetText(), "Bestes: ") and has(c.line2:GetText(), "Brust Kara") and has(c.line2:GetText(), "(+100)"), c.line2:GetText())
+assert(has(c.line2:GetText(), "Bestes: ") and has(c.line2:GetText(), "Brust Kern") and has(c.line2:GetText(), "(+100)"), c.line2:GetText())
 c.button:Click()
 assert(NS.CurrentPage() == "gear" and f.views.goals.on, "Ansehen opens the targets")
 NS.ShowGear("ziele", "CHEST")
@@ -487,7 +483,7 @@ assert(f.views.goals.on and G.title:GetText():find("^Brust"), "German view names
 local entries = {}
 for _, e in ipairs(NS.MinimapMenuEntries()) do entries[#entries + 1] = e[1] end
 entries = table.concat(entries, "|")
-assert(has(entries, "Ausrüstung") and not has(entries, "Ausrüstungstabelle"), "TBC: the page, no table: " .. entries)
+assert(has(entries, "Ausrüstung|Ausrüstungstabelle"), "the page, then the table: " .. entries)
 NS.ShowPage("overview")
 for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Ausrüstung" then e[2]() end end
 assert(NS.CurrentPage() == "gear", "the quick menu opens the page")

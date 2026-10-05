@@ -181,7 +181,7 @@ D.cancel:Click()
 ---------------------------------------------------------------------------
 NS.ShowAwardDialog(nil, s)
 assert(D:IsShown() and D.itemEdit:IsShown() and not D.give:IsEnabled(), "no item yet: the entry box shows, nothing to give")
-ChatEdit_InsertLink(link2)
+ChatFrameUtil.InsertLink(link2)
 assert(not D.itemEdit:IsShown() and D.itemText:GetText():find("Warglaive", 1, true), "a shift-clicked link fills the item")
 D.cancel:Click()
 NS.ShowAwardDialog(nil, s)

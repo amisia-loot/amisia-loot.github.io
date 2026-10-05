@@ -6,7 +6,7 @@ local function roster(...)
     for i, n in ipairs({ ... }) do out[i] = { name = n, class = "WARRIOR" } end
     STUB.roster = out
 end
-roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
+roster("Vuloo", "Fraktur Berg", "Chorf", "Anna", "Bob")
 local link = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 local link2 = STUB.item(32837, "Warglaive of Azzinoth", 5)
 local LIST = "Fraktur 32235\nFraktur 32235\nVuloo 32837\nAnna 32235\nGustav 32837\n"
@@ -62,9 +62,9 @@ assert(item and item.type == "choice" and item.default == "auto" and item.sectio
 -- !sr: own reservations, by whisper to the raw sender
 ---------------------------------------------------------------------------
 STUB.chat = {}
-ask("!sr", "Fraktur-Realm")
+ask("!sr", "Fraktur Berg")
 assert(#STUB.chat == 1, #STUB.chat)
-assert(last().chan == "WHISPER" and last().target == "Fraktur-Realm", "whisper to the sender as the client gave it")
+assert(last().chan == "WHISPER" and last().target == "Fraktur Berg", "whisper to the sender as the client gave it")
 assert(last().text == "Amisia: Deine Reservierungen (Liste vom " .. short .. "): " .. link .. " x2", last().text)
 -- asked in the raid chat: the answer is still a whisper
 ask("!SR", "Chorf", "CHAT_MSG_RAID")
@@ -73,10 +73,10 @@ assert(last().text == "Amisia: Du hast nichts reserviert (Liste vom " .. short .
 ask("!softres", "Anna", "CHAT_MSG_RAID_LEADER")
 assert(#STUB.chat == 3 and last().target == "Anna" and has(last().text, link), "the alias")
 -- one answer per sender every 15 s
-ask("!sr", "Fraktur-Realm")
+ask("!sr", "Fraktur Berg")
 assert(#STUB.chat == 3, "the same sender within 15 s is ignored")
 STUB.tick(15)
-ask("!sr", "Fraktur-Realm")
+ask("!sr", "Fraktur Berg")
 assert(#STUB.chat == 4, "after 15 s again")
 
 ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ silent("softres.chat off", function() NS.Set("softres.chat", false) end); NS.Res
 silent("not the loot lead", function() STUB.leader = false end); STUB.leader = true
 silent("raider view", function() NS.Set("ui.view", "raider") end); NS.Reset("ui.view")
 silent("no list", function() NS.ClearSoftRes() end); NS.SetSoftRes(LIST)
-silent("no raid", function() STUB.roster = {} end); roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
+silent("no raid", function() STUB.roster = {} end); roster("Vuloo", "Fraktur Berg", "Chorf", "Anna", "Bob")
 later()
 local n0 = #STUB.chat
 ask("!sr", "Fremder")
@@ -143,7 +143,7 @@ assert(#STUB.chat == 20 and #STUB.messages == msgs + 1, "still quiet, no second 
 STUB.tick(60)
 ask("!sr", many[24])
 assert(#STUB.chat == 21, "the next minute answers again")
-roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
+roster("Vuloo", "Fraktur Berg", "Chorf", "Anna", "Bob")
 
 ---------------------------------------------------------------------------
 -- an old list says so
@@ -209,19 +209,19 @@ NS.ConfirmSoftResReminders()
 assert(STUB.popup == nil and has(STUB.messages[#STUB.messages], "schon erinnert"), STUB.messages[#STUB.messages])
 NS.Reset("softres.remindText")
 -- a new list reminds again; I am never whispered; the raw roster name is the target
-roster("Vuloo", "Fraktur-Realm", "Chorf")
+roster("Vuloo", "Fraktur Berg", "Chorf")
 NS.SetSoftRes("Chorf 32235")
 names = NS.SoftResReminders()
-assert(table.concat(names, ",") == "Fraktur", "not myself: " .. table.concat(names, ","))
+assert(table.concat(names, ",") == "Fraktur Berg", "not myself: " .. table.concat(names, ","))
 STUB.chat = {}
 assert(NS.SendSoftResReminders() == 1)
-assert(STUB.chat[1].target == "Fraktur-Realm" and STUB.chat[1].text == "Amisia: Du hast für heute noch nichts reserviert.", STUB.chat[1].target)
+assert(STUB.chat[1].target == "Fraktur Berg" and STUB.chat[1].text == "Amisia: Du hast für heute noch nichts reserviert.", STUB.chat[1].target)
 -- outside a raid or in the raider view: no dialog
 STUB.roster = {}
 STUB.popup = nil
 NS.ConfirmSoftResReminders()
 assert(STUB.popup == nil and has(STUB.messages[#STUB.messages], "Raid"), STUB.messages[#STUB.messages])
-roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
+roster("Vuloo", "Fraktur Berg", "Chorf", "Anna", "Bob")
 NS.Set("ui.view", "raider")
 NS.ConfirmSoftResReminders()
 assert(STUB.popup == nil and has(STUB.messages[#STUB.messages], "Offiziersansicht"), STUB.messages[#STUB.messages])
@@ -259,7 +259,7 @@ assert(NS.PostSoftResSummary() == nil and #STUB.chat == 0, "only in a raid")
 -- /amisia sr with its sub-words
 ---------------------------------------------------------------------------
 later()
-roster("Vuloo", "Fraktur-Realm", "Chorf", "Anna", "Bob")
+roster("Vuloo", "Fraktur Berg", "Chorf", "Anna", "Bob")
 local help = table.concat(NS.SlashHelpLines(true), "\n")
 assert(has(help, "/amisia sr [pruefen|erinnern|posten|vergessen [Name]]"), help)
 msgs = #STUB.messages

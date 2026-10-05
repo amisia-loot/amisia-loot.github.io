@@ -104,7 +104,7 @@ assert(m:IsShown())
 NS.W.Menu(UIParent, { { "Eins", function() end } })
 assert(not m:IsShown(), "second click closes the menu")
 
--- the gear page with the real TBC data: every view builds and refreshes, for officers and raiders
+-- the gear page with the real Forever data: every view builds and refreshes, for officers and raiders
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     for _, v in ipairs({ "goals", "here", "wish", "guild" }) do
@@ -114,9 +114,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     end
 end
 NS.Reset("ui.view")
--- the map page with the real TBC map data: builds and refreshes for officers and raiders, in the
--- quick menu for both, and its parts fit the content at 602 x 478
-assert(NS.MAP and NS.Visible(NS.Panel("map")), "the map page on TBC")
+-- the map page with the real Forever map data: builds and refreshes for officers and raiders, in
+-- the quick menu for both (with the level-range table), and its parts fit the content at 602 x 478
+assert(NS.MAP and NS.Visible(NS.Panel("map")), "the map page with MapData.lua")
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowMap()
@@ -124,7 +124,7 @@ for _, view in ipairs({ "officer", "raider" }) do
     assert(NS.CurrentPage() == "map", "the map page for " .. view)
     local quick = {}
     for _, e in ipairs(NS.MinimapMenuEntries()) do quick[#quick + 1] = e[1] end
-    assert(table.concat(quick, "|"):find("Ausrüstung|Karte|", 1, true), "the quick menu for " .. view)
+    assert(table.concat(quick, "|"):find("Ausrüstung|Ausrüstungstabelle|Karte|", 1, true), "the quick menu for " .. view)
     local mf = NS.MapPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(mf, 602, 478)
     L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.open)

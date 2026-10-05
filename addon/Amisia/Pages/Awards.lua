@@ -9,8 +9,7 @@ local KINDS = { "MS", "OS", "SR", "-" }
 local MAX_SUGGEST = 3
 local TO_TEXT = { bank = "Bank", de = "Entzaubern" }
 
--- Forever has no GetItemInfo global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemInfo = C_Item.GetItemInfo
 
 local page
 local chosenRaid        -- session id, "all", or nil for the default
@@ -79,12 +78,10 @@ local function itemLink(id)
     return link or ("item:" .. tostring(id))
 end
 
--- Puts a link into the chat the way the client does: ChatFrameUtil.InsertLink, else the old global.
+-- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
 local function insertLink(link)
     if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
         return ChatFrameUtil.InsertLink(link)
-    elseif type(ChatEdit_InsertLink) == "function" then
-        return ChatEdit_InsertLink(link)
     end
 end
 

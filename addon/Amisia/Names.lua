@@ -1,25 +1,15 @@
--- Character names. Forever names are "First Surname" (one space, the surname may hold a dash);
--- Anniversary names may carry "-Realm". Everything that compares names goes through FullName and
--- SameName, and the export writes "_" for the space (no WoW name holds an underscore), so its
--- fields stay space-separated.
+-- Character names. WoW Forever names are "First Surname" (one space, the surname may hold a
+-- dash). Everything that compares names goes through FullName and SameName, and the export writes
+-- "_" for the space (no WoW name holds an underscore), so its fields stay space-separated.
 local ADDON, ns = ...
 
-function ns.IsForever()
-    local toc = GetBuildInfo and select(4, GetBuildInfo()) or 0
-    return toc >= 16000 and toc < 17000
-end
-
--- One spelling of a name: trimmed, single spaces, no realm on Anniversary, and on Forever the
--- surname added when it comes separately (UnitName's second value there).
+-- One spelling of a name: trimmed, single spaces, and the surname added when it comes separately
+-- (UnitName's second value). A dash stays: it belongs to the surname.
 function ns.FullName(name, surname)
     if type(name) ~= "string" then return nil end
     name = name:match("^%s*(.-)%s*$"):gsub("%s+", " ")
-    if ns.IsForever() then
-        if type(surname) == "string" and surname ~= "" and not name:find(" ", 1, true) then
-            name = name .. " " .. surname
-        end
-    else
-        name = name:match("^([^%-]+)") or name
+    if type(surname) == "string" and surname ~= "" and not name:find(" ", 1, true) then
+        name = name .. " " .. surname
     end
     if name == "" then return nil end
     return name

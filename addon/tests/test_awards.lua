@@ -62,11 +62,12 @@ assert(NS.PendingAward(1) == nil and NS.PendingAward(2) == nil)
 for _ = 1, 5 do table.remove(s.awards) end
 STUB.loot = { STUB.loot[1] }
 
--- the realm suffix of a candidate is dropped
-STUB.roster[2].name = "Fraktur-Thunderstrike"
-GiveMasterLoot(1, 2); assert(NS.PendingAward().name == "Fraktur")
-STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur-Thunderstrike", link))
-assert(#s.awards == 3 and s.awards[3].name == "Fraktur")
+-- a candidate with a dashed surname keeps it whole
+STUB.roster[2].name = "Fraktur Berg-Tal"
+GiveMasterLoot(1, 2); assert(NS.PendingAward().name == "Fraktur Berg-Tal")
+STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur Berg-Tal", link))
+assert(#s.awards == 3 and s.awards[3].name == "Fraktur Berg-Tal")
+s.awards[3].name = "Fraktur"
 STUB.roster[2].name = "Fraktur"
 
 -- manual

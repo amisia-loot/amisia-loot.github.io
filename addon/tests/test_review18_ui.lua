@@ -21,7 +21,7 @@ local otherLink = STUB.item(31001, "Ohne Wunsch", 4)
 -- 8. marks follow the scroll box; 9. both sit on the item icon
 ---------------------------------------------------------------------------
 check("8 scroll", function()
-    assert(NS.SetGuildWishes("#AMISIA-WL 1 tbc 2026-10-05\nW 28830 3 Anna\n#END"))
+    assert(NS.SetGuildWishes("#AMISIA-WL 1 forever 2026-10-05\nW 28830 3 Anna\n#END"))
     assert(NS.SetSoftRes("Anna " .. wishedLink) == 1)
     STUB.loot = { { link = otherLink }, { link = otherLink }, { link = wishedLink } }
     local box = LootFrame.ScrollBox
@@ -47,13 +47,6 @@ check("9 icon", function()
         "W at the top right of the icon, not of the element (its quality text sits there)")
     local sr = NS.SoftResMark(f2)
     assert(sr and sr.parent == f2.Item and sr.points.TOPLEFT and sr.points.TOPLEFT.rel == f2.Item, "SR at the top left of the icon")
-    -- the Anniversary loot button is the icon itself
-    local b = CreateFrame("Button", "LootButton1"); b.slot = 3; b:Show()
-    NS.MarkGuildWishLoot()
-    NS.MarkLootButtons()
-    local wb = NS.GuildWishMark(b)
-    assert(wb and wb.points.TOPRIGHT.rel == b and NS.SoftResMark(b).points.TOPLEFT.rel == b, "the loot button keeps its marks")
-    b:Hide()
     NS.ClearSoftRes()
 end)
 
@@ -63,13 +56,13 @@ end)
 check("10 cleared", function()
     NS.ShowGear("guild")
     local U = NS.GearPageFrame().guild
-    U.area.box:SetText("#AMISIA-WL 1 tbc 2026-10-05\nW 28830 3 Anna nur MS\nW 31000 2 Bob\n#END")
+    U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 28830 3 Anna nur MS\nW 31000 2 Bob\n#END")
     U.importBtn:Click()
     assert(U.hint:GetText() == "2 Wünsche übernommen, 0 Zeilen nicht erkannt.", tostring(U.hint:GetText()))
     U.clearBtn:Click(); STUB.acceptPopup()
     assert(NS.GuildWishesInfo() == nil)
     assert(U.hint:GetText() == "Auf der Website im Reiter Wishlist: Copy for the addon.", "the old result is gone: " .. tostring(U.hint:GetText()))
-    assert(NS.SetGuildWishes("#AMISIA-WL 1 tbc 2026-10-05\nW 28830 3 Anna\n#END"))
+    assert(NS.SetGuildWishes("#AMISIA-WL 1 forever 2026-10-05\nW 28830 3 Anna\n#END"))
 end)
 
 ---------------------------------------------------------------------------
@@ -89,13 +82,7 @@ check("11 toast", function()
     _G.ChatFrameUtil.InsertLink = function(l) inserted = l; return true end
     f:GetScript("OnClick")(f, "LeftButton")
     assert(inserted == wishedLink and opened == nil, "an open chat box gets the link")
-    _G.ChatFrameUtil = nil
-    local savedOld = _G.ChatEdit_InsertLink
-    _G.ChatEdit_InsertLink = function(l) inserted = l; return true end
-    inserted = nil
-    f:GetScript("OnClick")(f, "LeftButton")
-    assert(inserted == wishedLink, "the old global where the client has no ChatFrameUtil")
-    _G.ChatFrameUtil, _G.ChatEdit_InsertLink = savedUtil, savedOld
+    _G.ChatFrameUtil = savedUtil
     assert(STUB.modifiedClick == nil, "no modified click, which needs an open chat box")
     STUB.shift = false
     assert(f:IsShown(), "shift-click keeps the toast")
@@ -164,14 +151,14 @@ end)
 -- 13. a saved place the data no longer has
 ---------------------------------------------------------------------------
 check("13 place", function()
-    STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
-    STUB.areas[3457] = "Karazhan"
+    STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }
+    STUB.areas[1581] = "Die Todesminen"
     NS.ShowGear("here")
     AmisiaDB.settings.bis.place = "I:999999"
     NS.Refresh()
     local Hh = NS.GearPageFrame().here
     assert(not has(Hh.pick.label:GetText(), "I:999999"), "no raw key: " .. tostring(Hh.pick.label:GetText()))
-    assert(has(Hh.pick.label:GetText(), "Hier: Karazhan"), tostring(Hh.pick.label:GetText()))
+    assert(has(Hh.pick.label:GetText(), "Hier: Die Todesminen"), tostring(Hh.pick.label:GetText()))
     assert(AmisiaDB.settings.bis.place == nil, "the stale place is forgotten")
     assert(has(Hh.hint:GetText(), "Der gewählte Ort fehlt in den Daten"), tostring(Hh.hint:GetText()))
     NS.Refresh()

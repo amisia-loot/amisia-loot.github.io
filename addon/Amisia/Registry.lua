@@ -68,7 +68,7 @@ function ns.RegisterCard(spec)
 end
 
 local function guildOfficer()
-    local can = (C_GuildInfo and C_GuildInfo.CanEditOfficerNote) or _G.CanEditOfficerNote
+    local can = C_GuildInfo and C_GuildInfo.CanEditOfficerNote
     return type(can) == "function" and can() and true or false
 end
 

@@ -6,7 +6,7 @@
 -- targets are never computed inside a hover.
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
-STUB.class, STUB.level = "WARRIOR", 70
+STUB.class, STUB.level = "WARRIOR", 60
 
 assert(#STUB.tdp == 1 and STUB.tdp[1].kind == Enum.TooltipDataType.Item, "one shared item tooltip hook: " .. #STUB.tdp)
 
@@ -33,23 +33,23 @@ local function texts()
     return table.concat(out, " / ")
 end
 
--- a small TBC data set; the client describes every item
+-- a small Forever data set; the client describes every item
 local LINKS = {}
 local function gear(id, name, loc, stats, sources, o)
     o = o or {}
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID = "INVTYPE_" .. loc, o.classID or 4, o.sub or 4
-    it.stats, it.minLevel = stats, 70
+    it.stats, it.minLevel = stats, 60
     if sources then
-        NS.GEAR.I[id] = { "", 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+        NS.GEAR.I[id] = { loc, o.classID or 4, o.sub or 4, 60, 4, 1, 70, 0, 0, 0 }
         for _, n in ipairs(sources) do NS.GEAR.I[id][#NS.GEAR.I[id] + 1] = n end
     end
     return LINKS[id]
 end
 local function str(n) return { ITEM_MOD_STRENGTH_SHORT = n } end
-NS.GEAR = { game = "tbc", cap = 70, built = "test-tip", I = {}, Z = {},
-    S = { { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 }, { "X", "Gruul's Lair", "Gruul", 565, 3923, 1, 0 } } }
+NS.GEAR = { game = "forever", cap = 60, built = "test-tip", I = {}, Z = {},
+    S = { { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 0, 0 }, { "X", "Pechschwingenhort", "Nefarian", 469, 2677, 0, 0 } } }
 Gear._reset()
 gear(301, "Helm A", "HEAD", str(40), { 1 })
 gear(302, "Helm B", "HEAD", str(30), { 1 })
@@ -178,16 +178,6 @@ NS.Fire("BIS_CHANGED")
 show(LINKS[301]); STUB.tick(2)
 show(LINKS[301])
 assert(#lines == 2 and has(lines[1].t, "Reserviert") and lines[2].t == "angelegt, Option 1 für Kopf", "both lines: " .. texts())
-
--- the hidden scan tooltip gets no lines (it is filled inside a hover on clients without GetItemStats)
-local scan = _G.AmisiaScanTip or CreateFrame("GameTooltip", "AmisiaScanTip")
-local scanLines = 0
-local realAdd = scan.AddLine
-scan.AddLine = function() scanLines = scanLines + 1 end
-scan.shownLink = LINKS[301]
-for _, h in ipairs(STUB.tdp) do h.fn(scan) end
-assert(scanLines == 0, "nothing on the scan tooltip")
-scan.AddLine = realAdd
 
 -- the switch
 assert(NS.Set("bis.tooltip", false))

@@ -1,4 +1,4 @@
--- Gear page, on both clients: the best items of the own character per slot ("Ziele") with the
+-- Gear page: the best items of the own character per slot ("Ziele") with the
 -- three options of a slot, the buttons to wish or exclude and the explained score; what a place
 -- still offers ("Hier"); the own wishlist with its text for the website ("Wunschliste"); the guild
 -- wishes pasted from the website ("Gilde", import for officers). Plus the overview card.
@@ -18,17 +18,10 @@ local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
 local OWNED_TEXT = { worn = "angelegt", bag = "in der Tasche, nicht angelegt", bank = "in der Bank, nicht angelegt" }
-local HIT_NOTE = "Trefferwertung zählt ohne Obergrenze."
 local VIEWS = { goals = true, here = true, wish = true, guild = true }
-local PHASES = { { value = 0, text = "alle" }, { value = 1, text = "bis 1" }, { value = 2, text = "bis 2" },
-    { value = 3, text = "bis 3" }, { value = 4, text = "bis 4" }, { value = 5, text = "bis 5" } }
--- the source chips per game: key, label, width
-local CHIPS = {
-    tbc = { { "X", "Raids", 48 }, { "H", "Heroisch", 60 }, { "D", "Dungeons", 64 }, { "F", "Ruf", 36 }, { "V", "Händler", 56 },
-            { "C", "Berufe: alle", 86 }, { "W", "Welt", 40 } },
-    forever = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
-                { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } },
-}
+-- the source chips: key, label, width
+local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
+                { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
 
 local page
 local groupOnly          -- the guild view's "Nur Gruppe"; nil: on while in a raid
@@ -38,9 +31,8 @@ local guildResult        -- what the last import said
 local scrolledTo         -- the slot the targets list was last scrolled to
 local placeGone          -- the saved place of "Hier" was not in the data
 
--- Forever has no GetItemInfo global; both clients have C_Item.
 local function itemInfo(x)
-    local f = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+    local f = C_Item and C_Item.GetItemInfo
     if f then return f(x) end
     return nil
 end
@@ -123,12 +115,10 @@ local function wishCount()
     return n
 end
 
--- Puts a link into the chat the way the client does: ChatFrameUtil.InsertLink, else the old global.
+-- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
 local function insertLink(link)
     if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
         return ChatFrameUtil.InsertLink(link)
-    elseif type(ChatEdit_InsertLink) == "function" then
-        return ChatEdit_InsertLink(link)
     end
 end
 
@@ -316,7 +306,7 @@ local function longDate(iso)
 end
 
 ---------------------------------------------------------------------------
--- Head: spec, views, counts, source chips, phase
+-- Head: spec, views, counts, source chips
 ---------------------------------------------------------------------------
 
 local function counts(o, res)
@@ -332,9 +322,8 @@ end
 
 local chipsFor, chipsCache
 local function chipSet()
-    local set = CHIPS[Gear.Game() == "tbc" and "tbc" or "forever"]
-    if set ~= CHIPS.forever then return set end
-    -- Forever's raids show once the data has them; looked up once per data set
+    local set = CHIPS
+    -- the raids chip shows once the data has raids; looked up once per data set
     local d = ns.GEAR
     if chipsFor == d then return chipsCache end
     local raids = false
@@ -375,10 +364,10 @@ local function fillHead(f, o, res, v)
     for k, chip in pairs(f.views) do chip:SetOn(k == v) end
     if guildVisible() then f.views.guild:Show() else f.views.guild:Hide() end
     f.views.wish.label:SetText(("Wunschliste (%d)"):format(wishCount()))
-    if Gear.PlannerAvailable() then f.open:Show() else f.open:Hide() end
+    if Gear.Available() then f.open:Show() else f.open:Hide() end
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
-    -- the source chips of this game, in a row
+    -- the source chips, in a row
     local shown, x = {}, 0
     for _, def in ipairs(chipSet()) do
         local chip = f.src[def[1]]
@@ -394,13 +383,6 @@ local function fillHead(f, o, res, v)
         chip:Show()
     end
     for k, chip in pairs(f.src) do if not shown[k] then chip:Hide() end end
-    if Gear.Game() == "tbc" then
-        f.phase:SetValues(PHASES)
-        f.phase:SetValue(o.phase or 0)
-        f.phase:Show(); f.phaseText:Show()
-    else
-        f.phase:Hide(); f.phaseText:Hide()
-    end
 end
 
 ---------------------------------------------------------------------------
@@ -569,12 +551,9 @@ local function explainText(o, res, slotKey, e)
             else
                 lead = Gear.UnitText(e.gain or 0, Gear.Weights(o.class, o.spec, o.kind, o.level))
             end
-            local parts, note = {}, nil
-            for i = 2, #lines do
-                if lines[i] == HIT_NOTE then note = lines[i] else parts[#parts + 1] = lines[i] end
-            end
+            local parts = {}
+            for i = 2, #lines do parts[#parts + 1] = lines[i] end
             out[#out + 1] = lead .. ": " .. table.concat(parts, ", ") .. "."
-            if note then out[#out + 1] = note end
         end
     end
     local text = table.concat(out, " ")
@@ -1060,28 +1039,19 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
         f.reset:SetPoint("TOPRIGHT", 0, -24)
         f.src = {}
-        for _, set in pairs(CHIPS) do
-            for _, def in ipairs(set) do
-                if not f.src[def[1]] then
-                    local key = def[1]
-                    f.src[key] = W.Chip(f, def[2], def[3], function()
-                        if key == "C" then
-                            profClick()
-                        else
-                            local src = ns.BisOpts().sources
-                            src[key] = not src[key]
-                            ns.Fire("BIS_CHANGED")
-                        end
-                    end)
-                    f.src[key]:SetPoint("TOPLEFT", 0, -48)
+        for _, def in ipairs(CHIPS) do
+            local key = def[1]
+            f.src[key] = W.Chip(f, def[2], def[3], function()
+                if key == "C" then
+                    profClick()
+                else
+                    local src = ns.BisOpts().sources
+                    src[key] = not src[key]
+                    ns.Fire("BIS_CHANGED")
                 end
-            end
+            end)
+            f.src[key]:SetPoint("TOPLEFT", 0, -48)
         end
-        f.phaseText = W.Text(f, "GameFontNormalSmall", 40)
-        f.phaseText:SetPoint("TOPLEFT", 466, -51)
-        f.phaseText:SetText("Phase")
-        f.phase = W.Picker(f, 90, function(v) ns.Set("bis.phase", v) end)
-        f.phase:SetPoint("TOPRIGHT", 0, -48)
         f.goals = buildGoals(f)
         f.here = buildHere(f)
         f.wish = buildWish(f)

@@ -2,12 +2,11 @@
 -- tooltips and on the loot window, and ranked first in roll rounds.
 local ADDON, ns = ...
 
--- Forever has no GetItemInfo global; both clients have C_Item.
-local GetItemInfo = _G.GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemInfo = C_Item.GetItemInfo
 
 local F, editBox, resultText, dateText, previewText
 local previewGen = 0   -- the newest pending preview; older timers do nothing
-local marks = {}   -- loot button -> "SR" font string
+local marks = {}   -- loot element -> "SR" font string
 
 local function shortName(name)
     name = ns.FullName(name)
@@ -124,7 +123,7 @@ function ns.SetSoftRes(text)
     local byItem, _, bad, times, total, renamed = ns.ParseSoftRes(text)
     AmisiaDB.softres = { version = 2, date = date("%Y-%m-%d"), byItem = byItem, raw = text or "", count = total,
                          times = times, renamed = renamed, reminded = {} }
-    ns.MarkLootButtons()
+    ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
     return total, bad
 end
@@ -371,14 +370,14 @@ function ns.RenameReserve(from, to, remember)
         AmisiaDB.srAliases = AmisiaDB.srAliases or {}
         AmisiaDB.srAliases[from:lower()] = to
     end
-    ns.MarkLootButtons()
+    ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
     return n
 end
 
 function ns.ClearSoftRes()
     AmisiaDB.softres = nil
-    ns.MarkLootButtons()
+    ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -466,18 +465,19 @@ end)
 ---------------------------------------------------------------------------
 -- Loot window marks
 ---------------------------------------------------------------------------
+-- btn: an element of the scrolling loot window; the mark sits on its icon button, btn.Item.
 local function markButton(btn, slot)
     if not ns.Get("softres.lootMark") then
         if marks[btn] then marks[btn]:Hide() end
         return
     end
+    local icon = btn.Item
+    if type(icon) ~= "table" or type(icon.CreateFontString) ~= "function" then return end
     local link = slot and GetLootSlotLink and GetLootSlotLink(slot)
     local reserved = link and #ns.ReservedBy(ns.ItemID(link)) > 0
     local mark = marks[btn]
     if reserved and not mark then
-        -- on the item icon, top left: the loot button itself on Anniversary, the element's Item on
-        -- Forever's scrolling loot window
-        local icon = type(btn.Item) == "table" and type(btn.Item.CreateFontString) == "function" and btn.Item or btn
+        -- on the item icon, top left (the quality text sits at the element's top right)
         mark = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         mark:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
         mark:SetText("SR")
@@ -489,23 +489,15 @@ local function markButton(btn, slot)
     end
 end
 
--- For tests and the window: the SR of a loot button, and whether it is visible.
+-- For tests and the window: the SR of a loot element, and whether it is visible.
 function ns.SoftResMark(btn) return marks[btn] end
 function ns.SoftResMarkShown(btn)
     local m = marks[btn]
     return (m and m:IsShown()) and true or false
 end
 
-function ns.MarkLootButtons()
-    local n = LOOTFRAME_NUMBUTTONS or 4
-    for i = 1, n do
-        local btn = _G["LootButton" .. i]
-        if btn and btn.slot and btn.IsShown and btn:IsShown() then
-            markButton(btn, btn.slot)
-        elseif btn and marks[btn] then
-            marks[btn]:Hide()
-        end
-    end
+-- Marks every element the loot window shows now.
+function ns.MarkSoftResLoot()
     local box = LootFrame and LootFrame.ScrollBox
     if box and box.ForEachFrame then
         box:ForEachFrame(function(frame)
@@ -514,8 +506,8 @@ function ns.MarkLootButtons()
     end
 end
 
--- Forever's loot window is a scroll box that hands its element frames to other slots while it
--- scrolls: every element it sets up is marked again (the client's initialised-frame callback).
+-- The loot window is a scroll box that hands its element frames to other slots while it scrolls:
+-- every element it sets up is marked again (the client's initialised-frame callback).
 local scrollHooked
 local function onLootElement(_, frame)
     if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
@@ -537,12 +529,9 @@ hookLootScroll()
 
 ns.OnEvent("LOOT_OPENED", function()
     hookLootScroll()
-    C_Timer.After(0, ns.MarkLootButtons)
+    C_Timer.After(0, ns.MarkSoftResLoot)
 end)
-ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkLootButtons) end)
-if type(LootFrame_Update) == "function" then
-    hooksecurefunc("LootFrame_Update", ns.MarkLootButtons)
-end
+ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkSoftResLoot) end)
 
 ---------------------------------------------------------------------------
 -- Chat: reminders, the raid summary and !sr for raiders without the addon
@@ -575,7 +564,7 @@ local function cappedLines(head, parts, maxLines, sep, suffix)
     return { lines[1] }
 end
 
--- The raw name of a raid member as the roster gives it (Anniversary may add a realm), for whispers.
+-- The raw name of a raid member as the roster gives it, for whispers.
 local function rawRosterName(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local raw = ns.Plain((GetRaidRosterInfo(i)))
@@ -967,7 +956,7 @@ end
 ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items = {
     { key = "softres.tooltip", type = "toggle", label = "Tooltip-Zeile \"Reserviert: ...\"", default = true },
     { key = "softres.lootMark", type = "toggle", label = "SR-Markierung im Lootfenster und an den Würfelfenstern", default = true,
-      onChange = function() ns.MarkLootButtons() end },
+      onChange = function() ns.MarkSoftResLoot() end },
     { key = "softres.warnDays", type = "slider", label = "Warnen, wenn die Liste älter ist als (Tage)", default = 7, min = 1, max = 30, step = 1 },
     { key = "softres.tooltipGroup", type = "toggle", label = "Im Tooltip nur Reservierungen aus der Gruppe", default = true },
     { key = "softres.limit", type = "slider", label = "Reservierungen pro Raider (0 = keine Prüfung)", default = 0, min = 0, max = 6, step = 1,

@@ -43,8 +43,11 @@ assert(NS.ExportState(s) == "done" and NS.ExportState(old) == "new")
 NS.ShowExport(false)
 assert(NS.ExportState(old) == "done")
 
--- a fresh bank count alone is still exported, once
+-- a fresh bank count alone is still exported, once; without tracked materials it is not (the
+-- list is empty until the guild names its materials, a test list stands in for it)
 AmisiaDB.bank = { at = time(), by = "Vuloo", counts = { [32897] = 3 }, tabs = 2, filled = 2, total = 2 }
+assert(not NS.BankPending() and NS.Bank() == nil, "no tracked material: the old count is neither pending nor shown")
+NS.MATS[32897], NS.MAT_ORDER[1] = "Mal der Illidari", 32897
 assert(NS.BankPending())
 NS.ShowExport(false)
 assert(lastMsg():find("Export: 0 neue oder geänderte Raid(s) und die Gildenbank", 1, true), lastMsg())

@@ -114,10 +114,9 @@ end
 local function send(e)
     local chan = resolveChannel(e.chan)
     if not chan then return false end
-    -- Both clients have C_ChatInfo.SendChatMessage and keep the global only as a deprecated alias;
-    -- the global is the fallback for a client without the namespace function.
+    -- C_ChatInfo.SendChatMessage (the global is only a deprecated alias the client may lack)
     local info = _G.C_ChatInfo
-    local fn = (type(info) == "table" and type(info.SendChatMessage) == "function") and info.SendChatMessage or _G.SendChatMessage
+    local fn = type(info) == "table" and info.SendChatMessage
     if type(fn) ~= "function" then return false end
     local ok = pcall(fn, e.text, chan, nil, chan == "WHISPER" and e.target or nil)
     if not ok then

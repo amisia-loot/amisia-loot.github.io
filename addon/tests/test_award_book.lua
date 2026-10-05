@@ -225,7 +225,7 @@ assert(not NS.Set("awards.bankName", "Vulo von Bank"), "two spaces refused")
 assert(NS.Set("awards.bankName", "") and NS.Get("awards.bankName") == "")
 assert(NS.IsSpecialName("Vulobank") == nil)
 NS.Set("awards.bankName", "Vulobank")
-assert(NS.IsSpecialName("Vulobank") == "bank" and NS.IsSpecialName("vulobank-Realm") == "bank" and NS.IsSpecialName("Vuloo") == "de")
+assert(NS.IsSpecialName("Vulobank") == "bank" and NS.IsSpecialName(" vulobank ") == "bank" and NS.IsSpecialName("Vuloo") == "de")
 assert(NS.IsSpecialName("Fraktur") == nil)
 STUB.roster[3] = { name = "Vulobank", class = "WARRIOR" }
 STUB.loot = { { link = link, name = "Cursed Vision of Sargeras", src = "Creature-0-1-1-1-22917-1" } }

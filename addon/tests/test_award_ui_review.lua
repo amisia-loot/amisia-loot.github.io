@@ -1,3 +1,8 @@
+--[[preload
+-- the client's deprecation fallbacks switched on: the alias ChatEdit_InsertLink exists, bound to
+-- the unhooked ChatFrameUtil.InsertLink (Blizzard_DeprecatedChatInfo)
+ChatEdit_InsertLink = ChatFrameUtil.InsertLink
+]]
 -- Review fixes of the award dialog and the awards page: the chat link path of the client, master
 -- loot only into the running recording, a raid deleted while the dialog is open, notes typed without
 -- Enter, free names, and the layout at the main window's size.
@@ -95,11 +100,11 @@ D.cancel:Click()
 -- the note counts without Enter, a free name is cleaned like an edit
 ---------------------------------------------------------------------------
 NS.ShowAwardDialog(link2, old)
-D.winner.onPick("  Neuling-Gehennas ", true)
+D.winner.onPick("  Neuling   Berg-Tal ", true)
 D.note:SetFocus(); D.note:SetText("  ohne Enter  ")
 D.give:Click()
 local a = old.awards[#old.awards]
-assert(a.name == "Neuling", "the free name through ns.FullName: [" .. tostring(a.name) .. "]")
+assert(a.name == "Neuling Berg-Tal", "the free name through ns.FullName: [" .. tostring(a.name) .. "]")
 assert(a.note == "ohne Enter", "the typed note without Enter: " .. tostring(a.note))
 NS.ShowAwardDialog(link2, old)
 D.note:SetFocus(); D.note:SetText("Bank ohne Enter")

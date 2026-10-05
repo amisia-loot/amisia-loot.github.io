@@ -1,9 +1,9 @@
 -- Best items per slot for the player (Bis.lua): three options per slot, ownership (worn, bags,
--- bank, also without a bank visit), exclusions by item, boss and place, phase, faction, crafted
--- items with "only my professions", tier pieces for their class, rings and trinkets, two-hand
--- against main hand plus off hand and the weapon switch, the gain against the weaker ring, the
--- guessed and the chosen spec, rows filled from the client, "here" in an instance and in a zone
--- with its parents, the place picker, the cache and the throttled bag scan, settings and commands.
+-- bank tabs, also without a bank visit), exclusions by item, boss and place, faction, crafted
+-- items with "only my professions", class-limited pieces for their class, rings and trinkets,
+-- two-hand against main hand plus off hand and the weapon switch, the gain against the weaker
+-- ring, the guessed and the chosen spec, "here" in an instance and in a zone with its parents, the
+-- place picker, the cache and the throttled bag scan, settings and commands.
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function ids(list)
@@ -12,9 +12,9 @@ local function ids(list)
     return table.concat(out, ",")
 end
 
--- the spec comes from the Forever planner's choice when the character is first used
+-- the spec comes from the planner's choice when the character is first used
 AmisiaDB.settings.gear = { specs = { WARRIOR = "tank" } }
-STUB.class, STUB.level = "WARRIOR", 70
+STUB.class, STUB.level = "WARRIOR", 60
 local spec, guessed = NS.BisSpec()
 assert(spec == "tank" and not guessed, "the planner's spec is taken over: " .. tostring(spec))
 local me = NS.BisChar()
@@ -37,23 +37,23 @@ NS.BisSetSpec("dps")
 assert(select(2, NS.BisSpec()) == false, "a chosen spec is no guess")
 
 ---------------------------------------------------------------------------
--- a small TBC data set; the client describes every item
+-- a small Forever data set; the client describes every item
 ---------------------------------------------------------------------------
-STUB.areas[3457], STUB.areas[3714] = "Karazhan", "Die Zerschmetterten Hallen"
+STUB.areas[2717], STUB.areas[2017], STUB.areas[2057] = "Geschmolzener Kern", "Stratholme", "Scholomance"
 local S = {
-    { "X", "Karazhan", "Prinz Malchezaar", 532, 3457, 1, 0 },            -- 1
-    { "X", "Karazhan", "Moroes", 532, 3457, 1, 0 },                      -- 2
-    { "X", "Gruul's Lair", "Gruul", 565, 3923, 1, 0 },                   -- 3
-    { "X", "Black Temple", "Illidan", 564, 3959, 3, 0 },                 -- 4
-    { "D", "Shattered Halls", "Kargath", nil, 540, 3714, 0 },            -- 5
-    { "D", "Shattered Halls", "Kargath", nil, 540, 3714, 1 },            -- 6
-    { "F", "The Sha'tar", 7, 935, "" },                                  -- 7
-    { "V", "G'eras", 111, "", "Abzeichen", 1 },                          -- 8
-    { "C", "tailoring", 375 },                                           -- 9
-    { "C", "blacksmithing", 375 },                                       -- 10
-    { "X", "Black Temple", "Mutter Shahraz", 564, 3959, 1, 31101 },      -- 11 (a token)
-    { "V", "Horde Quartermaster", 111, "H", "Quartiermeister", 1 },      -- 12
-    { "W", nil, 70, 73, 1945 },                                          -- 13
+    { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 0, 0 },          -- 1
+    { "X", "Geschmolzener Kern", "Lucifron", 409, 2717, 0, 0 },          -- 2
+    { "X", "Pechschwingenhort", "Nefarian", 469, 2677, 0, 0 },           -- 3
+    { "X", "Naxxramas", "Kel'Thuzad", 533, 3456, 0, 0 },                 -- 4
+    { "D", "Stratholme", "Baron Totenschwur", nil, 329, 2017 },          -- 5
+    { "D", "Scholomance", "Dunkelmeister Gandling", nil, 289, 2057 },    -- 6
+    { "Q", "Eine Quest", 60, 58, "", 1429, 0, 0 },                       -- 7
+    { "V", "Händlerin", 1537, "", "Rüstungen" },                         -- 8
+    { "C", "tailoring", 300 },                                           -- 9
+    { "C", "blacksmithing", 300 },                                       -- 10
+    { "X", "Naxxramas", "Thaddius", 533, 3456, 0, 0 },                   -- 11
+    { "V", "Hordehändler", 1637, "H", "Quartiermeister" },               -- 12
+    { "W", nil, 58, 60, 1429 },                                          -- 13
 }
 local I = {}
 local LINKS = {}
@@ -62,28 +62,28 @@ local function gear(id, name, loc, stats, sources, o)
     LINKS[id] = STUB.item(id, name, 4)
     local it = STUB.items[id]
     it.equipLoc, it.classID, it.subclassID = "INVTYPE_" .. loc, o.classID or 4, o.sub or 4
-    it.stats, it.bind, it.minLevel = stats, o.bind or 1, 70
+    it.stats, it.bind, it.minLevel = stats, o.bind or 1, 60
     if sources then
-        I[id] = { "", 0, 0, 0, 0, 0, 0, o.mask or 0, 0, 0 }
+        I[id] = { loc, o.classID or 4, o.sub or 4, 60, 4, o.bind or 1, 70, o.mask or 0, 0, 0 }
         for _, n in ipairs(sources) do I[id][#I[id] + 1] = n end
     end
     return LINKS[id]
 end
 local function str(n) return { ITEM_MOD_STRENGTH_SHORT = n } end
 -- head: warriors score 2 per strength
-gear(105, "Helm BT", "HEAD", str(45), { 4 })
-gear(101, "Helm Prinz", "HEAD", str(40), { 1 })
-gear(102, "Helm Gruul", "HEAD", str(35), { 3 })
-gear(103, "Helm Heroisch", "HEAD", str(30), { 6 })
-gear(104, "Helm Moroes", "HEAD", str(25), { 2, 8 })
+gear(105, "Helm Naxx", "HEAD", str(45), { 4 })
+gear(101, "Helm Ragnaros", "HEAD", str(40), { 1 })
+gear(102, "Helm Nefarian", "HEAD", str(35), { 3 })
+gear(103, "Helm Scholo", "HEAD", str(30), { 6 })
+gear(104, "Helm Lucifron", "HEAD", str(25), { 2, 8 })
 gear(106, "Helm Horde", "HEAD", str(50), { 12 })
 gear(117, "Helm Welt", "HEAD", str(38), { 13 })
-gear(118, "Helm Normal", "HEAD", str(22), { 5 })
--- chest: crafted bind on pickup and bind on equip, a raid drop, a tier piece of the warrior
+gear(118, "Helm Strat", "HEAD", str(22), { 5 })
+-- chest: crafted bind on pickup and bind on equip, a raid drop, a piece for warriors only
 gear(107, "Brust BoP", "CHEST", str(60), { 10 }, { bind = 1 })
 gear(108, "Brust BoE", "CHEST", str(55), { 10 }, { bind = 2 })
-gear(109, "Brust Kara", "CHEST", str(30), { 1 })
-gear(110, "Brust T6", "CHEST", str(70), { 11 }, { mask = Gear.CLASS_BIT.WARRIOR })
+gear(109, "Brust Kern", "CHEST", str(30), { 1 })
+gear(110, "Brust Krieger", "CHEST", str(70), { 11 }, { mask = Gear.CLASS_BIT.WARRIOR })
 -- rings and trinkets
 gear(111, "Ring A", "FINGER", str(40), { 1 }, { sub = 0 })
 gear(112, "Ring B", "FINGER", str(30), { 2 }, { sub = 0 })
@@ -97,21 +97,22 @@ gear(120, "Zweihand", "2HWEAPON", wpn(130, 50), { 4 }, { classID = 2, sub = 1 })
 gear(121, "Axt", "WEAPON", wpn(80, 20), { 1 }, { classID = 2, sub = 0 })
 gear(122, "Schwert", "WEAPON", wpn(70, 0), { 3 }, { classID = 2, sub = 7 })
 gear(123, "Alte Zweihand", "2HWEAPON", wpn(50, 0), nil, { classID = 2, sub = 1 })
-gear(124, "Stoffkappe", "HEAD", { ITEM_MOD_INTELLECT_SHORT = 30 }, { 1 }, { sub = 1 })
+gear(124, "Stoffkappe", "HEAD", { ITEM_MOD_SPELL_POWER_SHORT = 30 }, { 1 }, { sub = 1 })
 
-NS.GEAR = { game = "tbc", cap = 70, built = "test-bis", S = S, I = I, Z = {} }
+NS.GEAR = { game = "forever", cap = 60, built = "test-bis", S = S, I = I, Z = {} }
 Gear._reset()
-assert(Gear.Available() and Gear.Game() == "tbc")
+assert(Gear.Available())
 
 -- options
 local o = NS.BisOpts()
-assert(o.class == "WARRIOR" and o.spec == "dps" and o.level == 70 and o.faction == "A", "class, spec, level, faction")
-assert(o.sources.X and o.sources.H and o.sources.D and o.sources.F and o.sources.V and o.sources.C and o.sources.W, "sources on")
+assert(o.class == "WARRIOR" and o.spec == "dps" and o.level == 60 and o.faction == "A", "class, spec, level, faction")
+assert(o.sources.X and o.sources.Q and o.sources.D and o.sources.V and o.sources.C and o.sources.W, "sources on")
+assert(o.sources.H == nil and o.sources.F == nil, "no switches for heroic dungeons or reputation")
 assert(not o.sources.A and not o.sources.P, "auction house and PvP off by default")
-assert(o.phase == 0 and o.prof == "all" and o.exclude == me.ex, "phase all, all professions, the character's exclusions")
-STUB.level = 73
-assert(NS.BisOpts().level == 70, "capped at the data's level")
-STUB.level = 70
+assert(o.phase == nil and o.prof == "all" and o.exclude == me.ex, "no phase, all professions, the character's exclusions")
+STUB.level = 63
+assert(NS.BisOpts().level == 60, "capped at the data's level")
+STUB.level = 60
 
 ---------------------------------------------------------------------------
 -- three options per slot
@@ -119,23 +120,17 @@ STUB.level = 70
 local r = NS.BisTargets()
 assert(ids(r.HEAD) == "105,101,117", "three heads, best first: " .. ids(r.HEAD))
 assert(r.HEAD[1].score == 90 and r.HEAD[1].gain == 90 and r.HEAD[1].upgrade, "nothing worn: all gain")
-assert(NS.GEAR.I[101][1] == "HEAD" and NS.GEAR.I[101][2] == 4, "rows filled from the client")
-assert(ids(r.CHEST) == "110,107,108", "the tier piece for its class, then crafted: " .. ids(r.CHEST))
+assert(ids(r.CHEST) == "110,107,108", "the warriors' piece for its class, then crafted: " .. ids(r.CHEST))
 assert(r.upgrades > 0)
 -- cached until something changes
 assert(NS.BisTargets() == r, "the same result while nothing changed")
 
--- the tier piece is the warrior's alone; a paladin sees the crafted ones first
+-- the class-limited piece is the warrior's alone; a paladin sees the crafted ones first
 local po = NS.BisOpts()
 po.class, po.spec = "PALADIN", "ret"
-assert(ids(NS.BisTargets(po).CHEST) == "107,108,109", "no warrior tier for a paladin: " .. ids(NS.BisTargets(po).CHEST))
+assert(ids(NS.BisTargets(po).CHEST) == "107,108,109", "no warrior piece for a paladin: " .. ids(NS.BisTargets(po).CHEST))
 
--- phase: Black Temple is phase 3
-assert(NS.Set("bis.phase", 1))
-r = NS.BisTargets()
-assert(ids(r.HEAD) == "101,117,102", "phase 1 drops Black Temple: " .. ids(r.HEAD))
-NS.Reset("bis.phase")
--- faction: the Horde quartermaster only for the Horde
+-- faction: the Horde vendor only for the Horde
 STUB.faction = "Horde"
 assert(ids(NS.BisTargets().HEAD) == "106,105,101", "horde sees its vendor")
 STUB.faction = "Alliance"
@@ -143,18 +138,21 @@ assert(ids(NS.BisTargets().HEAD) == "105,101,117", "and the alliance does not")
 
 -- professions: "only mine" keeps bind on equip, drops bind on pickup without the skill
 assert(NS.Set("bis.prof", "mine"))
-STUB.skills = { { name = "Berufe", header = true }, { name = "Schneiderei", rank = 375 } }
+STUB.skills = { { name = "Berufe", header = true }, { name = "Schneiderei", rank = 300 } }
 STUB.fire("SKILL_LINES_CHANGED")
 local sk = NS.BisSkills()
-assert(sk and sk.tailoring == 375 and not sk.blacksmithing, "own professions read")
+assert(sk and sk.tailoring == 300 and not sk.blacksmithing, "own professions read")
 r = NS.BisTargets()
 assert(ids(r.CHEST) == "110,108,109", "bind on pickup needs the profession: " .. ids(r.CHEST))
-STUB.skills = { { name = "Schmiedekunst", rank = 300 } }
+STUB.skills = { { name = "Schmiedekunst", rank = 250 } }
 STUB.fire("SKILL_LINES_CHANGED")
 assert(ids(NS.BisTargets().CHEST) == "110,108,109", "and its skill")
-STUB.skills = { { name = "Blacksmithing", rank = 375 } }
+STUB.skills = { { name = "Blacksmithing", rank = 300 } }
 STUB.fire("SKILL_LINES_CHANGED")
 assert(ids(NS.BisTargets().CHEST) == "110,107,108", "the English name counts too")
+STUB.skills = { { name = "Unbekannt", rank = 300, id = 164 } }
+STUB.fire("SKILL_LINES_CHANGED")
+assert(NS.BisSkills().blacksmithing == 300, "the skill line id counts without a known name")
 NS.Reset("bis.prof")
 
 ---------------------------------------------------------------------------
@@ -164,23 +162,23 @@ assert(NS.BisExclude("item", LINKS[105]))
 assert(me.ex.item[105], "excluded by link")
 r = NS.BisTargets()
 assert(ids(r.HEAD) == "101,117,102", "item excluded: " .. ids(r.HEAD))
-assert(NS.BisExclude("boss", "Gruul"))
+assert(NS.BisExclude("boss", "Nefarian"))
 assert(ids(NS.BisTargets().HEAD) == "101,117,103", "boss excluded: " .. ids(NS.BisTargets().HEAD))
-assert(NS.BisExclude("place", "I:540"))
-assert(ids(NS.BisTargets().HEAD) == "101,117,104", "place excluded, normal and heroic: " .. ids(NS.BisTargets().HEAD))
-assert(NS.BisExclude("boss", "Prinz Malchezaar"))
-assert(NS.BisExclude("boss", "Moroes"))
-assert(ids(NS.BisTargets().HEAD) == "117,104", "Moroes excluded, the vendor keeps his helm: " .. ids(NS.BisTargets().HEAD))
+assert(NS.BisExclude("place", "I:289"))
+assert(ids(NS.BisTargets().HEAD) == "101,117,104", "place excluded: " .. ids(NS.BisTargets().HEAD))
+assert(NS.BisExclude("boss", "Ragnaros"))
+assert(NS.BisExclude("boss", "Lucifron"))
+assert(ids(NS.BisTargets().HEAD) == "117,104,118", "Lucifron excluded, the vendor keeps his helm: " .. ids(NS.BisTargets().HEAD))
 local okBad, why = NS.BisExclude("item", "kein link")
 assert(not okBad and why == "Kein Item.", "a reason for a bad item")
 assert(not NS.BisExclude("thing", "x"), "unknown kind")
-assert(NS.BisExclude("boss", "Moroes", false) and not me.ex.boss.Moroes, "an exclusion goes again")
+assert(NS.BisExclude("boss", "Lucifron", false) and not me.ex.boss.Lucifron, "an exclusion goes again")
 assert(NS.BisClearExcludes() == 4, "four left to clear")
 assert(not next(me.ex.item) and not next(me.ex.boss) and not next(me.ex.place))
 assert(ids(NS.BisTargets().HEAD) == "105,101,117", "all back")
 
 ---------------------------------------------------------------------------
--- ownership: worn, bags, bank (counted at the bank or known to the client)
+-- ownership: worn, bags, bank tabs (counted at the bank or known to the client)
 ---------------------------------------------------------------------------
 STUB.worn[1] = LINKS[105]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED", 1)
@@ -199,20 +197,32 @@ assert(calls == 5, "one scan of bags 0-4 for ten events: " .. calls)
 assert(me.bag[110] and NS.BisOwned(110) == "bag", "seen in the bags")
 r = NS.BisTargets()
 assert(r.CHEST[1].owned == "bag" and r.state.CHEST == "bag" and r.CHEST[1].gain == 140, "in the bag, not worn: gain stays")
--- the bank, counted while it is open
-STUB.bags[-1] = { 107 }
-STUB.bags[5] = { LINKS[108] }
+-- the bank, counted while it is open: the purchased tabs of the character bank, there is no -1
+STUB.bankTabs = { 6, 7 }
+STUB.bags[-1] = { 113 }
+STUB.bags[6] = { 107 }
+STUB.bags[7] = { LINKS[108] }
 STUB.fire("BANKFRAME_OPENED")
-assert(me.bank[107] and me.bank[108] and me.bankAt == STUB.now, "bank and bank bags counted")
+assert(me.bank[107] and me.bank[108] and me.bankAt == STUB.now, "both bank tabs counted")
+assert(not me.bank[113], "no container -1")
 assert(NS.BisOwned(107) == "bank" and NS.BisTargets().CHEST[2].owned == "bank")
-STUB.bags[-1] = {}
+STUB.bags[6] = {}
 STUB.fire("PLAYERBANKSLOTS_CHANGED"); STUB.fire("PLAYERBANKSLOTS_CHANGED")
 STUB.tick(0.3)
 assert(not me.bank[107] and me.bank[108], "taken out of the bank")
 STUB.fire("BANKFRAME_CLOSED")
-STUB.bags[5] = {}
+STUB.bags[7] = {}
 STUB.fire("PLAYERBANKSLOTS_CHANGED"); STUB.tick(0.3)
 assert(me.bank[108], "a closed bank is not read")
+-- a client without the bank tabs reads nothing, and keeps what it saw
+local savedBank = C_Bank
+C_Bank = nil
+STUB.fire("BANKFRAME_OPENED")
+assert(me.bank[108], "no C_Bank: nothing read, nothing lost")
+STUB.fire("BANKFRAME_CLOSED")
+C_Bank = savedBank
+STUB.bankTabs = {}
+STUB.bags[-1], STUB.bags[6], STUB.bags[7] = nil, nil, nil
 -- without a bank visit: the client's own count with the bank
 STUB.bank[109] = 1
 assert(NS.BisOwned(109) == "bank", "the client counts it in the bank")
@@ -221,21 +231,6 @@ STUB.bank[109] = nil
 STUB.bags[0] = {}
 STUB.fire("BAG_UPDATE_DELAYED"); STUB.tick(1.1)
 assert(not me.bag[110] and NS.BisOwned(110) == nil, "gone from the bags")
-
--- Forever: the character bank is a set of tabs, there is no container -1
-STUB.toc = 16001
-_G.Enum.BankType = { Character = 0, Account = 2 }
-_G.C_Bank = { FetchPurchasedBankTabIDs = function(kind) return kind == 0 and { 6, 7 } or {} end }
-STUB.bags[-1] = { 113 }
-STUB.bags[6] = { 112 }
-STUB.bags[7] = { 111 }
-STUB.fire("BANKFRAME_OPENED")
-assert(me.bank[112] and me.bank[111] and not me.bank[113], "Forever reads the bank tabs, not -1")
-STUB.fire("BANKFRAME_CLOSED")
-STUB.toc = 20506
-_G.C_Bank = nil
-STUB.bags[-1], STUB.bags[6], STUB.bags[7] = nil, nil, nil
-STUB.fire("BANKFRAME_OPENED"); STUB.fire("BANKFRAME_CLOSED")
 
 ---------------------------------------------------------------------------
 -- rings, trinkets, weapons
@@ -294,7 +289,8 @@ local joined = table.concat(lines, "\n")
 assert(has(joined, "40 Stärke x 2,0 = 80"), joined)
 assert(has(lines[1], "Kopf") and has(lines[1], "+2 Punkte, so viel wie 2 Angriffskraft"), lines[1])
 gear(127, "Treffer", "HEAD", { ITEM_MOD_HIT_RATING_SHORT = 20 }, { 1 })
-assert(has(table.concat(NS.BisExplain(127), "\n"), "Trefferwertung zählt ohne Obergrenze."), "the hit note on TBC")
+local hitText = table.concat(NS.BisExplain(127), "\n")
+assert(has(hitText, "Trefferwertung") and not has(hitText, "Obergrenze"), "hit without a note about a cap: " .. hitText)
 
 ---------------------------------------------------------------------------
 -- here: the instance, a zone with its parents, a chosen place, the picker
@@ -303,13 +299,13 @@ STUB.worn[1] = nil
 STUB.fire("PLAYER_EQUIPMENT_CHANGED", 1)
 STUB.bags[0] = { 109 }
 STUB.fire("BAG_UPDATE_DELAYED"); STUB.tick(1.1)
-STUB.instance = { name = "Karazhan", type = "raid", id = 532 }
+STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
 local place, list = NS.BisHere()
-assert(place and place.key == "I:532" and place.text == "Karazhan", "here is Karazhan")
+assert(place and place.key == "I:409" and place.text == "Geschmolzener Kern", "here is Molten Core")
 local got = ids(list)
-assert(has(got, "101") and has(got, "121") and has(got, "111") and has(got, "109"), "Karazhan's upgrades: " .. got)
+assert(has(got, "101") and has(got, "121") and has(got, "111") and has(got, "109"), "Molten Core's upgrades: " .. got)
 assert(list[#list].id == 109 and list[#list].owned == "bag", "owned at the bottom")
-assert(not has(got, "102") and not has(got, "124"), "nothing from elsewhere, nothing a warrior would not take")
+assert(not has(got, "102") and not has(got, "124"), "nothing from elsewhere, nothing a warrior would not take: " .. got)
 for i = 2, #list - 1 do assert(list[i - 1].gain >= list[i].gain, "by gain") end
 -- a wish shows even without an upgrade
 STUB.worn[1] = LINKS[105]
@@ -326,28 +322,28 @@ me.wish[104] = nil
 NS.Fire("BIS_CHANGED")
 STUB.worn[1] = nil
 STUB.fire("PLAYER_EQUIPMENT_CHANGED", 1)
--- heroic in the instance: heroic sources only
-STUB.instance = { name = "Die Zerschmetterten Hallen", type = "party", id = 540, diff = 2 }
+-- a dungeon: its own sources; another one by choice
+STUB.instance = { name = "Stratholme", type = "party", id = 329 }
 place, list = NS.BisHere()
-assert(place.key == "I:540/H" and has(place.text, "heroisch") and ids(list) == "103", "heroic: " .. place.key .. " " .. ids(list))
-place, list = NS.BisHere("I:540")
-assert(ids(list) == "118", "normal by choice: " .. ids(list))
+assert(place.key == "I:329" and place.text == "Stratholme" and ids(list) == "118", "the dungeon: " .. place.key .. " " .. ids(list))
+place, list = NS.BisHere("I:289")
+assert(ids(list) == "103", "another dungeon by choice: " .. ids(list))
 -- in a zone: the map and its parents up to the continent
-STUB.instance = { name = "Terokkar", type = "none", id = 530 }
-STUB.place.map = 1955
-STUB.maps[1955] = { name = "Shattrath", parent = 1945, mapType = 3 }
-STUB.maps[1945] = { name = "Wälder von Terokkar", parent = 1467, mapType = 3 }
-STUB.maps[1467] = { name = "Scherbenwelt", parent = 946, mapType = 2 }
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
+STUB.place.map = 1453
+STUB.maps[1453] = { name = "Sturmwind", parent = 1429, mapType = 3 }
+STUB.maps[1429] = { name = "Wald von Elwynn", parent = 1415, mapType = 3 }
+STUB.maps[1415] = { name = "Östliche Königreiche", parent = 946, mapType = 2 }
 place, list = NS.BisHere()
-assert(place.key == "Z:1955" and place.text == "Shattrath" and ids(list) == "117", "the world drop of the parent zone: " .. ids(list))
+assert(place.key == "Z:1453" and place.text == "Sturmwind" and ids(list) == "117", "the world drop of the parent zone: " .. ids(list))
 place, list = NS.BisHere("I:999")
 assert(place.key == "I:999" and #list == 0, "an unknown place")
--- the picker: raids and dungeons, heroic as its own entry
+-- the picker: raids and dungeons
 local seen = {}
 for _, p in ipairs(NS.BisPlaces()) do seen[p.key] = p.text end
-assert(seen["I:532"] == "Karazhan" and seen["I:565"] == "Gruul's Lair" and seen["I:540"] == "Die Zerschmetterten Hallen", "places")
-assert(seen["I:540/H"] == "Die Zerschmetterten Hallen (heroisch)", "heroic entry")
-assert(not seen["Z:1945"], "zones are no picker entries")
+assert(seen["I:409"] == "Geschmolzener Kern" and seen["I:469"] == "Pechschwingenhort" and seen["I:329"] == "Stratholme", "places")
+assert(seen["I:289"] == "Scholomance" and not seen["I:329/H"], "every dungeon once, no heroic entry")
+assert(not seen["Z:1429"], "zones are no picker entries")
 
 ---------------------------------------------------------------------------
 -- the cache follows the exclusions
@@ -366,13 +362,12 @@ assert(NS.BisTargets().HEAD[1].id == 105)
 for path, want in pairs({ ["bis.tooltip"] = { "toggle", true }, ["bis.tooltipNone"] = { "toggle", false },
                           ["bis.minGain"] = { "slider", 2 }, ["bis.toast"] = { "toggle", true },
                           ["bis.toastUpgrade"] = { "toggle", true }, ["bis.toastSound"] = { "toggle", true },
-                          ["bis.wishAutoRemove"] = { "toggle", true }, ["bis.phase"] = { "choice", 0 },
-                          ["bis.prof"] = { "choice", "all" } }) do
+                          ["bis.wishAutoRemove"] = { "toggle", true }, ["bis.prof"] = { "choice", "all" } }) do
     local it = NS.SettingItem(path)
     assert(it and it.type == want[1] and it.default == want[2] and it.section.key == "bis", path)
 end
 assert(NS.SettingItem("bis.minGain").expert, "minimum gain for experts")
-assert(NS.SettingItem("bis.phase").available(), "phase on TBC")
+assert(NS.SettingItem("bis.phase") == nil, "no phase setting any more")
 NS.Dispatch("bis aus " .. LINKS[101])
 assert(me.ex.item[101], "/amisia bis aus")
 NS.Dispatch("bis zurueck")

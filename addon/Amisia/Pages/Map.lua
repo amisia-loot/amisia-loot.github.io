@@ -23,9 +23,8 @@ local page
 local builds = 0         -- index builds, for the tests
 local nameMissing = false -- an item name the client did not have at the last fill
 
--- Forever has no GetItemInfo global; both clients have C_Item.
 local function itemInfo(x)
-    local f = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+    local f = C_Item and C_Item.GetItemInfo
     if f then return f(x) end
     return nil
 end

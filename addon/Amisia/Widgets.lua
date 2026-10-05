@@ -1,5 +1,5 @@
 -- Amisia widgets: the building blocks the pages share, in the Amisia look (dark purple, gold).
--- Every control is built from plain frames and textures, so both clients draw it the same way.
+-- Every control is built from plain frames and textures, so it looks the same everywhere.
 local ADDON, ns = ...
 
 local W = {}

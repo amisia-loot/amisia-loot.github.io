@@ -95,8 +95,8 @@ end
 ---------------------------------------------------------------------------
 -- Bags and equipment
 ---------------------------------------------------------------------------
-local containerLink = (C_Container and C_Container.GetContainerItemLink) or _G.GetContainerItemLink
-local containerSlots = (C_Container and C_Container.GetContainerNumSlots) or _G.GetContainerNumSlots
+local containerLink = C_Container and C_Container.GetContainerItemLink
+local containerSlots = C_Container and C_Container.GetContainerNumSlots
 
 local function scanBags(first, last)
     if not enabled() or not containerLink or not containerSlots then return end
