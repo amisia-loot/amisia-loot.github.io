@@ -6,6 +6,7 @@ STUB = {
     instance = { name = "Black Temple", type = "raid", id = 564 },
 }
 
+_G.Enum = {}
 _G.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 _G.tinsert = table.insert
 _G.strmatch = string.match
@@ -15,20 +16,30 @@ _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
 _G.UnitName = function(u) if u == "target" then return STUB.target end if u == "npc" then return STUB.npc end return STUB.player end
 _G.UnitGUID = function(u) if u == "target" then return STUB.targetGUID end return "Player-1-1" end
-_G.IsInRaid = function() return #STUB.roster > 0 end
-_G.IsInGroup = function() return #STUB.roster > 0 end
 _G.GetNumGroupMembers = function() return #STUB.roster end
 _G.GetRaidRosterInfo = function(i)
     local m = STUB.roster[i]
     if not m then return nil end
     return m.name, m.rank or 0, 1, 70, m.class, m.class, m.zone or "Black Temple", m.online ~= false
 end
+-- Group categories: STUB.instanceGroup makes the group an instance group (a battleground or a
+-- finder group), so IsInRaid(LE_PARTY_CATEGORY_HOME) is false while IsInRaid() stays true.
+_G.LE_PARTY_CATEGORY_HOME, _G.LE_PARTY_CATEGORY_INSTANCE = 1, 2
+_G.IsInRaid = function(cat)
+    if #STUB.roster == 0 then return false end
+    if cat == LE_PARTY_CATEGORY_HOME then return not STUB.instanceGroup end
+    if cat == LE_PARTY_CATEGORY_INSTANCE then return STUB.instanceGroup and true or false end
+    return true
+end
+_G.IsInGroup = _G.IsInRaid
 _G.UnitIsGroupLeader = function() return STUB.leader end
 _G.UnitIsGroupAssistant = function() return false end
 _G.GetInstanceInfo = function() local i = STUB.instance; return i.name, i.type, i.diff or 0, "", 0, 0, false, i.id end
 _G.InCombatLockdown = function() return STUB.combat and true or false end
 _G.IsAltKeyDown = function() return STUB.alt end
-_G.GetGuildInfo = function() return "Amisia" end
+-- In a guild unless STUB.inGuild is false.
+_G.GetGuildInfo = function() if STUB.inGuild == false then return nil end return "Amisia" end
+_G.IsInGuild = function() return STUB.inGuild ~= false end
 -- errors inside protected handlers still fail the test
 _G.geterrorhandler = function() return function(e) error(e, 0) end end
 -- The client is WoW Forever (1.60.1, interface 16001, game type camelot).
@@ -131,10 +142,247 @@ _G.UnitIsDead = function(u) if u == "target" then return STUB.targetDead and tru
 -- A boss fight in progress (STUB.encounter) and the addon restriction of an encounter (STUB.restricted,
 -- restriction type 1); the client announces a change with ADDON_RESTRICTION_STATE_CHANGED.
 _G.C_InstanceEncounter = { IsEncounterInProgress = function() return STUB.encounter and true or false end }
-_G.C_RestrictedActions = { IsAddOnRestrictionActive = function(kind) return (STUB.restricted and kind == 1) and true or false end }
--- The guild roster: STUB.guild = { { name, class (token), online } }; requests are counted.
+-- Restriction type 5 (addon chat) follows the chat lockdown STUB.chatLock.
+_G.C_RestrictedActions = { IsAddOnRestrictionActive = function(kind)
+    if kind == 5 then return STUB.chatLock and true or false end
+    return (STUB.restricted and kind == 1) and true or false
+end }
+
+-- Addon messages. RegisterAddonMessagePrefix remembers the prefixes (STUB.prefixes) and answers
+-- STUB.prefixResult when set (0 success, 1 duplicate otherwise). SendAddonMessage notes every try in
+-- STUB.addonTries ({ prefix, text, chan, target, t, result }) and what went out in STUB.addon; the
+-- result is STUB.addonResult when set, else 11 during STUB.chatLock, 5 RAID without a home raid,
+-- 10 GUILD outside a guild, 6 WHISPER without a target, 2 over 255 bytes, 3 when ten messages of this
+-- prefix went out within the last second of stub time, else 0. A sent message goes to BUS_SEND too
+-- (the multi-client bus of run.py).
+STUB.prefixes, STUB.addon, STUB.addonTries = {}, {}, {}
+C_ChatInfo.RegisterAddonMessagePrefix = function(prefix)
+    if STUB.prefixResult then return STUB.prefixResult end
+    if STUB.prefixes[prefix] then return 1 end
+    STUB.prefixes[prefix] = true
+    return 0
+end
+C_ChatInfo.SendAddonMessage = function(prefix, text, chan, target)
+    local result = STUB.addonResult
+    if not result then
+        if STUB.chatLock then result = 11
+        elseif chan == "RAID" and not IsInRaid(LE_PARTY_CATEGORY_HOME) then result = 5
+        elseif chan == "GUILD" and not IsInGuild() then result = 10
+        elseif chan == "WHISPER" and (type(target) ~= "string" or target == "") then result = 6
+        elseif type(text) ~= "string" or #text > 255 then result = 2
+        else
+            local recent = 0
+            for _, m in ipairs(STUB.addon) do
+                if m.prefix == prefix and m.t > STUB.clock - 1 then recent = recent + 1 end
+            end
+            result = recent >= 10 and 3 or 0
+        end
+    end
+    local m = { prefix = prefix, text = text, chan = chan, target = target, t = STUB.clock, result = result }
+    STUB.addonTries[#STUB.addonTries + 1] = m
+    if result == 0 then
+        STUB.addon[#STUB.addon + 1] = m
+        if BUS_SEND then BUS_SEND(STUB.player, prefix, text, chan, target) end
+    end
+    return result
+end
+-- Battlegrounds: STUB.battlefield (an instance of type "pvp" or "arena" comes from STUB.instance).
+_G.C_PvP = { IsActiveBattlefield = function() return STUB.battlefield and true or false end }
+Enum.SendAddonMessageResult = { Success = 0, InvalidPrefix = 1, InvalidMessage = 2, AddonMessageThrottle = 3, InvalidChatType = 4,
+    NotInGroup = 5, TargetRequired = 6, InvalidChannel = 7, ChannelThrottle = 8, GeneralError = 9, NotInGuild = 10,
+    AddOnMessageLockdown = 11, TargetOffline = 12 }
+Enum.RegisterAddonMessagePrefixResult = { Success = 0, DuplicatePrefix = 1, InvalidPrefix = 2, MaxPrefixes = 3 }
+Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+Enum.CompressionMethod = { Deflate = 0, Zlib = 1, Gzip = 2 }
+
+-- C_EncodingUtil as a stand-in: SerializeCBOR is a deterministic Lua serializer (no real CBOR; a
+-- round trip for numbers, strings, booleans and nested tables), CompressString only marks the text
+-- (a round trip that checks the mark), EncodeBase64 and DecodeBase64 are real Base64. Bad input makes
+-- the decoders return nothing (DeserializeCBOR raises). STUB.noEncoding (preload) takes it away.
+do
+    local function ser(v, out, depth)
+        if depth > 100 then error("too deep") end
+        local t = type(v)
+        if t == "nil" then out[#out + 1] = "z"
+        elseif t == "boolean" then out[#out + 1] = v and "T" or "F"
+        elseif t == "number" then out[#out + 1] = "n" .. ("%.17g"):format(v) .. ";"
+        elseif t == "string" then out[#out + 1] = "s" .. #v .. ":" .. v
+        elseif t == "table" then
+            local keys = {}
+            for k in pairs(v) do keys[#keys + 1] = k end
+            table.sort(keys, function(a, b)
+                if type(a) ~= type(b) then return type(a) == "number" end
+                return a < b
+            end)
+            out[#out + 1] = "t"
+            for _, k in ipairs(keys) do ser(k, out, depth + 1); ser(v[k], out, depth + 1) end
+            out[#out + 1] = "e"
+        else
+            error("cannot serialize a " .. t)
+        end
+    end
+    local function deser(s, pos, depth)
+        if depth > 100 then error("too deep") end
+        local c = s:sub(pos, pos)
+        if c == "z" then return nil, pos + 1
+        elseif c == "T" then return true, pos + 1
+        elseif c == "F" then return false, pos + 1
+        elseif c == "n" then
+            local e = s:find(";", pos, true)
+            local n = e and tonumber(s:sub(pos + 1, e - 1))
+            if not n then error("bad number") end
+            return n, e + 1
+        elseif c == "s" then
+            local e = s:find(":", pos, true)
+            local len = e and tonumber(s:sub(pos + 1, e - 1))
+            if not len or e + len > #s then error("bad string") end
+            return s:sub(e + 1, e + len), e + len + 1
+        elseif c == "t" then
+            local t = {}
+            pos = pos + 1
+            while s:sub(pos, pos) ~= "e" do
+                if pos > #s then error("open table") end
+                local k, v
+                k, pos = deser(s, pos, depth + 1)
+                v, pos = deser(s, pos, depth + 1)
+                if k == nil then error("nil key") end
+                t[k] = v
+            end
+            return t, pos + 1
+        end
+        error("bad value at " .. pos)
+    end
+    local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local B64INV = {}
+    for i = 1, 64 do B64INV[B64:sub(i, i)] = i - 1 end
+    local function encode64(s)
+        local out = {}
+        for i = 1, #s, 3 do
+            local a, b, c = s:byte(i, i + 2)
+            local n = a * 65536 + (b or 0) * 256 + (c or 0)
+            local q = { math.floor(n / 262144) % 64, math.floor(n / 4096) % 64, math.floor(n / 64) % 64, n % 64 }
+            out[#out + 1] = B64:sub(q[1] + 1, q[1] + 1) .. B64:sub(q[2] + 1, q[2] + 1)
+                .. (b and B64:sub(q[3] + 1, q[3] + 1) or "=") .. (c and B64:sub(q[4] + 1, q[4] + 1) or "=")
+        end
+        return table.concat(out)
+    end
+    local function decode64(s)
+        if #s % 4 ~= 0 then return nil end
+        local out = {}
+        for i = 1, #s, 4 do
+            local chunk = s:sub(i, i + 3)
+            local pad = select(2, chunk:gsub("=", ""))
+            if pad > 2 or (pad > 0 and i + 3 < #s) or chunk:find("=[^=]") then return nil end
+            local n = 0
+            for j = 1, 4 do
+                local ch = chunk:sub(j, j)
+                local v = ch == "=" and 0 or B64INV[ch]
+                if not v then return nil end
+                n = n * 64 + v
+            end
+            local bytes = string.char(math.floor(n / 65536) % 256, math.floor(n / 256) % 256, n % 256)
+            out[#out + 1] = bytes:sub(1, 3 - pad)
+        end
+        return table.concat(out)
+    end
+    STUB.encodingCalls = 0
+    _G.C_EncodingUtil = {
+        SerializeCBOR = function(v)
+            STUB.encodingCalls = STUB.encodingCalls + 1
+            local out = {}
+            ser(v, out, 0)
+            return "CB1" .. table.concat(out)
+        end,
+        DeserializeCBOR = function(s)
+            if type(s) ~= "string" or s:sub(1, 3) ~= "CB1" then error("not CBOR") end
+            local v, pos = deser(s, 4, 0)
+            if pos ~= #s + 1 then error("trailing bytes") end
+            return v
+        end,
+        CompressString = function(s, method) return "DF" .. tostring(method or 0) .. ":" .. s end,
+        DecompressString = function(s, method)
+            local mark = "DF" .. tostring(method or 0) .. ":"
+            if type(s) ~= "string" or s:sub(1, #mark) ~= mark then return nil end
+            return s:sub(#mark + 1)
+        end,
+        EncodeBase64 = function(s) return encode64(s) end,
+        DecodeBase64 = function(s) return decode64(s) end,
+    }
+end
+
+-- Any value as Lua source ("return " .. STUB.dump(v) gives it back): tables with sorted keys,
+-- functions and cycles as nil. The multi-client runner hands tables between runtimes with it.
+function STUB.dump(v, seen)
+    local t = type(v)
+    if t == "string" then return ("%q"):format(v):gsub("\r", "\\r"):gsub("\n", "\\n") end
+    if t == "number" then
+        if v ~= v then return "(0/0)" end
+        if v == math.huge then return "math.huge" end
+        if v == -math.huge then return "-math.huge" end
+        return ("%.17g"):format(v)
+    end
+    if t == "boolean" then return tostring(v) end
+    if t ~= "table" then return "nil" end
+    seen = seen or {}
+    if seen[v] then return "nil" end
+    seen[v] = true
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys, function(a, b)
+        if type(a) ~= type(b) then return type(a) < type(b) end
+        if type(a) == "number" or type(a) == "string" then return a < b end
+        return tostring(a) < tostring(b)
+    end)
+    local parts = {}
+    for _, k in ipairs(keys) do
+        local kt = type(k)
+        if kt == "string" or kt == "number" or kt == "boolean" then
+            parts[#parts + 1] = "[" .. STUB.dump(k) .. "]=" .. STUB.dump(v[k], seen)
+        end
+    end
+    seen[v] = nil
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+
+-- The guild roster: STUB.guild = { { name, class (token), online, rank } } (rank: rank order, 1 =
+-- guild master, default 3); requests are counted.
 STUB.guild, STUB.guildRequests = {}, 0
 C_GuildInfo.GuildRoster = function() STUB.guildRequests = STUB.guildRequests + 1 end
+C_GuildInfo.IsGuildOfficer = function() return STUB.officer and true or false end
+-- Rank permissions: STUB.rankFlags[rank] = { [flag] = true } (22 is "officer rank"); every other
+-- flag is false. Calls are counted.
+STUB.rankFlags, STUB.rankFlagCalls = {}, 0
+C_GuildInfo.GuildControlGetRankFlags = function(rank)
+    STUB.rankFlagCalls = STUB.rankFlagCalls + 1
+    local out = {}
+    for i = 1, 24 do out[i] = false end
+    for k, v in pairs(STUB.rankFlags[rank] or {}) do out[k] = v end
+    return out
+end
+STUB.rankNames = { "Gildenmeister", "Offizier", "Veteran", "Mitglied", "Rekrut" }
+_G.GuildControlGetNumRanks = function() return #STUB.rankNames end
+_G.GuildControlGetRankName = function(i) return STUB.rankNames[i] end
+-- The guild as a club (C_Club): one club id while in a guild, its members from STUB.guild. Calls of
+-- GetClubMembers and GetMemberInfo are counted (STUB.clubCalls).
+STUB.clubCalls = 0
+_G.C_Club = {
+    GetGuildClubId = function() if not IsInGuild() then return nil end return 77 end,
+    GetClubMembers = function(club)
+        STUB.clubCalls = STUB.clubCalls + 1
+        local out = {}
+        if club ~= 77 then return out end
+        for i = 1, #STUB.guild do out[i] = 1000 + i end
+        return out
+    end,
+    GetMemberInfo = function(club, id)
+        STUB.clubCalls = STUB.clubCalls + 1
+        local m = club == 77 and STUB.guild[id - 1000]
+        if not m then return nil end
+        return { isSelf = m.name == STUB.player, memberId = id, name = m.name, guildRankOrder = m.rank or 3,
+                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1 }
+    end,
+}
 _G.GetNumGuildMembers = function()
     local online = 0
     for _, m in ipairs(STUB.guild) do if m.online ~= false then online = online + 1 end end
@@ -143,7 +391,8 @@ end
 _G.GetGuildRosterInfo = function(i)
     local m = STUB.guild[i]
     if not m then return nil end
-    return m.name, "Mitglied", 2, 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
+    local rank = m.rank or 3
+    return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
 end
 -- Friends: STUB.friends = { { name, className (localized), online } }.
 STUB.friends = {}
@@ -362,7 +611,9 @@ _G.LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d."
 _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
-_G.Enum = { TooltipDataType = { Item = 0 }, LootMethod = { Freeforall = 0, Masterlooter = 2 }, BankType = { Character = 0 } }
+Enum.TooltipDataType = { Item = 0 }
+Enum.LootMethod = { Freeforall = 0, Masterlooter = 2 }
+Enum.BankType = { Character = 0 }
 
 -- The tooltip data processor: every registered post call is kept in STUB.tdp ({ kind, fn }); the
 -- shown item comes from TooltipUtil.GetDisplayedItem (here the tooltip's GetItem).

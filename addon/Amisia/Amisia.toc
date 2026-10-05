@@ -14,6 +14,7 @@ Core.lua
 Names.lua
 Mats.lua
 Chat.lua
+Comm.lua
 Widgets.lua
 Awards.lua
 Rolls.lua
