@@ -211,9 +211,14 @@ local function firstRaidOfNight(night, instanceID)
     return true
 end
 
+-- The raid night ("YYYY-MM-DD") a moment belongs to (record.nightStart).
+function ns.NightOf(t)
+    return date("%Y-%m-%d", (t or time()) - nightStart())
+end
+
 local function newSession(zone, instanceID)
     local t = time()
-    local night = date("%Y-%m-%d", t - nightStart())
+    local night = ns.NightOf(t)
     local s = {
         id = date("%Y%m%d%H%M%S", t) .. "-" .. tostring(instanceID or 0),
         start = t,
@@ -237,6 +242,8 @@ local function newSession(zone, instanceID)
     while #DB.sessions > (ns.Get("record.keepSessions") or 60) do
         table.remove(DB.sessions, 1)
     end
+    -- the bench gathered tonight before the raid
+    if ns.TakeBenchNext then ns.TakeBenchNext(s) end
     return s
 end
 
@@ -257,8 +264,14 @@ local function noteMember(s, name, class, t)
         m.last = t
         if class and class ~= "" then m.class = class end
     else
-        local after = lateAfter(s)
-        s.members[name] = { class = class or "", first = t, last = t, late = (after and t > after) or nil }
+        -- whoever comes from the bench of this raid is never late
+        local benched = s.bench and next(s.bench) ~= nil and ns.IsBenched and ns.IsBenched(s, name)
+        if benched then
+            s.members[name] = { class = class or "", first = t, last = t, bench = true }
+        else
+            local after = lateAfter(s)
+            s.members[name] = { class = class or "", first = t, last = t, late = (after and t > after) or nil }
+        end
     end
 end
 ns.NoteMember = noteMember
@@ -336,6 +349,7 @@ local function evaluate()
             local s = findReusable(instanceID)
             if s then
                 active = s
+                if ns.TakeBenchNext then ns.TakeBenchNext(s) end
                 msg(("Aufnahme fortgesetzt: %s (%s)."):format(s.zone, s.date))
             else
                 active = newSession(zone, instanceID)
@@ -877,6 +891,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         end
         -- open boss attempts of an earlier session, kills still waiting for their names
         if ns.RaidLogLoaded then ns.RaidLogLoaded() end
+        -- a bench gathered for an earlier night falls away
+        if ns.BenchLoaded then ns.BenchLoaded() end
         -- awards of 1.4 get their ids, and the export marks of 1.4 are carried over
         ns.MigrateAwards(DB)
         -- soft-reserve lists of 1.5 get data model 2

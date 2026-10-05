@@ -561,9 +561,7 @@ end
 ---------------------------------------------------------------------------
 -- Chat: reminders, the raid summary and !sr for raiders without the addon
 ---------------------------------------------------------------------------
-local REPLY_GAP = 15       -- seconds between two answers to one sender
-local REPLY_PER_MIN = 20   -- answers a minute in all
-local REPLY_LINES = 3      -- lines of one answer
+local REPLY_LINES = 3     -- lines of one answer
 local SUMMARY_LINES = 2
 local REMIND_TEXT = "Amisia: Du hast für heute noch nichts reserviert."
 
@@ -702,10 +700,6 @@ function ns.SoftResCheckLines()
 end
 
 -- !sr answers ------------------------------------------------------------
-local lastReply = {}   -- lower-case sender -> GetTime() of the last answer
-local replies = {}     -- GetTime() of every answer in the last minute
-local warnedBusy
-
 -- A link to put into the chat: the client's link when it knows the item, else the name in brackets.
 local function chatLink(id)
     local _, link = GetItemInfo(id)
@@ -778,23 +772,8 @@ local function onSoftResCommand(sender, rest)
     if not sr or not ns.Get("softres.chat") or not ns.IsLootLead() then return end
     local name = ns.FullName(sender)
     if not name or not inGroup(name) then return end
-    local t = GetTime()
-    local key = name:lower()
-    if lastReply[key] and t - lastReply[key] < REPLY_GAP then return end
-    local keep = {}
-    for _, at in ipairs(replies) do
-        if t - at < 60 then keep[#keep + 1] = at end
-    end
-    replies = keep
-    if #replies >= REPLY_PER_MIN then
-        if not warnedBusy or t - warnedBusy >= 60 then
-            warnedBusy = t
-            ns.msg("Viele !sr-Anfragen: weitere bleiben bis zu einer Minute unbeantwortet.")
-        end
-        return
-    end
-    lastReply[key] = t
-    replies[#replies + 1] = t
+    -- one answer per sender every 15 s, 20 a minute (Chat.lua)
+    if not ns.ReplyGate("sr", name:lower()) then return end
     for _, line in ipairs(answer(sr, name, rest or "")) do
         ns.Say(line, "WHISPER", sender, { ttl = 120 })
     end

@@ -39,13 +39,14 @@ local function assign(a, src)
     for k, v in pairs(src) do a[k] = v end
 end
 
--- A note without bars and line breaks, trimmed and cut to NOTE_MAX bytes without splitting a
--- character; nil when nothing is left.
-local function cleanNote(text)
+-- A note without bars and line breaks, trimmed and cut to max bytes (default NOTE_MAX) without
+-- splitting a character; nil when nothing is left.
+local function cleanNote(text, max)
     if type(text) ~= "string" then return nil end
+    max = tonumber(max) or NOTE_MAX
     text = text:gsub("[\r\n]+", " "):gsub("|", ""):match("^%s*(.-)%s*$")
-    if #text > NOTE_MAX then
-        local cut = NOTE_MAX
+    if #text > max then
+        local cut = max
         -- a byte 10xxxxxx continues a character: step back to the character's start
         while cut > 0 do
             local b = text:byte(cut + 1)

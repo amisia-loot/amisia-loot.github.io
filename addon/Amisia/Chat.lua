@@ -231,7 +231,7 @@ end)
 local commands = {}   -- lower-case word -> fn(sender, rest, chan)
 
 -- fn gets the sender as the client gives it (answer to that, not to a rebuilt name), the rest of
--- the line and "WHISPER", "RAID" or "PARTY".
+-- the line and "WHISPER", "RAID", "PARTY" or "GUILD".
 function ns.RegisterChatCommand(word, fn)
     commands[word:lower()] = fn
 end
@@ -253,6 +253,47 @@ local function onCommand(chan, text, sender)
 end
 
 for event, chan in pairs({ CHAT_MSG_WHISPER = "WHISPER", CHAT_MSG_RAID = "RAID", CHAT_MSG_RAID_LEADER = "RAID",
-                           CHAT_MSG_PARTY = "PARTY", CHAT_MSG_PARTY_LEADER = "PARTY" }) do
+                           CHAT_MSG_PARTY = "PARTY", CHAT_MSG_PARTY_LEADER = "PARTY", CHAT_MSG_GUILD = "GUILD" }) do
     ns.OnEvent(event, function(text, sender) onCommand(chan, text, sender) end)
+end
+
+---------------------------------------------------------------------------
+-- Answer limits for "!word" commands
+---------------------------------------------------------------------------
+local GATE_GAP = 15       -- seconds between two answers to one sender
+local GATE_PER_MIN = 20   -- answers a minute per command word
+local gates = {}          -- word -> { last = { key -> GetTime() }, times = { GetTime() }, warned }
+
+-- Whether an answer to key (a sender) for word may go out now: one per key every 15 s, 20 a minute
+-- per word, otherwise quiet; the first refusal by the minute limit notes it once a minute in the
+-- own chat. A true answer counts as sent.
+function ns.ReplyGate(word, key)
+    word = tostring(word or "?")
+    key = tostring(key or ""):lower()
+    local g = gates[word]
+    if not g then
+        g = { last = {}, times = {} }
+        gates[word] = g
+    end
+    local t = GetTime()
+    if g.last[key] and t - g.last[key] < GATE_GAP then return false end
+    local keep = {}
+    for _, at in ipairs(g.times) do
+        if t - at < 60 then keep[#keep + 1] = at end
+    end
+    g.times = keep
+    if #keep >= GATE_PER_MIN then
+        if not g.warned or t - g.warned >= 60 then
+            g.warned = t
+            ns.msg(("Viele !%s-Anfragen: weitere bleiben bis zu einer Minute unbeantwortet."):format(word))
+        end
+        return false
+    end
+    -- senders whose gap is over are forgotten
+    for k, at in pairs(g.last) do
+        if t - at >= GATE_GAP then g.last[k] = nil end
+    end
+    g.last[key] = t
+    keep[#keep + 1] = t
+    return true
 end

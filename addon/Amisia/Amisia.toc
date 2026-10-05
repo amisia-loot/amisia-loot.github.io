@@ -21,6 +21,7 @@ AwardDialog.lua
 SoftRes.lua
 LootAnnounce.lua
 RaidLog.lua
+Bench.lua
 Scan.lua
 Collect.lua
 GearData.lua [AllowLoadGameType camelot]

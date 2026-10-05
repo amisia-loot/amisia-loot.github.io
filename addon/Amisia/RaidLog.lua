@@ -30,11 +30,6 @@ local function plainText(v)
     return nil
 end
 
--- A boss name as stored: no bars or line breaks, at most 60 bytes.
-local function cleanName(v)
-    return ns.CleanNote(plainText(v))
-end
-
 local function remember(event, text)
     trace[#trace + 1] = { t = time(), event = event, text = text }
     while #trace > TRACE_MAX do table.remove(trace, 1) end
