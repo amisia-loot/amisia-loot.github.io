@@ -1,12 +1,36 @@
--- Amisia widgets: the building blocks the pages share, in the Amisia look (dark purple, gold).
--- Every control is built from plain frames and textures, so it looks the same everywhere.
+-- Amisia widgets: the building blocks the pages share, in the look of Forever's own windows (the
+-- profession window): the client's general templates (Blizzard_SharedXML, always loaded) where it
+-- has one, the client's atlases where Amisia draws itself. When a template or an atlas is missing
+-- (a patch renamed it), each widget falls back to the flat look of before (dark, gold) and stays
+-- usable; nothing is reported.
 local ADDON, ns = ...
 
 local W = {}
 ns.W = W
 W.GOLD = { 0.89, 0.72, 0.34 }
 W.BG = { 0.055, 0.04, 0.08, 0.96 }
+-- the client's title bar: content starts at least this far below a window's top edge
+W.TITLE_H = 24
 local GOLD = W.GOLD
+
+-- the atlas exists in this client
+local function hasAtlas(name)
+    return C_Texture ~= nil and C_Texture.GetAtlasInfo ~= nil and C_Texture.GetAtlasInfo(name) ~= nil
+end
+W.HasAtlas = hasAtlas
+
+-- A frame that inherits a template of the client, or nil. probe(frame) checks the parts the caller
+-- needs: a client that only logs an unknown template would hand back a bare frame.
+local function inherit(kind, name, parent, template, probe)
+    local ok, f = pcall(CreateFrame, kind, name, parent, template)
+    if not ok or not f then return nil end
+    if probe and not probe(f) then
+        f:Hide()
+        f:ClearAllPoints()
+        return nil
+    end
+    return f
+end
 
 function W.Text(parent, template, width, wrap)
     local fs = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
@@ -41,36 +65,141 @@ function W.SetBorderColor(edges, r, g, b, a)
     for _, e in ipairs(edges) do e:SetColorTexture(r, g, b, a) end
 end
 
-function W.Button(parent, label, width, onClick)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    b:SetSize(width or 120, 22)
+-- The input border of the client's edit boxes (InputBoxTemplate: common-search-border-left,
+-- -middle, -right) on frame f, all inside its bounds; the flat field of before without the atlases.
+local function fieldBorder(f)
+    if not hasAtlas("common-search-border-left") then
+        W.Flat(f, 0, 0, 0, 0.5)
+        f.edges = W.Border(f, 1, 1, 1, 0.2)
+        return
+    end
+    local l = f:CreateTexture(nil, "BACKGROUND")
+    l:SetAtlas("common-search-border-left")
+    l:SetWidth(8)
+    l:SetPoint("TOPLEFT")
+    l:SetPoint("BOTTOMLEFT")
+    local r = f:CreateTexture(nil, "BACKGROUND")
+    r:SetAtlas("common-search-border-right")
+    r:SetWidth(8)
+    r:SetPoint("TOPRIGHT")
+    r:SetPoint("BOTTOMRIGHT")
+    local m = f:CreateTexture(nil, "BACKGROUND")
+    m:SetAtlas("common-search-border-middle")
+    m:SetPoint("TOPLEFT", l, "TOPRIGHT")
+    m:SetPoint("BOTTOMRIGHT", r, "BOTTOMLEFT")
+    f.Left, f.Middle, f.Right = l, m, r
+end
+
+-- The red button of the profession window (SharedButtonSmallTemplate: 128-RedButton in three
+-- slices that follow the height). The template sets OnMouseDown/Up, OnShow, OnEnable/Disable and
+-- OnSizeChanged itself: callers only set OnClick (and a tooltip). opts.height: 20 for buttons in
+-- rows. Without the template the client's old panel button.
+function W.Button(parent, label, width, onClick, opts)
+    local b = inherit("Button", nil, parent, "SharedButtonSmallTemplate", function(f) return f.Left and f.Right and f.Center end)
+        or inherit("Button", nil, parent, "UIPanelButtonTemplate")
+    if not b then
+        b = CreateFrame("Button", nil, parent)
+        if b.SetNormalFontObject then b:SetNormalFontObject(GameFontNormal) end
+        W.Flat(b, 0.5, 0.08, 0.06, 0.9)
+        W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    end
+    b:SetSize(width or 120, (opts and opts.height) or 22)
     b:SetText(label or "")
     if onClick then b:SetScript("OnClick", onClick) end
     return b
 end
 
--- A flat toggle chip: gold when on.
+-- The atlases of the client's filter button (WowStyle1FilterDropdown, Blizzard_Menu MenuConstants).
+local CHIP = { normal = "common-dropdown-b-button", hover = "common-dropdown-b-button-hover",
+               pressed = "common-dropdown-b-button-pressed", pressedhover = "common-dropdown-b-button-pressedhover",
+               open = "common-dropdown-b-button-open", disabled = "common-dropdown-b-button-disabled" }
+W.CHIP_ATLAS = CHIP
+
+-- A toggle chip in the look of the client's filter button: open and gold text when on, the normal
+-- button and grey text when off; hover, press and disabled as the client shows them. The atlas
+-- lies on the chip itself (the client's sits 4 px outside, chips 3-4 px apart would touch).
+-- Without the atlas the flat chip of before (gold frame).
 function W.Chip(parent, label, width, onClick)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 60, 20)
-    b.bg = W.Flat(b, 1, 1, 1, 0.06)
-    b.edges = W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.35)
     b.label = W.Text(b, "GameFontHighlightSmall")
     b.label:SetPoint("CENTER")
     b.label:SetJustifyH("CENTER")
     b.label:SetText(label or "")
-    local hl = b:CreateTexture(nil, "HIGHLIGHT")
-    hl:SetAllPoints()
-    hl:SetColorTexture(1, 1, 1, 0.08)
+    local styled = hasAtlas(CHIP.normal)
+    if styled then
+        b.bg = b:CreateTexture(nil, "BACKGROUND")
+        b.bg:SetAllPoints()
+    else
+        b.bg = W.Flat(b, 1, 1, 1, 0.06)
+        b.edges = W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.35)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.08)
+    end
+    function b:UpdateChip()
+        if styled then
+            local s
+            if self.IsEnabled and not self:IsEnabled() then s = CHIP.disabled
+            elseif self.chipDown and self.chipOver then s = CHIP.pressedhover
+            elseif self.chipOver then s = CHIP.hover
+            elseif self.chipDown then s = CHIP.pressed
+            elseif self.on then s = CHIP.open
+            else s = CHIP.normal end
+            self.bg:SetAtlas(s)
+        else
+            local on = self.on
+            self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
+            W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
+        end
+    end
     function b:SetOn(on)
         self.on = on
-        self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
-        self.label:SetTextColor(on and 1 or 0.6, on and 0.92 or 0.6, on and 0.7 or 0.6)
-        W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
+        if on then
+            self.label:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+        else
+            self.label:SetTextColor(0.6, 0.6, 0.6)
+        end
+        self:UpdateChip()
     end
+    -- the hover look; W.Tooltip keeps it through this
+    function b:SetOver(on)
+        self.chipOver = on
+        self:UpdateChip()
+    end
+    b:SetScript("OnEnter", function(self) self:SetOver(true) end)
+    b:SetScript("OnLeave", function(self) self:SetOver(false) end)
+    b:SetScript("OnMouseDown", function(self) self.chipDown = true self:UpdateChip() end)
+    b:SetScript("OnMouseUp", function(self) self.chipDown = false self:UpdateChip() end)
+    b:SetScript("OnEnable", function(self) self:UpdateChip() end)
+    b:SetScript("OnDisable", function(self) self.chipDown = false self:UpdateChip() end)
     b:SetOn(true)
     if onClick then b:SetScript("OnClick", onClick) end
     return b
+end
+
+-- A chip that cycles through its values on click.
+function W.Choice(parent, width, onChange)
+    local c = W.Chip(parent, "", width or 120)
+    function c:SetValues(values) self.values = values end
+    function c:SetValue(v)
+        self.current = v
+        for _, x in ipairs(self.values or {}) do
+            if x[1] == v then self.label:SetText(x[2]) end
+        end
+    end
+    c:SetScript("OnClick", function(self)
+        local vals, idx = self.values or {}, 0
+        for i, x in ipairs(vals) do
+            if x[1] == self.current then idx = i end
+        end
+        local nextValue = vals[idx % math.max(1, #vals) + 1]
+        if nextValue then
+            self:SetValue(nextValue[1])
+            if onChange then onChange(nextValue[1]) end
+        end
+    end)
+    return c
 end
 
 -- The client's dropdown arrow button (the WowStyle1 dropdown of Blizzard_Menu): a dark square with
@@ -118,6 +247,11 @@ function W.ArrowButton(parent, dir, size, onClick)
     function b:UpdateArrow()
         self.arrow:SetAtlas(arrowState(self), false)
     end
+    -- the hover look; W.Tooltip keeps it through this
+    function b:SetOver(on)
+        self.arrowOver = on
+        self:UpdateArrow()
+    end
     b:SetScript("OnEnter", function(self) self.arrowOver = true self:UpdateArrow() end)
     b:SetScript("OnLeave", function(self) self.arrowOver = false self:UpdateArrow() end)
     b:SetScript("OnMouseDown", function(self) self.arrowDown = true self:UpdateArrow() end)
@@ -131,17 +265,38 @@ end
 
 function W.Tooltip(frame, title, text)
     frame:SetScript("OnEnter", function(self)
+        if self.SetOver then self:SetOver(true) end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(title, 1, 0.82, 0)
         if text and text ~= "" then GameTooltip:AddLine(text, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
-    frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame:SetScript("OnLeave", function(self)
+        if self.SetOver then self:SetOver(false) end
+        GameTooltip:Hide()
+    end)
 end
 
--- A check box: a gold square when on.
+-- The check box of the profession window (MinimalCheckboxTemplate). A CheckButton turns itself
+-- over before OnClick runs; OnClick only reads the state. The field checked mirrors it. Without
+-- the template the gold square of before.
 function W.Toggle(parent, onChange)
-    local b = CreateFrame("Button", nil, parent)
+    local b = inherit("CheckButton", nil, parent, "MinimalCheckboxTemplate", function(f) return f.SetChecked and f.GetChecked end)
+    if b then
+        b:SetSize(18, 18)
+        local setChecked = b.SetChecked
+        function b:SetChecked(on)
+            self.checked = on and true or false
+            setChecked(self, self.checked)
+        end
+        b:SetScript("OnClick", function(self)
+            self.checked = self:GetChecked() and true or false
+            if onChange then onChange(self.checked) end
+        end)
+        b:SetChecked(false)
+        return b
+    end
+    b = CreateFrame("Button", nil, parent)
     b:SetSize(18, 18)
     W.Flat(b, 0, 0, 0, 0.5)
     W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.6)
@@ -162,16 +317,22 @@ function W.Toggle(parent, onChange)
     return b
 end
 
--- A number with minus and plus; shift steps ten times as far, the mouse wheel steps too.
+-- A number with arrow buttons left and right, as the profession window's count field; shift steps
+-- ten times as far, the mouse wheel steps too. The value sits in a field with the input border.
 function W.Stepper(parent, width, onChange)
     local f = CreateFrame("Frame", nil, parent)
     f:SetSize(width or 120, 20)
     f.min, f.max, f.step = 0, 100, 1
-    f.minus = W.Chip(f, "-", 22)
+    f.minus = W.ArrowButton(f, "left", 20)
     f.minus:SetPoint("LEFT")
-    f.plus = W.Chip(f, "+", 22)
+    f.plus = W.ArrowButton(f, "right", 20)
     f.plus:SetPoint("RIGHT")
-    f.value = W.Text(f, "GameFontHighlightSmall")
+    f.field = CreateFrame("Frame", nil, f)
+    f.field:SetHeight(20)
+    f.field:SetPoint("LEFT", f.minus, "RIGHT", 2, 0)
+    f.field:SetPoint("RIGHT", f.plus, "LEFT", -2, 0)
+    fieldBorder(f.field)
+    f.value = W.Text(f.field, "ChatFontNormal")
     f.value:SetPoint("CENTER")
     f.value:SetJustifyH("CENTER")
     function f:Configure(min, max, step, fmt)
@@ -196,20 +357,14 @@ function W.Stepper(parent, width, onChange)
     return f
 end
 
--- A one-line edit box on a dark field; Enter or leaving the box hands the text to onCommit once.
--- With restore, Escape puts back what the box held when it took the focus, without a commit.
-local function editBox(parent, width, justify, onCommit, restore)
-    local e = CreateFrame("EditBox", nil, parent)
-    e:SetSize(width or 60, 20)
-    e:SetAutoFocus(false)
-    e:SetFontObject(ChatFontNormal)
-    e:SetJustifyH(justify)
-    e:SetTextInsets(4, 4, 0, 0)
-    W.Flat(e, 0, 0, 0, 0.5)
-    W.Border(e, 1, 1, 1, 0.2)
+-- Enter or leaving box e hands its text to onCommit once. With restore, Escape puts back what the
+-- box held when it took the focus, without a commit. hook: the focus scripts are added to the
+-- template's (a search box shows its clear button and hint through them) instead of replacing them.
+local function wireCommit(e, onCommit, restore, hook)
     local function commit(self)
         if self.committing then return end
         self.committing = true
+        self.lastCommit = self:GetText()
         if onCommit then onCommit(self:GetText()) end
         self.committing = false
     end
@@ -219,14 +374,21 @@ local function editBox(parent, width, justify, onCommit, restore)
         self:ClearFocus()
         self.committing = false
     end
+    local function before(self) self.before = self:GetText() end
     -- the focus goes first, so a refresh from the commit may write the stored value back into the box
     e:SetScript("OnEnterPressed", function(self)
         leave(self)
         commit(self)
     end)
-    e:SetScript("OnEditFocusLost", commit)
+    if hook then
+        e:HookScript("OnEditFocusLost", commit)
+        e:HookScript("OnEditFocusGained", before)
+    else
+        e:SetScript("OnEditFocusLost", commit)
+        -- replaces the template's (it would mark the whole text)
+        e:SetScript("OnEditFocusGained", before)
+    end
     if restore then
-        e:SetScript("OnEditFocusGained", function(self) self.before = self:GetText() end)
         e:SetScript("OnEscapePressed", function(self)
             if self.before ~= nil then self:SetText(self.before) end
             leave(self)
@@ -234,6 +396,29 @@ local function editBox(parent, width, justify, onCommit, restore)
     else
         e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     end
+    return commit
+end
+
+-- A one-line edit box with the client's input border (InputBoxTemplate); its left edge, which the
+-- template puts 5 px outside the box, and the text stay inside the box. Without the template the
+-- dark field of before.
+local function editBox(parent, width, justify, onCommit, restore)
+    local e = inherit("EditBox", nil, parent, "InputBoxTemplate", function(f) return f.Left end)
+    if e then
+        e.Left:ClearAllPoints()
+        e.Left:SetPoint("LEFT", 0, 0)
+        e:SetTextInsets(6, 4, 0, 0)
+    else
+        e = CreateFrame("EditBox", nil, parent)
+        W.Flat(e, 0, 0, 0, 0.5)
+        W.Border(e, 1, 1, 1, 0.2)
+        e:SetTextInsets(4, 4, 0, 0)
+    end
+    e:SetSize(width or 60, 20)
+    e:SetAutoFocus(false)
+    e:SetFontObject(ChatFontNormal)
+    e:SetJustifyH(justify)
+    wireCommit(e, onCommit, restore, false)
     return e
 end
 
@@ -247,38 +432,152 @@ function W.LineEdit(parent, width, onCommit)
     return editBox(parent, width or 150, "LEFT", onCommit, true)
 end
 
--- A chip that cycles through its values on click.
-function W.Choice(parent, width, onChange)
-    local c = W.Chip(parent, "", width or 120)
-    function c:SetValues(values) self.values = values end
-    function c:SetValue(v)
-        self.current = v
-        for _, x in ipairs(self.values or {}) do
-            if x[1] == v then self.label:SetText(x[2]) end
-        end
+-- The client's search box (SearchBoxTemplate: magnifying glass, clear button, a grey hint while
+-- empty; hint defaults to the client's word for search). It commits like W.LineEdit: Enter or
+-- leaving the box once, Escape restores. The template's focus and text scripts stay (hooked); its
+-- Enter and Escape only drop the focus, so the box's own take their place (a hook would come too
+-- late for Escape to restore without a commit). The clear button commits the empty text when the
+-- box did not have the focus. Without the template a line edit with the hint.
+function W.SearchBox(parent, width, onCommit, hint)
+    hint = hint or SEARCH or "Suchen"
+    local e = inherit("EditBox", nil, parent, "SearchBoxTemplate", function(f) return f.Left and f.Instructions and f.clearButton end)
+    if not e then
+        e = W.LineEdit(parent, width, onCommit)
+        e.Instructions = W.Text(e, "GameFontDisableSmall")
+        e.Instructions:SetPoint("LEFT", 6, 0)
+        e.Instructions:SetPoint("RIGHT", -4, 0)
+        e.Instructions:SetText(hint)
+        e:HookScript("OnTextChanged", function(self) self.Instructions:SetShown(self:GetText() == "") end)
+        return e
     end
-    c:SetScript("OnClick", function(self)
-        local vals, idx = self.values or {}, 0
-        for i, x in ipairs(vals) do
-            if x[1] == self.current then idx = i end
-        end
-        local nextValue = vals[idx % math.max(1, #vals) + 1]
-        if nextValue then
-            self:SetValue(nextValue[1])
-            if onChange then onChange(nextValue[1]) end
-        end
+    e:SetSize(width or 150, 20)
+    e:SetAutoFocus(false)
+    e.Left:ClearAllPoints()
+    e.Left:SetPoint("LEFT", 0, 0)
+    e.Instructions:SetText(hint)
+    local commit = wireCommit(e, onCommit, true, true)
+    e.clearButton:HookScript("OnClick", function()
+        if e.lastCommit ~= e:GetText() then commit(e) end
     end)
-    return c
+    return e
 end
 
--- A multi-line edit box in a scroll frame, on a dark field.
+-- Forever's inset (common-insideframe, as the profession window's detail field and the character
+-- frame have it): a bevelled frame without a ground of its own, the window's shows through.
+-- inset.fill(atlas) or inset.fill(r, g, b, a) puts a ground under it. Without the atlas a thin
+-- gold frame.
+function W.Inset(parent)
+    local f = CreateFrame("Frame", nil, parent)
+    if hasAtlas("common-insideframe") then
+        f.border = f:CreateTexture(nil, "BORDER")
+        f.border:SetAllPoints()
+        f.border:SetAtlas("common-insideframe")
+    else
+        f.edges = W.Border(f, GOLD[1], GOLD[2], GOLD[3], 0.3)
+    end
+    f.fill = function(a, g, b, alpha)
+        if not f.ground then
+            f.ground = f:CreateTexture(nil, "BACKGROUND")
+            f.ground:SetAllPoints()
+        end
+        if type(a) == "string" then
+            if hasAtlas(a) then f.ground:SetAtlas(a) else f.ground:Hide() end
+        else
+            f.ground:SetColorTexture(a or 0, g or 0, b or 0, alpha or 1)
+        end
+        return f.ground
+    end
+    return f
+end
+
+-- The glow of a chosen row (the recipe list's Professions_Recipe_Active), stretched over the row,
+-- hidden; the gold area of before when the atlas is missing, so a choice stays visible.
+function W.SelectBar(row)
+    if hasAtlas("Professions_Recipe_Active") then
+        local t = row:CreateTexture(nil, "OVERLAY", nil, 2)
+        t:SetAllPoints()
+        t:SetAtlas("Professions_Recipe_Active")
+        t:Hide()
+        return t
+    end
+    local t = W.Flat(row, GOLD[1], GOLD[2], GOLD[3], 0.22, "BORDER")
+    t:Hide()
+    return t
+end
+
+-- A section header as in the profession window's recipe list (ListHeaderVisualTemplate with
+-- ListHeaderCodeTemplate): gold text on the dark bar, 25 high, a minus to collapse when
+-- collapsible. A click turns the state and hands it to onToggle(collapsed); h:SetCollapsed(on)
+-- shows a state. The click goes through the template's click handler, so its scripts stay.
+function W.SectionHeader(parent, label, collapsible, onToggle)
+    local h = inherit("Button", nil, parent, "ListHeaderVisualTemplate, ListHeaderCodeTemplate",
+        function(f) return f.ButtonText and f.SetClickHandler and f.SetHeaderText end)
+    local function toggle(self)
+        if not collapsible then return end
+        self:SetCollapsed(not self.collapsed)
+        if onToggle then onToggle(self.collapsed) end
+    end
+    if h then
+        h:SetHeight(25)
+        h:SetHeaderText(label or "")
+        if h.SetTitleColor and NORMAL_FONT_COLOR then h:SetTitleColor(false, NORMAL_FONT_COLOR) end
+        if h.CollapseButton and not collapsible then h.CollapseButton:Hide() end
+        function h:SetCollapsed(on)
+            self.collapsed = on and true or false
+            if self.UpdateCollapsedState then self:UpdateCollapsedState(self.collapsed) end
+        end
+        h:SetClickHandler(toggle)
+        h:SetCollapsed(false)
+        return h
+    end
+    h = CreateFrame("Button", nil, parent)
+    h:SetHeight(25)
+    W.Flat(h, GOLD[1], GOLD[2], GOLD[3], 0.12)
+    h.ButtonText = W.Text(h, "GameFontNormal")
+    h.ButtonText:SetPoint("LEFT", 8, 0)
+    h.ButtonText:SetPoint("RIGHT", -24, 0)
+    h.ButtonText:SetText(label or "")
+    h.ButtonText:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+    function h:SetHeaderText(t) self.ButtonText:SetText(t) end
+    function h:SetCollapsed(on) self.collapsed = on and true or false end
+    h:SetScript("OnClick", toggle)
+    h:SetCollapsed(false)
+    return h
+end
+
+-- The client's thin scroll bar (MinimalScrollBar, 8 px) 4 px to the right of scroll frame sf, as a
+-- child of parent; ScrollUtil ties them together (it sets the scroll frame's OnVerticalScroll,
+-- OnScrollRangeChanged and OnMouseWheel). Hidden while everything fits. Without the bar the mouse
+-- wheel scrolls on its own; returns the bar or nil.
+function W.Scroll(sf, parent)
+    parent = parent or sf:GetParent()
+    local bar = ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar
+        and inherit("EventFrame", nil, parent, "MinimalScrollBar", function(f) return f.SetScrollPercentage and f.RegisterCallback end)
+    if bar then
+        bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 4, 0)
+        bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 4, 0)
+        ScrollUtil.InitScrollFrameWithScrollBar(sf, bar)
+        bar:SetHideIfUnscrollable(true)
+        sf:EnableMouseWheel(true)
+        sf.bar = bar
+        return bar
+    end
+    sf:EnableMouseWheel(true)
+    sf:SetScript("OnMouseWheel", function(self, delta)
+        local range = self:GetVerticalScrollRange() or 0
+        self:SetVerticalScroll(math.max(0, math.min(range, (self:GetVerticalScroll() or 0) - delta * 20)))
+    end)
+    return nil
+end
+
+-- A multi-line edit box in a scroll frame, on an inset with a dark ground; the thin bar at the
+-- right edge.
 function W.EditArea(parent)
-    local bg = CreateFrame("Frame", nil, parent)
-    W.Flat(bg, 0, 0, 0, 0.45)
-    W.Border(bg, 1, 1, 1, 0.12)
-    local sf = CreateFrame("ScrollFrame", nil, bg, "UIPanelScrollFrameTemplate")
+    local bg = W.Inset(parent)
+    bg.fill(0, 0, 0, 0.35)
+    local sf = CreateFrame("ScrollFrame", nil, bg)
     sf:SetPoint("TOPLEFT", 6, -6)
-    sf:SetPoint("BOTTOMRIGHT", -28, 6)
+    sf:SetPoint("BOTTOMRIGHT", -16, 6)
     local box = CreateFrame("EditBox", nil, sf)
     box:SetMultiLine(true)
     box:SetMaxLetters(0)
@@ -290,14 +589,15 @@ function W.EditArea(parent)
     sf:SetScrollChild(box)
     bg:EnableMouse(true)
     bg:SetScript("OnMouseDown", function() box:SetFocus() end)
-    bg:SetScript("OnSizeChanged", function(_, w) box:SetWidth(math.max(100, (w or 500) - 40)) end)
+    bg:SetScript("OnSizeChanged", function(_, w) box:SetWidth(math.max(100, (w or 500) - 28)) end)
     bg.box, bg.scroll = box, sf
+    bg.bar = W.Scroll(sf, bg)
     return bg
 end
 
--- Wrapped read-only text that scrolls.
+-- Wrapped read-only text that scrolls; the thin bar sits 4 px right of the scroll frame.
 function W.ScrollText(parent)
-    local sf = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+    local sf = CreateFrame("ScrollFrame", nil, parent)
     local child = CreateFrame("Frame", nil, sf)
     child:SetSize(10, 10)
     sf:SetScrollChild(child)
@@ -305,21 +605,36 @@ function W.ScrollText(parent)
     fs:SetPoint("TOPLEFT")
     fs:SetJustifyV("TOP")
     function sf:SetText(t)
-        local w = math.max(100, (self:GetWidth() or 400) - 24)
+        local w = math.max(100, (self:GetWidth() or 400) - 4)
         fs:SetWidth(w)
         child:SetWidth(w)
         fs:SetText(t or "")
         child:SetHeight((fs:GetStringHeight() or 14) + 8)
     end
     sf.fs = fs
+    W.Scroll(sf, parent)
     return sf
 end
 
 -- A list with a fixed number of visible rows; the mouse wheel scrolls. build(row, i) makes a row's
--- parts once, fill(row, item, index) shows an item in it.
-function W.List(parent, rowCount, rowHeight, build, fill)
+-- parts once, fill(row, item, index) shows an item in it. Rows change their shade faintly and
+-- light up as the recipe list's do. f.bar: the thin scroll bar outside the list on the right
+-- (4 px off, 8 wide), hidden while all items fit; opts.bar = false for a list that never scrolls.
+function W.List(parent, rowCount, rowHeight, build, fill, opts)
     local f = CreateFrame("Frame", nil, parent)
     f.rows, f.items, f.offset, f.rowCount = {}, {}, 0, 0
+    local hover = hasAtlas("Professions_Recipe_Hover")
+    -- the bar shows the position; while the list sets it, its answer is not needed
+    local function syncBar(self)
+        local bar = self.bar
+        if not bar then return end
+        local n, span = #self.items, math.max(0, #self.items - self.rowCount)
+        self.syncing = true
+        bar:SetVisibleExtentPercentage(n > 0 and math.min(1, self.rowCount / n) or 1)
+        bar:SetPanExtentPercentage(span > 0 and 1 / span or 0)
+        bar:SetScrollPercentage(span > 0 and self.offset / span or 0, true)
+        self.syncing = false
+    end
     -- More rows can be added later (Grow); a list never gets shorter.
     function f:Grow(n)
         for i = self.rowCount + 1, n do
@@ -327,16 +642,41 @@ function W.List(parent, rowCount, rowHeight, build, fill)
             r:SetHeight(rowHeight - 1)
             r:SetPoint("TOPLEFT", 0, -(i - 1) * rowHeight)
             r:SetPoint("TOPRIGHT", 0, -(i - 1) * rowHeight)
-            W.Flat(r, 1, 1, 1, (i % 2 == 0) and 0.03 or 0.06)
-            local hl = r:CreateTexture(nil, "HIGHLIGHT")
-            hl:SetAllPoints()
-            hl:SetColorTexture(1, 1, 1, 0.08)
+            r.bg = W.Flat(r, 1, 1, 1, (i % 2 == 0) and 0.045 or 0.025)
+            r.hover = r:CreateTexture(nil, "HIGHLIGHT")
+            r.hover:SetAllPoints()
+            if hover then
+                r.hover:SetAtlas("Professions_Recipe_Hover")
+                r.hover:SetAlpha(0.5)
+            else
+                r.hover:SetColorTexture(1, 1, 1, 0.08)
+            end
             build(r, i)
             self.rows[i] = r
         end
         if n > self.rowCount then
             self.rowCount = n
             self:SetHeight(n * rowHeight)
+            syncBar(self)
+        end
+    end
+    if not (opts and opts.bar == false) then
+        local bar = inherit("EventFrame", nil, f, "MinimalScrollBar", function(b) return b.SetScrollPercentage and b.RegisterCallback end)
+        if bar then
+            bar:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, 0)
+            bar:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 4, 0)
+            bar:SetHideIfUnscrollable(true)
+            bar:RegisterCallback(BaseScrollBoxEvents and BaseScrollBoxEvents.OnScroll or "OnScroll", function(_, pct)
+                if f.syncing then return end
+                local span = #f.items - f.rowCount
+                if span <= 0 then return end
+                local o = math.max(0, math.min(span, math.floor((pct or 0) * span + 0.5)))
+                if o ~= f.offset then
+                    f.offset = o
+                    f:Redraw()
+                end
+            end, f)
+            f.bar = bar
         end
     end
     f:Grow(rowCount)
@@ -356,23 +696,25 @@ function W.List(parent, rowCount, rowHeight, build, fill)
         self.items = list or {}
         self.offset = math.max(0, math.min(self.offset, #self.items - self.rowCount))
         self:Redraw()
+        syncBar(self)
     end
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
         self.offset = math.max(0, math.min(math.max(0, #self.items - self.rowCount), self.offset - delta))
         self:Redraw()
+        syncBar(self)
     end)
+    syncBar(f)
     return f
 end
 
--- An overview card: title, two lines and at most one button.
+-- An overview card: an inset with a gold title, two lines and at most one red button.
 function W.Card(parent, width, height)
-    local c = CreateFrame("Frame", nil, parent)
+    local c = W.Inset(parent)
     c:SetSize(width, height)
-    W.Flat(c, 1, 1, 1, 0.04)
-    W.Border(c, GOLD[1], GOLD[2], GOLD[3], 0.3)
     c.title = W.Text(c, "GameFontNormal", width - 20)
     c.title:SetPoint("TOPLEFT", 10, -8)
+    c.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
     c.line1 = W.Text(c, "GameFontHighlight", width - 20)
     c.line1:SetPoint("TOPLEFT", 10, -28)
     c.line2 = W.Text(c, "GameFontDisableSmall", width - 20, true)
@@ -391,6 +733,29 @@ function W.Card(parent, width, height)
     return c
 end
 
+-- The ground of the client's menus (MenuStyle1Mixin: common-dropdown-bg 10 px wider and 3 px
+-- higher than the menu, alpha 0.925) on frame f; the dark field with a gold frame without it.
+local function menuGround(f)
+    if hasAtlas("common-dropdown-bg") then
+        f.bg = f:CreateTexture(nil, "BACKGROUND")
+        f.bg:SetAtlas("common-dropdown-bg")
+        f.bg:SetPoint("TOPLEFT", -10, 3)
+        f.bg:SetPoint("BOTTOMRIGHT", 10, -3)
+        f.bg:SetAlpha(0.925)
+    else
+        f.bg = W.Flat(f, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
+        f.edges = W.Border(f, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    end
+end
+
+-- The frame level for a panel that opens from widget w: above the window w lives in (its top
+-- frame under UIParent), whose client frame lies at 500 and its title and close button at 510.
+local function levelAbove(w)
+    local top = w
+    while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+    return math.min(9000, math.max(top:GetFrameLevel() or 1, w:GetFrameLevel() or 1) + 520), top
+end
+
 -- A small popup menu under owner; a click runs the entry and closes it. Leaving it for two seconds
 -- or Escape closes it too.
 local menu
@@ -404,8 +769,7 @@ function W.Menu(owner, entries)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetClampedToScreen(true)
         menu:EnableMouse(true)
-        W.Flat(menu, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
-        W.Border(menu, GOLD[1], GOLD[2], GOLD[3], 0.6)
+        menuGround(menu)
         menu.buttons = {}
         if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaMenu") end
         menu:SetScript("OnUpdate", function(self, elapsed)
@@ -428,9 +792,11 @@ function W.Menu(owner, entries)
             b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 20)
             b.label = W.Text(b, "GameFontHighlightSmall", 160)
             b.label:SetPoint("LEFT", 6, 0)
-            local hl = b:CreateTexture(nil, "HIGHLIGHT")
-            hl:SetAllPoints()
-            hl:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.25)
+            -- the client menu's hover (MenuVariants.CreateHighlight)
+            b.hl = b:CreateTexture(nil, "HIGHLIGHT")
+            b.hl:SetAllPoints()
+            b.hl:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+            b.hl:SetBlendMode("ADD")
             menu.buttons[i] = b
         end
         b.label:SetText(e[1])
@@ -450,6 +816,11 @@ function W.Menu(owner, entries)
         menu:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", x / s, y / s)
     else
         menu:SetPoint("TOPRIGHT", owner, "BOTTOMLEFT", 0, 0)
+        -- an owner in a window of the menu's strata: above that window's frame
+        local level, top = levelAbove(owner)
+        if top ~= owner and top.GetFrameStrata and top:GetFrameStrata() == "FULLSCREEN_DIALOG" then
+            menu:SetFrameLevel(level)
+        end
     end
     menu:Show()
     return menu
@@ -488,21 +859,16 @@ local function pickerPanel()
     picker:SetToplevel(true)
     picker:SetClampedToScreen(true)
     picker:EnableMouse(true)
-    W.Flat(picker, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
-    W.Border(picker, GOLD[1], GOLD[2], GOLD[3], 0.6)
+    menuGround(picker)
     if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaPicker") end
 
-    local filter = CreateFrame("EditBox", nil, picker)
+    -- the filter is a search box; Enter and Escape pick and close instead of committing
+    local filter = W.SearchBox(picker, nil, nil, SEARCH or "Suchen")
+    filter:ClearAllPoints()
     filter:SetHeight(20)
     filter:SetPoint("TOPLEFT", 6, -6)
     filter:SetPoint("TOPRIGHT", -6, -6)
-    filter:SetAutoFocus(false)
-    filter:SetFontObject(ChatFontNormal)
-    filter:SetJustifyH("LEFT")
-    filter:SetTextInsets(4, 4, 0, 0)
-    W.Flat(filter, 0, 0, 0, 0.5)
-    W.Border(filter, 1, 1, 1, 0.2)
-    filter:SetScript("OnTextChanged", function() picker:Fill(false) end)
+    filter:HookScript("OnTextChanged", function() picker:Fill(false) end)
     filter:SetScript("OnEscapePressed", function() picker:Hide() end)
     filter:SetScript("OnEnterPressed", function()
         local real, free = {}, nil
@@ -533,8 +899,9 @@ local function pickerPanel()
             r.text:SetTextColor(1, 1, 1)
         end
     end)
+    -- the rows end before the bar (4 px gap, 8 wide, 6 to the edge)
     picker.list:SetPoint("TOPLEFT", 6, -30)
-    picker.list:SetPoint("TOPRIGHT", -6, -30)
+    picker.list:SetPoint("TOPRIGHT", -18, -30)
 
     -- the entries the filter leaves, the free entry always last; keep holds the scroll position
     function picker:Fill(keep)
@@ -574,8 +941,8 @@ end
 function W.Picker(parent, width, onPick)
     local p = CreateFrame("Button", nil, parent)
     p:SetSize(width or 150, 20)
-    W.Flat(p, 0, 0, 0, 0.5)
-    W.Border(p, 1, 1, 1, 0.2)
+    -- the field looks like every edit box: the client's input border
+    fieldBorder(p)
     local hl = p:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.08)
@@ -634,11 +1001,9 @@ function W.Picker(parent, width, onPick)
         panel:SetSize(math.max(180, self:GetWidth() or 0), 36 + PICK_ROWS * PICK_ROW_H + 6)
         panel:ClearAllPoints()
         panel:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
-        -- above the window the widget lives in: its top frame under UIParent, and the widget itself
-        local top = self
-        while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+        -- above the window the widget lives in, its frame (level 500) and title bar (510) included
         panel:SetFrameStrata("FULLSCREEN_DIALOG")
-        panel:SetFrameLevel(math.min(9000, math.max(top:GetFrameLevel() or 1, self:GetFrameLevel() or 1) + 10))
+        panel:SetFrameLevel((levelAbove(self)))
         panel.filter:SetText("")
         panel:Fill(false)
         panel:Show()
@@ -654,4 +1019,83 @@ function W.Picker(parent, width, onPick)
     end)
     p:SetScript("OnHide", function(self) self:Close() end)
     return p
+end
+
+-- A window in the look of Forever's own (PortraitFrameTemplate: the metal frame, the title bar
+-- with the gold title in the middle and the red close button, the portrait at the top left).
+-- opts: portrait (a texture; none makes a dialog without one, title over the whole bar), title,
+-- strata, background (an atlas stretched over the ground, or the template's rock), onShow,
+-- onVisibility (runs on show and hide). The close button hides the window directly: the
+-- template's goes through HideUIPanel, which is blocked in combat for an addon's button. Without
+-- the template the flat window of before, with the same fields and methods.
+function W.Window(name, width, height, opts)
+    opts = opts or {}
+    local F = inherit("Frame", name, UIParent, "PortraitFrameTemplate",
+        function(f) return f.TitleContainer and f.TitleContainer.TitleText and f.CloseButton and f.SetTitle end)
+    if F then
+        if opts.portrait then
+            F:SetPortraitToAsset(opts.portrait)
+        else
+            if F.SetBorder then pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortrait") end
+            if F.SetPortraitShown then F:SetPortraitShown(false) end
+            if F.SetTitleOffsets then F:SetTitleOffsets(0, 0) end
+        end
+        if opts.background and F.Bg and hasAtlas(opts.background) then
+            if F.Bg.SetHorizTile then F.Bg:SetHorizTile(false) end
+            if F.Bg.SetVertTile then F.Bg:SetVertTile(false) end
+            F.Bg:SetAtlas(opts.background)
+            if F.TopTileStreaks then F.TopTileStreaks:Hide() end
+        end
+    else
+        F = CreateFrame("Frame", name, UIParent)
+        W.Flat(F, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
+        F.edges = W.Border(F, GOLD[1], GOLD[2], GOLD[3], 0.6)
+        F.TitleContainer = CreateFrame("Frame", nil, F)
+        F.TitleContainer:SetHeight(20)
+        F.TitleContainer:SetPoint("TOPLEFT", 12, -1)
+        F.TitleContainer:SetPoint("TOPRIGHT", -28, -1)
+        local title = W.Text(F.TitleContainer, "GameFontNormal")
+        title:SetPoint("TOP", 0, -5)
+        title:SetPoint("LEFT")
+        title:SetPoint("RIGHT")
+        title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+        F.TitleContainer.TitleText = title
+        F.CloseButton = inherit("Button", nil, F, "UIPanelCloseButton")
+        if not F.CloseButton then
+            F.CloseButton = CreateFrame("Button", nil, F)
+            F.CloseButton:SetSize(24, 24)
+            local x = W.Text(F.CloseButton, "GameFontNormal")
+            x:SetPoint("CENTER")
+            x:SetText("x")
+        end
+        F.CloseButton:SetPoint("TOPRIGHT", 0, 0)
+        function F:GetTitleText() return self.TitleContainer.TitleText end
+        function F:SetTitle(t) self.TitleContainer.TitleText:SetText(t) end
+        function F:SetPortraitToAsset(tex) self.portraitAsset = tex end
+        function F:SetPortraitShown() end
+        function F:SetTitleOffsets() end
+        function F:SetBorder() end
+    end
+    F.CloseButton:SetScript("OnClick", function(b) b:GetParent():Hide() end)
+    F:SetSize(width, height)
+    if opts.strata then F:SetFrameStrata(opts.strata) end
+    F:SetToplevel(true)
+    F:SetClampedToScreen(true)
+    F:SetMovable(true)
+    F:EnableMouse(true)
+    F:RegisterForDrag("LeftButton")
+    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    F:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        if opts.onDragStop then opts.onDragStop(self) end
+    end)
+    if opts.title then F:SetTitle(opts.title) end
+    F:Hide()
+    if opts.onShow then F:SetScript("OnShow", opts.onShow) end
+    if opts.onVisibility then
+        F:HookScript("OnShow", opts.onVisibility)
+        F:HookScript("OnHide", opts.onVisibility)
+    end
+    if name and UISpecialFrames then tinsert(UISpecialFrames, name) end
+    return F
 end

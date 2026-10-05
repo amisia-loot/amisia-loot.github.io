@@ -5,8 +5,13 @@ local root = CreateFrame("Frame", nil, UIParent)
 
 local seen
 local t = W.Toggle(root, function(v) seen = v end)
-t:SetChecked(true); assert(t:GetChecked())
-t:Click(); assert(seen == false and not t:GetChecked())
+-- the client's check box: a CheckButton that turns itself over before OnClick
+assert(t.kind == "CheckButton" and t.inherits.MinimalCheckboxTemplate, "the minimal check box")
+assert(t._w == 18 and t._h == 18)
+t:SetChecked(true); assert(t:GetChecked() and t.checked == true)
+t:Click(); assert(seen == false and not t:GetChecked() and t.checked == false, "one click, one turn")
+t:Click(); assert(seen == true and t:GetChecked() and t.checked == true)
+t:SetChecked(nil); assert(t:GetChecked() == false and t.checked == false)
 
 local st = W.Stepper(root, 120, function(v) seen = v end)
 st:Configure(5, 120, 5)
@@ -15,6 +20,33 @@ st.plus:Click(); assert(seen == 25)
 STUB.shift = true; st.minus:Click(); assert(seen == 5, "shift steps by ten steps, clamped"); STUB.shift = false
 st.minus:Click(); assert(seen == 5, "no change below the minimum")
 st.scripts.OnMouseWheel(st, 1); assert(seen == 10)
+-- the look: arrow buttons left and right, the value in a field with the input border
+assert(st.minus.arrow and st.plus.arrow, "the client's arrow buttons")
+assert(st.minus.arrow:GetAtlas() == "common-dropdown-a-button-shadowless" and st.minus.arrow.rotation < 0 and st.plus.arrow.rotation > 0)
+assert(st.minus._w == 20 and st.plus._w == 20)
+assert(st.field.Left.atlas == "common-search-border-left" and st.field.Middle.atlas == "common-search-border-middle"
+    and st.field.Right.atlas == "common-search-border-right", "the field's border")
+assert(st.value:GetText() == "10")
+local SL = dofile(ADDON_DIR .. "/../tests/layout.lua")(st, 120, 20)
+SL.row("stepper", st.minus, st.field, st.plus)
+
+-- a chip in the client's filter-button look: open when on, the state follows the mouse
+local chip = W.Chip(root, "MS", 30)
+local B = "common-dropdown-b-button"
+assert(chip.bg.atlas == B .. "-open" and chip.on and chip.edges == nil, "on: open, no gold frame: " .. tostring(chip.bg.atlas))
+assert(chip.label.textColor[1] == W.GOLD[1] and chip.label.textColor[2] == W.GOLD[2], "gold text when on")
+chip:SetOn(false)
+assert(chip.bg.atlas == B and chip.label.textColor[1] == 0.6 and chip.label.textColor[2] == 0.6, "off: normal and grey")
+chip:GetScript("OnEnter")(chip); assert(chip.bg.atlas == B .. "-hover", chip.bg.atlas)
+chip:GetScript("OnMouseDown")(chip); assert(chip.bg.atlas == B .. "-pressedhover", chip.bg.atlas)
+chip:GetScript("OnMouseUp")(chip); chip:GetScript("OnLeave")(chip); assert(chip.bg.atlas == B, chip.bg.atlas)
+chip:Disable(); assert(chip.bg.atlas == B .. "-disabled")
+chip:Enable(); chip:SetOn(true); assert(chip.bg.atlas == B .. "-open")
+assert(chip.bg.points.TOPLEFT.x == 0 and chip.bg.points.BOTTOMRIGHT.x == 0, "the atlas on the chip itself, not outside")
+-- a tooltip keeps the hover look
+W.Tooltip(chip, "Titel")
+chip:GetScript("OnEnter")(chip); assert(chip.bg.atlas == B .. "-hover", "hover with a tooltip")
+chip:GetScript("OnLeave")(chip); assert(chip.bg.atlas == B .. "-open")
 
 local c = W.Choice(root, 120, function(v) seen = v end)
 c:SetValues({ { "a", "Eins" }, { "b", "Zwei" } })
@@ -150,16 +182,38 @@ list.scripts.OnMouseWheel(list, -1); assert(list.rows[1].text:GetText() == "b")
 list.scripts.OnMouseWheel(list, -5); assert(list.rows[1].text:GetText() == "c", "stops at the end")
 list:SetItems({ "x" }); assert(list.rows[1].text:GetText() == "x" and not list.rows[2]:IsShown())
 
+-- rows: a faint change of shade, the recipe list's hover
+assert(list.rows[1].bg.color[4] == 0.025 and list.rows[2].bg.color[4] == 0.045, "a faint change of shade")
+assert(list.rows[1].hover.atlas == "Professions_Recipe_Hover" and list.rows[1].hover.alpha == 0.5)
+
 local card = W.Card(root, 296, 112)
 local clicked
 card:SetAction("Los", function() clicked = true end)
 card.button:Click(); assert(clicked)
 card:SetAction(nil); assert(not card.button:IsShown())
+assert(card.border.atlas == "common-insideframe" and card.edges == nil, "the card is an inset")
+assert(card.button.inherits.SharedButtonSmallTemplate, "a red button")
 
 local area = W.EditArea(root); area.box:SetText("abc"); assert(area.box:GetText() == "abc")
+assert(area.border.atlas == "common-insideframe" and area.ground.color[4] == 0.35, "an inset with a dark ground")
+assert(area.scroll.inherits == nil, "a plain scroll frame, no UIPanelScrollFrameTemplate")
+assert(area.scroll.points.BOTTOMRIGHT.x == -16 and area.scroll.points.TOPLEFT.x == 6, "room for the bar")
+assert(area.bar and area.bar.inherits.MinimalScrollBar and area.scroll.bar == area.bar, "the minimal bar")
+local pair = STUB.scrollPairs[#STUB.scrollPairs]
+assert(pair[1] == area.scroll and pair[2] == area.bar)
+local AL = dofile(ADDON_DIR .. "/../tests/layout.lua")(area, 300, 120)
+AL.row("edit area", area.scroll, area.bar)
+AL.inside("bar", area.bar)
+area.box:SetFocus(); area.box.scripts.OnEscapePressed(area.box); assert(not area.box:HasFocus(), "Escape leaves the box")
+area.scripts.OnMouseDown(area); assert(area.box:HasFocus(), "a click on the field focuses the box")
+area.box:ClearFocus()
 local st2 = W.ScrollText(root); st2:SetText("hallo"); assert(st2.fs:GetText() == "hallo")
+assert(st2.inherits == nil and st2.bar and st2.bar.inherits.MinimalScrollBar, "a plain scroll frame with the minimal bar")
 
 local hit
 W.Menu(root, { { "Eins", function() hit = 1 end }, { "Zwei", function() hit = 2 end } })
 assert(AmisiaMenu:IsShown())
+assert(AmisiaMenu.bg.atlas == "common-dropdown-bg" and AmisiaMenu.bg.alpha == 0.925 and AmisiaMenu.edges == nil, "the client's menu ground")
+assert(AmisiaMenu.bg.points.TOPLEFT.x == -10 and AmisiaMenu.bg.points.TOPLEFT.y == 3)
+assert(AmisiaMenu.buttons[1].hl.texture == "Interface\\QuestFrame\\UI-QuestTitleHighlight", "the menu's hover")
 AmisiaMenu.buttons[2]:Click(); assert(hit == 2 and not AmisiaMenu:IsShown(), "a click runs the entry and closes")

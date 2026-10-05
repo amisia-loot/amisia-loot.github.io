@@ -55,6 +55,13 @@ assert(br == pr + 1 and bl == pr - 21, "the button at the right end: " .. bl .. 
 local t, bt = L.vspan(b)
 local pt, pb = L.vspan(p)
 assert(t == pt + 1 and bt == pb - 1, "one pixel over the 20 px field at top and bottom")
+-- the field has the client's input border, like every edit box, inside the field's bounds
+assert(p.Left.atlas == "common-search-border-left" and p.Middle.atlas == "common-search-border-middle"
+    and p.Right.atlas == "common-search-border-right", "the input border")
+assert(p.edges == nil, "no flat frame any more")
+local fl = L.span(p.Left)
+local _, fr = L.span(p.Right)
+assert(fl == pl and fr == pr, "the border stays inside the field: " .. fl .. ".." .. fr)
 
 ---------------------------------------------------------------------------
 -- a turned arrow: without the drop shadow, turned left and right

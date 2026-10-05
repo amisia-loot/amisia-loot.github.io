@@ -663,6 +663,8 @@ TEMPLATES.PortraitFrameTemplate = function(f, kind, name)
     f.TitleContainer.TitleText = title
     if name then _G[name .. "TitleText"] = title end
     f.CloseButton = CreateFrame("Button", name and (name .. "CloseButton") or nil, f, "UIPanelCloseButtonDefaultAnchors")
+    -- a template's children are shown, as in the client
+    f.NineSlice.shown, f.PortraitContainer.shown, f.TitleContainer.shown, f.CloseButton.shown = true, true, true, true
     f.SetPortraitToAsset = function(self, tex) self.portraitAsset = tex; self.PortraitContainer.portrait:SetTexture(tex) end
     f.SetPortraitShown = function(self, on) self.PortraitContainer.portrait:SetShown(on) end
     f.SetBorder = function(self, layout) self.border = layout end
@@ -691,6 +693,7 @@ end
 TEMPLATES.ListHeaderVisualTemplate = function(f)
     f.CollapseButton = CreateFrame("Button", nil, f)
     f.CollapseButton:SetSize(20, 20)
+    f.CollapseButton.shown = true
     f.CollapseButton:SetPoint("RIGHT", -6, 0)
     f.CollapseButton.Icon = f.CollapseButton:CreateTexture(nil, "ARTWORK")
     f.ButtonText = f:CreateFontString(nil, "OVERLAY", "Game15Font_Shadow")
@@ -899,6 +902,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.Disable = function(self) self:SetEnabled(false) end
     f.IsEnabled = function(self) return self.enabled end
     f.Click = function(self) if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
+    f.SetTextInsets = function(self, l, r, t, b) self.insets = { l, r, t, b } end
     f.SetVerticalScroll = function(self, v) self.vscroll = v end
     f.GetVerticalScroll = function(self) return self.vscroll or 0 end
     f.GetVerticalScrollRange = function(self) return self.vrange or 0 end
