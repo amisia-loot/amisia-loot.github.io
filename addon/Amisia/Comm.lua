@@ -10,7 +10,7 @@ ns.SYNC_MIN_PROTO = 1    -- the oldest protocol this client still reads
 local PREFIX_CTRL, PREFIX_DATA = "Amisia", "AmisiaD"
 local MAX_TEXT = 250     -- bytes of one message (the client takes 255)
 local CHUNK = 200        -- Base64 characters per data part
-local MAX_PARTS, MAX_PARTS_OP = 60, 8
+local MAX_PARTS, MAX_PARTS_OP, MAX_PARTS_DK = 60, 8, 20
 local MAX_UNPACKED = 65536
 
 local MSG_BURST, MSG_REFILL = 10, 1        -- messages per prefix at once, then per second
@@ -20,6 +20,7 @@ local MAX_QUEUE = 200
 local TICK = 0.25
 local LOCK_POLL = 2
 local DEFAULT_TTL = 60
+local LOW_TTL = 120        -- entries of lowest priority (opts.low) fall after this unless told otherwise
 local MAX_TRIES = 5
 
 local SET_TTL = 30          -- seconds a part set waits for its next part
@@ -31,10 +32,12 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60 }
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
-local BLOB_ARTS = { SP = true, SO = true, OP = true }
+local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true }
+-- parts a blob of an art may have (default MAX_PARTS)
+local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK }
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
@@ -206,6 +209,29 @@ local function answerList(v)
     return true
 end
 
+-- A comma list of at most max entries, each passing ok; "-" (empty) when allowEmpty.
+local function commaList(v, max, ok, allowEmpty)
+    if v == "-" then return allowEmpty == true end
+    if type(v) ~= "string" or v == "" then return false end
+    local n = 0
+    for entry in (v .. ","):gmatch("([^,]*),") do
+        n = n + 1
+        if n > max or not ok(entry) then return false end
+    end
+    return true
+end
+
+-- The drop exchange (DropSync.lua): week "w:hhhh:n", bucket "day:inst:hhhh:n", kill id 8 hex.
+local function weekEntry(e)
+    local w, h, n = e:match("^(%d):(%x%x%x%x):(%d+)$")
+    return w ~= nil and isNum(w, 0, 3) and isNum(n, 0, 999999)
+end
+local function bucketEntry(e)
+    local day, inst, h, n = e:match("^(%d+):(%d+):(%x%x%x%x):(%d+)$")
+    return day ~= nil and isNum(day, 0, 99999) and isNum(inst, 1, 99999) and isNum(n, 1, 999999)
+end
+local function killId(e) return isHex(e, 8) end
+
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
@@ -219,7 +245,7 @@ local VALID = {
         if #f < 6 or not BLOB_ARTS[f[1]] or not isKey(f[2]) or not isNum(f[3], 0, 999999) then return false end
         local i, n = tonumber(f[4]), tonumber(f[5])
         if not isNum(f[4], 1, MAX_PARTS) or not isNum(f[5], 1, MAX_PARTS) or i > n then return false end
-        if f[1] == "OP" and n > MAX_PARTS_OP then return false end
+        if ART_PARTS[f[1]] and n > ART_PARTS[f[1]] then return false end
         return #f[6] > 0 and #f[6] <= CHUNK and f[6]:match("^[A-Za-z0-9+/=]+$") ~= nil
     end,
     OK = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 12) and isNum(f[3], 0, 999999) end,
@@ -227,6 +253,16 @@ local VALID = {
     NW = function(f) return #f >= 4 and isKey(f[1]) and isNum(f[2], 0, 999999) and isHex(f[3], 16) and isNum(f[4], 0, 999999) end,
     UQ = function(f) return #f >= 2 and isHex(f[1], 4) and itemList(f[2]) end,
     UA = function(f) return #f >= 2 and isHex(f[1], 4) and answerList(f[2]) end,
+    -- drop exchange: DV <drop proto> <records> <newest day> <weeks>; DQ <week>;
+    -- DI <week> <part> <parts> <buckets>|-; DR <bucket key> <kill ids>|*
+    DV = function(f) return #f >= 4 and isNum(f[1], 0, 9) and isNum(f[2], 0, 999999) and isNum(f[3], 0, 99999)
+                         and commaList(f[4], 4, weekEntry) end,
+    DQ = function(f) return #f >= 1 and isNum(f[1], 0, 3) end,
+    DI = function(f)
+        if #f < 4 or not isNum(f[1], 0, 3) or not isNum(f[2], 1, 20) or not isNum(f[3], 1, 20) then return false end
+        return tonumber(f[2]) <= tonumber(f[3]) and commaList(f[4], 12, bucketEntry, true)
+    end,
+    DR = function(f) return #f >= 2 and isKey(f[1]) and (f[2] == "*" or commaList(f[2], 16, killId)) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -401,13 +437,26 @@ local function attempt(i)
     return true
 end
 
+-- Whether an entry's own condition (opts.when) lets it go now.
+local function free(e)
+    if not e.when then return true end
+    local ok, yes = pcall(e.when)
+    if not ok then report(yes) return false end
+    return yes == true
+end
+
 -- The next entry that may go now: the first ready control message, else the first ready data part
--- (which leaves bytes for a waiting control message). nil when nothing may go.
+-- (which leaves bytes for a waiting control message). Entries of lowest priority (opts.low) only
+-- while nothing else waits in the queue. nil when nothing may go.
 local function pick()
     local t = now()
+    local urgent = false
+    for _, e in ipairs(queue) do
+        if not e.low then urgent = true break end
+    end
     local ctrl, data
     for i, e in ipairs(queue) do
-        if e.ready <= t then
+        if e.ready <= t and (not e.low or not urgent) and free(e) then
             if e.prefix == PREFIX_CTRL then
                 if not ctrl then ctrl = i end
             elseif not data then
@@ -475,8 +524,13 @@ local function enqueue(entries, key)
     end
     for _, e in ipairs(entries) do queue[#queue + 1] = e end
     while #queue > MAX_QUEUE do
+        -- the oldest entry of lowest priority, else the oldest data part, else the oldest message
         local drop
         for i, q in ipairs(queue) do
+            if q.low then drop = i break end
+        end
+        for i, q in ipairs(queue) do
+            if drop then break end
             if q.prefix == PREFIX_DATA then drop = i break end
         end
         table.remove(queue, drop or 1)
@@ -490,9 +544,10 @@ end
 local function entry(kind, text, chan, target, opts, desc)
     local t = now()
     local jitter = tonumber(opts.jitter) or 0
+    local low = opts.low and true or nil
     return { prefix = prefixOf(kind), text = text, chan = chan, target = target, key = opts.key, kind = kind,
-             expires = t + (tonumber(opts.ttl) or DEFAULT_TTL), ready = t + (jitter > 0 and math.random() * jitter or 0),
-             tries = 0, desc = desc }
+             expires = t + (tonumber(opts.ttl) or (low and LOW_TTL or DEFAULT_TTL)), ready = t + (jitter > 0 and math.random() * jitter or 0),
+             tries = 0, desc = desc, low = low, when = type(opts.when) == "function" and opts.when or nil }
 end
 
 local function envelope(kind, fields)
@@ -511,7 +566,9 @@ end
 
 -- Sends one control message. kind: "HI", "VQ", ...; fields: list of strings; chan "GUILD", "RAID"
 -- or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
--- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try).
+-- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
+-- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
+-- entry waits while it does not return true).
 function ns.CommSend(kind, fields, chan, target, opts)
     if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end
     if kind == "BL" then return nil, "Daten gehen über CommSendBlob." end
@@ -525,7 +582,9 @@ end
 
 local seq = 0
 
--- Packs tbl, cuts it into parts and queues them. art "SP", "SO" or "OP"; key the raid key.
+-- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP" or "DK"; key the raid key
+-- (DK: the bucket key, the same "date:instance" form). opts as CommSend. Returns true and the
+-- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end
     if not BLOB_ARTS[art] then return nil, "Unbekannte Datenart." end
@@ -535,16 +594,17 @@ function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     local packed, err = ns.CommPack(tbl)
     if not packed then return nil, err end
     local chunks = ns.CommChunks(packed)
-    if #chunks > (art == "OP" and MAX_PARTS_OP or MAX_PARTS) then return nil, "Daten zu groß." end
+    if #chunks > (ART_PARTS[art] or MAX_PARTS) then return nil, "Daten zu groß." end
     seq = seq % 999999 + 1
     opts = opts or {}
-    local list = {}
+    local list, bytes = {}, 0
     for i, c in ipairs(chunks) do
         local fields = { art, key, tostring(seq), tostring(i), tostring(#chunks), c }
         list[i] = entry("BL", ns.SYNC_PROTO .. "BL\t" .. table.concat(fields, "\t"), chan, target, opts, describe("BL", fields))
+        bytes = bytes + cost(list[i])
     end
     enqueue(list, opts.key)
-    return true
+    return true, #chunks, bytes
 end
 
 -- The restriction changed: read the state after the dispatch (it is not final during it).
