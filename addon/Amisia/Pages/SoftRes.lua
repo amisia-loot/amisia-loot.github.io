@@ -157,7 +157,8 @@ local function raiderRows(ctx, me)
     local out = {}
     for name, e in pairs(byName(ctx.sr)) do
         out[#out + 1] = { kind = "raider", name = name, n = e.n, over = limit > 0 and e.n > limit,
-                          text = itemsText(e.items), mine = me and ns.SameName(name, me) or false }
+                          text = itemsText(e.items), mine = me and ns.SameName(name, me) or false,
+                          was = ctx.sr and ctx.sr.renamed and ctx.sr.renamed[name] or nil }
     end
     for _, name in ipairs(ctx.check and ctx.check.missing or {}) do
         out[#out + 1] = { kind = "raider", name = name, n = 0, text = "keine", mine = me and ns.SameName(name, me) or false }
@@ -275,6 +276,15 @@ local function buildRow(r)
             GameTooltip:AddLine("Ein Klick auf einen Vorschlag korrigiert den Namen in der Liste und merkt die Korrektur für kommende Listen.",
                 0.85, 0.85, 0.85, true)
             GameTooltip:Show()
+        elseif e.kind == "raider" and e.was then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(e.name, 1, 0.82, 0)
+            GameTooltip:AddLine(("In der Liste als %s, korrigiert."):format(e.was), 0.85, 0.85, 0.85, true)
+            if ns.SoftResAlias(e.was) then
+                GameTooltip:AddLine(("Die Korrektur gilt auch für kommende Listen. \"/amisia sr vergessen %s\" nimmt sie zurück, ohne Namen vergisst es alle gemerkten Korrekturen."):format(e.was),
+                    0.85, 0.85, 0.85, true)
+            end
+            GameTooltip:Show()
         end
     end)
     r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -291,7 +301,7 @@ local function fillRow(r, e)
         r.a:SetText(itemText(e.item))
         r.c:SetText(e.text)
     elseif e.kind == "raider" then
-        local was = ctx and ctx.sr and ctx.sr.renamed and ctx.sr.renamed[e.name]
+        local was = e.was
         r.a:SetText((ctx and coloured(ctx, e.name) or e.name) .. (was and (GREY .. " (Liste: " .. was .. ")|r") or ""))
         r.b:SetText(e.over and (RED .. e.n .. "|r") or tostring(e.n))
         r.c:SetText(e.text)
@@ -388,7 +398,7 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
             f.clear:SetEnabled(sr ~= nil)
             f.views.check:Show()
             local raid = IsInRaid() and sr ~= nil
-            local open = raid and #ns.SoftResReminders() or 0
+            local open = raid and #ns.SoftResReminders(ctx.check) or 0
             f.remind:SetText(("Erinnern (%d)"):format(open))
             f.remind:SetEnabled(raid and open > 0)
             f.post:SetEnabled(raid)
@@ -423,10 +433,17 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         end
     end }
 
--- The roster changed: the check may have changed with it.
+-- The roster changed: the check may have changed with it. A burst of updates (a 40-man raid
+-- forming) makes one refresh half a second later.
+local rosterPending = false
 ns.OnEvent("GROUP_ROSTER_UPDATE", function()
-    local cur = ns.CurrentPage and ns.CurrentPage()
-    if cur == "softres" or cur == "overview" then ns.Refresh() end
+    if rosterPending then return end
+    rosterPending = true
+    C_Timer.After(0.5, function()
+        rosterPending = false
+        local cur = ns.CurrentPage and ns.CurrentPage()
+        if cur == "softres" or cur == "overview" then ns.Refresh() end
+    end)
 end)
 
 ns.RegisterCard{ key = "softres", order = 20, fill = function(c)

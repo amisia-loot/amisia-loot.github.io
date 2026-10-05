@@ -230,9 +230,10 @@ NS.Refresh()
 assert(has(f.check:GetText(), "Abgleich mit letztem Raid, " .. date("%d.%m.", STUB.now - 3 * 86400) .. ": 2 reserviert"), f.check:GetText())
 table.remove(AmisiaDB.sessions)
 
--- the roster changing refreshes the page
+-- the roster changing refreshes the page (half a second later, once per burst)
 STUB.roster = { { name = "Vuloo", class = "PRIEST" } }
 STUB.fire("GROUP_ROSTER_UPDATE")
+STUB.tick(1)
 assert(has(f.check:GetText(), "Abgleich mit Raid (1): 1 reserviert"), f.check:GetText())
 
 ---------------------------------------------------------------------------

@@ -865,9 +865,15 @@ local function refresh()
     end
 end
 
+-- The bottom of the import window, from below: buttons (10-32), result, preview, the text box.
+local TEXT_H = 26                       -- two lines of GameFontHighlightSmall
+local RESULT_Y = 38
+local PREVIEW_Y = RESULT_Y + TEXT_H + 4
+local BOX_BOTTOM = PREVIEW_Y + TEXT_H + 4
+
 local function build()
     F = CreateFrame("Frame", "AmisiaSoftResFrame", UIParent)
-    F:SetSize(440, 360)
+    F:SetSize(440, 380)
     F:SetPoint("CENTER", 0, 40)
     F:SetFrameStrata("FULLSCREEN_DIALOG")
     F:SetToplevel(true)
@@ -908,7 +914,7 @@ local function build()
 
     local boxBg = CreateFrame("Frame", nil, F)
     boxBg:SetPoint("TOPLEFT", 12, -50)
-    boxBg:SetPoint("BOTTOMRIGHT", -12, 84)
+    boxBg:SetPoint("BOTTOMRIGHT", -12, BOX_BOTTOM)
     local bb = boxBg:CreateTexture(nil, "BACKGROUND")
     bb:SetAllPoints()
     bb:SetColorTexture(0, 0, 0, 0.45)
@@ -929,19 +935,25 @@ local function build()
     boxBg:EnableMouse(true)
     boxBg:SetScript("OnMouseDown", function() editBox:SetFocus() end)
 
-    -- the preview sits above the result of the last import
+    -- the preview sits above the result of the last import; each has a fixed room of two lines,
+    -- so a long text is cut instead of growing into the other
     previewText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    previewText:SetPoint("BOTTOMLEFT", 12, 58)
-    previewText:SetWidth(416)
+    previewText:SetPoint("BOTTOMLEFT", 12, PREVIEW_Y)
+    previewText:SetSize(416, TEXT_H)
     previewText:SetJustifyH("LEFT")
+    previewText:SetJustifyV("TOP")
     previewText:SetWordWrap(true)
+    previewText:SetMaxLines(2)
     previewText:SetTextColor(0.89, 0.72, 0.34)
     previewText:SetText("")
 
     resultText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    resultText:SetPoint("BOTTOMLEFT", 12, 40)
-    resultText:SetWidth(410)
+    resultText:SetPoint("BOTTOMLEFT", 12, RESULT_Y)
+    resultText:SetSize(416, TEXT_H)
     resultText:SetJustifyH("LEFT")
+    resultText:SetJustifyV("TOP")
+    resultText:SetWordWrap(true)
+    resultText:SetMaxLines(2)
 
     local apply = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
     apply:SetSize(110, 22)
@@ -965,7 +977,7 @@ local function build()
         resultText:SetText("Liste geleert.")
         refresh()
     end)
-    F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn, F.previewText = editBox, resultText, dateText, apply, clear, previewText
+    F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn, F.previewText, F.box = editBox, resultText, dateText, apply, clear, previewText, boxBg
     ns.SoftResFrame = F
 end
 

@@ -21,7 +21,7 @@ STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Fraktur", 77, 1, 100))
 STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Vuloo", 80, 1, 50))
 assert(NS.RollFrame.rows[1].name:GetText():find("Fraktur", 1, true))
 assert(NS.RollFrame.rows[1].who == "Fraktur" and NS.RollFrame.rows[1].kind:GetText() == "MS")
-assert(NS.RollFrame.rows[2].who == nil and NS.RollFrame.rows[2].why:GetText():find("Bereich 1-50", 1, true))
+assert(NS.RollFrame.rows[2].who == nil and NS.RollFrame.rows[2].reason:GetText():find("Bereich 1-50", 1, true))
 assert(not NS.RollFrame.rows[3]:IsShown())
 
 -- no hand-out while the round runs: the rows still re-sort
