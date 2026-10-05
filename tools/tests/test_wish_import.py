@@ -3,7 +3,8 @@
 tools/tests/site_wishes.cjs cuts the wishlist code out of the page: amParseWishes reads the WL
 lines of the addon's "Für die Website" text, wishImportPlan decides what "Paste from the addon"
 adds, and wishAddonText writes the text for the addon. That text goes through the addon's own
-parser (ns.ParseGuildWishes, under the Lua stub of addon/tests) and must come out the same.
+parser (ns.ParseGuildWishes, under the Lua stub of addon/tests, as the Forever client) and must come
+out the same. The site keeps the wishlist for WoW Forever only; a TBC wish counts as another game.
 """
 import json
 import os
@@ -82,29 +83,20 @@ def test_forever_full_names_find_a_raider_by_first_name(out):
 
 def test_the_text_for_the_addon(out):
     assert out['text'].split('\n') == [
-        '#AMISIA-WL 1 tbc 2026-10-05',
+        '#AMISIA-WL 1 forever 2026-10-05',
         'W 28830 3 Bob nur MS',
         'W 28830 2 Anna',
         'W 29434 2 Alt_Name',
         'W 30001 1 Vulo_Sturmwind nach dem Boss',
         '#END',
     ], out['text']
-    assert out['textForever'].split('\n') == ['#AMISIA-WL 1 forever 2026-10-05', 'W 18832 3 Anna', '#END']
-    assert out['empty'].split('\n') == ['#AMISIA-WL 1 tbc 2026-10-05', '#END']
+    assert 'textForever' not in out, 'the site writes Forever wishes only'
+    assert out['empty'].split('\n') == ['#AMISIA-WL 1 forever 2026-10-05', '#END']
 
 
-def as_game(text, game):
-    """The site's text with the game of its head line set (the addon reads only WoW Forever lists)."""
-    head, sep, rest = text.partition('\n')
-    parts = head.split(' ')
-    assert parts[:2] == ['#AMISIA-WL', '1'] and len(parts) == 4, head
-    parts[2] = game
-    return ' '.join(parts) + sep + rest
-
-
-def parse_in_addon(text):
+def parse_in_addon(text, toc=16001):
     run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
-    lua = run.fresh('')
+    lua = run.fresh('--[[preload\nSTUB.toc = %d\n]]' % toc)
     parse = lua.eval('function(t) local res, why = NS.ParseGuildWishes(t); return res, why end')
     res, why = parse(text)
     if res is None:
@@ -116,7 +108,7 @@ def parse_in_addon(text):
 
 
 def test_the_addon_reads_the_text_back(out):
-    res, why = parse_in_addon(as_game(out['text'], 'forever'))
+    res, why = parse_in_addon(out['text'])
     assert res, why
     assert res['game'] == 'forever' and res['date'] == '2026-10-05' and res['n'] == 4 and res['skipped'] == 0
     assert res['list'] == {
@@ -127,10 +119,8 @@ def test_the_addon_reads_the_text_back(out):
 
 
 def test_the_addon_refuses_the_other_game(out):
-    # the addon is WoW Forever only: a TBC list is refused in words, a Forever list is read
-    res, why = parse_in_addon(as_game(out['textForever'], 'tbc'))
-    assert res is None and why == 'Diese Wunschliste ist für TBC Anniversary, du bist in WoW Forever.', why
-    res, why = parse_in_addon(out['textForever'])
-    assert res and res['list'] == {18832: [('Anna', 3, '')]}
-    res, why = parse_in_addon(as_game(out['empty'], 'forever'))
+    # a list from before 2.0, written for TBC Anniversary
+    res, why = parse_in_addon('#AMISIA-WL 1 tbc 2026-10-05\nW 18832 3 Anna\n#END')
+    assert res is None and 'TBC Anniversary' in why and 'WoW Forever' in why
+    res, why = parse_in_addon(out['empty'])
     assert res is None and why == 'Die Liste ist leer.'

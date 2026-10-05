@@ -9,13 +9,14 @@ const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSpl
   'wishesHere', 'wishGot', 'amLikely', 'wishImportPlan', 'wishAddonText'];
 // What else the code reaches for on the page, kept as small as the code allows.
 const STUBS = `
-let state = {raiders: [], awards: []}, WISHES = [], ITEM = {}, gameKey = 'tbc';
+let state = {raiders: [], awards: []}, WISHES = [], ITEM = {};
+const PLAY = 'forever';   // the wishlist is kept for Forever only
 const today = () => '2026-10-05';
 const raiderById = id => state.raiders.find(r => r.id === id);
 `;
 const src = STUBS + NEEDED.map(grab).join('\n\n') + `
 ;module.exports = {amSplit, amParse, amParseWishes, wishImportPlan, wishAddonText,
-  set: (s, w, items, game) => { state = s; WISHES = w; ITEM = items; gameKey = game || 'tbc'; }};`;
+  set: (s, w, items) => { state = s; WISHES = w; ITEM = items; }};`;
 const mod = {exports: {}};
 new Function('module', 'exports', src)(mod, mod.exports);
 const api = mod.exports;
@@ -41,13 +42,14 @@ const raiders = [{id: 'a', name: 'Anna', cls: 'Priest'}, {id: 'b', name: 'Bob', 
   {id: 'f', name: 'Full', cls: 'Rogue'}];
 const items = {28830: {name: 'Crown', sources: ['Prince Malchezaar', 'Moroes']}, 29434: {name: 'Cloak', sources: ['Gruul']},
   30000: {name: 'Ring', sources: ['Magtheridon']}, 30001: {name: 'Belt', sources: ['Netherspite']}};
-const existing = [{id: 'w1', game: 'tbc', raider: 'a', raider_name: 'Anna', item: 28830, prio: 2, note: ''},
-  {id: 'w2', game: 'forever', raider: 'b', raider_name: 'Bob', item: 29434, prio: 2, note: ''}];
-for (let i = 0; i < 29; i++) existing.push({id: 'f' + i, game: 'tbc', raider: 'f', raider_name: 'Full', item: 40000 + i, prio: 2, note: ''});
+// w2 is a wish of the TBC Anniversary archive: another game, it does not count
+const existing = [{id: 'w1', game: 'forever', raider: 'a', raider_name: 'Anna', item: 28830, prio: 2, note: ''},
+  {id: 'w2', game: 'tbc', raider: 'b', raider_name: 'Bob', item: 29434, prio: 2, note: ''}];
+for (let i = 0; i < 29; i++) existing.push({id: 'f' + i, game: 'forever', raider: 'f', raider_name: 'Full', item: 40000 + i, prio: 2, note: ''});
 // one more of Full's, received, does not count against the limit
-existing.push({id: 'fg', game: 'tbc', raider: 'f', raider_name: 'Full', item: 49999, prio: 2, note: ''});
+existing.push({id: 'fg', game: 'forever', raider: 'f', raider_name: 'Full', item: 49999, prio: 2, note: ''});
 const awards = [{raider: 'b', item: 30000}, {raider: 'f', item: 49999}];
-api.set({raiders, awards}, existing, items, 'tbc');
+api.set({raiders, awards}, existing, items);
 const pasted = [
   {item: 28830, prio: 3, at: 1, name: 'Anna', note: ''},            // already on the list
   {item: 29434, prio: 2, at: 1, name: 'Bob', note: 'only MS'},      // new (Bob's wish of the other game does not count)
@@ -65,7 +67,7 @@ out.plan = api.wishImportPlan(pasted).map(p => ({item: p.item, name: p.name, sta
 // Forever names "First_Last" against a roster that has the first name only: the same name first,
 // then the one raider of that first name
 api.set({raiders: raiders.concat([{id: 'k', name: 'Kim', cls: 'Mage'}, {id: 'k2', name: 'Kim Eisherz', cls: 'Mage'}]), awards: []},
-  [], items, 'tbc');
+  [], items);
 out.planNames = api.wishImportPlan([
   {item: 30001, prio: 2, at: 1, name: 'Bob Baumann', note: ''},     // Bob on the roster
   {item: 30001, prio: 2, at: 1, name: 'Vulo Sturmwind', note: ''},  // the full name is on the roster
@@ -74,19 +76,17 @@ out.planNames = api.wishImportPlan([
   {item: 30001, prio: 2, at: 1, name: 'Zed Zorn', note: ''},        // nobody
 ]).map(p => [p.name, p.raider ? p.raider.id : null, p.status]);
 
-// the text for the addon: open wishes of this game only, by item, then priority; names with "_"
+// the text for the addon: open Forever wishes only, by item, then priority; names with "_"
 const forText = [
-  {id: 'x1', game: 'tbc', raider: 'v', raider_name: 'Vulo Sturmwind', item: 30001, prio: 1, note: 'nach | dem\nBoss'},
-  {id: 'x2', game: 'tbc', raider: 'a', raider_name: 'Anna', item: 28830, prio: 2, note: ''},
-  {id: 'x3', game: 'tbc', raider: 'b', raider_name: 'Bob', item: 28830, prio: 3, note: 'nur MS'},
-  {id: 'x4', game: 'tbc', raider: 'b', raider_name: 'Bob', item: 30000, prio: 3, note: ''},           // received
-  {id: 'x5', game: 'forever', raider: 'a', raider_name: 'Anna', item: 18832, prio: 3, note: ''},      // another game
-  {id: 'x6', game: 'tbc', raider: 'gone', raider_name: 'Alt Name', item: 29434, prio: 2, note: ''},   // raider no longer on the roster
+  {id: 'x1', game: 'forever', raider: 'v', raider_name: 'Vulo Sturmwind', item: 30001, prio: 1, note: 'nach | dem\nBoss'},
+  {id: 'x2', game: 'forever', raider: 'a', raider_name: 'Anna', item: 28830, prio: 2, note: ''},
+  {id: 'x3', game: 'forever', raider: 'b', raider_name: 'Bob', item: 28830, prio: 3, note: 'nur MS'},
+  {id: 'x4', game: 'forever', raider: 'b', raider_name: 'Bob', item: 30000, prio: 3, note: ''},       // received
+  {id: 'x5', game: 'tbc', raider: 'a', raider_name: 'Anna', item: 18832, prio: 3, note: ''},          // the TBC archive: another game
+  {id: 'x6', game: 'forever', raider: 'gone', raider_name: 'Alt Name', item: 29434, prio: 2, note: ''},   // raider no longer on the roster
 ];
-api.set({raiders, awards}, forText, items, 'tbc');
+api.set({raiders, awards}, forText, items);
 out.text = api.wishAddonText(forText);
-api.set({raiders, awards}, forText, items, 'forever');
-out.textForever = api.wishAddonText(forText);
-api.set({raiders, awards}, [], items, 'tbc');
+api.set({raiders, awards}, [], items);
 out.empty = api.wishAddonText([]);
 process.stdout.write(JSON.stringify(out));

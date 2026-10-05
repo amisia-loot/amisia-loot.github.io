@@ -61,6 +61,8 @@ a:hover{text-decoration:underline}
 .eyebrow{font-family:var(--label);font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.05;margin:4px 0 0;color:var(--gold);letter-spacing:.01em;text-wrap:balance}
 .guild{font-family:var(--label);font-weight:600;font-size:20px;letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin-top:6px}
+.guildrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.guildrow .btn{margin-top:6px}
 .guild .realm{color:var(--muted);font-weight:500}
 .fac{display:inline-block;vertical-align:middle;margin-right:10px;padding:2px 9px;border-radius:3px;font-size:12px;letter-spacing:.14em;border:1px solid;line-height:1.5}
 .fac.alliance{color:#5b9cf0;border-color:#5b9cf0;background:rgba(91,156,240,.12)}
@@ -433,9 +435,9 @@ tr.got td{opacity:.5}
     <div class="brand">
     <img class="logo" src="logo.png" alt="Amisia" width="392" height="320">
     <div>
-      <div class="eyebrow" id="eyebrow">Burning Crusade raids · TBC Anniversary</div>
+      <div class="eyebrow" id="eyebrow">World of Warcraft Forever</div>
       <h1>Guild Loot Ledger</h1>
-      <div class="guild" id="guildLine"></div>
+      <div class="guildrow"><div class="guild" id="guildLine"></div><button class="btn sm ghost" id="archiveBtn" type="button" hidden>TBC archive</button></div>
     </div>
     </div>
     <div class="stats" id="stats"></div>
@@ -468,6 +470,14 @@ tr.got td{opacity:.5}
   <div class="notice" id="exampleNotice" hidden>
     <span class="grow"><b>Example ledger.</b> The raiders and awards shown are placeholders so you can see how the page works. Clear them to start your guild's own ledger.</span>
     <button class="btn sm" id="clearExample">Clear examples</button>
+  </div>
+  <div class="notice" id="archiveNotice" hidden>
+    <span class="grow">You are looking at the <b>TBC Anniversary archive</b>. It is read-only.</span>
+    <button class="btn sm" id="archiveBack" type="button">Back to Forever</button>
+  </div>
+  <div class="notice" id="moveNotice" hidden>
+    <span class="grow" id="moveText"></span>
+    <button class="btn sm primary" id="moveSave" type="button">Save the move to Forever</button>
   </div>
 
   <!-- ============ ARMORY ============ -->
@@ -808,12 +818,12 @@ tr.got td{opacity:.5}
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>Amisia addon</b> <a href="addon/Amisia.zip" download>download</a></p>
           <ol class="steps">
-            <li>Unpack it into <code>_anniversary_\Interface\AddOns</code>. It records every raid on its own: who was in the raid group, who looted Mark of the Illidari, Heart of Darkness or one of the six epic raid gems, every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
+            <li>Unpack it into the <code>Interface\AddOns</code> folder of your WoW Forever install. It records every raid on its own: who was in the raid group, who looted a tracked material, every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
-            <li>Open the guild bank before exporting and leave it open for a few seconds. The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
+            <li>Open the guild bank before exporting and leave it open for a few seconds (only when materials are tracked). The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Both exports can go into the box at the same time. Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
-          <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and drops that are not from one of the nine Burning Crusade raids are ignored.</p>
+          <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and items that are not in the Forever loot tables are ignored.</p>
         </div>
       </div>
     </div>
@@ -830,7 +840,7 @@ tr.got td{opacity:.5}
               <div class="field" id="gRealmField"><label for="gRealm">Realm</label><input class="inp" id="gRealm" placeholder="e.g. Spineshatter"></div>
               <div class="field" id="gRulesetField" hidden><label for="gRuleset">Rule set</label><select class="inp" id="gRuleset"></select></div>
               <div class="field"><label for="gFaction">Faction</label><select class="inp" id="gFaction"><option value="">Not set</option><option value="alliance">Alliance</option><option value="horde">Horde</option></select></div>
-              <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame"></select></div>
+              <div class="field"><label for="gGame">Game version</label><select class="inp" id="gGame" disabled title="The ledger is kept for World of Warcraft Forever. The TBC Anniversary loot is in the TBC archive."></select></div>
               <button class="btn" id="saveSettings">Save settings</button>
             </div>
           </div>
@@ -882,17 +892,19 @@ tr.got td{opacity:.5}
 /* ---------------- static data ---------------- */
 const CLASSIC_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Shaman','Mage','Warlock','Druid'];
 const MOP_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Death Knight','Shaman','Mage','Warlock','Monk','Druid'];
+// The ledger is kept for one game only. Forever is built by tools/build_scan.py from Amisia addon
+// scans; until raids are recorded every item sits under "Unknown source".
+const PLAY = 'forever';
 const GAMES = [
-  {key:'classic', name:'Classic Era', short:'Era', file:'data/classic.js', craft:'classic', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
-  {key:'hardcore', name:'Classic Hardcore', short:'Hardcore', file:'data/classic.js', craft:'classic', classes:CLASSIC_CLASSES, blurb:'Molten Core to Naxxramas'},
-  {key:'sod', name:'Season of Discovery', short:'SoD', file:'data/sod.js', craft:'sod', classes:CLASSIC_CLASSES, blurb:'Blackfathom Deeps to Scarlet Enclave'},
-  {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau'},
-  {key:'mop', name:'Mists of Pandaria Classic', short:'MoP', file:'data/mop.js', craft:'mop', classes:MOP_CLASSES, blurb:"Mogu'shan Vaults to Siege of Orgrimmar"},
-  // Forever: built by tools/build_scan.py from Amisia addon scans. Until raids are recorded every item sits under "Unknown source".
   {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
-const BUILD_ID = '1790101610';
-const GAME = Object.fromEntries(GAMES.map(g => [g.key, g]));
+// Games whose loot stays readable, never written: the guild's TBC Anniversary ledger. Their data
+// files are kept for this view only.
+const ARCHIVE = {
+  tbc: {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau', archive:true},
+};
+const BUILD_ID = '1791198217';
+const GAME = Object.assign(Object.fromEntries(GAMES.map(g => [g.key, g])), ARCHIVE);
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
   {name: 'Phase 1', zones: ['kara', 'gruul', 'mag']},
@@ -901,7 +913,7 @@ const PHASES = {tbc: [
   {name: 'Phase 4', zones: ['za']},
   {name: 'Phase 5', zones: ['swp']}
 ]};
-let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = CLASSIC_CLASSES, gameKey = 'tbc', dataState = 'loading';
+let DATA = {zones:[], bosses:[], items:[]}, ITEM = {}, BOSSES = [], BOSSZONE = {}, ZONES = [], ZONE = {}, ZSHORT = {}, ZSOON = {}, ZORDER = {}, CLASSES = MOP_CLASSES, gameKey = PLAY, dataState = 'loading';
 function applyData(d){
   DATA = d || {zones:[], bosses:[], items:[]};
   ITEM = Object.fromEntries(DATA.items.map(i => [i.id, i]));
@@ -944,7 +956,7 @@ function loadCraft(g){
 }
 // The Amisia addon records the boss name its own client showed, so a German client writes
 // "Illidan Sturmgrimm" where the loot tables say "Illidan Stormrage". data/bossnames.js pairs them
-// up for every language the loot addon is translated into.
+// up for the TBC archive; the Forever tables already carry the names the client shows.
 let BOSSNAME = {}, bossNameState = 'idle';
 function applyBossNames(){ BOSSNAME = (window.__BOSSNAMES || {})[gameKey] || {}; }
 const bossHere = name => { const n = String(name == null ? '' : name).trim(); return BOSSNAME[n] || n; };
@@ -958,7 +970,7 @@ function loadBossNames(){
   document.head.appendChild(s);
 }
 function loadGame(key){
-  const g = GAME[key] || GAME.tbc; gameKey = g.key; CLASSES = g.classes;
+  const g = GAME[key] || GAME[PLAY]; gameKey = g.key; CLASSES = g.classes;
   loadCraft(g); loadBossNames();
   if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
@@ -969,7 +981,8 @@ function loadGame(key){
   document.head.appendChild(s);
 }
 const BASE_PROFS = ['Alchemy','Blacksmithing','Enchanting','Engineering','Herbalism','Leatherworking','Mining','Skinning','Tailoring'];
-const PROF_LIST = {classic: BASE_PROFS, sod: BASE_PROFS, tbc: BASE_PROFS.concat('Jewelcrafting').sort(), mop: BASE_PROFS.concat(['Jewelcrafting','Inscription']).sort()};
+// The TBC archive's professions; Forever has the base list.
+const PROF_LIST = {tbc: BASE_PROFS.concat('Jewelcrafting').sort()};
 const profsHere = () => PROF_LIST[(GAME[gameKey] || {}).craft] || BASE_PROFS;
 // Accounts the owner linked to a character: {user_id, raider, rank: 'raider'|'trial', profs}. A linked
 // member sets the professions of that character, and those win over the ones in the ledger.
@@ -1026,7 +1039,7 @@ function spriteStyle(it, sheet){
   return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
 }
 function icoInner(it){ return it.img ? '<img src="'+it.img+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
-const WOWHEAD_DB = {classic:'classic', hardcore:'classic', sod:'classic', tbc:'tbc', mop:'mop-classic', forever:'classic'};
+const WOWHEAD_DB = {tbc:'tbc', forever:'classic'};
 // The loot tables carry a quality only where it is not epic, and what the addon reported about
 // an item outside them counts too. qCls turns it into the class the colours hang on.
 function itemQ(x){
@@ -1040,21 +1053,28 @@ const qCls = x => { const q = itemQ(x); return q === 4 ? '' : ' q' + q; };
 function icoHTML(it, extra, count, link){
   if(!it) return '<span class="ico"><i class="sp" style="background-image:none"></i></span>';
   const tag = link === false ? 'span' : 'a';
-  return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'tbc')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
+  return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'classic')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
 }
 const crafters = () => state.crafters || (state.crafters = []);
 const nights = () => state.nights || (state.nights = []);
 // Every game version keeps its own loot and raid nights; the roster and the guild settings are
-// shared. The game in use has its data at the top of the ledger, where every view reads it, the
-// others wait in state.shelf until the game is switched back. shelfGame names the game the top
-// belongs to: a ledger from before this has none, and all of it was TBC.
-const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped'];
+// shared. Forever has its data at the top of the ledger, where every view reads it, every other
+// game waits in state.shelf: TBC Anniversary there is the read-only archive, older games of a
+// backup stay untouched and unseen. shelfGame names the game the top belongs to: a ledger from
+// before the shelf has none, and all of it was TBC. retired keeps the raiders that left the roster
+// but still have loot or raid nights in that game.
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped', 'retired'];
+// Puts Forever on top. A ledger with another game on top moves it to the shelf, in memory only; it
+// is saved with the next save of an editor. Nothing is deleted on the way.
 function fitShelf(s){
-  const want = s.game || 'tbc', have = s.shelfGame || 'tbc';
+  const want = PLAY, have = s.shelfGame || 'tbc';   // a missing shelfGame still means tbc
+  if (s.game !== want) s.game = want;
   if (want !== have) {
     const shelf = s.shelf = s.shelf && typeof s.shelf === 'object' && !Array.isArray(s.shelf) ? s.shelf : {};
     const put = {};
     for (const k of PER_GAME) if (k in s) { put[k] = s[k]; delete s[k]; }
+    // a shelf entry of the same game is never overwritten: it moves aside under a free name
+    if (shelf[have]) { let i = 2; while (shelf[have + '~' + i]) i++; shelf[have + '~' + i] = shelf[have]; }
     shelf[have] = put;
     const back = shelf[want] || {};
     for (const k of PER_GAME) if (k in back) s[k] = back[k];
@@ -1063,8 +1083,93 @@ function fitShelf(s){
   if (!Array.isArray(s.awards)) s.awards = [];
   s.shelfGame = want;
 }
-// The per-game data of every game version: the one in use and the ones on the shelf.
-const allBuckets = () => [state, ...Object.values(state.shelf || {})];
+// The per-game data a raider leaves with: the one in use and the shelf, never the TBC archive.
+const allBuckets = (s = state) => [s, ...Object.entries(s.shelf || {}).filter(([k]) => k !== 'tbc').map(([, b]) => b)];
+
+/* ---------------- the TBC archive ---------------- */
+// Where the TBC data of a ledger lies: on the shelf, or still on top while it has not moved yet.
+function archiveBucket(s){
+  if (!s) return {};
+  if ((s.shelfGame || 'tbc') === 'tbc') return s;
+  const b = s.shelf && s.shelf.tbc;
+  return b && typeof b === 'object' ? b : {};
+}
+function archiveHas(s){
+  const b = archiveBucket(s), n = k => Array.isArray(b[k]) ? b[k].length : 0;
+  return n('awards') + n('nights') + n('crafters') > 0;
+}
+// The read-only view of the archive: a deep copy, so nothing done to it reaches the ledger.
+function archiveView(live){
+  const b = archiveBucket(live), raiders = Array.isArray(live.raiders) ? live.raiders.slice() : [];
+  for (const r of (Array.isArray(b.retired) ? b.retired : [])) if (r && !raiders.some(x => x.id === r.id)) raiders.push(r);
+  const v = {version: 1, guild: live.guild || '', realm: live.realm || '', faction: live.faction || '', example: false, raiders};
+  if (live.benchMode) v.benchMode = live.benchMode;
+  for (const k of PER_GAME) if (k !== 'retired' && k in b) v[k] = b[k];
+  const out = structuredClone(v);
+  if (!Array.isArray(out.awards)) out.awards = [];
+  out.game = 'tbc'; out.shelfGame = 'tbc'; out.shelf = {};
+  return out;
+}
+// Whether a raider left a trace in the archive: loot, a raid night or a recipe.
+function inArchive(s, rid){
+  const b = archiveBucket(s), has = (k, f) => Array.isArray(b[k]) && b[k].some(x => x && f(x));
+  return has('awards', a => a.raider === rid) || has('crafters', c => c.raider === rid) || has('matloot', x => x.raider === rid) || has('otherLoot', x => x.raider === rid)
+    || has('nights', n => (Array.isArray(n.present) && n.present.includes(rid)) || (!!n.late && typeof n.late === 'object' && rid in n.late) || (!!n.bench && typeof n.bench === 'object' && rid in n.bench)
+      || (Array.isArray(n.kills) && n.kills.some(k => k && Array.isArray(k.present) && k.present.includes(rid))));
+}
+// Takes a raider off the roster. Their trace goes in every game version but the archive, which
+// keeps a copy of the raider in retired so its loot still has a name.
+function removeRaider(s, rid){
+  fitShelf(s);
+  const r = (s.raiders || []).find(x => x.id === rid); if (!r) return;
+  if (inArchive(s, rid)) {
+    const b = s.shelf.tbc;
+    b.retired = Array.isArray(b.retired) ? b.retired : [];
+    if (!b.retired.some(x => x.id === rid)) b.retired.push(structuredClone(r));
+  }
+  s.raiders = s.raiders.filter(x => x !== r);
+  allBuckets(s).forEach(b => forgetRaider(b, rid));
+}
+let archiveOn = false, liveState = null, liveReadOnly = true;
+// movedOnLoad: the game the loaded ledger had on top when that was not Forever, until it is saved.
+let movedOnLoad = null;
+const noteMove = s => { const have = s && (s.shelfGame || 'tbc'); movedOnLoad = s && have !== PLAY ? have : null; };
+// The role decides readOnly outside the archive; inside it nobody writes.
+function setReadOnly(ro){ liveReadOnly = ro; readOnly = archiveOn || ro; }
+const ARCHIVE_TABS = ['armory', 'log', 'night', 'att', 'matrix', 'craft', 'mats', 'roster'];
+function enterArchive(){
+  if (archiveOn || busy()) return;
+  fitShelf(state);
+  if (!archiveHas(state)) return;
+  liveState = state; liveReadOnly = readOnly;
+  archiveOn = true; readOnly = true; ui.openCard = null; ui.night = null; ui.editing = null; ui.editRaider = null;
+  state = archiveView(liveState);
+  try { if (location.hash !== '#archive') history.replaceState(null, '', '#archive'); } catch(e){}
+  if (!ARCHIVE_TABS.includes(ui.view)) ui.view = 'armory';
+  loadGame('tbc'); showView(ui.view); refreshBar();
+}
+function leaveArchive(){
+  if (!archiveOn) return;
+  state = liveState; liveState = null;
+  archiveOn = false; readOnly = liveReadOnly; ui.openCard = null; ui.night = null;
+  try { if (location.hash === '#archive') history.replaceState(null, '', location.pathname + location.search); } catch(e){}
+  loadGame(PLAY); showView(ui.view); refreshBar();
+}
+// Every new ledger from the server or the artifact goes through here. In the archive it replaces
+// the live ledger behind the view, and the view is built anew from it.
+function takeState(next){
+  if (!next || typeof next !== 'object') return;
+  noteMove(next);
+  if (archiveOn) {
+    liveState = next; fitShelf(liveState);
+    if (!archiveHas(liveState)) { leaveArchive(); return; }
+    state = archiveView(liveState);
+    if (gameKey !== 'tbc') loadGame('tbc'); else renderAll();
+    return;
+  }
+  state = next;
+  if (gameKey !== PLAY) loadGame(PLAY); else renderAll();
+}
 const nightOn = d => nights().find(n => n.date === d);
 function allNights(){
   const byDate = {};
@@ -1144,7 +1249,7 @@ function attendance(rid){
 function craftersOf(c){
   const out = [], seen = new Set();
   for (const x of crafters()) if (x.craft === c.id) { const r = raiderById(x.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, id: x.id}); } }
-  for (const m of MEMBERS) if (Array.isArray(m.crafts) && m.crafts.includes(c.id)) { const r = raiderById(m.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, member: m}); } }
+  if (!archiveOn) for (const m of MEMBERS) if (Array.isArray(m.crafts) && m.crafts.includes(c.id)) { const r = raiderById(m.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, member: m}); } }
   if (c.recipe) for (const a of state.awards) if (a.item === c.recipe) { const r = raiderById(a.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, award: a}); } }
   return out.sort((a,b) => a.r.name.localeCompare(b.r.name));
 }
@@ -1154,7 +1259,7 @@ function canCraft(c){
 }
 const anyProfs = () => state.raiders.some(r => profsOf(r).length);
 function cicoHTML(c){
-  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey]||'tbc') + '/' + (c.item ? 'item=' + c.item : 'spell=' + c.id);
+  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey]||'classic') + '/' + (c.item ? 'item=' + c.item : 'spell=' + c.id);
   return '<a class="ico hot q'+c.q+'" data-craft="'+c.id+'" href="'+href+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
 }
 function dTag(it){ return it && it.diff ? '<span class="diff">'+esc(it.diff)+'</span>' : ''; }
@@ -1205,6 +1310,8 @@ const isNetError = e => /failed to fetch|networkerror|load failed|fetch failed|n
 // A request that never answers must not leave the page waiting forever.
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('no answer')), ms))]);
 readOnly = true;   // everyone is a viewer until the server says otherwise
+// Unsaved or saving: the archive cannot be opened then, it would hide the changes.
+const busy = () => dirty || saving;
 function setBar(kind, msg){
   const bar = $('#bar'); bar.className = 'bar '+kind; $('#barmsg').textContent = msg;
   $('#publishBtn').hidden = !(dirty && isEditor);
@@ -1215,6 +1322,7 @@ function setBar(kind, msg){
 function refreshBar(){
   if (!SUPA) setBar('err', 'Could not load the database client. Check your connection and reload.');
   else if (netError) setBar('err', 'Your browser cannot reach the ledger database (supabase.co), so signing in and saving do not work. An ad blocker or privacy add-on usually causes this: allow supabase.co on this page, then reload.');
+  else if (archiveOn) setBar('ro', 'TBC Anniversary archive. Read-only for everyone.');
   else if (!user) setBar('ro', 'Viewing. Sign in to edit.');
   else if (!isEditor) setBar('ro', 'Signed in as a viewer. Ask the owner to add you as an editor.');
   else if (saving) setBar('dirty', 'Saving…');
@@ -1222,6 +1330,7 @@ function refreshBar(){
   else setBar('ok', 'Everything is saved. Anyone with the link sees this version.');
 }
 function markDirty(){
+  if (archiveOn) return;   // the archive is a copy and is never saved
   dirty = true; state.savedAt = Date.now(); editSeq++;
   try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true, baseVersion: draftBase != null ? draftBase : serverVersion}))); } catch(e){}
   clearTimeout(saveTimer); saveTimer = setTimeout(publish, 4000);
@@ -1230,13 +1339,14 @@ function markDirty(){
 async function publish(){
   clearTimeout(saveTimer);
   if (dirty && SUPA && user && !isEditor && !saving) await refreshRole();
-  if (!dirty || !isEditor || !SUPA || saving) { refreshBar(); return; }
+  if (!dirty || !isEditor || !SUPA || saving || archiveOn) { refreshBar(); return; }
   saving = true; refreshBar(); $('#publishBtn').disabled = true;
   const seq = editSeq, clean = Object.assign({}, state); delete clean.dirty; delete clean.baseVersion;
   try {
     const {data, error} = await withTimeout(SUPA.rpc('save_ledger', {p_id: 'main', p_state: clean, p_version: draftBase != null ? draftBase : serverVersion}), 20000);
     if (error) throw error;
     serverVersion = Number(data && data[0] ? data[0].version : serverVersion + 1); draftBase = null;
+    movedOnLoad = null;   // the server has Forever on top now
     if (editSeq === seq) { dirty = false; try { localStorage.setItem(LS_KEY, JSON.stringify(clean)); } catch(e){} }
     else {   // something changed while saving: keep it as a draft and save again
       try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true, baseVersion: serverVersion}))); } catch(e){}
@@ -1262,10 +1372,10 @@ async function loadFromServer(force){
   if (error || !data) return false;
   netError = false;
   if (force || !dirty || !isEditor) {   // unsaved local edits only survive for someone who can actually save them
-    serverVersion = Number(data.version); state = data.state || state; dirty = false; draftBase = null;
+    serverVersion = Number(data.version); dirty = false; draftBase = null;
     clearTimeout(saveTimer);
     try { localStorage.removeItem(LS_KEY); } catch(e){}
-    if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll();
+    if (data.state) takeState(data.state); else renderAll();
   } else serverVersion = Number(data.version);   // a kept draft still saves against draftBase, so newer saves by others end in a conflict
   refreshBar();
   return true;
@@ -1289,7 +1399,7 @@ async function refreshRole(){
   }
   if ((SUPA && user ? user.id : null) !== me) return;   // signed in or out while asking: that call decides
   isEditor = ed; isOwner = own; roleUser = me; roleKnown = true;
-  readOnly = !isEditor;
+  setReadOnly(!isEditor);
 }
 async function renderEditors(){
   const panel = $('#editorsPanel'); panel.hidden = !isOwner; if (!isOwner) return;
@@ -1404,7 +1514,7 @@ async function initCapability(){
   });
   SUPA.channel('ledger').on('postgres_changes', {event: 'UPDATE', schema: 'public', table: 'ledgers', filter: 'id=eq.main'}, payload => {
     const v = Number(payload.new && payload.new.version);
-    if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; state = payload.new.state; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); else renderAll(); refreshBar(); }
+    if (v && v !== serverVersion && !dirty && !saving) { serverVersion = v; takeState(payload.new.state); refreshBar(); }
   }).subscribe();
   if (dirty && isEditor) saveTimer = setTimeout(publish, 2000);
 }
@@ -1460,15 +1570,16 @@ $('#editorsList').addEventListener('click', async ev => {
 function renderHeader(){
   const nightList = countedNights();
   const dates = nightList.map(n => n.date).sort();
-  const gm = GAME[gameKey] || GAME.tbc;
+  const gm = GAME[gameKey] || GAME[PLAY];
   // a game without realms (World of Warcraft Forever) shows its rule set where the realm would stand
-  const g = (state.guild||'').trim(), realm = (gm.rulesets ? (gm.rulesets.includes(state.ruleset) ? state.ruleset : '') : (state.realm||'')).trim(); $('#eyebrow').textContent = gm.name + ' · ' + gm.blurb;
+  const g = (state.guild||'').trim(), realm = (gm.rulesets ? (gm.rulesets.includes(state.ruleset) ? state.ruleset : '') : (state.realm||'')).trim(); $('#eyebrow').textContent = (archiveOn ? 'Archive · ' : '') + gm.name + ' · ' + gm.blurb;
   const fac = state.faction === 'alliance' ? '<span class="fac alliance">Alliance</span>' : state.faction === 'horde' ? '<span class="fac horde">Horde</span>' : '';
   $('#guildLine').innerHTML = g ? fac + esc(g) + (realm ? ' <span class="realm">· ' + esc(realm) + '</span>' : '') : (readOnly ? fac : fac + '<span class="hint">No guild name yet · <a data-goto="settings">set guild, realm or rule set, and faction</a></span>');
   document.title = g ? g + (realm ? ' – ' + realm : '') + ' · Guild Loot Ledger' : 'Guild Loot Ledger';
   $('#stats').innerHTML = '<div><b>'+state.awards.length+'</b> awards · <b>'+state.raiders.length+'</b> raiders</div>'
     + '<div><b>'+nightList.length+'</b> raid night'+(nightList.length===1?'':'s')+(dates.length ? ' · '+fmtShort(dates[0])+(dates.length>1?' – '+fmtDate(dates[dates.length-1]):' '+dates[0].slice(0,4)) : '')+'</div>';
   $('#exampleNotice').hidden = !state.example || readOnly;
+  renderArchiveBar();
   $('#awardPanel').classList.toggle('hidden', readOnly);
   $('#rosterForm').classList.toggle('hidden', readOnly);
   $('#rosterSide').classList.toggle('hidden', readOnly); $('#view-roster').querySelector('.two').style.gridTemplateColumns = readOnly ? '1fr' : '';
@@ -1481,11 +1592,27 @@ function renderHeader(){
   // importing is for owner and editors only
   document.querySelector('.tab[data-view="import"]').hidden = readOnly;
   document.querySelector('.tab[data-view="settings"]').hidden = readOnly;
+  const wishTab = document.querySelector('.tab[data-view="wish"]'); if (wishTab) wishTab.hidden = archiveOn;
   document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.view === 'settings') return;   // no count on this tab
-    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
+}
+
+// The archive button in the header, the archive line and the line for editors after a move.
+function renderArchiveBar(){
+  const b = $('#archiveBtn'), has = archiveOn || archiveHas(state), locked = !archiveOn && busy();
+  b.hidden = !has;
+  b.textContent = archiveOn ? 'Back to Forever' : 'TBC archive';
+  b.disabled = locked;
+  b.title = locked ? 'Save or discard your changes first.' : archiveOn ? 'Back to the World of Warcraft Forever ledger' : 'The loot and raid nights of TBC Anniversary, read-only';
+  $('#archiveNotice').hidden = !archiveOn;
+  const moved = !archiveOn && !readOnly && !dirty && movedOnLoad;
+  $('#moveNotice').hidden = !moved;
+  if (moved) $('#moveText').textContent = movedOnLoad === 'tbc'
+    ? 'This ledger still had TBC Anniversary on top. Its loot and raid nights are now in the TBC archive.'
+    : 'This ledger still had another game version on top. Its loot and raid nights are kept in the ledger, but not shown.';
 }
 
 /* ---------------- armory ---------------- */
@@ -1713,7 +1840,7 @@ function anyItemName(id){
 // An item outside the loot tables has no place in the icon sheet. Its icon name comes from Wowhead's
 // tooltip data the first time the item shows up and is kept in this browser; until then, or when
 // Wowhead does not know the item, the slot stays empty instead of showing the sheet's first icon.
-const ICON_KEY = 'guild-loot-ledger.icons.v1', WOWHEAD_ENV = {classic: 4, hardcore: 4, sod: 4, tbc: 5, mop: 15};
+const ICON_KEY = 'guild-loot-ledger.icons.v1', WOWHEAD_ENV = {tbc: 5};
 let extIcons = {}, iconTimer = null;
 try { extIcons = JSON.parse(localStorage.getItem(ICON_KEY) || '{}') || {}; } catch (e) {}
 const iconAsked = new Set();
@@ -1742,7 +1869,7 @@ function anyItemIcon(id){
 }
 function anyItemLink(id){
   const it = ITEM[id];
-  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id);
+  const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'classic') + '/item=' + Number(id);
   return '<a href="' + href + '" target="_blank" rel="noopener"' + (it ? ' data-item="' + it.id + '"' : '') + '>' + esc(anyItemName(id)) + '</a>';
 }
 // Items outside the loot tables have no icon here: their name links to Wowhead in its quality colour.
@@ -1750,7 +1877,7 @@ function anyItemHTML(id){
   const it = ITEM[id];
   if (it) return '<span class="item">' + icoHTML(it) + '<span class="nm">' + esc(it.name) + '</span></span>';
   const n = (state.itemNames || {})[id] || {};
-  return '<span class="item"><a class="nm' + qCls(id) + '" href="https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'tbc') + '/item=' + Number(id) + '" target="_blank" rel="noopener">' + esc(n.n || 'Item ' + id) + '</a></span>';
+  return '<span class="item"><a class="nm' + qCls(id) + '" href="https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'classic') + '/item=' + Number(id) + '" target="_blank" rel="noopener">' + esc(n.n || 'Item ' + id) + '</a></span>';
 }
 // One row: the icon on the left, the item name on its own line, who and the buttons below it.
 function xlootRow(id, count, foot){
@@ -2145,7 +2272,8 @@ $('#wclImport').addEventListener('click', () => {
 /* ---------------- wishlist ---------------- */
 let WISHES = [], wishState = 'loading', wishChannel = null;
 const PRIO = {3: 'High', 2: 'Medium', 1: 'Low'};
-const wishesHere = () => WISHES.filter(w => w.game === gameKey);
+// The wishlist is kept for Forever only, also while the archive is open.
+const wishesHere = () => WISHES.filter(w => w.game === PLAY);
 const wishGot = w => state.awards.some(a => a.raider === w.raider && a.item === w.item);
 const wishesFor = id => wishesHere().filter(w => w.item === id && !wishGot(w)).sort((a, b) => b.prio - a.prio || a.raider_name.localeCompare(b.raider_name));
 async function loadWishes(){
@@ -2175,7 +2303,7 @@ function renderWishes(){
   $('#wiRaider').innerHTML = raiderOptions(keep, '<option value="">Every raider</option>');
   $('#wishSide').hidden = false;
   $('#wiHint').innerHTML = all.length
-    ? 'What raiders still need from ' + esc((GAME[gameKey] || GAME.tbc).name) + '. When a boss is picked on the Loot Log tab, everyone who wants one of its drops is listed right under the form.'
+    ? 'What raiders still need from ' + esc(GAME[PLAY].name) + '. When a boss is picked on the Loot Log tab, everyone who wants one of its drops is listed right under the form.'
     : (user ? 'No wishes yet. Put the first item on a wishlist with the form on the right.' : 'No wishes yet. Sign in to put items on a wishlist.');
   const rows = all.map(w => ({w, got: wishGot(w), it: ITEM[w.item]})).filter(({w, got, it}) => {
     if (rf && w.raider !== rf) return false;
@@ -2252,7 +2380,7 @@ $('#wishForm').addEventListener('submit', async ev => {
   if (!raider) return say('Choose the raider.');
   if (!item) return say('Choose the item.');
   if (wishesHere().filter(w => w.raider === raider.id && !wishGot(w)).length >= 30) return say(raider.name + ' already has 30 open wishes.');
-  const {error} = await SUPA.from('wishlist').insert({game: gameKey, raider: raider.id, raider_name: raider.name, item, boss, prio: Number($('#wfPrio').value), note: $('#wfNote').value.trim(), created_by: user.id, created_name: userName()});
+  const {error} = await SUPA.from('wishlist').insert({game: PLAY, raider: raider.id, raider_name: raider.name, item, boss, prio: Number($('#wfPrio').value), note: $('#wfNote').value.trim(), created_by: user.id, created_name: userName()});
   if (error) return say(/duplicate|unique/i.test(error.message || '') ? raider.name + ' already has that item on the wishlist.' : 'Could not save: ' + (error.message || error.code));
   $('#wfNote').value = ''; say('Added ' + (ITEM[item] ? ITEM[item].name : 'the item') + ' to ' + raider.name + "'s wishlist."); loadWishes();
 });
@@ -2295,9 +2423,9 @@ function wishImportPlan(wishes){
 function wishAddonText(wishes){
   const one = s => String(s == null ? '' : s).replace(/[\r\n|]+/g, ' ').replace(/\s+/g, ' ').trim();
   const nameOf = w => { const r = raiderById(w.raider); return one(r ? r.name : w.raider_name); };
-  const rows = wishes.filter(w => w.game === gameKey && !wishGot(w))
+  const rows = wishes.filter(w => w.game === PLAY && !wishGot(w))
     .sort((a, b) => a.item - b.item || b.prio - a.prio || nameOf(a).localeCompare(nameOf(b)));
-  const lines = ['#AMISIA-WL 1 ' + gameKey + ' ' + today()];
+  const lines = ['#AMISIA-WL 1 ' + PLAY + ' ' + today()];
   for (const w of rows) {
     const name = nameOf(w).replace(/ /g, '_'), note = one(w.note), p = Number(w.prio);
     if (name) lines.push('W ' + w.item + ' ' + ([1, 2, 3].includes(p) ? p : 2) + ' ' + name + (note ? ' ' + note : ''));
@@ -2328,7 +2456,7 @@ $('#wpCheck').addEventListener('click', () => {
 });
 $('#wpAdd').addEventListener('click', async () => {
   if (!SUPA || !user) return say('Sign in first.');
-  const rows = wishPaste.filter(p => p.status === 'new').map(p => ({game: gameKey, raider: p.raider.id, raider_name: p.raider.name, item: p.item, boss: p.boss,
+  const rows = wishPaste.filter(p => p.status === 'new').map(p => ({game: PLAY, raider: p.raider.id, raider_name: p.raider.name, item: p.item, boss: p.boss,
     prio: p.prio, note: p.note || '', created_by: user.id, created_name: userName()}));
   if (!rows.length) return;
   $('#wpAdd').disabled = true;
@@ -2384,7 +2512,7 @@ function renderMatrix(){
 /* ---------------- crafting ---------------- */
 function renderCraft(){
   const q = $('#crSearch').value.trim().toLowerCase(), pf = $('#crProf').value, sf = $('#crSlot').value, show = $('#crShow').value;
-  const me = myMember(), meR = me && raiderById(me.raider), myProfs = meR ? profsOf(meR) : [];
+  const me = archiveOn ? null : myMember(), meR = me && raiderById(me.raider), myProfs = meR ? profsOf(meR) : [];   // nobody lists a recipe in the archive
   const mineOpt = $('#crShow').querySelector('option[value="mine"]');
   if (meR && !mineOpt) $('#crShow').insertAdjacentHTML('beforeend', '<option value="mine">Recipes I can craft</option><option value="myprof">Recipes of my professions</option>');
   if (!meR && mineOpt) { if (/^(mine|myprof)$/.test($('#crShow').value)) $('#crShow').value = 'all'; $('#crShow').querySelectorAll('option[value="mine"],option[value="myprof"]').forEach(o => o.remove()); }
@@ -2405,7 +2533,7 @@ function renderCraft(){
   });
   $('#crCount').textContent = rows.length + ' of ' + CRAFT.items.length + ' recipes';
   if (!rows.length) {
-    const msg = craftState === 'soon' ? ['No crafting tables for this game version yet', 'Switch the game version on the Roster tab.'] : craftState === 'loading' ? ['Loading crafting tables…', ''] : craftState === 'error' ? ['Crafting tables could not be loaded', 'Reload the page.'] : ['No recipes match', 'Try a different filter.'];
+    const msg = craftState === 'soon' ? ['No crafting tables for this game version yet', ''] : craftState === 'loading' ? ['Loading crafting tables…', ''] : craftState === 'error' ? ['Crafting tables could not be loaded', 'Reload the page.'] : ['No recipes match', 'Try a different filter.'];
     $('#crBody').innerHTML = '<tr><td colspan="4"><div class="empty"><b>'+msg[0]+'</b>'+msg[1]+'</div></td></tr>'; return;
   }
   let h = '', lastProf = null;
@@ -2436,6 +2564,7 @@ function renderCraft(){
 }
 
 /* ---------------- mats (guild bank materials) ---------------- */
+// The materials of the TBC archive. Forever tracks none yet: the guild has not picked them.
 const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'},
   {id: 32227, name: 'Crimson Spinel'}, {id: 32228, name: 'Empyrean Sapphire'}, {id: 32229, name: 'Lionseye'},
   {id: 32230, name: 'Shadowsong Amethyst'}, {id: 32231, name: 'Pyrestone'}, {id: 32249, name: 'Seaspray Emerald'}]};
@@ -2475,8 +2604,13 @@ function bankLine(id){
 function matOptions(sel){ return matsHere().map(m => '<option value="'+m.id+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
 function renderMats(){
   const mats = matsHere();
+  $('#matGrid').hidden = archiveOn;
+  if (archiveOn) {   // the archive keeps what was looted and the last bank count; requests belong to the live ledger
+    $('#matStock').innerHTML = mats.map(m => { const st = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span><b>'+st.looted+'</b>looted in raids</span></div>'+bankLine(m.id)+'</div></div>'; }).join('');
+    return;
+  }
   $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
-    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials for '+esc((GAME[gameKey]||GAME.tbc).name)+'</b>Materials are tracked for TBC Anniversary so far.</div>';
+    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive.</div>';
   for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
   for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
   $('#matReqForm').hidden = !user; $('#matReqLogin').hidden = !!user;
@@ -2570,7 +2704,7 @@ $('#matBody').addEventListener('click', async ev => {
 /* ---------------- roster ---------------- */
 function renderSettings(){
   $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
-  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===gameKey?' selected':'')+'>'+esc(g.name)+(g.soon?' · coming soon':'')+'</option>').join('');
+  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===PLAY?' selected':'')+'>'+esc(g.name)+'</option>').join('');
   renderPlaceField();
 }
 // Realm for games with realms, rule set for the ones without.
@@ -2580,7 +2714,7 @@ function renderPlaceField(){
   if (sets) $('#gRuleset').innerHTML = '<option value="">Not set</option>' + sets.map(x => '<option'+(x===state.ruleset?' selected':'')+'>'+esc(x)+'</option>').join('');
 }
 function renderMyChar(){
-  const m = myMember(), r = m && raiderById(m.raider);
+  const m = archiveOn ? null : myMember(), r = m && raiderById(m.raider);
   $('#myCharPanel').hidden = !r;
   if (!r) return;
   $('#myCharName').innerHTML = rName(r) + rankTag(r.id);
@@ -3132,7 +3266,7 @@ function forgetImport(a, b){
   b = b || state; b.dropped = b.dropped || [];
   for (const s of [importSig(a), a.am ? 'm' + a.am : '']) if (s && !b.dropped.includes(s)) b.dropped.push(s);
 }
-// A raider leaves the roster, so their trace goes in every game version, not only the one in use.
+// A raider leaves the roster, so their trace goes in every game version but the TBC archive (see removeRaider).
 function forgetRaider(b, rid){
   (b.awards || []).filter(a => a.raider === rid).forEach(a => forgetImport(a, b));
   b.awards = (b.awards || []).filter(a => a.raider !== rid);
@@ -3468,7 +3602,9 @@ function showView(v){
   renderAll();
 }
 function renderAll(){
-  fitShelf(state);
+  if (!archiveOn) fitShelf(state);   // the archive view is built with TBC on top and never moves
+  // the archive has no Wishlist, Import or Settings
+  if (archiveOn && !ARCHIVE_TABS.includes(ui.view)) { showView('armory'); return; }
   // a viewer never stays on the Import tab, once the server has said what the role is
   if (readOnly && roleKnown && (ui.view === 'import' || ui.view === 'settings')) { showView('armory'); return; }
   renderHeader();
@@ -3488,6 +3624,11 @@ function renderAll(){
 $('#tabs').addEventListener('click', ev => { const t = ev.target.closest('.tab'); if (t) showView(t.dataset.view); });
 document.addEventListener('click', ev => { const a = ev.target.closest('[data-goto]'); if (a) { ev.preventDefault(); if (a.dataset.date) ui.night = a.dataset.date; showView(a.dataset.goto); if (a.closest('#guildLine')) $('#gName').focus(); } });
 $('#publishBtn').addEventListener('click', publish);
+$('#archiveBtn').addEventListener('click', () => { if (archiveOn) leaveArchive(); else if (busy()) say('Save or discard your changes first.'); else enterArchive(); });
+$('#archiveBack').addEventListener('click', leaveArchive);
+// The move to Forever is saved like any change; the button lets an editor save it on its own.
+$('#moveSave').addEventListener('click', () => { if (!readOnly && !archiveOn) { fitShelf(state); markDirty(); } });
+window.addEventListener('hashchange', () => { if (location.hash === '#archive') enterArchive(); else leaveArchive(); });
 $('#discardBtn').addEventListener('click', async () => {
   if (!dirty) return;
   if (saving) return say('Saving right now, try again in a moment.');
@@ -3599,30 +3740,37 @@ $('#rosterBody').addEventListener('click', async ev => {
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
   if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
-  if (d) { const r = raiderById(d.dataset.rdel); if (!r) return; const n = allBuckets().reduce((t, b) => t + (b.awards || []).filter(a => a.raider === r.id).length, 0); if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s')+(Object.keys(state.shelf || {}).length ? ' in every game version' : ''):'')+'?', 'Remove')) { state.raiders = state.raiders.filter(x => x !== r); allBuckets().forEach(b => forgetRaider(b, r.id)); markDirty(); } }
+  if (d) {
+    const r = raiderById(d.dataset.rdel); if (!r || readOnly) return;
+    fitShelf(state);
+    const n = allBuckets().reduce((t, b) => t + (b.awards || []).filter(a => a.raider === r.id).length, 0), kept = inArchive(state, r.id);
+    if (await ask('Remove '+r.name+' from the roster'+(n?' and delete their '+n+' award'+(n===1?'':'s'):'')+'?'+(kept ? ' Their loot in the TBC archive stays.' : ''), 'Remove')) { removeRaider(state, r.id); markDirty(); }
+  }
 });
-$('#gGame').addEventListener('change', renderPlaceField);
-$('#saveSettings').addEventListener('click', async () => {
-  const newGame = $('#gGame').value;
-  if (newGame !== (state.game || 'tbc') && !await ask('Switch the game version to ' + GAME[newGame].name + '? The loot, raid nights and imports of ' + GAME[state.game || 'tbc'].name + ' are put aside and come back when you switch back. The roster and the guild settings stay.', 'Switch')) { $('#gGame').value = state.game || 'tbc'; return; }
-  state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); if (GAME[newGame] && GAME[newGame].rulesets) state.ruleset = $('#gRuleset').value; state.faction = $('#gFaction').value; state.game = newGame;
-  fitShelf(state); ui.openCard = null;
-  markDirty(); if (newGame !== gameKey) loadGame(newGame);
+$('#saveSettings').addEventListener('click', () => {
+  if (readOnly) return;
+  state.guild = $('#gName').value.trim(); state.realm = $('#gRealm').value.trim(); if (GAME[PLAY].rulesets) state.ruleset = $('#gRuleset').value; state.faction = $('#gFaction').value;
+  fitShelf(state);
+  markDirty();
 });
 $('#exportBtn').addEventListener('click', () => { const c = Object.assign({}, state); delete c.dirty; $('#backup').value = JSON.stringify(c, null, 1); });
 $('#copyBtn').addEventListener('click', async () => { const c = Object.assign({}, state); delete c.dirty; const txt = JSON.stringify(c); $('#backup').value = txt; try { await navigator.clipboard.writeText(txt); $('#copyBtn').textContent = 'Copied'; setTimeout(() => $('#copyBtn').textContent = 'Copy', 1500); } catch(e) { $('#backup').select(); } });
 $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
-  if (!await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})}; ui.openCard = null; markDirty(); if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc');
+  if (readOnly || !await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
+  // a backup without game was TBC; the next fitShelf moves whatever is on top to the shelf and puts Forever there
+  fitShelf(state); ui.openCard = null; markDirty(); if (gameKey !== PLAY) loadGame(PLAY);
 });
 window.addEventListener('beforeunload', ev => { if (dirty && isEditor) { ev.preventDefault(); ev.returnValue = ''; } });
 
 /* ---------------- boot ---------------- */
+noteMove(state);
 showView(ui.view || 'armory');
 refreshBar();
-loadGame(state.game || 'tbc');
+loadGame(PLAY);
+if (location.hash === '#archive') enterArchive();
 initCapability();
 })();
 </script>

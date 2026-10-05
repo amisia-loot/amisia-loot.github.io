@@ -86,7 +86,7 @@ const profsOf = r => Array.isArray(r && r.profs) ? r.profs : [];
 const wishesFor = () => [];
 function renderWantLine(){ const el = $('#wantLine'); if (el) el.hidden = true; }""")
 
-sub("  for (const m of MEMBERS) if (Array.isArray(m.crafts) && m.crafts.includes(c.id)) { const r = raiderById(m.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, member: m}); } }\n", '')
+sub("  if (!archiveOn) for (const m of MEMBERS) if (Array.isArray(m.crafts) && m.crafts.includes(c.id)) { const r = raiderById(m.raider); if (r && !seen.has(r.id)) { seen.add(r.id); out.push({r, member: m}); } }\n", '')
 
 # ---------------------------------------------------------------- state: no server version to base a draft on
 sub("""let dirty = false, readOnly = false, art = null, artResolved = false, saveTimer = null;
@@ -111,14 +111,18 @@ function setBar(kind, msg){
   $('#publishBtn').hidden = !(dirty && !readOnly && art);
   $('#discardBtn').hidden = !dirty;
 }
+// Unsaved: the archive cannot be opened then, it would hide the changes.
+const busy = () => dirty;
 function refreshBar(){
-  if (readOnly) setBar('ro', 'Read-only view. Only people who may edit this artifact can change the ledger.');
+  if (archiveOn) setBar('ro', 'TBC Anniversary archive. Read-only for everyone.');
+  else if (readOnly) setBar('ro', 'Read-only view. Only people who may edit this artifact can change the ledger.');
   else if (!artResolved) setBar('local', dirty ? 'Unsaved changes.' : 'Ledger loaded.');
   else if (!art) setBar('local', 'Changes are kept in this browser only. Open the page on claude.ai to publish them.');
   else if (dirty) setBar('dirty', 'Unsaved changes. They publish automatically in a moment, or press Publish.');
   else setBar('ok', 'Everything is published. Anyone with the link sees this version.');
 }
 function markDirty(){
+  if (archiveOn) return;   // the archive is a copy and is never saved
   dirty = true; state.savedAt = Date.now();
   try { localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({}, state, {dirty:true}))); } catch(e){}
   clearTimeout(saveTimer); saveTimer = setTimeout(publish, 25000);
@@ -126,14 +130,14 @@ function markDirty(){
 }
 async function publish(){
   clearTimeout(saveTimer);
-  if (!dirty || !art || readOnly) return;
+  if (!dirty || !art || readOnly || archiveOn) return;
   setBar('dirty', 'Publishing\u2026'); $('#publishBtn').disabled = true;
   const clean = Object.assign({}, state); delete clean.dirty;
   const json = JSON.stringify(clean);
   try {
     // Files form first: no reload, the page keeps its state.
     await art.publish({'data.json': {content: json, contentType: 'application/json'}});
-    dirty = false; try { localStorage.setItem(LS_KEY, json); } catch(e){}
+    dirty = false; movedOnLoad = null; try { localStorage.setItem(LS_KEY, json); } catch(e){}
     $('#publishBtn').disabled = false; refreshBar(); return;
   } catch (e) {
     if (!(e && e.code === 'capability_disabled')) { $('#publishBtn').disabled = false; return publishFailed(e); }
@@ -150,14 +154,14 @@ async function publish(){
     try { sessionStorage.setItem(LS_KEY+'.ui', JSON.stringify(ui)); } catch(e){}
     try { localStorage.setItem(LS_KEY, json); } catch(e){}
     await art.publish(src);
-    dirty = false; refreshBar();
+    dirty = false; movedOnLoad = null; refreshBar();
   } catch (e) { publishFailed(e); }
   finally { $('#publishBtn').disabled = false; }
 }
 function publishFailed(e){
   $('#publishBtn').disabled = false;
   const code = e && e.code;
-  if (code === 'not_writer' || code === 'not_granted') { readOnly = true; renderAll(); refreshBar(); return; }
+  if (code === 'not_writer' || code === 'not_granted') { setReadOnly(true); renderAll(); refreshBar(); return; }
   if (code === 'conflict') { setBar('dirty', 'Someone else published first. Reloading to the newest version\u2026'); return; }
   if (code === 'rate_limited') { setBar('err', 'Publishing too often. Your changes are kept here; try again in a minute.'); saveTimer = setTimeout(publish, 60000); return; }
   setBar('err', 'Publish failed ('+(e && (e.message||code) || 'unknown')+'). Your changes are kept in this browser. Press Publish to retry.');
@@ -168,18 +172,19 @@ async function initCapability(){
     // A newer data.json (from a files-form publish) beats the copy inside the page.
     try {
       const r = await fetch('data.json', {cache:'no-store'});
-      if (r.ok) { const d = await r.json(); if (d && d.awards && (d.savedAt||0) > (state.savedAt||0) && !dirty) { state = d; if ((state.game||'tbc') !== gameKey) loadGame(state.game||'tbc'); } }
+      const live = archiveOn ? liveState : state;
+      if (r.ok) { const d = await r.json(); if (d && d.awards && (d.savedAt||0) > (live.savedAt||0) && !dirty) takeState(d); }
     } catch(e){}
     art = await window.claude.use('artifact');
     if (art) {
       try {
         const perms = await window.claude.use('permissions');
-        if (perms) { const st = await perms.state('artifact'); if (st === 'unavailable' || st === 'denied') readOnly = true; }
+        if (perms) { const st = await perms.state('artifact'); if (st === 'unavailable' || st === 'denied') setReadOnly(true); }
       } catch(e) {}
     }
   } catch(e) { art = null; }
   artResolved = true; renderAll(); refreshBar();
-  if (dirty && art && !readOnly) saveTimer = setTimeout(publish, 3000);
+  if (dirty && art && !readOnly && !archiveOn) saveTimer = setTimeout(publish, 3000);
 }
 
 """
@@ -188,14 +193,14 @@ j = s.index('/* ---------------- header ---------------- */')
 s = s[:i] + PERSIST + s[j:]
 
 # ---------------------------------------------------------------- header: tab counts without wishlist and requests
-sub("""    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length : t.dataset.view==='craft' ? CRAFT.items.length""",
+sub("""    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length""",
     """    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? matsHere().length : t.dataset.view==='craft' ? CRAFT.items.length""")
 
 # ---------------------------------------------------------------- Warcraft Logs and wishlists
 cut('/* ---------------- warcraft logs ---------------- */', '/* ---------------- matrix ---------------- */')
 
 # ---------------------------------------------------------------- crafting: no "I can craft this" without accounts
-sub("  const me = myMember(), meR = me && raiderById(me.raider), myProfs = meR ? profsOf(meR) : [];",
+sub("  const me = archiveOn ? null : myMember(), meR = me && raiderById(me.raider), myProfs = meR ? profsOf(meR) : [];   // nobody lists a recipe in the archive",
     "  const meR = null, myProfs = [];   // without accounts nobody is \"me\" on this page")
 
 # ---------------------------------------------------------------- mats: the bank count and what was looted
@@ -209,7 +214,7 @@ cut("function matOptions(sel){", "function renderMats(){")
 MATSVIEW = """function renderMats(){
   const mats = matsHere();
   $('#matStock').innerHTML = mats.length ? mats.map(m => { const st = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span><b>'+st.looted+'</b>looted in raids</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
-    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials for '+esc((GAME[gameKey]||GAME.tbc).name)+'</b>Materials are tracked for TBC Anniversary so far.</div>';
+    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive.</div>';
 }
 
 """
