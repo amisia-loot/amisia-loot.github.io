@@ -264,7 +264,8 @@ local function buildOfficer(parent)
     end)
     O.add:SetPoint("RIGHT", O.undo, "LEFT", -6, 0)
 
-    -- the counts on the left (330 px), the sync state right-aligned (260 px) with its details as tooltip
+    -- the counts on the left (up to 330 px), the sync state right-aligned in the space the counts
+    -- leave (fillSync sizes it), with its details as tooltip
     O.head = W.Text(O, "GameFontDisableSmall", 330)
     O.head:SetPoint("TOPLEFT", 6, -28)
     O.sync = W.Text(O, "GameFontDisableSmall", 260)
@@ -446,14 +447,33 @@ local function buildOfficer(parent)
         chosenId = c.id
         ns.Refresh()
     end)
+    B:SetScript("OnEnter", function(self)
+        if not self.tip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine("Konflikt", 1, 0.82, 0)
+        for _, l in ipairs(self.tip) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    B:SetScript("OnLeave", function() GameTooltip:Hide() end)
     B:Hide()
     O.conflict = B
     return O
 end
 
+-- The first n characters of a UTF-8 text, with three dots when it was longer.
+local function cutText(t, n)
+    local out, count = {}, 0
+    for ch in tostring(t):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        count = count + 1
+        if count > n then return table.concat(out) .. "..." end
+        out[count] = ch
+    end
+    return table.concat(out)
+end
+
 -- What a change does, in words: "an Vulo (OS)", "an die Bank", "Notiz ..." (f: the fields, a: the
--- award for what f leaves out).
-local function changeText(a, f)
+-- award for what f leaves out). With short, a note is cut to 20 characters.
+local function changeText(a, f, short)
     local parts = {}
     if f.name ~= nil or f.kind ~= nil or f.to ~= nil then
         local to = f.to or a.to
@@ -466,7 +486,8 @@ local function changeText(a, f)
         end
     end
     if f.note ~= nil then
-        parts[#parts + 1] = (f.note and f.note ~= "") and ("Notiz \"%s\""):format(f.note) or "Notiz gelöscht"
+        parts[#parts + 1] = (f.note and f.note ~= "") and ("Notiz \"%s\""):format(short and cutText(f.note, 20) or f.note)
+            or "Notiz gelöscht"
     end
     return #parts > 0 and table.concat(parts, ", ") or "geändert"
 end
@@ -477,7 +498,7 @@ local function fillConflict(O, s)
     local list = (s and ns.SyncConflicts) and ns.SyncConflicts(s) or {}
     local c = list[1]
     if not c then
-        B.conflict = nil
+        B.conflict, B.tip = nil, nil
         B:Hide()
         return
     end
@@ -486,18 +507,26 @@ local function fillConflict(O, s)
     local mine = type(c.mine) == "table" and c.mine or {}
     local n = #list > 1 and (" (1 von %d)"):format(#list) or ""
     local by = tostring(c.by or "?")
-    if c.why == "GONE" then
-        B.text:SetText(("Konflikt%s: %s hat diese Vergabe gelöscht."):format(n, by))
-    else
-        -- the keeper's state of what the own change touched
-        local theirs = {}
-        for _, k in ipairs({ "name", "kind", "note", "to" }) do
-            if mine[k] ~= nil or mine.deleted then theirs[k] = a[k] == nil and false or a[k] end
+    -- the bar shows notes cut short; the tooltip (B.tip) has both sentences in full
+    local function sentences(short)
+        local keeper
+        if c.why == "GONE" then
+            keeper = ("Konflikt%s: %s hat diese Vergabe gelöscht."):format(n, by)
+        else
+            -- the keeper's state of what the own change touched
+            local theirs = {}
+            for _, k in ipairs({ "name", "kind", "note", "to" }) do
+                if mine[k] ~= nil or mine.deleted then theirs[k] = a[k] == nil and false or a[k] end
+            end
+            if mine.deleted then theirs.note = nil end
+            keeper = ("Konflikt%s: %s hat diese Vergabe zuerst geändert: %s."):format(n, by, changeText(a, theirs, short))
         end
-        if mine.deleted then theirs.note = nil end
-        B.text:SetText(("Konflikt%s: %s hat diese Vergabe zuerst geändert: %s."):format(n, by, changeText(a, theirs)))
+        return keeper, ("Deine Änderung: %s."):format(mine.deleted and "gelöscht" or changeText(a, mine, short))
     end
-    B.mine:SetText(("Deine Änderung: %s."):format(mine.deleted and "gelöscht" or changeText(a, mine)))
+    local keeper, own = sentences(true)
+    B.text:SetText(keeper)
+    B.mine:SetText(own)
+    B.tip = { sentences(false) }
     if c.why == "GONE" then
         B.take:SetText("Wiederherstellen und ändern")
         B.take:SetWidth(170)
@@ -512,6 +541,13 @@ local SYNC_COLOR = { green = { 0.31, 0.82, 0.42 }, gold = { GOLD[1], GOLD[2], GO
 
 -- The sync line of the head: the state of the chosen raid ("Alle Raids": none).
 local function fillSync(O, s, all)
+    -- the counts keep what they need (at most 330 px, measured at full width); the sync line and
+    -- its hit frame take the rest of the 590 px line after a 12 px gap
+    O.head:SetWidth(330)
+    -- rounded up, so the counts never lose their last letter
+    local hw = math.min(330, math.ceil(O.head:GetStringWidth() or 0))
+    O.head:SetWidth(hw)
+    local w = 590 - hw - 12
     if all or not s or not ns.SyncStatus then
         O.sync:SetText("")
         O.sync.color = nil
@@ -519,6 +555,8 @@ local function fillSync(O, s, all)
         return
     end
     local text, color, tip = ns.SyncStatus(s)
+    O.sync:SetWidth(w)
+    O.syncHit:SetWidth(w)
     O.sync:SetText(text)
     O.sync.color = color
     local c = SYNC_COLOR[color] or SYNC_COLOR.grey
@@ -623,6 +661,14 @@ local function refreshOfficer(O)
         parts[#parts + 1] = EXPORT_TEXT[ns.ExportState(s)] or ""
     else
         parts = { "Noch kein Raid aufgezeichnet." }
+    end
+    -- conflicts of the running raid while another raid (or all) is shown: a gold mark right after
+    -- the count, so it is not cut off
+    local act = ns.Active()
+    local actConflicts = (act and act ~= s and ns.SyncConflicts) and #ns.SyncConflicts(act) or 0
+    if actConflicts > 0 then
+        table.insert(parts, 2, ("|cffe2b857%d %s im laufenden Raid|r"):format(actConflicts,
+            actConflicts == 1 and "Konflikt" or "Konflikte"))
     end
     O.head:SetText(table.concat(parts, " · "))
     O.undo:SetEnabled(ns.UndoLabel() ~= nil)

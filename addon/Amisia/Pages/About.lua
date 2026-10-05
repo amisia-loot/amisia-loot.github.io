@@ -166,6 +166,10 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
             end
         end
         local guildText = ("Gilde: %d gesehen"):format(guildRows)
+        -- more clients than rows: the wheel scrolls the list
+        if available and #rows > ROWS then
+            guildText = guildText .. (" · %d von %d, Mausrad"):format(ROWS, #rows)
+        end
         if inRaid then
             f.summary:SetText(("Raid: %d von %d mit Amisia%s · %s"):format(withAmisia, math.max(#ns.GroupRoster(), raidRows),
                 outdated > 0 and (" · %d veraltet"):format(outdated) or "", guildText))

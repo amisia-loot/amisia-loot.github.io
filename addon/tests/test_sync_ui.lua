@@ -117,8 +117,10 @@ assert(line:find("Sync: älterer Raid, Änderungen bleiben lokal", 1, true), lin
 officer(FRAK, [[local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
     L.row("officer head", O.head, O.sync)
     local l, r = L.span(O.sync)
-    assert(r == 596 and r - l == 260, "the sync line right-aligned, 260 px: " .. l .. ".." .. r)
-    assert(L.span(O.head) == 6 and select(2, L.span(O.head)) == 336, "the counts on 330 px")
+    local h1, h2 = L.span(O.head)
+    -- 2.1: the sync line takes the space the counts leave, 12 px after them
+    assert(h1 == 6 and h2 <= 336 and h2 - h1 >= math.min(330, O.head:GetStringWidth()), "the counts on at most 330 px: " .. h1 .. ".." .. h2)
+    assert(r == 596 and l == h2 + 12, "the sync line right-aligned after the counts: " .. l .. ".." .. r)
     local hl, hr = L.span(O.syncHit)
     assert(hl == l and hr == r, "the tooltip area covers the line")
     for _, t in ipairs({ "Sync: aus", "Sync: kein Hüter im Raid", "Sync: du bist Hüter · 3 Offiziere", "Sync: dieser Client kann nicht packen",
@@ -275,7 +277,7 @@ for i, w in ipairs(want) do
     assert(it.key == w[1] and it.default == w[2], i .. ": " .. tostring(it.key))
     assert((w[3] == "officer") == (it.officer == true) and (w[3] == "expert") == (it.expert == true), it.key)
 end
-assert(items.items[3].label == "Der Lootleitung sagen, für welche Items ich ein Upgrade habe")
+assert(items.items[3].label == "Der Lootleitung meine Upgrades nennen")
 assert(items.items[6].label == "Beim Ansagen fragen, für wen ein Item ein Upgrade ist" and items.items[7].label == "Tooltip-Zeile Upgrade für")
 -- the rows on the settings page: officer items for officers, not for raiders
 assert(C(FRAK, "NS.ShowPage('settings'); NS.Refresh(); return NS.SettingsRows()['sync.askUpgrades']:IsShown()") == true)

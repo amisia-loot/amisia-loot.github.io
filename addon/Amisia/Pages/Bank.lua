@@ -4,6 +4,7 @@ local ADDON, ns = ...
 local W = ns.W
 
 local box   -- the link box of the editor, for the shift-click hook below
+local BANK_ROWS = 18
 
 ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, officer = true,
     create = function(parent)
@@ -30,7 +31,8 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         f.add.hint = W.Text(f, "GameFontDisableSmall", 220)
         f.add.hint:SetPoint("LEFT", f.add.button, "RIGHT", 8, 0)
         f.add.hint:SetText("Link mit Shift-Klick einfügen")
-        f.list = W.List(f, 1, 22, function(r)
+        -- 18 rows fit the page under the editor (70 + 18 * 22 = 466 of 478 px); the wheel scrolls the rest
+        f.list = W.List(f, BANK_ROWS, 22, function(r)
             r.name = W.Text(r, "GameFontHighlightSmall", 300)
             r.name:SetPoint("LEFT", 6, 0)
             r.count = W.Text(r, "GameFontHighlightSmall", 80)
@@ -55,8 +57,10 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
     end,
     refresh = function(f)
         local hidden = ns.HiddenMatCount()
-        local head = ("%d von %d Raidmaterialien%s. "):format(#ns.MAT_ORDER, ns.MAT_CAP,
-            hidden > 0 and (" · " .. hidden .. " herausgenommen") or "")
+        local n = #ns.MAT_ORDER
+        local head = ("%d von %d Raidmaterialien%s%s. "):format(n, ns.MAT_CAP,
+            hidden > 0 and (" · " .. hidden .. " herausgenommen") or "",
+            n > BANK_ROWS and (" · %d von %d sichtbar, Mausrad"):format(BANK_ROWS, n) or "")
         local bank = ns.Bank()
         if not ns.HasMats() then
             f.state:SetText("|cff8f86a3Noch keine Raidmaterialien.|r Amisia lernt sie in Raidaufnahmen von selbst: Handwerkswaren, die droppen, geplündert oder vergeben werden. Von Hand: Link unten einfügen.")
@@ -74,7 +78,6 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
             local e = ns.MatInfo(id)
             items[#items + 1] = { id = id, count = counts[id], manual = e and e.manual }
         end
-        f.list:Grow(#items)   -- the material list can grow after the page was made
         f.list:SetItems(items)
     end }
 

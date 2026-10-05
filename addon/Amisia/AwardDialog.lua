@@ -398,7 +398,8 @@ refresh = function()
     end
     -- who needs it: the answers, else "Fragen" while nothing was asked
     local needText = st.item and ns.NeedText and ns.NeedText(st.item)
-    local canAsk = st.item ~= nil and ns.NeedAsk ~= nil and needText == nil and ns.IsOfficerView() and IsInRaid() and true or false
+    -- the button only where asking works (loot lead, own raid, officer rank, messages on)
+    local canAsk = st.item ~= nil and ns.NeedCanAsk ~= nil and needText == nil and ns.NeedCanAsk() and true or false
     if needText then
         D.need:SetText("Upgrade für: " .. needText)
     else

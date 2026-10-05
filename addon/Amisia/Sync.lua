@@ -2242,7 +2242,7 @@ do
     local have = {}
     for _, it in ipairs(items) do have[it.key] = true end
     for _, it in ipairs({
-        { key = "sync.shareUpgrades", type = "toggle", label = "Der Lootleitung sagen, für welche Items ich ein Upgrade habe", default = true },
+        { key = "sync.shareUpgrades", type = "toggle", label = "Der Lootleitung meine Upgrades nennen", default = true },
         { key = "sync.askUpgrades", type = "toggle", label = "Beim Ansagen fragen, für wen ein Item ein Upgrade ist", default = true, officer = true },
         { key = "sync.needTooltip", type = "toggle", label = "Tooltip-Zeile Upgrade für", default = true, officer = true },
     }) do
