@@ -157,3 +157,20 @@ def test_attendance_bench_missed(out):
 def test_bench_on_leaves_out_who_was_there(out):
     for mode in out['att']:
         assert out['att'][mode]['benchD4'] == []
+
+
+def test_missed_the_last_raid_lists_the_bench_only_when_it_counts_as_missed(out):
+    m = out['missed']
+    for mode in ('undefined', 'present', 'excused'):
+        assert m[mode] == {'a': False, 'b': False, 'c': True}, (mode, m[mode])
+    assert m['missed'] == {'a': False, 'b': True, 'c': True}
+
+
+def test_attempts_of_one_recording_are_never_merged(out):
+    T = out['T']
+    k = out['sameRecording']
+    # two wipes of recording A 120 s apart stay two; B's copy of the first adds nothing
+    assert [(x['ok'], x['wipes']) for x in k] == [(True, 2), (True, 0)], k
+    # B's kill (more raiders) stands for A's kill 5 s earlier; A's second kill 60 s later stays its own
+    assert k[0]['end'] == T + 1745 and k[0]['sid'] == SID_B
+    assert k[1]['end'] == T + 1800 and k[1]['sid'] == SID_A

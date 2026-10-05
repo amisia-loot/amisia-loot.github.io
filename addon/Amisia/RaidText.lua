@@ -28,9 +28,15 @@ local function cutChars(text, n)
     return text
 end
 
--- Markdown characters of Discord get a backslash, so a name or an item shows as it is.
+-- A zero-width space (UTF-8): after an "@" it keeps Discord from reading a mention.
+local ZWSP = "\226\128\139"
+
+-- Markdown characters of Discord get a backslash, so a name or an item shows as it is; "<" too
+-- and every "@" a zero-width space, so text raiders typed never mentions anyone (@everyone, @here,
+-- <@id>, <@&role>, <#channel>).
 function ns.DiscordEscape(text)
-    return (tostring(text or ""):gsub("[\\%*_~`|>#%[%]]", "\\%0"))
+    local out = tostring(text or ""):gsub("[\\%*_~`|<>#%[%]]", "\\%0")
+    return (out:gsub("@", "@" .. ZWSP))
 end
 local esc = ns.DiscordEscape
 
@@ -153,7 +159,7 @@ local function bossSection(s)
             #extra > 0 and (" (" .. table.concat(extra, ", ") .. ")") or "")
     end
     if #out == 0 then return nil end
-    table.insert(out, 1, "**Bosse**")
+    table.insert(out, 1, { text = "**Bosse**", heading = true })
     return out
 end
 
@@ -197,13 +203,13 @@ local function lootSection(s)
     end)
     local out = {}
     if #groups > 0 or #bank > 0 or #de > 0 then
-        out[1] = "**Loot**"
+        out[1] = { text = "**Loot**", heading = true }
         for _, g in ipairs(groups) do
-            out[#out + 1] = g.title
+            out[#out + 1] = { text = g.title, heading = true }
             for _, l in ipairs(g.lines) do out[#out + 1] = l end
         end
-        if #bank > 0 then out[#out + 1] = "Bank: " .. table.concat(bank, ", ") end
-        if #de > 0 then out[#out + 1] = "Entzaubert: " .. table.concat(de, ", ") end
+        if #bank > 0 then out[#out + 1] = { head = "Bank: ", items = bank } end
+        if #de > 0 then out[#out + 1] = { head = "Entzaubert: ", items = de } end
         return out
     end
     -- group loot: no hand-outs, what the raiders looted
@@ -211,7 +217,7 @@ local function lootSection(s)
     for i, l in ipairs(s.items or {}) do items[i] = l end
     if #items == 0 then return nil end
     table.sort(items, function(a, b) return (a.t or 0) < (b.t or 0) end)
-    out[1] = "**Geplündert**"
+    out[1] = { text = "**Geplündert**", heading = true }
     for _, l in ipairs(items) do
         out[#out + 1] = ("- %s: %s%s"):format(esc(itemName(l.item)), esc(l.name or "?"), (l.count or 1) > 1 and (" x" .. l.count) or "")
     end
@@ -231,7 +237,7 @@ local function peopleSection(s)
     if #late > 0 then
         local words = {}
         for i, x in ipairs(late) do words[i] = ("%s (%s)"):format(esc(x.name), hm(x.t)) end
-        out[#out + 1] = "**Zu spät:** " .. table.concat(words, ", ")
+        out[#out + 1] = { head = "**Zu spät:** ", items = words }
     end
     local bench = ns.BenchList(s)
     if #bench > 0 then
@@ -242,7 +248,7 @@ local function peopleSection(s)
             if x.joined then extra[#extra + 1] = "eingewechselt " .. hm(x.joined) end
             words[i] = esc(x.name) .. (#extra > 0 and (" (" .. table.concat(extra, ", ") .. ")") or "")
         end
-        out[#out + 1] = "**Ersatzbank:** " .. table.concat(words, ", ")
+        out[#out + 1] = { head = "**Ersatzbank:** ", items = words }
     end
     if ns.Get("raidlog.discordNames") then
         local names = {}
@@ -250,7 +256,7 @@ local function peopleSection(s)
         table.sort(names)
         if #names > 0 then
             for i, n in ipairs(names) do names[i] = esc(n) end
-            out[#out + 1] = "**Dabei:** " .. table.concat(names, ", ")
+            out[#out + 1] = { head = "**Dabei:** ", items = names }
         end
     end
     return #out > 0 and out or nil
@@ -259,40 +265,93 @@ end
 ---------------------------------------------------------------------------
 -- Parts
 ---------------------------------------------------------------------------
+-- A line of a section: a string, a heading { text, heading = true } that stays with what follows
+-- it, or a list { head, items } that is wrapped at its items when it does not fit.
+local function lineText(l)
+    if type(l) == "string" then return l end
+    if l.items then return l.head .. table.concat(l.items, ", ") end
+    return l.text
+end
+
 -- Sections (lists of lines, a blank line between two) into parts of at most LIMIT characters: a
--- section that does not fit the current part any more starts the next one; only a section longer
--- than a part is cut, at line ends. Every part from the second starts with headFor(n).
+-- section that does not fit the current part any more starts the next one; a list line that does
+-- not fit is wrapped at its items (each piece with its head); headings at the end of a part move
+-- along into the next, so no part holds headings only. Every part from the second starts with
+-- headFor(n). Only a single line longer than a whole part (never seen in practice) is cut.
 local function split(sections, headFor)
-    local parts, cur, len, fresh = {}, {}, 0, true
-    local function push(line)
-        len = len + (#cur > 0 and 1 or 0) + chars(line)
-        cur[#cur + 1] = line
+    local parts, cur, len = {}, {}, 0   -- cur: { { text, heading } }
+    local function push(text, heading)
+        len = len + (#cur > 0 and 1 or 0) + chars(text)
+        cur[#cur + 1] = { text = text, heading = heading }
     end
+    local function hasBody()
+        for _, c in ipairs(cur) do
+            if not c.heading and c.text ~= "" then return true end
+        end
+        return false
+    end
+    -- the room for one more line, with the line break and the blank line before it
+    local function room(blank)
+        return LIMIT - len - (#cur > 0 and 1 or 0) - (blank and 1 or 0)
+    end
+    -- only called with a body in cur
     local function newPart()
-        parts[#parts + 1] = table.concat(cur, "\n")
-        cur, len, fresh = {}, 0, true
-        push(headFor(#parts + 1))
+        local carry = {}
+        while #cur > 0 and (cur[#cur].heading or cur[#cur].text == "") do table.insert(carry, 1, table.remove(cur)) end
+        while carry[1] and carry[1].text == "" do table.remove(carry, 1) end
+        local texts = {}
+        for i, c in ipairs(cur) do texts[i] = c.text end
+        parts[#parts + 1] = table.concat(texts, "\n")
+        cur, len = {}, 0
+        push(headFor(#parts + 1), true)
+        for _, c in ipairs(carry) do push(c.text, c.heading) end
     end
     for _, sec in ipairs(sections) do
-        if not fresh then
+        if hasBody() then
             local whole = 1
-            for _, l in ipairs(sec) do whole = whole + 1 + chars(l) end
+            for _, l in ipairs(sec) do whole = whole + 1 + chars(lineText(l)) end
             if len + whole > LIMIT then newPart() end
         end
-        for i, l in ipairs(sec) do
-            local sep = (i == 1 and not fresh) and 1 or 0
-            if not fresh and len + sep + 1 + chars(l) > LIMIT then
-                newPart()
-                sep = 0
+        local blank = #cur > 0 and not (#cur == 1 and #parts > 0)
+        for _, l in ipairs(sec) do
+            if type(l) == "table" and l.items then
+                local idx = 1
+                while idx <= #l.items do
+                    local text = l.head .. l.items[idx]
+                    if chars(text) > room(blank) and hasBody() then
+                        newPart()
+                        blank = false
+                    else
+                        if chars(text) > room(blank) then text = cutChars(text, math.max(0, room(blank))) end
+                        local j = idx
+                        while j < #l.items and chars(text) + 2 + chars(l.items[j + 1]) <= room(blank) do
+                            j = j + 1
+                            text = text .. ", " .. l.items[j]
+                        end
+                        if blank then push("") end
+                        blank = false
+                        push(text)
+                        idx = j + 1
+                    end
+                end
+            else
+                local text, heading = lineText(l), type(l) == "table" and l.heading or nil
+                if chars(text) > room(blank) and hasBody() then
+                    newPart()
+                    blank = false
+                end
+                if chars(text) > room(blank) then text = cutChars(text, math.max(0, room(blank))) end
+                if blank then push("") end
+                blank = false
+                push(text, heading)
             end
-            if sep == 1 then push("") end
-            local room = LIMIT - len - (#cur > 0 and 1 or 0)
-            if chars(l) > room then l = cutChars(l, math.max(0, room)) end
-            push(l)
-            fresh = false
         end
     end
-    if #cur > 0 then parts[#parts + 1] = table.concat(cur, "\n") end
+    if #cur > 0 then
+        local texts = {}
+        for i, c in ipairs(cur) do texts[i] = c.text end
+        parts[#parts + 1] = table.concat(texts, "\n")
+    end
     return parts
 end
 
@@ -309,7 +368,11 @@ function ns.RaidSummary(s)
     local people = peopleSection(s)
     if people then sections[#sections + 1] = people end
     local whole = {}
-    for i, sec in ipairs(sections) do whole[i] = table.concat(sec, "\n") end
+    for i, sec in ipairs(sections) do
+        local texts = {}
+        for j, l in ipairs(sec) do texts[j] = lineText(l) end
+        whole[i] = table.concat(texts, "\n")
+    end
     local total = chars(table.concat(whole, "\n\n"))
     local _, _, short = nightWords(s)
     local zone = esc(s.zone or "?")

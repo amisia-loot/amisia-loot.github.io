@@ -10,6 +10,7 @@ local IN_RAID_FOR = 600     -- seconds: a raider seen this recently counts as in
 local OUTSIDE_FOR = 600     -- seconds: the group outside suggested from s.outside
 local GUILD_EVERY = 10      -- seconds between two guild roster requests
 local MAX_NAME = 40
+local MAX_BENCH = 40        -- entries per raid
 
 -- "2026-10-05" -> "05.10."
 local function shortDate(night)
@@ -48,6 +49,12 @@ local function entries(s)
     return s.list
 end
 
+local function size(list)
+    local n = 0
+    for _ in pairs(list) do n = n + 1 end
+    return n
+end
+
 -- The words for a target in answers: "Schwarzer Tempel, 05.10." or "heute, 05.10.".
 function ns.BenchLabel(s)
     if type(s) ~= "table" then return "?" end
@@ -68,8 +75,12 @@ function ns.TakeBenchNext(s)
     local b = benchNext(false)
     if not b or type(s) ~= "table" or b.date ~= s.date then return end
     local list = entries(s)
+    local n = size(list)
     for name, e in pairs(b.list) do
-        if not list[name] then list[name] = e end
+        if not list[name] and n < MAX_BENCH then
+            list[name] = e
+            n = n + 1
+        end
     end
     AmisiaDB.benchNext = nil
 end
@@ -261,6 +272,7 @@ function ns.BenchAdd(s, name, opts)
     local note = ns.CleanNote(opts.note, NOTE_MAX)
     local class = (type(opts.class) == "string" and opts.class ~= "") and opts.class or classOf(name)
     local e, key = ns.IsBenched(s, name)
+    if not e and size(list) >= MAX_BENCH then return nil, ("Die Ersatzbank ist voll (%d)."):format(MAX_BENCH) end
     if e then
         if opts.self then e.self = true else e.by = ns.UnitFullName("player") end
         if note then e.note = note end
@@ -374,19 +386,8 @@ local function onBench(sender, rest)
             or "Amisia: Du stehst nicht auf der Ersatzbank.")
         return
     end
-    if word == "aus" or word == "off" or word == "weg" then
-        if not e then
-            reply("Amisia: Du stehst nicht auf der Ersatzbank.")
-        elseif not e.self then
-            reply("Amisia: Ein Offizier hat dich eingetragen. Frag bitte ihn.")
-        else
-            ns.BenchRemove(s, key)
-            reply("Amisia: Du stehst nicht mehr auf der Ersatzbank.")
-            notify(("%s hat sich von der Ersatzbank ausgetragen."):format(key))
-        end
-        return
-    end
-    local note = ns.CleanNote(rest, NOTE_MAX)
+    local off = word == "aus" or word == "off" or word == "weg"
+    local note = not off and ns.CleanNote(rest, NOTE_MAX) or nil
     local extra
     if ns.Get("raidlog.benchGuildOnly") then
         ns.RequestGuildRoster()
@@ -395,11 +396,30 @@ local function onBench(sender, rest)
             reply("Amisia: Die Ersatzbank ist nur für Gildenmitglieder.")
             return
         end
-        if member == nil and not note and not (e and e.note) then extra = "Gilde nicht geprüft" end
+        if member == nil and not off and not note and not (e and e.note) then extra = "Gilde nicht geprüft" end
+    end
+    if off then
+        -- only the sender's own entry: the same name, case aside, never a first name alone
+        local own, ownKey
+        local low = name:lower()
+        for k, x in pairs(entries(s)) do
+            if k:lower() == low then own, ownKey = x, k break end
+        end
+        if not own then
+            reply("Amisia: Du stehst nicht auf der Ersatzbank.")
+        elseif not own.self then
+            reply("Amisia: Ein Offizier hat dich eingetragen. Frag bitte ihn.")
+        else
+            ns.BenchRemove(s, ownKey)
+            reply("Amisia: Du stehst nicht mehr auf der Ersatzbank.")
+            notify(("%s hat sich von der Ersatzbank ausgetragen."):format(ownKey))
+        end
+        return
     end
     local added, res = ns.BenchAdd(s, name, { self = true, note = note or extra })
     if not added then
         if type(res) == "string" and res:find("ist im Raid", 1, true) then reply("Amisia: Du bist schon im Raid.") end
+        if type(res) == "string" and res:find("ist voll", 1, true) then reply("Amisia: Die Ersatzbank ist voll.") end
         return
     end
     reply(("Amisia: Du stehst auf der Ersatzbank (%s). Mit !bench aus trägst du dich aus.%s"):format(label,

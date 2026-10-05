@@ -187,6 +187,8 @@ NS.DeleteKill(s, stale)
 ---------------------------------------------------------------------------
 -- the loot window fallback
 ---------------------------------------------------------------------------
+-- (only in a recording without encounter events: each part below plays one by clearing the mark)
+s.encSeen = nil
 STUB.tick(1200)
 local boss = "Creature-0-1-1-1-22947-1"
 STUB.target, STUB.targetGUID, STUB.targetDead, STUB.targetClass = "Mutter Shahraz", boss, true, "worldboss"
@@ -221,6 +223,7 @@ assert(#s.kills == count, "alive")
 STUB.fire("ENCOUNTER_START", 611, "Najentus", 4, 25); STUB.tick(60)
 STUB.fire("ENCOUNTER_END", 611, "Najentus", 4, 25, 1); STUB.tick(1)
 STUB.tick(300)
+s.encSeen = nil
 count = #s.kills
 corpse("Creature-0-1-1-1-22887-4", "Hochkriegsfuerst", "worldboss", true)
 assert(#s.kills == count, "a kill 5 minutes before")
@@ -232,6 +235,7 @@ assert(#s.kills == count, "raidlog.lootKills off")
 NS.Reset("raidlog.lootKills")
 -- a later END replaces the loot window kill
 STUB.tick(1200)
+s.encSeen = nil
 corpse("Creature-0-1-1-1-22950-6", "Hohepriesterin Shahraz", "worldboss", true)
 local repl = lastKill(s)
 assert(repl.src == "loot")

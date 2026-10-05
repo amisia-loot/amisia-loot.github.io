@@ -99,6 +99,26 @@ assert(table.concat(names, ",") == "Fred,Kim Eisherz,Vulo", table.concat(names, 
 assert(list[2].e == s.bench["Kim Eisherz"] and list[2].joined == kim.first and list[1].joined == nil, "joined when subbed in")
 assert(s.bench["Kim Eisherz"], "a subbed-in raider stays on the bench")
 STUB.roster[3], STUB.roster[4] = nil, nil
+-- an own entry (!bench) keeps a raider from being late only when made before the late line;
+-- an officer's entry always does
+local cut = NS.LateAfter(s)
+local own = NS.BenchAdd(s, "Spaetselbst", { self = true })
+local early = NS.BenchAdd(s, "Fruehselbst", { self = true })
+early.t = cut - 60
+local seen = NS.BenchAdd(s, "Gesehen", { self = true })
+NS.BenchAdd(s, "Gesehen", {})   -- an officer took the entry over
+assert(own.self and own.t > cut and seen.by == "Vuloo")
+STUB.tick(60)
+STUB.roster[3] = { name = "Spaetselbst", class = "ROGUE" }
+STUB.roster[4] = { name = "Fruehselbst", class = "ROGUE" }
+STUB.roster[5] = { name = "Gesehen", class = "ROGUE" }
+STUB.fire("GROUP_ROSTER_UPDATE"); STUB.tick(2)
+local late1, early1, seen1 = s.members.Spaetselbst, s.members.Fruehselbst, s.members.Gesehen
+assert(late1 and late1.late == true and late1.bench == nil, "an own entry after the late line: late")
+assert(early1 and early1.late == nil and early1.bench == true, "an own entry before the late line: not late")
+assert(seen1 and seen1.late == nil and seen1.bench == true, "an entry an officer made or took over: not late")
+STUB.roster[3], STUB.roster[4], STUB.roster[5] = nil, nil, nil
+for _, n in ipairs({ "Spaetselbst", "Fruehselbst", "Gesehen" }) do NS.BenchRemove(s, n) end
 
 ---------------------------------------------------------------------------
 -- ns.IsBenched: a first name alone only when unique in the roster

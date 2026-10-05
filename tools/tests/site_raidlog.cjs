@@ -6,7 +6,7 @@ const {grab} = require('./site_parser.cjs');
 
 const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSplit', 'amParse', 'amLate', 'amResolve',
   'amNightLog', 'importAmisia', 'nights', 'nightOn', 'allNights', 'countedNights', 'presentOn', 'lateOn', 'lateTime',
-  'BENCH_MODES', 'benchMode', 'benchOn', 'attendance', 'nightKills', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'itemNames',
+  'BENCH_MODES', 'benchMode', 'benchOn', 'missedNight', 'attendance', 'nightKills', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'itemNames',
   'nightData', 'wipeWord', 'killTime', 'nightText'];
 // What else the code reaches for on the page, kept as small as the code allows.
 const STUBS = `
@@ -22,7 +22,7 @@ const nightExtraLoot = () => ({clash: [], other: [], left: []});
 const matName = id => 'Mat ' + id, anyItemName = id => 'Item ' + id;
 `;
 const src = STUBS + NEEDED.map(grab).join('\n\n') + `
-;module.exports = {amSplit, amParse, amResolve, importAmisia, amNightLog, nightKills, benchOn, attendance, nightText, nightOn,
+;module.exports = {amSplit, amParse, amResolve, importAmisia, amNightLog, nightKills, benchOn, missedNight, attendance, nightText, nightOn,
   getState: () => state, setState: s => { state = s; }, setRows: r => { amRows = r; }, setNight: d => { ui.night = d; }};`;
 const mod = {exports: {}};
 new Function('module', 'exports', src)(mod, mod.exports);
@@ -107,5 +107,20 @@ for (const mode of [undefined, 'present', 'excused', 'missed', 'bogus']) {
   api.setState(st);
   out.att[String(mode)] = {a: api.attendance('a'), b: api.attendance('b'), c: api.attendance('c'), benchD4: Object.keys(api.benchOn(D[3]))};
 }
+
+// "Missed the last raid": someone on the bench is listed only when the bench counts as missed.
+out.missed = {};
+for (const mode of [undefined, 'present', 'excused', 'missed']) {
+  const st = ATT(); if (mode !== undefined) st.benchMode = mode;
+  api.setState(st);
+  out.missed[String(mode)] = {a: api.missedNight('a', D[0]), b: api.missedNight('b', D[0]), c: api.missedNight('c', D[0])};
+}
+
+// Two wipes of one recording 120 s apart stay two wipes; a second recorder's copy of one merges.
+const W = (sid, end, ok, present) => ({sid, enc: 602, name: 'Supremus', start: end - 100, end, ok, size: 25, src: 'E', present});
+api.setState({raiders: [], awards: [], nights: [{id: 'w1', date: DATE, present: [], kills: [
+  W(SID_A, T + 1230, false), W(SID_A, T + 1350, false), W(SID_B, T + 1240, false), W(SID_A, T + 1740, true, ['a']),
+  W(SID_A, T + 1800, true, ['a']), W(SID_B, T + 1745, true, ['a', 'b'])]}]});
+out.sameRecording = api.nightKills(DATE).map(k => ({ok: k.ok, wipes: k.wipes, end: k.end, sid: k.sid}));
 
 process.stdout.write(JSON.stringify(out));

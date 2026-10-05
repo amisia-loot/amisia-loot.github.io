@@ -58,7 +58,7 @@ bringt:
 - **Ersatzbank gehört zum Raid** (`s.bench`), nicht zur Gilde. Vor dem ersten Betreten der Instanz
   (Gruppe sammelt sich in der Stadt) gibt es noch keine Aufnahme; Einträge landen dann in
   `AmisiaDB.benchNext` für die laufende Raidnacht und wandern in die erste Aufnahme dieser Nacht.
-- **Ersatzbank schützt vor "zu spät":** wer auf der Ersatzbank stand und später eingewechselt wird,
+- **Ersatzbank schützt vor "zu spät":** wer von einem Offizier oder vor der Zu-spät-Grenze des Raids selbst (`!bench`) auf die Ersatzbank gesetzt wurde und später eingewechselt wird,
   gilt nicht als zu spät (`noteMember` prüft `s.bench`). Ein eingewechselter Raider bleibt in
   `s.bench` (mit Hinweis "eingewechselt"), auf der Website gewinnt die Anwesenheit.
 - **`!bench` beantwortet nur die Lootleitung** (`ns.IsLootLead()`, also nur im Raid und in der
@@ -217,7 +217,8 @@ Alles nur mit laufender Aufnahme (`ns.Active()`) und `raidlog.track`.
   Raidliste. Nicht, wenn es in `s.kills` einen Kill gibt mit gleichem Namen (ohne Groß/Klein) oder
   mit `t` höchstens 10 Minuten vor dem ersten Öffnen dieser Leiche (Kampfname und Kreaturname
   weichen ab, z. B. ein Rat aus vier Bossen). Ein späterer `ENCOUNTER_END`/`BOSS_KILL` für denselben
-  Kampf ersetzt den Lootfenster-Kill, wenn dessen `t` höchstens 10 Minuten danach liegt.
+  Kampf ersetzt den Lootfenster-Kill, wenn dessen `t` höchstens 10 Minuten danach liegt. Hat die
+  Aufnahme schon ein Kampfereignis gesehen (`s.encSeen`), gibt es für sie keinen Lootfenster-Kill mehr.
 - **Von Hand** (`ns.AddKill`, Offiziere über Seite und `/amisia boss`): Name (bereinigt wie eine
   Notiz, höchstens 60 Zeichen), `ok`, `t` (Standard jetzt, auf der Seite die Zeit des ersten
   Lootfensters dieser Quelle, falls gewählt), `src = "hand"`, `who` aus der Raidliste, wenn die

@@ -264,12 +264,13 @@ local function noteMember(s, name, class, t)
         m.last = t
         if class and class ~= "" then m.class = class end
     else
-        -- whoever comes from the bench of this raid is never late
-        local benched = s.bench and next(s.bench) ~= nil and ns.IsBenched and ns.IsBenched(s, name)
-        if benched then
+        -- whoever comes from the bench of this raid is never late: an entry an officer made (or took
+        -- over), or an own entry (!bench) made before the late line; a late !bench changes nothing
+        local after = lateAfter(s)
+        local e = s.bench and next(s.bench) ~= nil and ns.IsBenched and ns.IsBenched(s, name)
+        if type(e) == "table" and (not e.self or e.by or not after or (e.t or 0) <= after) then
             s.members[name] = { class = class or "", first = t, last = t, bench = true }
         else
-            local after = lateAfter(s)
             s.members[name] = { class = class or "", first = t, last = t, late = (after and t > after) or nil }
         end
     end
@@ -290,7 +291,7 @@ local function snapshotRoster()
         name = ns.Plain(name)
         if name and ns.SameName(name, me) then
             here = ns.Plain(zone)
-            hereSecret = here == nil and zone ~= nil
+            hereSecret = here == nil and type(zone) ~= "nil"
             break
         end
     end

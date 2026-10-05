@@ -71,7 +71,9 @@ local function readPresent()
     for i = 1, GetNumGroupMembers() or 0 do
         local name, _, _, _, _, _, zone, online = GetRaidRosterInfo(i)
         local pName, pZone, pOnline = ns.Plain(name), ns.Plain(zone), ns.Plain(online)
-        if (name ~= nil and pName == nil) or (zone ~= nil and pZone == nil) or (online ~= nil and pOnline == nil) then
+        -- type() only: a secret value is never compared
+        if (type(name) ~= "nil" and pName == nil) or (type(zone) ~= "nil" and pZone == nil)
+            or (type(online) ~= "nil" and pOnline == nil) then
             return nil
         end
         local full = type(pName) == "string" and ns.FullName(pName)
@@ -103,9 +105,15 @@ local function membersAt(s, from, to)
     return out
 end
 
+-- readPresent that never fails: a roster read that errors counts as unreadable (nil).
+local function presentSafe()
+    local ok, p = pcall(readPresent)
+    return ok and p or nil
+end
+
 -- The head count at the end of an attempt: readable raiders in the zone, else the snapshots.
 local function countNow(s, start)
-    local p = readPresent()
+    local p = presentSafe()
     if p then return #p end
     return #membersAt(s, start - 60, time())
 end
@@ -128,7 +136,7 @@ end
 
 local function tryRead()
     if #waiting == 0 then return end
-    local names = (not restricted()) and readPresent() or nil
+    local names = (not restricted()) and presentSafe() or nil
     local now, keep, changed = GetTime(), {}, false
     for _, w in ipairs(waiting) do
         if not w.k.wait then
@@ -204,6 +212,7 @@ ns.OnEvent("ENCOUNTER_START", function(enc, name, diff, size)
     local s = recording()
     remember("ENCOUNTER_START", eventText(enc, name, (", %s Spieler, Schwierigkeit %s%s"):format(tostring(size or "?"),
         tostring(diff or "?"), s and "" or " (nicht aufgezeichnet)")))
+    if s then s.encSeen = true end
     if not s or not enc then return end
     -- an open attempt of another encounter never saw its end
     s.pull = { enc = enc, name = ns.CleanNote(name) or ("Boss " .. enc), start = time(), size = size or 0, diff = diff or 0 }
@@ -215,6 +224,7 @@ ns.OnEvent("ENCOUNTER_END", function(enc, name, diff, size, success)
     local s = recording()
     local result = success == 1 and "Kill" or (success == 0 and "Wipe" or "Ergebnis ?")
     remember("ENCOUNTER_END", eventText(enc, name, ": " .. result .. (s and "" or " (nicht aufgezeichnet)")))
+    if s then s.encSeen = true end
     if not s or not enc then return end
     local t = time()
     local pull = (s.pull and s.pull.enc == enc) and s.pull or nil
@@ -262,6 +272,7 @@ ns.OnEvent("BOSS_KILL", function(enc, name)
     enc, name = plainNumber(enc), plainText(name)
     local s = recording()
     remember("BOSS_KILL", eventText(enc, name, s and "" or " (nicht aufgezeichnet)"))
+    if s then s.encSeen = true end
     if not s or not enc then return end
     local t = time()
     if sameKill(s, enc, t) then return end
@@ -290,7 +301,9 @@ end)
 -- Runs after Core's own LOOT_OPENED handler, so s.drops already holds this window.
 ns.OnEvent("LOOT_OPENED", function()
     local s = recording()
-    if not s or not ns.Get("raidlog.lootKills") then return end
+    -- s.encSeen: this recording saw an encounter event, so the client reports its fights; the loot
+    -- of a fight can come from a differently named creature much later, so no loot window kills
+    if not s or not ns.Get("raidlog.lootKills") or s.encSeen then return end
     if type(UnitIsDead) ~= "function" or type(UnitClassification) ~= "function" or type(UnitGUID) ~= "function" then return end
     if ns.Plain(UnitIsDead("target")) ~= true then return end
     if ns.Plain(UnitClassification("target")) ~= "worldboss" then return end
@@ -308,7 +321,7 @@ ns.OnEvent("LOOT_OPENED", function()
             if k.t <= d.t + 5 and d.t - k.t <= LOOT_WINDOW then return end
         end
     end
-    local who = readPresent() or membersAt(s, d.t - 60, d.t)
+    local who = presentSafe() or membersAt(s, d.t - 60, d.t)
     insert(s, { enc = 0, name = name, start = d.t, t = d.t, ok = true, size = 0, diff = 0, src = "loot", who = who, n = #who })
     remember("LOOT", name .. " (Lootfenster)")
     ns.Fire("DATA_CHANGED")
@@ -365,7 +378,7 @@ function ns.AddKill(s, spec)
                 size = 0, diff = 0, src = "hand" }
     local live = ns.Active and s == ns.Active()
     if ok then
-        local who = live and (readPresent() or membersAt(s, k.start - 60, t)) or {}
+        local who = live and (presentSafe() or membersAt(s, k.start - 60, t)) or {}
         k.who, k.n = who, #who
     else
         k.n = live and countNow(s, k.start) or 0
@@ -442,6 +455,8 @@ function ns.RaidLogLoaded()
         end
         for _, k in ipairs(s.kills) do
             if k.wait then fallback(s, k) end
+            -- a recording from before s.encSeen existed
+            if k.src == "enc" or k.src == "kill" then s.encSeen = true end
         end
     end
 end

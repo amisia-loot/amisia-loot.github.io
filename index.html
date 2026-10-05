@@ -1083,8 +1083,8 @@ function benchOn(date){
   return out;
 }
 // The boss attempts of a night over every recording: two recorders of one raid give the same kill
-// twice, merged when the boss is the same (encounter id, or the translated name) and the ends lie at
-// most 180 s apart, keeping the one with more raiders. A kill carries the wipes on its boss before
+// twice, merged when the boss is the same (encounter id, or the translated name), the ends lie at
+// most 180 s apart and they come from different recordings, keeping the one with more raiders. A kill carries the wipes on its boss before
 // it; wipes without a later kill stay as a row of their own with ok false.
 function nightKills(date){
   const n = nightOn(date), all = (n && Array.isArray(n.kills) ? n.kills : []).filter(k => k && typeof k === 'object' && Number(k.end) > 0)
@@ -1092,12 +1092,14 @@ function nightKills(date){
   const nameOf = k => bossHere(k.name).toLowerCase();
   const sameBoss = (a, b) => (!!a.enc && a.enc === b.enc) || nameOf(a) === nameOf(b);
   const rank = k => (Array.isArray(k.present) ? k.present.length : 0) * 10 + ({E: 3, B: 2, H: 1}[k.src] || 0);
-  const merged = [];
+  // a merged attempt takes at most one entry per recording: two of one recording are two attempts
+  const merged = [], sids = new Map();
   for (const k of all) {
-    const m = merged.find(x => x.ok === !!k.ok && Math.abs(x.end - k.end) <= 180 && sameBoss(x, k));
+    const m = merged.find(x => !sids.get(x).has(k.sid) && x.ok === !!k.ok && Math.abs(x.end - k.end) <= 180 && sameBoss(x, k));
     const e = Object.assign({}, k, {ok: !!k.ok, present: Array.isArray(k.present) ? [...k.present] : []});
-    if (!m) merged.push(e);
-    else if (rank(e) > rank(m)) Object.assign(m, e);
+    if (!m) { merged.push(e); sids.set(e, new Set([k.sid])); continue; }
+    sids.get(m).add(k.sid);
+    if (rank(e) > rank(m)) Object.assign(m, e);
   }
   const out = [], open = [];
   for (const k of merged) {
@@ -1108,6 +1110,8 @@ function nightKills(date){
   for (const w of open) out.push(Object.assign({}, w.k, {wipes: w.wipes}));
   return out.sort((a, b) => a.end - b.end);
 }
+// Whether a raider missed a night: not there, and not on the bench unless the bench counts as missed.
+const missedNight = (rid, date) => !presentOn(date).has(rid) && !(benchMode() !== 'missed' && rid in benchOn(date));
 // Nights there, late and on the bench. The bench counts by benchMode: as attended, left out of the
 // rate (excused) or as missed; it is counted in bench either way. Someone there is never on the bench.
 function attendance(rid){
@@ -1881,7 +1885,7 @@ function renderAttendance(){
   let rows = state.raiders.map(r => ({r, at: attendance(r.id), aw: awardsOf(r.id)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
   if (show === 'low') rows = rows.filter(x => x.at.rate < 0.5);
   if (show === 'none') rows = rows.filter(x => !x.at.was);
-  if (show === 'last') rows = rows.filter(x => list.length && !presentOn(list[0].date).has(x.r.id) && !(benchMode() === 'present' && x.r.id in benchOn(list[0].date)));
+  if (show === 'last') rows = rows.filter(x => list.length && missedNight(x.r.id, list[0].date));
   if (show === 'late') rows = rows.filter(x => x.at.late);
   if (show === 'bench') rows = rows.filter(x => x.at.bench);
   rows.sort((a, b) => (show === 'late' ? b.at.late - a.at.late : 0) || b.at.was - a.at.was || a.r.name.localeCompare(b.r.name));
