@@ -253,6 +253,7 @@ end
 local function setMark(store, owner, parent, on)
     local mark = store[owner]
     if on and not mark then
+        -- on the item icon, top right (the quality text of a scrolling loot element sits on its right)
         mark = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         mark:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -1, -1)
         mark:SetText("W")
@@ -264,9 +265,12 @@ local function setMark(store, owner, parent, on)
     end
 end
 
+-- btn: a loot button (Anniversary: the icon button itself) or a scrolling loot element (Forever:
+-- its icon is btn.Item).
 local function markButton(btn, slot, on)
     local wished = on and slot and GetLootSlotLink and wishedInGroup(GetLootSlotLink(slot)) or false
-    setMark(lootMarks, btn, btn, wished)
+    local icon = type(btn.Item) == "table" and type(btn.Item.CreateFontString) == "function" and btn.Item or btn
+    setMark(lootMarks, btn, icon, wished)
 end
 
 local function markLoot()
@@ -292,6 +296,24 @@ function ns.MarkGuildWishLoot()
     local ok, err = pcall(markLoot)
     if not ok then report(err) end
 end
+
+-- Forever's loot window is a scroll box that hands its element frames to other slots while it
+-- scrolls: every element it sets up is marked again (the client's initialised-frame callback).
+local scrollHooked
+local function onLootElement(_, frame)
+    if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
+    local ok, err = pcall(function() markButton(frame, frame:GetSlotIndex(), officerOn("bis.guildLootMark")) end)
+    if not ok then report(err) end
+end
+local function hookLootScroll()
+    if scrollHooked then return end
+    local box = LootFrame and LootFrame.ScrollBox
+    local util = _G.ScrollUtil
+    if type(box) ~= "table" or type(util) ~= "table" or type(util.AddInitializedFrameCallback) ~= "function" then return end
+    scrollHooked = true
+    util.AddInitializedFrameCallback(box, onLootElement, lootMarks)
+end
+hookLootScroll()
 
 local function markRoll(frame)
     local on = false
@@ -328,7 +350,10 @@ refreshMarks = function()
     end
 end
 
-ns.OnEvent("LOOT_OPENED", function() C_Timer.After(0, ns.MarkGuildWishLoot) end)
+ns.OnEvent("LOOT_OPENED", function()
+    hookLootScroll()
+    C_Timer.After(0, ns.MarkGuildWishLoot)
+end)
 ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkGuildWishLoot) end)
 if type(LootFrame_Update) == "function" then hooksecurefunc("LootFrame_Update", ns.MarkGuildWishLoot) end
 ns.Listen("SETTING", function(path)
@@ -375,212 +400,19 @@ function ns.GuildWishAwardValues(item, names)
 end
 
 ---------------------------------------------------------------------------
--- Import window
+-- Clearing (the gear page's guild view asks with this dialog) and the command
 ---------------------------------------------------------------------------
-
-local F, editBox, infoText, previewText, resultText
-local previewGen = 0
-
-local function plural(n, one, many) return n == 1 and one or many end
-
-local function longDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and (d .. "." .. m .. "." .. y) or "?"
-end
-
--- The preview line for a pasted text; nothing is stored. "" for an empty text.
-function ns.GuildWishPreviewText(text)
-    if not (text or ""):find("%S") then return "" end
-    local res, why = ns.ParseGuildWishes(text)
-    if not res then return why end
-    local items = 0
-    for _ in pairs(res.list) do items = items + 1 end
-    local out = ("Vorschau: %d %s zu %d %s"):format(res.n, plural(res.n, "Wunsch", "Wünsche"), items, plural(items, "Item", "Items"))
-    if res.skipped > 0 then
-        out = out .. (", %d %s nicht erkannt"):format(res.skipped, plural(res.skipped, "Zeile", "Zeilen"))
-    end
-    return out
-end
-
-local function updatePreview()
-    if not F or not previewText then return end
-    local ok, text = pcall(ns.GuildWishPreviewText, editBox:GetText())
-    previewText:SetText(ok and text or "")
-    if not ok then report(text) end
-end
-
-local function schedulePreview()
-    previewGen = previewGen + 1
-    local gen = previewGen
-    C_Timer.After(0.3, function()
-        if gen == previewGen then updatePreview() end
-    end)
-end
-
-local function refresh()
-    if not F or not F:IsShown() then return end
-    local info = ns.GuildWishesInfo()
-    if info then
-        local age = ns.GuildWishesAgeText()
-        infoText:SetText(("Liste vom %s, %d %s"):format(longDate(info.date), info.n, plural(info.n, "Wunsch", "Wünsche"))
-            .. (age and (" |cff8f86a3" .. age .. "|r") or ""))
-    else
-        infoText:SetText("|cff8f86a3Keine Gildenwünsche geladen. Auf der Website im Reiter Wishlist: Copy for the addon.|r")
-    end
-end
-ns.Listen("GUILD_WISHES", refresh)
 
 StaticPopupDialogs["AMISIA_GUILDWISH_CLEAR"] = {
     text = "Die Gildenwünsche löschen?",
     button1 = "Löschen",
     button2 = "Abbrechen",
-    OnAccept = function()
-        ns.ClearGuildWishes()
-        if editBox then editBox:SetText("") end
-        if previewText then previewText:SetText("") end
-        if resultText then resultText:SetText("Liste gelöscht.") end
-        refresh()
-    end,
+    OnAccept = function() ns.ClearGuildWishes() end,
     timeout = 0,
     whileDead = true,
     hideOnEscape = true,
     preferredIndex = 3,
 }
-
--- The bottom of the window, from below: buttons (10-32), result, preview, the text box.
-local TEXT_H = 26
-local RESULT_Y = 38
-local PREVIEW_Y = RESULT_Y + TEXT_H + 4
-local BOX_BOTTOM = PREVIEW_Y + TEXT_H + 4
-local MAX_LETTERS = 150000
-
-local function build()
-    F = CreateFrame("Frame", "AmisiaGuildWishFrame", UIParent)
-    F:SetSize(440, 380)
-    F:SetPoint("CENTER", 0, 40)
-    -- above the main window, like the soft-reserve import
-    F:SetFrameStrata("FULLSCREEN_DIALOG")
-    F:SetToplevel(true)
-    F:SetClampedToScreen(true)
-    F:SetMovable(true)
-    F:EnableMouse(true)
-    F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    F:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-    F:SetScript("OnShow", refresh)
-    F:Hide()
-    if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaGuildWishFrame") end
-
-    local bg = F:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0.055, 0.04, 0.08, 0.96)
-    for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 }, { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
-        local t = F:CreateTexture(nil, "BORDER")
-        t:SetColorTexture(0.89, 0.72, 0.34, 0.6)
-        t:SetPoint(e[1])
-        t:SetPoint(e[2])
-        if e[3] then t:SetWidth(e[3]) end
-        if e[4] then t:SetHeight(e[4]) end
-    end
-
-    local title = F:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", 12, -10)
-    title:SetText("Gildenwünsche")
-    title:SetTextColor(0.89, 0.72, 0.34)
-
-    local close = CreateFrame("Button", nil, F, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
-
-    infoText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    infoText:SetPoint("TOPLEFT", 12, -32)
-    infoText:SetWidth(410)
-    infoText:SetJustifyH("LEFT")
-    infoText:SetWordWrap(false)
-
-    local boxBg = CreateFrame("Frame", nil, F)
-    boxBg:SetPoint("TOPLEFT", 12, -50)
-    boxBg:SetPoint("BOTTOMRIGHT", -12, BOX_BOTTOM)
-    local bb = boxBg:CreateTexture(nil, "BACKGROUND")
-    bb:SetAllPoints()
-    bb:SetColorTexture(0, 0, 0, 0.45)
-
-    local scroll = CreateFrame("ScrollFrame", "AmisiaGuildWishScroll", boxBg, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 6, -6)
-    scroll:SetPoint("BOTTOMRIGHT", -28, 6)
-    editBox = CreateFrame("EditBox", nil, scroll)
-    editBox:SetMultiLine(true)
-    editBox:SetMaxLetters(MAX_LETTERS)
-    editBox:SetAutoFocus(false)
-    editBox:SetFontObject(ChatFontNormal)
-    editBox:SetWidth(380)
-    editBox:SetHeight(200)
-    editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    editBox:SetScript("OnTextChanged", schedulePreview)
-    scroll:SetScrollChild(editBox)
-    boxBg:EnableMouse(true)
-    boxBg:SetScript("OnMouseDown", function() editBox:SetFocus() end)
-
-    -- preview and result each have a fixed room of two lines
-    previewText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    previewText:SetPoint("BOTTOMLEFT", 12, PREVIEW_Y)
-    previewText:SetSize(416, TEXT_H)
-    previewText:SetJustifyH("LEFT")
-    previewText:SetJustifyV("TOP")
-    previewText:SetWordWrap(true)
-    previewText:SetMaxLines(2)
-    previewText:SetTextColor(0.89, 0.72, 0.34)
-    previewText:SetText("")
-
-    resultText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    resultText:SetPoint("BOTTOMLEFT", 12, RESULT_Y)
-    resultText:SetSize(416, TEXT_H)
-    resultText:SetJustifyH("LEFT")
-    resultText:SetJustifyV("TOP")
-    resultText:SetWordWrap(true)
-    resultText:SetMaxLines(2)
-    resultText:SetText("")
-
-    local apply = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    apply:SetSize(110, 22)
-    apply:SetPoint("BOTTOMLEFT", 12, 10)
-    apply:SetText("Übernehmen")
-    apply:SetScript("OnClick", function()
-        local res, why = ns.SetGuildWishes(editBox:GetText())
-        if res then
-            resultText:SetText(("%d %s übernommen, %d %s nicht erkannt."):format(res.n, plural(res.n, "Wunsch", "Wünsche"), res.skipped,
-                plural(res.skipped, "Zeile", "Zeilen")))
-        else
-            resultText:SetText(why)
-        end
-        refresh()
-    end)
-
-    local clear = CreateFrame("Button", nil, F, "UIPanelButtonTemplate")
-    clear:SetSize(90, 22)
-    clear:SetPoint("LEFT", apply, "RIGHT", 6, 0)
-    clear:SetText("Löschen")
-    clear:SetScript("OnClick", function()
-        local d = StaticPopup_Show("AMISIA_GUILDWISH_CLEAR")
-        -- lifted above this window and the main window
-        if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
-    end)
-
-    local hint = F:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("LEFT", clear, "RIGHT", 8, 0)
-    hint:SetWidth(200)   -- 12 + 110 + 6 + 90 + 8 + 200 fits the 428 px inside the margin
-    hint:SetJustifyH("LEFT")
-    hint:SetWordWrap(false)
-    hint:SetText("Website, Reiter Wishlist: Copy for the addon")
-
-    F.editBox, F.previewText, F.resultText, F.infoText, F.applyBtn, F.clearBtn = editBox, previewText, resultText, infoText, apply, clear
-end
-
-function ns.ShowGuildWishFrame()
-    if not F then build() end
-    F:Show()
-    if F.Raise then F:Raise() end
-    return F
-end
 
 ns.RegisterSlash("wuensche", { aliases = { "wishes" }, officer = true, desc = "Gildenwünsche von der Website einfügen",
     run = function()

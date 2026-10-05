@@ -475,8 +475,11 @@ local function markButton(btn, slot)
     local reserved = link and #ns.ReservedBy(ns.ItemID(link)) > 0
     local mark = marks[btn]
     if reserved and not mark then
-        mark = btn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        mark:SetPoint("TOPLEFT", btn, "TOPLEFT", 1, -1)
+        -- on the item icon, top left: the loot button itself on Anniversary, the element's Item on
+        -- Forever's scrolling loot window
+        local icon = type(btn.Item) == "table" and type(btn.Item.CreateFontString) == "function" and btn.Item or btn
+        mark = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        mark:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
         mark:SetText("SR")
         mark:SetTextColor(0.89, 0.72, 0.34)
         marks[btn] = mark
@@ -486,7 +489,8 @@ local function markButton(btn, slot)
     end
 end
 
--- For tests and the window: whether a loot button carries a visible mark.
+-- For tests and the window: the SR of a loot button, and whether it is visible.
+function ns.SoftResMark(btn) return marks[btn] end
 function ns.SoftResMarkShown(btn)
     local m = marks[btn]
     return (m and m:IsShown()) and true or false
@@ -510,7 +514,31 @@ function ns.MarkLootButtons()
     end
 end
 
-ns.OnEvent("LOOT_OPENED", function() C_Timer.After(0, ns.MarkLootButtons) end)
+-- Forever's loot window is a scroll box that hands its element frames to other slots while it
+-- scrolls: every element it sets up is marked again (the client's initialised-frame callback).
+local scrollHooked
+local function onLootElement(_, frame)
+    if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
+    local ok, err = pcall(function() markButton(frame, frame:GetSlotIndex()) end)
+    if not ok then
+        local handler = geterrorhandler and geterrorhandler()
+        if handler then handler(err) end
+    end
+end
+local function hookLootScroll()
+    if scrollHooked then return end
+    local box = LootFrame and LootFrame.ScrollBox
+    local util = _G.ScrollUtil
+    if type(box) ~= "table" or type(util) ~= "table" or type(util.AddInitializedFrameCallback) ~= "function" then return end
+    scrollHooked = true
+    util.AddInitializedFrameCallback(box, onLootElement, marks)
+end
+hookLootScroll()
+
+ns.OnEvent("LOOT_OPENED", function()
+    hookLootScroll()
+    C_Timer.After(0, ns.MarkLootButtons)
+end)
 ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkLootButtons) end)
 if type(LootFrame_Update) == "function" then
     hooksecurefunc("LootFrame_Update", ns.MarkLootButtons)

@@ -36,6 +36,7 @@ local exportOpen = false -- the wishlist shows the text for the website instead 
 local exportText = ""
 local guildResult        -- what the last import said
 local scrolledTo         -- the slot the targets list was last scrolled to
+local placeGone          -- the saved place of "Hier" was not in the data
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local function itemInfo(x)
@@ -63,10 +64,13 @@ local function cached()
     return memo
 end
 
+local nameMissing = false   -- a shown row had no item name yet ("Item 12345")
+
 local function itemText(id)
     local name, _, q = itemInfo(id)
     local row = Gear.Item(id)
     q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
+    if not name then nameMissing = true end
     return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. id))
 end
 
@@ -560,6 +564,7 @@ local function buildHere(f)
     Hh:SetPoint("TOPLEFT", 0, -72)
     Hh:SetPoint("BOTTOMRIGHT", 0, 0)
     Hh.pick = W.Picker(Hh, 240, function(v)
+        placeGone = false
         state().place = (v ~= "here") and v or nil
         ns.Refresh()
     end)
@@ -594,7 +599,19 @@ local function fillHere(Hh, o)
     local chosen = state().place
     local cur = ns.BisCurrentPlace()
     local values = { { value = "here", text = "Hier: " .. ((cur and cur.text) or "unbekannt") } }
-    for _, p in ipairs(ns.BisPlaces()) do values[#values + 1] = { value = p.key, text = p.text } end
+    local found = false
+    for _, p in ipairs(ns.BisPlaces()) do
+        values[#values + 1] = { value = p.key, text = p.text }
+        if p.key == chosen then found = true end
+    end
+    -- a saved place the data no longer has (another data set, a rebuilt one): the own place again,
+    -- said until another place is picked
+    if chosen ~= nil and not found then
+        chosen = nil
+        state().place = nil
+        placeGone = true
+    end
+    local gone = placeGone
     Hh.pick:SetValues(values)
     Hh.pick:SetValue(chosen or "here")
     local place, list = ns.BisHere(chosen, o)
@@ -608,6 +625,7 @@ local function fillHere(Hh, o)
         hint = "Was du an diesem Ort noch holen kannst: Upgrades und Wünsche, Besitz unten."
     end
     if place and (place.loading or 0) > 0 then hint = hint .. (" · lädt noch %d Items"):format(place.loading) end
+    if gone then hint = "Der gewählte Ort fehlt in den Daten, gezeigt wird der aktuelle. " .. hint end
     Hh.hint:SetText(hint)
 end
 
@@ -949,6 +967,7 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         return f
     end,
     refresh = function(f)
+        nameMissing = false
         local o = ns.BisOpts()
         local res = ns.BisTargets()
         local v = shownView()
@@ -974,8 +993,28 @@ local function refreshShown()
     if cur == "gear" or cur == "overview" then ns.Refresh() end
 end
 ns.Listen("BIS_CHANGED", refreshShown)
-ns.Listen("GUILD_WISHES", refreshShown)
+-- a new or cleared list: what the last import said is over (an import sets its result afterwards)
+ns.Listen("GUILD_WISHES", function()
+    guildResult = nil
+    refreshShown()
+end)
 ns.BisOnOwned(refreshShown)
+
+-- Item names the client did not have at the last refresh: once item data arrives the shown rows
+-- are filled again, once for a burst of answers, and the wishlist (sorted by name) and the guild
+-- list are built again.
+local namesDue = false
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
+    if not nameMissing or namesDue then return end
+    namesDue = true
+    C_Timer.After(0.3, function()
+        namesDue = false
+        if not nameMissing or not (ns.CurrentPage and ns.CurrentPage() == "gear") then return end
+        memo.wishes = nil
+        guildKey = nil
+        ns.Refresh()
+    end)
+end)
 
 ---------------------------------------------------------------------------
 -- The overview card

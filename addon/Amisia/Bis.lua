@@ -1193,6 +1193,7 @@ end)
 ---------------------------------------------------------------------------
 
 local TOAST_SECONDS, TOAST_MAX, TOAST_AGAIN = 8, 3, 120
+local TOAST_Y = -60
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local GOLD = { 0.89, 0.72, 0.34 }
 local toastFrame, current
@@ -1215,7 +1216,9 @@ end
 local function buildToast()
     local f = CreateFrame("Button", "AmisiaBisToast", UIParent)
     f:SetSize(320, 58)
-    f:SetPoint("TOP", UIParent, "TOP", 0, -150)
+    -- high up, 60-118 px below the top: clear of the award dialog and the roll window (from about
+    -- 124 px down on the smallest screen) and above the client's error line (122 px down)
+    f:SetPoint("TOP", UIParent, "TOP", 0, TOAST_Y)
     -- above the main window and the roll windows; only the mouse, never the keyboard
     f:SetFrameStrata("FULLSCREEN_DIALOG")
     f:SetClampedToScreen(true)
@@ -1261,8 +1264,15 @@ local function buildToast()
     end)
     f:SetScript("OnClick", function(self, button)
         if button == "RightButton" then closeToast() return end
-        if self.link and HandleModifiedItemClick and IsShiftKeyDown and IsShiftKeyDown() then
-            HandleModifiedItemClick(self.link)
+        if self.link and IsShiftKeyDown and IsShiftKeyDown() then
+            -- into the open chat box, else a chat box opened with it (a modified click only
+            -- inserts into one that is open)
+            local util = type(ChatFrameUtil) == "table" and ChatFrameUtil or {}
+            local insert = util.InsertLink or _G.ChatEdit_InsertLink
+            if not (type(insert) == "function" and insert(self.link)) then
+                local open = util.OpenChat or _G.ChatFrame_OpenChat
+                if type(open) == "function" then open(self.link) end
+            end
             return
         end
         local slotKey = self.slotKey

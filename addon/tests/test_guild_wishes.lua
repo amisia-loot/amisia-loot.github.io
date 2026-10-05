@@ -3,7 +3,7 @@
 -- ns.SameNameIn (a first name alone only when it is clear), the tooltip line for officers with
 -- "(+n außerhalb)" through the shared hook, the "W" mark in the loot window and on the roll frames
 -- next to "SR", wishers first in the award dialog without changing the roll order, the switches,
--- the age, the import window and /amisia wuensche.
+-- the age, the import on the gear page (guild view) and /amisia wuensche.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 STUB.class, STUB.level = "WARRIOR", 70
@@ -219,7 +219,7 @@ assert(round.winner == "Bob", "wishes change no roll: " .. tostring(round.winner
 NS.ClearSoftRes()
 
 ---------------------------------------------------------------------------
--- age, clearing, the import window and the command
+-- age, clearing, the import on the gear page and the command
 ---------------------------------------------------------------------------
 assert(NS.GuildWishesAgeText() == nil and NS.GuildWishesInfo().age <= 14, "young lists need no hint")
 local old = os.date("%Y-%m-%d", STUB.now - 16 * 86400 - 12 * 3600)   -- the age counts from noon of the date
@@ -229,27 +229,29 @@ assert(NS.GuildWishesInfo().age == 16 and NS.GuildWishesAgeText() == "Die Wunsch
 assert(NS.Set("ui.view", "raider"))
 NS.Dispatch("wuensche")
 assert(has(lastMsg(), "Offiziersansicht"), "officers only: " .. lastMsg())
-assert(not (AmisiaGuildWishFrame and AmisiaGuildWishFrame:IsShown()), "no window for raiders")
+-- (the separate import window is gone; the gear page's guild view holds the import)
+assert(not AmisiaGuildWishFrame and NS.ShowGuildWishFrame == nil, "no separate import window")
+assert(NS.CurrentPage() ~= "gear", "no page for raiders either")
+NS.ShowGear("guild")
+local U = NS.GearPageFrame().guild
+assert(U:IsShown() and not U.area:IsShown() and not U.importBtn:IsShown() and not U.clearBtn:IsShown(),
+    "raiders see the list, not the import")
 NS.Reset("ui.view")
 NS.Dispatch("wuensche")
 assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "guild" and NS.GearPageFrame().guild:IsShown(),
     "the command opens the guild view of the gear page")
-NS.ShowGuildWishFrame()
-local F = AmisiaGuildWishFrame
-assert(F and F:IsShown() and F.strata == "FULLSCREEN_DIALOG", "the import window above the main window")
-F.editBox:SetText(TEXT)
-F.editBox.scripts.OnTextChanged(F.editBox)
-STUB.tick(0.5)
-assert(F.previewText:GetText() == "Vorschau: 6 Wünsche zu 3 Items, 4 Zeilen nicht erkannt", tostring(F.previewText:GetText()))
-F.editBox:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 1 2 Anna\n#END")
-F.editBox.scripts.OnTextChanged(F.editBox)
-STUB.tick(0.5)
-assert(F.previewText:GetText() == "Diese Wunschliste ist für WoW Forever, du bist in TBC Anniversary.", tostring(F.previewText:GetText()))
-F.editBox:SetText(TEXT)
-F.applyBtn:Click()
+assert(U.area:IsShown() and U.importBtn:IsShown() and U.clearBtn:IsShown(), "officers get the import")
+-- a list of the other game is refused with the reason, the stored list stays
+U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 1 2 Anna\n#END")
+U.importBtn:Click()
+assert(U.hint:GetText() == "Diese Wunschliste ist für WoW Forever, du bist in TBC Anniversary.", tostring(U.hint:GetText()))
+assert(AmisiaDB.bis.guild.n == 1, "the old list stays")
+U.area.box:SetText(TEXT)
+U.importBtn:Click()
 assert(AmisiaDB.bis.guild.n == 6 and AmisiaDB.bis.guild.date == "2026-10-05", "imported")
-assert(has(F.resultText:GetText(), "6 Wünsche übernommen"), tostring(F.resultText:GetText()))
-F.clearBtn:Click()
+assert(U.hint:GetText() == "6 Wünsche übernommen, 4 Zeilen nicht erkannt.", tostring(U.hint:GetText()))
+local resultText = U.hint:GetText()
+U.clearBtn:Click()
 assert(STUB.popup and STUB.popup.which == "AMISIA_GUILDWISH_CLEAR", "asks first")
 STUB.acceptPopup()
 assert(AmisiaDB.bis.guild == nil and NS.GuildWishesInfo() == nil, "cleared")
@@ -260,7 +262,7 @@ NS.MarkGuildWishLoot()
 assert(not NS.GuildWishMarkShown(b1), "no list, no mark")
 
 -- every text Latin-1 only
-for _, t in ipairs({ TEXT, F.previewText:GetText() or "", F.resultText:GetText() or "" }) do
+for _, t in ipairs({ TEXT, resultText, U.hint:GetText() or "", U.info:GetText() or "" }) do
     for c in t:gmatch("[\194-\244][\128-\191]*") do
         local b1c, b2c = c:byte(1, 2)
         assert(b1c <= 195, "beyond Latin-1: " .. c)
