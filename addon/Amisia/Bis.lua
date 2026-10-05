@@ -24,6 +24,8 @@ ns.BIS_MAX_WISH = MAX_WISH
 local stamp = 0          -- bumped by everything that changes a result; part of every cache key
 local function bump() stamp = stamp + 1 end
 ns.BisBump = bump
+-- The state counter: a page keeps what it showed until this changes.
+function ns.BisStamp() return stamp end
 
 ---------------------------------------------------------------------------
 -- Saved data and its move
@@ -797,6 +799,8 @@ local function currentPlace()
     if not first then return nil end
     return { key = "Z:" .. first, keys = keys, text = text }
 end
+-- The player's place as "Hier" finds it ({ key, keys, heroic, text }), or nil; nothing is listed.
+ns.BisCurrentPlace = currentPlace
 
 local placesCache, placesFor
 -- The raids and dungeons of the data for the place picker: { { key, text, raid } }, raids first;
@@ -875,7 +879,7 @@ function ns.BisHere(placeKey, opts)
                         local wished = wishOf(c, id)
                         local up = not ev.switch and ns.BisIsUpgrade(ev.gain, ev.mine)
                         if up or wished then
-                            list[#list + 1] = { id = id, rec = hit, score = ev.score, gain = ev.gain, mine = ev.mine,
+                            list[#list + 1] = { id = id, rec = hit, slotKey = ev.slotKey, score = ev.score, gain = ev.gain, mine = ev.mine,
                                 owned = ns.BisOwned(id), wished = wished, upgrade = up or false, switch = ev.switch or nil }
                         end
                     end
@@ -1446,13 +1450,19 @@ end))
 -- Page, settings, commands
 ---------------------------------------------------------------------------
 
--- Opens the gear page in a view ("goals", "here", "wish", "guild") with a slot chosen. The page
--- reads settings.bis.view and settings.bis.slot.
+local VIEW_OF = { goals = "goals", ziele = "goals", here = "here", hier = "here", wish = "wish", wunsch = "wish",
+    wunschliste = "wish", guild = "guild", gilde = "guild" }
+
+-- Opens the gear page in a view ("goals", "here", "wish", "guild" or the German words) with a slot
+-- chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
+-- at the player's own place again.
 function ns.ShowGear(view, slotKey)
     local s = AmisiaDB and AmisiaDB.settings
     if s then
         s.bis = type(s.bis) == "table" and s.bis or {}
-        s.bis.view = view or s.bis.view or "goals"
+        local v = VIEW_OF[tostring(view or ""):lower()]
+        s.bis.view = v or s.bis.view or "goals"
+        if v == "here" then s.bis.place = nil end
         if slotKey then s.bis.slot = slotKey end
     end
     if ns.ShowPage then ns.ShowPage("gear") end

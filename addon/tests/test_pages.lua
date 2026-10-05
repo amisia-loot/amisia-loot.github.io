@@ -103,3 +103,18 @@ local m = NS.W.Menu(UIParent, { { "Eins", function() end } })
 assert(m:IsShown())
 NS.W.Menu(UIParent, { { "Eins", function() end } })
 assert(not m:IsShown(), "second click closes the menu")
+
+-- the gear page with the real TBC data: every view builds and refreshes, for officers and raiders
+for _, view in ipairs({ "officer", "raider" }) do
+    NS.Set("ui.view", view)
+    for _, v in ipairs({ "goals", "here", "wish", "guild" }) do
+        NS.ShowGear(v)
+        NS.Refresh()
+        assert(NS.CurrentPage() == "gear", "the gear page in " .. v)
+    end
+end
+NS.Reset("ui.view")
+local gp = NS.GearPageFrame()
+assert(gp and gp.goals and #gp.goals.list.items == 17, "all slots on the real data")
+NS.ShowPage("overview")
+NS.Refresh()

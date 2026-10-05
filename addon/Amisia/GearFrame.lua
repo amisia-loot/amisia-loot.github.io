@@ -288,6 +288,12 @@ local function buildOverview(parent)
             b.up:SetPoint("TOPRIGHT", 2, 2)
             b.up:SetColorTexture(0.3, 0.9, 0.4, 1)
             b.up:Hide()
+            -- the own character has it (worn, bags or bank)
+            b.own = b:CreateTexture(nil, "OVERLAY")
+            b.own:SetSize(11, 11)
+            b.own:SetPoint("TOPLEFT", -2, 2)
+            b.own:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+            b.own:Hide()
             b.lvl = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
             b.lvl:SetPoint("BOTTOMRIGHT", 1, 0)
             b.empty = text(b, "GameFontDisableSmall")
@@ -351,11 +357,13 @@ local function fillOverview()
                 local mine, link = nil, nil
                 if c == myCol then mine, link = equippedScore(slot, c) end
                 if ns.Get("gear.upgradeDot") and mine and e[2] - mine > math.abs(mine) * 0.02 and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end
+                if g.class == myClass and ns.BisOwned and ns.BisOwned(e[1]) then b.own:Show() else b.own:Hide() end
             else
                 b.id, b.score = nil, nil
                 b.icon:Hide()
                 b.lvl:SetText("")
                 b.up:Hide()
+                b.own:Hide()
                 setBorderColor(b.edges, 1, 1, 1, 0.08)
                 b.empty:Show()
                 if slot.key == "OFFHAND" and res and res.plan == "2H" then
@@ -772,35 +780,29 @@ local function build()
     statusText:SetPoint("BOTTOMLEFT", 14, 10)
 end
 
--- The upgrades the player can get at their own level, against what they wear, best first.
+-- The upgrades of the own character, best first: option 1 of every slot that beats what is worn,
+-- from the targets of Bis.lua (its options, exclusions and cache). Returns the list, the targets and
+-- the options they were made with.
 function ns.GearMyUpgrades()
-    if not Gear.Available() then return {}, nil, nil end
-    local g = settings()
-    local _, myClass = UnitClass("player")
-    local o = {
-        class = myClass, spec = g.specs[myClass] or (Gear.Specs(myClass)[1] or {}).key, kind = ns.Get("gear.kind"),
-        faction = g.faction ~= "both" and g.faction or nil, sources = g.sources, level = UnitLevel("player") or 1,
-    }
-    local res = Gear.Best(o)
-    local out, worn = {}, {}
-    -- a ring or trinket worn in the other slot is no upgrade for this one
-    for _, slot in ipairs(Gear.SLOTS) do
-        local link = GetInventoryItemLink and GetInventoryItemLink("player", slot.inv)
-        if link then worn[ns.ItemID(link) or 0] = true end
-    end
+    if not Gear.Available() or not ns.BisTargets then return {}, nil, nil end
+    local o = ns.BisOpts()
+    local res = ns.BisTargets()
+    local out = {}
     for _, slot in ipairs(Gear.SLOTS) do
         local e = res[slot.key] and res[slot.key][1]
-        if e and not worn[e[1]] then
-            local link = GetInventoryItemLink and GetInventoryItemLink("player", slot.inv)
-            local mine = link and Gear.ScoreLink(link, slot.key, o) or 0
-            if (not link or ns.ItemID(link) ~= e[1]) and e[2] - mine > math.max(1, math.abs(mine) * 0.02) then
-                out[#out + 1] = { slot = slot, id = e[1], score = e[2], gain = e[2] - mine, mine = mine }
-            end
+        if e and e.upgrade then
+            out[#out + 1] = { slot = slot, id = e.id, score = e.score, gain = e.gain, mine = e.mine }
         end
     end
-    table.sort(out, function(a, b) return a.gain > b.gain end)
+    table.sort(out, function(a, b)
+        if a.gain ~= b.gain then return a.gain > b.gain end
+        return a.id < b.id
+    end)
     return out, res, o
 end
+
+-- Test hook: the cells of the overview.
+ns._gearFrame = { cells = function() return cells end }
 
 function ns.ResetGearPosition()
     if F then F:ClearAllPoints(); F:SetPoint("CENTER") end

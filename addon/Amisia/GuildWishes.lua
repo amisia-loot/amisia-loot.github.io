@@ -588,5 +588,6 @@ ns.RegisterSlash("wuensche", { aliases = { "wishes" }, officer = true, desc = "G
             ns.msg("Gildenwünsche nur in der Offiziersansicht.")
             return
         end
-        ns.ShowGuildWishFrame()
+        -- the gear page's guild view, with the import box
+        ns.ShowGear("guild")
     end })

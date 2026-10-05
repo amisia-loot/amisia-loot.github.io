@@ -15,13 +15,19 @@ local function settings()
 end
 
 local function gearAvailable()
-    return ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame
+    return ns.Gear and ns.Gear.Available() and ns.ShowGear
 end
 
 function ns.MinimapMenuEntries()
     local officer = ns.IsOfficerView()
     local e = {}
-    if gearAvailable() then e[#e + 1] = { "Ausrüstung", function() ns.ToggleGearFrame() end } end
+    if gearAvailable() then
+        e[#e + 1] = { "Ausrüstung", function() ns.ShowGear("goals") end }
+        -- the level-range table is a Forever thing
+        if ns.Gear.PlannerAvailable() and ns.ToggleGearFrame then
+            e[#e + 1] = { "Ausrüstungstabelle", function() ns.ToggleGearFrame() end }
+        end
+    end
     if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
     if officer then e[#e + 1] = { "Vergaben", function() ns.ShowPage("awards") end } end
     e[#e + 1] = { "Soft-Reserves", function() ns.ShowPage("softres") end }

@@ -232,6 +232,9 @@ assert(has(lastMsg(), "Offiziersansicht"), "officers only: " .. lastMsg())
 assert(not (AmisiaGuildWishFrame and AmisiaGuildWishFrame:IsShown()), "no window for raiders")
 NS.Reset("ui.view")
 NS.Dispatch("wuensche")
+assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "guild" and NS.GearPageFrame().guild:IsShown(),
+    "the command opens the guild view of the gear page")
+NS.ShowGuildWishFrame()
 local F = AmisiaGuildWishFrame
 assert(F and F:IsShown() and F.strata == "FULLSCREEN_DIALOG", "the import window above the main window")
 F.editBox:SetText(TEXT)

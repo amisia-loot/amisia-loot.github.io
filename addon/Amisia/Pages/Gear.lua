@@ -1,63 +1,1012 @@
--- Gear (WoW Forever): what the player can get at their level that beats what they wear.
+-- Gear page, on both clients: the best items of the own character per slot ("Ziele") with the
+-- three options of a slot, the buttons to wish or exclude and the explained score; what a place
+-- still offers ("Hier"); the own wishlist with its text for the website ("Wunschliste"); the guild
+-- wishes pasted from the website ("Gilde", import for officers). Plus the overview card.
+-- Everything shown comes from the caches of Bis.lua; a refresh never computes the targets again
+-- unless something they depend on changed.
 local ADDON, ns = ...
 local W = ns.W
+local Gear = ns.Gear
+local GOLD = W.GOLD
+local GREY, GREEN = "|cff8f86a3", "|cff4fd06a"
+local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
+local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local ROW_H = 24
+local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
+local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
+local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
+local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
+local OWNED_TEXT = { worn = "angelegt", bag = "in der Tasche, nicht angelegt", bank = "in der Bank, nicht angelegt" }
+local HIT_NOTE = "Trefferwertung zählt ohne Obergrenze."
+local VIEWS = { goals = true, here = true, wish = true, guild = true }
+local PHASES = { { value = 0, text = "alle" }, { value = 1, text = "bis 1" }, { value = 2, text = "bis 2" },
+    { value = 3, text = "bis 3" }, { value = 4, text = "bis 4" }, { value = 5, text = "bis 5" } }
+-- the source chips per game: key, label, width
+local CHIPS = {
+    tbc = { { "X", "Raids", 48 }, { "H", "Heroisch", 60 }, { "D", "Dungeons", 64 }, { "F", "Ruf", 36 }, { "V", "Händler", 56 },
+            { "C", "Berufe: alle", 86 }, { "W", "Welt", 40 } },
+    forever = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
+                { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } },
+}
 
-local function available() return ns.Gear and ns.Gear.Available() end
+local page
+local groupOnly          -- the guild view's "Nur Gruppe"; nil: on while in a raid
+local exportOpen = false -- the wishlist shows the text for the website instead of the list
+local exportText = ""
+local guildResult        -- what the last import said
+local scrolledTo         -- the slot the targets list was last scrolled to
 
-local function itemName(id)
-    local getInfo = C_Item and C_Item.GetItemInfo or _G.GetItemInfo
-    local name, _, q = getInfo(id)
-    local row = ns.Gear.Item(id)
-    q = q or (row and row[5]) or 1
+-- Forever has no GetItemInfo global; both clients have C_Item.
+local function itemInfo(x)
+    local f = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+    if f then return f(x) end
+    return nil
+end
+
+---------------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------------
+
+-- The window state of the page in settings.bis (view, slot, place, sources).
+local function state()
+    local s = AmisiaDB.settings
+    s.bis = type(s.bis) == "table" and s.bis or {}
+    return s.bis
+end
+
+-- What a refresh keeps until Bis.lua's state changes: source texts, explanations, the wishes.
+local memo = { stamp = -1 }
+local function cached()
+    local st = ns.BisStamp()
+    if memo.stamp ~= st then memo = { stamp = st, src = {}, explain = {} } end
+    return memo
+end
+
+local function itemText(id)
+    local name, _, q = itemInfo(id)
+    local row = Gear.Item(id)
+    q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
     return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. id))
 end
 
-local function sourceText(id, o)
-    local rec = ns.Gear.Sources(id, o)[1]
-    return rec and ns.Gear.SourceText(rec, true) or ""
+-- A worn item's name in the colour of its link.
+local function linkText(link)
+    local color = link:match("^|c(%x%x%x%x%x%x%x%x)")
+    local name = link:match("|h%[(.-)%]|h")
+    if name then return color and ("|c%s%s|r"):format(color, name) or name end
+    local id = ns.ItemID(link)
+    return id and itemText(id) or "?"
 end
 
-ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, available = available,
+local function linkOf(id)
+    local _, link = itemInfo(id)
+    return link or ("item:" .. id)
+end
+
+local function firstSource(id, o)
+    return Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
+end
+
+local function sourceText(id, o)
+    local c = cached()
+    local t = c.src[id]
+    if t == nil then
+        local rec = firstSource(id, o)
+        t = rec and Gear.SourceText(rec, true) or ""
+        c.src[id] = t
+    end
+    return t
+end
+
+local function marks(e)
+    return (e.owned and (CHECK .. " ") or "") .. (e.wished and (STAR .. " ") or "")
+end
+
+local function gainText(e)
+    if e.worn or e.owned == "worn" then return CHECK end
+    if e.switch then return "Wechsel" end
+    if type(e.gain) ~= "number" then return "" end
+    return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
+end
+
+local function upgradesText(n) return n == 1 and "1 Upgrade" or (n .. " Upgrades") end
+
+local function wishCount()
+    local c = ns.BisChar()
+    local n = 0
+    for _ in pairs(c and c.wish or {}) do n = n + 1 end
+    return n
+end
+
+-- Puts a link into the chat the way the client does: ChatFrameUtil.InsertLink, else the old global.
+local function insertLink(link)
+    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+        return ChatFrameUtil.InsertLink(link)
+    elseif type(ChatEdit_InsertLink) == "function" then
+        return ChatEdit_InsertLink(link)
+    end
+end
+
+-- Shift or Ctrl on an item: the client's modified click (link into the chat, dressing room).
+local function modifiedClick(id)
+    if not id or not HandleModifiedItemClick then return false end
+    if (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown()) then
+        HandleModifiedItemClick(linkOf(id))
+        return true
+    end
+    return false
+end
+
+local function itemTooltip(owner, id)
+    if not id then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local _, link = itemInfo(id)
+    if link then
+        GameTooltip:SetHyperlink(link)
+    elseif GameTooltip.SetItemByID then
+        GameTooltip:SetItemByID(id)
+    end
+    GameTooltip:Show()
+end
+local function hideTip() GameTooltip:Hide() end
+
+local function say(ok, why)
+    if not ok and why then ns.msg(why) end
+end
+
+local function lift(d)
+    -- the dialog strata is below the main window's; lift it so it is not hidden behind
+    if d and d.SetFrameStrata then
+        d:SetFrameStrata("FULLSCREEN_DIALOG")
+        if d.Raise then d:Raise() end
+    end
+end
+
+local function col(parent, x, w, label, template)
+    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    fs:SetPoint("LEFT", x, 0)
+    if label then fs:SetText(label) end
+    return fs
+end
+
+local function head(parent, y)
+    local h = CreateFrame("Frame", nil, parent)
+    h:SetHeight(14)
+    h:SetPoint("TOPLEFT", 0, y)
+    h:SetPoint("TOPRIGHT", 0, y)
+    return h
+end
+
+-- Every place key the data knows (raids, dungeons, zones), per data set.
+local knownFor, known
+local function placeKnown(place)
+    local d = ns.GEAR
+    if not place or not d then return false end
+    if knownFor ~= d then
+        known, knownFor = {}, d
+        for _, rec in ipairs(d.S) do
+            local p = Gear.PlaceOf(rec)
+            if p then known[p] = true end
+        end
+    end
+    for k in pairs(place.keys or {}) do
+        if known[k] then return true end
+    end
+    return false
+end
+
+local function guildVisible() return ns.IsOfficerView() or ns.GuildWishesInfo() ~= nil end
+
+local function shownView()
+    local v = state().view
+    if not VIEWS[v] or (v == "guild" and not guildVisible()) then return "goals" end
+    return v
+end
+
+local function setView(v)
+    state().view = v
+    guildResult = nil
+    if v ~= "wish" then exportOpen = false end
+    ns.Refresh()
+end
+
+local function longDate(iso)
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    return y and (d .. "." .. m .. "." .. y) or "?"
+end
+
+---------------------------------------------------------------------------
+-- Head: spec, views, counts, source chips, phase
+---------------------------------------------------------------------------
+
+local function counts(o, res)
+    local parts = { ("Level %d"):format(o.level), upgradesText(res.upgrades or 0) }
+    local c = ns.BisChar()
+    parts[#parts + 1] = (c and c.bankAt) and ("Bank " .. date("%d.%m.", c.bankAt)) or "Bank noch nicht geöffnet"
+    local ex = ns.BisExcludeCount()
+    if ex > 0 then parts[#parts + 1] = ex .. " ausgeschlossen" end
+    local loading = Gear.Loading()
+    if loading > 0 then parts[#parts + 1] = ("|cffe0a344lädt noch %d Items|r"):format(loading) end
+    return table.concat(parts, " · ")
+end
+
+local chipsFor, chipsCache
+local function chipSet()
+    local set = CHIPS[Gear.Game() == "tbc" and "tbc" or "forever"]
+    if set ~= CHIPS.forever then return set end
+    -- Forever's raids show once the data has them; looked up once per data set
+    local d = ns.GEAR
+    if chipsFor == d then return chipsCache end
+    local raids = false
+    for _, rec in ipairs(d and d.S or {}) do
+        if rec[1] == "X" then raids = true break end
+    end
+    local out = set
+    if not raids then
+        out = {}
+        for i = 2, #set do out[#out + 1] = set[i] end
+    end
+    chipsFor, chipsCache = d, out
+    return out
+end
+
+local function profClick()
+    local src = ns.BisOpts().sources
+    if not src.C then
+        src.C = true
+        ns.Set("bis.prof", "all")
+    elseif ns.Get("bis.prof") ~= "mine" and ns.BisSkills() then
+        ns.Set("bis.prof", "mine")
+    else
+        src.C = false
+        ns.Set("bis.prof", "all")
+    end
+    ns.Fire("BIS_CHANGED")
+end
+
+local function fillHead(f, o, res, v)
+    -- the spec: chosen, or guessed from the talents
+    local values = {}
+    for _, sp in ipairs(Gear.Specs(o.class)) do values[#values + 1] = { value = sp.key, text = sp.name } end
+    values[#values + 1] = { value = "", text = "aus den Talenten" }
+    f.spec:SetValues(values)
+    f.spec:SetValue(o.spec)
+    if o.guessed then f.spec.label:SetText(f.spec.label:GetText() .. " " .. GREY .. "(geraten)|r") end
+    for k, chip in pairs(f.views) do chip:SetOn(k == v) end
+    if guildVisible() then f.views.guild:Show() else f.views.guild:Hide() end
+    f.views.wish.label:SetText(("Wunschliste (%d)"):format(wishCount()))
+    if Gear.PlannerAvailable() then f.open:Show() else f.open:Hide() end
+    f.counts:SetText(counts(o, res))
+    if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
+    -- the source chips of this game, in a row
+    local shown, x = {}, 0
+    for _, def in ipairs(chipSet()) do
+        local chip = f.src[def[1]]
+        shown[def[1]] = true
+        chip:ClearAllPoints()
+        chip:SetPoint("TOPLEFT", x, -48)
+        x = x + def[3] + 4
+        local on = o.sources[def[1]] and true or false
+        chip:SetOn(on)
+        if def[1] == "C" then
+            chip.label:SetText(not on and "Berufe" or (o.prof == "mine" and "Berufe: meine" or "Berufe: alle"))
+        end
+        chip:Show()
+    end
+    for k, chip in pairs(f.src) do if not shown[k] then chip:Hide() end end
+    if Gear.Game() == "tbc" then
+        f.phase:SetValues(PHASES)
+        f.phase:SetValue(o.phase or 0)
+        f.phase:Show(); f.phaseText:Show()
+    else
+        f.phase:Hide(); f.phaseText:Hide()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Ziele: the slots, the details of one, the explanation
+---------------------------------------------------------------------------
+
+local function selectedSlot()
+    local slot = state().slot
+    if ns.BIS_SLOT_NAME[slot] then return slot end
+    return "HEAD"
+end
+
+local function selectSlot(key)
+    state().slot = key
+    scrolledTo = key
+    ns.Refresh()
+end
+
+local function menuEntries(e, o)
+    local id = e.id
+    local out = { { "Item ausschließen", function() say(ns.BisExclude("item", id)) end } }
+    local rec = firstSource(id, o)
+    if rec and (rec[1] == "X" or rec[1] == "D") and rec[3] and rec[3] ~= "Trash" then
+        out[#out + 1] = { "Boss ausschließen", function() say(ns.BisExclude("boss", rec[3])) end }
+    end
+    local place = rec and Gear.PlaceOf(rec)
+    if place then out[#out + 1] = { "Ort ausschließen", function() say(ns.BisExclude("place", place)) end } end
+    if e.wished then
+        out[#out + 1] = { "Von der Wunschliste nehmen", function() ns.WishRemove(id) end }
+    else
+        out[#out + 1] = { "Auf die Wunschliste", function() say(ns.WishAdd(id)) end }
+    end
+    out[#out + 1] = { "Link in den Chat", function() insertLink(linkOf(id)) end }
+    return out
+end
+
+local function toggleWish(id, wished)
+    if wished then ns.WishRemove(id) else say(ns.WishAdd(id)) end
+end
+
+local function fillGoalRow(r, e)
+    r.slot:SetText(e.name)
+    local up = e.opt and e.opt.upgrade
+    if up then r.slot:SetTextColor(1, 0.82, 0) else r.slot:SetTextColor(0.56, 0.53, 0.64) end
+    r.worn:SetText(e.wornLink and linkText(e.wornLink) or (GREY .. "nichts|r"))
+    if e.opt then
+        r.best:SetText(marks(e.opt) .. itemText(e.opt.id))
+        r.src:SetText(sourceText(e.opt.id, e.o))
+        r.gain:SetText(gainText(e.opt))
+    else
+        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")
+        r.src:SetText("")
+        r.gain:SetText("")
+    end
+    if e.key == selectedSlot() then r.sel:Show() else r.sel:Hide() end
+end
+
+local function buildGoals(f)
+    local G = CreateFrame("Frame", nil, f)
+    G:SetPoint("TOPLEFT", 0, -72)
+    G:SetPoint("BOTTOMRIGHT", 0, 0)
+    local h = head(G, 0)
+    G.head = { slot = col(h, 4, 66, "Slot"), worn = col(h, 74, 156, "Angelegt"), best = col(h, 234, 186, "Bestes"),
+        src = col(h, 424, 126, "Quelle"), gain = col(h, 554, 44, "Zuwachs") }
+    G.head.gain:SetJustifyH("RIGHT")
+    G.list = W.List(G, GOAL_ROWS, ROW_H, function(r)
+        r.sel = W.Flat(r, GOLD[1], GOLD[2], GOLD[3], 0.22, "BORDER")
+        r.sel:Hide()
+        r.slot = col(r, 4, 66)
+        r.worn = col(r, 74, 156, nil, "GameFontHighlightSmall")
+        r.best = col(r, 234, 186, nil, "GameFontHighlightSmall")
+        r.src = col(r, 424, 126, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 554, 44, nil, "GameFontHighlightSmall")
+        r.gain:SetJustifyH("RIGHT")
+        r:SetScript("OnClick", function(self)
+            local e = self.item
+            if not e then return end
+            if e.opt and modifiedClick(e.opt.id) then return end
+            selectSlot(e.key)
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e and e.opt then itemTooltip(self, e.opt.id) end
+        end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillGoalRow)
+    G.list:SetPoint("TOPLEFT", 0, -16)
+    G.list:SetPoint("TOPRIGHT", 0, -16)
+
+    G.title = W.Text(G, "GameFontNormal", 598)
+    G.title:SetPoint("TOPLEFT", 4, -284)
+    G.opts = {}
+    for i = 1, 3 do
+        local b = CreateFrame("Button", nil, G)
+        b:SetHeight(25)
+        b:SetPoint("TOPLEFT", 0, -300 - (i - 1) * 26)
+        b:SetPoint("TOPRIGHT", 0, -300 - (i - 1) * 26)
+        W.Flat(b, 1, 1, 1, 0.04)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetColorTexture(1, 1, 1, 0.08)
+        b.rank = col(b, 4, 12, nil, "GameFontNormalSmall")
+        b.name = col(b, 20, 212, nil, "GameFontHighlightSmall")
+        b.src = col(b, 236, 192, nil, "GameFontHighlightSmall")
+        b.gain = col(b, 432, 46, nil, "GameFontHighlightSmall")
+        b.gain:SetJustifyH("RIGHT")
+        b.wish = W.Button(b, "Wunsch", 78, function(self)
+            local e = self:GetParent().opt
+            if e then toggleWish(e.id, e.wished) end
+        end)
+        b.wish:SetPoint("LEFT", 484, 0)
+        b.ex = W.Button(b, "Aus", 36, function(self)
+            local e = self:GetParent().opt
+            if e then say(ns.BisExclude("item", e.id)) end
+        end)
+        b.ex:SetPoint("LEFT", 566, 0)
+        W.Tooltip(b.ex, "Ausschließen", "Das Item nicht mehr vorschlagen; die nächste Option rückt auf. Rechtsklick auf die Zeile: Boss oder Ort ausschließen.")
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        b:SetScript("OnClick", function(self, button)
+            local e = self.opt
+            if not e then return end
+            if button == "RightButton" then
+                W.Menu(self, menuEntries(e, ns.BisOpts()))
+                return
+            end
+            modifiedClick(e.id)
+        end)
+        b:SetScript("OnEnter", function(self) if self.opt then itemTooltip(self, self.opt.id) end end)
+        b:SetScript("OnLeave", hideTip)
+        G.opts[i] = b
+    end
+    G.explain = W.Text(G, "GameFontHighlightSmall", 598, true)
+    G.explain:SetPoint("TOPLEFT", 4, -380)
+    G.explain:SetHeight(26)
+    G.explain:SetJustifyV("TOP")
+    G.explain:SetMaxLines(2)
+    return G
+end
+
+-- The explanation of an option as one text, kept until the state changes.
+local function explainText(o, res, slotKey, e)
+    local c = cached()
+    local key = slotKey .. "|" .. (e and e.id or 0)
+    if c.explain[key] then return c.explain[key] end
+    local out = {}
+    if (slotKey == "MAINHAND" or slotKey == "OFFHAND") and res.twoHandScore and res.oneHandScore then
+        out[#out + 1] = ("Zweihand %s gegen Waffenhand plus Schildhand %s."):format(Gear.Num(res.twoHandScore), Gear.Num(res.oneHandScore))
+    end
+    if not e then
+        out[#out + 1] = (slotKey == "OFFHAND" and res.plan == "2H") and "Die Zweihandwaffe belegt beide Hände."
+            or "Für diesen Slot gibt es keine Option in den Daten."
+    else
+        local lines = ns.BisExplain(e.id, o)
+        if #lines <= 1 then
+            out[#out + 1] = lines[1] or ""
+        else
+            local lead
+            if e.worn then
+                lead = "angelegt"
+            elseif e.switch then
+                lead = "Waffenwechsel"
+            else
+                lead = Gear.UnitText(e.gain or 0, Gear.Weights(o.class, o.spec, o.kind, o.level))
+            end
+            local parts, note = {}, nil
+            for i = 2, #lines do
+                if lines[i] == HIT_NOTE then note = lines[i] else parts[#parts + 1] = lines[i] end
+            end
+            out[#out + 1] = lead .. ": " .. table.concat(parts, ", ") .. "."
+            if note then out[#out + 1] = note end
+        end
+    end
+    local text = table.concat(out, " ")
+    c.explain[key] = text
+    return text
+end
+
+local function goalItems(res, o)
+    local c = cached()
+    if c.goalsRes == res then return c.goals end
+    local items = {}
+    for _, sl in ipairs(Gear.SLOTS) do
+        local link = GetInventoryItemLink and ns.Plain(GetInventoryItemLink("player", sl.inv))
+        items[#items + 1] = { key = sl.key, name = sl.name, wornLink = type(link) == "string" and link or nil,
+            opt = res[sl.key] and res[sl.key][1], plan = res.plan, o = o }
+    end
+    c.goalsRes, c.goals = res, items
+    return items
+end
+
+local function fillGoals(G, o, res)
+    local items = goalItems(res, o)
+    local slot = selectedSlot()
+    -- a slot chosen from outside (the toast) is scrolled into view once
+    if scrolledTo ~= slot then
+        scrolledTo = slot
+        for i, e in ipairs(items) do
+            if e.key == slot and (i <= G.list.offset or i > G.list.offset + GOAL_ROWS) then
+                G.list.offset = math.max(0, math.min(i - 1, #items - GOAL_ROWS))
+            end
+        end
+    end
+    G.list:SetItems(items)
+    local sp = Gear.SpecInfo(o.class, o.spec)
+    G.title:SetText(("%s · Bestes für %s%s"):format(ns.BIS_SLOT_NAME[slot] or slot, sp and sp.name or "?", o.guessed and " (geraten)" or ""))
+    local list = res[slot] or {}
+    for i, b in ipairs(G.opts) do
+        local e = list[i]
+        b.opt = e
+        if e then
+            b.rank:SetText(tostring(i))
+            b.name:SetText(marks(e) .. itemText(e.id))
+            b.src:SetText(e.owned and OWNED_TEXT[e.owned] or sourceText(e.id, o))
+            b.gain:SetText(gainText(e))
+            if e.worn then
+                b.wish:Hide()
+                b.ex:Hide()
+            else
+                b.wish:SetText(e.wished and "Wunsch weg" or "Wunsch")
+                b.wish:Show()
+                b.ex:Show()
+            end
+            b:Show()
+        else
+            b:Hide()
+        end
+    end
+    G.explain:SetText(explainText(o, res, slot, list[1]))
+end
+
+---------------------------------------------------------------------------
+-- Hier: a place and what it still offers
+---------------------------------------------------------------------------
+
+local function bossText(rec)
+    if not rec then return "" end
+    if (rec[1] == "X" or rec[1] == "D") and rec[3] then return rec[3] end
+    return Gear.SourceText(rec, true)
+end
+
+local function fillHereRow(r, e)
+    r.boss:SetText(bossText(e.rec))
+    r.name:SetText(marks(e) .. itemText(e.id))
+    r.slot:SetText(ns.BIS_SLOT_NAME[e.slotKey] or "")
+    r.gain:SetText(gainText(e))
+    if e.owned then
+        r.wishBtn:Hide()
+    else
+        r.wishBtn:SetText(e.wished and "Wunsch weg" or "Wunsch")
+        r.wishBtn:Show()
+    end
+end
+
+local function buildHere(f)
+    local Hh = CreateFrame("Frame", nil, f)
+    Hh:SetPoint("TOPLEFT", 0, -72)
+    Hh:SetPoint("BOTTOMRIGHT", 0, 0)
+    Hh.pick = W.Picker(Hh, 240, function(v)
+        state().place = (v ~= "here") and v or nil
+        ns.Refresh()
+    end)
+    Hh.pick:SetPoint("TOPLEFT", 0, -2)
+    local h = head(Hh, -26)
+    Hh.head = { boss = col(h, 4, 146, "Boss"), name = col(h, 154, 216, "Item"), slot = col(h, 374, 76, "Slot"),
+        gain = col(h, 454, 56, "Zuwachs") }
+    Hh.head.gain:SetJustifyH("RIGHT")
+    Hh.list = W.List(Hh, HERE_ROWS, ROW_H, function(r)
+        r.boss = col(r, 4, 146, nil, "GameFontHighlightSmall")
+        r.name = col(r, 154, 216, nil, "GameFontHighlightSmall")
+        r.slot = col(r, 374, 76, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 454, 56, nil, "GameFontHighlightSmall")
+        r.gain:SetJustifyH("RIGHT")
+        r.wishBtn = W.Button(r, "Wunsch", 82, function(self)
+            local e = self:GetParent().item
+            if e then toggleWish(e.id, e.wished) end
+        end)
+        r.wishBtn:SetPoint("LEFT", 520, 0)
+        r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
+        r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillHereRow)
+    Hh.list:SetPoint("TOPLEFT", 0, -42)
+    Hh.list:SetPoint("TOPRIGHT", 0, -42)
+    Hh.hint = W.Text(Hh, "GameFontDisableSmall", 598)
+    Hh.hint:SetPoint("TOPLEFT", 4, -384)
+    return Hh
+end
+
+local function fillHere(Hh, o)
+    local chosen = state().place
+    local cur = ns.BisCurrentPlace()
+    local values = { { value = "here", text = "Hier: " .. ((cur and cur.text) or "unbekannt") } }
+    for _, p in ipairs(ns.BisPlaces()) do values[#values + 1] = { value = p.key, text = p.text } end
+    Hh.pick:SetValues(values)
+    Hh.pick:SetValue(chosen or "here")
+    local place, list = ns.BisHere(chosen, o)
+    Hh.list:SetItems(list)
+    local hint
+    if not place or not placeKnown(place) then
+        hint = "Diesen Ort kennen die Daten nicht."
+    elseif #list == 0 then
+        hint = "Hier gibt es nichts mehr für dich."
+    else
+        hint = "Was du an diesem Ort noch holen kannst: Upgrades und Wünsche, Besitz unten."
+    end
+    if place and (place.loading or 0) > 0 then hint = hint .. (" · lädt noch %d Items"):format(place.loading) end
+    Hh.hint:SetText(hint)
+end
+
+---------------------------------------------------------------------------
+-- Wunschliste: the own wishes and their text for the website
+---------------------------------------------------------------------------
+
+local function fillWishRow(r, e)
+    r.name:SetText(itemText(e.id))
+    r.slot:SetText(e.slot or "")
+    r.src:SetText(e.src or "")
+    r.prio.label:SetText(PRIO_TEXT[e.e.prio] or "mittel")
+    r.prio:SetOn(e.e.prio == 3)
+    if e.owned then
+        r.state:SetText("hast du")
+        r.state:SetTextColor(0.31, 0.82, 0.42)
+    elseif e.excluded then
+        r.state:SetText("aus")
+        r.state:SetTextColor(0.56, 0.53, 0.64)
+    else
+        r.state:SetText("")
+    end
+end
+
+local function setExport(V, text)
+    exportText = text or ""
+    V.area.box:SetText(exportText)
+end
+
+local function buildWish(f)
+    local V = CreateFrame("Frame", nil, f)
+    V:SetPoint("TOPLEFT", 0, -72)
+    V:SetPoint("BOTTOMRIGHT", 0, 0)
+    local h = head(V, 0)
+    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 166, "Quelle"),
+        prio = col(h, 474, 58, "Priorität"), state = col(h, 536, 44, "") }
+    V.list = W.List(V, WISH_ROWS, ROW_H, function(r)
+        r.name = col(r, 4, 216, nil, "GameFontHighlightSmall")
+        r.slot = col(r, 224, 76, nil, "GameFontHighlightSmall")
+        r.src = col(r, 304, 166, nil, "GameFontHighlightSmall")
+        r.prio = W.Chip(r, "", 58, function(self)
+            local e = self:GetParent().item
+            if e then ns.WishSetPrio(e.id, PRIO_NEXT[e.e.prio] or 2) end
+        end)
+        r.prio:SetPoint("LEFT", 474, 0)
+        r.state = col(r, 536, 44, nil, "GameFontHighlightSmall")
+        r.del = W.Chip(r, "x", 18, function(self)
+            local e = self:GetParent().item
+            if e then ns.WishRemove(e.id) end
+        end)
+        r.del:SetPoint("LEFT", 584, 0)
+        r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
+        r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillWishRow)
+    V.list:SetPoint("TOPLEFT", 0, -16)
+    V.list:SetPoint("TOPRIGHT", 0, -16)
+
+    V.area = W.EditArea(V)
+    V.area:SetPoint("TOPLEFT", 0, -16)
+    V.area:SetPoint("TOPRIGHT", 0, -16)
+    V.area:SetHeight(120)
+    -- read-only like the export box: typing puts the text back and marks it
+    V.area.box:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            self:SetText(exportText or "")
+            self:HighlightText()
+        end
+    end)
+    V.area:Hide()
+    V.areaHint = W.Text(V, "GameFontDisableSmall", 598, true)
+    V.areaHint:SetPoint("TOPLEFT", 4, -142)
+    V.areaHint:SetHeight(28)
+    V.areaHint:SetText("Strg+A, Strg+C, auf der Website im Reiter Wishlist bei Paste from the addon einfügen.")
+    V.areaHint:Hide()
+
+    V.web = W.Button(V, "Für die Website", 120, function()
+        exportOpen = not exportOpen
+        if exportOpen then
+            setExport(V, ns.WishExportText())
+            V.area.box:SetFocus()
+            V.area.box:HighlightText()
+        else
+            V.area.box:ClearFocus()
+        end
+        ns.Refresh()
+    end)
+    V.web:SetPoint("TOPLEFT", 0, -310)
+    V.clean = W.Button(V, "Erhaltene entfernen", 140, function()
+        for _, e in ipairs(ns.Wishes()) do
+            if e.owned then ns.WishRemove(e.id) end
+        end
+    end)
+    V.clean:SetPoint("LEFT", V.web, "RIGHT", 6, 0)
+    V.hint = W.Text(V, "GameFontDisableSmall", 598, true)
+    V.hint:SetPoint("TOPLEFT", 4, -338)
+    V.hint:SetHeight(28)
+    return V
+end
+
+local function fillWish(V)
+    local c = cached()
+    if not c.wishes then c.wishes = ns.Wishes() end
+    local list = c.wishes
+    V.list:SetItems(list)
+    if exportOpen then
+        V.list:Hide()
+        V.area:Show()
+        V.areaHint:Show()
+        V.web:SetText("Zur Liste")
+        -- the text follows the list unless the box is in use
+        if not V.area.box:HasFocus() then
+            local text = ns.WishExportText()
+            if text ~= exportText then setExport(V, text) end
+        end
+    else
+        V.area:Hide()
+        V.areaHint:Hide()
+        V.list:Show()
+        V.web:SetText("Für die Website")
+    end
+    local owned = false
+    for _, e in ipairs(list) do if e.owned then owned = true break end end
+    if ns.Get("bis.wishAutoRemove") then
+        V.clean:Hide()
+    else
+        V.clean:Show()
+        V.clean:SetEnabled(owned)
+    end
+    if #list == 0 then
+        V.hint:SetText("Noch keine Wünsche. Wunsch-Knopf in Ziele oder Hier, oder /amisia wunsch <Item-Link>.")
+    else
+        V.hint:SetText(("%d von %d Wünschen. Ein Klick auf die Priorität ändert sie."):format(#list, ns.BIS_MAX_WISH or 50))
+    end
+end
+
+---------------------------------------------------------------------------
+-- Gilde: the website's wishlist in the game
+---------------------------------------------------------------------------
+
+local function onlyGroup()
+    if groupOnly ~= nil then return groupOnly end
+    return IsInRaid() and true or false
+end
+
+local function classColored(text, class)
+    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    return (c and c.colorStr) and ("|c%s%s|r"):format(c.colorStr, text) or text
+end
+
+local guildKey, guildList
+local function guildItems(only)
+    local g = AmisiaDB.bis and AmisiaDB.bis.guild
+    if type(g) ~= "table" or type(g.list) ~= "table" then return {} end
+    local roster = ns.GroupRoster()
+    local key = table.concat({ tostring(g.list), tostring(g.at), tostring(only), table.concat(roster, ",") }, "|")
+    if key == guildKey then return guildList end
+    -- the class of everyone in the raid, for the colours
+    local classes = {}
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() or 0 do
+            local name, _, _, _, _, class = GetRaidRosterInfo(i)
+            name, class = ns.FullName(ns.Plain(name)), ns.Plain(class)
+            if name then classes[name:lower()] = class end
+        end
+    end
+    local out = {}
+    for id in pairs(g.list) do
+        local ws = ns.WishersOf(id, only)
+        if #ws > 0 then
+            local names = {}
+            for _, w in ipairs(ws) do
+                local text = w.name .. (PRIO_TIP[w.prio] or "")
+                if w.inGroup then
+                    local class = classes[w.name:lower()]
+                    if not class then
+                        for _, r in ipairs(roster) do
+                            if ns.SameNameIn(w.name, r, roster) then class = classes[r:lower()] break end
+                        end
+                    end
+                    names[#names + 1] = classColored(text, class)
+                else
+                    names[#names + 1] = GREY .. text .. "|r"
+                end
+            end
+            out[#out + 1] = { id = id, n = #ws, who = table.concat(names, ", ") }
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.n ~= b.n then return a.n > b.n end
+        return a.id < b.id
+    end)
+    guildKey, guildList = key, out
+    return out
+end
+
+local function buildGuild(f)
+    local U = CreateFrame("Frame", nil, f)
+    U:SetPoint("TOPLEFT", 0, -72)
+    U:SetPoint("BOTTOMRIGHT", 0, 0)
+    U.info = W.Text(U, "GameFontHighlightSmall", 470)
+    U.info:SetPoint("TOPLEFT", 4, -4)
+    U.group = W.Chip(U, "Nur Gruppe", 100, function()
+        groupOnly = not onlyGroup()
+        ns.Refresh()
+    end)
+    U.group:SetPoint("TOPRIGHT", 0, -2)
+    local h = head(U, -26)
+    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 334, "Wünschende") }
+    U.list = W.List(U, GUILD_ROWS, ROW_H, function(r)
+        r.name = col(r, 4, 256, nil, "GameFontHighlightSmall")
+        r.who = col(r, 264, 334, nil, "GameFontHighlightSmall")
+        r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
+        r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
+        r:SetScript("OnLeave", hideTip)
+    end, function(r, e)
+        r.name:SetText(itemText(e.id))
+        r.who:SetText(e.who)
+    end)
+    U.list:SetPoint("TOPLEFT", 0, -40)
+    U.list:SetPoint("TOPRIGHT", 0, -40)
+    U.area = W.EditArea(U)
+    U.area:SetPoint("TOPLEFT", 0, -308)
+    U.area:SetPoint("TOPRIGHT", 0, -308)
+    U.area:SetHeight(70)
+    U.importBtn = W.Button(U, "Importieren", 100, function()
+        local res, why = ns.SetGuildWishes(U.area.box:GetText())
+        if res then
+            guildResult = ("%d %s übernommen, %d %s nicht erkannt."):format(res.n, res.n == 1 and "Wunsch" or "Wünsche", res.skipped,
+                res.skipped == 1 and "Zeile" or "Zeilen")
+            U.area.box:SetText("")
+            U.area.box:ClearFocus()
+        else
+            guildResult = why
+        end
+        ns.Refresh()
+    end)
+    U.importBtn:SetPoint("TOPLEFT", 0, -382)
+    U.clearBtn = W.Button(U, "Löschen", 80, function()
+        lift(StaticPopup_Show("AMISIA_GUILDWISH_CLEAR"))
+    end)
+    U.clearBtn:SetPoint("LEFT", U.importBtn, "RIGHT", 6, 0)
+    U.hint = W.Text(U, "GameFontDisableSmall", 410)
+    U.hint:SetPoint("TOPLEFT", 192, -386)
+    return U
+end
+
+local function fillGuild(U)
+    local officer = ns.IsOfficerView()
+    local info = ns.GuildWishesInfo()
+    local age = ns.GuildWishesAgeText()
+    if info then
+        U.info:SetText(("Liste vom %s, %d %s"):format(longDate(info.date), info.n, info.n == 1 and "Wunsch" or "Wünsche")
+            .. (age and (" " .. GREY .. age .. "|r") or ""))
+    else
+        U.info:SetText(GREY .. "Keine Gildenwünsche geladen.|r")
+    end
+    local only = onlyGroup()
+    U.group:SetOn(only)
+    U.list:SetItems(guildItems(only))
+    if officer then
+        U.area:Show(); U.importBtn:Show(); U.clearBtn:Show()
+        U.clearBtn:SetEnabled(info ~= nil)
+        U.hint:SetText(guildResult or "Auf der Website im Reiter Wishlist: Copy for the addon.")
+    else
+        U.area:Hide(); U.importBtn:Hide(); U.clearBtn:Hide()
+        U.hint:SetText(age or "")
+    end
+end
+
+---------------------------------------------------------------------------
+-- The page
+---------------------------------------------------------------------------
+
+function ns.GearPageFrame() return page end
+
+StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
+    text = "Alle Ausschlüsse aufheben?",
+    button1 = "Aufheben",
+    button2 = "Abbrechen",
+    OnAccept = function() ns.BisClearExcludes() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50,
+    available = function() return Gear.Available() end,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        f.state = W.Text(f, "GameFontHighlight", 440, true)
-        f.state:SetPoint("TOPLEFT", 0, -2)
-        local open = W.Button(f, "Tabelle öffnen", 130, function() ns.ToggleGearFrame() end)
-        open:SetPoint("TOPRIGHT", 0, 0)
-        f.list = W.List(f, 17, 24, function(r)
-            r.slot = W.Text(r, "GameFontNormalSmall", 80)
-            r.slot:SetPoint("LEFT", 6, 0)
-            r.name = W.Text(r, "GameFontHighlightSmall", 210)
-            r.name:SetPoint("LEFT", 90, 0)
-            r.src = W.Text(r, "GameFontHighlightSmall", 230)
-            r.src:SetPoint("LEFT", 304, 0)
-            r.gain = W.Text(r, "GameFontHighlightSmall", 50)
-            r.gain:SetPoint("RIGHT", -6, 0)
-            r.gain:SetJustifyH("RIGHT")
-        end, function(r, e)
-            r.slot:SetText(e.slot.name)
-            r.name:SetText(itemName(e.id))
-            r.src:SetText(sourceText(e.id, r:GetParent().opts))
-            r.gain:SetText(("|cff4fd06a+%d|r"):format(math.floor(e.gain + 0.5)))
-        end)
-        f.list:SetPoint("TOPLEFT", 0, -30)
-        f.list:SetPoint("TOPRIGHT", 0, -30)
+        page = f
+        f.spec = W.Picker(f, 180, function(v) ns.BisSetSpec(v ~= "" and v or nil) end)
+        f.spec:SetPoint("TOPLEFT", 0, -1)
+        f.views = {}
+        f.views.goals = W.Chip(f, "Ziele", 52, function() setView("goals") end)
+        f.views.goals:SetPoint("TOPLEFT", 186, -1)
+        f.views.here = W.Chip(f, "Hier", 46, function() state().place = nil; setView("here") end)
+        f.views.here:SetPoint("TOPLEFT", 242, -1)
+        f.views.wish = W.Chip(f, "Wunschliste", 104, function() setView("wish") end)
+        f.views.wish:SetPoint("TOPLEFT", 292, -1)
+        f.views.guild = W.Chip(f, "Gilde", 56, function() setView("guild") end)
+        f.views.guild:SetPoint("TOPLEFT", 400, -1)
+        f.open = W.Button(f, "Tabelle öffnen", 130, function() ns.ToggleGearFrame() end)
+        f.open:SetPoint("TOPRIGHT", 0, 0)
+        f.counts = W.Text(f, "GameFontDisableSmall", 488)
+        f.counts:SetPoint("TOPLEFT", 4, -28)
+        f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
+        f.reset:SetPoint("TOPRIGHT", 0, -24)
+        f.src = {}
+        for _, set in pairs(CHIPS) do
+            for _, def in ipairs(set) do
+                if not f.src[def[1]] then
+                    local key = def[1]
+                    f.src[key] = W.Chip(f, def[2], def[3], function()
+                        if key == "C" then
+                            profClick()
+                        else
+                            local src = ns.BisOpts().sources
+                            src[key] = not src[key]
+                            ns.Fire("BIS_CHANGED")
+                        end
+                    end)
+                    f.src[key]:SetPoint("TOPLEFT", 0, -48)
+                end
+            end
+        end
+        f.phaseText = W.Text(f, "GameFontNormalSmall", 40)
+        f.phaseText:SetPoint("TOPLEFT", 466, -51)
+        f.phaseText:SetText("Phase")
+        f.phase = W.Picker(f, 90, function(v) ns.Set("bis.phase", v) end)
+        f.phase:SetPoint("TOPRIGHT", 0, -48)
+        f.goals = buildGoals(f)
+        f.here = buildHere(f)
+        f.wish = buildWish(f)
+        f.guild = buildGuild(f)
+        f.bodies = { goals = f.goals, here = f.here, wish = f.wish, guild = f.guild }
+        for _, b in pairs(f.bodies) do b:Hide() end
         return f
     end,
     refresh = function(f)
-        local list, _, o = ns.GearMyUpgrades()
-        f.list.opts = o
-        local loading = ns.Gear.Loading()
-        f.state:SetText(("Level %d · %d Upgrades%s"):format(UnitLevel("player") or 1, #list,
-            loading > 0 and (" · |cffe0a344lädt noch " .. loading .. " Items|r") or ""))
-        f.list:SetItems(list)
+        local o = ns.BisOpts()
+        local res = ns.BisTargets()
+        local v = shownView()
+        fillHead(f, o, res, v)
+        for k, body in pairs(f.bodies) do
+            if k ~= v then body:Hide() end
+        end
+        f.bodies[v]:Show()
+        if v == "goals" then
+            fillGoals(f.goals, o, res)
+        elseif v == "here" then
+            fillHere(f.here, o)
+        elseif v == "wish" then
+            fillWish(f.wish)
+        else
+            fillGuild(f.guild)
+        end
     end }
 
-ns.RegisterCard{ key = "gear", order = 30, available = available, fill = function(c)
-    local list = ns.GearMyUpgrades()
+-- A wish, an exclusion, the spec, the own items or the guild list changed: show it at once.
+local function refreshShown()
+    local cur = ns.CurrentPage and ns.CurrentPage()
+    if cur == "gear" or cur == "overview" then ns.Refresh() end
+end
+ns.Listen("BIS_CHANGED", refreshShown)
+ns.Listen("GUILD_WISHES", refreshShown)
+ns.BisOnOwned(refreshShown)
+
+---------------------------------------------------------------------------
+-- The overview card
+---------------------------------------------------------------------------
+
+local function bestUpgrade(res)
+    local best
+    for _, sl in ipairs(Gear.SLOTS) do
+        local e = res[sl.key] and res[sl.key][1]
+        if e and e.upgrade and (not best or e.gain > best.gain) then best = e end
+    end
+    return best
+end
+
+ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Available() end, fill = function(c)
+    local o = ns.BisOpts()
+    local res = ns.BisTargets()
+    local n = wishCount()
     c.title:SetText("Deine Ausrüstung")
-    c.line1:SetText(("Level %d · %d Upgrades"):format(UnitLevel("player") or 1, #list))
-    if list[1] then c.line2:SetText(("Bestes: %s (+%d)"):format(itemName(list[1].id), math.floor(list[1].gain + 0.5))) end
-    c:SetAction("Ansehen", function() ns.ShowPage("gear") end)
+    c.line1:SetText(("Level %d · %s · %d %s"):format(o.level, upgradesText(res.upgrades or 0), n, n == 1 and "Wunsch" or "Wünsche"))
+    local cur = ns.BisCurrentPlace()
+    if cur and cur.key:find("^I:") and placeKnown(cur) then
+        local _, list = ns.BisHere(nil, o)
+        local up = 0
+        for _, e in ipairs(list) do
+            if e.upgrade and not e.owned then up = up + 1 end
+        end
+        c.line2:SetText(("Hier: %s (%s)"):format(upgradesText(up), cur.text or "?"))
+    else
+        local best = bestUpgrade(res)
+        c.line2:SetText(best and ("Bestes: %s (+%d)"):format(itemText(best.id), math.floor(best.gain + 0.5)) or "Kein Upgrade in den Daten.")
+    end
+    c:SetAction("Ansehen", function() ns.ShowGear("goals") end)
 end }
