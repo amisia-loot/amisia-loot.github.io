@@ -74,7 +74,7 @@ local function col(parent, x, w, label, template)
     return fs
 end
 
--- One column per tracked material (ns.MAT_ORDER; empty until the guild names some) and one for
+-- One column per tracked material (ns.MAT_ORDER, learned in raids, first seen first) and one for
 -- the summed gems (ns.GEMS). Without a tracked material no column is shown. Three material
 -- columns at most, two when a gem column shares the width.
 local MAT_X, MAT_STEP, MAT_W = 380, 56, 54

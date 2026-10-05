@@ -87,9 +87,9 @@ end
 
 -- Tracked guild bank materials: [itemID] = fallback name until the client has the item cached;
 -- MAT_ORDER is the order of the counts and the export's B lines, GEMS the ids summed as gems.
--- Empty for WoW Forever until the guild names its materials: then nothing is counted, looted
--- materials are not recorded apart and the export writes no B lines. Filling the tables brings the
--- whole mechanism back.
+-- Mats.lua fills MATS and MAT_ORDER in place from the learned list (AmisiaDB.mats): trade goods
+-- that drop in raids. While the list is empty nothing is counted, looted materials are not recorded
+-- apart and the export writes no B lines. GEMS stays empty: the learned list has no gem group.
 ns.MATS = {}
 ns.MAT_ORDER = {}
 ns.GEMS = {}
@@ -97,12 +97,22 @@ ns.GEMS = {}
 -- Whether any material is tracked.
 function ns.HasMats() return ns.MAT_ORDER[1] ~= nil end
 
--- "Name n, Name n" over the tracked materials of counts.
-function ns.MatSummary(counts)
-    local parts = {}
+-- "Name n, Name n" over the tracked materials of counts. With more than three materials only
+-- those with a count are named, and with max at most max of them ("und n weitere"); "" when none.
+function ns.MatSummary(counts, max)
+    local parts, more = {}, 0
+    local all = #ns.MAT_ORDER <= 3
     for _, id in ipairs(ns.MAT_ORDER) do
-        parts[#parts + 1] = ("%s %d"):format(ns.ItemName(id), counts and counts[id] or 0)
+        local n = counts and counts[id] or 0
+        if all or n > 0 then
+            if max and #parts >= max then
+                more = more + 1
+            else
+                parts[#parts + 1] = ("%s %d"):format(ns.ItemName(id), n)
+            end
+        end
     end
+    if more > 0 then parts[#parts + 1] = ("und %d weitere"):format(more) end
     return table.concat(parts, ", ")
 end
 
@@ -120,7 +130,7 @@ function ns.MatLine(counts)
     for _, id in ipairs(ns.MAT_ORDER) do total = total + (counts[id] or 0) end
     local gems = ns.GemCount(counts)
     if total + gems == 0 then return "" end
-    local line = ns.MatSummary(counts)
+    local line = ns.MatSummary(counts, 3)
     if next(ns.GEMS) then line = line .. (", Edelsteine %d"):format(gems) end
     return line
 end
@@ -520,6 +530,8 @@ local function onLoot(text)
     local who, id, count, link = parseLoot(text)
     if not who then return end
     local t = time()
+    -- a trade good of a raid joins the material list before it is sorted in
+    if ns.LearnMat then ns.LearnMat(id, link) end
     if ns.MATS[id] then
         active.loot[#active.loot + 1] = { name = who, item = id, count = count, t = t }
     else
@@ -541,13 +553,16 @@ local function onLootOpened()
     local targetName = UnitName("target")
     local seen = {}   -- source -> { [itemID] = count in this window }
     for slot = 1, GetNumLootItems() or 0 do
-        local link = GetLootSlotLink(slot)
+        local link = ns.Plain(GetLootSlotLink(slot))
         local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
         local q = id and ns.LinkQuality(link)
+        local source = id and ns.Plain((GetLootSourceInfo and GetLootSourceInfo(slot))) or targetGUID or ("?" .. (targetName or ""))
+        -- a container opened from the bags is not a drop
+        local drop = type(source) == "string" and not source:find("^Item%-")
+        -- a trade good dropping in the raid joins the material list, and is then no drop line
+        if id and drop and ns.LearnMat then ns.LearnMat(id, link, q) end
         if id and q and q >= ns.MIN_QUALITY and not ns.MATS[id] and not ns.IGNORE[id] then
-            local source = (GetLootSourceInfo and GetLootSourceInfo(slot)) or targetGUID or ("?" .. (targetName or ""))
-            -- a container opened from the bags is not a drop
-            if type(source) == "string" and not source:find("^Item%-") then
+            if drop then
                 local _, _, qty = GetLootSlotInfo(slot)
                 seen[source] = seen[source] or {}
                 seen[source][id] = (seen[source][id] or 0) + (tonumber(qty) or 1)
@@ -668,7 +683,8 @@ local function bankClosed(frame, quiet)
     frame:UnregisterEvent("GUILDBANKBAGSLOTS_CHANGED")
     frame:UnregisterEvent("GUILDBANK_UPDATE_TABS")
     if not quiet and bankCounted and DB and DB.bank then
-        msg(("Gildenbank gezählt: %s (%d Tabs)."):format(ns.MatSummary(DB.bank.counts), DB.bank.tabs or 0))
+        local sum = ns.MatSummary(DB.bank.counts, 6)
+        msg(("Gildenbank gezählt: %s (%d Tabs)."):format(sum ~= "" and sum or "keine Materialien", DB.bank.tabs or 0))
         if (DB.bank.total or 0) > (DB.bank.tabs or 0) then
             msg(("%d von %d Tabs sind für dich nicht sichtbar. Ihr Inhalt fehlt in dieser Zählung."):format(
                 (DB.bank.total or 0) - (DB.bank.tabs or 0), DB.bank.total or 0))
@@ -812,6 +828,7 @@ local function sessionLines(s, lines, used, legacy)
     for _, key in ipairs(keys) do
         local e = sum[key]
         lines[#lines + 1] = ("L %s %d %d"):format(ns.ExportName(e.name), e.item, e.count)
+        used[e.item] = true
     end
     -- I <name> <itemID> <count>: blue or better loot
     local isum, ikeys = {}, {}
@@ -963,14 +980,18 @@ end
 -- Text block for the ledger's Import tab. One S..E block per session.
 function ns.ExportText(list)
     local lines = { "#AMISIA 2 " .. ns.ExportName(ns.UnitFullName("player") or "?") }
-    local used = {}   -- item ids of I and D lines, named in N lines at the end
+    local used = {}   -- item ids of L, B, I, D and A lines, named in N lines at the end
     local bank = ns.Bank()
     if bank and bank.counts then
         -- K <epoch seconds> <date> <HH:MM> <tabs with items> <tabs visible> <tabs total> <counted by>
         lines[#lines + 1] = ("K %d %s %s %d %d %d %s"):format(bank.at or 0, date("%Y-%m-%d", bank.at), date("%H:%M", bank.at),
             bank.filled or 0, bank.tabs or 0, bank.total or bank.tabs or 0, bank.by or "?")
+        -- a material learned after the count has no number yet, so no B line
         for _, id in ipairs(ns.MAT_ORDER) do
-            lines[#lines + 1] = ("B %d %d"):format(id, bank.counts[id] or 0)
+            if bank.counts[id] then
+                lines[#lines + 1] = ("B %d %d"):format(id, bank.counts[id])
+                used[id] = true
+            end
         end
     end
     for _, s in ipairs(list) do
@@ -1015,6 +1036,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             s.bench = s.bench or {}
             s.outside = s.outside or {}
         end
+        -- the learned material list, and what the raids recorded before it teach once
+        if ns.MatsLoaded then ns.MatsLoaded(DB) end
         -- open boss attempts of an earlier session, kills still waiting for their names
         if ns.RaidLogLoaded then ns.RaidLogLoaded() end
         -- a bench gathered for an earlier night falls away
@@ -1043,8 +1066,10 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             end
         end
     elseif event == "CHAT_MSG_LOOT" then
-        if active and type(arg1) == "string" then
-            onLoot(arg1)
+        -- a secret line of a boss fight is skipped
+        local text = ns.Plain(arg1)
+        if active and type(text) == "string" then
+            onLoot(text)
         end
     elseif event == "LOOT_OPENED" then
         onLootOpened()
@@ -1119,7 +1144,8 @@ ns.RegisterSlash("status", { desc = "Stand der Aufnahme und der Gildenbank", run
     if active then
         local c = ns.MatCounts(active)
         local late = ns.LateCount(active)
-        local mats = ns.HasMats() and (", " .. ns.MatSummary(c)) or ""
+        local sum = ns.HasMats() and ns.MatSummary(c, 6) or ""
+        local mats = sum ~= "" and (", " .. sum) or ""
         msg(("Aufnahme: %s, %d Raider%s%s."):format(active.zone, ns.MemberCount(active),
             late > 0 and (", " .. late .. " zu spät") or "", mats))
     else
@@ -1129,7 +1155,8 @@ ns.RegisterSlash("status", { desc = "Stand der Aufnahme und der Gildenbank", run
     if not ns.HasMats() then return end
     local bank = ns.Bank()
     if bank and bank.counts then
-        msg(("Gildenbank vom %s: %s."):format(date("%d.%m. %H:%M", bank.at), ns.MatSummary(bank.counts)))
+        local sum = ns.MatSummary(bank.counts, 6)
+        msg(("Gildenbank vom %s: %s."):format(date("%d.%m. %H:%M", bank.at), sum ~= "" and sum or "keine Materialien"))
     else
         msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
     end

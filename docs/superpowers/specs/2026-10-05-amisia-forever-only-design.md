@@ -628,3 +628,53 @@ Speicher, gespeichert mit dem nächsten Editor-Speichern oder per Knopf; `shelf.
 entfernte Raider des Archivs in `retired`; Era, Hardcore, SoD, MoP samt Daten gelöscht, ihre
 Regal-Daten in alten Sicherungen bleiben unberührt; TBC-Daten der Website nur noch für das Archiv;
 Supabase unverändert.
+
+## Nachtrag: automatische Materialliste
+
+Stand 2026-10-05. Antwort des Nutzers auf den offenen Punkt "Welche Materialien": Amisia zählt
+"alle Materialien, die in Raids droppen und verteilt werden". Die Raids von Forever und ihr Loot sind
+noch nicht bekannt, deshalb keine feste Liste: Amisia lernt sie.
+
+- **Was zählt:** ein Gegenstand der Klasse Handwerkswaren (`Enum.ItemClass.Tradegoods`, 7, im
+  Forever-Quellcode belegt) oder Reagenz (`Enum.ItemClass.Reagent`, 5; Feuerkern und Lavakern
+  tragen in den Classic-Daten diese Klasse), ab der Qualität `mats.quality` (Standard 2, grün; Wahl
+  weiß/grün/blau/episch), der während einer Raidaufnahme (Instanztyp raid, Raidgruppe) in einem
+  Lootfenster liegt (Quelle kein `Item-`, also kein Behälter aus der Tasche), geplündert wird
+  (`CHAT_MSG_LOOT`) oder vergeben wird (`ns.AddAwardTo` an die laufende Aufnahme). Ausgenommen:
+  Handwerkswaren der Unterklasse Verzauberkunst (12, Entzauberungsreste) und `ns.IGNORE`. Die Klasse
+  kommt aus `C_Item.GetItemInfoInstant` (auch ohne Cache), die Qualität aus der Linkfarbe.
+- **Gespeichert:** `AmisiaDB.mats = { [itemID] = { name, q, first = epoch, manual = true|nil,
+  hide = epoch|nil } }`. Höchstens 40 sichtbare Einträge (`ns.MAT_CAP`); ist die Liste voll, lernt
+  Amisia nichts mehr und sagt das einmal je Sitzung. Herausgenommene Einträge bleiben als `hide`
+  stehen (höchstens 100, die ältesten fallen weg), damit Amisia sie nicht wieder lernt.
+- **Abgeleitet:** `ns.MATS` und `ns.MAT_ORDER` werden aus der Liste an Ort und Stelle neu gefüllt
+  (Reihenfolge: zuerst gesehen, dann Item-ID). Alle bisherigen Nutzer bleiben unverändert: `L`-Zeilen,
+  Gildenbank-Zählung mit `K`/`B`, Spalten der Seite Raids (die ersten drei), Seite Gildenbank,
+  Übersichtskarten, `ns.MatLine`, Ausschluss in der Loot-Ansage. `ns.GEMS` bleibt leer (die gelernte
+  Liste kennt keine Edelstein-Gruppe; die Mechanik bleibt).
+- **Kürzere Zeilen:** bei mehr als drei Materialien nennen `ns.MatSummary`/`ns.MatLine` nur Materialien
+  mit Anzahl, die Karte höchstens drei, der Chat höchstens sechs, Rest als "und n weitere".
+- **Export:** `L`- und `B`-Zeilen werden in `N`-Zeilen benannt (damit die Website Namen hat). Eine
+  `B`-Zeile nur für Materialien, die die letzte Zählung kannte; ein später gelerntes hat bis zur
+  nächsten Zählung keine. Kein neuer Zeilentyp, `ns.SessionHash` unverändert.
+- **Umzug:** beim Laden einmal (`AmisiaDB.matsScan = 1`) aus den gespeicherten Raids lernen (`s.loot`,
+  `s.items`, `s.drops`, `s.awards`, mit deren Zeit als `first`). Die Raids selbst werden nicht
+  umgeschrieben (Export-Fingerabdrücke bleiben). Kaputte Einträge fallen beim Laden weg; zweimal
+  laden ändert nichts.
+- **Bedienung (nur Offiziere ändern):** `/amisia mats` zeigt die Liste, `/amisia mats add <Link|ID>`
+  trägt jeden Gegenstand von Hand ein (auch außerhalb des Raids, Markierung "von Hand") oder holt
+  einen herausgenommenen zurück, `/amisia mats weg <Link|ID>` nimmt einen heraus. Seite Gildenbank:
+  Liste aller Materialien auch ohne Zählung (Anzahl "-" bis zur ersten Zählung), je Zeile "Weg",
+  oben ein Feld für einen Link (Shift-Klick bei Fokus) mit "Hinzufügen". Einstellungen im Abschnitt
+  "Raidmaterialien" (Offiziere): `mats.learn` (an), `mats.quality` (grün).
+- **Website:** Forever hat keine feste `MATS`-Liste mehr; `matsHere()` nimmt jedes Item aus
+  `matloot` und der letzten Bankzählung (`bank.items`), Namen aus den Loot-Tabellen oder `itemNames`,
+  nach Namen sortiert. Das TBC-Archiv behält seine feste Liste. Die Bank-Vorschau im Import zeigt
+  jedes gezählte Item; `amParseBank` liest die `N`-Zeilen des Blocks mit, beim Import kommen die Namen
+  gezählter Items nach `itemNames`. Kein Datenfile geändert, `BUILD_ID` bleibt.
+- **Sync (Baustein 7):** die Liste ist je Client und gehört nicht ins Abbild; Sync ändert `s.loot` nicht.
+  `AmisiaDB.mats` und der Befehl `mats` kollidieren mit nichts aus dem Sync-Entwurf. Ein Abgleich der
+  Liste unter Offizieren wäre ein späterer Schritt.
+- **Grenzen:** Gesammeltes in Raids (Erz, Kräuter, Kürschnern) mit passender Qualität wird mitgelernt;
+  das Herausnehmen ist dafür da. Ob Forever eigene Raidmaterialien in einer anderen Klasse führt, zeigt
+  sich erst im Spiel.

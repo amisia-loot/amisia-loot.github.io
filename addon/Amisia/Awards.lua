@@ -155,7 +155,14 @@ function ns.AddAwardTo(s, f)
         ns.RememberItem(item, ilink, q)
     end
     -- only the running recording moves on; an old raid must not become resumable
-    if s == ns.Active() then s.last = t end
+    if s == ns.Active() then
+        s.last = t
+        -- a trade good handed out in the raid joins the material list
+        if ns.LearnMat then
+            local _, ilink, q = GetItemInfo(item)
+            ns.LearnMat(item, ilink, q)
+        end
+    end
     push({ op = "add", s = s, id = a.id })
     changed()
     return a

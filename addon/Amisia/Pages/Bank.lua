@@ -1,47 +1,94 @@
--- Guild bank: the last count of the tracked materials.
+-- Guild bank: the learned raid materials with their last count, and a small editor (take a
+-- material out per row, add one by link).
 local ADDON, ns = ...
 local W = ns.W
+
+local box   -- the link box of the editor, for the shift-click hook below
 
 ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, "GameFontHighlight", 590, true)
         f.state:SetPoint("TOPLEFT", 0, -2)
+        -- add by link: shift-click an item while the box has the focus, or type an item id
+        f.add = {}
+        f.add.box = W.LineEdit(f, 260)
+        f.add.box:SetPoint("TOPLEFT", 0, -40)
+        box = f.add.box
+        local function add()
+            local ok, text = ns.AddMat(f.add.box:GetText() or "")
+            ns.msg(text)
+            if ok then f.add.box:SetText("") end
+            ns.Refresh()
+        end
+        f.add.box:SetScript("OnEnterPressed", function(self)
+            self:ClearFocus()
+            add()
+        end)
+        f.add.button = W.Button(f, "Hinzufügen", 110, add)
+        f.add.button:SetPoint("LEFT", f.add.box, "RIGHT", 6, 0)
+        f.add.hint = W.Text(f, "GameFontDisableSmall", 220)
+        f.add.hint:SetPoint("LEFT", f.add.button, "RIGHT", 8, 0)
+        f.add.hint:SetText("Link mit Shift-Klick einfügen")
         f.list = W.List(f, 1, 22, function(r)
             r.name = W.Text(r, "GameFontHighlightSmall", 300)
             r.name:SetPoint("LEFT", 6, 0)
             r.count = W.Text(r, "GameFontHighlightSmall", 80)
-            r.count:SetPoint("RIGHT", -6, 0)
+            r.count:SetPoint("RIGHT", -60, 0)
             r.count:SetJustifyH("RIGHT")
+            r.remove = W.Button(r, "Weg", 46, function(self)
+                local row = self:GetParent()
+                if not (row and row.item) then return end
+                local _, text = ns.RemoveMat(row.item.id)
+                ns.msg(text)
+                ns.Refresh()
+            end)
+            r.remove:SetPoint("RIGHT", -4, 0)
+            W.Tooltip(r.remove, "Herausnehmen", "Nimmt das Material aus der Liste. Amisia lernt es dann nicht wieder; /amisia mats add <Link> holt es zurück.")
         end, function(r, e)
-            r.name:SetText(ns.ItemName(e.id))
-            r.count:SetText(e.count)
+            r.name:SetText(ns.ItemName(e.id) .. (e.manual and " |cff8f86a3(von Hand)|r" or ""))
+            r.count:SetText(e.count and tostring(e.count) or "-")
         end)
-        f.list:SetPoint("TOPLEFT", 0, -40)
-        f.list:SetPoint("TOPRIGHT", 0, -40)
+        f.list:SetPoint("TOPLEFT", 0, -70)
+        f.list:SetPoint("TOPRIGHT", 0, -70)
         return f
     end,
     refresh = function(f)
-        if not ns.HasMats() then
-            f.state:SetText("|cff8f86a3Keine Materialien festgelegt.|r Solange die Gilde keine Materialien benennt, zählt Amisia nichts in der Gildenbank.")
-            f.list:SetItems({})
-            return
-        end
+        local hidden = ns.HiddenMatCount()
+        local head = ("%d von %d Raidmaterialien%s. "):format(#ns.MAT_ORDER, ns.MAT_CAP,
+            hidden > 0 and (" · " .. hidden .. " herausgenommen") or "")
         local bank = ns.Bank()
-        if not (bank and bank.counts) then
-            f.state:SetText("|cff8f86a3Noch nicht gezählt.|r Öffne die Gildenbank einmal, dann zählt Amisia die Materialien.")
-            f.list:SetItems({})
-            return
+        if not ns.HasMats() then
+            f.state:SetText("|cff8f86a3Noch keine Raidmaterialien.|r Amisia lernt sie in Raidaufnahmen von selbst: Handwerkswaren, die droppen, geplündert oder vergeben werden. Von Hand: Link unten einfügen.")
+        elseif not (bank and bank.counts) then
+            f.state:SetText(head .. "|cff8f86a3Noch nicht gezählt.|r Öffne die Gildenbank einmal, dann zählt Amisia die Materialien.")
+        else
+            local hiddenTabs = (bank.total or 0) - (bank.tabs or 0)
+            f.state:SetText(head .. ("Gezählt am %s von %s · %d von %d sichtbaren Tabs mit Gegenständen%s"):format(
+                date("%d.%m.%Y %H:%M", bank.at), bank.by or "?", bank.filled or 0, bank.tabs or 0,
+                hiddenTabs > 0 and (" · |cffe0a344" .. hiddenTabs .. " Tabs nicht sichtbar|r") or ""))
         end
-        local hidden = (bank.total or 0) - (bank.tabs or 0)
-        f.state:SetText(("Gezählt am %s von %s · %d von %d sichtbaren Tabs mit Gegenständen%s"):format(
-            date("%d.%m.%Y %H:%M", bank.at), bank.by or "?", bank.filled or 0, bank.tabs or 0,
-            hidden > 0 and (" · |cffe0a344" .. hidden .. " Tabs nicht sichtbar|r") or ""))
+        local counts = bank and bank.counts or {}
         local items = {}
-        for _, id in ipairs(ns.MAT_ORDER) do items[#items + 1] = { id = id, count = bank.counts[id] or 0 } end
-        f.list:Grow(#items)   -- the material list can be filled after the page was made
+        for _, id in ipairs(ns.MAT_ORDER) do
+            local e = ns.MatInfo(id)
+            items[#items + 1] = { id = id, count = counts[id], manual = e and e.manual }
+        end
+        f.list:Grow(#items)   -- the material list can grow after the page was made
         f.list:SetItems(items)
     end }
+
+-- A link shift-clicked into the chat lands in the box while it has the focus. The client calls
+-- ChatFrameUtil.InsertLink; ChatEdit_InsertLink is its deprecated alias with a hook of its own.
+local function onInsertLink(link)
+    if box and box:HasFocus() and ns.ItemID(link) then box:SetText(link) end
+end
+if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+    hooksecurefunc(ChatFrameUtil, "InsertLink", onInsertLink)
+end
+if type(ChatEdit_InsertLink) == "function" then
+    hooksecurefunc("ChatEdit_InsertLink", onInsertLink)
+end
 
 -- The card appears only while materials are tracked (ns.MAT_ORDER).
 ns.RegisterCard{ key = "bank", order = 50, officer = true, available = ns.HasMats, fill = function(c)
