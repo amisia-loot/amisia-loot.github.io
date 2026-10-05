@@ -200,6 +200,29 @@ NS.Dispatch("karte 100")
 assert(has(lastMsg(), "Keine Kartendaten für diesen Client."))
 NS.MAP = data
 
+-- the arrow on Forever: "auto" leaves it to the client's guide while the waypoint is ours; a map
+-- without waypoints gets Amisia's arrow; "on" shows it next to the client's guide; "off" never
+STUB.map.pos = { x = 0.1, y = 0.1 }
+STUB.facing = 0
+NS.Set("map.arrow", "auto")
+assert(NS.MapSetTarget(100))
+assert(NS.MapTarget().ours and (_G.AmisiaArrow == nil or not AmisiaArrow:IsShown()), "auto: the client's guide only")
+NS.Set("map.arrow", "on")
+assert(_G.AmisiaArrow and AmisiaArrow:IsShown(), "on: Amisia's arrow too")
+AmisiaArrow.scripts.OnUpdate(AmisiaArrow, 0.1)
+assert(AmisiaArrow.dist:GetText() == "438 m" and AmisiaArrow.icon:IsShown(), tostring(AmisiaArrow.dist:GetText()))
+NS.Set("map.arrow", "auto")
+assert(not AmisiaArrow:IsShown())
+wp.blocked[1411] = true
+assert(NS.MapSetTarget(100))
+assert(NS.MapTarget().ours == false and AmisiaArrow:IsShown(), "a map without waypoints: the arrow")
+NS.Set("map.arrow", "off")
+assert(not AmisiaArrow:IsShown(), "off")
+NS.Set("map.arrow", "auto")
+wp.blocked[1411] = nil
+NS.MapClearTarget()
+assert(not AmisiaArrow:IsShown(), "no target, no arrow")
+
 -- every line Amisia wrote, and the file, stay within Latin-1
 for _, m in ipairs(STUB.messages) do
     for c in m:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1 in chat: " .. m) end

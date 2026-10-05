@@ -514,6 +514,232 @@ function ns.MapShowOnWorldMap(point)
 end
 
 ---------------------------------------------------------------------------
+-- Direction
+---------------------------------------------------------------------------
+
+-- The world directions of a map's east and south (unit vectors), measured once per map: the world
+-- position of two nearby map points tells them whatever the client's axes are.
+local axes = {}
+local function axesOf(map)
+    local a = axes[map]
+    if a ~= nil then return a or nil end
+    local c0, x0, y0 = worldOf(map, 0.5, 0.5)
+    local c1, x1, y1 = worldOf(map, 0.6, 0.5)
+    local c2, x2, y2 = worldOf(map, 0.5, 0.6)
+    a = false
+    if c0 and c1 and c2 then
+        local ex, ey, sx, sy = x1 - x0, y1 - y0, x2 - x0, y2 - y0
+        local el, sl = math.sqrt(ex * ex + ey * ey), math.sqrt(sx * sx + sy * sy)
+        if el > 0 and sl > 0 then a = { ex / el, ey / el, sx / sl, sy / sl } end
+    end
+    axes[map] = a
+    return a or nil
+end
+
+-- The bearing from the player to a point in radians, clockwise from the map's north; nil without a
+-- position or on another continent. me: Map.PlayerPosition().
+function Map.Bearing(point, me)
+    me = me or Map.PlayerPosition()
+    if not me or not me.wx or not point then return nil end
+    local cont, wx, wy = worldOf(point.map, point.x, point.y)
+    if not cont or cont ~= me.cont then return nil end
+    local a = axesOf(me.map)
+    if not a then return nil end
+    local dx, dy = wx - me.wx, wy - me.wy
+    local east = dx * a[1] + dy * a[2]
+    local south = dx * a[3] + dy * a[4]
+    if east == 0 and south == 0 then return 0 end
+    return math.atan2(east, -south) % (2 * math.pi)
+end
+
+local WORDS = { "Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest" }
+-- One of eight directions for a bearing (radians clockwise from north).
+function Map.DirectionWord(bearing)
+    if type(bearing) ~= "number" then return nil end
+    local i = math.floor(((bearing % (2 * math.pi)) / (math.pi / 4)) + 0.5) % 8
+    return WORDS[i + 1]
+end
+
+---------------------------------------------------------------------------
+-- The arrow (AmisiaArrow): Amisia's own pointer to the target where the client has no guide
+---------------------------------------------------------------------------
+
+local ARROW_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow"
+local TICK = 0.1                  -- seconds between two updates of the arrow
+local arrow                       -- the frame, made the first time it is needed
+
+-- Whether the arrow should show: map.arrow "on", or "auto" while the client's own guide does not
+-- carry the target (TBC always, Forever when its waypoint could not be set); only with a target,
+-- outside instances and with a readable position. Returns the position (Map.PlayerPosition) or nil.
+local function arrowWanted()
+    local t = ns.MapTarget()
+    if not t then return nil end
+    local mode = ns.Get("map.arrow")
+    if mode == "off" or (mode ~= "on" and t.ours) then return nil end
+    return Map.PlayerPosition()
+end
+
+local function arrowPlace(f)
+    f:ClearAllPoints()
+    local s = AmisiaDB and AmisiaDB.settings
+    local pos = s and type(s.map) == "table" and s.map.arrowPos
+    if type(pos) == "table" and type(pos[1]) == "string" and type(pos[3]) == "number" and type(pos[4]) == "number" then
+        f:SetPoint(pos[1], UIParent, type(pos[2]) == "string" and pos[2] or pos[1], pos[3], pos[4])
+    else
+        f:SetPoint("TOP", UIParent, "TOP", 0, -120)
+    end
+end
+
+-- Whether the client can turn the arrow: GetPlayerFacing gives a number and the texture turns.
+local function facing(icon)
+    if not (GetPlayerFacing and icon.SetRotation) then return nil end
+    local ok, f = pcall(GetPlayerFacing)
+    f = ok and ns.Plain(f) or nil
+    return type(f) == "number" and f or nil
+end
+
+local function arrowUpdate(f)
+    local t = ns.MapTarget()
+    local me = arrowWanted()
+    if not t or not me then
+        f:Hide()
+        return
+    end
+    local d = Map.Distance(t, me)
+    f.label:SetText(t.label or "?")
+    if not d then
+        f.icon:Hide()
+        f.dist:SetText("Anderer Kontinent")
+        f.dist:SetTextColor(0.6, 0.6, 0.6)
+        return
+    end
+    if d < ARRIVE then
+        ns.MapCheckArrival()
+        if ns.MapTarget() ~= t then return end      -- cleared: MAP_TARGET hid the arrow
+        f.icon:Hide()
+        f.dist:SetText("Angekommen")
+        f.dist:SetTextColor(0.3, 0.9, 0.3)
+        return
+    end
+    local text = ("%d m"):format(math.floor(d + 0.5))
+    local bearing = Map.Bearing(t, me)
+    local face = facing(f.icon)
+    if bearing and face then
+        f.icon:SetRotation(-(bearing + face))
+        f.icon:Show()
+    else
+        f.icon:Hide()
+        local word = Map.DirectionWord(bearing)
+        if word then text = text .. " " .. word end
+    end
+    f.dist:SetText(text)
+    f.dist:SetTextColor(1, 0.82, 0)
+end
+
+local function arrowMenu(f)
+    ns.W.Menu(f, {
+        { "Ziel löschen", function() ns.MapClearTarget() end },
+        { "Auf der Weltkarte zeigen", function()
+            local t = ns.MapTarget()
+            if t then ns.MapShowOnWorldMap(t) end
+        end },
+        { "Pfeil ausblenden", function()
+            local m = db()
+            local now = ns.Get("map.arrow")
+            if m and now ~= "off" then m.arrowBefore = now end
+            ns.Set("map.arrow", "off")
+        end },
+    })
+end
+
+local function arrowTooltip(f)
+    local t = ns.MapTarget()
+    if not t then return end
+    GameTooltip:SetOwner(f, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(t.label or "?", 1, 0.82, 0)
+    local item = itemText(t.item)
+    if item then GameTooltip:AddLine(item, 1, 1, 1) end
+    GameTooltip:AddLine(("%s %s"):format(zoneName(t.map), Map.Coords(t)), 0.7, 0.7, 0.7)
+    GameTooltip:AddLine("Ziehen: verschieben. Rechtsklick: mehr.", 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+local function makeArrow()
+    local f = CreateFrame("Button", "AmisiaArrow", UIParent)
+    f:SetSize(96, 84)
+    f:SetFrameStrata("MEDIUM")
+    f:SetClampedToScreen(true)
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:RegisterForClicks("RightButtonUp")
+    f.icon = f:CreateTexture(nil, "ARTWORK")
+    f.icon:SetSize(56, 56)
+    f.icon:SetPoint("TOP", 0, 0)
+    f.icon:SetTexture(ARROW_TEX)
+    f.icon:SetVertexColor(ns.W.GOLD[1], ns.W.GOLD[2], ns.W.GOLD[3])
+    f.label = ns.W.Text(f, "GameFontHighlightSmall", 90)
+    f.label:SetPoint("TOP", f.icon, "BOTTOM", 0, -1)
+    f.label:SetJustifyH("CENTER")
+    f.dist = ns.W.Text(f, "GameFontNormalSmall", 96)
+    f.dist:SetPoint("TOP", f.label, "BOTTOM", 0, -1)
+    f.dist:SetJustifyH("CENTER")
+    f.wait = 0
+    f:SetScript("OnUpdate", function(self, elapsed)
+        self.wait = self.wait + (elapsed or 0)
+        if self.wait < TICK - 1e-9 then return end
+        self.wait = 0
+        arrowUpdate(self)
+    end)
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local point, _, relPoint, x, y = self:GetPoint()
+        local s = AmisiaDB and AmisiaDB.settings
+        if s and point then
+            s.map = type(s.map) == "table" and s.map or {}
+            s.map.arrowPos = { point, relPoint or point, math.floor((x or 0) + 0.5), math.floor((y or 0) + 0.5) }
+        end
+    end)
+    f:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then arrowMenu(self) end
+    end)
+    f:SetScript("OnEnter", arrowTooltip)
+    f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f:Hide()
+    arrowPlace(f)
+    return f
+end
+
+-- Shows or hides the arrow for the current target and setting; the tick runs only while it shows.
+function Map.UpdateArrow()
+    if not arrowWanted() then
+        if arrow then arrow:Hide() end
+        return
+    end
+    arrow = arrow or makeArrow()
+    arrow.wait = 0
+    arrowUpdate(arrow)
+    if ns.MapTarget() and arrowWanted() then arrow:Show() end
+end
+
+-- The arrow frame, if made (for the settings and the tests).
+function Map.Arrow() return arrow end
+
+-- Puts the arrow back to its start (the saved position is gone already).
+function ns.MapResetArrow()
+    if arrow then arrowPlace(arrow) end
+end
+
+ns.Listen("MAP_TARGET", Map.UpdateArrow)
+ns.Listen("SETTING", function(path)
+    if path == "map.arrow" or path == nil then Map.UpdateArrow() end
+end)
+ns.OnEvent("PLAYER_ENTERING_WORLD", Map.UpdateArrow)
+ns.OnEvent("ZONE_CHANGED_NEW_AREA", Map.UpdateArrow)
+ns.OnEvent("ZONE_CHANGED", Map.UpdateArrow)
+
+---------------------------------------------------------------------------
 -- Tooltip line
 ---------------------------------------------------------------------------
 

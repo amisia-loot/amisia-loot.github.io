@@ -233,6 +233,8 @@ local function region(parent)
     f.SetShown = function(self, on) self.shown = on and true or false end
     f.GetStringWidth = function(self) return #tostring(self.text or "") * 6 end
     f.GetStringHeight = function(self) return 14 end
+    -- a texture turns (radians, counter-clockwise); STUB.noRotation makes regions without it
+    if not STUB.noRotation then f.SetRotation = function(self, r) self.rotation = r end end
     return f
 end
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
