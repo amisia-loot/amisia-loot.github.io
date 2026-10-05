@@ -20,9 +20,12 @@ local chosenKill         -- the attempt in the detail area, or "pull" for the ru
 local adding = false     -- the "Boss eintragen" line is open
 local addOk = true
 local addName, addAt     -- the boss to enter, and the time of its loot window
+local addFor             -- the raid the "Boss eintragen" line was opened for
 local benchName          -- the name chosen in the bench line
 local part = 1           -- the Discord part shown
 local discordText = ""   -- what the read-only box holds
+local discordFor         -- the raid and the part the box holds
+local discordPart
 local focusDiscord = false
 
 ---------------------------------------------------------------------------
@@ -61,6 +64,19 @@ local function tonightBench()
 end
 
 local function officer() return ns.IsOfficerView() end
+
+-- No raid log to show: tonight before the raid while raids are saved, or no raid at all.
+local function noRaidText(s)
+    if s == "next" and #ns.Sessions() > 0 then return "Für heute vor dem Raid gibt es noch keinen Raid-Log." end
+    return "Noch kein Raid aufgezeichnet."
+end
+
+-- A kill or wipe entered by hand without anyone read for it: who was there is not known.
+local function unknownWho(k)
+    if k.src ~= "hand" or k.wait then return false end
+    if k.ok then return type(k.who) ~= "table" or #k.who == 0 end
+    return (tonumber(k.n) or 0) == 0
+end
 
 local function shownView()
     if view == "discord" and not officer() then return "verlauf" end
@@ -179,7 +195,11 @@ local function fillLogRow(r, e)
         event = k.name or "?"
         result = k.ok and (GREEN .. "Kill|r") or (RED .. "Wipe|r")
         dur = lengthText(k) or ""
-        who = k.wait and "..." or tostring(k.n or (type(k.who) == "table" and #k.who) or "")
+        if k.wait then
+            who = "..."
+        elseif not unknownWho(k) then
+            who = tostring(k.n or (type(k.who) == "table" and #k.who) or "")
+        end
         src = SRC_TEXT[k.src] or ""
     end
     r.time:SetText(when)
@@ -267,6 +287,14 @@ local function buildLog(f)
     A.ok = W.Button(A, "Eintragen", 90, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
+        if s ~= addFor then
+            -- another raid is shown now (a recording started): the line was for the one before
+            adding, addName, addAt, addFor = false, nil, nil, nil
+            A.pick:SetValue(nil)
+            ns.msg("Der Raid hat gewechselt. Bitte den Boss neu eintragen.")
+            ns.Refresh()
+            return
+        end
         if not addName then
             ns.msg("Zuerst einen Boss wählen oder einen Namen eingeben.")
             return
@@ -279,14 +307,14 @@ local function buildLog(f)
             return
         end
         ns.msg(("%s eingetragen: %s (%s)."):format(k.ok and "Kill" or "Wipe", k.name, hm(k.t)))
-        adding, addName, addAt = false, nil, nil
+        adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         chosenKill = k
         ns.Refresh()
     end)
     A.ok:SetPoint("LEFT", A.wipe, "RIGHT", 10, 0)
     A.cancel = W.Button(A, "Abbrechen", 90, function()
-        adding, addName, addAt = false, nil, nil
+        adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         ns.Refresh()
     end)
@@ -299,12 +327,17 @@ end
 -- The names a raider list shows, of a kill: present, not present, bench, loot.
 local function detailLines(s, k)
     local lines = {}
-    if not k.ok then
+    if unknownWho(k) then
+        lines[#lines + 1] = LABEL .. "Dabei:|r unbekannt (von Hand nachgetragen)"
+        if not k.ok then return lines end
+    elseif not k.ok then
         lines[#lines + 1] = ("%sDabei:|r %d Raider"):format(LABEL, tonumber(k.n) or 0)
         return lines
     end
     local inWho = {}
-    if k.wait then
+    if unknownWho(k) then
+        -- nobody to list as there or not there
+    elseif k.wait then
         lines[#lines + 1] = LABEL .. "Dabei:|r wird nach dem Kampf gelesen"
     else
         local who = {}
@@ -368,6 +401,11 @@ local function refreshLog(V, s)
     V.list:SetItems(items)
 
     local A = V.add
+    if adding and s ~= addFor then
+        -- the line was opened for another raid: closed and emptied
+        adding, addName, addAt, addFor = false, nil, nil, nil
+        A.pick:SetValue(nil)
+    end
     if adding and officer() and type(s) == "table" then
         -- loot window sources of this raid, sorted by their first opening
         local first, names = {}, {}
@@ -464,7 +502,7 @@ local function buildBench(f)
     end
     B.note = W.LineEdit(B, 200)
     B.note:SetPoint("LEFT", B.pick, "RIGHT", 6, 0)
-    B.addBtn = W.Button(B, "Eintragen", 90, function()
+    local function addBench()
         if not officer() then return end
         local s = chosen()
         local name = benchName or B.pick:GetValue()
@@ -484,8 +522,14 @@ local function buildBench(f)
         B.pick:SetValue(nil)
         B.note:SetText("")
         ns.Refresh()
-    end)
+    end
+    B.addBtn = W.Button(B, "Eintragen", 90, addBench)
     B.addBtn:SetPoint("LEFT", B.note, "RIGHT", 6, 0)
+    -- Enter in the note enters the name, like the button
+    B.note:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        addBench()
+    end)
 
     local head = CreateFrame("Frame", nil, B)
     head:SetHeight(18)
@@ -572,8 +616,9 @@ end
 ---------------------------------------------------------------------------
 -- Discord
 ---------------------------------------------------------------------------
-local function setDiscord(D, text)
+local function setDiscord(D, text, s)
     discordText = text or ""
+    discordFor, discordPart = type(s) == "table" and s.id or nil, part
     D.area.box:SetText(discordText)
     D.area.box:SetCursorPosition(0)
     D.area.box:HighlightText()
@@ -605,6 +650,11 @@ local function buildDiscord(f)
             self:HighlightText()
         end
     end)
+    -- the text is kept while the box has the focus (a live raid changes it every minute and would
+    -- take the selection away); leaving the box brings it up to date
+    D.area.box:SetScript("OnEditFocusLost", function()
+        if page and page:IsShown() and D:IsShown() then ns.Refresh() end
+    end)
     D.hint = W.Text(D, "GameFontDisableSmall", 590)
     D.hint:SetPoint("TOPLEFT", D.area, "BOTTOMLEFT", 0, -6)
     return D
@@ -614,7 +664,11 @@ local function refreshDiscord(D, s)
     if type(s) ~= "table" then
         for _, c in ipairs(D.chips) do c:Hide() end
         if discordText ~= "" then setDiscord(D, "") end
-        D.hint:SetText("Noch kein Raid aufgezeichnet.")
+        D.hint:SetText(noRaidText(s))
+        return
+    end
+    -- focused on the same raid and part: the box keeps its text and selection
+    if D.area.box:HasFocus() and discordText ~= nil and discordFor == s.id and discordPart == part and not focusDiscord then
         return
     end
     local parts = ns.RaidSummary(s)
@@ -628,7 +682,7 @@ local function refreshDiscord(D, s)
         end
     end
     local text = parts[part] or ""
-    if text ~= discordText then setDiscord(D, text) end
+    if text ~= discordText or discordFor ~= s.id or discordPart ~= part then setDiscord(D, text, s) end
     if focusDiscord then
         focusDiscord = false
         D.area.box:SetFocus()
@@ -681,12 +735,13 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
         f.discordBtn:SetPoint("TOPRIGHT", 0, -1)
         f.addBoss = W.Button(f, "Boss eintragen", 110, function()
             if not officer() then return end
-            if type(chosen()) ~= "table" then
-                ns.msg("Noch kein Raid aufgezeichnet.")
+            local s = chosen()
+            if type(s) ~= "table" then
+                ns.msg(noRaidText(s))
                 return
             end
             view = "verlauf"
-            adding, addOk, addName, addAt = true, true, nil, nil
+            adding, addOk, addName, addAt, addFor = true, true, nil, nil, s
             if f.log then f.log.add.pick:SetValue(nil) end
             ns.Refresh()
         end)

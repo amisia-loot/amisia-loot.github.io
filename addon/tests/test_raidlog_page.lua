@@ -265,7 +265,8 @@ assert(has(D.hint:GetText(), "Strg+A, Strg+C, in Discord einfügen.") and has(D.
 D.area.box:SetText("kaputt")
 D.area.box.scripts.OnTextChanged(D.area.box, true)
 assert(D.area.box:GetText() == parts[1], "read-only")
--- many hand-outs: parts with chips
+-- many hand-outs: parts with chips (with the box left: a focused box keeps its text)
+D.area.box:ClearFocus()
 for i = 1, 80 do
     STUB.item(31000 + i, ("Langer Gegenstand der Prüfung Nummer %d"):format(i), 4)
     NS.AddAwardTo(s, { name = "Fraktur", item = 31000 + i, kind = "MS", src = "Hochkriegsfürst Naj'entus" })

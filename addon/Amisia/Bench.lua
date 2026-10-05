@@ -320,19 +320,50 @@ end
 -- Names to put on the bench of s for a picker: the group outside, the guild online, friends
 -- online; without doubles, without whoever is benched or in the raid.
 function ns.BenchSuggestions(s)
-    local out, taken = {}, {}
+    local out = {}
     if type(s) ~= "table" then return out end
     local t = time()
     local ctx = raidNow(s)
+    -- the names offered so far, for ns.SameName in constant time: the whole name (lower case), the
+    -- first names of all, and the first names of those without surname
+    local full, firsts, bare = {}, {}, {}
+    local function taken(name)
+        local low = name:lower()
+        if full[low] then return true end
+        local first = low:match("^(%S+)")
+        if low:find(" ", 1, true) then return bare[first] == true end
+        return firsts[first] == true
+    end
+    local function take(name)
+        local low = name:lower()
+        local first = low:match("^(%S+)")
+        full[low], firsts[first] = true, true
+        if not low:find(" ", 1, true) then bare[first] = true end
+    end
+    -- ns.IsBenched and inRaid only for a name that shares a first name with the bench or the raid:
+    -- any other name cannot match (ns.SameName needs the first names to agree)
+    local function firstsOf(names)
+        local set = {}
+        for _, n in ipairs(names) do
+            local low = tostring(n):lower()
+            set[low:match("^(%S+)") or low] = true
+        end
+        return set
+    end
+    local benchKeys = {}
+    for key in pairs(entries(s)) do benchKeys[#benchKeys + 1] = key end
+    local benchFirsts, raidFirsts = firstsOf(benchKeys), firstsOf(ctx.names)
+    local function blocked(name)
+        local first = name:lower():match("^(%S+)")
+        if benchFirsts[first] and ns.IsBenched(s, name) then return true end
+        return raidFirsts[first] == true and inRaid(s, name, ctx)
+    end
     local function offer(list, suffix)
         table.sort(list, function(a, b) return a < b end)
         for _, name in ipairs(list) do
-            local dup = false
-            for _, x in ipairs(taken) do
-                if ns.SameName(x, name) then dup = true break end
-            end
-            if not dup and not ns.IsBenched(s, name) and not inRaid(s, name, ctx) then
-                taken[#taken + 1] = name
+            name = ns.FullName(name)
+            if name and not taken(name) and not blocked(name) then
+                take(name)
                 out[#out + 1] = { value = name, text = ("%s (%s)"):format(name, suffix) }
             end
         end
