@@ -279,6 +279,9 @@ local function labelOf(place)
     return name
 end
 
+-- For the pins and the page: the name and the label of a place { key, rec, giver }, a zone's name.
+Map.PlaceName, Map.LabelOf, Map.ZoneName = placeName, labelOf, zoneName
+
 ---------------------------------------------------------------------------
 -- The client's user waypoint (Forever)
 ---------------------------------------------------------------------------

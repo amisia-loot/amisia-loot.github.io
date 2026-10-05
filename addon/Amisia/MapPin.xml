@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+	<!-- The pin of Amisia's world map places. Neither client has a pin template to inherit; the map
+	     canvas pools pins by template name, applies the mixin from MapPins.lua and sets the mouse
+	     scripts itself. Textures are made in the mixin's OnLoad. -->
+	<Frame name="AmisiaMapPinTemplate" mixin="AmisiaMapPinMixin" enableMouse="true" hidden="true" virtual="true">
+		<Size x="20" y="20"/>
+	</Frame>
+</Ui>

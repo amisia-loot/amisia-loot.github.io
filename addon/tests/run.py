@@ -24,7 +24,11 @@ def toc_files():
             if line and not line.startswith('#'):
                 # load conditions like "[AllowLoadGameType camelot]" stay out of the file name;
                 # the tests load every file
-                out.append(re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep))
+                name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep)
+                # XML files (templates) are for the client; a test reads them itself
+                if name.lower().endswith('.xml'):
+                    continue
+                out.append(name)
     return out
 
 

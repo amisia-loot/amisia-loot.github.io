@@ -36,6 +36,8 @@ GearFrame.lua
 Bis.lua
 GuildWishes.lua
 Map.lua
+MapPins.lua
+MapPin.xml
 MainFrame.lua
 Pages\Overview.lua
 Pages\Raids.lua

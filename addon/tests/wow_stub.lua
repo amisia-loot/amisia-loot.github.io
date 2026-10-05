@@ -510,3 +510,88 @@ _G.OpenWorldMap = function(id)
     if id then WorldMapFrame:SetMapID(id) end
 end
 _G.ToggleWorldMap = function() WorldMapFrame:SetShown(not WorldMapFrame:IsShown()) end
+
+-- Mixins and the map canvas as both clients' FrameXML has them (Blizzard_MapCanvas): data providers
+-- added with AddDataProvider get OnAdded, RefreshAllData on show and OnMapChanged on a new map;
+-- AcquirePin makes pins from a named template, applies its mixin (STUB.pinTemplates[template] names
+-- the mixin global, as the XML file would; a test reads it from MapPin.xml), runs OnLoad once and
+-- OnAcquired every time; RemoveAllPinsByTemplate releases them. STUB.mapPins(template) lists the
+-- active pins. A Forever-style pin mixin (passthrough buttons, OnMouseClickAction) comes from a
+-- test's preload.
+_G.Mixin = function(object, ...)
+    for i = 1, select("#", ...) do
+        for k, v in pairs((select(i, ...))) do object[k] = v end
+    end
+    return object
+end
+_G.CreateFromMixins = function(...) return Mixin({}, ...) end
+_G.MapCanvasDataProviderMixin = {
+    OnAdded = function(self, map) self.owningMap = map end,
+    OnRemoved = function(self) self.owningMap = nil end,
+    RemoveAllData = NOOP, RefreshAllData = NOOP, OnShow = NOOP, OnHide = NOOP, OnCanvasScaleChanged = NOOP,
+    OnMapChanged = function(self) self:RefreshAllData() end,
+    GetMap = function(self) return self.owningMap end,
+}
+_G.MapCanvasPinMixin = {
+    OnLoad = NOOP, OnAcquired = NOOP, OnReleased = NOOP, OnClick = NOOP, OnMouseEnter = NOOP, OnMouseLeave = NOOP,
+    OnMouseDown = NOOP, OnMouseUp = NOOP, ApplyCurrentScale = NOOP, ApplyFrameLevel = NOOP, OnCanvasScaleChanged = NOOP,
+    SetPosition = function(self, x, y) self.normalizedX, self.normalizedY = x, y end,
+    GetPosition = function(self) return self.normalizedX, self.normalizedY end,
+    SetScalingLimits = function(self, f, s, e) self.scaleFactor, self.startScale, self.endScale = f, s, e end,
+    UseFrameLevelType = function(self, t, i) self.pinFrameLevelType, self.pinFrameLevelIndex = t, i end,
+    GetMap = function(self) return self.owningMap end,
+}
+STUB.pinTemplates = {}
+WorldMapFrame.dataProviders, WorldMapFrame.pinPools = {}, {}
+WorldMapFrame.AddDataProvider = function(self, p)
+    self.dataProviders[p] = true
+    p:OnAdded(self)
+end
+WorldMapFrame.RemoveDataProvider = function(self, p)
+    p:RemoveAllData()
+    self.dataProviders[p] = nil
+    p:OnRemoved(self)
+end
+WorldMapFrame.AcquirePin = function(self, template, ...)
+    local mixin = STUB.pinTemplates[template] and _G[STUB.pinTemplates[template]]
+    assert(mixin, "unknown pin template " .. tostring(template))
+    local pool = self.pinPools[template] or { active = {}, free = {} }
+    self.pinPools[template] = pool
+    local pin = table.remove(pool.free)
+    local new = pin == nil
+    if new then pin = Mixin(CreateFrame("Frame", nil, self), mixin) end
+    pin.pinTemplate, pin.owningMap = template, self
+    if new then pin:OnLoad() end
+    pin:Show()
+    pin:OnAcquired(...)
+    if pin.CheckMouseButtonPassthrough then pin:CheckMouseButtonPassthrough("RightButton") end
+    pool.active[#pool.active + 1] = pin
+    return pin
+end
+WorldMapFrame.RemoveAllPinsByTemplate = function(self, template)
+    local pool = self.pinPools[template]
+    if not pool then return end
+    for _, pin in ipairs(pool.active) do
+        pin:Hide()
+        pin:OnReleased()
+        pin.pinTemplate, pin.owningMap = nil, nil
+        pool.free[#pool.free + 1] = pin
+    end
+    pool.active = {}
+end
+WorldMapFrame.SetMapID = function(self, id)
+    if self.mapID == id then return end
+    self.mapID = id
+    for p in pairs(self.dataProviders) do p:OnMapChanged() end
+end
+WorldMapFrame:SetScript("OnShow", function(self)
+    for p in pairs(self.dataProviders) do p:RefreshAllData(true) end
+    for p in pairs(self.dataProviders) do p:OnShow() end
+end)
+WorldMapFrame:SetScript("OnHide", function(self)
+    for p in pairs(self.dataProviders) do p:OnHide() end
+end)
+function STUB.mapPins(template)
+    local pool = WorldMapFrame.pinPools[template]
+    return pool and pool.active or {}
+end
