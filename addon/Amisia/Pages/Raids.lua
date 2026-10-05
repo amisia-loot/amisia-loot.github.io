@@ -74,6 +74,21 @@ local function col(parent, x, w, label, template)
     return fs
 end
 
+-- One column per tracked material (ns.MAT_ORDER; empty until the guild names some) and one for
+-- the summed gems (ns.GEMS). Without a tracked material no column is shown. Three material
+-- columns at most, two when a gem column shares the width.
+local MAT_X, MAT_STEP, MAT_W = 380, 56, 54
+local function matColumns()
+    local n = #ns.MAT_ORDER
+    local maxCols = next(ns.GEMS) and 2 or 3
+    return n > maxCols and maxCols or n, next(ns.GEMS) ~= nil
+end
+
+-- First word of an item name: the short column title.
+local function shortName(id)
+    return (ns.ItemName(id):match("%S+")) or "?"
+end
+
 ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 20, officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
@@ -85,9 +100,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         col(head, 30, 80, "Datum")
         col(head, 112, 200, "Raid")
         col(head, 316, 60, "Raider")
-        col(head, 380, 50, "Mal")
-        col(head, 432, 50, "Herz")
-        col(head, 486, 90, "Edelsteine")
+        f.matHead = {}
+        for i = 1, 3 do f.matHead[i] = col(head, MAT_X + (i - 1) * MAT_STEP, MAT_W) end
+        f.gemHead = col(head, MAT_X + 2 * MAT_STEP, 90)
         f.list = W.List(f, ROWS, ROW_H, function(r)
             r.box = W.Toggle(r, function(on)
                 if r.item then ns.RaidSelection[r.item.id] = on or nil end
@@ -97,9 +112,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             r.date = col(r, 30, 80, nil, "GameFontHighlightSmall")
             r.zone = col(r, 112, 200, nil, "GameFontHighlightSmall")
             r.raiders = col(r, 316, 60, nil, "GameFontHighlightSmall")
-            r.mark = col(r, 380, 50, nil, "GameFontHighlightSmall")
-            r.heart = col(r, 432, 50, nil, "GameFontHighlightSmall")
-            r.gems = col(r, 486, 90, nil, "GameFontHighlightSmall")
+            r.mats = {}
+            for i = 1, 3 do r.mats[i] = col(r, MAT_X + (i - 1) * MAT_STEP, MAT_W, nil, "GameFontHighlightSmall") end
+            r.gems = col(r, MAT_X + 2 * MAT_STEP, 90, nil, "GameFontHighlightSmall")
             r:SetScript("OnClick", function(self)
                 if self.item then
                     detailId = self.item.id
@@ -113,9 +128,19 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             r.zone:SetText((s == ns.Active() and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
             local late = ns.LateCount(s)
             r.raiders:SetText(ns.MemberCount(s) .. (late > 0 and ("  |cffe0a344+" .. late .. "|r") or ""))
-            r.mark:SetText(c[32897] or 0)
-            r.heart:SetText(c[32428] or 0)
-            r.gems:SetText(ns.GemCount(c))
+            local nMat, hasGems = matColumns()
+            for i = 1, 3 do
+                local id = ns.MAT_ORDER[i]
+                if i <= nMat and id then
+                    r.mats[i]:SetText(c[id] or 0)
+                    r.mats[i]:Show()
+                else
+                    r.mats[i]:Hide()
+                end
+            end
+            r.gems:ClearAllPoints()
+            r.gems:SetPoint("LEFT", MAT_X + nMat * MAT_STEP, 0)
+            if hasGems then r.gems:SetText(ns.GemCount(c)); r.gems:Show() else r.gems:Hide() end
             if s.id == detailId then r.sel:Show() else r.sel:Hide() end
         end)
         f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -2)
@@ -150,6 +175,14 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         local exists = {}
         for _, s in ipairs(all) do exists[s.id] = s end
         for id in pairs(ns.RaidSelection) do if not exists[id] then ns.RaidSelection[id] = nil end end
+        local nMat, hasGems = matColumns()
+        for i = 1, 3 do
+            local id = ns.MAT_ORDER[i]
+            if i <= nMat and id then f.matHead[i]:SetText(shortName(id)); f.matHead[i]:Show() else f.matHead[i]:Hide() end
+        end
+        f.gemHead:ClearAllPoints()
+        f.gemHead:SetPoint("LEFT", MAT_X + nMat * MAT_STEP, 0)
+        if hasGems then f.gemHead:SetText("Edelsteine"); f.gemHead:Show() else f.gemHead:Hide() end
         f.list:SetItems(all)
         f.pageText:SetText(#all == 0 and "Noch keine Raids aufgezeichnet." or ("%d Raids"):format(#all))
         local s = exists[detailId] or all[1]
@@ -189,8 +222,8 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     local _, _, bosses = ns.KillCount(s)
     if bosses > 0 then parts[#parts + 1] = bosses == 1 and "1 Boss" or (bosses .. " Bosse") end
     if late > 0 then parts[#parts + 1] = late .. " zu spät" end
-    local mats = (m[32897] or 0) + (m[32428] or 0) + ns.GemCount(m)
-    if mats > 0 then parts[#parts + 1] = ("Mal %d · Herz %d · Edelsteine %d"):format(m[32897] or 0, m[32428] or 0, ns.GemCount(m)) end
+    local mats = ns.MatLine(m)
+    if mats ~= "" then parts[#parts + 1] = mats end
     c.line2:SetText(table.concat(parts, " · "))
     if ns.IsOfficerView() then c:SetAction("Raids", function() ns.ShowPage("raids") end) end
 end }

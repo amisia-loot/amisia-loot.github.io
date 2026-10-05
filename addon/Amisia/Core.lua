@@ -112,6 +112,19 @@ function ns.GemCount(counts)
     return n
 end
 
+-- "Name n, Name n, Edelsteine n" of one counts table for the overview cards; "" when no material
+-- is tracked or none of them is in counts.
+function ns.MatLine(counts)
+    if not ns.HasMats() then return "" end
+    local total = 0
+    for _, id in ipairs(ns.MAT_ORDER) do total = total + (counts[id] or 0) end
+    local gems = ns.GemCount(counts)
+    if total + gems == 0 then return "" end
+    local line = ns.MatSummary(counts)
+    if next(ns.GEMS) then line = line .. (", Edelsteine %d"):format(gems) end
+    return line
+end
+
 -- Loot of this quality or better is recorded besides the materials: 3 rare (blue), 4 epic, 5 legendary.
 ns.MIN_QUALITY = 3
 -- Blue or better items that are no raid loot worth listing: disenchanting results.

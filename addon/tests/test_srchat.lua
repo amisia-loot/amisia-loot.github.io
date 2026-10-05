@@ -40,14 +40,12 @@ STUB.leader = true
 NS.Set("ui.view", "raider")
 assert(NS.IsLootLead() == false, "never in the raider view")
 NS.Reset("ui.view")
--- the global of an older client: "master" and the raid index of the looter
+-- no C_PartyInfo.GetLootMethod: the global of older clients is no longer read
 local cpi = C_PartyInfo
 C_PartyInfo = nil
 _G.GetLootMethod = function() return "master", nil, 4 end
-STUB.playerRaidIndex = 4
-assert(NS.IsLootLead() == true, "the old global")
 STUB.playerRaidIndex = 1
-assert(NS.IsLootLead() == false)
+assert(NS.IsLootLead() == true, "the old global is ignored, the leader leads")
 _G.GetLootMethod = nil
 assert(NS.IsLootLead() == true, "without any loot method the leader leads")
 C_PartyInfo = cpi

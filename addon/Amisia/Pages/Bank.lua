@@ -7,7 +7,7 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, "GameFontHighlight", 590, true)
         f.state:SetPoint("TOPLEFT", 0, -2)
-        f.list = W.List(f, #ns.MAT_ORDER, 22, function(r)
+        f.list = W.List(f, math.max(#ns.MAT_ORDER, 1), 22, function(r)
             r.name = W.Text(r, "GameFontHighlightSmall", 300)
             r.name:SetPoint("LEFT", 6, 0)
             r.count = W.Text(r, "GameFontHighlightSmall", 80)
@@ -22,6 +22,11 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         return f
     end,
     refresh = function(f)
+        if not ns.HasMats() then
+            f.state:SetText("|cff8f86a3Keine Materialien festgelegt.|r Solange die Gilde keine Materialien benennt, zählt Amisia nichts in der Gildenbank.")
+            f.list:SetItems({})
+            return
+        end
         local bank = ns.Bank()
         if not (bank and bank.counts) then
             f.state:SetText("|cff8f86a3Noch nicht gezählt.|r Öffne die Gildenbank einmal, dann zählt Amisia die Materialien.")
@@ -37,7 +42,8 @@ ns.RegisterPanel{ key = "bank", label = "Gildenbank", icon = "Interface\\Icons\\
         f.list:SetItems(items)
     end }
 
-ns.RegisterCard{ key = "bank", order = 50, officer = true, fill = function(c)
+-- The card appears only while materials are tracked (ns.MAT_ORDER).
+ns.RegisterCard{ key = "bank", order = 50, officer = true, available = ns.HasMats, fill = function(c)
     local bank = ns.Bank()
     c.title:SetText("Gildenbank")
     if not (bank and bank.counts) then
@@ -46,6 +52,6 @@ ns.RegisterCard{ key = "bank", order = 50, officer = true, fill = function(c)
     end
     local b = bank.counts
     c.line1:SetText(("Gezählt am %s"):format(date("%d.%m. %H:%M", bank.at)))
-    c.line2:SetText(("Mal %d · Herz %d · Edelsteine %d"):format(b[32897] or 0, b[32428] or 0, ns.GemCount(b)))
+    c.line2:SetText(ns.MatLine(b))
     c:SetAction("Ansehen", function() ns.ShowPage("bank") end)
 end }

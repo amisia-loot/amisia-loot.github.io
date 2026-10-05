@@ -13,8 +13,7 @@ local PERSONAL = LM.Personal or 5
 
 -- The loot method as a flag for master loot, with the master looter's party and raid index, and
 -- a flag for a method that hands out items over group loot rolls (group loot, need before greed,
--- round robin: not master loot, free-for-all or personal loot). Both clients have
--- C_PartyInfo.GetLootMethod; an older one the global with "master".
+-- round robin: not master loot, free-for-all or personal loot), from C_PartyInfo.GetLootMethod.
 local function lootMethod()
     local info = _G.C_PartyInfo
     if type(info) == "table" and type(info.GetLootMethod) == "function" then
@@ -24,14 +23,6 @@ local function lootMethod()
             return method == MASTER, partyID, raidID, rolls
         end
         return nil
-    end
-    local old = _G.GetLootMethod
-    if type(old) == "function" then
-        local ok, method, partyID, raidID = pcall(old)
-        if ok then
-            local rolls = type(method) == "string" and method ~= "master" and method ~= "freeforall" and method ~= "personalloot"
-            return method == "master", partyID, raidID, rolls
-        end
     end
     return nil
 end

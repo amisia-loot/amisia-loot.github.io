@@ -211,7 +211,6 @@ local function sourceText(e)
         local title = Gear.SourceText(rec, true):gsub("^Quest: ", "")
         return e.giver and (title .. " (" .. e.giver .. ")") or title
     end
-    if rec[1] == "F" then return e.giver or Gear.FactionName(rec) or "?" end
     return Map.PlaceName(e)
 end
 

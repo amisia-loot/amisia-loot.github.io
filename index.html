@@ -765,7 +765,7 @@ tr.got td{opacity:.5}
               <summary class="muted" style="cursor:pointer;font-size:13px">Get the list from the game with a macro</summary>
               <p class="muted" style="font-size:13px;margin:10px 0 6px">Create a macro with one of these, run it while in the raid (or anywhere for the guild list). Your chat box fills with the names and classes: press <code>Ctrl+C</code>, then <code>Escape</code>, and paste above.</p>
               <div class="field"><label>Current raid group</label><textarea class="inp" id="macroRaid" readonly spellcheck="false" style="min-height:70px"></textarea><button class="btn sm" data-copy="macroRaid" style="align-self:flex-start">Copy macro</button></div>
-              <div class="field" style="margin-top:8px"><label>Guild members at level 70</label><textarea class="inp" id="macroGuild" readonly spellcheck="false" style="min-height:70px"></textarea><button class="btn sm" data-copy="macroGuild" style="align-self:flex-start">Copy macro</button></div>
+              <div class="field" style="margin-top:8px"><label>Guild members at level 60</label><textarea class="inp" id="macroGuild" readonly spellcheck="false" style="min-height:70px"></textarea><button class="btn sm" data-copy="macroGuild" style="align-self:flex-start">Copy macro</button></div>
             </details>
           </div>
         </div>
@@ -2744,7 +2744,7 @@ function renderRoster(){
 
 /* ---------------- bulk roster ---------------- */
 const RAID_MACRO = "/run local s=\"\"for i=1,GetNumGroupMembers()do local n,_,_,_,_,c=GetRaidRosterInfo(i)s=s..(n or\"\")..\":\"..(c or\"\")..\" \"end local e=ChatFrame1EditBox e:SetMaxLetters(0)ChatEdit_ActivateChat(e)e:SetText(s)e:HighlightText()";
-const GUILD_MACRO = "/run local s=\"\"for i=1,GetNumGuildMembers()do local n,_,_,l,_,_,_,_,_,_,c=GetGuildRosterInfo(i)if l==70 then s=s..n..\":\"..c..\" \"end end local e=ChatFrame1EditBox e:SetMaxLetters(0)ChatEdit_ActivateChat(e)e:SetText(s)e:HighlightText()";
+const GUILD_MACRO = "/run local s=\"\"for i=1,GetNumGuildMembers()do local n,_,_,l,_,_,_,_,_,_,c=GetGuildRosterInfo(i)if l==60 then s=s..n..\":\"..c..\" \"end end local e=ChatFrame1EditBox e:SetMaxLetters(0)ChatEdit_ActivateChat(e)e:SetText(s)e:HighlightText()";
 $('#macroRaid').value = RAID_MACRO; $('#macroGuild').value = GUILD_MACRO; $('#anMacro').value = RAID_MACRO;
 const CLASS_ALIAS = {warrior:'Warrior',krieger:'Warrior',paladin:'Paladin',pala:'Paladin',hunter:'Hunter',jäger:'Hunter',jaeger:'Hunter',rogue:'Rogue',schurke:'Rogue',priest:'Priest',priester:'Priest',shaman:'Shaman',schamane:'Shaman',mage:'Mage',magier:'Mage',warlock:'Warlock',hexenmeister:'Warlock',hexer:'Warlock',druid:'Druid',druide:'Druid',deathknight:'Death Knight',dk:'Death Knight',todesritter:'Death Knight',monk:'Monk',mönch:'Monk',moench:'Monk'};
 const classOf = s => CLASS_ALIAS[String(s||'').trim().toLowerCase()] || null;

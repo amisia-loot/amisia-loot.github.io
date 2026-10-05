@@ -421,23 +421,21 @@ function Gear.Source(n)
 end
 
 -- Order sources are listed in: a raid where it is one, then what every character can count on.
-local KIND_ORDER = { X = 0, Q = 1, D = 2, C = 3, V = 4, F = 4.5, R = 5, W = 6, A = 7, P = 8 }
+local KIND_ORDER = { X = 0, Q = 1, D = 2, C = 3, V = 4, R = 5, W = 6, A = 7, P = 8 }
 Gear.KIND_ORDER = KIND_ORDER
--- Filter group per source kind: rare mobs and world drops share one switch; heroic dungeons have
--- their own (Gear.FilterKey).
-Gear.FILTER_OF = { X = "X", Q = "Q", D = "D", C = "C", V = "V", F = "F", R = "W", W = "W", A = "A", P = "P" }
+-- Filter group per source kind: rare mobs and world drops share one switch (Gear.FilterKey).
+Gear.FILTER_OF = { X = "X", Q = "Q", D = "D", C = "C", V = "V", R = "W", W = "W", A = "A", P = "P" }
 
 -- The filter switch a source belongs to.
 function Gear.FilterKey(rec)
     local k = rec[1]
-    if k == "D" and rec[7] == 1 then return "H" end
     return Gear.FILTER_OF[k] or k
 end
 
 local function sourceFaction(rec)
     local k = rec[1]
     local f
-    if k == "Q" or k == "F" then f = rec[5]
+    if k == "Q" then f = rec[5]
     elseif k == "V" or k == "P" then f = rec[4] end
     if f == "" then return nil end
     return f
@@ -445,7 +443,7 @@ end
 
 -- The place a source is at, for "here" and for excluding a place: "I:<instance id>" for raids and
 -- dungeons ("N:<name>" for dungeon records without one), "Z:<zone>" for quests, vendors, rare
--- mobs and world drops with a zone; nil for crafting, reputation and the auction house.
+-- mobs and world drops with a zone; nil for crafting and the auction house.
 function Gear.PlaceOf(rec)
     local k, z = rec[1], nil
     if k == "X" or k == "D" then
@@ -893,10 +891,8 @@ Gear.PROFESSIONS = {
     engineering = "Ingenieurskunst", alchemy = "Alchimie", enchanting = "Verzauberkunst", cooking = "Kochkunst",
     firstaid = "Erste Hilfe", jewelcrafting = "Juwelierskunst",
 }
-Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = "Beruf", V = "Händler", F = "Ruf", R = "Rar", W = "Weltdrop",
+Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = "Beruf", V = "Händler", R = "Rar", W = "Weltdrop",
     A = "Auktionshaus", P = "PvP-Händler" }
--- Reputation standings 5 friendly .. 8 exalted.
-Gear.STANDINGS = { [4] = "neutral", [5] = "freundlich", [6] = "wohlwollend", [7] = "respektvoll", [8] = "ehrfürchtig" }
 
 -- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised),
 -- else the source's own name.
@@ -905,22 +901,6 @@ function Gear.PlaceName(rec)
     if type(area) == "number" and area > 0 and C_Map and C_Map.GetAreaInfo then
         local name = C_Map.GetAreaInfo(area)
         if type(name) == "string" and name ~= "" then return name end
-    end
-    return rec[2]
-end
-
--- A faction's name as the client gives it, else the source's own name.
-function Gear.FactionName(rec)
-    local id = rec[4]
-    if type(id) == "number" and id > 0 then
-        if C_Reputation and C_Reputation.GetFactionDataByID then
-            local fd = C_Reputation.GetFactionDataByID(id)
-            if type(fd) == "table" and type(fd.name) == "string" and fd.name ~= "" then return fd.name end
-        end
-        if GetFactionInfoByID then
-            local name = GetFactionInfoByID(id)
-            if type(name) == "string" and name ~= "" then return name end
-        end
     end
     return rec[2]
 end
@@ -959,12 +939,8 @@ function Gear.SourceText(rec, short)
     elseif k == "D" then
         local chance = rec[4] and (" " .. rec[4]) or ""
         local name = Gear.PlaceName(rec) or "?"
-        if rec[7] == 1 then name = name .. " (heroisch)" end
         if rec[3] == "Trash" then return ("%s: Trash%s"):format(name, chance) end
         return ("%s: %s%s"):format(name, rec[3] or "?", chance)
-    elseif k == "F" then
-        local standing = Gear.STANDINGS[rec[3]]
-        return ("Ruf: %s%s%s"):format(Gear.FactionName(rec) or "?", standing and (", " .. standing) or "", FACTION_TAG[rec[5]] or "")
     elseif k == "C" then
         return ("%s (%d)"):format(Gear.PROFESSIONS[rec[2]] or tostring(rec[2]), rec[3] or 0)
     elseif k == "V" or k == "P" then

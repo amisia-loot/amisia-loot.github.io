@@ -706,7 +706,7 @@ end
 ---------------------------------------------------------------------------
 
 -- kind "item" (id or link), "boss" (name as in the source) or "place" ("I:<instance>", "Z:<map>",
--- "N:<name>"; a heroic "/H" counts for the whole dungeon). on false lifts it. true or nil, reason.
+-- "N:<name>"). on false lifts it. true or nil, reason.
 function ns.BisExclude(kind, key, on)
     local c = ns.BisChar()
     if not c then return nil, "Amisia ist noch nicht geladen." end
@@ -720,8 +720,7 @@ function ns.BisExclude(kind, key, on)
         if type(key) ~= "string" or key == "" then return nil, "Kein Boss." end
         set = c.ex.boss
     elseif kind == "place" then
-        key = type(key) == "string" and key:gsub("/H$", "") or nil
-        if not key or not key:find("^[IZN]:.") then return nil, "Kein Ort." end
+        if type(key) ~= "string" or not key:find("^[IZN]:.") then return nil, "Kein Ort." end
         set = c.ex.place
     else
         return nil, "Unbekannte Art."
@@ -757,17 +756,15 @@ end
 -- Here: what a place still offers
 ---------------------------------------------------------------------------
 
--- The player's place: in an instance its id (a heroic dungeon marked "/H") and name; outside the
--- map and its parents up to the continent.
+-- The player's place: in an instance its id and name; outside the map and its parents up to the
+-- continent.
 local function currentPlace()
     local name, itype, diff, _, _, _, _, instID = GetInstanceInfo()
     name, itype, diff, instID = ns.Plain(name), ns.Plain(itype), ns.Plain(diff), ns.Plain(instID)
     if type(itype) == "string" and itype ~= "none" and type(instID) == "number" and instID > 0 then
-        local heroic = itype == "party" and diff == 2
         local keys = { ["I:" .. instID] = true }
         if type(name) == "string" and name ~= "" then keys["N:" .. name] = true end
-        return { key = "I:" .. instID .. (heroic and "/H" or ""), keys = keys, heroic = heroic,
-            text = type(name) == "string" and (name .. (heroic and " (heroisch)" or "")) or nil }
+        return { key = "I:" .. instID, keys = keys, text = type(name) == "string" and name or nil }
     end
     local map = C_Map and C_Map.GetBestMapForUnit and ns.Plain(C_Map.GetBestMapForUnit("player"))
     local keys, first, text = {}, nil, nil
@@ -782,12 +779,11 @@ local function currentPlace()
     if not first then return nil end
     return { key = "Z:" .. first, keys = keys, text = text }
 end
--- The player's place as "Hier" finds it ({ key, keys, heroic, text }), or nil; nothing is listed.
+-- The player's place as "Hier" finds it ({ key, keys, text }), or nil; nothing is listed.
 ns.BisCurrentPlace = currentPlace
 
 local placesCache, placesFor
--- The raids and dungeons of the data for the place picker: { { key, text, raid } }, raids first;
--- a heroic dungeon is its own entry ("I:<id>/H").
+-- The raids and dungeons of the data for the place picker: { { key, text, raid } }, raids first.
 function ns.BisPlaces()
     local d = ns.GEAR
     if not d then return {} end
@@ -797,11 +793,9 @@ function ns.BisPlaces()
         if rec[1] == "X" or rec[1] == "D" then
             local base = Gear.PlaceOf(rec)
             if base then
-                local heroic = rec[1] == "D" and rec[7] == 1
-                local key = base .. (heroic and "/H" or "")
-                if not seen[key] then
-                    seen[key] = true
-                    out[#out + 1] = { key = key, text = (Gear.PlaceName(rec) or base) .. (heroic and " (heroisch)" or ""), raid = rec[1] == "X" }
+                if not seen[base] then
+                    seen[base] = true
+                    out[#out + 1] = { key = base, text = Gear.PlaceName(rec) or base, raid = rec[1] == "X" }
                 end
             end
         end
@@ -816,13 +810,11 @@ function ns.BisPlaces()
 end
 
 local function placeFor(key)
-    local base, h = key:match("^(.-)(/H)$")
-    base = base or key
     local text
     for _, p in ipairs(ns.BisPlaces()) do
         if p.key == key then text = p.text end
     end
-    return { key = key, keys = { [base] = true }, heroic = h ~= nil, text = text }
+    return { key = key, keys = { [key] = true }, text = text }
 end
 
 local hereKey, herePlace, hereList
@@ -841,7 +833,7 @@ function ns.BisHere(placeKey, opts)
     local at = {}
     for n, rec in ipairs(d.S) do
         local p = Gear.PlaceOf(rec)
-        if p and place.keys[p] and (rec[1] ~= "D" or ((rec[7] == 1) == (place.heroic and true or false))) then at[n] = rec end
+        if p and place.keys[p] then at[n] = rec end
     end
     local c = ns.BisChar()
     local exItem = o.exclude and o.exclude.item or {}
