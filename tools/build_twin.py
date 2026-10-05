@@ -55,6 +55,10 @@ cut('    <div class="panel" id="myCharPanel"', '    <div class="two">')
 # ---------------------------------------------------------------- settings: editors, accounts, history
 cut('      <div class="stack">\n          <div class="panel" id="editorsPanel"', '    </div>\n  </section>\n</div>\n<div id="tip" hidden></div>')
 
+# the addon's wishlist goes to the live site; this copy has no Wishlist tab
+sub('This text holds a wishlist. Paste it on the Wishlist tab.</p>',
+    'This text holds a wishlist. Paste it on the Wishlist tab of the live site.</p>')
+
 # the addon download lives on the live site, not next to the artifact
 sub('<a href="addon/Amisia.zip" download>download</a>',
     '<a href="https://amisia-loot.github.io/addon/Amisia.zip" target="_blank" rel="noopener">download from the live site</a>')
@@ -280,7 +284,8 @@ js = s[s.index('<script>\n(function(){'):s.rindex('})();')]
 defined = set(re.findall(r'(?:^|\s)(?:async )?function ([A-Za-z0-9_]+)', js)) | set(re.findall(r'(?:const|let|var) ([A-Za-z0-9_]+)\s*=', js))
 gone = [n for n in ('renderWantLine', 'wishesFor', 'wishesHere', 'wishGot', 'prioTag', 'renderMyChar', 'matWrite',
                     'matOptions', 'renderHistory', 'loadFromServer', 'refreshRole', 'withTimeout', 'startPresence',
-                    'heartbeat', 'renderOnline', 'wclNight', 'wclLoad', 'wclRender', 'wclResolve')
+                    'heartbeat', 'renderOnline', 'wclNight', 'wclLoad', 'wclRender', 'wclResolve',
+                    'wishImportPlan', 'wishAddonText', 'renderWishPaste')
         if re.search(r'\b' + n + r'\s*\(', js) and n not in defined]
 assert not gone, 'calls a function this copy no longer has: ' + ', '.join(gone)
 

@@ -321,3 +321,67 @@ def test_strange_log_lines_are_ignored():
     s = read_back(text)['sessions'][0]
     assert [x['name'] for x in s['kills']] == ['Supremus'] and 'present' not in s['kills'][0], 'an EP without its EK is dropped'
     assert s['bench'] == [], 'a BN without a name or its fields is dropped'
+
+
+BIS = os.path.join(ROOT, 'addon', 'Amisia', 'Bis.lua')
+
+
+def export_wishes_from_addon():
+    """Records a raid, exports it, puts three wishes on the list (one with a note that holds spaces
+    and a bar) and exports the raid again; returns both raid exports and the wishlist text."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        STUB.player = "Vulo Sturmwind"
+        STUB.roster = { { name = "Vulo Sturmwind", class = "WARRIOR" }, { name = "Fraktur", class = "SHAMAN" } }
+        STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+        local epic = STUB.item(32235, "Cursed Vision of Sargeras", 4)
+        STUB.fire("CHAT_MSG_LOOT", ("%s receives loot: %s."):format("Fraktur", epic))
+        local s = NS.Active()
+        BEFORE, HASH_BEFORE = NS.ExportText({ s }), NS.SessionHash(s)
+        for _, id in ipairs({ 28830, 29434, 30000 }) do
+            STUB.item(id, "Item " .. id, 4)
+            STUB.items[id].equipLoc = "INVTYPE_CHEST"
+        end
+        assert(NS.WishAdd(28830, 3, "nur MS | bitte"))
+        STUB.tick(5)
+        assert(NS.WishAdd(29434, 1))
+        assert(NS.WishAdd(30000))
+        AFTER, HASH_AFTER = NS.ExportText({ s }), NS.SessionHash(s)
+        WISHES = NS.WishExportText()
+    ''')
+    g = lua.globals()
+    return g.BEFORE, g.AFTER, g.HASH_BEFORE, g.HASH_AFTER, g.WISHES
+
+
+@pytest.fixture(scope='module')
+def wishes():
+    before, after, hb, ha, text = export_wishes_from_addon()
+    return before, after, hb, ha, text, read_back(text)
+
+
+def test_every_wish_line_the_addon_writes_is_read(wishes):
+    import re
+    written = set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(BIS, encoding='utf-8').read(), re.M))
+    assert 'WL' in written, 'the wishlist lines are found in Bis.lua'
+    read = set(wishes[5]['letters'])
+    assert not (written - read), 'the addon writes lines the site throws away: ' + ', '.join(sorted(written - read))
+
+
+def test_the_wishes_reach_the_site(wishes):
+    text, out = wishes[4], wishes[5]
+    assert text.startswith('#AMISIA 2 Vulo_Sturmwind\n') and text.endswith('\n#END')
+    assert out['blocks'] == 1 and out['rest'] == '' and out['sessions'] == [], 'a wishlist is no raid'
+    w = out['wishes']
+    assert [(x['item'], x['prio'], x['name']) for x in w] == [
+        (28830, 3, 'Vulo Sturmwind'), (30000, 2, 'Vulo Sturmwind'), (29434, 1, 'Vulo Sturmwind')], w
+    assert w[0]['note'] == 'nur MS bitte', 'the bar is gone, the spaces stay: ' + w[0]['note']
+    assert w[1]['note'] == '' and w[2]['note'] == ''
+    assert all(x['at'] > 0 for x in w) and w[2]['at'] - w[0]['at'] == 5, 'the time of each wish'
+
+
+def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
+    before, after, hb, ha = wishes[:4]
+    assert before == after, 'wishes are not part of the raid export'
+    assert hb == ha, 'nor of its fingerprint'
+    assert '\nWL ' not in after

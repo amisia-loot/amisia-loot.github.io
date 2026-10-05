@@ -598,8 +598,16 @@ tr.got td{opacity:.5}
           <div class="field"><label for="wiShow">Show</label><select class="inp" id="wiShow"><option value="open">Still needed</option><option value="all">Everything</option><option value="got">Already received</option></select></div>
           <div class="spacer"></div>
           <div class="count" id="wiCount"></div>
+          <button class="btn" id="wiAddon" type="button">Copy for the addon</button>
         </div>
         <p class="crhint" id="wiHint"></p>
+        <div class="panel" id="wiAddonPanel" hidden>
+          <div class="panel-h">Wishlist for the Amisia addon</div>
+          <div class="panel-b stack">
+            <textarea class="inp" id="wiAddonText" readonly spellcheck="false" style="min-height:90px"></textarea>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><button class="btn sm primary" id="wiAddonCopy" type="button">Copy</button><span class="muted" style="font-size:13px">Every wish still needed in this game. In game an officer types <code>/amisia wuensche</code>, pastes it into the box and presses <b>Importieren</b>. Tooltips, loot windows and the award dialog then show who wants an item.</span></div>
+          </div>
+        </div>
         <div class="tblwrap"><table id="wishTable"><thead><tr><th>Item</th><th>Boss</th><th>Raider</th><th>Priority</th><th>Note</th><th></th></tr></thead><tbody id="wishBody"></tbody></table></div>
       </div>
       <div class="stack" id="wishSide">
@@ -615,6 +623,15 @@ tr.got td{opacity:.5}
             </form>
             <div id="wishLogin" hidden><p class="muted" style="margin:0 0 10px;font-size:13px">Sign in with Discord to put items on a wishlist. Anyone in the guild can do this, no editor rights needed.</p><button class="btn primary" id="wishSignIn">Sign in</button></div>
             <p class="muted" style="margin:0;font-size:13px">An item you were already awarded counts as received and drops out of the list.</p>
+          </div>
+        </div>
+        <div class="panel" id="wishPastePanel" hidden>
+          <div class="panel-h">Paste from the addon</div>
+          <div class="panel-b stack matform">
+            <textarea class="inp" id="wpText" spellcheck="false" style="min-height:90px" placeholder="#AMISIA 2 Name&#10;WL 28830 3 …"></textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="wpCheck" type="button">Check</button><button class="btn primary" id="wpAdd" type="button" hidden>Add wishes</button></div>
+            <div id="wpPreview"></div>
+            <p class="muted" style="margin:0;font-size:13px">In game: <code>/amisia wunsch</code>, then <b>Für die Website</b>, <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here. Only wishes that are new for the raider are added.</p>
           </div>
         </div>
         <div class="panel">
@@ -759,6 +776,7 @@ tr.got td{opacity:.5}
               <label class="mini"><input type="checkbox" id="glDups"> Also import entries the ledger already has</label>
               <label class="mini">Dates like 04/09/2026 are <select class="inp" id="glDateOrder" style="width:auto;padding:3px 26px 3px 8px"><option value="dmy">day/month/year</option><option value="mdy">month/day/year</option></select></label>
             </div>
+            <p class="crhint" id="glWishHint" style="margin:0" hidden>This text holds a wishlist. Paste it on the Wishlist tab.</p>
           </div>
         </div>
         <div class="panel" id="impBar" hidden>
@@ -2146,9 +2164,11 @@ function renderWishForm(){
   $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + itemKind(i) + '</option>').join('')
     : '<option value="">Pick the boss first</option>';
   $('#wishForm').hidden = !user; $('#wishLogin').hidden = !!user;
+  $('#wishPastePanel').hidden = !user;
 }
 function renderWishes(){
   renderWishForm();
+  if (!$('#wiAddonPanel').hidden) $('#wiAddonText').value = wishAddonText(WISHES);
   const all = wishesHere();
   const q = $('#wiSearch').value.trim().toLowerCase(), rf = $('#wiRaider').value, grp = $('#wiGroup').value, show = $('#wiShow').value;
   const keep = $('#wiRaider').value;
@@ -2245,6 +2265,85 @@ $('#wishBody').addEventListener('click', async ev => {
   loadWishes();
 });
 ['#wiSearch','#wiRaider','#wiGroup','#wiShow'].forEach(s => $(s).addEventListener('input', renderWishes));
+// What "Paste from the addon" would do with the wishes of the addon's text (amParseWishes): per wish
+// the raider by name (as the award import finds one), the item, the boss it drops from and a status:
+// new, dup (on the raider's list already, or twice in this paste), got (already received), noitem
+// (not in the loot tables), noraider (not on the roster) or limit (over 30 open wishes).
+function wishImportPlan(wishes){
+  const open = {}, seen = new Set(), here = wishesHere();
+  for (const w of here) if (!wishGot(w)) open[w.raider] = (open[w.raider] || 0) + 1;
+  return wishes.map(x => {
+    const raider = state.raiders.find(r => r.name.toLowerCase() === String(x.name).toLowerCase()) || null;
+    const it = ITEM[x.item] || null, key = raider ? raider.id + '|' + x.item : '';
+    let status = 'new';
+    if (!it) status = 'noitem';
+    else if (!raider) status = 'noraider';
+    else if (seen.has(key) || here.some(w => w.raider === raider.id && w.item === x.item)) status = 'dup';
+    else if (wishGot({raider: raider.id, item: x.item})) status = 'got';
+    else if ((open[raider.id] || 0) >= 30) status = 'limit';
+    if (raider) seen.add(key);
+    if (status === 'new') open[raider.id] = (open[raider.id] || 0) + 1;
+    return Object.assign({}, x, {raider, it, boss: it && it.sources.length ? it.sources[0] : null, status});
+  });
+}
+// The open wishes of this game as text for the Amisia addon (its gear page, view "Gilde"):
+// "#AMISIA-WL 1 <game> <date>", one "W <item> <prio> <raider, _ for a space> [<note>]" per wish by
+// item, then priority, and "#END". Bars and line breaks never reach the game.
+function wishAddonText(wishes){
+  const one = s => String(s == null ? '' : s).replace(/[\r\n|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const nameOf = w => { const r = raiderById(w.raider); return one(r ? r.name : w.raider_name); };
+  const rows = wishes.filter(w => w.game === gameKey && !wishGot(w))
+    .sort((a, b) => a.item - b.item || b.prio - a.prio || nameOf(a).localeCompare(nameOf(b)));
+  const lines = ['#AMISIA-WL 1 ' + gameKey + ' ' + today()];
+  for (const w of rows) {
+    const name = nameOf(w).replace(/ /g, '_'), note = one(w.note), p = Number(w.prio);
+    if (name) lines.push('W ' + w.item + ' ' + ([1, 2, 3].includes(p) ? p : 2) + ' ' + name + (note ? ' ' + note : ''));
+  }
+  lines.push('#END');
+  return lines.join('\n');
+}
+let wishPaste = [];   // the checked plan of "Paste from the addon"
+const WP_STATUS = {new: 'new', dup: 'already on the list', got: 'already received', noitem: 'not in the loot tables', noraider: 'unknown raider', limit: 'over the limit of 30'};
+function renderWishPaste(){
+  const n = wishPaste.filter(p => p.status === 'new').length;
+  $('#wpAdd').hidden = !n; $('#wpAdd').textContent = 'Add ' + n + ' wish' + (n === 1 ? '' : 'es');
+  if (!wishPaste.length) { $('#wpPreview').innerHTML = ''; return; }
+  $('#wpPreview').innerHTML = '<div class="tblwrap"><table><thead><tr><th>Item</th><th>Raider</th><th>Priority</th><th></th></tr></thead><tbody>'
+    + wishPaste.map(p => '<tr class="' + (p.status === 'new' ? '' : 'got') + '">'
+      + '<td><span class="nm">' + esc(p.it ? p.it.name : 'Item ' + p.item) + '</span>' + (p.note ? '<div class="faint" style="font-size:12px">' + esc(p.note) + '</div>' : '') + '</td>'
+      + '<td>' + (p.raider ? rName(p.raider) : '<span class="rname">' + esc(p.name) + '</span>') + '</td>'
+      + '<td>' + prioTag(p.prio) + '</td>'
+      + '<td><span class="st ' + (p.status === 'new' ? 'ok' : 'skip') + '">' + esc(WP_STATUS[p.status] || p.status) + '</span>'
+      + (p.status === 'noraider' && isEditor ? '<div class="faint" style="font-size:12px">add them on the Roster tab</div>' : '') + '</td></tr>').join('')
+    + '</tbody></table></div>';
+}
+$('#wpCheck').addEventListener('click', () => {
+  const wishes = amParseWishes(amSplit($('#wpText').value).blocks);
+  wishPaste = wishImportPlan(wishes);
+  if (!wishes.length) say('No wishes in the text. In game: /amisia wunsch, then Für die Website, and copy the whole box.');
+  renderWishPaste();
+});
+$('#wpAdd').addEventListener('click', async () => {
+  if (!SUPA || !user) return say('Sign in first.');
+  const rows = wishPaste.filter(p => p.status === 'new').map(p => ({game: gameKey, raider: p.raider.id, raider_name: p.raider.name, item: p.item, boss: p.boss,
+    prio: p.prio, note: p.note || '', created_by: user.id, created_name: userName()}));
+  if (!rows.length) return;
+  $('#wpAdd').disabled = true;
+  const {error} = await SUPA.from('wishlist').insert(rows);
+  $('#wpAdd').disabled = false;
+  if (error) return say(/duplicate|unique/i.test(error.message || '') ? 'Some of these wishes are already on the list. Press Check again.' : 'Could not save: ' + (error.message || error.code));
+  say('Added ' + rows.length + ' wish' + (rows.length === 1 ? '' : 'es') + '.');
+  $('#wpText').value = ''; wishPaste = []; renderWishPaste(); loadWishes();
+});
+$('#wiAddon').addEventListener('click', () => {
+  const panel = $('#wiAddonPanel'); panel.hidden = !panel.hidden;
+  if (!panel.hidden) { $('#wiAddonText').value = wishAddonText(WISHES); $('#wiAddonText').select(); }
+});
+$('#wiAddonCopy').addEventListener('click', async () => {
+  const ta = $('#wiAddonText'); ta.value = wishAddonText(WISHES); ta.select();
+  try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia wuensche, paste it into the box and press Importieren.'); }
+  catch (e) { say('Press Ctrl+C to copy the selected text.'); }
+});
 
 /* ---------------- matrix ---------------- */
 function renderMatrix(){
@@ -2692,6 +2791,20 @@ function amParseBank(blocks){
     if (snap && Object.keys(snap.items).length && (!best || snap.at > best.at)) best = snap;
   }
   return best;
+}
+// The wishes in the addon's text for the Wishlist tab (a text of its own, never in a raid export):
+// "WL <itemID> <prio 1-3> <epoch> <name> [<note>]", the name with "_" for a space. A line without
+// its numbers or its name is skipped; a priority out of range is medium.
+function amParseWishes(blocks){
+  const out = [];
+  for (const b of blocks) for (const raw of b.split(/\r?\n/)) {
+    const f = raw.trim().split(/\s+/);
+    if (f[0] === 'WL' && f.length >= 5 && /^\d+$/.test(f[1]) && /^\d+$/.test(f[3])) {
+      const item = Number(f[1]), p = Number(f[2]), name = glCleanName(f[4].replace(/_/g, ' '));
+      if (item && name) out.push({item, prio: [1, 2, 3].includes(p) ? p : 2, at: Number(f[3]), name, note: f.slice(5).join(' ').trim().slice(0, 80)});
+    }
+  }
+  return out;
 }
 // A count only replaces an older one, so pasting an old export never rolls the bank back.
 function amBankResolve(snap){
@@ -3231,9 +3344,12 @@ $('#glPreview').addEventListener('click', () => {
   const amSessions = blocks.length ? amParse(blocks) : [];
   amRows = amSessions.length ? amResolve(amSessions) : [];
   amBank = blocks.length ? amBankResolve(amParseBank(blocks)) : null;
+  // the addon's wishlist belongs on the Wishlist tab; the raid import leaves its lines alone
+  const wishes = blocks.length ? amParseWishes(blocks).length : 0;
+  $('#glWishHint').hidden = !wishes;
   const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
   glRows = (rawRows.length ? glResolve(rawRows) : []).concat(amGoneRows(amSessions));
-  if (!glRows.length && !amRows.length && !amBank) return say('Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
+  if (!glRows.length && !amRows.length && !amBank) return say(wishes ? $('#glWishHint').textContent : 'Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
 });
@@ -3276,7 +3392,7 @@ $('#glImport').addEventListener('click', () => {
   // checked again at import time: another officer may have saved a newer count since the preview
   const bank = amBank && amBank.status === 'ok' && (!state.bank || amBank.at > state.bank.at) ? amBank : null;
   if (bank) state.bank = {at: bank.at, date: bank.date, time: bank.time, by: bank.by, filled: bank.filled, tabs: bank.tabs, total: bank.total, items: bank.items};
-  glRows = []; amRows = []; amBank = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true;
+  glRows = []; amRows = []; amBank = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; $('#glWishHint').hidden = true;
   markDirty();
   const said = [];
   if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
