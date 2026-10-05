@@ -368,3 +368,51 @@ def test_weights_cover_every_class_with_a_unit(tmp_path):
             assert sp.all.unit in ('AP', 'SP', 'HEAL', 'STA') and sp.all[sp.all.unit] == 1, f'{cls} {sp.key}'
     assert w.specs.WARRIOR[1].all.OHDPS == 0.5 and w.specs.MAGE[1].all.SP_ARCANE == 1
     assert [w.specs.DRUID[i].key for i in range(1, 5)] == ['balance', 'feral', 'bear', 'resto']
+
+
+def test_crafted_goggles_and_alchemist_stones_need_their_profession(tmp_path):
+    atlas = {'instances': [], 'factions': [], 'vendors': [], 'world': [], 'tokens': {},
+             'names': {'32494': 'Destruction Holo-gogs', '34356': 'Surestrike Goggles v3.0', '35749': "Sorcerer's Alchemist Stone",
+                       '23824': 'Rocket Boots Xtreme', '23838': "Foreman's Enchanted Helmet", '21871': 'Frozen Shadoweave Robe'},
+             'crafts': [{'item': 32494, 'prof': 'engineering', 'skill': 350}, {'item': 34356, 'prof': 'engineering', 'skill': 375},
+                        {'item': 35749, 'prof': 'alchemy', 'skill': 375}, {'item': 23824, 'prof': 'engineering', 'skill': 355},
+                        {'item': 23838, 'prof': 'engineering', 'skill': 375}, {'item': 21871, 'prof': 'tailoring', 'skill': 375}]}
+    src, rows, _ = build_bis.build(atlas, {}, {})
+    assert rows[32494][0][9] == [202, 350] and rows[34356][0][9] == [202, 375], 'engineering optics'
+    assert rows[35749][0][9] == [171, 375], 'alchemist stones'
+    assert rows[23824][0][9] == 0 and rows[23838][0][9] == 0 and rows[21871][0][9] == 0, 'worn by anyone'
+    out = tmp_path / 'BisDataTBC.lua'
+    build_bis.write_lua(str(out), src, rows, '2026-10-05')
+    text = out.read_text(encoding='utf-8')
+    assert '[32494] = {"", 0, 0, 0, 0, 0, 0, 0, 0, {202, 350}, ' in text
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    ns = lua.eval('{ IsForever = function() return false end }')
+    lua.eval('function(s, ns) return assert(loadstring(s))("Amisia", ns) end')(text, ns)
+    assert ns.GEAR.I[35749][10][1] == 171 and ns.GEAR.I[35749][10][2] == 375
+
+
+def test_client_tables_carry_the_required_skill_rank(tmp_path):
+    item = tmp_path / 'Item.csv'
+    item.write_text('ID,ClassID,SubclassID,InventoryType\n32494,4,1,1\n', encoding='utf-8')
+    sparse = tmp_path / 'ItemSparse.csv'
+    sparse.write_text('ID,AllowableClass,ItemDelay,RequiredSkill,RequiredSkillRank,ItemLevel,RequiredLevel,OverallQualityID,Bonding,'
+                      'InventoryType\n32494,-1,0,202,350,127,70,4,1,1\n', encoding='utf-8')
+    out = tmp_path / 'items.json'
+    build_bis.refresh_items(str(item), str(sparse), {32494}, path=str(out))
+    info = json.loads(out.read_text(encoding='utf-8'))
+    assert info['items']['32494'] == ['HEAD', 4, 1, 70, 4, 1, 127, 0, 0, [202, 350]]
+
+
+def test_the_real_data_marks_goggles_and_stones():
+    text = open(build_bis.OUT, encoding='utf-8').read()
+    assert '[32494] = {"", 0, 0, 0, 0, 0, 0, 0, 0, {202, 350}, ' in text, 'Destruction Holo-gogs'
+    assert '[35749] = {"", 0, 0, 0, 0, 0, 0, 0, 0, {171, 375}, ' in text, "Sorcerer's Alchemist Stone"
+
+
+def test_casters_weigh_spell_haste_and_fighters_physical_haste():
+    for cls, key, name, role, unit, w in build_bis.OWN_TBC:
+        if unit in ('SP', 'HEAL'):
+            assert 'HASTE' not in w and w.get('SHASTE', 0) > 0, f'{cls} {key}'
+        else:
+            assert 'SHASTE' not in w, f'{cls} {key}'

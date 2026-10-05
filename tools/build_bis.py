@@ -101,6 +101,26 @@ GEAR_SECTION = re.compile(r'^(Weapons|Armor)( - |$)|smith$|^Stones$')
 RECIPE_NAME = re.compile(r'^(Pattern|Plans|Design|Schematic|Formula|Recipe|Manual|Technique)\s*:')
 NOT_GEAR_IDS = {29434}   # Badge of Justice
 
+# Items that need a profession to be worn (field 10 of a row: {skill line, rank}). The loot tables
+# do not say so, so the rule comes from what TBC makes: every piece of head gear an engineer makes
+# with an optical name (goggles, specs, lens, shades, holo-gogs) and every piece of gear an
+# alchemist makes (the alchemist stones and the Mercurial Stone) needs that profession at the
+# recipe's skill. Other engineering gear (rocket boots, the foreman's helmets, the belt, guns) and
+# everything else can be worn by anyone. The client tables (--itemsparse) say it for every item and
+# win; the addon also reads the requirement line from the client's tooltip of a crafted item.
+SKILL_LINE = {'engineering': 202, 'alchemy': 171}
+ENGINEERING_OPTICS = re.compile(r'\b(Goggles|Specs|Lens|Shades|Holo-gogs)\b', re.I)
+
+
+def wear_profession(prof, name):
+    """The skill line an item made by a profession needs to be worn, or None (see SKILL_LINE)."""
+    if prof == 'alchemy':
+        return SKILL_LINE['alchemy']
+    if prof == 'engineering' and ENGINEERING_OPTICS.search(name or ''):
+        return SKILL_LINE['engineering']
+    return None
+
+
 # Item.csv InventoryType -> equip location; shirts, tabards, bags, ammo and quivers stay out.
 INVENTORY_TYPE = {1: 'HEAD', 2: 'NECK', 3: 'SHOULDER', 5: 'CHEST', 6: 'WAIST', 7: 'LEGS', 8: 'FEET', 9: 'WRIST',
                   10: 'HAND', 11: 'FINGER', 12: 'TRINKET', 13: 'WEAPON', 14: 'SHIELD', 15: 'RANGED', 16: 'CLOAK',
@@ -114,9 +134,10 @@ def log(*a):
 
 # ---------------------------------------------------------------- stat weights (Amisia's own)
 # Level 70. Ratings per percent (as the planner scores them), DEF per defence point, the rest per
-# point; GEM and META per socket. unit names the stat a point of score is worth. Starting values
-# after the usual rules of thumb (strength gives warriors 2 attack power, hit up to the cap counts
-# high, healers value healing and mana); change them here and rebuild.
+# point; GEM and META per socket. TBC splits haste like hit and crit: HASTE is physical haste for
+# weapon fighters, SHASTE spell haste for casters and healers. unit names the stat a point of score
+# is worth. Starting values after the usual rules of thumb (strength gives warriors 2 attack power,
+# hit up to the cap counts high, healers value healing and mana); change them here and rebuild.
 OWN_TBC = [
     ('WARRIOR', 'dps', 'Waffen/Furor', 'dps', 'AP',
      dict(STR=2.0, AGI=1.0, AP=1, CRIT=29, HIT=24, HASTE=19, EXP=25, STA=0.05, DPS=14, OHDPS=0.5, GEM=16, META=30)),
@@ -124,7 +145,7 @@ OWN_TBC = [
      dict(STA=1, DEF=2.0, DODGE=18, PARRY=15, BLOCK=6, BLOCKVAL=0.5, ARMOR=0.06, AGI=0.6, STR=0.4, HIT=8, EXP=10,
           AP=0.1, DPS=3, GEM=12, META=20)),
     ('PALADIN', 'holy', 'Heilig', 'heal', 'HEAL',
-     dict(HEAL=1, INT=1.1, MP5=2.0, SCRIT=14, HASTE=10, SPI=0.1, STA=0.1, GEM=18, META=20)),
+     dict(HEAL=1, INT=1.1, MP5=2.0, SCRIT=14, SHASTE=10, SPI=0.1, STA=0.1, GEM=18, META=20)),
     ('PALADIN', 'tank', 'Schutz', 'tank', 'STA',
      dict(STA=1, DEF=2.0, DODGE=18, PARRY=15, BLOCK=8, BLOCKVAL=0.6, ARMOR=0.06, SP=0.6, INT=0.3, AGI=0.5, HIT=6,
           EXP=6, MP5=1, DPS=1, GEM=12, META=20)),
@@ -135,34 +156,34 @@ OWN_TBC = [
     ('ROGUE', 'dps', 'Schurke', 'dps', 'AP',
      dict(AGI=1.8, STR=1.1, AP=1, CRIT=22, HIT=25, HASTE=19, EXP=25, STA=0.05, DPS=14, OHDPS=0.5, GEM=14, META=30)),
     ('PRIEST', 'holy', 'Heilig/Disziplin', 'heal', 'HEAL',
-     dict(HEAL=1, SPI=0.8, INT=0.8, MP5=2.0, SCRIT=8, HASTE=12, STA=0.1, GEM=18, META=20)),
+     dict(HEAL=1, SPI=0.8, INT=0.8, MP5=2.0, SCRIT=8, SHASTE=12, STA=0.1, GEM=18, META=20)),
     ('PRIEST', 'shadow', 'Schatten', 'dps', 'SP',
-     dict(SP=1, SP_SHADOW=1, SHIT=14, SCRIT=8, HASTE=12, INT=0.2, SPI=0.15, MP5=0.8, STA=0.05, GEM=9, META=20)),
+     dict(SP=1, SP_SHADOW=1, SHIT=14, SCRIT=8, SHASTE=12, INT=0.2, SPI=0.15, MP5=0.8, STA=0.05, GEM=9, META=20)),
     ('SHAMAN', 'ele', 'Elementar', 'dps', 'SP',
-     dict(SP=1, SP_NATURE=1, SHIT=14, SCRIT=13, HASTE=12, INT=0.3, MP5=0.8, GEM=9, META=20)),
+     dict(SP=1, SP_NATURE=1, SHIT=14, SCRIT=13, SHASTE=12, INT=0.3, MP5=0.8, GEM=9, META=20)),
     ('SHAMAN', 'enh', 'Verstärkung', 'dps', 'AP',
      dict(STR=2.0, AGI=0.9, AP=1, CRIT=22, HIT=25, HASTE=20, EXP=25, INT=0.3, MP5=1, DPS=14, OHDPS=0.5, GEM=16, META=30)),
     ('SHAMAN', 'resto', 'Wiederherstellung', 'heal', 'HEAL',
-     dict(HEAL=1, MP5=2.2, INT=0.8, SCRIT=10, HASTE=14, SPI=0.2, STA=0.1, GEM=18, META=20)),
+     dict(HEAL=1, MP5=2.2, INT=0.8, SCRIT=10, SHASTE=14, SPI=0.2, STA=0.1, GEM=18, META=20)),
     ('MAGE', 'arcane', 'Arkan', 'dps', 'SP',
-     dict(SP=1, SP_ARCANE=1, SHIT=14, SCRIT=11, HASTE=13, INT=0.7, SPI=0.3, MP5=0.5, GEM=9, META=20)),
+     dict(SP=1, SP_ARCANE=1, SHIT=14, SCRIT=11, SHASTE=13, INT=0.7, SPI=0.3, MP5=0.5, GEM=9, META=20)),
     ('MAGE', 'fire', 'Feuer', 'dps', 'SP',
-     dict(SP=1, SP_FIRE=1, SHIT=14, SCRIT=11, HASTE=13, INT=0.4, SPI=0.2, MP5=0.5, GEM=9, META=20)),
+     dict(SP=1, SP_FIRE=1, SHIT=14, SCRIT=11, SHASTE=13, INT=0.4, SPI=0.2, MP5=0.5, GEM=9, META=20)),
     ('MAGE', 'frost', 'Frost', 'dps', 'SP',
-     dict(SP=1, SP_FROST=1, SHIT=14, SCRIT=11, HASTE=13, INT=0.4, SPI=0.2, MP5=0.5, GEM=9, META=20)),
+     dict(SP=1, SP_FROST=1, SHIT=14, SCRIT=11, SHASTE=13, INT=0.4, SPI=0.2, MP5=0.5, GEM=9, META=20)),
     ('WARLOCK', 'affli', 'Gebrechen', 'dps', 'SP',
-     dict(SP=1, SP_SHADOW=1, SHIT=15, SCRIT=5, HASTE=12, INT=0.2, SPI=0.2, STA=0.1, GEM=9, META=20)),
+     dict(SP=1, SP_SHADOW=1, SHIT=15, SCRIT=5, SHASTE=12, INT=0.2, SPI=0.2, STA=0.1, GEM=9, META=20)),
     ('WARLOCK', 'destro', 'Zerstörung', 'dps', 'SP',
-     dict(SP=1, SP_SHADOW=1, SP_FIRE=0.3, SHIT=15, SCRIT=13, HASTE=12, INT=0.2, SPI=0.1, STA=0.1, GEM=9, META=20)),
+     dict(SP=1, SP_SHADOW=1, SP_FIRE=0.3, SHIT=15, SCRIT=13, SHASTE=12, INT=0.2, SPI=0.1, STA=0.1, GEM=9, META=20)),
     ('DRUID', 'balance', 'Gleichgewicht', 'dps', 'SP',
-     dict(SP=1, SP_ARCANE=0.6, SP_NATURE=0.4, SHIT=14, SCRIT=11, HASTE=12, INT=0.4, SPI=0.2, MP5=0.6, GEM=9, META=20)),
+     dict(SP=1, SP_ARCANE=0.6, SP_NATURE=0.4, SHIT=14, SCRIT=11, SHASTE=12, INT=0.4, SPI=0.2, MP5=0.6, GEM=9, META=20)),
     # feral attack power counts through AP for druids (Gear.Score)
     ('DRUID', 'feral', 'Wilder Kampf (Katze)', 'dps', 'AP',
      dict(STR=2.2, AGI=2.0, AP=1, CRIT=22, HIT=25, HASTE=10, EXP=25, GEM=16, META=30)),
     ('DRUID', 'bear', 'Bär', 'tank', 'STA',
      dict(STA=1, AGI=1.0, ARMOR=0.1, DODGE=15, DEF=1.0, STR=0.4, AP=0.1, HIT=6, EXP=8, CRIT=3, GEM=12, META=20)),
     ('DRUID', 'resto', 'Wiederherstellung', 'heal', 'HEAL',
-     dict(HEAL=1, SPI=0.9, INT=0.8, MP5=1.6, HASTE=12, SCRIT=4, STA=0.1, GEM=18, META=20)),
+     dict(HEAL=1, SPI=0.9, INT=0.8, MP5=1.6, SHASTE=12, SCRIT=4, STA=0.1, GEM=18, META=20)),
 ]
 
 
@@ -639,8 +660,10 @@ def refresh_items(item_csv, sparse_csv, ids, path=ITEMS_JSON):
             mask = mask & ALL_CLASSES if mask > 0 and mask & ALL_CLASSES != ALL_CLASSES else 0
             delay = num(row, 'ItemDelay')
             speed = round(delay / 1000, 2) if delay > 0 and cls == build_scan.CLASS_WEAPON else 0
+            line = num(row, 'RequiredSkill')
+            need = [line, num(row, 'RequiredSkillRank')] if line > 0 else 0
             items[str(iid)] = [loc, cls, sub, num(row, 'RequiredLevel'), num(row, 'OverallQualityID'), num(row, 'Bonding'),
-                               num(row, 'ItemLevel'), mask, speed, num(row, 'RequiredSkill')]
+                               num(row, 'ItemLevel'), mask, speed, need]
     with open(path, 'w', encoding='utf-8') as fh:
         json.dump({'source': [os.path.basename(item_csv), os.path.basename(sparse_csv)], 'items': items,
                    'not_gear': sorted(not_gear)}, fh, indent=0, sort_keys=True)
@@ -725,9 +748,14 @@ def build(atlas, phases, german, items_info=None, scan_items=None):
         for iid in atlas['world']:
             if not skip(iid):
                 note(iid, num)
+    wear = {}             # item id -> [skill line, rank] it needs to be worn
     for c in atlas['crafts']:
         if not skip(c['item']):
             note(c['item'], src.add('C', c['prof'], c['skill']))
+            line = wear_profession(c['prof'], names.get(c['item'], ''))
+            if line:
+                old = wear.get(c['item'])
+                wear[c['item']] = [line, min(c['skill'], old[1]) if old else c['skill']]
 
     rows = {}
     for iid, nums in found.items():
@@ -748,6 +776,8 @@ def build(atlas, phases, german, items_info=None, scan_items=None):
         row = list(row)
         if masks.get(iid):
             row[7] = masks[iid] if not row[7] else (row[7] & masks[iid]) or masks[iid]
+        if not row[9] and iid in wear:
+            row[9] = list(wear[iid])
         rows[iid] = (row, nums)
     for iid, (_, nums) in rows.items():
         for n in nums:
@@ -784,9 +814,9 @@ def write_lua(out, src, rows, built, stats=None):
         '-- are English (raid bosses German where known); the client names raids and dungeons by area id.',
         '-- Z: zone names by uiMapID. ST: [itemID] = the client stats a scan saw ("STRENGTH=5;...").',
         '-- I: [itemID] = {equipLoc, classID, subclassID, level, quality, bind, item level, class mask, weapon',
-        '-- speed, profession needed to wear it, source...}. An empty equipLoc means unknown: the addon fills',
-        '-- the row from the client (Gear.FillRow). Class mask 0 means every class; set pieces of a tier',
-        '-- token carry their class.',
+        '-- speed, profession needed to wear it (0 or {skill line, rank}), source...}. An empty equipLoc means',
+        '-- unknown: the addon fills the row from the client (Gear.FillRow). Class mask 0 means every class;',
+        '-- set pieces of a tier token carry their class.',
         'ns.GEAR = {',
         f'    game = "tbc", cap = {CAP}, built = {lua_str(built)},',
         '    S = {',
@@ -801,7 +831,11 @@ def write_lua(out, src, rows, built, stats=None):
     lines.append('    I = {')
     for iid in sorted(rows):
         row, nums = rows[iid]
-        vals = [lua_str(row[0])] + [f'{v:g}' if isinstance(v, float) else str(v) for v in row[1:]]
+        def num(v):
+            if isinstance(v, (list, tuple)):
+                return '{' + ', '.join(num(x) for x in v) + '}'
+            return f'{v:g}' if isinstance(v, float) else str(v)
+        vals = [lua_str(row[0])] + [num(v) for v in row[1:]]
         vals += [str(renum[n]) for n in sorted(nums, key=lambda n: renum[n])]
         lines.append(f'        [{iid}] = {{' + ', '.join(vals) + '},')
     lines.append('    },')

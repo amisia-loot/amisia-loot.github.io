@@ -11,7 +11,10 @@ for id, row in pairs(d.I) do
     n = n + 1
     assert(type(id) == "number" and type(row[1]) == "string", "row of " .. tostring(id))
     assert(row[1] == "" or Gear.GROUP[row[1]], "equip location empty or known on " .. id)
-    for i = 2, 10 do assert(type(row[i]) == "number", "field " .. i .. " of " .. id) end
+    for i = 2, 9 do assert(type(row[i]) == "number", "field " .. i .. " of " .. id) end
+    -- field 10: 0, or { skill line, rank } for gear that needs a profession to be worn
+    assert(row[10] == 0 or (type(row[10]) == "table" and type(row[10][1]) == "number" and row[10][1] > 0
+        and type(row[10][2]) == "number"), "field 10 of " .. id)
     assert(#row >= Gear.FIRST_SOURCE, "every item has a source: " .. id)
     for i = Gear.FIRST_SOURCE, #row do
         local rec = d.S[row[i]]

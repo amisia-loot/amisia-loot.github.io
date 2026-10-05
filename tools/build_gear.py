@@ -889,8 +889,21 @@ def compact_stats(text, keys):
 
 
 # ---------------------------------------------------------------- Lua output
+_LUA_ESCAPES = {'\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r', '\t': '\\t'}
+
+
 def lua_str(s):
-    return '"' + str(s).replace('\\', '\\\\').replace('"', '\\"').replace('\n', ' ') + '"'
+    """A Lua string literal: quotes, backslashes and every control character escaped, so a name
+    with a line break or a stray control byte cannot break the generated file."""
+    out = []
+    for ch in str(s):
+        if ch in _LUA_ESCAPES:
+            out.append(_LUA_ESCAPES[ch])
+        elif ord(ch) < 32 or ord(ch) == 127:
+            out.append('\\%03d' % ord(ch))
+        else:
+            out.append(ch)
+    return '"' + ''.join(out) + '"'
 
 
 def lua_val(v):

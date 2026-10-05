@@ -50,7 +50,7 @@ STATS[7002] = { EMPTY_SOCKET_YELLOW = 2, ITEM_MOD_RESILIENCE_RATING = 5, ITEM_MO
 local s = Gear.ReadStats(7001)
 assert(s.SOCK == 2 and s.META == 1 and s.RES == 20 and s.SPEN == 10 and s.STA == 30, "sockets, resilience, penetration")
 s = Gear.ReadStats(7002)
-assert(s.SOCK == 2 and s.RES == 5 and s.SPEN == 3 and s.HASTE == 10, "long spellings and spell haste")
+assert(s.SOCK == 2 and s.RES == 5 and s.SPEN == 3 and s.SHASTE == 10 and not s.HASTE, "long spellings and spell haste")
 assert(near(Gear.Score({ SOCK = 2, META = 1 }, { GEM = 16, META = 30 }, 70), 62), "a gem per socket, the meta gem")
 assert(near(Gear.Score({ RES = 20, SPEN = 10 }, { STA = 1 }, 70), 0), "PvE weights ignore resilience and penetration")
 assert(near(Gear.Score({ RES = 20 }, { RES = 1 }, 70), 20))

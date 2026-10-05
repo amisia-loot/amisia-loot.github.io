@@ -266,3 +266,13 @@ def test_output_is_guarded_for_forever(tmp_path):
     wlines = wout.read_text(encoding='utf-8').split('\n')
     i = wlines.index('local _, ns = ...')
     assert wlines[i + 1] == 'if not ns.IsForever() then return end'
+
+
+def test_lua_strings_escape_control_characters():
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    for text in ['a\nb', 'a\rb', 'tab\there', 'bell\x07', 'zero\x00one', 'del\x7f', 'q"uote\\back', 'digit\x012']:
+        lit = build_gear.lua_str(text)
+        assert not any(ord(c) < 32 or ord(c) == 127 for c in lit), repr(lit)
+        assert lua.eval(lit) == text, (text, lit)
+    assert build_gear.lua_str('a\nb') == '"a\\nb"' and build_gear.lua_str('a\rb') == '"a\\rb"'

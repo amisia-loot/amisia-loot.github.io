@@ -1064,7 +1064,22 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
     end
     local list = extra[event]
     if list then
-        for _, fn in ipairs(list) do fn(arg1, ...) end
+        -- one failing handler must not keep the others from their event: each runs protected and
+        -- its error goes to the client's error handler once all have run
+        local failed
+        for _, fn in ipairs(list) do
+            local ok, err = pcall(fn, arg1, ...)
+            if not ok then
+                failed = failed or {}
+                failed[#failed + 1] = err
+            end
+        end
+        if failed then
+            local report = geterrorhandler and geterrorhandler()
+            for _, err in ipairs(failed) do
+                if report then report(err) end
+            end
+        end
     end
 end)
 

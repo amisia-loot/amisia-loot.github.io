@@ -227,15 +227,7 @@ end
 -- Own professions
 ---------------------------------------------------------------------------
 
-local PROF_BY_NAME = {
-    schneiderei = "tailoring", tailoring = "tailoring", lederverarbeitung = "leatherworking", leatherworking = "leatherworking",
-    schmiedekunst = "blacksmithing", blacksmithing = "blacksmithing", ingenieurskunst = "engineering", engineering = "engineering",
-    juwelenschleifen = "jewelcrafting", juwelierskunst = "jewelcrafting", jewelcrafting = "jewelcrafting",
-    alchemie = "alchemy", alchemy = "alchemy", verzauberkunst = "enchanting", enchanting = "enchanting",
-}
--- skill line ids, as the Forever client and the data's "profession needed to wear it" field give them
-local PROF_ID = { tailoring = 197, leatherworking = 165, blacksmithing = 164, engineering = 202, jewelcrafting = 755,
-    alchemy = 171, enchanting = 333 }
+local PROF_BY_NAME, PROF_ID = Gear.PROF_BY_NAME, Gear.PROF_ID
 local PROF_BY_ID = {}
 for k, v in pairs(PROF_ID) do PROF_BY_ID[v] = k end
 
