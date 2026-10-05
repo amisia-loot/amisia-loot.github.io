@@ -5,15 +5,14 @@ The loot tables were built without a quality for most items, and the page drew e
 as epic - a legendary like the Warglaive of Azzinoth looked like any other drop. The quality comes
 from the Wowhead tooltip endpoint, which still answers while the pages themselves are blocked.
 
-    python tools/fill_quality.py [tbc classic sod mop ...] [--all]
+    python tools/fill_quality.py [tbc ...] [--all]
 
 Only items without a quality are asked for, and every answer is kept in tools/item-quality.json,
 so a second run costs nothing. Epic is the default of the page, so only the others are written
-into the data file.
+into the data file. Only the TBC archive is served: Forever gets its quality from the item scan.
 """
 import json
 import os
-import re
 import sys
 import time
 import urllib.error
@@ -24,8 +23,8 @@ ROOT = os.path.dirname(HERE)
 DATA = os.path.join(ROOT, 'data')
 CACHE = os.path.join(HERE, 'item-quality.json')
 
-# The tooltip endpoint serves one game world per number.
-ENV = {'classic': 4, 'hardcore': 4, 'sod': 4, 'tbc': 5, 'mop': 15}
+# The tooltip endpoint serves one game world per number; only the TBC archive is looked up.
+ENV = {'tbc': 5}
 DEFAULT_Q = 4
 PAUSE = 0.12
 
@@ -109,8 +108,7 @@ def fill(game, cache):
 def main(argv):
     games = [a for a in argv if not a.startswith('-')]
     if '--all' in argv or not games:
-        games = [re.sub(r'\.js$', '', f) for f in sorted(os.listdir(DATA))
-                 if f.endswith('.js') and not f.startswith(('craft-', 'bossnames'))]
+        games = list(ENV)
     cache = load_cache()
     for game in games:
         fill(game, cache)

@@ -68,91 +68,46 @@ python tools/build_gear.py
 - Forever raids: drops the site recorded in `data/forever.js` for a zone that
   `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
   raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
-- Both files start with `if not ns.IsForever() then return end` next to the TOC load condition, so
-  only the Forever client loads them; they carry `game = "forever"`, `cap = 60`.
+- Both files carry `game = "forever"`, `cap = 60` and are loaded through the TOC condition
+  `[AllowLoadGameType camelot]`.
 
 It reads the WoW install (QuestieDB, OneForAll, AtlasLoot, RXP, SavedVariables), so it runs on the
 PC. `AMISIA_WOW_ROOT` overrides the WoW install path. Requires `lupa`.
 
-## build_bis.py
-
-Builds `addon/Amisia/BisDataTBC.lua` and `addon/Amisia/BisWeightsTBC.lua` for the gear page on
-TBC Anniversary: every item from the TBC loot tables (raids, dungeons normal and heroic, reputation
-rewards, Badge of Justice vendors, world epics, crafted gear), where it comes from, and the stat
-weights per class and spec at level 70.
-
-```
-python tools/build_bis.py [--refresh-atlas] [--item-csv <Item.csv> --itemsparse <ItemSparse.csv>]
-                          [--wow-root <path>] [--sv <Amisia.lua>...]
-```
-
-- The item list, sources and tier tokens come from AtlasLootClassic
-  (https://github.com/Hoizame/AtlasLootClassic, GPL-2.0), its TBC files only: the dungeon and raid
-  tables, the reputation tables, the badge vendors and world epics, the TBC crafting tables with
-  the recipe list (`Data/Profession.lua`, spell to made item) and `Data/Token.lua`. `--refresh-atlas`
-  downloads them from GitHub into `tools/cache/atlasloot-tbc/` (not in git) and keeps what is read
-  from them in `tools/bis_atlas_tbc.json` (in git, like `gear_wowsrc.json`), so a build needs no
-  network and gives the same file every time. `BisDataTBC.lua` names the source and licence in its
-  header. PvP gear, holiday items, mounts, pets, tabards and the recipes themselves stay out.
-- A tier token is no gear: each set piece behind it gets the token's raid and boss (with the token
-  id) and the class bit of its class.
-- Phases: raids after `PHASES.tbc` in `index.html`, badge vendors after their table (P1, P4, P5),
-  dungeons after AtlasLoot's `ContentPhaseBC` (Magisters' Terrace 5), everything else 1.
-- Names: item names, quality and icons come from the client in game; raid and dungeon names too,
-  through the area id. Raid boss names are German where `data/bossnames.js` shows a clearly German
-  one; the rest stay English (the script lists them). `--wow-root <WoW folder>` reads the German
-  names of every boss from the installed AtlasLootClassic's locale files instead (PC only).
-- Item type: without client tables every row starts empty and the addon fills slot, type, level,
-  quality and bind from the client in game. `--item-csv`/`--itemsparse` take wago.tools exports of
-  the Anniversary build (download them by hand in a browser: wago.tools does not allow automated
-  access), fill the rows, leave out what is no gear and know class limits and weapon speed; the
-  selection is kept in `tools/bis_tbc_items.json`.
-- `--sv` takes Amisia SavedVariables with an item scan made on Anniversary (`/amisia scan gear`) and
-  writes the client's stats into the file (`ST`), so the page needs no loading.
-- The weights (`OWN_TBC` in the script) are Amisia's own, written down for this build; no weights
-  of anyone else. Change them there and rebuild.
-- Both files start with `if ns.IsForever and ns.IsForever() then return end` next to the TOC load
-  condition `[AllowLoadGameType tbc]`, so only TBC Anniversary loads them.
-
-Runs on the N100 (no WoW install needed); only `--wow-root` and scans need the PC. Requires `lupa`.
-
-Licences of the data: AtlasLootClassic GPL-2.0 (TBC tables, `BisDataTBC.lua`), QuestieDB GPL-3.0
-and AtlasLootClassic GPL-2.0 (Forever tables, `GearData.lua`), QuestieDB GPL-3.0 (`MapData.lua`,
-`MapDataTBC.lua`, `map_questie.json`), RestedXP's Forever weights CC BY-NC-SA
-4.0 (`GearWeights.lua`), wago.tools exports are Blizzard's game data (`gear_itemsparse.json`,
-`bis_tbc_items.json`).
+Licences of the data: QuestieDB GPL-3.0 and AtlasLootClassic GPL-2.0 (Forever tables,
+`GearData.lua`), QuestieDB GPL-3.0 (`MapData.lua`, `map_questie.json`), RestedXP's Forever weights
+CC BY-NC-SA 4.0 (`GearWeights.lua`), wago.tools exports are Blizzard's game data
+(`gear_itemsparse.json`).
 
 ## build_map.py
 
-Builds `addon/Amisia/MapData.lua` (Forever) and `addon/Amisia/MapDataTBC.lua` (TBC Anniversary) for
-the map: where each source of the gear data stands, as up to four points `uiMapID:x:y` (x, y in
-hundredths of a percent) under a stable key per source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`,
-`U:<NPC id>`, `I:<instance id>`, `N:<dungeon name>`, `F:<faction id>`).
+Builds `addon/Amisia/MapData.lua` (WoW Forever) for the map: where each source of the gear data
+stands, as up to four points `uiMapID:x:y` (x, y in hundredths of a percent) under a stable key per
+source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>`,
+`N:<dungeon name>`).
 
 ```
-python tools/build_map.py [--refresh-questie] [--game forever|tbc|both]
+python tools/build_map.py [--refresh-questie] [--questie-ref REF]
 ```
 
 - NPC and object spawns, quest starters, dungeon entrances and the zone tables (area id to uiMapID,
   instance id to area) come from QuestieDB (https://github.com/Questie/QuestieDB, GPL-3.0), its
-  Forever and TBC databases. `--refresh-questie` downloads them from GitHub into
-  `tools/cache/questiedb/` (not in git, with the commit in `COMMIT`). Whenever that download is
-  complete, what the gear data needs from it is written to `tools/map_questie.json` (in git), so a
-  build without network gives the same files. Only the `[[return {...}]]` block of each database
-  file is run; the dungeon file runs with the expansion of its game, so only that expansion's
-  corrections apply.
-- Which keys are needed comes from `GearData.lua` and `BisDataTBC.lua`: quests by their quest id
-  (quest giver or start object; quests started by an item have no place), vendors, rare and named
-  mobs by name (an NPC in the source's zone wins, names found in several zones are reported) or by
-  NPC id once `build_gear.py` writes it, raids and dungeons by their entrance, reputation by the
-  quartermaster in `QUARTERMASTERS` (Amisia's own list). A spawn inside an instance stands for its
-  entrance.
+  Forever databases. `--refresh-questie` downloads them from GitHub into
+  `tools/cache/questiedb/forever/` (not in git, with the commit in `COMMIT`). Whenever that
+  download is complete, what the gear data needs from it is written whole to
+  `tools/map_questie.json` (in git), so a build without network gives the same file. Only the
+  `[[return {...}]]` block of each database file is run; the dungeon file runs with the Era
+  expansion, so only the Era corrections of the entrances apply.
+- Which keys are needed comes from `GearData.lua`: quests by their quest id (quest giver or start
+  object; quests started by an item have no place), vendors, rare and named mobs by name (an NPC in
+  the source's zone wins, names found in several zones are reported) or by NPC id once
+  `build_gear.py` writes it, raids and dungeons by their entrance. A spawn inside an instance
+  stands for its entrance.
 - Several spawns: spawns within 2 % are one point, then the four farthest apart are kept.
-- Both files start with their client guard (`if not (ns.IsForever and ns.IsForever()) then return end`
-  for Forever, the opposite for TBC) next to the TOC load condition. Keys are sorted, so a second
-  build gives the same file.
-- The report lists per source kind how many have a place, areas without a map, ambiguous names,
-  quests without a starter and factions without a quartermaster.
+- The file is loaded through the TOC condition `[AllowLoadGameType camelot]`. Keys are sorted, so a
+  second build gives the same file.
+- The report lists per source kind how many have a place, areas without a map, ambiguous names and
+  quests without a starter.
 
 Runs on the N100 (no WoW install needed). After `build_gear.py` ran on the PC (NPC ids, instance
 ids), run it again and commit. Requires `lupa`.
@@ -201,12 +156,17 @@ The pairs come from the locale files of the installed loot addon the tables were
 without an argument the copy under the WoW folder is read (`AMISIA_WOW_ROOT` overrides the path).
 Names that stay untranslated are listed at the end. Bump `BUILD_ID` afterwards.
 
+Archive only: `data/bossnames.js` holds just the TBC table (the read-only TBC archive of the site),
+so this runs again only if the archive ever needs new names, which is practically never. It reads
+the WoW install, so it runs on the PC.
+
 ## fill_quality.py
 
-Writes the item quality into `data/<game>.js`, so names and icon frames get their colour.
+Writes the item quality into `data/tbc.js`, so names and icon frames get their colour. Archive
+only: Forever gets its quality from the item scan (`build_scan.py`).
 
 ```
-python tools/fill_quality.py [tbc classic sod mop ...] [--all]
+python tools/fill_quality.py [tbc] [--all]
 ```
 
 Only items without a quality are looked up, through the Wowhead tooltip endpoint; every answer is
@@ -215,9 +175,10 @@ is not written. Bump `BUILD_ID` afterwards.
 
 ## sync_addon.ps1
 
-Mirrors `addon/Amisia` into the AddOns folders of both clients (`_anniversary_` and
-`_classic_beta_`): changed files are copied, files gone from the repository are deleted, folders
-and files starting with a dot (editor and Claude Code settings) stay out.
+Mirrors `addon/Amisia` into the AddOns folder of the Forever client (`_classic_beta_`): changed
+files are copied, files gone from the repository are deleted, folders and files starting with a
+dot (editor and Claude Code settings) stay out. A junctioned target is skipped (the N100 sends
+that copy through Syncthing), so on the N100 setup it has nothing to do.
 
 ```
 pwsh -File tools/sync_addon.ps1 [-Watch] [-Quiet] [-NoCheck]

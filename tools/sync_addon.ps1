@@ -3,10 +3,10 @@
 Copies addon/Amisia into the WoW AddOns folders, so a change in the repository is in the game.
 
 .DESCRIPTION
-The addon is written once in this repository and has to run in two clients: the TBC Anniversary
-install and the Forever beta. This mirrors the source folder into both: files that changed are
-copied, files that no longer exist in the repository are deleted, and a target whose AddOns folder
-is missing is skipped with a note instead of an error.
+The addon is written once in this repository and runs in the Forever beta. This mirrors the
+source folder into its AddOns folder: files that changed are copied, files that no longer exist in
+the repository are deleted, and a target whose AddOns folder is missing is skipped with a note
+instead of an error.
 
 A running WoW reads the files only while it loads, so a copy made during play takes effect at the
 next /reload or login.
@@ -36,9 +36,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $Source = Join-Path (Split-Path -Parent $PSScriptRoot) 'addon\Amisia'
-# Both clients get the same files; the TOC lists an interface version for each of them.
 $WowRoot = if ($env:AMISIA_WOW_ROOT) { $env:AMISIA_WOW_ROOT } else { 'C:\Program Files (x86)\World of Warcraft' }
-$Flavors = @('_anniversary_', '_classic_beta_')
+$Flavors = @('_classic_beta_')
 
 # One syntax error keeps the whole addon from loading, and the error is then only visible in the
 # client's log. So the files are parsed before they leave the repository. Node or the parser being
@@ -133,7 +132,7 @@ if (-not $Watch) {
     if (-not (Test-Lua)) { exit 1 }
     $n = Sync-Once
     if (-not $Quiet) {
-        if ($n -eq 0) { Write-Host 'Nichts zu tun, beide Ordner sind aktuell.' -ForegroundColor DarkGray }
+        if ($n -eq 0) { Write-Host 'Nichts zu tun, der Ordner ist aktuell.' -ForegroundColor DarkGray }
         else { Write-Host 'Fertig. Im Spiel wirkt es nach /reload.' }
     }
     exit 0

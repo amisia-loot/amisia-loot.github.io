@@ -14,8 +14,9 @@ copy, not from the source repository.
     python tools/build_bossnames.py [<locale folder>...]
 
 Without an argument the installed copy under the WoW folder is used; AMISIA_WOW_ROOT overrides
-where that is. Every game version of data/*.js is served, and what stays untranslated is listed
-at the end.
+where that is. Only the TBC archive is served (data/tbc.js, kept read-only on the site): the file
+holds nothing else, so this only needs to run again if the archive ever needs new names, which
+is practically never. What stays untranslated is listed at the end.
 """
 import json
 import os
@@ -29,9 +30,9 @@ OUT = os.path.join(DATA, 'bossnames.js')
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
 FLAVORS = ('_anniversary_', '_classic_beta_', '_classic_era_', '_retail_')
-# Every folder of the loot addon that carries boss names for a game the ledger knows.
-MODULES = ('AtlasLootClassic_DungeonsAndRaids', 'AtlasLootClassic_MoP_DungeonsAndRaids')
-GAMES = ('classic', 'tbc', 'sod', 'mop')
+# The folder of the loot addon that carries the boss names of the TBC archive.
+MODULES = ('AtlasLootClassic_DungeonsAndRaids',)
+GAMES = ('tbc',)
 
 AL_LINE = re.compile(r'^AL\["(.*?)"\]\s*=\s*"(.*?)"', re.M)
 
