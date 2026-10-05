@@ -32,6 +32,7 @@ BisWeightsTBC.lua [AllowLoadGameType tbc]
 Gear.lua
 GearFrame.lua
 Bis.lua
+GuildWishes.lua
 MainFrame.lua
 Pages\Overview.lua
 Pages\Raids.lua

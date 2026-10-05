@@ -62,8 +62,9 @@ local function candidate(slot, name)
 end
 
 -- The names to pick from: the raid's members, in the recording the group too, and the master
--- loot candidates of the slot; secret values skipped, spellings of one character merged.
-local function names(s, slot)
+-- loot candidates of the slot; secret values skipped, spellings of one character merged. Who wished
+-- for the item on the website's list comes first (GuildWishes.lua, bis.guildAward).
+local function names(s, slot, item)
     local out = {}
     local function add(name)
         name = ns.FullName(ns.Plain(name))
@@ -88,6 +89,8 @@ local function names(s, slot)
         end
     end
     table.sort(out)
+    local wished = ns.GuildWishAwardValues and ns.GuildWishAwardValues(item, out)
+    if wished then return wished end
     local values = {}
     for _, n in ipairs(out) do values[#values + 1] = { value = n, text = n } end
     return values
@@ -353,7 +356,7 @@ refresh = function()
         D.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
     D.raidText:SetText(("Raid: %s, %s"):format(s.zone or "?", shortDate(s.date)))
-    D.winner:SetValues(names(s, slot), "Anderer Name")
+    D.winner:SetValues(names(s, slot, st.item), "Anderer Name")
     D.winner:SetValue(st.winner)
     for _, k in ipairs(KINDS) do D.kinds[k]:SetOn(st.kind == k) end
     if not D.note:HasFocus() then D.note:SetText(st.note or "") end
