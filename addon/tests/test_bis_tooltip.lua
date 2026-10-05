@@ -1,10 +1,3 @@
---[[preload
--- the client's tooltip data processor: every registered post call is kept, the shown item comes
--- from TooltipUtil.GetDisplayedItem (both clients have them)
-STUB_TIP = {}
-_G.TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) STUB_TIP[#STUB_TIP + 1] = { kind = kind, fn = fn } end }
-_G.TooltipUtil = { GetDisplayedItem = function(tip) return tip.shownName, tip.shownLink end }
-]]
 -- The upgrade line on item tooltips (Bis.lua): one shared, protected hook for every Amisia line;
 -- one line per tooltip build; "Upgrade für dich: +N (Slot)", "Option N für Slot", "angelegt,
 -- Option 1", "Kein Upgrade" only with its switch, the weapon switch, the wish suffix; nothing for
@@ -15,7 +8,7 @@ local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 STUB.class, STUB.level = "WARRIOR", 70
 
-assert(#STUB_TIP == 1 and STUB_TIP[1].kind == Enum.TooltipDataType.Item, "one shared item tooltip hook: " .. #STUB_TIP)
+assert(#STUB.tdp == 1 and STUB.tdp[1].kind == Enum.TooltipDataType.Item, "one shared item tooltip hook: " .. #STUB.tdp)
 
 -- a tooltip that records its lines and must never be rebuilt
 local tip = CreateFrame("GameTooltip", "TestTooltip")
@@ -31,7 +24,7 @@ local function show(link, again)
         if tip.scripts.OnTooltipCleared then tip.scripts.OnTooltipCleared(tip) end
     end
     tip.shownLink = link
-    for _, h in ipairs(STUB_TIP) do h.fn(tip) end
+    for _, h in ipairs(STUB.tdp) do h.fn(tip) end
     return lines
 end
 local function texts()
@@ -192,7 +185,7 @@ local scanLines = 0
 local realAdd = scan.AddLine
 scan.AddLine = function() scanLines = scanLines + 1 end
 scan.shownLink = LINKS[301]
-for _, h in ipairs(STUB_TIP) do h.fn(scan) end
+for _, h in ipairs(STUB.tdp) do h.fn(scan) end
 assert(scanLines == 0, "nothing on the scan tooltip")
 scan.AddLine = realAdd
 

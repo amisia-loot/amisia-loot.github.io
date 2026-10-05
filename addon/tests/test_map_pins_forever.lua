@@ -1,7 +1,4 @@
 --[[preload
-STUB.toc = 16001
-_G.GetItemInfo = nil
-_G.GetItemInfoInstant = nil
 -- the Forever pin mixin: right clicks pass through to the map unless a pin says otherwise, and a
 -- click goes through the map's global handlers to OnMouseClickAction
 MapCanvasPinMixin.ShouldMouseButtonBePassthrough = function(self, button) return button == "RightButton" end

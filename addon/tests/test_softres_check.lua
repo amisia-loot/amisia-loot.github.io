@@ -1,9 +1,6 @@
 --[[preload
--- a list saved by 1.5 (no version) and the tooltip processor both clients have
+-- a list saved by 1.5 (no version)
 AmisiaDB = { softres = { date = "2026-09-30", byItem = { [32235] = { "Fraktur" } }, raw = "Fraktur 32235", count = 1 } }
-STUB.tdp = {}
-TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) STUB.tdp[#STUB.tdp + 1] = { kind = kind, fn = fn } end }
-TooltipUtil = { GetDisplayedItem = function(tip) return nil, tip.itemLink end }
 ]]
 -- Soft-reserves, data model 2: the move from 1.5, double reservations, remembered name fixes, the
 -- check against the raid, renaming, the roll ranking with surnames and the tooltip processor.
@@ -154,7 +151,7 @@ NS.SetSoftRes("Fraktur 32235")
 local tip = CreateFrame("GameTooltip", "AmisiaTestTip")
 local got = {}
 tip.AddLine = function(_, s) got[#got + 1] = s end
-tip.itemLink = link
+tip.shownLink = link
 tdp.fn(tip); tdp.fn(tip)
 assert(#got == 1 and got[1]:find("Reserviert: Fraktur", 1, true), #got)
 tip.scripts.OnTooltipCleared(tip)

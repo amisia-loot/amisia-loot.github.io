@@ -1,6 +1,3 @@
---[[preload
-STUB.toc = 16001
-]]
 -- The gear page on WoW Forever (Pages/Gear.lua): the Forever source chips without a phase, the
 -- button for the level-range table, the targets and the explanation from the Forever data, "Hier"
 -- in a zone, the overview card, the quick menu with the page and the table, the planner's

@@ -1,13 +1,7 @@
---[[preload
-STUB.toc = 16001
-_G.GetItemInfo = nil
-_G.GetItemInfoInstant = nil
-_G.ChatEdit_InsertLink = nil
-]]
 -- The award dialog and the awards page on a client without the GetItemInfo and GetItemInfoInstant
 -- globals and without the deprecated ChatEdit_InsertLink alias (the Forever client): item data
 -- comes from C_Item, links go to the chat through ChatFrameUtil.InsertLink.
-assert(GetItemInfo == nil and GetItemInfoInstant == nil and ChatEdit_InsertLink == nil, "the preload took the globals away")
+assert(GetItemInfo == nil and GetItemInfoInstant == nil and ChatEdit_InsertLink == nil, "the Forever client has none of the globals")
 
 STUB.roster = { { name = "Vuloo Stein", class = "PRIEST" }, { name = "Fraktur Berg", class = "SHAMAN" } }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)

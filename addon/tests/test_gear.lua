@@ -1,6 +1,3 @@
---[[preload
-STUB.toc = 16001
-]]
 -- The gear planner: generated data, rating conversion, scoring, who may wear what, weapon plans,
 -- filters, loading item data and the window. It is a Forever thing, so this runs as the Forever
 -- client (on TBC the TBC data set loads instead).

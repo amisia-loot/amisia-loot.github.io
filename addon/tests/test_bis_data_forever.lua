@@ -1,6 +1,3 @@
---[[preload
-STUB.toc = 16001
-]]
 -- On the Forever client the guard of BisDataTBC.lua and BisWeightsTBC.lua skips them, so the
 -- Forever set stays (even if the TOC load condition let them through).
 local Gear = NS.Gear

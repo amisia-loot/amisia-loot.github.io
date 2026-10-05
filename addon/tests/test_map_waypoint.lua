@@ -1,6 +1,3 @@
---[[preload
-STUB.toc = 16001
-]]
 -- The target and the client's user waypoint on Forever: setting puts the waypoint and the guide
 -- arrow there (ours); a waypoint the player sets himself drops Amisia's target quietly; a foreign
 -- waypoint is only replaced when the player picks an Amisia target; clearing removes only the own

@@ -31,8 +31,9 @@ _G.IsAltKeyDown = function() return STUB.alt end
 _G.GetGuildInfo = function() return "Amisia" end
 -- errors inside protected handlers still fail the test
 _G.geterrorhandler = function() return function(e) error(e, 0) end end
-STUB.toc = 20506
-_G.GetBuildInfo = function() return "2.5.6", "99999", "Oct 1 2026", STUB.toc end
+-- The client is WoW Forever (1.60.1, interface 16001, game type camelot).
+STUB.toc = 16001
+_G.GetBuildInfo = function() return "1.60.1", "70205", "Oct 1 2026", STUB.toc end
 STUB.officer = true
 _G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
 _G.MouseIsOver = function() return false end
@@ -62,26 +63,23 @@ math.random = function(lo, hi)
 end
 
 local function itemId(x) return tonumber(x) or tonumber(tostring(x):match("item:(%d+)")) end
-_G.GetItemInfo = function(x)
-    local it = STUB.items[itemId(x)]
-    if not it then return nil end
-    return it.name, it.link, it.quality, it.ilvl or 141, it.minLevel or 70, "Armor", "Cloth", 1, it.equipLoc or "INVTYPE_HEAD", it.icon or 134, 0, it.classID or 4, it.subclassID or 1, it.bind or 1
-end
-_G.GetItemInfoInstant = function(x)
-    local id = itemId(x)
-    local it = STUB.items[id]
-    return id, "Armor", "Cloth", it and it.equipLoc or "INVTYPE_HEAD", it and it.icon or 134, it and it.classID or 4, it and it.subclassID or 1
-end
--- The client's stats of an item: STUB.items[id].stats as GetItemStats answers ({ ITEM_MOD_..._SHORT = n }).
--- Forever has C_Item.GetItemStats; a preload may take either spelling away.
-_G.GetItemStats = function(x)
-    local it = STUB.items[itemId(x)]
-    return it and it.stats
-end
+-- Forever has the item functions only in C_Item (no GetItemInfo, GetItemInfoInstant or GetItemStats
+-- globals). GetItemStats answers STUB.items[id].stats ({ ITEM_MOD_..._SHORT = n }).
 _G.C_Item = {
-    GetItemInfo = _G.GetItemInfo,
-    GetItemInfoInstant = _G.GetItemInfoInstant,
-    GetItemStats = _G.GetItemStats,
+    GetItemInfo = function(x)
+        local it = STUB.items[itemId(x)]
+        if not it then return nil end
+        return it.name, it.link, it.quality, it.ilvl or 141, it.minLevel or 70, "Armor", "Cloth", 1, it.equipLoc or "INVTYPE_HEAD", it.icon or 134, 0, it.classID or 4, it.subclassID or 1, it.bind or 1
+    end,
+    GetItemInfoInstant = function(x)
+        local id = itemId(x)
+        local it = STUB.items[id]
+        return id, "Armor", "Cloth", it and it.equipLoc or "INVTYPE_HEAD", it and it.icon or 134, it and it.classID or 4, it and it.subclassID or 1
+    end,
+    GetItemStats = function(x)
+        local it = STUB.items[itemId(x)]
+        return it and it.stats
+    end,
     RequestLoadItemDataByID = function(id) STUB.requested[#STUB.requested + 1] = id end,
     GetItemIconByID = function(x) local it = STUB.items[itemId(x)]; return it and it.icon or 134 end,
 }
@@ -95,24 +93,26 @@ _G.GetLootSlotInfo = function(s) local l = STUB.loot[s]; return "icon", l and l.
 _G.GetLootSourceInfo = function(s) local l = STUB.loot[s]; return l and l.src or "Creature-0-1-1-1-22917-1", l and l.qty or 1 end
 _G.GetMasterLootCandidate = function(slot, i) return STUB.roster[i] and STUB.roster[i].name end
 _G.GiveMasterLoot = function(slot, i) STUB.given = { slot = slot, i = i } end
--- The chat's link insertion: remembers the last link handed to it. Both clients call
--- ChatFrameUtil.InsertLink; ChatEdit_InsertLink is only the deprecated alias of the same function,
--- which a client without the deprecation fallbacks lacks (a test's preload may remove it).
+-- The chat's link insertion: remembers the last link handed to it. The client calls
+-- ChatFrameUtil.InsertLink; its deprecated alias ChatEdit_InsertLink exists only with the
+-- deprecation fallbacks switched on, so the stub has none.
 _G.ChatFrameUtil = { InsertLink = function(link) STUB.inserted = link; return true end }
-_G.ChatEdit_InsertLink = ChatFrameUtil.InsertLink
 -- A modified click on an item: shift puts the link into the chat, as the client does.
 _G.HandleModifiedItemClick = function(link)
     STUB.modifiedClick = link
     if IsShiftKeyDown() then return ChatFrameUtil.InsertLink(link) end
     return false
 end
-_G.SendChatMessage = function(text, chan, lang, target)
-    if STUB.sendError then error(STUB.sendError) end
-    STUB.chat[#STUB.chat + 1] = { text = text, chan = chan, target = target }
-end
--- The chat lockdown of a boss fight on the Forever client: STUB.chatLock. The client announces a
--- change with ADDON_RESTRICTION_STATE_CHANGED (a test fires it through STUB.fire).
-_G.C_ChatInfo = { InChatMessagingLockdown = function() return STUB.chatLock and true or false end }
+-- Chat messages go through C_ChatInfo.SendChatMessage (no global SendChatMessage). The chat
+-- lockdown of a boss fight: STUB.chatLock. The client announces a change with
+-- ADDON_RESTRICTION_STATE_CHANGED (a test fires it through STUB.fire).
+_G.C_ChatInfo = {
+    SendChatMessage = function(text, chan, lang, target)
+        if STUB.sendError then error(STUB.sendError) end
+        STUB.chat[#STUB.chat + 1] = { text = text, chan = chan, target = target }
+    end,
+    InChatMessagingLockdown = function() return STUB.chatLock and true or false end,
+}
 -- "raid<STUB.playerRaidIndex>" is the player, as the raid unit of one's own character is.
 _G.UnitIsUnit = function(a, b)
     if a == b then return true end
@@ -304,7 +304,8 @@ function _G.CreateFrame(kind, name, parent, template)
     f.AddLine = NOOP
     f.AddDoubleLine = NOOP
     f.NumLines = function() return 0 end
-    f.GetItem = function() return nil end
+    -- the item a tooltip shows: STUB.showTooltip sets shownLink, a test may set shownName too
+    f.GetItem = function(self) return self.shownName, self.shownLink end
     -- a disabled button ignores clicks, as in the client
     f.enabled = true
     f.Enable = function(self) self.enabled = true end
@@ -361,25 +362,91 @@ _G.LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d."
 _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
-_G.Enum = { TooltipDataType = { Item = 0 }, LootMethod = { Freeforall = 0, Masterlooter = 2 } }
+_G.Enum = { TooltipDataType = { Item = 0 }, LootMethod = { Freeforall = 0, Masterlooter = 2 }, BankType = { Character = 0 } }
+
+-- The tooltip data processor: every registered post call is kept in STUB.tdp ({ kind, fn }); the
+-- shown item comes from TooltipUtil.GetDisplayedItem (here the tooltip's GetItem).
+-- STUB.showTooltip(tip, link) builds an item tooltip: it runs the item post calls, as the client
+-- does after every SetHyperlink, SetBagItem, SetLootItem and the like.
+STUB.tdp = {}
+_G.TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) STUB.tdp[#STUB.tdp + 1] = { kind = kind, fn = fn } end }
+_G.TooltipUtil = { GetDisplayedItem = function(tip) return tip:GetItem() end }
+function STUB.showTooltip(tip, link)
+    if link ~= nil then tip.shownLink = link end
+    for _, e in ipairs(STUB.tdp) do
+        if e.kind == Enum.TooltipDataType.Item then e.fn(tip, { hyperlink = tip.shownLink }) end
+    end
+end
+
+-- The loot window: a scroll box with two element frames that show other slots as it scrolls (no
+-- LootButton frames, no LootFrame_Update). Each element has its icon button (Item) and the quality
+-- text at its own top right. LootFrame.ScrollBox:ShowFrom(first) runs the initialised-frame
+-- callbacks, as the client does after its initializer.
+ScrollBoxListMixin = { Event = { OnInitializedFrame = "OnInitializedFrame" } }
+do
+    local box = { frames = {}, callbacks = {} }
+    function box:ForEachFrame(fn) for _, f in ipairs(self.frames) do fn(f, f.data) end end
+    function box:RegisterCallback(event, fn, owner)
+        for _, c in ipairs(self.callbacks) do
+            if c.event == event and c.owner == owner then c.fn = fn return owner end
+        end
+        self.callbacks[#self.callbacks + 1] = { event = event, fn = fn, owner = owner }
+        return owner
+    end
+    function box:ShowFrom(first)
+        for i, f in ipairs(self.frames) do
+            f.slotIndex = first + i - 1
+            f.data = { slotIndex = f.slotIndex }
+            for _, c in ipairs(self.callbacks) do
+                if c.event == ScrollBoxListMixin.Event.OnInitializedFrame then c.fn(c.owner, f, f.data) end
+            end
+        end
+    end
+    ScrollUtil = {
+        AddInitializedFrameCallback = function(scrollBox, callback, owner, iterateExisting)
+            if iterateExisting then scrollBox:ForEachFrame(callback) end
+            scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnInitializedFrame, function(o, frame, data) callback(o, frame, data) end, owner)
+        end,
+    }
+    for i = 1, 2 do
+        local f = CreateFrame("Frame", nil, nil)
+        f.Item = CreateFrame("Button", nil, f)
+        f.QualityText = f:CreateFontString()
+        f.QualityText:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -2)
+        f.GetSlotIndex = function(self) return self.slotIndex end
+        f.slotIndex = i
+        box.frames[i] = f
+    end
+    LootFrame = { ScrollBox = box }
+end
 
 -- The player's own character for the best-item targets: class, level, faction (STUB.class,
 -- STUB.level, STUB.faction), what is worn (STUB.worn[inventory slot] = link), the bags and the
 -- bank (STUB.bags[bag] = { link or item id, ... }), the counts the client knows without a bank
--- visit (STUB.bank[id] = count in the bank), the bank tabs of Forever (STUB.bankTabs = { bag ids }),
--- the talent points per tree (STUB.talents = { 0, 31, 30 }), the skill lines (STUB.skills =
--- { { name, rank, header, id } }) and where the player is (STUB.place = { map = uiMapID }, with
+-- visit (STUB.bank[id] = count in the bank), the purchased tabs of the character bank
+-- (STUB.bankTabs = { bag ids }, through C_Bank), the talent points per tree (STUB.talents =
+-- { 0, 31, 30 }), the skill lines (STUB.skills = { { name, rank, header, id } }, through
+-- C_SkillInfo) and where the player is (STUB.place = { map = uiMapID }, with
 -- STUB.maps[uiMapID] = { name, parentMapID, mapType }). PlaySound counts in STUB.sounds.
 -- STUB.level stays nil until a test sets it (a client that answers no level, as older tests expect)
 STUB.class, STUB.level, STUB.faction = "WARRIOR", nil, "Alliance"
 STUB.worn, STUB.bags, STUB.bank, STUB.talents, STUB.skills, STUB.place, STUB.maps, STUB.sounds = {}, {}, {}, nil, nil, {}, {}, {}
+STUB.bankTabs = {}
 local CLASS_LOCAL = { WARRIOR = "Krieger", PALADIN = "Paladin", HUNTER = "Jäger", ROGUE = "Schurke", PRIEST = "Priester",
     SHAMAN = "Schamane", MAGE = "Magier", WARLOCK = "Hexenmeister", DRUID = "Druide" }
 _G.UnitClass = function() return CLASS_LOCAL[STUB.class] or STUB.class, STUB.class end
 _G.UnitLevel = function() return STUB.level end
 _G.UnitFactionGroup = function() return STUB.faction end
 _G.GetInventoryItemLink = function(_, slot) return STUB.worn[slot] end
-_G.NUM_BAG_SLOTS, _G.NUM_BANKBAGSLOTS, _G.BANK_CONTAINER = 4, 7, -1
+_G.NUM_BAG_SLOTS = 4
+_G.C_Bank = {
+    FetchPurchasedBankTabIDs = function(kind)
+        if kind ~= Enum.BankType.Character then return {} end
+        local out = {}
+        for i, id in ipairs(STUB.bankTabs) do out[i] = id end
+        return out
+    end,
+}
 local function bagEntry(bag, slot)
     local b = STUB.bags[bag]
     local v = b and b[slot]
@@ -412,12 +479,16 @@ _G.C_SpecializationInfo = {
         return 100 + i, "Baum " .. i, "", 0, "DAMAGER", 1, pts, "", 0, true
     end,
 }
-_G.GetNumSkillLines = function() return STUB.skills and #STUB.skills or 0 end
-_G.GetSkillLineInfo = function(i)
-    local s = STUB.skills and STUB.skills[i]
-    if not s then return nil end
-    return s.name, s.header and true or false, true, s.rank or 0, 0, 0, s.max or 375
-end
+-- one table per skill line, with the fields of SkillLineAttributes (SkillInfoDocumentation.lua)
+_G.C_SkillInfo = {
+    GetNumSkillLines = function() return STUB.skills and #STUB.skills or 0 end,
+    GetSkillLineInfo = function(i)
+        local s = STUB.skills and STUB.skills[i]
+        if not s then return nil end
+        return { name = s.name, skillID = s.id or 0, isHeader = s.header and true or false, isCollapsed = false,
+                 rank = s.rank or 0, tempPoints = 0, modifier = 0, maxRank = s.max or 300 }
+    end,
+}
 C_Map.GetBestMapForUnit = function() return STUB.place.map end
 C_Map.GetMapInfo = function(id)
     local m = STUB.maps[id]
@@ -466,7 +537,7 @@ end
 -- The client's user waypoint (Forever): STUB.waypoint.point = { uiMapID, position } or nil;
 -- STUB.waypoint.blocked[uiMapID] = true for a map that takes none; superTracked is the guide arrow.
 -- Setting or clearing it fires USER_WAYPOINT_UPDATED, as the client does; sets and clears count the
--- calls. A test's preload takes these away for TBC Anniversary.
+-- calls. A test's preload takes these away for a client without them.
 STUB.waypoint = { point = nil, blocked = {}, superTracked = false, sets = 0, clears = 0 }
 C_Map.CanSetUserWaypointOnMap = function(id) return not STUB.waypoint.blocked[id] end
 C_Map.SetUserWaypoint = function(point)

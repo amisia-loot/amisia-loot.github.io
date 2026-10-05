@@ -1,6 +1,3 @@
---[[preload
-STUB.toc = 16001
-]]
 -- Review of 1.6 (Forever names): group loot announced once, a bare first name on the list only
 -- for a single raider of that first name (roll rank, "du", "SR (du)", !sr), hand rolls in the
 -- spelling of the round, ambiguous names, rolls after the hand-out, a stale "not announced" round,

@@ -1,8 +1,3 @@
---[[preload
-STUB.toc = 16001
-_G.GetItemInfo = nil
-_G.GetItemInfoInstant = nil
-]]
 -- The map page on WoW Forever: without the GetItemInfo globals; a quest with its giver; "Weg" sets
 -- the client's waypoint; a waypoint the player set himself is named in the target line; the quick
 -- menu keeps the page and the table together; the layout at 602 x 478 for officers and raiders.
