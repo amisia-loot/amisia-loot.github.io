@@ -107,7 +107,8 @@ local function rectOn(zone, continent)
         if C_Map and C_Map.GetMapRectOnMap then
             local ok, l, rt, t, b = pcall(C_Map.GetMapRectOnMap, zone, continent)
             l, rt, t, b = ns.Plain(l), ns.Plain(rt), ns.Plain(t), ns.Plain(b)
-            if ok and type(l) == "number" and type(rt) == "number" and type(t) == "number" and type(b) == "number" then
+            if ok and type(l) == "number" and type(rt) == "number" and type(t) == "number" and type(b) == "number"
+                and rt > l and b > t then
                 r = { l, rt, t, b }
             end
         end

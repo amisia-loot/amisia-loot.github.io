@@ -85,7 +85,7 @@ end
 local parsed = {}        -- key -> list of points, parsed once
 local unknownMaps = {}   -- uiMapIDs the client does not know, noted once per session
 local placeCache = {}    -- item id -> { gen, wish, map, gear, list }: ns.MapItemPlaces with the page's filters
-local whereCache = {}    -- item id -> { list, m, cx, cy, text, line }: the nearest place as text
+local whereCache = {}    -- item id (or "id|key") -> { list, m, cx, cy, text, line }: the nearest place as text
 
 local function knownMap(id)
     if unknownMaps[id] then return false end
@@ -227,9 +227,10 @@ function Map.PlayerPosition()
         local cont, wx, wy = worldOf(map, x, y)
         return { map = map, x = x, y = y, cont = cont, wx = wx, wy = wy }
     end
-    -- the client's world position as a fallback for the distance (UnitPosition: y, x, z, instance)
+    -- the client's world position as a fallback for the distance (UnitPosition: positionX,
+    -- positionY, positionZ, instance: the same axes as the world position of a map point)
     if UnitPosition then
-        local wy, wx, _, cont = UnitPosition("player")
+        local wx, wy, _, cont = UnitPosition("player")
         wy, wx, cont = ns.Plain(wy), ns.Plain(wx), ns.Plain(cont)
         if type(wx) == "number" and type(wy) == "number" and type(cont) == "number" then
             return { map = map, cont = cont, wx = wx, wy = wy }
@@ -550,6 +551,9 @@ function ns.MapShowOnWorldMap(point)
     end
     local frame = _G.WorldMapFrame
     if not frame then return false end
+    -- the main window is fullscreen and toplevel: the map would open underneath it
+    local main = _G.AmisiaFrame
+    if main and main.IsShown and main:IsShown() then main:Hide() end
     if not frame:IsShown() then
         if OpenWorldMap then
             OpenWorldMap(point.map)
@@ -696,6 +700,7 @@ local function arrowMenu(f)
             local now = ns.Get("map.arrow")
             if m and now ~= "off" then m.arrowBefore = now end
             ns.Set("map.arrow", "off")
+            ns.msg("Pfeil aus. Wieder an: /amisia karte pfeil oder in den Einstellungen.")
         end },
     })
 end
@@ -793,25 +798,28 @@ ns.OnEvent("ZONE_CHANGED", Map.UpdateArrow)
 
 -- The nearest place of an item as text, kept per item until its places change or, for an item with
 -- more than one point, the player moves to another 2 % cell (the hover path reads only the cell).
-local function whereEntry(id)
+local function whereEntry(id, key)
     local places = ns.MapItemPlaces(id)
     if #places == 0 then return nil end
     local m, cx, cy
     if #places > 1 or #places[1].points > 1 then m, cx, cy = playerCell() end
-    local e = whereCache[id]
+    -- a source key narrows it to that place; kept apart from the item's nearest
+    local ck = key and (tostring(id) .. "|" .. key) or id
+    local e = whereCache[ck]
     if e and e.list == places and e.m == m and e.cx == cx and e.cy == cy then return e end
-    local point, place = nearestOf(places)
+    local point, place = nearestOf(places, key)
+    if not point and key then return whereEntry(id) end
     if not point then return nil end
     local text = whereText(placeName(place), point, isEntrance(place.key))
     e = { list = places, m = m, cx = cx, cy = cy, text = text, line = "Fundort: " .. text }
-    whereCache[id] = e
+    whereCache[ck] = e
     return e
 end
 
--- "Gorn One Eye, Durotar 47, 33" (the nearest place of an item), or nil.
-function Map.Where(id)
+-- "Gorn One Eye, Durotar 47, 33" (the nearest place of an item, of the source key's when given), or nil.
+function Map.Where(id, key)
     id = tonumber(id)
-    local e = id and ns.MAP and whereEntry(id)
+    local e = id and ns.MAP and whereEntry(id, key)
     return e and e.text or nil
 end
 

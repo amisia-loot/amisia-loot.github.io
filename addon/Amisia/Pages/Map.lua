@@ -21,6 +21,7 @@ local ROW_HINT = "Klick: Ziel setzen. Shift-Klick: Weltkarte. Rechtsklick: mehr.
 
 local page
 local builds = 0         -- index builds, for the tests
+local nameMissing = false -- an item name the client did not have at the last fill
 
 -- Forever has no GetItemInfo global; both clients have C_Item.
 local function itemInfo(x)
@@ -33,6 +34,7 @@ local function itemText(id)
     local name, _, q = itemInfo(id)
     local row = Gear.Item(id)
     q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
+    if not name then nameMissing = true end
     return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. tostring(id)))
 end
 
@@ -326,6 +328,8 @@ local function refresh(f)
     local chosen = chosenZone()
     local hereMap, hereText = hereZone()
     local zone = chosen or hereMap
+    -- another zone starts at the top of its list
+    if f.shownZone ~= zone then f.list.offset = 0 end
     f.zone:SetValues(pickerValues(idx, hereMap, hereText, chosen))
     f.zone:SetValue(chosen or "here")
     f.shownZone = zone
@@ -337,12 +341,15 @@ local function refresh(f)
     f.target:SetText(targetText())
     if ns.MapTarget() then f.clear:Show() else f.clear:Hide() end
     local list = zoneList(z, zone)
+    nameMissing = false
     f.list:SetItems(list)
     if #list > 0 then
         f.empty:Hide()
     else
         if not ns.MAP then
             f.empty:SetText("Für diesen Client gibt es keine Kartendaten.")
+        elseif not ns.Get("map.pinsTargets") and not ns.Get("map.pinsWishes") then
+            f.empty:SetText("Ziele und Wünsche sind ausgeblendet. Oben einschalten.")
         elseif idx.items == 0 then
             f.empty:SetText("Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung.")
         else
@@ -496,4 +503,17 @@ end)
 ns.BisOnOwned(schedule)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
     if not chosenZone() then schedule() end
+end)
+
+-- Item names the client did not have at the last fill: once item data arrives the shown rows are
+-- filled again, once for a burst of answers.
+local namesDue = false
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
+    if not nameMissing or namesDue or not shown() then return end
+    namesDue = true
+    C_Timer.After(0.3, function()
+        namesDue = false
+        if not nameMissing or not shown() then return end
+        ns.Refresh()
+    end)
 end)

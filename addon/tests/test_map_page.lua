@@ -160,6 +160,8 @@ rows[2].scripts.OnClick(rows[2], "LeftButton")
 STUB.shift = false
 assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1411 and NS.MapTarget() == nil, "shift: the world map, no target")
 WorldMapFrame:Hide()
+-- the world map took the main window out of the way: open the page again
+NS.ShowMap()
 assert(placesCalls == 0, "no place lookups for clicks on the list: " .. placesCalls)
 NS.MapItemPlaces = realPlaces
 
@@ -237,7 +239,7 @@ assert(NS.Get("map.pinsTargets") == false and not f.targets.on, "the chip writes
 assert(#f.list.items == 1 and rows[1].item.key == "V:Second Vendor" and #rows[1].item.items == 1, "only the wish")
 f.wishes:Click()
 assert(NS.Get("map.pinsWishes") == false and #f.list.items == 0)
-assert(f.empty:IsShown() and f.empty:GetText() == "Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung.", f.empty:GetText())
+assert(f.empty:IsShown() and f.empty:GetText() == "Ziele und Wünsche sind ausgeblendet. Oben einschalten.", f.empty:GetText())
 f.targets:Click(); f.wishes:Click()
 assert(NS.Get("map.pinsTargets") and NS.Get("map.pinsWishes") and #f.list.items == 2 and not f.empty:IsShown())
 

@@ -207,7 +207,7 @@ local function mapTip(self)
     if not self.id then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine("Wegpunkt zur Quelle", 1, 0.82, 0)
-    local where = ns.Map.Where(self.id)
+    local where = ns.Map.Where(self.id, self.key)
     if where then GameTooltip:AddLine("Fundort: " .. where, 0.85, 0.85, 0.85) end
     GameTooltip:AddLine("Klick: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen.", 0.6, 0.6, 0.6)
     GameTooltip:Show()
@@ -244,10 +244,10 @@ local function setMapButton(b, id, rec, hide)
 end
 
 -- "Wegpunkt setzen" and "Auf der Karte zeigen", for an item with a place.
-local function mapEntries(out, id)
+local function mapEntries(out, id, key)
     if not hasPlace(id) then return end
-    out[#out + 1] = { "Wegpunkt setzen", function() setTarget(id) end }
-    out[#out + 1] = { "Auf der Karte zeigen", function() showOnMap(id) end }
+    out[#out + 1] = { "Wegpunkt setzen", function() setTarget(id, key) end }
+    out[#out + 1] = { "Auf der Karte zeigen", function() showOnMap(id, key) end }
 end
 
 local function inInstance()
@@ -433,7 +433,8 @@ local function menuEntries(e, o)
     else
         out[#out + 1] = { "Auf die Wunschliste", function() say(ns.WishAdd(id)) end }
     end
-    mapEntries(out, id)
+    -- a row of its own place (Hier) keeps the menu on that place
+    mapEntries(out, id, placeKey(e.rec))
     out[#out + 1] = { "Link in den Chat", function() insertLink(linkOf(id)) end }
     return out
 end
