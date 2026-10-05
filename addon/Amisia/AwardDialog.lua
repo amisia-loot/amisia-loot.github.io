@@ -12,7 +12,8 @@ local GOLD = W.GOLD
 
 local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
-local WIDTH, HEIGHT = 380, 230
+local WIDTH, HEIGHT = 380, 248
+local ASK_W = 60
 
 local GetItemInfo = C_Item.GetItemInfo
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
@@ -62,7 +63,8 @@ end
 
 -- The names to pick from: the raid's members, in the recording the group too, and the master
 -- loot candidates of the slot; secret values skipped, spellings of one character merged. Who wished
--- for the item on the website's list comes first (GuildWishes.lua, bis.guildAward).
+-- for the item on the website's list comes first (GuildWishes.lua, bis.guildAward), then who
+-- answered upgrade or wish to "Wer braucht das?" (Need.lua).
 local function names(s, slot, item)
     local out = {}
     local function add(name)
@@ -88,10 +90,13 @@ local function names(s, slot, item)
         end
     end
     table.sort(out)
-    local wished = ns.GuildWishAwardValues and ns.GuildWishAwardValues(item, out)
-    if wished then return wished end
-    local values = {}
-    for _, n in ipairs(out) do values[#values + 1] = { value = n, text = n } end
+    local values = ns.GuildWishAwardValues and ns.GuildWishAwardValues(item, out)
+    if not values then
+        values = {}
+        for _, n in ipairs(out) do values[#values + 1] = { value = n, text = n } end
+    end
+    -- who answered "Wer braucht das?" with an upgrade or a wish comes right after the wishers
+    if ns.NeedAwardValues then values = ns.NeedAwardValues(item, values) end
     return values
 end
 
@@ -323,8 +328,31 @@ local function build()
 
     D.roll = W.Text(D, "GameFontHighlightSmall", 356)
     D.roll:SetPoint("TOPLEFT", 12, -120)
+    -- "Upgrade für:" from the raiders' answers (Need.lua), cut to the width, every answer as tooltip
+    D.need = W.Text(D, "GameFontHighlightSmall", 356)
+    D.need:SetPoint("TOPLEFT", 12, -140)
+    D.needHit = CreateFrame("Frame", nil, D)
+    D.needHit:SetSize(356, 16)
+    D.needHit:SetPoint("TOPLEFT", 12, -139)
+    D.needHit:EnableMouse(true)
+    D.needHit:SetScript("OnEnter", function(self)
+        local lines = st.item and ns.NeedLines and ns.NeedLines(st.item)
+        if not lines then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:AddLine("Upgrade für", 1, 0.82, 0)
+        for _, l in ipairs(lines) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    D.needHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    D.ask = W.Button(D, "Fragen", ASK_W, function()
+        if not st.item or not ns.NeedAsk then return end
+        local qid, why = ns.NeedAsk({ st.item })
+        if not qid and why then ns.msg(why) end
+        refresh()
+    end)
+    D.ask:SetPoint("TOPRIGHT", -12, -136)
     D.hint = W.Text(D, "GameFontDisableSmall", 356, true)
-    D.hint:SetPoint("TOPLEFT", 12, -140)
+    D.hint:SetPoint("TOPLEFT", 12, -160)
     D.hint:SetHeight(40)
     D.hint:SetJustifyV("TOP")
 
@@ -368,6 +396,17 @@ refresh = function()
     else
         D.roll:SetText(st.item and "Kein Roll-Ergebnis für dieses Item." or "")
     end
+    -- who needs it: the answers, else "Fragen" while nothing was asked
+    local needText = st.item and ns.NeedText and ns.NeedText(st.item)
+    local canAsk = st.item ~= nil and ns.NeedAsk ~= nil and needText == nil and ns.IsOfficerView() and IsInRaid() and true or false
+    if needText then
+        D.need:SetText("Upgrade für: " .. needText)
+    else
+        D.need:SetText(canAsk and "Upgrade für: noch nicht gefragt" or "")
+    end
+    D.need:SetWidth(canAsk and (356 - ASK_W - 6) or 356)
+    D.needHit:SetWidth(canAsk and (356 - ASK_W - 6) or 356)
+    if canAsk then D.ask:Show() else D.ask:Hide() end
     -- the way the hand-out goes
     if not st.item then
         D.hint:SetText("Item-Link per Shift-Klick einfügen oder Item-ID eingeben.")
@@ -407,6 +446,8 @@ ns.OnEvent("LOOT_CLOSED", function()
     lootOpen = false
     refresh()
 end)
+-- answers to "Wer braucht das?" arrive
+ns.Listen("NEED", function() if refresh then refresh() end end)
 
 -- A link shift-clicked into the chat lands in the item box of an open dialog without an item. The
 -- client calls ChatFrameUtil.InsertLink. ChatEdit_InsertLink is its deprecated alias, defined only

@@ -3,6 +3,7 @@
 -- officer view. loot.lead = "me" makes this client the lead when the leader has no Amisia.
 -- The lead names the items of every corpse once in the raid chat, with the reservers from the
 -- raid: from the loot window (master loot or own looting) and from the group loot roll frames.
+-- With sync.askUpgrades it then asks the raid clients who needs the items (Need.lua).
 -- Every client marks reserved items on the roll frames with "SR".
 local ADDON, ns = ...
 
@@ -128,6 +129,12 @@ local function announce(head, links)
     if ns.Get("loot.warning") and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
         ns.Say(("Loot: %s, %d reserviert. Liste im Schlachtzugschat."):format(items(#links), reserved),
             "RAID_WARNING", nil, { ttl = TTL })
+    end
+    -- "Wer braucht das?": one question for the announced items (by addon message, never in the chat)
+    if ns.NeedAsk and ns.Get("sync.askUpgrades") ~= false then
+        local ids = {}
+        for _, e in ipairs(links) do ids[#ids + 1] = e.id end
+        ns.NeedAsk(ids)
     end
 end
 

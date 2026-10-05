@@ -37,6 +37,7 @@ Gear.lua
 GearFrame.lua
 Bis.lua
 GuildWishes.lua
+Need.lua
 Map.lua
 MapPins.lua
 MapPin.xml
