@@ -677,9 +677,9 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                 continue
             title = n.get(14) or None
             kind = 'P' if is_pvp_vendor(n) else 'V'
-            num = src.add(kind, n.get(1) or f'NPC {nid}', zone_ref(n.get(9) or 0), npc_faction(n), title)
+            num = src.add(kind, n.get(1) or f'NPC {nid}', zone_ref(n.get(9) or 0), npc_faction(n), title, None, nid)
             note(iid, num, 'pvp' if kind == 'P' else 'vendor')
-        drops = [q_npcs[n] for n in (row.get(2) or []) if n in q_npcs]
+        drops = [dict(q_npcs[n], id=n) for n in (row.get(2) or []) if n in q_npcs]
         if not drops:
             continue
         drops = [n for n in drops if dungeon_areas.get(n.get(9) or 0) not in RAIDS]
@@ -695,14 +695,14 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                 note(iid, src.add('W', f'Trash ({dname})', n.get(4) or 0, n.get(5) or 0), 'world')
         rares = [n for n in outside if (n.get(6) or 0) in RARE_RANKS]
         for n in rares:
-            note(iid, src.add('R', n.get(1), n.get(4) or 0, zone_ref(n.get(9) or 0)), 'rare')
+            note(iid, src.add('R', n.get(1), n.get(4) or 0, zone_ref(n.get(9) or 0), n['id']), 'rare')
         common = [n for n in outside if n not in rares]
         if len(common) > WORLD_DROP_NPCS:
             lv = sorted(x for n in common for x in (n.get(4) or 0, n.get(5) or 0) if x)
             note(iid, src.add('W', None, lv[0] if lv else 0, lv[-1] if lv else 0), 'world')
         else:
             for n in common:
-                note(iid, src.add('W', n.get(1), n.get(4) or 0, n.get(5) or 0, zone_ref(n.get(9) or 0)), 'world')
+                note(iid, src.add('W', n.get(1), n.get(4) or 0, n.get(5) or 0, zone_ref(n.get(9) or 0), n['id']), 'world')
 
     # --- OneForAll dungeons and dungeon quests
     for dname, d in (ofa[0] or {}).items():
@@ -786,7 +786,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                 name = (npc and npc.get(1)) or n['name'] or '?'
                 zone_key = zone_ref(npc.get(9) or 0) if npc else zone_text_ref(n['place'])
                 note(iid, src.add('V', name, zone_key, npc_faction(npc) if npc else None,
-                                  (npc.get(14) or None) if npc else None), 'vendor')
+                                  (npc.get(14) or None) if npc else None, None, n['id'] or None), 'vendor')
             else:
                 if n['itype'] == 'raid':
                     continue
@@ -801,12 +801,12 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                         continue
                     note(iid, src.add('D', dname or n['place'] or '?', name, None, n['instance'] or None, area), 'dungeon')
                 elif npc and (npc.get(6) or 0) in RARE_RANKS:
-                    note(iid, src.add('R', name, npc.get(4) or 0, zone_ref(npc.get(9) or 0)), 'rare')
+                    note(iid, src.add('R', name, npc.get(4) or 0, zone_ref(npc.get(9) or 0), n['id']), 'rare')
                 else:
                     lo = (npc.get(4) or 0) if npc else 0
                     hi = (npc.get(5) or 0) if npc else 0
                     zone_key = zone_ref(npc.get(9) or 0) if npc else zone_text_ref(n['place'])
-                    note(iid, src.add('W', name, lo, hi, zone_key), 'world')
+                    note(iid, src.add('W', name, lo, hi, zone_key, n['id'] or None), 'world')
 
     # --- Forever raids the site has recorded: raid, boss, instance, area, phase 1, no token
     for rname, boss, iid, inst, area in forever_raids or []:
@@ -928,8 +928,8 @@ def write_lua(out, src, keep, zone_rows, info, missing=()):
         '',
         '-- S: source records. Q quest {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon},',
         '-- D dungeon {dungeon, boss, drop chance, instance id, area id}, X raid {raid, boss, instance id, area id,',
-        '-- phase, token}, R rare mob {name, level, zone}, W world drop {mob or nil,',
-        '-- min level, max level, zone}, V vendor {name, zone, faction, title}, P PvP rank vendor (as V),',
+        '-- phase, token}, R rare mob {name, level, zone, npc id}, W world drop {mob or nil,',
+        '-- min level, max level, zone, npc id}, V vendor {name, zone, faction, title, phase (nil), npc id}, P PvP rank vendor (as V),',
         '-- C crafted {profession, skill}, A seen at the auction house. Zones are uiMapIDs (localised in game) or negative area ids.',
         '-- ST: [itemID] = the client stats the scan saw, scored keys only ("STRENGTH=5;RESISTANCE0_NAME=40"). M: ids the',
         '-- sources name but no scan has seen yet; /amisia scan gear asks the client for them.',

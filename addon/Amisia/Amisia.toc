@@ -29,6 +29,8 @@ GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 BisDataTBC.lua [AllowLoadGameType tbc]
 BisWeightsTBC.lua [AllowLoadGameType tbc]
+MapData.lua [AllowLoadGameType camelot]
+MapDataTBC.lua [AllowLoadGameType tbc]
 Gear.lua
 GearFrame.lua
 Bis.lua

@@ -60,6 +60,9 @@ python tools/build_gear.py
   and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
   in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.
 - Rebuild after a scan, when the source addons update, or to pick up what the collector saw.
+- Vendors, rare mobs and named mobs carry the NPC id as their last field (V and P at 7, R at 5, W
+  at 6), from QuestieDB or the collector's `[npcID]`; `Gear.lua` does not read it, `build_map.py`
+  keys the map points by it.
 - Dungeon sources carry the instance id and area id (from AtlasLoot's `InstanceID`/`MapID` or
   Questie's zone tables), so the gear page can find "here" through `GetInstanceInfo()`.
 - Forever raids: drops the site recorded in `data/forever.js` for a zone that
@@ -114,9 +117,45 @@ python tools/build_bis.py [--refresh-atlas] [--item-csv <Item.csv> --itemsparse 
 Runs on the N100 (no WoW install needed); only `--wow-root` and scans need the PC. Requires `lupa`.
 
 Licences of the data: AtlasLootClassic GPL-2.0 (TBC tables, `BisDataTBC.lua`), QuestieDB GPL-3.0
-and AtlasLootClassic GPL-2.0 (Forever tables, `GearData.lua`), RestedXP's Forever weights CC BY-NC-SA
+and AtlasLootClassic GPL-2.0 (Forever tables, `GearData.lua`), QuestieDB GPL-3.0 (`MapData.lua`,
+`MapDataTBC.lua`, `map_questie.json`), RestedXP's Forever weights CC BY-NC-SA
 4.0 (`GearWeights.lua`), wago.tools exports are Blizzard's game data (`gear_itemsparse.json`,
 `bis_tbc_items.json`).
+
+## build_map.py
+
+Builds `addon/Amisia/MapData.lua` (Forever) and `addon/Amisia/MapDataTBC.lua` (TBC Anniversary) for
+the map: where each source of the gear data stands, as up to four points `uiMapID:x:y` (x, y in
+hundredths of a percent) under a stable key per source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`,
+`U:<NPC id>`, `I:<instance id>`, `N:<dungeon name>`, `F:<faction id>`).
+
+```
+python tools/build_map.py [--refresh-questie] [--game forever|tbc|both]
+```
+
+- NPC and object spawns, quest starters, dungeon entrances and the zone tables (area id to uiMapID,
+  instance id to area) come from QuestieDB (https://github.com/Questie/QuestieDB, GPL-3.0), its
+  Forever and TBC databases. `--refresh-questie` downloads them from GitHub into
+  `tools/cache/questiedb/` (not in git, with the commit in `COMMIT`). Whenever that download is
+  complete, what the gear data needs from it is written to `tools/map_questie.json` (in git), so a
+  build without network gives the same files. Only the `[[return {...}]]` block of each database
+  file is run; the dungeon file runs with the expansion of its game, so only that expansion's
+  corrections apply.
+- Which keys are needed comes from `GearData.lua` and `BisDataTBC.lua`: quests by their quest id
+  (quest giver or start object; quests started by an item have no place), vendors, rare and named
+  mobs by name (an NPC in the source's zone wins, names found in several zones are reported) or by
+  NPC id once `build_gear.py` writes it, raids and dungeons by their entrance, reputation by the
+  quartermaster in `QUARTERMASTERS` (Amisia's own list). A spawn inside an instance stands for its
+  entrance.
+- Several spawns: spawns within 2 % are one point, then the four farthest apart are kept.
+- Both files start with their client guard (`if not (ns.IsForever and ns.IsForever()) then return end`
+  for Forever, the opposite for TBC) next to the TOC load condition. Keys are sorted, so a second
+  build gives the same file.
+- The report lists per source kind how many have a place, areas without a map, ambiguous names,
+  quests without a starter and factions without a quartermaster.
+
+Runs on the N100 (no WoW install needed). After `build_gear.py` ran on the PC (NPC ids, instance
+ids), run it again and commit. Requires `lupa`.
 
 ## make_minimap_icon.py
 

@@ -276,3 +276,29 @@ def test_lua_strings_escape_control_characters():
         assert not any(ord(c) < 32 or ord(c) == 127 for c in lit), repr(lit)
         assert lua.eval(lit) == text, (text, lit)
     assert build_gear.lua_str('a\nb') == '"a\\nb"' and build_gear.lua_str('a\rb') == '"a\\rb"'
+
+
+def test_npc_id_rides_last_on_vendors_rares_and_named_mobs():
+    # Gear.lua's fields stay where they are; the NPC id sits behind them at a fixed place per kind
+    # (V and P after the phase field: 7, R: 5, W: 6), where the map data finds it.
+    questie = {
+        'Item': {30: {1: 'Vendor Helm', 14: [900]}, 31: {1: 'Rare Ring', 2: [901]}, 32: {1: 'Mob Boots', 2: [902]},
+                 33: {1: 'PvP Neck', 14: [903]}},
+        'Quest': {},
+        'Npc': {900: {1: 'Smith', 9: 40, 13: 'A', 14: 'Weaponsmith'}, 901: {1: 'Muad', 4: 10, 6: 4, 9: 85},
+                902: {1: 'Harvest Golem', 4: 11, 5: 12, 9: 40}, 903: {1: 'Sergeant', 9: 1519, 14: 'Accessories Quartermaster'}},
+    }
+    zones = ({40: 'Westfall', 85: 'Tirisfal', 1519: 'Stormwind'}, {}, {40: 1436, 85: 1420, 1519: 1453})
+    scan = {30: scan_item('Vendor Helm'), 31: scan_item('Rare Ring', loc='INVTYPE_FINGER'),
+            32: scan_item('Mob Boots', loc='INVTYPE_FEET'), 33: scan_item('PvP Neck', loc='INVTYPE_NECK', q=3)}
+    collected = {30: ['Haendler: Grimm [904] @Dun Morogh'], 31: ['Drop: Wolf [299] @Wald von Elwynn']}
+    src, keep, *_ = build_gear.build(scan, collected, questie, zones, ({}, {}), [], {}, {})
+    recs = {src.rows[n - 1] for k in keep.values() for n in k[1]}
+    assert ('V', 'Smith', 1436, 'A', 'Weaponsmith', None, 900) in recs
+    assert ('R', 'Muad', 10, 1420, 901) in recs
+    assert ('W', 'Harvest Golem', 11, 12, 1436, 902) in recs
+    assert ('P', 'Sergeant', 1453, None, 'Accessories Quartermaster', None, 903) in recs
+    grimm = [r for r in recs if r[1] == 'Grimm'][0]
+    assert grimm[0] == 'V' and grimm[6] == 904, 'a vendor the collector noted with its id'
+    wolf = [r for r in recs if r[1] == 'Wolf'][0]
+    assert wolf[:4] == ('W', 'Wolf', 0, 0) and wolf[5] == 299, 'a mob the collector noted with its id'
