@@ -23,6 +23,8 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
   BUS.tick(s)          runs all clocks in steps of 0.1 s and delivers after each step
   BUS.lock(on)         sets the chat lockdown everywhere and fires ADDON_RESTRICTION_STATE_CHANGED
   BUS.drop(fn)         drops sent messages for which fn(msg) is true (nil: drop none)
+  BUS.reload(name)     a /reload of that client: a fresh runtime with its AmisiaDB and the world of
+                       its STUB (clock, group, guild, ranks, loot method, lockdown)
   BUS.sent             every sent message: { sender, prefix, text, chan, target, t, proto, kind,
                        dropped }
   BUS.count(filter)    sent messages matching filter (prefix, kind, chan, sender, target, from, to
@@ -110,7 +112,17 @@ end
 function BUS_SET(field, src)
     STUB[field] = assert(loadstring(src))()
 end
+function BUS_GLOBAL(name, hex)
+    _G[name] = assert(loadstring(fromhex(hex)))()
+end
+function BUS_STUB(hex)
+    for k, v in pairs(assert(loadstring(fromhex(hex)))()) do STUB[k] = v end
+end
 '''
+
+# STUB fields a /reload keeps (the world around the client), copied into the new runtime.
+RELOAD_STUB = ('now', 'clock', 'roster', 'guild', 'rankFlags', 'rankNames', 'officer', 'leader', 'lootMethod', 'mlPartyID',
+               'mlRaidID', 'playerRaidIndex', 'instance', 'inGuild', 'chatLock', 'instanceGroup', 'battlefield')
 
 DIRECTOR_PRELUDE = r'''
 local function fromhex(h) return (h:gsub("%x%x", function(x) return string.char(tonumber(x, 16)) end)) end
@@ -160,11 +172,14 @@ class Bus:
         bus = g.BUS
         g.C = self.run
         g.CLIENTS = self.director.table_from(names)
+        g.ADDON_DIR = ADDON
         bus.deliver = self.deliver
         bus.tick = self.tick
         bus.lock = self.lock
         bus.setRaid = self.set_raid
         bus.setGuild = self.set_guild
+        bus.reload = self.reload
+        self.source = source
 
     def client(self, name):
         name = str(name).replace('_', ' ')
@@ -231,6 +246,22 @@ class Bus:
             lua.globals().STUB.chatLock = on
             lua.globals().STUB.fire('ADDON_RESTRICTION_STATE_CHANGED', 5, 2 if on else 0)
         self.deliver()
+
+    def reload(self, name):
+        """A /reload of one client: a fresh runtime with the saved AmisiaDB and the world of the STUB
+        (clock, group, guild, loot method, lockdown); timers, queues and memory are gone."""
+        name = str(name).replace('_', ' ')
+        old = self.client(name)
+        saved = old.globals().BUS_RUN('AmisiaDB')
+        fields = ','.join('%s = STUB.%s' % (f, f) for f in RELOAD_STUB)
+        world = old.globals().BUS_RUN('{ ' + fields + ' }')
+
+        def setup(lua, name=name):
+            lua.execute(CLIENT_PRELUDE)
+            lua.globals().BUS_PY = lambda p, t, c, tg, clock, name=name: self.sent(name, p, t, c, tg, clock)
+            lua.globals().BUS_GLOBAL('AmisiaDB', saved)
+            lua.globals().BUS_STUB(world)
+        self.clients[name] = fresh(self.source, player=name, setup=setup)
 
     def set_raid(self, names):
         names = [str(v).replace('_', ' ') for v in names.values()] if names else []

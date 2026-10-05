@@ -1046,6 +1046,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         ns.MigrateAwards(DB)
         -- soft-reserve lists of 1.5 get data model 2
         if ns.MigrateSoftRes then ns.MigrateSoftRes(DB) end
+        -- AmisiaDB.sync, and the versions seen cleaned (30 days, 300 entries)
+        if ns.VersionLoaded then ns.VersionLoaded(DB) end
         -- forget the export marks of sessions that were dropped or deleted
         local ids = {}
         for _, s in ipairs(DB.sessions) do ids[s.id] = true end
