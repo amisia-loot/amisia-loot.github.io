@@ -950,8 +950,9 @@ function loadCraft(g){
   if (window.__CRAFT && window.__CRAFT[key]) { craftState = 'ok'; applyCraft(window.__CRAFT[key]); return; }
   craftState = 'loading'; applyCraft(null);
   const s = document.createElement('script'); s.src = 'data/craft-' + key + '.js?v=' + BUILD_ID;
-  s.onload = () => { craftState = window.__CRAFT && window.__CRAFT[key] ? 'ok' : 'error'; applyCraft(window.__CRAFT && window.__CRAFT[key]); renderAll(); };
-  s.onerror = () => { craftState = 'error'; applyCraft(null); renderAll(); };
+  // a script that arrives after the game changed is not the one on show: its tables stay in window.__CRAFT for later
+  s.onload = () => { if ((GAME[gameKey] || {}).craft !== key) return; craftState = window.__CRAFT && window.__CRAFT[key] ? 'ok' : 'error'; applyCraft(window.__CRAFT && window.__CRAFT[key]); renderAll(); };
+  s.onerror = () => { if ((GAME[gameKey] || {}).craft !== key) return; craftState = 'error'; applyCraft(null); renderAll(); };
   document.head.appendChild(s);
 }
 // The Amisia addon records the boss name its own client showed, so a German client writes
@@ -976,8 +977,9 @@ function loadGame(key){
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
   dataState = 'loading'; applyData(null); renderAll();
   const s = document.createElement('script'); s.src = g.file + '?v=' + BUILD_ID;
-  s.onload = () => { dataState = window.__LOOT && window.__LOOT[g.key] ? 'ok' : 'error'; applyData(window.__LOOT && window.__LOOT[g.key]); renderAll(); };
-  s.onerror = () => { dataState = 'error'; applyData(null); renderAll(); };
+  // a script that arrives after the game changed is not the one on show: its tables stay in window.__LOOT for later
+  s.onload = () => { if (GAME[gameKey].file !== g.file) return; dataState = window.__LOOT && window.__LOOT[g.key] ? 'ok' : 'error'; applyData(window.__LOOT && window.__LOOT[g.key]); renderAll(); };
+  s.onerror = () => { if (GAME[gameKey].file !== g.file) return; dataState = 'error'; applyData(null); renderAll(); };
   document.head.appendChild(s);
 }
 const BASE_PROFS = ['Alchemy','Blacksmithing','Enchanting','Engineering','Herbalism','Leatherworking','Mining','Skinning','Tailoring'];
