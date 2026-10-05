@@ -160,6 +160,11 @@ assert(NS.TrustName("Anna Weide") == "Anna Weide", "a guild member outside the g
 assert(NS.TrustName("Anna") == "Anna Weide")
 assert(NS.TrustName("Lia Sturm-Wind") == "Lia Sturm-Wind", "a dash in the surname")
 assert(NS.TrustName("Lia Sturm-Wind-Realm") == "Lia Sturm-Wind")
+-- only the own realm's ending is cut off: a player of another realm is not the guild member
+assert(NS.TrustName("Kim Eisherz-Anderswo") == nil and NS.TrustName("Anna Weide-Anderswo") == nil, "another realm")
+STUB.realm = "Anderswo"
+assert(NS.TrustName("Kim Eisherz-Anderswo") == "Kim Eisherz" and NS.TrustName("Kim Eisherz-Realm") == nil, "the own realm decides")
+STUB.realm = nil
 assert(NS.TrustName("Pug Fremd") == nil and NS.TrustName("Pug Fremd-Realm") == nil, "unknown")
 assert(NS.TrustName("") == nil and NS.TrustName(nil) == nil and NS.TrustName(42) == nil)
 STUB.secret["Fraktur"] = true

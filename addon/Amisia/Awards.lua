@@ -240,8 +240,9 @@ function ns.EditAward(s, id, f)
     local fields, was = {}, {}
     for _, k in ipairs({ "name", "kind", "note", "to" }) do
         if a[k] ~= before[k] then
-            fields[k] = a[k] == nil and false or a[k]
-            was[k] = before[k] == nil and false or before[k]
+            -- (not "x == nil and false or x": that gives nil for nil)
+            if a[k] == nil then fields[k] = false else fields[k] = a[k] end
+            if before[k] == nil then was[k] = false else was[k] = before[k] end
         end
     end
     report("edit", s, { id = id, fields = fields, was = was })
@@ -388,7 +389,11 @@ function ns.UndoAward()
             local done
             -- every step goes to the sync as the change it makes
             local reports = {}
-            local function all(a) return { name = a.name, kind = a.kind, note = a.note == nil and false or a.note, to = a.to } end
+            local function all(a)
+                local note = a.note
+                if note == nil then note = false end
+                return { name = a.name, kind = a.kind, note = note, to = a.to }
+            end
             if e.op == "add" or e.op == "restore" then
                 done = remove(e.s, e.id)
                 if done then reports[1] = { "delete", { id = e.id } } end

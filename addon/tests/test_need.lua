@@ -269,6 +269,42 @@ local dlg2 = C(VULO, "local D = NS.ShowAwardDialog(STUB.items[301].link); return
 assert(dlg2[1] == "Upgrade für: noch nicht gefragt" and dlg2[2] == true)
 C(VULO, "AmisiaAwardDialog:Hide()")
 
+---------------------------------------------------------------------------
+-- review of 2.1: ns.NeedCanAsk, an answer longer than one message, a refused answer
+---------------------------------------------------------------------------
+assert(C(VULO, "NS.NeedCanAsk()") == true, "the lead may ask")
+local can, canWhy, canCode = C(KIM, "NS.NeedCanAsk()")
+assert(can == false and type(canWhy) == "string" and canCode == "lead", "a raider may not: " .. tostring(canCode))
+-- eight upgrades with long slot names do not fit into 250 bytes: the answer goes in parts
+C(KIM, [[NS.BisGain = function(id) return 99999, "SECONDARYHANDSLOT_X", 1 end
+    NS.BisOwned = function() return false end
+    NS.BisIsUpgrade = function() return true end]])
+local LONG = { 999901, 999902, 999903, 999904, 999905, 999906, 999907, 999908 }
+local uaBefore = BUS.count({ kind = "UA", sender = KIM })
+local qLong = C(VULO, "NS.NeedAsk({ 999901, 999902, 999903, 999904, 999905, 999906, 999907, 999908 })")
+assert(type(qLong) == "string", "asked")
+BUS.tick(5)
+assert(BUS.count({ kind = "UA", sender = KIM }) == uaBefore + 2, "two answers: " .. (BUS.count({ kind = "UA", sender = KIM }) - uaBefore))
+assert(BUS.count(function(m) return m.kind == "UA" and #m.text > 250 end) == 0, "none longer than 250 bytes")
+for _, id in ipairs(LONG) do
+    local n = C(VULO, "NS.NeedOf(" .. id .. ")")
+    assert(n and #n.up == 1 and n.up[1].name == KIM and n.up[1].pct == 999, "Kim's upgrade for " .. id)
+end
+-- a refused answer is not marked: the same question once more gets it
+C(KIM, [[STUB.realSend = NS.CommSend
+    NS.CommSend = function(kind, ...) if kind == "UA" then return nil, "Nachricht zu lang." end return STUB.realSend(kind, ...) end]])
+BUS.tick(6)
+uaBefore = BUS.count({ kind = "UA", sender = KIM })
+local qRefused = C(VULO, "NS.NeedAsk({ 999909 })")
+BUS.tick(5)
+assert(BUS.count({ kind = "UA", sender = KIM }) == uaBefore, "Kim's answer was refused")
+C(KIM, "NS.CommSend = STUB.realSend")
+BUS.tick(6)
+C(VULO, ("NS.CommSend('UQ', { %q, '999909' }, 'RAID')"):format(qRefused))
+BUS.tick(5)
+assert(BUS.count({ kind = "UA", sender = KIM }) == uaBefore + 1, "answered on the repeated question")
+assert(C(VULO, "NS.NeedOf(999909)").up[1].name == KIM)
+
 -- Latin-1 only
 for _, file in ipairs({ "Need.lua", "AwardDialog.lua", "LootAnnounce.lua" }) do
     local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")

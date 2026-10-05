@@ -6,33 +6,47 @@
 -- officers of the own guild in the own group count as keepers; what a message says about its
 -- sender is never trusted. Nothing is merged step by step: a snapshot is checked whole and then
 -- replaces the raid's awards (officers: also the bench; kills are only added).
+-- Every snapshot carries the keeper's term and revision; (term, rev) orders them. A client that
+-- becomes keeper first asks the raid for anything newer (gathers), adopts the newest state and
+-- starts the next term above everything seen. Followers never take an older snapshot: they tell
+-- the sender (NW), who gathers again. A keeper's own changes stay in a journal until a later
+-- keeper's snapshot shows (by its lineage) that it has them; what it lacks goes as wishes.
 local ADDON, ns = ...
 
-local CLAIM_KEEP = 360        -- seconds a claim of the keeper role holds
-local ST_EVERY = 300          -- the keeper's only repetition in the raid
+local CLAIM_KEEP = 900        -- seconds a claim of the keeper role holds (outside the lockdown)
+local ST_EVERY = 240          -- the keeper's only repetition in the raid
 local TICK_EVERY = 5
 local SEND_AFTER, SEND_LATEST = 3, 10
 local RQ_SPREAD = 2.75        -- a request goes 0 to 3 s after the reason (the queue ticks every 0.25 s)
 local SP_FRESH = 15           -- a snapshot of this revision arrived this recently: no request
 local SO_WAIT = 20            -- seconds an officer waits for the officer part before asking
-local TAKEOVER_WAIT = 10
+local TAKEOVER_WAIT = 10      -- seconds a new keeper gathers (longer while the lockdown holds the queue)
+local GATHER_GAP = 20         -- seconds between two gatherings of one keeper
+local NOTICE_GAP = 20         -- seconds between two notices of a newer state to the keeper
+local RAIDER_TERM_STEP = 8    -- a raider's notice lifts the term by at most this much
 local ANSWERS_MAX, ANSWER_WINDOW = 6, 60
 local DATA_TTL = 1800         -- snapshots wait out a boss fight in the queue
 local ZERO = "0000000000000000"
-local MAX_AWARDS, MAX_GONE, MAX_BENCH, MAX_KILLS, MAX_PLUS = 400, 400, 40, 100, 80
+local MAX_AWARDS, MAX_GONE, MAX_BENCH, MAX_KILLS, MAX_PLUS = 400, 400, 40, 400, 80
+local MAX_TERM, MAX_REV = 999999, 999999
+local MAX_LINEAGE = 16        -- terms a snapshot names in its lineage
+local MAX_JOURNAL = 400       -- own keeper changes remembered per raid
 local SAME_FIGHT = 120
 local KINDS = { MS = true, OS = true, SR = true, ["-"] = true }
 local TARGETS = { player = true, bank = true, de = true }
 local KILL_SRC = { enc = true, kill = true, loot = true, hand = true }
 
 local claims = {}         -- lower name -> { name, key, at, rev }: claims of verified officers
-local maxRev = {}         -- key -> { rev, name }: the highest revision an officer announced
+local seen = {}           -- key -> { e, r, name }: the highest (term, revision) heard of
 local officers = {}       -- lower name -> name: verified officers that spoke Amisia this session
 local role, roleKey, keeperName   -- "keeper" | "follower" | nil for the raid key roleKey
 local keptKey             -- the raid key this client last kept (for the hand-over note)
 local claiming, claimKey = false, nil
 local lastST
-local takeover            -- { key, from, token }: a new keeper waits for the old keeper's snapshot
+local takeover            -- { key, token, deadline, cands, best }: a new keeper gathers newer states
+local lastGather = {}     -- key -> GetTime() of the last gathering
+local gatherDue = {}      -- key -> true: a newer state was heard of, gather again when allowed
+local noticed = {}        -- key -> GetTime() of the last notice of a newer state
 local sendFirst, sendToken
 local lastSent = {}       -- key -> revision this client sent last
 local pend = {}           -- key -> { sp, so, from, sender, token }: an officer waits for both parts
@@ -158,12 +172,20 @@ local function selfClaims()
     return (ns.IsLootLead() and ns.SelfIsOfficer(true)) and true or false
 end
 
+-- A claim of name counts as fresh again (any keeper traffic of his).
+local function touchClaim(name)
+    local c = type(name) == "string" and claims[name:lower()]
+    if c then c.at = now() end
+end
+
 local function candidates(key)
     local out, mine = {}, me()
     if claiming and claimKey == key then out[1] = mine end
     local t = now()
+    -- the lockdown holds every state in the queue (and may hide roster names): nothing expires
+    local held = ns.CommHeld()
     for low, c in pairs(claims) do
-        if t - c.at > CLAIM_KEEP or not ns.InMyGroup(c.name) then
+        if not held and (t - c.at > CLAIM_KEEP or not ns.InMyGroup(c.name)) then
             claims[low] = nil
         elseif c.key == key and not ns.SameName(c.name, mine) then
             out[#out + 1] = c.name
@@ -183,9 +205,95 @@ local function elect(key)
     return best, bestRank
 end
 
-local function noteRev(key, rev, name)
-    if type(rev) ~= "number" then return end
-    if not maxRev[key] or rev > maxRev[key].rev then maxRev[key] = { rev = rev, name = name } end
+---------------------------------------------------------------------------
+-- Terms, revisions and the lineage
+---------------------------------------------------------------------------
+local function whole(v, hi) return type(v) == "number" and v == math.floor(v) and v >= 0 and v <= hi end
+
+-- The keeper term and the revision of the state of s (0 without one).
+local function termOf(s)
+    local sync = type(s) == "table" and type(s.sync) == "table" and s.sync or nil
+    return sync and whole(sync.term, MAX_TERM) and sync.term or 0
+end
+local function revOf(s)
+    local sync = type(s) == "table" and type(s.sync) == "table" and s.sync or nil
+    return sync and whole(sync.rev, MAX_REV) and sync.rev or 0
+end
+
+-- (e1, r1) against (e2, r2): -1 older, 0 the same, 1 newer.
+local function order(e1, r1, e2, r2)
+    if e1 ~= e2 then return e1 < e2 and -1 or 1 end
+    if r1 ~= r2 then return r1 < r2 and -1 or 1 end
+    return 0
+end
+
+local function noteSeen(key, e, r, name)
+    if not whole(e, MAX_TERM) or not whole(r, MAX_REV) then return end
+    local cur = seen[key]
+    if not cur or order(e, r, cur.e, cur.r) > 0 then seen[key] = { e = e, r = r, name = name } end
+end
+
+-- The lineage of a state: lower keeper name -> { term, rev }, the newest term of that keeper the
+-- state descends from and the revision it has of it. A keeper's state always holds its own earlier
+-- changes and its revisions only rise, so one entry per keeper tells everything it contains.
+local function lineage(s)
+    if type(s.sync.lin) ~= "table" then s.sync.lin = {} end
+    return s.sync.lin
+end
+
+local function linOk(name, v)
+    return type(name) == "string" and #name <= 48 and not name:find("[%c|]") and type(v) == "table" and whole(v[1], MAX_TERM)
+        and whole(v[2], MAX_REV)
+end
+
+-- Puts (term e, revision r) of keeper name into lin when it is newer than what lin has.
+local function linNote(lin, name, e, r)
+    local low = tostring(name):lower()
+    local cur = lin[low]
+    if not linOk(low, cur) or order(e, r, cur[1], cur[2]) > 0 then lin[low] = { e, r } end
+end
+
+-- The lineage as it goes over the wire: { term, keeper, rev }, the newest terms first, 16 keepers.
+local function linWire(lin)
+    local out = {}
+    for name, v in pairs(type(lin) == "table" and lin or {}) do
+        if linOk(name, v) then out[#out + 1] = { v[1], name, v[2] } end
+    end
+    table.sort(out, function(x, y)
+        if x[1] ~= y[1] then return x[1] > y[1] end
+        return x[2] < y[2]
+    end)
+    while #out > MAX_LINEAGE do table.remove(out) end
+    return out
+end
+
+local function linFrom(l)
+    local out = {}
+    for _, x in ipairs(type(l) == "table" and l or {}) do linNote(out, x[2], x[1], x[3]) end
+    return out
+end
+
+-- The keeper marks its own term in the lineage of its state.
+local function stamp(s)
+    linNote(lineage(s), me(), termOf(s), revOf(s))
+end
+
+-- Whether lineage lin contains a journal entry of this client: a later own term, or the same
+-- term up to the entry's revision.
+local function included(lin, e)
+    local v = type(lin) == "table" and lin[me():lower()]
+    if not linOk("x", v) or not whole(e.term, MAX_TERM) or not whole(e.rev, MAX_REV) then return false end
+    return v[1] > e.term or (v[1] == e.term and v[2] >= e.rev)
+end
+
+-- The raid day of a date as the earliest and latest time a snapshot may name (the day minus one,
+-- plus two days), or nil.
+local function dayRange(date)
+    local y, mo, d = tostring(date or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    if not y then return nil end
+    local day = time({ year = tonumber(y), month = tonumber(mo), day = tonumber(d), hour = 0, min = 0, sec = 0 })
+    if type(day) ~= "number" then return nil end
+    return day - 86400, day + 3 * 86400
 end
 
 ---------------------------------------------------------------------------
@@ -227,18 +335,40 @@ function ns.SyncBuild(s)
         plus.n[e.name] = e.n
         count = count + 1
     end
-    local b = {}
-    for name, e in pairs(s.bench or {}) do
-        b[name] = { sec(e.t ~= nil and e.t or s.start), e.class or "", e.self and 1 or 0, e.by or "-", e.note or "" }
+    -- the bench as Bench.lua keeps it: at most 40, the earliest first
+    local b, benched = {}, {}
+    for name, e in pairs(type(s.bench) == "table" and s.bench or {}) do
+        if type(e) == "table" then benched[#benched + 1] = { name = name, e = e, t = sec(e.t ~= nil and e.t or s.start) } end
     end
+    table.sort(benched, function(x, y)
+        if x.t ~= y.t then return x.t < y.t end
+        return tostring(x.name) < tostring(y.name)
+    end)
+    for i = 1, math.min(#benched, MAX_BENCH) do
+        local e = benched[i].e
+        b[benched[i].name] = { benched[i].t, e.class or "", e.self and 1 or 0, e.by or "-", e.note or "" }
+    end
+    -- kill headers within the raid's days; above 400 the oldest wipes stay out (every recorder
+    -- reads its boss fights itself, the site joins them), then the oldest kills
+    local lo, hi = dayRange(s.date)
     local x = {}
     for _, k in ipairs(ns.Kills and ns.Kills(s) or {}) do
-        x[#x + 1] = { num(k.enc), plainText(k.name, 80), sec(k.start or k.t), sec(k.t), k.ok and 1 or 0, num(k.size), num(k.diff),
-                      KILL_SRC[k.src] and k.src or "hand", num(k.n) }
+        local from, to = sec(k.start or k.t), sec(k.t)
+        if lo and from >= lo and from <= hi and to >= lo and to <= hi then
+            x[#x + 1] = { num(k.enc), plainText(k.name, 80), from, to, k.ok and 1 or 0, num(k.size), num(k.diff),
+                          KILL_SRC[k.src] and k.src or "hand", num(k.n) }
+        end
     end
-    local sp = { k = key, r = num(sync.rev), by = me(), d = s.date, i = num(s.instanceID), z = plainText(s.zone, 80), t0 = t0,
-                 a = a, g = g, p = plus }
-    local so = { k = key, r = sp.r, n = n, b = b, x = x }
+    for _, wipes in ipairs({ true, false }) do
+        local i = 1
+        while #x > MAX_KILLS and i <= #x do
+            if not wipes or x[i][5] == 0 then table.remove(x, i) else i = i + 1 end
+        end
+    end
+    local sp = { k = key, r = num(sync.rev), e = termOf(s), by = me(), d = s.date, i = num(s.instanceID), z = plainText(s.zone, 80),
+                 t0 = t0, a = a, g = g, p = plus }
+    -- the lineage only for officers: only an officer keeps the raid and has a journal
+    local so = { k = key, r = sp.r, n = n, b = b, x = x, l = linWire(sync.lin) }
     sp.h = ns.SyncHashOf(sp, so)
     return sp, so
 end
@@ -322,12 +452,10 @@ function ns.SyncCheck(sp, so, s)
     if type(sp) ~= "table" then return nil, "Daten" end
     local key = sp.k
     if not isKey(key) or (s and ns.RaidKey(s) ~= key) then return nil, "Schlüssel" end
-    if not int(sp.r, 0, 999999) or not isHash(sp.h) or not nameOk(sp.by) then return nil, "Kopf" end
+    if not int(sp.r, 0, MAX_REV) or not int(sp.e, 0, MAX_TERM) or not isHash(sp.h) or not nameOk(sp.by) then return nil, "Kopf" end
     if type(sp.d) ~= "string" or key:sub(1, 10) ~= sp.d or not int(sp.i, 0, 99999999) or not text(sp.z, 80) then return nil, "Raid" end
-    local y, mo, d = sp.d:match("^(%d+)%-(%d+)%-(%d+)$")
-    local day = time({ year = tonumber(y), month = tonumber(mo), day = tonumber(d), hour = 0, min = 0, sec = 0 })
-    if type(day) ~= "number" then return nil, "Raid" end
-    local lo, hi = day - 86400, day + 3 * 86400
+    local lo, hi = dayRange(sp.d)
+    if not lo then return nil, "Raid" end
     local span = hi - lo
     local function at(v) return int(v, lo, hi) end
     if not at(sp.t0) then return nil, "Zeit" end
@@ -359,6 +487,14 @@ function ns.SyncCheck(sp, so, s)
     if so == nil then return true end
     if type(so) ~= "table" or so.k ~= key or so.r ~= sp.r then return nil, "Offiziersteil" end
     if not map(so.n, MAX_AWARDS + MAX_GONE) or not map(so.b, MAX_BENCH) or not list(so.x, MAX_KILLS) then return nil, "Offiziersteil" end
+    if so.l ~= nil then
+        if not list(so.l, MAX_LINEAGE) then return nil, "Offiziersteil" end
+        for _, x in ipairs(so.l) do
+            if type(x) ~= "table" or not int(x[1], 0, MAX_TERM) or not nameOk(x[2]) or not int(x[3], 0, MAX_REV) then
+                return nil, "Offiziersteil"
+            end
+        end
+    end
     for id, e in pairs(so.n) do
         if not ids[id] or type(e) ~= "table" or not noteOk(e[1], 60) or not (e[2] == "" or nameOk(e[2])) or not flag(e[3]) then
             return nil, "Notiz"
@@ -409,6 +545,7 @@ local function insertByTime(out, x)
 end
 
 local relayer, firstWishes   -- forward: the own waiting wishes on a new snapshot
+local journalToWishes        -- forward: a former keeper's changes the new state lacks
 
 local function apply(s, sp, so, from)
     local t0 = sp.t0
@@ -461,13 +598,18 @@ local function apply(s, sp, so, from)
     local newB, addKills
     if so then
         newB = {}
+        local count = 0
         for name, e in pairs(so.b) do
             newB[name] = { t = e[1], class = e[2], self = e[3] == 1 or nil, by = e[4] ~= "-" and e[4] or nil, note = e[5] ~= "" and e[5] or nil }
+            count = count + 1
         end
-        -- the first snapshot of a keeper keeps the own entries it does not have
+        -- the first snapshot of a keeper keeps the own entries it does not have (the bench holds 40)
         if first then
             for name, e in pairs(s.bench or {}) do
-                if not newB[name] then newB[name] = e end
+                if not newB[name] and count < MAX_BENCH then
+                    newB[name] = e
+                    count = count + 1
+                end
             end
         end
         addKills = {}
@@ -518,10 +660,15 @@ local function apply(s, sp, so, from)
     for name, c in pairs(sp.p.n) do plus.n[name] = c end
     s.sync = type(s.sync) == "table" and s.sync or {}
     s.sync.key, s.sync.rev, s.sync.hash, s.sync.keeper, s.sync.at, s.sync.plus = sp.k, sp.r, sp.h, from, time(), plus
+    s.sync.term = sp.e
+    if so then s.sync.lin = linFrom(so.l) end
     stats.applied = stats.applied + 1
+    -- a former keeper: its changes the new keeper's state lacks go to him as wishes
+    if role ~= "keeper" and so then journalToWishes(s) end
     -- what this officer did and the keeper has not confirmed yet stays visible on top
     relayer(s)
     if first then firstWishes(s, ownA, ownB) end
+    if role == "follower" then flush() end
     ns.Fire("DATA_CHANGED")
     ns.Fire("SYNC_STATE")
 end
@@ -536,7 +683,7 @@ local function stFields(s, key, claim)
         local ml = masterLooter()
         flags = (ml and ns.SameName(ml, me())) and "KM" or "K"
     end
-    return { key, tostring(math.floor(num(sync and sync.rev))), (sync and isHash(sync.hash)) and sync.hash or ZERO, flags }
+    return { key, tostring(revOf(s)), (sync and isHash(sync.hash)) and sync.hash or ZERO, flags, tostring(termOf(s)) }
 end
 
 local function sendST(s, key, claim, target)
@@ -555,6 +702,7 @@ local function broadcast(s)
     local key = ns.RaidKey(s)
     if not key or not ready() then return end
     s.sync = type(s.sync) == "table" and s.sync or { rev = 0 }
+    stamp(s)
     local sp, so = ns.SyncBuild(s)
     s.sync.key, s.sync.hash, s.sync.keeper, s.sync.at = key, sp.h, me(), time()
     local ok, why = ns.CommSendBlob("SP", key, sp, "RAID", nil, { key = "SP:" .. key, ttl = DATA_TTL })
@@ -594,8 +742,15 @@ end
 ---------------------------------------------------------------------------
 local update
 local adopt, onOP   -- forward: the new keeper's own wishes; a wish at the keeper
+local replayOwn     -- forward: an own journal entry on an adopted state
+
+local function journal(s)
+    if type(s.sync.mine) ~= "table" then s.sync.mine = {} end
+    return s.sync.mine
+end
 
 local function finishTakeover()
+    local t = takeover
     takeover = nil
     local s, key = running()
     if role ~= "keeper" or not s or key ~= roleKey then
@@ -604,11 +759,35 @@ local function finishTakeover()
     end
     s.sync = type(s.sync) == "table" and s.sync or {}
     s.sync.key = key
-    -- the revision carries on above everything seen, so no follower takes the new state for old
-    s.sync.rev = math.max(num(s.sync.rev), maxRev[key] and maxRev[key].rev or 0) + 1
+    local old = journal(s)
+    local own = lineage(s)[me():lower()]
+    local ownRev = revOf(s)
+    -- the newest state gathered, when it is newer than the own: taken like a follower takes it
+    local best, from = t and t.key == key and t.best, nil
+    if best and order(best.sp.e, best.sp.r, termOf(s), revOf(s)) > 0 and ns.SyncCheck(best.sp, best.so, s) then
+        apply(s, best.sp, best.so, best.from)
+        from = best.from
+    end
+    local replay = {}
+    if from then
+        -- own changes the adopted state lacks are made again on it; the rest it has
+        local lin = lineage(s)
+        s.sync.mine = {}
+        for _, e in ipairs(old) do
+            if type(e) == "table" and type(e.op) == "table" and not included(lin, e) then replay[#replay + 1] = e end
+        end
+        if linOk("x", own) then linNote(lin, me(), own[1], own[2]) end
+    end
+    -- the term and the revision carry on above everything seen (the revision also above the
+    -- own), so no follower takes the new state for old
+    local sn = seen[key]
+    s.sync.term = math.min(MAX_TERM, math.max(termOf(s), sn and sn.e or 0) + 1)
+    s.sync.rev = math.min(MAX_REV, math.max(revOf(s), ownRev, sn and sn.r or 0) + 1)
     s.sync.keeper = me()
+    stamp(s)
     -- what this client changed as a follower holds now: its wishes are the keeper's own changes
     adopt(s)
+    for _, e in ipairs(replay) do replayOwn(s, key, e, from) end
     sendToken, sendFirst = nil, nil
     broadcast(s)
     -- wishes of other officers that came while taking over
@@ -617,23 +796,73 @@ local function finishTakeover()
     for _, d in ipairs(list) do onOP(d[1], d[2], d[3], d[4]) end
 end
 
--- A new keeper asks the old one (else the officer with the highest revision seen) first and waits
--- up to 10 s for that snapshot, so nothing of the old keeper's raid is lost.
+-- A new keeper gathers first: it asks the raid (and by whisper every officer it knows and the old
+-- keeper) for any state newer than its own, waits 10 s (in the lockdown until 10 s after it), takes
+-- the newest it got and only then sends its own, one term above everything seen. So a keeper that
+-- missed changes (a relog, a lost connection, a keeper change) never sends an older raid over them.
 local function beginKeeper(s, key, old)
     keptKey = key
-    local from = (old and not ns.SameName(old, me())) and old or nil
-    local mine = num(type(s.sync) == "table" and s.sync.rev)
-    if not from and maxRev[key] and maxRev[key].rev > mine and not ns.SameName(maxRev[key].name, me()) then from = maxRev[key].name end
-    if from and ns.InMyGroup(from) then
-        local token = {}
-        takeover = { key = key, from = from, token = token }
-        ns.CommSend("RQ", { key, tostring(mine), "PO" }, "WHISPER", from, { key = "RQ:" .. key })
-        C_Timer.After(TAKEOVER_WAIT, function()
-            if takeover and takeover.token == token then finishTakeover() end
-        end)
-    else
-        finishTakeover()
+    lastGather[key], gatherDue[key] = now(), nil
+    sendToken, sendFirst = nil, nil
+    local token = {}
+    takeover = { key = key, token = token, deadline = now() + TAKEOVER_WAIT, cands = {} }
+    local fields = { key, tostring(revOf(s)), "PO", tostring(termOf(s)), "G" }
+    ns.CommSend("RQ", fields, "RAID", nil, { key = "RQG:" .. key })
+    local asked = {}
+    local function whisper(name)
+        if type(name) ~= "string" or ns.SameName(name, me()) or asked[name:lower()] or not ns.InMyGroup(name) then return end
+        asked[name:lower()] = true
+        ns.CommSend("RQ", fields, "WHISPER", name, { key = "RQG:" .. key .. ":" .. name:lower() })
     end
+    whisper(old)
+    for _, name in pairs(officers) do whisper(name) end
+    whisper(seen[key] and seen[key].name)
+    -- every officer asked by whisper answers (his state, or a notice that he has nothing newer):
+    -- when all did, the gathering ends early
+    takeover.asked = asked
+    local function wait()
+        if not takeover or takeover.token ~= token then return end
+        if ns.CommHeld() then takeover.deadline = math.max(takeover.deadline, now() + TAKEOVER_WAIT) end
+        if now() >= takeover.deadline then return finishTakeover() end
+        C_Timer.After(1, wait)
+    end
+    C_Timer.After(1, wait)
+end
+
+-- An asked officer answered the gathering; the last answer ends it.
+local function gatherAnswered(name)
+    local t = takeover
+    if not t or not t.asked or not t.asked[name:lower()] then return end
+    t.asked[name:lower()] = nil
+    if next(t.asked) == nil then finishTakeover() end
+end
+
+-- A newer state was heard of while keeping: gather again (at most every 20 s).
+local function regather()
+    local s, key = running()
+    if role ~= "keeper" or not s or key ~= roleKey or takeover or not gatherDue[key] then return end
+    local sn = seen[key]
+    if not sn or order(sn.e, sn.r, termOf(s), revOf(s)) <= 0 then
+        gatherDue[key] = nil
+        return
+    end
+    if lastGather[key] and now() - lastGather[key] < GATHER_GAP then return end
+    beginKeeper(s, key, nil)
+end
+
+-- A state of key (term e, revision r) from name: a keeper that is behind gathers again. Officers
+-- count with their term; a raider's notice lifts the term by at most 8.
+local function heardNewer(key, e, r, name, officer)
+    local s, k = running()
+    if role ~= "keeper" or not s or k ~= key or roleKey ~= key then return end
+    if not whole(e, MAX_TERM) or not whole(r, MAX_REV) or order(e, r, termOf(s), revOf(s)) <= 0 then return end
+    if officer then
+        noteSeen(key, e, r, name)
+    else
+        noteSeen(key, math.min(e, termOf(s) + RAIDER_TERM_STEP), r, nil)
+    end
+    gatherDue[key] = true
+    regather()
 end
 
 local function handOver(new)
@@ -702,7 +931,7 @@ end
 -- "kill+" (info.k), "kill-" (info.k). On the keeper a change of the running raid counts the
 -- award's revision (a.v) and the raid's (rev) and plans a snapshot; on an officer that does not
 -- keep the raid (or takes it over right now) it becomes a wish to the keeper.
-local wishFrom
+local wishFrom, wishesOf, remember
 function ns.SyncNote(op, s, info)
     if ns.AwardsIsQuiet and ns.AwardsIsQuiet() then return end
     local cur, key = running()
@@ -713,6 +942,14 @@ function ns.SyncNote(op, s, info)
         if ns.IsOfficerView() then wishFrom(s, key, op, info) end
         return
     end
+    s.sync = type(s.sync) == "table" and s.sync or {}
+    -- the change as a wish for the journal, on the award's revision before it
+    local ws = wishesOf(s, op, info)
+    local bases = {}
+    for i, w in ipairs(ws) do
+        local a = w.op ~= "add" and w.id and ns.FindAward(s, w.id)
+        bases[i] = num(a and a.v)
+    end
     local function bump(id)
         local a = id and ns.FindAward(s, id)
         if a then a.v = num(a.v) + 1 end
@@ -720,10 +957,11 @@ function ns.SyncNote(op, s, info)
     if type(info.a) == "table" then info.a.v = num(info.a.v) + 1 end
     bump(info.id)
     for _, id in ipairs(info.ids or {}) do bump(id) end
-    s.sync = type(s.sync) == "table" and s.sync or {}
     s.sync.key = key
-    s.sync.rev = num(s.sync.rev) + 1
+    s.sync.rev = math.min(MAX_REV, revOf(s) + 1)
     s.sync.at = time()
+    stamp(s)
+    for i, w in ipairs(ws) do remember(s, w, bases[i]) end
     schedule(s)
 end
 
@@ -752,9 +990,11 @@ local opSeq
 local function newOpid(s)
     opSeq = (opSeq or math.floor(now() * 1000)) % 65536 + 1
     local id = ("%08x%04x"):format(serverTime() % 4294967296, opSeq % 65536)
-    local list = type(s.sync) == "table" and type(s.sync.pending) == "table" and s.sync.pending or {}
-    for _, p in ipairs(list) do
-        if p.opid == id then return newOpid(s) end
+    local sync = type(s.sync) == "table" and s.sync or {}
+    for _, list in ipairs({ sync.pending, sync.mine }) do
+        for _, p in ipairs(type(list) == "table" and list or {}) do
+            if type(p) == "table" and p.opid == id then return newOpid(s) end
+        end
     end
     return id
 end
@@ -941,15 +1181,16 @@ local function queueWish(s, key, w, base, noMerge)
     ns.Fire("SYNC_STATE")
 end
 
--- A change of this officer as a wish. A rename is one change of the name per award.
-wishFrom = function(s, key, op, info)
+-- A change as wishes (the form of s.sync.pending). A rename is one change of the name per award.
+wishesOf = function(s, op, info)
     local w
     if op == "rename" then
+        local out = {}
         for _, id in ipairs(info.ids or {}) do
             local a = ns.FindAward(s, id)
-            if a then wishFrom(s, key, "edit", { id = id, fields = { name = a.name }, was = { name = info.from } }) end
+            if a then out[#out + 1] = { op = "edit", id = id, fields = { name = a.name }, was = { name = info.from } } end
         end
-        return
+        return out
     elseif op == "add" and type(info.a) == "table" then
         w = { op = "add", id = info.a.id, a = awardCopy(info.a) }
     elseif op == "edit" and info.id then
@@ -968,11 +1209,45 @@ wishFrom = function(s, key, op, info)
     elseif (op == "kill+" or op == "kill-") and type(info.k) == "table" then
         local k = info.k
         -- every recorder reads the boss fights itself: only kills entered by hand are wished
-        if op == "kill+" and k.src ~= "hand" then return end
+        if op == "kill+" and k.src ~= "hand" then return {} end
         w = { op = op, k = { enc = math.floor(num(k.enc)), name = plainText(k.name, 80), start = math.floor(num(k.start or k.t)),
                              t = math.floor(num(k.t)), ok = k.ok ~= false } }
     end
-    if w then queueWish(s, key, w) end
+    return { w }
+end
+
+-- A change of this officer as wishes to the keeper.
+wishFrom = function(s, key, op, info)
+    for _, w in ipairs(wishesOf(s, op, info)) do queueWish(s, key, w) end
+end
+
+-- A change of this keeper into its journal: the wish it would be, the award's revision before it,
+-- and the term and revision of the state that holds it first.
+remember = function(s, w, base)
+    if type(w) ~= "table" then return end
+    local list = journal(s)
+    list[#list + 1] = { opid = newOpid(s), op = w, base = num(base), term = termOf(s), rev = revOf(s), t = serverTime() }
+    while #list > MAX_JOURNAL do table.remove(list, 1) end
+end
+
+-- A former keeper's journal on the state of the new keeper: what its lineage holds is done, the
+-- rest goes to the new keeper as wishes (edits and deletions too, on their old revision).
+journalToWishes = function(s)
+    local list = type(s.sync) == "table" and s.sync.mine
+    if type(list) ~= "table" or #list == 0 then return end
+    local lin, wishes = s.sync.lin, pendingOf(s)
+    s.sync.mine = {}
+    for _, e in ipairs(list) do
+        if type(e) == "table" and type(e.op) == "table" and not included(lin, e) then
+            local opid = idOk(e.opid) and e.opid or newOpid(s)
+            for _, p in ipairs(wishes) do
+                if p.opid == opid then opid = newOpid(s) break end
+            end
+            wishes[#wishes + 1] = { opid = opid, op = e.op, base = num(e.base), t = serverTime(), tries = 0 }
+            stats.wishes = stats.wishes + 1
+        end
+    end
+    while #wishes > MAX_PENDING do table.remove(wishes, 1) end
 end
 
 -- One own wish on the own state (quietly: no undo step, no new wish).
@@ -1045,6 +1320,7 @@ adopt = function(s)
     if type(list) ~= "table" or #list == 0 then return end
     for _, p in ipairs(list) do
         local a = type(p.op) == "table" and p.op.id and ns.FindAward(s, p.op.id)
+        if type(p.op) == "table" then remember(s, p.op, a and num(a.v) or 0) end
         if a then a.v = num(a.v) + 1 end
     end
     s.sync.pending = {}
@@ -1053,15 +1329,20 @@ end
 ---------------------------------------------------------------------------
 -- The keeper takes a wish: checked whole, applied with the book's own functions, quietly
 ---------------------------------------------------------------------------
+-- A time of a wish: whole seconds within the raid's days, as SyncCheck wants every time of a
+-- snapshot (a wish the keeper takes is in its next snapshot).
+local function timeOk(v, s)
+    local lo, hi = dayRange(s.date)
+    return lo ~= nil and int(v, lo, hi)
+end
+
 local function parseAward(r, s)
-    if type(r) ~= "table" or not idOk(r[1]) or not nameOk(r[2]) or not int(r[3], 1, 999999) or type(r[4]) ~= "number"
+    if type(r) ~= "table" or not idOk(r[1]) or not nameOk(r[2]) or not int(r[3], 1, 999999) or not timeOk(r[4], s)
         or not KINDS[r[5]] or not text(r[6], 80) or r[6] == "" or not TARGETS[r[7]] or not noteOk(r[8], 60)
         or not (r[9] == "" or nameOk(r[9])) or not flag(r[10]) then
         return nil
     end
-    local t = math.floor(r[4])
-    if t < num(s.start) - 86400 or t > time() + 86400 then return nil end
-    return { id = r[1], name = r[2], item = r[3], t = t, kind = r[5], src = r[6], to = r[7], note = r[8] ~= "" and r[8] or nil,
+    return { id = r[1], name = r[2], item = r[3], t = r[4], kind = r[5], src = r[6], to = r[7], note = r[8] ~= "" and r[8] or nil,
              orig = r[9] ~= "" and r[9] or nil, manual = r[10] == 1 or nil }
 end
 
@@ -1138,6 +1419,7 @@ local function take(s, name, w)
     local op, base = w.op, w.b
     if type(base) ~= "number" then return "BAD", 0 end
     local changed, id = false, nil
+    local jw, jbase = nil, 0    -- the change for the journal and the award's revision before it
     if op == "add" then
         local x = parseAward(w.a, s)
         if not x then return "BAD", 0 end
@@ -1150,6 +1432,7 @@ local function take(s, name, w)
         a.orig = x.orig
         a.v = 0
         id, changed = a.id, true
+        jw = { op = "add", id = a.id, a = awardCopy(a) }
     elseif op == "edit" or op == "delete" or op == "restore" then
         if not idOk(w.id) then return "BAD", 0 end
         local fields
@@ -1160,20 +1443,24 @@ local function take(s, name, w)
         local was = parseWas(w.w)
         local a, _, gone = ns.FindAward(s, w.id)
         if not a then return "GONE", 0 end
-        id = a.id
+        id, jbase = a.id, num(a.v)
+        local before = fieldsOf(a)
         if op == "edit" then
             if gone then return "GONE", num(a.v) end
             if not fields then return "BAD", 0 end
             if conflicting(a, base, fields, was) then return "CONFLICT", num(a.v) end
             changed = editQuiet(s, a, fields)
             if changed == nil then return "BAD", num(a.v) end
+            jw = { op = "edit", id = a.id, fields = copy(fields), was = before }
         elseif op == "delete" then
             if gone then return "OK", num(a.v) end
             -- the keeper changed the award since: deleting it would lose that
             if base < num(a.v) and touched(a, was) then return "CONFLICT", num(a.v) end
             ns.AwardsQuiet(ns.DeleteAward, s, a.id)
             changed = true
+            jw = { op = "delete", id = a.id, was = before }
         else
+            jw = { op = "restore", id = a.id, fields = fields and copy(fields) or nil }
             if gone then
                 ns.AwardsQuiet(ns.RestoreAward, s, a.id)
                 changed = true
@@ -1196,16 +1483,21 @@ local function take(s, name, w)
         -- who put him there: the officer's entry, not the keeper
         if e[3] ~= 1 then entry.by = e[4] ~= "-" and e[4] or name end
         changed = true
+        jw = { op = "bench+", name = w.n, e = { t = math.floor(num(entry.t)), class = entry.class or "", self = entry.self and true or nil,
+                                               by = entry.by, note = entry.note } }
     elseif op == "bench-" then
         if not nameOk(w.n) then return "BAD", 0 end
         if ns.IsBenched(s, w.n) then
             ns.AwardsQuiet(ns.BenchRemove, s, w.n)
             changed = true
+            jw = { op = "bench-", name = w.n }
         end
     elseif op == "kill+" or op == "kill-" then
         local r = w.x
-        if type(r) ~= "table" or not int(r[1], 0, 99999999) or not text(r[2], 80) or r[2] == "" or type(r[3]) ~= "number"
-            or type(r[4]) ~= "number" or not flag(r[5]) then
+        -- the times as a snapshot checks them: a kill outside the raid's days would make every
+        -- following snapshot invalid
+        if type(r) ~= "table" or not int(r[1], 0, 99999999) or not text(r[2], 80) or r[2] == "" or not timeOk(r[3], s)
+            or not timeOk(r[4], s) or not flag(r[5]) then
             return "BAD", 0
         end
         local k = findKill(s, r)
@@ -1216,6 +1508,7 @@ local function take(s, name, w)
             ns.AwardsQuiet(ns.DeleteKill, s, k)
             changed = true
         end
+        if changed then jw = { op = op, k = { enc = r[1], name = r[2], start = r[3], t = r[4], ok = r[5] == 1 } } end
     else
         return "BAD", 0
     end
@@ -1223,12 +1516,15 @@ local function take(s, name, w)
     if changed then
         if a then a.v = num(a.v) + 1 end
         local sync = syncOf(s)
-        sync.rev = num(sync.rev) + 1
+        sync.rev = math.min(MAX_REV, revOf(s) + 1)
         sync.at = time()
         if id then
             sync.by = type(sync.by) == "table" and sync.by or {}
             sync.by[id] = name
         end
+        -- the keeper's journal: a taken wish is a change of this keeper's state now
+        stamp(s)
+        remember(s, jw, jbase)
         stats.taken = stats.taken + 1
         schedule(s)
         ns.Fire("SYNC_STATE")
@@ -1313,6 +1609,21 @@ local function addConflict(s, p, by, why, rev)
     end
 end
 
+-- An own journal entry the adopted state lacks: taken again like a wish (on its old revision), a
+-- conflict with the adopted state is kept as a conflict of this client.
+replayOwn = function(s, key, e, by)
+    local p = { opid = idOk(e.opid) and e.opid or newOpid(s), op = e.op, base = num(e.base) }
+    -- the journal lives in the saved file: an entry that is not as this client wrote it is dropped
+    if not wellFormed(p) then return end
+    local ok, verdict, rev = pcall(function() return take(s, me(), wire(key, p)) end)
+    if not ok then
+        local handler = geterrorhandler and geterrorhandler()
+        if handler then handler(verdict) end
+        return
+    end
+    if verdict == "CONFLICT" or verdict == "GONE" then addConflict(s, p, by or me(), verdict, tonumber(rev) or 0) end
+end
+
 -- Whether a waiting wish was sent to name (or name keeps the raid now).
 local function wishKeeper(p, name)
     return (p.to and ns.SameName(p.to, name)) or (keeperName ~= nil and ns.SameName(keeperName, name))
@@ -1370,8 +1681,13 @@ function ns.SyncResolve(s, opid, take)
             return nil, "Diese Änderung kann nicht erneut gesendet werden."
         end
         table.remove(list, idx)
-        if w.op ~= "add" then ns.AwardsQuiet(localApply, s, w) end
-        queueWish(s, key, w, math.max(num(c.rev), num(a.v)), true)
+        if role == "keeper" and roleKey == key and not takeover then
+            -- a conflict of the keeper itself (an own change on an adopted state): taken at once
+            take(s, me(), wire(key, { opid = newOpid(s), op = w, base = math.max(num(c.rev), num(a.v)) }))
+        else
+            if w.op ~= "add" then ns.AwardsQuiet(localApply, s, w) end
+            queueWish(s, key, w, math.max(num(c.rev), num(a.v)), true)
+        end
     else
         table.remove(list, idx)
     end
@@ -1394,34 +1710,55 @@ local function request(key, part, target, want)
         if want and badRev[key] == want then return end
         local l = lastSP[key]
         if want and l and l.r >= want and now() - l.at < SP_FRESH then return end
+        -- the keeper's snapshot is coming in right now (its state came first): it is not asked
+        -- for again; a set that gets lost asks by itself
+        if want and ns.CommIncoming and ns.CommIncoming(target, "SP", key) then return end
         local s = sessionFor(key)
         ns.CommSend("RQ", { key, tostring(math.floor(num(s and type(s.sync) == "table" and s.sync.rev))), part }, "WHISPER", target,
             { key = "RQ:" .. key })
     end)
 end
 
-local function compare(s, key, rev, hash, sender)
+-- Whether this client holds a state of s at all (a follower without one takes any snapshot).
+local function hasState(s)
+    return type(s.sync) == "table" and type(s.sync.rev) == "number"
+end
+
+-- The keeper sent an older state than this client holds: tell him (NW), at most every 20 s, so he
+-- gathers the newer one instead of sending the older over it.
+local function notice(s, key, target)
+    local t = now()
+    if noticed[key] and t - noticed[key] < NOTICE_GAP then return end
+    noticed[key] = t
+    ns.CommSend("NW", { key, tostring(revOf(s)), isHash(s.sync.hash) and s.sync.hash or ZERO, tostring(termOf(s)) }, "WHISPER", target,
+        { key = "NW:" .. key })
+end
+
+local function compare(s, key, e, rev, hash, sender)
     if badRev[key] == rev then return end
-    local sync = type(s.sync) == "table" and s.sync or nil
+    local sync = hasState(s) and s.sync or nil
+    local o = sync and order(e, rev, termOf(s), revOf(s)) or 1
+    if o < 0 then return notice(s, key, sender) end
     if officerSelf() then
-        if not sync or sync.rev ~= rev or sync.hash ~= hash then request(key, "PO", sender, rev) end
+        if o > 0 or sync.hash ~= hash then request(key, "PO", sender, rev) end
     elseif ns.Get("sync.raiderAwards") ~= false then
-        if not sync or rev > num(sync.rev) then request(key, "P", sender, rev) end
+        if o > 0 then request(key, "P", sender, rev) end
     end
 end
 
--- Whether name may send the snapshot of key: the keeper by the choice, or the old keeper this
--- client asked while taking over.
+-- Whether name may send the snapshot of key: the keeper by the choice.
 local function fromKeeper(name, key)
-    if takeover and takeover.key == key and ns.SameName(takeover.from, name) then return true end
     local k = elect(key)
     return k ~= nil and ns.SameName(k, name) and not ns.SameName(k, me())
 end
 
+-- 1: the snapshot is newer than the own state (or the same with another checksum: the keeper
+-- wins), 0: the same, -1: older (never taken).
 local function newer(s, sp)
-    local sync = type(s.sync) == "table" and s.sync or nil
-    if not sync or type(sync.rev) ~= "number" then return true end
-    return sp.r > sync.rev or (sp.r == sync.rev and sp.h ~= sync.hash)
+    if not hasState(s) then return 1 end
+    local o = order(sp.e, sp.r, termOf(s), revOf(s))
+    if o == 0 and sp.h ~= s.sync.hash then return 1 end
+    return o
 end
 
 local function refuse(key, r, why)
@@ -1430,56 +1767,93 @@ local function refuse(key, r, why)
     debugOnce("refused", ("Ungültiges Abbild verworfen (%s)."):format(tostring(why)))
 end
 
-local function done(key, from)
+local function done(key)
     lostAsked[key] = nil
-    if takeover and takeover.key == key and ns.SameName(takeover.from, from) then finishTakeover() end
 end
 
-local function combine(s, sp, so, from)
+local function combine(s, sp, so, from, sender)
     local ok, why = ns.SyncCheck(sp, so, s)
     if not ok then return refuse(sp.k, sp.r, why) end
-    if newer(s, sp) then apply(s, sp, so, from) end
-    done(sp.k, from)
+    local o = newer(s, sp)
+    if o > 0 then
+        apply(s, sp, so, from)
+    elseif o < 0 then
+        notice(s, sp.k, sender)
+    end
+    done(sp.k)
+end
+
+-- A part of a state gathered by this new keeper: both parts of a responder, checked whole; the
+-- newest above the own state is kept for the end of the gathering.
+local function gatherPart(name, part, tbl)
+    local t = takeover
+    local low = name:lower()
+    local c = t.cands[low] or {}
+    t.cands[low] = c
+    c[part] = tbl
+    if not c.sp or not c.so or c.sp.r ~= c.so.r then return end
+    t.cands[low] = nil
+    local s = sessionFor(t.key)
+    local ok, why = s ~= nil and ns.SyncCheck(c.sp, c.so, s)
+    if not ok then
+        stats.refused = stats.refused + 1
+        debugOnce("refused", ("Ungültiges Abbild verworfen (%s)."):format(tostring(why)))
+    else
+        noteSeen(t.key, c.sp.e, c.sp.r, name)
+        if order(c.sp.e, c.sp.r, termOf(s), revOf(s)) > 0 and (not t.best or order(c.sp.e, c.sp.r, t.best.sp.e, t.best.sp.r) > 0) then
+            t.best = { sp = c.sp, so = c.so, from = name }
+        end
+    end
+    gatherAnswered(name)
 end
 
 local function onSP(name, sender, sp)
     local key = sp.k
     local s = sessionFor(key)
-    if not s or not fromKeeper(name, key) then return end
+    if not s then return end
+    if takeover and takeover.key == key and role == "keeper" then return gatherPart(name, "sp", sp) end
+    if not fromKeeper(name, key) then return end
+    touchClaim(name)
     lastSP[key] = { r = sp.r, at = now() }
-    noteRev(key, sp.r, name)
     local ok, why = ns.SyncCheck(sp, nil, s)
     if not ok then return refuse(key, sp.r, why) end
-    if not newer(s, sp) then return done(key, name) end
+    noteSeen(key, sp.e, sp.r, name)
+    local o = newer(s, sp)
+    if o < 0 then notice(s, key, sender) end
+    if o <= 0 then return done(key) end
     if officerSelf() then
         local p = pend[key]
         if p and p.so and p.so.r == sp.r and ns.SameName(p.from, name) then
             pend[key] = nil
-            return combine(s, sp, p.so, name)
+            return combine(s, sp, p.so, name, sender)
         end
         local token = {}
         pend[key] = { sp = sp, from = name, token = token }
         -- the officer part did not come (the keeper did not know this client): ask for it
         C_Timer.After(SO_WAIT, function()
             local q = pend[key]
-            if q and q.token == token and q.sp and not q.so and ready() then
+            -- an officer part on its way is not asked for again (the answer would replace it)
+            if q and q.token == token and q.sp and not q.so and ready() and not (ns.CommIncoming and ns.CommIncoming(sender, "SO", key)) then
                 ns.CommSend("RQ", { key, tostring(math.floor(num(type(s.sync) == "table" and s.sync.rev))), "O" }, "WHISPER", sender,
                     { key = "RQ:" .. key })
             end
         end)
     elseif ns.Get("sync.raiderAwards") ~= false then
         apply(s, sp, nil, name)
-        done(key, name)
+        done(key)
     end
 end
 
-local function onSO(name, so, key)
+local function onSO(name, sender, so, key)
     local s = sessionFor(key)
-    if not s or type(so) ~= "table" or not officerSelf() or not fromKeeper(name, key) then return end
+    if not s or type(so) ~= "table" then return end
+    if takeover and takeover.key == key and role == "keeper" then return gatherPart(name, "so", so) end
+    if not officerSelf() or not fromKeeper(name, key) then return end
+    touchClaim(name)
     local p = pend[key]
     if p and p.sp and p.sp.r == so.r and ns.SameName(p.from, name) then
         pend[key] = nil
-        return combine(s, p.sp, so, name)
+        return combine(s, p.sp, so, name, sender)
     end
     pend[key] = { so = so, from = name }
 end
@@ -1492,6 +1866,9 @@ ns.CommOn("ST", function(sender, f)
     local name = ns.TrustName(sender)
     if not name then return end
     local key, rev, hash, flags = f[1], tonumber(f[2]), f[3], f[4]
+    -- the term (a fifth field; 0 when it is missing or not a number in range)
+    local e = tonumber(f[5])
+    if not whole(e, MAX_TERM) then e = 0 end
     ns.TrustWait(name, "officer", function(ok)
         if not ok or not ns.InMyGroup(name) or not ready() then return end
         local low = name:lower()
@@ -1500,11 +1877,32 @@ ns.CommOn("ST", function(sender, f)
         else
             claims[low] = nil
         end
-        noteRev(key, rev, name)
+        noteSeen(key, e, rev, name)
         update()
+        -- a keeper behind another officer's state gathers it first
+        heardNewer(key, e, rev, name, true)
         local s, k = running()
         if not s or k ~= key or role ~= "follower" or not keeperName or not ns.SameName(keeperName, name) then return end
-        compare(s, key, rev, hash, sender)
+        compare(s, key, e, rev, hash, sender)
+    end)
+end)
+
+-- A follower holds a newer state than this keeper sent: gather it.
+ns.CommOn("NW", function(sender, f, chan)
+    if not ready() or chan ~= "WHISPER" then return end
+    local name = ns.TrustName(sender)
+    if not name then return end
+    local key, rev, e = f[1], tonumber(f[2]), tonumber(f[4])
+    ns.TrustWait(name, "member", function(ok)
+        if not ok or not ns.InMyGroup(name) or not ready() then return end
+        local officer = ns.IsVerifiedOfficer(name) == true
+        heardNewer(key, e, rev, name, officer)
+        -- the answer of an asked officer that has nothing newer
+        local s = sessionFor(key)
+        if officer and takeover and takeover.key == key and s and whole(e, MAX_TERM) and whole(rev, MAX_REV)
+            and order(e, rev, termOf(s), revOf(s)) <= 0 then
+            gatherAnswered(name)
+        end
     end)
 end)
 
@@ -1560,14 +1958,43 @@ local function answer(name, sender, key, part)
     end
 end
 
+-- A new keeper gathers: an officer with a newer state than the asker's (term e, revision r) sends
+-- it whole by whisper; the others stay quiet.
+local function answerGather(name, sender, key, e, r)
+    local s = sessionFor(key)
+    if not s or not officerSelf() or ns.SameName(name, me()) or not whole(e, MAX_TERM) or not whole(r, MAX_REV) then return end
+    officers[name:lower()] = name
+    if not hasState(s) or order(termOf(s), revOf(s), e, r) <= 0 then
+        -- nothing newer here: said, so the new keeper need not wait for this client
+        local sync = type(s.sync) == "table" and s.sync or {}
+        ns.CommSend("NW", { key, tostring(revOf(s)), isHash(sync.hash) and sync.hash or ZERO, tostring(termOf(s)) }, "WHISPER", sender,
+            { key = "NWG:" .. key })
+        return
+    end
+    local t, recent = now(), {}
+    for _, at in ipairs(answers) do
+        if t - at < ANSWER_WINDOW then recent[#recent + 1] = at end
+    end
+    answers = recent
+    if #answers >= ANSWERS_MAX then return end
+    answers[#answers + 1] = t
+    local sp, so = ns.SyncBuild(s)
+    local low = name:lower()
+    ns.CommSendBlob("SP", key, sp, "WHISPER", sender, { key = "SPG:" .. key .. ":" .. low, ttl = DATA_TTL })
+    ns.CommSendBlob("SO", key, so, "WHISPER", sender, { key = "SOG:" .. key .. ":" .. low, ttl = DATA_TTL })
+end
+
 ns.CommOn("RQ", function(sender, f)
     if not ready() then return end
     local name = ns.TrustName(sender)
     if not name then return end
     local key, part = f[1], f[3]
+    local gather = f[5] == "G"
     -- the public part also for raiders of the guild in the group; the officer part only for officers
     ns.TrustWait(name, part == "P" and "member" or "officer", function(ok)
-        if ok and ns.InMyGroup(name) and ready() then answer(name, sender, key, part) end
+        if not ok or not ns.InMyGroup(name) or not ready() then return end
+        if gather then return answerGather(name, sender, key, tonumber(f[4]), tonumber(f[2])) end
+        answer(name, sender, key, part)
     end)
 end)
 
@@ -1585,7 +2012,7 @@ ns.CommOnBlob("SO", function(sender, tbl, chan, key)
     local name = ns.TrustName(sender)
     if not name or type(tbl) ~= "table" or tbl.k ~= key then return end
     ns.TrustWait(name, "officer", function(ok)
-        if ok and ns.InMyGroup(name) and ready() then onSO(name, tbl, key) end
+        if ok and ns.InMyGroup(name) and ready() then onSO(name, sender, tbl, key) end
     end)
 end)
 
@@ -1605,6 +2032,7 @@ ns.CommOn("OK", function(sender, f)
     local name = ns.TrustName(sender)
     local s = name and sessionFor(f[1])
     if not s then return end
+    touchClaim(name)
     local p, i, list = findPending(s, f[2])
     if not p or not wishKeeper(p, name) then return end
     table.remove(list, i)
@@ -1616,6 +2044,7 @@ ns.CommOn("NO", function(sender, f)
     local name = ns.TrustName(sender)
     local s = name and sessionFor(f[1])
     if not s then return end
+    touchClaim(name)
     local p, i, list = findPending(s, f[2])
     if not p or not wishKeeper(p, name) then return end
     table.remove(list, i)
@@ -1653,9 +2082,14 @@ end)
 -- The recording, the ticker and the group
 ---------------------------------------------------------------------------
 local function tick()
+    -- the lockdown holds every keeper's state in its queue: the claims stay fresh through it
+    if ns.CommHeld() then
+        for _, c in pairs(claims) do c.at = now() end
+    end
     update()
     local s, key = running()
     if claiming and s and key == claimKey and (not lastST or now() - lastST >= ST_EVERY) then sendST(s, key, true) end
+    regather()
     flush()
 end
 

@@ -16,6 +16,8 @@ _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
 _G.UnitName = function(u) if u == "target" then return STUB.target end if u == "npc" then return STUB.npc end return STUB.player end
 _G.UnitGUID = function(u) if u == "target" then return STUB.targetGUID end return "Player-1-1" end
+-- The own realm as the client writes it behind a sender ("Name-Realm"); STUB.realm changes it.
+_G.GetNormalizedRealmName = function() return STUB.realm or "Realm" end
 _G.GetNumGroupMembers = function() return #STUB.roster end
 _G.GetRaidRosterInfo = function(i)
     local m = STUB.roster[i]

@@ -236,9 +236,35 @@ end
 ---------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------
+-- The own realm as the client writes it behind a sender ("Name-Realm"), or nil.
+local function ownRealm()
+    for _, read in ipairs({
+        function() return _G.GetNormalizedRealmName and GetNormalizedRealmName() end,
+        function() return _G.UnitFullName and select(2, UnitFullName("player")) end,
+    }) do
+        local ok, realm = pcall(read)
+        realm = ok and ns.Plain(realm) or nil
+        if type(realm) == "string" and realm ~= "" then return realm end
+    end
+    return nil
+end
+
+local function realmKey(r) return (r:gsub("[%s%-']", "")):lower() end
+
+-- A raw sender without the realm ending, but only when that ending is the own realm (a player of
+-- another realm is never taken for a guild member of the same name); nil otherwise.
+function ns.StripOwnRealm(raw)
+    if type(raw) ~= "string" then return nil end
+    local base, realm = raw:match("^(.+)%-([^%-]+)$")
+    if not base then return nil end
+    local own = ownRealm()
+    if not own or realmKey(realm) ~= realmKey(own) then return nil end
+    return base
+end
+
 -- A raw sender as the name it has in the group or the guild: the same spelling (any case), else a
--- first name alone that only one of them carries; then the text before a realm ending. nil when
--- nobody fits.
+-- first name alone that only one of them carries; then the text before the own realm's ending.
+-- nil when nobody fits.
 function ns.TrustName(raw)
     raw = ns.Plain(raw)
     if type(raw) ~= "string" or raw == "" then return nil end
@@ -266,7 +292,7 @@ function ns.TrustName(raw)
     end
     local hit = match(raw)
     if hit then return hit end
-    local base = raw:match("^(.+)%-[^%-]*$")
+    local base = ns.StripOwnRealm(raw)
     return base and match(base) or nil
 end
 

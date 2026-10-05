@@ -170,13 +170,14 @@ Map*, Widgets.lua, MainFrame.lua, alle übrigen Seiten.
 |---|---|---|---|---|
 | `HI` | Amisia | GUILD, RAID, WHISPER | Version, Mindestprotokoll, Kennzeichen (`O` Offiziersansicht, `L` Lootleitung, `-`), Raid-Schlüssel oder `-` | Versionsmeldung und Antwort auf `VQ` |
 | `VQ` | Amisia | GUILD, RAID | Frage-Nummer (4 Hex) | Versionsfrage; Antwort `HI` per Flüsterung |
-| `ST` | Amisia | RAID, WHISPER | Raid-Schlüssel, Stand, Prüfsumme (16 Hex), Kennzeichen (`K` beansprucht Hüter, `M` Plündermeister nach eigener Sicht, `-`) | Stand des Hüters; Anspruch auf die Hüterrolle |
-| `RQ` | Amisia | WHISPER an Hüter | Raid-Schlüssel, eigener Stand, Teil (`P`, `O`, `PO`) | Abbild anfordern |
+| `ST` | Amisia | RAID, WHISPER | Raid-Schlüssel, Stand, Prüfsumme (16 Hex), Kennzeichen (`K` beansprucht Hüter, `M` Plündermeister nach eigener Sicht, `-`), Amtszeit | Stand des Hüters; Anspruch auf die Hüterrolle |
+| `RQ` | Amisia | WHISPER an Hüter; mit `G` auch RAID | Raid-Schlüssel, eigener Stand, Teil (`P`, `O`, `PO`), eigene Amtszeit, `G` | Abbild anfordern; mit `G`: ein neuer Hüter sammelt (siehe Nachtrag) |
+| `NW` | Amisia | WHISPER an Hüter | Raid-Schlüssel, eigener Stand, Prüfsumme, eigene Amtszeit | "ich habe einen neueren Stand" bzw. Antwort auf `RQ` mit `G` ohne Neueres |
 | `BL` | AmisiaD | RAID, WHISPER | Art (`SP`, `SO`, `OP`), Raid-Schlüssel, Folgenummer, Teil i, Teile n, Base64-Stück | ein Teil gepackter Daten |
 | `OK` | Amisia | WHISPER | Raid-Schlüssel, Wunsch-Kennung (12 Hex), neue Revision der Vergabe | Änderungswunsch übernommen |
 | `NO` | Amisia | WHISPER | Raid-Schlüssel, Wunsch-Kennung, Grund (`CONFLICT`, `GONE`, `DENIED`, `NORAID`, `BAD`), aktuelle Revision | Änderungswunsch abgelehnt |
 | `UQ` | Amisia | RAID | Frage-Nummer, bis zu 8 Item-IDs mit Komma | "Wer braucht das?" |
-| `UA` | Amisia | WHISPER an Fragenden | Frage-Nummer, je Item `id:art:zuwachs:prozent:slot` (Art `U` Upgrade, `W` Wunsch mit Prio im Feld zuwachs, `-` nichts), mit Komma | Antwort |
+| `UA` | Amisia | WHISPER an Fragenden | Frage-Nummer, je Item `id:art:zuwachs:prozent:slot` (Art `U` Upgrade, `W` Wunsch mit Prio im Feld zuwachs, `-` nichts), mit Komma | Antwort (passt sie nicht in 250 Bytes, in mehreren `UA` derselben Frage) |
 
 Feldprüfungen beim Empfang (sonst wird die Nachricht still verworfen und in der Fehlersuche gezählt):
 Version `^%d+%.%d+%.%d+$`, Raid-Schlüssel `^%d%d%d%d%-%d%d%-%d%d:%d+$`, Stand 0 bis 999999,
@@ -193,7 +194,12 @@ Prüfsumme `^%x+$` mit 16 Zeichen, Kennungen 12 Hex, Item-IDs 1 bis 999999, Teil
   nicht gesendet; der Hüter meldet einmal "Amisia: Der Raid-Stand ist zu groß für den Abgleich." (im
   Test geprüft: 60 Vergaben, 40 Grabsteine, 25 Kills passen in etwa 8 Teile).
 - Zusammensetzen je Absender und Folgenummer; Teile dürfen in beliebiger Reihenfolge und doppelt
-  kommen. Höchstens 3 offene Sätze je Absender, ein Satz verfällt nach 30 s ohne neuen Teil. Fertig:
+  kommen. Höchstens 3 offene Sätze je Absender, zusammen höchstens 90 Teile und 18.000 Zeichen (ein
+  Teil darüber verwirft seinen Satz, vor jedem Entpacken); ein Satz verfällt nach 30 s ohne neuen
+  Teil. Datenteile zählen nur von Mitgliedern der eigenen Gilde (`ns.IsVerifiedMember`): ist der
+  Absender nachweislich keins, fällt schon sein erster Teil weg und seine Teile werden 60 s lang
+  ungelesen verworfen; ist die Gildenliste gerade nicht lesbar, wird ein fertiger Satz erst nach der
+  Prüfung (`ns.TrustWait`) entpackt. Fertig:
   `DecodeBase64`, `DecompressString` (Ergebnis höchstens 64 KB, sonst verworfen), `DeserializeCBOR`,
   alles in `pcall`; danach strenge Prüfung des Inhalts (siehe "Abbild prüfen"). Ein Fehler verwirft
   den ganzen Satz, nie einen Teil davon.
@@ -253,17 +259,21 @@ ns.CommHeld() -> bool           -- Sperre hält die Schlange
 - Ereignis `CHAT_MSG_ADDON` (Payload `prefix, text, channel, sender, target, zoneChannelID, localID,
   name, instanceID`; laut Doku ohne Geheim-Kennzeichen). Alle Werte gehen trotzdem durch `ns.Plain`;
   ein geheimer Wert verwirft die Nachricht.
-- Eigene Nachrichten (Echo im Raid- und Gildenkanal) werden über `ns.SameName(sender, ich)` erkannt
-  und ignoriert.
+- Eigene Nachrichten (Echo im Raid- und Gildenkanal) werden am genauen eigenen vollen Namen erkannt
+  (ohne Groß-/Kleinschreibung, auch mit dem eigenen Realm dahinter) und ignoriert; nie am Vornamen
+  allein, sonst wäre ein anderer Charakter mit demselben Vornamen taub.
 - **Absendername:** `ns.TrustName(sender)` bildet den rohen Absender auf einen Namen aus Gruppe oder
   Gilde ab: gleich über `ns.SameNameIn` mit der Gruppe als Liste, sonst (falls der Client einen
-  Realm anhängt) der Teil vor dem letzten "-", wenn er so in Gruppe oder Gilde steht. Ohne Treffer
+  Realm anhängt) der Teil vor dem letzten "-", wenn er so in Gruppe oder Gilde steht und das Ende der
+  **eigene** Realm ist (`GetNormalizedRealmName()`, sonst `UnitFullName("player")`); ein Spieler eines
+  anderen Realms wird nie für das gleichnamige Gildenmitglied gehalten. Ohne Treffer
   zählt der Absender als unbekannt: Versions- und Raid-Daten werden ignoriert. Geantwortet wird an den
   rohen Absender-Text, wie bei `!sr`.
 - **Grenzen je Absender:** höchstens 40 Nachrichten in 10 s und 20 KB in einer Minute; darüber
   werden seine Nachrichten 60 s lang ignoriert (Fehlersuche: "Amisia Sync: Fraktur sendet zu viel,
   60 s ignoriert."). Grenzen je Typ zusätzlich: `VQ` je Absender einmal in 5 Minuten beantwortet,
-  `RQ` je Absender einmal in 20 s, `UQ` je Absender einmal in 5 s.
+  `RQ` je Absender einmal in 20 s (`RQ` mit `G` getrennt davon), `UQ` je Absender einmal in 5 s,
+  `NW` einmal in 10 s.
 - Jeder Handler läuft in `pcall`; ein Fehler geht an `geterrorhandler` und trifft keine anderen
   Handler (wie `ns.OnEvent`).
 
@@ -349,11 +359,13 @@ ns.CompareVersion(a, b) -> -1 | 0 | 1
 - **Anspruch:** ein Client beansprucht die Hüterrolle für den Raid-Schlüssel seiner laufenden
   Aufnahme, wenn `sync.enabled`, `ns.CommPacking()`, `ns.IsLootLead()`, `ns.SelfIsOfficer()` und eine
   laufende Aufnahme (`ns.Active()`) zusammenkommen. Er sendet dann `ST` mit `K` in den Raid: beim
-  Start oder Fortsetzen der Aufnahme, nach jedem eigenen Abbild, alle 5 Minuten (einzige
+  Start oder Fortsetzen der Aufnahme, nach jedem eigenen Abbild, alle 4 Minuten (einzige
   Wiederholung im Raid) und als Flüsterung auf ein `HI` eines neuen Raidmitglieds.
-- **Wahl:** jeder Client merkt sich Ansprüche der letzten 6 Minuten von geprüften Offizieren seiner
-  Gruppe mit dem eigenen Raid-Schlüssel. Ein Anspruch fällt weg, wenn der Absender die Gruppe verlässt
-  oder ein `ST`/`HI` ohne `K` sendet. Reihenfolge: (1) Plündermeister nach eigener Sicht
+- **Wahl:** jeder Client merkt sich Ansprüche der letzten 15 Minuten von geprüften Offizieren seiner
+  Gruppe mit dem eigenen Raid-Schlüssel. Jede Nachricht des Hüters (`ST`, `SP`, `SO`, `OK`, `NO`)
+  frischt seinen Anspruch auf; solange die Kampfsperre die Schlange hält, verfällt kein Anspruch (der
+  Takt frischt alle auf, nach dem Kampf gelten wieder volle 15 Minuten). Ein Anspruch fällt weg, wenn
+  der Absender die Gruppe verlässt oder ein `ST`/`HI` ohne `K` sendet. Reihenfolge: (1) Plündermeister nach eigener Sicht
   (`C_PartyInfo.GetLootMethod`, Raid-Index des Plündermeisters), (2) Schlachtzugsleiter
   (`UnitIsGroupLeader` auf dessen Raid-Einheit), (3) alle anderen; bei Gleichstand der Name (klein
   geschrieben) alphabetisch. Alle Clients rechnen dasselbe aus denselben Ansprüchen.
@@ -361,10 +373,9 @@ ns.CompareVersion(a, b) -> -1 | 0 | 1
   `sync.notify` einmal "Amisia: Vulo Sturmwind hält jetzt den Raid-Stand (Plündermeister). Deine
   Änderungen gehen an ihn." und wird Folger. Seine Änderungen ab dann gehen als Wünsche an den neuen
   Hüter.
-- **Übernehmen:** ein neuer Hüter fragt zuerst (`RQ` an den bisherigen Hüter, sonst an den Offizier
-  mit dem höchsten gesehenen Stand), wartet bis zu 10 s auf das Abbild, wendet es an wie ein Folger und
-  sendet dann sein erstes Abbild mit Stand = höchster gesehener Stand + 1. So läuft der Stand über
-  Hüterwechsel weiter und keine Vergabe des alten Hüters geht verloren.
+- **Übernehmen:** ein neuer Hüter sammelt zuerst (siehe "Nachtrag: Stand vor Hüter"), übernimmt den
+  neuesten Stand und sendet dann sein erstes Abbild in einer neuen Amtszeit. So läuft der Stand über
+  Hüterwechsel weiter und keine Änderung des alten Hüters geht verloren.
 
 ### Abbild
 
@@ -418,9 +429,14 @@ Vor dem Anwenden, ganz oder gar nicht:
 
 - `k` passt zur eigenen Aufnahme (oder dem neuesten Raid mit diesem Schlüssel innerhalb
   `record.resumeHours`); sonst wird das Abbild ignoriert (kein neuer Raid nur aus einem Abbild).
-- `r` größer als der eigene Stand, oder gleich mit anderer Prüfsumme (dann gewinnt der Hüter).
-- Typen und Grenzen: höchstens 400 Vergaben, 400 Grabsteine, 40 Bankplätze, 100 Kills, 80
-  Plus-Eins-Namen. Namen höchstens 48 Bytes ohne `|` und Steuerzeichen (`ns.FullName` danach nicht
+- (Amtszeit `e`, Stand `r`) größer als der eigene, oder gleich mit anderer Prüfsumme (dann gewinnt
+  der Hüter); ein älteres Abbild wird nie angewandt (siehe Nachtrag).
+- Typen und Grenzen: höchstens 400 Vergaben, 400 Grabsteine, 40 Bankplätze, 400 Kill-Köpfe, 80
+  Plus-Eins-Namen, 16 Einträge der Abstammung. `ns.SyncBuild` hält dieselben Grenzen ein, damit das
+  eigene Abbild immer die eigene Prüfung besteht: über 40 Bankplätze gehen die frühesten 40, über 400
+  Kill-Köpfe bleiben zuerst die ältesten Fehlversuche, dann die ältesten Kills draußen (jeder
+  Aufnehmende liest seine Bosskämpfe selbst), Kill-Köpfe außerhalb der Raidtage bleiben ganz draußen.
+  Namen höchstens 48 Bytes ohne `|` und Steuerzeichen (`ns.FullName` danach nicht
   leer); Quellnamen höchstens 80 Bytes, ohne `|`; Notizen über `ns.CleanNote` (60 bzw. 40 Bytes); Art
   aus MS/OS/SR/-, Ziel aus player/bank/de; Item 1 bis 999999; Zeiten zwischen dem Raidtag minus 1
   und plus 2 Tagen; Kennungen 12 Hex, im Abbild eindeutig.
@@ -471,7 +487,9 @@ Vor dem Anwenden, ganz oder gar nicht:
   Funktionen an (`ns.AddAwardTo` mit der Kennung des Absenders, `ns.EditAward`, `ns.DeleteAward`,
   `ns.RestoreAward`, `ns.RenameAwards`, `ns.BenchAdd`, `ns.BenchRemove`, `ns.AddKill`, `ns.DeleteKill`),
   erhöht `a.v`, antwortet `OK` und plant das Abbild. Ein "add", dessen Kennung schon lebt, ist ein
-  Doppel und wird mit `OK` bestätigt. Fremde Änderungen landen nicht auf dem Rückgängig-Stapel des
+  Doppel und wird mit `OK` bestätigt. Jede Zeit eines Wunsches (Vergabe, Kill-Kopf) wird geprüft wie
+  im Abbild: eine ganze Zahl innerhalb der Raidtage, sonst `NO BAD` (ein Kill bei 1e15 oder eine
+  Vergabezeit "keine Zahl" würde sonst jedes folgende Abbild ungültig machen). Fremde Änderungen landen nicht auf dem Rückgängig-Stapel des
   Hüters; seine Seite zeigt sie mit "geändert von Fraktur" im Status.
 - **`ns.AddAwardTo` mit vorgegebener Kennung:** neues optionales Feld `f.id` (12 Hex, im Raid noch
   frei, sonst wird wie bisher eine neue gewürfelt). Nur Sync nutzt es.
@@ -490,6 +508,46 @@ Vor dem Anwenden, ganz oder gar nicht:
   gehen alle wartenden Wünsche an den neuen Hüter.
 - Raider ohne Offiziersansicht senden nie Wünsche; ihre lokalen Änderungen (selten) bleiben lokal.
 
+### Nachtrag: Stand vor Hüter
+
+Befund des Reviews (2026-10-05): ein Hüter, dessen Stand zurückliegt (nach `/reload`, nach einem
+Verbindungsabbruch oder wenn er Hüter war und es wieder wird), überschrieb mit seinem nächsten Abbild
+spätere Änderungen und Löschungen aller anderen, weil nur der Stand `r` verglichen wurde und er nur
+fragte, wenn er einen höheren Stand kannte. Seitdem gilt:
+
+- **Amtszeit:** jedes Abbild trägt (`e`, `r`): Amtszeit des Hüters und Stand; `ST` trägt die Amtszeit
+  als fünftes Feld. Verglichen wird lexikografisch (erst `e`, dann `r`). `s.sync.term` speichert sie.
+- **Sammeln vor dem ersten Abbild:** wer Hüter wird, fragt **immer** zuerst: `RQ` mit eigener Amtszeit
+  und `G` in den Raid und per Flüsterung an jeden Offizier, den er kennt (und den bisherigen Hüter).
+  Jeder Offizier mit neuerem (`e`, `r`) schickt SP und SO per Flüsterung; ein Offizier ohne Neueres
+  antwortet `NW` mit seinem Stand. Haben alle Gefragten geantwortet, endet das Sammeln, sonst nach
+  10 s (in der Kampfsperre bis 10 s nach ihrem Ende). Der Hüter übernimmt das neueste geprüfte
+  Abbild wie ein Folger und sendet dann mit Amtszeit = höchste gesehene + 1 und Stand = höchster
+  gesehener (auch eigener) + 1. Wünsche, die währenddessen kommen, warten bis danach.
+- **Folger nehmen nie ein älteres Abbild:** ein Folger (Raider wie Offizier), der von seinem Hüter ein
+  `ST` oder SP mit älterem (`e`, `r`) als seinem eigenen sieht, wendet nichts an und flüstert dem
+  Hüter `NW` (höchstens alle 20 s). Der Hüter sammelt daraufhin erneut (höchstens alle 20 s), ebenso
+  wenn ein anderer beanspruchender Offizier per `ST` einen neueren Stand zeigt. Die Amtszeit aus dem
+  `NW` eines Raiders hebt die eigene höchstens um 8 (ein verstellter Client treibt sie nicht hoch).
+- **Tagebuch und Abstammung:** jede Änderung des Hüters (eigene und übernommene Wünsche, auch
+  Änderungen und Löschungen) steht als Wunsch mit Basis-Revision, Amtszeit und Stand in
+  `s.sync.mine` (höchstens 400). Das SO trägt die Abstammung `l`: je Hüter die neueste Amtszeit und
+  den Stand daraus, die der Zustand enthält (höchstens 16 Hüter; `s.sync.lin`). Ein Hüterzustand
+  enthält immer seine eigenen früheren Änderungen, daher genügt ein Eintrag je Hüter.
+- **Hüterrolle verloren:** wer nicht mehr Hüter ist (ein anderer gewählt, der Anspruch überholt),
+  vergleicht beim ersten Abbild des neuen Hüters sein Tagebuch mit dessen Abstammung: Enthaltenes
+  fällt weg, alles andere geht als Wunsch an den neuen Hüter, mit der alten Basis-Revision (so zeigt
+  sich ein echter Gegensatz über den bestehenden Konflikt). Ein Hüter, der beim Sammeln einen
+  fremden Stand übernimmt, legt seine nicht enthaltenen Tagebuch-Einträge selbst erneut darauf; ein
+  Gegensatz wird sein eigener Konflikt (auflösen wendet ihn sofort an).
+- **Zwei Hüter zugleich** (getrennte Gruppen, gleichzeitiger Anspruch): beim Wiedersehen entscheidet
+  die Wahl wie immer. Ist der Zustand des Gewinners neuer, wird der Verlierer Folger und schickt seine
+  Änderungen als Wünsche; ist der des Verlierers neuer, weist er das Abbild des Gewinners ab, meldet
+  `NW`, der Gewinner sammelt den neueren Stand und legt seine eigenen Änderungen darauf. In beiden
+  Fällen geht keine Seite verloren; dasselbe Feld auf beiden Seiten geändert wird ein Konflikt.
+- **Protokoll:** bleibt 1 (2.1 ist noch nicht ausgeliefert); die neuen Felder sind angehängt, `NW`
+  ist neu.
+
 ## Datenmodell und Umzug
 
 ### Raid (`AmisiaDB.sessions[i]`)
@@ -504,6 +562,9 @@ s.sync = {                          -- NEU, optional: Stand des Abgleichs dieses
   pending = { { opid = "a1b2c3d4e5f6", op = { ... }, base = 3, t = 1759690200, tries = 1 } },
   conflicts = { { opid = "...", id = "651f3a2c9b04", op = "edit", mine = { name = "Vulo" }, by = "Vulo Sturmwind", at = 1759690310 } },
   by = { ["651f3a2c9b04"] = "Fraktur" },   -- Hüter: wer eine Vergabe zuletzt per Wunsch geändert hat (Anzeige)
+  term = 3,                                -- Amtszeit des Stands (Nachtrag: Stand vor Hüter)
+  lin = { ["vulo sturmwind"] = { 3, 17 } },  -- Abstammung: je Hüter neueste Amtszeit und Stand darin
+  mine = { { opid, op, base, term, rev, t } },  -- Tagebuch der eigenen Hüter-Änderungen (höchstens 400)
 }
 a.v = 3                             -- NEU, optional: Revision der Vergabe, nur vom Hüter erhöht
 ```
@@ -637,11 +698,15 @@ ns.NeedText(item) -> "Anna +12 % (Brust), Bob Wunsch (hoch) · 2 ohne Upgrade" |
   Lootfensters (LootAnnounce.lua, nach dem Senden der Ansage) mit den angesagten Items; außerdem per
   Befehl `/amisia wer <Item-Link>` und im Vergabe-Dialog mit dem Knopf "Fragen" (60), wenn für das
   Item noch nichts vorliegt. `UQ` geht in den Raid; dieselbe Item-Liste höchstens einmal in 2 Minuten.
+  `ns.NeedCanAsk()` macht dieselben Prüfungen wie `ns.NeedAsk` ohne zu fragen (true, sonst false,
+  Grund und Kennung) für Knöpfe, die nur erscheinen, wenn Fragen geht.
 - **Antworten:** jeder Client mit `sync.shareUpgrades` (Standard an) und Ausrüstungsdaten
   (`Gear.Available()`) rechnet je Item `ns.BisGain(id)`: Upgrade (`ns.BisIsUpgrade`) -> `U` mit
   Zuwachs (ganzzahlig), Prozent (`gain / mine * 100`, ganzzahlig, 999 bei mine 0) und Slot-Schlüssel;
   ein Wunsch (`ns.BisChar().wish[id]`) -> `W` mit Prio; sonst `-`. Eine `UA`-Flüsterung je Frage mit
-  allen Items, nach 0 bis 2 s Zufall. Besessene Items (`ns.BisOwned`) zählen als `-`.
+  allen Items, nach 0 bis 2 s Zufall; passt sie nicht in 250 Bytes, geht sie in mehreren `UA`. Wird
+  das Senden verweigert, gilt die Frage nicht als beantwortet. Besessene Items (`ns.BisOwned`) zählen
+  als `-`.
 - **Anzeige** (nur Offiziersansicht): Vergabe-Dialog Zeile "Upgrade für: Anna +12 % (Brust), Bob
   Wunsch (hoch) · 2 ohne Upgrade · 5 ohne Antwort" (gekürzt auf die Breite, Tooltip mit allen); im
   Gewinner-Picker hinter dem Namen "(Upgrade +12 %)". Tooltip-Zeile für Offiziere

@@ -10,6 +10,7 @@ local ADDON, ns = ...
 local KEEP = 1800             -- seconds a question and its answers are kept
 local REPEAT_GAP = 120        -- the same item list is asked at most this often
 local MAX_ITEMS = 8
+local UA_TEXT = 250           -- bytes of one answer message (Comm.lua's limit)
 local ASK_TTL = 600           -- a question waits out a boss fight in the queue
 local ANSWER_TTL = 600
 local ANSWER_SPREAD = 2       -- an answer goes 0 to 2 s after the question
@@ -124,13 +125,26 @@ local function newQid()
     return ("%04x"):format(math.random(0, 65535))
 end
 
+-- Whether this client may ask at all: true, or false, the reason (German) and a code.
+local function canAsk()
+    if not ns.CommReady() then return false, "Addon-Nachrichten sind aus oder nicht verfügbar.", "off" end
+    if not ns.IsOfficerView() or not ns.IsLootLead() then return false, "Fragen kann nur die Lootleitung.", "lead" end
+    if not homeRaid() then return false, "Fragen nur in einer eigenen Raidgruppe.", "raid" end
+    if not ns.SelfIsOfficer() then return false, "Fragen nur mit Offiziersrang: die Raider antworten sonst nicht.", "rank" end
+    return true
+end
+
+-- The checks of ns.NeedAsk without asking (for a button that shows only when asking works):
+-- true, or false and the reason and its code.
+function ns.NeedCanAsk()
+    return canAsk()
+end
+
 -- Asks the raid who needs the items (ids or links, at most 8). Returns the question's number, or
 -- nil, the reason (German) and a code ("recent" for a list asked within 2 minutes).
 function ns.NeedAsk(items)
-    if not ns.CommReady() then return nil, "Addon-Nachrichten sind aus oder nicht verfügbar.", "off" end
-    if not ns.IsOfficerView() or not ns.IsLootLead() then return nil, "Fragen kann nur die Lootleitung.", "lead" end
-    if not homeRaid() then return nil, "Fragen nur in einer eigenen Raidgruppe.", "raid" end
-    if not ns.SelfIsOfficer() then return nil, "Fragen nur mit Offiziersrang: die Raider antworten sonst nicht.", "rank" end
+    local can, why, code = canAsk()
+    if not can then return nil, why, code end
     local ids, set = {}, {}
     for _, x in ipairs(type(items) == "table" and items or { items }) do
         local id = tonumber(x) or ns.ItemID(ns.Plain(x))
@@ -201,10 +215,30 @@ local function answer(sender, name, qid, list)
         end
     end
     if #entries == 0 then return end
+    -- one message holds 250 bytes: the entries go in as many answers as they need
+    local room = UA_TEXT - #("1UA\t" .. qid .. "\t")
+    local chunks, cur = {}, nil
+    for _, e in ipairs(entries) do
+        if #e <= room then
+            if cur and #cur + 1 + #e <= room then
+                cur = cur .. "," .. e
+            else
+                if cur then chunks[#chunks + 1] = cur end
+                cur = e
+            end
+        end
+    end
+    if cur then chunks[#chunks + 1] = cur end
+    local sent = false
+    for i, list in ipairs(chunks) do
+        local ok = ns.CommSend("UA", { qid, list }, "WHISPER", sender,
+            { jitter = ANSWER_SPREAD, ttl = ANSWER_TTL, key = "UA:" .. qid .. ":" .. i })
+        sent = sent or ok == true
+    end
+    -- a refused answer is not marked: the next question of the lead gets one
+    if not sent then return end
     answeredQ[mark] = t
     answerTimes[#answerTimes + 1] = t
-    ns.CommSend("UA", { qid, table.concat(entries, ",") }, "WHISPER", sender,
-        { jitter = ANSWER_SPREAD, ttl = ANSWER_TTL, key = "UA:" .. qid })
 end
 
 ns.CommOn("UQ", function(sender, f, chan)

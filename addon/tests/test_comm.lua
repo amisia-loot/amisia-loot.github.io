@@ -1,6 +1,8 @@
 -- Addon message layer (Comm.lua): prefixes, envelope, chunks and their reassembly, the send queue
 -- with its throttle per prefix, result codes, the lockdown, battlegrounds, receive limits, debug.
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" }, { name = "Kim Eisherz", class = "WARRIOR" } }
+-- data parts are only read from members of the own guild
+STUB.guild = { { name = "Vuloo", rank = 1 }, { name = "Fraktur", rank = 2 }, { name = "Kim Eisherz", rank = 4 } }
 local KEY = "2026-10-05:409"
 
 local function fresh()
@@ -138,6 +140,13 @@ STUB.secret["Kim Eisherz"] = true
 recv("Amisia", "1HI\t2.1.0\t1\tL\t-", "RAID", "Kim Eisherz")
 STUB.secret["Kim Eisherz"] = nil
 assert(#got == 1, "a secret sender is never read")
+-- the echo is the exact own name, also with the own realm; never a first name alone or another realm
+recv("Amisia", "1HI\t2.1.0\t1\t-\t-", "RAID", "Vuloo-Realm")
+assert(#got == 1, "own echo with the own realm")
+recv("Amisia", "1HI\t2.1.0\t1\t-\t-", "RAID", "Vuloo Sturm")
+assert(#got == 2 and got[2].sender == "Vuloo Sturm", "another character with the own first name is heard")
+recv("Amisia", "1HI\t2.1.0\t1\t-\t-", "RAID", "Vuloo-Anderswo")
+assert(#got == 3, "the own name on another realm is not the echo")
 
 -- a failing handler goes to the error handler and does not stop the others
 local caught
@@ -326,6 +335,46 @@ recv("Amisia", one[1], "RAID", "Fraktur")
 assert(#blobs == before)
 recv("AmisiaD", one[1], "RAID", "Fraktur")
 assert(#blobs == before + 1)
+-- data only from members of the own guild: the parts of a group member outside the guild are
+-- dropped from the first on and never unpacked
+local unpacked = 0
+local decompress = C_EncodingUtil.DecompressString
+C_EncodingUtil.DecompressString = function(...) unpacked = unpacked + 1 return decompress(...) end
+table.insert(STUB.roster, { name = "Pug Fremd", class = "ROGUE" })
+before = #blobs
+local badOut = NS.CommStats().bad
+local stranger = partsOf({ z = 2 }, "SP", KEY, 730)
+recv("AmisiaD", stranger[1], "RAID", "Pug Fremd")
+local stranger2 = partsOf({ a = string.rep("p", 200) }, "SP", KEY, 731)
+assert(#stranger2 == 2)
+recv("AmisiaD", stranger2[1], "RAID", "Pug Fremd")
+recv("AmisiaD", stranger2[2], "RAID", "Pug Fremd")
+assert(#blobs == before and unpacked == 0, "an outsider's sets are never unpacked")
+assert(NS.CommStats().bad == badOut + 1, "counted once, the rest dropped unread")
+table.remove(STUB.roster)
+-- the open parts of one sender are bounded before anything is unpacked: three sets of 40 parts
+-- sent slowly (within the receive limits) reach 90 open parts, the next part drops its set
+STUB.tick(120)
+local wide = {}
+for k = 1, 3 do
+    wide[k] = partsOf({ a = string.rep(string.char(96 + k), 5980) }, "SP", KEY, 740 + k)
+    assert(#wide[k] == 40, #wide[k])
+end
+local badWide, limitedWide = NS.CommStats().bad, NS.CommStats().limited
+for i = 1, 30 do
+    for k = 1, 3 do
+        recv("AmisiaD", wide[k][i], "RAID", "Kim Eisherz")
+        STUB.tick(0.8)
+    end
+end
+assert(NS.CommStats().limited == limitedWide, "within the receive limits")
+assert(NS.CommStats().bad == badWide, "90 open parts are allowed")
+recv("AmisiaD", wide[3][31], "RAID", "Kim Eisherz")
+assert(NS.CommStats().bad == badWide + 1, "the 91st open part drops its set")
+before = #blobs
+for i = 31, 40 do recv("AmisiaD", wide[1][i], "RAID", "Kim Eisherz"); STUB.tick(0.8) end
+assert(#blobs == before + 1 and blobs[#blobs].t.a:sub(1, 1) == "a", "the other sets go on")
+C_EncodingUtil.DecompressString = decompress
 
 ---------------------------------------------------------------------------
 -- throttle: 10 per prefix at once, then 1 a second; control before data

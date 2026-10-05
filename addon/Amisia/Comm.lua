@@ -28,7 +28,10 @@ local DONE_KEEP = 60        -- seconds a finished set is remembered (late double
 local RECV_WINDOW, RECV_MAX = 10, 40
 local BYTE_WINDOW, BYTE_MAX = 60, 20480
 local IGNORE_FOR = 60
-local KIND_GAP = { VQ = 300, RQ = 20, UQ = 5 }   -- seconds between two handled messages per sender
+local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
+local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
+-- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10 }
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
 local BLOB_ARTS = { SP = true, SO = true, OP = true }
@@ -221,6 +224,7 @@ local VALID = {
     end,
     OK = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 12) and isNum(f[3], 0, 999999) end,
     NO = function(f) return #f >= 4 and isKey(f[1]) and isHex(f[2], 12) and NO_REASONS[f[3]] and isNum(f[4], 0, 999999) end,
+    NW = function(f) return #f >= 4 and isKey(f[1]) and isNum(f[2], 0, 999999) and isHex(f[3], 16) and isNum(f[4], 0, 999999) end,
     UQ = function(f) return #f >= 2 and isHex(f[1], 4) and itemList(f[2]) end,
     UA = function(f) return #f >= 2 and isHex(f[1], 4) and answerList(f[2]) end,
 }
@@ -234,9 +238,15 @@ local function withoutRealm(name)
     return type(name) == "string" and name:match("^(.+)%-[^%-]*$") or nil
 end
 
+-- The own echo: exactly the own full name, also with the own realm ending. Never a first name
+-- alone (another character with that first name would be deaf to this client).
 local function isSelf(sender)
     local me = ns.UnitFullName("player")
-    return ns.SameName(sender, me) or ns.SameName(withoutRealm(sender), me)
+    local name = ns.FullName(sender)
+    if not me or not name then return false end
+    if name:lower() == me:lower() then return true end
+    local base = ns.StripOwnRealm and ns.StripOwnRealm(name)
+    return base ~= nil and base:lower() == me:lower()
 end
 
 -- A whisper target must be a name of the group or the guild (as the client gives it, a realm
@@ -626,7 +636,40 @@ local function sweep()
     end
 end
 
-local function onPart(s, sender, f, chan)
+local function dropSet(s, set)
+    for j, x in ipairs(s.sets) do if x == set then table.remove(s.sets, j) break end end
+end
+
+-- A finished set: unpacked only for a member of the own guild (the roster may have to be read
+-- first), then handed to the handlers of its kind.
+local function finishSet(sender, name, set)
+    local text = table.concat(set.parts, "", 1, set.n)
+    local function unpack()
+        local tbl = ns.CommUnpack(text)
+        if not tbl then
+            bad("Daten")
+            return
+        end
+        run(blobHandlers[set.art], sender, tbl, set.chan, set.key)
+    end
+    if not ns.TrustWait then return unpack() end
+    ns.TrustWait(name, "member", function(ok)
+        if ok then unpack() else bad("Absender") end
+    end)
+end
+
+-- Whether a part set of kind art for raid key from the raw sender is coming in right now.
+function ns.CommIncoming(sender, art, key)
+    local s = type(sender) == "string" and senders[sender:lower()]
+    if not s then return false end
+    sweep()
+    for _, set in ipairs(s.sets) do
+        if set.art == art and set.key == key then return true end
+    end
+    return false
+end
+
+local function onPart(s, sender, name, f, chan)
     local art, key, n, i = f[1], f[2], tonumber(f[5]), tonumber(f[4])
     local id = art .. ":" .. key .. ":" .. f[3]
     sweep()
@@ -637,7 +680,7 @@ local function onPart(s, sender, f, chan)
     end
     if set and set.n ~= n then
         -- the same set with another part count: all of it is bad
-        for j, x in ipairs(s.sets) do if x == set then table.remove(s.sets, j) break end end
+        dropSet(s, set)
         bad("Teile")
         return
     end
@@ -647,24 +690,28 @@ local function onPart(s, sender, f, chan)
             for j, x in ipairs(s.sets) do if x.last < s.sets[oldest].last then oldest = j end end
             table.remove(s.sets, oldest)
         end
-        set = { id = id, art = art, key = key, n = n, parts = {}, got = 0, sender = sender, chan = chan }
+        set = { id = id, art = art, key = key, n = n, parts = {}, got = 0, bytes = 0, sender = sender, chan = chan }
         s.sets[#s.sets + 1] = set
     end
     set.last = now()
     C_Timer.After(SET_TTL + 0.5, sweep)
     if not set.parts[i] then
+        -- the open parts and bytes of one sender are bounded before anything is unpacked
+        local parts, bytes = 0, 0
+        for _, x in ipairs(s.sets) do parts, bytes = parts + x.got, bytes + (x.bytes or 0) end
+        if parts + 1 > OPEN_PARTS or bytes + #f[6] > OPEN_BYTES then
+            dropSet(s, set)
+            bad("Grenze")
+            return
+        end
         set.parts[i] = f[6]
         set.got = set.got + 1
+        set.bytes = set.bytes + #f[6]
     end
     if set.got < n then return end
-    for j, x in ipairs(s.sets) do if x == set then table.remove(s.sets, j) break end end
+    dropSet(s, set)
     s.done[id] = now()
-    local tbl = ns.CommUnpack(table.concat(set.parts, "", 1, n))
-    if not tbl then
-        bad("Daten")
-        return
-    end
-    run(blobHandlers[art], sender, tbl, chan, key)
+    finishSet(sender, name, set)
 end
 
 local function onMessage(prefix, text, chan, sender)
@@ -699,15 +746,25 @@ local function onMessage(prefix, text, chan, sender)
     if not check or not check(fields) then return bad(kind) end
     stats.received = stats.received + 1
     debugLine("< " .. sender .. " " .. describe(kind, fields))
-    local gap = KIND_GAP[kind]
+    local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or kind
+    local gap = KIND_GAP[gapKey]
     if gap then
         local t = now()
-        if s.kinds[kind] and t - s.kinds[kind] < gap then return end
-        s.kinds[kind] = t
+        if s.kinds[gapKey] and t - s.kinds[gapKey] < gap then return end
+        s.kinds[gapKey] = t
     end
     if kind == "BL" then
         if not ns.CommPacking() then return end
-        return onPart(s, sender, fields, chan)
+        -- data only from members of the own guild: an outsider's parts are dropped from the first
+        -- one on, unread, for a minute
+        if s.outsider and now() < s.outsider then return end
+        local name = ns.TrustName and ns.TrustName(sender) or sender
+        local member = (name and ns.IsVerifiedMember) and ns.IsVerifiedMember(name)
+        if not name or member == false then
+            s.outsider, s.sets = now() + OUTSIDER_FOR, {}
+            return bad("Absender")
+        end
+        return onPart(s, sender, name, fields, chan)
     end
     run(handlers[kind], sender, fields, chan, text)
 end
