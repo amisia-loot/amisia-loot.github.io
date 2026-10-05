@@ -898,6 +898,419 @@ ns.Listen("BIS_CHANGED", function() guess = nil; bump() end)
 Gear.OnData(bump)
 
 ---------------------------------------------------------------------------
+-- Wishlist
+---------------------------------------------------------------------------
+
+local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
+ns.BIS_PRIO_TEXT = PRIO_TEXT
+
+local function clampPrio(p)
+    p = math.floor(tonumber(p) or 2)
+    return math.max(1, math.min(3, p))
+end
+
+local function itemName(id, link)
+    local name = itemInfo(id)
+    if type(name) == "string" and name ~= "" then return name end
+    name = type(link) == "string" and link:match("|h%[(.-)%]|h")
+    return name or ("Item " .. id)
+end
+
+-- Whether the own class can wear an item, by its type alone (at the data's level cap, so plate
+-- for a level 30 warrior counts). Unknown to the client: no item.
+local function wearable(id)
+    local _, _, _, instLoc = itemInstant(id)
+    if instLoc == nil and not Gear.Item(id) then return nil, "Kein Item." end
+    local loc, classID, sub, row = rowType(id)
+    local group = loc and Gear.GROUP[loc]
+    local _, class = UnitClass("player")
+    local cannot = "Das kann dein Charakter nicht tragen."
+    if not group or not (classID == 2 or classID == 4) then return nil, cannot end
+    if class and not Gear.Usable(class, { loc, classID, sub or 0 }, Gear.Cap(), (ns.BisSpec())) then return nil, cannot end
+    if class and row and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then return nil, cannot end
+    return true
+end
+
+-- Adds a wish (id or link) or changes its priority (3 high, 2 medium, 1 low) and note.
+-- Returns the entry, or nil and the reason.
+function ns.WishAdd(item, prio, note)
+    local c = ns.BisChar()
+    if not c then return nil, "Amisia ist noch nicht geladen." end
+    local id = tonumber(item) or ns.ItemID(item)
+    if not id or id <= 0 or id % 1 ~= 0 then return nil, "Kein Item." end
+    local e = c.wish[id]
+    if not e then
+        local ok, why = wearable(id)
+        if not ok then return nil, why end
+        local n = 0
+        for _ in pairs(c.wish) do n = n + 1 end
+        if n >= MAX_WISH then return nil, ("Die Wunschliste ist voll (%d)."):format(MAX_WISH) end
+        e = { t = time(), prio = clampPrio(prio), note = ns.CleanNote(note, NOTE_MAX) or "" }
+        c.wish[id] = e
+    else
+        if prio ~= nil then e.prio = clampPrio(prio) end
+        if note ~= nil then e.note = ns.CleanNote(note, NOTE_MAX) or "" end
+    end
+    ns.Fire("BIS_CHANGED")
+    return e
+end
+
+function ns.WishRemove(item)
+    local c = ns.BisChar()
+    local id = tonumber(item) or ns.ItemID(item)
+    if not c or not id or not c.wish[id] then return nil end
+    c.wish[id] = nil
+    ns.Fire("BIS_CHANGED")
+    return true
+end
+
+function ns.WishSetPrio(item, prio)
+    local c = ns.BisChar()
+    local id = tonumber(item) or ns.ItemID(item)
+    local e = c and id and c.wish[id]
+    if not e then return nil end
+    e.prio = clampPrio(prio)
+    ns.Fire("BIS_CHANGED")
+    return e
+end
+
+-- The wishes { id, e, owned, slot (German), src (best source, short), name, excluded }, by priority,
+-- then name.
+function ns.Wishes()
+    local c = ns.BisChar()
+    local out = {}
+    if not c then return out end
+    local o = Gear.Available() and ns.BisOpts() or nil
+    for id, e in pairs(c.wish) do
+        local loc = rowType(id)
+        local group = loc and Gear.GROUP[loc]
+        local slotKey = group and SLOT_OF[group]
+        local src
+        if o then
+            local rec = Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
+            src = rec and Gear.SourceText(rec, true) or nil
+        end
+        out[#out + 1] = { id = id, e = e, owned = ns.BisOwned(id), slot = slotKey and SLOT_NAME[slotKey] or nil, slotKey = slotKey,
+            src = src, name = itemName(id), excluded = c.ex.item[id] or nil }
+    end
+    table.sort(out, function(a, b)
+        if a.e.prio ~= b.e.prio then return a.e.prio > b.e.prio end
+        if a.name ~= b.name then return a.name < b.name end
+        return a.id < b.id
+    end)
+    return out
+end
+
+-- The wishes as text for the website's wishlist tab: "#AMISIA 2 <name>", one WL line per wish
+-- (priority down, then item id; the note is the last field and may hold spaces), "#END". Not part of
+-- the raid export.
+function ns.WishExportText()
+    local c = ns.BisChar()
+    local name = ns.ExportName(ns.UnitFullName("player") or "?")
+    local lines = { "#AMISIA 2 " .. name }
+    local ids = {}
+    for id in pairs(c and c.wish or {}) do ids[#ids + 1] = id end
+    table.sort(ids, function(a, b)
+        local pa, pb = c.wish[a].prio or 2, c.wish[b].prio or 2
+        if pa ~= pb then return pa > pb end
+        return a < b
+    end)
+    for _, id in ipairs(ids) do
+        local e = c.wish[id]
+        -- WL <itemID> <prio 1-3> <epoch> <name> [<note>]
+        local note = tostring(e.note or ""):gsub("|", ""):gsub("%c", " "):match("^%s*(.-)%s*$")
+        lines[#lines + 1] = ("WL %d %d %d %s%s"):format(id, clampPrio(e.prio), tonumber(e.t) or 0, name, note ~= "" and (" " .. note) or "")
+    end
+    lines[#lines + 1] = "#END"
+    return table.concat(lines, "\n")
+end
+
+-- Self clean-up (bis.wishAutoRemove): a wish that is worn, in the bags or in the bank goes.
+local function cleanWishes()
+    if not ns.Get("bis.wishAutoRemove") then return end
+    local c = ns.BisChar()
+    if not c or not next(c.wish) then return end
+    local gone = {}
+    for id in pairs(c.wish) do
+        if ns.BisOwned(id) then gone[#gone + 1] = id end
+    end
+    if #gone == 0 then return end
+    table.sort(gone)
+    for _, id in ipairs(gone) do
+        c.wish[id] = nil
+        ns.msg(("%s von deiner Wunschliste genommen, du hast das Item."):format(itemName(id)))
+    end
+    ns.Fire("BIS_CHANGED")
+end
+ns.BisOnOwned(cleanWishes)
+
+-- The own loot line ("You receive loot: ...") takes a wish off at once and reads the bags.
+ns.OnEvent("CHAT_MSG_LOOT", function(text)
+    text = ns.Plain(text)
+    if type(text) ~= "string" then return end
+    local who, id = ns.ParseLoot(text)
+    if not who or not ns.SameName(who, ns.UnitFullName("player")) then return end
+    local c = ns.BisChar()
+    if c and c.wish[id] and ns.Get("bis.wishAutoRemove") then
+        c.wish[id] = nil
+        ns.msg(("%s von deiner Wunschliste genommen, du hast das Item."):format(itemName(id)))
+        ns.Fire("BIS_CHANGED")
+    end
+    -- gear read at once; herbs and ore wait for the next bag update
+    if c and keepId(id, c) then scanBags() end
+end)
+
+---------------------------------------------------------------------------
+-- Toast: a wish or an upgrade drops
+---------------------------------------------------------------------------
+
+local TOAST_SECONDS, TOAST_MAX, TOAST_AGAIN = 8, 3, 120
+local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local GOLD = { 0.89, 0.72, 0.34 }
+local toastFrame, current
+local waiting = {}        -- toasts after the shown one, oldest first
+local lastToast = {}      -- item id -> time of its last toast
+local token = 0
+
+local showNext
+
+local function closeToast()
+    token = token + 1
+    current = nil
+    if toastFrame then
+        toastFrame.id, toastFrame.link, toastFrame.slotKey, toastFrame.hover = nil, nil, nil, false
+        toastFrame:Hide()
+    end
+    showNext()
+end
+
+local function buildToast()
+    local f = CreateFrame("Button", "AmisiaBisToast", UIParent)
+    f:SetSize(320, 58)
+    f:SetPoint("TOP", UIParent, "TOP", 0, -150)
+    -- above the main window and the roll windows; only the mouse, never the keyboard
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+    f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    local bg = f:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.055, 0.04, 0.08, 0.94)
+    for _, e in ipairs({ { "TOPLEFT", "TOPRIGHT", nil, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", nil, 1 },
+                         { "TOPLEFT", "BOTTOMLEFT", 1, nil }, { "TOPRIGHT", "BOTTOMRIGHT", 1, nil } }) do
+        local t = f:CreateTexture(nil, "BORDER")
+        t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.7)
+        t:SetPoint(e[1]); t:SetPoint(e[2])
+        if e[3] then t:SetWidth(e[3]) end
+        if e[4] then t:SetHeight(e[4]) end
+    end
+    f.icon = f:CreateTexture(nil, "ARTWORK")
+    f.icon:SetSize(36, 36)
+    f.icon:SetPoint("LEFT", 11, 0)
+    f.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    local function line(template, y)
+        local fs = f:CreateFontString(nil, "OVERLAY", template)
+        fs:SetPoint("TOPLEFT", 56, y)
+        fs:SetWidth(256)
+        fs:SetJustifyH("LEFT")
+        fs:SetWordWrap(false)
+        return fs
+    end
+    f.title = line("GameFontNormal", -7)
+    f.item = line("GameFontHighlightSmall", -24)
+    f.source = line("GameFontDisableSmall", -39)
+    f:SetScript("OnEnter", function(self)
+        self.hover = true
+        if self.link and GameTooltip then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetHyperlink(self.link)
+            GameTooltip:Show()
+        end
+    end)
+    f:SetScript("OnLeave", function(self)
+        self.hover = false
+        if GameTooltip then GameTooltip:Hide() end
+    end)
+    f:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then closeToast() return end
+        if self.link and HandleModifiedItemClick and IsShiftKeyDown and IsShiftKeyDown() then
+            HandleModifiedItemClick(self.link)
+            return
+        end
+        local slotKey = self.slotKey
+        closeToast()
+        if ns.ShowGear then ns.ShowGear("goals", slotKey) end
+    end)
+    f:Hide()
+    return f
+end
+
+local function expire(my)
+    if my ~= token or not toastFrame then return end
+    if toastFrame.hover or (MouseIsOver and MouseIsOver(toastFrame)) then
+        C_Timer.After(1, function() expire(my) end)
+        return
+    end
+    closeToast()
+end
+
+local function show(entry)
+    toastFrame = toastFrame or buildToast()
+    local f = toastFrame
+    token = token + 1
+    current = entry
+    f.id, f.link, f.slotKey, f.hover = entry.id, entry.link, entry.slotKey, false
+    local _, link, q, _, _, _, _, _, _, icon = itemInfo(entry.id)
+    if not icon then icon = select(5, itemInstant(entry.id)) end
+    q = q or ns.LinkQuality(entry.link) or 4
+    f.icon:SetTexture(icon or 134400)
+    if entry.why == "wish" then
+        f.title:SetText("Wunsch droppt!")
+        f.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
+    else
+        f.title:SetText("Upgrade für dich")
+        f.title:SetTextColor(0.31, 0.82, 0.42)
+    end
+    local extra = ""
+    if entry.gain and entry.slotKey then
+        extra = (" %+d (%s)"):format(math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
+    end
+    f.item:SetText(("|c%s%s|r%s"):format(QUALITY[q] or QUALITY[4], itemName(entry.id, entry.link or link), extra))
+    f.source:SetText(entry.src or "")
+    f:Show()
+    if entry.why == "wish" and ns.Get("bis.toastSound") and type(PlaySound) == "function" and SOUNDKIT and SOUNDKIT.RAID_WARNING then
+        pcall(PlaySound, SOUNDKIT.RAID_WARNING)
+    end
+    local my = token
+    C_Timer.After(TOAST_SECONDS, function() expire(my) end)
+end
+
+showNext = function()
+    if current then return end
+    local entry = table.remove(waiting, 1)
+    if entry then show(entry) end
+end
+
+-- Shows a toast for an item: why "wish" or "upgrade", the link (for the name and the shift-click)
+-- and where it was seen. One at a time; at most three at once, the oldest waiting one goes.
+function ns.BisToast(id, why, link, src)
+    id = tonumber(id) or ns.ItemID(id)
+    if not id then return end
+    local entry = { id = id, why = why, link = link, src = src }
+    local gain, slotKey = ns.BisGain(link or id)
+    entry.slotKey = slotKey ~= nil and SLOT_NAME[slotKey] and slotKey or nil
+    entry.gain = type(gain) == "number" and gain or nil
+    if not entry.slotKey then
+        local loc = rowType(id)
+        local group = loc and Gear.GROUP[loc]
+        entry.slotKey = group and SLOT_OF[group] or nil
+    end
+    waiting[#waiting + 1] = entry
+    while (current and 1 or 0) + #waiting > TOAST_MAX do table.remove(waiting, 1) end
+    showNext()
+end
+
+-- Test and page hook: the shown toast's item and the waiting ones.
+function ns.BisToastState()
+    local q = {}
+    for i, e in ipairs(waiting) do q[i] = e.id end
+    return { shown = current and current.id or nil, queue = q, frame = toastFrame }
+end
+
+local function inPvP()
+    local kind
+    if type(IsInInstance) == "function" then
+        local _, t = IsInInstance()
+        kind = ns.Plain(t)
+    else
+        local _, t = GetInstanceInfo()
+        kind = ns.Plain(t)
+    end
+    return kind == "pvp" or kind == "arena"
+end
+
+-- One item seen dropping: a toast when it is a wish, else when it is an upgrade (bis.toastUpgrade);
+-- never for an owned item, never twice in two minutes, never in battlegrounds and arenas.
+local function consider(link, src)
+    link = ns.Plain(link)
+    local id = ns.ItemID(link)
+    if not id then return end
+    local t = time()
+    if lastToast[id] and t - lastToast[id] < TOAST_AGAIN then return end
+    if ns.BisOwned(id) then return end
+    local c = ns.BisChar()
+    local why
+    if c and c.wish[id] then
+        why = "wish"
+    elseif ns.Get("bis.toastUpgrade") and Gear.Available() then
+        local gain, _, mine = ns.BisGain(link)
+        if gain and ns.BisIsUpgrade(gain, mine) then why = "upgrade" end
+    end
+    if not why then return end
+    lastToast[id] = t
+    ns.BisToast(id, why, link, src)
+end
+
+-- Every trigger runs protected: an error goes to the error handler, never into the client's event.
+local function guarded(fn)
+    return function(...)
+        if not ns.Get("bis.toast") or inPvP() then return end
+        local ok, err = pcall(fn, ...)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then handler(err) end
+        end
+    end
+end
+
+local function plainString(v)
+    v = ns.Plain(v)
+    return (type(v) == "string" and v ~= "") and v or nil
+end
+
+ns.OnEvent("LOOT_OPENED", guarded(function()
+    for slot = 1, (GetNumLootItems and ns.Plain(GetNumLootItems()) or 0) do
+        local link = GetLootSlotLink and plainString(GetLootSlotLink(slot))
+        if link then
+            local src
+            if type(ns.LootSourceName) == "function" then
+                local ok, name = pcall(ns.LootSourceName, slot)
+                src = ok and plainString(name) or nil
+            end
+            consider(link, (src and src ~= "?") and src or "Lootfenster")
+        end
+    end
+end))
+
+ns.OnEvent("START_LOOT_ROLL", guarded(function(rollID)
+    rollID = ns.Plain(rollID)
+    if type(rollID) ~= "number" or type(_G.GetLootRollItemLink) ~= "function" then return end
+    local ok, link = pcall(_G.GetLootRollItemLink, rollID)
+    if ok then consider(plainString(link), "Würfeln") end
+end))
+
+-- item links in a chat line: coloured links, as the client sends them
+local function eachLink(text, fn)
+    for link in text:gmatch("|c%x%x%x%x%x%x%x%x|Hitem:.-|h|r") do fn(link) end
+end
+
+-- The loot lead's announcement: a numbered item line in the raid chat ("1. [Item] SR: ..."), or a
+-- raid warning with an item link (a roll start). Secret text (a boss fight on Forever) is skipped.
+local function onRaidChat(text)
+    if ns.ChatLocked() then return end
+    text = plainString(text)
+    if not text or not text:find("^%d+%. |c") then return end
+    eachLink(text, function(link) consider(link, "Ansage") end)
+end
+ns.OnEvent("CHAT_MSG_RAID", guarded(onRaidChat))
+ns.OnEvent("CHAT_MSG_RAID_LEADER", guarded(onRaidChat))
+ns.OnEvent("CHAT_MSG_RAID_WARNING", guarded(function(text)
+    if ns.ChatLocked() then return end
+    text = plainString(text)
+    if text then eachLink(text, function(link) consider(link, "Ansage") end) end
+end))
+
+---------------------------------------------------------------------------
 -- Page, settings, commands
 ---------------------------------------------------------------------------
 
@@ -960,6 +1373,56 @@ ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45
       officer = true },
     { key = "bis.guildAward", type = "toggle", label = "Wünschende zuerst im Vergabe-Dialog", default = true, officer = true },
 }}
+
+-- The item at the start of a command (a link, else an item id) and the rest.
+local function splitItem(rest)
+    local s, e = rest:find("|c%x%x%x%x%x%x%x%x|Hitem:.-|h|r")
+    if not s then s, e = rest:find("|Hitem:.-|h.-|h") end
+    if s then return rest:sub(s, e), rest:sub(e + 1):match("^%s*(.-)%s*$") end
+    local id, more = rest:match("^(%d+)%s*(.-)%s*$")
+    if id then return tonumber(id), more end
+    return nil, rest
+end
+
+local PRIO_WORD = { hoch = 3, high = 3, mittel = 2, medium = 2, niedrig = 1, low = 1, ["3"] = 3, ["2"] = 2, ["1"] = 1 }
+
+ns.RegisterSlash("wunsch", { aliases = { "wish" }, args = "[<Link> [hoch|mittel|niedrig] [Notiz] | weg <Link>]",
+    desc = "Wunschliste: Item merken, ändern oder entfernen",
+    run = function(rest)
+        rest = rest or ""
+        if rest == "" then
+            ns.ShowGear("wish")
+            return
+        end
+        local word, after = rest:match("^(%S+)%s*(.*)$")
+        word = word and word:lower()
+        if word == "weg" or word == "remove" then
+            local item = splitItem(after)
+            local id = tonumber(item) or ns.ItemID(item)
+            if id and ns.WishRemove(id) then
+                ns.msg(("%s von deiner Wunschliste entfernt."):format(type(item) == "string" and item or itemName(id)))
+            else
+                ns.msg("Das steht nicht auf deiner Wunschliste.")
+            end
+            return
+        end
+        local item, more = splitItem(rest)
+        if not item then
+            ns.msg("Aufruf: /amisia wunsch <Item-Link> [hoch|mittel|niedrig] [Notiz]")
+            return
+        end
+        local prio
+        local first, tail = more:match("^(%S+)%s*(.-)$")
+        if first and PRIO_WORD[first:lower()] then prio, more = PRIO_WORD[first:lower()], tail end
+        local e, why = ns.WishAdd(item, prio, more ~= "" and more or nil)
+        if not e then
+            ns.msg(why)
+            return
+        end
+        local id = tonumber(item) or ns.ItemID(item)
+        ns.msg(("%s auf deiner Wunschliste (%s%s)."):format(type(item) == "string" and item or itemName(id), PRIO_TEXT[e.prio],
+            e.note ~= "" and (", " .. e.note) or ""))
+    end })
 
 ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" }, args = "[hier | item <Link> | aus <Link> | zurueck]",
     desc = "beste Ausrüstung für deinen Charakter",
