@@ -72,7 +72,7 @@ end
 
 -- Builds the roster when it is due: never in the lockdown (C_Club answers secret values there),
 -- at most every 10 s, sooner when it is empty and something changed.
-local function refresh()
+local function refresh(noAsk)
     if ns.ChatLocked() then return end
     local t = now()
     local empty = not roster or #roster == 0
@@ -84,16 +84,16 @@ local function refresh()
         return
     end
     roster = clubMembers() or rosterMembers() or {}
-    if #roster == 0 and ns.RequestGuildRoster then ns.RequestGuildRoster() end
+    if #roster == 0 and not noAsk and ns.RequestGuildRoster then ns.RequestGuildRoster() end
 end
 
 -- The roster to read now, or nil when it cannot be read (empty, or the lockdown without cache
--- permission).
-local function readable(allowLocked)
+-- permission). noAsk: an empty roster is not asked for (a reader that polls).
+local function readable(allowLocked, noAsk)
     if ns.ChatLocked() then
         if not allowLocked then return nil end
     else
-        refresh()
+        refresh(noAsk)
     end
     if not inGuild() then return {} end
     if not roster or #roster == 0 then return nil end
@@ -153,8 +153,8 @@ local function selfOfficerFlag()
     return false
 end
 
-local function ownRank()
-    local list = readable(true)
+local function ownRank(noAsk)
+    local list = readable(true, noAsk)
     if not list then return nil end
     for _, m in ipairs(list) do
         if m.self then return m.rank end
@@ -204,9 +204,10 @@ function ns.IsVerifiedMember(name)
 end
 
 -- Whether the own character has an officer rank (a forced officer view does not count). Reads the
--- roster built before a lockdown, without a new query.
-function ns.SelfIsOfficer()
-    local own = ownRank()
+-- roster built before a lockdown, without a new query. noAsk: an empty roster is not asked for (the
+-- sync polls this every few seconds).
+function ns.SelfIsOfficer(noAsk)
+    local own = ownRank(noAsk)
     return own ~= nil and ns.IsOfficerRank(own) or false
 end
 

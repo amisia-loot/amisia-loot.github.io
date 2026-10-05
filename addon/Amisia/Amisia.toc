@@ -26,6 +26,7 @@ SoftRes.lua
 LootAnnounce.lua
 RaidLog.lua
 Bench.lua
+Sync.lua
 RaidText.lua
 Scan.lua
 Collect.lua

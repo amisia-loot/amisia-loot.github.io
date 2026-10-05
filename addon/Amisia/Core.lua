@@ -428,8 +428,11 @@ local function stopRecording()
     if not active then return end
     snapshotRoster()
     msg(("Aufnahme beendet: %s, %d Raider."):format(active.zone, ns.MemberCount(active)))
+    local old = active
     active = nil
     stopTicker()
+    -- the sync sends a last snapshot of the ended raid when something changed
+    ns.Fire("RECORDING", nil, old)
     refresh()
 end
 
@@ -441,6 +444,7 @@ local function evaluate()
     end
     local isRaid, zone, instanceID = raidInstance()
     if isRaid and IsInRaid() then
+        local started = false
         if not active or active.instanceID ~= instanceID then
             if active then stopRecording() end
             local s = findReusable(instanceID)
@@ -452,9 +456,12 @@ local function evaluate()
                 active = newSession(zone, instanceID)
                 msg(("Aufnahme gestartet: %s. /amisia zeigt die Liste."):format(active.zone))
             end
+            started = true
         end
         startTicker()
         snapshotRoster()
+        -- start or resume: the version check says hello, the sync claims or follows
+        if started then ns.Fire("RECORDING", active) end
     elseif active then
         stopRecording()
     end
@@ -1025,6 +1032,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.itemNames = DB.itemNames or {}
         DB.exported = DB.exported or {}   -- session id -> { h = fingerprint, at = epoch } of its last export
         ns.ApplySettings(DB)
+        local loadedAt, tonight = time(), ns.NightOf(time())
         for _, s in ipairs(DB.sessions) do
             s.members = s.members or {}
             s.loot = s.loot or {}
@@ -1035,6 +1043,39 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             s.kills = s.kills or {}
             s.bench = s.bench or {}
             s.outside = s.outside or {}
+            -- the sync state of a raid (2.1): a table with a raid key, waiting wishes younger than a
+            -- day, conflicts only of tonight (20 at most); an award's revision only as a number >= 0
+            local sy = s.sync
+            if sy ~= nil and (type(sy) ~= "table" or type(sy.key) ~= "string" or not sy.key:match("^%d%d%d%d%-%d%d%-%d%d:%d+$")) then
+                s.sync = nil
+            elseif sy then
+                if type(sy.rev) ~= "number" or sy.rev < 0 then sy.rev = 0 end
+                if type(sy.pending) == "table" then
+                    local keep = {}
+                    for _, p in ipairs(sy.pending) do
+                        if type(p) == "table" and type(p.t) == "number" and loadedAt - p.t < 86400 then keep[#keep + 1] = p end
+                    end
+                    sy.pending = keep
+                elseif sy.pending ~= nil then
+                    sy.pending = nil
+                end
+                if type(sy.conflicts) == "table" then
+                    local keep = {}
+                    if s.date == tonight then
+                        for _, c in ipairs(sy.conflicts) do
+                            if type(c) == "table" and #keep < 20 then keep[#keep + 1] = c end
+                        end
+                    end
+                    sy.conflicts = keep
+                elseif sy.conflicts ~= nil then
+                    sy.conflicts = nil
+                end
+            end
+            for _, list in ipairs({ s.awards, s.gone }) do
+                for _, a in ipairs(list) do
+                    if a.v ~= nil and (type(a.v) ~= "number" or a.v < 0) then a.v = nil end
+                end
+            end
         end
         -- the learned material list, and what the raids recorded before it teach once
         if ns.MatsLoaded then ns.MatsLoaded(DB) end

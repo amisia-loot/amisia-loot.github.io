@@ -284,6 +284,7 @@ function ns.BenchAdd(s, name, opts)
         list[key] = e
     end
     ns.Fire("DATA_CHANGED")
+    if s.members and ns.SyncNote then ns.SyncNote("bench+", s, { name = key, e = e }) end
     return e, key
 end
 
@@ -295,6 +296,7 @@ function ns.BenchRemove(s, name)
     end
     entries(s)[key] = nil
     ns.Fire("DATA_CHANGED")
+    if s.members and ns.SyncNote then ns.SyncNote("bench-", s, { name = key }) end
     return true, key
 end
 

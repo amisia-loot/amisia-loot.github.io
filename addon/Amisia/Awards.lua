@@ -102,7 +102,31 @@ local function noteWinner(s, name, t)
     return false
 end
 
+---------------------------------------------------------------------------
+-- Quiet changes and the sync report
+---------------------------------------------------------------------------
+local quiet = 0   -- > 0 inside ns.AwardsQuiet
+
+-- Runs fn(...) for a change applied on behalf of someone else (the sync): no undo step, no note in
+-- the chat, no report to the sync. Returns what fn returns; an error is raised after the count is
+-- set back.
+function ns.AwardsQuiet(fn, ...)
+    quiet = quiet + 1
+    local res = { pcall(fn, ...) }
+    quiet = quiet - 1
+    if not res[1] then error(res[2], 0) end
+    return unpack(res, 2, table.maxn(res))
+end
+
+function ns.AwardsIsQuiet() return quiet > 0 end
+
+-- Reports a change to the sync (Sync.lua decides what it means).
+local function report(op, s, info)
+    if quiet == 0 and ns.SyncNote then ns.SyncNote(op, s, info) end
+end
+
 local function push(entry)
+    if quiet > 0 then return end
     undo[#undo + 1] = entry
     while #undo > UNDO_MAX do table.remove(undo, 1) end
 end
@@ -147,7 +171,7 @@ function ns.AddAwardTo(s, f)
     }
     s.gone = s.gone or {}
     s.awards[#s.awards + 1] = a
-    if to == "player" and not noteWinner(s, name, t) and s == ns.Active() then
+    if to == "player" and not noteWinner(s, name, t) and s == ns.Active() and quiet == 0 then
         ns.msg(("Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."):format(name))
     end
     if not ns.KnownItem(item) then
@@ -165,6 +189,7 @@ function ns.AddAwardTo(s, f)
     end
     push({ op = "add", s = s, id = a.id })
     changed()
+    report("add", s, { a = a })
     return a
 end
 
@@ -208,6 +233,11 @@ function ns.EditAward(s, id, f)
     a.edited = time()
     push({ op = "edit", s = s, id = id, before = before })
     changed()
+    local fields = {}
+    for _, k in ipairs({ "name", "kind", "note", "to" }) do
+        if a[k] ~= before[k] then fields[k] = a[k] == nil and false or a[k] end
+    end
+    report("edit", s, { id = id, fields = fields })
     return a
 end
 
@@ -241,6 +271,7 @@ function ns.DeleteAward(s, id)
     if not a then return nil, GONE end
     push({ op = "delete", s = s, id = id })
     changed()
+    report("delete", s, { id = id })
     return a
 end
 
@@ -249,6 +280,7 @@ function ns.RestoreAward(s, id)
     if not a then return nil, GONE end
     push({ op = "restore", s = s, id = id })
     changed()
+    report("restore", s, { id = id })
     return a
 end
 
@@ -269,6 +301,9 @@ function ns.RenameAwards(s, from, to)
     noteWinner(s, to, t)
     push({ op = "rename", s = s, before = before, from = from, to = to })
     changed()
+    local ids = {}
+    for i, b in ipairs(before) do ids[i] = b.id end
+    report("rename", s, { from = from, to = to, ids = ids })
     return #before
 end
 
@@ -344,30 +379,43 @@ function ns.UndoAward()
         if doable(e) then
             local text = label(e)
             local done
+            -- every step goes to the sync as the change it makes
+            local reports = {}
+            local function all(a) return { name = a.name, kind = a.kind, note = a.note == nil and false or a.note, to = a.to } end
             if e.op == "add" or e.op == "restore" then
                 done = remove(e.s, e.id)
+                if done then reports[1] = { "delete", { id = e.id } } end
             elseif e.op == "delete" then
                 done = revive(e.s, e.id)
+                if done then reports[1] = { "restore", { id = e.id } } end
             elseif e.op == "edit" then
                 local a, _, inGone = ns.FindAward(e.s, e.id)
                 if a and not inGone then
+                    -- the revision of the sync is no part of the step taken back
+                    local v = a.v
                     assign(a, e.before)
+                    a.v = v
                     -- stamped anew, so the site takes the reverted award as the newer state
                     a.edited = time()
                     done = a
+                    reports[1] = { "edit", { id = e.id, fields = all(a) } }
                 end
             elseif e.op == "rename" then
                 for _, b in ipairs(e.before) do
                     local a, _, inGone = ns.FindAward(e.s, b.id)
                     if a and not inGone then
+                        local v = a.v
                         assign(a, b)
+                        a.v = v
                         a.edited = time()
                         done = a
+                        reports[#reports + 1] = { "edit", { id = b.id, fields = all(a) } }
                     end
                 end
             end
             if done then
                 changed()
+                for _, r in ipairs(reports) do report(r[1], e.s, r[2]) end
                 return text
             end
         end
@@ -443,6 +491,12 @@ local function plusSessions(scope)
     end
     local s = ns.Active() or newestSession()
     return { s }, "raid"
+end
+
+-- The scope the plus-one counts in right now: "raid" or "week".
+function ns.PlusScope()
+    local _, scope = plusSessions()
+    return scope
 end
 
 local function plusAward(a)

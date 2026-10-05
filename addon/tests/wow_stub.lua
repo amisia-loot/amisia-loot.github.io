@@ -32,7 +32,18 @@ _G.IsInRaid = function(cat)
     return true
 end
 _G.IsInGroup = _G.IsInRaid
-_G.UnitIsGroupLeader = function() return STUB.leader end
+-- "player" is the leader with STUB.leader; a raid unit "raid<i>" with STUB.roster[i].leader (the
+-- player's own raid unit, STUB.playerRaidIndex, follows STUB.leader when that is not set).
+_G.UnitIsGroupLeader = function(u)
+    local i = type(u) == "string" and tonumber(u:match("^raid(%d+)$"))
+    if i then
+        local m = STUB.roster[i]
+        if m and m.leader ~= nil then return m.leader and true or false end
+        if STUB.playerRaidIndex == i then return STUB.leader end
+        return false
+    end
+    return STUB.leader
+end
 _G.UnitIsGroupAssistant = function() return false end
 _G.GetInstanceInfo = function() local i = STUB.instance; return i.name, i.type, i.diff or 0, "", 0, 0, false, i.id end
 _G.InCombatLockdown = function() return STUB.combat and true or false end

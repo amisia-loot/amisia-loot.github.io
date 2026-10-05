@@ -61,6 +61,11 @@ local function insert(s, k)
     sortKills(s)
 end
 
+-- A kill header of s was added or changed ("kill+") or deleted ("kill-"): the sync hears of it.
+local function synced(s, op, k)
+    if ns.SyncNote then ns.SyncNote(op, s, { enc = k.enc, t = k.t, k = k }) end
+end
+
 ---------------------------------------------------------------------------
 -- Who was there
 ---------------------------------------------------------------------------
@@ -241,6 +246,7 @@ ns.OnEvent("ENCOUNTER_END", function(enc, name, diff, size, success)
                 k.src, k.size, k.diff = "enc", size, diff
                 if start then k.start = start end
                 ns.Fire("DATA_CHANGED")
+                synced(s, "kill+", k)
             end
             return
         end
@@ -251,21 +257,27 @@ ns.OnEvent("ENCOUNTER_END", function(enc, name, diff, size, success)
             if start then k.start = math.min(start, k.t) end
             sortKills(s)
             ns.Fire("DATA_CHANGED")
+            synced(s, "kill+", k)
             return
         end
         k = { enc = enc, name = name, start = start or t, t = t, ok = true, size = size, diff = diff, src = "enc",
               n = countNow(s, start or t) }
         insert(s, k)
         waitFor(s, k)
+        ns.Fire("DATA_CHANGED")
+        synced(s, "kill+", k)
+        return
     else
         -- the same wipe twice (a second handler, a repeated event)
         for _, x in ipairs(s.kills) do
             if not x.ok and x.enc == enc and math.abs(x.t - t) <= 2 then return end
         end
-        insert(s, { enc = enc, name = name, start = start or t, t = t, ok = false, size = size, diff = diff, src = "enc",
-                    n = countNow(s, start or t) })
+        local k = { enc = enc, name = name, start = start or t, t = t, ok = false, size = size, diff = diff, src = "enc",
+                    n = countNow(s, start or t) }
+        insert(s, k)
+        ns.Fire("DATA_CHANGED")
+        synced(s, "kill+", k)
     end
-    ns.Fire("DATA_CHANGED")
 end)
 
 ns.OnEvent("BOSS_KILL", function(enc, name)
@@ -286,6 +298,7 @@ ns.OnEvent("BOSS_KILL", function(enc, name)
         if start then k.start = math.min(start, k.t) end
         sortKills(s)
         ns.Fire("DATA_CHANGED")
+        synced(s, "kill+", k)
         return
     end
     k = { enc = enc, name = name, start = start or t, t = t, ok = true, size = pull and pull.size or 0,
@@ -293,6 +306,7 @@ ns.OnEvent("BOSS_KILL", function(enc, name)
     insert(s, k)
     waitFor(s, k)
     ns.Fire("DATA_CHANGED")
+    synced(s, "kill+", k)
 end)
 
 ---------------------------------------------------------------------------
@@ -322,9 +336,11 @@ ns.OnEvent("LOOT_OPENED", function()
         end
     end
     local who = presentSafe() or membersAt(s, d.t - 60, d.t)
-    insert(s, { enc = 0, name = name, start = d.t, t = d.t, ok = true, size = 0, diff = 0, src = "loot", who = who, n = #who })
+    local k = { enc = 0, name = name, start = d.t, t = d.t, ok = true, size = 0, diff = 0, src = "loot", who = who, n = #who }
+    insert(s, k)
     remember("LOOT", name .. " (Lootfenster)")
     ns.Fire("DATA_CHANGED")
+    synced(s, "kill+", k)
 end)
 
 ---------------------------------------------------------------------------
@@ -385,6 +401,7 @@ function ns.AddKill(s, spec)
     end
     insert(s, k)
     ns.Fire("DATA_CHANGED")
+    synced(s, "kill+", k)
     return k
 end
 
@@ -395,6 +412,7 @@ function ns.DeleteKill(s, k)
             table.remove(s.kills, i)
             k.wait = nil
             ns.Fire("DATA_CHANGED")
+            synced(s, "kill-", k)
             return true
         end
     end
