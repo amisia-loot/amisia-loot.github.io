@@ -7,7 +7,7 @@
 const {grab} = require('./site_parser.cjs');
 
 const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSplit', 'amParse', 'amAwardRows', 'amGoneRows',
-  'importSig', 'forgetImport', 'glResolve', 'amApplyAwardChanges', 'amLate', 'amResolve', 'importAmisia', 'nightExtraLoot',
+  'importSig', 'forgetImport', 'glResolve', 'amApplyAwardChanges', 'amLate', 'amNightLog', 'amResolve', 'importAmisia', 'nightExtraLoot',
   'bossGuessed', 'bossHere', 'raiderById', 'anyItemName', 'nightOn', 'lootDrops', 'lootAway', 'otherLoot', 'itemNames', 'matloot',
   'nights', 'lootOk'];
 const src = NEEDED.map(grab).join('\n\n');
