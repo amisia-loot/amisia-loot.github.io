@@ -604,6 +604,9 @@ function Gear.PlaceOf(rec)
     local k, z = rec[1], nil
     if k == "X" or k == "D" then
         local inst = k == "X" and rec[4] or rec[5]
+        -- Forever data built before the game field held a zone there, no instance id
+        local d = data()
+        if k == "D" and d and not d.game then inst = nil end
         if type(inst) == "number" and inst > 0 then return "I:" .. inst end
         return rec[2] and ("N:" .. rec[2]) or nil
     elseif k == "Q" then z = rec[6]

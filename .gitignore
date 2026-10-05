@@ -1,6 +1,7 @@
 __pycache__/
 .pytest_cache/
 tools/icons/
+tools/cache/
 .vscode/
 Amisia_teil*.lua
 .claude/settings.local.json

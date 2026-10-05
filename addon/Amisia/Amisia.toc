@@ -27,6 +27,8 @@ Scan.lua
 Collect.lua
 GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
+BisDataTBC.lua [AllowLoadGameType tbc]
+BisWeightsTBC.lua [AllowLoadGameType tbc]
 Gear.lua
 GearFrame.lua
 MainFrame.lua

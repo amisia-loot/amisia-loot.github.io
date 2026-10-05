@@ -177,7 +177,7 @@ def test_collector_drops_become_dungeon_world_and_quest_sources():
     }
     src, keep, zone_rows, *_ = build_gear.build(scan, collected, questie, zones, ({}, {}), [], {}, {})
     rec = lambda i: src.rows[keep[i][1][0] - 1]
-    assert rec(1) == ('D', 'The Deadmines', 'Edwin VanCleef')
+    assert rec(1) == ('D', 'The Deadmines', 'Edwin VanCleef', None, 36, 1581), 'with instance and area id'
     w = rec(2)
     assert w[:4] == ('W', 'Wolf', 0, 0) and zone_rows[w[4]] == 'Wald von Elwynn'
     assert rec(3) == ('Q', 'The Quest', 26, 24, 'A', None, 500, 0)
@@ -191,3 +191,78 @@ def test_test_items_stay_out():
     scan = {8350: scan_item('Der Eine Ring', loc='INVTYPE_FINGER')}
     _, keep, _, _, dropped, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {})
     assert 8350 not in keep and dropped['junk'] == 1
+
+
+def test_dungeon_sources_carry_instance_and_area():
+    questie = {'Item': {20: {1: 'Cookie Hat', 2: [645]}, 21: {1: 'Cruel Barb'}},
+               'Quest': {}, 'Npc': {645: {1: 'Cookie', 4: 20, 5: 20, 6: 1, 9: 1581}}}
+    zones = ({1581: 'The Deadmines'}, {1581: 'The Deadmines'}, {1581: 291}, {36: 1581})
+    scan = {20: scan_item('Cookie Hat', q=3), 21: scan_item('Cruel Barb', loc='INVTYPE_WEAPON', cls=2, q=3)}
+    wowsrc = {'dungeons': [{'name': 'Deadmines', 'bosses': [{'name': 'Edwin VanCleef', 'items': [{'n': 'Cruel Barb', 'd': '12%'}]}]}]}
+    src, keep, *_ = build_gear.build(scan, {}, questie, zones, ({}, {}), [], {}, wowsrc)
+    assert src.rows[keep[20][1][0] - 1] == ('D', 'The Deadmines', 'Cookie', None, 36, 1581)
+    assert src.rows[keep[21][1][0] - 1] == ('D', 'Deadmines', 'Edwin VanCleef', '12%', 36, 1581), 'found by name'
+
+
+def test_atlas_forever_dungeons_read_instance_and_map(tmp_path):
+    p = tmp_path / 'data.lua'
+    p.write_text('data["Barrow"] = {\n\tname = "Barrow",\n\tMapID = 7001,\n\tInstanceID = 3001,\n\tContentType = FOREVER_DUNGEON_CONTENT,\n'
+                 '\tLevelRange = {20, 24, 28},\n\titems = {\n\t\t{\n\t\t\tname = "Barrow King",\n\t\t\t[NORMAL_DIFF] = {\n'
+                 '\t\t\t\t{ 1, 270001 }, -- Crown of Bones {FOREVER}\n\t\t\t}\n\t\t},\n\t}\n}\n', encoding='utf-8')
+    rows = build_gear.load_atlas_forever_dungeons(str(p))
+    assert rows == [('Barrow', (20, 24, 28), 'Barrow King', 270001, 'Crown of Bones {FOREVER}', 3001, 7001)]
+    questie = {'Item': {}, 'Quest': {}, 'Npc': {}}
+    src, keep, *_ = build_gear.build({270001: scan_item('Crown of Bones', q=3)}, {}, questie, ({}, {}, {}),
+                                     ({}, {}), rows, {}, {})
+    assert src.rows[keep[270001][1][0] - 1] == ('D', 'Barrow', 'Barrow King', None, 3001, 7001)
+
+
+FOREVER_JS = ('window.__LOOT=window.__LOOT||{};window.__LOOT["forever"]={"zones":['
+              '{"key":"ony","name":"Onyxia\'s Lair","short":"Ony","color":["#b9915a","#8a6428"]},'
+              '{"key":"field","name":"Seen in the world","short":"World","color":["#7c9a6d","#5d7452"]}],'
+              '"bosses":[{"name":"Onyxia","zone":"ony"},{"name":"Alter Seekrabbler","zone":"field"}],'
+              '"items":[{"id":18205,"name":"Eskhandar\'s Collar","sources":["Onyxia"]},'
+              '{"id":262888,"name":"X","sources":["Alter Seekrabbler"]}]};\n')
+
+
+def test_forever_raid_zones_become_raid_sources(tmp_path):
+    js = tmp_path / 'forever.js'
+    js.write_text(FOREVER_JS, encoding='utf-8')
+    cfg = {"Onyxia's Lair": {'key': 'ony', 'raid': True, 'instance': 249, 'area': 2159},
+           'Seen in the world': {'key': 'field'}}
+    raids = build_gear.load_forever_raids(str(js), cfg)
+    assert raids == [("Onyxia's Lair", 'Onyxia', 18205, 249, 2159)], 'only raid zones'
+    questie = {'Item': {}, 'Quest': {}, 'Npc': {}}
+    scan = {18205: dict(scan_item("Eskhandar's Collar", loc='INVTYPE_NECK', q=4, lvl=60), ilvl=80)}
+    src, keep, _, stats, dropped, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {},
+                                                        forever_raids=raids)
+    assert src.rows[keep[18205][1][0] - 1] == ('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)
+    assert dropped['raid level'] == 0, 'raid gear of a Forever raid stays'
+    assert build_gear.load_forever_raids(str(js), {}) == [], 'no raid zones, nothing new'
+
+
+def test_the_real_zone_list_marks_forever_raids():
+    import json
+    with open(build_gear.FOREVER_ZONES, encoding='utf-8') as fh:
+        cfg = json.load(fh)
+    assert cfg["Onyxia's Lair"].get('raid') is True and cfg["Onyxia's Lair"].get('instance') == 249
+
+
+def test_output_is_guarded_for_forever(tmp_path):
+    src = build_gear.Sources()
+    n = src.add('Q', 'Q', 1, 1, None, None, 5)
+    keep = {10: (scan_item('Helm'), [n], 1, 0, 0.0, 0)}
+    out = tmp_path / 'GearData.lua'
+    build_gear.write_lua(str(out), src, keep, {}, {'built': '2026-10-05'})
+    lines = out.read_text(encoding='utf-8').split('\n')
+    assert lines[2] == 'local _, ns = ...' and lines[3] == 'if not ns.IsForever() then return end'
+    assert '    game = "forever", cap = 60, built = "2026-10-05",' in lines
+
+    class AnyWeights(dict):
+        def get(self, key, default=None):
+            return {'STR': 1}
+    wout = tmp_path / 'GearWeights.lua'
+    build_gear.write_weights(str(wout), AnyWeights())
+    wlines = wout.read_text(encoding='utf-8').split('\n')
+    i = wlines.index('local _, ns = ...')
+    assert wlines[i + 1] == 'if not ns.IsForever() then return end'

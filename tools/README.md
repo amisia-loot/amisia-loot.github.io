@@ -60,8 +60,63 @@ python tools/build_gear.py
   and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
   in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.
 - Rebuild after a scan, when the source addons update, or to pick up what the collector saw.
+- Dungeon sources carry the instance id and area id (from AtlasLoot's `InstanceID`/`MapID` or
+  Questie's zone tables), so the gear page can find "here" through `GetInstanceInfo()`.
+- Forever raids: drops the site recorded in `data/forever.js` for a zone that
+  `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
+  raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
+- Both files start with `if not ns.IsForever() then return end` next to the TOC load condition, so
+  only the Forever client loads them; they carry `game = "forever"`, `cap = 60`.
 
-`AMISIA_WOW_ROOT` overrides the WoW install path. Requires `lupa`.
+It reads the WoW install (QuestieDB, OneForAll, AtlasLoot, RXP, SavedVariables), so it runs on the
+PC. `AMISIA_WOW_ROOT` overrides the WoW install path. Requires `lupa`.
+
+## build_bis.py
+
+Builds `addon/Amisia/BisDataTBC.lua` and `addon/Amisia/BisWeightsTBC.lua` for the gear page on
+TBC Anniversary: every item from the TBC loot tables (raids, dungeons normal and heroic, reputation
+rewards, Badge of Justice vendors, world epics, crafted gear), where it comes from, and the stat
+weights per class and spec at level 70.
+
+```
+python tools/build_bis.py [--refresh-atlas] [--item-csv <Item.csv> --itemsparse <ItemSparse.csv>]
+                          [--wow-root <path>] [--sv <Amisia.lua>...]
+```
+
+- The item list, sources and tier tokens come from AtlasLootClassic
+  (https://github.com/Hoizame/AtlasLootClassic, GPL-2.0), its TBC files only: the dungeon and raid
+  tables, the reputation tables, the badge vendors and world epics, the TBC crafting tables with
+  the recipe list (`Data/Profession.lua`, spell to made item) and `Data/Token.lua`. `--refresh-atlas`
+  downloads them from GitHub into `tools/cache/atlasloot-tbc/` (not in git) and keeps what is read
+  from them in `tools/bis_atlas_tbc.json` (in git, like `gear_wowsrc.json`), so a build needs no
+  network and gives the same file every time. `BisDataTBC.lua` names the source and licence in its
+  header. PvP gear, holiday items, mounts, pets, tabards and the recipes themselves stay out.
+- A tier token is no gear: each set piece behind it gets the token's raid and boss (with the token
+  id) and the class bit of its class.
+- Phases: raids after `PHASES.tbc` in `index.html`, badge vendors after their table (P1, P4, P5),
+  dungeons after AtlasLoot's `ContentPhaseBC` (Magisters' Terrace 5), everything else 1.
+- Names: item names, quality and icons come from the client in game; raid and dungeon names too,
+  through the area id. Raid boss names are German where `data/bossnames.js` shows a clearly German
+  one; the rest stay English (the script lists them). `--wow-root <WoW folder>` reads the German
+  names of every boss from the installed AtlasLootClassic's locale files instead (PC only).
+- Item type: without client tables every row starts empty and the addon fills slot, type, level,
+  quality and bind from the client in game. `--item-csv`/`--itemsparse` take wago.tools exports of
+  the Anniversary build (download them by hand in a browser: wago.tools does not allow automated
+  access), fill the rows, leave out what is no gear and know class limits and weapon speed; the
+  selection is kept in `tools/bis_tbc_items.json`.
+- `--sv` takes Amisia SavedVariables with an item scan made on Anniversary (`/amisia scan gear`) and
+  writes the client's stats into the file (`ST`), so the page needs no loading.
+- The weights (`OWN_TBC` in the script) are Amisia's own, written down for this build; no weights
+  of anyone else. Change them there and rebuild.
+- Both files start with `if ns.IsForever and ns.IsForever() then return end` next to the TOC load
+  condition `[AllowLoadGameType tbc]`, so only TBC Anniversary loads them.
+
+Runs on the N100 (no WoW install needed); only `--wow-root` and scans need the PC. Requires `lupa`.
+
+Licences of the data: AtlasLootClassic GPL-2.0 (TBC tables, `BisDataTBC.lua`), QuestieDB GPL-3.0
+and AtlasLootClassic GPL-2.0 (Forever tables, `GearData.lua`), RestedXP's Forever weights CC BY-NC-SA
+4.0 (`GearWeights.lua`), wago.tools exports are Blizzard's game data (`gear_itemsparse.json`,
+`bis_tbc_items.json`).
 
 ## make_minimap_icon.py
 

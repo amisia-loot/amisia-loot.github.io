@@ -44,6 +44,8 @@ WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of W
 FOREVER_ADDONS = os.path.join(WOW_ROOT, '_classic_beta_', 'Interface', 'AddOns')
 QUESTIE_TOC = os.path.join(WOW_ROOT, '_classic_era_', 'Interface', 'AddOns', 'QuestieDB', 'QuestieDB_Forever.toc')
 WOWSRC_JSON = os.path.join(HERE, 'gear_wowsrc.json')
+FOREVER_JS = os.path.join(ROOT, 'data', 'forever.js')
+FOREVER_ZONES = os.path.join(HERE, 'forever_zones.json')
 ITEMSPARSE_JSON = os.path.join(HERE, 'gear_itemsparse.json')
 # Questie/ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
@@ -180,6 +182,7 @@ def write_weights(out, rxp):
         '-- licensed CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/); this file is',
         "-- shared under the same licence. Healer and tank weights are Amisia's own.",
         'local _, ns = ...',
+        'if not ns.IsForever() then return end',
         '',
         '-- Hit, crit, haste, expertise, dodge, parry and block weights are per percent, DEF per defence skill',
         '-- point, the rest per point. SPD_* weigh weapon speed by slot, DPS/RDPS melee and ranged weapon damage.',
@@ -356,7 +359,8 @@ def load_oneforall(base=os.path.join(FOREVER_ADDONS, 'OneForAll')):
 
 # ---------------------------------------------------------------- AtlasLoot
 def load_atlas_forever_dungeons(path=os.path.join(FOREVER_ADDONS, 'AtlasLootClassic_DungeonsAndRaids', 'data.lua')):
-    """[(dungeon name, (min, recMin, recMax) or None, boss name, item id)] for the Forever-only dungeons."""
+    """[(dungeon name, (min, recMin, recMax) or None, boss name, item id, comment, instance id, area id)]
+    for the Forever-only dungeons; the ids are None where the table has none."""
     with open(path, encoding='utf-8') as fh:
         src = fh.read()
     out = []
@@ -367,10 +371,39 @@ def load_atlas_forever_dungeons(path=os.path.join(FOREVER_ADDONS, 'AtlasLootClas
         name = re.search(r'name = "([^"]+)"', body).group(1)
         lr = re.search(r'LevelRange = \{ *(\d+), *(\d+), *(\d+)', body)
         lr = tuple(int(x) for x in lr.groups()) if lr else None
+        inst = re.search(r'\n\s*InstanceID = (\d+)', body)
+        area = re.search(r'\n\s*MapID = (\d+)', body)
+        inst, area = (int(inst.group(1)) if inst else None), (int(area.group(1)) if area else None)
         for boss, rows in re.findall(r'name = "([^"]+)",\s*\[NORMAL_DIFF\] = \{(.*?)\n\t\t\t\}', body, re.S):
             for item, comment in re.findall(r'\{ *\d+, *(\d+) *\}, *-- *([^\n]*)', rows):
-                out.append((name, lr, boss, int(item), comment.strip()))
+                out.append((name, lr, boss, int(item), comment.strip(), inst, area))
     return out
+
+
+def load_forever_raids(path=FOREVER_JS, zones_cfg=None):
+    """[(raid name, boss, item id, instance id, area id)] from the site's Forever tables, for the zones
+    tools/forever_zones.json marks "raid": true (with optional "instance" and "area" ids)."""
+    if zones_cfg is None:
+        with open(FOREVER_ZONES, encoding='utf-8') as fh:
+            zones_cfg = json.load(fh)
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding='utf-8') as fh:
+        s = fh.read()
+    data = json.loads(s[s.index('={') + 1:].rstrip().rstrip(';'))
+    raid_zones = {}
+    for z in data.get('zones', []):
+        cfg = zones_cfg.get(z['name'])
+        if isinstance(cfg, dict) and cfg.get('raid'):
+            raid_zones[z['key']] = (z['name'], cfg.get('instance') or 0, cfg.get('area') or 0)
+    boss_zone = {b['name']: b['zone'] for b in data.get('bosses', [])}
+    out = []
+    for it in data.get('items', []):
+        for boss in it.get('sources') or []:
+            z = raid_zones.get(boss_zone.get(boss))
+            if z:
+                out.append((z[0], boss, it['id'], z[1], z[2]))
+    return sorted(set(out))
 
 
 def load_atlas_crafts(path=os.path.join(FOREVER_ADDONS, 'AtlasLootClassic', 'Data', 'Profession.lua')):
@@ -546,9 +579,24 @@ def merge_dungeon_sources(nums, rows):
     return out
 
 
-def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse=None):
+def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse=None,
+          forever_raids=None):
     zone_names, dungeon_areas, uimap = zones[:3]
     instances = zones[3] if len(zones) > 3 else {}
+    area_instance = {}
+    for inst, area in sorted(instances.items()):
+        area_instance.setdefault(area, inst)
+
+    def place_of(dname, area=None):
+        """(instance id, area id) of a dungeon, by its area or else by its name; None where unknown.
+        "Here" in game finds the dungeon through them (GetInstanceInfo)."""
+        if not area:
+            key = dungeon_key(dname)
+            exact = sorted(a for a, n in dungeon_areas.items() if dungeon_key(n) == key)
+            near = sorted(a for a, n in dungeon_areas.items() if key and (key in dungeon_key(n) or dungeon_key(n) in key))
+            # an area with an instance id first: a dungeon's other areas are only aliases
+            area = sorted(exact or near or [None], key=lambda a: (a not in area_instance, a or 0))[0]
+        return area_instance.get(area) if area else None, area or None
     q_items, q_quests, q_npcs = questie['Item'], questie['Quest'], questie['Npc']
     src = Sources()
     found = {}   # item id -> list of source numbers
@@ -601,7 +649,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
     for dname, d in (ofa[0] or {}).items():
         for boss in d.get('bosses') or []:
             known_bosses.setdefault(dungeon_key(dname), set()).add(norm_name(boss.get('name')))
-    for dname, _, boss, _, _ in atlas_dungeons:
+    for dname, _, boss, *_ in atlas_dungeons:
         known_bosses.setdefault(dungeon_key(dname), set()).add(norm_name(boss))
     for d in (wowsrc or {}).get('dungeons', []):
         for boss in d['bosses']:
@@ -641,7 +689,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
             dname = dungeon_areas[n.get(9)]
             boss = n.get(1) if is_boss(dname, n.get(1)) or len(inside) == 1 or (n.get(6) or 0) == 3 else None
             if boss:
-                note(iid, src.add('D', dname, boss, None, zone_ref(n.get(9))), 'dungeon')
+                note(iid, src.add('D', dname, boss, None, *place_of(dname, n.get(9))), 'dungeon')
             else:
                 # trash loot is a random drop: listed with the world drops
                 note(iid, src.add('W', f'Trash ({dname})', n.get(4) or 0, n.get(5) or 0), 'world')
@@ -661,7 +709,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
         for boss in d.get('bosses') or []:
             for tup in boss.get('loot') or []:
                 if isinstance(tup, list) and tup and isinstance(tup[0], int):
-                    note(tup[0], src.add('D', dname, boss.get('name') or '?'), 'dungeon')
+                    note(tup[0], src.add('D', dname, boss.get('name') or '?', None, *place_of(dname)), 'dungeon')
                     if len(tup) > 1:
                         name_id(tup[1], tup[0])
         for q in d.get('quests') or []:
@@ -681,8 +729,11 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                 note(item, src.add('C', key, r.get('requiredSkill') or 0), 'craft')
 
     # --- AtlasLoot: Forever dungeons and Classic recipes
-    for dname, lr, boss, item, comment in atlas_dungeons:
-        note(item, src.add('D', dname, boss), 'dungeon')
+    for dname, lr, boss, item, comment, *ids in atlas_dungeons:
+        inst, area = (ids + [None, None])[:2]
+        if not inst and not area:
+            inst, area = place_of(dname)
+        note(item, src.add('D', dname, boss, None, inst, area), 'dungeon')
         name_id(re.sub(r'\s*\(.*$', '', comment.replace('{FOREVER}', '')), item)
     for item, profs in atlas_crafts.items():
         for key, skill in profs:
@@ -708,7 +759,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                     # below one percent nobody farms it: a random drop like the world drops
                     note(iid, src.add('W', f"{d['name']}: {bname} {it.get('d')}", 0, 0), 'world')
                 else:
-                    note(iid, src.add('D', d['name'], bname, it.get('d')), 'dungeon')
+                    note(iid, src.add('D', d['name'], bname, it.get('d'), *place_of(d['name'])), 'dungeon')
 
     # --- the collector: what players met in the Forever client
     for iid, notes in collected.items():
@@ -748,7 +799,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                     dname = dungeon_areas.get(area) if area else None
                     if dname in RAIDS:
                         continue
-                    note(iid, src.add('D', dname or n['place'] or '?', name), 'dungeon')
+                    note(iid, src.add('D', dname or n['place'] or '?', name, None, n['instance'] or None, area), 'dungeon')
                 elif npc and (npc.get(6) or 0) in RARE_RANKS:
                     note(iid, src.add('R', name, npc.get(4) or 0, zone_ref(npc.get(9) or 0)), 'rare')
                 else:
@@ -756,6 +807,10 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                     hi = (npc.get(5) or 0) if npc else 0
                     zone_key = zone_ref(npc.get(9) or 0) if npc else zone_text_ref(n['place'])
                     note(iid, src.add('W', name, lo, hi, zone_key), 'world')
+
+    # --- Forever raids the site has recorded: raid, boss, instance, area, phase 1, no token
+    for rname, boss, iid, inst, area in forever_raids or []:
+        note(iid, src.add('X', rname, boss, inst or 0, area or 0, 1, 0), 'raid')
 
     # --- keep what the Forever scan knows and a character can wear
     keep = {}
@@ -781,7 +836,7 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
             dropped['junk'] += 1
             continue
         kinds = {src.rows[n - 1][0] for n in nums}
-        if iid < FOREVER_IDS and it['ilvl'] > CLASSIC_MAX_ILVL:
+        if iid < FOREVER_IDS and it['ilvl'] > CLASSIC_MAX_ILVL and 'X' not in kinds:
             dropped['raid level'] += 1
             continue
         if kinds == {'P'} and it['q'] < 3:
@@ -856,9 +911,11 @@ def write_lua(out, src, keep, zone_rows, info, missing=()):
         '-- GENERATED by tools/build_gear.py. Do not edit; rebuild instead.',
         '-- Sources: QuestieDB (GPL-3.0), OneForAll, AtlasLootClassic (GPL-2.0), wowsrc.com, the Amisia item scan.',
         'local _, ns = ...',
+        'if not ns.IsForever() then return end',
         '',
         '-- S: source records. Q quest {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon},',
-        '-- D dungeon {dungeon, boss, drop chance}, R rare mob {name, level, zone}, W world drop {mob or nil,',
+        '-- D dungeon {dungeon, boss, drop chance, instance id, area id}, X raid {raid, boss, instance id, area id,',
+        '-- phase, token}, R rare mob {name, level, zone}, W world drop {mob or nil,',
         '-- min level, max level, zone}, V vendor {name, zone, faction, title}, P PvP rank vendor (as V),',
         '-- C crafted {profession, skill}, A seen at the auction house. Zones are uiMapIDs (localised in game) or negative area ids.',
         '-- ST: [itemID] = the client stats the scan saw, scored keys only ("STRENGTH=5;RESISTANCE0_NAME=40"). M: ids the',
@@ -868,7 +925,7 @@ def write_lua(out, src, keep, zone_rows, info, missing=()):
         '-- level its quest can be taken (quest-only items) or the profession skill / 5. Class mask 0 means every',
         '-- class (bits as in S.Q); speed 0 for non-weapons.',
         'ns.GEAR = {',
-        f'    built = {lua_str(info["built"])},',
+        f'    game = "forever", cap = 60, built = {lua_str(info["built"])},',
         '    S = {',
     ]
     for n in used:
@@ -948,12 +1005,14 @@ def main(argv=None):
     ofa = load_oneforall()
     atlas_dungeons = load_atlas_forever_dungeons()
     atlas_crafts = load_atlas_crafts()
+    forever_raids = load_forever_raids()
     log(f'questie: {len(questie["Item"])} items, {len(questie["Quest"])} quests, {len(questie["Npc"])} npcs; '
         f'oneforall: {len(ofa[0])} dungeons; atlasloot: {len(atlas_dungeons)} forever dungeon rows, '
-        f'{len(atlas_crafts)} crafted items; wowsrc: {len(wowsrc.get("dungeons", []))} dungeons')
+        f'{len(atlas_crafts)} crafted items; wowsrc: {len(wowsrc.get("dungeons", []))} dungeons; '
+        f'forever raids: {len(forever_raids)} drops')
 
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
-        scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse)
+        scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse, forever_raids)
     n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d')}, missing)
     with_stats = sum(1 for k in keep.values() if k[0].get('stats'))
     log(f'stats from the scan: {with_stats} of {len(keep)} items; {len(missing)} ids for /amisia scan gear')
