@@ -619,10 +619,15 @@ end
 
 -- Whether one source passes the filters: kind switched on, faction and class fit, the phase is
 -- reached (opts.phase, 0 or nil for all) and neither its boss nor its place is excluded
--- (opts.exclude = { boss = { [name] = true }, place = { [Gear.PlaceOf key] = true } }).
-function Gear.SourceOk(rec, opts)
+-- (opts.exclude = { boss = { [name] = true }, place = { [Gear.PlaceOf key] = true } }). With
+-- opts.prof "mine" and the own professions in opts.skills ({ tailoring = 375, ... }), a crafted
+-- item that binds on pickup (row given) counts only with that profession and skill.
+function Gear.SourceOk(rec, opts, row)
     if not rec then return false end
     if not opts.sources[Gear.FilterKey(rec)] then return false end
+    if rec[1] == "C" and row and row[6] == 1 and opts.prof == "mine" and type(opts.skills) == "table" then
+        if (opts.skills[rec[2]] or 0) < (rec[3] or 0) then return false end
+    end
     local fac = sourceFaction(rec)
     if fac and opts.faction and fac ~= opts.faction then return false end
     if rec[1] == "Q" and (rec[8] or 0) > 0 and opts.class and not Gear.HasClassBit(rec[8], opts.class) then
@@ -655,7 +660,7 @@ function Gear.Sources(id, opts)
     if not row then return out end
     for i = Gear.FIRST_SOURCE, #row do
         local rec = Gear.Source(row[i])
-        if not opts or Gear.SourceOk(rec, opts) then out[#out + 1] = rec end
+        if not opts or Gear.SourceOk(rec, opts, row) then out[#out + 1] = rec end
     end
     table.sort(out, function(a, b)
         local ka, kb = KIND_ORDER[a[1]] or 9, KIND_ORDER[b[1]] or 9
@@ -924,11 +929,12 @@ function Gear.Best(opts)
         if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
             local ok = false
             for i = Gear.FIRST_SOURCE, #row do
-                if Gear.SourceOk(d.S[row[i]], opts) then ok = true break end
+                if Gear.SourceOk(d.S[row[i]], opts, row) then ok = true break end
             end
             if ok and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok = false end
-            -- engineering goggles and the like only with their switch
-            if ok and (row[10] or 0) > 0 and not opts.sources.B then ok = false end
+            -- engineering goggles and the like only with their switch, or with the profession
+            -- itself when the own skill lines are known (opts.skills by skill line id)
+            if ok and (row[10] or 0) > 0 and not opts.sources.B and not (opts.skills and opts.skills[row[10]]) then ok = false end
             if ok then
                 res.total = res.total + 1
                 local s, failed = Gear.Stats(id)

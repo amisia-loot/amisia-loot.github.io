@@ -25,7 +25,7 @@ _G.GetRaidRosterInfo = function(i)
 end
 _G.UnitIsGroupLeader = function() return STUB.leader end
 _G.UnitIsGroupAssistant = function() return false end
-_G.GetInstanceInfo = function() local i = STUB.instance; return i.name, i.type, 0, "", 0, 0, false, i.id end
+_G.GetInstanceInfo = function() local i = STUB.instance; return i.name, i.type, i.diff or 0, "", 0, 0, false, i.id end
 _G.InCombatLockdown = function() return STUB.combat and true or false end
 _G.IsAltKeyDown = function() return STUB.alt end
 _G.GetGuildInfo = function() return "Amisia" end
@@ -360,6 +360,74 @@ _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
 _G.Enum = { TooltipDataType = { Item = 0 }, LootMethod = { Freeforall = 0, Masterlooter = 2 } }
+
+-- The player's own character for the best-item targets: class, level, faction (STUB.class,
+-- STUB.level, STUB.faction), what is worn (STUB.worn[inventory slot] = link), the bags and the
+-- bank (STUB.bags[bag] = { link or item id, ... }), the counts the client knows without a bank
+-- visit (STUB.bank[id] = count in the bank), the bank tabs of Forever (STUB.bankTabs = { bag ids }),
+-- the talent points per tree (STUB.talents = { 0, 31, 30 }), the skill lines (STUB.skills =
+-- { { name, rank, header, id } }) and where the player is (STUB.place = { map = uiMapID }, with
+-- STUB.maps[uiMapID] = { name, parentMapID, mapType }). PlaySound counts in STUB.sounds.
+-- STUB.level stays nil until a test sets it (a client that answers no level, as older tests expect)
+STUB.class, STUB.level, STUB.faction = "WARRIOR", nil, "Alliance"
+STUB.worn, STUB.bags, STUB.bank, STUB.talents, STUB.skills, STUB.place, STUB.maps, STUB.sounds = {}, {}, {}, nil, nil, {}, {}, {}
+local CLASS_LOCAL = { WARRIOR = "Krieger", PALADIN = "Paladin", HUNTER = "Jäger", ROGUE = "Schurke", PRIEST = "Priester",
+    SHAMAN = "Schamane", MAGE = "Magier", WARLOCK = "Hexenmeister", DRUID = "Druide" }
+_G.UnitClass = function() return CLASS_LOCAL[STUB.class] or STUB.class, STUB.class end
+_G.UnitLevel = function() return STUB.level end
+_G.UnitFactionGroup = function() return STUB.faction end
+_G.GetInventoryItemLink = function(_, slot) return STUB.worn[slot] end
+_G.NUM_BAG_SLOTS, _G.NUM_BANKBAGSLOTS, _G.BANK_CONTAINER = 4, 7, -1
+local function bagEntry(bag, slot)
+    local b = STUB.bags[bag]
+    local v = b and b[slot]
+    if type(v) == "number" then return v, STUB.items[v] and STUB.items[v].link or ("item:" .. v) end
+    if type(v) == "string" then return itemId(v), v end
+    return nil
+end
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return STUB.bags[bag] and #STUB.bags[bag] or 0 end,
+    GetContainerItemID = function(bag, slot) return (bagEntry(bag, slot)) end,
+    GetContainerItemLink = function(bag, slot) return select(2, bagEntry(bag, slot)) end,
+}
+-- counts over bags 0-4 and worn items; with includeBank also the bank bags and STUB.bank
+C_Item.GetItemCount = function(item, includeBank)
+    local id = itemId(item)
+    local n = 0
+    for bag, list in pairs(STUB.bags) do
+        if (bag >= 0 and bag <= 4) or includeBank then
+            for slot = 1, #list do if bagEntry(bag, slot) == id then n = n + 1 end end
+        end
+    end
+    for _, link in pairs(STUB.worn) do if itemId(link) == id then n = n + 1 end end
+    if includeBank then n = n + (STUB.bank[id] or 0) end
+    return n
+end
+_G.C_SpecializationInfo = {
+    GetSpecializationInfo = function(i)
+        local pts = STUB.talents and STUB.talents[i]
+        if not pts then return 0 end
+        return 100 + i, "Baum " .. i, "", 0, "DAMAGER", 1, pts, "", 0, true
+    end,
+}
+_G.GetNumSkillLines = function() return STUB.skills and #STUB.skills or 0 end
+_G.GetSkillLineInfo = function(i)
+    local s = STUB.skills and STUB.skills[i]
+    if not s then return nil end
+    return s.name, s.header and true or false, true, s.rank or 0, 0, 0, s.max or 375
+end
+C_Map.GetBestMapForUnit = function() return STUB.place.map end
+C_Map.GetMapInfo = function(id)
+    local m = STUB.maps[id]
+    if not m then return nil end
+    return { mapID = id, name = m.name, parentMapID = m.parent or 0, mapType = m.mapType or 3 }
+end
+_G.SOUNDKIT = { RAID_WARNING = 8959 }
+_G.PlaySound = function(kit) STUB.sounds[#STUB.sounds + 1] = kit; return true end
+_G.IsInInstance = function()
+    local t = STUB.instance and STUB.instance.type or "none"
+    return t ~= "none", t
+end
 
 local QCOLOR = { [2] = "ff1eff00", [3] = "ff0070dd", [4] = "ffa335ee", [5] = "ffff8000" }
 function STUB.link(id, name, q)

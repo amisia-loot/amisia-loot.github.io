@@ -863,7 +863,7 @@ ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available 
     { key = "gear.upgradeDot", type = "toggle", label = "Upgrade-Punkt in der Tabelle", default = true,
       tip = "Grüner Punkt an Items, die besser sind als das, was du trägst." },
 }}
-ns.RegisterSlash("gear", { aliases = { "ausruestung" }, args = "[item <Link>]", desc = "Ausrüstungstabelle (WoW Forever)",
+ns.RegisterSlash("gear", { args = "[item <Link>]", desc = "Ausrüstungstabelle (WoW Forever)",
     run = function(rest)
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
         if sub and sub:lower() == "item" then ns.GearDebug(arg) else ns.ToggleGearFrame() end
