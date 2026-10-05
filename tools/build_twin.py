@@ -204,7 +204,7 @@ sub("  const me = archiveOn ? null : myMember(), meR = me && raiderById(me.raide
     "  const meR = null, myProfs = [];   // without accounts nobody is \"me\" on this page")
 
 # ---------------------------------------------------------------- mats: the bank count and what was looted
-cut("let MATROWS = [], matState = 'loading', matChannel = null;\n", "const matsHere = () => MATS[gameKey] || [];")
+cut("let MATROWS = [], matState = 'loading', matChannel = null;\n", "// Every item of the looted materials and of the last guild bank count")
 sub("const ORDER = {open: 0, received: 1, declined: 2};\n", "const MATROWS = [];   // material requests need a database, so this copy has none\n")
 sub("""// Shown to other people: never the e-mail address. The database sets the same name on its side.
 const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.preferred_username || 'Member') : '';
@@ -214,7 +214,7 @@ cut("function matOptions(sel){", "function renderMats(){")
 MATSVIEW = """function renderMats(){
   const mats = matsHere();
   $('#matStock').innerHTML = mats.length ? mats.map(m => { const st = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span><b>'+st.looted+'</b>looted in raids</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
-    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive.</div>';
+    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive. The Amisia addon learns them on its own: trade goods that drop in a raid and are looted or handed out there show up here after the next import.</div>';
 }
 
 """

@@ -818,7 +818,7 @@ tr.got td{opacity:.5}
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 8px"><b>Amisia addon</b> <a href="addon/Amisia.zip" download>download</a></p>
           <ol class="steps">
-            <li>Unpack it into the <code>Interface\AddOns</code> folder of your WoW Forever install. It records every raid on its own: who was in the raid group, who looted a tracked material, every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
+            <li>Unpack it into the <code>Interface\AddOns</code> folder of your WoW Forever install. It records every raid on its own: who was in the raid group, who looted a tracked material (it learns the trade goods that drop in raids on its own; <code>/amisia mats</code> shows the list), every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
             <li>Open the guild bank before exporting and leave it open for a few seconds (only when materials are tracked). The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
           </ol>
@@ -2566,14 +2566,22 @@ function renderCraft(){
 }
 
 /* ---------------- mats (guild bank materials) ---------------- */
-// The materials of the TBC archive. Forever tracks none yet: the guild has not picked them.
-const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'},
-  {id: 32227, name: 'Crimson Spinel'}, {id: 32228, name: 'Empyrean Sapphire'}, {id: 32229, name: 'Lionseye'},
-  {id: 32230, name: 'Shadowsong Amethyst'}, {id: 32231, name: 'Pyrestone'}, {id: 32249, name: 'Seaspray Emerald'}]};
+// The fixed materials of the TBC archive. Forever has no fixed list: the Amisia addon learns its raid
+// materials on its own (trade goods that drop in raids), so matsHere takes them from the ledger.
+const MATS = {tbc: [{id: 32428, name: 'Heart of Darkness'}, {id: 32897, name: 'Mark of the Illidari'}, {id: 32227, name: 'Crimson Spinel'}, {id: 32228, name: 'Empyrean Sapphire'}, {id: 32229, name: 'Lionseye'}, {id: 32230, name: 'Shadowsong Amethyst'}, {id: 32231, name: 'Pyrestone'}, {id: 32249, name: 'Seaspray Emerald'}]};
 let MATROWS = [], matState = 'loading', matChannel = null;
-const matsHere = () => MATS[gameKey] || [];
+// Every item of the looted materials and of the last guild bank count, each once, by name: what the
+// addon learned is what it exported. The name comes from the loot tables or the addon's N lines.
+function matsHere(){
+  if (MATS[gameKey]) return MATS[gameKey];
+  const ids = new Set();
+  for (const x of (state.matloot || [])) if (x && Number(x.item) > 0) ids.add(Number(x.item));
+  const b = state.bank;
+  if (b && b.items && typeof b.items === 'object') for (const k of Object.keys(b.items)) if (Number(k) > 0) ids.add(Number(k));
+  return [...ids].map(id => ({id, name: anyItemName(id)})).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+}
 const ORDER = {open: 0, received: 1, declined: 2};
-const matName = id => { const m = matsHere().find(x => x.id === id); return m ? m.name : (ITEM[id] ? ITEM[id].name : 'Item ' + id); };
+const matName = id => { const m = (MATS[gameKey] || []).find(x => x.id === id); return m ? m.name : anyItemName(id); };
 // Shown to other people: never the e-mail address. The database sets the same name on its side.
 const userName = () => user ? (user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.preferred_username || 'Member') : '';
 async function loadMats(){
@@ -2612,7 +2620,7 @@ function renderMats(){
     return;
   }
   $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
-    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive.</div>';
+    : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive. The Amisia addon learns them on its own: trade goods that drop in a raid and are looted or handed out there show up here after the next import.</div>';
   for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
   for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
   $('#matReqForm').hidden = !user; $('#matReqLogin').hidden = !!user;
@@ -2917,14 +2925,16 @@ function amGoneRows(sessions){
 function amParseBank(blocks){
   let best = null;
   for (const b of blocks) {
-    let snap = null;
+    let snap = null; const names = {};   // the block's N lines name the counted items (they follow the B lines)
     for (const raw of b.split(/\r?\n/)) {
       const f = raw.trim().split(/\s+/);
       if (f[0] === 'K' && f.length >= 7 && /^\d+$/.test(f[1]) && /^\d{4}-\d{2}-\d{2}$/.test(f[2]) && /^\d{2}:\d{2}$/.test(f[3])) {
         const n = x => Math.max(0, Math.floor(Number(x) || 0));
-        snap = {at: Number(f[1]), date: f[2], time: f[3], filled: n(f[4]), tabs: n(f[5]), total: n(f[6]), by: f[7] ? glCleanName(f[7]) : '?', items: {}};
+        snap = {at: Number(f[1]), date: f[2], time: f[3], filled: n(f[4]), tabs: n(f[5]), total: n(f[6]), by: f[7] ? glCleanName(f[7]) : '?', items: {}, names};
       } else if (f[0] === 'B' && snap && f.length >= 3 && /^\d+$/.test(f[1])) {
         snap.items[Number(f[1])] = Math.max(0, Math.floor(Number(f[2]) || 0));
+      } else if (f[0] === 'N' && f.length >= 3 && /^\d+$/.test(f[1])) {
+        names[Number(f[1])] = {n: (f.slice(3).join(' ') || 'Item ' + f[1]).slice(0, 80), q: Math.max(0, Math.min(7, Math.floor(Number(f[2]) || 0)))};
       }
     }
     if (snap && Object.keys(snap.items).length && (!best || snap.at > best.at)) best = snap;
@@ -2952,6 +2962,8 @@ function amBankResolve(snap){
   return Object.assign({}, snap, {status: !cur || snap.at > cur.at ? 'ok' : snap.at === cur.at ? 'dup' : 'old'});
 }
 const bankIncomplete = b => (b.tabs && b.filled < b.tabs) || b.total > b.tabs;
+// A counted item by name: the loot tables, else the names of the pasted export, else the ledger's.
+const amBankName = id => ITEM[id] ? ITEM[id].name : amBank && amBank.names && amBank.names[id] ? amBank.names[id].n : anyItemName(id);
 function amBankRender(){
   const el = $('#amBank');
   if (!amBank) { el.hidden = true; el.innerHTML = ''; return; }
@@ -2960,7 +2972,7 @@ function amBankRender(){
   el.innerHTML = '<div style="padding:12px 16px;border-bottom:1px solid var(--line)">'
     + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (st === 'ok' ? '<span class="st ok">Import</span>' : '<span class="st dup">' + (st === 'dup' ? 'Imported' : 'Older') + '</span>')
     + '<b>Guild bank count</b><span class="muted">' + esc(fmtDate(amBank.date)) + ' ' + esc(amBank.time) + ' · ' + esc(amBank.by) + '</span></div>'
-    + '<div class="chips" style="margin-top:8px">' + matsHere().filter(m => m.id in amBank.items).map(m => {
+    + '<div class="chips" style="margin-top:8px">' + Object.keys(amBank.items).map(Number).map(id => ({id, name: amBankName(id)})).sort((a, b) => a.name.localeCompare(b.name)).map(m => {
         const n = amBank.items[m.id], d = st === 'ok' && cur && cur.items && m.id in cur.items ? n - cur.items[m.id] : 0;
         return '<span class="chip">' + esc(m.name) + ' <b>' + n + '</b>' + (d ? ' <span style="color:' + (d > 0 ? 'var(--good)' : 'var(--bad)') + '">' + (d > 0 ? '+' : '') + d + '</span>' : '') + '</span>';
       }).join('') + '</div>'
@@ -3530,7 +3542,11 @@ $('#glImport').addEventListener('click', () => {
   created += am.created;
   // checked again at import time: another officer may have saved a newer count since the preview
   const bank = amBank && amBank.status === 'ok' && (!state.bank || amBank.at > state.bank.at) ? amBank : null;
-  if (bank) state.bank = {at: bank.at, date: bank.date, time: bank.time, by: bank.by, filled: bank.filled, tabs: bank.tabs, total: bank.total, items: bank.items};
+  if (bank) {
+    state.bank = {at: bank.at, date: bank.date, time: bank.time, by: bank.by, filled: bank.filled, tabs: bank.tabs, total: bank.total, items: bank.items};
+    // the counted materials keep their names for the Mats tab, as the items of a session do
+    for (const [id, v] of Object.entries(bank.names || {})) if (id in bank.items && !ITEM[id]) itemNames()[id] = v;
+  }
   glRows = []; amRows = []; amBank = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; $('#glWishHint').hidden = true;
   markDirty();
   const said = [];
