@@ -150,8 +150,9 @@ function ns.FindAward(s, id)
     return nil
 end
 
--- A new award in raid s: { name, item, kind, src, t, to, note, manual }. A bank or disenchant
--- award has kind "-" and, without a receiver, the name "-".
+-- A new award in raid s: { name, item, kind, src, t, to, note, manual, id }. A bank or disenchant
+-- award has kind "-" and, without a receiver, the name "-". id (12 hex, only the sync gives one)
+-- is taken when the raid does not have it yet; otherwise a new one is rolled.
 function ns.AddAwardTo(s, f)
     if type(s) ~= "table" or type(s.awards) ~= "table" then
         return nil, "Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."
@@ -163,8 +164,10 @@ function ns.AddAwardTo(s, f)
     if to ~= "player" and (type(name) ~= "string" or name == "") then name = "-" end
     if type(name) ~= "string" or name == "" or not item then return nil, "Name oder Item fehlt." end
     local t = tonumber(f.t) or time()
+    local id = f.id
+    if type(id) ~= "string" or #id ~= 12 or not id:match("^%x+$") or idUsed(s, id) then id = newId(s, t) end
     local a = {
-        id = newId(s, t), name = name, item = item, t = t,
+        id = id, name = name, item = item, t = t,
         kind = (to == "player" and VALID_KIND[f.kind]) and f.kind or "-",
         src = (type(f.src) == "string" and f.src ~= "") and f.src or "?",
         to = to, note = cleanNote(f.note), manual = f.manual and true or nil,
@@ -233,11 +236,15 @@ function ns.EditAward(s, id, f)
     a.edited = time()
     push({ op = "edit", s = s, id = id, before = before })
     changed()
-    local fields = {}
+    -- the changed fields and what they were (false: no value), so the keeper can tell a conflict
+    local fields, was = {}, {}
     for _, k in ipairs({ "name", "kind", "note", "to" }) do
-        if a[k] ~= before[k] then fields[k] = a[k] == nil and false or a[k] end
+        if a[k] ~= before[k] then
+            fields[k] = a[k] == nil and false or a[k]
+            was[k] = before[k] == nil and false or before[k]
+        end
     end
-    report("edit", s, { id = id, fields = fields })
+    report("edit", s, { id = id, fields = fields, was = was })
     return a
 end
 
@@ -391,6 +398,7 @@ function ns.UndoAward()
             elseif e.op == "edit" then
                 local a, _, inGone = ns.FindAward(e.s, e.id)
                 if a and not inGone then
+                    local was = all(a)
                     -- the revision of the sync is no part of the step taken back
                     local v = a.v
                     assign(a, e.before)
@@ -398,18 +406,19 @@ function ns.UndoAward()
                     -- stamped anew, so the site takes the reverted award as the newer state
                     a.edited = time()
                     done = a
-                    reports[1] = { "edit", { id = e.id, fields = all(a) } }
+                    reports[1] = { "edit", { id = e.id, fields = all(a), was = was } }
                 end
             elseif e.op == "rename" then
                 for _, b in ipairs(e.before) do
                     local a, _, inGone = ns.FindAward(e.s, b.id)
                     if a and not inGone then
+                        local was = all(a)
                         local v = a.v
                         assign(a, b)
                         a.v = v
                         a.edited = time()
                         done = a
-                        reports[#reports + 1] = { "edit", { id = b.id, fields = all(a) } }
+                        reports[#reports + 1] = { "edit", { id = b.id, fields = all(a), was = was } }
                     end
                 end
             end
@@ -503,8 +512,27 @@ local function plusAward(a)
     return a.kind == "MS" and (a.to == nil or a.to == "player")
 end
 
+-- The keeper's plus-one of the running raid, for a client that does not count itself: not the
+-- keeper and no officer (a raider follows the keeper's number). nil when it does not apply.
+local function keeperPlus(scope)
+    local s = ns.Active()
+    local p = s and type(s.sync) == "table" and s.sync.plus
+    if type(p) ~= "table" or type(p.n) ~= "table" then return nil end
+    if scope ~= nil and scope ~= p.s then return nil end
+    if ns.SyncIsKeeper and ns.SyncIsKeeper() then return nil end
+    if ns.IsOfficerView() and ns.SelfIsOfficer and ns.SelfIsOfficer(true) then return nil end
+    return p
+end
+
 function ns.PlusCount(name, scope)
     if not ns.FullName(name) then return 0 end
+    local kp = keeperPlus(scope)
+    if kp then
+        for who, c in pairs(kp.n) do
+            if ns.SameName(who, name) then return tonumber(c) or 0 end
+        end
+        return 0
+    end
     local n = 0
     for _, s in ipairs((plusSessions(scope))) do
         for _, a in ipairs(s and s.awards or {}) do
