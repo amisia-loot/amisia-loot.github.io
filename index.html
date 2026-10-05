@@ -903,7 +903,7 @@ const GAMES = [
 const ARCHIVE = {
   tbc: {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau', archive:true},
 };
-const BUILD_ID = '1791198217';
+const BUILD_ID = '1791229869';
 const GAME = Object.assign(Object.fromEntries(GAMES.map(g => [g.key, g])), ARCHIVE);
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1041,7 +1041,7 @@ function spriteStyle(it, sheet){
   return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
 }
 function icoInner(it){ return it.img ? '<img src="'+it.img+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
-const WOWHEAD_DB = {tbc:'tbc', forever:'classic'};
+const WOWHEAD_DB = {tbc:'tbc', forever:'forever'};
 // The loot tables carry a quality only where it is not epic, and what the addon reported about
 // an item outside them counts too. qCls turns it into the class the colours hang on.
 function itemQ(x){
@@ -1842,7 +1842,8 @@ function anyItemName(id){
 // An item outside the loot tables has no place in the icon sheet. Its icon name comes from Wowhead's
 // tooltip data the first time the item shows up and is kept in this browser; until then, or when
 // Wowhead does not know the item, the slot stays empty instead of showing the sheet's first icon.
-const ICON_KEY = 'guild-loot-ledger.icons.v1', WOWHEAD_ENV = {tbc: 5};
+// Wowhead's data environments (its tooltip script): TBC is 5, Forever ("forever") is 16.
+const ICON_KEY = 'guild-loot-ledger.icons.v1', WOWHEAD_ENV = {tbc: 5, forever: 16};
 let extIcons = {}, iconTimer = null;
 try { extIcons = JSON.parse(localStorage.getItem(ICON_KEY) || '{}') || {}; } catch (e) {}
 const iconAsked = new Set();
