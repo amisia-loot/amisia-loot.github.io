@@ -477,9 +477,15 @@ local function region(parent)
     local f = { text = "", shown = true, parent = parent }
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
                           "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
-                          "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines" }) do
+                          "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines",
+                          "SetBlendMode", "SetHorizTile", "SetVertTile", "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetScale" }) do
         f[m] = NOOP
     end
+    -- colours are kept, so a test can tell gold from grey
+    f.SetTextColor = function(self, r, g, b, a) self.textColor = { r, g, b, a } end
+    f.SetColorTexture = function(self, r, g, b, a) self.color = { r, g, b, a }; self.atlas = nil end
+    f.SetAlpha = function(self, a) self.alpha = a end
+    f.GetAlpha = function(self) return self.alpha or 1 end
     f.SetPoint = setPoint
     f.SetAllPoints = setAllPoints
     f.ClearAllPoints = function(self) self.points = {} end
@@ -487,10 +493,17 @@ local function region(parent)
     f.SetHeight = function(self, h) self._h = h end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetTexture = function(self, t) self.texture = t end
-    -- an atlas of the client's art by name; the test reads it back
+    -- an atlas of the client's art by name; the test reads it back. Every call is counted
+    -- (STUB.atlasCalls); an atlas the client lacks draws nothing and answers false, as in the client.
     f.SetAtlas = function(self, name, useAtlasSize)
         assert(type(name) == "string" and name ~= "", "SetAtlas needs an atlas name")
-        self.atlas, self.texture = name, nil
+        STUB.atlasCalls[name] = (STUB.atlasCalls[name] or 0) + 1
+        if not C_Texture.GetAtlasInfo(name) then
+            self.atlas = nil
+            return false
+        end
+        self.atlas, self.texture, self.color = name, nil, nil
+        return true
     end
     f.GetAtlas = function(self) return self.atlas end
     f.SetText = function(self, t) self.text = t end
@@ -505,6 +518,303 @@ local function region(parent)
     if not STUB.noRotation then f.SetRotation = function(self, r) self.rotation = r end end
     return f
 end
+-- The client's atlases Amisia and the templates it inherits use, with their size (Forever 1.60.1;
+-- the sizes are only plausible, the names are the client's). C_Texture.GetAtlasInfo answers them;
+-- STUB.missingAtlases[name] makes one go missing (a patch renamed it).
+STUB.missingAtlases, STUB.atlasCalls = {}, {}
+STUB.atlases = {
+    ["Profession-Background-Overview"] = { 750, 594 },
+    ["Professions-background-summarylist"] = { 304, 480 },
+    ["Professions_Recipe_Active"] = { 270, 20 },
+    ["Professions_Recipe_Hover"] = { 270, 20 },
+    ["common-insideframe"] = { 420, 420 },
+    ["Professions-skillbar-bg"] = { 453, 18 },
+    ["Professions-skillbar-frame"] = { 451, 29 },
+    ["common-dropdown-bg"] = { 128, 128 },
+    ["common-search-border-left"] = { 8, 20 },
+    ["common-search-border-middle"] = { 10, 20 },
+    ["common-search-border-right"] = { 8, 20 },
+    ["common-search-magnifyingglass"] = { 10, 10 },
+    ["common-search-clearbutton"] = { 10, 10 },
+    ["common-sidetab"] = { 43, 50 },
+    ["common-button-list-collapseExpand"] = { 300, 25 },
+    ["common-button-list-minus"] = { 12, 12 },
+    ["common-button-list-plus"] = { 12, 12 },
+    ["checkbox-minimal"] = { 30, 29 },
+    ["checkmark-minimal"] = { 30, 29 },
+    ["checkmark-minimal-disabled"] = { 30, 29 },
+    ["RedButton-Exit"] = { 24, 24 },
+    ["RedButton-Highlight"] = { 24, 24 },
+}
+for _, base in ipairs({ "common-dropdown-a-button", "common-dropdown-b-button" }) do
+    STUB.atlases[base] = { 26, 26 }
+    for _, s in ipairs({ "hover", "pressed", "pressedhover", "open", "disabled" }) do
+        STUB.atlases[base .. "-" .. s] = { 26, 26 }
+        if base == "common-dropdown-a-button" then STUB.atlases[base .. "-" .. s .. "-shadowless"] = { 26, 26 } end
+    end
+end
+STUB.atlases["common-dropdown-a-button-shadowless"] = { 26, 26 }
+for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
+    for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
+end
+STUB.atlases["128-RedButton-Highlight"] = { 441, 128 }
+_G.C_Texture = {
+    GetAtlasInfo = function(name)
+        local a = type(name) == "string" and not STUB.missingAtlases[name] and STUB.atlases[name]
+        if not a then return nil end
+        return { width = a[1], height = a[2], file = 1, leftTexCoord = 0, rightTexCoord = 1, topTexCoord = 0, bottomTexCoord = 1 }
+    end,
+}
+
+-- Colours and strings of the client (the German one).
+local function color(r, g, b, a)
+    return { r = r, g = g, b = b, a = a or 1, GetRGB = function(self) return self.r, self.g, self.b end,
+             GetRGBA = function(self) return self.r, self.g, self.b, self.a end }
+end
+_G.NORMAL_FONT_COLOR = color(1, 0.82, 0)
+_G.HIGHLIGHT_FONT_COLOR = color(1, 1, 1)
+_G.DISABLED_FONT_COLOR = color(0.5, 0.5, 0.5)
+_G.SEARCH = "Suchen"
+_G.BaseScrollBoxEvents = { OnScroll = "OnScroll" }
+_G.ScrollBoxConstants = { NoScrollInterpolation = true }
+
+-- HideUIPanel and ShowUIPanel are blocked for an addon's call in combat ("Aktion blockiert"):
+-- the stub raises then.
+_G.HideUIPanel = function(frame)
+    if InCombatLockdown() then error("HideUIPanel: action blocked in combat") end
+    if frame then frame:Hide() end
+end
+_G.ShowUIPanel = function(frame)
+    if InCombatLockdown() then error("ShowUIPanel: action blocked in combat") end
+    if frame then frame:Show() end
+end
+_G.UIPanelCloseButton_OnClick = function(self)
+    local parent = self:GetParent()
+    if parent then HideUIPanel(parent) end
+end
+
+-- The templates of the client Amisia inherits, by name: each builder makes the parts and methods
+-- of the template Amisia touches (Blizzard_SharedXML of Forever 1.60.1). The template's own
+-- scripts are set as in the client, so a test can tell whether the addon kept them (HookScript)
+-- or threw them away (SetScript); they count their runs in tplRuns[script].
+local TEMPLATES = {}
+STUB.templates = TEMPLATES
+STUB.missingTemplates = {}
+local function tplScript(f, script, fn)
+    f.scripts[script] = function(self, ...)
+        self.tplRuns = self.tplRuns or {}
+        self.tplRuns[script] = (self.tplRuns[script] or 0) + 1
+        if fn then return fn(self, ...) end
+    end
+end
+local function part(f, key, layer, globalSuffix)
+    local t = f:CreateTexture(nil, layer)
+    f[key] = t
+    if globalSuffix and f.name then _G[f.name .. globalSuffix] = t end
+    return t
+end
+local function closeButton(f, kind, name)
+    f.tplW, f.tplH = 24, 24
+    f:SetFrameLevel(510)
+    tplScript(f, "OnClick", UIPanelCloseButton_OnClick)
+end
+TEMPLATES.UIPanelCloseButton = closeButton
+TEMPLATES.UIPanelCloseButtonDefaultAnchors = function(f, kind, name)
+    closeButton(f, kind, name)
+    f:SetPoint("TOPRIGHT", -2, 1)
+end
+TEMPLATES.UIPanelButtonTemplate = function(f)
+    f.Text = f:CreateFontString()
+    f.Left, f.Middle, f.Right = f:CreateTexture(), f:CreateTexture(), f:CreateTexture()
+end
+TEMPLATES.UIPanelScrollFrameTemplate = function(f)
+    f.ScrollBar = CreateFrame("Slider", nil, f)
+end
+TEMPLATES.PortraitFrameTemplate = function(f, kind, name)
+    f.tplW, f.tplH = 338, 424
+    f.NineSlice = CreateFrame("Frame", nil, f)
+    f.NineSlice:SetFrameLevel(500)
+    f.NineSlice:SetAllPoints()
+    local bg = part(f, "Bg", "BACKGROUND", "Bg")
+    bg.texture = "Interface\\FrameGeneral\\UI-Background-Rock"
+    bg:SetPoint("TOPLEFT", 2, -21)
+    bg:SetPoint("BOTTOMRIGHT", -2, 2)
+    local streaks = part(f, "TopTileStreaks", "BORDER")
+    streaks:SetPoint("TOPLEFT", 6, -21)
+    streaks:SetPoint("TOPRIGHT", -2, -21)
+    f.PortraitContainer = CreateFrame("Frame", nil, f)
+    f.PortraitContainer:SetFrameLevel(400)
+    f.PortraitContainer:SetSize(1, 1)
+    f.PortraitContainer:SetPoint("TOPLEFT")
+    local portrait = f.PortraitContainer:CreateTexture(nil, "OVERLAY")
+    portrait:SetSize(62, 62)
+    portrait:SetPoint("TOPLEFT", -5, 7)
+    f.PortraitContainer.portrait = portrait
+    if name then _G[name .. "Portrait"] = portrait end
+    f.TitleContainer = CreateFrame("Frame", nil, f)
+    f.TitleContainer:SetFrameLevel(510)
+    f.TitleContainer:SetHeight(20)
+    f.TitleContainer:SetPoint("TOPLEFT", 58, -1)
+    f.TitleContainer:SetPoint("TOPRIGHT", -24, -1)
+    local title = f.TitleContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", 0, -5)
+    title:SetPoint("LEFT")
+    title:SetPoint("RIGHT")
+    f.TitleContainer.TitleText = title
+    if name then _G[name .. "TitleText"] = title end
+    f.CloseButton = CreateFrame("Button", name and (name .. "CloseButton") or nil, f, "UIPanelCloseButtonDefaultAnchors")
+    f.SetPortraitToAsset = function(self, tex) self.portraitAsset = tex; self.PortraitContainer.portrait:SetTexture(tex) end
+    f.SetPortraitShown = function(self, on) self.PortraitContainer.portrait:SetShown(on) end
+    f.SetBorder = function(self, layout) self.border = layout end
+    f.GetTitleText = function(self) return self.TitleContainer.TitleText end
+    f.SetTitle = function(self, t) self.TitleContainer.TitleText:SetText(t) end
+    f.SetTitleOffsets = function(self, l, r)
+        self.TitleContainer:SetPoint("TOPLEFT", self, "TOPLEFT", l or 58, -1)
+        self.TitleContainer:SetPoint("TOPRIGHT", self, "TOPRIGHT", r or -24, -1)
+    end
+end
+-- the three-slice red button: its slices follow the state and the height (UpdateScale)
+TEMPLATES.SharedButtonSmallTemplate = function(f)
+    f.tplW, f.tplH = 138, 28
+    f.Left, f.Right, f.Center = f:CreateTexture(nil, "BACKGROUND"), f:CreateTexture(nil, "BACKGROUND"), f:CreateTexture(nil, "BACKGROUND")
+    f.Left:SetPoint("TOPLEFT")
+    f.Right:SetPoint("TOPRIGHT")
+    f.Text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.Text:SetPoint("CENTER")
+    local setText = f.SetText
+    f.SetText = function(self, t) setText(self, t); self.Text:SetText(t) end
+    for _, s in ipairs({ "OnMouseDown", "OnMouseUp", "OnShow", "OnEnable", "OnDisable", "OnEnter", "OnLeave", "OnSizeChanged" }) do
+        tplScript(f, s)
+    end
+    f.motionScriptsWhileDisabled = true
+end
+TEMPLATES.ListHeaderVisualTemplate = function(f)
+    f.CollapseButton = CreateFrame("Button", nil, f)
+    f.CollapseButton:SetSize(20, 20)
+    f.CollapseButton:SetPoint("RIGHT", -6, 0)
+    f.CollapseButton.Icon = f.CollapseButton:CreateTexture(nil, "ARTWORK")
+    f.ButtonText = f:CreateFontString(nil, "OVERLAY", "Game15Font_Shadow")
+    f.ButtonText:SetPoint("LEFT", 8, 0)
+    f.ButtonText:SetPoint("RIGHT", f.CollapseButton, "LEFT", -4, 0)
+    f.SetHeaderText = function(self, t) self.ButtonText:SetText(t) end
+    f.SetTitleColor = function(self, useHighlight, c)
+        self.titleColors = self.titleColors or {}
+        self.titleColors[useHighlight] = c
+        if not useHighlight then self.ButtonText:SetTextColor(c:GetRGB()) end
+    end
+    f.GetCollapseButton = function(self) return self.CollapseButton end
+end
+TEMPLATES.ListHeaderCodeTemplate = function(f)
+    f.SetClickHandler = function(self, fn) self.customClickHandler = fn end
+    tplScript(f, "OnClick", function(self, button) if self.customClickHandler then self.customClickHandler(self, button) end end)
+    for _, s in ipairs({ "OnEnter", "OnLeave", "OnMouseDown", "OnMouseUp" }) do tplScript(f, s) end
+    f.UpdateCollapsedState = function(self, collapsed)
+        self.collapsed = collapsed
+        if self.CollapseButton then
+            self.CollapseButton.collapsed = collapsed
+            self.CollapseButton.Icon.atlas = collapsed and "common-button-list-plus" or "common-button-list-minus"
+        end
+    end
+end
+-- the side tab: a Frame (no Button); a click comes through the custom mouse-up handler
+TEMPLATES.LargeSideTabButtonTemplate = function(f)
+    f.tplW, f.tplH = 43, 50
+    f.Icon = f:CreateTexture(nil, "ARTWORK")
+    f.SelectedTexture = f:CreateTexture(nil, "OVERLAY")
+    f.SelectedTexture:Hide()
+    f.SetChecked = function(self, on) self.checked = on and true or false; self.SelectedTexture:SetShown(self.checked) end
+    f.SetCustomOnMouseUpHandler = function(self, fn) self.customMouseUpHandler = fn end
+    tplScript(f, "OnMouseUp", function(self, button, upInside)
+        if self.customMouseUpHandler then self.customMouseUpHandler(self, button, upInside) end
+    end)
+end
+function STUB.clickTab(tab) tab.scripts.OnMouseUp(tab, "LeftButton", true) end
+local function inputVisual(f)
+    f.tplH = 20
+    f.Left = f:CreateTexture(nil, "BACKGROUND")
+    f.Left:SetSize(8, 20)
+    f.Left:SetPoint("LEFT", -5, 0)
+    f.Right = f:CreateTexture(nil, "BACKGROUND")
+    f.Right:SetSize(8, 20)
+    f.Right:SetPoint("RIGHT", 0, 0)
+    f.Middle = f:CreateTexture(nil, "BACKGROUND")
+    f.Middle:SetHeight(20)
+    f.Middle:SetPoint("LEFT", f.Left, "RIGHT")
+    f.Middle:SetPoint("RIGHT", f.Right, "LEFT")
+end
+TEMPLATES.InputBoxTemplate = function(f)
+    inputVisual(f)
+    tplScript(f, "OnEscapePressed", function(self) self:ClearFocus() end)
+    tplScript(f, "OnEditFocusLost")
+    tplScript(f, "OnEditFocusGained")
+    tplScript(f, "OnTabPressed")
+end
+TEMPLATES.SearchBoxTemplate = function(f)
+    TEMPLATES.InputBoxTemplate(f)
+    f.Instructions = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    f.Instructions:SetPoint("TOPLEFT", 16, 0)
+    f.Instructions:SetPoint("BOTTOMRIGHT", -20, 0)
+    f.Instructions:SetText(SEARCH)
+    f.searchIcon = f:CreateTexture(nil, "OVERLAY")
+    f.clearButton = CreateFrame("Button", nil, f)
+    f.clearButton:SetSize(17, 17)
+    f.clearButton:SetPoint("RIGHT", -3, 0)
+    f.clearButton.shown = false
+    tplScript(f.clearButton, "OnClick", function(self)
+        local box = self:GetParent()
+        box:SetText("")
+        if box.scripts.OnTextChanged then box.scripts.OnTextChanged(box, false) end
+        box:ClearFocus()
+    end)
+    tplScript(f, "OnEscapePressed", function(self) self:ClearFocus() end)
+    tplScript(f, "OnEnterPressed", function(self) self:ClearFocus() end)
+    tplScript(f, "OnEditFocusLost", function(self) if self:GetText() == "" then self.clearButton:Hide() end end)
+    tplScript(f, "OnEditFocusGained", function(self) self.clearButton:Show() end)
+    tplScript(f, "OnTextChanged", function(self)
+        self.clearButton:SetShown(self:HasFocus() or self:GetText() ~= "")
+        self.Instructions:SetShown(self:GetText() == "")
+    end)
+end
+-- the minimal scroll bar: visible (extent), pan and scroll as percentages; a change of the scroll
+-- runs the OnScroll callbacks (owner, percentage), as the client's does
+local function clamp01(v) return math.max(0, math.min(1, v or 0)) end
+TEMPLATES.MinimalScrollBar = function(f)
+    f.tplW, f.tplH = 8, 560
+    f.visible, f.pan, f.scroll, f.callbacks = 0, 0, 0, {}
+    local function update(self)
+        if self.hideIfUnscrollable then self:SetShown(self:HasScrollableExtent()) end
+    end
+    f.HasScrollableExtent = function(self) return self.visible > 1e-5 and self.visible < 1 - 1e-5 end
+    f.SetVisibleExtentPercentage = function(self, p) self.visible = clamp01(p); update(self) end
+    f.GetVisibleExtentPercentage = function(self) return self.visible end
+    f.SetPanExtentPercentage = function(self, p) self.pan = clamp01(p) end
+    f.GetPanExtentPercentage = function(self) return self.pan end
+    f.GetScrollPercentage = function(self) return self.scroll end
+    f.SetHideIfUnscrollable = function(self, on) self.hideIfUnscrollable = on; update(self) end
+    f.RegisterCallback = function(self, event, fn, owner)
+        self.callbacks[#self.callbacks + 1] = { event = event, fn = fn, owner = owner }
+    end
+    f.SetScrollPercentage = function(self, p)
+        self.scroll = clamp01(p)
+        update(self)
+        for _, c in ipairs(self.callbacks) do
+            if c.event == BaseScrollBoxEvents.OnScroll then c.fn(c.owner, self.scroll) end
+        end
+    end
+    f.ScrollStepInDirection = function(self, dir) self:SetScrollPercentage(self.scroll + self.pan * dir) end
+end
+function STUB.scrollBar(bar, pct) bar:SetScrollPercentage(pct) end
+TEMPLATES.MinimalCheckboxTemplate = function(f, kind)
+    if kind ~= "CheckButton" then error("MinimalCheckboxTemplate needs a CheckButton", 3) end
+    f.tplW, f.tplH = 30, 29
+end
+TEMPLATES.TooltipBackdropTemplate = function(f)
+    f.NineSlice = CreateFrame("Frame", nil, f)
+    f.NineSlice:SetAllPoints()
+end
+-- The addon's own template (MapPin.xml); the pins come from the map's pin pools.
+TEMPLATES.AmisiaMapPinTemplate = function() end
+
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
     "RegisterForDrag", "SetAllPoints", "SetScrollChild", "SetVerticalScroll", "SetMultiLine", "SetMaxLetters", "SetAutoFocus", "SetFontObject",
     "SetCursorPosition", "HighlightText", "SetFocus", "ClearFocus", "EnableMouseWheel", "SetFrameLevel", "SetToplevel", "StartMoving",
@@ -544,8 +854,9 @@ function _G.CreateFrame(kind, name, parent, template)
     f.Raise = function(self) self.raised = (self.raised or 0) + 1 end
     f.GetFrameStrata = function(self) return self.strata or (parent and parent.GetFrameStrata and parent:GetFrameStrata()) or "MEDIUM" end
     f.GetPoint = function(self) return self._point or "CENTER", nil, self._point or "CENTER", self._x or 0, self._y or 0 end
-    f.GetWidth = function(self) return self._w or 400 end
-    f.GetHeight = function(self) return self._h or 300 end
+    -- a template's own size (tplW, tplH) counts until the addon sets one
+    f.GetWidth = function(self) return self._w or self.tplW or 400 end
+    f.GetHeight = function(self) return self._h or self.tplH or 300 end
     f.GetScale = function(self) return self._scale or 1 end
     f.SetScale = function(self, s) self._scale = s end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
@@ -588,7 +899,33 @@ function _G.CreateFrame(kind, name, parent, template)
     f.Disable = function(self) self:SetEnabled(false) end
     f.IsEnabled = function(self) return self.enabled end
     f.Click = function(self) if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
+    f.SetVerticalScroll = function(self, v) self.vscroll = v end
+    f.GetVerticalScroll = function(self) return self.vscroll or 0 end
+    f.GetVerticalScrollRange = function(self) return self.vrange or 0 end
+    -- a check button turns itself over before OnClick runs, as in the client
+    if kind == "CheckButton" then
+        f.SetChecked = function(self, on) self.checked = on and true or false end
+        f.checked = false
+        f.Click = function(self)
+            if not self.enabled then return end
+            self.checked = not self.checked
+            if self.scripts.OnClick then self.scripts.OnClick(self, "LeftButton") end
+        end
+    end
     if name then _G[name] = f end
+    if template ~= nil then
+        f.inherits, f.template = {}, template
+        for t in tostring(template):gmatch("[^,]+") do
+            t = t:match("^%s*(.-)%s*$")
+            local build = not STUB.missingTemplates[t] and TEMPLATES[t]
+            if not build then
+                if name then _G[name] = nil end
+                error(("CreateFrame: unknown template '%s'"):format(t), 2)
+            end
+            f.inherits[t] = true
+            build(f, kind, name)
+        end
+    end
     return f
 end
 function STUB.fire(event, ...)
@@ -684,7 +1021,17 @@ do
             if iterateExisting then scrollBox:ForEachFrame(callback) end
             scrollBox:RegisterCallback(ScrollBoxListMixin.Event.OnInitializedFrame, function(o, frame, data) callback(o, frame, data) end, owner)
         end,
+        -- a plain scroll frame with a minimal scroll bar: the pair is kept (STUB.scrollPairs), the
+        -- wheel steps the bar and the bar scrolls the frame, as ScrollUtil.lua does
+        InitScrollFrameWithScrollBar = function(sf, bar)
+            STUB.scrollPairs[#STUB.scrollPairs + 1] = { sf, bar }
+            sf:SetScript("OnMouseWheel", function(_, delta) bar:ScrollStepInDirection(-delta) end)
+            sf:SetScript("OnScrollRangeChanged", function() end)
+            sf:SetScript("OnVerticalScroll", function() end)
+            bar:RegisterCallback(BaseScrollBoxEvents.OnScroll, function(o, pct) sf:SetVerticalScroll(pct * sf:GetVerticalScrollRange()) end, sf)
+        end,
     }
+    STUB.scrollPairs = {}
     for i = 1, 2 do
         local f = CreateFrame("Frame", nil, nil)
         f.Item = CreateFrame("Button", nil, f)

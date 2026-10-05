@@ -24,7 +24,8 @@ return function(root, rootW, rootH)
             local c = Hx[p] or "C"
             if c == "L" then Lx = x elseif c == "R" then R = x else C = x end
         end
-        local w = fr._w
+        -- a template's own width (the stub's tplW: a scroll bar 8, a side tab 43) until one is set
+        local w = fr._w or fr.tplW
         if Lx and R then return Lx, R end
         assert(w, "a width for " .. tostring(fr.name or fr.text))
         if Lx then return Lx, Lx + w end
@@ -48,7 +49,7 @@ return function(root, rootW, rootH)
             local c = Vx[p] or "C"
             if c == "T" then T = y elseif c == "B" then Bt = y else C = y end
         end
-        local h = fr._h or 14
+        local h = fr._h or fr.tplH or 14
         if T and Bt then return T, Bt end
         if T then return T, T - h end
         if Bt then return Bt + h, Bt end
@@ -73,6 +74,13 @@ return function(root, rootW, rootH)
             if prevB then assert(t <= prevB, ("%s #%d overlaps #%d: %d > %d"):format(name, i, i - 1, t, prevB)) end
             prevB = b
         end
+    end
+    -- a part lies wholly inside the root (a scroll bar, a field)
+    function L.inside(name, fr)
+        local l, r = span(fr)
+        local t, b = vspan(fr)
+        assert(l >= 0 and r <= rootW and t <= 0 and b >= -rootH,
+            ("%s leaves its frame: x %d..%d of %d, y %d..%d of %d"):format(name, l, r, rootW, t, b, rootH))
     end
     function L.fits(fs)
         assert(fs:GetStringWidth() <= fs._w, ("'%s' fits %s px"):format(tostring(fs:GetText()), tostring(fs._w)))
