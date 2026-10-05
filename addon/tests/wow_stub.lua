@@ -487,6 +487,12 @@ local function region(parent)
     f.SetHeight = function(self, h) self._h = h end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetTexture = function(self, t) self.texture = t end
+    -- an atlas of the client's art by name; the test reads it back
+    f.SetAtlas = function(self, name, useAtlasSize)
+        assert(type(name) == "string" and name ~= "", "SetAtlas needs an atlas name")
+        self.atlas, self.texture = name, nil
+    end
+    f.GetAtlas = function(self) return self.atlas end
     f.SetText = function(self, t) self.text = t end
     f.GetText = function(self) return self.text end
     f.Show = function(self) self.shown = true end
@@ -569,10 +575,17 @@ function _G.CreateFrame(kind, name, parent, template)
     -- the item a tooltip shows: STUB.showTooltip sets shownLink, a test may set shownName too
     f.GetItem = function(self) return self.shownName, self.shownLink end
     -- a disabled button ignores clicks, as in the client
+    -- a change of the state runs OnEnable or OnDisable, as in the client
     f.enabled = true
-    f.Enable = function(self) self.enabled = true end
-    f.Disable = function(self) self.enabled = false end
-    f.SetEnabled = function(self, on) self.enabled = on and true or false end
+    f.SetEnabled = function(self, on)
+        on = on and true or false
+        if self.enabled == on then return end
+        self.enabled = on
+        local s = self.scripts[on and "OnEnable" or "OnDisable"]
+        if s then s(self) end
+    end
+    f.Enable = function(self) self:SetEnabled(true) end
+    f.Disable = function(self) self:SetEnabled(false) end
     f.IsEnabled = function(self) return self.enabled end
     f.Click = function(self) if self.enabled and self.scripts.OnClick then self.scripts.OnClick(self) end end
     if name then _G[name] = f end

@@ -73,6 +73,62 @@ function W.Chip(parent, label, width, onClick)
     return b
 end
 
+-- The client's dropdown arrow button (the WowStyle1 dropdown of Blizzard_Menu): a dark square with
+-- a gold bevel and a gold triangle pointing down. One atlas per state, as the client picks them
+-- (GetWowStyle1ArrowButtonState); turned for left and right, then without the drop shadow.
+local ARROW = {
+    shadow = { normal = "common-dropdown-a-button", hover = "common-dropdown-a-button-hover",
+               pressed = "common-dropdown-a-button-pressed", pressedhover = "common-dropdown-a-button-pressedhover",
+               open = "common-dropdown-a-button-open", disabled = "common-dropdown-a-button-disabled" },
+    flat = { normal = "common-dropdown-a-button-shadowless", hover = "common-dropdown-a-button-hover-shadowless",
+             pressed = "common-dropdown-a-button-pressed-shadowless",
+             pressedhover = "common-dropdown-a-button-pressedhover-shadowless",
+             open = "common-dropdown-a-button-open-shadowless", disabled = "common-dropdown-a-button-disabled-shadowless" },
+}
+W.ARROW_ATLAS = ARROW
+local TURN = { down = 0, right = math.pi / 2, up = math.pi, left = -math.pi / 2 }
+
+-- The atlas for the state of button b: its own flags (over, down) and isOpen() of the owner.
+local function arrowState(b)
+    local set = b.arrowSet
+    if b.IsEnabled and not b:IsEnabled() then return set.disabled end
+    if b.arrowDown and b.arrowOver then return set.pressedhover end
+    if b.arrowOver then return set.hover end
+    if b.arrowDown then return set.pressed end
+    if b.isOpen and b.isOpen() then return set.open end
+    return set.normal
+end
+
+-- A square arrow button (size px, 22 by default) pointing dir ("down", "up", "left", "right").
+-- b:UpdateArrow() shows the state again (after an owner opened or closed what the button opens).
+function W.ArrowButton(parent, dir, size, onClick)
+    local b = CreateFrame("Button", nil, parent)
+    size = size or 22
+    b:SetSize(size, size)
+    b.arrow = b:CreateTexture(nil, "ARTWORK")
+    b.arrow:SetAllPoints()
+    local turn = TURN[dir or "down"] or 0
+    -- a turned button would throw its shadow sideways: the flat atlases, where the client can turn
+    if turn ~= 0 and b.arrow.SetRotation then
+        b.arrowSet = ARROW.flat
+        b.arrow:SetRotation(turn)
+    else
+        b.arrowSet = ARROW.shadow
+    end
+    function b:UpdateArrow()
+        self.arrow:SetAtlas(arrowState(self), false)
+    end
+    b:SetScript("OnEnter", function(self) self.arrowOver = true self:UpdateArrow() end)
+    b:SetScript("OnLeave", function(self) self.arrowOver = false self:UpdateArrow() end)
+    b:SetScript("OnMouseDown", function(self) self.arrowDown = true self:UpdateArrow() end)
+    b:SetScript("OnMouseUp", function(self) self.arrowDown = false self:UpdateArrow() end)
+    b:SetScript("OnEnable", function(self) self:UpdateArrow() end)
+    b:SetScript("OnDisable", function(self) self.arrowDown = false self:UpdateArrow() end)
+    if onClick then b:SetScript("OnClick", onClick) end
+    b:UpdateArrow()
+    return b
+end
+
 function W.Tooltip(frame, title, text)
     frame:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -506,7 +562,11 @@ local function pickerPanel()
             if self.away > 2 then self:Hide() end
         end
     end)
-    picker:SetScript("OnHide", function(self) self.filter:ClearFocus() end)
+    picker:SetScript("OnHide", function(self)
+        self.filter:ClearFocus()
+        -- the owner's arrow leaves its open state
+        if self.owner and self.owner.arrow then self.owner.arrow:UpdateArrow() end
+    end)
     picker:Hide()
     return picker
 end
@@ -521,10 +581,24 @@ function W.Picker(parent, width, onPick)
     hl:SetColorTexture(1, 1, 1, 0.08)
     p.label = W.Text(p, "GameFontHighlightSmall")
     p.label:SetPoint("LEFT", 6, 0)
-    p.label:SetPoint("RIGHT", -16, 0)
-    p.arrow = W.Text(p, "GameFontDisableSmall", 10)
-    p.arrow:SetPoint("RIGHT", -4, 0)
-    p.arrow:SetText("v")
+    p.label:SetPoint("RIGHT", -26, 0)
+    -- the client's dropdown button at the right end (22 px, one over the 20 px field top and
+    -- bottom); a click on it opens like a click on the field, hovering the field lights it too
+    p.arrow = W.ArrowButton(p, "down", 22, function() p:Click() end)
+    p.arrow:SetPoint("RIGHT", 1, 0)
+    p.arrow.isOpen = function() return picker ~= nil and picker:IsShown() and picker.owner == p end
+    local function over(on)
+        return function()
+            p.arrow.arrowOver = on
+            p.arrow:UpdateArrow()
+        end
+    end
+    p:HookScript("OnEnter", over(true))
+    p:HookScript("OnLeave", over(false))
+    p:HookScript("OnMouseDown", function() p.arrow.arrowDown = true p.arrow:UpdateArrow() end)
+    p:HookScript("OnMouseUp", function() p.arrow.arrowDown = false p.arrow:UpdateArrow() end)
+    p:HookScript("OnEnable", function() p.arrow:Enable() end)
+    p:HookScript("OnDisable", function() p.arrow:Disable() end)
     p.onPick = onPick
     p.values = {}
     -- the list to pick from; freeText names the optional free-text entry at its end. A page
@@ -552,7 +626,10 @@ function W.Picker(parent, width, onPick)
     function p:GetValue() return self.current end
     function p:Open()
         local panel = pickerPanel()
+        -- another picker's panel moves here: that arrow closes
+        local before = panel:IsShown() and panel.owner ~= self and panel.owner or nil
         panel.owner = self
+        if before and before.arrow then before.arrow:UpdateArrow() end
         panel.away = 0
         panel:SetSize(math.max(180, self:GetWidth() or 0), 36 + PICK_ROWS * PICK_ROW_H + 6)
         panel:ClearAllPoints()
@@ -567,6 +644,7 @@ function W.Picker(parent, width, onPick)
         panel:Show()
         panel:Raise()
         panel.filter:SetFocus()
+        self.arrow:UpdateArrow()
     end
     function p:Close()
         if picker and picker.owner == self then picker:Hide() end
