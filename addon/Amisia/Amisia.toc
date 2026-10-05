@@ -2,7 +2,7 @@
 ## Title: Amisia
 ## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt in WoW Forever die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
-## Version: 1.5.0
+## Version: 1.6.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 ## AddonCompartmentFunc: Amisia_OnAddonCompartmentClick
