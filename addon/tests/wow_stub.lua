@@ -113,7 +113,17 @@ _G.C_Map = { GetAreaInfo = function(id) return STUB.areas[id] end }
 _G.GetFactionInfoByID = function(id) return STUB.factions[id] end
 _G.GetNumLootItems = function() return #STUB.loot end
 _G.GetLootSlotLink = function(s) return STUB.loot[s] and STUB.loot[s].link end
-_G.GetLootSlotInfo = function(s) local l = STUB.loot[s]; return "icon", l and l.name, l and l.qty or 1 end
+-- As the client: texture, item name, quantity, currencyID, quality, locked (STUB.loot[s].quality, else the
+-- quality of the registered item).
+_G.GetLootSlotInfo = function(s)
+    local l = STUB.loot[s]
+    local q = l and l.quality
+    if l and q == nil and l.link then
+        local it = STUB.items[tonumber(tostring(l.link):match("item:(%d+)"))]
+        q = it and it.quality
+    end
+    return "icon", l and l.name, l and l.qty or 1, nil, q, false
+end
 _G.GetLootSourceInfo = function(s) local l = STUB.loot[s]; return l and l.src or "Creature-0-1-1-1-22917-1", l and l.qty or 1 end
 _G.GetMasterLootCandidate = function(slot, i) return STUB.roster[i] and STUB.roster[i].name end
 _G.GiveMasterLoot = function(slot, i) STUB.given = { slot = slot, i = i } end

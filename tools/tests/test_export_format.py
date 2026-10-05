@@ -386,3 +386,127 @@ def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
     assert before == after, 'wishes are not part of the raid export'
     assert hb == ha, 'nor of its fingerprint'
     assert '\nWL ' not in after
+
+
+DROPS = os.path.join(ROOT, 'addon', 'Amisia', 'Drops.lua')
+PAGE = os.path.join(ROOT, 'index.html')
+
+
+def drops_from_addon(record):
+    """Records a raid with two boss loot windows (one after a kill event, one with an epic) and a
+    dungeon boss; returns the raid export, its fingerprint and the text "Drops fuer die Website"."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        NS.Set("drops.record", %s)
+        STUB.roster = {
+            { name = "Vuloo", class = "PRIEST" },
+            { name = "Fraktur", class = "SHAMAN" },
+            { name = "Vulo Sturmwind", class = "MAGE" },
+        }
+        STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+        local s = NS.Active()
+        local epic = STUB.item(32235, "Cursed Vision of Sargeras", 4)
+        local green = STUB.item(32236, "Green Thing", 2)
+        STUB.fire("ENCOUNTER_END", 601, "Hochkriegsfürst Naj'entus", 4, 25, 1)
+        STUB.tick(5)
+        STUB.target, STUB.targetGUID = "Hochkriegsfürst Naj'entus", "Creature-0-1-564-1-22887-1"
+        STUB.loot = { { link = green, name = "Green Thing", src = "Creature-0-1-564-1-22887-1" } }
+        STUB.fire("LOOT_OPENED")
+        STUB.tick(600)
+        STUB.target, STUB.targetGUID = "Illidan Sturmgrimm", "Creature-0-1-564-1-22917-1"
+        STUB.loot = { { link = epic, name = "Cursed Vision of Sargeras", src = "Creature-0-1-564-1-22917-1" },
+                      { link = green, name = "Green Thing", src = "Creature-0-1-564-1-22917-1", qty = 2 } }
+        STUB.fire("LOOT_OPENED")
+        RAID, HASH = NS.ExportText({ s }), NS.SessionHash(s)
+        DROPS = NS.DropsExportText()
+    ''' % ('true' if record else 'false'))
+    g = lua.globals()
+    return g.RAID, g.HASH, g.DROPS
+
+
+def parse_drops(text):
+    """The format the spec gives, read field by field: DZ <inst> <party|raid> <name>,
+    DN <npc> <enc|0> <name>, DK <h> <npc> <inst> <diff> <YYYY-MM-DD> <origin> <G|E> <id>:<n>,...|-."""
+    import re
+    out = {'zones': {}, 'names': {}, 'kills': [], 'bad': 0}
+    for line in text.split('\n'):
+        f = line.split(' ')
+        if f[0] == 'DZ':
+            m = re.match(r'^DZ (\d+) (party|raid) (.+)$', line)
+            if not m:
+                out['bad'] += 1
+                continue
+            out['zones'][int(m.group(1))] = (m.group(2), m.group(3))
+        elif f[0] == 'DN':
+            m = re.match(r'^DN (\d+) (\d+) (.+)$', line)
+            if not m:
+                out['bad'] += 1
+                continue
+            out['names'][int(m.group(1))] = (int(m.group(2)), m.group(3))
+        elif f[0] == 'DK':
+            m = re.match(r'^DK ([0-9a-f]{8}) (\d+) (\d+) (\d+) (\d{4}-\d\d-\d\d) ([0-9a-f]{8}) ([GE]) (\S+)$', line)
+            if not m or not re.match(r'^(-|\d+:\d+(,\d+:\d+)*)$', m.group(8)):
+                out['bad'] += 1
+                continue
+            items = {} if m.group(8) == '-' else {int(a): int(b) for a, b in (x.split(':') for x in m.group(8).split(','))}
+            out['kills'].append({'h': m.group(1), 'npc': int(m.group(2)), 'inst': int(m.group(3)), 'diff': int(m.group(4)),
+                                 'date': m.group(5), 'o': m.group(6), 'src': m.group(7), 'items': items})
+    return out
+
+
+@pytest.fixture(scope='module')
+def drops():
+    raid_on, hash_on, text = drops_from_addon(True)
+    raid_off, hash_off, empty = drops_from_addon(False)
+    return raid_on, hash_on, text, raid_off, hash_off, empty
+
+
+def test_the_drop_text_follows_the_format(drops):
+    text = drops[2]
+    lines = text.split('\n')
+    assert lines[0] == '#AMISIA 2 Vuloo' and lines[-1] == '#END', 'header with who exports, and the end'
+    body = lines[1:-1]
+    assert body and all(l[:3] in ('DZ ', 'DN ', 'DK ') for l in body), body
+    got = parse_drops(text)
+    assert got['bad'] == 0
+    assert len(got['kills']) == 2
+    k = {x['npc']: x for x in got['kills']}
+    assert k[22887]['items'] == {32236: 1} and k[22917]['items'] == {32235: 1, 32236: 2}
+    assert all(x['inst'] == 564 and x['src'] == 'G' and x['o'] == k[22887]['o'] for x in got['kills'])
+    assert got['zones'] == {564: ('raid', 'Black Temple')}
+    assert got['names'][22887] == (601, "Hochkriegsfürst Naj'entus") and got['names'][22917] == (0, 'Illidan Sturmgrimm')
+
+
+def test_no_player_name_in_the_drop_lines(drops):
+    text = drops[2]
+    for line in text.split('\n')[1:]:
+        for name in ('Vuloo', 'Fraktur', 'Vulo', 'Sturmwind'):
+            assert name not in line, line
+
+
+def test_the_raid_export_is_the_same_with_and_without_drop_records(drops):
+    raid_on, hash_on, text, raid_off, hash_off, empty = drops
+    assert raid_on == raid_off, 'drop records are not part of the raid export'
+    assert hash_on == hash_off, 'nor of its fingerprint'
+    assert '\nDK ' not in raid_on and '\nDZ ' not in raid_on and '\nDN ' not in raid_on
+    assert empty == '#AMISIA 2 Vuloo\n#END', 'recording off: an empty drop text'
+
+
+def test_the_site_takes_the_drop_text_as_no_raid(drops):
+    out = read_back(drops[2])
+    assert out['blocks'] == 1 and out['rest'] == '', 'one Amisia block'
+    assert out['sessions'] == [] and out['wishes'] == [] and out['bank'] is None, 'the other parsers skip the drop lines'
+
+
+def test_every_drop_line_the_addon_writes_has_a_reader(drops):
+    import re
+    written = set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(DROPS, encoding='utf-8').read(), re.M))
+    assert written == {'DZ', 'DN', 'DK'}, written
+    got = parse_drops(drops[2])
+    assert got['zones'] and got['names'] and got['kills'], 'the reference reader reads every kind'
+    page = open(PAGE, encoding='utf-8').read()
+    if 'function amParseDrops(' not in page:
+        pytest.skip('the site reads drop lines once amParseDrops exists (the website task)')
+    found = set(re.findall(r"'(D[ZNK])'", page[page.index('function amParseDrops('):][:4000]))
+    assert not (written - found), 'the addon writes drop lines the site throws away: ' + ', '.join(sorted(written - found))

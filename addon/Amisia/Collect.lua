@@ -191,11 +191,20 @@ end)
 -- Loot windows and loot lines
 ---------------------------------------------------------------------------
 ns.OnEvent("LOOT_OPENED", function()
+    -- the boss kill records (Drops.lua) first; an error there loses only that window, not the notes
+    if ns.DropsFromLoot then
+        local ok, err = pcall(ns.DropsFromLoot)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then handler(err) end
+        end
+    end
     if not enabled() or not GetNumLootItems or not GetLootSlotLink then return end
     local place = placeTag()
     for slot = 1, GetNumLootItems() or 0 do
-        local link = GetLootSlotLink(slot)
-        local src = GetLootSourceInfo and GetLootSourceInfo(slot)
+        -- a secret link or source GUID (a boss fight on Forever) is skipped
+        local link = ns.Plain(GetLootSlotLink(slot))
+        local src = GetLootSourceInfo and ns.Plain((GetLootSourceInfo(slot))) or nil
         if link and not (type(src) == "string" and src:find("^Item%-")) then
             -- the corpse this slot came from: its NPC id always, its name when it is targeted
             local npc = ns.NpcID(src)

@@ -30,6 +30,7 @@ Sync.lua
 RaidText.lua
 Scan.lua
 Collect.lua
+Drops.lua
 GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 MapData.lua [AllowLoadGameType camelot]
