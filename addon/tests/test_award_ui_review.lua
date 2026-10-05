@@ -186,11 +186,22 @@ end
 local E = O.edit
 root, rootW = O, 602
 row("page head", O.raid, O.search, O.add, O.undo)
-local hl, hr = span(O.searchHint)
+-- 2.2: the hint is the search box's own placeholder (SearchBoxTemplate), still inside the box
+local hl, hr = span(O.search.Instructions)
 local sl, sr = span(O.search)
 assert(hl >= sl and hr <= sr, ("the hint sits in the search box: %d..%d in %d..%d"):format(hl, hr, sl, sr))
+assert(O.search.inherits.SearchBoxTemplate and O.search.Instructions:GetText() == "Name oder Item", "the client's search box with its hint")
 row("edit panel", E.winner, E.kinds.MS, E.kinds.OS, E.kinds.SR, E.kinds["-"], E.note)
 row("edit buttons", E.bank, E.de, E.del)
+-- 2.2: the list ends 12 px before the edge for its thin bar; the edit panel below keeps the full width
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(O, 602, 478)
+Lay.row("award list", O.list, O.list.bar)
+Lay.inside("award list bar", O.list.bar)
+local _, lr = span(O.list)
+local el, er = span(E)
+assert(lr == 590 and el == 0 and er == 602, ("list to 590, edit panel 0..602: %d, %d..%d"):format(lr, el, er))
+Lay.inside("conflict bar", O.conflict)
+assert(O.list.rows[1].sel.atlas == "Professions_Recipe_Active", "the chosen award glows like the recipe list's")
 
 root, rootW = D, 380
 row("dialog item", D.icon, D.itemText, D.raidText)

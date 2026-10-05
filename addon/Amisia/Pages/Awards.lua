@@ -225,19 +225,13 @@ local function buildOfficer(parent)
         ns.Refresh()
     end)
     O.raid:SetPoint("TOPLEFT", 0, -2)
-    -- the head line fills the 602 px of the content: raid 210, search 172, two buttons of 100
-    O.search = W.LineEdit(O, 172, function(text)
+    -- the head line fills the 602 px of the content: raid 210, search 172, two buttons of 100;
+    -- the search box shows its hint while empty
+    O.search = W.SearchBox(O, 172, function(text)
         query = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
-    end)
+    end, "Name oder Item")
     O.search:SetPoint("LEFT", O.raid, "RIGHT", 8, 0)
-    O.searchHint = W.Text(O, "GameFontDisableSmall", 160)
-    O.searchHint:SetPoint("LEFT", O.search, "LEFT", 6, 0)
-    O.searchHint:SetText("Suche: Name oder Item")
-    O.search:HookScript("OnEditFocusGained", function() O.searchHint:Hide() end)
-    O.search:HookScript("OnTextChanged", function(self)
-        if (self:GetText() or "") == "" and not self:HasFocus() then O.searchHint:Show() else O.searchHint:Hide() end
-    end)
     O.undo = W.Button(O, "Rückgängig", 100, function()
         local text = ns.UndoAward()
         ns.msg(text and ("Rückgängig: %s."):format(text) or "Nichts rückgängig zu machen.")
@@ -292,16 +286,16 @@ local function buildOfficer(parent)
     col(head, 256, 140, "Gewinner")
     col(head, 400, 30, "Art")
     col(head, 434, 24, "+1")
-    col(head, 462, 136, "Quelle")
+    col(head, 462, 124, "Quelle")
 
     O.list = W.List(O, ROWS, ROW_H, function(r)
-        r.sel = W.Flat(r, GOLD[1], GOLD[2], GOLD[3], 0.18, "BORDER")
+        r.sel = W.SelectBar(r)
         r.time = col(r, 6, 44, nil, "GameFontHighlightSmall")
         r.itemText = col(r, 52, 200, nil, "GameFontHighlightSmall")
         r.name = col(r, 256, 140, nil, "GameFontHighlightSmall")
         r.kind = col(r, 400, 30, nil, "GameFontHighlightSmall")
         r.plus = col(r, 434, 24, nil, "GameFontHighlightSmall")
-        r.src = col(r, 462, 136, nil, "GameFontHighlightSmall")
+        r.src = col(r, 462, 124, nil, "GameFontHighlightSmall")
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -333,13 +327,14 @@ local function buildOfficer(parent)
         r.src:SetText(a.src or "?")
         if a.id == chosenId then r.sel:Show() else r.sel:Hide() end
     end)
+    -- 12 px short of the right edge: room for the list's scroll bar
     O.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    O.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    O.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
 
-    -- the edit panel under the list
+    -- the edit panel under the list, over the full width again (past the list's bar)
     local E = CreateFrame("Frame", nil, O)
     E:SetPoint("TOPLEFT", O.list, "BOTTOMLEFT", 0, -6)
-    E:SetPoint("TOPRIGHT", O.list, "BOTTOMRIGHT", 0, -6)
+    E:SetPoint("TOPRIGHT", O.list, "BOTTOMRIGHT", 12, -6)
     E:SetHeight(120)
     E.title = W.Text(E, "GameFontNormal", 590)
     E.title:SetPoint("TOPLEFT", 6, -2)
@@ -416,12 +411,12 @@ local function buildOfficer(parent)
     E:Hide()
     O.edit = E
 
-    -- the conflict bar: in place of the name hint, also while no award is chosen
-    local B = CreateFrame("Button", nil, O)
+    -- the conflict bar: in place of the name hint, also while no award is chosen; an inset with a
+    -- gold ground that takes the click
+    local B = W.Inset(O, "Button")
+    B.fill(GOLD[1], GOLD[2], GOLD[3], 0.16)
     B:SetSize(602, 40)
     B:SetPoint("TOPLEFT", E, "TOPLEFT", 0, -80)
-    W.Flat(B, GOLD[1], GOLD[2], GOLD[3], 0.16)
-    W.Border(B, GOLD[1], GOLD[2], GOLD[3], 0.6)
     B.text = W.Text(B, "GameFontHighlightSmall", 590)
     B.text:SetPoint("TOPLEFT", 6, -5)
     B.mine = W.Text(B, "GameFontHighlightSmall", 318)
@@ -639,7 +634,6 @@ local function refreshOfficer(O)
     local s, all = chosen()
     O.raid:SetValue(all and "all" or (s and s.id) or nil)
     if not O.search:HasFocus() then O.search:SetText(query) end
-    if query == "" and not O.search:HasFocus() then O.searchHint:Show() else O.searchHint:Hide() end
     local list = entries()
     O.list.all = all
     O.list:SetItems(list)
@@ -805,7 +799,8 @@ local function buildAll(R)
         r.plus:SetText(plus and tostring(plus) or "")
     end)
     A.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    -- 12 px short of the right edge: room for the list's scroll bar
+    A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
     A.empty = W.Text(A, "GameFontDisable", 590)
     A.empty:SetPoint("TOPLEFT", A.list, "TOPLEFT", 6, -6)
     A.empty:SetText("Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen.")
@@ -879,7 +874,8 @@ local function buildRaider(parent)
         r.kind:SetText((e.kind and e.kind ~= "-") and e.kind or "")
     end)
     R.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    -- 12 px short of the right edge: room for the list's scroll bar
+    R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
     R.text = W.Text(M, "GameFontDisableSmall", 590, true)
     R.text:SetPoint("TOPLEFT", R.list, "BOTTOMLEFT", 6, -10)
     R.text:SetText("Vergaben anderer siehst du auf der Amisia-Loot-Seite.")

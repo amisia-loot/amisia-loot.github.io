@@ -337,79 +337,8 @@ assert(old.kills[1] and old.kills[1].t == old.last and old.last == 1700003600, "
 -- layout at the main window's size (content 602 x 478)
 ---------------------------------------------------------------------------
 f.raid.onPick(s.id)
-local H = { LEFT = "L", TOPLEFT = "L", BOTTOMLEFT = "L", RIGHT = "R", TOPRIGHT = "R", BOTTOMRIGHT = "R" }
-local V = { TOP = "T", TOPLEFT = "T", TOPRIGHT = "T", BOTTOM = "B", BOTTOMLEFT = "B", BOTTOMRIGHT = "B" }
-local root, rootW, rootH = f, 602, 478
-local span, vspan
-local function edge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local l, r = span(rel)
-    local c = H[relPoint] or "C"
-    if c == "L" then return l elseif c == "R" then return r end
-    return (l + r) / 2
-end
-span = function(fr)
-    if fr == root then return 0, rootW end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local Lx, R, C
-    for p, a in pairs(fr.points or {}) do
-        local x = edge(a.rel, a.relPoint, fr) + a.x
-        local c = H[p] or "C"
-        if c == "L" then Lx = x elseif c == "R" then R = x else C = x end
-    end
-    local w = fr._w
-    if Lx and R then return Lx, R end
-    assert(w, "a width for " .. tostring(fr.name or fr.text))
-    if Lx then return Lx, Lx + w end
-    if R then return R - w, R end
-    assert(C, "an anchor for " .. tostring(fr.name or fr.text))
-    return C - w / 2, C + w / 2
-end
--- vertical: the top is 0, down is negative
-local function vedge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local t, b = vspan(rel)
-    local c = V[relPoint] or "C"
-    if c == "T" then return t elseif c == "B" then return b end
-    return (t + b) / 2
-end
-vspan = function(fr)
-    if fr == root then return 0, -rootH end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local T, Bt, C
-    for p, a in pairs(fr.points or {}) do
-        local y = vedge(a.rel, a.relPoint, fr) + a.y
-        local c = V[p] or "C"
-        if c == "T" then T = y elseif c == "B" then Bt = y else C = y end
-    end
-    local h = fr._h or 14
-    if T and Bt then return T, Bt end
-    if T then return T, T - h end
-    if Bt then return Bt + h, Bt end
-    assert(C, "an anchor for " .. tostring(fr.name or fr.text))
-    return C + h / 2, C - h / 2
-end
-local function row(name, ...)
-    local prevR
-    for i, fr in ipairs({ ... }) do
-        local l, r = span(fr)
-        assert(l >= 0 and r <= rootW, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, l, r, rootW))
-        if prevR then assert(l >= prevR, ("%s #%d overlaps #%d: %d < %d"):format(name, i, i - 1, l, prevR)) end
-        prevR = r
-    end
-end
-local function column(name, ...)
-    local prevB
-    for i, fr in ipairs({ ... }) do
-        local t, b = vspan(fr)
-        assert(t <= 0 and b >= -rootH, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, t, b, rootH))
-        if prevB then assert(t <= prevB, ("%s #%d overlaps #%d: %d > %d"):format(name, i, i - 1, t, prevB)) end
-        prevB = b
-    end
-end
-local function fits(fs)
-    assert(fs:GetStringWidth() <= fs._w, ("'%s' fits %s px"):format(tostring(fs:GetText()), tostring(fs._w)))
-end
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local span, vspan, row, column, fits = Lay.span, Lay.vspan, Lay.row, Lay.column, Lay.fits
 
 f.views.verlauf:Click()
 row("head", f.raid, f.addBoss, f.discordBtn)
@@ -417,10 +346,18 @@ row("views", f.views.verlauf, f.views.bench, f.views.discord)
 local LH = f.log.head
 row("columns", LH.time, LH.event, LH.result, LH.dur, LH.who, LH.src)
 local r1 = L.rows[1]
+-- the list ends 12 px before the edge; its thin bar sits in that gap, inside the page
 row("timeline row", r1.time, r1.event, r1.result, r1.dur, r1.who, r1.src)
+row("timeline list", L, L.bar)
+local _, lr = span(L)
+assert(lr == 590, "the timeline is 590 wide: " .. lr)
+Lay.inside("timeline bar", L.bar)
 for _, r in ipairs(rowsShown()) do fits(r.event); fits(r.src) end
 column("verlauf", f.raid, f.counts, f.views.verlauf, LH.time, L, f.log.title, f.log.detail)
 row("detail head", f.log.title, f.log.del)
+row("detail text", f.log.detail, f.log.detail.bar)
+Lay.inside("detail bar", f.log.detail.bar)
+assert(r1.sel.atlas == "Professions_Recipe_Active", "the chosen row glows like the recipe list's")
 f.addBoss:Click()
 row("add line", A.pick, A.kill, A.wipe, A.ok, A.cancel)
 column("add line", L, A, f.log.detail)
@@ -431,6 +368,8 @@ row("bench input", B.pick, B.note, B.addBtn)
 row("bench columns", B.head.name, B.head.since, B.head.how, B.head.note, B.head.joined)
 local b1 = B.list.rows[1]
 row("bench row", b1.name, b1.since, b1.how, b1.note, b1.joined, b1.x)
+row("bench list", B.list, B.list.bar)
+Lay.inside("bench bar", B.list.bar)
 fits(kimRow.joined); fits(kimRow.how)
 row("outside", B.outside, B.all)
 column("bench", f.views.bench, B.label, B.pick, B.head.name, B.list, B.outside, B.hint)
@@ -438,6 +377,11 @@ column("bench", f.views.bench, B.label, B.pick, B.head.name, B.list, B.outside, 
 f.views.discord:Click()
 row("parts", D.chips[1], D.chips[2], D.chips[3], D.chips[4], D.chips[5], D.chips[6])
 row("discord box", D.area)
+-- the box's bar lies inside the box
+local al, ar = span(D.area)
+local bl, br = span(D.area.bar)
+assert(bl >= al and br <= ar, ("the box's bar inside the box: %d..%d in %d..%d"):format(bl, br, al, ar))
+Lay.inside("discord box", D.area)
 column("discord", f.views.discord, D.chips[1], D.area, D.hint)
 local _, at = vspan(D.area)
 local top = vspan(D.area)

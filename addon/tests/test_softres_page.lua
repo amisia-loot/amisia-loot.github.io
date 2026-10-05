@@ -120,43 +120,17 @@ f.views.check:Click()
 ---------------------------------------------------------------------------
 -- layout at the main window's size (content 602 px)
 ---------------------------------------------------------------------------
-local H = { LEFT = "L", TOPLEFT = "L", BOTTOMLEFT = "L", RIGHT = "R", TOPRIGHT = "R", BOTTOMRIGHT = "R" }
-local root, rootW = f, 602
-local span
-local function edge(rel, relPoint, owner)
-    rel = rel or owner.parent
-    local l, r = span(rel)
-    local c = H[relPoint] or "C"
-    if c == "L" then return l elseif c == "R" then return r end
-    return (l + r) / 2
-end
-span = function(fr)
-    if fr == root then return 0, rootW end
-    assert(fr ~= UIParent and fr ~= nil, "laid out outside the root")
-    local L, R, C
-    for p, a in pairs(fr.points or {}) do
-        local x = edge(a.rel, a.relPoint, fr) + a.x
-        local c = H[p] or "C"
-        if c == "L" then L = x elseif c == "R" then R = x else C = x end
-    end
-    local w = fr._w
-    if L and R then return L, R end
-    assert(w, "a width for " .. tostring(fr.name or fr.text))
-    if L then return L, L + w end
-    if R then return R - w, R end
-    assert(C, "an anchor for " .. tostring(fr.name or fr.text))
-    return C - w / 2, C + w / 2
-end
-local function row(name, ...)
-    local prevR
-    for i, fr in ipairs({ ... }) do
-        local l, r = span(fr)
-        assert(l >= 0 and r <= rootW, ("%s #%d leaves its frame: %d..%d of %d"):format(name, i, l, r, rootW))
-        if prevR then assert(l >= prevR, ("%s #%d overlaps #%d: %d < %d"):format(name, i, i - 1, l, prevR)) end
-        prevR = r
-    end
-end
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local span, row = Lay.span, Lay.row
 row("head", f.state, f.import, f.clear)
+-- the list ends 12 px before the edge; its thin bar sits in that gap, inside the page
+row("list", f.list, f.list.bar)
+local _, lr = span(f.list)
+assert(lr == 590, "the list is 590 wide: " .. lr)
+Lay.inside("list bar", f.list.bar)
+Lay.column("page", f.state, f.check, f.views.items, f.heads[1], f.list, f.hint)
+Lay.inside("hint", f.hint)
+assert(rows[1].sel.atlas == "Professions_Recipe_Active", "an own row glows like the recipe list's")
 row("check line", f.check)
 row("views", f.views.items, f.views.raider, f.views.check, f.remind, f.post)
 -- a check row with the widest suggestions
@@ -167,9 +141,14 @@ NS.Refresh()
 local r1 = rows[1]
 assert(r1.chips[1]:IsShown(), "a suggestion is shown")
 row("check row", r1.a, r1.chips[1], r1.chips[2], r1.chips[3])
+-- the widest chips end inside the 590 px row, before the bar
+local _, cr = span(r1.chips[3])
+assert(cr <= 590, "the chips end in the row: " .. cr)
 for _, v in ipairs({ "items", "raider" }) do
     f.views[v]:Click()
     row(v .. " row", rows[1].a, rows[1].b, rows[1].c)
+    local _, er = span(rows[1].c)
+    assert(er <= 590, v .. " row ends in the list: " .. er)
 end
 f.views.check:Click()
 

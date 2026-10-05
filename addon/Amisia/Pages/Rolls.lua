@@ -47,7 +47,8 @@ ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI
             r.text:SetPoint("LEFT", 6, 0)
         end, function(r, round) r.text:SetText(roundLine(round)) end)
         f.list:SetPoint("TOPLEFT", 0, -80)
-        f.list:SetPoint("TOPRIGHT", 0, -80)
+        -- 12 px short of the right edge: room for the list's scroll bar
+        f.list:SetPoint("TOPRIGHT", -12, -80)
         page = f
         return f
     end,

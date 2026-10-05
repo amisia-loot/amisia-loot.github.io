@@ -30,6 +30,42 @@ NS.ShowPage("overview")
 local panelFrame = AmisiaFrame and true
 assert(panelFrame)
 
+-- 2.2 layout of the raid pages at 602 x 478: overview cards are insets that fill the width exactly
+local ov = NS.OverviewPageFrame()
+assert(ov.cards[1]:IsShown(), "a card is shown")
+do
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(ov, 602, 478)
+    for i = 1, 5, 2 do L.row("overview cards " .. i, ov.cards[i], ov.cards[i + 1]) end
+    L.column("overview left", ov.cards[1], ov.cards[3], ov.cards[5])
+    L.column("overview right", ov.cards[2], ov.cards[4], ov.cards[6])
+    for i, c in ipairs(ov.cards) do
+        L.inside("overview card " .. i, c)
+        assert(c.border and c.border.atlas == "common-insideframe", "card " .. i .. " is Forever's inset")
+    end
+    local _, r = L.span(ov.cards[2])
+    assert(r == 602, "the right card ends at the edge: " .. r)
+end
+-- the raids page: the list leaves 12 px for its bar, the detail text's bar sits under it
+NS.ShowPage("raids")
+local rp = NS.RaidsPageFrame()
+do
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(rp, 602, 478)
+    L.row("raids list", rp.list, rp.list.bar)
+    L.inside("raids list bar", rp.list.bar)
+    local _, r = L.span(rp.list)
+    assert(r == 590, "the raids list is 590 wide: " .. r)
+    local r1 = rp.list.rows[1]
+    L.row("raids row", r1.box, r1.date, r1.zone, r1.raiders, r1.mats[1], r1.mats[2])
+    local _, gr = L.span(r1.gems)
+    assert(gr <= 590, "the last column ends in the row: " .. gr)
+    L.row("raids buttons", rp.pageText, rp.all, rp.del)
+    L.row("raids detail", rp.detail, rp.detail.bar)
+    L.inside("raids detail bar", rp.detail.bar)
+    L.column("raids page", rp.list, rp.del, rp.detail)
+    assert(r1.sel.atlas == "Professions_Recipe_Active" and r1.sel:IsShown(), "the shown raid glows like the recipe list's")
+end
+NS.ShowPage("overview")
+
 -- export page keeps the old behaviour
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 NS.ShowExport(false)
@@ -78,6 +114,18 @@ local link = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 assert(NS.StartRoll(link, 5)); NS.StopRoll()
 assert(#NS.RollHistory() >= 1)
 NS.ShowPage("rolls")
+do
+    local rf = NS.RollsPageFrame()
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(rf, 602, 478)
+    L.row("rolls list", rf.list, rf.list.bar)
+    L.inside("rolls list bar", rf.list.bar)
+    local _, r = L.span(rf.list)
+    assert(r == 590, "the rolls list is 590 wide: " .. r)
+    local _, tr = L.span(rf.list.rows[1].text)
+    assert(tr <= 590, "the round text ends in the row: " .. tr)
+    L.column("rolls page", rf.current, rf.list)
+    L.inside("rolls list", rf.list)
+end
 
 -- the soft-reserves page fills its list without losing the row text
 local errs = {}

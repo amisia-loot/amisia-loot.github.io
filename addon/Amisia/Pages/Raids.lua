@@ -6,6 +6,8 @@ local ROWS, ROW_H = 8, 22
 ns.RaidSelection = ns.RaidSelection or {}
 local detailId
 local page
+-- For tests: the page frame once built.
+function ns.RaidsPageFrame() return page end
 
 local function ordered()
     local src, out = ns.Sessions(), {}
@@ -108,7 +110,7 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
                 if r.item then ns.RaidSelection[r.item.id] = on or nil end
             end)
             r.box:SetPoint("LEFT", 6, 0)
-            r.sel = W.Flat(r, W.GOLD[1], W.GOLD[2], W.GOLD[3], 0.18, "BORDER")
+            r.sel = W.SelectBar(r)
             r.date = col(r, 30, 80, nil, "GameFontHighlightSmall")
             r.zone = col(r, 112, 200, nil, "GameFontHighlightSmall")
             r.raiders = col(r, 316, 60, nil, "GameFontHighlightSmall")
@@ -143,8 +145,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             if hasGems then r.gems:SetText(ns.GemCount(c)); r.gems:Show() else r.gems:Hide() end
             if s.id == detailId then r.sel:Show() else r.sel:Hide() end
         end)
+        -- 12 px short of the right edge: room for the list's scroll bar
         f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -2)
-        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, -2)
+        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, -2)
         f.pageText = W.Text(f, "GameFontDisableSmall", 200)
         f.pageText:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
         f.del = W.Button(f, "Löschen", 100, function()
@@ -167,7 +170,8 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         f.all:SetPoint("RIGHT", f.del, "LEFT", -6, 0)
         f.detail = W.ScrollText(f)
         f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 0, -34)
-        f.detail:SetPoint("BOTTOMRIGHT", -24, 0)
+        -- the text ends with the list; its bar lies under the list's
+        f.detail:SetPoint("BOTTOMRIGHT", -12, 0)
         return f
     end,
     refresh = function(f)

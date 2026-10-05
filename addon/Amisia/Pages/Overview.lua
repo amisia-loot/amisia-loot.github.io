@@ -1,11 +1,17 @@
 -- Overview: one card per registered feature, each with its state and at most one button.
 local ADDON, ns = ...
 local W = ns.W
-local CARD_W, CARD_H, GAP, SLOTS = 296, 112, 12, 6
+-- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12
+local CARD_W, CARD_H, GAP, SLOTS = 295, 112, 12, 6
+
+local page
+-- For tests: the page frame once built.
+function ns.OverviewPageFrame() return page end
 
 ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
+        page = f
         f.cards = {}
         for i = 1, SLOTS do
             local c = W.Card(f, CARD_W, CARD_H)

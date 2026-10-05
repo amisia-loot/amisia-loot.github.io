@@ -4,7 +4,6 @@
 -- are for officers.
 local ADDON, ns = ...
 local W = ns.W
-local GOLD = W.GOLD
 local LOG_ROWS, BENCH_ROWS, ROW_H = 12, 10, 22
 local MAX_PARTS = 6
 local OUTSIDE_FOR = 600   -- seconds: the group outside offered for "Alle eintragen"
@@ -225,16 +224,16 @@ local function buildLog(f)
     head.result = col(head, 304, 76, "Ergebnis")
     head.dur = col(head, 384, 46, "Dauer")
     head.who = col(head, 434, 46, "Dabei")
-    head.src = col(head, 484, 118, "Quelle")
+    head.src = col(head, 484, 106, "Quelle")
     V.head = head
     V.list = W.List(V, LOG_ROWS, ROW_H, function(r)
-        r.sel = W.Flat(r, GOLD[1], GOLD[2], GOLD[3], 0.18, "BORDER")
+        r.sel = W.SelectBar(r)
         r.time = col(r, 2, 48, nil, "GameFontHighlightSmall")
         r.event = col(r, 54, 246, nil, "GameFontHighlightSmall")
         r.result = col(r, 304, 76, nil, "GameFontHighlightSmall")
         r.dur = col(r, 384, 46, nil, "GameFontHighlightSmall")
         r.who = col(r, 434, 46, nil, "GameFontHighlightSmall")
-        r.src = col(r, 484, 118, nil, "GameFontHighlightSmall")
+        r.src = col(r, 484, 106, nil, "GameFontHighlightSmall")
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -248,8 +247,9 @@ local function buildLog(f)
             ns.Refresh()
         end)
     end, fillLogRow)
+    -- 12 px short of the right edge: room for the list's scroll bar
     V.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    V.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    V.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
 
     -- the detail area under the list
     V.title = W.Text(V, "GameFontNormal", 490)
@@ -262,7 +262,8 @@ local function buildLog(f)
     V.del:SetPoint("TOPRIGHT", V.list, "BOTTOMRIGHT", 0, -4)
     V.detail = W.ScrollText(V)
     V.detail:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 0, -28)
-    V.detail:SetPoint("BOTTOMRIGHT", -24, 0)
+    -- the text ends with the list; its bar lies under the list's
+    V.detail:SetPoint("BOTTOMRIGHT", -12, 0)
 
     -- "Boss eintragen": [Boss v] [Kill] [Wipe] [Eintragen] [Abbrechen]
     local A = CreateFrame("Frame", nil, V)
@@ -538,15 +539,16 @@ local function buildBench(f)
     head.name = col(head, 4, 130, "Name")
     head.since = col(head, 138, 36, "Seit")
     head.how = col(head, 178, 110, "Wie")
-    head.note = col(head, 292, 160, "Notiz")
-    head.joined = col(head, 456, 118, "Im Raid")
+    -- the note gives 12 px to the list's scroll bar, so "eingewechselt 20:15" keeps its width
+    head.note = col(head, 292, 148, "Notiz")
+    head.joined = col(head, 444, 118, "Im Raid")
     B.head = head
     B.list = W.List(B, BENCH_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 130, nil, "GameFontHighlightSmall")
         r.since = col(r, 138, 36, nil, "GameFontHighlightSmall")
         r.how = col(r, 178, 110, nil, "GameFontHighlightSmall")
-        r.note = col(r, 292, 160, nil, "GameFontHighlightSmall")
-        r.joined = col(r, 456, 118, nil, "GameFontHighlightSmall")
+        r.note = col(r, 292, 148, nil, "GameFontHighlightSmall")
+        r.joined = col(r, 444, 118, nil, "GameFontHighlightSmall")
         r.x = W.Chip(r, "x", 20, function(self)
             local x = self:GetParent().item
             local target = benchOf(chosen())
@@ -567,10 +569,12 @@ local function buildBench(f)
         r.joined:SetText(x.joined and ("eingewechselt " .. hm(x.joined)) or "")
         if officer() then r.x:Show() else r.x:Hide() end
     end)
+    -- 12 px short of the right edge: room for the list's scroll bar
     B.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    B.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+    B.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
 
-    B.outside = W.Text(B, "GameFontHighlightSmall", 490)
+    -- ends 6 px before "Alle eintragen", which moved left with the list
+    B.outside = W.Text(B, "GameFontHighlightSmall", 478)
     B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -10)
     B.all = W.Button(B, "Alle eintragen", 100, function()
         local s = chosen()

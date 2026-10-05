@@ -100,8 +100,13 @@ O.search:SetFocus(); O.search:SetText("warglaive"); O.search.scripts.OnEnterPres
 assert(rows[1].item.a == a2 and rows[2].item.a == a3 and rows[3].item.a == a5 and rows[4].item.a == o2 and rows[5].item.a == o3, "the item name")
 O.search:SetFocus(); O.search:SetText("vulo"); O.search.scripts.OnEnterPressed(O.search)
 assert(rows[1].item.a == a2 and rows[2].item.a == a3 and rows[3].item.a == o1 and rows[4].item.a == o2 and not rows[5]:IsShown(), "the winner, bank receiver included")
+-- the client runs OnTextChanged on every change; the stub's SetText does not, so the test does
+O.search.scripts.OnTextChanged(O.search, false)
+assert(O.search:GetText() == "vulo" and not O.search.Instructions:IsShown(), "the placeholder hides behind a query")
 O.search:SetFocus(); O.search:SetText(""); O.search.scripts.OnEnterPressed(O.search)
 assert(rows[8]:IsShown())
+O.search.scripts.OnTextChanged(O.search, false)
+assert(O.search.Instructions:IsShown(), "an empty search shows the placeholder again")
 
 ---------------------------------------------------------------------------
 -- editing works at once, undo puts it back

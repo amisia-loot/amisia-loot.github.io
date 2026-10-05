@@ -2,12 +2,11 @@
 -- name fixes with one click, importing and clearing for officers, and the overview card.
 local ADDON, ns = ...
 local W = ns.W
-local GOLD = W.GOLD
 local ROWS, ROW_H = 14, 22
 local GREY, ORANGE, RED = "|cff8f86a3", "|cffe0a344", "|cffff5050"
-local MAX_CHIPS, CHIP_MAX_W = 3, 104
--- the columns of a row; the content is 602 px wide
-local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 324
+local MAX_CHIPS, CHIP_MAX_W = 3, 100
+-- the columns of a row; the list is 590 px wide (602 of the content less 12 for its scroll bar)
+local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 312
 
 local GetItemInfo = C_Item.GetItemInfo
 
@@ -233,8 +232,7 @@ local HEADS = {
 }
 
 local function buildRow(r)
-    r.sel = W.Flat(r, GOLD[1], GOLD[2], GOLD[3], 0.18, "BORDER")
-    r.sel:Hide()
+    r.sel = W.SelectBar(r)
     r.a = col(r, COL_A, COL_A_W)
     r.b = col(r, COL_B, COL_B_W)
     r.c = col(r, COL_C, COL_C_W)
@@ -368,7 +366,8 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
                     col(head, COL_C, COL_C_W, "GameFontNormalSmall") }
         f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
         f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", 0, 0)
+        -- 12 px short of the right edge: room for the list's scroll bar
+        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
         f.hint = W.Text(f, "GameFontDisableSmall", 590, true)
         f.hint:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
         return f

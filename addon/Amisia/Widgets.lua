@@ -465,9 +465,9 @@ end
 -- Forever's inset (common-insideframe, as the profession window's detail field and the character
 -- frame have it): a bevelled frame without a ground of its own, the window's shows through.
 -- inset.fill(atlas) or inset.fill(r, g, b, a) puts a ground under it. Without the atlas a thin
--- gold frame.
-function W.Inset(parent)
-    local f = CreateFrame("Frame", nil, parent)
+-- gold frame. kind makes it another frame type ("Button" for an inset that takes clicks).
+function W.Inset(parent, kind)
+    local f = CreateFrame(kind or "Frame", nil, parent)
     if hasAtlas("common-insideframe") then
         f.border = f:CreateTexture(nil, "BORDER")
         f.border:SetAllPoints()

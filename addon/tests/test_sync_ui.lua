@@ -155,6 +155,9 @@ officer(FRAK, [[local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 47
     assert(l == 0 and r == 602, "the bar spans the content: " .. l .. ".." .. r)
     local t, b = L.vspan(O.conflict)
     assert(t - b == 40 and b >= -478, "40 px inside the page: " .. t .. ".." .. b)
+    L.inside("conflict bar", O.conflict)
+    -- 2.2: Forever's inset with a gold ground instead of an area with a gold frame
+    assert(O.conflict.border and O.conflict.border.atlas == "common-insideframe" and O.conflict.ground, "the bar is an inset")
     L.fits(O.conflict.text); L.fits(O.conflict.mine)]])
 -- "Meine übernehmen" wins
 officer(FRAK, "O.conflict.take:Click()")
