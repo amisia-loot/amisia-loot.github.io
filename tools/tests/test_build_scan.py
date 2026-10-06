@@ -340,3 +340,31 @@ def test_no_day_after_today_and_the_ids_of_the_last_day():
     assert data['obsThrough'] == today
     assert data['obsIds'] == ['a0000002', 'a0000003'], 'the ids of the last day, for the site'
     assert data['obsBosses'][0]['kills'] == 3, 'the future record is not in the tables'
+
+
+def test_the_source_collector_records():
+    p = b.parse_collect_record
+    q = p('q', "280;3344;1440:5234:4011;4455;1440:1:1;280604;5001,5002;34;30;AH;2000;Sturmrufer;Titel; mit Semikolon")
+    assert q['giver'] == 3344 and q['gpos'] == (1440, 5234, 4011) and q['rewards'] == [280604] and q['choices'] == [5001, 5002]
+    assert q['fac'] == 'AH' and q['pre'] == 2000 and q['title'] == 'Titel; mit Semikolon'
+    assert p('q', '280;-178000;1440;0;;;;0;0;;0;;Steckbrief')['gpos'] == (1440, None, None)
+    v = p('s', '280;;6001:1520:L:6@Orgrimmar;Grimm')
+    assert v['items'][6001] == {'price': 1520, 'flags': 'L', 'rep': '6@Orgrimmar'} and v['pos'] is None
+    w = p('w', '280;r;1411:1:1;0;7001:2;Wolf')
+    assert w['items'] == {7001: 2} and w['class'] == 'r'
+    for kind, bad in (('q', 'x;1;;0;;;;0;0;;0;;T'), ('q', '1;1;;0;;;;0;0;X;0;;T'), ('q', '1;1;1:20000:1;0;;;;0;0;;0;;T'),
+                      ('q', '1;1;;0;;;'), ('s', '1;;1:2:Q:;N'), ('w', '1;z;;0;;N'), ('w', '1;n;;0;1:100;N'), ('q', None)):
+        assert p(kind, bad) is None, bad
+    # two files: joined, broken records left out
+    obs = b.collect_observed([
+        {'collect': {'q': {7: '280;1;;0;;5;;0;20;A;0;;Sieben', 8: 'kaputt'}, 'w': {299: '280;;;0;7001:1;'}}},
+        {'collect': {'q': {7: '281;0;;9;;6;;12;0;H;0;Geber;'}, 'w': {299: '279;r;1411:1:1;0;7001:3;Wolf'}, 's': []}},
+        {'other': 1}])
+    assert set(obs['q']) == {7} and obs['q'][7]['rewards'] == [5, 6] and obs['q'][7]['fac'] == 'AH' and obs['q'][7]['ender'] == 9
+    assert obs['q'][7]['title'] == 'Sieben' and obs['q'][7]['qlevel'] == 12 and obs['q'][7]['day'] == 281
+    assert obs['w'][299]['items'] == {7001: 3} and obs['w'][299]['name'] == 'Wolf'
+    notes = b.observed_notes(obs)
+    assert notes[5] == ['Quest: Sieben [7]'] and notes[7001] == ['Drop: Wolf [299]']
+    collected = b.add_notes({5: ['Quest: Sieben [7]']}, notes)
+    assert collected[5] == ['Quest: Sieben [7]'] and collected[7001] == ['Drop: Wolf [299]']
+    assert b.note_label('Quest: Sieben [7]') == 'Quest: Sieben'

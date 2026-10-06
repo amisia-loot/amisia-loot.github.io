@@ -247,6 +247,14 @@ ns.OnEvent("LOOT_OPENED", function()
             if handler then handler(err) end
         end
     end
+    -- then the drops of the other corpses (Collector.lua), outside the boss records
+    if ns.CollectorFromLoot then
+        local ok, err = pcall(ns.CollectorFromLoot)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then handler(err) end
+        end
+    end
     if not enabled() or not GetNumLootItems or not GetLootSlotLink then return end
     local place = placeTag()
     for slot = 1, GetNumLootItems() or 0 do

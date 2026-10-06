@@ -14,6 +14,8 @@ are reported and given defaults so the file still builds.
 The item collector writes down where an item was met (`scan.sources`): a drop outside a recorded
 raid, a merchant, a quest or the auction house. A "Drop: <name>" source becomes a boss in the zone
 "Seen in the world"; the other sources are kept as the item's `via` line, which the site shows.
+The source collector's records (`collect`: quests, vendors, world drops; collect_observed) are added
+to those notes the same way.
 
 --catalog adds every scanned item worth awarding (epic or better, or rare from --catalog-ilvl up)
 that has no observed drop yet, under the boss "Unknown source", so loot can be recorded before
@@ -194,6 +196,170 @@ def collect(dbs):
         if k not in items:
             items[k] = {'name': v['name'], 'q': v['q'], 'ilvl': 0, 'min': 0, 'classID': 0, 'subclassID': 0, 'equipLoc': '', 'icon': '', 'bind': 0}
     return items, sessions, collected
+
+
+# ---------------------------------------------------------------- the source collector
+# AmisiaDB.collect (Collector.lua): one string per record, fields split by ";", the free text last.
+#   q: day;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+#   s: day;pos;items(id:price:flags:rep,...);name
+#   w: day;class;pos;instance;items(id:count,...);name
+COLLECT_FIELDS = {'q': 13, 's': 4, 'w': 6}
+_INT = re.compile(r'^-?\d+$')
+_POS = re.compile(r'^(\d+)(?::(\d+):(\d+))?$')
+
+
+def _cint(v, lo, hi):
+    if not _INT.match(v or ''):
+        raise ValueError(v)
+    n = int(v)
+    if not lo <= n <= hi:
+        raise ValueError(v)
+    return n
+
+
+def _cpos(v):
+    """A position "map:x:y" (hundredths of a percent) or "map" as (map, x, y), (map, None, None) or None."""
+    if v == '':
+        return None
+    m = _POS.match(v)
+    if not m:
+        raise ValueError(v)
+    x, y = m.group(2), m.group(3)
+    if x is not None and (int(x) > 10000 or int(y) > 10000):
+        raise ValueError(v)
+    return (int(m.group(1)), int(x) if x is not None else None, int(y) if y is not None else None)
+
+
+def _cids(v, limit=8):
+    out = [_cint(x, 1, 9999999) for x in v.split(',')] if v else []
+    if len(out) > limit:
+        raise ValueError(v)
+    return out
+
+
+def _ctext(v):
+    if any(ord(c) < 32 or c == '|' for c in v):
+        raise ValueError(v)
+    return v
+
+
+def parse_collect_record(kind, text):
+    """One collector record as a dict, or None when it does not parse."""
+    if kind not in COLLECT_FIELDS or not isinstance(text, str):
+        return None
+    n = COLLECT_FIELDS[kind]
+    f = text.split(';', n - 1)
+    if len(f) != n:
+        return None
+    try:
+        if kind == 'q':
+            if f[9] not in ('', 'A', 'H', 'AH'):
+                return None
+            return {'day': _cint(f[0], 0, 99999), 'giver': _cint(f[1], -9999999, 9999999), 'gpos': _cpos(f[2]),
+                    'ender': _cint(f[3], -9999999, 9999999), 'epos': _cpos(f[4]), 'rewards': _cids(f[5]),
+                    'choices': _cids(f[6]), 'qlevel': _cint(f[7], 0, 99), 'minlvl': _cint(f[8], 0, 99), 'fac': f[9],
+                    'pre': _cint(f[10], 0, 9999999), 'gname': _ctext(f[11]), 'title': _ctext(f[12])}
+        if kind == 's':
+            items = {}
+            for e in f[2].split(',') if f[2] else []:
+                iid, price, flags, rep = e.split(':', 3)
+                if flags not in ('', 'L', 'x', 'Lx'):
+                    return None
+                items[_cint(iid, 1, 9999999)] = {'price': _cint(price, 0, 2147483647), 'flags': flags, 'rep': _ctext(rep)}
+            return {'day': _cint(f[0], 0, 99999), 'pos': _cpos(f[1]), 'items': items, 'name': _ctext(f[3])}
+        if f[1] not in ('', 'n', 'e', 'r', 'R', 'b'):
+            return None
+        items = {}
+        for e in f[4].split(',') if f[4] else []:
+            iid, cnt = e.split(':')
+            items[_cint(iid, 1, 9999999)] = _cint(cnt, 1, 99)
+        return {'day': _cint(f[0], 0, 99999), 'class': f[1], 'pos': _cpos(f[2]), 'inst': _cint(f[3], 0, 99999),
+                'items': items, 'name': _ctext(f[5])}
+    except ValueError:
+        return None
+
+
+def _join(kind, a, b):
+    """Two records of the same id as one (the addon's join: lists united, the first known text kept)."""
+    out = dict(a)
+    out['day'] = max(a['day'], b['day'])
+    for k, v in b.items():
+        if k == 'day':
+            continue
+        cur = out.get(k)
+        if k in ('rewards', 'choices'):
+            out[k] = sorted(set(cur) | set(v))
+        elif k == 'items':
+            merged = dict(cur)
+            for iid, x in v.items():
+                if iid not in merged:
+                    merged[iid] = x
+                elif kind == 'w':
+                    merged[iid] = max(merged[iid], x)
+            out[k] = merged
+        elif k == 'fac':
+            out[k] = ('A' if 'A' in cur + v else '') + ('H' if 'H' in cur + v else '')
+        elif k in ('qlevel', 'inst'):
+            out[k] = max(cur, v)
+        elif cur in (None, '', 0):
+            out[k] = v
+    return out
+
+
+def collect_observed(dbs):
+    """The collector records of the SavedVariables: {'q': {questID: record}, 's': {npcID: record},
+    'w': {npcID: record}}; the same id from several files is joined, broken records are left out."""
+    out = {'q': {}, 's': {}, 'w': {}}
+    for db in dbs:
+        c = db.get('collect') if isinstance(db, dict) else None
+        if not isinstance(c, dict):
+            continue
+        for kind in out:
+            t = c.get(kind)
+            if isinstance(t, list):
+                t = {i + 1: v for i, v in enumerate(t)}
+            for k, v in (t or {}).items():
+                try:
+                    rid = int(k)
+                except (TypeError, ValueError):
+                    continue
+                r = parse_collect_record(kind, v)
+                if r is None:
+                    continue
+                out[kind][rid] = _join(kind, out[kind][rid], r) if rid in out[kind] else r
+    return out
+
+
+def observed_notes(obs):
+    """The collector records as item notes in the form of scan.sources (for the site's via line and the
+    field drops): quests and vendors by name and id, mobs by name."""
+    notes = {}
+
+    def add(item, text):
+        lst = notes.setdefault(item, [])
+        if text not in lst:
+            lst.append(text)
+
+    for qid, q in sorted(obs.get('q', {}).items()):
+        for item in q['rewards'] + q['choices']:
+            add(item, f"Quest: {q['title'] or '?'} [{qid}]")
+    for npc, v in sorted(obs.get('s', {}).items()):
+        for item in v['items']:
+            add(item, f"Haendler: {v['name'] or '?'} [{npc}]")
+    for npc, w in sorted(obs.get('w', {}).items()):
+        for item in w['items']:
+            add(item, f"Drop: {w['name'] or '?'} [{npc}]")
+    return notes
+
+
+def add_notes(collected, notes):
+    """Adds notes to the collected sources, each once."""
+    for item, texts in notes.items():
+        lst = collected.setdefault(item, [])
+        for t in texts:
+            if t not in lst:
+                lst.append(t)
+    return collected
 
 
 # ---------------------------------------------------------------- zones and bosses
@@ -897,6 +1063,8 @@ def main(argv=None):
         return update_in_place(args, zones_cfg)
     dbs = [load_sv(p) for p in args.files]
     items, sessions, collected = collect(dbs)
+    # what the source collector saw (quests, vendors, world drops) joins the notes
+    add_notes(collected, observed_notes(collect_observed(dbs)))
     bosses_cfg = load_json(BOSSES_CFG, {})
     zones, bosses, warnings = zones_and_bosses(sessions, zones_cfg, bosses_cfg)
     out_items = build_items(items, sessions, bosses, zones, bosses_cfg)

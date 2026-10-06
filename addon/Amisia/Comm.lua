@@ -32,15 +32,16 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60 }
--- the same per first field: a drop question per week, a drop request per (first) bucket
-local KEYED_GAP = { DQ = 60, DR = 60 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60 }
+-- the same per first field: a drop question per week, a drop request per (first) bucket; a source
+-- question per kind, a source request per kind and bucket
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
-local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true }
+local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true }
 -- parts a blob of an art may have (default MAX_PARTS)
-local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK }
+local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK }
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
@@ -257,6 +258,22 @@ local function drPairs(f)
     return true
 end
 
+-- The source exchange (CollectSync.lua): a kind "q:hhhh:n", a bucket "bb:hhhh:n" (bb two hex,
+-- 00-3f), a known record as 4 hex.
+local COLLECT_KINDS = { q = true, s = true, w = true }
+local function collectKindEntry(e)
+    local k, n = e:match("^([qsw]):%x%x%x%x:(%d+)$")
+    return k ~= nil and isNum(n, 0, 999999)
+end
+local function collectBucket(b)
+    return type(b) == "string" and b:match("^%x%x$") ~= nil and tonumber(b, 16) <= 63
+end
+local function collectBucketEntry(e)
+    local b, n = e:match("^(%x%x):%x%x%x%x:(%d+)$")
+    return b ~= nil and collectBucket(b) and isNum(n, 1, 999999)
+end
+local function hex4(e) return isHex(e, 4) end
+
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
@@ -290,6 +307,25 @@ local VALID = {
     end,
     DR = drPairs,
     DW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
+    -- source exchange: CV <collect proto> <records> <kinds>; CQ <kind>; CI <kind> <part> <parts>
+    -- <buckets>|-; CR (<kind><bucket> <known records>|*)... (12 buckets of one kind at most); CW <seconds> (busy)
+    CV = function(f) return #f >= 3 and isNum(f[1], 0, 9) and isNum(f[2], 0, 999999) and commaList(f[3], 3, collectKindEntry) end,
+    CQ = function(f) return #f >= 1 and COLLECT_KINDS[f[1]] == true end,
+    CI = function(f)
+        if #f < 4 or not COLLECT_KINDS[f[1]] or not isNum(f[2], 1, 8) or not isNum(f[3], 1, 8) then return false end
+        return tonumber(f[2]) <= tonumber(f[3]) and commaList(f[4], 20, collectBucketEntry, true)
+    end,
+    CR = function(f)
+        if #f < 2 or #f % 2 ~= 0 or #f > 24 then return false end
+        for i = 1, #f, 2 do
+            if #f[i] ~= 3 or f[i]:sub(1, 1) ~= f[1]:sub(1, 1) or not COLLECT_KINDS[f[i]:sub(1, 1)] or not collectBucket(f[i]:sub(2))
+                or not (f[i + 1] == "*" or commaList(f[i + 1], 45, hex4)) then
+                return false
+            end
+        end
+        return true
+    end,
+    CW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -609,8 +645,8 @@ end
 
 local seq = 0
 
--- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP" or "DK"; key the raid key
--- (DK: the bucket key, the same "date:instance" form). opts as CommSend. Returns true and the
+-- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK" or "CK"; key the raid key
+-- (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"). opts as CommSend. Returns true and the
 -- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end
