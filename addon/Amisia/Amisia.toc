@@ -35,9 +35,11 @@ DropSync.lua
 GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 MapData.lua [AllowLoadGameType camelot]
+DungeonData.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
 Bis.lua
+Dungeons.lua
 GuildWishes.lua
 Need.lua
 Map.lua

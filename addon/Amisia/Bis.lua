@@ -1480,10 +1480,10 @@ end))
 ---------------------------------------------------------------------------
 
 local VIEW_OF = { goals = "goals", ziele = "goals", here = "here", hier = "here", wish = "wish", wunsch = "wish",
-    wunschliste = "wish", guild = "guild", gilde = "guild" }
+    wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons" }
 
--- Opens the gear page in a view ("goals", "here", "wish", "guild" or the German words) with a slot
--- chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
+-- Opens the gear page in a view ("goals", "here", "dungeons", "wish", "guild" or the German words)
+-- with a slot chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
 -- at the player's own place again.
 function ns.ShowGear(view, slotKey)
     local s = AmisiaDB and AmisiaDB.settings

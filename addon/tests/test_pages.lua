@@ -253,7 +253,7 @@ assert(not m:IsShown(), "second click closes the menu")
 -- the gear page with the real Forever data: every view builds and refreshes, for officers and raiders
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
-    for _, v in ipairs({ "goals", "here", "wish", "guild" }) do
+    for _, v in ipairs({ "goals", "here", "dungeons", "wish", "guild" }) do
         NS.ShowGear(v)
         NS.Refresh()
         assert(NS.CurrentPage() == "gear", "the gear page in " .. v)

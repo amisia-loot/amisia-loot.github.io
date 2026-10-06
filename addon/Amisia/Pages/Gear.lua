@@ -1,7 +1,9 @@
 -- Gear page: the best items of the own character per slot ("Ziele") with the
 -- three options of a slot, the buttons to wish or exclude and the explained score; what a place
--- still offers ("Hier"); the own wishlist with its text for the website ("Wunschliste"); the guild
--- wishes pasted from the website ("Gilde", import for officers). Plus the overview card.
+-- still offers ("Hier"); the dungeon planner ("Dungeons": the next dungeon, every dungeon's value,
+-- the chosen one's bosses, upgrades and quests, the waypoint to its entrance); the own wishlist with
+-- its text for the website ("Wunschliste"); the guild wishes pasted from the website ("Gilde",
+-- import for officers). Plus the overview card.
 -- Everything shown comes from the caches of Bis.lua; a refresh never computes the targets again
 -- unless something they depend on changed.
 local ADDON, ns = ...
@@ -13,11 +15,12 @@ local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
+local DUNGEON_ROWS, DETAIL_ROWS = 8, 5
 local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
 local OWNED_TEXT = { worn = "angelegt", bag = "in der Tasche, nicht angelegt", bank = "in der Bank, nicht angelegt" }
-local VIEWS = { goals = true, here = true, wish = true, guild = true }
+local VIEWS = { goals = true, here = true, dungeons = true, wish = true, guild = true }
 -- the source chips: key, label, width
 local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
                 { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
@@ -366,9 +369,9 @@ local function fillHead(f, o, res, v)
     if Gear.Available() then f.open:Show() else f.open:Hide() end
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
-    -- the source chips, in a row
+    -- the source chips, in a row; the dungeon planner does not use them, its body takes their room
     local shown, x = {}, 0
-    for _, def in ipairs(chipSet()) do
+    for _, def in ipairs(v == "dungeons" and {} or chipSet()) do
         local chip = f.src[def[1]]
         shown[def[1]] = true
         chip:ClearAllPoints()
@@ -729,6 +732,214 @@ local function fillHere(Hh, o)
 end
 
 ---------------------------------------------------------------------------
+-- Dungeons: the next dungeon, the list, the chosen one's bosses and quests
+---------------------------------------------------------------------------
+
+local GOLD_TEXT = "|cffe3b857"
+
+local function signed(x) return ("%+d"):format(math.floor(x + 0.5)) end
+
+-- The chosen dungeon: the saved one while the list has it, else the recommended, else the first.
+local function chosenDungeon(list, nextE)
+    local key = state().dungeon
+    for _, e in ipairs(list) do
+        if e.key == key then return e end
+    end
+    return nextE or list[1]
+end
+
+local function fillDungeonRow(r, e)
+    local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
+    local dim = e.fit == "high" or e.fit == "easy" or e.fit == "later"
+    r.name:SetText(e.name .. raid)
+    if dim then r.name:SetTextColor(0.56, 0.53, 0.64) else r.name:SetTextColor(1, 1, 1) end
+    r.level:SetText(ns.Dungeons.RangeText(e))
+    r.fit:SetText(ns.Dungeons.FitText(e))
+    if e.fit == "fit" then r.fit:SetTextColor(0.31, 0.82, 0.42)
+    elseif e.fit == "soon" then r.fit:SetTextColor(1, 0.82, 0)
+    else r.fit:SetTextColor(0.56, 0.53, 0.64) end
+    if e.computed then
+        r.upgrades:SetText(tostring(e.upgrades))
+        r.run:SetText(e.perRun > 0 and signed(e.perRun) or "0")
+        r.quests:SetText(e.once > 0 and signed(e.once) or "0")
+        r.value:SetText(tostring(math.floor(e.value + 0.5)))
+    else
+        r.upgrades:SetText(""); r.run:SetText(""); r.quests:SetText(""); r.value:SetText("")
+    end
+    if r.owner and r.owner.chosen == e.key then r.sel:Show() else r.sel:Hide() end
+end
+
+local function dungeonTip(self)
+    local e = self.item
+    if not e then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(e.name, 1, 0.82, 0)
+    local range = ns.Dungeons.RangeText(e)
+    if range ~= "" then
+        GameTooltip:AddLine(("Level %s%s"):format(range, e.est and ", geschätzt aus den Items" or ""), 0.85, 0.85, 0.85)
+    end
+    if e.kind == "raid" then
+        GameTooltip:AddLine(("Raid%s%s"):format(e.size and (" für " .. e.size) or "", e.fit == "later" and (", " .. ns.Dungeons.FitText(e)) or ""),
+            0.85, 0.85, 0.85)
+    end
+    if e.computed then
+        GameTooltip:AddLine(("%d Upgrades, je Lauf %s, Quests %s, Wert %d"):format(e.upgrades, signed(e.perRun), signed(e.once),
+            math.floor(e.value + 0.5)), 0.6, 0.6, 0.6)
+    end
+    GameTooltip:Show()
+end
+
+-- The rows of the chosen dungeon: a row per boss, its items below it, then the quests.
+local function detailItems(e)
+    local c = cached()
+    c.detail = c.detail or {}
+    local out = c.detail[e]
+    if out then return out end
+    out = {}
+    for _, b in ipairs(e.bosses or {}) do
+        out[#out + 1] = { kind = "boss", text = b.name, b = b }
+        for _, it in ipairs(b.items) do
+            out[#out + 1] = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
+        end
+    end
+    for _, q in ipairs(e.quests or {}) do
+        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or ""), q = q,
+            id = q.best and q.best.id or nil }
+    end
+    c.detail[e] = out
+    return out
+end
+
+local function fillDetailRow(r, e)
+    if e.kind == "boss" then
+        r.name:SetText(GOLD_TEXT .. e.text .. "|r")
+        r.slot:SetText("")
+        r.gain:SetText("")
+        r.rate:SetText(e.b.perRun > 0 and ("je Lauf %s"):format(signed(e.b.perRun)) or "")
+    elseif e.kind == "item" then
+        local it = e.it
+        r.name:SetText(marks(it) .. itemText(it.id))
+        r.slot:SetText(ns.BIS_SLOT_NAME[it.slotKey] or "")
+        r.gain:SetText(gainText(it))
+        r.rate:SetText(it.rate or "")
+    else
+        local q = e.q
+        r.name:SetText((q.done and GREY or "") .. "Quest: " .. e.text .. (q.done and "|r" or ""))
+        if q.best then
+            r.slot:SetText(ns.BIS_SLOT_NAME[q.best.slotKey] or "")
+            r.gain:SetText((q.done and GREY or GREEN) .. signed(q.best.gain) .. "|r")
+            r.rate:SetText(itemText(q.best.id))
+        else
+            r.slot:SetText("")
+            r.gain:SetText("")
+            r.rate:SetText(GREY .. "kein Upgrade|r")
+        end
+    end
+end
+
+local function buildDungeons(f)
+    -- the source chips are hidden here, so the body starts below the counts
+    local B = CreateFrame("Frame", nil, f)
+    B:SetPoint("TOPLEFT", 0, -48)
+    B:SetPoint("BOTTOMRIGHT", 0, 0)
+    B.next = W.Text(B, "GameFontNormal", 598)
+    B.next:SetPoint("TOPLEFT", 4, -2)
+    B.why = W.Text(B, "GameFontHighlightSmall", 598)
+    B.why:SetPoint("TOPLEFT", 4, -18)
+    local h = head(B, -36)
+    -- the list is 590 wide (12 px for its scroll bar)
+    B.head = { name = col(h, 4, 170, "Dungeon"), level = col(h, 178, 46, "Level"), fit = col(h, 228, 56, "Passung"),
+        upgrades = col(h, 288, 56, "Upgrades"), run = col(h, 348, 66, "Je Lauf"), quests = col(h, 418, 66, "Quests"),
+        value = col(h, 488, 60, "Wert") }
+    for _, k in ipairs({ "upgrades", "run", "quests", "value" }) do B.head[k]:SetJustifyH("RIGHT") end
+    B.list = W.List(B, DUNGEON_ROWS, ROW_H, function(r)
+        r.owner = B
+        r.sel = W.SelectBar(r)
+        r.name = col(r, 4, 170, nil, "GameFontHighlightSmall")
+        r.level = col(r, 178, 46, nil, "GameFontHighlightSmall")
+        r.fit = col(r, 228, 56, nil, "GameFontHighlightSmall")
+        r.upgrades = col(r, 288, 56, nil, "GameFontHighlightSmall")
+        r.run = col(r, 348, 66, nil, "GameFontHighlightSmall")
+        r.quests = col(r, 418, 66, nil, "GameFontHighlightSmall")
+        r.value = col(r, 488, 60, nil, "GameFontHighlightSmall")
+        for _, k in ipairs({ "upgrades", "run", "quests", "value" }) do r[k]:SetJustifyH("RIGHT") end
+        r:SetScript("OnClick", function(self)
+            if not self.item then return end
+            state().dungeon = self.item.key
+            ns.Refresh()
+        end)
+        r:SetScript("OnEnter", dungeonTip)
+        r:SetScript("OnLeave", hideTip)
+    end, fillDungeonRow)
+    B.list:SetPoint("TOPLEFT", 0, -52)
+    B.list:SetPoint("TOPRIGHT", -12, -52)
+
+    B.header = W.SectionHeader(B, "", false)
+    B.header:SetPoint("TOPLEFT", 0, -250)
+    B.header:SetPoint("TOPRIGHT", -128, -250)
+    B.way = W.Button(B, "Wegpunkt", 120, function()
+        if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
+    end)
+    B.way:SetPoint("TOPRIGHT", 0, -251)
+    W.Tooltip(B.way, "Wegpunkt zum Eingang", "Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons.")
+    B.detail = W.List(B, DETAIL_ROWS, ROW_H, function(r)
+        r.name = col(r, 4, 256, nil, "GameFontHighlightSmall")
+        r.slot = col(r, 264, 70, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 338, 40, nil, "GameFontHighlightSmall")
+        r.gain:SetJustifyH("RIGHT")
+        r.rate = col(r, 382, 204, nil, "GameFontHighlightSmall")
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e or not e.id then return end
+            if button == "RightButton" then
+                if e.kind == "item" then W.Menu(self, menuEntries(e, ns.BisOpts())) end
+                return
+            end
+            modifiedClick(e.id)
+        end)
+        r:SetScript("OnEnter", function(self) if self.item and self.item.id then itemTooltip(self, self.item.id) end end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillDetailRow)
+    B.detail:SetPoint("TOPLEFT", 0, -280)
+    B.detail:SetPoint("TOPRIGHT", -12, -280)
+    B.hint = W.Text(B, "GameFontDisableSmall", 598, true)
+    B.hint:SetPoint("TOPLEFT", 4, -404)
+    B.hint:SetHeight(24)
+    B.hint:SetJustifyV("TOP")
+    return B
+end
+
+local function fillDungeons(B)
+    local list = ns.DungeonList()
+    local nextE, why = ns.DungeonNext()
+    local Dn = ns.Dungeons
+    if nextE then
+        B.next:SetText(("Nächster Dungeon: %s · Level %s"):format(nextE.name, Dn.RangeText(nextE)))
+        B.why:SetText(nextE.why or "")
+    else
+        B.next:SetText(why or Dn.NO_DATA)
+        B.why:SetText("")
+    end
+    local e = chosenDungeon(list, nextE)
+    B.chosen = e and e.key or nil
+    B.list:SetItems(list)
+    if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
+    if e then
+        B.header:SetHeaderText(e.name .. " · Bosse und Quests")
+        B.detail:SetItems(detailItems(e))
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    else
+        B.header:SetHeaderText("")
+        B.detail:SetItems({})
+        B.way:SetEnabled(false)
+    end
+    local hint = "Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."
+    if e and e.computed and #B.detail.items == 0 then hint = "In diesem Dungeon gibt es nichts mehr für dich. " .. hint end
+    B.hint:SetText(hint)
+end
+
+---------------------------------------------------------------------------
 -- Wunschliste: the own wishes and their text for the website
 ---------------------------------------------------------------------------
 
@@ -1037,12 +1248,16 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         f.views.goals:SetPoint("TOPLEFT", 186, -1)
         f.views.here = W.Chip(f, "Hier", 46, function() state().place = nil; setView("here") end)
         f.views.here:SetPoint("TOPLEFT", 242, -1)
+        f.views.dungeons = W.Chip(f, "Dungeons", 74, function() setView("dungeons") end)
+        f.views.dungeons:SetPoint("TOPLEFT", 292, -1)
         f.views.wish = W.Chip(f, "Wunschliste", 104, function() setView("wish") end)
-        f.views.wish:SetPoint("TOPLEFT", 292, -1)
+        f.views.wish:SetPoint("TOPLEFT", 370, -1)
         f.views.guild = W.Chip(f, "Gilde", 56, function() setView("guild") end)
-        f.views.guild:SetPoint("TOPLEFT", 400, -1)
-        f.open = W.Button(f, "Tabelle öffnen", 130, function() ns.ToggleGearFrame() end)
+        f.views.guild:SetPoint("TOPLEFT", 478, -1)
+        -- 64 wide since the dungeons chip came: the tooltip says what the table is
+        f.open = W.Button(f, "Tabelle", 64, function() ns.ToggleGearFrame() end)
         f.open:SetPoint("TOPRIGHT", 0, 0)
+        W.Tooltip(f.open, "Ausrüstungstabelle", "Die besten Items aller Levelbereiche für jede Spezialisierung.")
         f.counts = W.Text(f, "GameFontDisableSmall", 488)
         f.counts:SetPoint("TOPLEFT", 4, -28)
         f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
@@ -1063,9 +1278,10 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         end
         f.goals = buildGoals(f)
         f.here = buildHere(f)
+        f.dungeons = buildDungeons(f)
         f.wish = buildWish(f)
         f.guild = buildGuild(f)
-        f.bodies = { goals = f.goals, here = f.here, wish = f.wish, guild = f.guild }
+        f.bodies = { goals = f.goals, here = f.here, dungeons = f.dungeons, wish = f.wish, guild = f.guild }
         for _, b in pairs(f.bodies) do b:Hide() end
         return f
     end,
@@ -1083,6 +1299,8 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
             fillGoals(f.goals, o, res)
         elseif v == "here" then
             fillHere(f.here, o)
+        elseif v == "dungeons" then
+            fillDungeons(f.dungeons)
         elseif v == "wish" then
             fillWish(f.wish)
         else
@@ -1148,7 +1366,11 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
         c.line2:SetText(("Hier: %s (%s)"):format(upgradesText(up), cur.text or "?"))
     else
         local best = bestUpgrade(res)
-        c.line2:SetText(best and ("Bestes: %s (+%d)"):format(itemText(best.id), math.floor(best.gain + 0.5)) or "Kein Upgrade in den Daten.")
+        local text = best and ("Bestes: %s (+%d)"):format(itemText(best.id), math.floor(best.gain + 0.5)) or "Kein Upgrade in den Daten."
+        -- the dungeon planner's recommendation, from its cache when nothing changed
+        local nextE = ns.DungeonNext and ns.DungeonNext()
+        if nextE then text = text .. "\nNächster Dungeon: " .. nextE.name end
+        c.line2:SetText(text)
     end
     c:SetAction("Ansehen", function() ns.ShowGear("goals") end)
 end }

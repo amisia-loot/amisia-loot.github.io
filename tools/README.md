@@ -137,6 +137,29 @@ python tools/build_map.py [--refresh-questie] [--questie-ref REF]
 Runs on the N100 (no WoW install needed). After `build_gear.py` ran on the PC (NPC ids, instance
 ids), run it again and commit. Requires `lupa`.
 
+## build_dungeons.py
+
+Builds `addon/Amisia/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
+`[AllowLoadGameType camelot]`) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
+planner: every dungeon and raid of WoW Forever with its level range, size, bosses known so far,
+opening date and instance id where known. Facts only, never a loot table or a drop chance; every
+entry names its source in `src`, explained in the file's `sources` block with the date of the check.
+
+```
+python tools/build_dungeons.py
+```
+
+- Forever's new dungeons and raids: public facts (Blizzard's announcements, the public dungeon list),
+  checked by hand. Onyxia's instance and area id from `tools/forever_zones.json`.
+- Classic dungeons: the names the repo's own data uses (`GearData.lua` dungeon sources and dungeon
+  quests, `MapData.lua` entrances). Their level ranges stay empty until the client's `LFGDungeons`
+  table (wago CSV) is read; the addon estimates a range from the required levels of the dungeon's
+  items meanwhile and marks it with "~".
+- Once `build_bis.py` writes `ns.BIS.DG` (the same facts, with the `LFGDungeons` ranges and the
+  bosses' NPC ids), the planner takes that table and this file can go.
+
+Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the Lua file is current.
+
 ## make_minimap_icon.py
 
 Draws `addon/Amisia/Media/Icons/Minimap.tga`, the round minimap button icon: the golden A of
