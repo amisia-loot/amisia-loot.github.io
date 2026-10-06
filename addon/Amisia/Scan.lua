@@ -90,7 +90,7 @@ local function finish(why)
     pending, pendingCount = {}, 0
     local s = scanDB()
     s.at = time()
-    ns.msg(("Scan %s: %d Items gespeichert, naechste ID %d, %d offen zum Wiederholen."):format(why or "beendet", s.count, s.next or 0, #s.retry))
+    ns.msg(("Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."):format(why or "beendet", s.count, s.next or 0, #s.retry))
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -166,18 +166,18 @@ function ns.ScanRunning() return running end
 
 function ns.ScanStart(from, to)
     if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan laeuft schon. /amisia scan stop haelt ihn an." end
-    if inInstance() then return nil, "Der Scan laeuft nur ausserhalb von Instanzen." end
+    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
+    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
     local s = scanDB()
     from = tonumber(from) or s.next or 1
     to = tonumber(to) or s.to or DEFAULT_TO
-    if from < 1 or to < from then return nil, "Bereich pruefen: /amisia scan <von> <bis>" end
+    if from < 1 or to < from then return nil, "Bereich prüfen: /amisia scan <von> <bis>" end
     s.from, s.to, s.next = math.floor(from), math.floor(to), math.floor(from)
     pending, pendingCount = {}, 0
     nextReport = (math.floor(s.next / REPORT_EVERY) + 1) * REPORT_EVERY
     running = true
     ticker = C_Timer.NewTicker(0.1, tick)
-    ns.msg(("Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop haelt an."):format(s.from, s.to, s.rate))
+    ns.msg(("Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop hält an."):format(s.from, s.to, s.rate))
     if ns.Refresh then ns.Refresh() end
     return true
 end
@@ -185,8 +185,8 @@ end
 -- Asks again for every id that got no usable answer, at a quarter of the rate.
 function ns.ScanRetry()
     if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan laeuft schon. /amisia scan stop haelt ihn an." end
-    if inInstance() then return nil, "Der Scan laeuft nur ausserhalb von Instanzen." end
+    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
+    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
     local s = scanDB()
     if #s.retry == 0 then return nil, "Keine offenen IDs." end
     queue = s.retry
@@ -206,8 +206,8 @@ end
 -- has seen yet (items Forever only reveals later).
 function ns.ScanList(ids, label)
     if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan laeuft schon. /amisia scan stop haelt ihn an." end
-    if inInstance() then return nil, "Der Scan laeuft nur ausserhalb von Instanzen." end
+    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
+    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
     if not ids or #ids == 0 then return nil, "Keine IDs zu scannen." end
     local s = scanDB()
     queue = {}
@@ -242,9 +242,9 @@ function ns.ScanStatus()
         return ("Noch kein Scan. /amisia scan <von> <bis> startet einen. %d Items gesammelt."):format(s and s.count or 0)
     end
     if running then
-        return ("Scan laeuft: ID %d von %d, %d Items."):format(s.next - 1, s.to, s.count or 0)
+        return ("Scan läuft: ID %d von %d, %d Items."):format(s.next - 1, s.to, s.count or 0)
     end
-    return ("Scan: %d Items, naechste ID %d von %d%s%s."):format(s.count or 0, s.next, s.to or 0,
+    return ("Scan: %d Items, nächste ID %d von %d%s%s."):format(s.count or 0, s.next, s.to or 0,
         (#(s.retry or {}) > 0) and (", " .. #s.retry .. " offen") or "",
         ns.CollectCount and (", " .. ns.CollectCount() .. " Quellen gesammelt") or "")
 end

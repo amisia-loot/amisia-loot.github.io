@@ -1651,14 +1651,14 @@ end
 -- Resolves a conflict: take sends the own change again on the keeper's current revision (it wins,
 -- unless the keeper changed the award once more); otherwise the conflict is dropped and the
 -- keeper's state stays. A change of an award the keeper deleted restores it with the change.
-function ns.SyncResolve(s, opid, take)
+function ns.SyncResolve(s, opid, takeIt)
     local list = ns.SyncConflicts(s)
     local c, idx
     for i, x in ipairs(list) do
         if x.opid == opid then c, idx = x, i break end
     end
     if not c then return nil, "Kein Konflikt." end
-    if take then
+    if takeIt then
         local cur, key = running()
         if s ~= cur then return nil, "Der Raid läuft nicht mehr; Änderungen bleiben lokal." end
         local o = type(c.wish) == "table" and c.wish or {}
@@ -1794,7 +1794,8 @@ local function gatherPart(name, part, tbl)
     if not c.sp or not c.so or c.sp.r ~= c.so.r then return end
     t.cands[low] = nil
     local s = sessionFor(t.key)
-    local ok, why = s ~= nil and ns.SyncCheck(c.sp, c.so, s)
+    local ok, why = false, "kein Raid"
+    if s ~= nil then ok, why = ns.SyncCheck(c.sp, c.so, s) end
     if not ok then
         stats.refused = stats.refused + 1
         debugOnce("refused", ("Ungültiges Abbild verworfen (%s)."):format(tostring(why)))
