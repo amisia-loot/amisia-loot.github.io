@@ -5,7 +5,8 @@
     "public": "Public facts on WoW Forever's new dungeons and raids as the user gave them on 2026-10-05: names, level ranges, raid sizes and the raid opening on 2026-12-09. Instance ids are left empty (Onyxia's Lair: see zones); the client reports them through the drop records.",
     "repo": "Classic dungeons as the repo's own data names them: the dungeon sources and dungeon quests of addon/Amisia/GearData.lua (tools/build_gear.py) and the entrances of addon/Amisia/MapData.lua (tools/build_map.py). Their level ranges and sizes stay empty until the LFGDungeons client table (wago CSV, downloaded by hand) is read; meanwhile the addon estimates a range from the required levels of the dungeon's items and marks it as an estimate. The item data's plain \"Blackrock Spire\" records (War Master Voone, Goraluk Anvilcrack) belong to Lower Blackrock Spire, where those bosses stand; both halves are parts of the one instance the client calls \"Blackrock Spire\".",
     "repo:GearData": "Boss names and spellings as the dungeon sources of addon/Amisia/GearData.lua (tools/build_gear.py) give them: the named bosses of the dungeon's D records (its captains and other named mobs left out). Checked against that file by tools/tests/test_build_dungeons.py.",
-    "zones": "Onyxia's Lair: instance id 249 and area id 2159 from tools/forever_zones.json."
+    "zones": "Onyxia's Lair: instance id 249 and area id 2159 from tools/forever_zones.json.",
+    "att": "The instance list of AllTheThings' hand-kept Forever data (MIT, read by tools/att_data.py; its Classic folders for the Classic dungeons): the instance's name as that data writes it. Used where the repo's own data does not name the dungeon (yet), e.g. while the item scan has not seen its loot."
   },
   "dungeons": [
     {"key": "rfc", "name": "Ragefire Chasm", "kind": "party", "src": "repo"},
@@ -21,7 +22,7 @@
     {"key": "gnomer", "name": "Gnomeregan", "kind": "party", "src": "repo"},
     {"key": "rfk", "name": "Razorfen Kraul", "kind": "party", "src": "repo"},
     {"key": "excavation", "name": "Excavation Site", "kind": "party", "src": "public", "min": 26, "max": 31,
-     "aliases": ["Excavation Site: Wetlands"], "aliases_src": "repo:GearData"},
+     "aliases": ["Excavation Site: Wetlands"], "aliases_src": "att"},
     {"key": "dalaran", "name": "City of Dalaran", "kind": "party", "src": "public", "min": 28, "max": 33},
     {"key": "sm", "name": "Scarlet Monastery", "kind": "party", "src": "repo",
      "aliases": ["Scarlet Monastery - Graveyard", "Scarlet Monastery - Library", "Scarlet Monastery - Armory",
@@ -38,7 +39,7 @@
     {"key": "lbrs", "name": "Lower Blackrock Spire", "kind": "party", "src": "repo", "aliases": ["Blackrock Spire"],
      "part": "Blackrock Spire"},
     {"key": "ubrs", "name": "Upper Blackrock Spire", "kind": "party", "src": "repo", "part": "Blackrock Spire"},
-    {"key": "dire", "name": "Dire Maul", "kind": "party", "src": "repo"},
+    {"key": "dire", "name": "Dire Maul", "kind": "party", "src": "att"},
     {"key": "scholo", "name": "Scholomance", "kind": "party", "src": "repo"},
     {"key": "strat", "name": "Stratholme", "kind": "party", "src": "repo"},
     {"key": "shaper", "name": "Shaper's Terrace", "kind": "party", "src": "public", "min": 58, "max": 60},
