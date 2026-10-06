@@ -594,6 +594,13 @@ local function sectionAtlases(R)
         end
     end
     add(R, okCount == #ATLASES and "OK" or "WERT", "Atlanten", ("%d von %d vorhanden"):format(okCount, #ATLASES))
+    -- the sizes the layout scales from (dropdown arrow, head bar)
+    local sizes = {}
+    for _, name in ipairs({ "common-dropdown-a-button", "Professions-skillbar-bg", "Professions-skillbar-frame" }) do
+        local info = C_Texture.GetAtlasInfo(name)
+        sizes[#sizes + 1] = ("%s %sx%s"):format(name, info and tostring(info.width) or "?", info and tostring(info.height) or "?")
+    end
+    add(R, "WERT", "Atlasgrößen", table.concat(sizes, ", "))
 end
 
 -- kind, template, the parts Amisia needs from it (as the widgets probe them)

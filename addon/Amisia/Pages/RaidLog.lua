@@ -128,7 +128,10 @@ end
 
 local function countsText(s)
     if s == "next" then
-        if #ns.Sessions() == 0 and shownView() ~= "bench" then return "Noch kein Raid aufgezeichnet." end
+        -- the history says it in its middle; the line stays empty there
+        if #ns.Sessions() == 0 and shownView() ~= "bench" then
+            return shownView() == "verlauf" and "" or "Noch kein Raid aufgezeichnet."
+        end
         local b = tonightBench()
         local n = b and #ns.BenchList(b) or 0
         return ("Heute, vor dem Raid · %d auf der Ersatzbank"):format(n)
@@ -250,6 +253,9 @@ local function buildLog(f)
     -- 12 px short of the right edge: room for the list's scroll bar
     V.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
     V.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
+    -- no raid yet: the page says so in its middle instead of an empty table
+    V.empty = W.EmptyState(V, 440)
+    V.empty:SetPoint("TOP", V, "TOP", 0, -110)
 
     -- the detail area under the list
     V.title = W.Text(V, "GameFontNormal", 490)
@@ -400,6 +406,15 @@ local function refreshLog(V, s)
     end
     if not chosenKill then chosenKill = kills[#kills] end
     V.list:SetItems(items)
+    if s == "next" and #ns.Sessions() == 0 then
+        V.empty:Set("Noch kein Raid aufgezeichnet",
+            "Amisia zeichnet von selbst auf, sobald du einen Schlachtzug betrittst: Anwesenheit, Bosskills und Loot. Hier stehen dann die Bosse des Abends.")
+        V.empty:Show()
+        V.head:Hide()
+    else
+        V.empty:Hide()
+        V.head:Show()
+    end
 
     local A = V.add
     if adding and s ~= addFor then

@@ -51,7 +51,14 @@ local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(root, 200, 40)
 L.row("picker", p.label, b)
 local pl, pr = L.span(p)
 local bl, br = L.span(b)
-assert(br == pr + 1 and bl == pr - 21, "the button at the right end: " .. bl .. ".." .. br)
+assert(br == pr - 1 and bl == pr - 23, "the button inside the field's right end: " .. bl .. ".." .. br)
+-- the shadowed atlas at its own size (scaled from the client's 25 px box), its right edge one over
+-- the button and 3 px down, as the client draws its dropdown arrow
+local fit, info = b.arrowFit, C_Texture.GetAtlasInfo(A)
+local s = 22 / 25
+assert(fit and math.abs(fit.w - info.width * s) < 1e-9 and math.abs(fit.h - info.height * s) < 1e-9, "the atlas's own size")
+local ap = b.arrow.points.RIGHT
+assert(ap and ap.rel == b and math.abs(ap.x - s) < 1e-9 and math.abs(ap.y + 3 * s) < 1e-9, "right edge one over, 3 px down")
 local t, bt = L.vspan(b)
 local pt, pb = L.vspan(p)
 assert(t == pt + 1 and bt == pb - 1, "one pixel over the 20 px field at top and bottom")

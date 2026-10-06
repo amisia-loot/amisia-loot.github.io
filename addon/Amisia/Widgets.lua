@@ -202,6 +202,64 @@ function W.Choice(parent, width, onChange)
     return c
 end
 
+-- An atlas drawn as three pieces across holder: the left and right cap (cap px of the atlas at
+-- its own size) stay as they are, the middle stretches. For the client's fixed-width bars that
+-- have to fill a wider place without bending their round ends. Returns the three textures, or nil
+-- without the atlas data (the caller keeps its fallback).
+function W.SlicedAtlas(holder, layer, sublevel, atlas, cap, height)
+    if not (C_Texture and C_Texture.GetAtlasInfo) then return nil end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+    if not ok or type(info) ~= "table" or type(info.width) ~= "number" or info.width <= 2 * cap then return nil end
+    local l, r = info.leftTexCoord, info.rightTexCoord
+    local t, b = info.topTexCoord, info.bottomTexCoord
+    if type(l) ~= "number" or type(r) ~= "number" or type(t) ~= "number" or type(b) ~= "number" then return nil end
+    local cut = (r - l) * cap / info.width
+    local h = height or info.height
+    local parts = {}
+    for i, span in ipairs({ { l, l + cut }, { l + cut, r - cut }, { r - cut, r } }) do
+        local tex = holder:CreateTexture(nil, layer, nil, sublevel)
+        tex:SetAtlas(atlas, false)
+        tex:SetTexCoord(span[1], span[2], t, b)
+        tex:SetHeight(h)
+        parts[i] = tex
+    end
+    parts[1]:SetWidth(cap)
+    parts[3]:SetWidth(cap)
+    parts[1]:SetPoint("TOPLEFT", holder, "TOPLEFT")
+    parts[3]:SetPoint("TOPRIGHT", holder, "TOPRIGHT")
+    parts[2]:SetPoint("TOPLEFT", parts[1], "TOPRIGHT")
+    parts[2]:SetPoint("TOPRIGHT", parts[3], "TOPLEFT")
+    return parts
+end
+
+-- The empty state of a page: the addon's emblem faint, a title and a line of help, centred in
+-- the place the list would fill. e:Set(title, text) fills it; Show/Hide as any frame.
+W.EMBLEM = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
+function W.EmptyState(parent, width)
+    local e = CreateFrame("Frame", nil, parent)
+    width = width or 420
+    e:SetSize(width, 120)
+    e.icon = e:CreateTexture(nil, "ARTWORK")
+    e.icon:SetSize(56, 56)
+    e.icon:SetPoint("TOP", 0, 0)
+    e.icon:SetTexture(W.EMBLEM)
+    if e.icon.SetDesaturated then e.icon:SetDesaturated(true) end
+    e.icon:SetAlpha(0.35)
+    e.title = W.Text(e, "GameFontNormalLarge", width)
+    e.title:SetPoint("TOP", e.icon, "BOTTOM", 0, -10)
+    e.title:SetJustifyH("CENTER")
+    e.title:SetTextColor(0.75, 0.65, 0.45)
+    e.text = W.Text(e, "GameFontDisable", width, true)
+    e.text:SetPoint("TOP", e.title, "BOTTOM", 0, -6)
+    e.text:SetJustifyH("CENTER")
+    function e:Set(title, text)
+        self.title:SetText(title or "")
+        self.text:SetText(text or "")
+    end
+    e:Hide()
+    return e
+end
+
 -- The client's dropdown arrow button (the WowStyle1 dropdown of Blizzard_Menu): a dark square with
 -- a gold bevel and a gold triangle pointing down. One atlas per state, as the client picks them
 -- (GetWowStyle1ArrowButtonState); turned for left and right, then without the drop shadow.
@@ -243,6 +301,23 @@ function W.ArrowButton(parent, dir, size, onClick)
         b.arrow:SetRotation(turn)
     else
         b.arrowSet = ARROW.shadow
+    end
+    -- the shadowed atlas carries its drop shadow below and to the right of the square: the client
+    -- draws it at its own size, its right edge one over the box and 3 px down (WowStyle1Dropdown,
+    -- a 25 px box). Here the same, scaled to the button; the flat atlases fill the button.
+    local fit
+    if b.arrowSet == ARROW.shadow and C_Texture and C_Texture.GetAtlasInfo then
+        local ok, info = pcall(C_Texture.GetAtlasInfo, ARROW.shadow.normal)
+        if ok and type(info) == "table" and type(info.width) == "number" and info.width > 0 and type(info.height) == "number" then
+            local s = size / 25
+            fit = { w = info.width * s, h = info.height * s, x = 1 * s, y = -3 * s }
+        end
+    end
+    if fit then
+        b.arrow:ClearAllPoints()
+        b.arrow:SetSize(fit.w, fit.h)
+        b.arrow:SetPoint("RIGHT", b, "RIGHT", fit.x, fit.y)
+        b.arrowFit = fit
     end
     function b:UpdateArrow()
         self.arrow:SetAtlas(arrowState(self), false)
@@ -971,10 +1046,9 @@ function W.Picker(parent, width, onPick)
     p.label = W.Text(p, "GameFontHighlightSmall")
     p.label:SetPoint("LEFT", 6, 0)
     p.label:SetPoint("RIGHT", -26, 0)
-    -- the client's dropdown button at the right end (22 px, one over the 20 px field top and
-    -- bottom); a click on it opens like a click on the field, hovering the field lights it too
+    -- the client's dropdown button at the right end (22 px, inside the field's right border); a click on it opens like a click on the field, hovering the field lights it too
     p.arrow = W.ArrowButton(p, "down", 22, function() p:Click() end)
-    p.arrow:SetPoint("RIGHT", 1, 0)
+    p.arrow:SetPoint("RIGHT", -1, 0)
     p.arrow.isOpen = function() return picker ~= nil and picker:IsShown() and picker.owner == p end
     local function over(on)
         return function()
