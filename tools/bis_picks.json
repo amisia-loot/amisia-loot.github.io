@@ -1,26 +1,26 @@
 {
- "_doc": [
-  "BiS-Empfehlungen: hand-kept best-in-slot items the stat scoring alone misses (procs, equip effects).",
-  "tools/build_bis.py checks every entry against the client tables and writes it into BisData.lua (PICK);",
-  "the planner then puts the item first in its slot for that spec and level range (setting bis.picks).",
-  "Fields: class (WARRIOR, PALADIN, HUNTER, ROGUE, PRIEST, SHAMAN, MAGE, WARLOCK, DRUID), spec (the key of",
-  "build_bis.py's SPECS, e.g. SHAMAN enh/ele/resto, WARRIOR dps/tank), from/to (level range, 1-60; the planner",
-  "columns are 1-9, 10-14, 15-19, ... 55-59, 60), slot (HEAD NECK SHOULDER BACK CHEST WRIST HANDS WAIST LEGS",
-  "FEET FINGER1 FINGER2 TRINKET1 TRINKET2 MAINHAND OFFHAND RANGED), item (item id), note (German, shown in",
-  "the planner), source (German, optional, default 'Quelle unbekannt'), name (optional, for reading only).",
-  "Rebuild: ~/.venvs/amisia/bin/python tools/build_bis.py (needs the item in ~/addons/_wago's ItemSparse/Item)."
- ],
- "picks": [
-  {
-   "class": "SHAMAN",
-   "spec": "enh",
-   "from": 30,
-   "to": 34,
-   "slot": "MAINHAND",
-   "item": 280604,
-   "name": "Rage of the Storm",
-   "note": "BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung.",
-   "source": "Quelle noch unbekannt"
-  }
- ]
+  "_doc": [
+    "BiS-Empfehlungen: hand-kept best-in-slot items the stat scoring alone misses (procs, equip effects).",
+    "tools/build_bis.py checks every entry against the client tables and writes it into BisData.lua (PICK);",
+    "the planner then puts the item first in its slot for that spec and level range (setting bis.picks).",
+    "Fields: class (WARRIOR, PALADIN, HUNTER, ROGUE, PRIEST, SHAMAN, MAGE, WARLOCK, DRUID), spec (the key of",
+    "build_bis.py's SPECS, e.g. SHAMAN enh/ele/resto, WARRIOR dps/tank), from/to (level range, 1-60; the planner",
+    "columns are 1-9, 10-14, 15-19, ... 55-59, 60), slot (HEAD NECK SHOULDER BACK CHEST WRIST HANDS WAIST LEGS",
+    "FEET FINGER1 FINGER2 TRINKET1 TRINKET2 MAINHAND OFFHAND RANGED), item (item id), note (German, shown in",
+    "the planner), source (German, optional, default 'Quelle unbekannt'), name (optional, for reading only).",
+    "Rebuild: ~/.venvs/amisia/bin/python tools/build_bis.py (needs the item in ~/addons/_wago's ItemSparse/Item)."
+  ],
+  "picks": [
+    {
+      "class": "SHAMAN",
+      "spec": "enh",
+      "from": 30,
+      "to": 34,
+      "slot": "MAINHAND",
+      "item": 280604,
+      "name": "Rage of the Storm",
+      "note": "BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung. Questreihe nach der Luft-Totem-Quest: den letzten Boss in Kral der Klingenhauer looten, dann je 5 Totems von Murlocs (Düstermarschen), Zentauren (Desolace), Verlorenen (Sümpfe des Elends) und Troggs (Ödland) sammeln.",
+      "source": "Schamanen-Quest „The Tempest's Weapons“"
+    }
+  ]
 }
