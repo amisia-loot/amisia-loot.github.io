@@ -91,6 +91,10 @@ end
 ---------------------------------------------------------------------------
 -- Prefixes
 ---------------------------------------------------------------------------
+-- What the client answered to each registration (the self-test shows it): the result, or the
+-- error text of a raising call.
+local prefixResults = {}
+
 do
     local info = _G.C_ChatInfo
     local register = type(info) == "table" and info.RegisterAddonMessagePrefix
@@ -98,6 +102,7 @@ do
         available = true
         for _, prefix in ipairs({ PREFIX_CTRL, PREFIX_DATA }) do
             local ok, result = pcall(register, prefix)
+            prefixResults[#prefixResults + 1] = { prefix = prefix, ok = ok, result = result }
             -- 0 success, 1 already registered; 2 invalid and 3 too many prefixes switch the layer off
             if not ok or (result ~= 0 and result ~= 1 and result ~= true) then available = false end
         end
@@ -109,6 +114,14 @@ end
 
 -- Whether the message layer works at all (prefixes registered, the send function there).
 function ns.CommAvailable() return available end
+
+-- The prefixes and what their registration returned: { { prefix, ok, result } }; empty when the
+-- client has no registration function.
+function ns.CommPrefixResults()
+    local out = {}
+    for i, r in ipairs(prefixResults) do out[i] = { prefix = r.prefix, ok = r.ok, result = r.result } end
+    return out
+end
 
 -- The layer works and the raid sync is switched on.
 function ns.CommReady() return available and ns.Get("sync.enabled") ~= false end

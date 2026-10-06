@@ -115,6 +115,12 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.cmdTitle = W.Text(f, "GameFontNormal", 300)
         f.cmdTitle:SetPoint("TOPLEFT", 0, -290)
         f.cmdTitle:SetText("Befehle")
+        -- the in-game self-test: a report of the client to copy into a chat with the developers
+        f.selfTest = W.Button(f, "Selbsttest", 110, function() if ns.ShowSelfTest then ns.ShowSelfTest() end end)
+        -- between the list (ends at -282) and the command text (starts at -308)
+        f.selfTest:SetPoint("TOPRIGHT", -12, -284)
+        f.selfTest.tip = "Prüft Namen, Sperren, Gildenränge, Atlanten, Vorlagen und Client-Funktionen und zeigt einen Bericht zum Kopieren. Sendet nichts."
+        tipButton(f.selfTest)
         f.text = W.ScrollText(f)
         f.text:SetPoint("TOPLEFT", 0, -308)
         -- the text ends with the list; its bar lies under the list's

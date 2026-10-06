@@ -60,3 +60,4 @@ Pages\Tools.lua
 Pages\Settings.lua
 Pages\About.lua
 Minimap.lua
+SelfTest.lua
