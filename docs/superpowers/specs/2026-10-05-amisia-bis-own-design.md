@@ -851,3 +851,71 @@ Beobachtungen mit Kill-Zahl.
   stehen. Soll "keine Links auf fremde Seiten" auch diese bestehenden Item-Links entfernen?
 - Nutzer-Handgriff (keine Frage): die CSV-Liste oben einmal je Forever-Build bei wago.tools im Browser
   herunterladen und nach `tools/wago/<build>/` legen.
+
+## Nachtrag 2026-10-06: Aufgaben 1 bis 3 mit den echten Client-Tabellen
+
+Umgesetzt mit den wago-CSVs von Forever 1.60.1.70235 (`ItemSparse`, `Item`, `ItemSet`, `SpellEffect`,
+`SpellItemEnchantment`, `RandPropPoints`, `LFGDungeons`, `UiMapAssignment`). Abweichungen vom Entwurf:
+
+- **Ordner:** die CSVs liegen in `~/addons/_wago` (Syncthing-Ordner `amisia-wago`, nur empfangen),
+  nicht in `tools/wago/<build>/`; `build_bis.py --wago` liest von dort, die Dateien heißen
+  `<Tabelle>.<build>.csv`. Committet wird nur der Auszug `tools/bis_gamedata.json`.
+- **Nicht auf wago für Forever:** `ItemRandomProperties`, `ItemRandomSuffix` und alle `gt*`-Tabellen
+  (`gtChanceToMeleeCrit(Base)`, `gtChanceToSpellCrit(Base)`, `gtCombatRatings`, `gtRegenMPPerSpt`). Noch
+  nicht geladen, aber vorhanden: `ItemSetSpell` (Setboni) und `ContentTuning` (Level der
+  Classic-Dungeons aus `LFGDungeons`); das Skript liest sie, sobald sie im Ordner liegen.
+- **Umrechnungen ohne gt-Tabellen:** Beweglichkeit und Intelligenz je Prozent Krit, Rating je Prozent
+  (Kurve `(L-8)/52` wie bisher) und Mana je Willenskraft sind dokumentierte Standardwerte im Skript
+  (Classic-Werte, Konstanten mit Kommentar). Messungen im Spiel ersetzen sie: `tools/bis_measured.json`
+  mit `samples` (Rohwerte: `level`, `class`, `agi`, `int`, `crit`, `spellcrit`, je Rating
+  `cr_<ART>=<Rating>:<Bonus %>`, wie sie der Abschnitt "Werte" des Selbsttests als `AMISIA-WERTE`-Zeile
+  ausgibt; `build_bis.py --werte "<Zeile>"` trägt sie ein) und `overrides` (`rating60`,
+  `agiPerCritScale`, `intPerCritScale`, `manaPerSpirit5`). Eine Messung korrigiert die Kurve einer Klasse
+  um ihr Verhältnis zum Standard. Die benutzten Ratings stehen als `ratings` in `GearWeights.lua`;
+  Gear.lua rechnet damit.
+- **Zufallsboni nur aus Beobachtung:** ohne `ItemRandomProperties`/`ItemRandomSuffix` gibt es kein `RS`
+  (Anteile mal Budget). Der Sammler speichert stattdessen je Item und Bonus-ID die vollen Werte, die
+  `C_Item.GetItemStats(link)` für den Link nennt (`AmisiaDB.scan.suffix[item][bonus]`, höchstens 12 je
+  Item, 1500 Items); `build_bis.py` übernimmt die der SavedVariables als `RP[item][bonus] = "Werte"`,
+  Gear.lua liest beide. Gewertet wird der beste gesehene Wurf (`bis.suffix`).
+- **Berechnete Werte nur für Rüstung und Schmuck:** Waffen (Schaden braucht Schadenstabellen) und
+  Schmuckstücke (Anlegeeffekte stehen in `ItemEffect`) bekommen kein `SC`; sie zählen auch nicht in der
+  98-%-Prüfung. Stand: 100 % von 1.138 geprüften Items exakt, 223 Items mit `SC`. Unbekannte Stat-IDs
+  und Widerstände werden ausgelassen.
+- **Setboni:** `SET` hat die Teile aus `ItemSet`; ohne `ItemSetSpell` sind alle Boni `""` (nicht
+  gewertet), der Setplan greift erst mit der Tabelle. Bonus-Effekte gelesen: Attribut, Rüstung,
+  Angriffskraft, Distanzangriffskraft, Zauberschaden (alle Schulen), Heilung, Mana alle 5 Sek.
+- **Dungeons:** `DG` = die Fakten aus `forever_dungeons.json` plus `bosses` als NPC-IDs aus
+  AllTheThings' Forever-Daten (Bosse je Instanz; in einer Instanz mit mehreren Dungeons nur, wo die
+  Item-Daten oder Fakten den Boss nennen) und `bossNames` (NPC -> englischer Name). Bossnamen ohne
+  passende ID bleiben als Name stehen. Dungeons.lua hängt die NPC-ID über `bossNames` an den
+  gleichnamigen Boss der Item-Daten; Drops.lua erkennt damit Boss-Kills ohne seltenes Item und ohne
+  Kill-Ereignis. Instanz-IDs liefert `UiMapAssignment` nur für Außengebiete, `LFGDungeons` ohne MapID:
+  sie kommen weiter über die Drop-Aufzeichnung.
+- **BisData.lua** hat keinen `IsForever`-Wächter mehr (das Addon ist nur noch Forever, die TOC-Bedingung
+  `[AllowLoadGameType camelot]` reicht).
+- **Herleitung, genauer als oben:** Schaden je Sekunde `(wDPS + AP/14) * (1 + r*s) * (1 + c) * t` mit
+  `r` Spezialangriffen je Sekunde, die je einen Schlag Waffenschaden tragen (Classic: Tempo `s` zählt),
+  also Waffentempo = `14 * r * B / (1 + r*s)` je Sekunde über dem Bezugstempo (`SPDREF_2H` 3,3,
+  `SPDREF_MH` 2,6, `SPDREF_RANGED` 2,8; Gear.lua rechnet `SPEED - SPDREF`). Krit ohne den Faktor des
+  Entwurfs, sondern als Ableitung derselben Formel `14 * 0,01 * B / (1 + c)`. Zauber: Manawert über den
+  Manavorrat (`Anteil Mana knapp * (B + k*SP) / (k * Vorrat)`), Zauberanteil an der Zeit 0,6 (Heiler
+  0,4) für Mana alle 5 Sek. und Willenskraft. Speedrun enthält 10 %, Hardcore 30 % der Tank-Sicht auf
+  Ausdauer, Rüstung und Vermeidung (in Einheiten über "ein Budgetpunkt = 2 AP / 1,2 Zauberschaden /
+  2,2 Heilung"); Klassen ohne Mana bekommen Willenskraft als kürzere Pausen. Der Fixpunkt rechnet
+  bis zu 16 Runden mit kleiner werdendem Schritt (wo die beste Ausrüstung zwischen zwei Sets kippt,
+  pendeln die Gewichte sonst); stoppt eine Runde nicht unter 1 %, bricht der Bau ab.
+- **Treffergrenze im Spiel:** 6 % für Waffen und Zauber, eigener Wert über
+  `GetCombatRatingBonus(6/8)` plus `GetHitModifier`/`GetSpellHitModifier`, je Zeile gegen das
+  Angelegte; ohne API linear mit dem Hinweis "Trefferwertung zählt ohne Obergrenze".
+- **Ansichten:** Waffenplan-Auswahl rechts neben den Quellen-Chips (Ziele), Hinweise an den Optionen
+  ("Set 2/5, +18 Bonus", "berechnet", "bester gesehener Bonus", "leichter zu bekommen"), Vergleich
+  Option 1 gegen 2 und gegen das Angelegte beim Überfahren der Erklärung, Knopf "Warum?" (Begründung,
+  Einheit, Bezugswerte) und Knopf "Simulation" (eigene Ansicht `sim`: Klasse, Spec, Level, Waffenplan;
+  17 Slots aus `ns.BisFor`). Die Planertabelle rechnet über `ns.BisFor`. Befehle `/amisia bis
+  vergleich`, `gewichte`, `plan`, `sim`.
+- **Noch offen:** `bis.liveWeights` (Gewichte aus den eigenen Charakterwerten) ist nicht umgesetzt;
+  `data/bis-forever.js` und der Reiter "Gear guide" gehören zu Aufgabe 8. `tools/build_gear.py`
+  schreibt `GearWeights.lua` noch, wenn auf dem PC die Gewichte des fremden Leveling-Guides
+  installiert sind; dieser Teil muss aus `build_gear.py` heraus (sonst überschreibt ein PC-Lauf die
+  eigenen Gewichte).
