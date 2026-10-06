@@ -128,6 +128,12 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - The collector notes drops with NPC id and dungeon (`Drop: <mob> [<npcID>] @<place> #party:<instanceID>`)
   and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
   in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.
+- The source collector (`AmisiaDB.collect`, `Collector.lua`, shared in the guild by `CollectSync.lua`)
+  records quests (giver and turn-in NPC with places, rewards, choices, quest level, the lowest player
+  level offered, faction), vendors (gear, recipes, limited goods) and drops of non-boss NPCs.
+  `build_scan.collect_observed` reads it; `build_gear.py` uses it below ATT (a quest or NPC ATT knows
+  keeps ATT's record, the observation adds what ATT lacks), `build_scan.py` adds it to the site's
+  `via` line and the field drops.
 - Vendors, rare mobs and named mobs carry the NPC id as their last field (V and P at 7, R at 5, W
   at 6), from ATT or the collector's `[npcID]`; `Gear.lua` does not read it, `build_map.py` keys the
   map points by it.

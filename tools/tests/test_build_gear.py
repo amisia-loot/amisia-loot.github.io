@@ -401,3 +401,44 @@ def test_no_rxp_era_weights_left():
     with open(os.path.join(os.path.dirname(build_gear.__file__), 'README.md'), encoding='utf-8') as fh:
         text = fh.read()
     assert 'RestedXP' not in text and 'CC BY-NC-SA' not in text and 'StatWeights' not in text
+
+
+def test_the_source_collector_fills_what_att_lacks():
+    # ATT knows quest 500 (without the reward 41), vendor 900 and the rare 901; the collector saw
+    # them and more: a new shaman quest with Rage of the Storm, a vendor and mobs ATT does not know
+    a = att(quests={500: quest('The Quest', 24, 'A', 1436, rewards=[40])},
+            npcs={900: npc('Smith', {'vendor'}, 1436, 'A', 'Weaponsmith'), 901: npc('Muad', {'rare'}, 1420),
+                  639: npc('Edwin VanCleef', {'boss'}, zone=291, inst=63)},
+            sold=[(42, 900, False)], instances=DEADMINES)
+    scan = {i: scan_item(f'I{i}', q=3) for i in (40, 41, 42, 43, 44, 45, 46, 47, 48)}
+    scan[280604] = scan_item('Rage of the Storm', loc='INVTYPE_2HWEAPON', cls=2, q=3, lvl=30)
+    sb = build_gear.build_scan
+    observed = sb.collect_observed([{'collect': {
+        'q': {500: '280;3344;1436:5000:5000;0;;40,41;;0;20;A;0;Gryan;Die Quest',
+              2001: '280;3344;1440:5234:4011;0;;280604;;34;30;H;0;Sturmrufer;The Tempest\'s Weapons'},
+        's': {900: '280;1436:1:1;42:100::,43:200:L:;Schmied', 904: '280;1411:2500:7500;44:1520::6@Orgrimmar;Grimm'},
+        'w': {901: '280;r;1420:1:1;0;45:1;Muad', 299: '280;n;1411:2500:7500;0;46:2;Wolf', 300: '280;R;1411:1:1;0;47:1;Eber',
+              302: '280;n;;36;48:1;Defias'}}}])
+    assert len(observed['q']) == 2 and len(observed['s']) == 2 and len(observed['w']) == 4
+    src, keep, zone_rows, *_ = build_gear.build(scan, {}, a, facts=FACTS, observed=observed)
+    recs = lambda i: {src.rows[n - 1] for n in keep[i][1]}  # noqa: E731
+    att_quest = ('Q', 'The Quest', 0, 24, 'A', 1436, 500, 0)
+    assert recs(40) == {att_quest}, 'ATT wins for a quest it knows: one source'
+    assert recs(41) == {att_quest}, 'a reward ATT does not list gets ATT\'s quest record'
+    assert recs(280604) == {('Q', "The Tempest's Weapons", 34, 30, 'H', 1440, 2001)}, 'the observed quest'
+    assert recs(42) == {('V', 'Smith', 1436, 'A', 'Weaponsmith', None, 900)}, 'ATT\'s vendor record'
+    assert recs(43) == {('V', 'Smith', 1436, 'A', 'Weaponsmith', None, 900)}
+    assert recs(44) == {('V', 'Grimm', 1411, None, None, None, 904)}, 'a vendor ATT does not know'
+    assert recs(45) == {('R', 'Muad', 0, 1420, 901)}
+    assert recs(46) == {('W', 'Wolf', 0, 0, 1411, 299)}
+    assert recs(47) == {('R', 'Eber', 0, 1411, 300)}, 'a rare by its classification'
+    assert recs(48) == {('W', 'Trash (The Deadmines)', 0, 0)}, 'dungeon trash'
+    assert 1440 in zone_rows and 1411 in zone_rows
+
+
+def test_without_observations_nothing_changes():
+    a = att(quests={500: quest('The Quest', 24, 'A', None, rewards=[40])})
+    scan = {40: scan_item('I40', q=3)}
+    one = build_gear.build(scan, {}, a)
+    two = build_gear.build(scan, {}, a, observed={'q': {}, 's': {}, 'w': {}})
+    assert one[0].rows == two[0].rows and one[1].keys() == two[1].keys()

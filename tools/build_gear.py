@@ -24,6 +24,9 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
     and no recipe skill (0 = not known).
   - The Amisia item collector (`scan.sources`): drops, merchants, quests and the auction house as a
     player met them. These names are German.
+  - The Amisia source collector (`collect`, shared in the guild): quests with giver, rewards and
+    level, vendors, drops of non-boss NPCs. Below ATT: a quest or NPC ATT knows keeps ATT's record,
+    the observation adds what ATT lacks (so a quest reward ATT lists as missing gets its source).
   - Optional, PC only (the Forever AddOns folder; skipped when missing): OneForAll (dungeon bosses,
     dungeon quests, Merchant's Favor recipes) and AtlasLootClassic (Forever dungeon tables, Classic
     recipes with their skill).
@@ -486,9 +489,10 @@ def is_junk(name):
 
 
 def build(scan_items, collected, att, ofa=({}, {}), atlas_dungeons=(), atlas_crafts=None, wowsrc=None,
-          itemsparse=None, forever_raids=None, facts=None, prev_items=None):
+          itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
-    for none); ofa, atlas_dungeons and atlas_crafts are the optional PC sources. Returns the source
+    for none); ofa, atlas_dungeons and atlas_crafts are the optional PC sources; observed the source
+    collector's records (build_scan.collect_observed). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
     ask the client for."""
@@ -722,6 +726,60 @@ def build(scan_items, collected, att, ofa=({}, {}), atlas_dungeons=(), atlas_cra
                     zone_key = zone_ref(npc_zone(npc)) if npc else zone_text_ref(n['place'])
                     note(iid, src.add('W', name, 0, 0, zone_key, n['id'] or None), 'world')
 
+    # --- the source collector (Collector.lua): quests, vendors and world drops the guild saw. What
+    # ATT knows about a quest or NPC wins (the same record comes out, so it is one source); the
+    # observation fills in what ATT lacks: a quest or vendor ATT does not have, a reward ATT does
+    # not list, a mob nobody named.
+    obs = observed or {}
+    for qid, q in sorted((obs.get('q') or {}).items()):
+        rewards = list(q['rewards']) + list(q['choices'])
+        if not rewards:
+            continue
+        aq = quests.get(qid)
+        num = quest_rec(qid, aq) if aq else None
+        if aq and num is None:
+            continue   # a raid quest
+        if num is None:
+            fac = q['fac'] if q['fac'] in ('A', 'H') else None
+            zone = zone_ref(q['gpos'][0]) if q['gpos'] else None
+            # the lowest player level that was offered the quest stands in for its minimum level
+            num = src.add('Q', q['title'] or f'Quest {qid}', q['qlevel'] or 0, q['minlvl'] or 0, fac, zone, qid)
+        for item in rewards:
+            note(item, num, 'quest')
+    for nid, v in sorted((obs.get('s') or {}).items()):
+        n = npcs.get(nid)
+        if n:
+            title = n.get('title')
+            kind = 'P' if is_pvp_vendor(title) else 'V'
+            num = src.add(kind, n.get('name') or v['name'] or f'NPC {nid}', zone_ref(npc_zone(n)), n.get('faction') or None,
+                          title, None, nid)
+        else:
+            kind = 'V'
+            num = src.add('V', v['name'] or f'NPC {nid}', zone_ref(v['pos'][0]) if v['pos'] else None, None, None, None, nid)
+        for item in sorted(v['items']):
+            note(item, num, 'pvp' if kind == 'P' else 'vendor')
+    for nid, w in sorted((obs.get('w') or {}).items()):
+        n = npcs.get(nid)
+        name = (n and n.get('name')) or w['name'] or f'NPC {nid}'
+        if w['inst']:
+            dname, inst, area = places.of_instance(w['inst'])
+            if not dname or dname in RAIDS:
+                continue
+            if n and 'boss' in n.get('kinds', ()):
+                num = src.add('D', dname, name, None, inst, area)
+                kind = 'dungeon'
+            else:
+                num = src.add('W', f'Trash ({dname})', 0, 0)
+                kind = 'world'
+        else:
+            zone = zone_ref(npc_zone(n)) if n else (zone_ref(w['pos'][0]) if w['pos'] else None)
+            if w['class'] in ('r', 'R') or (n and 'rare' in n.get('kinds', ())):
+                num, kind = src.add('R', name, 0, zone, nid), 'rare'
+            else:
+                num, kind = src.add('W', name, 0, 0, zone, nid), 'world'
+        for item in sorted(w['items']):
+            note(item, num, kind)
+
     # --- Forever raids the site has recorded: raid, boss, instance, area, phase 1, no token
     for rname, boss, iid, inst, area in forever_raids or []:
         note(iid, src.add('X', rname, boss, inst or 0, area or 0, 1, 0), 'raid')
@@ -947,10 +1005,14 @@ def main(argv=None):
         + (f'; files that failed: {sorted(att["errors"])}' if att['errors'] else ''))
 
     svs = args.sv if args.sv is not None else default_svs()
-    scan_items, collected = {}, {}
+    scan_items, collected, observed = {}, {}, {}
     if svs:
-        scan_items, _, collected = build_scan.collect([build_scan.load_sv(p) for p in svs])
-    log(f'scan: {len(scan_items)} items from {len(svs)} file(s), {len(collected)} with collector notes')
+        dbs = [build_scan.load_sv(p) for p in svs]
+        scan_items, _, collected = build_scan.collect(dbs)
+        observed = build_scan.collect_observed(dbs)
+    log(f'scan: {len(scan_items)} items from {len(svs)} file(s), {len(collected)} with collector notes; source collector: '
+        f'{len((observed or {}).get("q", {}))} quests, {len((observed or {}).get("s", {}))} vendors, '
+        f'{len((observed or {}).get("w", {}))} mobs')
 
     wowsrc = {}
     if not args.no_wowsrc:
@@ -984,7 +1046,7 @@ def main(argv=None):
     log(f'last build ({os.path.relpath(last, ROOT)}): {len(prev_items)} items, {len(old_stats)} with stats')
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse, forever_raids, load_facts(),
-        prev_items)
+        prev_items, observed)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
     if ofa[0] or ofa[1]:
         sources.append('OneForAll')
