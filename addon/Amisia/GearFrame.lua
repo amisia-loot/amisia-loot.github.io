@@ -90,7 +90,7 @@ local function coloredName(id)
     local name, _, q = itemInfo(id)
     local row = Gear.Item(id)
     q = q or (row and row[5]) or 1
-    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. id))
+    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or (row and row.name) or ("Item " .. id))
 end
 
 ---------------------------------------------------------------------------
@@ -114,11 +114,16 @@ end
 -- Tooltip
 ---------------------------------------------------------------------------
 
-local function showItemTooltip(owner, id, score, extra)
+-- pick: the BiS pick the option is (Gear.Best's e.pick), shown with its note; its source stands in
+-- when the data knows none.
+local function showItemTooltip(owner, id, score, extra, pick)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local _, link = itemInfo(id)
     if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(id) end
     GameTooltip:AddLine(" ")
+    if pick and ns.BisPickText then
+        GameTooltip:AddLine(ns.BisPickText(pick), 0.25, 1, 0.4, true)
+    end
     local o = opts(settings().col)
     local srcs = Gear.Sources(id, o)
     if #srcs == 0 then srcs = Gear.Sources(id) end
@@ -130,6 +135,7 @@ local function showItemTooltip(owner, id, score, extra)
         end
         GameTooltip:AddLine(Gear.SourceText(rec), 1, 1, 1, true)
     end
+    if #srcs == 0 and pick and type(pick.src) == "string" then GameTooltip:AddLine(pick.src, 1, 1, 1, true) end
     local row = Gear.Item(id)
     if row and row[6] == 2 then GameTooltip:AddLine("Beim Anlegen gebunden: auch im Auktionshaus zu finden.", 0.6, 0.8, 1, true) end
     if score then GameTooltip:AddDoubleLine("Wertung", ("%.0f"):format(score), GOLD[1], GOLD[2], GOLD[3], 1, 1, 1) end
@@ -259,7 +265,7 @@ local function buildOverview(parent)
                 if self.id then
                     local note
                     if self.slotKey == "MAINHAND" and self.plan == "2H" then note = "Zweihänder schlägt Waffenhand + Schildhand." end
-                    showItemTooltip(self, self.id, self.score, note)
+                    showItemTooltip(self, self.id, self.score, note, self.pick)
                 elseif self.note then
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:AddLine(self.note, 0.8, 0.8, 0.8, true)
@@ -295,6 +301,7 @@ local function fillOverview()
             local e = list and list[1]
             b.plan = res and res.plan
             b.note = nil
+            b.pick = e and e.pick or nil
             if e then
                 local _, _, _, icon = itemInfo(e[1])
                 b.id, b.score = e[1], e[2]
@@ -373,7 +380,7 @@ local function buildList(parent)
         b.src = col(b, 326, 170, nil, "GameFontHighlightSmall")
         b.score = col(b, 498, 40, nil, "GameFontHighlightSmall")
         b.slotKey = slot.key
-        b:SetScript("OnEnter", function(self) if self.id then showItemTooltip(self, self.id, self.value, self.note) end end)
+        b:SetScript("OnEnter", function(self) if self.id then showItemTooltip(self, self.id, self.value, self.note, self.pick) end end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         b:SetScript("OnClick", function(self)
             if itemClick(self.id) then return end
@@ -419,10 +426,10 @@ local function buildList(parent)
     return f
 end
 
-local function bestSourceText(id, o)
+local function bestSourceText(id, o, pick)
     local srcs = Gear.Sources(id, o)
     local rec = srcs[1]
-    if not rec then return "" end
+    if not rec then return (pick and type(pick.src) == "string") and pick.src or "" end
     local more = #srcs > 1 and (" |cff8f86a3+%d|r"):format(#srcs - 1) or ""
     return Gear.SourceText(rec, true) .. more
 end
@@ -440,15 +447,16 @@ local function fillList()
         local e = list and list[1]
         if slot.key == selSlot then b.sel:Show() else b.sel:Hide() end
         b.note = nil
+        b.pick = e and e.pick or nil
         if e then
             local _, _, _, icon = itemInfo(e[1])
             b.id, b.value = e[1], e[2]
             b.icon:SetTexture(icon or 134400)
             b.icon:Show()
-            b.name:SetText(coloredName(e[1]))
+            b.name:SetText(coloredName(e[1]) .. (e.pick and " |cff8f86a3(BiS-Empfehlung)|r" or ""))
             local row = Gear.Item(e[1])
             b.lvl:SetText(row and row[4] > 0 and row[4] or "-")
-            b.src:SetText(bestSourceText(e[1], o))
+            b.src:SetText(bestSourceText(e[1], o, e.pick))
             local mine, link = equippedScore(slot, g.col)
             if mine and link and ns.ItemID(link) ~= e[1] then
                 local gain = e[2] - mine
@@ -491,15 +499,15 @@ local function fillList()
         local e = list[i]
         if e then
             local _, _, _, icon = itemInfo(e[1])
-            b.id, b.value = e[1], e[2]
+            b.id, b.value, b.pick = e[1], e[2], e.pick
             b.icon:SetTexture(icon or 134400)
-            b.name:SetText(coloredName(e[1]))
+            b.name:SetText(coloredName(e[1]) .. (e.pick and " |cff8f86a3(BiS-Empfehlung)|r" or ""))
             local row = Gear.Item(e[1])
-            b.src:SetText(((row and row[4] > 0) and ("L" .. row[4] .. "  ") or "") .. bestSourceText(e[1], o))
+            b.src:SetText(((row and row[4] > 0) and ("L" .. row[4] .. "  ") or "") .. bestSourceText(e[1], o, e.pick))
             b.score:SetText(("%.0f"):format(e[2]))
             b:Show()
         else
-            b.id = nil
+            b.id, b.pick = nil, nil
             b:Hide()
         end
     end

@@ -66,7 +66,7 @@ local function itemText(id)
     local row = Gear.Item(id)
     q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
     if not name then nameMissing = true end
-    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. id))
+    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or (row and row.name) or ("Item " .. id))
 end
 
 -- A worn item's name in the colour of its link.
@@ -87,7 +87,8 @@ local function firstSource(id, o)
     return Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
 end
 
-local function sourceText(id, o)
+-- pick: the BiS pick of the option (its source text stands in when the data knows none)
+local function sourceText(id, o, pick)
     local c = cached()
     local t = c.src[id]
     if t == nil then
@@ -95,6 +96,7 @@ local function sourceText(id, o)
         t = rec and Gear.SourceText(rec, true) or ""
         c.src[id] = t
     end
+    if t == "" and type(pick) == "table" and type(pick.src) == "string" then return pick.src end
     return t
 end
 
@@ -102,10 +104,11 @@ local function marks(e)
     return (e.owned and (CHECK .. " ") or "") .. (e.wished and (STAR .. " ") or "")
 end
 
--- What the planner did with an option, as short grey notes: the set it belongs to, computed stats,
--- the best seen random suffix, moved ahead for its effort.
+-- What the planner did with an option, as short grey notes: a BiS pick, the set it belongs to,
+-- computed stats, the best seen random suffix, moved ahead for its effort.
 local function noteParts(e)
     local out = {}
+    if e.pick then out[#out + 1] = "BiS-Empfehlung" end
     if e.set then out[#out + 1] = ("Set %d/%d, %+d Bonus"):format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
     if e.sc then out[#out + 1] = "berechnet" end
     if e.suffix then out[#out + 1] = "bester gesehener Bonus" end
@@ -460,7 +463,7 @@ local function fillGoalRow(r, e)
     r.worn:SetText(e.wornLink and linkText(e.wornLink) or (GREY .. "nichts|r"))
     if e.opt then
         r.best:SetText(marks(e.opt) .. itemText(e.opt.id))
-        r.src:SetText(sourceText(e.opt.id, e.o))
+        r.src:SetText(sourceText(e.opt.id, e.o, e.opt.pick))
         r.gain:SetText(gainText(e.opt))
     else
         r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")
@@ -646,9 +649,13 @@ local function explainText(o, res, slotKey, e)
                 lead = Gear.UnitText(e.gain or 0, Gear.Weights(o.class, o.spec, o.kind, o.level))
             end
             local parts = {}
-            for i = 2, #lines do parts[#parts + 1] = lines[i] end
+            for i = 2, #lines do
+                -- the pick's note is a sentence of its own (BisExplain's last line)
+                if not (e.pick and lines[i] == ns.BisPickText(e.pick)) then parts[#parts + 1] = lines[i] end
+            end
             out[#out + 1] = lead .. ": " .. table.concat(parts, ", ") .. "."
         end
+        if e.pick then out[#out + 1] = ns.BisPickText(e.pick) end
     end
     local text = table.concat(out, " ")
     c.explain[key] = text
@@ -690,7 +697,7 @@ local function fillGoals(G, o, res)
         if e then
             b.rank:SetText(tostring(i))
             b.name:SetText(marks(e) .. itemText(e.id) .. noteText(e))
-            b.src:SetText(e.owned and OWNED_TEXT[e.owned] or sourceText(e.id, o))
+            b.src:SetText(e.owned and OWNED_TEXT[e.owned] or sourceText(e.id, o, e.pick))
             setMapButton(b.map, e.id, nil, e.owned)
             b.gain:SetText(gainText(e))
             if e.worn then
@@ -1495,7 +1502,7 @@ local function fillSimRow(r, e)
     r.slot:SetText(e.name)
     if e.opt then
         r.best:SetText(itemText(e.opt[1]) .. noteText(e.opt))
-        r.src:SetText(sourceText(e.opt[1]))
+        r.src:SetText(sourceText(e.opt[1], nil, e.opt.pick))
         r.score:SetText(Gear.Num(e.opt[2]))
     else
         r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")

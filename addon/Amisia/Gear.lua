@@ -416,9 +416,13 @@ end
 
 -- The item's row: equip location, class, subclass, level, quality, bind, item level, class mask
 -- (0 = every class), weapon speed, profession needed to wear it (Gear.WearProf), sources...
+-- A BiS pick GearData.lua does not list has its row in ns.BIS.PI (no sources, plus name).
 function Gear.Item(id)
     local d = data()
-    return d and d.I[id]
+    local row = d and d.I[id]
+    if row then return row end
+    local B = ns.BIS
+    return d and type(B) == "table" and type(B.PI) == "table" and B.PI[id] or nil
 end
 
 -- Whether a class (and spec) can wear the item at a level, by item type alone.
@@ -1030,6 +1034,50 @@ local function setPlan(res, w, level, class)
 end
 Gear.SetPlan = setPlan
 
+-- BiS picks (ns.BIS.PICK, from tools/bis_picks.json): hand-kept items the scoring alone misses
+-- (procs, equip effects), each { class, spec, from, to, slot, item, note, src }. The picks of a
+-- class, spec and level as { [slotKey] = pick }, for a weapon plan: a two-hand pick in the
+-- MAINHAND row only with the plan "auto" or "2H" (it then drops main and off hand picks), a
+-- one-hand or off-hand pick only without "2H", an off-hand weapon only without "SHIELD" and a
+-- shield or held item only without "DW". Items the class cannot wear at the level and excluded
+-- items (exclude.item) are left out; the source filters do not apply (a pick's source may be unknown).
+function Gear.PicksFor(class, spec, level, plan, exclude)
+    local B = ns.BIS
+    local list = type(B) == "table" and type(B.PICK) == "table" and B.PICK or nil
+    local out = {}
+    if not list or not class then return out end
+    plan = plan or "auto"
+    local exItem = type(exclude) == "table" and exclude.item or nil
+    local two = false
+    for _, p in ipairs(list) do
+        if type(p) == "table" and p.class == class and p.spec == spec and type(p.from) == "number" and type(p.to) == "number"
+            and level >= p.from and level <= p.to and type(p.slot) == "string" and not (exItem and exItem[p.item]) then
+            local row = Gear.Item(p.item)
+            local group = row and GROUP[row[1]]
+            local ok = row and Gear.Usable(class, row, level, spec)
+                and not ((row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class))
+            if ok and (p.slot == "MAINHAND" or p.slot == "OFFHAND") then
+                if group == "2H" then
+                    ok = p.slot == "MAINHAND" and (plan == "auto" or plan == "2H")
+                    two = two or ok
+                elseif plan == "2H" then
+                    ok = false
+                elseif p.slot == "OFFHAND" then
+                    local weapon = group == "1H" or group == "OHW"
+                    ok = not ((plan == "SHIELD" and weapon) or (plan == "DW" and not weapon))
+                end
+            end
+            if ok and not out[p.slot] then out[p.slot] = p end
+        end
+    end
+    if two then
+        out.OFFHAND = nil
+        local mh = out.MAINHAND
+        if mh and GROUP[Gear.Item(mh.item)[1]] ~= "2H" then out.MAINHAND = nil end
+    end
+    return out
+end
+
 -- Best items per slot for one level range.
 -- opts: class, spec, kind ("Speedrun"/"Hardcore"), faction ("Alliance"/"Horde" short A/H or nil),
 -- sources (set of filter keys), level (upper end of the range); optional
@@ -1037,8 +1085,10 @@ Gear.SetPlan = setPlan
 -- plan ("auto", "2H", "DW", "SHIELD"; auto picks the larger sum), suffix ("best": an item's best
 -- seen random suffix counts, "base": base stats only), sets (false: no set plan), tie (percent
 -- within which effort orders the options), cap ({ [row] = { HIT = %, SHIT = % } }: hit still
--- useful per row).
--- Returns { [slotKey] = { {id, score, effort, suffix, sc, easier, set}, ... best first }, plan =
+-- useful per row), picks (false: no BiS picks; else Gear.PicksFor's picks go first in their rows,
+-- marked pick = the pick, scored as any option; a two-hand pick makes the plan "auto" two-hand, a
+-- main or off-hand pick one-hand).
+-- Returns { [slotKey] = { {id, score, effort, suffix, sc, easier, set, pick}, ... best first }, plan =
 -- "2H" or "1H", twoHandScore, oneHandScore, dwScore, shieldScore, sets, missing = n, total = n }.
 function Gear.Best(opts)
     local d = data()
@@ -1181,6 +1231,36 @@ function Gear.Best(opts)
     end
     for _, list in pairs(lists) do effortOrder(list, tie) end
 
+    -- BiS picks: first in their rows (after the set plan and the effort order, which they override)
+    local picks = opts.picks ~= false and Gear.PicksFor(class, opts.spec, level, opts.plan, opts.exclude) or {}
+    local function front(list, p, place, group)
+        for i = #list, 1, -1 do
+            if list[i][1] == p.item then table.remove(list, i) end
+        end
+        local s = Gear.Stats(p.item) or {}
+        local e = score(p.item, s, place, group)
+        e.pick = p
+        if group == "1H" or group == "OHW" then e.weapon = true end
+        table.insert(list, 1, e)
+    end
+    local PICK_LIST = { FINGER1 = lists.FINGER, TRINKET1 = lists.TRINKET }
+    local mainPick, offPick
+    for slotKey, p in pairs(picks) do
+        local row = Gear.Item(p.item)
+        local group = GROUP[row[1]]
+        if slotKey == "MAINHAND" then
+            mainPick = group
+            if group == "2H" then front(lists["2H"], p, "2H", group) else front(lists.MH, p, "MH", group) end
+        elseif slotKey == "OFFHAND" then
+            offPick = true
+            front(lists.OH, p, (group == "1H" or group == "OHW") and "OH" or nil, group)
+        elseif PICK_LIST[slotKey] then
+            front(PICK_LIST[slotKey], p, nil, group)
+        elseif slotKey ~= "FINGER2" and slotKey ~= "TRINKET2" and res[slotKey] then
+            front(res[slotKey], p, slotKey == "RANGED" and "RANGED" or nil, group)
+        end
+    end
+
     -- two rings and two trinkets: the same list, the second row starts after the first pick
     for _, pair in ipairs({ { "FINGER", "FINGER1", "FINGER2" }, { "TRINKET", "TRINKET1", "TRINKET2" } }) do
         local list = lists[pair[1]]
@@ -1188,6 +1268,10 @@ function Gear.Best(opts)
         local second = {}
         for i = 2, #list do second[#second + 1] = list[i] end
         res[pair[3]] = second
+        local p = picks[pair[3]]
+        if p and not (list[1] and list[1][1] == p.item) then
+            front(second, p, nil, GROUP[Gear.Item(p.item)[1]])
+        end
     end
 
     -- weapons: a two-hander against the best main hand plus the best off hand; the plan says which
@@ -1218,6 +1302,8 @@ function Gear.Best(opts)
     local use2H
     if plan == "2H" then use2H = best2H ~= nil
     elseif plan == "DW" or plan == "SHIELD" then use2H = false
+    elseif mainPick == "2H" then use2H = true
+    elseif mainPick or offPick then use2H = false
     else use2H = best2H ~= nil and best2H[2] >= (oneHand or 0) end
     res.planWanted = plan
     if use2H then

@@ -572,3 +572,127 @@ def test_set_bonus_percent_auras_become_level_60_ratings():
     assert bb.set_bonus_text([[6, 30, 10, 95]]) == 'DEFENSE_SKILL_RATING=15'
     # a proc or a spell modifier stays unscored
     assert bb.set_bonus_text([[6, 42, 0, 0]]) is None and bb.set_bonus_text([[6, 107, 5, 11]]) is None
+
+
+# ---------------------------------------------------------------- BiS picks (tools/bis_picks.json)
+PICK_SPARSE = SPARSE_HEADER + ['ItemDelay', 'Bonding', 'AllowableClass']
+ITEM_HEADER = ['ID', 'ClassID', 'SubclassID', 'InventoryType']
+
+
+def pick_wago(folder):
+    """ItemSparse with the columns a pick reads (name, delay, bind, classes) and the Item table."""
+    rows = [sparse_row(20000 + i, 1, 2, 30, [(4, 6000), (7, 4000)]) + [0, 0, -1] for i in range(50)]
+    rows += [sparse_row(1001, 1, 2, 30, [(4, 6000), (7, 4000)], item_set=7) + [0, 2, -1],
+             sparse_row(1002, 7, 3, 40, [(5, 7000)], item_set=7) + [0, 1, -1],
+             # the two-hand mace of the request: rare, item level 40, intellect and stamina, 3.6 s
+             sparse_row(3001, 17, 3, 40, [(5, 6956), (7, 6521)], req=1) + [3600, 1, -1],
+             sparse_row(3002, 2, 2, 30, [(7, 10000)], req=25) + [0, 1, -1],     # a neck
+             sparse_row(3003, 4, 1, 5, []) + [0, 0, -1],                        # a shirt
+             sparse_row(3004, 13, 2, 30, [(4, 10000)], req=20) + [2600, 1, 1024]]  # a one-hander for druids
+    write_csv(folder, 'ItemSparse', PICK_SPARSE, rows)
+    write_csv(folder, 'Item', ITEM_HEADER, [[3001, 2, 5, 17], [3002, 4, 0, 2], [3003, 4, 0, 4], [3004, 2, 7, 13]])
+
+
+def pick(**kw):
+    p = {'class': 'SHAMAN', 'spec': 'enh', 'from': 30, 'to': 34, 'slot': 'MAINHAND', 'item': 3001,
+         'note': 'BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung.', 'source': 'Quelle noch unbekannt'}
+    p.update(kw)
+    return p
+
+
+def test_extract_keeps_what_a_pick_needs(wago):
+    pick_wago(wago)
+    gd = bb.extract(wago, pick_ids={3001, 3003, 9999})
+    p = gd['picks'][3001]
+    assert p == {'name': 'Item 3001', 'inv': 17, 'q': 3, 'ilvl': 40, 'req': 1, 'bind': 1, 'delay': 3.6, 'cls': 2,
+                 'sub': 5, 'mask': 0, 'stats': [[5, 6956], [7, 6521]]}
+    assert gd['picks'][3003]['inv'] == 4, 'a pick keeps its row even when it is no gear (the check refuses it)'
+    assert 9999 not in gd['picks']
+    assert 'picks' not in bb.extract(wago) or bb.extract(wago)['picks'] == {}
+
+
+def test_pick_checks(wago):
+    pick_wago(wago)
+    gd = bb.extract(wago, pick_ids={3001, 3002, 3003, 3004})
+    ok, errors = bb.check_picks([pick()], gd)
+    assert errors == [] and ok == [{'class': 'SHAMAN', 'spec': 'enh', 'from': 30, 'to': 34, 'slot': 'MAINHAND',
+                                    'item': 3001, 'note': pick()['note'], 'src': 'Quelle noch unbekannt'}]
+    # no source given: it is unknown
+    assert bb.check_picks([{k: v for k, v in pick().items() if k != 'source'}], gd)[0][0]['src'] == 'Quelle unbekannt'
+    bad = [
+        (pick(spec='storm'), 'spec'),
+        (pick(**{'class': 'MONK'}), 'spec'),
+        (pick(item=5555), 'ItemSparse'),
+        (pick(slot='OFFHAND'), 'slot'),
+        (pick(slot='KNEE'), 'slot'),
+        (pick(item=3003, slot='CHEST'), 'slot'),
+        (pick(**{'from': 35, 'to': 30}), 'level'),
+        (pick(to=61), 'level'),
+        (pick(note=''), 'note'),
+        (pick(item=3002, slot='NECK', **{'from': 20, 'to': 24}), 'level 25'),   # the item needs 25
+        (pick(item=3004, **{'class': 'WARRIOR', 'spec': 'dps'}), 'class'),         # druids only
+        (pick(**{'class': 'PRIEST', 'spec': 'holy'}), 'class'),                    # priests carry no maces
+    ]
+    for p, part in bad:
+        ok, errors = bb.check_picks([p], gd)
+        assert ok == [] and len(errors) == 1 and part in errors[0], (p, errors)
+    # two picks for one spec, slot and level: refused
+    ok, errors = bb.check_picks([pick(), pick(**{'from': 34, 'to': 40})], gd)
+    assert len(errors) == 1 and 'overlap' in errors[0]
+    # the two rings are separate rows
+    ring = dict(item=3002, slot='NECK')
+    assert bb.check_picks([pick(**ring), pick(**ring, **{'class': 'SHAMAN', 'spec': 'ele'})], gd)[1] == []
+
+
+def test_a_build_with_picks(tmp_path, wago):
+    pick_wago(wago)
+    path = tmp_path / 'picks.json'
+    path.write_text(json.dumps({'picks': [pick()]}), encoding='utf-8')
+    facts = tmp_path / 'facts.json'
+    facts.write_text(json.dumps(FACTS), encoding='utf-8')
+    out_b = tmp_path / 'BisData.lua'
+    report, _ = bb.run(wago=wago, gamedata_path=str(tmp_path / 'gd.json'), measured_path=None,
+                       gear_path=gear_file(tmp_path), facts_path=str(facts), archive_path=None, sv_path=None,
+                       att=None, out_weights=str(tmp_path / 'W.lua'), out_bis=str(out_b), built='2026-10-06',
+                       specs={('SHAMAN', 'enh')}, picks_path=str(path))
+    assert report['picks'] == 1
+    B = lua_load(out_b).BIS
+    p = B.PICK[1]
+    assert (p['class'], p.spec, p['from'], p.to, p.slot, p.item, p.src) == (
+        'SHAMAN', 'enh', 30, 34, 'MAINHAND', 3001, 'Quelle noch unbekannt')
+    assert p.note.startswith('BiS für Verstärkung'), 'German text survives'
+    # the item's row as GearData has it (no sources): the required level 1 of the table becomes the pick's 30
+    row = B.PI[3001]
+    assert [row[i] for i in range(1, 11)] == ['2HWEAPON', 2, 5, 30, 3, 1, 40, 0, 3.6, 0] and row.name == 'Item 3001'
+    # intellect and stamina computed (two-hand budget column 0: 26 at rare item level 40)
+    assert B.SC[3001] == 'INTELLECT=18;STAMINA=17'
+    # the cache holds the pick's row: the next build without CSVs needs no download
+    report, _ = bb.run(wago=None, gamedata_path=str(tmp_path / 'gd.json'), measured_path=None,
+                       gear_path=gear_file(tmp_path), facts_path=str(facts), archive_path=None, sv_path=None,
+                       att=None, out_weights=str(tmp_path / 'W.lua'), out_bis=str(out_b), built='2026-10-06',
+                       specs={('SHAMAN', 'enh')}, picks_path=str(path))
+    assert lua_load(out_b).BIS.PI[3001] is not None
+    # a bad pick stops the build before BisData.lua is written
+    out_b.unlink()
+    path.write_text(json.dumps({'picks': [pick(slot='HEAD')]}), encoding='utf-8')
+    with pytest.raises(bb.PickError) as err:
+        bb.run(wago=wago, gamedata_path=str(tmp_path / 'gd.json'), measured_path=None, gear_path=gear_file(tmp_path),
+               facts_path=str(facts), archive_path=None, sv_path=None, att=None,
+               out_weights=str(tmp_path / 'W.lua'), out_bis=str(out_b), built='2026-10-06',
+               specs={('SHAMAN', 'enh')}, picks_path=str(path))
+    assert 'slot' in str(err.value) and not out_b.exists()
+
+
+def test_the_committed_picks_are_valid():
+    """tools/bis_picks.json passes the checks against the committed client data and is in BisData.lua."""
+    picks = bb.load_picks(bb.PICKS)
+    gd = bb.load_gamedata()
+    ok, errors = bb.check_picks(picks, gd)
+    assert errors == [] and len(ok) == len(picks) >= 1
+    with open(os.path.join(ROOT, 'addon', 'Amisia', 'BisData.lua'), encoding='utf-8') as fh:
+        b = fh.read()
+    for p in ok:
+        assert f'item = {p["item"]}' in b and f'[{p["item"]}] = {{' in b
+    enh = [p for p in ok if p['item'] == 280604]
+    assert enh and enh[0]['class'] == 'SHAMAN' and enh[0]['spec'] == 'enh' and enh[0]['from'] <= 30 <= enh[0]['to']
+    assert 'Gilde' not in json.dumps(picks, ensure_ascii=False)

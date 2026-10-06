@@ -3,7 +3,7 @@ no scan has seen, item sets, observed random suffixes, the dungeon facts with th
 the guild's drop base stock and the effort per source kind.
 
     python tools/build_bis.py [--wago DIR] [--measured FILE] [--werte "AMISIA-WERTE ..."]
-                              [--sv Amisia.lua] [--att DIR] [--no-att]
+                              [--sv Amisia.lua] [--att DIR] [--no-att] [--picks FILE]
 
 Runs on the N100; needs no WoW install. Inputs:
 
@@ -22,7 +22,9 @@ Runs on the N100; needs no WoW install. Inputs:
     MIT) for the bosses' NPC ids per dungeon;
   - tools/drop_obs.json: the guild's drop records (tools/build_scan.py) for the base stock;
   - the Amisia SavedVariables (default ~/addons/_SavedVariables/Amisia.lua when present): the
-    random suffixes the collector saw (scan.suffix).
+    random suffixes the collector saw (scan.suffix);
+  - tools/bis_picks.json: hand-kept BiS picks (items the scoring alone misses), checked against the
+    client tables (check_picks) and written as ns.BIS.PICK and ns.BIS.PI.
 
 Outputs: addon/Amisia/GearWeights.lua (ns.GEAR_WEIGHTS) and addon/Amisia/BisData.lua (ns.BIS).
 The scoring formula exists twice, here (score) and in Gear.lua (Gear.Score); tools/tests/
@@ -49,6 +51,7 @@ OUT_WEIGHTS = os.path.join(ADDON, 'GearWeights.lua')
 OUT_BIS = os.path.join(ADDON, 'BisData.lua')
 GAMEDATA = os.path.join(HERE, 'bis_gamedata.json')
 MEASURED = os.path.join(HERE, 'bis_measured.json')
+PICKS = os.path.join(HERE, 'bis_picks.json')
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 DROP_ARCHIVE = os.path.join(HERE, 'drop_obs.json')
 WAGO = os.path.expanduser('~/addons/_wago')
@@ -151,21 +154,36 @@ def num(v, f=int):
             return 0
 
 
-def extract(folder):
+def extract(folder, pick_ids=()):
     """The compact game data of a folder of wago CSVs: {'build', 'date', 'missing': [tables],
     'items': {id: [inventory type, quality, item level, required level, item set, [[stat id,
     allocation], ...]]}, 'rpp': {item level: {'GoodF': [5], 'SuperiorF': [5], 'EpicF': [5]}},
     'sets': {id: {'name', 'items'}}, 'setspells': {set id: [[threshold, spell id], ...]},
     'spells': {spell id: [[effect, aura, points, misc], ...]}, 'lfg': {id: [name, min, max]},
-    'enchants': {id: [[effect, points, arg], ...]}}. Items only with stats or an item set."""
+    'enchants': {id: [[effect, points, arg], ...]}, 'picks': {id: {'name', 'inv', 'q', 'ilvl', 'req', 'bind',
+    'delay' (seconds), 'cls', 'sub', 'mask', 'stats'}}}. Items only with stats or an item set; picks for the
+    ids of pick_ids (tools/bis_picks.json) that ItemSparse holds, whatever they are (the checks judge)."""
     out = {'build': None, 'date': time.strftime('%Y-%m-%d'), 'missing': [], 'items': {}, 'rpp': {}, 'sets': {},
-           'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}}
+           'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}, 'picks': {}}
+    pick_ids = set(pick_ids or ())
     paths = {t: find_csv(folder, t) for t in TABLES}
     out['missing'] = sorted([t for t, p in paths.items() if not p] + list(NOT_ON_WAGO))
     out['build'] = next((build_of(p) for p in paths.values() if p and build_of(p)), None)
     if paths['ItemSparse']:
         for r in rows(paths['ItemSparse']):
             inv = num(r.get('InventoryType'))
+            if num(r.get('ID')) in pick_ids:
+                stats = []
+                for i in range(10):
+                    sid, alloc = num(r.get(f'StatModifier_bonusStat_{i}')), num(r.get(f'StatPercentEditor_{i}'))
+                    if sid > 0 and alloc:
+                        stats.append([sid, alloc])
+                mask = num(r.get('AllowableClass'))
+                out['picks'][num(r['ID'])] = {
+                    'name': r.get('Display_lang') or '', 'inv': inv, 'q': num(r.get('OverallQualityID')),
+                    'ilvl': num(r.get('ItemLevel')), 'req': num(r.get('RequiredLevel')), 'bind': num(r.get('Bonding')),
+                    'delay': round(num(r.get('ItemDelay')) / 1000, 2), 'cls': None, 'sub': None,
+                    'mask': mask if mask > 0 else 0, 'stats': stats}
             if inv not in GEAR_INV:
                 continue
             stats = []
@@ -177,6 +195,11 @@ def extract(folder):
             if stats or num(r.get('ItemSet')):
                 out['items'][num(r['ID'])] = [inv, num(r.get('OverallQualityID')), num(r.get('ItemLevel')),
                                               num(r.get('RequiredLevel')), num(r.get('ItemSet')), stats]
+    if paths['Item'] and out['picks']:
+        for r in rows(paths['Item']):
+            p = out['picks'].get(num(r.get('ID')))
+            if p is not None:
+                p['cls'], p['sub'] = num(r.get('ClassID')), num(r.get('SubclassID'))
     if paths['RandPropPoints']:
         for r in rows(paths['RandPropPoints']):
             out['rpp'][num(r['ID'])] = {q: [round(num(r.get(f'{q}_{i}'), float), 4) for i in range(5)]
@@ -240,7 +263,7 @@ def load_gamedata(path=GAMEDATA):
         return None
     with open(path, encoding='utf-8') as fh:
         raw = json.load(fh)
-    for k in ('items', 'rpp', 'sets', 'setspells', 'spells', 'lfg', 'enchants'):
+    for k in ('items', 'rpp', 'sets', 'setspells', 'spells', 'lfg', 'enchants', 'picks'):
         raw[k] = {int(i): v for i, v in (raw.get(k) or {}).items()}
     return raw
 
@@ -544,14 +567,15 @@ def parse_stats(text, stat_map):
     return s
 
 
-def computed_stats(gd, iid):
+def computed_stats(gd, iid, any_slot=False):
     """{client key: value} of an item from ItemSparse's allocations and RandPropPoints' budget, or
-    None when the tables cannot say (unknown item, quality, item level or stat)."""
+    None when the tables cannot say (unknown item, quality, item level or stat). any_slot: weapons
+    and trinkets too (a BiS pick: its stats from the allocations, its damage and effect stay unknown)."""
     it = gd['items'].get(iid)
     if not it:
         return None
     inv, q, ilvl, _, _, stats = it
-    if inv not in SC_INV:
+    if inv not in SC_INV and not any_slot:
         return None
     if not stats:
         return {}
@@ -1525,10 +1549,111 @@ def base_stock(archive):
 
 
 # Effort per source kind ("about one dungeon run = 3"): the tie rule of the planner.
+# ---------------------------------------------------------------- BiS picks (tools/bis_picks.json)
+# A hand-kept list of best-in-slot items the scoring alone misses (procs, equip effects): per spec,
+# level range and slot one item that Gear.Best puts first. Checked against the client tables.
+SLOT_KEYS = ('HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'WRIST', 'HANDS', 'WAIST', 'LEGS', 'FEET', 'FINGER1',
+             'FINGER2', 'TRINKET1', 'TRINKET2', 'MAINHAND', 'OFFHAND', 'RANGED')
+# ItemSparse InventoryType -> GearData's equip location (INVTYPE_ without the prefix)
+INV_LOC = {1: 'HEAD', 2: 'NECK', 3: 'SHOULDER', 5: 'CHEST', 20: 'ROBE', 6: 'WAIST', 7: 'LEGS', 8: 'FEET', 9: 'WRIST',
+           10: 'HAND', 11: 'FINGER', 12: 'TRINKET', 13: 'WEAPON', 14: 'SHIELD', 15: 'RANGED', 16: 'CLOAK',
+           17: '2HWEAPON', 21: 'WEAPONMAINHAND', 22: 'WEAPONOFFHAND', 23: 'HOLDABLE', 25: 'THROWN',
+           26: 'RANGEDRIGHT', 28: 'RELIC'}
+# slot group (GROUP) -> the rows of the planner an item of it may fill
+GROUP_SLOTS = {'2H': ('MAINHAND',), '1H': ('MAINHAND', 'OFFHAND'), 'MH': ('MAINHAND',), 'OHW': ('OFFHAND',),
+               'SHIELD': ('OFFHAND',), 'HELD': ('OFFHAND',), 'RANGED': ('RANGED',), 'FINGER': ('FINGER1', 'FINGER2'),
+               'TRINKET': ('TRINKET1', 'TRINKET2')}
+PICK_SOURCE = 'Quelle unbekannt'
+
+
+class PickError(ValueError):
+    """tools/bis_picks.json holds a pick the checks refuse; nothing is written."""
+
+
+def load_picks(path=PICKS):
+    """The raw picks of tools/bis_picks.json ({"picks": [...]}), [] without the file."""
+    if not path or not os.path.exists(path):
+        return []
+    with open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
+    return list(data.get('picks') or [])
+
+
+def check_picks(picks, gd):
+    """(clean picks, errors): every pick needs a known class and spec (SPECS), a level range within
+    1-60 that the item's required level allows, a planner row (SLOT_KEYS) its inventory type fits,
+    an item ItemSparse holds that the class can carry, and a note; two picks of one spec and row
+    must not overlap in level. source defaults to "Quelle unbekannt"."""
+    specs = {(c, k) for c, k, *_ in SPECS}
+    table = gd.get('picks') or {}
+    ok, errors = [], []
+    for n, p in enumerate(picks, 1):
+        cls, spec, slot = p.get('class'), p.get('spec'), p.get('slot')
+        lo, hi, iid = p.get('from'), p.get('to'), p.get('item')
+        where = f'pick {n} ({cls}/{spec} {slot} {iid})'
+        if (cls, spec) not in specs:
+            errors.append(f'{where}: unknown class/spec (known: {", ".join(sorted(c + "/" + k for c, k in specs))})')
+            continue
+        if not (isinstance(lo, int) and isinstance(hi, int) and 1 <= lo <= hi <= 60):
+            errors.append(f'{where}: level range from/to must be whole numbers with 1 <= from <= to <= 60')
+            continue
+        if slot not in SLOT_KEYS:
+            errors.append(f'{where}: unknown slot (one of {", ".join(SLOT_KEYS)})')
+            continue
+        note = p.get('note')
+        if not isinstance(note, str) or not note.strip():
+            errors.append(f'{where}: a note is needed (why the item is the pick)')
+            continue
+        it = table.get(iid) if isinstance(iid, int) else None
+        if it is None:
+            errors.append(f'{where}: item not in ItemSparse (download the client tables to ~/addons/_wago)')
+            continue
+        loc = INV_LOC.get(it['inv'])
+        group = GROUP.get(loc) if loc else None
+        if not group or slot not in GROUP_SLOTS.get(group, (group,)):
+            errors.append(f'{where}: the item (inventory type {it["inv"]}) does not fit the slot {slot}')
+            continue
+        if it['req'] > lo:
+            errors.append(f'{where}: the item needs level {it["req"]}, the range starts at {lo}')
+            continue
+        if it['cls'] is None or not usable(cls, [loc, it['cls'], it['sub']], hi) or (
+                it['mask'] and not it['mask'] & CLASS_BIT[cls]):
+            errors.append(f'{where}: the class cannot carry the item (Item table class {it["cls"]}/{it["sub"]}, '
+                          f'class mask {it["mask"]})')
+            continue
+        clash = next((q for q in ok if (q['class'], q['spec'], q['slot']) == (cls, spec, slot)
+                      and q['from'] <= hi and lo <= q['to']), None)
+        if clash:
+            errors.append(f'{where}: levels overlap with the pick of item {clash["item"]} ({clash["from"]}-{clash["to"]})')
+            continue
+        src = p.get('source')
+        ok.append({'class': cls, 'spec': spec, 'from': lo, 'to': hi, 'slot': slot, 'item': iid, 'note': note.strip(),
+                   'src': src.strip() if isinstance(src, str) and src.strip() else PICK_SOURCE})
+    return ok, errors
+
+
+def pick_rows(picks, gd, gear_ids):
+    """{item: row} for picked items GearData does not list: GearData's row without sources
+    (equip location, class, subclass, level, quality, bind, item level, class mask, speed, 0) plus
+    the name. The level is ItemSparse's required level, or the lowest pick's from when the table says
+    less (its beta data has 1 for items that are not)."""
+    out = {}
+    for p in picks:
+        iid = p['item']
+        if iid in gear_ids:
+            continue
+        it = gd['picks'][iid]
+        level = max(it['req'], min(q['from'] for q in picks if q['item'] == iid))
+        speed = it['delay'] if it['cls'] == 2 else 0
+        out[iid] = [INV_LOC[it['inv']], it['cls'], it['sub'], level, it['q'], it['bind'], it['ilvl'], it['mask'],
+                    speed, 0, it['name']]
+    return out
+
+
 EFFORT = {'V': 1, 'C': 2, 'A': 2, 'Q': 2, 'QSTEP': 1, 'D': 3, 'R': 8, 'W': 20, 'P': 25, 'X': 6, 'DMAX': 30}
 
 
-def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate):
+def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate, picks=(), pick_items=None):
     lines = [
         '-- GENERATED by tools/build_bis.py. Do not edit; rebuild instead.',
         f"-- Client tables of WoW Forever {info.get('gamedata') or '?'} (wago.tools CSV, Blizzard game data); missing "
@@ -1538,6 +1663,8 @@ def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate):
         '-- bonuses (a bonus "" is not scored). RP: random suffixes seen on links (item -> suffix -> stats).',
         '-- DG: dungeons and raids (tools/forever_dungeons.json) with their bosses\' NPC ids from AllTheThings\' Forever',
         '-- data (MIT, see LICENSES/). O: the guild\'s drop records up to day OT (OI: that day\'s ids). EF: effort per source.',
+        '-- PICK: BiS picks from tools/bis_picks.json (the planner puts them first). PI: the rows of picked items',
+        '-- GearData.lua lacks (as its I, no sources, plus name); their SC is computed for weapons too.',
         'local _, ns = ...',
         '',
         'ns.BIS = {',
@@ -1568,6 +1695,14 @@ def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate):
     lines.append(f'    OT = {OT},')
     lines.append('    OI = ' + lua_val(OI) + ',')
     lines.append('    EF = ' + lua_val(EFFORT) + ',')
+    lines.append('    PICK = {')
+    for p in picks:
+        lines.append('        ' + lua_val(p) + ',')
+    lines.append('    },')
+    lines.append('    PI = {')
+    for iid, row in sorted((pick_items or {}).items()):
+        lines.append(f'        [{iid}] = {{ ' + ', '.join(lua_val(v) for v in row[:-1]) + f', name = {lua_str(row[-1])} }},')
+    lines.append('    },')
     lines += ['}', '']
     return '\n'.join(lines)
 
@@ -1594,12 +1729,16 @@ def load_sv(path):
 
 def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEAR_DATA, facts_path=FACTS,
         archive_path=DROP_ARCHIVE, sv_path=SV_DEFAULT, att=None, out_weights=OUT_WEIGHTS, out_bis=OUT_BIS,
-        built=None, specs=None):
-    """The whole build; returns a report dict. att: the neutral AllTheThings data (or None)."""
+        built=None, specs=None, picks_path=None):
+    """The whole build; returns a report dict. att: the neutral AllTheThings data (or None).
+    picks_path: tools/bis_picks.json (None: no picks); a pick the checks refuse raises PickError
+    before anything but the game data cache is written."""
     report = {}
     gd = None
+    raw_picks = load_picks(picks_path)
+    pick_ids = {p.get('item') for p in raw_picks if isinstance(p.get('item'), int)}
     if wago and find_csv(wago, 'ItemSparse'):
-        gd = extract(wago)
+        gd = extract(wago, pick_ids)
         save_gamedata(gd, gamedata_path)
         report['gamedata'] = f'{len(gd["items"])} items from {wago}'
     else:
@@ -1607,7 +1746,11 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
         report['gamedata'] = 'cached' if gd else 'none'
     if gd is None:
         gd = {'build': None, 'missing': sorted(TABLES) + list(NOT_ON_WAGO), 'items': {}, 'rpp': {}, 'sets': {},
-              'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}}
+              'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}, 'picks': {}}
+    picks, errors = check_picks(raw_picks, gd)
+    if errors:
+        raise PickError('; '.join(errors))
+    report['picks'] = len(picks)
     conv = Conv(load_measured(measured_path))
     gear = load_gear(gear_path)
     stat_map = gear_stat_map()
@@ -1621,6 +1764,14 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
             calc = computed_stats(gd, iid)
             if calc:
                 sc[iid] = stat_text(calc)
+        # a picked item no scan has seen: its stats from the allocations, weapons too (the check
+        # above covers armour only; a weapon's allocations work the same, its damage stays unknown)
+        for p in picks:
+            iid = p['item']
+            if iid not in gear['ST'] and iid not in sc:
+                calc = computed_stats(gd, iid, any_slot=True)
+                if calc:
+                    sc[iid] = stat_text(calc)
     else:
         log(f'computed stats: {rate:.1%} of {checked} scanned items match; below {SC_MIN_RATE:.0%}, SC left out')
         for m in misses[:10]:
@@ -1656,7 +1807,8 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
         archive = build_scan.load_archive(archive_path)
     O, OT, OI = base_stock(archive)
     write_if_changed(out_bis, render_bis(info, sc, sets, rp, dg, O, OT, OI, gd.get('missing') or [],
-                                         f'{rate:.1%} of {checked} scanned items'))
+                                         f'{rate:.1%} of {checked} scanned items', picks,
+                                         pick_rows(picks, gd, set(gear['I']))))
     report.update({'sets': len(sets), 'sets_with_bonus': sum(1 for s in sets.values() if any(b[1] for b in s['b'])),
                    'rp': len(rp), 'dungeons': len(dg), 'boss_npcs': sum(len(v) for v in bosses.values()),
                    'base_npcs': len(O), 'missing': gd.get('missing')})
@@ -1671,6 +1823,7 @@ def main(argv=None):
                     help='an AMISIA-WERTE line from the self-test; added to the samples of --measured')
     ap.add_argument('--sv', default=SV_DEFAULT, help='Amisia SavedVariables for observed random suffixes')
     ap.add_argument('--att', default=None, help='AllTheThings download (default ~/addons/_cache/att)')
+    ap.add_argument('--picks', default=PICKS, help='hand-kept BiS picks (default tools/bis_picks.json)')
     ap.add_argument('--no-att', action='store_true', help='build without AllTheThings (no boss NPC ids)')
     args = ap.parse_args(argv)
     if args.werte:
@@ -1704,7 +1857,11 @@ def main(argv=None):
             att = att_data.load(base, items=False, wago=args.wago)
         else:
             log(f'no AllTheThings download in {base}: dungeon bosses stay without NPC ids')
-    report, _ = run(wago=args.wago, measured_path=args.measured, sv_path=args.sv, att=att)
+    try:
+        report, _ = run(wago=args.wago, measured_path=args.measured, sv_path=args.sv, att=att, picks_path=args.picks)
+    except PickError as e:
+        log(f'{os.path.relpath(args.picks, ROOT) if args.picks else "picks"} refused, nothing written: {e}')
+        return 2
     for k, v in report.items():
         log(f'{k}: {v}')
     return 0

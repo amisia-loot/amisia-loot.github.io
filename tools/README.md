@@ -231,6 +231,7 @@ install, no network:
 python tools/build_bis.py [--wago ~/addons/_wago] [--measured tools/bis_measured.json]
                           [--werte "AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.3 cr_CRIT=28:2"]
                           [--sv ~/addons/_SavedVariables/Amisia.lua] [--att DIR] [--no-att]
+                          [--picks tools/bis_picks.json]
 ```
 
 Inputs:
@@ -273,6 +274,25 @@ What it does:
 - **Sets** (`SET`), **random suffixes** seen on links (`RP`), **dungeons** (`DG`: the facts with
   `bosses` as NPC ids and `bossNames`), the **drop base stock** (`O`, `OT`, `OI`) and the **effort**
   per source kind (`EF`).
+
+**BiS picks** (`tools/bis_picks.json`, hand-kept): best-in-slot items the stat scoring alone misses
+(procs, equip effects), each with `class`, `spec` (the key of `SPECS`, e.g. `SHAMAN`/`enh`), `from`/`to`
+(level range), `slot` (a planner row: `HEAD` … `MAINHAND`, `OFFHAND`, `RANGED`, `FINGER1`, `TRINKET2`),
+`item`, a German `note` and an optional `source` (default "Quelle unbekannt"). The build checks every
+pick (known spec, item in ItemSparse and the Item table, the item's inventory type fits the row, the
+class can carry it at the range's end, its required level is not above `from`, no two picks of one spec
+and row overlap) and stops with exit 2 before writing anything when one fails. `extract` keeps the
+picked items' rows (name, slot, quality, item level, required level, bind, speed, class and subclass,
+classes, stat allocations) in `bis_gamedata.json`, so later builds need the CSVs only for a new item.
+It writes `PICK` (the picks) and `PI` (GearData's row, no sources, plus `name`, for picked items
+GearData.lua lacks; the level is the table's required level, or the lowest `from` when the table says
+less) into `BisData.lua`, and computed stats (`SC`) for an unscanned picked item, weapons too (their
+damage and effect stay unknown). Picks do not enter the weights. In the addon `Gear.Best` puts a pick
+first in its row for that spec and level (the weapon plan decides: a two-hand pick only with "auto" or
+"Zweihand", which it then chooses; source filters do not apply), the computed options below; the own
+targets, `ns.UpgradeOf`, `ns.BisGain` and the tooltip treat it as the row's target (an upgrade until
+worn; while it is worn nothing else is an upgrade for that row). The setting `bis.picks`
+("BiS-Empfehlungen zeigen", on) switches picks off.
 
 `tools/tests/test_build_bis.py` (fixture CSVs) and `tools/tests/test_score_parity.py` (Python and
 `Gear.Score` equal to 0.01 on 200 real items per spec).

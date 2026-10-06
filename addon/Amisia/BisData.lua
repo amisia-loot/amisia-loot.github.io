@@ -4,6 +4,8 @@
 -- bonuses (a bonus "" is not scored). RP: random suffixes seen on links (item -> suffix -> stats).
 -- DG: dungeons and raids (tools/forever_dungeons.json) with their bosses' NPC ids from AllTheThings' Forever
 -- data (MIT, see LICENSES/). O: the guild's drop records up to day OT (OI: that day's ids). EF: effort per source.
+-- PICK: BiS picks from tools/bis_picks.json (the planner puts them first). PI: the rows of picked items
+-- GearData.lua lacks (as its I, no sources, plus name); their SC is computed for weapons too.
 local _, ns = ...
 
 ns.BIS = {
@@ -228,6 +230,7 @@ ns.BIS = {
         [279262] = "CRIT_RATING=14;SPELL_DAMAGE_DONE=8;SPELL_HEALING_DONE=23;STAMINA=16",
         [279264] = "DEFENSE_SKILL_RATING=12;STAMINA=14;STRENGTH=21",
         [279265] = "AGILITY=18;STAMINA=27;STRENGTH=24",
+        [280604] = "INTELLECT=16;STAMINA=15",
         [281256] = "INTELLECT=2;SPIRIT=2",
         [281318] = "INTELLECT=4;STAMINA=4",
         [286426] = "ATTACK_POWER=1;SPELL_DAMAGE_DONE=1;STAMINA=1",
@@ -305,4 +308,10 @@ ns.BIS = {
     OT = -1,
     OI = {},
     EF = { A = 2, C = 2, D = 3, DMAX = 30, P = 25, Q = 2, QSTEP = 1, R = 8, V = 1, W = 20, X = 6 },
+    PICK = {
+        { class = "SHAMAN", from = 30, item = 280604, note = "BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung.", slot = "MAINHAND", spec = "enh", src = "Quelle noch unbekannt", to = 34 },
+    },
+    PI = {
+        [280604] = { "2HWEAPON", 2, 5, 30, 3, 1, 40, 0, 3.6, 0, name = "Rage of the Storm" },
+    },
 }

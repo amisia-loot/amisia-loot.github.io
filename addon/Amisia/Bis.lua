@@ -304,9 +304,10 @@ local function sourceState()
     return s.bis.sources
 end
 
--- The scoring switches every option set carries: random suffixes, set plan, effort tie.
+-- The scoring switches every option set carries: random suffixes, set plan, effort tie, BiS picks.
 local function scoringOpts(o)
     o.suffix = ns.Get("bis.suffix") or "best"
+    o.picks = ns.Get("bis.picks") ~= false
     o.sets = ns.Get("bis.sets") ~= false
     o.tie = tonumber(ns.Get("bis.effortTie")) or 3
     return o
@@ -346,6 +347,7 @@ function ns.BisFor(class, spec, level, opts)
     }
     scoringOpts(o)
     if opts.tie ~= nil then o.tie = opts.tie end
+    if opts.picks ~= nil then o.picks = opts.picks end
     return Gear.Best(o)
 end
 
@@ -376,7 +378,7 @@ local function optsKey(o)
     return table.concat({ tostring(ns.GEAR), tostring(ns.BIS), stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
-        tostring(o.suffix), tostring(o.sets), tostring(o.tie), capKey(o.cap) }, "|")
+        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap) }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -694,8 +696,39 @@ function ns.BisGroup(id)
     return loc and Gear.GROUP[loc] or nil
 end
 
+-- BiS picks for the own character (Gear.PicksFor with the options' plan and exclusions; none with
+-- o.picks == false): the pick an item is in its rows (slotKey, and the second ring or trinket row),
+-- and whether a pick other than the item is worn in a row it is compared against. A pick is the
+-- slot's target: the pick itself counts as an upgrade until it is worn, and while a pick is worn
+-- nothing else is an upgrade for that row (gain at most 0).
+local SECOND_ROW = { FINGER1 = "FINGER2", TRINKET1 = "TRINKET2" }
+
+-- The line of a pick for explanations and tooltips: "BiS-Empfehlung: <note> (<source>)".
+function ns.BisPickText(p)
+    if type(p) ~= "table" then return nil end
+    local note = type(p.note) == "string" and p.note ~= "" and (": " .. p.note) or ""
+    local src = type(p.src) == "string" and p.src ~= "" and (" (" .. p.src .. ")") or ""
+    return "BiS-Empfehlung" .. note .. src
+end
+local function pickState(o, id, slotKey, against)
+    if o.picks == false or not o.class then return nil, false end
+    local picks = Gear.PicksFor(o.class, o.spec, o.level, o.plan, o.exclude)
+    if not next(picks) then return nil, false end
+    local pick
+    for _, key in ipairs({ slotKey, SECOND_ROW[slotKey] }) do
+        if picks[key] and picks[key].item == id then pick = picks[key] end
+    end
+    local wornIds = worn().ids
+    local pickWorn = false
+    for _, key in ipairs(against or {}) do
+        local p = picks[key]
+        if p and p.item ~= id and wornIds[p.item] then pickWorn = true end
+    end
+    return pick, pickWorn
+end
+
 -- Everything about one item for the own character: { id, s, w, kind, group, slotKey, score, gain,
--- mine, switch } or { reason, code }.
+-- mine, switch, pick, pickWorn } or { reason, code }.
 local function evaluate(item, o)
     if not Gear.Available() then return { reason = "Für diesen Client gibt es keine Ausrüstungsdaten.", code = "nodata" } end
     local id = tonumber(item) or ns.ItemID(item)
@@ -722,8 +755,9 @@ local function evaluate(item, o)
     local cap = o.cap and o.cap[Gear.CAP_ROW[group] or slotKey]
     local score = Gear.Score(s, w, o.level, kind, o.class, cap)
     local gain, mine, switch, against = gainFor(slotKey, group, id, score, context(o))
+    local pick, pickWorn = pickState(o, id, slotKey, against)
     return { id = id, s = s, w = w, kind = kind, group = group, slotKey = slotKey, score = score, gain = gain, mine = mine,
-        switch = switch, row = row, against = against, cap = cap }
+        switch = switch, row = row, against = against, cap = cap, pick = pick, pickWorn = pickWorn }
 end
 
 -- What an item (id or link; a link counts its random suffix) brings the own character:
@@ -733,6 +767,7 @@ function ns.BisGain(item, opts)
     local ev = evaluate(item, opts)
     if ev.reason then return nil, ev.reason, ev.code end
     if ev.switch then return nil, "Waffenwechsel", "switch", ev.slotKey end
+    if ev.pickWorn then return math.min(ev.gain, 0), ev.slotKey, ev.mine, ev.score end
     return ev.gain, ev.slotKey, ev.mine, ev.score
 end
 
@@ -752,7 +787,9 @@ end
 -- against = { worn links }, weaker, later } or nil, reason (German), code as ns.BisGain ("switch"
 -- with the slot as 4th value). pct is the gain in percent of the worn score, nil for an empty slot;
 -- weaker says a ring or trinket is compared with the weaker of the two worn; later is the level the
--- item needs when it is above the own (then it is no upgrade yet).
+-- item needs when it is above the own (then it is no upgrade yet); pick is the BiS pick when the item
+-- is one (then it is an upgrade until worn), pickWorn says a pick is worn in the compared row (then
+-- nothing else is an upgrade there).
 function ns.UpgradeOf(item, opts)
     local o = opts or ns.BisOpts()
     local ev = evaluate(item, o)
@@ -768,7 +805,12 @@ function ns.UpgradeOf(item, opts)
         if link then u.against[#u.against + 1] = link end
     end
     u.later = laterLevel(type(item) == "string" and item or ev.id)
-    u.up = (not u.later and not w.ids[ev.id] and ns.BisIsUpgrade(ev.gain, mine)) and true or false
+    u.pick, u.pickWorn = ev.pick, ev.pickWorn or nil
+    if ev.pickWorn then
+        u.up = false
+    else
+        u.up = (not u.later and not w.ids[ev.id] and (ev.pick ~= nil or ns.BisIsUpgrade(ev.gain, mine))) and true or false
+    end
     return u
 end
 
@@ -802,6 +844,7 @@ function ns.BisExplain(item, opts)
         lines[#lines + 1] = Gear.PartText(p)
     end
     if ev.s.SC then lines[#lines + 1] = "Werte berechnet (noch nicht gescannt)" end
+    if ev.pick then lines[#lines + 1] = ns.BisPickText(ev.pick) end
     if (ev.s.HIT or ev.s.MHIT or ev.s.SHIT) and not ev.cap then lines[#lines + 1] = "Trefferwertung zählt ohne Obergrenze" end
     return lines
 end
@@ -968,9 +1011,13 @@ function ns.BisTargets(opts)
             local src = list[i]
             out[i] = { id = id, score = score, gain = gain, mine = mine, owned = owned, worn = owned == "worn",
                 wished = wishOf(c, id), switch = switch or nil,
-                upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, mine)) or false,
+                upgrade = (not switch and owned ~= "worn" and (src.pick ~= nil or ns.BisIsUpgrade(gain, mine))) or false,
                 sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, setb = src.setb,
-                effort = src.effort }
+                effort = src.effort, pick = src.pick }
+        end
+        -- a BiS pick worn in the row: it is the target, nothing else is an upgrade there
+        if out[1] and out[1].pick and out[1].worn then
+            for i = 2, #out do out[i].upgrade = false end
         end
         r.mine[sl.key] = ctx.slot[sl.key]
         local first = out[1]
@@ -1255,7 +1302,8 @@ local function tipLines(link, id, shift)
     local compare = ns.Get("bis.compare") ~= false
     local c = ns.BisChar()
     local isWorn = worn().ids[id] ~= nil
-    local up = not isWorn and ns.BisIsUpgrade(gain, mine)
+    -- a BiS pick is the slot's target: an upgrade until worn; while one is worn nothing else is
+    local up = not isWorn and not u.pickWorn and (u.pick ~= nil or ns.BisIsUpgrade(gain, mine))
     local text, color, noTargets = nil, TIP_GREY, false
     local vs = up               -- the worn item goes under an upgrade or a "Kein Upgrade" line
     local points = math.floor(gain + 0.5)
@@ -1291,9 +1339,11 @@ local function tipLines(link, id, shift)
             end
         end
     end
+    if not text and u.pick then text, color = ("BiS-Empfehlung für dich (%s)"):format(slotName), TIP_GREEN end
     if not text then return {}, noTargets, true end
     if c and c.wish[id] then text = text .. " · auf deiner Wunschliste" end
     local out = { { text, color } }
+    if u.pick then out[#out + 1] = { ns.BisPickText(u.pick), TIP_GREEN } end
     local against = compare and vs and againstText(u)
     if against then out[#out + 1] = { against, TIP_GREY } end
     if shift then
@@ -1871,6 +1921,8 @@ ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45
       values = { { "best", "bester gesehener" }, { "base", "nur Grundwerte" } },
       tip = "Items mit Zufallsbonus (\"...des Adlers\") zählen mit dem besten Bonus, den Amisia an ihnen gesehen hat." },
     { key = "bis.sets", type = "toggle", label = "Setboni werten", default = true },
+    { key = "bis.picks", type = "toggle", label = "BiS-Empfehlungen zeigen", default = true,
+      tip = "Von Hand gepflegte beste Items, die die Wertung allein verfehlt (Procs, Effekte), stehen in ihrem Slot zuerst." },
     { key = "bis.hitCap", type = "toggle", label = "Trefferwertung nur bis zur Grenze", default = true,
       tip = "Trefferwertung über 6 % zählt nicht, gerechnet mit deinem Trefferwert aus dem Charakterfenster." },
     { key = "bis.effortTie", type = "slider", label = "Gleichstand für Aufwand (Prozent)", default = 3, min = 0, max = 10, step = 1,
