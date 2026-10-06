@@ -95,6 +95,9 @@ end
 ---------------------------------------------------------------------------
 
 local index, indexOf   -- lower alt name -> entry, built from the stored list
+-- memos of the lookups, valid for the list indexOf: lower name -> entry (false: no alt), lower
+-- main -> its alts. SameName depends on the two names only, so only a new list clears them.
+local entryMemo, altsMemo = {}, {}
 local function stored()
     local a = AmisiaDB and AmisiaDB.alts
     if type(a) ~= "table" or type(a.list) ~= "table" then return nil end
@@ -103,10 +106,10 @@ end
 
 local function byAlt()
     local a = stored()
-    if not a then return {} end
-    if indexOf ~= a.list then
-        index, indexOf = {}, a.list
-        for _, e in ipairs(a.list) do
+    local list = a and a.list or nil
+    if indexOf ~= list or not index then
+        index, indexOf, entryMemo, altsMemo = {}, list, {}, {}
+        for _, e in ipairs(list or {}) do
             if type(e) == "table" and type(e.alt) == "string" and type(e.main) == "string" then index[e.alt:lower()] = e end
         end
     end
@@ -142,15 +145,19 @@ local function entryOf(name)
     name = ns.FullName(name)
     if not name then return nil end
     local idx = byAlt()
-    local e = idx[name:lower()]
-    if e then return e end
-    local hit
-    for _, x in pairs(idx) do
-        if ns.SameName(x.alt, name) then
-            if hit then return nil end
-            hit = x
+    local low = name:lower()
+    local memo = entryMemo[low]
+    if memo ~= nil then return memo or nil end
+    local hit = idx[low]
+    if not hit then
+        for _, x in pairs(idx) do
+            if ns.SameName(x.alt, name) then
+                if hit then hit = nil break end
+                hit = x
+            end
         end
     end
+    entryMemo[low] = hit or false
     return hit
 end
 
@@ -169,12 +176,21 @@ end
 
 -- The alts of a main, sorted by name.
 function ns.AltsOf(main)
-    local out = {}
-    if not ns.FullName(main) then return out end
-    for _, e in pairs(byAlt()) do
-        if ns.SameName(e.main, main) then out[#out + 1] = e.alt end
+    main = ns.FullName(main)
+    if not main then return {} end
+    local idx = byAlt()
+    local low = main:lower()
+    local list = altsMemo[low]
+    if not list then
+        list = {}
+        for _, e in pairs(idx) do
+            if ns.SameName(e.main, main) then list[#list + 1] = e.alt end
+        end
+        table.sort(list)
+        altsMemo[low] = list
     end
-    table.sort(out)
+    local out = {}
+    for i, alt in ipairs(list) do out[i] = alt end
     return out
 end
 
@@ -235,7 +251,8 @@ function ns.ImportSiteText(text)
         local res, why = ns.SetAlts(blocks.alts)
         if res then
             ok = true
-            parts[#parts + 1] = ("%d %s übernommen."):format(res.n, res.n == 1 and "Twink" or "Twinks")
+            local skipped = res.skipped > 0 and (", %d übersprungen"):format(res.skipped) or ""
+            parts[#parts + 1] = ("%d %s übernommen%s."):format(res.n, res.n == 1 and "Twink" or "Twinks", skipped)
         else
             parts[#parts + 1] = why
         end

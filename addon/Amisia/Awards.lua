@@ -556,23 +556,31 @@ end
 -- Everyone with a plus-one in the scope: { { name, n, names } }, most first, then by name. One
 -- entry per player: spellings of one character (with and without surname) and the alts of a main
 -- are counted together, under the main's name for an alt, else under the first spelling seen.
--- names holds every spelling that won, the main and its known alts (the sync writes them all).
+-- names holds every spelling that won, the main and its known alts (the sync writes them all);
+-- won only the spellings that won.
 function ns.PlusList(scope)
     local out, sessions = {}, plusSessions(scope)
+    -- lower main of a winner -> its entry: the same player again needs no scan; a new key looks
+    -- through the entries with ns.SameMain (a spelling without surname)
+    local byKey = {}
     for _, s in ipairs(sessions) do
         for _, a in ipairs(s and s.awards or {}) do
             if plusAward(a) then
-                local hit
-                for _, e in ipairs(out) do
-                    if ns.SameMain(e.name, a.name) then hit = e break end
+                local key = tostring(ns.MainOf(a.name) or a.name):lower()
+                local hit = byKey[key]
+                if not hit then
+                    for _, e in ipairs(out) do
+                        if ns.SameMain(e.name, a.name) then hit = e break end
+                    end
                 end
                 if hit then
                     hit.n = hit.n + 1
                 else
-                    hit = { name = ns.AltMain(a.name) or a.name, n = 1, names = {} }
+                    hit = { name = ns.AltMain(a.name) or a.name, n = 1, names = {}, won = {} }
                     out[#out + 1] = hit
                 end
-                hit.names[a.name] = true
+                byKey[key] = hit
+                hit.names[a.name], hit.won[a.name] = true, true
             end
         end
     end

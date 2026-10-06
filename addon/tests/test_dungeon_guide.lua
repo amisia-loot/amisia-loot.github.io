@@ -167,7 +167,11 @@ assert(NS.DungeonQuestWaypoint(99001), "the giver's point")
 assert(STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1436 and NS.MapTarget().label == "Questgeber Thane Giver",
     NS.MapTarget() and NS.MapTarget().label)
 assert(near(NS.MapTarget().x, 0.5633))
-assert(NS.DungeonQuestWaypoint(99005) and NS.MapTarget().label == "Hall of Thanes (Eingang)", NS.MapTarget().label)
+-- a start inside without a known entrance: the giver's point inside, named as the giver (the
+-- entrance case is in test_review24.lua)
+assert(NS.DungeonEntrance("thanes") == nil)
+assert(NS.DungeonQuestWaypoint(99005) and NS.MapTarget().label == "Questgeber Halls Giver (im Dungeon)", NS.MapTarget().label)
+assert(near(NS.MapTarget().x, 0.425) and near(NS.MapTarget().y, 0.717) and NS.MapTarget().map == 1436)
 local ok, reason = NS.DungeonQuestWaypoint(99010)
 assert(not ok and reason == "Diese Quest startet durch ein Item.", tostring(reason))
 ok, reason = NS.DungeonQuestWaypoint(99003)

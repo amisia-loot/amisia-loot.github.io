@@ -331,21 +331,24 @@ function ns.SyncBuild(s)
     end
     local plus, count = { s = ns.PlusScope and ns.PlusScope() or "raid", n = {} }, 0
     -- one line per player under the main and under every linked alt, so a raider without the alt
-    -- list finds the number under the name it plays now
-    for _, e in ipairs(ns.PlusList()) do
-        local others = {}
-        for name in pairs(e.names or {}) do
-            if name ~= e.name then others[#others + 1] = name end
+    -- list finds the number under the name it plays now. Under the cap every player's main comes
+    -- first, then the names that won, then the other linked alts (each pass in plus order).
+    local function put(name, c)
+        if count < MAX_PLUS and plus.n[name] == nil then
+            plus.n[name] = c
+            count = count + 1
         end
-        table.sort(others)
-        local names = { e.name }
-        for _, name in ipairs(others) do names[#names + 1] = name end
-        for _, name in ipairs(names) do
-            if count >= MAX_PLUS then break end
-            if plus.n[name] == nil then
-                plus.n[name] = e.n
-                count = count + 1
+    end
+    local list = ns.PlusList()
+    for _, e in ipairs(list) do put(e.name, e.n) end
+    for pass = 1, 2 do
+        for _, e in ipairs(list) do
+            local others = {}
+            for name in pairs(e.names or {}) do
+                if name ~= e.name and (pass == 2 or (e.won and e.won[name])) then others[#others + 1] = name end
             end
+            table.sort(others)
+            for _, name in ipairs(others) do put(name, e.n) end
         end
     end
     -- the bench as Bench.lua keeps it: at most 40, the earliest first

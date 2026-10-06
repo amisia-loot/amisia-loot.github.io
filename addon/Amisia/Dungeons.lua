@@ -1220,7 +1220,8 @@ function D.QuestStartText(n)
 end
 
 -- Sets the map target to where a quest starts: the quest giver (the nearest of its points), the
--- dungeon's entrance for a giver inside. true, or nil and why.
+-- dungeon's entrance for a giver inside (the giver's own point inside when no entrance is known).
+-- true, or nil and why.
 function ns.DungeonQuestWaypoint(qid)
     qid = tonumber(qid)
     local dq = questData()
@@ -1228,17 +1229,19 @@ function ns.DungeonQuestWaypoint(qid)
     if r and r[6] == "X" then return nil, ITEM_START end
     local Map = ns.Map
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
+    local giver = r and r[7] or (ns.MAP and ns.MAP.G and qid and ns.MAP.G["Q:" .. qid]) or (r and r[1]) or "?"
+    if r and r[6] == "I" then
+        local point = ns.DungeonEntrance(r[11])
+        if point then
+            local e = factOf(r[11])
+            return ns.MapSetPoint(point, (e and D.Name(e) or "Dungeon") .. " (Eingang)", "Q:" .. qid)
+        end
+    end
     local points = Map.ParsePoints(r and r[8])
     if #points == 0 and qid then points = ns.MapPoints("Q:" .. qid) end
     if #points == 0 then return nil, NO_START end
-    local label
-    if r and r[6] == "I" then
-        local e = factOf(r[11])
-        label = (e and D.Name(e) or "Dungeon") .. " (Eingang)"
-    else
-        local giver = r and r[7] or (ns.MAP and ns.MAP.G and ns.MAP.G["Q:" .. qid]) or (r and r[1]) or "?"
-        label = "Questgeber " .. giver
-    end
+    local label = "Questgeber " .. giver
+    if r and r[6] == "I" then label = label .. " (im Dungeon)" end
     return ns.MapSetPoint(ns.MapNearest(points), label, "Q:" .. qid)
 end
 
