@@ -664,7 +664,7 @@ local REQUIRED = {
     "CreateFrame", "GetBuildInfo", "GetTime", "GetServerTime", "UnitName", "UnitGUID", "UnitClass", "UnitLevel",
     "UnitFactionGroup", "UnitIsUnit", "UnitIsDead", "UnitClassification", "UnitIsGroupLeader", "UnitIsGroupAssistant", "UnitPosition",
     "GetNormalizedRealmName", "GetNumGroupMembers", "GetRaidRosterInfo", "IsInGroup", "IsInRaid", "IsInInstance", "GetInstanceInfo",
-    "GetRealZoneText", "GetZoneText", "InCombatLockdown", "IsAltKeyDown", "IsShiftKeyDown", "IsControlKeyDown", "MouseIsOver",
+    "GetRealZoneText", "GetZoneText", "InCombatLockdown", "IsAltKeyDown", "IsShiftKeyDown", "IsControlKeyDown",
     "GetCursorPosition", "IsInGuild", "GetGuildInfo", "GetNumGuildMembers", "GetGuildRosterInfo", "GuildControlGetNumRanks",
     "GuildControlGetRankName", "GetNumGuildBankTabs", "GetGuildBankTabInfo", "GetGuildBankItemInfo", "GetGuildBankItemLink",
     "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
@@ -697,7 +697,7 @@ ST.REQUIRED = REQUIRED
 local OPTIONAL = {
     "ChatEdit_InsertLink", "UnitFullName", "GetItemStats", "GetItemInfo", "GetTalentTabInfo", "GetSkillLineInfo", "GetNumSkillLines",
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
-    "GetAuctionItemLink", "GetNumAuctionItems", "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
+    "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
     "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
 }
 ST.OPTIONAL = OPTIONAL
@@ -753,7 +753,7 @@ end
 
 local EVENTS = {
     "ACTIVE_TALENT_GROUP_CHANGED", "ADDON_LOADED", "ADDON_RESTRICTION_STATE_CHANGED", "AUCTION_HOUSE_BROWSE_RESULTS_ADDED",
-    "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "AUCTION_ITEM_LIST_UPDATE", "BAG_UPDATE_DELAYED", "BANKFRAME_CLOSED", "BANKFRAME_OPENED",
+    "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "BAG_UPDATE_DELAYED", "BANKFRAME_CLOSED", "BANKFRAME_OPENED",
     "BOSS_KILL", "CHARACTER_POINTS_CHANGED", "CHAT_MSG_ADDON", "CHAT_MSG_LOOT", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER",
     "CHAT_MSG_RAID_WARNING", "CHAT_MSG_SYSTEM", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER",
     "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_CHANNEL",

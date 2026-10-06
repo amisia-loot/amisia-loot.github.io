@@ -1413,7 +1413,7 @@ end
 
 local function expire(my)
     if my ~= token or not toastFrame then return end
-    if toastFrame.hover or (MouseIsOver and MouseIsOver(toastFrame)) then
+    if toastFrame.hover or toastFrame:IsMouseOver() then
         C_Timer.After(1, function() expire(my) end)
         return
     end

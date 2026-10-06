@@ -161,17 +161,8 @@ ns.OnEvent("QUEST_DETAIL", questRewards)
 ns.OnEvent("QUEST_COMPLETE", questRewards)
 
 ---------------------------------------------------------------------------
--- Auction house: the classic list and the retail browse results
+-- Auction house: the browse results
 ---------------------------------------------------------------------------
-ns.OnEvent("AUCTION_ITEM_LIST_UPDATE", function()
-    if not enabled() or not GetNumAuctionItems or not GetAuctionItemLink then return end
-    local n = GetNumAuctionItems("list") or 0
-    for i = 1, n do
-        local link = GetAuctionItemLink("list", i)
-        if link then ns.NoteItem(link, "Auktionshaus") end
-    end
-end)
-
 local function browseResults()
     if not enabled() or not (C_AuctionHouse and C_AuctionHouse.GetBrowseResults) then return end
     for _, r in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
