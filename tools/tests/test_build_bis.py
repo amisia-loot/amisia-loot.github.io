@@ -140,18 +140,61 @@ def test_rating_curve_matches_gear_lua():
     assert c.rating_pp('HIT', 5) == c.rating_pp('HIT', 10)
 
 
-def test_werte_line_and_measured_overrides(tmp_path):
-    s = bb.parse_werte('AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.35;cr_CRIT=28:2 cr_HIT=20:1.6 junk=x')
-    assert s['level'] == 60 and s['class'] == 'ROGUE' and s['agi'] == 300 and s['ratings']['CRIT'] == [28, 2]
+REAL_LINE = ('AMISIA-WERTE 1 SHAMAN 18 race=Orc hp=509 mana=553 str=53,53,15,0 agi=35,35,11,0 sta=53,53,15,0 '
+             'int=34,34,0,0 spi=48,48,9,0 apstr=106 apagi=0 apsta=0 apint=0 apspi=0 crit=11.563 rcrit=2.403 sc2=10.2516 '
+             'sc3=10.2516 sc4=10.2516 sc5=10.2516 sc6=10.2516 sc7=10.2516 dodge=5.483 parry=0 block=4.8 ap=156,0,0 '
+             'rap=0,0,0 regen=12.001,0.001 hm=0,0 hr=0,0 hs=0,0 cm=0,0 cr=0,0 cs=0,0 am=0,0 ar=0,0 as=0,0 def=0,0 dr=0,0 '
+             'pr=0,0 br=0,0 exp=0,0')
+
+
+def test_the_self_test_line():
+    """The first line from the game (2026-10-06): one shaman at 18 without any rating."""
+    s = bb.parse_werte(REAL_LINE)
+    assert s['class'] == 'SHAMAN' and s['level'] == 18 and s['race'] == 'Orc'
+    assert s['agi'] == 35 and s['int'] == 34 and s['str'] == 53, 'the effective value of base,effective,plus,minus'
+    assert s['crit'] == 11.563 and s['spellcrit'] == 10.2516 and s['apstr'] == 106 and s['ap'] == 156
+    assert s['ratings']['CRIT'] == [0, 0] and s['ratings']['HIT'] == [0, 0]
     m = bb.derive_measured([s])
-    assert m['rating60']['CRIT'] == 14 and m['rating60']['HIT'] == 12.5
-    # 300 agility for 10.35 % crit: 29 agility per percent, the default, so the scale stays 1
-    assert m['agiPerCritScale']['ROGUE'] == pytest.approx(300 / 10.35 / 29, rel=1e-3)
+    # no rating to pin, and one point cannot separate base crit from agility per percent
+    assert m['rating60'] == {} and m['agiPerCritScale'] == {} and m['intPerCritScale'] == {}
+    assert m['unpinned'] == ['SHAMAN 18'] and m['sources'] == ['SHAMAN 18']
+    # shamans get two attack power per strength (the planner's assumption)
+    assert s['apstr'] == 2 * s['str']
+
+
+def test_measured_slopes_and_ratings(tmp_path):
+    a = bb.parse_werte('AMISIA-WERTE 1 ROGUE 60 agi=300,300,0,0 crit=20 int=40,40,0,0 sc2=2 cm=28,2 hm=20,1.6')
+    b = bb.parse_werte('AMISIA-WERTE 1 ROGUE 60 agi=271,271,0,0 crit=19 int=40,40,0,0 sc2=2')
+    m = bb.derive_measured([a, b])
+    assert m['rating60']['CRIT'] == 14 and m['rating60']['HIT'] == 12.5, 'one rating pair pins its kind'
+    # 29 agility for 1 % between the two: the default for rogues at 60
+    assert m['agiPerCritScale']['ROGUE'] == pytest.approx(1.0)
+    assert 'ROGUE' not in m['intPerCritScale'], 'the same intellect pins nothing'
+    assert m['unpinned'] == []
+    old = bb.parse_werte('AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.35;cr_CRIT=28:2 junk=x')
+    assert old['level'] == 60 and old['class'] == 'ROGUE' and old['ratings']['CRIT'] == [28, 2], 'the older test form'
     path = tmp_path / 'measured.json'
-    path.write_text(json.dumps({'samples': [s], 'overrides': {'manaPerSpirit5': {'MAGE': 0.7}}}), encoding='utf-8')
+    path.write_text(json.dumps({'samples': [a, b], 'overrides': {'manaPerSpirit5': {'MAGE': 0.7}}}), encoding='utf-8')
     c = bb.Conv(bb.load_measured(str(path)))
-    assert c.rating60['HIT'] == 12.5 and c.spirit['MAGE'] == 0.7 and c.sources == ['ROGUE 60']
+    assert c.rating60['HIT'] == 12.5 and c.spirit['MAGE'] == 0.7 and c.sources == ['ROGUE 60', 'ROGUE 60']
     assert bb.Conv(bb.load_measured(str(tmp_path / 'none.json'))).rating60 == bb.RATING_60
+
+
+def test_the_committed_measurements_load():
+    """tools/bis_measured.json: the shaman at 18 with and without an agility item pins the slope
+    (8.79 agility per percent, about 1.46 times Classic's curve) and the base crit; the paladin at 9
+    is a single point. Unmeasured classes take the shaman's factor."""
+    m = bb.load_measured(bb.MEASURED)
+    assert m['agiPerCritScale']['SHAMAN'] == pytest.approx(8.79 / 6.0, rel=0.01)
+    assert m['baseCrit']['SHAMAN'] == pytest.approx(7.58, abs=0.01)
+    assert 'PALADIN 9' in m['unpinned'] and 'PALADIN' not in m['agiPerCritScale']
+    c = bb.Conv(m)
+    assert c.agi_per_crit('SHAMAN', 18) == pytest.approx(8.79, rel=0.01)
+    assert c.agi_per_crit('PALADIN', 9) == pytest.approx(20 * 10 / 60 * m['agiPerCritScale']['SHAMAN'])
+    assert c.base_crit('PALADIN') == bb.BASE_CRIT['PALADIN'] and c.base_crit('SHAMAN') == pytest.approx(7.58, abs=0.01)
+    # the paladin's point as a check of that estimate: within a percent of crit
+    pal = next(s for s in json.load(open(bb.MEASURED, encoding='utf-8'))['samples'] if s['class'] == 'PALADIN')
+    assert abs(c.base_crit('PALADIN') + pal['agi'] / c.agi_per_crit('PALADIN', 9) - pal['crit']) < 1.0
 
 
 # ---------------------------------------------------------------- the weights
@@ -438,3 +481,55 @@ def test_the_committed_data_is_current():
     assert 'BisData.lua [AllowLoadGameType camelot]' in toc
     assert toc.index('GearWeights.lua [AllowLoadGameType camelot]') < toc.index('BisData.lua [AllowLoadGameType camelot]') \
         < toc.index('Gear.lua')
+
+
+def test_attack_power_per_stat_matches_the_game():
+    """The planner's attack power per strength and agility against the measured lines: shaman and
+    paladin 2 per strength, 0 per agility; hunter ranged 2 per agility - 10 without a level part."""
+    samples = json.load(open(bb.MEASURED, encoding='utf-8'))['samples']
+    melee = {cls: p for cls, key, _, _, model, p in bb.SPECS if model == 'phys' and not p.get('ranged')}
+    for s in samples:
+        cls = s['class']
+        if cls in melee and s.get('apstr') is not None:
+            assert s['apstr'] == melee[cls]['ap_str'] * s['str'], (cls, s['apstr'])
+        if cls in melee and s.get('apagi') is not None:
+            assert s['apagi'] == melee[cls]['ap_agi'] * s['agi'], (cls, s['apagi'])
+    hunter = next(s for s in samples if s['class'] == 'HUNTER')
+    assert hunter['apagi'] == hunter['agi'] and hunter['apstr'] == hunter['str'], 'hunter melee: 1 per strength and agility'
+    p = next(sp[5] for sp in bb.SPECS if sp[0] == 'HUNTER')
+    r = ref('HUNTER', 5, AGI=hunter['agi'])
+    _, shown = bb.phys_weights('HUNTER', p, r, bb.Conv())
+    assert shown['AP'] == 2 * hunter['agi'] - 10 == 40, 'ranged attack power as the game shows it'
+
+
+def test_spell_power_counts_for_casters_and_healers():
+    """Forever items carry ITEM_MOD_SPELL_POWER_SHORT (seen in game 2026-10-06 on a random-suffix
+    cloak): ItemSparse's stat 45 computes to it, Gear.lua maps it to SPP, and SPP counts with the
+    spell damage plus the healing weight - one for every caster and healer."""
+    assert bb.STAT_KEY[45] == 'SPELL_POWER'
+    stat_map = bb.gear_stat_map()
+    assert stat_map['SPELL_POWER'] == 'SPP'
+    assert bb.parse_stats('SPELL_POWER=12;INTELLECT=4', stat_map) == {'SPP': 12, 'INT': 4}
+    conv = bb.Conv()
+    for cls, key, _, role, model, p in bb.SPECS:
+        if model in ('caster', 'heal'):
+            w, hard, _ = bb.derive(cls, model, p, ref(cls, 30), conv)
+            assert bb.score({'SPP': 10}, w, 30, None, cls, conv) >= 10, (cls, key)
+
+
+def test_measured_pairs_confirm_the_model():
+    """Warrior 15 with a strength/stamina item off: 2 attack power per strength, 10 health per
+    stamina (the tank model's unit), crit unchanged. Priest 23 with an intellect/spirit cloak off:
+    19.8 intellect per 1 % spell crit and 0.625 mana per spirit and five seconds (Classic's value)."""
+    samples = json.load(open(bb.MEASURED, encoding='utf-8'))['samples']
+    war = sorted((s for s in samples if s['class'] == 'WARRIOR'), key=lambda s: s['str'])
+    assert len(war) == 2
+    lo, hi = war
+    assert hi['ap'] - lo['ap'] == 2 * (hi['str'] - lo['str'])
+    assert hi['hp'] - lo['hp'] == 10 * (hi['sta'] - lo['sta'])
+    assert hi['crit'] == lo['crit']
+    m = bb.load_measured(bb.MEASURED)
+    c = bb.Conv(m)
+    assert c.int_per_crit('PRIEST', 23) == pytest.approx(19.8, rel=0.01)
+    assert c.base_spell_crit('PRIEST') == pytest.approx(0.8, abs=0.01)
+    assert m['manaPerSpirit5']['PRIEST'] == pytest.approx(0.625)

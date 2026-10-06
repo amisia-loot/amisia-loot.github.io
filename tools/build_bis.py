@@ -283,8 +283,12 @@ HP_FACTOR = {'WARRIOR': 1.0, 'PALADIN': 0.95, 'HUNTER': 0.9, 'ROGUE': 0.9, 'PRIE
 class Conv:
     """The conversions in use: the defaults above, corrected by measurements.
 
-    A measurement at one level corrects a class's curve by its ratio to the default at that level
-    (the shape stays Classic's, the size is Forever's)."""
+    A measurement corrects a class's curve by its ratio to the default at that level (the shape
+    stays Classic's: per percent grows with max(level, 10) / 60; the size is Forever's). A class
+    nobody measured takes the mean ratio of the measured classes: the best estimate until it is
+    measured itself (assumption: Forever changed the curve by one factor for every class). The base
+    crit (crit at 0 agility or intellect, talents included) of a measured class replaces the
+    Classic base for that class at every level."""
 
     def __init__(self, measured=None):
         m = measured or {}
@@ -292,9 +296,19 @@ class Conv:
         self.rating60.update({k: float(v) for k, v in (m.get('rating60') or {}).items() if k in RATING_60})
         self.agi_scale = {c: float(v) for c, v in (m.get('agiPerCritScale') or {}).items()}
         self.int_scale = {c: float(v) for c, v in (m.get('intPerCritScale') or {}).items()}
+        mean = lambda d: sum(d.values()) / len(d) if d else 1.0  # noqa: E731
+        self.agi_default, self.int_default = mean(self.agi_scale), mean(self.int_scale)
+        self.base_crit_m = {c: float(v) for c, v in (m.get('baseCrit') or {}).items()}
+        self.base_spell_crit_m = {c: float(v) for c, v in (m.get('baseSpellCrit') or {}).items()}
         self.spirit = dict(MANA_PER_SPIRIT_5)
         self.spirit.update({c: float(v) for c, v in (m.get('manaPerSpirit5') or {}).items()})
         self.sources = list(m.get('sources') or [])
+
+    def base_crit(self, cls):
+        return self.base_crit_m.get(cls, BASE_CRIT[cls])
+
+    def base_spell_crit(self, cls):
+        return self.base_spell_crit_m.get(cls, BASE_SPELL_CRIT[cls])
 
     def rating_pp(self, kind, level):
         """Percent per point of rating (per skill point for DEF), as Gear.lua's ratingPerPoint."""
@@ -302,43 +316,88 @@ class Conv:
         return 1 / (self.rating60[kind] * scale)
 
     def agi_per_crit(self, cls, level):
-        return AGI_PER_CRIT_60[cls] * max(level, 10) / 60 * self.agi_scale.get(cls, 1.0)
+        return AGI_PER_CRIT_60[cls] * max(level, 10) / 60 * self.agi_scale.get(cls, self.agi_default)
 
     def int_per_crit(self, cls, level):
-        return INT_PER_CRIT_60[cls] * max(level, 10) / 60 * self.int_scale.get(cls, 1.0)
+        return INT_PER_CRIT_60[cls] * max(level, 10) / 60 * self.int_scale.get(cls, self.int_default)
+
+
+# The self-test's rating pairs ("<rating>,<bonus %>") -> rating kinds of RATING_60.
+WERTE_RATINGS = {'hm': 'HIT', 'hs': 'SHIT', 'cm': 'CRIT', 'am': 'HASTE', 'exp': 'EXP', 'dr': 'DODGE', 'pr': 'PARRY',
+                 'br': 'BLOCK', 'def': 'DEF'}
+WERTE_STATS = {'str': 'str', 'agi': 'agi', 'sta': 'sta', 'int': 'int', 'spi': 'spi'}
 
 
 def parse_werte(text):
-    """One sample from an in-game line: tokens key=value, separated by spaces or ';' (keys ignore
-    case): level, class, agi, int, crit (melee crit chance %), spellcrit (%), and per rating kind
-    cr_<KIND>=<rating>:<bonus %> (GetCombatRatingBonus). The leading "AMISIA-WERTE" is skipped."""
+    """One sample from the self-test's line (SelfTest.lua, section "Werte"):
+
+        AMISIA-WERTE 1 SHAMAN 18 race=Orc hp=509 mana=553 str=53,53,15,0 agi=35,35,11,0 ...
+            crit=11.563 rcrit=2.403 sc2=10.2516 ... dodge=5.483 parry=0 block=4.8 ap=156,0,0
+            hm=0,0 hs=0,0 cm=0,0 ... dr=0,0 pr=0,0 br=0,0 exp=0,0
+
+    After the tag: the line's version, the class and the level. Attributes are UnitStat's
+    base,effective,plus,minus (the effective value counts); crit is the melee crit chance, sc2 the
+    spell crit (sc2..sc7 per school, all alike); a rating pair is <rating>,<bonus %>
+    (GetCombatRatingBonus). Older test form: cr_<KIND>=<rating>:<bonus>, spellcrit=. Unknown
+    tokens are skipped."""
     sample = {'ratings': {}}
-    for tok in re.split(r'[\s;]+', str(text or '')):
-        k, _, v = tok.partition('=')
-        k = k.strip().lower()
-        if not v:
+    positional = []
+    for tok in re.split(r'[\s;]+', str(text or '').strip()):
+        if not tok or tok == 'AMISIA-WERTE':
             continue
-        if k.startswith('cr_'):
-            r, _, b = v.partition(':')
+        k, eq, v = tok.partition('=')
+        if not eq:
+            positional.append(tok)
+            continue
+        k = k.lower()
+        nums = []
+        for part in re.split(r'[,:]', v):
             try:
-                sample['ratings'][k[3:].upper()] = [float(r), float(b)]
+                nums.append(float(part))
             except ValueError:
-                pass
+                nums.append(None)
+        if k.startswith('cr_') and len(nums) >= 2 and None not in nums[:2]:
+            sample['ratings'][k[3:].upper()] = nums[:2]
+        elif k in WERTE_RATINGS and len(nums) >= 2 and None not in nums[:2]:
+            sample['ratings'][WERTE_RATINGS[k]] = nums[:2]
+        elif k in WERTE_STATS and nums and nums[0] is not None:
+            # base,effective,plus,minus: the effective value
+            sample[WERTE_STATS[k]] = nums[1] if len(nums) > 1 and nums[1] is not None else nums[0]
         elif k == 'class':
-            sample['class'] = v.strip().upper()
-        elif k in ('level', 'agi', 'int', 'crit', 'spellcrit'):
-            try:
-                sample[k] = float(v)
-            except ValueError:
-                pass
+            sample['class'] = v.upper()
+        elif k == 'race':
+            sample['race'] = v
+        elif k in ('level', 'crit', 'spellcrit', 'rcrit', 'dodge', 'parry', 'block', 'hp', 'mana', 'apstr', 'apagi', 'regen') \
+                and nums and nums[0] is not None:
+            sample[k] = nums[0]
+        elif k.startswith('sc2') and nums and nums[0] is not None:
+            sample['spellcrit'] = nums[0]
+        elif k == 'ap' and nums and nums[0] is not None:
+            sample['ap'] = nums[0]
+    # positional: version, class, level
+    words = [p for p in positional if re.match(r'^[A-Z]+$', p)]
+    numbers = [p for p in positional if re.match(r'^\d+$', p)]
+    if words and 'class' not in sample:
+        sample['class'] = words[0]
+    if len(numbers) >= 2 and 'level' not in sample:
+        sample['level'] = float(numbers[1])
+    elif len(numbers) == 1 and 'level' not in sample and not words:
+        sample['level'] = float(numbers[0])
     return sample
 
 
 def derive_measured(samples):
-    """Overrides from raw samples: rating per percent at 60 from (rating, bonus) pairs (scaled by
-    the level curve), agility and intellect per crit from the shown crit minus the class's base."""
-    out = {'rating60': {}, 'agiPerCritScale': {}, 'intPerCritScale': {}, 'sources': []}
+    """Overrides from raw samples.
+
+    - Rating per percent at 60 from any pair with a rating (rating / bonus, scaled by the level
+      curve): one sample pins it.
+    - Agility (intellect) per percent crit only from two samples of the same class and level with
+      different agility (intellect): the slope. One sample cannot separate the base crit from the
+      ratio, so it changes nothing (it stays in the file as a check, see `unpinned`)."""
+    out = {'rating60': {}, 'agiPerCritScale': {}, 'intPerCritScale': {}, 'baseCrit': {}, 'baseSpellCrit': {}, 'sources': [],
+           'unpinned': []}
     base = Conv()
+    groups = {}
     for s in samples:
         lvl, cls = s.get('level'), s.get('class')
         if not lvl:
@@ -348,15 +407,29 @@ def derive_measured(samples):
         for kind, (rating, bonus) in (s.get('ratings') or {}).items():
             if kind in RATING_60 and rating > 0 and bonus > 0:
                 out['rating60'][kind] = round(rating / bonus / scale, 3)
-        if cls in AGI_PER_CRIT_60 and s.get('agi') and s.get('crit') is not None:
-            from_agi = s['crit'] - BASE_CRIT[cls]
-            if from_agi > 0:
-                out['agiPerCritScale'][cls] = round(s['agi'] / from_agi / base.agi_per_crit(cls, lvl), 4)
-        if cls in INT_PER_CRIT_60 and s.get('int') and s.get('spellcrit') is not None:
-            from_int = s['spellcrit'] - BASE_SPELL_CRIT[cls]
-            if from_int > 0:
-                out['intPerCritScale'][cls] = round(s['int'] / from_int / base.int_per_crit(cls, lvl), 4)
         out['sources'].append(f"{cls or '?'} {lvl}")
+        if cls in AGI_PER_CRIT_60:
+            groups.setdefault((cls, lvl), []).append(s)
+    for (cls, lvl), group in sorted(groups.items()):
+        pinned = False
+        for stat, chance, key, bkey, default in (('agi', 'crit', 'agiPerCritScale', 'baseCrit', base.agi_per_crit),
+                                                 ('int', 'spellcrit', 'intPerCritScale', 'baseSpellCrit', base.int_per_crit)):
+            pts = sorted({(g[stat], g[chance]) for g in group if g.get(stat) is not None and g.get(chance) is not None})
+            if len(pts) >= 2 and pts[-1][0] != pts[0][0] and pts[-1][1] != pts[0][1]:
+                per = (pts[-1][0] - pts[0][0]) / (pts[-1][1] - pts[0][1])
+                if per > 0:
+                    out[key][cls] = round(per / default(cls, lvl), 4)
+                    # the crit at none of the stat: base and talents of this character
+                    out[bkey][cls] = round(pts[-1][1] - pts[-1][0] / per, 3)
+                    pinned = True
+        # mana per spirit: GetManaRegen's base value (per second) between two samples with
+        # different spirit, times five for the five-second unit of the weights
+        pts = sorted({(g['spi'], g['regen']) for g in group if g.get('spi') is not None and g.get('regen') is not None})
+        if len(pts) >= 2 and pts[-1][0] != pts[0][0] and pts[-1][1] > pts[0][1]:
+            out.setdefault('manaPerSpirit5', {})[cls] = round(5 * (pts[-1][1] - pts[0][1]) / (pts[-1][0] - pts[0][0]), 4)
+            pinned = True
+        if not pinned:
+            out['unpinned'].append(f'{cls} {lvl}')
     return out
 
 
@@ -368,7 +441,9 @@ def load_measured(path=MEASURED):
         return {}
     with open(path, encoding='utf-8') as fh:
         raw = json.load(fh)
-    out = derive_measured(raw.get('samples') or [])
+    # a sample with its original line is read again, so a better parser reaches old samples too
+    samples = [parse_werte(s['line']) if isinstance(s, dict) and s.get('line') else s for s in raw.get('samples') or []]
+    out = derive_measured(samples)
     for k, v in (raw.get('overrides') or {}).items():
         if isinstance(v, dict):
             out.setdefault(k, {}).update(v)
@@ -891,11 +966,13 @@ def phys_weights(cls, p, ref, conv):
     ranged = p.get('ranged')
     form = p.get('form')
     agi = ref['AGI']
-    ap = (ref['RAP'] + ref['AP'] + 2 * agi + 2 * L - 10) if ranged else (
+    # attack power as measured in game (tools/bis_measured.json, 2026-10-06): hunter ranged 2 per
+    # agility - 10 (no level part), paladin 2 per strength + 3 * level - 20; shaman 2 per strength
+    ap = (ref['RAP'] + ref['AP'] + 2 * agi - 10) if ranged else (
         ref['AP'] + ref['FAP'] + p['ap_str'] * ref['STR'] + p['ap_agi'] * agi + (2 * L if form else 3 * L - 20))
     wdps = ref['rDPS'] if ranged else (0.9 * L if form else ref['wDPS'])
     B = wdps + max(ap, 0) / 14
-    c = (BASE_CRIT[cls] + agi / conv.agi_per_crit(cls, L) + ref['critRating']) / 100
+    c = (conv.base_crit(cls) + agi / conv.agi_per_crit(cls, L) + ref['critRating']) / 100
     dw = p.get('plan') == 'DW' and cls in DUAL_WIELD and L >= DUAL_WIELD[cls]
     miss = (0.6 * DW_MISS + 0.4 * MELEE_MISS) if dw else MELEE_MISS
     t = max(0.5, 1 - max(0.0, miss - ref['hit']) / 100 - TARGET_DODGE / 100)
@@ -948,7 +1025,7 @@ def caster_weights(cls, p, ref, conv, heal=False):
         sp = ref['HEAL'] + ref['SPP']
     else:
         sp = ref['SPD'] + ref['SPP'] + max([ref[s] for s in p['school']] or [0])
-    c = (BASE_SPELL_CRIT[cls] + ref['INT'] / conv.int_per_crit(cls, L) + ref['spellCritRating']) / 100
+    c = (conv.base_spell_crit(cls) + ref['INT'] / conv.int_per_crit(cls, L) + ref['spellCritRating']) / 100
     t = 1.0 if heal else max(0.5, 1 - max(0.0, SPELL_MISS - ref['spellhit']) / 100)
     dmg = B + k * sp
     pool = 18 * L + 15 * ref['INT']
@@ -1555,6 +1632,7 @@ def main(argv=None):
         data.setdefault('samples', [])
         for line in args.werte:
             s = parse_werte(line)
+            s["line"] = line.strip()
             if s not in data['samples']:
                 data['samples'].append(s)
         with open(args.measured, 'w', encoding='utf-8', newline='\n') as fh:

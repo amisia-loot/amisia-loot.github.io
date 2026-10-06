@@ -919,3 +919,27 @@ Umgesetzt mit den wago-CSVs von Forever 1.60.1.70235 (`ItemSparse`, `Item`, `Ite
   schreibt `GearWeights.lua` noch, wenn auf dem PC die Gewichte des fremden Leveling-Guides
   installiert sind; dieser Teil muss aus `build_gear.py` heraus (sonst überschreibt ein PC-Lauf die
   eigenen Gewichte).
+- **Erste Messungen im Spiel (2026-10-06, `tools/bis_measured.json`):** Schamane 18 mit und ohne ein
+  Beweglichkeits-Item (35 -> 33 Beweglichkeit, Krit 11,563 -> 11,3354 %): 8,79 Beweglichkeit je 1 %
+  Krit (Classic-Kurve mal 1,46) und 7,58 % Krit bei 0 Beweglichkeit (Grundwert mit Talenten, statt
+  Classic 1,7 %; gilt für den Schamanen auf allen Leveln). Ausweichen steigt je Beweglichkeit genauso.
+  Eine einzelne Messung legt weder Verhältnis noch Grundwert fest (Paladin 9, Jäger 5: nur zur
+  Prüfung, `unpinned`). Klassen ohne eigene Steigung nehmen den Faktor der gemessenen (Annahme:
+  Forever ändert die Kurve für alle Klassen um denselben Faktor, die Form `max(Level, 10) / 60` bleibt
+  Classics); der Paladin-9-Punkt liegt damit unter 1 % Krit daneben. Zauberkrit je Intelligenz und
+  die Ratings sind noch ungemessen (alle Ratings 0 in den Zeilen). Angriffskraft bestätigt: Schamane
+  und Paladin 2 je Stärke, 0 je Beweglichkeit; Jäger im Nahkampf 1 je Stärke und Beweglichkeit, Distanz
+  2 je Beweglichkeit - 10 ohne Levelanteil (Formel angepasst). Der Schamane hat 16 Angriffskraft mehr
+  als `2*Stärke + 3*Level - 20`; Herkunft offen.
+- **Weitere Messungen (2026-10-06):** Priester 23 mit und ohne einen Intelligenz/Willenskraft-Umhang:
+  19,8 Intelligenz je 1 % Zauberkrit (Classic-Kurve mal 0,87), 0,80 % Zauberkrit bei 0 Intelligenz,
+  15 Mana je Intelligenz, 0,625 Mana je Willenskraft und 5 Sek. (genau der Classic-Wert). Der Nahkampfkrit
+  dieses Paars fiel ohne Änderung der Beweglichkeit (ungeklärt) und zählt nicht. Klassen ohne eigene
+  Messung nehmen für Intelligenz den Faktor des Priesters. Krieger 15 mit und ohne ein
+  Stärke/Ausdauer-Item: 2 Angriffskraft je Stärke, 10 Gesundheit je Ausdauer, Krit und Vermeidung
+  unverändert (bestätigt das Modell). Prüfpunkte gegen die Schätzung mit dem Schamanen-Faktor:
+  Krieger 15 4,5 % geschätzt gegen 5,1 % gemessen, Paladin 9 5,4 % gegen 4,6 %; Jäger 5 1,9 % gegen
+  5,4 % (die Jäger-Kurve von Classic, 53 Beweglichkeit je % bei 60, passt bei Level 5 nicht; Jäger
+  brauchen eine eigene Steigung). `ITEM_MOD_SPELL_POWER_SHORT` gibt es auf Forever-Items (gesehen an
+  einem Umhang mit Zufallsbonus); es zählt als Zaubermacht für Zauberschaden und Heilung, und
+  `GetItemStats` mit einem Link liefert die Werte des Zufallsbonus mit.
