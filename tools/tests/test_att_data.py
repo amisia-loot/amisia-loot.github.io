@@ -1,0 +1,118 @@
+"""tools/att_data.py: the shared reader of AllTheThings' Forever data (MIT) for build_gear.py,
+build_map.py and build_dungeonquests.py. Runs on the hand-made fixture in tools/tests/fixtures/att
+(the builder language, no real data): the sandbox, the preprocessor, timelines, quests, NPCs, drops,
+vendors, zone drops, world drops, PvP gear, crafted items, the item export and the instance map ids."""
+import os
+import sys
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+import att_data  # noqa: E402
+
+FIXTURE = os.path.join(HERE, 'fixtures', 'att')
+
+
+@pytest.fixture(scope='module')
+def db():
+    return att_data.load(FIXTURE)
+
+
+def test_the_sandbox_has_no_io_os_load_or_python(tmp_path):
+    lua, S = att_data.sandbox()
+    for name in ('io', 'os', 'python', 'require', 'loadstring', 'load', 'dofile', 'debug', 'package'):
+        assert lua.eval(name) is None, name
+    target = tmp_path / 'touched'
+    # inside a data file "io" is only a stand-in: the call records nothing and touches nothing
+    assert S.run('local f = io.open(%r, "w"); f:write("x")' % str(target), 'evil.lua', S.new()) is None
+    assert not target.exists()
+
+
+def test_preprocessor_keeps_the_forever_branches():
+    src = '\n'.join(['a', '-- #if SEASON_OF_DISCOVERY', 'sod', '-- #elseif AFTER CATA', 'cata', '-- #else', 'forever',
+                     '-- #endif', '-- #if BEFORE 4.0.3', 'classic', '-- #endif', '-- #if NOT ANYCLASSIC', 'retail',
+                     '-- #endif', '-- #if AFTER 1.13.5 AND CAMELOT', 'both', '-- #endif'])
+    out = att_data.preprocess(src).split('\n')
+    assert len(out) == len(src.split('\n')), 'line numbers stay'
+    assert [x for x in out if x] == ['a', 'forever', 'classic', 'both']
+    assert att_data.pp_true('ANYCLASSIC') and not att_data.pp_true('TBC') and att_data.pp_true('BEFORE WRATH')
+    assert att_data.pp_true('SEASON_OF_DISCOVERY OR FOREVER') and not att_data.pp_true('SEASON_OF_DISCOVERY')
+
+
+def test_nothing_failed_and_the_commit(db):
+    assert db['errors'] == {}
+    assert db['files'][0].startswith('dungeons & raids/'), 'the Forever dungeon files first'
+    assert any(f.startswith('zzOLD/') for f in db['files'])
+
+
+def test_quests_from_a_zone_file(db):
+    q = db['quests'][71001]
+    assert q['name'] == 'Boar Trouble' and q['giver'] == 'Farmer Fixture' and q['givers'] == [81001]
+    assert q['faction'] == 'A', 'Human and Dwarf'
+    assert q['classes'] == 1 | 2, 'warrior and paladin as class bits'
+    assert q['minLevel'] == 6 and q['zone'] == 1426 and q['points'] == [(1426, 4000, 6000)]
+    assert q['rewards'] == [61001, 61002, 61003], 'the rewards and what a container holds, not the objective item'
+    assert 71002 not in db['quests'], 'added with Cataclysm: not in Forever'
+    assert 71003 not in db['quests'], 'the Season of Discovery branch is preprocessed away'
+    q = db['quests'][71004]
+    assert q['objects'] == [91001] and q['points'] == [(1426, 1000, 1000), (1455, 2000, 2000)], 'a bare map constant too'
+
+
+def test_dungeon_quests_and_the_old_copy(db):
+    q = db['quests'][70001]
+    assert q['inst'] == 9001 and not q['old'] and q['minLevel'] == 10, 'the Forever record wins over the zzOLD copy'
+    assert db['quests'][70002]['inside'], 'a giver on the dungeon map stands inside'
+    assert db['quests'][70003]['startItem'] and db['quests'][70003]['rewards'] == [60003]
+
+
+def test_npcs(db):
+    n = db['npcs']
+    assert n[81001]['title'] == 'Farmer' and n[81001]['points'] == [(1426, 4000, 6000)], 'a giver stands where the quest starts'
+    assert n[81002]['kinds'] == {'rare'} and len(n[81002]['points']) == 2
+    assert n[81003]['kinds'] == {'vendor'} and n[81003]['faction'] == 'H' and n[81003]['title'] == 'Armorer'
+    assert n[81003]['points'] == [(1426, 5000, 4000)], 'the old zone file does not add its points'
+    assert n[81006]['kinds'] == {'boss'} and n[81006]['inst'] == 9003 and n[81006]['old']
+    assert n[81007]['name'] == 'Encounter Boss', 'an encounter boss named by its encounter'
+    assert n[81004]['name'] == 'Gnoll Brute' and n[81004]['kinds'] == {'mob'}, 'a mob only a drop names'
+
+
+def test_drops_vendors_and_the_rest(db):
+    assert (60200, 80100, 'boss', 9001, 9101, False, 'Boss') in db['drops']
+    assert (61004, 81002, 'rare', None, 1426, False, None) in db['drops']
+    assert (61013, 81007, 'boss', 9003, 9102, True, 'Encounter Boss') in db['drops']
+    assert (61006, [81004], None, 1426, False) in db['zone_drops'] and (61007, [], None, 1426, False) in db['zone_drops']
+    assert (61011, [81005], 9003, 9102, True) in db['zone_drops']
+    assert db['sold'] == [(61005, 81003, False), (61014, 81003, True)]
+    assert db['world'] == [61015] and db['pvp'] == [(61016, 'A')] and db['crafted'] == [(61017, 'tailoring')]
+
+
+def test_instances_and_their_map_ids(db):
+    i = db['instances']
+    assert i[9001]['name'] == 'Test Halls' and i[9001]['area'] == 99001 and i[9001]['mapID'] == 4001
+    assert i[9003]['mapID'] == 4002, 'the first assignment of a uiMap'
+    assert i[9003]['points'] == [(1426, 7000, 2000)] and i[9003]['old']
+    assert i[9002]['mapID'] is None
+
+
+def test_the_item_export(db):
+    it = db['items']
+    assert it[61001] == {'name': 'Boar Hide Belt', 'q': 2, 'ilvl': 10, 'min': 5, 'classID': 4, 'subclassID': 2,
+                         'equipLoc': 'INVTYPE_WAIST', 'icon': '', 'bind': 1, 'classes': 0, 'skill': 0, 'stats': ''}
+    assert it[61005]['classes'] == 1 | 2 and it[61006]['equipLoc'] == 'INVTYPE_2HWEAPON'
+    assert db['item_names'][61017] == 'Woven Robe'
+
+
+def test_what_a_refresh_keeps():
+    assert att_data.kept('zones/kalimdor/durotar.lua') and att_data.kept('zzOLD/02 - Outdoor Zones/x.lua')
+    assert att_data.kept('.config/exports/ItemDB.lua') and att_data.kept('.config/.wago/UiMapAssignment.1.60.1.70170.csv')
+    assert not att_data.kept('.config/.wago/Item.1.60.1.70170.csv') and not att_data.kept('holidays/x.lua')
+    assert not att_data.kept('zzOLD/10 - Professions/x.lua') and not att_data.kept('00 - Missing DB/MissingItems.txt')
+
+
+def test_names_from_comments():
+    src = ('q(5, {\t-- A Quest -- note\n\t["qg"] = 7,\t-- Giver <Title>\n\tcrs = {\n\t\t8,\t-- Mob\n\t},\n'
+           'i(9),\t-- Sword [Classic] / New Name [CATA+]\nn(10, {\t-- Vendor (PET!)\n')
+    names = att_data.comment_names(src)
+    assert names[('q', 5)] == ('A Quest', None) and names[('n', 7)] == ('Giver', 'Title')
+    assert names[('n', 8)] == ('Mob', None) and names[('i', 9)] == ('Sword', None) and names[('n', 10)] == ('Vendor', None)

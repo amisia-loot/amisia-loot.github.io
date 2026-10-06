@@ -1,24 +1,45 @@
-"""The pure parts of tools/build_gear.py: QuestieDB's CBOR rows, source interning, factions,
-wowsrc pages and the join with the scan."""
-import base64
+"""The pure parts of tools/build_gear.py: source interning, wowsrc pages, the item master (scan over
+the last build over the item export), places of dungeons, and the join of AllTheThings' data (as
+tools/att_data.py hands it over) and the collector with the items. No QuestieDB."""
+import json
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
+import att_data  # noqa: E402
 import build_gear  # noqa: E402
 
-
-def test_cbor_map_with_text_and_numbers():
-    # {1: "Worn Shortsword", 9: 2, 10: 1, 12: 2, 13: 7}, the way QuestieDB stores an item row
-    raw = base64.b64decode('pQFPV29ybiBTaG9ydHN3b3JkCQIKAQwCDQc=')
-    assert build_gear._cbor(raw)[0] == {1: 'Worn Shortsword', 9: 2, 10: 1, 12: 2, 13: 7}
+FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 
 
-def test_cbor_nested_arrays_and_negative_numbers():
-    # [[820], -1, [1, 2]]
-    raw = bytes([0x83, 0x81, 0x19, 0x03, 0x34, 0x20, 0x82, 0x01, 0x02])
-    assert build_gear._cbor(raw)[0] == [[820], -1, [1, 2]]
+def scan_item(name, loc='INVTYPE_HEAD', q=2, lvl=20, cls=4):
+    return {'name': name, 'q': q, 'ilvl': lvl + 5, 'min': lvl, 'classID': cls, 'subclassID': 2,
+            'equipLoc': loc, 'icon': '', 'bind': 1}
+
+
+def quest(name, minlvl, faction='', zone=1436, points=(), rewards=(), inst=None, classes=0, inside=False):
+    return {'name': name, 'minLevel': minlvl, 'faction': faction, 'classes': classes, 'givers': [], 'giver': None,
+            'points': list(points), 'objects': [], 'startItem': False, 'inside': inside, 'zone': zone, 'inst': inst,
+            'pre': [], 'alt': [], 'rewards': list(rewards), 'file': 'x', 'old': False}
+
+
+def npc(name, kinds, zone=1436, faction='', title=None, inst=None, points=()):
+    return {'name': name, 'title': title, 'points': list(points), 'zone': zone, 'faction': faction,
+            'kinds': set(kinds), 'inst': inst, 'old': False}
+
+
+def att(**kw):
+    db = att_data.empty_db()
+    db.update(kw)
+    return db
+
+
+DEADMINES = {63: {'name': 'Deadmines', 'area': 1581, 'maps': [291], 'points': [(1436, 4220, 8260)], 'file': 'd',
+                  'stem': 'the deadmines', 'old': False, 'mapID': 36}}
+FACTS = [{'key': 'deadmines', 'name': 'The Deadmines', 'kind': 'party'},
+         {'key': 'sm', 'name': 'Scarlet Monastery', 'kind': 'party', 'aliases': ['Scarlet Monastery - Armory']},
+         {'key': 'onyxia', 'name': "Onyxia's Lair", 'kind': 'raid', 'inst': 249, 'area': 2159}]
 
 
 def test_sources_are_interned_and_trailing_nones_dropped():
@@ -27,19 +48,6 @@ def test_sources_are_interned_and_trailing_nones_dropped():
     b = s.add('D', 'Deadmines', 'VanCleef')
     assert a == b == 1 and s.rows == [('D', 'Deadmines', 'VanCleef')]
     assert s.add('Q', 'x', 1, 0, None, None, 5) == 2 and s.rows[1] == ('Q', 'x', 1, 0, None, None, 5)
-
-
-def test_faction_from_race_bits():
-    assert build_gear.faction_of(77) == 'A'
-    assert build_gear.faction_of(178) == 'H'
-    assert build_gear.faction_of(0) is None and build_gear.faction_of(None) is None
-    assert build_gear.faction_of(77 | 2) is None
-
-
-def test_pvp_vendors():
-    assert build_gear.is_pvp_vendor({9: 2918, 14: 'Food and Drink'})
-    assert build_gear.is_pvp_vendor({9: 1519, 14: 'Accessories Quartermaster'})
-    assert not build_gear.is_pvp_vendor({9: 45, 14: 'League of Arathor Supply Officer'})
 
 
 def test_parse_wowsrc_page():
@@ -52,58 +60,71 @@ def test_parse_wowsrc_page():
                  'bosses': [{'name': 'Edwin VanCleef', 'items': [{'n': 'Cruel Barb', 'l': 19, 'd': '12.5%', 'nw': False}]}]}
 
 
-def scan_item(name, loc='INVTYPE_HEAD', q=2, lvl=20, cls=4):
-    return {'name': name, 'q': q, 'ilvl': lvl + 5, 'min': lvl, 'classID': cls, 'subclassID': 2,
-            'equipLoc': loc, 'icon': '', 'bind': 1}
+def test_no_questie_left():
+    with open(build_gear.__file__, encoding='utf-8') as fh:
+        src = fh.read()
+    assert 'questie' not in src.lower(), 'no data of that unlicensed database'
+    assert not hasattr(build_gear, 'load_questie')
 
 
-def test_join_keeps_wearable_scanned_items_and_quest_levels():
-    questie = {
-        'Item': {
-            10: {1: 'Quest Helm', 6: [500]},
-            11: {1: 'Not Scanned', 6: [500], 12: 4},
-            12: {1: 'Some Bag', 6: [500]},
-            13: {1: 'Vendor White', 14: [900]},
-            14: {1: 'Cruel Barb'},
-        },
-        'Quest': {500: {1: 'The Quest', 4: 24, 5: 26, 6: 77, 17: 40}},
-        'Npc': {900: {1: 'Smith', 9: 40, 13: 'A', 14: 'Weaponsmith'}},
-    }
-    zones = ({40: 'Westfall'}, {}, {40: 1436})
-    scan = {10: scan_item('Quest Helm', lvl=20), 12: scan_item('Some Bag', loc='INVTYPE_BAG'),
-            13: scan_item('Vendor White', q=1), 14: scan_item('Cruel Barb', loc='INVTYPE_WEAPON', cls=2)}
+def test_join_keeps_wearable_items_and_quest_levels():
+    a = att(quests={500: quest('The Quest', 24, 'A', 1436, [(1436, 5000, 5000)], [10, 11, 12])},
+            items={10: dict(scan_item('Quest Helm', lvl=0), min=0), 12: scan_item('Some Bag', loc='INVTYPE_BAG')},
+            maps={'WESTFALL': 1436})
+    scan = {10: scan_item('Quest Helm', lvl=20), 13: scan_item('Cruel Barb', loc='INVTYPE_WEAPON', cls=2)}
     wowsrc = {'dungeons': [{'name': 'The Deadmines', 'bosses': [{'name': 'Edwin VanCleef', 'items': [{'n': 'Cruel Barb', 'd': '12%'}]}]}]}
+    a['item_names'] = {13: 'Cruel Barb'}
     collected = {10: ['Auktionshaus']}
-    src, keep, zone_rows, stats, dropped, unmatched, missing = build_gear.build(
-        scan, collected, questie, zones, ({}, {}), [], {}, wowsrc)
-    assert set(keep) == {10, 14}
-    assert dropped['not scanned'] == 1 and dropped['not gear'] == 1 and dropped['quality'] == 1
+    src, keep, zone_rows, stats, dropped, unmatched, missing = build_gear.build(scan, collected, a, wowsrc=wowsrc)
+    assert set(keep) == {10, 13}
+    assert dropped['unknown item'] == 1 and dropped['not gear'] == 1
     it, nums, level, mask, speed, line = keep[10]
     recs = [src.rows[n - 1] for n in nums]
-    assert ('Q', 'The Quest', 26, 24, 'A', 1436, 500, 0) in recs and ('A',) in recs
-    assert level == 20, 'auction house is a second source, so the item level stands'
+    assert ('Q', 'The Quest', 0, 24, 'A', 1436, 500, 0) in recs and ('A',) in recs, 'quest level unknown (0)'
+    assert level == 20, 'the auction house is a second source, so the item level stands'
     assert zone_rows[1436] == 'Westfall'
-    _, nums, _, _, _, _ = keep[14]
-    assert src.rows[nums[0] - 1] == ('D', 'The Deadmines', 'Edwin VanCleef', '12%')
-    assert unmatched == []
-    assert missing == [11], 'the unscanned quest reward is asked for again' 
+    assert src.rows[keep[13][1][0] - 1] == ('D', 'The Deadmines', 'Edwin VanCleef', '12%')
+    assert unmatched == [] and missing == [11], 'an item no table knows is asked for again'
 
 
-def test_quest_only_item_counts_from_the_quest_level():
-    questie = {'Item': {10: {1: 'Helm', 6: [500]}, 11: {1: 'Gun', 6: [501]}},
-               'Quest': {500: {1: 'Q', 4: 24, 5: 26}, 501: {1: 'Big Game Hunter', 4: 28, 5: 43}}, 'Npc': {}}
+def test_quest_only_item_counts_from_the_minimum_level():
+    a = att(quests={500: quest('Q', 24, rewards=[10]), 501: quest('Big Game Hunter', 39, rewards=[11])})
     scan = {10: scan_item('Helm', lvl=20), 11: scan_item('Gun', lvl=28)}
-    _, keep, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {})
+    _, keep, *_ = build_gear.build(scan, {}, a)
     assert keep[10][2] == 24, 'can be taken at 24'
-    assert keep[11][2] == 39, 'an elite level 43 quest counts from 39, not from 28'
+    assert keep[11][2] == 39
+
+
+def test_item_master_scan_over_last_build_over_export():
+    export = {1: dict(scan_item('Belt', lvl=5), classes=3, skill=0)}
+    prev = {1: dict(scan_item('', lvl=24), classes=0), 2: dict(scan_item('', lvl=30), classes=0)}
+    m = build_gear.item_master({}, export, prev, {2: 'Old Boots'})
+    assert m[1]['min'] == 5 and m[1]['name'] == 'Belt', 'the export keeps the required level and the name'
+    assert m[2]['min'] == 30 and m[2]['name'] == 'Old Boots'
+    m = build_gear.item_master({1: scan_item('Gürtel', lvl=7)}, export, prev)
+    assert m[1]['min'] == 7 and m[1]['name'] == 'Gürtel' and m[1]['classes'] == 3, 'the scan wins, class limits stay'
+
+
+def test_last_build_is_read_back(tmp_path):
+    src = build_gear.Sources()
+    q = src.add('Q', 'Q', 0, 30, None, None, 5)
+    v = src.add('V', 'Smith', 1436)
+    keep = {10: (dict(scan_item('Helm'), stats='STRENGTH_SHORT=5'), [q], 34, 0, 0.0, 0),
+            11: (scan_item('Hat', lvl=12), [q, v], 12, 1024, 0.0, 0)}
+    out = tmp_path / 'GearData.lua'
+    build_gear.write_lua(str(out), src, keep, {}, {'built': '2026-10-06'}, old_stats={11: 'AGILITY=3'})
+    prev = build_gear.previous_items(str(out))
+    assert prev[10]['min'] == 0, 'a quest-only item: its level was a quest level, so it is not kept'
+    assert prev[11]['min'] == 12 and prev[11]['classes'] == 1024 and prev[11]['equipLoc'] == 'INVTYPE_HEAD'
+    assert build_gear.previous_stats(str(out)) == {10: 'STRENGTH=5', 11: 'AGILITY=3'}, 'an older scan\'s stats stay'
 
 
 def test_rare_dungeon_drops_count_as_world_drops():
     assert build_gear.drop_chance('12.5%') == 12.5 and build_gear.drop_chance('<0.1%') == 0.05
     assert build_gear.drop_chance(None) == 100.0
-    questie = {'Item': {12: {1: 'Avenger Armor'}}, 'Quest': {}, 'Npc': {}}
+    a = att(item_names={12: 'Avenger Armor'})
     wowsrc = {'dungeons': [{'name': 'Razorfen Kraul', 'bosses': [{'name': 'Trash', 'items': [{'n': 'Avenger Armor', 'd': '<0.1%'}]}]}]}
-    src, keep, *_ = build_gear.build({12: scan_item('Avenger Armor')}, {}, questie, ({}, {}, {}), ({}, {}), [], {}, wowsrc)
+    src, keep, *_ = build_gear.build({12: scan_item('Avenger Armor')}, {}, a, wowsrc=wowsrc)
     assert src.rows[keep[12][1][0] - 1][:2] == ('W', 'Razorfen Kraul: Trash <0.1%')
 
 
@@ -130,17 +151,20 @@ def test_itemsparse_keeps_class_limits_and_weapon_speed(tmp_path):
             3: scan_item('Any'), 4: scan_item('Staff', loc='INVTYPE_2HWEAPON', cls=2)}
     out = tmp_path / 'is.json'
     build_gear.refresh_itemsparse(str(csv_path), scan, path=str(out))
-    import json
     data = json.loads(out.read_text(encoding='utf-8'))
     assert data['classes'] == {'2': 2, '4': 1024}
     assert data['delay'] == {'1': 2600, '4': 3000}
     assert data['skill'] == {'3': [202, 280]}
-    questie = {'Item': {4: {1: 'Staff', 6: [500]}}, 'Quest': {500: {1: 'Q', 4: 1, 5: 2}}, 'Npc': {}}
-    _, keep, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {}, data)
+    a = att(quests={500: quest('Q', 1, rewards=[4, 3])})
+    _, keep, *_ = build_gear.build(scan, {}, a, itemsparse=data)
     assert keep[4][3:] == (1024, 3.0, 0)
-    questie['Item'][3] = {1: 'Goggles', 6: [500]}
-    _, keep, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {}, data)
     assert keep[3][2] == 56 and keep[3][5] == 202, 'engineering 280 is reached around level 56'
+
+
+def test_class_limits_from_the_export_when_itemsparse_has_none():
+    a = att(quests={500: quest('Q', 1, rewards=[5])}, items={5: dict(scan_item('Helm'), classes=1 | 2, skill=0)})
+    _, keep, *_ = build_gear.build({}, {}, a)
+    assert keep[5][3] == 3
 
 
 def test_scanned_stats_keep_what_the_planner_scores():
@@ -164,44 +188,59 @@ def test_collector_notes_old_and_new():
 
 
 def test_collector_drops_become_dungeon_world_and_quest_sources():
-    questie = {'Item': {}, 'Quest': {500: {1: 'The Quest', 4: 24, 5: 26, 6: 77}},
-               'Npc': {639: {1: 'Edwin VanCleef', 4: 21, 5: 21, 9: 1581}}}
-    zones = ({1581: 'The Deadmines'}, {1581: 'The Deadmines'}, {}, {36: 1581})
-    scan = {i: scan_item(f'I{i}', q=3) for i in (1, 2, 3, 4, 5)}
+    a = att(quests={500: quest('The Quest', 24, 'A', None)},
+            npcs={639: npc('Edwin VanCleef', {'boss'}, zone=291, inst=63)}, instances=DEADMINES)
+    scan = {i: scan_item(f'I{i}', q=3) for i in (1, 2, 3, 4, 5, 6)}
     collected = {
         1: ['Drop: ? [639] @Die Todesminen #party:36'],
         2: ['Drop: Wolf [299] @Wald von Elwynn'],
         3: ['Quest: Die Fackel [500] L23'],
         4: ['Quest: Neue Quest [99999] L31'],
         5: ['Drop: Ragnaros [11502] @Geschmolzener Kern #raid:409'],
+        6: ['Drop: Cookie [645] @The Deadmines #party:36'],
     }
-    src, keep, zone_rows, *_ = build_gear.build(scan, collected, questie, zones, ({}, {}), [], {}, {})
-    rec = lambda i: src.rows[keep[i][1][0] - 1]
+    src, keep, zone_rows, *_ = build_gear.build(scan, collected, a, facts=FACTS)
+    rec = lambda i: src.rows[keep[i][1][0] - 1]  # noqa: E731
     assert rec(1) == ('D', 'The Deadmines', 'Edwin VanCleef', None, 36, 1581), 'with instance and area id'
     w = rec(2)
     assert w[:4] == ('W', 'Wolf', 0, 0) and zone_rows[w[4]] == 'Wald von Elwynn'
-    assert rec(3) == ('Q', 'The Quest', 26, 24, 'A', None, 500, 0)
+    assert rec(3) == ('Q', 'The Quest', 0, 24, 'A', None, 500, 0)
     assert rec(4) == ('Q', 'Neue Quest', 31, 0, None, None, 99999)
     assert 5 not in keep, 'raid drops stay out'
+    assert rec(6) == ('D', 'The Deadmines', 'Cookie', None, 36, 1581)
 
 
-def test_test_items_stay_out():
+def test_test_items_and_retired_items_stay_out():
     assert 8350 in build_gear.TEST_ITEMS
-    questie = {'Item': {8350: {1: 'The 1 Ring', 6: [500]}}, 'Quest': {500: {1: 'Q', 4: 1, 5: 2}}, 'Npc': {}}
+    a = att(quests={500: quest('Q', 1, rewards=[8350, 61099])},
+            items={61099: dict(scan_item('OLDRetired Belt', loc='INVTYPE_WAIST'), classes=0, skill=0)})
     scan = {8350: scan_item('Der Eine Ring', loc='INVTYPE_FINGER')}
-    _, keep, _, _, dropped, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {})
-    assert 8350 not in keep and dropped['junk'] == 1
+    _, keep, _, _, dropped, *_ = build_gear.build(scan, {}, a)
+    assert 8350 not in keep and 61099 not in keep and dropped['junk'] == 2
 
 
-def test_dungeon_sources_carry_instance_and_area():
-    questie = {'Item': {20: {1: 'Cookie Hat', 2: [645]}, 21: {1: 'Cruel Barb'}},
-               'Quest': {}, 'Npc': {645: {1: 'Cookie', 4: 20, 5: 20, 6: 1, 9: 1581}}}
-    zones = ({1581: 'The Deadmines'}, {1581: 'The Deadmines'}, {1581: 291}, {36: 1581})
-    scan = {20: scan_item('Cookie Hat', q=3), 21: scan_item('Cruel Barb', loc='INVTYPE_WEAPON', cls=2, q=3)}
+def test_dungeon_drops_carry_instance_area_and_the_facts_name():
+    a = att(instances=DEADMINES, npcs={645: npc('Cookie', {'boss'}, zone=291, inst=63)},
+            drops=[(20, 645, 'boss', 63, 291, False, None), (22, None, 'boss', 63, 291, False, 'Sneed')],
+            zone_drops=[(23, [624], 63, 291, False)], item_names={21: 'Cruel Barb'})
+    scan = {20: scan_item('Cookie Hat', q=3), 21: scan_item('Cruel Barb', loc='INVTYPE_WEAPON', cls=2, q=3),
+            22: scan_item('Gloves', q=3), 23: scan_item('Trash Boots', q=2)}
     wowsrc = {'dungeons': [{'name': 'Deadmines', 'bosses': [{'name': 'Edwin VanCleef', 'items': [{'n': 'Cruel Barb', 'd': '12%'}]}]}]}
-    src, keep, *_ = build_gear.build(scan, {}, questie, zones, ({}, {}), [], {}, wowsrc)
+    src, keep, *_ = build_gear.build(scan, {}, a, wowsrc=wowsrc, facts=FACTS)
     assert src.rows[keep[20][1][0] - 1] == ('D', 'The Deadmines', 'Cookie', None, 36, 1581)
-    assert src.rows[keep[21][1][0] - 1] == ('D', 'Deadmines', 'Edwin VanCleef', '12%', 36, 1581), 'found by name'
+    assert src.rows[keep[21][1][0] - 1] == ('D', 'The Deadmines', 'Edwin VanCleef', '12%', 36, 1581), 'found by name'
+    assert src.rows[keep[22][1][0] - 1] == ('D', 'The Deadmines', 'Sneed', None, 36, 1581), 'an encounter boss'
+    assert src.rows[keep[23][1][0] - 1] == ('W', 'Trash (The Deadmines)', 0, 0)
+
+
+def test_places_learn_instance_ids_from_drop_notes():
+    a = att(instances={63: dict(DEADMINES[63], mapID=None)})
+    p = build_gear.Places(a, FACTS)
+    assert p.of_att(63) == ('The Deadmines', None, 1581)
+    p.learn(36, 'The Deadmines')
+    assert p.of_name('Deadmines') == ('The Deadmines', 36, 1581) and p.of_instance(36)[0] == 'The Deadmines'
+    assert p.of_name('Scarlet Monastery - Armory')[0] == 'Scarlet Monastery', 'a wing is its dungeon'
+    assert p.of_name("Onyxia's Lair") == ("Onyxia's Lair", 249, 2159), 'from the facts'
 
 
 def test_atlas_forever_dungeons_read_instance_and_map(tmp_path):
@@ -211,9 +250,7 @@ def test_atlas_forever_dungeons_read_instance_and_map(tmp_path):
                  '\t\t\t\t{ 1, 270001 }, -- Crown of Bones {FOREVER}\n\t\t\t}\n\t\t},\n\t}\n}\n', encoding='utf-8')
     rows = build_gear.load_atlas_forever_dungeons(str(p))
     assert rows == [('Barrow', (20, 24, 28), 'Barrow King', 270001, 'Crown of Bones {FOREVER}', 3001, 7001)]
-    questie = {'Item': {}, 'Quest': {}, 'Npc': {}}
-    src, keep, *_ = build_gear.build({270001: scan_item('Crown of Bones', q=3)}, {}, questie, ({}, {}, {}),
-                                     ({}, {}), rows, {}, {})
+    src, keep, *_ = build_gear.build({270001: scan_item('Crown of Bones', q=3)}, {}, att(), atlas_dungeons=rows)
     assert src.rows[keep[270001][1][0] - 1] == ('D', 'Barrow', 'Barrow King', None, 3001, 7001)
 
 
@@ -232,23 +269,20 @@ def test_forever_raid_zones_become_raid_sources(tmp_path):
            'Seen in the world': {'key': 'field'}}
     raids = build_gear.load_forever_raids(str(js), cfg)
     assert raids == [("Onyxia's Lair", 'Onyxia', 18205, 249, 2159)], 'only raid zones'
-    questie = {'Item': {}, 'Quest': {}, 'Npc': {}}
     scan = {18205: dict(scan_item("Eskhandar's Collar", loc='INVTYPE_NECK', q=4, lvl=60), ilvl=80)}
-    src, keep, _, stats, dropped, *_ = build_gear.build(scan, {}, questie, ({}, {}, {}), ({}, {}), [], {}, {},
-                                                        forever_raids=raids)
+    src, keep, _, stats, dropped, *_ = build_gear.build(scan, {}, att(), forever_raids=raids)
     assert src.rows[keep[18205][1][0] - 1] == ('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)
     assert dropped['raid level'] == 0, 'raid gear of a Forever raid stays'
     assert build_gear.load_forever_raids(str(js), {}) == [], 'no raid zones, nothing new'
 
 
 def test_the_real_zone_list_marks_forever_raids():
-    import json
     with open(build_gear.FOREVER_ZONES, encoding='utf-8') as fh:
         cfg = json.load(fh)
     assert cfg["Onyxia's Lair"].get('raid') is True and cfg["Onyxia's Lair"].get('instance') == 249
 
 
-def test_output_has_no_client_guard(tmp_path):
+def test_output_header_names_the_sources_and_no_guard(tmp_path):
     # the addon is WoW Forever only: the TOC load condition is the one lock, no IsForever guard
     src = build_gear.Sources()
     n = src.add('Q', 'Q', 1, 1, None, None, 5)
@@ -257,6 +291,8 @@ def test_output_has_no_client_guard(tmp_path):
     build_gear.write_lua(str(out), src, keep, {}, {'built': '2026-10-05'})
     text = out.read_text(encoding='utf-8')
     lines = text.split('\n')
+    assert 'AllTheThings' in lines[1] and 'MIT' in lines[1] and 'LICENSES' in lines[1]
+    assert 'Questie' not in text and 'GPL-3.0' not in text
     assert lines[2] == 'local _, ns = ...' and lines[3] == ''
     assert 'IsForever' not in text
     assert '    game = "forever", cap = 60, built = "2026-10-05",' in lines
@@ -286,24 +322,45 @@ def test_lua_strings_escape_control_characters():
 def test_npc_id_rides_last_on_vendors_rares_and_named_mobs():
     # Gear.lua's fields stay where they are; the NPC id sits behind them at a fixed place per kind
     # (V and P after the phase field: 7, R: 5, W: 6), where the map data finds it.
-    questie = {
-        'Item': {30: {1: 'Vendor Helm', 14: [900]}, 31: {1: 'Rare Ring', 2: [901]}, 32: {1: 'Mob Boots', 2: [902]},
-                 33: {1: 'PvP Neck', 14: [903]}},
-        'Quest': {},
-        'Npc': {900: {1: 'Smith', 9: 40, 13: 'A', 14: 'Weaponsmith'}, 901: {1: 'Muad', 4: 10, 6: 4, 9: 85},
-                902: {1: 'Harvest Golem', 4: 11, 5: 12, 9: 40}, 903: {1: 'Sergeant', 9: 1519, 14: 'Accessories Quartermaster'}},
-    }
-    zones = ({40: 'Westfall', 85: 'Tirisfal', 1519: 'Stormwind'}, {}, {40: 1436, 85: 1420, 1519: 1453})
+    a = att(npcs={900: npc('Smith', {'vendor'}, 1436, 'A', 'Weaponsmith'), 901: npc('Muad', {'rare'}, 1420),
+                  902: npc('Harvest Golem', {'mob'}, 1436), 903: npc('Sergeant', {'vendor'}, 1453, '', 'Accessories Quartermaster')},
+            sold=[(30, 900, False), (33, 903, False)], drops=[(31, 901, 'rare', None, 1420, False, None)],
+            zone_drops=[(32, [902], None, 1436, False)], pvp=[(34, 'H')])
     scan = {30: scan_item('Vendor Helm'), 31: scan_item('Rare Ring', loc='INVTYPE_FINGER'),
-            32: scan_item('Mob Boots', loc='INVTYPE_FEET'), 33: scan_item('PvP Neck', loc='INVTYPE_NECK', q=3)}
+            32: scan_item('Mob Boots', loc='INVTYPE_FEET'), 33: scan_item('PvP Neck', loc='INVTYPE_NECK', q=3),
+            34: scan_item('Rank Cloak', loc='INVTYPE_CLOAK', q=3)}
     collected = {30: ['Haendler: Grimm [904] @Dun Morogh'], 31: ['Drop: Wolf [299] @Wald von Elwynn']}
-    src, keep, *_ = build_gear.build(scan, collected, questie, zones, ({}, {}), [], {}, {})
+    src, keep, *_ = build_gear.build(scan, collected, a)
     recs = {src.rows[n - 1] for k in keep.values() for n in k[1]}
     assert ('V', 'Smith', 1436, 'A', 'Weaponsmith', None, 900) in recs
-    assert ('R', 'Muad', 10, 1420, 901) in recs
-    assert ('W', 'Harvest Golem', 11, 12, 1436, 902) in recs
+    assert ('R', 'Muad', 0, 1420, 901) in recs
+    assert ('W', 'Harvest Golem', 0, 0, 1436, 902) in recs
     assert ('P', 'Sergeant', 1453, None, 'Accessories Quartermaster', None, 903) in recs
+    assert ('P', build_gear.PVP_SOURCE, None, 'H') in recs, 'PvP rank gear per faction'
     grimm = [r for r in recs if r[1] == 'Grimm'][0]
     assert grimm[0] == 'V' and grimm[6] == 904, 'a vendor the collector noted with its id'
     wolf = [r for r in recs if r[1] == 'Wolf'][0]
     assert wolf[:4] == ('W', 'Wolf', 0, 0) and wolf[5] == 299, 'a mob the collector noted with its id'
+
+
+def test_crafted_items_keep_a_known_skill():
+    a = att(crafted=[(40, 'tailoring'), (41, 'tailoring')])
+    scan = {40: dict(scan_item('Robe', loc='INVTYPE_ROBE'), bind=2), 41: dict(scan_item('Cap'), bind=2)}
+    src, keep, *_ = build_gear.build(scan, {}, a, atlas_crafts={40: [('tailoring', 75)]})
+    assert [src.rows[n - 1] for n in keep[40][1]] == [('C', 'tailoring', 75)], 'the skill of a PC source wins'
+    assert [src.rows[n - 1] for n in keep[41][1]] == [('C', 'tailoring', 0)], 'else the profession without a skill'
+
+
+def test_the_fixture_end_to_end():
+    db = att_data.load(FIXTURE)
+    src, keep, zone_rows, stats, dropped, unmatched, missing = build_gear.build({}, {}, db, facts=[
+        {'key': 'thanes', 'name': 'Test Halls', 'kind': 'party'}])
+    rec = lambda i: [src.rows[n - 1] for n in keep[i][1]]  # noqa: E731
+    assert rec(61001) == [('Q', 'Boar Trouble', 0, 6, 'A', 1426, 71001, 3)]
+    assert keep[61001][2] == 6, 'the quest can be taken at 6, the belt is worn from 5'
+    assert rec(61004) == [('R', 'Old Tusk', 0, 1426, 81002)]
+    assert rec(61005) == [('V', 'Smith Fixture', 1426, 'H', 'Armorer', None, 81003)] and keep[61005][3] == 3
+    assert rec(61006) == [('W', 'Gnoll Brute', 0, 0, 1426, 81004)]
+    assert 61099 not in keep
+    assert {61002, 61003, 61012, 61013, 61017} <= set(missing), 'a quest, dungeon or crafted item no table knows'
+    assert not {61007, 61015, 61016} & set(missing), 'world drops and PvP gear are not asked for'

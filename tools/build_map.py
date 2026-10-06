@@ -1,109 +1,46 @@
 """Builds addon/Amisia/MapData.lua (WoW Forever): where the sources of the gear data stand on the
-world map. Quest givers and start objects, vendors, rare and named mobs come from NPC and object
-spawns, raids and dungeons from their entrances. Runs without a WoW install (on the N100).
+world map. Quest givers and starts, vendors, rare and named mobs come from the coordinates the
+data gives them, raids and dungeons from their entrances. Runs without a WoW install (on the N100).
 
-    python tools/build_map.py [--refresh-questie] [--questie-ref REF]
+    python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR]
 
 Sources (named with their licence in tools/README.md and in the header of the generated file):
-  - QuestieDB on GitHub (QUESTIE_REPO): the Forever npc, object and quest databases and the zone
-    tables (dungeon entrances, area id -> uiMapID, instance id -> area id). Every database file
-    holds its table as a "[[return {...}]]" string; only that block is run.
-    --refresh-questie downloads them into tools/cache/questiedb/forever/ (not in git). Whenever a
-    complete download is there, what the gear data needs from it is written to
-    tools/map_questie.json (the whole file, for that download's commit), so a build without
-    network repeats exactly.
+  - AllTheThings' hand-kept Forever data (tools/att_data.py; MIT, the licence ships in
+    addon/Amisia/LICENSES/): the coordinates of quests (where the giver or start object stands),
+    of rares, vendors and other NPCs, and of dungeon and raid entrances. --refresh-att downloads it
+    into ~/addons/_cache/att (outside the repo); the folder's commit is named in the output.
+    A place inside a dungeon stands for its entrance.
   - The generated gear data (GearData.lua): which places are needed at all.
+  - Instance ids (I:<id> keys) are matched to the data's instances through the client's
+    UiMapAssignment table in --wago (default ~/addons/_wago, downloaded by hand from wago.tools)
+    and tools/forever_dungeons.json; without them those keys stay without a place and the
+    dungeon is found by its name (N:<name>).
 
 Points are "uiMapID:x:y" with x and y in hundredths of a percent (0-10000), at most four per key.
+No other quest database is read.
 """
 import argparse
-import json
 import math
 import os
 import re
 import sys
 import time
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
-import build_gear  # noqa: E402  (Lua strings, dungeon name keys, user agent)
+import att_data  # noqa: E402  (the AllTheThings reader)
+import build_gear  # noqa: E402  (Lua strings, dungeon name keys, the dungeon facts)
 
-QUESTIE_REPO = 'Questie/QuestieDB'
-# The one place the data's licence is written; the generated headers and the JSON take it from here.
-QUESTIE_LICENSE = 'GPL-3.0'
-RAW = 'https://raw.githubusercontent.com/{repo}/{ref}/{path}'
-FILES = {
-    'npc': 'data/Forever/foreverNpcDB.lua', 'quest': 'data/Forever/foreverQuestDB.lua',
-    'object': 'data/Forever/foreverObjectDB.lua', 'dungeons': 'support/Forever/Zones/dungeons.lua',
-    'area': 'support/Forever/Zones/areaIdToUiMapId.lua', 'instance': 'support/Forever/Zones/instanceIdToAreaId.lua',
-}
-# The data's expansion order (Era 1, Tbc 2, Wotlk 3, ...); Forever counts as Era. The dungeon file
-# corrects entrances for later expansions, and only the corrections of the own one apply.
-EXPANSION = 1
-CACHE_DIR = os.path.join(HERE, 'cache', 'questiedb')
-MAP_JSON = os.path.join(HERE, 'map_questie.json')
 GEAR = os.path.join(ROOT, 'addon', 'Amisia', 'GearData.lua')
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'MapData.lua')
-USER_AGENT = build_gear.USER_AGENT
 MAX_POINTS = 4
-MERGE = 200          # spawns closer than 2 % (in hundredths of a percent) are one point
-
-# Instance keys whose dungeon the data spells differently.
-INSTANCE_ALIASES = {'AHN_QIRAJ': "Temple of Ahn'Qiraj"}
+MERGE = 200          # points closer than 2 % (in hundredths of a percent) are one
+PLACEHOLDER = (5000, 5000)   # an entrance given as the middle of its zone: not measured yet
 
 
 def log(*a):
     print(*a, file=sys.stderr)
-
-
-# ---------------------------------------------------------------- download and cache
-def refresh_questie(dest=CACHE_DIR, ref='master'):
-    """Downloads the Forever database files. Returns {name: text} and the commit."""
-    def get(url):
-        req = urllib.request.Request(url, headers={'User-Agent': USER_AGENT})
-        with urllib.request.urlopen(req, timeout=120) as r:
-            return r.read().decode('utf-8')
-
-    commit = ref
-    try:
-        commit = json.loads(get(f'https://api.github.com/repos/{QUESTIE_REPO}/commits/{ref}'))['sha']
-    except Exception as exc:  # noqa: BLE001 - the commit is only recorded, the files are what counts
-        log(f'quest database: could not read the commit of {ref}: {exc}')
-    texts = {}
-    os.makedirs(os.path.join(dest, 'forever'), exist_ok=True)
-    for name, path in FILES.items():
-        text = get(RAW.format(repo=QUESTIE_REPO, ref=commit, path=path))
-        with open(os.path.join(dest, 'forever', name + '.lua'), 'w', encoding='utf-8', newline='\n') as fh:
-            fh.write(text)
-        texts[name] = text
-    with open(os.path.join(dest, 'COMMIT'), 'w', encoding='utf-8') as fh:
-        fh.write(commit + '\n')
-    log(f'quest database: {len(FILES)} files of {QUESTIE_REPO}@{commit[:10]} -> {os.path.relpath(dest, ROOT)}')
-    return texts, commit
-
-
-def load_cached(dest=CACHE_DIR):
-    """The downloaded files and their commit, or (None, None) when the download is incomplete."""
-    texts = {}
-    for name in FILES:
-        p = os.path.join(dest, 'forever', name + '.lua')
-        if not os.path.exists(p):
-            return None, None
-        with open(p, encoding='utf-8') as fh:
-            texts[name] = fh.read()
-    commit = None
-    if os.path.exists(os.path.join(dest, 'COMMIT')):
-        with open(os.path.join(dest, 'COMMIT'), encoding='utf-8') as fh:
-            commit = fh.read().strip() or None
-    return texts, commit
-
-
-# ---------------------------------------------------------------- reading the Lua tables
-def _lua():
-    from lupa.lua51 import LuaRuntime
-    return LuaRuntime(unpack_returned_tuples=True)
 
 
 def py(v):
@@ -121,136 +58,9 @@ def seq(t):
     return [t.get(i) for i in range(1, n + 1)]
 
 
-BLOCK = re.compile(r'([\w.]+)\s*=\s*\[\[(return\s*\{.*?)\]\]', re.S)
-
-
-def return_blocks(text):
-    """{assigned name: "return {...}"} for every long-string table of a file."""
-    return {m.group(1): m.group(2) for m in BLOCK.finditer(text)}
-
-
-def read_table(block, lua=None):
-    lua = lua or _lua()
-    return py(lua.eval('function(s) return assert(loadstring(s))() end')(block))
-
-
-def _lua_table(block, lua):
-    return lua.eval('function(s) return assert(loadstring(s))() end')(block)
-
-
-def area_to_ui(text):
-    """area id -> uiMapID; the file's overrides win, 0 means no map."""
-    blocks = return_blocks(text)
-    out = {}
-    for name in sorted(blocks, key=lambda n: n.endswith('Override')):
-        out.update(read_table(blocks[name]))
-    return {int(a): int(u) for a, u in out.items() if u}
-
-
-ZONE_STUB = r'''
-local modules = { ZoneDB = { private = {}, zoneIDs = setmetatable({}, { __index = function(_, k) return k end }) },
-                  Expansions = { Era = 1, Tbc = 2, Wotlk = 3, Cata = 4, MoP = 5, Current = EXPANSION } }
-QuestieLoader = { ImportModule = function(_, name) return modules[name] end }
-function UnitFactionGroup() return "Alliance" end
-return modules.ZoneDB
-'''
-
-
-def _run_zone_file(text, expansion=1):
-    lua = _lua()
-    lua.globals().EXPANSION = expansion
-    zone_db = lua.execute(ZONE_STUB)
-    lua.eval('function(s) return assert(loadstring(s))() end')(text)
-    return zone_db
-
-
-def read_dungeons(text, expansion):
-    """{area: {'name', 'alt': [area...], 'entrances': [(area, x, y)...]}} as the expansion sees it."""
-    zone_db = _run_zone_file(text, expansion)
-    out = {}
-    for area, row in py(zone_db.private.dungeons).items():
-        r = seq(row)
-        out[int(area)] = {
-            'name': r[0], 'alt': [int(a) for a in seq(r[1])] if len(r) > 1 else [],
-            'entrances': [tuple(seq(e)) for e in seq(r[3])] if len(r) > 3 else [],
-        }
-    return out
-
-
-def read_instances(text, dungeons):
-    """{instance id: dungeon area}, the file's zone names matched to the dungeons by name; and the
-    names no dungeon matched."""
-    zone_db = _run_zone_file(text)
-    by_key = {}
-    for area in sorted(dungeons):
-        by_key.setdefault(build_gear.dungeon_key(dungeons[area]['name']), area)
-    out, unknown = {}, []
-    for inst, key in sorted(py(zone_db.instanceIdToAreaId).items()):
-        if isinstance(key, (int, float)):
-            # some lines give the area id itself
-            out[int(inst)] = int(key)
-            continue
-        name = INSTANCE_ALIASES.get(key) or key.replace('_', ' ')
-        area = by_key.get(build_gear.dungeon_key(name))
-        if area:
-            out[int(inst)] = area
-        else:
-            unknown.append(key)
-    return out, unknown
-
-
 # ---------------------------------------------------------------- points
-def dungeon_of_area(dungeons):
-    """area (the dungeon's own and its aliases) -> dungeon area."""
-    out = {}
-    for area, d in dungeons.items():
-        out.setdefault(area, area)
-        for a in d['alt']:
-            out.setdefault(a, area)
-    return out
-
-
-def _hundredths(v):
-    return max(0, min(10000, int(math.floor(v * 100 + 0.5))))
-
-
-def entrance_points(dungeon, areas, unknown):
-    out = []
-    for area, x, y in dungeon['entrances']:
-        ui = areas.get(int(area))
-        if not ui:
-            unknown.add(int(area))
-            continue
-        out.append((ui, _hundredths(x), _hundredths(y)))
-    return out
-
-
-def spawn_points(spawns, areas, dungeons, unknown):
-    """Spawns {area: [[x, y]...]} as points (uiMapID, x, y). A spawn inside an instance stands for
-    its entrance; -1/-1 elsewhere and areas without a map fall away (the latter are noted)."""
-    inside = dungeon_of_area(dungeons)
-    out = []
-    for key in sorted(spawns):
-        area = int(key)
-        if area in inside:
-            for p in entrance_points(dungeons[inside[area]], areas, unknown):
-                if p not in out:
-                    out.append(p)
-            continue
-        ui = areas.get(area)
-        for xy in spawns[key]:
-            x, y = (xy.get(1), xy.get(2)) if isinstance(xy, dict) else (xy[0], xy[1])
-            if x is None or y is None or x < 0 or y < 0:
-                continue
-            if not ui:
-                unknown.add(area)
-                continue
-            out.append((ui, _hundredths(x), _hundredths(y)))
-    return out
-
-
 def pick_points(points, n=MAX_POINTS):
-    """At most n points far apart: spawns within 2 % are one, then greedily the point farthest from
+    """At most n points far apart: points within 2 % are one, then greedily the point farthest from
     those already taken (another map counts as farthest)."""
     cand, cells = [], set()
     for p in sorted(set(points)):
@@ -283,7 +93,9 @@ def parse_points(text):
 GEAR_STUB = r'''
 return function(src)
     local ns = {}
-    assert(loadstring(src, "@gear"))("Amisia", ns)
+    local f = assert(loadstring(src, "@gear"))
+    setfenv(f, {})
+    f("Amisia", ns)
     local out = {}
     local d = ns.GEAR
     if not d then return out, false end
@@ -300,7 +112,8 @@ end
 def load_gear_text(text):
     """The source records of a gear data file (as lists, trailing nils dropped) and whether it has
     the game field (data built before it holds a zone in a dungeon record's instance field)."""
-    lua = _lua()
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
     recs, has_game = lua.execute(GEAR_STUB)(text)
     out = []
     for rec in seq(py(recs)):
@@ -371,172 +184,147 @@ def needed_keys(recs, has_game):
 
 
 def _rec_zones(recs):
-    """The zones (uiMapIDs; negative area ids as they are) the records name for their place."""
+    """The zones (uiMapIDs) the records name for their place."""
     out = set()
     for rec in recs:
         field = {'V': 3, 'P': 3, 'R': 4, 'W': 5}.get(rec[0])
         z = _at(rec, field) if field else None
-        if isinstance(z, (int, float)) and z != 0:
+        if isinstance(z, (int, float)) and z > 0:
             out.add(int(z))
     return out
 
 
-def _rec_areas(recs):
-    """Dungeon area ids the raid and dungeon records carry."""
-    out = set()
-    for rec in recs:
-        a = _at(rec, 5) if rec[0] == 'X' else _at(rec, 6) if rec[0] == 'D' else None
-        if _num(a):
-            out.add(int(a))
-    return out
-
-
-# ---------------------------------------------------------------- the subset the data needs
-def parse_questie(texts, needed):
-    """What the needed keys use from the database files, as plain JSON-ready data:
-    npcs {id: [name, zone uiMapID, title, points]}, objects {id: [name, points]} (points as in the output),
-    quests {id: [npc starters, object starters, item start 1/0]}, dungeons {area: [name, points]},
-    instances {id: area}, areas (area -> uiMapID for the records' negative zones), unknown areas."""
-    lua = _lua()
-    areas = area_to_ui(texts['area'])
-    dungeons = read_dungeons(texts['dungeons'], EXPANSION)
-    instances, _ = read_instances(texts['instance'], dungeons)
-    unknown = set()
-
-    npc_t = _lua_table(return_blocks(texts['npc'])['QuestieDB.npcData'], lua)
-    quest_t = _lua_table(return_blocks(texts['quest'])['QuestieDB.questData'], lua)
-    obj_t = _lua_table(return_blocks(texts['object'])['QuestieDB.objectData'], lua)
-
-    names, ids, qids = set(), set(), set()
-    for key in needed:
-        kind, _, rest = key.partition(':')
-        if kind in ('V', 'R', 'W'):
-            names.add(rest)
-        elif kind == 'U':
-            ids.add(int(rest))
-        elif kind == 'Q':
-            qids.add(int(rest))
-
-    quests, objects_needed = {}, set()
-    for qid in sorted(qids):
-        row = quest_t[qid]
-        if row is None:
-            continue
-        started = seq(py(row[2])) if row[2] is not None else []
-        npcs = [int(n) for n in seq(started[0])] if len(started) > 0 and started[0] else []
-        objs = [int(o) for o in seq(started[1])] if len(started) > 1 and started[1] else []
-        items = 1 if len(started) > 2 and started[2] else 0
-        quests[str(qid)] = [npcs, objs, items]
-        ids.update(npcs)
-        objects_needed.update(objs)
-
-    if names:
-        for nid, row in npc_t.items():
-            if row[1] in names:
-                ids.add(int(nid))
-
-    def ui_of(area):
-        return areas.get(int(area)) if area else None
-
-    npcs = {}
-    for nid in sorted(ids):
-        row = npc_t[nid]
-        if row is None:
-            continue
-        spawns = py(row[7]) or {}
-        pts = spawn_points({a: seq(v) for a, v in spawns.items()} if spawns else {}, areas, dungeons, unknown)
-        npcs[str(nid)] = [row[1], ui_of(row[9]), row[14], fmt_points(pts)]
-    objects = {}
-    for oid in sorted(objects_needed):
-        row = obj_t[oid]
-        if row is None:
-            continue
-        spawns = py(row[4]) or {}
-        pts = spawn_points({a: seq(v) for a, v in spawns.items()}, areas, dungeons, unknown)
-        objects[str(oid)] = [row[1], fmt_points(pts)]
-    dun = {}
-    for area in sorted(dungeons):
-        d = dungeons[area]
-        dun[str(area)] = [d['name'], fmt_points(entrance_points(d, areas, set()))]
-    neg = {}
-    for recs in needed.values():
-        for z in _rec_zones(recs):
-            if z < 0 and -z in areas:
-                neg[str(-z)] = areas[-z]
-    return {'npcs': npcs, 'objects': objects, 'quests': quests, 'dungeons': dun,
-            'instances': {str(k): v for k, v in sorted(instances.items())}, 'areas': neg,
-            'unknown': sorted(unknown)}
+def _rec_names(recs):
+    """The dungeon or raid names the records give (for an I:<id> key whose id the data lacks)."""
+    return [rec[1] for rec in recs if rec[0] in ('D', 'X') and isinstance(_at(rec, 2), str)]
 
 
 # ---------------------------------------------------------------- resolving keys to points
-def resolve(subset, needed):
+class Atlas:
+    """The places of the AllTheThings data: entrances per instance, points per NPC and quest."""
+
+    def __init__(self, att, facts=()):
+        self.att = att
+        self.npcs, self.quests = att.get('npcs', {}), att.get('quests', {})
+        self.instances = att.get('instances', {})
+        self.inst_maps = {}     # uiMapID of an instance -> ATT instance id
+        for iid, i in sorted(self.instances.items()):
+            for m in i.get('maps') or []:
+                self.inst_maps.setdefault(m, iid)
+        self.places = build_gear.Places(att, facts)
+        self.by_key = {}        # dungeon_key(name) -> ATT instance id
+        for iid in sorted(self.instances):
+            i = self.instances[iid]
+            for n in (i['name'], i.get('stem'), self.places.of_att(iid)[0]):
+                if n:
+                    self.by_key.setdefault(build_gear.dungeon_key(n), iid)
+        for f in facts or ():
+            iid = self.by_key.get(build_gear.dungeon_key(f['name']))
+            for n in list(f.get('aliases') or []) + ([f['part']] if f.get('part') else []):
+                if iid is not None:
+                    self.by_key.setdefault(build_gear.dungeon_key(n), iid)
+        self.by_name = {}
+        for nid in sorted(self.npcs):
+            name = self.npcs[nid].get('name')
+            if name:
+                self.by_name.setdefault(name, []).append(nid)
+
+    def entrance(self, iid):
+        """An instance's entrance points: its coordinates outside its own maps. The data marks an
+        entrance nobody has measured yet with the middle of the zone (50, 50): that is no place."""
+        i = self.instances.get(iid)
+        if not i:
+            return []
+        own = set(i.get('maps') or [])
+        return [p for p in i.get('points') or [] if p[0] not in own and p[1:] != PLACEHOLDER]
+
+    def outside(self, points):
+        """Points, those on an instance's map replaced by that instance's entrance."""
+        out = []
+        for p in points:
+            iid = self.inst_maps.get(p[0])
+            for q in (self.entrance(iid) if iid is not None else [p]):
+                if q not in out:
+                    out.append(q)
+        return out
+
+    def npc_points(self, nid):
+        n = self.npcs.get(nid)
+        if not n:
+            return []
+        if n.get('points'):
+            return self.outside(n['points'])
+        # an NPC inside an instance without coordinates of its own: the entrance
+        return self.entrance(n['inst']) if n.get('inst') is not None else []
+
+    def instance_by_name(self, name):
+        key = build_gear.dungeon_key(name or '')
+        if key in self.by_key:
+            return self.by_key[key]
+        near = sorted((abs(len(k) - len(key)), k) for k in self.by_key if key and k and (k in key or key in k))
+        return self.by_key[near[0][1]] if near else None
+
+    def instance_by_id(self, inst):
+        for iid in sorted(self.instances):
+            if self.places.of_att(iid)[1] == inst:
+                return iid
+        return None
+
+
+def resolve(att, needed, facts=()):
     """{key: [points]} for every needed key (empty where no place is known), {key: who stands there}
     and a report."""
-    npcs = {int(k): v for k, v in subset['npcs'].items()}
-    objects = {int(k): v for k, v in subset['objects'].items()}
-    quests = {int(k): v for k, v in subset['quests'].items()}
-    dungeons = {int(k): v for k, v in subset['dungeons'].items()}
-    instances = {int(k): v for k, v in subset['instances'].items()}
-    neg = {int(k): v for k, v in subset.get('areas', {}).items()}
-    by_name = {}
-    for nid in sorted(npcs):
-        by_name.setdefault(npcs[nid][0], []).append(nid)
-    dkeys = sorted((build_gear.dungeon_key(d[0]), a) for a, d in dungeons.items())
-
-    def pts(text):
-        return parse_points(text)
-
-    def dungeon_by_name(name):
-        key = build_gear.dungeon_key(name)
-        exact = [a for k, a in dkeys if k == key]
-        if exact:
-            return exact[0]
-        near = sorted((abs(len(k) - len(key)), a) for k, a in dkeys if key and k and (key in k or k in key))
-        return near[0][1] if near else None
-
-    report = {'kinds': {}, 'ambiguous': [], 'quest item start': 0, 'quest without starter': 0,
-              'unknown quests': 0, 'unknown areas': list(subset.get('unknown', []))}
+    atlas = Atlas(att, facts)
+    report = {'kinds': {}, 'ambiguous': [], 'quest item start': 0, 'quest without place': 0, 'unknown quests': 0,
+              'unknown instances': []}
     P, G = {}, {}
     for key in sorted(needed):
         recs = needed[key]
         kind, _, rest = key.partition(':')
         points = []
         if kind == 'Q':
-            q = quests.get(int(rest))
+            q = atlas.quests.get(int(rest))
             if not q:
                 report['unknown quests'] += 1
             else:
-                for nid in q[0]:
-                    if nid in npcs:
-                        points += pts(npcs[nid][3])
-                        G.setdefault(key, npcs[nid][0])
-                for oid in q[1]:
-                    if oid in objects:
-                        points += pts(objects[oid][1])
-                if not q[0] and not q[1]:
-                    report['quest item start' if q[2] else 'quest without starter'] += 1
+                points = atlas.outside(q.get('points') or [])
+                if not points:
+                    for nid in q.get('givers') or []:
+                        points += atlas.npc_points(nid)
+                if not points and q.get('inst') is not None and q.get('inside'):
+                    points = atlas.entrance(q['inst'])
+                if q.get('giver'):
+                    G[key] = q['giver']
+                if not points:
+                    report['quest item start' if q.get('startItem') else 'quest without place'] += 1
         elif kind in ('V', 'R', 'W'):
-            cands = by_name.get(rest, [])
-            zones = {z if z > 0 else neg.get(-z) for z in _rec_zones(recs)} - {None}
-            inzone = [n for n in cands if npcs[n][1] in zones or any(p[0] in zones for p in pts(npcs[n][3]))]
+            cands = atlas.by_name.get(rest, [])
+            zones = _rec_zones(recs)
+            inzone = [n for n in cands if atlas.npcs[n].get('zone') in zones
+                      or any(p[0] in zones for p in atlas.npcs[n].get('points') or [])]
             if inzone:
                 cands = inzone
-            elif len({npcs[n][1] for n in cands}) > 1:
+            elif len({atlas.npcs[n].get('zone') for n in cands}) > 1:
                 report['ambiguous'].append(key)
             for n in cands:
-                points += pts(npcs[n][3])
+                points += atlas.npc_points(n)
         elif kind == 'U':
-            n = npcs.get(int(rest))
-            if n:
-                points = pts(n[3])
+            points = atlas.npc_points(int(rest))
         elif kind == 'I':
-            area = next(iter(sorted(_rec_areas(recs))), None) or instances.get(int(rest))
-            if area in dungeons:
-                points = pts(dungeons[area][1])
+            iid = atlas.instance_by_id(int(rest))
+            if iid is None:
+                for name in _rec_names(recs):
+                    iid = atlas.instance_by_name(name)
+                    if iid is not None:
+                        break
+            if iid is None:
+                report['unknown instances'].append(int(rest))
+            else:
+                points = atlas.entrance(iid)
         elif kind == 'N':
-            area = dungeon_by_name(rest)
-            if area:
-                points = pts(dungeons[area][1])
+            iid = atlas.instance_by_name(rest)
+            if iid is not None:
+                points = atlas.entrance(iid)
         P[key] = pick_points(points)
         for k in sorted({r[0] for r in recs}):
             w, wo = report['kinds'].get(k, (0, 0))
@@ -547,10 +335,10 @@ def resolve(subset, needed):
 # ---------------------------------------------------------------- output
 def write_lua(out, P, G, commit, built):
     lua_str = build_gear.lua_str
-    commit = (commit or 'master')[:10]
+    commit = (commit or '')[:10]
     lines = [
         '-- GENERATED by tools/build_map.py. Do not edit; rebuild instead.',
-        f'-- Sources: QuestieDB ({QUESTIE_LICENSE}) npc, object, quest and zone data at {commit}.',
+        f'-- Sources: {att_data.ATT_SOURCE}' + (f' at {commit}' if commit else '') + '.',
         'local _, ns = ...',
         '',
         '-- P: [source key] = up to four points "uiMapID:x:y" (x, y in hundredths of a percent, 0-10000),',
@@ -558,7 +346,7 @@ def write_lua(out, P, G, commit, built):
         '-- rare, named mob), U:<NPC id>, I:<instance id> and N:<dungeon name> (entrance).',
         '-- G: [source key] = who stands there (the quest giver), English.',
         'ns.MAP = {',
-        f'    game = "forever", built = {lua_str(built)}, questie = {lua_str(commit)},',
+        f'    game = "forever", built = {lua_str(built)}, source = {lua_str(commit or "none")},',
         '    P = {',
     ]
     for key in sorted(P):
@@ -581,61 +369,36 @@ def write_lua(out, P, G, commit, built):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--refresh-questie', action='store_true', help='download the database files again (see tools/README.md)')
-    ap.add_argument('--questie-ref', default='master', help='branch, tag or commit to download (default master)')
+    ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
+    ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
+    ap.add_argument('--wago', default=build_gear.WAGO, help='folder with client tables from wago.tools (UiMapAssignment)')
+    ap.add_argument('--gear', default=GEAR)
+    ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
 
-    recs, has_game = load_gear()
+    recs, has_game = load_gear(args.gear)
     needed = needed_keys(recs, has_game)
-
-    texts, commit = (None, None) if args.refresh_questie else load_cached()
-    if args.refresh_questie:
-        texts, commit = refresh_questie(ref=args.questie_ref)
-    stored = {}
-    if os.path.exists(MAP_JSON):
-        with open(MAP_JSON, encoding='utf-8') as fh:
-            stored = json.load(fh)
-    if texts is not None:
-        stored = questie_json(stored, texts, commit or args.questie_ref, needed)
-        with open(MAP_JSON, 'w', encoding='utf-8', newline='\n') as fh:
-            json.dump(stored, fh, ensure_ascii=False, indent=1, sort_keys=True)
-            fh.write('\n')
-        log(f'quest database: read -> {os.path.relpath(MAP_JSON, ROOT)} ({os.path.getsize(MAP_JSON) // 1024} KB)')
-    elif not stored:
-        raise SystemExit('no tools/map_questie.json and no download in tools/cache/questiedb: run with --refresh-questie')
-    else:
-        log('quest database: no complete download in tools/cache/questiedb, building from tools/map_questie.json')
-    if 'forever' not in stored:
-        raise SystemExit('tools/map_questie.json has no forever data: run with --refresh-questie')
-
-    P, G, report = resolve(stored['forever'], needed)
-    n = write_lua(OUT, P, G, stored.get('commit'), stored.get('fetched') or time.strftime('%Y-%m-%d'))
+    if args.refresh_att:
+        att_data.refresh(args.att)
+    if not os.path.isdir(os.path.join(args.att, 'dungeons & raids')):
+        raise SystemExit(f'no AllTheThings download in {args.att}: run with --refresh-att')
+    att = att_data.load(args.att, items=False, wago=args.wago)
+    P, G, report = resolve(att, needed, build_gear.load_facts())
+    n = write_lua(args.out, P, G, att.get('commit'), time.strftime('%Y-%m-%d'))
     log('places per source kind (with / without): '
         + ', '.join(f'{k} {w}/{wo}' for k, (w, wo) in sorted(report['kinds'].items())))
     for kind in ('Q', 'V', 'R', 'W', 'U', 'I', 'N'):
         keys = [k for k in P if k.startswith(kind + ':')]
         if keys:
             log(f'  keys {kind}: {sum(1 for k in keys if P[k])} of {len(keys)} with a place')
-    if report['unknown areas']:
-        log(f'  areas without a map: {len(report["unknown areas"])} ({report["unknown areas"][:12]})')
     if report['ambiguous']:
         log(f'  names in more than one zone, none in the source zone: {len(report["ambiguous"])} '
             f'({report["ambiguous"][:8]})')
-    log(f'  quests started by an item: {report["quest item start"]}, without starter: '
-        f'{report["quest without starter"]}, unknown: {report["unknown quests"]}')
-    missing = [k for k in P if not P[k]]
-    if missing:
-        log(f'  without a place: {missing[:20]}{" ..." if len(missing) > 20 else ""}')
-    log(f'{os.path.relpath(OUT, ROOT)}: {n} keys with a place, {os.path.getsize(OUT) // 1024} KB')
-
-
-def questie_json(stored, texts, commit, needed):
-    """The content of tools/map_questie.json for a complete download: always written whole from that
-    download (nothing is kept from an older one); the fetch date stays while the commit is the same."""
-    same = stored.get('commit') == commit and stored.get('fetched')
-    return {'source': f'https://github.com/{QUESTIE_REPO}', 'license': QUESTIE_LICENSE, 'commit': commit,
-            'fetched': stored['fetched'] if same else time.strftime('%Y-%m-%d'),
-            'forever': parse_questie(texts, needed)}
+    if report['unknown instances']:
+        log(f'  instance ids the data cannot place: {report["unknown instances"]}')
+    log(f'  quests started by an item: {report["quest item start"]}, without a place: '
+        f'{report["quest without place"]}, unknown: {report["unknown quests"]}')
+    log(f'{os.path.relpath(args.out, ROOT)}: {n} keys with a place, {os.path.getsize(args.out) // 1024} KB')
 
 
 if __name__ == '__main__':

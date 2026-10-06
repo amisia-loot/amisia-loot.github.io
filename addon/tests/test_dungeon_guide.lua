@@ -20,7 +20,7 @@ STUB.instance = { name = "Dun Morogh", type = "none", id = 0 }
 -- three dungeons: the thanes and the ruins both bring a helm and a ring, the mines a cloak
 ---------------------------------------------------------------------------
 NS.DUNGEON_QUESTS = {
-    built = "test", questie = "test",
+    built = "test", source = "test",
     D = { thanes = { 99001, 99005 }, deadmines = { 99010 } },
     Q = {
         [99001] = { "Grudge of the Thanes", 14, 18, "A", 0, "O", "Thane Giver", "1436:5633:4752", { 99002 }, { 99003, 99004 }, "thanes" },

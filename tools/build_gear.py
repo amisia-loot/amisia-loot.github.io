@@ -2,58 +2,71 @@
 where it comes from. The addon's gear window (/amisia gear) reads it, asks the client for the
 item's stats and picks the best item per slot and level range.
 
-    python tools/build_gear.py [--sv <Amisia.lua>...] [--refresh-wowsrc] [--out addon/Amisia/GearData.lua]
+    python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv <Amisia.lua>...]
+                               [--refresh-wowsrc] [--no-wowsrc] [--itemsparse CSV] [--out FILE]
 
-What an item is (slot, armour or weapon type, required level, quality, bind type) comes from the
-Amisia item scan (`/amisia scan`), because Forever changed a lot of Classic items and the scan
-reads the Forever client. An item that is not in a scan is left out. By default the scan dumps
-in the repo root and the SavedVariables of the installed Forever client are read.
+Runs on the N100: everything it needs by default comes from the AllTheThings download and the
+files in the repo. PC-only inputs are optional and only add to it.
 
-Where an item comes from is joined from:
-  - QuestieDB (Forever flavour, installed in the Classic Era AddOns folder): quest rewards with
-    quest level, faction and zone, vendors, and drops by NPC. Its drop assignments are Classic's.
-  - OneForAll (Forever AddOns folder): dungeon bosses, dungeon quests and Merchant's Favor recipes.
-  - AtlasLootClassic (Forever AddOns folder): the Forever dungeon tables and the Classic crafting
-    recipes (spell -> made item, profession, skill).
-  - wowsrc.com dungeon loot pages (rare and better per boss with the drop chance), kept parsed in
-    tools/gear_wowsrc.json. --refresh-wowsrc downloads them again; the site allows crawling.
+What an item is (slot, armour or weapon type, required level, quality, bind type):
+  - the Amisia item scan (`/amisia scan`): the scan dumps in the repo root, the SavedVariables
+    Syncthing brings to ~/addons/_SavedVariables/Amisia.lua, those of an installed Forever client,
+    or the files given with --sv. A scanned item's fields win, because the scan reads the live client;
+  - else AllTheThings' export of the Forever client's item table (tools/att_data.py).
+  The scanned stats go into ST; an item no scan given here has seen keeps the stats of the current
+  GearData.lua (earlier scans), so a rebuild without SavedVariables loses none.
+
+Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LICENSES/):
+  - AllTheThings' Forever data: quest rewards with minimum level, faction, zone and dungeon; boss
+    drops per dungeon; rares, vendors and zone drops with their NPC; world drops; PvP rank gear;
+    crafted items per profession. The authors' Classic folders (zzOLD) fill what the Forever
+    folders do not have yet. ATT gives no quest level (the minimum level stands in), no NPC levels
+    and no recipe skill (0 = not known).
   - The Amisia item collector (`scan.sources`): drops, merchants, quests and the auction house as a
     player met them. These names are German.
+  - Optional, PC only (the Forever AddOns folder; skipped when missing): OneForAll (dungeon bosses,
+    dungeon quests, Merchant's Favor recipes) and AtlasLootClassic (Forever dungeon tables, Classic
+    recipes with their skill).
+  - wowsrc.com dungeon loot pages (drop chances), kept parsed in tools/gear_wowsrc.json;
+    --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
+
+Instance ids (what GetInstanceInfo reports) come from the UiMapAssignment client table in --wago
+(default ~/addons/_wago, downloaded by hand from wago.tools), from tools/forever_dungeons.json and
+from the collector's drop notes; a dungeon without one is placed by its name.
 
 AMISIA_WOW_ROOT overrides the WoW install path.
 """
 import argparse
-import base64
 import glob
 import html
 import json
 import os
 import re
-import struct
 import sys
 import time
 import urllib.request
-import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import att_data  # noqa: E402  (the AllTheThings reader)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
 FOREVER_ADDONS = os.path.join(WOW_ROOT, '_classic_beta_', 'Interface', 'AddOns')
-QUESTIE_TOC = os.path.join(WOW_ROOT, '_classic_era_', 'Interface', 'AddOns', 'QuestieDB', 'QuestieDB_Forever.toc')
 WOWSRC_JSON = os.path.join(HERE, 'gear_wowsrc.json')
 FOREVER_JS = os.path.join(ROOT, 'data', 'forever.js')
 FOREVER_ZONES = os.path.join(HERE, 'forever_zones.json')
+FACTS = os.path.join(HERE, 'forever_dungeons.json')
 ITEMSPARSE_JSON = os.path.join(HERE, 'gear_itemsparse.json')
-# Questie/ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
+WAGO = os.path.expanduser('~/addons/_wago')
+# ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
 RXP_WEIGHTS = os.path.join(FOREVER_ADDONS, 'RXPGuides', 'DB', 'forever', 'StatWeights.lua')
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'GearData.lua')
 OUT_WEIGHTS = os.path.join(ROOT, 'addon', 'Amisia', 'GearWeights.lua')
 GEAR_LUA = os.path.join(ROOT, 'addon', 'Amisia', 'Gear.lua')
-USER_AGENT = 'AmisiaGuildTool/1.0 (+https://amisia-loot.github.io)'
+USER_AGENT = att_data.USER_AGENT
 
 # Equipment slots worth planning. Shirts, tabards, bags and ammo are left out.
 EQUIP = {
@@ -63,12 +76,6 @@ EQUIP = {
     'INVTYPE_WEAPONOFFHAND', 'INVTYPE_SHIELD', 'INVTYPE_HOLDABLE', 'INVTYPE_RANGED', 'INVTYPE_RANGEDRIGHT',
     'INVTYPE_THROWN', 'INVTYPE_RELIC',
 }
-# Questie race bits: Human 1, Orc 2, Dwarf 4, Night Elf 8, Undead 16, Tauren 32, Gnome 64, Troll 128.
-ALLIANCE_RACES, HORDE_RACES = 1 | 4 | 8 | 64, 2 | 16 | 32 | 128
-# Questie NPC ranks: 0 normal, 1 elite, 2 rare elite, 3 boss, 4 rare.
-RARE_RANKS = {2, 4}
-# Hall of Legends and Champions' Hall, where the PvP rank vendors stand.
-PVP_HALLS = {2917, 2918}
 # An item dropped by more NPCs than this outside instances is a world drop, not a named mob's loot.
 WORLD_DROP_NPCS = 6
 # The planner is about levelling: Classic raids and their quests stay out. Their items are in the
@@ -86,6 +93,8 @@ ATLAS_PROF = {1: 'firstaid', 2: 'blacksmithing', 3: 'leatherworking', 4: 'alchem
               8: 'tailoring', 9: 'engineering', 10: 'enchanting', 14: 'jewelcrafting'}
 OFA_PROF = {'Alchemy': 'alchemy', 'Blacksmithing': 'blacksmithing', 'Leatherworking': 'leatherworking',
             'Tailoring': 'tailoring', 'Engineering': 'engineering', 'Enchanting': 'enchanting', 'Cooking': 'cooking'}
+# The name PvP rank gear gets as a source: ATT lists it per faction, not per quartermaster.
+PVP_SOURCE = 'Rank Quartermaster'
 
 
 def log(*a):
@@ -217,129 +226,6 @@ def write_weights(out, rxp):
     lines += ['    },', '}']
     with open(out, 'w', encoding='utf-8', newline='\n') as fh:
         fh.write('\n'.join(lines) + '\n')
-
-
-# ---------------------------------------------------------------- QuestieDB (baked TOC store)
-def _cbor(b, i=0):
-    ib = b[i]
-    mt, ai = ib >> 5, ib & 31
-    i += 1
-    if ai < 24:
-        val = ai
-    elif ai == 24:
-        val = b[i]
-        i += 1
-    elif ai == 25:
-        val = struct.unpack('>H', b[i:i + 2])[0]
-        i += 2
-    elif ai == 26:
-        if mt == 7:
-            return struct.unpack('>f', b[i:i + 4])[0], i + 4
-        val = struct.unpack('>I', b[i:i + 4])[0]
-        i += 4
-    elif ai == 27:
-        if mt == 7:
-            return struct.unpack('>d', b[i:i + 8])[0], i + 8
-        val = struct.unpack('>Q', b[i:i + 8])[0]
-        i += 8
-    else:
-        raise ValueError('indefinite CBOR length is not used by QuestieDB')
-    if mt == 0:
-        return val, i
-    if mt == 1:
-        return -1 - val, i
-    if mt in (2, 3):
-        return b[i:i + val].decode('utf-8', 'replace'), i + val
-    if mt == 4:
-        out = []
-        for _ in range(val):
-            v, i = _cbor(b, i)
-            out.append(v)
-        return out, i
-    if mt == 5:
-        out = {}
-        for _ in range(val):
-            k, i = _cbor(b, i)
-            v, i = _cbor(b, i)
-            out[k] = v
-        return out, i
-    if mt == 6:
-        return _cbor(b, i)
-    if ai == 25:  # half float
-        s, e, f = (val >> 15) & 1, (val >> 10) & 31, val & 1023
-        v = (f / 1024) * 2 ** -14 if e == 0 else (1 + f / 1024) * 2 ** (e - 15)
-        return (-v if s else v), i
-    return {20: False, 21: True, 22: None}.get(val), i
-
-
-def load_questie(toc=QUESTIE_TOC):
-    """{'Item'|'Quest'|'Npc': {id: {fieldIndex: value}}} from QuestieDB's baked metadata store.
-
-    Each entity row is base64 CBOR in `## X-<Entity>-<id>-S`; table fields sit in
-    `X-<Entity>-<id>-<field>` and the row's `p` bitmask says which exist. Long values are split
-    into `~N~` plus numbered parts. The id list is zlib-compressed."""
-    meta = {}
-    with open(toc, encoding='utf-8') as fh:
-        for line in fh:
-            if line.startswith('## X-'):
-                k, _, v = line[3:].rstrip('\n').partition(': ')
-                meta[k] = v
-
-    def stored(key):
-        v = meta.get(key)
-        if v and v.startswith('~') and v.endswith('~'):
-            v = ''.join(meta[f'{key}-{j}'] for j in range(1, int(v.strip('~')) + 1))
-        return v
-
-    def decode(v):
-        return _cbor(base64.b64decode(v))[0]
-
-    out = {}
-    for ent in ('Item', 'Quest', 'Npc'):
-        ids = _cbor(zlib.decompress(base64.b64decode(stored(f'X-{ent}-IDS'))))[0]
-        rows = {}
-        for i in ids:
-            s = stored(f'X-{ent}-{i}-S')
-            row = decode(s) if s else {}
-            if isinstance(row, list):
-                row = {n + 1: v for n, v in enumerate(row) if v is not None}
-            p = row.pop('p', 0) or 0
-            fi = 1
-            while p:
-                if p & 1:
-                    t = stored(f'X-{ent}-{i}-{fi}')
-                    if t:
-                        row[fi] = decode(t)
-                p >>= 1
-                fi += 1
-            rows[i] = row
-        out[ent] = rows
-    return out
-
-
-def questie_zones(toc=QUESTIE_TOC):
-    """(area id -> name, dungeon area ids, area id -> uiMapID) from QuestieDB's Forever zone files."""
-    zdir = os.path.join(os.path.dirname(toc), 'support', 'Forever', 'Zones')
-    names, dungeons, uimap, by_key = {}, {}, {}, {}
-    with open(os.path.join(zdir, 'zoneIds.lua'), encoding='utf-8') as fh:
-        for key, num in re.findall(r'^\s*([A-Z][A-Z0-9_]+)\s*=\s*(\d+)', fh.read(), re.M):
-            names.setdefault(int(num), key.replace('_', ' ').title().replace("'S", "'s"))
-            by_key.setdefault(key, int(num))
-    with open(os.path.join(zdir, 'dungeons.lua'), encoding='utf-8') as fh:
-        for area, name, alts in re.findall(r'\[(\d+)\]\s*=\s*\{"([^"]+)",(\{[^}]*\}|nil)', fh.read()):
-            dungeons[int(area)] = name
-            for a in re.findall(r'\d+', alts):
-                dungeons[int(a)] = name
-            names[int(area)] = name
-    with open(os.path.join(zdir, 'areaIdToUiMapId.lua'), encoding='utf-8') as fh:
-        for area, ui in re.findall(r'\[(\d+)\]\s*=\s*(\d+)', fh.read()):
-            uimap.setdefault(int(area), int(ui))
-    instances = {}
-    with open(os.path.join(zdir, 'instanceIdToAreaId.lua'), encoding='utf-8') as fh:
-        for inst, key in re.findall(r'\[(\d+)\]\s*=\s*ZoneDB\.zoneIDs\.([A-Z0-9_]+)', fh.read()):
-            if key in by_key:
-                instances[int(inst)] = by_key[key]
-    return names, dungeons, uimap, instances
 
 
 # ---------------------------------------------------------------- OneForAll
@@ -500,22 +386,83 @@ class Sources:
         return self.index[rec]
 
 
-def faction_of(races):
-    races = races or 0
-    a, h = bool(races & ALLIANCE_RACES), bool(races & HORDE_RACES)
-    return 'A' if a and not h else 'H' if h and not a else None
-
-
-def npc_faction(npc):
-    f = str(npc.get(13) or '')
-    return 'A' if f == 'A' else 'H' if f == 'H' else None
-
-
-def is_pvp_vendor(npc):
+def is_pvp_vendor(title):
     """PvP rank quartermasters: their gear needs an honour rank, not just gold."""
-    title = str(npc.get(14) or '')
-    return (npc.get(9) in PVP_HALLS or 'Quartermaster' in title and ('Armor' in title or 'Accessories' in title)
-            or 'Legacy' in title)
+    title = str(title or '')
+    return 'Quartermaster' in title and ('Armor' in title or 'Accessories' in title) or 'Legacy' in title
+
+
+def zone_name(const):
+    """A map constant as a name: STORMWIND_CITY -> Stormwind City (the fallback when the client
+    has no name for the uiMapID)."""
+    return ' '.join(w.capitalize() for w in const.split('_')).replace("'S ", "'s ")
+
+
+def load_facts(path=FACTS):
+    with open(path, encoding='utf-8') as fh:
+        return json.load(fh)['dungeons']
+
+
+class Places:
+    """Dungeons and raids by ATT instance, name or instance id: (name, instance id, area id).
+
+    The name is the one tools/forever_dungeons.json gives a dungeon (else ATT's); the instance id
+    comes from the client's UiMapAssignment table (via the ATT reader), the facts file, or what the
+    collector's drop notes reported (learn())."""
+
+    def __init__(self, att, facts=()):
+        self.facts = list(facts or ())
+        self.att = {}       # ATT instance id -> [name, instance id, area id]
+        self.by_key = {}    # dungeon_key(name) -> the same list
+        for iid in sorted(att.get('instances', {})):
+            i = att['instances'][iid]
+            fact = self._fact(i['name'], i.get('area')) or self._fact(i.get('stem'), None)
+            name = fact['name'] if fact else i['name']
+            place = [name, i.get('mapID') or (fact or {}).get('inst'), i.get('area') or (fact or {}).get('area')]
+            self.att[iid] = place
+            for n in [name, i['name']] + list((fact or {}).get('aliases') or []):
+                self.by_key.setdefault(dungeon_key(n), place)
+        for f in self.facts:
+            place = self.by_key.get(dungeon_key(f['name'])) or [f['name'], f.get('inst'), f.get('area')]
+            for n in [f['name']] + list(f.get('aliases') or []):
+                self.by_key.setdefault(dungeon_key(n), place)
+
+    def _fact(self, name, area):
+        if area:
+            for f in self.facts:
+                if f.get('area') == area:
+                    return f
+        key = dungeon_key(name or '')
+        for f in self.facts:
+            if key and key in {dungeon_key(n) for n in [f['name']] + list(f.get('aliases') or [])}:
+                return f
+        return None
+
+    def of_att(self, iid):
+        return tuple(self.att[iid]) if iid in self.att else (None, None, None)
+
+    def of_name(self, name):
+        """By name: exactly, else by containment ("Scarlet Monastery - Armory")."""
+        key = dungeon_key(name or '')
+        place = self.by_key.get(key)
+        if place is None and key:
+            near = sorted((abs(len(k) - len(key)), k) for k in self.by_key if k and (k in key or key in k))
+            place = self.by_key[near[0][1]] if near else None
+        return tuple(place) if place else (None, None, None)
+
+    def of_instance(self, inst):
+        for place in self.att.values():
+            if inst and place[1] == inst:
+                return tuple(place)
+        return (None, None, None)
+
+    def learn(self, inst, name):
+        """An instance id a drop note reported for a dungeon name: kept where the id was unknown."""
+        if not inst or not name:
+            return
+        place = self.by_key.get(dungeon_key(name))
+        if place is not None and not place[1]:
+            place[1] = inst
 
 
 def norm_name(s):
@@ -578,25 +525,93 @@ def merge_dungeon_sources(nums, rows):
     return out
 
 
-def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse=None,
-          forever_raids=None):
-    zone_names, dungeon_areas, uimap = zones[:3]
-    instances = zones[3] if len(zones) > 3 else {}
-    area_instance = {}
-    for inst, area in sorted(instances.items()):
-        area_instance.setdefault(area, inst)
+PREV_STUB = r'''
+return function(src)
+    local ns = {}
+    local f = assert(loadstring(src, "@GearData.lua"))
+    setfenv(f, {})
+    f("Amisia", ns)
+    local d, out = ns.GEAR, {}
+    if not d then return out end
+    for id, row in pairs(d.I) do
+        local only = true
+        for i = 11, #row do
+            local rec = d.S[row[i]]
+            if not rec or rec[1] ~= "Q" then only = false end
+        end
+        out[id] = { "INVTYPE_" .. row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], only and #row > 10 }
+    end
+    return out
+end
+'''
 
-    def place_of(dname, area=None):
-        """(instance id, area id) of a dungeon, by its area or else by its name; None where unknown.
-        "Here" in game finds the dungeon through them (GetInstanceInfo)."""
-        if not area:
-            key = dungeon_key(dname)
-            exact = sorted(a for a, n in dungeon_areas.items() if dungeon_key(n) == key)
-            near = sorted(a for a, n in dungeon_areas.items() if key and (key in dungeon_key(n) or dungeon_key(n) in key))
-            # an area with an instance id first: a dungeon's other areas are only aliases
-            area = sorted(exact or near or [None], key=lambda a: (a not in area_instance, a or 0))[0]
-        return area_instance.get(area) if area else None, area or None
-    q_items, q_quests, q_npcs = questie['Item'], questie['Quest'], questie['Npc']
+
+def previous_items(path=OUT):
+    """{item id: item dict} of the I table of a generated GearData.lua: what earlier scans said about
+    the items (slot, class, subclass, quality, bind, item level, class mask). Its level column is the
+    planner's level, not the item's required level; for an item whose only sources were quests it
+    holds a quest level, so there it is given as 0 (unknown) and the quest data sets it again."""
+    if not os.path.exists(path):
+        return {}
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
+    with open(path, encoding='utf-8') as fh:
+        rows = lua.execute(PREV_STUB)(fh.read())
+    out = {}
+    for iid, r in rows.items():
+        loc, cls, sub, level, q, bind, ilvl, mask, quest_only = (r[i] for i in range(1, 10))
+        out[int(iid)] = {'name': '', 'q': int(q or 0), 'ilvl': int(ilvl or 0), 'min': 0 if quest_only else int(level or 0),
+                         'classID': int(cls or 0), 'subclassID': int(sub or 0), 'equipLoc': loc, 'icon': '',
+                         'bind': int(bind or 0), 'classes': int(mask or 0), 'stats': ''}
+    return out
+
+
+def item_master(scan_items, att_items, prev_items=None, names=None):
+    """The items the build knows: ATT's export of the client's item table; over it what the last
+    GearData.lua said (earlier scans; the required level stays ATT's where ATT has one); over both a
+    scanned item's fields (the scan reads the live client). names fills missing names."""
+    out = {iid: dict(it) for iid, it in (att_items or {}).items()}
+    for iid, it in (prev_items or {}).items():
+        base = out.get(iid)
+        out[iid] = dict(it)
+        if base:
+            out[iid].update(name=base.get('name') or '', min=base.get('min') or it['min'], skill=base.get('skill') or 0,
+                            classes=it.get('classes') or base.get('classes') or 0)
+    for iid, name in (names or {}).items():
+        if iid in out and not out[iid].get('name'):
+            out[iid]['name'] = name
+    for iid, it in (scan_items or {}).items():
+        if not it.get('equipLoc') and iid in out:
+            # an itemNames-only record (name and quality): what else ATT knows stays
+            out[iid].update({k: v for k, v in it.items() if v})
+            continue
+        base = out.get(iid, {})
+        out[iid] = dict(base, **it)
+        for k in ('classes', 'skill'):
+            if base.get(k):
+                out[iid][k] = base[k]
+    return out
+
+
+def is_junk(name):
+    """Test, unused and old items by name; ATT's export marks retired ones "OLD<name>"."""
+    name = name or ''
+    return bool(build_scan.JUNK_NAME.search(name)) or bool(re.match(r'OLD[A-Z]', name))
+
+
+def build(scan_items, collected, att, ofa=({}, {}), atlas_dungeons=(), atlas_crafts=None, wowsrc=None,
+          itemsparse=None, forever_raids=None, facts=None, prev_items=None):
+    """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
+    for none); ofa, atlas_dungeons and atlas_crafts are the optional PC sources. Returns the source
+    records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
+    zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
+    ask the client for."""
+    items = item_master(scan_items, att.get('items'), prev_items, att.get('item_names'))
+    places = Places(att, facts)
+    quests, npcs = att.get('quests', {}), att.get('npcs', {})
+    map_names = {}
+    for const, ui in sorted((att.get('maps') or {}).items()):
+        map_names.setdefault(ui, zone_name(const))
     src = Sources()
     found = {}   # item id -> list of source numbers
     stats = {}
@@ -607,20 +622,14 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
             lst.append(num)
             stats[kind] = stats.get(kind, 0) + 1
 
-    def zone(area):
-        if not area or area <= 0:
-            return None
-        return uimap.get(area) or None, zone_names.get(area)
-
     zone_rows = {}
 
-    def zone_ref(area):
-        z = zone(area)
-        if not z or not (z[0] or z[1]):
+    def zone_ref(ui):
+        """A uiMapID as a zone key; the name is the fallback for a client without one."""
+        if not ui or ui <= 0:
             return None
-        key = z[0] or -area
-        zone_rows.setdefault(key, z[1] or '')
-        return key
+        zone_rows.setdefault(ui, map_names.get(ui, ''))
+        return ui
 
     text_zones = {}
 
@@ -640,75 +649,88 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
     def name_id(name, iid):
         by_name.setdefault(norm_name(name), set()).add(iid)
 
-    for iid, row in q_items.items():
-        name_id(row.get(1), iid)
+    for iid, it in (att.get('items') or {}).items():
+        name_id(it.get('name'), iid)
+    for iid, name in (att.get('item_names') or {}).items():
+        name_id(name, iid)
 
-    # Boss names the dungeon sources know, so a Questie drop can tell a boss from trash
-    known_bosses = {}
-    for dname, d in (ofa[0] or {}).items():
-        for boss in d.get('bosses') or []:
-            known_bosses.setdefault(dungeon_key(dname), set()).add(norm_name(boss.get('name')))
-    for dname, _, boss, *_ in atlas_dungeons:
-        known_bosses.setdefault(dungeon_key(dname), set()).add(norm_name(boss))
-    for d in (wowsrc or {}).get('dungeons', []):
-        for boss in d['bosses']:
-            known_bosses.setdefault(dungeon_key(d['name']), set()).add(norm_name(boss['name']))
+    def npc_zone(n, fallback=None):
+        """Where an NPC stands: its own zone, else the map of its first point."""
+        z = n.get('zone') if n else None
+        if not z and n and n.get('points'):
+            z = n['points'][0][0]
+        return z or fallback
 
-    def is_boss(dname, npc_name):
-        key, name = dungeon_key(dname), norm_name(npc_name)
-        return any(name in bosses for k, bosses in known_bosses.items() if k in key or key in k)
+    def quest_rec(qid, q):
+        dname = places.of_att(q['inst'])[0] if q.get('inst') is not None else None
+        if dname in RAIDS:
+            return None
+        zone = q.get('zone')
+        if q.get('points') and not q.get('inside'):
+            zone = q['points'][0][0]
+        return src.add('Q', q.get('name') or f'Quest {qid}', 0, q.get('minLevel') or 0, q.get('faction') or None,
+                       zone_ref(zone), qid, q.get('classes') or 0, dname)
 
-    # --- QuestieDB: quests, vendors, NPC drops
-    for iid, row in q_items.items():
-        for qid in row.get(6) or []:
-            q = q_quests.get(qid)
-            if not q:
-                continue
-            area = q.get(17) if isinstance(q.get(17), int) else 0
-            if dungeon_areas.get(area) in RAIDS:
-                continue
-            num = src.add('Q', q.get(1) or f'Quest {qid}', q.get(5) or 0, q.get(4) or 0, faction_of(q.get(6)),
-                          zone_ref(area), qid, q.get(7) or 0)
-            note(iid, num, 'quest')
-        for nid in row.get(14) or []:
-            n = q_npcs.get(nid)
-            if not n:
-                continue
-            title = n.get(14) or None
-            kind = 'P' if is_pvp_vendor(n) else 'V'
-            num = src.add(kind, n.get(1) or f'NPC {nid}', zone_ref(n.get(9) or 0), npc_faction(n), title, None, nid)
-            note(iid, num, 'pvp' if kind == 'P' else 'vendor')
-        drops = [dict(q_npcs[n], id=n) for n in (row.get(2) or []) if n in q_npcs]
-        if not drops:
+    # --- AllTheThings: quest rewards
+    for qid in sorted(quests):
+        q = quests[qid]
+        if not q.get('rewards'):
             continue
-        drops = [n for n in drops if dungeon_areas.get(n.get(9) or 0) not in RAIDS]
-        inside = [n for n in drops if (n.get(9) or 0) in dungeon_areas]
-        outside = [n for n in drops if n not in inside]
-        for n in inside:
-            dname = dungeon_areas[n.get(9)]
-            boss = n.get(1) if is_boss(dname, n.get(1)) or len(inside) == 1 or (n.get(6) or 0) == 3 else None
-            if boss:
-                note(iid, src.add('D', dname, boss, None, *place_of(dname, n.get(9))), 'dungeon')
-            else:
-                # trash loot is a random drop: listed with the world drops
-                note(iid, src.add('W', f'Trash ({dname})', n.get(4) or 0, n.get(5) or 0), 'world')
-        rares = [n for n in outside if (n.get(6) or 0) in RARE_RANKS]
-        for n in rares:
-            note(iid, src.add('R', n.get(1), n.get(4) or 0, zone_ref(n.get(9) or 0), n['id']), 'rare')
-        common = [n for n in outside if n not in rares]
-        if len(common) > WORLD_DROP_NPCS:
-            lv = sorted(x for n in common for x in (n.get(4) or 0, n.get(5) or 0) if x)
-            note(iid, src.add('W', None, lv[0] if lv else 0, lv[-1] if lv else 0), 'world')
-        else:
-            for n in common:
-                note(iid, src.add('W', n.get(1), n.get(4) or 0, n.get(5) or 0, zone_ref(n.get(9) or 0), n['id']), 'world')
+        num = quest_rec(qid, q)
+        if num is None:
+            continue
+        for item in q['rewards']:
+            note(item, num, 'quest')
 
-    # --- OneForAll dungeons and dungeon quests
-    for dname, d in (ofa[0] or {}).items():
+    # --- boss, rare and named mob drops
+    for item, nid, kind, iid, zone, _old, boss in att.get('drops', []):
+        n = npcs.get(nid) if nid is not None else None
+        name = (n or {}).get('name') or boss
+        if iid is not None:
+            dname, inst, area = places.of_att(iid)
+            if dname in RAIDS or not dname:
+                continue
+            note(item, src.add('D', dname, name or 'Trash', None, inst, area), 'dungeon')
+        elif not name:
+            continue
+        elif kind == 'rare':
+            note(item, src.add('R', name, 0, zone_ref(npc_zone(n, zone)), nid), 'rare')
+        else:
+            note(item, src.add('W', name, 0, 0, zone_ref(npc_zone(n, zone)), nid), 'world')
+
+    # --- zone drops: trash inside a dungeon, the named mobs outside, or a drop of the whole zone
+    for item, crs, iid, zone, _old in att.get('zone_drops', []):
+        if iid is not None:
+            dname = places.of_att(iid)[0]
+            if dname and dname not in RAIDS:
+                note(item, src.add('W', f'Trash ({dname})', 0, 0), 'world')
+            continue
+        named = [(c, npcs.get(c)) for c in crs if (npcs.get(c) or {}).get('name')]
+        if not named or len(crs) > WORLD_DROP_NPCS:
+            note(item, src.add('W', None, 0, 0, zone_ref(zone)), 'world')
+            continue
+        for c, n in named:
+            note(item, src.add('W', n['name'], 0, 0, zone_ref(npc_zone(n, zone)), c), 'world')
+
+    # --- vendors (PvP rank quartermasters as P), world drops, PvP rank gear
+    for item, nid, _old in att.get('sold', []):
+        n = npcs.get(nid) or {}
+        kind = 'P' if is_pvp_vendor(n.get('title')) else 'V'
+        num = src.add(kind, n.get('name') or f'NPC {nid}', zone_ref(npc_zone(n)), n.get('faction') or None,
+                      n.get('title'), None, nid)
+        note(item, num, 'pvp' if kind == 'P' else 'vendor')
+    for item in att.get('world', []):
+        note(item, src.add('W', None, 0, 0), 'world')
+    for item, fac in att.get('pvp', []):
+        note(item, src.add('P', PVP_SOURCE, None, fac or None), 'pvp')
+
+    # --- OneForAll dungeons and dungeon quests (PC, optional)
+    for dname, d in ((ofa or ({}, {}))[0] or {}).items():
         for boss in d.get('bosses') or []:
             for tup in boss.get('loot') or []:
                 if isinstance(tup, list) and tup and isinstance(tup[0], int):
-                    note(tup[0], src.add('D', dname, boss.get('name') or '?', None, *place_of(dname)), 'dungeon')
+                    pname, inst, area = places.of_name(dname)
+                    note(tup[0], src.add('D', pname or dname, boss.get('name') or '?', None, inst, area), 'dungeon')
                     if len(tup) > 1:
                         name_id(tup[1], tup[0])
         for q in d.get('quests') or []:
@@ -720,36 +742,43 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                     note(tup[0], num, 'quest')
                     if len(tup) > 1:
                         name_id(tup[1], tup[0])
-    for prof, recipes in (ofa[1] or {}).items():
+    crafted = {}   # item -> professions a PC source named with a skill
+    for prof, recipes in ((ofa or ({}, {}))[1] or {}).items():
         key = OFA_PROF.get(prof)
         for r in (recipes or {}).values():
             item = r.get('craftedItemID')
             if key and item:
                 note(item, src.add('C', key, r.get('requiredSkill') or 0), 'craft')
+                crafted.setdefault(item, set()).add(key)
 
-    # --- AtlasLoot: Forever dungeons and Classic recipes
-    for dname, lr, boss, item, comment, *ids in atlas_dungeons:
+    # --- AtlasLoot: Forever dungeons and Classic recipes (PC, optional)
+    for dname, lr, boss, item, comment, *ids in atlas_dungeons or ():
         inst, area = (ids + [None, None])[:2]
+        pname, pinst, parea = places.of_name(dname)
         if not inst and not area:
-            inst, area = place_of(dname)
-        note(item, src.add('D', dname, boss, None, inst, area), 'dungeon')
+            inst, area = pinst, parea
+        note(item, src.add('D', pname or dname, boss, None, inst, area), 'dungeon')
         name_id(re.sub(r'\s*\(.*$', '', comment.replace('{FOREVER}', '')), item)
-    for item, profs in atlas_crafts.items():
+    for item, profs in (atlas_crafts or {}).items():
         for key, skill in profs:
             note(item, src.add('C', key, skill), 'craft')
+            crafted.setdefault(item, set()).add(key)
+
+    # --- ATT's crafted items: the profession without a skill, unless a source above has one
+    for item, key in att.get('crafted', []):
+        if key not in crafted.get(item, ()):
+            note(item, src.add('C', key, 0), 'craft')
 
     # --- wowsrc dungeon pages: drop chances, and loot of dungeons the other sources lack
     unmatched = []
-    missing = set()   # gear the sources name that no scan has seen: /amisia scan gear asks for it
+    missing = set()   # gear the sources name that no item table knows: /amisia scan gear asks for it
     for d in (wowsrc or {}).get('dungeons', []):
         for boss in d['bosses']:
             bname = 'Trash' if boss['name'].lower() == 'trash' else boss['name']
             for it in boss['items']:
                 ids = by_name.get(norm_name(it['n']))
-                iid = pick_id(ids, scan_items, it.get('nw'))
+                iid = pick_id(ids, items, it.get('nw'))
                 if not iid:
-                    # no id for the name at all, or an item the scan never saw (Forever still hides
-                    # many items from the client until they are revealed; a new scan picks them up)
                     unmatched.append(f"{d['name']}: {it['n']}" + ('' if ids else ' (no item id)'))
                     if ids:
                         missing.add(pick_id(ids, {i: True for i in ids}, it.get('nw')))
@@ -758,87 +787,84 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
                     # below one percent nobody farms it: a random drop like the world drops
                     note(iid, src.add('W', f"{d['name']}: {bname} {it.get('d')}", 0, 0), 'world')
                 else:
-                    note(iid, src.add('D', d['name'], bname, it.get('d'), *place_of(d['name'])), 'dungeon')
+                    pname, inst, area = places.of_name(d['name'])
+                    note(iid, src.add('D', pname or d['name'], bname, it.get('d'), inst, area), 'dungeon')
 
     # --- the collector: what players met in the Forever client
-    for iid, notes in collected.items():
-        for text in notes:
-            n = build_scan.parse_note(text)
-            if not n:
-                continue
+    notes = {iid: [n for n in (build_scan.parse_note(t) for t in texts) if n] for iid, texts in collected.items()}
+    for ns in notes.values():
+        for n in ns:
+            if n['kind'] == 'drop' and n.get('itype') == 'party':
+                places.learn(n['instance'], n['place'])
+    for iid, ns in notes.items():
+        for n in ns:
             if n['kind'] == 'ah':
                 note(iid, src.add('A'), 'ah')
             elif n['kind'] == 'quest':
-                q = q_quests.get(n['id']) if n['id'] else None
-                if q:
-                    area = q.get(17) if isinstance(q.get(17), int) else 0
-                    if dungeon_areas.get(area) in RAIDS:
-                        continue
-                    num = src.add('Q', q.get(1) or n['name'], q.get(5) or 0, q.get(4) or 0, faction_of(q.get(6)),
-                                  zone_ref(area), n['id'], q.get(7) or 0)
-                else:
-                    # a quest Questie does not know: the player's level stands in for the quest level
+                q = quests.get(n['id']) if n['id'] else None
+                num = quest_rec(n['id'], q) if q else None
+                if q and num is None:
+                    continue   # a raid quest
+                if num is None:
+                    # a quest the data does not know: the player's level stands in for the quest level
                     num = src.add('Q', n['name'] or '?', n['level'] or 0, 0, None, None, n['id'])
                 note(iid, num, 'quest')
             elif n['kind'] == 'vendor':
-                npc = q_npcs.get(n['id']) if n['id'] else None
-                name = (npc and npc.get(1)) or n['name'] or '?'
-                zone_key = zone_ref(npc.get(9) or 0) if npc else zone_text_ref(n['place'])
-                note(iid, src.add('V', name, zone_key, npc_faction(npc) if npc else None,
-                                  (npc.get(14) or None) if npc else None, None, n['id'] or None), 'vendor')
+                npc = npcs.get(n['id']) if n['id'] else None
+                name = (npc and npc.get('name')) or n['name'] or '?'
+                zone_key = zone_ref(npc_zone(npc)) if npc else zone_text_ref(n['place'])
+                note(iid, src.add('V', name, zone_key, (npc or {}).get('faction') or None,
+                                  (npc or {}).get('title'), None, n['id'] or None), 'vendor')
             else:
                 if n['itype'] == 'raid':
                     continue
-                npc = q_npcs.get(n['id']) if n['id'] else None
-                name = (npc and npc.get(1)) or n['name'] or (f"NPC {n['id']}" if n['id'] else None)
+                npc = npcs.get(n['id']) if n['id'] else None
+                name = (npc and npc.get('name')) or n['name'] or (f"NPC {n['id']}" if n['id'] else None)
                 if not name:
                     continue
                 if n['itype'] == 'party':
-                    area = instances.get(n['instance'])
-                    dname = dungeon_areas.get(area) if area else None
+                    dname, inst, area = places.of_instance(n['instance'])
+                    if not dname:
+                        dname, inst, area = places.of_name(n['place'])
                     if dname in RAIDS:
                         continue
-                    note(iid, src.add('D', dname or n['place'] or '?', name, None, n['instance'] or None, area), 'dungeon')
-                elif npc and (npc.get(6) or 0) in RARE_RANKS:
-                    note(iid, src.add('R', name, npc.get(4) or 0, zone_ref(npc.get(9) or 0), n['id']), 'rare')
+                    note(iid, src.add('D', dname or n['place'] or '?', name, None, n['instance'] or inst or None,
+                                      area), 'dungeon')
+                elif npc and 'rare' in npc.get('kinds', ()):
+                    note(iid, src.add('R', name, 0, zone_ref(npc_zone(npc)), n['id']), 'rare')
                 else:
-                    lo = (npc.get(4) or 0) if npc else 0
-                    hi = (npc.get(5) or 0) if npc else 0
-                    zone_key = zone_ref(npc.get(9) or 0) if npc else zone_text_ref(n['place'])
-                    note(iid, src.add('W', name, lo, hi, zone_key, n['id'] or None), 'world')
+                    zone_key = zone_ref(npc_zone(npc)) if npc else zone_text_ref(n['place'])
+                    note(iid, src.add('W', name, 0, 0, zone_key, n['id'] or None), 'world')
 
     # --- Forever raids the site has recorded: raid, boss, instance, area, phase 1, no token
     for rname, boss, iid, inst, area in forever_raids or []:
         note(iid, src.add('X', rname, boss, inst or 0, area or 0, 1, 0), 'raid')
 
-    # --- keep what the Forever scan knows and a character can wear
+    # --- keep what the item table knows and a character can wear
     keep = {}
-    dropped = {'not scanned': 0, 'not gear': 0, 'quality': 0, 'junk': 0, 'raid level': 0}
+    dropped = {'unknown item': 0, 'not gear': 0, 'quality': 0, 'junk': 0, 'raid level': 0}
     itemsparse = itemsparse or {}
     classes, delays, skills = itemsparse.get('classes', {}), itemsparse.get('delay', {}), itemsparse.get('skill', {})
     for iid, nums in found.items():
         nums = merge_dungeon_sources(nums, src.rows)
-        it = scan_items.get(iid)
-        if not it:
-            dropped['not scanned'] += 1
-            # worth asking the client again when Questie calls it a weapon or armour, or a dungeon
-            # or crafting source names it
-            q = q_items.get(iid)
-            kinds = {src.rows[n - 1][0] for n in nums}
-            if (q and q.get(12) in (2, 4)) or (not q and kinds & {'D', 'C', 'Q'}):
+        it = items.get(iid)
+        kinds = {src.rows[n - 1][0] for n in nums}
+        if not it or not it.get('equipLoc') and not it.get('classID'):
+            dropped['unknown item'] += 1
+            # worth asking the client when a dungeon, crafting or quest source names it
+            if kinds & {'D', 'C', 'Q'}:
                 missing.add(iid)
             continue
         if it['equipLoc'] not in EQUIP or it['classID'] not in (build_scan.CLASS_WEAPON, build_scan.CLASS_ARMOR):
             dropped['not gear'] += 1
             continue
-        if iid in TEST_ITEMS or build_scan.JUNK_NAME.search(it['name'] or ''):
+        if iid in TEST_ITEMS or is_junk(it.get('name')):
             dropped['junk'] += 1
             continue
-        kinds = {src.rows[n - 1][0] for n in nums}
         if iid < FOREVER_IDS and it['ilvl'] > CLASSIC_MAX_ILVL and 'X' not in kinds:
             dropped['raid level'] += 1
             continue
-        if kinds == {'P'} and it['q'] < 3:
+        if kinds <= {'P'} and it['q'] < 3:
             dropped['quality'] += 1
             continue
         # grey is never worth it, white only as a quest reward or crafted
@@ -857,8 +883,10 @@ def build(scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_craf
             skill = min(src.rows[n - 1][2] or 0 for n in nums)
             level = max(level, min(60, -(-skill // 5)))
         mask = int(classes.get(str(iid), 0))
+        if not mask and it.get('classes') and it['classes'] & ALL_CLASSES != ALL_CLASSES:
+            mask = it['classes'] & ALL_CLASSES
         speed = round(int(delays.get(str(iid), 0)) / 1000, 2)
-        line, rank = skills.get(str(iid), (0, 0))
+        line, rank = skills.get(str(iid), (it.get('skill') or 0, 0))
         if line:
             # worn only with the profession, so not before that skill is reached
             level = max(level, min(60, -(-rank // 5)))
@@ -915,22 +943,37 @@ def lua_val(v):
     return lua_str(v)
 
 
-def write_lua(out, src, keep, zone_rows, info, missing=()):
+def previous_stats(path=OUT):
+    """{item id: stat text} of the ST table of a generated GearData.lua: what earlier scans saw."""
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        text = fh.read()
+    m = re.search(r'\n    ST = \{\n(.*?)\n    \},', text, re.S)
+    if not m:
+        return {}
+    # stat texts are KEY=value pairs: no quotes or escapes in them
+    return {int(i): v for i, v in re.findall(r'^\s*\[(\d+)\] = "([^"\\]*)",$', m.group(1), re.M)}
+
+
+def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
     used = sorted({n for k in keep.values() for n in k[1]})
     renum = {n: i + 1 for i, n in enumerate(used)}
     zones_used = {}
     lines = [
         '-- GENERATED by tools/build_gear.py. Do not edit; rebuild instead.',
-        '-- Sources: QuestieDB (GPL-3.0), OneForAll, AtlasLootClassic (GPL-2.0), wowsrc.com, the Amisia item scan.',
+        '-- Sources: ' + ', '.join(info.get('sources') or [att_data.ATT_SOURCE, 'the Amisia item scan']) + '.',
         'local _, ns = ...',
         '',
-        '-- S: source records. Q quest {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon},',
+        '-- S: source records. Q quest {name, quest level (0 unknown), minimum level, faction, zone, quest id, class mask,',
+        '-- dungeon},',
         '-- D dungeon {dungeon, boss, drop chance, instance id, area id}, X raid {raid, boss, instance id, area id,',
         '-- phase, token}, R rare mob {name, level, zone, npc id}, W world drop {mob or nil,',
         '-- min level, max level, zone, npc id}, V vendor {name, zone, faction, title, phase (nil), npc id}, P PvP rank vendor (as V),',
-        '-- C crafted {profession, skill}, A seen at the auction house. Zones are uiMapIDs (localised in game) or negative area ids.',
+        '-- C crafted {profession, skill}, A seen at the auction house. Zones are uiMapIDs (localised in game), negative keys',
+        '-- are zones the collector wrote down by name (Z holds the names).',
         '-- ST: [itemID] = the client stats the scan saw, scored keys only ("STRENGTH=5;RESISTANCE0_NAME=40"). M: ids the',
-        '-- sources name but no scan has seen yet; /amisia scan gear asks the client for them.',
+        '-- sources name but no item table knows yet; /amisia scan gear asks the client for them.',
         '-- I: [itemID] = {equipLoc, classID, subclassID, level, quality, bind, item level, class mask, weapon speed,',
         '-- profession needed to wear it (skill line, 0 none), source...}. Level is the required level, or later: the',
         '-- level its quest can be taken (quest-only items) or the profession skill / 5. Class mask 0 means every',
@@ -961,7 +1004,7 @@ def write_lua(out, src, keep, zone_rows, info, missing=()):
     keys = scored_stat_keys()
     lines.append('    ST = {')
     for iid in sorted(keep):
-        st = compact_stats(keep[iid][0].get('stats'), keys)
+        st = compact_stats(keep[iid][0].get('stats'), keys) or (old_stats or {}).get(iid)
         if st:
             lines.append(f'        [{iid}] = {lua_str(st)},')
     lines.append('    },')
@@ -976,63 +1019,106 @@ def write_lua(out, src, keep, zone_rows, info, missing=()):
 
 
 def default_svs():
+    """The scan dumps in the repo root, the SavedVariables Syncthing brings to the N100 and those of
+    an installed Forever client: whichever exist."""
     paths = [os.path.join(ROOT, f) for f in ('Amisia_teil1.lua', 'Amisia_teil2.lua')]
+    paths.append(build_scan.DEFAULT_SV)
     paths += sorted(glob.glob(os.path.join(WOW_ROOT, '_classic_beta_', 'WTF', 'Account', '*', 'SavedVariables', 'Amisia.lua')))
     return [p for p in paths if os.path.exists(p)]
 
 
+def optional(what, fn, path, empty):
+    """A PC-only source: read when its file is there, else empty."""
+    if not os.path.exists(path):
+        log(f'{what}: not found ({path}), left out')
+        return empty
+    return fn(path)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files with item scans (default: repo dumps + installed Forever client)')
+    ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
+    ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
+    ap.add_argument('--wago', default=WAGO, help='folder with client tables from wago.tools (UiMapAssignment; default ~/addons/_wago)')
+    ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files with item scans (default: repo dumps, '
+                                            '~/addons/_SavedVariables/Amisia.lua, installed Forever client)')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
+    ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
     ap.add_argument('--show-unmatched', action='store_true')
     ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes); '
                                          'refreshes tools/gear_itemsparse.json')
     args = ap.parse_args(argv)
 
-    svs = args.sv or default_svs()
-    if not svs:
-        raise SystemExit('no Amisia SavedVariables with an item scan found; pass --sv')
-    scan_items, _, collected = build_scan.collect([build_scan.load_sv(p) for p in svs])
+    if args.refresh_att:
+        att_data.refresh(args.att)
+    if not os.path.isdir(os.path.join(args.att, 'dungeons & raids')):
+        raise SystemExit(f'no AllTheThings download in {args.att}: run with --refresh-att')
+    att = att_data.load(args.att, wago=args.wago)
+    log(f'AllTheThings {(att["commit"] or "?")[:10]}: {len(att["items"])} items, {len(att["quests"])} quests, '
+        f'{len(att["npcs"])} NPCs, {len(att["instances"])} instances'
+        + (f'; files that failed: {sorted(att["errors"])}' if att['errors'] else ''))
+
+    svs = args.sv if args.sv is not None else default_svs()
+    scan_items, collected = {}, {}
+    if svs:
+        scan_items, _, collected = build_scan.collect([build_scan.load_sv(p) for p in svs])
     log(f'scan: {len(scan_items)} items from {len(svs)} file(s), {len(collected)} with collector notes')
 
-    if args.refresh_wowsrc or not os.path.exists(WOWSRC_JSON):
-        refresh_wowsrc()
-    with open(WOWSRC_JSON, encoding='utf-8') as fh:
-        wowsrc = json.load(fh)
+    wowsrc = {}
+    if not args.no_wowsrc:
+        if args.refresh_wowsrc or not os.path.exists(WOWSRC_JSON):
+            refresh_wowsrc()
+        with open(WOWSRC_JSON, encoding='utf-8') as fh:
+            wowsrc = json.load(fh)
 
     if args.itemsparse:
-        refresh_itemsparse(args.itemsparse, scan_items)
+        refresh_itemsparse(args.itemsparse, item_master(scan_items, att['items'], previous_items(OUT)))
     itemsparse = {}
     if os.path.exists(ITEMSPARSE_JSON):
         with open(ITEMSPARSE_JSON, encoding='utf-8') as fh:
             itemsparse = json.load(fh)
     else:
-        log('no tools/gear_itemsparse.json: class limits and weapon speeds come from tooltips in game')
+        log('no tools/gear_itemsparse.json: weapon speeds come from tooltips in game')
 
-    questie = load_questie()
-    zones = questie_zones()
-    ofa = load_oneforall()
-    atlas_dungeons = load_atlas_forever_dungeons()
-    atlas_crafts = load_atlas_crafts()
+    ofa = optional('OneForAll', load_oneforall, os.path.join(FOREVER_ADDONS, 'OneForAll'), ({}, {}))
+    atlas_dungeons = optional('AtlasLoot dungeons', load_atlas_forever_dungeons,
+                              os.path.join(FOREVER_ADDONS, 'AtlasLootClassic_DungeonsAndRaids', 'data.lua'), [])
+    atlas_crafts = optional('AtlasLoot recipes', load_atlas_crafts,
+                            os.path.join(FOREVER_ADDONS, 'AtlasLootClassic', 'Data', 'Profession.lua'), {})
     forever_raids = load_forever_raids()
-    log(f'questie: {len(questie["Item"])} items, {len(questie["Quest"])} quests, {len(questie["Npc"])} npcs; '
-        f'oneforall: {len(ofa[0])} dungeons; atlasloot: {len(atlas_dungeons)} forever dungeon rows, '
+    log(f'oneforall: {len(ofa[0])} dungeons; atlasloot: {len(atlas_dungeons)} forever dungeon rows, '
         f'{len(atlas_crafts)} crafted items; wowsrc: {len(wowsrc.get("dungeons", []))} dungeons; '
         f'forever raids: {len(forever_raids)} drops')
 
+    # what earlier scans said, kept in the generated file: the item table and the stats
+    last = args.out if os.path.exists(args.out) else OUT
+    prev_items, old_stats = previous_items(last), previous_stats(last)
+    log(f'last build ({os.path.relpath(last, ROOT)}): {len(prev_items)} items, {len(old_stats)} with stats')
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
-        scan_items, collected, questie, zones, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse, forever_raids)
-    n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d')}, missing)
-    with_stats = sum(1 for k in keep.values() if k[0].get('stats'))
-    log(f'stats from the scan: {with_stats} of {len(keep)} items; {len(missing)} ids for /amisia scan gear')
-    write_weights(OUT_WEIGHTS, load_rxp_weights())
+        scan_items, collected, att, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse, forever_raids, load_facts(),
+        prev_items)
+    sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
+    if ofa[0] or ofa[1]:
+        sources.append('OneForAll')
+    if atlas_dungeons or atlas_crafts:
+        sources.append('AtlasLootClassic (GPL-2.0)')
+    if wowsrc:
+        sources.append('wowsrc.com')
+    n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d'), 'sources': sources},
+                      missing, old_stats)
+    scanned = sum(1 for k in keep.values() if k[0].get('stats'))
+    kept_old = sum(1 for i, k in keep.items() if not k[0].get('stats') and i in old_stats)
+    log(f'stats: {scanned} of {len(keep)} items from the scan, {kept_old} kept from the last build; '
+        f'{len(missing)} ids for /amisia scan gear')
+    if os.path.exists(RXP_WEIGHTS):
+        write_weights(OUT_WEIGHTS, load_rxp_weights())
+    else:
+        log(f'RXP stat weights not found ({RXP_WEIGHTS}): GearWeights.lua stays as it is')
     log(f'links found: {stats}')
     log(f'left out: {dropped}')
     no_id = sum(1 for u in unmatched if u.endswith('(no item id)'))
-    log(f'wowsrc items left out: {len(unmatched) - no_id} not in the scan (hidden by Forever until revealed), '
-        f'{no_id} without an item id')
+    log(f'wowsrc items left out: {len(unmatched) - no_id} not in the item tables, {no_id} without an item id')
     if args.show_unmatched:
         for u in unmatched:
             log('  ' + u)

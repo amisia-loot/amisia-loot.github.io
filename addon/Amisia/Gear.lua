@@ -76,7 +76,7 @@ local DUAL_WIELD = { ROGUE = 10, WARRIOR = 20, HUNTER = 20 }
 local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
 -- Index of the first source number in an item row.
 Gear.FIRST_SOURCE = 11
--- Questie class bits, used by class quests and the item rows' class masks
+-- Class bits (1 << (classID - 1)), used by class quests and the item rows' class masks
 local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
 Gear.CLASS_BIT = CLASS_BIT
 

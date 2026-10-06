@@ -56,6 +56,38 @@ The file is rewritten only when the tables change; then bump `BUILD_ID`.
 
 Tests: `python -m pytest tools/tests -q`.
 
+## att_data.py
+
+The shared reader of AllTheThings' hand-kept WoW Forever data for `build_gear.py`, `build_map.py`
+and `build_dungeonquests.py`: the folder `.contrib/.db/forever` of
+https://github.com/ATTWoWAddon/AllTheThings, MIT licence (Copyright (c) 2026 AllTheThings WoW Addon;
+the licence text ships in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`, approved by the user on
+2026-10-06).
+
+- `--refresh-att` (on each of the three builds) downloads through the GitHub API (the token of `gh`)
+  into `~/addons/_cache/att`, outside the repo, with the commit in `COMMIT`: the Forever dungeons
+  and zones, the Classic folders not yet moved (`zzOLD/01 - Dungeons Raids`, `zzOLD/02 - Outdoor
+  Zones`), world drops, PvP gear, crafted items, the map constants, the item export
+  `.config/exports/ItemDB.lua` and the client table `UiMapAssignment` ATT ships.
+- The files are a Lua builder language. They run in a sandbox (lupa without its python bridge, an
+  environment of a few safe functions, no `io`, `os`, `load`, `require`, `debug`) with stand-ins
+  that only record what they are given. ATT's preprocessor (`-- #if SEASON_OF_DISCOVERY` ...) is
+  applied first with the Forever build's tags; timelines decide what is in Forever 1.60.1 (an
+  addition with Cataclysm or only in the 1.15 Era/SoD branch is not). Names come from the comments.
+- Out comes one neutral form (see `load()`): quests (minimum level, faction, classes, givers with
+  points, start object or item, pre-quests, rewards, zone, dungeon), NPCs (name, title, points,
+  zone, faction, kind: boss, rare, vendor, giver, mob), boss and rare drops, zone drops with their
+  mobs, vendor stock, world drops, PvP gear per faction, crafted items per profession, the items of
+  the export, instances (name, area id, uiMaps, entrance, instance map id). A record of a Forever
+  folder wins over the same quest or NPC in a zzOLD folder.
+- What ATT does not give: a quest's own level (the minimum level stands in), NPC levels, recipe
+  skill levels, spawn points of mobs it only names, measured entrances of some dungeons (the new
+  ones carry the middle of their zone, which `build_map.py` does not take), and instance map ids
+  of dungeons (ATT's `UiMapAssignment` copy holds the outdoor zones only; put the wago.tools export
+  `UiMapAssignment` of the current build into `~/addons/_wago` for them).
+
+Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixtures/att`.
+
 ## build_gear.py
 
 Builds `addon/Amisia/GearData.lua` and `addon/Amisia/GearWeights.lua` for the addon's gear window
@@ -63,46 +95,60 @@ Builds `addon/Amisia/GearData.lua` and `addon/Amisia/GearWeights.lua` for the ad
 and the stat weights per class, spec and level.
 
 ```
-python tools/build_gear.py
+python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--no-wowsrc] [--itemsparse CSV]
 ```
 
-- What an item is (slot, armour or weapon type, required level, quality) comes from the Amisia item
-  scan: the scan dumps in the repo root plus the installed Forever client's SavedVariables, or the
-  files given with `--sv`. Items without a scan are left out.
-- Where it comes from is joined from QuestieDB's Forever database (quests, vendors, NPC drops; read
-  from the Classic Era AddOns folder), OneForAll (Forever dungeons, dungeon quests, Merchant's Favor
-  recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes), the wowsrc.com dungeon pages
-  (kept in `tools/gear_wowsrc.json`, `--refresh-wowsrc` downloads them again) and the Amisia item
-  collector.
+- What an item is (slot, armour or weapon type, required level, quality, bind, class limits): the
+  Amisia item scan where there is one (the scan dumps in the repo root,
+  `~/addons/_SavedVariables/Amisia.lua`, the installed Forever client's SavedVariables, or `--sv`),
+  else what the last `GearData.lua` said (earlier scans; a quest-only item's level is set again from
+  the quest), else ATT's item export. The stats (`ST`) are the scan's, else the last build's, so a
+  rebuild without SavedVariables loses none.
+- Where it comes from (`att_data.py`): quest rewards (minimum level, faction, zone, class limits,
+  dungeon), boss drops per dungeon, rares, vendors (PvP rank quartermasters as `P`), zone drops
+  (trash inside a dungeon, the named mobs outside), world drops, PvP rank gear, crafted items (the
+  profession; the skill is 0 = unknown unless AtlasLoot or OneForAll name it); and the Amisia item
+  collector (drops, merchants, quests, the auction house as players met them; German names).
+- Optional, PC only, skipped with a note when missing: OneForAll (Forever dungeons, dungeon quests,
+  Merchant's Favor recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes with skill),
+  RestedXP's Forever `StatWeights.lua` (without it `GearWeights.lua` stays as it is).
+- wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
+  `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
 - The DPS weights come from RestedXP's Forever `StatWeights.lua` (CC BY-NC-SA 4.0, so
   `GearWeights.lua` carries that licence); healer and tank weights are defined in the script.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
-  plus the ids its sources name but no scan has seen (`M` in GearData.lua, items Forever still
+  plus the ids its sources name but no item table knows (`M` in GearData.lua, items Forever still
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go
   into `GearData.lua` (`ST`), so the window needs no loading, and newly revealed items join.
 - Items without scanned stats are read from the client when the window opens.
 - The collector notes drops with NPC id and dungeon (`Drop: <mob> [<npcID>] @<place> #party:<instanceID>`)
   and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
   in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.
-- Rebuild after a scan, when the source addons update, or to pick up what the collector saw.
 - Vendors, rare mobs and named mobs carry the NPC id as their last field (V and P at 7, R at 5, W
-  at 6), from QuestieDB or the collector's `[npcID]`; `Gear.lua` does not read it, `build_map.py`
-  keys the map points by it.
-- Dungeon sources carry the instance id and area id (from AtlasLoot's `InstanceID`/`MapID` or
-  Questie's zone tables), so the gear page can find "here" through `GetInstanceInfo()`.
+  at 6), from ATT or the collector's `[npcID]`; `Gear.lua` does not read it, `build_map.py` keys the
+  map points by it.
+- Dungeon sources carry the instance id and area id, so the gear page can find "here" through
+  `GetInstanceInfo()`. The area id is ATT's; the instance id comes from the `UiMapAssignment` client
+  table (`--wago`, default `~/addons/_wago`), `tools/forever_dungeons.json` or the collector's drop
+  notes. Without one the dungeon is found by its English name only.
+- Dungeon names are those of `tools/forever_dungeons.json` (ATT's and the other sources' spellings
+  map to them through the names and aliases there).
 - Forever raids: drops the site recorded in `data/forever.js` for a zone that
   `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
   raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
 - Both files carry `game = "forever"`, `cap = 60` and are loaded through the TOC condition
   `[AllowLoadGameType camelot]`.
 
-It reads the WoW install (QuestieDB, OneForAll, AtlasLoot, RXP, SavedVariables), so it runs on the
-PC. `AMISIA_WOW_ROOT` overrides the WoW install path. Requires `lupa`.
+Runs on the N100. On the PC it also takes the scan and the PC-only sources. `AMISIA_WOW_ROOT`
+overrides the WoW install path. Requires `lupa`.
 
-Licences of the data: QuestieDB GPL-3.0 and AtlasLootClassic GPL-2.0 (Forever tables,
-`GearData.lua`), QuestieDB GPL-3.0 (`MapData.lua`, `map_questie.json`), RestedXP's Forever weights
-CC BY-NC-SA 4.0 (`GearWeights.lua`), wago.tools exports are Blizzard's game data
-(`gear_itemsparse.json`).
+Licences of the data: AllTheThings MIT (`GearData.lua`, `MapData.lua`, `DungeonQuestData.lua`;
+`addon/Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
+the installed folder), RestedXP's Forever weights CC BY-NC-SA 4.0 (`GearWeights.lua`), wago.tools
+exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). Still open:
+OneForAll's licence (check its installed folder on the PC) and wowsrc.com, whose pages state no
+licence (its robots.txt allows crawling, which is not one); `--no-wowsrc` leaves it out. No QuestieDB
+data: it has no licence.
 
 ## build_map.py
 
@@ -112,31 +158,26 @@ source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>
 `N:<dungeon name>`).
 
 ```
-python tools/build_map.py [--refresh-questie] [--questie-ref REF]
+python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR]
 ```
 
-- NPC and object spawns, quest starters, dungeon entrances and the zone tables (area id to uiMapID,
-  instance id to area) come from QuestieDB (https://github.com/Questie/QuestieDB, GPL-3.0), its
-  Forever databases. `--refresh-questie` downloads them from GitHub into
-  `tools/cache/questiedb/forever/` (not in git, with the commit in `COMMIT`). Whenever that
-  download is complete, what the gear data needs from it is written whole to
-  `tools/map_questie.json` (in git), so a build without network gives the same file. Only the
-  `[[return {...}]]` block of each database file is run; the dungeon file runs with the Era
-  expansion, so only the Era corrections of the entrances apply.
-- Which keys are needed comes from `GearData.lua`: quests by their quest id (quest giver or start
-  object; quests started by an item have no place), vendors, rare and named mobs by name (an NPC in
-  the source's zone wins, names found in several zones are reported) or by NPC id once
-  `build_gear.py` writes it, raids and dungeons by their entrance. A spawn inside an instance
-  stands for its entrance.
-- Several spawns: spawns within 2 % are one point, then the four farthest apart are kept.
+- Places come from ATT's data (`att_data.py`): a quest's coordinates (where its giver or start
+  object stands, else its givers' points), an NPC's own coordinates, those of the quests it gives,
+  or for a mob only a drop names the drop's coordinates; dungeon and raid entrances from the
+  instances' coordinates. A point on a dungeon's own map stands for its entrance; an entrance given
+  as the middle of its zone (50, 50) is not measured and is left out.
+- Which keys are needed comes from `GearData.lua`: quests by their quest id (quests started by an
+  item have no place), vendors, rare and named mobs by NPC id or by name (an NPC in the source's
+  zone wins, names found in several zones are reported), raids and dungeons by instance id (matched
+  through the `UiMapAssignment` table) or by name.
+- Several points: points within 2 % are one, then the four farthest apart are kept.
 - The file is loaded through the TOC condition `[AllowLoadGameType camelot]`. Keys are sorted, so a
   second build gives the same file.
-- The report lists per source kind how many have a place, areas without a map, ambiguous names and
-  quests without a starter.
+- The report lists per source kind how many have a place, ambiguous names, instance ids the data
+  cannot place and quests without a place.
 
-Runs on the N100 (no WoW install needed). After `build_gear.py` ran on the PC (NPC ids, instance
-ids), run it again and commit. Requires `lupa`.
-
+Runs on the N100 (no WoW install needed). Run it after every `build_gear.py`, then commit.
+Requires `lupa`.
 ## build_dungeons.py
 
 Builds `addon/Amisia/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
@@ -175,14 +216,11 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
 - Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
   https://github.com/ATTWoWAddon/AllTheThings, **MIT licence**. The copyright line and the licence
   text ship with the addon in `addon/Amisia/LICENSES/AllTheThings-MIT.txt` (approved by the user on
-  2026-10-06; the UI does not name it). `--refresh-att` downloads the dungeon and zone files and the
-  map constants through the GitHub API (with the `gh` token) into `~/addons/_cache/att` (outside the
-  repo; the repository itself is far too large to clone).
-- The files are a Lua builder language (`inst`, `q`, `e`, `i`, `n`, `objective`, ...). The reader runs
-  them under lupa with stand-ins that only record what they get; quest and giver names come from the
-  files' comments. A dungeon file is matched to the facts by its file name or the instance's area id;
-  instances without facts are reported. Pre-quests are looked up in the zone files; one the download
-  does not hold falls away.
+  2026-10-06; the UI does not name it). `--refresh-att` downloads it into `~/addons/_cache/att` (see
+  `att_data.py`, the shared reader, which runs the files in its sandbox).
+- Only the Forever folders count here (not the Classic zzOLD ones). A dungeon file is matched to the
+  facts by its file name or the instance's area id; instances without facts are reported.
+  Pre-quests are looked up in the zone files; one the download does not hold falls away.
 - The input is pluggable: every reader produces one neutral form (see `NEUTRAL` in the script),
   `--json` reads that form directly, `--empty` writes the file without data (the addon then says
   "Questdaten fehlen noch.").
