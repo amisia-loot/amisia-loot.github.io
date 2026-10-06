@@ -74,7 +74,8 @@ BUS.guild = { VULO, FRAK, KIM, PUG }
 for _, name in ipairs(CLIENTS) do setup(name) end
 assert(C(VULO, "NS.IsVerifiedMember('Fraktur')") == true and C(VULO, "NS.IsVerifiedMember('Pug')") == false)
 assert(C(VULO, "NS.DropSyncCanTalk()") == true, "outside instances the exchange may talk")
-assert(C(VULO, "NS.DROP_PROTO") == 1, "the drop protocol")
+-- protocol 2: the checksums cover the items, requests group buckets, busy senders answer DW
+assert(C(VULO, "NS.DROP_PROTO") == 2, "the drop protocol")
 
 ---------------------------------------------------------------------------
 -- three clients with overlapping records converge; a kill counts once
@@ -100,7 +101,7 @@ end
 local dv
 for _, m in ipairs(BUS.sent) do if m.kind == "DV" and m.sender == KIM then dv = m.text end end
 local today = C(KIM, "NS.DropsToday()")
-local w1, w2, w3 = dv:match("^1DV\t1\t3\t" .. (today - 9) .. "\t0:0000:0,1:(%x%x%x%x):1,2:(%x%x%x%x):1,3:(%x%x%x%x):1$")
+local w1, w2, w3 = dv:match("^1DV\t2\t3\t" .. (today - 9) .. "\t0:0000:0,1:(%x%x%x%x):1,2:(%x%x%x%x):1,3:(%x%x%x%x):1$")
 assert(w1 and w1 ~= w2 and w2 ~= w3, "DV fields: " .. dv)
 -- a record that came from one client is the same everywhere
 local k4 = C(KIM, "AmisiaDB.drops.k['44444444']")

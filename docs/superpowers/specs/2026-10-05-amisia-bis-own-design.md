@@ -93,7 +93,7 @@ findenden Fakten, keine Kopie einer fremden Seite.** 2.3 bringt:
   in einem eigenen Text "Drops für die Website"; Raid-Export und `ns.SessionHash` ändern sich nicht.
 - **Version 2.3.0.** `ns.SYNC_PROTO` bleibt 1 (neue Nachrichtentypen stören alte Clients nicht, sie
   verwerfen unbekannte Typen; siehe Tests). Der Drop-Austausch trägt eine eigene Protokollziffer im
-  Feld (`ns.DROP_PROTO = 1`).
+  Feld (`ns.DROP_PROTO = 2`; 1 prüfte nur Kennungen, siehe Austausch).
 
 ## Dateien
 
@@ -197,8 +197,12 @@ AmisiaDB.drops = {
 - **Aufbewahrung:** 28 Tage und höchstens 4000 Datensätze (älteste zuerst weg). Langfristig leben
   die Daten im Archiv `tools/drop_obs.json` (über Website oder SavedVariables) und im erzeugten
   Grundstock `BisData.lua` `O`.
-- **Vereinigung:** gleiche Kennung aus zwei Quellen -> ein Datensatz; `it` je Item das Maximum;
-  `o` die kleinere Kennung (damit alle Clients dasselbe Ergebnis haben); `enc`, `npc` gefüllt, wenn
+- **Vereinigung:** gleiche Kennung aus zwei Quellen -> ein Datensatz; `it` je Item das Maximum,
+  danach in den Obergrenzen (16 Items, 20 je Item; in jeder Reihenfolge dasselbe); `day` der frühere
+  Tag (eine Leiche vor und nach Mitternacht UTC ist ein Kill); `o` bleibt bei einem eigenen
+  Datensatz, sonst die kleinere Kennung (damit alle Clients dasselbe Ergebnis haben); ein Datensatz
+  nach heute wird abgelehnt, bei 4000 gespeicherten auch einer älter als der älteste;
+  `ns.BIS.OI` (Kennungen des letzten Tags des Grundstocks) zählt ein Kill nicht doppelt; `enc`, `npc` gefüllt, wenn
   einer sie hat. Nichts wird gelöscht außer durch Alter oder Obergrenze.
 
 ### BiS je Charakter (`AmisiaDB.bis`, Erweiterung)
@@ -472,10 +476,14 @@ Ohne Beobachtung: Quell-Chance oder "Chance unbekannt".
   `BOSS_KILL`) dieser Instanz innerhalb von 120 s (Zuordnung über RaidLog.lua, das die Ereignisse
   schon liest), **oder** das Fenster enthält ein Item der Qualität 3 oder höher (Forever: Bosse
   lassen immer ein seltenes Item fallen). Trash bleibt wie heute nur Sammler-Notiz und wird nicht
-  geteilt.
+  geteilt. Das Kill-Ereignis geht an eine Leiche eines bekannten Bosses oder mit seltenem Item; eine
+  Leiche ohne beides hält es nur vorläufig: öffnet man innerhalb der 120 s eine bessere, übernimmt
+  diese das Ereignis, und die erste (doch Trash) verliert Datensatz und Ereignis-Namen.
 - **Was zählt:** jedes Item der Qualität 2 oder höher, dazu Rezepte und Baupläne (Item-Klasse 9)
   jeder Qualität; Anzahl laut `GetLootSlotInfo`. Ein Kill ohne solche Items wird trotzdem
-  gespeichert (`it = {}`), denn er zählt für die Rate.
+  gespeichert (`it = {}`), denn er zählt für die Rate. Obergrenzen überall (eigenes Fenster,
+  Austausch, SavedVariables): höchstens 16 Items je Datensatz (die 16 kleinsten IDs), höchstens 20
+  je Item.
 - **Nur einmal je Leiche:** ein zweites Öffnen derselben Leiche ergänzt `it` (Maximum je Item),
   zählt keinen zweiten Kill.
 - **Namen:** NPC-Namen über `UnitName("target")`, wenn das Ziel die GUID der Leiche hat, sonst über
@@ -489,28 +497,44 @@ Ablauf als Ziehen in drei Stufen (Prüfsummenbaum), damit nur Fehlendes wandert:
 
 | Typ | Präfix | Kanal | Felder | Zweck |
 |---|---|---|---|---|
-| `DV` | Amisia | GUILD | Drop-Protokoll (1), Zahl der Datensätze, neuester Tag, vier Wochen-Angaben `w:hhhh:n` (w 0-3 = Alter in Wochen, 4 Hex Prüfsumme, Anzahl), mit Komma | "so viele Kills kenne ich" |
+| `DV` | Amisia | GUILD | Drop-Protokoll (2), Zahl der Datensätze, neuester Tag, vier Wochen-Angaben `w:hhhh:n` (w 0-3 = Alter in Wochen, 4 Hex Prüfsumme, Anzahl), mit Komma | "so viele Kills kenne ich" |
 | `DQ` | Amisia | WHISPER | Woche (0-3) | nach der Eimerliste einer Woche fragen |
 | `DI` | Amisia | WHISPER | Woche, Teil i, Teile n, bis zu 12 Eimer `tag:inst:hhhh:n` mit Komma | Eimerliste (Eimer = Tag und Instanz) |
-| `DR` | Amisia | WHISPER | Eimer-Schlüssel `JJJJ-MM-TT:<inst>`, eigene Kennungen in diesem Eimer (bis zu 16, je 8 Hex, Komma) oder `*` | Eimer anfordern, ohne das schon Bekannte |
-| `BL` Art `DK` | AmisiaD | WHISPER | wie 2.1, Schlüssel = Eimer-Schlüssel | die fehlenden Datensätze (höchstens 20 Teile) |
+| `DR` | Amisia | WHISPER | bis zu 12 Paare: Eimer-Schlüssel `JJJJ-MM-TT:<inst>`, eigene Kennungen in diesem Eimer mit 4 Hex Item-Prüfsumme (bis zu 16, je 12 Hex, Komma) oder `*` | Eimer anfordern, ohne das schon Bekannte |
+| `DW` | Amisia | WHISPER | Sekunden | "beschäftigt, später fragen" |
+| `BL` Art `DK` | AmisiaD | WHISPER | wie 2.1, Schlüssel = erster Eimer-Schlüssel der Anfrage | die fehlenden Datensätze (höchstens 20 Teile; `m = 1`: eine zweite Hälfte folgt) |
 
-- **Prüfsummen:** Eimer-Prüfsumme = `ns.Checksum` über die sortierten Kennungen des Eimers (nur die
-  Kennungen, nicht die Items; ein Item-Unterschied bei gleicher Kennung gleicht sich beim nächsten
-  `DR` mit `*` nach 7 Tagen von selbst aus, siehe unten). Wochen-Prüfsumme über die Eimer-Summen.
-- **Ziehen:** wer ein `DV` mit abweichender Wochen-Prüfsumme hört, fragt höchstens **einen** Absender
-  zur Zeit (`DQ`), vergleicht die Eimer und schickt für fehlende oder abweichende Eimer `DR`; der
-  Antwortende sendet nur Datensätze, deren Kennung nicht in der Liste steht (bei `*` alle). Beide
-  Seiten ziehen, keine schiebt. Einmal je 7 Tage je Eimer darf ein `DR` mit `*` die Items angleichen.
-- **Wann:** ein `DV` 60 bis 180 s nach dem Login (Zufall), danach höchstens alle 30 Minuten und nur,
-  wenn neue eigene Datensätze dazukamen. Gesendet und geantwortet wird nur, wenn alles gilt:
+- **Prüfsummen (Drop-Protokoll 2):** Eimer-Prüfsumme = `ns.Checksum` über die sortierten Kennungen
+  des Eimers, jede mit der Prüfsumme ihrer Items und ihres `enc`; so ziehen auch Clients mit gleichen
+  Kennungen, aber anderen Items, und gleichen sich an. Wochen-Prüfsumme über die Eimer-Summen.
+  Protokoll 1 prüfte nur Kennungen; Clients mit 1 und 2 ignorieren die `DV` des anderen.
+- **Ziehen:** wer ein `DV` mit abweichender Wochen-Prüfsumme hört, fragt nach 0 bis 30 s (Zufall)
+  höchstens **einen** Absender zur Zeit (`DQ`; unter mehreren gehörten einen zufälligen), vergleicht
+  die Eimer und schickt für fehlende oder abweichende Eimer `DR`, mehrere Eimer je Anfrage (bis 12,
+  nach den Zahlen des Absenders bis 100 Datensätze); der Antwortende sendet die Datensätze, deren
+  Kennung nicht genannt ist oder deren Item-Prüfsumme abweicht (bei `*` alle). Beide Seiten ziehen,
+  keine schiebt. Mehr als 16 eigene Kennungen in einem Eimer: höchstens einmal je 7 Tage `*`.
+- **Eine Anfrage, eine Antwort:** angenommen wird genau die Antwort auf ein `DR` (ein Blob, oder die
+  zwei Hälften einer großen Antwort), danach gilt jeder weitere Blob als unverlangt. Datensätze, die
+  die Anfrage mit gleicher Item-Prüfsumme als bekannt nannte, werden verworfen; je Eimer nicht mehr
+  Datensätze als der Absender in `DI` zählte (sonst der ganze Blob), je Anfrage höchstens 300; je
+  Sitzung höchstens 600 neue Datensätze einer Herkunft und 1500 eines Absenders.
+- **Beschäftigt:** ein Antwortender bedient zwei Fragende zugleich; ein dritter (oder eine volle
+  Warteschlange von 12 Anfragen, 2 je Fragendem) bekommt `DW 120` und fragt erst einen anderen
+  Absender oder nach der Wartezeit wieder. Bedient wird reihum (wer am längsten wartet, zuerst).
+- **Wann:** ein `DV` 60 bis 180 s nach dem Login (Zufall); ein Client, der dann nichts hatte, sobald
+  er Datensätze gelernt hat und sein Ziehen fertig ist (so ziehen andere auch von ihm). Danach
+  höchstens alle 30 Minuten: nach neuen eigenen Datensätzen, und einmal je Sitzung nach gelernten.
+  Gesendet und geantwortet wird nur, wenn alles gilt:
   `drops.share` an, nicht in einer Instanz (`IsInInstance()` falsch), nicht im Kampf
   (`InCombatLockdown()`), keine Sperre (`ns.CommHeld()`), keine laufende Raid-Aufnahme mit Sync, kein
   Schlachtfeld.
 - **Grenzen:** höchstens ein offener `DR` je Client; höchstens 30 `DR` je Stunde; ein Antwortender
   bedient höchstens einen Blob je 30 s und 40 Teile je 10 Minuten; Blob höchstens 20 Teile (etwa 3 KB
   gepackt, etwa 100 Datensätze; ein größerer Eimer wird nach Kennungen in Hälften geteilt und mit
-  zwei Blobs beantwortet); höchstens 60 KB Senden je Sitzung. Alles mit `opts.low`: solche Einträge
+  zwei Blobs beantwortet); höchstens 60 KB Senden je Sitzung, davon höchstens ein Drittel an einen
+  Fragenden; empfangen wird höchstens ein `DQ` je Woche und Absender je 60 s und ein `DR` je
+  (erstem) Eimer und Absender je 60 s (Comm.lua). Alles mit `opts.low`: solche Einträge
   gehen erst, wenn sonst nichts in der Schlange wartet, und fallen nach 120 s (ttl).
 - **Vertrauen:** gelesen wird nur von geprüften Gildenmitgliedern (`ns.IsVerifiedMember`, sonst
   `ns.TrustWait`); Flüsterungen gehen nur an Gildenmitglieder. Absendernamen werden nicht
@@ -518,9 +542,10 @@ Ablauf als Ziehen in drei Stufen (Prüfsummenbaum), damit nur Fehlendes wandert:
 - **Prüfung des Blob-Inhalts** (alles oder nichts, wie 2.1): `{ v = 1, r = { {h, npc, inst, diff,
   day, o, enc, {id, n, id, n, ...}, src}, ... }, n = { [npc] = name }, z = { [inst] = {kind, name} } }`;
   `h`, `o` 8 Hex; `npc` 0 bis 9999999; `inst` 1 bis 99999; `diff` 0 bis 255; `day` innerhalb der
-  letzten 28 Tage und nicht mehr als 1 Tag in der Zukunft; höchstens 30 Items je Datensatz, IDs 1 bis
-  9999999, Anzahl 1 bis 200; höchstens 300 Datensätze; Namen höchstens 48 Zeichen ohne Steuerzeichen
-  und `|`; `kind` `party` oder `raid`; jeder Datensatz muss zum Eimer-Schlüssel passen.
+  letzten 28 Tage und nicht nach heute (UTC); höchstens 16 Items je Datensatz, IDs 1 bis
+  9999999, Anzahl 1 bis 20; höchstens 300 Datensätze; Namen höchstens 48 Bytes gültiges UTF-8 ohne
+  Steuerzeichen und `|`; `kind` `party` oder `raid`; jeder Datensatz muss zu einem Eimer der Anfrage
+  passen.
 - **Comm.lua:** `BLOB_ARTS` bekommt `DK` (höchstens 20 Teile); der Schlüssel `Tag:Instanz` hat schon
   das Format der Raid-Schlüssel; `opts.low` ordnet hinter Daten und Steuerung; Grenzen je Absender
   wie 2.1 gelten zusätzlich.

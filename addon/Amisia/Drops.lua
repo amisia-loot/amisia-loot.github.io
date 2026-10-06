@@ -5,15 +5,23 @@
 -- window, never a player name. Records are kept 28 days (4000 at most); the guild shares them
 -- (DropSync.lua), the website reads them from the text "Drops für die Website", and the observed
 -- drop rates per boss come from them plus the generated base stock (ns.BIS.O).
+--
+-- The items of a record stay within fixed caps wherever they come from (own loot window, another
+-- client, the saved table): at most 16 different items (the loot slots of one corpse) and at most
+-- 20 of one item. Above that the 16 lowest item ids stay and a count is cut to 20, so two clients
+-- that merge the same records always reach the same items, and a heard record can never blow up an
+-- own one.
 local ADDON, ns = ...
 
 local EPOCH = 1767225600      -- 2026-01-01 00:00 UTC: day 0 of the records
 local KEEP_DAYS = 28
 local MAX_RECORDS = 4000
 local MAX_NAMES = 2000
+local MAX_ENCS = 2000
+local MAX_INSTS = 500
 local MAX_PEERS = 500
 local KILL_WINDOW = 120       -- seconds between a kill event and the loot window of its corpse
-local MAX_ITEMS, MAX_COUNT = 30, 200
+local MAX_ITEMS, MAX_COUNT = 16, 20
 local MAX_NAME = 48
 local MIN_QUALITY = 2         -- uncommon and better count, recipes of any quality
 local RARE = 3                -- a window with a rare item is a boss (every boss drops one on Forever)
@@ -22,8 +30,11 @@ local SMOOTH = 3              -- weight of the expected chance in the observed r
 local SHOW_RATE_FROM = 5      -- kills before a rate is shown as a share
 
 ns.DROPS_KEEP_DAYS = KEEP_DAYS
+ns.DROPS_MAX_ITEMS, ns.DROPS_MAX_COUNT = MAX_ITEMS, MAX_COUNT
 
-local lastKill    -- { enc, name, t, inst, used = record id }: the last boss kill event in an instance
+-- the last boss kill event in an instance: { enc, name, t, inst, used = record id, rank = rank of
+-- that corpse, made = the record was made for the event, named = npc named after the event }
+local lastKill
 local nameless = {}   -- npc -> true: a record of this NPC still waits for its name
 local added = 0       -- own new records this session (the exchange announces after new ones)
 local version = 0     -- bumped on every change (rate sums are rebuilt after one)
@@ -112,13 +123,41 @@ end
 ---------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------
--- A name as it may be stored: plain, without control characters and bars, at most 48 bytes (cut at
--- a whole character); nil when nothing is left.
+-- Whether s is well-formed UTF-8 (every name the client shows is).
+local function utf8Ok(s)
+    local i, n = 1, #s
+    while i <= n do
+        local c = s:byte(i)
+        local len = (c < 0x80 and 1) or (c >= 0xC2 and c <= 0xDF and 2) or (c >= 0xE0 and c <= 0xEF and 3)
+            or (c >= 0xF0 and c <= 0xF4 and 4) or nil
+        if not len or i + len - 1 > n then return false end
+        for j = i + 1, i + len - 1 do
+            local x = s:byte(j)
+            if x < 0x80 or x > 0xBF then return false end
+        end
+        i = i + len
+    end
+    return true
+end
+
+-- A name as it may be stored: plain, well-formed UTF-8 without control characters and bars, at most
+-- 48 bytes (cut at a whole character); nil when nothing is left. Ends on any input.
 local function cleanName(v)
     v = ns.Plain(v)
     if type(v) ~= "string" then return nil end
-    v = v:gsub("[%c|]", ""):match("^%s*(.-)%s*$")
-    while #v > MAX_NAME do v = v:gsub("[%z\1-\127\194-\244][\128-\191]*$", "") end
+    v = v:gsub("[%c|]", "")
+    if not utf8Ok(v) then return nil end
+    v = v:match("^%s*(.-)%s*$")
+    if #v > MAX_NAME then
+        -- step back over continuation bytes, so the cut falls before a whole character
+        local cut = MAX_NAME
+        while cut > 0 do
+            local next = v:byte(cut + 1)
+            if next < 0x80 or next > 0xBF then break end
+            cut = cut - 1
+        end
+        v = v:sub(1, cut):match("^%s*(.-)%s*$")
+    end
     if v == "" then return nil end
     return v
 end
@@ -152,13 +191,14 @@ local function count(t)
     return n
 end
 
--- A record as it may be stored or merged; day within the kept days unless anyDay.
+-- A record as it may be stored or merged: day within the kept days and not after today (UTC server
+-- days, the same on every client) unless anyDay (the saved table: a day ahead is tolerated there).
 local function validRecord(r, today, anyDay)
     if type(r) ~= "table" then return false end
     if not int(r.npc, 0, 9999999) or not int(r.inst, 1, 99999) or not int(r.diff, 0, 255) then return false end
     if anyDay then
         if not int(r.day, 0, today + 1) then return false end
-    elseif not int(r.day, today - KEEP_DAYS + 1, today + 1) then
+    elseif not int(r.day, today - KEEP_DAYS + 1, today) then
         return false
     end
     if not isHex8(r.o) then return false end
@@ -180,12 +220,53 @@ local function validRecord(r, today, anyDay)
 end
 ns.DropsValidRecord = validRecord
 
+-- Items within the caps: counts cut to 20, the 16 lowest item ids. A new table; nil for a broken one.
+local function capItems(it)
+    if type(it) ~= "table" then return nil end
+    local ids = {}
+    for id, c in pairs(it) do
+        if not int(id, 1, 9999999) or not int(c, 1, 9999999) then return nil end
+        ids[#ids + 1] = id
+    end
+    table.sort(ids)
+    local out = {}
+    for i = 1, math.min(#ids, MAX_ITEMS) do out[ids[i]] = math.min(it[ids[i]], MAX_COUNT) end
+    return out
+end
+ns.DropsCapItems = capItems
+
 local function bump()
     version = version + 1
     if ns.Fire then ns.Fire("DROPS_CHANGED") end
 end
 
--- Records older than 28 days go, then the oldest above 4000; names without records above 2000.
+-- The number of records (kept up to date by merging and recording, counted again by prune) and the
+-- order in which the oldest go when the 4000 are full: ids sorted by day, then id, from evictAt on.
+local nRecords, kOf = 0, nil
+local evict, evictAt = nil, 1
+
+local function byAge(k)
+    return function(a, b)
+        local ra, rb = k[a], k[b]
+        if ra.day ~= rb.day then return ra.day < rb.day end
+        return a < b
+    end
+end
+
+local function cappedNames(t, max, used)
+    if count(t) <= max then return end
+    local list = {}
+    for key in pairs(t) do list[#list + 1] = key end
+    -- names without records go first, then the lowest ids
+    table.sort(list, function(a, b)
+        if (used[a] or false) ~= (used[b] or false) then return not used[a] end
+        return a < b
+    end)
+    for i = 1, #list - max do t[list[i]] = nil end
+end
+
+-- Records older than 28 days go, then the oldest above 4000; names without records above 2000
+-- (bosses, encounters) and 500 (instances).
 local function prune(d)
     local min = ns.DropsToday() - KEEP_DAYS + 1
     local ids = {}
@@ -193,13 +274,10 @@ local function prune(d)
         if r.day < min then d.k[id] = nil else ids[#ids + 1] = id end
     end
     if #ids > MAX_RECORDS then
-        table.sort(ids, function(a, b)
-            local ra, rb = d.k[a], d.k[b]
-            if ra.day ~= rb.day then return ra.day < rb.day end
-            return a < b
-        end)
+        table.sort(ids, byAge(d.k))
         for i = 1, #ids - MAX_RECORDS do d.k[ids[i]] = nil end
     end
+    nRecords, kOf, evict, evictAt = math.min(#ids, MAX_RECORDS), d.k, nil, 1
     for o, day in pairs(d.peers) do
         if day < min then d.peers[o] = nil end
     end
@@ -209,17 +287,61 @@ local function prune(d)
         table.sort(list, function(a, b) if d.peers[a] ~= d.peers[b] then return d.peers[a] < d.peers[b] end return a < b end)
         for i = 1, #list - MAX_PEERS do d.peers[list[i]] = nil end
     end
-    if count(d.npc) > MAX_NAMES then
-        local used = {}
-        for _, r in pairs(d.k) do used[r.npc] = true end
-        local list = {}
-        for npc in pairs(d.npc) do list[#list + 1] = npc end
-        -- names of NPCs without records go first, then the lowest ids
-        table.sort(list, function(a, b)
-            if (used[a] or false) ~= (used[b] or false) then return not used[a] end
-            return a < b
-        end)
-        for i = 1, #list - MAX_NAMES do d.npc[list[i]] = nil end
+    if count(d.npc) > MAX_NAMES or count(d.enc) > MAX_ENCS or count(d.inst) > MAX_INSTS then
+        local npcs, encs, insts = {}, {}, {}
+        for _, r in pairs(d.k) do
+            npcs[r.npc] = true
+            insts[r.inst] = true
+            if r.enc then encs[r.enc] = true end
+        end
+        cappedNames(d.npc, MAX_NAMES, npcs)
+        cappedNames(d.enc, MAX_ENCS, encs)
+        cappedNames(d.inst, MAX_INSTS, insts)
+    end
+end
+
+-- The record count, counted again when the table was replaced.
+local function records(d)
+    if kOf ~= d.k then
+        nRecords, kOf, evict, evictAt = count(d.k), d.k, nil, 1
+    end
+    return nRecords
+end
+
+-- The day of the oldest record that would go next, or nil (the list is made once and used up
+-- from the front; records made after it are newer or as old as its first).
+local function oldestDay(d)
+    if not evict or evictAt > #evict then
+        evict, evictAt = {}, 1
+        for id in pairs(d.k) do evict[#evict + 1] = id end
+        table.sort(evict, byAge(d.k))
+    end
+    while evictAt <= #evict and not d.k[evict[evictAt]] do evictAt = evictAt + 1 end
+    local id = evict[evictAt]
+    return id and d.k[id].day or nil
+end
+
+-- A record just made: counted, and placed in the order of the oldest when that list exists.
+local function track(d, id)
+    records(d)
+    nRecords = nRecords + 1
+    if not evict then return end
+    local before = byAge(d.k)
+    local lo, hi = evictAt, #evict + 1
+    while lo < hi do
+        local mid = math.floor((lo + hi) / 2)
+        if not d.k[evict[mid]] or before(evict[mid], id) then lo = mid + 1 else hi = mid end
+    end
+    table.insert(evict, lo, id)
+end
+
+-- Removes the oldest records while more than 4000 are kept.
+local function evictOldest(d)
+    while records(d) > MAX_RECORDS do
+        if not oldestDay(d) then prune(d) return end
+        d.k[evict[evictAt]] = nil
+        evictAt = evictAt + 1
+        nRecords = nRecords - 1
     end
 end
 
@@ -235,7 +357,10 @@ function ns.DropsMigrate(root)
     end
     local today = ns.DropsToday()
     for id, r in pairs(d.k) do
-        if not isHex8(id) or not validRecord(r, today, true) then
+        -- items of an older build (30 items, counts to 200) are brought within the caps
+        local it = type(r) == "table" and capItems(r.it) or nil
+        if it then r.it = it end
+        if not isHex8(id) or not it or not validRecord(r, today, true) then
             d.k[id] = nil
         elseif r.mine ~= nil and r.mine ~= true then
             r.mine = nil
@@ -292,56 +417,110 @@ local function copyItems(it)
     return out
 end
 
--- Merges one record { h, npc, inst, diff, day, o, enc, it, src }: the same id is one kill; items take
--- the larger count, the origin the smaller id, enc and npc are filled in when missing; nothing else
--- is overwritten. Returns "new", "merged", "same", or nil and the reason.
+-- The union of two item tables: each item at its larger count, then within the caps (the 16 lowest
+-- ids, counts to 20). The same result in any order. Whether it differs from cur, and the union.
+local function unionItems(cur, it)
+    local all, changed = copyItems(cur), false
+    for id, c in pairs(it) do
+        if (all[id] or 0) < c then all[id] = c end
+    end
+    all = capItems(all)
+    for id, c in pairs(all) do if cur[id] ~= c then changed = true end end
+    for id in pairs(cur) do if all[id] == nil then changed = true end end
+    return changed, all
+end
+
+-- Merges one record into d; nothing is fired. See ns.DropsMerge.
+local function mergeOne(d, r, today)
+    if type(r) ~= "table" or not isHex8(r.h) then return nil, "id" end
+    if r.enc == 0 then r.enc = nil end
+    if not validRecord(r, today) then return nil, "record" end
+    local it = capItems(r.it)
+    local cur = d.k[r.h]
+    if not cur then
+        -- with 4000 kept, a record older than the oldest kept one would go again at once
+        if records(d) >= MAX_RECORDS then
+            local oldest = oldestDay(d)
+            if oldest and r.day < oldest then return nil, "full" end
+        end
+        if r.o ~= d.me and (d.peers[r.o] or -1) < r.day then d.peers[r.o] = r.day end
+        d.k[r.h] = { npc = r.npc, inst = r.inst, diff = r.diff, day = r.day, o = r.o, enc = r.enc, it = it, src = r.src }
+        track(d, r.h)
+        return "new"
+    end
+    if r.o ~= d.me and (d.peers[r.o] or -1) < r.day then d.peers[r.o] = r.day end
+    local changed, union = unionItems(cur.it, it)
+    if changed then cur.it = union end
+    -- a corpse looted on both sides of midnight (UTC) is one kill of the earlier day
+    if r.day < cur.day then cur.day, changed = r.day, true end
+    -- the own record keeps the own origin; between heard ones the smaller id wins on every client
+    if not cur.mine and r.o < cur.o then cur.o, changed = r.o, true end
+    if cur.enc == nil and r.enc ~= nil then cur.enc, changed = r.enc, true end
+    if cur.npc == 0 and r.npc > 0 and cur.src == r.src then cur.npc, changed = r.npc, true end
+    return changed and "merged" or "same"
+end
+
+-- Merges one record { h, npc, inst, diff, day, o, enc, it, src }: the same id is one kill. Items are
+-- the union at the larger count within the caps (16 items, 20 each); the day the earlier one; the
+-- origin stays on an own record and is the smaller id on a heard one; enc and npc are filled in when
+-- missing; nothing else is overwritten. A record after today, older than 28 days or (with 4000 kept)
+-- older than the oldest kept one is refused. Returns "new", "merged", "same", or nil and the reason.
 function ns.DropsMerge(r)
     local d = ns.DropsDB()
     if not d then return nil, "not loaded" end
-    if type(r) ~= "table" or not isHex8(r.h) then return nil, "id" end
-    if r.enc == 0 then r.enc = nil end
-    if not validRecord(r, ns.DropsToday()) then return nil, "record" end
-    if r.o ~= d.me and (d.peers[r.o] or -1) < r.day then d.peers[r.o] = r.day end
-    local cur = d.k[r.h]
-    if not cur then
-        d.k[r.h] = { npc = r.npc, inst = r.inst, diff = r.diff, day = r.day, o = r.o, enc = r.enc, it = copyItems(r.it), src = r.src }
-        if count(d.k) > MAX_RECORDS then prune(d) end
-        bump()
-        return "new"
-    end
-    local changed = false
-    local n = count(cur.it)
-    for id, c in pairs(r.it) do
-        local had = cur.it[id]
-        if (had or 0) < c and (had or n < MAX_ITEMS) then
-            if not had then n = n + 1 end
-            cur.it[id] = c
-            changed = true
-        end
-    end
-    if r.o < cur.o then cur.o, changed = r.o, true end
-    if cur.enc == nil and r.enc ~= nil then cur.enc, changed = r.enc, true end
-    if cur.npc == 0 and r.npc > 0 and cur.src == r.src then cur.npc, changed = r.npc, true end
-    if changed then bump() return "merged" end
-    return "same"
+    local res, why = mergeOne(d, r, ns.DropsToday())
+    if res == "new" then evictOldest(d) end
+    if res == "new" or res == "merged" then bump() end
+    return res, why
 end
 
--- A name heard from another client: taken only where none is known.
+-- Merges a list of records with one prune and one change event at the end (the exchange hands a
+-- whole blob to this). Returns the results in the order of the list and the counts { new, merged,
+-- same, refused }.
+function ns.DropsMergeAll(list)
+    local d = ns.DropsDB()
+    local out, n = {}, { new = 0, merged = 0, same = 0, refused = 0 }
+    if not d then return out, n end
+    local today = ns.DropsToday()
+    for i, r in ipairs(list) do
+        local res = mergeOne(d, r, today)
+        out[i] = res
+        if res then n[res] = n[res] + 1 else n.refused = n.refused + 1 end
+        if res == "new" and records(d) > MAX_RECORDS then evictOldest(d) end
+    end
+    if n.new > 0 or n.merged > 0 then bump() end
+    return out, n
+end
+
+-- Raised whenever a name is added (learned from another client or recorded), so a view keyed on
+-- names knows it is stale; DROPS_CHANGED fires with it.
+local namesGen = 0
+function ns.DropsNamesGen() return namesGen end
+
+-- A name heard from another client: taken only where none is known. Fires DROPS_CHANGED once when
+-- at least one name was added. Returns the number of names added.
 function ns.DropsLearnNames(npcNames, zones, encNames)
     local d = ns.DropsDB()
-    if not d then return end
+    if not d then return 0 end
+    local n = 0
     for npc, name in pairs(type(npcNames) == "table" and npcNames or {}) do
-        if int(npc, 1, 9999999) and nameOk(name) and d.npc[npc] == nil then d.npc[npc] = name; nameless[npc] = nil end
+        if int(npc, 1, 9999999) and nameOk(name) and d.npc[npc] == nil then d.npc[npc] = name; nameless[npc] = nil; n = n + 1 end
     end
     for enc, name in pairs(type(encNames) == "table" and encNames or {}) do
-        if int(enc, 1, 99999999) and nameOk(name) and d.enc[enc] == nil then d.enc[enc] = name end
+        if int(enc, 1, 99999999) and nameOk(name) and d.enc[enc] == nil then d.enc[enc] = name; n = n + 1 end
     end
     for inst, z in pairs(type(zones) == "table" and zones or {}) do
         if int(inst, 1, 99999) and type(z) == "table" and (z[1] == "party" or z[1] == "raid") and nameOk(z[2]) and d.inst[inst] == nil then
             d.inst[inst] = { z[1], z[2] }
+            n = n + 1
         end
     end
-    if count(d.npc) > MAX_NAMES then prune(d) end
+    if n > 0 then
+        if count(d.npc) > MAX_NAMES or count(d.enc) > MAX_ENCS or count(d.inst) > MAX_INSTS then prune(d) end
+        namesGen = namesGen + 1
+        bump()
+    end
+    return n
 end
 
 ---------------------------------------------------------------------------
@@ -407,6 +586,7 @@ local function setName(d, npc, name)
     if not name or npc < 1 then return end
     if d.npc[npc] == nil then
         d.npc[npc] = name
+        namesGen = namesGen + 1
         if count(d.npc) > MAX_NAMES then prune(d) end
     end
     nameless[npc] = nil
@@ -445,18 +625,14 @@ local function readWindow()
     return groups, order
 end
 
-local function trimItems(items)
-    local ids = {}
-    for id in pairs(items) do ids[#ids + 1] = id end
-    if #ids <= MAX_ITEMS then return items end
-    table.sort(ids)
-    local out = {}
-    for i = 1, MAX_ITEMS do out[ids[i]] = items[ids[i]] end
-    return out
-end
-
 -- Called by Collect.lua on LOOT_OPENED: the boss corpses of the window become records (or add their
 -- items to the record of a corpse opened before).
+--
+-- Which corpse a kill event belongs to: a corpse of a known boss or with a rare item takes it at
+-- once. A corpse with neither takes it only for the time being (it may be the boss: unknown, nothing
+-- rare in its window); a corpse of a known boss or with a rare item opened later within the 120 s
+-- takes the event over, and the first one, trash after all, loses its record and the name it got
+-- from the event. So trash looted between a boss kill and its corpse never becomes the kill.
 function ns.DropsFromLoot()
     if not AmisiaDB or not ns.Get("drops.record") then return end
     if type(GetNumLootItems) ~= "function" or type(GetLootSlotLink) ~= "function" then return end
@@ -473,16 +649,35 @@ function ns.DropsFromLoot()
     local function add(id, g, src, npc, enc)
         local r = d.k[id]
         if r then
-            for item, c in pairs(g.items) do
-                if (r.it[item] or 0) < c and (r.it[item] or count(r.it) < MAX_ITEMS) then r.it[item] = c; changed = true end
-            end
+            local more, union = unionItems(r.it, capItems(g.items) or {})
+            if more then r.it = union; changed = true end
             return r
         end
-        r = { npc = npc, inst = inst, diff = diff, day = today, o = d.me, enc = enc, it = trimItems(g.items), src = src, mine = true }
+        r = { npc = npc, inst = inst, diff = diff, day = today, o = d.me, enc = enc, it = capItems(g.items) or {}, src = src, mine = true }
         d.k[id] = r
+        track(d, id)
         added = added + 1
         changed = true
         return r
+    end
+
+    -- the corpse that held the event for the time being gives it up: its record goes when it was
+    -- made for the event, the name it got from the event too
+    local function takeOver()
+        local old = kill.used and d.k[kill.used]
+        if old and kill.made and old.mine then
+            d.k[kill.used] = nil
+            nRecords = nRecords - 1
+            added = math.max(0, added - 1)
+        elseif old and old.enc == kill.enc then
+            old.enc = nil
+        end
+        if kill.named and d.npc[kill.named] == kill.name then
+            d.npc[kill.named] = nil
+            nameless[kill.named] = nil
+        end
+        kill.used, kill.weak, kill.made, kill.named = nil, nil, nil, nil
+        changed = true
     end
 
     -- corpses opened before, then known bosses and windows with a rare item, then the rest; a kill
@@ -504,16 +699,21 @@ function ns.DropsFromLoot()
             local r = d.k[g.id]
             if r then
                 add(g.id, g)
-            else
+            elseif rank[key] == 1 then
                 local enc
-                local free = kill and not kill.used
-                if rank[key] == 1 or free then
-                    if free then enc, kill.used = kill.enc, g.id end
-                    r = add(g.id, g, "G", g.npc, enc)
-                end
+                if kill and kill.used and kill.weak and kill.used ~= g.id then takeOver() end
+                if kill and not kill.used then enc, kill.used = kill.enc, g.id end
+                r = add(g.id, g, "G", g.npc, enc)
+            elseif kill and not kill.used then
+                -- only for the time being, see above
+                kill.used, kill.weak, kill.made = g.id, true, true
+                r = add(g.id, g, "G", g.npc, kill.enc)
             end
             if r then
-                local name = nameOfGUID(g.guid) or (r.enc and kill and kill.enc == r.enc and kill.name) or nil
+                local name = nameOfGUID(g.guid)
+                if not name and kill and kill.used == g.id and r.enc == kill.enc and kill.name and d.npc[g.npc] == nil then
+                    name, kill.named = kill.name, g.npc
+                end
                 if name then setName(d, g.npc, name) elseif d.npc[g.npc] == nil then nameless[g.npc] = true end
             end
         elseif kill then
@@ -529,8 +729,9 @@ function ns.DropsFromLoot()
     if changed then
         if instName and (d.inst[inst] == nil or d.inst[inst][2] ~= instName or d.inst[inst][1] ~= kind) then
             d.inst[inst] = { kind, instName }
+            if count(d.inst) > MAX_INSTS then prune(d) end
         end
-        if count(d.k) > MAX_RECORDS then prune(d) end
+        evictOldest(d)
         bump()
     end
 end
@@ -542,20 +743,36 @@ ns.OnEvent("PLAYER_TARGET_CHANGED", function()
     if not npc or not nameless[npc] then return end
     local d = ns.DropsDB()
     local name = cleanName(UnitName("target"))
-    if d and name then setName(d, npc, name) end
+    if d and name then
+        setName(d, npc, name)
+        bump()
+    end
 end)
 
 ---------------------------------------------------------------------------
 -- Rates
 ---------------------------------------------------------------------------
-local sums, sumsVersion, sumsOT   -- npc -> { k = kills, it = { [item] = kills with it } } after OT
+local sums, sumsVersion, sumsOT, sumsOI   -- npc -> { k = kills, it = { [item] = kills with it } } after OT
+
+-- Whether a record counts on top of the base stock: a day after its day (ns.BIS.OT) and an id it
+-- does not hold. ns.BIS.OI lists the ids of the base stock's last day, so a corpse looted on both
+-- sides of midnight (UTC) counts once.
+local function afterBase(id, r, ot, oi)
+    return r.day > ot and not (oi and oi[id])
+end
+
+local function baseIds()
+    local B = ns.BIS
+    return type(B) == "table" and type(B.OI) == "table" and B.OI or nil
+end
 
 local function ownSums(ot)
-    if sums and sumsVersion == version and sumsOT == ot then return sums end
-    sums, sumsVersion, sumsOT = {}, version, ot
+    local oi = baseIds()
+    if sums and sumsVersion == version and sumsOT == ot and sumsOI == oi then return sums end
+    sums, sumsVersion, sumsOT, sumsOI = {}, version, ot, oi
     local d = ns.DropsDB()
-    for _, r in pairs(d and d.k or {}) do
-        if r.day > ot and r.npc > 0 then
+    for id, r in pairs(d and d.k or {}) do
+        if afterBase(id, r, ot, oi) and r.npc > 0 then
             local s = sums[r.npc]
             if not s then s = { k = 0, it = {} }; sums[r.npc] = s end
             s.k = s.k + 1
@@ -723,11 +940,12 @@ function ns.DropsBossList()
         if not b then b = { npc = npc, enc = enc, k = 0, it = {} }; bosses[key] = b end
         return b
     end
-    for _, r in pairs(d.k) do
+    local oi = baseIds()
+    for id, r in pairs(d.k) do
         local key = r.npc > 0 and r.npc or ("e" .. tostring(r.enc))
         local b = boss(key, r.npc, r.npc > 0 and nil or r.enc)
         if not b.inst or (b.day or -1) < r.day then b.inst, b.day = r.inst, r.day end
-        if r.day > ot then
+        if afterBase(id, r, ot, oi) then
             b.k = b.k + 1
             for id in pairs(r.it) do b.it[id] = (b.it[id] or 0) + 1 end
         end

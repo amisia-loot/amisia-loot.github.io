@@ -33,6 +33,9 @@ local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
 local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60 }
+-- the same per first field: a drop question per week, a drop request per (first) bucket
+local KEYED_GAP = { DQ = 60, DR = 60 }
+local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
 local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true }
@@ -221,7 +224,8 @@ local function commaList(v, max, ok, allowEmpty)
     return true
 end
 
--- The drop exchange (DropSync.lua): week "w:hhhh:n", bucket "day:inst:hhhh:n", kill id 8 hex.
+-- The drop exchange (DropSync.lua): week "w:hhhh:n", bucket "day:inst:hhhh:n", a known kill as its
+-- id (8 hex) and the digest of its items (4 hex).
 local function weekEntry(e)
     local w, h, n = e:match("^(%d):(%x%x%x%x):(%d+)$")
     return w ~= nil and isNum(w, 0, 3) and isNum(n, 0, 999999)
@@ -230,7 +234,15 @@ local function bucketEntry(e)
     local day, inst, h, n = e:match("^(%d+):(%d+):(%x%x%x%x):(%d+)$")
     return day ~= nil and isNum(day, 0, 99999) and isNum(inst, 1, 99999) and isNum(n, 1, 999999)
 end
-local function killId(e) return isHex(e, 8) end
+local function killEntry(e) return isHex(e, 12) end
+-- DR: pairs of a bucket key and its known kills (or "*"), 12 buckets at most
+local function drPairs(f)
+    if #f < 2 or #f % 2 ~= 0 or #f > 24 then return false end
+    for i = 1, #f, 2 do
+        if not isKey(f[i]) or not (f[i + 1] == "*" or commaList(f[i + 1], 16, killEntry)) then return false end
+    end
+    return true
+end
 
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
@@ -254,7 +266,8 @@ local VALID = {
     UQ = function(f) return #f >= 2 and isHex(f[1], 4) and itemList(f[2]) end,
     UA = function(f) return #f >= 2 and isHex(f[1], 4) and answerList(f[2]) end,
     -- drop exchange: DV <drop proto> <records> <newest day> <weeks>; DQ <week>;
-    -- DI <week> <part> <parts> <buckets>|-; DR <bucket key> <kill ids>|*
+    -- DI <week> <part> <parts> <buckets>|-; DR (<bucket key> <known kills>|*)...; DW <seconds>
+    -- (busy: ask again later)
     DV = function(f) return #f >= 4 and isNum(f[1], 0, 9) and isNum(f[2], 0, 999999) and isNum(f[3], 0, 99999)
                          and commaList(f[4], 4, weekEntry) end,
     DQ = function(f) return #f >= 1 and isNum(f[1], 0, 3) end,
@@ -262,7 +275,8 @@ local VALID = {
         if #f < 4 or not isNum(f[1], 0, 3) or not isNum(f[2], 1, 20) or not isNum(f[3], 1, 20) then return false end
         return tonumber(f[2]) <= tonumber(f[3]) and commaList(f[4], 12, bucketEntry, true)
     end,
-    DR = function(f) return #f >= 2 and isKey(f[1]) and (f[2] == "*" or commaList(f[2], 16, killId)) end,
+    DR = drPairs,
+    DW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -812,6 +826,24 @@ local function onMessage(prefix, text, chan, sender)
         local t = now()
         if s.kinds[gapKey] and t - s.kinds[gapKey] < gap then return end
         s.kinds[gapKey] = t
+    end
+    local keyed = KEYED_GAP[kind]
+    if keyed then
+        local t, k = now(), kind .. ":" .. fields[1]
+        s.keyed = s.keyed or { n = 0, at = {} }
+        if s.keyed.at[k] and t - s.keyed.at[k] < keyed then return end
+        if not s.keyed.at[k] then
+            if s.keyed.n >= KEYED_MAX then
+                local keep, n = {}, 0
+                for key, at in pairs(s.keyed.at) do
+                    if t - at < 600 then keep[key], n = at, n + 1 end
+                end
+                s.keyed.at, s.keyed.n = keep, n
+                if n >= KEYED_MAX then return end
+            end
+            s.keyed.n = s.keyed.n + 1
+        end
+        s.keyed.at[k] = t
     end
     if kind == "BL" then
         if not ns.CommPacking() then return end
