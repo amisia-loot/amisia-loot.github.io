@@ -506,7 +506,23 @@ def test_every_drop_line_the_addon_writes_has_a_reader(drops):
     got = parse_drops(drops[2])
     assert got['zones'] and got['names'] and got['kills'], 'the reference reader reads every kind'
     page = open(PAGE, encoding='utf-8').read()
-    if 'function amParseDrops(' not in page:
-        pytest.skip('the site reads drop lines once amParseDrops exists (the website task)')
+    assert 'function amParseDrops(' in page, 'the site reads the drop lines'
     found = set(re.findall(r"'(D[ZNK])'", page[page.index('function amParseDrops('):][:4000]))
     assert not (written - found), 'the addon writes drop lines the site throws away: ' + ', '.join(sorted(written - found))
+    out = read_back(drops[2])
+    assert {'DZ', 'DN', 'DK'} <= set(out['letters']), 'the site parser knows every drop line'
+
+
+def test_the_drop_text_round_trips_to_the_site(drops):
+    """The site's own amParseDrops reads what the addon wrote, field by field as the reference reader."""
+    import datetime
+    ref = parse_drops(drops[2])
+    got = read_back(drops[2])['drops']
+    assert got['bad'] == 0
+    assert got['zones'] == {str(k): list(v) for k, v in ref['zones'].items()}
+    assert got['names'] == {str(k): v[1] for k, v in ref['names'].items() if k > 0}
+    day0 = datetime.date(2026, 1, 1)
+    want = [{'h': k['h'], 'npc': k['npc'], 'inst': k['inst'], 'diff': k['diff'],
+             'day': (datetime.date.fromisoformat(k['date']) - day0).days, 'o': k['o'], 'src': k['src'],
+             'items': {str(i): n for i, n in k['items'].items()}} for k in ref['kills']]
+    assert got['kills'] == want

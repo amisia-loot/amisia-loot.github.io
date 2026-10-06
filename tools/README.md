@@ -29,6 +29,31 @@ addon saved.
 The boss loot tables grow with the raids: every item that lay in an opened loot window is
 listed under its source. Requires `lupa`; icons need `Pillow` and internet access.
 
+### Drop records of the guild
+
+The addon records every boss kill whose loot window a guild member opens in a dungeon or raid
+(no player names) and shares the records in the guild. `build_scan.py` keeps all of them for good in
+`tools/drop_obs.json` (committed) and writes the loot tables per boss into `data/forever.js`
+(`obsBosses` with kills and per item the kills that had it, `obsZones`, `obsItems`, and
+`obsThrough`, the newest day in the archive; the site adds only the kills it imported after it).
+The records come from:
+
+- the SavedVariables given for a full build (`drops.k`);
+- `--drops <file>`: the addon's text "Drops für die Website" (`/amisia drops export`), saved to a file;
+- `--obs <file>`: the site's "Download observations" (Loot Tables tab, editors only).
+
+Without SavedVariables on the command line only the observations change: the records of
+`~/addons/_SavedVariables/Amisia.lua` (when Syncthing brings the file to the N100), `--drops` and
+`--obs` go into the archive and the observation keys of `data/forever.js` are replaced in place; the
+item catalog of the last full build stays. This needs no WoW install and no client tables, so it
+runs on the N100:
+
+```
+python tools/build_scan.py --obs amisia-drop-obs-2026-10-20.json
+```
+
+The file is rewritten only when the tables change; then bump `BUILD_ID`.
+
 Tests: `python -m pytest tools/tests -q`.
 
 ## build_gear.py

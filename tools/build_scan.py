@@ -19,12 +19,28 @@ raid, a merchant, a quest or the auction house. A "Drop: <name>" source becomes 
 that has no observed drop yet, under the boss "Unknown source", so loot can be recorded before
 the boss tables exist. The boss tables replace that source as raids get recorded.
 
+Drop records of the guild (boss kills with the items of their loot window, no player names) are
+kept for good in the archive tools/drop_obs.json: from the SavedVariables (`drops.k`), from the
+site's "Download observations" file (--obs) and from the addon's text "Drops für die Website"
+(--drops, DZ/DN/DK lines). The same kill from several sources is one record (items at their largest
+count, the smaller origin). data/forever.js gets per boss {npc, name, zone, kills, obs: {item: kills
+with it}} as `obsBosses`, their dungeons and raids as `obsZones`, scanned names of observed items
+outside the loot tables as `obsItems`, and the newest day in the archive as `obsThrough`: the site
+adds only the kills it imported after that day, so nothing counts twice. Records without an NPC
+(the addon's fallback ids) stay in the archive but have no table.
+
+Without SavedVariables files on the command line only the observations change: the drop records
+of ~/addons/_SavedVariables/Amisia.lua (when Syncthing brings it to the N100) and of --obs/--drops
+go into the archive, and the observation keys of the existing --out file are replaced in place; the
+item catalog of the last full build stays. Nothing here needs the client tables (wago CSVs).
+
 Icons: the scan stores icon file ids. --listfile <community-listfile.csv> (wowdev/wow-listfile)
 turns them into icon names; the ones used are kept in tools/icon-fileids.json, so later builds
 work without the big file. Anything still unnamed falls back to Wowhead by item id (cached in tools/icon-cache.json) and are packed into a
 sprite next to the data file with Pillow. --no-icons skips that and writes the icon names only.
 """
 import argparse
+import datetime
 import hashlib
 import io
 import json
@@ -40,6 +56,10 @@ ZONES_CFG = os.path.join(HERE, 'forever_zones.json')
 BOSSES_CFG = os.path.join(HERE, 'forever_bosses.json')
 ICON_CACHE = os.path.join(HERE, 'icon-cache.json')
 ICON_FILEIDS = os.path.join(HERE, 'icon-fileids.json')
+DROP_ARCHIVE = os.path.join(HERE, 'drop_obs.json')
+# The addon's SavedVariables as Syncthing would bring them to the N100 (read for the drop records only)
+DEFAULT_SV = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
+DAY0 = datetime.date(2026, 1, 1)   # day 0 of the drop records (UTC), as in the addon
 DEFAULT_COLOR = ['#8f86a3', '#6a617a']
 UNKNOWN_ZONE = {'key': 'unknown', 'name': 'Unknown source', 'short': '?', 'color': DEFAULT_COLOR}
 UNKNOWN_BOSS = 'Unknown source'
@@ -431,19 +451,416 @@ def build_sprite(items, out_dir, log=print):
     return {'file': f'data/{file_name}', 'cols': cols, 'rows': rows, 'n': len(names)}
 
 
+# ---------------------------------------------------------------- the guild's drop records
+HEX8 = re.compile(r'^[0-9a-f]{8}$')
+DROP_MAX_ITEMS, DROP_MAX_COUNT, DROP_MAX_NAME = 30, 200, 48
+
+
+def drop_day(text):
+    """Days since 2026-01-01 of "YYYY-MM-DD", or None."""
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})$', str(text or ''))
+    if not m:
+        return None
+    try:
+        d = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return None
+    day = (d - DAY0).days
+    return day if day >= 0 else None
+
+
+def drop_date(day):
+    return (DAY0 + datetime.timedelta(days=day)).isoformat()
+
+
+def _today():
+    return (datetime.datetime.now(datetime.timezone.utc).date() - DAY0).days
+
+
+def _int(v, lo, hi):
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    if isinstance(v, str) and v.isdigit():
+        v = int(v)
+    return v if isinstance(v, int) and lo <= v <= hi else None
+
+
+def _pairs(v):
+    """Key and value of a converted Lua table: a dict as it is, a list from key 1 on."""
+    if isinstance(v, dict):
+        return list(v.items())
+    if isinstance(v, list):
+        return list(enumerate(v, 1))
+    return []
+
+
+def clean_drop_name(v):
+    """A boss or instance name as the addon keeps it: no control characters or bars, 48 at most."""
+    if not isinstance(v, str):
+        return None
+    v = re.sub(r'[\x00-\x1f\x7f|]', '', v).strip()[:DROP_MAX_NAME].strip()
+    return v or None
+
+
+def check_record(r, today=None):
+    """A kill record {npc, inst, diff, day, o, src, [enc], it} as the archive keeps it, or None.
+    G records have an NPC, E records (the addon's fallback ids) have none."""
+    if not isinstance(r, dict):
+        return None
+    today = _today() if today is None else today
+    npc, inst = _int(r.get('npc'), 0, 9999999), _int(r.get('inst'), 1, 99999)
+    diff, day = _int(r.get('diff'), 0, 255), _int(r.get('day'), 0, today + 1)
+    o, src, enc = r.get('o'), r.get('src'), r.get('enc')
+    if None in (npc, inst, diff, day) or not isinstance(o, str) or not HEX8.match(o) or src not in ('G', 'E'):
+        return None
+    if (src == 'G' and npc < 1) or (src == 'E' and npc != 0):
+        return None
+    if enc in (None, 0):
+        enc = None
+    elif _int(enc, 1, 99999999) is None:
+        return None
+    items = {}
+    for k, n in _pairs(r.get('it')):
+        k, n = _int(k, 1, 9999999), _int(n, 1, DROP_MAX_COUNT)
+        if k is None or n is None:
+            return None
+        items[k] = n
+    if not isinstance(r.get('it'), (dict, list)) or len(items) > DROP_MAX_ITEMS:
+        return None
+    out = {'npc': npc, 'inst': inst, 'diff': diff, 'day': day, 'o': o, 'src': src, 'it': items}
+    if enc is not None:
+        out['enc'] = _int(enc, 1, 99999999)
+    return out
+
+
+def merge_record(store, h, r):
+    """Merges record r under id h as the addon does: the same id is one kill; each item at its
+    larger count, the smaller origin, enc and the NPC filled in when missing. 'new', 'merged' or 'same'."""
+    cur = store.get(h)
+    if cur is None:
+        store[h] = dict(r, it=dict(r['it']))
+        return 'new'
+    changed = False
+    for i, n in r['it'].items():
+        had = cur['it'].get(i)
+        if (had or 0) < n and (had is not None or len(cur['it']) < DROP_MAX_ITEMS):
+            cur['it'][i] = n
+            changed = True
+    if r['o'] < cur['o']:
+        cur['o'], changed = r['o'], True
+    if cur.get('enc') is None and r.get('enc') is not None:
+        cur['enc'], changed = r['enc'], True
+    if cur['npc'] == 0 and r['npc'] > 0 and cur['src'] == r['src']:
+        cur['npc'], changed = r['npc'], True
+    return 'merged' if changed else 'same'
+
+
+def _part():
+    return {'k': {}, 'npc': {}, 'inst': {}, 'enc': {}, 'bad': 0}
+
+
+def obs_from_text(text):
+    """The DZ/DN/DK lines of the addon's text "Drops für die Website"."""
+    part = _part()
+    for raw in str(text).splitlines():
+        f = raw.strip().split()
+        if not f or f[0] not in ('DZ', 'DN', 'DK'):
+            continue
+        if f[0] == 'DZ':
+            inst, name = (_int(f[1], 1, 99999) if len(f) > 1 else None), clean_drop_name(' '.join(f[3:]))
+            if inst and len(f) > 3 and f[2] in ('party', 'raid') and name:
+                part['inst'][inst] = [f[2], name]
+            else:
+                part['bad'] += 1
+        elif f[0] == 'DN':
+            npc = _int(f[1], 0, 9999999) if len(f) > 1 else None
+            enc = _int(f[2], 0, 99999999) if len(f) > 2 else None
+            name = clean_drop_name(' '.join(f[3:]))
+            if npc is None or enc is None or not name:
+                part['bad'] += 1
+            elif npc > 0:
+                part['npc'][npc] = name
+            elif enc > 0:
+                part['enc'][enc] = name
+        else:
+            r, items = None, {}
+            if len(f) == 9 and HEX8.match(f[1]):
+                ok = True
+                if f[8] != '-':
+                    for p in f[8].split(','):
+                        m = re.match(r'^(\d+):(\d+)$', p)
+                        if not m:
+                            ok = False
+                            break
+                        i = int(m.group(1))
+                        items[i] = max(items.get(i, 0), int(m.group(2)))
+                if ok:
+                    r = check_record({'npc': f[2], 'inst': f[3], 'diff': f[4], 'day': drop_day(f[5]), 'o': f[6], 'src': f[7], 'it': items})
+            if r is None:
+                part['bad'] += 1
+            else:
+                merge_record(part['k'], f[1], r)
+    return part
+
+
+def _names(part, npc, inst, enc):
+    for k, v in _pairs(npc):
+        k, v = _int(k, 1, 9999999), clean_drop_name(v)
+        if k and v:
+            part['npc'][k] = v
+    for k, v in _pairs(inst):
+        k = _int(k, 1, 99999)
+        if k and isinstance(v, list) and len(v) == 2 and v[0] in ('party', 'raid') and clean_drop_name(v[1]):
+            part['inst'][k] = [v[0], clean_drop_name(v[1])]
+    for k, v in _pairs(enc):
+        k, v = _int(k, 1, 99999999), clean_drop_name(v)
+        if k and v:
+            part['enc'][k] = v
+
+
+def obs_from_sv(db):
+    """The drop records of a SavedVariables table (AmisiaDB.drops), without the own-record marker."""
+    part = _part()
+    d = db.get('drops') if isinstance(db, dict) else None
+    if not isinstance(d, dict):
+        return part
+    for h, r in _pairs(d.get('k')):
+        rec = check_record(r) if isinstance(h, str) and HEX8.match(h) else None
+        if rec is None:
+            part['bad'] += 1
+        else:
+            merge_record(part['k'], h, rec)
+    _names(part, d.get('npc'), d.get('inst'), d.get('enc'))
+    return part
+
+
+def obs_from_site(js):
+    """The site's "Download observations" file: {v, k: [[id, npc, inst, diff, day, origin, G|E, [item, n, ...]]], names, zones}."""
+    part = _part()
+    js = js if isinstance(js, dict) else {}
+    for x in js.get('k') or []:
+        r = None
+        if isinstance(x, list) and len(x) == 8 and isinstance(x[0], str) and HEX8.match(x[0]) and isinstance(x[7], list) and len(x[7]) % 2 == 0:
+            r = check_record({'npc': x[1], 'inst': x[2], 'diff': x[3], 'day': x[4], 'o': x[5], 'src': x[6],
+                              'it': {x[7][i]: x[7][i + 1] for i in range(0, len(x[7]), 2)}})
+        if r is None:
+            part['bad'] += 1
+        else:
+            merge_record(part['k'], x[0], r)
+    _names(part, js.get('names'), js.get('zones'), None)
+    return part
+
+
+def empty_archive():
+    return {'v': 1, 'k': {}, 'npc': {}, 'inst': {}, 'enc': {}}
+
+
+def merge_obs(arch, part):
+    """Merges a part into the archive; names only where none is known. {'new': n, 'merged': n}."""
+    stats = {'new': 0, 'merged': 0}
+    for h in sorted(part['k']):
+        res = merge_record(arch['k'], h, part['k'][h])
+        if res in stats:
+            stats[res] += 1
+    for key in ('npc', 'inst', 'enc'):
+        for k, v in part[key].items():
+            arch[key].setdefault(k, v)
+    return stats
+
+
+def load_archive(path):
+    """tools/drop_obs.json, or an empty archive when there is none yet."""
+    arch = empty_archive()
+    if not os.path.exists(path):
+        return arch
+    with open(path, encoding='utf-8') as fh:
+        raw = json.load(fh)
+    for h, r in (raw.get('k') or {}).items():
+        rec = check_record(r, today=10 ** 6) if HEX8.match(str(h)) else None
+        if rec is not None:
+            arch['k'][h] = rec
+    part = _part()
+    _names(part, raw.get('npc'), raw.get('inst'), raw.get('enc'))
+    for key in ('npc', 'inst', 'enc'):
+        arch[key] = part[key]
+    return arch
+
+
+def save_archive(path, arch):
+    def keyed(d):
+        return {str(k): v for k, v in d.items()}
+    out = {'v': 1, 'k': {h: dict(r, it=keyed(r['it'])) for h, r in arch['k'].items()},
+           'npc': keyed(arch['npc']), 'inst': keyed(arch['inst']), 'enc': keyed(arch['enc'])}
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+        json.dump(out, fh, indent=1, sort_keys=True, ensure_ascii=False)
+        fh.write('\n')
+
+
+def obs_tables(arch, zones_cfg, known=None):
+    """The loot tables from the archive: (zones, bosses, newest day, warnings). A boss per NPC with its
+    kills and per item the number of kills that had it; its zone is the instance of its newest kill:
+    a zone of the data file with the same name (known), else named by tools/forever_zones.json (by
+    name, or by "instance"), else by the addon's DZ line."""
+    known = {z['name']: z for z in known or [] if isinstance(z, dict) and z.get('name') and z.get('key')}
+    recs = arch['k']
+    through = max((r['day'] for r in recs.values()), default=None)
+    per = {}
+    for h in sorted(recs):
+        r = recs[h]
+        if r['npc'] <= 0:
+            continue
+        b = per.setdefault(r['npc'], {'kills': 0, 'obs': {}, 'inst': r['inst'], 'day': r['day']})
+        b['kills'] += 1
+        for i in r['it']:
+            b['obs'][i] = b['obs'].get(i, 0) + 1
+        if r['day'] > b['day']:
+            b['inst'], b['day'] = r['inst'], r['day']
+    by_inst = {cfg['instance']: (name, cfg) for name, cfg in zones_cfg.items() if isinstance(cfg, dict) and cfg.get('instance')}
+    zones, zone_of, warnings = {}, {}, []
+    for npc in sorted(per):
+        inst = per[npc]['inst']
+        if inst in zone_of:
+            continue
+        kind, name = arch['inst'].get(inst) or [None, None]
+        cfg = known.get(name) if name else None
+        if not isinstance(cfg, dict):
+            cfg = zones_cfg.get(name) if name else None
+        if not isinstance(cfg, dict) and inst in by_inst:
+            name, cfg = name or by_inst[inst][0], by_inst[inst][1]
+        if not isinstance(cfg, dict):
+            name = name or f'Instance {inst}'
+            warnings.append(f'unknown zone "{name}" (instance {inst}) of the drop records: add it to tools/forever_zones.json')
+            cfg = {'key': slug(name), 'short': name[:8], 'color': DEFAULT_COLOR}
+        zone = {'key': cfg['key'], 'name': name, 'short': cfg.get('short', name[:8]), 'color': cfg.get('color', DEFAULT_COLOR),
+                'inst': inst, 'kind': kind or ('raid' if cfg.get('raid') else None)}
+        zone_of[inst] = zone['key']
+        zones.setdefault(zone['key'], zone)
+    zone_list = sorted(zones.values(), key=lambda z: (z['name'], z['key']))
+    order = {z['key']: i for i, z in enumerate(zone_list)}
+    bosses = [{'npc': npc, 'name': arch['npc'].get(npc) or f'Boss {npc}', 'zone': zone_of[b['inst']], 'kills': b['kills'],
+               'obs': {str(i): n for i, n in sorted(b['obs'].items())}} for npc, b in per.items()]
+    bosses.sort(key=lambda x: (order[x['zone']], x['name'], x['npc']))
+    return zone_list, bosses, through, warnings
+
+
+OBS_KEYS = ('obsZones', 'obsBosses', 'obsItems', 'obsThrough')
+
+
+def set_observations(data, arch, zones_cfg, items=None):
+    """Puts the observation keys into the data of data/forever.js (replacing older ones). items: the
+    scanned items of a full build, which name the observed items outside the loot tables; without
+    them (an update in place) the named rows of the last full build stay. Returns the warnings."""
+    old = {r['id']: r for r in data.get('obsItems') or [] if isinstance(r, dict) and 'id' in r}
+    for k in OBS_KEYS:
+        data.pop(k, None)
+    zones, bosses, through, warnings = obs_tables(arch, zones_cfg, data.get('zones'))
+    if not bosses:
+        return warnings
+    have = {it['id'] for it in data.get('items') or []}
+    rows = []
+    for i in sorted({int(i) for b in bosses for i in b['obs']} - have):
+        if items is not None and i in items:
+            row = item_row(i, items, [])
+            row.pop('sources', None)
+            rows.append(row)
+        elif items is None and i in old:
+            rows.append(old[i])
+    data['obsZones'], data['obsBosses'] = zones, bosses
+    if rows:
+        data['obsItems'] = rows
+    data['obsThrough'] = through
+    return warnings
+
+
 # ---------------------------------------------------------------- output
-def write_js(out, zones, bosses, items, sprite):
+JS_PREFIX = 'window.__LOOT=window.__LOOT||{};window.__LOOT["forever"]='
+
+
+def js_text(data):
+    return JS_PREFIX + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n'
+
+
+def read_js(path):
+    with open(path, encoding='utf-8') as fh:
+        txt = fh.read()
+    if not txt.startswith(JS_PREFIX):
+        raise SystemExit(f'{path}: not a data file of build_scan.py')
+    return json.loads(txt[len(JS_PREFIX):].rstrip().rstrip(';'))
+
+
+def write_js(out, zones, bosses, items, sprite, extra=None):
     data = {'zones': zones, 'bosses': bosses, 'items': items}
     if sprite:
         data['sprite'] = sprite
+    data.update(extra or {})
     with open(out, 'w', encoding='utf-8', newline='\n') as fh:
-        fh.write('window.__LOOT=window.__LOOT||{};window.__LOOT["forever"]=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
+        fh.write(js_text(data))
+
+
+def gather_drops(arch, sv_dbs, obs_files, drop_files, log=print):
+    """Merges the drop records of SavedVariables tables, site downloads and addon texts into the archive."""
+    total = {'new': 0, 'merged': 0}
+    # the client's own records first, then its texts, then the site's download: the first name of a
+    # boss or an instance stays
+    parts = [obs_from_sv(db) for db in sv_dbs]
+    for p in drop_files:
+        with open(p, encoding='utf-8') as fh:
+            parts.append(obs_from_text(fh.read()))
+    for p in obs_files:
+        with open(p, encoding='utf-8') as fh:
+            parts.append(obs_from_site(json.load(fh)))
+    bad = 0
+    for part in parts:
+        bad += part['bad']
+        s = merge_obs(arch, part)
+        total['new'] += s['new']
+        total['merged'] += s['merged']
+    log(f'drop records: {len(arch["k"])} in the archive, {total["new"]} new, {total["merged"]} merged'
+        + (f', {bad} broken skipped' if bad else ''))
+    return total
+
+
+def update_in_place(args, zones_cfg):
+    """No SavedVariables named: the drop records go into the archive and only the observation keys of
+    the existing data file change. The SavedVariables Syncthing brings to the N100 are read for their
+    drop records when they are there."""
+    arch = load_archive(args.archive)
+    dbs = []
+    if os.path.exists(DEFAULT_SV):
+        try:
+            dbs.append(load_sv(DEFAULT_SV))
+        except (SystemExit, Exception) as exc:  # noqa: BLE001 - a broken file must not stop the rest
+            print(f'  {DEFAULT_SV}: not read ({exc})')
+    gather_drops(arch, dbs, args.obs, args.drops)
+    save_archive(args.archive, arch)
+    if not os.path.exists(args.out):
+        print(f'{args.out} does not exist: run a full build with the SavedVariables first')
+        return 1
+    with open(args.out, encoding='utf-8') as fh:
+        before = fh.read()
+    data = read_js(args.out)
+    warnings = set_observations(data, arch, zones_cfg)
+    text = js_text(data)
+    if text != before:
+        with open(args.out, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write(text)
+        print(f'{len(data.get("obsBosses") or [])} bosses with drop tables -> {args.out} (bump BUILD_ID in index.html)')
+    else:
+        print(f'{args.out} unchanged')
+    for w in warnings:
+        print('  ' + w)
+    return 0
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('files', nargs='+', help='Amisia.lua SavedVariables files')
+    ap.add_argument('files', nargs='*', help='Amisia.lua SavedVariables files (none: update the drop observations only)')
     ap.add_argument('--out', default=os.path.join(ROOT, 'data', 'forever.js'))
+    ap.add_argument('--archive', default=DROP_ARCHIVE, help='the archive of drop records (default tools/drop_obs.json)')
+    ap.add_argument('--obs', action='append', default=[], help='the site\'s "Download observations" file (repeatable)')
+    ap.add_argument('--drops', action='append', default=[], help='a text "Drops für die Website" of the addon (repeatable)')
     ap.add_argument('--no-icons', action='store_true', help='skip Wowhead lookups and the sprite')
     ap.add_argument('--catalog', action='store_true', help='add awardable scanned items without a drop under "Unknown source"')
     ap.add_argument('--catalog-ilvl', type=int, default=60, help='lowest item level for rare items in the catalog (default 60)')
@@ -453,20 +870,30 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    zones_cfg = load_json(ZONES_CFG, {})
+    if not args.files:
+        return update_in_place(args, zones_cfg)
     dbs = [load_sv(p) for p in args.files]
     items, sessions, collected = collect(dbs)
-    zones_cfg = load_json(ZONES_CFG, {})
     bosses_cfg = load_json(BOSSES_CFG, {})
     zones, bosses, warnings = zones_and_bosses(sessions, zones_cfg, bosses_cfg)
     out_items = build_items(items, sessions, bosses, zones, bosses_cfg)
     field = add_field_sources(out_items, items, collected, zones, bosses, args.field_quality)
     catalog = add_catalog(out_items, items, zones, bosses, args.catalog_ilvl) if args.catalog else 0
     add_via(out_items, collected)
+    # the guild's drop records: the archive with these SavedVariables, downloads and texts
+    arch = load_archive(args.archive)
+    gather_drops(arch, dbs, args.obs, args.drops)
+    save_archive(args.archive, arch)
+    obs = {'items': out_items}
+    warnings += set_observations(obs, arch, zones_cfg, items=items)
+    del obs['items']
+    obs_items = obs.get('obsItems') or []
     sprite = None
     if not args.no_icons:
-        icon_names(out_items, fileids=fileid_names(out_items, args.listfile), wowhead=not args.no_wowhead)
-        sprite = build_sprite(out_items, os.path.dirname(os.path.abspath(args.out)))
-    write_js(args.out, zones, bosses, out_items, sprite)
+        icon_names(out_items + obs_items, fileids=fileid_names(out_items + obs_items, args.listfile), wowhead=not args.no_wowhead)
+        sprite = build_sprite(out_items + obs_items, os.path.dirname(os.path.abspath(args.out)))
+    write_js(args.out, zones, bosses, out_items, sprite, obs)
     print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(collected)} collected sources, {len(zones)} zones, {len(bosses)} bosses, '
           f'{len(out_items) - catalog - field} items with raid drops, {field} seen in the world, {catalog} catalog items -> {args.out}')
     if not args.no_icons:

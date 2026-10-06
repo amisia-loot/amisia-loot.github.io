@@ -795,6 +795,21 @@ Nur im Spiel zu klären (kein Nutzer-Entscheid, Prüfauftrag nach dem ersten Rel
 - Ob die hergeleiteten Gewichte für die Gilde stimmige Reihenfolgen ergeben (Stichprobe je Rolle;
   Änderungen gehen in die Parameter des Skripts, nicht in die Datei).
 
+Aus der Umsetzung der Teile ohne CSV (Aufgabe 7 Drop-Daten, Aufgabe 8 Website und `build_scan.py`,
+2026-10-06):
+
+- `data/forever.js` trägt die Beobachtungen in eigenen Schlüsseln neben `zones`/`bosses`/`items`:
+  `obsBosses` (je Boss `{npc, name, zone, kills, obs}`), `obsZones` (mit `inst` und `kind`),
+  `obsItems` (gescannte Namen beobachteter Items außerhalb der Loot-Tabellen) und `obsThrough`.
+  So erneuert `build_scan.py` ohne SavedVariables-Datei nur diese Schlüssel an Ort und Stelle (Archiv
+  aus `~/addons/_SavedVariables/Amisia.lua`, falls vorhanden, `--obs` und `--drops`), der Katalog des
+  letzten vollen Baus bleibt. Die Website zeigt die Tabellen im neuen Reiter "Loot Tables".
+- `DK`-Zeilen tragen keine encounterID: Rückfall-Datensätze (`src = "E"`, NPC 0) kann die Website
+  keinem Boss zuordnen; sie bleiben im Archiv und in `dropObs`, zählen aber in keiner Tabelle. Falls
+  das im Spiel häufig ist (siehe GUID-Frage oben), bräuchte `DK` ein Feld für die Begegnung.
+- Der Twin behält Import und Download der Drops: er speichert das Ledger selbst (data.json), eine
+  Datenbank braucht keiner der beiden.
+
 Entschieden: eigene Gewichte statt der CC-BY-NC-SA-Gewichte; keine Links und keine Daten fremder
 Seiten; Drop-Austausch an, ohne Namen, nur Gildenmitglieder, Vereinigung statt Überschreiben;
 Aufwand nur als Gleichstandsregel; Zufallsboni mit dem besten gesehenen Wurf; Website zeigt
