@@ -1341,6 +1341,12 @@ def render_weights(result, conv, info):
 AURA_MOD_STAT, AURA_MOD_RESISTANCE, AURA_MOD_DAMAGE_DONE, AURA_MOD_HEALING_DONE = 29, 22, 13, 135
 AURA_MOD_AP, AURA_MOD_RAP, AURA_MOD_POWER_REGEN, AURA_MOD_RATING = 99, 124, 85, 189
 STAT_OF_MISC = {0: 'STRENGTH', 1: 'AGILITY', 2: 'STAMINA', 3: 'INTELLECT', 4: 'SPIRIT'}
+# Percent bonuses (hit, crit, spell hit and crit) and defence skill, written as the rating that gives
+# the same at level 60 (RATING_60): set bonuses are worn at the end of the levelling, and the
+# addon scores ratings already.
+AURA_PCT = {54: ('HIT_MELEE_RATING', 'HIT'), 55: ('HIT_SPELL_RATING', 'SHIT'),
+            52: ('CRIT_MELEE_RATING', 'CRIT'), 57: ('CRIT_SPELL_RATING', 'SCRIT')}
+AURA_MOD_SKILL, SKILL_DEFENSE = 30, 95
 
 
 def set_bonus_text(effects):
@@ -1364,6 +1370,12 @@ def set_bonus_text(effects):
             key = 'SPELL_HEALING_DONE'
         elif aura == AURA_MOD_POWER_REGEN and misc == 0:
             key = 'MANA_REGENERATION'
+        elif aura in AURA_PCT:
+            key, kind = AURA_PCT[aura]
+            v = int(round(points * RATING_60.get(kind, 14)))
+        elif aura == AURA_MOD_SKILL and misc == SKILL_DEFENSE:
+            key = 'DEFENSE_SKILL_RATING'
+            v = int(round(points * RATING_60['DEF']))
         else:
             return None
         out[key] = out.get(key, 0) + v

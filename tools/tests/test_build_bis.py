@@ -561,3 +561,14 @@ def test_werte_lines_must_be_finite(tmp_path, capsys):
     m = bb.load_measured(str(path))
     assert m['rating60'] == {'CRIT': 14} and m['sources'] == ['ROGUE 60']
     assert capsys.readouterr().err.count('skipped') == 2
+
+
+def test_set_bonus_percent_auras_become_level_60_ratings():
+    # +2 % hit (Devilsaur), +1 % spell hit, +1 % crit, +1 % spell crit, +10 defence
+    assert bb.set_bonus_text([[6, 54, 2, 0]]) == 'HIT_MELEE_RATING=20'
+    assert bb.set_bonus_text([[6, 55, 1, 0]]) == 'HIT_SPELL_RATING=8'
+    assert bb.set_bonus_text([[6, 52, 1, 0]]) == 'CRIT_MELEE_RATING=14'
+    assert bb.set_bonus_text([[6, 57, 1, 0]]) == 'CRIT_SPELL_RATING=14'
+    assert bb.set_bonus_text([[6, 30, 10, 95]]) == 'DEFENSE_SKILL_RATING=15'
+    # a proc or a spell modifier stays unscored
+    assert bb.set_bonus_text([[6, 42, 0, 0]]) is None and bb.set_bonus_text([[6, 107, 5, 11]]) is None
