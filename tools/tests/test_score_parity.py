@@ -66,8 +66,8 @@ def py_capped(s, w, level, kind, cls, conv, cap):
             continue
         if rating:
             conv_v = value * conv.rating_pp(rating, level)
-            room = {'MHIT': cap.get('HIT'), 'SHIT': cap.get('SHIT'),
-                    'HIT': cap.get('HIT') if cap.get('HIT') is not None else cap.get('SHIT')}.get(key)
+            room = {'HIT': cap.get('HIT'), 'MHIT': cap.get('HIT'), 'SHIT': cap.get('SHIT'),
+                    'HITSP': cap.get('SHIT')}.get(key)
             if room is not None:
                 conv_v = max(0.0, min(conv_v, room))
             total += conv_v * weight

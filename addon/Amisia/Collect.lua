@@ -90,6 +90,7 @@ local function noteSuffix(id, link)
     seen = seen or {}
     s.suffix[id] = seen
     seen[suffix] = table.concat(parts, ";")
+    if ns.Gear and ns.Gear.SuffixNoted then ns.Gear.SuffixNoted(id) end
 end
 ns.NoteSuffix = noteSuffix
 

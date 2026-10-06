@@ -638,7 +638,9 @@ def terms(s, w, level, kind, cls, conv):
     for school in SCHOOLS:
         out.append((school, s.get(school), W(school), None))
     crit_w = W('CRIT') + W('SCRIT')
-    out.append(('HIT', s.get('HIT'), W('HIT') + W('SHIT'), 'HIT'))
+    # generic hit: a melee part (melee rate) and a spell part (spell rate), each under its own room
+    out.append(('HIT', s.get('HIT'), W('HIT'), 'HIT'))
+    out.append(('HITSP', s.get('HIT'), W('SHIT'), 'SHIT'))
     out.append(('MHIT', s.get('MHIT'), W('HIT'), 'HIT'))
     out.append(('SHIT', s.get('SHIT'), W('SHIT'), 'SHIT'))
     out.append(('CRIT', s.get('CRIT'), crit_w, 'CRIT'))

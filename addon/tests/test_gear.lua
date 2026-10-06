@@ -36,7 +36,7 @@ assert(near(Gear.RatingPerPoint("CRIT", 60) * 14, 1))
 local w = { STR = 2, STA = 1, CRIT = 10, SCRIT = 0, DPS = 14, SPD_2H = 50, SPD_MH = 20, ARMOR = 0.05, HIT = 5, SHIT = 3 }
 assert(near(Gear.Score({ STR = 10, STA = 5 }, w, 60), 25))
 assert(near(Gear.Score({ CRIT = 14 }, w, 60), 10), "1 % crit")
-assert(near(Gear.Score({ HIT = 10 }, w, 60), 8), "Forever hit counts for weapons and spells")
+assert(near(Gear.Score({ HIT = 10 }, w, 60), 5 + 1.25 * 3), "Forever hit counts for weapons and spells (spell part at the spell rate)")
 assert(near(Gear.Score({ DPS = 20, SPEED = 3.5 }, w, 60, "2H"), 280 + 175))
 assert(near(Gear.Score({ DPS = 20, SPEED = 3.5 }, w, 60), 0), "weapon damage only counts in a weapon place")
 assert(near(Gear.Score({ DPS = 20 }, w, 60, "OH"), 70), "an off-hand weapon: half damage, dual-wield misses")

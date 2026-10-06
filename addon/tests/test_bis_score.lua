@@ -23,9 +23,10 @@ assert(near(Gear.RatingPerPoint("CRIT", 60) * 14, 1))
 assert(near(Gear.RatingPerPoint("HIT", 10), Gear.RatingPerPoint("HIT", 1)), "flat below 10")
 assert(near(Gear.RatingPerPoint("HIT", 70), Gear.RatingPerPoint("HIT", 60)), "no curve above 60")
 
--- hit and crit rating work for weapons and spells
+-- hit and crit rating work for weapons and spells (generic hit: 10 rating is 1 % melee hit and,
+-- at the spell rate of 8, 1,25 % spell hit)
 local wHit = { HIT = 10, SHIT = 5, CRIT = 20, SCRIT = 7 }
-assert(near(Gear.Score({ HIT = 10 }, wHit, 60), 15), "hit works for weapons and spells")
+assert(near(Gear.Score({ HIT = 10 }, wHit, 60), 10 + 1.25 * 5), "hit works for weapons and spells")
 assert(near(Gear.Score({ CRIT = 14 }, wHit, 60), 27), "crit too")
 assert(near(Gear.Score({ SHIT = 8 }, wHit, 60), 5) and near(Gear.Score({ SCRIT = 14 }, wHit, 60), 7), "spell ratings for spells")
 
@@ -80,7 +81,9 @@ for _, p in ipairs(parts) do byKey[p.key] = p end
 assert(byKey.STR.label == "Stärke" and byKey.STR.amount == "30" and byKey.STR.weight == 2 and near(byKey.STR.points, 60))
 assert(Gear.PartText(byKey.STR) == "30 Stärke x 2,0 = 60", Gear.PartText(byKey.STR))
 assert(byKey.HIT.label == "Trefferwertung" and byKey.HIT.amount == "2,0 % (20)", "rating as percent with the rating: " .. byKey.HIT.amount)
-assert(near(byKey.HIT.points, 54, 1e-4), "hit for weapons and spells: " .. byKey.HIT.points)
+assert(near(byKey.HIT.points, 48, 1e-4), "the melee part of hit: " .. byKey.HIT.points)
+assert(byKey.HITSP.label == "Trefferwertung (Zauber)" and byKey.HITSP.amount == "2,5 % (20)" and near(byKey.HITSP.points, 7.5, 1e-4),
+    "the spell part of hit at the spell rate: " .. byKey.HITSP.amount)
 assert(byKey.SOCK.label == "Sockel" and byKey.META.label == "Meta-Sockel")
 assert(byKey.DPS.label == "Waffenschaden pro Sekunde" and byKey.CRIT.label == "kritische Trefferwertung")
 assert(not byKey.RES and not byKey.FAP, "nothing for zero weights or a non-druid's feral attack power")

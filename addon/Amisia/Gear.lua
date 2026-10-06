@@ -226,7 +226,7 @@ Gear.STAT_LABELS = {
     AP = "Angriffskraft", RAP = "Distanzangriffskraft", FAP = "Angriffskraft (Gestalt)", SPD = "Zauberschaden",
     HEAL = "Heilung", SPP = "Zaubermacht", SP_ARCANE = "Schaden (Arkan)", SP_FIRE = "Schaden (Feuer)",
     SP_NATURE = "Schaden (Natur)", SP_FROST = "Schaden (Frost)", SP_SHADOW = "Schaden (Schatten)", SP_HOLY = "Schaden (Heilig)",
-    HIT = "Trefferwertung", MHIT = "Trefferwertung", SHIT = "Zaubertrefferwertung", CRIT = "kritische Trefferwertung",
+    HIT = "Trefferwertung", HITSP = "Trefferwertung (Zauber)", MHIT = "Trefferwertung", SHIT = "Zaubertrefferwertung", CRIT = "kritische Trefferwertung",
     MCRIT = "kritische Trefferwertung", SCRIT = "Zauberkritwertung", HASTE = "Tempowertung", SHASTE = "Zaubertempowertung", EXP = "Waffenkundewertung",
     DEF = "Verteidigungswertung", DODGE = "Ausweichwertung", PARRY = "Parierwertung", BLOCK = "Blockwertung",
     BLOCKVAL = "Blockwert", ARMOR = "Rüstung", MP5 = "Mana alle 5 Sek.", HP5 = "Gesundheit alle 5 Sek.",
@@ -258,9 +258,12 @@ local function terms(s, w, level, kind, class, add)
         add(school, s[school], W(school))
     end
     -- ratings in percent at this level. Forever's hit, crit and haste work for weapons and spells
-    -- alike; the melee and spell kinds count for their own side only.
+    -- alike; the melee and spell kinds count for their own side only. Generic hit is two parts:
+    -- the melee part (melee rate, melee room) and the spell part HITSP (spell rate, spell room), so
+    -- the hit cap limits a caster's generic hit as much as its spell hit.
     local critW = W("CRIT") + W("SCRIT")
-    add("HIT", s.HIT, W("HIT") + W("SHIT"), "HIT")
+    add("HIT", s.HIT, W("HIT"), "HIT")
+    add("HITSP", s.HIT, W("SHIT"), "SHIT")
     add("MHIT", s.MHIT, W("HIT"), "HIT")
     add("SHIT", s.SHIT, W("SHIT"), "SHIT")
     add("CRIT", s.CRIT, critW, "CRIT")
@@ -300,13 +303,13 @@ local function terms(s, w, level, kind, class, add)
 end
 
 -- How much of a rating term counts under the hit cap: cap = { HIT = the melee and ranged hit
--- still useful in percent, SHIT = the spell hit } (nil or a missing side: everything counts).
+-- still useful in percent, SHIT = the spell hit } (nil or a missing side: everything counts). The
+-- melee terms (HIT, MHIT) take the melee room, the spell terms (SHIT, HITSP) the spell room.
 local function capped(key, converted, cap)
     if not cap then return converted end
     local room
-    if key == "MHIT" then room = cap.HIT
-    elseif key == "SHIT" then room = cap.SHIT
-    elseif key == "HIT" then room = cap.HIT or cap.SHIT end
+    if key == "HIT" or key == "MHIT" then room = cap.HIT
+    elseif key == "SHIT" or key == "HITSP" then room = cap.SHIT end
     if room == nil then return converted end
     return math.max(0, math.min(converted, room))
 end
@@ -700,10 +703,12 @@ end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onLoaded)
 
 -- Stats of an item, or nil while unknown (it is then requested). The second value is true for an
--- item the server never described, which is skipped rather than waited for.
+-- item the server never described, which is skipped rather than waited for; the stats the build
+-- computed for it (Gear.ComputedStats) still count then.
 function Gear.Stats(id)
     local s = stats[id]
-    if s ~= nil then return s or nil, s == false end
+    if s == false then return Gear.ComputedStats(id), true end
+    if s ~= nil then return s end
     local g = cacheDB()
     if g and g.stats[id] then
         s = decode(g.stats[id])
@@ -756,12 +761,20 @@ end
 -- The random suffixes seen on an item: { [suffix id] = stat table } from the build (ns.BIS.RP,
 -- the guild's collectors) and the own collector (AmisiaDB.scan.suffix); nil when none was seen.
 -- Each table holds the item's full stats with that suffix, as C_Item.GetItemStats gave them.
+-- Parsed once per item and kept while the build's and the collector's tables of the item stay the
+-- same tables; the collector calls Gear.SuffixNoted when it adds a suffix to the item.
+local suffixCache = {}   -- id -> { rp = table, own = table, out = result or false }
+function Gear.SuffixNoted(id) suffixCache[id] = nil end
 function Gear.SuffixStats(id)
     local B = ns.BIS
     local rp = type(B) == "table" and type(B.RP) == "table" and B.RP[id]
     local own = AmisiaDB and type(AmisiaDB.scan) == "table" and type(AmisiaDB.scan.suffix) == "table" and AmisiaDB.scan.suffix[id]
     -- the planner asks for every item: most have none, and that answer costs nothing
     if type(rp) ~= "table" and type(own) ~= "table" then return nil end
+    rp = type(rp) == "table" and rp or nil
+    own = type(own) == "table" and own or nil
+    local c = suffixCache[id]
+    if c and c.rp == rp and c.own == own then return c.out or nil end
     local out
     local function addText(suffix, text)
         if type(text) ~= "string" then return end
@@ -778,8 +791,9 @@ function Gear.SuffixStats(id)
             out[suffix] = s
         end
     end
-    if type(rp) == "table" then for suffix, text in pairs(rp) do addText(suffix, text) end end
-    if type(own) == "table" then for suffix, text in pairs(own) do addText(suffix, text) end end
+    if rp then for suffix, text in pairs(rp) do addText(suffix, text) end end
+    if own then for suffix, text in pairs(own) do addText(suffix, text) end end
+    suffixCache[id] = { rp = rp, own = own, out = out or false }
     return out
 end
 
@@ -793,7 +807,7 @@ end
 -- Test hook: run the loader once without waiting for the ticker.
 Gear._tick = tick
 function Gear._reset()
-    wipe(stats); wipe(pending); wipe(queue); wipe(queued)
+    wipe(stats); wipe(pending); wipe(queue); wipe(queued); wipe(suffixCache)
     arrived = false
     memo, memoKey = {}, nil
     if ticker then ticker:Cancel(); ticker = nil end
@@ -949,8 +963,11 @@ local SET_SLOTS = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS
 
 -- The set plan: for up to two sets with at least two reachable pieces, k pieces of the set plus
 -- the best single items elsewhere against the single picks; a set that wins takes its slots, its
--- pieces carry set = { id, name, have, total, bonus } and the piece that completes the best
--- threshold the bonus as SETB in its score. Linear per set (pieces sorted by their loss).
+-- pieces carry set = { id, name, have, total, bonus } and a share of the bonus (setb, added to
+-- their score): each piece its loss against the single best of its slot plus an equal part of
+-- the net gain, so the shares sum to the bonus and every piece scores above the single item it
+-- displaced. ns.BisCompare counts the share as the part SETB. Linear per set (pieces sorted by
+-- their loss).
 local function setPlan(res, w, level, class)
     local B = ns.BIS
     local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
@@ -996,11 +1013,14 @@ local function setPlan(res, w, level, class)
         if not bestSet then return end
         local info = { id = bestSet.sid, name = bestSet.set.name, have = bestSet.k, total = #bestSet.set.items,
             bonus = bestSet.bonus }
+        local extra = bestSet.net / bestSet.k
         for k = 1, bestSet.k do
             local p = bestSet.pieces[k]
             local list = res[p.slot]
             local e = table.remove(list, p.i)
             e.set = info
+            e.setb = p.loss + extra
+            e[2] = e[2] + e.setb
             table.insert(list, 1, e)
             used[p.slot] = true
         end
@@ -1040,12 +1060,32 @@ function Gear.Best(opts)
         local cap = caps and caps[CAP_ROW[group] or ""]
         local v = scoreOf(id, st, w, level, place, class, cap)
         local suffix
-        if useSuffix then
-            local variants = Gear.SuffixStats(id)
-            for sfx, vs in pairs(variants or {}) do
-                local x = Gear.Score(vs, w, level, place, class, cap)
-                if x > v or (x == v and suffix and sfx < suffix) then v, suffix = x, sfx end
+        local variants = useSuffix and Gear.SuffixStats(id)
+        if variants then
+            -- the best variant (ties: the lowest suffix id), kept with the scores unless a hit cap
+            -- makes it depend on what is worn; a new variants table (Gear.SuffixStats) is a new entry
+            local byId, k, best = nil, nil, nil
+            local keep = not cap
+            if cap then
+                keep = true
+                for _, vs in pairs(variants) do if hasHit(vs) then keep = false break end end
             end
+            if keep then
+                byId = memo[id]
+                if not byId then byId = {}; memo[id] = byId end
+                k = -1 - (level * 5 + (place and PLACE_SLOT[place] or 0))
+                best = byId[k]
+                if best and best.variants ~= variants then best = nil end
+            end
+            if not best then
+                best = { variants = variants }
+                for sfx, vs in pairs(variants) do
+                    local x = Gear.Score(vs, w, level, place, class, cap)
+                    if not best.v or x > best.v or (x == best.v and sfx < best.sfx) then best.v, best.sfx = x, sfx end
+                end
+                if keep then byId[k] = best end
+            end
+            if best.v and best.v > v then v, suffix = best.v, best.sfx end
         end
         local e = { id, v, suffix = suffix, sc = st.SC or nil }
         return e

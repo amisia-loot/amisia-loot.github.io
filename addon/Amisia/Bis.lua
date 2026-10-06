@@ -621,6 +621,8 @@ function ns.BisHitCaps(o)
     for _, sl in ipairs(Gear.SLOTS) do
         local link = w.links[sl.inv]
         local s = link and Gear.ReadStats(link) or {}
+        -- worn hit converted as Gear.lua's terms do: generic hit at the melee rate for the melee
+        -- side and at the spell rate for the spell side
         local m = ((s.HIT or 0) + (s.MHIT or 0)) * Gear.RatingPerPoint("HIT", o.level)
         local sp = ((s.HIT or 0) + (s.SHIT or 0)) * Gear.RatingPerPoint("SHIT", o.level)
         caps[sl.key] = { HIT = melee and math.max(0, HIT_CAP - (melee - m)) or nil,
@@ -804,10 +806,27 @@ function ns.BisExplain(item, opts)
     return lines
 end
 
--- The parts of a score by key (the stats of an item for the options), and the evaluation.
+-- The parts of a score by key (the stats of an item for the options), and the evaluation. item is
+-- an id, a link or an option of ns.BisTargets / Gear.Best ({ id = ..., suffix = ..., setb = ... }
+-- or { id, score, suffix = ..., setb = ... }): an option counts the random suffix and the share of
+-- the set bonus its ranking counted.
 local function partsOf(item, o)
-    local ev = evaluate(item, o)
+    local opt = type(item) == "table" and item or nil
+    local ev = evaluate(opt and (opt.id or opt[1]) or item, o)
     if ev.reason then return nil, ev end
+    if opt and (opt.suffix or opt.setb) then
+        local s = ev.s
+        local variants = opt.suffix and Gear.SuffixStats(ev.id)
+        if variants and variants[opt.suffix] then s = variants[opt.suffix] end
+        if opt.setb then
+            local c = {}
+            for k, v in pairs(s) do c[k] = v end
+            c.SETB = opt.setb
+            s = c
+        end
+        ev.s = s
+        ev.score = Gear.Score(s, ev.w, o.level, ev.kind, o.class, ev.cap)
+    end
     local by = {}
     for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class, ev.cap)) do
         if not p.over then by[p.key] = p end
@@ -815,9 +834,9 @@ local function partsOf(item, o)
     return by, ev
 end
 
--- a against b (ids or links): { lines = { "+24 Stärke (+48)", ... } largest first, diff = score
--- of a minus b, text = "Option 1 liegt 21 vorn, vor allem durch Stärke." } or nil, reason. names
--- (optional): { "Option 1", "Option 2" } for the sentence.
+-- a against b (ids, links or options of ns.BisTargets, see partsOf): { lines = { "+24 Stärke
+-- (+48)", ... } largest first, diff = score of a minus b, text = "Option 1 liegt 21 vorn, vor allem
+-- durch Stärke." } or nil, reason. names (optional): { "Option 1", "Option 2" } for the sentence.
 function ns.BisCompare(a, b, opts, names)
     local o = opts or ns.BisOpts()
     local pa, ea = partsOf(a, o)
@@ -950,7 +969,8 @@ function ns.BisTargets(opts)
             out[i] = { id = id, score = score, gain = gain, mine = mine, owned = owned, worn = owned == "worn",
                 wished = wishOf(c, id), switch = switch or nil,
                 upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, mine)) or false,
-                sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, effort = src.effort }
+                sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, setb = src.setb,
+                effort = src.effort }
         end
         r.mine[sl.key] = ctx.slot[sl.key]
         local first = out[1]

@@ -528,14 +528,20 @@ end
 ---------------------------------------------------------------------------
 local bossSet, bossOf
 
--- A boss NPC: in the base stock (ns.BIS.O) or among the bosses of the dungeon facts (ns.BIS.DG).
+-- A boss NPC: among the bosses of the dungeon facts (ns.BIS.DG), or in the base stock (ns.BIS.O)
+-- with at least BOSS_FROM_KILLS archived kills. The base stock alone is no proof: a trash corpse
+-- that held a kill event for the time being (see ns.DropsFromLoot) can reach the archive, but it
+-- rarely does so again and again, while a boss the facts miss is recorded on every run.
+local BOSS_FROM_KILLS = 3
 local function isBoss(npc)
     local B = ns.BIS
     if B ~= bossOf or not bossSet then
         bossOf, bossSet = B, {}
         if type(B) == "table" then
             if type(B.O) == "table" then
-                for k in pairs(B.O) do bossSet[k] = true end
+                for k, e in pairs(B.O) do
+                    if type(e) == "table" and (tonumber(e.k) or 0) >= BOSS_FROM_KILLS then bossSet[k] = true end
+                end
             end
             if type(B.DG) == "table" then
                 for _, dg in ipairs(B.DG) do
@@ -548,6 +554,7 @@ local function isBoss(npc)
     end
     return npc ~= nil and bossSet[npc] == true
 end
+ns.DropsIsBoss = isBoss
 
 local function itemClass(id)
     local instant = C_Item and C_Item.GetItemInfoInstant

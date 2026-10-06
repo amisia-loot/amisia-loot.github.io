@@ -55,7 +55,7 @@ local over
 for _, p in ipairs(parts) do if p.over then over = p end end
 assert(over and over.points == 0 and has(Gear.PartText(over), "1,5 % Trefferwertung über der Grenze: 0"), "the part over the cap")
 assert(near(Gear.Score(s, w, 60, "2H", "WARRIOR", { HIT = 0 }), score - 2 * 15), "no room: hit counts nothing")
-assert(near(Gear.Score(s, w, 60, "2H", "WARRIOR", { SHIT = 0 }), score - 2 * 15), "generic hit rating falls back on spell hit room")
+assert(near(Gear.Score(s, w, 60, "2H", "WARRIOR", { SHIT = 0 }), score), "the spell room never limits a melee class's hit")
 
 ---------------------------------------------------------------------------
 -- a small data set: sets, suffixes, plans, effort, computed stats

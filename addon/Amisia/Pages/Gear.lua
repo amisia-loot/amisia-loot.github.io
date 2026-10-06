@@ -598,14 +598,15 @@ local function compareLines(o, list, wornLink)
     for _, n in ipairs(noteParts(first)) do lines[#lines + 1] = GREY .. n .. "|r" end
     local second = list[2]
     if second then
-        local cmp = ns.BisCompare(first.id, second.id, o, { "Option 1", "Option 2" })
+        -- the options themselves: their random suffix and set bonus share count as in the ranking
+        local cmp = ns.BisCompare(first, second, o, { "Option 1", "Option 2" })
         if cmp then
             lines[#lines + 1] = cmp.text
             for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
         end
     end
     if wornLink and not first.worn then
-        local cmp = ns.BisCompare(first.id, wornLink, o, { "Option 1", "das Angelegte" })
+        local cmp = ns.BisCompare(first, wornLink, o, { "Option 1", "das Angelegte" })
         if cmp then
             lines[#lines + 1] = cmp.text
             for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
