@@ -158,6 +158,17 @@ assert(v.items[6002] == nil, "bread stays out")
 assert(v.items[6003] and v.items[6003].flags == "L", "a recipe in limited stock")
 assert(v.items[6004] and v.items[6004].flags == "L", "limited goods are kept")
 assert(v.items[6005] and v.items[6005].flags == "x", "another currency")
+-- a female standing label (FACTION_STANDING_LABELn_FEMALE, where the client has them) reads the same
+_G.FACTION_STANDING_LABEL7_FEMALE = "Respektvolle"
+C_TooltipInfo.GetMerchantItem = function(i)
+    if i == 1 then return { lines = { { leftText = "Benötigt Donnerfels - Respektvolle" } } } end
+    return { lines = {} }
+end
+STUB.npcGUID = "Creature-0-3110-1-47-906-00002E7CF2"
+STUB.fire("MERCHANT_SHOW")
+assert(parsed("s", 906).items[6001].rep == "7@Donnerfels", "female label: " .. parsed("s", 906).items[6001].rep)
+AmisiaDB.collect.s[906] = nil
+NS.CollectMigrate(AmisiaDB)
 -- a merchant without an NPC id is not recorded
 STUB.npcGUID = nil
 STUB.fire("MERCHANT_SHOW")

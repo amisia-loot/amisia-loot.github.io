@@ -771,9 +771,12 @@ local function reputationPattern()
     return repPattern
 end
 
+-- the standing 1-8 of a label; a client with gendered labels (FACTION_STANDING_LABELn_FEMALE) may
+-- show either
 local function standingIndex(label)
     for i = 1, 8 do
-        if _G["FACTION_STANDING_LABEL" .. i] == label then return i end
+        local f = _G["FACTION_STANDING_LABEL" .. i .. "_FEMALE"]
+        if _G["FACTION_STANDING_LABEL" .. i] == label or (type(f) == "string" and f == label) then return i end
     end
     return nil
 end
