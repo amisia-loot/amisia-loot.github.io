@@ -21,7 +21,9 @@ local function detailText(s)
     table.sort(names, function(a, b) return a.name < b.name end)
     local people = {}
     for _, e in ipairs(names) do
-        people[#people + 1] = e.m.late and ("|cffe0a344%s (%s)|r"):format(e.name, date("%H:%M", e.m.first or 0)) or e.name
+        local main = ns.AltMain(e.name)
+        local alt = main and (" (Twink von %s)"):format(main) or ""
+        people[#people + 1] = e.m.late and ("|cffe0a344%s (%s)%s|r"):format(e.name, date("%H:%M", e.m.first or 0), alt) or (e.name .. alt)
     end
     local loot = {}
     for _, l in ipairs(s.items or {}) do

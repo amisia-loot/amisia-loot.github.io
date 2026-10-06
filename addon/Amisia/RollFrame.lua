@@ -176,7 +176,9 @@ refresh = function()
         if i > ROWS then break end
         local row = rows[i]
         row.who = e.name
-        row.name:SetText(("|c%s%s|r"):format(classColor(e.class), e.name))
+        -- an alt names its main in grey: its plus-one is the main's
+        local main = ns.AltMain(e.name)
+        row.name:SetText(("|c%s%s|r"):format(classColor(e.class), e.name) .. (main and (" |cff9d9d9d(" .. main .. ")|r") or ""))
         local plus = ns.PlusLabel(r, e.name)
         row.kind:SetText((e.rank or e.kind or "") .. (plus and (" " .. plus) or ""))
         row.value:SetText(tostring(e.value))

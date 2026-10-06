@@ -1185,15 +1185,13 @@ local function buildGuild(f)
     U.area:SetPoint("TOPRIGHT", 0, -308)
     U.area:SetHeight(70)
     U.importBtn = W.Button(U, "Importieren", 100, function()
-        local res, why = ns.SetGuildWishes(U.area.box:GetText())
-        if res then
-            guildResult = ("%d %s übernommen, %d %s nicht erkannt."):format(res.n, res.n == 1 and "Wunsch" or "Wünsche", res.skipped,
-                res.skipped == 1 and "Zeile" or "Zeilen")
+        -- the website's text: the wishes, the alts, or both
+        local text, ok = ns.ImportSiteText(U.area.box:GetText())
+        if ok then
             U.area.box:SetText("")
             U.area.box:ClearFocus()
-        else
-            guildResult = why
         end
+        guildResult = text
         ns.Refresh()
     end)
     U.importBtn:SetPoint("TOPLEFT", 0, -382)
@@ -1215,6 +1213,10 @@ local function fillGuild(U)
             .. (age and (" " .. GREY .. age .. "|r") or ""))
     else
         U.info:SetText(GREY .. "Keine Gildenwünsche geladen.|r")
+    end
+    local alts = ns.AltsInfo()
+    if alts then
+        U.info:SetText(U.info:GetText() .. (" · %d %s"):format(alts.n, alts.n == 1 and "Twink" or "Twinks"))
     end
     local only = onlyGroup()
     U.group:SetOn(only)
@@ -1329,6 +1331,7 @@ ns.Listen("GUILD_WISHES", function()
     guildResult = nil
     refreshShown()
 end)
+ns.Listen("ALTS", refreshShown)
 ns.BisOnOwned(refreshShown)
 
 -- Item names the client did not have at the last refresh: once item data arrives the shown rows

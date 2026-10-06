@@ -12,6 +12,7 @@
 Registry.lua
 Core.lua
 Names.lua
+Alts.lua
 Mats.lua
 Chat.lua
 Comm.lua

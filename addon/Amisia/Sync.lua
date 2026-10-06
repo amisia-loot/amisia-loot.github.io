@@ -330,10 +330,23 @@ function ns.SyncBuild(s)
         extra(x)
     end
     local plus, count = { s = ns.PlusScope and ns.PlusScope() or "raid", n = {} }, 0
+    -- one line per player under the main and under every linked alt, so a raider without the alt
+    -- list finds the number under the name it plays now
     for _, e in ipairs(ns.PlusList()) do
-        if count >= MAX_PLUS then break end
-        plus.n[e.name] = e.n
-        count = count + 1
+        local others = {}
+        for name in pairs(e.names or {}) do
+            if name ~= e.name then others[#others + 1] = name end
+        end
+        table.sort(others)
+        local names = { e.name }
+        for _, name in ipairs(others) do names[#names + 1] = name end
+        for _, name in ipairs(names) do
+            if count >= MAX_PLUS then break end
+            if plus.n[name] == nil then
+                plus.n[name] = e.n
+                count = count + 1
+            end
+        end
     end
     -- the bench as Bench.lua keeps it: at most 40, the earliest first
     local b, benched = {}, {}

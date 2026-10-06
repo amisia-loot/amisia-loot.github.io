@@ -529,6 +529,9 @@ local function keeperPlus(scope)
     return p
 end
 
+-- The plus-one of a player: the mainspec wins of the character and of every character linked
+-- to the same main (Alts.lua). The keeper's number, where it applies, is looked up by the name
+-- first, then by the main.
 function ns.PlusCount(name, scope)
     if not ns.FullName(name) then return 0 end
     local kp = keeperPlus(scope)
@@ -536,19 +539,24 @@ function ns.PlusCount(name, scope)
         for who, c in pairs(kp.n) do
             if ns.SameName(who, name) then return tonumber(c) or 0 end
         end
+        for who, c in pairs(kp.n) do
+            if ns.SameMain(who, name) then return tonumber(c) or 0 end
+        end
         return 0
     end
     local n = 0
     for _, s in ipairs((plusSessions(scope))) do
         for _, a in ipairs(s and s.awards or {}) do
-            if plusAward(a) and ns.SameName(a.name, name) then n = n + 1 end
+            if plusAward(a) and ns.SameMain(a.name, name) then n = n + 1 end
         end
     end
     return n
 end
 
--- Everyone with a plus-one in the scope: { { name, n } }, most first, then by name. Spellings of
--- one character (with and without surname) are counted together under the first one seen.
+-- Everyone with a plus-one in the scope: { { name, n, names } }, most first, then by name. One
+-- entry per player: spellings of one character (with and without surname) and the alts of a main
+-- are counted together, under the main's name for an alt, else under the first spelling seen.
+-- names holds every spelling that won, the main and its known alts (the sync writes them all).
 function ns.PlusList(scope)
     local out, sessions = {}, plusSessions(scope)
     for _, s in ipairs(sessions) do
@@ -556,11 +564,21 @@ function ns.PlusList(scope)
             if plusAward(a) then
                 local hit
                 for _, e in ipairs(out) do
-                    if ns.SameName(e.name, a.name) then hit = e break end
+                    if ns.SameMain(e.name, a.name) then hit = e break end
                 end
-                if hit then hit.n = hit.n + 1 else out[#out + 1] = { name = a.name, n = 1 } end
+                if hit then
+                    hit.n = hit.n + 1
+                else
+                    hit = { name = ns.AltMain(a.name) or a.name, n = 1, names = {} }
+                    out[#out + 1] = hit
+                end
+                hit.names[a.name] = true
             end
         end
+    end
+    for _, e in ipairs(out) do
+        e.names[e.name] = true
+        for _, alt in ipairs(ns.AltsOf(e.name)) do e.names[alt] = true end
     end
     table.sort(out, function(x, y)
         if x.n ~= y.n then return x.n > y.n end
