@@ -160,6 +160,38 @@ python tools/build_dungeons.py
 
 Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the Lua file is current.
 
+## build_dungeonquests.py
+
+Builds `addon/Amisia/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
+`[AllowLoadGameType camelot]`) for the quest list of the dungeon planner: per dungeon of
+`tools/forever_dungeons.json` its quests, and per quest the level, faction, where it starts (quest
+giver with up to four map points, inside the dungeon, or by an item), its pre-quests (each with its
+own record) and its gear rewards.
+
+```
+python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] [--json FILE] [--empty]
+```
+
+- Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
+  https://github.com/ATTWoWAddon/AllTheThings, **MIT licence**. The copyright line and the licence
+  text ship with the addon in `addon/Amisia/LICENSES/AllTheThings-MIT.txt` (approved by the user on
+  2026-10-06; the UI does not name it). `--refresh-att` downloads the dungeon and zone files and the
+  map constants through the GitHub API (with the `gh` token) into `~/addons/_cache/att` (outside the
+  repo; the repository itself is far too large to clone).
+- The files are a Lua builder language (`inst`, `q`, `e`, `i`, `n`, `objective`, ...). The reader runs
+  them under lupa with stand-ins that only record what they get; quest and giver names come from the
+  files' comments. A dungeon file is matched to the facts by its file name or the instance's area id;
+  instances without facts are reported. Pre-quests are looked up in the zone files; one the download
+  does not hold falls away.
+- The input is pluggable: every reader produces one neutral form (see `NEUTRAL` in the script),
+  `--json` reads that form directly, `--empty` writes the file without data (the addon then says
+  "Questdaten fehlen noch.").
+- No data of other quest databases goes in. The date alone does not rewrite the file.
+
+Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the source has new
+dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on a
+hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real data).
+
 ## make_minimap_icon.py
 
 Draws `addon/Amisia/Media/Icons/Minimap.tga`, the round minimap button icon: the golden A of
