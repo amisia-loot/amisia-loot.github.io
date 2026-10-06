@@ -248,7 +248,7 @@ assert(has(said, "Nächster Dungeon (13-18): Hall of Thanes: ") and has(said, " 
 NS.Dispatch("dungeons")
 assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "dungeons", "the view of the gear page")
 local lines = table.concat(NS.SlashHelpLines(false), "\n")
-assert(has(lines, "/amisia dungeon [naechster]"), lines)
+assert(has(lines, "/amisia dungeon [naechster|kette|quests <Dungeon>]"), lines)
 
 ---------------------------------------------------------------------------
 -- the trash group of a dungeon is never its focus

@@ -64,7 +64,8 @@ assert(rows.deadmines and rows.deadmines.level:GetText() == "~18" and rows.deadm
 assert(rows.excavation and rows.excavation.fit:GetText() == "zu hoch" and rows.excavation.value:GetText() == "", "not computed")
 
 -- the chosen dungeon: header, bosses with their items, quests
-assert(D.header.ButtonText:GetText() == "Hall of Thanes · Bosse und Quests", D.header.ButtonText:GetText())
+assert(D.header.ButtonText:GetText() == "Hall of Thanes · Bosse", D.header.ButtonText:GetText())
+assert(D.parts.bosses.on and not D.parts.quests.on and D.sorts.level.on, "bosses, by level at first")
 local texts = {}
 for _, dr in ipairs(D.detail.rows) do
     if dr.item then texts[#texts + 1] = plain(dr.name:GetText()) .. "|" .. plain(dr.gain:GetText()) .. "|" .. plain(dr.rate:GetText()) end
@@ -74,8 +75,17 @@ local all = {}
 for _, e in ipairs(D.detail.items) do all[#all + 1] = e.kind .. ":" .. (e.text or e.id or "") end
 all = table.concat(all, ",")
 assert(has(all, "boss:Faldrim Anvilmar") and has(all, "item:501") and has(all, "boss:Magmatus") and has(all, "item:503"), all)
-assert(has(all, "quest:An Ancient Grudge") and has(all, "quest:Done Already (erledigt)"), all)
+assert(not has(all, "quest:"), "the quests have their own part: " .. all)
 assert(has(texts[2] or "", "Ambosshelm") and has(texts[2], "Chance 20 %"), texts[2])
+-- the quests part: the item data's dungeon quests joined with the quest data's
+D.parts.quests:Click()
+assert(D.header.ButtonText:GetText() == "Hall of Thanes · Quests" and D.parts.quests.on)
+local qall = {}
+for _, e in ipairs(D.detail.items) do qall[#qall + 1] = e.kind .. ":" .. (e.text or e.id or "") end
+qall = table.concat(qall, ",")
+assert(has(qall, "quest:An Ancient Grudge") and has(qall, "quest:Done Already (erledigt)") and has(qall, "reward:505"), qall)
+assert(not has(D.hint:GetText(), "fehlen"), "the quest data knows the thanes: " .. D.hint:GetText())
+D.parts.bosses:Click()
 -- the wished legs carry the star
 local legs
 for _, e in ipairs(D.detail.items) do if e.id == 503 then legs = e end end
@@ -87,7 +97,7 @@ STUB.maps[1436] = { name = "Westfall", mapType = 3 }
 NS.Map._reset()
 rows.deadmines:Click()
 assert(AmisiaDB.settings.bis.dungeon == "deadmines" and rows.deadmines.sel:IsShown() and not rows.thanes.sel:IsShown())
-assert(D.header.ButtonText:GetText() == "The Deadmines · Bosse und Quests" and D.way:IsEnabled())
+assert(D.header.ButtonText:GetText() == "The Deadmines · Bosse" and D.way:IsEnabled())
 D.way:Click()
 assert(STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1436, "the waypoint to the entrance")
 NS.MapClearTarget()
@@ -115,7 +125,8 @@ for _, view in ipairs({ "officer", "raider" }) do
     Lay.row(view .. " list row", lr.name, lr.level, lr.fit, lr.upgrades, lr.run, lr.quests, lr.value)
     Lay.row(view .. " list", D.list, D.list.bar)
     Lay.inside(view .. " list bar", D.list.bar)
-    Lay.row(view .. " detail head", D.header, D.way)
+    Lay.row(view .. " detail head", D.header, D.parts.bosses, D.parts.quests, D.way)
+    Lay.row(view .. " sorts", D.next, D.sorts.level, D.sorts.value, D.sorts.chain)
     local dr = D.detail.rows[1]
     Lay.row(view .. " detail row", dr.name, dr.slot, dr.gain, dr.rate)
     Lay.row(view .. " detail", D.detail, D.detail.bar)

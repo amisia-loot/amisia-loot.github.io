@@ -698,7 +698,7 @@ local OPTIONAL = {
     "ChatEdit_InsertLink", "UnitFullName", "GetItemStats", "GetItemInfo", "GetTalentTabInfo", "GetSkillLineInfo", "GetNumSkillLines",
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
     "GetAuctionItemLink", "GetNumAuctionItems", "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
-    "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint",
+    "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -761,7 +761,7 @@ local EVENTS = {
     "GUILDBANKBAGSLOTS_CHANGED", "GUILDBANK_UPDATE_TABS", "ITEM_DATA_LOAD_RESULT", "ITEM_SEARCH_RESULTS_UPDATED", "LOOT_CLOSED",
     "LOOT_OPENED", "LOOT_SLOT_CLEARED", "MERCHANT_SHOW", "PLAYERBANKSLOTS_CHANGED", "PLAYER_ENTERING_WORLD",
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
-    "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
+    "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
     "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
 }
 ST.EVENTS = EVENTS

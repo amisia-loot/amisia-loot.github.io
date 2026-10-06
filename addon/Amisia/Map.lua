@@ -100,11 +100,11 @@ end
 
 -- The points of a key: { { map = uiMapID, x = 0-1, y = 0-1 }, ... }; broken parts and maps the client
 -- does not know are skipped. Empty when the key has no place.
-function ns.MapPoints(key)
-    local list = parsed[key]
-    if list then return list end
-    list = {}
-    local text = ns.MAP and ns.MAP.P and ns.MAP.P[key]
+-- Points of a text "uiMapID:x:y ..." (x, y in hundredths of a percent) as { { map, x, y } }; broken
+-- parts and maps the client does not know are skipped. Other generated data (the dungeon quests)
+-- writes its points the same way.
+function Map.ParsePoints(text)
+    local list = {}
     if type(text) == "string" then
         for part in text:gmatch("%S+") do
             local m, x, y = part:match("^(%d+):(%d+):(%d+)$")
@@ -114,6 +114,13 @@ function ns.MapPoints(key)
             end
         end
     end
+    return list
+end
+
+function ns.MapPoints(key)
+    local list = parsed[key]
+    if list then return list end
+    list = Map.ParsePoints(ns.MAP and ns.MAP.P and ns.MAP.P[key])
     parsed[key] = list
     return list
 end
