@@ -2,7 +2,7 @@
 ## Title: Amisia
 ## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
-## Version: 2.5.1
+## Version: 2.5.2
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 ## AddonCompartmentFunc: Amisia_OnAddonCompartmentClick
