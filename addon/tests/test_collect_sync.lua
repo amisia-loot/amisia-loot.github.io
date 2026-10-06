@@ -23,7 +23,7 @@ end
 local function put(name, list)
     return C(name, [[local n = 0
         for _, e in ipairs({ ]] .. list .. [[ }) do
-            assert(NS.CollectPut(e[1], e[2], e[3]), "valid " .. e[3])
+            assert(NS.CollectPut(e[1], e[2], e[3], "own"), "valid " .. e[3])
             n = n + 1
         end
         return n]])
@@ -56,39 +56,50 @@ BUS.setGuild({ { name = VULO, rank = 1 }, { name = FRAK, rank = 2 }, { name = KI
 BUS.guild = { VULO, FRAK, KIM, PUG }
 for _, name in ipairs(CLIENTS) do setup(name) end
 assert(C(VULO, "NS.CollectSyncCanTalk()") == true)
-assert(C(VULO, "NS.COLLECT_PROTO") == 1)
+assert(C(VULO, "NS.COLLECT_PROTO") == 2)
 
 ---------------------------------------------------------------------------
 -- three members with overlapping records converge; Pug is ignored
 ---------------------------------------------------------------------------
 local D = C(VULO, "NS.DropsToday()")
-put(VULO, ([[{ "q", 2001, "%d;3344;1411:5234:4011;0;;280604;;0;30;H;0;Sturmrufer;Die Waffen des Sturms" },
-    { "q", 2002, "%d;3344;1411:5234:4011;0;;;;34;30;H;2001;Sturmrufer;Weiter" },
-    { "s", 904, "%d;1411:2500:7500;6001:1520::6@Orgrimmar;Grimm" },
-    { "w", 299, "%d;r;1411:2500:7500;0;7001:1;Wolf" }]]):format(D, D, D, D))
-put(FRAK, ([[{ "q", 2001, "%d;3344;1411:5234:4011;4455;1411:1000:2000;280604;5001;34;28;A;0;Sturmrufer;Die Waffen des Sturms" },
-    { "q", 2065, "%d;100;1411:1:1;0;;;;0;10;A;0;Gryan;Die Defias" },
-    { "w", 299, "%d;;1411:2600:7500;0;7001:2,7004:1;" }]]):format(D - 3, D - 1, D))
+put(VULO, ([[{ "q", 2001, "%d;0;3344;1411:5234:4011;0;;280604;;0;30;H;0;Sturmrufer;Die Waffen des Sturms" },
+    { "q", 2002, "%d;0;3344;1411:5234:4011;0;;;;34;30;H;2001;Sturmrufer;Weiter" },
+    { "s", 904, "%d;0;1411:2500:7500;6001:1520::6@Orgrimmar;Grimm" },
+    { "w", 299, "%d;0;r;1411:2500:7500;0;7001:1;Wolf" }]]):format(D, D, D, D))
+put(FRAK, ([[{ "q", 2001, "%d;0;3344;1411:5234:4011;4455;1411:1000:2000;280604;5001;34;28;A;0;Sturmrufer;Die Waffen des Sturms" },
+    { "q", 2065, "%d;0;100;1411:1:1;0;;;;0;10;A;0;Gryan;Die Defias" },
+    { "w", 299, "%d;0;;1411:2600:7500;0;7001:2,7004:1;" }]]):format(D - 3, D - 1, D))
 -- many quests at Kim's, spread over the buckets
 local many = {}
-for i = 1, 60 do many[#many + 1] = ([[{ "q", %d, "%d;%d;1440:%d:%d;0;;%d;;0;20;H;0;Geber;Quest %d" }]]):format(3000 + i, D, 5000 + i, i, i, 200000 + i, i) end
+for i = 1, 60 do many[#many + 1] = ([[{ "q", %d, "%d;0;%d;1440:%d:%d;0;;%d;;0;20;H;0;Geber;Quest %d" }]]):format(3000 + i, D, 5000 + i, i, i, 200000 + i, i) end
 put(KIM, table.concat(many, ","))
-put(PUG, ([[{ "q", 9999, "%d;1;;0;;;;0;1;H;0;;Pugs Quest" }]]):format(D))
+put(PUG, ([[{ "q", 9999, "%d;0;1;;0;;;;0;1;H;0;;Pugs Quest" }]]):format(D))
 local want = {}
 for _, name in ipairs(CLIENTS) do login(name) end
 BUS.tick(89)
 assert(BUS.count({ kind = "CV" }) == 0, "no announcement in the first 90 s")
 BUS.tick(2400)
-local base = dump(VULO)
+-- quest 2001 and the wolf 299 were seen by Vulo and by Fraktur with different values: each keeps
+-- its own (heard data never replaces an own value), so those two records differ between them;
+-- everything else is the same everywhere
+local function shared(name) return (dump(name):gsub("q:2001=[^\n]*\n?", ""):gsub("w:299=[^\n]*\n?", "")) end
+local base = shared(VULO)
 for _, name in ipairs(MEMBERS) do
-    assert(dump(name) == base, name .. " differs:\n" .. dump(name) .. "\n---\n" .. base)
+    assert(shared(name) == base, name .. " differs:\n" .. shared(name) .. "\n---\n" .. base)
     assert(count(name) == 65, name .. ": " .. count(name))
 end
--- the merged quest: rewards and choices, both factions, the turn-in NPC, the lowest level
-local q = C(FRAK, "NS.CollectQuest(2001)")
+-- the merged quest at Kim (heard only): rewards and choices, both factions, the turn-in NPC, the lowest level
+local q = C(KIM, "NS.CollectQuest(2001)")
 assert(q.ender == 4455 and q.fac == "AH" and q.minlvl == 28 and q.qlevel == 34 and q.choices[1] == 5001, "merged")
+-- at Vulo his own faction and level stay; what he did not see comes from Fraktur
+q = C(VULO, "NS.CollectQuest(2001)")
+assert(q.fac == "H" and q.minlvl == 30 and q.ender == 4455 and q.qlevel == 34 and q.choices[1] == 5001, "own values stay at Vulo")
+q = C(FRAK, "NS.CollectQuest(2001)")
+assert(q.fac == "A" and q.minlvl == 28, "and at Fraktur")
 local w = C(KIM, "NS.CollectWorld(299)")
 assert(w.items[7001] == 2 and w.items[7004] == 1 and w.class == "r" and w.name == "Wolf")
+w = C(VULO, "NS.CollectWorld(299)")
+assert(w.items[7001] == 1 and not w.items[7004] and w.pos == "1411:2500:7500", "Vulo's own loot list stays his")
 -- nothing from or to Pug
 for _, name in ipairs(MEMBERS) do assert(C(name, "AmisiaDB.collect.q[9999] == nil"), "Pug's record at " .. name) end
 assert(C(PUG, "AmisiaDB.collect.q[2001] == nil"), "Pug got nothing")
@@ -139,7 +150,7 @@ assert(BUS.count(function(m) return m.t >= t2 and (m.kind == "CQ" or m.kind == "
 -- forged, malformed and unasked data
 ---------------------------------------------------------------------------
 for _, name in ipairs(CLIENTS) do BUS.reload(name); setup(name); clear(name) end
-put(VULO, ([[{ "q", 64, "%d;1;;0;;;;0;1;H;0;;Eins" }]]):format(D))
+put(VULO, ([[{ "q", 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" }]]):format(D))
 -- Fraktur asks, Vulo's answers are lost: the request is made through the protocol
 BUS.drop(function(m) return m.sender == VULO and isCK(m) end)
 login(VULO); login(FRAK)
@@ -155,21 +166,24 @@ local function forge(tbl, open, from)
     BUS.tick(10)
     return stat(FRAK, "bad") - bad0, stat(FRAK, "unasked") - un0
 end
-local GOOD = ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D)
+local GOOD = ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D)
 -- Kim was never asked by Fraktur: her blob is unasked
 local bad, unasked = forge(GOOD, false, KIM)
 assert(bad == 0 and unasked == 1 and C(FRAK, "AmisiaDB.collect.q[64] == nil"), "unasked data is dropped")
 local forged = {
-    ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;X;0;;Eins" } }]]):format(D),        -- a bad faction
-    ([[{ v = 1, k = "q", r = { 65, "%d;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- another bucket
-    ([[{ v = 1, k = "s", r = { 64, "%d;;;Eins" } }]]):format(D),                       -- another kind
-    ([[{ v = 2, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- another version
-    ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Ei|cffffns" } }]]):format(D),  -- a bar in a text
-    ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Eins", 128, "kaputt" } }]]):format(D),   -- one bad among good
-    ([[{ v = 1, k = "q", r = { 64 } }]]),                                               -- odd list
-    ([[{ v = 1, k = "q", r = { "64", "x" } }]]),                                        -- a text id
-    ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Eins", 64, "%d;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D, D), -- twice
-    ([[{ v = 1, k = "q", r = { 64, "%d;1;;0;;;;0;1;H;0;;Eins", n = 1 } }]]):format(D),  -- extra keys
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;X;0;;Eins" } }]]):format(D),        -- a bad faction
+    ([[{ v = 2, k = "q", r = { 65, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- another bucket
+    ([[{ v = 2, k = "s", r = { 64, "%d;0;;;Eins" } }]]):format(D),                       -- another kind
+    ([[{ v = 1, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- another version
+    ([[{ v = 2, k = "q", r = { 64, "%d;1;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- an own mask
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D + 2),    -- the day after tomorrow
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" }, x = 1 }]]):format(D),  -- a field of no blob
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Ei|cffffns" } }]]):format(D),  -- a bar in a text
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins", 128, "kaputt" } }]]):format(D),   -- one bad among good
+    ([[{ v = 2, k = "q", r = { 64 } }]]),                                               -- odd list
+    ([[{ v = 2, k = "q", r = { "64", "x" } }]]),                                        -- a text id
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins", 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D, D), -- twice
+    ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins", n = 1 } }]]):format(D),  -- extra keys
 }
 for i, tbl in ipairs(forged) do
     local b = forge(tbl)
@@ -190,31 +204,35 @@ BUS.tick(10)
 assert(C(FRAK, "NS.CommStats().bad") - bad0 == 4, "four malformed messages counted")
 -- Pug's blobs are dropped unread, even for an asked bucket
 C(FRAK, "AmisiaDB.collect.q[64] = nil; NS.CollectMigrate(AmisiaDB); NS.CollectSyncOpenAsk('Pug', 'q', { 0 })")
-C(PUG, ([[NS.CommSendBlob("CK", "0000-00-00:101", { v = 1, k = "q", b = 0, r = { 64, "%d;1;;0;;;;0;1;H;0;;Pug" } }, "WHISPER", "Fraktur", {})]]):format(D))
+C(PUG, ([[NS.CommSendBlob("CK", "0000-00-00:101", { v = 2, k = "q", b = 0, r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Pug" } }, "WHISPER", "Fraktur", {})]]):format(D))
 BUS.tick(10)
 assert(C(FRAK, "AmisiaDB.collect.q[64] == nil"), "nothing from Pug")
--- a saved record that broke at the sender cannot reach the others: the whole blob is refused
+-- a saved record that broke at the sender cannot reach the others: it is left out of the blob
 for _, name in ipairs(CLIENTS) do BUS.reload(name); setup(name); clear(name) end
-put(VULO, ([[{ "q", 64, "%d;1;;0;;;;0;1;H;0;;Eins" }]]):format(D))
-C(VULO, ("AmisiaDB.collect.q[128] = %q; NS.CollectPut('q', 192, '%d;1;;0;;;;0;1;H;0;;Drei')"):format("kaputt;;", D))
+put(VULO, ([[{ "q", 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" }]]):format(D))
+C(VULO, ("AmisiaDB.collect.q[128] = %q; NS.CollectPut('q', 192, '%d;0;1;;0;;;;0;1;H;0;;Drei', 'own')"):format("kaputt;;", D))
 local fbad = stat(FRAK, "bad")
 login(VULO); login(FRAK)
 BUS.tick(600)
-assert(stat(FRAK, "bad") > fbad and C(FRAK, "AmisiaDB.collect.q[64] == nil"), "a blob with a broken record is refused whole")
+assert(stat(FRAK, "bad") == fbad and C(FRAK, "AmisiaDB.collect.q[128] == nil"), "the broken record stays behind")
+assert(C(FRAK, "AmisiaDB.collect.q[64] ~= nil and AmisiaDB.collect.q[192] ~= nil"), "the good ones travel")
 
 ---------------------------------------------------------------------------
 -- another collect protocol is passed over; an unknown kind stops nothing
 ---------------------------------------------------------------------------
 for _, name in ipairs(CLIENTS) do BUS.reload(name); setup(name); clear(name) end
 local t3 = C(VULO, "STUB.clock")
-C(FRAK, "NS.CommSend('CV', { '2', '5', 'q:abcd:5,s:0000:0,w:0000:0', 'more' }, 'GUILD')")
+C(FRAK, "NS.CommSend('CV', { '3', '5', 'q:abcd:5,s:0000:0,w:0000:0', 'more' }, 'GUILD')")
 BUS.tick(120)
 assert(BUS.count({ kind = "CQ", from = t3 }) == 0, "a newer collect protocol is not pulled from")
 assert(stat(VULO, "other") == 1)
+C(FRAK, "NS.CommSend('CV', { '1', '5', 'q:abcd:5,s:0000:0,w:0000:0' }, 'GUILD')")
+BUS.tick(120)
+assert(BUS.count({ kind = "CQ", from = t3 }) == 0 and stat(VULO, "other") == 2, "an older collect protocol is passed over too")
 -- a later client's unknown message kind: counted as bad, the sender still heard afterwards
 C(FRAK, "NS.CommSend('ZX', { 'neu' }, 'GUILD')")
 BUS.tick(5)
-put(FRAK, ([[{ "q", 7, "%d;1;;0;;;;0;1;H;0;;Sieben" }]]):format(D))
+put(FRAK, ([[{ "q", 7, "%d;0;1;;0;;;;0;1;H;0;;Sieben" }]]):format(D))
 login(FRAK); login(VULO)
 BUS.tick(600)
 assert(C(VULO, "AmisiaDB.collect.q[7] ~= nil"), "pulled from Fraktur after its unknown message")
@@ -223,8 +241,8 @@ assert(C(VULO, "AmisiaDB.collect.q[7] ~= nil"), "pulled from Fraktur after its u
 -- nothing in an instance, in combat, in the lockdown; the switch
 ---------------------------------------------------------------------------
 for _, name in ipairs(CLIENTS) do BUS.reload(name); setup(name); clear(name) end
-put(VULO, ([[{ "q", 11, "%d;1;;0;;;;0;1;H;0;;Elf" }]]):format(D))
-put(KIM, ([[{ "q", 12, "%d;1;;0;;;;0;1;H;0;;Zwoelf" }]]):format(D))
+put(VULO, ([[{ "q", 11, "%d;0;1;;0;;;;0;1;H;0;;Elf" }]]):format(D))
+put(KIM, ([[{ "q", 12, "%d;0;1;;0;;;;0;1;H;0;;Zwoelf" }]]):format(D))
 C(KIM, [[STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }]])
 assert(C(KIM, "NS.CollectSyncCanTalk()") == false)
 local t4 = C(KIM, "STUB.clock")
@@ -240,7 +258,7 @@ C(KIM, "STUB.combat = false")
 BUS.tick(600)
 assert(C(KIM, "AmisiaDB.collect.q[11] ~= nil") and C(VULO, "AmisiaDB.collect.q[12] ~= nil"), "after leaving")
 BUS.reload(FRAK); setup(FRAK); clear(FRAK)
-put(FRAK, ([[{ "q", 13, "%d;1;;0;;;;0;1;H;0;;Dreizehn" }]]):format(D))
+put(FRAK, ([[{ "q", 13, "%d;0;1;;0;;;;0;1;H;0;;Dreizehn" }]]):format(D))
 BUS.lock(true)
 assert(C(FRAK, "NS.CollectSyncCanTalk()") == false)
 local t5 = C(FRAK, "STUB.clock")

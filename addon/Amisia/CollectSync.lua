@@ -4,21 +4,24 @@
 -- kinds to the guild (CV: per kind a checksum and a count); whoever holds another checksum asks that
 -- sender for its buckets (CQ, answered by CI parts), then asks for the buckets that differ (CR, up
 -- to 12 of one kind in one request, naming per bucket the own records as 4 hex each, or "*"); the
--- answer is a CK blob with only the records the asker does not hold the same. A record's checksum leaves its day out, so a record
--- seen again on another day starts no exchange.
+-- answer is a CK blob with only the records the asker does not hold the same. A record's checksum
+-- leaves its day and own mask out, so a record seen again on another day, or held as own by one
+-- client and as heard by the other, starts no exchange.
 --
 -- Both sides pull, neither pushes: a blob nobody asked for is dropped, a request takes its one
 -- answer. Every record heard is checked like a saved one (Collector.lua's one canonical form,
--- the bucket of the request); one bad record drops the whole blob. Only between guild members,
+-- the bucket of the request, no own mask, no day after tomorrow); one bad record drops the whole
+-- blob. What is heard is kept as heard: it fills only fields the client did not see itself. Only between guild members,
 -- at the lowest priority of the queue, never in an instance, a battleground, in combat, in the
 -- lockdown or while a raid is synced, within fixed byte caps. No player names travel.
 --
--- Collect protocol 1. A client pulls only from announcements of its own collect protocol; clients
+-- Collect protocol 2 (1 had no own mask in its records). A client pulls only from announcements of its own collect protocol; clients
 -- before the exchange do not know CV and drop it as an unknown message (they never get the
 -- whispered kinds).
 local ADDON, ns = ...
 
-ns.COLLECT_PROTO = 1
+ns.COLLECT_PROTO = 2
+ns.COLLECT_BLOB_V = 2
 
 local L = {
     firstMin = 90, firstSpread = 120,   -- the first announcement 90 to 210 s after the login
@@ -35,7 +38,7 @@ local L = {
     peerKeep = 1800, peersMax = 10, pullJitter = 30,
     serveMax = 12, serveKeep = 1200, servePeers = 2, activeKeep = 120,
     busyWait = 120,
-    senderMax = 1500,                   -- records new to this client from one sender in a session
+    senderMax = 1500,                   -- records taken from one sender in a session (new or merged)
     knownMax = 45, ciEntries = 20,
     crBuckets = 12, crChars = 220,      -- buckets and characters of one request
     buckets = 64,
@@ -59,6 +62,11 @@ local partsLog = {}
 local senderNew = {}
 local firstAt, announced, lastCV, ownAtCV, learnedAtCV, reannounced, emptyAtFirst
 local learned = 0
+-- Pairs of checksums (a sender's, the own) of a bucket or a kind that were pulled once and gave
+-- nothing: two clients that saw the same record with different values each keep their own, so
+-- their checksums never meet; this keeps them from pulling the same records again and again.
+-- Keyed by checksums only (no names), for the session.
+local settled, nSettled = {}, 0
 
 local function now() return GetTime() end
 local function report(err)
@@ -132,12 +140,12 @@ end
 ---------------------------------------------------------------------------
 -- The index: per kind 64 buckets with their checksums
 ---------------------------------------------------------------------------
-local digests, nDigests = {}, 0   -- record string -> 4 hex of the record without its day
+local digests, nDigests = {}, 0   -- record string -> 4 hex of the record without its day and own mask
 local function digest(s)
     local d = digests[s]
     if d then return d end
     if nDigests > 20000 then digests, nDigests = {}, 0 end
-    d = hex4(s:match("^%d+;(.*)$") or s)
+    d = hex4(ns.CollectBody(s))
     digests[s] = d
     nDigests = nDigests + 1
     return d
@@ -181,6 +189,18 @@ local function indexNow()
     index = { gen = gen, kinds = kinds, total = total }
     return index
 end
+
+local function settle(key)
+    if settled[key] then return end
+    if nSettled >= 4096 then settled, nSettled = {}, 0 end
+    settled[key] = true
+    nSettled = nSettled + 1
+end
+local function bucketKey(kind, b, theirs)
+    local bk = indexNow().kinds[kind].buckets[b]
+    return ("%s%02x:%s:%s"):format(kind, b, theirs, bk and bk.hash or "-")
+end
+local function kindKey(kind, theirs) return ("%s:%s:%s"):format(kind, theirs, indexNow().kinds[kind].hash) end
 
 local function blobKey(kind, b) return ("0000-00-00:%d"):format(KIND_INDEX[kind] * 100 + b + 1) end
 
@@ -235,7 +255,7 @@ local function wantsOf(kinds)
     local ix, out = indexNow(), {}
     for _, kind in ipairs(KINDS) do
         local t, m = kinds[kind], ix.kinds[kind]
-        if t and t.n > 0 and (t.h ~= m.hash or t.n ~= m.n) then out[#out + 1] = kind end
+        if t and t.n > 0 and (t.h ~= m.hash or t.n ~= m.n) and not settled[kindKey(kind, t.h)] then out[#out + 1] = kind end
     end
     return out
 end
@@ -298,6 +318,14 @@ startNext = function()
 end
 
 nextKind = function()
+    -- every bucket that differed is settled now: so is the kind
+    if pull.kind and pull.diff then
+        local all = true
+        for _, b in ipairs(pull.diff) do
+            if not settled[bucketKey(pull.kind, b, pull.hs[b])] then all = false break end
+        end
+        if all then settle(kindKey(pull.kind, pull.kinds[pull.kind].h)) end
+    end
     pull.wi = pull.wi + 1
     local kind = pull.wants[pull.wi]
     if not kind then
@@ -310,6 +338,7 @@ nextKind = function()
         return startNext()
     end
     pull.kind, pull.stage, pull.parts, pull.n, pull.got, pull.deadline = kind, "CI", {}, nil, 0, now() + L.ciWait
+    pull.diff, pull.hs = nil, nil
     if not send("CQ", { kind }, "WHISPER", pull.name) then pull = nil end
 end
 
@@ -350,7 +379,7 @@ nextCR = function()
     if not send("CR", fields, "WHISPER", pull.name) then return stopPull(false) end
     crTimes[#crTimes + 1] = now()
     local akey = fields[1] .. "|" .. pull.low
-    asked[akey] = { at = now(), kind = pull.kind, b = first, bs = bs }
+    asked[akey] = { at = now(), kind = pull.kind, b = first, bs = bs, hs = pull.hs }
     pull.stage, pull.akey, pull.deadline = "CK", akey, now() + L.crWait
 end
 
@@ -402,17 +431,21 @@ ns.CommOn("CI", function(sender, f, chan)
         pull.got = pull.got + 1
     end
     if pull.got < n then return end
-    local mine, crs = indexNow().kinds[pull.kind].buckets, {}
+    local mine, crs, diff, hs = indexNow().kinds[pull.kind].buckets, {}, {}, {}
     for p = 1, n do
         if pull.parts[p] ~= "-" then
             for e in (pull.parts[p] .. ","):gmatch("([^,]*),") do
-                local b, h, cnt = e:match("^(%x%x):(%x+):(%d+)$")
-                b = tonumber(b, 16)
+                local b, h = e:match("^(%x%x):(%x+):%d+$")
+                b, h = tonumber(b, 16), h and h:lower()
                 local m = b and mine[b]
-                if b and (not m or m.hash ~= h:lower()) then crs[#crs + 1] = b end
+                if b and (not m or m.hash ~= h) then
+                    diff[#diff + 1], hs[b] = b, h
+                    if not settled[bucketKey(pull.kind, b, h)] then crs[#crs + 1] = b end
+                end
             end
         end
     end
+    pull.diff, pull.hs = diff, hs
     for j = #crs, 2, -1 do
         local k = math.random(j)
         crs[j], crs[k] = crs[k], crs[j]
@@ -433,11 +466,16 @@ ns.CommOn("CW", function(sender, f, chan)
     startNext()
 end)
 
--- A blob checked whole: { v = 1, k = kind, r = { id, record, id, record, ... } }, every record valid
--- in its canonical form and of an asked bucket, 60 at most. Returns the list
--- { { kind, id, record } } or nil.
+-- A blob checked whole: { v = 2, k = kind, r = { id, record, id, record, ... } }, every record valid
+-- in its canonical form, heard (own mask 0), of no day after tomorrow and of an asked bucket, 60 at
+-- most. Returns the list { { kind, id, record } } or nil.
+local BLOB_KEYS = { v = true, k = true, r = true, m = true }
 local function checkBlob(tbl, ask)
-    if type(tbl) ~= "table" or tbl.v ~= 1 or tbl.k ~= ask.kind then return nil end
+    if type(tbl) ~= "table" or tbl.v ~= ns.COLLECT_BLOB_V or tbl.k ~= ask.kind then return nil end
+    if tbl.m ~= nil and tbl.m ~= true then return nil end
+    for key in pairs(tbl) do
+        if not BLOB_KEYS[key] then return nil end
+    end
     local r = tbl.r
     if r == nil then return {} end
     if type(r) ~= "table" then return nil end
@@ -447,10 +485,12 @@ local function checkBlob(tbl, ask)
     for _ in pairs(r) do size = size + 1 end
     if size ~= n then return nil end
     local out, seen = {}, {}
+    local latest = (ns.DropsToday and ns.DropsToday() or 0) + 1
     for i = 1, n, 2 do
         local id, s = r[i], r[i + 1]
         if type(id) ~= "number" or id ~= math.floor(id) or id < 1 or id > 9999999 or not ask.bs[id % L.buckets] or seen[id] then return nil end
-        if not ns.CollectParse(ask.kind, s) then return nil end
+        local rec = ns.CollectParse(ask.kind, s)
+        if not rec or rec.own ~= 0 or rec.day > latest then return nil end
         seen[id] = true
         out[#out + 1] = { ask.kind, id, s }
     end
@@ -489,17 +529,14 @@ ns.CommOnBlob("CK", function(sender, tbl, chan, key)
         return
     end
     stats.blobs = stats.blobs + 1
-    local c = ns.CollectDB()
-    local take = {}
+    -- every record counts against the sender's cap, a merge as much as a new one
+    local take, capped = {}, false
     for _, e in ipairs(list) do
-        if c and not c[e[1]][e[2]] then
-            if (senderNew[low] or 0) >= L.senderMax then
-                stats.capped = stats.capped + 1
-            else
-                senderNew[low] = (senderNew[low] or 0) + 1
-                take[#take + 1] = e
-            end
+        if (senderNew[low] or 0) >= L.senderMax then
+            stats.capped = stats.capped + 1
+            capped = true
         else
+            senderNew[low] = (senderNew[low] or 0) + 1
             take[#take + 1] = e
         end
     end
@@ -508,7 +545,24 @@ ns.CommOnBlob("CK", function(sender, tbl, chan, key)
     stats.new, stats.merged = stats.new + n.new, stats.merged + n.merged
     learned = learned + n.new + n.merged
     asked[ask.akey] = nil
-    if pull and pull.stage == "CK" and pull.akey == ask.akey then nextCR() end
+    -- a whole answer that changed nothing in a bucket settles the bucket for these two checksums
+    local changed = {}
+    for id in pairs(n.changed) do changed[id % L.buckets] = true end
+    if not tbl.m and not capped and ask.hs then
+        for b in pairs(ask.bs) do
+            if not changed[b] and ask.hs[b] then settle(bucketKey(ask.kind, b, ask.hs[b])) end
+        end
+    end
+    if pull and pull.stage == "CK" and pull.akey == ask.akey then
+        -- the rest of a cut answer is asked for at once, as long as the answers bring something
+        if tbl.m and n.new + n.merged > 0 then
+            local bs = {}
+            for b in pairs(ask.bs) do bs[#bs + 1] = b end
+            table.sort(bs)
+            for i = #bs, 1, -1 do table.insert(pull.crs, 1, bs[i]) end
+        end
+        nextCR()
+    end
 end)
 
 ---------------------------------------------------------------------------
@@ -599,11 +653,12 @@ ns.CommOn("CR", function(sender, f, chan)
     end)
 end)
 
+-- The records of ids as a blob; each goes as heard (own mask 0): the asker did not see it itself.
 local function wire(kind, ids)
     local c = ns.CollectDB()
-    local t = { v = 1, k = kind, r = {} }
+    local t = { v = ns.COLLECT_BLOB_V, k = kind, r = {} }
     for _, id in ipairs(ids) do
-        local s = c and c[kind][id]
+        local s = c and c[kind][id] and ns.CollectMark(kind, c[kind][id], "heard")
         if s then
             t.r[#t.r + 1] = id
             t.r[#t.r + 1] = s
@@ -613,13 +668,14 @@ local function wire(kind, ids)
     return t
 end
 
--- The longest front of ids that packs into one blob (20 parts, 60 records).
+-- The longest front of ids that packs into one blob (20 parts, 60 records); a cut one says so (m).
 local function fit(kind, ids)
     local n = math.min(#ids, L.blobRecords)
     for _ = 1, 8 do
         local list = {}
         for i = 1, n do list[i] = ids[i] end
         local tbl = wire(kind, list)
+        if n < #ids then tbl.m = true end
         local packed = ns.CommPack(tbl)
         if not packed then return nil end
         local parts = math.ceil(#packed / 200)

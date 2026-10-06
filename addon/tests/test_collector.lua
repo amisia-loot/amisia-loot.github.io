@@ -262,9 +262,9 @@ walk(AmisiaDB.collect)
 -- merging: the same in any order, idempotent; strict parsing
 ---------------------------------------------------------------------------
 local M = NS.CollectMergeRecords
-local a = "100;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A"
-local b = "101;12;1411:100:300;20;1411:1:1;6;8;22;16;H;55;Beta;Titel B"
-local c = "99;0;;0;;9;;0;0;;54;;"
+local a = "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A"
+local b = "101;0;12;1411:100:300;20;1411:1:1;6;8;22;16;H;55;Beta;Titel B"
+local c = "99;0;0;;0;;9;;0;0;;54;;"
 for _, s in ipairs({ a, b, c }) do assert(NS.CollectParse("q", s), "valid: " .. s) end
 assert(M("q", a, b) == M("q", b, a), "commutative")
 assert(M("q", M("q", a, b), c) == M("q", a, M("q", b, c)), "associative")
@@ -272,20 +272,21 @@ assert(M("q", a, a) == a, "idempotent")
 local ab = NS.CollectParse("q", M("q", a, b))
 assert(ab.day == 101 and ab.giver == 10 and ab.ender == 20 and ab.qlevel == 22 and ab.minlvl == 16 and ab.fac == "AH" and ab.pre == 55)
 assert(table.concat(ab.rewards, ",") == "5,6,7" and ab.title == "Titel A")
-local va, vb = "50;1411:1:1;10:100::,11:200:L:;", "51;;10:90:x:4@Ratschlag,12:5::;Händler"
+local va, vb = "50;0;1411:1:1;10:100::,11:200:L:;", "51;0;;10:90:x:4@Ratschlag,12:5::;Händler"
 assert(M("s", va, vb) == M("s", vb, va))
 local vab = NS.CollectParse("s", M("s", va, vb))
 assert(vab.items[10].price == 90 and vab.items[10].flags == "x" and vab.items[10].rep == "4@Ratschlag" and vab.name == "Händler")
-local wa, wb = "5;r;1411:1:1;0;1:2,3:1;Wolf", "6;;;0;1:5,4:1;"
+local wa, wb = "5;0;r;1411:1:1;0;1:2,3:1;Wolf", "6;0;;;0;1:5,4:1;"
 assert(M("w", wa, wb) == M("w", wb, wa) and NS.CollectParse("w", M("w", wa, wb)).items[1] == 5)
 -- broken records: refused
-for _, s in ipairs({ "x;10;;0;;;;0;0;;0;;T", "1;10;1411:100:200:5;0;;;;0;0;;0;;T", "1;10;;0;;7,5;;0;0;;0;;T",
-                     "1;10;;0;;;;0;0;X;0;;T", "1;10;;0;;;;0;0;;0;Na|me;T", "1;10;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;T",
-                     "1;10;;0;;;;0;0;;0;;Ti\1tel", "-1;10;;0;;;;0;0;;0;;T", "1;10;;0;;;;0;0;;0;;" .. ("x"):rep(60) }) do
+for _, s in ipairs({ "x;0;10;;0;;;;0;0;;0;;T", "1;0;10;1411:100:200:5;0;;;;0;0;;0;;T", "1;0;10;;0;;7,5;;0;0;;0;;T",
+                     "1;0;10;;0;;;;0;0;X;0;;T", "1;0;10;;0;;;;0;0;;0;Na|me;T", "1;0;10;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;T",
+                     "1;0;10;;0;;;;0;0;;0;;Ti\1tel", "-1;0;10;;0;;;;0;0;;0;;T", "1;0;10;;0;;;;0;0;;0;;" .. ("x"):rep(60),
+                     "1;2;10;;0;;;;0;0;;0;;T", "1;4096;10;;0;;;;0;0;;0;;T", "1;01;10;;0;;;;0;0;;0;;T", "1;10;;0;;;;0;0;;0;;T" }) do
     assert(NS.CollectParse("q", s) == nil, "refused: " .. s)
 end
-assert(NS.CollectParse("s", "1;;10:100:Q:;N") == nil and NS.CollectParse("s", "1;;10:100::9@X;N") == nil)
-assert(NS.CollectParse("w", "1;z;;0;;N") == nil and NS.CollectParse("w", "1;n;;0;1:0;N") == nil and NS.CollectParse("w", "1;n;;0;1:100;N") == nil)
+assert(NS.CollectParse("s", "1;0;;10:100:Q:;N") == nil and NS.CollectParse("s", "1;0;;10:100::9@X;N") == nil)
+assert(NS.CollectParse("w", "1;0;z;;0;;N") == nil and NS.CollectParse("w", "1;0;n;;0;1:0;N") == nil and NS.CollectParse("w", "1;0;n;;0;1:100;N") == nil)
 
 ---------------------------------------------------------------------------
 -- load: broken saved records go, the shape is fixed
@@ -297,7 +298,13 @@ AmisiaDB.collect.w[9] = { "nope" }
 AmisiaDB.collect.x = { 1 }
 NS.CollectMigrate(AmisiaDB)
 assert(AmisiaDB.collect.q[3000] == nil and AmisiaDB.collect.q["3001"] == nil and AmisiaDB.collect.s[0] == nil and AmisiaDB.collect.w[9] == nil)
-assert(AmisiaDB.collect.q[2001] and AmisiaDB.collect.ver == 1)
+assert(AmisiaDB.collect.q[2001] and AmisiaDB.collect.ver == 2)
+-- a table of version 1 (no own mask): its records are kept as heard; a day far ahead is pulled back
+AmisiaDB.collect = { ver = 1, q = { [7] = "100;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A",
+    [8] = (TODAY + 30) .. ";10;;0;;;;0;0;;0;;Zukunft" }, s = {}, w = {} }
+NS.CollectMigrate(AmisiaDB)
+assert(AmisiaDB.collect.ver == 2 and AmisiaDB.collect.q[7] == "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A", "version 1 as heard")
+assert(NS.CollectQuest(8).day == TODAY + 1, "a day far ahead becomes tomorrow")
 AmisiaDB.collect = "garbage"
 NS.CollectMigrate(AmisiaDB)
 assert(type(AmisiaDB.collect.q) == "table" and next(AmisiaDB.collect.q) == nil, "a broken table starts empty")
@@ -309,7 +316,7 @@ local L = NS.COLLECT_LIMITS
 local old = { q = L.q, s = L.s, w = L.w, bytes = L.bytes }
 L.q = 50
 for i = 1, 60 do
-    assert(NS.CollectPut("q", 10000 + i, ("%d;10;1411:100:200;0;;5;;20;18;A;0;Geber;Quest %d"):format(TODAY - 60 + i, i)) == "new")
+    assert(NS.CollectPut("q", 10000 + i, ("%d;0;10;1411:100:200;0;;5;;20;18;A;0;Geber;Quest %d"):format(TODAY - 60 + i, i)) == "new")
 end
 local counts = NS.CollectCounts()
 assert(counts.q <= 50 and counts.q >= 45, "the quest cap: " .. counts.q)
@@ -317,7 +324,7 @@ assert(AmisiaDB.collect.q[10001] == nil and AmisiaDB.collect.q[10060] ~= nil, "t
 L.q = old.q
 -- the byte budget
 L.bytes = 3000
-for i = 1, 60 do NS.CollectPut("w", 20000 + i, ("%d;n;1411:1:1;0;7001:1;Mob %d"):format(TODAY - 60 + i, i)) end
+for i = 1, 60 do NS.CollectPut("w", 20000 + i, ("%d;0;n;1411:1:1;0;7001:1;Mob %d"):format(TODAY - 60 + i, i)) end
 assert(NS.CollectBytes() <= 3000, "within the byte budget: " .. NS.CollectBytes())
 assert(AmisiaDB.collect.w[20060] ~= nil and AmisiaDB.collect.w[20001] == nil)
 L.bytes = old.bytes
@@ -337,16 +344,16 @@ assert(NS.CollectBytes() == recount(), "bytes counted right")
 AmisiaDB.collect = nil
 NS.CollectMigrate(AmisiaDB)
 for i = 1, L.q do
-    NS.CollectPut("q", 30000 + i, ("%d;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name;Eine typische Quest %d"):format(
-        TODAY, 3000 + i, 1000 + i % 9000, 2000 + i % 7000, 4000 + i, 200000 + i, 200001 + i, 210000 + i, 210001 + i, 210002 + i, 20 + i % 40, 18 + i % 40, i, i))
+    NS.CollectPut("q", 30000 + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name;Eine typische Quest %d"):format(
+        TODAY, 3000 + i, 1000 + i % 9000, 2000 + i % 7000, 4000 + i, 200000 + i, 200001 + i, 210000 + i, 210001 + i, 210002 + i, 20 + i % 40, 18 + i % 40, i, i), "own")
 end
 for i = 1, L.s do
     local items = {}
     for j = 1, 6 do items[j] = ("%d:%d::"):format(220000 + i * 10 + j, 1000 + j * 37) end
-    NS.CollectPut("s", 40000 + i, ("%d;1440:2311:5512;%s;Händlerin Name %d"):format(TODAY, table.concat(items, ","), i))
+    NS.CollectPut("s", 40000 + i, ("%d;0;1440:2311:5512;%s;Händlerin Name %d"):format(TODAY, table.concat(items, ","), i), "own")
 end
 for i = 1, L.w do
-    NS.CollectPut("w", 50000 + i, ("%d;n;1440:%d:%d;0;%d:1,%d:2;Ein Mob %d"):format(TODAY, 1000 + i % 9000, 3000 + i % 6000, 230000 + i, 230001 + i, i))
+    NS.CollectPut("w", 50000 + i, ("%d;0;n;1440:%d:%d;0;%d:1,%d:2;Ein Mob %d"):format(TODAY, 1000 + i % 9000, 3000 + i % 6000, 230000 + i, 230001 + i, i), "own")
 end
 counts = NS.CollectCounts()
 -- the file text of the table: '[id] = "record",' per line with two tabs, as the client writes it

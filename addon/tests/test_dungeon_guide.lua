@@ -179,9 +179,9 @@ assert(not ok and reason == "Für diese Quest kennt Amisia keinen Startort.", to
 -- what the collector saw stands in: the giver's place of a quest the data has no usable point for,
 -- and a quest the data does not know at all, with the giver's name
 local D0 = NS.DropsToday()
-assert(NS.CollectPut("q", 99003, D0 .. ";555;1436:3000:4000;0;;;;0;10;H;0;Gesehener Geber;Horde Detour") == "new")
+assert(NS.CollectPut("q", 99003, D0 .. ";0;555;1436:3000:4000;0;;;;0;10;H;0;Gesehener Geber;Horde Detour", "own") == "new")
 assert(NS.DungeonQuestWaypoint(99003) and NS.MapTarget().label == "Questgeber Horde Giver" and near(NS.MapTarget().x, 0.3), NS.MapTarget().label)
-assert(NS.CollectPut("q", 99050, D0 .. ";556;1436:1200:3400;0;;;;0;10;A;0;Neuer Geber;Neue Quest") == "new")
+assert(NS.CollectPut("q", 99050, D0 .. ";0;556;1436:1200:3400;0;;;;0;10;A;0;Neuer Geber;Neue Quest", "own") == "new")
 assert(NS.DungeonQuestWaypoint(99050) and NS.MapTarget().label == "Questgeber Neuer Geber" and near(NS.MapTarget().y, 0.34), NS.MapTarget().label)
 NS.MapClearTarget()
 

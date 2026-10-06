@@ -5,21 +5,25 @@
 -- non-boss NPCs (gear and recipes of green or better, with the NPC's classification and place).
 -- Boss loot stays with Drops.lua; the item notes (scan.sources) stay with Collect.lua.
 --
--- AmisiaDB.collect = { ver = 1, q = { [questID] = record }, s = { [npcID] = record },
+-- AmisiaDB.collect = { ver = 2, q = { [questID] = record }, s = { [npcID] = record },
 -- w = { [npcID] = record } }. A record is one string, the fields split by ";" and the free text last
 -- (a third of the room a table takes in the saved file; the exchange sends the same string):
---   q: day;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
---   s: day;pos;items;name                 items "id:price:flags:rep,..." (flags L limited, x other currency;
---                                         rep "<standing 1-8>@<faction>")
---   w: day;class;pos;instance;items;name  items "id:count,..."; class n e r R b or empty
+--   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+--   s: day;own;pos;items;name                 items "id:price:flags:rep,..." (flags L limited, x other
+--                                             currency; rep "<standing 1-8>@<faction>")
+--   w: day;own;class;pos;instance;items;name  items "id:count,..."; class n e r R b or empty
 -- Positions "uiMapID:x:y" (x and y in hundredths of a percent, 0-10000), "uiMapID" alone, or empty.
 -- NPC ids are negative for game objects (a quest from a wanted poster), 0 unknown. day: days since
--- 2026-01-01 (ns.DropsToday), the last day the record was seen or changed. No player name is read
--- into a record: names come from the quest/merchant NPC unit or a looted corpse, never from players.
+-- 2026-01-01 (ns.DropsToday), the last day the record was seen or changed. own: a bit mask of the
+-- fields after it (bit 0 the first) that this client saw itself; the others, if they hold anything,
+-- were heard from the guild (0: all heard, as every record of an exchange blob). No player name is
+-- read into a record: names come from the quest/merchant NPC unit or a looted corpse, never from
+-- players.
 --
 -- Every record, own, saved or heard, passes the same strict check: it must parse and read back to
 -- exactly the same string (one canonical form, so two clients' checksums agree). Records merge as a
--- join that gives the same result in any order (see merge), so clients that exchanged converge.
+-- join that gives the same result in any order (see merge): own values beat heard ones, so a guild
+-- member cannot overwrite what a client saw itself.
 local ADDON, ns = ...
 
 local Co = {}
@@ -116,15 +120,53 @@ end
 ---------------------------------------------------------------------------
 -- Records: parse and format (one canonical form)
 ---------------------------------------------------------------------------
+-- The fields of each kind after "day;own;", in record order. Bit i-1 of own stands for field i.
+local FIELDS = {
+    q = { "giver", "gpos", "ender", "epos", "rewards", "choices", "qlevel", "minlvl", "fac", "pre", "gname", "title" },
+    s = { "pos", "items", "name" },
+    w = { "class", "pos", "inst", "items", "name" },
+}
+ns.COLLECT_FIELDS = FIELDS
+local function bitOf(i) return 2 ^ (i - 1) end
+local function hasBit(mask, i) return math.floor(mask / bitOf(i)) % 2 == 1 end
+local function empty(v) return v == "" or v == 0 or (type(v) == "table" and next(v) == nil) end
+
+-- the own mask of r: only bits of fields that hold something (an empty field has no provenance)
+local function ownOk(kind, r)
+    local n = #FIELDS[kind]
+    if not int(r.own, 0, 2 ^ n - 1) then return false end
+    for i, f in ipairs(FIELDS[kind]) do
+        if hasBit(r.own, i) and empty(r[f]) then return false end
+    end
+    return true
+end
+-- the mask that marks every field that holds something as own
+local function allOwn(kind, r)
+    local m = 0
+    for i, f in ipairs(FIELDS[kind]) do
+        if not empty(r[f]) then m = m + bitOf(i) end
+    end
+    return m
+end
+
 local P, F = {}, {}
 
-function P.q(s)
-    local f = split(s, 13)
+-- "day;own;..." into its two numbers and the n fields after them
+local function head(s, n)
+    local f = split(s, n + 2)
     if not f then return nil end
-    local r = { day = num(f[1], 0, 99999), giver = num(f[2], -MAX_ID, MAX_ID), gpos = f[3], ender = num(f[4], -MAX_ID, MAX_ID),
-                epos = f[5], rewards = idList(f[6], L.rewards), choices = idList(f[7], L.rewards), qlevel = num(f[8], 0, 99),
-                minlvl = num(f[9], 0, 99), fac = f[10], pre = num(f[11], 0, MAX_ID), gname = f[12], title = f[13] }
-    if not (r.day and r.giver and r.ender and r.rewards and r.choices and r.qlevel and r.minlvl and r.pre) then return nil end
+    local day, own = num(f[1], 0, 99999), num(f[2], 0, 2 ^ n - 1)
+    if not day or not own then return nil end
+    return f, day, own
+end
+
+function P.q(s)
+    local f, day, own = head(s, 12)
+    if not f then return nil end
+    local r = { day = day, own = own, giver = num(f[3], -MAX_ID, MAX_ID), gpos = f[4], ender = num(f[5], -MAX_ID, MAX_ID),
+                epos = f[6], rewards = idList(f[7], L.rewards), choices = idList(f[8], L.rewards), qlevel = num(f[9], 0, 99),
+                minlvl = num(f[10], 0, 99), fac = f[11], pre = num(f[12], 0, MAX_ID), gname = f[13], title = f[14] }
+    if not (r.giver and r.ender and r.rewards and r.choices and r.qlevel and r.minlvl and r.pre) then return nil end
     if not posOk(r.gpos) or not posOk(r.epos) then return nil end
     if r.fac ~= "" and r.fac ~= "A" and r.fac ~= "H" and r.fac ~= "AH" then return nil end
     if not textOk(r.gname, ";") or not textOk(r.title) then return nil end
@@ -132,20 +174,20 @@ function P.q(s)
 end
 
 function F.q(r)
-    return table.concat({ r.day, r.giver, r.gpos, r.ender, r.epos, table.concat(r.rewards, ","), table.concat(r.choices, ","),
+    return table.concat({ r.day, r.own or 0, r.giver, r.gpos, r.ender, r.epos, table.concat(r.rewards, ","), table.concat(r.choices, ","),
         r.qlevel, r.minlvl, r.fac, r.pre, r.gname, r.title }, ";")
 end
 
 local FLAGS = { [""] = true, L = true, x = true, Lx = true }
 
 function P.s(s)
-    local f = split(s, 4)
+    local f, day, own = head(s, 3)
     if not f then return nil end
-    local r = { day = num(f[1], 0, 99999), pos = f[2], items = {}, name = f[4] }
-    if not r.day or not posOk(r.pos) or not textOk(r.name) then return nil end
-    if f[3] ~= "" then
+    local r = { day = day, own = own, pos = f[3], items = {}, name = f[5] }
+    if not posOk(r.pos) or not textOk(r.name) then return nil end
+    if f[4] ~= "" then
         local n, last = 0, 0
-        for e in (f[3] .. ","):gmatch("([^,]*),") do
+        for e in (f[4] .. ","):gmatch("([^,]*),") do
             local id, price, flags, rep = e:match("^(%d+):(%d+):(%a*):(.*)$")
             id, price = num(id, 1, MAX_ID), num(price, 0, 2147483647)
             if not id or not price or not FLAGS[flags] or id <= last then return nil end
@@ -167,20 +209,20 @@ function F.s(r)
         local it = r.items[id]
         items[#items + 1] = ("%d:%d:%s:%s"):format(id, it.price, it.flags, it.rep)
     end
-    return table.concat({ r.day, r.pos, table.concat(items, ","), r.name }, ";")
+    return table.concat({ r.day, r.own or 0, r.pos, table.concat(items, ","), r.name }, ";")
 end
 
 local CLASSES = { [""] = true, n = true, e = true, r = true, R = true, b = true }
 local CLASS_RANK = { [""] = 0, n = 1, e = 2, r = 3, R = 4, b = 5 }
 
 function P.w(s)
-    local f = split(s, 6)
+    local f, day, own = head(s, 5)
     if not f then return nil end
-    local r = { day = num(f[1], 0, 99999), class = f[2], pos = f[3], inst = num(f[4], 0, 99999), items = {}, name = f[6] }
-    if not r.day or not CLASSES[r.class] or not posOk(r.pos) or not r.inst or not textOk(r.name) then return nil end
-    if f[5] ~= "" then
+    local r = { day = day, own = own, class = f[3], pos = f[4], inst = num(f[5], 0, 99999), items = {}, name = f[7] }
+    if not CLASSES[r.class] or not posOk(r.pos) or not r.inst or not textOk(r.name) then return nil end
+    if f[6] ~= "" then
         local n, last = 0, 0
-        for e in (f[5] .. ","):gmatch("([^,]*),") do
+        for e in (f[6] .. ","):gmatch("([^,]*),") do
             local id, c = e:match("^(%d+):(%d+)$")
             id, c = num(id, 1, MAX_ID), num(c, 1, L.wCount)
             if not id or not c or id <= last then return nil end
@@ -195,23 +237,51 @@ end
 function F.w(r)
     local items = {}
     for _, id in ipairs(sortedKeys(r.items)) do items[#items + 1] = id .. ":" .. r.items[id] end
-    return table.concat({ r.day, r.class, r.pos, r.inst, table.concat(items, ","), r.name }, ";")
+    return table.concat({ r.day, r.own or 0, r.class, r.pos, r.inst, table.concat(items, ","), r.name }, ";")
 end
 
 -- The record as a table, or nil when it is not a valid record in its one canonical form.
 function ns.CollectParse(kind, s)
     if type(s) ~= "string" or #s > L.maxLen or not P[kind] then return nil end
     local ok, r = pcall(P[kind], s)
-    if not ok or not r then return nil end
+    if not ok or not r or not ownOk(kind, r) then return nil end
     if F[kind](r) ~= s then return nil end
     return r
 end
 
+-- A record table as its string (own defaults to 0, all heard).
 function ns.CollectFormat(kind, r) return F[kind](r) end
+
+-- Whether field f of the parsed record r is the client's own observation.
+function ns.CollectOwn(kind, r, f)
+    for i, name in ipairs(FIELDS[kind] or {}) do
+        if name == f then return type(r) == "table" and int(r.own, 0, 2 ^ 12) and hasBit(r.own, i) or false end
+    end
+    return false
+end
+
+-- The record string s with its own mask set: every field that holds something (how "own") or none
+-- (how "heard"); nil when s is not valid.
+function ns.CollectMark(kind, s, how)
+    local r = ns.CollectParse(kind, s)
+    if not r then return nil end
+    r.own = how == "own" and allOwn(kind, r) or 0
+    return F[kind](r)
+end
+
+-- The record string without its day and own mask: what two clients compare (a record seen again on
+-- another day, or held as heard by one and as own by the other, is the same record).
+function ns.CollectBody(s) return type(s) == "string" and s:match("^%d+;%d+;(.*)$") or s end
 
 ---------------------------------------------------------------------------
 -- Merging: a join (the same result in any order, twice the same as once)
 ---------------------------------------------------------------------------
+-- Per field the pair (own?, value): an own value beats a heard one; two own values, or two heard
+-- ones, join as below. Heard data so only fills what the own observations left empty and never
+-- replaces an own value, and an own observation replaces heard values (a lexicographic join, still
+-- the same in any order). Lists are capped after the union (the smallest ids); an own list never
+-- takes heard entries, so its cap keeps only own ones.
+--
 -- text, id or position: the one there; of two different ones the smaller (byte order)
 local function pickText(a, b)
     if a == "" then return b end
@@ -239,19 +309,10 @@ local function unionFaction(a, b)
     local hasH = a:find("H", 1, true) or b:find("H", 1, true)
     return (hasA and "A" or "") .. (hasH and "H" or "")
 end
-
-local M = {}
-function M.q(a, b)
-    return { day = math.max(a.day, b.day), giver = pickId(a.giver, b.giver), gpos = pickText(a.gpos, b.gpos),
-             ender = pickId(a.ender, b.ender), epos = pickText(a.epos, b.epos), rewards = unionList(a.rewards, b.rewards, L.rewards),
-             choices = unionList(a.choices, b.choices, L.rewards), qlevel = math.max(a.qlevel, b.qlevel),
-             minlvl = pickId(a.minlvl, b.minlvl), fac = unionFaction(a.fac, b.fac), pre = pickId(a.pre, b.pre),
-             gname = pickText(a.gname, b.gname), title = pickText(a.title, b.title) }
-end
-function M.s(a, b)
+local function vendorItems(a, b)
     local set = {}
-    for id, it in pairs(a.items) do set[id] = { price = it.price, flags = it.flags, rep = it.rep } end
-    for id, it in pairs(b.items) do
+    for id, it in pairs(a) do set[id] = { price = it.price, flags = it.flags, rep = it.rep } end
+    for id, it in pairs(b) do
         local x = set[id]
         if x then
             x.price, x.flags, x.rep = math.min(x.price, it.price), unionFlags(x.flags, it.flags), pickText(x.rep, it.rep)
@@ -261,24 +322,43 @@ function M.s(a, b)
     end
     local items = {}
     for _, id in ipairs(capList(set, L.vItems)) do items[id] = set[id] end
-    return { day = math.max(a.day, b.day), pos = pickText(a.pos, b.pos), items = items, name = pickText(a.name, b.name) }
+    return items
 end
-function M.w(a, b)
+local function worldItems(a, b)
     local set = {}
-    for id, c in pairs(a.items) do set[id] = c end
-    for id, c in pairs(b.items) do set[id] = math.max(set[id] or 0, c) end
+    for id, c in pairs(a) do set[id] = c end
+    for id, c in pairs(b) do set[id] = math.max(set[id] or 0, c) end
     local items = {}
     for _, id in ipairs(capList(set, L.wItems)) do items[id] = set[id] end
-    local class = CLASS_RANK[a.class] >= CLASS_RANK[b.class] and a.class or b.class
-    return { day = math.max(a.day, b.day), class = class, pos = pickText(a.pos, b.pos), inst = math.max(a.inst, b.inst),
-             items = items, name = pickText(a.name, b.name) }
+    return items
+end
+local function list(a, b) return unionList(a, b, L.rewards) end
+local function rank(a, b) return CLASS_RANK[a] >= CLASS_RANK[b] and a or b end
+
+local JOIN = {
+    q = { giver = pickId, gpos = pickText, ender = pickId, epos = pickText, rewards = list, choices = list, qlevel = math.max,
+          minlvl = pickId, fac = unionFaction, pre = pickId, gname = pickText, title = pickText },
+    s = { pos = pickText, items = vendorItems, name = pickText },
+    w = { class = rank, pos = pickText, inst = math.max, items = worldItems, name = pickText },
+}
+
+local function merge(kind, a, b)
+    local out = { day = math.max(a.day, b.day), own = 0 }
+    for i, f in ipairs(FIELDS[kind]) do
+        local oa, ob = hasBit(a.own, i), hasBit(b.own, i)
+        local v
+        if oa == ob then v = JOIN[kind][f](a[f], b[f]) elseif oa then v = a[f] else v = b[f] end
+        out[f] = v
+        if (oa or ob) and not empty(v) then out.own = out.own + bitOf(i) end
+    end
+    return out
 end
 
 -- Two valid records of a kind as one; nil when either is not valid.
 function ns.CollectMergeRecords(kind, a, b)
     local ra, rb = ns.CollectParse(kind, a), ns.CollectParse(kind, b)
     if not ra or not rb then return nil end
-    return F[kind](M[kind](ra, rb))
+    return F[kind](merge(kind, ra, rb))
 end
 
 ---------------------------------------------------------------------------
@@ -288,6 +368,27 @@ local counts, bytes = { q = 0, s = 0, w = 0 }, 0
 local gen = 0   -- raised on every change (the exchange's index keys on it)
 
 local function weight(s) return #s + 16 end
+local function today() return ns.DropsToday and ns.DropsToday() or 0 end
+ns.COLLECT_VER = 2
+
+-- A saved record of an older table version as one of this version: version 1 had no own mask, so
+-- its records count as heard (nothing tells which of them the client saw itself).
+local function upgrade(s, ver)
+    if ver == 1 and type(s) == "string" then return (s:gsub("^(%d+;)", "%10;", 1)) end
+    return s
+end
+
+-- A saved record whose day lies more than a day ahead (a clock that was wrong) gets tomorrow, the
+-- most a put takes: a day far in the future would keep it from ever being pruned.
+local function clampDay(kind, s)
+    local r = ns.CollectParse(kind, s)
+    if not r then return nil end
+    if r.day > today() + 1 then
+        r.day = today() + 1
+        return F[kind](r)
+    end
+    return s
+end
 
 -- Checks every saved record (broken ones and ids that are not whole numbers go) and counts again.
 function ns.CollectMigrate(root)
@@ -300,15 +401,18 @@ function ns.CollectMigrate(root)
     for k in pairs(c) do
         if k ~= "ver" and k ~= "q" and k ~= "s" and k ~= "w" then c[k] = nil end
     end
-    c.ver = 1
+    local ver = c.ver
+    c.ver = ns.COLLECT_VER
     counts, bytes = { q = 0, s = 0, w = 0 }, 0
     for _, kind in ipairs(KINDS) do
         if type(c[kind]) ~= "table" then c[kind] = {} end
         local t = c[kind]
-        for id, s in pairs(t) do
-            if not int(id, 1, MAX_ID) or not ns.CollectParse(kind, s) then
-                t[id] = nil
-            else
+        local ids = {}
+        for id in pairs(t) do ids[#ids + 1] = id end
+        for _, id in ipairs(ids) do
+            local s = int(id, 1, MAX_ID) and clampDay(kind, upgrade(t[id], ver)) or nil
+            t[id] = s
+            if s then
                 counts[kind] = counts[kind] + 1
                 bytes = bytes + weight(s)
             end
@@ -327,8 +431,8 @@ function ns.CollectDB()
     return c
 end
 
--- The oldest records go (smallest day; of one day world drops, then vendors, then quests; the
--- highest id first) until every kind is within its cap and the bytes within the budget; a prune
+-- The oldest records go (smallest day; of one day the ones only heard of before the client's own,
+-- then world drops, then vendors, then quests; the highest id first) until every kind is within its cap and the bytes within the budget; a prune
 -- goes down to 95 % so a full table is not sorted on every new record.
 local function prune(c)
     local over = bytes > L.bytes
@@ -339,11 +443,13 @@ local function prune(c)
     local list = {}
     for _, kind in ipairs(KINDS) do
         for id, s in pairs(c[kind]) do
-            list[#list + 1] = { kind = kind, id = id, day = tonumber(s:match("^(%d+)")) or 0 }
+            local day, own = s:match("^(%d+);(%d+);")
+            list[#list + 1] = { kind = kind, id = id, day = tonumber(day) or 0, own = own ~= "0" }
         end
     end
     table.sort(list, function(a, b)
         if a.day ~= b.day then return a.day < b.day end
+        if a.own ~= b.own then return b.own end
         if a.kind ~= b.kind then return KIND_ORDER[a.kind] < KIND_ORDER[b.kind] end
         return a.id > b.id
     end)
@@ -382,7 +488,10 @@ function ns.CollectPrune()
 end
 
 local function put(c, kind, id, s, quiet)
-    if not int(id, 1, MAX_ID) or not ns.CollectParse(kind, s) then return nil, "invalid" end
+    local r = int(id, 1, MAX_ID) and ns.CollectParse(kind, s)
+    if not r then return nil, "invalid" end
+    -- a day ahead is a clock a day ahead; more would pin the record against pruning
+    if r.day > today() + 1 then return nil, "future" end
     local t = c[kind]
     local cur = t[id]
     local out, res = s, "new"
@@ -406,23 +515,30 @@ local function put(c, kind, id, s, quiet)
 end
 
 -- Merges a record string into the saved table: "new", "merged", "same", or nil and the reason.
-function ns.CollectPut(kind, id, s)
+-- how: "own" marks every field that holds something as the client's own, "heard" none of them,
+-- nil takes the record's own mask as it is.
+function ns.CollectPut(kind, id, s, how)
     local c = ns.CollectDB()
     if not c or not P[kind] then return nil, "no table" end
+    if how then
+        s = ns.CollectMark(kind, s, how)
+        if not s then return nil, "invalid" end
+    end
     local res, why = put(c, kind, id, s)
     if res == "new" or res == "merged" then ns.Fire("COLLECT_CHANGED", kind, id) end
     return res, why
 end
 
 -- A list of { kind, id, s } with one prune and one change event at the end; the counts
--- { new, merged, same, refused }.
+-- { new, merged, same, refused } and the ids that changed ({ [id] = true }).
 function ns.CollectPutAll(list)
     local c = ns.CollectDB()
-    local n = { new = 0, merged = 0, same = 0, refused = 0 }
+    local n = { new = 0, merged = 0, same = 0, refused = 0, changed = {} }
     if not c then return n end
     for _, e in ipairs(list) do
         local res = put(c, e[1], e[2], e[3], true)
         n[res or "refused"] = n[res or "refused"] + 1
+        if res == "new" or res == "merged" then n.changed[e[2]] = true end
     end
     prune(c)
     if n.new + n.merged > 0 then ns.Fire("COLLECT_CHANGED") end
@@ -437,7 +553,9 @@ function ns.CollectGen() return gen end
 local ownChanges = 0
 function ns.CollectOwnChanges() return ownChanges end
 
+-- An own observation: every field it holds is the client's own.
 local function observe(kind, id, r)
+    r.own = allOwn(kind, r)
     local res = ns.CollectPut(kind, id, F[kind](r))
     if res == "new" or res == "merged" then ownChanges = ownChanges + 1 end
     return res
@@ -484,8 +602,6 @@ local function here()
     return tostring(map)
 end
 Co.Here = here
-
-local function today() return ns.DropsToday and ns.DropsToday() or 0 end
 
 local function itemOf(link)
     link = ns.Plain(link)
@@ -774,7 +890,8 @@ function ns.CollectorFromLoot()
         -- a corpse looted before adds its items once: the count is the sum over corpses
         local c = ns.CollectDB()
         local cur = c and c.w[g.npc] and ns.CollectParse("w", c.w[g.npc])
-        if cur then
+        -- only own counts add up: heard counts are someone else's corpses
+        if cur and ns.CollectOwn("w", cur, "items") then
             for id, k in pairs(items) do items[id] = math.min(L.wCount, k + (cur.items[id] or 0)) end
         end
         observe("w", g.npc, { day = today(), class = class, pos = pos, inst = inst, items = items, name = name })
