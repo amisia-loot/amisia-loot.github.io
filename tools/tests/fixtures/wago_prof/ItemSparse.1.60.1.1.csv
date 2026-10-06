@@ -1,0 +1,24 @@
+ID,Description_lang,Display_lang,MinFactionID,MinReputation,RequiredSkillRank,RequiredSkill,ItemLevel
+118,,Minor Healing Potion,0,0,0,0,5
+2853,,Copper Bracers,0,0,0,0,7
+3471,,Copper Chain Vest,0,0,0,0,10
+3609,,Plans: Copper Chain Vest,0,0,10,164,10
+251001,,Gemmed Copper Boots,0,0,0,0,12
+276992,,Cloudy Skyforged Chainmail,0,0,0,0,30
+276928,Teaches you how to craft Cloudy Skyforged Chainmail.,Plans: Cloudy Skyforged Chainmail,2758,5,60,164,30
+7000,,Golden Scale Gauntlets,0,0,0,0,40
+7001,,Golden Scale Boots,0,0,0,0,40
+888001,,Plans: Golden Scale Gauntlets,0,0,170,164,40
+888002,,Plans: Golden Scale Boots,0,0,170,164,40
+3848,,Big Bronze Knife,0,0,0,0,25
+7723,,Blight,0,0,0,0,50
+250001,,Elixir of Lesser Intellect,0,0,0,0,20
+250388,,Recipe: Elixir of Lesser Intellect,0,0,50,171,20
+279988,,Anvil,0,0,140,164,28
+273086,Teaches you how to place an Anvil at a campsite.,Blueprint: Anvil,0,0,140,164,28
+279944,,Sharpening Wheel,0,0,20,164,4
+279981,,Basic Campfire,0,0,1,185,1
+264020,A pending crafting order.,Craftsman's Writ: Copper Chain Vest,0,0,0,0,1
+271622,,Blacksmithing Certification,0,0,300,164,1
+251358,,Plans: Acolyte's Boots,0,0,1,164,1
+251400,,Acolyte's Boots,0,0,0,0,10

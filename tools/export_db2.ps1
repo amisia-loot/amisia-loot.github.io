@@ -101,7 +101,9 @@ $OptionalTables = @(
     'JournalEncounterCreature',
     'ItemDamageOneHand', 'ItemDamageOneHandCaster', 'ItemDamageTwoHand', 'ItemDamageTwoHandCaster',
     'ItemDamageAmmo', 'ItemArmorQuality', 'ItemArmorShield', 'ItemArmorTotal', 'ArmorLocation',
-    'ItemRandomProperties', 'ItemRandomSuffix'
+    'ItemRandomProperties', 'ItemRandomSuffix',
+    # tools/build_professions.py: recipe -> profession, reagents, profession names
+    'SkillLineAbility', 'SpellReagents', 'SkillLine'
 )
 
 function Fail([string]$Message) {

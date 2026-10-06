@@ -68,8 +68,9 @@ the licence text ships in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`, approved
   into `~/addons/_cache/att`, outside the repo, with the commit in `COMMIT`: the Forever dungeons
   and zones, the Classic folders not yet moved (`zzOLD/01 - Dungeons Raids`, `zzOLD/02 - Outdoor
   Zones`), world drops, PvP gear, crafted items, the map constants, the item export
-  `.config/exports/ItemDB.lua` and the client tables `UiMapAssignment`, `AreaTable` and `ContentTuning`
-  ATT ships.
+  `.config/exports/ItemDB.lua`, the client tables `UiMapAssignment`, `AreaTable`, `ContentTuning` and
+  `SkillLineAbility` ATT ships, and for `build_professions.py` the recipe lists
+  `.config/structures/` and `profession db/` (that build reads them itself, `load()` does not).
 - Client tables (wago.tools CSV downloads) are read as `<Table>.csv` or `<Table>.<build>.csv`, the name
   wago.tools gives them (`UiMapAssignment.1.60.1.70235.csv`); of several builds in one folder the newest
   counts (`wago_csv()`). The user's folder `~/addons/_wago` comes first, ATT's copies second.
@@ -373,6 +374,42 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
 Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the source has new
 dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on a
 hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real data).
+
+## build_professions.py
+
+Builds `addon/Amisia/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
+`[AllowLoadGameType camelot]`) for the professions page (`/amisia berufe`): every recipe of every
+profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
+`TrivialSkillLineRankHigh` grey, green between), how it is learned (with the profession, trainer
+tier, recipe item) and where a recipe item comes from (vendor, Merchant's Favor with price and
+standing per faction, drop, zone or world drop, quest); the camp objects (campfires with their
+places, the objects per profession and rank, which one replaces which); Merchant's Favor (vendors,
+certifications, the items a crafting order exists for). Spec:
+`docs/superpowers/specs/2026-10-06-amisia-professions-design.md`.
+
+```
+python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--out FILE] [--empty]
+```
+
+- Client tables (`~/addons/_wago`): `SkillLineAbility`, `SpellEffect`, `ItemSparse`,
+  `ItemXItemEffect`, `ItemEffect`, `SpellName`, `Spell`, optional `SpellReagents`. Without a
+  `SkillLineAbility` of its own the build takes the copy AllTheThings ships
+  (`.config/.wago/SkillLineAbility.1.60.1.70170.csv`). Without `SpellReagents` the file has no
+  reagents and the addon asks the client (`C_TradeSkillUI.GetRecipeSchematic`). Export the missing
+  ones on the PC: `export_db2.ps1 -Tables SkillLineAbility,SpellReagents,SkillLine`.
+- AllTheThings (MIT, see `att_data.py`): `.config/structures/*.lua` (trainer lists per tier,
+  Merchant's Favor lists per faction and standing; read as text after the preprocessor),
+  `profession db/*.lua` (recipe item -> recipe), and the zone and dungeon files through
+  `att_data.load()` (vendors, drops, quests of the recipe items; the favor vendors by the list
+  their goods name).
+- No names of recipes or items go in: the addon asks the client (German). NPC and quest names are
+  AllTheThings' English ones. Spells 400000-999999 (Season of Discovery) that AllTheThings does not
+  list for Forever are left out (134 in 1.60.1.70235).
+- Size: about 180 KB for 2,400 recipes and 1,950 recipe items. The date alone does not rewrite the
+  file.
+
+Tests: `tools/tests/test_build_professions.py` on hand-made CSVs (`tools/tests/fixtures/wago_prof`)
+and a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`).
 
 ## make_icons.py
 

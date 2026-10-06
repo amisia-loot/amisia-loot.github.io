@@ -1,0 +1,8 @@
+ID,NameSubtext_lang,Description_lang,AuraDescription_lang
+1307175,,"Places an anvil, and provides all of the benefits of a Sharpening Wheel. Requires a Campfire nearby.
+
+May be placed over a Sharpening Wheel to replace it. All camping features share a cooldown of $1308027d.",
+1307392,,"Constructs a sharpening wheel that grants you and others sitting nearby $?$PL<24[6][$1230172s1] increased Strength.
+
+Requires a Campfire nearby. All camping features share a cooldown of $1308027d.",
+1307227,,Builds a basic campfire that allows cooking and the placement of up to $s1 additional camp features.,

@@ -18,7 +18,10 @@ large to clone) into ~/addons/_cache/att, outside the repo:
   - .config/.wago/UiMapAssignment.*.csv: uiMapID -> instance map id (the client table ATT ships);
   - .config/.wago/AreaTable.*.csv: area id -> the map (ContinentID) it lies on, which for an
     instance's own area is the instance map id; ContentTuning.*.csv: the level the client tunes a
-    dungeon to (build_dungeons.py, with the LFGDungeons table of the user's wago.tools download).
+    dungeon to (build_dungeons.py, with the LFGDungeons table of the user's wago.tools download);
+    SkillLineAbility.*.csv: recipe -> profession (build_professions.py, when the user's export has none);
+  - .config/structures/, profession db/: trainer and Merchant's Favor recipe lists, recipe item ->
+    recipe (build_professions.py reads them itself; load() does not).
 
 Client tables are read as <Table>.csv or <Table>.<build>.csv (wago.tools names its downloads so);
 of several builds in one folder the newest counts (wago_csv()).
@@ -46,9 +49,10 @@ USER_AGENT = 'AmisiaGuildTool/1.0 (+https://amisia-loot.github.io)'
 
 # What refresh() keeps of the folder (paths relative to it).
 KEEP_DIRS = ('dungeons & raids/', 'zones/', 'world drops/', 'pvp/', 'crafted items/',
-             'zzOLD/01 - Dungeons Raids/', 'zzOLD/02 - Outdoor Zones/', '.config/constants/')
+             'zzOLD/01 - Dungeons Raids/', 'zzOLD/02 - Outdoor Zones/', '.config/constants/',
+             'profession db/', '.config/structures/')
 KEEP_FILES = ('.config/exports/ItemDB.lua',)
-KEEP_WAGO = ('UiMapAssignment', 'AreaTable', 'ContentTuning')
+KEEP_WAGO = ('UiMapAssignment', 'AreaTable', 'ContentTuning', 'SkillLineAbility')
 # The data folders load() reads, in this order; a later folder never overwrites an earlier record.
 DATA_DIRS = ('dungeons & raids', 'zones', 'world drops', 'pvp', 'crafted items',
              os.path.join('zzOLD', '01 - Dungeons Raids'), os.path.join('zzOLD', '02 - Outdoor Zones'))
