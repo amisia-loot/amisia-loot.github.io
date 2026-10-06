@@ -413,12 +413,15 @@ def test_the_source_collector_fills_what_att_lacks():
     scan = {i: scan_item(f'I{i}', q=3) for i in (40, 41, 42, 43, 44, 45, 46, 47, 48)}
     scan[280604] = scan_item('Rage of the Storm', loc='INVTYPE_2HWEAPON', cls=2, q=3, lvl=30)
     sb = build_gear.build_scan
+    # what the account saw itself (own values)
+    def own(kind, recs):
+        return {k: sb.mark_collect_record(kind, v, 'own') for k, v in recs.items()}
     observed = sb.collect_observed([{'collect': {
-        'q': {500: '280;3344;1436:5000:5000;0;;40,41;;0;20;A;0;Gryan;Die Quest',
-              2001: '280;3344;1440:5234:4011;0;;280604;;34;30;H;0;Sturmrufer;The Tempest\'s Weapons'},
-        's': {900: '280;1436:1:1;42:100::,43:200:L:;Schmied', 904: '280;1411:2500:7500;44:1520::6@Orgrimmar;Grimm'},
-        'w': {901: '280;r;1420:1:1;0;45:1;Muad', 299: '280;n;1411:2500:7500;0;46:2;Wolf', 300: '280;R;1411:1:1;0;47:1;Eber',
-              302: '280;n;;36;48:1;Defias'}}}])
+        'q': own('q', {500: '280;0;3344;1436:5000:5000;0;;40,41;;0;20;A;0;Gryan;Die Quest',
+                       2001: '280;0;3344;1440:5234:4011;0;;280604;;34;30;H;0;Sturmrufer;The Tempest\'s Weapons'}),
+        's': own('s', {900: '280;0;1436:1:1;42:100::,43:200:L:;Schmied', 904: '280;0;1411:2500:7500;44:1520::6@Orgrimmar;Grimm'}),
+        'w': own('w', {901: '280;0;r;1420:1:1;0;45:1;Muad', 299: '280;0;n;1411:2500:7500;0;46:2;Wolf', 300: '280;0;R;1411:1:1;0;47:1;Eber',
+                       302: '280;0;n;;36;48:1;Defias'})}}])
     assert len(observed['q']) == 2 and len(observed['s']) == 2 and len(observed['w']) == 4
     src, keep, zone_rows, *_ = build_gear.build(scan, {}, a, facts=FACTS, observed=observed)
     recs = lambda i: {src.rows[n - 1] for n in keep[i][1]}  # noqa: E731

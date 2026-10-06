@@ -1024,7 +1024,11 @@ def main(argv=None):
     if svs:
         dbs = [build_scan.load_sv(p) for p in svs]
         scan_items, _, collected = build_scan.collect(dbs)
-        observed = build_scan.collect_observed(dbs)
+        # own observations, heard ones only where two accounts agree, item ids the client has
+        item_ok = build_scan.observed_item_filter(args.wago)
+        if item_ok is None:
+            log(f'no ItemSparse in {args.wago}: the source collector\'s item ids are not checked against the client')
+        observed = build_scan.collect_observed(dbs, item_ok)
     log(f'scan: {len(scan_items)} items from {len(svs)} file(s), {len(collected)} with collector notes; source collector: '
         f'{len((observed or {}).get("q", {}))} quests, {len((observed or {}).get("s", {}))} vendors, '
         f'{len((observed or {}).get("w", {}))} mobs')

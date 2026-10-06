@@ -15,7 +15,8 @@ The item collector writes down where an item was met (`scan.sources`): a drop ou
 raid, a merchant, a quest or the auction house. A "Drop: <name>" source becomes a boss in the zone
 "Seen in the world"; the other sources are kept as the item's `via` line, which the site shows.
 The source collector's records (`collect`: quests, vendors, world drops; collect_observed) are added
-to those notes the same way.
+to those notes the same way: what an account saw itself, heard values only where two accounts hold
+them alike, and only item ids the client's ItemSparse has that can be worn or are recipes (--wago).
 
 --catalog adds every scanned item worth awarding (epic or better, or rare from --catalog-ilvl up)
 that has no observed drop yet, under the boss "Unknown source", so loot can be recorded before
@@ -63,6 +64,8 @@ ICON_FILEIDS = os.path.join(HERE, 'icon-fileids.json')
 DROP_ARCHIVE = os.path.join(HERE, 'drop_obs.json')
 # The addon's SavedVariables as Syncthing would bring them to the N100 (read for the drop records only)
 DEFAULT_SV = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
+# The client tables from wago.tools (ItemSparse, Item): the source collector's item ids are checked against them
+WAGO = os.path.expanduser('~/addons/_wago')
 DAY0 = datetime.date(2026, 1, 1)   # day 0 of the drop records (UTC), as in the addon
 DEFAULT_COLOR = ['#8f86a3', '#6a617a']
 UNKNOWN_ZONE = {'key': 'unknown', 'name': 'Unknown source', 'short': '?', 'color': DEFAULT_COLOR}
@@ -107,13 +110,47 @@ def lua_to_py(v):
     return {k: lua_to_py(v[k]) for k in keys}
 
 
+# A SavedVariables file is Lua the client wrote, but it comes from another machine: it runs in a
+# sandbox (as tools/att_data.py runs AllTheThings): lupa without its python bridge, an empty
+# environment of its own, the dangerous globals gone, string methods out of reach, and an
+# instruction budget (a real file of 2.4 MB needs a small fraction of it).
+SV_SANDBOX = r'''
+local loadstring, setfenv, pcall, tostring, error = loadstring, setfenv, pcall, tostring, error
+local sethook = debug.sethook
+local strmeta = getmetatable("")
+for _, k in ipairs({ "os", "io", "require", "package", "debug", "dofile", "loadfile", "load", "loadstring",
+                     "setfenv", "getfenv", "python", "collectgarbage", "module", "newproxy", "string" }) do
+    _G[k] = nil
+end
+return function(src, name, budget)
+    local f, err = loadstring(src, "@" .. name)
+    if not f then return nil, tostring(err) end
+    local env = {}
+    setfenv(f, env)
+    local index = strmeta.__index
+    strmeta.__index = nil
+    sethook(function() error("the file runs too long", 0) end, "", budget)
+    local ok, e = pcall(f)
+    sethook()
+    strmeta.__index = index
+    if not ok then return nil, tostring(e) end
+    return env
+end
+'''
+SV_BUDGET = 200000000   # Lua instructions
+
+
 def load_sv(path):
     from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
+    run = lua.execute(SV_SANDBOX)
     with open(path, encoding='utf-8') as fh:
-        lua.execute(fh.read())
-    db = lua.globals().AmisiaDB
-    if db is None:
+        res = run(fh.read(), os.path.basename(path), SV_BUDGET)
+    env, err = res if isinstance(res, tuple) else (res, None)
+    if env is None:
+        raise SystemExit(f'{path}: {err}')
+    db = env['AmisiaDB']
+    if db is None or not hasattr(db, 'items'):
         raise SystemExit(f'{path}: no AmisiaDB table in this file')
     return lua_to_py(db)
 
@@ -199,134 +236,419 @@ def collect(dbs):
 
 
 # ---------------------------------------------------------------- the source collector
-# AmisiaDB.collect (Collector.lua): one string per record, fields split by ";", the free text last.
-#   q: day;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
-#   s: day;pos;items(id:price:flags:rep,...);name
-#   w: day;class;pos;instance;items(id:count,...);name
-COLLECT_FIELDS = {'q': 13, 's': 4, 'w': 6}
-_INT = re.compile(r'^-?\d+$')
-_POS = re.compile(r'^(\d+)(?::(\d+):(\d+))?$')
+# AmisiaDB.collect (Collector.lua, table version 2): one string per record, fields split by ";", the
+# free text last. own is a bit mask of the fields after it that the client saw itself (bit 0 the
+# first field); the others, if they hold anything, were heard from the guild.
+#   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+#   s: day;own;pos;items(id:price:flags:rep,...);name
+#   w: day;own;class;pos;instance;items(id:count,...);name
+# The check and the merge are the addon's (tools/tests/test_collect_records.py holds them side by
+# side): one canonical form, so a record reads back to exactly the same string.
+COLLECT_FIELDS = {
+    'q': ('giver', 'gpos', 'ender', 'epos', 'rewards', 'choices', 'qlevel', 'minlvl', 'fac', 'pre', 'gname', 'title'),
+    's': ('pos', 'items', 'name'),
+    'w': ('class', 'pos', 'inst', 'items', 'name'),
+}
+COLLECT_LIMITS = {'rewards': 8, 'vItems': 48, 'wItems': 16, 'wCount': 99, 'maxLen': 2000, 'name': 48}
+_MAX_ID = 9999999
+_NUM = re.compile(r'-?[0-9]+')
+_LUA_SPACE = re.compile(r'[ \t\n\v\f\r]+')
+_CTRL = re.compile(r'[\x00-\x1f\x7f|]')
+_CLASSES = ('', 'n', 'e', 'r', 'R', 'b')
+_CLASS_RANK = {c: i for i, c in enumerate(_CLASSES)}
+_FLAGS = ('', 'L', 'x', 'Lx')
 
 
-def _cint(v, lo, hi):
-    if not _INT.match(v or ''):
-        raise ValueError(v)
-    n = int(v)
-    if not lo <= n <= hi:
-        raise ValueError(v)
-    return n
-
-
-def _cpos(v):
-    """A position "map:x:y" (hundredths of a percent) or "map" as (map, x, y), (map, None, None) or None."""
-    if v == '':
+def _num(s, lo, hi):
+    """The addon's num(): a decimal integer in its one spelling ("00", "-0", "+1" are not)."""
+    if not isinstance(s, str) or len(s) > 10 or not _NUM.fullmatch(s):
         return None
-    m = _POS.match(v)
-    if not m:
-        raise ValueError(v)
-    x, y = m.group(2), m.group(3)
-    if x is not None and (int(x) > 10000 or int(y) > 10000):
-        raise ValueError(v)
-    return (int(m.group(1)), int(x) if x is not None else None, int(y) if y is not None else None)
-
-
-def _cids(v, limit=8):
-    out = [_cint(x, 1, 9999999) for x in v.split(',')] if v else []
-    if len(out) > limit:
-        raise ValueError(v)
-    return out
-
-
-def _ctext(v):
-    if any(ord(c) < 32 or c == '|' for c in v):
-        raise ValueError(v)
+    v = int(s)
+    if str(v) != s or not lo <= v <= hi:
+        return None
     return v
 
 
-def parse_collect_record(kind, text):
-    """One collector record as a dict, or None when it does not parse."""
-    if kind not in COLLECT_FIELDS or not isinstance(text, str):
-        return None
-    n = COLLECT_FIELDS[kind]
-    f = text.split(';', n - 1)
-    if len(f) != n:
-        return None
-    try:
-        if kind == 'q':
-            if f[9] not in ('', 'A', 'H', 'AH'):
-                return None
-            return {'day': _cint(f[0], 0, 99999), 'giver': _cint(f[1], -9999999, 9999999), 'gpos': _cpos(f[2]),
-                    'ender': _cint(f[3], -9999999, 9999999), 'epos': _cpos(f[4]), 'rewards': _cids(f[5]),
-                    'choices': _cids(f[6]), 'qlevel': _cint(f[7], 0, 99), 'minlvl': _cint(f[8], 0, 99), 'fac': f[9],
-                    'pre': _cint(f[10], 0, 9999999), 'gname': _ctext(f[11]), 'title': _ctext(f[12])}
-        if kind == 's':
-            items = {}
-            for e in f[2].split(',') if f[2] else []:
-                iid, price, flags, rep = e.split(':', 3)
-                if flags not in ('', 'L', 'x', 'Lx'):
-                    return None
-                items[_cint(iid, 1, 9999999)] = {'price': _cint(price, 0, 2147483647), 'flags': flags, 'rep': _ctext(rep)}
-            return {'day': _cint(f[0], 0, 99999), 'pos': _cpos(f[1]), 'items': items, 'name': _ctext(f[3])}
-        if f[1] not in ('', 'n', 'e', 'r', 'R', 'b'):
+def _pos_ok(s):
+    if s == '':
+        return True
+    parts = s.split(':')
+    if len(parts) == 3:
+        return (_num(parts[0], 1, 999999) is not None and _num(parts[1], 0, 10000) is not None
+                and _num(parts[2], 0, 10000) is not None)
+    return len(parts) == 1 and _num(s, 1, 999999) is not None
+
+
+def _clean(v, sep=None):
+    """Drops.lua's cleanName (no control characters or bars, trimmed, 48 bytes at most at a whole
+    character) and Collector.lua's clean (the separators of the field as spaces, runs of spaces as one)."""
+    if not isinstance(v, str):
+        return ''
+    v = _CTRL.sub('', v).strip(' \t\n\v\f\r')
+    raw = v.encode('utf-8')
+    if len(raw) > COLLECT_LIMITS['name']:
+        v = raw[:COLLECT_LIMITS['name']].decode('utf-8', 'ignore').strip(' \t\n\v\f\r')
+    if sep:
+        v = _LUA_SPACE.sub(' ', re.sub('[' + re.escape(sep) + ']', ' ', v)).strip(' \t\n\v\f\r')
+    return v
+
+
+def _text_ok(s, sep=None):
+    return isinstance(s, str) and (s == '' or _clean(s, sep) == s)
+
+
+def _id_list(s, limit):
+    out = []
+    if s == '':
+        return out
+    for e in s.split(','):
+        v = _num(e, 1, _MAX_ID)
+        if v is None or len(out) >= limit or (out and out[-1] >= v):
             return None
-        items = {}
-        for e in f[4].split(',') if f[4] else []:
-            iid, cnt = e.split(':')
-            items[_cint(iid, 1, 9999999)] = _cint(cnt, 1, 99)
-        return {'day': _cint(f[0], 0, 99999), 'class': f[1], 'pos': _cpos(f[2]), 'inst': _cint(f[3], 0, 99999),
-                'items': items, 'name': _ctext(f[5])}
-    except ValueError:
-        return None
-
-
-def _join(kind, a, b):
-    """Two records of the same id as one (the addon's join: lists united, the first known text kept)."""
-    out = dict(a)
-    out['day'] = max(a['day'], b['day'])
-    for k, v in b.items():
-        if k == 'day':
-            continue
-        cur = out.get(k)
-        if k in ('rewards', 'choices'):
-            out[k] = sorted(set(cur) | set(v))
-        elif k == 'items':
-            merged = dict(cur)
-            for iid, x in v.items():
-                if iid not in merged:
-                    merged[iid] = x
-                elif kind == 'w':
-                    merged[iid] = max(merged[iid], x)
-            out[k] = merged
-        elif k == 'fac':
-            out[k] = ('A' if 'A' in cur + v else '') + ('H' if 'H' in cur + v else '')
-        elif k in ('qlevel', 'inst'):
-            out[k] = max(cur, v)
-        elif cur in (None, '', 0):
-            out[k] = v
+        out.append(v)
     return out
 
 
-def collect_observed(dbs):
-    """The collector records of the SavedVariables: {'q': {questID: record}, 's': {npcID: record},
-    'w': {npcID: record}}; the same id from several files is joined, broken records are left out."""
-    out = {'q': {}, 's': {}, 'w': {}}
-    for db in dbs:
+def _empty(v):
+    return v in ('', 0) or (isinstance(v, (list, dict)) and not v)
+
+
+def _parse_raw(kind, text):
+    """A record as the addon's parse gives it (positions as their strings), or None."""
+    fields = COLLECT_FIELDS.get(kind)
+    if not fields or not isinstance(text, str) or len(text.encode('utf-8')) > COLLECT_LIMITS['maxLen']:
+        return None
+    f = text.split(';', len(fields) + 1)
+    if len(f) != len(fields) + 2:
+        return None
+    r = {'day': _num(f[0], 0, 99999), 'own': _num(f[1], 0, (1 << len(fields)) - 1)}
+    if r['day'] is None or r['own'] is None:
+        return None
+    f = f[2:]
+    if kind == 'q':
+        r.update(giver=_num(f[0], -_MAX_ID, _MAX_ID), gpos=f[1], ender=_num(f[2], -_MAX_ID, _MAX_ID), epos=f[3],
+                 rewards=_id_list(f[4], COLLECT_LIMITS['rewards']), choices=_id_list(f[5], COLLECT_LIMITS['rewards']),
+                 qlevel=_num(f[6], 0, 99), minlvl=_num(f[7], 0, 99), fac=f[8], pre=_num(f[9], 0, _MAX_ID), gname=f[10], title=f[11])
+        if any(r[k] is None for k in ('giver', 'ender', 'rewards', 'choices', 'qlevel', 'minlvl', 'pre')):
+            return None
+        if not _pos_ok(r['gpos']) or not _pos_ok(r['epos']) or r['fac'] not in ('', 'A', 'H', 'AH'):
+            return None
+        if not _text_ok(r['gname'], ';') or not _text_ok(r['title']):
+            return None
+    elif kind == 's':
+        r.update(pos=f[0], items={}, name=f[2])
+        if not _pos_ok(r['pos']) or not _text_ok(r['name']):
+            return None
+        if f[1]:
+            last = 0
+            for e in f[1].split(','):
+                m = re.fullmatch(r'([0-9]+):([0-9]+):([A-Za-z]*):(.*)', e, re.S)
+                if not m:
+                    return None
+                iid, price = _num(m.group(1), 1, _MAX_ID), _num(m.group(2), 0, 2147483647)
+                flags, rep = m.group(3), m.group(4)
+                if iid is None or price is None or flags not in _FLAGS or iid <= last:
+                    return None
+                if rep:
+                    rm = re.fullmatch(r'([0-9])@(.+)', rep, re.S)
+                    if not rm or _num(rm.group(1), 1, 8) is None or _clean(rm.group(2), ',;:@') != rm.group(2):
+                        return None
+                last = iid
+                if len(r['items']) >= COLLECT_LIMITS['vItems']:
+                    return None
+                r['items'][iid] = {'price': price, 'flags': flags, 'rep': rep}
+    else:
+        r.update({'class': f[0], 'pos': f[1], 'inst': _num(f[2], 0, 99999), 'items': {}, 'name': f[4]})
+        if r['class'] not in _CLASSES or not _pos_ok(r['pos']) or r['inst'] is None or not _text_ok(r['name']):
+            return None
+        if f[3]:
+            last = 0
+            for e in f[3].split(','):
+                m = re.fullmatch(r'([0-9]+):([0-9]+)', e)
+                if not m:
+                    return None
+                iid, c = _num(m.group(1), 1, _MAX_ID), _num(m.group(2), 1, COLLECT_LIMITS['wCount'])
+                if iid is None or c is None or iid <= last:
+                    return None
+                last = iid
+                if len(r['items']) >= COLLECT_LIMITS['wItems']:
+                    return None
+                r['items'][iid] = c
+    for i, name in enumerate(fields):
+        if r['own'] >> i & 1 and _empty(r[name]):
+            return None
+    return r
+
+
+def format_collect_record(kind, r):
+    """A record dict (positions as strings) as the addon writes it."""
+    own = r.get('own', 0)
+    if kind == 'q':
+        parts = [r['day'], own, r['giver'], r['gpos'], r['ender'], r['epos'], ','.join(map(str, r['rewards'])),
+                 ','.join(map(str, r['choices'])), r['qlevel'], r['minlvl'], r['fac'], r['pre'], r['gname'], r['title']]
+    elif kind == 's':
+        items = ','.join(f"{i}:{x['price']}:{x['flags']}:{x['rep']}" for i, x in sorted(r['items'].items()))
+        parts = [r['day'], own, r['pos'], items, r['name']]
+    else:
+        items = ','.join(f'{i}:{c}' for i, c in sorted(r['items'].items()))
+        parts = [r['day'], own, r['class'], r['pos'], r['inst'], items, r['name']]
+    return ';'.join(str(p) for p in parts)
+
+
+def _parse_canonical(kind, text):
+    r = _parse_raw(kind, text)
+    if r is None or format_collect_record(kind, r) != text:
+        return None
+    return r
+
+
+def _pos_tuple(v):
+    """A position "map:x:y" or "map" as (map, x, y) or (map, None, None); None when empty."""
+    if not v:
+        return None
+    p = [int(x) for x in v.split(':')]
+    return (p[0], p[1], p[2]) if len(p) == 3 else (p[0], None, None)
+
+
+def _public(r):
+    out = dict(r)
+    for k in ('gpos', 'epos', 'pos'):
+        if k in out:
+            out[k] = _pos_tuple(out[k])
+    return out
+
+
+def parse_collect_record(kind, text):
+    """One collector record as a dict (positions as tuples, own the mask), or None when it is not a
+    valid record in its one canonical form (the addon's check)."""
+    r = _parse_canonical(kind, text)
+    return _public(r) if r is not None else None
+
+
+def mark_collect_record(kind, text, how):
+    """The record with its own mask set as the addon's CollectMark does: every field that holds
+    something ('own') or none ('heard'); None when it is not valid."""
+    r = _parse_canonical(kind, text)
+    if r is None:
+        return None
+    r['own'] = sum(1 << i for i, f in enumerate(COLLECT_FIELDS[kind]) if not _empty(r[f])) if how == 'own' else 0
+    return format_collect_record(kind, r)
+
+
+# The join of Collector.lua: per field an own value beats a heard one; two own or two heard values
+# join (ids and texts: the smaller one there; lists: the union, capped at the smallest ids; levels
+# and instance: the larger; minimum level and pre-quest: the smallest above 0; prices: the lower).
+def _pick_text(a, b):
+    if a == '':
+        return b
+    return a if b == '' or a.encode('utf-8') <= b.encode('utf-8') else b
+
+
+def _pick_id(a, b):
+    if a == 0:
+        return b
+    if b == 0:
+        return a
+    return min(a, b)
+
+
+def _union(a, b, limit):
+    return sorted(set(a) | set(b))[:limit]
+
+
+def _flags(a, b):
+    return ('L' if 'L' in a + b else '') + ('x' if 'x' in a + b else '')
+
+
+def _vendor_items(a, b):
+    out = {i: dict(x) for i, x in a.items()}
+    for i, x in b.items():
+        if i in out:
+            y = out[i]
+            out[i] = {'price': min(y['price'], x['price']), 'flags': _flags(y['flags'], x['flags']), 'rep': _pick_text(y['rep'], x['rep'])}
+        else:
+            out[i] = dict(x)
+    return {i: out[i] for i in sorted(out)[:COLLECT_LIMITS['vItems']]}
+
+
+def _world_items(a, b):
+    out = dict(a)
+    for i, c in b.items():
+        out[i] = max(out.get(i, 0), c)
+    return {i: out[i] for i in sorted(out)[:COLLECT_LIMITS['wItems']]}
+
+
+def _list(a, b):
+    return _union(a, b, COLLECT_LIMITS['rewards'])
+
+
+_JOIN = {
+    'q': {'giver': _pick_id, 'gpos': _pick_text, 'ender': _pick_id, 'epos': _pick_text, 'rewards': _list, 'choices': _list,
+          'qlevel': max, 'minlvl': _pick_id, 'fac': lambda a, b: ('A' if 'A' in a + b else '') + ('H' if 'H' in a + b else ''),
+          'pre': _pick_id, 'gname': _pick_text, 'title': _pick_text},
+    's': {'pos': _pick_text, 'items': _vendor_items, 'name': _pick_text},
+    'w': {'class': lambda a, b: a if _CLASS_RANK[a] >= _CLASS_RANK[b] else b, 'pos': _pick_text, 'inst': max,
+          'items': _world_items, 'name': _pick_text},
+}
+
+
+def _merge_raw(kind, a, b):
+    out = {'day': max(a['day'], b['day']), 'own': 0}
+    for i, f in enumerate(COLLECT_FIELDS[kind]):
+        oa, ob = a['own'] >> i & 1, b['own'] >> i & 1
+        v = _JOIN[kind][f](a[f], b[f]) if oa == ob else (a[f] if oa else b[f])
+        out[f] = v
+        if (oa or ob) and not _empty(v):
+            out['own'] |= 1 << i
+    return out
+
+
+def merge_collect(kind, x, y):
+    """Two record strings as one, as the addon merges them; None when either is not valid."""
+    a, b = _parse_canonical(kind, x), _parse_canonical(kind, y)
+    if a is None or b is None:
+        return None
+    return format_collect_record(kind, _merge_raw(kind, a, b))
+
+
+def observed_item_filter(wago_dir):
+    """A test for item ids by the client's own tables in wago_dir (ItemSparse, Item; downloaded from
+    wago.tools): the id is in ItemSparse, and it can be worn (an inventory type) or is a recipe
+    (class 9), as the addon keeps them. None when the folder has no ItemSparse."""
+    import csv
+    import att_data
+    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir else None
+    if not path:
+        return None
+    kinds = {}
+    with open(path, encoding='utf-8', newline='') as fh:
+        for row in csv.DictReader(fh):
+            if (row.get('ID') or '').isdigit():
+                kinds[int(row['ID'])] = int(row.get('InventoryType') or 0)
+    classes = {}
+    item = att_data.wago_csv(wago_dir, 'Item')
+    if item:
+        with open(item, encoding='utf-8', newline='') as fh:
+            for row in csv.DictReader(fh):
+                if (row.get('ID') or '').isdigit():
+                    classes[int(row['ID'])] = int(row.get('ClassID') or 0)
+
+    def ok(iid):
+        return iid in kinds and (kinds[iid] != 0 or classes.get(iid) == 9)
+    return ok
+
+
+def _source_of(db, index):
+    """Which account a SavedVariables file is: the addon's random client id (drops.me); a copy of a
+    file is the same account."""
+    me = (db.get('drops') or {}).get('me') if isinstance(db.get('drops'), dict) else None
+    return me if isinstance(me, str) and me else f'#file{index}'
+
+
+def _agreed(kind, field, per_source):
+    """The heard values of a field that two accounts or more hold alike, joined; lists and item
+    tables entry by entry."""
+    join = _JOIN[kind][field]
+    if field in ('rewards', 'choices'):
+        count = {}
+        for vals in per_source.values():
+            for i in set().union(*vals):
+                count[i] = count.get(i, 0) + 1
+        return sorted(i for i, n in count.items() if n >= 2)[:COLLECT_LIMITS['rewards']]
+    if field == 'items':
+        seen = {}
+        for vals in per_source.values():
+            entries = set()
+            for v in vals:
+                for i, x in v.items():
+                    entries.add((i, tuple(sorted(x.items())) if isinstance(x, dict) else None))
+            for e in entries:
+                seen[e] = seen.get(e, 0) + 1
+        out = {}
+        for (i, x), n in seen.items():
+            if n < 2:
+                continue
+            if x is None:   # world items: the id agrees, the largest count of the accounts that saw it
+                out[i] = max(c for vals in per_source.values() for v in vals for j, c in v.items() if j == i)
+            else:
+                out[i] = dict(x) if i not in out else _vendor_items({i: out[i]}, {i: dict(x)})[i]
+        cap = COLLECT_LIMITS['vItems'] if kind == 's' else COLLECT_LIMITS['wItems']
+        return {i: out[i] for i in sorted(out)[:cap]}
+    count = {}
+    for vals in per_source.values():
+        for v in set(vals):
+            count[v] = count.get(v, 0) + 1
+    good = sorted(v for v, n in count.items() if n >= 2)
+    out = None
+    for v in good:
+        out = v if out is None else join(out, v)
+    return out
+
+
+_EMPTY = {'rewards': [], 'choices': [], 'items': {}, 'giver': 0, 'ender': 0, 'qlevel': 0, 'minlvl': 0, 'pre': 0, 'inst': 0}
+_EMPTY = {f: _EMPTY.get(f, '') for fields in COLLECT_FIELDS.values() for f in fields}
+
+
+def collect_observed(dbs, item_ok=None):
+    """The collector records of the SavedVariables for the builds: {'q': {questID: record},
+    's': {npcID: record}, 'w': {npcID: record}}, each field taken as follows (in any file order the
+    same):
+
+    - what an account saw itself (its own values) counts; the own values of several files join;
+    - a heard value (from the guild exchange, which any member can fill with anything) counts only
+      where no file has an own value and two accounts or more hold it alike (list entries one by one);
+      the files of one account (the same drops.me) are one source;
+    - item ids item_ok rejects (not in the client's tables, nor wearable nor a recipe) are left out.
+
+    Broken records are left out; a record with nothing left is too. Version 1 tables (no own mask)
+    count as heard, as in the addon."""
+    per = {'q': {}, 's': {}, 'w': {}}
+    for index, db in enumerate(dbs):
         c = db.get('collect') if isinstance(db, dict) else None
         if not isinstance(c, dict):
             continue
-        for kind in out:
+        src = _source_of(db, index)
+        for kind in per:
             t = c.get(kind)
             if isinstance(t, list):
                 t = {i + 1: v for i, v in enumerate(t)}
             for k, v in (t or {}).items():
-                try:
-                    rid = int(k)
-                except (TypeError, ValueError):
+                if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= _MAX_ID or not isinstance(v, str):
                     continue
-                r = parse_collect_record(kind, v)
-                if r is None:
-                    continue
-                out[kind][rid] = _join(kind, out[kind][rid], r) if rid in out[kind] else r
+                if c.get('ver') == 1:
+                    v = re.sub(r'^([0-9]+;)', r'\g<1>0;', v, count=1)
+                r = _parse_canonical(kind, v)
+                if r is not None:
+                    per[kind].setdefault(k, []).append((src, r))
+    out = {'q': {}, 's': {}, 'w': {}}
+    for kind, recs in per.items():
+        fields = COLLECT_FIELDS[kind]
+        for rid, lst in recs.items():
+            res = {'day': max(r['day'] for _, r in lst)}
+            for i, f in enumerate(fields):
+                own = [r[f] for _, r in lst if r['own'] >> i & 1]
+                if own:
+                    v = own[0]
+                    for x in own[1:]:
+                        v = _JOIN[kind][f](v, x)
+                else:
+                    heard = {}
+                    for src, r in lst:
+                        if not _empty(r[f]):
+                            heard.setdefault(src, []).append(r[f])
+                    v = _agreed(kind, f, heard) if len(heard) >= 2 else None
+                    if v is None:
+                        v = _EMPTY[f]
+                res[f] = v
+            if item_ok is not None:
+                for f in ('rewards', 'choices'):
+                    if f in res:
+                        res[f] = [i for i in res[f] if item_ok(i)]
+                if 'items' in res:
+                    res['items'] = {i: x for i, x in res['items'].items() if item_ok(i)}
+            if all(_empty(res[f]) for f in fields):
+                continue
+            out[kind][rid] = _public(res)
     return out
 
 
@@ -1055,6 +1377,8 @@ def main(argv=None):
     ap.add_argument('--field-quality', type=int, default=3, help='lowest quality for a drop the collector saw outside a raid (default 3, blue)')
     ap.add_argument('--listfile', help='community-listfile.csv from wowdev/wow-listfile, names the icon file ids')
     ap.add_argument('--no-wowhead', action='store_true', help='never ask Wowhead for an icon name')
+    ap.add_argument('--wago', default=WAGO, help='folder with the client tables ItemSparse and Item from wago.tools (default '
+                                                 '~/addons/_wago): item ids of the source collector they lack are left out')
     args = ap.parse_args(argv)
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -1064,7 +1388,10 @@ def main(argv=None):
     dbs = [load_sv(p) for p in args.files]
     items, sessions, collected = collect(dbs)
     # what the source collector saw (quests, vendors, world drops) joins the notes
-    add_notes(collected, observed_notes(collect_observed(dbs)))
+    item_ok = observed_item_filter(args.wago)
+    if item_ok is None:
+        print(f'no ItemSparse in {args.wago}: the source collector\'s item ids are not checked against the client')
+    add_notes(collected, observed_notes(collect_observed(dbs, item_ok)))
     bosses_cfg = load_json(BOSSES_CFG, {})
     zones, bosses, warnings = zones_and_bosses(sessions, zones_cfg, bosses_cfg)
     out_items = build_items(items, sessions, bosses, zones, bosses_cfg)
