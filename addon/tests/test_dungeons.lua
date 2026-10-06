@@ -79,11 +79,13 @@ local faldrim, magmatus = boss(thanes, "Faldrim Anvilmar"), boss(thanes, "Magmat
 assert(faldrim and magmatus, "the bosses of the sources")
 assert(near(item(faldrim, 501).p, 0.2) and item(faldrim, 501).upgrade, "the source's chance")
 assert(item(faldrim, 508) == nil, "no upgrade, not listed")
-assert(near(item(magmatus, 502).p, 1 / 3), "one of the boss's three known rare items: " .. tostring(item(magmatus, 502).p))
+-- without a source chance: one of a typical table of six rare items (the boss has three known ones)
+assert(near(item(magmatus, 502).p, 1 / 6), "one of six rare items: " .. tostring(item(magmatus, 502).p))
+assert(item(magmatus, 502).rate == "Chance unbekannt", item(magmatus, 502).rate)
 assert(item(magmatus, 504) == nil, "required level 19 is beyond the window")
-local perRun = g(501) * 0.2 + (g(502) + g(503)) / 3
+local perRun = g(501) * 0.2 + (g(502) + g(503)) / 6
 assert(near(thanes.perRun, perRun), thanes.perRun .. " ~= " .. perRun)
-assert(near(magmatus.perRun, (g(502) + g(503)) / 3) and near(faldrim.perRun, g(501) * 0.2))
+assert(near(magmatus.perRun, (g(502) + g(503)) / 6) and near(faldrim.perRun, g(501) * 0.2))
 -- the dungeon's quests: open ones of the own faction count, a done one is listed as done
 local grudge, done = quest(thanes, "An Ancient Grudge"), quest(thanes, "Done Already")
 assert(grudge and grudge.qid == 96395 and not grudge.done and grudge.best.id == 505 and near(grudge.best.gain, g(505)))
@@ -91,7 +93,7 @@ assert(done and done.done, "the done quest is listed as done")
 assert(quest(thanes, "Horde Task") == nil, "no quest of the other faction")
 assert(near(thanes.once, g(505)), "once: the best reward of every open quest")
 assert(near(thanes.value, thanes.once + 2 * thanes.perRun), "value: the quests and two runs")
-assert(ruins.upgrades == 1 and near(ruins.perRun, g(509)), "the baron's only known item")
+assert(ruins.upgrades == 1 and near(ruins.perRun, g(509) / 6), "the baron's only known item: one of six, not every kill")
 -- fits of the other entries
 local exc, dm = find(list, "excavation"), find(list, "deadmines")
 assert(exc.fit == "high" and exc.value == nil, "26-31 is too high, not computed")
@@ -147,8 +149,10 @@ assert(NS.DropsMerge({ h = "0e000001", npc = 10184, inst = 249, diff = 9, day = 
 ony = NS.DungeonInfo("onyxia")
 local onyBoss = boss(ony, "Onyxia")
 assert(onyBoss and onyBoss.npc == 10184 and item(onyBoss, 520), "the boss and its item from the record")
-assert(near(item(onyBoss, 520).p, (NS.DropRate(10184, 520))) and has(item(onyBoss, 520).rate, "gesehen 1-mal in 1 Kills"),
+-- the expected chance of its only known epic: one of a dozen, not every kill
+assert(near(item(onyBoss, 520).p, (NS.DropRate(10184, 520, 1 / 12))) and has(item(onyBoss, 520).rate, "gesehen 1-mal in 1 Kills"),
     item(onyBoss, 520).rate)
+assert(onyBoss.tentative and onyBoss.perRun == 0, "one kill of an NPC no facts name does not count yet")
 assert(boss(NS.DungeonInfo("barrow"), "Onyxia") == nil, "a record goes to its own raid only")
 
 ---------------------------------------------------------------------------
@@ -170,8 +174,8 @@ faldrim = boss(thanes, "Faldrim Anvilmar")
 assert(faldrim.npc == 9001, "the boss by its name")
 assert(near(item(faldrim, 501).p, (2 + 3 * 0.2) / (4 + 3)), "two of four kills with the source's chance: " .. item(faldrim, 501).p)
 assert(item(faldrim, 501).rate == NS.DropRateText(9001, 501, 0.2) and item(faldrim, 501).K == 4 and item(faldrim, 501).n == 2)
--- expected chance without a source chance: one of the boss's three known rare items (501, 508, 530)
-assert(item(faldrim, 530) and near(item(faldrim, 530).p, (NS.DropRate(9001, 530, 1 / 3))), "an item only the guild saw")
+-- expected chance without a source chance: one of six rare items (the boss has three known: 501, 508, 530)
+assert(item(faldrim, 530) and near(item(faldrim, 530).p, (NS.DropRate(9001, 530, 1 / 6))), "an item only the guild saw")
 local other = boss(thanes, "Unbekannter Boss")
 assert(other and other.npc == 9002 and item(other, 531), "a boss of the same instance, found through the shared items")
 assert(boss(ruins, "Unbekannter Boss") == nil)

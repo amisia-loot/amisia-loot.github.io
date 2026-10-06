@@ -2,8 +2,9 @@
 WoW Forever for the addon's dungeon planner (Dungeons.lua).
 
 The JSON file is kept by hand and holds facts only (names, level ranges, sizes, bosses known so
-far, opening dates, instance ids), each entry with its source; see its "sources" block. Nothing is
-fetched. Run it after changing the JSON:
+far, opening dates, instance ids), each entry with its source ("src", and "<field>_src" for a field
+that comes from elsewhere, as boss lists read from the repo's item data); see its "sources" block.
+Nothing is fetched. Run it after changing the JSON:
 
     python tools/build_dungeons.py
 
@@ -20,8 +21,9 @@ ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'DungeonData.lua')
 
-# Field order in the Lua table; anything else in the JSON is not written.
-FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'from', 'bosses', 'aliases')
+# Field order in the Lua table; anything else in the JSON (src and the <field>_src labels) is not
+# written. part: the client's name of an instance that hosts several dungeons (Blackrock Spire).
+FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'from', 'bosses', 'aliases', 'part')
 
 
 def lua_str(s):

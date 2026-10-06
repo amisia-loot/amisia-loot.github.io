@@ -503,6 +503,8 @@ local function region(parent)
     f.SetHeight = function(self, h) self._h = h end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetTexture = function(self, t) self.texture = t end
+    -- the line limit of a font string is kept, so a test can tell a clamped one
+    f.SetMaxLines = function(self, n) self.maxLines = n end
     -- an atlas of the client's art by name; the test reads it back. Every call is counted
     -- (STUB.atlasCalls); an atlas the client lacks draws nothing and answers false, as in the client.
     f.SetAtlas = function(self, name, useAtlasSize)

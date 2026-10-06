@@ -17,6 +17,18 @@ ns.Dungeons = D
 
 local SOON = 2            -- levels below a range that still count as "bald"
 local RUNS = 2            -- runs of the usual plan: value = quests + RUNS x gain per run
+-- The expected chance of an item whose source names none: one of the boss's known items of its
+-- quality, but never more than one of a typical loot table's. A dungeon boss's table holds about six
+-- rare items of which one drops per kill (1/6), somewhat more uncommon ones and a dozen or more epics
+-- where it has any; the item data and the guild's records often know only one or two of them, and
+-- "the only known item" is no 100 % chance. Never above PRIOR_MAX; the rate reads "Chance unbekannt".
+local PRIOR_TABLE = { [2] = 8, [3] = 6, [4] = 12 }
+local PRIOR_DEFAULT = 6
+local PRIOR_MAX = 0.5
+-- An NPC known only from the guild's records (neither the facts, the item data nor the base stock
+-- name it as a boss) is listed but counts for the value and the recommendation from this many kills:
+-- one trash corpse with a world drop is no boss.
+local MIN_KILLS = 3
 local NO_DATA = "Keine Dungeon-Daten."
 local NO_HIT = "Für dein Level hat kein Dungeon noch Upgrades für dich."
 local NO_ENTRANCE = "Für diesen Dungeon kennt Amisia keinen Eingang."
@@ -57,15 +69,19 @@ function D.Gain(id, o) return ns.BisGain(id, o) end
 function D.BossNpc(rec) return nil end
 
 -- p, text, n, K for an item of a boss: with an NPC the guild's kills (base stock and records) with
--- p0 as the expected chance, else p0 alone. A raid's chance comes from observations only.
-function D.Rate(boss, id, p0, raid)
+-- p0 as the expected chance, else p0 alone. A raid's chance comes from observations only. est: p0 is
+-- the planner's prior, not the source's chance - it goes into the value, the text says
+-- "Chance unbekannt" until the guild has kills.
+function D.Rate(boss, id, p0, raid, est)
     if boss.npc and ns.DropRate then
         local p, n, K = ns.DropRate(boss.npc, id, p0)
         if raid and (K or 0) == 0 then return nil, "Chance unbekannt", 0, 0 end
+        if p and est and (K or 0) == 0 then return p, "Chance unbekannt", n, K end
         if p then return p, ns.DropRateText(boss.npc, id, p0), n, K end
         return nil, "Chance unbekannt", 0, 0
     end
     if raid or not p0 then return nil, "Chance unbekannt", 0, 0 end
+    if est then return p0, "Chance unbekannt", 0, 0 end
     return p0, ("Chance %d %%"):format(math.floor(p0 * 100 + 0.5)), 0, 0
 end
 
@@ -179,9 +195,22 @@ local function addBoss(x, name, npc)
     return b
 end
 
+-- Adds key to the list at t[k] once.
+local function addKey(t, k, key)
+    local list = t[k]
+    if not list then list = {}; t[k] = list end
+    for _, v in ipairs(list) do
+        if v == key then return end
+    end
+    list[#list + 1] = key
+end
+
+-- idx.byName: dungeon name or alias (lower case) -> key; idx.parts: the client's name of an instance
+-- that hosts several dungeons (the facts' "part", lower case) -> their keys; idx.instKeys: instance
+-- id -> the keys the facts give it (more than one where an instance hosts several dungeons).
 local function buildIndex(facts)
-    local idx = { byKey = {}, byName = {}, itemTo = {} }
-    local instKey = {}
+    local idx = { byKey = {}, byName = {}, itemTo = {}, parts = {}, instKeys = {} }
+    local instKeys = idx.instKeys
     for _, e in ipairs(facts) do
         if type(e) == "table" and type(e.key) == "string" then
             local x = { byL = {}, order = {}, quests = {} }
@@ -191,7 +220,8 @@ local function buildIndex(facts)
                 local l = lower(a)
                 if l and not idx.byName[l] then idx.byName[l] = e.key end
             end
-            if type(e.inst) == "number" then instKey[e.inst] = e.key end
+            if type(e.part) == "string" then addKey(idx.parts, lower(e.part), e.key) end
+            if type(e.inst) == "number" then addKey(instKeys, e.inst, e.key) end
             for _, b in ipairs(type(e.bosses) == "table" and e.bosses or {}) do
                 if type(b) == "string" then addBoss(x, b) end
             end
@@ -205,7 +235,8 @@ local function buildIndex(facts)
             local key = idx.byName[lower(rec[2])]
             local place = Gear.PlaceOf(rec)
             local inst = place and tonumber(place:match("^I:(%d+)$"))
-            if inst and instKey[inst] then key = instKey[inst] end
+            -- the instance decides only where it hosts one dungeon; else the source's own name
+            if inst and instKeys[inst] and #instKeys[inst] == 1 then key = instKeys[inst][1] end
             if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3], D.BossNpc(rec)), rec = rec } end
         elseif rec[1] == "Q" and type(rec[9]) == "string" then
             local key = idx.byName[lower(rec[9])]
@@ -259,10 +290,32 @@ end
 -- Observations: which boss of which dungeon an NPC of the guild's records is
 ---------------------------------------------------------------------------
 
-local dropsGen, questGen = 0, 0
+local dropsGen, questGen, namesGen = 0, 0, 0
 ns.Listen("DROPS_CHANGED", function() dropsGen = dropsGen + 1 end)
 
-local obs, obsGen, obsIndex, obsBase
+local obs, obsGen, obsIndex, obsBase, obsNameless
+
+-- Names arrive from other clients without a change of the records (and without DROPS_CHANGED), and
+-- a name is only ever added where none was: the observations note the NPCs and instances they found
+-- nameless, and a name among them since then makes them stale (namesGen goes up, which the result
+-- caches key on). Cheap: only the nameless ones are looked at.
+local function checkNames()
+    if not obs or not obsNameless then return end
+    local dd = ns.DropsDB and ns.DropsDB() or nil
+    if not dd then return end
+    for npc in pairs(obsNameless.npc) do
+        if dd.npc[npc] ~= nil then
+            obs, namesGen = nil, namesGen + 1
+            return
+        end
+    end
+    for inst in pairs(obsNameless.inst) do
+        if dd.inst[inst] ~= nil then
+            obs, namesGen = nil, namesGen + 1
+            return
+        end
+    end
+end
 
 -- The key with the most votes (the smaller key on a tie).
 local function winner(votes)
@@ -273,21 +326,62 @@ local function winner(votes)
     return best
 end
 
+-- The one key with the most votes; nil on a tie at the top or without votes.
+local function sole(votes)
+    local best, most, tie
+    for k, n in pairs(votes) do
+        if not most or n > most then
+            best, most, tie = k, n, false
+        elseif n == most then
+            tie = true
+        end
+    end
+    if tie or not most or most <= 0 then return nil end
+    return best
+end
+
+-- The dungeon among cands (the keys of one instance that hosts several) an NPC belongs to: the one
+-- whose bosses carry its name, else the one whose items it dropped most; nil when that is not clear
+-- - such an NPC stays unassigned rather than going to the first half.
+local function pickPart(cands, name, items, idx)
+    local l = lower(name)
+    local hit, hits = nil, 0
+    if l then
+        for _, k in ipairs(cands) do
+            local x = idx.byKey[k]
+            if x and x.byL[l] then hit, hits = k, hits + 1 end
+        end
+    end
+    if hits == 1 then return hit end
+    local inCands, v = {}, {}
+    for _, k in ipairs(cands) do inCands[k] = true end
+    for id in pairs(items) do
+        for k in pairs(idx.itemTo[id] or {}) do
+            if inCands[k] then v[k] = (v[k] or 0) + 1 end
+        end
+    end
+    return sole(v)
+end
+
 -- dungeon key -> list of { npc, name, items = set, lname of the boss it is (or nil: a boss of its
--- own) }: the NPCs of the build's facts, of the base stock (ns.BIS.O) and of the records. An NPC
--- belongs to the dungeon the facts give it, else to the instance most of its records are from,
--- else to the dungeon whose items it dropped. The instance of a dungeon: the facts', else the one
--- whose client name is the dungeon's, else the one whose records hold the dungeon's items.
+-- own), kills (records), known (a boss of the facts or the base stock) }: the NPCs of the build's
+-- facts, of the base stock (ns.BIS.O) and of the records. An NPC belongs to the dungeon the facts give
+-- it, else to the instance most of its records are from, else to the dungeon whose items it dropped.
+-- The dungeons of an instance: the facts' (several where one instance hosts several, as the two
+-- halves of Blackrock Spire), else those whose client name is the instance's "part", else the one
+-- whose name it is, else the one whose records hold the dungeon's items. In an instance of several
+-- dungeons an NPC goes to the one whose data lists it (pickPart), else nowhere.
 local function observations(facts, idx)
     local B = ns.BIS
     local base = type(B) == "table" and type(B.O) == "table" and B.O or nil
     if obs and obsGen == dropsGen and obsIndex == idx and obsBase == base then return obs end
     local dd = ns.DropsDB and ns.DropsDB() or nil
     local records = dd and dd.k or {}
+    local nameless = { npc = {}, inst = {} }
     local npcs = {}
     local function npcOf(npc)
         local o = npcs[npc]
-        if not o then o = { npc = npc, items = {}, insts = {} }; npcs[npc] = o end
+        if not o then o = { npc = npc, items = {}, insts = {}, kills = 0 }; npcs[npc] = o end
         return o
     end
     local npcKey = {}
@@ -299,25 +393,28 @@ local function observations(facts, idx)
     for npc, e in pairs(base or {}) do
         if type(npc) == "number" and type(e) == "table" and type(e.it) == "table" then
             local o = npcOf(npc)
+            o.known = true
             for id in pairs(e.it) do o.items[id] = true end
         end
     end
-    local instKey, votes = {}, {}
-    for _, e in ipairs(facts) do
-        if type(e.inst) == "number" then instKey[e.inst] = e.key end
-    end
+    local instKeys, votes = {}, {}
+    for inst, list in pairs(idx.instKeys) do instKeys[inst] = list end
     for _, r in pairs(records) do
         if r.npc > 0 then
             local o = npcOf(r.npc)
             for id in pairs(r.it) do o.items[id] = true end
             o.insts[r.inst] = (o.insts[r.inst] or 0) + 1
+            o.kills = o.kills + 1
         end
-        if not instKey[r.inst] then
+        if not instKeys[r.inst] then
             local z = dd.inst[r.inst]
-            local named = z and idx.byName[lower(z[2])]
-            if named then
-                instKey[r.inst] = named
+            local zl = z and lower(z[2])
+            if zl and idx.parts[zl] then
+                instKeys[r.inst] = idx.parts[zl]
+            elseif zl and idx.byName[zl] then
+                instKeys[r.inst] = { idx.byName[zl] }
             else
+                if not z then nameless.inst[r.inst] = true end
                 local v = votes[r.inst]
                 if not v then v = {}; votes[r.inst] = v end
                 for id in pairs(r.it) do
@@ -327,16 +424,24 @@ local function observations(facts, idx)
         end
     end
     for inst, v in pairs(votes) do
-        if not instKey[inst] then instKey[inst] = winner(v) end
+        local w = not instKeys[inst] and winner(v)
+        if w then instKeys[inst] = { w } end
     end
     local out = {}
     for npc, o in pairs(npcs) do
-        local key = npcKey[npc]
+        local name = dd and dd.npc[npc]
+        if dd and name == nil then nameless.npc[npc] = true end
+        local key, cands = npcKey[npc], nil
         if not key then
             local inst = winner(o.insts)
-            key = inst and instKey[inst]
+            cands = inst and instKeys[inst]
+            if cands and #cands == 1 then
+                key = cands[1]
+            elseif cands then
+                key = pickPart(cands, name, o.items, idx)
+            end
         end
-        if not key then
+        if not key and not cands then
             local v = {}
             for id in pairs(o.items) do
                 for k in pairs(idx.itemTo[id] or {}) do v[k] = (v[k] or 0) + 1 end
@@ -345,7 +450,6 @@ local function observations(facts, idx)
         end
         local x = key and idx.byKey[key]
         if x then
-            local name = dd and dd.npc[npc]
             -- the boss of the item data: the same NPC, the same name, else the most shared items
             local lname
             for _, b in ipairs(x.order) do
@@ -362,13 +466,14 @@ local function observations(facts, idx)
             end
             local list = out[key]
             if not list then list = {}; out[key] = list end
-            list[#list + 1] = { npc = npc, name = name or ("Boss " .. npc), items = o.items, lname = lname }
+            list[#list + 1] = { npc = npc, name = name or ("Boss " .. npc), items = o.items, lname = lname, kills = o.kills,
+                known = npcKey[npc] ~= nil or o.known or false }
         end
     end
     for _, list in pairs(out) do
         table.sort(list, function(a, b) return a.npc < b.npc end)
     end
-    obs, obsGen, obsIndex, obsBase = out, dropsGen, idx, base
+    obs, obsGen, obsIndex, obsBase, obsNameless = out, dropsGen, idx, base, nameless
     return out
 end
 
@@ -377,7 +482,9 @@ end
 ---------------------------------------------------------------------------
 
 -- The bosses of a dungeon: the item data's (with their source records), the observed NPCs joined
--- to them or standing on their own, each with the items seen only by the guild.
+-- to them or standing on their own, each with the items seen only by the guild. One standing on its
+-- own that no facts or base stock name as a boss is tentative below MIN_KILLS kills: listed, not
+-- counted.
 local function bossesOf(key, x, seen)
     local out, byL = {}, {}
     for _, b in ipairs(x.order) do
@@ -388,7 +495,8 @@ local function bossesOf(key, x, seen)
     for _, link in ipairs(seen[key] or {}) do
         local nb = link.lname and byL[link.lname]
         if not nb then
-            nb = { name = link.name, lname = lower(link.name), src = { items = {}, ids = {} }, extra = {} }
+            nb = { name = link.name, lname = lower(link.name), src = { items = {}, ids = {} }, extra = {}, kills = link.kills,
+                tentative = not link.known and (link.kills or 0) < MIN_KILLS }
             out[#out + 1] = nb
         end
         nb.npc = nb.npc or link.npc
@@ -440,7 +548,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
                 local q = quality(a[1]) or 0
                 byQ[q] = (byQ[q] or 0) + 1
             end
-            local ob = { name = b.name, npc = b.npc, items = {}, perRun = 0 }
+            local ob = { name = b.name, npc = b.npc, items = {}, perRun = 0, kills = b.kills, tentative = b.tentative or nil }
             for _, a in ipairs(all) do
                 local id, rec = a[1], a[2]
                 local ok = not exItem[id] and reqLevel(id) <= limit
@@ -454,11 +562,16 @@ local function compute(entry, e, x, seen, o, gains, limit)
                     local better = ns.BisIsUpgrade(gain, mine)
                     local up = better and not owned or false
                     if better or wished then
-                        local p0 = chanceOf(rec) or 1 / math.max(1, byQ[quality(id) or 0] or 1)
-                        local p, rate, n, K = D.Rate(ob, id, p0, raid)
+                        local p0, est = chanceOf(rec), false
+                        if not p0 then
+                            local q = quality(id) or 0
+                            p0 = math.min(PRIOR_MAX, 1 / math.max(byQ[q] or 1, PRIOR_TABLE[q] or PRIOR_DEFAULT))
+                            est = true
+                        end
+                        local p, rate, n, K = D.Rate(ob, id, p0, raid, est)
                         ob.items[#ob.items + 1] = { id = id, gain = gain, slotKey = slotKey, mine = mine, p = p, rate = rate, n = n, K = K,
                             owned = owned, wished = wished, upgrade = up, rec = rec }
-                        if up then
+                        if up and not ob.tentative then
                             ob.perRun = ob.perRun + gain * (p or 0)
                             if not counted[id] then counted[id] = true; upgrades = upgrades + 1 end
                         end
@@ -548,7 +661,8 @@ local function baseEntry(e, x, o, anyRange)
 end
 
 local function stateKey(o, facts, opts)
-    return table.concat({ tostring(ns.GEAR), tostring(facts), ns.BisStamp(), dropsGen, questGen, tostring(o.class), tostring(o.spec),
+    checkNames()
+    return table.concat({ tostring(ns.GEAR), tostring(facts), ns.BisStamp(), dropsGen, questGen, namesGen, tostring(o.class), tostring(o.spec),
         tostring(o.kind), tostring(o.level), tostring(o.faction), opts and tostring(opts) or "" }, "|")
 end
 

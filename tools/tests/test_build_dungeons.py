@@ -18,7 +18,8 @@ import build_dungeons  # noqa: E402
 FACTS = os.path.join(TOOLS, 'forever_dungeons.json')
 OUT = os.path.join(ADDON, 'DungeonData.lua')
 
-# What Blizzard and the public dungeon list say about Forever's new instances (checked 2026-10-05).
+# The public facts on Forever's new instances as the user gave them (2026-10-05); the boss lists are
+# the item data's (GearData.lua), see test_every_label_says_where_its_facts_can_be_checked.
 NEW = {
     'Hall of Thanes': (13, 18), 'Ruins of Lordaeron': (15, 20), 'Excavation Site': (26, 31),
     'City of Dalaran': (28, 33), 'Drowned City': (35, 40), "Krol'dok Stronghold": (40, 45),
@@ -68,6 +69,9 @@ def test_every_entry_has_its_fields_and_a_known_source():
         keys.add(e['key'])
         assert e['kind'] in ('party', 'raid'), e
         assert e['src'] in sources and sources[e['src']], e
+        for k, v in e.items():
+            if k.endswith('_src'):
+                assert k[:-4] in e and v in sources and sources[v], (k, e)
         if e.get('min') is not None or e.get('max') is not None:
             assert 1 <= e['min'] <= e['max'] <= 60, e
 
@@ -76,11 +80,43 @@ def test_the_new_dungeons_and_their_level_ranges():
     by = {e['name']: e for e in entries()}
     for name, (lo, hi) in NEW.items():
         e = by[name]
-        assert e['kind'] == 'party' and (e['min'], e['max']) == (lo, hi) and e['src'] == 'forever', e
+        assert e['kind'] == 'party' and (e['min'], e['max']) == (lo, hi) and e['src'] == 'public', e
     for name, bosses in BOSSES.items():
         assert by[name]['bosses'] == bosses
     # what the item data calls the excavation site
     assert 'Excavation Site: Wetlands' in by['Excavation Site']['aliases']
+
+
+def test_every_label_says_where_its_facts_can_be_checked():
+    """A boss list labelled as the repo's item data is exactly what that data says: each boss is a
+    dungeon source of GearData.lua for that dungeon. Nothing is labelled as from Blizzard."""
+    sources = facts()['sources']
+    assert 'forever' not in sources and 'Blizzard' not in json.dumps(sources), 'no claim the repo cannot back'
+    with open(os.path.join(ADDON, 'GearData.lua'), encoding='utf-8') as fh:
+        gear = fh.read()
+    d_recs = set(re.findall(r'\{"D", "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"', gear))
+    d_recs = {(a.replace("\\'", "'"), b.replace("\\'", "'")) for a, b in d_recs}
+    names = repo_names()
+    labelled = 0
+    for e in entries():
+        if e.get('bosses'):
+            assert e.get('bosses_src') == 'repo:GearData', e
+            for b in e['bosses']:
+                assert (e['name'], b) in d_recs, (e['name'], b)
+            labelled += 1
+        if e.get('aliases_src') == 'repo:GearData':
+            assert all(a in names for a in e['aliases']), e
+    assert labelled == 2
+
+
+def test_blackrock_spire_hosts_two_dungeons():
+    by = {e['key']: e for e in entries()}
+    assert by['lbrs']['part'] == by['ubrs']['part'] == 'Blackrock Spire'
+    assert [e['key'] for e in entries() if e.get('part')] == ['lbrs', 'ubrs']
+    text = build_dungeons.render(facts())
+    assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire" }' in text
+    assert '{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", part = "Blackrock Spire" },' in text
+    assert '_src' not in text, 'the labels stay in the JSON'
 
 
 def test_the_raids_open_on_the_ninth_of_december():
@@ -116,7 +152,7 @@ def test_no_loot_table_and_no_link():
     text = open(FACTS, encoding='utf-8').read()
     for e in entries():
         assert not set(e) - {'key', 'name', 'kind', 'src', 'min', 'max', 'size', 'inst', 'area', 'from', 'bosses',
-                              'aliases'}, e
+                              'aliases', 'part', 'bosses_src', 'aliases_src', 'inst_src'}, e
     assert 'http' not in text and 'www.' not in text
     text.encode('latin-1')
 

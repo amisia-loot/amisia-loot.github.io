@@ -815,7 +815,13 @@ local function fillDetailRow(r, e)
         r.name:SetText(GOLD_TEXT .. e.text .. "|r")
         r.slot:SetText("")
         r.gain:SetText("")
-        r.rate:SetText(e.b.perRun > 0 and ("je Lauf %s"):format(signed(e.b.perRun)) or "")
+        if e.b.tentative then
+            -- an NPC only the guild's records know: listed, counted from its third kill
+            local k = e.b.kills or 0
+            r.rate:SetText(GREY .. ("%d %s, zählt ab 3"):format(k, k == 1 and "Kill" or "Kills") .. "|r")
+        else
+            r.rate:SetText(e.b.perRun > 0 and ("je Lauf %s"):format(signed(e.b.perRun)) or "")
+        end
     elseif e.kind == "item" then
         local it = e.it
         r.name:SetText(marks(it) .. itemText(it.id))
@@ -925,6 +931,10 @@ local function fillDungeons(B)
     B.chosen = e and e.key or nil
     B.list:SetItems(list)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
+    -- another dungeon starts its bosses at the top
+    local detailKey = e and e.key or nil
+    if detailKey ~= B.detailKey then B.detail.offset = 0 end
+    B.detailKey = detailKey
     if e then
         B.header:SetHeaderText(e.name .. " · Bosse und Quests")
         B.detail:SetItems(detailItems(e))
@@ -1370,6 +1380,8 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
         -- the dungeon planner's recommendation, from its cache when nothing changed
         local nextE = ns.DungeonNext and ns.DungeonNext()
         if nextE then text = text .. "\nNächster Dungeon: " .. nextE.name end
+        -- two lines at most: a long item name would wrap the text into the button
+        c.line2:SetMaxLines(2)
         c.line2:SetText(text)
     end
     c:SetAction("Ansehen", function() ns.ShowGear("goals") end)
