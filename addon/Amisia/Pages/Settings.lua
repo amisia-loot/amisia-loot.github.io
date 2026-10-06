@@ -58,7 +58,8 @@ local function makeRow(it)
     end
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
     if it.type ~= "button" and it.type ~= "desc" then
-        r.reset = W.Chip(r, "x", 20, function() ns.Reset(path) end)
+        -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
+        r.reset = W.ResetButton(r, 18, function() ns.Reset(path) end)
         r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
         W.Tooltip(r.reset, "Zurücksetzen", "Auf den Standard zurück.")
     end

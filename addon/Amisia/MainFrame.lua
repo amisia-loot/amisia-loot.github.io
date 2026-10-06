@@ -241,27 +241,16 @@ local function build()
     restorePosition()
     ns.ApplyScale()
 
-    -- the head: the profession window's skill bar as the frame of the recording state, from the
-    -- portrait to the button (the bar's own 453 px would leave a gap): its round ends stay, the
-    -- middle stretches
+    -- the head: the recording state as plain text between the portrait and the button, on the
+    -- frame's own ground (a dark bar there did not fit the window's look)
     local BAR_W = WIDTH - 66 - 10 - 110 - 12
     local bar = CreateFrame("Frame", nil, F)
-    bar:SetSize(BAR_W, 18)
-    bar:SetPoint("TOPLEFT", 66, -28)
-    local ring = CreateFrame("Frame", nil, bar)
-    ring:SetSize(BAR_W - 2, 29)
-    ring:SetPoint("TOPLEFT")
-    bar.ring = ring
-    bar.bgParts = W.HasAtlas("Professions-skillbar-bg") and W.SlicedAtlas(bar, "ARTWORK", 1, "Professions-skillbar-bg", 10, 18)
-    if not bar.bgParts then
-        bar.bg = bar:CreateTexture(nil, "ARTWORK", nil, 1)
-        bar.bg:SetAllPoints()
-        bar.bg:SetColorTexture(0, 0, 0, 0.35)
-    end
-    bar.frameParts = W.HasAtlas("Professions-skillbar-frame") and W.SlicedAtlas(ring, "ARTWORK", 3, "Professions-skillbar-frame", 14, 29)
-    statusText = W.Text(bar, "GameFontHighlightSmall", BAR_W - 20)
-    statusText:SetPoint("CENTER", bar, "CENTER", 0, -3)
+    bar:SetSize(BAR_W, 22)
+    bar:SetPoint("TOPLEFT", 66, -26)
+    statusText = W.Text(bar, "GameFontHighlight", BAR_W - 20)
+    statusText:SetPoint("CENTER", bar, "CENTER", 0, 0)
     statusText:SetJustifyH("CENTER")
+    if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
     pauseBtn = W.Button(F, "Pausieren", 110, function() ns.SetEnabled(not ns.IsEnabled()) end)
     pauseBtn:SetPoint("TOPRIGHT", -10, -26)
 

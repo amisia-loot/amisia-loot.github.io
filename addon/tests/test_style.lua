@@ -398,21 +398,16 @@ assert(MF.Bg.atlas == "Profession-Background-Overview" and not MF.TopTileStreaks
 local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 560)
 -- the head: the status bar right of the portrait, below the title bar, the button beside it
 local status, pause = MF.statusBar, MF.pauseBtn
--- the bar reaches from the portrait to 12 px before the button, its ends unbent (three pieces)
-assert(status._w == 806 - 66 - 10 - 110 - 12 and status._h == 18 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -28)
-assert(#status.bgParts == 3 and #status.frameParts == 3)
-for _, p in ipairs(status.bgParts) do assert(p.atlas == "Professions-skillbar-bg" and p._h == 18) end
-for _, p in ipairs(status.frameParts) do assert(p.atlas == "Professions-skillbar-frame" and p._h == 29) end
-assert(status.bgParts[1]._w == 10 and status.bgParts[3]._w == 10 and status.frameParts[1]._w == 14 and status.frameParts[3]._w == 14)
-assert(status.frameParts[2].points.TOPLEFT and status.frameParts[2].points.TOPRIGHT, "the middle stretches between the ends")
-assert(status.ring._w == status._w - 2 and status.ring._h == 29)
+-- the state as plain text from the portrait to 12 px before the button, level with it, no bar
+assert(status._w == 806 - 66 - 10 - 110 - 12 and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
+assert(status.bgParts == nil and status.frameParts == nil and status.bg == nil, "no bar textures")
 ML.row("head", status, pause)
 local sl = ML.span(status)
 local st = ML.vspan(status)
 assert(sl >= 58 and st <= -W.TITLE_H, "right of the portrait and below the title bar")
 assert(pause._w == 110 and pause._h == 22 and pause.points.TOPRIGHT.x == -10 and pause.points.TOPRIGHT.y == -26)
 assert(pause.inherits.SharedButtonSmallTemplate and pause:GetText() == "Pausieren")
-assert(MF.statusText._w == status._w - 20 and MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == -3)
+assert(MF.statusText._w == status._w - 20 and MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
 NS.SetEnabled(false); assert(pause:GetText() == "Fortsetzen" and MF.statusText:GetText():find("pausiert", 1, true))
 pause:Click(); assert(NS.IsEnabled() and pause:GetText() == "Pausieren")
 -- the page list and the content field side by side, the page area exactly 602 x 478 at (191, -69)
@@ -791,6 +786,8 @@ for _, base in ipairs({ "common-dropdown-a-button", "common-dropdown-b-button" }
     end
 end
 ALLOWED["common-dropdown-a-button-shadowless"] = true
+-- the client's reset button (UIResetButtonTemplate)
+ALLOWED["auctionhouse-ui-filter-redx"] = true
 for name in pairs(STUB.atlasCalls) do
     assert(ALLOWED[name], "an atlas outside the design: " .. name)
 end

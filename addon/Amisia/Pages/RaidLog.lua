@@ -564,7 +564,7 @@ local function buildBench(f)
         r.how = col(r, 178, 110, nil, "GameFontHighlightSmall")
         r.note = col(r, 292, 148, nil, "GameFontHighlightSmall")
         r.joined = col(r, 444, 118, nil, "GameFontHighlightSmall")
-        r.x = W.Chip(r, "x", 20, function(self)
+        r.x = W.ResetButton(r, 18, function(self)
             local x = self:GetParent().item
             local target = benchOf(chosen())
             if not x or not officer() or not target then return end
@@ -573,7 +573,6 @@ local function buildBench(f)
             ns.Refresh()
         end)
         r.x:SetPoint("RIGHT", -4, 0)
-        r.x:SetOn(false)
         W.Tooltip(r.x, "Austragen", "Von der Ersatzbank nehmen.")
     end, function(r, x)
         local e = x.e

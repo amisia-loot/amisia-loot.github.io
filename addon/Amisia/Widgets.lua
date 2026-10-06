@@ -115,11 +115,72 @@ local CHIP = { normal = "common-dropdown-b-button", hover = "common-dropdown-b-b
                open = "common-dropdown-b-button-open", disabled = "common-dropdown-b-button-disabled" }
 W.CHIP_ATLAS = CHIP
 
+-- The client's small reset button (UIResetButtonTemplate: the red circle with the gold x), for
+-- "back to the default" and "remove this". Without the template or its atlas a small red button.
+function W.ResetButton(parent, size, onClick)
+    size = size or 18
+    local b = hasAtlas("auctionhouse-ui-filter-redx") and CreateFrame("Button", nil, parent)
+    if b then
+        b:SetSize(size, size)
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetAllPoints()
+        b.icon:SetAtlas("auctionhouse-ui-filter-redx")
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        hl:SetAtlas("auctionhouse-ui-filter-redx")
+        hl:SetBlendMode("ADD")
+        hl:SetAlpha(0.4)
+    else
+        b = W.Button(parent, "x", size + 4, nil, { height = size })
+    end
+    if onClick then b:SetScript("OnClick", onClick) end
+    return b
+end
+
 -- A toggle chip in the look of the client's filter button: open and gold text when on, the normal
 -- button and grey text when off; hover, press and disabled as the client shows them. The atlas
 -- lies on the chip itself (the client's sits 4 px outside, chips 3-4 px apart would touch).
 -- Without the atlas the flat chip of before (gold frame).
-function W.Chip(parent, label, width, onClick)
+-- The client's filter button carries its dropdown arrow in the atlas. A chip that only switches
+-- something on or off (opts.arrow not set) leaves the arrow out: its left end, a stretch of its
+-- middle and the left end turned round as the right end. Without the atlas data the whole atlas.
+local CHIP_CAP = 8
+local function chipPieces(b)
+    if not (C_Texture and C_Texture.GetAtlasInfo) then return nil end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, CHIP.normal)
+    if not ok or type(info) ~= "table" or type(info.width) ~= "number" or info.width <= 4 * CHIP_CAP
+        or type(info.leftTexCoord) ~= "number" or type(info.rightTexCoord) ~= "number" then
+        return nil
+    end
+    local parts = {}
+    for i = 1, 3 do parts[i] = b:CreateTexture(nil, "BACKGROUND") end
+    parts[1]:SetPoint("TOPLEFT"); parts[1]:SetPoint("BOTTOMLEFT"); parts[1]:SetWidth(CHIP_CAP)
+    parts[3]:SetPoint("TOPRIGHT"); parts[3]:SetPoint("BOTTOMRIGHT"); parts[3]:SetWidth(CHIP_CAP)
+    parts[2]:SetPoint("TOPLEFT", parts[1], "TOPRIGHT"); parts[2]:SetPoint("BOTTOMRIGHT", parts[3], "BOTTOMLEFT")
+    return parts
+end
+
+-- the state's atlas on the pieces, each cut from the atlas's own coordinates
+local function setChipAtlas(b, name)
+    if not b.pieces then
+        b.bg:SetAtlas(name)
+        return
+    end
+    local info = C_Texture.GetAtlasInfo(name) or C_Texture.GetAtlasInfo(CHIP.normal)
+    local l, r = info.leftTexCoord, info.rightTexCoord
+    local t, bt = info.topTexCoord or 0, info.bottomTexCoord or 1
+    local cap = (r - l) * CHIP_CAP / info.width
+    -- the middle from the left part of the atlas, well clear of the arrow on the right
+    local midEnd = l + (r - l) * 0.45
+    local spans = { { l, l + cap }, { l + cap, midEnd }, { l + cap, l } }
+    for i, p in ipairs(b.pieces) do
+        p:SetAtlas(name, false)
+        p:SetTexCoord(spans[i][1], spans[i][2], t, bt)
+    end
+    b.bg.atlas = name
+end
+
+function W.Chip(parent, label, width, onClick, opts)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(width or 60, 20)
     b.label = W.Text(b, "GameFontHighlightSmall")
@@ -128,8 +189,14 @@ function W.Chip(parent, label, width, onClick)
     b.label:SetText(label or "")
     local styled = hasAtlas(CHIP.normal)
     if styled then
-        b.bg = b:CreateTexture(nil, "BACKGROUND")
-        b.bg:SetAllPoints()
+        b.pieces = not (opts and opts.arrow) and chipPieces(b) or nil
+        if b.pieces then
+            -- bg stands for the pieces (its atlas field names the state)
+            b.bg = b.pieces[1]
+        else
+            b.bg = b:CreateTexture(nil, "BACKGROUND")
+            b.bg:SetAllPoints()
+        end
     else
         b.bg = W.Flat(b, 1, 1, 1, 0.06)
         b.edges = W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.35)
@@ -146,7 +213,7 @@ function W.Chip(parent, label, width, onClick)
             elseif self.chipDown then s = CHIP.pressed
             elseif self.on then s = CHIP.open
             else s = CHIP.normal end
-            self.bg:SetAtlas(s)
+            setChipAtlas(self, s)
         else
             local on = self.on
             self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
@@ -180,7 +247,8 @@ end
 
 -- A chip that cycles through its values on click.
 function W.Choice(parent, width, onChange)
-    local c = W.Chip(parent, "", width or 120)
+    -- the arrow stays: a click goes on to the next value
+    local c = W.Chip(parent, "", width or 120, nil, { arrow = true })
     function c:SetValues(values) self.values = values end
     function c:SetValue(v)
         self.current = v

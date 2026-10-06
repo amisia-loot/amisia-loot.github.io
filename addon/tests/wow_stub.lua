@@ -515,6 +515,7 @@ local function region(parent)
     f.SetMaxLines = function(self, n) self.maxLines = n end
     -- an atlas of the client's art by name; the test reads it back. Every call is counted
     -- (STUB.atlasCalls); an atlas the client lacks draws nothing and answers false, as in the client.
+    f.SetTexCoord = function(self, ...) self.texCoord = { ... } end
     f.SetAtlas = function(self, name, useAtlasSize)
         assert(type(name) == "string" and name ~= "", "SetAtlas needs an atlas name")
         STUB.atlasCalls[name] = (STUB.atlasCalls[name] or 0) + 1
@@ -574,6 +575,11 @@ for _, base in ipairs({ "common-dropdown-a-button", "common-dropdown-b-button" }
     end
 end
 STUB.atlases["common-dropdown-a-button-shadowless"] = { 26, 26 }
+-- the filter button is wide (its arrow sits in its right end), the reset button a small circle
+for _, s in ipairs({ "", "-hover", "-pressed", "-pressedhover", "-open", "-disabled" }) do
+    STUB.atlases["common-dropdown-b-button" .. s] = { 143, 26 }
+end
+STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
 for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
     for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
 end

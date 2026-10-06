@@ -1141,7 +1141,7 @@ local function buildWish(f)
         end)
         r.prio:SetPoint("LEFT", 462, 0)
         r.state = col(r, 524, 44, nil, "GameFontHighlightSmall")
-        r.del = W.Chip(r, "x", 18, function(self)
+        r.del = W.ResetButton(r, 18, function(self)
             local e = self:GetParent().item
             if e then ns.WishRemove(e.id) end
         end)

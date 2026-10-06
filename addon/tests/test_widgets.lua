@@ -42,7 +42,24 @@ chip:GetScript("OnMouseDown")(chip); assert(chip.bg.atlas == B .. "-pressedhover
 chip:GetScript("OnMouseUp")(chip); chip:GetScript("OnLeave")(chip); assert(chip.bg.atlas == B, chip.bg.atlas)
 chip:Disable(); assert(chip.bg.atlas == B .. "-disabled")
 chip:Enable(); chip:SetOn(true); assert(chip.bg.atlas == B .. "-open")
-assert(chip.bg.points.TOPLEFT.x == 0 and chip.bg.points.BOTTOMRIGHT.x == 0, "the atlas on the chip itself, not outside")
+-- the atlas on the chip itself, not outside, in three pieces without the arrow: the left end, a
+-- stretch of the middle, the left end turned round on the right
+local P = chip.pieces
+assert(P and #P == 3 and P[1] == chip.bg, "three pieces")
+assert(P[1].points.TOPLEFT.x == 0 and P[1].points.BOTTOMLEFT and P[3].points.TOPRIGHT.x == 0 and P[3].points.BOTTOMRIGHT)
+assert(P[1]._w == 8 and P[3]._w == 8 and P[2].points.TOPLEFT and P[2].points.BOTTOMRIGHT)
+for _, p in ipairs(P) do assert(p.atlas == B .. "-open", p.atlas) end
+local c1, c2, c3 = P[1].texCoord, P[2].texCoord, P[3].texCoord
+assert(c1 and c2 and c3, "each piece cut")
+assert(c1[1] == 0 and math.abs(c1[2] - 8 / 143) < 1e-9, "the left end")
+assert(math.abs(c3[1] - 8 / 143) < 1e-9 and c3[2] == 0, "the left end turned round")
+assert(c2[2] <= 0.45 + 1e-9, "the middle clear of the arrow")
+-- a choice keeps the whole atlas with its arrow (a click goes on to the next value)
+local choice = W.Choice(root, 120)
+assert(choice.pieces == nil and choice.bg.points.TOPLEFT and choice.bg.points.BOTTOMRIGHT)
+-- the reset button: the client's red x
+local rb = W.ResetButton(root, 18, function() end)
+assert(rb._w == 18 and rb._h == 18 and rb.icon.atlas == "auctionhouse-ui-filter-redx")
 -- a tooltip keeps the hover look
 W.Tooltip(chip, "Titel")
 chip:GetScript("OnEnter")(chip); assert(chip.bg.atlas == B .. "-hover", "hover with a tooltip")
