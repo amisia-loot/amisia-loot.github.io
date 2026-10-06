@@ -27,7 +27,7 @@ STUB.map.pos = { x = 0.5, y = 0.5 }
 NS.Dispatch("selbsttest wegpunkt")
 local text = ST.Frame().area.box:GetText()
 for _, title in ipairs({ "Client", "Sperren jetzt", "Namen", "Addon-Nachrichten und Packen", "Gilde", "Woche, Karte, Wegpunkt", "Loot",
-                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Gespeicherte Daten" }) do
+                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Werte", "Gespeicherte Daten" }) do
     assert(has(text, "== " .. title .. " =="), "section " .. title)
 end
 assert(not text:find("\nFEHLER "), "a missing function is no error:\n" .. text)
@@ -43,6 +43,14 @@ assert(has(text, "FEHLT  SharedButtonSmallTemplate: "), "missing template")
 assert(has(text, "FEHLT  Wegpunkt setzen: "), "no waypoint without the functions")
 assert(STUB.waypoint.sets == 0)
 assert(has(text, "C_Club Gildenliste: C_Club.GetGuildClubId fehlt"))
+-- the values: a client without the stat functions writes WERT lines, no problem, and a short machine line
+assert(has(text, "WERT   UnitStat(1 Stärke): Basis, Wert, plus, minus: nicht vorhanden"))
+assert(has(text, "WERT   GetAttackPowerForStat(1): nicht vorhanden (kein Wert)"))
+assert(has(text, "WERT   GetSpellCritChance: nicht vorhanden") and has(text, "WERT   UnitArmor: Basis, wirksam, Rüstung, plus, minus: nicht vorhanden"))
+assert(has(text, "WERT   CR-Konstanten nicht vorhanden: CR_HIT_MELEE, "), "no rating constant")
+local werte = text:match("== Werte ==\n(.-)\n\n")
+assert(werte and not werte:find("FEHLT") and not werte:find("FEHLER"), "no problem from the values:\n" .. tostring(werte))
+assert(text:find("\nAMISIA%-WERTE 1 WARRIOR %?\n"), "class and an unknown level, nothing else")
 
 -- more goes away while the client runs: the saved data, the build, the group functions
 _G.AmisiaDB = nil
@@ -54,5 +62,12 @@ assert(has(R.text, "Amisia-Selbsttest " .. NS.VERSION .. " | Client ?"), "head w
 assert(has(R.text, "FEHLT  AmisiaDB: keine gespeicherten Daten"))
 assert(has(R.text, "FEHLER GetRaidRosterInfo(1): ") and has(R.text, "Liste geheim"))
 assert(has(R.text, "FEHLT  C_Texture.GetAtlasInfo: fehlt"))
+-- a stat function that raises, the class gone: still WERT lines and a machine line
+_G.UnitStat = function() error("Werte geheim") end
+_G.UnitClass = nil
+R = ST.Run()
+assert(has(R.text, "WERT   UnitStat(2 Beweglichkeit): Basis, Wert, plus, minus: Fehler: ") and has(R.text, "Werte geheim"))
+assert(has(R.text, "WERT   UnitClass: nicht vorhanden") and R.text:find("\nAMISIA%-WERTE 1 %? %?\n"), "class and level unknown")
+assert(not R.text:find("%[Werte%]"), "no problem from the values")
 ST.Short()
 assert(#STUB.chat == 0 and #STUB.addonTries == 0, "nothing sent")

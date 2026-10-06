@@ -1,9 +1,10 @@
 -- /amisia selbsttest: checks in the real client every point the specs leave to an in-game check
 -- (names, lockdowns, addon messages, packing, guild ranks, weekly reset, waypoints, loot method,
--- atlases, templates, client functions, events, item constants, saved data) and writes a compact
--- report into a read-only box to copy. Read-only: it sends nothing to chat or other players, and
--- only "/amisia selbsttest wegpunkt" sets a map waypoint. Every check runs protected; a failing
--- check reports its error text instead of raising.
+-- atlases, templates, client functions, events, item constants, the character's stat values with a
+-- machine-readable line, saved data) and writes a compact report into a read-only box to copy.
+-- Read-only: it sends nothing to chat or other players, and only "/amisia selbsttest wegpunkt" sets
+-- a map waypoint. Every check runs protected; a failing check reports its error text instead of
+-- raising.
 local ADDON, ns = ...
 
 local ST = {}
@@ -855,6 +856,140 @@ local function sectionItems(R)
 end
 
 ---------------------------------------------------------------------------
+-- Values: the character's stats and what the client derives from them. WoW Forever has no gt
+-- tables for the conversions (agility to crit, rating to percent ...), so they are measured: one WERT
+-- line per value and one machine-readable line for tools/bis_measured.json,
+--   AMISIA-WERTE 1 <class> <level> race=<race> str=base,effective,pos,neg ... crm=rating,percent ...
+-- A missing function is a WERT line "nicht vorhanden" (no FEHLT: some clients lack some of them),
+-- a function that raises one "Fehler: ..."; neither goes into the machine line.
+---------------------------------------------------------------------------
+local VALUES_FORMAT = 1
+local STATS = { { 1, "str", "Stärke" }, { 2, "agi", "Beweglichkeit" }, { 3, "sta", "Ausdauer" }, { 4, "int", "Intelligenz" },
+                { 5, "spi", "Willenskraft" } }
+-- the rating constants, where the client defines them, with their key in the machine line
+local RATINGS = {
+    { "CR_HIT_MELEE", "hm" }, { "CR_HIT_RANGED", "hr" }, { "CR_HIT_SPELL", "hs" },
+    { "CR_CRIT_MELEE", "cm" }, { "CR_CRIT_RANGED", "cr" }, { "CR_CRIT_SPELL", "cs" },
+    { "CR_HASTE_MELEE", "am" }, { "CR_HASTE_RANGED", "ar" }, { "CR_HASTE_SPELL", "as" },
+    { "CR_DEFENSE_SKILL", "def" }, { "CR_DODGE", "dr" }, { "CR_PARRY", "pr" }, { "CR_BLOCK", "br" }, { "CR_EXPERTISE", "exp" },
+}
+ST.RATINGS = RATINGS
+
+-- A number for the machine line: integers plain, else up to four decimals; nil for anything else.
+local function num(v)
+    if isSecret(v) or type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return nil end
+    if v == math.floor(v) and math.abs(v) < 1e15 then return ("%d"):format(v) end
+    local t = ("%.4f"):format(v):gsub("0+$", ""):gsub("%.$", "")
+    return t
+end
+
+-- Numbers joined by commas, nil unless every one is a number.
+local function nums(list, n)
+    local out = {}
+    for i = 1, n do
+        local t = num(list[i])
+        if not t then return nil end
+        out[i] = t
+    end
+    return table.concat(out, ",")
+end
+
+local function sectionValues(R)
+    local pairsOut = {}
+    -- one value: the client function at path called with args; label for the WERT line, key for the
+    -- machine line (nil: none), n how many results count
+    local function value(label, key, n, path, ...)
+        local f = fn(path)
+        if not f then
+            add(R, "WERT", label, "nicht vorhanden")
+            return nil
+        end
+        local res = { pcall(f, ...) }
+        if not res[1] then
+            add(R, "WERT", label, "Fehler: " .. cut(res[2]))
+            return nil
+        end
+        table.remove(res, 1)
+        local shown = {}
+        for i = 1, n do shown[i] = show(res[i]) end
+        add(R, "WERT", label, table.concat(shown, ", "))
+        local text = key and nums(res, n)
+        if text then pairsOut[#pairsOut + 1] = key .. "=" .. text end
+        return res
+    end
+
+    local level = value("UnitLevel", nil, 1, "UnitLevel", "player")
+    local cls = value("UnitClass", nil, 2, "UnitClass", "player")
+    local race = value("UnitRace", nil, 2, "UnitRace", "player")
+    local classFile = cls and not isSecret(cls[2]) and type(cls[2]) == "string" and cls[2] or "?"
+    local raceFile = race and not isSecret(race[2]) and type(race[2]) == "string" and race[2] or nil
+    if raceFile then pairsOut[#pairsOut + 1] = "race=" .. raceFile:gsub("[^%w_]", "") end
+    value("UnitHealthMax", "hp", 1, "UnitHealthMax", "player")
+    value("UnitPowerMax (Mana)", "mana", 1, "UnitPowerMax", "player", 0)
+
+    local effective = {}
+    for _, s in ipairs(STATS) do
+        local res = value(("UnitStat(%d %s): Basis, Wert, plus, minus"):format(s[1], s[3]), s[2], 4, "UnitStat", "player", s[1])
+        effective[s[1]] = res and not isSecret(res[2]) and tonumber(res[2]) or nil
+    end
+    for _, s in ipairs(STATS) do
+        if effective[s[1]] then
+            value(("GetAttackPowerForStat(%d, %s)"):format(s[1], num(effective[s[1]]) or "?"), "ap" .. s[2], 1, "GetAttackPowerForStat",
+                s[1], effective[s[1]])
+        else
+            add(R, "WERT", ("GetAttackPowerForStat(%d)"):format(s[1]), "nicht vorhanden (kein Wert)")
+        end
+    end
+    value("GetCritChanceFromAgility", "critagi", 1, "GetCritChanceFromAgility", "player")
+    value("GetSpellCritChanceFromIntellect", "critint", 1, "GetSpellCritChanceFromIntellect", "player")
+
+    value("GetCritChance", "crit", 1, "GetCritChance")
+    value("GetRangedCritChance", "rcrit", 1, "GetRangedCritChance")
+    if fn("GetSpellCritChance") then
+        for school = 2, 7 do value(("GetSpellCritChance(%d)"):format(school), "sc" .. school, 1, "GetSpellCritChance", school) end
+    else
+        add(R, "WERT", "GetSpellCritChance", "nicht vorhanden")
+    end
+    value("GetDodgeChance", "dodge", 1, "GetDodgeChance")
+    value("GetParryChance", "parry", 1, "GetParryChance")
+    value("GetBlockChance", "block", 1, "GetBlockChance")
+    value("UnitAttackPower: Basis, plus, minus", "ap", 3, "UnitAttackPower", "player")
+    value("UnitRangedAttackPower: Basis, plus, minus", "rap", 3, "UnitRangedAttackPower", "player")
+    value("GetManaRegen: Grund, beim Zaubern", "regen", 2, "GetManaRegen")
+    value("UnitArmor: Basis, wirksam, Rüstung, plus, minus", "armor", 5, "UnitArmor", "player")
+
+    local haveRating, haveBonus = fn("GetCombatRating"), fn("GetCombatRatingBonus")
+    local lacking = {}
+    for _, r in ipairs(RATINGS) do
+        local id = _G[r[1]]
+        if type(id) ~= "number" then
+            lacking[#lacking + 1] = r[1]
+        else
+            local label = ("%s (%d): Wertung, Prozent"):format(r[1], id)
+            if not haveRating and not haveBonus then
+                add(R, "WERT", label, "nicht vorhanden")
+            else
+                local okR, rating = true, nil
+                if haveRating then okR, rating = pcall(haveRating, id) end
+                local okB, bonus = true, nil
+                if haveBonus then okB, bonus = pcall(haveBonus, id) end
+                local a = okR and (haveRating and show(rating) or "nicht vorhanden") or ("Fehler: " .. cut(rating))
+                local b = okB and (haveBonus and show(bonus) or "nicht vorhanden") or ("Fehler: " .. cut(bonus))
+                add(R, "WERT", label, a .. ", " .. b)
+                local ta, tb = okR and num(rating), okB and num(bonus)
+                if ta or tb then pairsOut[#pairsOut + 1] = r[2] .. "=" .. (ta or "") .. "," .. (tb or "") end
+            end
+        end
+    end
+    if #lacking > 0 then add(R, "WERT", "CR-Konstanten nicht vorhanden", table.concat(lacking, ", ")) end
+
+    local lv = level and num(level[1]) or "?"
+    R.values = ("AMISIA-WERTE %d %s %s"):format(VALUES_FORMAT, classFile, lv)
+        .. (#pairsOut > 0 and (" " .. table.concat(pairsOut, " ")) or "")
+    add(R, "WERT", "Maschinenzeile", "steht oben im Bericht (AMISIA-WERTE)")
+end
+
+---------------------------------------------------------------------------
 -- Saved data: size estimate and counts
 ---------------------------------------------------------------------------
 -- Bytes the client would about write for v at depth (indent, key, " = ", value, ",\n"); stops after
@@ -953,6 +1088,7 @@ function ST.Run(opts)
     runSection(R, "Client-Funktionen", sectionFunctions)
     runSection(R, "Ereignisse", sectionEvents)
     runSection(R, "Item-Konstanten", sectionItems)
+    runSection(R, "Werte", sectionValues)
     runSection(R, "Gespeicherte Daten", sectionData)
     local c = R.counts
     local build = "?"
@@ -962,6 +1098,8 @@ function ST.Run(opts)
         ("Amisia-Selbsttest %s | Client %s | %s"):format(tostring(ns.VERSION), build, date("%Y-%m-%d %H:%M")),
         ("Ergebnis: %d OK, %d FEHLT, %d FEHLER, %d WERT"):format(c.OK, c.FEHLT, c.FEHLER, c.WERT),
     }
+    -- the values in one line to paste (section "Werte")
+    if R.values then head[#head + 1] = R.values end
     if #R.problems > 0 then
         head[#head + 1] = "Probleme:"
         for _, p in ipairs(R.problems) do head[#head + 1] = "  " .. p end

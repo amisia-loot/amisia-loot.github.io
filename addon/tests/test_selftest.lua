@@ -46,6 +46,29 @@ STUB.fire("CHAT_MSG_ADDON", "Fremd", "x", "RAID", "Jemand", "", 0, 0, "", 0)
 STUB.fire("CHAT_MSG_WHISPER", "!sr", "Fraktur Eisherz-Realm")
 STUB.fire("CHAT_MSG_WHISPER_INFORM", "hallo", "Fraktur Eisherz")
 
+-- the character's values (section "Werte"): a level 60 human warrior with every stat function
+STUB.level = 60
+_G.UnitRace = function() return "Mensch", "Human", 1 end
+_G.UnitHealthMax = function() return 4321 end
+_G.UnitPowerMax = function(_, kind) return kind == 0 and 0 or 100 end
+local STATS = { { 120, 150, 30, 0 }, { 80, 95, 15, 0 }, { 110, 260, 150, 0 }, { 30, 31, 1, 0 }, { 45, 50, 5, 0 } }
+_G.UnitStat = function(_, i) local s = STATS[i]; return s[1], s[2], s[3], s[4] end
+_G.GetAttackPowerForStat = function(i, v) return i == 1 and v * 2 or 0 end
+_G.GetCritChanceFromAgility = function() return 4.75 end
+_G.GetCritChance = function() return 12.3456789 end
+_G.GetRangedCritChance = function() return 5 end
+_G.GetSpellCritChance = function(school) return school / 10 end
+_G.GetDodgeChance = function() return 7.5 end
+_G.GetParryChance = function() return 5 end
+_G.GetBlockChance = function() return 5 end
+_G.UnitAttackPower = function() return 500, 40, 0 end
+_G.UnitRangedAttackPower = function() return 100, 0, 0 end
+_G.GetManaRegen = function() return 0, 0 end
+_G.UnitArmor = function() return 3000, 3200, 3200, 200, 0 end
+_G.CR_HIT_MELEE, _G.CR_CRIT_MELEE, _G.CR_DEFENSE_SKILL, _G.CR_EXPERTISE = 6, 9, 2, 24
+_G.GetCombatRating = function(id) return ({ [6] = 20, [9] = 28, [2] = 15, [24] = 0 })[id] end
+_G.GetCombatRatingBonus = function(id) if id == 24 then error("keine Waffenkunde") end return ({ [6] = 2, [9] = 2, [2] = 10 })[id] end
+
 local chatBefore, triesBefore = #STUB.chat, #STUB.addonTries
 local setsBefore = STUB.waypoint.sets
 
@@ -57,7 +80,7 @@ assert(type(text) == "string" and #text > 2000, "a full report: " .. #tostring(t
 
 -- every section, the head and the result line
 for _, title in ipairs({ "Client", "Sperren jetzt", "Namen", "Addon-Nachrichten und Packen", "Gilde", "Woche, Karte, Wegpunkt", "Loot",
-                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Gespeicherte Daten" }) do
+                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Werte", "Gespeicherte Daten" }) do
     assert(has(text, "== " .. title .. " =="), "section " .. title)
 end
 assert(text:find("^Amisia%-Selbsttest " .. NS.VERSION:gsub("%.", "%%.") .. " | Client 1%.60%.1 %(70205%)"), "head line")
@@ -120,6 +143,24 @@ assert(has(text, "OK     Enum.ItemClass: Tradegoods 7, Reagent 5"), "item classe
 assert(has(text, 'WERT   ITEM_MIN_SKILL: "Benötigt %s (%d)"'))
 assert(has(text, "WERT   ITEM_REQ_SKILL: fehlt"))
 assert(has(text, "ITEM_MOD_NEW_THING_SHORT ITEM_MOD_STAMINA_SHORT; unbekannt: ITEM_MOD_NEW_THING_SHORT"), "stat keys")
+-- the values: one WERT line each, a missing function without a problem, and the machine line on top
+assert(has(text, 'WERT   UnitRace: "Mensch", "Human"'), "race")
+assert(has(text, "WERT   UnitStat(1 Stärke): Basis, Wert, plus, minus: 120, 150, 30, 0"), "strength")
+assert(has(text, "WERT   GetAttackPowerForStat(1, 150): 300"), "attack power from strength")
+assert(has(text, "WERT   GetSpellCritChanceFromIntellect: nicht vorhanden"), "missing: a WERT line")
+assert(has(text, "WERT   GetCritChance: 12.346") and has(text, "WERT   GetSpellCritChance(7): 0.700"))
+assert(has(text, "WERT   UnitArmor: Basis, wirksam, Rüstung, plus, minus: 3000, 3200, 3200, 200, 0"))
+assert(has(text, "WERT   CR_HIT_MELEE (6): Wertung, Prozent: 20, 2"), "hit rating")
+assert(has(text, "WERT   CR_EXPERTISE (24): Wertung, Prozent: 0, Fehler: ") and has(text, "keine Waffenkunde"), "an error stays a WERT line")
+assert(text:find("WERT   CR%-Konstanten nicht vorhanden: CR_HIT_RANGED, [^\n]*CR_BLOCK\n"), "the constants the client lacks")
+local values = text:match("\n(AMISIA%-WERTE [^\n]*)\n")
+assert(values, "the machine line in the head:\n" .. text:sub(1, 400))
+assert(values:find("^AMISIA%-WERTE 1 WARRIOR 60 race=Human hp=4321 mana=0 str=120,150,30,0 agi=80,95,15,0 sta=110,260,150,0 "
+    .. "int=30,31,1,0 spi=45,50,5,0 apstr=300 apagi=0 apsta=0 apint=0 apspi=0 critagi=4.75 crit=12.3457 rcrit=5 "
+    .. "sc2=0.2 sc3=0.3 sc4=0.4 sc5=0.5 sc6=0.6 sc7=0.7 dodge=7.5 parry=5 block=5 ap=500,40,0 rap=100,0,0 regen=0,0 "
+    .. "armor=3000,3200,3200,200,0 hm=20,2 cm=28,2 def=15,10 exp=0,$"), values)
+assert(not values:find("critint") and not values:find("  "), "nothing for a missing function")
+assert(text:find("^[^\n]*\nErgebnis:[^\n]*\nAMISIA%-WERTE "), "right under the result line")
 -- saved data
 assert(text:find("WERT   Größe %(geschätzt%): etwa [%d%.]+ KB in %d+ Einträgen; größte: "), "saved data size")
 assert(has(text, "WERT   Raids: 0 Raids"))
