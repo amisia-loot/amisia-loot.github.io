@@ -198,6 +198,9 @@ td.c,th.c{text-align:center}
 .item .nm{color:var(--epic);font-weight:600;white-space:nowrap}
 .item .sl{font-family:var(--label);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 .rname{font-weight:600;white-space:nowrap}
+.alts{font-weight:400;font-size:12px;color:var(--muted);white-space:normal}
+.alttag{margin-left:7px;font-size:12px;color:var(--muted);font-weight:400}
+td.altrow{padding-left:26px}
 .night td{background:var(--panel-2);font-family:var(--label);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12px;color:var(--gold);padding:8px 12px}
 .night td .n{color:var(--muted);margin-left:10px}
 .night td .bz{margin-left:10px}
@@ -226,7 +229,7 @@ td.c,th.c{text-align:center}
 @media (max-width:900px){.two{grid-template-columns:1fr}}
 .stack{display:flex;flex-direction:column;gap:12px}
 textarea.inp{min-height:130px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical}
-.rowedit{display:flex;gap:8px;align-items:center}
+.rowedit{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .rowedit .inp{padding:5px 8px}
 
 /* ---------- tooltip ---------- */
@@ -769,6 +772,14 @@ tr.got td{opacity:.5}
             <button class="btn primary" type="submit">Add to roster</button>
           </form></div>
         </div>
+        <div class="panel" id="altAddonPanel" hidden>
+          <div class="panel-h">Alts for the addon</div>
+          <div class="panel-b stack help">
+            <p class="muted" style="margin:0;font-size:13px">Mark an alt with <b>Edit</b> on its row. Attendance and loot of an alt count for its main, and the Amisia addon counts its +1 for the main. The wishlist's <b>Copy for the addon</b> already carries these lines; this box holds them alone. In game an officer types <code>/amisia wuensche</code>, pastes it and presses Importieren.</p>
+            <textarea class="inp" id="altAddonText" readonly spellcheck="false" style="min-height:70px"></textarea>
+            <button class="btn sm" data-copy="altAddonText" style="align-self:flex-start">Copy</button>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-h">Add many raiders</div>
           <div class="panel-b stack help">
@@ -1151,6 +1162,8 @@ function removeRaider(s, rid){
     if (!b.retired.some(x => x.id === rid)) b.retired.push(structuredClone(r));
   }
   s.raiders = s.raiders.filter(x => x !== r);
+  // its alts stand on their own again
+  for (const x of s.raiders) if (x.main === rid) delete x.main;
   allBuckets(s).forEach(b => forgetRaider(b, rid));
 }
 let archiveOn = false, liveState = null, liveReadOnly = true;
@@ -1257,17 +1270,78 @@ function nightKills(date){
   return out.sort((a, b) => a.end - b.end);
 }
 // Whether a raider missed a night: not there, and not on the bench unless the bench counts as missed.
-const missedNight = (rid, date) => !presentOn(date).has(rid) && !(benchMode() !== 'missed' && rid in benchOn(date));
+// ids: every character of the player (groupIds), the raider alone when left out.
+const missedNight = (rid, date, ids) => { ids = ids || [rid]; const here = presentOn(date), b = benchOn(date); return !ids.some(id => here.has(id)) && !(benchMode() !== 'missed' && ids.some(id => id in b)); };
 // Nights there, late and on the bench. The bench counts by benchMode: as attended, left out of the
 // rate (excused) or as missed; it is counted in bench either way. Someone there is never on the bench.
-function attendance(rid){
+// ids: every character of the player (groupIds): a night counts when one of them was there, as late
+// only when every one of them that was there came in late, as bench only when none was there.
+function attendance(rid, ids){
+  ids = ids || [rid];
   const list = countedNights(), mode = benchMode(); let was = 0, late = 0, bench = 0, total = 0;
   for (const n of list) {
-    if (presentOn(n.date).has(rid)) { was++; total++; if (rid in lateOn(n.date)) late++; continue; }
-    if (rid in benchOn(n.date)) { bench++; if (mode === 'excused') continue; if (mode === 'present') was++; }
+    const here = ids.filter(id => presentOn(n.date).has(id));
+    if (here.length) { was++; total++; const lt = lateOn(n.date); if (here.every(id => id in lt)) late++; continue; }
+    const b = benchOn(n.date);
+    if (ids.some(id => id in b)) { bench++; if (mode === 'excused') continue; if (mode === 'present') was++; }
     total++;
   }
   return {was, late, bench, total, rate: total ? was / total : 0};
+}
+// Alts: an officer links a raider to its main once (raider.main = id of the main, in the shared
+// roster). Every record keeps the character it was made for; attendance, award counts and the
+// Armory add up the characters of a player, so unlinking loses nothing. One level only: a link is
+// valid when the main exists, is not the raider itself and is no alt; an invalid one is ignored.
+function mainIdOf(rid){
+  const r = raiderById(rid), m = r && r.main ? raiderById(r.main) : null;
+  return m && m.id !== rid && !(m.main && m.main !== m.id && raiderById(m.main)) ? m.id : rid;
+}
+// The alts of a main, sorted by name (none for an alt or an unknown id).
+function altsOf(mid){
+  return state.raiders.filter(r => r.id !== mid && r.main === mid && mainIdOf(r.id) === mid).sort((a, b) => a.name.localeCompare(b.name));
+}
+// Every character of the player rid belongs to: the main first, then its alts.
+const groupIds = rid => { const m = mainIdOf(rid); return [m, ...altsOf(m).map(r => r.id)]; };
+// The mains: raiders that are nobody's alt.
+const mainRaiders = () => state.raiders.filter(r => mainIdOf(r.id) === r.id);
+// The awards of every character of a player, oldest first.
+function awardsOfGroup(rid, zone){
+  const ids = new Set(groupIds(rid));
+  return state.awards.filter(a => ids.has(a.raider) && (!zone || BOSSZONE[a.boss] === zone)).sort((a,b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.ts||0)-(b.ts||0));
+}
+// One cell of the attendance grid for the characters ids of a player: won (one of them won loot),
+// here (one was there), late (every one there came in late), when (the earliest late sighting),
+// bench (the bench entry when none was there) and as (the character that was there, won or sat on
+// the bench, the first of ids when several). late and bench: lateOn and benchOn of the night.
+function nightMark(ids, date, late, bench){
+  late = late || lateOn(date); bench = bench || benchOn(date);
+  const winners = ids.filter(id => state.awards.some(a => a.date === date && a.raider === id));
+  const present = presentOn(date), there = ids.filter(id => winners.includes(id) || present.has(id));
+  const isLate = there.length > 0 && there.every(id => id in late);
+  const benched = there.length ? [] : ids.filter(id => id in bench), seen = isLate ? there.map(id => late[id]).filter(t => t > 0) : [];
+  return {won: winners.length > 0, here: there.length > 0, late: isLate, when: seen.length ? Math.min(...seen) : 0,
+    bench: benched.length ? bench[benched[0]] : null, as: there[0] || benched[0] || null};
+}
+// Links raider rid to main mid ('' or null unlinks). Returns null, or why it cannot be done.
+function setMain(rid, mid){
+  const r = raiderById(rid);
+  if (!r) return 'Unknown raider.';
+  if (!mid) { delete r.main; return null; }
+  const m = raiderById(mid);
+  if (!m || m.id === r.id) return 'A raider cannot be their own alt.';
+  if (mainIdOf(m.id) !== m.id) return m.name + ' is an alt of ' + raiderById(mainIdOf(m.id)).name + '. Pick the main.';
+  if (altsOf(r.id).length) return r.name + ' has alts of their own. Unlink those first.';
+  r.main = m.id;
+  return null;
+}
+// The links as text for the Amisia addon: "#AMISIA-ALTS 1 <game> <date>", one "A <alt> <main>"
+// per valid link (names with "_" for a space), "#END". Empty when nobody is linked.
+function altAddonText(){
+  const one = s => String(s == null ? '' : s).replace(/[\r\n|]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/ /g, '_');
+  const rows = state.raiders.filter(r => mainIdOf(r.id) !== r.id).map(r => [one(r.name), one(raiderById(mainIdOf(r.id)).name)])
+    .filter(([a, m]) => a && m).sort((x, y) => x[1].localeCompare(y[1]) || x[0].localeCompare(y[0]));
+  if (!rows.length) return '';
+  return ['#AMISIA-ALTS 1 ' + PLAY + ' ' + today(), ...rows.map(([a, m]) => 'A ' + a + ' ' + m), '#END'].join('\n');
 }
 function craftersOf(c){
   const out = [], seen = new Set();
@@ -1643,21 +1717,26 @@ function renderArchiveBar(){
 function renderArmory(){
   const q = $('#armSearch').value.trim().toLowerCase(), zone = $('#armZone').value;
   const phase = (PHASES[gameKey] || [])[$('#armPhase').value], inPhase = a => !phase || phase.zones.includes(BOSSZONE[a.boss]);
-  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id, zone).filter(inPhase)}))
-    .filter(x => !q || x.r.name.toLowerCase().includes(q))
+  // one card per player: a main with the loot of its alts
+  const mains = mainRaiders();
+  const rows = mains.map(r => ({r, alts: altsOf(r.id), aw: awardsOfGroup(r.id, zone).filter(inPhase)}))
+    .filter(x => !q || x.r.name.toLowerCase().includes(q) || x.alts.some(a => a.name.toLowerCase().includes(q)))
     .sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
-  $('#armCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
+  $('#armCount').textContent = rows.length + ' of ' + mains.length + ' raiders';
   if (!rows.length) { $('#cards').innerHTML = '<div class="empty" style="grid-column:1/-1"><b>No raiders yet</b>Add raiders on the Roster tab, or award the first item on the Loot Log tab.</div>'; return; }
-  $('#cards').innerHTML = rows.map(({r,aw}) => {
+  $('#cards').innerHTML = rows.map(({r,alts,aw}) => {
     const perZone = ZONES.map(z => [z.key, aw.filter(a => BOSSZONE[a.boss]===z.key).length]).filter(x => x[1]);
-    const at = attendance(r.id);
+    const at = attendance(r.id, groupIds(r.id));
+    // an award to an alt names the alt in the details
+    const onAlt = a => a.raider !== r.id && raiderById(a.raider) ? '<span class="alttag" style="margin:0 6px 0 0">on '+esc(raiderById(a.raider).name)+'</span>' : '';
     const last = aw.length ? aw[aw.length-1] : null;
     const open = ui.openCard === r.id;
     return '<article class="card'+(open?' open':'')+'" data-card="'+r.id+'">'
       + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'+rankTag(r.id)+'<span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
+      + (alts.length ? '<div class="alts" style="margin-top:-4px">alts: '+alts.map(a => esc(a.name)).join(', ')+'</div>' : '')
       + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
       + '<div class="meta">'+perZone.map(([z,n]) => '<span><b>'+n+'</b> '+zTag(z)+'</span>').join('')+'<span><b>'+at.was+'</b> of '+at.total+' raid'+(at.total===1?'':'s')+'</span>'+(last?'<span>last: <b>'+fmtShort(last.date)+'</b></span>':'')+'</div>'
-      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td><td class="note">'+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
+      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td><td class="note">'+onAlt(a)+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
       + '</article>';
   }).join('');
 }
@@ -2052,17 +2131,21 @@ function renderAttendance(){
   $('#attBench').value = benchMode();
   if (!$('#anDate').value) $('#anDate').value = list.length ? list[0].date : today();
   const total = countedNights().length, skipped = allNights().length - total;
-  let rows = state.raiders.map(r => ({r, at: attendance(r.id), aw: awardsOf(r.id)})).filter(x => !q || x.r.name.toLowerCase().includes(q));
+  // one row per player: a main with its alts, counted together
+  const mains = mainRaiders();
+  let rows = mains.map(r => { const ids = groupIds(r.id); return {r, ids, alts: altsOf(r.id), at: attendance(r.id, ids), aw: awardsOfGroup(r.id)}; })
+    .filter(x => !q || x.r.name.toLowerCase().includes(q) || x.alts.some(a => a.name.toLowerCase().includes(q)));
   if (show === 'low') rows = rows.filter(x => x.at.rate < 0.5);
   if (show === 'none') rows = rows.filter(x => !x.at.was);
-  if (show === 'last') rows = rows.filter(x => list.length && missedNight(x.r.id, list[0].date));
+  if (show === 'last') rows = rows.filter(x => list.length && missedNight(x.r.id, list[0].date, x.ids));
   if (show === 'late') rows = rows.filter(x => x.at.late);
   if (show === 'bench') rows = rows.filter(x => x.at.bench);
   rows.sort((a, b) => (show === 'late' ? b.at.late - a.at.late : 0) || b.at.was - a.at.was || a.r.name.localeCompare(b.r.name));
-  $('#attCount').textContent = rows.length + ' of ' + state.raiders.length + ' raiders';
+  $('#attCount').textContent = rows.length + ' of ' + mains.length + ' raiders';
   $('#attHint').hidden = false;
   $('#attHint').innerHTML = total
     ? 'A star means the raider won loot that night, a tick means they were there without winning anything, a red hot potato <span class="potato">' + potato(14) + '</span> means they missed the raid, and an amber tick on an amber cell means they came in after the raid start; the Late column counts those nights' + (total > ATT_MAX ? '. Newest ' + ATT_MAX + ' nights shown' : '') + '. A B means the raider was on the bench' + (readOnly ? '.' : '; how that counts is set on the right.') + (skipped ? ' ' + skipped + ' night' + (skipped === 1 ? ' does' : 's do') + ' not count for attendance.' : '') + (readOnly ? '' : ' Click a cell to change it, and record a night on the right.')
+      + (mains.length < state.raiders.length ? ' Alts are counted with their main (set on the Roster tab).' : '')
     : (readOnly ? 'No raid nights yet.' : 'No raid nights yet. Record one on the right, or import a loot export on the <a data-goto="import">Import tab</a>.');
   $('#attHead').innerHTML = '<tr><th>Raider</th><th class="num">Raids</th><th class="num">Rate</th><th class="num" title="Raids they came in after the start">Late</th><th class="num">Items</th><th class="num">Per raid</th>'
     + list.map(n => '<th class="d">' + fmtShort(n.date).replace(' ', '<br>') + '</th>').join('') + '</tr>';
@@ -2074,25 +2157,26 @@ function renderAttendance(){
   for (const n of list) lateBy[n.date] = lateOn(n.date);
   const benchBy = {}, mode = benchMode();
   for (const n of list) benchBy[n.date] = benchOn(n.date);
-  $('#attBody').innerHTML = rows.map(({r, at, aw}) => {
+  $('#attBody').innerHTML = rows.map(({r, ids, alts, at, aw}) => {
     const cls = at.rate >= 0.75 ? 'good' : at.rate >= 0.4 ? 'mid' : 'bad';
     const per = at.was ? (aw.length / at.was).toFixed(1) : '–';
-    return '<tr><td class="rn" style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</td>'
+    return '<tr><td class="rn" style="color:' + clsVar(r.cls) + '">' + esc(r.name)
+      + (alts.length ? '<div class="alts">alts: ' + alts.map(a => esc(a.name)).join(', ') + '</div>' : '') + '</td>'
       + '<td class="num"' + (at.bench ? ' title="on the bench on ' + at.bench + ' night' + (at.bench === 1 ? '' : 's') + ', counted as ' + BENCH_WORD[mode] + '"' : '') + '>' + at.was + '<span class="faint"> / ' + at.total + '</span></td>'
       + '<td class="num rate ' + cls + '">' + Math.round(at.rate * 100) + '%</td>'
       + (at.late ? '<td class="num lates" title="came in after the raid start on ' + at.late + ' of ' + at.was + ' raid' + (at.was === 1 ? '' : 's') + '">' + at.late + '&times;</td>' : '<td class="num faint">–</td>')
       + '<td class="num">' + aw.length + '</td>'
       + '<td class="num muted">' + per + '</td>'
       + list.map(n => {
-          const won = state.awards.some(a => a.date === n.date && a.raider === r.id);
-          const here = won || presentOn(n.date).has(r.id);
-          const late = here && r.id in lateBy[n.date];
-          const when = late ? lateTime(lateBy[n.date][r.id]) : '';
-          const bench = !here && benchBy[n.date][r.id];
-          const lock = late ? ' title="there, but late' + (when ? ' - first seen at ' + when : '') + '"'
-            : bench ? ' title="' + esc(['on the bench', bench.note || '', bench.self ? 'signed up themselves' : ''].filter(Boolean).join(' · ') + (readOnly ? '' : ' - click to change')) + '"'
-            : won ? ' title="won loot that night"' : readOnly ? '' : ' title="click to change"';
-          return '<td class="c' + (late ? ' lt' : '') + (readOnly || won ? '' : ' hot" data-att="' + r.id + '|' + n.date) + '"' + lock + '>'
+          const k = nightMark(ids, n.date, lateBy[n.date], benchBy[n.date]);
+          const {won, here, late, bench} = k;
+          const when = late ? lateTime(k.when) : '';
+          const as = k.as && k.as !== r.id && raiderById(k.as) ? ' as ' + raiderById(k.as).name : '';
+          const lock = late ? ' title="there' + as + ', but late' + (when ? ' - first seen at ' + when : '') + '"'
+            : bench ? ' title="' + esc(['on the bench' + as, bench.note || '', bench.self ? 'signed up themselves' : ''].filter(Boolean).join(' · ') + (readOnly ? '' : ' - click to change')) + '"'
+            : won ? ' title="won loot that night' + esc(as) + '"' : here && as ? ' title="there' + esc(as) + (readOnly ? '' : ' - click to change') + '"' : readOnly ? '' : ' title="click to change"';
+          // a click changes the character that was there (or on the bench), else the main
+          return '<td class="c' + (late ? ' lt' : '') + (readOnly || won ? '' : ' hot" data-att="' + (k.as || r.id) + '|' + n.date) + '"' + lock + '>'
             + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="' + (late ? 'late' : 'yes') + '">&#10003;</span>' : bench ? '<span class="bench">B</span>' : '<span class="potato" title="missed this raid">' + potato(16) + '</span>') + '</td>';
         }).join('') + '</tr>';
   }).join('');
@@ -2321,7 +2405,7 @@ function renderWishForm(){
 }
 function renderWishes(){
   renderWishForm();
-  if (!$('#wiAddonPanel').hidden) $('#wiAddonText').value = wishAddonText(WISHES);
+  if (!$('#wiAddonPanel').hidden) $('#wiAddonText').value = wishAndAltText();
   const all = wishesHere();
   const q = $('#wiSearch').value.trim().toLowerCase(), rf = $('#wiRaider').value, grp = $('#wiGroup').value, show = $('#wiShow').value;
   const keep = $('#wiRaider').value;
@@ -2458,6 +2542,9 @@ function wishAddonText(wishes){
   lines.push('#END');
   return lines.join('\n');
 }
+// "Copy for the addon": the wishes, and the alt links behind them when there are any (an addon
+// from before the alts reads up to the first #END and passes over them).
+const wishAndAltText = () => { const a = altAddonText(); return wishAddonText(WISHES) + (a ? '\n' + a : ''); };
 let wishPaste = [];   // the checked plan of "Paste from the addon"
 const WP_STATUS = {new: 'new', dup: 'already on the list', got: 'already received', noitem: 'not in the loot tables', noraider: 'unknown raider', limit: 'over the limit of 30'};
 function renderWishPaste(){
@@ -2493,10 +2580,10 @@ $('#wpAdd').addEventListener('click', async () => {
 });
 $('#wiAddon').addEventListener('click', () => {
   const panel = $('#wiAddonPanel'); panel.hidden = !panel.hidden;
-  if (!panel.hidden) { $('#wiAddonText').value = wishAddonText(WISHES); $('#wiAddonText').select(); }
+  if (!panel.hidden) { $('#wiAddonText').value = wishAndAltText(); $('#wiAddonText').select(); }
 });
 $('#wiAddonCopy').addEventListener('click', async () => {
-  const ta = $('#wiAddonText'); ta.value = wishAddonText(WISHES); ta.select();
+  const ta = $('#wiAddonText'); ta.value = wishAndAltText(); ta.select();
   try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia wuensche, paste it into the box and press Importieren.'); }
   catch (e) { say('Press Ctrl+C to copy the selected text.'); }
 });
@@ -2794,18 +2881,34 @@ function renderMyChar(){
   const key = gameKey + '|' + profsOf(r).join('|');
   if ($('#myP1').dataset.key !== key) { $('#myP1').dataset.key = key; $('#myP1').innerHTML = profOptions(profsOf(r)[0] || ''); $('#myP2').innerHTML = profOptions(profsOf(r)[1] || ''); }
 }
+// The main picker of the roster's edit row: mains only, never the raider itself; locked for a
+// main with alts of its own.
+function mainSelect(r){
+  const own = altsOf(r.id).length, cur = mainIdOf(r.id) !== r.id ? mainIdOf(r.id) : '';
+  const opts = mainRaiders().filter(x => x.id !== r.id).sort((a, b) => a.name.localeCompare(b.name));
+  return '<select class="inp" id="erMain"' + (own ? ' disabled title="' + esc(r.name) + ' has alts of their own"' : ' title="Alt of: attendance and loot count for the main"') + '>'
+    + '<option value="">Main character</option>' + opts.map(x => '<option value="' + x.id + '"' + (x.id === cur ? ' selected' : '') + '>Alt of ' + esc(x.name) + '</option>').join('') + '</select>';
+}
 function renderRoster(){
   renderMyChar();
   if (!$('#rCls').options.length) $('#rCls').innerHTML = classOptions('Warrior');
   if ($('#rP1').dataset.game !== gameKey) { $('#rP1').dataset.game = gameKey; $('#rP1').innerHTML = profOptions(''); $('#rP2').innerHTML = profOptions(''); }
-  const rows = state.raiders.map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name));
+  // every character its own row; alts right under their main
+  const rows = [];
+  for (const m of mainRaiders().map(r => ({r, aw: awardsOf(r.id)})).sort((a,b) => b.aw.length - a.aw.length || a.r.name.localeCompare(b.r.name))) {
+    rows.push(m);
+    for (const a of altsOf(m.r.id)) rows.push({r: a, aw: awardsOf(a.id), main: m.r});
+  }
+  const altText = altAddonText();
+  $('#altAddonPanel').hidden = !altText;
+  $('#altAddonText').value = altText;
   if (!rows.length) { $('#rosterBody').innerHTML = '<tr><td colspan="8"><div class="empty"><b>Empty roster</b>Add your raiders with the form on the right.</div></td></tr>'; return; }
-  $('#rosterBody').innerHTML = rows.map(({r,aw}) => {
+  $('#rosterBody').innerHTML = rows.map(({r,aw,main}) => {
     const perZone = ZONES.map(z => [z.key, aw.filter(a => BOSSZONE[a.boss]===z.key).length]).filter(x => x[1]);
     const editing = ui.editRaider === r.id;
     return '<tr>'
-      + (editing ? '<td colspan="3"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select><select class="inp" id="erP1">'+profOptions(profsOf(r)[0]||'')+'</select><select class="inp" id="erP2">'+profOptions(profsOf(r)[1]||'')+'</select></div></td>'
-                 : '<td>'+rName(r)+rankTag(r.id)+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
+      + (editing ? '<td colspan="3"><div class="rowedit"><input class="inp" id="erName" value="'+esc(r.name)+'"><select class="inp" id="erCls">'+classOptions(r.cls)+'</select><select class="inp" id="erP1">'+profOptions(profsOf(r)[0]||'')+'</select><select class="inp" id="erP2">'+profOptions(profsOf(r)[1]||'')+'</select>'+mainSelect(r)+'</div></td>'
+                 : '<td'+(main ? ' class="altrow"' : '')+'>'+rName(r)+rankTag(r.id)+(main ? '<span class="alttag">alt of '+esc(main.name)+'</span>' : '')+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
       + '<td class="num">'+aw.length+'</td><td><span class="chips">'+perZone.map(([z,n]) => zTag(z).replace('</span>', ' '+n+'</span>')).join('')+'</span></td>'
       + '<td class="muted">'+(aw.length?fmtDate(aw[0].date):'—')+'</td><td class="muted">'+(aw.length?fmtDate(aw[aw.length-1].date):'—')+'</td>'
       + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+r.id+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+r.id+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+r.id+'">Remove</button>'))+'</td>'
@@ -2851,7 +2954,7 @@ $('#bulkAdd').addEventListener('click', () => {
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('[data-copy]'); if (!b) return;
   const ta = $('#' + b.dataset.copy); ta.select();
-  try { await navigator.clipboard.writeText(ta.value); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy macro', 1500); } catch (e) { say('Press Ctrl+C to copy the selected macro.'); }
+  try { await navigator.clipboard.writeText(ta.value); b.dataset.label = b.dataset.label || b.textContent; b.textContent = 'Copied'; setTimeout(() => b.textContent = b.dataset.label, 1500); } catch (e) { say('Press Ctrl+C to copy the selected macro.'); }
 });
 
 /* ---------------- Gargul import ---------------- */
@@ -4041,7 +4144,7 @@ $('#rosterBody').addEventListener('click', async ev => {
   const e = ev.target.closest('[data-redit]'), d = ev.target.closest('[data-rdel]'), s = ev.target.closest('[data-rsave]'), c = ev.target.closest('[data-rcancel]');
   if (e) { ui.editRaider = e.dataset.redit; renderRoster(); $('#erName').focus(); }
   if (c) { ui.editRaider = null; renderRoster(); }
-  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); } ui.editRaider = null; markDirty(); }
+  if (s) { const r = raiderById(s.dataset.rsave); const name = $('#erName').value.trim(); if (r && name) { r.name = name; r.cls = $('#erCls').value; r.profs = readProfs('#erP1', '#erP2'); if (memberOf(r.id) && SUPA) SUPA.rpc('set_member_profs', {p_raider: r.id, p_profs: r.profs}).then(({error}) => { if (error) say('Could not save the professions of the linked member: ' + (error.message || error.code)); else loadMembers(); }); const mp = $('#erMain'), why = mp && !mp.disabled ? setMain(r.id, mp.value) : null; if (why) say(why); } ui.editRaider = null; markDirty(); }
   if (d) {
     const r = raiderById(d.dataset.rdel); if (!r || readOnly) return;
     fitShelf(state);
