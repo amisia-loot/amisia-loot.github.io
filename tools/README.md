@@ -230,12 +230,15 @@ Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the 
 dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on a
 hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real data).
 
-## make_minimap_icon.py
+## make_icons.py
 
-Draws `addon/Amisia/Media/Icons/Minimap.tga`, the round minimap button icon: the golden A of
-`Amisia.tga` on the guild's turquoise stone with a gold rim, as a genuine 64x64 32-bit TGA.
-`--preview out.png` writes an enlarged PNG to look at. A new or renamed texture needs a full client
-restart before WoW shows it; `/reload` is not enough. Requires Pillow.
+Draws the addon's icons from scratch as genuine 32-bit TGAs: `Amisia.tga` (128x128, the window
+portrait and the addon list icon: the golden A over the infinity loop of the guild logo on the
+logo's turquoise stone) and `Minimap.tga` (64x64, the same with a gold rim). The A is set in Cinzel
+(`tools/fonts/Cinzel.ttf`, SIL Open Font License 1.1, `tools/fonts/OFL.txt`); the font is only used
+to draw the images and does not ship in the addon. `--preview DIR` also writes PNGs to look at. A
+changed texture needs a full client restart before WoW shows it; `/reload` is not enough. Requires
+Pillow.
 
 ## build_bossnames.py
 
