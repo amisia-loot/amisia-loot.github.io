@@ -101,54 +101,6 @@ def log(*a):
     print(*a, file=sys.stderr)
 
 
-# ---------------------------------------------------------------- stat weights
-# The level brackets RXP's Forever weights are cut into.
-BRACKETS = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 49), (50, 60)]
-CLASS_ORDER = ['WARRIOR', 'PALADIN', 'HUNTER', 'ROGUE', 'PRIEST', 'SHAMAN', 'MAGE', 'WARLOCK', 'DRUID']
-# Healers and tanks have no RXP weights (it is a levelling guide); these are ours, the same for
-# every level. Weapon damage barely matters to them. SP weighs spell damage and HEAL healing; spell
-# power, which Forever gives healing gear, counts for both.
-HEALER = {'INT': 1.0, 'SPI': 0.6, 'HEAL': 1.0, 'MP5': 2.5, 'STA': 0.4, 'SCRIT': 6.0, 'HASTE': 4.0,
-          'ARMOR': 0.005, 'DPS': 0.1}
-TANK = {'STA': 1.5, 'ARMOR': 0.1, 'DEF': 1.5, 'DODGE': 12.0, 'PARRY': 10.0, 'BLOCK': 6.0, 'BLOCKVAL': 0.6,
-        'STR': 1.0, 'AGI': 1.0, 'HIT': 4.0, 'EXP': 4.0, 'AP': 0.3, 'DPS': 4.0, 'HP5': 1.0}
-OWN = {
-    'heal_priest': dict(HEALER, SPI=0.9),
-    'heal_druid': dict(HEALER, SPI=0.8),
-    'heal_shaman': dict(HEALER, SPI=0.3, MP5=3.0),
-    'heal_paladin': dict(HEALER, INT=1.1, SPI=0.2, SCRIT=8.0),
-    'tank_warrior': TANK,
-    'tank_paladin': dict(TANK, SP=0.5, INT=0.3, MP5=1.5),
-    'tank_bear': {'STA': 1.5, 'AGI': 1.6, 'ARMOR': 0.12, 'DODGE': 12.0, 'STR': 1.2, 'DEF': 1.2, 'HIT': 4.0,
-                  'EXP': 4.0, 'AP': 0.4, 'CRIT': 3.0, 'HP5': 1.0},
-}
-# class token, spec key, German name, role, RXP (Class, Spec) or one of OWN
-SPECS = [
-    ('WARRIOR', 'dps', 'Waffen/Furor', 'dps', ('Warrior', None)),
-    ('WARRIOR', 'tank', 'Schutz', 'tank', 'tank_warrior'),
-    ('PALADIN', 'ret', 'Vergeltung', 'dps', ('Paladin', 'Retribution')),
-    ('PALADIN', 'holy', 'Heilig', 'heal', 'heal_paladin'),
-    ('PALADIN', 'tank', 'Schutz', 'tank', 'tank_paladin'),
-    ('HUNTER', 'dps', 'Jäger', 'dps', ('Hunter', None)),
-    ('ROGUE', 'dps', 'Schurke', 'dps', ('Rogue', None)),
-    ('PRIEST', 'shadow', 'Schatten', 'dps', ('Priest', 'Shadow')),
-    ('PRIEST', 'disc', 'Disziplin', 'dps', ('Priest', 'Discipline')),
-    ('PRIEST', 'holy', 'Heilig', 'heal', 'heal_priest'),
-    ('SHAMAN', 'ele', 'Elementar', 'dps', ('Shaman', 'Elemental')),
-    ('SHAMAN', 'enh', 'Verstärkung', 'dps', ('Shaman', 'Enhancement')),
-    ('SHAMAN', 'resto', 'Wiederherstellung', 'heal', 'heal_shaman'),
-    ('MAGE', 'frost', 'Frost', 'dps', ('Mage', 'Frost')),
-    ('MAGE', 'fire', 'Feuer', 'dps', ('Mage', 'Fire')),
-    ('MAGE', 'arcane', 'Arkan', 'dps', ('Mage', 'Arcane')),
-    ('WARLOCK', 'affli', 'Gebrechen', 'dps', ('Warlock', 'Affliction')),
-    ('WARLOCK', 'destro', 'Zerstörung', 'dps', ('Warlock', 'Destruction')),
-    ('DRUID', 'balance', 'Gleichgewicht', 'dps', ('Druid', 'Balance')),
-    ('DRUID', 'feral', 'Wilder Kampf', 'dps', ('Druid', 'Feral Combat')),
-    ('DRUID', 'bear', 'Bär', 'tank', 'tank_bear'),
-    ('DRUID', 'resto', 'Wiederherstellung', 'heal', 'heal_druid'),
-]
-
-
 # ---------------------------------------------------------------- OneForAll
 def load_oneforall(base=os.path.join(FOREVER_ADDONS, 'OneForAll')):
     from lupa.lua51 import LuaRuntime

@@ -97,9 +97,9 @@ Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixt
 
 ## build_gear.py
 
-Builds `addon/Amisia/GearData.lua` and `addon/Amisia/GearWeights.lua` for the addon's gear window
-(`/amisia gear`, WoW Forever only): every item a levelling character can wear, where it comes from,
-and the stat weights per class, spec and level.
+Builds `addon/Amisia/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
+every item a levelling character can wear and where it comes from. The stat weights
+(`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
 ```
 python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--no-wowsrc] [--itemsparse CSV|DIR]
@@ -117,12 +117,9 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   profession; the skill is 0 = unknown unless AtlasLoot or OneForAll name it); and the Amisia item
   collector (drops, merchants, quests, the auction house as players met them; German names).
 - Optional, PC only, skipped with a note when missing: OneForAll (Forever dungeons, dungeon quests,
-  Merchant's Favor recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes with skill),
-  RestedXP's Forever `StatWeights.lua` (without it `GearWeights.lua` stays as it is).
+  Merchant's Favor recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes with skill).
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
-- The DPS weights come from RestedXP's Forever `StatWeights.lua` (CC BY-NC-SA 4.0, so
-  `GearWeights.lua` carries that licence); healer and tank weights are defined in the script.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
   plus the ids its sources name but no item table knows (`M` in GearData.lua, items Forever still
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go
@@ -148,15 +145,15 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - Forever raids: drops the site recorded in `data/forever.js` for a zone that
   `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
   raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
-- Both files carry `game = "forever"`, `cap = 60` and are loaded through the TOC condition
-  `[AllowLoadGameType camelot]`.
+- `GearData.lua` carries `game = "forever"`, `cap = 60`; it and `GearWeights.lua` are loaded through
+  the TOC condition `[AllowLoadGameType camelot]`.
 
 Runs on the N100. On the PC it also takes the scan and the PC-only sources. `AMISIA_WOW_ROOT`
 overrides the WoW install path. Requires `lupa`.
 
 Licences of the data: AllTheThings MIT (`GearData.lua`, `MapData.lua`, `DungeonQuestData.lua`;
 `addon/Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
-the installed folder), RestedXP's Forever weights CC BY-NC-SA 4.0 (`GearWeights.lua`), wago.tools
+the installed folder), wago.tools
 exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). Still open:
 OneForAll's licence (check its installed folder on the PC) and wowsrc.com, whose pages state no
 licence (its robots.txt allows crawling, which is not one); `--no-wowsrc` leaves it out. No QuestieDB

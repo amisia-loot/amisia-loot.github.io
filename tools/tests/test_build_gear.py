@@ -389,3 +389,15 @@ def test_itemsparse_from_a_folder(tmp_path):
         assert False, 'a folder without the table stops the build'
     except SystemExit as e:
         assert 'no ItemSparse' in str(e)
+
+
+def test_no_rxp_era_weights_left():
+    """Review 25: the weights are Amisia's own (build_bis.py). build_gear.py keeps none of the
+    RestedXP-era weight constants, and tools/README.md claims no RestedXP weights or their licence."""
+    for name in ('BRACKETS', 'CLASS_ORDER', 'SPECS', 'OWN', 'HEALER', 'TANK'):
+        assert not hasattr(build_gear, name), name
+    with open(build_gear.__file__, encoding='utf-8') as fh:
+        assert 'RXP' not in fh.read()
+    with open(os.path.join(os.path.dirname(build_gear.__file__), 'README.md'), encoding='utf-8') as fh:
+        text = fh.read()
+    assert 'RestedXP' not in text and 'CC BY-NC-SA' not in text and 'StatWeights' not in text
