@@ -30,40 +30,32 @@ assert(st.value:GetText() == "10")
 local SL = dofile(ADDON_DIR .. "/../tests/layout.lua")(st, 120, 20)
 SL.row("stepper", st.minus, st.field, st.plus)
 
--- a chip in the client's filter-button look: open when on, the state follows the mouse
+-- a chip in the window's classic look: the client's small red button, gold text when on; off the
+-- same button darkened with grey text
 local chip = W.Chip(root, "MS", 30)
-local B = "common-dropdown-b-button"
-assert(chip.bg.atlas == B .. "-open" and chip.on and chip.edges == nil, "on: open, no gold frame: " .. tostring(chip.bg.atlas))
+assert(chip.styled and chip.inherits.SharedButtonSmallTemplate and chip.edges == nil, "the red button")
+local function shade(c) return c.Left.vertexColor[1], c.Center.vertexColor[1], c.Right.vertexColor[1] end
+assert(chip.on and select(1, shade(chip)) == 1 and select(2, shade(chip)) == 1 and select(3, shade(chip)) == 1, "on: as it is")
 assert(chip.label.textColor[1] == W.GOLD[1] and chip.label.textColor[2] == W.GOLD[2], "gold text when on")
 chip:SetOn(false)
-assert(chip.bg.atlas == B and chip.label.textColor[1] == 0.6 and chip.label.textColor[2] == 0.6, "off: normal and grey")
-chip:GetScript("OnEnter")(chip); assert(chip.bg.atlas == B .. "-hover", chip.bg.atlas)
-chip:GetScript("OnMouseDown")(chip); assert(chip.bg.atlas == B .. "-pressedhover", chip.bg.atlas)
-chip:GetScript("OnMouseUp")(chip); chip:GetScript("OnLeave")(chip); assert(chip.bg.atlas == B, chip.bg.atlas)
-chip:Disable(); assert(chip.bg.atlas == B .. "-disabled")
-chip:Enable(); chip:SetOn(true); assert(chip.bg.atlas == B .. "-open")
--- the atlas on the chip itself, not outside, in three pieces without the arrow: the left end, a
--- stretch of the middle, the left end turned round on the right
-local P = chip.pieces
-assert(P and #P == 3 and P[1] == chip.bg, "three pieces")
-assert(P[1].points.TOPLEFT.x == 0 and P[1].points.BOTTOMLEFT and P[3].points.TOPRIGHT.x == 0 and P[3].points.BOTTOMRIGHT)
-assert(P[1]._w == 8 and P[3]._w == 8 and P[2].points.TOPLEFT and P[2].points.BOTTOMRIGHT)
-for _, p in ipairs(P) do assert(p.atlas == B .. "-open", p.atlas) end
-local c1, c2, c3 = P[1].texCoord, P[2].texCoord, P[3].texCoord
-assert(c1 and c2 and c3, "each piece cut")
-assert(c1[1] == 0 and math.abs(c1[2] - 8 / 143) < 1e-9, "the left end")
-assert(math.abs(c3[1] - 8 / 143) < 1e-9 and c3[2] == 0, "the left end turned round")
-assert(c2[2] <= 0.45 + 1e-9, "the middle clear of the arrow")
--- a choice keeps the whole atlas with its arrow (a click goes on to the next value)
+local l, c, r = shade(chip)
+assert(l < 0.6 and c == l and r == l, "off: darkened")
+assert(chip.label.textColor[1] == 0.6 and chip.label.textColor[2] == 0.6, "off: grey text")
+-- a press keeps the darkening (the template sets its slices again)
+chip:GetScript("OnMouseDown")(chip); chip:GetScript("OnMouseUp")(chip)
+assert(select(1, shade(chip)) == l, "still darkened after a press")
+chip:Disable(); assert(chip.label.textColor[1] == 0.45, "disabled: dim text")
+chip:Enable(); chip:SetOn(true); assert(select(1, shade(chip)) == 1)
+-- a tooltip is hooked: the template's hover stays
+W.Tooltip(chip, "Titel")
+chip:GetScript("OnEnter")(chip); chip:GetScript("OnLeave")(chip)
+-- a choice is the same button, its label the value
 local choice = W.Choice(root, 120)
-assert(choice.pieces == nil and choice.bg.points.TOPLEFT and choice.bg.points.BOTTOMRIGHT)
+choice:SetValues({ { "a", "Alpha" }, { "b", "Beta" } }); choice:SetValue("a")
+assert(choice.styled and choice.label:GetText() == "Alpha")
 -- the reset button: the client's red x
 local rb = W.ResetButton(root, 18, function() end)
 assert(rb._w == 18 and rb._h == 18 and rb.icon.atlas == "auctionhouse-ui-filter-redx")
--- a tooltip keeps the hover look
-W.Tooltip(chip, "Titel")
-chip:GetScript("OnEnter")(chip); assert(chip.bg.atlas == B .. "-hover", "hover with a tooltip")
-chip:GetScript("OnLeave")(chip); assert(chip.bg.atlas == B .. "-open")
 
 local c = W.Choice(root, 120, function(v) seen = v end)
 c:SetValues({ { "a", "Eins" }, { "b", "Zwei" } })

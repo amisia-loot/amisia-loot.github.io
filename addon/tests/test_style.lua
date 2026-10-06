@@ -309,10 +309,10 @@ local flatList = W.List(page, 2, 20, function() end, function() end)
 STUB.missingAtlases.Professions_Recipe_Hover = nil
 assert(flatList.rows[1].hover.atlas == nil and flatList.rows[1].hover.color[4] == 0.08)
 
--- the chip without its atlas: the flat look of before
-STUB.missingAtlases["common-dropdown-b-button"] = true
+-- the chip without the red button template: the flat look of before
+STUB.missingTemplates.SharedButtonSmallTemplate = true
 local flatChip = W.Chip(page, "MS", 30)
-STUB.missingAtlases["common-dropdown-b-button"] = nil
+STUB.missingTemplates.SharedButtonSmallTemplate = nil
 assert(flatChip.edges and flatChip.bg.color and flatChip.bg.atlas == nil)
 flatChip:SetOn(false); assert(flatChip.bg.color[4] == 0.04)
 
@@ -644,7 +644,7 @@ NS.GearRefresh(true)
 local row2 = { GF.kindButton, GF.factionButton }
 for _, b in ipairs(GF.filterButtons) do row2[#row2 + 1] = b end
 GL.row("gear second row", unpack(row2))
-for _, b in ipairs(row2) do assert(b.bg.atlas and b.bg.atlas:find("^common%-dropdown%-b%-button"), "the shared chips") end
+for _, b in ipairs(row2) do assert(b.styled and b.inherits.SharedButtonSmallTemplate, "the shared chips: red buttons") end
 AmisiaDB.settings.gear.view = "list"
 NS.GearRefresh(true)
 GL.row("gear third row", GF.viewButtons.overview, GF.viewButtons.list, GF.prevCol, GF.colLabel, GF.nextCol, GF.mine)

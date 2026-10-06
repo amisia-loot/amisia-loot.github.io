@@ -516,6 +516,7 @@ local function region(parent)
     -- an atlas of the client's art by name; the test reads it back. Every call is counted
     -- (STUB.atlasCalls); an atlas the client lacks draws nothing and answers false, as in the client.
     f.SetTexCoord = function(self, ...) self.texCoord = { ... } end
+    f.SetVertexColor = function(self, r, g, b, a) self.vertexColor = { r, g, b, a } end
     f.SetAtlas = function(self, name, useAtlasSize)
         assert(type(name) == "string" and name ~= "", "SetAtlas needs an atlas name")
         STUB.atlasCalls[name] = (STUB.atlasCalls[name] or 0) + 1

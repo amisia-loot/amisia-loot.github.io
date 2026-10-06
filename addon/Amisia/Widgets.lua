@@ -109,12 +109,6 @@ function W.Button(parent, label, width, onClick, opts)
     return b
 end
 
--- The atlases of the client's filter button (WowStyle1FilterDropdown, Blizzard_Menu MenuConstants).
-local CHIP = { normal = "common-dropdown-b-button", hover = "common-dropdown-b-button-hover",
-               pressed = "common-dropdown-b-button-pressed", pressedhover = "common-dropdown-b-button-pressedhover",
-               open = "common-dropdown-b-button-open", disabled = "common-dropdown-b-button-disabled" }
-W.CHIP_ATLAS = CHIP
-
 -- The client's small reset button (UIResetButtonTemplate: the red circle with the gold x), for
 -- "back to the default" and "remove this". Without the template or its atlas a small red button.
 function W.ResetButton(parent, size, onClick)
@@ -137,67 +131,24 @@ function W.ResetButton(parent, size, onClick)
     return b
 end
 
--- A toggle chip in the look of the client's filter button: open and gold text when on, the normal
--- button and grey text when off; hover, press and disabled as the client shows them. The atlas
--- lies on the chip itself (the client's sits 4 px outside, chips 3-4 px apart would touch).
--- Without the atlas the flat chip of before (gold frame).
--- The client's filter button carries its dropdown arrow in the atlas. A chip that only switches
--- something on or off (opts.arrow not set) leaves the arrow out: its left end, a stretch of its
--- middle and the left end turned round as the right end. Without the atlas data the whole atlas.
-local CHIP_CAP = 8
-local function chipPieces(b)
-    if not (C_Texture and C_Texture.GetAtlasInfo) then return nil end
-    local ok, info = pcall(C_Texture.GetAtlasInfo, CHIP.normal)
-    if not ok or type(info) ~= "table" or type(info.width) ~= "number" or info.width <= 4 * CHIP_CAP
-        or type(info.leftTexCoord) ~= "number" or type(info.rightTexCoord) ~= "number" then
-        return nil
-    end
-    local parts = {}
-    for i = 1, 3 do parts[i] = b:CreateTexture(nil, "BACKGROUND") end
-    parts[1]:SetPoint("TOPLEFT"); parts[1]:SetPoint("BOTTOMLEFT"); parts[1]:SetWidth(CHIP_CAP)
-    parts[3]:SetPoint("TOPRIGHT"); parts[3]:SetPoint("BOTTOMRIGHT"); parts[3]:SetWidth(CHIP_CAP)
-    parts[2]:SetPoint("TOPLEFT", parts[1], "TOPRIGHT"); parts[2]:SetPoint("BOTTOMRIGHT", parts[3], "BOTTOMLEFT")
-    return parts
-end
-
--- the state's atlas on the pieces, each cut from the atlas's own coordinates
-local function setChipAtlas(b, name)
-    if not b.pieces then
-        b.bg:SetAtlas(name)
-        return
-    end
-    local info = C_Texture.GetAtlasInfo(name) or C_Texture.GetAtlasInfo(CHIP.normal)
-    local l, r = info.leftTexCoord, info.rightTexCoord
-    local t, bt = info.topTexCoord or 0, info.bottomTexCoord or 1
-    local cap = (r - l) * CHIP_CAP / info.width
-    -- the middle from the left part of the atlas, well clear of the arrow on the right
-    local midEnd = l + (r - l) * 0.45
-    local spans = { { l, l + cap }, { l + cap, midEnd }, { l + cap, l } }
-    for i, p in ipairs(b.pieces) do
-        p:SetAtlas(name, false)
-        p:SetTexCoord(spans[i][1], spans[i][2], t, bt)
-    end
-    b.bg.atlas = name
-end
-
-function W.Chip(parent, label, width, onClick, opts)
-    local b = CreateFrame("Button", nil, parent)
+-- A toggle chip in the classic look of the window: the client's small red button
+-- (SharedButtonSmallTemplate, as "Pausieren" and the profession window's "Erstellen"). On: the
+-- button as it is, gold text. Off: the same button darkened, grey text. Press, hover and disabled
+-- as the template shows them (its scripts are hooked, never replaced). Without the template the
+-- flat chip of before (gold frame).
+local CHIP_OFF = 0.45
+function W.Chip(parent, label, width, onClick)
+    local b = inherit("Button", nil, parent, "SharedButtonSmallTemplate", function(f) return f.Left and f.Right and f.Center end)
+    local styled = b ~= nil
+    if not b then b = CreateFrame("Button", nil, parent) end
     b:SetSize(width or 60, 20)
+    if styled and b.SetText then b:SetText("") end
     b.label = W.Text(b, "GameFontHighlightSmall")
     b.label:SetPoint("CENTER")
     b.label:SetJustifyH("CENTER")
     b.label:SetText(label or "")
-    local styled = hasAtlas(CHIP.normal)
-    if styled then
-        b.pieces = not (opts and opts.arrow) and chipPieces(b) or nil
-        if b.pieces then
-            -- bg stands for the pieces (its atlas field names the state)
-            b.bg = b.pieces[1]
-        else
-            b.bg = b:CreateTexture(nil, "BACKGROUND")
-            b.bg:SetAllPoints()
-        end
-    else
+    b.styled = styled
+    if not styled then
         b.bg = W.Flat(b, 1, 1, 1, 0.06)
         b.edges = W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.35)
         local hl = b:CreateTexture(nil, "HIGHLIGHT")
@@ -205,41 +156,36 @@ function W.Chip(parent, label, width, onClick, opts)
         hl:SetColorTexture(1, 1, 1, 0.08)
     end
     function b:UpdateChip()
-        if styled then
-            local s
-            if self.IsEnabled and not self:IsEnabled() then s = CHIP.disabled
-            elseif self.chipDown and self.chipOver then s = CHIP.pressedhover
-            elseif self.chipOver then s = CHIP.hover
-            elseif self.chipDown then s = CHIP.pressed
-            elseif self.on then s = CHIP.open
-            else s = CHIP.normal end
-            setChipAtlas(self, s)
+        local on = self.on
+        if self.styled then
+            local v = on and 1 or CHIP_OFF
+            for _, k in ipairs({ "Left", "Right", "Center" }) do self[k]:SetVertexColor(v, v, v) end
         else
-            local on = self.on
             self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
             W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
         end
-    end
-    function b:SetOn(on)
-        self.on = on
-        if on then
+        if self.IsEnabled and not self:IsEnabled() then
+            self.label:SetTextColor(0.45, 0.45, 0.45)
+        elseif on then
             self.label:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
         else
             self.label:SetTextColor(0.6, 0.6, 0.6)
         end
+    end
+    function b:SetOn(on)
+        self.on = on
         self:UpdateChip()
     end
-    -- the hover look; W.Tooltip keeps it through this
-    function b:SetOver(on)
-        self.chipOver = on
-        self:UpdateChip()
+    -- the hover look (the template's highlight); W.Tooltip calls this
+    function b:SetOver(on) self.chipOver = on end
+    local function hook(script, fn)
+        if b.HookScript then b:HookScript(script, fn) else b:SetScript(script, fn) end
     end
-    b:SetScript("OnEnter", function(self) self:SetOver(true) end)
-    b:SetScript("OnLeave", function(self) self:SetOver(false) end)
-    b:SetScript("OnMouseDown", function(self) self.chipDown = true self:UpdateChip() end)
-    b:SetScript("OnMouseUp", function(self) self.chipDown = false self:UpdateChip() end)
-    b:SetScript("OnEnable", function(self) self:UpdateChip() end)
-    b:SetScript("OnDisable", function(self) self.chipDown = false self:UpdateChip() end)
+    hook("OnEnable", function(self) self:UpdateChip() end)
+    hook("OnDisable", function(self) self:UpdateChip() end)
+    -- the template sets its slices again on a press: the darkening follows
+    hook("OnMouseDown", function(self) self:UpdateChip() end)
+    hook("OnMouseUp", function(self) self:UpdateChip() end)
     b:SetOn(true)
     if onClick then b:SetScript("OnClick", onClick) end
     return b
@@ -247,8 +193,7 @@ end
 
 -- A chip that cycles through its values on click.
 function W.Choice(parent, width, onChange)
-    -- the arrow stays: a click goes on to the next value
-    local c = W.Chip(parent, "", width or 120, nil, { arrow = true })
+    local c = W.Chip(parent, "", width or 120)
     function c:SetValues(values) self.values = values end
     function c:SetValue(v)
         self.current = v
@@ -406,15 +351,17 @@ function W.ArrowButton(parent, dir, size, onClick)
     return b
 end
 
+-- On a template button the tooltip is hooked, so the template's own hover look stays.
 function W.Tooltip(frame, title, text)
-    frame:SetScript("OnEnter", function(self)
+    local set = frame.styled and frame.HookScript and frame.HookScript or frame.SetScript
+    set(frame, "OnEnter", function(self)
         if self.SetOver then self:SetOver(true) end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(title, 1, 0.82, 0)
         if text and text ~= "" then GameTooltip:AddLine(text, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
-    frame:SetScript("OnLeave", function(self)
+    set(frame, "OnLeave", function(self)
         if self.SetOver then self:SetOver(false) end
         GameTooltip:Hide()
     end)
