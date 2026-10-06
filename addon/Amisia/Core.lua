@@ -3,7 +3,7 @@
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
 
-ns.VERSION = "2.4.5"
+ns.VERSION = "2.4.6"
 
 -- The item functions live in C_Item (WoW Forever has no GetItemInfo global).
 local GetItemInfo = C_Item.GetItemInfo
