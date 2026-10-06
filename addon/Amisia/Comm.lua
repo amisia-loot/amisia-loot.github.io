@@ -645,8 +645,8 @@ end
 
 local seq = 0
 
--- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP" or "DK"; key the raid key
--- (DK: the bucket key, the same "date:instance" form). opts as CommSend. Returns true and the
+-- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK" or "CK"; key the raid key
+-- (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"). opts as CommSend. Returns true and the
 -- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end

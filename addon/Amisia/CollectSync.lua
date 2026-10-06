@@ -206,7 +206,9 @@ ns.OnEvent("PLAYER_LOGIN", setFirst)
 local function announce()
     if not firstAt and learned > 0 then setFirst() end
     if not firstAt or now() < firstAt or not canTalk() then return end
-    local total = indexNow().total
+    -- the counts, not the index: the index is built again only when something is sent
+    local c = ns.CollectCounts()
+    local total = c.q + c.s + c.w
     if not announced then
         if total == 0 then
             emptyAtFirst = true

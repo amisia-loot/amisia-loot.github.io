@@ -90,11 +90,18 @@ Gemessen 2026-10-06: `Amisia.lua` vom PC ist 2,33 MB, davon `scan.items` 2,09 MB
 |---|---|---|---|
 | Quests `q` | 2500 | ~120 B | ~300 KB |
 | Händler `s` | 500 | ~150 B | ~75 KB (bis 48 Items je Händler größer) |
-| Welt `w` | 2500 | ~70 B | ~175 KB |
+| Welt `w` | 2000 | ~70 B | ~140 KB |
 
-Zusätzlich ein Byte-Budget von 400 KB (Summe der Satzlängen plus 16 je Satz, nahe am Text in der
-Datei). Darüber und über den Satzgrenzen fallen die ältesten Sätze (kleinster Tag, dann Art
-q/s/w, dann höchste ID). Beim Laden wird jeder Satz neu geprüft; kaputte fallen.
+Zusätzlich ein Byte-Budget von 480 KB (Summe der Satzlängen plus 16 je Satz; das ist genau der
+Text `[id] = "Satz",` mit zwei Tabs in der Datei). Darüber und über den Satzgrenzen fallen die
+ältesten Sätze (kleinster Tag; am selben Tag zuerst Weltdrops, dann Händler, dann Quests; dann die
+höchste ID), und zwar bis 95 % der Grenze, damit eine volle Tabelle nicht bei jedem Satz sortiert
+wird. Beim Laden wird jeder Satz neu geprüft; kaputte fallen.
+
+Messung im Test (`test_collector.lua`, volle Tabellen mit typischen Sätzen): 2375 Quests,
+475 Händler, 926 Mobs passen in die 480 KB (477 745 Bytes Dateitext); das Budget, nicht die
+Satzgrenze, begrenzt dann die Weltdrops. Ein Abend Spielen ergibt erfahrungsgemäß einige Dutzend
+Quests und Mobs (wenige KB).
 
 ## Beobachtung
 
@@ -136,18 +143,24 @@ Abgleich auslösen); Prüfsumme eines Bündels = 4 Hex über "id=summe" sortiert
   nach dem Login (gestreut nach der Client-ID), dann höchstens alle 30 Minuten nach eigenen neuen
   Daten oder einmal nach gehörten.
 - **CQ** (Flüstern) `<Art>` -> **CI** `<Art> <Teil> <Teile> bb:hhhh:n,...` (bis 20 je Teil).
-- **CR** (Flüstern) `<Art><bb> <bekannt>`: bekannt = je eigener Satz des Bündels 4 Hex über
-  "id=summe", höchstens 45, sonst `*`. Antwort: Daten **CK** (Schlüssel `0000-00-00:<n>`,
-  n = Art*100 + Bündel + 1) mit `{ v = 1, k = Art, b = Bündel, r = { id, Satz, ... } }`, nur
-  Sätze, die der Fragende nicht so hat, höchstens 60 Sätze und 20 Teile.
+- **CR** (Flüstern) `(<Art><bb> <bekannt>)...`: bis 12 Bündel einer Art (höchstens 220 Zeichen);
+  bekannt = je eigener Satz des Bündels 4 Hex über "id=summe", höchstens 45, sonst `*`. Antwort:
+  Daten **CK** (Schlüssel `0000-00-00:<n>`, n = Art*100 + erstes Bündel + 1) mit
+  `{ v = 1, k = Art, r = { id, Satz, ... } }`, nur Sätze, die der Fragende nicht so hat, höchstens
+  60 Sätze und 20 Teile; was nicht passt, kommt in einer späteren Runde (das Bündel unterscheidet
+  sich dann noch). Eine leere Antwort ist erlaubt (der Fragende wartet nicht umsonst).
 - **CW** `<Sekunden>`: beschäftigt, später wieder.
+
+Ein Fragender hat immer nur eine Anfrage offen (Wartezeit 180 s); eine neue ersetzt beim Antwortenden,
+was für ihn noch wartet. Blieben Antworten aus (beschäftigt, verloren), fragt er denselben Absender
+für dieselbe Ansage höchstens zweimal erneut (nach 60-90 s).
 
 Regeln: Beide Seiten ziehen, keiner schiebt. Daten nur auf eine eigene offene Anfrage, nur von
 Gildenmitgliedern (`ns.TrustWait(..., "member")`, Comm entpackt Daten nur von Mitgliedern).
 Jeder empfangene Satz wird wie ein gespeicherter streng geprüft (IDs, Zahlenbereiche, Listen,
 Grenzen, Texte über `DropsCleanName`); ein ungültiger Satz verwirft den ganzen Blob. Sätze eines
-fremden Bündels ebenso. Grenzen je Sitzung: 48 KB gesendet, ein Fragender höchstens ein Drittel,
-ein Blob je 20 s, 40 Anfragen je Stunde, höchstens 1500 neue Sätze von einem Absender.
+nicht erfragten Bündels, doppelte IDs, fremde Felder ebenso. Grenzen je Sitzung: 48 KB gesendet, ein Fragender höchstens ein Drittel,
+ein Blob je 20 s und 40 Teile je 10 Minuten, 40 Anfragen je Stunde, höchstens 1500 neue Sätze von einem Absender.
 Alles mit niedrigster Priorität der Warteschlange, nur außerhalb von Instanzen und Schlachtfeldern,
 ohne Kampf, ohne Sperre (`ns.CommHeld`), nicht während ein Raid synchronisiert wird.
 Abschalter `collect.share` (Standard an).
