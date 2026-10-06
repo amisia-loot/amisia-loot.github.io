@@ -844,6 +844,8 @@ function ns.BisExplain(item, opts)
         lines[#lines + 1] = Gear.PartText(p)
     end
     if ev.s.SC then lines[#lines + 1] = "Werte berechnet (noch nicht gescannt)" end
+    local fx = Gear.EffectText(ev.id)
+    if fx then lines[#lines + 1] = "Effekt nicht gewertet: " .. fx end
     if ev.pick then lines[#lines + 1] = ns.BisPickText(ev.pick) end
     if (ev.s.HIT or ev.s.MHIT or ev.s.SHIT) and not ev.cap then lines[#lines + 1] = "Trefferwertung zählt ohne Obergrenze" end
     return lines

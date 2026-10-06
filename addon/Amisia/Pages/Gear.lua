@@ -105,12 +105,14 @@ local function marks(e)
 end
 
 -- What the planner did with an option, as short grey notes: a BiS pick, the set it belongs to,
--- computed stats, the best seen random suffix, moved ahead for its effort.
+-- computed stats, an effect the scoring does not count, the best seen random suffix, moved ahead
+-- for its effort.
 local function noteParts(e)
     local out = {}
     if e.pick then out[#out + 1] = "BiS-Empfehlung" end
     if e.set then out[#out + 1] = ("Set %d/%d, %+d Bonus"):format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
     if e.sc then out[#out + 1] = "berechnet" end
+    if Gear.EffectText(e.id or e[1]) then out[#out + 1] = "Effekt nicht gewertet" end
     if e.suffix then out[#out + 1] = "bester gesehener Bonus" end
     if e.easier then out[#out + 1] = "leichter zu bekommen" end
     return out
