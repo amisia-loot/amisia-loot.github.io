@@ -5,7 +5,8 @@ local Gear = NS.Gear
 assert(Gear.Available() and Gear.Cap() == 60, "the Forever set with level cap 60")
 assert(NS.GEAR.game == nil or NS.GEAR.game == "forever", "no field or forever: " .. tostring(NS.GEAR.game))
 assert(not NS.GEAR.I[28770], "no TBC rows")
-assert(#NS.GEAR_WEIGHTS.brackets == 6, "the Forever weights with their level brackets")
+assert(#NS.GEAR_WEIGHTS.brackets == #Gear.COLUMNS, "the Forever weights with one bracket per planner column")
+for i, c in ipairs(Gear.COLUMNS) do assert(NS.GEAR_WEIGHTS.brackets[i] == c[2], "bracket " .. i .. " ends at " .. c[2]) end
 
 -- every row: a known equip location (no "" to fill from the client), numbers in the fixed fields,
 -- field 10 a skill line or 0 (never the { skill line, rank } form), known sources with a text

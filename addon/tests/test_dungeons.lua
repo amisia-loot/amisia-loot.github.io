@@ -14,6 +14,10 @@ local function quest(e, title) for _, q in ipairs(e and e.quests or {}) do if q.
 
 assert(NS.DUNGEON_FACTS and #NS.DUNGEON_FACTS.list > 20, "the hand facts load")
 local D = NS.Dungeons
+-- the build's data (BisData.lua, ns.BIS.DG) takes over when it is there: test_bis_data.lua; here
+-- the hand facts
+assert(D and D.Facts() == NS.BIS.DG, "the build's DG first")
+NS.BIS = nil
 assert(D and D.Facts() == NS.DUNGEON_FACTS.list, "without the build's DG the hand facts")
 
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 16, "Alliance"

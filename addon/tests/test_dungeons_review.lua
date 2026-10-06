@@ -10,6 +10,8 @@ local function boss(e, name) for _, b in ipairs(e and e.bosses or {}) do if b.na
 local function bossNpc(e, npc) for _, b in ipairs(e and e.bosses or {}) do if b.npc == npc then return b end end end
 local function item(b, id) for _, it in ipairs(b and b.items or {}) do if it.id == id then return it end end end
 
+-- the hand facts of DungeonData.lua (the build's ns.BIS.DG: test_bis_data.lua)
+NS.BIS = nil
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 16, "Alliance"
 STUB.instance = { name = "Dun Morogh", type = "none", id = 0 }
 

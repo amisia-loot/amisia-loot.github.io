@@ -6,6 +6,8 @@
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 
+-- the hand facts of DungeonData.lua (the build's ns.BIS.DG: test_bis_data.lua)
+NS.BIS = nil
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 16, "Alliance"
 STUB.instance = { name = "Dun Morogh", type = "none", id = 0 }
 STUB.questsDone[96397] = true
