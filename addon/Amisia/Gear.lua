@@ -757,6 +757,11 @@ end
 -- the guild's collectors) and the own collector (AmisiaDB.scan.suffix); nil when none was seen.
 -- Each table holds the item's full stats with that suffix, as C_Item.GetItemStats gave them.
 function Gear.SuffixStats(id)
+    local B = ns.BIS
+    local rp = type(B) == "table" and type(B.RP) == "table" and B.RP[id]
+    local own = AmisiaDB and type(AmisiaDB.scan) == "table" and type(AmisiaDB.scan.suffix) == "table" and AmisiaDB.scan.suffix[id]
+    -- the planner asks for every item: most have none, and that answer costs nothing
+    if type(rp) ~= "table" and type(own) ~= "table" then return nil end
     local out
     local function addText(suffix, text)
         if type(text) ~= "string" then return end
@@ -773,10 +778,7 @@ function Gear.SuffixStats(id)
             out[suffix] = s
         end
     end
-    local B = ns.BIS
-    local rp = type(B) == "table" and type(B.RP) == "table" and B.RP[id]
     if type(rp) == "table" then for suffix, text in pairs(rp) do addText(suffix, text) end end
-    local own = AmisiaDB and type(AmisiaDB.scan) == "table" and type(AmisiaDB.scan.suffix) == "table" and AmisiaDB.scan.suffix[id]
     if type(own) == "table" then for suffix, text in pairs(own) do addText(suffix, text) end end
     return out
 end
