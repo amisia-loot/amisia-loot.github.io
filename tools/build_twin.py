@@ -63,6 +63,32 @@ sub('This text holds a wishlist. Paste it on the Wishlist tab.</p>',
 sub('<a href="addon/Amisia.zip" download>download</a>',
     '<a href="https://amisia-loot.github.io/addon/Amisia.zip" target="_blank" rel="noopener">download from the live site</a>')
 
+# the artifact viewer allows no downloads: the editors' drop observations are shown in a box to copy
+sub('title="The guild\'s boss kills as a file for tools/build_scan.py --obs">Download observations</button>',
+    'title="The guild\'s boss kills as text for tools/build_scan.py --obs">Show observations</button>')
+sub('    <p class="crhint">Boss kills the guild recorded',
+    '    <div class="panel" id="dropObsPanel" hidden style="margin-bottom:12px"><div class="panel-h">Drop observations</div>'
+    '<div class="field" style="padding:0 16px 12px"><label for="dropObsText">Save this as a .json file and give it to tools/build_scan.py --obs</label>'
+    '<textarea class="inp" id="dropObsText" readonly spellcheck="false" style="min-height:90px"></textarea>'
+    '<button class="btn sm" id="dropObsCopy" type="button" style="align-self:flex-start">Copy</button></div></div>\n'
+    '    <p class="crhint">Boss kills the guild recorded')
+i = s.index("// the guild's kills as a file for tools/build_scan.py --obs (editors only)\n")
+j = s.index("$('#amDropsAdd')", i)
+s = s[:i] + """// the guild's kills as text to copy (editors only)
+$('#dropDownload').addEventListener('click', () => {
+  if (readOnly || archiveOn) return;
+  const panel = $('#dropObsPanel'); panel.hidden = !panel.hidden;
+  if (!panel.hidden) { $('#dropObsText').value = dropDownload(state); $('#dropObsText').select(); }
+});
+$('#dropObsCopy').addEventListener('click', async () => {
+  const ta = $('#dropObsText'); ta.value = dropDownload(state); ta.select();
+  try { await navigator.clipboard.writeText(ta.value); say('Copied the drop observations.'); }
+  catch (e) { say('Press Ctrl+C to copy the selected text.'); }
+});
+""" + s[j:]
+sub("$('#dropDownload').hidden = readOnly || archiveOn || !(Array.isArray(state.dropObs) && state.dropObs.length);",
+    "$('#dropDownload').hidden = readOnly || archiveOn || !(Array.isArray(state.dropObs) && state.dropObs.length);\n  if ($('#dropDownload').hidden) $('#dropObsPanel').hidden = true;")
+
 # ---------------------------------------------------------------- the ledger the page starts with
 ledger = DATA_JSON.read_bytes().decode('utf-8').strip()
 i = s.index('<script id="ledger-data" type="application/json">') + len('<script id="ledger-data" type="application/json">')
@@ -293,6 +319,10 @@ gone = [n for n in ('renderWantLine', 'wishesFor', 'wishesHere', 'wishGot', 'pri
                     'wishImportPlan', 'wishAddonText', 'renderWishPaste')
         if re.search(r'\b' + n + r'\s*\(', js) and n not in defined]
 assert not gone, 'calls a function this copy no longer has: ' + ', '.join(gone)
+
+# The artifact viewer permits no downloads, so no link or blob may be left that offers one.
+for bad in ('createObjectURL', 'blob:', ' download>', ' download ', ' download=', '.download'):
+    assert bad not in s, 'the twin still offers a download: ' + bad
 
 OUT.write_bytes(s.encode('utf-8'))
 print('built', OUT, len(s), 'chars')
