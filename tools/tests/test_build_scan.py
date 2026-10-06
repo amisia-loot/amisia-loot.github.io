@@ -315,3 +315,28 @@ def test_a_full_build_names_the_observed_items(tmp_path, monkeypatch):
     assert named[219004]['name'] == 'Ring der Thane' and named[219004]['slot'] == 'finger', 'a scanned item gets its name'
     assert 219007 not in named, 'an item the scan never saw has no row'
     assert data['obsThrough'] == 277
+
+
+def _rec(day, items=None, o='3fa9c2e1'):
+    return {'npc': 213450, 'inst': 2834, 'diff': 1, 'day': day, 'o': o, 'src': 'G', 'it': dict(items or {})}
+
+
+def test_a_kill_on_both_sides_of_midnight_keeps_the_earlier_day():
+    store = {}
+    assert b.merge_record(store, 'a0000001', _rec(277)) == 'new'
+    assert b.merge_record(store, 'a0000001', _rec(276)) == 'merged' and store['a0000001']['day'] == 276
+    assert b.merge_record(store, 'a0000001', _rec(277)) == 'same' and store['a0000001']['day'] == 276
+
+
+def test_no_day_after_today_and_the_ids_of_the_last_day():
+    today = b._today()
+    assert b.check_record(_rec(today)) is not None
+    assert b.check_record(_rec(today + 1)) is None, 'a wrong clock is not taken'
+    # an archive that holds a record of a future day (an old import) keeps obsThrough at today
+    arch = b.empty_archive()
+    arch['k'] = {'a0000001': _rec(today - 1), 'a0000002': _rec(today), 'a0000003': _rec(today), 'a0000004': _rec(today + 5)}
+    data = {'zones': [], 'items': []}
+    b.set_observations(data, arch, {}, today=today)
+    assert data['obsThrough'] == today
+    assert data['obsIds'] == ['a0000002', 'a0000003'], 'the ids of the last day, for the site'
+    assert data['obsBosses'][0]['kills'] == 3, 'the future record is not in the tables'

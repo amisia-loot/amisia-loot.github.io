@@ -150,6 +150,21 @@ def test_the_download_for_build_scan(out):
     assert d['v'] == 1 and len(d['k']) == 5 and d['names']['213480'] == 'Neuer Boss' and d['zones']['409'] == ['raid', 'Geschmolzener Kern']
 
 
+def test_hostile_names_are_just_names(out):
+    h = out['hostile']
+    for name in ('constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf'):
+        assert h[name] == [[name, [[name, 2]]]], (name, h[name])
+
+
+def test_a_kill_on_both_sides_of_midnight_counts_once(out):
+    assert out['midnight'] == [['Faldrim', 1, '1 of 1']], 'the id of the base\'s last day is not counted again'
+    assert out['midnightDay'] == [276] and out['midnightParse'] == [276], 'the earlier day'
+
+
+def test_a_kill_after_tomorrow_is_not_read(out):
+    assert out['future']['kills'] == [] and out['future']['bad'] == 1
+
+
 def test_the_tab_escapes_names_and_draws_items_without_a_link(out):
     p = out['page']
     assert '<img' not in p['body'] and '&lt;img src=x onerror=alert(1)&gt;' in p['body'], 'a boss name from the addon is escaped'

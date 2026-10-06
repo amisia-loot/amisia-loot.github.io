@@ -3045,11 +3045,15 @@ function dropDate(day){ return new Date(DROP_DAY0 + day * 86400000).toISOString(
 // A boss or instance name as the addon keeps it: no control characters or bars, at most 48 characters.
 function dropName(s){ const n = String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f|]/g, '').trim().slice(0, 48).trim(); return n || null; }
 // Every drop line of the pasted blocks: kills (one per id: the same kill twice keeps the larger
-// count of each item and the smaller origin), boss names by NPC, instances as [kind, name], and the
-// number of lines that could not be read. Other lines are left to the other parsers.
+// count of each item, the smaller origin and the earlier day, as a corpse looted on both sides of
+// midnight is one kill), boss names by NPC, instances as [kind, name], and the number of lines that
+// could not be read. A kill dated after tomorrow (a wrong clock) is a line that could not be read.
+// Other lines are left to the other parsers. Names come from other players' clients: every lookup
+// keyed by them has no prototype, so a boss called "constructor" is just a name.
 function amParseDrops(blocks){
-  const out = {kills: [], names: {}, zones: {}, bad: 0}, at = {};
+  const out = {kills: [], names: Object.create(null), zones: Object.create(null), bad: 0}, at = Object.create(null);
   const num = (s, lo, hi) => /^\d+$/.test(String(s)) && +s >= lo && +s <= hi ? +s : null;
+  const latest = Math.floor((Date.now() - DROP_DAY0) / 86400000) + 1;
   for (const b of blocks) for (const raw of b.split(/\r?\n/)) {
     const line = raw.trim(), f = line.split(/\s+/);
     if (f[0] === 'DZ') {
@@ -3062,7 +3066,7 @@ function amParseDrops(blocks){
     } else if (f[0] === 'DK') {
       const npc = num(f[2], 0, 9999999), inst = num(f[3], 1, 99999), diff = num(f[4], 0, 255), day = dropDay(f[5]), items = {};
       let ok = f.length === 9 && /^[0-9a-f]{8}$/.test(f[1]) && /^[0-9a-f]{8}$/.test(f[6]) && (f[7] === 'G' || f[7] === 'E')
-        && npc != null && inst != null && diff != null && day != null && (f[7] === 'G' ? npc > 0 : npc === 0);
+        && npc != null && inst != null && diff != null && day != null && day <= latest && (f[7] === 'G' ? npc > 0 : npc === 0);
       if (ok && f[8] !== '-') {
         const pairs = f[8].split(',');
         ok = pairs.length <= 30 && pairs.every(p => {
@@ -3076,6 +3080,7 @@ function amParseDrops(blocks){
       if (!had) { out.kills.push(at[f[1]] = {h: f[1], npc, inst, diff, day, o: f[6], src: f[7], items}); continue; }
       for (const [id, n] of Object.entries(items)) if ((had.items[id] || 0) < n && (id in had.items || Object.keys(had.items).length < 30)) had.items[id] = n;
       if (f[6] < had.o) had.o = f[6];
+      if (day < had.day) had.day = day;
     }
   }
   return out;
@@ -3087,7 +3092,8 @@ function dropRecOk(r){
     && Array.isArray(r[7]) && r[7].length % 2 === 0 && r[7].every(Number.isInteger);
 }
 // Merges a parsed kill into a kept one as the addon does: each item at its larger count (30 items at
-// most), the smaller origin, the NPC filled in when it was missing. Whether anything changed.
+// most), the smaller origin, the earlier day (a corpse looted on both sides of midnight is one kill),
+// the NPC filled in when it was missing. Whether anything changed.
 function dropMergeInto(r, k){
   let changed = false;
   const pairs = [];
@@ -3099,6 +3105,7 @@ function dropMergeInto(r, k){
   }
   if (changed) r[7] = pairs.sort((a, b) => a[0] - b[0]).flat();
   if (k.o < r[5]) { r[5] = k.o; changed = true; }
+  if (k.day < r[4]) { r[4] = k.day; changed = true; }
   if (r[1] === 0 && k.npc > 0 && r[6] === k.src) { r[1] = k.npc; changed = true; }
   return changed;
 }
@@ -3143,11 +3150,16 @@ function dropRateText(n, K){ return K >= 5 ? n + ' of ' + K + ' (' + Math.round(
 // to its day (obsThrough), the ledger's kills after that day add to them, so no kill counts twice.
 // A boss whose name has a table in data/forever.js lists those items too (0 of K until one is
 // seen). A zone data/forever.js does not know comes from the addon's DZ line, from its first kill.
-// Kills without an NPC (fallback records) cannot be placed at a boss and count nowhere.
+// Kills without an NPC (fallback records) cannot be placed at a boss and count nowhere. A kill counts
+// by its id: one data/forever.js already holds (obsIds, the ids of its last day) is not counted again
+// when a client dated it a day later (looted after midnight). Every table keyed by a name or key has
+// no prototype: names come from other players' clients ("constructor", "toString" are just names).
 function dropTables(data, st){
   data = data || {};
-  const obj = x => x && typeof x === 'object' && !Array.isArray(x) ? x : {};
-  const items = {}, extra = {}, bySource = {}, zones = {}, byInst = {}, byName = {};
+  const dict = () => Object.create(null);
+  const obj = x => Object.assign(dict(), x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+  const items = dict(), extra = dict(), bySource = dict(), zones = dict(), byInst = dict(), byName = dict();
+  const baseIds = new Set(Array.isArray(data.obsIds) ? data.obsIds : []);
   for (const it of (data.items || [])) {
     items[it.id] = it;
     for (const s of (it.sources || [])) if (s !== 'Unknown source') (bySource[s] = bySource[s] || []).push(it.id);
@@ -3170,16 +3182,16 @@ function dropTables(data, st){
     zones[key] = {key, name, short: name.slice(0, 8), kind: d && (d[0] === 'party' || d[0] === 'raid') ? d[0] : null, inst, known: false};
     return byInst[inst] = key;
   };
-  const through = Number.isInteger(data.obsThrough) ? data.obsThrough : -1, bosses = {};
-  for (const b of (data.obsBosses || [])) if (b && b.npc > 0) bosses[b.npc] = {npc: b.npc, name: b.name || dn[b.npc] || 'Boss ' + b.npc, zone: b.zone, kills: Number(b.kills) || 0, obs: Object.assign({}, b.obs || {})};
+  const through = Number.isInteger(data.obsThrough) ? data.obsThrough : -1, bosses = dict();
+  for (const b of (data.obsBosses || [])) if (b && b.npc > 0) bosses[b.npc] = {npc: b.npc, name: String(b.name || dn[b.npc] || 'Boss ' + b.npc), zone: b.zone, kills: Number(b.kills) || 0, obs: obj(b.obs)};
   for (const r of (Array.isArray(st.dropObs) ? st.dropObs : []).filter(dropRecOk)) {
-    if (r[1] <= 0 || r[4] <= through) continue;
-    const b = bosses[r[1]] || (bosses[r[1]] = {npc: r[1], name: dn[r[1]] || 'Boss ' + r[1], zone: null, kills: 0, obs: {}});
+    if (r[1] <= 0 || r[4] <= through || baseIds.has(r[0])) continue;
+    const b = bosses[r[1]] || (bosses[r[1]] = {npc: r[1], name: String(dn[r[1]] || 'Boss ' + r[1]), zone: null, kills: 0, obs: dict()});
     b.kills++;
     if (!b.zone) b.zone = zoneOf(r[2]);
     for (let i = 0; i < r[7].length; i += 2) b.obs[r[7][i]] = (b.obs[r[7][i]] || 0) + 1;
   }
-  const out = {};
+  const out = dict();
   for (const b of Object.values(bosses)) {
     if (b.kills <= 0) continue;
     const z = zones[b.zone] || (zones[b.zone] = {key: b.zone, name: b.zone, short: String(b.zone).slice(0, 8), kind: null, inst: null, known: false});

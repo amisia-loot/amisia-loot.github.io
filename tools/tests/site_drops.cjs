@@ -101,6 +101,40 @@ out.tablesEmpty = api.dropTables({zones: [], bosses: [], items: []}, {raiders: [
 out.rates = [api.dropRateText(9, 41), api.dropRateText(2, 3), api.dropRateText(0, 40), api.dropRateText(5, 5)];
 out.download = JSON.parse(api.dropDownload(st));
 
+// hostile names: boss and zone names equal to Object.prototype members are just names
+{
+  const hostile = Object.create(null);
+  for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf']) {
+    const text = ['#AMISIA 2 X', 'DZ 99999 party ' + name, 'DN 999001 0 ' + name,
+      'DK a0000001 999001 99999 1 2026-10-05 3fa9c2e1 G 219004:1', 'DK a0000002 999001 2834 1 2026-10-05 3fa9c2e1 G -', '#END'].join('\n');
+    const led = {raiders: [], awards: []};
+    try {
+      api.dropImport(led, api.amParseDrops(api.amSplit(text).blocks));
+      const t = api.dropTables({zones: [{key: 'x', name: 'X', inst: 1}], items: [{id: 5, name: 'Five', sources: [name]}]}, led);
+      hostile[name] = t.map(z => [z.name, z.bosses.map(b => [b.name, b.kills])]);
+    } catch (e) { hostile[name] = 'THROWS ' + e.message; }
+  }
+  out.hostile = hostile;
+}
+
+// midnight: a kill data/forever.js holds on its last day (obsIds) counts once when a client dated it
+// a day later; two texts with the same kill on two days keep the earlier day
+{
+  const base = {zones: [{key: 'thanes', name: 'Halle der Thane', inst: 2834}], obsThrough: 276, obsIds: ['a0000001'],
+    obsBosses: [{npc: 213450, name: 'Faldrim', zone: 'thanes', kills: 1, obs: {219004: 1}}]};
+  const led = {raiders: [], awards: []};
+  api.dropImport(led, api.amParseDrops(api.amSplit('#AMISIA 2 B\nDK a0000001 213450 2834 1 2026-10-05 bbbbbbbb G 219004:1\n#END').blocks));
+  out.midnight = api.dropTables(base, led)[0].bosses.map(b => [b.name, b.kills, b.items[0].rate]);
+  const led2 = {raiders: [], awards: []};
+  api.dropImport(led2, api.amParseDrops(api.amSplit('#AMISIA 2 A\nDK a0000009 213450 2834 1 2026-10-05 bbbbbbbb G -\n#END').blocks));
+  api.dropImport(led2, api.amParseDrops(api.amSplit('#AMISIA 2 B\nDK a0000009 213450 2834 1 2026-10-04 cccccccc G -\n#END').blocks));
+  out.midnightDay = led2.dropObs.map(r => r[4]);
+  const one = api.amParseDrops(api.amSplit('#AMISIA 2 A\nDK a0000008 213450 2834 1 2026-10-05 bbbbbbbb G -\nDK a0000008 213450 2834 1 2026-10-04 bbbbbbbb G -\n#END').blocks);
+  out.midnightParse = one.kills.map(k => k.day);
+  // a kill dated far after today (a wrong clock) is not read
+  out.future = api.amParseDrops(api.amSplit('#AMISIA 2 A\nDK a0000007 213450 2834 1 2099-01-01 bbbbbbbb G -\n#END').blocks);
+}
+
 // the tab itself, on a small fake page: names from the addon are escaped, items carry no link
 {
   const els = {};

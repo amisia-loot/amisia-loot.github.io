@@ -25,8 +25,10 @@ site's "Download observations" file (--obs) and from the addon's text "Drops fü
 (--drops, DZ/DN/DK lines). The same kill from several sources is one record (items at their largest
 count, the smaller origin). data/forever.js gets per boss {npc, name, zone, kills, obs: {item: kills
 with it}} as `obsBosses`, their dungeons and raids as `obsZones`, scanned names of observed items
-outside the loot tables as `obsItems`, and the newest day in the archive as `obsThrough`: the site
-adds only the kills it imported after that day, so nothing counts twice. Records without an NPC
+outside the loot tables as `obsItems`, the newest day in the archive (never after today) as
+`obsThrough` and the ids of that day as `obsIds`: the site adds only the kills it imported after
+that day and not among those ids (a corpse looted on both sides of midnight is one kill, of the
+earlier day), so nothing counts twice. Records without an NPC
 (the addon's fallback ids) stay in the archive but have no table.
 
 Without SavedVariables files on the command line only the observations change: the drop records
@@ -511,7 +513,8 @@ def check_record(r, today=None):
         return None
     today = _today() if today is None else today
     npc, inst = _int(r.get('npc'), 0, 9999999), _int(r.get('inst'), 1, 99999)
-    diff, day = _int(r.get('diff'), 0, 255), _int(r.get('day'), 0, today + 1)
+    # never a day after today (UTC): a wrong clock must not move obsThrough into the future
+    diff, day = _int(r.get('diff'), 0, 255), _int(r.get('day'), 0, today)
     o, src, enc = r.get('o'), r.get('src'), r.get('enc')
     if None in (npc, inst, diff, day) or not isinstance(o, str) or not HEX8.match(o) or src not in ('G', 'E'):
         return None
@@ -537,7 +540,8 @@ def check_record(r, today=None):
 
 def merge_record(store, h, r):
     """Merges record r under id h as the addon does: the same id is one kill; each item at its
-    larger count, the smaller origin, enc and the NPC filled in when missing. 'new', 'merged' or 'same'."""
+    larger count, the smaller origin, the earlier day (a corpse looted on both sides of midnight is
+    one kill), enc and the NPC filled in when missing. 'new', 'merged' or 'same'."""
     cur = store.get(h)
     if cur is None:
         store[h] = dict(r, it=dict(r['it']))
@@ -550,6 +554,8 @@ def merge_record(store, h, r):
             changed = True
     if r['o'] < cur['o']:
         cur['o'], changed = r['o'], True
+    if r['day'] < cur['day']:
+        cur['day'], changed = r['day'], True
     if cur.get('enc') is None and r.get('enc') is not None:
         cur['enc'], changed = r['enc'], True
     if cur['npc'] == 0 and r['npc'] > 0 and cur['src'] == r['src']:
@@ -698,13 +704,28 @@ def save_archive(path, arch):
         fh.write('\n')
 
 
-def obs_tables(arch, zones_cfg, known=None):
+def base_records(arch, today=None):
+    """The archive's records the loot tables count: none dated after today (UTC; a wrong clock of one
+    client must not move obsThrough into the future, which would hide every later kill on the site)."""
+    today = _today() if today is None else today
+    return {h: r for h, r in arch['k'].items() if r['day'] <= today}
+
+
+def edge_ids(arch, through, today=None):
+    """The ids of the base's last day (obsIds): the site skips them when a client dated the same corpse
+    a day later (looted after midnight), so a kill counts once."""
+    if through is None:
+        return []
+    return sorted(h for h, r in base_records(arch, today).items() if r['day'] == through)
+
+
+def obs_tables(arch, zones_cfg, known=None, today=None):
     """The loot tables from the archive: (zones, bosses, newest day, warnings). A boss per NPC with its
     kills and per item the number of kills that had it; its zone is the instance of its newest kill:
     a zone of the data file with the same name (known), else named by tools/forever_zones.json (by
-    name, or by "instance"), else by the addon's DZ line."""
+    name, or by "instance"), else by the addon's DZ line. Records after today stay out."""
     known = {z['name']: z for z in known or [] if isinstance(z, dict) and z.get('name') and z.get('key')}
-    recs = arch['k']
+    recs = base_records(arch, today)
     through = max((r['day'] for r in recs.values()), default=None)
     per = {}
     for h in sorted(recs):
@@ -745,17 +766,17 @@ def obs_tables(arch, zones_cfg, known=None):
     return zone_list, bosses, through, warnings
 
 
-OBS_KEYS = ('obsZones', 'obsBosses', 'obsItems', 'obsThrough')
+OBS_KEYS = ('obsZones', 'obsBosses', 'obsItems', 'obsThrough', 'obsIds')
 
 
-def set_observations(data, arch, zones_cfg, items=None):
+def set_observations(data, arch, zones_cfg, items=None, today=None):
     """Puts the observation keys into the data of data/forever.js (replacing older ones). items: the
     scanned items of a full build, which name the observed items outside the loot tables; without
     them (an update in place) the named rows of the last full build stay. Returns the warnings."""
     old = {r['id']: r for r in data.get('obsItems') or [] if isinstance(r, dict) and 'id' in r}
     for k in OBS_KEYS:
         data.pop(k, None)
-    zones, bosses, through, warnings = obs_tables(arch, zones_cfg, data.get('zones'))
+    zones, bosses, through, warnings = obs_tables(arch, zones_cfg, data.get('zones'), today)
     if not bosses:
         return warnings
     have = {it['id'] for it in data.get('items') or []}
@@ -771,6 +792,7 @@ def set_observations(data, arch, zones_cfg, items=None):
     if rows:
         data['obsItems'] = rows
     data['obsThrough'] = through
+    data['obsIds'] = edge_ids(arch, through, today)
     return warnings
 
 
