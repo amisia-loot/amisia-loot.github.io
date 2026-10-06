@@ -22,6 +22,13 @@ local function fill(path, value)
 end
 for _, path in ipairs(ST.REQUIRED) do fill(path, function() end) end
 for _, name in ipairs(ST.OBJECTS) do fill(name, {}) end
+-- the professions functions answer as a client with a recipe, a description and the favor currency
+fill("C_TradeSkillUI.GetRecipeSchematic", function() return { name = "Kupferarmschienen",
+    reagentSlotSchematics = { { reagents = { { itemID = 2840 } }, quantityRequired = 2 } } } end)
+fill("C_Spell.GetSpellName", function() return "Kupferarmschienen" end)
+fill("C_Spell.GetSpellDescription", function() return "Errichtet ein Schleifrad." end)
+fill("C_CurrencyInfo.GetCurrencyInfo", function() return { name = "Händlergunst", quantity = 0 } end)
+for _, path in ipairs(ST.PROF_FUNCTIONS) do fill(path, function() end) end
 Enum.ItemClass = { Tradegoods = 7, Reagent = 5, Recipe = 9 }
 
 -- a world to look at: a raid, a guild with ranks, a map, a worn item, a weekly reset
@@ -80,7 +87,7 @@ assert(type(text) == "string" and #text > 2000, "a full report: " .. #tostring(t
 
 -- every section, the head and the result line
 for _, title in ipairs({ "Client", "Sperren jetzt", "Namen", "Addon-Nachrichten und Packen", "Gilde", "Woche, Karte, Wegpunkt", "Loot",
-                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Werte", "Gespeicherte Daten" }) do
+                         "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Werte", "Berufe", "Gespeicherte Daten" }) do
     assert(has(text, "== " .. title .. " =="), "section " .. title)
 end
 assert(text:find("^Amisia%-Selbsttest " .. NS.VERSION:gsub("%.", "%%.") .. " | Client 1%.60%.1 %(70205%)"), "head line")

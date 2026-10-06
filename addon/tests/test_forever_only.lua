@@ -69,9 +69,13 @@ for _, name in ipairs(files) do
     assert(not name:find("TBC", 1, true), "a file with TBC in its name: " .. name)
     if name:find("%.lua$") then
         local src = readFile(ADDON_DIR .. "/" .. name)
+        -- a generated data file holds item and spell numbers: the TBC interface number may be part of one
+        local generated = src:find("^%-%- GENERATED") ~= nil
         for _, word in ipairs({ "IsForever", "LootButton", "LootFrame_Update", "BANK_CONTAINER", "OnTooltipSetItem", "20506",
                                 "NUM_BANKBAGSLOTS", "LOOTFRAME_NUMBUTTONS", "AmisiaScanTip" }) do
-            assert(not src:find(word, 1, true), name .. " still has " .. word)
+            if not (generated and word == "20506") then
+                assert(not src:find(word, 1, true), name .. " still has " .. word)
+            end
         end
         assert(not src:find("[^%.:%w_]GetSkillLineInfo%(") and not src:find("_G%.GetSkillLineInfo"),
             name .. " calls the global GetSkillLineInfo")

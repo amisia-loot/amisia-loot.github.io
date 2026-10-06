@@ -774,6 +774,7 @@ local EVENTS = {
     "LOOT_OPENED", "LOOT_SLOT_CLEARED", "MERCHANT_SHOW", "PLAYERBANKSLOTS_CHANGED", "PLAYER_ENTERING_WORLD",
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
     "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
+    "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
     "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
 }
 ST.EVENTS = EVENTS
@@ -998,6 +999,97 @@ end
 ---------------------------------------------------------------------------
 -- Bytes the client would about write for v at depth (indent, key, " = ", value, ",\n"); stops after
 -- the budget of entries (state.cut).
+---------------------------------------------------------------------------
+-- Professions: the functions the professions page reads, the own professions, a recipe's reagents
+-- without the profession window, names and descriptions from the client, the Merchant's Favor
+---------------------------------------------------------------------------
+local PROF_FUNCTIONS = {
+    "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI.GetRecipeSchematic", "C_TradeSkillUI.GetRecipeInfo",
+    "C_TradeSkillUI.GetBaseProfessionInfo", "C_TradeSkillUI.IsTradeSkillLinked", "C_TradeSkillUI.IsTradeSkillGuild",
+    "C_TradeSkillUI.IsNPCCrafting", "C_Spell.GetSpellName", "C_Spell.GetSpellDescription", "C_CurrencyInfo.GetCurrencyInfo",
+}
+ST.PROF_FUNCTIONS = PROF_FUNCTIONS
+local PROF_RECIPE = 2663      -- Copper Bracers, a trainer recipe of blacksmithing
+local PROF_CAMP = 1307392     -- the placement spell of the Sharpening Wheel
+local PROF_CURRENCY = 3402    -- Merchant's Favor
+
+local function sectionProfessions(R)
+    local missing = {}
+    for _, path in ipairs(PROF_FUNCTIONS) do
+        if not fn(path) then missing[#missing + 1] = path end
+    end
+    listLine(R, "Funktionen", #PROF_FUNCTIONS, missing, "vorhanden")
+    add(R, "WERT", "Rezeptliste", ("GetAllRecipeIDs %s, GetFilteredRecipeIDs %s, IsPlayerSpell %s"):format(
+        fn("C_TradeSkillUI.GetAllRecipeIDs") and "da" or "fehlt", fn("C_TradeSkillUI.GetFilteredRecipeIDs") and "da" or "fehlt",
+        fn("IsPlayerSpell") and "da" or "fehlt"))
+    local Pr = ns.Prof
+    check(R, "Eigene Berufe", function()
+        local idx = { call("GetProfessions") }
+        local parts, unknown = {}, {}
+        for i = 1, 5 do
+            if type(idx[i]) == "number" then
+                local name, _, rank, max, _, _, skill = call("GetProfessionInfo", idx[i])
+                parts[#parts + 1] = ("%s (%s) %s/%s"):format(show(name), show(skill), show(rank), show(max))
+                if Pr and type(skill) == "number" and not Pr.Key(skill) then unknown[#unknown + 1] = tostring(skill) end
+            end
+        end
+        if #parts == 0 then return "WERT", "keine" end
+        if #unknown > 0 then return "FEHLT", table.concat(parts, ", ") .. "; nicht in den Daten: " .. table.concat(unknown, ", ") end
+        return "OK", table.concat(parts, ", ")
+    end)
+    check(R, "Reagenzien ohne Fenster", function()
+        local sch = call("C_TradeSkillUI.GetRecipeSchematic", PROF_RECIPE, false)
+        if type(sch) ~= "table" or type(sch.reagentSlotSchematics) ~= "table" then return "FEHLT", "keine Antwort für " .. PROF_RECIPE end
+        local parts = {}
+        for _, slot in ipairs(sch.reagentSlotSchematics) do
+            local first = type(slot.reagents) == "table" and slot.reagents[1]
+            parts[#parts + 1] = ("%sx %s"):format(show(slot.quantityRequired), show(type(first) == "table" and first.itemID or nil))
+        end
+        return #parts > 0 and "OK" or "FEHLT", ("%s: %s"):format(show(sch.name), #parts > 0 and table.concat(parts, ", ") or "keine Plätze")
+    end)
+    check(R, "Rezeptname", function()
+        local name = call("C_Spell.GetSpellName", PROF_RECIPE)
+        return type(name) == "string" and name ~= "" and "OK" or "FEHLT", show(name)
+    end)
+    check(R, "Lagerbeschreibung", function()
+        local text = call("C_Spell.GetSpellDescription", PROF_CAMP)
+        return type(text) == "string" and text ~= "" and "OK" or "FEHLT", show(type(text) == "string" and text:sub(1, 120) or text)
+    end)
+    check(R, "Händlergunst", function()
+        local info = call("C_CurrencyInfo.GetCurrencyInfo", PROF_CURRENCY)
+        if type(info) ~= "table" then return "FEHLT", "Währung " .. PROF_CURRENCY .. " unbekannt" end
+        return "OK", ("%s: %s"):format(show(info.name), show(info.quantity))
+    end)
+    check(R, "Gespeicherter Stand", function()
+        local db = _G.AmisiaDB
+        local c = type(db) == "table" and type(db.prof) == "table" and type(db.prof.chars) == "table"
+            and db.prof.chars[ns.UnitFullName and ns.UnitFullName("player") or "?"]
+        if type(c) ~= "table" then return "WERT", "keiner (Berufsfenster einmal öffnen)" end
+        local parts, sample = {}, nil
+        for skill, st in pairs(c) do
+            local n = 0
+            for spell in pairs(type(st) == "table" and type(st.known) == "table" and st.known or {}) do
+                n = n + 1
+                sample = sample or spell
+            end
+            parts[#parts + 1] = ("%s: Rang %s, %d bekannt"):format(Pr and Pr.Name(skill) or tostring(skill),
+                show(type(st) == "table" and st.rank or nil), n)
+        end
+        table.sort(parts)
+        local spellText = ""
+        if sample and fn("IsPlayerSpell") then
+            spellText = ("; IsPlayerSpell(%d) = %s"):format(sample, show(call("IsPlayerSpell", sample)))
+        end
+        return "WERT", table.concat(parts, ", ") .. spellText
+    end)
+    if Pr and Pr.Available() then
+        local d = ns.PROFESSIONS
+        add(R, "WERT", "Daten", ("%d Berufe, Client %s, gebaut %s"):format(#d.P, show(d.client), show(d.built)))
+    else
+        add(R, "WERT", "Daten", "keine Berufsdaten")
+    end
+end
+
 local function svSize(v, depth, state)
     local t = type(v)
     if t == "string" then return #v + 2 end
@@ -1100,6 +1192,7 @@ function ST.Run(opts)
     runSection(R, "Ereignisse", sectionEvents)
     runSection(R, "Item-Konstanten", sectionItems)
     runSection(R, "Werte", sectionValues)
+    runSection(R, "Berufe", sectionProfessions)
     runSection(R, "Gespeicherte Daten", sectionData)
     local c = R.counts
     local build = "?"
