@@ -382,3 +382,56 @@ It parses the Lua files first (`addon/tests/syntax.cjs`) and copies nothing when
 parse, because a single broken file keeps the whole addon from loading; `-NoCheck` skips that.
 `-Watch` copies again on every change, `AMISIA_WOW_ROOT` overrides the WoW folder. A running
 client picks the files up at the next `/reload`.
+
+## export_db2.ps1
+
+Exports the Forever client tables the build scripts read (`ItemSparse`, `Item`, `ItemSet`,
+`ItemSetSpell`, `ItemXItemEffect`, `ItemEffect`, `SpellEffect`, `SpellName`, `Spell`, `SpellMisc`,
+`SpellItemEnchantment`, `RandPropPoints`, `LFGDungeons`, `ContentTuning`, `UiMapAssignment`,
+`AreaTable`, `Map`, the `Journal*` and `DungeonEncounter` tables, plus the item damage/armour tables
+when the build has them) as CSV straight from the WoW install on the PC, instead of downloading them
+from wago.tools by hand. Runs on the PC only (it needs the WoW install).
+
+It drives [wow.tools.local](https://github.com/Marlamin/wow.tools.local) (WTL), which reads the local
+CASC storage (TACTSharp), decodes the DB2 files with DBCD and the WoWDBDefs definitions, and serves a
+CSV export on localhost. Forever is the TACT product `wow_classic_beta`; the script reads it from
+`_classic_beta_\.flavor.info` and the installed build from `.build.info`.
+
+**Install (once):**
+
+1. Download `Release-win-x64.zip` of wow.tools.local **0.9.9** or newer from
+   <https://github.com/Marlamin/wow.tools.local/releases> (self-contained, no .NET install needed) and
+   extract it to `%USERPROFILE%\Tools\wow.tools.local` (or set `AMISIA_WTL_DIR`, or pass `-WtlDir`).
+2. Nothing else: on its first start WTL downloads the WoWDBDefs definitions, the community listfile
+   and the TACT keys from GitHub (internet needed; the listfile is large), and keeps them for a day.
+
+**Run** (WoW and the Battle.net launcher closed, so no files are locked):
+
+```
+powershell -ExecutionPolicy Bypass -File tools\export_db2.ps1
+```
+
+It starts WTL in the background on port 5077, waits until the build is loaded (minutes on the first
+start), switches to the installed build if WTL picked a newer one from the patch server, writes
+`<Table>.<build>.csv` (for example `ItemSparse.1.60.1.70235.csv`) into `%USERPROFILE%\VuloSync\wago`
+and stops WTL again. Syncthing (folder `amisia-wago`) brings the files to `~/addons/_wago`, where
+`build_bis.py`, `build_dungeons.py`, `build_gear.py` and `build_map.py` pick the newest build.
+
+- Array columns are renamed from `Name[0]` to `Name_0`, the form wago.tools uses, so the files are
+  drop-in replacements. String columns are `enUS` (`-Locale`).
+- Idempotent: tables already exported for the installed build are skipped, so after a client patch
+  only the new build is exported. `_export.<build>.txt` in the output folder records the result per
+  table; a table the build has empty or lacks is not asked for again. `-Force` exports everything
+  again, `-Tables ItemSparse,Item` only those.
+- `-Hotfixes` applies the client's `DBCache.bin` hotfixes (log in once first); without it the base
+  data of the build is exported, as on wago.tools.
+- Other options: `-WowDir` (or `AMISIA_WOW_ROOT`), `-Flavor`, `-Product`, `-OutDir`, `-Port`,
+  `-StartTimeoutMin`, `-IgnoreRunningGame`. A WTL already answering on the port is used and left
+  running.
+- Exit code 0 when everything is there, 1 on a setup error (message says what to fix), 2 when a
+  table failed; then the WTL log (`%TEMP%\amisia-wtl.out.log`) is printed. Tables encrypted with a key
+  WTL does not know come out without those rows.
+
+Licences: wow.tools.local, TACTSharp and DBCD are MIT; the WoWDBDefs definitions are CC BY-SA 4.0
+(code BSD-3-Clause). The tool is only run, nothing of it is shipped. The exported tables are
+Blizzard's game data, as with the wago.tools downloads: read by the build scripts, never committed.
