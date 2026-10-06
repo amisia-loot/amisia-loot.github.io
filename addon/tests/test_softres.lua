@@ -1,4 +1,5 @@
 -- Soft-reserve parsing, storage, tooltip line and loot marks.
+assert(NS.Set("drops.tooltip", false))   -- the guild's drop rate of the looted items stays out of these tooltips
 local csv = 'Item,ItemId,From,Name,Class,Spec,Note,Plus,Date\n'
     .. '"Cursed Vision of Sargeras",32235,Illidan,Fraktur,Shaman,Enhancement,,0,2026-09-19\n'
     .. '"Cursed Vision of Sargeras",32235,Illidan,fraktur,Shaman,,,0,2026-09-19\n'

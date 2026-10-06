@@ -604,18 +604,212 @@ function ns.DropRate(npc, item, p0)
     return (n + SMOOTH * p0) / (K + SMOOTH), n, K
 end
 
--- "9 von 41 Kills der Gilde (22 %)", below five kills "gesehen 2-mal in 3 Kills", else the
--- expected chance or "Chance unbekannt".
-function ns.DropRateText(npc, item, p0)
-    local p, n, K = ns.DropRate(npc, item, p0)
+-- n sightings in K kills as text: a share from five kills on, a count below; nil without kills.
+local function countText(n, K)
     if K and K >= SHOW_RATE_FROM then
         return ("%d von %d Kills der Gilde (%d %%)"):format(n, K, math.floor(n / K * 100 + 0.5))
     elseif K and K > 0 then
         return ("gesehen %d-mal in %d Kills"):format(n, K)
+    end
+    return nil
+end
+
+-- "9 von 41 Kills der Gilde (22 %)", below five kills "gesehen 2-mal in 3 Kills", else the
+-- expected chance or "Chance unbekannt".
+function ns.DropRateText(npc, item, p0)
+    local p, n, K = ns.DropRate(npc, item, p0)
+    if K and K > 0 then
+        return countText(n, K)
     elseif p then
         return ("Chance %d %%"):format(math.floor(p * 100 + 0.5))
     end
     return "Chance unbekannt"
+end
+
+---------------------------------------------------------------------------
+-- The tooltip line: "Drop bei <Boss>: <rate>" on items the guild saw drop
+---------------------------------------------------------------------------
+-- item -> npc of the boss that drops it most often (base stock plus the records after its day).
+-- Built once per change of the records or the base stock, never per hover.
+local tipIndex, tipVersion, tipBase, tipOT
+local tipStats = { builds = 0 }
+
+local function tipBoss(item)
+    local B = ns.BIS
+    local base = type(B) == "table" and type(B.O) == "table" and B.O or nil
+    local ot = type(B) == "table" and tonumber(B.OT) or -1
+    if not tipIndex or tipVersion ~= version or tipBase ~= base or tipOT ~= ot then
+        tipIndex, tipVersion, tipBase, tipOT = {}, version, base, ot
+        tipStats.builds = tipStats.builds + 1
+        local counts = {}   -- npc -> { k, it }
+        local function add(npc, k, it)
+            local c = counts[npc]
+            if not c then c = { k = 0, it = {} }; counts[npc] = c end
+            c.k = c.k + k
+            for id, n in pairs(it) do c.it[id] = (c.it[id] or 0) + n end
+        end
+        for npc, e in pairs(base or {}) do
+            if type(npc) == "number" and type(e) == "table" then
+                add(npc, tonumber(e.k) or 0, type(e.it) == "table" and e.it or {})
+            end
+        end
+        for npc, s in pairs(ownSums(ot)) do add(npc, s.k, s.it) end
+        for npc, c in pairs(counts) do
+            for id, n in pairs(c.it) do
+                if type(id) == "number" and n > 0 and c.k > 0 then
+                    local best = tipIndex[id]
+                    -- the boss that drops it most often, then the higher share, then the lower id
+                    if not best or n > best.n or (n == best.n and (n / c.k > best.n / best.k
+                        or (n / c.k == best.n / best.k and npc < best.npc))) then
+                        tipIndex[id] = { npc = npc, n = n, k = c.k }
+                    end
+                end
+            end
+        end
+    end
+    local e = tipIndex[item]
+    return e and e.npc or nil
+end
+
+-- "Drop bei Faldrim Ambossmahl: 9 von 41 Kills der Gilde (22 %)" for an item the guild saw drop,
+-- or nil.
+function ns.DropsTooltipLine(item)
+    item = tonumber(item)
+    if not item or not AmisiaDB then return nil end
+    local npc = tipBoss(item)
+    if not npc then return nil end
+    local d = ns.DropsDB()
+    local name = d and d.npc[npc] or ("Boss " .. npc)
+    return ("Drop bei %s: %s"):format(name, ns.DropRateText(npc, item))
+end
+
+function ns.DropsTooltipStats() return { builds = tipStats.builds } end
+
+local TIP_GREY = { 0.56, 0.53, 0.64 }
+
+-- Registered once every file has loaded, so the line stands under the upgrade line of Bis.lua.
+local tipHooked = false
+ns.OnEvent("ADDON_LOADED", function(name)
+    if name ~= ADDON or tipHooked then return end
+    tipHooked = true
+    ns.OnItemTooltip("drops", function(tip, _, id)
+        if not ns.Get("drops.tooltip") then return false end
+        local line = ns.DropsTooltipLine(id)
+        if not line then return false end
+        tip:AddLine(line, TIP_GREY[1], TIP_GREY[2], TIP_GREY[3])
+        return true
+    end)
+end)
+
+---------------------------------------------------------------------------
+-- The list per instance and boss (tools page)
+---------------------------------------------------------------------------
+local KIND_TEXT = { party = "Dungeon", raid = "Raid" }
+
+-- Rows for the page: { kind = "inst", inst, text, rate, K }, then per boss { kind = "boss", npc,
+-- enc, text, rate, K } and its items { kind = "item", npc, id, n, K, text, rate }. Kills and
+-- sightings as for the rates (base stock plus the records after its day); a fallback record
+-- (no NPC) counts under its encounter. Instances and bosses by name, items by count, then id.
+function ns.DropsBossList()
+    local d = ns.DropsDB()
+    if not d then return {} end
+    local B = ns.BIS
+    local base = type(B) == "table" and type(B.O) == "table" and B.O or {}
+    local ot = type(B) == "table" and tonumber(B.OT) or -1
+    local bosses = {}   -- key -> { npc, enc, inst, k, it }
+    local instOf = {}   -- npc -> instance of its newest record
+    local function boss(key, npc, enc)
+        local b = bosses[key]
+        if not b then b = { npc = npc, enc = enc, k = 0, it = {} }; bosses[key] = b end
+        return b
+    end
+    for _, r in pairs(d.k) do
+        local key = r.npc > 0 and r.npc or ("e" .. tostring(r.enc))
+        local b = boss(key, r.npc, r.npc > 0 and nil or r.enc)
+        if not b.inst or (b.day or -1) < r.day then b.inst, b.day = r.inst, r.day end
+        if r.day > ot then
+            b.k = b.k + 1
+            for id in pairs(r.it) do b.it[id] = (b.it[id] or 0) + 1 end
+        end
+    end
+    for npc, e in pairs(base) do
+        if type(npc) == "number" and type(e) == "table" then
+            local b = boss(npc, npc)
+            b.k = b.k + (tonumber(e.k) or 0)
+            for id, n in pairs(type(e.it) == "table" and e.it or {}) do
+                if type(id) == "number" and tonumber(n) then b.it[id] = (b.it[id] or 0) + n end
+            end
+        end
+    end
+    -- the dungeon facts place the bosses of the base stock
+    local dgInst, dgName = {}, {}
+    if type(B) == "table" and type(B.DG) == "table" then
+        for _, dg in ipairs(B.DG) do
+            if type(dg) == "table" and type(dg.inst) == "number" then
+                dgName[dg.inst] = { dg.kind, dg.name }
+                for _, n in ipairs(type(dg.bosses) == "table" and dg.bosses or {}) do dgInst[n] = dg.inst end
+            end
+        end
+    end
+    local insts = {}
+    for key, b in pairs(bosses) do
+        if b.k > 0 then
+            local inst = b.inst or dgInst[b.npc] or 0
+            local g = insts[inst]
+            if not g then
+                local z = d.inst[inst] or dgName[inst]
+                g = { inst = inst, kind = z and z[1], name = z and z[2], k = 0, list = {} }
+                insts[inst] = g
+            end
+            g.k = g.k + b.k
+            if b.npc > 0 then
+                b.name = d.npc[b.npc] or ("Boss " .. b.npc)
+            else
+                b.name = d.enc[b.enc] or ("Begegnung " .. tostring(b.enc))
+            end
+            g.list[#g.list + 1] = b
+        end
+    end
+    local order = {}
+    for _, g in pairs(insts) do order[#order + 1] = g end
+    table.sort(order, function(a, b)
+        -- the bosses without an instance last
+        if (a.inst == 0) ~= (b.inst == 0) then return b.inst == 0 end
+        local na, nb = a.name or ("Instanz " .. a.inst), b.name or ("Instanz " .. b.inst)
+        if na ~= nb then return na < nb end
+        return a.inst < b.inst
+    end)
+    local rows = {}
+    local function kills(k) return ("%d %s"):format(k, k == 1 and "Kill" or "Kills") end
+    for _, g in ipairs(order) do
+        local text
+        if g.inst == 0 then
+            text = "Ohne Instanz"
+        else
+            text = (g.name or ("Instanz " .. g.inst)) .. (KIND_TEXT[g.kind] and (" · " .. KIND_TEXT[g.kind]) or "")
+        end
+        rows[#rows + 1] = { kind = "inst", inst = g.inst, text = text, rate = kills(g.k), K = g.k }
+        table.sort(g.list, function(a, b)
+            if a.name ~= b.name then return a.name < b.name end
+            return (a.npc or 0) < (b.npc or 0)
+        end)
+        for _, b in ipairs(g.list) do
+            rows[#rows + 1] = { kind = "boss", inst = g.inst, npc = b.npc, enc = b.enc, text = b.name, rate = kills(b.k), K = b.k }
+            local items = {}
+            for id, n in pairs(b.it) do
+                if n > 0 then items[#items + 1] = { id = id, n = n } end
+            end
+            table.sort(items, function(x, y)
+                if x.n ~= y.n then return x.n > y.n end
+                return x.id < y.id
+            end)
+            for _, it in ipairs(items) do
+                rows[#rows + 1] = { kind = "item", inst = g.inst, npc = b.npc, id = it.id, n = it.n, K = b.k,
+                    text = ns.ItemName(it.id), rate = countText(math.min(it.n, b.k), b.k) }
+            end
+        end
+    end
+    return rows
 end
 
 ---------------------------------------------------------------------------
@@ -710,17 +904,15 @@ ns.DROPS_SETTINGS = { key = "drops", label = "Drop-Daten", order = 46, items = {
       tip = "Ein geöffnetes Lootfenster eines Bosses wird ein Kill mit seinen Items, ohne Spielernamen." },
     { key = "drops.share", type = "toggle", label = "Drop-Daten mit der Gilde teilen", default = true,
       tip = "ohne Namen, nur außerhalb von Instanzen" },
+    { key = "drops.tooltip", type = "toggle", label = "Dropraten der Gilde im Tooltip", default = true,
+      tip = "Eine graue Zeile an Items, die die Gilde bei einem Boss droppen sah, mit der Zahl der Kills." },
 } }
 ns.RegisterSettings(ns.DROPS_SETTINGS)
 
 ns.RegisterSlash("drops", { args = "[export]", desc = "Stand der Drop-Daten der Gilde", run = function(rest)
     local word = (rest or ""):match("^(%S*)"):lower()
     if word == "export" then
-        if ns.ShowDropsExport then
-            ns.ShowDropsExport()
-        else
-            ns.msg("Der Text \"Drops für die Website\" steht unter Werkzeuge, sobald die Ansicht da ist.")
-        end
+        ns.ShowDropsExport()
         return
     elseif word ~= "" then
         ns.msg("Aufruf: /amisia drops [export]")

@@ -8,6 +8,7 @@ local function has(t, part) return type(t) == "string" and t:find(part, 1, true)
 local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 STUB.class, STUB.level = "WARRIOR", 70
 assert(NS.Set("bis.tooltip", false))   -- the own upgrade line stays out of these tooltips
+assert(NS.Set("drops.tooltip", false))   -- and the guild's drop rate of the looted items
 
 local link = STUB.item(28830, "Drachenwirbeltrophäe", 4)
 local link2 = STUB.item(31000, "Zweites Item", 4)
