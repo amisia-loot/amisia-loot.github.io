@@ -859,12 +859,18 @@ UNIT = {'phys': 'AP', 'caster': 'SP', 'heal': 'HEAL', 'tank': 'STA'}
 # damage, 2.2 healing, 1 stamina): the exchange rate for survival in the Hardcore weighting.
 UNIT_PER_BUDGET = {'AP': 2.0, 'SP': 1.2, 'HEAL': 2.2, 'STA': 1.0}
 HARDCORE_SHARE = 0.3        # Hardcore: survival on top, at 30 % of a tank's view
-SPEEDRUN_SURVIVAL = 0.1     # Speedrun: a little stamina for less downtime
+SPEEDRUN_SURVIVAL = 0.1     # Speedrun: a little survival (stamina, armour, avoidance) for less downtime
 THREAT_SHARE = 0.15         # tanks: threat stats count at 15 %
 MELEE_MISS, DW_MISS, SPELL_MISS = 8.0, 27.0, 6.0   # percent, against a target two levels higher
 TARGET_DODGE = 5.6
 HIT_CAP, SPELL_HIT_CAP = 6.0, 6.0
 CASTS_PER_BAR_SPIRIT = 0.5  # share of a mana bar's time spent outside the five-second rule
+# Share of the time a character casts while a mana bar lasts (the rest: moving, looting, waiting):
+# damage dealers levelling 0.6, healers 0.4. A bar lasts its casting time divided by this.
+DUTY = {'caster': 0.6, 'heal': 0.4}
+# Spirit of a class without mana: health comes back faster between fights (shorter breaks); half
+# of what a point of stamina is worth for the Speedrun weighting.
+SPIRIT_HEALTH_SHARE = 0.5
 
 
 def base_hp(cls, level):
@@ -947,7 +953,7 @@ def caster_weights(cls, p, ref, conv, heal=False):
     dmg = B + k * sp
     pool = 18 * L + 15 * ref['INT']
     mv = p['scarce'] * dmg / (k * pool)
-    bar_time = pool * p['eff'] * T / B
+    bar_time = pool * p['eff'] * T / B / DUTY['heal' if heal else 'caster']
     w = {}
     unit = 'HEAL' if heal else 'SP'
     w[unit] = 1.0
@@ -1030,14 +1036,22 @@ def derive(cls, model, p, ref, conv):
                                      block=cls in ('WARRIOR', 'PALADIN', 'SHAMAN'), armor_mult=1.0,
                                      threat=cls), ref, conv)
     u = UNIT_PER_BUDGET[UNIT[model]]
-    speed = dict(w)
-    speed['STA'] = speed.get('STA', 0) + SPEEDRUN_SURVIVAL * u
-    hard = dict(speed)
-    for k in SURVIVAL:
-        if tank.get(k):
-            hard[k] = hard.get(k, 0) + HARDCORE_SHARE * u * tank[k]
-    # agility's dodge and armour part
-    hard['AGI'] = hard.get('AGI', 0) + HARDCORE_SHARE * u * (2 * tank['ARMOR'] + tank['DODGE'] / conv.agi_per_crit(cls, ref['level']))
+
+    def survival(share):
+        # the tank's view of stamina, armour and avoidance at this share, in the spec's unit;
+        # agility's dodge and armour part on top
+        out = dict(w)
+        for k in SURVIVAL:
+            if tank.get(k):
+                out[k] = out.get(k, 0) + share * u * tank[k]
+        out['AGI'] = out.get('AGI', 0) + share * u * (2 * tank['ARMOR'] + tank['DODGE'] / conv.agi_per_crit(cls, ref['level']))
+        return out
+    speed = survival(SPEEDRUN_SURVIVAL)
+    if model == 'phys' and not MANA_PER_SPIRIT_5.get(cls):
+        speed['SPI'] = speed.get('SPI', 0) + SPEEDRUN_SURVIVAL * u * SPIRIT_HEALTH_SHARE
+    hard = survival(HARDCORE_SHARE)
+    if 'SPI' in speed and speed['SPI'] != w.get('SPI'):
+        hard['SPI'] = speed['SPI']
     return rounded(speed), rounded(hard), shown
 
 
