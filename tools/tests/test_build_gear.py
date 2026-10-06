@@ -297,16 +297,8 @@ def test_output_header_names_the_sources_and_no_guard(tmp_path):
     assert 'IsForever' not in text
     assert '    game = "forever", cap = 60, built = "2026-10-05",' in lines
 
-    class AnyWeights(dict):
-        def get(self, key, default=None):
-            return {'STR': 1}
-    wout = tmp_path / 'GearWeights.lua'
-    build_gear.write_weights(str(wout), AnyWeights())
-    wtext = wout.read_text(encoding='utf-8')
-    wlines = wtext.split('\n')
-    i = wlines.index('local _, ns = ...')
-    assert wlines[i + 1] == ''
-    assert 'IsForever' not in wtext
+    # the stat weights are Amisia's own (build_bis.py): this build has no writer for them any more
+    assert not hasattr(build_gear, 'write_weights') and not hasattr(build_gear, 'load_rxp_weights')
 
 
 def test_lua_strings_escape_control_characters():
