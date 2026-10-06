@@ -116,3 +116,20 @@ def test_shipped_file_loads_and_is_in_the_toc_with_its_licence():
         for field in (9, 10):
             for p in (q[field] or {}).values():
                 assert dq.Q[p] is not None, ('pre-quest without a record', qid, p)
+
+
+def test_the_downloaded_lua_runs_without_io_os_or_python(tmp_path):
+    # the data files are third-party code: whatever they try, nothing outside the reader happens
+    lua = bdq._att_lua()
+    S = lua.execute(bdq.ATT_STUB)
+    target = tmp_path / 'touched'
+    for code in ['io.open(%r, "w"):write("x")', 'os.execute("touch " .. %r)',
+                 'python.eval("open(%r, \'w\')")', 'loadstring("io.open(%r, [[w]])")()',
+                 'require("os").execute("touch " .. %r)', 'getfenv(0).io.open(%r, "w")',
+                 'rawget(_G, "io").open(%r, "w")']:
+        try:
+            S.run(code % str(target), 'evil.lua')
+        except Exception:
+            pass
+        assert not target.exists(), code
+    assert lua.eval('io') is None and lua.eval('os') is None and lua.eval('python') is None

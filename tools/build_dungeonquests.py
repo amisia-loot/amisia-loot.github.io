@@ -81,6 +81,7 @@ def hundredths(v):
 
 # ---------------------------------------------------------------- AllTheThings reader
 ATT_STUB = r'''
+local loadstring, setfenv, assert = loadstring, setfenv, assert
 local rec = {}
 local function node(kind, id, t)
     if type(id) == "table" and t == nil then t, id = id, nil end
@@ -101,9 +102,14 @@ proxy = setmetatable({}, {
     __div = function() return proxy end, __mod = function() return proxy end, __unm = function() return proxy end,
     __concat = function() return proxy end, __pow = function() return proxy end,
 })
+-- the downloaded files are third-party code: they see only these, never io, os, load or python
+local SAFE = { pairs = pairs, ipairs = ipairs, type = type, tostring = tostring, tonumber = tonumber,
+    select = select, next = next, unpack = unpack, rawget = rawget, rawset = rawset,
+    setmetatable = setmetatable, getmetatable = getmetatable,
+    string = string, table = table, math = math }
 local env = setmetatable({}, { __index = function(_, k)
-    local v = _G[k]
-    if v ~= nil and k ~= "MAP" then return v end
+    local v = SAFE[k]
+    if v ~= nil then return v end
     return proxy
 end })
 env.inst, env.q, env.e, env.i, env.n, env.objective = tagged("inst"), tagged("q"), tagged("e"), tagged("i"), tagged("n"), tagged("objective")
@@ -121,13 +127,18 @@ end
 -- runs the map constants file; MAP for the data files
 function S.maps(src)
     local f = assert(loadstring(src, "@maps.lua"))
-    local menv = setmetatable({ print = function() end }, { __index = _G })
+    local menv = setmetatable({ print = function() end }, { __index = SAFE })
     setfenv(f, menv)
     f()
     env.MAP = menv.MAP
 end
 -- a table of the data (no stand-in)
 function S.plain(v) return type(v) == "table" and v ~= proxy end
+-- the globals go (the locals above keep what the reader itself needs)
+for _, k in ipairs({ "os", "io", "require", "package", "debug", "dofile", "loadfile", "load", "loadstring",
+                     "setfenv", "getfenv", "python", "collectgarbage", "module", "newproxy" }) do
+    _G[k] = nil
+end
 return S
 '''
 
@@ -142,7 +153,7 @@ def clean_name(text):
 
 def _att_lua():
     from lupa.lua51 import LuaRuntime
-    return LuaRuntime(unpack_returned_tuples=True)
+    return LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
 
 
 def _seq(t):

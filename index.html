@@ -2172,7 +2172,7 @@ function renderAttendance(){
           const {won, here, late, bench} = k;
           const when = late ? lateTime(k.when) : '';
           const as = k.as && k.as !== r.id && raiderById(k.as) ? ' as ' + raiderById(k.as).name : '';
-          const lock = late ? ' title="there' + as + ', but late' + (when ? ' - first seen at ' + when : '') + '"'
+          const lock = late ? ' title="' + esc('there' + as + ', but late' + (when ? ' - first seen at ' + when : '')) + '"'
             : bench ? ' title="' + esc(['on the bench' + as, bench.note || '', bench.self ? 'signed up themselves' : ''].filter(Boolean).join(' · ') + (readOnly ? '' : ' - click to change')) + '"'
             : won ? ' title="won loot that night' + esc(as) + '"' : here && as ? ' title="there' + esc(as) + (readOnly ? '' : ' - click to change') + '"' : readOnly ? '' : ' title="click to change"';
           // a click changes the character that was there (or on the bench), else the main
