@@ -42,6 +42,7 @@ by its name.
 AMISIA_WOW_ROOT overrides the WoW install path.
 """
 import argparse
+import csv
 import glob
 import html
 import json
@@ -215,6 +216,20 @@ def parse_wowsrc(page, slug):
 
 
 # ---------------------------------------------------------------- ItemSparse (client item table)
+def client_known(ids, wago_dir):
+    """The ids of ids the client's own ItemSparse table has (an id it lacks does not exist in Forever:
+    /amisia scan gear would ask for it in vain). Without the table, all of them."""
+    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir and os.path.isdir(wago_dir) else None
+    if not path:
+        return list(ids)
+    with open(path, encoding='utf-8', newline='') as fh:
+        known = {int(r['ID']) for r in csv.DictReader(fh) if (r.get('ID') or '').isdigit()}
+    kept = [i for i in ids if i in known]
+    if len(kept) < len(ids):
+        log(f'scan gear: {len(ids) - len(kept)} ids left out, the client has no such item')
+    return kept
+
+
 def itemsparse_path(arg):
     """--itemsparse: a CSV file, or a folder holding ItemSparse.csv or ItemSparse.<build>.csv (the
     newest build)."""
@@ -1047,6 +1062,7 @@ def main(argv=None):
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, ofa, atlas_dungeons, atlas_crafts, wowsrc, itemsparse, forever_raids, load_facts(),
         prev_items, observed)
+    missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
     if ofa[0] or ofa[1]:
         sources.append('OneForAll')
