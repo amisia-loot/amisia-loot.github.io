@@ -79,7 +79,9 @@ def test_extract_keeps_only_what_the_build_uses(wago):
     gd = bb.extract(wago)
     assert gd['build'] == BUILD
     assert set(gd['items']) == {1001, 1002, 1003, 1006}, 'gear with stats or a set; no shirt, no statless feet'
-    assert gd['items'][1001] == [1, 2, 30, 0, 7, [[4, 6000], [7, 4000]]]
+    # inventory type, quality, item level, required level, set, allocations, then class and subclass (no
+    # Item table here: unknown), weapon delay in ms, damage variance and the caster flag
+    assert gd['items'][1001] == [1, 2, 30, 0, 7, [[4, 6000], [7, 4000]], None, None, 0, 0, 0]
     assert gd['rpp'][30]['GoodF'][0] == 15.0
     assert gd['sets'] == {7: {'name': 'Garb of Tests', 'items': [1001, 1002]}}, 'a set needs two items'
     assert gd['setspells'][7] == [[2, 501], [2, 502]]
@@ -696,3 +698,262 @@ def test_the_committed_picks_are_valid():
     enh = [p for p in ok if p['item'] == 280604]
     assert enh and enh[0]['class'] == 'SHAMAN' and enh[0]['spec'] == 'enh' and enh[0]['from'] <= 30 <= enh[0]['to']
     assert 'Gilde' not in json.dumps(picks, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- weapon damage, armour, equip effects (client tables)
+FULL_SPARSE = SPARSE_HEADER + ['ItemDelay', 'DmgVariance', 'Flags_4']
+
+
+def full_row(iid, inv, q, ilvl, stats=(), delay=0, var=0, flags4=0, req=0):
+    return sparse_row(iid, inv, q, ilvl, stats, req=req) + [delay, var, flags4]
+
+
+def full_wago(folder):
+    """The wago fixture plus the damage, armour, effect, tuning and encounter tables. Item level 20, uncommon:
+    one-hand 10, two-hand 13 damage per second (the caster tables are copies, as in Forever's base data)."""
+    rows = [
+        full_row(4001, 13, 2, 20, delay=2600, var=0.6),                         # one-hand sword
+        full_row(4002, 17, 2, 20, [(5, 10000)], delay=3000, var=0.4, flags4=0x300),   # caster staff
+        full_row(4003, 15, 2, 20, delay=2800, var=0.6),                         # bow
+        full_row(4004, 26, 2, 20, delay=1500, var=0.6),                         # wand: damage unknown
+        full_row(4005, 20, 2, 20, [(50, 2000), (7, 8000)]),                     # cloth robe with extra armour
+        full_row(4006, 14, 3, 20),                                              # shield
+        full_row(4007, 12, 3, 30),                                              # trinket: equip AP, use Zeal
+        full_row(4008, 17, 3, 40, [(5, 6956), (7, 6521)], delay=3600, var=0.4),  # the mace with a spell modifier
+        full_row(4009, 13, 2, 20, delay=1800, var=0.6),                         # dagger with a chance on hit
+        full_row(4010, 11, 3, 30),                                              # ring: equip spell power
+        full_row(4011, 12, 3, 30),                                              # trinket: proc, extra attack
+    ]
+    write_csv(folder, 'ItemSparse', FULL_SPARSE, rows)
+    write_csv(folder, 'Item', ITEM_HEADER, [[4001, 2, 7, 13], [4002, 2, 10, 17], [4003, 2, 2, 15], [4004, 2, 19, 26],
+                                            [4005, 4, 1, 20], [4006, 4, 6, 14], [4007, 4, 0, 12], [4008, 2, 5, 17],
+                                            [4009, 2, 15, 13], [4010, 4, 0, 11], [4011, 4, 0, 12]])
+    head = ['ID', 'ItemLevel'] + [f'Quality_{q}' for q in range(7)]
+    one = [[il, il] + [10.0 * il / 20 * (0.5 + 0.25 * q) for q in range(7)] for il in range(1, 61)]
+    two = [[il, il] + [13.0 * il / 20 * (0.5 + 0.25 * q) for q in range(7)] for il in range(1, 61)]
+    for table, data in (('ItemDamageOneHand', one), ('ItemDamageOneHandCaster', one), ('ItemDamageTwoHand', two),
+                        ('ItemDamageTwoHandCaster', two)):
+        write_csv(folder, table, head, data)
+    write_csv(folder, 'ItemArmorQuality', ['ID'] + [f'Qualitymod_{q}' for q in range(7)],
+              [[il, 0.9, 0.95, 1, 1.1, 1.2, 1.2, 1.2] for il in range(1, 61)])
+    write_csv(folder, 'ItemArmorTotal', ['ID', 'ItemLevel', 'Cloth', 'Leather', 'Mail', 'Plate'],
+              [[il, il, 5 * il, 10 * il, 15 * il, 20 * il] for il in range(1, 61)])
+    write_csv(folder, 'ItemArmorShield', ['ID'] + [f'Quality_{q}' for q in range(7)] + ['ItemLevel'],
+              [[il] + [25 * il + q for q in range(7)] + [il] for il in range(1, 61)])
+    write_csv(folder, 'ArmorLocation', ['ID', 'Clothmodifier', 'Leathermodifier', 'Chainmodifier', 'Platemodifier',
+                                        'Modifier'],
+              [[i, 0.16 if i == 5 else 0.13 if i == 1 else 0, 0, 0, 0, 0] for i in range(1, 24)])
+    write_csv(folder, 'ItemXItemEffect', ['ID', 'ItemEffectID', 'ItemID'],
+              [[1, 701, 4007], [2, 702, 4007], [3, 703, 4008], [4, 704, 4009], [5, 705, 4010], [6, 706, 4010],
+               [7, 707, 4011]])
+    write_csv(folder, 'ItemEffect', ['ID', 'LegacySlotIndex', 'TriggerType', 'SpellID', 'PlayerConditionID'],
+              [[701, 0, 1, 801, 0], [702, 1, 0, 802, 0], [703, 0, 1, 803, 0], [704, 0, 2, 804, 0],
+               [705, 0, 1, 805, 0], [706, 1, 1, 806, 0], [707, 0, 1, 807, 0]])
+    write_csv(folder, 'SpellName', ['ID', 'Name_lang'],
+              [[501, 'Set Strength'], [502, 'Set Spell'], [801, 'Authority'], [802, 'Zeal'], [803, 'Rage of Earth'],
+               [804, 'Fireball'], [805, 'Stolen Power'], [806, 'Stolen Power'], [807, 'Hand of Justice'],
+               [808, 'Hand of Justice']])
+    write_csv(folder, 'Spell', ['ID', 'NameSubtext_lang', 'Description_lang', 'AuraDescription_lang'],
+              [[801, '', '+$s1 Attack Power.', ''], [802, '', 'Increases damage by $s1 and armor by $s2 for $d.', ''],
+               [803, '', 'Increases the damage dealt by your Stormstrike ability by $m1%.', ''],
+               [804, '', 'Hurls a fiery ball that causes $s1 Fire damage.', ''],
+               [805, '', 'Increases damage and healing done by magical spells and effects by up to $s1.', ''],
+               [806, '', '', 'In a Forest area, more.'],   # hidden: a condition the tooltip does not show
+               [807, '', '$h% chance on melee hit to gain 1 extra attack.', ''], [808, '', 'Extra attack.', '']])
+    write_csv(folder, 'SpellMisc', ['ID', 'SchoolMask', 'SpellID'], [[1, 4, 804], [2, 1, 802], [3, 1, 808]])
+    write_csv(folder, 'SpellEffect', ['ID', 'SpellID', 'EffectIndex', 'Effect', 'EffectAura', 'EffectBasePointsF',
+                                      'EffectMiscValue_0', 'EffectTriggerSpell'],
+              [[1, 501, 0, 6, 29, 12, 0, 0], [2, 502, 0, 6, 42, 5, 0, 0],
+               [10, 801, 0, 6, 99, 20, 0, 0], [11, 801, 1, 6, 124, 20, 0, 0],
+               [12, 802, 0, 6, 13, 10, 1, 0], [13, 802, 1, 6, 22, 150, 1, 0],
+               [14, 803, 0, 6, 108, 10, 0, 0],
+               [15, 804, 0, 2, 0, 176, 0, 0], [16, 804, 1, 6, 3, 8, 0, 0],
+               [17, 805, 0, 6, 13, 8, 126, 0], [18, 805, 1, 6, 135, 8, 126, 0],
+               [19, 806, 0, 6, 13, 16, 126, 0], [20, 806, 1, 6, 135, 16, 126, 0],
+               [21, 807, 0, 6, 42, 1, 0, 808], [22, 808, 0, 19, 0, 1, 0, 0]])
+    write_csv(folder, 'ContentTuning', ['ID', 'MinLevelSquish', 'MaxLevelSquish'], [[11, 17, 17], [12, 0, 0], [13, 22, 26]])
+    write_csv(folder, 'LFGDungeons', ['ID', 'Name_lang', 'TypeID', 'ContentTuningID'],
+              [[1, 'Wailing Caverns', 0, 11], [57, 'Elwynn Forest', 4, 12], [9, 'Blackfathom Deeps', 0, 13]])
+    write_csv(folder, 'DungeonEncounter', ['Name_lang', 'ID', 'MapID', 'DifficultyID', 'OrderIndex'],
+              [['Faldrim Anvilmar', 3493, 3065, 0, 0], ['Plunder', 3494, 3065, 0, 2500], ['Kresh', 585, 43, 0, 0],
+               ['Nobody Known', 3495, 3065, 0, 2000]])
+    return folder
+
+
+KEEP = set(range(4001, 4012))
+
+
+def test_extract_reads_the_new_tables(wago, tmp_path):
+    full_wago(wago)
+    gd = bb.extract(wago, keep_ids=KEEP)
+    # every kept item, with or without stats, with class and subclass, delay, variance and the caster bits
+    assert gd['items'][4001] == [13, 2, 20, 0, 0, [], 2, 7, 2600, 0.6, 0]
+    assert gd['items'][4002][6:] == [2, 10, 3000, 0.4, 0x300], 'the caster bits of Flags_4'
+    assert 4004 in gd['items'] and gd['items'][4006][6:8] == [4, 6]
+    assert gd['dmg']['1H'][20][2] == pytest.approx(10.0) and gd['dmg']['2HC'][20][2] == pytest.approx(13.0)
+    assert gd['armor']['total'][20] == [100, 200, 300, 400] and gd['armor']['loc'][5][0] == 0.16
+    assert gd['armor']['shield'][20][3] == 503 and gd['armor']['q'][20][3] == 1.1
+    assert gd['effects'][4007] == [[1, 801], [0, 802]] and gd['effects'][4010] == [[1, 805], [1, 806]]
+    fx = gd['fx'][804]
+    assert fx['name'] == 'Fireball' and fx['vis'] == 1 and fx['school'] == 4
+    assert fx['e'] == [[2, 0, 176, 0, 0], [6, 3, 8, 0, 0]]
+    assert gd['fx'][806]['vis'] == 0, 'a spell without a description is hidden on the tooltip'
+    assert gd['fx'][808]['e'] == [[19, 0, 1, 0, 0]], 'the spell a proc triggers comes along'
+    assert gd['fx'][803]['ab'] == 'Stormstrike', 'the ability a spell modifier changes, from the description'
+    # ContentTuning's squished levels (one level in Forever), and a range where a table has one
+    assert gd['lfg'] == {1: ['Wailing Caverns', 17, 17], 9: ['Blackfathom Deeps', 22, 26]}
+    assert gd['enc'][3493] == ['Faldrim Anvilmar', 3065] and gd['enc'][585] == ['Kresh', 43]
+    # the cache gives the same back
+    p = str(tmp_path / 'gd.json')
+    bb.save_gamedata(gd, p)
+    back = bb.load_gamedata(p)
+    for k in ('items', 'dmg', 'armor', 'effects', 'fx', 'lfg', 'enc'):
+        assert back[k] == gd[k], k
+    # without keep_ids only items with stats or a set stay (the old extract)
+    assert 4001 not in bb.extract(wago)['items']
+
+
+def test_weapon_damage_as_the_client_computes_it(wago):
+    full_wago(wago)
+    gd = bb.extract(wago, keep_ids=KEEP)
+    # one-hand: 10 per second at 2.6 s: average 26, 18 to 34 (min floored, max rounded)
+    assert bb.weapon_damage(gd, 4001) == (18, 34, pytest.approx(10.0))
+    assert bb.weapon_kind(gd, 4001) == '1H' and bb.weapon_kind(gd, 4002) == '2HC' and bb.weapon_kind(gd, 4003) == 'ranged'
+    # caster staff: the caster table is a copy of the melee one, so the measured factor applies
+    mn, mx, dps = bb.weapon_damage(gd, 4002)
+    avg = 13.0 * bb.DMG_FACTOR['2HC'] * 3.0
+    assert (mn, mx) == (math.floor(avg * 0.8), math.floor(avg * 1.2 + 0.5)) and dps == pytest.approx((mn + mx) / 2 / 3.0)
+    # a caster table of its own (a later export with the hotfixes) is used as it is
+    gd2 = dict(gd, dmg={k: dict(t) for k, t in gd['dmg'].items()})
+    gd2['dmg']['2HC'][20] = [x * 0.5 for x in gd['dmg']['2HC'][20]]
+    assert bb.weapon_damage(gd2, 4002)[2] == pytest.approx(
+        (math.floor(19.5 * 0.8) + math.floor(19.5 * 1.2 + 0.5)) / 2 / 3.0)
+    # bow: the two-hand table times the ranged factor
+    avg = 13.0 * bb.DMG_FACTOR['ranged'] * 2.8
+    assert bb.weapon_damage(gd, 4003)[:2] == (math.floor(avg * 0.7), math.floor(avg * 1.3 + 0.5))
+    assert bb.weapon_damage(gd, 4004) is None, 'wands follow no table'
+    assert bb.weapon_damage(gd, 4005) is None, 'no weapon'
+    # without the damage tables nothing is known
+    assert bb.weapon_damage(dict(gd, dmg={}), 4001) is None
+
+
+def test_armour_value(wago):
+    full_wago(wago)
+    gd = bb.extract(wago, keep_ids=KEEP)
+    # robe = chest: 100 cloth at 20 * 0.16 * quality 1.0 = 16, plus 2 extra armour from its allocation
+    assert bb.armour_value(gd, 4005) == 18
+    assert bb.armour_value(gd, 4006) == 503, 'shields: the shield table, no quality factor'
+    assert bb.armour_value(gd, 4010) == 0, 'a ring has none'
+    assert bb.armour_value(dict(gd, armor={}), 4005) is None
+
+
+def test_equip_effects_become_stats_and_the_rest_a_text(wago):
+    full_wago(wago)
+    gd = bb.extract(wago, keep_ids=KEEP)
+    stats, texts = bb.item_effects(gd, 4007)
+    assert stats == {'ATTACK_POWER': 20}, 'melee and ranged attack power of one aura pair'
+    assert texts == ['Benutzen: Zeal (+10 Schaden, +150 Rüstung)']
+    stats, texts = bb.item_effects(gd, 4010)
+    assert stats == {'SPELL_POWER': 8} and texts == [], 'damage and healing alike: spell power; the hidden one left out'
+    assert bb.item_effects(gd, 4008) == ({}, ['Anlegen: Rage of Earth (+10 % Schaden: Stormstrike)'])
+    assert bb.item_effects(gd, 4009) == ({}, ['Chance bei Treffer: Fireball (176 Feuerschaden, 8 Feuerschaden je Tick)'])
+    assert bb.item_effects(gd, 4011) == ({}, ['Anlegen: Hand of Justice (1 zusätzlicher Angriff)'])
+    assert bb.item_effects(gd, 4001) == ({}, [])
+    # a use effect's plain stats read as one: melee and ranged attack power alike are attack power
+    gd['fx'][9999] = {'name': 'Molten Fury', 'vis': 1, 'school': 1, 'e': [[6, 99, 55, 0, 0], [6, 124, 55, 0, 0]]}
+    assert bb.describe(gd, 9999) == ['+55 Angriffskraft']
+    # the computed stats of an item: allocations, armour, damage and equip stats
+    assert bb.full_stats(gd, 4007) == ({'ATTACK_POWER': 20}, set())
+    full, unknown = bb.full_stats(gd, 4001)
+    assert full == {'DAMAGE_PER_SECOND': pytest.approx(10.0)} and unknown == set()
+    assert bb.full_stats(gd, 4004)[1] == {'DPS'}
+    assert bb.full_stats(gd, 4005)[0] == {'RESISTANCE0_NAME': 18, 'STAMINA': 8}
+    # a caster weapon's spell power: twice the budget of its level (10 at uncommon 20), on top of its
+    # allocations; a healing weapon (0x400) spell damage and healing instead
+    full, _ = bb.full_stats(gd, 4002)
+    assert full['SPELL_POWER'] == 20 and full['INTELLECT'] == 10 and 'DAMAGE_PER_SECOND' in full
+    gd['items'][4002][10] = 0x500
+    assert bb.caster_power(gd, 4002) == {'SPELL_DAMAGE_DONE': 12, 'SPELL_HEALING_DONE': 37}
+    assert bb.caster_power(gd, 4001) == {}
+    # extra armour of a weapon's or a ring's allocation is its armour
+    gd['items'][4010][5] = [[50, 5000]]
+    assert bb.armour_value(gd, 4010) == math.floor(5000 * gd['rpp'][30]['SuperiorF'][2] / 10000 + 0.5)
+
+
+def test_the_check_per_kind(wago):
+    full_wago(wago)
+    gd = bb.extract(wago, keep_ids=KEEP)
+    kinds = {}
+    rate, n, misses = bb.check_computed(gd, {
+        4001: 'DAMAGE_PER_SECOND=10.0000004',              # float noise of the client
+        4005: 'RESISTANCE0_NAME=18;STAMINA=8;EMPTY_SOCKET_RED=1',
+        4006: 'RESISTANCE0_NAME=500',                      # wrong
+        4007: 'ATTACK_POWER=20',
+        4004: 'DAMAGE_PER_SECOND=14',                      # a wand: not checked
+    }, by_kind=kinds)
+    assert n == 4 and rate == 0.75 and [m[0] for m in misses] == [4006]
+    assert kinds == {'melee': [1, 1], 'armour': [1, 1], 'shield': [0, 1], 'trinket': [1, 1]}
+    assert bb.item_kind(gd, 4002) == 'caster' and bb.item_kind(gd, 4003) == 'ranged' and bb.item_kind(gd, 4004) == 'wand'
+    assert bb.item_kind(gd, 4010) == 'jewellery'
+
+
+def test_a_build_with_weapons_and_effects(tmp_path, wago):
+    full_wago(wago)
+    facts = tmp_path / 'facts.json'
+    facts.write_text(json.dumps(dict(FACTS, dungeons=FACTS['dungeons'] + [
+        {'key': 'bfd', 'name': 'Blackfathom Deeps', 'kind': 'party'}])), encoding='utf-8')
+    rows, st, sparse, items, xs = [], [], [], [], []
+    # ten scanned swords and trinkets that match, so their kinds pass the check (98 %, at least 10 items)
+    for i in range(10):
+        iid = 5000 + i
+        rows.append(f'        [{iid}] = {{"WEAPON", 2, 7, 15, 2, 0, 20, 0, 2.6, 0, 1}},')
+        st.append(f'        [{iid}] = "DAMAGE_PER_SECOND=10",')
+        sparse.append(full_row(iid, 13, 2, 20, delay=2600, var=0.6))
+        items.append([iid, 2, 7, 13])
+        iid = 5100 + i
+        rows.append(f'        [{iid}] = {{"TRINKET", 4, 0, 25, 3, 0, 30, 0, 0, 0, 1}},')
+        st.append(f'        [{iid}] = "ATTACK_POWER=20",')
+        sparse.append(full_row(iid, 12, 3, 30))
+        items.append([iid, 4, 0, 12])
+        xs.append([100 + i, 701, iid])
+    for table, extra in (('ItemSparse', sparse), ('Item', items), ('ItemXItemEffect', xs)):
+        with open(os.path.join(wago, f'{table}.{BUILD}.csv'), encoding='utf-8') as fh:
+            old = list(csv.reader(fh))
+        write_csv(wago, table, old[0], old[1:] + extra)
+    for iid, loc, cls, sub in ((4001, 'WEAPON', 2, 7), (4004, 'RANGEDRIGHT', 2, 19), (4007, 'TRINKET', 4, 0),
+                               (4008, '2HWEAPON', 2, 5), (4009, 'WEAPON', 2, 15)):
+        rows.append(f'        [{iid}] = {{"{loc}", {cls}, {sub}, 20, 2, 0, 20, 0, 2.6, 0, 1}},')
+    gear = tmp_path / 'GearData.lua'
+    gear.write_text(GEAR_LUA % ('\n'.join(rows), '\n'.join(st)), encoding='utf-8')
+    out_b = tmp_path / 'BisData.lua'
+    report, _ = bb.run(wago=wago, gamedata_path=str(tmp_path / 'gd.json'), measured_path=None, gear_path=str(gear),
+                       facts_path=str(facts), archive_path=None, sv_path=None, att=fake_att(),
+                       out_weights=str(tmp_path / 'W.lua'), out_bis=str(out_b), built='2026-10-06',
+                       specs={('WARRIOR', 'dps')})
+    assert report['sc_kinds']['melee'] == [10, 10] and report['sc_kinds']['trinket'] == [10, 10]
+    B = lua_load(out_b).BIS
+    assert B.SC[4001] == 'DAMAGE_PER_SECOND=10', 'an unscanned weapon gets its damage'
+    assert B.SC[4007] == 'ATTACK_POWER=20', 'a trinket its equip stats'
+    assert B.SC[4004] is None, 'no damage known: no computed stats'
+    assert B.FX[4007] == 'Benutzen: Zeal (+10 Schaden, +150 Rüstung)'
+    assert B.FX[4009] == 'Chance bei Treffer: Fireball (176 Feuerschaden, 8 Feuerschaden je Tick)'
+    assert B.FX[4001] is None and B.FX[5100] is None
+    # encounters: the client's ids of the bosses with an NPC id, by name on the dungeon's map
+    assert B.EN[3493] == 261306 and B.EN[3494] == 261311 and B.EN[3495] is None
+    dg = {B.DG[i].key: B.DG[i] for i in range(1, len(B.DG) + 1)}
+    assert dg['bfd']['min'] == 22 and dg['bfd']['max'] == 26, 'a real range from ContentTuning'
+    assert dg['wc']['min'] is None, 'one level is no range (it stays lvl)'
+
+
+def test_base_stock_counts_a_fallback_record_under_its_boss():
+    arch = {'k': {'aaaaaaaa': {'npc': 0, 'enc': 3493, 'day': 270, 'it': {'5': 1}},
+                  'bbbbbbbb': {'npc': 0, 'enc': 1, 'day': 270, 'it': {}}}}
+    O, OT, OI = bb.base_stock(arch, {3493: 261306})
+    assert O == {261306: {'k': 1, 'it': {5: 1}}} and OT == 270
+
+
+def test_build_dungeons_reads_the_same_tuning():
+    import build_dungeons
+    rows = [{'ID': '5', 'MinLevelSquish': '17', 'MaxLevelSquish': '17'}, {'ID': '6', 'MinLevel': '20', 'MaxLevel': '25'},
+            {'ID': '7', 'MinLevelSquish': '0', 'MaxLevelSquish': '0'}]
+    assert build_dungeons.tuning_levels(rows) == {5: (17, 17), 6: (20, 25)}

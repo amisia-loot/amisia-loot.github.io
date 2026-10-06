@@ -74,6 +74,21 @@ def _keys(e):
     return {att_data.name_key(n) for n in [e['name']] + list(e.get('aliases') or []) if n}
 
 
+def tuning_levels(rows):
+    """{ContentTuning id: (min level, max level)} of ContentTuning rows: the squished levels
+    (MinLevelSquish/MaxLevelSquish, Forever 1.60 and the other modern clients) or MinLevel/MaxLevel
+    (tables of older builds). Forever gives every dungeon one level (min = max). Rows without a level
+    are left out; the first row of an id wins. tools/build_bis.py reads the table through this too."""
+    out = {}
+    for row in rows:
+        cid = _int(row.get('ID'))
+        lo = _int(row.get('MinLevelSquish') or row.get('MinLevel'))
+        hi = _int(row.get('MaxLevelSquish') or row.get('MaxLevel'))
+        if cid is not None and cid not in out and lo:
+            out[cid] = (lo, max(lo, hi or lo))
+    return out
+
+
 def client_facts(facts, dirs=WAGO_DIRS):
     """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg'}}, 'unmatched': [names]}
     from the client tables in dirs (the first folder holding a table wins, its newest build).
@@ -88,12 +103,7 @@ def client_facts(facts, dirs=WAGO_DIRS):
             if path:
                 tables[t] = os.path.basename(path)
                 break
-    tuning = {}
-    for row in att_data.wago_rows('ContentTuning', *dirs):
-        cid = _int(row.get('ID'))
-        lvl = _int(row.get('MinLevelSquish') or row.get('MinLevel'))
-        if cid is not None and cid not in tuning and lvl:
-            tuning[cid] = lvl
+    tuning = {cid: lo for cid, (lo, _) in tuning_levels(att_data.wago_rows('ContentTuning', *dirs)).items()}
     by_key = {}
     for e in facts['dungeons']:
         for k in _keys(e):

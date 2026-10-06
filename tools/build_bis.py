@@ -7,22 +7,26 @@ the guild's drop base stock and the effort per source kind.
 
 Runs on the N100; needs no WoW install. Inputs:
 
-  - the client tables the user downloads by hand from wago.tools as CSV (one folder per Forever
-    build, files named <Table>.<build>.csv; default ~/addons/_wago). Read when present:
+  - the client tables as CSV in wago.tools' format (tools/export_db2.ps1 on the PC, or downloaded
+    by hand; files named <Table>.<build>.csv; default ~/addons/_wago). Read when present (TABLES):
     ItemSparse, Item, ItemSet, ItemSetSpell, SpellEffect, SpellItemEnchantment, RandPropPoints,
-    LFGDungeons, ContentTuning. Only the columns and rows the build uses go to
-    tools/bis_gamedata.json (committed), so a later build runs from that file alone.
-    Not published for Forever (2026-10-06): ItemRandomProperties, ItemRandomSuffix and every gt*
-    table (gtChanceToMeleeCrit, gtChanceToSpellCrit, gtCombatRatings, gtRegenMPPerSpt). Random
-    suffixes therefore come from observed item links only, and the stat conversions (agility or
-    intellect per percent crit, rating per percent, mana per spirit) are documented defaults that
-    in-game measurements override (tools/bis_measured.json, see load_measured);
+    LFGDungeons, ContentTuning, DungeonEncounter, the weapon damage tables (ItemDamage*), the armour
+    tables (ItemArmorQuality, ItemArmorTotal, ItemArmorShield, ArmorLocation) and the item effects
+    (ItemXItemEffect, ItemEffect, SpellName, Spell, SpellMisc). Only the columns and rows the build
+    uses go to tools/bis_gamedata.json (committed), so a later build runs from that file alone.
+    Not in Forever (2026-10-06): ItemRandomProperties, ItemRandomSuffix and every gt* table
+    (gtChanceToMeleeCrit, gtChanceToSpellCrit, gtCombatRatings, gtRegenMPPerSpt); the Journal*
+    tables are empty. Random suffixes therefore come from observed item links only, and the stat
+    conversions (agility or intellect per percent crit, rating per percent, mana per spirit) are
+    documented defaults that in-game measurements override (tools/bis_measured.json, see
+    load_measured);
   - addon/Amisia/GearData.lua (tools/build_gear.py): items, sources and scanned stats (read only);
   - tools/forever_dungeons.json: the dungeon facts; AllTheThings' Forever data (tools/att_data.py,
     MIT) for the bosses' NPC ids per dungeon;
   - tools/drop_obs.json: the guild's drop records (tools/build_scan.py) for the base stock;
   - the Amisia SavedVariables (default ~/addons/_SavedVariables/Amisia.lua when present): the
-    random suffixes the collector saw (scan.suffix);
+    random suffixes the collector saw (scan.suffix) and the item scan (scan.items) for the check of
+    the computed stats;
   - tools/bis_picks.json: hand-kept BiS picks (items the scoring alone misses), checked against the
     client tables (check_picks) and written as ns.BIS.PICK and ns.BIS.PI.
 
@@ -74,12 +78,30 @@ TABLES = {
     'Item': ('ID', 'ClassID', 'SubclassID', 'InventoryType'),
     'ItemSet': None,
     'ItemSetSpell': ('ItemSetID', 'SpellID', 'Threshold', 'ChrSpecID'),
-    'SpellEffect': ('SpellID', 'EffectIndex', 'Effect', 'EffectAura', 'EffectBasePointsF', 'EffectMiscValue_0'),
+    'SpellEffect': ('SpellID', 'EffectIndex', 'Effect', 'EffectAura', 'EffectBasePointsF', 'EffectMiscValue_0',
+                    'EffectTriggerSpell'),
     'SpellItemEnchantment': None,
     'RandPropPoints': None,
     'LFGDungeons': ('ID', 'Name_lang', 'TypeID', 'ContentTuningID'),
-    'ContentTuning': ('ID', 'MinLevel', 'MaxLevel'),
+    'ContentTuning': ('ID', 'MinLevelSquish', 'MaxLevelSquish'),   # or MinLevel/MaxLevel (build_dungeons.tuning_levels)
+    # weapon damage per second by item level and quality, armour by item level, quality and slot
+    'ItemDamageOneHand': None, 'ItemDamageOneHandCaster': None, 'ItemDamageTwoHand': None,
+    'ItemDamageTwoHandCaster': None,
+    'ItemArmorQuality': None, 'ItemArmorTotal': None, 'ItemArmorShield': None, 'ArmorLocation': None,
+    # item effects: item -> effect (trigger, spell) -> the spell's name, tooltip text, school and effects
+    'ItemXItemEffect': ('ItemEffectID', 'ItemID'),
+    'ItemEffect': ('ID', 'TriggerType', 'SpellID'),
+    'SpellName': ('ID', 'Name_lang'),
+    'Spell': ('ID', 'Description_lang'),
+    'SpellMisc': ('SpellID', 'SchoolMask'),
+    'DungeonEncounter': ('ID', 'Name_lang', 'MapID'),
 }
+# The item damage tables by their key in the game data cache.
+DMG_TABLES = {'1H': 'ItemDamageOneHand', '1HC': 'ItemDamageOneHandCaster', '2H': 'ItemDamageTwoHand',
+              '2HC': 'ItemDamageTwoHandCaster'}
+# ItemEffect TriggerType: 0 on use, 1 on equip, 2 chance on hit, 5 on use without delay (6 teaches a
+# recipe and others are no gear effects).
+FX_TRIGGERS = (0, 1, 2, 5)
 # Tables wago.tools does not publish for Forever: their parts fall back (see the module text).
 NOT_ON_WAGO = ('ItemRandomProperties', 'ItemRandomSuffix', 'gtChanceToMeleeCrit', 'gtChanceToMeleeCritBase',
                'gtChanceToSpellCrit', 'gtChanceToSpellCritBase', 'gtCombatRatings', 'gtRegenMPPerSpt')
@@ -110,11 +132,12 @@ SC_UNSCORED = {'EXTRA_ARMOR', 'FIRE_RESISTANCE', 'FROST_RESISTANCE', 'HOLY_RESIS
 BUDGET_SLOT = {1: 0, 5: 0, 7: 0, 20: 0, 17: 0, 3: 1, 10: 1, 6: 1, 8: 1, 12: 1, 2: 2, 9: 2, 11: 2, 16: 2,
                14: 2, 23: 2, 13: 3, 21: 3, 22: 3, 15: 4, 25: 4, 26: 4, 28: 4}
 BUDGET_QUALITY = {2: 'GoodF', 3: 'SuperiorF', 4: 'EpicF', 5: 'EpicF'}
-# Computed stats are kept only when the formula matches the scans this often.
+# Computed stats of a kind of item (item_kind) are kept only when the computation matches the scans of
+# that kind this often, over at least SC_MIN_CHECKED scanned items.
 SC_MIN_RATE = 0.98
-# Weapons and trinkets get no computed stats: their damage needs the damage tables and their spell
-# power or attack power often comes from an equip effect (ItemEffect), none of which wago has for
-# Forever. They are left out of the check too, which covers what SC is used for.
+SC_MIN_CHECKED = 10
+# Armour and jewellery: the inventory types computed_stats takes without any_slot (their allocations
+# alone; full_stats adds armour, weapon damage and equip effects for every slot).
 SC_INV = {1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 14, 16, 20, 23}
 
 
@@ -140,7 +163,8 @@ def build_of(path):
 
 
 def rows(path):
-    with open(path, encoding='utf-8') as fh:
+    # utf-8-sig: a byte order mark (some exports have one) must not become part of the first column's name
+    with open(path, encoding='utf-8-sig') as fh:
         yield from csv.DictReader(fh)
 
 
@@ -154,18 +178,49 @@ def num(v, f=int):
             return 0
 
 
-def extract(folder, pick_ids=()):
+CASTER_FLAG4 = 0x100       # ItemSparse Flags_4: a caster weapon (staves, spell daggers and maces; see DMG_FACTOR)
+CASTER_SP_FLAG4 = 0x200    # ... with spell power: 2 * the item's budget (caster_power)
+CASTER_HEAL_FLAG4 = 0x400  # ... with spell damage and healing instead (caster_power)
+CASTER_FLAGS4 = CASTER_FLAG4 | CASTER_SP_FLAG4 | CASTER_HEAL_FLAG4
+# The ability a spell modifier changes, from the (English) tooltip text of its spell.
+ABILITY_RE = (re.compile(r"\byour ([A-Z][A-Za-z' ]+?) (?:ability|abilities|spells?|totems?)\b"),
+              re.compile(r"\b(?:of|by|for) ([A-Z][A-Za-z']+(?: (?:[A-Z][A-Za-z']+|of|the))*) by\b"))
+
+
+def ability_of(text):
+    for rx in ABILITY_RE:
+        m = rx.search(text or '')
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def empty_gamedata():
+    return {'build': None, 'date': time.strftime('%Y-%m-%d'), 'missing': [], 'items': {}, 'rpp': {}, 'sets': {},
+            'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}, 'picks': {}, 'dmg': {}, 'armor': {},
+            'effects': {}, 'fx': {}, 'enc': {}}
+
+
+def extract(folder, pick_ids=(), keep_ids=None):
     """The compact game data of a folder of wago CSVs: {'build', 'date', 'missing': [tables],
     'items': {id: [inventory type, quality, item level, required level, item set, [[stat id,
-    allocation], ...]]}, 'rpp': {item level: {'GoodF': [5], 'SuperiorF': [5], 'EpicF': [5]}},
+    allocation], ...], class, subclass (Item table, None without), weapon delay in ms, damage variance,
+    caster bits of Flags_4 (CASTER_FLAGS4)]}, 'rpp': {item level: {'GoodF': [5], 'SuperiorF': [5], 'EpicF': [5]}},
     'sets': {id: {'name', 'items'}}, 'setspells': {set id: [[threshold, spell id], ...]},
     'spells': {spell id: [[effect, aura, points, misc], ...]}, 'lfg': {id: [name, min, max]},
     'enchants': {id: [[effect, points, arg], ...]}, 'picks': {id: {'name', 'inv', 'q', 'ilvl', 'req', 'bind',
-    'delay' (seconds), 'cls', 'sub', 'mask', 'stats'}}}. Items only with stats or an item set; picks for the
-    ids of pick_ids (tools/bis_picks.json) that ItemSparse holds, whatever they are (the checks judge)."""
-    out = {'build': None, 'date': time.strftime('%Y-%m-%d'), 'missing': [], 'items': {}, 'rpp': {}, 'sets': {},
-           'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}, 'picks': {}}
+    'delay' (seconds), 'cls', 'sub', 'mask', 'stats'}}, 'dmg': {'1H'|'1HC'|'2H'|'2HC': {item level: [quality
+    0-6]}}, 'armor': {'q': {item level: [7]}, 'total': {item level: [cloth, leather, mail, plate]}, 'shield':
+    {item level: [7]}, 'loc': {inventory type: [cloth, leather, mail, plate]}}, 'effects': {item: [[trigger,
+    spell], ...]}, 'fx': {spell: {'name', 'vis' (1: the tooltip shows it), 'school', 'e': [[effect, aura,
+    points, misc, triggered spell], ...], 'ab' (the ability a modifier changes, when the text names one)}},
+    'enc': {encounter: [name, map]}}.
+    Items: gear with stats or an item set, and every gear item of keep_ids (the planner's items and the
+    picks: weapons and armour need no stats for their damage and armour); picks for the ids of pick_ids
+    (tools/bis_picks.json) that ItemSparse holds, whatever they are (the checks judge)."""
+    out = empty_gamedata()
     pick_ids = set(pick_ids or ())
+    keep_ids = set(keep_ids or ()) | pick_ids
     paths = {t: find_csv(folder, t) for t in TABLES}
     out['missing'] = sorted([t for t, p in paths.items() if not p] + list(NOT_ON_WAGO))
     out['build'] = next((build_of(p) for p in paths.values() if p and build_of(p)), None)
@@ -191,15 +246,40 @@ def extract(folder, pick_ids=()):
                 sid, alloc = num(r.get(f'StatModifier_bonusStat_{i}')), num(r.get(f'StatPercentEditor_{i}'))
                 if sid > 0 and alloc:
                     stats.append([sid, alloc])
-            # an item without stats or set adds nothing the build computes
-            if stats or num(r.get('ItemSet')):
+            # an item without stats or set adds nothing the build computes, unless it is one of the
+            # planner's (its damage or armour)
+            if stats or num(r.get('ItemSet')) or num(r.get('ID')) in keep_ids:
                 out['items'][num(r['ID'])] = [inv, num(r.get('OverallQualityID')), num(r.get('ItemLevel')),
-                                              num(r.get('RequiredLevel')), num(r.get('ItemSet')), stats]
-    if paths['Item'] and out['picks']:
+                                              num(r.get('RequiredLevel')), num(r.get('ItemSet')), stats, None, None,
+                                              num(r.get('ItemDelay')), round(num(r.get('DmgVariance'), float), 4),
+                                              num(r.get('Flags_4')) & CASTER_FLAGS4]
+    if paths['Item'] and (out['picks'] or out['items']):
         for r in rows(paths['Item']):
-            p = out['picks'].get(num(r.get('ID')))
+            iid = num(r.get('ID'))
+            p = out['picks'].get(iid)
             if p is not None:
                 p['cls'], p['sub'] = num(r.get('ClassID')), num(r.get('SubclassID'))
+            it = out['items'].get(iid)
+            if it is not None:
+                it[6], it[7] = num(r.get('ClassID')), num(r.get('SubclassID'))
+    for key, table in DMG_TABLES.items():
+        if paths[table]:
+            out['dmg'][key] = {num(r.get('ItemLevel')): [round(num(r.get(f'Quality_{q}'), float), 6) for q in range(7)]
+                               for r in rows(paths[table])}
+    if paths['ItemArmorQuality'] and paths['ItemArmorTotal'] and paths['ArmorLocation']:
+        out['armor']['q'] = {num(r['ID']): [round(num(r.get(f'Qualitymod_{q}'), float), 4) for q in range(7)]
+                             for r in rows(paths['ItemArmorQuality'])}
+        out['armor']['total'] = {num(r.get('ItemLevel')): [round(num(r.get(c), float), 4)
+                                                           for c in ('Cloth', 'Leather', 'Mail', 'Plate')]
+                                 for r in rows(paths['ItemArmorTotal'])}
+        out['armor']['loc'] = {num(r['ID']): [round(num(r.get(c), float), 4) for c in ('Clothmodifier',
+                                                                                    'Leathermodifier',
+                                                                                    'Chainmodifier', 'Platemodifier')]
+                               for r in rows(paths['ArmorLocation'])}
+        if paths['ItemArmorShield']:
+            out['armor']['shield'] = {num(r.get('ItemLevel')): [round(num(r.get(f'Quality_{q}'), float), 4)
+                                                                for q in range(7)]
+                                      for r in rows(paths['ItemArmorShield'])}
     if paths['RandPropPoints']:
         for r in rows(paths['RandPropPoints']):
             out['rpp'][num(r['ID'])] = {q: [round(num(r.get(f'{q}_{i}'), float), 4) for i in range(5)]
@@ -219,13 +299,50 @@ def extract(folder, pick_ids=()):
                 wanted.add(num(r.get('SpellID')))
         for v in out['setspells'].values():
             v.sort()
-    if paths['SpellEffect'] and wanted:
+    # the effects of the kept items (and picks): which spell, on use, on equip or by chance on hit
+    fx_spells = set()
+    if paths['ItemXItemEffect'] and paths['ItemEffect'] and (out['items'] or out['picks']):
+        effect = {num(r['ID']): (num(r.get('TriggerType')), num(r.get('SpellID'))) for r in rows(paths['ItemEffect'])}
+        links = sorted((num(r['ID']), num(r.get('ItemID')), num(r.get('ItemEffectID')))
+                       for r in rows(paths['ItemXItemEffect']))
+        for _, iid, eid in links:
+            if (iid in out['items'] or iid in out['picks']) and eid in effect:
+                trig, spell = effect[eid]
+                if trig in FX_TRIGGERS and spell > 0:
+                    out['effects'].setdefault(iid, []).append([trig, spell])
+                    fx_spells.add(spell)
+    if paths['SpellEffect'] and (wanted or fx_spells):
+        by_spell = {}
         for r in rows(paths['SpellEffect']):
             sp = num(r.get('SpellID'))
-            if sp in wanted:
-                out['spells'].setdefault(sp, []).append([num(r.get('Effect')), num(r.get('EffectAura')),
-                                                         num(r.get('EffectBasePointsF'), float),
-                                                         num(r.get('EffectMiscValue_0'))])
+            by_spell.setdefault(sp, []).append((num(r.get('EffectIndex')), [
+                num(r.get('Effect')), num(r.get('EffectAura')), num(r.get('EffectBasePointsF'), float),
+                num(r.get('EffectMiscValue_0')), num(r.get('EffectTriggerSpell'))]))
+        for sp in by_spell:
+            by_spell[sp] = [e for _, e in sorted(by_spell[sp], key=lambda x: x[0])]
+        for sp in wanted:
+            if sp in by_spell:
+                out['spells'][sp] = [e[:4] for e in by_spell[sp]]
+        # an item's spell and the spells it triggers (a proc's effect), one step deep
+        todo = set(fx_spells)
+        for sp in list(fx_spells):
+            todo |= {e[4] for e in by_spell.get(sp, []) if e[4] > 0}
+        names = {num(r['ID']): r.get('Name_lang') or '' for r in rows(paths['SpellName'])} if paths['SpellName'] else {}
+        texts = {num(r['ID']): r.get('Description_lang') or '' for r in rows(paths['Spell'])} if paths['Spell'] else {}
+        school = {num(r.get('SpellID')): num(r.get('SchoolMask')) for r in rows(paths['SpellMisc'])} \
+            if paths['SpellMisc'] else {}
+        for sp in sorted(todo):
+            rec = {'name': names.get(sp, ''), 'vis': 1 if texts.get(sp, '').strip() else 0,
+                   'school': school.get(sp, 0), 'e': [[e[0], e[1], round(e[2], 4), e[3], e[4]] for e in by_spell.get(sp, [])]}
+            ab = ability_of(texts.get(sp))
+            if ab and any(e[1] in (AURA_ADD_FLAT, AURA_ADD_PCT) for e in rec['e']):
+                rec['ab'] = ab
+            out['fx'][sp] = rec
+    if paths['DungeonEncounter']:
+        for r in rows(paths['DungeonEncounter']):
+            eid = num(r.get('ID'))
+            if eid > 0 and eid not in out['enc']:
+                out['enc'][eid] = [r.get('Name_lang') or '', num(r.get('MapID'))]
     if paths['SpellItemEnchantment']:
         # the stat enchantments (effect 5); a random property or suffix points at them, once the
         # tables that link the two exist for Forever
@@ -237,10 +354,9 @@ def extract(folder, pick_ids=()):
                     effs.append([e, num(r.get(f'EffectPointsMin_{i}')), num(r.get(f'EffectArg_{i}'))])
             if effs:
                 out['enchants'][num(r['ID'])] = effs
-    tuning = {}
-    if paths['ContentTuning']:
-        for r in rows(paths['ContentTuning']):
-            tuning[num(r['ID'])] = (num(r.get('MinLevel')), num(r.get('MaxLevel')))
+    # one reader for ContentTuning with tools/build_dungeons.py (squished levels in Forever)
+    import build_dungeons
+    tuning = build_dungeons.tuning_levels(rows(paths['ContentTuning'])) if paths['ContentTuning'] else {}
     if paths['LFGDungeons']:
         for r in rows(paths['LFGDungeons']):
             if num(r.get('TypeID')) in (0, 2):
@@ -249,10 +365,15 @@ def extract(folder, pick_ids=()):
     return out
 
 
+NESTED = ('dmg', 'armor')   # {name: {int: ...}} in the cache
+
+
 def save_gamedata(gd, path=GAMEDATA):
     def keyed(d):
         return {str(k): v for k, v in sorted(d.items())}
-    data = {k: (keyed(v) if isinstance(v, dict) and k not in ('date',) else v) for k, v in gd.items()}
+    data = {k: (keyed(v) if isinstance(v, dict) and k not in ('date',) + NESTED else v) for k, v in gd.items()}
+    for k in NESTED:
+        data[k] = {name: keyed(t) for name, t in sorted((gd.get(k) or {}).items())}
     with open(path, 'w', encoding='utf-8', newline='\n') as fh:
         json.dump(data, fh, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
         fh.write('\n')
@@ -263,8 +384,13 @@ def load_gamedata(path=GAMEDATA):
         return None
     with open(path, encoding='utf-8') as fh:
         raw = json.load(fh)
-    for k in ('items', 'rpp', 'sets', 'setspells', 'spells', 'lfg', 'enchants', 'picks'):
+    for k in ('items', 'rpp', 'sets', 'setspells', 'spells', 'lfg', 'enchants', 'picks', 'effects', 'fx', 'enc'):
         raw[k] = {int(i): v for i, v in (raw.get(k) or {}).items()}
+    for k in NESTED:
+        raw[k] = {name: {int(i): v for i, v in t.items()} for name, t in (raw.get(k) or {}).items()}
+    # a cache of an older build: items without class, subclass, delay, variance and caster flag
+    for it in raw['items'].values():
+        it.extend([None, None, 0, 0, 0][len(it) - 6:] if len(it) < 11 else [])
     return raw
 
 
@@ -569,12 +695,12 @@ def parse_stats(text, stat_map):
 
 def computed_stats(gd, iid, any_slot=False):
     """{client key: value} of an item from ItemSparse's allocations and RandPropPoints' budget, or
-    None when the tables cannot say (unknown item, quality, item level or stat). any_slot: weapons
-    and trinkets too (a BiS pick: its stats from the allocations, its damage and effect stay unknown)."""
+    None when the tables cannot say (unknown item, quality, item level or stat). Armour and jewellery
+    only (SC_INV), any_slot: every slot (full_stats adds armour, damage and equip effects)."""
     it = gd['items'].get(iid)
     if not it:
         return None
-    inv, q, ilvl, _, _, stats = it
+    inv, q, ilvl, _, _, stats = it[:6]
     if inv not in SC_INV and not any_slot:
         return None
     if not stats:
@@ -599,33 +725,400 @@ def stat_text(d):
     return ';'.join(f'{k}={v:g}' for k, v in sorted(d.items()))
 
 
-# Scan keys the computation cannot produce: armour and weapon damage need tables Forever's wago
-# lacks; equip effects (caster weapons' spell power, trinket attack power) live in ItemEffect.
-SC_SKIP = {'RESISTANCE0_NAME', 'DAMAGE_PER_SECOND', 'EMPTY_SOCKET_RED', 'EMPTY_SOCKET_YELLOW', 'EMPTY_SOCKET_BLUE',
-           'EMPTY_SOCKET_META', 'EXTRA_ARMOR'}
+# ---------------------------------------------------------------- weapon damage and armour
+# The client's weapon damage: damage per second of the item's level and quality (ItemDamage* table of
+# its kind), average hit = DPS * speed, minimum = floor(average * (1 - variance / 2)), maximum =
+# floor(average * (1 + variance / 2) + 0.5); the tooltip's DPS is (minimum + maximum) / 2 / speed.
+# What Forever's base data (1.60.1.70235, exported without the client's hotfixes) does not say,
+# measured on 2026-10-06 against the scanned items (C_Item.GetItemStats, the player's SavedVariables;
+# every factor reproduces the scans to the hundredth over all item levels, see tools/README.md):
+# - caster weapons (Flags_4 & 0x100): the caster tables are copies of the melee tables in that data;
+#   the scans are 2/3 of the one-hand and 0.7435 of the two-hand table. A caster table that differs
+#   from the melee one (an export with the hotfixes) is taken as it is, without a factor;
+# - bows, guns and crossbows: 0.6 of the two-hand table (no ranged table exists any more);
+# - thrown weapons: 0.9 of the one-hand table;
+# - wands follow none of the tables (1.3 to 1.5 times the one-hand one, changing with the level): no
+#   damage, so no computed stats.
+DMG_FACTOR = {'1HC': 2 / 3, '2HC': 0.7435, 'ranged': 0.6, 'thrown': 0.9}
+WEAPON_INV_1H, WEAPON_INV_RANGED = (13, 21, 22), (15, 26)
+SUB_BOW, SUB_GUN, SUB_CROSSBOW, SUB_THROWN, SUB_WAND = 2, 3, 18, 16, 19
 
 
-def check_computed(gd, scanned):
-    """(rate, checked, misses): how often the computed stats equal what the scan saw, over the
-    scanned items the tables know (stats the computation cannot make left out)."""
-    good, misses = 0, []
-    produced = set(STAT_KEY.values())
-    for iid, text in sorted(scanned.items()):
-        if iid not in gd['items'] or gd['items'][iid][0] not in SC_INV:
+def weapon_kind(gd, iid):
+    """'1H', '1HC' (caster), '2H', '2HC', 'ranged' (bow, gun, crossbow), 'thrown', 'wand', or None for
+    no weapon or an unknown class (no Item table)."""
+    it = gd['items'].get(iid)
+    if not it or it[6] != 2:
+        return None
+    inv, sub, caster = it[0], it[7], it[10] & CASTER_FLAG4
+    if sub == SUB_WAND:
+        return 'wand'
+    if sub == SUB_THROWN:
+        return 'thrown'
+    if sub in (SUB_BOW, SUB_GUN, SUB_CROSSBOW):
+        return 'ranged'
+    if inv == 17:
+        return '2HC' if caster else '2H'
+    if inv in WEAPON_INV_1H:
+        return '1HC' if caster else '1H'
+    return None
+
+
+def weapon_damage(gd, iid):
+    """(minimum, maximum, damage per second) of a weapon as the client computes it, or None (no weapon,
+    a wand, no delay, or the tables lack the item level)."""
+    kind = weapon_kind(gd, iid)
+    it = gd['items'].get(iid)
+    if kind is None or kind == 'wand' or not it[8]:
+        return None
+    q, ilvl, delay, var = it[1], it[2], it[8] / 1000, it[9]
+    dmg = gd.get('dmg') or {}
+    table, factor = {'1H': ('1H', 1), '2H': ('2H', 1), '1HC': ('1HC', None), '2HC': ('2HC', None),
+                     'ranged': ('2H', DMG_FACTOR['ranged']), 'thrown': ('1H', DMG_FACTOR['thrown'])}[kind]
+    row = (dmg.get(table) or {}).get(ilvl)
+    if row is None or not 0 <= q < len(row):
+        return None
+    if factor is None:
+        melee = (dmg.get(table[:2]) or {}).get(ilvl)
+        factor = DMG_FACTOR[kind] if melee == row else 1
+    avg = row[q] * factor * delay
+    lo = math.floor(avg * (1 - var / 2))
+    hi = math.floor(avg * (1 + var / 2) + 0.5)
+    return lo, hi, (lo + hi) / 2 / delay
+
+
+def caster_power(gd, iid):
+    """The spell power a caster weapon carries without an allocation (client keys): b = the item's
+    budget of its level and quality in RandPropPoints' first column (one- and two-handers alike);
+    Flags_4 & 0x200: SPELL_POWER = 2 * b; Flags_4 & 0x400 (healing weapons): SPELL_DAMAGE_DONE =
+    floor(2 * b * 0.625) and SPELL_HEALING_DONE = floor(2 * b * 1.88). Measured 2026-10-06 against
+    every scanned caster weapon of the player's SavedVariables (exact). {} for any other item."""
+    it = gd['items'].get(iid)
+    flags = it[10] if it else 0
+    if not flags & (CASTER_SP_FLAG4 | CASTER_HEAL_FLAG4):
+        return {}
+    col, budget_row = BUDGET_QUALITY.get(it[1]), gd['rpp'].get(it[2])
+    if col is None or budget_row is None:
+        return {}
+    power = 2 * budget_row[col][0]
+    if flags & CASTER_SP_FLAG4:
+        return {'SPELL_POWER': int(power)}
+    return {'SPELL_DAMAGE_DONE': math.floor(power * 0.625 + 1e-9), 'SPELL_HEALING_DONE': math.floor(power * 1.88 + 1e-9)}
+
+
+ARMOUR_SUB = {1: 0, 2: 1, 3: 2, 4: 3}   # Item subclass (cloth, leather, mail, plate) -> column
+SUB_SHIELD = 6
+INV_ROBE, INV_CHEST = 20, 5
+
+
+def extra_armour(gd, iid):
+    """The extra armour of an item's allocations (stat 50), as computed_stats computes stats; None when
+    the budget is unknown."""
+    it = gd['items'].get(iid)
+    inv, q, ilvl, stats = it[0], it[1], it[2], it[5]
+    allocs = [a for sid, a in stats if sid == 50]
+    if not allocs:
+        return 0
+    col, budget_row = BUDGET_QUALITY.get(q), gd['rpp'].get(ilvl)
+    if col is None or budget_row is None or inv not in BUDGET_SLOT:
+        return None
+    budget = budget_row[col][BUDGET_SLOT[inv]]
+    return sum(math.floor(a * budget / 10000 + 0.5) for a in allocs)
+
+
+def armour_value(gd, iid):
+    """The armour of an item as the client computes it: quality factor * the material's total of the
+    item level * the slot's share, rounded (ItemArmorQuality, ItemArmorTotal, ArmorLocation; a robe
+    counts as a chest); shields their ItemArmorShield value of level and quality, rounded (no quality
+    factor: checked against the scans); plus the extra armour of the allocations (rings and weapons
+    have that alone). 0 for an item without armour, None when the tables or the item's class are
+    missing."""
+    it = gd['items'].get(iid)
+    if not it:
+        return None
+    arm = gd.get('armor') or {}
+    cls, sub, inv, q, ilvl = it[6], it[7], it[0], it[1], it[2]
+    if cls is None:
+        return None
+    extra = extra_armour(gd, iid)
+    if extra is None:
+        return None
+    if cls != 4 or (sub not in ARMOUR_SUB and sub != SUB_SHIELD):
+        return extra
+    if not arm.get('q') or not arm.get('total'):
+        return None
+    if sub == SUB_SHIELD:
+        row = (arm.get('shield') or {}).get(ilvl)
+        if row is None or not 0 <= q < len(row):
+            return None
+        return math.floor(row[q] + 0.5) + extra
+    qrow, total, loc = arm['q'].get(ilvl), arm['total'].get(ilvl), arm['loc'].get(INV_CHEST if inv == INV_ROBE else inv)
+    if qrow is None or total is None or loc is None or not 0 <= q < len(qrow):
+        return None
+    col = ARMOUR_SUB[sub]
+    return math.floor(qrow[q] * total[col] * loc[col] + 0.5) + extra
+
+
+# ---------------------------------------------------------------- item effects (ItemEffect, SpellEffect)
+# Auras of plain stats (SpellEffect effect 6 = apply aura); set bonuses (set_bonus_text) and equip effects
+# (item_effects) read them alike.
+AURA_MOD_STAT, AURA_MOD_RESISTANCE, AURA_MOD_DAMAGE_DONE, AURA_MOD_HEALING_DONE = 29, 22, 13, 135
+AURA_MOD_AP, AURA_MOD_RAP, AURA_MOD_POWER_REGEN, AURA_MOD_RATING = 99, 124, 85, 189
+AURA_MOD_TARGET_RESISTANCE = 123
+AURA_PROC_TRIGGER, AURA_PERIODIC_DAMAGE, AURA_PERIODIC_HEAL, AURA_DAMAGE_SHIELD = 42, 3, 8, 15
+AURA_ADD_FLAT, AURA_ADD_PCT, AURA_MOD_SPEED, AURA_MOD_DECREASE_SPEED, AURA_SCHOOL_ABSORB = 107, 108, 31, 33, 69
+AURA_MOD_SPEED_ALWAYS = 129
+STAT_OF_MISC = {0: 'STRENGTH', 1: 'AGILITY', 2: 'STAMINA', 3: 'INTELLECT', 4: 'SPIRIT'}
+# Percent bonuses (hit, crit, spell hit and crit) and defence skill, written as the rating that gives
+# the same at level 60 (RATING_60): set bonuses are worn at the end of the levelling, and the
+# addon scores ratings already.
+AURA_PCT = {54: ('HIT_MELEE_RATING', 'HIT'), 55: ('HIT_SPELL_RATING', 'SHIT'),
+            52: ('CRIT_MELEE_RATING', 'CRIT'), 57: ('CRIT_SPELL_RATING', 'SCRIT')}
+AURA_MOD_SKILL, SKILL_DEFENSE = 30, 95
+# school mask -> damage key of one school (MOD_DAMAGE_DONE with a single school)
+SCHOOL_KEY = {2: 'HOLY_DAMAGE_DONE', 4: 'FIRE_DAMAGE_DONE', 8: 'NATURE_DAMAGE_DONE', 16: 'FROST_DAMAGE_DONE',
+              32: 'SHADOW_DAMAGE_DONE', 64: 'ARCANE_DAMAGE_DONE'}
+MAGIC_SCHOOLS, ALL_SCHOOLS = 126, 127
+
+
+def aura_stats(effects):
+    """(stats, rest) of a spell's effects ([effect, aura, points, misc, ...]): the plain stats it gives
+    as client keys (the keys C_Item.GetItemStats names them by: damage and healing alike are
+    SPELL_POWER, melee and ranged attack power alike ATTACK_POWER), and whether any effect is something
+    else (rest: a proc, a spell modifier, a skill...). Resistances are plain but not scored: left out."""
+    out, rest = {}, False
+    pts = {}
+    for e in effects:
+        effect, aura, points, misc = e[0], e[1], e[2], e[3]
+        if effect != 6:
+            rest = True
             continue
-        calc = computed_stats(gd, iid)
-        want = {}
-        for part in text.split(';'):
-            k, _, v = part.partition('=')
-            if k in produced and k not in SC_SKIP:
-                try:
-                    want[k] = float(v)
-                except ValueError:
-                    pass
-        if calc is not None and {k: float(v) for k, v in calc.items()} == want:
-            good += 1
+        pts.setdefault((aura, misc), points)
+    dmg, heal = pts.get((AURA_MOD_DAMAGE_DONE, MAGIC_SCHOOLS)), pts.get((AURA_MOD_HEALING_DONE, MAGIC_SCHOOLS))
+    ap = next((v for (a, _), v in pts.items() if a == AURA_MOD_AP), None)
+
+    def add(key, v):
+        v = int(round(v))
+        if v:
+            out[key] = out.get(key, 0) + v
+    for (aura, misc), points in pts.items():
+        if aura == AURA_MOD_STAT and misc in STAT_OF_MISC:
+            add(STAT_OF_MISC[misc], points)
+        elif aura == AURA_MOD_STAT and misc == -1:
+            for key in STAT_OF_MISC.values():
+                add(key, points)
+        elif aura == AURA_MOD_RESISTANCE:
+            if misc == 1:
+                add('RESISTANCE0_NAME', points)
+        elif aura == AURA_MOD_AP:
+            add('ATTACK_POWER', points)
+        elif aura == AURA_MOD_RAP:
+            if ap != points:
+                add('RANGED_ATTACK_POWER', points)
+        elif aura == AURA_MOD_DAMAGE_DONE and misc in (MAGIC_SCHOOLS, ALL_SCHOOLS):
+            add('SPELL_POWER' if misc == MAGIC_SCHOOLS and heal == points else 'SPELL_DAMAGE_DONE', points)
+        elif aura == AURA_MOD_DAMAGE_DONE and misc in SCHOOL_KEY:
+            add(SCHOOL_KEY[misc], points)
+        elif aura == AURA_MOD_HEALING_DONE:
+            if not (misc == MAGIC_SCHOOLS and dmg == points):
+                add('SPELL_HEALING_DONE', points)
+        elif aura == AURA_MOD_POWER_REGEN and misc == 0:
+            add('MANA_REGENERATION', points)
+        elif aura == AURA_MOD_TARGET_RESISTANCE and misc in (MAGIC_SCHOOLS, ALL_SCHOOLS) and points < 0:
+            add('SPELL_PENETRATION', -points)
+        elif aura in AURA_PCT:
+            key, kind = AURA_PCT[aura]
+            add(key, points * RATING_60.get(kind, 14))
+        elif aura == AURA_MOD_SKILL and misc == SKILL_DEFENSE:
+            add('DEFENSE_SKILL_RATING', points * RATING_60['DEF'])
         else:
-            misses.append((iid, calc, want))
+            rest = True
+    return out, rest
+
+
+# German words for the short description of an effect the scoring does not count.
+SCHOOL_DE = {1: '', 2: 'Heilig', 4: 'Feuer', 8: 'Natur', 16: 'Frost', 32: 'Schatten', 64: 'Arkan'}
+STAT_DE = {'STRENGTH': 'Stärke', 'AGILITY': 'Beweglichkeit', 'STAMINA': 'Ausdauer', 'INTELLECT': 'Intelligenz',
+           'SPIRIT': 'Willenskraft', 'RESISTANCE0_NAME': 'Rüstung', 'ATTACK_POWER': 'Angriffskraft',
+           'RANGED_ATTACK_POWER': 'Distanzangriffskraft', 'SPELL_POWER': 'Zaubermacht',
+           'SPELL_DAMAGE_DONE': 'Zauberschaden', 'SPELL_HEALING_DONE': 'Heilung', 'MANA_REGENERATION': 'Mana alle 5 Sek.',
+           'SPELL_PENETRATION': 'Zauberdurchschlag', 'HIT_MELEE_RATING': 'Trefferwertung',
+           'HIT_SPELL_RATING': 'Zaubertrefferwertung', 'CRIT_MELEE_RATING': 'kritische Trefferwertung',
+           'CRIT_SPELL_RATING': 'kritische Zaubertrefferwertung', 'DEFENSE_SKILL_RATING': 'Verteidigungswertung',
+           'HOLY_DAMAGE_DONE': 'Heiligschaden', 'FIRE_DAMAGE_DONE': 'Feuerschaden', 'NATURE_DAMAGE_DONE': 'Naturschaden',
+           'FROST_DAMAGE_DONE': 'Frostschaden', 'SHADOW_DAMAGE_DONE': 'Schattenschaden', 'ARCANE_DAMAGE_DONE': 'Arkanschaden'}
+TRIGGER_DE = {0: 'Benutzen', 1: 'Anlegen', 2: 'Chance bei Treffer', 5: 'Benutzen'}
+
+
+def _n(v):
+    return f'{v:g}'
+
+
+def _school_damage(school):
+    return (SCHOOL_DE.get(school, '') + 'schaden') if SCHOOL_DE.get(school) else 'Schaden'
+
+
+def describe(gd, spell, depth=0):
+    """Short German parts of what a spell does, where its effects say it plainly ("176 Feuerschaden",
+    "+10 % Schaden: Stormstrike"); a proc describes the spell it triggers. [] when nothing is plain."""
+    fx = (gd.get('fx') or {}).get(spell)
+    if not fx:
+        return []
+    parts, plain = [], []
+    school = fx.get('school') or 0
+    for e in fx['e']:
+        effect, aura, points, misc, trig = e[0], e[1], e[2], e[3], e[4]
+        if effect == 2:
+            parts.append(f'{_n(points)} {_school_damage(school)}')
+        elif effect == 9:
+            parts.append(f'{_n(points)} Leben entziehen')
+        elif effect == 10:
+            parts.append(f'{_n(points)} Heilung')
+        elif effect == 19:
+            parts.append(f'{_n(points)} zusätzlicher Angriff' if points == 1 else f'{_n(points)} zusätzliche Angriffe')
+        elif effect == 30 and misc == 0:
+            parts.append(f'{_n(points)} Mana')
+        elif effect != 6:
+            continue
+        elif aura == AURA_PROC_TRIGGER and trig and depth == 0:
+            parts.extend(describe(gd, trig, depth + 1))
+        elif aura == AURA_PERIODIC_DAMAGE:
+            parts.append(f'{_n(points)} {_school_damage(school)} je Tick')
+        elif aura == AURA_PERIODIC_HEAL:
+            parts.append(f'{_n(points)} Heilung je Tick')
+        elif aura == AURA_DAMAGE_SHIELD:
+            parts.append(f'{_n(points)} {_school_damage(school)} an Angreifern')
+        elif aura == AURA_SCHOOL_ABSORB:
+            parts.append(f'absorbiert {_n(points)} Schaden')
+        elif aura in (AURA_MOD_SPEED, AURA_MOD_SPEED_ALWAYS) and points > 0:
+            parts.append(f'+{_n(points)} % Lauftempo')
+        elif aura == AURA_MOD_DECREASE_SPEED and points < 0:
+            parts.append(f'verlangsamt um {_n(-points)} %')
+        elif aura == AURA_MOD_DAMAGE_DONE and misc in (1, ALL_SCHOOLS):
+            parts.append(f'{points:+g} Schaden')
+        elif aura in (AURA_ADD_FLAT, AURA_ADD_PCT) and misc == 0 and fx.get('ab'):
+            parts.append(f'{points:+g}{" %" if aura == AURA_ADD_PCT else ""} Schaden: {fx["ab"]}')
+        elif aura in (AURA_ADD_FLAT, AURA_ADD_PCT) and fx.get('ab'):
+            parts.append(f'{fx["ab"]} verbessert')
+        else:
+            plain.append(e)
+    # the plain stats together, so pairs read as one (melee and ranged attack power: attack power)
+    stats, _ = aura_stats(plain)
+    for key, v in sorted(stats.items()):
+        if key in STAT_DE:
+            parts.append(f'{v:+g} {STAT_DE[key]}')
+    return parts
+
+
+def item_effects(gd, iid):
+    """(stats, texts) of an item's effects: the plain stats of its equip effects (client keys, as
+    aura_stats), and one German line for each effect the scoring does not count: "<when>: <spell>
+    (<what it does, where plain>)", when = Benutzen, Anlegen, Chance bei Treffer. Effects the tooltip
+    does not show (a spell without a description: a hidden condition of another effect) are left out."""
+    stats, texts = {}, []
+    for trig, spell in (gd.get('effects') or {}).get(iid, []):
+        fx = (gd.get('fx') or {}).get(spell)
+        if not fx or not fx.get('vis'):
+            continue
+        rest = True
+        if trig == 1:
+            s, rest = aura_stats(fx['e'])
+            for k, v in s.items():
+                stats[k] = stats.get(k, 0) + v
+            if not fx['e']:
+                rest = True
+        if rest:
+            parts = describe(gd, spell)
+            name = fx.get('name') or f'Zauber {spell}'
+            texts.append(f'{TRIGGER_DE.get(trig, "Effekt")}: {name}' + (f' ({", ".join(parts)})' if parts else ''))
+    return stats, texts
+
+
+def full_stats(gd, iid):
+    """(stats, unknown) of an item from the client tables: the allocations (computed_stats), the armour
+    (RESISTANCE0_NAME, extra armour included, as the scans have it), a weapon's damage per second
+    (DAMAGE_PER_SECOND) and the plain stats of its equip effects. unknown: what the tables cannot say
+    ('ARMOR', 'DPS'). (None, set()) for an item the tables do not know."""
+    base = computed_stats(gd, iid, any_slot=True)
+    if base is None:
+        return None, set()
+    out, unknown = dict(base), set()
+    arm = armour_value(gd, iid)
+    if arm is None:
+        unknown.add('ARMOR')
+    elif arm:
+        out['RESISTANCE0_NAME'] = arm
+    it = gd['items'][iid]
+    if it[6] == 2 or (it[6] is None and it[0] in WEAPON_INV_1H + WEAPON_INV_RANGED + (17, 25)):
+        dmg = weapon_damage(gd, iid)
+        if dmg is None:
+            unknown.add('DPS')
+        else:
+            out['DAMAGE_PER_SECOND'] = round(dmg[2], 4)
+        for k, v in caster_power(gd, iid).items():
+            out[k] = out.get(k, 0) + v
+    fx, _ = item_effects(gd, iid)
+    for k, v in fx.items():
+        out[k] = out.get(k, 0) + v
+    return out, unknown
+
+
+def item_kind(gd, iid):
+    """The kind an item is checked and gated by: 'melee', 'caster', 'ranged', 'thrown', 'wand' (or
+    'weapon' without its class), 'armour', 'shield', 'trinket', 'relic' or 'jewellery' (neck, ring, held
+    in the off hand). None for an unknown item."""
+    it = gd['items'].get(iid)
+    if not it:
+        return None
+    inv, cls, sub = it[0], it[6], it[7]
+    if cls == 2:
+        k = weapon_kind(gd, iid)
+        return {'1H': 'melee', '2H': 'melee', '1HC': 'caster', '2HC': 'caster'}.get(k, k or 'weapon')
+    if inv == 12:
+        return 'trinket'
+    if inv == 28 or (cls == 4 and sub in (7, 8, 9, 10)):
+        return 'relic'
+    if inv == 14 or (cls == 4 and sub == SUB_SHIELD):
+        return 'shield'
+    if inv in (2, 11, 23):
+        return 'jewellery'
+    if inv in WEAPON_INV_1H + WEAPON_INV_RANGED + (17, 25):
+        return 'weapon'
+    return 'armour'
+
+
+# Scoring keys the computation cannot produce (sockets).
+SC_SKIP = {'SOCK', 'META'}
+
+
+def check_computed(gd, scanned, stat_map=None, by_kind=None):
+    """(rate, checked, misses): how often the computed stats (full_stats) equal what the scan saw, over
+    the scanned items the tables know, compared as Gear.lua scores them (its keys; damage per second to
+    a thousandth). What the tables cannot say for an item (its armour, a weapon's damage) is left out of
+    its comparison; a weapon without damage is not checked. by_kind (a dict) gets {kind: [good,
+    checked]} (item_kind)."""
+    stat_map = stat_map or gear_stat_map()
+    good, misses = 0, []
+    for iid, text in sorted(scanned.items()):
+        if iid not in gd['items']:
+            continue
+        calc, unknown = full_stats(gd, iid)
+        if 'DPS' in unknown:
+            continue
+        want = {k: v for k, v in parse_stats(text, stat_map).items() if k not in SC_SKIP and k not in unknown}
+        got = parse_stats(stat_text(calc), stat_map) if calc is not None else None
+        ok = got is not None and set(got) == set(want) and all(
+            abs(got[k] - want[k]) < (1e-3 if k == 'DPS' else 1e-6) for k in want)
+        kind = item_kind(gd, iid)
+        if by_kind is not None:
+            by_kind.setdefault(kind, [0, 0])
+            by_kind[kind][1] += 1
+        if ok:
+            good += 1
+            if by_kind is not None:
+                by_kind[kind][0] += 1
+        else:
+            misses.append((iid, got, want))
     n = good + len(misses)
     return (good / n if n else 0.0), n, misses
 
@@ -1361,49 +1854,12 @@ def render_weights(result, conv, info):
 
 
 # ---------------------------------------------------------------- item sets
-# SpellEffect aura -> stat key of a set bonus (simple effects only; anything else is not scored).
-AURA_MOD_STAT, AURA_MOD_RESISTANCE, AURA_MOD_DAMAGE_DONE, AURA_MOD_HEALING_DONE = 29, 22, 13, 135
-AURA_MOD_AP, AURA_MOD_RAP, AURA_MOD_POWER_REGEN, AURA_MOD_RATING = 99, 124, 85, 189
-STAT_OF_MISC = {0: 'STRENGTH', 1: 'AGILITY', 2: 'STAMINA', 3: 'INTELLECT', 4: 'SPIRIT'}
-# Percent bonuses (hit, crit, spell hit and crit) and defence skill, written as the rating that gives
-# the same at level 60 (RATING_60): set bonuses are worn at the end of the levelling, and the
-# addon scores ratings already.
-AURA_PCT = {54: ('HIT_MELEE_RATING', 'HIT'), 55: ('HIT_SPELL_RATING', 'SHIT'),
-            52: ('CRIT_MELEE_RATING', 'CRIT'), 57: ('CRIT_SPELL_RATING', 'SCRIT')}
-AURA_MOD_SKILL, SKILL_DEFENSE = 30, 95
-
-
 def set_bonus_text(effects):
-    """The stat text of a set bonus spell, or None when any effect is not a simple stat."""
-    out = {}
-    for effect, aura, points, misc in effects:
-        if effect != 6:
-            return None
-        v = int(round(points))
-        if aura == AURA_MOD_STAT and misc in STAT_OF_MISC:
-            key = STAT_OF_MISC[misc]
-        elif aura == AURA_MOD_RESISTANCE and misc == 1:
-            key = 'RESISTANCE0_NAME'
-        elif aura == AURA_MOD_AP:
-            key = 'ATTACK_POWER'
-        elif aura == AURA_MOD_RAP:
-            key = 'RANGED_ATTACK_POWER'
-        elif aura == AURA_MOD_DAMAGE_DONE and misc in (126, 127):
-            key = 'SPELL_DAMAGE_DONE'
-        elif aura == AURA_MOD_HEALING_DONE:
-            key = 'SPELL_HEALING_DONE'
-        elif aura == AURA_MOD_POWER_REGEN and misc == 0:
-            key = 'MANA_REGENERATION'
-        elif aura in AURA_PCT:
-            key, kind = AURA_PCT[aura]
-            v = int(round(points * RATING_60.get(kind, 14)))
-        elif aura == AURA_MOD_SKILL and misc == SKILL_DEFENSE:
-            key = 'DEFENSE_SKILL_RATING'
-            v = int(round(points * RATING_60['DEF']))
-        else:
-            return None
-        out[key] = out.get(key, 0) + v
-    return stat_text(out) if out else None
+    """The stat text of a set bonus spell (aura_stats: attribute, armour, attack power, spell damage and
+    healing, mana per five, percent hit and crit as level-60 rating, defence), or None when any effect
+    is not a plain stat."""
+    out, rest = aura_stats(effects)
+    return stat_text(out) if out and not rest else None
 
 
 def build_sets(gd, gear_ids):
@@ -1510,7 +1966,9 @@ FACT_FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'fro
 def build_dungeons(facts, bosses, gd):
     """ns.BIS.DG: the facts with bosses as NPC ids (bossNames: id -> English name); boss names the
     facts know but no NPC id matched stay as names (the planner reads both)."""
-    lfg = {norm(v[0]): (v[1], v[2]) for v in (gd or {}).get('lfg', {}).values() if v[1]}
+    # a level range of the client (ContentTuning); Forever tunes every dungeon to one level (min = max),
+    # which is no range: that level is the fact's lvl (build_dungeons.merge), not min and max
+    lfg = {norm(v[0]): (v[1], v[2]) for v in (gd or {}).get('lfg', {}).values() if v[1] and v[2] > v[1]}
     out = []
     for e in facts['dungeons']:
         d = {k: e[k] for k in FACT_FIELDS if e.get(k) not in (None, [])}
@@ -1531,15 +1989,37 @@ def build_dungeons(facts, bosses, gd):
 
 
 # ---------------------------------------------------------------- the drop base stock
-def base_stock(archive):
-    """(O, OT, OI): kills and sightings per NPC from the archive, its newest day and that day's ids."""
+def encounter_npcs(gd, dg):
+    """{encounter id: boss NPC id} (ns.BIS.EN): the client's encounters (DungeonEncounter) matched by name
+    to the bosses of the dungeons with an NPC id (dg's bossNames). A name several dungeons share is
+    matched on the encounter's map (the dungeon's instance id); one that stays ambiguous is left out."""
+    by_name = {}
+    for d in dg:
+        for npc, name in (d.get('bossNames') or {}).items():
+            by_name.setdefault(norm(name), []).append((npc, d.get('inst')))
+    out = {}
+    for eid, (name, mapid) in sorted((gd.get('enc') or {}).items()):
+        cands = {npc for npc, _ in by_name.get(norm(name), [])}
+        if len(cands) > 1:
+            cands = {npc for npc, inst in by_name[norm(name)] if inst == mapid}
+        if len(cands) == 1:
+            out[eid] = next(iter(cands))
+    return out
+
+
+def base_stock(archive, en=None):
+    """(O, OT, OI): kills and sightings per NPC from the archive, its newest day and that day's ids. A
+    record known only by its encounter (NPC 0: the corpse's GUID was secret) counts under the boss en
+    (encounter -> NPC, encounter_npcs) names for it."""
     O, OT = {}, -1
+    en = en or {}
     for h, r in archive.get('k', {}).items():
         OT = max(OT, r['day'])
     OI = {}
     for h, r in archive.get('k', {}).items():
-        if r['npc'] > 0:
-            e = O.setdefault(r['npc'], {'k': 0, 'it': {}})
+        npc = r['npc'] if r['npc'] > 0 else en.get(r.get('enc') or 0, 0)
+        if npc > 0:
+            e = O.setdefault(npc, {'k': 0, 'it': {}})
             e['k'] += 1
             for i in r['it']:
                 e['it'][int(i)] = e['it'].get(int(i), 0) + 1
@@ -1653,18 +2133,21 @@ def pick_rows(picks, gd, gear_ids):
 EFFORT = {'V': 1, 'C': 2, 'A': 2, 'Q': 2, 'QSTEP': 1, 'D': 3, 'R': 8, 'W': 20, 'P': 25, 'X': 6, 'DMAX': 30}
 
 
-def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate, picks=(), pick_items=None):
+def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate, picks=(), pick_items=None, fx=None, en=None):
     lines = [
         '-- GENERATED by tools/build_bis.py. Do not edit; rebuild instead.',
         f"-- Client tables of WoW Forever {info.get('gamedata') or '?'} (wago.tools CSV, Blizzard game data); missing "
         'there: ' + (', '.join(missing) or 'none') + '.',
-        '-- SC: stats of items no scan has seen, computed from ItemSparse and RandPropPoints (checked against '
-        f'{rate}). SET: item sets with their',
-        '-- bonuses (a bonus "" is not scored). RP: random suffixes seen on links (item -> suffix -> stats).',
+        '-- SC: stats of items no scan has seen, computed from ItemSparse, RandPropPoints, the weapon damage and',
+        '-- armour tables and the equip effects (checked against '
+        f'{rate}; per kind: {info.get("kinds") or "-"}).',
+        '-- SET: item sets with their bonuses (a bonus "" is not scored). RP: random suffixes seen on links',
+        '-- (item -> suffix -> stats). FX: effects the scoring does not count (use, chance on hit, other equip',
+        '-- effects), German text. EN: the client\'s encounter ids -> boss NPC id.',
         '-- DG: dungeons and raids (tools/forever_dungeons.json) with their bosses\' NPC ids from AllTheThings\' Forever',
         '-- data (MIT, see LICENSES/). O: the guild\'s drop records up to day OT (OI: that day\'s ids). EF: effort per source.',
         '-- PICK: BiS picks from tools/bis_picks.json (the planner puts them first). PI: the rows of picked items',
-        '-- GearData.lua lacks (as its I, no sources, plus name); their SC is computed for weapons too.',
+        '-- GearData.lua lacks (as its I, no sources, plus name).',
         'local _, ns = ...',
         '',
         'ns.BIS = {',
@@ -1674,6 +2157,11 @@ def render_bis(info, sc, sets, rp, dg, O, OT, OI, missing, rate, picks=(), pick_
     for iid in sorted(sc):
         lines.append(f'        [{iid}] = {lua_str(sc[iid])},')
     lines.append('    },')
+    lines.append('    FX = {')
+    for iid in sorted(fx or {}):
+        lines.append(f'        [{iid}] = {lua_str(fx[iid])},')
+    lines.append('    },')
+    lines.append('    EN = ' + lua_val(en or {}) + ',')
     lines.append('    SET = {')
     for sid in sorted(sets):
         s = sets[sid]
@@ -1727,6 +2215,32 @@ def load_sv(path):
     return build_scan.load_sv(path)
 
 
+def scan_stats(sv):
+    """{item: stat text} of the SavedVariables' item scan (scan.items, the tenth field of a line), keys
+    in GearData's form (without ITEM_MOD_ and _SHORT)."""
+    out = {}
+    items = ((sv or {}).get('scan') or {}).get('items') or {}
+    pairs = enumerate(items, 1) if isinstance(items, list) else items.items()
+    for iid, line in pairs:
+        if not isinstance(line, str):
+            continue
+        try:
+            iid = int(iid)
+        except (TypeError, ValueError):
+            continue
+        f = line.split('\t')
+        if len(f) < 10 or not f[9]:
+            continue
+        parts = []
+        for part in f[9].split(';'):
+            k, eq, v = part.partition('=')
+            if eq:
+                parts.append(re.sub(r'^ITEM_MOD_|_SHORT$', '', k) + '=' + v)
+        if parts:
+            out[iid] = ';'.join(parts)
+    return out
+
+
 def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEAR_DATA, facts_path=FACTS,
         archive_path=DROP_ARCHIVE, sv_path=SV_DEFAULT, att=None, out_weights=OUT_WEIGHTS, out_bis=OUT_BIS,
         built=None, specs=None, picks_path=None):
@@ -1737,46 +2251,64 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
     gd = None
     raw_picks = load_picks(picks_path)
     pick_ids = {p.get('item') for p in raw_picks if isinstance(p.get('item'), int)}
+    gear = load_gear(gear_path)
     if wago and find_csv(wago, 'ItemSparse'):
-        gd = extract(wago, pick_ids)
+        # every planner item and pick: weapons and armour need no stats for their damage and armour
+        gd = extract(wago, pick_ids, keep_ids=set(gear['I']))
         save_gamedata(gd, gamedata_path)
         report['gamedata'] = f'{len(gd["items"])} items from {wago}'
     else:
         gd = load_gamedata(gamedata_path)
         report['gamedata'] = 'cached' if gd else 'none'
     if gd is None:
-        gd = {'build': None, 'missing': sorted(TABLES) + list(NOT_ON_WAGO), 'items': {}, 'rpp': {}, 'sets': {},
-              'setspells': {}, 'spells': {}, 'lfg': {}, 'enchants': {}, 'picks': {}}
+        gd = dict(empty_gamedata(), missing=sorted(TABLES) + list(NOT_ON_WAGO))
     picks, errors = check_picks(raw_picks, gd)
     if errors:
         raise PickError('; '.join(errors))
     report['picks'] = len(picks)
     conv = Conv(load_measured(measured_path))
-    gear = load_gear(gear_path)
     stat_map = gear_stat_map()
-    # computed stats: only when the formula matches the scans (SC_MIN_RATE)
-    rate, checked, misses = check_computed(gd, gear['ST'])
+    sv = load_sv(sv_path)
+    # what the scans saw: GearData's ST, and the SavedVariables' item scan for the planner's items and
+    # picks ST lacks (they still get computed stats: the addon has no scan of them)
+    scanned = dict(gear['ST'])
+    for iid, text in scan_stats(sv).items():
+        if (iid in gear['I'] or iid in pick_ids) and iid not in scanned:
+            scanned[iid] = text
+    # computed stats per kind of item, only where the computation matches the scans of that kind
+    # (SC_MIN_RATE over at least SC_MIN_CHECKED items)
+    kinds = {}
+    rate, checked, misses = check_computed(gd, scanned, stat_map, by_kind=kinds)
+    passed = {k for k, (good, n) in kinds.items() if n >= SC_MIN_CHECKED and good / n >= SC_MIN_RATE}
     sc = {}
-    if checked and rate >= SC_MIN_RATE:
-        for iid in gear['I']:
-            if iid in gear['ST']:
-                continue
-            calc = computed_stats(gd, iid)
-            if calc:
-                sc[iid] = stat_text(calc)
-        # a picked item no scan has seen: its stats from the allocations, weapons too (the check
-        # above covers armour only; a weapon's allocations work the same, its damage stays unknown)
-        for p in picks:
-            iid = p['item']
-            if iid not in gear['ST'] and iid not in sc:
-                calc = computed_stats(gd, iid, any_slot=True)
-                if calc:
-                    sc[iid] = stat_text(calc)
-    else:
-        log(f'computed stats: {rate:.1%} of {checked} scanned items match; below {SC_MIN_RATE:.0%}, SC left out')
+    for iid in list(gear['I']) + [p['item'] for p in picks if p['item'] not in gear['I']]:
+        if iid in gear['ST'] or iid in sc:
+            continue
+        calc, unknown = full_stats(gd, iid)
+        if not calc or 'DPS' in unknown:
+            calc = None
+        if calc and item_kind(gd, iid) in passed:
+            sc[iid] = stat_text(calc)
+        elif iid in pick_ids and passed:
+            # a pick of a kind without proof: its allocations alone, as the proven kinds compute them
+            alloc = computed_stats(gd, iid, any_slot=True)
+            if alloc:
+                sc[iid] = stat_text(alloc)
+    for kind, (good, n) in sorted(kinds.items()):
+        if kind not in passed:
+            log(f'computed stats of kind {kind}: {good} of {n} scanned items match; no SC for that kind')
+    if not passed:
         for m in misses[:10]:
             log('   ', m)
     report['sc'] = (len(sc), round(rate, 4), checked)
+    report['sc_kinds'] = {k: list(v) for k, v in sorted(kinds.items())}
+    # effects the scoring does not count, for the planner's items and the picks
+    fx = {}
+    for iid in set(gear['I']) | pick_ids:
+        _, texts = item_effects(gd, iid)
+        if texts:
+            fx[iid] = '; '.join(texts)
+    report['fx'] = len(fx)
     items = Items(gear, sc, stat_map)
     result = {}
     worst = 0.0
@@ -1788,27 +2320,35 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
         result[(cls, key)] = (sr, hc, shown)
     report['fixpoint'] = round(worst, 4)
     built = built or time.strftime('%Y-%m-%d')
-    info = {'built': built, 'gamedata': gd.get('build')}
+    info = {'built': built, 'gamedata': gd.get('build'),
+            'kinds': ', '.join(f'{k} {g}/{n}' + ('' if k in passed else ' (no SC)') for k, (g, n) in sorted(kinds.items()))}
     if not specs:
         write_if_changed(out_weights, render_weights(result, conv, info))
     sets = build_sets(gd, set(gear['I']))
-    rp = observed_suffixes(load_sv(sv_path))
+    rp = observed_suffixes(sv)
     with open(facts_path, encoding='utf-8') as fh:
         facts = json.load(fh)
-    # the client's level and instance id where the hand facts leave them open, as DungeonData.lua has
-    # them (tools/forever_dungeons_client.json, written by build_dungeons.py --wago)
+    # the client's level and instance id where the hand facts leave them open (the reader of
+    # build_dungeons.py, from the client tables of this build when they are there, else its
+    # tools/forever_dungeons_client.json)
     import build_dungeons as dungeon_facts
-    facts = dict(facts, dungeons=dungeon_facts.merge(facts, dungeon_facts.load_client()))
+    if wago and find_csv(wago, 'LFGDungeons'):
+        client = dungeon_facts.client_facts(facts, (wago,))
+    else:
+        client = dungeon_facts.load_client()
+    facts = dict(facts, dungeons=dungeon_facts.merge(facts, client))
     bosses = boss_npcs(facts, att, gear)
     dg = build_dungeons(facts, bosses, gd)
+    en = encounter_npcs(gd, dg)
     archive = {'k': {}}
     if archive_path and os.path.exists(archive_path):
         import build_scan
         archive = build_scan.load_archive(archive_path)
-    O, OT, OI = base_stock(archive)
+    O, OT, OI = base_stock(archive, en)
     write_if_changed(out_bis, render_bis(info, sc, sets, rp, dg, O, OT, OI, gd.get('missing') or [],
                                          f'{rate:.1%} of {checked} scanned items', picks,
-                                         pick_rows(picks, gd, set(gear['I']))))
+                                         pick_rows(picks, gd, set(gear['I'])), fx, en))
+    report['encounters'] = len(en)
     report.update({'sets': len(sets), 'sets_with_bonus': sum(1 for s in sets.values() if any(b[1] for b in s['b'])),
                    'rp': len(rp), 'dungeons': len(dg), 'boss_npcs': sum(len(v) for v in bosses.values()),
                    'base_npcs': len(O), 'missing': gd.get('missing')})
