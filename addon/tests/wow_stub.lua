@@ -14,8 +14,19 @@ _G.time = function(t) if type(t) == "table" then return os.time(t) end return ST
 _G.date = function(fmt, t) return os.date(fmt, t or STUB.now) end
 _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
-_G.UnitName = function(u) if u == "target" then return STUB.target end if u == "npc" then return STUB.npc end return STUB.player end
-_G.UnitGUID = function(u) if u == "target" then return STUB.targetGUID end return "Player-1-1" end
+_G.UnitName = function(u)
+    if u == "target" then return STUB.target end
+    if u == "npc" then return STUB.npc end
+    if u == "mouseover" then return STUB.mouseover end
+    return STUB.player
+end
+-- the NPC of an open quest or merchant window (STUB.npcGUID) and the mouseover (STUB.mouseoverGUID)
+_G.UnitGUID = function(u)
+    if u == "target" then return STUB.targetGUID end
+    if u == "npc" then return STUB.npcGUID end
+    if u == "mouseover" then return STUB.mouseoverGUID end
+    return "Player-1-1"
+end
 -- The own realm as the client writes it behind a sender ("Name-Realm"); STUB.realm changes it.
 _G.GetNormalizedRealmName = function() return STUB.realm or "Realm" end
 _G.GetNumGroupMembers = function() return #STUB.roster end
@@ -160,7 +171,11 @@ _G.C_PartyInfo = { GetLootMethod = function() return STUB.lootMethod or 0, STUB.
 STUB.rolls = {}
 _G.GetLootRollItemLink = function(rollID) return STUB.rolls[rollID] end
 -- The target's classification ("worldboss", "elite", ...) and death: STUB.targetClass, STUB.targetDead.
-_G.UnitClassification = function(u) if u == "target" then return STUB.targetClass or "normal" end return "normal" end
+_G.UnitClassification = function(u)
+    if u == "target" then return STUB.targetClass or "normal" end
+    if u == "mouseover" then return STUB.mouseoverClass or "normal" end
+    return "normal"
+end
 _G.UnitIsDead = function(u) if u == "target" then return STUB.targetDead and true or false end return false end
 -- A boss fight in progress (STUB.encounter) and the addon restriction of an encounter (STUB.restricted,
 -- restriction type 1); the client announces a change with ADDON_RESTRICTION_STATE_CHANGED.

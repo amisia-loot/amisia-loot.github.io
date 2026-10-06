@@ -678,7 +678,7 @@ local REQUIRED = {
     "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
-    "GetQuestLogItemLink", "QuestInfo_Display",
+    "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "GetMerchantItemInfo",
     "GetPlayerFacing", "OpenWorldMap", "ToggleWorldMap", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
     "Mixin", "issecretvalue",
     "C_ChatInfo.SendChatMessage", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.RegisterAddonMessagePrefix",
@@ -707,6 +707,10 @@ local OPTIONAL = {
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
     "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
     "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
+    -- the source collector: the quest level from either generation of the quest log, the reputation
+    -- line of a merchant's item
+    "C_QuestLog.GetLogIndexForQuestID", "C_QuestLog.GetInfo", "GetQuestLogIndexByID", "GetQuestLogTitle",
+    "C_TooltipInfo.GetMerchantItem",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -769,7 +773,7 @@ local EVENTS = {
     "GUILDBANKBAGSLOTS_CHANGED", "GUILDBANK_UPDATE_TABS", "ITEM_DATA_LOAD_RESULT", "ITEM_SEARCH_RESULTS_UPDATED", "LOOT_CLOSED",
     "LOOT_OPENED", "LOOT_SLOT_CLEARED", "MERCHANT_SHOW", "PLAYERBANKSLOTS_CHANGED", "PLAYER_ENTERING_WORLD",
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
-    "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
+    "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
     "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
 }
 ST.EVENTS = EVENTS
@@ -1052,6 +1056,13 @@ local function sectionData(R)
         if type(d) ~= "table" then return "WERT", "keine" end
         return "WERT", ("%d Kills (%d eigene, %d gehört), %d Bosse, neuester Tag %s"):format(d.kills or 0, d.own or 0, d.heard or 0,
             d.bosses or 0, show(d.newest))
+    end)
+    check(R, "Quellen-Sammler", function()
+        if not ns.CollectCounts then return "WERT", "nicht geladen" end
+        if ns.CollectDB then ns.CollectDB() end
+        local c, sy = ns.CollectCounts(), ns.CollectSyncStats and ns.CollectSyncStats() or {}
+        return "WERT", ("%d Quests, %d Händler, %d Weltdrop-NPCs, %s; gelernt %d, gesendet %s"):format(c.q, c.s, c.w,
+            kb(ns.CollectBytes()), (sy.new or 0) + (sy.merged or 0), kb(sy.bytes or 0))
     end)
     check(R, "Materialien", function()
         local list = ns.MatEntries and ns.MatEntries() or {}

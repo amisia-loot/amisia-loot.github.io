@@ -1113,6 +1113,15 @@ local function questNode(qid, r, rec)
         n.giver, n.points = mapGiver, mapPoints
         n.start = mapPoints and "O" or ""
     end
+    -- what a guild member saw: the giver and where it stood (Collector.lua), where the data has none
+    if (not n.giver or not n.points) and ns.CollectQuestStart then
+        local giver, point = ns.CollectQuestStart(qid)
+        n.giver = n.giver or giver
+        if not n.points and point then
+            n.points = point
+            if n.start == "" then n.start = "O" end
+        end
+    end
     return n
 end
 
@@ -1241,7 +1250,9 @@ function ns.DungeonQuestWaypoint(qid)
     if r and r[6] == "X" then return nil, ITEM_START end
     local Map = ns.Map
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
-    local giver = r and r[7] or (ns.MAP and ns.MAP.G and qid and ns.MAP.G["Q:" .. qid]) or (r and r[1]) or "?"
+    local seenGiver, seenPoint
+    if ns.CollectQuestStart and qid then seenGiver, seenPoint = ns.CollectQuestStart(qid) end
+    local giver = r and r[7] or (ns.MAP and ns.MAP.G and qid and ns.MAP.G["Q:" .. qid]) or seenGiver or (r and r[1]) or "?"
     if r and r[6] == "I" then
         local point = ns.DungeonEntrance(r[11])
         if point then
@@ -1251,6 +1262,7 @@ function ns.DungeonQuestWaypoint(qid)
     end
     local points = Map.ParsePoints(r and r[8])
     if #points == 0 and qid then points = ns.MapPoints("Q:" .. qid) end
+    if #points == 0 and seenPoint then points = Map.ParsePoints(seenPoint) end
     if #points == 0 then return nil, NO_START end
     local label = "Questgeber " .. giver
     if r and r[6] == "I" then label = label .. " (im Dungeon)" end
@@ -1262,6 +1274,10 @@ end
 ---------------------------------------------------------------------------
 
 local function questChanged() questGen = questGen + 1 end
+-- a quest seen by the collector (here or heard from the guild) can bring a giver and its place
+ns.Listen("COLLECT_CHANGED", function(kind)
+    if kind == nil or kind == "q" then questChanged() end
+end)
 ns.OnEvent("QUEST_TURNED_IN", questChanged)
 ns.OnEvent("QUEST_ACCEPTED", questChanged)
 ns.OnEvent("QUEST_REMOVED", questChanged)

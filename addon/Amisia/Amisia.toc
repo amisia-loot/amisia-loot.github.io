@@ -33,6 +33,8 @@ Scan.lua
 Collect.lua
 Drops.lua
 DropSync.lua
+Collector.lua
+CollectSync.lua
 GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 BisData.lua [AllowLoadGameType camelot]
