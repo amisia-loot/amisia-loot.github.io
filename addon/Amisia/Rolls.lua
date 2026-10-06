@@ -445,6 +445,9 @@ ns.RegisterSettings{ key = "rolls", label = "Rolls und Vergabe", order = 20, off
       tip = "Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug." },
     { key = "rolls.altClick", type = "toggle", label = "Alt-Klick im Lootfenster startet einen Roll", default = true,
       tip = "Ausschalten, wenn ein anderes Loot-Addon Alt-Klick selbst benutzt." },
+    { key = "rolls.lookHint", type = "choice", label = "Hinweis im Roll-Fenster: Aussehen schon vergeben", default = "dungeon",
+      values = { { "dungeon", "nur in Dungeons" }, { "all", "überall" }, { "off", "aus" } },
+      tip = "Grüne und blaue Items, die beim Aufheben gebunden werden: laut Blizzards Ankündigung bekommen in Dungeons alle Berechtigten das Aussehen schon beim Plündern. Für Schlachtzüge ist das nicht angekündigt." },
 }}
 ns.RegisterSlash("roll", { officer = true, args = "<Item-Link> [Sekunden]", desc = "Roll-Runde starten", run = function(rest)
     local link, secs = rest:match("^(.-)%s*(%d*)$")

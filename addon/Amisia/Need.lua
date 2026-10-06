@@ -1,5 +1,5 @@
 -- Amisia "Wer braucht das?": the loot lead asks while announcing, every raider client answers from
--- its own gear (ns.BisGain) and wishlist whether an item is an upgrade, a wish or nothing for its
+-- its own gear (ns.UpgradeOf) and wishlist whether an item is an upgrade, a wish or nothing for its
 -- character. One question per item batch into the raid (UQ), one whispered answer per client and
 -- question (UA). Questions count only from the elected loot lead with a verified officer rank,
 -- answers only from guild members in the group. Answers are kept in memory for the current loot
@@ -182,10 +182,11 @@ local function answerFor(id)
     local nothing = id .. ":-:0:0:-"
     local okOwned, owned = pcall(ns.BisOwned, id)
     if not okOwned or owned then return nothing end
-    local ok, gain, slot, mine = pcall(ns.BisGain, id)
-    if ok and type(gain) == "number" and type(slot) == "string" and slot:match("^[%w_]+$") and ns.BisIsUpgrade(gain, mine) then
-        local pct = (type(mine) == "number" and mine > 0) and math.floor(gain / mine * 100 + 0.5) or 999
-        return ("%d:U:%d:%d:%s"):format(id, clamp(math.floor(gain + 0.5), 0, MAX_GAIN), clamp(pct, 0, 999), slot)
+    -- the one comparison with the worn gear (Bis.lua); an item for a later level is no upgrade yet
+    local ok, u = pcall(ns.UpgradeOf, id)
+    local slot = ok and type(u) == "table" and u.slotKey
+    if type(slot) == "string" and slot:match("^[%w_]+$") and u.up then
+        return ("%d:U:%d:%d:%s"):format(id, clamp(math.floor(u.gain + 0.5), 0, MAX_GAIN), clamp(u.pct or 999, 0, 999), slot)
     end
     local c = ns.BisChar()
     local w = c and type(c.wish) == "table" and c.wish[id]

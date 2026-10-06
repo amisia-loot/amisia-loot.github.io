@@ -41,6 +41,7 @@ GearFrame.lua
 Bis.lua
 Dungeons.lua
 GuildWishes.lua
+Compare.lua
 Need.lua
 Map.lua
 MapPins.lua

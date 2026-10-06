@@ -670,6 +670,7 @@ local REQUIRED = {
     "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
+    "GetQuestLogItemLink", "QuestInfo_Display",
     "GetPlayerFacing", "OpenWorldMap", "ToggleWorldMap", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
     "Mixin", "issecretvalue",
     "C_ChatInfo.SendChatMessage", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.RegisterAddonMessagePrefix",
@@ -705,7 +706,7 @@ ST.OPTIONAL = OPTIONAL
 local OBJECTS = {
     "UIParent", "GameTooltip", "ItemRefTooltip", "DEFAULT_CHAT_FRAME", "Minimap", "WorldMapFrame", "UISpecialFrames",
     "StaticPopupDialogs", "RAID_CLASS_COLORS", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "ChatFontNormal",
-    "LOCALIZED_CLASS_NAMES_MALE", "GroupLootFrame1",
+    "LOCALIZED_CLASS_NAMES_MALE", "GroupLootFrame1", "QuestInfoFrame", "QuestInfoRewardsFrame",
 }
 ST.OBJECTS = OBJECTS
 

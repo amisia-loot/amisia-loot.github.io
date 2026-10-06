@@ -276,9 +276,8 @@ assert(C(VULO, "NS.NeedCanAsk()") == true, "the lead may ask")
 local can, canWhy, canCode = C(KIM, "NS.NeedCanAsk()")
 assert(can == false and type(canWhy) == "string" and canCode == "lead", "a raider may not: " .. tostring(canCode))
 -- eight upgrades with long slot names do not fit into 250 bytes: the answer goes in parts
-C(KIM, [[NS.BisGain = function(id) return 99999, "SECONDARYHANDSLOT_X", 1 end
-    NS.BisOwned = function() return false end
-    NS.BisIsUpgrade = function() return true end]])
+C(KIM, [[NS.UpgradeOf = function(id) return { gain = 99999, slotKey = "SECONDARYHANDSLOT_X", mine = 1, pct = 999, up = true } end
+    NS.BisOwned = function() return false end]])
 local LONG = { 999901, 999902, 999903, 999904, 999905, 999906, 999907, 999908 }
 local uaBefore = BUS.count({ kind = "UA", sender = KIM })
 local qLong = C(VULO, "NS.NeedAsk({ 999901, 999902, 999903, 999904, 999905, 999906, 999907, 999908 })")
