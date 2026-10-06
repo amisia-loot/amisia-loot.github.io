@@ -30,9 +30,11 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
   - wowsrc.com dungeon loot pages (drop chances), kept parsed in tools/gear_wowsrc.json;
     --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
 
-Instance ids (what GetInstanceInfo reports) come from the UiMapAssignment client table in --wago
-(default ~/addons/_wago, downloaded by hand from wago.tools), from tools/forever_dungeons.json and
-from the collector's drop notes; a dungeon without one is placed by its name.
+Instance ids (what GetInstanceInfo reports) come from the client tables UiMapAssignment and
+AreaTable (<Table>[.<build>].csv in --wago, default ~/addons/_wago, downloaded by hand from
+wago.tools, then the copies ATT ships), from tools/forever_dungeons.json (with
+forever_dungeons_client.json) and from the collector's drop notes; a dungeon without one is placed
+by its name.
 
 AMISIA_WOW_ROOT overrides the WoW install path.
 """
@@ -339,6 +341,17 @@ def parse_wowsrc(page, slug):
 
 
 # ---------------------------------------------------------------- ItemSparse (client item table)
+def itemsparse_path(arg):
+    """--itemsparse: a CSV file, or a folder holding ItemSparse.csv or ItemSparse.<build>.csv (the
+    newest build)."""
+    if not os.path.isdir(arg):
+        return arg
+    path = att_data.wago_csv(arg, 'ItemSparse')
+    if not path:
+        raise SystemExit(f'no ItemSparse[.<build>].csv in {arg}')
+    return path
+
+
 def refresh_itemsparse(csv_path, scan_items, path=ITEMSPARSE_JSON):
     """Keeps what the addon needs from an ItemSparse export: class limits, weapon speed and the
     profession an item needs to be worn (engineering goggles).
@@ -399,16 +412,18 @@ def zone_name(const):
 
 
 def load_facts(path=FACTS):
+    """The dungeon facts with the client's instance ids filled in (build_dungeons.merge)."""
+    import build_dungeons
     with open(path, encoding='utf-8') as fh:
-        return json.load(fh)['dungeons']
+        return build_dungeons.merge(json.load(fh), build_dungeons.load_client())
 
 
 class Places:
     """Dungeons and raids by ATT instance, name or instance id: (name, instance id, area id).
 
     The name is the one tools/forever_dungeons.json gives a dungeon (else ATT's); the instance id
-    comes from the client's UiMapAssignment table (via the ATT reader), the facts file, or what the
-    collector's drop notes reported (learn())."""
+    comes from the client's UiMapAssignment and AreaTable tables (via the ATT reader), the facts file
+    (with tools/forever_dungeons_client.json), or what the collector's drop notes reported (learn())."""
 
     def __init__(self, att, facts=()):
         self.facts = list(facts or ())
@@ -985,7 +1000,8 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
     for n in used:
         rec = src.rows[n - 1]
         lines.append('        {' + ', '.join(lua_val(v) for v in rec) + '},')
-        for v in rec[1:]:
+        # D and X records hold instance and area ids, no zone (an instance id can equal a uiMapID)
+        for v in rec[1:] if rec[0] not in ('D', 'X') else ():
             if isinstance(v, int) and v in zone_rows:
                 zones_used[v] = zone_rows[v]
     lines.append('    },')
@@ -1039,15 +1055,15 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
-    ap.add_argument('--wago', default=WAGO, help='folder with client tables from wago.tools (UiMapAssignment; default ~/addons/_wago)')
+    ap.add_argument('--wago', default=WAGO, help='folder with client tables from wago.tools (UiMapAssignment, AreaTable; default ~/addons/_wago)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files with item scans (default: repo dumps, '
                                             '~/addons/_SavedVariables/Amisia.lua, installed Forever client)')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
     ap.add_argument('--show-unmatched', action='store_true')
-    ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes); '
-                                         'refreshes tools/gear_itemsparse.json')
+    ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes), or a '
+                                         'folder holding ItemSparse[.<build>].csv; refreshes tools/gear_itemsparse.json')
     args = ap.parse_args(argv)
 
     if args.refresh_att:
@@ -1073,7 +1089,7 @@ def main(argv=None):
             wowsrc = json.load(fh)
 
     if args.itemsparse:
-        refresh_itemsparse(args.itemsparse, item_master(scan_items, att['items'], previous_items(OUT)))
+        refresh_itemsparse(itemsparse_path(args.itemsparse), item_master(scan_items, att['items'], previous_items(OUT)))
     itemsparse = {}
     if os.path.exists(ITEMSPARSE_JSON):
         with open(ITEMSPARSE_JSON, encoding='utf-8') as fh:

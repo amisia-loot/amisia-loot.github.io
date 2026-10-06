@@ -727,7 +727,12 @@ local function baseEntry(e, x, o, anyRange)
         local cap = Gear.Cap()
         min, max = min or cap, max or cap
     elseif not (min and max) then
-        if x and x.lo then
+        -- lvl: the level the client tunes the dungeon to, the low end of its range; the high end
+        -- then comes from the items
+        local lvl = type(e.lvl) == "number" and e.lvl > 0 and e.lvl or nil
+        if lvl then
+            min, max, est = lvl, math.max(lvl, x and x.hi or lvl), true
+        elseif x and x.lo then
             min, max, est = x.lo, x.hi, true
         elseif anyRange then
             min, max = nil, nil

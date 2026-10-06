@@ -364,3 +364,36 @@ def test_the_fixture_end_to_end():
     assert 61099 not in keep
     assert {61002, 61003, 61012, 61013, 61017} <= set(missing), 'a quest, dungeon or crafted item no table knows'
     assert not {61007, 61015, 61016} & set(missing), 'world drops and PvP gear are not asked for'
+
+
+def test_zone_names_only_for_zone_fields(tmp_path):
+    # an instance id (Blackrock Depths, 230) can equal a uiMapID (Uldaman's map, 230): a D record names no zone
+    src = build_gear.Sources()
+    d = src.add('D', 'Blackrock Depths', 'Boss', None, 230, 1584)
+    q = src.add('Q', 'Quest', 30, 25, None, 301, 5)
+    keep = {10: (scan_item('Helm'), [d, q], 30, 0, 0.0, 0)}
+    out = tmp_path / 'GearData.lua'
+    build_gear.write_lua(str(out), src, keep, {230: 'Uldaman', 301: 'Razorfen Kraul'}, {'built': '2026-10-06'})
+    text = out.read_text(encoding='utf-8')
+    assert '[301] = "Razorfen Kraul",' in text and '"Uldaman"' not in text
+
+
+def test_the_facts_carry_the_client_instance_ids():
+    by = {f['key']: f for f in build_gear.load_facts()}
+    assert by['ubrs']['inst'] == 229 and by['deadmines']['inst'] == 36, 'tools/forever_dungeons_client.json'
+    assert by['onyxia']['inst'] == 249, 'the hand facts win'
+    p = build_gear.Places({'instances': {}}, build_gear.load_facts())
+    assert p.of_name('Upper Blackrock Spire')[1] == 229
+
+
+def test_itemsparse_from_a_folder(tmp_path):
+    f = tmp_path / 'ItemSparse.1.60.1.70235.csv'
+    f.write_text('ID\n', encoding='utf-8')
+    assert build_gear.itemsparse_path(str(tmp_path)) == str(f), 'the download name in a folder'
+    assert build_gear.itemsparse_path(str(f)) == str(f), 'a file as it is'
+    (tmp_path / 'empty').mkdir()
+    try:
+        build_gear.itemsparse_path(str(tmp_path / 'empty'))
+        assert False, 'a folder without the table stops the build'
+    except SystemExit as e:
+        assert 'no ItemSparse' in str(e)

@@ -1,0 +1,8 @@
+ID,ZoneName,AreaName_lang,ContinentID,ParentAreaID,AreaBit
+99001,TestHalls,"Test Halls",4777,0,1
+99002,TestRaid,"Test Raid",4003,0,2
+99003,TestRaidInner,"Inner Hall",4003,99002,3
+99010,TestHills,"Test Hills",0,0,4
+99011,Westfall,"Westfall",4100,0,5
+99012,Westfall,"Westfall",4101,0,6
+99020,TheTestWing,"The Test Wing",4020,0,7

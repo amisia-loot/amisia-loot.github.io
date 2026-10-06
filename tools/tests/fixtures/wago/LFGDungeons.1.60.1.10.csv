@@ -1,0 +1,8 @@
+ID,Name_lang,Description_lang,TypeID,MapID,ContentTuningID
+1,"Test Halls",,0,0,10
+2,"Test Wing - East",,0,0,11
+3,"Test Wing - West",,0,0,11
+4,"Test Zone",,4,0,12
+5,"Test Field",,5,0,12
+6,"Unknown Place",,0,0,10
+7,"Stormwind Stockades",,0,0,13

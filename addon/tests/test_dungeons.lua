@@ -97,9 +97,11 @@ assert(ruins.upgrades == 1 and near(ruins.perRun, g(509) / 6), "the baron's only
 -- fits of the other entries
 local exc, dm = find(list, "excavation"), find(list, "deadmines")
 assert(exc.fit == "high" and exc.value == nil, "26-31 is too high, not computed")
-assert(dm.est and dm.min == 20 and dm.max == 20 and dm.fit == "high", "the range from its items' levels")
+assert(dm.est and dm.min == 16 and dm.max == 20 and dm.fit == "fit",
+    "the client's level (DungeonData lvl) as the low end, its items' levels as the high end")
 assert(find(list, "drowned").fit == "high", "a dungeon without items keeps its fact range")
-assert(find(list, "rfd") == nil, "a dungeon without a range and without items is left out")
+local rfd = find(list, "rfd")
+assert(rfd and rfd.est and rfd.min == 34 and rfd.max == 34, "without items the client's level alone")
 assert(find(list, "onyxia") == nil and find(list, "barrow") == nil, "no raid below 60")
 -- sorted by level
 local last = 0

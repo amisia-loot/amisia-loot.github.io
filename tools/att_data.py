@@ -15,7 +15,13 @@ large to clone) into ~/addons/_cache/att, outside the repo:
   - .config/constants/: the map constants (MAP.X -> uiMapID);
   - .config/exports/ItemDB.lua: the Forever client's item table as ATT exports it (slot, class,
     subclass, item level, quality, bind, required level, classes, required skill line);
-  - .config/.wago/UiMapAssignment.*.csv: uiMapID -> instance map id (the client table ATT ships).
+  - .config/.wago/UiMapAssignment.*.csv: uiMapID -> instance map id (the client table ATT ships);
+  - .config/.wago/AreaTable.*.csv: area id -> the map (ContinentID) it lies on, which for an
+    instance's own area is the instance map id; ContentTuning.*.csv: the level the client tunes a
+    dungeon to (build_dungeons.py, with the LFGDungeons table of the user's wago.tools download).
+
+Client tables are read as <Table>.csv or <Table>.<build>.csv (wago.tools names its downloads so);
+of several builds in one folder the newest counts (wago_csv()).
 
 The files are a Lua builder language (root, maproot, inst, q, n, e, i, objective, ...). load()
 runs them under lupa with stand-ins that only record what they are given; names come from the
@@ -42,7 +48,7 @@ USER_AGENT = 'AmisiaGuildTool/1.0 (+https://amisia-loot.github.io)'
 KEEP_DIRS = ('dungeons & raids/', 'zones/', 'world drops/', 'pvp/', 'crafted items/',
              'zzOLD/01 - Dungeons Raids/', 'zzOLD/02 - Outdoor Zones/', '.config/constants/')
 KEEP_FILES = ('.config/exports/ItemDB.lua',)
-KEEP_WAGO = ('UiMapAssignment',)
+KEEP_WAGO = ('UiMapAssignment', 'AreaTable', 'ContentTuning')
 # The data folders load() reads, in this order; a later folder never overwrites an earlier record.
 DATA_DIRS = ('dungeons & raids', 'zones', 'world drops', 'pvp', 'crafted items',
              os.path.join('zzOLD', '01 - Dungeons Raids'), os.path.join('zzOLD', '02 - Outdoor Zones'))
@@ -577,21 +583,98 @@ INVTYPE = {1: 'INVTYPE_HEAD', 2: 'INVTYPE_NECK', 3: 'INVTYPE_SHOULDER', 4: 'INVT
            27: 'INVTYPE_QUIVER', 28: 'INVTYPE_RELIC'}
 
 
+def _build_key(build):
+    return tuple(int(x) for x in build.split('.')) if build else ()
+
+
+def wago_csv(folder, table):
+    """The client table <table> in folder: <Table>.csv or <Table>.<build>.csv (the name wago.tools
+    gives a download, e.g. UiMapAssignment.1.60.1.70235.csv); of several builds the newest, a file
+    without a build last. None when the folder has none."""
+    if not folder or not os.path.isdir(folder):
+        return None
+    pat = re.compile(r'^' + re.escape(table) + r'(?:\.(\d+(?:\.\d+)*))?\.csv$', re.I)
+    found = []
+    for name in os.listdir(folder):
+        m = pat.match(name)
+        if m:
+            found.append((_build_key(m.group(1)), name))
+    return os.path.join(folder, max(found)[1]) if found else None
+
+
+def wago_rows(table, *dirs):
+    """The rows of the newest <table> CSV of each folder, the folders in the order given (the
+    user's wago.tools download first, then the copy ATT ships)."""
+    for d in dirs:
+        path = wago_csv(d, table)
+        if path:
+            with open(path, encoding='utf-8-sig') as fh:
+                yield from csv.DictReader(fh)
+
+
 def read_uimap_instances(*dirs):
     """uiMapID -> instance map id (the client's Map id, what GetInstanceInfo reports) from the
     UiMapAssignment client tables in the given folders (the user's wago.tools download first, then
-    the copy ATT ships, which holds the outdoor zones only); the first assignment of a uiMap wins."""
+    the copy ATT ships); the first assignment of a uiMap wins. The tables of WoW Forever 1.60.1 hold
+    the outdoor zones and battlegrounds only, no Classic dungeon map (see read_area_instances)."""
     out = {}
-    for path in [p for d in dirs if d for p in sorted(glob.glob(os.path.join(d, "UiMapAssignment*.csv")))]:
-        with open(path, encoding='utf-8') as fh:
-            for row in csv.DictReader(fh):
-                try:
-                    ui, mid, order = int(row['UiMapID']), int(row['MapID']), int(row.get('OrderIndex') or 0)
-                except (KeyError, ValueError):
-                    continue
-                if order == 0:
-                    out.setdefault(ui, mid)
+    for row in wago_rows('UiMapAssignment', *dirs):
+        try:
+            ui, mid, order = int(row['UiMapID']), int(row['MapID']), int(row.get('OrderIndex') or 0)
+        except (KeyError, ValueError):
+            continue
+        if order == 0:
+            out.setdefault(ui, mid)
     return out
+
+
+# ATT's instance names the client's AreaTable spells otherwise.
+CLIENT_NAMES = {"The Temple of Atal'hakkar": 'Sunken Temple'}
+
+# The maps of the open world (Eastern Kingdoms, Kalimdor): an area on one of them is no instance.
+OUTDOOR_MAPS = (0, 1)
+
+
+def name_key(name):
+    """Instance names compared without case, punctuation and a leading "The"."""
+    return re.sub(r'^the', '', re.sub(r'[^a-z0-9]+', '', (name or '').lower()))
+
+
+def read_area_instances(*dirs):
+    """({area id: instance map id}, {name_key(name): instance map id}) from the AreaTable client
+    tables: an area's ContinentID is the map it lies on, the instance map for an area inside an
+    instance. Areas of the open world (OUTDOOR_MAPS) are left out. By name only areas at the top
+    (no parent area), and only names that point at one map (not "Westfall", which several test and
+    event maps share); the first folder's table wins."""
+    by_area, names = {}, {}
+    for row in wago_rows('AreaTable', *dirs):
+        try:
+            aid, mid, parent = int(row['ID']), int(row['ContinentID']), int(row.get('ParentAreaID') or 0)
+        except (KeyError, ValueError):
+            continue
+        if mid in OUTDOOR_MAPS or aid in by_area:
+            continue
+        by_area[aid] = mid
+        if parent == 0:
+            for n in {row.get('AreaName_lang'), row.get('ZoneName')}:
+                if n:
+                    names.setdefault(name_key(n), set()).add(mid)
+    return by_area, {k: next(iter(v)) for k, v in names.items() if len(v) == 1}
+
+
+def instance_map_id(maps, area, names, uimap_instance, area_instance):
+    """The instance map id of an ATT instance: through its uiMaps (UiMapAssignment), else its area
+    (AreaTable; ATT gives the outdoor area of some, as Gnomeregan's in Dun Morogh), else its name."""
+    for m in maps:
+        if m in uimap_instance:
+            return uimap_instance[m]
+    by_area, by_name = area_instance
+    if area in by_area:
+        return by_area[area]
+    for n in [x for n in names for x in (n, CLIENT_NAMES.get(n))]:
+        if n and name_key(n) in by_name:
+            return by_name[name_key(n)]
+    return None
 
 
 def read_itemdb(base, lua_S=None):
@@ -657,7 +740,8 @@ def load(base=ATT_CACHE, items=True, wago=None):
         files.append(rel)
     raw = _py(raw)
     old = lambda f: (f or '').startswith('zzOLD/')  # noqa: E731
-    uimap_instance = read_uimap_instances(wago, os.path.join(base, ".config", ".wago"))
+    wago_dirs = (wago, os.path.join(base, ".config", ".wago"))
+    uimap_instance, area_instance = read_uimap_instances(*wago_dirs), read_area_instances(*wago_dirs)
 
     def pts(lst):
         out = []
@@ -679,7 +763,8 @@ def load(base=ATT_CACHE, items=True, wago=None):
         name = (names.get(('inst', iid)) or (None,))[0] or stem
         instances[iid] = {'name': name, 'area': _int(r.get('area')), 'maps': maps, 'points': pts(r.get('pts')),
                           'file': r['file'], 'stem': stem, 'old': old(r['file']),
-                          'mapID': next((uimap_instance[m] for m in maps if m in uimap_instance), None)}
+                          'mapID': instance_map_id(maps, _int(r.get('area')), (name, stem), uimap_instance,
+                                                   area_instance)}
 
     def faction(code):
         return code if code in ('A', 'H') else ''

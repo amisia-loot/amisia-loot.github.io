@@ -68,7 +68,11 @@ the licence text ships in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`, approved
   into `~/addons/_cache/att`, outside the repo, with the commit in `COMMIT`: the Forever dungeons
   and zones, the Classic folders not yet moved (`zzOLD/01 - Dungeons Raids`, `zzOLD/02 - Outdoor
   Zones`), world drops, PvP gear, crafted items, the map constants, the item export
-  `.config/exports/ItemDB.lua` and the client table `UiMapAssignment` ATT ships.
+  `.config/exports/ItemDB.lua` and the client tables `UiMapAssignment`, `AreaTable` and `ContentTuning`
+  ATT ships.
+- Client tables (wago.tools CSV downloads) are read as `<Table>.csv` or `<Table>.<build>.csv`, the name
+  wago.tools gives them (`UiMapAssignment.1.60.1.70235.csv`); of several builds in one folder the newest
+  counts (`wago_csv()`). The user's folder `~/addons/_wago` comes first, ATT's copies second.
 - The files are a Lua builder language. They run in a sandbox (lupa without its python bridge, an
   environment of a few safe functions, no `io`, `os`, `load`, `require`, `debug`) with stand-ins
   that only record what they are given. ATT's preprocessor (`-- #if SEASON_OF_DISCOVERY` ...) is
@@ -83,8 +87,11 @@ the licence text ships in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`, approved
 - What ATT does not give: a quest's own level (the minimum level stands in), NPC levels, recipe
   skill levels, spawn points of mobs it only names, measured entrances of some dungeons (the new
   ones carry the middle of their zone, which `build_map.py` does not take), and instance map ids
-  of dungeons (ATT's `UiMapAssignment` copy holds the outdoor zones only; put the wago.tools export
-  `UiMapAssignment` of the current build into `~/addons/_wago` for them).
+  of dungeons. Those come from the client tables: `UiMapAssignment` (uiMap -> instance map; Forever
+  1.60.1's table holds the outdoor zones and battlegrounds only), then `AreaTable` (an area's
+  `ContinentID` is the instance map for an area inside an instance; ATT gives the outdoor area of some,
+  as Gnomeregan's in Dun Morogh, so those are found by the client's name of the instance). With ATT's
+  `AreaTable` of 1.60.1.70170 every ATT instance but Onyxia's Lair (249 from the facts) has its id.
 
 Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixtures/att`.
 
@@ -95,7 +102,7 @@ Builds `addon/Amisia/GearData.lua` and `addon/Amisia/GearWeights.lua` for the ad
 and the stat weights per class, spec and level.
 
 ```
-python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--no-wowsrc] [--itemsparse CSV]
+python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--no-wowsrc] [--itemsparse CSV|DIR]
 ```
 
 - What an item is (slot, armour or weapon type, required level, quality, bind, class limits): the
@@ -128,9 +135,14 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   at 6), from ATT or the collector's `[npcID]`; `Gear.lua` does not read it, `build_map.py` keys the
   map points by it.
 - Dungeon sources carry the instance id and area id, so the gear page can find "here" through
-  `GetInstanceInfo()`. The area id is ATT's; the instance id comes from the `UiMapAssignment` client
-  table (`--wago`, default `~/addons/_wago`), `tools/forever_dungeons.json` or the collector's drop
+  `GetInstanceInfo()`. The area id is ATT's; the instance id comes from the `UiMapAssignment` and
+  `AreaTable` client tables (`--wago`, default `~/addons/_wago`, then ATT's copies),
+  `tools/forever_dungeons.json` with `tools/forever_dungeons_client.json`, or the collector's drop
   notes. Without one the dungeon is found by its English name only.
+- `--itemsparse` takes the CSV or a folder with `ItemSparse[.<build>].csv` and rewrites
+  `tools/gear_itemsparse.json` from it; ids the export does not hold lose their entry, so compare
+  first (the 1.60.1.70235 download holds about 1,750 of the 2,340 cached weapon speeds and agrees on
+  every one it has).
 - Dungeon names are those of `tools/forever_dungeons.json` (ATT's and the other sources' spellings
   map to them through the names and aliases there).
 - Forever raids: drops the site recorded in `data/forever.js` for a zone that
@@ -187,15 +199,26 @@ opening date and instance id where known. Facts only, never a loot table or a dr
 entry names its source in `src`, explained in the file's `sources` block with the date of the check.
 
 ```
-python tools/build_dungeons.py
+python tools/build_dungeons.py [--wago [DIR ...]]
 ```
+
+- `--wago` reads the client tables (default `~/addons/_wago`, then ATT's copies in
+  `~/addons/_cache/att/.config/.wago`) and rewrites `tools/forever_dungeons_client.json`: per dungeon of
+  the facts the level the client tunes it to (`LFGDungeons` -> `ContentTuningID` -> `ContentTuning`
+  `MinLevelSquish`) and its instance id (`AreaTable`). Forever's `LFGDungeons` (1.60.1.70235) has no
+  level range, map or group size of its own; the tuning level is one number, the low end of the range
+  (it equals the public minimum of Hall of Thanes, Ruins of Lordaeron, Excavation Site and City of
+  Dalaran). Without `--wago` the JSON file is used as it is.
+- The hand facts win: the client's values fill only what `forever_dungeons.json` leaves open (`lvl`, and
+  `inst` where the facts have none); differences are printed. The addon takes `lvl` as the low end of a
+  dungeon without a fact range and the required levels of its items for the high end ("~16-20").
 
 - Forever's new dungeons and raids: public facts (Blizzard's announcements, the public dungeon list),
   checked by hand. Onyxia's instance and area id from `tools/forever_zones.json`.
 - Classic dungeons: the names the repo's own data uses (`GearData.lua` dungeon sources and dungeon
-  quests, `MapData.lua` entrances). Their level ranges stay empty until the client's `LFGDungeons`
-  table (wago CSV) is read; the addon estimates a range from the required levels of the dungeon's
-  items meanwhile and marks it with "~".
+  quests, `MapData.lua` entrances). Their level ranges stay empty in the facts; the client's level
+  (`forever_dungeons_client.json`) and the required levels of the dungeon's items give an estimate,
+  marked with "~".
 - Once `build_bis.py` writes `ns.BIS.DG` (the same facts, with the `LFGDungeons` ranges and the
   bosses' NPC ids), the planner takes that table and this file can go.
 
