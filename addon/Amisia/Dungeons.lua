@@ -490,8 +490,10 @@ local function observations(facts, idx)
     local instKeys, votes = {}, {}
     for inst, list in pairs(idx.instKeys) do instKeys[inst] = list end
     for _, r in pairs(records) do
-        if r.npc > 0 then
-            local o = npcOf(r.npc)
+        -- a fallback record counts for the boss of its encounter (ns.BIS.EN) where the client names one
+        local bossNpc = ns.DropsBossOf and ns.DropsBossOf(r) or r.npc
+        if bossNpc > 0 then
+            local o = npcOf(bossNpc)
             for id in pairs(r.it) do o.items[id] = true end
             o.insts[r.inst] = (o.insts[r.inst] or 0) + 1
             o.kills = o.kills + 1

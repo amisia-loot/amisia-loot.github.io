@@ -124,6 +124,8 @@ local function showItemTooltip(owner, id, score, extra, pick)
     if pick and ns.BisPickText then
         GameTooltip:AddLine(ns.BisPickText(pick), 0.25, 1, 0.4, true)
     end
+    local fx = Gear.EffectText(id)
+    if fx then GameTooltip:AddLine("Effekt nicht gewertet: " .. fx, 0.6, 0.6, 0.6, true) end
     local o = opts(settings().col)
     local srcs = Gear.Sources(id, o)
     if #srcs == 0 then srcs = Gear.Sources(id) end

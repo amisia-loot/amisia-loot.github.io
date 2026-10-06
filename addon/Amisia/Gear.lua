@@ -742,8 +742,9 @@ function Gear.Stats(id)
 end
 
 -- Stats tools/build_bis.py computed for an item no scan has seen (ns.BIS.SC), marked SC = true;
--- nil without. Weapons and trinkets have none (their damage and equip effects are not in the
--- tables the build reads).
+-- nil without. They hold the allocations, the armour, a weapon's damage per second (its speed comes
+-- from the item row, as for scanned stats) and the plain stats of equip effects; procs and use
+-- effects are not in them (Gear.EffectText names those).
 local computedCache, computedFor = {}, nil
 function Gear.ComputedStats(id)
     local B = ns.BIS
@@ -758,8 +759,19 @@ function Gear.ComputedStats(id)
         v = tonumber(v)
         if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
     end
+    local row = s.DPS and Gear.Item(id)
+    if row and (row[9] or 0) > 0 then s.SPEED = row[9] end
     computedCache[id] = s
     return s
+end
+
+-- The effects of an item the scoring does not count (ns.BIS.FX, from the client tables: use
+-- effects, chances on hit, equip effects other than plain stats), as German text
+-- ("Chance bei Treffer: Fireball (176 Feuerschaden)"; several joined by "; "), or nil.
+function Gear.EffectText(id)
+    local B = ns.BIS
+    local text = type(B) == "table" and type(B.FX) == "table" and B.FX[tonumber(id) or id]
+    return type(text) == "string" and text ~= "" and text or nil
 end
 
 -- The random suffixes seen on an item: { [suffix id] = stat table } from the build (ns.BIS.RP,

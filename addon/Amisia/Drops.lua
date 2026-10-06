@@ -759,7 +759,7 @@ end)
 ---------------------------------------------------------------------------
 -- Rates
 ---------------------------------------------------------------------------
-local sums, sumsVersion, sumsOT, sumsOI   -- npc -> { k = kills, it = { [item] = kills with it } } after OT
+local sums, sumsVersion, sumsOT, sumsOI, sumsBIS   -- npc -> { k = kills, it = { [item] = kills with it } } after OT
 
 -- Whether a record counts on top of the base stock: a day after its day (ns.BIS.OT) and an id it
 -- does not hold. ns.BIS.OI lists the ids of the base stock's last day, so a corpse looted on both
@@ -773,15 +773,26 @@ local function baseIds()
     return type(B) == "table" and type(B.OI) == "table" and B.OI or nil
 end
 
+-- The boss NPC of a record: its own, or for a fallback record (NPC 0, known by its encounter) the
+-- boss the client's encounter table names for that encounter (ns.BIS.EN, tools/build_bis.py); 0
+-- when neither says.
+function ns.DropsBossOf(r)
+    if r.npc > 0 then return r.npc end
+    local B = ns.BIS
+    local npc = r.enc and type(B) == "table" and type(B.EN) == "table" and tonumber(B.EN[r.enc])
+    return npc and npc > 0 and npc or 0
+end
+
 local function ownSums(ot)
     local oi = baseIds()
-    if sums and sumsVersion == version and sumsOT == ot and sumsOI == oi then return sums end
-    sums, sumsVersion, sumsOT, sumsOI = {}, version, ot, oi
+    if sums and sumsVersion == version and sumsOT == ot and sumsOI == oi and sumsBIS == ns.BIS then return sums end
+    sums, sumsVersion, sumsOT, sumsOI, sumsBIS = {}, version, ot, oi, ns.BIS
     local d = ns.DropsDB()
     for id, r in pairs(d and d.k or {}) do
-        if afterBase(id, r, ot, oi) and r.npc > 0 then
-            local s = sums[r.npc]
-            if not s then s = { k = 0, it = {} }; sums[r.npc] = s end
+        local npc = ns.DropsBossOf(r)
+        if afterBase(id, r, ot, oi) and npc > 0 then
+            local s = sums[npc]
+            if not s then s = { k = 0, it = {} }; sums[npc] = s end
             s.k = s.k + 1
             for item in pairs(r.it) do s.it[item] = (s.it[item] or 0) + 1 end
         end
@@ -949,8 +960,11 @@ function ns.DropsBossList()
     end
     local oi = baseIds()
     for id, r in pairs(d.k) do
-        local key = r.npc > 0 and r.npc or ("e" .. tostring(r.enc))
-        local b = boss(key, r.npc, r.npc > 0 and nil or r.enc)
+        -- a fallback record counts under the boss of its encounter where the client's table names one
+        local npc = ns.DropsBossOf(r)
+        local key = npc > 0 and npc or ("e" .. tostring(r.enc))
+        local b = boss(key, npc, npc > 0 and nil or r.enc)
+        if npc ~= r.npc and not b.encName then b.encName = d.enc[r.enc] end
         if not b.inst or (b.day or -1) < r.day then b.inst, b.day = r.inst, r.day end
         if afterBase(id, r, ot, oi) then
             b.k = b.k + 1
@@ -988,7 +1002,7 @@ function ns.DropsBossList()
             end
             g.k = g.k + b.k
             if b.npc > 0 then
-                b.name = d.npc[b.npc] or ("Boss " .. b.npc)
+                b.name = d.npc[b.npc] or b.encName or ("Boss " .. b.npc)
             else
                 b.name = d.enc[b.enc] or ("Begegnung " .. tostring(b.enc))
             end
@@ -1049,7 +1063,8 @@ function ns.DropsStatus()
     for _, r in pairs(d.k) do
         out.kills = out.kills + 1
         if r.mine then out.own = out.own + 1 else out.heard = out.heard + 1 end
-        bosses[r.npc > 0 and r.npc or ("e" .. tostring(r.enc))] = true
+        local npc = ns.DropsBossOf(r)
+        bosses[npc > 0 and npc or ("e" .. tostring(r.enc))] = true
         if not out.newest or r.day > out.newest then out.newest = r.day end
     end
     out.bosses = count(bosses)

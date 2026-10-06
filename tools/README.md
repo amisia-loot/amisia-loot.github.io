@@ -208,8 +208,8 @@ python tools/build_dungeons.py [--wago [DIR ...]]
 - `--wago` reads the client tables (default `~/addons/_wago`, then ATT's copies in
   `~/addons/_cache/att/.config/.wago`) and rewrites `tools/forever_dungeons_client.json`: per dungeon of
   the facts the level the client tunes it to (`LFGDungeons` -> `ContentTuningID` -> `ContentTuning`
-  `MinLevelSquish`) and its instance id (`AreaTable`). Forever's `LFGDungeons` (1.60.1.70235) has no
-  level range, map or group size of its own; the tuning level is one number, the low end of the range
+  `MinLevelSquish`, read by `tuning_levels`, which `build_bis.py` uses too) and its instance id
+  (`AreaTable`). Forever's `LFGDungeons` (1.60.1.70235) has no level range, map or group size of its own; the tuning level is one number, the low end of the range
   (it equals the public minimum of Hall of Thanes, Ruins of Lordaeron, Excavation Site and City of
   Dalaran). Without `--wago` the JSON file is used as it is.
 - The hand facts win: the client's values fill only what `forever_dungeons.json` leaves open (`lvl`, and
@@ -242,18 +242,24 @@ python tools/build_bis.py [--wago ~/addons/_wago] [--measured tools/bis_measured
 
 Inputs:
 
-- **Client tables** (wago.tools CSV, downloaded by hand in the browser per Forever build; Syncthing
-  brings them to `~/addons/_wago`, files `<Table>.<build>.csv`; never committed). Read when present:
-  `ItemSparse`, `RandPropPoints`, `ItemSet`, `ItemSetSpell`, `SpellEffect`, `SpellItemEnchantment`,
-  `LFGDungeons`, `ContentTuning`. The used columns and rows go to `tools/bis_gamedata.json`
-  (committed); without CSVs the build runs from that file. wago does not publish
-  `ItemRandomProperties`, `ItemRandomSuffix` or any `gt*` table for Forever (2026-10-06).
-  `ItemSetSpell` (set bonuses) and `ContentTuning` (Classic dungeon level ranges) exist on wago but
-  were not downloaded yet: their parts stay empty until they are.
-- `addon/Amisia/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`,
-  AllTheThings' Forever data (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon,
-  `tools/drop_obs.json` for the drop base stock, and the SavedVariables for the random suffixes the
-  collector saw (`scan.suffix`).
+- **Client tables** (CSV in wago.tools' format: `tools/export_db2.ps1` exports them from the WoW
+  install on the PC, or they are downloaded by hand from wago.tools; Syncthing brings them to
+  `~/addons/_wago`, files `<Table>.<build>.csv`; never committed). Read when present: `ItemSparse`,
+  `Item`, `RandPropPoints`, `ItemSet`, `ItemSetSpell`, `SpellEffect`, `SpellItemEnchantment`,
+  `LFGDungeons`, `ContentTuning`, `DungeonEncounter`, the damage tables `ItemDamageOneHand(Caster)` and
+  `ItemDamageTwoHand(Caster)`, the armour tables `ItemArmorQuality`, `ItemArmorTotal`, `ItemArmorShield`
+  and `ArmorLocation`, and the effect tables `ItemXItemEffect`, `ItemEffect`, `SpellName`, `Spell`
+  (tooltip text) and `SpellMisc` (school). The used columns and rows go to `tools/bis_gamedata.json`
+  (committed; items: the planner's items and the picks, with stats or not); without CSVs the build
+  runs from that file. Forever has no `ItemRandomProperties`, `ItemRandomSuffix` or `gt*` table, and
+  its `Journal*` tables are empty (1.60.1.70235). `ContentTuning` is read through
+  `build_dungeons.tuning_levels` (one reader for both builds).
+- `addon/Amisia/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
+  (with the client's level and instance id of `build_dungeons.client_facts`, from the CSVs of this
+  build when they are there, else `tools/forever_dungeons_client.json`), AllTheThings' Forever data
+  (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
+  base stock, and the SavedVariables: the random suffixes the collector saw (`scan.suffix`) and the
+  item scan (`scan.items`) of planner items and picks GearData.lua has no `ST` for (the check below).
 - **Conversions** (agility and intellect per percent crit, rating per percent, mana per spirit) are
   documented defaults in the script (Classic's values; the level curve of ratings is TBC's). In-game
   measurements correct them: `tools/bis_measured.json` holds `samples` (raw values, e.g. from the
@@ -273,10 +279,45 @@ What it does:
   bracket wears the best gear of the bracket's entry level under these very weights (fixpoint with a
   shrinking step; the build stops when a weight does not settle within 1 %). Every spec has a unit,
   a German reason (`why`) and its reference values (`ref`) for "Warum diese Gewichte".
-- **Computed stats** (`SC`) of armour and jewellery no scan has seen, from ItemSparse's allocations and
-  RandPropPoints' budget; written only when at least 98 % of the scanned items the tables know come
-  out exactly (2026-10-06: 100 % of 1,138). Weapons and trinkets get none (damage tables and equip
-  effects are not on wago).
+- **Computed stats** (`SC`) of items no scan has seen (`full_stats`): ItemSparse's allocations times
+  RandPropPoints' budget; the **armour** (quality factor of `ItemArmorQuality` x the material's
+  `ItemArmorTotal` of the item level x the slot's `ArmorLocation` share, rounded, a robe counts as a
+  chest; shields their `ItemArmorShield` value, no quality factor; plus the extra armour of the
+  allocations, which rings and weapons have alone); a **weapon's damage per second** (DPS of the
+  `ItemDamage*` table of its kind, level and quality; average hit = DPS x speed, minimum floored,
+  maximum rounded with `DmgVariance`, DPS = (min + max) / 2 / speed); a **caster weapon's spell power**
+  (`Flags_4` & 0x200: 2 x the RandPropPoints budget of column 0; & 0x400, healing weapons: spell damage
+  floor(2b x 0.625) and healing floor(2b x 1.88)); and the plain stats of **equip effects** (auras of
+  attributes, armour, attack power, spell damage and healing, mana per five, spell penetration, percent
+  hit and crit as level-60 rating). What Forever's base data does not say, measured on 2026-10-06
+  against the scans (`DMG_FACTOR`): its caster tables are copies of the melee ones, the client's caster
+  damage is 2/3 (one-hand) and 0.7435 (two-hand) of them (a caster table of its own, as an export with
+  the hotfixes might have, is taken without a factor); bows, guns and crossbows 0.6 of the two-hand
+  table, thrown weapons 0.9 of the one-hand table; wands follow none (no damage, no `SC`).
+  **The check:** the same computation for every scanned item the tables know, compared as Gear.lua
+  scores (damage to a thousandth), per kind (`item_kind`); a kind gets `SC` only when at least 98 % of
+  at least 10 scanned items come out exactly. 2026-10-06 (1.60.1.70235, 2,021 scanned items the tables
+  know, 99.8 %): armour 1,379/1,379, shields 60/60, jewellery 148/150, trinkets 15/15, melee weapons
+  306/307, caster weapons 44/44, bows, guns and crossbows 59/60, thrown 6/6 (too few: no `SC`), wands not
+  checked. The misses: common-quality items (RandPropPoints has no budget for them) and one bow of
+  item level 5 (the ranged factor misses the lowest levels). The item scan covers most planner items,
+  so `SC` holds the pick (Rage of the Storm: its damage, intellect and stamina) and items without a
+  scan to come.
+- **Effects** (`FX`, item -> German text) the scoring does not count, for the planner's items and the
+  picks: `ItemXItemEffect` -> `ItemEffect` (trigger 0/5 "Benutzen", 1 "Anlegen", 2 "Chance bei
+  Treffer") -> the spell's name (`SpellName`, English) and what its effects plainly say
+  (`SpellEffect`, school from `SpellMisc`: "176 Feuerschaden", "+10 % Schaden: Stormstrike" with the
+  ability named in the spell's tooltip text, a proc's triggered spell). An equip effect of plain stats
+  goes into `SC` instead; an effect whose spell has no tooltip text (a hidden condition of another
+  effect) is left out. No proc value: chances and durations are not in the exported tables
+  (`SpellAuraOptions`, `SpellDuration`), so a proc stays unscored and named.
+- **Encounters** (`EN`, encounter id -> boss NPC id): `DungeonEncounter` names matched to the
+  dungeons' bosses (`bossNames`; a name two dungeons share by the encounter's map = instance id).
+  A drop record known only by its encounter (NPC 0) counts under that boss in the base stock (`O`)
+  and in the addon (`ns.DropsBossOf`: rates, the boss list, the dungeon planner).
+- **Dungeon levels:** `LFGDungeons` -> `ContentTuning` gives Forever's dungeons one level each
+  (MinLevelSquish = MaxLevelSquish); that is `lvl` (the low end), not a range. `DG`'s `min`/`max` take
+  the client's values only where a table has a real range (none in 1.60.1.70235).
 - **Sets** (`SET`), **random suffixes** seen on links (`RP`), **dungeons** (`DG`: the facts with
   `bosses` as NPC ids and `bossNames`), the **drop base stock** (`O`, `OT`, `OI`) and the **effort**
   per source kind (`EF`).
@@ -292,8 +333,9 @@ picked items' rows (name, slot, quality, item level, required level, bind, speed
 classes, stat allocations) in `bis_gamedata.json`, so later builds need the CSVs only for a new item.
 It writes `PICK` (the picks) and `PI` (GearData's row, no sources, plus `name`, for picked items
 GearData.lua lacks; the level is the table's required level, or the lowest `from` when the table says
-less) into `BisData.lua`, and computed stats (`SC`) for an unscanned picked item, weapons too (their
-damage and effect stay unknown). Picks do not enter the weights. In the addon `Gear.Best` puts a pick
+less) into `BisData.lua`, and computed stats (`SC`) for a picked item GearData.lua has no scan of (as
+any item of its kind; a pick of a kind without proof gets its allocations alone). Picks do not enter
+the weights. In the addon `Gear.Best` puts a pick
 first in its row for that spec and level (the weapon plan decides: a two-hand pick only with "auto" or
 "Zweihand", which it then chooses; source filters do not apply), the computed options below; the own
 targets, `ns.UpgradeOf`, `ns.BisGain` and the tooltip treat it as the row's target (an upgrade until
@@ -394,9 +436,9 @@ client picks the files up at the next `/reload`.
 Exports the Forever client tables the build scripts read (`ItemSparse`, `Item`, `ItemSet`,
 `ItemSetSpell`, `ItemXItemEffect`, `ItemEffect`, `SpellEffect`, `SpellName`, `Spell`, `SpellMisc`,
 `SpellItemEnchantment`, `RandPropPoints`, `LFGDungeons`, `ContentTuning`, `UiMapAssignment`,
-`AreaTable`, `Map`, the `Journal*` and `DungeonEncounter` tables, plus the item damage/armour tables
-when the build has them) as CSV straight from the WoW install on the PC, instead of downloading them
-from wago.tools by hand. Runs on the PC only (it needs the WoW install).
+`AreaTable`, `Map`, the `Journal*` and `DungeonEncounter` tables, plus the item damage and armour
+tables `ItemDamage*`, `ItemArmor*` and `ArmorLocation`, which `build_bis.py` reads) as CSV straight from
+the WoW install on the PC, instead of downloading them from wago.tools by hand. Runs on the PC only (it needs the WoW install).
 
 It drives [wow.tools.local](https://github.com/Marlamin/wow.tools.local) (WTL), which reads the local
 CASC storage (TACTSharp), decodes the DB2 files with DBCD and the WoWDBDefs definitions, and serves a

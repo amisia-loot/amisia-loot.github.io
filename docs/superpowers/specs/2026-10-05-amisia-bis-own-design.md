@@ -943,3 +943,48 @@ Umgesetzt mit den wago-CSVs von Forever 1.60.1.70235 (`ItemSparse`, `Item`, `Ite
   brauchen eine eigene Steigung). `ITEM_MOD_SPELL_POWER_SHORT` gibt es auf Forever-Items (gesehen an
   einem Umhang mit Zufallsbonus); es zählt als Zaubermacht für Zauberschaden und Heilung, und
   `GetItemStats` mit einem Link liefert die Werte des Zufallsbonus mit.
+
+## Nachtrag 2026-10-06 (2): Waffenschaden, Rüstung, Effekte, Dungeon-Level und Begegnungen
+
+Mit den lokal exportierten Client-Tabellen (`tools/export_db2.ps1`, Build 1.60.1.70235: `ItemDamage*`,
+`ItemArmor*`, `ArmorLocation`, `ItemXItemEffect`, `ItemEffect`, `SpellName`, `Spell`, `SpellMisc`,
+`ContentTuning`, `DungeonEncounter`, `AreaTable`; `Map` wird nicht gebraucht, `Journal*` ist in Forever leer). Abweichungen
+und Ergänzungen zu "Berechnete Werte" und zum ersten Nachtrag:
+
+- **Berechnete Werte für alle Slots** (`full_stats`): Anteile mal Budget wie bisher, dazu die Rüstung
+  (Qualitätsfaktor x Materialsumme der Itemstufe x Slotanteil, gerundet; Robe = Brust; Schilde ihr
+  `ItemArmorShield`-Wert ohne Qualitätsfaktor; plus Extra-Rüstung der Anteile, die Ringe und Waffen
+  allein haben), der Waffenschaden (DPS der Tabelle je Art, Stufe und Qualität; Mittel = DPS x Tempo,
+  Minimum abgerundet, Maximum gerundet mit `DmgVariance`), die Zaubermacht der Zauberwaffen
+  (`Flags_4` 0x200: 2 x Budget der ersten RandPropPoints-Spalte; 0x400, Heilwaffen: Zauberschaden
+  floor(2b x 0,625) und Heilung floor(2b x 1,88)) und die einfachen Werte der Anlegeeffekte (Attribute,
+  Rüstung, Angriffskraft, Zauberschaden/Heilung, Mana alle 5 Sek., Zauberdurchschlag, Prozent-Treffer
+  und -Krit als Wertung bei 60; Schaden und Heilung gleich = Zaubermacht, Nah- und Distanzangriffskraft
+  gleich = Angriffskraft, wie `GetItemStats` sie nennt). Setboni lesen dieselbe Auswertung.
+- **Was die Basisdaten nicht sagen** (gemessen an den Scans, Konstanten `DMG_FACTOR`): die
+  Zauberwaffen-Tabellen sind dort Kopien der Nahkampftabellen; der Client zeigt 2/3 (Einhand) bzw.
+  0,7435 (Zweihand) davon. Bögen, Gewehre, Armbrüste: 0,6 der Zweihandtabelle; Wurfwaffen 0,9 der
+  Einhandtabelle; Zauberstäbe passen zu keiner Tabelle (kein Schaden, kein `SC`). Eine eigene
+  Zauberwaffentabelle (ein Export mit `-Hotfixes` könnte sie haben) gilt ohne Faktor.
+- **Prüfung je Art** statt insgesamt: `SC` nur für eine Art, deren Rechnung bei mindestens 98 % von
+  mindestens 10 gescannten Items exakt stimmt (Vergleich wie Gear.lua wertet, DPS auf ein Tausendstel).
+  Stand: 99,8 % von 2.021 (Rüstung 1.379/1.379, Schilde 60/60, Schmuck 148/150, Schmuckstücke 15/15,
+  Nahkampfwaffen 306/307, Zauberwaffen 44/44, Fernkampf 59/60, Wurfwaffen 6/6 zu wenige). Die übrigen
+  3.229 gescannten Planer-Items fehlen in Forevers `ItemSparse`. Gewichte: unverändert (die
+  Planer-Items mit Werten sind alle gescannt).
+- **Effekte** (`ns.BIS.FX`, deutscher Text): Benutzen (Auslöser 0/5), Anlegen (1, wenn nicht nur
+  einfache Werte), Chance bei Treffer (2), mit englischem Zaubernamen und, wo die Effekte es klar
+  sagen, kurzer Beschreibung ("Chance bei Treffer: Fireball (176 Feuerschaden)", "Anlegen: Rage of
+  Earth (+10 % Schaden: Stormstrike)"). Zauber ohne Tooltip-Text (versteckte Bedingungen) zählen
+  nicht. Kein Proc-Wert: Chance und Dauer stehen in `SpellAuraOptions`/`SpellDuration`, die nicht
+  exportiert werden. Im Spiel: Zeile "Effekt nicht gewertet: ..." in der Erklärung (`ns.BisExplain`,
+  Tooltip mit Umschalt) und im Tooltip des Planers, Hinweis "Effekt nicht gewertet" an der Option.
+- **Dungeon-Level:** `ContentTuning` (MinLevelSquish = MaxLevelSquish) gibt jedem Forever-Dungeon eine
+  Stufe; sie bleibt `lvl` (untere Grenze). `min`/`max` nur aus einer echten Spanne (in 1.60.1.70235
+  keine). Ein Leser (`build_dungeons.tuning_levels`) für beide Skripte; `build_bis.py` holt Stufe und
+  Instanz-ID aus den CSVs des Builds (`build_dungeons.client_facts`), sonst aus
+  `tools/forever_dungeons_client.json`.
+- **Begegnungen** (`ns.BIS.EN`, Begegnungs-ID -> Boss-NPC): `DungeonEncounter`-Namen gegen die
+  `bossNames` der Dungeons (bei doppeltem Namen über die Karte = Instanz-ID). Ein Rückfall-Datensatz
+  (NPC 0, nur Begegnung) zählt damit beim Boss: im Grundstock (`O`) und im Addon über
+  `ns.DropsBossOf` (Raten, Bossliste, Dungeon-Planer).
