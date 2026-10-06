@@ -533,3 +533,31 @@ def test_measured_pairs_confirm_the_model():
     assert c.int_per_crit('PRIEST', 23) == pytest.approx(19.8, rel=0.01)
     assert c.base_spell_crit('PRIEST') == pytest.approx(0.8, abs=0.01)
     assert m['manaPerSpirit5']['PRIEST'] == pytest.approx(0.625)
+
+
+def test_werte_lines_must_be_finite(tmp_path, capsys):
+    """Review 25: float() takes nan, inf and 1e400; such a value never becomes a sample value, a
+    line without a class or with a level outside 1-60 is refused before anything is saved, and an
+    invalid line already in the file is skipped with a warning (the build goes on)."""
+    for line in ('AMISIA-WERTE level=nan class=ROGUE', 'AMISIA-WERTE level=inf class=ROGUE',
+                 'AMISIA-WERTE level=1e400 class=ROGUE', 'AMISIA-WERTE 1 ROGUE 61', 'AMISIA-WERTE 1 ROGUE 0',
+                 'AMISIA-WERTE level=12.5 class=ROGUE', 'AMISIA-WERTE 1 KNIGHT 20', 'AMISIA-WERTE 1 60'):
+        assert bb.werte_problem(bb.parse_werte(line)), line
+    s = bb.parse_werte('AMISIA-WERTE 1 ROGUE 60 agi=nan,nan,0,0 crit=inf cm=1e400,2 hm=20,nan dodge=-inf')
+    assert bb.werte_problem(s) is None and s['level'] == 60
+    assert 'agi' not in s and 'crit' not in s and 'dodge' not in s and s['ratings'] == {}, s
+    # main: refused before the file is written
+    path = tmp_path / 'measured.json'
+    path.write_text(json.dumps({'samples': []}), encoding='utf-8')
+    rc = bb.main(['--measured', str(path), '--werte', 'AMISIA-WERTE 1 ROGUE 60 cm=28,2',
+                  '--werte', 'AMISIA-WERTE level=nan', '--no-att', '--wago', str(tmp_path)])
+    assert rc == 2 and json.loads(path.read_text(encoding='utf-8')) == {'samples': []}, 'nothing saved'
+    # saved before this check: skipped with a warning
+    good = bb.parse_werte('AMISIA-WERTE 1 ROGUE 60 cm=28,2')
+    path.write_text(json.dumps({'samples': [{'line': 'AMISIA-WERTE level=nan class=ROGUE'},
+                                            {'class': 'ROGUE', 'level': float('inf'), 'ratings': {}},
+                                            dict(good, line='AMISIA-WERTE 1 ROGUE 60 cm=28,2')]}), encoding='utf-8')
+    capsys.readouterr()
+    m = bb.load_measured(str(path))
+    assert m['rating60'] == {'CRIT': 14} and m['sources'] == ['ROGUE 60']
+    assert capsys.readouterr().err.count('skipped') == 2

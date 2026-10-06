@@ -256,6 +256,9 @@ Inputs:
   self-test's `AMISIA-WERTE` line via `--werte`: `level`, `class`, `agi`, `int`, `crit`, `spellcrit`,
   `cr_<KIND>=<rating>:<bonus %>`) and optional `overrides` (`rating60`, `agiPerCritScale`,
   `intPerCritScale`, `manaPerSpirit5`). A measurement corrects a class's curve by its ratio.
+  Only finite numbers count (`nan`, `inf`, `1e400` are dropped); a `--werte` line without a known
+  class or with a level outside 1-60 is refused before the file is written (exit 2), and such a
+  sample already in the file is skipped with a warning.
 
 What it does:
 

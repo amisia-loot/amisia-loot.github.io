@@ -353,9 +353,11 @@ def parse_werte(text):
         nums = []
         for part in re.split(r'[,:]', v):
             try:
-                nums.append(float(part))
+                x = float(part)
             except ValueError:
-                nums.append(None)
+                x = None
+            # float() takes nan, inf and 1e400: never a measured value
+            nums.append(x if x is not None and math.isfinite(x) else None)
         if k.startswith('cr_') and len(nums) >= 2 and None not in nums[:2]:
             sample['ratings'][k[3:].upper()] = nums[:2]
         elif k in WERTE_RATINGS and len(nums) >= 2 and None not in nums[:2]:
@@ -386,6 +388,27 @@ def parse_werte(text):
     return sample
 
 
+def werte_problem(sample):
+    """Why a sample cannot be used (a text), or None: it needs a known class and a whole level
+    of 1-60, and every number in it finite."""
+    if not isinstance(sample, dict):
+        return 'not a sample'
+    if sample.get('class') not in CLASS_ORDER:
+        return f"unknown class {sample.get('class')!r}"
+    lvl = sample.get('level')
+    if not isinstance(lvl, (int, float)) or isinstance(lvl, bool) or not math.isfinite(lvl) \
+            or lvl != int(lvl) or not 1 <= lvl <= 60:
+        return f'level {lvl!r} is not a whole number of 1-60'
+    for k, v in sample.items():
+        if isinstance(v, float) and not math.isfinite(v):
+            return f'{k} is not finite'
+    for kind, pair in (sample.get('ratings') or {}).items():
+        if not isinstance(pair, (list, tuple)) or len(pair) < 2 or \
+                not all(isinstance(x, (int, float)) and math.isfinite(x) for x in pair[:2]):
+            return f'rating {kind} is not a pair of finite numbers'
+    return None
+
+
 def derive_measured(samples):
     """Overrides from raw samples.
 
@@ -399,9 +422,9 @@ def derive_measured(samples):
     base = Conv()
     groups = {}
     for s in samples:
-        lvl, cls = s.get('level'), s.get('class')
-        if not lvl:
+        if werte_problem(s):
             continue
+        lvl, cls = s.get('level'), s.get('class')
         lvl = int(lvl)
         scale = 2 / 52 if lvl <= 10 else (min(lvl, 60) - 8) / 52
         for kind, (rating, bonus) in (s.get('ratings') or {}).items():
@@ -442,7 +465,15 @@ def load_measured(path=MEASURED):
     with open(path, encoding='utf-8') as fh:
         raw = json.load(fh)
     # a sample with its original line is read again, so a better parser reaches old samples too
-    samples = [parse_werte(s['line']) if isinstance(s, dict) and s.get('line') else s for s in raw.get('samples') or []]
+    samples = []
+    for s in raw.get('samples') or []:
+        if isinstance(s, dict) and s.get('line'):
+            s = parse_werte(s['line'])
+        why = werte_problem(s)
+        if why:
+            log(f'{os.path.basename(path)}: sample skipped ({why})')
+            continue
+        samples.append(s)
     out = derive_measured(samples)
     for k, v in (raw.get('overrides') or {}).items():
         if isinstance(v, dict):
@@ -1631,13 +1662,21 @@ def main(argv=None):
     ap.add_argument('--no-att', action='store_true', help='build without AllTheThings (no boss NPC ids)')
     args = ap.parse_args(argv)
     if args.werte:
+        # every line is checked before the file is touched: a bad line saved would break every build
+        parsed = []
+        for line in args.werte:
+            s = parse_werte(line)
+            why = werte_problem(s)
+            if why:
+                log(f'--werte refused, nothing saved: {why}: {line.strip()}')
+                return 2
+            parsed.append((s, line))
         data = {}
         if os.path.exists(args.measured):
             with open(args.measured, encoding='utf-8') as fh:
                 data = json.load(fh)
         data.setdefault('samples', [])
-        for line in args.werte:
-            s = parse_werte(line)
+        for s, line in parsed:
             s["line"] = line.strip()
             if s not in data['samples']:
                 data['samples'].append(s)
