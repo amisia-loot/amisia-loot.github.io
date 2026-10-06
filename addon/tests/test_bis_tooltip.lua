@@ -1,5 +1,6 @@
 -- The upgrade line on item tooltips (Bis.lua): one shared, protected hook for every Amisia line;
--- one line per tooltip build; "Upgrade für dich: +N (Slot)", "Option N für Slot", "angelegt,
+-- one line per tooltip build; "Upgrade für dich: +N (Slot, Platz leer)" (percent and the worn item
+-- in test_upgrade_compare.lua), "Option N für Slot", "angelegt,
 -- Option 1", "Kein Upgrade" only with its switch, the weapon switch, the wish suffix; nothing for
 -- items that are no gear, that the class cannot wear or that have no stats yet (then requested);
 -- the explanation on Shift; an error never breaks the tooltip; the switch; cached per link, and the
@@ -72,7 +73,7 @@ Gear.Best = function(...) best = best + 1; return realBest(...) end
 -- the upgrade line
 ---------------------------------------------------------------------------
 show(LINKS[301])
-assert(#lines == 1 and lines[1].t == "Upgrade für dich: +80 (Kopf)", "the upgrade: " .. texts())
+assert(#lines == 1 and lines[1].t == "Upgrade für dich: +80 (Kopf, Platz leer)", "the upgrade: " .. texts())
 assert(lines[1].g > 0.7 and lines[1].r < 0.5, "green")
 -- handed to the hook twice in one build: still one line
 show(LINKS[301], true)
@@ -103,7 +104,7 @@ show(LINKS[312])
 assert(#lines == 0, "no option, no upgrade: nothing by default: " .. texts())
 assert(NS.Set("bis.tooltipNone", true))
 show(LINKS[312])
-assert(lines[1] and lines[1].t == "Kein Upgrade für dich (-60)", "with the switch: " .. texts())
+assert(lines[1] and lines[1].t == "Kein Upgrade für dich (-60, -75 %)" and lines[2] and lines[2].t == "statt Helm A", "with the switch: " .. texts())
 NS.Reset("bis.tooltipNone")
 STUB.tick(2)
 assert(best == 2, "a setting changes the targets: computed again, once, a little later: " .. best)
@@ -113,7 +114,7 @@ assert(best == 2, "a setting changes the targets: computed again, once, a little
 ---------------------------------------------------------------------------
 assert(NS.WishAdd(304))
 show(LINKS[304])
-assert(#lines == 1 and has(lines[1].t, "Upgrade für dich: +") and has(lines[1].t, " (Brust) · auf deiner Wunschliste"), texts())
+assert(#lines == 1 and has(lines[1].t, "Upgrade für dich: +") and has(lines[1].t, " (Brust, Platz leer) · auf deiner Wunschliste"), texts())
 STUB.shift = true
 show(LINKS[304])
 assert(#lines == 5, "the line and the four biggest parts: " .. texts())
@@ -147,8 +148,8 @@ assert(#lines == 1 and lines[1].t == "Waffenwechsel für dich", "a one-hander ag
 ---------------------------------------------------------------------------
 show(LINKS[302]); STUB.tick(2)
 local calls = 0
-local realGain = NS.BisGain
-NS.BisGain = function(...) calls = calls + 1; return realGain(...) end
+local realGain = NS.UpgradeOf
+NS.UpgradeOf = function(...) calls = calls + 1; return realGain(...) end
 show(LINKS[302]); show(LINKS[302]); show(LINKS[302])
 assert(calls <= 1 and lines[1] and lines[1].t == "Option 2 für Kopf", "one evaluation for three hovers: " .. calls)
 local before = calls
@@ -158,7 +159,7 @@ assert(calls == before + 1, "evaluated again after a change")
 before = calls
 show(LINKS[302])
 assert(calls == before, "and cached again")
-NS.BisGain = realGain
+NS.UpgradeOf = realGain
 
 ---------------------------------------------------------------------------
 -- an error never breaks the tooltip or the other lines
@@ -167,13 +168,13 @@ NS.SetSoftRes("Chorf 301")
 local errors = {}
 local realHandler = geterrorhandler
 _G.geterrorhandler = function() return function(e) errors[#errors + 1] = tostring(e) end end
-NS.BisGain = function() error("kaputt") end
+NS.UpgradeOf = function() error("kaputt") end
 NS.Fire("BIS_CHANGED")
 show(LINKS[301])
 assert(#errors == 1 and has(errors[1], "kaputt"), "the error goes to the error handler: " .. #errors)
 assert(#lines == 1 and has(lines[1].t, "Reserviert: Chorf"), "the reserve line stays: " .. texts())
 _G.geterrorhandler = realHandler
-NS.BisGain = realGain
+NS.UpgradeOf = realGain
 NS.Fire("BIS_CHANGED")
 show(LINKS[301]); STUB.tick(2)
 show(LINKS[301])

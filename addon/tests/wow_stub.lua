@@ -983,6 +983,33 @@ for i = 1, 4 do
     local f = CreateFrame("Frame", "GroupLootFrame" .. i, UIParent)
     f.IconFrame = CreateFrame("Button", nil, f)
 end
+-- Quest rewards as Forever's QuestInfo (Mainline) shows them: QuestInfo_Display(template) fills
+-- QuestInfoFrame.rewardsFrame.RewardButtons (each with type "choice"/"reward", objectType, its index
+-- as ID and an Icon); QuestInfoFrame.questLog is set from the template. The links come from
+-- GetQuestItemLink(type, index) (quest giver, STUB.questItems) and GetQuestLogItemLink(type, index)
+-- (quest log, STUB.questLogItems). STUB.questButton(i, type, index, objectType) sets up button i.
+STUB.questItems, STUB.questLogItems = { choice = {}, reward = {} }, { choice = {}, reward = {} }
+_G.GetQuestItemLink = function(t, i) return STUB.questItems[t] and STUB.questItems[t][i] end
+_G.GetQuestLogItemLink = function(t, i) return STUB.questLogItems[t] and STUB.questLogItems[t][i] end
+_G.QuestInfoRewardsFrame = CreateFrame("Frame", "QuestInfoRewardsFrame", UIParent)
+QuestInfoRewardsFrame.RewardButtons = {}
+_G.QuestInfoFrame = CreateFrame("Frame", "QuestInfoFrame", UIParent)
+QuestInfoFrame.rewardsFrame = QuestInfoRewardsFrame
+_G.QUEST_TEMPLATE_DETAIL, _G.QUEST_TEMPLATE_LOG = { questLog = nil }, { questLog = true }
+_G.QuestInfo_Display = function(template) QuestInfoFrame.questLog = template and template.questLog end
+function STUB.questButton(i, kind, index, objectType)
+    local buttons = QuestInfoFrame.rewardsFrame.RewardButtons
+    local b = buttons[i]
+    if not b then
+        b = CreateFrame("Button", nil, QuestInfoFrame.rewardsFrame)
+        b.Icon = b:CreateTexture()
+        b.GetID = function(self) return self._id end
+        buttons[i] = b
+    end
+    b.type, b.objectType, b._id = kind, objectType or "item", index
+    b:Show()
+    return b
+end
 _G.StaticPopupDialogs = {}
 -- The last dialog shown; STUB.acceptPopup() presses its first button.
 _G.StaticPopup_Show = function(which, a1, a2, data)

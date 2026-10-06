@@ -389,7 +389,7 @@ local tl = tipTexts(LINKS[201])
 for _, x in ipairs(tl) do assert(not has(x, "Fundort"), "no place without Shift") end
 STUB.shift = true
 tl = tipTexts(LINKS[201])
-assert(tl[1] == "Upgrade für dich: +80 (Kopf)" and tl[#tl] == "Fundort: Gorn One Eye, Durotar 47, 33", table.concat(tl, " / "))
+assert(tl[1] == "Upgrade für dich: +80 (Kopf, Platz leer)" and tl[#tl] == "Fundort: Gorn One Eye, Durotar 47, 33", table.concat(tl, " / "))
 local full = NS.BisTooltipLines(LINKS[201])
 assert(full[#full][2][1] < 0.7, "grey")
 tl = tipTexts(LINKS[206])

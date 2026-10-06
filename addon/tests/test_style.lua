@@ -676,14 +676,14 @@ NS.ToggleRollFrame()
 local RF = AmisiaRollFrame
 assert(RF:IsShown())
 dialogFrame("roll window", RF, "Amisia Rolls")
-assert(RF._w == 360 and not special("AmisiaRollFrame"), "Escape leaves the roll window open, as before")
-local RL = headClear("roll window", RF, 360, RF._h)
+assert(RF._w == 410 and not special("AmisiaRollFrame"), "Escape leaves the roll window open, as before")
+local RL = headClear("roll window", RF, 410, RF._h)
 assert(RF.header._w == 220 and RF.header.points.TOPLEFT.x == 12 and RF.header.points.TOPLEFT.y == -30)
 assert(RF.timer.points.TOPRIGHT.x == -12 and RF.timer.points.TOPRIGHT.y == -28 and RF.timer._w == 110)
 RL.row("roll head", RF.header, RF.timer)
 local rr1 = RF.rows[1]
 assert(rr1.award.inherits.SharedButtonSmallTemplate and rr1.award._w == 64 and rr1.award._h == 18 and rr1.award:GetText() == "Vergeben")
-RL.row("roll row", rr1.name, rr1.kind, rr1.value, rr1.hand, rr1.why, rr1.award)
+RL.row("roll row", rr1.name, rr1.kind, rr1.value, rr1.up, rr1.hand, rr1.why, rr1.award)
 assert(RF.addBtn.inherits.SharedButtonSmallTemplate and RF.addBtn._h == 20 and RF.addBtn:GetText() == "Eintragen")
 RL.row("roll entry", RF.namePick, RF.valueEdit, RF.msChip, RF.osChip, RF.addBtn)
 for _, b in ipairs({ RF.stopBtn, RF.againBtn, RF.resultBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end

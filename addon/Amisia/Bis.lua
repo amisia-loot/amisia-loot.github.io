@@ -535,29 +535,35 @@ function ns.BisIsUpgrade(gain, mine)
     return gain > math.max(1, math.abs(mine or 0) * minGain() / 100)
 end
 
--- gain, mine, switch for an item of a group scored score, in the row slotKey.
+-- The weaker of two rows (the first on a tie).
+local function weakerOf(ctx, a, b)
+    return (ctx.slot[a] or 0) <= (ctx.slot[b] or 0) and a or b
+end
+
+-- gain, mine, switch, against for an item of a group scored score, in the row slotKey; against
+-- lists the rows compared with (the weaker ring or trinket, both hands for a two-hander).
 local function gainFor(slotKey, group, id, score, ctx)
-    local mine
+    local mine, against
     if slotKey == "FINGER1" or slotKey == "FINGER2" then
-        mine = ctx.ring
+        mine, against = ctx.ring, { weakerOf(ctx, "FINGER1", "FINGER2") }
     elseif slotKey == "TRINKET1" or slotKey == "TRINKET2" then
-        mine = ctx.trinket
+        mine, against = ctx.trinket, { weakerOf(ctx, "TRINKET1", "TRINKET2") }
     elseif slotKey == "MAINHAND" then
         if group == "2H" then
-            mine = ctx.slot.MAINHAND + ctx.slot.OFFHAND
+            mine, against = ctx.slot.MAINHAND + ctx.slot.OFFHAND, { "MAINHAND", "OFFHAND" }
         elseif ctx.twoWorn then
-            return nil, ctx.slot.MAINHAND, true
+            return nil, ctx.slot.MAINHAND, true, { "MAINHAND" }
         else
-            mine = ctx.slot.MAINHAND
+            mine, against = ctx.slot.MAINHAND, { "MAINHAND" }
         end
     elseif slotKey == "OFFHAND" then
-        if ctx.twoWorn then return nil, ctx.slot.MAINHAND, true end
-        mine = ctx.slot.OFFHAND
+        if ctx.twoWorn then return nil, ctx.slot.MAINHAND, true, { "MAINHAND" } end
+        mine, against = ctx.slot.OFFHAND, { "OFFHAND" }
     else
-        mine = ctx.slot[slotKey] or 0
+        mine, against = ctx.slot[slotKey] or 0, { slotKey }
     end
-    if id and worn().ids[id] then return 0, mine, false end
-    return score - mine, mine, false
+    if id and worn().ids[id] then return 0, mine, false, against end
+    return score - mine, mine, false, against
 end
 
 local function rowType(id)
@@ -594,9 +600,9 @@ local function evaluate(item, o)
     local kind = KIND_OF[group]
     local slotKey = SLOT_OF[group]
     local score = Gear.Score(s, w, o.level, kind, o.class)
-    local gain, mine, switch = gainFor(slotKey, group, id, score, context(o))
+    local gain, mine, switch, against = gainFor(slotKey, group, id, score, context(o))
     return { id = id, s = s, w = w, kind = kind, group = group, slotKey = slotKey, score = score, gain = gain, mine = mine,
-        switch = switch, row = row }
+        switch = switch, row = row, against = against }
 end
 
 -- What an item (id or link; a link counts its random suffix) brings the own character:
@@ -607,6 +613,52 @@ function ns.BisGain(item, opts)
     if ev.reason then return nil, ev.reason, ev.code end
     if ev.switch then return nil, "Waffenwechsel", "switch", ev.slotKey end
     return ev.gain, ev.slotKey, ev.mine, ev.score
+end
+
+-- The level an item needs when it is above the own one (C_Item.GetItemInfo, fifth value), else nil.
+local function laterLevel(item)
+    local info = C_Item and C_Item.GetItemInfo
+    if type(info) ~= "function" then return nil end
+    local ok, _, _, _, _, minLevel = pcall(info, item)
+    minLevel = ok and tonumber(ns.Plain(minLevel)) or nil
+    local level = tonumber(ns.Plain(UnitLevel("player")))
+    if minLevel and level and minLevel > level then return minLevel end
+    return nil
+end
+
+-- The one comparison with the worn gear every display uses (tooltip, roll frames, quest rewards,
+-- the roll window, the answers to "Wer braucht das?"): { gain, pct, mine, score, slotKey, up,
+-- against = { worn links }, weaker, later } or nil, reason (German), code as ns.BisGain ("switch"
+-- with the slot as 4th value). pct is the gain in percent of the worn score, nil for an empty slot;
+-- weaker says a ring or trinket is compared with the weaker of the two worn; later is the level the
+-- item needs when it is above the own (then it is no upgrade yet).
+function ns.UpgradeOf(item, opts)
+    local o = opts or ns.BisOpts()
+    local ev = evaluate(item, o)
+    if ev.reason then return nil, ev.reason, ev.code end
+    if ev.switch then return nil, "Waffenwechsel", "switch", ev.slotKey end
+    local mine = ev.mine or 0
+    local u = { gain = ev.gain, mine = mine, score = ev.score, slotKey = ev.slotKey, against = {},
+        weaker = (ev.group == "FINGER" or ev.group == "TRINKET") or nil }
+    if mine > 0 then u.pct = math.floor(ev.gain / mine * 100 + 0.5) end
+    local w = worn()
+    for _, key in ipairs(ev.against or {}) do
+        local link = w.links[SLOT_INV[key]]
+        if link then u.against[#u.against + 1] = link end
+    end
+    u.later = laterLevel(type(item) == "string" and item or ev.id)
+    u.up = (not u.later and not w.ids[ev.id] and ns.BisIsUpgrade(ev.gain, mine)) and true or false
+    return u
+end
+
+-- The short text of a comparison for an item mark: "+12%", "neu" (an empty slot), "ab 62" (a level
+-- above the own) or "-8%"; nil when there is nothing to say.
+function ns.UpgradeShort(u)
+    if type(u) ~= "table" or type(u.gain) ~= "number" then return nil end
+    if u.later then return u.gain > 0 and ("ab %d"):format(u.later) or nil end
+    if u.pct then return ("%+d%%"):format(u.pct) end
+    if u.up then return "neu" end
+    return nil
 end
 
 -- The score of an item explained as German lines: what it scores against what is worn, then every
@@ -893,6 +945,7 @@ Gear.OnData(bump)
 
 local TIP_GREEN = { 0.31, 0.82, 0.42 }
 local TIP_GREY = { 0.56, 0.53, 0.64 }
+local TIP_ORANGE = { 1, 0.6, 0.2 }
 local TIP_PARTS = 4             -- explanation lines on Shift
 local TIP_CACHE_MAX = 200       -- links kept per state
 local WARM_GAP = 2              -- seconds between two deferred target computations
@@ -934,19 +987,45 @@ end
 
 -- The line (and on Shift the explanation) for one link: { { text, color }, ... }, plus whether it
 -- was made without the targets and whether it may be kept (not while stats are still loading).
+-- "statt Helm B", "statt Ring (schwächerer Ring)", "statt Axt + Schild": what an item is compared with.
+local function againstText(u)
+    local names = {}
+    for _, link in ipairs(u.against) do
+        names[#names + 1] = link:match("|h%[(.-)%]|h") or ns.ItemName(ns.ItemID(link))
+    end
+    if #names == 0 then return nil end
+    local text = "statt " .. table.concat(names, " + ")
+    if u.weaker then
+        text = text .. (u.slotKey == "FINGER1" and " (schwächerer Ring)" or " (schwächerer Schmuck)")
+    end
+    return text
+end
+
 local function tipLines(link, id, shift)
-    local gain, slotKey, mine = ns.BisGain(link)
-    if gain == nil then
-        local code = mine
+    local u, _, code = ns.UpgradeOf(link)
+    if not u then
         if code == "switch" then return { { "Waffenwechsel für dich", TIP_GREY } }, false, true end
         return {}, false, code ~= "loading"
     end
+    local gain, slotKey, mine = u.gain, u.slotKey, u.mine
+    local compare = ns.Get("bis.compare") ~= false
     local c = ns.BisChar()
     local isWorn = worn().ids[id] ~= nil
     local up = not isWorn and ns.BisIsUpgrade(gain, mine)
     local text, color, noTargets = nil, TIP_GREY, false
-    if up then
-        text, color = ("Upgrade für dich: %+d (%s)"):format(math.floor(gain + 0.5), SLOT_NAME[slotKey] or ""), TIP_GREEN
+    local vs = up               -- the worn item goes under an upgrade or a "Kein Upgrade" line
+    local points = math.floor(gain + 0.5)
+    local slotName = SLOT_NAME[slotKey] or ""
+    if up and compare then
+        local head = u.later and ("Upgrade für dich ab Stufe %d"):format(u.later) or "Upgrade für dich"
+        if u.pct then
+            text = ("%s: %+d %% (%+d, %s)"):format(head, u.pct, points, slotName)
+        else
+            text = ("%s: %+d (%s, Platz leer)"):format(head, points, slotName)
+        end
+        color = u.later and TIP_ORANGE or TIP_GREEN
+    elseif up then
+        text, color = ("Upgrade für dich: %+d (%s)"):format(points, slotName), TIP_GREEN
     else
         local res = ns.BisTargetsCached()
         local rank, rankSlot
@@ -960,12 +1039,19 @@ local function tipLines(link, id, shift)
         if rank then
             text = (isWorn and "angelegt, " or "") .. ("Option %d für %s"):format(rank, SLOT_NAME[rankSlot] or "")
         elseif not isWorn and ns.Get("bis.tooltipNone") then
-            text = ("Kein Upgrade für dich (%+d)"):format(math.floor(gain + 0.5))
+            vs = true
+            if compare and u.pct then
+                text = ("Kein Upgrade für dich (%+d, %+d %%)"):format(points, u.pct)
+            else
+                text = ("Kein Upgrade für dich (%+d)"):format(points)
+            end
         end
     end
     if not text then return {}, noTargets, true end
     if c and c.wish[id] then text = text .. " · auf deiner Wunschliste" end
     local out = { { text, color } }
+    local against = compare and vs and againstText(u)
+    if against then out[#out + 1] = { against, TIP_GREY } end
     if shift then
         local ex = ns.BisExplain(link)
         -- the first line is the head (spec, slot, scores); the parts follow, biggest first
@@ -1337,7 +1423,9 @@ local function show(entry)
         f.title:SetTextColor(0.31, 0.82, 0.42)
     end
     local extra = ""
-    if entry.gain and entry.slotKey then
+    if entry.gain and entry.slotKey and entry.pct and ns.Get("bis.compare") ~= false then
+        extra = (" %+d %% (%+d, %s)"):format(entry.pct, math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
+    elseif entry.gain and entry.slotKey then
         extra = (" %+d (%s)"):format(math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
     end
     f.item:SetText(("|c%s%s|r%s"):format(QUALITY[q] or QUALITY[4], itemName(entry.id, entry.link or link), extra))
@@ -1362,9 +1450,10 @@ function ns.BisToast(id, why, link, src)
     id = tonumber(id) or ns.ItemID(id)
     if not id then return end
     local entry = { id = id, why = why, link = link, src = src }
-    local gain, slotKey = ns.BisGain(link or id)
-    entry.slotKey = slotKey ~= nil and SLOT_NAME[slotKey] and slotKey or nil
-    entry.gain = type(gain) == "number" and gain or nil
+    local u = ns.UpgradeOf(link or id)
+    entry.slotKey = u and SLOT_NAME[u.slotKey] and u.slotKey or nil
+    entry.gain = u and u.gain or nil
+    entry.pct = u and u.pct or nil
     if not entry.slotKey then
         local loc = rowType(id)
         local group = loc and Gear.GROUP[loc]
@@ -1408,8 +1497,8 @@ local function consider(link, src)
     if c and c.wish[id] then
         why = "wish"
     elseif ns.Get("bis.toastUpgrade") and Gear.Available() then
-        local gain, _, mine = ns.BisGain(link)
-        if gain and ns.BisIsUpgrade(gain, mine) then why = "upgrade" end
+        local u = ns.UpgradeOf(link)
+        if u and u.up then why = "upgrade" end
     end
     if not why then return end
     lastToast[id] = t
@@ -1523,6 +1612,8 @@ end
 
 ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45, available = function() return Gear.Available() end, items = {
     { key = "bis.tooltip", type = "toggle", label = "Tooltip-Zeile \"Upgrade für dich\"", default = true },
+    { key = "bis.compare", type = "toggle", label = "Mit angelegter Ausrüstung vergleichen (Prozent)", default = true,
+      tip = "Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster." },
     { key = "bis.tooltipNone", type = "toggle", label = "Auch \"Kein Upgrade\" im Tooltip zeigen", default = false },
     { key = "bis.minGain", type = "slider", label = "Upgrade erst ab (Prozent mehr Wertung)", default = 2, min = 0, max = 10, step = 1,
       expert = true },

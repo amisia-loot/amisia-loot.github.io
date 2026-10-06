@@ -4,17 +4,28 @@
 -- the rows re-sort, so a click could land on the row that just moved up.
 -- Below the list a row enters rolls by hand (the roll chat is secret in a boss fight on Forever);
 -- a finished round changed that way is announced with "Ergebnis ansagen".
+-- Under the item a line names everyone the item is an upgrade or a wish for (the answers to "Wer
+-- braucht das?", asked by the window itself when a round starts, the guild wishes and the own
+-- comparison, ns.UpgradeOf), and each row shows its roller's part of it. For green and blue items
+-- bound on pickup a hint says the appearance is already granted (rolls.lookHint): a hint, no rule.
 local ADDON, ns = ...
 local W = ns.W
 
 local ROWS = 12
 local ROW_H = 18
-local WIDTH = 360
-local LIST_TOP = 50
+local WIDTH = 410
+local ROW_W = WIDTH - 24
+local UP_Y = -48                                 -- the upgrade line under the item
+local LOOK_Y = -62                               -- the appearance hint under it, two lines
+local LIST_TOP = 92
 local ENTRY_Y = -(LIST_TOP + ROWS * ROW_H + 4)   -- the entry row under the list
 local HINT_Y = ENTRY_Y - 24                      -- the hint under it, two lines
 local HEIGHT = -HINT_Y + 26 + 10 + 22 + 8        -- hint, gap, buttons, margin
 local GREY = "|cff8f86a3"
+local UP_GREEN, UP_ORANGE, UP_BLUE = "|cff4fe673", "|cffff9933", "|cff66b3ff"
+local LINE_NAMES = 6
+local QUALITY_GREEN, QUALITY_BLUE, BIND_PICKUP = 2, 3, 1
+local LOOK_TEXT = "Aussehen: bekommen laut Blizzard alle Berechtigten schon beim Plündern. Nicht nur fürs Aussehen würfeln."
 
 local F, header, timer, stopBtn, againBtn, hint
 local rows = {}
@@ -134,6 +145,135 @@ end
 
 local refresh
 
+---------------------------------------------------------------------------
+-- Upgrades and the appearance hint
+---------------------------------------------------------------------------
+
+local function report(err)
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(err) end
+end
+
+local function compareOn()
+    return (ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false) and true or false
+end
+
+-- Asks the raid once per round who needs the item, unless it was asked in the last 30 minutes
+-- (the loot announcement asks too) or this client may not ask.
+local function askFor(r)
+    if not r or r.done or r.needAsked or not compareOn() then return end
+    r.needAsked = true
+    if ns.Get("sync.askUpgrades") == false or not ns.NeedAsk or not ns.NeedCanAsk or not ns.NeedCanAsk() then return end
+    if ns.NeedOf and ns.NeedOf(r.item) then return end
+    ns.NeedAsk({ r.item })
+end
+
+local function pctText(pct) return pct == 999 and "neu" or ("+%d %%"):format(pct) end
+
+-- What the round's item is for whom: { up = { { name, pct, own } } (best first, 999 = empty slot),
+-- wish = { names }, need = ns.NeedOf, own = ns.UpgradeOf of this client }.
+local function upgradeInfo(r)
+    local info = { up = {}, wish = {} }
+    local need = ns.NeedOf and ns.NeedOf(r.item)
+    info.need = need
+    local me = ns.UnitFullName("player")
+    local own = ns.UpgradeOf(r.link or r.item)
+    info.own = own
+    for _, e in ipairs(need and need.up or {}) do info.up[#info.up + 1] = { name = e.name, pct = e.pct } end
+    if own and own.up and me then info.up[#info.up + 1] = { name = me, pct = own.pct or 999, own = true } end
+    table.sort(info.up, function(a, b)
+        if a.pct ~= b.pct then return a.pct > b.pct end
+        return a.name:lower() < b.name:lower()
+    end)
+    local function wish(name)
+        for _, n in ipairs(info.wish) do if ns.SameName(n, name) then return end end
+        info.wish[#info.wish + 1] = name
+    end
+    for _, e in ipairs(need and need.wish or {}) do wish(e.name) end
+    for _, e in ipairs(ns.WishersOf and ns.WishersOf(r.item, true) or {}) do wish(e.name) end
+    return info
+end
+
+-- The roller's part: "+12%", "neu", "W", "ab 58" (the own row), coloured; "" when nothing is known.
+local function rollerText(info, name)
+    for _, e in ipairs(info.up) do
+        if ns.SameName(e.name, name) then return UP_GREEN .. (e.pct == 999 and "neu" or ("+%d%%"):format(e.pct)) .. "|r" end
+    end
+    for _, n in ipairs(info.wish) do
+        if ns.SameName(n, name) then return UP_BLUE .. "W|r" end
+    end
+    if info.own and ns.SameName(name, ns.UnitFullName("player")) then
+        local short = ns.UpgradeShort(info.own)
+        if short then return (info.own.later and UP_ORANGE or GREY) .. short .. "|r" end
+    end
+    return ""
+end
+
+-- "Upgrade für: Anna +25 %, du +12 % · Wunsch: Bob", "Für niemanden ein Upgrade (3 Antworten)",
+-- "Upgrade für: warte auf Antworten" or, not asked, the own result alone.
+local function upgradeLine(info)
+    local parts = {}
+    for i, e in ipairs(info.up) do
+        if i > LINE_NAMES then
+            parts[#parts + 1] = ("und %d weitere"):format(#info.up - LINE_NAMES)
+            break
+        end
+        parts[#parts + 1] = (e.own and "du" or e.name) .. " " .. pctText(e.pct)
+    end
+    local text
+    if #parts > 0 then text = "Upgrade für: " .. table.concat(parts, ", ") end
+    if #info.wish > 0 then
+        local w = "Wunsch: " .. table.concat(info.wish, ", ", 1, math.min(#info.wish, LINE_NAMES))
+        text = text and (text .. " · " .. w) or w
+    end
+    if text then return UP_GREEN .. text .. "|r" end
+    local need = info.need
+    if need and need.none > 0 then
+        return GREY .. ("Für niemanden ein Upgrade (%d Antworten)"):format(need.none) .. "|r"
+    elseif need then
+        return GREY .. "Upgrade für: warte auf Antworten|r"
+    end
+    return GREY .. "Für dich kein Upgrade, die anderen wurden nicht gefragt.|r"
+end
+
+-- Whether the appearance hint shows for the round's item: green or blue, bound on pickup, and in a
+-- dungeon (rolls.lookHint "dungeon") or anywhere ("all").
+local function lookHint(r)
+    local mode = ns.Get("rolls.lookHint") or "dungeon"
+    if not r or mode == "off" then return false end
+    local info = C_Item and C_Item.GetItemInfo
+    if type(info) ~= "function" then return false end
+    local ok, _, _, quality, _, _, _, _, _, _, _, _, _, _, bind = pcall(info, r.link or r.item)
+    quality, bind = ok and ns.Plain(quality), ok and ns.Plain(bind)
+    if (quality ~= QUALITY_GREEN and quality ~= QUALITY_BLUE) or bind ~= BIND_PICKUP then return false end
+    if mode == "all" then return true end
+    local _, kind = IsInInstance()
+    return ns.Plain(kind) == "party"
+end
+
+-- The upgrade line and the appearance hint of a round (nil: none); returns the upgrade info for the
+-- rows, nil when switched off.
+local function showUpgrades(r)
+    local info
+    if r and compareOn() then
+        local ok, res = pcall(upgradeInfo, r)
+        if ok then info = res else report(res) end
+    end
+    if info then
+        F.upLine:SetText(upgradeLine(info))
+        F.upLine:Show()
+    else
+        F.upLine:SetText("")
+        F.upLine:Hide()
+    end
+    local ok, look = pcall(lookHint, r)
+    if not ok then report(look) end
+    look = ok and look
+    F.lookLine:SetText(look and LOOK_TEXT or "")
+    if look then F.lookLine:Show() else F.lookLine:Hide() end
+    return info
+end
+
 -- Enters the roll of the entry row; a reason stays in the hint line until the next try.
 local function addEntry()
     local e, why = ns.AddManualRoll(F.namePick:GetValue(), F.valueEdit:GetText(), entryKind)
@@ -158,9 +298,11 @@ refresh = function()
         stopBtn:Disable()
         againBtn:Disable()
         F.resultBtn:Disable()
+        showUpgrades(nil)
         return
     end
     header:SetText(r.link or r.name)
+    local info = showUpgrades(r)
     if r.done then
         timer:SetText(r.winner and ("Gewinner: " .. r.winner) or (r.tie and "Gleichstand" or "Beendet"))
     else
@@ -182,6 +324,7 @@ refresh = function()
         local plus = ns.PlusLabel(r, e.name)
         row.kind:SetText((e.rank or e.kind or "") .. (plus and (" " .. plus) or ""))
         row.value:SetText(tostring(e.value))
+        row.up:SetText(info and rollerText(info, e.name) or "")
         row.hand:SetText(e.manual and "Hand" or "")
         row.why:SetText(r.winner == e.name and "|cff4fbf7aGewinner|r" or "")
         row.reason:SetText("")
@@ -197,6 +340,7 @@ refresh = function()
         row.name:SetText(("|cff8f86a3%s|r"):format(e.name))
         row.kind:SetText("")
         row.value:SetText(("|cff8f86a3%d|r"):format(e.value or 0))
+        row.up:SetText("")
         row.hand:SetText("")
         row.why:SetText("")
         -- the reason takes the room of the hand mark, the winner mark and the hidden button
@@ -213,7 +357,8 @@ local function build()
     F = W.Window("AmisiaRollFrame", WIDTH, HEIGHT, { title = "Amisia Rolls", strata = "FULLSCREEN_DIALOG",
         onShow = refresh, escape = false,
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
-    F:SetPoint("CENTER", 260, 80)
+    -- the top stays where it was before the upgrade lines made the window taller (toast above it)
+    F:SetPoint("CENTER", 260, 59)
 
     -- the item on the left, the time (it sat under the close button) on the right of the same line
     header = text(F, "GameFontHighlight", 220)
@@ -221,10 +366,17 @@ local function build()
     timer = text(F, "GameFontNormalLarge", 110)
     timer:SetPoint("TOPRIGHT", -12, -28)
     timer:SetJustifyH("RIGHT")
+    -- who it is an upgrade for, then the appearance hint (two lines)
+    F.upLine = text(F, "GameFontHighlightSmall", ROW_W)
+    F.upLine:SetPoint("TOPLEFT", 12, UP_Y)
+    F.lookLine = text(F, "GameFontDisableSmall", ROW_W)
+    F.lookLine:SetPoint("TOPLEFT", 12, LOOK_Y)
+    F.lookLine:SetWordWrap(true)
+    F.lookLine:SetMaxLines(2)
 
     for i = 1, ROWS do
         local row = CreateFrame("Frame", nil, F)
-        row:SetSize(336, ROW_H)
+        row:SetSize(ROW_W, ROW_H)
         row:SetPoint("TOPLEFT", 12, -LIST_TOP - (i - 1) * ROW_H)
         local rb = row:CreateTexture(nil, "BACKGROUND")
         rb:SetAllPoints()
@@ -235,12 +387,15 @@ local function build()
         row.kind:SetPoint("LEFT", 116, 0)
         row.value = text(row, "GameFontHighlightSmall", 26)
         row.value:SetPoint("LEFT", 162, 0)
+        -- the roller's upgrade ("+12%", "neu", "W")
+        row.up = text(row, "GameFontHighlightSmall", 46)
+        row.up:SetPoint("LEFT", 190, 0)
         row.hand = text(row, "GameFontDisableSmall", 28)
-        row.hand:SetPoint("LEFT", 190, 0)
+        row.hand:SetPoint("LEFT", 240, 0)
         row.why = text(row, "GameFontHighlightSmall", 48)
-        row.why:SetPoint("LEFT", 220, 0)
+        row.why:SetPoint("LEFT", 270, 0)
         -- why a roll was not counted, on rows without a button
-        row.reason = text(row, "GameFontDisableSmall", 336 - 190 - 4)
+        row.reason = text(row, "GameFontDisableSmall", ROW_W - 190 - 4)
         row.reason:SetPoint("LEFT", 190, 0)
         row.award = W.Button(row, "Vergeben", 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         row.award:SetPoint("RIGHT", -2, 0)
@@ -298,7 +453,15 @@ function ns.ToggleRollFrame()
     if F:IsShown() then F:Hide() else ns.ShowRollFrame() end
 end
 
-ns.OnRollChanged = function() refresh() end
+ns.OnRollChanged = function(r)
+    local ok, err = pcall(askFor, r or ns.CurrentRoll())
+    if not ok then report(err) end
+    refresh()
+end
+ns.Listen("NEED", function() refresh() end)
+ns.Listen("SETTING", function(path)
+    if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minGain" then refresh() end
+end)
 
 ns.OnEvent("LOOT_OPENED", function() lootOpen = true end)
 ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
