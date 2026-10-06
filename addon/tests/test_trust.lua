@@ -171,6 +171,41 @@ STUB.secret["Fraktur"] = true
 assert(NS.TrustName("Fraktur") == nil, "a secret value is unknown")
 STUB.secret["Fraktur"] = nil
 assert(NS.InMyGroup("Kim") == true and NS.InMyGroup("Anna Weide") == false and NS.InMyGroup("Vulo") == false)
+-- through the index of the roster: any case, the own realm's ending, the first name
+assert(NS.TrustName("anna weide-realm") == "Anna Weide" and NS.TrustName("ANNA") == "Anna Weide", "any case, realm")
+assert(NS.TrustName("lia sturm-wind-Realm") == "Lia Sturm-Wind")
+assert(NS.GuildMember("anna weide").name == "Anna Weide" and NS.GuildMember("anna").name == "Anna Weide", "a member in any case")
+assert(NS.GuildMember("Anna Fremd") == nil, "a first name with another surname is no one")
+
+---------------------------------------------------------------------------
+-- a big guild: the roster is indexed once per build, not per sender
+---------------------------------------------------------------------------
+local big = {}
+for _, m in ipairs(GUILD) do big[#big + 1] = m end
+for i = 1, 500 do big[#big + 1] = { name = "Mitglied" .. string.char(97 + i % 26) .. i .. " Weit", rank = 4 } end
+-- the same first name in the guild (Anna) and twice the same spelling in two cases
+big[#big + 1] = { name = "Anna Fluss", rank = 4 }
+big[#big + 1] = { name = "Kim eisherz", rank = 5 }
+STUB.guild = big
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.tick(11)
+assert(NS.GuildMember("mitgliedv489 weit").name == "Mitgliedv489 Weit", "a member far down the list")
+assert(NS.TrustName("Mitgliedv489 Weit-Realm") == "Mitgliedv489 Weit")
+assert(NS.GuildMember("Anna") == nil and NS.TrustName("Anna") == nil, "two Annas in the guild: no one")
+assert(NS.GuildMember("Kim Eisherz").rank == 4, "the first of two spellings")
+assert(NS.GuildMember("Kim") == nil, "Kim twice in the roster")
+assert(NS.TrustName("Kim") == "Kim Eisherz", "one spelling in group and guild: one name")
+local fullName, calls = NS.FullName, 0
+NS.FullName = function(...) calls = calls + 1; return fullName(...) end
+for _ = 1, 10 do
+    NS.TrustName("Mitgliedv489 Weit")
+    NS.GuildMember("Mitgliedv489 Weit")
+end
+NS.FullName = fullName
+assert(calls < 200, "no pass over the guild per lookup: " .. calls)
+STUB.guild = GUILD
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.tick(11)
 
 ---------------------------------------------------------------------------
 -- /amisia sync raenge

@@ -205,6 +205,7 @@ assert(not A:IsShown(), "cancel closes the line")
 -- the bench view
 ---------------------------------------------------------------------------
 STUB.guild = { { name = "Gildi", class = "ROGUE" } }
+STUB.fire("GUILD_ROSTER_UPDATE"); STUB.tick(11)
 local req = STUB.guildRequests
 f.views.bench:Click()
 assert(f.bench:IsShown() and not f.log:IsShown() and f.views.bench.on, "view Ersatzbank")

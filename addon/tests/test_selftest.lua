@@ -60,7 +60,7 @@ for _, title in ipairs({ "Client", "Sperren jetzt", "Namen", "Addon-Nachrichten 
                          "Atlanten", "Vorlagen", "Client-Funktionen", "Ereignisse", "Item-Konstanten", "Gespeicherte Daten" }) do
     assert(has(text, "== " .. title .. " =="), "section " .. title)
 end
-assert(text:find("^Amisia%-Selbsttest 2%.3%.0 | Client 1%.60%.1 %(70205%)"), "head line")
+assert(text:find("^Amisia%-Selbsttest " .. NS.VERSION:gsub("%.", "%%.") .. " | Client 1%.60%.1 %(70205%)"), "head line")
 assert(text:find("\nErgebnis: %d+ OK, %d+ FEHLT, %d+ FEHLER, %d+ WERT"), "result line")
 
 -- every line under a section carries a mark

@@ -103,22 +103,10 @@ local function groupRows()
     return rows, here
 end
 
--- The guild roster as { name, class, online }, or nil when it cannot be read (no function, nobody).
+-- The guild roster as { name, class, online } (Trust's: C_Club, else the classic roster functions,
+-- the one built before a lockdown in it), or nil when it cannot be read (no guild, nobody). Read only.
 local function guildList()
-    if type(GetNumGuildMembers) ~= "function" or type(GetGuildRosterInfo) ~= "function" then return nil end
-    local ok, n = pcall(GetNumGuildMembers)
-    n = ok and tonumber(ns.Plain(n)) or 0
-    if n <= 0 then return nil end
-    local out = {}
-    for i = 1, n do
-        local name, _, _, _, _, _, _, _, online, _, class = GetGuildRosterInfo(i)
-        name, online, class = ns.Plain(name), ns.Plain(online), ns.Plain(class)
-        local full = type(name) == "string" and ns.FullName(name)
-        if full then
-            out[#out + 1] = { name = full, class = type(class) == "string" and class or "", online = online and true or false }
-        end
-    end
-    return out
+    return ns.GuildRoster and ns.GuildRoster() or nil
 end
 
 -- Class tokens from localized class names, for the friend list.

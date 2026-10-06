@@ -403,9 +403,17 @@ _G.C_Club = {
         local m = club == 77 and STUB.guild[id - 1000]
         if not m then return nil end
         return { isSelf = m.name == STUB.player, memberId = id, name = m.name, guildRankOrder = m.rank or 3,
-                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1 }
+                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1, classID = STUB.classIDs[m.class] }
     end,
 }
+-- Class ids and GetClassInfo(id): localized name, class token, id.
+STUB.classIDs = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
+_G.GetClassInfo = function(id)
+    for file, n in pairs(STUB.classIDs) do
+        if n == id then return file:sub(1, 1) .. file:sub(2):lower(), file, n end
+    end
+    return nil
+end
 _G.GetNumGuildMembers = function()
     local online = 0
     for _, m in ipairs(STUB.guild) do if m.online ~= false then online = online + 1 end end

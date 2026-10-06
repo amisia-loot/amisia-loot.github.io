@@ -126,6 +126,26 @@ assert(count(FRAK, "Konflikt bei") == 2, "every conflict said once")
 same({ FRAK, MARA, KIM }, "after resolving")
 
 ---------------------------------------------------------------------------
+-- a conflict of the keeper itself (an own change on an adopted state), "Meine übernehmen":
+-- taken at once by the keeper (the resolver's flag once hid the local take of the wish)
+---------------------------------------------------------------------------
+local kv = award(VULO, a1).v
+local tk = C(VULO, "STUB.clock")
+S(VULO, ([[s.sync.conflicts = s.sync.conflicts or {}
+    table.insert(s.sync.conflicts, { opid = "0a0b0c0d0e0f", id = %q, op = "edit", mine = { note = "vom Keeper" }, by = "Fraktur",
+        at = time(), why = "CONFLICT", rev = %d, wish = { op = "edit", id = %q, fields = { note = "vom Keeper" } } })]]):format(a1, kv, a1))
+assert(conflicts(VULO) == 1)
+local okK, errK = pcall(S, VULO, "NS.SyncResolve(s, '0a0b0c0d0e0f', true)")
+assert(okK, "the keeper resolves its own conflict: " .. tostring(errK))
+assert(errK == true, "resolved")
+assert(conflicts(VULO) == 0 and pending(VULO) == 0, "no conflict, no wish at the keeper")
+assert(award(VULO, a1).note == "vom Keeper" and award(VULO, a1).v == kv + 1, "applied at once, the revision rises")
+settle()
+assert(BUS.count({ kind = "BL", sender = VULO, chan = "RAID", from = tk }) >= 1, "the new state goes out")
+assert(award(FRAK, a1).note == "vom Keeper" and award(MARA, a1).note == "vom Keeper", "the officers have it")
+same({ FRAK, MARA, KIM }, "the keeper's own conflict")
+
+---------------------------------------------------------------------------
 -- different fields at the same time: both changes hold
 ---------------------------------------------------------------------------
 S(VULO, "NS.EditAward(s, '" .. a2 .. "', { note = 'zweiter Wurf' })")

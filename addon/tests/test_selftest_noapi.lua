@@ -50,7 +50,7 @@ _G.GetBuildInfo = nil
 _G.GetRaidRosterInfo = function() error("Liste geheim") end
 _G.C_Texture = nil
 local R = ST.Run()
-assert(has(R.text, "Amisia-Selbsttest 2.3.0 | Client ?"), "head without the build")
+assert(has(R.text, "Amisia-Selbsttest " .. NS.VERSION .. " | Client ?"), "head without the build")
 assert(has(R.text, "FEHLT  AmisiaDB: keine gespeicherten Daten"))
 assert(has(R.text, "FEHLER GetRaidRosterInfo(1): ") and has(R.text, "Liste geheim"))
 assert(has(R.text, "FEHLT  C_Texture.GetAtlasInfo: fehlt"))

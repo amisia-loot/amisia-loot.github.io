@@ -149,6 +149,8 @@ STUB.guild = {
 }
 STUB.friends = { { name = "Freundin", className = "Magier" }, { name = "Gildi", className = "Schurke" },
                  { name = "Weg", className = "Krieger", online = false } }
+-- the guild roster is Trust's (rebuilt at most every 10 s after the client announces it)
+STUB.fire("GUILD_ROSTER_UPDATE"); STUB.tick(11)
 local sug = NS.BenchSuggestions(s)
 local texts = {}
 for i, x in ipairs(sug) do texts[i] = x.text; assert(x.value and x.text) end
@@ -238,12 +240,14 @@ NS.BenchRemove(s, "Fremder")
 later()
 local guild = STUB.guild
 STUB.guild = {}
+STUB.fire("GUILD_ROSTER_UPDATE"); STUB.tick(11)
 ask("!bench", "Unbekannt")
 assert(s.bench.Unbekannt and s.bench.Unbekannt.note == "Gilde nicht geprüft", "accepted with a note")
 later()
 ask("!bench komme spaeter", "Unbekanntzwei")
 assert(s.bench.Unbekanntzwei.note == "komme spaeter", "an own note wins")
 STUB.guild = guild
+STUB.fire("GUILD_ROSTER_UPDATE")
 -- from the guild chat, the alias !ersatz
 later()
 ask("!bench", "Gastdrei", "CHAT_MSG_GUILD")
