@@ -19,6 +19,10 @@ end
 
 local MAX_WISH, NOTE_MAX = 50, 40
 ns.BIS_MAX_WISH = MAX_WISH
+-- Weapon plans: auto (the larger sum of a two-hander and main hand plus off hand), only a
+-- two-hander, two weapons, weapon and shield (or a held item).
+ns.BIS_PLANS = { auto = "automatisch", ["2H"] = "Zweihand", DW = "zwei Waffen", SHIELD = "Waffe und Schild" }
+ns.BIS_PLAN_ORDER = { "auto", "2H", "DW", "SHIELD" }
 
 local stamp = 0          -- bumped by everything that changes a result; part of every cache key
 local function bump() stamp = stamp + 1 end
@@ -89,6 +93,8 @@ local function cleanChar(c)
     c.bankAt = tonumber(c.bankAt)
     if c.spec ~= nil and type(c.spec) ~= "string" then c.spec = nil end
     if c.class ~= nil and type(c.class) ~= "string" then c.class = nil end
+    -- the weapon plan: auto | 2H | DW | SHIELD
+    if c.plan ~= nil and not ns.BIS_PLANS[c.plan] then c.plan = "auto" end
 end
 
 -- Settings of the TBC data that WoW Forever has no use for: the content phase, and the source
@@ -236,6 +242,16 @@ function ns.BisSetSpec(key)
     ns.Fire("BIS_CHANGED")
 end
 
+-- The weapon plan of the own character (ns.BIS_PLANS); true, or nil and the reason.
+function ns.BisSetPlan(plan)
+    local c = ns.BisChar()
+    if not c then return nil, "Amisia ist noch nicht geladen." end
+    if not ns.BIS_PLANS[plan] then return nil, "Waffenplan: auto, 2H, DW oder SHIELD." end
+    c.plan = plan
+    ns.Fire("BIS_CHANGED")
+    return true
+end
+
 ---------------------------------------------------------------------------
 -- Own professions
 ---------------------------------------------------------------------------
@@ -288,22 +304,49 @@ local function sourceState()
     return s.bis.sources
 end
 
+-- The scoring switches every option set carries: random suffixes, set plan, effort tie.
+local function scoringOpts(o)
+    o.suffix = ns.Get("bis.suffix") or "best"
+    o.sets = ns.Get("bis.sets") ~= false
+    o.tie = tonumber(ns.Get("bis.effortTie")) or 3
+    return o
+end
+
 -- The options of the own character: class, spec (guessed), weighting kind, faction (A/H), level up
--- to the data's cap, source switches, professions ("all"/"mine") with the own skills, and the
--- exclusions.
+-- to the data's cap, source switches, professions ("all"/"mine") with the own skills, the
+-- exclusions, the weapon plan, the scoring switches and (bis.hitCap) the hit still useful per row.
 function ns.BisOpts()
     local c = ns.BisChar()
     local _, class = UnitClass("player")
     local spec, guessed = ns.BisSpec()
     local fac = UnitFactionGroup and UnitFactionGroup("player")
-    return {
+    local o = {
         class = class, spec = spec, guessed = guessed, kind = ns.Get("gear.kind") or "Speedrun",
         faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil,
         level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())),
         sources = sourceState(),
         prof = ns.Get("bis.prof") or "all", skills = ns.BisSkills(),
         exclude = c and c.ex or nil,
+        plan = c and c.plan or "auto",
     }
+    scoringOpts(o)
+    o.cap = ns.BisHitCaps and ns.BisHitCaps(o) or nil
+    return o
+end
+
+-- The same calculation for any class, spec and level (the simulation and the planner table):
+-- no ownership, no exclusions, both factions unless opts.faction, the own source switches unless
+-- opts.sources. Returns Gear.Best's result.
+function ns.BisFor(class, spec, level, opts)
+    opts = opts or {}
+    local o = {
+        class = class, spec = spec or (Gear.Specs(class)[1] or {}).key, kind = opts.kind or ns.Get("gear.kind") or "Speedrun",
+        faction = opts.faction, level = math.max(1, math.min(tonumber(level) or 1, Gear.Cap())),
+        sources = opts.sources or sourceState(), prof = "all", plan = opts.plan or "auto", exclude = opts.exclude,
+    }
+    scoringOpts(o)
+    if opts.tie ~= nil then o.tie = opts.tie end
+    return Gear.Best(o)
 end
 
 local function sortedKeys(t, onlyTrue)
@@ -316,12 +359,24 @@ local function sortedKeys(t, onlyTrue)
     return table.concat(out, ",")
 end
 
+local function capKey(cap)
+    if type(cap) ~= "table" then return "" end
+    local out = {}
+    for row, c in pairs(cap) do
+        out[#out + 1] = ("%s:%s:%s"):format(row, tostring(c.HIT and math.floor(c.HIT * 100 + 0.5)),
+            tostring(c.SHIT and math.floor(c.SHIT * 100 + 0.5)))
+    end
+    table.sort(out)
+    return table.concat(out, ",")
+end
+
 -- Everything a result depends on, as one string.
 local function optsKey(o)
     local ex = o.exclude or {}
-    return table.concat({ tostring(ns.GEAR), stamp, tostring(o.class), tostring(o.spec), tostring(o.level), tostring(o.kind),
-        tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
-        sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true) }, "|")
+    return table.concat({ tostring(ns.GEAR), tostring(ns.BIS), stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
+        tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
+        sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
+        tostring(o.suffix), tostring(o.sets), tostring(o.tie), capKey(o.cap) }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -506,7 +561,8 @@ end
 -- Scores of what is worn, per slot, for one weighting: kept until the gear or the weighting changes.
 local ctxCache, ctxKey
 local function context(o)
-    local key = table.concat({ tostring(ns.GEAR), stamp, tostring(o.class), tostring(o.spec), tostring(o.kind), tostring(o.level) }, "|")
+    local key = table.concat({ tostring(ns.GEAR), stamp, tostring(o.class), tostring(o.spec), tostring(o.kind), tostring(o.level),
+        capKey(o.cap) }, "|")
     if ctxKey == key then return ctxCache end
     local w = worn()
     local ctx, partial = { slot = {} }, false
@@ -525,6 +581,53 @@ local function context(o)
     ctx.twoWorn = w.links[16] and linkGroup(w.links[16]) == "2H" or false
     if not partial then ctxCache, ctxKey = ctx, key end
     return ctx
+end
+
+-- The hit cap: hit rating counts up to this much hit in percent against a target two levels
+-- higher (Classic's 6 % for weapons and spells, to be confirmed in game).
+local HIT_CAP, SPELL_HIT_CAP = 6, 6
+local CR_HIT_MELEE, CR_HIT_SPELL = 6, 8
+ns.BIS_HIT_CAP = HIT_CAP
+
+local function plainNumber(f, ...)
+    if type(f) ~= "function" then return nil end
+    local ok, v = pcall(f, ...)
+    v = ok and tonumber(ns.Plain(v)) or nil
+    return v
+end
+
+-- The own hit in percent from the character sheet: melee/ranged and spell; nil where the client
+-- has no API for it.
+function ns.BisOwnHit()
+    local melee = plainNumber(GetCombatRatingBonus, CR_HIT_MELEE)
+    local spell = plainNumber(GetCombatRatingBonus, CR_HIT_SPELL)
+    if melee then melee = melee + (plainNumber(GetHitModifier) or 0) end
+    if spell then spell = spell + (plainNumber(GetSpellHitModifier) or 0) end
+    return melee, spell
+end
+
+local capCache, capKeyOf
+-- The hit still useful per row (bis.hitCap): the cap minus the own hit without the item worn in
+-- that row, { [row] = { HIT = %, SHIT = % } }; nil when the switch is off or the client cannot say
+-- (hit then counts without a cap).
+function ns.BisHitCaps(o)
+    if not ns.Get("bis.hitCap") then return nil end
+    local melee, spell = ns.BisOwnHit()
+    if not melee and not spell then return nil end
+    local w = worn()
+    local key = table.concat({ tostring(w), tostring(o.level), tostring(melee), tostring(spell) }, "|")
+    if capKeyOf == key then return capCache end
+    local caps = {}
+    for _, sl in ipairs(Gear.SLOTS) do
+        local link = w.links[sl.inv]
+        local s = link and Gear.ReadStats(link) or {}
+        local m = ((s.HIT or 0) + (s.MHIT or 0)) * Gear.RatingPerPoint("HIT", o.level)
+        local sp = ((s.HIT or 0) + (s.SHIT or 0)) * Gear.RatingPerPoint("SHIT", o.level)
+        caps[sl.key] = { HIT = melee and math.max(0, HIT_CAP - (melee - m)) or nil,
+            SHIT = spell and math.max(0, SPELL_HIT_CAP - (spell - sp)) or nil }
+    end
+    capCache, capKeyOf = caps, key
+    return caps
 end
 
 -- The worn scores per slot for the options, as a copy: { slot = { [slotKey] = score }, two = a
@@ -614,10 +717,11 @@ local function evaluate(item, o)
     if not w then return { id = id, reason = "Keine Gewichtung.", code = "noweights" } end
     local kind = KIND_OF[group]
     local slotKey = SLOT_OF[group]
-    local score = Gear.Score(s, w, o.level, kind, o.class)
+    local cap = o.cap and o.cap[Gear.CAP_ROW[group] or slotKey]
+    local score = Gear.Score(s, w, o.level, kind, o.class, cap)
     local gain, mine, switch, against = gainFor(slotKey, group, id, score, context(o))
     return { id = id, s = s, w = w, kind = kind, group = group, slotKey = slotKey, score = score, gain = gain, mine = mine,
-        switch = switch, row = row, against = against }
+        switch = switch, row = row, against = against, cap = cap }
 end
 
 -- What an item (id or link; a link counts its random suffix) brings the own character:
@@ -692,8 +796,110 @@ function ns.BisExplain(item, opts)
         lines[1] = ("%s · %s: Wertung %s, angelegt %s, %s"):format(who, SLOT_NAME[ev.slotKey], Gear.Num(ev.score),
             Gear.Num(ev.mine or 0), Gear.UnitText(ev.gain, ev.w))
     end
-    for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class)) do
+    for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class, ev.cap)) do
         lines[#lines + 1] = Gear.PartText(p)
+    end
+    if ev.s.SC then lines[#lines + 1] = "Werte berechnet (noch nicht gescannt)" end
+    if (ev.s.HIT or ev.s.MHIT or ev.s.SHIT) and not ev.cap then lines[#lines + 1] = "Trefferwertung zählt ohne Obergrenze" end
+    return lines
+end
+
+-- The parts of a score by key (the stats of an item for the options), and the evaluation.
+local function partsOf(item, o)
+    local ev = evaluate(item, o)
+    if ev.reason then return nil, ev end
+    local by = {}
+    for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class, ev.cap)) do
+        if not p.over then by[p.key] = p end
+    end
+    return by, ev
+end
+
+-- a against b (ids or links): { lines = { "+24 Stärke (+48)", ... } largest first, diff = score
+-- of a minus b, text = "Option 1 liegt 21 vorn, vor allem durch Stärke." } or nil, reason. names
+-- (optional): { "Option 1", "Option 2" } for the sentence.
+function ns.BisCompare(a, b, opts, names)
+    local o = opts or ns.BisOpts()
+    local pa, ea = partsOf(a, o)
+    if not pa then return nil, ea.reason end
+    local pb, eb = partsOf(b, o)
+    if not pb then return nil, eb.reason end
+    local rows = {}
+    local keys = {}
+    for k in pairs(pa) do keys[k] = true end
+    for k in pairs(pb) do keys[k] = true end
+    for k in pairs(keys) do
+        local x, y = pa[k], pb[k]
+        local dp = (x and x.points or 0) - (y and y.points or 0)
+        if math.abs(dp) >= 0.5 then
+            local p = x or y
+            local amount
+            if k == "SPEED" then
+                amount = ("%s s"):format(Gear.Num(((x and x.value) or 0) - ((y and y.value) or 0), 1))
+            elseif p.amount and p.amount:find("%%") then
+                -- a rating part: its percent is points / weight
+                local function pct(q) return (q and q.weight ~= 0) and q.points / q.weight or 0 end
+                local d = pct(x) - pct(y)
+                amount = ("%s%s %%"):format(d >= 0 and "+" or "", Gear.Num(d, 1))
+            else
+                local d = ((x and x.value) or 0) - ((y and y.value) or 0)
+                amount = ("%s%s"):format(d >= 0 and "+" or "", Gear.Num(d))
+            end
+            rows[#rows + 1] = { key = k, points = dp, text = ("%s %s (%+d)"):format(amount, p.label, math.floor(dp + 0.5)) }
+        end
+    end
+    table.sort(rows, function(r1, r2)
+        if math.abs(r1.points) ~= math.abs(r2.points) then return math.abs(r1.points) > math.abs(r2.points) end
+        return r1.key < r2.key
+    end)
+    local lines = {}
+    for _, r in ipairs(rows) do lines[#lines + 1] = r.text end
+    local diff = ea.score - eb.score
+    local na, nb = (names and names[1]) or "Das erste", (names and names[2]) or "das zweite"
+    local lead = rows[1]
+    for _, r in ipairs(rows) do
+        if (diff >= 0) == (r.points >= 0) then lead = r break end
+    end
+    local text
+    if math.abs(diff) < 0.5 then
+        text = ("%s und %s liegen gleichauf."):format(na, nb)
+    elseif diff > 0 then
+        text = ("%s liegt %d vorn%s."):format(na, math.floor(diff + 0.5),
+            lead and (", vor allem durch " .. ((pa[lead.key] or pb[lead.key]).label)) or "")
+    else
+        text = ("%s liegt %d vorn%s."):format(nb:gsub("^%l", string.upper), math.floor(-diff + 0.5),
+            lead and (", vor allem durch " .. ((pb[lead.key] or pa[lead.key]).label)) or "")
+    end
+    return { lines = lines, diff = diff, text = text }
+end
+
+-- Why the weights are as they are: the spec's reason, its unit and the reference character of the
+-- bracket ("Bezug Level 30: 410 Angriffskraft, 22 Waffen-DPS, 14 % Krit").
+local REF_LABEL = { AP = "Angriffskraft", wDPS = "Waffen-DPS", crit = "% Krit", SP = "Zauberschaden", HEAL = "Heilung",
+    mana = "Mana", HP = "Gesundheit", armor = "Rüstung", avoid = "% Vermeidung", spell = "Grundschaden des Bezugszaubers" }
+local REF_ORDER = { "AP", "SP", "HEAL", "HP", "wDPS", "crit", "mana", "armor", "avoid", "spell" }
+function ns.BisWhy(o)
+    o = o or ns.BisOpts()
+    local sp = Gear.SpecInfo(o.class, o.spec)
+    if not sp then return {} end
+    local lines = {}
+    if sp.why then lines[#lines + 1] = sp.why end
+    local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
+    local unit = Gear.Unit(w)
+    if unit then lines[#lines + 1] = ("Ein Punkt Wertung ist so viel wert wie 1 %s."):format(Gear.UNIT_LABELS[unit]) end
+    local brackets = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.brackets or {}
+    local idx
+    for i, upper in ipairs(brackets) do
+        if o.level <= upper then idx = i break end
+    end
+    local ref = type(sp.ref) == "table" and sp.ref[idx or #brackets]
+    if type(ref) == "table" then
+        local parts = {}
+        for _, k in ipairs(REF_ORDER) do
+            local v = tonumber(ref[k])
+            if v then parts[#parts + 1] = ("%s %s"):format(Gear.Num(v), REF_LABEL[k]) end
+        end
+        lines[#lines + 1] = ("Bezug Level %d: %s"):format(brackets[idx or #brackets] or o.level, table.concat(parts, ", "))
     end
     return lines
 end
@@ -729,6 +935,7 @@ function ns.BisTargets(opts)
     local r = emptyResult()
     r.plan, r.missing, r.total = best.plan, best.missing, best.total
     r.twoHandScore, r.oneHandScore = best.twoHandScore, best.oneHandScore
+    r.dwScore, r.shieldScore, r.planWanted, r.sets = best.dwScore, best.shieldScore, best.planWanted, best.sets
     local ctx = context(o)
     local c = ns.BisChar()
     for _, sl in ipairs(Gear.SLOTS) do
@@ -739,9 +946,11 @@ function ns.BisTargets(opts)
             local group = row and Gear.GROUP[row[1]]
             local gain, mine, switch = gainFor(sl.key, group, id, score, ctx)
             local owned = ns.BisOwned(id)
+            local src = list[i]
             out[i] = { id = id, score = score, gain = gain, mine = mine, owned = owned, worn = owned == "worn",
                 wished = wishOf(c, id), switch = switch or nil,
-                upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, mine)) or false }
+                upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, mine)) or false,
+                sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, effort = src.effort }
         end
         r.mine[sl.key] = ctx.slot[sl.key]
         local first = out[1]
@@ -1584,7 +1793,8 @@ end))
 ---------------------------------------------------------------------------
 
 local VIEW_OF = { goals = "goals", ziele = "goals", here = "here", hier = "here", wish = "wish", wunsch = "wish",
-    wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons" }
+    wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons", sim = "sim",
+    simulation = "sim" }
 
 -- Opens the gear page in a view ("goals", "here", "dungeons", "wish", "guild" or the German words)
 -- with a slot chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
@@ -1637,6 +1847,14 @@ ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45
     { key = "bis.toastUpgrade", type = "toggle", label = "Hinweis auch für andere Upgrades", default = true },
     { key = "bis.toastSound", type = "toggle", label = "Ton beim Wunsch-Hinweis", default = true },
     { key = "bis.wishAutoRemove", type = "toggle", label = "Erhaltene Wünsche von der Liste nehmen", default = true },
+    { key = "bis.suffix", type = "choice", label = "Zufallsboni", default = "best",
+      values = { { "best", "bester gesehener" }, { "base", "nur Grundwerte" } },
+      tip = "Items mit Zufallsbonus (\"...des Adlers\") zählen mit dem besten Bonus, den Amisia an ihnen gesehen hat." },
+    { key = "bis.sets", type = "toggle", label = "Setboni werten", default = true },
+    { key = "bis.hitCap", type = "toggle", label = "Trefferwertung nur bis zur Grenze", default = true,
+      tip = "Trefferwertung über 6 % zählt nicht, gerechnet mit deinem Trefferwert aus dem Charakterfenster." },
+    { key = "bis.effortTie", type = "slider", label = "Gleichstand für Aufwand (Prozent)", default = 3, min = 0, max = 10, step = 1,
+      expert = true, tip = "Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst." },
     { key = "bis.prof", type = "choice", label = "Hergestellte Items", default = "all",
       values = { { "all", "alle" }, { "mine", "nur meine Berufe" } } },
     { key = "bis.guildTooltip", type = "toggle", label = "Gildenwünsche im Tooltip", default = true, officer = true },
@@ -1695,7 +1913,69 @@ ns.RegisterSlash("wunsch", { aliases = { "wish" }, args = "[<Link> [hoch|mittel|
             e.note ~= "" and (", " .. e.note) or ""))
     end })
 
-ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" }, args = "[hier | item <Link> | aus <Link> | zurueck]",
+local PLAN_WORD = { auto = "auto", ["2h"] = "2H", zweihand = "2H", dw = "DW", zwei = "DW", schild = "SHIELD",
+    shield = "SHIELD" }
+
+-- /amisia bis vergleich <Link> <Link>: the two items against each other in the own chat.
+function ns.BisCompareReport(arg)
+    local a, rest = splitItem(tostring(arg or ""))
+    local b = rest and splitItem(rest)
+    if not a or not b then
+        ns.msg("Aufruf: /amisia bis vergleich <Item-Link> <Item-Link>")
+        return
+    end
+    if not Gear.Available() then
+        ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+        return
+    end
+    local cmp, why = ns.BisCompare(a, b, nil, { "Das erste", "das zweite" })
+    if not cmp then
+        ns.msg(why)
+        return
+    end
+    ns.msg(cmp.text)
+    for i = 1, math.min(6, #cmp.lines) do ns.msg("  " .. cmp.lines[i]) end
+end
+
+-- /amisia bis gewichte: the weights of the own spec at the own level with their reason.
+function ns.BisWeightsReport()
+    if not Gear.Available() then
+        ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+        return
+    end
+    local o = ns.BisOpts()
+    local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
+    if not w then
+        ns.msg("Keine Gewichtung.")
+        return
+    end
+    for _, line in ipairs(ns.BisWhy(o)) do ns.msg(line) end
+    local parts = {}
+    for k, v in pairs(w) do
+        if type(v) == "number" and v ~= 0 and not k:find("^SPDREF_") and k ~= "OHDPS" then
+            parts[#parts + 1] = { k = k, v = v }
+        end
+    end
+    table.sort(parts, function(x, y)
+        if x.v ~= y.v then return x.v > y.v end
+        return x.k < y.k
+    end)
+    local out = {}
+    for _, p in ipairs(parts) do
+        out[#out + 1] = ("%s %s"):format(Gear.STAT_LABELS[p.k] or p.k, Gear.Num(p.v, p.v < 1 and 2 or 1))
+    end
+    ns.msg(("Gewichte (%s, Level %d): %s"):format(o.kind, o.level, table.concat(out, ", ")))
+    local melee, spell = ns.BisOwnHit()
+    if melee or spell then
+        ns.msg(("Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %%"):format(
+            melee and Gear.Num(melee, 1) or "?", spell and Gear.Num(spell, 1) or "?", ns.BIS_HIT_CAP))
+    else
+        ns.msg("Trefferwertung zählt ohne Obergrenze (der Client nennt den eigenen Trefferwert nicht).")
+    end
+end
+
+ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },
+    args = "[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]",
     desc = "beste Ausrüstung für deinen Charakter",
     run = function(rest)
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
@@ -1719,7 +1999,21 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" }, args = "[hier | 
         elseif sub == "zurueck" or sub == "reset" then
             local n = ns.BisClearExcludes()
             ns.msg(n == 1 and "1 Ausschluss aufgehoben." or ("%d Ausschlüsse aufgehoben."):format(n))
+        elseif sub == "vergleich" or sub == "compare" then
+            ns.BisCompareReport(arg)
+        elseif sub == "gewichte" or sub == "weights" then
+            ns.BisWeightsReport()
+        elseif sub == "plan" then
+            local want = PLAN_WORD[(arg or ""):lower()]
+            if not want then
+                ns.msg("Aufruf: /amisia bis plan auto|2h|dw|schild")
+                return
+            end
+            local ok, why = ns.BisSetPlan(want)
+            ns.msg(ok and ("Waffenplan: %s."):format(ns.BIS_PLANS[want]) or why)
+        elseif sub == "sim" or sub == "simulation" then
+            ns.ShowGear("sim")
         else
-            ns.msg("Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck]")
+            ns.msg("Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]")
         end
     end })

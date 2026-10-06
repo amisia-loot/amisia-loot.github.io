@@ -21,7 +21,7 @@ local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
 local OWNED_TEXT = { worn = "angelegt", bag = "in der Tasche, nicht angelegt", bank = "in der Bank, nicht angelegt" }
-local VIEWS = { goals = true, here = true, dungeons = true, wish = true, guild = true }
+local VIEWS = { goals = true, here = true, dungeons = true, wish = true, guild = true, sim = true }
 -- the source chips: key, label, width
 local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
                 { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
@@ -100,6 +100,22 @@ end
 
 local function marks(e)
     return (e.owned and (CHECK .. " ") or "") .. (e.wished and (STAR .. " ") or "")
+end
+
+-- What the planner did with an option, as short grey notes: the set it belongs to, computed stats,
+-- the best seen random suffix, moved ahead for its effort.
+local function noteParts(e)
+    local out = {}
+    if e.set then out[#out + 1] = ("Set %d/%d, %+d Bonus"):format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
+    if e.sc then out[#out + 1] = "berechnet" end
+    if e.suffix then out[#out + 1] = "bester gesehener Bonus" end
+    if e.easier then out[#out + 1] = "leichter zu bekommen" end
+    return out
+end
+local function noteText(e)
+    local parts = noteParts(e)
+    if #parts == 0 then return "" end
+    return " " .. GREY .. "(" .. table.concat(parts, ", ") .. ")|r"
 end
 
 local function gainText(e)
@@ -386,6 +402,15 @@ local function fillHead(f, o, res, v)
         chip:Show()
     end
     for k, chip in pairs(f.src) do if not shown[k] then chip:Hide() end end
+    if v == "goals" then
+        local plans = {}
+        for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = "Waffen: " .. ns.BIS_PLANS[k] } end
+        f.plan:SetValues(plans)
+        f.plan:SetValue(o.plan or "auto")
+        f.plan:Show()
+    else
+        f.plan:Hide()
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -478,8 +503,21 @@ local function buildGoals(f)
     G.list:SetPoint("TOPLEFT", 0, -16)
     G.list:SetPoint("TOPRIGHT", -12, -16)
 
-    G.title = W.Text(G, "GameFontNormal", 598)
+    G.title = W.Text(G, "GameFontNormal", 440)
     G.title:SetPoint("TOPLEFT", 4, -284)
+    -- why the weights are as they are (tooltip), and the simulation of another class or level
+    G.why = W.Button(G, "Warum?", 64)
+    G.why:SetPoint("TOPRIGHT", -92, -280)
+    G.why:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Warum diese Gewichte")
+        for _, line in ipairs(ns.BisWhy()) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+        GameTooltip:Show()
+    end)
+    G.why:SetScript("OnLeave", hideTip)
+    G.sim = W.Button(G, "Simulation", 88, function() setView("sim") end)
+    G.sim:SetPoint("TOPRIGHT", 0, -280)
+    W.Tooltip(G.sim, "Simulation", "Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz.")
     G.opts = {}
     for i = 1, 3 do
         local b = CreateFrame("Button", nil, G)
@@ -533,7 +571,48 @@ local function buildGoals(f)
     G.explain:SetHeight(26)
     G.explain:SetJustifyV("TOP")
     G.explain:SetMaxLines(2)
+    -- the explanation in full on hover: option 1 against 2 and against what is worn
+    G.explainHit = CreateFrame("Frame", nil, G)
+    G.explainHit:SetPoint("TOPLEFT", G.explain, "TOPLEFT")
+    G.explainHit:SetPoint("BOTTOMRIGHT", G.explain, "BOTTOMRIGHT")
+    G.explainHit:EnableMouse(true)
+    G.explainHit:SetScript("OnEnter", function(self)
+        if not self.lines or #self.lines == 0 then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.title or "Vergleich")
+        for _, line in ipairs(self.lines) do GameTooltip:AddLine(line, 1, 1, 1, true) end
+        GameTooltip:Show()
+    end)
+    G.explainHit:SetScript("OnLeave", hideTip)
     return G
+end
+
+-- The comparison lines of a slot: option 1 against option 2 and against the worn item.
+local function compareLines(o, list, wornLink)
+    local c = cached()
+    local first = list[1]
+    if not first then return {} end
+    local key = "cmp|" .. first.id .. "|" .. (list[2] and list[2].id or 0) .. "|" .. tostring(wornLink)
+    if c.explain[key] then return c.explain[key] end
+    local lines = {}
+    for _, n in ipairs(noteParts(first)) do lines[#lines + 1] = GREY .. n .. "|r" end
+    local second = list[2]
+    if second then
+        local cmp = ns.BisCompare(first.id, second.id, o, { "Option 1", "Option 2" })
+        if cmp then
+            lines[#lines + 1] = cmp.text
+            for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
+        end
+    end
+    if wornLink and not first.worn then
+        local cmp = ns.BisCompare(first.id, wornLink, o, { "Option 1", "das Angelegte" })
+        if cmp then
+            lines[#lines + 1] = cmp.text
+            for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
+        end
+    end
+    c.explain[key] = lines
+    return lines
 end
 
 -- The explanation of an option as one text, kept until the state changes.
@@ -543,7 +622,11 @@ local function explainText(o, res, slotKey, e)
     if c.explain[key] then return c.explain[key] end
     local out = {}
     if (slotKey == "MAINHAND" or slotKey == "OFFHAND") and res.twoHandScore and res.oneHandScore then
-        out[#out + 1] = ("Zweihand %s gegen Waffenhand plus Schildhand %s."):format(Gear.Num(res.twoHandScore), Gear.Num(res.oneHandScore))
+        local more = {}
+        if res.dwScore then more[#more + 1] = ("zwei Waffen %s"):format(Gear.Num(res.dwScore)) end
+        if res.shieldScore then more[#more + 1] = ("mit Schild %s"):format(Gear.Num(res.shieldScore)) end
+        out[#out + 1] = ("Zweihand %s gegen Waffenhand plus Schildhand %s%s."):format(Gear.Num(res.twoHandScore),
+            Gear.Num(res.oneHandScore), #more > 0 and (" (" .. table.concat(more, ", ") .. ")") or "")
     end
     if not e then
         out[#out + 1] = (slotKey == "OFFHAND" and res.plan == "2H") and "Die Zweihandwaffe belegt beide Hände."
@@ -605,7 +688,7 @@ local function fillGoals(G, o, res)
         b.opt = e
         if e then
             b.rank:SetText(tostring(i))
-            b.name:SetText(marks(e) .. itemText(e.id))
+            b.name:SetText(marks(e) .. itemText(e.id) .. noteText(e))
             b.src:SetText(e.owned and OWNED_TEXT[e.owned] or sourceText(e.id, o))
             setMapButton(b.map, e.id, nil, e.owned)
             b.gain:SetText(gainText(e))
@@ -624,6 +707,10 @@ local function fillGoals(G, o, res)
         end
     end
     G.explain:SetText(explainText(o, res, slot, list[1]))
+    local wornLink
+    for _, e in ipairs(goalItems(res, o)) do if e.key == slot then wornLink = e.wornLink end end
+    G.explainHit.title = ns.BIS_SLOT_NAME[slot] or slot
+    G.explainHit.lines = compareLines(o, list, wornLink)
 end
 
 ---------------------------------------------------------------------------
@@ -1378,6 +1465,138 @@ local function fillGuild(U)
 end
 
 ---------------------------------------------------------------------------
+-- Simulation: the best items of any class, spec and level (ns.BisFor), without ownership
+---------------------------------------------------------------------------
+
+local SIM_ROWS = 11
+
+-- The simulated character in settings.bis.sim: class, spec, level, weapon plan; starts as the own.
+local function simState()
+    local st = state()
+    st.sim = type(st.sim) == "table" and st.sim or {}
+    local sim = st.sim
+    local _, myClass = UnitClass("player")
+    if not (type(sim.class) == "string" and #Gear.Specs(sim.class) > 0) then sim.class = myClass or "WARRIOR" end
+    local ok = false
+    for _, sp in ipairs(Gear.Specs(sim.class)) do if sp.key == sim.spec then ok = true end end
+    if not ok then sim.spec = (Gear.Specs(sim.class)[1] or {}).key end
+    sim.level = math.max(1, math.min(tonumber(sim.level) or tonumber(UnitLevel("player")) or 1, Gear.Cap()))
+    if not ns.BIS_PLANS[sim.plan] then sim.plan = "auto" end
+    return sim
+end
+ns.BisSimState = simState
+
+local function simChanged()
+    ns.Refresh()
+end
+
+local function fillSimRow(r, e)
+    r.slot:SetText(e.name)
+    if e.opt then
+        r.best:SetText(itemText(e.opt[1]) .. noteText(e.opt))
+        r.src:SetText(sourceText(e.opt[1]))
+        r.score:SetText(Gear.Num(e.opt[2]))
+    else
+        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")
+        r.src:SetText("")
+        r.score:SetText("")
+    end
+end
+
+local function buildSim(f)
+    local S = CreateFrame("Frame", nil, f)
+    S:SetPoint("TOPLEFT", 0, -72)
+    S:SetPoint("BOTTOMRIGHT", 0, 0)
+    S.class = W.Picker(S, 118, function(v)
+        local sim = simState()
+        sim.class, sim.spec = v, nil
+        simChanged()
+    end)
+    S.class:SetPoint("TOPLEFT", 0, 0)
+    S.spec = W.Picker(S, 140, function(v)
+        simState().spec = v
+        simChanged()
+    end)
+    S.spec:SetPoint("TOPLEFT", 124, 0)
+    S.level = W.Stepper(S, 104, function(v)
+        simState().level = v
+        simChanged()
+    end)
+    S.level:SetPoint("TOPLEFT", 270, 0)
+    S.plan = W.Picker(S, 124, function(v)
+        simState().plan = v
+        simChanged()
+    end)
+    S.plan:SetPoint("TOPLEFT", 380, 0)
+    S.back = W.Button(S, "Zurück", 84, function() setView("goals") end)
+    S.back:SetPoint("TOPRIGHT", 0, 1)
+    local h = head(S, -28)
+    S.head = { slot = col(h, 4, 66, "Slot"), best = col(h, 74, 250, "Bestes"), src = col(h, 328, 200, "Quelle"),
+        score = col(h, 532, 54, "Wertung") }
+    S.head.score:SetJustifyH("RIGHT")
+    S.list = W.List(S, SIM_ROWS, ROW_H, function(r)
+        r.slot = col(r, 4, 66)
+        r.best = col(r, 74, 250, nil, "GameFontHighlightSmall")
+        r.src = col(r, 328, 200, nil, "GameFontHighlightSmall")
+        r.score = col(r, 532, 54, nil, "GameFontHighlightSmall")
+        r.score:SetJustifyH("RIGHT")
+        r:SetScript("OnClick", function(self)
+            local e = self.item
+            if e and e.opt then modifiedClick(e.opt[1]) end
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e and e.opt then itemTooltip(self, e.opt[1]) end
+        end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillSimRow)
+    S.list:SetPoint("TOPLEFT", 0, -44)
+    S.list:SetPoint("TOPRIGHT", -12, -44)
+    S.info = W.Text(S, "GameFontHighlightSmall", 598, true)
+    S.info:SetPoint("TOPLEFT", 4, -44 - SIM_ROWS * ROW_H - 6)
+    S.info:SetHeight(40)
+    S.info:SetJustifyV("TOP")
+    S.info:SetMaxLines(3)
+    return S
+end
+
+local function fillSim(S)
+    local sim = simState()
+    local classes = {}
+    for _, token in ipairs(ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.order or {}) do
+        classes[#classes + 1] = { value = token, text = Gear.CLASS_NAMES[token] or token }
+    end
+    S.class:SetValues(classes)
+    S.class:SetValue(sim.class)
+    local specs = {}
+    for _, sp in ipairs(Gear.Specs(sim.class)) do specs[#specs + 1] = { value = sp.key, text = sp.name } end
+    S.spec:SetValues(specs)
+    S.spec:SetValue(sim.spec)
+    S.level:Configure(1, Gear.Cap(), 1, function(v) return "Level " .. v end)
+    S.level:SetValue(sim.level)
+    local plans = {}
+    for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = "Waffen: " .. ns.BIS_PLANS[k] } end
+    S.plan:SetValues(plans)
+    S.plan:SetValue(sim.plan)
+    -- the result, kept until anything the gear page depends on changes
+    local c = cached()
+    local key = table.concat({ sim.class, tostring(sim.spec), sim.level, sim.plan }, "|")
+    if c.simKey ~= key then
+        c.simKey = key
+        c.sim = ns.BisFor(sim.class, sim.spec, sim.level, { plan = sim.plan })
+    end
+    local res = c.sim
+    local items = {}
+    for _, sl in ipairs(Gear.SLOTS) do
+        items[#items + 1] = { key = sl.key, name = sl.name, opt = res[sl.key] and res[sl.key][1], plan = res.plan }
+    end
+    S.list:SetItems(items)
+    local o = { class = sim.class, spec = sim.spec, kind = ns.Get("gear.kind") or "Speedrun", level = sim.level }
+    local lines = ns.BisWhy(o)
+    S.info:SetText(GREY .. "Ohne Besitz und Zuwachs, mit deinen Quellen. " .. table.concat(lines, " ") .. "|r")
+end
+
+---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
 
@@ -1420,6 +1639,9 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         f.counts:SetPoint("TOPLEFT", 4, -28)
         f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
         f.reset:SetPoint("TOPRIGHT", 0, -24)
+        -- the weapon plan of the own character, beside the source chips of the targets
+        f.plan = W.Picker(f, 128, function(v) say(ns.BisSetPlan(v)) end)
+        f.plan:SetPoint("TOPLEFT", 470, -48)
         f.src = {}
         for _, def in ipairs(CHIPS) do
             local key = def[1]
@@ -1439,7 +1661,8 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         f.dungeons = buildDungeons(f)
         f.wish = buildWish(f)
         f.guild = buildGuild(f)
-        f.bodies = { goals = f.goals, here = f.here, dungeons = f.dungeons, wish = f.wish, guild = f.guild }
+        f.sim = buildSim(f)
+        f.bodies = { goals = f.goals, here = f.here, dungeons = f.dungeons, wish = f.wish, guild = f.guild, sim = f.sim }
         for _, b in pairs(f.bodies) do b:Hide() end
         return f
     end,
@@ -1461,6 +1684,8 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
             fillDungeons(f.dungeons)
         elseif v == "wish" then
             fillWish(f.wish)
+        elseif v == "sim" then
+            fillSim(f.sim)
         else
             fillGuild(f.guild)
         end

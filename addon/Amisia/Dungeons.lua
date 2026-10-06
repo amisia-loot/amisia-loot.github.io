@@ -251,8 +251,15 @@ local function buildIndex(facts)
             end
             if type(e.part) == "string" then addKey(idx.parts, lower(e.part), e.key) end
             if type(e.inst) == "number" then addKey(instKeys, e.inst, e.key) end
+            -- the build's facts name their bosses by NPC id with the English name beside it
+            -- (bossNames): the boss of the item data with that name gets the NPC id
+            local names = type(e.bossNames) == "table" and e.bossNames or {}
             for _, b in ipairs(type(e.bosses) == "table" and e.bosses or {}) do
-                if type(b) == "string" then addBoss(x, b) end
+                if type(b) == "string" then
+                    addBoss(x, b)
+                elseif type(b) == "number" and type(names[b]) == "string" then
+                    addBoss(x, names[b], b)
+                end
             end
         end
     end

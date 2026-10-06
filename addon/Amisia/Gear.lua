@@ -130,13 +130,20 @@ Gear.STAT = STAT
 -- Rating needed for 1 % (1 skill point for defence) at level 60. Forever's ratings come from TBC:
 -- Lionheart Helm's Classic 2 % crit became 28 crit rating. Below 60 a point of rating is worth
 -- more, on TBC's curve (level - 8) / 52; Forever ends at 60, so higher levels count as 60.
+-- GearWeights.lua carries the values the build used (corrected by in-game measurements once
+-- known); these are the defaults without it.
 local RATING_60 = { HIT = 10, SHIT = 8, CRIT = 14, HASTE = 10, EXP = 10, DODGE = 12, PARRY = 15, BLOCK = 5, DEF = 1.5 }
+
+local function rating60(kind)
+    local r = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.ratings
+    return (r and tonumber(r[kind])) or RATING_60[kind]
+end
 
 local function ratingPerPoint(kind, level)
     local scale
     if level <= 10 then scale = 2 / 52
     else scale = (math.min(level, 60) - 8) / 52 end
-    return 1 / (RATING_60[kind] * scale)
+    return 1 / (rating60(kind) * scale)
 end
 Gear.RatingPerPoint = ratingPerPoint
 
@@ -224,7 +231,7 @@ Gear.STAT_LABELS = {
     DEF = "Verteidigungswertung", DODGE = "Ausweichwertung", PARRY = "Parierwertung", BLOCK = "Blockwertung",
     BLOCKVAL = "Blockwert", ARMOR = "Rüstung", MP5 = "Mana alle 5 Sek.", HP5 = "Gesundheit alle 5 Sek.",
     DPS = "Waffenschaden pro Sekunde", SPEED = "Waffentempo", SOCK = "Sockel", META = "Meta-Sockel",
-    RES = "Abhärtungswertung", SPEN = "Zauberdurchschlag",
+    RES = "Abhärtungswertung", SPEN = "Zauberdurchschlag", SETB = "Setbonus",
 }
 
 -- A number the German way: whole numbers plain, otherwise one decimal with a comma.
@@ -235,7 +242,8 @@ end
 Gear.Num = deNum
 
 -- Every term of a score: add(key, value, weight, rating kind or nil). The score is their sum, so
--- Gear.Score and Gear.ScoreParts can never disagree.
+-- Gear.Score and Gear.ScoreParts can never disagree. tools/build_bis.py has the same function
+-- (terms/score); tools/tests/test_score_parity.py holds the two equal.
 local function terms(s, w, level, kind, class, add)
     local function W(k) return w[k] or 0 end
     for _, k in ipairs({ "STR", "AGI", "STA", "INT", "SPI", "HP5", "MP5", "AP", "RAP", "ARMOR", "BLOCKVAL" }) do
@@ -273,26 +281,48 @@ local function terms(s, w, level, kind, class, add)
     add("RES", s.RES, W("RES"))
     add("SPEN", s.SPEN, W("SPEN"))
     if s.DPS and kind then
+        local spd
         if kind == "RANGED" then
             add("DPS", s.DPS, W("RDPS"))
-            add("SPEED", s.SPEED, W("SPD_RANGED"))
+            spd = "SPD_RANGED"
         else
             -- an off-hand weapon hits for half its damage, and wielding two adds a miss chance to
             -- both hands (about a fifth); both land on the off hand, so main hands stay comparable.
             -- OHDPS is that factor (0.25 unless the weights say otherwise).
             add("DPS", s.DPS, W("DPS") * (kind == "OH" and (w.OHDPS or 0.25) or 1))
-            add("SPEED", s.SPEED, W("SPD_" .. kind))
+            spd = "SPD_" .. kind
         end
+        -- weapon speed counts in seconds above the slot's reference speed (SPDREF_*)
+        if s.SPEED then add("SPEED", s.SPEED - (w["SPDREF_" .. kind] or 0), W(spd)) end
     end
+    -- a set's bonus, which the set plan puts on the piece that completes a threshold
+    if s.SETB then add("SETB", s.SETB, 1) end
 end
 
+-- How much of a rating term counts under the hit cap: cap = { HIT = the melee and ranged hit
+-- still useful in percent, SHIT = the spell hit } (nil or a missing side: everything counts).
+local function capped(key, converted, cap)
+    if not cap then return converted end
+    local room
+    if key == "MHIT" then room = cap.HIT
+    elseif key == "SHIT" then room = cap.SHIT
+    elseif key == "HIT" then room = cap.HIT or cap.SHIT end
+    if room == nil then return converted end
+    return math.max(0, math.min(converted, room))
+end
+Gear.Capped = capped
+
 -- Score of a stat table for one weight set at one level. kind is the weapon's place: "2H", "MH",
--- "OH" or "RANGED"; nil for everything else.
-function Gear.Score(s, w, level, kind, class)
+-- "OH" or "RANGED"; nil for everything else. cap (optional): the hit still useful, see capped().
+function Gear.Score(s, w, level, kind, class, cap)
     local score = 0
-    terms(s, w, level, kind, class, function(_, value, weight, rating)
+    terms(s, w, level, kind, class, function(key, value, weight, rating)
         if value and value ~= 0 and weight ~= 0 then
-            score = score + value * (rating and ratingPerPoint(rating, level) or 1) * weight
+            if rating then
+                score = score + capped(key, value * ratingPerPoint(rating, level), cap) * weight
+            else
+                score = score + value * weight
+            end
         end
     end)
     return score
@@ -300,21 +330,33 @@ end
 
 -- The same score in parts: { { key, label, amount (text), value, weight, points }, ... } with the
 -- largest part first and parts without points left out. Ratings show as percent with the rating
--- in brackets ("1,2 % (26)"), defence as skill points; weight is then per percent or point.
-function Gear.ScoreParts(s, w, level, kind, class)
+-- in brackets ("1,2 % (26)"), defence as skill points; weight is then per percent or point. Hit
+-- over the cap is a part of its own with 0 points (over = true), so the parts still sum up.
+function Gear.ScoreParts(s, w, level, kind, class, cap)
     local parts = {}
     terms(s, w, level, kind, class, function(key, value, weight, rating)
         if not value or value == 0 or weight == 0 then return end
         local amount, converted = deNum(value), value
+        local label = Gear.STAT_LABELS[key] or key
         if rating then
             converted = value * ratingPerPoint(rating, level)
+            local counted = capped(key, converted, cap)
+            if counted < converted - 1e-9 then
+                parts[#parts + 1] = { key = key .. "_OVER", label = label .. " über der Grenze", over = true,
+                    amount = ("%s %%"):format(deNum(converted - counted, 1)), value = converted - counted, weight = 0,
+                    points = 0 }
+                converted = counted
+                if converted <= 0 then return end
+            end
             if rating == "DEF" then
                 amount = ("%s Punkte (%d)"):format(deNum(converted, 1), math.floor(value + 0.5))
             else
                 amount = ("%s %% (%d)"):format(deNum(converted, 1), math.floor(value + 0.5))
             end
+        elseif key == "SPEED" then
+            amount = ("%s s"):format(deNum(s.SPEED, 1))
         end
-        parts[#parts + 1] = { key = key, label = Gear.STAT_LABELS[key] or key, amount = amount, value = value,
+        parts[#parts + 1] = { key = key, label = label, amount = amount, value = value,
             weight = weight, points = converted * weight }
     end)
     table.sort(parts, function(a, b)
@@ -324,8 +366,12 @@ function Gear.ScoreParts(s, w, level, kind, class)
     return parts
 end
 
--- One part as text: "30 Stärke x 2,0 = 60".
+-- One part as text: "30 Stärke x 2,0 = 60", "Waffentempo 3,6 s: +12", "Setbonus: +18",
+-- "0,8 % Trefferwertung über der Grenze: 0".
 function Gear.PartText(p)
+    if p.over then return ("%s %s: 0"):format(p.amount, p.label) end
+    if p.key == "SPEED" then return ("%s %s: %+d"):format(p.label, p.amount, math.floor(p.points + 0.5)) end
+    if p.key == "SETB" then return ("%s: %+d"):format(p.label, math.floor(p.points + 0.5)) end
     local wt = p.weight == math.floor(p.weight) and deNum(p.weight, 1)
         or (("%.2f"):format(p.weight):gsub("0$", ""):gsub("%.", ","))
     return ("%s %s x %s = %s"):format(p.amount, p.label, wt, deNum(p.points))
@@ -334,6 +380,7 @@ end
 -- What one point of score is worth: the weights' unit when it weighs 1, else the first of attack
 -- power, spell damage, healing and stamina that does; nil when none fits.
 local UNIT_LABELS = { AP = "Angriffskraft", SP = "Zauberschaden", HEAL = "Heilung", STA = "Ausdauer" }
+Gear.UNIT_LABELS = UNIT_LABELS
 function Gear.Unit(w)
     if not w then return nil end
     if w.unit and UNIT_LABELS[w.unit] and w[w.unit] == 1 then return w.unit end
@@ -680,7 +727,60 @@ function Gear.Stats(id)
     if not ticker and C_Timer and C_Timer.NewTicker and C_Item and C_Item.RequestLoadItemDataByID then
         ticker = C_Timer.NewTicker(0.1, tick)
     end
-    return nil
+    -- meanwhile the stats the build computed from the client tables, if any (marked SC); the
+    -- client's answer replaces them when it comes
+    return Gear.ComputedStats(id)
+end
+
+-- Stats tools/build_bis.py computed for an item no scan has seen (ns.BIS.SC), marked SC = true;
+-- nil without. Weapons and trinkets have none (their damage and equip effects are not in the
+-- tables the build reads).
+local computedCache, computedFor = {}, nil
+function Gear.ComputedStats(id)
+    local B = ns.BIS
+    local text = type(B) == "table" and type(B.SC) == "table" and B.SC[id]
+    if not text then return nil end
+    if computedFor ~= B then computedCache, computedFor = {}, B end
+    local s = computedCache[id]
+    if s then return s end
+    s = { SC = true }
+    for k, v in tostring(text):gmatch("([%w_]+)=([^;]+)") do
+        local key = STAT["ITEM_MOD_" .. k] or STAT[k]
+        v = tonumber(v)
+        if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
+    end
+    computedCache[id] = s
+    return s
+end
+
+-- The random suffixes seen on an item: { [suffix id] = stat table } from the build (ns.BIS.RP,
+-- the guild's collectors) and the own collector (AmisiaDB.scan.suffix); nil when none was seen.
+-- Each table holds the item's full stats with that suffix, as C_Item.GetItemStats gave them.
+function Gear.SuffixStats(id)
+    local B = ns.BIS
+    local rp = type(B) == "table" and type(B.RP) == "table" and B.RP[id]
+    local own = AmisiaDB and type(AmisiaDB.scan) == "table" and type(AmisiaDB.scan.suffix) == "table" and AmisiaDB.scan.suffix[id]
+    -- the planner asks for every item: most have none, and that answer costs nothing
+    if type(rp) ~= "table" and type(own) ~= "table" then return nil end
+    local out
+    local function addText(suffix, text)
+        if type(text) ~= "string" then return end
+        local s = {}
+        for k, v in text:gmatch("([%w_]+)=([^;]+)") do
+            local key = STAT["ITEM_MOD_" .. k] or STAT[k]
+            v = tonumber(v)
+            if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
+        end
+        if next(s) then
+            local row = Gear.Item(id)
+            if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
+            out = out or {}
+            out[suffix] = s
+        end
+    end
+    if type(rp) == "table" then for suffix, text in pairs(rp) do addText(suffix, text) end end
+    if type(own) == "table" then for suffix, text in pairs(own) do addText(suffix, text) end end
+    return out
 end
 
 -- How many requested items are still on their way.
@@ -731,8 +831,18 @@ end
 -- Scores are kept per class, spec and weighting (memo, declared with the loader), so a redraw only
 -- scores items that are new to it.
 local PLACE_SLOT = { MH = 1, OH = 2, ["2H"] = 3, RANGED = 4 }
+-- slot group -> the row whose worn item a hit cap is reckoned against
+local CAP_ROW = { HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", BACK = "BACK", CHEST = "CHEST", WRIST = "WRIST",
+    HANDS = "HANDS", WAIST = "WAIST", LEGS = "LEGS", FEET = "FEET", FINGER = "FINGER1", TRINKET = "TRINKET1",
+    ["2H"] = "MAINHAND", ["1H"] = "MAINHAND", MH = "MAINHAND", OHW = "OFFHAND", SHIELD = "OFFHAND", HELD = "OFFHAND",
+    RANGED = "RANGED" }
+Gear.CAP_ROW = CAP_ROW
 
-local function scoreOf(id, s, w, level, place, class)
+local function hasHit(s) return s.HIT or s.MHIT or s.SHIT end
+
+local function scoreOf(id, s, w, level, place, class, cap)
+    -- an item with hit rating under a cap depends on what is worn: never kept
+    if cap and hasHit(s) then return Gear.Score(s, w, level, place, class, cap) end
     local byId = memo[id]
     if not byId then byId = {}; memo[id] = byId end
     local k = level * 5 + (place and PLACE_SLOT[place] or 0)
@@ -744,11 +854,172 @@ local function scoreOf(id, s, w, level, place, class)
     return v
 end
 
+-- The effort of getting an item from its sources that pass the filters (the cheapest one), in
+-- ns.BIS.EF's unit (about one dungeon run = 3); nil without data.
+local KIND_EFFORT = { V = "V", C = "C", A = "A", Q = "Q", D = "D", R = "R", W = "W", P = "P", X = "X" }
+local function sourceEffort(rec, ef)
+    local k = rec[1]
+    if k == "D" then
+        local v, p = rec[4], nil
+        if type(v) == "number" then p = v > 1 and v / 100 or v
+        elseif type(v) == "string" then
+            local n = tonumber((v:gsub(",", ".")):match("%d+%.?%d*"))
+            p = n and n / 100
+        end
+        p = (p and p > 0) and p or 0.15
+        return math.min(ef.DMAX or 30, (ef.D or 3) / p)
+    end
+    local key = KIND_EFFORT[k]
+    return key and ef[key] or nil
+end
+Gear.SourceEffort = sourceEffort
+
+-- Orders the options within tie percent of the best by effort (cheapest first), the score
+-- deciding among equal efforts; an option moved ahead of a better one is marked easier. Scores
+-- are never changed.
+local function effortOrder(list, tie)
+    if not tie or tie <= 0 or #list < 2 then return end
+    local top = list[1][2]
+    local floor = top - math.abs(top) * tie / 100
+    local n = 0
+    for i, e in ipairs(list) do
+        if e[2] >= floor then n = i else break end
+    end
+    if n < 2 then return end
+    local head = {}
+    for i = 1, n do head[i] = list[i] end
+    table.sort(head, function(a, b)
+        local ea, eb = a.effort or 99, b.effort or 99
+        if ea ~= eb then return ea < eb end
+        if a[2] ~= b[2] then return a[2] > b[2] end
+        return a[1] < b[1]
+    end)
+    for i = 1, n do
+        local e = head[i]
+        list[i] = e
+        -- ahead of a better option
+        for j = i + 1, n do
+            if head[j][2] > e[2] then e.easier = true break end
+        end
+    end
+end
+
+-- The bonus of a set as a stat table per threshold: { [threshold] = stats or false (not scored) }.
+local setBonusCache, setBonusFor = {}, nil
+local function setBonuses(sid, set)
+    local S = type(ns.BIS) == "table" and ns.BIS.SET or nil
+    if setBonusFor ~= S then setBonusCache, setBonusFor = {}, S end
+    local b = setBonusCache[sid]
+    if b then return b end
+    b = {}
+    for _, pair in ipairs(type(set.b) == "table" and set.b or {}) do
+        local thr, text = tonumber(pair[1]), pair[2]
+        if thr then
+            local s = false
+            if type(text) == "string" and text ~= "" then
+                s = {}
+                for k, v in text:gmatch("([%w_]+)=([^;]+)") do
+                    local key = STAT["ITEM_MOD_" .. k] or STAT[k]
+                    v = tonumber(v)
+                    if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
+                end
+            end
+            b[thr] = s
+        end
+    end
+    setBonusCache[sid] = b
+    return b
+end
+
+-- item -> set id, for the sets of ns.BIS.SET.
+local setOfItem, setOfFor = {}, nil
+function Gear.SetOf(id)
+    local B = ns.BIS
+    local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
+    if setOfFor ~= S then
+        setOfItem, setOfFor = {}, S
+        for sid, set in pairs(S or {}) do
+            for _, item in ipairs(type(set.items) == "table" and set.items or {}) do setOfItem[item] = sid end
+        end
+    end
+    return setOfItem[id]
+end
+
+local SET_SLOTS = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET" }
+
+-- The set plan: for up to two sets with at least two reachable pieces, k pieces of the set plus
+-- the best single items elsewhere against the single picks; a set that wins takes its slots, its
+-- pieces carry set = { id, name, have, total, bonus } and the piece that completes the best
+-- threshold the bonus as SETB in its score. Linear per set (pieces sorted by their loss).
+local function setPlan(res, w, level, class)
+    local B = ns.BIS
+    local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
+    if not S then return end
+    local used = {}
+    for _ = 1, 2 do
+        local bestSet
+        for sid, set in pairs(S) do
+            local bon = setBonuses(sid, set)
+            local scored = false
+            for _, s in pairs(bon) do if s then scored = true break end end
+            if scored then
+                -- per free slot the best piece of the set among the options and its loss
+                local pieces = {}
+                for _, slot in ipairs(SET_SLOTS) do
+                    if not used[slot] then
+                        local list = res[slot]
+                        for i, e in ipairs(list) do
+                            if Gear.SetOf(e[1]) == sid then
+                                pieces[#pieces + 1] = { slot = slot, i = i, loss = list[1][2] - e[2] }
+                                break
+                            end
+                        end
+                    end
+                end
+                if #pieces >= 2 then
+                    table.sort(pieces, function(a, b)
+                        if a.loss ~= b.loss then return a.loss < b.loss end
+                        return a.slot < b.slot
+                    end)
+                    local loss, bonus = 0, 0
+                    for k = 1, #pieces do
+                        loss = loss + pieces[k].loss
+                        local s = bon[k]
+                        if s then bonus = bonus + Gear.Score(s, w, level, nil, class) end
+                        if bon[k] ~= nil and bonus - loss > 0 and (not bestSet or bonus - loss > bestSet.net) then
+                            bestSet = { sid = sid, set = set, k = k, net = bonus - loss, bonus = bonus, pieces = pieces }
+                        end
+                    end
+                end
+            end
+        end
+        if not bestSet then return end
+        local info = { id = bestSet.sid, name = bestSet.set.name, have = bestSet.k, total = #bestSet.set.items,
+            bonus = bestSet.bonus }
+        for k = 1, bestSet.k do
+            local p = bestSet.pieces[k]
+            local list = res[p.slot]
+            local e = table.remove(list, p.i)
+            e.set = info
+            table.insert(list, 1, e)
+            used[p.slot] = true
+        end
+        res.sets = res.sets or {}
+        res.sets[#res.sets + 1] = info
+    end
+end
+Gear.SetPlan = setPlan
+
 -- Best items per slot for one level range.
 -- opts: class, spec, kind ("Speedrun"/"Hardcore"), faction ("Alliance"/"Horde" short A/H or nil),
 -- sources (set of filter keys), level (upper end of the range); optional
--- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }).
--- Returns { [slotKey] = { {id, score}, ... best first }, plan = "2H" or "1H", missing = n, total = n }.
+-- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }),
+-- plan ("auto", "2H", "DW", "SHIELD"; auto picks the larger sum), suffix ("best": an item's best
+-- seen random suffix counts, "base": base stats only), sets (false: no set plan), tie (percent
+-- within which effort orders the options), cap ({ [row] = { HIT = %, SHIT = % } }: hit still
+-- useful per row).
+-- Returns { [slotKey] = { {id, score, effort, suffix, sc, easier, set}, ... best first }, plan =
+-- "2H" or "1H", twoHandScore, oneHandScore, dwScore, shieldScore, sets, missing = n, total = n }.
 function Gear.Best(opts)
     local d = data()
     local res = { plan = "1H", missing = 0, total = 0 }
@@ -761,14 +1032,37 @@ function Gear.Best(opts)
     local lists = { ["2H"] = {}, MH = {}, OH = {}, FINGER = {}, TRINKET = {} }
     local key = class .. "/" .. tostring(opts.spec) .. "/" .. tostring(opts.kind)
     if key ~= memoKey then memo, memoKey = {}, key end
-    local function score(id, st, place) return scoreOf(id, st, w, level, place, class) end
+    local caps = opts.cap
+    local useSuffix = opts.suffix ~= "base"
+    local B = ns.BIS
+    local ef = type(B) == "table" and type(B.EF) == "table" and B.EF or nil
+    local function score(id, st, place, group)
+        local cap = caps and caps[CAP_ROW[group] or ""]
+        local v = scoreOf(id, st, w, level, place, class, cap)
+        local suffix
+        if useSuffix then
+            local variants = Gear.SuffixStats(id)
+            for sfx, vs in pairs(variants or {}) do
+                local x = Gear.Score(vs, w, level, place, class, cap)
+                if x > v or (x == v and suffix and sfx < suffix) then v, suffix = x, sfx end
+            end
+        end
+        local e = { id, v, suffix = suffix, sc = st.SC or nil }
+        return e
+    end
     local exItem = opts.exclude and opts.exclude.item
 
     for id, row in pairs(d.I) do
         if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
-            local ok = false
+            local ok, effort = false, nil
             for i = Gear.FIRST_SOURCE, #row do
-                if Gear.SourceOk(d.S[row[i]], opts, row) then ok = true break end
+                local rec = d.S[row[i]]
+                if Gear.SourceOk(rec, opts, row) then
+                    ok = true
+                    if not ef then break end
+                    local x = sourceEffort(rec, ef)
+                    if x and (not effort or x < effort) then effort = x end
+                end
             end
             if ok and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok = false end
             -- engineering goggles and the like only with their switch, or with the profession
@@ -785,23 +1079,31 @@ function Gear.Best(opts)
                     if not failed then res.missing = res.missing + 1 end
                 elseif not (s.CLASSES and not s.CLASSES[class]) then
                     local group = GROUP[row[1]]
+                    local function put(list, e)
+                        e.effort = effort
+                        list[#list + 1] = e
+                    end
                     if group == "1H" or group == "MH" then
-                        lists.MH[#lists.MH + 1] = { id, score(id, s, "MH") }
+                        put(lists.MH, score(id, s, "MH", group))
                         if group == "1H" and dual then
-                            lists.OH[#lists.OH + 1] = { id, score(id, s, "OH"), weapon = true }
+                            local e = score(id, s, "OH", "OHW")
+                            e.weapon = true
+                            put(lists.OH, e)
                         end
                     elseif group == "OHW" then
-                        lists.OH[#lists.OH + 1] = { id, score(id, s, "OH"), weapon = true }
+                        local e = score(id, s, "OH", group)
+                        e.weapon = true
+                        put(lists.OH, e)
                     elseif group == "SHIELD" or group == "HELD" then
-                        lists.OH[#lists.OH + 1] = { id, score(id, s, nil) }
+                        put(lists.OH, score(id, s, nil, group))
                     elseif group == "2H" then
-                        lists["2H"][#lists["2H"] + 1] = { id, score(id, s, "2H") }
+                        put(lists["2H"], score(id, s, "2H", group))
                     elseif group == "RANGED" then
-                        res.RANGED[#res.RANGED + 1] = { id, score(id, s, "RANGED") }
+                        put(res.RANGED, score(id, s, "RANGED", group))
                     elseif group == "FINGER" or group == "TRINKET" then
-                        lists[group][#lists[group] + 1] = { id, score(id, s, nil) }
+                        put(lists[group], score(id, s, nil, group))
                     elseif res[group] then
-                        res[group][#res[group] + 1] = { id, score(id, s, nil) }
+                        put(res[group], score(id, s, nil, group))
                     end
                 end
             end
@@ -830,6 +1132,15 @@ function Gear.Best(opts)
     for _, sl in ipairs(Gear.SLOTS) do sort(res[sl.key]) end
     for _, list in pairs(lists) do sort(list) end
 
+    -- the set plan works on the best-first lists, before effort reorders a tie
+    if opts.sets ~= false then setPlan(res, w, level, class) end
+    local tie = tonumber(opts.tie)
+    for _, sl in ipairs(Gear.SLOTS) do
+        local first = res[sl.key][1]
+        if not (first and first.set) then effortOrder(res[sl.key], tie) end
+    end
+    for _, list in pairs(lists) do effortOrder(list, tie) end
+
     -- two rings and two trinkets: the same list, the second row starts after the first pick
     for _, pair in ipairs({ { "FINGER", "FINGER1", "FINGER2" }, { "TRINKET", "TRINKET1", "TRINKET2" } }) do
         local list = lists[pair[1]]
@@ -839,16 +1150,37 @@ function Gear.Best(opts)
         res[pair[3]] = second
     end
 
-    -- weapons: a two-hander against the best main hand plus the best off hand
-    local best2H = lists["2H"][1]
-    local bestMH = lists.MH[1]
-    local bestOH
-    for _, e in ipairs(lists.OH) do
-        if not bestMH or e[1] ~= bestMH[1] then bestOH = e break end
+    -- weapons: a two-hander against the best main hand plus the best off hand; the plan says which
+    -- off hands count (DW: weapons, SHIELD: shields and held items) or forces the two-hander
+    local plan = opts.plan or "auto"
+    if plan == "DW" and not dual then plan = "auto" end
+    local function offList(want)
+        local out = {}
+        local bestMH = lists.MH[1]
+        for _, e in ipairs(lists.OH) do
+            if (not bestMH or e[1] ~= bestMH[1]) and (want == nil or (want == "DW") == (e.weapon == true)) then
+                out[#out + 1] = e
+            end
+        end
+        return out
     end
-    local oneHand = (bestMH and bestMH[2] or 0) + (bestOH and bestOH[2] or 0)
-    res.twoHandScore, res.oneHandScore = best2H and best2H[2] or nil, (bestMH or bestOH) and oneHand or nil
-    if best2H and best2H[2] >= oneHand then
+    local function sum(oh)
+        local bestMH = lists.MH[1]
+        if not bestMH and not oh[1] then return nil end
+        return (bestMH and bestMH[2] or 0) + (oh[1] and oh[1][2] or 0)
+    end
+    local best2H = lists["2H"][1]
+    local ohAll = offList(nil)
+    local oneHand = sum(ohAll)
+    res.twoHandScore, res.oneHandScore = best2H and best2H[2] or nil, oneHand
+    if dual then res.dwScore = sum(offList("DW")) end
+    res.shieldScore = sum(offList("SHIELD"))
+    local use2H
+    if plan == "2H" then use2H = best2H ~= nil
+    elseif plan == "DW" or plan == "SHIELD" then use2H = false
+    else use2H = best2H ~= nil and best2H[2] >= (oneHand or 0) end
+    res.planWanted = plan
+    if use2H then
         res.plan = "2H"
         res.MAINHAND = lists["2H"]
         res.OFFHAND = {}
@@ -856,11 +1188,7 @@ function Gear.Best(opts)
     else
         res.plan = "1H"
         res.MAINHAND = lists.MH
-        local oh = {}
-        for _, e in ipairs(lists.OH) do
-            if not bestMH or e[1] ~= bestMH[1] then oh[#oh + 1] = e end
-        end
-        res.OFFHAND = oh
+        res.OFFHAND = (plan == "DW" or plan == "SHIELD") and offList(plan) or ohAll
         res.altMainhand = lists["2H"]
     end
     return res
@@ -879,7 +1207,7 @@ function Gear.ScoreLink(link, slotKey, opts)
     if slotKey == "MAINHAND" then kind = group == "2H" and "2H" or "MH"
     elseif slotKey == "OFFHAND" then kind = (group == "1H" or group == "OHW") and "OH" or nil
     elseif slotKey == "RANGED" then kind = "RANGED" end
-    return Gear.Score(s, w, opts.level, kind, opts.class)
+    return Gear.Score(s, w, opts.level, kind, opts.class, opts.cap and opts.cap[slotKey])
 end
 
 ---------------------------------------------------------------------------

@@ -152,13 +152,20 @@ end
 -- Computing
 ---------------------------------------------------------------------------
 
+-- One column through ns.BisFor (Bis.lua): the same calculation as the simulation, with the
+-- table's faction and source switches.
+local function bestOf(col)
+    local o = opts(col)
+    return ns.BisFor(o.class, o.spec, o.level, o)
+end
+
 local function compute()
     results = {}
     local g = settings()
     if g.view == "overview" then
-        for c = 1, #Gear.COLUMNS do results[c] = Gear.Best(opts(c)) end
+        for c = 1, #Gear.COLUMNS do results[c] = bestOf(c) end
     else
-        results[g.col] = Gear.Best(opts(g.col))
+        results[g.col] = bestOf(g.col)
     end
 end
 

@@ -219,10 +219,63 @@ python tools/build_dungeons.py [--wago [DIR ...]]
   quests, `MapData.lua` entrances). Their level ranges stay empty in the facts; the client's level
   (`forever_dungeons_client.json`) and the required levels of the dungeon's items give an estimate,
   marked with "~".
-- Once `build_bis.py` writes `ns.BIS.DG` (the same facts, with the `LFGDungeons` ranges and the
-  bosses' NPC ids), the planner takes that table and this file can go.
+- `build_bis.py` writes `ns.BIS.DG` (the same facts, with the bosses' NPC ids); the planner takes
+  that table. This file stays as the fallback without `BisData.lua`.
 
 Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the Lua file is current.
+
+## build_bis.py
+
+Builds `addon/Amisia/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
+`addon/Amisia/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
+install, no network:
+
+```
+python tools/build_bis.py [--wago ~/addons/_wago] [--measured tools/bis_measured.json]
+                          [--werte "AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.3 cr_CRIT=28:2"]
+                          [--sv ~/addons/_SavedVariables/Amisia.lua] [--att DIR] [--no-att]
+```
+
+Inputs:
+
+- **Client tables** (wago.tools CSV, downloaded by hand in the browser per Forever build; Syncthing
+  brings them to `~/addons/_wago`, files `<Table>.<build>.csv`; never committed). Read when present:
+  `ItemSparse`, `RandPropPoints`, `ItemSet`, `ItemSetSpell`, `SpellEffect`, `SpellItemEnchantment`,
+  `LFGDungeons`, `ContentTuning`. The used columns and rows go to `tools/bis_gamedata.json`
+  (committed); without CSVs the build runs from that file. wago does not publish
+  `ItemRandomProperties`, `ItemRandomSuffix` or any `gt*` table for Forever (2026-10-06).
+  `ItemSetSpell` (set bonuses) and `ContentTuning` (Classic dungeon level ranges) exist on wago but
+  were not downloaded yet: their parts stay empty until they are.
+- `addon/Amisia/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`,
+  AllTheThings' Forever data (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon,
+  `tools/drop_obs.json` for the drop base stock, and the SavedVariables for the random suffixes the
+  collector saw (`scan.suffix`).
+- **Conversions** (agility and intellect per percent crit, rating per percent, mana per spirit) are
+  documented defaults in the script (Classic's values; the level curve of ratings is TBC's). In-game
+  measurements correct them: `tools/bis_measured.json` holds `samples` (raw values, e.g. from the
+  self-test's `AMISIA-WERTE` line via `--werte`: `level`, `class`, `agi`, `int`, `crit`, `spellcrit`,
+  `cr_<KIND>=<rating>:<bonus %>`) and optional `overrides` (`rating60`, `agiPerCritScale`,
+  `intPerCritScale`, `manaPerSpirit5`). A measurement corrects a class's curve by its ratio.
+
+What it does:
+
+- **Weights** per spec and level bracket (the 12 columns of the planner, Speedrun and Hardcore) from
+  game mechanics: physical damage (white swings plus weapon specials, crit, hit, weapon speed above
+  a reference speed), spell damage and healing (a reference spell per spec, coefficient, crit, hit,
+  mana while it runs short), tanks (effective health; threat at 15 %). The reference character of a
+  bracket wears the best gear of the bracket's entry level under these very weights (fixpoint with a
+  shrinking step; the build stops when a weight does not settle within 1 %). Every spec has a unit,
+  a German reason (`why`) and its reference values (`ref`) for "Warum diese Gewichte".
+- **Computed stats** (`SC`) of armour and jewellery no scan has seen, from ItemSparse's allocations and
+  RandPropPoints' budget; written only when at least 98 % of the scanned items the tables know come
+  out exactly (2026-10-06: 100 % of 1,138). Weapons and trinkets get none (damage tables and equip
+  effects are not on wago).
+- **Sets** (`SET`), **random suffixes** seen on links (`RP`), **dungeons** (`DG`: the facts with
+  `bosses` as NPC ids and `bossNames`), the **drop base stock** (`O`, `OT`, `OI`) and the **effort**
+  per source kind (`EF`).
+
+`tools/tests/test_build_bis.py` (fixture CSVs) and `tools/tests/test_score_parity.py` (Python and
+`Gear.Score` equal to 0.01 on 200 real items per spec).
 
 ## build_dungeonquests.py
 

@@ -290,7 +290,8 @@ assert(has(joined, "40 Stärke x 2,0 = 80"), joined)
 assert(has(lines[1], "Kopf") and has(lines[1], "+2 Punkte, so viel wie 2 Angriffskraft"), lines[1])
 gear(127, "Treffer", "HEAD", { ITEM_MOD_HIT_RATING_SHORT = 20 }, { 1 })
 local hitText = table.concat(NS.BisExplain(127), "\n")
-assert(has(hitText, "Trefferwertung") and not has(hitText, "Obergrenze"), "hit without a note about a cap: " .. hitText)
+-- the stub has no GetCombatRatingBonus: hit counts without a cap, and the explanation says so
+assert(has(hitText, "Trefferwertung") and has(hitText, "Trefferwertung zählt ohne Obergrenze"), "hit without a cap: " .. hitText)
 
 ---------------------------------------------------------------------------
 -- here: the instance, a zone with its parents, a chosen place, the picker

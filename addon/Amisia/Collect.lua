@@ -38,12 +38,68 @@ local function addSource(id, source)
     if #list < MAX_SOURCES then list[#list + 1] = source end
 end
 
+-- Random suffixes ("...des Adlers"): which an item can roll is not in the client tables, so the
+-- collector keeps what it sees. scan.suffix[item][suffix id] = the item's stats with that suffix
+-- as C_Item.GetItemStats gives them for the link ("STRENGTH=5;STAMINA=4", keys without ITEM_MOD_
+-- and _SHORT, only those the planner scores); read by Gear.SuffixStats and tools/build_bis.py.
+local MAX_SUFFIX_ITEMS, MAX_SUFFIXES = 1500, 12
+
+-- The suffix id of an item link (item:id:enchant:gem1:gem2:gem3:gem4:suffix:...), or nil for none.
+function ns.LinkSuffix(link)
+    if type(link) ~= "string" then return nil end
+    local body = link:match("item:([%-%d:]+)")
+    if not body then return nil end
+    local i = 0
+    for field in (body .. ":"):gmatch("([^:]*):") do
+        i = i + 1
+        if i == 7 then
+            local v = tonumber(field)
+            return (v and v ~= 0) and v or nil
+        end
+    end
+    return nil
+end
+
+local function noteSuffix(id, link)
+    local suffix = ns.LinkSuffix(link)
+    if not suffix or not (C_Item and C_Item.GetItemStats) then return end
+    local s = ns.ScanDB()
+    s.suffix = type(s.suffix) == "table" and s.suffix or {}
+    local seen = s.suffix[id]
+    if seen and seen[suffix] then return end
+    if not seen then
+        local n = 0
+        for _ in pairs(s.suffix) do n = n + 1 end
+        if n >= MAX_SUFFIX_ITEMS then return end
+    else
+        local n = 0
+        for _ in pairs(seen) do n = n + 1 end
+        if n >= MAX_SUFFIXES then return end
+    end
+    local ok, raw = pcall(C_Item.GetItemStats, link)
+    if not ok or type(raw) ~= "table" then return end
+    local parts = {}
+    local STAT = ns.Gear and ns.Gear.STAT or {}
+    for k, v in pairs(raw) do
+        if type(k) == "string" and type(v) == "number" and v ~= 0 and STAT[k] then
+            parts[#parts + 1] = (k:gsub("^ITEM_MOD_", ""):gsub("_SHORT$", "")) .. "=" .. tostring(v)
+        end
+    end
+    if #parts == 0 then return end
+    table.sort(parts)
+    seen = seen or {}
+    s.suffix[id] = seen
+    seen[suffix] = table.concat(parts, ";")
+end
+ns.NoteSuffix = noteSuffix
+
 -- Records an item by id or link. Returns true when it is stored now, false when requested.
 function ns.NoteItem(idOrLink, source)
     if not enabled() then return nil end
     local id = tonumber(idOrLink) or ns.ItemID(idOrLink)
     if not id then return nil end
     addSource(id, source)
+    if type(idOrLink) == "string" then pcall(noteSuffix, id, idOrLink) end
     if ns.StoreItem(id) then return true end
     wanted[id] = source or false
     if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end

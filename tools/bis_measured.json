@@ -1,0 +1,212 @@
+{
+ "_comment": "In-game measurements for tools/build_bis.py (load_measured). samples: what the self-test's AMISIA-WERTE line says (parse_werte; add one with build_bis.py --werte \"<line>\"; 'line' keeps the original). A rating pair (rating, bonus %) pins the rating per percent of its kind. Agility or intellect per percent crit and the base crit (crit at none of the stat, talents included) are pinned only by two samples of the same class and level with different agility (intellect), e.g. the same character with an item taken off; a single point is listed as unpinned and changes nothing. A class nobody measured takes the mean factor of the measured ones (Classic's curve times that factor). overrides: direct values that win over derived ones (rating60, agiPerCritScale, intPerCritScale, baseCrit, baseSpellCrit, manaPerSpirit5).",
+ "overrides": {},
+ "samples": [
+  {
+   "agi": 35.0,
+   "ap": 156.0,
+   "apagi": 0.0,
+   "apstr": 106.0,
+   "block": 4.8,
+   "class": "SHAMAN",
+   "crit": 11.563,
+   "dodge": 5.483,
+   "hp": 509.0,
+   "int": 34.0,
+   "level": 18.0,
+   "line": "AMISIA-WERTE 1 SHAMAN 18 race=Orc hp=509 mana=553 str=53,53,15,0 agi=35,35,11,0 sta=53,53,15,0 int=34,34,0,0 spi=48,48,9,0 apstr=106 apagi=0 apsta=0 apint=0 apspi=0 crit=11.563 rcrit=2.403 sc2=10.2516 sc3=10.2516 sc4=10.2516 sc5=10.2516 sc6=10.2516 sc7=10.2516 dodge=5.483 parry=0 block=4.8 ap=156,0,0 rap=0,0,0 regen=12.001,0.001 hm=0,0 hr=0,0 hs=0,0 cm=0,0 cr=0,0 cs=0,0 am=0,0 ar=0,0 as=0,0 def=0,0 dr=0,0 pr=0,0 br=0,0 exp=0,0",
+   "mana": 553.0,
+   "parry": 0.0,
+   "race": "Orc",
+   "ratings": {
+    "BLOCK": [
+     0.0,
+     0.0
+    ],
+    "CRIT": [
+     0.0,
+     0.0
+    ],
+    "DEF": [
+     0.0,
+     0.0
+    ],
+    "DODGE": [
+     0.0,
+     0.0
+    ],
+    "EXP": [
+     0.0,
+     0.0
+    ],
+    "HASTE": [
+     0.0,
+     0.0
+    ],
+    "HIT": [
+     0.0,
+     0.0
+    ],
+    "PARRY": [
+     0.0,
+     0.0
+    ],
+    "SHIT": [
+     0.0,
+     0.0
+    ]
+   },
+   "rcrit": 2.403,
+   "spellcrit": 10.2516,
+   "spi": 48.0,
+   "sta": 53.0,
+   "str": 53.0
+  },
+  {
+   "agi": 33.0,
+   "ap": 154.0,
+   "apstr": 104.0,
+   "block": 4.8,
+   "class": "SHAMAN",
+   "crit": 11.3354,
+   "dodge": 5.2554,
+   "hp": 489.0,
+   "int": 34.0,
+   "level": 18.0,
+   "line": "AMISIA-WERTE 1 SHAMAN 18 race=Orc hp=489 mana=553 str=52,52,14,0 agi=33,33,9,0 sta=51,51,13,0 int=34,34,0,0 spi=48,48,9,0 apstr=104 crit=11.3354 rcrit=2.1754 sc2..7=10.2516 dodge=5.2554 block=4.8 ap=154,0,0 regen=12.001,0.001",
+   "mana": 553.0,
+   "race": "Orc",
+   "ratings": {},
+   "rcrit": 2.1754,
+   "spellcrit": 10.2516,
+   "spi": 48.0,
+   "sta": 51.0,
+   "str": 52.0
+  },
+  {
+   "agi": 23.0,
+   "ap": 71.0,
+   "apstr": 64.0,
+   "block": 4.76,
+   "class": "PALADIN",
+   "crit": 4.5816,
+   "dodge": 4.5816,
+   "hp": 252.0,
+   "int": 23.0,
+   "level": 9.0,
+   "line": "AMISIA-WERTE 1 PALADIN 9 race=Scourge hp=252 mana=230 str=32 agi=23 sta=34 int=23 spi=26 apstr=64 crit=4.5816 rcrit=3.0616 sc2..7=4.88 dodge=4.5816 parry=4.76 block=4.76 ap=71,14,0 regen=6.501",
+   "mana": 230.0,
+   "parry": 4.76,
+   "race": "Scourge",
+   "ratings": {},
+   "rcrit": 3.0616,
+   "spellcrit": 4.88,
+   "spi": 26.0,
+   "sta": 34.0,
+   "str": 32.0
+  },
+  {
+   "agi": 25.0,
+   "ap": 40.0,
+   "apagi": 25.0,
+   "apstr": 25.0,
+   "class": "HUNTER",
+   "crit": 5.425,
+   "dodge": 16.8875,
+   "hp": 134.0,
+   "int": 21.0,
+   "level": 5.0,
+   "line": "AMISIA-WERTE 1 HUNTER 5 race=Orc hp=134 mana=156 str=25 agi=25 sta=25 int=21 spi=23 apstr=25 apagi=25 crit=5.425 rcrit=4.385 sc2..7=5.9356 dodge=16.8875 ap=40,0,0 rap=40,0,0 regen=5.751",
+   "mana": 156.0,
+   "race": "Orc",
+   "ratings": {},
+   "rcrit": 4.385,
+   "spellcrit": 5.9356,
+   "spi": 23.0,
+   "sta": 25.0,
+   "str": 25.0
+  },
+  {
+   "agi": 28.0,
+   "ap": 16.0,
+   "apstr": 26.0,
+   "class": "PRIEST",
+   "crit": 3.3532,
+   "dodge": 4.9132,
+   "hp": 545.0,
+   "int": 61.0,
+   "level": 23.0,
+   "line": "AMISIA-WERTE 1 PRIEST 23 race=Scourge hp=545 mana=1084 str=26 agi=28 sta=45 int=61 spi=74 apstr=26 crit=3.3532 rcrit=5.1532 sc2..7=3.8866 dodge=4.9132 ap=16 regen=15.501 armor=778",
+   "mana": 1084.0,
+   "race": "Scourge",
+   "ratings": {},
+   "rcrit": 5.1532,
+   "spellcrit": 3.8866,
+   "spi": 74.0,
+   "sta": 45.0,
+   "str": 26.0
+  },
+  {
+   "agi": 28.0,
+   "ap": 16.0,
+   "class": "PRIEST",
+   "crit": 0.5932,
+   "dodge": 4.9132,
+   "hp": 545.0,
+   "int": 51.0,
+   "level": 23.0,
+   "line": "AMISIA-WERTE 1 PRIEST 23 race=Scourge hp=545 mana=934 str=26 agi=28 sta=45 int=51 spi=66 crit=0.5932 rcrit=5.1532 sc2..7=3.3806 dodge=4.9132 ap=16 regen=14.501,0.001",
+   "mana": 934.0,
+   "race": "Scourge",
+   "ratings": {},
+   "rcrit": 5.1532,
+   "regen": 14.501,
+   "spellcrit": 3.3806,
+   "spi": 66.0,
+   "sta": 45.0,
+   "str": 26.0
+  },
+  {
+   "agi": 33.0,
+   "ap": 119.0,
+   "apstr": 94.0,
+   "block": 9.92,
+   "class": "WARRIOR",
+   "crit": 5.1179,
+   "dodge": 5.0779,
+   "hp": 419.0,
+   "int": 25.0,
+   "level": 15.0,
+   "line": "AMISIA-WERTE 1 WARRIOR 15 race=Troll hp=419 mana=0 str=47 agi=33 sta=46 int=25 spi=24 apstr=94 crit=5.1179 rcrit=4.3579 sc=0 dodge=5.0779 parry=4.92 block=9.92 ap=119,0,0 rap=61,0,0 armor=888",
+   "mana": 0.0,
+   "parry": 4.92,
+   "race": "Troll",
+   "ratings": {},
+   "rcrit": 4.3579,
+   "spi": 24.0,
+   "sta": 46.0,
+   "str": 47.0
+  },
+  {
+   "agi": 33.0,
+   "ap": 107.0,
+   "apstr": 82.0,
+   "block": 9.92,
+   "class": "WARRIOR",
+   "crit": 5.1179,
+   "dodge": 5.0779,
+   "hp": 369.0,
+   "int": 25.0,
+   "level": 15.0,
+   "line": "AMISIA-WERTE 1 WARRIOR 15 race=Troll hp=369 mana=0 str=41 agi=33 sta=41 int=25 spi=24 apstr=82 crit=5.1179 rcrit=4.3579 dodge=5.0779 parry=4.92 block=9.92 ap=107,0,0",
+   "mana": 0.0,
+   "parry": 4.92,
+   "race": "Troll",
+   "ratings": {},
+   "rcrit": 4.3579,
+   "spi": 24.0,
+   "sta": 41.0,
+   "str": 41.0
+  }
+ ]
+}

@@ -18,7 +18,8 @@ for _, token in ipairs(NS.GEAR_WEIGHTS.order) do
     local specs = Gear.Specs(token)
     assert(#specs >= 1, token .. " has specs")
     for _, sp in ipairs(specs) do
-        assert(sp.all or (#sp.Speedrun == 6 and #sp.Hardcore == 6), token .. " " .. sp.key .. " has six brackets")
+        assert(#sp.Speedrun == #Gear.COLUMNS and #sp.Hardcore == #Gear.COLUMNS, token .. " " .. sp.key .. " has twelve brackets")
+        assert(sp.unit and sp.why and #sp.ref == #Gear.COLUMNS, token .. " " .. sp.key .. " explains its weights")
         for _, lvl in ipairs({ 1, 9, 10, 35, 60 }) do
             assert(Gear.Weights(token, sp.key, "Speedrun", lvl), "weights for " .. token .. " " .. sp.key .. " at " .. lvl)
         end
