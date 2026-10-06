@@ -27,9 +27,10 @@ local L = {
     firstMin = 90, firstSpread = 120,   -- the first announcement 90 to 210 s after the login
     every = 1800,                       -- later ones at most every 30 minutes, after new records
     tick = 5,
-    ciWait = 60, crWait = 180,          -- seconds the bucket list and a blob may take (a busy sender
-                                        -- answers one blob per 20 s and 40 parts per 10 minutes)
+    ciWait = 60, crWait = 180,          -- seconds the bucket list and a blob may take (a sender answers
+                                        -- within it, or says with CW how long to wait)
     retries = 2,                        -- a pull that missed answers is tried again this often
+    missMax = 2, missWait = 600,        -- after this many missed blobs a pull stops and waits
     askKeep = 600,
     crPerHour = 40,
     serveGap = 20, partsWindow = 600, partsMax = 40,
@@ -38,6 +39,10 @@ local L = {
     peerKeep = 1800, peersMax = 10, pullJitter = 30,
     serveMax = 12, serveKeep = 1200, servePeers = 2, activeKeep = 120,
     busyWait = 120,
+    doneWait = 3600,                    -- CW once the asker's share (or the session's bytes) is spent
+    cwReserve = 1024,                   -- bytes a CW may go beyond the session's cap
+    minParts = 5,                       -- a blob waits for at least this much room in the parts window
+    answerMargin = 15,                  -- a blob must leave this long before the asker's wait ends
     senderMax = 1500,                   -- records taken from one sender in a session (new or merged)
     knownMax = 45, ciEntries = 20,
     crBuckets = 12, crChars = 220,      -- buckets and characters of one request
@@ -50,8 +55,11 @@ local KIND_INDEX = { q = 1, s = 2, w = 3 }
 local PART_OVERHEAD = 45
 
 local stats = { bytes = 0, cv = 0, cq = 0, ci = 0, cr = 0, cw = 0, served = 0, blobs = 0, records = 0, new = 0, merged = 0,
-                bad = 0, unasked = 0, refused = 0, pulls = 0, capped = 0, busy = 0, other = 0 }
+                missed = 0, bad = 0, unasked = 0, refused = 0, pulls = 0, capped = 0, busy = 0, other = 0 }
 local crTimes = {}
+local crFirst = {}        -- "<kind><bb>" of a request's first bucket -> when it was sent (Comm takes one per
+                          -- 60 s for the same first field and drops the rest)
+local KEY_GAP = 61
 local asked = {}          -- "<kind><first bb>|lower name" -> { at, kind, b (first bucket), bs = { [bucket] = true } }
 local peers = {}          -- { name, low, kinds, at, nb, retry }
 local pull                -- { name, low, kinds, at, retry, missed, wants, wi, kind, stage, parts, n, got, crs, akey, deadline }
@@ -124,9 +132,12 @@ local function charge(n, low)
     if low then askerOf(low).bytes = askerOf(low).bytes + n end
 end
 
-local function send(kind, fields, chan, target, key, low)
+local function send(kind, fields, chan, target, key, low, reserve)
     local n = #"Amisia" + #tostring(ns.SYNC_PROTO) + #kind + 1 + #table.concat(fields, "\t")
-    if not afford(n, low) then
+    if reserve then
+        -- a CW answers a request even when the bytes are spent, within a small reserve
+        if stats.bytes + n > L.sessionBytes + L.cwReserve then return false end
+    elseif not afford(n, low) then
         debugLine("Sendegrenze erreicht.")
         return false
     end
@@ -342,6 +353,21 @@ nextKind = function()
     if not send("CQ", { kind }, "WHISPER", pull.name) then pull = nil end
 end
 
+-- An answer that did not come (timeout, a bad blob): the next request, or after missMax misses the
+-- pull stops and the sender is asked again after missWait (retries at most).
+local function missed()
+    pull.missed = pull.missed + 1
+    stats.missed = stats.missed + 1
+    if pull.missed >= L.missMax then
+        if pull.retry < L.retries then
+            queuePeer(pull.name, pull.kinds, now(), now() + L.missWait + math.random() * L.pullJitter, pull.retry + 1)
+        end
+        pull = nil
+        return startNext()
+    end
+    return nextCR()
+end
+
 local function hourCount()
     local t, keep = now(), {}
     for _, at in ipairs(crTimes) do
@@ -357,6 +383,26 @@ nextCR = function()
         debugLine("Anfragen der Stunde erreicht.")
         return stopPull(true)
     end
+    -- the first bucket must not have led a request in the last minute (the sender's Comm would drop
+    -- it): another one goes first, or the request waits
+    local t, soonest = now(), math.huge
+    for k, at in pairs(crFirst) do
+        if t - at >= KEY_GAP then crFirst[k] = nil end
+    end
+    local pick
+    for i, b in ipairs(pull.crs) do
+        local at = crFirst[("%s%02x"):format(pull.kind, b)]
+        if not at then
+            pick = i
+            break
+        end
+        soonest = math.min(soonest, at + KEY_GAP)
+    end
+    if not pick then
+        pull.stage, pull.akey, pull.deadline = "gap", nil, soonest
+        return
+    end
+    if pick > 1 then table.insert(pull.crs, 1, table.remove(pull.crs, pick)) end
     local buckets = indexNow().kinds[pull.kind].buckets
     local fields, bs, len = {}, {}, 0
     while #pull.crs > 0 and #fields < 2 * L.crBuckets do
@@ -378,6 +424,7 @@ nextCR = function()
     local first = tonumber(fields[1]:sub(2), 16)
     if not send("CR", fields, "WHISPER", pull.name) then return stopPull(false) end
     crTimes[#crTimes + 1] = now()
+    crFirst[fields[1]] = now()
     local akey = fields[1] .. "|" .. pull.low
     asked[akey] = { at = now(), kind = pull.kind, b = first, bs = bs, hs = pull.hs }
     pull.stage, pull.akey, pull.deadline = "CK", akey, now() + L.crWait
@@ -460,7 +507,8 @@ ns.CommOn("CW", function(sender, f, chan)
     if not name or name:lower() ~= pull.low then return end
     stats.busy = stats.busy + 1
     if pull.akey then asked[pull.akey] = nil end
-    local wait = math.max(30, math.min(tonumber(f[1]) or L.busyWait, 3600))
+    -- a minute at least: the sender's Comm takes one question of a kind per minute
+    local wait = math.max(KEY_GAP, math.min(tonumber(f[1]) or L.busyWait, 3600))
     queuePeer(pull.name, pull.kinds, now(), now() + wait + math.random() * L.pullJitter)
     pull = nil
     startNext()
@@ -522,10 +570,7 @@ ns.CommOnBlob("CK", function(sender, tbl, chan, key)
         stats.bad = stats.bad + 1
         debugLine("Ungültige Quellen-Daten verworfen.")
         asked[ask.akey] = nil
-        if pull and pull.akey == ask.akey then
-            pull.missed = pull.missed + 1
-            nextCR()
-        end
+        if pull and pull.akey == ask.akey then missed() end
         return
     end
     stats.blobs = stats.blobs + 1
@@ -559,7 +604,7 @@ ns.CommOnBlob("CK", function(sender, tbl, chan, key)
             local bs = {}
             for b in pairs(ask.bs) do bs[#bs + 1] = b end
             table.sort(bs)
-            for i = #bs, 1, -1 do table.insert(pull.crs, 1, bs[i]) end
+            for _, b in ipairs(bs) do pull.crs[#pull.crs + 1] = b end
         end
         nextCR()
     end
@@ -596,13 +641,16 @@ local function busyFor(low)
     return n >= L.servePeers
 end
 
-local function shareLeft(low) return askerOf(low).bytes < L.sessionBytes / L.askerShare end
-local function sendCW(name, low) send("CW", { tostring(L.busyWait) }, "WHISPER", name, nil, low) end
+local function shareLeft(low) return askerOf(low).bytes < L.sessionBytes / L.askerShare and stats.bytes < L.sessionBytes end
+-- busy: come back in wait seconds (default busyWait); a request is never left without an answer
+local function sendCW(name, low, wait)
+    send("CW", { tostring(math.max(1, math.min(3600, math.floor(wait or L.busyWait)))) }, "WHISPER", name, nil, low, true)
+end
 
 ns.CommOn("CQ", function(sender, f, chan)
     fromMember(sender, chan, function(name)
         local low = name:lower()
-        if not shareLeft(low) then return end
+        if not shareLeft(low) then return sendCW(name, low, L.doneWait) end
         if busyFor(low) then return sendCW(name, low) end
         askerOf(low).at = now()
         local kind = f[1]
@@ -629,7 +677,7 @@ end)
 ns.CommOn("CR", function(sender, f, chan)
     fromMember(sender, chan, function(name)
         local low = name:lower()
-        if not shareLeft(low) then return end
+        if not shareLeft(low) then return sendCW(name, low, L.doneWait) end
         local kind, b = f[1]:sub(1, 1), tonumber(f[1]:sub(2), 16)
         local buckets = indexNow().kinds[kind].buckets
         local ids = {}
@@ -668,8 +716,10 @@ local function wire(kind, ids)
     return t
 end
 
--- The longest front of ids that packs into one blob (20 parts, 60 records); a cut one says so (m).
-local function fit(kind, ids)
+-- The longest front of ids that packs into one blob (maxParts, 20 at most; 60 records); a cut one
+-- says so (m).
+local function fit(kind, ids, maxParts)
+    maxParts = math.min(maxParts or L.blobParts, L.blobParts)
     local n = math.min(#ids, L.blobRecords)
     for _ = 1, 8 do
         local list = {}
@@ -679,9 +729,9 @@ local function fit(kind, ids)
         local packed = ns.CommPack(tbl)
         if not packed then return nil end
         local parts = math.ceil(#packed / 200)
-        if parts <= L.blobParts then return tbl, packed end
+        if parts <= maxParts then return tbl, packed end
         if n <= 1 then return nil end
-        n = math.max(1, math.min(n - 1, math.floor(n * L.blobParts / parts * 0.95)))
+        n = math.max(1, math.min(n - 1, math.floor(n * maxParts / parts * 0.95)))
     end
     return nil
 end
@@ -710,8 +760,22 @@ local function nextServe()
     return best and best.i
 end
 
--- One blob of a waiting request when the gaps allow it; what does not fit is left for a later round
--- (the bucket still differs then).
+-- Seconds until the parts window has room for need parts.
+local function windowFree(need)
+    local over = partsRecent() + need - L.partsMax
+    if over <= 0 then return 0 end
+    local t = now()
+    for _, p in ipairs(partsLog) do
+        over = over - p[2]
+        if over <= 0 then return p[1] + L.partsWindow - t end
+    end
+    return L.partsWindow
+end
+
+-- One blob of a waiting request when the gaps allow it, sized to what is left of the asker's share
+-- and of the parts window; a cut blob says so (m) and the asker asks for the rest at once. A
+-- request that cannot be answered in time gets a CW with the wait instead: once the share is
+-- spent a long one, while the parts window is full the time until it has room.
 local function serveOne()
     if #serve == 0 or not canTalk() then return end
     local t = now()
@@ -719,18 +783,36 @@ local function serveOne()
     local i = nextServe()
     if not i then return end
     local s = serve[i]
-    local tbl, packed = fit(s.kind, s.ids)
-    if not tbl then
+    local a = askerOf(s.low)
+    local left = math.min(L.sessionBytes - stats.bytes, L.sessionBytes / L.askerShare - a.bytes)
+    local maxParts = math.min(L.blobParts, math.floor(left / (200 + PART_OVERHEAD)))
+    if maxParts < 1 then
+        debugLine("Sendegrenze erreicht.")
         table.remove(serve, i)
+        return sendCW(s.name, s.low, L.doneWait)
+    end
+    local room = L.partsMax - partsRecent()
+    local need = math.min(maxParts, L.minParts)
+    if room < need then
+        local wait = windowFree(need)
+        if t + wait > s.at + L.crWait - L.answerMargin then
+            table.remove(serve, i)
+            sendCW(s.name, s.low, math.ceil(wait))
+        end
         return
     end
+    local tbl, packed = fit(s.kind, s.ids, math.min(maxParts, room))
+    if not tbl then
+        -- not even one record fits into what is left
+        table.remove(serve, i)
+        return sendCW(s.name, s.low, maxParts < L.blobParts and L.doneWait or L.busyWait)
+    end
     local parts = math.ceil(#packed / 200)
-    if partsRecent() + parts > L.partsMax then return end
     local estimate = #packed + parts * PART_OVERHEAD
     if not afford(estimate, s.low) then
         debugLine("Sendegrenze erreicht.")
         table.remove(serve, i)
-        return
+        return sendCW(s.name, s.low, L.doneWait)
     end
     local ok, n, bytes = ns.CommSendBlob("CK", blobKey(s.kind, s.b), tbl, "WHISPER", s.name, { low = true, when = canTalk })
     table.remove(serve, i)
@@ -738,7 +820,6 @@ local function serveOne()
     charge(bytes or estimate, s.low)
     stats.served = stats.served + 1
     lastBlob = t
-    local a = askerOf(s.low)
     a.served, a.at = t, t
     partsLog[#partsLog + 1] = { t, n or parts }
 end
@@ -752,10 +833,11 @@ local function tick()
     if pull and not canTalk() then
         stopPull(true)
     elseif pull and t > pull.deadline then
-        if pull.stage == "CK" then
-            if pull.akey then asked[pull.akey] = nil end
-            pull.missed = pull.missed + 1
+        if pull.stage == "gap" then
             nextCR()
+        elseif pull.stage == "CK" then
+            if pull.akey then asked[pull.akey] = nil end
+            missed()
         else
             pull = nil
         end
