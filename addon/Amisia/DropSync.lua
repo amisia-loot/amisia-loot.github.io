@@ -277,13 +277,35 @@ local function wantsOf(weeks)
     return out
 end
 
+-- The records an announcement holds over its weeks.
+local function heldBy(weeks)
+    local n = 0
+    for w = 0, 3 do n = n + (weeks[w] and weeks[w].n or 0) end
+    return n
+end
+
+-- A full list loses the announcement worth least: one that holds nothing this client lacks, else
+-- the one with the fewest records, the oldest of those. (Dropping the oldest would let a burst of
+-- half-pulled announcements push out the senders that hold everything; those announce once, so a
+-- client could stay short for the session.)
+local function evictPeer()
+    local worst, worstUseless, worstN
+    for i, p in ipairs(peers) do
+        local useless, n = #wantsOf(p.weeks) == 0, heldBy(p.weeks)
+        if not worst or (useless and not worstUseless) or (useless == worstUseless and n < worstN) then
+            worst, worstUseless, worstN = i, useless, n
+        end
+    end
+    table.remove(peers, worst)
+end
+
 local function queuePeer(name, weeks, at, nb)
     local low = name:lower()
     for i, p in ipairs(peers) do
         if p.low == low then table.remove(peers, i) break end
     end
     peers[#peers + 1] = { name = name, low = low, weeks = weeks, at = at or now(), nb = nb or now() }
-    while #peers > L.peersMax do table.remove(peers, 1) end
+    while #peers > L.peersMax do evictPeer() end
 end
 
 -- Stops the pull; a peer that was cut off by the conditions (not by silence) waits again.
@@ -445,6 +467,13 @@ ns.CommOn("DI", function(sender, f, chan)
                 end
             end
         end
+    end
+    -- in a random order: the listeners of one sender pull other buckets first, so what they
+    -- announce next differs and they can pull from each other (in the sender's order they all
+    -- held the same first buckets, and the guild waited half an hour for the next announcements)
+    for j = #drs, 2, -1 do
+        local k = math.random(j)
+        drs[j], drs[k] = drs[k], drs[j]
     end
     pull.drs, pull.stage = drs, "DR"
     nextDR()
