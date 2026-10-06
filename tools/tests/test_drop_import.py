@@ -208,25 +208,3 @@ def test_the_tables_escape_what_they_show():
     assert 'icoHTML(' in body and ",0,false)" in body.replace(' ', ''), 'observation rows draw items without a link'
     assert 'wowhead' not in body.lower()
 
-
-def test_the_twin_still_builds(tmp_path):
-    out_file, data = tmp_path / 'twin.html', tmp_path / 'data.json'
-    data.write_text('{}', encoding='utf-8')
-    p = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build_twin.py'), str(out_file), str(data)],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    assert p.returncode == 0, p.stderr.decode('utf-8', 'replace')
-    twin = out_file.read_text(encoding='utf-8')
-    assert 'function dropTables(' in twin and 'id="view-drops"' in twin, 'the loot tables stay in the twin'
-
-
-def test_the_twin_copies_the_observations_instead_of_downloading_them(tmp_path):
-    out_file, data = tmp_path / 'twin.html', tmp_path / 'data.json'
-    data.write_text('{}', encoding='utf-8')
-    p = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build_twin.py'), str(out_file), str(data)],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    assert p.returncode == 0, p.stderr.decode('utf-8', 'replace')
-    twin = out_file.read_text(encoding='utf-8')
-    for bad in ('createObjectURL', 'blob:', ' download>', ' download=', '.download', 'Download observations'):
-        assert bad not in twin, 'the artifact viewer allows no downloads: ' + bad
-    assert 'id="dropObsText"' in twin and 'id="dropObsCopy"' in twin and 'readonly' in twin.split('id="dropObsText"')[1][:80]
-    assert 'navigator.clipboard.writeText(ta.value)' in twin.split("$('#dropObsCopy')")[1][:300]

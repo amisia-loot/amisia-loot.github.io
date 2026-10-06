@@ -64,12 +64,3 @@ def test_the_page_explains_the_learned_list():
     body = src[i:src.index('\n}', i)]
     assert 'Object.keys(amBank.items)' in body and 'matsHere()' not in body
 
-
-def test_the_twin_still_builds(tmp_path):
-    out_file, data = tmp_path / 'twin.html', tmp_path / 'data.json'
-    data.write_text('{}', encoding='utf-8')
-    p = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'build_twin.py'), str(out_file), str(data)],
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    assert p.returncode == 0, p.stderr.decode('utf-8', 'replace')
-    twin = out_file.read_text(encoding='utf-8')
-    assert 'function matsHere(' in twin and 'The Amisia addon learns them on its own' in twin

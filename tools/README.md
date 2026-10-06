@@ -167,29 +167,6 @@ Draws `addon/Amisia/Media/Icons/Minimap.tga`, the round minimap button icon: the
 `--preview out.png` writes an enlarged PNG to look at. A new or renamed texture needs a full client
 restart before WoW shows it; `/reload` is not enough. Requires Pillow.
 
-## build_twin.py and twin_stamp.py
-
-The claude.ai copy of the ledger (the "twin") is built from `index.html`, never edited by hand.
-It has no database, so everything that needs Supabase is cut out of it.
-
-1. Read the twin's own `data.json` from the artifact, then build:
-
-   ```
-   python tools/build_twin.py <out>/index.html <the twin's data.json>
-   ```
-
-2. Publish the result to the artifact, together with every file under `data/`, `favicon.png` and
-   `logo.png` that changed.
-3. Record what was published:
-
-   ```
-   python tools/twin_stamp.py --published
-   ```
-
-`python tools/twin_stamp.py` without arguments lists what changed since the last publish. The
-pre-push hook in `.githooks/pre-push` runs it and warns, but never blocks the push. Turn it on
-once per clone with `git config core.hooksPath .githooks`.
-
 ## build_bossnames.py
 
 Builds `data/bossnames.js`: the boss name a localized client shows, mapped to the name the loot
