@@ -1793,7 +1793,8 @@ end))
 ---------------------------------------------------------------------------
 
 local VIEW_OF = { goals = "goals", ziele = "goals", here = "here", hier = "here", wish = "wish", wunsch = "wish",
-    wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons" }
+    wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons", sim = "sim",
+    simulation = "sim" }
 
 -- Opens the gear page in a view ("goals", "here", "dungeons", "wish", "guild" or the German words)
 -- with a slot chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
