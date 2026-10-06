@@ -1,7 +1,8 @@
 -- Gear page: the best items of the own character per slot ("Ziele") with the
 -- three options of a slot, the buttons to wish or exclude and the explained score; what a place
--- still offers ("Hier"); the dungeon planner ("Dungeons": the next dungeon, every dungeon's value,
--- the chosen one's bosses, upgrades and quests, the waypoint to its entrance); the own wishlist with
+-- still offers ("Hier"); the dungeon planner ("Dungeons": the next dungeon, every dungeon's value
+-- sorted by level, by value or as the chain, the chosen one's bosses and upgrades or its quests with
+-- pre-quests, start and rewards, the waypoints to its entrance and quest givers); the own wishlist with
 -- its text for the website ("Wunschliste"); the guild wishes pasted from the website ("Gilde",
 -- import for officers). Plus the overview card.
 -- Everything shown comes from the caches of Bis.lua; a refresh never computes the targets again
@@ -739,6 +740,34 @@ local GOLD_TEXT = "|cffe3b857"
 
 local function signed(x) return ("%+d"):format(math.floor(x + 0.5)) end
 
+-- The dungeon list in the chosen order: "level" as the planner gives it, "value" the ranking first
+-- (then the rest by level), "chain" the chain's dungeons in its order (then the rest). Rows of the
+-- ranking and the chain carry their place (e.rank) and, for the chain, the chain's value.
+local function orderedDungeons(list, sort)
+    if sort ~= "value" and sort ~= "chain" then return list, nil end
+    local c = cached()
+    c.dorder = c.dorder or {}
+    local key = sort .. tostring(list)
+    if c.dorder[key] then return c.dorder[key][1], c.dorder[key][2] end
+    local top, chain, why = {}, nil, nil
+    if sort == "value" then
+        for i, e in ipairs(ns.DungeonRanking()) do top[#top + 1] = { e = e, rank = i, value = e.value } end
+    else
+        chain, why = ns.DungeonChain()
+        for i, st in ipairs(chain) do top[#top + 1] = { e = st.entry, rank = i, value = st.value } end
+    end
+    local out, seen = {}, {}
+    for _, t in ipairs(top) do
+        out[#out + 1] = setmetatable({ rank = t.rank, chainValue = sort == "chain" and t.value or nil }, { __index = t.e })
+        seen[t.e] = true
+    end
+    for _, e in ipairs(list) do
+        if not seen[e] then out[#out + 1] = e end
+    end
+    c.dorder[key] = { out, { chain = chain, why = why } }
+    return out, c.dorder[key][2]
+end
+
 -- The chosen dungeon: the saved one while the list has it, else the recommended, else the first.
 local function chosenDungeon(list, nextE)
     local key = state().dungeon
@@ -751,7 +780,7 @@ end
 local function fillDungeonRow(r, e)
     local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
     local dim = e.fit == "high" or e.fit == "easy" or e.fit == "later"
-    r.name:SetText(e.name .. raid)
+    r.name:SetText((e.rank and (e.rank .. ". ") or "") .. e.name .. raid)
     if dim then r.name:SetTextColor(0.56, 0.53, 0.64) else r.name:SetTextColor(1, 1, 1) end
     r.level:SetText(ns.Dungeons.RangeText(e))
     r.fit:SetText(ns.Dungeons.FitText(e))
@@ -762,7 +791,7 @@ local function fillDungeonRow(r, e)
         r.upgrades:SetText(tostring(e.upgrades))
         r.run:SetText(e.perRun > 0 and signed(e.perRun) or "0")
         r.quests:SetText(e.once > 0 and signed(e.once) or "0")
-        r.value:SetText(tostring(math.floor(e.value + 0.5)))
+        r.value:SetText(tostring(math.floor((e.chainValue or e.value) + 0.5)))
     else
         r.upgrades:SetText(""); r.run:SetText(""); r.quests:SetText(""); r.value:SetText("")
     end
@@ -789,7 +818,7 @@ local function dungeonTip(self)
     GameTooltip:Show()
 end
 
--- The rows of the chosen dungeon: a row per boss, its items below it, then the quests.
+-- The rows of the chosen dungeon: a row per boss with its items below it.
 local function detailItems(e)
     local c = cached()
     c.detail = c.detail or {}
@@ -802,12 +831,49 @@ local function detailItems(e)
             out[#out + 1] = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
         end
     end
-    for _, q in ipairs(e.quests or {}) do
-        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or ""), q = q,
-            id = q.best and q.best.id or nil }
-    end
     c.detail[e] = out
     return out
+end
+
+-- The quest rows of a dungeon: per quest a row, its pre-quests and its gear rewards below it.
+-- list, status as ns.DungeonQuests gives them.
+local function questItems(key)
+    local c = cached()
+    c.qdetail = c.qdetail or {}
+    local list, status = ns.DungeonQuests(key)
+    local kept = c.qdetail[key]
+    if kept and kept.list == list then return kept.out, status end
+    local out = {}
+    for _, q in ipairs(list) do
+        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or ""), q = q, qid = q.qid }
+        for _, n in ipairs(q.chain) do
+            out[#out + 1] = { kind = "pre", q = n, qid = n.qid }
+        end
+        for _, r in ipairs(q.rewards) do
+            out[#out + 1] = { kind = "reward", id = r.id, it = r, owned = r.owned }
+        end
+    end
+    c.qdetail[key] = { list = list, out = out }
+    return out, status
+end
+
+local STATE_TEXT = { done = "erledigt", active = "im Log" }
+local function questState(n) return n.done and "done" or n.active and "active" or nil end
+
+-- The level text of a quest in the quest log's colours (simplified): red when it cannot be taken yet
+-- or is five levels above, orange three above, yellow around the own level, green below, grey far below.
+local function questLevelText(q)
+    local text = ns.Dungeons.QuestLevelText(q)
+    if text == "" then return "" end
+    local my = tonumber(UnitLevel("player")) or 1
+    local lv = (q.level or 0) > 0 and q.level or (q.minLevel or 0)
+    local c
+    if (q.minLevel or 0) > my or lv - my >= 5 then c = "|cffff2020"
+    elseif lv - my >= 3 then c = "|cffff8040"
+    elseif lv - my >= -2 then c = "|cffffff00"
+    elseif lv - my >= -5 then c = "|cff40c040"
+    else c = GREY end
+    return c .. text .. "|r"
 end
 
 local function fillDetailRow(r, e)
@@ -828,19 +894,43 @@ local function fillDetailRow(r, e)
         r.slot:SetText(ns.BIS_SLOT_NAME[it.slotKey] or "")
         r.gain:SetText(gainText(it))
         r.rate:SetText(it.rate or "")
+    elseif e.kind == "reward" then
+        local it = e.it
+        r.name:SetText("      " .. marks(it) .. itemText(it.id))
+        r.slot:SetText(ns.BIS_SLOT_NAME[it.slotKey] or "")
+        r.gain:SetText(gainText(it))
+        r.rate:SetText(it.upgrade and (GREEN .. "Upgrade|r") or "")
     else
-        local q = e.q
-        r.name:SetText((q.done and GREY or "") .. "Quest: " .. e.text .. (q.done and "|r" or ""))
-        if q.best then
-            r.slot:SetText(ns.BIS_SLOT_NAME[q.best.slotKey] or "")
-            r.gain:SetText((q.done and GREY or GREEN) .. signed(q.best.gain) .. "|r")
-            r.rate:SetText(itemText(q.best.id))
-        else
-            r.slot:SetText("")
-            r.gain:SetText("")
-            r.rate:SetText(GREY .. "kein Upgrade|r")
-        end
+        -- a quest or one of its pre-quests: state, title, level, where it starts
+        local q, pre = e.q, e.kind == "pre"
+        local st = questState(q)
+        local title = pre and ("   Vorquest: " .. q.title .. (q.one and " (oder eine andere)" or "")) or (GOLD_TEXT .. e.text .. "|r")
+        r.name:SetText((q.done and (GREY .. title .. "|r")) or title)
+        r.slot:SetText(questLevelText(q))
+        r.gain:SetText(not pre and q.best and ((q.done and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
+        local where = ns.Dungeons.QuestStartText(q)
+        r.rate:SetText((st and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
     end
+end
+
+-- The tooltip of a quest row: title, level, state, where it starts, the chain, a hint on the click.
+local function questTip(self)
+    local e = self.item
+    if not e or not e.q then return end
+    local q = e.q
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(q.title, 1, 0.82, 0)
+    local lv = ns.Dungeons.QuestLevelText(q)
+    if lv ~= "" then GameTooltip:AddLine("Level " .. lv, 0.85, 0.85, 0.85) end
+    local st = questState(q)
+    GameTooltip:AddLine(st and STATE_TEXT[st] or "offen", 0.85, 0.85, 0.85)
+    local where = ns.Dungeons.QuestStartText(q)
+    if where ~= "" then GameTooltip:AddLine("Start: " .. where, 0.85, 0.85, 0.85, true) end
+    for _, n in ipairs(q.chain or {}) do
+        GameTooltip:AddLine(("Vorquest: %s%s"):format(n.title, n.done and " (erledigt)" or ""), 0.6, 0.6, 0.6, true)
+    end
+    if q.start ~= "X" then GameTooltip:AddLine("Klick: Wegpunkt zum Start", 0.31, 0.82, 0.42) end
+    GameTooltip:Show()
 end
 
 local function buildDungeons(f)
@@ -848,10 +938,27 @@ local function buildDungeons(f)
     local B = CreateFrame("Frame", nil, f)
     B:SetPoint("TOPLEFT", 0, -48)
     B:SetPoint("BOTTOMRIGHT", 0, 0)
-    B.next = W.Text(B, "GameFontNormal", 598)
+    B.next = W.Text(B, "GameFontNormal", 412)
     B.next:SetPoint("TOPLEFT", 4, -2)
     B.why = W.Text(B, "GameFontHighlightSmall", 598)
     B.why:SetPoint("TOPLEFT", 4, -18)
+    -- the order of the list: by level, by value (the ranking), the chain
+    B.sorts = {}
+    local sortDefs = { { "level", "Level", 50, "Nach Level", "Die Dungeons nach ihrem Levelbereich." },
+        { "value", "Wert", 46, "Rangliste", "Die lohnendsten Dungeons für dich zuerst: offene Quests plus zwei Läufe." },
+        { "chain", "Kette", 50, "Kette", "Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf." } }
+    local x = 0
+    for i = #sortDefs, 1, -1 do
+        local d = sortDefs[i]
+        local chip = W.Chip(B, d[2], d[3], function()
+            state().dsort = d[1]
+            ns.Refresh()
+        end)
+        chip:SetPoint("TOPRIGHT", -x, 0)
+        W.Tooltip(chip, d[4], d[5])
+        B.sorts[d[1]] = chip
+        x = x + d[3] + 4
+    end
     local h = head(B, -36)
     -- the list is 590 wide (12 px for its scroll bar)
     B.head = { name = col(h, 4, 170, "Dungeon"), level = col(h, 178, 46, "Level"), fit = col(h, 228, 56, "Passung"),
@@ -882,7 +989,14 @@ local function buildDungeons(f)
 
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, -250)
-    B.header:SetPoint("TOPRIGHT", -128, -250)
+    B.header:SetPoint("TOPRIGHT", -244, -250)
+    -- the lower part: the bosses or the quests of the chosen dungeon
+    B.parts = {}
+    B.parts.bosses = W.Chip(B, "Bosse", 54, function() state().dpart = "bosses"; ns.Refresh() end)
+    B.parts.bosses:SetPoint("TOPRIGHT", -184, -251)
+    B.parts.quests = W.Chip(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
+    B.parts.quests:SetPoint("TOPRIGHT", -126, -251)
+    W.Tooltip(B.parts.quests, "Quests", "Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest setzt den Wegpunkt zum Questgeber.")
     B.way = W.Button(B, "Wegpunkt", 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -897,14 +1011,22 @@ local function buildDungeons(f)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
-            if not e or not e.id then return end
+            if not e then return end
+            if (e.kind == "quest" or e.kind == "pre") and e.qid and button ~= "RightButton" then
+                say(ns.DungeonQuestWaypoint(e.qid))
+                return
+            end
+            if not e.id then return end
             if button == "RightButton" then
                 if e.kind == "item" then W.Menu(self, menuEntries(e, ns.BisOpts())) end
                 return
             end
             modifiedClick(e.id)
         end)
-        r:SetScript("OnEnter", function(self) if self.item and self.item.id then itemTooltip(self, self.item.id) end end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e and e.q then questTip(self) elseif e and e.id then itemTooltip(self, e.id) end
+        end)
         r:SetScript("OnLeave", hideTip)
     end, fillDetailRow)
     B.detail:SetPoint("TOPLEFT", 0, -280)
@@ -920,7 +1042,15 @@ local function fillDungeons(B)
     local list = ns.DungeonList()
     local nextE, why = ns.DungeonNext()
     local Dn = ns.Dungeons
-    if nextE then
+    local sort = state().dsort
+    if sort ~= "value" and sort ~= "chain" then sort = "level" end
+    for k, chip in pairs(B.sorts) do chip:SetOn(k == sort) end
+    local shown, extra = orderedDungeons(list, sort)
+    if sort == "chain" then
+        B.next:SetText(Dn.ChainText(extra.chain, extra.why))
+        B.why:SetText(#extra.chain > 0 and ("Annahme: je Boss das größte Upgrade und alle Quest-Upgrades bekommen." ..
+            (extra.why and (" " .. extra.why) or "")) or "")
+    elseif nextE then
         B.next:SetText(("Nächster Dungeon: %s · Level %s"):format(nextE.name, Dn.RangeText(nextE)))
         B.why:SetText(nextE.why or "")
     else
@@ -929,14 +1059,23 @@ local function fillDungeons(B)
     end
     local e = chosenDungeon(list, nextE)
     B.chosen = e and e.key or nil
-    B.list:SetItems(list)
+    B.list:SetItems(shown)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
-    -- another dungeon starts its bosses at the top
-    local detailKey = e and e.key or nil
+    local part = state().dpart == "quests" and "quests" or "bosses"
+    for k, chip in pairs(B.parts) do chip:SetOn(k == part) end
+    -- another dungeon or part starts at the top
+    local detailKey = e and (e.key .. part) or nil
     if detailKey ~= B.detailKey then B.detail.offset = 0 end
     B.detailKey = detailKey
-    if e then
-        B.header:SetHeaderText(e.name .. " · Bosse und Quests")
+    local status
+    if e and part == "quests" then
+        local rows
+        rows, status = questItems(e.key)
+        B.header:SetHeaderText(e.name .. " · Quests")
+        B.detail:SetItems(rows)
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e then
+        B.header:SetHeaderText(e.name .. " · Bosse")
         B.detail:SetItems(detailItems(e))
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
@@ -944,8 +1083,15 @@ local function fillDungeons(B)
         B.detail:SetItems({})
         B.way:SetEnabled(false)
     end
-    local hint = "Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."
-    if e and e.computed and #B.detail.items == 0 then hint = "In diesem Dungeon gibt es nichts mehr für dich. " .. hint end
+    local hint
+    if part == "quests" then
+        hint = Dn.QuestStatusText(status) or ""
+        if e and #B.detail.items == 0 and hint == "" then hint = "Für diesen Dungeon kennt Amisia keine Quests." end
+        hint = hint .. (hint ~= "" and " " or "") .. "Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich."
+    else
+        hint = "Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."
+        if e and e.computed and #B.detail.items == 0 then hint = "In diesem Dungeon gibt es nichts mehr für dich. " .. hint end
+    end
     B.hint:SetText(hint)
 end
 

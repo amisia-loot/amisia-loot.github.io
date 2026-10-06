@@ -1158,8 +1158,10 @@ C_Map.GetMapInfo = function(id)
     return { mapID = id, name = m.name, parentMapID = m.parent or 0, mapType = m.mapType or 3 }
 end
 -- Quests the character has turned in: STUB.questsDone[questID] = true (C_QuestLog).
-STUB.questsDone = {}
-_G.C_QuestLog = { IsQuestFlaggedCompleted = function(id) return STUB.questsDone[id] == true end }
+-- Quests in the log: STUB.questsActive[questID] = true (C_QuestLog.IsOnQuest).
+STUB.questsDone, STUB.questsActive = {}, {}
+_G.C_QuestLog = { IsQuestFlaggedCompleted = function(id) return STUB.questsDone[id] == true end,
+    IsOnQuest = function(id) return STUB.questsActive[id] == true end }
 _G.SOUNDKIT = { RAID_WARNING = 8959 }
 _G.PlaySound = function(kit) STUB.sounds[#STUB.sounds + 1] = kit; return true end
 _G.IsInInstance = function()

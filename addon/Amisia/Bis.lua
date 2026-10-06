@@ -527,6 +527,15 @@ local function context(o)
     return ctx
 end
 
+-- The worn scores per slot for the options, as a copy: { slot = { [slotKey] = score }, two = a
+-- two-hander is worn }. The dungeon chain equips items on it virtually.
+function ns.BisWornScores(o)
+    local ctx = context(o or ns.BisOpts())
+    local slot = {}
+    for k, v in pairs(ctx.slot) do slot[k] = v end
+    return { slot = slot, two = ctx.twoWorn }
+end
+
 local function minGain() return tonumber(ns.Get("bis.minGain")) or 2 end
 
 -- Whether a gain is worth calling an upgrade: more than a point and more than bis.minGain percent.
@@ -566,6 +575,12 @@ local function rowType(id)
     local _, _, _, loc, _, classID, sub = itemInstant(id)
     if type(loc) ~= "string" or loc == "" then return nil end
     return (loc:gsub("^INVTYPE_", "")), classID, sub, row
+end
+
+-- The slot group of an item ("HEAD", "FINGER", "2H", "1H", "SHIELD", ...), or nil when it is no gear.
+function ns.BisGroup(id)
+    local loc = rowType(id)
+    return loc and Gear.GROUP[loc] or nil
 end
 
 -- Everything about one item for the own character: { id, s, w, kind, group, slotKey, score, gain,
