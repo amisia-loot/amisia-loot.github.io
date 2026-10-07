@@ -2,6 +2,15 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.0 (2026-10-07)
+
+- Locales: ns.L with German keys and English for every other client locale (Locales/Locale.lua, enUS parts), ns.Num/FmtDay/FmtDate, N_ marker; English slash words (def.en, collisions are errors); run.py --locale enUS (text assertions shown, Lua errors and missing texts fail), tools/l10n.py scan/check, layout rules in deDE and enUS, build.py check runs both
+- WIP l10n: partial English routing gathered from the area worktrees (SelfTest.lua mid-edit, not yet green)
+- l10n: core, window, settings, overview, export, bank, tools, about and the self-test in English
+- l10n: the raid area in English (awards, rolls, soft-reserves, raid log, bench, sync, announcements and chat in the sender's language)
+- l10n: gear, BiS, dungeons, map, quests, professions, talents and the collector in English
+- l10n: GuildWishes delete button uses the button key; README section on languages, CLAUDE.md note
+
 ## 2.8.0 (2026-10-07)
 
 - UI snapshots and layout rules: the stub keeps the frame tree (kids, font objects, word wrap, the addon's own Show/Hide, template parts), GetStringWidth estimates per character and font (addon/tests/textwidth.py, shared with the rules); addon/tests/uidump.lua hands the tree over as JSON, addon/tests/ui_scene.lua is the world the shots show; tools/ui_layout.py solves the anchors, checks bounds, overlap, text fit, minimum widths, atlases and the page list, draws PNGs with an index.html and compares layout boxes
