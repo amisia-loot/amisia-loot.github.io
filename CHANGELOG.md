@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.3 (2026-10-07)
+
+- Talents: 34 px icons again, the action bar's thin rounded frame tinted by state
+
 ## 2.9.2 (2026-10-07)
 
 - Questgeber-Wegpunkte und Pins nur aus eigenen Beobachtungen: Dungeon-Guide nimmt CollectQuestOwnStart, Berufe-Orte von der Gilde ohne Wegpunkt; Tests zuerst
