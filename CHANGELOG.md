@@ -2,6 +2,14 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.2 (2026-10-07)
+
+- Questgeber-Wegpunkte und Pins nur aus eigenen Beobachtungen: Dungeon-Guide nimmt CollectQuestOwnStart, Berufe-Orte von der Gilde ohne Wegpunkt; Tests zuerst
+- Talents: nodes as the client draws them - 30 px icon with the action bar's rounded mask, the state frame at 1.25x, room between neighbouring frames
+- Quellen-Austausch schneller: 192 KB je Sitzung, halber Anteil je Fragendem, 120 Teile je 10 Minuten, ein Blob je 30 s, 90 Anfragen je Stunde, Ansagen eine Stunde gültig; Flusstest mit neuen Erwartungen und zwei Absendern je Stunde, Zahlen in der Spezifikation
+- Händler im Sammler über C_MerchantFrame.GetItemInfo (Forever 1.60.1.70245 hat GetMerchantItemInfo nicht mehr), alte Funktion als Rückfall; Selbsttest: GetMerchantItemInfo optional, C_MerchantFrame.GetItemInfo nötig
+- Lagerbeschreibung: Zauberdaten anfordern (C_Spell.RequestLoadSpellData), bei SPELL_DATA_LOAD_RESULT nachtragen, bis dahin "Beschreibung lädt ..."; Selbsttest meldet "noch nicht geladen" als WERT statt FEHLT, SPELL_DATA_LOAD_RESULT in der Ereignisliste
+
 ## 2.9.1 (2026-10-07)
 
 - Data rebuilt from the user's own client export (talents identical, profession reagents from SpellReagents); build_talents accepts the export's Index column
