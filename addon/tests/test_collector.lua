@@ -393,3 +393,13 @@ end
 print(("collector size at the caps: %d quests, %d vendors, %d mobs, budget count %d bytes, file text %d bytes"):format(
     counts.q, counts.s, counts.w, NS.CollectBytes(), text))
 assert(NS.CollectBytes() <= L.bytes and text <= L.bytes * 1.1, "the whole collector within its budget")
+
+-- a price of 0 (recorded by a client without the merchant API) is "unknown": the real price wins
+do
+    local a = "279;7;1454:6285:4514;7005:0::;Tamar"
+    local b = "280;7;1454:6285:4514;7005:82::;Tamar"
+    local ab, ba = NS.CollectMergeRecords("s", a, b), NS.CollectMergeRecords("s", b, a)
+    assert(ab and ab == ba and ab:find("7005:82::", 1, true), "the real price wins over 0 in both orders: " .. tostring(ab))
+    local abc = NS.CollectMergeRecords("s", ab, "281;7;1454:6285:4514;7005:60::;Tamar")
+    assert(abc and abc:find("7005:60::", 1, true), "between real prices the lower one: " .. tostring(abc))
+end

@@ -309,13 +309,20 @@ local function unionFaction(a, b)
     local hasH = a:find("H", 1, true) or b:find("H", 1, true)
     return (hasA and "A" or "") .. (hasH and "H" or "")
 end
+-- 0 is "price unknown" (a client without the merchant API answered nothing): any real price wins
+-- over it, else the lower one (still commutative and idempotent: 0 is the neutral element)
+local function joinPrice(a, b)
+    if a == 0 then return b end
+    if b == 0 then return a end
+    return math.min(a, b)
+end
 local function vendorItems(a, b)
     local set = {}
     for id, it in pairs(a) do set[id] = { price = it.price, flags = it.flags, rep = it.rep } end
     for id, it in pairs(b) do
         local x = set[id]
         if x then
-            x.price, x.flags, x.rep = math.min(x.price, it.price), unionFlags(x.flags, it.flags), pickText(x.rep, it.rep)
+            x.price, x.flags, x.rep = joinPrice(x.price, it.price), unionFlags(x.flags, it.flags), pickText(x.rep, it.rep)
         else
             set[id] = { price = it.price, flags = it.flags, rep = it.rep }
         end

@@ -437,7 +437,17 @@ def mark_collect_record(kind, text, how):
 
 # The join of Collector.lua: per field an own value beats a heard one; two own or two heard values
 # join (ids and texts: the smaller one there; lists: the union, capped at the smallest ids; levels
-# and instance: the larger; minimum level and pre-quest: the smallest above 0; prices: the lower).
+# and instance: the larger; minimum level and pre-quest: the smallest above 0; prices: the lower, 0 meaning
+# unknown).
+def _join_price(a, b):
+    """0 is "price unknown": a real price wins over it, else the lower one (as the addon's joinPrice)."""
+    if a == 0:
+        return b
+    if b == 0:
+        return a
+    return min(a, b)
+
+
 def _pick_text(a, b):
     if a == '':
         return b
@@ -465,7 +475,7 @@ def _vendor_items(a, b):
     for i, x in b.items():
         if i in out:
             y = out[i]
-            out[i] = {'price': min(y['price'], x['price']), 'flags': _flags(y['flags'], x['flags']), 'rep': _pick_text(y['rep'], x['rep'])}
+            out[i] = {'price': _join_price(y['price'], x['price']), 'flags': _flags(y['flags'], x['flags']), 'rep': _pick_text(y['rep'], x['rep'])}
         else:
             out[i] = dict(x)
     return {i: out[i] for i in sorted(out)[:COLLECT_LIMITS['vItems']]}
