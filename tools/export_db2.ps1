@@ -103,7 +103,9 @@ $OptionalTables = @(
     'ItemDamageAmmo', 'ItemArmorQuality', 'ItemArmorShield', 'ItemArmorTotal', 'ArmorLocation',
     'ItemRandomProperties', 'ItemRandomSuffix',
     # tools/build_professions.py: recipe -> profession, reagents, profession names
-    'SkillLineAbility', 'SpellReagents', 'SkillLine', 'LoadingScreens'
+    'SkillLineAbility', 'SpellReagents', 'SkillLine',
+    # tools/build_dungeonart.py: the loading screen of a dungeon
+    'LoadingScreens'
 )
 # The talent trees (tools/build_talents.py); a miss is only a warning like the optional ones.
 $TalentTables = @(
@@ -113,7 +115,8 @@ $TalentTables = @(
     'TraitTreeXTraitCurrency', 'SkillLineXTraitTree', 'SkillLine', 'SkillRaceClassInfo', 'ChrClasses',
     'ChrSpecialization', 'SpellDuration', 'SpellRadius', 'SpellAuraOptions'
 )
-$OptionalTables += $TalentTables
+# one list, every table once (SkillLine serves the professions and the talents)
+$OptionalTables = @(@($OptionalTables) + @($TalentTables) | Where-Object { $RequiredTables -notcontains $_ } | Select-Object -Unique)
 
 function Fail([string]$Message) {
     Write-Host "FEHLER: $Message" -ForegroundColor Red
