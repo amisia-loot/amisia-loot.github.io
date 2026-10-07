@@ -1272,6 +1272,224 @@ function ns.DungeonQuestWaypoint(qid)
 end
 
 ---------------------------------------------------------------------------
+-- The journal parts: the header image, the boss model, quest XP, the quest givers on the map
+---------------------------------------------------------------------------
+
+-- The texts of this part, in one place for the translation.
+local TEXT = {
+    xpSum = "Quest-EP offen: %s (draußen %s, im Dungeon %s)",
+    xpSumOne = "Quest-EP offen: %s (draußen %s, im Dungeon %s), 1 Quest ohne Wert",
+    xpSumMany = "Quest-EP offen: %s (draußen %s, im Dungeon %s), %d Quests ohne Wert",
+    xpNone = "Quest-EP: für %d offene Quests noch nicht gesehen",
+    xpEst = "~%d",
+    xpOther = "%d (Lvl %d)",
+    noGivers = "Für diesen Dungeon kennt Amisia keine Questgeber mit Ort.",
+    giver = "Questgeber %s",
+    giverInside = "Questgeber %s (im Dungeon)",
+    preFor = "%s (Vorquest für %s)",
+}
+D.TEXT = TEXT
+
+-- The client's own loading screen of a dungeon (DungeonArt.lua): file data id, kind ("n" a 4:3
+-- picture in a square texture, "w" a wide one); the general screen of its kind without its own; nil
+-- without the art data.
+function D.Art(key)
+    local A = ns.DUNGEON_ART
+    if type(A) ~= "table" then return nil end
+    local a = type(A.D) == "table" and A.D[key] or nil
+    if type(a) ~= "table" then
+        local e = factOf(key)
+        a = (e and e.kind == "raid") and A.raid or A.party
+    end
+    if type(a) ~= "table" or type(a[1]) ~= "number" then return nil end
+    return a[1], a[2] == "w" and "w" or "n"
+end
+
+-- The picture's proportions as the client shows it and the band of the texture that holds the
+-- picture (a 4:3 screen has the client's frame above and below, a wide one empty bands).
+local ART_SHAPE = {
+    n = { aspect = 4 / 3, cy = 0.5, top = 0.2, bottom = 0.8 },
+    w = { aspect = 2992 / 1684, cy = 0.5, top = 0.16, bottom = 0.84 },
+}
+
+-- The texture coordinates (left, right, top, bottom) of the middle of a picture of kind for a
+-- banner w x h, its proportions kept: the full width and a band of the height, or, where the
+-- picture is not tall enough, the middle of the width.
+function D.ArtCoords(kind, w, h)
+    local s = ART_SHAPE[kind] or ART_SHAPE.n
+    local want = w / h
+    local du, dv = 1, s.aspect / want
+    local room = s.bottom - s.top
+    if dv > room then
+        dv = room
+        du = want * dv / s.aspect
+    end
+    local l = (1 - du) / 2
+    local t = math.max(s.top, math.min(s.cy - dv / 2, s.bottom - dv))
+    return l, l + du, t, math.min(t + dv, s.bottom)
+end
+
+-- The NPC id of the boss a model shows: the hovered boss (a boss row of the list), else the one
+-- with the biggest gain per run, else the first one with an NPC id; nil when none has one.
+function D.ModelNpc(e, hovered)
+    local function npcOf(b) return type(b) == "table" and type(b.npc) == "number" and b.npc > 0 and b.npc or nil end
+    if npcOf(hovered) then return hovered.npc end
+    if type(e) ~= "table" or type(e.bosses) ~= "table" then return nil end
+    local best
+    for _, b in ipairs(e.bosses) do
+        if npcOf(b) and (not best or (b.perRun or 0) > (best.perRun or 0)) then best = b end
+    end
+    return best and best.npc or nil
+end
+
+-- The quest level of a quest node: the quest data's, else what the collector saw; nil unknown.
+local function questLevelOf(n)
+    if (n.level or 0) > 0 then return n.level end
+    local r = ns.CollectQuest and n.qid and ns.CollectQuest(n.qid)
+    if r and (r.qlevel or 0) > 0 then return r.qlevel end
+    return nil
+end
+
+-- The XP of a quest of ns.DungeonQuests for the own level: value, how, seenLevel (QuestXP.For);
+-- nil when never seen.
+function D.QuestXP(n)
+    if type(n) ~= "table" or not n.qid or not ns.QuestXP then return nil end
+    return ns.QuestXP.For(n.qid, questLevelOf(n))
+end
+
+-- "1150", "~925" (estimated), "900 (Lvl 16)" (seen at another level), "" without a value.
+function D.XPText(value, how, seen)
+    if not value then return "" end
+    if how == "scaled" then return TEXT.xpEst:format(value) end
+    if how == "other" and seen then return TEXT.xpOther:format(value, seen) end
+    return tostring(value)
+end
+
+-- The XP of the open quests of a quest list: { total, inside (start in the dungeon), outside,
+-- missing (open quests without a value), est (some value is an estimate) }.
+function D.XPSum(list)
+    local s = { total = 0, inside = 0, outside = 0, missing = 0, est = false }
+    for _, q in ipairs(list or {}) do
+        if not q.done then
+            local v, how = D.QuestXP(q)
+            if v then
+                s.total = s.total + v
+                if q.start == "I" then s.inside = s.inside + v else s.outside = s.outside + v end
+                if how == "scaled" or how == "other" then s.est = true end
+            else
+                s.missing = s.missing + 1
+            end
+        end
+    end
+    return s
+end
+
+-- "Quest-EP offen: 2050 (draußen 1150, im Dungeon 900), 1 Quest ohne Wert"; "" without open quests.
+function D.XPSumText(s)
+    if not s or (s.total == 0 and s.missing == 0) then return "" end
+    if s.total == 0 then return TEXT.xpNone:format(s.missing) end
+    local function num(v) return s.est and TEXT.xpEst:format(v) or tostring(v) end
+    if s.missing == 0 then return TEXT.xpSum:format(num(s.total), num(s.outside), num(s.inside)) end
+    if s.missing == 1 then return TEXT.xpSumOne:format(num(s.total), num(s.outside), num(s.inside)) end
+    return TEXT.xpSumMany:format(num(s.total), num(s.outside), num(s.inside), s.missing)
+end
+
+-- All quest givers of a dungeon on the world map (MapPins.lua draws them). The marked dungeon is
+-- kept in AmisiaDB.map.quests.
+local function mapDB()
+    if not AmisiaDB then return nil end
+    if type(AmisiaDB.map) ~= "table" and ns.MapMigrate then ns.MapMigrate(AmisiaDB) end
+    return type(AmisiaDB.map) == "table" and AmisiaDB.map or nil
+end
+
+-- The dungeon whose quest givers are marked, or nil.
+function ns.DungeonMarked()
+    local m = mapDB()
+    local key = m and m.quests
+    if type(key) ~= "string" or not factOf(key) then return nil end
+    return key
+end
+
+-- The givers to visit for a dungeon's open quests: per open quest not in the log the first open
+-- quest of its chain (the quest itself without one); a quest starting inside points to the
+-- entrance (to the giver's point inside where no entrance is known), one started by an item has
+-- no giver. One place per giver and point: { key, giver, label, points, quests = { titles }, inside }.
+local function givers(dkey)
+    local Map = ns.Map
+    if not Map or not Map.ParsePoints then return {} end
+    local out, byKey = {}, {}
+    for _, q in ipairs((ns.DungeonQuests(dkey))) do
+        if not q.done and not q.active and q.qid then
+            local node = q
+            for _, c in ipairs(q.chain or {}) do
+                if not c.done then node = c break end
+            end
+            local points, inside = {}, node.start == "I"
+            if not node.active and node.start ~= "X" then
+                if inside then
+                    local p = ns.DungeonEntrance(dkey)
+                    points = p and { p } or Map.ParsePoints(node.points)
+                else
+                    points = Map.ParsePoints(node.points)
+                end
+            end
+            if #points > 0 then
+                local giver = node.giver or "?"
+                local p1 = points[1]
+                local k = ("%s@%d:%d:%d"):format(giver, p1.map, math.floor(p1.x * 1000 + 0.5), math.floor(p1.y * 1000 + 0.5))
+                local place = byKey[k]
+                if not place then
+                    place = { key = "Q:" .. node.qid, giver = giver, label = (inside and TEXT.giverInside or TEXT.giver):format(giver),
+                        points = points, quests = {}, has = {}, inside = inside }
+                    byKey[k] = place
+                    out[#out + 1] = place
+                end
+                local title = node == q and q.title or TEXT.preFor:format(node.title, q.title)
+                if not place.has[title] then
+                    place.has[title] = true
+                    place.quests[#place.quests + 1] = title
+                end
+            end
+        end
+    end
+    return out
+end
+
+local marksKey, marksRes
+
+-- The places of the marked dungeon's givers (see givers), kept until the quests change.
+function ns.DungeonMarkPlaces()
+    local key = ns.DungeonMarked()
+    if not key then return {} end
+    local stamp = key .. ":" .. ns.DungeonMarkStamp()
+    if stamp ~= marksKey then marksKey, marksRes = stamp, givers(key) end
+    return marksRes
+end
+
+-- What the marks depend on, for the pins' cache.
+function ns.DungeonMarkStamp()
+    return ("%s:%d:%s:%s"):format(tostring(ns.DungeonMarked()), questGen, tostring(ns.DUNGEON_QUESTS), ns.BisStamp())
+end
+
+-- Marks every quest giver of a dungeon on the world map: the number of places, or nil and why.
+function ns.DungeonMarkQuests(dkey)
+    local m = mapDB()
+    if not m or not factOf(dkey) then return nil, NO_DATA end
+    local list = givers(dkey)
+    if #list == 0 then return nil, TEXT.noGivers end
+    m.quests = dkey
+    ns.Fire("MAP_MARKS")
+    return #list
+end
+
+-- Takes the marks away.
+function ns.DungeonClearMarks()
+    local m = mapDB()
+    if m then m.quests = nil end
+    ns.Fire("MAP_MARKS")
+end
+
+---------------------------------------------------------------------------
 -- What changes a result, the command
 ---------------------------------------------------------------------------
 

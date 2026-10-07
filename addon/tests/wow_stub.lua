@@ -596,6 +596,8 @@ for _, s in ipairs({ "", "-hover", "-pressed", "-pressedhover", "-open", "-disab
     STUB.atlases["common-dropdown-b-button" .. s] = { 143, 26 }
 end
 STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
+-- the quest icon of the map legend (Forever loads the mainline MapLegendFrameData): the quest giver marks
+STUB.atlases["QuestNormal"] = { 28, 28 }
 for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
     for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
 end

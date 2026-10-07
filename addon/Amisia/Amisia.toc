@@ -35,12 +35,14 @@ Drops.lua
 DropSync.lua
 Collector.lua
 CollectSync.lua
+QuestXP.lua
 GearData.lua [AllowLoadGameType camelot]
 GearWeights.lua [AllowLoadGameType camelot]
 BisData.lua [AllowLoadGameType camelot]
 MapData.lua [AllowLoadGameType camelot]
 DungeonData.lua [AllowLoadGameType camelot]
 DungeonQuestData.lua [AllowLoadGameType camelot]
+DungeonArt.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
 Bis.lua

@@ -2,7 +2,8 @@
 -- continent maps, through the map canvas's data provider interface (WorldMapFrame:AddDataProvider,
 -- AcquirePin with Amisia's own template from MapPin.xml). The provider only acquires and releases
 -- its own pins: it writes into none of the map's tables, hooks none of its methods and touches no
--- other frame of the map. Pins are display only; a click sets Amisia's target.
+-- other frame of the map. Pins are display only; a click sets Amisia's target. The quest givers of a
+-- dungeon marked from the dungeon planner (ns.DungeonMarkPlaces) get pins with the client's quest icon.
 local ADDON, ns = ...
 local Gear, Map, W = ns.Gear, ns.Map, ns.W
 
@@ -10,6 +11,12 @@ local TEMPLATE = "AmisiaMapPinTemplate"
 local MAX_PINS = 60
 local DOT = "Interface\\AddOns\\Amisia\\Media\\Icons\\dot"
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
+-- the quest giver marks: the client's quest icon of its map legend, else the classic gossip icon
+local QUEST_ATLAS, QUEST_ICON = "QuestNormal", "Interface\\GossipFrame\\AvailableQuestIcon"
+local MAX_MARKS = 40
+-- the texts of the quest giver marks, in one place for the translation
+local TEXT = { setTarget = "Ziel setzen", clearMarks = "Markierung der Questgeber entfernen",
+    hint = "Klick: Ziel setzen. Rechtsklick: mehr." }
 -- frame level types the world map defines (Blizzard_WorldMap); an unknown type would fall back to
 -- the canvas default
 local LEVEL, TARGET_LEVEL = "PIN_FRAME_LEVEL_AREA_POI", "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST"
@@ -139,6 +146,22 @@ local function samePoint(a, b)
     return a.map == b.map and math.abs(a.x - b.x) <= 0.001 and math.abs(a.y - b.y) <= 0.001
 end
 
+-- The marked quest givers on the shown map: spots { key, mark, giver, label, quests, point, x, y }.
+local function markSpots(mapID, kind, continent)
+    local out = {}
+    if not ns.DungeonMarkPlaces then return out end
+    for _, place in ipairs(ns.DungeonMarkPlaces()) do
+        for _, pt in ipairs(place.points) do
+            local x, y = project(pt, mapID, kind)
+            if x and #out < MAX_MARKS then
+                out[#out + 1] = { key = place.key, mark = true, giver = place.giver, label = place.label, quests = place.quests,
+                    point = pt, x = x, y = y, items = {}, continent = continent }
+            end
+        end
+    end
+    return out
+end
+
 local function build(mapID)
     local kind = mapKind(mapID)
     if kind ~= ZONE and kind ~= CONTINENT then return {} end
@@ -174,6 +197,7 @@ local function build(mapID)
             end
         end
     end
+    local marks = markSpots(mapID, kind, continent)
     -- the target: its spot is highlighted (kept even past the limit), else a pin of its own
     local t = ns.MapTarget()
     local late, extra       -- the target's spot past the limit, or a pin of its own
@@ -188,6 +212,14 @@ local function build(mapID)
                 end
             end
             if not at then
+                for _, s in ipairs(marks) do
+                    if s.key == t.key and samePoint(s.point, t) then
+                        s.target, at = true, 0
+                        break
+                    end
+                end
+            end
+            if not at then
                 extra = { key = t.key, label = t.label, point = { map = t.map, x = t.x, y = t.y }, x = x, y = y,
                     items = t.item and { { id = t.item } } or {}, continent = continent, target = true }
             elseif at > MAX_PINS then
@@ -196,6 +228,7 @@ local function build(mapID)
         end
     end
     for i = #out, MAX_PINS + 1, -1 do out[i] = nil end
+    for _, s in ipairs(marks) do out[#out + 1] = s end
     out[#out + 1] = late or extra
     return out
 end
@@ -208,7 +241,7 @@ local version = 0     -- bumped by the target, hidden places and the map setting
 function Map.PinPlaces(mapID)
     mapID = tonumber(mapID)
     if not mapID or not ns.MAP then return {} end
-    local stamp = ns.BisStamp() .. ":" .. version
+    local stamp = ns.BisStamp() .. ":" .. version .. ":" .. (ns.DungeonMarkStamp and ns.DungeonMarkStamp() or "")
     if stamp ~= cacheStamp then
         cache, cacheStamp = {}, stamp
     end
@@ -252,6 +285,10 @@ end
 
 -- The menu of a place (a pin, a row of the map page); a hidden place offers to show it again.
 local function placeMenu(e)
+    if e.mark then
+        return { { TEXT.setTarget, function() setTarget(e) end },
+            { TEXT.clearMarks, function() if ns.DungeonClearMarks then ns.DungeonClearMarks() end end } }
+    end
     local entries = {
         { "Ziel setzen", function() setTarget(e) end },
         { "Item auf der Seite zeigen", function()
@@ -295,6 +332,16 @@ end
 -- and the hint (the pin's by default).
 local function placeTooltip(owner, e, hint)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if e.mark then
+        -- a marked quest giver: who, where, the quests to take there
+        GameTooltip:AddLine(e.label or e.giver or "?", 1, 0.82, 0)
+        if e.target then GameTooltip:AddLine("Aktuelles Ziel", GOLD[1], GOLD[2], GOLD[3]) end
+        GameTooltip:AddLine(("%s %s"):format(Map.ZoneName(e.point.map), Map.Coords(e.point)), 0.7, 0.7, 0.7)
+        for _, title in ipairs(e.quests or {}) do GameTooltip:AddLine(title, 1, 1, 1, true) end
+        GameTooltip:AddLine(hint or TEXT.hint, 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+        return
+    end
     local title
     if e.rec then
         title = Gear.SourceText(e.rec, true)
@@ -352,16 +399,26 @@ function Pin:OnAcquired(entry, scale)
     self:SetPosition(entry.x, entry.y)
     if self.ApplyCurrentScale then self:ApplyCurrentScale() end
     local best = entry.items[1]
-    self.icon:SetTexture(best and itemIcon(best.id) or QUESTION)
-    local wish = false
+    -- pins are pooled: the icon and its coordinates are set every time
+    if entry.mark and W.HasAtlas(QUEST_ATLAS) then
+        self.icon:SetAtlas(QUEST_ATLAS)
+    elseif entry.mark then
+        self.icon:SetTexture(QUEST_ICON)
+        self.icon:SetTexCoord(0, 1, 0, 1)
+    else
+        self.icon:SetTexture(best and itemIcon(best.id) or QUESTION)
+        self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    end
+    local wish = entry.mark or false
     for _, it in ipairs(entry.items) do
         if it.wish then wish = true end
     end
     local c = wish and GOLD or GREEN
     W.SetBorderColor(self.edges, c[1], c[2], c[3], 1)
     self.ring:SetShown(entry.target and true or false)
-    if #entry.items > 1 then
-        self.count:SetText(tostring(#entry.items))
+    local count = entry.mark and #(entry.quests or {}) or #entry.items
+    if count > 1 then
+        self.count:SetText(tostring(count))
         self.count:Show()
     else
         self.count:Hide()
@@ -482,6 +539,10 @@ local function schedule()
 end
 
 ns.Listen("BIS_CHANGED", schedule)
+ns.Listen("MAP_MARKS", function()
+    version = version + 1
+    schedule()
+end)
 ns.Listen("MAP_TARGET", function()
     version = version + 1
     schedule()

@@ -51,8 +51,8 @@ zeigt dafür sechs statt acht Zeilen (sie scrollt).
 **Bossmodell.** Rechts im Band ein kleines Modell (`PlayerModel:SetCreature(npcID)`), wo der Boss
 eine NPC-ID hat (Build-Fakten `ns.BIS.DG`, Encounter-Tabelle). Gezeigt wird der Boss der Zeile
 unter der Maus, sonst der Boss mit dem größten Zuwachs, sonst der erste mit NPC-ID. Ohne
-NPC-ID oder ohne `SetCreature` bleibt das Modell verborgen. Die Einstellung
-"Bossmodell im Dungeonbild" schaltet es ab.
+NPC-ID oder ohne `SetCreature` bleibt das Modell verborgen (keine eigene Einstellung, um keine
+neue Einstellungsgruppe anzulegen).
 
 **Selbsttest.** Die neuen Atlanten kommen in `ST.ATLASES` und den Stub; ein neuer Abschnitt prüft
 die Bild-IDs mit `Texture:SetTexture(fileID)` (Rückgabe "success") und meldet fehlende.
@@ -89,8 +89,9 @@ Ort einen Pin mit dem Questsymbol des Clients (Atlas `QuestNormal`, sonst
 `Interface\GossipFrame\AvailableQuestIcon`). Mehrere Quests eines Gebers teilen einen Pin; der
 Tooltip nennt Geber und Quests, Klick setzt den Wegpunkt, Rechtsklick bietet "Markierung
 entfernen". Ein zweiter Klick auf den Knopf ("Karte leeren") nimmt alles weg. Die Weltkarte
-öffnet sich nach dem Markieren auf der Zone des nächsten Gebers (nicht im Kampf). Quests, die
-im Dungeon starten, zeigen auf den Eingang.
+öffnet sich nicht von selbst (das würde das Amisia-Fenster schließen); eine Chatzeile nennt die
+Zahl der markierten Geber. Quests, die im Dungeon starten, zeigen auf den Eingang (ohne bekannten
+Eingang auf den Geber drinnen); Quests im Log und erledigte fallen weg.
 
 ## 4. Anprobe
 
