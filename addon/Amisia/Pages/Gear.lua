@@ -962,7 +962,8 @@ local function questItems(key)
     if kept and kept.list == list then return kept.out, status end
     local out = {}
     for _, q in ipairs(list) do
-        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or ""), q = q, qid = q.qid }
+        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or q.gone and " (nicht mehr möglich)" or ""),
+            q = q, qid = q.qid }
         for _, n in ipairs(q.chain) do
             out[#out + 1] = { kind = "pre", q = n, qid = n.qid }
         end
@@ -974,8 +975,8 @@ local function questItems(key)
     return out, status
 end
 
-local STATE_TEXT = { done = "erledigt", active = "im Log" }
-local function questState(n) return n.done and "done" or n.active and "active" or nil end
+local STATE_TEXT = { done = "erledigt", active = "im Log", gone = "nicht mehr möglich" }
+local function questState(n) return n.done and "done" or n.active and "active" or n.gone and "gone" or nil end
 
 -- The level text of a quest in the quest log's colours (simplified): red when it cannot be taken yet
 -- or is five levels above, orange three above, yellow around the own level, green below, grey far below.
@@ -1023,13 +1024,14 @@ local function fillDetailRow(r, e)
         local q, pre = e.q, e.kind == "pre"
         local st = questState(q)
         local title = pre and ("   Vorquest: " .. q.title .. (q.one and " (oder eine andere)" or "")) or (GOLD_TEXT .. e.text .. "|r")
-        r.name:SetText((q.done and (GREY .. title .. "|r")) or title)
+        local over = q.done or q.gone
+        r.name:SetText((over and (GREY .. title .. "|r")) or title)
         r.slot:SetText(questLevelText(q))
-        r.gain:SetText(not pre and q.best and ((q.done and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
+        r.gain:SetText(not pre and q.best and ((over and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
         local where = ns.Dungeons.QuestStartText(q)
         r.rate:SetText((st and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
         local xp = ns.Dungeons.XPText(ns.Dungeons.QuestXP(q))
-        r.xp:SetText(q.done and xp ~= "" and (GREY .. xp .. "|r") or xp)
+        r.xp:SetText(over and xp ~= "" and (GREY .. xp .. "|r") or xp)
     end
 end
 

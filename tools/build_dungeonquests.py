@@ -42,8 +42,11 @@ ATT_SOURCE = att_data.ATT_SOURCE
 #           'dungeons': {fact key: [quest ids]},
 #           'quests': {quest id: {'name', 'minLevel', 'level', 'faction' ('A', 'H', ''), 'classes' (mask),
 #                                 'start' ('O' outside, 'I' inside, 'X' by an item, '' unknown), 'giver',
-#                                 'points' ([(uiMapID, x, y) in hundredths of a percent]), 'preAll' [ids],
-#                                 'preOne' [ids], 'dungeon' (fact key or None), 'rewards' [item ids]}}}
+#                                 'points' ([(uiMapID, x, y) in hundredths of a percent]), 'preAll' [ids]
+#                                 (all of them), 'preOne' [ids] (any one of them: ATT's sourceQuests with
+#                                 sourceQuestNumRequired 1), 'alt' [ids] (the quests that exclude this one:
+#                                 ATT's altQuests), 'breadcrumb' (bool), 'dungeon' (fact key or None),
+#                                 'rewards' [item ids]}}}
 MAX_POINTS = 4
 
 
@@ -106,9 +109,12 @@ def read_att(base, facts, commit=None):
         elif not q['givers'] and q['startItem']:
             start = 'X'
         key = keys.get(q['inst']) if q['inst'] is not None else None
+        pre = list(q['pre'])
+        one = q.get('sqreq') == 1 and len(pre) > 1
         quests[qid] = {'name': q['name'] or f'Quest {qid}', 'minLevel': q['minLevel'], 'level': 0,
                        'faction': q['faction'], 'classes': q['classes'], 'start': start, 'giver': q['giver'],
-                       'points': pts, 'preAll': list(q['pre']), 'preOne': list(q['alt']), 'dungeon': key,
+                       'points': pts, 'preAll': [] if one else pre, 'preOne': pre if one else [],
+                       'alt': list(q['alt']), 'breadcrumb': bool(q.get('breadcrumb')), 'dungeon': key,
                        'rewards': list(q['rewards'])}
         if key:
             dungeons.setdefault(key, []).append(qid)
@@ -134,11 +140,13 @@ def empty():
 
 # ---------------------------------------------------------------- output
 def complete(data):
-    """Drops pre-quests the data has no record of and sorts the lists (the addon walks what it gets)."""
+    """Drops pre-quests the data has no record of, the quest itself and breadcrumbs among the "all of"
+    pre-quests (a way to the quest, never a must), and sorts the lists (the addon walks what it gets)."""
     Q = data['quests']
-    for q in Q.values():
-        for k in ('preAll', 'preOne'):
-            q[k] = sorted({p for p in q.get(k) or [] if p in Q and p != None})  # noqa: E711
+    for qid, q in Q.items():
+        for k in ('preAll', 'preOne', 'alt'):
+            q[k] = sorted({p for p in q.get(k) or [] if p in Q and p != qid})
+        q['preAll'] = [p for p in q['preAll'] if not Q[p].get('breadcrumb')]
     for key in data['dungeons']:
         data['dungeons'][key] = sorted(set(data['dungeons'][key]))
     return data
@@ -182,7 +190,8 @@ def render(data, built):
         '-- Q: [quest id] = { name (English), required level, quest level (0 unknown), faction ("A", "H", "" both),',
         '-- class mask (0 all), start ("O" outside, "I" inside the dungeon, "X" by an item, "" unknown), giver,',
         '-- points (up to four "uiMapID:x:y", x and y in hundredths of a percent), pre-quests all of, pre-quests',
-        '-- one of, dungeon key (nil for a pre-quest only), gear rewards }.',
+        '-- one of, dungeon key (nil for a pre-quest only), gear rewards, quests that exclude this one (one of them',
+        '-- done: this one is no longer possible) }.',
         'ns.DUNGEON_QUESTS = {',
         f'    built = {lua_str(built)}, source = {lua_str(commit or data["source"][:20])},',
         '    D = {',
@@ -199,7 +208,7 @@ def render(data, built):
         parts = [lua_str(q.get('name') or f'Quest {qid}'), str(int(q.get('minLevel') or 0)), str(int(q.get('level') or 0)),
                  lua_str(q.get('faction') or ''), str(int(q.get('classes') or 0)), lua_str(q.get('start') or ''),
                  lua_val(q.get('giver')), lua_val(pts), _lua_list(q.get('preAll')), _lua_list(q.get('preOne')),
-                 lua_val(q.get('dungeon')), _lua_list(q.get('rewards'))]
+                 lua_val(q.get('dungeon')), _lua_list(q.get('rewards')), _lua_list(q.get('alt'))]
         lines.append(f'        [{qid}] = {{ {", ".join(parts)} }},')
     lines += ['    },', '}', '']
     text = '\n'.join(lines)

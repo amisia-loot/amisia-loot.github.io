@@ -22,6 +22,11 @@ root(ROOTS.Zones, m(MAP.TEST_HILLS, {
 			coord = { 32.45, 44.8, MAP.TEST_CITY },
 			lvl = 10,
 		}),
+		q(70013, {	-- Go to the Halls
+			isBreadcrumb = true,
+			races = HORDE_ONLY,
+			lvl = 10,
+		}),
 		q(70500, {	-- Unrelated Zone Quest
 			lvl = 5,
 		}),

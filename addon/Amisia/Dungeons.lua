@@ -141,6 +141,16 @@ local function questDone(qid)
     return ok and ns.Plain(done) == true
 end
 
+-- Whether a quest of the quest data is no longer possible: one of the quests that exclude it (its
+-- 13th field) is done.
+local function questGone(r)
+    if type(r) ~= "table" or type(r[13]) ~= "table" then return false end
+    for _, a in ipairs(r[13]) do
+        if questDone(a) then return true end
+    end
+    return false
+end
+
 local function questActive(qid)
     local Q = _G.C_QuestLog
     local f = type(Q) == "table" and Q.IsOnQuest
@@ -697,7 +707,8 @@ local function compute(entry, e, x, seen, o, gains, limit)
                     end
                 end
             end
-            local done = questDone(rec[7])
+            -- a quest no longer possible (another way done) counts as done here
+            local done = questDone(rec[7]) or questGone(q.dq)
             quests[#quests + 1] = { qid = rec[7], title = questTitle(rec), level = rec[4], best = best, done = done, rec = rec, ups = ups }
             if best and not done then
                 once = once + best.gain
@@ -1100,12 +1111,14 @@ local function questFits(r, o)
 end
 
 -- One quest of the quest data as a node: { qid, title, minLevel, level, start, giver, points, done,
--- active }; the item data's map points and giver stand in where the quest data has none.
+-- active, gone (no longer possible: a quest that excludes it is done) }; the item data's map points
+-- and giver stand in where the quest data has none.
 local function questNode(qid, r, rec)
     local key = "Q:" .. tostring(qid)
     local mapGiver = ns.MAP and ns.MAP.G and ns.MAP.G[key] or nil
     local mapPoints = ns.MAP and ns.MAP.P and ns.MAP.P[key] or nil
     local n = { qid = qid, done = questDone(qid), active = questActive(qid) }
+    n.gone = not n.done and not n.active and questGone(r)
     if r then
         n.title = titleOf(qid, r[1])
         n.minLevel, n.level, n.start, n.giver, n.points = r[2] or 0, r[3] or 0, r[6] or "", r[7] or mapGiver, r[8] or mapPoints
@@ -1128,8 +1141,8 @@ local function questNode(qid, r, rec)
 end
 
 -- The pre-quests of a quest from the root, each once: all of the "all" list, and of a "one of"
--- list the done one, else the first open one (marked one = true when there was a choice). Quests of
--- the other faction or class fall away. A loop in the data ends.
+-- list (any one of them will do) the done one, else the first one still possible (marked one = true
+-- when there was a choice). Quests of the other faction or class fall away. A loop in the data ends.
 local function chainOf(dq, qid, o)
     local out, seen = {}, { [qid] = true }
     local function walk(id, depth)
@@ -1152,7 +1165,7 @@ local function chainOf(dq, qid, o)
             if questFits(dq.Q[p], o) then
                 fits = fits + 1
                 if questDone(p) then pick = p break end
-                pick = pick or p
+                if not pick or (questGone(dq.Q[pick]) and not questGone(dq.Q[p])) then pick = p end
             end
         end
         if pick then take(pick, fits > 1 or #list > 1) end
@@ -1166,9 +1179,9 @@ local questKey, questRes = nil, {}
 -- The quests of a dungeon for the options (default the own character): list, status. status "ok"
 -- (the quest data knows the dungeon), "missing" (it does not: Forever's new dungeons; only the item
 -- data's quests are listed) or "nodata" (no quest data at all). Each quest: { qid, title, minLevel,
--- level, start ("I", "O", "X", ""), giver, points, done, active, chain = { pre-quest nodes, root
--- first }, rewards = { { id, gain, slotKey, upgrade, owned } } (upgrades first), best }. Open ones
--- first, by level. Kept until anything it depends on changes; callers must not change it.
+-- level, start ("I", "O", "X", ""), giver, points, done, active, gone (no longer possible), chain =
+-- { pre-quest nodes, root first }, rewards = { { id, gain, slotKey, upgrade, owned } } (upgrades
+-- first), best }. Open ones first, by level; done and no longer possible ones last. Kept until anything it depends on changes; callers must not change it.
 function ns.DungeonQuests(dkey, opts)
     local facts = D.Facts()
     local dq = questData()
@@ -1212,7 +1225,8 @@ function ns.DungeonQuests(dkey, opts)
         end
     end
     table.sort(out, function(a, b)
-        if a.done ~= b.done then return not a.done end
+        local ea, eb = a.done or a.gone or false, b.done or b.gone or false
+        if ea ~= eb then return not ea end
         if a.minLevel ~= b.minLevel then return a.minLevel < b.minLevel end
         if a.level ~= b.level then return a.level < b.level end
         if a.title ~= b.title then return a.title < b.title end
@@ -1370,7 +1384,7 @@ end
 function D.XPSum(list)
     local s = { total = 0, inside = 0, outside = 0, missing = 0, est = false }
     for _, q in ipairs(list or {}) do
-        if not q.done then
+        if not q.done and not q.gone then
             local v, how = D.QuestXP(q)
             if v then
                 s.total = s.total + v
@@ -1419,7 +1433,7 @@ local function givers(dkey)
     if not Map or not Map.ParsePoints then return {} end
     local out, byKey = {}, {}
     for _, q in ipairs((ns.DungeonQuests(dkey))) do
-        if not q.done and not q.active and q.qid then
+        if not q.done and not q.active and not q.gone and q.qid then
             local node = q
             for _, c in ipairs(q.chain or {}) do
                 if not c.done then node = c break end
@@ -1542,7 +1556,7 @@ local function sayQuests(word)
         return
     end
     for _, q in ipairs(list) do
-        local mark = q.done and "[erledigt] " or q.active and "[im Log] " or ""
+        local mark = q.done and "[erledigt] " or q.active and "[im Log] " or q.gone and "[nicht mehr möglich] " or ""
         local start = D.QuestStartText(q)
         local line = ("%s%s · Level %s%s"):format(mark, q.title, D.QuestLevelText(q), start ~= "" and (" · Start: " .. start) or "")
         if q.best then

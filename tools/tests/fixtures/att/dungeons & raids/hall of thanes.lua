@@ -35,6 +35,7 @@ root(ROOTS.Instances, {
 					["coord"] = { 10.0, 20.0, MAP.TEST_HALLS },
 					["races"] = HORDE_ONLY,
 					["lvl"] = 12,
+					["sourceQuest"] = 70013,	-- Go to the Halls (a breadcrumb)
 				}),
 				q(70003, {	-- Found Note
 					qs = 60100,	-- A Note (QS!)
@@ -44,6 +45,11 @@ root(ROOTS.Instances, {
 				q(70004, {	-- Unknown Start
 					qg = 80004,	-- Lost Giver
 					lvl = 11,
+					sourceQuests = {
+						70010,	-- Root Quest
+						70012,	-- Detour B
+					},
+					sourceQuestNumRequired = 1,
 				}),
 			}),
 			e(3001, {	-- Boss

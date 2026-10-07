@@ -52,7 +52,10 @@ def test_quest_fields(att):
     assert q['minLevel'] == 10 and q['level'] == 0 and q['faction'] == 'A'
     assert q['start'] == 'O' and q['points'] == [(1455, 3245, 4480)]
     assert q['rewards'] == [60001, 60002], 'the items of the quest, not the objective provider'
-    assert set(q['preAll']) == {70010, 79999} and q['preOne'] == [70011, 70012]
+    assert set(q['preAll']) == {70010, 79999} and q['preOne'] == [], 'altQuests are no pre-quests'
+    assert q['alt'] == [70011, 70012], 'altQuests: the quests that exclude this one'
+    assert Q[70004]['preOne'] == [70010, 70012] and Q[70004]['preAll'] == [], 'sourceQuestNumRequired 1: one of them'
+    assert Q[70002]['preAll'] == [70013] and Q[70013]['breadcrumb'], 'the breadcrumb is read'
     assert q['dungeon'] == 'thanes', 'the zone listing of the same quest does not take its dungeon'
     assert Q[70002]['start'] == 'I' and Q[70002]['faction'] == 'H', 'a giver on the dungeon map stands inside'
     assert Q[70003]['start'] == 'X' and Q[70003]['rewards'] == [60003], 'started by an item; a wrapper keeps its child'
@@ -74,7 +77,9 @@ def test_render_keeps_dungeon_quests_and_their_pre_quests(att):
     assert q[1] == 'First Grudge' and q[2] == 10 and q[4] == 'A' and q[6] == 'O' and q[7] == 'Giver One'
     assert q[8] == '1455:3245:4480' and q[11] == 'thanes' and q[12][1] == 60001
     assert q[9][1] == 70010 and q[9][2] is None, 'a pre-quest without a record falls away'
-    assert q[10][1] == 70011 and q[10][2] == 70012
+    assert q[10] is None and q[13][1] == 70011 and q[13][2] == 70012, 'alt in its own field, no "one of" list'
+    assert dq.Q[70004][10][1] == 70010 and dq.Q[70004][10][2] == 70012 and dq.Q[70004][9] is None
+    assert dq.Q[70002][9] is None and dq.Q[70013] is None, 'a breadcrumb is no pre-quest'
     assert dq.Q[70010] is not None and dq.Q[70010][11] is None, 'a pre-quest has its own record'
     assert dq.Q[70500] is None and dq.Q[70100] is None, 'quests of no dungeon and no chain stay out'
     assert dq.Q[70003][7] is None and dq.Q[70003][8] is None
