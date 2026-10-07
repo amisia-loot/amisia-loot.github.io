@@ -15,7 +15,7 @@ ADDON = os.path.join(ROOT, 'addon', 'Amisia')
 sys.path.insert(0, TOOLS)
 import build_dungeonart  # noqa: E402
 
-OUT = os.path.join(ADDON, 'DungeonArt.lua')
+OUT = os.path.join(ADDON, 'Data', 'DungeonArt.lua')
 SNAPSHOT = os.path.join(TOOLS, 'forever_dungeon_art.json')
 
 MAP_HEAD = 'ID,Directory,MapName_lang,InstanceType,LoadingScreenID\n'
@@ -128,6 +128,6 @@ def test_the_generated_file_is_valid_lua():
 def test_the_toc_loads_the_art_on_forever_before_the_planner():
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         lines = [l.strip() for l in fh if l.strip() and not l.startswith('#')]
-    assert 'DungeonArt.lua [AllowLoadGameType camelot]' in lines
+    assert 'Data\\DungeonArt.lua [AllowLoadGameType camelot]' in lines
     names = [re.sub(r'\s*\[.*\]', '', l) for l in lines]
-    assert names.index('DungeonData.lua') < names.index('DungeonArt.lua') < names.index('Dungeons.lua')
+    assert names.index('Data\\DungeonData.lua') < names.index('Data\\DungeonArt.lua') < names.index('Gear\\Dungeons.lua')

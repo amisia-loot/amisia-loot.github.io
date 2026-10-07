@@ -238,5 +238,5 @@ NS.Dispatch("sync raenge")
 assert(table.concat(STUB.messages, "\n"):find("Du bist in keiner Gilde.", 1, true))
 
 -- all texts of the file are Latin-1
-local src = assert(io.open(ADDON_DIR .. "/Trust.lua", "rb")):read("*a")
+local src = assert(io.open(ADDON_DIR .. "/Core/Trust.lua", "rb")):read("*a")
 for ch in src:gmatch("[\194-\244][\128-\191]*") do assert(ch:byte(1) <= 195, "a character beyond Latin-1 in Trust.lua") end

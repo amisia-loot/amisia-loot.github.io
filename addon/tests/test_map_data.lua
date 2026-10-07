@@ -45,7 +45,7 @@ local function readFile(name)
     fh:close()
     return src
 end
-local src = readFile("MapData.lua")
+local src = readFile("Data/MapData.lua")
 assert(not src:find("IsForever", 1, true) and not src:find("then return end", 1, true), "no guard line")
 local fns = {}
 assert(loadstring(src, "@MapData.lua"))("Amisia", fns)

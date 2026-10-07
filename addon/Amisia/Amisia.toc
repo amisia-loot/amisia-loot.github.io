@@ -9,72 +9,72 @@
 ## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 
-Registry.lua
-Core.lua
-Names.lua
-Alts.lua
-Mats.lua
-Chat.lua
-Comm.lua
-Trust.lua
-Version.lua
-Widgets.lua
-Awards.lua
-Rolls.lua
-RollFrame.lua
-AwardDialog.lua
-SoftRes.lua
-LootAnnounce.lua
-RaidLog.lua
-Bench.lua
-Sync.lua
-RaidText.lua
-Scan.lua
-Collect.lua
-Drops.lua
-DropSync.lua
-Collector.lua
-CollectSync.lua
-QuestXP.lua
-GearData.lua [AllowLoadGameType camelot]
-GearWeights.lua [AllowLoadGameType camelot]
-BisData.lua [AllowLoadGameType camelot]
-MapData.lua [AllowLoadGameType camelot]
-DungeonData.lua [AllowLoadGameType camelot]
-DungeonQuestData.lua [AllowLoadGameType camelot]
-ProfessionData.lua [AllowLoadGameType camelot]
-QuestData.lua [AllowLoadGameType camelot]
-TalentData.lua [AllowLoadGameType camelot]
-DungeonArt.lua [AllowLoadGameType camelot]
-Gear.lua
-GearFrame.lua
-Bis.lua
-Dungeons.lua
-Professions.lua
-Quests.lua
-GuildWishes.lua
-Compare.lua
-Need.lua
-Talents.lua
-Map.lua
-MapPins.lua
-MapPin.xml
-MainFrame.lua
-Pages\Overview.lua
-Pages\Raids.lua
-Pages\RaidLog.lua
-Pages\Rolls.lua
-Pages\Awards.lua
-Pages\SoftRes.lua
-Pages\Gear.lua
-Pages\Map.lua
-Pages\Professions.lua
-Pages\Quests.lua
-Pages\Talents.lua
-Pages\Export.lua
-Pages\Bank.lua
-Pages\Tools.lua
-Pages\Settings.lua
-Pages\About.lua
-Minimap.lua
-SelfTest.lua
+Core\Registry.lua
+Core\Core.lua
+Core\Names.lua
+Raid\Alts.lua
+Raid\Mats.lua
+Core\Chat.lua
+Core\Comm.lua
+Core\Trust.lua
+Core\Version.lua
+UI\Widgets.lua
+Raid\Awards.lua
+Raid\Rolls.lua
+Raid\RollFrame.lua
+Raid\AwardDialog.lua
+Raid\SoftRes.lua
+Raid\LootAnnounce.lua
+Raid\RaidLog.lua
+Raid\Bench.lua
+Raid\Sync.lua
+Raid\RaidText.lua
+Collect\Scan.lua
+Collect\Collect.lua
+Collect\Drops.lua
+Collect\DropSync.lua
+Collect\Collector.lua
+Collect\CollectSync.lua
+Collect\QuestXP.lua
+Data\GearData.lua [AllowLoadGameType camelot]
+Data\GearWeights.lua [AllowLoadGameType camelot]
+Data\BisData.lua [AllowLoadGameType camelot]
+Data\MapData.lua [AllowLoadGameType camelot]
+Data\DungeonData.lua [AllowLoadGameType camelot]
+Data\DungeonQuestData.lua [AllowLoadGameType camelot]
+Data\ProfessionData.lua [AllowLoadGameType camelot]
+Data\QuestData.lua [AllowLoadGameType camelot]
+Data\TalentData.lua [AllowLoadGameType camelot]
+Data\DungeonArt.lua [AllowLoadGameType camelot]
+Gear\Gear.lua
+Gear\GearFrame.lua
+Gear\Bis.lua
+Gear\Dungeons.lua
+Gear\Professions.lua
+Gear\Quests.lua
+Gear\GuildWishes.lua
+Gear\Compare.lua
+Raid\Need.lua
+Gear\Talents.lua
+Gear\Map.lua
+Gear\MapPins.lua
+Gear\MapPin.xml
+UI\MainFrame.lua
+UI\Pages\Overview.lua
+UI\Pages\Raids.lua
+UI\Pages\RaidLog.lua
+UI\Pages\Rolls.lua
+UI\Pages\Awards.lua
+UI\Pages\SoftRes.lua
+UI\Pages\Gear.lua
+UI\Pages\Map.lua
+UI\Pages\Professions.lua
+UI\Pages\Quests.lua
+UI\Pages\Talents.lua
+UI\Pages\Export.lua
+UI\Pages\Bank.lua
+UI\Pages\Tools.lua
+UI\Pages\Settings.lua
+UI\Pages\About.lua
+Core\Minimap.lua
+Core\SelfTest.lua

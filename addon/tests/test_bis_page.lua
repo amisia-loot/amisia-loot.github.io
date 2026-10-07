@@ -448,7 +448,7 @@ assert(list[1] and list[1].id == 304 and math.floor(list[1].gain + 0.5) == 100 a
 ---------------------------------------------------------------------------
 -- Latin-1 only, in the file and in what the page showed
 ---------------------------------------------------------------------------
-local fh = assert(io.open(ADDON_DIR .. "/Pages/Gear.lua", "rb"))
+local fh = assert(io.open(ADDON_DIR .. "/UI/Pages/Gear.lua", "rb"))
 local src = fh:read("*a")
 fh:close()
 for lead in src:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Pages/Gear.lua") end

@@ -198,7 +198,7 @@ NS.Reset("ui.view")
 NS.StopRoll()
 
 -- every UI and chat string stays Latin-1
-for _, file in ipairs({ "Rolls.lua", "RollFrame.lua", "Pages/Rolls.lua" }) do
+for _, file in ipairs({ "Raid/Rolls.lua", "Raid/RollFrame.lua", "UI/Pages/Rolls.lua" }) do
     local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
     for c in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. c) end
 end

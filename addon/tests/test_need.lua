@@ -305,7 +305,7 @@ assert(BUS.count({ kind = "UA", sender = KIM }) == uaBefore + 1, "answered on th
 assert(C(VULO, "NS.NeedOf(999909)").up[1].name == KIM)
 
 -- Latin-1 only
-for _, file in ipairs({ "Need.lua", "AwardDialog.lua", "LootAnnounce.lua" }) do
+for _, file in ipairs({ "Raid/Need.lua", "Raid/AwardDialog.lua", "Raid/LootAnnounce.lua" }) do
     local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
     for c in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. c) end
 end

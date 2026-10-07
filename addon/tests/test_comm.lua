@@ -614,7 +614,7 @@ assert(table.concat(STUB.messages, "\n"):find("Amisia Sync: Kim Eisherz sendet z
 NS.Set("sync.debug", false)
 
 -- all texts of the file are Latin-1
-local src = assert(io.open(ADDON_DIR .. "/Comm.lua", "rb")):read("*a")
+local src = assert(io.open(ADDON_DIR .. "/Core/Comm.lua", "rb")):read("*a")
 for ch in src:gmatch("[\194-\244][\128-\191]*") do
     local b1, b2 = ch:byte(1, 2)
     assert(b1 <= 195, "a character beyond Latin-1 in Comm.lua")

@@ -23,7 +23,7 @@ end
 local Map = NS.Map
 local TEMPLATE = "AmisiaMapPinTemplate"
 assert(NS.MAP and NS.MAP.game == "forever" and GetItemInfo == nil, "the Forever data, no GetItemInfo global")
-local fh = assert(io.open(ADDON_DIR .. "/MapPin.xml", "rb"))
+local fh = assert(io.open(ADDON_DIR .. "/Gear/MapPin.xml", "rb"))
 local xml = fh:read("*a")
 fh:close()
 STUB.pinTemplates[TEMPLATE] = xml:match('mixin="([^"]+)"')

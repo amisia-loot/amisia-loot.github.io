@@ -186,7 +186,7 @@ assert(D.area.box:GetText() == text, "the report stays")
 
 -- Latin-1 only, in the report and in the files
 latin1(text, "the report")
-for _, file in ipairs({ "SelfTest.lua", "Pages/About.lua", "Comm.lua" }) do
+for _, file in ipairs({ "Core/SelfTest.lua", "UI/Pages/About.lua", "Core/Comm.lua" }) do
     local fh = assert(io.open(ADDON_DIR .. "/" .. file, "rb"))
     local src = fh:read("*a")
     fh:close()

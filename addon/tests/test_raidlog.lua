@@ -151,7 +151,7 @@ STUB.tick(300)
 STUB.fire("ENCOUNTER_START", 609, "Der Illidari-Rat", 4, 25)
 local pullStart = STUB.now
 STUB.tick(30)
-local chunk = assert(loadfile(ADDON_DIR .. "/RaidLog.lua"))
+local chunk = assert(loadfile(ADDON_DIR .. "/Raid/RaidLog.lua"))
 chunk("Amisia", NS)
 NS.RaidLogLoaded()
 assert(s.pull and s.pull.enc == 609, "the pull survives the reload")
@@ -372,5 +372,5 @@ assert(NS.EncounterTrace()[20].text:find("Draussen", 1, true), "the trace still 
 ---------------------------------------------------------------------------
 -- UI and chat texts stay within Latin-1
 ---------------------------------------------------------------------------
-local src = assert(io.open(ADDON_DIR .. "/RaidLog.lua", "rb")):read("*a")
+local src = assert(io.open(ADDON_DIR .. "/Raid/RaidLog.lua", "rb")):read("*a")
 for c in src:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1: " .. c) end

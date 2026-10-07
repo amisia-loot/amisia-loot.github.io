@@ -271,5 +271,5 @@ end
 ---------------------------------------------------------------------------
 -- Latin-1 only in the file
 ---------------------------------------------------------------------------
-local src = assert(io.open(ADDON_DIR .. "/RaidText.lua", "rb")):read("*a")
+local src = assert(io.open(ADDON_DIR .. "/Raid/RaidText.lua", "rb")):read("*a")
 for c in src:gmatch("[\196-\255][\128-\191]") do error("RaidText.lua: character above Latin-1: " .. c) end

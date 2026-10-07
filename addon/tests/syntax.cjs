@@ -15,8 +15,18 @@ try {
 }
 
 const dir = path.join(__dirname, '..', 'Amisia');
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.lua'))
-  .concat(fs.readdirSync(path.join(dir, 'Pages')).filter(f => f.endsWith('.lua')).map(f => path.join('Pages', f)));
+// every .lua file in the addon folder and its subfolders (Core, Raid, Gear, Collect, Data, UI, UI/Pages)
+function luaFiles(rel) {
+  let out = [];
+  for (const e of fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).sort((x, y) => x.name.localeCompare(y.name))) {
+    if (e.name.startsWith('.')) continue;
+    const r = rel ? path.join(rel, e.name) : e.name;
+    if (e.isDirectory()) out = out.concat(luaFiles(r));
+    else if (e.name.endsWith('.lua')) out.push(r);
+  }
+  return out;
+}
+const files = luaFiles('');
 let bad = 0;
 for (const f of files) {
   try {

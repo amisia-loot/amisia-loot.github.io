@@ -98,7 +98,7 @@ Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixt
 
 ## build_gear.py
 
-Builds `addon/Amisia/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
+Builds `addon/Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
 every item a levelling character can wear and where it comes from. The stat weights
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
@@ -168,7 +168,7 @@ data: it has no licence.
 
 ## build_map.py
 
-Builds `addon/Amisia/MapData.lua` (WoW Forever) for the map: where each source of the gear data
+Builds `addon/Amisia/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
 stands, as up to four points `uiMapID:x:y` (x, y in hundredths of a percent) under a stable key per
 source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>`,
 `N:<dungeon name>`).
@@ -196,7 +196,7 @@ Runs on the N100 (no WoW install needed). Run it after every `build_gear.py`, th
 Requires `lupa`.
 ## build_dungeons.py
 
-Builds `addon/Amisia/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
+Builds `addon/Amisia/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
 `[AllowLoadGameType camelot]`) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
 planner: every dungeon and raid of WoW Forever with its level range, size, bosses known so far,
 opening date and instance id where known. Facts only, never a loot table or a drop chance; every
@@ -230,8 +230,8 @@ Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the 
 
 ## build_bis.py
 
-Builds `addon/Amisia/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
-`addon/Amisia/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
+Builds `addon/Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
+`addon/Amisia/Data/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
 install, no network:
 
 ```
@@ -255,7 +255,7 @@ Inputs:
   runs from that file. Forever has no `ItemRandomProperties`, `ItemRandomSuffix` or `gt*` table, and
   its `Journal*` tables are empty (1.60.1.70235). `ContentTuning` is read through
   `build_dungeons.tuning_levels` (one reader for both builds).
-- `addon/Amisia/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
+- `addon/Amisia/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
   (with the client's level and instance id of `build_dungeons.client_facts`, from the CSVs of this
   build when they are there, else `tools/forever_dungeons_client.json`), AllTheThings' Forever data
   (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
@@ -348,7 +348,7 @@ worn; while it is worn nothing else is an upgrade for that row). The setting `bi
 
 ## build_dungeonquests.py
 
-Builds `addon/Amisia/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
+Builds `addon/Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
 `[AllowLoadGameType camelot]`) for the quest list of the dungeon planner: per dungeon of
 `tools/forever_dungeons.json` its quests, and per quest the level, faction, where it starts (quest
 giver with up to four map points, inside the dungeon, or by an item), its pre-quests (each with its
@@ -377,7 +377,7 @@ hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real d
 
 ## build_professions.py
 
-Builds `addon/Amisia/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
+Builds `addon/Amisia/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
 `[AllowLoadGameType camelot]`) for the professions page (`/amisia berufe`): every recipe of every
 profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
 `TrivialSkillLineRankHigh` grey, green between), how it is learned (with the profession, trainer
@@ -413,7 +413,7 @@ and a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`).
 
 ## build_talents.py
 
-Builds `addon/Amisia/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
+Builds `addon/Amisia/Data/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
 for the talent calculator (`/amisia talente`): per class its trait tree, the three trees (node group,
 name, icon), the row locks (counting groups) and the talents with row, column, ranks, prerequisites,
 name and text (enUS, placeholders resolved; what changes per rank as `{1}` with the values per rank).

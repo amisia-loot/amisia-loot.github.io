@@ -43,8 +43,8 @@ local interface = {}
 for v in toc:gmatch("## Interface:%s*([^\r\n]+)") do interface[#interface + 1] = v end
 assert(#interface == 1 and interface[1] == "16001", "## Interface: 16001 alone: " .. table.concat(interface, "|"))
 assert(not toc:find("TBC", 1, true) and not toc:find("AllowLoadGameType tbc", 1, true), "no TBC line")
-for _, name in ipairs({ "GearData.lua", "GearWeights.lua", "MapData.lua" }) do
-    assert(toc:find("\n" .. name .. " [AllowLoadGameType camelot]", 1, true), name .. " keeps its load condition")
+for _, name in ipairs({ "Data/GearData.lua", "Data/GearWeights.lua", "Data/MapData.lua" }) do
+    assert(toc:find("\n" .. name:gsub("/", "\\") .. " [AllowLoadGameType camelot]", 1, true), name .. " keeps its load condition")
 end
 assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load condition")
 local version = toc:match("## Version:%s*([^\r\n]+)")
@@ -96,12 +96,12 @@ assert(NS.Gear.Available(), "the Forever data loads")
 -- the map: one data file without guard, no reputation keys, the arrow's tip
 ---------------------------------------------------------------------------
 assert(NS.MAP and NS.MAP.game == "forever", "MapData.lua loads")
-local mapSrc = readFile(ADDON_DIR .. "/MapData.lua")
+local mapSrc = readFile(ADDON_DIR .. "/Data/MapData.lua")
 assert(not mapSrc:find("then return end", 1, true) and not mapSrc:find("quartermaster", 1, true), "no guard, no quartermaster list")
 for key in pairs(NS.MAP.P) do assert(not key:find("^F:"), "no reputation key: " .. key) end
 assert(NS.MapKeyOf({ "F", "Thrallmar", 5, 947, "H" }) == nil, "no key for a reputation source")
 assert(NS.SettingItem("map.arrow").tip == "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann.")
-for _, name in ipairs({ "Map.lua", "MapPins.lua", "Pages/Map.lua" }) do
+for _, name in ipairs({ "Gear/Map.lua", "Gear/MapPins.lua", "UI/Pages/Map.lua" }) do
     local src = readFile(ADDON_DIR .. "/" .. name)
     assert(not src:find("TBC", 1, true) and not src:find("both clients", 1, true), name .. " still names a second client")
 end

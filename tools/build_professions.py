@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/ProfessionData.lua (WoW Forever): every recipe of every profession for the
+"""Builds addon/Amisia/Data/ProfessionData.lua (WoW Forever): every recipe of every profession for the
 addon's professions page - what it makes, its difficulty, how it is learned (trainer, with the
 profession, a recipe item and where that item comes from), the reagents when the client table is
 there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (on the N100).
@@ -35,7 +35,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'ProfessionData.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'ProfessionData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 ATT_CACHE = att_data.ATT_CACHE
 

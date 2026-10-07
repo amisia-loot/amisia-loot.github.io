@@ -18,7 +18,7 @@ import build_dungeons  # noqa: E402
 FACTS = os.path.join(TOOLS, 'forever_dungeons.json')
 CLIENT = os.path.join(TOOLS, 'forever_dungeons_client.json')
 WAGO = os.path.join(HERE, 'fixtures', 'wago')
-OUT = os.path.join(ADDON, 'DungeonData.lua')
+OUT = os.path.join(ADDON, 'Data', 'DungeonData.lua')
 
 # The public facts on Forever's new instances as the user gave them (2026-10-05); the boss lists are
 # the item data's (GearData.lua), see test_every_label_says_where_its_facts_can_be_checked.
@@ -48,9 +48,9 @@ def entries():
 def repo_names():
     """Dungeon names the repo's own data uses: the item data's dungeon sources and dungeon quests,
     and the map data's entrances."""
-    with open(os.path.join(ADDON, 'GearData.lua'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
-    with open(os.path.join(ADDON, 'MapData.lua'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Data', 'MapData.lua'), encoding='utf-8') as fh:
         mapdata = fh.read()
     names = set(re.findall(r'\{"D", "((?:[^"\\]|\\.)*)"', gear))
     # Q {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon}
@@ -94,7 +94,7 @@ def test_every_label_says_where_its_facts_can_be_checked():
     dungeon source of GearData.lua for that dungeon. Nothing is labelled as from Blizzard."""
     sources = facts()['sources']
     assert 'forever' not in sources and 'Blizzard' not in json.dumps(sources), 'no claim the repo cannot back'
-    with open(os.path.join(ADDON, 'GearData.lua'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
     d_recs = set(re.findall(r'\{"D", "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"', gear))
     d_recs = {(a.replace("\\'", "'"), b.replace("\\'", "'")) for a, b in d_recs}
@@ -193,10 +193,10 @@ def test_the_generated_file_is_valid_lua():
 def test_the_toc_loads_the_facts_on_forever_and_the_planner_after_bis():
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         lines = [l.strip() for l in fh if l.strip() and not l.startswith('#')]
-    assert 'DungeonData.lua [AllowLoadGameType camelot]' in lines
+    assert 'Data\\DungeonData.lua [AllowLoadGameType camelot]' in lines
     names = [re.sub(r'\s*\[.*\]', '', l) for l in lines]
-    assert names.index('MapData.lua') < names.index('DungeonData.lua') < names.index('Dungeons.lua')
-    assert names.index('Bis.lua') < names.index('Dungeons.lua') < names.index('Pages\\Gear.lua')
+    assert names.index('Data\\MapData.lua') < names.index('Data\\DungeonData.lua') < names.index('Gear\\Dungeons.lua')
+    assert names.index('Gear\\Bis.lua') < names.index('Gear\\Dungeons.lua') < names.index('UI\\Pages\\Gear.lua')
 
 
 # --- the client tables (tools/forever_dungeons_client.json, build_dungeons.py --wago)

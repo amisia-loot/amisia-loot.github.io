@@ -15,7 +15,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ADDON_TESTS = os.path.join(ROOT, 'addon', 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
-CORE = os.path.join(ROOT, 'addon', 'Amisia', 'Core.lua')
+CORE = os.path.join(ROOT, 'addon', 'Amisia', 'Core', 'Core.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
@@ -324,7 +324,7 @@ def test_strange_log_lines_are_ignored():
     assert s['bench'] == [], 'a BN without a name or its fields is dropped'
 
 
-BIS = os.path.join(ROOT, 'addon', 'Amisia', 'Bis.lua')
+BIS = os.path.join(ROOT, 'addon', 'Amisia', 'Gear', 'Bis.lua')
 
 
 def export_wishes_from_addon():
@@ -388,7 +388,7 @@ def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
     assert '\nWL ' not in after
 
 
-DROPS = os.path.join(ROOT, 'addon', 'Amisia', 'Drops.lua')
+DROPS = os.path.join(ROOT, 'addon', 'Amisia', 'Collect', 'Drops.lua')
 PAGE = os.path.join(ROOT, 'index.html')
 
 

@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/GearData.lua: every WoW Forever item a levelling character can wear, with
+"""Builds addon/Amisia/Data/GearData.lua: every WoW Forever item a levelling character can wear, with
 where it comes from. The addon's gear window (/amisia gear) reads it, asks the client for the
 item's stats and picks the best item per slot and level range.
 
@@ -68,8 +68,8 @@ ITEMSPARSE_JSON = os.path.join(HERE, 'gear_itemsparse.json')
 WAGO = os.path.expanduser('~/addons/_wago')
 # ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'GearData.lua')
-GEAR_LUA = os.path.join(ROOT, 'addon', 'Amisia', 'Gear.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'GearData.lua')
+GEAR_LUA = os.path.join(ROOT, 'addon', 'Amisia', 'Gear', 'Gear.lua')
 USER_AGENT = att_data.USER_AGENT
 
 # Equipment slots worth planning. Shirts, tabards, bags and ammo are left out.

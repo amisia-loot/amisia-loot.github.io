@@ -133,7 +133,7 @@ assert(STUB.waypoint.point == nil, "the own waypoint cleared on arrival")
 -- after /reload: the target stays; a standing waypoint stays ours, a missing one is set again,
 -- a foreign one is left alone
 local function reload()
-    local fh = assert(io.open(ADDON_DIR .. "/Map.lua", "rb"))
+    local fh = assert(io.open(ADDON_DIR .. "/Gear/Map.lua", "rb"))
     local src = fh:read("*a")
     fh:close()
     assert(loadstring(src, "@Map.lua"))("Amisia", NS)
@@ -224,7 +224,7 @@ assert(not AmisiaArrow:IsShown(), "no target, no arrow")
 for _, m in ipairs(STUB.messages) do
     for c in m:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1 in chat: " .. m) end
 end
-local fh = assert(io.open(ADDON_DIR .. "/Map.lua", "rb"))
+local fh = assert(io.open(ADDON_DIR .. "/Gear/Map.lua", "rb"))
 local src = fh:read("*a")
 fh:close()
 for c in src:gmatch("[\196-\255][\128-\191]") do error("Map.lua: character above Latin-1: " .. c) end

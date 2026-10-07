@@ -412,7 +412,7 @@ assert(f.raid:GetValue() == "next" and #rowsShown() == 0, "no timeline before th
 ---------------------------------------------------------------------------
 -- texts stay within Latin-1
 ---------------------------------------------------------------------------
-for _, file in ipairs({ "Pages/RaidLog.lua", "Pages/Raids.lua", "Minimap.lua" }) do
+for _, file in ipairs({ "UI/Pages/RaidLog.lua", "UI/Pages/Raids.lua", "Core/Minimap.lua" }) do
     local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
     for ch in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. ch) end
 end

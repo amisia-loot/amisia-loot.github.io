@@ -19,5 +19,5 @@ def test_toc_files_skip_xml():
 def test_toc_lists_the_pin_template_after_its_mixin():
     with open(os.path.join(ROOT, 'addon', 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
         lines = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
-    assert 'MapPin.xml' in lines
-    assert lines.index('GuildWishes.lua') < lines.index('MapPins.lua') < lines.index('MapPin.xml')
+    assert 'Gear\\MapPin.xml' in lines
+    assert lines.index('Gear\\GuildWishes.lua') < lines.index('Gear\\MapPins.lua') < lines.index('Gear\\MapPin.xml')

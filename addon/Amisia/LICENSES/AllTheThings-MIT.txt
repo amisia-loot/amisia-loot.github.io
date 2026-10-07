@@ -1,5 +1,5 @@
-BisData.lua (the bosses' NPC ids), DungeonQuestData.lua, GearData.lua, MapData.lua, ProfessionData.lua and
-QuestData.lua are generated in part or whole from the hand-kept WoW Forever data of AllTheThings
+Data/BisData.lua (the bosses' NPC ids), Data/DungeonQuestData.lua, Data/GearData.lua, Data/MapData.lua,
+Data/ProfessionData.lua and Data/QuestData.lua are generated in part or whole from the hand-kept WoW Forever data of AllTheThings
 (https://github.com/ATTWoWAddon/AllTheThings, folder .contrib/.db/forever), used under this licence:
 
 MIT License

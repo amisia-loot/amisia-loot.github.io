@@ -488,7 +488,7 @@ AmisiaDB.map.hidden["V:Elwynn Guy"] = nil
 ---------------------------------------------------------------------------
 -- Latin-1 only, in the files and in the chat
 ---------------------------------------------------------------------------
-for _, name in ipairs({ "Pages/Map.lua", "Pages/Gear.lua", "Map.lua", "MapPins.lua", "Bis.lua", "Minimap.lua" }) do
+for _, name in ipairs({ "UI/Pages/Map.lua", "UI/Pages/Gear.lua", "Gear/Map.lua", "Gear/MapPins.lua", "Gear/Bis.lua", "Core/Minimap.lua" }) do
     local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
     local src = fh:read("*a")
     fh:close()

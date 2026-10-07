@@ -35,7 +35,7 @@ for i = 1, 30 do NS.MATS[9000 + i], NS.MAT_ORDER[i] = nil, nil end
 AmisiaDB.bank = nil
 
 -- 3. no heroic suffix is stripped from a place any more: the place comes through as the data wrote it
-local src = io.open(ADDON_DIR .. "/Map.lua", "r"):read("*a")
+local src = io.open(ADDON_DIR .. "/Gear/Map.lua", "r"):read("*a")
 assert(not src:find('"/H$"', 1, true), "the heroic suffix strip is gone")
-local pages = io.open(ADDON_DIR .. "/Pages/Map.lua", "r"):read("*a")
+local pages = io.open(ADDON_DIR .. "/UI/Pages/Map.lua", "r"):read("*a")
 assert(not pages:find("Rüstmeister", 1, true), "the quartermaster kind is gone")

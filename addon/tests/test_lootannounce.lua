@@ -55,7 +55,7 @@ fresh(); open(false)
 assert(#STUB.chat == 0, "once per corpse")
 
 -- a /reload: the file runs again with the same recording, and still says nothing
-local chunk = assert(loadfile(ADDON_DIR .. "/LootAnnounce.lua"))
+local chunk = assert(loadfile(ADDON_DIR .. "/Raid/LootAnnounce.lua"))
 chunk("Amisia", NS)
 fresh(); open(false)
 assert(#STUB.chat == 0, "no second announcement after a reload")
@@ -247,5 +247,5 @@ _G.GetLootRollItemLink = getLink
 NS.Reset("ui.view")
 
 -- every UI and chat string stays Latin-1
-local src = assert(io.open(ADDON_DIR .. "/LootAnnounce.lua", "rb")):read("*a")
+local src = assert(io.open(ADDON_DIR .. "/Raid/LootAnnounce.lua", "rb")):read("*a")
 for c in src:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1: " .. c) end

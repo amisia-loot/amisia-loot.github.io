@@ -367,7 +367,7 @@ assert(pending(MARA) == 200, "200 at most")
 assert(S(MARA, "s.sync.pending[1].op.a.item") == 40002, "the oldest went")
 assert(count(MARA, "Zu viele wartende Änderungen") == 1, "said once")
 
-for _, file in ipairs({ "Sync.lua", "Awards.lua" }) do
+for _, file in ipairs({ "Raid/Sync.lua", "Raid/Awards.lua" }) do
     local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
     for ch in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. ch) end
 end

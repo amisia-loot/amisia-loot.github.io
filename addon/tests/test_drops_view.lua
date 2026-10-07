@@ -254,7 +254,7 @@ AmisiaDB.drops = saved
 NS.Reset("ui.expert")
 
 -- Latin-1 only, in the files and in what the page showed
-for _, file in ipairs({ "Drops.lua", "Pages/Tools.lua" }) do
+for _, file in ipairs({ "Collect/Drops.lua", "UI/Pages/Tools.lua" }) do
     local fh = assert(io.open(ADDON_DIR .. "/" .. file, "rb"))
     local src = fh:read("*a")
     fh:close()

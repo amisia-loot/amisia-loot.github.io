@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
+"""Builds addon/Amisia/Data/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
 tools/forever_dungeons.json for the addon's dungeon planner - where each quest starts (the quest
 giver with map points, inside the dungeon, or by an item), its level, faction, pre-quests and gear
 rewards. Runs without a WoW install (on the N100).
@@ -34,7 +34,7 @@ import att_data  # noqa: E402  (the AllTheThings reader)
 import build_gear  # noqa: E402  (dungeon name keys, Lua strings)
 
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'DungeonQuestData.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'DungeonQuestData.lua')
 ATT_CACHE = att_data.ATT_CACHE
 ATT_SOURCE = att_data.ATT_SOURCE
 

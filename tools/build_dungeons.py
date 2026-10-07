@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/DungeonData.lua from tools/forever_dungeons.json: the dungeons and raids of
+"""Builds addon/Amisia/Data/DungeonData.lua from tools/forever_dungeons.json: the dungeons and raids of
 WoW Forever for the addon's dungeon planner (Dungeons.lua).
 
 The JSON file is kept by hand and holds facts only (names, level ranges, sizes, bosses known so
@@ -30,7 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'DungeonData.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
 
 # LFGDungeons names that differ from the facts' names and aliases (the client's own spellings).

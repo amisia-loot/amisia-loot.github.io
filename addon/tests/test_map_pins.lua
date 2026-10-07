@@ -19,7 +19,7 @@ end
 ---------------------------------------------------------------------------
 -- the template and the TOC
 ---------------------------------------------------------------------------
-local xml = readFile("MapPin.xml")
+local xml = readFile("Gear/MapPin.xml")
 local tag = xml:match("<Frame%s[^>]*>")
 assert(tag, "one frame template")
 assert(tag:find('name="' .. TEMPLATE .. '"', 1, true) and tag:find('virtual="true"', 1, true), tag)
@@ -30,7 +30,7 @@ assert(not xml:find("<Script", 1, true) and not xml:find("<Scripts", 1, true), "
 for c in xml:gmatch("<!%-%-(.-)%-%->") do assert(not c:find("--", 1, true), "no double hyphen in an XML comment") end
 STUB.pinTemplates[TEMPLATE] = tag:match('mixin="([^"]+)"')
 local toc = readFile("Amisia.toc")
-local iPins, iXml, iWish = toc:find("\nMapPins.lua", 1, true), toc:find("\nMapPin.xml", 1, true), toc:find("\nGuildWishes.lua", 1, true)
+local iPins, iXml, iWish = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPin.xml", 1, true), toc:find("\nGear\\GuildWishes.lua", 1, true)
 assert(iPins and iXml and iWish and iWish < iPins and iPins < iXml, "MapPins.lua, then MapPin.xml, after GuildWishes.lua")
 assert(type(AmisiaMapPinMixin) == "table" and AmisiaMapPinMixin.OnAcquired, "the mixin is a global for the XML")
 
@@ -359,7 +359,7 @@ for key in pairs(WorldMapFrame) do
 end
 
 -- Latin-1 only
-local src = readFile("MapPins.lua")
+local src = readFile("Gear/MapPins.lua")
 for c in src:gmatch("[\196-\255][\128-\191]") do error("MapPins.lua: character above Latin-1: " .. c) end
 for _, m in ipairs(STUB.messages) do
     for c in m:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1 in chat: " .. m) end

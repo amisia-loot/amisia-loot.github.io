@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/DungeonArt.lua: the client's own loading screen per dungeon, for the header
+"""Builds addon/Amisia/Data/DungeonArt.lua: the client's own loading screen per dungeon, for the header
 image of the dungeon planner. Game data only (file data ids of the client's art), no image is
 copied into the addon: the client draws its own file.
 
@@ -28,7 +28,7 @@ import build_dungeons
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SNAPSHOT = os.path.join(HERE, 'forever_dungeon_art.json')
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'DungeonArt.lua')
+OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'DungeonArt.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.expanduser('~/addons/_cache/wago'))
 
 # The general screens of the client's LoadingScreens table (LoadScreenDungeon, LoadScreenRaid).
