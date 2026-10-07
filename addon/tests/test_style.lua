@@ -436,13 +436,13 @@ local function navShown()
 end
 NS.Set("ui.view", "raider")
 NS.Refresh()
-assert(navShown() == "#raid overview raidlog awards softres #gear gear map quests professions talents #amisia settings about", navShown())
+assert(navShown() == "#raid overview raidlog awards stats softres #gear gear map quests professions talents #amisia settings about", navShown())
 NS.Set("ui.view", "officer")
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards stats softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards stats softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
 -- every visible page has a row (officer and expert: all of them); a page past the rows the list has
 -- would be dropped without a word, so the test says so
 local function missingRows()
@@ -454,30 +454,34 @@ local function missingRows()
     return table.concat(miss, ",")
 end
 assert(missingRows() == "", "pages without a row in the page list (more rows needed): " .. missingRows())
-NS.RegisterPanel({ key = "extra17", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+-- 17 pages in the expert view, 18 rows: one more page fits, a second has no row
+NS.RegisterPanel({ key = "extra18", label = "Extra", group = "amisia", order = 998, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+NS.RegisterPanel({ key = "extra19", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
 NS.Refresh()
-assert(missingRows() == "extra17", "the check sees a page without a row: " .. missingRows())
-for i, p in ipairs(NS.panels) do if p.key == "extra17" then table.remove(NS.panels, i) break end end
+assert(missingRows() == "extra19", "the check sees a page without a row: " .. missingRows())
+for _, key in ipairs({ "extra18", "extra19" }) do
+    for i, p in ipairs(NS.panels) do if p.key == key then table.remove(NS.panels, i) break end end
+end
 NS.Refresh()
 assert(missingRows() == "")
 -- the labels of the sections
 local labels = {}
 for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
 assert(table.concat(labels, ",") == "Raid,Ausrüstung,Gilde,Amisia", table.concat(labels, ","))
--- 4 bars and all rows fit the list: headers 25 high, rows 22, 4 px after each section
+-- 4 bars and all rows fit the list: headers 25 high, rows 20, 4 px after each section
 local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
 local parts = {}
 for _, e in ipairs(MF.navOrder) do
     local fr = e.header or e.button
     parts[#parts + 1] = fr
     NL.inside("nav part", fr)
-    if e.header then assert(fr._h == 25) else assert(fr._h == 22 and fr.points.TOPLEFT.x == 8, "rows 22 high, 8 indented") end
+    if e.header then assert(fr._h == 25) else assert(fr._h == 20 and fr.points.TOPLEFT.x == 8, "rows 20 high, 8 indented") end
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
 local nRows = 0
 for _, e in ipairs(MF.navOrder) do if not e.header then nRows = nRows + 1 end end
-assert(lastB == -(4 * 25 + nRows * 22 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
+assert(lastB == -(4 * 25 + nRows * 20 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
 assert(-lastB <= 480, "the list fits its 480 px: " .. lastB)
 -- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
 local ovRow

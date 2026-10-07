@@ -40,6 +40,7 @@ Raid\Bench.lua
 Raid\Sync.lua
 Raid\LootPrio.lua
 Raid\RaidText.lua
+Raid\Stats.lua
 Collect\Scan.lua
 Collect\Collect.lua
 Collect\Drops.lua
@@ -77,6 +78,7 @@ UI\Pages\Raids.lua
 UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua
 UI\Pages\Awards.lua
+UI\Pages\Stats.lua
 UI\Pages\SoftRes.lua
 UI\Pages\Gear.lua
 UI\Pages\Map.lua

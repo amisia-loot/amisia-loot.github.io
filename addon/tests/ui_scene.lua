@@ -65,6 +65,7 @@ S.STATES = {
     { page = "gear", name = "gear-sim", open = function() NS.ShowGear("sim") end },
     { page = "raidlog", name = "raidlog-bench", open = function() NS.ShowRaidLog("bench") end },
     { page = "raidlog", name = "raidlog-discord", open = function() NS.ShowRaidLog("discord") end },
+    { page = "stats", name = "stats-fame", open = function() NS.ShowStats("fame") end },
     { page = "softres", name = "softres-raider", open = function() NS.ShowSoftRes("raider") end },
     { page = "softres", name = "softres-check", open = function() NS.ShowSoftRes("check") end },
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
