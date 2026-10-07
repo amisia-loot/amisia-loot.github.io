@@ -4,6 +4,7 @@
 -- still offers. Everything per character in AmisiaDB.bis. Nothing here reads combat data: only the
 -- item stats the client shows in every tooltip, the own bags, bank, talents and professions.
 local ADDON, ns = ...
+local L = ns.L
 local Gear = ns.Gear
 
 local function itemInfo(x)
@@ -21,7 +22,7 @@ local MAX_WISH, NOTE_MAX = 50, 40
 ns.BIS_MAX_WISH = MAX_WISH
 -- Weapon plans: auto (the larger sum of a two-hander and main hand plus off hand), only a
 -- two-hander, two weapons, weapon and shield (or a held item).
-ns.BIS_PLANS = { auto = "automatisch", ["2H"] = "Zweihand", DW = "zwei Waffen", SHIELD = "Waffe und Schild" }
+ns.BIS_PLANS = { auto = L["automatisch"], ["2H"] = L["Zweihand"], DW = L["zwei Waffen"], SHIELD = L["Waffe und Schild"] }
 ns.BIS_PLAN_ORDER = { "auto", "2H", "DW", "SHIELD" }
 
 local stamp = 0          -- bumped by everything that changes a result; part of every cache key
@@ -245,8 +246,8 @@ end
 -- The weapon plan of the own character (ns.BIS_PLANS); true, or nil and the reason.
 function ns.BisSetPlan(plan)
     local c = ns.BisChar()
-    if not c then return nil, "Amisia ist noch nicht geladen." end
-    if not ns.BIS_PLANS[plan] then return nil, "Waffenplan: auto, 2H, DW oder SHIELD." end
+    if not c then return nil, L["Amisia ist noch nicht geladen."] end
+    if not ns.BIS_PLANS[plan] then return nil, L["Waffenplan: auto, 2H, DW oder SHIELD."] end
     c.plan = plan
     ns.Fire("BIS_CHANGED")
     return true
@@ -306,10 +307,10 @@ end
 
 -- The scoring switches every option set carries: random suffixes, set plan, effort tie, BiS picks.
 local function scoringOpts(o)
-    o.suffix = ns.Get("bis.suffix") or "best"
-    o.picks = ns.Get("bis.picks") ~= false
-    o.sets = ns.Get("bis.sets") ~= false
-    o.tie = tonumber(ns.Get("bis.effortTie")) or 3
+    o.suffix = ns.Get("bis.suffix") or "best"   -- l10n-ok: setting key
+    o.picks = ns.Get("bis.picks") ~= false   -- l10n-ok: setting key
+    o.sets = ns.Get("bis.sets") ~= false   -- l10n-ok: setting key
+    o.tie = tonumber(ns.Get("bis.effortTie")) or 3   -- l10n-ok: setting key
     return o
 end
 
@@ -326,7 +327,7 @@ function ns.BisOpts()
         faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil,
         level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())),
         sources = sourceState(),
-        prof = ns.Get("bis.prof") or "all", skills = ns.BisSkills(),
+        prof = ns.Get("bis.prof") or "all", skills = ns.BisSkills(),   -- l10n-ok: setting key
         exclude = c and c.ex or nil,
         plan = c and c.plan or "auto",
     }
@@ -613,7 +614,7 @@ local capCache, capKeyOf
 -- that row, { [row] = { HIT = %, SHIT = % } }; nil when the switch is off or the client cannot say
 -- (hit then counts without a cap).
 function ns.BisHitCaps(o)
-    if not ns.Get("bis.hitCap") then return nil end
+    if not ns.Get("bis.hitCap") then return nil end   -- l10n-ok: setting key
     local melee, spell = ns.BisOwnHit()
     if not melee and not spell then return nil end
     local w = worn()
@@ -643,7 +644,7 @@ function ns.BisWornScores(o)
     return { slot = slot, two = ctx.twoWorn }
 end
 
-local function minGain() return tonumber(ns.Get("bis.minGain")) or 2 end
+local function minGain() return tonumber(ns.Get("bis.minGain")) or 2 end   -- l10n-ok: setting key
 
 -- Whether a gain is worth calling an upgrade: more than a point and more than bis.minGain percent.
 function ns.BisIsUpgrade(gain, mine)
@@ -708,7 +709,7 @@ function ns.BisPickText(p)
     if type(p) ~= "table" then return nil end
     local note = type(p.note) == "string" and p.note ~= "" and (": " .. p.note) or ""
     local src = type(p.src) == "string" and p.src ~= "" and (" (" .. p.src .. ")") or ""
-    return "BiS-Empfehlung" .. note .. src
+    return L["BiS-Empfehlung"] .. note .. src
 end
 local function pickState(o, id, slotKey, against)
     if o.picks == false or not o.class then return nil, false end
@@ -730,14 +731,14 @@ end
 -- Everything about one item for the own character: { id, s, w, kind, group, slotKey, score, gain,
 -- mine, switch, pick, pickWorn } or { reason, code }.
 local function evaluate(item, o)
-    if not Gear.Available() then return { reason = "Für diesen Client gibt es keine Ausrüstungsdaten.", code = "nodata" } end
+    if not Gear.Available() then return { reason = L["Für diesen Client gibt es keine Ausrüstungsdaten."], code = "nodata" } end
     local id = tonumber(item) or ns.ItemID(item)
-    if not id then return { reason = "Kein Item.", code = "noitem" } end
+    if not id then return { reason = L["Kein Item."], code = "noitem" } end
     o = o or ns.BisOpts()
     local loc, classID, sub, row = rowType(id)
     local group = loc and Gear.GROUP[loc]
-    if not group or not (classID == 2 or classID == 4) then return { id = id, reason = "Keine Ausrüstung.", code = "notgear" } end
-    local cannot = { id = id, reason = "Das kann dein Charakter nicht tragen.", code = "class" }
+    if not group or not (classID == 2 or classID == 4) then return { id = id, reason = L["Keine Ausrüstung."], code = "notgear" } end
+    local cannot = { id = id, reason = L["Das kann dein Charakter nicht tragen."], code = "class" }
     if not o.class or not Gear.Usable(o.class, { loc, classID, sub or 0 }, o.level, o.spec) then return cannot end
     if row and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], o.class) then return cannot end
     local s
@@ -745,11 +746,11 @@ local function evaluate(item, o)
     if not s then
         local failed
         s, failed = Gear.Stats(id)
-        if not s then return { id = id, reason = "Werte fehlen noch.", code = failed and "nostats" or "loading" } end
+        if not s then return { id = id, reason = L["Werte fehlen noch."], code = failed and "nostats" or "loading" } end
     end
     if s.CLASSES and not s.CLASSES[o.class] then return cannot end
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
-    if not w then return { id = id, reason = "Keine Gewichtung.", code = "noweights" } end
+    if not w then return { id = id, reason = L["Keine Gewichtung."], code = "noweights" } end
     local kind = KIND_OF[group]
     local slotKey = SLOT_OF[group]
     local cap = o.cap and o.cap[Gear.CAP_ROW[group] or slotKey]
@@ -766,7 +767,7 @@ end
 function ns.BisGain(item, opts)
     local ev = evaluate(item, opts)
     if ev.reason then return nil, ev.reason, ev.code end
-    if ev.switch then return nil, "Waffenwechsel", "switch", ev.slotKey end
+    if ev.switch then return nil, L["Waffenwechsel"], "switch", ev.slotKey end
     if ev.pickWorn then return math.min(ev.gain, 0), ev.slotKey, ev.mine, ev.score end
     return ev.gain, ev.slotKey, ev.mine, ev.score
 end
@@ -794,7 +795,7 @@ function ns.UpgradeOf(item, opts)
     local o = opts or ns.BisOpts()
     local ev = evaluate(item, o)
     if ev.reason then return nil, ev.reason, ev.code end
-    if ev.switch then return nil, "Waffenwechsel", "switch", ev.slotKey end
+    if ev.switch then return nil, L["Waffenwechsel"], "switch", ev.slotKey end
     local mine = ev.mine or 0
     local u = { gain = ev.gain, mine = mine, score = ev.score, slotKey = ev.slotKey, against = {},
         weaker = (ev.group == "FINGER" or ev.group == "TRINKET") or nil }
@@ -818,9 +819,9 @@ end
 -- above the own) or "-8%"; nil when there is nothing to say.
 function ns.UpgradeShort(u)
     if type(u) ~= "table" or type(u.gain) ~= "number" then return nil end
-    if u.later then return u.gain > 0 and ("ab %d"):format(u.later) or nil end
+    if u.later then return u.gain > 0 and L["ab %d"]:format(u.later) or nil end
     if u.pct then return ("%+d%%"):format(u.pct) end
-    if u.up then return "neu" end
+    if u.up then return L["neu"] end
     return nil
 end
 
@@ -831,23 +832,23 @@ function ns.BisExplain(item, opts)
     local ev = evaluate(item, o)
     if ev.reason then return { ev.reason } end
     local sp = Gear.SpecInfo(o.class, o.spec)
-    local who = (sp and sp.name or tostring(o.spec)) .. (o.guessed and " (geraten)" or "")
+    local who = (sp and L[sp.name] or tostring(o.spec)) .. (o.guessed and L[" (geraten)"] or "")
     local lines = {}
     if ev.switch then
-        lines[1] = ("%s · %s: Wertung %s, Waffenwechsel gegen die Zweihandwaffe (%s)"):format(who, SLOT_NAME[ev.slotKey],
+        lines[1] = L["%s · %s: Wertung %s, Waffenwechsel gegen die Zweihandwaffe (%s)"]:format(who, SLOT_NAME[ev.slotKey],
             Gear.Num(ev.score), Gear.Num(ev.mine or 0))
     else
-        lines[1] = ("%s · %s: Wertung %s, angelegt %s, %s"):format(who, SLOT_NAME[ev.slotKey], Gear.Num(ev.score),
+        lines[1] = L["%s · %s: Wertung %s, angelegt %s, %s"]:format(who, SLOT_NAME[ev.slotKey], Gear.Num(ev.score),
             Gear.Num(ev.mine or 0), Gear.UnitText(ev.gain, ev.w))
     end
     for _, p in ipairs(Gear.ScoreParts(ev.s, ev.w, o.level, ev.kind, o.class, ev.cap)) do
         lines[#lines + 1] = Gear.PartText(p)
     end
-    if ev.s.SC then lines[#lines + 1] = "Werte berechnet (noch nicht gescannt)" end
+    if ev.s.SC then lines[#lines + 1] = L["Werte berechnet (noch nicht gescannt)"] end
     local fx = Gear.EffectText(ev.id)
-    if fx then lines[#lines + 1] = "Effekt nicht gewertet: " .. fx end
+    if fx then lines[#lines + 1] = L["Effekt nicht gewertet: %s"]:format(fx) end
     if ev.pick then lines[#lines + 1] = ns.BisPickText(ev.pick) end
-    if (ev.s.HIT or ev.s.MHIT or ev.s.SHIT) and not ev.cap then lines[#lines + 1] = "Trefferwertung zählt ohne Obergrenze" end
+    if (ev.s.HIT or ev.s.MHIT or ev.s.SHIT) and not ev.cap then lines[#lines + 1] = L["Trefferwertung zählt ohne Obergrenze"] end
     return lines
 end
 
@@ -919,38 +920,39 @@ function ns.BisCompare(a, b, opts, names)
     local lines = {}
     for _, r in ipairs(rows) do lines[#lines + 1] = r.text end
     local diff = ea.score - eb.score
-    local na, nb = (names and names[1]) or "Das erste", (names and names[2]) or "das zweite"
+    local na, nb = (names and names[1]) or L["Das erste"], (names and names[2]) or L["das zweite"]
     local lead = rows[1]
     for _, r in ipairs(rows) do
         if (diff >= 0) == (r.points >= 0) then lead = r break end
     end
     local text
     if math.abs(diff) < 0.5 then
-        text = ("%s und %s liegen gleichauf."):format(na, nb)
+        text = L["%s und %s liegen gleichauf."]:format(na, nb)
     elseif diff > 0 then
-        text = ("%s liegt %d vorn%s."):format(na, math.floor(diff + 0.5),
-            lead and (", vor allem durch " .. ((pa[lead.key] or pb[lead.key]).label)) or "")
+        text = L["%s liegt %d vorn%s."]:format(na, math.floor(diff + 0.5),
+            lead and L[", vor allem durch %s"]:format((pa[lead.key] or pb[lead.key]).label) or "")
     else
-        text = ("%s liegt %d vorn%s."):format(nb:gsub("^%l", string.upper), math.floor(-diff + 0.5),
-            lead and (", vor allem durch " .. ((pb[lead.key] or pa[lead.key]).label)) or "")
+        text = L["%s liegt %d vorn%s."]:format(nb:gsub("^%l", string.upper), math.floor(-diff + 0.5),
+            lead and L[", vor allem durch %s"]:format((pb[lead.key] or pa[lead.key]).label) or "")
     end
     return { lines = lines, diff = diff, text = text }
 end
 
 -- Why the weights are as they are: the spec's reason, its unit and the reference character of the
 -- bracket ("Bezug Level 30: 410 Angriffskraft, 22 Waffen-DPS, 14 % Krit").
-local REF_LABEL = { AP = "Angriffskraft", wDPS = "Waffen-DPS", crit = "% Krit", SP = "Zauberschaden", HEAL = "Heilung",
-    mana = "Mana", HP = "Gesundheit", armor = "Rüstung", avoid = "% Vermeidung", spell = "Grundschaden des Bezugszaubers" }
+local REF_LABEL = { AP = L["Angriffskraft"], wDPS = L["Waffen-DPS"], crit = L["% Krit"], SP = L["Zauberschaden"],
+    HEAL = L["Heilung"], mana = "Mana", HP = L["Gesundheit"], armor = L["Rüstung"], avoid = L["% Vermeidung"],
+    spell = L["Grundschaden des Bezugszaubers"] }
 local REF_ORDER = { "AP", "SP", "HEAL", "HP", "wDPS", "crit", "mana", "armor", "avoid", "spell" }
 function ns.BisWhy(o)
     o = o or ns.BisOpts()
     local sp = Gear.SpecInfo(o.class, o.spec)
     if not sp then return {} end
     local lines = {}
-    if sp.why then lines[#lines + 1] = sp.why end
+    if sp.why then lines[#lines + 1] = L[sp.why] end
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
     local unit = Gear.Unit(w)
-    if unit then lines[#lines + 1] = ("Ein Punkt Wertung ist so viel wert wie 1 %s."):format(Gear.UNIT_LABELS[unit]) end
+    if unit then lines[#lines + 1] = L["Ein Punkt Wertung ist so viel wert wie 1 %s."]:format(Gear.UNIT_LABELS[unit]) end
     local brackets = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.brackets or {}
     local idx
     for i, upper in ipairs(brackets) do
@@ -963,7 +965,7 @@ function ns.BisWhy(o)
             local v = tonumber(ref[k])
             if v then parts[#parts + 1] = ("%s %s"):format(Gear.Num(v), REF_LABEL[k]) end
         end
-        lines[#lines + 1] = ("Bezug Level %d: %s"):format(brackets[idx or #brackets] or o.level, table.concat(parts, ", "))
+        lines[#lines + 1] = L["Bezug Level %d: %s"]:format(brackets[idx or #brackets] or o.level, table.concat(parts, ", "))
     end
     return lines
 end
@@ -1054,21 +1056,21 @@ end
 -- "N:<name>"). on false lifts it. true or nil, reason.
 function ns.BisExclude(kind, key, on)
     local c = ns.BisChar()
-    if not c then return nil, "Amisia ist noch nicht geladen." end
+    if not c then return nil, L["Amisia ist noch nicht geladen."] end
     if on == nil then on = true end
     local set
     if kind == "item" then
         key = tonumber(key) or ns.ItemID(key)
-        if not key then return nil, "Kein Item." end
+        if not key then return nil, L["Kein Item."] end
         set = c.ex.item
     elseif kind == "boss" then
-        if type(key) ~= "string" or key == "" then return nil, "Kein Boss." end
+        if type(key) ~= "string" or key == "" then return nil, L["Kein Boss."] end
         set = c.ex.boss
     elseif kind == "place" then
-        if type(key) ~= "string" or not key:find("^[IZN]:.") then return nil, "Kein Ort." end
+        if type(key) ~= "string" or not key:find("^[IZN]:.") then return nil, L["Kein Ort."] end
         set = c.ex.place
     else
-        return nil, "Unbekannte Art."
+        return nil, L["Unbekannte Art."]
     end
     set[key] = on and true or nil
     ns.Fire("BIS_CHANGED")
@@ -1287,9 +1289,9 @@ local function againstText(u)
         names[#names + 1] = link:match("|h%[(.-)%]|h") or ns.ItemName(ns.ItemID(link))
     end
     if #names == 0 then return nil end
-    local text = "statt " .. table.concat(names, " + ")
+    local text = L["statt %s"]:format(table.concat(names, " + "))
     if u.weaker then
-        text = text .. (u.slotKey == "FINGER1" and " (schwächerer Ring)" or " (schwächerer Schmuck)")
+        text = text .. (u.slotKey == "FINGER1" and L[" (schwächerer Ring)"] or L[" (schwächerer Schmuck)"])
     end
     return text
 end
@@ -1297,11 +1299,11 @@ end
 local function tipLines(link, id, shift)
     local u, _, code = ns.UpgradeOf(link)
     if not u then
-        if code == "switch" then return { { "Waffenwechsel für dich", TIP_GREY } }, false, true end
+        if code == "switch" then return { { L["Waffenwechsel für dich"], TIP_GREY } }, false, true end
         return {}, false, code ~= "loading"
     end
     local gain, slotKey, mine = u.gain, u.slotKey, u.mine
-    local compare = ns.Get("bis.compare") ~= false
+    local compare = ns.Get("bis.compare") ~= false   -- l10n-ok: setting key
     local c = ns.BisChar()
     local isWorn = worn().ids[id] ~= nil
     -- a BiS pick is the slot's target: an upgrade until worn; while one is worn nothing else is
@@ -1311,15 +1313,15 @@ local function tipLines(link, id, shift)
     local points = math.floor(gain + 0.5)
     local slotName = SLOT_NAME[slotKey] or ""
     if up and compare then
-        local head = u.later and ("Upgrade für dich ab Stufe %d"):format(u.later) or "Upgrade für dich"
+        local head = u.later and L["Upgrade für dich ab Stufe %d"]:format(u.later) or L["Upgrade für dich"]
         if u.pct then
             text = ("%s: %+d %% (%+d, %s)"):format(head, u.pct, points, slotName)
         else
-            text = ("%s: %+d (%s, Platz leer)"):format(head, points, slotName)
+            text = L["%s: %+d (%s, Platz leer)"]:format(head, points, slotName)
         end
         color = u.later and TIP_ORANGE or TIP_GREEN
     elseif up then
-        text, color = ("Upgrade für dich: %+d (%s)"):format(points, slotName), TIP_GREEN
+        text, color = L["Upgrade für dich: %+d (%s)"]:format(points, slotName), TIP_GREEN
     else
         local res = ns.BisTargetsCached()
         local rank, rankSlot
@@ -1331,19 +1333,19 @@ local function tipLines(link, id, shift)
             warmTargets()
         end
         if rank then
-            text = (isWorn and "angelegt, " or "") .. ("Option %d für %s"):format(rank, SLOT_NAME[rankSlot] or "")
-        elseif not isWorn and ns.Get("bis.tooltipNone") then
+            text = (isWorn and L["angelegt, Option %d für %s"] or L["Option %d für %s"]):format(rank, SLOT_NAME[rankSlot] or "")
+        elseif not isWorn and ns.Get("bis.tooltipNone") then   -- l10n-ok: setting key
             vs = true
             if compare and u.pct then
-                text = ("Kein Upgrade für dich (%+d, %+d %%)"):format(points, u.pct)
+                text = L["Kein Upgrade für dich (%+d, %+d %%)"]:format(points, u.pct)
             else
-                text = ("Kein Upgrade für dich (%+d)"):format(points)
+                text = L["Kein Upgrade für dich (%+d)"]:format(points)
             end
         end
     end
-    if not text and u.pick then text, color = ("BiS-Empfehlung für dich (%s)"):format(slotName), TIP_GREEN end
+    if not text and u.pick then text, color = L["BiS-Empfehlung für dich (%s)"]:format(slotName), TIP_GREEN end
     if not text then return {}, noTargets, true end
-    if c and c.wish[id] then text = text .. " · auf deiner Wunschliste" end
+    if c and c.wish[id] then text = text .. L[" · auf deiner Wunschliste"] end
     local out = { { text, color } }
     if u.pick then out[#out + 1] = { ns.BisPickText(u.pick), TIP_GREEN } end
     local against = compare and vs and againstText(u)
@@ -1383,7 +1385,7 @@ function ns.BisTooltipLines(link)
     if tipCacheStamp ~= stamp or tipCacheN >= TIP_CACHE_MAX then
         tipCache, tipCacheStamp, tipCacheN, placeOnly = {}, stamp, 0, {}
     end
-    if not ns.Get("bis.tooltip") then
+    if not ns.Get("bis.tooltip") then   -- l10n-ok: setting key
         if not place then return nil end
         local only = placeOnly[place]
         if not only then
@@ -1414,7 +1416,7 @@ function ns.BisTooltipLines(link)
     return e.full
 end
 
-ns.OnItemTooltip("bis", function(tip, link)
+ns.OnItemTooltip("bis", function(tip, link)   -- l10n-ok: command word / internal key
     local lines = ns.BisTooltipLines(link)
     if not lines or #lines == 0 then return false end
     for _, l in ipairs(lines) do tip:AddLine(l[1], l[2][1], l[2][2], l[2][3]) end
@@ -1425,7 +1427,7 @@ end)
 -- Wishlist
 ---------------------------------------------------------------------------
 
-local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
+local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
 ns.BIS_PRIO_TEXT = PRIO_TEXT
 
 local function clampPrio(p)
@@ -1444,11 +1446,11 @@ end
 -- for a level 30 warrior counts). Unknown to the client: no item.
 local function wearable(id)
     local _, _, _, instLoc = itemInstant(id)
-    if instLoc == nil and not Gear.Item(id) then return nil, "Kein Item." end
+    if instLoc == nil and not Gear.Item(id) then return nil, L["Kein Item."] end
     local loc, classID, sub, row = rowType(id)
     local group = loc and Gear.GROUP[loc]
     local _, class = UnitClass("player")
-    local cannot = "Das kann dein Charakter nicht tragen."
+    local cannot = L["Das kann dein Charakter nicht tragen."]
     if not group or not (classID == 2 or classID == 4) then return nil, cannot end
     if class and not Gear.Usable(class, { loc, classID, sub or 0 }, Gear.Cap(), (ns.BisSpec())) then return nil, cannot end
     if class and row and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then return nil, cannot end
@@ -1459,16 +1461,16 @@ end
 -- Returns the entry, or nil and the reason.
 function ns.WishAdd(item, prio, note)
     local c = ns.BisChar()
-    if not c then return nil, "Amisia ist noch nicht geladen." end
+    if not c then return nil, L["Amisia ist noch nicht geladen."] end
     local id = tonumber(item) or ns.ItemID(item)
-    if not id or id <= 0 or id % 1 ~= 0 then return nil, "Kein Item." end
+    if not id or id <= 0 or id % 1 ~= 0 then return nil, L["Kein Item."] end
     local e = c.wish[id]
     if not e then
         local ok, why = wearable(id)
         if not ok then return nil, why end
         local n = 0
         for _ in pairs(c.wish) do n = n + 1 end
-        if n >= MAX_WISH then return nil, ("Die Wunschliste ist voll (%d)."):format(MAX_WISH) end
+        if n >= MAX_WISH then return nil, L["Die Wunschliste ist voll (%d)."]:format(MAX_WISH) end
         e = { t = time(), prio = clampPrio(prio), note = ns.CleanNote(note, NOTE_MAX) or "" }
         c.wish[id] = e
     else
@@ -1551,7 +1553,7 @@ end
 
 -- Self clean-up (bis.wishAutoRemove): a wish that is worn, in the bags or in the bank goes.
 local function cleanWishes()
-    if not ns.Get("bis.wishAutoRemove") then return end
+    if not ns.Get("bis.wishAutoRemove") then return end   -- l10n-ok: setting key
     local c = ns.BisChar()
     if not c or not next(c.wish) then return end
     local gone = {}
@@ -1562,7 +1564,7 @@ local function cleanWishes()
     table.sort(gone)
     for _, id in ipairs(gone) do
         c.wish[id] = nil
-        ns.msg(("%s von deiner Wunschliste genommen, du hast das Item."):format(itemName(id)))
+        ns.msg(L["%s von deiner Wunschliste genommen, du hast das Item."]:format(itemName(id)))
     end
     ns.Fire("BIS_CHANGED")
 end
@@ -1575,9 +1577,9 @@ ns.OnEvent("CHAT_MSG_LOOT", function(text)
     local who, id = ns.ParseLoot(text)
     if not who or not ns.SameName(who, ns.UnitFullName("player")) then return end
     local c = ns.BisChar()
-    if c and c.wish[id] and ns.Get("bis.wishAutoRemove") then
+    if c and c.wish[id] and ns.Get("bis.wishAutoRemove") then   -- l10n-ok: setting key
         c.wish[id] = nil
-        ns.msg(("%s von deiner Wunschliste genommen, du hast das Item."):format(itemName(id)))
+        ns.msg(L["%s von deiner Wunschliste genommen, du hast das Item."]:format(itemName(id)))
         ns.Fire("BIS_CHANGED")
     end
     -- gear read at once; herbs and ore wait for the next bag update
@@ -1712,14 +1714,14 @@ local function show(entry)
     q = q or ns.LinkQuality(entry.link) or 4
     f.icon:SetTexture(icon or 134400)
     if entry.why == "wish" then
-        f.title:SetText("Wunsch droppt!")
+        f.title:SetText(L["Wunsch droppt!"])
         f.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
     else
-        f.title:SetText("Upgrade für dich")
+        f.title:SetText(L["Upgrade für dich"])
         f.title:SetTextColor(0.31, 0.82, 0.42)
     end
     local extra = ""
-    if entry.gain and entry.slotKey and entry.pct and ns.Get("bis.compare") ~= false then
+    if entry.gain and entry.slotKey and entry.pct and ns.Get("bis.compare") ~= false then   -- l10n-ok: setting key
         extra = (" %+d %% (%+d, %s)"):format(entry.pct, math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
     elseif entry.gain and entry.slotKey then
         extra = (" %+d (%s)"):format(math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
@@ -1727,7 +1729,7 @@ local function show(entry)
     f.item:SetText(("|c%s%s|r%s"):format(QUALITY[q] or QUALITY[4], itemName(entry.id, entry.link or link), extra))
     f.source:SetText(entry.src or "")
     f:Show()
-    if entry.why == "wish" and ns.Get("bis.toastSound") and type(PlaySound) == "function" and SOUNDKIT and SOUNDKIT.RAID_WARNING then
+    if entry.why == "wish" and ns.Get("bis.toastSound") and type(PlaySound) == "function" and SOUNDKIT and SOUNDKIT.RAID_WARNING then   -- l10n-ok: setting key
         pcall(PlaySound, SOUNDKIT.RAID_WARNING)
     end
     local my = token
@@ -1792,7 +1794,7 @@ local function consider(link, src)
     local why
     if c and c.wish[id] then
         why = "wish"
-    elseif ns.Get("bis.toastUpgrade") and Gear.Available() then
+    elseif ns.Get("bis.toastUpgrade") and Gear.Available() then   -- l10n-ok: setting key
         local u = ns.UpgradeOf(link)
         if u and u.up then why = "upgrade" end
     end
@@ -1804,7 +1806,7 @@ end
 -- Every trigger runs protected: an error goes to the error handler, never into the client's event.
 local function guarded(fn)
     return function(...)
-        if not ns.Get("bis.toast") or inPvP() then return end
+        if not ns.Get("bis.toast") or inPvP() then return end   -- l10n-ok: setting key
         local ok, err = pcall(fn, ...)
         if not ok then
             local handler = geterrorhandler and geterrorhandler()
@@ -1827,7 +1829,7 @@ ns.OnEvent("LOOT_OPENED", guarded(function()
                 local ok, name = pcall(ns.LootSourceName, slot)
                 src = ok and plainString(name) or nil
             end
-            consider(link, (src and src ~= "?") and src or "Lootfenster")
+            consider(link, (src and src ~= "?") and src or L["Lootfenster"])
         end
     end
 end))
@@ -1836,7 +1838,7 @@ ns.OnEvent("START_LOOT_ROLL", guarded(function(rollID)
     rollID = ns.Plain(rollID)
     if type(rollID) ~= "number" or type(_G.GetLootRollItemLink) ~= "function" then return end
     local ok, link = pcall(_G.GetLootRollItemLink, rollID)
-    if ok then consider(plainString(link), "Würfeln") end
+    if ok then consider(plainString(link), L["Würfeln"]) end
 end))
 
 -- item links in a chat line: coloured links, as the client sends them
@@ -1850,14 +1852,14 @@ local function onRaidChat(text)
     if ns.ChatLocked() then return end
     text = plainString(text)
     if not text or not text:find("^%d+%. |c") then return end
-    eachLink(text, function(link) consider(link, "Ansage") end)
+    eachLink(text, function(link) consider(link, L["Ansage"]) end)
 end
 ns.OnEvent("CHAT_MSG_RAID", guarded(onRaidChat))
 ns.OnEvent("CHAT_MSG_RAID_LEADER", guarded(onRaidChat))
 ns.OnEvent("CHAT_MSG_RAID_WARNING", guarded(function(text)
     if ns.ChatLocked() then return end
     text = plainString(text)
-    if text then eachLink(text, function(link) consider(link, "Ansage") end) end
+    if text then eachLink(text, function(link) consider(link, L["Ansage"]) end) end
 end))
 
 ---------------------------------------------------------------------------
@@ -1888,11 +1890,11 @@ function ns.BisItemReport(arg)
     arg = tostring(arg or "")
     local id = ns.ItemID(arg) or tonumber(arg)
     if not id then
-        ns.msg("Aufruf: /amisia bis item <Item-Link>")
+        ns.msg(L["Aufruf: /amisia bis item <Item-Link>"])
         return
     end
     if not Gear.Available() then
-        ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+        ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
         return
     end
     local item = arg:find("item:", 1, true) and arg or id
@@ -1907,34 +1909,34 @@ function ns.BisItemReport(arg)
     end
 end
 
-ns.RegisterSettings{ key = "bis", label = "Ausrüstung und Wünsche", order = 45, available = function() return Gear.Available() end, items = {
-    { key = "bis.tooltip", type = "toggle", label = "Tooltip-Zeile \"Upgrade für dich\"", default = true },
-    { key = "bis.compare", type = "toggle", label = "Mit angelegter Ausrüstung vergleichen (Prozent)", default = true,
-      tip = "Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster." },
-    { key = "bis.tooltipNone", type = "toggle", label = "Auch \"Kein Upgrade\" im Tooltip zeigen", default = false },
-    { key = "bis.minGain", type = "slider", label = "Upgrade erst ab (Prozent mehr Wertung)", default = 2, min = 0, max = 10, step = 1,
+ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order = 45, available = function() return Gear.Available() end, items = {   -- l10n-ok: command word / internal key
+    { key = "bis.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Upgrade für dich\""], default = true },   -- l10n-ok: setting key
+    { key = "bis.compare", type = "toggle", label = L["Mit angelegter Ausrüstung vergleichen (Prozent)"], default = true,   -- l10n-ok: setting key
+      tip = L["Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster."] },
+    { key = "bis.tooltipNone", type = "toggle", label = L["Auch \"Kein Upgrade\" im Tooltip zeigen"], default = false },   -- l10n-ok: setting key
+    { key = "bis.minGain", type = "slider", label = L["Upgrade erst ab (Prozent mehr Wertung)"], default = 2, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
       expert = true },
-    { key = "bis.toast", type = "toggle", label = "Hinweis, wenn ein Wunsch droppt", default = true,
-      tip = "Aus dem Lootfenster, beim Würfeln und aus der Loot-Ansage im Schlachtzugschat." },
-    { key = "bis.toastUpgrade", type = "toggle", label = "Hinweis auch für andere Upgrades", default = true },
-    { key = "bis.toastSound", type = "toggle", label = "Ton beim Wunsch-Hinweis", default = true },
-    { key = "bis.wishAutoRemove", type = "toggle", label = "Erhaltene Wünsche von der Liste nehmen", default = true },
-    { key = "bis.suffix", type = "choice", label = "Zufallsboni", default = "best",
-      values = { { "best", "bester gesehener" }, { "base", "nur Grundwerte" } },
-      tip = "Items mit Zufallsbonus (\"...des Adlers\") zählen mit dem besten Bonus, den Amisia an ihnen gesehen hat." },
-    { key = "bis.sets", type = "toggle", label = "Setboni werten", default = true },
-    { key = "bis.picks", type = "toggle", label = "BiS-Empfehlungen zeigen", default = true,
-      tip = "Von Hand gepflegte beste Items, die die Wertung allein verfehlt (Procs, Effekte), stehen in ihrem Slot zuerst." },
-    { key = "bis.hitCap", type = "toggle", label = "Trefferwertung nur bis zur Grenze", default = true,
-      tip = "Trefferwertung über 6 % zählt nicht, gerechnet mit deinem Trefferwert aus dem Charakterfenster." },
-    { key = "bis.effortTie", type = "slider", label = "Gleichstand für Aufwand (Prozent)", default = 3, min = 0, max = 10, step = 1,
-      expert = true, tip = "Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst." },
-    { key = "bis.prof", type = "choice", label = "Hergestellte Items", default = "all",
-      values = { { "all", "alle" }, { "mine", "nur meine Berufe" } } },
-    { key = "bis.guildTooltip", type = "toggle", label = "Gildenwünsche im Tooltip", default = true, officer = true },
-    { key = "bis.guildLootMark", type = "toggle", label = "W-Markierung im Lootfenster und an den Würfelfenstern", default = true,
+    { key = "bis.toast", type = "toggle", label = L["Hinweis, wenn ein Wunsch droppt"], default = true,   -- l10n-ok: setting key
+      tip = L["Aus dem Lootfenster, beim Würfeln und aus der Loot-Ansage im Schlachtzugschat."] },
+    { key = "bis.toastUpgrade", type = "toggle", label = L["Hinweis auch für andere Upgrades"], default = true },   -- l10n-ok: setting key
+    { key = "bis.toastSound", type = "toggle", label = L["Ton beim Wunsch-Hinweis"], default = true },   -- l10n-ok: setting key
+    { key = "bis.wishAutoRemove", type = "toggle", label = L["Erhaltene Wünsche von der Liste nehmen"], default = true },   -- l10n-ok: setting key
+    { key = "bis.suffix", type = "choice", label = L["Zufallsboni"], default = "best",   -- l10n-ok: setting key
+      values = { { "best", L["bester gesehener"] }, { "base", L["nur Grundwerte"] } },
+      tip = L["Items mit Zufallsbonus (\"...des Adlers\") zählen mit dem besten Bonus, den Amisia an ihnen gesehen hat."] },
+    { key = "bis.sets", type = "toggle", label = L["Setboni werten"], default = true },   -- l10n-ok: setting key
+    { key = "bis.picks", type = "toggle", label = L["BiS-Empfehlungen zeigen"], default = true,   -- l10n-ok: setting key
+      tip = L["Von Hand gepflegte beste Items, die die Wertung allein verfehlt (Procs, Effekte), stehen in ihrem Slot zuerst."] },
+    { key = "bis.hitCap", type = "toggle", label = L["Trefferwertung nur bis zur Grenze"], default = true,   -- l10n-ok: setting key
+      tip = L["Trefferwertung über 6 % zählt nicht, gerechnet mit deinem Trefferwert aus dem Charakterfenster."] },
+    { key = "bis.effortTie", type = "slider", label = L["Gleichstand für Aufwand (Prozent)"], default = 3, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
+      expert = true, tip = L["Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst."] },
+    { key = "bis.prof", type = "choice", label = L["Hergestellte Items"], default = "all",   -- l10n-ok: setting key
+      values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } } },
+    { key = "bis.guildTooltip", type = "toggle", label = L["Gildenwünsche im Tooltip"], default = true, officer = true },   -- l10n-ok: setting key
+    { key = "bis.guildLootMark", type = "toggle", label = L["W-Markierung im Lootfenster und an den Würfelfenstern"], default = true,   -- l10n-ok: setting key
       officer = true },
-    { key = "bis.guildAward", type = "toggle", label = "Wünschende zuerst im Vergabe-Dialog", default = true, officer = true },
+    { key = "bis.guildAward", type = "toggle", label = L["Wünschende zuerst im Vergabe-Dialog"], default = true, officer = true },   -- l10n-ok: setting key
 }}
 
 -- The item at the start of a command (a link, else an item id) and the rest.
@@ -1949,8 +1951,8 @@ end
 
 local PRIO_WORD = { hoch = 3, high = 3, mittel = 2, medium = 2, niedrig = 1, low = 1, ["3"] = 3, ["2"] = 2, ["1"] = 1 }
 
-ns.RegisterSlash("wunsch", { aliases = { "wish" }, args = "[<Link> [hoch|mittel|niedrig] [Notiz] | weg <Link>]",
-    desc = "Wunschliste: Item merken, ändern oder entfernen",
+ns.RegisterSlash("wunsch", { en = "wish", args = L["[<Link> [hoch|mittel|niedrig] [Notiz] | weg <Link>]"],
+    desc = L["Wunschliste: Item merken, ändern oder entfernen"],
     run = function(rest)
         rest = rest or ""
         if rest == "" then
@@ -1959,19 +1961,19 @@ ns.RegisterSlash("wunsch", { aliases = { "wish" }, args = "[<Link> [hoch|mittel|
         end
         local word, after = rest:match("^(%S+)%s*(.*)$")
         word = word and word:lower()
-        if word == "weg" or word == "remove" then
+        if word == "weg" or word == "remove" then   -- l10n-ok: command word / internal key
             local item = splitItem(after)
             local id = tonumber(item) or ns.ItemID(item)
             if id and ns.WishRemove(id) then
-                ns.msg(("%s von deiner Wunschliste entfernt."):format(type(item) == "string" and item or itemName(id)))
+                ns.msg(L["%s von deiner Wunschliste entfernt."]:format(type(item) == "string" and item or itemName(id)))
             else
-                ns.msg("Das steht nicht auf deiner Wunschliste.")
+                ns.msg(L["Das steht nicht auf deiner Wunschliste."])
             end
             return
         end
         local item, more = splitItem(rest)
         if not item then
-            ns.msg("Aufruf: /amisia wunsch <Item-Link> [hoch|mittel|niedrig] [Notiz]")
+            ns.msg(L["Aufruf: /amisia wunsch <Item-Link> [hoch|mittel|niedrig] [Notiz]"])
             return
         end
         local prio
@@ -1983,7 +1985,7 @@ ns.RegisterSlash("wunsch", { aliases = { "wish" }, args = "[<Link> [hoch|mittel|
             return
         end
         local id = tonumber(item) or ns.ItemID(item)
-        ns.msg(("%s auf deiner Wunschliste (%s%s)."):format(type(item) == "string" and item or itemName(id), PRIO_TEXT[e.prio],
+        ns.msg(L["%s auf deiner Wunschliste (%s%s)."]:format(type(item) == "string" and item or itemName(id), PRIO_TEXT[e.prio],
             e.note ~= "" and (", " .. e.note) or ""))
     end })
 
@@ -1995,14 +1997,14 @@ function ns.BisCompareReport(arg)
     local a, rest = splitItem(tostring(arg or ""))
     local b = rest and splitItem(rest)
     if not a or not b then
-        ns.msg("Aufruf: /amisia bis vergleich <Item-Link> <Item-Link>")
+        ns.msg(L["Aufruf: /amisia bis vergleich <Item-Link> <Item-Link>"])
         return
     end
     if not Gear.Available() then
-        ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+        ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
         return
     end
-    local cmp, why = ns.BisCompare(a, b, nil, { "Das erste", "das zweite" })
+    local cmp, why = ns.BisCompare(a, b, nil, { L["Das erste"], L["das zweite"] })
     if not cmp then
         ns.msg(why)
         return
@@ -2014,13 +2016,13 @@ end
 -- /amisia bis gewichte: the weights of the own spec at the own level with their reason.
 function ns.BisWeightsReport()
     if not Gear.Available() then
-        ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+        ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
         return
     end
     local o = ns.BisOpts()
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
     if not w then
-        ns.msg("Keine Gewichtung.")
+        ns.msg(L["Keine Gewichtung."])
         return
     end
     for _, line in ipairs(ns.BisWhy(o)) do ns.msg(line) end
@@ -2038,41 +2040,41 @@ function ns.BisWeightsReport()
     for _, p in ipairs(parts) do
         out[#out + 1] = ("%s %s"):format(Gear.STAT_LABELS[p.k] or p.k, Gear.Num(p.v, p.v < 1 and 2 or 1))
     end
-    ns.msg(("Gewichte (%s, Level %d): %s"):format(o.kind, o.level, table.concat(out, ", ")))
+    ns.msg(L["Gewichte (%s, Level %d): %s"]:format(o.kind, o.level, table.concat(out, ", ")))
     local melee, spell = ns.BisOwnHit()
     if melee or spell then
-        ns.msg(("Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %%"):format(
+        ns.msg(L["Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %%"]:format(
             melee and Gear.Num(melee, 1) or "?", spell and Gear.Num(spell, 1) or "?", ns.BIS_HIT_CAP))
     else
-        ns.msg("Trefferwertung zählt ohne Obergrenze (der Client nennt den eigenen Trefferwert nicht).")
+        ns.msg(L["Trefferwertung zählt ohne Obergrenze (der Client nennt den eigenen Trefferwert nicht)."])
     end
 end
 
-ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },
-    args = "[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]",
-    desc = "beste Ausrüstung für deinen Charakter",
+ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: command word / internal key
+    args = L["[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"],
+    desc = L["beste Ausrüstung für deinen Charakter"],
     run = function(rest)
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
         sub = sub and sub:lower()
         if sub == "item" then ns.BisItemReport(arg) return end
         if not Gear.Available() then
-            ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+            ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
             return
         end
         if not sub then
             ns.ShowGear("goals")
-        elseif sub == "hier" or sub == "here" then
+        elseif sub == "hier" or sub == "here" then   -- l10n-ok: command word / internal key
             ns.ShowGear("here")
-        elseif sub == "aus" then
+        elseif sub == "aus" or sub == "exclude" then   -- l10n-ok: command word / internal key
             local ok, why = ns.BisExclude("item", arg)
             if ok then
-                ns.msg(("%s ausgeschlossen. /amisia bis zurueck hebt alle Ausschlüsse auf."):format(ns.ItemID(arg) and arg or ("Item " .. arg)))
+                ns.msg(L["%s ausgeschlossen. /amisia bis zurueck hebt alle Ausschlüsse auf."]:format(ns.ItemID(arg) and arg or ("Item " .. arg)))
             else
                 ns.msg(why)
             end
         elseif sub == "zurueck" or sub == "reset" then
             local n = ns.BisClearExcludes()
-            ns.msg(n == 1 and "1 Ausschluss aufgehoben." or ("%d Ausschlüsse aufgehoben."):format(n))
+            ns.msg(n == 1 and L["1 Ausschluss aufgehoben."] or L["%d Ausschlüsse aufgehoben."]:format(n))
         elseif sub == "vergleich" or sub == "compare" then
             ns.BisCompareReport(arg)
         elseif sub == "gewichte" or sub == "weights" then
@@ -2080,14 +2082,14 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },
         elseif sub == "plan" then
             local want = PLAN_WORD[(arg or ""):lower()]
             if not want then
-                ns.msg("Aufruf: /amisia bis plan auto|2h|dw|schild")
+                ns.msg(L["Aufruf: /amisia bis plan auto|2h|dw|schild"])
                 return
             end
             local ok, why = ns.BisSetPlan(want)
-            ns.msg(ok and ("Waffenplan: %s."):format(ns.BIS_PLANS[want]) or why)
+            ns.msg(ok and L["Waffenplan: %s."]:format(ns.BIS_PLANS[want]) or why)
         elseif sub == "sim" or sub == "simulation" then
             ns.ShowGear("sim")
         else
-            ns.msg("Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]")
+            ns.msg(L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"])
         end
     end })

@@ -424,7 +424,7 @@ local function limits(idx, r, o, add)
     for a in eachId(r[ALT]) do
         if isDone(a) then
             n = n + 1
-            if add then add("alt", L["Alternative erledigt: %s"]:format(Q.Title(a))) end
+            if add then add("alt", L["Alternative erledigt: %s"]:format(Q.Title(a))) end   -- l10n-ok: reason key
             break
         end
     end

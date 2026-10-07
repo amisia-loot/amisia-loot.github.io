@@ -3,6 +3,7 @@
 -- chain progress and the best reward's upgrade mark per row, a click opening the chain and the
 -- rewards below the quest, and a button that sets the waypoint to the quest giver.
 local ADDON, ns = ...
+local L = ns.L
 local W, Q, T = ns.W, ns.Quests, ns.Theme
 local GOLD_TEXT = T.GOLD_TEXT
 local GREY = T.GREY
@@ -14,7 +15,7 @@ local ICON = "Interface\\Icons\\INV_Misc_Book_08"
 local ROWS, ROW_H = 13, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local STATUS_COLOR = { active = YELLOW, open = GREEN, locked = RED, done = GREY }
-local HINT = "Klick auf eine Quest: Reihe und Belohnungen. Weg: Wegpunkt zum Questgeber."
+local HINT = L["Klick auf eine Quest: Reihe und Belohnungen. Weg: Wegpunkt zum Questgeber."]
 
 local page
 local nameMissing = false
@@ -34,7 +35,7 @@ end
 
 local function longDate(iso)
     local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and (d .. "." .. m .. "." .. y) or "?"
+    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
 end
 
 local function itemText(id)
@@ -130,7 +131,7 @@ local function fillRow(r, e)
         if rw.best then
             r.reward:SetText(markText(rw.best))
         elseif #rw.list > 0 then
-            r.reward:SetText(GREY .. (#rw.list == 1 and "1 Item" or (#rw.list .. " Items")) .. "|r")
+            r.reward:SetText(GREY .. (#rw.list == 1 and L["1 Item"] or L["%d Items"]:format(#rw.list)) .. "|r")
         else
             r.reward:SetText("")
         end
@@ -152,31 +153,31 @@ local function questTip(self)
     local r = info.rec
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(info.title, 1, 0.82, 0)
-    if r.min > 0 then GameTooltip:AddLine("ab Level " .. r.min, 0.85, 0.85, 0.85) end
+    if r.min > 0 then GameTooltip:AddLine(L["ab Level %s"]:format(r.min), 0.85, 0.85, 0.85) end
     GameTooltip:AddLine(Q.STATUS_TEXT[info.status], 0.85, 0.85, 0.85)
     for _, reason in ipairs(info.reasons) do GameTooltip:AddLine(reason.text, 1, 0.38, 0.25, true) end
-    if info.note then GameTooltip:AddLine(info.note .. " (nicht prüfbar)", 0.85, 0.85, 0.85, true) end
+    if info.note then GameTooltip:AddLine(L["%s (nicht prüfbar)"]:format(info.note), 0.85, 0.85, 0.85, true) end
     local where = ns.QuestStartText(e.qid)
-    if where ~= "" then GameTooltip:AddLine("Start: " .. where, 0.85, 0.85, 0.85, true) end
+    if where ~= "" then GameTooltip:AddLine(L["Start: %s"]:format(where), 0.85, 0.85, 0.85, true) end
     local c = ns.QuestChain(e.qid)
     if c then
-        GameTooltip:AddLine(("Reihe %s (Quest %d von %d)"):format(Q.ChainText(c), c.pos, c.total), 0.89, 0.72, 0.34)
+        GameTooltip:AddLine(L["Reihe %s (Quest %d von %d)"]:format(Q.ChainText(c), c.pos, c.total), 0.89, 0.72, 0.34)
         for i, id in ipairs(c.ids) do
             if i > 12 then
-                GameTooltip:AddLine(("... und %d weitere"):format(#c.ids - 12), 0.6, 0.6, 0.6)
+                GameTooltip:AddLine(L["... und %d weitere"]:format(#c.ids - 12), 0.6, 0.6, 0.6)
                 break
             end
             local s = ns.QuestState(id)
-            GameTooltip:AddLine(("%d. %s%s"):format(i, s.title, s.status == "done" and " (erledigt)" or ""), 0.6, 0.6, 0.6, true)
+            GameTooltip:AddLine(("%d. %s%s"):format(i, s.title, s.status == "done" and L[" (erledigt)"] or ""), 0.6, 0.6, 0.6, true)
         end
     end
     for _, x in ipairs(ns.QuestRewards(e.qid).list) do
-        GameTooltip:AddLine("Belohnung: " .. itemText(x.id) .. (x.mark and (" " .. markText(x)) or ""), 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(L["Belohnung: %s"]:format(itemText(x.id) .. (x.mark and (" " .. markText(x)) or "")), 0.85, 0.85, 0.85, true)
     end
-    if r.breadcrumb then GameTooltip:AddLine("Hinweis-Quest: führt zu einer anderen Quest.", 0.6, 0.6, 0.6, true) end
-    if r.repeatable then GameTooltip:AddLine("Wiederholbar.", 0.6, 0.6, 0.6) end
-    if r.classic then GameTooltip:AddLine("Aus den Classic-Daten, für Forever noch nicht bestätigt.", 0.6, 0.6, 0.6, true) end
-    if e.kind == "quest" then GameTooltip:AddLine("Klick: Reihe und Belohnungen auf- oder zuklappen.", 0.31, 0.82, 0.42) end
+    if r.breadcrumb then GameTooltip:AddLine(L["Hinweis-Quest: führt zu einer anderen Quest."], 0.6, 0.6, 0.6, true) end
+    if r.repeatable then GameTooltip:AddLine(L["Wiederholbar."], 0.6, 0.6, 0.6) end
+    if r.classic then GameTooltip:AddLine(L["Aus den Classic-Daten, für Forever noch nicht bestätigt."], 0.6, 0.6, 0.6, true) end
+    if e.kind == "quest" then GameTooltip:AddLine(L["Klick: Reihe und Belohnungen auf- oder zuklappen."], 0.31, 0.82, 0.42) end
     GameTooltip:Show()
 end
 
@@ -220,8 +221,8 @@ function ns.QuestPageFrame() return page end
 
 local function zoneValues(counts, s)
     local here = Q.HereZone()
-    local values = { { value = "all", text = "Alle Zonen" },
-        { value = "here", text = "Hier: " .. (here and Q.ZoneName(here) or "unbekannt") } }
+    local values = { { value = "all", text = L["Alle Zonen"] },
+        { value = "here", text = L["Hier: %s"]:format(here and Q.ZoneName(here) or L["unbekannt"]) } }
     local found = false
     for _, z in ipairs(counts.zones or {}) do
         values[#values + 1] = { value = z.zone, text = ("%s (%d)"):format(z.name, z.n) }
@@ -232,7 +233,7 @@ local function zoneValues(counts, s)
 end
 
 local function countsText(counts)
-    return ("%d im Log · %d annehmbar · %d gesperrt · %d erledigt"):format(counts.active, counts.open, counts.locked, counts.done)
+    return L["%d im Log · %d annehmbar · %d gesperrt · %d erledigt"]:format(counts.active, counts.open, counts.locked, counts.done)
 end
 
 local function refresh(f)
@@ -254,12 +255,12 @@ local function refresh(f)
     if #rows > 0 then
         f.empty:Hide()
     else
-        f.empty:SetText(Q.WhyText(why) or "Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren.")
+        f.empty:SetText(Q.WhyText(why) or L["Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren."])
         f.empty:Show()
     end
     local d = ns.Data("QUEST_DATA")
     if type(d) == "table" then
-        f.data:SetText(("Questdaten vom %s · %d Quests · Namen englisch, bis der Client die Quest kennt."):format(longDate(d.built), d.count or 0))
+        f.data:SetText(L["Questdaten vom %s · %d Quests · Namen englisch, bis der Client die Quest kennt."]:format(longDate(d.built), d.count or 0))
     else
         f.data:SetText("")
     end
@@ -275,15 +276,15 @@ local function create(parent)
     f.search = W.SearchBox(f, 190, function(text)
         state().search = (text or ""):match("^%s*(.-)%s*$") or ""
         ns.Refresh()
-    end, "Quest, Questgeber, Zone")
+    end, L["Quest, Questgeber, Zone"])
     W.Row(f, { f.zone, f.search }, 12, 0, -1)
 
     -- the status chips, then the filters
     f.show = {}
-    local defs = { { "open", "Annehmbar", 76, "Quests, die du jetzt annehmen kannst." },
-        { "active", "Im Log", 58, "Quests in deinem Questlog." },
-        { "locked", "Gesperrt", 68, "Quests, die dir noch fehlen: Vorquest, Level, Beruf. Der Grund steht in der Zeile." },
-        { "done", "Erledigt", 64, "Abgegebene Quests." } }
+    local defs = { { "open", L["Annehmbar"], 76, L["Quests, die du jetzt annehmen kannst."] },
+        { "active", L["Im Log"], 58, L["Quests in deinem Questlog."] },
+        { "locked", L["Gesperrt"], 68, L["Quests, die dir noch fehlen: Vorquest, Level, Beruf. Der Grund steht in der Zeile."] },
+        { "done", L["Erledigt"], 64, L["Abgegebene Quests."] } }
     local row = {}
     for _, d in ipairs(defs) do
         local chip = W.Chip(f, d[2], d[3], function()
@@ -302,12 +303,12 @@ local function create(parent)
             ns.Refresh()
         end
     end
-    f.chains = W.Chip(f, "Reihen", 58, toggle("chains"))
-    W.Tooltip(f.chains, "Nur Reihen", "Nur Quests mit Vorquest oder Folgequest.")
+    f.chains = W.Chip(f, L["Reihen"], 58, toggle("chains"))
+    W.Tooltip(f.chains, L["Nur Reihen"], L["Nur Quests mit Vorquest oder Folgequest."])
     f.upgrades = W.Chip(f, "Upgrades", 72, toggle("upgrades"))
-    W.Tooltip(f.upgrades, "Nur Upgrades", "Nur Quests, deren Belohnung ein Upgrade für dich ist.")
-    f.mine = W.Chip(f, "Nur für mich", 92, toggle("mine"))
-    W.Tooltip(f.mine, "Nur für mich", "Quests anderer Fraktionen, Völker und Klassen ausblenden.")
+    W.Tooltip(f.upgrades, L["Nur Upgrades"], L["Nur Quests, deren Belohnung ein Upgrade für dich ist."])
+    f.mine = W.Chip(f, L["Nur für mich"], 92, toggle("mine"))
+    W.Tooltip(f.mine, L["Nur für mich"], L["Quests anderer Fraktionen, Völker und Klassen ausblenden."])
     -- the status chips, then the filters after a wider gap
     row[#row + 1] = { f.chains, gap = 16 }
     row[#row + 1] = f.upgrades
@@ -323,13 +324,13 @@ local function create(parent)
     h:SetPoint("TOPRIGHT", 0, -70)
     -- the list is 590 wide (12 px for its scroll bar)
     f.head = { title = col(h, 4, 232, "Quest"), level = col(h, 240, 40, "Level"), status = col(h, 284, 150, "Status"),
-        reward = col(h, 438, 92, "Belohnung"), go = col(h, 540, 46, "Weg") }
+        reward = col(h, 438, 92, L["Belohnung"]), go = col(h, 540, 46, L["Weg"]) }
     f.list = W.List(f, ROWS, ROW_H, function(r)
         r.title = col(r, 4, 232, nil, T.FONT.text)
         r.level = col(r, 240, 40, nil, T.FONT.text)
         r.status = col(r, 284, 150, nil, T.FONT.text)
         r.reward = col(r, 438, 92, nil, T.FONT.text)
-        r.go = W.Button(r, "Weg", 54, function(self)
+        r.go = W.Button(r, L["Weg"], 54, function(self)
             local e = self:GetParent().item
             if e and e.qid then say(ns.QuestWaypoint(e.qid)) end
         end)

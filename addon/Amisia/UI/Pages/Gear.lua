@@ -8,6 +8,7 @@
 -- Everything shown comes from the caches of Bis.lua; a refresh never computes the targets again
 -- unless something they depend on changed.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local Gear = ns.Gear
 local GREY, GREEN = T.GREY, "|cff4fd06a"
@@ -17,14 +18,14 @@ local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335e
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
 local DUNGEON_ROWS, DETAIL_ROWS = 6, 5
-local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
+local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
-local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
-local OWNED_TEXT = { worn = "angelegt", bag = "in der Tasche, nicht angelegt", bank = "in der Bank, nicht angelegt" }
+local PRIO_TIP = { [3] = L[" (hoch)"], [1] = L[" (niedrig)"] }
+local OWNED_TEXT = { worn = L["angelegt"], bag = L["in der Tasche, nicht angelegt"], bank = L["in der Bank, nicht angelegt"] }
 local VIEWS = { goals = true, here = true, dungeons = true, wish = true, guild = true, sim = true }
 -- the source chips: key, label, width
-local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", "Berufe: alle", 86 },
-                { "V", "Händler", 56 }, { "W", "Welt", 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
+local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", L["Berufe: alle"], 86 },
+                { "V", L["Händler"], 56 }, { "W", L["Welt"], 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
 
 local page
 local groupOnly          -- the guild view's "Nur Gruppe"; nil: on while in a raid
@@ -109,12 +110,12 @@ end
 -- for its effort.
 local function noteParts(e)
     local out = {}
-    if e.pick then out[#out + 1] = "BiS-Empfehlung" end
-    if e.set then out[#out + 1] = ("Set %d/%d, %+d Bonus"):format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
-    if e.sc then out[#out + 1] = "berechnet" end
-    if Gear.EffectText(e.id or e[1]) then out[#out + 1] = "Effekt nicht gewertet" end
-    if e.suffix then out[#out + 1] = "bester gesehener Bonus" end
-    if e.easier then out[#out + 1] = "leichter zu bekommen" end
+    if e.pick then out[#out + 1] = L["BiS-Empfehlung"] end
+    if e.set then out[#out + 1] = L["Set %d/%d, %+d Bonus"]:format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
+    if e.sc then out[#out + 1] = L["berechnet"] end
+    if Gear.EffectText(e.id or e[1]) then out[#out + 1] = L["Effekt nicht gewertet"] end
+    if e.suffix then out[#out + 1] = L["bester gesehener Bonus"] end
+    if e.easier then out[#out + 1] = L["leichter zu bekommen"] end
     return out
 end
 local function noteText(e)
@@ -125,7 +126,7 @@ end
 
 local function gainText(e)
     if e.worn or e.owned == "worn" then return CHECK end
-    if e.switch then return "Wechsel" end
+    if e.switch then return L["Wechsel"] end
     if type(e.gain) ~= "number" then return "" end
     return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
 end
@@ -222,10 +223,10 @@ end
 local function mapTip(self)
     if not self.id then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine("Wegpunkt zur Quelle", 1, 0.82, 0)
+    GameTooltip:AddLine(L["Wegpunkt zur Quelle"], 1, 0.82, 0)
     local where = ns.Map.Where(self.id, self.key)
-    if where then GameTooltip:AddLine("Fundort: " .. where, 0.85, 0.85, 0.85) end
-    GameTooltip:AddLine("Klick: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen.", 0.6, 0.6, 0.6)
+    if where then GameTooltip:AddLine(L["Fundort: %s"]:format(where), 0.85, 0.85, 0.85) end
+    GameTooltip:AddLine(L["Klick: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."], 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
 
@@ -262,8 +263,8 @@ end
 -- "Wegpunkt setzen" and "Auf der Karte zeigen", for an item with a place.
 local function mapEntries(out, id, key)
     if not hasPlace(id) then return end
-    out[#out + 1] = { "Wegpunkt setzen", function() setTarget(id, key) end }
-    out[#out + 1] = { "Auf der Karte zeigen", function() showOnMap(id, key) end }
+    out[#out + 1] = { L["Wegpunkt setzen"], function() setTarget(id, key) end }
+    out[#out + 1] = { L["Auf der Karte zeigen"], function() showOnMap(id, key) end }
 end
 
 local function inInstance()
@@ -328,7 +329,7 @@ end
 
 local function longDate(iso)
     local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and (d .. "." .. m .. "." .. y) or "?"
+    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
 end
 
 ---------------------------------------------------------------------------
@@ -336,13 +337,13 @@ end
 ---------------------------------------------------------------------------
 
 local function counts(o, res)
-    local parts = { ("Level %d"):format(o.level), upgradesText(res.upgrades or 0) }
+    local parts = { L["Level %d"]:format(o.level), upgradesText(res.upgrades or 0) }
     local c = ns.BisChar()
-    parts[#parts + 1] = (c and c.bankAt) and ("Bank " .. date("%d.%m.", c.bankAt)) or "Bank noch nicht geöffnet"
+    parts[#parts + 1] = (c and c.bankAt) and L["Bank %s"]:format(ns.FmtDay(c.bankAt)) or L["Bank noch nicht geöffnet"]
     local ex = ns.BisExcludeCount()
-    if ex > 0 then parts[#parts + 1] = ex .. " ausgeschlossen" end
+    if ex > 0 then parts[#parts + 1] = L["%d ausgeschlossen"]:format(ex) end
     local loading = Gear.Loading()
-    if loading > 0 then parts[#parts + 1] = ("|cffe0a344lädt noch %d Items|r"):format(loading) end
+    if loading > 0 then parts[#parts + 1] = "|cffe0a344" .. L["lädt noch %d Items"]:format(loading) .. "|r" end
     return table.concat(parts, " · ")
 end
 
@@ -369,12 +370,12 @@ local function profClick()
     local src = ns.BisOpts().sources
     if not src.C then
         src.C = true
-        ns.Set("bis.prof", "all")
-    elseif ns.Get("bis.prof") ~= "mine" and ns.BisSkills() then
-        ns.Set("bis.prof", "mine")
+        ns.Set("bis.prof", "all")   -- l10n-ok: setting key
+    elseif ns.Get("bis.prof") ~= "mine" and ns.BisSkills() then   -- l10n-ok: setting key
+        ns.Set("bis.prof", "mine")   -- l10n-ok: setting key
     else
         src.C = false
-        ns.Set("bis.prof", "all")
+        ns.Set("bis.prof", "all")   -- l10n-ok: setting key
     end
     ns.Fire("BIS_CHANGED")
 end
@@ -382,14 +383,14 @@ end
 local function fillHead(f, o, res, v)
     -- the spec: chosen, or guessed from the talents
     local values = {}
-    for _, sp in ipairs(Gear.Specs(o.class)) do values[#values + 1] = { value = sp.key, text = sp.name } end
-    values[#values + 1] = { value = "", text = "aus den Talenten" }
+    for _, sp in ipairs(Gear.Specs(o.class)) do values[#values + 1] = { value = sp.key, text = L[sp.name] } end
+    values[#values + 1] = { value = "", text = L["aus den Talenten"] }
     f.spec:SetValues(values)
     f.spec:SetValue(o.spec)
-    if o.guessed then f.spec.label:SetText(f.spec.label:GetText() .. " " .. GREY .. "(geraten)|r") end
+    if o.guessed then f.spec.label:SetText(f.spec.label:GetText() .. " " .. GREY .. L["(geraten)"] .. "|r") end
     for k, chip in pairs(f.views) do chip:SetOn(k == v) end
     if guildVisible() then f.views.guild:Show() else f.views.guild:Hide() end
-    f.views.wish.label:SetText(("Wunschliste (%d)"):format(wishCount()))
+    f.views.wish.label:SetText(L["Wunschliste (%d)"]:format(wishCount()))
     if Gear.Available() then f.open:Show() else f.open:Hide() end
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
@@ -402,7 +403,7 @@ local function fillHead(f, o, res, v)
         local on = o.sources[def[1]] and true or false
         chip:SetOn(on)
         if def[1] == "C" then
-            chip.label:SetText(not on and "Berufe" or (o.prof == "mine" and "Berufe: meine" or "Berufe: alle"))
+            chip.label:SetText(not on and L["Berufe"] or (o.prof == "mine" and L["Berufe: meine"] or L["Berufe: alle"]))
         end
         chip:Show()
     end
@@ -410,7 +411,7 @@ local function fillHead(f, o, res, v)
     for k, chip in pairs(f.src) do if not shown[k] then chip:Hide() end end
     if v == "goals" then
         local plans = {}
-        for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = "Waffen: " .. ns.BIS_PLANS[k] } end
+        for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = L["Waffen: %s"]:format(ns.BIS_PLANS[k]) } end
         f.plan:SetValues(plans)
         f.plan:SetValue(o.plan or "auto")
         f.plan:Show()
@@ -437,21 +438,21 @@ end
 
 local function menuEntries(e, o)
     local id = e.id
-    local out = { { "Item ausschließen", function() say(ns.BisExclude("item", id)) end } }
+    local out = { { L["Item ausschließen"], function() say(ns.BisExclude("item", id)) end } }
     local rec = firstSource(id, o)
     if rec and (rec[1] == "X" or rec[1] == "D") and rec[3] and rec[3] ~= "Trash" then
-        out[#out + 1] = { "Boss ausschließen", function() say(ns.BisExclude("boss", rec[3])) end }
+        out[#out + 1] = { L["Boss ausschließen"], function() say(ns.BisExclude("boss", rec[3])) end }
     end
     local place = rec and Gear.PlaceOf(rec)
-    if place then out[#out + 1] = { "Ort ausschließen", function() say(ns.BisExclude("place", place)) end } end
+    if place then out[#out + 1] = { L["Ort ausschließen"], function() say(ns.BisExclude("place", place)) end } end
     if e.wished then
-        out[#out + 1] = { "Von der Wunschliste nehmen", function() ns.WishRemove(id) end }
+        out[#out + 1] = { L["Von der Wunschliste nehmen"], function() ns.WishRemove(id) end }
     else
-        out[#out + 1] = { "Auf die Wunschliste", function() say(ns.WishAdd(id)) end }
+        out[#out + 1] = { L["Auf die Wunschliste"], function() say(ns.WishAdd(id)) end }
     end
     -- a row of its own place (Hier) keeps the menu on that place
     mapEntries(out, id, placeKey(e.rec))
-    out[#out + 1] = { "Link in den Chat", function() insertLink(linkOf(id)) end }
+    out[#out + 1] = { L["Link in den Chat"], function() insertLink(linkOf(id)) end }
     return out
 end
 
@@ -463,13 +464,13 @@ local function fillGoalRow(r, e)
     r.slot:SetText(e.name)
     local up = e.opt and e.opt.upgrade
     if up then r.slot:SetTextColor(1, 0.82, 0) else r.slot:SetTextColor(0.56, 0.53, 0.64) end
-    r.worn:SetText(e.wornLink and linkText(e.wornLink) or (GREY .. "nichts|r"))
+    r.worn:SetText(e.wornLink and linkText(e.wornLink) or (GREY .. L["nichts"] .. "|r"))
     if e.opt then
         r.best:SetText(marks(e.opt) .. itemText(e.opt.id))
         r.src:SetText(sourceText(e.opt.id, e.o, e.opt.pick))
         r.gain:SetText(gainText(e.opt))
     else
-        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")
+        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and L["Zweihandwaffe geplant"] or L["keine Option"]) .. "|r")
         r.src:SetText("")
         r.gain:SetText("")
     end
@@ -482,8 +483,8 @@ local function buildGoals(f)
     G:SetPoint("BOTTOMRIGHT", 0, 0)
     local h = head(G, 0)
     -- the list is 590 wide (12 px for its scroll bar): the source gives them, the gain moves left
-    G.head = { slot = col(h, 4, 66, "Slot"), worn = col(h, 74, 156, "Angelegt"), best = col(h, 234, 186, "Bestes"),
-        src = col(h, 424, 114, "Quelle"), gain = col(h, 542, 44, "Zuwachs") }
+    G.head = { slot = col(h, 4, 66, "Slot"), worn = col(h, 74, 156, L["Angelegt"]), best = col(h, 234, 186, L["Bestes"]),
+        src = col(h, 424, 114, L["Quelle"]), gain = col(h, 542, 44, L["Zuwachs"]) }
     G.head.gain:SetJustifyH("RIGHT")
     G.list = W.List(G, GOAL_ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -513,18 +514,18 @@ local function buildGoals(f)
     G.title:SetPoint("TOPLEFT", 4, -284)
     -- why the weights are as they are (tooltip), and the simulation of another class or level
     -- 20 high, between the list (it ends at -280) and the first option (-300)
-    G.why = W.Button(G, "Warum?", 64, nil, { height = T.ROW_BUTTON_H })
+    G.why = W.Button(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
     G.why:SetPoint("TOPRIGHT", -92, -280)
     G.why:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Warum diese Gewichte")
+        GameTooltip:SetText(L["Warum diese Gewichte"])
         for _, line in ipairs(ns.BisWhy()) do GameTooltip:AddLine(line, 1, 1, 1, true) end
         GameTooltip:Show()
     end)
     G.why:SetScript("OnLeave", hideTip)
-    G.sim = W.Button(G, "Simulation", 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
+    G.sim = W.Button(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
     G.sim:SetPoint("TOPRIGHT", 0, -280)
-    W.Tooltip(G.sim, "Simulation", "Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz.")
+    W.Tooltip(G.sim, L["Simulation"], L["Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz."])
     G.opts = {}
     for i = 1, 3 do
         local b = CreateFrame("Button", nil, G)
@@ -548,17 +549,17 @@ local function buildGoals(f)
         b.src = col(b, 254, 174, nil, T.FONT.text)
         b.gain = col(b, 432, 46, nil, T.FONT.text)
         b.gain:SetJustifyH("RIGHT")
-        b.wish = W.Button(b, "Wunsch", 78, function(self)
+        b.wish = W.Button(b, L["Wunsch##Knopf"], 78, function(self)
             local e = self:GetParent().opt
             if e then toggleWish(e.id, e.wished) end
         end)
-        b.ex = W.Button(b, "Aus", 36, function(self)
+        b.ex = W.Button(b, L["Aus##ausschließen"], 36, function(self)
             local e = self:GetParent().opt
             if e then say(ns.BisExclude("item", e.id)) end
         end)
         W.FitChip(b.ex, 36)
         W.Row(b, { b.wish, b.ex }, T.CHIP_GAP, 0, 0, { right = true, point = "RIGHT" })
-        W.Tooltip(b.ex, "Ausschließen", "Das Item nicht mehr vorschlagen; die nächste Option rückt auf. Rechtsklick auf die Zeile: Boss oder Ort ausschließen.")
+        W.Tooltip(b.ex, L["Ausschließen"], L["Das Item nicht mehr vorschlagen; die nächste Option rückt auf. Rechtsklick auf die Zeile: Boss oder Ort ausschließen."])
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         b:SetScript("OnClick", function(self, button)
             local e = self.opt
@@ -586,7 +587,7 @@ local function buildGoals(f)
     G.explainHit:SetScript("OnEnter", function(self)
         if not self.lines or #self.lines == 0 then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(self.title or "Vergleich")
+        GameTooltip:SetText(self.title or L["Vergleich"])
         for _, line in ipairs(self.lines) do GameTooltip:AddLine(line, 1, 1, 1, true) end
         GameTooltip:Show()
     end)
@@ -606,14 +607,14 @@ local function compareLines(o, list, wornLink)
     local second = list[2]
     if second then
         -- the options themselves: their random suffix and set bonus share count as in the ranking
-        local cmp = ns.BisCompare(first, second, o, { "Option 1", "Option 2" })
+        local cmp = ns.BisCompare(first, second, o, { L["Option 1"], L["Option 2"] })
         if cmp then
             lines[#lines + 1] = cmp.text
             for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
         end
     end
     if wornLink and not first.worn then
-        local cmp = ns.BisCompare(first, wornLink, o, { "Option 1", "das Angelegte" })
+        local cmp = ns.BisCompare(first, wornLink, o, { L["Option 1"], L["das Angelegte"] })
         if cmp then
             lines[#lines + 1] = cmp.text
             for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
@@ -631,14 +632,14 @@ local function explainText(o, res, slotKey, e)
     local out = {}
     if (slotKey == "MAINHAND" or slotKey == "OFFHAND") and res.twoHandScore and res.oneHandScore then
         local more = {}
-        if res.dwScore then more[#more + 1] = ("zwei Waffen %s"):format(Gear.Num(res.dwScore)) end
-        if res.shieldScore then more[#more + 1] = ("mit Schild %s"):format(Gear.Num(res.shieldScore)) end
-        out[#out + 1] = ("Zweihand %s gegen Waffenhand plus Schildhand %s%s."):format(Gear.Num(res.twoHandScore),
+        if res.dwScore then more[#more + 1] = L["zwei Waffen %s"]:format(Gear.Num(res.dwScore)) end
+        if res.shieldScore then more[#more + 1] = L["mit Schild %s"]:format(Gear.Num(res.shieldScore)) end
+        out[#out + 1] = L["Zweihand %s gegen Waffenhand plus Schildhand %s%s."]:format(Gear.Num(res.twoHandScore),
             Gear.Num(res.oneHandScore), #more > 0 and (" (" .. table.concat(more, ", ") .. ")") or "")
     end
     if not e then
-        out[#out + 1] = (slotKey == "OFFHAND" and res.plan == "2H") and "Die Zweihandwaffe belegt beide Hände."
-            or "Für diesen Slot gibt es keine Option in den Daten."
+        out[#out + 1] = (slotKey == "OFFHAND" and res.plan == "2H") and L["Die Zweihandwaffe belegt beide Hände."]
+            or L["Für diesen Slot gibt es keine Option in den Daten."]
     else
         local lines = ns.BisExplain(e.id, o)
         if #lines <= 1 then
@@ -646,9 +647,9 @@ local function explainText(o, res, slotKey, e)
         else
             local lead
             if e.worn then
-                lead = "angelegt"
+                lead = L["angelegt"]
             elseif e.switch then
-                lead = "Waffenwechsel"
+                lead = L["Waffenwechsel"]
             else
                 lead = Gear.UnitText(e.gain or 0, Gear.Weights(o.class, o.spec, o.kind, o.level))
             end
@@ -693,7 +694,7 @@ local function fillGoals(G, o, res)
     end
     G.list:SetItems(items)
     local sp = Gear.SpecInfo(o.class, o.spec)
-    G.title:SetText(("%s · Bestes für %s%s"):format(ns.BIS_SLOT_NAME[slot] or slot, sp and sp.name or "?", o.guessed and " (geraten)" or ""))
+    G.title:SetText(L["%s · Bestes für %s%s"]:format(ns.BIS_SLOT_NAME[slot] or slot, sp and L[sp.name] or "?", o.guessed and L[" (geraten)"] or ""))
     local list = res[slot] or {}
     for i, b in ipairs(G.opts) do
         local e = list[i]
@@ -708,7 +709,7 @@ local function fillGoals(G, o, res)
                 b.wish:Hide()
                 b.ex:Hide()
             else
-                b.wish:SetText(e.wished and "Wunsch weg" or "Wunsch")
+                b.wish:SetText(e.wished and L["Wunsch weg"] or L["Wunsch##Knopf"])
                 b.wish:Show()
                 b.ex:Show()
             end
@@ -745,7 +746,7 @@ local function fillHereRow(r, e)
     if e.owned then
         r.wishBtn:Hide()
     else
-        r.wishBtn:SetText(e.wished and "Wunsch weg" or "Wunsch")
+        r.wishBtn:SetText(e.wished and L["Wunsch weg"] or L["Wunsch##Knopf"])
         r.wishBtn:Show()
     end
 end
@@ -763,7 +764,7 @@ local function buildHere(f)
     local h = head(Hh, -26)
     -- the list is 590 wide (12 px for its scroll bar): the gain gives 6, the button moves left
     Hh.head = { boss = col(h, 4, 146, "Boss"), name = col(h, 154, 216, "Item"), slot = col(h, 374, 76, "Slot"),
-        gain = col(h, 454, 50, "Zuwachs") }
+        gain = col(h, 454, 50, L["Zuwachs"]) }
     Hh.head.gain:SetJustifyH("RIGHT")
     Hh.list = W.List(Hh, HERE_ROWS, ROW_H, function(r)
         r.map = mapButton(r, 4)
@@ -772,7 +773,7 @@ local function buildHere(f)
         r.slot = col(r, 374, 76, nil, T.FONT.text)
         r.gain = col(r, 454, 50, nil, T.FONT.text)
         r.gain:SetJustifyH("RIGHT")
-        r.wishBtn = W.Button(r, "Wunsch", 82, function(self)
+        r.wishBtn = W.Button(r, L["Wunsch##Knopf"], 82, function(self)
             local e = self:GetParent().item
             if e then toggleWish(e.id, e.wished) end
         end)
@@ -800,7 +801,7 @@ end
 local function fillHere(Hh, o)
     local chosen = state().place
     local cur = ns.BisCurrentPlace()
-    local values = { { value = "here", text = "Hier: " .. ((cur and cur.text) or "unbekannt") } }
+    local values = { { value = "here", text = L["Hier: %s"]:format((cur and cur.text) or L["unbekannt"]) } }
     local found = false
     for _, p in ipairs(ns.BisPlaces()) do
         values[#values + 1] = { value = p.key, text = p.text }
@@ -820,14 +821,14 @@ local function fillHere(Hh, o)
     Hh.list:SetItems(list)
     local hint
     if not place or not placeKnown(place) then
-        hint = "Diesen Ort kennen die Daten nicht."
+        hint = L["Diesen Ort kennen die Daten nicht."]
     elseif #list == 0 then
-        hint = "Hier gibt es nichts mehr für dich."
+        hint = L["Hier gibt es nichts mehr für dich."]
     else
-        hint = "Was du an diesem Ort noch holen kannst: Upgrades und Wünsche, Besitz unten."
+        hint = L["Was du an diesem Ort noch holen kannst: Upgrades und Wünsche, Besitz unten."]
     end
-    if place and (place.loading or 0) > 0 then hint = hint .. (" · lädt noch %d Items"):format(place.loading) end
-    if gone then hint = "Der gewählte Ort fehlt in den Daten, gezeigt wird der aktuelle. " .. hint end
+    if place and (place.loading or 0) > 0 then hint = hint .. " · " .. L["lädt noch %d Items"]:format(place.loading) end
+    if gone then hint = L["Der gewählte Ort fehlt in den Daten, gezeigt wird der aktuelle."] .. " " .. hint end
     Hh.hint:SetText(hint)
 end
 
@@ -839,19 +840,19 @@ local GOLD_TEXT = "|cffe3b857"
 -- the texts of the journal parts (image, XP, marks, dressing room), in one place for the translation
 local DTEXT = {
     level = "Level %s · %s",
-    mark = "Alle auf Karte",
-    unmark = "Karte leeren",
-    markTitle = "Alle Questgeber auf der Karte",
-    markTip = "Markiert die Questgeber aller offenen Quests dieses Dungeons auf der Weltkarte (bei einer Questreihe den Geber der ersten offenen Vorquest). Noch einmal klicken: Markierung entfernen.",
-    marked = "%d Questgeber auf der Weltkarte markiert.",
-    unmarked = "Markierung der Questgeber entfernt.",
-    itemHint = "Strg-Klick: Anprobe. Shift-Klick: in den Chat.",
-    xpLine = "EP: %s",
-    xpLog = "laut Questlog",
-    xpSeen = "gesehen bei Level %d",
-    xpScaled = "geschätzt, gesehen bei Level %d",
-    xpOther = "gesehen bei Level %d, Questlevel unbekannt",
-    xpNone = "EP: noch nicht gesehen",
+    mark = L["Alle auf Karte"],
+    unmark = L["Karte leeren"],
+    markTitle = L["Alle Questgeber auf der Karte"],
+    markTip = L["Markiert die Questgeber aller offenen Quests dieses Dungeons auf der Weltkarte (bei einer Questreihe den Geber der ersten offenen Vorquest). Noch einmal klicken: Markierung entfernen."],
+    marked = L["%d Questgeber auf der Weltkarte markiert."],
+    unmarked = L["Markierung der Questgeber entfernt."],
+    itemHint = L["Strg-Klick: Anprobe. Shift-Klick: in den Chat."],
+    xpLine = L["EP: %s"],
+    xpLog = L["laut Questlog"],
+    xpSeen = L["gesehen bei Level %d"],
+    xpScaled = L["geschätzt, gesehen bei Level %d"],
+    xpOther = L["gesehen bei Level %d, Questlevel unbekannt"],
+    xpNone = L["EP: noch nicht gesehen"],
 }
 local ART_W, ART_H = 590, 48
 
@@ -922,14 +923,14 @@ local function dungeonTip(self)
     GameTooltip:AddLine(e.name, 1, 0.82, 0)
     local range = ns.Dungeons.RangeText(e)
     if range ~= "" then
-        GameTooltip:AddLine(("Level %s%s"):format(range, e.est and ", geschätzt aus den Items" or ""), 0.85, 0.85, 0.85)
+        GameTooltip:AddLine(("Level %s%s"):format(range, e.est and L[", geschätzt aus den Items"] or ""), 0.85, 0.85, 0.85)
     end
     if e.kind == "raid" then
-        GameTooltip:AddLine(("Raid%s%s"):format(e.size and (" für " .. e.size) or "", e.fit == "later" and (", " .. ns.Dungeons.FitText(e)) or ""),
+        GameTooltip:AddLine(("Raid%s%s"):format(e.size and L[" für %s"]:format(e.size) or "", e.fit == "later" and (", " .. ns.Dungeons.FitText(e)) or ""),
             0.85, 0.85, 0.85)
     end
     if e.computed then
-        GameTooltip:AddLine(("%d Upgrades, je Lauf %s, Quests %s, Wert %d"):format(e.upgrades, signed(e.perRun), signed(e.once),
+        GameTooltip:AddLine(L["%d Upgrades, je Lauf %s, Quests %s, Wert %d"]:format(e.upgrades, signed(e.perRun), signed(e.once),
             math.floor(e.value + 0.5)), 0.6, 0.6, 0.6)
     end
     GameTooltip:Show()
@@ -962,7 +963,7 @@ local function questItems(key)
     if kept and kept.list == list then return kept.out, status end
     local out = {}
     for _, q in ipairs(list) do
-        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and " (erledigt)" or q.gone and " (nicht mehr möglich)" or ""),
+        out[#out + 1] = { kind = "quest", text = q.title .. (q.done and L[" (erledigt)"] or q.gone and L[" (nicht mehr möglich)"] or ""),
             q = q, qid = q.qid }
         for _, n in ipairs(q.chain) do
             out[#out + 1] = { kind = "pre", q = n, qid = n.qid }
@@ -975,7 +976,7 @@ local function questItems(key)
     return out, status
 end
 
-local STATE_TEXT = { done = "erledigt", active = "im Log", gone = "nicht mehr möglich" }
+local STATE_TEXT = { done = L["erledigt"], active = L["im Log"], gone = L["nicht mehr möglich"] }
 local function questState(n) return n.done and "done" or n.active and "active" or n.gone and "gone" or nil end
 
 -- The level text of a quest in the quest log's colours (simplified): red when it cannot be taken yet
@@ -1003,9 +1004,9 @@ local function fillDetailRow(r, e)
         if e.b.tentative then
             -- an NPC only the guild's records know: listed, counted from its third kill
             local k = e.b.kills or 0
-            r.rate:SetText(GREY .. ("%d %s, zählt ab 3"):format(k, k == 1 and "Kill" or "Kills") .. "|r")
+            r.rate:SetText(GREY .. L["%d %s, zählt ab 3"]:format(k, k == 1 and "Kill" or "Kills") .. "|r")
         else
-            r.rate:SetText(e.b.perRun > 0 and ("je Lauf %s"):format(signed(e.b.perRun)) or "")
+            r.rate:SetText(e.b.perRun > 0 and L["je Lauf %s"]:format(signed(e.b.perRun)) or "")
         end
     elseif e.kind == "item" then
         local it = e.it
@@ -1023,7 +1024,7 @@ local function fillDetailRow(r, e)
         -- a quest or one of its pre-quests: state, title, level, where it starts
         local q, pre = e.q, e.kind == "pre"
         local st = questState(q)
-        local title = pre and ("   Vorquest: " .. q.title .. (q.one and " (oder eine andere)" or "")) or (GOLD_TEXT .. e.text .. "|r")
+        local title = pre and ("   " .. L["Vorquest: %s"]:format(q.title) .. (q.one and L[" (oder eine andere)"] or "")) or (GOLD_TEXT .. e.text .. "|r")
         local over = q.done or q.gone
         r.name:SetText((over and (GREY .. title .. "|r")) or title)
         r.slot:SetText(questLevelText(q))
@@ -1043,11 +1044,11 @@ local function questTip(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(q.title, 1, 0.82, 0)
     local lv = ns.Dungeons.QuestLevelText(q)
-    if lv ~= "" then GameTooltip:AddLine("Level " .. lv, 0.85, 0.85, 0.85) end
+    if lv ~= "" then GameTooltip:AddLine(L["Level %s"]:format(lv), 0.85, 0.85, 0.85) end
     local st = questState(q)
-    GameTooltip:AddLine(st and STATE_TEXT[st] or "offen", 0.85, 0.85, 0.85)
+    GameTooltip:AddLine(st and STATE_TEXT[st] or L["offen"], 0.85, 0.85, 0.85)
     local where = ns.Dungeons.QuestStartText(q)
-    if where ~= "" then GameTooltip:AddLine("Start: " .. where, 0.85, 0.85, 0.85, true) end
+    if where ~= "" then GameTooltip:AddLine(L["Start: %s"]:format(where), 0.85, 0.85, 0.85, true) end
     local value, how, seen = ns.Dungeons.QuestXP(q)
     if value then
         local from = how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
@@ -1057,9 +1058,9 @@ local function questTip(self)
         GameTooltip:AddLine(DTEXT.xpNone, 0.6, 0.6, 0.6)
     end
     for _, n in ipairs(q.chain or {}) do
-        GameTooltip:AddLine(("Vorquest: %s%s"):format(n.title, n.done and " (erledigt)" or ""), 0.6, 0.6, 0.6, true)
+        GameTooltip:AddLine(L["Vorquest: %s"]:format(n.title) .. (n.done and L[" (erledigt)"] or ""), 0.6, 0.6, 0.6, true)
     end
-    if q.start ~= "X" then GameTooltip:AddLine("Klick: Wegpunkt zum Start", 0.31, 0.82, 0.42) end
+    if q.start ~= "X" then GameTooltip:AddLine(L["Klick: Wegpunkt zum Start"], 0.31, 0.82, 0.42) end
     GameTooltip:Show()
 end
 
@@ -1124,9 +1125,9 @@ local function buildDungeons(f)
     B.why:SetPoint("TOPLEFT", 4, -18)
     -- the order of the list: by level, by value (the ranking), the chain
     B.sorts = {}
-    local sortDefs = { { "level", "Level", 50, "Nach Level", "Die Dungeons nach ihrem Levelbereich." },
-        { "value", "Wert", 46, "Rangliste", "Die lohnendsten Dungeons für dich zuerst: offene Quests plus zwei Läufe." },
-        { "chain", "Kette", 50, "Kette", "Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf." } }
+    local sortDefs = { { "level", "Level", 50, L["Nach Level"], L["Die Dungeons nach ihrem Levelbereich."] },
+        { "value", L["Wert"], 46, L["Rangliste"], L["Die lohnendsten Dungeons für dich zuerst: offene Quests plus zwei Läufe."] },
+        { "chain", L["Kette"], 50, L["Kette"], L["Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf."] } }
     local sortRow = {}
     for i, d in ipairs(sortDefs) do
         local chip = W.Chip(B, d[2], d[3], function()
@@ -1141,9 +1142,9 @@ local function buildDungeons(f)
     W.Row(B, sortRow, T.CHIP_GAP, 0, 0, { right = true })
     local h = head(B, -36)
     -- the list is 590 wide (12 px for its scroll bar)
-    B.head = { name = col(h, 4, 170, "Dungeon"), level = col(h, 178, 46, "Level"), fit = col(h, 228, 56, "Passung"),
-        upgrades = col(h, 288, 56, "Upgrades"), run = col(h, 348, 66, "Je Lauf"), quests = col(h, 418, 66, "Quests"),
-        value = col(h, 488, 60, "Wert") }
+    B.head = { name = col(h, 4, 170, "Dungeon"), level = col(h, 178, 46, "Level"), fit = col(h, 228, 56, L["Passung"]),
+        upgrades = col(h, 288, 56, "Upgrades"), run = col(h, 348, 66, L["Je Lauf"]), quests = col(h, 418, 66, "Quests"),
+        value = col(h, 488, 60, L["Wert"]) }
     for _, k in ipairs({ "upgrades", "run", "quests", "value" }) do B.head[k]:SetJustifyH("RIGHT") end
     B.list = W.List(B, DUNGEON_ROWS, ROW_H, function(r)
         r.owner = B
@@ -1186,15 +1187,15 @@ local function buildDungeons(f)
     B.header:SetPoint("TOPRIGHT", -244, -250)
     -- the lower part: the bosses or the quests of the chosen dungeon
     B.parts = {}
-    B.parts.bosses = W.Chip(B, "Bosse", 54, function() state().dpart = "bosses"; ns.Refresh() end)
+    B.parts.bosses = W.Chip(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
     B.parts.quests = W.Chip(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
-    W.Tooltip(B.parts.quests, "Quests", "Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest setzt den Wegpunkt zum Questgeber.")
-    B.way = W.Button(B, "Wegpunkt", 120, function()
+    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest setzt den Wegpunkt zum Questgeber."])
+    B.way = W.Button(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     -- the two chips and the waypoint button at the right end of the header's line
     W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = 6 } }, T.CHIP_GAP, 0, -251, { right = true })
-    W.Tooltip(B.way, "Wegpunkt zum Eingang", "Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons.")
+    W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
     B.detail = W.List(B, DETAIL_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
         r.slot = col(r, 228, 62, nil, T.FONT.text)
@@ -1280,10 +1281,10 @@ local function fillDungeons(B)
     local shown, extra = orderedDungeons(list, sort)
     if sort == "chain" then
         B.next:SetText(Dn.ChainText(extra.chain, extra.why))
-        B.why:SetText(#extra.chain > 0 and ("Annahme: je Boss das größte Upgrade und alle Quest-Upgrades bekommen." ..
+        B.why:SetText(#extra.chain > 0 and (L["Annahme: je Boss das größte Upgrade und alle Quest-Upgrades bekommen."] ..
             (extra.why and (" " .. extra.why) or "")) or "")
     elseif nextE then
-        B.next:SetText(("Nächster Dungeon: %s · Level %s"):format(nextE.name, Dn.RangeText(nextE)))
+        B.next:SetText(L["Nächster Dungeon: %s · Level %s"]:format(nextE.name, Dn.RangeText(nextE)))
         B.why:SetText(nextE.why or "")
     else
         B.next:SetText(why or Dn.NO_DATA)
@@ -1309,7 +1310,7 @@ local function fillDungeons(B)
         B.detail:SetItems(rows)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e then
-        B.header:SetHeaderText(e.name .. " · Bosse")
+        B.header:SetHeaderText(e.name .. " · " .. L["Bosse"])
         B.detail:SetItems(detailItems(e))
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
@@ -1320,16 +1321,16 @@ local function fillDungeons(B)
     local hint
     if part == "quests" then
         hint = Dn.QuestStatusText(status) or ""
-        if e and #B.detail.items == 0 and hint == "" then hint = "Für diesen Dungeon kennt Amisia keine Quests." end
+        if e and #B.detail.items == 0 and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
         local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
         local parts = {}
-        for _, t in ipairs({ xp, hint, "Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich.", DTEXT.itemHint }) do
+        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich."], DTEXT.itemHint }) do
             if t ~= "" then parts[#parts + 1] = t end
         end
         hint = table.concat(parts, " ")
     else
-        hint = "Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."
-        if e and e.computed and #B.detail.items == 0 then hint = "In diesem Dungeon gibt es nichts mehr für dich. " .. hint end
+        hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
+        if e and e.computed and #B.detail.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
         hint = hint .. " " .. DTEXT.itemHint
     end
     B.hint:SetText(hint)
@@ -1344,13 +1345,13 @@ local function fillWishRow(r, e)
     r.slot:SetText(e.slot or "")
     r.src:SetText(e.src or "")
     setMapButton(r.map, e.id, nil, e.owned)
-    r.prio.label:SetText(PRIO_TEXT[e.e.prio] or "mittel")
+    r.prio.label:SetText(PRIO_TEXT[e.e.prio] or PRIO_TEXT[2])
     r.prio:SetOn(e.e.prio == 3)
     if e.owned then
-        r.state:SetText("hast du")
+        r.state:SetText(L["hast du"])
         r.state:SetTextColor(0.31, 0.82, 0.42)
     elseif e.excluded then
-        r.state:SetText("aus")
+        r.state:SetText(L["aus##ausgeschlossen"])
         r.state:SetTextColor(0.56, 0.53, 0.64)
     else
         r.state:SetText("")
@@ -1368,8 +1369,8 @@ local function buildWish(f)
     V:SetPoint("BOTTOMRIGHT", 0, 0)
     local h = head(V, 0)
     -- the list is 590 wide (12 px for its scroll bar): the source gives them, what follows moves left
-    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 154, "Quelle"),
-        prio = col(h, 462, 58, "Priorität"), state = col(h, 524, 44, "") }
+    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 154, L["Quelle"]),
+        prio = col(h, 462, 58, L["Priorität"]), state = col(h, 524, 44, "") }
     V.list = W.List(V, WISH_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 216, nil, T.FONT.text)
         r.slot = col(r, 224, 76, nil, T.FONT.text)
@@ -1417,10 +1418,10 @@ local function buildWish(f)
     V.areaHint = W.Text(V, T.FONT.hint, 598, true)
     V.areaHint:SetPoint("TOPLEFT", 4, -142)
     V.areaHint:SetHeight(28)
-    V.areaHint:SetText("Strg+A, Strg+C, auf der Website im Reiter Wishlist bei Paste from the addon einfügen.")
+    V.areaHint:SetText(L["Strg+A, Strg+C, auf der Website im Reiter Wishlist bei Paste from the addon einfügen."])
     V.areaHint:Hide()
 
-    V.web = W.Button(V, "Für die Website", 120, function()
+    V.web = W.Button(V, L["Für die Website"], 120, function()
         exportOpen = not exportOpen
         if exportOpen then
             setExport(V, ns.WishExportText())
@@ -1432,7 +1433,7 @@ local function buildWish(f)
         ns.Refresh()
     end)
     V.web:SetPoint("TOPLEFT", 0, -310)
-    V.clean = W.Button(V, "Erhaltene entfernen", 140, function()
+    V.clean = W.Button(V, L["Erhaltene entfernen"], 140, function()
         for _, e in ipairs(ns.Wishes()) do
             if e.owned then ns.WishRemove(e.id) end
         end
@@ -1453,7 +1454,7 @@ local function fillWish(V)
         V.list:Hide()
         V.area:Show()
         V.areaHint:Show()
-        V.web:SetText("Zur Liste")
+        V.web:SetText(L["Zur Liste"])
         -- the text follows the list unless the box is in use
         if not V.area.box:HasFocus() then
             local text = ns.WishExportText()
@@ -1463,20 +1464,20 @@ local function fillWish(V)
         V.area:Hide()
         V.areaHint:Hide()
         V.list:Show()
-        V.web:SetText("Für die Website")
+        V.web:SetText(L["Für die Website"])
     end
     local owned = false
     for _, e in ipairs(list) do if e.owned then owned = true break end end
-    if ns.Get("bis.wishAutoRemove") then
+    if ns.Get("bis.wishAutoRemove") then   -- l10n-ok: setting key
         V.clean:Hide()
     else
         V.clean:Show()
         V.clean:SetEnabled(owned)
     end
     if #list == 0 then
-        V.hint:SetText("Noch keine Wünsche. Wunsch-Knopf in Ziele oder Hier, oder /amisia wunsch <Item-Link>.")
+        V.hint:SetText(L["Noch keine Wünsche. Wunsch-Knopf in Ziele oder Hier, oder /amisia wunsch <Item-Link>."])
     else
-        V.hint:SetText(("%d von %d Wünschen. Ein Klick auf die Priorität ändert sie."):format(#list, ns.BIS_MAX_WISH or 50))
+        V.hint:SetText(L["%d von %d Wünschen. Ein Klick auf die Priorität ändert sie."]:format(#list, ns.BIS_MAX_WISH or 50))
     end
 end
 
@@ -1546,14 +1547,14 @@ local function buildGuild(f)
     U:SetPoint("BOTTOMRIGHT", 0, 0)
     U.info = W.Text(U, T.FONT.text, 470)
     U.info:SetPoint("TOPLEFT", 4, -4)
-    U.group = W.Chip(U, "Nur Gruppe", 100, function()
+    U.group = W.Chip(U, L["Nur Gruppe"], 100, function()
         groupOnly = not onlyGroup()
         ns.Refresh()
     end)
     U.group:SetPoint("TOPRIGHT", 0, -2)
     local h = head(U, -26)
     -- the list is 590 wide (12 px for its scroll bar), the wishers give them
-    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 322, "Wünschende") }
+    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 322, L["Wünschende"]) }
     U.list = W.List(U, GUILD_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 256, nil, T.FONT.text)
         r.who = col(r, 264, 322, nil, T.FONT.text)
@@ -1570,7 +1571,7 @@ local function buildGuild(f)
     U.area:SetPoint("TOPLEFT", 0, -308)
     U.area:SetPoint("TOPRIGHT", 0, -308)
     U.area:SetHeight(70)
-    U.importBtn = W.Button(U, "Importieren", 100, function()
+    U.importBtn = W.Button(U, L["Importieren"], 100, function()
         -- the website's text: the wishes, the alts, or both
         local text, ok = ns.ImportSiteText(U.area.box:GetText())
         if ok then
@@ -1581,7 +1582,7 @@ local function buildGuild(f)
         ns.Refresh()
     end)
     U.importBtn:SetPoint("TOPLEFT", 0, -382)
-    U.clearBtn = W.Button(U, "Löschen", 80, function()
+    U.clearBtn = W.Button(U, L["Löschen##Gildenwünsche"], 80, function()
         lift(StaticPopup_Show("AMISIA_GUILDWISH_CLEAR"))
     end)
     U.clearBtn:SetPoint("LEFT", U.importBtn, "RIGHT", 6, 0)
@@ -1595,14 +1596,14 @@ local function fillGuild(U)
     local info = ns.GuildWishesInfo()
     local age = ns.GuildWishesAgeText()
     if info then
-        U.info:SetText(("Liste vom %s, %d %s"):format(longDate(info.date), info.n, info.n == 1 and "Wunsch" or "Wünsche")
+        U.info:SetText((info.n == 1 and L["Liste vom %s, 1 Wunsch"] or L["Liste vom %s, %d Wünsche"]):format(longDate(info.date), info.n)
             .. (age and (" " .. GREY .. age .. "|r") or ""))
     else
-        U.info:SetText(GREY .. "Keine Gildenwünsche geladen.|r")
+        U.info:SetText(GREY .. L["Keine Gildenwünsche geladen."] .. "|r")
     end
     local alts = ns.AltsInfo()
     if alts then
-        U.info:SetText(U.info:GetText() .. (" · %d %s"):format(alts.n, alts.n == 1 and "Twink" or "Twinks"))
+        U.info:SetText(U.info:GetText() .. " · " .. (alts.n == 1 and L["1 Twink"] or L["%d Twinks"]:format(alts.n)))
     end
     local only = onlyGroup()
     U.group:SetOn(only)
@@ -1610,7 +1611,7 @@ local function fillGuild(U)
     if officer then
         U.area:Show(); U.importBtn:Show(); U.clearBtn:Show()
         U.clearBtn:SetEnabled(info ~= nil)
-        U.hint:SetText(guildResult or "Auf der Website im Reiter Wishlist: Copy for the addon.")
+        U.hint:SetText(guildResult or L["Auf der Website im Reiter Wishlist: Copy for the addon."])
     else
         U.area:Hide(); U.importBtn:Hide(); U.clearBtn:Hide()
         U.hint:SetText(age or "")
@@ -1650,7 +1651,7 @@ local function fillSimRow(r, e)
         r.src:SetText(sourceText(e.opt[1], nil, e.opt.pick))
         r.score:SetText(Gear.Num(e.opt[2]))
     else
-        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and "Zweihandwaffe geplant" or "keine Option") .. "|r")
+        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and L["Zweihandwaffe geplant"] or L["keine Option"]) .. "|r")
         r.src:SetText("")
         r.score:SetText("")
     end
@@ -1678,11 +1679,11 @@ local function buildSim(f)
         simChanged()
     end)
     W.Row(S, { S.class, S.spec, S.level, S.plan }, 6, 0, 0)
-    S.back = W.Button(S, "Zurück", 84, function() setView("goals") end)
+    S.back = W.Button(S, L["Zurück"], 84, function() setView("goals") end)
     S.back:SetPoint("TOPRIGHT", 0, 1)
     local h = head(S, -28)
-    S.head = { slot = col(h, 4, 66, "Slot"), best = col(h, 74, 250, "Bestes"), src = col(h, 328, 200, "Quelle"),
-        score = col(h, 532, 54, "Wertung") }
+    S.head = { slot = col(h, 4, 66, "Slot"), best = col(h, 74, 250, L["Bestes"]), src = col(h, 328, 200, L["Quelle"]),
+        score = col(h, 532, 54, L["Wertung"]) }
     S.head.score:SetJustifyH("RIGHT")
     S.list = W.List(S, SIM_ROWS, ROW_H, function(r)
         r.slot = col(r, 4, 66)
@@ -1719,13 +1720,13 @@ local function fillSim(S)
     S.class:SetValues(classes)
     S.class:SetValue(sim.class)
     local specs = {}
-    for _, sp in ipairs(Gear.Specs(sim.class)) do specs[#specs + 1] = { value = sp.key, text = sp.name } end
+    for _, sp in ipairs(Gear.Specs(sim.class)) do specs[#specs + 1] = { value = sp.key, text = L[sp.name] } end
     S.spec:SetValues(specs)
     S.spec:SetValue(sim.spec)
     S.level:Configure(1, Gear.Cap(), 1, function(v) return "Level " .. v end)
     S.level:SetValue(sim.level)
     local plans = {}
-    for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = "Waffen: " .. ns.BIS_PLANS[k] } end
+    for _, k in ipairs(ns.BIS_PLAN_ORDER) do plans[#plans + 1] = { value = k, text = L["Waffen: %s"]:format(ns.BIS_PLANS[k]) } end
     S.plan:SetValues(plans)
     S.plan:SetValue(sim.plan)
     -- the result, kept until anything the gear page depends on changes
@@ -1743,7 +1744,7 @@ local function fillSim(S)
     S.list:SetItems(items)
     local o = { class = sim.class, spec = sim.spec, kind = ns.Get("gear.kind") or "Speedrun", level = sim.level }
     local lines = ns.BisWhy(o)
-    S.info:SetText(GREY .. "Ohne Besitz und Zuwachs, mit deinen Quellen. " .. table.concat(lines, " ") .. "|r")
+    S.info:SetText(GREY .. L["Ohne Besitz und Zuwachs, mit deinen Quellen."] .. " " .. table.concat(lines, " ") .. "|r")
 end
 
 ---------------------------------------------------------------------------
@@ -1753,9 +1754,9 @@ end
 function ns.GearPageFrame() return page end
 
 StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
-    text = "Alle Ausschlüsse aufheben?",
-    button1 = "Aufheben",
-    button2 = "Abbrechen",
+    text = L["Alle Ausschlüsse aufheben?"],
+    button1 = L["Aufheben"],
+    button2 = L["Abbrechen"],
     OnAccept = function() ns.BisClearExcludes() end,
     timeout = 0,
     whileDead = true,
@@ -1763,28 +1764,28 @@ StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
     preferredIndex = 3,
 }
 
-ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "gear",
+ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "gear",
     available = function() return Gear.Available() end,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
         f.spec = W.Picker(f, 180, function(v) ns.BisSetSpec(v ~= "" and v or nil) end)
         f.views = {}
-        f.views.goals = W.Chip(f, "Ziele", 52, function() setView("goals") end)
-        f.views.here = W.Chip(f, "Hier", 46, function() state().place = nil; setView("here") end)
+        f.views.goals = W.Chip(f, L["Ziele"], 52, function() setView("goals") end)
+        f.views.here = W.Chip(f, L["Hier"], 46, function() state().place = nil; setView("here") end)
         f.views.dungeons = W.Chip(f, "Dungeons", 74, function() setView("dungeons") end)
-        f.views.wish = W.Chip(f, "Wunschliste", 104, function() setView("wish") end)
-        f.views.guild = W.Chip(f, "Gilde", 56, function() setView("guild") end)
+        f.views.wish = W.Chip(f, L["Wunschliste"], 104, function() setView("wish") end)
+        f.views.guild = W.Chip(f, L["Gilde"], 56, function() setView("guild") end)
         -- the spec, then the views
         W.Row(f, { f.spec, { f.views.goals, gap = 6 }, f.views.here, f.views.dungeons, f.views.wish, f.views.guild },
             T.CHIP_GAP, 0, -1)
         -- 64 wide since the dungeons chip came: the tooltip says what the table is
-        f.open = W.Button(f, "Tabelle", 64, function() ns.ToggleGearFrame() end)
+        f.open = W.Button(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
         f.open:SetPoint("TOPRIGHT", 0, 0)
-        W.Tooltip(f.open, "Ausrüstungstabelle", "Die besten Items aller Levelbereiche für jede Spezialisierung.")
+        W.Tooltip(f.open, L["Ausrüstungstabelle"], L["Die besten Items aller Levelbereiche für jede Spezialisierung."])
         f.counts = W.Text(f, T.FONT.hint, 488)
         f.counts:SetPoint("TOPLEFT", 4, -28)
-        f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
+        f.reset = W.Button(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
         f.reset:SetPoint("TOPRIGHT", 0, -24)
         -- the weapon plan of the own character, beside the source chips of the targets
         f.plan = W.Picker(f, 132, function(v) say(ns.BisSetPlan(v)) end)
@@ -1801,6 +1802,8 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
                     ns.Fire("BIS_CHANGED")
                 end
             end)
+            -- as wide as given, wider where the text (English) needs it
+            W.FitChip(f.src[key], def[3])
             f.src[key]:SetPoint("TOPLEFT", 0, -48)
         end
         f.goals = buildGoals(f)
@@ -1885,8 +1888,8 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
     local o = ns.BisOpts()
     local res = ns.BisTargets()
     local n = wishCount()
-    c.title:SetText("Deine Ausrüstung")
-    c.line1:SetText(("Level %d · %s · %d %s"):format(o.level, upgradesText(res.upgrades or 0), n, n == 1 and "Wunsch" or "Wünsche"))
+    c.title:SetText(L["Deine Ausrüstung"])
+    c.line1:SetText((n == 1 and L["Level %d · %s · 1 Wunsch"] or L["Level %d · %s · %d Wünsche"]):format(o.level, upgradesText(res.upgrades or 0), n))
     local cur = ns.BisCurrentPlace()
     if cur and cur.key:find("^I:") and placeKnown(cur) then
         local _, list = ns.BisHere(nil, o)
@@ -1894,16 +1897,16 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
         for _, e in ipairs(list) do
             if e.upgrade and not e.owned then up = up + 1 end
         end
-        c.line2:SetText(("Hier: %s (%s)"):format(upgradesText(up), cur.text or "?"))
+        c.line2:SetText(L["Hier: %s (%s)"]:format(upgradesText(up), cur.text or "?"))
     else
         local best = bestUpgrade(res)
-        local text = best and ("Bestes: %s (+%d)"):format(itemText(best.id), math.floor(best.gain + 0.5)) or "Kein Upgrade in den Daten."
+        local text = best and L["Bestes: %s (+%d)"]:format(itemText(best.id), math.floor(best.gain + 0.5)) or L["Kein Upgrade in den Daten."]
         -- the dungeon planner's recommendation, from its cache when nothing changed
         local nextE = ns.DungeonNext and ns.DungeonNext()
-        if nextE then text = text .. "\nNächster Dungeon: " .. nextE.name end
+        if nextE then text = text .. "\n" .. L["Nächster Dungeon: %s"]:format(nextE.name) end
         -- two lines at most: a long item name would wrap the text into the button
         c.line2:SetMaxLines(2)
         c.line2:SetText(text)
     end
-    c:SetAction("Ansehen", function() ns.ShowGear("goals") end)
+    c:SetAction(L["Ansehen"], function() ns.ShowGear("goals") end)
 end }

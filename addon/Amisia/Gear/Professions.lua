@@ -7,21 +7,23 @@
 --
 -- AmisiaDB.prof = { chars = { [name] = { [skillLine] = { rank, max, day, known = { [spell] = true } } } } }
 local ADDON, ns = ...
+local L = ns.L
 
 local Pr = {}
 ns.Prof = Pr
 
 local KNOWN_CAP = 1200  -- recipes kept per profession and character at most
 
--- The profession keys of the data in German.
+-- The profession keys of the data, named in the client's language.
 Pr.NAMES = {
-    alchemy = "Alchimie", blacksmithing = "Schmiedekunst", enchanting = "Verzauberkunst", engineering = "Ingenieurskunst",
-    leatherworking = "Lederverarbeitung", tailoring = "Schneiderei", cooking = "Kochkunst", firstaid = "Erste Hilfe",
-    fishing = "Angeln", herbalism = "Kräuterkunde", mining = "Bergbau", skinning = "Kürschnerei", poisons = "Gifte",
+    alchemy = L["Alchimie"], blacksmithing = L["Schmiedekunst"], enchanting = L["Verzauberkunst"], engineering = L["Ingenieurskunst"],
+    leatherworking = L["Lederverarbeitung"], tailoring = L["Schneiderei"], cooking = L["Kochkunst"], firstaid = L["Erste Hilfe"],
+    fishing = L["Angeln"], herbalism = L["Kräuterkunde"], mining = L["Bergbau"], skinning = L["Kürschnerei"], poisons = L["Gifte"],
 }
-Pr.TIERS = { [0] = "Lehrer", "Lehrer (Lehrling)", "Lehrer (Geselle)", "Lehrer (Experte)", "Lehrer (Fachmann)" }
-Pr.STANDING = { "Hasserfüllt", "Feindselig", "Unfreundlich", "Neutral", "Freundlich", "Wohlwollend", "Respektvoll", "Ehrfürchtig" }
-Pr.FACTION_NAME = { A = "Allianz", H = "Horde" }
+Pr.TIERS = { [0] = L["Lehrer"], L["Lehrer (Lehrling)"], L["Lehrer (Geselle)"], L["Lehrer (Experte)"], L["Lehrer (Fachmann)"] }
+Pr.STANDING = { L["Hasserfüllt"], L["Feindselig"], L["Unfreundlich"], "Neutral", L["Freundlich"], L["Wohlwollend"], L["Respektvoll"],
+    L["Ehrfürchtig"] }
+Pr.FACTION_NAME = { A = L["Allianz"], H = "Horde" }
 -- the difficulty colours of the client's recipe list
 Pr.COLORS = { orange = "ffff8040", yellow = "ffffff00", green = "ff40bf40", grey = "ff808080", red = "ffff2020", none = "ffffffff" }
 
@@ -61,7 +63,7 @@ function Pr.Key(skill)
     end
     return nil
 end
-function Pr.Name(skill) return Pr.NAMES[Pr.Key(skill) or ""] or ("Beruf " .. tostring(skill)) end
+function Pr.Name(skill) return Pr.NAMES[Pr.Key(skill) or ""] or L["Beruf %s"]:format(tostring(skill)) end
 
 -- The skill lines of the data in its order.
 function Pr.Skills()
@@ -181,7 +183,7 @@ end
 
 -- The name a recipe shows: the client's spell name, else the made item's, else its number.
 function Pr.RecipeName(r)
-    return Pr.SpellName(r.spell) or (r.item > 0 and (Pr.ItemInfo(r.item))) or ("Rezept " .. r.spell)
+    return Pr.SpellName(r.spell) or (r.item > 0 and (Pr.ItemInfo(r.item))) or L["Rezept %s"]:format(r.spell)
 end
 
 ---------------------------------------------------------------------------
@@ -477,7 +479,7 @@ function Pr.Sources(r)
         out[#out + 1] = e
     end
     for _, tok in ipairs(r.src) do
-        if tok == "A" then add("A", "Mit dem Beruf gelernt")
+        if tok == "A" then add("A", L["Mit dem Beruf gelernt"])
         else
             local tier = tok:match("^T(%d)$")
             if tier then add("T", Pr.TIERS[num(tier)] or Pr.TIERS[0]) end
@@ -493,13 +495,13 @@ function Pr.Sources(r)
             if k == "F" then
                 local price, standing, fac = rest:match("^(%d+)@(%d)([AH])$")
                 if price and (not myFaction or fac == myFaction) then
-                    add("F", ("Händlergunst: %s Gunst, %s (%s)"):format(price, Pr.STANDING[num(standing)] or "?",
+                    add("F", L["Händlergunst: %s Gunst, %s (%s)"]:format(price, Pr.STANDING[num(standing)] or "?",
                         Pr.FACTION_NAME[fac] or fac), nil, { price = num(price), standing = num(standing), item = itemId })
                 end
             elseif k == "V" or k == "D" then
                 local npc = Pr.Npc(rest)
                 listed[num(rest)] = true
-                local label = k == "V" and "Händler" or "Drop"
+                local label = k == "V" and L["Händler"] or "Drop"
                 local w = where(npc)
                 add(k, ("%s: %s%s"):format(label, npc and npc.name or ("NPC " .. rest), w and (", " .. w) or ""),
                     npc and npc.point, { npc = num(rest), item = itemId })
@@ -508,17 +510,17 @@ function Pr.Sources(r)
                 local name = d and d.Q and d.Q[num(rest)]
                 add("Q", ("Quest: %s"):format(name ~= nil and name ~= "" and name or ("Quest " .. rest)), nil, { quest = num(rest), item = itemId })
             elseif k == "Z" then
-                add("Z", ("Zonendrop: %s"):format(Pr.ZoneName(num(rest)) or ("Zone " .. rest)), nil, { item = itemId })
+                add("Z", L["Zonendrop: %s"]:format(Pr.ZoneName(num(rest)) or ("Zone " .. rest)), nil, { item = itemId })
             elseif k == "W" then
-                add("W", "Weltdrop", nil, { item = itemId })
+                add("W", L["Weltdrop"], nil, { item = itemId })
             end
         end
         local obs = Pr.Observed(itemId)
         for _, v in ipairs(obs and obs.vendors or {}) do
             if not listed[v.npc] then
                 local pt, point = posText(v.pos)
-                add("V", ("Händler: %s%s, %s%s"):format(v.name ~= "" and v.name or ("NPC " .. v.npc), pt and (", " .. pt) or "",
-                    money(v.price), v.own and " (selbst gesehen)" or " (von der Gilde)"), point,
+                add("V", L["Händler: %s%s, %s%s"]:format(v.name ~= "" and v.name or ("NPC " .. v.npc), pt and (", " .. pt) or "",
+                    money(v.price), v.own and L[" (selbst gesehen)"] or L[" (von der Gilde)"]), point,
                     { npc = v.npc, observed = true, own = v.own, item = itemId })
             end
         end
@@ -526,7 +528,7 @@ function Pr.Sources(r)
             if not listed[v.npc] then
                 local pt, point = posText(v.pos)
                 add("D", ("Drop: %s%s%s"):format(v.name ~= "" and v.name or ("NPC " .. v.npc), pt and (", " .. pt) or "",
-                    v.own and " (selbst gesehen)" or " (von der Gilde)"), point, { npc = v.npc, observed = true, own = v.own, item = itemId })
+                    v.own and L[" (selbst gesehen)"] or L[" (von der Gilde)"]), point, { npc = v.npc, observed = true, own = v.own, item = itemId })
             end
         end
         if ri and (ri.rank or 0) > 0 then
@@ -535,7 +537,7 @@ function Pr.Sources(r)
         end
         if ri and ri.faction > 0 then out.rep = { faction = ri.faction, standing = ri.standing } end
     end
-    if #out == 0 then add("?", "Quelle unbekannt (vermutlich Lehrer)") end
+    if #out == 0 then add("?", L["Quelle unbekannt (vermutlich Lehrer)"]) end
     return out
 end
 

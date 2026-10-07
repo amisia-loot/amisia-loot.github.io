@@ -12,6 +12,7 @@
 -- that merge the same records always reach the same items, and a heard record can never blow up an
 -- own one.
 local ADDON, ns = ...
+local L = ns.L
 
 local EPOCH = 1767225600      -- 2026-01-01 00:00 UTC: day 0 of the records
 local KEEP_DAYS = 28
@@ -837,9 +838,9 @@ end
 -- n sightings in K kills as text: a share from five kills on, a count below; nil without kills.
 local function countText(n, K)
     if K and K >= SHOW_RATE_FROM then
-        return ("%d von %d Kills der Gilde (%d %%)"):format(n, K, math.floor(n / K * 100 + 0.5))
+        return L["%d von %d Kills der Gilde (%d %%)"]:format(n, K, math.floor(n / K * 100 + 0.5))
     elseif K and K > 0 then
-        return ("gesehen %d-mal in %d Kills"):format(n, K)
+        return L["gesehen %d-mal in %d Kills"]:format(n, K)
     end
     return nil
 end
@@ -851,9 +852,9 @@ function ns.DropRateText(npc, item, p0)
     if K and K > 0 then
         return countText(n, K)
     elseif p then
-        return ("Chance %d %%"):format(math.floor(p * 100 + 0.5))
+        return L["Chance %d %%"]:format(math.floor(p * 100 + 0.5))
     end
-    return "Chance unbekannt"
+    return L["Chance unbekannt"]
 end
 
 ---------------------------------------------------------------------------
@@ -910,7 +911,7 @@ function ns.DropsTooltipLine(item)
     if not npc then return nil end
     local d = ns.DropsDB()
     local name = d and d.npc[npc] or ("Boss " .. npc)
-    return ("Drop bei %s: %s"):format(name, ns.DropRateText(npc, item))
+    return L["Drop bei %s: %s"]:format(name, ns.DropRateText(npc, item))
 end
 
 function ns.DropsTooltipStats() return { builds = tipStats.builds } end
@@ -998,7 +999,7 @@ function ns.DropsBossList()
             if b.npc > 0 then
                 b.name = d.npc[b.npc] or b.encName or ("Boss " .. b.npc)
             else
-                b.name = d.enc[b.enc] or ("Begegnung " .. tostring(b.enc))
+                b.name = d.enc[b.enc] or L["Begegnung %s"]:format(tostring(b.enc))
             end
             g.list[#g.list + 1] = b
         end
@@ -1008,7 +1009,7 @@ function ns.DropsBossList()
     table.sort(order, function(a, b)
         -- the bosses without an instance last
         if (a.inst == 0) ~= (b.inst == 0) then return b.inst == 0 end
-        local na, nb = a.name or ("Instanz " .. a.inst), b.name or ("Instanz " .. b.inst)
+        local na, nb = a.name or L["Instanz %s"]:format(a.inst), b.name or L["Instanz %s"]:format(b.inst)
         if na ~= nb then return na < nb end
         return a.inst < b.inst
     end)
@@ -1017,9 +1018,9 @@ function ns.DropsBossList()
     for _, g in ipairs(order) do
         local text
         if g.inst == 0 then
-            text = "Ohne Instanz"
+            text = L["Ohne Instanz"]
         else
-            text = (g.name or ("Instanz " .. g.inst)) .. (KIND_TEXT[g.kind] and (" · " .. KIND_TEXT[g.kind]) or "")
+            text = (g.name or L["Instanz %s"]:format(g.inst)) .. (KIND_TEXT[g.kind] and (" · " .. KIND_TEXT[g.kind]) or "")
         end
         rows[#rows + 1] = { kind = "inst", inst = g.inst, text = text, rate = kills(g.k), K = g.k }
         table.sort(g.list, function(a, b)
@@ -1133,28 +1134,28 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.DROPS_SETTINGS = { key = "drops", label = "Drop-Daten", order = 46, items = {
-    { key = "drops.record", type = "toggle", label = "Boss-Loot in Dungeons und Raids aufzeichnen", default = true,
-      tip = "Ein geöffnetes Lootfenster eines Bosses wird ein Kill mit seinen Items, ohne Spielernamen." },
-    { key = "drops.share", type = "toggle", label = "Drop-Daten mit der Gilde teilen", default = true,
-      tip = "ohne Namen, nur außerhalb von Instanzen" },
-    { key = "drops.tooltip", type = "toggle", label = "Dropraten der Gilde im Tooltip", default = true,
-      tip = "Eine graue Zeile an Items, die die Gilde bei einem Boss droppen sah, mit der Zahl der Kills." },
+ns.DROPS_SETTINGS = { key = "drops", label = L["Drop-Daten"], order = 46, items = {
+    { key = "drops.record", type = "toggle", label = L["Boss-Loot in Dungeons und Raids aufzeichnen"], default = true,
+      tip = L["Ein geöffnetes Lootfenster eines Bosses wird ein Kill mit seinen Items, ohne Spielernamen."] },
+    { key = "drops.share", type = "toggle", label = L["Drop-Daten mit der Gilde teilen"], default = true,
+      tip = L["ohne Namen, nur außerhalb von Instanzen"] },
+    { key = "drops.tooltip", type = "toggle", label = L["Dropraten der Gilde im Tooltip"], default = true,
+      tip = L["Eine graue Zeile an Items, die die Gilde bei einem Boss droppen sah, mit der Zahl der Kills."] },
 } }
 ns.RegisterSettings(ns.DROPS_SETTINGS)
 
-ns.RegisterSlash("drops", { args = "[export]", desc = "Stand der Drop-Daten der Gilde", run = function(rest)
+ns.RegisterSlash("drops", { args = "[export]", desc = L["Stand der Drop-Daten der Gilde"], run = function(rest)
     local word = (rest or ""):match("^(%S*)"):lower()
     if word == "export" then
         ns.ShowDropsExport()
         return
     elseif word ~= "" then
-        ns.msg("Aufruf: /amisia drops [export]")
+        ns.msg(L["Aufruf: /amisia drops [export]"])
         return
     end
     local s = ns.DropsStatus()
-    ns.msg(("Drop-Daten: %d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s. Aufzeichnen %s, Teilen %s."):format(
-        s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or "keiner",
-        s.heardAt and date("%d.%m. %H:%M", s.heardAt) or "noch keiner",
-        ns.Get("drops.record") and "an" or "aus", ns.Get("drops.share") and "an" or "aus"))
+    ns.msg(L["Drop-Daten: %d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s. Aufzeichnen %s, Teilen %s."]:format(
+        s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or L["keiner"],
+        s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch keiner"],
+        ns.Get("drops.record") and L["an"] or L["aus"], ns.Get("drops.share") and L["an"] or L["aus"]))
 end })

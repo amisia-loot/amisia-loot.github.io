@@ -894,7 +894,7 @@ ns.RegisterSlash("karte", { en = "map", args = L["[<Link> | aus | pins | pfeil]"
         end
         if word == "" then
             if ns.ShowMap then ns.ShowMap() else ns.msg(statusLine()) end
-        elseif word == "aus" or word == "off" or word == "clear" then
+        elseif word == "aus" or word == "off" or word == "clear" then   -- l10n-ok: command word
             if ns.MapClearTarget() then ns.msg(L["Ziel gelöscht."]) else ns.msg(L["Kein Ziel gesetzt."]) end
         elseif word == "pins" then
             local on = not ns.Get("map.pins")

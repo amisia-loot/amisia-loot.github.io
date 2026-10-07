@@ -466,7 +466,7 @@ function ns.ShowMap(zone)
         local z = tonumber(zone)
         if z then
             state().zone = z
-        elseif zone == "hier" or zone == "here" then
+        elseif zone == "hier" or zone == "here" then   -- l10n-ok: command word
             state().zone = nil
         end
     end

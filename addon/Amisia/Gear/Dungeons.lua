@@ -15,6 +15,7 @@
 -- tools/build_dungeonquests.py) joined with the item data's quests: pre-quests, where a quest starts
 -- (the quest giver's waypoint), level, done or in the log, rewards with the upgrade mark.
 local ADDON, ns = ...
+local L = ns.L
 local Gear = ns.Gear
 
 local D = {}
@@ -34,19 +35,19 @@ local PRIOR_MAX = 0.5
 -- name it as a boss) is listed but counts for the value and the recommendation from this many kills:
 -- one trash corpse with a world drop is no boss.
 local MIN_KILLS = 3
-local NO_DATA = "Keine Dungeon-Daten."
-local NO_HIT = "Für dein Level hat kein Dungeon noch Upgrades für dich."
-local NO_ENTRANCE = "Für diesen Dungeon kennt Amisia keinen Eingang."
-local NO_MAP = "Keine Kartendaten für diesen Client."
-local NO_QUESTS = "Questdaten fehlen noch."
-local NO_START = "Für diese Quest kennt Amisia keinen Startort."
-local ITEM_START = "Diese Quest startet durch ein Item."
-local CHAIN_END = "Danach hat kein Dungeon mehr Upgrades für dich."
+local NO_DATA = L["Keine Dungeon-Daten."]
+local NO_HIT = L["Für dein Level hat kein Dungeon noch Upgrades für dich."]
+local NO_ENTRANCE = L["Für diesen Dungeon kennt Amisia keinen Eingang."]
+local NO_MAP = L["Keine Kartendaten für diesen Client."]
+local NO_QUESTS = L["Questdaten fehlen noch."]
+local NO_START = L["Für diese Quest kennt Amisia keinen Startort."]
+local ITEM_START = L["Diese Quest startet durch ein Item."]
+local CHAIN_END = L["Danach hat kein Dungeon mehr Upgrades für dich."]
 local CHAIN_STEPS = 5
 local MAX_CHAIN = 30      -- pre-quest levels walked at most
 D.NO_DATA, D.NO_HIT, D.NO_QUESTS = NO_DATA, NO_HIT, NO_QUESTS
 
-local FIT_TEXT = { fit = "passt", soon = "bald", easy = "leicht", high = "zu hoch" }
+local FIT_TEXT = { fit = L["passt"], soon = L["bald"], easy = L["leicht"], high = L["zu hoch"] }
 local FIT_ORDER = { fit = 1, soon = 2 }
 
 local function lower(s) return type(s) == "string" and s:lower() or nil end
@@ -86,14 +87,14 @@ function D.BossNpc(rec) return nil end
 function D.Rate(boss, id, p0, raid, est)
     if boss.npc and ns.DropRate then
         local p, n, K = ns.DropRate(boss.npc, id, p0)
-        if raid and (K or 0) == 0 then return nil, "Chance unbekannt", 0, 0 end
-        if p and est and (K or 0) == 0 then return p, "Chance unbekannt", n, K end
+        if raid and (K or 0) == 0 then return nil, L["Chance unbekannt"], 0, 0 end
+        if p and est and (K or 0) == 0 then return p, L["Chance unbekannt"], n, K end
         if p then return p, ns.DropRateText(boss.npc, id, p0), n, K end
-        return nil, "Chance unbekannt", 0, 0
+        return nil, L["Chance unbekannt"], 0, 0
     end
-    if raid or not p0 then return nil, "Chance unbekannt", 0, 0 end
-    if est then return p0, "Chance unbekannt", 0, 0 end
-    return p0, ("Chance %d %%"):format(math.floor(p0 * 100 + 0.5)), 0, 0
+    if raid or not p0 then return nil, L["Chance unbekannt"], 0, 0 end
+    if est then return p0, L["Chance unbekannt"], 0, 0 end
+    return p0, L["Chance %d %%"]:format(math.floor(p0 * 100 + 0.5)), 0, 0
 end
 
 ---------------------------------------------------------------------------
@@ -201,7 +202,7 @@ end
 function D.FitText(e)
     if e.fit == "later" then
         local y, m, d = tostring(e.from or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-        return y and ("ab %s.%s."):format(d, m) or "später"
+        return y and L["ab %s"]:format(ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))) or L["später"]
     end
     return FIT_TEXT[e.fit] or ""
 end
@@ -824,14 +825,14 @@ local function whyOf(e)
     local parts = {}
     if e.upgrades > 0 then parts[#parts + 1] = e.upgrades == 1 and "1 Upgrade" or (e.upgrades .. " Upgrades") end
     if e.questUps > 0 then
-        parts[#parts + 1] = e.questUps == 1 and "1 Quest mit Upgrade" or (e.questUps .. " Quests mit Upgrades")
+        parts[#parts + 1] = e.questUps == 1 and L["1 Quest mit Upgrade"] or L["%d Quests mit Upgrades"]:format(e.questUps)
     end
     -- the focus is a boss: the item data's trash group of a dungeon is none
     local focus
     for _, b in ipairs(e.bosses) do
         if b.perRun > 0 and b.name ~= "Trash" and (not focus or b.perRun > focus.perRun) then focus = b end
     end
-    if focus then parts[#parts + 1] = "Schwerpunkt " .. focus.name end
+    if focus then parts[#parts + 1] = L["Schwerpunkt %s"]:format(focus.name) end
     return table.concat(parts, ", ")
 end
 
@@ -1053,7 +1054,7 @@ function D.ChainText(chain, why)
     if #chain == 0 then return why or NO_HIT end
     local parts = {}
     for i, s in ipairs(chain) do parts[#parts + 1] = ("%d. %s"):format(i, s.entry.name) end
-    return "Kette: " .. table.concat(parts, " · ")
+    return L["Kette: %s"]:format(table.concat(parts, " · "))
 end
 
 ---------------------------------------------------------------------------
@@ -1089,7 +1090,7 @@ function ns.DungeonWaypoint(key)
     if not e then return nil, NO_DATA end
     local point, mapKey = ns.DungeonEntrance(key)
     if not point then return nil, NO_ENTRANCE end
-    return ns.MapSetPoint(point, D.Name(e) .. " (Eingang)", mapKey)
+    return ns.MapSetPoint(point, L["%s (Eingang)"]:format(D.Name(e)), mapKey)
 end
 
 ---------------------------------------------------------------------------
@@ -1239,22 +1240,22 @@ end
 
 -- "20 (ab 15)" or "20".
 function D.QuestLevelText(n)
-    if (n.level or 0) <= 0 then return n.minLevel and n.minLevel > 0 and ("ab " .. n.minLevel) or "" end
-    if (n.minLevel or 0) > 0 and n.minLevel ~= n.level then return ("%d (ab %d)"):format(n.level, n.minLevel) end
+    if (n.level or 0) <= 0 then return n.minLevel and n.minLevel > 0 and L["ab %d"]:format(n.minLevel) or "" end
+    if (n.minLevel or 0) > 0 and n.minLevel ~= n.level then return L["%d (ab %d)"]:format(n.level, n.minLevel) end
     return tostring(n.level)
 end
 
 -- Where a quest starts, as text: "im Dungeon", "durch ein Item", "<giver>, <zone> 56, 48" or "".
 function D.QuestStartText(n)
-    if n.start == "I" then return "im Dungeon" end
-    if n.start == "X" then return "durch ein Item" end
+    if n.start == "I" then return L["im Dungeon"] end
+    if n.start == "X" then return L["durch ein Item"] end
     local Map = ns.Map
     local points = Map and Map.ParsePoints and Map.ParsePoints(n.points) or {}
     if #points > 0 then
         local p = ns.MapNearest(points)
         return ("%s, %s %s"):format(n.giver or "?", Gear.ZoneName(p.map) or ("Zone " .. p.map), Map.Coords(p))
     end
-    return n.giver and (n.giver .. " (Ort unbekannt)") or ""
+    return n.giver and L["%s (Ort unbekannt)"]:format(n.giver) or ""
 end
 
 -- Sets the map target to where a quest starts: the quest giver (the nearest of its points), the
@@ -1275,15 +1276,14 @@ function ns.DungeonQuestWaypoint(qid)
         local point = ns.DungeonEntrance(r[11])
         if point then
             local e = factOf(r[11])
-            return ns.MapSetPoint(point, (e and D.Name(e) or "Dungeon") .. " (Eingang)", "Q:" .. qid)
+            return ns.MapSetPoint(point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), "Q:" .. qid)
         end
     end
     local points = Map.ParsePoints(r and r[8])
     if #points == 0 and qid then points = ns.MapPoints("Q:" .. qid) end
     if #points == 0 and seenPoint then points = Map.ParsePoints(seenPoint) end
     if #points == 0 then return nil, NO_START end
-    local label = "Questgeber " .. giver
-    if r and r[6] == "I" then label = label .. " (im Dungeon)" end
+    local label = (r and r[6] == "I") and L["Questgeber %s (im Dungeon)"]:format(giver) or L["Questgeber %s"]:format(giver)
     return ns.MapSetPoint(ns.MapNearest(points), label, "Q:" .. qid)
 end
 
@@ -1293,16 +1293,16 @@ end
 
 -- The texts of this part, in one place for the translation.
 local TEXT = {
-    xpSum = "Quest-EP offen: %s (draußen %s, im Dungeon %s)",
-    xpSumOne = "Quest-EP offen: %s (draußen %s, im Dungeon %s), 1 Quest ohne Wert",
-    xpSumMany = "Quest-EP offen: %s (draußen %s, im Dungeon %s), %d Quests ohne Wert",
-    xpNone = "Quest-EP: für %d offene Quests noch nicht gesehen",
+    xpSum = L["Quest-EP offen: %s (draußen %s, im Dungeon %s)"],
+    xpSumOne = L["Quest-EP offen: %s (draußen %s, im Dungeon %s), 1 Quest ohne Wert"],
+    xpSumMany = L["Quest-EP offen: %s (draußen %s, im Dungeon %s), %d Quests ohne Wert"],
+    xpNone = L["Quest-EP: für %d offene Quests noch nicht gesehen"],
     xpEst = "~%d",
     xpOther = "%d (Lvl %d)",
-    noGivers = "Für diesen Dungeon kennt Amisia keine Questgeber mit Ort.",
-    giver = "Questgeber %s",
-    giverInside = "Questgeber %s (im Dungeon)",
-    preFor = "%s (Vorquest für %s)",
+    noGivers = L["Für diesen Dungeon kennt Amisia keine Questgeber mit Ort."],
+    giver = L["Questgeber %s"],
+    giverInside = L["Questgeber %s (im Dungeon)"],
+    preFor = L["%s (Vorquest für %s)"],
 }
 D.TEXT = TEXT
 
@@ -1546,45 +1546,45 @@ end
 local function sayQuests(word)
     local e = commandDungeon(word)
     if not e then
-        ns.msg(word ~= "" and ("Keinen Dungeon \"%s\" gefunden."):format(word) or NO_HIT)
+        ns.msg(word ~= "" and L["Keinen Dungeon \"%s\" gefunden."]:format(word) or NO_HIT)
         return
     end
     local list, status = ns.DungeonQuests(e.key)
-    ns.msg(("Quests in %s:"):format(D.Name(e)))
+    ns.msg(L["Quests in %s:"]:format(D.Name(e)))
     local missing = D.QuestStatusText(status)
     if missing then ns.msg(missing) end
     if #list == 0 then
-        if not missing then ns.msg("Für diesen Dungeon kennt Amisia keine Quests.") end
+        if not missing then ns.msg(L["Für diesen Dungeon kennt Amisia keine Quests."]) end
         return
     end
     for _, q in ipairs(list) do
-        local mark = q.done and "[erledigt] " or q.active and "[im Log] " or q.gone and "[nicht mehr möglich] " or ""
+        local mark = q.done and L["[erledigt] "] or q.active and L["[im Log] "] or q.gone and L["[nicht mehr möglich] "] or ""
         local start = D.QuestStartText(q)
-        local line = ("%s%s · Level %s%s"):format(mark, q.title, D.QuestLevelText(q), start ~= "" and (" · Start: " .. start) or "")
+        local line = ("%s%s · Level %s%s"):format(mark, q.title, D.QuestLevelText(q), start ~= "" and L[" · Start: %s"]:format(start) or "")
         if q.best then
             line = line .. (" · Upgrade %s (%+d)"):format(ns.ItemName and ns.ItemName(q.best.id) or ("Item " .. q.best.id),
                 math.floor(q.best.gain + 0.5))
         end
         ns.msg(line)
         for _, n in ipairs(q.chain) do
-            ns.msg(("  Vorquest: %s%s · Level %s%s"):format(n.title, n.one and " (oder eine andere)" or "", D.QuestLevelText(n),
-                n.done and " (erledigt)" or ""))
+            ns.msg(L["  Vorquest: %s%s · Level %s%s"]:format(n.title, n.one and L[" (oder eine andere)"] or "", D.QuestLevelText(n),
+                n.done and L[" (erledigt)"] or ""))
         end
     end
 end
 
-ns.RegisterSlash("dungeon", { aliases = { "dungeons" }, args = "[naechster|kette|quests <Dungeon>]",
-    desc = "Dungeon-Planer: welcher Dungeon sich für dich lohnt, die Kette, die Quests eines Dungeons",
+ns.RegisterSlash("dungeon", { aliases = { "dungeons" }, args = L["[naechster|kette|quests <Dungeon>]"],
+    desc = L["Dungeon-Planer: welcher Dungeon sich für dich lohnt, die Kette, die Quests eines Dungeons"],
     run = function(rest)
         local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
         word = (word or ""):lower()
-        if word == "naechster" or word == "nächster" or word == "next" then
+        if word == "naechster" or word == "nächster" or word == "next" then   -- l10n-ok: command word
             local ok, e, why = pcall(ns.DungeonNext)
             if not ok then
                 report(e)
                 return
             end
-            if e then ns.msg(("Nächster Dungeon (%s): %s"):format(D.RangeText(e), why)) else ns.msg(why) end
+            if e then ns.msg(L["Nächster Dungeon (%s): %s"]:format(D.RangeText(e), why)) else ns.msg(why) end
             return
         elseif word == "kette" or word == "chain" then
             local ok, chain, why = pcall(ns.DungeonChain)
@@ -1599,11 +1599,11 @@ ns.RegisterSlash("dungeon", { aliases = { "dungeons" }, args = "[naechster|kette
             if not ok then report(err) end
             return
         elseif word ~= "" then
-            ns.msg("Aufruf: /amisia dungeon [naechster|kette|quests <Dungeon>]")
+            ns.msg(L["Aufruf: /amisia dungeon [naechster|kette|quests <Dungeon>]"])
             return
         end
         if not Gear.Available() then
-            ns.msg("Für diesen Client gibt es keine Ausrüstungsdaten.")
+            ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
             return
         end
         ns.ShowGear("dungeons")

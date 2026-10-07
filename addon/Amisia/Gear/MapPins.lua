@@ -549,7 +549,7 @@ ns.Listen("MAP_TARGET", function()
     schedule()
 end)
 ns.Listen("SETTING", function(path)
-    if type(path) == "string" and (path:sub(1, 4) == "map." or path:sub(1, 4) == "bis.") then
+    if type(path) == "string" and (path:sub(1, 4) == "map." or path:sub(1, 4) == "bis.") then   -- l10n-ok: setting key prefix
         version = version + 1
         schedule()
     end

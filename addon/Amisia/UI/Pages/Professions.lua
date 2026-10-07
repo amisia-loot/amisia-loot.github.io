@@ -4,17 +4,18 @@
 -- the own count, where it comes from, Merchant's Favor and crafting orders). Two more views in the
 -- profession picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
 local ADDON, ns = ...
+local L = ns.L
 local W, Pr, T = ns.W, ns.Prof, ns.Theme
 local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
 local ROWS, ROW_H = 17, 22
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
-local SOURCES = { { "all", "Alle Quellen" }, { "T", "Lehrer" }, { "V", "Händler" }, { "F", "Händlergunst" },
+local SOURCES = { { "all", L["Alle Quellen"] }, { "T", L["Lehrer"] }, { "V", L["Händler"] }, { "F", L["Händlergunst"] },
     { "D", "Drop" }, { "Q", "Quest" } }
-local KNOWN = { { "all", "Alle" }, { "known", "Bekannt" }, { "unknown", "Unbekannt" } }
+local KNOWN = { { "all", L["Alle"] }, { "known", L["Bekannt"] }, { "unknown", L["Unbekannt"] } }
 local CAMP, FAVOR = "camp", "favor"
-local ROW_HINT = "Klick: Details. Shift-Klick: Link in den Chat."
+local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
 local page
 local nameMissing = false
@@ -105,14 +106,14 @@ local function fillRow(r, e)
         local rank = c.skill > 0 and Pr.Rank(c.skill) or nil
         local col = (rank and rank >= c.rank) and Pr.COLORS.green or (rank and Pr.COLORS.red) or Pr.COLORS.none
         r.name:SetText(color(col, campName(c)))
-        r.mark:SetText(c.slots > 0 and (GREY .. c.slots .. " Pl.|r") or "")
+        r.mark:SetText(c.slots > 0 and (GREY .. L["%d Pl."]:format(c.slots) .. "|r") or "")
         r.rank:SetText(c.skill > 0 and (GREY .. c.rank .. "|r") or "")
         return
     end
     local rec = e.recipe
     local col = Pr.COLORS[e.color] or Pr.COLORS.none
     local name = e.name
-    if e.known == true then name = name .. " " .. GREY .. "(bekannt)|r" end
+    if e.known == true then name = name .. " " .. GREY .. L["(bekannt)"] .. "|r" end
     r.name:SetText(color(col, name))
     r.mark:SetText(upgradeMark(rec.item) or "")
     if e.price then
@@ -132,14 +133,14 @@ end
 
 local function reagentLines(r)
     local list, from = Pr.Reagents(r.spell)
-    if not list then return { GREY .. "Reagenzien: noch unbekannt (Client antwortet nicht)|r" } end
-    local out = { "Reagenzien:" }
+    if not list then return { GREY .. L["Reagenzien: noch unbekannt (Client antwortet nicht)"] .. "|r" } end
+    local out = { L["Reagenzien:"] }
     for _, e in ipairs(list) do
         local have = Pr.Count(e[1])
         local mark = have >= e[2] and GREEN or "|cffff6060"
         out[#out + 1] = ("  %dx %s %s(%d)|r"):format(e[2], itemText(e[1]), mark, have)
     end
-    if from == "client" then out[#out + 1] = GREY .. "  (aus dem Client)|r" end
+    if from == "client" then out[#out + 1] = GREY .. "  " .. L["(aus dem Client)"] .. "|r" end
     return out
 end
 
@@ -147,38 +148,38 @@ local function recipeDetail(r)
     local lines = {}
     local rank = Pr.Rank(r.skill)
     local known = Pr.Known(r.spell, r.skill)
-    lines[#lines + 1] = ("%s · Fertigkeit %s"):format(Pr.Name(r.skill), steps(r))
+    lines[#lines + 1] = L["%s · Fertigkeit %s"]:format(Pr.Name(r.skill), steps(r))
     if rank then
         local d = Pr.Difficulty(r, rank, known)
-        local word = ({ orange = "orange", yellow = "gelb", green = "grün", grey = "grau", red = "noch nicht lernbar" })[d]
-        lines[#lines + 1] = ("Dein Rang %d%s"):format(rank, word and (": " .. color(Pr.COLORS[d], word)) or "")
+        local word = ({ orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"], red = L["noch nicht lernbar"] })[d]
+        lines[#lines + 1] = L["Dein Rang %d%s"]:format(rank, word and (": " .. color(Pr.COLORS[d], word)) or "")
     end
     if known == true then
-        lines[#lines + 1] = GREEN .. "Bekannt|r"
+        lines[#lines + 1] = GREEN .. L["Bekannt"] .. "|r"
     elseif known == false then
-        lines[#lines + 1] = "Nicht bekannt" .. (r.learn > 1 and (" (lernbar ab %d)"):format(r.learn) or "")
+        lines[#lines + 1] = L["Nicht bekannt"] .. (r.learn > 1 and L[" (lernbar ab %d)"]:format(r.learn) or "")
     elseif rank then
-        lines[#lines + 1] = GREY .. "Ob bekannt: Berufsfenster einmal öffnen.|r"
+        lines[#lines + 1] = GREY .. L["Ob bekannt: Berufsfenster einmal öffnen."] .. "|r"
     end
-    if r.count > 1 then lines[#lines + 1] = ("Stellt %d Stück her."):format(r.count) end
+    if r.count > 1 then lines[#lines + 1] = L["Stellt %d Stück her."]:format(r.count) end
     lines[#lines + 1] = ""
     for _, l in ipairs(reagentLines(r)) do lines[#lines + 1] = l end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = "Quelle:"
+    lines[#lines + 1] = L["Quelle:"]
     local src = Pr.Sources(r)
     for _, s in ipairs(src) do lines[#lines + 1] = "  " .. s.text end
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
         if ri then
             local need = {}
-            if ri.rank > 0 then need[#need + 1] = ("Rang %d"):format(ri.rank) end
-            if ri.faction > 0 then need[#need + 1] = ("Ruf %s"):format(Pr.STANDING[ri.standing] or "?") end
-            lines[#lines + 1] = ("  Rezept: %s%s"):format(itemText(itemId), #need > 0 and (GREY .. " (" .. table.concat(need, ", ") .. ")|r") or "")
+            if ri.rank > 0 then need[#need + 1] = L["Rang %d"]:format(ri.rank) end
+            if ri.faction > 0 then need[#need + 1] = L["Ruf %s"]:format(Pr.STANDING[ri.standing] or "?") end
+            lines[#lines + 1] = L["  Rezept: %s%s"]:format(itemText(itemId), #need > 0 and (GREY .. " (" .. table.concat(need, ", ") .. ")|r") or "")
         end
     end
     if Pr.HasWrit(r) then
         lines[#lines + 1] = ""
-        lines[#lines + 1] = "Handwerksauftrag für dieses Item möglich (Händlergunst)."
+        lines[#lines + 1] = L["Handwerksauftrag für dieses Item möglich (Händlergunst)."]
     end
     return table.concat(lines, "\n"), src
 end
@@ -187,23 +188,23 @@ local function campDetail(c)
     local lines = {}
     if c.skill > 0 then
         local rank = Pr.Rank(c.skill)
-        lines[#lines + 1] = ("%s · ab Rang %d%s"):format(Pr.Name(c.skill), c.rank, rank and (" (dein Rang %d)"):format(rank) or "")
+        lines[#lines + 1] = L["%s · ab Rang %d%s"]:format(Pr.Name(c.skill), c.rank, rank and L[" (dein Rang %d)"]:format(rank) or "")
     end
-    if c.slots > 0 then lines[#lines + 1] = ("Lagerfeuer mit %d Plätzen für weitere Lagerobjekte."):format(c.slots) end
+    if c.slots > 0 then lines[#lines + 1] = L["Lagerfeuer mit %d Plätzen für weitere Lagerobjekte."]:format(c.slots) end
     if c.over > 0 then
         local other
         for _, o in ipairs(Pr.Camp()) do if o.item == c.over then other = o end end
-        lines[#lines + 1] = ("Ersetzt %s und behält dessen Wirkung."):format(other and campName(other) or ("Item " .. c.over))
+        lines[#lines + 1] = L["Ersetzt %s und behält dessen Wirkung."]:format(other and campName(other) or ("Item " .. c.over))
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = Pr.SpellDescription(c.use) or (GREY .. "Beschreibung lädt ...|r")
+    lines[#lines + 1] = Pr.SpellDescription(c.use) or (GREY .. L["Beschreibung lädt ..."] .. "|r")
     local r = c.recipe > 0 and Pr.Recipe(c.recipe)
     local src = {}
     if r then
         lines[#lines + 1] = ""
-        lines[#lines + 1] = ("Herstellen: %s"):format(steps(r))
+        lines[#lines + 1] = L["Herstellen: %s"]:format(steps(r))
         for _, l in ipairs(reagentLines(r)) do lines[#lines + 1] = l end
-        lines[#lines + 1] = "Quelle:"
+        lines[#lines + 1] = L["Quelle:"]
         src = Pr.Sources(r)
         for _, s in ipairs(src) do lines[#lines + 1] = "  " .. s.text end
     end
@@ -217,7 +218,7 @@ local function showDetail(f, e)
         d.icon:Hide()
         d.title:SetText("")
         d.sub:SetText("")
-        d.body:SetText(GREY .. "Ein Rezept wählen.|r")
+        d.body:SetText(GREY .. L["Ein Rezept wählen."] .. "|r")
         d.go:Disable()
         return
     end
@@ -236,7 +237,7 @@ local function showDetail(f, e)
             d.title:SetText(color(Pr.COLORS.none, e.name))
         end
         local mark, u = upgradeMark(item)
-        sub = mark and ("Upgrade: " .. mark .. (u and u.slotKey and (GREY .. " (" .. tostring(u.slotKey) .. ")|r") or "")) or ""
+        sub = mark and (L["Upgrade: %s"]:format(mark) .. (u and u.slotKey and (GREY .. " (" .. tostring(u.slotKey) .. ")|r") or "")) or ""
         body, src = recipeDetail(r)
     end
     local icon = item and item > 0 and C_Item and C_Item.GetItemIconByID and ns.Plain(C_Item.GetItemIconByID(item)) or nil
@@ -269,24 +270,24 @@ local function pickerValues()
         local p = own[skill]
         values[#values + 1] = { value = skill, text = p and ("%s (%d/%d)"):format(Pr.Name(skill), p.rank, p.max) or Pr.Name(skill) }
     end
-    values[#values + 1] = { value = CAMP, text = "Lager (Camping)" }
-    values[#values + 1] = { value = FAVOR, text = "Händlergunst" }
+    values[#values + 1] = { value = CAMP, text = L["Lager (Camping)"] }
+    values[#values + 1] = { value = FAVOR, text = L["Händlergunst"] }
     return values
 end
 
 local function statusText(v, n)
-    if v == CAMP then return ("%d Lagerobjekte"):format(n) end
+    if v == CAMP then return L["%d Lagerobjekte"]:format(n) end
     if v == FAVOR then
         local fav = Pr.Favor() or {}
-        local parts = { ("%d Rezepte"):format(n) }
-        if fav.amount then parts[#parts + 1] = ("%s: %d"):format(fav.name or "Händlergunst", fav.amount) end
+        local parts = { L["%d Rezepte"]:format(n) }
+        if fav.amount then parts[#parts + 1] = ("%s: %d"):format(fav.name or L["Händlergunst"], fav.amount) end
         local certs = 0
         for _ in pairs(fav.cert or {}) do certs = certs + 1 end
-        if certs > 0 then parts[#parts + 1] = ("%d Zertifizierungen (1000 Gunst, Rang 300)"):format(certs) end
+        if certs > 0 then parts[#parts + 1] = L["%d Zertifizierungen (1000 Gunst, Rang 300)"]:format(certs) end
         return table.concat(parts, " · ")
     end
-    local text = ("%d Rezepte"):format(n)
-    if Pr.Rank(v) and not Pr.HasSnapshot(v) then text = text .. " · Berufsfenster öffnen für Bekannt" end
+    local text = L["%d Rezepte"]:format(n)
+    if Pr.Rank(v) and not Pr.HasSnapshot(v) then text = text .. L[" · Berufsfenster öffnen für Bekannt"] end
     return text
 end
 
@@ -300,10 +301,10 @@ local function hintText(v)
         end
         local writs = 0
         for _, c in pairs(fav.writs or {}) do writs = writs + c end
-        return ("Händler: %s. Gunst gibt es für volle Kisten und Handwerksaufträge (%d Items haben einen)."):format(
-            #names > 0 and table.concat(names, ", ") or "unbekannt", writs)
+        return L["Händler: %s. Gunst gibt es für volle Kisten und Handwerksaufträge (%d Items haben einen)."]:format(
+            #names > 0 and table.concat(names, ", ") or L["unbekannt"], writs)
     elseif v == CAMP then
-        return "Lagerobjekte brauchen ein Lagerfeuer in der Nähe und teilen eine Abklingzeit. Wirkung nach Sitzen am Feuer."
+        return L["Lagerobjekte brauchen ein Lagerfeuer in der Nähe und teilen eine Abklingzeit. Wirkung nach Sitzen am Feuer."]
     end
     return ROW_HINT
 end
@@ -327,7 +328,7 @@ local function refresh(f)
     end
     local rank, max = nil, nil
     if isRecipes then rank, max = Pr.Rank(v) end
-    f.rank:SetText(rank and ("Dein Rang: %d / %d"):format(rank, max or 0) or (isRecipes and (GREY .. "Beruf nicht erlernt|r") or ""))
+    f.rank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (isRecipes and (GREY .. L["Beruf nicht erlernt"] .. "|r") or ""))
     if f.shownView ~= v then f.list.offset = 0 end
     f.shownView = v
     nameMissing = false
@@ -342,7 +343,7 @@ local function refresh(f)
     f.selected = f.selected or list[1]
     f.list:SetItems(list)
     if #list == 0 then
-        f.empty:SetText(Pr.Available() and "Keine Rezepte zu diesen Filtern." or "Für diesen Client gibt es keine Berufsdaten.")
+        f.empty:SetText(Pr.Available() and L["Keine Rezepte zu diesen Filtern."] or L["Für diesen Client gibt es keine Berufsdaten."])
         f.empty:Show()
     else
         f.empty:Hide()
@@ -351,7 +352,7 @@ local function refresh(f)
     f.counts:SetText(statusText(v, #list))
     f.hint:SetText(hintText(v))
     local d = ns.Data("PROFESSIONS")
-    f.data:SetText(("Berufsdaten vom %s (Client %s) · Namen aus dem Client."):format(d and d.built or "?", d and d.client or "?"))
+    f.data:SetText(L["Berufsdaten vom %s (Client %s) · Namen aus dem Client."]:format(d and d.built or "?", d and d.client or "?"))
 end
 
 local function choose(e)
@@ -418,7 +419,7 @@ local function create(parent)
     f.search = W.SearchBox(f, 170, function(text)
         state().search = text ~= "" and text or nil
         ns.Refresh()
-    end, "Rezept suchen")
+    end, L["Rezept suchen"])
     W.Row(f, { f.prof, f.search }, 10, 0, -1)
     f.rank = W.Text(f, T.FONT.head, 210)
     f.rank:SetPoint("TOPRIGHT", -2, -5)
@@ -429,19 +430,19 @@ local function create(parent)
         ns.Refresh()
     end)
     f.known:SetValues(KNOWN)
-    W.Tooltip(f.known, "Bekannt", "Alle, nur bekannte oder nur unbekannte Rezepte. Was du kennst, liest Amisia aus dem offenen Berufsfenster.")
+    W.Tooltip(f.known, L["Bekannt"], L["Alle, nur bekannte oder nur unbekannte Rezepte. Was du kennst, liest Amisia aus dem offenen Berufsfenster."])
     f.source = W.Choice(f, 120, function(v)
         state().source = v
         ns.Refresh()
     end)
     f.source:SetValues(SOURCES)
-    W.Tooltip(f.source, "Quelle", "Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest.")
-    f.learn = W.Chip(f, "Lernbar", 80, function()
+    W.Tooltip(f.source, L["Quelle"], L["Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest."])
+    f.learn = W.Chip(f, L["Lernbar"], 80, function()
         local s = state()
         s.learnable = not s.learnable or nil
         ns.Refresh()
     end)
-    W.Tooltip(f.learn, "Lernbar", "Nur unbekannte Rezepte, die dein Rang schon erlaubt.")
+    W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
     f.counts = W.Text(f, T.FONT.hint, 286)
     -- the filters, then the counts on the text line beside them
     W.Row(f, { f.known, f.source, f.learn, { f.counts, gap = 8, y = -31 } }, T.CHIP_GAP, 0, -27)
@@ -492,14 +493,14 @@ local function create(parent)
     d.body = W.ScrollText(d)
     d.body:SetPoint("TOPLEFT", 8, -46)
     d.body:SetPoint("BOTTOMRIGHT", -16, 32)
-    d.go = W.Button(d, "Weg", 70, function()
+    d.go = W.Button(d, L["Weg"], 70, function()
         if d.point and ns.MapSetPoint then
             local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
             if not ok and why then ns.msg(why) end
         end
     end, { height = 20 })
     d.go:SetPoint("BOTTOMRIGHT", -8, 8)
-    W.Tooltip(d.go, "Weg", "Setzt den Wegpunkt auf die erste Quelle mit Ort.")
+    W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
 
     -- the hint takes two lines when it needs them (the favor vendors), the data line moves down
     f.hint = W.Text(f, T.FONT.hint, 598, true)
@@ -510,7 +511,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "professions", label = "Berufe", icon = ICON, order = 57, group = "gear",
+ns.RegisterPanel{ key = "professions", label = L["Berufe"], icon = ICON, order = 57, group = "gear",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
 
 function ns.ProfessionsPageFrame() return page end
@@ -521,7 +522,7 @@ function ns.ShowProfessions(what)
         local w = ns.Fold(what)
         if w:find("^lager") or w:find("^camp") then
             state().view = CAMP
-        elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then
+        elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then   -- l10n-ok: German command words
             state().view = FAVOR
         else
             for _, skill in ipairs(Pr.Skills()) do
@@ -536,8 +537,8 @@ function ns.ShowProfessions(what)
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
-ns.RegisterSlash("berufe", { aliases = { "professions", "beruf" }, args = "[Beruf|lager|gunst]",
-    desc = "Rezepte, Lager und Händlergunst", run = function(rest) ns.ShowProfessions(rest) end })
+ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst]"],
+    desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 
 ---------------------------------------------------------------------------
 -- Changes: the shown page follows the profession window, the collector and item names
