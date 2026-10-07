@@ -471,7 +471,7 @@ def build(dirs, log=None):
     for r in t['TraitNode']:
         nodes_of_tree[num(r['TraitTreeID'])].append(r)
     entry_of_node = {}
-    for r in sorted(t['TraitNodeXTraitNodeEntry'], key=lambda r: (num(r['_Index']), num(r['ID']))):
+    for r in sorted(t['TraitNodeXTraitNodeEntry'], key=lambda r: (num(r.get('_Index', r.get('Index'))), num(r['ID']))):
         entry_of_node.setdefault(num(r['TraitNodeID']), num(r['TraitNodeEntryID']))
     entries = {num(r['ID']): r for r in t['TraitNodeEntry']}
     defs = {num(r['ID']): r for r in t['TraitDefinition']}

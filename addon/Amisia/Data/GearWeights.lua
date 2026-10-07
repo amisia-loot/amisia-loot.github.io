@@ -12,7 +12,7 @@ ns.GEAR_WEIGHTS = {
     brackets = {9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 60},
     order = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"},
     ratings = {BLOCK = 5, CRIT = 14, DEF = 1.5, DODGE = 12, EXP = 10, HASTE = 10, HIT = 10, PARRY = 15, SHIT = 8},
-    built = "2026-10-06",
+    built = "2026-10-07",
     specs = {
         WARRIOR = {
             { key = "dps", name = "Waffen/Furor", role = "dps", unit = "AP",
