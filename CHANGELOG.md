@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.4 (2026-10-07)
+
+- Map: the main window stays open under the world map and comes back on top when the map closes
+
 ## 2.9.3 (2026-10-07)
 
 - Talents: 34 px icons again, the action bar's thin rounded frame tinted by state
