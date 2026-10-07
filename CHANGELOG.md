@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.6 (2026-10-07)
+
+- Collector: a vendor price of 0 is unknown - a real price replaces it (prices recorded while the merchant API was missing stayed 0 forever)
+
 ## 2.9.5 (2026-10-07)
 
 - Talents: 36 px icons, the frame 2 px outside the icon so its dark rim no longer covers it, less icon crop
