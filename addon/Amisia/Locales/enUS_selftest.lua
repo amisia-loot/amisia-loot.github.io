@@ -205,3 +205,4 @@ L["Selbsttest: %d Problem(e). Ganzer Bericht: /amisia selbsttest"] = "Self-test:
 L["  ... und %d weitere"] = "  ... and %d more"
 L["[kurz] [wegpunkt]"] = "[short] [waypoint]"
 L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat)"] = "checks the client, report to copy (short: only problems in chat)"
+L["%d eigene, %d aus der Gilde; gelernt %d, gesendet %s"] = "%d own, %d from the guild; learned %d, sent %s"

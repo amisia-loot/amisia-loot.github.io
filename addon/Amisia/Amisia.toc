@@ -62,6 +62,7 @@ Gear\GearFrame.lua
 Gear\Bis.lua
 Gear\Dungeons.lua
 Gear\Professions.lua
+Gear\Crafters.lua
 Gear\Quests.lua
 Gear\GuildWishes.lua
 Gear\Compare.lua

@@ -34,16 +34,16 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, PV = 60, PQ = 60 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
-local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true }
+local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true }
 -- parts a blob of an art may have (default MAX_PARTS)
-local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40 }
+local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40, PK = MAX_PARTS_DK }
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
@@ -331,6 +331,11 @@ local VALID = {
     -- loot council (LootPrio.lua): LV <raid key> <hash> <items> from the keeper; LQ <raid key> <own hash>
     LV = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 16) and isNum(f[3], 0, 999) end,
     LQ = function(f) return #f >= 2 and isKey(f[1]) and isHex(f[2], 16) end,
+    -- recipe exchange (Gear/Crafters.lua): PV <crafter proto> <crafters> <digest>; PQ <crafter proto>
+    -- <format B|L> <request number>; PW <seconds> (busy)
+    PV = function(f) return #f >= 3 and isNum(f[1], 0, 9) and isNum(f[2], 0, 99) and isHex(f[3], 8) end,
+    PQ = function(f) return #f >= 3 and isNum(f[1], 0, 9) and (f[2] == "B" or f[2] == "L") and isNum(f[3], 1, 999999) end,
+    PW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -650,8 +655,9 @@ end
 
 local seq = 0
 
--- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK" or "CK"; key the raid key
--- (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"). opts as CommSend. Returns true and the
+-- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK", "CK" or "PK"; key the raid key
+-- (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"; PK:
+-- "0000-00-01:<request number>"). opts as CommSend. Returns true and the
 -- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
