@@ -47,3 +47,18 @@ assert(has(s, 'OK     Lagerbeschreibung: "Errichtet ein Schleifrad."'), s)
 assert(has(s, 'OK     Händlergunst: "Händlergunst": 75'), s)
 assert(has(s, "Schmiedekunst: Rang 45, 1 bekannt; IsPlayerSpell(2663) = true"), s)
 assert(has(s, "WERT   Daten: 3 Berufe, Client"), s)
+
+-- the camp description not loaded yet (the first ask after the login): a value, not a problem, and
+-- the client is asked to load it
+local realDesc = C_Spell.GetSpellDescription
+C_Spell.GetSpellDescription = function() return "" end
+C_Spell.IsSpellDataCached = function() return false end
+local askedLoad = {}
+C_Spell.RequestLoadSpellData = function(id) askedLoad[#askedLoad + 1] = id end
+s = section(ST.Run().text)
+assert(has(s, "WERT   Lagerbeschreibung: noch nicht geladen") and askedLoad[1] == 1307392, s)
+-- loaded and still empty: missing
+C_Spell.IsSpellDataCached = function() return true end
+s = section(ST.Run().text)
+assert(has(s, "FEHLT  Lagerbeschreibung"), s)
+C_Spell.GetSpellDescription, C_Spell.IsSpellDataCached, C_Spell.RequestLoadSpellData = realDesc, nil, nil

@@ -367,6 +367,7 @@ L["%s · ab Rang %d%s"] = "%s · from rank %d%s"
 L["Lagerfeuer mit %d Plätzen für weitere Lagerobjekte."] = "Campfire with %d slots for more camp objects."
 L["Ersetzt %s und behält dessen Wirkung."] = "Replaces %s and keeps its effect."
 L["Beschreibung lädt ..."] = "Description loading ..."
+L["Keine Beschreibung vom Client."] = "No description from the client."
 L["Herstellen: %s"] = "Craft: %s"
 L["Ein Rezept wählen."] = "Choose a recipe."
 L["Upgrade: %s"] = true

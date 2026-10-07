@@ -159,12 +159,50 @@ function Pr.SpellName(spell)
     return type(name) == "string" and name ~= "" and name or nil
 end
 
+-- A spell's data (its description above all) comes back empty until the client has loaded it; the
+-- first ask after the login often finds it not loaded. spell -> "asked" (load requested, waiting
+-- for SPELL_DATA_LOAD_RESULT) or "done" (the result came: never asked again, so an empty text
+-- cannot loop).
+local spellLoad = {}
+
+-- Whether the client still has to load the spell's data: asks it to (once) and returns true while
+-- the load is pending; false when the data is there, was loaded once already, or the client has no
+-- way to load it.
+function Pr.LoadSpell(spell)
+    spell = tonumber(spell)
+    local api = _G.C_Spell
+    if not spell or type(api) ~= "table" or type(api.RequestLoadSpellData) ~= "function" then return false end
+    local state = spellLoad[spell]
+    if state == "done" then return false end
+    if type(api.IsSpellDataCached) == "function" and ns.Plain(call(api.IsSpellDataCached, spell)) == true then
+        if state then spellLoad[spell] = "done" end
+        return false
+    end
+    if state == "asked" then return true end
+    spellLoad[spell] = "asked"
+    call(api.RequestLoadSpellData, spell)
+    return true
+end
+
+ns.OnEvent("SPELL_DATA_LOAD_RESULT", function(spell)
+    spell = tonumber(ns.Plain(spell))
+    if spell and spellLoad[spell] == "asked" then
+        spellLoad[spell] = "done"
+        ns.Fire("PROF_SPELL_LOADED", spell)
+    end
+end)
+
+-- The client's description of a spell; nil and true while the client still loads it (or may: a
+-- client without RequestLoadSpellData fills it in on its own), nil and false when it has none.
 function Pr.SpellDescription(spell)
     local text
     if C_Spell and C_Spell.GetSpellDescription then text = call(C_Spell.GetSpellDescription, spell) end
     if not text and GetSpellDescription then text = call(GetSpellDescription, spell) end
     text = ns.Plain(text)
-    return type(text) == "string" and text ~= "" and text or nil
+    if type(text) == "string" and text ~= "" then return text, false end
+    local api = _G.C_Spell
+    if type(api) ~= "table" or type(api.RequestLoadSpellData) ~= "function" then return nil, true end
+    return nil, Pr.LoadSpell(spell)
 end
 
 -- Name, quality and link of an item, when the client has it.

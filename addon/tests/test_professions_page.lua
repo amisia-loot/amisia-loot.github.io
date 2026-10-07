@@ -108,9 +108,23 @@ NS.Dispatch("berufe lager")
 assert(f.prof.label:GetText() == "Lager (Camping)" and #f.list.items == 3, f.prof.label:GetText())
 assert(not f.known:IsShown() and not f.search:IsShown(), "the recipe filters hide")
 assert(has(rows[1].mark:GetText(), "3 Pl."), "a campfire's places")
+-- the description is not loaded yet on the first ask: a placeholder, the client is asked to load
+-- the spell (once), and SPELL_DATA_LOAD_RESULT fills the text in
+local loaded, asked, realDesc = false, {}, C_Spell.GetSpellDescription
+C_Spell.GetSpellDescription = function(id) if id == 1307175 and not loaded then return "" end return realDesc(id) end
+C_Spell.IsSpellDataCached = function(id) return id ~= 1307175 or loaded end
+C_Spell.RequestLoadSpellData = function(id) asked[#asked + 1] = id end
 rows[3]:Click()
 body = d.body.fs:GetText()
-assert(has(body, "Stellt einen Amboss auf."), "the client's description")
+assert(has(body, "Beschreibung lädt") and #asked == 1 and asked[1] == 1307175, body)
+NS.Refresh()
+assert(#asked == 1, "asked once: " .. #asked)
+loaded = true
+STUB.fire("SPELL_DATA_LOAD_RESULT", 1307175, true)
+STUB.tick(1)
+body = d.body.fs:GetText()
+assert(has(body, "Stellt einen Amboss auf."), "the client's description once loaded: " .. body)
+C_Spell.GetSpellDescription, C_Spell.IsSpellDataCached, C_Spell.RequestLoadSpellData = realDesc, nil, nil
 assert(has(body, "Ersetzt Schleifrad und behält dessen Wirkung."), body)
 assert(has(body, "ab Rang 140 (dein Rang 45)"), body)
 assert(has(f.counts:GetText(), "3 Lagerobjekte") and has(f.hint:GetText(), "Lagerfeuer"), f.counts:GetText())

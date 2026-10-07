@@ -197,7 +197,9 @@ local function campDetail(c)
         lines[#lines + 1] = L["Ersetzt %s und behält dessen Wirkung."]:format(other and campName(other) or ("Item " .. c.over))
     end
     lines[#lines + 1] = ""
-    lines[#lines + 1] = Pr.SpellDescription(c.use) or (GREY .. L["Beschreibung lädt ..."] .. "|r")
+    local desc, loading = Pr.SpellDescription(c.use)
+    -- the text comes when the client has loaded the spell (PROF_SPELL_LOADED redraws the page)
+    lines[#lines + 1] = desc or (GREY .. (loading and L["Beschreibung lädt ..."] or L["Keine Beschreibung vom Client."]) .. "|r")
     local r = c.recipe > 0 and Pr.Recipe(c.recipe)
     local src = {}
     if r then
@@ -557,6 +559,7 @@ local function schedule()
     end)
 end
 ns.Listen("PROF_CHANGED", schedule)
+ns.Listen("PROF_SPELL_LOADED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
 ns.OnEvent("BAG_UPDATE_DELAYED", schedule)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()

@@ -792,6 +792,8 @@ local OPTIONAL = {
     "C_Traits.GetTraitDescription", "C_Traits.GetGroupDisplayInfoByTreeID", "C_Spell.GetSpellName", "C_Spell.GetSpellTexture",
     -- the dungeon view: the dressing room on Ctrl-click, the quest XP
     "DressUpLink", "IsModifiedClick", "GetRewardXP", "GetQuestLogRewardXP",
+    -- the professions page: a spell's description once the client has loaded it
+    "C_Spell.RequestLoadSpellData", "C_Spell.IsSpellDataCached",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -856,7 +858,7 @@ local EVENTS = {
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
     "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "TRAIT_CONFIG_UPDATED", "USER_WAYPOINT_UPDATED",
     "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
-    "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
+    "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
 }
 ST.EVENTS = EVENTS
 
@@ -1134,7 +1136,11 @@ local function sectionProfessions(R)
     end)
     check(R, L["Lagerbeschreibung"], function()
         local text = call("C_Spell.GetSpellDescription", PROF_CAMP)
-        return type(text) == "string" and text ~= "" and "OK" or FEHLT, show(type(text) == "string" and text:sub(1, 120) or text)
+        if type(text) == "string" and text ~= "" then return "OK", show(text:sub(1, 120)) end
+        -- the first ask after the login often finds the spell not loaded: a value, not a problem
+        -- (the load is requested; the next run shows the text)
+        if ns.Prof and ns.Prof.LoadSpell and ns.Prof.LoadSpell(PROF_CAMP) then return "WERT", L["noch nicht geladen"] end
+        return FEHLT, show(text)
     end)
     check(R, L["Händlergunst"], function()
         local info = call("C_CurrencyInfo.GetCurrencyInfo", PROF_CURRENCY)
