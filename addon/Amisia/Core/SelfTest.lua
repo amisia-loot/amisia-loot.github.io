@@ -794,6 +794,8 @@ local OPTIONAL = {
     "DressUpLink", "IsModifiedClick", "GetRewardXP", "GetQuestLogRewardXP",
     -- the professions page: a spell's description once the client has loaded it
     "C_Spell.RequestLoadSpellData", "C_Spell.IsSpellDataCached",
+    -- the group loot roll log: the client's own roll list (Forever's loot history), the item of a roll
+    "C_LootHistory.GetSortedInfoForDrop", "C_LootHistory.GetAllEncounterInfos", "GetLootRollItemInfo",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -859,6 +861,7 @@ local EVENTS = {
     "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "TRAIT_CONFIG_UPDATED", "USER_WAYPOINT_UPDATED",
     "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
     "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
+    "LOOT_ROLLS_COMPLETE", "LOOT_ITEM_ROLL_WON", "LOOT_HISTORY_UPDATE_DROP",
 }
 ST.EVENTS = EVENTS
 
@@ -899,6 +902,15 @@ local function sectionItems(R)
             if v == nil then return "WERT", L["fehlt"] end
             return "WERT", show(v)
         end)
+    end
+    -- the roll lines of group loot (GroupRolls.lua): a client without some of them still logs the rest
+    local GR = ns.GroupRolls
+    if GR and GR.LINES then
+        local have, lack = 0, {}
+        for _, d in ipairs(GR.LINES) do
+            if type(_G[d[1]]) == "string" then have = have + 1 else lack[#lack + 1] = d[1] end
+        end
+        add(R, "WERT", L["Würfel-Texte"], L["%d von %d%s"]:format(have, #GR.LINES, #lack > 0 and L["; fehlen: %s"]:format(table.concat(lack, ", ")) or ""))
     end
     local lootMissing = {}
     for _, key in ipairs(LOOT_STRINGS) do

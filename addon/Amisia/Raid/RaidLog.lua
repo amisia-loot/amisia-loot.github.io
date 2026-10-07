@@ -513,8 +513,8 @@ local function printLog(s)
     end
 end
 
-ns.RegisterSlash("log", { aliases = { "raidlog" }, args = L["[ereignisse]"],
-    desc = L["Raid-Log des Raids; \"ereignisse\" zeigt die letzten Kampfereignisse"], run = function(rest)
+ns.RegisterSlash("log", { aliases = { "raidlog" }, args = L["[ereignisse|würfe]"],
+    desc = L["Raid-Log des Raids; \"ereignisse\" zeigt die letzten Kampfereignisse, \"würfe\" die Würfe bei Gruppenloot"], run = function(rest)
         local word = (rest or ""):lower():match("^%s*(%S*)")
         if word == "ereignisse" or word == "events" then   -- l10n-ok: typed sub-words, both work
             if #trace == 0 then
@@ -525,6 +525,8 @@ ns.RegisterSlash("log", { aliases = { "raidlog" }, args = L["[ereignisse]"],
             for _, e in ipairs(trace) do
                 DEFAULT_CHAT_FRAME:AddMessage(("  %s %s %s"):format(date("%H:%M:%S", e.t), e.event, e.text))
             end
+        elseif ns.ShowRaidLog and (word == "würfe" or word == "wuerfe" or word == "rolls") then   -- l10n-ok: typed sub-words
+            ns.ShowRaidLog("rolls")
         elseif ns.ShowRaidLog then
             ns.ShowRaidLog("verlauf")
         else

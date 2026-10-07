@@ -10,7 +10,8 @@ local MAX_PARTS = 6
 local OUTSIDE_FOR = 600   -- seconds: the group outside offered for "Alle eintragen"
 local GREY, GREEN, RED, ORANGE, LABEL = T.GREY, T.GREEN, "|cffe05a5a", T.ORANGE, T.LABEL
 local SRC_TEXT = { enc = L["Kampf"], kill = L["Kampf (Ende)"], loot = L["Lootfenster"], hand = L["von Hand"] }
-local VIEWS = { verlauf = "verlauf", log = "verlauf", bench = "bench", ersatzbank = "bench", ersatz = "bench", discord = "discord" }
+local VIEWS = { verlauf = "verlauf", log = "verlauf", bench = "bench", ersatzbank = "bench", ersatz = "bench", discord = "discord",
+    ["würfe"] = "rolls", wuerfe = "rolls", rolls = "rolls" }   -- l10n-ok: typed view words
 local KIND_ORDER = { start = 1, late = 2, bench = 2, kill = 3, pull = 4, ["end"] = 5 }
 
 local page
@@ -727,7 +728,7 @@ end
 
 function ns.RaidLogPageFrame() return page end
 
--- Opens the page with a view ("verlauf", "bench", "discord") on a raid (nil: the default).
+-- Opens the page with a view ("verlauf", "bench", "rolls", "discord") on a raid (nil: the default).
 function ns.ShowRaidLog(v, sessionId)
     view = VIEWS[tostring(v or ""):lower()] or view
     chosenRaid = sessionId
@@ -773,11 +774,14 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
         f.views.verlauf:SetPoint("TOPLEFT", 0, -48)
         f.views.bench = W.Chip(f, L["Ersatzbank"], 110, function() setView("bench") end)
         f.views.bench:SetPoint("LEFT", f.views.verlauf, "RIGHT", 4, 0)
+        f.views.rolls = W.Chip(f, L["Würfe"], 90, function() setView("rolls") end)
+        f.views.rolls:SetPoint("LEFT", f.views.bench, "RIGHT", 4, 0)
         f.views.discord = W.Chip(f, "Discord", 70, function() setView("discord") end)
-        f.views.discord:SetPoint("LEFT", f.views.bench, "RIGHT", 4, 0)
+        f.views.discord:SetPoint("LEFT", f.views.rolls, "RIGHT", 4, 0)
         f.log = buildLog(f)
         f.bench = buildBench(f)
         f.discord = buildDiscord(f)
+        f.rolls = ns.RaidLogRolls.Build(f)
         f.log:Hide()
         f.bench:Hide()
         f.discord:Hide()
@@ -806,15 +810,23 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
         f.views.verlauf:SetOn(v == "verlauf")
         f.views.bench:SetOn(v == "bench")
         f.views.discord:SetOn(v == "discord")
+        f.views.rolls:SetOn(v == "rolls")
+        f.views.rolls.label:SetText(L["Würfe (%d)"]:format(ns.RaidLogRolls.Count(s)))
         if v ~= "verlauf" then adding = false end
+        for key, frame in pairs({ verlauf = f.log, bench = f.bench, discord = f.discord, rolls = f.rolls }) do
+            if key ~= v then frame:Hide() end
+        end
         if v == "verlauf" then
-            f.bench:Hide(); f.discord:Hide(); f.log:Show()
+            f.log:Show()
             refreshLog(f.log, s)
         elseif v == "bench" then
-            f.log:Hide(); f.discord:Hide(); f.bench:Show()
+            f.bench:Show()
             refreshBench(f.bench, s)
+        elseif v == "rolls" then
+            f.rolls:Show()
+            ns.RaidLogRolls.Refresh(f.rolls, s)
         else
-            f.log:Hide(); f.bench:Hide(); f.discord:Show()
+            f.discord:Show()
             refreshDiscord(f.discord, s)
         end
     end }

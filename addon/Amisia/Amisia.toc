@@ -37,6 +37,7 @@ Raid\SoftRes.lua
 Raid\LootAnnounce.lua
 Raid\RaidLog.lua
 Raid\Bench.lua
+Raid\GroupRolls.lua
 Raid\Sync.lua
 Raid\RaidText.lua
 Collect\Scan.lua
@@ -72,6 +73,7 @@ Gear\MapPin.xml
 UI\MainFrame.lua
 UI\Pages\Overview.lua
 UI\Pages\Raids.lua
+UI\Pages\RaidLogRolls.lua
 UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua
 UI\Pages\Awards.lua

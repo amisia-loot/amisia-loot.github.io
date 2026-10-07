@@ -927,6 +927,8 @@ local function sessionLines(s, lines, used, legacy)
             lines[#lines + 1] = ("BN %s %s %d %s %s%s"):format(ns.ExportName(name), (e.class and e.class ~= "") and e.class or "UNKNOWN",
                 e.t or 0, e.self and "S" or "O", e.by and ns.ExportName(e.by) or "-", e.note and (" " .. oneLine(e.note)) or "")
         end
+        -- R <itemID> <epoch> <W|A|O> <winner|-> <name>:<choice>[:<roll>] ...: group loot rolls (GroupRolls.lua)
+        if ns.GroupRollLines and type(s.rolls) == "table" then ns.GroupRollLines(s, lines, used) end
     end
     lines[#lines + 1] = "E"
     return lines
