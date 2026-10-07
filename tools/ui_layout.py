@@ -669,13 +669,24 @@ def render(shot, path, scale=1, mono=False):
                 x = x0 + (r[2] - r[0]) * scale - width
             else:
                 x = x0
+            # a one-line text held to a width ends where the client would put its ellipsis
+            cut = None
+            if bw is not None and not tree.wraps(n) and in_list_row(tree, n['id']) and width > (r[2] - r[0]) * scale + 0.5:
+                x, cut = x0, x0 + (r[2] - r[0]) * scale
+            ended = False
             for seg, color in _segments(line, base):
                 for ch in plain(seg)[0]:
+                    if ended:
+                        break
                     if ch == '\x00':
                         d.rectangle([x, y + 1, x + size - 2, y + size - 1], outline=(150, 150, 150))
                         x += size + 2 * scale
                         continue
                     cell = adv(ch)
+                    if cut is not None and x + cell > cut - adv('.') * 3:
+                        d.text((x, y + 0.8 * size), '...', font=fnt, fill=color, anchor='ls')
+                        ended = True
+                        break
                     if clip is None or (clip[0] - 1 <= x and x + cell <= clip[2] + 1 and clip[1] - 1 <= y
                                         and y + size <= clip[3] + 1):
                         g, dots = _glyph(ch)
