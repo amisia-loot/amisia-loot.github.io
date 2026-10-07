@@ -113,6 +113,7 @@ T.ATLASES = {
     "common-dropdown-a-button-open-shadowless", "common-dropdown-a-button-disabled-shadowless",
     -- the talent calculator (the client's talent window)
     "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
+    "UI-HUD-ActionBar-IconFrame-Mask",
     "talents-arrow-head-yellow", "talents-arrow-head-gray",
     "talent-background-warrior", "talent-background-paladin", "talent-background-hunter", "talent-background-rogue",
     "talent-background-priest", "talent-background-shaman", "talent-background-mage", "talent-background-warlock",

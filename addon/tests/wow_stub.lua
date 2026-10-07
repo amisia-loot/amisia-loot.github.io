@@ -536,7 +536,7 @@ local function region(parent, kind, layer, template)
     if kind == "FontString" then f.font = template end
     adopt(parent, f)
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
-                          "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
+                          "SetAllPoints", "AddMaskTexture", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
                           "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines",
                           "SetBlendMode", "SetHorizTile", "SetVertTile", "SetSnapToPixelGrid", "SetTexelSnappingBias", "SetScale" }) do
         f[m] = NOOP
@@ -642,6 +642,7 @@ for _, s in ipairs({ "", "-hover", "-pressed", "-pressedhover", "-open", "-disab
 end
 STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
 -- the client's talent window (Blizzard_SharedTalentUI, Blizzard_PlayerSpells/Camelot)
+STUB.atlases["UI-HUD-ActionBar-IconFrame-Mask"] = { 64, 64 }
 for _, name in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
                         "talents-arrow-head-yellow", "talents-arrow-head-gray" }) do
     STUB.atlases[name] = { 44, 44 }
@@ -957,6 +958,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.GetText = function(self) return self.text end
     f.CreateFontString = function(self, _, layer, template) return region(self, "FontString", layer, template) end
     f.CreateTexture = function(self, _, layer) return region(self, "Texture", layer) end
+    f.CreateMaskTexture = function(self, _, layer) return region(self, "MaskTexture", layer) end
     f.SetFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetNormalFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetJustifyH = function(self, j) self.justifyH = j end

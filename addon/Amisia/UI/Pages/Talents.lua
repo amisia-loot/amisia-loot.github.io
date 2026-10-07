@@ -14,7 +14,11 @@ local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, 28, 398
 local HEAD_H = 24
 -- the grid inside a tree: a column for the row locks, then 4 columns and 7 rows
 local GRID = { left = 18, top = HEAD_H + 8, pitchX = 44, pitchY = 50, pad = 5 }
-local BTN = 34
+-- the client's square talent button keeps its border at 1.25x the button (40 px button, 50 px
+-- frame); 30 px here leaves 6 px between neighbouring frames at the 44 px pitch
+local BTN = 30
+local FRAME = math.floor(BTN * 1.25 + 0.5)
+local MASK = "UI-HUD-ActionBar-IconFrame-Mask"
 local ROWS = 7
 local GOLD = { 1, 0.82, 0 }
 local GREEN = { 0.25, 1, 0.25 }
@@ -130,19 +134,25 @@ local function talentButton(tree)
     b:SetSize(BTN, BTN)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", 2, -2)
-    b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+    b.icon:SetAllPoints()
     b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    -- rounded corners, as the client's square icons (the action bar's icon mask)
+    if b.CreateMaskTexture and hasAtlas(MASK) then
+        b.mask = b:CreateMaskTexture()
+        b.mask:SetAtlas(MASK, false)
+        b.mask:SetAllPoints(b.icon)
+        b.icon:AddMaskTexture(b.mask)
+    end
     b.border = b:CreateTexture(nil, "OVERLAY")
     b.border:SetPoint("CENTER")
-    b.border:SetSize(BTN + 10, BTN + 10)
+    b.border:SetSize(FRAME, FRAME)
     b.edges = W.Border(b, GREY[1], GREY[2], GREY[3], 0)
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints(b.icon)
     hl:SetColorTexture(1, 1, 1, 0.15)
     b.rankBg = b:CreateTexture(nil, "OVERLAY", nil, 1)
     b.rankBg:SetSize(26, 12)
-    b.rankBg:SetPoint("BOTTOMRIGHT", 6, -5)
+    b.rankBg:SetPoint("BOTTOMRIGHT", 8, -6)
     b.rankBg:SetColorTexture(0, 0, 0, 0.8)
     b.rank = W.Text(b, "NumberFontNormalSmall", 26)
     b.rank:SetDrawLayer("OVERLAY", 2)

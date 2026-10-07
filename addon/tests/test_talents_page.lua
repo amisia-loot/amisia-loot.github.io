@@ -219,3 +219,13 @@ STUB.missingAtlases["talent-background-mage"] = true
 NS.Refresh()
 assert(f.buttons[201].border:GetAtlas() == nil and f.buttons[201].border.color ~= nil, "a coloured frame instead")
 print("test_talents_page ok")
+
+-- the button as the client draws its square talent node: a 30 px icon with the action bar's rounded
+-- mask, the state frame at 1.25x (38 px), 6 px between neighbouring frames at the 44 px pitch
+do
+    local any
+    for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
+    assert(any and any._w == 30 and any._h == 30, "30 px button")
+    assert(any.border._w == 38 and any.border._h == 38, "frame at 1.25x: " .. tostring(any.border._w))
+    assert(any.mask and any.mask.atlas == "UI-HUD-ActionBar-IconFrame-Mask", "rounded icon")
+end
