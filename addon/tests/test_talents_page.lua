@@ -222,7 +222,7 @@ NS.Refresh()
 assert(f.buttons[201].border:GetAtlas() == nil and f.buttons[201].border.color ~= nil, "a coloured frame instead")
 print("test_talents_page ok")
 
--- the button: a 34 px icon with the action bar's rounded mask and its thin rounded frame, tinted
+-- the button: a 36 px icon with the action bar's rounded mask and its thin rounded frame, tinted
 -- green (can be raised), gold (full) or grey (locked)
 STUB.missingAtlases["talents-node-square-green"] = nil
 STUB.missingAtlases["UI-HUD-ActionBar-IconFrame"] = nil
@@ -231,7 +231,7 @@ NS.Refresh()
 do
     local any
     for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
-    assert(any and any._w == 34 and any._h == 34, "34 px button")
-    assert(any.border._w == 36 and any.border.atlas == "UI-HUD-ActionBar-IconFrame", "the thin rounded frame")
+    assert(any and any._w == 36 and any._h == 36, "36 px button")
+    assert(any.border._w == 40 and any.border.atlas == "UI-HUD-ActionBar-IconFrame", "the thin rounded frame")
     assert(any.mask and any.mask.atlas == "UI-HUD-ActionBar-IconFrame-Mask", "rounded icon")
 end

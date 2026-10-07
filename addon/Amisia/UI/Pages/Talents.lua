@@ -14,10 +14,11 @@ local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, 28, 398
 local HEAD_H = 24
 -- the grid inside a tree: a column for the row locks, then 4 columns and 7 rows
 local GRID = { left = 18, top = HEAD_H + 8, pitchX = 44, pitchY = 50, pad = 5 }
--- 34 px icons with the action bar's rounded mask and its thin rounded frame, tinted by the state
--- (green: can be raised, gold: full, grey: locked); 10 px between neighbours at the pitch
-local BTN = 34
-local FRAME = BTN + 2
+-- 36 px icons with the action bar's rounded mask and its thin rounded frame, tinted by the state
+-- (green: can be raised, gold: full, grey: locked); the frame lies 2 px outside the icon so its
+-- dark inner edge does not cover the icon; 4 px between neighbouring frames at the 44 px pitch
+local BTN = 36
+local FRAME = BTN + 4
 local MASK = "UI-HUD-ActionBar-IconFrame-Mask"
 local RIM = "UI-HUD-ActionBar-IconFrame"
 local RIM_COLOR = { maxed = { 1, 0.82, 0 }, partial = { 0.25, 1, 0.25 }, free = { 0.25, 1, 0.25 }, locked = { 0.55, 0.55, 0.55 } }
@@ -137,7 +138,7 @@ local function talentButton(tree)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetAllPoints()
-    b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    b.icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)
     -- rounded corners, as the client's square icons (the action bar's icon mask)
     if b.CreateMaskTexture and hasAtlas(MASK) then
         b.mask = b:CreateMaskTexture()
@@ -154,7 +155,7 @@ local function talentButton(tree)
     hl:SetColorTexture(1, 1, 1, 0.15)
     b.rankBg = b:CreateTexture(nil, "OVERLAY", nil, 1)
     b.rankBg:SetSize(26, 12)
-    b.rankBg:SetPoint("BOTTOMRIGHT", 6, -5)
+    b.rankBg:SetPoint("BOTTOMRIGHT", 4, -5)
     b.rankBg:SetColorTexture(0, 0, 0, 0.8)
     b.rank = W.Text(b, "NumberFontNormalSmall", 26)
     b.rank:SetDrawLayer("OVERLAY", 2)
