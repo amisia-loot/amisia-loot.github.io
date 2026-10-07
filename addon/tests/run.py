@@ -37,8 +37,16 @@ import sys
 
 from lupa.lua51 import LuaRuntime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import textwidth  # noqa: E402 - the shared text width estimate
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
+
+
+def measure(text, font):
+    """The stub's GetStringWidth: the estimated width of text in font (a font object's name or None)."""
+    return textwidth.text_width(text, font)
 
 
 def toc_meta():
@@ -76,6 +84,8 @@ def fresh(source='', player=None, setup=None):
     lua = LuaRuntime(unpack_returned_tuples=True)
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
+    # FontString:GetStringWidth estimates as the layout rules do (textwidth.py)
+    lua.globals().STUB.measure = measure
     meta = lua.globals().STUB.tocMeta
     for k, v in toc_meta().items():
         meta[k] = v

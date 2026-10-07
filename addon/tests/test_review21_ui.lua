@@ -122,7 +122,7 @@ local sync = officer(FRAK, [[local L = dofile(ADDON_DIR .. "/../tests/layout.lua
     local l, r = L.span(O.sync)
     local hl, hr = L.span(O.syncHit)
     return { text = O.sync:GetText(), l = l, r = r, hl = hl, hr = hr,
-        want = 590 - math.min(330, O.head:GetStringWidth()) - 12 }]])
+        want = 590 - math.min(330, math.ceil(O.head:GetStringWidth())) - 12 }]])
 assert(sync.text:find("Sync: Hüter Vulo Sturmwind · Stand ", 1, true), sync.text)
 assert(sync.r == 596 and sync.r - sync.l >= sync.want, ("%d..%d, want %d"):format(sync.l, sync.r, sync.want))
 assert(sync.hl == sync.l and sync.hr == sync.r, "the tooltip area covers the line")

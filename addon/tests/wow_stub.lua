@@ -512,8 +512,26 @@ local function setAllPoints(self, rel)
     self.points = { TOPLEFT = { rel = rel, relPoint = "TOPLEFT", x = 0, y = 0 },
                     BOTTOMRIGHT = { rel = rel, relPoint = "BOTTOMRIGHT", x = 0, y = 0 } }
 end
-local function region(parent)
-    local f = { text = "", shown = true, parent = parent }
+-- Every frame and region is kept in its parent's kids (in the order made), with its kind, draw layer
+-- and font object (the template of CreateFontString, or SetFontObject), so tools/ui_layout.py can
+-- draw a page and check its layout.
+local function adopt(parent, child)
+    if type(parent) == "table" then
+        parent.kids = parent.kids or {}
+        parent.kids[#parent.kids + 1] = child
+    end
+    -- a part a client template made (its art, its own buttons), not the addon's layout
+    if (STUB.tplDepth or 0) > 0 then child.tplPart = true end
+end
+local function fontName(obj)
+    if type(obj) == "table" then return obj.fontName end
+    return obj
+end
+STUB.fontName = fontName
+local function region(parent, kind, layer, template)
+    local f = { text = "", shown = true, parent = parent, kind = kind, _kind = kind, layer = layer }
+    if kind == "FontString" then f.font = template end
+    adopt(parent, f)
     for _, m in ipairs({ "SetPoint", "SetWidth", "SetHeight", "SetSize", "SetJustifyH", "SetWordWrap", "SetTextColor", "SetFontObject",
                           "SetAllPoints", "SetColorTexture", "SetTexture", "SetTexCoord", "SetAlpha", "SetDrawLayer", "SetFont", "SetShadowOffset",
                           "SetDesaturated", "SetVertexColor", "ClearAllPoints", "SetJustifyV", "SetNonSpaceWrap", "SetSpacing", "SetMaxLines",
@@ -532,6 +550,10 @@ local function region(parent)
     f.SetHeight = function(self, h) self._h = h end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetTexture = function(self, t) self.texture = t end
+    f.SetFontObject = function(self, obj) self.font = fontName(obj) end
+    f.SetWordWrap = function(self, on) self.wordWrap = on and true or false end
+    f.SetJustifyH = function(self, j) self.justifyH = j end
+    f.SetDrawLayer = function(self, layer) self.layer = layer end
     -- the line limit of a font string is kept, so a test can tell a clamped one
     f.SetMaxLines = function(self, n) self.maxLines = n end
     -- an atlas of the client's art by name; the test reads it back. Every call is counted
@@ -555,7 +577,12 @@ local function region(parent)
     f.Hide = function(self) self.shown = false end
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) self.shown = on and true or false end
-    f.GetStringWidth = function(self) return #tostring(self.text or "") * 6 end
+    -- the width the client would draw the text in, estimated per character and font object
+    -- (addon/tests/textwidth.py through STUB.measure, which run.py sets); 6 px a character without it
+    f.GetStringWidth = function(self)
+        if STUB.measure then return STUB.measure(tostring(self.text or ""), self.font) end
+        return #tostring(self.text or "") * 6
+    end
     f.GetStringHeight = function(self) return 14 end
     -- a texture turns (radians, counter-clockwise); STUB.noRotation makes regions without it
     if not STUB.noRotation then f.SetRotation = function(self, r) self.rotation = r end end
@@ -896,7 +923,8 @@ local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrame
     "Raise", "Lower", "SetUserPlaced", "SetJustifyH", "SetJustifyV", "SetTextInsets", "SetNumeric", "SetHighlightFontObject", "SetNormalFontObject",
     "SetHyperlink" }
 function _G.CreateFrame(kind, name, parent, template)
-    local f = { kind = kind, name = name, shown = false, scripts = {}, events = {}, text = "", parent = parent }
+    local f = { kind = kind, _kind = kind, name = name, shown = false, scripts = {}, events = {}, text = "", parent = parent }
+    adopt(parent, f)
     for _, m in ipairs(frameMethods) do f[m] = NOOP end
     f.SetScript = function(self, k, fn) self.scripts[k] = fn end
     f.GetScript = function(self, k) return self.scripts[k] end
@@ -906,15 +934,21 @@ function _G.CreateFrame(kind, name, parent, template)
     end
     f.RegisterEvent = function(self, e) self.events[e] = true; STUB.frames[self] = true end
     f.UnregisterEvent = function(self, e) self.events[e] = nil end
-    f.Show = function(self) self.shown = true; if self.scripts.OnShow then self.scripts.OnShow(self) end end
-    f.Hide = function(self) self.shown = false; if self.scripts.OnHide then self.scripts.OnHide(self) end end
+    -- a frame starts hidden here (tests ask IsShown), but the client shows a new frame until it is hidden:
+    -- vis keeps what the addon did (nil: never shown or hidden), for the layout tools
+    f.Show = function(self) self.shown = true; self.vis = true; if self.scripts.OnShow then self.scripts.OnShow(self) end end
+    f.Hide = function(self) self.shown = false; self.vis = false; if self.scripts.OnHide then self.scripts.OnHide(self) end end
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) if on then self:Show() else self:Hide() end end
     f.IsVisible = f.IsShown
     f.SetText = function(self, t) self.text = t end
     f.GetText = function(self) return self.text end
-    f.CreateFontString = function(self) return region(self) end
-    f.CreateTexture = function(self) return region(self) end
+    f.CreateFontString = function(self, _, layer, template) return region(self, "FontString", layer, template) end
+    f.CreateTexture = function(self, _, layer) return region(self, "Texture", layer) end
+    f.SetFontObject = function(self, obj) self.font = fontName(obj) end
+    f.SetNormalFontObject = function(self, obj) self.font = fontName(obj) end
+    f.SetJustifyH = function(self, j) self.justifyH = j end
+    f.SetScrollChild = function(self, child) self.scrollChild = child; if child then child.scrollParent = self end end
     f.GetParent = function() return parent end
     f.GetName = function() return name end
     f.SetPoint = setPoint
@@ -999,7 +1033,10 @@ function _G.CreateFrame(kind, name, parent, template)
                 error(("CreateFrame: unknown template '%s'"):format(t), 2)
             end
             f.inherits[t] = true
-            build(f, kind, name)
+            STUB.tplDepth = (STUB.tplDepth or 0) + 1
+            local ok, err = pcall(build, f, kind, name)
+            STUB.tplDepth = STUB.tplDepth - 1
+            if not ok then error(err, 0) end
         end
     end
     return f
@@ -1061,8 +1098,11 @@ function STUB.acceptPopup()
     if d and d.OnAccept then d.OnAccept(p, p.data) end
 end
 _G.SlashCmdList = {}
-_G.ChatFontNormal = {}
-_G.GameFontNormal = {}
+-- the client's font objects by name (the ones a template or a SetFontObject call names)
+for _, n in ipairs({ "ChatFontNormal", "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
+                     "GameFontDisable", "GameFontDisableSmall", "GameFontNormalLarge", "NumberFontNormalSmall" }) do
+    _G[n] = { fontName = n }
+end
 _G.RAID_CLASS_COLORS = {
     WARRIOR = { r = 0.78, g = 0.61, b = 0.43, colorStr = "ffc79c6e" },
     SHAMAN = { r = 0, g = 0.44, b = 0.87, colorStr = "ff0070de" },
