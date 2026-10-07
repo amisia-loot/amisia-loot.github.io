@@ -501,10 +501,12 @@ local function create(parent)
     d.go:SetPoint("BOTTOMRIGHT", -8, 8)
     W.Tooltip(d.go, "Weg", "Setzt den Wegpunkt auf die erste Quelle mit Ort.")
 
-    f.hint = W.Text(f, T.FONT.hint, 598)
+    -- the hint takes two lines when it needs them (the favor vendors), the data line moves down
+    f.hint = W.Text(f, T.FONT.hint, 598, true)
     f.hint:SetPoint("TOPLEFT", 4, -436)
+    f.hint:SetMaxLines(2)
     f.data = W.Text(f, T.FONT.hint, 598)
-    f.data:SetPoint("TOPLEFT", 4, -454)
+    f.data:SetPoint("TOPLEFT", f.hint, "BOTTOMLEFT", 0, -8)
     return f
 end
 

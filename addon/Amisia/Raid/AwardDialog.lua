@@ -277,7 +277,7 @@ local function build()
     local lab = W.Text(D, T.FONT.text, 56)
     lab:SetPoint("TOPLEFT", 12, -66)
     lab:SetText("Gewinner")
-    D.winner = W.Picker(D, 140, function(v)
+    D.winner = W.Picker(D, 136, function(v)
         -- a typed name is cleaned like an edit on the page does it
         st.winner = ns.FullName(v)
         refresh()
@@ -288,12 +288,13 @@ local function build()
     artLab:SetText("Art")
     D.kinds = {}
     local prev = artLab
-    for i, k in ipairs(KINDS) do
+    for _, k in ipairs(KINDS) do
         local chip = W.Chip(D, k, 28, function()
             st.kind = k
             refresh()
         end)
-        chip:SetPoint("LEFT", prev, "RIGHT", i == 1 and 2 or 3, 0)
+        W.FitChip(chip, 28)
+        chip:SetPoint("LEFT", prev, "RIGHT", 2, 0)
         D.kinds[k] = chip
         prev = chip
     end

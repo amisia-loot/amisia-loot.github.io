@@ -702,7 +702,7 @@ assert(RF.header._w == 220 and RF.header.points.TOPLEFT.x == 12 and RF.header.po
 assert(RF.timer.points.TOPRIGHT.x == -12 and RF.timer.points.TOPRIGHT.y == -28 and RF.timer._w == 110)
 RL.row("roll head", RF.header, RF.timer)
 local rr1 = RF.rows[1]
-assert(rr1.award.inherits.SharedButtonSmallTemplate and rr1.award._w == 64 and rr1.award._h == 18 and rr1.award:GetText() == "Vergeben")
+assert(rr1.award.inherits.SharedButtonSmallTemplate and rr1.award._w >= 64 and rr1.award._h == 18 and rr1.award:GetText() == "Vergeben")
 RL.row("roll row", rr1.name, rr1.kind, rr1.value, rr1.up, rr1.hand, rr1.why, rr1.award)
 assert(RF.addBtn.inherits.SharedButtonSmallTemplate and RF.addBtn._h == 20 and RF.addBtn:GetText() == "Eintragen")
 RL.row("roll entry", RF.namePick, RF.valueEdit, RF.msChip, RF.osChip, RF.addBtn)

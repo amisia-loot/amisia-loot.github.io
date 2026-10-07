@@ -680,6 +680,7 @@ local function build()
             ns.GearRefresh(true)
         end)
         b.key = fdef.key
+        W.FitChip(b, 62)
         b:SetPoint("LEFT", prev, "RIGHT", i == 1 and 14 or 4, 0)
         prev = b
         filterButtons[i] = b

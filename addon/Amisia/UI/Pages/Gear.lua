@@ -512,7 +512,8 @@ local function buildGoals(f)
     G.title = W.Text(G, T.FONT.title, 440)
     G.title:SetPoint("TOPLEFT", 4, -284)
     -- why the weights are as they are (tooltip), and the simulation of another class or level
-    G.why = W.Button(G, "Warum?", 64)
+    -- 20 high, between the list (it ends at -280) and the first option (-300)
+    G.why = W.Button(G, "Warum?", 64, nil, { height = T.ROW_BUTTON_H })
     G.why:SetPoint("TOPRIGHT", -92, -280)
     G.why:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -521,7 +522,7 @@ local function buildGoals(f)
         GameTooltip:Show()
     end)
     G.why:SetScript("OnLeave", hideTip)
-    G.sim = W.Button(G, "Simulation", 88, function() setView("sim") end)
+    G.sim = W.Button(G, "Simulation", 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
     G.sim:SetPoint("TOPRIGHT", 0, -280)
     W.Tooltip(G.sim, "Simulation", "Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz.")
     G.opts = {}
@@ -551,12 +552,12 @@ local function buildGoals(f)
             local e = self:GetParent().opt
             if e then toggleWish(e.id, e.wished) end
         end)
-        b.wish:SetPoint("LEFT", 484, 0)
         b.ex = W.Button(b, "Aus", 36, function(self)
             local e = self:GetParent().opt
             if e then say(ns.BisExclude("item", e.id)) end
         end)
-        b.ex:SetPoint("LEFT", 566, 0)
+        W.FitChip(b.ex, 36)
+        W.Row(b, { b.wish, b.ex }, T.CHIP_GAP, 0, 0, { right = true, point = "RIGHT" })
         W.Tooltip(b.ex, "Ausschließen", "Das Item nicht mehr vorschlagen; die nächste Option rückt auf. Rechtsklick auf die Zeile: Boss oder Ort ausschließen.")
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         b:SetScript("OnClick", function(self, button)
@@ -1672,7 +1673,7 @@ local function buildSim(f)
         simState().level = v
         simChanged()
     end)
-    S.plan = W.Picker(S, 124, function(v)
+    S.plan = W.Picker(S, 132, function(v)
         simState().plan = v
         simChanged()
     end)
@@ -1786,8 +1787,8 @@ ns.RegisterPanel{ key = "gear", label = "Ausrüstung", icon = "Interface\\Icons\
         f.reset = W.Button(f, "zurücksetzen", 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
         f.reset:SetPoint("TOPRIGHT", 0, -24)
         -- the weapon plan of the own character, beside the source chips of the targets
-        f.plan = W.Picker(f, 128, function(v) say(ns.BisSetPlan(v)) end)
-        f.plan:SetPoint("TOPLEFT", 470, -48)
+        f.plan = W.Picker(f, 132, function(v) say(ns.BisSetPlan(v)) end)
+        f.plan:SetPoint("TOPLEFT", 466, -48)
         f.src = {}
         for _, def in ipairs(CHIPS) do
             local key = def[1]

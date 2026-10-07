@@ -679,7 +679,7 @@ def render(shot, path, scale=1, mono=False):
                     if clip is None or (clip[0] - 1 <= x and x + cell <= clip[2] + 1 and clip[1] - 1 <= y
                                         and y + size <= clip[3] + 1):
                         g, dots = _glyph(ch)
-                        d.text((x + cell / 2, y), g, font=fnt, fill=color, anchor='mt')
+                        d.text((x + cell / 2, y + 0.8 * size), g, font=fnt, fill=color, anchor='ms')
                         if dots:
                             for dx in (-0.15, 0.15):
                                 cx = x + cell / 2 + dx * size
