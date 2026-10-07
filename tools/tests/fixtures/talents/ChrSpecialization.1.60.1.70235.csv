@@ -1,0 +1,4 @@
+Name_lang,FemaleName_lang,Description_lang,ID,ClassID,OrderIndex,PetTalentType,Role,Flags,SpellIconFileID,PrimaryStatPriority,AnimReplacements,MasterySpellID_0,MasterySpellID_1
+Mage,Mage,,1482,8,0,0,0,0,0,0,0,0,0
+Warrior,Warrior,,1491,1,0,0,0,0,0,0,0,0,0
+Default,,,1493,0,0,0,0,0,0,0,0,0,0

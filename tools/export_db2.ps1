@@ -103,6 +103,15 @@ $OptionalTables = @(
     'ItemDamageAmmo', 'ItemArmorQuality', 'ItemArmorShield', 'ItemArmorTotal', 'ArmorLocation',
     'ItemRandomProperties', 'ItemRandomSuffix'
 )
+# The talent trees (tools/build_talents.py); a miss is only a warning like the optional ones.
+$TalentTables = @(
+    'TraitNode', 'TraitNodeEntry', 'TraitNodeXTraitNodeEntry', 'TraitDefinition', 'TraitDefinitionEffectPoints',
+    'CurvePoint', 'TraitEdge', 'TraitNodeGroup', 'TraitNodeGroupXTraitNode', 'TraitNodeGroupXTraitCond',
+    'TraitNodeXTraitCond', 'TraitCond', 'TraitNodeGroupDisplayInfo', 'TraitCurrency', 'TraitCurrencySource',
+    'TraitTreeXTraitCurrency', 'SkillLineXTraitTree', 'SkillLine', 'SkillRaceClassInfo', 'ChrClasses',
+    'ChrSpecialization', 'SpellDuration', 'SpellRadius', 'SpellAuraOptions'
+)
+$OptionalTables += $TalentTables
 
 function Fail([string]$Message) {
     Write-Host "FEHLER: $Message" -ForegroundColor Red

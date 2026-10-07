@@ -1,0 +1,7 @@
+DisplayName_lang,AlternateVerb_lang,Description_lang,HordeDisplayName_lang,NeutralDisplayName,ID,CategoryID,SpellIconFileID,CanLink,ParentSkillLineID,ParentTierIndex,Flags,SpellBookSpellID,ExpansionNameSharedStringID,HordeExpansionNameSharedStringID
+Arcane,,,,0,237,7,135932,0,0,0,1040,0,0,0
+Fire,,,,0,8,7,135810,0,0,0,1040,0,0,0
+Frost,,,,0,6,7,135846,0,0,0,1040,0,0,0
+Arms,,,,0,26,7,132292,0,0,0,1040,0,0,0
+Fury,,,,0,256,7,132347,0,0,0,1040,0,0,0
+Protection,,,,0,257,7,134952,0,0,0,1040,0,0,0
