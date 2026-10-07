@@ -132,3 +132,18 @@ def test_the_shipped_file():
     assert toc.index('QuestData.lua') < toc.index('Quests.lua') < toc.index('Pages\\Quests.lua')
     with open(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
         assert 'QuestData.lua' in fh.read()
+
+
+def test_the_licence_names_every_file_from_allthethings():
+    with open(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
+        head = fh.read().split('used under this licence')[0]
+    users = []
+    for name in sorted(os.listdir(ADDON)):
+        if name.endswith('.lua'):
+            with open(os.path.join(ADDON, name), encoding='utf-8') as fh:
+                top = ''.join(fh.readline() for _ in range(15))
+            if top.startswith('-- GENERATED') and 'AllTheThings' in top:
+                users.append(name)
+    assert 'ProfessionData.lua' in users and 'QuestData.lua' in users
+    missing = [n for n in users if n not in head]
+    assert not missing, f'not named in LICENSES/AllTheThings-MIT.txt: {missing}'
