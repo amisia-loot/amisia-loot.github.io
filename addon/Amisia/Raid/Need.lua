@@ -161,8 +161,8 @@ function ns.NeedAsk(items)
     local key = table.concat(sorted, ",")
     if askedLists[key] then return nil, "Diese Items wurden gerade erst gefragt.", "recent" end
     local qid = newQid()
-    local ok, why = ns.CommSend("UQ", { qid, table.concat(ids, ",") }, "RAID", nil, { ttl = ASK_TTL, key = "UQ:" .. qid })
-    if not ok then return nil, why, "send" end
+    local ok, err = ns.CommSend("UQ", { qid, table.concat(ids, ",") }, "RAID", nil, { ttl = ASK_TTL, key = "UQ:" .. qid })
+    if not ok then return nil, err, "send" end
     local t = now()
     askedLists[key] = t
     questions[qid] = { items = set, at = t }
@@ -231,8 +231,8 @@ local function answer(sender, name, qid, list)
     end
     if cur then chunks[#chunks + 1] = cur end
     local sent = false
-    for i, list in ipairs(chunks) do
-        local ok = ns.CommSend("UA", { qid, list }, "WHISPER", sender,
+    for i, chunk in ipairs(chunks) do
+        local ok = ns.CommSend("UA", { qid, chunk }, "WHISPER", sender,
             { jitter = ANSWER_SPREAD, ttl = ANSWER_TTL, key = "UA:" .. qid .. ":" .. i })
         sent = sent or ok == true
     end
@@ -333,7 +333,7 @@ function ns.NeedOf(item)
     if not n then return nil end
     local out = { up = {}, wish = {}, none = 0, asked = 0, missing = 0, without = {}, at = n.t }
     local answered = {}
-    for low, a in pairs(n.answers) do
+    for _, a in pairs(n.answers) do
         answered[#answered + 1] = a.name
         if a.art == "U" then
             out.up[#out.up + 1] = { name = a.name, gain = a.gain, pct = a.pct, slot = a.slot }

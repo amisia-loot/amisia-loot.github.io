@@ -38,7 +38,7 @@ local function splitCsv(line, delim)
     return out
 end
 
-local function lines(text)
+local function splitLines(text)
     local out = {}
     for line in (text or ""):gmatch("[^\r\n]+") do
         line = line:match("^%s*(.-)%s*$")
@@ -83,7 +83,7 @@ function ns.ParseSoftRes(text)
         end
         return true
     end
-    local all = lines(text)
+    local all = splitLines(text)
     if #all > 0 and all[1]:lower():gsub("%s", ""):find("itemid", 1, true) then
         local head = all[1]
         local delim = (select(2, head:gsub(";", "")) > select(2, head:gsub(",", ""))) and ";" or ","

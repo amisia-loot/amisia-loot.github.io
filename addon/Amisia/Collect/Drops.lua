@@ -41,11 +41,6 @@ local version = 0     -- bumped on every change (rate sums are rebuilt after one
 
 local function now() return (GetServerTime and GetServerTime()) or time() end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
-
 local function hex8(s) return ns.Checksum(s):sub(9, 16) end
 local function isHex8(v) return type(v) == "string" and #v == 8 and v:match("^%x+$") ~= nil end
 local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
@@ -952,7 +947,6 @@ function ns.DropsBossList()
     local base = type(B) == "table" and type(B.O) == "table" and B.O or {}
     local ot = type(B) == "table" and tonumber(B.OT) or -1
     local bosses = {}   -- key -> { npc, enc, inst, k, it }
-    local instOf = {}   -- npc -> instance of its newest record
     local function boss(key, npc, enc)
         local b = bosses[key]
         if not b then b = { npc = npc, enc = enc, k = 0, it = {} }; bosses[key] = b end
@@ -968,7 +962,7 @@ function ns.DropsBossList()
         if not b.inst or (b.day or -1) < r.day then b.inst, b.day = r.inst, r.day end
         if afterBase(id, r, ot, oi) then
             b.k = b.k + 1
-            for id in pairs(r.it) do b.it[id] = (b.it[id] or 0) + 1 end
+            for item in pairs(r.it) do b.it[item] = (b.it[item] or 0) + 1 end
         end
     end
     for npc, e in pairs(base) do
@@ -991,7 +985,7 @@ function ns.DropsBossList()
         end
     end
     local insts = {}
-    for key, b in pairs(bosses) do
+    for _, b in pairs(bosses) do
         if b.k > 0 then
             local inst = b.inst or dgInst[b.npc] or 0
             local g = insts[inst]

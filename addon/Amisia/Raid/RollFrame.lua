@@ -220,13 +220,13 @@ local function upgradeLine(info)
         end
         parts[#parts + 1] = (e.own and "du" or e.name) .. " " .. pctText(e.pct)
     end
-    local text
-    if #parts > 0 then text = "Upgrade für: " .. table.concat(parts, ", ") end
+    local line
+    if #parts > 0 then line = "Upgrade für: " .. table.concat(parts, ", ") end
     if #info.wish > 0 then
         local w = "Wunsch: " .. table.concat(info.wish, ", ", 1, math.min(#info.wish, LINE_NAMES))
-        text = text and (text .. " · " .. w) or w
+        line = line and (line .. " · " .. w) or w
     end
-    if text then return UP_GREEN .. text .. "|r" end
+    if line then return UP_GREEN .. line .. "|r" end
     local need = info.need
     if need and need.none > 0 then
         return GREY .. ("Für niemanden ein Upgrade (%d Antworten)"):format(need.none) .. "|r"

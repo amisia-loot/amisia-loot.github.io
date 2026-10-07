@@ -401,7 +401,7 @@ local function onBench(sender, rest)
     if not s then return end
     rest = rest or ""
     local word = rest:lower()
-    local e, key = ns.IsBenched(s, name)
+    local e = ns.IsBenched(s, name)
     if word == "?" then
         reply(e and ("Amisia: Du stehst auf der Ersatzbank (seit %s)."):format(date("%H:%M", e.t or time()))
             or "Amisia: Du stehst nicht auf der Ersatzbank.")

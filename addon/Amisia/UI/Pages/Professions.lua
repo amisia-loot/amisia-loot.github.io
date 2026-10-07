@@ -5,7 +5,6 @@
 -- profession picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
 local ADDON, ns = ...
 local W, Pr = ns.W, ns.Prof
-local GOLD = W.GOLD
 local GREY = "|cff8f86a3"
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"

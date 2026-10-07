@@ -885,8 +885,8 @@ function W.Menu(owner, entries)
         menu.buttons = {}
         if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaMenu") end
         menu:SetScript("OnUpdate", function(self, elapsed)
-            local owner = self.owner ~= UIParent and self.owner or nil
-            if self:IsMouseOver() or (owner and owner:IsMouseOver()) then
+            local anchor = self.owner ~= UIParent and self.owner or nil
+            if self:IsMouseOver() or (anchor and anchor:IsMouseOver()) then
                 self.away = 0
             else
                 self.away = (self.away or 0) + (elapsed or 0)

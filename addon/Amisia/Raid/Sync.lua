@@ -440,7 +440,7 @@ local function noteOk(v, max) return v == "" or (type(v) == "string" and ns.Clea
 local function flag(v) return v == 0 or v == 1 end
 
 -- A list 1..n (n <= max) of a table, else nil.
-local function list(v, max)
+local function isList(v, max)
     if type(v) ~= "table" then return nil end
     local n = 0
     for k in pairs(v) do
@@ -477,7 +477,7 @@ function ns.SyncCheck(sp, so, s)
     if not at(sp.t0) then return nil, "Zeit" end
     local t0 = sp.t0
     local function rel(v, zero) return int(v, -span, span) and ((zero and v == 0) or at(t0 + v)) end
-    if not list(sp.a, MAX_AWARDS) or not list(sp.g, MAX_GONE) then return nil, "Anzahl" end
+    if not isList(sp.a, MAX_AWARDS) or not isList(sp.g, MAX_GONE) then return nil, "Anzahl" end
     local ids = {}
     for _, r in ipairs(sp.a) do
         if type(r) ~= "table" or not idOk(r[1]) or ids[r[1]] then return nil, "Kennung" end
@@ -502,9 +502,9 @@ function ns.SyncCheck(sp, so, s)
     end
     if so == nil then return true end
     if type(so) ~= "table" or so.k ~= key or so.r ~= sp.r then return nil, "Offiziersteil" end
-    if not map(so.n, MAX_AWARDS + MAX_GONE) or not map(so.b, MAX_BENCH) or not list(so.x, MAX_KILLS) then return nil, "Offiziersteil" end
+    if not map(so.n, MAX_AWARDS + MAX_GONE) or not map(so.b, MAX_BENCH) or not isList(so.x, MAX_KILLS) then return nil, "Offiziersteil" end
     if so.l ~= nil then
-        if not list(so.l, MAX_LINEAGE) then return nil, "Offiziersteil" end
+        if not isList(so.l, MAX_LINEAGE) then return nil, "Offiziersteil" end
         for _, x in ipairs(so.l) do
             if type(x) ~= "table" or not int(x[1], 0, MAX_TERM) or not nameOk(x[2]) or not int(x[3], 0, MAX_REV) then
                 return nil, "Offiziersteil"
@@ -2159,7 +2159,7 @@ local function plural(n, one, many) return ("%d %s"):format(n, n == 1 and one or
 -- The sync state of raid s (nil: the running raid) for a page: text, colour ("green", "gold",
 -- "grey") and the lines of its tooltip.
 function ns.SyncStatus(s)
-    local cur, key = running()
+    local cur = running()
     s = s or cur
     local tip = {}
     if not ns.CommAvailable() or ns.Get("sync.enabled") == false then
@@ -2228,10 +2228,10 @@ ns.RegisterSyncCommand("jetzt", function()
         ns.msg("Nur in der Offiziersansicht.")
         return
     end
-    local done, why = ns.SyncNow()
-    if done == "keeper" then
+    local result, why = ns.SyncNow()
+    if result == "keeper" then
         ns.msg("Raid-Stand gesendet.")
-    elseif done == "follower" then
+    elseif result == "follower" then
         local n = ns.SyncPendingCount()
         ns.msg(("Beim Hüter nachgefragt%s."):format(n > 0 and (", " .. plural(n, "Änderung", "Änderungen") .. " erneut gesendet") or ""))
     else
@@ -2284,8 +2284,8 @@ end
 ---------------------------------------------------------------------------
 -- "/amisia sync": the state in the chat.
 ns.RegisterSyncCommand("", function()
-    local text, _, tip = ns.SyncStatus()
-    ns.msg(text)
+    local status, _, tip = ns.SyncStatus()
+    ns.msg(status)
     for _, l in ipairs(tip or {}) do DEFAULT_CHAT_FRAME:AddMessage("  " .. l) end
 end)
 

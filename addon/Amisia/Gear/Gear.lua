@@ -1126,7 +1126,7 @@ function Gear.Best(opts)
         if variants then
             -- the best variant (ties: the lowest suffix id), kept with the scores unless a hit cap
             -- makes it depend on what is worn; a new variants table (Gear.SuffixStats) is a new entry
-            local byId, k, best = nil, nil, nil
+            local byId, k, best
             local keep = not cap
             if cap then
                 keep = true
@@ -1213,15 +1213,15 @@ function Gear.Best(opts)
     end
 
     -- an armour piece or trinket that scores nothing for this spec is no recommendation
-    for _, key in ipairs({ "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET" }) do
+    for _, slot in ipairs({ "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET" }) do
         local kept = {}
-        for _, e in ipairs(res[key]) do if e[2] > 0 then kept[#kept + 1] = e end end
-        res[key] = kept
+        for _, e in ipairs(res[slot]) do if e[2] > 0 then kept[#kept + 1] = e end end
+        res[slot] = kept
     end
-    for _, key in ipairs({ "FINGER", "TRINKET" }) do
+    for _, slot in ipairs({ "FINGER", "TRINKET" }) do
         local kept = {}
-        for _, e in ipairs(lists[key]) do if e[2] > 0 then kept[#kept + 1] = e end end
-        lists[key] = kept
+        for _, e in ipairs(lists[slot]) do if e[2] > 0 then kept[#kept + 1] = e end end
+        lists[slot] = kept
     end
 
     local function sort(list)

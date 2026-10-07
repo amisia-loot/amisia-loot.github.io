@@ -621,10 +621,10 @@ local function sectionArt(R)
         add(R, "FEHLT", "Dungeonbilder", "keine Bilddaten")
         return
     end
-    local ids, seen = {}, {}
+    local ids, have = {}, {}
     local function take(a)
-        if type(a) == "table" and type(a[1]) == "number" and not seen[a[1]] then
-            seen[a[1]] = true
+        if type(a) == "table" and type(a[1]) == "number" and not have[a[1]] then
+            have[a[1]] = true
             ids[#ids + 1] = a[1]
         end
     end

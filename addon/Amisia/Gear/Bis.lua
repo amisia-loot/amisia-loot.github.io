@@ -1104,8 +1104,8 @@ end
 -- The player's place: in an instance its id and name; outside the map and its parents up to the
 -- continent.
 local function currentPlace()
-    local name, itype, diff, _, _, _, _, instID = GetInstanceInfo()
-    name, itype, diff, instID = ns.Plain(name), ns.Plain(itype), ns.Plain(diff), ns.Plain(instID)
+    local name, itype, _, _, _, _, _, instID = GetInstanceInfo()
+    name, itype, instID = ns.Plain(name), ns.Plain(itype), ns.Plain(instID)
     if type(itype) == "string" and itype ~= "none" and type(instID) == "number" and instID > 0 then
         local keys = { ["I:" .. instID] = true }
         if type(name) == "string" and name ~= "" then keys["N:" .. name] = true end

@@ -332,11 +332,11 @@ local function worldItems(a, b)
     for _, id in ipairs(capList(set, L.wItems)) do items[id] = set[id] end
     return items
 end
-local function list(a, b) return unionList(a, b, L.rewards) end
+local function rewardList(a, b) return unionList(a, b, L.rewards) end
 local function rank(a, b) return CLASS_RANK[a] >= CLASS_RANK[b] and a or b end
 
 local JOIN = {
-    q = { giver = pickId, gpos = pickText, ender = pickId, epos = pickText, rewards = list, choices = list, qlevel = math.max,
+    q = { giver = pickId, gpos = pickText, ender = pickId, epos = pickText, rewards = rewardList, choices = rewardList, qlevel = math.max,
           minlvl = pickId, fac = unionFaction, pre = pickId, gname = pickText, title = pickText },
     s = { pos = pickText, items = vendorItems, name = pickText },
     w = { class = rank, pos = pickText, inst = math.max, items = worldItems, name = pickText },

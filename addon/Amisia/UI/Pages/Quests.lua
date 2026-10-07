@@ -4,7 +4,6 @@
 -- rewards below the quest, and a button that sets the waypoint to the quest giver.
 local ADDON, ns = ...
 local W, Q = ns.W, ns.Quests
-local GOLD = W.GOLD
 local GOLD_TEXT = "|cffe3b857"
 local GREY = "|cff8f86a3"
 local GREEN = "|cff4fd16b"

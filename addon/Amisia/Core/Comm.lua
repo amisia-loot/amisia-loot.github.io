@@ -241,11 +241,11 @@ end
 -- The drop exchange (DropSync.lua): week "w:hhhh:n", bucket "day:inst:hhhh:n", a known kill as its
 -- id (8 hex) and the digest of its items (4 hex).
 local function weekEntry(e)
-    local w, h, n = e:match("^(%d):(%x%x%x%x):(%d+)$")
+    local w, _, n = e:match("^(%d):(%x%x%x%x):(%d+)$")
     return w ~= nil and isNum(w, 0, 3) and isNum(n, 0, 999999)
 end
 local function bucketEntry(e)
-    local day, inst, h, n = e:match("^(%d+):(%d+):(%x%x%x%x):(%d+)$")
+    local day, inst, _, n = e:match("^(%d+):(%d+):(%x%x%x%x):(%d+)$")
     return day ~= nil and isNum(day, 0, 99999) and isNum(inst, 1, 99999) and isNum(n, 1, 999999)
 end
 local function killEntry(e) return isHex(e, 12) end
@@ -456,7 +456,7 @@ end
 -- One try: true when the queue may go on, false when it has to stop (pause or hold).
 local function attempt(i)
     local e = queue[i]
-    local ok, why = channelOk(e.chan, e.target)
+    local ok = channelOk(e.chan, e.target)
     if not ok then
         stats.dropped = stats.dropped + 1
         removeAt(i)
