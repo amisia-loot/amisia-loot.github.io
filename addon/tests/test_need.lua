@@ -178,7 +178,7 @@ assert(dlg.vals == "Fraktur,Kim Eisherz,Anna,Bob,Pug,Vulo Sturmwind", "guild wis
 assert(dlg.texts == ("Fraktur (Wunsch mittel),Kim Eisherz (Upgrade +%d %%),Anna,Bob,Pug,Vulo Sturmwind"):format(kPct), dlg.texts)
 assert(not dlg.ask, "answers there: no button")
 assert(not dlg.roll:find("Upgrade", 1, true), "the roll line stays")
-assert(dlg.h == 248, "the window is taller")
+assert(dlg.h == 268, "the window is taller (the loot prio line)")
 -- the tooltip of the line names everything
 local tipLines = C(VULO, [[local D = AmisiaAwardDialog
     local out, add = {}, GameTooltip.AddLine

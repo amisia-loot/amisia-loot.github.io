@@ -123,6 +123,9 @@ local function announce(head, links)
     for i, e in ipairs(links) do
         local text, here = reserversText(e.id, raid)
         if here then reserved = reserved + 1 end
+        -- with loot.prio the officers' order behind it (LootPrio.lua)
+        local prio = ns.Get("loot.prio") and ns.LootPrioShort and ns.LootPrioShort(e.id)
+        if prio then text = text .. L[" · Prio: %s"]:format(prio) end
         if i <= MAX_LINES then lines[#lines + 1] = ("%d. %s %s"):format(i, e.link, text) end
     end
     if #links > MAX_LINES then lines[#lines + 1] = L["und %d weitere"]:format(#links - MAX_LINES) end
@@ -253,6 +256,8 @@ local function announceAgain()
         remember({ g.key })
     end
 end
+
+ns.LootAnnounceAgain = announceAgain
 
 ---------------------------------------------------------------------------
 -- Group loot: START_LOOT_ROLL(rollID, rollTime), collected over 1.5 s
@@ -385,6 +390,8 @@ ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 22, officer
       values = { { 3, L["Selten"] }, { 4, L["Episch"] }, { 5, L["Legendär"] } } },
     { key = "loot.groupLoot", type = "toggle", label = L["Auch bei Gruppenplündern ansagen"], default = true,
       tip = L["Aus den Würfelfenstern: Würfe, die zusammen beginnen, stehen in einer Ansage."] },
+    { key = "loot.prio", type = "toggle", label = L["Loot-Prio hinter jedem Item ansagen"], default = false,
+      tip = L["Die Reihenfolge der Offiziere aus der Prioliste, ohne Notiz."] },
     { key = "loot.warning", type = "toggle", label = L["Zusätzlich eine Schlachtzugswarnung"], default = false,
       tip = L["Nur als Leiter oder Assistent."] },
     { key = "loot.lead", type = "choice", label = L["Ansage und !sr-Antworten"], default = "auto",

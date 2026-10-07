@@ -8,22 +8,27 @@
 -- braucht das?", asked by the window itself when a round starts, the guild wishes and the own
 -- comparison, ns.UpgradeOf), and each row shows its roller's part of it. For green and blue items
 -- bound on pickup a hint says the appearance is already granted (rolls.lookHint): a hint, no rule.
+-- Above them the officers' loot prio of the item (LootPrio.lua: "Prio: 1. Anna (Tank), 2. Krieger
+-- Furor" and the note, everything in its tooltip), "P1", "P2" in the rows of the listed rollers
+-- (gold by name, grey by class) and, for officers, a "Prio" button that edits it.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local ROWS = 12
 local ROW_H = 18
-local WIDTH = 410
+local WIDTH = 440
 local ROW_W = WIDTH - 24
-local UP_Y = -48                                 -- the upgrade line under the item
-local LOOK_Y = -62                               -- the appearance hint under it, two lines
-local LIST_TOP = 92
+local PRIO_Y = -48                               -- the officers' prio under the item
+local UP_Y = -62                                 -- the upgrade line under it
+local LOOK_Y = -76                               -- the appearance hint under that, two lines
+local LIST_TOP = 106
 local ENTRY_Y = -(LIST_TOP + ROWS * ROW_H + 4)   -- the entry row under the list
 local HINT_Y = ENTRY_Y - 24                      -- the hint under it, two lines
 local HEIGHT = -HINT_Y + 26 + 10 + 22 + 8        -- hint, gap, buttons, margin
 local GREY = "|cff8f86a3"
 local UP_GREEN, UP_ORANGE, UP_BLUE = "|cff4fe673", "|cffff9933", "|cff66b3ff"
+local PRIO_GOLD = "|cffffb347"
 local LINE_NAMES = 6
 local QUALITY_GREEN, QUALITY_BLUE, BIND_PICKUP = 2, 3, 1
 local LOOK_TEXT = L["Aussehen: bekommen laut Blizzard alle Berechtigten schon beim Plündern. Nicht nur fürs Aussehen würfeln."]
@@ -275,6 +280,24 @@ local function showUpgrades(r)
     return info
 end
 
+-- The prio line of a round and the officers' button; returns whether the item has a prio.
+local function showPrio(r)
+    local line = r and ns.LootPrioLine and ns.LootPrioLine(r.item)
+    F.prioLine:SetText(line and (PRIO_GOLD .. line .. "|r") or "")
+    F.prioLine:SetShown(line ~= nil)
+    F.prioHit:SetShown(line ~= nil)
+    F.prioBtn:SetShown((r ~= nil and ns.IsOfficerView() and ns.ShowPrioDialog ~= nil) and true or false)
+    return line ~= nil
+end
+
+-- A roller's place in the prio: "P1" gold (by name), "P2" grey (by class), "" when not listed.
+local function prioMark(r, e)
+    if not ns.LootPrioRank then return "" end
+    local rank, how = ns.LootPrioRank(r.item, e.name, e.class)
+    if not rank then return "" end
+    return (how == "name" and PRIO_GOLD or GREY) .. "P" .. rank .. "|r"
+end
+
 -- Enters the roll of the entry row; a reason stays in the hint line until the next try.
 local function addEntry()
     local e, why = ns.AddManualRoll(F.namePick:GetValue(), F.valueEdit:GetText(), entryKind)
@@ -300,10 +323,12 @@ refresh = function()
         againBtn:Disable()
         F.resultBtn:Disable()
         showUpgrades(nil)
+        showPrio(nil)
         return
     end
     header:SetText(r.link or r.name)
     local info = showUpgrades(r)
+    local hasPrio = showPrio(r)
     if r.done then
         timer:SetText(r.winner and L["Gewinner: %s"]:format(r.winner) or (r.tie and L["Gleichstand"] or L["Beendet"]))
     else
@@ -326,6 +351,7 @@ refresh = function()
         row.kind:SetText((e.rank or e.kind or "") .. (plus and (" " .. plus) or ""))
         row.value:SetText(tostring(e.value))
         row.up:SetText(info and rollerText(info, e.name) or "")
+        row.prio:SetText(hasPrio and prioMark(r, e) or "")
         row.hand:SetText(e.manual and L["Hand##Wurf"] or "")
         row.why:SetText(r.winner == e.name and ("|cff4fbf7a" .. L["Gewinner"] .. "|r") or "")
         row.reason:SetText("")
@@ -342,6 +368,7 @@ refresh = function()
         row.kind:SetText("")
         row.value:SetText(("|cff8f86a3%d|r"):format(e.value or 0))
         row.up:SetText("")
+        row.prio:SetText("")
         row.hand:SetText("")
         row.why:SetText("")
         -- the reason takes the room of the hand mark, the winner mark and the hidden button
@@ -359,7 +386,7 @@ local function build()
         onShow = refresh, escape = false,
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     -- the top stays where it was before the upgrade lines made the window taller (toast above it)
-    F:SetPoint("CENTER", 260, 59)
+    F:SetPoint("CENTER", 260, 52)
 
     -- the item on the left, the time (it sat under the close button) on the right of the same line
     header = text(F, T.FONT.body, 220)
@@ -367,6 +394,32 @@ local function build()
     timer = text(F, T.FONT.big, 110)
     timer:SetPoint("TOPRIGHT", -12, -28)
     timer:SetJustifyH("RIGHT")
+    -- officers: the item's loot prio in a small dialog
+    F.prioBtn = W.Button(F, "Prio", 44, function()
+        local r = ns.CurrentRoll() or ns.LastRoll()
+        if r and ns.ShowPrioDialog then ns.ShowPrioDialog(r.link or r.item) end
+    end, { height = 20 })
+    W.FitChip(F.prioBtn, 44)
+    F.prioBtn:SetPoint("TOPLEFT", 240, -28)
+    F.prioBtn:Hide()
+    -- the officers' prio, cut to the width; the tooltip holds all of it
+    F.prioLine = text(F, T.FONT.text, ROW_W)
+    F.prioLine:SetPoint("TOPLEFT", 12, PRIO_Y)
+    F.prioHit = CreateFrame("Frame", nil, F)
+    F.prioHit:SetSize(ROW_W, 14)
+    F.prioHit:SetPoint("TOPLEFT", 12, PRIO_Y + 1)
+    F.prioHit:EnableMouse(true)
+    F.prioHit:SetScript("OnEnter", function(self)
+        local r = ns.CurrentRoll() or ns.LastRoll()
+        local p = r and ns.LootPrioOf and ns.LootPrioOf(r.item)
+        if not p then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:AddLine(L["Loot-Prio"], 1, 0.82, 0)
+        for i, e in ipairs(p.prio) do GameTooltip:AddLine((ns.LootPrioText({ e }):gsub("^1%.", i .. ".")), 0.85, 0.85, 0.85, true) end
+        if p.note ~= "" then GameTooltip:AddLine(L["Notiz: %s"]:format(p.note), 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    F.prioHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
     -- who it is an upgrade for, then the appearance hint (two lines)
     F.upLine = text(F, T.FONT.text, ROW_W)
     F.upLine:SetPoint("TOPLEFT", 12, UP_Y)
@@ -391,10 +444,13 @@ local function build()
         -- the roller's upgrade ("+12%", "neu", "W")
         row.up = text(row, T.FONT.text, 46)
         row.up:SetPoint("LEFT", 190, 0)
+        -- the roller's place in the officers' prio ("P1")
+        row.prio = text(row, T.FONT.text, 26)
+        row.prio:SetPoint("LEFT", 238, 0)
         row.hand = text(row, T.FONT.hint, 28)
-        row.hand:SetPoint("LEFT", 240, 0)
+        row.hand:SetPoint("LEFT", 266, 0)
         row.why = text(row, T.FONT.text, 44)
-        row.why:SetPoint("LEFT", 270, 0)
+        row.why:SetPoint("LEFT", 296, 0)
         -- why a roll was not counted, on rows without a button
         row.reason = text(row, T.FONT.hint, ROW_W - 190 - 4)
         row.reason:SetPoint("LEFT", 190, 0)
@@ -461,6 +517,7 @@ ns.OnRollChanged = function(r)
     refresh()
 end
 ns.Listen("NEED", function() refresh() end)
+ns.Listen("LOOT_PRIO", function() refresh() end)
 ns.Listen("SETTING", function(path)
     if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minGain" then refresh() end  -- l10n-ok: setting keys
 end)

@@ -1004,6 +1004,10 @@ function ns.ExportText(list)
             end
         end
     end
+    -- LC <itemID> <edited epoch> <officer> <prio token|-> [<note>]: the loot prio edited in game (LootPrio.lua)
+    if ns.LootPrioExportLines then
+        for _, line in ipairs(ns.LootPrioExportLines()) do lines[#lines + 1] = line end
+    end
     for _, s in ipairs(list) do
         sessionLines(s, lines, used)
     end

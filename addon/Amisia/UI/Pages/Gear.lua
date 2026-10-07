@@ -1572,7 +1572,7 @@ local function buildGuild(f)
     U.area:SetPoint("TOPRIGHT", 0, -308)
     U.area:SetHeight(70)
     U.importBtn = W.Button(U, L["Importieren"], 100, function()
-        -- the website's text: the wishes, the alts, or both
+        -- the website's text: the wishes, the alts and the loot prio (any of them)
         local text, ok = ns.ImportSiteText(U.area.box:GetText())
         if ok then
             U.area.box:SetText("")

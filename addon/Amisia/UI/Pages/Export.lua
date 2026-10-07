@@ -34,7 +34,9 @@ function ns.ShowExport(latestOnly)
     end
     if #list == 0 then
         local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and ns.Bank())
-        if not bankOnly then
+        -- the loot prio edited in game goes to the site on its own too
+        local prioOnly = ns.LootPrioPending and ns.LootPrioPending() > 0
+        if not bankOnly and not prioOnly then
             setExport("")
             if #src == 0 and not ns.Bank() then
                 ns.msg(L["Noch keine Raids und keine Gildenbank-Zählung zum Exportieren."])

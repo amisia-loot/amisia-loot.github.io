@@ -12,7 +12,7 @@ local W, T = ns.W, ns.Theme
 
 local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
-local WIDTH, HEIGHT = 380, 248
+local WIDTH, HEIGHT = 380, 268
 local ASK_W = 60
 
 local GetItemInfo = C_Item.GetItemInfo
@@ -98,6 +98,8 @@ local function names(s, slot, item)
     end
     -- who answered "Wer braucht das?" with an upgrade or a wish comes right after the wishers
     if ns.NeedAwardValues then values = ns.NeedAwardValues(item, values) end
+    -- the players of the officers' prio list (LootPrio.lua) before everyone, in their order
+    if ns.LootPrioAwardValues then values = ns.LootPrioAwardValues(item, values) end
     return values
 end
 
@@ -312,12 +314,15 @@ local function build()
 
     D.roll = W.Text(D, T.FONT.text, 356)
     D.roll:SetPoint("TOPLEFT", 12, -120)
+    -- the officers' prio and note (LootPrio.lua), cut to the width
+    D.prio = W.Text(D, T.FONT.text, 356)
+    D.prio:SetPoint("TOPLEFT", 12, -140)
     -- "Upgrade für:" from the raiders' answers (Need.lua), cut to the width, every answer as tooltip
     D.need = W.Text(D, T.FONT.text, 356)
-    D.need:SetPoint("TOPLEFT", 12, -140)
+    D.need:SetPoint("TOPLEFT", 12, -160)
     D.needHit = CreateFrame("Frame", nil, D)
     D.needHit:SetSize(356, 16)
-    D.needHit:SetPoint("TOPLEFT", 12, -139)
+    D.needHit:SetPoint("TOPLEFT", 12, -159)
     D.needHit:EnableMouse(true)
     D.needHit:SetScript("OnEnter", function(self)
         local lines = st.item and ns.NeedLines and ns.NeedLines(st.item)
@@ -334,9 +339,9 @@ local function build()
         if not qid and why then ns.msg(why) end
         refresh()
     end)
-    D.ask:SetPoint("TOPRIGHT", -12, -136)
+    D.ask:SetPoint("TOPRIGHT", -12, -156)
     D.hint = W.Text(D, T.FONT.hint, 356, true)
-    D.hint:SetPoint("TOPLEFT", 12, -160)
+    D.hint:SetPoint("TOPLEFT", 12, -180)
     D.hint:SetHeight(40)
     D.hint:SetJustifyV("TOP")
 
@@ -380,6 +385,7 @@ refresh = function()
     else
         D.roll:SetText(st.item and L["Kein Roll-Ergebnis für dieses Item."] or "")
     end
+    D.prio:SetText(st.item and ns.LootPrioLine and ns.LootPrioLine(st.item) or "")
     -- who needs it: the answers, else "Fragen" while nothing was asked
     local needText = st.item and ns.NeedText and ns.NeedText(st.item)
     -- the button only where asking works (loot lead, own raid, officer rank, messages on)
@@ -433,6 +439,7 @@ ns.OnEvent("LOOT_CLOSED", function()
 end)
 -- answers to "Wer braucht das?" arrive
 ns.Listen("NEED", function() if refresh then refresh() end end)
+ns.Listen("LOOT_PRIO", function() if refresh then refresh() end end)
 
 -- A link shift-clicked into the chat lands in the item box of an open dialog without an item. The
 -- client calls ChatFrameUtil.InsertLink. ChatEdit_InsertLink is its deprecated alias, defined only

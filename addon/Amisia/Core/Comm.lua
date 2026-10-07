@@ -34,16 +34,16 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
-local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true }
+local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true }
 -- parts a blob of an art may have (default MAX_PARTS)
-local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK }
+local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40 }
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
@@ -328,6 +328,9 @@ local VALID = {
         return true
     end,
     CW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
+    -- loot council (LootPrio.lua): LV <raid key> <hash> <items> from the keeper; LQ <raid key> <own hash>
+    LV = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 16) and isNum(f[3], 0, 999) end,
+    LQ = function(f) return #f >= 2 and isKey(f[1]) and isHex(f[2], 16) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

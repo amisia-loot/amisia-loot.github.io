@@ -38,6 +38,7 @@ Raid\LootAnnounce.lua
 Raid\RaidLog.lua
 Raid\Bench.lua
 Raid\Sync.lua
+Raid\LootPrio.lua
 Raid\RaidText.lua
 Collect\Scan.lua
 Collect\Collect.lua

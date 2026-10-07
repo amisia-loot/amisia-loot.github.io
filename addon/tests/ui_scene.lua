@@ -49,6 +49,9 @@ function S.setup()
         NS.AddAwardTo(s, { name = "Anna Bergmann", item = 30000, kind = "OS", src = "Illidan Stormrage", note = "Tausch" })
     end
     NS.SetSoftRes("Vuloo 32235\nFraktur 32235\nBobbington 32837\nAnna Bergmann 30000\nGustav 32837\n")
+    -- the officers' loot prio of two items
+    NS.SetLootPrio("#AMISIA-LC 1 forever 2026-10-07\nC 32837 1788000000 p:Kimtaro:Tank,c:WARRIOR:Furor,p:Bobbington,o Erst Tanks, dann DPS\n"
+        .. "C 32235 1788000000 p:Anna_Bergmann:Heal,o\n#END")
     STUB.fire("LOOT_CLOSED")
 end
 
@@ -80,6 +83,10 @@ S.WINDOWS = {
     { key = "awarddialog", view = "officer", open = function()
         NS.ShowAwardDialog(LINK)
         return AmisiaAwardDialog
+    end },
+    { key = "priodialog", view = "officer", open = function()
+        NS.ShowPrioDialog(LINK2)
+        return AmisiaPrioDialog
     end },
     { key = "softresframe", view = "officer", open = function()
         NS.ToggleSoftResFrame()
