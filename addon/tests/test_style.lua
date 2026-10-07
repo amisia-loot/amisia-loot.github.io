@@ -443,6 +443,23 @@ assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear ge
 NS.Set("ui.expert", true)
 NS.Refresh()
 assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
+-- every visible page has a row (officer and expert: all of them); a page past the rows the list has
+-- would be dropped without a word, so the test says so
+local function missingRows()
+    local rows, miss = {}, {}
+    for _, e in ipairs(MF.navOrder) do if e.button then rows[e.button.key] = true end end
+    for _, p in ipairs(NS.panels) do
+        if NS.Visible(p) and not rows[p.key] then miss[#miss + 1] = p.key end
+    end
+    return table.concat(miss, ",")
+end
+assert(missingRows() == "", "pages without a row in the page list (more rows needed): " .. missingRows())
+NS.RegisterPanel({ key = "extra17", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+NS.Refresh()
+assert(missingRows() == "extra17", "the check sees a page without a row: " .. missingRows())
+for i, p in ipairs(NS.panels) do if p.key == "extra17" then table.remove(NS.panels, i) break end end
+NS.Refresh()
+assert(missingRows() == "")
 -- the labels of the sections
 local labels = {}
 for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
