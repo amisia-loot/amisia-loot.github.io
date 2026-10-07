@@ -375,7 +375,7 @@ end
 -- Everything a result depends on, as one string.
 local function optsKey(o)
     local ex = o.exclude or {}
-    return table.concat({ tostring(ns.GEAR), tostring(ns.BIS), stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
+    return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
         tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap) }, "|")
@@ -563,7 +563,7 @@ end
 -- Scores of what is worn, per slot, for one weighting: kept until the gear or the weighting changes.
 local ctxCache, ctxKey
 local function context(o)
-    local key = table.concat({ tostring(ns.GEAR), stamp, tostring(o.class), tostring(o.spec), tostring(o.kind), tostring(o.level),
+    local key = table.concat({ tostring(ns.Data("GEAR")), stamp, tostring(o.class), tostring(o.spec), tostring(o.kind), tostring(o.level),
         capKey(o.cap) }, "|")
     if ctxKey == key then return ctxCache end
     local w = worn()
@@ -1130,7 +1130,7 @@ ns.BisCurrentPlace = currentPlace
 local placesCache, placesFor
 -- The raids and dungeons of the data for the place picker: { { key, text, raid } }, raids first.
 function ns.BisPlaces()
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     if not d then return {} end
     if placesFor == d and placesCache then return placesCache end
     local seen, out = {}, {}
@@ -1173,7 +1173,7 @@ function ns.BisHere(placeKey, opts)
     if not o.class then return place, {} end
     local key = optsKey(o) .. "|" .. place.key
     if key == hereKey then return herePlace, hereList end
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     -- the sources at this place first, then the items that have one
     local at = {}
     for n, rec in ipairs(d.S) do

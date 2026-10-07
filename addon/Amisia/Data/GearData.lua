@@ -15,7 +15,8 @@ local _, ns = ...
 -- profession needed to wear it (skill line, 0 none), source...}. Level is the required level, or later: the
 -- level its quest can be taken (quest-only items) or the profession skill / 5. Class mask 0 means every
 -- class (bits as in S.Q); speed 0 for non-weapons.
-ns.GEAR = {
+ns.LazyData("GEAR", [=[
+return {
     game = "forever", cap = 60, built = "2026-10-06",
     S = {
         {"Q", "Bounty on Garrick Padfoot", 0, 2, "A", 1429, 6, 0},
@@ -12236,3 +12237,4 @@ ns.GEAR = {
     M = {
     },
 }
+]=], 5497)

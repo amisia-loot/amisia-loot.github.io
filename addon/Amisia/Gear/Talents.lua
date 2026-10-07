@@ -28,9 +28,12 @@ function T._reset()
     prepared, treeNames = {}, {}
 end
 
-local function data() return ns.TALENTS end
+local function data() return ns.Data("TALENTS") end
 
 function T.Available()
+    -- the generator's count of classes, while the table waits (opening the window builds nothing)
+    local n = ns.DataSize("TALENTS")
+    if n then return n > 0 end
     local d = data()
     return type(d) == "table" and type(d.classes) == "table" and next(d.classes) ~= nil
 end

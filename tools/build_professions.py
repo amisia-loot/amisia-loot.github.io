@@ -34,6 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402
+import lua_data  # noqa: E402  (the lazy form of the data file)
 
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'ProfessionData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
@@ -497,7 +498,8 @@ def render(data, built):
     out.append('        writ = ' + _num_map(F['writ'], indent=8) + ',')
     out.append('    },')
     out.append('}')
-    return '\n'.join(out) + '\n'
+    # the addon builds the table on first use (Core/LazyData.lua)
+    return lua_data.lazy('\n'.join(out) + '\n', 'PROFESSIONS', len(data['P']))
 
 
 def main(argv=None):

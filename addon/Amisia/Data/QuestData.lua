@@ -11,7 +11,8 @@ local _, ns = ...
 -- finish first (all of them, or as many as the flag N<n> says); alt the quests that exclude this one; rewards
 -- gear item ids; flags B breadcrumb, R repeatable, C Classic data the source has not moved to its Forever
 -- files yet, N<n> only n of pre needed (any one of them for N1).
-ns.QUEST_DATA = {
+ns.LazyData("QUEST_DATA", [=[
+return {
     built = "2026-10-07", source = "bf0a1ad853", count = 3796,
     Z = {
         [33] = "Blackrock Mountain",
@@ -5210,3 +5211,4 @@ ns.QUEST_DATA = {
         [99260] = "2521;Fillion's Mission;5;A;0;0;0;253285;;O;92850;;;",
     },
 }
+]=], 3796)

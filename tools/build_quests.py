@@ -30,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
+import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_gear  # noqa: E402  (Lua strings)
 
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'QuestData.lua')
@@ -194,7 +195,8 @@ def render(data, built):
     text = '\n'.join(lines)
     if re.search(r'[\x00-\x08\x0b-\x1f\x7f]', text):
         raise SystemExit('control characters in the output')
-    return text
+    # the addon builds the table on first use (Core/LazyData.lua)
+    return lua_data.lazy(text, 'QUEST_DATA', len(Q))
 
 
 def main(argv=None):

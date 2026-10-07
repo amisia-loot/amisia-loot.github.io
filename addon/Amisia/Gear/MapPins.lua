@@ -240,7 +240,7 @@ local version = 0     -- bumped by the target, hidden places and the map setting
 -- continent }, at most 60 (plus the target), wishes first, then by gain. Kept until anything changes.
 function Map.PinPlaces(mapID)
     mapID = tonumber(mapID)
-    if not mapID or not ns.MAP then return {} end
+    if not mapID or not ns.HasData("MAP") then return {} end
     local stamp = ns.BisStamp() .. ":" .. version .. ":" .. (ns.DungeonMarkStamp and ns.DungeonMarkStamp() or "")
     if stamp ~= cacheStamp then
         cache, cacheStamp = {}, stamp

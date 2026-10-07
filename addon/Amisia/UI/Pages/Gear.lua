@@ -183,7 +183,7 @@ local MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
 
 -- Whether an item has a place on the map (with the page's filters), kept until the state changes.
 local function hasPlace(id)
-    if not id or not ns.MAP or not ns.MapItemPlaces then return false end
+    if not id or not ns.HasData("MAP") or not ns.MapItemPlaces then return false end
     local c = cached()
     c.places = c.places or {}
     local v = c.places[id]
@@ -296,7 +296,7 @@ end
 -- Every place key the data knows (raids, dungeons, zones), per data set.
 local knownFor, known
 local function placeKnown(place)
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     if not place or not d then return false end
     if knownFor ~= d then
         known, knownFor = {}, d
@@ -350,7 +350,7 @@ local chipsFor, chipsCache
 local function chipSet()
     local set = CHIPS
     -- the raids chip shows once the data has raids; looked up once per data set
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     if chipsFor == d then return chipsCache end
     local raids = false
     for _, rec in ipairs(d and d.S or {}) do

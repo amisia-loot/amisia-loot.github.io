@@ -113,10 +113,10 @@ end
 local index, idxGen, idxMap, idxGear
 local function currentIndex()
     local _, gen = Map.PageOpts()
-    if not index or gen ~= idxGen or idxMap ~= ns.MAP or idxGear ~= ns.GEAR then
+    if not index or gen ~= idxGen or idxMap ~= ns.Data("MAP") or idxGear ~= ns.Data("GEAR") then
         -- the targets and wishes follow Bis.lua's stamp, which the options follow
         index = buildIndex()
-        idxGen, idxMap, idxGear = gen, ns.MAP, ns.GEAR
+        idxGen, idxMap, idxGear = gen, ns.Data("MAP"), ns.Data("GEAR")
     end
     return index
 end
@@ -343,7 +343,7 @@ local function refresh(f)
     if #list > 0 then
         f.empty:Hide()
     else
-        if not ns.MAP then
+        if not ns.HasData("MAP") then
             f.empty:SetText("Für diesen Client gibt es keine Kartendaten.")
         elseif not ns.Get("map.pinsTargets") and not ns.Get("map.pinsWishes") then
             f.empty:SetText("Ziele und Wünsche sind ausgeblendet. Oben einschalten.")
@@ -354,7 +354,7 @@ local function refresh(f)
         end
         f.empty:Show()
     end
-    f.data:SetText(("Kartendaten vom %s · Orte aus öffentlichen Questdaten, Namen englisch."):format(longDate(ns.MAP and ns.MAP.built)))
+    f.data:SetText(("Kartendaten vom %s · Orte aus öffentlichen Questdaten, Namen englisch."):format(longDate(ns.HasData("MAP") and ns.Data("MAP").built)))
     local hidden = 0
     for _ in pairs(hiddenSet()) do hidden = hidden + 1 end
     if hidden > 0 then
@@ -455,7 +455,7 @@ local function create(parent)
 end
 
 ns.RegisterPanel{ key = "map", label = "Karte", icon = ICON, order = 55, group = "gear",
-    available = function() return Gear.Available() and ns.MAP ~= nil end,
+    available = function() return Gear.Available() and ns.HasData("MAP") end,
     create = create, refresh = refresh }
 
 -- Opens the page; zone: a uiMapID to show, "hier"/"here" for the own zone, nil for the last choice.

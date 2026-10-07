@@ -25,8 +25,11 @@ Pr.FACTION_NAME = { A = "Allianz", H = "Horde" }
 -- the difficulty colours of the client's recipe list
 Pr.COLORS = { orange = "ffff8040", yellow = "ffffff00", green = "ff40bf40", grey = "ff808080", red = "ffff2020", none = "ffffffff" }
 
-local function data() return ns.PROFESSIONS end
+local function data() return ns.Data("PROFESSIONS") end
 function Pr.Available()
+    -- the generator's count, while the table waits (opening the window builds nothing)
+    local n = ns.DataSize("PROFESSIONS")
+    if n then return n > 0 end
     local d = data()
     return type(d) == "table" and type(d.P) == "table" and d.P[1] ~= nil
 end

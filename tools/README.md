@@ -100,13 +100,35 @@ the comparison) and `addon/tests/test_layout_helpers.lua`.
 
 ## Addon layout
 
-`addon/Amisia/`: `Core/` (registry, core, names, chat queue, comm, trust, version, minimap button,
-selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid log, bench, sync,
-raid text, need), `Collect/` (item scan, collector, drops and their guild exchange, quest XP),
-`Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes, comparison marks,
-map and map pins), `Data/` (only generated files, from the build scripts below), `UI/` (theme,
-widgets, main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads them in dependency
-order; `build.py check` fails when a file is missing from it.
+`addon/Amisia/`: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version,
+minimap button, selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid
+log, bench, sync, raid text, need), `Collect/` (item scan, collector, drops and their guild exchange,
+quest XP), `Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes,
+comparison marks, map and map pins), `Data/` (only generated files, from the build scripts below),
+`UI/` (theme, widgets, main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads
+them in dependency order; `build.py check` fails when a file is missing from it.
+
+### Lazy data
+
+The five big generated files (`GearData`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`)
+hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
+`lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
+N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
+`[[` inside a level-0 one). `Core/LazyData.lua` keeps the text and builds the table the
+first time `ns.Data("KEY")` (or a read of `ns.KEY`) asks for it; `ns.HasData` and `ns.DataSize`
+answer availability checks without building anything; assigning `ns.KEY` (a test fixture, or nil)
+replaces what waits; `ns.DropData` lets it go. Consumers read through `ns.Data`, checks use
+`ns.HasData`/`ns.DataSize`, so a login, the settings page or the page list build none of them.
+
+```
+python3 tools/load_cost.py [--eager]
+```
+
+measures in the test stub what each data file costs to load and what the addon load and login cost,
+then each table's first use; `--eager` adds the numbers with the tables built at load (as before).
+On 2026-10-07: data files 30 ms and 4.3 MB of tables at load before, 5.5 ms and 1.5 MB of text now;
+the whole addon load 98 ms and 8.3 MB of Lua memory before, 59 ms and 5.7 MB now; nothing is built at
+login; the first use costs 13 ms (gear), 4 ms (quests), 1-2 ms (map, professions, talents).
 
 ## build_scan.py
 

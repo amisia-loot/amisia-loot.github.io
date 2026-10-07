@@ -19,6 +19,7 @@ REAGENTS = os.path.join(WAGO, 'reagents')
 ATT = os.path.join(HERE, 'fixtures', 'att_prof')
 sys.path.insert(0, TOOLS)
 import build_professions as bp  # noqa: E402
+import lua_data  # noqa: E402
 
 
 @pytest.fixture(scope='module')
@@ -32,11 +33,9 @@ def plain():
 
 
 def lua_load(text):
-    from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
-    ns = lua.eval('{}')
-    lua.eval('function(s) return assert(loadstring(s, "@ProfessionData.lua")) end')(text)('Amisia', ns)
-    return ns.PROFESSIONS
+    # the table comes as text for ns.LazyData (Core/LazyData.lua)
+    assert 'ns.LazyData("PROFESSIONS", [' in text
+    return lua_data.load(text, 'ProfessionData.lua').PROFESSIONS
 
 
 def lines(data, skill):

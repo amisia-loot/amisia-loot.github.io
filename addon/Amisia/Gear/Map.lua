@@ -120,7 +120,8 @@ end
 function ns.MapPoints(key)
     local list = parsed[key]
     if list then return list end
-    list = Map.ParsePoints(ns.MAP and ns.MAP.P and ns.MAP.P[key])
+    local map = ns.Data("MAP")
+    list = Map.ParsePoints(map and map.P and map.P[key])
     parsed[key] = list
     return list
 end
@@ -131,7 +132,8 @@ function Map.UnknownMaps() return unknownMaps end
 
 -- Who stands at a key (the quest giver), English, or nil.
 function Map.Giver(key)
-    return ns.MAP and ns.MAP.G and ns.MAP.G[key] or nil
+    local map = ns.Data("MAP")
+    return map and map.G and map.G[key] or nil
 end
 
 -- Test hook: forget the parsed points (after the data changed).
@@ -186,15 +188,15 @@ end
 -- the options, the wish or the data change: callers must not change it.
 function ns.MapItemPlaces(id, o)
     id = tonumber(id)
-    if not id or not ns.MAP or not Gear.Available() or not Gear.Item(id) then return {} end
+    if not id or not ns.HasData("MAP") or not Gear.Available() or not Gear.Item(id) then return {} end
     if o then return placesOf(Gear.Sources(id, o)) end
     local page, gen = Map.PageOpts()
     local wish = isWish(id)
     local e = placeCache[id]
-    if e and e.gen == gen and e.wish == wish and e.map == ns.MAP and e.gear == ns.GEAR then return e.list end
+    if e and e.gen == gen and e.wish == wish and e.map == ns.Data("MAP") and e.gear == ns.Data("GEAR") then return e.list end
     local out = placesOf(Gear.Sources(id, page))
     if #out == 0 and wish then out = placesOf(Gear.Sources(id)) end
-    placeCache[id] = { gen = gen, wish = wish, map = ns.MAP, gear = ns.GEAR, list = out }
+    placeCache[id] = { gen = gen, wish = wish, map = ns.Data("MAP"), gear = ns.Data("GEAR"), list = out }
     return out
 end
 
@@ -467,7 +469,7 @@ end
 
 -- Sets the target to the nearest place of an item (or of the chosen source key).
 function ns.MapSetTarget(id, key)
-    if not ns.MAP then return nil, NO_DATA end
+    if not ns.HasData("MAP") then return nil, NO_DATA end
     id = tonumber(id)
     local point, place = nearestOf(id and ns.MapItemPlaces(id) or {}, key)
     if not point then return nil, NO_PLACE end
@@ -825,14 +827,14 @@ end
 -- "Gorn One Eye, Durotar 47, 33" (the nearest place of an item, of the source key's when given), or nil.
 function Map.Where(id, key)
     id = tonumber(id)
-    local e = id and ns.MAP and whereEntry(id, key)
+    local e = id and ns.Data("MAP") and whereEntry(id, key)
     return e and e.text or nil
 end
 
 -- "Fundort: Gorn One Eye, Durotar 47, 33" for an item with a place (the nearest), with map.tooltip.
 function ns.MapTooltipLine(id)
     id = tonumber(id)
-    if not id or not ns.MAP or not ns.Get("map.tooltip") then return nil end
+    if not id or not ns.HasData("MAP") or not ns.Get("map.tooltip") then return nil end
     local e = whereEntry(id)
     return e and e.line or nil
 end
@@ -841,7 +843,7 @@ end
 -- Settings and commands
 ---------------------------------------------------------------------------
 
-ns.RegisterSettings{ key = "map", label = "Karte und Wegpunkt", order = 47, available = function() return ns.MAP ~= nil end, items = {
+ns.RegisterSettings{ key = "map", label = "Karte und Wegpunkt", order = 47, available = function() return ns.HasData("MAP") end, items = {
     { key = "map.pins", type = "toggle", label = "Orte auf der Weltkarte zeigen", default = true,
       tip = "Pins für Upgrades und Wünsche, mit Item-Symbol." },
     { key = "map.pinsTargets", type = "toggle", label = "Pins für Upgrades aus Ziele", default = true },
@@ -885,7 +887,7 @@ ns.RegisterSlash("karte", { aliases = { "map" }, args = "[<Link> | aus | pins | 
     run = function(rest)
         rest = (rest or ""):match("^%s*(.-)%s*$")
         local word = rest:lower()
-        if not ns.MAP then
+        if not ns.HasData("MAP") then
             ns.msg(NO_DATA)
             return
         end

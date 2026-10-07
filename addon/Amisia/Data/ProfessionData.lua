@@ -10,8 +10,9 @@ local _, ns = ...
 -- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =
 -- "item:n,..." reagents (only with the SpellReagents table). N: [npc] = "Name|uiMapID:x:y|A/H/" (English).
 -- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".
-ns.PROFESSIONS = {
-    built = "2026-10-06", client = "1.60.1.70235", source = "bf0a1ad853",
+ns.LazyData("PROFESSIONS", [=[
+return {
+    built = "2026-10-07", client = "1.60.1.70235", source = "bf0a1ad853",
     P = { { 171, "alchemy" }, { 164, "blacksmithing" }, { 333, "enchanting" }, { 202, "engineering" }, { 165, "leatherworking" }, { 197, "tailoring" }, { 185, "cooking" }, { 129, "firstaid" }, { 356, "fishing" }, { 182, "herbalism" }, { 186, "mining" }, { 393, "skinning" }, { 40, "poisons" } },
     R = {
         [171] = {
@@ -1327,3 +1328,4 @@ ns.PROFESSIONS = {
         },
     },
 }
+]=], 13)

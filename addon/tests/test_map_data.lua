@@ -47,7 +47,10 @@ local function readFile(name)
 end
 local src = readFile("Data/MapData.lua")
 assert(not src:find("IsForever", 1, true) and not src:find("then return end", 1, true), "no guard line")
+-- the table comes as text for ns.LazyData (Core/LazyData.lua); here it is built at once
+assert(src:find('ns.LazyData("MAP", [', 1, true), "the map data waits for its first use")
 local fns = {}
+fns.LazyData = function(key, text) fns[key] = assert(loadstring(text))() end
 assert(loadstring(src, "@MapData.lua"))("Amisia", fns)
 assert(fns.MAP and fns.MAP.game == "forever" and fns.MAP.P["N:The Deadmines"], "the data with its dungeon entrances")
 

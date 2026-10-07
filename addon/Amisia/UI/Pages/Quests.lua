@@ -257,7 +257,7 @@ local function refresh(f)
         f.empty:SetText(Q.WhyText(why) or "Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren.")
         f.empty:Show()
     end
-    local d = ns.QUEST_DATA
+    local d = ns.Data("QUEST_DATA")
     if type(d) == "table" then
         f.data:SetText(("Questdaten vom %s · %d Quests · Namen englisch, bis der Client die Quest kennt."):format(longDate(d.built), d.count or 0))
     else

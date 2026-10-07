@@ -15,6 +15,7 @@ ADDON = os.path.join(ROOT, 'addon', 'Amisia')
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 sys.path.insert(0, TOOLS)
 import build_quests as bq  # noqa: E402
+import lua_data  # noqa: E402
 
 
 @pytest.fixture(scope='module')
@@ -23,11 +24,9 @@ def att():
 
 
 def lua_load(text):
-    from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
-    ns = lua.eval('{}')
-    lua.eval('function(s) return assert(loadstring(s, "@QuestData.lua")) end')(text)('Amisia', ns)
-    return ns.QUEST_DATA
+    # the table comes as text for ns.LazyData (Core/LazyData.lua)
+    assert 'ns.LazyData("QUEST_DATA", [' in text
+    return lua_data.load(text, 'QuestData.lua').QUEST_DATA
 
 
 def fields(qd, qid):

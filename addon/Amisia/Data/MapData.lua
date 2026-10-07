@@ -6,7 +6,8 @@ local _, ns = ...
 -- separated by spaces. Keys: Q:<quest id> (where the quest starts), V:, R:, W:<NPC name> (vendor,
 -- rare, named mob), U:<NPC id>, I:<instance id> and N:<dungeon name> (entrance).
 -- G: [source key] = who stands there (the quest giver), English.
-ns.MAP = {
+ns.LazyData("MAP", [=[
+return {
     game = "forever", built = "2026-10-06", source = "f8d7232b7c",
     P = {
         ["I:129"] = "1413:5000:9200",
@@ -1509,3 +1510,4 @@ ns.MAP = {
         ["Q:995"] = "Volcor",
     },
 }
+]=], 915)

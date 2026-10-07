@@ -38,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from att_data import wago_csv  # noqa: E402
+import lua_data  # noqa: E402  (the lazy form of the data file)
 
 OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'TalentData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
@@ -664,7 +665,8 @@ def render_lua(data):
         L.append('            },')
         L.append('        },')
     L += ['    },', '}', '']
-    return '\n'.join(L)
+    # the addon builds the table on first use (Core/LazyData.lua)
+    return lua_data.lazy('\n'.join(L), 'TALENTS', len(data['classes']))
 
 
 def main(argv=None):

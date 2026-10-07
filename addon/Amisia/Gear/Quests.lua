@@ -113,7 +113,7 @@ local function enabled() return ns.Get("quests.enabled") ~= false end
 -- and why: "off" (the switch), "reload" (switched on again after the data went at login), "nodata".
 function ns.QuestIndex()
     if not enabled() then return nil, "off" end
-    local d = ns.QUEST_DATA
+    local d = ns.Data("QUEST_DATA")
     if d == nil then return nil, dropped and "reload" or "nodata" end
     if type(d) ~= "table" or type(d.Q) ~= "table" then return nil, "nodata" end
     if index and indexData == d then return index end
@@ -358,7 +358,7 @@ function Q.ZoneName(z)
     local info = mapInfo(z)
     n = info and plain(info.name)
     if type(n) ~= "string" or n == "" then
-        local d = ns.QUEST_DATA
+        local d = ns.Data("QUEST_DATA")
         n = type(d) == "table" and type(d.Z) == "table" and d.Z[z] or ("Zone " .. z)
     end
     zoneNames[z] = n
@@ -848,8 +848,9 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", bump)
 -- At login (and a /reload): with the switch off the strings go, nothing refers to them any more.
 function Q.OnLoaded(name)
     if name ~= ADDON then return end
-    if not enabled() and ns.QUEST_DATA ~= nil then
-        ns.QUEST_DATA, index, indexData, dropped = nil, nil, nil, true
+    if not enabled() and ns.HasData("QUEST_DATA") then
+        ns.DropData("QUEST_DATA")
+        index, indexData, dropped = nil, nil, true
     end
 end
 ns.OnEvent("ADDON_LOADED", Q.OnLoaded)

@@ -350,7 +350,7 @@ local function refresh(f)
     showDetail(f, f.selected)
     f.counts:SetText(statusText(v, #list))
     f.hint:SetText(hintText(v))
-    local d = ns.PROFESSIONS
+    local d = ns.Data("PROFESSIONS")
     f.data:SetText(("Berufsdaten vom %s (Client %s) · Namen aus dem Client."):format(d and d.built or "?", d and d.client or "?"))
 end
 

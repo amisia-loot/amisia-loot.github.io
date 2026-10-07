@@ -1156,7 +1156,7 @@ local function sectionProfessions(R)
         return "WERT", table.concat(parts, ", ") .. spellText
     end)
     if Pr and Pr.Available() then
-        local d = ns.PROFESSIONS
+        local d = ns.Data("PROFESSIONS")
         add(R, "WERT", "Daten", ("%d Berufe, Client %s, gebaut %s"):format(#d.P, show(d.client), show(d.built)))
     else
         add(R, "WERT", "Daten", "keine Berufsdaten")
@@ -1249,7 +1249,7 @@ end
 -- from its data)
 ---------------------------------------------------------------------------
 local function sectionTalents(R)
-    local T, d = ns.Talents, ns.TALENTS
+    local T, d = ns.Talents, ns.Data("TALENTS")
     if not T or not T.Available() then
         add(R, "WERT", "Talentdaten", "keine (TalentData.lua nicht geladen)")
         return

@@ -10,6 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import att_data  # noqa: E402
 import build_map  # noqa: E402
+import lua_data  # noqa: E402
 
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 FACTS = [{'key': 'thanes', 'name': 'Test Halls', 'kind': 'party', 'aliases': ['Halls of Testing']},
@@ -150,11 +151,9 @@ def test_output_header_without_guard_sorted_and_repeatable(tmp_path, resolved):
     build_map.write_lua(str(out), P, G, 'f8d7232b7c988cb31f927f076d4692bc85c6fd0c', '2026-10-06')
     assert out.read_text(encoding='utf-8') == first
 
-    from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
-    chunk = lua.eval('function(s) return assert(loadstring(s, "@MapData.lua")) end')(text)
-    ns = lua.eval('{}')
-    chunk('Amisia', ns)
+    # the table waits for its first use in the addon (Core/LazyData.lua)
+    assert 'ns.LazyData("MAP", [=[\nreturn {\n' in text and 'ns.MAP = {' not in text
+    ns = lua_data.load(text, 'MapData.lua')
     assert ns.MAP.P['Q:71001'] == '1426:4000:6000' and ns.MAP.G['Q:71001'] == 'Farmer Fixture' and ns.MAP.game == 'forever'
 
 

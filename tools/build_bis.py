@@ -47,6 +47,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import lua_data  # noqa: E402  (the lazy form of the data files)
 
 ADDON = os.path.join(ROOT, 'addon', 'Amisia')
 GEAR_DATA = os.path.join(ADDON, 'Data', 'GearData.lua')
@@ -645,7 +646,7 @@ def load_gear(path=GEAR_DATA):
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(unpack_returned_tuples=True)
     with open(path, encoding='utf-8') as fh:
-        src = fh.read()
+        src = lua_data.eager(fh.read())
     ns = lua.eval('{}')
     lua.eval('function(s, ns) return assert(loadstring(s))("Amisia", ns) end')(src, ns)
     g = ns.GEAR

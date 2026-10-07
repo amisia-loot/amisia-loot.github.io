@@ -10,6 +10,7 @@
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 
 Core\Registry.lua
+Core\LazyData.lua
 Core\Core.lua
 Core\Names.lua
 Raid\Alts.lua

@@ -56,6 +56,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
+import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
@@ -460,7 +461,7 @@ def previous_items(path=OUT):
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
     with open(path, encoding='utf-8') as fh:
-        rows = lua.execute(PREV_STUB)(fh.read())
+        rows = lua.execute(PREV_STUB)(lua_data.eager(fh.read()))
     out = {}
     for iid, r in rows.items():
         loc, cls, sub, level, q, bind, ilvl, mask, quest_only = (r[i] for i in range(1, 10))
@@ -973,8 +974,9 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
         lines.append('        ' + ', '.join(str(x) for x in missing[i:i + 20]) + ',')
     lines.append('    },')
     lines.append('}')
+    # the addon builds the table on first use (Core/LazyData.lua)
     with open(out, 'w', encoding='utf-8', newline='\n') as fh:
-        fh.write('\n'.join(lines) + '\n')
+        fh.write(lua_data.lazy('\n'.join(lines) + '\n', 'GEAR', len(keep)))
     return len(used)
 
 

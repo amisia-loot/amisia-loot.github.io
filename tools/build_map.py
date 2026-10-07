@@ -30,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
+import lua_data  # noqa: E402  (the lazy form of the data files)
 import build_gear  # noqa: E402  (Lua strings, dungeon name keys, the dungeon facts)
 
 GEAR = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'GearData.lua')
@@ -114,7 +115,7 @@ def load_gear_text(text):
     the game field (data built before it holds a zone in a dungeon record's instance field)."""
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
-    recs, has_game = lua.execute(GEAR_STUB)(text)
+    recs, has_game = lua.execute(GEAR_STUB)(lua_data.eager(text))
     out = []
     for rec in seq(py(recs)):
         out.append([None if v == '\0nil' else v for v in seq(rec)])
@@ -362,6 +363,8 @@ def write_lua(out, P, G, commit, built):
     text = '\n'.join(lines) + '\n'
     if re.search(r'[\x00-\x08\x0b-\x1f\x7f]', text):
         raise SystemExit('control characters in the output')
+    # the addon builds the table on first use (Core/LazyData.lua)
+    text = lua_data.lazy(text, 'MAP', sum(1 for k in P if P[k]))
     with open(out, 'w', encoding='utf-8', newline='\n') as fh:
         fh.write(text)
     return sum(1 for k in P if P[k])

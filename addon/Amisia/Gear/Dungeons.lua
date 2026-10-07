@@ -273,7 +273,7 @@ local function buildIndex(facts)
             end
         end
     end
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     if not d then return idx end
     local srcTo, srcQid, qidItems = {}, {}, {}
     for n, rec in ipairs(d.S) do
@@ -380,8 +380,8 @@ local function buildIndex(facts)
 end
 
 local function getIndex(facts)
-    if not index or indexGear ~= ns.GEAR or indexFacts ~= facts or indexQuests ~= ns.DUNGEON_QUESTS then
-        index, indexGear, indexFacts, indexQuests = buildIndex(facts), ns.GEAR, facts, ns.DUNGEON_QUESTS
+    if not index or indexGear ~= ns.Data("GEAR") or indexFacts ~= facts or indexQuests ~= ns.DUNGEON_QUESTS then
+        index, indexGear, indexFacts, indexQuests = buildIndex(facts), ns.Data("GEAR"), facts, ns.DUNGEON_QUESTS
     end
     return index
 end
@@ -772,7 +772,7 @@ end
 
 local function stateKey(o, facts, opts)
     checkNames()
-    return table.concat({ tostring(ns.GEAR), tostring(facts), tostring(ns.DUNGEON_QUESTS), ns.BisStamp(), dropsGen, questGen, namesGen,
+    return table.concat({ tostring(ns.Data("GEAR")), tostring(facts), tostring(ns.DUNGEON_QUESTS), ns.BisStamp(), dropsGen, questGen, namesGen,
         tostring(o.class), tostring(o.spec),
         tostring(o.kind), tostring(o.level), tostring(o.faction), opts and tostring(opts) or "" }, "|")
 end
@@ -1070,7 +1070,7 @@ end
 -- The nearest entrance of a dungeon as the map data knows it: point, map key; nil without one.
 function ns.DungeonEntrance(key)
     local e = factOf(key)
-    if not e or not ns.MAP or not ns.MapPoints then return nil end
+    if not e or not ns.HasData("MAP") or not ns.MapPoints then return nil end
     local keys = {}
     if type(e.inst) == "number" then keys[#keys + 1] = "I:" .. e.inst end
     if e.name then keys[#keys + 1] = "N:" .. e.name end
@@ -1084,7 +1084,7 @@ end
 
 -- Sets the map target (and the client's waypoint) to a dungeon's entrance; true, or nil and why.
 function ns.DungeonWaypoint(key)
-    if not ns.MAP then return nil, NO_MAP end
+    if not ns.HasData("MAP") then return nil, NO_MAP end
     local e = factOf(key)
     if not e then return nil, NO_DATA end
     local point, mapKey = ns.DungeonEntrance(key)
@@ -1115,8 +1115,9 @@ end
 -- and giver stand in where the quest data has none.
 local function questNode(qid, r, rec)
     local key = "Q:" .. tostring(qid)
-    local mapGiver = ns.MAP and ns.MAP.G and ns.MAP.G[key] or nil
-    local mapPoints = ns.MAP and ns.MAP.P and ns.MAP.P[key] or nil
+    local map = ns.Data("MAP")
+    local mapGiver = map and map.G and map.G[key] or nil
+    local mapPoints = map and map.P and map.P[key] or nil
     local n = { qid = qid, done = questDone(qid), active = questActive(qid) }
     n.gone = not n.done and not n.active and questGone(r)
     if r then
@@ -1268,7 +1269,8 @@ function ns.DungeonQuestWaypoint(qid)
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
     local seenGiver, seenPoint
     if ns.CollectQuestStart and qid then seenGiver, seenPoint = ns.CollectQuestStart(qid) end
-    local giver = r and r[7] or (ns.MAP and ns.MAP.G and qid and ns.MAP.G["Q:" .. qid]) or seenGiver or (r and r[1]) or "?"
+    local map = ns.Data("MAP")
+    local giver = r and r[7] or (map and map.G and qid and map.G["Q:" .. qid]) or seenGiver or (r and r[1]) or "?"
     if r and r[6] == "I" then
         local point = ns.DungeonEntrance(r[11])
         if point then

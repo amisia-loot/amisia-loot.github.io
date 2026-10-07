@@ -188,7 +188,7 @@ end
 -- Stats the item scan saw, as GearData.lua keeps them: "STRENGTH=5;RESISTANCE0_NAME=40" (the client's
 -- keys without ITEM_MOD_ and _SHORT; STAT knows the long spelling too).
 function Gear.ScannedStats(id)
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     local text = d and d.ST and d.ST[id]
     if not text then return nil end
     local s = {}
@@ -405,8 +405,8 @@ end
 -- Items
 ---------------------------------------------------------------------------
 
-local function data() return ns.GEAR end
-function Gear.Available() return ns.GEAR ~= nil and ns.GEAR_WEIGHTS ~= nil end
+local function data() return ns.Data("GEAR") end
+function Gear.Available() return ns.HasData("GEAR") and ns.GEAR_WEIGHTS ~= nil end
 
 -- The level cap of the loaded data set.
 function Gear.Cap()

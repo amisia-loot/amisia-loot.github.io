@@ -222,7 +222,7 @@ end
 
 -- The ids the gear planner wants scanned: its items and the ones its sources name but lack.
 function ns.GearScanIDs()
-    local d = ns.GEAR
+    local d = ns.Data("GEAR")
     if not d then return nil end
     local ids = {}
     for id in pairs(d.I) do ids[#ids + 1] = id end
