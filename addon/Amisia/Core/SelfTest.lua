@@ -749,7 +749,7 @@ local REQUIRED = {
     "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
-    "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "GetMerchantItemInfo",
+    "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "C_MerchantFrame.GetItemInfo",
     "GetPlayerFacing", "OpenWorldMap", "ToggleWorldMap", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
     "Mixin", "issecretvalue",
     "C_ChatInfo.SendChatMessage", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.RegisterAddonMessagePrefix",
@@ -782,6 +782,8 @@ local OPTIONAL = {
     -- line of a merchant's item
     "C_QuestLog.GetLogIndexForQuestID", "C_QuestLog.GetInfo", "GetQuestLogIndexByID", "GetQuestLogTitle",
     "C_TooltipInfo.GetMerchantItem",
+    -- the merchant's prices before Forever 1.60.1.70245 (C_MerchantFrame.GetItemInfo since)
+    "GetMerchantItemInfo",
     -- the quest tracker: all done quests in one call (else one call per quest), the race for race
     -- quests
     "C_QuestLog.GetAllCompletedQuestIDs", "UnitRace",

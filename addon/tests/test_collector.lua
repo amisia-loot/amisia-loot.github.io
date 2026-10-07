@@ -169,6 +169,24 @@ STUB.fire("MERCHANT_SHOW")
 assert(parsed("s", 906).items[6001].rep == "7@Donnerfels", "female label: " .. parsed("s", 906).items[6001].rep)
 AmisiaDB.collect.s[906] = nil
 NS.CollectMigrate(AmisiaDB)
+-- Forever 1.60.1.70245 has no GetMerchantItemInfo any more: C_MerchantFrame.GetItemInfo (a table)
+-- reads the same
+local oldInfo = _G.GetMerchantItemInfo
+_G.GetMerchantItemInfo = nil
+_G.C_MerchantFrame = { GetItemInfo = function(i)
+    local w = wares[i]
+    return w and { name = "name", texture = 1, price = w.price, stackCount = 1, numAvailable = w.avail, isPurchasable = true,
+        isUsable = true, hasExtendedCost = w.ext and true or false, isQuestStartItem = false } or nil
+end }
+STUB.npcGUID = "Creature-0-3110-1-47-907-00002E7CF2"
+STUB.fire("MERCHANT_SHOW")
+local v7 = parsed("s", 907)
+assert(v7 and v7.items[6001] and v7.items[6001].price == 1520 and v7.items[6001].flags == "", "gear through C_MerchantFrame")
+assert(v7.items[6002] == nil and v7.items[6003].flags == "L" and v7.items[6004].flags == "L" and v7.items[6005].flags == "x",
+    "limited stock and another currency through C_MerchantFrame")
+AmisiaDB.collect.s[907] = nil
+NS.CollectMigrate(AmisiaDB)
+_G.C_MerchantFrame, _G.GetMerchantItemInfo = nil, oldInfo
 -- a merchant without an NPC id is not recorded
 STUB.npcGUID = nil
 STUB.fire("MERCHANT_SHOW")

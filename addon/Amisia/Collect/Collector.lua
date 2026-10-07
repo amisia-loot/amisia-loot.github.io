@@ -800,6 +800,18 @@ local function merchantRep(i)
     return ""
 end
 
+-- Price, stock (-1 unlimited) and "another currency" of merchant slot i: C_MerchantFrame.GetItemInfo
+-- (a table; Forever 1.60.1.70245 has no GetMerchantItemInfo any more), else the old global.
+local function merchantInfo(i)
+    local api = _G.C_MerchantFrame
+    local info = type(api) == "table" and call(api.GetItemInfo, i)
+    if type(info) == "table" then
+        return ns.Plain(info.price), ns.Plain(info.numAvailable), ns.Plain(info.hasExtendedCost) == true
+    end
+    local _, _, price, _, avail, _, _, ext = call(_G.GetMerchantItemInfo, i)
+    return ns.Plain(price), ns.Plain(avail), ns.Plain(ext) and true or false
+end
+
 local function onMerchant()
     if not AmisiaDB or not ns.Get("collect.vendors") then return end
     local npc, name = npcNow()
@@ -810,8 +822,8 @@ local function onMerchant()
     for i = 1, math.min(n, 200) do
         local id = itemOf(call(GetMerchantItemLink, i))
         if id and not r.items[id] then
-            local _, _, price, _, avail, _, _, ext = call(GetMerchantItemInfo, i)
-            price, avail, ext = tonumber(ns.Plain(price)) or 0, tonumber(ns.Plain(avail)), ns.Plain(ext)
+            local price, avail, ext = merchantInfo(i)
+            price, avail = tonumber(price) or 0, tonumber(avail)
             local loc, class = itemKind(id)
             local limited = avail ~= nil and avail >= 0
             if wearable(loc) or class == CLASS_RECIPE or limited then

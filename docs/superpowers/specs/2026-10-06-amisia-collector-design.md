@@ -145,8 +145,9 @@ Quests und Mobs (wenige KB).
 - **QUEST_TURNED_IN**: merkt Quest und NPC für die Vorquest-Regel.
 - Ein Mindestlevel liefert der Client nicht; das niedrigste gesehene Spielerlevel beim Angebot
   ist eine obere Schranke und steht dafür.
-- **MERCHANT_SHOW**: nur mit NPC-ID. Je Ware `GetMerchantItemLink`, `GetMerchantItemInfo`
-  (Preis, `numAvailable >= 0` = begrenzt, `extendedCost` = andere Währung), Ruf aus
+- **MERCHANT_SHOW**: nur mit NPC-ID. Je Ware `GetMerchantItemLink`, `C_MerchantFrame.GetItemInfo`
+  (eine Tabelle: `price`, `numAvailable >= 0` = begrenzt, `hasExtendedCost` = andere Währung; Forever
+  1.60.1.70245 hat `GetMerchantItemInfo` nicht mehr, das bleibt als Rückfall für ältere Clients), Ruf aus
   `C_TooltipInfo.GetMerchantItem` mit dem Muster aus `ITEM_REQ_REPUTATION`
   (Stufe über `FACTION_STANDING_LABEL1..8`, auch die `_FEMALE`-Varianten, wo es sie gibt).
   Gespeichert werden Ausrüstung, Rezepte und begrenzte Waren (Futter und Reagenzien nicht: die
@@ -286,6 +287,7 @@ Absender zu sperren; CQ/CR/CK gehen nur per Flüstern an Clients, die CV gesende
 - `UnitGUID("npc")` bei QUEST_DETAIL/QUEST_COMPLETE und MERCHANT_SHOW (Forever), auch bei Quests
   aus Objekten und Items.
 - Argumente von QUEST_ACCEPTED auf Forever (Index + ID oder nur ID).
-- `GetMerchantItemInfo`-Rückgaben und die Ruf-Zeile im Händler-Tooltip.
+- `C_MerchantFrame.GetItemInfo` (`numAvailable` -1 bei unbegrenztem Vorrat wie früher?) und die
+  Ruf-Zeile im Händler-Tooltip.
 - `C_Map.GetPlayerMapPosition` in Instanzen (nil erwartet).
 - Größe von `AmisiaDB.collect` nach einigen Abenden (`/amisia quellen`).
