@@ -711,6 +711,9 @@ local OPTIONAL = {
     -- line of a merchant's item
     "C_QuestLog.GetLogIndexForQuestID", "C_QuestLog.GetInfo", "GetQuestLogIndexByID", "GetQuestLogTitle",
     "C_TooltipInfo.GetMerchantItem",
+    -- the quest tracker: all done quests in one call (else one call per quest), the race for race
+    -- quests
+    "C_QuestLog.GetAllCompletedQuestIDs", "UnitRace",
 }
 ST.OPTIONAL = OPTIONAL
 

@@ -219,6 +219,11 @@ local MAPS = {}
 local RACE = { HUMAN = 1, ORC = 2, DWARF = 3, NIGHTELF = 4, UNDEAD = 5, SCOURGE = 5, TAUREN = 6, GNOME = 7, TROLL = 8 }
 local ALLIANCE = { [1] = true, [3] = true, [4] = true, [7] = true }
 local CLASS = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
+-- skill lines by the data's constant names (requireSkill)
+local SKILL = { ALCHEMY = 171, BLACKSMITHING = 164, COOKING = 185, ENCHANTING = 333, ENGINEERING = 202, FIRST_AID = 129,
+                FISHING = 356, HERBALISM = 182, LEATHERWORKING = 165, MINING = 186, SKINNING = 393, TAILORING = 197,
+                JEWELCRAFTING = 755, LOCKPICKING = 633, POISONS = 40 }
+local ALL_ALLIANCE, ALL_HORDE = 1 + 4 + 8 + 64, 2 + 16 + 32 + 128
 
 local S = {}
 -- runs the map constants file; MAP for the data files (an unknown key gives nil, so its
@@ -279,6 +284,23 @@ local function raceCode(v, inherited)
     end
     if a and not h then return "A" elseif h and not a then return "H" end
     return ""
+end
+-- The races of a list as a mask (bit race id - 1); 0 for a whole faction or both, the inherited
+-- mask where the thing names none.
+local function raceMask(v, inherited)
+    if v == "A" or v == "H" then return 0 end
+    if not plain(v) then return inherited or 0 end
+    local mask, seen = 0, {}
+    for _, r in ipairs(v) do
+        local id = type(r) == "number" and r or RACE[NAMED[r] or ""]
+        if id and not seen[id] then seen[id] = true; mask = mask + 2 ^ (id - 1) end
+    end
+    if mask == ALL_ALLIANCE or mask == ALL_HORDE or mask == ALL_ALLIANCE + ALL_HORDE then return 0 end
+    return mask
+end
+local function skillOf(v)
+    if type(v) == "number" then return v end
+    return SKILL[NAMED[v] or ""]
 end
 local function classMask(v)
     local mask = 0
@@ -348,6 +370,7 @@ local function walk(v, ctx, depth)
     if t._skip or kind == "objective" or notInForever(t) then return end
     local c = setmetatable({}, { __index = ctx })
     c.races = raceCode(t.races, ctx.races)
+    c.raceMask = raceMask(t.races, ctx.raceMask)
     if kind == "inst" then
         local maps = ids(t.mapID)
         for _, m in ipairs(ids(t.maps)) do maps[#maps + 1] = m end
@@ -379,7 +402,8 @@ local function walk(v, ctx, depth)
         emit("quests", { id = id, file = ctx.file, zone = ctx.zone, inst = ctx.inst, givers = givers, objs = objs,
                          startItem = startItem, pts = pts, inside = #pts > 0 and inside, races = c.races,
                          classes = classMask(t.classes), lvl = type(t.lvl) == "number" and t.lvl or nil,
-                         pre = pre, alt = ids(t.altQuests) })
+                         pre = pre, alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
+                         breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true })
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
         local npc
@@ -712,7 +736,9 @@ def load(base=ATT_CACHE, items=True, wago=None):
     {'commit', 'files', 'errors': {file: text}, 'maps': {MAP constant: uiMapID},
      'instances': {ATT instance id: {'name', 'area', 'maps', 'points', 'file', 'old', 'mapID'}},
      'quests': {id: {'name', 'minLevel', 'faction', 'classes', 'givers', 'giver', 'points', 'objects',
-                     'startItem', 'inside', 'zone', 'inst', 'pre', 'alt', 'rewards', 'file', 'old'}},
+                     'startItem', 'inside', 'zone', 'inst', 'pre', 'alt', 'rewards', 'file', 'old',
+                     'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
+                     'breadcrumb', 'repeatable'}},
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
@@ -780,7 +806,9 @@ def load(base=ATT_CACHE, items=True, wago=None):
                'startItem': bool(r.get('startItem')), 'inside': bool(r.get('inside')),
                'zone': _int(r.get('zone')), 'inst': _int(r.get('inst')),
                'pre': [int(p) for p in r.get('pre') or []], 'alt': [int(p) for p in r.get('alt') or []],
-               'rewards': [], 'file': r['file'], 'old': old(r['file'])}
+               'rewards': [], 'file': r['file'], 'old': old(r['file']),
+               'races': int(r.get('raceMask') or 0), 'skill': _int(r.get('skill')) or 0,
+               'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable'))}
         have = quests.get(qid)
         if have is None:
             quests[qid] = rec

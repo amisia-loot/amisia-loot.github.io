@@ -23,22 +23,25 @@ neue Seite "Quests" im Hauptfenster, die für Level, Fraktion, Volk und Klasse d
 
 - Quelle nur AllTheThings (MIT, freigegeben, `tools/att_data.py` mit Sandbox): die Forever-Ordner
   und, wie beim Dungeon-Planer, die Classic-Ordner unter `zzOLD/` (Quests, die die Autoren noch nicht
-  verschoben haben; ein Forever-Eintrag gewinnt). Neu geladen werden zusätzlich `character/`
-  (Klassenquests: Jäger-Zähmen, Hexenmeister-Dämonen, Schurken-Gifte) und
-  `zzOLD/10 - Professions/` (Berufsquests); `refresh()` lädt sie mit, die anderen Builds lesen sie
-  nicht (eigene Ordnerliste `QUEST_DIRS`). Feiertage und Weltereignisse bleiben draußen.
+  verschoben haben; ein Forever-Eintrag gewinnt). Feiertage und Weltereignisse bleiben draußen.
 - Der Leser liefert je Quest zusätzlich Volksmaske, Beruf (`requireSkill`, Skill-Line-ID),
   Hinweis-Quest (`isBreadcrumb`) und wiederholbar (`repeatable`). `altQuests` heißt in den Daten
   "schließt sich gegenseitig aus" (Beispiel Darkshore 994/995), nicht "eine von mehreren Vorquests".
 - Kompakt: eine Zeichenkette je Quest, Felder mit `;` getrennt, Questgeber als NPC-ID mit eigener
   NPC-Tabelle (Name und Orte einmal statt je Quest), nur Ausrüstungsbelohnungen (Klasse Waffe/Rüstung
   im ItemDB-Export). Zonennamen englisch als Rückfall, der Client-Name (`C_Map.GetMapInfo`) gewinnt.
-- Das Skript misst die Größe und schreibt sie ins Log. Ziel: unter 400 KB Datei.
+- Das Skript misst die Größe und schreibt sie ins Log. Stand ATT bf0a1ad: 3796 Quests (2069 aus den
+  Classic-Ordnern), 1318 Questgeber, 76 Zonen, 350 KB Datei (Quest-Zeichenketten 201 KB).
+- `character/` und `zzOLD/10 - Professions/` enthalten bei bf0a1ad keine Quest, die nicht schon in
+  den Zonendateien steht; sie werden daher nicht gelesen (keine Änderung an `KEEP_DIRS`).
 
 ## Laden und Speicher
 
 - Die Datei hält nur Zeichenketten (kaum Tabellen). Zerlegt wird erst beim ersten Öffnen der Seite
-  oder beim ersten `/amisia quests` (`ns.QuestIndex()`), dann bleibt der Index bis zum /reload.
+  oder beim ersten `/amisia quests` (`ns.QuestIndex()`), in ein kleines Array je Quest (Listen
+  bleiben Zeichenketten), dann bleibt der Index bis zum /reload. Die Liste merkt sich je Quest nur
+  einen Statusbuchstaben; Gründe und Reihen entstehen nur für sichtbare Zeilen. Gemessen (lupa,
+  64 bit): Zerlegen 0,03 s, erste Liste aller Quests 0,03 s, zusammen etwa 2,9 MB.
 - Einstellung `quests.enabled` (Standard an): aus, dann gibt es weder Seite noch Index; der Befehl
   sagt, wie man sie einschaltet. Ein eigenes Load-on-Demand-Addon lohnt nicht: es bräuchte einen
   zweiten Syncthing-Ordner und eine zweite Verknüpfung auf dem PC.

@@ -925,6 +925,16 @@ function ns.CollectQuestStart(id)
     return r.gname ~= "" and r.gname or nil, point
 end
 
+-- The same from this client's own observation only (fields only heard from the guild left out):
+-- the giver's name, the point "uiMapID:x:y"; for places a waypoint may go to.
+function ns.CollectQuestOwnStart(id)
+    local r = get("q", id)
+    if not r then return nil, nil end
+    local name = ns.CollectOwn("q", r, "gname") and r.gname ~= "" and r.gname or nil
+    local point = ns.CollectOwn("q", r, "gpos") and r.gpos:match("^%d+:%d+:%d+$") and r.gpos or nil
+    return name, point
+end
+
 ---------------------------------------------------------------------------
 -- Load, settings, command
 ---------------------------------------------------------------------------
