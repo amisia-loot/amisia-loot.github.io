@@ -6,8 +6,9 @@
 -- The pasted text is untrusted: escape codes and bars are stripped, every field is checked and
 -- capped, and no link is ever built from it.
 local ADDON, ns = ...
+local L = ns.L
 
-local HEAD_FAIL = "Das ist keine Wunschliste der Amisia-Seite."
+local HEAD_FAIL = L["Das ist keine Wunschliste der Amisia-Seite."]
 local MAX_LINES = 2000      -- lines read, the head included
 local MAX_LINE = 200        -- bytes of one line that are looked at
 local NAME_MAX = 48
@@ -18,8 +19,8 @@ local TIP_NAMES = 8         -- names in the tooltip line, the rest counted
 -- The own game is always WoW Forever; "tbc" is named so that an old list is refused in words.
 local OWN_GAME = "forever"
 local GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary" }
-local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
-local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
+local PRIO_TIP = { [3] = L[" (hoch)"], [1] = L[" (niedrig)"] }
+local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
 local BLUE = { 0.55, 0.75, 1 }
 
 ---------------------------------------------------------------------------
@@ -68,7 +69,7 @@ function ns.ParseGuildWishes(text)
                 if ver ~= "1" or not day or not day:match("^%d%d%d%d%-%d%d%-%d%d$") then return nil, HEAD_FAIL end
                 game = game:lower()
                 if game ~= OWN_GAME then
-                    return nil, ("Diese Wunschliste ist für %s, du bist in %s."):format(gameName(game), gameName(OWN_GAME))
+                    return nil, L["Diese Wunschliste ist für %s, du bist in %s."]:format(gameName(game), gameName(OWN_GAME))
                 end
                 res.game, res.date, head = game, day, true
                 read = 1
@@ -104,7 +105,7 @@ function ns.ParseGuildWishes(text)
         end
     end
     if not head then return nil, HEAD_FAIL end
-    if res.n == 0 then return nil, "Die Liste ist leer." end
+    if res.n == 0 then return nil, L["Die Liste ist leer."] end
     for _, entries in pairs(res.list) do table.sort(entries, byPrio) end
     res.ended = ended
     return res
@@ -124,7 +125,7 @@ local refreshMarks
 function ns.SetGuildWishes(text)
     local res, why = ns.ParseGuildWishes(text)
     if not res then return nil, why end
-    if not AmisiaDB then return nil, "Amisia ist noch nicht geladen." end
+    if not AmisiaDB then return nil, L["Amisia ist noch nicht geladen."] end
     if type(AmisiaDB.bis) ~= "table" then ns.BisMigrate(AmisiaDB) end
     AmisiaDB.bis.guild = { game = res.game, date = res.date, at = time(), by = ns.UnitFullName("player"), n = res.n, list = res.list }
     refreshMarks()
@@ -148,7 +149,7 @@ end
 -- "Die Wunschliste ist 16 Tage alt." for a list older than two weeks, else nil.
 function ns.GuildWishesAgeText()
     local info = ns.GuildWishesInfo()
-    if info and info.age and info.age > OLD_DAYS then return ("Die Wunschliste ist %d Tage alt."):format(info.age) end
+    if info and info.age and info.age > OLD_DAYS then return L["Die Wunschliste ist %d Tage alt."]:format(info.age) end
     return nil
 end
 
@@ -213,13 +214,13 @@ function ns.GuildWishTooltipText(item)
     end
     local text
     if #shown == 0 then
-        text = "Gewünscht: niemand aus der Gruppe"
+        text = L["Gewünscht: niemand aus der Gruppe"]
     elseif #shown > TIP_NAMES then
-        text = "Gewünscht: " .. table.concat(shown, ", ", 1, TIP_NAMES) .. (" und %d weitere"):format(#shown - TIP_NAMES)
+        text = L["Gewünscht: %s und %d weitere"]:format(table.concat(shown, ", ", 1, TIP_NAMES), #shown - TIP_NAMES)
     else
-        text = "Gewünscht: " .. table.concat(shown, ", ")
+        text = L["Gewünscht: %s"]:format(table.concat(shown, ", "))
     end
-    if outside > 0 then text = text .. (" (+%d außerhalb)"):format(outside) end
+    if outside > 0 then text = text .. L[" (+%d außerhalb)"]:format(outside) end
     return text
 end
 
@@ -383,7 +384,7 @@ function ns.GuildWishAwardValues(item, names)
     table.sort(first, byPrio)
     local values = {}
     for _, e in ipairs(first) do
-        values[#values + 1] = { value = e.name, text = ("%s (Wunsch %s)"):format(e.name, PRIO_TEXT[e.prio] or "mittel") }
+        values[#values + 1] = { value = e.name, text = L["%s (Wunsch %s)"]:format(e.name, PRIO_TEXT[e.prio] or PRIO_TEXT[2]) }
     end
     for _, n in ipairs(rest) do values[#values + 1] = { value = n, text = n } end
     return values
@@ -394,9 +395,9 @@ end
 ---------------------------------------------------------------------------
 
 StaticPopupDialogs["AMISIA_GUILDWISH_CLEAR"] = {
-    text = "Die Gildenwünsche löschen?",
-    button1 = "Löschen",
-    button2 = "Abbrechen",
+    text = L["Die Gildenwünsche löschen?"],
+    button1 = L["Löschen"],
+    button2 = L["Abbrechen"],
     OnAccept = function() ns.ClearGuildWishes() end,
     timeout = 0,
     whileDead = true,
@@ -404,10 +405,10 @@ StaticPopupDialogs["AMISIA_GUILDWISH_CLEAR"] = {
     preferredIndex = 3,
 }
 
-ns.RegisterSlash("wuensche", { aliases = { "wishes" }, officer = true, desc = "Gildenwünsche von der Website einfügen",
+ns.RegisterSlash("wuensche", { en = "wishes", officer = true, desc = L["Gildenwünsche von der Website einfügen"],
     run = function()
         if not ns.IsOfficerView() then
-            ns.msg("Gildenwünsche nur in der Offiziersansicht.")
+            ns.msg(L["Gildenwünsche nur in der Offiziersansicht."])
             return
         end
         -- the gear page's guild view, with the import box

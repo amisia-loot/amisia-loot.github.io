@@ -2,6 +2,7 @@
 -- a quick menu with the pages and the recording switch. Drag the button around the minimap;
 -- /amisia minimap hides or shows it.
 local ADDON, ns = ...
+local L = ns.L
 
 local ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\Minimap"
 local DEFAULT_ANGLE = 200
@@ -22,22 +23,22 @@ function ns.MinimapMenuEntries()
     local officer = ns.IsOfficerView()
     local e = {}
     if gearAvailable() then
-        e[#e + 1] = { "Ausrüstung", function() ns.ShowGear("goals") end }
+        e[#e + 1] = { L["Ausrüstung"], function() ns.ShowGear("goals") end }
         if ns.ToggleGearFrame then
-            e[#e + 1] = { "Ausrüstungstabelle", function() ns.ToggleGearFrame() end }
+            e[#e + 1] = { L["Ausrüstungstabelle"], function() ns.ToggleGearFrame() end }
         end
         -- the map page goes with the gear page
         if ns.ShowMap and ns.Visible(ns.Panel("map")) then
-            e[#e + 1] = { "Karte", function() ns.ShowMap() end }
+            e[#e + 1] = { L["Karte"], function() ns.ShowMap() end }
         end
     end
     if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
-    if officer then e[#e + 1] = { "Vergaben", function() ns.ShowPage("awards") end } end
-    e[#e + 1] = { "Soft-Reserves", function() ns.ShowPage("softres") end }
-    e[#e + 1] = { "Raid-Log", function() ns.ShowPage("raidlog") end }
+    if officer then e[#e + 1] = { L["Vergaben"], function() ns.ShowPage("awards") end } end
+    e[#e + 1] = { L["Soft-Reserves"], function() ns.ShowPage("softres") end }
+    e[#e + 1] = { L["Raid-Log"], function() ns.ShowPage("raidlog") end }
     if officer then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
-    e[#e + 1] = { "Einstellungen", function() ns.ShowPage("settings") end }
-    e[#e + 1] = { ns.IsEnabled() and "Aufnahme pausieren" or "Aufnahme fortsetzen", function() ns.SetEnabled(not ns.IsEnabled()) end }
+    e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
+    e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }
     return e
 end
 
@@ -55,15 +56,15 @@ local function tooltip(owner, anchor)
     GameTooltip:AddLine("Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r", 0.89, 0.72, 0.34)
     local act = ns.Active and ns.Active()
     if act then
-        GameTooltip:AddLine(("Aufnahme läuft: %s"):format(act.zone or "?"), 0.31, 0.75, 0.48)
+        GameTooltip:AddLine(L["Aufnahme läuft: %s"]:format(act.zone or "?"), 0.31, 0.75, 0.48)
     elseif ns.IsEnabled and not ns.IsEnabled() then
-        GameTooltip:AddLine("Aufnahme pausiert", 0.88, 0.64, 0.27)
+        GameTooltip:AddLine(L["Aufnahme pausiert"], 0.88, 0.64, 0.27)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Linksklick", "Amisia-Fenster", 1, 1, 1, 0.8, 0.8, 0.8)
-    GameTooltip:AddDoubleLine("Rechtsklick", "Schnellmenü", 1, 1, 1, 0.8, 0.8, 0.8)
+    GameTooltip:AddDoubleLine(L["Linksklick"], L["Amisia-Fenster"], 1, 1, 1, 0.8, 0.8, 0.8)
+    GameTooltip:AddDoubleLine(L["Rechtsklick"], L["Schnellmenü"], 1, 1, 1, 0.8, 0.8, 0.8)
     if owner == button then
-        GameTooltip:AddDoubleLine("Ziehen", "Verschieben", 1, 1, 1, 0.8, 0.8, 0.8)
+        GameTooltip:AddDoubleLine(L["Ziehen"], L["Verschieben"], 1, 1, 1, 0.8, 0.8, 0.8)
     end
     GameTooltip:Show()
 end
@@ -131,9 +132,9 @@ function ns.ShowMinimapButton(on)
     if on then button:Show() else button:Hide() end
 end
 
-ns.RegisterSlash("minimap", { desc = "Minimap-Button ein- oder ausblenden", run = function()
+ns.RegisterSlash("minimap", { desc = L["Minimap-Button ein- oder ausblenden"], run = function()
     ns.Set("ui.minimap", not ns.Get("ui.minimap"))
-    ns.msg(ns.Get("ui.minimap") and "Minimap-Button eingeblendet." or "Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück.")
+    ns.msg(ns.Get("ui.minimap") and L["Minimap-Button eingeblendet."] or L["Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück."])
 end })
 
 -- The addon compartment (the addon menu at the minimap) calls these by name, from the TOC.

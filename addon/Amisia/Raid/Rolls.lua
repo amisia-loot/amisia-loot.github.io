@@ -3,6 +3,7 @@
 -- 1-99 offspec. Reserved names rank first, then MS, then OS, then the higher roll. With the
 -- plus-one in the order (awards.plusOrder), fewer mainspec wins rank first among the MS rolls.
 local ADDON, ns = ...
+local L = ns.L
 
 local KEEP = 10 * 60   -- a finished round answers ns.RollKind for this long
 local current, last, ticker
@@ -157,16 +158,16 @@ end
 -- the round ends, else the item). Clears r.dirty.
 function ns.AnnounceRollResult(r, prefix)
     r = r or current or last
-    if not r then return nil, "Keine Runde." end
-    if not r.done then return nil, "Die Runde läuft noch." end
+    if not r then return nil, L["Keine Runde."] end
+    if not r.done then return nil, L["Die Runde läuft noch."] end
     local list, _, standing = ns.RollDecide(r)
-    prefix = prefix or ("Ergebnis %s: "):format(r.link or r.name or "?")
+    prefix = prefix or L["Ergebnis %s: "]:format(r.link or r.name or "?")
     if #list == 0 then
-        ns.Announce(prefix .. "Niemand hat gewürfelt.")
+        ns.Announce(prefix .. L["Niemand hat gewürfelt."])
     elseif r.tie then
-        ns.Announce(("%sGleichstand: %s (%s). Bitte nochmal würfeln."):format(prefix, table.concat(r.tie, " und "), standing))
+        ns.Announce(L["%sGleichstand: %s (%s). Bitte nochmal würfeln."]:format(prefix, table.concat(r.tie, L[" und "]), standing))
     else
-        ns.Announce(("%sGewinner: %s (%s)."):format(prefix, r.winner, standing))
+        ns.Announce(L["%sGewinner: %s (%s)."]:format(prefix, r.winner, standing))
     end
     r.dirty = nil
     changed()
@@ -179,7 +180,7 @@ local function finish()
     current.done = true
     current.ended = time()
     current.leftAt = 0
-    ns.AnnounceRollResult(current, "Stopp! ")
+    ns.AnnounceRollResult(current, L["Stopp! "])
     last = current
     table.insert(history, 1, current)
     while #history > 10 do table.remove(history) end
@@ -189,13 +190,13 @@ end
 -- Starts a round for an item link. onlyNames restricts who counts (the tie-break).
 function ns.StartRoll(link, seconds, onlyNames)
     local id = ns.ItemID(link)
-    if not id then return nil, "Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]" end
+    if not id then return nil, L["Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]"] end
     if current and not current.done then finish() end
     -- a round changed by hand and not announced cannot be announced any more once a newer one runs
     for _, old in ipairs(history) do
         if old.dirty then
             old.dirty = nil
-            ns.msg(("Das geänderte Ergebnis für %s wurde nicht angesagt; die neue Runde ersetzt es."):format(old.link or old.name or "?"))
+            ns.msg(L["Das geänderte Ergebnis für %s wurde nicht angesagt; die neue Runde ersetzt es."]:format(old.link or old.name or "?"))
         end
     end
     seconds = tonumber(seconds) or ns.Get("rolls.seconds") or 20
@@ -222,10 +223,10 @@ function ns.StartRoll(link, seconds, onlyNames)
     end
     if not matcher then matcher = ns.BuildMatcher(RANDOM_ROLL_RESULT) end
     if onlyNames then
-        ns.Announce(("Stechen: %s. /roll. %d Sekunden."):format(table.concat(onlyNames, ", "), seconds))
+        ns.Announce(L["Stechen: %s. /roll. %d Sekunden."]:format(table.concat(onlyNames, ", "), seconds))
     else
-        ns.Announce(("Roll auf %s: /roll für Mainspec, /roll 99 für Offspec. %d Sekunden."):format(link, seconds))
-        if #reserved > 0 then ns.Announce("Reserviert von " .. table.concat(reserved, ", ") .. ".") end
+        ns.Announce(L["Roll auf %s: /roll für Mainspec, /roll 99 für Offspec. %d Sekunden."]:format(link, seconds))
+        if #reserved > 0 then ns.Announce(L["Reserviert von %s."]:format(table.concat(reserved, ", "))) end
     end
     local left = seconds
     ticker = C_Timer.NewTicker(1, function()
@@ -233,7 +234,7 @@ function ns.StartRoll(link, seconds, onlyNames)
         if current then current.leftAt = left end
         if ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
             -- a countdown is worthless after a few seconds (it waits during the chat lockdown)
-            ns.Announce(("%d Sekunden."):format(left), 3)
+            ns.Announce(L["%d Sekunden."]:format(left), 3)
         end
         if left <= 0 then finish() else changed() end
     end)
@@ -249,7 +250,7 @@ function ns.RollHistory() return history end
 -- Starts the tie-break of the current round, if it ended in a tie.
 function ns.RerollTie()
     local r = current or last
-    if not r or not r.tie then return nil, "Kein Gleichstand." end
+    if not r or not r.tie then return nil, L["Kein Gleichstand."] end
     return ns.StartRoll(r.link, 10, r.tie)
 end
 
@@ -277,13 +278,13 @@ local function onSystem(text)
     local ok, class = inGroup(name)
     local why
     if not ok then
-        why = "nicht in der Gruppe"
+        why = L["nicht in der Gruppe"]
     elseif current.only and not keyIn(current, current.only, name) then
-        why = "nicht im Stechen"
+        why = L["nicht im Stechen"]
     elseif keyIn(current, current.rolls, name) then
-        why = "schon gewürfelt"
+        why = L["schon gewürfelt"]
     elseif not kindOf(low, high) then
-        why = ("Bereich %d-%d"):format(low or 0, high or 0)
+        why = L["Bereich %d-%d"]:format(low or 0, high or 0)
     end
     if why then
         current.ignored[#current.ignored + 1] = { name = name, value = value, low = low, high = high, why = why }
@@ -311,7 +312,7 @@ end)
 ---------------------------------------------------------------------------
 -- Rolls by hand: when the roll chat is secret (boss fight on Forever), the loot master enters them
 ---------------------------------------------------------------------------
-local RANGE = "Wurf 1-100 (MS) oder 1-99 (OS)."
+local RANGE = L["Wurf 1-100 (MS) oder 1-99 (OS)."]
 local HIGH = { MS = 100, OS = 99 }
 
 -- The round a hand roll goes to: the running one, else the last one up to 10 minutes after its end.
@@ -348,7 +349,7 @@ local function knownName(name)
         local list = {}
         for i, c in ipairs(cands) do list[i] = c[1] end
         table.sort(list)
-        return nil, nil, ("Name nicht eindeutig: %s"):format(table.concat(list, ", "))
+        return nil, nil, L["Name nicht eindeutig: %s"]:format(table.concat(list, ", "))
     end
     return nil
 end
@@ -368,24 +369,24 @@ end
 -- anew and marked dirty; its result is announced only through ns.AnnounceRollResult.
 function ns.AddManualRoll(name, value, kind)
     local r = handRound()
-    if not r then return nil, "Keine Runde." end
+    if not r then return nil, L["Keine Runde."] end
     kind = tostring(kind or "MS"):upper()
     local high = HIGH[kind]
     value = tonumber(value)
     if not high or not value or value % 1 ~= 0 or value < 1 or value > high then return nil, RANGE end
     local typed = ns.FullName(ns.Plain(name))
-    if not typed then return nil, "Kein Name." end
+    if not typed then return nil, L["Kein Name."] end
     local full, class, ambiguous = knownName(typed)
-    if not full then return nil, ambiguous or ("%s ist nicht in der Gruppe."):format(typed) end
+    if not full then return nil, ambiguous or L["%s ist nicht in der Gruppe."]:format(typed) end
     -- one player, one entry: a roll from the chat or a tie-break name in another spelling keeps its key
     local key = keyIn(r, r.rolls, full)
     if r.only then
         local tied = keyIn(r, r.only, full)
-        if not tied then return nil, ("%s ist nicht am Stechen beteiligt."):format(full) end
+        if not tied then return nil, L["%s ist nicht am Stechen beteiligt."]:format(full) end
         key = key or tied
     end
     key = key or full
-    if awardedAfter(r) then return nil, "Das Item ist schon vergeben; erst die Vergabe ändern." end
+    if awardedAfter(r) then return nil, L["Das Item ist schon vergeben; erst die Vergabe ändern."] end
     local e = { name = key, value = value, low = 1, high = high, kind = kind, t = nextSeq(r), class = class, manual = true }
     if not r.rolls[key] then r.order[#r.order + 1] = key end
     r.rolls[key] = e
@@ -410,21 +411,21 @@ end
 -- /amisia wurf <Name> <Zahl> [os]: the number is the first purely numeric word, the name all
 -- before it (Forever names hold a space).
 local function rollCommand(rest)
-    if not ns.IsOfficerView() then ns.msg("Würfe von Hand nur in der Offiziersansicht.") return end
+    if not ns.IsOfficerView() then ns.msg(L["Würfe von Hand nur in der Offiziersansicht."]) return end
     local words = {}
     for w in (rest or ""):gmatch("%S+") do words[#words + 1] = w end
     local at
     for i, w in ipairs(words) do
         if w:match("^%d+$") then at = i break end
     end
-    if not at or at == 1 then ns.msg("Aufruf: /amisia wurf <Name> <Zahl> [os]") return end
+    if not at or at == 1 then ns.msg(L["Aufruf: /amisia wurf <Name> <Zahl> [os]"]) return end
     local name = table.concat(words, " ", 1, at - 1)
     local kind = (words[at + 1] or "ms"):upper()
     local e, why = ns.AddManualRoll(name, words[at], kind)
     if not e then ns.msg(why) return end
-    ns.msg(("Wurf eingetragen: %s %d (%s)."):format(e.name, e.value, e.kind))
+    ns.msg(L["Wurf eingetragen: %s %d (%s)."]:format(e.name, e.value, e.kind))
     local r = handRound()
-    if r and r.done and r.dirty then ns.msg("Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an.") end
+    if r and r.done and r.dirty then ns.msg(L["Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an."]) end
 end
 
 -- MS, OS or SR for an award: what the recipient reserved or rolled in the last round for this item.
@@ -436,27 +437,27 @@ function ns.RollKind(item, name)
     return e and e.kind or "-"
 end
 
-ns.RegisterSettings{ key = "rolls", label = "Rolls und Vergabe", order = 20, officer = true, items = {
-    { key = "rolls.seconds", type = "slider", label = "Roll-Dauer (Sekunden)", default = 20, min = 5, max = 120, step = 1 },
-    { key = "rolls.countdown", type = "toggle", label = "Countdown ansagen", default = true,
-      tip = "Sagt bei 10, 5 und 3 Sekunden die Restzeit an." },
-    { key = "rolls.channel", type = "choice", label = "Ansagekanal", default = "RAID_WARNING",
-      values = { { "RAID_WARNING", "Schlachtzugswarnung" }, { "RAID", "Schlachtzug" } },
-      tip = "Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug." },
-    { key = "rolls.altClick", type = "toggle", label = "Alt-Klick im Lootfenster startet einen Roll", default = true,
-      tip = "Ausschalten, wenn ein anderes Loot-Addon Alt-Klick selbst benutzt." },
-    { key = "rolls.lookHint", type = "choice", label = "Hinweis im Roll-Fenster: Aussehen schon vergeben", default = "dungeon",
-      values = { { "dungeon", "nur in Dungeons" }, { "all", "überall" }, { "off", "aus" } },
-      tip = "Grüne und blaue Items, die beim Aufheben gebunden werden: laut Blizzards Ankündigung bekommen in Dungeons alle Berechtigten das Aussehen schon beim Plündern. Für Schlachtzüge ist das nicht angekündigt." },
+ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, officer = true, items = {
+    { key = "rolls.seconds", type = "slider", label = L["Roll-Dauer (Sekunden)"], default = 20, min = 5, max = 120, step = 1 },
+    { key = "rolls.countdown", type = "toggle", label = L["Countdown ansagen"], default = true,
+      tip = L["Sagt bei 10, 5 und 3 Sekunden die Restzeit an."] },
+    { key = "rolls.channel", type = "choice", label = L["Ansagekanal"], default = "RAID_WARNING",
+      values = { { "RAID_WARNING", L["Schlachtzugswarnung"] }, { "RAID", L["Schlachtzug"] } },
+      tip = L["Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug."] },
+    { key = "rolls.altClick", type = "toggle", label = L["Alt-Klick im Lootfenster startet einen Roll"], default = true,
+      tip = L["Ausschalten, wenn ein anderes Loot-Addon Alt-Klick selbst benutzt."] },
+    { key = "rolls.lookHint", type = "choice", label = L["Hinweis im Roll-Fenster: Aussehen schon vergeben"], default = "dungeon",
+      values = { { "dungeon", L["nur in Dungeons"] }, { "all", L["überall"] }, { "off", L["aus"] } },
+      tip = L["Grüne und blaue Items, die beim Aufheben gebunden werden: laut Blizzards Ankündigung bekommen in Dungeons alle Berechtigten das Aussehen schon beim Plündern. Für Schlachtzüge ist das nicht angekündigt."] },
 }}
-ns.RegisterSlash("roll", { officer = true, args = "<Item-Link> [Sekunden]", desc = "Roll-Runde starten", run = function(rest)
+ns.RegisterSlash("roll", { officer = true, args = L["<Item-Link> [Sekunden]"], desc = L["Roll-Runde starten"], run = function(rest)
     local link, secs = rest:match("^(.-)%s*(%d*)$")
     local ok, why = ns.StartRoll(link, tonumber(secs))
-    if not ok then ns.msg(why or "Aufruf: /amisia roll <Item-Link> [Sekunden]") elseif ns.ShowRollFrame then ns.ShowRollFrame() end
+    if not ok then ns.msg(why or L["Aufruf: /amisia roll <Item-Link> [Sekunden]"]) elseif ns.ShowRollFrame then ns.ShowRollFrame() end
 end })
-ns.RegisterSlash("wurf", { aliases = { "addroll" }, officer = true, args = "<Name> <Zahl> [os]", desc = "Wurf von Hand in die Runde eintragen",
+ns.RegisterSlash("wurf", { en = "addroll", officer = true, args = L["<Name> <Zahl> [os]"], desc = L["Wurf von Hand in die Runde eintragen"],
     run = rollCommand })
-ns.RegisterSlash("rollzeit", { officer = true, args = "<5-120>", desc = "Standard-Dauer einer Roll-Runde", run = function(rest)
+ns.RegisterSlash("rollzeit", { en = "rolltime", officer = true, args = "<5-120>", desc = L["Standard-Dauer einer Roll-Runde"], run = function(rest)
     local ok = ns.Set("rolls.seconds", tonumber(rest))
-    ns.msg(ok and ("Roll-Dauer: %d Sekunden."):format(ns.Get("rolls.seconds")) or "Aufruf: /amisia rollzeit <5-120>")
+    ns.msg(ok and L["Roll-Dauer: %d Sekunden."]:format(ns.Get("rolls.seconds")) or L["Aufruf: /amisia rollzeit <5-120>"])
 end })

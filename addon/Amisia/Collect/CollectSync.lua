@@ -83,7 +83,7 @@ local function report(err)
 end
 local function hex4(s) return ns.Checksum(s):sub(13, 16) end
 local function debugLine(text)
-    if ns.Get("sync.debug") then DEFAULT_CHAT_FRAME:AddMessage("|cff999999Amisia Quellen: " .. text .. "|r") end
+    if ns.Get("sync.debug") then DEFAULT_CHAT_FRAME:AddMessage("|cff999999" .. ns.L["Amisia Quellen: %s"]:format(text) .. "|r") end
 end
 
 ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ local function send(kind, fields, chan, target, key, low, reserve)
         -- a CW answers a request even when the bytes are spent, within a small reserve
         if stats.bytes + n > L.sessionBytes + L.cwReserve then return false end
     elseif not afford(n, low) then
-        debugLine("Sendegrenze erreicht.")
+        debugLine(ns.L["Sendegrenze erreicht."])
         return false
     end
     local ok = ns.CommSend(kind, fields, chan, target, { low = true, when = canTalk, key = key })
@@ -380,7 +380,7 @@ end
 nextCR = function()
     if #pull.crs == 0 then return nextKind() end
     if hourCount() >= L.crPerHour then
-        debugLine("Anfragen der Stunde erreicht.")
+        debugLine(ns.L["Anfragen der Stunde erreicht."])
         return stopPull(true)
     end
     -- the first bucket must not have led a request in the last minute (the sender's Comm would drop
@@ -562,13 +562,13 @@ ns.CommOnBlob("CK", function(sender, tbl, chan, key)
     end
     if not ask or now() - ask.at > L.askKeep then
         stats.unasked = stats.unasked + 1
-        debugLine("Quellen-Daten ohne Anfrage verworfen.")
+        debugLine(ns.L["Quellen-Daten ohne Anfrage verworfen."])
         return
     end
     local list = checkBlob(tbl, ask)
     if not list then
         stats.bad = stats.bad + 1
-        debugLine("Ungültige Quellen-Daten verworfen.")
+        debugLine(ns.L["Ungültige Quellen-Daten verworfen."])
         asked[ask.akey] = nil
         if pull and pull.akey == ask.akey then missed() end
         return
@@ -787,7 +787,7 @@ local function serveOne()
     local left = math.min(L.sessionBytes - stats.bytes, L.sessionBytes / L.askerShare - a.bytes)
     local maxParts = math.min(L.blobParts, math.floor(left / (200 + PART_OVERHEAD)))
     if maxParts < 1 then
-        debugLine("Sendegrenze erreicht.")
+        debugLine(ns.L["Sendegrenze erreicht."])
         table.remove(serve, i)
         return sendCW(s.name, s.low, L.doneWait)
     end
@@ -810,7 +810,7 @@ local function serveOne()
     local parts = math.ceil(#packed / 200)
     local estimate = #packed + parts * PART_OVERHEAD
     if not afford(estimate, s.low) then
-        debugLine("Sendegrenze erreicht.")
+        debugLine(ns.L["Sendegrenze erreicht."])
         table.remove(serve, i)
         return sendCW(s.name, s.low, L.doneWait)
     end

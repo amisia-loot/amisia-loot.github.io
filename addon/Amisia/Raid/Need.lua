@@ -6,6 +6,7 @@
 -- (30 minutes) and shown to officers: the award dialog, the winner picker and a tooltip line.
 -- Nothing of it ever goes into the raid chat.
 local ADDON, ns = ...
+local L = ns.L
 
 local KEEP = 1800             -- seconds a question and its answers are kept
 local REPEAT_GAP = 120        -- the same item list is asked at most this often
@@ -125,12 +126,12 @@ local function newQid()
     return ("%04x"):format(math.random(0, 65535))
 end
 
--- Whether this client may ask at all: true, or false, the reason (German) and a code.
+-- Whether this client may ask at all: true, or false, the reason (for the screen) and a code.
 local function canAsk()
-    if not ns.CommReady() then return false, "Addon-Nachrichten sind aus oder nicht verfügbar.", "off" end
-    if not ns.IsOfficerView() or not ns.IsLootLead() then return false, "Fragen kann nur die Lootleitung.", "lead" end
-    if not homeRaid() then return false, "Fragen nur in einer eigenen Raidgruppe.", "raid" end
-    if not ns.SelfIsOfficer() then return false, "Fragen nur mit Offiziersrang: die Raider antworten sonst nicht.", "rank" end
+    if not ns.CommReady() then return false, L["Addon-Nachrichten sind aus oder nicht verfügbar."], "off" end
+    if not ns.IsOfficerView() or not ns.IsLootLead() then return false, L["Fragen kann nur die Lootleitung."], "lead" end
+    if not homeRaid() then return false, L["Fragen nur in einer eigenen Raidgruppe."], "raid" end
+    if not ns.SelfIsOfficer() then return false, L["Fragen nur mit Offiziersrang: die Raider antworten sonst nicht."], "rank" end
     return true
 end
 
@@ -141,7 +142,7 @@ function ns.NeedCanAsk()
 end
 
 -- Asks the raid who needs the items (ids or links, at most 8). Returns the question's number, or
--- nil, the reason (German) and a code ("recent" for a list asked within 2 minutes).
+-- nil, the reason (for the screen) and a code ("recent" for a list asked within 2 minutes).
 function ns.NeedAsk(items)
     local can, why, code = canAsk()
     if not can then return nil, why, code end
@@ -153,13 +154,13 @@ function ns.NeedAsk(items)
             ids[#ids + 1] = id
         end
     end
-    if #ids == 0 then return nil, "Kein Item.", "noitem" end
+    if #ids == 0 then return nil, L["Kein Item."], "noitem" end
     sweep()
     local sorted = {}
     for i, id in ipairs(ids) do sorted[i] = id end
     table.sort(sorted)
     local key = table.concat(sorted, ",")
-    if askedLists[key] then return nil, "Diese Items wurden gerade erst gefragt.", "recent" end
+    if askedLists[key] then return nil, L["Diese Items wurden gerade erst gefragt."], "recent" end
     local qid = newQid()
     local ok, err = ns.CommSend("UQ", { qid, table.concat(ids, ",") }, "RAID", nil, { ttl = ASK_TTL, key = "UQ:" .. qid })
     if not ok then return nil, err, "send" end
@@ -361,13 +362,16 @@ function ns.NeedOf(item)
     return out
 end
 
+-- the wish priorities as words (BIS_PRIO_TEXT's, in the client's language)
+local PRIO_WORD = { [3] = L["hoch##Prio"], [2] = L["mittel##Prio"], [1] = L["niedrig##Prio"] }
+
 local function upText(e)
     local slot = e.slot and ns.BIS_SLOT_NAME and ns.BIS_SLOT_NAME[e.slot]
-    return ("%s +%d %%%s"):format(e.name, e.pct, slot and (" (" .. slot .. ")") or "")
+    return ("%s +%d %%%s"):format(e.name, e.pct, slot and (" (" .. L[slot] .. ")") or "")
 end
 
 local function wishText(e)
-    return ("%s Wunsch (%s)"):format(e.name, (ns.BIS_PRIO_TEXT or {})[e.prio] or "mittel")
+    return L["%s Wunsch (%s)"]:format(e.name, PRIO_WORD[e.prio] or PRIO_WORD[2])
 end
 
 -- "Anna +12 % (Brust), Bob Wunsch (hoch) · 2 ohne Upgrade · 5 ohne Antwort", or nil when the item
@@ -382,12 +386,12 @@ function ns.NeedText(item)
     if #parts > 0 then
         text = table.concat(parts, ", ")
     elseif need.none > 0 then
-        text = "niemand"
+        text = L["niemand"]
     else
-        text = "noch keine Antworten"
+        text = L["noch keine Antworten"]
     end
-    if need.none > 0 then text = text .. (" · %d ohne Upgrade"):format(need.none) end
-    if need.missing > 0 then text = text .. (" · %d ohne Antwort"):format(need.missing) end
+    if need.none > 0 then text = text .. L[" · %d ohne Upgrade"]:format(need.none) end
+    if need.missing > 0 then text = text .. L[" · %d ohne Antwort"]:format(need.missing) end
     return text
 end
 
@@ -398,9 +402,9 @@ function ns.NeedLines(item)
     local out = {}
     for _, e in ipairs(need.up) do out[#out + 1] = upText(e) end
     for _, e in ipairs(need.wish) do out[#out + 1] = wishText(e) end
-    if need.none > 0 then out[#out + 1] = ("%d ohne Upgrade"):format(need.none) end
-    if need.missing > 0 then out[#out + 1] = "ohne Antwort: " .. table.concat(need.without, ", ") end
-    if #out == 0 then out[1] = "Noch keine Antworten." end
+    if need.none > 0 then out[#out + 1] = L["%d ohne Upgrade"]:format(need.none) end
+    if need.missing > 0 then out[#out + 1] = L["ohne Antwort: %s"]:format(table.concat(need.without, ", ")) end
+    if #out == 0 then out[1] = L["Noch keine Antworten."] end
     return out
 end
 
@@ -424,14 +428,14 @@ function ns.NeedAwardValues(item, values)
         local i = find(e.name)
         if i and not taken[i] then
             taken[i] = true
-            mid[#mid + 1] = { value = values[i].value, text = ("%s (Upgrade +%d %%)"):format(values[i].value, e.pct) }
+            mid[#mid + 1] = { value = values[i].value, text = L["%s (Upgrade +%d %%)"]:format(values[i].value, e.pct) }
         end
     end
     for _, e in ipairs(need.wish) do
         local i = find(e.name)
         if i and not taken[i] then
             taken[i] = true
-            mid[#mid + 1] = { value = values[i].value, text = ("%s (Wunsch %s)"):format(values[i].value, (ns.BIS_PRIO_TEXT or {})[e.prio] or "mittel") }
+            mid[#mid + 1] = { value = values[i].value, text = L["%s (Wunsch %s)"]:format(values[i].value, PRIO_WORD[e.prio] or PRIO_WORD[2]) }
         end
     end
     if #mid == 0 then return values end
@@ -459,9 +463,9 @@ function ns.NeedTooltipText(item)
     for _, e in ipairs(need.up) do shown[#shown + 1] = ("%s +%d %%"):format(e.name, e.pct) end
     for _, e in ipairs(need.wish) do shown[#shown + 1] = e.name end
     if #shown > TIP_NAMES then
-        return "Upgrade für: " .. table.concat(shown, ", ", 1, TIP_NAMES) .. (" und %d weitere"):format(#shown - TIP_NAMES)
+        return L["Upgrade für: %s und %d weitere"]:format(table.concat(shown, ", ", 1, TIP_NAMES), #shown - TIP_NAMES)
     end
-    return "Upgrade für: " .. table.concat(shown, ", ")
+    return L["Upgrade für: %s"]:format(table.concat(shown, ", "))
 end
 
 ns.OnItemTooltip("need", function(tip, _, id)
@@ -475,23 +479,23 @@ end)
 ---------------------------------------------------------------------------
 -- /amisia wer <Item-Link>
 ---------------------------------------------------------------------------
-ns.RegisterSlash("wer", { aliases = { "upgrade" }, args = "<Item-Link>", officer = true,
-    desc = "Wer braucht das? Die Raider antworten aus ihrer Ausrüstung",
+ns.RegisterSlash("wer", { en = "upgrade", args = L["<Item-Link>"], officer = true,   -- l10n-ok: the German command word
+    desc = L["Wer braucht das? Die Raider antworten aus ihrer Ausrüstung"],
     run = function(rest)
         rest = ns.Plain(rest)
         rest = type(rest) == "string" and rest:match("^%s*(.-)%s*$") or ""
         local id = ns.ItemID(rest) or tonumber(rest:match("^(%d+)$") or "")
         if not id then
-            ns.msg("Aufruf: /amisia wer <Item-Link>")
+            ns.msg(L["Aufruf: /amisia wer <Item-Link>"])
             return
         end
         if not ns.IsOfficerView() then
-            ns.msg("Nur in der Offiziersansicht.")
+            ns.msg(L["Nur in der Offiziersansicht."])
             return
         end
         local label = rest:find("|H", 1, true) and rest or ("Item " .. id)
         local function tell()
-            ns.msg(("Upgrade für %s: %s"):format(label, ns.NeedText(id) or "keine Antworten"))
+            ns.msg(L["Upgrade für %s: %s"]:format(label, ns.NeedText(id) or L["keine Antworten"]))
         end
         local qid, why, code = ns.NeedAsk({ id })
         if not qid then
@@ -499,6 +503,6 @@ ns.RegisterSlash("wer", { aliases = { "upgrade" }, args = "<Item-Link>", officer
             ns.msg(why)
             return
         end
-        ns.msg(("Gefragt, wer %s braucht. Antworten in %d s."):format(label, WER_WAIT))
+        ns.msg(L["Gefragt, wer %s braucht. Antworten in %d s."]:format(label, WER_WAIT))
         C_Timer.After(WER_WAIT, tell)
     end })

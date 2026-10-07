@@ -5,6 +5,7 @@
 -- zone's sorted list is kept until the target, the hidden places or the player's cell change.
 local ADDON, ns = ...
 local W, Gear, Map, T = ns.W, ns.Gear, ns.Map, ns.Theme
+local L = ns.L
 local GOLD = W.GOLD
 local GREY = T.GREY
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
@@ -14,9 +15,9 @@ local ROWS, ROW_H = 12, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local TICK = 0.5         -- seconds between two updates of the target line's distance
 local ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
-local KIND = { Q = "Quest", V = "Händler", P = "PvP-Händler", R = "Rar", W = "Gegner", X = "Eingang", D = "Eingang" }
-local NO_PLACE_WHY = { C = "Berufe", A = "Auktionshaus" }
-local ROW_HINT = "Klick: Ziel setzen. Shift-Klick: Weltkarte. Rechtsklick: mehr."
+local KIND = { Q = "Quest", V = L["Händler"], P = L["PvP-Händler"], R = L["Rar"], W = L["Gegner"], X = L["Eingang"], D = L["Eingang"] }
+local NO_PLACE_WHY = { C = L["Berufe"], A = L["Auktionshaus"] }
+local ROW_HINT = L["Klick: Ziel setzen. Shift-Klick: Weltkarte. Rechtsklick: mehr."]
 
 local page
 local builds = 0         -- index builds, for the tests
@@ -50,7 +51,8 @@ end
 
 local function longDate(iso)
     local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and (d .. "." .. m .. "." .. y) or "?"
+    if not y then return "?" end
+    return ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 local function plural(n, one, many) return ("%d %s"):format(n, n == 1 and one or many) end
@@ -62,8 +64,8 @@ local function plural(n, one, many) return ("%d %s"):format(n, n == 1 and one or
 local function noPlaceWhy(id)
     local rec = Gear.Sources(id, (Map.PageOpts()))[1] or Gear.Sources(id)[1]
     local k = rec and rec[1]
-    if k == "W" and not rec[2] then return "Weltdrops" end
-    return NO_PLACE_WHY[k] or "keine Ortsdaten"
+    if k == "W" and not rec[2] then return L["Weltdrops"] end
+    return NO_PLACE_WHY[k] or L["keine Ortsdaten"]
 end
 
 local function buildIndex()
@@ -139,7 +141,7 @@ local function hereZone()
         local pts = type(instID) == "number" and ns.MapPoints("I:" .. instID) or {}
         if #pts == 0 and type(name) == "string" and name ~= "" then pts = ns.MapPoints("N:" .. name) end
         if pts[1] then return pts[1].map end
-        return nil, "in einer Instanz"
+        return nil, L["in einer Instanz"]
     end
     local map = C_Map and C_Map.GetBestMapForUnit and ns.Plain(C_Map.GetBestMapForUnit("player"))
     for _ = 1, 10 do
@@ -151,7 +153,7 @@ local function hereZone()
         if kind < ZONE then break end
         map = ns.Plain(info.parentMapID)
     end
-    return nil, "unbekannt"
+    return nil, L["unbekannt"]
 end
 
 local viewKey = {}
@@ -199,7 +201,7 @@ end
 local function isEntrance(key) return type(key) == "string" and (key:sub(1, 2) == "I:" or key:sub(1, 2) == "N:") end
 
 local function kindText(e)
-    if isEntrance(e.key) then return "Eingang" end
+    if isEntrance(e.key) then return L["Eingang"] end
     return KIND[e.rec and e.rec[1]] or ""
 end
 
@@ -233,12 +235,12 @@ end
 local function targetText()
     local t = ns.MapTarget()
     if not t then
-        if foreignWaypoint() then return GREY .. "Dein eigener Wegpunkt ist gesetzt; Weg ersetzt ihn.|r" end
-        return "Kein Ziel gesetzt."
+        if foreignWaypoint() then return GREY .. L["Dein eigener Wegpunkt ist gesetzt; Weg ersetzt ihn."] .. "|r" end
+        return L["Kein Ziel gesetzt."]
     end
     local d = Map.Distance(t)
-    return ("Ziel: %s, %s %s%s"):format(t.label or "?", Map.ZoneName(t.map), Map.Coords(t),
-        d and (" · %d m"):format(math.floor(d + 0.5)) or "")
+    return (L["Ziel: %s, %s %s%s"]):format(t.label or "?", Map.ZoneName(t.map), Map.Coords(t),
+        d and L[" · %d m"]:format(math.floor(d + 0.5)) or "")
 end
 
 ---------------------------------------------------------------------------
@@ -256,7 +258,7 @@ local function fillRow(r, e)
     r.kind:SetText(kindText(e))
     r.src:SetText(sourceText(e))
     local where = Map.Coords(e.point)
-    if e.dist then where = where .. (" · %d m"):format(math.floor(e.dist + 0.5)) end
+    if e.dist then where = where .. L[" · %d m"]:format(math.floor(e.dist + 0.5)) end
     r.where:SetText(where)
     -- a hidden place is grey throughout, its items without their quality colour
     if e.hidden then
@@ -291,7 +293,7 @@ local function chosenZone()
 end
 
 local function pickerValues(idx, hereMap, hereText, chosen)
-    local values = { { value = "here", text = "Hier: " .. (hereMap and Map.ZoneName(hereMap) or hereText or "unbekannt") } }
+    local values = { { value = "here", text = L["Hier: %s"]:format(hereMap and Map.ZoneName(hereMap) or hereText or L["unbekannt"]) } }
     local found = false
     for _, z in ipairs(idx.list) do
         values[#values + 1] = { value = z.map, text = ("%s (%d)"):format(z.name, #z.spots) }
@@ -313,9 +315,9 @@ local function countsText(idx, z)
             end
         end
     end
-    local text = plural(n, "Ort", "Orte") .. " · " .. plural(items, "Item", "Items")
+    local text = plural(n, L["Ort"], L["Orte"]) .. " · " .. plural(items, "Item", "Items")
     if idx.without > 0 then
-        text = text .. (" · %s ohne Ort (%s)"):format(plural(idx.without, "Item", "Items"), table.concat(idx.reasons, ", "))
+        text = text .. (L[" · %s ohne Ort (%s)"]):format(plural(idx.without, "Item", "Items"), table.concat(idx.reasons, ", "))
     end
     return text
 end
@@ -344,21 +346,21 @@ local function refresh(f)
         f.empty:Hide()
     else
         if not ns.HasData("MAP") then
-            f.empty:SetText("Für diesen Client gibt es keine Kartendaten.")
+            f.empty:SetText(L["Für diesen Client gibt es keine Kartendaten."])
         elseif not ns.Get("map.pinsTargets") and not ns.Get("map.pinsWishes") then
-            f.empty:SetText("Ziele und Wünsche sind ausgeblendet. Oben einschalten.")
+            f.empty:SetText(L["Ziele und Wünsche sind ausgeblendet. Oben einschalten."])
         elseif idx.items == 0 then
-            f.empty:SetText("Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung.")
+            f.empty:SetText(L["Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung."])
         else
-            f.empty:SetText("In dieser Zone liegt nichts aus deinen Zielen und Wünschen.")
+            f.empty:SetText(L["In dieser Zone liegt nichts aus deinen Zielen und Wünschen."])
         end
         f.empty:Show()
     end
-    f.data:SetText(("Kartendaten vom %s · Orte aus öffentlichen Questdaten, Namen englisch."):format(longDate(ns.HasData("MAP") and ns.Data("MAP").built)))
+    f.data:SetText((L["Kartendaten vom %s · Orte aus öffentlichen Questdaten, Namen englisch."]):format(longDate(ns.HasData("MAP") and ns.Data("MAP").built)))
     local hidden = 0
     for _ in pairs(hiddenSet()) do hidden = hidden + 1 end
     if hidden > 0 then
-        f.showHidden:SetText(("Ausgeblendete zeigen (%d)"):format(hidden))
+        f.showHidden:SetText((L["Ausgeblendete zeigen (%d)"]):format(hidden))
         f.showHidden:Show()
     else
         f.showHidden:Hide()
@@ -374,13 +376,13 @@ local function create(parent)
         ns.Refresh()
     end)
     f.zone:SetPoint("TOPLEFT", 0, -1)
-    f.targets = W.Chip(f, "Ziele", 60, function() ns.Set("map.pinsTargets", not ns.Get("map.pinsTargets")) end)
+    f.targets = W.Chip(f, L["Ziele"], 60, function() ns.Set("map.pinsTargets", not ns.Get("map.pinsTargets")) end)
     f.targets:SetPoint("TOPLEFT", 248, -1)
-    f.wishes = W.Chip(f, "Wünsche", 70, function() ns.Set("map.pinsWishes", not ns.Get("map.pinsWishes")) end)
+    f.wishes = W.Chip(f, L["Wünsche"], 70, function() ns.Set("map.pinsWishes", not ns.Get("map.pinsWishes")) end)
     f.wishes:SetPoint("TOPLEFT", 314, -1)
-    W.Tooltip(f.targets, "Ziele", "Orte der Upgrades aus Ziele zeigen, hier und auf der Weltkarte.")
-    W.Tooltip(f.wishes, "Wünsche", "Orte der Wünsche zeigen, hier und auf der Weltkarte.")
-    f.open = W.Button(f, "Weltkarte öffnen", 130, function()
+    W.Tooltip(f.targets, L["Ziele"], L["Orte der Upgrades aus Ziele zeigen, hier und auf der Weltkarte."])
+    W.Tooltip(f.wishes, L["Wünsche"], L["Orte der Wünsche zeigen, hier und auf der Weltkarte."])
+    f.open = W.Button(f, L["Weltkarte öffnen"], 130, function()
         local zone = f.shownZone
         if zone then ns.MapShowOnWorldMap({ map = zone, x = 0.5, y = 0.5 }) end
     end)
@@ -389,7 +391,7 @@ local function create(parent)
     f.counts:SetPoint("TOPLEFT", 4, -28)
     f.target = W.Text(f, T.FONT.text, 484)
     f.target:SetPoint("TOPLEFT", 4, -52)
-    f.clear = W.Button(f, "Ziel löschen", 110, function()
+    f.clear = W.Button(f, L["Ziel löschen"], 110, function()
         ns.MapClearTarget()
         ns.Refresh()
     end)
@@ -400,14 +402,14 @@ local function create(parent)
     h:SetPoint("TOPLEFT", 0, -76)
     h:SetPoint("TOPRIGHT", 0, -76)
     -- the list is 590 wide (12 px for its scroll bar): the items give them, the button moves left
-    f.head = { kind = col(h, 4, 66, "Art"), src = col(h, 74, 186, "Quelle"), where = col(h, 264, 100, "Ort"),
-        items = col(h, 368, 164, "Items"), go = col(h, 540, 46, "Weg") }
+    f.head = { kind = col(h, 4, 66, L["Art"]), src = col(h, 74, 186, L["Quelle"]), where = col(h, 264, 100, L["Ort##Spalte"]),
+        items = col(h, 368, 164, "Items"), go = col(h, 540, 46, L["Weg"]) }
     f.list = W.List(f, ROWS, ROW_H, function(r)
         r.kind = col(r, 4, 66, nil, T.FONT.text)
         r.src = col(r, 74, 186, nil, T.FONT.text)
         r.where = col(r, 264, 100, nil, T.FONT.text)
         r.items = col(r, 368, 164, nil, T.FONT.text)
-        r.go = W.Button(r, "Weg", 54, function(self) go(self:GetParent().item) end)
+        r.go = W.Button(r, L["Weg"], 54, function(self) go(self:GetParent().item) end)
         r.go:SetPoint("LEFT", 536, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
@@ -432,10 +434,10 @@ local function create(parent)
 
     f.hint = W.Text(f, T.FONT.hint, 598)
     f.hint:SetPoint("TOPLEFT", 4, -390)
-    f.hint:SetText("Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen.")
+    f.hint:SetText(L["Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."])
     f.data = W.Text(f, T.FONT.hint, 598)
     f.data:SetPoint("TOPLEFT", 4, -408)
-    f.showHidden = W.Button(f, "Ausgeblendete zeigen", 170, function()
+    f.showHidden = W.Button(f, L["Ausgeblendete zeigen"], 170, function()
         wipe(hiddenSet())
         ns.Fire("MAP_TARGET")
         ns.Refresh()
@@ -454,7 +456,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "map", label = "Karte", icon = ICON, order = 55, group = "gear",
+ns.RegisterPanel{ key = "map", label = L["Karte"], icon = ICON, order = 55, group = "gear",
     available = function() return Gear.Available() and ns.HasData("MAP") end,
     create = create, refresh = refresh }
 

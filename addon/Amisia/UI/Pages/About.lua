@@ -1,13 +1,14 @@
 -- About: the version, who runs which Amisia version in raid and guild, and every command, generated
 -- from the registry.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local ORANGE, RED, GREY = "|cffff9933", "|cffff4d4d", "|cff8f8f8f"
 local ROWS, ROW_H = 8, 20
 -- column: field, x, width
-local COLS = { { "name", 6, 180, "Name" }, { "ver", 190, 72, "Version" }, { "view", 266, 80, "Ansicht" },
-               { "where", 350, 60, "Wo" }, { "last", 414, 126, "Zuletzt" } }
+local COLS = { { "name", 6, 180, "Name" }, { "ver", 190, 72, "Version" }, { "view", 266, 80, L["Ansicht"] },
+               { "where", 350, 60, L["Wo"] }, { "last", 414, 126, L["Zuletzt"] } }
 
 local page            -- the built frame
 local refreshAt, refreshPending
@@ -23,7 +24,7 @@ end
 local function lastText(at)
     if type(at) ~= "number" then return "-" end
     if date("%Y-%m-%d", at) == date("%Y-%m-%d", time()) then return date("%H:%M", at) end
-    return date("%d.%m.", at)
+    return ns.FmtDay(at)
 end
 
 local function buildRow(row)
@@ -40,7 +41,7 @@ local function fillRow(row, r)
         row.ver:SetText("-")
         row.view:SetText("-")
         row.where:SetText(colored(GREY, "Raid"))
-        row.last:SetText(colored(GREY, "kein Amisia?"))
+        row.last:SetText(colored(GREY, L["kein Amisia?"]))
         return
     end
     row.name:SetText(classColored(r.name, r.class))
@@ -52,7 +53,7 @@ local function fillRow(row, r)
     end
     row.ver:SetText(v)
     row.view:SetText(ns.VersionView(r))
-    row.where:SetText(r.where == "raid" and "Raid" or "Gilde")
+    row.where:SetText(r.where == "raid" and "Raid" or L["Gilde"])
     row.last:SetText(lastText(r.at))
 end
 
@@ -80,7 +81,7 @@ end
 
 function ns.AboutPageFrame() return page end
 
-ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
+ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.head = W.Text(f, T.FONT.title, 590)
@@ -91,9 +92,9 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.newer:SetPoint("TOPLEFT", 0, -38)
         f.title = W.Text(f, T.FONT.title, 360)
         f.title:SetPoint("TOPLEFT", 0, -62)
-        f.askGuild = W.Button(f, "Gilde fragen", 110, function() ask("guild") end)
+        f.askGuild = W.Button(f, L["Gilde fragen"], 110, function() ask("guild") end)
         f.askGuild:SetPoint("TOPRIGHT", 0, -58)
-        f.askRaid = W.Button(f, "Raid fragen", 110, function() ask("raid") end)
+        f.askRaid = W.Button(f, L["Raid fragen"], 110, function() ask("raid") end)
         f.askRaid:SetPoint("TOPRIGHT", -116, -58)
         tipButton(f.askGuild)
         tipButton(f.askRaid)
@@ -114,12 +115,12 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.empty:SetPoint("TOPLEFT", 6, -126)
         f.cmdTitle = W.Text(f, T.FONT.title, 300)
         f.cmdTitle:SetPoint("TOPLEFT", 0, -290)
-        f.cmdTitle:SetText("Befehle")
+        f.cmdTitle:SetText(L["Befehle"])
         -- the in-game self-test: a report of the client to copy into a chat with the developers
-        f.selfTest = W.Button(f, "Selbsttest", 110, function() if ns.ShowSelfTest then ns.ShowSelfTest() end end)
+        f.selfTest = W.Button(f, L["Selbsttest"], 110, function() if ns.ShowSelfTest then ns.ShowSelfTest() end end)
         -- between the list (ends at -282) and the command text (starts at -308)
         f.selfTest:SetPoint("TOPRIGHT", -12, -284)
-        f.selfTest.tip = "Prüft Namen, Sperren, Gildenränge, Atlanten, Vorlagen und Client-Funktionen und zeigt einen Bericht zum Kopieren. Sendet nichts."
+        f.selfTest.tip = L["Prüft Namen, Sperren, Gildenränge, Atlanten, Vorlagen und Client-Funktionen und zeigt einen Bericht zum Kopieren. Sendet nichts."]
         tipButton(f.selfTest)
         f.text = W.ScrollText(f)
         f.text:SetPoint("TOPLEFT", 0, -308)
@@ -130,12 +131,12 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
     end,
     refresh = function(f)
         refreshAt = GetTime()
-        f.head:SetText(("Amisia %s · Sync-Protokoll %d"):format(ns.VERSION or "", ns.SYNC_PROTO or 1))
-        f.sub:SetText("|cff8f86a3Raid-Aufnahme, Loot, Rolls, Soft-Reserves und Export für die Amisia-Loot-Seite.|r")
-        f.title:SetText("Amisia in Raid und Gilde")
+        f.head:SetText(L["Amisia %s · Sync-Protokoll %d"]:format(ns.VERSION or "", ns.SYNC_PROTO or 1))
+        f.sub:SetText("|cff8f86a3" .. L["Raid-Aufnahme, Loot, Rolls, Soft-Reserves und Export für die Amisia-Loot-Seite."] .. "|r")
+        f.title:SetText(L["Amisia in Raid und Gilde"])
         local newer, by = ns.VersionNewer()
         if newer then
-            f.newer:SetText(colored(ORANGE, ("Es gibt eine neuere Version: %s (gesehen bei %s). Bitte aktualisieren."):format(newer, by)))
+            f.newer:SetText(colored(ORANGE, L["Es gibt eine neuere Version: %s (gesehen bei %s). Bitte aktualisieren."]:format(newer, by)))
             f.newer:Show()
         else
             f.newer:SetText("")
@@ -146,18 +147,18 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         local inRaid = IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false
         local inGuild = IsInGuild() and true or false
         if not available then
-            setButton(f.askRaid, false, "Addon-Nachrichten sind nicht verfügbar.")
-            setButton(f.askGuild, false, "Addon-Nachrichten sind nicht verfügbar.")
+            setButton(f.askRaid, false, L["Addon-Nachrichten sind nicht verfügbar."])
+            setButton(f.askGuild, false, L["Addon-Nachrichten sind nicht verfügbar."])
         elseif not on then
-            setButton(f.askRaid, false, "Versionsprüfung ist ausgeschaltet.")
-            setButton(f.askGuild, false, "Versionsprüfung ist ausgeschaltet.")
+            setButton(f.askRaid, false, L["Versionsprüfung ist ausgeschaltet."])
+            setButton(f.askGuild, false, L["Versionsprüfung ist ausgeschaltet."])
         else
-            setButton(f.askRaid, inRaid, not inRaid and "Nur in einer Raidgruppe." or nil)
+            setButton(f.askRaid, inRaid, not inRaid and L["Nur in einer Raidgruppe."] or nil)
             local wait = ns.VersionGuildWait()
             if not inGuild then
-                setButton(f.askGuild, false, "Nur in einer Gilde.")
+                setButton(f.askGuild, false, L["Nur in einer Gilde."])
             elseif wait > 0 then
-                setButton(f.askGuild, false, ("Wieder in %s."):format(ns.VersionMinutes(wait)))
+                setButton(f.askGuild, false, L["Wieder in %s."]:format(ns.VersionMinutes(wait)))
             else
                 setButton(f.askGuild, true, nil)
             end
@@ -173,24 +174,24 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
                 guildRows = guildRows + (r.self and 0 or 1)
             end
         end
-        local guildText = ("Gilde: %d gesehen"):format(guildRows)
+        local guildText = L["Gilde: %d gesehen"]:format(guildRows)
         -- more clients than rows: the wheel scrolls the list
         if available and #rows > ROWS then
-            guildText = guildText .. (" · %d von %d, Mausrad"):format(ROWS, #rows)
+            guildText = guildText .. L[" · %d von %d, Mausrad"]:format(ROWS, #rows)
         end
         if inRaid then
-            f.summary:SetText(("Raid: %d von %d mit Amisia%s · %s"):format(withAmisia, math.max(#ns.GroupRoster(), raidRows),
-                outdated > 0 and (" · %d veraltet"):format(outdated) or "", guildText))
+            f.summary:SetText(L["Raid: %d von %d mit Amisia%s · %s"]:format(withAmisia, math.max(#ns.GroupRoster(), raidRows),
+                outdated > 0 and L[" · %d veraltet"]:format(outdated) or "", guildText))
         else
             f.summary:SetText(guildText)
         end
         if not available then
             f.list:SetItems({})
-            f.empty:SetText("Addon-Nachrichten sind nicht verfügbar.")
+            f.empty:SetText(L["Addon-Nachrichten sind nicht verfügbar."])
             f.empty:Show()
         elseif #rows <= 1 then
             f.list:SetItems({})
-            f.empty:SetText("Noch keine anderen Amisia-Clients gesehen.")
+            f.empty:SetText(L["Noch keine anderen Amisia-Clients gesehen."])
             f.empty:Show()
         else
             f.list:SetItems(rows)

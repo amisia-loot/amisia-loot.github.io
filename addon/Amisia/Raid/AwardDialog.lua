@@ -7,6 +7,7 @@
 -- On the Forever client names can be secret during a boss fight; every name goes through
 -- ns.Plain and a secret one is left out of the list.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local KINDS = { "MS", "OS", "SR", "-" }
@@ -26,8 +27,9 @@ local lootOpen = false
 -- Helpers
 ---------------------------------------------------------------------------
 local function shortDate(iso)
-    local m, d = tostring(iso or ""):match("^%d+%-(%d+)%-(%d+)$")
-    return d and (d .. "." .. m .. ".") or tostring(iso or "?")
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    if not d then return tostring(iso or "?") end
+    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 local function newest()
@@ -158,7 +160,7 @@ end
 -- Writes the award directly into the chosen raid, as a manual entry.
 local function direct(name, to, hint)
     if not alive(st.s) then
-        ns.msg("Der Raid wurde inzwischen gelöscht.")
+        ns.msg(L["Der Raid wurde inzwischen gelöscht."])
         return false
     end
     local a, why = ns.AddAwardTo(st.s, {
@@ -171,10 +173,10 @@ local function direct(name, to, hint)
     end
     local item = itemLabel()
     if to == "player" then
-        ns.msg(("Vergabe gespeichert: %s an %s (%s), von Hand eingetragen.%s"):format(item, name, a.kind, hint and (" " .. hint) or ""))
+        ns.msg(L["Vergabe gespeichert: %s an %s (%s), von Hand eingetragen.%s"]:format(item, name, a.kind, hint and (" " .. hint) or ""))
     else
-        local where = (lootOpen and ns.InLootWindow(st.item)) and "im Lootfenster" or "in den Taschen"
-        ns.msg(("Vergabe gespeichert: %s %s. Das Item liegt noch %s.%s"):format(item, to == "bank" and "an die Bank" or "zum Entzaubern",
+        local where = (lootOpen and ns.InLootWindow(st.item)) and L["im Lootfenster"] or L["in den Taschen"]
+        ns.msg(L["Vergabe gespeichert: %s %s. Das Item liegt noch %s.%s"]:format(item, to == "bank" and L["an die Bank"] or L["zum Entzaubern"],
             where, hint and (" " .. hint) or ""))
     end
     return true
@@ -189,7 +191,7 @@ local function give()
     if not st.item then return end
     takeNote()
     if not ns.FullName(st.winner) then
-        ns.msg("Zuerst einen Gewinner wählen.")
+        ns.msg(L["Zuerst einen Gewinner wählen."])
         return
     end
     local slot = lootSlot(st.item)
@@ -198,7 +200,7 @@ local function give()
         if candidate(slot, st.winner) then
             done = giveML(slot, st.winner, st.kind, st.note)
         else
-            done = direct(st.winner, "player", ("%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."):format(st.winner))
+            done = direct(st.winner, "player", L["%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."]:format(st.winner))
         end
     else
         done = direct(st.winner, "player")
@@ -218,7 +220,7 @@ local function giveTo(to)
         done = giveML(slot, who, "-", st.note)
     else
         local hint
-        if slot and type(who) == "string" and who ~= "" then hint = ("%s ist kein Kandidat für dieses Item."):format(who) end
+        if slot and type(who) == "string" and who ~= "" then hint = L["%s ist kein Kandidat für dieses Item."]:format(who) end
         done = direct("-", to, hint)
     end
     if done then D:Hide() end
@@ -251,7 +253,7 @@ end
 local function build()
     -- a dialog in the client's frame without a portrait, the title in its bar; everything below
     -- starts at y -32, under the bar
-    D = W.Window("AmisiaAwardDialog", WIDTH, HEIGHT, { title = "Vergabe", strata = "FULLSCREEN_DIALOG" })
+    D = W.Window("AmisiaAwardDialog", WIDTH, HEIGHT, { title = L["Vergabe"], strata = "FULLSCREEN_DIALOG" })
     D:SetPoint("CENTER", 0, 120)
     D:SetScript("OnHide", function() st = {} end)
 
@@ -266,7 +268,7 @@ local function build()
         if setItem((text or ""):match("^%s*(.-)%s*$")) then
             refresh()
         elseif (text or "") ~= "" then
-            ns.msg("Kein Item: Link per Shift-Klick einfügen oder Item-ID eingeben.")
+            ns.msg(L["Kein Item: Link per Shift-Klick einfügen oder Item-ID eingeben."])
         end
     end)
     D.itemEdit:SetPoint("LEFT", D.icon, "RIGHT", 6, 0)
@@ -276,7 +278,7 @@ local function build()
 
     local lab = W.Text(D, T.FONT.text, 56)
     lab:SetPoint("TOPLEFT", 12, -66)
-    lab:SetText("Gewinner")
+    lab:SetText(L["Gewinner"])
     D.winner = W.Picker(D, 136, function(v)
         -- a typed name is cleaned like an edit on the page does it
         st.winner = ns.FullName(v)
@@ -285,7 +287,7 @@ local function build()
     D.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
     local artLab = W.Text(D, T.FONT.text, 22)
     artLab:SetPoint("LEFT", D.winner, "RIGHT", 10, 0)
-    artLab:SetText("Art")
+    artLab:SetText(L["Art"])
     D.kinds = {}
     local prev = artLab
     for _, k in ipairs(KINDS) do
@@ -301,7 +303,7 @@ local function build()
 
     local noteLab = W.Text(D, T.FONT.text, 56)
     noteLab:SetPoint("TOPLEFT", 12, -92)
-    noteLab:SetText("Notiz")
+    noteLab:SetText(L["Notiz"])
     D.note = W.LineEdit(D, 296, function(text)
         st.note = ns.CleanNote(text)
         refresh()
@@ -321,12 +323,12 @@ local function build()
         local lines = st.item and ns.NeedLines and ns.NeedLines(st.item)
         if not lines then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-        GameTooltip:AddLine("Upgrade für", 1, 0.82, 0)
+        GameTooltip:AddLine(L["Upgrade für"], 1, 0.82, 0)
         for _, l in ipairs(lines) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
     D.needHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    D.ask = W.Button(D, "Fragen", ASK_W, function()
+    D.ask = W.Button(D, L["Fragen"], ASK_W, function()
         if not st.item or not ns.NeedAsk then return end
         local qid, why = ns.NeedAsk({ st.item })
         if not qid and why then ns.msg(why) end
@@ -339,13 +341,13 @@ local function build()
     D.hint:SetJustifyV("TOP")
 
     -- 90 + 60 + 90 + 86 and the gaps fit the 356 px between the margins
-    D.give = W.Button(D, "Vergeben", 90, give)
+    D.give = W.Button(D, L["Vergeben"], 90, give)
     D.give:SetPoint("BOTTOMLEFT", 12, 12)
     D.bank = W.Button(D, "Bank", 60, function() giveTo("bank") end)
     D.bank:SetPoint("LEFT", D.give, "RIGHT", 6, 0)
-    D.de = W.Button(D, "Entzaubern", 90, function() giveTo("de") end)
+    D.de = W.Button(D, L["Entzaubern"], 90, function() giveTo("de") end)
     D.de:SetPoint("LEFT", D.bank, "RIGHT", 6, 0)
-    D.cancel = W.Button(D, "Abbrechen", 86, function() D:Hide() end)
+    D.cancel = W.Button(D, L["Abbrechen"], 86, function() D:Hide() end)
     D.cancel:SetPoint("BOTTOMRIGHT", -12, 12)
 end
 
@@ -365,7 +367,7 @@ refresh = function()
         D.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
     D.raidText:SetText(("Raid: %s, %s"):format(s.zone or "?", shortDate(s.date)))
-    D.winner:SetValues(names(s, slot, st.item), "Anderer Name")
+    D.winner:SetValues(names(s, slot, st.item), L["Anderer Name"])
     D.winner:SetValue(st.winner)
     for _, k in ipairs(KINDS) do D.kinds[k]:SetOn(st.kind == k) end
     if not D.note:HasFocus() then D.note:SetText(st.note or "") end
@@ -376,29 +378,29 @@ refresh = function()
         local list = ns.RollRanking(r)
         D.roll:SetText(("Roll: %s %d (%s) · +1: %d"):format(r.winner, e and e.value or 0, (list[1] and list[1].rank) or "?", ns.PlusCount(r.winner)))
     else
-        D.roll:SetText(st.item and "Kein Roll-Ergebnis für dieses Item." or "")
+        D.roll:SetText(st.item and L["Kein Roll-Ergebnis für dieses Item."] or "")
     end
     -- who needs it: the answers, else "Fragen" while nothing was asked
     local needText = st.item and ns.NeedText and ns.NeedText(st.item)
     -- the button only where asking works (loot lead, own raid, officer rank, messages on)
     local canAsk = st.item ~= nil and ns.NeedCanAsk ~= nil and needText == nil and ns.NeedCanAsk() and true or false
     if needText then
-        D.need:SetText("Upgrade für: " .. needText)
+        D.need:SetText(L["Upgrade für: %s"]:format(needText))
     else
-        D.need:SetText(canAsk and "Upgrade für: noch nicht gefragt" or "")
+        D.need:SetText(canAsk and L["Upgrade für: noch nicht gefragt"] or "")
     end
     D.need:SetWidth(canAsk and (356 - ASK_W - 6) or 356)
     D.needHit:SetWidth(canAsk and (356 - ASK_W - 6) or 356)
     if canAsk then D.ask:Show() else D.ask:Hide() end
     -- the way the hand-out goes
     if not st.item then
-        D.hint:SetText("Item-Link per Shift-Klick einfügen oder Item-ID eingeben.")
+        D.hint:SetText(L["Item-Link per Shift-Klick einfügen oder Item-ID eingeben."])
     elseif slot then
-        D.hint:SetText("Das Item liegt im Lootfenster: Vergeben geht über Master Loot, die Vergabe wird nach der Übergabe gespeichert.")
+        D.hint:SetText(L["Das Item liegt im Lootfenster: Vergeben geht über Master Loot, die Vergabe wird nach der Übergabe gespeichert."])
     else
-        D.hint:SetText(("Kein Lootfenster mit Master Loot: die Vergabe wird in den Raid eingetragen, die Übergabe machst du selbst."))
+        D.hint:SetText(L["Kein Lootfenster mit Master Loot: die Vergabe wird in den Raid eingetragen, die Übergabe machst du selbst."])
     end
-    D.give:SetText(slot and "Vergeben" or "Eintragen")
+    D.give:SetText(slot and L["Vergeben"] or L["Eintragen"])
     D.give:SetEnabled(st.item ~= nil and ns.FullName(st.winner) ~= nil)
     D.bank:SetEnabled(st.item ~= nil)
     D.de:SetEnabled(st.item ~= nil)
@@ -409,7 +411,7 @@ end
 function ns.ShowAwardDialog(item, s)
     s = s or newest()
     if not s then
-        ns.msg("Noch kein Raid aufgezeichnet: Vergaben brauchen einen Raid.")
+        ns.msg(L["Noch kein Raid aufgezeichnet: Vergaben brauchen einen Raid."])
         return nil
     end
     if not D then build() end

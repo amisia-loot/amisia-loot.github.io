@@ -12,6 +12,7 @@
 -- the sender (NW), who gathers again. A keeper's own changes stay in a journal until a later
 -- keeper's snapshot shows (by its lineage) that it has them; what it lacks goes as wishes.
 local ADDON, ns = ...
+local L = ns.L
 
 local CLAIM_KEEP = 900        -- seconds a claim of the keeper role holds (outside the lockdown)
 local ST_EVERY = 240          -- the keeper's only repetition in the raid
@@ -462,19 +463,29 @@ local function map(v, max)
     return n
 end
 
+-- SyncCheck's reasons (German words the code returns and the tests compare) for the screen.
+local WHY_TEXT = {
+    Daten = L["Daten##Abbild"], ["Schlüssel"] = L["Schlüssel##Abbild"], Kopf = L["Kopf##Abbild"],   -- l10n-ok: reason codes
+    Raid = L["Raid##Abbild"], Zeit = L["Zeit##Abbild"], Anzahl = L["Anzahl##Abbild"], Kennung = L["Kennung##Abbild"],   -- l10n-ok: reason codes
+    Vergabe = L["Vergabe##Abbild"], Grabstein = L["Grabstein##Abbild"], ["Plus-Eins"] = L["Plus-Eins##Abbild"],   -- l10n-ok: reason codes
+    Offiziersteil = L["Offiziersteil##Abbild"], Notiz = L["Notiz##Abbild"], Ersatzbank = L["Ersatzbank##Abbild"],   -- l10n-ok: reason codes
+    Kill = L["Kill##Abbild"], ["Prüfsumme"] = L["Prüfsumme##Abbild"], ["kein Raid"] = L["kein Raid##Abbild"],   -- l10n-ok: reason codes
+}
+local function whyText(why) return WHY_TEXT[why] or tostring(why) end
+
 -- true, or nil and the reason. so may be nil (a raider checks the public part alone); with so the
 -- checksum is checked too. s: the raid it is for (its key must match).
 function ns.SyncCheck(sp, so, s)
     if type(sp) ~= "table" then return nil, "Daten" end
     local key = sp.k
-    if not isKey(key) or (s and ns.RaidKey(s) ~= key) then return nil, "Schlüssel" end
+    if not isKey(key) or (s and ns.RaidKey(s) ~= key) then return nil, "Schlüssel" end   -- l10n-ok: reason code
     if not int(sp.r, 0, MAX_REV) or not int(sp.e, 0, MAX_TERM) or not isHash(sp.h) or not nameOk(sp.by) then return nil, "Kopf" end
     if type(sp.d) ~= "string" or key:sub(1, 10) ~= sp.d or not int(sp.i, 0, 99999999) or not text(sp.z, 80) then return nil, "Raid" end
     local lo, hi = dayRange(sp.d)
     if not lo then return nil, "Raid" end
     local span = hi - lo
     local function at(v) return int(v, lo, hi) end
-    if not at(sp.t0) then return nil, "Zeit" end
+    if not at(sp.t0) then return nil, "Zeit" end   -- l10n-ok: reason code
     local t0 = sp.t0
     local function rel(v, zero) return int(v, -span, span) and ((zero and v == 0) or at(t0 + v)) end
     if not isList(sp.a, MAX_AWARDS) or not isList(sp.g, MAX_GONE) then return nil, "Anzahl" end
@@ -484,7 +495,7 @@ function ns.SyncCheck(sp, so, s)
         ids[r[1]] = true
         if not nameOk(r[2]) or not int(r[3], 1, 999999) or not rel(r[4]) or not KINDS[r[5]] or not text(r[6], 80) or r[6] == ""
             or not TARGETS[r[7]] or not int(r[8], 0, 999999) or not rel(r[9], true) then
-            return nil, "Vergabe"
+            return nil, "Vergabe"   -- l10n-ok: reason code
         end
     end
     for _, r in ipairs(sp.g) do
@@ -529,7 +540,7 @@ function ns.SyncCheck(sp, so, s)
             return nil, "Kill"
         end
     end
-    if ns.SyncHashOf(sp, so) ~= sp.h then return nil, "Prüfsumme" end
+    if ns.SyncHashOf(sp, so) ~= sp.h then return nil, "Prüfsumme" end   -- l10n-ok: reason code
     return true
 end
 
@@ -723,9 +734,9 @@ local function broadcast(s)
     s.sync.key, s.sync.hash, s.sync.keeper, s.sync.at = key, sp.h, me(), time()
     local ok, why = ns.CommSendBlob("SP", key, sp, "RAID", nil, { key = "SP:" .. key, ttl = DATA_TTL })
     if not ok then
-        if why == "Daten zu groß." and not warnedSize then
+        if why == "Daten zu groß." and not warnedSize then   -- l10n-ok: Comm's reason, compared
             warnedSize = true
-            ns.msg("Der Raid-Stand ist zu groß für den Abgleich.")
+            ns.msg(L["Der Raid-Stand ist zu groß für den Abgleich."])
         end
         return
     end
@@ -886,8 +897,8 @@ local function handOver(new)
     if not new or ns.SameName(new, me()) then return end
     if ns.Get("sync.notify") == false then return end
     local r = rankOf(new, masterLooter())
-    ns.msg(("%s hält jetzt den Raid-Stand%s. Deine Änderungen gehen an ihn."):format(new,
-        r == 1 and " (Plündermeister)" or r == 2 and " (Schlachtzugsleiter)" or ""))
+    ns.msg(L["%s hält jetzt den Raid-Stand%s. Deine Änderungen gehen an ihn."]:format(new,
+        r == 1 and L[" (Plündermeister)"] or r == 2 and L[" (Schlachtzugsleiter)"] or ""))
 end
 
 update = function()
@@ -1189,7 +1200,7 @@ local function queueWish(s, key, w, base, noMerge)
                 sendWish(key, old)
             elseif not fullSaid[key] then
                 fullSaid[key] = true
-                ns.msg("Zu viele wartende Änderungen für den Raid-Stand. Die älteste wird nicht abgeglichen.")
+                ns.msg(L["Zu viele wartende Änderungen für den Raid-Stand. Die älteste wird nicht abgeglichen."])
             end
         end
     end
@@ -1620,8 +1631,8 @@ local function addConflict(s, p, by, why, rev)
     if ns.Get("sync.notify") ~= false then
         local a = o.id and ns.FindAward(s, o.id)
         local item = (a and a.item) or (o.a and o.a.item)
-        ns.msg(("Konflikt bei %s: %s hat die Vergabe %s. Siehe Seite Vergaben."):format(ns.ItemName(item or 0), by,
-            why == "GONE" and "gelöscht" or "zuerst geändert"))
+        ns.msg(L["Konflikt bei %s: %s hat die Vergabe %s. Siehe Seite Vergaben."]:format(ns.ItemName(item or 0), by,
+            why == "GONE" and L["gelöscht"] or L["zuerst geändert"]))
     end
 end
 
@@ -1673,13 +1684,13 @@ function ns.SyncResolve(s, opid, takeIt)
     for i, x in ipairs(list) do
         if x.opid == opid then c, idx = x, i break end
     end
-    if not c then return nil, "Kein Konflikt." end
+    if not c then return nil, L["Kein Konflikt."] end
     if takeIt then
         local cur, key = running()
-        if s ~= cur then return nil, "Der Raid läuft nicht mehr; Änderungen bleiben lokal." end
+        if s ~= cur then return nil, L["Der Raid läuft nicht mehr; Änderungen bleiben lokal."] end
         local o = type(c.wish) == "table" and c.wish or {}
         local a, _, gone = ns.FindAward(s, o.id)
-        if not a then return nil, "Vergabe nicht mehr vorhanden." end
+        if not a then return nil, L["Vergabe nicht mehr vorhanden."] end
         local w
         if o.op == "edit" or o.op == "restore" then
             if gone then
@@ -1694,7 +1705,7 @@ function ns.SyncResolve(s, opid, takeIt)
         elseif o.op == "delete" then
             w = { op = "delete", id = o.id, was = {} }
         else
-            return nil, "Diese Änderung kann nicht erneut gesendet werden."
+            return nil, L["Diese Änderung kann nicht erneut gesendet werden."]
         end
         table.remove(list, idx)
         if role == "keeper" and roleKey == key and not takeover then
@@ -1780,7 +1791,7 @@ end
 local function refuse(key, r, why)
     badRev[key] = r
     stats.refused = stats.refused + 1
-    debugOnce("refused", ("Ungültiges Abbild verworfen (%s)."):format(tostring(why)))
+    debugOnce("refused", L["Ungültiges Abbild verworfen (%s)."]:format(whyText(why)))
 end
 
 local function done(key)
@@ -1810,11 +1821,11 @@ local function gatherPart(name, part, tbl)
     if not c.sp or not c.so or c.sp.r ~= c.so.r then return end
     t.cands[low] = nil
     local s = sessionFor(t.key)
-    local ok, why = false, "kein Raid"
+    local ok, why = false, "kein Raid"   -- l10n-ok: reason code
     if s ~= nil then ok, why = ns.SyncCheck(c.sp, c.so, s) end
     if not ok then
         stats.refused = stats.refused + 1
-        debugOnce("refused", ("Ungültiges Abbild verworfen (%s)."):format(tostring(why)))
+        debugOnce("refused", L["Ungültiges Abbild verworfen (%s)."]:format(whyText(why)))
     else
         noteSeen(t.key, c.sp.e, c.sp.r, name)
         if order(c.sp.e, c.sp.r, termOf(s), revOf(s)) > 0 and (not t.best or order(c.sp.e, c.sp.r, t.best.sp.e, t.best.sp.r) > 0) then
@@ -2074,10 +2085,10 @@ ns.CommOn("NO", function(sender, f)
     elseif why == "DENIED" then
         if not deniedSaid[f[1]] then
             deniedSaid[f[1]] = true
-            ns.msg(("%s nimmt deine Änderungen nicht an (kein Offiziersrang laut Gildenliste)."):format(name))
+            ns.msg(L["%s nimmt deine Änderungen nicht an (kein Offiziersrang laut Gildenliste)."]:format(name))
         end
     else
-        debugOnce("no:" .. why, ("Änderung abgelehnt (%s)."):format(why))
+        debugOnce("no:" .. why, L["Änderung abgelehnt (%s)."]:format(why))
     end
     ns.Fire("DATA_CHANGED")
     ns.Fire("SYNC_STATE")
@@ -2163,50 +2174,50 @@ function ns.SyncStatus(s)
     s = s or cur
     local tip = {}
     if not ns.CommAvailable() or ns.Get("sync.enabled") == false then
-        tip[1] = ns.CommAvailable() and "Der Abgleich ist in den Einstellungen ausgeschaltet." or "Addon-Nachrichten sind nicht verfügbar."
-        return "Sync: aus", "grey", tip
+        tip[1] = ns.CommAvailable() and L["Der Abgleich ist in den Einstellungen ausgeschaltet."] or L["Addon-Nachrichten sind nicht verfügbar."]
+        return L["Sync: aus"], "grey", tip
     end
     if not ns.CommPacking() then
-        tip[1] = "Dem Client fehlen die Pack-Funktionen; der Raid-Abgleich ist aus. Versionsprüfung geht weiter."
-        return "Sync: dieser Client kann nicht packen", "grey", tip
+        tip[1] = L["Dem Client fehlen die Pack-Funktionen; der Raid-Abgleich ist aus. Versionsprüfung geht weiter."]
+        return L["Sync: dieser Client kann nicht packen"], "grey", tip
     end
     if not s or s ~= cur then
-        tip[1] = "Abgeglichen wird nur der laufende Raid. Die Website gleicht ältere Raids über die Kennung der Vergaben ab."
-        return "Sync: älterer Raid, Änderungen bleiben lokal", "grey", tip
+        tip[1] = L["Abgeglichen wird nur der laufende Raid. Die Website gleicht ältere Raids über die Kennung der Vergaben ab."]
+        return L["Sync: älterer Raid, Änderungen bleiben lokal"], "grey", tip
     end
     local sync = type(s.sync) == "table" and s.sync or {}
     local n, stuck = ns.SyncPendingCount(s)
     local keeper = ns.SyncKeeperName()
-    tip[#tip + 1] = "Hüter: " .. (keeper or "keiner")
-    tip[#tip + 1] = ("Stand %d · Prüfsumme %s"):format(num(sync.rev), isHash(sync.hash) and sync.hash or "-")
-    tip[#tip + 1] = "Wartende Änderungen: " .. n
-    tip[#tip + 1] = "Konflikte: " .. #ns.SyncConflicts(s)
-    tip[#tip + 1] = ("Schlange: %s%s"):format(plural(ns.CommQueueSize(), "Nachricht", "Nachrichten"), ns.CommHeld() and " (Kampfsperre)" or "")
+    tip[#tip + 1] = L["Hüter: %s"]:format(keeper or L["keiner##Hüter"])
+    tip[#tip + 1] = L["Stand %d · Prüfsumme %s"]:format(num(sync.rev), isHash(sync.hash) and sync.hash or "-")
+    tip[#tip + 1] = L["Wartende Änderungen: %d"]:format(n)
+    tip[#tip + 1] = L["Konflikte: %d"]:format(#ns.SyncConflicts(s))
+    tip[#tip + 1] = L["Schlange: %s%s"]:format(plural(ns.CommQueueSize(), L["Nachricht"], L["Nachrichten"]), ns.CommHeld() and L[" (Kampfsperre)"] or "")
     if ns.CommHeld() and ns.CommQueueSize() > 0 then
-        return ("Sync: wartet auf Kampfende (%s)"):format(plural(ns.CommQueueSize(), "Nachricht", "Nachrichten")), "gold", tip
+        return L["Sync: wartet auf Kampfende (%s)"]:format(plural(ns.CommQueueSize(), L["Nachricht"], L["Nachrichten"])), "gold", tip
     end
     if stuck > 0 then
-        return ("Sync: %s nicht abgeglichen"):format(plural(stuck, "Änderung", "Änderungen")), "gold", tip
+        return L["Sync: %s nicht abgeglichen"]:format(plural(stuck, L["Änderung"], L["Änderungen"])), "gold", tip
     end
     if not keeper then
-        table.insert(tip, 1, "Die Lootleitung hat kein Amisia 2.1 oder keinen Offiziersrang. Jeder Offizier arbeitet für sich; die Website gleicht über die Kennung ab.")
-        return "Sync: kein Hüter im Raid", "grey", tip
+        table.insert(tip, 1, L["Die Lootleitung hat kein Amisia 2.1 oder keinen Offiziersrang. Jeder Offizier arbeitet für sich; die Website gleicht über die Kennung ab."])
+        return L["Sync: kein Hüter im Raid"], "grey", tip
     end
     if ns.SyncIsKeeper() then
-        return ("Sync: du bist Hüter · %s"):format(plural(officerCount(), "Offizier", "Offiziere")), "green", tip
+        return L["Sync: du bist Hüter · %s"]:format(plural(officerCount(), L["Offizier"], L["Offiziere"])), "green", tip
     end
     if n > 0 then
-        return ("Sync: %s auf %s"):format(n == 1 and "1 Änderung wartet" or (n .. " Änderungen warten"), keeper), "gold", tip
+        return L["Sync: %s auf %s"]:format(n == 1 and L["1 Änderung wartet"] or L["%d Änderungen warten"]:format(n), keeper), "gold", tip
     end
-    return ("Sync: Hüter %s · Stand %d · vor %s"):format(keeper, num(sync.rev), ago(sync.at)), "grey", tip
+    return L["Sync: Hüter %s · Stand %d · vor %s"]:format(keeper, num(sync.rev), ago(sync.at)), "grey", tip
 end
 
 -- "/amisia sync jetzt": the keeper sends the snapshot at once; a follower sends his waiting
 -- wishes again and asks the keeper. Returns "keeper" | "follower", or nil and the reason.
 function ns.SyncNow()
-    if not ready() then return nil, "Der Raid-Abgleich ist aus." end
+    if not ready() then return nil, L["Der Raid-Abgleich ist aus."] end
     local s, key = running()
-    if not s then return nil, "Keine laufende Aufnahme." end
+    if not s then return nil, L["Keine laufende Aufnahme."] end
     update()
     if role == "keeper" and roleKey == key and not takeover then
         sendToken, sendFirst = nil, nil
@@ -2220,20 +2231,20 @@ function ns.SyncNow()
             { key = "RQ:" .. key })
         return "follower"
     end
-    return nil, "Kein Hüter im Raid."
+    return nil, L["Kein Hüter im Raid."]
 end
 
 ns.RegisterSyncCommand("jetzt", function()
     if not ns.IsOfficerView() then
-        ns.msg("Nur in der Offiziersansicht.")
+        ns.msg(L["Nur in der Offiziersansicht."])
         return
     end
     local result, why = ns.SyncNow()
     if result == "keeper" then
-        ns.msg("Raid-Stand gesendet.")
+        ns.msg(L["Raid-Stand gesendet."])
     elseif result == "follower" then
         local n = ns.SyncPendingCount()
-        ns.msg(("Beim Hüter nachgefragt%s."):format(n > 0 and (", " .. plural(n, "Änderung", "Änderungen") .. " erneut gesendet") or ""))
+        ns.msg(L["Beim Hüter nachgefragt%s."]:format(n > 0 and L[", %s erneut gesendet"]:format(plural(n, L["Änderung"], L["Änderungen"])) or ""))
     else
         ns.msg(why)
     end
@@ -2248,20 +2259,20 @@ do
     for i, it in ipairs(items) do
         if it.key == "sync.enabled" then at = i + 1 end
     end
-    table.insert(items, at, { key = "sync.raiderAwards", type = "toggle", label = "Vergaben des Raids von der Lootleitung empfangen", default = true })
+    table.insert(items, at, { key = "sync.raiderAwards", type = "toggle", label = L["Vergaben des Raids von der Lootleitung empfangen"], default = true })
     local before = #items + 1
     for i, it in ipairs(items) do
         if it.key == "sync.officerRanks" then before = i end
     end
-    table.insert(items, before, { key = "sync.notify", type = "toggle", label = "Hüterwechsel und Konflikte im Chat melden", default = true,
+    table.insert(items, before, { key = "sync.notify", type = "toggle", label = L["Hüterwechsel und Konflikte im Chat melden"], default = true,
         officer = true })
     -- the switches of "Wer braucht das?" belong to the section too
     local have = {}
     for _, it in ipairs(items) do have[it.key] = true end
     for _, it in ipairs({
-        { key = "sync.shareUpgrades", type = "toggle", label = "Der Lootleitung meine Upgrades nennen", default = true },
-        { key = "sync.askUpgrades", type = "toggle", label = "Beim Ansagen fragen, für wen ein Item ein Upgrade ist", default = true, officer = true },
-        { key = "sync.needTooltip", type = "toggle", label = "Tooltip-Zeile Upgrade für", default = true, officer = true },
+        { key = "sync.shareUpgrades", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true },
+        { key = "sync.askUpgrades", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true },
+        { key = "sync.needTooltip", type = "toggle", label = L["Tooltip-Zeile Upgrade für"], default = true, officer = true },
     }) do
         if not have[it.key] then items[#items + 1] = it end
     end
@@ -2291,23 +2302,23 @@ end)
 
 ns.RegisterSyncCommand("an", function()
     ns.Set("sync.enabled", true)
-    ns.msg("Raid-Abgleich an.")
+    ns.msg(L["Raid-Abgleich an."])
 end)
 
 ns.RegisterSyncCommand("aus", function()
     ns.Set("sync.enabled", false)
-    ns.msg("Raid-Abgleich aus.")
+    ns.msg(L["Raid-Abgleich aus."])
 end)
 
 -- "/amisia sync selbsttest": packs the snapshot of the running or newest raid, unpacks it again
 -- and compares; says the size and the parts (checks the client's pack functions in the game).
 ns.RegisterSyncCommand("selbsttest", function()
     if not ns.Get("ui.expert") then
-        ns.msg("Nur im Expertenmodus.")
+        ns.msg(L["Nur im Expertenmodus."])
         return
     end
     if not ns.CommPacking() then
-        ns.msg("Selbsttest: dieser Client kann nicht packen (C_EncodingUtil fehlt). Der Raid-Abgleich ist aus.")
+        ns.msg(L["Selbsttest: dieser Client kann nicht packen (C_EncodingUtil fehlt). Der Raid-Abgleich ist aus."])
         return
     end
     local s = ns.Active()
@@ -2316,14 +2327,14 @@ ns.RegisterSyncCommand("selbsttest", function()
         s = list[#list]
     end
     if not s then
-        ns.msg("Selbsttest: noch kein Raid aufgezeichnet.")
+        ns.msg(L["Selbsttest: noch kein Raid aufgezeichnet."])
         return
     end
     local sp, so = ns.SyncBuild(s)
     local pp, err = ns.CommPack(sp)
     local po = pp and ns.CommPack(so)
     if not pp or not po then
-        ns.msg("Selbsttest: Packen fehlgeschlagen" .. (err and (" (" .. err .. ")") or "") .. ".")
+        ns.msg(L["Selbsttest: Packen fehlgeschlagen%s."]:format(err and (" (" .. tostring(err) .. ")") or ""))
         return
     end
     local bp, bo = ns.CommUnpack(pp), ns.CommUnpack(po)
@@ -2331,7 +2342,7 @@ ns.RegisterSyncCommand("selbsttest", function()
     local valid, why = false, nil
     if same then valid, why = ns.SyncCheck(bp, bo, s) end
     local np, no = #ns.CommChunks(pp), #ns.CommChunks(po)
-    ns.msg(("Selbsttest: Abbild gepackt und entpackt, %s. Öffentlicher Teil %d Zeichen in %d Teilen, Offiziersteil %d Zeichen in %d Teilen%s."):format(
-        same and "gleich" or "NICHT gleich", #pp, np, #po, no,
-        same and not valid and (", aber ungültig (" .. tostring(why) .. ")") or ""))
+    ns.msg(L["Selbsttest: Abbild gepackt und entpackt, %s. Öffentlicher Teil %d Zeichen in %d Teilen, Offiziersteil %d Zeichen in %d Teilen%s."]:format(
+        same and L["gleich"] or L["NICHT gleich"], #pp, np, #po, no,
+        same and not valid and L[", aber ungültig (%s)"]:format(whyText(why)) or ""))
 end)

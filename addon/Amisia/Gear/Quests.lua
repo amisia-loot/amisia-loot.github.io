@@ -12,15 +12,16 @@
 -- once so its strings are collected.
 local ADDON, ns = ...
 local Gear = ns.Gear
+local L, N_ = ns.L, ns.N_
 
 local Q = {}
 ns.Quests = Q
 
 local MAX_CHAIN = 40          -- quests of one chain at most
 local MAX_DEPTH = 30          -- pre-quest levels walked at most
-local NO_START = "Für diese Quest kennt Amisia keinen Startort."
-local ITEM_START = "Diese Quest startet durch ein Item."
-local NO_MAP = "Keine Kartendaten für diesen Client."
+local NO_START = L["Für diese Quest kennt Amisia keinen Startort."]
+local ITEM_START = L["Diese Quest startet durch ein Item."]
+local NO_MAP = L["Keine Kartendaten für diesen Client."]
 local MICRO, ORPHAN = 5, 6    -- Enum.UIMapType of sub zones that count as the zone above them
 Q.NO_START, Q.ITEM_START = NO_START, ITEM_START
 
@@ -29,21 +30,27 @@ Q.NO_START, Q.ITEM_START = NO_START, ITEM_START
 local ID, ZONE, NAME, MIN, FAC, CLASSES, RACES, SKILL, GIVER, POINTS, START, PRE, ALT, REWARDS, FLAGS, NEED =
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 
-local RACE_NAMES = { "Mensch", "Orc", "Zwerg", "Nachtelf", "Untoter", "Tauren", "Gnom", "Troll" }
+-- German keys, shown through L
+local RACE_NAMES = { N_("Mensch"), N_("Orc"), N_("Zwerg"), N_("Nachtelf"), N_("Untoter"), N_("Tauren"), N_("Gnom"), N_("Troll") }
 local RACE_IDS = { Human = 1, Orc = 2, Dwarf = 3, NightElf = 4, Scourge = 5, Undead = 5, Tauren = 6, Gnome = 7, Troll = 8 }
 local CLASS_ORDER = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
--- skill lines the data names (requireSkill) and their German names
+-- skill lines the data names (requireSkill) and their German names (the German client's skill line
+-- names match them; shown through L, the English client's names match the English text)
 local SKILL_NAMES = {
-    [171] = "Alchimie", [164] = "Schmiedekunst", [185] = "Kochkunst", [333] = "Verzauberkunst", [202] = "Ingenieurskunst",
-    [129] = "Erste Hilfe", [356] = "Angeln", [182] = "Kräuterkunde", [165] = "Lederverarbeitung", [186] = "Bergbau",
-    [393] = "Kürschnerei", [197] = "Schneiderei", [755] = "Juwelierskunst", [633] = "Schlossknacken", [40] = "Gifte",
+    [171] = N_("Alchimie"), [164] = N_("Schmiedekunst"), [185] = N_("Kochkunst"), [333] = N_("Verzauberkunst"),
+    [202] = N_("Ingenieurskunst"), [129] = N_("Erste Hilfe"), [356] = N_("Angeln"), [182] = N_("Kräuterkunde"),
+    [165] = N_("Lederverarbeitung"), [186] = N_("Bergbau"), [393] = N_("Kürschnerei"), [197] = N_("Schneiderei"),
+    [755] = N_("Juwelierskunst"), [633] = N_("Schlossknacken"), [40] = N_("Gifte"),
 }
 local SKILL_BY_NAME = {}
-for id, name in pairs(SKILL_NAMES) do SKILL_BY_NAME[name:lower()] = id end
+for id, name in pairs(SKILL_NAMES) do
+    SKILL_BY_NAME[name:lower()] = id
+    SKILL_BY_NAME[L[name]:lower()] = id
+end
 Q.SKILL_NAMES = SKILL_NAMES
 local STATUS_RANK = { active = 1, open = 2, locked = 3, done = 4 }
 local STATUS_OF = { a = "active", o = "open", l = "locked", d = "done" }
-Q.STATUS_TEXT = { active = "im Log", open = "annehmbar", locked = "gesperrt", done = "erledigt" }
+Q.STATUS_TEXT = { active = L["im Log"], open = L["annehmbar"], locked = L["gesperrt"], done = L["erledigt"] }
 
 local function report(err)
     local handler = geterrorhandler and geterrorhandler()
@@ -352,7 +359,7 @@ end
 
 -- The zone's name: the client's, else the data's English one; "Ohne Zone" for 0.
 function Q.ZoneName(z)
-    if not z or z == 0 then return "Ohne Zone" end
+    if not z or z == 0 then return L["Ohne Zone"] end
     local n = zoneNames[z]
     if n then return n end
     local info = mapInfo(z)
@@ -374,7 +381,7 @@ local function hasBit(mask, i) return math.floor(mask / 2 ^ (i - 1)) % 2 == 1 en
 local function raceText(mask)
     local out = {}
     for i, name in ipairs(RACE_NAMES) do
-        if hasBit(mask, i) then out[#out + 1] = name end
+        if hasBit(mask, i) then out[#out + 1] = L[name] end
     end
     return table.concat(out, "/")
 end
@@ -404,20 +411,20 @@ local function limits(idx, r, o, add)
     local n, foreign, note = 0, false, nil
     if r[FAC] ~= "" and o.faction and r[FAC] ~= o.faction then
         n, foreign = n + 1, true
-        if add then add("faction", r[FAC] == "H" and "nur Horde" or "nur Allianz") end
+        if add then add("faction", r[FAC] == "H" and L["nur Horde"] or L["nur Allianz"]) end
     end
     if r[RACES] > 0 and o.race and not hasBit(r[RACES], o.race) then
         n, foreign = n + 1, true
-        if add then add("race", "nur " .. raceText(r[RACES])) end
+        if add then add("race", L["nur %s"]:format(raceText(r[RACES]))) end
     end
     if r[CLASSES] > 0 and o.class and not Gear.HasClassBit(r[CLASSES], o.class) then
         n, foreign = n + 1, true
-        if add then add("class", "nur " .. classText(r[CLASSES])) end
+        if add then add("class", L["nur %s"]:format(classText(r[CLASSES]))) end
     end
     for a in eachId(r[ALT]) do
         if isDone(a) then
             n = n + 1
-            if add then add("alt", "Alternative erledigt: " .. Q.Title(a)) end
+            if add then add("alt", L["Alternative erledigt: %s"]:format(Q.Title(a))) end
             break
         end
     end
@@ -444,10 +451,10 @@ local function limits(idx, r, o, add)
         if add then
             local rest = ""
             if more > 0 then
-                rest = need == 1 and (" (oder %d weitere)"):format(more) or not need and (" (+%d)"):format(more)
-                    or (" (%d von %d nötig)"):format(need - have, more + 1)
+                rest = need == 1 and (L[" (oder %d weitere)"]):format(more) or not need and (" (+%d)"):format(more)
+                    or (L[" (%d von %d nötig)"]):format(need - have, more + 1)
             end
-            add("pre", "Vorquest fehlt: " .. Q.Title(first) .. rest)
+            add("pre", L["Vorquest fehlt: %s"]:format(Q.Title(first)) .. rest)
         end
     end
     -- a breadcrumb leads to a quest: taken or done, the way there is gone
@@ -456,24 +463,24 @@ local function limits(idx, r, o, add)
             local d = isDone(nq)
             if d or isActive(nq) then
                 n = n + 1
-                if add then add("follow", (d and "Folgequest schon erledigt: " or "Folgequest schon angenommen: ") .. Q.Title(nq)) end
+                if add then add("follow", (d and L["Folgequest schon erledigt: %s"] or L["Folgequest schon angenommen: %s"]):format(Q.Title(nq))) end
                 break
             end
         end
     end
     if r[MIN] > o.level then
         n = n + 1
-        if add then add("level", "ab Level " .. r[MIN]) end
+        if add then add("level", L["ab Level %s"]:format(r[MIN])) end
     end
     if r[SKILL] > 0 then
-        local name = SKILL_NAMES[r[SKILL]] or ("Beruf " .. r[SKILL])
+        local name = SKILL_NAMES[r[SKILL]] and L[SKILL_NAMES[r[SKILL]]] or L["Beruf %s"]:format(r[SKILL])
         if o.skills then
             if not o.skills[r[SKILL]] then
                 n = n + 1
-                if add then add("skill", "Beruf fehlt: " .. name) end
+                if add then add("skill", L["Beruf fehlt: %s"]:format(name)) end
             end
         else
-            note = "Beruf: " .. name
+            note = L["Beruf: %s"]:format(name)
         end
     end
     return n, foreign, note
@@ -523,7 +530,7 @@ end
 -- The text of a state: "im Log", "annehmbar", "erledigt" or the first reason (+n).
 function Q.StatusText(info)
     if info.status ~= "locked" then return Q.STATUS_TEXT[info.status] end
-    local first = info.reasons[1] and info.reasons[1].text or "gesperrt"
+    local first = info.reasons[1] and info.reasons[1].text or L["gesperrt"]
     if #info.reasons > 1 then first = first .. (" (+%d)"):format(#info.reasons - 1) end
     return first
 end
@@ -666,14 +673,14 @@ end
 function ns.QuestStartText(qid)
     local r, points, giver = startOf(qid)
     if not r then return "" end
-    if r[START] == "X" then return "durch ein Item" end
+    if r[START] == "X" then return L["durch ein Item"] end
     local Map = ns.Map
     local list = Map and Map.ParsePoints and Map.ParsePoints(points) or {}
     if #list > 0 then
         local p = ns.MapNearest and ns.MapNearest(list) or list[1]
-        return ("%s, %s %s%s"):format(giver or "Startort", Q.ZoneName(p.map), Map.Coords(p), r[START] == "I" and " (im Dungeon)" or "")
+        return ("%s, %s %s%s"):format(giver or L["Startort"], Q.ZoneName(p.map), Map.Coords(p), r[START] == "I" and L[" (im Dungeon)"] or "")
     end
-    return giver and (giver .. " (Ort unbekannt)") or ""
+    return giver and L["%s (Ort unbekannt)"]:format(giver) or ""
 end
 
 -- Sets the map target to where a quest starts (the nearest point). true, or nil and why.
@@ -686,8 +693,8 @@ function ns.QuestWaypoint(qid)
     if not (Map and Map.ParsePoints and ns.MapSetPoint) then return nil, NO_MAP end
     local list = Map.ParsePoints(points)
     if #list == 0 then return nil, NO_START end
-    local label = giver and ("Questgeber " .. giver) or Q.Title(qid)
-    if r[START] == "I" then label = label .. " (im Dungeon)" end
+    local label = giver and L["Questgeber %s"]:format(giver) or Q.Title(qid)
+    if r[START] == "I" then label = label .. L[" (im Dungeon)"] end
     return ns.MapSetPoint(ns.MapNearest(list), label, "Q:" .. qid)
 end
 
@@ -856,9 +863,8 @@ end
 ns.OnEvent("ADDON_LOADED", Q.OnLoaded)
 
 ns.RegisterSettings{ key = "quests", label = "Quests", order = 48, items = {
-    { key = "quests.enabled", type = "toggle", label = "Quest-Seite", default = true,
-      tip = "Alle Quests der Welt mit Status, Reihen, Belohnungen und Wegpunkt. Aus: die Questdaten werden "
-          .. "beim nächsten Einloggen oder /reload nicht mehr geladen und belegen keinen Speicher.",
+    { key = "quests.enabled", type = "toggle", label = L["Quest-Seite"], default = true,
+      tip = L["Alle Quests der Welt mit Status, Reihen, Belohnungen und Wegpunkt. Aus: die Questdaten werden beim nächsten Einloggen oder /reload nicht mehr geladen und belegen keinen Speicher."],
       onChange = function(v)
           if not v then index, indexData, listKey = nil, nil, nil end
           bump()
@@ -888,16 +894,16 @@ end
 
 -- A text for why there is no list: nil when there is one.
 function Q.WhyText(why)
-    if why == "off" then return "Die Quest-Seite ist aus (Einstellungen, Quests)." end
-    if why == "reload" then return "Die Questdaten werden nach /reload geladen." end
-    if why == "nodata" then return "Für diesen Client gibt es keine Questdaten." end
+    if why == "off" then return L["Die Quest-Seite ist aus (Einstellungen, Quests)."] end
+    if why == "reload" then return L["Die Questdaten werden nach /reload geladen."] end
+    if why == "nodata" then return L["Für diesen Client gibt es keine Questdaten."] end
     return nil
 end
 
-ns.RegisterSlash("quests", { aliases = { "quest" }, args = "[suche]", desc = "Quest-Tracker: alle Quests mit Status und Wegpunkt",
+ns.RegisterSlash("quests", { aliases = { "quest" }, args = L["[suche]"], desc = L["Quest-Tracker: alle Quests mit Status und Wegpunkt"],
     run = function(rest)
         if not enabled() then
-            ns.msg("Die Quest-Seite ist aus. Einschalten: Einstellungen, Quests, Quest-Seite.")
+            ns.msg(L["Die Quest-Seite ist aus. Einschalten: Einstellungen, Quests, Quest-Seite."])
             return
         end
         if AmisiaDB and AmisiaDB.settings then

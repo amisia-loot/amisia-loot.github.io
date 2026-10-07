@@ -6,8 +6,9 @@
 --
 -- The pasted text is untrusted: escape codes and bars are stripped, every name is checked.
 local ADDON, ns = ...
+local L = ns.L
 
-local HEAD_FAIL = "Das ist keine Twink-Liste der Amisia-Seite."
+local HEAD_FAIL = L["Das ist keine Twink-Liste der Amisia-Seite."]
 local MAX_LINES = 2000      -- lines read, the head included
 local MAX_LINE = 200        -- bytes of one line that are looked at
 local NAME_MAX = 48
@@ -35,7 +36,7 @@ end
 --   #AMISIA-ALTS 1 <game> <yyyy-mm-dd>
 --   A <alt with _> <main with _>
 --   #END
--- Returns { game, date, list = { { alt, main } }, n, skipped } or nil and the reason (German).
+-- Returns { game, date, list = { { alt, main } }, n, skipped } or nil and the reason (in the client's language).
 -- Skipped: unknown or broken lines, an alt of itself, an alt named twice (the first line stays),
 -- and chains (one level only: an alt that is the main of an earlier line, a main that is an alt).
 function ns.ParseAlts(text)
@@ -52,7 +53,7 @@ function ns.ParseAlts(text)
                 if ver ~= "1" or not day or not day:match("^%d%d%d%d%-%d%d%-%d%d$") then return nil, HEAD_FAIL end
                 game = game:lower()
                 if game ~= OWN_GAME then
-                    return nil, ("Diese Twink-Liste ist für %s, du bist in %s."):format(GAME_NAMES[game] or game:sub(1, 24),
+                    return nil, L["Diese Twink-Liste ist für %s, du bist in %s."]:format(GAME_NAMES[game] or game:sub(1, 24),
                         GAME_NAMES[OWN_GAME])
                 end
                 res.game, res.date, head, read = game, day, true, 1
@@ -86,7 +87,7 @@ function ns.ParseAlts(text)
             res.n = res.n + 1
         end
     end
-    if res.n == 0 then return nil, "Die Twink-Liste ist leer." end
+    if res.n == 0 then return nil, L["Die Twink-Liste ist leer."] end
     return res
 end
 
@@ -121,7 +122,7 @@ end
 function ns.SetAlts(text)
     local res, why = ns.ParseAlts(text)
     if not res then return nil, why end
-    if not AmisiaDB then return nil, "Amisia ist noch nicht geladen." end
+    if not AmisiaDB then return nil, L["Amisia ist noch nicht geladen."] end
     AmisiaDB.alts = { game = res.game, date = res.date, at = time(), by = ns.UnitFullName("player"), n = res.n, list = res.list }
     ns.Fire("ALTS")
     return res
@@ -227,7 +228,7 @@ function ns.SiteBlocks(text)
     return out
 end
 
--- Imports what the text holds: the guild wishes, the alts, or both. Returns the German result
+-- Imports what the text holds: the guild wishes, the alts, or both. Returns the result
 -- line and whether anything was taken. A text with neither block goes to the wishes' parser, so
 -- its refusal reads as before.
 function ns.ImportSiteText(text)
@@ -241,8 +242,8 @@ function ns.ImportSiteText(text)
         local res, why = ns.SetGuildWishes(blocks.wl)
         if res then
             ok = true
-            parts[#parts + 1] = ("%d %s übernommen, %d %s nicht erkannt."):format(res.n, res.n == 1 and "Wunsch" or "Wünsche",
-                res.skipped, res.skipped == 1 and "Zeile" or "Zeilen")
+            parts[#parts + 1] = L["%d %s übernommen, %d %s nicht erkannt."]:format(res.n, res.n == 1 and L["Wunsch"] or L["Wünsche"],
+                res.skipped, res.skipped == 1 and L["Zeile"] or L["Zeilen"])
         else
             parts[#parts + 1] = why
         end
@@ -251,8 +252,8 @@ function ns.ImportSiteText(text)
         local res, why = ns.SetAlts(blocks.alts)
         if res then
             ok = true
-            local skipped = res.skipped > 0 and (", %d übersprungen"):format(res.skipped) or ""
-            parts[#parts + 1] = ("%d %s übernommen%s."):format(res.n, res.n == 1 and "Twink" or "Twinks", skipped)
+            local skipped = res.skipped > 0 and L[", %d übersprungen"]:format(res.skipped) or ""
+            parts[#parts + 1] = L["%d %s übernommen%s."]:format(res.n, res.n == 1 and L["Twink"] or L["Twinks"], skipped)
         else
             parts[#parts + 1] = why
         end
@@ -260,34 +261,34 @@ function ns.ImportSiteText(text)
     return table.concat(parts, " "), ok
 end
 
-ns.RegisterSlash("twinks", { aliases = { "alts" }, args = "[Name|löschen]", desc = "Twinks und ihre Mains von der Website",
+ns.RegisterSlash("twinks", { en = "alts", args = L["[Name|löschen]"], desc = L["Twinks und ihre Mains von der Website"],
     run = function(rest)
         local word = type(rest) == "string" and rest:lower():match("^%s*(.-)%s*$") or ""
-        if word == "löschen" or word == "loeschen" or word == "clear" then
+        if word == "löschen" or word == "loeschen" or word == "clear" or word == "delete" then -- l10n-ok: sub-words
             if not ns.IsOfficerView() then
-                ns.msg("Die Twink-Liste löschen nur Offiziere.")
+                ns.msg(L["Die Twink-Liste löschen nur Offiziere."])
                 return
             end
             ns.ClearAlts()
-            ns.msg("Twink-Liste gelöscht.")
+            ns.msg(L["Twink-Liste gelöscht."])
             return
         end
         local name = ns.FullName(rest)
         if name then
             local main = ns.AltMain(name)
             if main then
-                ns.msg(("%s ist ein Twink von %s."):format(name, main))
+                ns.msg(L["%s ist ein Twink von %s."]:format(name, main))
             else
                 local alts = ns.AltsOf(name)
-                ns.msg(#alts > 0 and ("Twinks von %s: %s."):format(name, table.concat(alts, ", "))
-                    or ("%s hat keine Twinks in der Liste."):format(name))
+                ns.msg(#alts > 0 and L["Twinks von %s: %s."]:format(name, table.concat(alts, ", "))
+                    or L["%s hat keine Twinks in der Liste."]:format(name))
             end
             return
         end
         local info = ns.AltsInfo()
         if not info then
-            ns.msg("Keine Twink-Liste geladen. Auf der Website: Wishlist, Copy for the addon; im Spiel: /amisia wuensche.")
+            ns.msg(L["Keine Twink-Liste geladen. Auf der Website: Wishlist, Copy for the addon; im Spiel: /amisia wuensche."])
             return
         end
-        ns.msg(("Twink-Liste vom %s: %d %s."):format(info.date, info.n, info.n == 1 and "Twink" or "Twinks"))
+        ns.msg(L["Twink-Liste vom %s: %d %s."]:format(info.date, info.n, info.n == 1 and L["Twink"] or L["Twinks"]))
     end })

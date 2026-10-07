@@ -3,6 +3,7 @@
 -- items and where they come from (tools/build_gear.py), GearWeights.lua the stat weights per class,
 -- spec and level. The stats themselves come from the client, because Forever changed many items.
 local ADDON, ns = ...
+local L = ns.L
 
 local Gear = {}
 ns.Gear = Gear
@@ -16,23 +17,23 @@ Gear.COLUMNS = {
 
 -- Rows of the table. inv is the inventory slot of the equipped item.
 Gear.SLOTS = {
-    { key = "HEAD", name = "Kopf", inv = 1 },
-    { key = "NECK", name = "Hals", inv = 2 },
-    { key = "SHOULDER", name = "Schultern", inv = 3 },
-    { key = "BACK", name = "Rücken", inv = 15 },
-    { key = "CHEST", name = "Brust", inv = 5 },
-    { key = "WRIST", name = "Handgelenke", inv = 9 },
-    { key = "HANDS", name = "Hände", inv = 10 },
-    { key = "WAIST", name = "Taille", inv = 6 },
-    { key = "LEGS", name = "Beine", inv = 7 },
-    { key = "FEET", name = "Füße", inv = 8 },
-    { key = "FINGER1", name = "Finger", inv = 11 },
-    { key = "FINGER2", name = "Finger", inv = 12 },
-    { key = "TRINKET1", name = "Schmuck", inv = 13 },
-    { key = "TRINKET2", name = "Schmuck", inv = 14 },
-    { key = "MAINHAND", name = "Waffenhand", inv = 16 },
-    { key = "OFFHAND", name = "Schildhand", inv = 17 },
-    { key = "RANGED", name = "Distanz", inv = 18 },
+    { key = "HEAD", name = L["Kopf"], inv = 1 },
+    { key = "NECK", name = L["Hals"], inv = 2 },
+    { key = "SHOULDER", name = L["Schultern"], inv = 3 },
+    { key = "BACK", name = L["Rücken"], inv = 15 },
+    { key = "CHEST", name = L["Brust"], inv = 5 },
+    { key = "WRIST", name = L["Handgelenke"], inv = 9 },
+    { key = "HANDS", name = L["Hände"], inv = 10 },
+    { key = "WAIST", name = L["Taille"], inv = 6 },
+    { key = "LEGS", name = L["Beine"], inv = 7 },
+    { key = "FEET", name = L["Füße"], inv = 8 },
+    { key = "FINGER1", name = L["Finger"], inv = 11 },
+    { key = "FINGER2", name = L["Finger"], inv = 12 },
+    { key = "TRINKET1", name = L["Schmuck"], inv = 13 },
+    { key = "TRINKET2", name = L["Schmuck"], inv = 14 },
+    { key = "MAINHAND", name = L["Waffenhand"], inv = 16 },
+    { key = "OFFHAND", name = L["Schildhand"], inv = 17 },
+    { key = "RANGED", name = L["Distanz"], inv = 18 },
 }
 
 -- equip location (without INVTYPE_) -> the group of rows it competes for
@@ -81,8 +82,8 @@ local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16
 Gear.CLASS_BIT = CLASS_BIT
 
 Gear.CLASS_NAMES = {
-    WARRIOR = "Krieger", PALADIN = "Paladin", HUNTER = "Jäger", ROGUE = "Schurke", PRIEST = "Priester",
-    SHAMAN = "Schamane", MAGE = "Magier", WARLOCK = "Hexenmeister", DRUID = "Druide",
+    WARRIOR = L["Krieger"], PALADIN = L["Paladin"], HUNTER = L["Jäger"], ROGUE = L["Schurke"], PRIEST = L["Priester"],
+    SHAMAN = L["Schamane"], MAGE = L["Magier"], WARLOCK = L["Hexenmeister"], DRUID = L["Druide"],
 }
 
 ---------------------------------------------------------------------------
@@ -222,23 +223,20 @@ end
 
 -- German names of the scored stats, for the explanation of a score.
 Gear.STAT_LABELS = {
-    STR = "Stärke", AGI = "Beweglichkeit", STA = "Ausdauer", INT = "Intelligenz", SPI = "Willenskraft",
-    AP = "Angriffskraft", RAP = "Distanzangriffskraft", FAP = "Angriffskraft (Gestalt)", SPD = "Zauberschaden",
-    HEAL = "Heilung", SPP = "Zaubermacht", SP_ARCANE = "Schaden (Arkan)", SP_FIRE = "Schaden (Feuer)",
-    SP_NATURE = "Schaden (Natur)", SP_FROST = "Schaden (Frost)", SP_SHADOW = "Schaden (Schatten)", SP_HOLY = "Schaden (Heilig)",
-    HIT = "Trefferwertung", HITSP = "Trefferwertung (Zauber)", MHIT = "Trefferwertung", SHIT = "Zaubertrefferwertung", CRIT = "kritische Trefferwertung",
-    MCRIT = "kritische Trefferwertung", SCRIT = "Zauberkritwertung", HASTE = "Tempowertung", SHASTE = "Zaubertempowertung", EXP = "Waffenkundewertung",
-    DEF = "Verteidigungswertung", DODGE = "Ausweichwertung", PARRY = "Parierwertung", BLOCK = "Blockwertung",
-    BLOCKVAL = "Blockwert", ARMOR = "Rüstung", MP5 = "Mana alle 5 Sek.", HP5 = "Gesundheit alle 5 Sek.",
-    DPS = "Waffenschaden pro Sekunde", SPEED = "Waffentempo", SOCK = "Sockel", META = "Meta-Sockel",
-    RES = "Abhärtungswertung", SPEN = "Zauberdurchschlag", SETB = "Setbonus",
+    STR = L["Stärke"], AGI = L["Beweglichkeit"], STA = L["Ausdauer"], INT = L["Intelligenz"], SPI = L["Willenskraft"],
+    AP = L["Angriffskraft"], RAP = L["Distanzangriffskraft"], FAP = L["Angriffskraft (Gestalt)"], SPD = L["Zauberschaden"],
+    HEAL = L["Heilung"], SPP = L["Zaubermacht"], SP_ARCANE = L["Schaden (Arkan)"], SP_FIRE = L["Schaden (Feuer)"],
+    SP_NATURE = L["Schaden (Natur)"], SP_FROST = L["Schaden (Frost)"], SP_SHADOW = L["Schaden (Schatten)"], SP_HOLY = L["Schaden (Heilig)"],
+    HIT = L["Trefferwertung"], HITSP = L["Trefferwertung (Zauber)"], MHIT = L["Trefferwertung"], SHIT = L["Zaubertrefferwertung"], CRIT = L["kritische Trefferwertung"],
+    MCRIT = L["kritische Trefferwertung"], SCRIT = L["Zauberkritwertung"], HASTE = L["Tempowertung"], SHASTE = L["Zaubertempowertung"], EXP = L["Waffenkundewertung"],
+    DEF = L["Verteidigungswertung"], DODGE = L["Ausweichwertung"], PARRY = L["Parierwertung"], BLOCK = L["Blockwertung"],
+    BLOCKVAL = L["Blockwert"], ARMOR = L["Rüstung"], MP5 = L["Mana alle 5 Sek."], HP5 = L["Gesundheit alle 5 Sek."],
+    DPS = L["Waffenschaden pro Sekunde"], SPEED = L["Waffentempo"], SOCK = L["Sockel"], META = L["Meta-Sockel"],
+    RES = L["Abhärtungswertung"], SPEN = L["Zauberdurchschlag"], SETB = L["Setbonus"],
 }
 
--- A number the German way: whole numbers plain, otherwise one decimal with a comma.
-local function deNum(x, decimals)
-    if not decimals and math.abs(x - math.floor(x + 0.5)) < 0.05 then return tostring(math.floor(x + 0.5)) end
-    return (("%." .. (decimals or 1) .. "f"):format(x):gsub("%.", ","))
-end
+-- A number in the language's form: whole numbers plain, otherwise one decimal ("2,5" / "2.5").
+local deNum = ns.Num
 Gear.Num = deNum
 
 -- Every term of a score: add(key, value, weight, rating kind or nil). The score is their sum, so
@@ -345,14 +343,14 @@ function Gear.ScoreParts(s, w, level, kind, class, cap)
             converted = value * ratingPerPoint(rating, level)
             local counted = capped(key, converted, cap)
             if counted < converted - 1e-9 then
-                parts[#parts + 1] = { key = key .. "_OVER", label = label .. " über der Grenze", over = true,
+                parts[#parts + 1] = { key = key .. "_OVER", label = L["%s über der Grenze"]:format(label), over = true,
                     amount = ("%s %%"):format(deNum(converted - counted, 1)), value = converted - counted, weight = 0,
                     points = 0 }
                 converted = counted
                 if converted <= 0 then return end
             end
             if rating == "DEF" then
-                amount = ("%s Punkte (%d)"):format(deNum(converted, 1), math.floor(value + 0.5))
+                amount = L["%s Punkte (%d)"]:format(deNum(converted, 1), math.floor(value + 0.5))
             else
                 amount = ("%s %% (%d)"):format(deNum(converted, 1), math.floor(value + 0.5))
             end
@@ -376,13 +374,13 @@ function Gear.PartText(p)
     if p.key == "SPEED" then return ("%s %s: %+d"):format(p.label, p.amount, math.floor(p.points + 0.5)) end
     if p.key == "SETB" then return ("%s: %+d"):format(p.label, math.floor(p.points + 0.5)) end
     local wt = p.weight == math.floor(p.weight) and deNum(p.weight, 1)
-        or (("%.2f"):format(p.weight):gsub("0$", ""):gsub("%.", ","))
+        or (deNum(p.weight, 2):gsub("0$", ""))
     return ("%s %s x %s = %s"):format(p.amount, p.label, wt, deNum(p.points))
 end
 
 -- What one point of score is worth: the weights' unit when it weighs 1, else the first of attack
 -- power, spell damage, healing and stamina that does; nil when none fits.
-local UNIT_LABELS = { AP = "Angriffskraft", SP = "Zauberschaden", HEAL = "Heilung", STA = "Ausdauer" }
+local UNIT_LABELS = { AP = L["Angriffskraft"], SP = L["Zauberschaden"], HEAL = L["Heilung"], STA = L["Ausdauer"] }
 Gear.UNIT_LABELS = UNIT_LABELS
 function Gear.Unit(w)
     if not w then return nil end
@@ -397,8 +395,8 @@ end
 function Gear.UnitText(points, w)
     local n = math.floor(points + 0.5)
     local unit = Gear.Unit(w)
-    if unit then return ("%+d Punkte, so viel wie %d %s"):format(n, n, UNIT_LABELS[unit]) end
-    return ("%+d Punkte"):format(n)
+    if unit then return L["%+d Punkte, so viel wie %d %s"]:format(n, n, UNIT_LABELS[unit]) end
+    return L["%+d Punkte"]:format(n)
 end
 
 ---------------------------------------------------------------------------
@@ -767,11 +765,112 @@ end
 
 -- The effects of an item the scoring does not count (ns.BIS.FX, from the client tables: use
 -- effects, chances on hit, equip effects other than plain stats), as German text
--- ("Chance bei Treffer: Fireball (176 Feuerschaden)"; several joined by "; "), or nil.
+-- ("Chance bei Treffer: Fireball (176 Feuerschaden)"; several joined by "; "), or nil. In English
+-- the German words tools/build_bis.py composes (describe, item_effects) are put in English here; a
+-- part it does not know stays as it is. The patterns match the generated German text, they are not
+-- shown.
+local FX_TRIGGER = {
+    ["Benutzen"] = L["Benutzen"], ["Anlegen"] = L["Anlegen"],                 -- l10n-ok: generated data matched
+    ["Chance bei Treffer"] = L["Chance bei Treffer"], ["Effekt"] = L["Effekt"], -- l10n-ok: generated data matched
+}
+local FX_SCHOOL = {
+    Heilig = L["Heilig##Schule"], Feuer = L["Feuer##Schule"], Natur = L["Natur##Schule"],
+    Frost = L["Frost##Schule"], Schatten = L["Schatten##Schule"], Arkan = L["Arkan##Schule"],
+}
+local FX_STAT = {
+    ["Stärke"] = Gear.STAT_LABELS.STR, ["Beweglichkeit"] = Gear.STAT_LABELS.AGI,                -- l10n-ok: generated data matched
+    ["Ausdauer"] = Gear.STAT_LABELS.STA, ["Intelligenz"] = Gear.STAT_LABELS.INT,                -- l10n-ok: generated data matched
+    ["Willenskraft"] = Gear.STAT_LABELS.SPI, ["Rüstung"] = Gear.STAT_LABELS.ARMOR,              -- l10n-ok: generated data matched
+    ["Angriffskraft"] = Gear.STAT_LABELS.AP, ["Distanzangriffskraft"] = Gear.STAT_LABELS.RAP,   -- l10n-ok: generated data matched
+    ["Zaubermacht"] = Gear.STAT_LABELS.SPP, ["Zauberschaden"] = Gear.STAT_LABELS.SPD,           -- l10n-ok: generated data matched
+    ["Mana alle 5 Sek."] = Gear.STAT_LABELS.MP5, ["Zauberdurchschlag"] = Gear.STAT_LABELS.SPEN, -- l10n-ok: generated data matched
+    ["Trefferwertung"] = Gear.STAT_LABELS.HIT, ["Zaubertrefferwertung"] = Gear.STAT_LABELS.SHIT, -- l10n-ok: generated data matched
+    ["kritische Trefferwertung"] = Gear.STAT_LABELS.CRIT,                                       -- l10n-ok: generated data matched
+    ["kritische Zaubertrefferwertung"] = L["kritische Zaubertrefferwertung"],                   -- l10n-ok: generated data matched
+    ["Verteidigungswertung"] = Gear.STAT_LABELS.DEF,                                            -- l10n-ok: generated data matched
+}
+-- { pattern of the German part, its text with the captures in the same order }
+local FX_PART = {
+    { "^(%S+) Leben entziehen$", L["%s Leben entziehen"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Heilung je Tick$", L["%s Heilung je Tick"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Heilung$", L["%s Heilung"] },                          -- l10n-ok: generated data matched
+    { "^1 zusätzlicher Angriff$", L["1 zusätzlicher Angriff"] },     -- l10n-ok: generated data matched
+    { "^(%S+) zusätzliche Angriffe$", L["%s zusätzliche Angriffe"] }, -- l10n-ok: generated data matched
+    { "^(%S+) Mana$", "%s Mana" },
+    { "^absorbiert (%S+) Schaden$", L["absorbiert %s Schaden"] },    -- l10n-ok: generated data matched
+    { "^%+(%S+) %% Lauftempo$", L["+%s %% Lauftempo"] },             -- l10n-ok: generated data matched
+    { "^verlangsamt um (%S+) %%$", L["verlangsamt um %s %%"] },      -- l10n-ok: generated data matched
+    { "^(%S+) %% Schaden: (.+)$", L["%s %% Schaden: %s"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Schaden: (.+)$", L["%s Schaden: %s"] },                -- l10n-ok: generated data matched
+    { "^(.+) verbessert$", L["%s verbessert"] },                     -- l10n-ok: generated data matched
+}
+
+local function fxPart(p)
+    for _, e in ipairs(FX_PART) do
+        local a, b = p:match(e[1])
+        if a then return e[2]:format(a, b) end
+    end
+    -- "176 Feuerschaden", "35 Schaden je Tick", "10 Feuerschaden an Angreifern"
+    local n, school, rest = p:match("^(%S+) (%a*)schaden(.*)$")
+    if not n then
+        n, rest = p:match("^(%S+) Schaden(.*)$")    -- l10n-ok: generated data matched
+        school = ""
+    end
+    if n and (school == "" or FX_SCHOOL[school]) then
+        local dmg = school == "" and L["%s Schaden"]:format(n) or L["%s %sschaden"]:format(n, FX_SCHOOL[school])
+        if rest == "" then return dmg end
+        if rest == " je Tick" then return L["%s je Tick"]:format(dmg) end            -- l10n-ok: generated data matched
+        if rest == " an Angreifern" then return L["%s an Angreifern"]:format(dmg) end -- l10n-ok: generated data matched
+        return nil
+    end
+    local v, stat = p:match("^([%+%-]%S+) (.+)$")
+    if v and FX_STAT[stat] then return v .. " " .. FX_STAT[stat] end
+    return nil
+end
+
+-- "Fireball (176 Feuerschaden, ...)": the spell name may hold " (" itself, so the first bracket
+-- whose every part is known wins.
+local function fxRest(rest)
+    rest = rest:gsub("^Zauber (%d+)", function(n) return L["Zauber %s"]:format(n) end) -- l10n-ok: generated data matched
+    if rest:sub(-1) ~= ")" then return rest end
+    local from = 1
+    while true do
+        local pos = rest:find(" (", from, true)
+        if not pos then return rest end
+        local out, ok = {}, true
+        for part in (rest:sub(pos + 2, -2) .. ", "):gmatch("(.-), ") do
+            local t = fxPart(part)
+            if not t then ok = false break end
+            out[#out + 1] = t
+        end
+        if ok then return rest:sub(1, pos - 1) .. " (" .. table.concat(out, ", ") .. ")" end
+        from = pos + 1
+    end
+end
+
+local function fxEnglish(text)
+    local lines = {}
+    for line in (text .. "; "):gmatch("(.-); ") do
+        local trig, rest = line:match("^(.-): (.*)$")
+        if trig and FX_TRIGGER[trig] then line = FX_TRIGGER[trig] .. ": " .. fxRest(rest) end
+        lines[#lines + 1] = line
+    end
+    return table.concat(lines, "; ")
+end
+Gear.FxEnglish = fxEnglish
+
+local fxShown = {}   -- German text -> English text
 function Gear.EffectText(id)
     local B = ns.BIS
     local text = type(B) == "table" and type(B.FX) == "table" and B.FX[tonumber(id) or id]
-    return type(text) == "string" and text ~= "" and text or nil
+    if type(text) ~= "string" or text == "" then return nil end
+    if ns.GERMAN then return text end
+    local en = fxShown[text]
+    if not en then
+        en = fxEnglish(text)
+        fxShown[text] = en
+    end
+    return en
 end
 
 -- The random suffixes seen on an item: { [suffix id] = stat table } from the build (ns.BIS.RP,
@@ -1353,12 +1452,12 @@ end
 ---------------------------------------------------------------------------
 
 Gear.PROFESSIONS = {
-    blacksmithing = "Schmiedekunst", leatherworking = "Lederverarbeitung", tailoring = "Schneiderei",
-    engineering = "Ingenieurskunst", alchemy = "Alchimie", enchanting = "Verzauberkunst", cooking = "Kochkunst",
-    firstaid = "Erste Hilfe", jewelcrafting = "Juwelierskunst",
+    blacksmithing = L["Schmiedekunst"], leatherworking = L["Lederverarbeitung"], tailoring = L["Schneiderei"],
+    engineering = L["Ingenieurskunst"], alchemy = L["Alchimie"], enchanting = L["Verzauberkunst"], cooking = L["Kochkunst"],
+    firstaid = L["Erste Hilfe"], jewelcrafting = L["Juwelierskunst"],
 }
-Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = "Beruf", V = "Händler", R = "Rar", W = "Weltdrop",
-    A = "Auktionshaus", P = "PvP-Händler" }
+Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = L["Beruf"], V = L["Händler"], R = L["Rar"], W = L["Weltdrop"],
+    A = L["Auktionshaus"], P = L["PvP-Händler"] }
 
 -- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised),
 -- else the source's own name.
@@ -1411,20 +1510,20 @@ function Gear.SourceText(rec, short)
         return ("%s (%d)"):format(Gear.PROFESSIONS[rec[2]] or tostring(rec[2]), rec[3] or 0)
     elseif k == "V" or k == "P" then
         local zone = not short and Gear.ZoneName(rec[3]) or nil
-        local label = k == "P" and "PvP-Händler" or "Händler"
+        local label = k == "P" and L["PvP-Händler"] or L["Händler"]
         return ("%s: %s%s%s"):format(label, rec[2], zone and (", " .. zone) or "", FACTION_TAG[rec[4]] or "")
     elseif k == "R" then
         local zone = not short and Gear.ZoneName(rec[4]) or nil
-        return ("Rar: %s%s%s"):format(rec[2] or "?", (rec[3] or 0) > 0 and (" (%d)"):format(rec[3]) or "", zone and (", " .. zone) or "")
+        return L["Rar: %s%s%s"]:format(rec[2] or "?", (rec[3] or 0) > 0 and (" (%d)"):format(rec[3]) or "", zone and (", " .. zone) or "")
     elseif k == "W" then
         if rec[2] then
             local zone = not short and Gear.ZoneName(rec[5]) or nil
             return ("Drop: %s%s"):format(rec[2], zone and (", " .. zone) or "")
         end
-        if (rec[3] or 0) > 0 then return ("Weltdrop (Gegner %d-%d)"):format(rec[3], rec[4] or rec[3]) end
-        return "Weltdrop"
+        if (rec[3] or 0) > 0 then return L["Weltdrop (Gegner %d-%d)"]:format(rec[3], rec[4] or rec[3]) end
+        return L["Weltdrop"]
     elseif k == "A" then
-        return "Im Auktionshaus gesehen"
+        return L["Im Auktionshaus gesehen"]
     end
     return tostring(k)
 end

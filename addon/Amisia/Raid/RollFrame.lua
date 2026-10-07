@@ -9,6 +9,7 @@
 -- comparison, ns.UpgradeOf), and each row shows its roller's part of it. For green and blue items
 -- bound on pickup a hint says the appearance is already granted (rolls.lookHint): a hint, no rule.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local ROWS = 12
@@ -25,7 +26,7 @@ local GREY = "|cff8f86a3"
 local UP_GREEN, UP_ORANGE, UP_BLUE = "|cff4fe673", "|cffff9933", "|cff66b3ff"
 local LINE_NAMES = 6
 local QUALITY_GREEN, QUALITY_BLUE, BIND_PICKUP = 2, 3, 1
-local LOOK_TEXT = "Aussehen: bekommen laut Blizzard alle Berechtigten schon beim Plündern. Nicht nur fürs Aussehen würfeln."
+local LOOK_TEXT = L["Aussehen: bekommen laut Blizzard alle Berechtigten schon beim Plündern. Nicht nur fürs Aussehen würfeln."]
 
 local F, header, timer, stopBtn, againBtn, hint
 local rows = {}
@@ -61,7 +62,7 @@ function ns.AwardFromRoll(name, item, link)
     link = link or (r and r.item == item and r.link) or nil
     if not item or not name then return end
     if not lootOpen or type(GiveMasterLoot) ~= "function" or not GetMasterLootCandidate then
-        ns.msg(("Lootfenster öffnen und Master Loot nutzen, oder /amisia award %s %s"):format(name, link or tostring(item)))
+        ns.msg(L["Lootfenster öffnen und Master Loot nutzen, oder /amisia award %s %s"]:format(name, link or tostring(item)))
         return
     end
     local slot
@@ -69,7 +70,7 @@ function ns.AwardFromRoll(name, item, link)
         if ns.ItemID(GetLootSlotLink(i)) == item then slot = i break end
     end
     if not slot then
-        ns.msg("Das Item liegt nicht mehr im Lootfenster.")
+        ns.msg(L["Das Item liegt nicht mehr im Lootfenster."])
         return
     end
     for i = 1, 40 do
@@ -79,7 +80,7 @@ function ns.AwardFromRoll(name, item, link)
             return
         end
     end
-    ns.msg(name .. " ist kein Kandidat für dieses Item (zu weit weg?).")
+    ns.msg(L["%s ist kein Kandidat für dieses Item (zu weit weg?)."]:format(name))
 end
 
 -- The row button: asks before handing out. The item travels with the question, so a round started
@@ -88,16 +89,16 @@ local function confirmGive(name)
     local r = ns.CurrentRoll() or ns.LastRoll()
     if not r or not name then return end
     if not r.done then
-        ns.msg("Erst vergeben, wenn die Runde beendet ist (Stopp oder Zeit abgelaufen).")
+        ns.msg(L["Erst vergeben, wenn die Runde beendet ist (Stopp oder Zeit abgelaufen)."])
         return
     end
     StaticPopup_Show("AMISIA_GIVE", r.link or r.name, name, { name = name, item = r.item, link = r.link })
 end
 
 StaticPopupDialogs["AMISIA_GIVE"] = {
-    text = "%s an %s vergeben?",
-    button1 = "Vergeben",
-    button2 = "Abbrechen",
+    text = L["%s an %s vergeben?"],
+    button1 = L["Vergeben"],
+    button2 = L["Abbrechen"],
     OnAccept = function(_, data)
         if data then ns.AwardFromRoll(data.name, data.item, data.link) end
     end,
@@ -130,9 +131,9 @@ local function showHint(r)
     if F.reason then
         hint:SetText("|cffe05050" .. F.reason .. "|r")
     elseif r and r.lockdown then
-        hint:SetText(("|cffe0a344Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen.|r"):format(r.hidden or 0))
+        hint:SetText("|cffe0a344" .. L["Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen."]:format(r.hidden or 0) .. "|r")
     else
-        hint:SetText(GREY .. "Alt-Klick im Lootfenster startet eine Runde.|r")
+        hint:SetText(GREY .. L["Alt-Klick im Lootfenster startet eine Runde."] .. "|r")
     end
     hint:Show()
 end
@@ -155,7 +156,7 @@ local function report(err)
 end
 
 local function compareOn()
-    return (ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false) and true or false
+    return (ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false) and true or false  -- l10n-ok: setting key
 end
 
 -- Asks the raid once per round who needs the item, unless it was asked in the last 30 minutes
@@ -168,7 +169,7 @@ local function askFor(r)
     ns.NeedAsk({ r.item })
 end
 
-local function pctText(pct) return pct == 999 and "neu" or ("+%d %%"):format(pct) end
+local function pctText(pct) return pct == 999 and L["neu"] or ("+%d %%"):format(pct) end
 
 -- What the round's item is for whom: { up = { { name, pct, own } } (best first, 999 = empty slot),
 -- wish = { names }, need = ns.NeedOf, own = ns.UpgradeOf of this client }.
@@ -197,7 +198,7 @@ end
 -- The roller's part: "+12%", "neu", "W", "ab 58" (the own row), coloured; "" when nothing is known.
 local function rollerText(info, name)
     for _, e in ipairs(info.up) do
-        if ns.SameName(e.name, name) then return UP_GREEN .. (e.pct == 999 and "neu" or ("+%d%%"):format(e.pct)) .. "|r" end
+        if ns.SameName(e.name, name) then return UP_GREEN .. (e.pct == 999 and L["neu"] or ("+%d%%"):format(e.pct)) .. "|r" end
     end
     for _, n in ipairs(info.wish) do
         if ns.SameName(n, name) then return UP_BLUE .. "W|r" end
@@ -215,25 +216,25 @@ local function upgradeLine(info)
     local parts = {}
     for i, e in ipairs(info.up) do
         if i > LINE_NAMES then
-            parts[#parts + 1] = ("und %d weitere"):format(#info.up - LINE_NAMES)
+            parts[#parts + 1] = L["und %d weitere"]:format(#info.up - LINE_NAMES)
             break
         end
-        parts[#parts + 1] = (e.own and "du" or e.name) .. " " .. pctText(e.pct)
+        parts[#parts + 1] = (e.own and L["du"] or e.name) .. " " .. pctText(e.pct)
     end
     local line
-    if #parts > 0 then line = "Upgrade für: " .. table.concat(parts, ", ") end
+    if #parts > 0 then line = L["Upgrade für: %s"]:format(table.concat(parts, ", ")) end
     if #info.wish > 0 then
-        local w = "Wunsch: " .. table.concat(info.wish, ", ", 1, math.min(#info.wish, LINE_NAMES))
+        local w = L["Wunsch: %s"]:format(table.concat(info.wish, ", ", 1, math.min(#info.wish, LINE_NAMES)))
         line = line and (line .. " · " .. w) or w
     end
     if line then return UP_GREEN .. line .. "|r" end
     local need = info.need
     if need and need.none > 0 then
-        return GREY .. ("Für niemanden ein Upgrade (%d Antworten)"):format(need.none) .. "|r"
+        return GREY .. L["Für niemanden ein Upgrade (%d Antworten)"]:format(need.none) .. "|r"
     elseif need then
-        return GREY .. "Upgrade für: warte auf Antworten|r"
+        return GREY .. L["Upgrade für: warte auf Antworten"] .. "|r"
     end
-    return GREY .. "Für dich kein Upgrade, die anderen wurden nicht gefragt.|r"
+    return GREY .. L["Für dich kein Upgrade, die anderen wurden nicht gefragt."] .. "|r"
 end
 
 -- Whether the appearance hint shows for the round's item: green or blue, bound on pickup, and in a
@@ -289,10 +290,10 @@ end
 refresh = function()
     if not F or not F:IsShown() then return end
     local r = ns.CurrentRoll() or ns.LastRoll()
-    F.namePick:SetValues(entryNames(), "Anderer Name")
+    F.namePick:SetValues(entryNames(), L["Anderer Name"])
     showHint(r)
     if not r then
-        header:SetText("Keine Roll-Runde. Alt-Klick auf ein Item im Lootfenster startet eine.")
+        header:SetText(L["Keine Roll-Runde. Alt-Klick auf ein Item im Lootfenster startet eine."])
         timer:SetText("")
         for i = 1, ROWS do rows[i]:Hide() end
         stopBtn:Disable()
@@ -304,7 +305,7 @@ refresh = function()
     header:SetText(r.link or r.name)
     local info = showUpgrades(r)
     if r.done then
-        timer:SetText(r.winner and ("Gewinner: " .. r.winner) or (r.tie and "Gleichstand" or "Beendet"))
+        timer:SetText(r.winner and L["Gewinner: %s"]:format(r.winner) or (r.tie and L["Gleichstand"] or L["Beendet"]))
     else
         timer:SetText(("%d s"):format(r.leftAt or 0))
     end
@@ -326,7 +327,7 @@ refresh = function()
         row.value:SetText(tostring(e.value))
         row.up:SetText(info and rollerText(info, e.name) or "")
         row.hand:SetText(e.manual and "Hand" or "")
-        row.why:SetText(r.winner == e.name and "|cff4fbf7aGewinner|r" or "")
+        row.why:SetText(r.winner == e.name and ("|cff4fbf7a" .. L["Gewinner"] .. "|r") or "")
         row.reason:SetText("")
         row.award:SetEnabled(r.done and true or false)
         row.award:Show()
@@ -397,7 +398,7 @@ local function build()
         -- why a roll was not counted, on rows without a button
         row.reason = text(row, T.FONT.hint, ROW_W - 190 - 4)
         row.reason:SetPoint("LEFT", 190, 0)
-        row.award = W.Button(row, "Vergeben", 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
+        row.award = W.Button(row, L["Vergeben"], 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         W.FitChip(row.award, 64)
         row.award:SetPoint("RIGHT", -2, 0)
         row:Hide()
@@ -419,7 +420,7 @@ local function build()
     F.osChip = W.Chip(F, "OS", 30, function() setKind("OS") end)
     W.FitChip(F.msChip, 30)
     W.FitChip(F.osChip, 30)
-    F.addBtn = W.Button(F, "Eintragen", 76, addEntry, { height = 20 })
+    F.addBtn = W.Button(F, L["Eintragen"], 76, addEntry, { height = 20 })
     W.Row(F, { F.msChip, F.osChip, { F.addBtn, gap = 6 } }, 2, 180, ENTRY_Y)
     setKind("MS")
 
@@ -429,13 +430,13 @@ local function build()
     F.lockHint = hint
     F.note = hint
 
-    stopBtn = W.Button(F, "Stopp", 80, function() ns.StopRoll() end)
+    stopBtn = W.Button(F, L["Stopp"], 80, function() ns.StopRoll() end)
     stopBtn:SetPoint("BOTTOMLEFT", 12, 10)
 
-    againBtn = W.Button(F, "Nochmal", 80, function() ns.RerollTie() end)
+    againBtn = W.Button(F, L["Nochmal"], 80, function() ns.RerollTie() end)
     againBtn:SetPoint("LEFT", stopBtn, "RIGHT", 6, 0)
 
-    F.resultBtn = W.Button(F, "Ergebnis ansagen", 120, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
+    F.resultBtn = W.Button(F, L["Ergebnis ansagen"], 120, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.resultBtn:SetPoint("BOTTOMRIGHT", -12, 10)
     F.rows = rows
     -- the parts the layout tests read
@@ -461,7 +462,7 @@ ns.OnRollChanged = function(r)
 end
 ns.Listen("NEED", function() refresh() end)
 ns.Listen("SETTING", function(path)
-    if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minGain" then refresh() end
+    if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minGain" then refresh() end  -- l10n-ok: setting keys
 end)
 
 ns.OnEvent("LOOT_OPENED", function() lootOpen = true end)
@@ -479,4 +480,4 @@ if type(HandleModifiedItemClick) == "function" then
     end)
 end
 
-ns.RegisterSlash("rolls", { officer = true, desc = "Roll-Fenster öffnen oder schließen", run = function() ns.ToggleRollFrame() end })
+ns.RegisterSlash("rolls", { officer = true, desc = L["Roll-Fenster öffnen oder schließen"], run = function() ns.ToggleRollFrame() end })

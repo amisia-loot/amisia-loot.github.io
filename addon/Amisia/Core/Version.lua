@@ -4,6 +4,7 @@
 -- guild count. A newer version is pointed out once per version, and only when an officer or two
 -- members run it.
 local ADDON, ns = ...
+local L = ns.L
 
 local GUILD_HELLO_AFTER, GUILD_HELLO_SPREAD = 20, 40   -- seconds after the login: 20 to 60
 local HELLO_KEEP = 1800      -- seconds a guild hello holds over a /reload
@@ -121,7 +122,7 @@ end)
 -- "1 Minute" or "n Minuten", rounded up (whole seconds first: clock steps leave fractions).
 local function minutes(seconds)
     local n = math.max(1, math.ceil(math.floor(seconds + 0.5) / 60))
-    return n == 1 and "1 Minute" or (n .. " Minuten")
+    return n == 1 and L["1 Minute"] or L["%d Minuten"]:format(n)
 end
 ns.VersionMinutes = minutes
 
@@ -134,21 +135,21 @@ end
 
 -- Asks "raid" or "guild" for their versions: true, or nil and the reason.
 function ns.VersionAsk(where)
-    if not ns.CommAvailable() then return nil, "Addon-Nachrichten sind nicht verfügbar." end
-    if ns.Get("sync.versionCheck") == false then return nil, "Versionsprüfung ist ausgeschaltet." end
+    if not ns.CommAvailable() then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
+    if ns.Get("sync.versionCheck") == false then return nil, L["Versionsprüfung ist ausgeschaltet."] end
     local t = now()
     local chan
     if where == "raid" then
-        if not homeRaid() then return nil, "Du bist in keiner Raidgruppe." end
-        if askedAt.raid and t - askedAt.raid < RAID_ASK_GAP then return nil, "Der Raid wurde gerade gefragt." end
+        if not homeRaid() then return nil, L["Du bist in keiner Raidgruppe."] end
+        if askedAt.raid and t - askedAt.raid < RAID_ASK_GAP then return nil, L["Der Raid wurde gerade gefragt."] end
         chan = "RAID"
     elseif where == "guild" then
-        if not inGuild() then return nil, "Du bist in keiner Gilde." end
+        if not inGuild() then return nil, L["Du bist in keiner Gilde."] end
         local wait = ns.VersionGuildWait()
-        if wait > 0 then return nil, ("Die Gilde wurde gerade gefragt. Noch %s."):format(minutes(wait)) end
+        if wait > 0 then return nil, L["Die Gilde wurde gerade gefragt. Noch %s."]:format(minutes(wait)) end
         chan = "GUILD"
     else
-        return nil, "Unbekanntes Ziel."
+        return nil, L["Unbekanntes Ziel."]
     end
     local ok, why = ns.CommSend("VQ", { ("%04x"):format(math.random(0, 65535)) }, chan)
     if not ok then return nil, why end
@@ -238,7 +239,7 @@ local function checkNewer()
     if not v or not d then return end
     if type(d.warned) == "string" and ns.CompareVersion(v, d.warned) <= 0 then return end
     d.warned = v
-    ns.msg(("Es gibt eine neuere Version (%s, gesehen bei %s). Du hast %s."):format(v, name, ns.VERSION))
+    ns.msg(L["Es gibt eine neuere Version (%s, gesehen bei %s). Du hast %s."]:format(v, name, ns.VERSION))
 end
 
 local function record(name, e)
@@ -248,7 +249,7 @@ local function record(name, e)
     trim(d)
     if (e.mp or 0) > ns.SYNC_PROTO and e.flags:find("L", 1, true) and not warnedOld[name] then
         warnedOld[name] = true
-        ns.msg(("Deine Version ist zu alt für den Abgleich mit %s. Bitte aktualisieren."):format(name))
+        ns.msg(L["Deine Version ist zu alt für den Abgleich mit %s. Bitte aktualisieren."]:format(name))
     end
     checkNewer()
     ns.Fire("SYNC_VERSIONS", name)
@@ -347,16 +348,16 @@ end
 -- "Hüter", "Offizier", "Raider" or "-".
 function ns.VersionView(r)
     if r.missing or not r.flags then return "-" end
-    if r.keeper then return "Hüter" end
-    if r.flags:find("O", 1, true) then return "Offizier" end
-    return "Raider"
+    if r.keeper then return L["Hüter"] end
+    if r.flags:find("O", 1, true) then return L["Offizier"] end
+    return L["Raider"]
 end
 
 local function printList()
-    ns.msg("Amisia-Versionen:")
+    ns.msg(L["Amisia-Versionen:"])
     for _, r in ipairs(ns.VersionRows()) do
-        DEFAULT_CHAT_FRAME:AddMessage(("  %s · %s · %s · %s"):format(r.name, r.missing and "kein Amisia?" or tostring(r.v),
-            ns.VersionView(r), r.where == "raid" and "Raid" or "Gilde"))
+        DEFAULT_CHAT_FRAME:AddMessage(("  %s · %s · %s · %s"):format(r.name, r.missing and L["kein Amisia?"] or tostring(r.v),
+            ns.VersionView(r), r.where == "raid" and "Raid" or L["Gilde"]))
     end
 end
 
@@ -369,13 +370,13 @@ do
     for i, it in ipairs(items) do
         if it.key == "sync.enabled" then at = i + 1 end
     end
-    table.insert(items, at, { key = "sync.versionCheck", type = "toggle", label = "Versionsprüfung", default = true,
-        tip = "Meldet die eigene Version einmal nach dem Login an die Gilde und beim Betreten eines Raids." })
-    table.insert(items, at + 1, { key = "sync.outdatedWarn", type = "toggle", label = "Hinweis auf eine neuere Amisia-Version", default = true })
+    table.insert(items, at, { key = "sync.versionCheck", type = "toggle", label = L["Versionsprüfung"], default = true,
+        tip = L["Meldet die eigene Version einmal nach dem Login an die Gilde und beim Betreten eines Raids."] })
+    table.insert(items, at + 1, { key = "sync.outdatedWarn", type = "toggle", label = L["Hinweis auf eine neuere Amisia-Version"], default = true })
     ns.RegisterSettings(ns.SYNC_SETTINGS)
 end
 
-ns.RegisterSlash("version", { aliases = { "versionen" }, desc = "Amisia-Versionen in Raid oder Gilde abfragen", run = function()
+ns.RegisterSlash("version", { aliases = { "versionen" }, desc = L["Amisia-Versionen in Raid oder Gilde abfragen"], run = function()
     local where = homeRaid() and "raid" or "guild"
     local ok, why = ns.VersionAsk(where)
     if not ok then
@@ -383,6 +384,7 @@ ns.RegisterSlash("version", { aliases = { "versionen" }, desc = "Amisia-Versione
         printList()
         return
     end
-    ns.msg(("Frage %s nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."):format(where == "raid" and "den Raid" or "die Gilde"))
+    ns.msg(where == "raid" and L["Frage den Raid nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."]
+        or L["Frage die Gilde nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."])
     C_Timer.After(NO_ANSWER_AFTER + 0.1, printList)
 end })

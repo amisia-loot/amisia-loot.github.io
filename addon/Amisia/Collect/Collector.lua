@@ -944,22 +944,22 @@ ns.OnEvent("ADDON_LOADED", function(name)
     prune(AmisiaDB.collect)
 end)
 
-ns.COLLECT_SETTINGS = { key = "collect", label = "Quellen-Sammler", order = 47, items = {
-    { key = "collect.quests", type = "toggle", label = "Quests aufzeichnen", default = true,
-      tip = "Questgeber, Abgabe, Orte, Belohnungen und Level, wenn ein Questfenster offen ist." },
-    { key = "collect.vendors", type = "toggle", label = "Händler aufzeichnen", default = true,
-      tip = "Ausrüstung, Rezepte und begrenzte Waren eines Händlers mit Preis und Ort." },
-    { key = "collect.world", type = "toggle", label = "Weltdrops aufzeichnen", default = true,
-      tip = "Ausrüstung und Rezepte ab grün aus Leichen, die kein Boss sind, mit dem Ort." },
-    { key = "collect.share", type = "toggle", label = "Mit der Gilde teilen", default = true,
-      tip = "ohne Namen von Spielern, nur außerhalb von Instanzen und Kämpfen" },
+ns.COLLECT_SETTINGS = { key = "collect", label = ns.L["Quellen-Sammler"], order = 47, items = {
+    { key = "collect.quests", type = "toggle", label = ns.L["Quests aufzeichnen"], default = true,
+      tip = ns.L["Questgeber, Abgabe, Orte, Belohnungen und Level, wenn ein Questfenster offen ist."] },
+    { key = "collect.vendors", type = "toggle", label = ns.L["Händler aufzeichnen"], default = true,
+      tip = ns.L["Ausrüstung, Rezepte und begrenzte Waren eines Händlers mit Preis und Ort."] },
+    { key = "collect.world", type = "toggle", label = ns.L["Weltdrops aufzeichnen"], default = true,
+      tip = ns.L["Ausrüstung und Rezepte ab grün aus Leichen, die kein Boss sind, mit dem Ort."] },
+    { key = "collect.share", type = "toggle", label = ns.L["Mit der Gilde teilen"], default = true,
+      tip = ns.L["ohne Namen von Spielern, nur außerhalb von Instanzen und Kämpfen"] },
 } }
 ns.RegisterSettings(ns.COLLECT_SETTINGS)
 
-ns.RegisterSlash("quellen", { aliases = { "sources" }, desc = "Stand des Quellen-Sammlers", run = function()
+ns.RegisterSlash("quellen", { en = "sources", desc = ns.L["Stand des Quellen-Sammlers"], run = function()
     ns.CollectDB()
     local s = ns.CollectSyncStats and ns.CollectSyncStats() or {}
-    ns.msg(("Quellen: %d Quests, %d Händler, %d Weltdrop-NPCs, etwa %d KB. Gelernt %d, gesendet %d Bytes. Teilen %s."):format(
+    ns.msg(ns.L["Quellen: %d Quests, %d Händler, %d Weltdrop-NPCs, etwa %d KB. Gelernt %d, gesendet %d Bytes. Teilen %s."]:format(
         counts.q, counts.s, counts.w, math.floor(bytes / 1024 + 0.5), s.new or 0, s.bytes or 0,
-        ns.Get("collect.share") and "an" or "aus"))
+        ns.Get("collect.share") and ns.L["an"] or ns.L["aus"]))
 end })

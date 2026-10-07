@@ -9,6 +9,7 @@
 --   "Auktionshaus"
 -- Older notes have only the name; every part after it is optional.
 local ADDON, ns = ...
+local L = ns.L
 
 local MAX_SOURCES = 6
 local wanted = {}   -- itemID -> source text, waiting for the client's item data
@@ -190,7 +191,7 @@ ns.OnEvent("MERCHANT_SHOW", function()
     if not enabled() or not GetMerchantNumItems or not GetMerchantItemLink then return end
     local who = UnitName("npc") or UnitName("target") or "?"
     local npc = ns.NpcID(UnitGUID("npc"))
-    local note = "Haendler: " .. who .. (npc and (" [" .. npc .. "]") or "") .. placeTag()
+    local note = "Haendler: " .. who .. (npc and (" [" .. npc .. "]") or "") .. placeTag()   -- l10n-ok: a stored source note build_scan.py parses
     for i = 1, GetMerchantNumItems() or 0 do
         local link = GetMerchantItemLink(i)
         if link then ns.NoteItem(link, note) end
@@ -205,7 +206,7 @@ local function questRewards()
     local title = (GetTitleText and GetTitleText()) or "?"
     local qid = GetQuestID and GetQuestID()
     local level = UnitLevel and UnitLevel("player")
-    local note = "Quest: " .. title .. ((qid and qid > 0) and (" [" .. qid .. "]") or "") .. ((level and level > 0) and (" L" .. level) or "")
+    local note = "Quest: " .. title .. ((qid and qid > 0) and (" [" .. qid .. "]") or "") .. ((level and level > 0) and (" L" .. level) or "")   -- l10n-ok: a stored source note
     for _, kind in ipairs({ "reward", "choice" }) do
         local n = kind == "reward" and (GetNumQuestRewards and GetNumQuestRewards() or 0) or (GetNumQuestChoices and GetNumQuestChoices() or 0)
         for i = 1, n do
@@ -224,15 +225,15 @@ local function browseResults()
     if not enabled() or not (C_AuctionHouse and C_AuctionHouse.GetBrowseResults) then return end
     for _, r in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
         local id = r.itemKey and r.itemKey.itemID
-        if id then ns.NoteItem(id, "Auktionshaus") end
+        if id then ns.NoteItem(id, "Auktionshaus") end   -- l10n-ok: a stored source note
     end
 end
 ns.OnEvent("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", browseResults)
 ns.OnEvent("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", browseResults)
-ns.OnEvent("COMMODITY_SEARCH_RESULTS_UPDATED", function(id) if id then ns.NoteItem(id, "Auktionshaus") end end)
+ns.OnEvent("COMMODITY_SEARCH_RESULTS_UPDATED", function(id) if id then ns.NoteItem(id, "Auktionshaus") end end)   -- l10n-ok: a stored source note
 ns.OnEvent("ITEM_SEARCH_RESULTS_UPDATED", function(key)
     local id = type(key) == "table" and key.itemID or tonumber(key)
-    if id then ns.NoteItem(id, "Auktionshaus") end
+    if id then ns.NoteItem(id, "Auktionshaus") end   -- l10n-ok: a stored source note
 end)
 
 ---------------------------------------------------------------------------
@@ -266,7 +267,7 @@ ns.OnEvent("LOOT_OPENED", function()
             local npc = ns.NpcID(src)
             local who = nameOfGUID(src) or (not npc and UnitName("target")) or nil
             if who or npc then
-                ns.NoteItem(link, "Drop: " .. (who or "?") .. (npc and (" [" .. npc .. "]") or "") .. place)
+                ns.NoteItem(link, "Drop: " .. (who or "?") .. (npc and (" [" .. npc .. "]") or "") .. place)   -- l10n-ok: a stored source note
             else
                 ns.NoteItem(link)
             end
@@ -296,8 +297,8 @@ for _, ev in ipairs({ "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_M
     ns.OnEvent(ev, chatLinks)
 end
 
-ns.RegisterSlash("sammeln", { aliases = { "collect" }, desc = "Item-Sammler an oder aus", run = function()
+ns.RegisterSlash("sammeln", { en = "collect", desc = L["Item-Sammler an oder aus"], run = function()
     ns.Set("tools.collect", not ns.Get("tools.collect"))
-    ns.msg(ns.Get("tools.collect") and "Item-Sammler an: Taschen, Händler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."
-        or "Item-Sammler aus.")
+    ns.msg(ns.Get("tools.collect") and L["Item-Sammler an: Taschen, Händler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."]
+        or L["Item-Sammler aus."])
 end })

@@ -3,6 +3,8 @@
 -- chunking and reassembly, a send queue with its own throttle per prefix that waits in the chat
 -- lockdown and reads every send result, no sending in battlegrounds, receive limits per sender.
 local ADDON, ns = ...
+local L = ns.L
+local N_ = ns.N_
 
 ns.SYNC_PROTO = 1        -- protocol of this client
 ns.SYNC_MIN_PROTO = 1    -- the oldest protocol this client still reads
@@ -108,7 +110,7 @@ do
             if not ok or (result ~= 0 and result ~= 1 and result ~= true) then available = false end
         end
         if not available then
-            ns.msg("Addon-Nachrichten sind nicht verfügbar (Präfix nicht angemeldet). Sync und Versionsprüfung sind aus.")
+            ns.msg(L["Addon-Nachrichten sind nicht verfügbar (Präfix nicht angemeldet). Sync und Versionsprüfung sind aus."])
         end
     end
 end
@@ -156,16 +158,16 @@ end
 
 -- A table as Base64 text (CBOR, Deflate, Base64), or nil and the reason.
 function ns.CommPack(tbl)
-    if not ns.CommPacking() then return nil, "Packen ist auf diesem Client nicht möglich." end
-    if type(tbl) ~= "table" then return nil, "Keine Daten." end
+    if not ns.CommPacking() then return nil, L["Packen ist auf diesem Client nicht möglich."] end
+    if type(tbl) ~= "table" then return nil, L["Keine Daten."] end
     local api = C_EncodingUtil
     local ok, out = pcall(function()
         local raw = api.SerializeCBOR(tbl)
         local packed = type(raw) == "string" and api.CompressString(raw, deflate()) or nil
         return type(packed) == "string" and api.EncodeBase64(packed) or nil
     end)
-    if not ok then report(out) return nil, "Packen fehlgeschlagen." end
-    if type(out) ~= "string" or out == "" then return nil, "Packen fehlgeschlagen." end
+    if not ok then report(out) return nil, L["Packen fehlgeschlagen."] end
+    if type(out) ~= "string" or out == "" then return nil, L["Packen fehlgeschlagen."] end
     return out
 end
 
@@ -372,12 +374,12 @@ end
 
 -- Whether a channel can be used right now; nil and the reason otherwise.
 local function channelOk(chan, target)
-    if not CHANNELS[chan] then return nil, "Dieser Kanal wird nicht benutzt." end
-    if chan == "RAID" and not homeRaid() then return nil, "Keine eigene Raidgruppe." end
-    if chan == "GUILD" and not inGuild() then return nil, "Keine Gilde." end
+    if not CHANNELS[chan] then return nil, L["Dieser Kanal wird nicht benutzt."] end
+    if chan == "RAID" and not homeRaid() then return nil, L["Keine eigene Raidgruppe."] end
+    if chan == "GUILD" and not inGuild() then return nil, L["Keine Gilde."] end
     if chan == "WHISPER" then
-        if type(target) ~= "string" or target == "" then return nil, "Kein Empfänger." end
-        if not knownTarget(target) then return nil, "Der Empfänger ist weder in der Gruppe noch in der Gilde." end
+        if type(target) ~= "string" or target == "" then return nil, L["Kein Empfänger."] end
+        if not knownTarget(target) then return nil, L["Der Empfänger ist weder in der Gruppe noch in der Gilde."] end
     end
     return true
 end
@@ -479,7 +481,7 @@ local function attempt(i)
         if e.tries >= MAX_TRIES then
             stats.dropped = stats.dropped + 1
             removeAt(i)
-            noteOnce("throttle", "Nachricht nach " .. MAX_TRIES .. " gedrosselten Versuchen verworfen.")
+            noteOnce("throttle", L["Nachricht nach %d gedrosselten Versuchen verworfen."]:format(MAX_TRIES))
             pausedUntil = now() + 2
         else
             pausedUntil = now() + 2 ^ e.tries
@@ -496,7 +498,7 @@ local function attempt(i)
     end
     stats.failed = stats.failed + 1
     removeAt(i)
-    noteOnce("error", "Senden fehlgeschlagen (Ergebnis " .. tostring(result) .. ").")
+    noteOnce("error", L["Senden fehlgeschlagen (Ergebnis %s)."]:format(tostring(result)))
     return true
 end
 
@@ -598,7 +600,7 @@ local function enqueue(entries, key)
         end
         table.remove(queue, drop or 1)
         stats.dropped = stats.dropped + 1
-        noteOnce("full", "Sendeschlange voll, älteste Nachricht verworfen.")
+        noteOnce("full", L["Sendeschlange voll, älteste Nachricht verworfen."])
     end
     startTicker()
     pump(false)
@@ -614,16 +616,16 @@ local function entry(kind, text, chan, target, opts, desc)
 end
 
 local function envelope(kind, fields)
-    if type(kind) ~= "string" or not kind:match("^%u%u$") then return nil, "Unbekannte Nachricht." end
-    if type(fields) ~= "table" then return nil, "Keine Felder." end
+    if type(kind) ~= "string" or not kind:match("^%u%u$") then return nil, L["Unbekannte Nachricht."] end
+    if type(fields) ~= "table" then return nil, L["Keine Felder."] end
     local parts = {}
     for i, f in ipairs(fields) do
         f = tostring(f)
-        if f:find("[%c|]") then return nil, "Ungültiges Feld." end
+        if f:find("[%c|]") then return nil, L["Ungültiges Feld."] end
         parts[i] = f
     end
     local text = ns.SYNC_PROTO .. kind .. (#parts > 0 and ("\t" .. table.concat(parts, "\t")) or "")
-    if #text > MAX_TEXT then return nil, "Nachricht zu lang." end
+    if #text > MAX_TEXT then return nil, L["Nachricht zu lang."] end
     return text, parts
 end
 
@@ -633,8 +635,8 @@ end
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
 -- entry waits while it does not return true).
 function ns.CommSend(kind, fields, chan, target, opts)
-    if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end
-    if kind == "BL" then return nil, "Daten gehen über CommSendBlob." end
+    if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
+    if kind == "BL" then return nil, L["Daten gehen über CommSendBlob."] end
     local text, parts = envelope(kind, fields)
     if not text then return nil, parts end
     local ok, why = channelOk(chan, target)
@@ -649,15 +651,15 @@ local seq = 0
 -- (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"). opts as CommSend. Returns true and the
 -- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
-    if not available then return nil, "Addon-Nachrichten sind nicht verfügbar." end
-    if not BLOB_ARTS[art] then return nil, "Unbekannte Datenart." end
-    if not isKey(key) then return nil, "Ungültiger Raid-Schlüssel." end
+    if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
+    if not BLOB_ARTS[art] then return nil, L["Unbekannte Datenart."] end
+    if not isKey(key) then return nil, L["Ungültiger Raid-Schlüssel."] end
     local ok, why = channelOk(chan, target)
     if not ok then return nil, why end
     local packed, err = ns.CommPack(tbl)
     if not packed then return nil, err end
     local chunks = ns.CommChunks(packed)
-    if #chunks > (ART_PARTS[art] or MAX_PARTS) then return nil, "Daten zu groß." end
+    if #chunks > (ART_PARTS[art] or MAX_PARTS) then return nil, N_("Daten zu groß.") end -- l10n-ok: Raid/Sync.lua compares the reason; shown through L[why]
     seq = seq % 999999 + 1
     opts = opts or {}
     local list, bytes = {}, 0
@@ -729,15 +731,19 @@ local function withinLimits(s, sender, n)
     if #times > RECV_MAX or total > BYTE_MAX then
         s.ignoreUntil = t + IGNORE_FOR
         s.times, s.bytes = {}, {}
-        debugLine(("%s sendet zu viel, 60 s ignoriert."):format(sender), true)
+        debugLine(L["%s sendet zu viel, 60 s ignoriert."]:format(sender), true)
         return false
     end
     return true
 end
 
+-- the reasons of bad() as shown (a message kind such as "HI" shows as it is)
+local BAD_REASONS = { Daten = L["Daten"], Absender = L["Absender"], Teile = L["Teile"], Grenze = L["Grenze"],
+                      Umschlag = L["Umschlag"], ["Präfix"] = L["Präfix"] } -- l10n-ok: the reasons as keys
+
 local function bad(reason)
     stats.bad = stats.bad + 1
-    noteOnce("bad:" .. reason, "Ungültige Nachricht verworfen (" .. reason .. ").")
+    noteOnce("bad:" .. reason, L["Ungültige Nachricht verworfen (%s)."]:format(BAD_REASONS[reason] or reason))
 end
 
 -- Drops part sets without a new part for 30 s and announces the loss.
@@ -859,7 +865,7 @@ local function onMessage(prefix, text, chan, sender)
         return
     end
     if proto < ns.SYNC_MIN_PROTO then return end
-    if prefixOf(kind) ~= prefix then return bad("Präfix") end
+    if prefixOf(kind) ~= prefix then return bad("Präfix") end -- l10n-ok: a reason key, shown via BAD_REASONS
     local fields = {}
     if rest ~= "" then
         if rest:sub(1, 1) ~= "\t" then return bad("Umschlag") end
@@ -917,10 +923,10 @@ ns.OnEvent("CHAT_MSG_ADDON", onMessage)
 ---------------------------------------------------------------------------
 -- The "sync" settings section; later parts add their items to SYNC_SETTINGS.items and register it
 -- again.
-ns.SYNC_SETTINGS = { key = "sync", label = "Sync und Version", order = 85, items = {
-    { key = "sync.enabled", type = "toggle", label = "Raid-Stand mit anderen Amisia-Clients abgleichen", default = true,
-      tip = "Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids. Die Lootleitung hält den Stand." },
-    { key = "sync.debug", type = "toggle", label = "Sync-Nachrichten im Chat (Fehlersuche)", default = false, expert = true },
+ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, items = {
+    { key = "sync.enabled", type = "toggle", label = L["Raid-Stand mit anderen Amisia-Clients abgleichen"], default = true,
+      tip = L["Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids. Die Lootleitung hält den Stand."] },
+    { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true },
 } }
 ns.RegisterSettings(ns.SYNC_SETTINGS)
 
@@ -928,25 +934,28 @@ ns.RegisterSettings(ns.SYNC_SETTINGS)
 local syncWords = {}
 function ns.RegisterSyncCommand(word, fn) syncWords[word] = fn end
 
-local SYNC_USAGE = "[jetzt|an|aus|raenge|debug|selbsttest]"
+local SYNC_USAGE = L["[jetzt|an|aus|raenge|debug|selbsttest]"]
+-- the English sub-words (they work in every language)
+local SYNC_EN = { now = "jetzt", on = "an", off = "aus", ranks = "raenge", selftest = "selbsttest" } -- l10n-ok: the registered sub-words
 
-ns.RegisterSlash("sync", { args = SYNC_USAGE, desc = "Stand des Abgleichs", run = function(rest)
+ns.RegisterSlash("sync", { args = SYNC_USAGE, desc = L["Stand des Abgleichs"], run = function(rest)
     local word, more = (rest or ""):match("^(%S*)%s*(.-)$")
     word = (word or ""):lower()
+    if not syncWords[word] and SYNC_EN[word] then word = SYNC_EN[word] end
     if word == "" then
         if not available then
-            ns.msg("Addon-Nachrichten sind nicht verfügbar.")
+            ns.msg(L["Addon-Nachrichten sind nicht verfügbar."])
             return
         end
         -- the raid sync tells its state itself (word ""); the layer alone says its queue
         if syncWords[""] then return syncWords[""](more) end
-        ns.msg(("Sync %s · %d Nachrichten warten%s."):format(ns.Get("sync.enabled") ~= false and "an" or "aus",
-            #queue, ns.CommHeld() and " (Sperre)" or ""))
+        ns.msg(L["Sync %s · %d Nachrichten warten%s."]:format(ns.Get("sync.enabled") ~= false and L["an"] or L["aus"],
+            #queue, ns.CommHeld() and L[" (Sperre)"] or ""))
         return
     end
     local fn = syncWords[word]
     if not fn then
-        ns.msg("Aufruf: /amisia sync " .. SYNC_USAGE)
+        ns.msg(L["Aufruf: /amisia sync %s"]:format(SYNC_USAGE))
         return
     end
     fn(more)
@@ -954,10 +963,10 @@ end })
 
 ns.RegisterSyncCommand("debug", function()
     if not ns.Get("ui.expert") then
-        ns.msg("Nur im Expertenmodus.")
+        ns.msg(L["Nur im Expertenmodus."])
         return
     end
     local on = not ns.Get("sync.debug")
     ns.Set("sync.debug", on)
-    ns.msg(on and "Sync-Fehlersuche an." or "Sync-Fehlersuche aus.")
+    ns.msg(on and L["Sync-Fehlersuche an."] or L["Sync-Fehlersuche aus."])
 end)

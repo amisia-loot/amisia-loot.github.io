@@ -2,6 +2,7 @@
 -- were looted and what lay in opened loot windows, and exports it as text for the Import tab
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
+local L = ns.L
 
 -- The version stands only in the TOC (## Version), read once at load.
 local GetAddOnMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
@@ -114,7 +115,7 @@ function ns.MatSummary(counts, max)
             end
         end
     end
-    if more > 0 then parts[#parts + 1] = ("und %d weitere"):format(more) end
+    if more > 0 then parts[#parts + 1] = L["und %d weitere"]:format(more) end
     return table.concat(parts, ", ")
 end
 
@@ -133,7 +134,7 @@ function ns.MatLine(counts)
     local gems = ns.GemCount(counts)
     if total + gems == 0 then return "" end
     local line = ns.MatSummary(counts, 3)
-    if next(ns.GEMS) then line = line .. (", Edelsteine %d"):format(gems) end
+    if next(ns.GEMS) then line = line .. L[", Edelsteine %d"]:format(gems) end
     return line
 end
 
@@ -429,7 +430,7 @@ end
 local function stopRecording()
     if not active then return end
     snapshotRoster()
-    msg(("Aufnahme beendet: %s, %d Raider."):format(active.zone, ns.MemberCount(active)))
+    msg(L["Aufnahme beendet: %s, %d Raider."]:format(active.zone, ns.MemberCount(active)))
     local old = active
     active = nil
     stopTicker()
@@ -453,10 +454,10 @@ local function evaluate()
             if s then
                 active = s
                 if ns.TakeBenchNext then ns.TakeBenchNext(s) end
-                msg(("Aufnahme fortgesetzt: %s (%s)."):format(s.zone, s.date))
+                msg(L["Aufnahme fortgesetzt: %s (%s)."]:format(s.zone, s.date))
             else
                 active = newSession(zone, instanceID)
-                msg(("Aufnahme gestartet: %s. /amisia zeigt die Liste."):format(active.zone))
+                msg(L["Aufnahme gestartet: %s. /amisia zeigt die Liste."]:format(active.zone))
             end
             started = true
         end
@@ -693,13 +694,13 @@ local function bankClosed(frame, quiet)
     frame:UnregisterEvent("GUILDBANK_UPDATE_TABS")
     if not quiet and bankCounted and DB and DB.bank then
         local sum = ns.MatSummary(DB.bank.counts, 6)
-        msg(("Gildenbank gezählt: %s (%d Tabs)."):format(sum ~= "" and sum or "keine Materialien", DB.bank.tabs or 0))
+        msg(L["Gildenbank gezählt: %s (%d Tabs)."]:format(sum ~= "" and sum or L["keine Materialien"], DB.bank.tabs or 0))
         if (DB.bank.total or 0) > (DB.bank.tabs or 0) then
-            msg(("%d von %d Tabs sind für dich nicht sichtbar. Ihr Inhalt fehlt in dieser Zählung."):format(
+            msg(L["%d von %d Tabs sind für dich nicht sichtbar. Ihr Inhalt fehlt in dieser Zählung."]:format(
                 (DB.bank.total or 0) - (DB.bank.tabs or 0), DB.bank.total or 0))
         end
         if (DB.bank.filled or 0) < (DB.bank.tabs or 0) then
-            msg(("Nur %d von %d Tabs haben Gegenstände geliefert. Sind die übrigen nicht leer, die Bank beim nächsten Mal länger offen lassen."):format(
+            msg(L["Nur %d von %d Tabs haben Gegenstände geliefert. Sind die übrigen nicht leer, die Bank beim nächsten Mal länger offen lassen."]:format(
                 DB.bank.filled or 0, DB.bank.tabs or 0))
         end
     end
@@ -722,7 +723,7 @@ function ns.IsEnabled() return DB ~= nil and ns.Get("record.enabled") end
 function ns.SetEnabled(on)
     if not DB then return end
     ns.Set("record.enabled", on and true or false)
-    msg(on and "Aufnahme aktiv." or "Aufnahme pausiert.")
+    msg(on and L["Aufnahme aktiv."] or L["Aufnahme pausiert."])
 end
 
 -- Raid start as HH:MM, or nil when the late marker is switched off.
@@ -736,21 +737,21 @@ function ns.SetLateTime(text)
     return (ns.Set("record.lateAt", text)) or nil
 end
 
-ns.RegisterSettings{ key = "record", label = "Aufnahme", order = 10, items = {
-    { key = "record.enabled", type = "toggle", label = "Aufnahme im Raid", default = true,
-      tip = "Zeichnet in Raidinstanzen mit Raidgruppe Anwesenheit und Loot auf.",
+ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, items = {
+    { key = "record.enabled", type = "toggle", label = L["Aufnahme im Raid"], default = true,
+      tip = L["Zeichnet in Raidinstanzen mit Raidgruppe Anwesenheit und Loot auf."],
       onChange = function() evaluate() end },
-    { key = "record.lateAt", type = "time", allowOff = true, label = "Raidbeginn (zu spät ab)", default = 20 * 60,
-      tip = "Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab." },
-    { key = "record.keepSessions", type = "slider", label = "Raids aufbewahren", default = 60, min = 10, max = 200, step = 10 },
-    { key = "record.resumeHours", type = "slider", label = "Fortsetzen innerhalb von (Std.)", default = 2, min = 1, max = 6,
-      expert = true, tip = "Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort." },
-    { key = "record.nightStart", type = "time", label = "Raidnacht beginnt um", default = 6 * 60, expert = true,
-      tip = "Ein Raid vor dieser Uhrzeit zählt zur Nacht davor." },
+    { key = "record.lateAt", type = "time", allowOff = true, label = L["Raidbeginn (zu spät ab)"], default = 20 * 60,
+      tip = L["Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab."] },
+    { key = "record.keepSessions", type = "slider", label = L["Raids aufbewahren"], default = 60, min = 10, max = 200, step = 10 },
+    { key = "record.resumeHours", type = "slider", label = L["Fortsetzen innerhalb von (Std.)"], default = 2, min = 1, max = 6,
+      expert = true, tip = L["Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort."] },
+    { key = "record.nightStart", type = "time", label = L["Raidnacht beginnt um"], default = 6 * 60, expert = true,
+      tip = L["Ein Raid vor dieser Uhrzeit zählt zur Nacht davor."] },
 }}
-ns.RegisterSettings{ key = "bank", label = "Gildenbank", order = 40, officer = true, items = {
-    { key = "bank.count", type = "toggle", label = "Beim Öffnen der Gildenbank zählen", default = true,
-      tip = "Zählt die Gildenmaterialien in allen sichtbaren Tabs." },
+ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 40, officer = true, items = {
+    { key = "bank.count", type = "toggle", label = L["Beim Öffnen der Gildenbank zählen"], default = true,
+      tip = L["Zählt die Gildenmaterialien in allen sichtbaren Tabs."] },
 }}
 
 function ns.LateCount(s)
@@ -1170,42 +1171,42 @@ end)
 ---------------------------------------------------------------------------
 -- Slash command
 ---------------------------------------------------------------------------
-ns.RegisterSlash("pause", { desc = "Aufnahme pausieren oder fortsetzen", run = function() ns.SetEnabled(not ns.IsEnabled()) end })
-ns.RegisterSlash("spaet", { aliases = { "late" }, args = "<HH:MM>|aus", desc = "Raidbeginn für die Zu-spät-Markierung",
+ns.RegisterSlash("pause", { desc = L["Aufnahme pausieren oder fortsetzen"], run = function() ns.SetEnabled(not ns.IsEnabled()) end })
+ns.RegisterSlash("spaet", { en = "late", args = L["<HH:MM>|aus"], desc = L["Raidbeginn für die Zu-spät-Markierung"],
     run = function(rest)
         if rest == "" then
             local at = ns.LateTime()
-            msg(at and ("Raidbeginn %s. Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. /amisia spaet aus schaltet es ab."):format(at)
-                or "Verspätungen werden nicht vermerkt. /amisia spaet 20:00 schaltet sie ein.")
+            msg(at and L["Raidbeginn %s. Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. /amisia spaet aus schaltet es ab."]:format(at)
+                or L["Verspätungen werden nicht vermerkt. /amisia spaet 20:00 schaltet sie ein."])
         elseif ns.SetLateTime(rest) then
             local at = ns.LateTime()
-            msg(at and ("Raidbeginn %s: wer danach zum ersten Mal im Raid steht, ist zu spät."):format(at)
-                or "Verspätungen werden nicht mehr vermerkt.")
+            msg(at and L["Raidbeginn %s: wer danach zum ersten Mal im Raid steht, ist zu spät."]:format(at)
+                or L["Verspätungen werden nicht mehr vermerkt."])
         else
-            msg("Aufruf: /amisia spaet <HH:MM> | aus")
+            msg(L["Aufruf: /amisia spaet <HH:MM> | aus"])
         end
     end })
-ns.RegisterSlash("status", { desc = "Stand der Aufnahme und der Gildenbank", run = function()
+ns.RegisterSlash("status", { desc = L["Stand der Aufnahme und der Gildenbank"], run = function()
     if active then
         local c = ns.MatCounts(active)
         local late = ns.LateCount(active)
         local sum = ns.HasMats() and ns.MatSummary(c, 6) or ""
         local mats = sum ~= "" and (", " .. sum) or ""
-        msg(("Aufnahme: %s, %d Raider%s%s."):format(active.zone, ns.MemberCount(active),
-            late > 0 and (", " .. late .. " zu spät") or "", mats))
+        msg(L["Aufnahme: %s, %d Raider%s%s."]:format(active.zone, ns.MemberCount(active),
+            late > 0 and L[", %d zu spät"]:format(late) or "", mats))
     else
-        msg(ns.IsEnabled() and "Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe." or "Aufnahme pausiert. /amisia pause setzt sie fort.")
+        msg(ns.IsEnabled() and L["Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe."] or L["Aufnahme pausiert. /amisia pause setzt sie fort."])
     end
     -- the guild bank only while materials are tracked
     if not ns.HasMats() then return end
     local bank = ns.Bank()
     if bank and bank.counts then
         local sum = ns.MatSummary(bank.counts, 6)
-        msg(("Gildenbank vom %s: %s."):format(date("%d.%m. %H:%M", bank.at), sum ~= "" and sum or "keine Materialien"))
+        msg(L["Gildenbank vom %s: %s."]:format(ns.FmtDayTime(bank.at), sum ~= "" and sum or L["keine Materialien"]))
     else
-        msg("Gildenbank noch nicht gezählt. Öffne sie einmal.")
+        msg(L["Gildenbank noch nicht gezählt. Öffne sie einmal."])
     end
 end })
-ns.RegisterSlash("export", { officer = true, desc = "den neuesten Raid exportieren", run = function()
+ns.RegisterSlash("export", { officer = true, desc = L["den neuesten Raid exportieren"], run = function()
     if ns.ShowExport then ns.ShowExport(true) end
 end })

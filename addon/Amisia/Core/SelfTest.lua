@@ -6,6 +6,7 @@
 -- a map waypoint. Every check runs protected; a failing check reports its error text instead of
 -- raising.
 local ADDON, ns = ...
+local L, N_ = ns.L, ns.N_
 
 local ST = {}
 ns.SelfTest = ST
@@ -74,7 +75,7 @@ end
 
 -- Any value as short text: strings quoted (spaces show), secret values marked, tables counted.
 local function show(v)
-    if isSecret(v) then return "<geheim>" end
+    if isSecret(v) then return L["<geheim>"] end
     local t = type(v)
     if t == "nil" then return "nil" end
     if t == "string" then return '"' .. v .. '"' end
@@ -86,7 +87,7 @@ local function show(v)
     if t == "table" then
         local n = 0
         for _ in pairs(v) do n = n + 1 end
-        return ("Tabelle(%d)"):format(n)
+        return L["Tabelle(%d)"]:format(n)
     end
     return t
 end
@@ -95,15 +96,15 @@ end
 local function showAll(...)
     local out = {}
     for i = 1, select("#", ...) do out[i] = show((select(i, ...))) end
-    if #out == 0 then return "(nichts)" end
+    if #out == 0 then return L["(nichts)"] end
     return table.concat(out, ", ")
 end
 
 local function seenText(e, withChan)
-    if not e then return "noch keins gesehen" end
-    local name = e.secret and "<geheim>" or ('"' .. tostring(e.text) .. '"')
+    if not e then return L["noch keins gesehen"] end
+    local name = e.secret and L["<geheim>"] or ('"' .. tostring(e.text) .. '"')
     local ago = math.floor((GetTime() - (e.at or 0)) + 0.5)
-    return name .. (withChan and e.chan and (" (" .. e.chan .. ")") or "") .. (" vor %d s"):format(ago)
+    return name .. (withChan and e.chan and (" (" .. e.chan .. ")") or "") .. L[" vor %d s"]:format(ago)
 end
 
 -- A value of the client by its path ("C_Map.GetBestMapForUnit"), or nil.
@@ -163,7 +164,7 @@ local function check(R, label, f)
     end
     local text, missing = errorText(mark)
     if missing then
-        add(R, "FEHLT", label, missing .. " fehlt")
+        add(R, "FEHLT", label, L["%s fehlt"]:format(missing))
     else
         add(R, "FEHLER", label, text)
     end
@@ -173,7 +174,7 @@ end
 local function runSection(R, title, body, ...)
     section(R, title)
     local ok, err = pcall(body, R, ...)
-    if not ok then add(R, "FEHLER", "Abschnitt", errorText(err) or tostring(err)) end
+    if not ok then add(R, "FEHLER", L["Abschnitt"], errorText(err) or tostring(err)) end
 end
 
 ---------------------------------------------------------------------------
@@ -190,17 +191,17 @@ end
 local function sectionClient(R)
     check(R, "Amisia", function() return "WERT", tostring(ns.VERSION) end)
     check(R, "GetBuildInfo", function() return "WERT", showAll(call("GetBuildInfo")) end)
-    check(R, "Zeit", function()
+    check(R, L["Zeit"], function()
         return "WERT", ("%s, Server %s"):format(date("%Y-%m-%d %H:%M:%S"), show(call("GetServerTime")))
     end)
-    check(R, "Seit dem Login", function()
-        if not loginAt then return "WERT", "unbekannt (nach /reload)" end
+    check(R, L["Seit dem Login"], function()
+        if not loginAt then return "WERT", L["unbekannt (nach /reload)"] end
         return "WERT", ("%d s"):format(math.floor(GetTime() - loginAt + 0.5))
     end)
     check(R, "C_Map.GetBestMapForUnit", function()
         local id = call("C_Map.GetBestMapForUnit", "player")
         local info = id and not isSecret(id) and fn("C_Map.GetMapInfo") and C_Map.GetMapInfo(id)
-        local extra = type(info) == "table" and (" %s, Typ %s, oben %s"):format(show(info.name), show(info.mapType), show(info.parentMapID)) or ""
+        local extra = type(info) == "table" and L[" %s, Typ %s, oben %s"]:format(show(info.name), show(info.mapType), show(info.parentMapID)) or ""
         return "WERT", show(id) .. extra
     end)
     check(R, "GetInstanceInfo", function()
@@ -224,7 +225,7 @@ local function sectionLock(R)
     if #kinds == 0 then kinds = { { 1, "Encounter" }, { 5, "Chat" } } end
     table.sort(kinds, function(a, b) return a[1] < b[1] end)
     if not fn("C_RestrictedActions.IsAddOnRestrictionActive") then
-        add(R, "FEHLT", "C_RestrictedActions.IsAddOnRestrictionActive", "fehlt")
+        add(R, "FEHLT", "C_RestrictedActions.IsAddOnRestrictionActive", L["fehlt"])
     else
         for _, k in ipairs(kinds) do
             check(R, ("IsAddOnRestrictionActive(%d %s)"):format(k[1], k[2]), function()
@@ -233,8 +234,8 @@ local function sectionLock(R)
         end
     end
     check(R, "C_InstanceEncounter.IsEncounterInProgress", function() return "WERT", show(call("C_InstanceEncounter.IsEncounterInProgress")) end)
-    check(R, "Amisia-Warteschlangen", function()
-        return "WERT", ("Chat %s, Addon %s, angehalten %s"):format(show(ns.ChatQueueSize and ns.ChatQueueSize()),
+    check(R, L["Amisia-Warteschlangen"], function()
+        return "WERT", L["Chat %s, Addon %s, angehalten %s"]:format(show(ns.ChatQueueSize and ns.ChatQueueSize()),
             show(ns.CommQueueSize and ns.CommQueueSize()), show(ns.CommHeld and ns.CommHeld()))
     end)
 end
@@ -249,12 +250,12 @@ local function sectionNames(R)
         return "WERT", showAll(name, second)
     end)
     check(R, "UnitFullName(\"player\")", function()
-        if not fn("UnitFullName") then return "WERT", "fehlt" end
+        if not fn("UnitFullName") then return "WERT", L["fehlt"] end
         local name, second = UnitFullName("player")
         return "WERT", showAll(name, second)
     end)
     check(R, "GetNormalizedRealmName", function() return "WERT", show(call("GetNormalizedRealmName")) end)
-    check(R, "Amisia liest dich als", function() return "WERT", show(ns.UnitFullName("player")) end)
+    check(R, L["Amisia liest dich als"], function() return "WERT", show(ns.UnitFullName("player")) end)
     local n = 0
     check(R, "GetNumGroupMembers", function()
         n = tonumber(call("GetNumGroupMembers")) or 0
@@ -265,24 +266,24 @@ local function sectionNames(R)
         check(R, ("GetRaidRosterInfo(%d)"):format(i), function()
             local name, rank, sub = call("GetRaidRosterInfo", i)
             local unit = raid and ("raid" .. i) or (i == 1 and "player" or ("party" .. (i - 1)))
-            return "WERT", ("%s, Rang %s, Gruppe %s; UnitName(%s) = %s"):format(show(name), show(rank), show(sub), unit,
+            return "WERT", L["%s, Rang %s, Gruppe %s; UnitName(%s) = %s"]:format(show(name), show(rank), show(sub), unit,
                 showAll(UnitName(unit), (select(2, UnitName(unit)))))
         end)
     end
-    if n == 0 then add(R, "WERT", "Raidliste", "nicht in einer Gruppe, nicht prüfbar") end
-    check(R, "Ziel", function()
+    if n == 0 then add(R, "WERT", L["Raidliste"], L["nicht in einer Gruppe, nicht prüfbar"]) end
+    check(R, L["Ziel##Selbsttest"], function()
         local exists = fn("UnitExists") and UnitExists("target")
         if exists == nil then exists = UnitName("target") ~= nil end
-        if not isSecret(exists) and not exists then return "WERT", "kein Ziel" end
+        if not isSecret(exists) and not exists then return "WERT", L["kein Ziel"] end
         local cls = fn("UnitClassification") and UnitClassification("target")
-        return "WERT", ("UnitName %s, Art %s, GUID %s"):format(showAll(UnitName("target")), show(cls), show(UnitGUID("target")))
+        return "WERT", L["UnitName %s, Art %s, GUID %s"]:format(showAll(UnitName("target")), show(cls), show(UnitGUID("target")))
     end)
-    check(R, "CHAT_MSG_ADDON eigenes Echo", function() return "WERT", seenText(seen.addonOwn, true) end)
-    check(R, "CHAT_MSG_ADDON fremder Absender", function() return "WERT", seenText(seen.addonOther, true) end)
-    check(R, "CHAT_MSG_WHISPER Absender", function() return "WERT", seenText(seen.whisper) end)
-    check(R, "CHAT_MSG_WHISPER_INFORM Ziel", function() return "WERT", seenText(seen.inform) end)
+    check(R, L["CHAT_MSG_ADDON eigenes Echo"], function() return "WERT", seenText(seen.addonOwn, true) end)
+    check(R, L["CHAT_MSG_ADDON fremder Absender"], function() return "WERT", seenText(seen.addonOther, true) end)
+    check(R, L["CHAT_MSG_WHISPER Absender"], function() return "WERT", seenText(seen.whisper) end)
+    check(R, L["CHAT_MSG_WHISPER_INFORM Ziel"], function() return "WERT", seenText(seen.inform) end)
     check(R, "GetGuildRosterInfo(1)", function()
-        if not (fn("IsInGuild") and IsInGuild()) then return "WERT", "keine Gilde" end
+        if not (fn("IsInGuild") and IsInGuild()) then return "WERT", L["keine Gilde"] end
         local name, rankName, rankIndex = call("GetGuildRosterInfo", 1)
         return "WERT", showAll(name, rankName, rankIndex)
     end)
@@ -307,7 +308,7 @@ local function same(a, b, depth)
 end
 
 local SAMPLE = {
-    name = "Vulo Sturmwind", text = "Grüße aus Sturmwind", n = 123456, f = 1.5, yes = true,
+    name = "Vulo Sturmwind", text = "Grüße aus Sturmwind", n = 123456, -- l10n-ok: test data for the round trip, never shown f = 1.5, yes = true,
     list = { 1, 2, 3, 5, 8, 13 }, nested = { a = { b = { c = "tief" } }, filler = string.rep("Amisia ", 40) },
 }
 
@@ -315,50 +316,50 @@ local function roundTrip(R)
     local api = _G.C_EncodingUtil
     local method = _G.Enum and Enum.CompressionMethod and Enum.CompressionMethod.Deflate
     check(R, "Enum.CompressionMethod.Deflate", function()
-        if method == nil then return "FEHLT", "fehlt (Rückfall 0)" end
+        if method == nil then return "FEHLT", L["fehlt (Rückfall 0)"] end
         return "OK", show(method)
     end)
     method = method or 0
     local raw, packed, text, back
     check(R, "SerializeCBOR", function()
         raw = api.SerializeCBOR(SAMPLE)
-        if type(raw) ~= "string" then return "FEHLT", "kein Text: " .. show(raw) end
-        return "OK", ("%d Bytes"):format(#raw)
+        if type(raw) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(raw)) end
+        return "OK", L["%d Bytes"]:format(#raw)
     end)
     if not raw then return end
     check(R, "CompressString(Deflate)", function()
         packed = api.CompressString(raw, method)
-        if type(packed) ~= "string" then return "FEHLT", "kein Text: " .. show(packed) end
-        return "OK", ("%d Bytes"):format(#packed)
+        if type(packed) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(packed)) end
+        return "OK", L["%d Bytes"]:format(#packed)
     end)
     if not packed then return end
     check(R, "EncodeBase64", function()
         text = api.EncodeBase64(packed)
-        if type(text) ~= "string" then return "FEHLT", "kein Text: " .. show(text) end
-        return "OK", ("%d Zeichen, %d Teile zu 200"):format(#text, math.ceil(#text / 200))
+        if type(text) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(text)) end
+        return "OK", L["%d Zeichen, %d Teile zu 200"]:format(#text, math.ceil(#text / 200))
     end)
     if not text then return end
-    check(R, "Zurück (Base64, Deflate, CBOR)", function()
+    check(R, L["Zurück (Base64, Deflate, CBOR)"], function()
         local p = api.DecodeBase64(text)
         local r = type(p) == "string" and api.DecompressString(p, method)
         back = type(r) == "string" and api.DeserializeCBOR(r)
-        if type(back) ~= "table" then return "FEHLT", "kein Ergebnis" end
-        if not same(SAMPLE, back) then return "FEHLT", "Ergebnis anders als das Original" end
-        return "OK", "gleich"
+        if type(back) ~= "table" then return "FEHLT", L["kein Ergebnis"] end
+        if not same(SAMPLE, back) then return "FEHLT", L["Ergebnis anders als das Original"] end
+        return "OK", L["gleich"]
     end)
 end
 
 local function sectionComm(R)
-    check(R, "Präfixe", function()
+    check(R, L["Präfixe"], function()
         local list = ns.CommPrefixResults and ns.CommPrefixResults() or {}
-        if #list == 0 then return "FEHLT", "keine Anmeldung (Funktion fehlt)" end
+        if #list == 0 then return "FEHLT", L["keine Anmeldung (Funktion fehlt)"] end
         local parts, bad = {}, false
         for _, r in ipairs(list) do
             local good = r.ok and (r.result == 0 or r.result == 1 or r.result == true)
             if not good then bad = true end
-            parts[#parts + 1] = ("%s = %s"):format(r.prefix, r.ok and show(r.result) or ("Fehler " .. cut(r.result)))
+            parts[#parts + 1] = ("%s = %s"):format(r.prefix, r.ok and show(r.result) or L["Fehler %s"]:format(cut(r.result)))
         end
-        return bad and "FEHLT" or "OK", table.concat(parts, ", ") .. " (0 neu, 1 schon angemeldet)"
+        return bad and "FEHLT" or "OK", table.concat(parts, ", ") .. L[" (0 neu, 1 schon angemeldet)"]
     end)
     if fn("C_ChatInfo.IsAddonMessagePrefixRegistered") then
         for _, p in ipairs({ "Amisia", "AmisiaD" }) do
@@ -368,23 +369,23 @@ local function sectionComm(R)
             end)
         end
     else
-        add(R, "WERT", "C_ChatInfo.IsAddonMessagePrefixRegistered", "fehlt")
+        add(R, "WERT", "C_ChatInfo.IsAddonMessagePrefixRegistered", L["fehlt"])
     end
-    check(R, "Addon-Nachrichten", function()
-        return "WERT", ("verfügbar %s, Abgleich an %s"):format(show(ns.CommAvailable and ns.CommAvailable()), show(ns.CommReady and ns.CommReady()))
+    check(R, L["Addon-Nachrichten"], function()
+        return "WERT", L["verfügbar %s, Abgleich an %s"]:format(show(ns.CommAvailable and ns.CommAvailable()), show(ns.CommReady and ns.CommReady()))
     end)
-    check(R, "Zähler", function()
+    check(R, L["Zähler"], function()
         local stats = ns.CommStats and ns.CommStats() or {}
         local keys = {}
         for k in pairs(stats) do keys[#keys + 1] = tostring(k) end
         table.sort(keys)
         local parts = {}
         for _, k in ipairs(keys) do parts[#parts + 1] = k .. "=" .. show(stats[k]) end
-        return "WERT", #parts > 0 and table.concat(parts, " ") or "keine"
+        return "WERT", #parts > 0 and table.concat(parts, " ") or L["keine"]
     end)
     local api = _G.C_EncodingUtil
     if type(api) ~= "table" then
-        add(R, "FEHLT", "C_EncodingUtil", "fehlt (kein Raid-Abgleich)")
+        add(R, "FEHLT", "C_EncodingUtil", L["fehlt (kein Raid-Abgleich)"])
         return
     end
     local missing = {}
@@ -392,25 +393,25 @@ local function sectionComm(R)
         if type(api[f]) ~= "function" then missing[#missing + 1] = f end
     end
     if #missing > 0 then
-        add(R, "FEHLT", "C_EncodingUtil", table.concat(missing, ", ") .. " fehlt")
+        add(R, "FEHLT", "C_EncodingUtil", L["%s fehlt"]:format(table.concat(missing, ", ")))
         return
     end
-    add(R, "OK", "C_EncodingUtil", "alle sechs Funktionen")
+    add(R, "OK", "C_EncodingUtil", L["alle sechs Funktionen"])
     roundTrip(R)
-    check(R, "Abbild des neuesten Raids", function()
+    check(R, L["Abbild des neuesten Raids"], function()
         local s = ns.Active and ns.Active()
         if not s then
             local list = ns.Sessions and ns.Sessions() or {}
             s = list[#list]
         end
-        if not s then return "WERT", "noch kein Raid aufgezeichnet" end
+        if not s then return "WERT", L["noch kein Raid aufgezeichnet"] end
         local sp, so = ns.SyncBuild(s)
         local pp, err = ns.CommPack(sp)
         local po = pp and ns.CommPack(so)
-        if not pp or not po then return "FEHLT", "Packen fehlgeschlagen" .. (err and (" (" .. err .. ")") or "") end
+        if not pp or not po then return "FEHLT", L["Packen fehlgeschlagen"] .. (err and (" (" .. err .. ")") or "") end
         local back = ns.CommUnpack(pp)
-        return "OK", ("öffentlich %d Zeichen in %d Teilen, Offiziere %d Zeichen in %d Teilen, zurück %s"):format(
-            #pp, #ns.CommChunks(pp), #po, #ns.CommChunks(po), type(back) == "table" and "lesbar" or "NICHT lesbar")
+        return "OK", L["öffentlich %d Zeichen in %d Teilen, Offiziere %d Zeichen in %d Teilen, zurück %s"]:format(
+            #pp, #ns.CommChunks(pp), #po, #ns.CommChunks(po), type(back) == "table" and L["lesbar"] or L["NICHT lesbar"])
     end)
 end
 
@@ -426,14 +427,14 @@ local function sectionGuild(R)
         return "WERT", show(inGuild)
     end)
     if not inGuild then
-        add(R, "WERT", "Gilde", "nicht in einer Gilde, Gildenprüfungen entfallen")
+        add(R, "WERT", L["Gilde"], L["nicht in einer Gilde, Gildenprüfungen entfallen"])
         return
     end
     check(R, "GetGuildInfo", function() return "WERT", showAll(call("GetGuildInfo", "player")) end)
-    check(R, "C_Club Gildenliste", function()
+    check(R, L["C_Club Gildenliste"], function()
         local id = call("C_Club.GetGuildClubId")
-        if id == nil then return "WERT", "keine Club-ID (noch nicht bereit?)" end
-        if isSecret(id) then return "WERT", "Club-ID geheim" end
+        if id == nil then return "WERT", L["keine Club-ID (noch nicht bereit?)"] end
+        if isSecret(id) then return "WERT", L["Club-ID geheim"] end
         local members = call("C_Club.GetClubMembers", id)
         local count = type(members) == "table" and #members or 0
         local me
@@ -443,8 +444,8 @@ local function sectionGuild(R)
                 if type(info) == "table" and not isSecret(info.isSelf) and info.isSelf then me = info break end
             end
         end
-        local mine = me and ("; du: %s, Rang %s"):format(show(me.name), show(me.guildRankOrder)) or "; dich nicht gefunden"
-        return count > 0 and "OK" or "WERT", ("Club %s, %d Mitglieder%s"):format(show(id), count, mine)
+        local mine = me and L["; du: %s, Rang %s"]:format(show(me.name), show(me.guildRankOrder)) or L["; dich nicht gefunden"]
+        return count > 0 and "OK" or "WERT", L["Club %s, %d Mitglieder%s"]:format(show(id), count, mine)
     end)
     check(R, "GetNumGuildMembers", function() return "WERT", showAll(call("GetNumGuildMembers")) end)
     local ranks = 0
@@ -453,22 +454,22 @@ local function sectionGuild(R)
         return "WERT", show(ranks)
     end)
     if not fn("C_GuildInfo.GuildControlGetRankFlags") then
-        add(R, "FEHLT", "C_GuildInfo.GuildControlGetRankFlags", "fehlt (Rückfall über Rangzahl)")
+        add(R, "FEHLT", "C_GuildInfo.GuildControlGetRankFlags", L["fehlt (Rückfall über Rangzahl)"])
     else
         for r = 1, math.min(ranks, 10) do
-            check(R, ("Rang %d"):format(r), function()
+            check(R, L["Rang %d"]:format(r), function()
                 local name = fn("GuildControlGetRankName") and GuildControlGetRankName(r)
                 local flags = C_GuildInfo.GuildControlGetRankFlags(r)
-                if type(flags) ~= "table" then return "WERT", ("%s: keine Tabelle (%s)"):format(show(name), show(flags)) end
-                return "WERT", ("%s: %d Rechte, [%d] Offiziersrang = %s"):format(show(name), #flags, OFFICER_FLAG, show(flags[OFFICER_FLAG]))
+                if type(flags) ~= "table" then return "WERT", L["%s: keine Tabelle (%s)"]:format(show(name), show(flags)) end
+                return "WERT", L["%s: %d Rechte, [%d] Offiziersrang = %s"]:format(show(name), #flags, OFFICER_FLAG, show(flags[OFFICER_FLAG]))
             end)
         end
     end
     check(R, "C_GuildInfo.IsGuildOfficer", function() return "WERT", show(call("C_GuildInfo.IsGuildOfficer")) end)
     check(R, "C_GuildInfo.CanEditOfficerNote", function() return "WERT", show(call("C_GuildInfo.CanEditOfficerNote")) end)
-    check(R, "Amisia hält dich für", function()
+    check(R, L["Amisia hält dich für"], function()
         local verified = ns.IsVerifiedOfficer and ns.IsVerifiedOfficer(ns.UnitFullName("player"))
-        return "WERT", ("Offiziersansicht %s, geprüfter Offizier %s"):format(show(ns.IsOfficerView and ns.IsOfficerView()), show(verified))
+        return "WERT", L["Offiziersansicht %s, geprüfter Offizier %s"]:format(show(ns.IsOfficerView and ns.IsOfficerView()), show(verified))
     end)
 end
 
@@ -479,16 +480,16 @@ local function sectionMap(R, opts)
     check(R, "C_DateAndTime.GetSecondsUntilWeeklyReset", function()
         local s = call("C_DateAndTime.GetSecondsUntilWeeklyReset")
         if type(s) ~= "number" or isSecret(s) then return "WERT", show(s) end
-        return "WERT", ("%d s, also %s"):format(s, date("%Y-%m-%d %H:%M", time() + s))
+        return "WERT", L["%d s, also %s"]:format(s, date("%Y-%m-%d %H:%M", time() + s))
     end)
     local map = currentMap()
     check(R, "C_Map.CanSetUserWaypointOnMap", function()
-        if not map then return "WERT", "keine Karte" end
-        return "WERT", ("Karte %d: %s"):format(map, show(call("C_Map.CanSetUserWaypointOnMap", map)))
+        if not map then return "WERT", L["keine Karte"] end
+        return "WERT", L["Karte %d: %s"]:format(map, show(call("C_Map.CanSetUserWaypointOnMap", map)))
     end)
     local pos
     check(R, "C_Map.GetPlayerMapPosition", function()
-        if not map then return "WERT", "keine Karte" end
+        if not map then return "WERT", L["keine Karte"] end
         pos = call("C_Map.GetPlayerMapPosition", map, "player")
         if type(pos) ~= "table" then return "WERT", show(pos) end
         local x, y = pos.x, pos.y
@@ -500,17 +501,17 @@ local function sectionMap(R, opts)
     check(R, "C_SuperTrack.IsSuperTrackingUserWaypoint", function() return "WERT", show(call("C_SuperTrack.IsSuperTrackingUserWaypoint")) end)
     check(R, "GetPlayerFacing", function() return "WERT", show(call("GetPlayerFacing")) end)
     if not opts.waypoint then
-        add(R, "WERT", "Wegpunkt setzen", "nicht versucht (/amisia selbsttest wegpunkt)")
+        add(R, "WERT", L["Wegpunkt setzen"], L["nicht versucht (/amisia selbsttest wegpunkt)"])
         return
     end
-    check(R, "Wegpunkt setzen", function()
-        if not map or not pos or type(pos.x) ~= "number" or isSecret(pos.x) then return "FEHLT", "keine Position auf der Karte" end
+    check(R, L["Wegpunkt setzen"], function()
+        if not map or not pos or type(pos.x) ~= "number" or isSecret(pos.x) then return "FEHLT", L["keine Position auf der Karte"] end
         local point = call("UiMapPoint.CreateFromCoordinates", map, pos.x, pos.y)
         local ok = call("C_Map.SetUserWaypoint", point)
         if fn("C_SuperTrack.SetSuperTrackedUserWaypoint") then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
         local has = fn("C_Map.HasUserWaypoint") and C_Map.HasUserWaypoint()
         local tracked = fn("C_SuperTrack.IsSuperTrackingUserWaypoint") and C_SuperTrack.IsSuperTrackingUserWaypoint()
-        return has and "OK" or "FEHLT", ("Ergebnis %s, gesetzt %s, Wegweiser %s"):format(show(ok), show(has), show(tracked))
+        return has and "OK" or "FEHLT", L["Ergebnis %s, gesetzt %s, Wegweiser %s"]:format(show(ok), show(has), show(tracked))
     end)
 end
 
@@ -526,17 +527,17 @@ local function lootMethodName(v)
 end
 
 local function sectionLoot(R)
-    check(R, "Gruppe", function()
+    check(R, L["Gruppe"], function()
         return "WERT", ("IsInGroup %s, IsInRaid %s"):format(show(fn("IsInGroup") and IsInGroup()), show(fn("IsInRaid") and IsInRaid()))
     end)
     check(R, "C_PartyInfo.GetLootMethod", function()
         local method, partyID, raidID = call("C_PartyInfo.GetLootMethod")
         local name = not isSecret(method) and lootMethodName(method)
-        return "WERT", ("%s%s, Plündermeister Gruppe %s, Raid %s"):format(show(method), name and (" " .. name) or "", show(partyID), show(raidID))
+        return "WERT", L["%s%s, Plündermeister Gruppe %s, Raid %s"]:format(show(method), name and (" " .. name) or "", show(partyID), show(raidID))
     end)
     check(R, "C_PartyInfo.GetAvailableLootMethods", function()
-        if not fn("C_PartyInfo.GetAvailableLootMethods") then return "WERT", "fehlt" end
-        if not (fn("IsInGroup") and IsInGroup()) then return "WERT", "vorhanden, nur in einer Gruppe aussagekräftig" end
+        if not fn("C_PartyInfo.GetAvailableLootMethods") then return "WERT", L["fehlt"] end
+        if not (fn("IsInGroup") and IsInGroup()) then return "WERT", L["vorhanden, nur in einer Gruppe aussagekräftig"] end
         local r = { C_PartyInfo.GetAvailableLootMethods() }
         local list = {}
         local function addOne(v)
@@ -548,12 +549,12 @@ local function sectionLoot(R)
         else
             for _, v in ipairs(r) do addOne(v) end
         end
-        return "WERT", #list > 0 and table.concat(list, ", ") or "(nichts)"
+        return "WERT", #list > 0 and table.concat(list, ", ") or L["(nichts)"]
     end)
-    check(R, "Lootfenster", function()
+    check(R, L["Lootfenster"], function()
         local n = fn("GetNumLootItems") and tonumber(GetNumLootItems()) or 0
-        if n == 0 then return "WERT", "keins offen (GetLootSourceInfo nicht prüfbar)" end
-        return "WERT", ("%d Plätze, GetLootSourceInfo(1) = %s"):format(n, showAll(call("GetLootSourceInfo", 1)))
+        if n == 0 then return "WERT", L["keins offen (GetLootSourceInfo nicht prüfbar)"] end
+        return "WERT", L["%d Plätze, GetLootSourceInfo(1) = %s"]:format(n, showAll(call("GetLootSourceInfo", 1)))
     end)
 end
 
@@ -588,7 +589,7 @@ ST.ATLASES = ATLASES
 
 local function sectionAtlases(R)
     if not fn("C_Texture.GetAtlasInfo") then
-        add(R, "FEHLT", "C_Texture.GetAtlasInfo", "fehlt (alle Atlanten im Rückfall)")
+        add(R, "FEHLT", "C_Texture.GetAtlasInfo", L["fehlt (alle Atlanten im Rückfall)"])
         return
     end
     local okCount = 0
@@ -599,17 +600,17 @@ local function sectionAtlases(R)
         elseif type(info) == "table" then
             okCount = okCount + 1
         else
-            add(R, "FEHLT", "Atlas " .. a, "nicht im Client")
+            add(R, "FEHLT", "Atlas " .. a, L["nicht im Client"])
         end
     end
-    add(R, okCount == #ATLASES and "OK" or "WERT", "Atlanten", ("%d von %d vorhanden"):format(okCount, #ATLASES))
+    add(R, okCount == #ATLASES and "OK" or "WERT", L["Atlanten"], L["%d von %d vorhanden"]:format(okCount, #ATLASES))
     -- the sizes the layout scales from (dropdown arrow, head bar)
     local sizes = {}
     for _, name in ipairs({ "common-dropdown-a-button", "Professions-skillbar-bg", "Professions-skillbar-frame" }) do
         local info = C_Texture.GetAtlasInfo(name)
         sizes[#sizes + 1] = ("%s %sx%s"):format(name, info and tostring(info.width) or "?", info and tostring(info.height) or "?")
     end
-    add(R, "WERT", "Atlasgrößen", table.concat(sizes, ", "))
+    add(R, "WERT", L["Atlasgrößen"], table.concat(sizes, ", "))
 end
 
 -- The dungeon images (DungeonArt.lua): every file id of the client's loading screens, drawn once on
@@ -618,7 +619,7 @@ local artTexture, artModel
 local function sectionArt(R)
     local A = ns.DUNGEON_ART
     if type(A) ~= "table" or type(A.D) ~= "table" then
-        add(R, "FEHLT", "Dungeonbilder", "keine Bilddaten")
+        add(R, "FEHLT", L["Dungeonbilder"], L["keine Bilddaten"])
         return
     end
     local ids, have = {}, {}
@@ -649,23 +650,23 @@ local function sectionArt(R)
         end
     end
     if #missing > 0 then
-        add(R, "FEHLT", "Dungeonbilder", ("%d von %d fehlen: %s"):format(#missing, #ids, table.concat(missing, ", ")))
+        add(R, "FEHLT", L["Dungeonbilder"], L["%d von %d fehlen: %s"]:format(#missing, #ids, table.concat(missing, ", ")))
     elseif silent > 0 then
-        add(R, "WERT", "Dungeonbilder", ("%d Dateien, SetTexture ohne Antwort"):format(#ids))
+        add(R, "WERT", L["Dungeonbilder"], L["%d Dateien, SetTexture ohne Antwort"]:format(#ids))
     else
-        add(R, "OK", "Dungeonbilder", ("%d von %d vorhanden"):format(found, #ids))
+        add(R, "OK", L["Dungeonbilder"], L["%d von %d vorhanden"]:format(found, #ids))
     end
-    check(R, "Bossmodell", function()
+    check(R, L["Bossmodell"], function()
         -- made once per session, as the template frames
         if not artModel then
             local good, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
             artModel = good and m or false
         end
         local good, m = artModel ~= false, artModel
-        if not good or not m then return "WERT", "kein PlayerModel (kein Bossmodell)" end
+        if not good or not m then return "WERT", L["kein PlayerModel (kein Bossmodell)"] end
         m:Hide()
-        if type(m.SetCreature) == "function" then return "OK", "SetCreature vorhanden" end
-        return "WERT", "SetCreature fehlt (kein Bossmodell)"
+        if type(m.SetCreature) == "function" then return "OK", L["SetCreature vorhanden"] end
+        return "WERT", L["SetCreature fehlt (kein Bossmodell)"]
     end)
 end
 
@@ -702,7 +703,7 @@ local function tryTemplate(t)
     if not ok then
         answer = { "FEHLT", cut(f) }
     elseif not f then
-        answer = { "FEHLT", "kein Rahmen" }
+        answer = { "FEHLT", L["kein Rahmen"] }
     else
         if f.Hide then pcall(f.Hide, f) end
         local lacking = {}
@@ -710,9 +711,9 @@ local function tryTemplate(t)
             if f[part] == nil then lacking[#lacking + 1] = part end
         end
         if #lacking > 0 then
-            answer = { "FEHLT", "Teile fehlen: " .. table.concat(lacking, ", ") }
+            answer = { "FEHLT", L["Teile fehlen: %s"]:format(table.concat(lacking, ", ")) }
         else
-            answer = { "OK", #t[3] > 0 and ("mit " .. table.concat(t[3], ", ")) or "vorhanden" }
+            answer = { "OK", #t[3] > 0 and L["mit %s"]:format(table.concat(t[3], ", ")) or L["vorhanden"] }
         end
     end
     templateAnswers[key] = answer
@@ -728,7 +729,7 @@ local function sectionTemplates(R)
     end
     check(R, "AmisiaMapPinTemplate", function()
         return type(_G.AmisiaMapPinMixin) == "table" and "OK" or "FEHLT",
-            type(_G.AmisiaMapPinMixin) == "table" and "Mixin geladen (Vorlage aus MapPin.xml)" or "Mixin fehlt"
+            type(_G.AmisiaMapPinMixin) == "table" and L["Mixin geladen (Vorlage aus MapPin.xml)"] or L["Mixin fehlt"]
     end)
 end
 
@@ -798,9 +799,9 @@ ST.OBJECTS = OBJECTS
 -- One line for a list: OK with the count when all are there, else FEHLT naming the missing ones.
 local function listLine(R, label, total, missing, what)
     if #missing == 0 then
-        add(R, "OK", label, ("alle %d %s"):format(total, what))
+        add(R, "OK", label, L["alle %d %s"]:format(total, what))
     else
-        add(R, "FEHLT", label, ("%d von %d fehlen: %s"):format(#missing, total, table.concat(missing, ", ")))
+        add(R, "FEHLT", label, L["%d von %d fehlen: %s"]:format(#missing, total, table.concat(missing, ", ")))
     end
 end
 
@@ -809,31 +810,31 @@ local function sectionFunctions(R)
     for _, path in ipairs(REQUIRED) do
         if not fn(path) then missing[#missing + 1] = path end
     end
-    listLine(R, "Funktionen", #REQUIRED, missing, "vorhanden")
+    listLine(R, L["Funktionen"], #REQUIRED, missing, L["vorhanden"])
     local have, lack = {}, {}
     for _, path in ipairs(OPTIONAL) do
         if fn(path) then have[#have + 1] = path else lack[#lack + 1] = path end
     end
-    add(R, "WERT", "Wahlweise vorhanden", #have > 0 and table.concat(have, ", ") or "keine")
-    add(R, "WERT", "Wahlweise fehlend", #lack > 0 and table.concat(lack, ", ") or "keine")
-    check(R, "Chat-Link-Alias", function()
-        return "WERT", ("ChatEdit_InsertLink %s, ChatFrameUtil.InsertLink %s"):format(fn("ChatEdit_InsertLink") and "da" or "fehlt",
-            fn("ChatFrameUtil.InsertLink") and "da" or "fehlt")
+    add(R, "WERT", L["Wahlweise vorhanden"], #have > 0 and table.concat(have, ", ") or L["keine"])
+    add(R, "WERT", L["Wahlweise fehlend"], #lack > 0 and table.concat(lack, ", ") or L["keine"])
+    check(R, L["Chat-Link-Alias"], function()
+        return "WERT", ("ChatEdit_InsertLink %s, ChatFrameUtil.InsertLink %s"):format(fn("ChatEdit_InsertLink") and L["da"] or L["fehlt"],
+            fn("ChatFrameUtil.InsertLink") and L["da"] or L["fehlt"])
     end)
     check(R, "WorldMapFrame:AddDataProvider", function()
         local w = _G.WorldMapFrame
         return (type(w) == "table" and type(w.AddDataProvider) == "function") and "OK" or "FEHLT",
-            (type(w) == "table" and type(w.AddDataProvider) == "function") and "vorhanden" or "fehlt (keine Pins auf der Karte)"
+            (type(w) == "table" and type(w.AddDataProvider) == "function") and L["vorhanden"] or L["fehlt (keine Pins auf der Karte)"]
     end)
     check(R, "MapCanvasPinMixin.UseFrameLevelType", function()
         local m = _G.MapCanvasPinMixin
-        return "WERT", (type(m) == "table" and type(m.UseFrameLevelType) == "function") and "vorhanden" or "fehlt"
+        return "WERT", (type(m) == "table" and type(m.UseFrameLevelType) == "function") and L["vorhanden"] or L["fehlt"]
     end)
     local lackObjects = {}
     for _, name in ipairs(OBJECTS) do
         if _G[name] == nil then lackObjects[#lackObjects + 1] = name end
     end
-    listLine(R, "Objekte", #OBJECTS, lackObjects, "vorhanden")
+    listLine(R, L["Objekte"], #OBJECTS, lackObjects, L["vorhanden"])
 end
 
 local EVENTS = {
@@ -855,7 +856,7 @@ ST.EVENTS = EVENTS
 local function sectionEvents(R)
     local valid = fn("C_EventUtils.IsEventValid")
     if not valid then
-        add(R, "WERT", "Ereignisse", "nicht prüfbar (C_EventUtils.IsEventValid fehlt)")
+        add(R, "WERT", L["Ereignisse"], L["nicht prüfbar (C_EventUtils.IsEventValid fehlt)"])
         return
     end
     local missing = {}
@@ -867,7 +868,7 @@ local function sectionEvents(R)
             missing[#missing + 1] = e
         end
     end
-    listLine(R, "Ereignisse", #EVENTS, missing, "bekannt")
+    listLine(R, L["Ereignisse"], #EVENTS, missing, L["bekannt"])
 end
 
 ---------------------------------------------------------------------------
@@ -879,14 +880,14 @@ local LOOT_STRINGS = { "LOOT_ITEM", "LOOT_ITEM_MULTIPLE", "LOOT_ITEM_SELF", "LOO
 local function sectionItems(R)
     check(R, "Enum.ItemClass", function()
         local c = _G.Enum and Enum.ItemClass
-        if type(c) ~= "table" then return "FEHLT", "fehlt (Rückfall Handwerkswaren 7, Reagenzien 5)" end
+        if type(c) ~= "table" then return "FEHLT", L["fehlt (Rückfall Handwerkswaren 7, Reagenzien 5)"] end
         local bad = c.Tradegoods == nil or c.Reagent == nil
         return bad and "FEHLT" or "OK", ("Tradegoods %s, Reagent %s, Recipe %s"):format(show(c.Tradegoods), show(c.Reagent), show(c.Recipe))
     end)
     for _, key in ipairs({ "ITEM_MIN_SKILL", "ITEM_REQ_SKILL", "ITEM_CLASSES_ALLOWED", "RESISTANCE0_NAME" }) do
         check(R, key, function()
             local v = _G[key]
-            if v == nil then return "WERT", "fehlt" end
+            if v == nil then return "WERT", L["fehlt"] end
             return "WERT", show(v)
         end)
     end
@@ -895,13 +896,13 @@ local function sectionItems(R)
         if type(_G[key]) ~= "string" then lootMissing[#lootMissing + 1] = key end
     end
     if #lootMissing > 0 then
-        add(R, "FEHLT", "Loot-Texte", table.concat(lootMissing, ", ") .. " fehlt")
+        add(R, "FEHLT", L["Loot-Texte"], L["%s fehlt"]:format(table.concat(lootMissing, ", ")))
     else
-        add(R, "OK", "Loot-Texte", ("alle %d (LOOT_ITEM ...)"):format(#LOOT_STRINGS))
+        add(R, "OK", L["Loot-Texte"], L["alle %d (LOOT_ITEM ...)"]:format(#LOOT_STRINGS))
     end
     local stat = ns.Gear and ns.Gear.STAT
-    check(R, "ITEM_MOD-Texte", function()
-        if type(stat) ~= "table" then return "WERT", "keine Wertungstabelle" end
+    check(R, L["ITEM_MOD-Texte"], function()
+        if type(stat) ~= "table" then return "WERT", L["keine Wertungstabelle"] end
         local total, missing = 0, {}
         for key in pairs(stat) do
             if key:find("^ITEM_MOD_.*_SHORT$") or key:find("^EMPTY_SOCKET_") then
@@ -910,16 +911,16 @@ local function sectionItems(R)
             end
         end
         table.sort(missing)
-        if #missing == 0 then return "OK", ("alle %d vorhanden"):format(total) end
-        return "WERT", ("%d von %d fehlen: %s"):format(#missing, total, table.concat(missing, ", "))
+        if #missing == 0 then return "OK", L["alle %d vorhanden"]:format(total) end
+        return "WERT", L["%d von %d fehlen: %s"]:format(#missing, total, table.concat(missing, ", "))
     end)
-    check(R, "C_Item.GetItemStats (getragenes Item)", function()
+    check(R, L["C_Item.GetItemStats (getragenes Item)"], function()
         local link
         for slot = 1, 18 do
             local l = fn("GetInventoryItemLink") and GetInventoryItemLink("player", slot)
             if type(l) == "string" and not isSecret(l) then link = l break end
         end
-        if not link then return "WERT", "nichts angelegt" end
+        if not link then return "WERT", L["nichts angelegt"] end
         local raw = call("C_Item.GetItemStats", link)
         if type(raw) ~= "table" then return "WERT", ("%s: %s"):format(link, show(raw)) end
         local keys, unknown = {}, {}
@@ -929,7 +930,7 @@ local function sectionItems(R)
         end
         table.sort(keys)
         table.sort(unknown)
-        return "WERT", ("%s: %s%s"):format(link, table.concat(keys, " "), #unknown > 0 and ("; unbekannt: " .. table.concat(unknown, " ")) or "")
+        return "WERT", ("%s: %s%s"):format(link, table.concat(keys, " "), #unknown > 0 and L["; unbekannt: %s"]:format(table.concat(unknown, " ")) or "")
     end)
 end
 
@@ -942,8 +943,8 @@ end
 -- a function that raises one "Fehler: ..."; neither goes into the machine line.
 ---------------------------------------------------------------------------
 local VALUES_FORMAT = 1
-local STATS = { { 1, "str", "Stärke" }, { 2, "agi", "Beweglichkeit" }, { 3, "sta", "Ausdauer" }, { 4, "int", "Intelligenz" },
-                { 5, "spi", "Willenskraft" } }
+local STATS = { { 1, "str", N_("Stärke") }, { 2, "agi", N_("Beweglichkeit") }, { 3, "sta", N_("Ausdauer") }, { 4, "int", N_("Intelligenz") },
+                { 5, "spi", N_("Willenskraft") } }
 -- the rating constants, where the client defines them, with their key in the machine line
 local RATINGS = {
     { "CR_HIT_MELEE", "hm" }, { "CR_HIT_RANGED", "hr" }, { "CR_HIT_SPELL", "hs" },
@@ -979,12 +980,12 @@ local function sectionValues(R)
     local function value(label, key, n, path, ...)
         local f = fn(path)
         if not f then
-            add(R, "WERT", label, "nicht vorhanden")
+            add(R, "WERT", label, L["nicht vorhanden"])
             return nil
         end
         local res = { pcall(f, ...) }
         if not res[1] then
-            add(R, "WERT", label, "Fehler: " .. cut(res[2]))
+            add(R, "WERT", label, L["Fehler: %s"]:format(cut(res[2])))
             return nil
         end
         table.remove(res, 1)
@@ -1007,7 +1008,7 @@ local function sectionValues(R)
 
     local effective = {}
     for _, s in ipairs(STATS) do
-        local res = value(("UnitStat(%d %s): Basis, Wert, plus, minus"):format(s[1], s[3]), s[2], 4, "UnitStat", "player", s[1])
+        local res = value(L["UnitStat(%d %s): Basis, Wert, plus, minus"]:format(s[1], L[s[3]]), s[2], 4, "UnitStat", "player", s[1])
         effective[s[1]] = res and not isSecret(res[2]) and tonumber(res[2]) or nil
     end
     for _, s in ipairs(STATS) do
@@ -1015,7 +1016,7 @@ local function sectionValues(R)
             value(("GetAttackPowerForStat(%d, %s)"):format(s[1], num(effective[s[1]]) or "?"), "ap" .. s[2], 1, "GetAttackPowerForStat",
                 s[1], effective[s[1]])
         else
-            add(R, "WERT", ("GetAttackPowerForStat(%d)"):format(s[1]), "nicht vorhanden (kein Wert)")
+            add(R, "WERT", ("GetAttackPowerForStat(%d)"):format(s[1]), L["nicht vorhanden (kein Wert)"])
         end
     end
     value("GetCritChanceFromAgility", "critagi", 1, "GetCritChanceFromAgility", "player")
@@ -1026,15 +1027,15 @@ local function sectionValues(R)
     if fn("GetSpellCritChance") then
         for school = 2, 7 do value(("GetSpellCritChance(%d)"):format(school), "sc" .. school, 1, "GetSpellCritChance", school) end
     else
-        add(R, "WERT", "GetSpellCritChance", "nicht vorhanden")
+        add(R, "WERT", "GetSpellCritChance", L["nicht vorhanden"])
     end
     value("GetDodgeChance", "dodge", 1, "GetDodgeChance")
     value("GetParryChance", "parry", 1, "GetParryChance")
     value("GetBlockChance", "block", 1, "GetBlockChance")
-    value("UnitAttackPower: Basis, plus, minus", "ap", 3, "UnitAttackPower", "player")
-    value("UnitRangedAttackPower: Basis, plus, minus", "rap", 3, "UnitRangedAttackPower", "player")
-    value("GetManaRegen: Grund, beim Zaubern", "regen", 2, "GetManaRegen")
-    value("UnitArmor: Basis, wirksam, Rüstung, plus, minus", "armor", 5, "UnitArmor", "player")
+    value(L["UnitAttackPower: Basis, plus, minus"], "ap", 3, "UnitAttackPower", "player")
+    value(L["UnitRangedAttackPower: Basis, plus, minus"], "rap", 3, "UnitRangedAttackPower", "player")
+    value(L["GetManaRegen: Grund, beim Zaubern"], "regen", 2, "GetManaRegen")
+    value(L["UnitArmor: Basis, wirksam, Rüstung, plus, minus"], "armor", 5, "UnitArmor", "player")
 
     local haveRating, haveBonus = fn("GetCombatRating"), fn("GetCombatRatingBonus")
     local lacking = {}
@@ -1043,28 +1044,28 @@ local function sectionValues(R)
         if type(id) ~= "number" then
             lacking[#lacking + 1] = r[1]
         else
-            local label = ("%s (%d): Wertung, Prozent"):format(r[1], id)
+            local label = L["%s (%d): Wertung, Prozent"]:format(r[1], id)
             if not haveRating and not haveBonus then
-                add(R, "WERT", label, "nicht vorhanden")
+                add(R, "WERT", label, L["nicht vorhanden"])
             else
                 local okR, rating = true, nil
                 if haveRating then okR, rating = pcall(haveRating, id) end
                 local okB, bonus = true, nil
                 if haveBonus then okB, bonus = pcall(haveBonus, id) end
-                local a = okR and (haveRating and show(rating) or "nicht vorhanden") or ("Fehler: " .. cut(rating))
-                local b = okB and (haveBonus and show(bonus) or "nicht vorhanden") or ("Fehler: " .. cut(bonus))
+                local a = okR and (haveRating and show(rating) or L["nicht vorhanden"]) or L["Fehler: %s"]:format(cut(rating))
+                local b = okB and (haveBonus and show(bonus) or L["nicht vorhanden"]) or L["Fehler: %s"]:format(cut(bonus))
                 add(R, "WERT", label, a .. ", " .. b)
                 local ta, tb = okR and num(rating), okB and num(bonus)
                 if ta or tb then pairsOut[#pairsOut + 1] = r[2] .. "=" .. (ta or "") .. "," .. (tb or "") end
             end
         end
     end
-    if #lacking > 0 then add(R, "WERT", "CR-Konstanten nicht vorhanden", table.concat(lacking, ", ")) end
+    if #lacking > 0 then add(R, "WERT", L["CR-Konstanten nicht vorhanden"], table.concat(lacking, ", ")) end
 
     local lv = level and num(level[1]) or "?"
     R.values = ("AMISIA-WERTE %d %s %s"):format(VALUES_FORMAT, classFile, lv)
         .. (#pairsOut > 0 and (" " .. table.concat(pairsOut, " ")) or "")
-    add(R, "WERT", "Maschinenzeile", "steht oben im Bericht (AMISIA-WERTE)")
+    add(R, "WERT", L["Maschinenzeile"], L["steht oben im Bericht (AMISIA-WERTE)"])
 end
 
 ---------------------------------------------------------------------------
@@ -1091,12 +1092,12 @@ local function sectionProfessions(R)
     for _, path in ipairs(PROF_FUNCTIONS) do
         if not fn(path) then missing[#missing + 1] = path end
     end
-    listLine(R, "Funktionen", #PROF_FUNCTIONS, missing, "vorhanden")
-    add(R, "WERT", "Rezeptliste", ("GetAllRecipeIDs %s, GetFilteredRecipeIDs %s, IsPlayerSpell %s"):format(
-        fn("C_TradeSkillUI.GetAllRecipeIDs") and "da" or "fehlt", fn("C_TradeSkillUI.GetFilteredRecipeIDs") and "da" or "fehlt",
-        fn("IsPlayerSpell") and "da" or "fehlt"))
+    listLine(R, L["Funktionen"], #PROF_FUNCTIONS, missing, L["vorhanden"])
+    add(R, "WERT", L["Rezeptliste"], ("GetAllRecipeIDs %s, GetFilteredRecipeIDs %s, IsPlayerSpell %s"):format(
+        fn("C_TradeSkillUI.GetAllRecipeIDs") and L["da"] or L["fehlt"], fn("C_TradeSkillUI.GetFilteredRecipeIDs") and L["da"] or L["fehlt"],
+        fn("IsPlayerSpell") and L["da"] or L["fehlt"]))
     local Pr = ns.Prof
-    check(R, "Eigene Berufe", function()
+    check(R, L["Eigene Berufe"], function()
         local idx = { call("GetProfessions") }
         local parts, unknown = {}, {}
         for i = 1, 7 do
@@ -1106,38 +1107,38 @@ local function sectionProfessions(R)
                 if Pr and type(skill) == "number" and not Pr.Key(skill) then unknown[#unknown + 1] = tostring(skill) end
             end
         end
-        if #parts == 0 then return "WERT", "keine" end
-        if #unknown > 0 then return "FEHLT", table.concat(parts, ", ") .. "; nicht in den Daten: " .. table.concat(unknown, ", ") end
+        if #parts == 0 then return "WERT", L["keine"] end
+        if #unknown > 0 then return "FEHLT", table.concat(parts, ", ") .. L["; nicht in den Daten: %s"]:format(table.concat(unknown, ", ")) end
         return "OK", table.concat(parts, ", ")
     end)
-    check(R, "Reagenzien ohne Fenster", function()
+    check(R, L["Reagenzien ohne Fenster"], function()
         local sch = call("C_TradeSkillUI.GetRecipeSchematic", PROF_RECIPE, false)
-        if type(sch) ~= "table" or type(sch.reagentSlotSchematics) ~= "table" then return "FEHLT", "keine Antwort für " .. PROF_RECIPE end
+        if type(sch) ~= "table" or type(sch.reagentSlotSchematics) ~= "table" then return "FEHLT", L["keine Antwort für %d"]:format(PROF_RECIPE) end
         local parts = {}
         for _, slot in ipairs(sch.reagentSlotSchematics) do
             local first = type(slot.reagents) == "table" and slot.reagents[1]
             parts[#parts + 1] = ("%sx %s"):format(show(slot.quantityRequired), show(type(first) == "table" and first.itemID or nil))
         end
-        return #parts > 0 and "OK" or "FEHLT", ("%s: %s"):format(show(sch.name), #parts > 0 and table.concat(parts, ", ") or "keine Plätze")
+        return #parts > 0 and "OK" or "FEHLT", ("%s: %s"):format(show(sch.name), #parts > 0 and table.concat(parts, ", ") or L["keine Plätze"])
     end)
-    check(R, "Rezeptname", function()
+    check(R, L["Rezeptname"], function()
         local name = call("C_Spell.GetSpellName", PROF_RECIPE)
         return type(name) == "string" and name ~= "" and "OK" or "FEHLT", show(name)
     end)
-    check(R, "Lagerbeschreibung", function()
+    check(R, L["Lagerbeschreibung"], function()
         local text = call("C_Spell.GetSpellDescription", PROF_CAMP)
         return type(text) == "string" and text ~= "" and "OK" or "FEHLT", show(type(text) == "string" and text:sub(1, 120) or text)
     end)
-    check(R, "Händlergunst", function()
+    check(R, L["Händlergunst"], function()
         local info = call("C_CurrencyInfo.GetCurrencyInfo", PROF_CURRENCY)
-        if type(info) ~= "table" then return "FEHLT", "Währung " .. PROF_CURRENCY .. " unbekannt" end
+        if type(info) ~= "table" then return "FEHLT", L["Währung %d unbekannt"]:format(PROF_CURRENCY) end
         return "OK", ("%s: %s"):format(show(info.name), show(info.quantity))
     end)
-    check(R, "Gespeicherter Stand", function()
+    check(R, L["Gespeicherter Stand"], function()
         local db = _G.AmisiaDB
         local c = type(db) == "table" and type(db.prof) == "table" and type(db.prof.chars) == "table"
             and db.prof.chars[ns.UnitFullName and ns.UnitFullName("player") or "?"]
-        if type(c) ~= "table" then return "WERT", "keiner (Berufsfenster einmal öffnen)" end
+        if type(c) ~= "table" then return "WERT", L["keiner (Berufsfenster einmal öffnen)"] end
         local parts, sample = {}, nil
         for skill, st in pairs(c) do
             local n = 0
@@ -1145,7 +1146,7 @@ local function sectionProfessions(R)
                 n = n + 1
                 sample = sample or spell
             end
-            parts[#parts + 1] = ("%s: Rang %s, %d bekannt"):format(Pr and Pr.Name(skill) or tostring(skill),
+            parts[#parts + 1] = L["%s: Rang %s, %d bekannt"]:format(Pr and Pr.Name(skill) or tostring(skill),
                 show(type(st) == "table" and st.rank or nil), n)
         end
         table.sort(parts)
@@ -1157,9 +1158,9 @@ local function sectionProfessions(R)
     end)
     if Pr and Pr.Available() then
         local d = ns.Data("PROFESSIONS")
-        add(R, "WERT", "Daten", ("%d Berufe, Client %s, gebaut %s"):format(#d.P, show(d.client), show(d.built)))
+        add(R, "WERT", L["Daten"], L["%d Berufe, Client %s, gebaut %s"]:format(#d.P, show(d.client), show(d.built)))
     else
-        add(R, "WERT", "Daten", "keine Berufsdaten")
+        add(R, "WERT", L["Daten"], L["keine Berufsdaten"])
     end
 end
 
@@ -1188,10 +1189,10 @@ local function kb(bytes) return ("%.1f KB"):format(bytes / 1024) end
 local function sectionData(R)
     local db = _G.AmisiaDB
     if type(db) ~= "table" then
-        add(R, "FEHLT", "AmisiaDB", "keine gespeicherten Daten")
+        add(R, "FEHLT", "AmisiaDB", L["keine gespeicherten Daten"])
         return
     end
-    check(R, "Größe (geschätzt)", function()
+    check(R, L["Größe (geschätzt)"], function()
         local state = { n = 0 }
         local parts, total = {}, 0
         for k, v in pairs(db) do
@@ -1202,8 +1203,8 @@ local function sectionData(R)
         table.sort(parts, function(a, b) return a[2] > b[2] end)
         local top = {}
         for i = 1, math.min(6, #parts) do top[i] = ("%s %s"):format(parts[i][1], kb(parts[i][2])) end
-        return "WERT", ("%s%s in %d Einträgen; größte: %s"):format(state.cut and "mindestens " or "etwa ", kb(total), state.n,
-            table.concat(top, ", "))
+        return "WERT", (state.cut and L["mindestens %s in %d Einträgen; größte: %s"] or L["etwa %s in %d Einträgen; größte: %s"]):format(
+            kb(total), state.n, table.concat(top, ", "))
     end)
     check(R, "Raids", function()
         local list = ns.Sessions and ns.Sessions() or {}
@@ -1213,34 +1214,34 @@ local function sectionData(R)
             items = items + (ns.ItemCount and ns.ItemCount(s) or 0)
             kills = kills + (type(s.kills) == "table" and #s.kills or 0)
         end
-        return "WERT", ("%d Raids, %d Vergaben, %d Items, %d Bosskills%s"):format(#list, awards, items, kills,
-            ns.Active and ns.Active() and ", Aufnahme läuft" or "")
+        return "WERT", L["%d Raids, %d Vergaben, %d Items, %d Bosskills%s"]:format(#list, awards, items, kills,
+            ns.Active and ns.Active() and L[", Aufnahme läuft"] or "")
     end)
-    check(R, "Drop-Daten", function()
+    check(R, L["Drop-Daten"], function()
         local d = ns.DropsStatus and ns.DropsStatus()
-        if type(d) ~= "table" then return "WERT", "keine" end
-        return "WERT", ("%d Kills (%d eigene, %d gehört), %d Bosse, neuester Tag %s"):format(d.kills or 0, d.own or 0, d.heard or 0,
+        if type(d) ~= "table" then return "WERT", L["keine"] end
+        return "WERT", L["%d Kills (%d eigene, %d gehört), %d Bosse, neuester Tag %s"]:format(d.kills or 0, d.own or 0, d.heard or 0,
             d.bosses or 0, show(d.newest))
     end)
-    check(R, "Quellen-Sammler", function()
-        if not ns.CollectCounts then return "WERT", "nicht geladen" end
+    check(R, L["Quellen-Sammler"], function()
+        if not ns.CollectCounts then return "WERT", L["nicht geladen"] end
         if ns.CollectDB then ns.CollectDB() end
         local c, sy = ns.CollectCounts(), ns.CollectSyncStats and ns.CollectSyncStats() or {}
-        return "WERT", ("%d Quests, %d Händler, %d Weltdrop-NPCs, %s; gelernt %d, gesendet %s"):format(c.q, c.s, c.w,
+        return "WERT", L["%d Quests, %d Händler, %d Weltdrop-NPCs, %s; gelernt %d, gesendet %s"]:format(c.q, c.s, c.w,
             kb(ns.CollectBytes()), (sy.new or 0) + (sy.merged or 0), kb(sy.bytes or 0))
     end)
-    check(R, "Materialien", function()
+    check(R, L["Materialien"], function()
         local list = ns.MatEntries and ns.MatEntries() or {}
         local hidden = 0
         for _, e in pairs(type(db.mats) == "table" and db.mats or {}) do
             if type(e) == "table" and e.hide then hidden = hidden + 1 end
         end
-        return "WERT", ("%d in der Liste, %d ausgeblendet"):format(#list, hidden)
+        return "WERT", L["%d in der Liste, %d ausgeblendet"]:format(#list, hidden)
     end)
-    check(R, "Itemnamen", function()
+    check(R, L["Itemnamen"], function()
         local n = 0
         for _ in pairs(type(db.itemNames) == "table" and db.itemNames or {}) do n = n + 1 end
-        return "WERT", ("%d gemerkt"):format(n)
+        return "WERT", L["%d gemerkt"]:format(n)
     end)
 end
 
@@ -1251,36 +1252,36 @@ end
 local function sectionTalents(R)
     local T, d = ns.Talents, ns.Data("TALENTS")
     if not T or not T.Available() then
-        add(R, "WERT", "Talentdaten", "keine (TalentData.lua nicht geladen)")
+        add(R, "WERT", L["Talentdaten"], L["keine (TalentData.lua nicht geladen)"])
         return
     end
     local classes, nodes = T.Classes(), 0
     for _, cls in ipairs(classes) do nodes = nodes + #(T.Class(cls).data.nodes or {}) end
-    add(R, "WERT", "Talentdaten", ("Build %s, %d Klassen, %d Talente, %d Punkte"):format(tostring(d.build), #classes, nodes, T.Max()))
+    add(R, "WERT", L["Talentdaten"], L["Build %s, %d Klassen, %d Talente, %d Punkte"]:format(tostring(d.build), #classes, nodes, T.Max()))
     local _, mine = UnitClass("player")
     local own = T.Class(mine)
     local config
     if fn("C_ClassTalents.GetActiveConfigID") then
-        check(R, "Aktive Konfiguration", function()
+        check(R, L["Aktive Konfiguration"], function()
             config = call("C_ClassTalents.GetActiveConfigID")
             if isSecret(config) then
                 config = nil
-                return "WERT", "<geheim>"
+                return "WERT", L["<geheim>"]
             end
-            return "WERT", config and tostring(config) or "keine"
+            return "WERT", config and tostring(config) or L["keine"]
         end)
     else
-        add(R, "WERT", "Aktive Konfiguration", "C_ClassTalents.GetActiveConfigID fehlt")
+        add(R, "WERT", L["Aktive Konfiguration"], L["%s fehlt"]:format("C_ClassTalents.GetActiveConfigID"))
     end
     if config and own then
-        check(R, "Talentbaum", function()
+        check(R, L["Talentbaum"], function()
             local info = call("C_Traits.GetConfigInfo", config)
             local ids = type(info) == "table" and type(info.treeIDs) == "table" and info.treeIDs or {}
             local found = false
             for _, id in ipairs(ids) do found = found or id == own.tree end
-            return found and "OK" or "WERT", ("Client %s, Daten %d"):format(#ids > 0 and table.concat(ids, ",") or "keiner", own.tree)
+            return found and "OK" or "WERT", L["Client %s, Daten %d"]:format(#ids > 0 and table.concat(ids, ",") or L["keiner"], own.tree)
         end)
-        check(R, "Knoten im Client", function()
+        check(R, L["Knoten im Client"], function()
             local known, total, other = 0, 0, 0
             for id, n in pairs(own.byId) do
                 total = total + 1
@@ -1292,14 +1293,14 @@ local function sectionTalents(R)
             end
             local live = T.Live()
             return known == total and other == 0 and "OK" or "WERT",
-                ("%d von %d bekannt, %d mit anderem Höchstrang; gesetzt %d Punkte"):format(known, total, other,
+                L["%d von %d bekannt, %d mit anderem Höchstrang; gesetzt %d Punkte"]:format(known, total, other,
                     live and T.Spent(live) or 0)
         end)
-        check(R, "Talentpunkte", function()
+        check(R, L["Talentpunkte"], function()
             local list = call("C_Traits.GetTreeCurrencyInfo", config, own.tree, false)
             local c = type(list) == "table" and list[1]
-            if type(c) ~= "table" then return "WERT", "keine Angabe" end
-            return "WERT", ("frei %s, ausgegeben %s, höchstens %s"):format(show(c.quantity), show(c.spent), show(c.maxQuantity))
+            if type(c) ~= "table" then return "WERT", L["keine Angabe"] end
+            return "WERT", L["frei %s, ausgegeben %s, höchstens %s"]:format(show(c.quantity), show(c.spent), show(c.maxQuantity))
         end)
     end
     -- another class: do its texts and tree names come without a configuration of that class?
@@ -1312,17 +1313,17 @@ local function sectionTalents(R)
     if not n then return end
     local F = T.F
     if fn("C_Traits.GetTraitDescription") then
-        check(R, "Text fremde Klasse", function()
+        check(R, L["Text fremde Klasse"], function()
             local text = call("C_Traits.GetTraitDescription", n[F.ENTRY], 1)
             return type(text) == "string" and text ~= "" and "OK" or "WERT", ("%s %s: %s"):format(other, show(n[F.NAME]), show(text))
         end)
     end
     if fn("C_Traits.GetGroupDisplayInfoByTreeID") then
-        check(R, "Baumnamen fremde Klasse", function()
+        check(R, L["Baumnamen fremde Klasse"], function()
             local infos = call("C_Traits.GetGroupDisplayInfoByTreeID", oc.tree)
             local names = {}
             for _, info in ipairs(type(infos) == "table" and infos or {}) do names[#names + 1] = show(info.displayName) end
-            return #names == 3 and "OK" or "WERT", #names > 0 and table.concat(names, ", ") or "keine"
+            return #names == 3 and "OK" or "WERT", #names > 0 and table.concat(names, ", ") or L["keine"]
         end)
     end
     if fn("C_Spell.GetSpellName") then
@@ -1339,34 +1340,34 @@ function ST.Run(opts)
     opts = opts or {}
     local R = newReport()
     runSection(R, "Client", sectionClient)
-    runSection(R, "Sperren jetzt", sectionLock)
-    runSection(R, "Namen", sectionNames)
-    runSection(R, "Addon-Nachrichten und Packen", sectionComm)
-    runSection(R, "Gilde", sectionGuild)
-    runSection(R, "Woche, Karte, Wegpunkt", sectionMap, opts)
+    runSection(R, L["Sperren jetzt"], sectionLock)
+    runSection(R, L["Namen"], sectionNames)
+    runSection(R, L["Addon-Nachrichten und Packen"], sectionComm)
+    runSection(R, L["Gilde"], sectionGuild)
+    runSection(R, L["Woche, Karte, Wegpunkt"], sectionMap, opts)
     runSection(R, "Loot", sectionLoot)
-    runSection(R, "Atlanten", sectionAtlases)
-    runSection(R, "Dungeonbilder", sectionArt)
-    runSection(R, "Vorlagen", sectionTemplates)
-    runSection(R, "Client-Funktionen", sectionFunctions)
-    runSection(R, "Ereignisse", sectionEvents)
-    runSection(R, "Item-Konstanten", sectionItems)
-    runSection(R, "Werte", sectionValues)
-    runSection(R, "Berufe", sectionProfessions)
-    runSection(R, "Talente", sectionTalents)
-    runSection(R, "Gespeicherte Daten", sectionData)
+    runSection(R, L["Atlanten"], sectionAtlases)
+    runSection(R, L["Dungeonbilder"], sectionArt)
+    runSection(R, L["Vorlagen"], sectionTemplates)
+    runSection(R, L["Client-Funktionen"], sectionFunctions)
+    runSection(R, L["Ereignisse"], sectionEvents)
+    runSection(R, L["Item-Konstanten"], sectionItems)
+    runSection(R, L["Werte"], sectionValues)
+    runSection(R, L["Berufe"], sectionProfessions)
+    runSection(R, L["Talente"], sectionTalents)
+    runSection(R, L["Gespeicherte Daten"], sectionData)
     local c = R.counts
     local build = "?"
     local okBuild, version, number = pcall(GetBuildInfo)
     if okBuild then build = ("%s (%s)"):format(tostring(version), tostring(number)) end
     local head = {
-        ("Amisia-Selbsttest %s | Client %s | %s"):format(tostring(ns.VERSION), build, date("%Y-%m-%d %H:%M")),
-        ("Ergebnis: %d OK, %d FEHLT, %d FEHLER, %d WERT"):format(c.OK, c.FEHLT, c.FEHLER, c.WERT),
+        L["Amisia-Selbsttest %s | Client %s | %s"]:format(tostring(ns.VERSION), build, date("%Y-%m-%d %H:%M")),
+        L["Ergebnis: %d OK, %d FEHLT, %d FEHLER, %d WERT"]:format(c.OK, c.FEHLT, c.FEHLER, c.WERT),
     }
     -- the values in one line to paste (section "Werte")
     if R.values then head[#head + 1] = R.values end
     if #R.problems > 0 then
-        head[#head + 1] = "Probleme:"
+        head[#head + 1] = L["Probleme:"]
         for _, p in ipairs(R.problems) do head[#head + 1] = "  " .. p end
     end
     for i = #head, 1, -1 do table.insert(R.lines, 1, head[i]) end
@@ -1381,11 +1382,11 @@ local D, reportText
 
 local function build()
     local W = ns.W
-    D = W.Window("AmisiaSelfTestFrame", 640, 500, { title = "Amisia-Selbsttest", strata = "FULLSCREEN_DIALOG" })
+    D = W.Window("AmisiaSelfTestFrame", 640, 500, { title = L["Amisia-Selbsttest"], strata = "FULLSCREEN_DIALOG" })
     D:SetPoint("CENTER", 0, 20)
     D.intro = W.Text(D, "GameFontHighlightSmall", 612, true)
     D.intro:SetPoint("TOPLEFT", 14, -32)
-    D.intro:SetText("Prüft im Client alles, was die Pläne offen lassen. Nichts wird gesendet.")
+    D.intro:SetText(L["Prüft im Client alles, was die Pläne offen lassen. Nichts wird gesendet."])
     D.area = W.EditArea(D)
     D.area:SetPoint("TOPLEFT", 12, -52)
     D.area:SetPoint("BOTTOMRIGHT", -12, 44)
@@ -1398,13 +1399,13 @@ local function build()
     end)
     D.hint = W.Text(D, "GameFontDisableSmall", 330)
     D.hint:SetPoint("BOTTOMLEFT", 14, 18)
-    D.hint:SetText("Strg+A, Strg+C und im Chat an uns einfügen.")
-    D.mark = W.Button(D, "Alles markieren", 120, function()
+    D.hint:SetText(L["Strg+A, Strg+C und im Chat an uns einfügen."])
+    D.mark = W.Button(D, L["Alles markieren"], 120, function()
         D.area.box:SetFocus()
         D.area.box:HighlightText()
     end)
     D.mark:SetPoint("BOTTOMRIGHT", -12, 12)
-    D.again = W.Button(D, "Erneut prüfen", 120, function() ST.Show() end)
+    D.again = W.Button(D, L["Erneut prüfen"], 120, function() ST.Show() end)
     D.again:SetPoint("RIGHT", D.mark, "LEFT", -6, 0)
 end
 
@@ -1427,25 +1428,25 @@ function ST.Short(opts)
     local R = ST.Run(opts)
     local c = R.counts
     if #R.problems == 0 then
-        ns.msg(("Selbsttest: keine Probleme (%d OK, %d Werte). Ganzer Bericht: /amisia selbsttest"):format(c.OK, c.WERT))
+        ns.msg(L["Selbsttest: keine Probleme (%d OK, %d Werte). Ganzer Bericht: /amisia selbsttest"]:format(c.OK, c.WERT))
         return R
     end
-    ns.msg(("Selbsttest: %d Problem(e). Ganzer Bericht: /amisia selbsttest"):format(#R.problems))
+    ns.msg(L["Selbsttest: %d Problem(e). Ganzer Bericht: /amisia selbsttest"]:format(#R.problems))
     local chat = DEFAULT_CHAT_FRAME
     for i = 1, math.min(#R.problems, MAX_SHORT) do chat:AddMessage("  " .. R.problems[i]) end
-    if #R.problems > MAX_SHORT then chat:AddMessage(("  ... und %d weitere"):format(#R.problems - MAX_SHORT)) end
+    if #R.problems > MAX_SHORT then chat:AddMessage(L["  ... und %d weitere"]:format(#R.problems - MAX_SHORT)) end
     return R
 end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { aliases = { "selftest" }, args = "[kurz] [wegpunkt]",
-    desc = "prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat)", run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat)"], run = function(rest)
     local opts = {}
     local short = false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
-        if word == "kurz" or word == "short" then short = true
-        elseif word == "wegpunkt" or word == "waypoint" then opts.waypoint = true end
+        if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words short = true
+        elseif word == "wegpunkt" or word == "waypoint" then -- l10n-ok: the German and English sub-words opts.waypoint = true end
     end
     if short then ST.Short(opts) else ST.Show(opts) end
 end })

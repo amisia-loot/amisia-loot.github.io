@@ -6,6 +6,7 @@
 -- its talents from the game. The rules live in Talents.lua.
 local ADDON, ns = ...
 local W, T, Theme = ns.W, ns.Talents, ns.Theme
+local L = ns.L
 local F = T.F
 
 local ICON = "Interface\\Icons\\INV_Misc_Book_09"
@@ -23,7 +24,7 @@ local BORDER = { maxed = "talents-node-square-yellow", partial = "talents-node-s
                  free = "talents-node-square-green", locked = "talents-node-square-gray" }
 local BORDER_COLOR = { maxed = GOLD, partial = GREEN, free = GREEN, locked = GREY }
 local TURN = { down = 0, right = math.pi / 2, left = -math.pi / 2, up = math.pi }
-local HINT = "Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"
+local HINT = L["Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"]
 
 local page
 
@@ -79,20 +80,20 @@ local function tooltip(btn)
     local r, max = T.Rank(plan, n[F.NODE]), n[F.MAX]
     GameTooltip:SetOwner(btn, "ANCHOR_RIGHT")
     GameTooltip:AddLine(T.NodeName(n), 1, 1, 1)
-    GameTooltip:AddLine(("Rang %d/%d"):format(r, max), 1, 1, 1)
+    GameTooltip:AddLine((L["Rang %d/%d"]):format(r, max), 1, 1, 1)
     if r < max then
         for _, line in ipairs(T.Missing(plan, n[F.NODE])) do GameTooltip:AddLine(line, RED[1], RED[2], RED[3], true) end
     end
     GameTooltip:AddLine(T.NodeText(n, math.max(1, r)), GOLD[1], GOLD[2], GOLD[3], true)
     if r > 0 and r < max then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Nächster Rang:", 1, 1, 1)
+        GameTooltip:AddLine(L["Nächster Rang:"], 1, 1, 1)
         GameTooltip:AddLine(T.NodeText(n, r + 1), GOLD[1], GOLD[2], GOLD[3], true)
     end
     local live = page.livePlan
     if live and live.class == plan.class then
         local lr = T.Rank(live, n[F.NODE])
-        if lr ~= r then GameTooltip:AddLine(("Im Spiel: Rang %d"):format(lr), 0.56, 0.53, 0.64) end
+        if lr ~= r then GameTooltip:AddLine((L["Im Spiel: Rang %d"]):format(lr), 0.56, 0.53, 0.64) end
     end
     GameTooltip:AddLine(HINT, 0.56, 0.53, 0.64, true)
     GameTooltip:Show()
@@ -318,7 +319,7 @@ local function makeTree(f, t)
         ns.Refresh()
     end)
     tree.reset:SetPoint("RIGHT", -3, 0)
-    W.Tooltip(tree.reset, "Baum zurücksetzen", "Nimmt alle Punkte aus diesem Baum.")
+    W.Tooltip(tree.reset, L["Baum zurücksetzen"], L["Nimmt alle Punkte aus diesem Baum."])
     tree.rowLabels = {}
     for row = 1, ROWS do
         local l = W.Text(tree, Theme.FONT.hint, 16)
@@ -344,7 +345,7 @@ local function onCode(text)
     local s = T.State()
     local spent = T.Spent(plan)
     if spent > points() then s.level = T.LevelFor(spent, s.talented or 0) or 60 end
-    say(("Code übernommen: %s, %d Punkte."):format(T.ClassName(plan.class), spent))
+    say((L["Code übernommen: %s, %d Punkte."]):format(T.ClassName(plan.class), spent))
     ns.Refresh()
 end
 
@@ -356,14 +357,14 @@ local function create(parent)
 
     f.class = W.Picker(f, 130, function(v) chooseClass(v) end)
     f.levelLabel = W.Text(f, Theme.FONT.text, 34)
-    f.levelLabel:SetText("Stufe")
+    f.levelLabel:SetText(L["Stufe"])
     f.level = W.Stepper(f, 76, function(v)
         T.State().level = v
         ns.Refresh()
     end)
     f.level:Configure(1, 60, 1)
     f.talentedLabel = W.Text(f, Theme.FONT.text, 58)
-    f.talentedLabel:SetText("Talentiert")
+    f.talentedLabel:SetText(L["Talentiert"])
     f.talented = W.Stepper(f, 64, function(v)
         T.State().talented = v
         ns.Refresh()
@@ -373,8 +374,8 @@ local function create(parent)
     W.Row(f, { f.class, { f.levelLabel, gap = 10, y = -5 }, f.level, { f.talentedLabel, gap = 10, y = -5 }, f.talented },
         2, 0, -1)
     f.talented:EnableMouse(true)
-    W.Tooltip(f.talented, "Talentiert (Vermächtnis)",
-        "Jeder Rang gibt die Talentpunkte eine Stufe früher (ab Stufe 9 bis 5); mehr als 51 Punkte gibt es nie.")
+    W.Tooltip(f.talented, L["Talentiert (Vermächtnis)"],
+        L["Jeder Rang gibt die Talentpunkte eine Stufe früher (ab Stufe 9 bis 5); mehr als 51 Punkte gibt es nie."])
     f.total = W.Text(f, Theme.FONT.body, 206)
     f.total:SetJustifyH("RIGHT")
     f.total:SetPoint("TOPRIGHT", 0, -5)
@@ -391,7 +392,7 @@ local function create(parent)
     f.liveText:SetJustifyH("RIGHT")
     f.liveText:SetPoint("TOPRIGHT", 0, -(TREE_TOP + TREE_H + 4))
 
-    f.live = W.Button(f, "Eigene laden", 104, function()
+    f.live = W.Button(f, L["Eigene laden"], 104, function()
         local plan, info = T.Live()
         if not plan then
             say(info, true)
@@ -400,12 +401,12 @@ local function create(parent)
         page.plan = plan
         T.State().class = plan.class
         save()
-        say(("Talente aus dem Spiel geladen (%d Punkte)."):format(T.Spent(plan)))
+        say((L["Talente aus dem Spiel geladen (%d Punkte)."]):format(T.Spent(plan)))
         ns.Refresh()
     end)
     f.live:SetPoint("BOTTOMLEFT", 0, 2)
-    W.Tooltip(f.live, "Eigene Talente laden", "Übernimmt die Talente, die dein Charakter gerade hat.")
-    f.resetAll = W.Button(f, "Alles zurücksetzen", 128, function()
+    W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
+    f.resetAll = W.Button(f, L["Alles zurücksetzen"], 128, function()
         T.Reset(page.plan)
         save()
         say("")
@@ -419,7 +420,7 @@ local function create(parent)
     f.code:SetPoint("LEFT", f.codeLabel, "RIGHT", 4, 0)
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    W.Tooltip(f.code, "Build-Code", "Zum Teilen kopieren (Strg+C). Einen Code einfügen und Enter drücken übernimmt ihn.")
+    W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code einfügen und Enter drücken übernimmt ihn."])
     return f
 end
 
@@ -443,8 +444,8 @@ local function refresh(f)
     local spent = T.Spent(plan)
     local need = T.LevelFor(spent, s.talented or 0)
     local over = spent > pts
-    f.total:SetText(("%s%d / %d|r Punkte%s"):format(over and "|cffff4040" or "|cffffffff", spent, pts,
-        spent > 0 and need and (" · ab Stufe " .. need) or ""))
+    f.total:SetText((L["%s%d / %d|r Punkte%s"]):format(over and "|cffff4040" or "|cffffffff", spent, pts,
+        spent > 0 and need and L[" · ab Stufe %d"]:format(need) or ""))
 
     for t = 1, 3 do
         local tree = f.trees[t]
@@ -479,7 +480,7 @@ local function refresh(f)
     if own then live, info = T.Live() end
     if live then
         f.livePlan = live
-        f.liveText:SetText(("Im Spiel: %d/%d/%d · %d von %d Punkten"):format(T.Spent(live, 1), T.Spent(live, 2), T.Spent(live, 3),
+        f.liveText:SetText((L["Im Spiel: %d/%d/%d · %d von %d Punkten"]):format(T.Spent(live, 1), T.Spent(live, 2), T.Spent(live, 3),
             info.spent or T.Spent(live), info.total or T.PointsAt(UnitLevel("player") or 60, s.talented or 0)))
     else
         f.liveText:SetText(own and ("|cff8f86a3" .. tostring(info or "") .. "|r") or "")
@@ -488,7 +489,7 @@ local function refresh(f)
     if not f.code:HasFocus() then f.code:SetText(T.Encode(plan)) end
 end
 
-ns.RegisterPanel{ key = "talents", label = "Talente", icon = ICON, order = 58, group = "gear",
+ns.RegisterPanel{ key = "talents", label = L["Talente"], icon = ICON, order = 58, group = "gear",
     available = function() return T.Available() end,
     create = create, refresh = refresh }
 
@@ -498,8 +499,8 @@ function ns.ShowTalents(code)
     if code and code:find("%S") and page then onCode(code) end
 end
 
-ns.RegisterSlash("talente", { aliases = { "talents", "talent" }, args = "[Code]",
-    desc = "Talentrechner öffnen (mit Code: Build übernehmen)",
+ns.RegisterSlash("talente", { en = "talents", aliases = { "talent" }, args = L["[Code]"],
+    desc = L["Talentrechner öffnen (mit Code: Build übernehmen)"],
     run = function(rest) ns.ShowTalents(rest) end })
 
 -- the own talents changed in the game: show them while the page is open

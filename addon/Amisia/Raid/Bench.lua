@@ -4,6 +4,7 @@
 -- enter names (suggested from the group outside, the guild and friends); raiders without the addon
 -- sign up with !bench, which only the loot lead answers, by whisper.
 local ADDON, ns = ...
+local L = ns.L
 
 local NOTE_MAX = 40
 local IN_RAID_FOR = 600     -- seconds: a raider seen this recently counts as in the raid
@@ -12,10 +13,11 @@ local GUILD_EVERY = 10      -- seconds between two guild roster requests
 local MAX_NAME = 40
 local MAX_BENCH = 40        -- entries per raid
 
--- "2026-10-05" -> "05.10."
+-- "2026-10-05" -> "05.10." (English "Oct 5")
 local function shortDate(night)
-    local _, m, d = tostring(night or ""):match("^(%d+)-(%d+)-(%d+)$")
-    return d and (d .. "." .. m .. ".") or "?"
+    local y, m, d = tostring(night or ""):match("^(%d+)-(%d+)-(%d+)$")
+    if not d then return "?" end
+    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 local function tonight() return ns.NightOf(time()) end
@@ -59,7 +61,7 @@ end
 function ns.BenchLabel(s)
     if type(s) ~= "table" then return "?" end
     if s.members then return ("%s, %s"):format(s.zone or "?", shortDate(s.date)) end
-    return "heute, " .. shortDate(s.date)
+    return L["heute, %s"]:format(shortDate(s.date))
 end
 
 -- The running recording, else tonight's benchNext (created when missing).
@@ -246,21 +248,21 @@ end
 function ns.BenchAdd(s, name, opts)
     opts = type(opts) == "table" and opts or {}
     if s == nil then s = ns.BenchTarget() end
-    if type(s) ~= "table" then return nil, "Kein Raid." end
+    if type(s) ~= "table" then return nil, L["Kein Raid."] end
     -- a benchNext held on to that is no longer tonight's (an earlier night, or taken over by a
     -- recording): the write goes to the current target
     if not s.members and (type(AmisiaDB) ~= "table" or s ~= AmisiaDB.benchNext or s.date ~= tonight()) then
         s = ns.BenchTarget()
-        if type(s) ~= "table" then return nil, "Kein Raid." end
+        if type(s) ~= "table" then return nil, L["Kein Raid."] end
     end
     name = ns.FullName(ns.Plain(name))
-    if not name or #name > MAX_NAME or name:find("[|%d]") then return nil, "Name fehlt." end
-    if inRaid(s, name) then return nil, ("%s ist im Raid."):format(name) end
+    if not name or #name > MAX_NAME or name:find("[|%d]") then return nil, L["Name fehlt."] end
+    if inRaid(s, name) then return nil, L["%s ist im Raid."]:format(name), "raid" end
     local list = entries(s)
     local note = ns.CleanNote(opts.note, NOTE_MAX)
     local class = (type(opts.class) == "string" and opts.class ~= "") and opts.class or classOf(name)
     local e, key = ns.IsBenched(s, name)
-    if not e and size(list) >= MAX_BENCH then return nil, ("Die Ersatzbank ist voll (%d)."):format(MAX_BENCH) end
+    if not e and size(list) >= MAX_BENCH then return nil, L["Die Ersatzbank ist voll (%d)."]:format(MAX_BENCH), "full" end
     if e then
         if opts.self then e.self = true else e.by = ns.UnitFullName("player") end
         if note then e.note = note end
@@ -277,10 +279,10 @@ function ns.BenchAdd(s, name, opts)
 end
 
 function ns.BenchRemove(s, name)
-    if type(s) ~= "table" then return nil, "Kein Raid." end
+    if type(s) ~= "table" then return nil, L["Kein Raid."] end
     local e, key = ns.IsBenched(s, name)
     if not e then
-        return nil, ("%s steht nicht auf der Ersatzbank."):format(ns.FullName(ns.Plain(name)) or "?")
+        return nil, L["%s steht nicht auf der Ersatzbank."]:format(ns.FullName(ns.Plain(name)) or "?")
     end
     entries(s)[key] = nil
     ns.Fire("DATA_CHANGED")
@@ -362,17 +364,17 @@ function ns.BenchSuggestions(s)
     for name, seen in pairs(s.outside or {}) do
         if type(seen) == "number" and t - seen <= OUTSIDE_FOR then outside[#outside + 1] = name end
     end
-    offer(outside, "in der Gruppe, draußen")
+    offer(outside, L["in der Gruppe, draußen"])
     local guild = {}
     for _, m in ipairs(guildList() or {}) do
         if m.online then guild[#guild + 1] = m.name end
     end
-    offer(guild, "Gilde")
+    offer(guild, L["Gilde##Vorschlag"])
     local friends = {}
     for _, f in ipairs(friendList()) do
         if f.online then friends[#friends + 1] = f.name end
     end
-    offer(friends, "Freund")
+    offer(friends, L["Freund##Vorschlag"])
     return out
 end
 
@@ -403,21 +405,21 @@ local function onBench(sender, rest)
     local word = rest:lower()
     local e = ns.IsBenched(s, name)
     if word == "?" then
-        reply(e and ("Amisia: Du stehst auf der Ersatzbank (seit %s)."):format(date("%H:%M", e.t or time()))
-            or "Amisia: Du stehst nicht auf der Ersatzbank.")
+        reply(e and L["Amisia: Du stehst auf der Ersatzbank (seit %s)."]:format(date("%H:%M", e.t or time()))
+            or L["Amisia: Du stehst nicht auf der Ersatzbank."])
         return
     end
-    local off = word == "aus" or word == "off" or word == "weg"
+    local off = word == "aus" or word == "off" or word == "weg" or word == "remove"   -- l10n-ok: chat words the addon reads
     local note = not off and ns.CleanNote(rest, NOTE_MAX) or nil
     local extra
     if ns.Get("raidlog.benchGuildOnly") then
         ns.RequestGuildRoster()
         local member = inGuild(name)
         if member == false then
-            reply("Amisia: Die Ersatzbank ist nur für Gildenmitglieder.")
+            reply(L["Amisia: Die Ersatzbank ist nur für Gildenmitglieder."])
             return
         end
-        if member == nil and not off and not note and not (e and e.note) then extra = "Gilde nicht geprüft" end
+        if member == nil and not off and not note and not (e and e.note) then extra = L["Gilde nicht geprüft"] end
     end
     if off then
         -- only the sender's own entry: the same name, case aside, never a first name alone
@@ -427,25 +429,25 @@ local function onBench(sender, rest)
             if k:lower() == low then own, ownKey = x, k break end
         end
         if not own then
-            reply("Amisia: Du stehst nicht auf der Ersatzbank.")
+            reply(L["Amisia: Du stehst nicht auf der Ersatzbank."])
         elseif not own.self then
-            reply("Amisia: Ein Offizier hat dich eingetragen. Frag bitte ihn.")
+            reply(L["Amisia: Ein Offizier hat dich eingetragen. Frag bitte ihn."])
         else
             ns.BenchRemove(s, ownKey)
-            reply("Amisia: Du stehst nicht mehr auf der Ersatzbank.")
-            notify(("%s hat sich von der Ersatzbank ausgetragen."):format(ownKey))
+            reply(L["Amisia: Du stehst nicht mehr auf der Ersatzbank."])
+            notify(L["%s hat sich von der Ersatzbank ausgetragen."]:format(ownKey))
         end
         return
     end
-    local added, res = ns.BenchAdd(s, name, { self = true, note = note or extra })
+    local added, res, why = ns.BenchAdd(s, name, { self = true, note = note or extra })
     if not added then
-        if type(res) == "string" and res:find("ist im Raid", 1, true) then reply("Amisia: Du bist schon im Raid.") end
-        if type(res) == "string" and res:find("ist voll", 1, true) then reply("Amisia: Die Ersatzbank ist voll.") end
+        if why == "raid" then reply(L["Amisia: Du bist schon im Raid."]) end
+        if why == "full" then reply(L["Amisia: Die Ersatzbank ist voll."]) end
         return
     end
-    reply(("Amisia: Du stehst auf der Ersatzbank (%s). Mit !bench aus trägst du dich aus.%s"):format(label,
-        note and (" Notiz: %s."):format((note:gsub("[%.!?]+$", ""))) or ""))
-    notify(("%s steht auf der Ersatzbank (selbst eingetragen)."):format(res))
+    reply(L["Amisia: Du stehst auf der Ersatzbank (%s). Mit !bench aus trägst du dich aus.%s"]:format(label,
+        note and L[" Notiz: %s."]:format((note:gsub("[%.!?]+$", ""))) or ""))
+    notify(L["%s steht auf der Ersatzbank (selbst eingetragen)."]:format(res))
 end
 
 ns.RegisterChatCommand("bench", onBench)
@@ -456,10 +458,10 @@ ns.RegisterChatCommand("ersatz", onBench)
 ---------------------------------------------------------------------------
 if ns.RaidLogSettings then
     for _, it in ipairs({
-        { key = "raidlog.benchChat", type = "toggle", label = "Auf !bench antworten", default = true, officer = true,
-          tip = "Nur als Lootleitung, per Flüsterung." },
-        { key = "raidlog.benchGuildOnly", type = "toggle", label = "!bench nur für Gildenmitglieder", default = true, officer = true },
-        { key = "raidlog.benchNotify", type = "toggle", label = "Neue Einträge der Ersatzbank im Chat melden", default = true, officer = true },
+        { key = "raidlog.benchChat", type = "toggle", label = L["Auf !bench antworten"], default = true, officer = true,
+          tip = L["Nur als Lootleitung, per Flüsterung."] },
+        { key = "raidlog.benchGuildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true },
+        { key = "raidlog.benchNotify", type = "toggle", label = L["Neue Einträge der Ersatzbank im Chat melden"], default = true, officer = true },
     }) do
         table.insert(ns.RaidLogSettings.items, it)
     end
@@ -490,13 +492,13 @@ local function printBench(s, label)
     for _, x in ipairs(ns.BenchList(s)) do
         names[#names + 1] = x.name .. (x.e.note and (" (" .. x.e.note .. ")") or "")
     end
-    ns.msg(("Ersatzbank (%s): %s."):format(label, #names > 0 and table.concat(names, ", ") or "niemand"))
+    ns.msg(L["Ersatzbank (%s): %s."]:format(label, #names > 0 and table.concat(names, ", ") or L["niemand"]))
 end
 
-ns.RegisterSlash("ersatz", { aliases = { "bench" }, officer = true, args = "[Name] [Notiz] | weg <Name>",
-    desc = "Ersatzbank: eintragen, austragen oder anzeigen", run = function(rest)
+ns.RegisterSlash("ersatz", { en = "bench", officer = true, args = L["[Name] [Notiz] | weg <Name>"],
+    desc = L["Ersatzbank: eintragen, austragen oder anzeigen"], run = function(rest)
         if not ns.IsOfficerView() then
-            ns.msg("Ersatzbank nur in der Offiziersansicht.")
+            ns.msg(L["Ersatzbank nur in der Offiziersansicht."])
             return
         end
         rest = (rest or ""):match("^%s*(.-)%s*$")
@@ -508,13 +510,13 @@ ns.RegisterSlash("ersatz", { aliases = { "bench" }, officer = true, args = "[Nam
         end
         local first, after = rest:match("^(%S+)%s*(.*)$")
         local fl = first:lower()
-        if fl == "weg" or fl == "remove" then
+        if fl == "weg" or fl == "remove" then   -- l10n-ok: sub-words the command reads
             if after == "" then
-                ns.msg("Aufruf: /amisia ersatz weg <Name>")
+                ns.msg(L["Aufruf: /amisia ersatz weg <Name>"])
                 return
             end
             local ok, res = ns.BenchRemove(s, after)
-            ns.msg(ok and ("%s steht nicht mehr auf der Ersatzbank."):format(res) or res)
+            ns.msg(ok and L["%s steht nicht mehr auf der Ersatzbank."]:format(res) or res)
             return
         end
         local name, note = splitNameNote(rest, s)
@@ -523,5 +525,5 @@ ns.RegisterSlash("ersatz", { aliases = { "bench" }, officer = true, args = "[Nam
             ns.msg(key)
             return
         end
-        ns.msg(("%s steht auf der Ersatzbank (%s)%s."):format(key, label, e.note and (", Notiz: " .. e.note) or ""))
+        ns.msg(L["%s steht auf der Ersatzbank (%s)%s."]:format(key, label, e.note and L[", Notiz: %s"]:format(e.note) or ""))
     end })

@@ -1,6 +1,7 @@
 -- Amisia item scan: asks the client for every item id in a range, throttled, and keeps what
 -- exists. The result feeds tools/build_scan.py, which reads the SavedVariables file.
 local ADDON, ns = ...
+local L = ns.L
 
 local MAX_PENDING = 200
 local TIMEOUT = 6
@@ -90,7 +91,7 @@ local function finish(why)
     pending, pendingCount = {}, 0
     local s = scanDB()
     s.at = time()
-    ns.msg(("Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."):format(why or "beendet", s.count, s.next or 0, #s.retry))
+    ns.msg(L["Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."]:format(why or L["beendet"], s.count, s.next or 0, #s.retry))
     if ns.Refresh then ns.Refresh() end
 end
 
@@ -103,7 +104,7 @@ local function tick()
     local s = scanDB()
     if not running then return end
     if InCombatLockdown() then return end
-    if inInstance() then finish("pausiert in der Instanz") return end
+    if inInstance() then finish(L["pausiert in der Instanz"]) return end
     if not GetTime then clock = clock + 0.1 end
     local t = now()
     for id, p in pairs(pending) do
@@ -124,7 +125,7 @@ local function tick()
             pendingCount = pendingCount + 1
             batch = batch - 1
         end
-        if #queue == 0 and pendingCount == 0 then finish("fertig") end
+        if #queue == 0 and pendingCount == 0 then finish(L["fertig"]) end
         return
     end
     while batch > 0 and pendingCount < MAX_PENDING and s.next <= s.to do
@@ -138,11 +139,11 @@ local function tick()
         batch = batch - 1
         if s.next > nextReport then
             nextReport = nextReport + REPORT_EVERY
-            ns.msg(("Scan: ID %d von %d, %d Items."):format(s.next - 1, s.to, s.count))
+            ns.msg(L["Scan: ID %d von %d, %d Items."]:format(s.next - 1, s.to, s.count))
             if ns.Refresh then ns.Refresh() end
         end
     end
-    if s.next > s.to and pendingCount == 0 then finish("fertig") end
+    if s.next > s.to and pendingCount == 0 then finish(L["fertig"]) end
 end
 
 local function onResult(id, success)
@@ -157,7 +158,7 @@ local function onResult(id, success)
         end
     end
     local s = scanDB()
-    if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish("fertig") end
+    if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"]) end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", onResult)
@@ -165,30 +166,30 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", onResult)
 function ns.ScanRunning() return running end
 
 function ns.ScanStart(from, to)
-    if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
-    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
+    if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
+    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
+    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
     local s = scanDB()
     from = tonumber(from) or s.next or 1
     to = tonumber(to) or s.to or DEFAULT_TO
-    if from < 1 or to < from then return nil, "Bereich prüfen: /amisia scan <von> <bis>" end
+    if from < 1 or to < from then return nil, L["Bereich prüfen: /amisia scan <von> <bis>"] end
     s.from, s.to, s.next = math.floor(from), math.floor(to), math.floor(from)
     pending, pendingCount = {}, 0
     nextReport = (math.floor(s.next / REPORT_EVERY) + 1) * REPORT_EVERY
     running = true
     ticker = C_Timer.NewTicker(0.1, tick)
-    ns.msg(("Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop hält an."):format(s.from, s.to, s.rate))
+    ns.msg(L["Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop hält an."]:format(s.from, s.to, s.rate))
     if ns.Refresh then ns.Refresh() end
     return true
 end
 
 -- Asks again for every id that got no usable answer, at a quarter of the rate.
 function ns.ScanRetry()
-    if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
-    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
+    if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
+    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
+    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
     local s = scanDB()
-    if #s.retry == 0 then return nil, "Keine offenen IDs." end
+    if #s.retry == 0 then return nil, L["Keine offenen IDs."] end
     queue = s.retry
     s.retry = {}
     pending, pendingCount = {}, 0
@@ -198,17 +199,17 @@ function ns.ScanRetry()
     savedRate = s.rate
     s.rate = slow
     ticker = C_Timer.NewTicker(0.1, tick)
-    ns.msg(("Wiederholung gestartet: %d IDs mit %d Anfragen pro Sekunde."):format(#queue, slow))
+    ns.msg(L["Wiederholung gestartet: %d IDs mit %d Anfragen pro Sekunde."]:format(#queue, slow))
     return true
 end
 
 -- Scans a list of ids, e.g. everything the gear planner lists plus what its sources name but no scan
 -- has seen yet (items Forever only reveals later).
 function ns.ScanList(ids, label)
-    if not request then return nil, "Dieser Client kann keine Items nachladen." end
-    if running then return nil, "Der Scan läuft schon. /amisia scan stop hält ihn an." end
-    if inInstance() then return nil, "Der Scan läuft nur außerhalb von Instanzen." end
-    if not ids or #ids == 0 then return nil, "Keine IDs zu scannen." end
+    if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
+    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
+    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
+    if not ids or #ids == 0 then return nil, L["Keine IDs zu scannen."] end
     local s = scanDB()
     queue = {}
     for i = 1, #ids do queue[i] = ids[i] end
@@ -216,7 +217,7 @@ function ns.ScanList(ids, label)
     nextReport = math.huge
     running = true
     ticker = C_Timer.NewTicker(0.1, tick)
-    ns.msg(("%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."):format(label or "Scan", #ids, s.rate))
+    ns.msg(L["%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."]:format(label or "Scan", #ids, s.rate))
     return true
 end
 
@@ -233,20 +234,20 @@ end
 
 function ns.ScanStop()
     if not running then return end
-    finish("angehalten")
+    finish(L["angehalten"])
 end
 
 function ns.ScanStatus()
     local s = AmisiaDB and AmisiaDB.scan
     if not s or not s.next then
-        return ("Noch kein Scan. /amisia scan <von> <bis> startet einen. %d Items gesammelt."):format(s and s.count or 0)
+        return L["Noch kein Scan. /amisia scan <von> <bis> startet einen. %d Items gesammelt."]:format(s and s.count or 0)
     end
     if running then
-        return ("Scan läuft: ID %d von %d, %d Items."):format(s.next - 1, s.to, s.count or 0)
+        return L["Scan läuft: ID %d von %d, %d Items."]:format(s.next - 1, s.to, s.count or 0)
     end
-    return ("Scan: %d Items, nächste ID %d von %d%s%s."):format(s.count or 0, s.next, s.to or 0,
-        (#(s.retry or {}) > 0) and (", " .. #s.retry .. " offen") or "",
-        ns.CollectCount and (", " .. ns.CollectCount() .. " Quellen gesammelt") or "")
+    return L["Scan: %d Items, nächste ID %d von %d%s%s."]:format(s.count or 0, s.next, s.to or 0,
+        (#(s.retry or {}) > 0) and L[", %d offen"]:format(#s.retry) or "",
+        ns.CollectCount and L[", %d Quellen gesammelt"]:format(ns.CollectCount()) or "")
 end
 
 function ns.ScanCommand(rest)
@@ -263,22 +264,22 @@ function ns.ScanCommand(rest)
     elseif word == "gear" then
         local ids = ns.GearScanIDs()
         if not ids then
-            ns.msg("Die Ausrüstungstabelle gibt es nur in WoW Forever.")
+            ns.msg(L["Die Ausrüstungstabelle gibt es nur in WoW Forever."])
             return
         end
-        local ok, why = ns.ScanList(ids, "Ausrüstungs-Scan")
+        local ok, why = ns.ScanList(ids, L["Ausrüstungs-Scan"])
         if not ok and why then ns.msg(why) end
     elseif word == "rate" then
         if ns.Set("tools.scanRate", tonumber(arg)) then
             scanDB()
-            ns.msg(("Scan-Rate: %d Anfragen pro Sekunde."):format(ns.Get("tools.scanRate")))
+            ns.msg(L["Scan-Rate: %d Anfragen pro Sekunde."]:format(ns.Get("tools.scanRate")))
         else
-            ns.msg("Aufruf: /amisia scan rate <10-1000>")
+            ns.msg(L["Aufruf: /amisia scan rate <10-1000>"])
         end
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg("Aufruf: /amisia scan [<von> <bis>] | gear | retry | stop | status | rate <n>")
+            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | retry | stop | status | rate <n>"])
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))
@@ -286,11 +287,11 @@ function ns.ScanCommand(rest)
     end
 end
 
-ns.RegisterSettings{ key = "tools", label = "Werkzeuge", order = 95, expert = true, items = {
-    { key = "tools.collect", type = "toggle", label = "Item-Sammler", default = true,
-      tip = "Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle." },
-    { key = "tools.scanRate", type = "slider", label = "Scan-Rate (Anfragen pro Sekunde)", default = 100, min = 10, max = 1000, step = 10 },
+ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, expert = true, items = {
+    { key = "tools.collect", type = "toggle", label = L["Item-Sammler"], default = true,
+      tip = L["Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle."] },
+    { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10 },
 }}
-ns.RegisterSlash("scan", { args = "[von bis] | gear | retry | stop | status | rate <n>", desc = "Item-Scan", run = function(rest)
+ns.RegisterSlash("scan", { args = L["[von bis] | gear | retry | stop | status | rate <n>"], desc = L["Item-Scan"], run = function(rest)
     ns.ScanCommand(rest)
 end })

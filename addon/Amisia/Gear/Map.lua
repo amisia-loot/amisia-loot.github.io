@@ -6,6 +6,7 @@
 -- instances.
 local ADDON, ns = ...
 local Gear = ns.Gear
+local L, N_ = ns.L, ns.N_
 
 local Map = {}
 ns.Map = Map
@@ -338,14 +339,14 @@ end
 
 -- "Gorn One Eye, Durotar 47, 33" or "Karazhan (Eingang Gebirgspass der Totenwinde 47, 70)".
 local function whereText(name, point, entrance)
-    if entrance then return ("%s (Eingang %s %s)"):format(name, zoneName(point.map), Map.Coords(point)) end
+    if entrance then return (L["%s (Eingang %s %s)"]):format(name, zoneName(point.map), Map.Coords(point)) end
     return ("%s, %s %s"):format(name, zoneName(point.map), Map.Coords(point))
 end
 
 -- The short label of a target.
 local function labelOf(place)
     local name = placeName(place)
-    if isEntrance(place.key) then return name .. " (Eingang)" end
+    if isEntrance(place.key) then return L["%s (Eingang)"]:format(name) end
     return name
 end
 
@@ -426,9 +427,9 @@ end
 -- The target
 ---------------------------------------------------------------------------
 
-local NO_DATA = "Keine Kartendaten für diesen Client."
-local NO_PLACE = "Für dieses Item kennt Amisia keinen Ort."
-local NO_ZONE = "Diese Zone kennt der Client nicht."
+local NO_DATA = L["Keine Kartendaten für diesen Client."]
+local NO_PLACE = L["Für dieses Item kennt Amisia keinen Ort."]
+local NO_ZONE = L["Diese Zone kennt der Client nicht."]
 
 function ns.MapTarget()
     local m = db()
@@ -443,7 +444,7 @@ end
 -- Returns true, or nil and the reason.
 function ns.MapSetPoint(point, label, key, id)
     local m = db()
-    if not m then return nil, "Amisia ist noch nicht geladen." end
+    if not m then return nil, L["Amisia ist noch nicht geladen."] end
     if type(point) ~= "table" or type(point.map) ~= "number" or not inRange(point.x) or not inRange(point.y) then
         return nil, NO_ZONE
     end
@@ -463,7 +464,7 @@ function ns.MapSetPoint(point, label, key, id)
     end
     ns.Fire("MAP_TARGET")
     local item = itemText(t.item)
-    ns.msg(("Ziel %s%s."):format(whereText(t.label, t), item and (" (" .. item .. ")") or ""))
+    ns.msg((L["Ziel %s%s."]):format(whereText(t.label, t), item and (" (" .. item .. ")") or ""))
     return true
 end
 
@@ -496,7 +497,7 @@ function ns.MapCheckArrival()
     if not d or d >= ARRIVE then return false end
     if not t.arrived then
         t.arrived = true
-        ns.msg(("Ziel erreicht (%s)."):format(t.label or "?"))
+        ns.msg((L["Ziel erreicht (%s)."]):format(t.label or "?"))
     end
     if ns.Get("map.autoClear") then ns.MapClearTarget() end
     return true
@@ -554,7 +555,7 @@ end)
 function ns.MapShowOnWorldMap(point)
     if type(point) ~= "table" or type(point.map) ~= "number" then return false end
     if InCombatLockdown and InCombatLockdown() then
-        ns.msg("Im Kampf öffnet Amisia die Weltkarte nicht.")
+        ns.msg(L["Im Kampf öffnet Amisia die Weltkarte nicht."])
         return false
     end
     local frame = _G.WorldMapFrame
@@ -612,12 +613,12 @@ function Map.Bearing(point, me)
     return math.atan2(east, -south) % (2 * math.pi)
 end
 
-local WORDS = { "Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest" }
+local WORDS = { N_("Nord"), N_("Nordost"), N_("Ost"), N_("Südost"), N_("Süd"), N_("Südwest"), N_("West"), N_("Nordwest") }
 -- One of eight directions for a bearing (radians clockwise from north).
 function Map.DirectionWord(bearing)
     if type(bearing) ~= "number" then return nil end
     local i = math.floor(((bearing % (2 * math.pi)) / (math.pi / 4)) + 0.5) % 8
-    return WORDS[i + 1]
+    return L[WORDS[i + 1]]
 end
 
 ---------------------------------------------------------------------------
@@ -669,7 +670,7 @@ local function arrowUpdate(f)
     f.label:SetText(t.label or "?")
     if not d then
         f.icon:Hide()
-        f.dist:SetText("Anderer Kontinent")
+        f.dist:SetText(L["Anderer Kontinent"])
         f.dist:SetTextColor(0.6, 0.6, 0.6)
         return
     end
@@ -677,11 +678,11 @@ local function arrowUpdate(f)
         ns.MapCheckArrival()
         if ns.MapTarget() ~= t then return end      -- cleared: MAP_TARGET hid the arrow
         f.icon:Hide()
-        f.dist:SetText("Angekommen")
+        f.dist:SetText(L["Angekommen"])
         f.dist:SetTextColor(0.3, 0.9, 0.3)
         return
     end
-    local text = ("%d m"):format(math.floor(d + 0.5))
+    local text = (L["%d m"]):format(math.floor(d + 0.5))
     local bearing = Map.Bearing(t, me)
     local face = facing(f.icon)
     if bearing and face then
@@ -698,17 +699,17 @@ end
 
 local function arrowMenu(f)
     ns.W.Menu(f, {
-        { "Ziel löschen", function() ns.MapClearTarget() end },
-        { "Auf der Weltkarte zeigen", function()
+        { L["Ziel löschen"], function() ns.MapClearTarget() end },
+        { L["Auf der Weltkarte zeigen"], function()
             local t = ns.MapTarget()
             if t then ns.MapShowOnWorldMap(t) end
         end },
-        { "Pfeil ausblenden", function()
+        { L["Pfeil ausblenden"], function()
             local m = db()
             local now = ns.Get("map.arrow")
             if m and now ~= "off" then m.arrowBefore = now end
             ns.Set("map.arrow", "off")
-            ns.msg("Pfeil aus. Wieder an: /amisia karte pfeil oder in den Einstellungen.")
+            ns.msg(L["Pfeil aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."])
         end },
     })
 end
@@ -721,7 +722,7 @@ local function arrowTooltip(f)
     local item = itemText(t.item)
     if item then GameTooltip:AddLine(item, 1, 1, 1) end
     GameTooltip:AddLine(("%s %s"):format(zoneName(t.map), Map.Coords(t)), 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("Ziehen: verschieben. Rechtsklick: mehr.", 0.6, 0.6, 0.6)
+    GameTooltip:AddLine(L["Ziehen: verschieben. Rechtsklick: mehr."], 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
 
@@ -819,7 +820,7 @@ local function whereEntry(id, key)
     if not point and key then return whereEntry(id) end
     if not point then return nil end
     local text = whereText(placeName(place), point, isEntrance(place.key))
-    e = { list = places, m = m, cx = cx, cy = cy, text = text, line = "Fundort: " .. text }
+    e = { list = places, m = m, cx = cx, cy = cy, text = text, line = L["Fundort: %s"]:format(text) }
     whereCache[ck] = e
     return e
 end
@@ -843,25 +844,25 @@ end
 -- Settings and commands
 ---------------------------------------------------------------------------
 
-ns.RegisterSettings{ key = "map", label = "Karte und Wegpunkt", order = 47, available = function() return ns.HasData("MAP") end, items = {
-    { key = "map.pins", type = "toggle", label = "Orte auf der Weltkarte zeigen", default = true,
-      tip = "Pins für Upgrades und Wünsche, mit Item-Symbol." },
-    { key = "map.pinsTargets", type = "toggle", label = "Pins für Upgrades aus Ziele", default = true },
-    { key = "map.pinsWishes", type = "toggle", label = "Pins für Wünsche", default = true },
-    { key = "map.pinsContinent", type = "toggle", label = "Pins auch auf der Kontinentkarte", default = true },
-    { key = "map.pinScale", type = "slider", label = "Pin-Größe (%)", default = 100, min = 60, max = 160, step = 10, expert = true },
-    { key = "map.arrow", type = "choice", label = "Pfeil zum Ziel", default = "auto",
-      values = { { "auto", "Automatisch" }, { "on", "Immer" }, { "off", "Aus" } },
-      tip = "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann." },
-    { key = "map.autoClear", type = "toggle", label = "Ziel beim Ankommen löschen", default = true },
-    { key = "map.tooltip", type = "toggle", label = "Fundort im Tooltip (mit Shift)", default = true },
-    { key = "map.resetHidden", type = "button", label = "Ausgeblendete Orte wieder zeigen",
+ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 47, available = function() return ns.HasData("MAP") end, items = {
+    { key = "map.pins", type = "toggle", label = L["Orte auf der Weltkarte zeigen"], default = true,
+      tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol."] },
+    { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true },
+    { key = "map.pinsWishes", type = "toggle", label = L["Pins für Wünsche"], default = true },
+    { key = "map.pinsContinent", type = "toggle", label = L["Pins auch auf der Kontinentkarte"], default = true },
+    { key = "map.pinScale", type = "slider", label = L["Pin-Größe (%)"], default = 100, min = 60, max = 160, step = 10, expert = true },
+    { key = "map.arrow", type = "choice", label = L["Pfeil zum Ziel"], default = "auto",
+      values = { { "auto", L["Automatisch"] }, { "on", L["Immer"] }, { "off", L["Aus"] } },
+      tip = L["Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann."] },
+    { key = "map.autoClear", type = "toggle", label = L["Ziel beim Ankommen löschen"], default = true },
+    { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true },
+    { key = "map.resetHidden", type = "button", label = L["Ausgeblendete Orte wieder zeigen"],
       run = function()
           local m = db()
           if m then wipe(m.hidden) end
           ns.Fire("MAP_TARGET")
       end },
-    { key = "map.resetArrow", type = "button", label = "Pfeilposition zurücksetzen", expert = true,
+    { key = "map.resetArrow", type = "button", label = L["Pfeilposition zurücksetzen"], expert = true,
       run = function()
           local s = AmisiaDB and AmisiaDB.settings
           if s and type(s.map) == "table" then s.map.arrowPos = nil end
@@ -878,12 +879,12 @@ end
 
 local function statusLine()
     local t = ns.MapTarget()
-    if not t then return "Kein Ziel gesetzt. /amisia karte <Item-Link> setzt eins." end
-    return ("Ziel: %s, %s %s."):format(t.label or "?", zoneName(t.map), Map.Coords(t))
+    if not t then return L["Kein Ziel gesetzt. /amisia karte <Item-Link> setzt eins."] end
+    return (L["Ziel: %s, %s %s."]):format(t.label or "?", zoneName(t.map), Map.Coords(t))
 end
 
-ns.RegisterSlash("karte", { aliases = { "map" }, args = "[<Link> | aus | pins | pfeil]",
-    desc = "Karte: Ziel zur Quelle eines Items, Pins und Pfeil",
+ns.RegisterSlash("karte", { en = "map", args = L["[<Link> | aus | pins | pfeil]"],
+    desc = L["Karte: Ziel zur Quelle eines Items, Pins und Pfeil"],
     run = function(rest)
         rest = (rest or ""):match("^%s*(.-)%s*$")
         local word = rest:lower()
@@ -893,27 +894,27 @@ ns.RegisterSlash("karte", { aliases = { "map" }, args = "[<Link> | aus | pins | 
         end
         if word == "" then
             if ns.ShowMap then ns.ShowMap() else ns.msg(statusLine()) end
-        elseif word == "aus" or word == "clear" then
-            if ns.MapClearTarget() then ns.msg("Ziel gelöscht.") else ns.msg("Kein Ziel gesetzt.") end
+        elseif word == "aus" or word == "off" or word == "clear" then
+            if ns.MapClearTarget() then ns.msg(L["Ziel gelöscht."]) else ns.msg(L["Kein Ziel gesetzt."]) end
         elseif word == "pins" then
             local on = not ns.Get("map.pins")
             ns.Set("map.pins", on)
-            ns.msg(on and "Pins auf der Weltkarte an." or "Pins auf der Weltkarte aus.")
+            ns.msg(on and L["Pins auf der Weltkarte an."] or L["Pins auf der Weltkarte aus."])
         elseif word == "pfeil" or word == "arrow" then
             local m = db()
             local now = ns.Get("map.arrow")
             if now == "off" then
                 ns.Set("map.arrow", m and m.arrowBefore or "auto")
-                ns.msg("Pfeil zum Ziel an.")
+                ns.msg(L["Pfeil zum Ziel an."])
             else
                 if m then m.arrowBefore = now end
                 ns.Set("map.arrow", "off")
-                ns.msg("Pfeil zum Ziel aus.")
+                ns.msg(L["Pfeil zum Ziel aus."])
             end
         else
             local id = itemOf(rest)
             if not id then
-                ns.msg("Aufruf: /amisia karte [<Item-Link> | aus | pins | pfeil]")
+                ns.msg(L["Aufruf: /amisia karte [<Item-Link> | aus | pins | pfeil]"])
                 return
             end
             local ok, why = ns.MapSetTarget(id)

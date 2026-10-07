@@ -1,6 +1,7 @@
 -- Amisia gear window (/amisia gear): class, spec and source switches, an overview with the best item
 -- per slot for every level range, and a list of one range with names, sources and alternatives.
 local ADDON, ns = ...
+local L = ns.L
 
 local Gear = ns.Gear
 local W, T = ns.W, ns.Theme
@@ -13,9 +14,9 @@ local ROW_H = 26
 local SLOT_W = 92
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local FILTERS = {
-    { key = "Q", label = "Quests" }, { key = "D", label = "Dungeons" }, { key = "C", label = "Berufe" },
-    { key = "V", label = "Händler" }, { key = "W", label = "Weltdrops" }, { key = "A", label = "AH" },
-    { key = "P", label = "PvP" }, { key = "B", label = "Ingenieur" },
+    { key = "Q", label = "Quests" }, { key = "D", label = "Dungeons" }, { key = "C", label = L["Berufe"] },
+    { key = "V", label = L["Händler"] }, { key = "W", label = L["Weltdrops"] }, { key = "A", label = "AH" },
+    { key = "P", label = "PvP" }, { key = "B", label = L["Ingenieur"] },
 }
 local CLASS_ICON = {
     WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter", ROGUE = "Rogue", PRIEST = "Priest",
@@ -125,24 +126,24 @@ local function showItemTooltip(owner, id, score, extra, pick)
         GameTooltip:AddLine(ns.BisPickText(pick), 0.25, 1, 0.4, true)
     end
     local fx = Gear.EffectText(id)
-    if fx then GameTooltip:AddLine("Effekt nicht gewertet: " .. fx, 0.6, 0.6, 0.6, true) end
+    if fx then GameTooltip:AddLine(L["Effekt nicht gewertet: %s"]:format(fx), 0.6, 0.6, 0.6, true) end
     local o = opts(settings().col)
     local srcs = Gear.Sources(id, o)
     if #srcs == 0 then srcs = Gear.Sources(id) end
-    GameTooltip:AddLine("Quelle", GOLD[1], GOLD[2], GOLD[3])
+    GameTooltip:AddLine(L["Quelle"], GOLD[1], GOLD[2], GOLD[3])
     for i, rec in ipairs(srcs) do
         if i > 6 then
-            GameTooltip:AddLine(("... und %d weitere"):format(#srcs - 6), 0.6, 0.6, 0.6)
+            GameTooltip:AddLine(L["... und %d weitere"]:format(#srcs - 6), 0.6, 0.6, 0.6)
             break
         end
         GameTooltip:AddLine(Gear.SourceText(rec), 1, 1, 1, true)
     end
     if #srcs == 0 and pick and type(pick.src) == "string" then GameTooltip:AddLine(pick.src, 1, 1, 1, true) end
     local row = Gear.Item(id)
-    if row and row[6] == 2 then GameTooltip:AddLine("Beim Anlegen gebunden: auch im Auktionshaus zu finden.", 0.6, 0.8, 1, true) end
-    if score then GameTooltip:AddDoubleLine("Wertung", ("%.0f"):format(score), GOLD[1], GOLD[2], GOLD[3], 1, 1, 1) end
+    if row and row[6] == 2 then GameTooltip:AddLine(L["Beim Anlegen gebunden: auch im Auktionshaus zu finden."], 0.6, 0.8, 1, true) end
+    if score then GameTooltip:AddDoubleLine(L["Wertung"], ("%.0f"):format(score), GOLD[1], GOLD[2], GOLD[3], 1, 1, 1) end
     if extra then GameTooltip:AddLine(extra, 0.6, 0.6, 0.6, true) end
-    GameTooltip:AddLine("Shift-Klick: Link in den Chat", 0.5, 0.5, 0.5)
+    GameTooltip:AddLine(L["Shift-Klick: Link in den Chat"], 0.5, 0.5, 0.5)
     GameTooltip:Show()
 end
 
@@ -218,8 +219,8 @@ local function buildOverview(parent)
         end)
         h:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(("Level %s"):format(self.label:GetText()), 1, 0.82, 0)
-            GameTooltip:AddLine("Klick: diesen Bereich als Liste mit Quellen und Alternativen", 0.7, 0.7, 0.7, true)
+            GameTooltip:AddLine(L["Level %s"]:format(self.label:GetText()), 1, 0.82, 0)
+            GameTooltip:AddLine(L["Klick: diesen Bereich als Liste mit Quellen und Alternativen"], 0.7, 0.7, 0.7, true)
             GameTooltip:Show()
         end)
         h:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -266,7 +267,7 @@ local function buildOverview(parent)
             b:SetScript("OnEnter", function(self)
                 if self.id then
                     local note
-                    if self.slotKey == "MAINHAND" and self.plan == "2H" then note = "Zweihänder schlägt Waffenhand + Schildhand." end
+                    if self.slotKey == "MAINHAND" and self.plan == "2H" then note = L["Zweihänder schlägt Waffenhand + Schildhand."] end
                     showItemTooltip(self, self.id, self.score, note, self.pick)
                 elseif self.note then
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -329,7 +330,7 @@ local function fillOverview()
                 setBorderColor(b.edges, 1, 1, 1, 0.08)
                 b.empty:Show()
                 if slot.key == "OFFHAND" and res and res.plan == "2H" then
-                    b.note = "Zweihänder in der Waffenhand"
+                    b.note = L["Zweihänder in der Waffenhand"]
                     b.empty:SetText("2H")
                 else
                     b.empty:SetText("-")
@@ -360,9 +361,9 @@ local function buildList(parent)
     end
     col(head, 6, 80, "Slot")
     col(head, 90, 200, "Item")
-    col(head, 294, 28, "Lvl")
-    col(head, 326, 172, "Quelle")
-    col(head, 498, 40, "Wert")
+    col(head, 294, 28, L["Lvl"])
+    col(head, 326, 172, L["Quelle"])
+    col(head, 498, 40, L["Wert"])
     for r, slot in ipairs(Gear.SLOTS) do
         local b = CreateFrame("Button", nil, f)
         b:SetSize(LIST_W, ROW_H - 1)
@@ -441,8 +442,8 @@ local function fillList()
     local res = results[g.col]
     local o = opts(g.col)
     local lo, hi = Gear.COLUMNS[g.col][1], Gear.COLUMNS[g.col][2]
-    colLabel:SetText((lo == hi and ("Level " .. lo) or ("Level " .. lo .. "-" .. hi))
-        .. (o.level < hi and (" |cff8f86a3(bis Level %d, deine Stufe)|r"):format(o.level) or ""))
+    colLabel:SetText(L["Level %s"]:format(lo == hi and tostring(lo) or (lo .. "-" .. hi))
+        .. (o.level < hi and L[" |cff8f86a3(bis Level %d, deine Stufe)|r"]:format(o.level) or ""))
     for r, slot in ipairs(Gear.SLOTS) do
         local b = listRows[r]
         local list = res and res[slot.key]
@@ -455,7 +456,7 @@ local function fillList()
             b.id, b.value = e[1], e[2]
             b.icon:SetTexture(icon or 134400)
             b.icon:Show()
-            b.name:SetText(coloredName(e[1]) .. (e.pick and " |cff8f86a3(BiS-Empfehlung)|r" or ""))
+            b.name:SetText(coloredName(e[1]) .. (e.pick and L[" |cff8f86a3(BiS-Empfehlung)|r"] or ""))
             local row = Gear.Item(e[1])
             b.lvl:SetText(row and row[4] > 0 and row[4] or "-")
             b.src:SetText(bestSourceText(e[1], o, e.pick))
@@ -464,7 +465,7 @@ local function fillList()
                 local gain = e[2] - mine
                 b.score:SetText(gain >= 1 and ("|cff4fd06a+%d|r"):format(math.floor(gain + 0.5)) or ("%.0f"):format(e[2]))
                 -- a percentage only means something when the worn item scores at all
-                b.note = ("Angelegt: %.0f, dieses Item: %.0f%s"):format(mine, e[2],
+                b.note = L["Angelegt: %.0f, dieses Item: %.0f%s"]:format(mine, e[2],
                     mine >= 20 and ("  (%+d %%)"):format(math.floor(gain / mine * 100 + 0.5)) or "")
             else
                 b.score:SetText(("%.0f"):format(e[2]))
@@ -476,9 +477,9 @@ local function fillList()
             b.score:SetText("")
             b.src:SetText("")
             if slot.key == "OFFHAND" and res and res.plan == "2H" then
-                b.name:SetText("|cff8f86a3Zweihänder in der Waffenhand|r")
+                b.name:SetText("|cff8f86a3" .. L["Zweihänder in der Waffenhand"] .. "|r")
             else
-                b.name:SetText("|cff8f86a3nichts gefunden|r")
+                b.name:SetText("|cff8f86a3" .. L["nichts gefunden"] .. "|r")
             end
         end
     end
@@ -486,14 +487,14 @@ local function fillList()
     -- alternatives for the selected slot
     local slotName
     for _, s in ipairs(Gear.SLOTS) do if s.key == selSlot then slotName = s.name end end
-    altPanel.title:SetText("Alternativen: " .. (slotName or ""))
+    altPanel.title:SetText(L["Alternativen: %s"]:format(slotName or ""))
     local list = res and res[selSlot] or {}
     local note = ""
     if selSlot == "MAINHAND" and res then
         if res.plan == "2H" then
-            note = ("Zweihänder %.0f gegen Waffenhand + Schildhand %.0f"):format(res.twoHandScore or 0, res.oneHandScore or 0)
+            note = L["Zweihänder %.0f gegen Waffenhand + Schildhand %.0f"]:format(res.twoHandScore or 0, res.oneHandScore or 0)
         elseif res.twoHandScore then
-            note = ("Waffenhand + Schildhand %.0f gegen Zweihänder %.0f"):format(res.oneHandScore or 0, res.twoHandScore or 0)
+            note = L["Waffenhand + Schildhand %.0f gegen Zweihänder %.0f"]:format(res.oneHandScore or 0, res.twoHandScore or 0)
         end
     end
     altPanel.note:SetText(note)
@@ -503,7 +504,7 @@ local function fillList()
             local _, _, _, icon = itemInfo(e[1])
             b.id, b.value, b.pick = e[1], e[2], e.pick
             b.icon:SetTexture(icon or 134400)
-            b.name:SetText(coloredName(e[1]) .. (e.pick and " |cff8f86a3(BiS-Empfehlung)|r" or ""))
+            b.name:SetText(coloredName(e[1]) .. (e.pick and L[" |cff8f86a3(BiS-Empfehlung)|r"] or ""))
             local row = Gear.Item(e[1])
             b.src:SetText(((row and row[4] > 0) and ("L" .. row[4] .. "  ") or "") .. bestSourceText(e[1], o, e.pick))
             b.score:SetText(("%.0f"):format(e[2]))
@@ -534,7 +535,7 @@ local function updateControls()
         local sp = specs[i]
         if sp then
             b.key = sp.key
-            b.label:SetText(sp.name)
+            b.label:SetText(L[sp.name])
             W.FitChip(b, 60)
             row[#row + 1] = b
             b:SetOn(sp.key == cur)
@@ -545,15 +546,15 @@ local function updateControls()
     end
     W.Row(F, row, T.CHIP_GAP, SPEC_X, -46)
     local sp = Gear.SpecInfo(g.class, cur)
-    kindButton.label:SetText(sp and sp.all and "Gewichtung: eigene" or ("Gewichtung: " .. ns.Get("gear.kind")))
+    kindButton.label:SetText(sp and sp.all and L["Gewichtung: eigene"] or L["Gewichtung: %s"]:format(ns.Get("gear.kind")))
     kindButton:SetOn(true)
-    factionButton.label:SetText(g.faction == "A" and "Allianz" or g.faction == "H" and "Horde" or "Beide")
+    factionButton.label:SetText(g.faction == "A" and L["Allianz"] or g.faction == "H" and "Horde" or L["Beide"])
     factionButton:SetOn(true)
     for _, b in ipairs(filterButtons) do b:SetOn(g.sources[b.key] and true or false) end
     viewButtons.overview:SetOn(g.view == "overview")
     viewButtons.list:SetOn(g.view == "list")
     local r, gg, bb = classColor(g.class)
-    F:SetTitle(("Ausrüstung |cff%02x%02x%02x%s|r"):format(r * 255, gg * 255, bb * 255, Gear.CLASS_NAMES[g.class] or g.class))
+    F:SetTitle(L["Ausrüstung |cff%02x%02x%02x%s|r"]:format(r * 255, gg * 255, bb * 255, Gear.CLASS_NAMES[g.class] or g.class))
     colLabel:SetShown(g.view == "list")
     F.prevCol:SetShown(g.view == "list")
     F.nextCol:SetShown(g.view == "list")
@@ -568,9 +569,9 @@ local function updateStatus()
     local total, missing = 0, 0
     for _, r in pairs(results) do total, missing = math.max(total, r.total), math.max(missing, r.missing) end
     if loading > 0 or missing > 0 then
-        statusText:SetText(("|cffe0a344Lade Itemdaten vom Server ...|r %d offen"):format(math.max(loading, missing)))
+        statusText:SetText(L["|cffe0a344Lade Itemdaten vom Server ...|r %d offen"]:format(math.max(loading, missing)))
     else
-        statusText:SetText(("%d passende Items bewertet. Shift-Klick verlinkt, Klick zeigt Quellen und Alternativen."):format(total))
+        statusText:SetText(L["%d passende Items bewertet. Shift-Klick verlinkt, Klick zeigt Quellen und Alternativen."]:format(total))
     end
     if not res then statusText:SetText("") end
 end
@@ -658,8 +659,8 @@ local function build()
     kindButton:SetScript("OnEnter", function(self)
         self:SetOver(true)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine("Gewichtung", 1, 0.82, 0)
-        GameTooltip:AddLine("Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung. Heiler und Tanks haben eigene Gewichte.", 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(L["Gewichtung"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung. Heiler und Tanks haben eigene Gewichte."], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
     kindButton:SetScript("OnLeave", function(self)
@@ -687,12 +688,12 @@ local function build()
     end
 
     -- third row: view, range, status
-    viewButtons.overview = chip(F, "Übersicht", 80, function()
+    viewButtons.overview = chip(F, L["Übersicht"], 80, function()
         settings().view = "overview"
         ns.GearRefresh(true)
     end)
     viewButtons.overview:SetPoint("TOPLEFT", 14, -108)
-    viewButtons.list = chip(F, "Liste", 60, function()
+    viewButtons.list = chip(F, L["Liste"], 60, function()
         settings().view = "list"
         ns.GearRefresh(true)
     end)
@@ -713,7 +714,7 @@ local function build()
         ns.GearRefresh(true)
     end)
     F.nextCol:SetPoint("LEFT", colLabel, "RIGHT", 6, 0)
-    local mine = chip(F, "Mein Charakter", 110, function()
+    local mine = chip(F, L["Mein Charakter"], 110, function()
         local g = settings()
         local _, myClass = UnitClass("player")
         g.class = myClass or g.class
@@ -767,7 +768,7 @@ end
 function ns.ToggleGearFrame()
     if not Gear.Available() then
         -- the data files load only in WoW Forever (TOC load condition)
-        ns.msg("Die Ausrüstungstabelle ist nicht verfügbar.")
+        ns.msg(L["Die Ausrüstungstabelle ist nicht verfügbar."])
         return
     end
     if not F then build() end
@@ -779,12 +780,12 @@ function ns.GearDebug(arg)
     if not Gear.Available() then return end
     local id = ns.ItemID(arg) or tonumber(arg)
     if not id then
-        ns.msg("Aufruf: /amisia gear item <Item-Link>")
+        ns.msg(L["Aufruf: /amisia gear item <Item-Link>"])
         return
     end
     local s = Gear.ReadStats(arg:find("item:") and arg or id)
     if not s then
-        ns.msg("Keine Daten für " .. id .. ", gleich nochmal versuchen.")
+        ns.msg(L["Keine Daten für %d, gleich nochmal versuchen."]:format(id))
         if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
         return
     end
@@ -807,18 +808,18 @@ function ns.GearDebug(arg)
     local row = Gear.Item(id)
     local kind = row and ({ ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" })[Gear.GROUP[row[1]]]
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
-    ns.msg(("Wertung %s/%s bei Level %d: %.1f%s"):format(o.class, o.spec or "?", o.level, Gear.Score(s, w, o.level, kind, o.class),
-        row and "" or " (nicht in der Tabelle)"))
+    ns.msg(L["Wertung %s/%s bei Level %d: %s%s"]:format(o.class, o.spec or "?", o.level, ns.Num(Gear.Score(s, w, o.level, kind, o.class), 1),
+        row and "" or L[" (nicht in der Tabelle)"]))
 end
 
-ns.RegisterSettings{ key = "gear", label = "Ausrüstung", order = 50, available = function() return Gear.Available() end, items = {
-    { key = "gear.kind", type = "choice", label = "Gewichtung", default = "Speedrun",
+ns.RegisterSettings{ key = "gear", label = L["Ausrüstung"], order = 50, available = function() return Gear.Available() end, items = {
+    { key = "gear.kind", type = "choice", label = L["Gewichtung"], default = "Speedrun",
       values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
-      tip = "Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung." },
-    { key = "gear.upgradeDot", type = "toggle", label = "Upgrade-Punkt in der Tabelle", default = true,
-      tip = "Grüner Punkt an Items, die besser sind als das, was du trägst." },
+      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] },
+    { key = "gear.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,
+      tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
 }}
-ns.RegisterSlash("gear", { args = "[item <Link>]", desc = "Ausrüstungstabelle (WoW Forever)",
+ns.RegisterSlash("gear", { args = L["[item <Link>]"], desc = L["Ausrüstungstabelle (WoW Forever)"],
     run = function(rest)
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
         if sub and sub:lower() == "item" then ns.GearDebug(arg) else ns.ToggleGearFrame() end

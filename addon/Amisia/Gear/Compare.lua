@@ -21,7 +21,7 @@ local function report(err)
 end
 
 local function on()
-    return ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false
+    return ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false -- l10n-ok: setting key
 end
 
 local function hide(owner)
@@ -151,7 +151,7 @@ local function refresh()
         if type(info) == "table" and info.IsShown and info:IsShown() then markRewards() end
     end)
 end
-ns.Listen("SETTING", function(path) if path == "bis.compare" then refresh() end end)
+ns.Listen("SETTING", function(path) if path == "bis.compare" then refresh() end end) -- l10n-ok: setting key
 ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", function() C_Timer.After(0, refresh) end)
 
 -- The mark's text on a roll frame or reward button while it shows, else nil.

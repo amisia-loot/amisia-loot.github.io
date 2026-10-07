@@ -4,6 +4,8 @@
 -- fallback and a setting). The guild roster comes from C_Club (secret in the chat lockdown, so it
 -- is only read outside of it), else from the classic guild roster functions.
 local ADDON, ns = ...
+local L = ns.L
+local N_ = ns.N_
 
 local REBUILD_GAP = 10    -- seconds between two builds of the roster
 local WAIT_FOR = 60       -- seconds data of an unchecked sender waits for the roster
@@ -279,11 +281,11 @@ function ns.RankList()
     local out = {}
     for r = 1, n do
         local name = type(GuildControlGetRankName) == "function" and ns.Plain(GuildControlGetRankName(r)) or nil
-        out[r] = { rank = r, name = type(name) == "string" and name ~= "" and name or ("Rang " .. r),
+        out[r] = { rank = r, name = type(name) == "string" and name ~= "" and name or L["Rang %d"]:format(r),
                    officer = ns.IsOfficerRank(r), members = count[r] or 0 }
     end
     local rule = officerRule()
-    return out, rule == "flags" and "Rangrechte" or rule == "setting" and "Einstellung" or "Rückfall"
+    return out, rule == "flags" and N_("Rangrechte") or rule == "setting" and N_("Einstellung") or N_("Rückfall")
 end
 
 ---------------------------------------------------------------------------
@@ -431,27 +433,27 @@ end
 -- Setting and command
 ---------------------------------------------------------------------------
 do
-    local values = { { "auto", "Automatisch" }, { 1, "Rang 1" } }
-    for n = 2, 10 do values[#values + 1] = { n, "Rang 1 bis " .. n } end
-    table.insert(ns.SYNC_SETTINGS.items, { key = "sync.officerRanks", type = "choice", label = "Offiziersränge", default = "auto",
+    local values = { { "auto", L["Automatisch"] }, { 1, L["Rang %d"]:format(1) } }
+    for n = 2, 10 do values[#values + 1] = { n, L["Rang 1 bis %d"]:format(n) } end
+    table.insert(ns.SYNC_SETTINGS.items, { key = "sync.officerRanks", type = "choice", label = L["Offiziersränge"], default = "auto",
         values = values, expert = true,
-        tip = "Automatisch: Ränge mit dem Recht Offiziersrang in der Rangverwaltung." })
+        tip = L["Automatisch: Ränge mit dem Recht Offiziersrang in der Rangverwaltung."] })
     ns.RegisterSettings(ns.SYNC_SETTINGS)
 end
 
 ns.RegisterSyncCommand("raenge", function()
     if not inGuild() then
-        ns.msg("Du bist in keiner Gilde.")
+        ns.msg(L["Du bist in keiner Gilde."])
         return
     end
     local list, source = ns.RankList()
     if not list then
-        ns.msg("Die Gildenliste ist gerade nicht lesbar (Kampfsperre oder noch nicht geladen). Versuch es gleich noch einmal.")
+        ns.msg(L["Die Gildenliste ist gerade nicht lesbar (Kampfsperre oder noch nicht geladen). Versuch es gleich noch einmal."])
         return
     end
-    ns.msg(("Gildenränge (Quelle: %s):"):format(source))
+    ns.msg(L["Gildenränge (Quelle: %s):"]:format(L[source]))
     for _, r in ipairs(list) do
-        DEFAULT_CHAT_FRAME:AddMessage(("  Rang %d · %s · %d %s · %s"):format(r.rank, r.name, r.members,
-            r.members == 1 and "Mitglied" or "Mitglieder", r.officer and "Offiziersrang" or "kein Offiziersrang"))
+        DEFAULT_CHAT_FRAME:AddMessage(L["  Rang %d · %s · %d %s · %s"]:format(r.rank, r.name, r.members,
+            r.members == 1 and L["Mitglied"] or L["Mitglieder"], r.officer and L["Offiziersrang"] or L["kein Offiziersrang"]))
     end
 end)

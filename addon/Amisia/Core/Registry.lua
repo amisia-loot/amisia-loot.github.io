@@ -2,6 +2,7 @@
 -- slash commands here; the main window, the settings page and the command help are built from
 -- what is registered. Loaded first, so every other file can register while it loads.
 local ADDON, ns = ...
+local L = ns.L
 
 ns.panels, ns.cards, ns.schema, ns.slash = {}, {}, {}, {}
 local items = {}        -- setting path -> item of the schema
@@ -59,8 +60,8 @@ end
 -- The sections of the page list, top to bottom.
 ns.PANEL_GROUPS = {
     { key = "raid", label = "Raid" },
-    { key = "gear", label = "Ausrüstung" },
-    { key = "guild", label = "Gilde" },
+    { key = "gear", label = L["Ausrüstung"] },
+    { key = "guild", label = L["Gilde"] },
     { key = "amisia", label = "Amisia" },
 }
 
@@ -126,7 +127,7 @@ end
 -- Minutes after midnight from "20:00", "20.30" or "20"; false for "aus"/"off" when allowOff.
 function ns.ParseTime(text, allowOff)
     text = tostring(text or ""):lower():match("^%s*(.-)%s*$")
-    if allowOff and (text == "aus" or text == "off") then return false end
+    if allowOff and (text == "aus" or text == "off") then return false end -- l10n-ok: typed words, both work
     local h, m = text:match("^(%d%d?)[:.](%d%d)$")
     if not h then h, m = text:match("^(%d%d?)$"), "0" end
     h, m = tonumber(h), tonumber(m)
@@ -135,7 +136,7 @@ function ns.ParseTime(text, allowOff)
 end
 
 function ns.FormatTime(mins)
-    if not mins then return "aus" end
+    if not mins then return L["aus"] end
     return ("%02d:%02d"):format(math.floor(mins / 60), mins % 60)
 end
 
@@ -214,11 +215,11 @@ end
 
 function ns.Set(path, value)
     local it = items[path]
-    if not it or it.type == "button" or it.type == "desc" then return false, "Unbekannte Einstellung: " .. tostring(path) end
+    if not it or it.type == "button" or it.type == "desc" then return false, L["Unbekannte Einstellung: %s"]:format(tostring(path)) end
     local s = stored()
-    if not s then return false, "Amisia ist noch nicht geladen." end
+    if not s then return false, L["Amisia ist noch nicht geladen."] end
     local ok, v = check(it, value)
-    if not ok then return false, it.invalid or "Ungültiger Wert." end
+    if not ok then return false, it.invalid or L["Ungültiger Wert."] end
     put(s, path, v)
     if it.onChange then it.onChange(v) end
     ns.Fire("SETTING", path, v)
@@ -302,7 +303,7 @@ end
 
 function ns.ShowHelp()
     local chat = DEFAULT_CHAT_FRAME
-    ns.msg("Befehle (das Fenster öffnet /amisia):")
+    ns.msg(L["Befehle (das Fenster öffnet /amisia):"])
     for _, line in ipairs(ns.SlashHelpLines(ns.IsOfficerView())) do chat:AddMessage("  " .. line) end
 end
 
@@ -315,7 +316,7 @@ function ns.Dispatch(input)
     end
     local def = slashWords[word:lower()]
     if not def then
-        ns.msg(("Unbekannter Befehl \"%s\"."):format(word))
+        ns.msg(L["Unbekannter Befehl \"%s\"."]:format(word))
         ns.ShowHelp()
         return
     end
@@ -325,22 +326,22 @@ end
 SLASH_AMISIA1 = "/amisia"
 SlashCmdList.AMISIA = ns.Dispatch
 
-ns.RegisterSlash("hilfe", { en = "help", aliases = { "?" }, desc = "alle Befehle", run = function() ns.ShowHelp() end })
+ns.RegisterSlash("hilfe", { en = "help", aliases = { "?" }, desc = L["alle Befehle"], run = function() ns.ShowHelp() end })
 
 ---------------------------------------------------------------------------
 -- Interface settings that belong to no single feature
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "ui", label = "Oberfläche", order = 90, items = {
-    { key = "ui.minimap", type = "toggle", label = "Minimap-Button", default = true,
-      tip = "Der runde Amisia-Button am Rand der Minimap.",
+ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, items = {
+    { key = "ui.minimap", type = "toggle", label = L["Minimap-Button"], default = true,
+      tip = L["Der runde Amisia-Button am Rand der Minimap."],
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
-    { key = "ui.scale", type = "slider", label = "Fenstergröße (%)", default = 100, min = 70, max = 130, step = 5,
+    { key = "ui.scale", type = "slider", label = L["Fenstergröße (%)"], default = 100, min = 70, max = 130, step = 5,
       onChange = function(v) if ns.ApplyScale then ns.ApplyScale(v) end end },
-    { key = "ui.resetPosition", type = "button", label = "Fensterposition zurücksetzen",
+    { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
       run = function() if ns.ResetPositions then ns.ResetPositions() end end },
-    { key = "ui.view", type = "choice", label = "Ansicht", default = "auto",
-      values = { { "auto", "Automatisch" }, { "officer", "Offizier" }, { "raider", "Raider" } },
-      tip = "Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich." },
-    { key = "ui.expert", type = "toggle", label = "Expertenmodus", default = false,
-      tip = "Zeigt die Werkzeuge und seltene Einstellungen." },
+    { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
+      values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
+      tip = L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] },
+    { key = "ui.expert", type = "toggle", label = L["Expertenmodus"], default = false,
+      tip = L["Zeigt die Werkzeuge und seltene Einstellungen."] },
 }}

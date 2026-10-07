@@ -72,7 +72,7 @@ local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) 
 local function nameOk(v) return type(v) == "string" and ns.DropsCleanName(v) == v end
 
 local function debugLine(text)
-    if ns.Get("sync.debug") then DEFAULT_CHAT_FRAME:AddMessage("|cff999999Amisia Drops: " .. text .. "|r") end
+    if ns.Get("sync.debug") then DEFAULT_CHAT_FRAME:AddMessage("|cff999999" .. ns.L["Amisia Drops: %s"]:format(text) .. "|r") end
 end
 
 ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ end
 local function send(kind, fields, chan, target, key, low)
     local n = #"Amisia" + #tostring(ns.SYNC_PROTO) + #kind + 1 + #table.concat(fields, "\t")
     if not afford(n, low) then
-        debugLine("Sendegrenze erreicht.")
+        debugLine(ns.L["Sendegrenze erreicht."])
         return false
     end
     local ok = ns.CommSend(kind, fields, chan, target, { low = true, when = canTalk, key = key })
@@ -390,7 +390,7 @@ end
 nextDR = function()
     if #pull.drs == 0 then return nextWeek() end
     if hourCount() >= L.drPerHour then
-        debugLine("30 Anfragen in der Stunde erreicht.")
+        debugLine(ns.L["30 Anfragen in der Stunde erreicht."])
         return stopPull(true)
     end
     local ix = indexNow()
@@ -571,13 +571,13 @@ ns.CommOnBlob("DK", function(sender, tbl, chan, key)
     if not ask or now() - ask.at > L.askKeep then
         -- nobody asked for this, or its answer came already: nothing is pushed into the records
         stats.unasked = stats.unasked + 1
-        debugLine("Drop-Daten ohne Anfrage verworfen.")
+        debugLine(ns.L["Drop-Daten ohne Anfrage verworfen."])
         return
     end
     local recs, names, zones, encs = checkBlob(tbl, ask)
     if not recs then
         stats.bad = stats.bad + 1
-        debugLine("Ungültige Drop-Daten verworfen.")
+        debugLine(ns.L["Ungültige Drop-Daten verworfen."])
         return
     end
     stats.blobs = stats.blobs + 1
@@ -820,7 +820,7 @@ local function serveOne()
     if partsRecent() + parts > L.partsMax then return end
     local estimate = #packed + parts * PART_OVERHEAD
     if not afford(estimate, s.low) then
-        debugLine("Sendegrenze erreicht.")
+        debugLine(ns.L["Sendegrenze erreicht."])
         table.remove(serve, i)
         return
     end

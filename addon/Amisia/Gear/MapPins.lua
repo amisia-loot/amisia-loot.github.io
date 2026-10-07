@@ -6,6 +6,7 @@
 -- dungeon marked from the dungeon planner (ns.DungeonMarkPlaces) get pins with the client's quest icon.
 local ADDON, ns = ...
 local Gear, Map, W = ns.Gear, ns.Map, ns.W
+local L = ns.L
 
 local TEMPLATE = "AmisiaMapPinTemplate"
 local MAX_PINS = 60
@@ -15,8 +16,8 @@ local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
 local QUEST_ATLAS, QUEST_ICON = "QuestNormal", "Interface\\GossipFrame\\AvailableQuestIcon"
 local MAX_MARKS = 40
 -- the texts of the quest giver marks, in one place for the translation
-local TEXT = { setTarget = "Ziel setzen", clearMarks = "Markierung der Questgeber entfernen",
-    hint = "Klick: Ziel setzen. Rechtsklick: mehr." }
+local TEXT = { setTarget = L["Ziel setzen"], clearMarks = L["Markierung der Questgeber entfernen"],
+    hint = L["Klick: Ziel setzen. Rechtsklick: mehr."] }
 -- frame level types the world map defines (Blizzard_WorldMap); an unknown type would fall back to
 -- the canvas default
 local LEVEL, TARGET_LEVEL = "PIN_FRAME_LEVEL_AREA_POI", "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST"
@@ -290,8 +291,8 @@ local function placeMenu(e)
             { TEXT.clearMarks, function() if ns.DungeonClearMarks then ns.DungeonClearMarks() end end } }
     end
     local entries = {
-        { "Ziel setzen", function() setTarget(e) end },
-        { "Item auf der Seite zeigen", function()
+        { TEXT.setTarget, function() setTarget(e) end },
+        { L["Item auf der Seite zeigen"], function()
             local best = e.items[1]
             if best and ns.ShowGear then ns.ShowGear(best.wish and "wish" or "goals", best.slot or best.wishSlot) end
         end },
@@ -299,7 +300,7 @@ local function placeMenu(e)
     if e.key then
         local m = AmisiaDB and AmisiaDB.map
         local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
-        entries[#entries + 1] = { hidden and "Wieder einblenden" or "Diesen Ort ausblenden", function()
+        entries[#entries + 1] = { hidden and L["Wieder einblenden"] or L["Diesen Ort ausblenden"], function()
             local mm = AmisiaDB and AmisiaDB.map
             if mm and type(mm.hidden) == "table" then
                 mm.hidden[e.key] = (not hidden) or nil
@@ -307,7 +308,7 @@ local function placeMenu(e)
             end
         end }
     end
-    entries[#entries + 1] = { "Alle Pins aus", function() ns.Set("map.pins", false) end }
+    entries[#entries + 1] = { L["Alle Pins aus"], function() ns.Set("map.pins", false) end }
     return entries
 end
 
@@ -335,7 +336,7 @@ local function placeTooltip(owner, e, hint)
     if e.mark then
         -- a marked quest giver: who, where, the quests to take there
         GameTooltip:AddLine(e.label or e.giver or "?", 1, 0.82, 0)
-        if e.target then GameTooltip:AddLine("Aktuelles Ziel", GOLD[1], GOLD[2], GOLD[3]) end
+        if e.target then GameTooltip:AddLine(L["Aktuelles Ziel"], GOLD[1], GOLD[2], GOLD[3]) end
         GameTooltip:AddLine(("%s %s"):format(Map.ZoneName(e.point.map), Map.Coords(e.point)), 0.7, 0.7, 0.7)
         for _, title in ipairs(e.quests or {}) do GameTooltip:AddLine(title, 1, 1, 1, true) end
         GameTooltip:AddLine(hint or TEXT.hint, 0.6, 0.6, 0.6)
@@ -350,18 +351,18 @@ local function placeTooltip(owner, e, hint)
         title = e.label or "?"
     end
     GameTooltip:AddLine(title, 1, 0.82, 0)
-    if e.target then GameTooltip:AddLine("Aktuelles Ziel", GOLD[1], GOLD[2], GOLD[3]) end
+    if e.target then GameTooltip:AddLine(L["Aktuelles Ziel"], GOLD[1], GOLD[2], GOLD[3]) end
     GameTooltip:AddLine(("%s %s"):format(Map.ZoneName(e.point.map), Map.Coords(e.point)), 0.7, 0.7, 0.7)
     for _, it in ipairs(e.items) do
         local right, color = "", GREEN
         if it.wish then
-            right, color = ("Wunsch (%s)"):format((ns.BIS_PRIO_TEXT or {})[it.prio] or "mittel"), GOLD
+            right, color = (L["Wunsch (%s)"]):format((ns.BIS_PRIO_TEXT or {})[it.prio] or L["mittel"]), GOLD
         elseif it.gain then
             right = ("%+d (%s)"):format(math.floor(it.gain + 0.5), (ns.BIS_SLOT_NAME or {})[it.slot] or "?")
         end
         GameTooltip:AddDoubleLine(itemText(it.id), right, 1, 1, 1, color[1], color[2], color[3])
     end
-    GameTooltip:AddLine(hint or "Klick: Ziel setzen. Rechtsklick: mehr.", 0.6, 0.6, 0.6)
+    GameTooltip:AddLine(hint or TEXT.hint, 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
 

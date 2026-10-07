@@ -4,6 +4,7 @@
 -- got through; the queue is released when the restriction ends. Incoming "!word" commands from
 -- raiders without the addon are dispatched to registered handlers.
 local ADDON, ns = ...
+local L = ns.L
 
 local BURST = 2000        -- bytes that may go out at once
 local REFILL = 800        -- bytes per second after that
@@ -120,7 +121,7 @@ local function send(e)
     if type(fn) ~= "function" then return false end
     local ok = pcall(fn, e.text, chan, nil, chan == "WHISPER" and e.target or nil)
     if not ok then
-        warnOnce("error", "Chat-Zeile konnte nicht gesendet werden.")
+        warnOnce("error", L["Chat-Zeile konnte nicht gesendet werden."])
         return false
     end
     tokens = tokens - #e.text
@@ -163,9 +164,9 @@ end
 -- a waiting line stays valid (default 600); opts.key: a waiting line with the same key is replaced.
 -- Returns "sent", "queued", or nil and the reason.
 function ns.Say(text, chan, target, opts)
-    if type(text) ~= "string" or text == "" then return nil, "Kein Text." end
-    if chan == "WHISPER" and (type(target) ~= "string" or target == "") then return nil, "Kein Empfänger." end
-    if not resolveChannel(chan) then return nil, "Keine Gruppe." end
+    if type(text) ~= "string" or text == "" then return nil, L["Kein Text."] end
+    if chan == "WHISPER" and (type(target) ~= "string" or target == "") then return nil, L["Kein Empfänger."] end
+    if not resolveChannel(chan) then return nil, L["Keine Gruppe."] end
     opts = opts or {}
     local e = { text = fit(text), chan = chan, target = target, key = opts.key,
                 expires = now() + (tonumber(opts.ttl) or DEFAULT_TTL) }
@@ -176,7 +177,7 @@ function ns.Say(text, chan, target, opts)
             refill()
             if tokens >= #e.text then
                 if send(e) then return "sent" end
-                return nil, "Senden fehlgeschlagen."
+                return nil, L["Senden fehlgeschlagen."]
             end
         end
     end
@@ -190,8 +191,8 @@ function ns.Say(text, chan, target, opts)
         end
     end
     if #queue >= MAX_QUEUE then
-        warnOnce("full", "Chat-Warteschlange voll, Zeilen verworfen.")
-        return nil, "Warteschlange voll."
+        warnOnce("full", L["Chat-Warteschlange voll, Zeilen verworfen."])
+        return nil, L["Warteschlange voll."]
     end
     queue[#queue + 1] = e
     startTicker()
@@ -284,7 +285,7 @@ function ns.ReplyGate(word, key)
     if #keep >= GATE_PER_MIN then
         if not g.warned or t - g.warned >= 60 then
             g.warned = t
-            ns.msg(("Viele !%s-Anfragen: weitere bleiben bis zu einer Minute unbeantwortet."):format(word))
+            ns.msg(L["Viele !%s-Anfragen: weitere bleiben bis zu einer Minute unbeantwortet."]:format(word))
         end
         return false
     end

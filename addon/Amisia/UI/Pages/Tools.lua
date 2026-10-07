@@ -2,6 +2,7 @@
 -- drop data: kills own and heard, the list per instance and boss with the rates, the sharing switch
 -- and the text "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local page
 local exportOpen = false
@@ -35,7 +36,7 @@ end
 
 local function buildDrops(f)
     local D = {}
-    D.head = W.SectionHeader(f, "Drop-Daten", false)
+    D.head = W.SectionHeader(f, L["Drop-Daten"], false)
     D.head:SetPoint("TOPLEFT", 0, -110)
     D.head:SetPoint("TOPRIGHT", 0, -110)
     D.state = W.Text(f, T.FONT.text, 590, true)
@@ -47,10 +48,10 @@ local function buildDrops(f)
     D.share:SetPoint("TOPLEFT", 0, -174)
     D.shareLabel = W.Text(f, T.FONT.text, 180)
     D.shareLabel:SetPoint("LEFT", D.share, "RIGHT", 6, 0)
-    D.shareLabel:SetText("Mit der Gilde teilen")
-    W.Tooltip(D.share, "Drop-Daten mit der Gilde teilen", "Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern.")
+    D.shareLabel:SetText(L["Mit der Gilde teilen"])
+    W.Tooltip(D.share, L["Drop-Daten mit der Gilde teilen"], L["Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern."])
 
-    D.web = W.Button(f, "Drops für die Website", 160, function()
+    D.web = W.Button(f, L["Drops für die Website"], 160, function()
         exportOpen = not exportOpen
         if exportOpen then
             setExport(D, ns.DropsExportText())
@@ -100,7 +101,7 @@ local function buildDrops(f)
     D.area:Hide()
     D.areaHint = W.Text(f, T.FONT.hint, 590)
     D.areaHint:SetPoint("BOTTOMLEFT", 0, 4)
-    D.areaHint:SetText("Strg+A, Strg+C, auf der Website im Reiter Import einfügen.")
+    D.areaHint:SetText(L["Strg+A, Strg+C, auf der Website im Reiter Import einfügen."])
     D.areaHint:Hide()
     return D
 end
@@ -108,12 +109,13 @@ end
 local function fillDrops(D)
     local s = ns.DropsStatus()
     if s.kills == 0 then
-        D.state:SetText("Noch keine Kills. Amisia zeichnet geöffnete Lootfenster von Bossen in Dungeons und Raids auf"
-            .. (ns.Get("drops.record") and "." or " (Aufzeichnen ist in den Einstellungen aus)."))
+        D.state:SetText(ns.Get("drops.record")
+            and L["Noch keine Kills. Amisia zeichnet geöffnete Lootfenster von Bossen in Dungeons und Raids auf."]
+            or L["Noch keine Kills. Amisia zeichnet geöffnete Lootfenster von Bossen in Dungeons und Raids auf (Aufzeichnen ist in den Einstellungen aus)."])
     else
-        D.state:SetText(("%d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s."):format(
-            s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or "keiner",
-            s.heardAt and date("%d.%m. %H:%M", s.heardAt) or "noch keiner"))
+        D.state:SetText(L["%d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s."]:format(
+            s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or L["keiner"],
+            s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch keiner"]))
     end
     D.share:SetChecked(ns.Get("drops.share") and true or false)
     D.list:SetItems(ns.DropsBossList())
@@ -121,7 +123,7 @@ local function fillDrops(D)
         D.list:Hide()
         D.area:Show()
         D.areaHint:Show()
-        D.web:SetText("Zur Liste")
+        D.web:SetText(L["Zur Liste"])
         -- the text follows the records unless the box is in use
         if not D.area.box:HasFocus() then
             local text = ns.DropsExportText()
@@ -131,29 +133,28 @@ local function fillDrops(D)
         D.area:Hide()
         D.areaHint:Hide()
         D.list:Show()
-        D.web:SetText("Drops für die Website")
+        D.web:SetText(L["Drops für die Website"])
     end
 end
 
-ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
+ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         f.state = W.Text(f, T.FONT.body, 590, true)
         f.state:SetPoint("TOPLEFT", 0, -2)
-        local gear = W.Button(f, "Ausrüstungs-Scan", 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
+        local gear = W.Button(f, L["Ausrüstungs-Scan"], 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
         gear:SetPoint("TOPLEFT", 0, -40)
-        local resume = W.Button(f, "Scan fortsetzen", 130, function() ns.ScanCommand(""); ns.Refresh() end)
+        local resume = W.Button(f, L["Scan fortsetzen"], 130, function() ns.ScanCommand(""); ns.Refresh() end)
         resume:SetPoint("LEFT", gear, "RIGHT", 6, 0)
-        local retry = W.Button(f, "Offene wiederholen", 140, function() ns.ScanCommand("retry"); ns.Refresh() end)
+        local retry = W.Button(f, L["Offene wiederholen"], 140, function() ns.ScanCommand("retry"); ns.Refresh() end)
         retry:SetPoint("LEFT", resume, "RIGHT", 6, 0)
-        local stop = W.Button(f, "Anhalten", 90, function() ns.ScanStop(); ns.Refresh() end)
+        local stop = W.Button(f, L["Anhalten"], 90, function() ns.ScanStop(); ns.Refresh() end)
         stop:SetPoint("LEFT", retry, "RIGHT", 6, 0)
         local hint = W.Text(f, T.FONT.hint, 590, true)
         hint:SetPoint("TOPLEFT", 0, -76)
         hint:SetHeight(28)
         hint:SetJustifyV("TOP")
-        hint:SetText("Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; "
-            .. "tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen.")
+        hint:SetText(L["Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen."])
         f.drops = buildDrops(f)
         -- the parts the layout tests read
         f.buttons, f.hint = { gear, resume, retry, stop }, hint
@@ -161,7 +162,8 @@ ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\
         return f
     end,
     refresh = function(f)
-        f.state:SetText(ns.ScanStatus() .. ("\nItem-Sammler: %s, %d Items mit Quelle."):format(ns.Get("tools.collect") and "an" or "aus", ns.CollectCount()))
+        f.state:SetText(ns.ScanStatus() .. "\n" .. (ns.Get("tools.collect") and L["Item-Sammler: an, %d Items mit Quelle."]
+            or L["Item-Sammler: aus, %d Items mit Quelle."]):format(ns.CollectCount()))
         fillDrops(f.drops)
     end }
 
@@ -170,7 +172,7 @@ ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\
 function ns.ShowDropsExport()
     ns.ShowPage("tools")
     if ns.CurrentPage() ~= "tools" or not page then
-        ns.msg("Der Text \"Drops für die Website\" steht auf der Seite Werkzeuge; sie zeigt Amisia im Expertenmodus (Einstellungen).")
+        ns.msg(L["Der Text \"Drops für die Website\" steht auf der Seite Werkzeuge; sie zeigt Amisia im Expertenmodus (Einstellungen)."])
         return
     end
     exportOpen = true

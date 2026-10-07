@@ -2,6 +2,7 @@
 -- dash). Everything that compares names goes through FullName and SameName, and the export writes
 -- "_" for the space (no WoW name holds an underscore), so its fields stay space-separated.
 local ADDON, ns = ...
+local L = ns.L
 
 -- One spelling of a name: trimmed, single spaces, and the surname added when it comes separately
 -- (UnitName's second value). A dash stays: it belongs to the surname.
@@ -74,7 +75,7 @@ end
 
 -- A text for a search: lower case, the German capitals folded too (lower() leaves the bytes of
 -- Ä, Ö and Ü as they are). nil and other values give "".
-local FOLD = { ["Ä"] = "ä", ["Ö"] = "ö", ["Ü"] = "ü" }
+local FOLD = { ["Ä"] = "ä", ["Ö"] = "ö", ["Ü"] = "ü" } -- l10n-ok: case folding, not text
 function ns.Fold(s)
     if type(s) ~= "string" then return "" end
     return (s:gsub("\195[\132\150\156]", FOLD):lower())
@@ -85,11 +86,11 @@ function ns.ExportName(name)
 end
 
 -- /amisia namen: how Amisia reads names on this client, to check Forever's surnames.
-ns.RegisterSlash("namen", { aliases = { "names" }, desc = "zeigt, wie Amisia Namen liest", run = function()
+ns.RegisterSlash("namen", { en = "names", desc = L["zeigt, wie Amisia Namen liest"], run = function()
     local n, second = UnitName("player")
-    ns.msg(("Du: UnitName = \"%s\", \"%s\" -> %s"):format(tostring(n), tostring(second), tostring(ns.UnitFullName("player"))))
+    ns.msg(L["Du: UnitName = \"%s\", \"%s\" -> %s"]:format(tostring(n), tostring(second), tostring(ns.UnitFullName("player"))))
     for i = 1, math.min(GetNumGroupMembers() or 0, 5) do
         local rn = GetRaidRosterInfo(i)
-        ns.msg(("Gruppe %d: Raidliste = \"%s\" -> %s"):format(i, tostring(rn), tostring(ns.FullName(rn))))
+        ns.msg(L["Gruppe %d: Raidliste = \"%s\" -> %s"]:format(i, tostring(rn), tostring(ns.FullName(rn))))
     end
 end })

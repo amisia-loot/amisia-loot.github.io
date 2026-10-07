@@ -1,10 +1,11 @@
 -- Amisia raid text: a summary of one raid as Discord Markdown (date, raid, bosses with their times,
--- attendance, late, bench, loot per boss with winner and MS/OS/SR, bank and disenchant), German,
--- cut into parts Discord accepts. Pure computation: no frames, no chat.
+-- attendance, late, bench, loot per boss with winner and MS/OS/SR, bank and disenchant), in the
+-- client's language, cut into parts Discord accepts. Pure computation: no frames, no chat.
 local ADDON, ns = ...
+local L = ns.L
 
 local LIMIT = 1900   -- characters per part; Discord takes 2000
-local WEEKDAYS = { "Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag" }
+local WEEKDAYS = { L["Sonntag"], L["Montag"], L["Dienstag"], L["Mittwoch"], L["Donnerstag"], L["Freitag"], L["Samstag"] }
 
 -- Characters of a UTF-8 text (continuation bytes do not count).
 local function chars(text)
@@ -104,19 +105,19 @@ function ns.BossRuns(s, withWipes)
     return out
 end
 
-local function wipeText(n) return n == 1 and "1 Wipe" or (n .. " Wipes") end
+local function wipeText(n) return n == 1 and L["1 Wipe"] or L["%d Wipes"]:format(n) end
 ns.WipeText = wipeText
 
 ---------------------------------------------------------------------------
 -- The sections
 ---------------------------------------------------------------------------
--- "2026-10-02" -> weekday, "02.10.2026", "02.10."
+-- "2026-10-02" -> weekday, "02.10.2026", "02.10." (English: "Oct 2, 2026", "Oct 2")
 local function nightWords(s)
     local y, m, d = tostring(s.date or ""):match("^(%d+)-(%d+)-(%d+)$")
     local t = y and time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12, min = 0, sec = 0 })
     if not t then t = s.start or time() end
     local wd = WEEKDAYS[tonumber(date("%w", t)) + 1] or "?"
-    return wd, date("%d.%m.%Y", t), date("%d.%m.", t)
+    return wd, ns.FmtDate(t), ns.FmtDay(t)
 end
 
 local function headSection(s, bosses, wipes)
@@ -125,15 +126,15 @@ local function headSection(s, bosses, wipes)
     -- the officer's own line stays as typed: a mention or Markdown of their own must work
     if type(head) == "string" and head ~= "" then out[#out + 1] = head end
     local wd, full = nightWords(s)
-    out[#out + 1] = ("**%s** · %s, %s · %s bis %s"):format(esc(s.zone or "?"), wd, full, hm(s.firstScan or s.start),
+    out[#out + 1] = L["**%s** · %s, %s · %s bis %s"]:format(esc(s.zone or "?"), wd, full, hm(s.firstScan or s.start),
         hm(s.last or s.start))
-    local parts = { ("Bosse: %d"):format(bosses) }
+    local parts = { L["Bosse: %d"]:format(bosses) }
     if ns.Get("raidlog.discordWipes") and wipes > 0 then parts[#parts + 1] = ("Wipes: %d"):format(wipes) end
     parts[#parts + 1] = ("Raider: %d"):format(ns.MemberCount(s))
     local late = ns.LateCount(s)
-    if late > 0 then parts[#parts + 1] = ("zu spät: %d"):format(late) end
+    if late > 0 then parts[#parts + 1] = L["zu spät: %d"]:format(late) end
     local bench = #ns.BenchList(s)
-    if bench > 0 then parts[#parts + 1] = ("Ersatzbank: %d"):format(bench) end
+    if bench > 0 then parts[#parts + 1] = L["Ersatzbank: %d"]:format(bench) end
     out[#out + 1] = table.concat(parts, " · ")
     return out
 end
@@ -146,20 +147,20 @@ local function bossSection(s)
         local k = r.kill
         local prefix = ""
         if not k then
-            extra[#extra + 1] = "kein Kill"
+            extra[#extra + 1] = L["kein Kill"]
         else
             local len = lengthOf(k)
-            if len then extra[#extra + 1] = "Kampf " .. fightLength(len) end
+            if len then extra[#extra + 1] = L["Kampf %s"]:format(fightLength(len)) end
             if k.src == "loot" then
-                prefix = "ca. "
-                extra[#extra + 1] = "aus dem Lootfenster"
+                prefix = L["ca. "]
+                extra[#extra + 1] = L["aus dem Lootfenster"]
             end
         end
         out[#out + 1] = ("%s%s %s%s"):format(prefix, hm(r.t), esc(r.name),
             #extra > 0 and (" (" .. table.concat(extra, ", ") .. ")") or "")
     end
     if #out == 0 then return nil end
-    table.insert(out, 1, { text = "**Bosse**", heading = true })
+    table.insert(out, 1, { text = L["**Bosse**"], heading = true })
     return out
 end
 
@@ -179,13 +180,13 @@ local function lootSection(s)
             local key, g
             if k then
                 key = k
-                g = byKey[key] or { rank = 1, t = k.t, title = ("__%s__ %s%s"):format(esc(k.name or "?"), k.src == "loot" and "ca. " or "", hm(k.t)) }
+                g = byKey[key] or { rank = 1, t = k.t, title = ("__%s__ %s%s"):format(esc(k.name or "?"), k.src == "loot" and L["ca. "] or "", hm(k.t)) }
             elseif type(a.src) == "string" and a.src ~= "" and a.src ~= "?" then
                 key = "src:" .. a.src
                 g = byKey[key] or { rank = 2, t = 0, name = a.src:lower(), title = ("__%s__"):format(esc(a.src)) }
             else
                 key = "?"
-                g = byKey[key] or { rank = 3, t = 0, title = "__Ohne Boss__" }
+                g = byKey[key] or { rank = 3, t = 0, title = L["__Ohne Boss__"] }
             end
             if not byKey[key] then
                 byKey[key] = g
@@ -209,7 +210,7 @@ local function lootSection(s)
             for _, l in ipairs(g.lines) do out[#out + 1] = l end
         end
         if #bank > 0 then out[#out + 1] = { head = "Bank: ", items = bank } end
-        if #de > 0 then out[#out + 1] = { head = "Entzaubert: ", items = de } end
+        if #de > 0 then out[#out + 1] = { head = L["Entzaubert: "], items = de } end
         return out
     end
     -- group loot: no hand-outs, what the raiders looted
@@ -217,7 +218,7 @@ local function lootSection(s)
     for i, l in ipairs(s.items or {}) do items[i] = l end
     if #items == 0 then return nil end
     table.sort(items, function(a, b) return (a.t or 0) < (b.t or 0) end)
-    out[1] = { text = "**Geplündert**", heading = true }
+    out[1] = { text = L["**Geplündert**"], heading = true }
     for _, l in ipairs(items) do
         out[#out + 1] = ("- %s: %s%s"):format(esc(itemName(l.item)), esc(l.name or "?"), (l.count or 1) > 1 and (" x" .. l.count) or "")
     end
@@ -237,7 +238,7 @@ local function peopleSection(s)
     if #late > 0 then
         local words = {}
         for i, x in ipairs(late) do words[i] = ("%s (%s)"):format(esc(x.name), hm(x.t)) end
-        out[#out + 1] = { head = "**Zu spät:** ", items = words }
+        out[#out + 1] = { head = L["**Zu spät:** "], items = words }
     end
     local bench = ns.BenchList(s)
     if #bench > 0 then
@@ -245,10 +246,10 @@ local function peopleSection(s)
         for i, x in ipairs(bench) do
             local extra = {}
             if x.e.note then extra[#extra + 1] = esc(x.e.note) end
-            if x.joined then extra[#extra + 1] = "eingewechselt " .. hm(x.joined) end
+            if x.joined then extra[#extra + 1] = L["eingewechselt %s"]:format(hm(x.joined)) end
             words[i] = esc(x.name) .. (#extra > 0 and (" (" .. table.concat(extra, ", ") .. ")") or "")
         end
-        out[#out + 1] = { head = "**Ersatzbank:** ", items = words }
+        out[#out + 1] = { head = L["**Ersatzbank:** "], items = words }
     end
     if ns.Get("raidlog.discordNames") then
         local names = {}
@@ -256,7 +257,7 @@ local function peopleSection(s)
         table.sort(names)
         if #names > 0 then
             for i, n in ipairs(names) do names[i] = esc(n) end
-            out[#out + 1] = { head = "**Dabei:** ", items = names }
+            out[#out + 1] = { head = L["**Dabei:** "], items = names }
         end
     end
     return #out > 0 and out or nil
@@ -364,7 +365,7 @@ function ns.RaidSummary(s)
     local bossLines, lootLines = bossSection(s), lootSection(s)
     if bossLines then sections[#sections + 1] = bossLines end
     if lootLines then sections[#sections + 1] = lootLines end
-    if not bossLines and not lootLines then sections[#sections + 1] = { "Keine Bosse, kein Loot." } end
+    if not bossLines and not lootLines then sections[#sections + 1] = { L["Keine Bosse, kein Loot."] } end
     local people = peopleSection(s)
     if people then sections[#sections + 1] = people end
     local whole = {}
@@ -376,7 +377,7 @@ function ns.RaidSummary(s)
     local total = chars(table.concat(whole, "\n\n"))
     local _, _, short = nightWords(s)
     local zone = esc(s.zone or "?")
-    return split(sections, function(n) return ("**%s, %s (Teil %d)**"):format(zone, short, n) end), total
+    return split(sections, function(n) return L["**%s, %s (Teil %d)**"]:format(zone, short, n) end), total
 end
 
 ---------------------------------------------------------------------------
@@ -384,11 +385,11 @@ end
 ---------------------------------------------------------------------------
 if ns.RaidLogSettings then
     for _, it in ipairs({
-        { key = "raidlog.discordWipes", type = "toggle", label = "Wipes im Discord-Text", default = true, officer = true },
-        { key = "raidlog.discordLoot", type = "toggle", label = "Loot im Discord-Text", default = true, officer = true },
-        { key = "raidlog.discordNames", type = "toggle", label = "Alle Anwesenden im Discord-Text nennen", default = false, officer = true },
-        { key = "raidlog.discordHead", type = "text", label = "Erste Zeile im Discord-Text", default = "", officer = true,
-          tip = "Zum Beispiel der Gildenname oder eine Erwähnung.",
+        { key = "raidlog.discordWipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true },
+        { key = "raidlog.discordLoot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true },
+        { key = "raidlog.discordNames", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true },
+        { key = "raidlog.discordHead", type = "text", label = L["Erste Zeile im Discord-Text"], default = "", officer = true,
+          tip = L["Zum Beispiel der Gildenname oder eine Erwähnung."],
           validate = function(v) return ns.CleanNote(v, 80) or "" end },
     }) do
         table.insert(ns.RaidLogSettings.items, it)
@@ -396,14 +397,14 @@ if ns.RaidLogSettings then
     ns.RegisterSettings(ns.RaidLogSettings)
 end
 
-ns.RegisterSlash("discord", { officer = true, desc = "Discord-Text des Raids zum Kopieren", run = function()
+ns.RegisterSlash("discord", { officer = true, desc = L["Discord-Text des Raids zum Kopieren"], run = function()
     if not ns.IsOfficerView() then
-        ns.msg("Discord-Text nur in der Offiziersansicht.")
+        ns.msg(L["Discord-Text nur in der Offiziersansicht."])
         return
     end
     local s = ns.NewestRaid and ns.NewestRaid()
     if not s then
-        ns.msg("Noch kein Raid aufgezeichnet.")
+        ns.msg(L["Noch kein Raid aufgezeichnet."])
         return
     end
     if ns.ShowRaidLog then
@@ -411,5 +412,5 @@ ns.RegisterSlash("discord", { officer = true, desc = "Discord-Text des Raids zum
         return
     end
     local parts, total = ns.RaidSummary(s)
-    ns.msg(("Discord-Text für %s (%s): %d Zeichen in %d Teil(en)."):format(s.zone or "?", s.date or "?", total, #parts))
+    ns.msg(L["Discord-Text für %s (%s): %d Zeichen in %d Teil(en)."]:format(s.zone or "?", s.date or "?", total, #parts))
 end })

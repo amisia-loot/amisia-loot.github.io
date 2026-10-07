@@ -12,6 +12,7 @@
 -- hand-out, so a second one before the first is confirmed does not push the first out. A hand-out
 -- to the bank or disenchant character of the settings is written with to = "bank" or "de".
 local ADDON, ns = ...
+local L = ns.L
 
 local GetItemInfo = C_Item.GetItemInfo
 
@@ -19,7 +20,7 @@ local VALID_KIND = { MS = true, OS = true, SR = true, ["-"] = true }
 local VALID_TO = { player = true, bank = true, de = true }
 local NOTE_MAX = 60
 local UNDO_MAX = 20
-local GONE = "Vergabe nicht mehr vorhanden."
+local GONE = L["Vergabe nicht mehr vorhanden."]
 
 local undo = {}   -- { op = "add"|"edit"|"delete"|"restore"|"rename", s, id, before = copy, item, name, ... }
 
@@ -155,14 +156,14 @@ end
 -- is taken when the raid does not have it yet; otherwise a new one is rolled.
 function ns.AddAwardTo(s, f)
     if type(s) ~= "table" or type(s.awards) ~= "table" then
-        return nil, "Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."
+        return nil, L["Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."]
     end
     f = f or {}
     local item = tonumber(f.item)
     local to = VALID_TO[f.to] and f.to or "player"
     local name = f.name
     if to ~= "player" and (type(name) ~= "string" or name == "") then name = "-" end
-    if type(name) ~= "string" or name == "" or not item then return nil, "Name oder Item fehlt." end
+    if type(name) ~= "string" or name == "" or not item then return nil, L["Name oder Item fehlt."] end
     local t = tonumber(f.t) or time()
     local id = f.id
     if type(id) ~= "string" or #id ~= 12 or not id:match("^%x+$") or idUsed(s, id) then id = newId(s, t) end
@@ -175,7 +176,7 @@ function ns.AddAwardTo(s, f)
     s.gone = s.gone or {}
     s.awards[#s.awards + 1] = a
     if to == "player" and not noteWinner(s, name, t) and s == ns.Active() and quiet == 0 then
-        ns.msg(("Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."):format(name))
+        ns.msg(L["Hinweis: %s ist nicht in der Gruppe. Die Vergabe ist gespeichert, aber ohne Anwesenheit."]:format(name))
     end
     if not ns.KnownItem(item) then
         local _, ilink, q = GetItemInfo(item)
@@ -215,7 +216,7 @@ function ns.EditAward(s, id, f)
         if not name and a.to ~= "player" then name = "-" end
         if not name then
             assign(a, before)
-            return nil, "Name oder Item fehlt."
+            return nil, L["Name oder Item fehlt."]
         end
         if name ~= a.name then
             a.orig = a.orig or a.name
@@ -226,7 +227,7 @@ function ns.EditAward(s, id, f)
     -- a player needs a name: back from the bank without a receiver is refused
     if a.to == "player" and a.name == "-" then
         assign(a, before)
-        return nil, "Name oder Item fehlt."
+        return nil, L["Name oder Item fehlt."]
     end
     if f.note ~= nil then a.note = cleanNote(f.note) end
     local same = true
@@ -345,15 +346,15 @@ end
 ---------------------------------------------------------------------------
 -- Undo
 ---------------------------------------------------------------------------
-local VERB = { add = "Hinzufügen", edit = "Ändern", delete = "Löschen", restore = "Wiederherstellen" }
+local VERB = { add = L["Hinzufügen"], edit = L["Ändern"], delete = L["Löschen"], restore = L["Wiederherstellen"] }
 
 local function label(e)
     if e.op == "rename" then
-        return ("Umbenennen von %s in %s (%d)"):format(e.from, e.to, #e.before)
+        return L["Umbenennen von %s in %s (%d)"]:format(e.from, e.to, #e.before)
     end
     local a = ns.FindAward(e.s, e.id)
     local b = a or (e.before) or {}
-    return ("%s von %s an %s"):format(VERB[e.op] or e.op, ns.ItemName(b.item), tostring(b.name or "?"))
+    return L["%s von %s an %s"]:format(VERB[e.op] or e.op, ns.ItemName(b.item), tostring(b.name or "?"))
 end
 
 -- Whether step e can still be taken back: its raid exists and its award is where the step left it.
@@ -595,26 +596,26 @@ function ns.PlusList(scope)
     return out
 end
 
-local SCOPE_TEXT = { raid = "dieser Raid", week = "diese ID-Woche" }
+local SCOPE_TEXT = { raid = L["dieser Raid"], week = L["diese ID-Woche"] }
 
 -- "/amisia plus [Name]": the plus-one of everyone in the scope, or of one name.
 local function plusCommand(rest)
     local name = ns.FullName(rest)
     local _, scope = plusSessions()
     if name then
-        ns.msg(("Plus-Eins von %s (%s): %d."):format(name, SCOPE_TEXT[scope], ns.PlusCount(name)))
+        ns.msg(L["Plus-Eins von %s (%s): %d."]:format(name, SCOPE_TEXT[scope], ns.PlusCount(name)))
         return
     end
     local list, parts = ns.PlusList(), {}
     for _, e in ipairs(list) do parts[#parts + 1] = ("%s %d"):format(e.name, e.n) end
     if #parts == 0 then
-        ns.msg(("Plus-Eins (%s): noch niemand."):format(SCOPE_TEXT[scope]))
+        ns.msg(L["Plus-Eins (%s): noch niemand."]:format(SCOPE_TEXT[scope]))
     else
-        ns.msg(("Plus-Eins (%s): %s."):format(SCOPE_TEXT[scope], table.concat(parts, ", ")))
+        ns.msg(L["Plus-Eins (%s): %s."]:format(SCOPE_TEXT[scope], table.concat(parts, ", ")))
     end
 end
 
-ns.RegisterSlash("plus", { officer = true, args = "[Name]", desc = "Plus-Eins der Gewinner im Chat", run = plusCommand })
+ns.RegisterSlash("plus", { officer = true, args = L["[Name]"], desc = L["Plus-Eins der Gewinner im Chat"], run = plusCommand })
 
 ---------------------------------------------------------------------------
 -- Settings
@@ -628,17 +629,17 @@ local function validName(v)
     return name
 end
 
-ns.RegisterSettings{ key = "awards", label = "Vergaben", order = 25, officer = true, items = {
-    { key = "awards.plusScope", type = "choice", label = "Plus-Eins zählt", default = "raid",
-      values = { { "raid", "Dieser Raid" }, { "week", "Diese ID-Woche" } },
-      tip = "Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid." },
-    { key = "awards.plusOrder", type = "toggle", label = "Plus-Eins in der Roll-Reihenfolge", default = false,
-      tip = "Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec." },
-    { key = "awards.modClick", type = "toggle", label = "Alt+Shift-Klick auf ein Item öffnet die Vergabe", default = true },
-    { key = "awards.bankName", type = "text", label = "Bank-Charakter", default = "", validate = validName,
-      tip = "Master Loot an diesen Namen zählt als Bank.", invalid = "Name ohne Ziffern, höchstens ein Leerzeichen." },
-    { key = "awards.deName", type = "text", label = "Entzauberer", default = "", validate = validName,
-      tip = "Master Loot an diesen Namen zählt als Entzaubern.", invalid = "Name ohne Ziffern, höchstens ein Leerzeichen." },
+ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 25, officer = true, items = {
+    { key = "awards.plusScope", type = "choice", label = L["Plus-Eins zählt"], default = "raid",
+      values = { { "raid", L["Dieser Raid"] }, { "week", L["Diese ID-Woche"] } },
+      tip = L["Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid."] },
+    { key = "awards.plusOrder", type = "toggle", label = L["Plus-Eins in der Roll-Reihenfolge"], default = false,
+      tip = L["Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec."] },
+    { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true },
+    { key = "awards.bankName", type = "text", label = L["Bank-Charakter"], default = "", validate = validName,
+      tip = L["Master Loot an diesen Namen zählt als Bank."], invalid = L["Name ohne Ziffern, höchstens ein Leerzeichen."] },
+    { key = "awards.deName", type = "text", label = L["Entzauberer"], default = "", validate = validName,
+      tip = L["Master Loot an diesen Namen zählt als Entzaubern."], invalid = L["Name ohne Ziffern, höchstens ein Leerzeichen."] },
 }}
 
 ---------------------------------------------------------------------------
@@ -666,7 +667,7 @@ function ns.LootSourceName(slot)
     return "?"
 end
 
-local TO_TEXT = { bank = "an die Bank (%s)", de = "zum Entzaubern (%s)" }
+local TO_TEXT = { bank = L["an die Bank (%s)"], de = L["zum Entzaubern (%s)"] }
 
 local function commit(a)
     local to = ns.IsSpecialName(a.name) or "player"
@@ -678,9 +679,9 @@ local function commit(a)
     if ok then
         local item = a.link or ("Item " .. a.item)
         if to == "player" then
-            ns.msg(("Vergabe gespeichert: %s an %s (%s)."):format(item, a.name, kind))
+            ns.msg(L["Vergabe gespeichert: %s an %s (%s)."]:format(item, a.name, kind))
         else
-            ns.msg(("Vergabe gespeichert: %s %s."):format(item, TO_TEXT[to]:format(a.name)))
+            ns.msg(L["Vergabe gespeichert: %s %s."]:format(item, TO_TEXT[to]:format(a.name)))
         end
     elseif why then
         ns.msg(why)
@@ -739,13 +740,13 @@ ns.OnEvent("LOOT_CLOSED", function() wipe(pending) end)
 -- "/amisia award <Name|bank|de> <Item-Link oder ID> [ms|os|sr]" and "/amisia unaward"; without
 -- anything the award dialog opens.
 local SPECIAL_TO = { bank = "bank", de = "de" }
-local SPECIAL_TEXT = { bank = "an die Bank", de = "zum Entzaubern" }
+local SPECIAL_TEXT = { bank = L["an die Bank"], de = L["zum Entzaubern"] }
 
 function ns.AwardCommand(rest)
     rest = (rest or ""):match("^%s*(.-)%s*$")
     if rest:lower() == "unaward" then
         local a = ns.RemoveLastAward()
-        ns.msg(a and ("Vergabe entfernt: Item %d an %s. /amisia undo holt sie zurück."):format(a.item, a.name) or "Keine Vergabe in der laufenden Aufnahme.")
+        ns.msg(a and L["Vergabe entfernt: Item %d an %s. /amisia undo holt sie zurück."]:format(a.item, a.name) or L["Keine Vergabe in der laufenden Aufnahme."])
         return
     end
     if rest == "" and ns.ShowAwardDialog then
@@ -757,12 +758,12 @@ function ns.AwardCommand(rest)
     if not name then name, tail = rest:match("^(%D-)%s+(%d.*)$") end
     if not name then name, tail = rest:match("^(%S+)%s*(.*)$") end
     if not name or name == "" then
-        ns.msg("Aufruf: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]")
+        ns.msg(L["Aufruf: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]"])
         return
     end
     local id = ns.ItemID(tail) or tonumber(tail:match("^(%d+)"))
     if not id then
-        ns.msg("Item fehlt: Link einfügen oder Item-ID angeben.")
+        ns.msg(L["Item fehlt: Link einfügen oder Item-ID angeben."])
         return
     end
     local kind = (tail:match("%s(%a%a)%s*$") or ""):upper()
@@ -773,16 +774,16 @@ function ns.AwardCommand(rest)
     if not ok then
         ns.msg(why)
     elseif to then
-        ns.msg(("Vergabe gespeichert: Item %d %s."):format(id, SPECIAL_TEXT[to]))
+        ns.msg(L["Vergabe gespeichert: Item %d %s."]:format(id, SPECIAL_TEXT[to]))
     else
-        ns.msg(("Vergabe gespeichert: Item %d an %s (%s)."):format(id, shortName(name), kind))
+        ns.msg(L["Vergabe gespeichert: Item %d an %s (%s)."]:format(id, shortName(name), kind))
     end
 end
 
-ns.RegisterSlash("award", { officer = true, args = "<Name|bank|de> <Item-Link|ID> [ms|os|sr]", desc = "Vergabe von Hand eintragen, ohne Angaben öffnet der Dialog",
+ns.RegisterSlash("award", { officer = true, args = L["<Name|bank|de> <Item-Link|ID> [ms|os|sr]"], desc = L["Vergabe von Hand eintragen, ohne Angaben öffnet der Dialog"],
     run = function(rest) ns.AwardCommand(rest) end })
-ns.RegisterSlash("unaward", { officer = true, desc = "letzte Vergabe zurücknehmen", run = function() ns.AwardCommand("unaward") end })
-ns.RegisterSlash("rueckgaengig", { aliases = { "undo" }, officer = true, desc = "letzte Änderung an Vergaben zurücknehmen", run = function()
+ns.RegisterSlash("unaward", { officer = true, desc = L["letzte Vergabe zurücknehmen"], run = function() ns.AwardCommand("unaward") end })
+ns.RegisterSlash("rueckgaengig", { en = "undo", officer = true, desc = L["letzte Änderung an Vergaben zurücknehmen"], run = function()
     local text = ns.UndoAward()
-    ns.msg(text and ("Rückgängig: %s."):format(text) or "Nichts rückgängig zu machen.")
+    ns.msg(text and L["Rückgängig: %s."]:format(text) or L["Nichts rückgängig zu machen."])
 end })

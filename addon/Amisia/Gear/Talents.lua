@@ -9,6 +9,7 @@
 -- of the counting group (the rows above). pre: 0 or node ids; a positive id is "sufficient" (one
 -- full source of these is enough), a negative one "required" (that node must be full).
 local ADDON, ns = ...
+local L, N_ = ns.L, ns.N_
 
 local T = {}
 ns.Talents = T
@@ -18,8 +19,9 @@ local NODE, ENTRY, SPELL, ICON, TREE, ROW, COL, MAX, GATES, PRE, NAME, TEXT, VAL
 T.F = { NODE = NODE, ENTRY = ENTRY, SPELL = SPELL, ICON = ICON, TREE = TREE, ROW = ROW, COL = COL, MAX = MAX,
         GATES = GATES, PRE = PRE, NAME = NAME, TEXT = TEXT, VALUES = VALUES }
 
-local GERMAN_CLASS = { WARRIOR = "Krieger", PALADIN = "Paladin", HUNTER = "Jäger", ROGUE = "Schurke", PRIEST = "Priester",
-    SHAMAN = "Schamane", MAGE = "Magier", WARLOCK = "Hexenmeister", DRUID = "Druide" }
+-- the class names when the client gives none (German keys, shown through L)
+local CLASS_NAME = { WARRIOR = N_("Krieger"), PALADIN = N_("Paladin"), HUNTER = N_("Jäger"), ROGUE = N_("Schurke"),
+    PRIEST = N_("Priester"), SHAMAN = N_("Schamane"), MAGE = N_("Magier"), WARLOCK = N_("Hexenmeister"), DRUID = N_("Druide") }
 
 local prepared = {}     -- class -> { byId, order[tree], data }
 local treeNames = {}    -- class -> { [tree index] = client name } (false: asked, none)
@@ -134,7 +136,7 @@ end
 
 function T.ClassName(cls)
     local names = _G.LOCALIZED_CLASS_NAMES_MALE
-    return (type(names) == "table" and plainString(names[cls])) or GERMAN_CLASS[cls] or cls
+    return (type(names) == "table" and plainString(names[cls])) or (CLASS_NAME[cls] and L[CLASS_NAME[cls]]) or cls
 end
 
 function T.TreeName(cls, i)
@@ -224,14 +226,14 @@ local function full(c, plan, id)
     return n ~= nil and (plan.ranks[id] or 0) >= n[MAX]
 end
 
--- What keeps node n from taking a point (rank aside): a German line per missing requirement.
+-- What keeps node n from taking a point (rank aside): a line per missing requirement.
 local function missing(c, plan, n)
     local out = {}
     local g = n[GATES]
     if type(g) == "table" then
         for i = 1, #g - 1, 2 do
             if groupSpent(c, plan, g[i]) < g[i + 1] then
-                out[#out + 1] = ("Benötigt %d Punkte in %s."):format(g[i + 1], T.TreeName(c.cls, n[TREE]))
+                out[#out + 1] = (L["Benötigt %d Punkte in %s."]):format(g[i + 1], T.TreeName(c.cls, n[TREE]))
                 break
             end
         end
@@ -244,7 +246,7 @@ local function missing(c, plan, n)
             if src then
                 if sid < 0 then
                     if not full(c, plan, -sid) then
-                        out[#out + 1] = ("Benötigt %s (%d/%d)."):format(T.NodeName(src), src[MAX], src[MAX])
+                        out[#out + 1] = (L["Benötigt %s (%d/%d)."]):format(T.NodeName(src), src[MAX], src[MAX])
                     end
                 else
                     any[#any + 1] = src
@@ -255,7 +257,7 @@ local function missing(c, plan, n)
         if #any > 0 and not anyMet then
             local names = {}
             for _, src in ipairs(any) do names[#names + 1] = ("%s (%d/%d)"):format(T.NodeName(src), src[MAX], src[MAX]) end
-            out[#out + 1] = "Benötigt " .. table.concat(names, " oder ") .. "."
+            out[#out + 1] = L["Benötigt %s."]:format(table.concat(names, L[" oder "]))
         end
     end
     return out
@@ -273,9 +275,9 @@ end
 function T.CanAdd(plan, id, points)
     local c = T.Class(plan.class)
     local n = c and c.byId[id]
-    if not n then return false, "Unbekanntes Talent." end
-    if (plan.ranks[id] or 0) >= n[MAX] then return false, "Höchster Rang erreicht." end
-    if T.Spent(plan) >= (points or T.Max()) then return false, "Keine Punkte mehr frei." end
+    if not n then return false, L["Unbekanntes Talent."] end
+    if (plan.ranks[id] or 0) >= n[MAX] then return false, L["Höchster Rang erreicht."] end
+    if T.Spent(plan) >= (points or T.Max()) then return false, L["Keine Punkte mehr frei."] end
     local miss = missing(c, plan, n)
     if #miss > 0 then return false, miss[1] end
     return true
@@ -291,7 +293,7 @@ end
 function T.CanRemove(plan, id)
     local c = T.Class(plan.class)
     local r = plan.ranks[id] or 0
-    if not c or r <= 0 then return false, "Kein Punkt gesetzt." end
+    if not c or r <= 0 then return false, L["Kein Punkt gesetzt."] end
     plan.ranks[id] = r - 1
     local broken
     for oid, rank in pairs(plan.ranks) do
@@ -299,7 +301,7 @@ function T.CanRemove(plan, id)
         if rank > 0 and n and #missing(c, plan, n) > 0 then broken = n break end
     end
     plan.ranks[id] = r
-    if broken then return false, ("%s hängt davon ab."):format(T.NodeName(broken)) end
+    if broken then return false, (L["%s hängt davon ab."]):format(T.NodeName(broken)) end
     return true
 end
 
@@ -352,30 +354,30 @@ end
 -- The plan of a code (also inside a line of chat text), rebuilt with the rules; nil and why.
 function T.Decode(text)
     text = tostring(text or "")
-    if not text:find("%S") then return nil, "Kein Code eingegeben." end
+    if not text:find("%S") then return nil, L["Kein Code eingegeben."] end
     -- trees at the end without points may be left out ("AT1.MAGE.2"); a sentence's full stop after
     -- the code is no fourth tree
     local version, cls, rest, after = text:match("AT(%d+)%.(%u+)([%.%d]*)(.?)")
     if not version or after:find("%w") or (rest ~= "" and rest:sub(1, 1) ~= ".") then
-        return nil, "Kein Amisia-Talentcode (AT1.KLASSE.x.y.z)."
+        return nil, L["Kein Amisia-Talentcode (AT1.KLASSE.x.y.z)."]
     end
-    if tonumber(version) ~= CODE_VERSION then return nil, ("Kein Code dieser Version (AT%s)."):format(version) end
+    if tonumber(version) ~= CODE_VERSION then return nil, (L["Kein Code dieser Version (AT%s)."]):format(version) end
     local c = T.Class(cls)
-    if not c then return nil, ("Unbekannte Klasse %s."):format(cls) end
+    if not c then return nil, (L["Unbekannte Klasse %s."]):format(cls) end
     local parts = {}
     for digits in rest:gmatch("%.(%d*)") do parts[#parts + 1] = digits end
     for i = 4, #parts do
-        if parts[i] ~= "" then return nil, "Kein Amisia-Talentcode (mehr als drei Bäume)." end
+        if parts[i] ~= "" then return nil, L["Kein Amisia-Talentcode (mehr als drei Bäume)."] end
     end
     local want = {}
     for t = 1, 3 do
         local digits = parts[t] or ""
         local list = c.order[t]
-        if #digits > #list then return nil, ("Der Code ist für %s zu lang (Baum %d)."):format(T.ClassName(cls), t) end
+        if #digits > #list then return nil, (L["Der Code ist für %s zu lang (Baum %d)."]):format(T.ClassName(cls), t) end
         for i = 1, #digits do
             local r = tonumber(digits:sub(i, i))
             local n = list[i]
-            if r > n[MAX] then return nil, ("Rang %d für %s, höchstens %d."):format(r, T.NodeName(n), n[MAX]) end
+            if r > n[MAX] then return nil, (L["Rang %d für %s, höchstens %d."]):format(r, T.NodeName(n), n[MAX]) end
             if r > 0 then want[n[NODE]] = r end
         end
     end
@@ -399,7 +401,7 @@ function T.Decode(text)
     end
     for _, n in ipairs(all) do
         if (plan.ranks[n[NODE]] or 0) ~= (want[n[NODE]] or 0) then
-            return nil, ("Der Code verletzt eine Voraussetzung (%s)."):format(T.NodeName(n))
+            return nil, (L["Der Code verletzt eine Voraussetzung (%s)."]):format(T.NodeName(n))
         end
     end
     return plan
@@ -413,14 +415,14 @@ end
 function T.Live()
     local cls = playerClass()
     local c = T.Class(cls)
-    if not c then return nil, "Keine Talentdaten für diese Klasse." end
+    if not c then return nil, L["Keine Talentdaten für diese Klasse."] end
     local CT, TR = _G.C_ClassTalents, _G.C_Traits
     if type(CT) ~= "table" or type(CT.GetActiveConfigID) ~= "function" or type(TR) ~= "table" or type(TR.GetNodeInfo) ~= "function" then
-        return nil, "Der Client kennt die Talent-Schnittstelle nicht."
+        return nil, L["Der Client kennt die Talent-Schnittstelle nicht."]
     end
     local ok, config = pcall(CT.GetActiveConfigID)
     config = ok and ns.Plain(config) or nil
-    if not config then return nil, "Keine aktive Talentkonfiguration." end
+    if not config then return nil, L["Keine aktive Talentkonfiguration."] end
     local plan, lacking = T.NewPlan(cls), 0
     for id in pairs(c.byId) do
         local got, info = pcall(TR.GetNodeInfo, config, id)
