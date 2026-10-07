@@ -643,6 +643,7 @@ end
 STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
 -- the client's talent window (Blizzard_SharedTalentUI, Blizzard_PlayerSpells/Camelot)
 STUB.atlases["UI-HUD-ActionBar-IconFrame-Mask"] = { 64, 64 }
+STUB.atlases["UI-HUD-ActionBar-IconFrame"] = { 46, 45 }
 for _, name in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
                         "talents-arrow-head-yellow", "talents-arrow-head-gray" }) do
     STUB.atlases[name] = { 44, 44 }

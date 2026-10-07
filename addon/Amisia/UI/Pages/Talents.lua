@@ -14,11 +14,13 @@ local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, 28, 398
 local HEAD_H = 24
 -- the grid inside a tree: a column for the row locks, then 4 columns and 7 rows
 local GRID = { left = 18, top = HEAD_H + 8, pitchX = 44, pitchY = 50, pad = 5 }
--- the client's square talent button keeps its border at 1.25x the button (40 px button, 50 px
--- frame); 30 px here leaves 6 px between neighbouring frames at the 44 px pitch
-local BTN = 30
-local FRAME = math.floor(BTN * 1.25 + 0.5)
+-- 34 px icons with the action bar's rounded mask and its thin rounded frame, tinted by the state
+-- (green: can be raised, gold: full, grey: locked); 10 px between neighbours at the pitch
+local BTN = 34
+local FRAME = BTN + 2
 local MASK = "UI-HUD-ActionBar-IconFrame-Mask"
+local RIM = "UI-HUD-ActionBar-IconFrame"
+local RIM_COLOR = { maxed = { 1, 0.82, 0 }, partial = { 0.25, 1, 0.25 }, free = { 0.25, 1, 0.25 }, locked = { 0.55, 0.55, 0.55 } }
 local ROWS = 7
 local GOLD = { 1, 0.82, 0 }
 local GREEN = { 0.25, 1, 0.25 }
@@ -152,7 +154,7 @@ local function talentButton(tree)
     hl:SetColorTexture(1, 1, 1, 0.15)
     b.rankBg = b:CreateTexture(nil, "OVERLAY", nil, 1)
     b.rankBg:SetSize(26, 12)
-    b.rankBg:SetPoint("BOTTOMRIGHT", 8, -6)
+    b.rankBg:SetPoint("BOTTOMRIGHT", 6, -5)
     b.rankBg:SetColorTexture(0, 0, 0, 0.8)
     b.rank = W.Text(b, "NumberFontNormalSmall", 26)
     b.rank:SetDrawLayer("OVERLAY", 2)
@@ -166,8 +168,10 @@ end
 
 local function setState(b, state)
     b.state = state
-    local atlas = BORDER[state]
+    local atlas = hasAtlas(RIM) and RIM or BORDER[state]
     if hasAtlas(atlas) and b.border:SetAtlas(atlas) then
+        local c = RIM_COLOR[state] or RIM_COLOR.locked
+        if atlas == RIM then b.border:SetVertexColor(c[1], c[2], c[3]) else b.border:SetVertexColor(1, 1, 1) end
         b.border:Show()
         W.SetBorderColor(b.edges, 0, 0, 0, 0)
     else

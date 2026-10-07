@@ -70,7 +70,8 @@ assert(b[301].points.TOPLEFT.y == -(L.top + 6 * L.pitchY), "row 7")
 -- state: free talents green, locked ones grey and desaturated, rank text
 assert(b[101].rank:GetText() == "0/2" and b[101].state == "free" and not b[101].icon.desaturated)
 assert(b[103].state == "locked" and b[103].icon.desaturated, "row 2 is locked")
-assert(b[101].border:GetAtlas() == "talents-node-square-green" and b[103].border:GetAtlas() == "talents-node-square-gray")
+assert(b[101].border:GetAtlas() == "UI-HUD-ActionBar-IconFrame" and b[101].border.vertexColor[2] == 1 and b[101].border.vertexColor[1] < 0.5, "green frame")
+assert(b[103].border.vertexColor[1] == 0.55 and b[103].border.vertexColor[2] == 0.55, "grey frame")
 -- the row lock beside row 2 of the first tree
 assert(f.trees[1].rowLabels[2]:GetText() == "5" and f.trees[1].rowLabels[2]:IsShown() and not f.trees[1].rowLabels[1]:IsShown())
 -- the arrows: 102 -> 103 down, 103 -> 105 to the right
@@ -91,7 +92,7 @@ assert(b[101].rank:GetText() == "0/2")
 _G.IsShiftKeyDown = function() return true end
 b[102]:GetScript("OnClick")(b[102], "LeftButton")
 _G.IsShiftKeyDown = function() return false end
-assert(b[102].rank:GetText() == "5/5" and b[102].state == "maxed" and b[102].border:GetAtlas() == "talents-node-square-yellow")
+assert(b[102].rank:GetText() == "5/5" and b[102].state == "maxed" and b[102].border.vertexColor[1] == 1 and b[102].border.vertexColor[2] == 0.82, "gold frame")
 assert(b[103].state == "free" and down.head:GetAtlas() == "talents-arrow-head-yellow", "unlocked, the arrow lights up")
 b[103]:GetScript("OnClick")(b[103], "LeftButton")
 b[105]:GetScript("OnClick")(b[105], "LeftButton")
@@ -215,17 +216,22 @@ Lay.row("foot", f.live, f.resetAll, f.codeLabel, f.code)
 for id, btn in pairs(f.buttons) do Lay.inside("talent " .. id, btn) end
 -- without the client's art: plain borders, nothing breaks
 STUB.missingAtlases["talents-node-square-green"] = true
+STUB.missingAtlases["UI-HUD-ActionBar-IconFrame"] = true
 STUB.missingAtlases["talent-background-mage"] = true
 NS.Refresh()
 assert(f.buttons[201].border:GetAtlas() == nil and f.buttons[201].border.color ~= nil, "a coloured frame instead")
 print("test_talents_page ok")
 
--- the button as the client draws its square talent node: a 30 px icon with the action bar's rounded
--- mask, the state frame at 1.25x (38 px), 6 px between neighbouring frames at the 44 px pitch
+-- the button: a 34 px icon with the action bar's rounded mask and its thin rounded frame, tinted
+-- green (can be raised), gold (full) or grey (locked)
+STUB.missingAtlases["talents-node-square-green"] = nil
+STUB.missingAtlases["UI-HUD-ActionBar-IconFrame"] = nil
+STUB.missingAtlases["talent-background-mage"] = nil
+NS.Refresh()
 do
     local any
     for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
-    assert(any and any._w == 30 and any._h == 30, "30 px button")
-    assert(any.border._w == 38 and any.border._h == 38, "frame at 1.25x: " .. tostring(any.border._w))
+    assert(any and any._w == 34 and any._h == 34, "34 px button")
+    assert(any.border._w == 36 and any.border.atlas == "UI-HUD-ActionBar-IconFrame", "the thin rounded frame")
     assert(any.mask and any.mask.atlas == "UI-HUD-ActionBar-IconFrame-Mask", "rounded icon")
 end
