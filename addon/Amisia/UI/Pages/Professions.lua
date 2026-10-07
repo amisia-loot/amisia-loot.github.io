@@ -1,11 +1,12 @@
 -- Professions page: the recipes of one profession in the colours of the client's recipe list (the
 -- own rank decides), filtered by name, known/unknown, learnable and source; the chosen recipe in
 -- the detail field (what it makes with the upgrade mark, the four difficulty steps, reagents with
--- the own count, where it comes from, Merchant's Favor and crafting orders). Two more views in the
--- profession picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
+-- the own count, where it comes from, Merchant's Favor and crafting orders, who of the guild makes it
+-- (Crafters.lua) with a button that asks one of them by whisper). Two more views in the profession
+-- picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
 local ADDON, ns = ...
 local L = ns.L
-local W, Pr, T = ns.W, ns.Prof, ns.Theme
+local W, Pr, T, Cr = ns.W, ns.Prof, ns.Theme, ns.Crafters
 local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
@@ -15,6 +16,7 @@ local SOURCES = { { "all", L["Alle Quellen"] }, { "T", L["Lehrer"] }, { "V", L["
     { "D", "Drop" }, { "Q", "Quest" } }
 local KNOWN = { { "all", L["Alle"] }, { "known", L["Bekannt"] }, { "unknown", L["Unbekannt"] } }
 local CAMP, FAVOR = "camp", "favor"
+local COUNTS_W = 222
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
 local page
@@ -87,7 +89,7 @@ local function listOf(v)
         return out
     end
     return Pr.List(v, { search = s.search, known = s.known ~= "all" and s.known or nil, learnable = s.learnable,
-        source = s.source ~= "all" and s.source or nil })
+        source = s.source ~= "all" and s.source or nil, guild = s.guild })
 end
 
 local function campName(c)
@@ -161,6 +163,9 @@ local function recipeDetail(r)
     elseif rank then
         lines[#lines + 1] = GREY .. L["Ob bekannt: Berufsfenster einmal öffnen."] .. "|r"
     end
+    local makers = Cr.ForSpell(r.spell)
+    lines[#lines + 1] = #makers > 0 and L["Hergestellt von: %s"]:format(Cr.Text(makers, 6, true))
+        or (GREY .. L["Hergestellt von: niemand aus der Gilde bekannt"] .. "|r")
     if r.count > 1 then lines[#lines + 1] = L["Stellt %d Stück her."]:format(r.count) end
     lines[#lines + 1] = ""
     for _, l in ipairs(reagentLines(r)) do lines[#lines + 1] = l end
@@ -222,6 +227,7 @@ local function showDetail(f, e)
         d.sub:SetText("")
         d.body:SetText(GREY .. L["Ein Rezept wählen."] .. "|r")
         d.go:Disable()
+        d.ask:Disable()
         return
     end
     local item, body, src, sub
@@ -259,6 +265,9 @@ local function showDetail(f, e)
         end
     end
     if d.point then d.go:Enable() else d.go:Disable() end
+    -- the crafter to ask: online first, never an own character
+    d.askWho = (not e.camp) and Cr.AskWhom(e.recipe.spell) or nil
+    if d.askWho then d.ask:Enable() else d.ask:Disable() end
 end
 
 ---------------------------------------------------------------------------
@@ -323,11 +332,15 @@ local function refresh(f)
     f.known:SetValue(s.known or "all")
     f.source:SetValue(s.source or "all")
     f.learn:SetOn(s.learnable and true or false)
+    f.guild:SetOn(s.guild and true or false)
     local text = s.search or ""
     if not f.search:HasFocus() and f.search:GetText() ~= text then f.search:SetText(text) end
-    for _, w in ipairs({ f.known, f.source, f.learn, f.search }) do
+    for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search }) do
         if isRecipes then w:Show() else w:Hide() end
     end
+    -- without the filters (camp, favor) the counts take the whole line
+    f.counts:SetWidth(isRecipes and COUNTS_W or 598)
+    W.Row(f, f.filterRow, T.CHIP_GAP, 0, -27, { shown = true })
     local rank, max = nil, nil
     if isRecipes then rank, max = Pr.Rank(v) end
     f.rank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (isRecipes and (GREY .. L["Beruf nicht erlernt"] .. "|r") or ""))
@@ -445,9 +458,16 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
-    f.counts = W.Text(f, T.FONT.hint, 286)
+    f.guild = W.Chip(f, L["Gilde"], 60, function()
+        local s = state()
+        s.guild = not s.guild or nil
+        ns.Refresh()
+    end)
+    W.Tooltip(f.guild, L["Gilde"], L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."])
+    f.counts = W.Text(f, T.FONT.hint, COUNTS_W)
     -- the filters, then the counts on the text line beside them
-    W.Row(f, { f.known, f.source, f.learn, { f.counts, gap = 8, y = -31 } }, T.CHIP_GAP, 0, -27)
+    f.filterRow = { f.known, f.source, f.learn, f.guild, { f.counts, gap = 8, y = -31 } }
+    W.Row(f, f.filterRow, T.CHIP_GAP, 0, -27)
 
     f.list = W.List(f, ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -503,6 +523,16 @@ local function create(parent)
     end, { height = 20 })
     d.go:SetPoint("BOTTOMRIGHT", -8, 8)
     W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
+    d.ask = W.Button(d, L["Fragen"], 70, function()
+        local e, who = d.entry, d.askWho
+        if not e or not who or e.camp then return end
+        local r = e.recipe
+        local link
+        if r.item > 0 then link = select(3, Pr.ItemInfo(r.item)) end
+        Cr.Whisper(who.name, link or e.name)
+    end, { height = 20 })
+    d.ask:SetPoint("RIGHT", d.go, "LEFT", -T.CHIP_GAP, 0)
+    W.Tooltip(d.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
 
     -- the hint takes two lines when it needs them (the favor vendors), the data line moves down
     f.hint = W.Text(f, T.FONT.hint, 598, true)
@@ -561,6 +591,7 @@ end
 ns.Listen("PROF_CHANGED", schedule)
 ns.Listen("PROF_SPELL_LOADED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
+ns.Listen("CRAFTERS_CHANGED", schedule)
 ns.OnEvent("BAG_UPDATE_DELAYED", schedule)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     if nameMissing then schedule() end

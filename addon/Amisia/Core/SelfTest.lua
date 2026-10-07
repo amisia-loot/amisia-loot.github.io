@@ -794,6 +794,8 @@ local OPTIONAL = {
     "DressUpLink", "IsModifiedClick", "GetRewardXP", "GetQuestLogRewardXP",
     -- the professions page: a spell's description once the client has loaded it
     "C_Spell.RequestLoadSpellData", "C_Spell.IsSpellDataCached",
+    -- the guild crafters: a whisper with a prefilled question (else the chat line opened by hand)
+    "ChatFrameUtil.SendTellWithMessage", "ChatFrame_OpenChat",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -858,7 +860,7 @@ local EVENTS = {
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
     "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "TRAIT_CONFIG_UPDATED", "USER_WAYPOINT_UPDATED",
     "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
-    "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
+    "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA", "GUILD_ROSTER_UPDATE",
 }
 ST.EVENTS = EVENTS
 
@@ -1242,6 +1244,14 @@ local function sectionData(R)
         local c, sy = ns.CollectCounts(), ns.CollectSyncStats and ns.CollectSyncStats() or {}
         return "WERT", L["%d Quests, %d Händler, %d Weltdrop-NPCs, %s; gelernt %d, gesendet %s"]:format(c.q, c.s, c.w,
             kb(ns.CollectBytes()), (sy.new or 0) + (sy.merged or 0), kb(sy.bytes or 0))
+    end)
+    check(R, L["Hersteller der Gilde"], function()
+        if not ns.Crafters then return "WERT", L["nicht geladen"] end
+        local n = 0
+        for _ in pairs(type(db.crafters) == "table" and type(db.crafters.c) == "table" and db.crafters.c or {}) do n = n + 1 end
+        local st = ns.CraftersStats()
+        return "WERT", L["%d eigene, %d aus der Gilde; gelernt %d, gesendet %s"]:format(#ns.Crafters.Own(), n, st.crafters or 0,
+            kb(st.bytes or 0))
     end)
     check(R, L["Materialien"], function()
         local list = ns.MatEntries and ns.MatEntries() or {}

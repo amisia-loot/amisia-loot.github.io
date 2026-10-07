@@ -612,7 +612,8 @@ local lower = ns.Fold
 
 -- The recipes of a skill line after the filters: opts.search (part of the recipe or item name, any
 -- case), opts.known ("known", "unknown"), opts.learnable (the own rank reaches the learn rank),
--- opts.source ("T", "V", "F", "D", "Q"). Each entry is the recipe with name, known, color.
+-- opts.source ("T", "V", "F", "D", "Q"), opts.guild (someone of the guild knows it, Crafters.lua).
+-- Each entry is the recipe with name, known, color.
 function Pr.List(skill, opts)
     opts = opts or {}
     local rank = Pr.Rank(skill)
@@ -625,6 +626,7 @@ function Pr.List(skill, opts)
         if opts.known == "unknown" and known == true then ok = false end
         if ok and opts.learnable and (known == true or not Pr.Learnable(r, rank)) then ok = false end
         if ok and opts.source and not Pr.SourceKinds(r)[opts.source] then ok = false end
+        if ok and opts.guild and not (ns.Crafters and ns.Crafters.Has(r.spell)) then ok = false end
         local name = Pr.RecipeName(r)
         if ok and search then
             local itemName = r.item > 0 and Pr.ItemInfo(r.item) or nil
