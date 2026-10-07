@@ -106,8 +106,10 @@ assert(NS.CollectPut("w", 80600, ("%d;0;n;1429:2000:2000;0;276928:1;Golem Junior
 src = Pr.Sources(Pr.Recipe(3321))
 assert(#src == 2 and src[2].observed and src[2].own, "the own vendor joins; the data's vendor stays once")
 assert(has(src[2].text, "Händler: Ada Amboss, Wald von Elwynn 40, 50, 5s 0c (selbst gesehen)"), src[2].text)
+assert(src[2].point and src[2].point.map == 1429, "an own place is a waypoint")
 src = Pr.Sources(cloudy)
 assert(#src == 2 and has(src[2].text, "Drop: Golem Junior") and has(src[2].text, "(von der Gilde)"), src[2] and src[2].text)
+assert(src[2].point == nil, "a place only heard from the guild is no waypoint")
 
 -- the list: search, known, learnable, source
 local function spells(list)

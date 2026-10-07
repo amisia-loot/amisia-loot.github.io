@@ -1130,9 +1130,11 @@ local function questNode(qid, r, rec)
         n.giver, n.points = mapGiver, mapPoints
         n.start = mapPoints and "O" or ""
     end
-    -- what a guild member saw: the giver and where it stood (Collector.lua), where the data has none
-    if (not n.giver or not n.points) and ns.CollectQuestStart then
-        local giver, point = ns.CollectQuestStart(qid)
+    -- what this client saw itself: the giver and where it stood (Collector.lua), where the data has
+    -- none. Only own observations: a giver heard from the guild could come from one member alone (the
+    -- collector does not keep who sent a heard field), and a waypoint or pin must not rest on that.
+    if (not n.giver or not n.points) and ns.CollectQuestOwnStart then
+        local giver, point = ns.CollectQuestOwnStart(qid)
         n.giver = n.giver or giver
         if not n.points and point then
             n.points = point
@@ -1269,7 +1271,8 @@ function ns.DungeonQuestWaypoint(qid)
     local Map = ns.Map
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
     local seenGiver, seenPoint
-    if ns.CollectQuestStart and qid then seenGiver, seenPoint = ns.CollectQuestStart(qid) end
+    -- own observations only (see questNode)
+    if ns.CollectQuestOwnStart and qid then seenGiver, seenPoint = ns.CollectQuestOwnStart(qid) end
     local map = ns.Data("MAP")
     local giver = r and r[7] or (map and map.G and qid and map.G["Q:" .. qid]) or seenGiver or (r and r[1]) or "?"
     if r and r[6] == "I" then

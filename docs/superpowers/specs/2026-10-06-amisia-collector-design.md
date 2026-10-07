@@ -40,7 +40,7 @@ Dungeon-Questlisten-Startort (`ns.DungeonQuests`) und von der Seite (`via`-Zeile
 - `addon/Amisia/CollectSync.lua` (neu): Austausch in der Gilde.
 - `Comm.lua`: neue Nachrichtenarten CV, CQ, CI, CR, CW und Datenart CK.
 - `Collect.lua`: ruft im LOOT_OPENED nach `ns.DropsFromLoot` auch `ns.CollectorFromLoot` auf.
-- `Dungeons.lua`: Questgeber und Punkte aus den Beobachtungen, wo die Questdaten keine haben.
+- `Dungeons.lua`: Questgeber und Punkte aus den eigenen Beobachtungen, wo die Questdaten keine haben.
 - `SelfTest.lua`: neue Funktionen und Ereignisse in den Listen.
 - `tools/build_scan.py`: liest `collect` aus den SavedVariables (`parse_collect`), schreibt
   Quest/Händler-Notizen in die `via`-Zeile der Seite.
@@ -221,8 +221,14 @@ Absender zu sperren; CQ/CR/CK gehen nur per Flüstern an Clients, die CV gesende
 
 - `ns.CollectQuest(id)`, `ns.CollectVendor(npc)`, `ns.CollectWorld(npc)`: der geprüfte Satz als
   Tabelle. `ns.CollectQuestStart(id)`: Gebername und Punkt `"map:x:y"`.
-- `ns.DungeonQuests` / Wegpunkt: Questgeber und Punkt aus den Beobachtungen, wenn weder die
-  Questdaten noch die Kartendaten einen haben.
+- `ns.DungeonQuests` / Wegpunkt / "Alle auf Karte": Questgeber und Punkt aus den **eigenen**
+  Beobachtungen (`ns.CollectQuestOwnStart`), wenn weder die Questdaten noch die Kartendaten einen
+  haben; ebenso die Questliste (`Quests.lua`) und die Händler- und Drop-Orte der Berufe
+  (`Professions.lua`: ein gehörter Ort steht als Text mit "(von der Gilde)" da, wird aber kein
+  Wegpunkt). Seit 2026-10-07: ein nur gehörter Geber oder Ort gibt keinen Wegpunkt und keinen Pin.
+  Eine Bestätigung durch zwei Absender kann der Client nicht prüfen: gehörte Felder tragen keinen
+  Absender (die Eigen-Maske kennt nur eigen/gehört), dafür bräuchte es eine Protokolländerung.
+  Die Zwei-Konten-Regel gilt nur in den Builds (`build_scan.collect_observed`).
 - **Was die Builds glauben** (`build_scan.collect_observed`, für Seite und `build_gear.py`): eigene
   Werte aller Dateien (vereinigt); ein gehörter Wert nur, wo keine Datei einen eigenen hat und
   mindestens zwei Konten ihn gleich halten (Konto = `drops.me`; die Kopie einer Datei ist dasselbe

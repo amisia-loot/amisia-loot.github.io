@@ -405,8 +405,9 @@ end
 ---------------------------------------------------------------------------
 -- Sources
 ---------------------------------------------------------------------------
--- Item -> what the source collector saw: { vendors = { { npc, name, pos, price, rep, own } },
--- drops = { { npc, name, pos, own } } }, rebuilt when the collector changes.
+-- Item -> what the source collector saw: { vendors = { { npc, name, pos, price, rep, own, ownPos } },
+-- drops = { { npc, name, pos, own, ownPos } } }, rebuilt when the collector changes. ownPos: the place
+-- was seen by this client itself (only such a place becomes a waypoint).
 local obsIndex, obsGen
 function Pr.Observed(item)
     local gen = ns.CollectGen and ns.CollectGen() or 0
@@ -421,7 +422,7 @@ function Pr.Observed(item)
                         local e = obsIndex[id] or { vendors = {}, drops = {} }
                         obsIndex[id] = e
                         e.vendors[#e.vendors + 1] = { npc = npc, name = r.name, pos = r.pos, price = it.price, rep = it.rep,
-                            own = r.own ~= 0 }
+                            own = r.own ~= 0, ownPos = ns.CollectOwn and ns.CollectOwn("s", r, "pos") or false }
                     end
                 end
             end
@@ -431,7 +432,8 @@ function Pr.Observed(item)
                     for id in pairs(r.items) do
                         local e = obsIndex[id] or { vendors = {}, drops = {} }
                         obsIndex[id] = e
-                        e.drops[#e.drops + 1] = { npc = npc, name = r.name, pos = r.pos, own = r.own ~= 0 }
+                        e.drops[#e.drops + 1] = { npc = npc, name = r.name, pos = r.pos, own = r.own ~= 0,
+                            ownPos = ns.CollectOwn and ns.CollectOwn("w", r, "pos") or false }
                     end
                 end
             end
@@ -519,6 +521,7 @@ function Pr.Sources(r)
         for _, v in ipairs(obs and obs.vendors or {}) do
             if not listed[v.npc] then
                 local pt, point = posText(v.pos)
+                if not v.ownPos then point = nil end   -- a place heard from the guild is shown, never a waypoint
                 add("V", L["Händler: %s%s, %s%s"]:format(v.name ~= "" and v.name or ("NPC " .. v.npc), pt and (", " .. pt) or "",
                     money(v.price), v.own and L[" (selbst gesehen)"] or L[" (von der Gilde)"]), point,
                     { npc = v.npc, observed = true, own = v.own, item = itemId })
@@ -527,6 +530,7 @@ function Pr.Sources(r)
         for _, v in ipairs(obs and obs.drops or {}) do
             if not listed[v.npc] then
                 local pt, point = posText(v.pos)
+                if not v.ownPos then point = nil end
                 add("D", ("Drop: %s%s%s"):format(v.name ~= "" and v.name or ("NPC " .. v.npc), pt and (", " .. pt) or "",
                     v.own and L[" (selbst gesehen)"] or L[" (von der Gilde)"]), point, { npc = v.npc, observed = true, own = v.own, item = itemId })
             end
