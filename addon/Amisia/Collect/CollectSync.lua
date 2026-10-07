@@ -32,11 +32,19 @@ local L = {
     retries = 2,                        -- a pull that missed answers is tried again this often
     missMax = 2, missWait = 600,        -- after this many missed blobs a pull stops and waits
     askKeep = 600,
-    crPerHour = 40,
-    serveGap = 20, partsWindow = 600, partsMax = 40,
+    -- Throughput (2026-10-07, test_collect_flow.lua; the stub does not compress, a blob there holds
+    -- about 17 typical quests, deflate in the client several times as many): a sender sends at most
+    -- 120 parts in 10 minutes (about 29 KB, some 50 bytes a second on average, a tenth of Comm's own
+    -- 500 bytes a second) and one blob per 30 s (at most two blobs, about 9 KB, a minute to one asker:
+    -- under half of Comm's 20 KB a minute per sender at the receiver). 192 KB per session, half of it
+    -- per asker: one asker takes about 330 quests (stub) from one sender in about 40 minutes, then the
+    -- next sender; two senders bring a new member about 550 in an hour (2.9.1: 102). The blob itself stays at 20
+    -- parts and 60 records: clients of 2.9 drop bigger ones (Comm's CK part cap, checkBlob).
+    crPerHour = 90,
+    serveGap = 30, partsWindow = 600, partsMax = 120,
     blobParts = 20, blobRecords = 60,
-    sessionBytes = 49152, askerShare = 3,
-    peerKeep = 1800, peersMax = 10, pullJitter = 30,
+    sessionBytes = 196608, askerShare = 2,
+    peerKeep = 3600, peersMax = 10, pullJitter = 30,
     serveMax = 12, serveKeep = 1200, servePeers = 2, activeKeep = 120,
     busyWait = 120,
     doneWait = 3600,                    -- CW once the asker's share (or the session's bytes) is spent

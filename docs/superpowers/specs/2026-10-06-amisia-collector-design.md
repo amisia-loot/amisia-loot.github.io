@@ -198,19 +198,36 @@ Gildenmitgliedern (`ns.TrustWait(..., "member")`, Comm entpackt Daten nur von Mi
 Jeder empfangene Satz wird wie ein gespeicherter streng geprüft (IDs, Zahlenbereiche, Listen,
 Grenzen, Texte über `DropsCleanName`, Eigen-Maske 0, Tag höchstens morgen); ein ungültiger Satz
 verwirft den ganzen Blob. Sätze eines nicht erfragten Bündels, doppelte IDs, fremde Felder ebenso.
-Gehörtes wird als gehört gespeichert. Ein beim Absender kaputt gespeicherter Satz bleibt draußen. Grenzen je Sitzung: 48 KB gesendet, ein Fragender höchstens ein Drittel,
-ein Blob je 20 s und 40 Teile je 10 Minuten, 40 Anfragen je Stunde, höchstens 1500 Sätze von einem Absender (neue und zusammengeführte).
+Gehörtes wird als gehört gespeichert. Ein beim Absender kaputt gespeicherter Satz bleibt draußen. Grenzen je Sitzung (seit 2026-10-07): 192 KB gesendet, ein Fragender höchstens die Hälfte,
+ein Blob je 30 s und 120 Teile je 10 Minuten, 90 Anfragen je Stunde, höchstens 1500 Sätze von einem
+Absender (neue und zusammengeführte); eine Ansage bleibt eine Stunde in der Liste der Absender.
+Bis 2.9.1: 48 KB, ein Drittel, ein Blob je 20 s, 40 Teile je 10 Minuten, 40 Anfragen, 30 Minuten.
 Alles mit niedrigster Priorität der Warteschlange, nur außerhalb von Instanzen und Schlachtfeldern,
 ohne Kampf, ohne Sperre (`ns.CommHeld`), nicht während ein Raid synchronisiert wird.
 Abschalter `collect.share` (Standard an).
 
-**Durchsatz** (`test_collect_flow.lua`, ein Absender mit 1200 typischen Quests): Der Anteil eines
-Fragenden (16 KB je Sitzung) bezahlt auch die Bündellisten (CI, etwa 740 Bytes je CQ). Im Test
-kommen so etwa 55 Quests je Fragendem und Sitzung an, alle in den ersten 15 Minuten (3 Blobs zu
-19-20 Teilen; nach zwei Blobs wartet der dritte mit CW auf das Teilefenster), danach ein CW mit
-3600 s und Ruhe. Zwei Fragende gleichzeitig: je 52 in 25 Minuten. Der Stub komprimiert nicht (ein
-Blob fasst etwa 17 Quests); deflate im Client packt ähnliche Sätze mehrfach dichter, im Spiel also
-entsprechend mehr (nicht gemessen). Der Hebel für mehr ist `sessionBytes`/`askerShare`.
+**Durchsatz** (seit 2026-10-07; `test_collect_flow.lua`, Stub ohne Kompression, ein Blob fasst dort
+etwa 17 typische Quests; deflate im Client packt ähnliche Sätze mehrfach dichter, im Spiel also
+entsprechend mehr, nicht gemessen):
+
+| Fall | bis 2.9.1 | jetzt |
+|---|---|---|
+| ein Fragender, ein Absender mit 1200 Quests | 55 in 15 min, dann Schluss (Anteil 16 KB) | 356 in 35 min, dann Schluss (Anteil 96 KB) |
+| zwei Fragende gleichzeitig, ein Absender | je 52 in 25 min | je 306 in 60 min (Teilefenster geteilt) |
+| neues Mitglied, zwei Absender mit je 600 eigenen Quests (die auch voneinander ziehen) | 102 in 30 min, dann Schluss | 546 in 60 min |
+
+Warum diese Zahlen sicher sind: Comm schickt je Präfix 10 Nachrichten am Stück, dann eine je
+Sekunde, und höchstens 500 Bytes je Sekunde (beide Präfixe, Datenteile lassen Platz für wartende
+Steuernachrichten); alles des Austauschs hat die niedrigste Priorität und geht nur, wenn nichts
+anderes wartet, nie während ein Raid synchronisiert wird, nie in Instanz, Kampf oder Sperre. 120
+Teile je 10 Minuten sind etwa 29 KB, im Mittel rund 50 Bytes je Sekunde, ein Zehntel dessen, was
+Comm selbst durchlässt. Ein Blob je 30 s heißt höchstens zwei Blobs (etwa 9 KB) je Minute an einen
+Fragenden, unter der Hälfte der 20 KB je Minute und Absender, ab denen Comm beim Empfänger den
+Absender 60 s ignoriert. Die 192 KB einer Sitzung sind bei vollem Fenster nach gut einer Stunde
+verbraucht. Der Blob selbst bleibt bei 20 Teilen und 60 Sätzen: Clients bis 2.9.1 verwerfen größere
+(Comms Teilegrenze für CK, `checkBlob`), ein größerer Blob bräuchte eine neue Sammelprotokollnummer.
+Ein Fragender zieht immer nur von einem Absender; ist dessen Anteil verbraucht (CW 3600 s), kommt der
+nächste dran, deshalb bleibt eine Ansage jetzt eine Stunde (statt 30 Minuten) in der Liste.
 
 **Ältere und neuere Clients:** CV trägt die Sammelprotokollnummer (jetzt 2); ein Client zieht nur von
 derselben Nummer, eine andere wird still übergangen. Clients vor diesem Stand kennen CV nicht:

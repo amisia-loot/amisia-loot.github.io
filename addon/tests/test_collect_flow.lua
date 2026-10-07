@@ -5,7 +5,7 @@
 -- A cut blob is followed at once by the rest; an asker's share of the sender's bytes is used up
 -- in whole (the last blob sized to what is left), then a long CW sends the asker away.
 --
--- The stub's CompressString does not compress, so a blob here holds about 17 typical quest records
+-- Limits since 2026-10-07 (CollectSync.lua). The stub's CompressString does not compress, so a blob here holds about 17 typical quest records
 -- in its 20 parts; deflate in the client packs several times as many. The numbers printed are the
 -- stub's.
 local VULO, FRAK, KIM = "Vulo Sturmwind", "Fraktur", "Kim Eisherz"
@@ -17,16 +17,23 @@ for i, name in ipairs(CLIENTS) do
         AmisiaDB.drops.me = "%d0000001"
         STUB.fire("GUILD_ROSTER_UPDATE")]]):format(i))
 end
-local function fill(name)
-    C(name, [[local D = NS.DropsToday()
-    for i = 1, 1200 do
-      assert(NS.CollectPut("q", 30000 + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name %d;Eine typische Quest mit Titel %d"):format(
+local function fill(name, base, count)
+    C(name, "local N, BASE = " .. (count or 1200) .. ", " .. (base or 30000) .. [[ local D = NS.DropsToday()
+    for i = 1, N do
+      assert(NS.CollectPut("q", BASE + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name %d;Eine typische Quest mit Titel %d"):format(
             D, 3000 + i, 1000 + i % 9000, 2000 + i % 7000, 4000 + i, 200000 + i, 200001 + i, 210000 + i, 210001 + i, 210002 + i, 20 + i % 40, 18 + i % 40, i, i, i), "own"))
     end]])
 end
 local function isCK(m) return m.prefix == "AmisiaD" and m.text:match("^%dBL\tCK\t") ~= nil end
 local function qn(name) return C(name, "NS.CollectCounts().q") end
 local L = C(VULO, "NS.COLLECTSYNC_LIMITS")
+local function reset()
+    for _, name in ipairs(CLIENTS) do
+        BUS.reload(name)
+        C(name, [[STUB.instance = { name = "Durotar", type = "none", id = 0 }; STUB.combat = false; STUB.fire("GUILD_ROSTER_UPDATE")]])
+        C(name, "AmisiaDB.collect = nil; NS.CollectMigrate(AmisiaDB); NS.Set('collect.share', true)")
+    end
+end
 local SHARE = L.sessionBytes / L.askerShare
 
 -- every request (CQ, CR) of an asker to Vulo is answered by Vulo within the asker's wait
@@ -51,11 +58,13 @@ local function answered(asker, from)
     end
     return #open
 end
--- bytes Vulo sent to target (CW left out: it may go beyond the caps, within a small reserve)
+-- bytes Vulo sent to target as answers (CW left out: it may go beyond the caps, within a small
+-- reserve; CQ and CR left out: Vulo's own requests when it pulls from the asker in turn)
+local ANSWER = { CI = true, BL = true }
 local function bytesTo(target, from)
     local n = 0
     for _, m in ipairs(BUS.sent) do
-        if m.sender == VULO and m.target == target and m.t >= from and m.kind ~= "CW" then n = n + #m.prefix + #m.text end
+        if m.sender == VULO and m.target == target and m.t >= from and ANSWER[m.kind] then n = n + #m.prefix + #m.text end
     end
     return n
 end
@@ -80,10 +89,12 @@ answered(FRAK, t0)
 assert(C(FRAK, "NS.CollectSyncStats().missed") == 0, "no blob missed")
 -- the share is used up (the last blob sized to what is left) and not overrun by more than a part
 assert(bytesTo(FRAK, t0) <= SHARE + 250, "within the share: " .. bytesTo(FRAK, t0))
-assert(bytesTo(FRAK, t0) >= SHARE - 250, "the share used up: " .. bytesTo(FRAK, t0))
--- the share (16 KB) pays for the bucket lists too (about 740 bytes per CQ): about 55 records here
-assert(marks[3] >= 50, "the share arrives within 15 minutes: " .. marks[3])
-assert(marks[12] == marks[3], "then nothing more this session")
+assert(bytesTo(FRAK, t0) >= SHARE - 500, "the share used up (within two parts): " .. bytesTo(FRAK, t0))
+-- the share (96 KB) pays for the bucket lists too (about 740 bytes per CQ): about 350 records here
+-- (before 2026-10-07: 16 KB, about 55), paced by the parts window (120 in 10 minutes)
+assert(marks[2] >= 90, "a first lot within 10 minutes: " .. marks[2])
+assert(marks[8] >= 330, "the share arrives within 40 minutes: " .. marks[8])
+assert(marks[12] == marks[8], "then nothing more this session")
 -- the share is spent: Vulo says so with a long wait, and Fraktur does not ask again within it
 local cw = 0
 for _, m in ipairs(BUS.sent) do
@@ -117,7 +128,8 @@ answered(FRAK, t1)
 answered(KIM, t1)
 for _, name in ipairs({ FRAK, KIM }) do
     assert(C(name, "NS.CollectSyncStats().missed") == 0, name .. " missed no blob")
-    assert(qn(name) >= 50, name .. " got its share: " .. qn(name))
+    -- the parts window is shared: about 300 each in an hour
+    assert(qn(name) >= 280, name .. " got its part: " .. qn(name))
 end
 assert(BUS.count(function(m) return m.kind == "CW" and m.sender == VULO and m.t >= t1 end) >= 1, "someone was told to wait")
 
@@ -149,3 +161,21 @@ for _, m in ipairs(BUS.sent) do
 end
 assert(again and again - (crs[2] + L.crWait) >= L.missWait, "asked again only after the wait")
 assert(qn(FRAK) > 0, "and then got records")
+
+---------------------------------------------------------------------------
+-- a new member and two senders: records per hour (the goal of 2026-10-07: a few hundred in an
+-- evening from two or three senders). Vulo and Kim hold 600 quests each (different ones); they
+-- pull from each other as well, so each sender's window is shared by two askers.
+---------------------------------------------------------------------------
+reset()
+fill(VULO, 30000, 600)
+fill(KIM, 40000, 600)
+for _, name in ipairs(CLIENTS) do C(name, "STUB.fire('PLAYER_LOGIN')") end
+local m3 = {}
+for step = 1, 12 do
+    BUS.tick(300)
+    m3[step] = qn(FRAK)
+end
+print(("two senders, records at the new member Fraktur every 5 minutes: %s"):format(table.concat(m3, " ")))
+assert(C(FRAK, "NS.CollectSyncStats().missed") == 0, "no blob missed")
+assert(m3[12] >= 450, "a new member gets several hundred records in an hour from two senders: " .. m3[12])
