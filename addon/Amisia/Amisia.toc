@@ -1,6 +1,7 @@
 ## Interface: 16001
 ## Title: Amisia
-## Notes: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
+## Notes: Records raid members, loot and awards per raid, runs rolls and soft reserves, exports everything for the Amisia loot site and shows the best gear per level range.
+## Notes-deDE: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
 ## Version: 2.8.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
@@ -9,6 +10,13 @@
 ## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 
+Locales\Locale.lua
+Locales\enUS_core.lua
+Locales\enUS_raid.lua
+Locales\enUS_raid2.lua
+Locales\enUS_gear.lua
+Locales\enUS_world.lua
+Locales\enUS_selftest.lua
 Core\Registry.lua
 Core\LazyData.lua
 Core\Core.lua

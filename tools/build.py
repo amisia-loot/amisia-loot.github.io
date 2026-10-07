@@ -9,12 +9,13 @@ data     rebuilds every generated file in addon/Amisia/Data in dependency order 
          dungeon quests, quests, professions, talents, dungeon art, BiS), stops at the first error
          and shows what changed. A step whose client tables are missing in --wago is skipped with a
          note (the tables come only from the user's own tools/export_db2.ps1 run, never downloaded).
-check    the syntax check, the addon tests, the layout rules of every page and window
+check    the syntax check, the addon tests (German, then English), the translation check
+         (tools/l10n.py), the layout rules of every page and window in both locales
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
          a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
          anything fails.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
-         into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
+         (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
 release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
          fails), builds addon/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
@@ -269,6 +270,16 @@ def cmd_check(args=None):
         rc, out = run([py, os.path.join(ROOT, 'addon', 'tests', 'run.py')], capture=True)
         return ('ok', []) if rc == 0 else ('FAIL', fail_lines(out))
 
+    def addon_tests_en():
+        rc, out = run([py, os.path.join(ROOT, 'addon', 'tests', 'run.py'), '--locale', 'enUS'], capture=True)
+        summary = [ln for ln in out.splitlines() if ln.startswith('locale ')]
+        return ('ok', summary) if rc == 0 else ('FAIL', fail_lines(out))
+
+    def translations():
+        rc, out = run([py, os.path.join(ROOT, 'tools', 'l10n.py'), 'check'], capture=True)
+        lines = [ln for ln in out.splitlines() if ln.strip()]
+        return ('ok', []) if rc == 0 else ('FAIL', lines[-40:])
+
     def layout_rules():
         rc, out = run([py, os.path.join(ROOT, 'tools', 'ui_layout.py'), 'rules'], capture=True)
         if rc == 0:
@@ -298,6 +309,8 @@ def cmd_check(args=None):
 
     step('syntax (luaparse, Lua 5.1)', syntax)
     step('addon tests (addon/tests/run.py)', addon_tests)
+    step('addon tests in English (run.py --locale enUS: no Lua error, no missing text)', addon_tests_en)
+    step('translations (tools/l10n.py check: no German outside L, enUS complete)', translations)
     step('layout rules (tools/ui_layout.py rules, every page and window)', layout_rules)
     step('tool tests (pytest tools/tests, incl. generated files current)', tool_tests)
     step('UTF-8 of the addon files', utf8)
@@ -424,7 +437,7 @@ def cmd_snapshots(args):
     if tools not in sys.path:
         sys.path.insert(0, tools)
     import ui_layout
-    argv = ['snapshots', '--out', args.out, '--scale', str(args.scale)]
+    argv = ['snapshots', '--out', args.out, '--scale', str(args.scale), '--locale', args.locale]
     if args.compare:
         argv += ['--compare', args.compare]
     if args.mono:
@@ -452,6 +465,7 @@ def main(argv=None):
     sn.add_argument('--compare', default=None, help='an earlier run\'s folder: list the shots whose layout changed')
     sn.add_argument('--scale', type=int, default=1, help='pixels per UI pixel (default 1)')
     sn.add_argument('--mono', action='store_true', help='text in a fixed 0.6 em grid instead of the estimated widths')
+    sn.add_argument('--locale', default='deDE', help='the client locale of the shots: deDE (default) or enUS')
     r = sub.add_parser('release', help='check, version, zip, changelog, commit, push, copy to Syncthing')
     r.add_argument('version', help='X.Y.Z')
     r.add_argument('-m', '--message', default=None,

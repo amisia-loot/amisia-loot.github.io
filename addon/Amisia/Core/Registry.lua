@@ -266,19 +266,35 @@ end
 ---------------------------------------------------------------------------
 -- Slash commands
 ---------------------------------------------------------------------------
--- def: { aliases = { ... }, args = "<x>", desc, officer, run = fn(rest, word) }
+-- def: { en = "word", aliases = { ... }, args = "<x>", desc, officer, run = fn(rest, word) }
+-- word is the German command, en the English one (the help of an English client shows it); both and
+-- every alias work in every language. A word another command already holds is an error.
+local function claim(w, def)
+    local had = slashWords[w]
+    if had and had.word ~= def.word then
+        error(("slash word %q of /amisia %s is taken by /amisia %s"):format(w, def.word, had.word), 3)
+    end
+    slashWords[w] = def
+end
+
 function ns.RegisterSlash(word, def)
     def.word = word
     upsert(ns.slash, def, "word")
-    slashWords[word] = def
-    for _, a in ipairs(def.aliases or {}) do slashWords[a] = def end
+    claim(word, def)
+    if def.en then claim(def.en, def) end
+    for _, a in ipairs(def.aliases or {}) do claim(a, def) end
+end
+
+-- The word of a command in the client's language.
+function ns.SlashWord(def)
+    return (not ns.GERMAN and def.en) or def.word
 end
 
 function ns.SlashHelpLines(officer)
     local out = {}
     for _, def in ipairs(ns.slash) do
         if officer or not def.officer then
-            out[#out + 1] = ("/amisia %s%s - %s"):format(def.word, def.args and (" " .. def.args) or "", def.desc or "")
+            out[#out + 1] = ("/amisia %s%s - %s"):format(ns.SlashWord(def), def.args and (" " .. def.args) or "", def.desc or "")
         end
     end
     return out
@@ -309,7 +325,7 @@ end
 SLASH_AMISIA1 = "/amisia"
 SlashCmdList.AMISIA = ns.Dispatch
 
-ns.RegisterSlash("hilfe", { aliases = { "help", "?" }, desc = "alle Befehle", run = function() ns.ShowHelp() end })
+ns.RegisterSlash("hilfe", { en = "help", aliases = { "?" }, desc = "alle Befehle", run = function() ns.ShowHelp() end })
 
 ---------------------------------------------------------------------------
 -- Interface settings that belong to no single feature

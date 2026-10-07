@@ -69,6 +69,9 @@ _G.geterrorhandler = function() return function(e) error(e, 0) end end
 -- The client is WoW Forever (1.60.1, interface 16001, game type camelot).
 STUB.toc = 16001
 _G.GetBuildInfo = function() return "1.60.1", "70205", "Oct 1 2026", STUB.toc end
+-- The client's locale: German unless a test (run.py --locale, a "--[[locale enUS]]" line) sets another.
+STUB.locale = "deDE"
+_G.GetLocale = function() return STUB.locale end
 -- The TOC's "## Field: value" lines (run.py fills them from addon/Amisia/Amisia.toc).
 STUB.tocMeta = {}
 _G.C_AddOns = { GetAddOnMetadata = function(addon, field)

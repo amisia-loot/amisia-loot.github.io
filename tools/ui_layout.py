@@ -1,7 +1,7 @@
 """UI snapshots and layout rules of the Amisia addon, from the test stub's recorded frames.
 
-    python3 tools/ui_layout.py rules [--locale deDE]
-    python3 tools/ui_layout.py snapshots [--out DIR] [--compare DIR] [--scale N]
+    python3 tools/ui_layout.py rules [--locale deDE|enUS]
+    python3 tools/ui_layout.py snapshots [--out DIR] [--compare DIR] [--scale N] [--locale enUS]
 
 Every registered page is opened in the raider, officer and expert view of the scene
 (addon/tests/ui_scene.lua), and the side windows (roll window, award dialog, soft-reserve window,
@@ -22,7 +22,7 @@ Rules (RULES below), each over every shot:
   minwidth   every button and chip is at least as wide as its text plus the padding on both sides
   atlas      only atlases of the style allow-list (ns.Theme.ATLASES) are used
   nav        every visible page has a row in the page list, inside the list
-The locales the text rule runs in: LOCALES (German now; English joins once the addon has it).
+The locales the rules run in: LOCALES (German and English).
 """
 import argparse
 import html
@@ -36,9 +36,9 @@ TESTS = os.path.join(ROOT, 'addon', 'tests')
 DEFAULT_OUT = '/tmp/amisia-snapshots'
 VIEWS = ('raider', 'officer', 'expert')
 
-# The client locales the text rule runs in and their width factor (1.0: the widths below as they
-# are). English joins here once the addon has its enUS strings: ('enUS', 1.0).
-LOCALES = {'deDE': 1.0}
+# The client locales the rules run in and their width factor (1.0: the widths below as they are).
+# Every shot is taken in each locale: German (deDE) and English (enUS, every other client locale).
+LOCALES = {'deDE': 1.0, 'enUS': 1.0}
 
 sys.path.insert(0, TESTS)
 from textwidth import FONTS, font_size, plain, text_width, wrap_lines  # noqa: E402,F401 - shared with the stub
@@ -123,7 +123,9 @@ def _runtime(locale):
     def setup(lua):
         lua.globals().STUB.locale = locale
         lua.globals().STUB.measure = lambda text, font: text_width(text, font, factor)
-    return addon_run.fresh('', setup=setup)
+    lua = addon_run.fresh('', setup=setup)
+    addon_run.RUNTIMES.clear()
+    return lua
 
 
 def capture(view, mode, locale='deDE'):

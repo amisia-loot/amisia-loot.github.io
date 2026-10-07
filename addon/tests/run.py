@@ -29,6 +29,14 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
                        dropped }
   BUS.count(filter)    sent messages matching filter (prefix, kind, chan, sender, target, from, to
                        (stub clock), or a function)
+
+Locales: the client is German (deDE) unless "--locale enUS" (or the environment variable
+AMISIA_LOCALE) names another; a test file with a line "--[[locale enUS]]" in its first lines always
+runs in that locale. In a locale other than deDE the German texts the tests assert are not there, so
+a run in such a locale counts a failed assertion as "text" (shown, not failed) and fails a test only
+on a Lua runtime error (attempt to index nil, bad argument, a format without its value ...) or on a
+text the addon asked for that Locales/enUS*.lua lacks. A test with its own locale line counts every
+failure. "-v" lists the text assertions too.
 """
 import glob
 import os
@@ -76,14 +84,30 @@ def toc_files():
     return out
 
 
+LOCALE = os.environ.get('AMISIA_LOCALE') or 'deDE'
+LOCALE_LINE = re.compile(r'^--\[\[locale (\w+)\]\]\s*$', re.M)
+# what a Lua runtime error (not a failed assertion of a test) says
+RUNTIME_ERROR = re.compile(r"attempt to |bad argument|invalid option|invalid capture|malformed pattern|stack overflow|"
+                           r"unfinished capture|invalid pattern capture|missing translation")
+RUNTIMES = []   # every runtime fresh() made for the current test file
+
+
+def file_locale(source):
+    """The locale a test file runs in: its own "--[[locale X]]" line, else the run's."""
+    m = LOCALE_LINE.search(source[:2000])
+    return (m.group(1), True) if m else (LOCALE, False)
+
+
 PRELOAD = re.compile(r'\A--\[\[preload\n(.*?)\n\]\]', re.S)
 CLIENTS = re.compile(r'\A--\[\[clients ([^\]\n]*)\]\]\n?')
 
 
-def fresh(source='', player=None, setup=None):
+def fresh(source='', player=None, setup=None, locale=None):
     lua = LuaRuntime(unpack_returned_tuples=True)
+    RUNTIMES.append(lua)
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
+    lua.globals().STUB.locale = locale or file_locale(source)[0]
     # FontString:GetStringWidth estimates as the layout rules do (textwidth.py)
     lua.globals().STUB.measure = measure
     meta = lua.globals().STUB.tocMeta
@@ -324,22 +348,62 @@ def run_file(source):
     bus.director.execute(rest)
 
 
+def missing_translations():
+    """The keys the addon asked for in English without an entry, over every runtime of the file."""
+    out = set()
+    for lua in RUNTIMES:
+        try:
+            keys = lua.eval('(NS and NS.MissingTranslations and NS.MissingTranslations()) or {}')
+            out.update(str(k) for k in keys.keys())
+        except Exception:  # noqa: BLE001 - a runtime that never loaded the addon
+            pass
+    return sorted(out)
+
+
 def main(argv):
-    only = argv[1] if len(argv) > 1 else None
-    failed = 0
+    global LOCALE
+    args = list(argv[1:])
+    verbose = '-v' in args
+    if verbose:
+        args.remove('-v')
+    if '--locale' in args:
+        i = args.index('--locale')
+        LOCALE = args[i + 1]
+        del args[i:i + 2]
+    only = args[0] if args else None
+    failed = texts = 0
     for path in sorted(glob.glob(os.path.join(ROOT, 'tests', 'test_*.lua'))):
         base = os.path.basename(path)
         if only and only not in base:
             continue
         with open(path, encoding='utf-8') as fh:
             source = fh.read()
+        locale, own = file_locale(source)
+        RUNTIMES.clear()
+        err = None
         try:
             run_file(source)
-            print('ok   ', base)
         except Exception as exc:  # noqa: BLE001 - report every failure the same way
+            err = str(exc).strip().splitlines()[0][:500] if str(exc).strip() else repr(exc)
+        missing = missing_translations() if locale != 'deDE' else []
+        if missing:
             failed += 1
             print('FAIL ', base)
-            print('      ' + str(exc).strip().splitlines()[0][:500])
+            print('      missing translation: ' + '; '.join(repr(k) for k in missing[:8])
+                  + (f' (+{len(missing) - 8})' if len(missing) > 8 else ''))
+        elif err is None:
+            print('ok   ', base)
+        elif locale != 'deDE' and not own and not RUNTIME_ERROR.search(err):
+            texts += 1
+            print('text ', base)
+            if verbose:
+                print('      ' + err)
+        else:
+            failed += 1
+            print('FAIL ', base)
+            print('      ' + err)
+    if LOCALE != 'deDE':
+        print(f'locale {LOCALE}: {failed} failed, {texts} with German text assertions (not counted)')
     return 1 if failed else 0
 
 

@@ -30,7 +30,7 @@ read_globals = {
     "DEFAULT_CHAT_FRAME", "DressUpLink", "Enum", "GameFontNormal", "GameTooltip", "GetAddOnMetadata",
     "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition",
     "geterrorhandler", "GetGuildBankItemInfo", "GetGuildBankItemLink", "GetGuildBankTabInfo", "GetGuildInfo",
-    "GetGuildRosterInfo", "GetHitModifier", "GetInstanceInfo", "GetInventoryItemLink", "GetLootSlotInfo",
+    "GetGuildRosterInfo", "GetHitModifier", "GetInstanceInfo", "GetLocale", "AMISIA_LOCALE", "GetInventoryItemLink", "GetLootSlotInfo",
     "GetLootSlotLink", "GetLootSourceInfo", "GetMasterLootCandidate", "GetMerchantItemInfo",
     "GetMerchantItemLink", "GetMerchantNumItems", "GetNormalizedRealmName", "GetNumGroupMembers",
     "GetNumGuildBankTabs", "GetNumGuildMembers", "GetNumLootItems", "GetNumQuestChoices",
