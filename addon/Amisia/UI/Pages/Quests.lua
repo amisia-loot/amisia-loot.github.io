@@ -3,9 +3,9 @@
 -- chain progress and the best reward's upgrade mark per row, a click opening the chain and the
 -- rewards below the quest, and a button that sets the waypoint to the quest giver.
 local ADDON, ns = ...
-local W, Q = ns.W, ns.Quests
-local GOLD_TEXT = "|cffe3b857"
-local GREY = "|cff8f86a3"
+local W, Q, T = ns.W, ns.Quests, ns.Theme
+local GOLD_TEXT = T.GOLD_TEXT
+local GREY = T.GREY
 local GREEN = "|cff4fd16b"
 local RED = "|cffff6040"
 local YELLOW = "|cffffd100"
@@ -206,7 +206,7 @@ local function onRowClick(self, button)
 end
 
 local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
     if label then fs:SetText(label) end
     return fs
@@ -272,12 +272,11 @@ local function create(parent)
         state().zone = (v == "all" or v == "here") and v or tonumber(v) or "all"
         ns.Refresh()
     end)
-    f.zone:SetPoint("TOPLEFT", 0, -1)
     f.search = W.SearchBox(f, 190, function(text)
         state().search = (text or ""):match("^%s*(.-)%s*$") or ""
         ns.Refresh()
     end, "Quest, Questgeber, Zone")
-    f.search:SetPoint("TOPLEFT", 212, -1)
+    W.Row(f, { f.zone, f.search }, 12, 0, -1)
 
     -- the status chips, then the filters
     f.show = {}
@@ -285,17 +284,16 @@ local function create(parent)
         { "active", "Im Log", 58, "Quests in deinem Questlog." },
         { "locked", "Gesperrt", 68, "Quests, die dir noch fehlen: Vorquest, Level, Beruf. Der Grund steht in der Zeile." },
         { "done", "Erledigt", 64, "Abgegebene Quests." } }
-    local x = 0
+    local row = {}
     for _, d in ipairs(defs) do
         local chip = W.Chip(f, d[2], d[3], function()
             local s = state()
             s.show[d[1]] = not s.show[d[1]]
             ns.Refresh()
         end)
-        chip:SetPoint("TOPLEFT", x, -27)
         W.Tooltip(chip, d[2], d[4])
         f.show[d[1]] = chip
-        x = x + d[3] + 4
+        row[#row + 1] = chip
     end
     local function toggle(field)
         return function()
@@ -305,16 +303,18 @@ local function create(parent)
         end
     end
     f.chains = W.Chip(f, "Reihen", 58, toggle("chains"))
-    f.chains:SetPoint("TOPLEFT", x + 12, -27)
     W.Tooltip(f.chains, "Nur Reihen", "Nur Quests mit Vorquest oder Folgequest.")
     f.upgrades = W.Chip(f, "Upgrades", 72, toggle("upgrades"))
-    f.upgrades:SetPoint("TOPLEFT", x + 74, -27)
     W.Tooltip(f.upgrades, "Nur Upgrades", "Nur Quests, deren Belohnung ein Upgrade für dich ist.")
     f.mine = W.Chip(f, "Nur für mich", 92, toggle("mine"))
-    f.mine:SetPoint("TOPLEFT", x + 150, -27)
     W.Tooltip(f.mine, "Nur für mich", "Quests anderer Fraktionen, Völker und Klassen ausblenden.")
+    -- the status chips, then the filters after a wider gap
+    row[#row + 1] = { f.chains, gap = 16 }
+    row[#row + 1] = f.upgrades
+    row[#row + 1] = f.mine
+    W.Row(f, row, T.CHIP_GAP, 0, -27)
 
-    f.counts = W.Text(f, "GameFontDisableSmall", 598)
+    f.counts = W.Text(f, T.FONT.hint, 598)
     f.counts:SetPoint("TOPLEFT", 4, -54)
 
     local h = CreateFrame("Frame", nil, f)
@@ -325,10 +325,10 @@ local function create(parent)
     f.head = { title = col(h, 4, 232, "Quest"), level = col(h, 240, 40, "Level"), status = col(h, 284, 150, "Status"),
         reward = col(h, 438, 92, "Belohnung"), go = col(h, 540, 46, "Weg") }
     f.list = W.List(f, ROWS, ROW_H, function(r)
-        r.title = col(r, 4, 232, nil, "GameFontHighlightSmall")
-        r.level = col(r, 240, 40, nil, "GameFontHighlightSmall")
-        r.status = col(r, 284, 150, nil, "GameFontHighlightSmall")
-        r.reward = col(r, 438, 92, nil, "GameFontHighlightSmall")
+        r.title = col(r, 4, 232, nil, T.FONT.text)
+        r.level = col(r, 240, 40, nil, T.FONT.text)
+        r.status = col(r, 284, 150, nil, T.FONT.text)
+        r.reward = col(r, 438, 92, nil, T.FONT.text)
         r.go = W.Button(r, "Weg", 54, function(self)
             local e = self:GetParent().item
             if e and e.qid then say(ns.QuestWaypoint(e.qid)) end
@@ -340,15 +340,15 @@ local function create(parent)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
     f.list:SetPoint("TOPLEFT", 0, -86)
-    f.list:SetPoint("TOPRIGHT", -12, -86)
-    f.empty = W.Text(f, "GameFontDisableSmall", 590, true)
+    f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -86)
+    f.empty = W.Text(f, T.FONT.hint, 590, true)
     f.empty:SetPoint("TOPLEFT", 6, -94)
     f.empty:Hide()
 
-    f.hint = W.Text(f, "GameFontDisableSmall", 598)
+    f.hint = W.Text(f, T.FONT.hint, 598)
     f.hint:SetPoint("TOPLEFT", 4, -406)
     f.hint:SetText(HINT)
-    f.data = W.Text(f, "GameFontDisableSmall", 598)
+    f.data = W.Text(f, T.FONT.hint, 598)
     f.data:SetPoint("TOPLEFT", 4, -424)
     return f
 end

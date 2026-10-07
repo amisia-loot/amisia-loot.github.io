@@ -1,10 +1,10 @@
 -- Awards: every hand-out of a raid for officers, to look through, change, delete and take back;
 -- raiders see their own items. Changes apply on the click and land on the undo stack.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local ROWS, ROW_H = 12, 22
-local GREY = "|cff8f86a3"
+local GREY = T.GREY
 local KINDS = { "MS", "OS", "SR", "-" }
 local MAX_SUGGEST = 3
 local TO_TEXT = { bank = "Bank", de = "Entzaubern" }
@@ -138,7 +138,7 @@ local function entries()
 end
 
 local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
     if label then fs:SetText(label) end
     return fs
@@ -260,9 +260,9 @@ local function buildOfficer(parent)
 
     -- the counts on the left (up to 330 px), the sync state right-aligned in the space the counts
     -- leave (fillSync sizes it), with its details as tooltip
-    O.head = W.Text(O, "GameFontDisableSmall", 330)
+    O.head = W.Text(O, T.FONT.hint, 330)
     O.head:SetPoint("TOPLEFT", 6, -28)
-    O.sync = W.Text(O, "GameFontDisableSmall", 260)
+    O.sync = W.Text(O, T.FONT.hint, 260)
     O.sync:SetPoint("TOPRIGHT", -6, -28)
     O.sync:SetJustifyH("RIGHT")
     O.syncHit = CreateFrame("Frame", nil, O)
@@ -290,12 +290,12 @@ local function buildOfficer(parent)
 
     O.list = W.List(O, ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.time = col(r, 6, 44, nil, "GameFontHighlightSmall")
-        r.itemText = col(r, 52, 200, nil, "GameFontHighlightSmall")
-        r.name = col(r, 256, 140, nil, "GameFontHighlightSmall")
-        r.kind = col(r, 400, 30, nil, "GameFontHighlightSmall")
-        r.plus = col(r, 434, 24, nil, "GameFontHighlightSmall")
-        r.src = col(r, 462, 124, nil, "GameFontHighlightSmall")
+        r.time = col(r, 6, 44, nil, T.FONT.text)
+        r.itemText = col(r, 52, 200, nil, T.FONT.text)
+        r.name = col(r, 256, 140, nil, T.FONT.text)
+        r.kind = col(r, 400, 30, nil, T.FONT.text)
+        r.plus = col(r, 434, 24, nil, T.FONT.text)
+        r.src = col(r, 462, 124, nil, T.FONT.text)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -336,16 +336,16 @@ local function buildOfficer(parent)
     E:SetPoint("TOPLEFT", O.list, "BOTTOMLEFT", 0, -6)
     E:SetPoint("TOPRIGHT", O.list, "BOTTOMRIGHT", 12, -6)
     E:SetHeight(120)
-    E.title = W.Text(E, "GameFontNormal", 590)
+    E.title = W.Text(E, T.FONT.title, 590)
     E.title:SetPoint("TOPLEFT", 6, -2)
-    local lab = W.Text(E, "GameFontHighlightSmall", 60)
+    local lab = W.Text(E, T.FONT.text, 60)
     lab:SetPoint("TOPLEFT", 6, -26)
     lab:SetText("Gewinner")
     E.winner = W.Picker(E, 150, function(v)
         edit({ name = v, to = "player" })
     end)
     E.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
-    local artLab = W.Text(E, "GameFontHighlightSmall", 24)
+    local artLab = W.Text(E, T.FONT.text, 24)
     artLab:SetPoint("LEFT", E.winner, "RIGHT", 12, 0)
     artLab:SetText("Art")
     E.kinds = {}
@@ -356,7 +356,7 @@ local function buildOfficer(parent)
         E.kinds[k] = chip
         prev = chip
     end
-    local noteLab = W.Text(E, "GameFontHighlightSmall", 32)
+    local noteLab = W.Text(E, T.FONT.text, 32)
     noteLab:SetPoint("LEFT", prev, "RIGHT", 12, 0)
     noteLab:SetText("Notiz")
     -- up to 6 px before the panel's right edge (602 px of content)
@@ -385,12 +385,12 @@ local function buildOfficer(parent)
         ns.Refresh()
     end)
     E.del:SetPoint("LEFT", E.de, "RIGHT", 6, 0)
-    E.status = W.Text(E, "GameFontDisableSmall")
+    E.status = W.Text(E, T.FONT.hint)
     E.status:SetPoint("LEFT", E.del, "RIGHT", 12, 0)
     E.status:SetJustifyH("RIGHT")
     E.status:SetPoint("RIGHT", -6, 0)
 
-    E.hint = W.Text(E, "GameFontHighlightSmall", 590)
+    E.hint = W.Text(E, T.FONT.text, 590)
     E.hint:SetPoint("TOPLEFT", 6, -80)
     E.chips = {}
     for i = 1, MAX_SUGGEST * 2 do
@@ -417,9 +417,9 @@ local function buildOfficer(parent)
     B.fill(GOLD[1], GOLD[2], GOLD[3], 0.16)
     B:SetSize(602, 40)
     B:SetPoint("TOPLEFT", E, "TOPLEFT", 0, -80)
-    B.text = W.Text(B, "GameFontHighlightSmall", 590)
+    B.text = W.Text(B, T.FONT.text, 590)
     B.text:SetPoint("TOPLEFT", 6, -5)
-    B.mine = W.Text(B, "GameFontHighlightSmall", 318)
+    B.mine = W.Text(B, T.FONT.text, 318)
     B.mine:SetPoint("BOTTOMLEFT", 6, 7)
     B.drop = W.Button(B, "Verwerfen", 90, function(self)
         local c = B.conflict
@@ -607,7 +607,7 @@ local function fillEdit(E)
         i = i + 1
         local c = chips[i]
         c.label:SetText(name)
-        c:SetWidth(c.label:GetStringWidth() + 16)
+        W.FitChip(c)
         c.target, c.all = name, false
         c:SetOn(false)
         c:Show()
@@ -615,7 +615,7 @@ local function fillEdit(E)
             i = i + 1
             local all = chips[i]
             all.label:SetText(("alle %d"):format(same))
-            all:SetWidth(all.label:GetStringWidth() + 16)
+            W.FitChip(all)
             all.target, all.all = name, true
             all:SetOn(false)
             all:Show()
@@ -771,11 +771,11 @@ local function buildAll(R)
         kind = col(head, 474, 46, "Art"), plus = col(head, 524, 36, "+1"),
     }
     A.list = W.List(A, ROWS, ROW_H, function(r)
-        r.time = col(r, 6, 54, nil, "GameFontHighlightSmall")
-        r.itemText = col(r, 64, 226, nil, "GameFontHighlightSmall")
-        r.name = col(r, 294, 176, nil, "GameFontHighlightSmall")
-        r.kind = col(r, 474, 46, nil, "GameFontHighlightSmall")
-        r.plus = col(r, 524, 36, nil, "GameFontHighlightSmall")
+        r.time = col(r, 6, 54, nil, T.FONT.text)
+        r.itemText = col(r, 64, 226, nil, T.FONT.text)
+        r.name = col(r, 294, 176, nil, T.FONT.text)
+        r.kind = col(r, 474, 46, nil, T.FONT.text)
+        r.plus = col(r, 524, 36, nil, T.FONT.text)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.a.item)) end
@@ -801,10 +801,10 @@ local function buildAll(R)
     A.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
     -- 12 px short of the right edge: room for the list's scroll bar
     A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    A.empty = W.Text(A, "GameFontDisable", 590)
+    A.empty = W.Text(A, T.FONT.dim, 590)
     A.empty:SetPoint("TOPLEFT", A.list, "TOPLEFT", 6, -6)
     A.empty:SetText("Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen.")
-    A.foot = W.Text(A, "GameFontDisableSmall", 590)
+    A.foot = W.Text(A, T.FONT.hint, 590)
     A.foot:SetPoint("TOPLEFT", A.list, "BOTTOMLEFT", 6, -10)
     A:Hide()
     return A
@@ -831,7 +831,7 @@ end
 local function buildRaider(parent)
     local R = CreateFrame("Frame", nil, parent)
     R:SetAllPoints(parent)
-    R.title = W.Text(R, "GameFontNormal", 300)
+    R.title = W.Text(R, T.FONT.title, 300)
     R.title:SetPoint("TOPLEFT", 0, -2)
     R.title:SetText("Deine Items")
     R.mineChip = W.Chip(R, "Deine Items", 100, function() setRaiderView("mine") end)
@@ -851,10 +851,10 @@ local function buildRaider(parent)
     col(head, 306, 200, "Raid")
     col(head, 510, 40, "Art")
     R.list = W.List(M, ROWS, ROW_H, function(r)
-        r.date = col(r, 6, 60, nil, "GameFontHighlightSmall")
-        r.itemText = col(r, 70, 230, nil, "GameFontHighlightSmall")
-        r.zone = col(r, 306, 200, nil, "GameFontHighlightSmall")
-        r.kind = col(r, 510, 40, nil, "GameFontHighlightSmall")
+        r.date = col(r, 6, 60, nil, T.FONT.text)
+        r.itemText = col(r, 70, 230, nil, T.FONT.text)
+        r.zone = col(r, 306, 200, nil, T.FONT.text)
+        r.kind = col(r, 510, 40, nil, T.FONT.text)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.item)) end
@@ -876,7 +876,7 @@ local function buildRaider(parent)
     R.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
     -- 12 px short of the right edge: room for the list's scroll bar
     R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    R.text = W.Text(M, "GameFontDisableSmall", 590, true)
+    R.text = W.Text(M, T.FONT.hint, 590, true)
     R.text:SetPoint("TOPLEFT", R.list, "BOTTOMLEFT", 6, -10)
     R.text:SetText("Vergaben anderer siehst du auf der Amisia-Loot-Seite.")
     -- "Alle Vergaben": every award of a raid as the loot lead sent it

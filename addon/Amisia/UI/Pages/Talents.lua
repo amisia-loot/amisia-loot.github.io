@@ -5,7 +5,7 @@
 -- set the free points; the plan of each class is kept as its share code. The own class can load
 -- its talents from the game. The rules live in Talents.lua.
 local ADDON, ns = ...
-local W, T = ns.W, ns.Talents
+local W, T, Theme = ns.W, ns.Talents, ns.Theme
 local F = T.F
 
 local ICON = "Interface\\Icons\\INV_Misc_Book_09"
@@ -306,9 +306,9 @@ local function makeTree(f, t)
     tree.icon:SetSize(16, 16)
     tree.icon:SetPoint("LEFT", 3, 0)
     tree.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    tree.name = W.Text(tree.head, "GameFontNormal", 120)
+    tree.name = W.Text(tree.head, Theme.FONT.title, 120)
     tree.name:SetPoint("LEFT", 24, 0)
-    tree.pts = W.Text(tree.head, "GameFontHighlight", 26)
+    tree.pts = W.Text(tree.head, Theme.FONT.body, 26)
     tree.pts:SetJustifyH("RIGHT")
     tree.pts:SetPoint("RIGHT", -24, 0)
     tree.reset = W.ResetButton(tree.head, 16, function()
@@ -321,7 +321,7 @@ local function makeTree(f, t)
     W.Tooltip(tree.reset, "Baum zurücksetzen", "Nimmt alle Punkte aus diesem Baum.")
     tree.rowLabels = {}
     for row = 1, ROWS do
-        local l = W.Text(tree, "GameFontDisableSmall", 16)
+        local l = W.Text(tree, Theme.FONT.hint, 16)
         l:SetJustifyH("CENTER")
         l:SetPoint("TOPLEFT", 1, -(GRID.top + (row - 1) * GRID.pitchY + BTN / 2 - 6))
         tree.rowLabels[row] = l
@@ -355,29 +355,27 @@ local function create(parent)
     f.layoutInfo = GRID
 
     f.class = W.Picker(f, 130, function(v) chooseClass(v) end)
-    f.class:SetPoint("TOPLEFT", 0, -1)
-    f.levelLabel = W.Text(f, "GameFontHighlightSmall", 34)
-    f.levelLabel:SetPoint("TOPLEFT", 140, -5)
+    f.levelLabel = W.Text(f, Theme.FONT.text, 34)
     f.levelLabel:SetText("Stufe")
     f.level = W.Stepper(f, 76, function(v)
         T.State().level = v
         ns.Refresh()
     end)
     f.level:Configure(1, 60, 1)
-    f.level:SetPoint("TOPLEFT", 176, -1)
-    f.talentedLabel = W.Text(f, "GameFontHighlightSmall", 58)
-    f.talentedLabel:SetPoint("TOPLEFT", 262, -5)
+    f.talentedLabel = W.Text(f, Theme.FONT.text, 58)
     f.talentedLabel:SetText("Talentiert")
     f.talented = W.Stepper(f, 64, function(v)
         T.State().talented = v
         ns.Refresh()
     end)
     f.talented:Configure(0, 5, 1)
-    f.talented:SetPoint("TOPLEFT", 322, -1)
+    -- the class, then each stepper with its label in front (the labels 4 px lower, on the text line)
+    W.Row(f, { f.class, { f.levelLabel, gap = 10, y = -5 }, f.level, { f.talentedLabel, gap = 10, y = -5 }, f.talented },
+        2, 0, -1)
     f.talented:EnableMouse(true)
     W.Tooltip(f.talented, "Talentiert (Vermächtnis)",
         "Jeder Rang gibt die Talentpunkte eine Stufe früher (ab Stufe 9 bis 5); mehr als 51 Punkte gibt es nie.")
-    f.total = W.Text(f, "GameFontHighlight", 206)
+    f.total = W.Text(f, Theme.FONT.body, 206)
     f.total:SetJustifyH("RIGHT")
     f.total:SetPoint("TOPRIGHT", 0, -5)
 
@@ -387,9 +385,9 @@ local function create(parent)
     f.trees = {}
     for t = 1, 3 do f.trees[t] = makeTree(f, t) end
 
-    f.msg = W.Text(f, "GameFontHighlightSmall", 330)
+    f.msg = W.Text(f, Theme.FONT.text, 330)
     f.msg:SetPoint("TOPLEFT", 2, -(TREE_TOP + TREE_H + 4))
-    f.liveText = W.Text(f, "GameFontHighlightSmall", 262)
+    f.liveText = W.Text(f, Theme.FONT.text, 262)
     f.liveText:SetJustifyH("RIGHT")
     f.liveText:SetPoint("TOPRIGHT", 0, -(TREE_TOP + TREE_H + 4))
 
@@ -414,7 +412,7 @@ local function create(parent)
         ns.Refresh()
     end)
     f.resetAll:SetPoint("LEFT", f.live, "RIGHT", 6, 0)
-    f.codeLabel = W.Text(f, "GameFontHighlightSmall", 34)
+    f.codeLabel = W.Text(f, Theme.FONT.text, 34)
     f.codeLabel:SetPoint("LEFT", f.resetAll, "RIGHT", 10, 0)
     f.codeLabel:SetText("Code")
     f.code = W.LineEdit(f, 600 - 104 - 6 - 128 - 10 - 34 - 4, onCode)

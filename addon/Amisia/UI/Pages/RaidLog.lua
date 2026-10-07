@@ -3,11 +3,11 @@
 -- Everyone sees the timeline and the bench; entering bosses, editing the bench and the Discord text
 -- are for officers.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local LOG_ROWS, BENCH_ROWS, ROW_H = 12, 10, 22
 local MAX_PARTS = 6
 local OUTSIDE_FOR = 600   -- seconds: the group outside offered for "Alle eintragen"
-local GREY, GREEN, RED, ORANGE, LABEL = "|cff8f86a3", "|cff4fbf7a", "|cffe05a5a", "|cffe0a344", "|cffe2b857"
+local GREY, GREEN, RED, ORANGE, LABEL = T.GREY, T.GREEN, "|cffe05a5a", T.ORANGE, T.LABEL
 local SRC_TEXT = { enc = "Kampf", kill = "Kampf (Ende)", loot = "Lootfenster", hand = "von Hand" }
 local VIEWS = { verlauf = "verlauf", log = "verlauf", bench = "bench", ersatzbank = "bench", ersatz = "bench", discord = "discord" }
 local KIND_ORDER = { start = 1, late = 2, bench = 2, kill = 3, pull = 4, ["end"] = 5 }
@@ -112,7 +112,7 @@ local function lengthText(k)
 end
 
 local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
     if label then fs:SetText(label) end
     return fs
@@ -231,12 +231,12 @@ local function buildLog(f)
     V.head = head
     V.list = W.List(V, LOG_ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.time = col(r, 2, 48, nil, "GameFontHighlightSmall")
-        r.event = col(r, 54, 246, nil, "GameFontHighlightSmall")
-        r.result = col(r, 304, 76, nil, "GameFontHighlightSmall")
-        r.dur = col(r, 384, 46, nil, "GameFontHighlightSmall")
-        r.who = col(r, 434, 46, nil, "GameFontHighlightSmall")
-        r.src = col(r, 484, 106, nil, "GameFontHighlightSmall")
+        r.time = col(r, 2, 48, nil, T.FONT.text)
+        r.event = col(r, 54, 246, nil, T.FONT.text)
+        r.result = col(r, 304, 76, nil, T.FONT.text)
+        r.dur = col(r, 384, 46, nil, T.FONT.text)
+        r.who = col(r, 434, 46, nil, T.FONT.text)
+        r.src = col(r, 484, 106, nil, T.FONT.text)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -258,7 +258,7 @@ local function buildLog(f)
     V.empty:SetPoint("TOP", V, "TOP", 0, -110)
 
     -- the detail area under the list
-    V.title = W.Text(V, "GameFontNormal", 490)
+    V.title = W.Text(V, T.FONT.title, 490)
     V.title:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 6, -6)
     V.del = W.Button(V, "Löschen", 90, function()
         local s = chosen()
@@ -505,7 +505,7 @@ local function buildBench(f)
     local B = CreateFrame("Frame", nil, f)
     B:SetPoint("TOPLEFT", 0, -72)
     B:SetPoint("BOTTOMRIGHT", 0, 0)
-    B.label = W.Text(B, "GameFontHighlightSmall", 590)
+    B.label = W.Text(B, T.FONT.text, 590)
     B.label:SetPoint("TOPLEFT", 6, 0)
     B.pick = W.Picker(B, 200, function(v) benchName = v end)
     B.pick:SetPoint("TOPLEFT", 0, -18)
@@ -559,11 +559,11 @@ local function buildBench(f)
     head.joined = col(head, 444, 118, "Im Raid")
     B.head = head
     B.list = W.List(B, BENCH_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 130, nil, "GameFontHighlightSmall")
-        r.since = col(r, 138, 36, nil, "GameFontHighlightSmall")
-        r.how = col(r, 178, 110, nil, "GameFontHighlightSmall")
-        r.note = col(r, 292, 148, nil, "GameFontHighlightSmall")
-        r.joined = col(r, 444, 118, nil, "GameFontHighlightSmall")
+        r.name = col(r, 4, 130, nil, T.FONT.text)
+        r.since = col(r, 138, 36, nil, T.FONT.text)
+        r.how = col(r, 178, 110, nil, T.FONT.text)
+        r.note = col(r, 292, 148, nil, T.FONT.text)
+        r.joined = col(r, 444, 118, nil, T.FONT.text)
         r.x = W.ResetButton(r, 18, function(self)
             local x = self:GetParent().item
             local target = benchOf(chosen())
@@ -588,7 +588,7 @@ local function buildBench(f)
     B.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
 
     -- ends 6 px before "Alle eintragen", which moved left with the list
-    B.outside = W.Text(B, "GameFontHighlightSmall", 478)
+    B.outside = W.Text(B, T.FONT.text, 478)
     B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -10)
     B.all = W.Button(B, "Alle eintragen", 100, function()
         local s = chosen()
@@ -601,7 +601,7 @@ local function buildBench(f)
         ns.Refresh()
     end)
     B.all:SetPoint("TOPRIGHT", B.list, "BOTTOMRIGHT", 0, -6)
-    B.hint = W.Text(B, "GameFontDisableSmall", 590, true)
+    B.hint = W.Text(B, T.FONT.hint, 590, true)
     B.hint:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -40)
     B.hint:SetText("Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung.")
     return B
@@ -673,7 +673,7 @@ local function buildDiscord(f)
     D.area.box:SetScript("OnEditFocusLost", function()
         if page and page:IsShown() and D:IsShown() then ns.Refresh() end
     end)
-    D.hint = W.Text(D, "GameFontDisableSmall", 590)
+    D.hint = W.Text(D, T.FONT.hint, 590)
     D.hint:SetPoint("TOPLEFT", D.area, "BOTTOMLEFT", 0, -6)
     return D
 end
@@ -764,7 +764,7 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
             ns.Refresh()
         end)
         f.addBoss:SetPoint("RIGHT", f.discordBtn, "LEFT", -6, 0)
-        f.counts = W.Text(f, "GameFontDisableSmall", 590)
+        f.counts = W.Text(f, T.FONT.hint, 590)
         f.counts:SetPoint("TOPLEFT", 6, -28)
         f.views = {}
         f.views.verlauf = W.Chip(f, "Verlauf", 70, function() setView("verlauf") end)

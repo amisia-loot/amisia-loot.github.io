@@ -4,10 +4,11 @@
 -- windows. Pages are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
 
-local W = ns.W
-local WIDTH, HEIGHT = 806, 560
-local NAV_W, NAV_MAX, HEAD_MAX = 164, 16, 4   -- 16 rows: 4 bars, 3 gaps and 16 rows fit the 480 px list
-local HEAD_H, ROW_H, GAP, INDENT = 25, 22, 4, 8
+local W, T = ns.W, ns.Theme
+local M = T.MAIN
+local WIDTH, HEIGHT = M.W, M.H
+local NAV_W, NAV_MAX, HEAD_MAX = M.NAV_W, M.NAV_ROWS, M.NAV_HEADS   -- 16 rows: 4 bars, 3 gaps and 16 rows fit the 480 px list
+local HEAD_H, ROW_H, GAP, INDENT = T.HEADER_H, M.NAV_ROW_H, M.NAV_GAP, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
@@ -69,7 +70,7 @@ end
 
 local function errorPage(parent, err)
     local f = CreateFrame("Frame", nil, parent)
-    local t = W.Text(f, "GameFontNormal", 560, true)
+    local t = W.Text(f, T.FONT.title, 560, true)
     t:SetPoint("TOPLEFT", 10, -10)
     t:SetText("Diese Seite konnte nicht geladen werden.\n|cff8f86a3" .. (tostring(err):match("^[^\n]*") or "?") .. "|r")
     return f
@@ -163,9 +164,9 @@ function ns.UpdateSideTabs()
                 firstShown = firstShown or tab
                 tab:ClearAllPoints()
                 if prev then
-                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -2)
+                    tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -M.TAB_GAP)
                 else
-                    tab:SetPoint("TOPLEFT", F, "TOPRIGHT", 0, -60)
+                    tab:SetPoint("TOPLEFT", F, "TOPRIGHT", 0, -M.TAB_Y)
                 end
                 tab:Show()
                 prev = tab
@@ -188,16 +189,16 @@ local function navRow()
     b.hover:SetAllPoints()
     if W.HasAtlas("Professions_Recipe_Hover") then
         b.hover:SetAtlas("Professions_Recipe_Hover")
-        b.hover:SetAlpha(0.5)
+        b.hover:SetAlpha(T.HOVER_ALPHA)
     else
         b.hover:SetColorTexture(1, 1, 1, 0.08)
     end
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(16, 16)
+    b.icon:SetSize(M.NAV_ICON, M.NAV_ICON)
     b.icon:SetPoint("LEFT", 4, 0)
     b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    b.label = W.Text(b, "GameFontHighlight", 130)
-    b.label:SetPoint("LEFT", 26, 0)
+    b.label = W.Text(b, T.FONT.body, M.NAV_LABEL_W)
+    b.label:SetPoint("LEFT", M.NAV_LABEL_X, 0)
     b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
     b:Hide()
     return b
@@ -243,37 +244,37 @@ local function build()
 
     -- the head: the recording state as plain text between the portrait and the button, on the
     -- frame's own ground (a dark bar there did not fit the window's look)
-    local BAR_W = WIDTH - 66 - 10 - 110 - 12
+    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - 12
     local bar = CreateFrame("Frame", nil, F)
-    bar:SetSize(BAR_W, 22)
-    bar:SetPoint("TOPLEFT", 66, -26)
-    statusText = W.Text(bar, "GameFontHighlight", BAR_W - 20)
+    bar:SetSize(BAR_W, M.HEAD_H)
+    bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
+    statusText = W.Text(bar, T.FONT.body, BAR_W - 20)
     statusText:SetPoint("CENTER", bar, "CENTER", 0, 0)
     statusText:SetJustifyH("CENTER")
     if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
-    pauseBtn = W.Button(F, "Pausieren", 110, function() ns.SetEnabled(not ns.IsEnabled()) end)
-    pauseBtn:SetPoint("TOPRIGHT", -10, -26)
+    pauseBtn = W.Button(F, "Pausieren", M.PAUSE_W, function() ns.SetEnabled(not ns.IsEnabled()) end)
+    pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
 
     -- the page list in an inset with the recipe list's ground, the page in an inset beside it
     local listInset = W.Inset(F)
-    listInset:SetPoint("TOPLEFT", 6, -62)
-    listInset:SetPoint("BOTTOMLEFT", 6, 6)
-    listInset:SetWidth(176)
+    listInset:SetPoint("TOPLEFT", M.MARGIN, -M.TOP)
+    listInset:SetPoint("BOTTOMLEFT", M.MARGIN, M.MARGIN)
+    listInset:SetWidth(M.LIST_W)
     listInset.fill("Professions-background-summarylist")
     local contentInset = W.Inset(F)
-    contentInset:SetPoint("TOPLEFT", 184, -62)
-    contentInset:SetPoint("BOTTOMRIGHT", -6, 6)
+    contentInset:SetPoint("TOPLEFT", M.CONTENT_X, -M.TOP)
+    contentInset:SetPoint("BOTTOMRIGHT", -M.MARGIN, M.MARGIN)
 
     nav = CreateFrame("Frame", nil, listInset)
-    nav:SetPoint("TOPLEFT", 6, -6)
-    nav:SetPoint("BOTTOMRIGHT", -6, 6)
+    nav:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    nav:SetPoint("BOTTOMRIGHT", -M.INNER, M.INNER)
     for i = 1, HEAD_MAX do navHeaders[i] = navHeader() end
     for i = 1, NAV_MAX do navButtons[i] = navRow() end
 
     -- 602 x 478, as before: the pages keep their layout
     content = CreateFrame("Frame", nil, contentInset)
-    content:SetPoint("TOPLEFT", 7, -7)
-    content:SetPoint("BOTTOMRIGHT", -7, 7)
+    content:SetPoint("TOPLEFT", M.PAGE_PAD, -M.PAGE_PAD)
+    content:SetPoint("BOTTOMRIGHT", -M.PAGE_PAD, M.PAGE_PAD)
 
     for _, def in ipairs(SIDE_TABS) do
         local tab = sideTab(def)

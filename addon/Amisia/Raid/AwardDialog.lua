@@ -7,7 +7,7 @@
 -- On the Forever client names can be secret during a boss fight; every name goes through
 -- ns.Plain and a secret one is left out of the list.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 
 local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
@@ -259,7 +259,7 @@ local function build()
     D.icon:SetSize(22, 22)
     D.icon:SetPoint("TOPLEFT", 12, -32)
     D.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    D.itemText = W.Text(D, "GameFontHighlight", 180)
+    D.itemText = W.Text(D, T.FONT.body, 180)
     D.itemText:SetPoint("LEFT", D.icon, "RIGHT", 6, 0)
     -- without an item: a box for a link (shift-click in the chat) or an item id
     D.itemEdit = W.LineEdit(D, 180, function(text)
@@ -270,11 +270,11 @@ local function build()
         end
     end)
     D.itemEdit:SetPoint("LEFT", D.icon, "RIGHT", 6, 0)
-    D.raidText = W.Text(D, "GameFontHighlightSmall", 140)
+    D.raidText = W.Text(D, T.FONT.text, 140)
     D.raidText:SetPoint("TOPRIGHT", -12, -36)
     D.raidText:SetJustifyH("RIGHT")
 
-    local lab = W.Text(D, "GameFontHighlightSmall", 56)
+    local lab = W.Text(D, T.FONT.text, 56)
     lab:SetPoint("TOPLEFT", 12, -66)
     lab:SetText("Gewinner")
     D.winner = W.Picker(D, 140, function(v)
@@ -283,7 +283,7 @@ local function build()
         refresh()
     end)
     D.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
-    local artLab = W.Text(D, "GameFontHighlightSmall", 22)
+    local artLab = W.Text(D, T.FONT.text, 22)
     artLab:SetPoint("LEFT", D.winner, "RIGHT", 10, 0)
     artLab:SetText("Art")
     D.kinds = {}
@@ -298,7 +298,7 @@ local function build()
         prev = chip
     end
 
-    local noteLab = W.Text(D, "GameFontHighlightSmall", 56)
+    local noteLab = W.Text(D, T.FONT.text, 56)
     noteLab:SetPoint("TOPLEFT", 12, -92)
     noteLab:SetText("Notiz")
     D.note = W.LineEdit(D, 296, function(text)
@@ -307,10 +307,10 @@ local function build()
     end)
     D.note:SetPoint("LEFT", noteLab, "RIGHT", 4, 0)
 
-    D.roll = W.Text(D, "GameFontHighlightSmall", 356)
+    D.roll = W.Text(D, T.FONT.text, 356)
     D.roll:SetPoint("TOPLEFT", 12, -120)
     -- "Upgrade für:" from the raiders' answers (Need.lua), cut to the width, every answer as tooltip
-    D.need = W.Text(D, "GameFontHighlightSmall", 356)
+    D.need = W.Text(D, T.FONT.text, 356)
     D.need:SetPoint("TOPLEFT", 12, -140)
     D.needHit = CreateFrame("Frame", nil, D)
     D.needHit:SetSize(356, 16)
@@ -332,7 +332,7 @@ local function build()
         refresh()
     end)
     D.ask:SetPoint("TOPRIGHT", -12, -136)
-    D.hint = W.Text(D, "GameFontDisableSmall", 356, true)
+    D.hint = W.Text(D, T.FONT.hint, 356, true)
     D.hint:SetPoint("TOPLEFT", 12, -160)
     D.hint:SetHeight(40)
     D.hint:SetJustifyV("TOP")

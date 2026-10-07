@@ -5,12 +5,13 @@
 -- usable; nothing is reported.
 local ADDON, ns = ...
 
+local T = ns.Theme
 local W = {}
 ns.W = W
-W.GOLD = { 0.89, 0.72, 0.34 }
-W.BG = { 0.055, 0.04, 0.08, 0.96 }
+W.GOLD = T.GOLD
+W.BG = T.BG
 -- the client's title bar: content starts at least this far below a window's top edge
-W.TITLE_H = 24
+W.TITLE_H = T.TITLE_H
 local GOLD = W.GOLD
 
 -- the atlas exists in this client
@@ -33,11 +34,99 @@ local function inherit(kind, name, parent, template, probe)
 end
 
 function W.Text(parent, template, width, wrap)
-    local fs = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", template or T.FONT.text)
     if width then fs:SetWidth(width) end
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(wrap and true or false)
     return fs
+end
+
+---------------------------------------------------------------------------
+-- Layout helpers: rows, columns and grids of frames, and chips sized to their text
+---------------------------------------------------------------------------
+
+-- An entry of W.Row or W.Column: a frame, or { frame, gap = px before it (instead of the row's),
+-- y = its own offset across a row (a label beside a field sits lower), right = in a column, its
+-- right edge that far from the parent's (it spans the width) }.
+local function rowEntry(e)
+    if type(e) == "table" and e[1] ~= nil and type(e[1]) == "table" then return e[1], e.gap, e.y, e.right end
+    return e, nil, nil, nil
+end
+
+-- Places items (listed left to right) in a row in parent: the first with its point (opts.point,
+-- "TOPLEFT") at x, y, each next gap px after the one before, every one at its own width. With
+-- opts.right the row hangs from the parent's right edge instead (point "TOPRIGHT"): the last item x px
+-- from that edge, the others to its left. Hidden items are passed over with opts.shown (a row whose
+-- parts come and go). Returns how far the row reaches from where it starts (x plus its width).
+function W.Row(parent, items, gap, x, y, opts)
+    local right = opts and opts.right
+    local point = opts and opts.point or (right and "TOPRIGHT" or "TOPLEFT")
+    local onlyShown = opts and opts.shown
+    local at, placed = x or 0, false
+    local first, last, step = 1, #items, 1
+    if right then first, last, step = #items, 1, -1 end
+    local pendingGap
+    for i = first, last, step do
+        local f, own, ownY = rowEntry(items[i])
+        if f and not (onlyShown and not f:IsShown()) then
+            -- the gap that belongs between two items stands before the right one of them
+            if placed then at = at + ((right and pendingGap or own) or gap or 0) end
+            f:ClearAllPoints()
+            f:SetPoint(point, parent, point, right and -at or at, ownY or y or 0)
+            at = at + (f:GetWidth() or 0)
+            placed = true
+            pendingGap = own
+        end
+    end
+    return at
+end
+
+-- Stacks items top to bottom in parent from y (a SetPoint offset, 0 or below): each at x (TOPLEFT),
+-- gap px under the one before, at its own height. opts.right: every item's right edge that far from
+-- the parent's (they span the width; an entry's own right wins); opts.shown: hidden items are passed
+-- over. Returns the offset below the last placed item (y when none was placed).
+function W.Column(parent, items, gap, x, y, opts)
+    local onlyShown = opts and opts.shown
+    local at, placed = y or 0, false
+    for _, e in ipairs(items) do
+        local f, own, _, ownRight = rowEntry(e)
+        if f and not (onlyShown and not f:IsShown()) then
+            if placed then at = at - (own or gap or 0) end
+            f:ClearAllPoints()
+            f:SetPoint("TOPLEFT", parent, "TOPLEFT", x or 0, at)
+            local right = ownRight or (opts and opts.right)
+            if right then f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -right, at) end
+            at = at - (f:GetHeight() or 0)
+            placed = true
+        end
+    end
+    return at
+end
+
+-- Places items in a grid of cols columns from x, y (TOPLEFT): cells as large as the first item,
+-- gapX and gapY between them, row by row. Returns the offset below the last row.
+function W.Grid(parent, items, cols, gapX, gapY, x, y)
+    local first = items[1]
+    if not first then return y or 0 end
+    local w, h = first:GetWidth() or 0, first:GetHeight() or 0
+    for i, f in ipairs(items) do
+        local c, r = (i - 1) % cols, math.floor((i - 1) / cols)
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", parent, "TOPLEFT", (x or 0) + c * (w + gapX), (y or 0) - r * (h + gapY))
+    end
+    return (y or 0) - math.ceil(#items / cols) * (h + gapY) + gapY
+end
+
+-- Sizes a chip or a red button to its text and the padding on both sides (pad, else the theme's),
+-- at least minW wide and at most maxW (both optional). Returns the width.
+function W.FitChip(b, minW, maxW, pad)
+    local fs = b.label or b.Text or (b.GetFontString and b:GetFontString())
+    local text = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
+    local w = text + 2 * (pad or T.CHIP_PAD)
+    if minW and w < minW then w = minW end
+    if maxW and w > maxW then w = maxW end
+    b:SetWidth(w)
+    return w
 end
 
 function W.Flat(parent, r, g, b, a, layer)
@@ -75,12 +164,12 @@ local function fieldBorder(f)
     end
     local l = f:CreateTexture(nil, "BACKGROUND")
     l:SetAtlas("common-search-border-left")
-    l:SetWidth(8)
+    l:SetWidth(T.FIELD_CAP)
     l:SetPoint("TOPLEFT")
     l:SetPoint("BOTTOMLEFT")
     local r = f:CreateTexture(nil, "BACKGROUND")
     r:SetAtlas("common-search-border-right")
-    r:SetWidth(8)
+    r:SetWidth(T.FIELD_CAP)
     r:SetPoint("TOPRIGHT")
     r:SetPoint("BOTTOMRIGHT")
     local m = f:CreateTexture(nil, "BACKGROUND")
@@ -103,7 +192,7 @@ function W.Button(parent, label, width, onClick, opts)
         W.Flat(b, 0.5, 0.08, 0.06, 0.9)
         W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.6)
     end
-    b:SetSize(width or 120, (opts and opts.height) or 22)
+    b:SetSize(width or T.BUTTON_W, (opts and opts.height) or T.BUTTON_H)
     b:SetText(label or "")
     if onClick then b:SetScript("OnClick", onClick) end
     return b
@@ -112,7 +201,7 @@ end
 -- The client's small reset button (UIResetButtonTemplate: the red circle with the gold x), for
 -- "back to the default" and "remove this". Without the template or its atlas a small red button.
 function W.ResetButton(parent, size, onClick)
-    size = size or 18
+    size = size or T.RESET
     local b = hasAtlas("auctionhouse-ui-filter-redx") and CreateFrame("Button", nil, parent)
     if b then
         b:SetSize(size, size)
@@ -136,14 +225,14 @@ end
 -- button as it is, gold text. Off: the same button darkened, grey text. Press, hover and disabled
 -- as the template shows them (its scripts are hooked, never replaced). Without the template the
 -- flat chip of before (gold frame).
-local CHIP_OFF = 0.45
+local CHIP_OFF = T.CHIP_OFF
 function W.Chip(parent, label, width, onClick)
     local b = inherit("Button", nil, parent, "SharedButtonSmallTemplate", function(f) return f.Left and f.Right and f.Center end)
     local styled = b ~= nil
     if not b then b = CreateFrame("Button", nil, parent) end
-    b:SetSize(width or 60, 20)
+    b:SetSize(width or T.CHIP_W, T.CHIP_H)
     if styled and b.SetText then b:SetText("") end
-    b.label = W.Text(b, "GameFontHighlightSmall")
+    b.label = W.Text(b, T.FONT.text)
     b.label:SetPoint("CENTER")
     b.label:SetJustifyH("CENTER")
     b.label:SetText(label or "")
@@ -164,13 +253,8 @@ function W.Chip(parent, label, width, onClick)
             self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
             W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
         end
-        if self.IsEnabled and not self:IsEnabled() then
-            self.label:SetTextColor(0.45, 0.45, 0.45)
-        elseif on then
-            self.label:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-        else
-            self.label:SetTextColor(0.6, 0.6, 0.6)
-        end
+        local c = (self.IsEnabled and not self:IsEnabled()) and T.TEXT_DISABLED or (on and GOLD or T.TEXT_OFF)
+        self.label:SetTextColor(c[1], c[2], c[3])
     end
     function b:SetOn(on)
         self.on = on
@@ -193,7 +277,7 @@ end
 
 -- A chip that cycles through its values on click.
 function W.Choice(parent, width, onChange)
-    local c = W.Chip(parent, "", width or 120)
+    local c = W.Chip(parent, "", width or T.CHOICE_W)
     function c:SetValues(values) self.values = values end
     function c:SetValue(v)
         self.current = v
@@ -250,20 +334,21 @@ end
 W.EMBLEM = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 function W.EmptyState(parent, width)
     local e = CreateFrame("Frame", nil, parent)
-    width = width or 420
-    e:SetSize(width, 120)
+    local E = T.EMPTY
+    width = width or E.W
+    e:SetSize(width, E.H)
     e.icon = e:CreateTexture(nil, "ARTWORK")
-    e.icon:SetSize(56, 56)
+    e.icon:SetSize(E.ICON, E.ICON)
     e.icon:SetPoint("TOP", 0, 0)
     e.icon:SetTexture(W.EMBLEM)
     if e.icon.SetDesaturated then e.icon:SetDesaturated(true) end
-    e.icon:SetAlpha(0.35)
-    e.title = W.Text(e, "GameFontNormalLarge", width)
-    e.title:SetPoint("TOP", e.icon, "BOTTOM", 0, -10)
+    e.icon:SetAlpha(E.ALPHA)
+    e.title = W.Text(e, T.FONT.big, width)
+    e.title:SetPoint("TOP", e.icon, "BOTTOM", 0, -E.TITLE_GAP)
     e.title:SetJustifyH("CENTER")
     e.title:SetTextColor(0.75, 0.65, 0.45)
-    e.text = W.Text(e, "GameFontDisable", width, true)
-    e.text:SetPoint("TOP", e.title, "BOTTOM", 0, -6)
+    e.text = W.Text(e, T.FONT.dim, width, true)
+    e.text:SetPoint("TOP", e.title, "BOTTOM", 0, -E.TEXT_GAP)
     e.text:SetJustifyH("CENTER")
     function e:Set(title, text)
         self.title:SetText(title or "")
@@ -303,7 +388,7 @@ end
 -- b:UpdateArrow() shows the state again (after an owner opened or closed what the button opens).
 function W.ArrowButton(parent, dir, size, onClick)
     local b = CreateFrame("Button", nil, parent)
-    size = size or 22
+    size = size or T.ARROW
     b:SetSize(size, size)
     b.arrow = b:CreateTexture(nil, "ARTWORK")
     b.arrow:SetAllPoints()
@@ -374,7 +459,7 @@ end
 function W.Toggle(parent, onChange)
     local b = inherit("CheckButton", nil, parent, "MinimalCheckboxTemplate", function(f) return f.SetChecked and f.GetChecked end)
     if b then
-        b:SetSize(18, 18)
+        b:SetSize(T.TOGGLE, T.TOGGLE)
         for _, key in ipairs({ "NormalTexture", "PushedTexture", "HighlightTexture", "CheckedTexture", "DisabledCheckedTexture" }) do
             local t = b[key]
             if t and t.SetAllPoints then
@@ -395,7 +480,7 @@ function W.Toggle(parent, onChange)
         return b
     end
     b = CreateFrame("Button", nil, parent)
-    b:SetSize(18, 18)
+    b:SetSize(T.TOGGLE, T.TOGGLE)
     W.Flat(b, 0, 0, 0, 0.5)
     W.Border(b, GOLD[1], GOLD[2], GOLD[3], 0.6)
     b.mark = b:CreateTexture(nil, "ARTWORK")
@@ -419,14 +504,14 @@ end
 -- ten times as far, the mouse wheel steps too. The value sits in a field with the input border.
 function W.Stepper(parent, width, onChange)
     local f = CreateFrame("Frame", nil, parent)
-    f:SetSize(width or 120, 20)
+    f:SetSize(width or T.STEPPER_W, T.FIELD_H)
     f.min, f.max, f.step = 0, 100, 1
-    f.minus = W.ArrowButton(f, "left", 20)
+    f.minus = W.ArrowButton(f, "left", T.ARROW_SMALL)
     f.minus:SetPoint("LEFT")
-    f.plus = W.ArrowButton(f, "right", 20)
+    f.plus = W.ArrowButton(f, "right", T.ARROW_SMALL)
     f.plus:SetPoint("RIGHT")
     f.field = CreateFrame("Frame", nil, f)
-    f.field:SetHeight(20)
+    f.field:SetHeight(T.FIELD_H)
     f.field:SetPoint("LEFT", f.minus, "RIGHT", 2, 0)
     f.field:SetPoint("RIGHT", f.plus, "LEFT", -2, 0)
     fieldBorder(f.field)
@@ -505,14 +590,14 @@ local function editBox(parent, width, justify, onCommit, restore)
     if e then
         e.Left:ClearAllPoints()
         e.Left:SetPoint("LEFT", 0, 0)
-        e:SetTextInsets(6, 4, 0, 0)
+        e:SetTextInsets(T.TEXT_INSET, 4, 0, 0)
     else
         e = CreateFrame("EditBox", nil, parent)
         W.Flat(e, 0, 0, 0, 0.5)
         W.Border(e, 1, 1, 1, 0.2)
         e:SetTextInsets(4, 4, 0, 0)
     end
-    e:SetSize(width or 60, 20)
+    e:SetSize(width or T.EDIT_W, T.FIELD_H)
     e:SetAutoFocus(false)
     e:SetFontObject(ChatFontNormal)
     e:SetJustifyH(justify)
@@ -522,12 +607,12 @@ end
 
 -- A centred box for a time of day.
 function W.TimeBox(parent, width, onCommit)
-    return editBox(parent, width or 60, "CENTER", onCommit, false)
+    return editBox(parent, width or T.EDIT_W, "CENTER", onCommit, false)
 end
 
 -- A left-aligned box for a name or a note; Escape restores the text.
 function W.LineEdit(parent, width, onCommit)
-    return editBox(parent, width or 150, "LEFT", onCommit, true)
+    return editBox(parent, width or T.LINE_W, "LEFT", onCommit, true)
 end
 
 -- The client's search box (SearchBoxTemplate: magnifying glass, clear button, a grey hint while
@@ -542,20 +627,20 @@ function W.SearchBox(parent, width, onCommit, hint)
     if not e then
         e = W.LineEdit(parent, width, onCommit)
         e.Instructions = W.Text(e, "GameFontDisableSmall")
-        e.Instructions:SetPoint("LEFT", 6, 0)
+        e.Instructions:SetPoint("LEFT", T.TEXT_INSET, 0)
         e.Instructions:SetPoint("RIGHT", -4, 0)
         e.Instructions:SetText(hint)
         e:HookScript("OnTextChanged", function(self) self.Instructions:SetShown(self:GetText() == "") end)
         return e
     end
-    e:SetSize(width or 150, 20)
+    e:SetSize(width or T.LINE_W, T.FIELD_H)
     e:SetAutoFocus(false)
     e.Left:ClearAllPoints()
     e.Left:SetPoint("LEFT", 0, 0)
     -- the cap moved 5 px in from the template's -5: the magnifier moves with it (template: x 1)
     if e.searchIcon then
         e.searchIcon:ClearAllPoints()
-        e.searchIcon:SetPoint("LEFT", 6, -1)
+        e.searchIcon:SetPoint("LEFT", T.TEXT_INSET, -1)
     end
     e.Instructions:SetText(hint)
     local commit = wireCommit(e, onCommit, true, true)
@@ -621,7 +706,7 @@ function W.SectionHeader(parent, label, collapsible, onToggle)
         if onToggle then onToggle(self.collapsed) end
     end
     if h then
-        h:SetHeight(25)
+        h:SetHeight(T.HEADER_H)
         h:SetHeaderText(label or "")
         if h.SetTitleColor and NORMAL_FONT_COLOR then h:SetTitleColor(false, NORMAL_FONT_COLOR) end
         if not collapsible then
@@ -641,10 +726,10 @@ function W.SectionHeader(parent, label, collapsible, onToggle)
         return h
     end
     h = CreateFrame("Button", nil, parent)
-    h:SetHeight(25)
+    h:SetHeight(T.HEADER_H)
     W.Flat(h, GOLD[1], GOLD[2], GOLD[3], 0.12)
-    h.ButtonText = W.Text(h, "GameFontNormal")
-    h.ButtonText:SetPoint("LEFT", 8, 0)
+    h.ButtonText = W.Text(h, T.FONT.title)
+    h.ButtonText:SetPoint("LEFT", T.HEADER_TEXT_X, 0)
     h.ButtonText:SetPoint("RIGHT", -24, 0)
     h.ButtonText:SetText(label or "")
     h.ButtonText:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
@@ -664,8 +749,8 @@ function W.Scroll(sf, parent)
     local bar = ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar
         and inherit("EventFrame", nil, parent, "MinimalScrollBar", function(f) return f.SetScrollPercentage and f.RegisterCallback end)
     if bar then
-        bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 4, 0)
-        bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 4, 0)
+        bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", T.SCROLLBAR_GAP, 0)
+        bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", T.SCROLLBAR_GAP, 0)
         ScrollUtil.InitScrollFrameWithScrollBar(sf, bar)
         bar:SetHideIfUnscrollable(true)
         sf:EnableMouseWheel(true)
@@ -752,12 +837,12 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
             r:SetHeight(rowHeight - 1)
             r:SetPoint("TOPLEFT", 0, -(i - 1) * rowHeight)
             r:SetPoint("TOPRIGHT", 0, -(i - 1) * rowHeight)
-            r.bg = W.Flat(r, 1, 1, 1, (i % 2 == 0) and 0.045 or 0.025)
+            r.bg = W.Flat(r, 1, 1, 1, T.ROW_SHADE[(i % 2 == 0) and 2 or 1])
             r.hover = r:CreateTexture(nil, "HIGHLIGHT")
             r.hover:SetAllPoints()
             if hover then
                 r.hover:SetAtlas("Professions_Recipe_Hover")
-                r.hover:SetAlpha(0.5)
+                r.hover:SetAlpha(T.HOVER_ALPHA)
             else
                 r.hover:SetColorTexture(1, 1, 1, 0.08)
             end
@@ -773,8 +858,8 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
     if not (opts and opts.bar == false) then
         local bar = inherit("EventFrame", nil, f, "MinimalScrollBar", function(b) return b.SetScrollPercentage and b.RegisterCallback end)
         if bar then
-            bar:SetPoint("TOPLEFT", f, "TOPRIGHT", 4, 0)
-            bar:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", 4, 0)
+            bar:SetPoint("TOPLEFT", f, "TOPRIGHT", T.SCROLLBAR_GAP, 0)
+            bar:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", T.SCROLLBAR_GAP, 0)
             bar:SetHideIfUnscrollable(true)
             -- the controller's wheel steps pan extent x 2.0; one notch is one row here, as on the list
             bar.wheelPanScalar = 1
@@ -822,17 +907,18 @@ end
 
 -- An overview card: an inset with a gold title, two lines and at most one red button.
 function W.Card(parent, width, height)
+    local C = T.CARD
     local c = W.Inset(parent)
     c:SetSize(width, height)
-    c.title = W.Text(c, "GameFontNormal", width - 20)
-    c.title:SetPoint("TOPLEFT", 10, -8)
+    c.title = W.Text(c, T.FONT.title, width - 2 * C.PAD)
+    c.title:SetPoint("TOPLEFT", C.PAD, -C.TITLE_Y)
     c.title:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    c.line1 = W.Text(c, "GameFontHighlight", width - 20)
-    c.line1:SetPoint("TOPLEFT", 10, -28)
-    c.line2 = W.Text(c, "GameFontDisableSmall", width - 20, true)
-    c.line2:SetPoint("TOPLEFT", 10, -48)
-    c.button = W.Button(c, "", 110)
-    c.button:SetPoint("BOTTOMLEFT", 10, 8)
+    c.line1 = W.Text(c, T.FONT.body, width - 2 * C.PAD)
+    c.line1:SetPoint("TOPLEFT", C.PAD, -C.LINE1_Y)
+    c.line2 = W.Text(c, T.FONT.hint, width - 2 * C.PAD, true)
+    c.line2:SetPoint("TOPLEFT", C.PAD, -C.LINE2_Y)
+    c.button = W.Button(c, "", C.BUTTON_W)
+    c.button:SetPoint("BOTTOMLEFT", C.PAD, C.BUTTON_Y)
     function c:SetAction(label, fn)
         if label then
             self.button:SetText(label)
@@ -850,10 +936,11 @@ end
 local function menuGround(f)
     if hasAtlas("common-dropdown-bg") then
         f.bg = f:CreateTexture(nil, "BACKGROUND")
+        local M = T.MENU
         f.bg:SetAtlas("common-dropdown-bg")
-        f.bg:SetPoint("TOPLEFT", -10, 3)
-        f.bg:SetPoint("BOTTOMRIGHT", 10, -3)
-        f.bg:SetAlpha(0.925)
+        f.bg:SetPoint("TOPLEFT", -M.GROUND_X, M.GROUND_Y)
+        f.bg:SetPoint("BOTTOMRIGHT", M.GROUND_X, -M.GROUND_Y)
+        f.bg:SetAlpha(M.ALPHA)
     else
         f.bg = W.Flat(f, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
         f.edges = W.Border(f, GOLD[1], GOLD[2], GOLD[3], 0.6)
@@ -898,12 +985,13 @@ function W.Menu(owner, entries)
     menu.away = 0
     for i, e in ipairs(entries) do
         local b = menu.buttons[i]
+        local M = T.MENU
         if not b then
             b = CreateFrame("Button", nil, menu)
-            b:SetSize(170, 20)
-            b:SetPoint("TOPLEFT", 6, -6 - (i - 1) * 20)
-            b.label = W.Text(b, "GameFontHighlightSmall", 160)
-            b.label:SetPoint("LEFT", 6, 0)
+            b:SetSize(M.ROW_W, M.ROW_H)
+            b:SetPoint("TOPLEFT", M.PAD, -M.PAD - (i - 1) * M.ROW_H)
+            b.label = W.Text(b, T.FONT.text, M.LABEL_W)
+            b.label:SetPoint("LEFT", M.PAD, 0)
             -- the client menu's hover (MenuVariants.CreateHighlight)
             b.hl = b:CreateTexture(nil, "HIGHLIGHT")
             b.hl:SetAllPoints()
@@ -919,7 +1007,7 @@ function W.Menu(owner, entries)
         b:Show()
     end
     for i = #entries + 1, #menu.buttons do menu.buttons[i]:Hide() end
-    menu:SetSize(182, 12 + #entries * 20)
+    menu:SetSize(T.MENU.W, 2 * T.MENU.PAD + #entries * T.MENU.ROW_H)
     menu:ClearAllPoints()
     if owner == UIParent and GetCursorPosition then
         -- no button to hang it on (the compartment entry with the minimap button hidden): at the cursor
@@ -944,7 +1032,7 @@ end
 -- its own. Enter in the filter picks the single match, or the typed text when nothing matches and
 -- free text is allowed. Escape, a pick or a second click on the widget close the panel.
 local picker
-local PICK_ROWS, PICK_ROW_H = 8, 20
+local PICK_ROWS, PICK_ROW_H = T.PICKER.ROWS, T.PICKER.ROW_H
 
 local function pickerChoose(entry)
     local owner = picker.owner
@@ -977,9 +1065,10 @@ local function pickerPanel()
     -- the filter is a search box; Enter and Escape pick and close instead of committing
     local filter = W.SearchBox(picker, nil, nil, SEARCH or "Suchen")
     filter:ClearAllPoints()
-    filter:SetHeight(20)
-    filter:SetPoint("TOPLEFT", 6, -6)
-    filter:SetPoint("TOPRIGHT", -6, -6)
+    local P, pad = T.PICKER, T.MENU.PAD
+    filter:SetHeight(T.FIELD_H)
+    filter:SetPoint("TOPLEFT", pad, -P.FILTER_Y)
+    filter:SetPoint("TOPRIGHT", -pad, -P.FILTER_Y)
     filter:HookScript("OnTextChanged", function() picker:Fill(false) end)
     filter:SetScript("OnEscapePressed", function() picker:Hide() end)
     filter:SetScript("OnEnterPressed", function()
@@ -996,15 +1085,15 @@ local function pickerPanel()
     picker.filter = filter
 
     picker.list = W.List(picker, PICK_ROWS, PICK_ROW_H, function(r)
-        r.text = W.Text(r, "GameFontHighlightSmall")
-        r.text:SetPoint("LEFT", 6, 0)
-        r.text:SetPoint("RIGHT", -6, 0)
+        r.text = W.Text(r, T.FONT.text)
+        r.text:SetPoint("LEFT", pad, 0)
+        r.text:SetPoint("RIGHT", -pad, 0)
         r:SetScript("OnClick", function(self) pickerChoose(self.item) end)
     end, function(r, e)
         r.text:SetText(e.text or "")
         local owner = picker.owner
         if e.free then
-            r.text:SetTextColor(0.56, 0.53, 0.64)
+            r.text:SetTextColor(T.TEXT_FREE[1], T.TEXT_FREE[2], T.TEXT_FREE[3])
         elseif owner and e.value == owner.current then
             r.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
         else
@@ -1012,8 +1101,8 @@ local function pickerPanel()
         end
     end)
     -- the rows end before the bar (4 px gap, 8 wide, 6 to the edge)
-    picker.list:SetPoint("TOPLEFT", 6, -30)
-    picker.list:SetPoint("TOPRIGHT", -18, -30)
+    picker.list:SetPoint("TOPLEFT", pad, -P.LIST_Y)
+    picker.list:SetPoint("TOPRIGHT", -(pad + T.SCROLL_ROOM), -P.LIST_Y)
 
     -- the entries the filter leaves, the free entry always last; keep holds the scroll position
     function picker:Fill(keep)
@@ -1052,17 +1141,17 @@ end
 
 function W.Picker(parent, width, onPick)
     local p = CreateFrame("Button", nil, parent)
-    p:SetSize(width or 150, 20)
+    p:SetSize(width or T.LINE_W, T.FIELD_H)
     -- the field looks like every edit box: the client's input border
     fieldBorder(p)
     local hl = p:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints()
     hl:SetColorTexture(1, 1, 1, 0.08)
-    p.label = W.Text(p, "GameFontHighlightSmall")
-    p.label:SetPoint("LEFT", 6, 0)
-    p.label:SetPoint("RIGHT", -26, 0)
+    p.label = W.Text(p, T.FONT.text)
+    p.label:SetPoint("LEFT", T.TEXT_INSET, 0)
+    p.label:SetPoint("RIGHT", -T.PICKER.ARROW_ROOM, 0)
     -- the client's dropdown button at the right end (22 px, inside the field's right border); a click on it opens like a click on the field, hovering the field lights it too
-    p.arrow = W.ArrowButton(p, "down", 22, function() p:Click() end)
+    p.arrow = W.ArrowButton(p, "down", T.ARROW, function() p:Click() end)
     p.arrow:SetPoint("RIGHT", -1, 0)
     p.arrow.isOpen = function() return picker ~= nil and picker:IsShown() and picker.owner == p end
     local function over(on)
@@ -1109,7 +1198,7 @@ function W.Picker(parent, width, onPick)
         panel.owner = self
         if before and before.arrow then before.arrow:UpdateArrow() end
         panel.away = 0
-        panel:SetSize(math.max(180, self:GetWidth() or 0), 36 + PICK_ROWS * PICK_ROW_H + 6)
+        panel:SetSize(math.max(T.PICKER.MIN_W, self:GetWidth() or 0), T.PICKER.LIST_Y + T.MENU.PAD + PICK_ROWS * PICK_ROW_H + T.MENU.PAD)
         panel:ClearAllPoints()
         panel:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -2)
         -- above the window the widget lives in, its frame (level 500) and title bar (510) included
@@ -1166,7 +1255,7 @@ function W.Window(name, width, height, opts)
         F.TitleContainer:SetHeight(20)
         F.TitleContainer:SetPoint("TOPLEFT", 12, -1)
         F.TitleContainer:SetPoint("TOPRIGHT", -28, -1)
-        local title = W.Text(F.TitleContainer, "GameFontNormal")
+        local title = W.Text(F.TitleContainer, T.FONT.title)
         title:SetPoint("TOP", 0, -5)
         title:SetPoint("LEFT")
         title:SetPoint("RIGHT")

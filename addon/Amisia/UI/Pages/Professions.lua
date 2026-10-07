@@ -4,8 +4,8 @@
 -- the own count, where it comes from, Merchant's Favor and crafting orders). Two more views in the
 -- profession picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
 local ADDON, ns = ...
-local W, Pr = ns.W, ns.Prof
-local GREY = "|cff8f86a3"
+local W, Pr, T = ns.W, ns.Prof, ns.Theme
+local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
 local ROWS, ROW_H = 17, 22
@@ -403,7 +403,7 @@ local function insertLink(link)
 end
 
 local function col(parent, x, w, template)
-    local fs = W.Text(parent, template or "GameFontHighlightSmall", w)
+    local fs = W.Text(parent, template or T.FONT.text, w)
     fs:SetPoint("LEFT", x, 0)
     return fs
 end
@@ -415,13 +415,12 @@ local function create(parent)
         state().view = (v == CAMP or v == FAVOR) and v or tonumber(v)
         ns.Refresh()
     end)
-    f.prof:SetPoint("TOPLEFT", 0, -1)
     f.search = W.SearchBox(f, 170, function(text)
         state().search = text ~= "" and text or nil
         ns.Refresh()
     end, "Rezept suchen")
-    f.search:SetPoint("TOPLEFT", 210, -1)
-    f.rank = W.Text(f, "GameFontNormalSmall", 210)
+    W.Row(f, { f.prof, f.search }, 10, 0, -1)
+    f.rank = W.Text(f, T.FONT.head, 210)
     f.rank:SetPoint("TOPRIGHT", -2, -5)
     f.rank:SetJustifyH("RIGHT")
 
@@ -430,24 +429,22 @@ local function create(parent)
         ns.Refresh()
     end)
     f.known:SetValues(KNOWN)
-    f.known:SetPoint("TOPLEFT", 0, -27)
     W.Tooltip(f.known, "Bekannt", "Alle, nur bekannte oder nur unbekannte Rezepte. Was du kennst, liest Amisia aus dem offenen Berufsfenster.")
     f.source = W.Choice(f, 120, function(v)
         state().source = v
         ns.Refresh()
     end)
     f.source:SetValues(SOURCES)
-    f.source:SetPoint("TOPLEFT", 104, -27)
     W.Tooltip(f.source, "Quelle", "Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest.")
     f.learn = W.Chip(f, "Lernbar", 80, function()
         local s = state()
         s.learnable = not s.learnable or nil
         ns.Refresh()
     end)
-    f.learn:SetPoint("TOPLEFT", 228, -27)
     W.Tooltip(f.learn, "Lernbar", "Nur unbekannte Rezepte, die dein Rang schon erlaubt.")
-    f.counts = W.Text(f, "GameFontDisableSmall", 286)
-    f.counts:SetPoint("TOPLEFT", 316, -31)
+    f.counts = W.Text(f, T.FONT.hint, 286)
+    -- the filters, then the counts on the text line beside them
+    W.Row(f, { f.known, f.source, f.learn, { f.counts, gap = 8, y = -31 } }, T.CHIP_GAP, 0, -27)
 
     f.list = W.List(f, ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -470,7 +467,7 @@ local function create(parent)
     end, fillRow)
     f.list:SetPoint("TOPLEFT", 0, -54)
     f.list:SetWidth(290)
-    f.empty = W.Text(f, "GameFontDisableSmall", 280, true)
+    f.empty = W.Text(f, T.FONT.hint, 280, true)
     f.empty:SetPoint("TOPLEFT", 6, -62)
     f.empty:Hide()
 
@@ -486,11 +483,11 @@ local function create(parent)
     d.head:SetPoint("TOPLEFT", 44, -8)
     d.head:SetPoint("TOPRIGHT", -8, -8)
     d.head:SetHeight(18)
-    d.title = W.Text(d.head, "GameFontNormal", 236)
+    d.title = W.Text(d.head, T.FONT.title, 236)
     d.title:SetPoint("LEFT", 0, 0)
     d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
     d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    d.sub = W.Text(d, "GameFontHighlightSmall", 236)
+    d.sub = W.Text(d, T.FONT.text, 236)
     d.sub:SetPoint("TOPLEFT", 44, -28)
     d.body = W.ScrollText(d)
     d.body:SetPoint("TOPLEFT", 8, -46)
@@ -504,9 +501,9 @@ local function create(parent)
     d.go:SetPoint("BOTTOMRIGHT", -8, 8)
     W.Tooltip(d.go, "Weg", "Setzt den Wegpunkt auf die erste Quelle mit Ort.")
 
-    f.hint = W.Text(f, "GameFontDisableSmall", 598)
+    f.hint = W.Text(f, T.FONT.hint, 598)
     f.hint:SetPoint("TOPLEFT", 4, -436)
-    f.data = W.Text(f, "GameFontDisableSmall", 598)
+    f.data = W.Text(f, T.FONT.hint, 598)
     f.data:SetPoint("TOPLEFT", 4, -454)
     return f
 end

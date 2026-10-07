@@ -2,7 +2,7 @@
 -- drop data: kills own and heard, the list per instance and boss with the rates, the sharing switch
 -- and the text "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local page
 local exportOpen = false
 local exportText = ""
@@ -38,14 +38,14 @@ local function buildDrops(f)
     D.head = W.SectionHeader(f, "Drop-Daten", false)
     D.head:SetPoint("TOPLEFT", 0, -110)
     D.head:SetPoint("TOPRIGHT", 0, -110)
-    D.state = W.Text(f, "GameFontHighlightSmall", 590, true)
+    D.state = W.Text(f, T.FONT.text, 590, true)
     D.state:SetPoint("TOPLEFT", 4, -140)
     D.state:SetHeight(28)
     D.state:SetJustifyV("TOP")
 
     D.share = W.Toggle(f, function(on) ns.Set("drops.share", on) end)
     D.share:SetPoint("TOPLEFT", 0, -174)
-    D.shareLabel = W.Text(f, "GameFontHighlightSmall", 180)
+    D.shareLabel = W.Text(f, T.FONT.text, 180)
     D.shareLabel:SetPoint("LEFT", D.share, "RIGHT", 6, 0)
     D.shareLabel:SetText("Mit der Gilde teilen")
     W.Tooltip(D.share, "Drop-Daten mit der Gilde teilen", "Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern.")
@@ -66,9 +66,9 @@ local function buildDrops(f)
     -- 15 rows of 18 under the controls (202 + 270 = 472 of 478 px); the list is 590 wide, its thin
     -- bar beside it
     D.list = W.List(f, DROP_ROWS, DROP_ROW_H, function(r)
-        r.name = W.Text(r, "GameFontHighlightSmall", 330)
+        r.name = W.Text(r, T.FONT.text, 330)
         r.name:SetPoint("LEFT", 6, 0)
-        r.rate = W.Text(r, "GameFontHighlightSmall", 240)
+        r.rate = W.Text(r, T.FONT.text, 240)
         r.rate:SetPoint("RIGHT", -6, 0)
         r.rate:SetJustifyH("RIGHT")
         r:SetScript("OnEnter", function(self)
@@ -85,7 +85,7 @@ local function buildDrops(f)
         r.rate:SetTextColor(rateColor[1], rateColor[2], rateColor[3])
     end)
     D.list:SetPoint("TOPLEFT", 0, -202)
-    D.list:SetPoint("TOPRIGHT", -12, -202)
+    D.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -202)
 
     D.area = W.EditArea(f)
     D.area:SetPoint("TOPLEFT", 0, -202)
@@ -98,7 +98,7 @@ local function buildDrops(f)
         end
     end)
     D.area:Hide()
-    D.areaHint = W.Text(f, "GameFontDisableSmall", 590)
+    D.areaHint = W.Text(f, T.FONT.hint, 590)
     D.areaHint:SetPoint("BOTTOMLEFT", 0, 4)
     D.areaHint:SetText("Strg+A, Strg+C, auf der Website im Reiter Import einfügen.")
     D.areaHint:Hide()
@@ -138,7 +138,7 @@ end
 ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        f.state = W.Text(f, "GameFontHighlight", 590, true)
+        f.state = W.Text(f, T.FONT.body, 590, true)
         f.state:SetPoint("TOPLEFT", 0, -2)
         local gear = W.Button(f, "Ausrüstungs-Scan", 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
         gear:SetPoint("TOPLEFT", 0, -40)
@@ -148,7 +148,7 @@ ns.RegisterPanel{ key = "tools", label = "Werkzeuge", icon = "Interface\\Icons\\
         retry:SetPoint("LEFT", resume, "RIGHT", 6, 0)
         local stop = W.Button(f, "Anhalten", 90, function() ns.ScanStop(); ns.Refresh() end)
         stop:SetPoint("LEFT", retry, "RIGHT", 6, 0)
-        local hint = W.Text(f, "GameFontDisableSmall", 590, true)
+        local hint = W.Text(f, T.FONT.hint, 590, true)
         hint:SetPoint("TOPLEFT", 0, -76)
         hint:SetHeight(28)
         hint:SetJustifyV("TOP")

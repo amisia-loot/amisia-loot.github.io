@@ -9,7 +9,7 @@
 -- comparison, ns.UpgradeOf), and each row shows its roller's part of it. For green and blue items
 -- bound on pickup a hint says the appearance is already granted (rolls.lookHint): a hint, no rule.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 
 local ROWS = 12
 local ROW_H = 18
@@ -33,7 +33,7 @@ local lootOpen = false
 local entryKind = "MS"
 
 local function text(parent, template, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
+    local fs = parent:CreateFontString(nil, "OVERLAY", template or T.FONT.text)
     if width then fs:SetWidth(width) end
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(false)
@@ -361,15 +361,15 @@ local function build()
     F:SetPoint("CENTER", 260, 59)
 
     -- the item on the left, the time (it sat under the close button) on the right of the same line
-    header = text(F, "GameFontHighlight", 220)
+    header = text(F, T.FONT.body, 220)
     header:SetPoint("TOPLEFT", 12, -30)
-    timer = text(F, "GameFontNormalLarge", 110)
+    timer = text(F, T.FONT.big, 110)
     timer:SetPoint("TOPRIGHT", -12, -28)
     timer:SetJustifyH("RIGHT")
     -- who it is an upgrade for, then the appearance hint (two lines)
-    F.upLine = text(F, "GameFontHighlightSmall", ROW_W)
+    F.upLine = text(F, T.FONT.text, ROW_W)
     F.upLine:SetPoint("TOPLEFT", 12, UP_Y)
-    F.lookLine = text(F, "GameFontDisableSmall", ROW_W)
+    F.lookLine = text(F, T.FONT.hint, ROW_W)
     F.lookLine:SetPoint("TOPLEFT", 12, LOOK_Y)
     F.lookLine:SetWordWrap(true)
     F.lookLine:SetMaxLines(2)
@@ -381,21 +381,21 @@ local function build()
         local rb = row:CreateTexture(nil, "BACKGROUND")
         rb:SetAllPoints()
         rb:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0.06)
-        row.name = text(row, "GameFontHighlightSmall", 110)
+        row.name = text(row, T.FONT.text, 110)
         row.name:SetPoint("LEFT", 4, 0)
-        row.kind = text(row, "GameFontHighlightSmall", 44)
+        row.kind = text(row, T.FONT.text, 44)
         row.kind:SetPoint("LEFT", 116, 0)
-        row.value = text(row, "GameFontHighlightSmall", 26)
+        row.value = text(row, T.FONT.text, 26)
         row.value:SetPoint("LEFT", 162, 0)
         -- the roller's upgrade ("+12%", "neu", "W")
-        row.up = text(row, "GameFontHighlightSmall", 46)
+        row.up = text(row, T.FONT.text, 46)
         row.up:SetPoint("LEFT", 190, 0)
-        row.hand = text(row, "GameFontDisableSmall", 28)
+        row.hand = text(row, T.FONT.hint, 28)
         row.hand:SetPoint("LEFT", 240, 0)
-        row.why = text(row, "GameFontHighlightSmall", 48)
+        row.why = text(row, T.FONT.text, 48)
         row.why:SetPoint("LEFT", 270, 0)
         -- why a roll was not counted, on rows without a button
-        row.reason = text(row, "GameFontDisableSmall", ROW_W - 190 - 4)
+        row.reason = text(row, T.FONT.hint, ROW_W - 190 - 4)
         row.reason:SetPoint("LEFT", 190, 0)
         row.award = W.Button(row, "Vergeben", 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         row.award:SetPoint("RIGHT", -2, 0)
@@ -422,7 +422,7 @@ local function build()
     F.addBtn:SetPoint("TOPLEFT", 248, ENTRY_Y)
     setKind("MS")
 
-    hint = text(F, "GameFontDisableSmall", WIDTH - 24)
+    hint = text(F, T.FONT.hint, WIDTH - 24)
     hint:SetPoint("TOPLEFT", 12, HINT_Y)
     hint:SetWordWrap(true)
     F.lockHint = hint

@@ -18,6 +18,7 @@ Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
+UI\Theme.lua
 UI\Widgets.lua
 Raid\Awards.lua
 Raid\Rolls.lua

@@ -3,7 +3,7 @@
 local ADDON, ns = ...
 
 local Gear = ns.Gear
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local W_WIDTH, W_HEIGHT = 820, 640
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
@@ -201,7 +201,7 @@ local function buildOverview(parent)
         local h = CreateFrame("Button", nil, f)
         h:SetSize(cellW, 18)
         h:SetPoint("TOPLEFT", SLOT_W + (c - 1) * cellW, 0)
-        h.label = text(h, "GameFontNormalSmall")
+        h.label = text(h, T.FONT.head)
         h.label:SetPoint("CENTER")
         h.label:SetJustifyH("CENTER")
         local lo, hi = Gear.COLUMNS[c][1], Gear.COLUMNS[c][2]
@@ -231,7 +231,7 @@ local function buildOverview(parent)
         band:SetPoint("TOPLEFT", 0, y)
         band:SetSize(W_WIDTH - 28, ROW_H - 1)
         band:SetColorTexture(1, 1, 1, (r % 2 == 0) and 0.03 or 0.055)
-        local label = text(f, "GameFontNormalSmall", SLOT_W - 6)
+        local label = text(f, T.FONT.head, SLOT_W - 6)
         label:SetPoint("TOPLEFT", 6, y - 7)
         label:SetText(slot.name)
         cells[r] = {}
@@ -257,7 +257,7 @@ local function buildOverview(parent)
             b.own:Hide()
             b.lvl = b:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
             b.lvl:SetPoint("BOTTOMRIGHT", 1, 0)
-            b.empty = text(b, "GameFontDisableSmall")
+            b.empty = text(b, T.FONT.hint)
             b.empty:SetPoint("CENTER")
             b.empty:SetText("-")
             local hl = b:CreateTexture(nil, "HIGHLIGHT")
@@ -353,7 +353,7 @@ local function buildList(parent)
     head:SetSize(LIST_W, 18)
     head:SetPoint("TOPLEFT")
     local function col(p, x, w, label, template)
-        local fs = text(p, template or "GameFontNormalSmall", w)
+        local fs = text(p, template or T.FONT.head, w)
         fs:SetPoint("LEFT", x, 0)
         if label then fs:SetText(label) end
         return fs
@@ -377,10 +377,10 @@ local function buildList(parent)
         b.icon:SetSize(20, 20)
         b.icon:SetPoint("LEFT", 90, 0)
         b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        b.name = col(b, 114, 176, nil, "GameFontHighlightSmall")
-        b.lvl = col(b, 294, 28, nil, "GameFontHighlightSmall")
-        b.src = col(b, 326, 170, nil, "GameFontHighlightSmall")
-        b.score = col(b, 498, 40, nil, "GameFontHighlightSmall")
+        b.name = col(b, 114, 176, nil, T.FONT.text)
+        b.lvl = col(b, 294, 28, nil, T.FONT.text)
+        b.src = col(b, 326, 170, nil, T.FONT.text)
+        b.score = col(b, 498, 40, nil, T.FONT.text)
         b.slotKey = slot.key
         b:SetScript("OnEnter", function(self) if self.id then showItemTooltip(self, self.id, self.value, self.note, self.pick) end end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -397,9 +397,9 @@ local function buildList(parent)
     altPanel:SetPoint("TOPLEFT", LIST_W + 10, 0)
     altPanel:SetPoint("BOTTOMRIGHT", 0, 0)
     altPanel.fill(1, 1, 1, 0.03)
-    altPanel.title = text(altPanel, "GameFontNormal", 230)
+    altPanel.title = text(altPanel, T.FONT.title, 230)
     altPanel.title:SetPoint("TOPLEFT", 8, -6)
-    altPanel.note = text(altPanel, "GameFontDisableSmall", 230)
+    altPanel.note = text(altPanel, T.FONT.hint, 230)
     altPanel.note:SetPoint("TOPLEFT", 8, -24)
     altPanel.note:SetWordWrap(true)
     for i = 1, 13 do
@@ -413,11 +413,11 @@ local function buildList(parent)
         b.icon:SetSize(22, 22)
         b.icon:SetPoint("LEFT", 4, 0)
         b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        b.name = text(b, "GameFontHighlightSmall", 160)
+        b.name = text(b, T.FONT.text, 160)
         b.name:SetPoint("TOPLEFT", 32, -2)
-        b.src = text(b, "GameFontDisableSmall", 200)
+        b.src = text(b, T.FONT.hint, 200)
         b.src:SetPoint("TOPLEFT", 32, -15)
-        b.score = text(b, "GameFontHighlightSmall", 40)
+        b.score = text(b, T.FONT.text, 40)
         b.score:SetPoint("TOPRIGHT", -4, -2)
         b.score:SetJustifyH("RIGHT")
         b:SetScript("OnEnter", function(self) if self.id then showItemTooltip(self, self.id, self.value) end end)
@@ -529,23 +529,21 @@ local function updateControls()
     end
     local specs = Gear.Specs(g.class)
     local cur = g.specs[g.class] or (specs[1] and specs[1].key)
-    local x = 0
+    local row = {}
     for i, b in ipairs(specButtons) do
         local sp = specs[i]
         if sp then
             b.key = sp.key
             b.label:SetText(sp.name)
-            local w = math.max(60, b.label:GetStringWidth() + 16)
-            b:SetWidth(w)
-            b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", F, "TOPLEFT", SPEC_X + x, -46)
-            x = x + w + 4
+            W.FitChip(b, 60)
+            row[#row + 1] = b
             b:SetOn(sp.key == cur)
             b:Show()
         else
             b:Hide()
         end
     end
+    W.Row(F, row, T.CHIP_GAP, SPEC_X, -46)
     local sp = Gear.SpecInfo(g.class, cur)
     kindButton.label:SetText(sp and sp.all and "Gewichtung: eigene" or ("Gewichtung: " .. ns.Get("gear.kind")))
     kindButton:SetOn(true)
@@ -705,7 +703,7 @@ local function build()
         ns.GearRefresh(true)
     end)
     F.prevCol:SetPoint("LEFT", viewButtons.list, "RIGHT", 14, 0)
-    colLabel = text(F, "GameFontNormal", 90)
+    colLabel = text(F, T.FONT.title, 90)
     colLabel:SetPoint("LEFT", F.prevCol, "RIGHT", 6, 0)
     colLabel:SetJustifyH("CENTER")
     F.nextCol = ns.W.ArrowButton(F, "right", 22, function()
@@ -727,7 +725,7 @@ local function build()
     overview = buildOverview(F)
     listView = buildList(F)
 
-    statusText = text(F, "GameFontDisableSmall", W_WIDTH - 28)
+    statusText = text(F, T.FONT.hint, W_WIDTH - 28)
     statusText:SetPoint("BOTTOMLEFT", 14, 10)
 
     -- the parts the layout tests read

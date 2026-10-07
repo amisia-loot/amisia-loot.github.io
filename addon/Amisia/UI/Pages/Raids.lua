@@ -1,6 +1,6 @@
 -- Raids: the recorded sessions, a selection for the export, and the details of one session.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 8, 22
 
 ns.RaidSelection = ns.RaidSelection or {}
@@ -72,7 +72,7 @@ end
 ns.RaidDetailText = detailText
 
 local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
     if label then fs:SetText(label) end
     return fs
@@ -113,12 +113,12 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             end)
             r.box:SetPoint("LEFT", 6, 0)
             r.sel = W.SelectBar(r)
-            r.date = col(r, 30, 80, nil, "GameFontHighlightSmall")
-            r.zone = col(r, 112, 200, nil, "GameFontHighlightSmall")
-            r.raiders = col(r, 316, 60, nil, "GameFontHighlightSmall")
+            r.date = col(r, 30, 80, nil, T.FONT.text)
+            r.zone = col(r, 112, 200, nil, T.FONT.text)
+            r.raiders = col(r, 316, 60, nil, T.FONT.text)
             r.mats = {}
-            for i = 1, 3 do r.mats[i] = col(r, MAT_X + (i - 1) * MAT_STEP, MAT_W, nil, "GameFontHighlightSmall") end
-            r.gems = col(r, MAT_X + 2 * MAT_STEP, 90, nil, "GameFontHighlightSmall")
+            for i = 1, 3 do r.mats[i] = col(r, MAT_X + (i - 1) * MAT_STEP, MAT_W, nil, T.FONT.text) end
+            r.gems = col(r, MAT_X + 2 * MAT_STEP, 90, nil, T.FONT.text)
             r:SetScript("OnClick", function(self)
                 if self.item then
                     detailId = self.item.id
@@ -150,7 +150,7 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         -- 12 px short of the right edge: room for the list's scroll bar
         f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -2)
         f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, -2)
-        f.pageText = W.Text(f, "GameFontDisableSmall", 200)
+        f.pageText = W.Text(f, T.FONT.hint, 200)
         f.pageText:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
         f.del = W.Button(f, "Löschen", 100, function()
             if not next(ns.RaidSelection) then

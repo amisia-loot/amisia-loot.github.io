@@ -1,6 +1,6 @@
 -- Settings: built from the registered sections; changed rows carry a dot and a reset button.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local ROW_H, LABEL_W = 26, 300
 
@@ -28,7 +28,7 @@ local function makeRow(it)
     r.dot:SetSize(6, 6)
     r.dot:SetPoint("LEFT", 0, 0)
     r.dot:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 1)
-    r.label = W.Text(r, "GameFontHighlightSmall", LABEL_W)
+    r.label = W.Text(r, T.FONT.text, LABEL_W)
     r.label:SetPoint("LEFT", 12, 0)
     r.label:SetText(it.label or it.key)
     local path = it.key
@@ -59,7 +59,7 @@ local function makeRow(it)
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
     if it.type ~= "button" and it.type ~= "desc" then
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
-        r.reset = W.ResetButton(r, 18, function() ns.Reset(path) end)
+        r.reset = W.ResetButton(r, T.RESET, function() ns.Reset(path) end)
         r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
         W.Tooltip(r.reset, "Zurücksetzen", "Auf den Standard zurück.")
     end
@@ -108,7 +108,7 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
     end,
     refresh = function()
         -- hide only what this pass leaves out: hiding a row would take the focus from its edit box
-        local y, placed = 0, {}
+        local column, placed = {}, {}
         for _, section in ipairs(ns.schema) do
             if ns.Visible(section) then
                 local shown = {}
@@ -122,26 +122,23 @@ ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\
                         h = W.SectionHeader(child, section.label, false)
                         headers[section.key] = h
                     end
-                    h:ClearAllPoints()
-                    h:SetPoint("TOPLEFT", 0, -y)
-                    h:SetPoint("TOPRIGHT", child, "TOPRIGHT", 0, -y)
                     h:Show()
                     placed[h] = true
-                    y = y + 25
+                    -- a section after the first starts a section gap lower
+                    column[#column + 1] = { h, gap = #column > 0 and T.SECTION_GAP or 0, right = 0 }
                     for _, it in ipairs(shown) do
                         local r = rows[it.key] or makeRow(it)
-                        r:ClearAllPoints()
-                        r:SetPoint("TOPLEFT", 0, -y)
                         fillRow(r)
                         r:Show()
                         placed[r] = true
-                        y = y + ROW_H
+                        column[#column + 1] = r
                     end
-                    y = y + 12
                 end
             end
         end
         for _, h in pairs(headers) do if not placed[h] then h:Hide() end end
         for _, r in pairs(rows) do if not placed[r] then r:Hide() end end
-        child:SetHeight(math.max(10, y))
+        -- the headers span the width, the rows keep theirs; the last section's gap ends the list
+        local bottom = W.Column(child, column, 0, 0, 0)
+        child:SetHeight(math.max(10, -bottom + (#column > 0 and T.SECTION_GAP or 0)))
     end }

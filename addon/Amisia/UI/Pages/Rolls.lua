@@ -1,6 +1,6 @@
 -- Rolls: the running round and the last rounds of this session; the floating roll window stays.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 
 -- One line for a round: time, item, and the winner with kind and plus-one, the tie, or the state;
 -- then the boss fight lockdown and the rolls entered by hand.
@@ -33,22 +33,22 @@ function ns.RollsPageFrame() return page end
 ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, group = "raid", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        f.current = W.Text(f, "GameFontHighlight", 590, true)
+        f.current = W.Text(f, T.FONT.body, 590, true)
         f.current:SetPoint("TOPLEFT", 0, -2)
         local open = W.Button(f, "Roll-Fenster", 120, function() ns.ShowRollFrame() end)
         open:SetPoint("TOPLEFT", 0, -26)
-        f.hint = W.Text(f, "GameFontDisableSmall", 440, true)
+        f.hint = W.Text(f, T.FONT.hint, 440, true)
         f.hint:SetPoint("LEFT", open, "RIGHT", 10, 0)
-        local head = W.Text(f, "GameFontNormal", 300)
+        local head = W.Text(f, T.FONT.title, 300)
         head:SetPoint("TOPLEFT", 0, -60)
         head:SetText("Letzte Runden")
         f.list = W.List(f, 12, 22, function(r)
-            r.text = W.Text(r, "GameFontHighlightSmall", 580)
+            r.text = W.Text(r, T.FONT.text, 580)
             r.text:SetPoint("LEFT", 6, 0)
         end, function(r, round) r.text:SetText(roundLine(round)) end)
         f.list:SetPoint("TOPLEFT", 0, -80)
         -- 12 px short of the right edge: room for the list's scroll bar
-        f.list:SetPoint("TOPRIGHT", -12, -80)
+        f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -80)
         page = f
         return f
     end,

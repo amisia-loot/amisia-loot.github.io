@@ -1,7 +1,7 @@
 -- About: the version, who runs which Amisia version in raid and guild, and every command, generated
 -- from the registry.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 
 local ORANGE, RED, GREY = "|cffff9933", "|cffff4d4d", "|cff8f8f8f"
 local ROWS, ROW_H = 8, 20
@@ -28,7 +28,7 @@ end
 
 local function buildRow(row)
     for _, col in ipairs(COLS) do
-        local fs = W.Text(row, "GameFontHighlightSmall", col[3])
+        local fs = W.Text(row, T.FONT.text, col[3])
         fs:SetPoint("LEFT", col[2], 0)
         row[col[1]] = fs
     end
@@ -83,13 +83,13 @@ function ns.AboutPageFrame() return page end
 ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        f.head = W.Text(f, "GameFontNormal", 590)
+        f.head = W.Text(f, T.FONT.title, 590)
         f.head:SetPoint("TOPLEFT", 0, 0)
-        f.sub = W.Text(f, "GameFontHighlightSmall", 590)
+        f.sub = W.Text(f, T.FONT.text, 590)
         f.sub:SetPoint("TOPLEFT", 0, -18)
-        f.newer = W.Text(f, "GameFontHighlightSmall", 590)
+        f.newer = W.Text(f, T.FONT.text, 590)
         f.newer:SetPoint("TOPLEFT", 0, -38)
-        f.title = W.Text(f, "GameFontNormal", 360)
+        f.title = W.Text(f, T.FONT.title, 360)
         f.title:SetPoint("TOPLEFT", 0, -62)
         f.askGuild = W.Button(f, "Gilde fragen", 110, function() ask("guild") end)
         f.askGuild:SetPoint("TOPRIGHT", 0, -58)
@@ -97,11 +97,11 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.askRaid:SetPoint("TOPRIGHT", -116, -58)
         tipButton(f.askGuild)
         tipButton(f.askRaid)
-        f.summary = W.Text(f, "GameFontHighlightSmall", 590)
+        f.summary = W.Text(f, T.FONT.text, 590)
         f.summary:SetPoint("TOPLEFT", 0, -86)
         f.cols = {}
         for _, col in ipairs(COLS) do
-            local fs = W.Text(f, "GameFontDisableSmall", col[3])
+            local fs = W.Text(f, T.FONT.hint, col[3])
             fs:SetPoint("TOPLEFT", col[2], -104)
             fs:SetText(col[4])
             f.cols[#f.cols + 1] = fs
@@ -109,10 +109,10 @@ ns.RegisterPanel{ key = "about", label = "Über und Befehle", icon = "Interface\
         f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
         -- 12 px short of the right edge: room for the thin scroll bar (the old bar needed 24)
         f.list:SetPoint("TOPLEFT", 0, -122)
-        f.list:SetPoint("TOPRIGHT", -12, -122)
-        f.empty = W.Text(f, "GameFontDisableSmall", 560)
+        f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -122)
+        f.empty = W.Text(f, T.FONT.hint, 560)
         f.empty:SetPoint("TOPLEFT", 6, -126)
-        f.cmdTitle = W.Text(f, "GameFontNormal", 300)
+        f.cmdTitle = W.Text(f, T.FONT.title, 300)
         f.cmdTitle:SetPoint("TOPLEFT", 0, -290)
         f.cmdTitle:SetText("Befehle")
         -- the in-game self-test: a report of the client to copy into a chat with the developers

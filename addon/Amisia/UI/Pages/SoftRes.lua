@@ -1,9 +1,9 @@
 -- Soft-reserves: the loaded list in three views (items, raiders, the check against the raid),
 -- name fixes with one click, importing and clearing for officers, and the overview card.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 14, 22
-local GREY, ORANGE, RED = "|cff8f86a3", "|cffe0a344", "|cffff5050"
+local GREY, ORANGE, RED = T.GREY, T.ORANGE, "|cffff5050"
 local MAX_CHIPS, CHIP_MAX_W = 3, 100
 -- the columns of a row; the list is 590 px wide (602 of the content less 12 for its scroll bar)
 local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 312
@@ -220,7 +220,7 @@ local function chooseView(v)
 end
 
 local function col(parent, x, w, template)
-    local fs = W.Text(parent, template or "GameFontHighlightSmall", w)
+    local fs = W.Text(parent, template or T.FONT.text, w)
     fs:SetPoint("LEFT", x, 0)
     return fs
 end
@@ -307,7 +307,7 @@ local function fillRow(r, e)
                 if i > MAX_CHIPS then break end
                 local chip = r.chips[i]
                 chip.label:SetText(name)
-                chip:SetWidth(math.min(CHIP_MAX_W, (chip.label:GetStringWidth() or 60) + 16))
+                W.FitChip(chip, nil, CHIP_MAX_W)
                 chip.from, chip.to = e.name, name
                 chip:SetOn(false)
                 chip:Show()
@@ -330,14 +330,14 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         local f = CreateFrame("Frame", nil, parent)
         page = f
         -- line 1: the list, import and clear on the right
-        f.state = W.Text(f, "GameFontHighlight", 390)
+        f.state = W.Text(f, T.FONT.body, 390)
         f.state:SetPoint("TOPLEFT", 0, -2)
         f.clear = W.Button(f, "Löschen", 90, function() ns.ClearSoftRes() end)
         f.clear:SetPoint("TOPRIGHT", 0, 0)
         f.import = W.Button(f, "Importieren", 110, function() ns.ToggleSoftResFrame() end)
         f.import:SetPoint("RIGHT", f.clear, "LEFT", -6, 0)
         -- line 2: the check
-        f.check = W.Text(f, "GameFontHighlightSmall", 590)
+        f.check = W.Text(f, T.FONT.text, 590)
         f.check:SetPoint("TOPLEFT", 0, -28)
         -- line 3: the views
         f.views = {}
@@ -362,13 +362,13 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         head:SetHeight(18)
         head:SetPoint("TOPLEFT", 0, -76)
         head:SetPoint("TOPRIGHT", 0, -76)
-        f.heads = { col(head, COL_A, COL_A_W, "GameFontNormalSmall"), col(head, COL_B, COL_B_W, "GameFontNormalSmall"),
-                    col(head, COL_C, COL_C_W, "GameFontNormalSmall") }
+        f.heads = { col(head, COL_A, COL_A_W, T.FONT.head), col(head, COL_B, COL_B_W, T.FONT.head),
+                    col(head, COL_C, COL_C_W, T.FONT.head) }
         f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
         f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
         -- 12 px short of the right edge: room for the list's scroll bar
         f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-        f.hint = W.Text(f, "GameFontDisableSmall", 590, true)
+        f.hint = W.Text(f, T.FONT.hint, 590, true)
         f.hint:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
         return f
     end,

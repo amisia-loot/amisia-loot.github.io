@@ -4,9 +4,9 @@
 -- all zones is built once per change of what it depends on; a refresh only picks the zone, and a
 -- zone's sorted list is kept until the target, the hidden places or the player's cell change.
 local ADDON, ns = ...
-local W, Gear, Map = ns.W, ns.Gear, ns.Map
+local W, Gear, Map, T = ns.W, ns.Gear, ns.Map, ns.Theme
 local GOLD = W.GOLD
-local GREY = "|cff8f86a3"
+local GREY = T.GREY
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
@@ -272,7 +272,7 @@ local function fillRow(r, e)
 end
 
 local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or "GameFontNormalSmall", w)
+    local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
     if label then fs:SetText(label) end
     return fs
@@ -385,9 +385,9 @@ local function create(parent)
         if zone then ns.MapShowOnWorldMap({ map = zone, x = 0.5, y = 0.5 }) end
     end)
     f.open:SetPoint("TOPRIGHT", 0, 0)
-    f.counts = W.Text(f, "GameFontDisableSmall", 598)
+    f.counts = W.Text(f, T.FONT.hint, 598)
     f.counts:SetPoint("TOPLEFT", 4, -28)
-    f.target = W.Text(f, "GameFontHighlightSmall", 484)
+    f.target = W.Text(f, T.FONT.text, 484)
     f.target:SetPoint("TOPLEFT", 4, -52)
     f.clear = W.Button(f, "Ziel löschen", 110, function()
         ns.MapClearTarget()
@@ -403,10 +403,10 @@ local function create(parent)
     f.head = { kind = col(h, 4, 66, "Art"), src = col(h, 74, 186, "Quelle"), where = col(h, 264, 100, "Ort"),
         items = col(h, 368, 164, "Items"), go = col(h, 540, 46, "Weg") }
     f.list = W.List(f, ROWS, ROW_H, function(r)
-        r.kind = col(r, 4, 66, nil, "GameFontHighlightSmall")
-        r.src = col(r, 74, 186, nil, "GameFontHighlightSmall")
-        r.where = col(r, 264, 100, nil, "GameFontHighlightSmall")
-        r.items = col(r, 368, 164, nil, "GameFontHighlightSmall")
+        r.kind = col(r, 4, 66, nil, T.FONT.text)
+        r.src = col(r, 74, 186, nil, T.FONT.text)
+        r.where = col(r, 264, 100, nil, T.FONT.text)
+        r.items = col(r, 368, 164, nil, T.FONT.text)
         r.go = W.Button(r, "Weg", 54, function(self) go(self:GetParent().item) end)
         r.go:SetPoint("LEFT", 536, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -425,15 +425,15 @@ local function create(parent)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
     f.list:SetPoint("TOPLEFT", 0, -92)
-    f.list:SetPoint("TOPRIGHT", -12, -92)
-    f.empty = W.Text(f, "GameFontDisableSmall", 590, true)
+    f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -92)
+    f.empty = W.Text(f, T.FONT.hint, 590, true)
     f.empty:SetPoint("TOPLEFT", 6, -100)
     f.empty:Hide()
 
-    f.hint = W.Text(f, "GameFontDisableSmall", 598)
+    f.hint = W.Text(f, T.FONT.hint, 598)
     f.hint:SetPoint("TOPLEFT", 4, -390)
     f.hint:SetText("Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen.")
-    f.data = W.Text(f, "GameFontDisableSmall", 598)
+    f.data = W.Text(f, T.FONT.hint, 598)
     f.data:SetPoint("TOPLEFT", 4, -408)
     f.showHidden = W.Button(f, "Ausgeblendete zeigen", 170, function()
         wipe(hiddenSet())

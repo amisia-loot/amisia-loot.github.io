@@ -584,6 +584,15 @@ local function region(parent, kind, layer, template)
         return #tostring(self.text or "") * 6
     end
     f.GetStringHeight = function(self) return 14 end
+    -- a region's size: what was set, else a font string's text extent (a texture without one is 0)
+    f.GetWidth = function(self)
+        if self._w then return self._w end
+        return self._kind == "FontString" and self:GetStringWidth() or 0
+    end
+    f.GetHeight = function(self)
+        if self._h then return self._h end
+        return self._kind == "FontString" and self:GetStringHeight() or 0
+    end
     -- a texture turns (radians, counter-clockwise); STUB.noRotation makes regions without it
     if not STUB.noRotation then f.SetRotation = function(self, r) self.rotation = r end end
     return f

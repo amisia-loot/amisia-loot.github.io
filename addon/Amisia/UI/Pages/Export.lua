@@ -1,6 +1,6 @@
 -- Export: the text block for the ledger's Import tab, of the new and changed raids or the selected ones.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 
 local area, page
 local exportText = ""
@@ -58,7 +58,7 @@ end
 ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 60, group = "guild", officer = true,
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
-        local intro = W.Text(f, "GameFontHighlight", 590, true)
+        local intro = W.Text(f, T.FONT.body, 590, true)
         intro:SetPoint("TOPLEFT", 0, -2)
         intro:SetText("Text für den Import-Tab der Amisia-Loot-Seite.")
         local newBtn = W.Button(f, "Neue und geänderte", 150, function()
@@ -74,7 +74,7 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
             ns.ShowExport(false)
         end)
         selBtn:SetPoint("LEFT", newBtn, "RIGHT", 6, 0)
-        f.state = W.Text(f, "GameFontDisableSmall", 300)
+        f.state = W.Text(f, T.FONT.hint, 300)
         f.state:SetPoint("LEFT", selBtn, "RIGHT", 10, 0)
         area = W.EditArea(f)
         area:SetPoint("TOPLEFT", 0, -56)
@@ -85,7 +85,7 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
                 self:HighlightText()
             end
         end)
-        local hint = W.Text(f, "GameFontDisableSmall", 590)
+        local hint = W.Text(f, T.FONT.hint, 590)
         hint:SetPoint("BOTTOMLEFT", 0, 4)
         hint:SetText("Strg+A, Strg+C, im Import-Tab einfügen.")
         -- the parts the layout tests read

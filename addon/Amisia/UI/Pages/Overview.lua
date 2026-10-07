@@ -1,8 +1,9 @@
 -- Overview: one card per registered feature, each with its state and at most one button.
 local ADDON, ns = ...
-local W = ns.W
+local W, T = ns.W, ns.Theme
 -- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12
-local CARD_W, CARD_H, GAP, SLOTS = 295, 112, 12, 6
+local GAP, SLOTS = 12, 6
+local CARD_W, CARD_H = (T.PAGE_W - GAP) / 2, 112
 
 local page
 -- For tests: the page frame once built.
@@ -15,11 +16,11 @@ ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Ico
         f.cards = {}
         for i = 1, SLOTS do
             local c = W.Card(f, CARD_W, CARD_H)
-            c:SetPoint("TOPLEFT", ((i - 1) % 2) * (CARD_W + GAP), -math.floor((i - 1) / 2) * (CARD_H + GAP))
             c:Hide()
             f.cards[i] = c
         end
-        f.empty = W.Text(f, "GameFontDisable", 500)
+        W.Grid(f, f.cards, 2, GAP, GAP, 0, 0)
+        f.empty = W.Text(f, T.FONT.dim, 500)
         f.empty:SetPoint("TOPLEFT", 4, -4)
         return f
     end,
