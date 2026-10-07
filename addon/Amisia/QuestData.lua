@@ -8,10 +8,11 @@ local _, ns = ...
 -- zone uiMapID (0 unknown); faction A, H or empty (both); classes and races as masks (bit id - 1, 0 all);
 -- skill the skill line it needs (0 none); giver an NPC id of N (0 none); points the quest's own start where
 -- the giver's differ; start O outside, I inside a dungeon, X by an item, empty unknown; pre the quests to
--- finish first (all of them); alt the quests that exclude this one; rewards gear item ids; flags B
--- breadcrumb, R repeatable, C Classic data the source has not moved to its Forever files yet.
+-- finish first (all of them, or as many as the flag N<n> says); alt the quests that exclude this one; rewards
+-- gear item ids; flags B breadcrumb, R repeatable, C Classic data the source has not moved to its Forever
+-- files yet, N<n> only n of pre needed (any one of them for N1).
 ns.QUEST_DATA = {
-    built = "2026-10-06", source = "bf0a1ad853", count = 3796,
+    built = "2026-10-07", source = "bf0a1ad853", count = 3796,
     Z = {
         [33] = "Blackrock Mountain",
         [162] = "Naxxramas",
@@ -3251,7 +3252,7 @@ ns.QUEST_DATA = {
         [3519] = "1438;A Friend in Need;2;A;0;0;0;8584;;O;4495;;;",
         [3520] = "1446;Screecher Spirits;40;;0;0;0;8579;;O;;;;C",
         [3521] = "1438;Iverron's Antidote (1/2);2;A;0;0;0;8583;;O;3519;;;",
-        [3522] = "1438;Iverron's Antidote (2/2);2;A;0;0;0;8583;;O;3522;;10655,10656;",
+        [3522] = "1438;Iverron's Antidote (2/2);2;A;0;0;0;8583;;O;;;10655,10656;",
         [3523] = "300;Scourge of the Downs (Before Cataclysm);32;;0;0;0;8516;;;;;;C",
         [3524] = "1439;Washed Ashore (1/2);11;A;0;0;0;10219;;O;;;;",
         [3525] = "300;Extinguishing the Idol;32;;0;0;0;8516;;;3523;;;C",
@@ -3386,7 +3387,7 @@ ns.QUEST_DATA = {
         [4109] = "1448;Salve via Mining (2/2);48;H;0;0;186;9529;;O;5888;;;RC",
         [4110] = "1448;Salve via Gathering (2/2);48;H;0;0;182;9529;;O;5889;;;RC",
         [4111] = "1448;Salve via Skinning (2/2);48;H;0;0;393;9529;;O;5890;;;RC",
-        [4112] = "1448;Salve via Disenchanting (2/2);48;H;0;0;333;9529;;O;4112;;;RC",
+        [4112] = "1448;Salve via Disenchanting (2/2);48;H;0;0;333;9529;;O;;;;RC",
         [4113] = "1448;Corrupted Songflower;48;;0;0;0;0;1448:5290:8780;O;;;;RC",
         [4114] = "1448;Corrupted Songflower;48;;0;0;0;0;1448:5580:1050;O;;;;RC",
         [4115] = "1448;Corrupted Windblossom;48;;0;0;0;0;1448:5000:8000;O;;;;RC",
@@ -4881,8 +4882,8 @@ ns.QUEST_DATA = {
         [92485] = "2521;A Student of Nature;2;;1024;0;0;251361;;O;92461;;;",
         [92489] = "1453;Power Overwhelming;24;A;0;0;0;5694;;O;;;;",
         [92514] = "2521;Welcome to Shen'dar Village (H);4;H;0;0;0;251523;;O;;;;",
-        [92515] = "2521;The Problem With Prideclaws;4;;0;0;0;251993;;O;92514,93461;;;",
-        [92516] = "2521;Hippogryph Harrassment;4;;0;0;0;251906;;O;92514,93461;;;",
+        [92515] = "2521;The Problem With Prideclaws;4;;0;0;0;251993;;O;92514,93461;;;N1",
+        [92516] = "2521;Hippogryph Harrassment;4;;0;0;0;251906;;O;92514,93461;;;N1",
         [92517] = "2521;The Criminal Element;4;;0;0;0;251523;;O;92514,93461;;263421,263422,263423;",
         [92528] = "2521;Among the Faithful;5;;0;0;0;257065;;O;92529;;257332,257333,273877;",
         [92529] = "2521;Falaath Village;5;;0;0;0;251904;;O;93036;;;",
@@ -4890,7 +4891,7 @@ ns.QUEST_DATA = {
         [92544] = "2521;Al'Aketh Thugs;2;;0;0;0;252095;;O;;;;",
         [92550] = "2521;Havoc in the Highlands;5;;0;0;0;251523;;O;92528;;263424,263425,263426;",
         [92551] = "2521;Stolen Supplies;5;;0;0;0;252172;;O;92528;;;",
-        [92553] = "2521;Restocking the Larders;4;;0;0;0;251905;;O;92514,93461;;;",
+        [92553] = "2521;Restocking the Larders;4;;0;0;0;251905;;O;92514,93461;;;N1",
         [92579] = "2521;To Valanaar;6;H;0;0;0;251523;;O;92550;;263414,263417,263420;",
         [92595] = "2521;The Windshapers;4;H;0;0;0;251902;;O;;;;",
         [92596] = "2521;The High Order;4;A;0;0;0;251903;;O;92472;;;",
@@ -4949,9 +4950,9 @@ ns.QUEST_DATA = {
         [93165] = "2521;Mercy Falls on Deaf Ears;8;;0;0;0;254151;;O;94484;;263306,263307,263308;",
         [93172] = "2521;Free the Hollows;8;;0;0;0;251684;;O;93159;;263309,263310,263311;",
         [93317] = "2521;Crab Season;4;;0;0;0;257006;;O;;;;",
-        [93318] = "2521;WANTED: Vulgara the Insatiable;4;;0;0;0;0;2521:4340:4590;O;92514,93461;;257943,257255;",
-        [93319] = "2521;Pilfered Windstones;4;;0;0;0;251906;;O;92514,93461;;;",
-        [93320] = "2521;Tower Defense;6;;0;0;0;252383;;O;92860,92871;;263338,263339,263340;",
+        [93318] = "2521;WANTED: Vulgara the Insatiable;4;;0;0;0;0;2521:4340:4590;O;92514,93461;;257943,257255;N1",
+        [93319] = "2521;Pilfered Windstones;4;;0;0;0;251906;;O;92514,93461;;;N1",
+        [93320] = "2521;Tower Defense;6;;0;0;0;252383;;O;92860,92871;;263338,263339,263340;N1",
         [93459] = "2521;More Al'Aketh Ears;8;;0;0;0;254151;;O;93165;;;R",
         [93461] = "2521;Welcome to Shen'dar Village (A);4;A;0;0;0;251523;;O;;;;",
         [93463] = "0;Triggered when turning in 'The High Order', likely a shared quest flag for either faction having completed their initial introduction quest.;0;;0;0;0;0;;;;;;",
@@ -4971,7 +4972,7 @@ ns.QUEST_DATA = {
         [93927] = "2521;A Last Request;5;;0;0;0;252155;;O;93926;;;",
         [93948] = "2521;Deliver the Signet;6;;0;0;0;251523;;O;92550;;;",
         [93949] = "2521;Bugged;6;;0;0;0;252383;;O;93948;;;",
-        [93951] = "2521;A Little Beauty;4;;0;0;0;251991;;O;92514,93461;;;",
+        [93951] = "2521;A Little Beauty;4;;0;0;0;251991;;O;92514,93461;;;N1",
         [93958] = "2521;The Inner Sanctum;7;;0;0;0;253576;;O;92947;;;",
         [93963] = "1453;Exploring the Alliance;0;A;0;0;0;1748;;O;;;286427;",
         [94003] = "2521;The Skybreaker Bulwark;10;;1;0;0;252377;;O;;;275290;",

@@ -120,6 +120,8 @@ def test_class_race_profession_and_flags(db):
     assert q[71001]['races'] == 1 | 4, 'Human and Dwarf'
     assert q[72100]['old'] and q[72100]['skill'] == 164 and q[72100]['minLevel'] == 20
     assert q[71001]['skill'] == 0 and not q[71001]['repeatable']
+    assert q[72007]['pre'] == [72005, 72006] and q[72007]['sqreq'] == 1, 'any one of the two'
+    assert q[72002]['sqreq'] == 0, 'without sourceQuestNumRequired every pre-quest counts'
 
 
 def test_names_from_comments():

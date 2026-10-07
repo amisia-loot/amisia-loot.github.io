@@ -43,7 +43,7 @@ NOT_GEAR = ('', 'INVTYPE_AMMO', 'INVTYPE_BAG', 'INVTYPE_QUIVER')
 #           'npcs': {NPC id: {'name', 'points' [(uiMapID, x, y) in hundredths of a percent]}},
 #           'quests': {quest id: QUEST_DEFAULTS with values}}
 QUEST_DEFAULTS = {'zone': 0, 'name': '', 'minLevel': 0, 'faction': '', 'classes': 0, 'races': 0, 'skill': 0,
-                  'giver': 0, 'points': [], 'start': '', 'pre': [], 'alt': [], 'rewards': [],
+                  'giver': 0, 'points': [], 'start': '', 'pre': [], 'sqreq': 0, 'alt': [], 'rewards': [],
                   'breadcrumb': False, 'repeatable': False, 'old': False}
 
 
@@ -100,6 +100,7 @@ def read_att(base, commit=None):
         quests[qid] = dict(QUEST_DEFAULTS, zone=zone or 0, name=q['name'] or f'Quest {qid}', minLevel=q['minLevel'] or 0,
                            faction=q['faction'] or '', classes=q['classes'] or 0, races=q.get('races') or 0,
                            skill=q.get('skill') or 0, giver=giver, points=points, start=start, pre=list(q['pre']),
+                           sqreq=q.get('sqreq') or 0,
                            alt=list(q['alt']), rewards=[i for i in q['rewards'] if gear(i)],
                            breadcrumb=bool(q.get('breadcrumb')), repeatable=bool(q.get('repeatable')), old=bool(q['old']))
     zones = {}
@@ -142,9 +143,13 @@ def _points(v):
     return ' '.join(f'{int(m)}:{int(x)}:{int(y)}' for m, x, y in list(v)[:MAX_POINTS])
 
 
-def record(q, known):
+def record(q, known, qid=None):
+    # a quest is no pre-quest of itself (the source lists a few that way)
+    pre = sorted({p for p in q.get('pre') or [] if p in known and p != qid})
+    need = int(q.get('sqreq') or 0)
     flags = ('B' if q.get('breadcrumb') else '') + ('R' if q.get('repeatable') else '') + ('C' if q.get('old') else '')
-    pre = sorted({p for p in q.get('pre') or [] if p in known})
+    if 0 < need < len(pre):
+        flags += f'N{need}'
     alt = sorted({p for p in q.get('alt') or [] if p in known})
     return ';'.join([str(int(q.get('zone') or 0)), _text(q.get('name')), str(int(q.get('minLevel') or 0)),
                      q.get('faction') or '', str(int(q.get('classes') or 0)), str(int(q.get('races') or 0)),
@@ -169,8 +174,9 @@ def render(data, built):
         '-- zone uiMapID (0 unknown); faction A, H or empty (both); classes and races as masks (bit id - 1, 0 all);',
         '-- skill the skill line it needs (0 none); giver an NPC id of N (0 none); points the quest\'s own start where',
         '-- the giver\'s differ; start O outside, I inside a dungeon, X by an item, empty unknown; pre the quests to',
-        '-- finish first (all of them); alt the quests that exclude this one; rewards gear item ids; flags B',
-        '-- breadcrumb, R repeatable, C Classic data the source has not moved to its Forever files yet.',
+        '-- finish first (all of them, or as many as the flag N<n> says); alt the quests that exclude this one; rewards',
+        '-- gear item ids; flags B breadcrumb, R repeatable, C Classic data the source has not moved to its Forever',
+        '-- files yet, N<n> only n of pre needed (any one of them for N1).',
         'ns.QUEST_DATA = {',
         f'    built = {lua_str(built)}, source = {lua_str(commit or data["source"][:20])}, count = {len(Q)},',
         '    Z = {',
@@ -183,7 +189,7 @@ def render(data, built):
         lines.append(f'        [{g}] = {lua_str(_text(n.get("name") or f"NPC {g}") + ";" + _points(n.get("points") or []))},')
     lines += ['    },', '    Q = {']
     for qid in sorted(Q):
-        lines.append(f'        [{int(qid)}] = {lua_str(record(Q[qid], known))},')
+        lines.append(f'        [{int(qid)}] = {lua_str(record(Q[qid], known, qid))},')
     lines += ['    },', '}', '']
     text = '\n'.join(lines)
     if re.search(r'[\x00-\x08\x0b-\x1f\x7f]', text):
@@ -223,7 +229,7 @@ def main(argv=None):
         log(f'wrote {os.path.relpath(args.out, ROOT)}')
     Q = data['quests']
     size = len(text.encode('utf-8'))
-    q_bytes = sum(len(record(q, set(Q)).encode('utf-8')) for q in Q.values())
+    q_bytes = sum(len(record(q, set(Q), qid).encode('utf-8')) for qid, q in Q.items())
     log(f'  {len(Q)} quests ({sum(1 for q in Q.values() if q.get("old"))} from the Classic folders), '
         f'{len({q.get("giver") for q in Q.values()} - {0})} givers, {len(data.get("zones") or {})} zones')
     log(f'  size {size / 1024:.0f} KB (quest strings {q_bytes / 1024:.0f} KB)')

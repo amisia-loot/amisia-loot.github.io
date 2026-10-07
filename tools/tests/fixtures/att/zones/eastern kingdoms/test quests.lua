@@ -46,6 +46,14 @@ root(ROOTS.Character, {
 				["altQuests"] = { 72005 },	-- Fight Them
 				["qg"] = 82003,	-- Choice Giver
 			}),
+			q(72007, {	-- After the Choice
+				["sourceQuests"] = {
+					72005,	-- Fight Them
+					72006,	-- Sneak Past Them
+				},
+				["sourceQuestNumRequired"] = 1,
+				["qg"] = 82003,	-- Choice Giver
+			}),
 		}),
 	}),
 });

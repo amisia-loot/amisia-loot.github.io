@@ -25,8 +25,9 @@ local MICRO, ORPHAN = 5, 6    -- Enum.UIMapType of sub zones that count as the z
 Q.NO_START, Q.ITEM_START = NO_START, ITEM_START
 
 -- the fields of a parsed record (an array, a third of the memory of named fields)
-local ID, ZONE, NAME, MIN, FAC, CLASSES, RACES, SKILL, GIVER, POINTS, START, PRE, ALT, REWARDS, FLAGS =
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+-- NEED: how many of PRE are needed (the flag N<n>), false for all of them
+local ID, ZONE, NAME, MIN, FAC, CLASSES, RACES, SKILL, GIVER, POINTS, START, PRE, ALT, REWARDS, FLAGS, NEED =
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 
 local RACE_NAMES = { "Mensch", "Orc", "Zwerg", "Nachtelf", "Untoter", "Tauren", "Gnom", "Troll" }
 local RACE_IDS = { Human = 1, Orc = 2, Dwarf = 3, NightElf = 4, Scourge = 5, Undead = 5, Tauren = 6, Gnome = 7, Troll = 8 }
@@ -103,7 +104,7 @@ local function parse(qid, s)
     local pre, alt, rewards = listField(f[11]), listField(f[12]), listField(f[13])
     if pre == nil or alt == nil or rewards == nil then return nil end
     return { qid, zone, f[2] ~= "" and f[2] or ("Quest " .. qid), min, f[4], classes, races, skill, giver,
-        f[9] ~= "" and f[9] or false, f[10], pre, alt, rewards, f[14] }
+        f[9] ~= "" and f[9] or false, f[10], pre, alt, rewards, f[14], tonumber(f[14]:match("N(%d+)")) or false }
 end
 
 local function enabled() return ns.Get("quests.enabled") ~= false end
@@ -127,7 +128,8 @@ function ns.QuestIndex()
     table.sort(list, function(a, b) return a[ID] < b[ID] end)
     for _, r in ipairs(list) do
         for p in eachId(r[PRE]) do
-            if byId[p] then
+            -- a quest listing itself is no follow-up of itself
+            if byId[p] and p ~= r[ID] then
                 local have = nxt[p]
                 if have == nil then
                     nxt[p] = r[ID]
@@ -156,7 +158,8 @@ function Q.Next(qid)
 end
 
 -- A record with named fields (for the tooltip and the tests): id, zone, name, min, fac, classes,
--- races, skill, giver, points, start, pre, alt, rewards (lists), breadcrumb, repeatable, classic.
+-- races, skill, giver, points, start, pre, alt, rewards (lists), need (how many of pre, nil for all),
+-- breadcrumb, repeatable, classic.
 function Q.Record(qid)
     local idx = ns.QuestIndex()
     local r = idx and idx.byId[qid]
@@ -169,7 +172,7 @@ function Q.Record(qid)
     local flags = r[FLAGS]
     return { id = r[ID], zone = r[ZONE], name = r[NAME], min = r[MIN], fac = r[FAC], classes = r[CLASSES], races = r[RACES],
         skill = r[SKILL], giver = r[GIVER], points = r[POINTS] or nil, start = r[START], pre = list(r[PRE]), alt = list(r[ALT]),
-        rewards = list(r[REWARDS]), breadcrumb = flags:find("B", 1, true) ~= nil,
+        rewards = list(r[REWARDS]), need = r[NEED] or nil, breadcrumb = flags:find("B", 1, true) ~= nil,
         repeatable = flags:find("R", 1, true) ~= nil, classic = flags:find("C", 1, true) ~= nil }
 end
 
@@ -384,6 +387,16 @@ local function classText(mask)
     return table.concat(out, "/")
 end
 
+-- Whether the own character can take a quest at all (faction, race, class).
+local function forMe(r, o)
+    if r[FAC] ~= "" and o.faction and r[FAC] ~= o.faction then return false end
+    if r[RACES] > 0 and o.race and not hasBit(r[RACES], o.race) then return false end
+    if r[CLASSES] > 0 and o.class and not Gear.HasClassBit(r[CLASSES], o.class) then return false end
+    return true
+end
+
+local function isBreadcrumb(r) return r[FLAGS]:find("B", 1, true) ~= nil end
+
 -- The limits of a quest for the options: the number of reasons, whether it is another faction's,
 -- race's or class's, the note on a profession the client cannot check. With add, every reason goes
 -- to add(kind, text); without, nothing is made (the list asks this for every quest).
@@ -408,15 +421,45 @@ local function limits(idx, r, o, add)
             break
         end
     end
-    local first, more = nil, 0
+    -- the pre-quests: those the own character can take (another faction's, race's or class's variant
+    -- of a step does not count), not the quest itself, a breadcrumb only where any one of the list
+    -- will do (a breadcrumb is a way to the quest, never a must); all of them, or NEED of them
+    local need = r[NEED]
+    local first, more, have, cand = nil, 0, 0, 0
     for p in eachId(r[PRE]) do
-        if idx.byId[p] and not satisfied(idx, p) then
-            if first then more = more + 1 else first = p end
+        local pr = idx.byId[p]
+        if pr and p ~= r[ID] and forMe(pr, o) and (need or not isBreadcrumb(pr)) then
+            cand = cand + 1
+            if satisfied(idx, p) then
+                have = have + 1
+            elseif first then
+                more = more + 1
+            else
+                first = p
+            end
         end
     end
-    if first then
+    if first and (not need or have < math.min(need, cand)) then
         n = n + 1
-        if add then add("pre", "Vorquest fehlt: " .. Q.Title(first) .. (more > 0 and (" (+%d)"):format(more) or "")) end
+        if add then
+            local rest = ""
+            if more > 0 then
+                rest = need == 1 and (" (oder %d weitere)"):format(more) or not need and (" (+%d)"):format(more)
+                    or (" (%d von %d nötig)"):format(need - have, more + 1)
+            end
+            add("pre", "Vorquest fehlt: " .. Q.Title(first) .. rest)
+        end
+    end
+    -- a breadcrumb leads to a quest: taken or done, the way there is gone
+    if isBreadcrumb(r) and not isDone(r[ID]) then
+        for _, nq in ipairs(nextOf(idx, r[ID])) do
+            local d = isDone(nq)
+            if d or isActive(nq) then
+                n = n + 1
+                if add then add("follow", (d and "Folgequest schon erledigt: " or "Folgequest schon angenommen: ") .. Q.Title(nq)) end
+                break
+            end
+        end
     end
     if r[MIN] > o.level then
         n = n + 1
@@ -455,7 +498,8 @@ end
 local stateCache, stateGen = {}, nil
 
 -- The state of a quest for the own character: { qid, title, status ("done", "active", "open",
--- "locked"), reasons = { { kind, text } } (kind faction, race, class, alt, pre, level, skill),
+-- "locked"), reasons = { { kind, text } } (kind faction, race, class, alt, pre, follow (a breadcrumb
+-- whose follow-up is taken or done), level, skill),
 -- foreign (another faction's, race's or class's: never for this character), note (a profession the
 -- client cannot check), rec (Q.Record) }. nil for a quest the data does not know. Kept per state;
 -- made only for the quests asked for (the shown rows, a tooltip).
@@ -487,14 +531,6 @@ end
 ---------------------------------------------------------------------------
 -- Chains
 ---------------------------------------------------------------------------
-
--- Whether the own character can take a quest at all (faction, race, class).
-local function forMe(r, o)
-    if r[FAC] ~= "" and o.faction and r[FAC] ~= o.faction then return false end
-    if r[RACES] > 0 and o.race and not hasBit(r[RACES], o.race) then return false end
-    if r[CLASSES] > 0 and o.class and not Gear.HasClassBit(r[CLASSES], o.class) then return false end
-    return true
-end
 
 local chainCache, chainGen = {}, nil
 

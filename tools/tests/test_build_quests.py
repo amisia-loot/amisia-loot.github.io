@@ -100,6 +100,19 @@ def test_pre_quests_without_a_record_fall_away():
     assert fields(qd, 5)[10] == '6' and fields(qd, 5)[11] == ''
 
 
+def test_any_one_of_the_pre_quests_and_no_self_pre():
+    f = fields(lua_load(bq.render(bq.read_att(FIXTURE)[0], 'x')), 72007)
+    assert f[10] == '72005,72006' and f[13] == 'N1', 'sourceQuestNumRequired 1: the flag N1'
+    data = bq.empty()
+    data['quests'][5] = dict(bq.QUEST_DEFAULTS, name='A', pre=[5, 6, 7], sqreq=1)
+    data['quests'][6] = dict(bq.QUEST_DEFAULTS, name='B', pre=[6])
+    data['quests'][7] = dict(bq.QUEST_DEFAULTS, name='C', pre=[6, 8], sqreq=2)
+    qd = lua_load(bq.render(data, 'x'))
+    assert fields(qd, 5)[10] == '6,7' and fields(qd, 5)[13] == 'N1', 'a quest is no pre-quest of itself'
+    assert fields(qd, 6)[10] == '' and fields(qd, 6)[13] == ''
+    assert fields(qd, 7)[10] == '6' and fields(qd, 7)[13] == '', 'as many needed as known: all of them, no flag'
+
+
 def test_empty_file_loads():
     qd = lua_load(bq.render(bq.empty(), 'x'))
     assert qd.count == 0 and qd.source == 'none yet'

@@ -406,7 +406,8 @@ local function walk(v, ctx, depth)
         emit("quests", { id = id, file = ctx.file, zone = ctx.zone, inst = ctx.inst, givers = givers, objs = objs,
                          startItem = startItem, pts = pts, inside = #pts > 0 and inside, races = c.races,
                          classes = classMask(t.classes), lvl = type(t.lvl) == "number" and t.lvl or nil,
-                         pre = pre, alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
+                         pre = pre, sqreq = type(t.sourceQuestNumRequired) == "number" and t.sourceQuestNumRequired or nil,
+                         alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
                          breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true })
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
@@ -740,7 +741,8 @@ def load(base=ATT_CACHE, items=True, wago=None):
     {'commit', 'files', 'errors': {file: text}, 'maps': {MAP constant: uiMapID},
      'instances': {ATT instance id: {'name', 'area', 'maps', 'points', 'file', 'old', 'mapID'}},
      'quests': {id: {'name', 'minLevel', 'faction', 'classes', 'givers', 'giver', 'points', 'objects',
-                     'startItem', 'inside', 'zone', 'inst', 'pre', 'alt', 'rewards', 'file', 'old',
+                     'startItem', 'inside', 'zone', 'inst', 'pre', 'sqreq' (how many of pre are needed:
+                     0 all, else ATT's sourceQuestNumRequired), 'alt', 'rewards', 'file', 'old',
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
                      'breadcrumb', 'repeatable'}},
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
@@ -809,7 +811,7 @@ def load(base=ATT_CACHE, items=True, wago=None):
                'points': pts(r.get('pts'))[:4], 'objects': [int(o) for o in r.get('objs') or []],
                'startItem': bool(r.get('startItem')), 'inside': bool(r.get('inside')),
                'zone': _int(r.get('zone')), 'inst': _int(r.get('inst')),
-               'pre': [int(p) for p in r.get('pre') or []], 'alt': [int(p) for p in r.get('alt') or []],
+               'pre': [int(p) for p in r.get('pre') or []], 'sqreq': _int(r.get('sqreq')) or 0, 'alt': [int(p) for p in r.get('alt') or []],
                'rewards': [], 'file': r['file'], 'old': old(r['file']),
                'races': int(r.get('raceMask') or 0), 'skill': _int(r.get('skill')) or 0,
                'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable'))}
