@@ -16,6 +16,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ADDON_TESTS = os.path.join(ROOT, 'addon', 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
 CORE = os.path.join(ROOT, 'addon', 'Amisia', 'Core', 'Core.lua')
+PRIO = os.path.join(ROOT, 'addon', 'Amisia', 'Raid', 'LootPrio.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
@@ -82,9 +83,30 @@ def parsed():
 def test_every_line_the_addon_writes_is_read(parsed):
     text, out = parsed
     import re
-    written = set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(CORE, encoding='utf-8').read(), re.M))
+    written = set()
+    for path in (CORE, PRIO):
+        written |= set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(path, encoding='utf-8').read(), re.M))
+    assert 'LC' in written, 'the loot prio lines are found in LootPrio.lua'
     read = set(out['letters'])
     assert not (written - read), 'the addon writes lines the site throws away: ' + ', '.join(sorted(written - read))
+
+
+def test_the_loot_prio_lines_reach_the_site():
+    """An export with loot prio edited in game: the LC lines stand outside the raid blocks."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    text = lua.eval('''function()
+        STUB.now = 1788100000
+        NS.EditLootPrio(32235, "Anna (Tank), Krieger Furor, offen", "erst Tanks")
+        NS.ClearLootPrioItem(32837)
+        return NS.ExportText({})
+    end''')()
+    out = read_back(text)
+    assert out['sessions'] == [] and out['blocks'] == 1
+    rows = out['prio']['rows']
+    assert out['prio']['bad'] == 0 and [r['item'] for r in rows] == [32235, 32837], rows
+    assert rows[0]['prio'] == [{'k': 'p', 'name': 'Anna', 'label': 'Tank'}, {'k': 'c', 'cls': 'WARRIOR', 'label': 'Furor'}, {'k': 'o'}]
+    assert rows[0]['note'] == 'erst Tanks' and rows[0]['at'] == 1788100000 and rows[1]['prio'] == [] and rows[1]['note'] == ''
 
 
 def test_the_session_comes_across(parsed):

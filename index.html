@@ -452,6 +452,7 @@ tr.got td{opacity:.5}
     <button class="tab" role="tab" data-view="night">Nights</button>
     <button class="tab" role="tab" data-view="att">Attendance</button>
     <button class="tab" role="tab" data-view="wish">Wishlist</button>
+    <button class="tab" role="tab" data-view="prio">Loot Council</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
     <button class="tab" role="tab" data-view="drops">Loot Tables</button>
     <button class="tab" role="tab" data-view="craft">Crafting</button>
@@ -656,6 +657,44 @@ tr.got td{opacity:.5}
     </div>
   </section>
 
+  <!-- ============ LOOT COUNCIL ============ -->
+  <section class="view" id="view-prio" hidden>
+    <div class="matgrid" id="prioGrid">
+      <div class="stack">
+        <div class="toolbar" style="margin:4px 0 0">
+          <div class="field"><label for="lcSearch">Search</label><input class="inp" id="lcSearch" placeholder="Item, raider or note…"></div>
+          <div class="spacer"></div>
+          <div class="count" id="lcCount"></div>
+          <button class="btn" id="lcAddon" type="button">Copy for the addon</button>
+        </div>
+        <p class="crhint">The officers' order per item: players with their role, classes with a spec, or open. The Amisia addon shows it in the roll window, the award dialog, the item tooltip and, if wanted, the loot announcement; the loot lead shares it with every Amisia in the raid.</p>
+        <div class="panel" id="lcAddonPanel" hidden>
+          <div class="panel-h">Wishlist, alts and priority lists for the Amisia addon</div>
+          <div class="panel-b stack">
+            <textarea class="inp" id="lcAddonText" readonly spellcheck="false" style="min-height:90px"></textarea>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><button class="btn sm primary" id="lcAddonCopy" type="button">Copy</button><span class="muted" style="font-size:13px">The same text as the Wishlist's <b>Copy for the addon</b>. In game an officer types <code>/amisia wuensche</code>, pastes it into the box and presses <b>Importieren</b>. Changes made in game come back with the addon's export on the Import tab.</span></div>
+          </div>
+        </div>
+        <div class="tblwrap"><table id="lcTable"><thead><tr><th>Item</th><th>Priority</th><th>Note</th><th>Changed</th><th></th></tr></thead><tbody id="lcBody"></tbody></table></div>
+      </div>
+      <div class="stack" id="lcSide">
+        <div class="panel">
+          <div class="panel-h">Set a priority</div>
+          <div class="panel-b stack matform">
+            <form id="lcForm" class="stack" autocomplete="off">
+              <div class="field"><label for="lcBoss">Boss</label><select class="inp" id="lcBoss"></select></div>
+              <div class="field"><label for="lcItem">Item</label><select class="inp" id="lcItem"></select></div>
+              <div class="field"><label for="lcOrder">Order</label><input class="inp" id="lcOrder" placeholder="Anna (Tank), Warrior Fury, open" maxlength="300"></div>
+              <div class="field"><label for="lcNote">Note</label><input class="inp" id="lcNote" placeholder="optional" maxlength="80"></div>
+              <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Save</button><button class="btn ghost danger" id="lcClear" type="button">Clear</button></div>
+            </form>
+            <p class="muted" style="margin:0;font-size:13px">Separate the places with commas. A player with a role in brackets, a class with its spec after it (German class names work too), <b>open</b> for everyone. At most 10 places. Saving an empty order and note clears the item.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ MATRIX ============ -->
   <section class="view" id="view-matrix" hidden>
     <div class="toolbar">
@@ -818,6 +857,10 @@ tr.got td{opacity:.5}
           <div class="panel-h">Boss kills from the Amisia addon<span class="grow"></span><button class="btn sm primary" id="amDropsAdd" type="button">Add the kills</button></div>
           <div class="panel-b"><p class="muted" id="amDropsText" style="margin:0;font-size:13px"></p></div>
         </div>
+        <div class="panel" id="amPrio" hidden>
+          <div class="panel-h">Loot prio changed in game<span class="grow"></span><button class="btn sm primary" id="amPrioAdd" type="button">Take them over</button></div>
+          <div class="panel-b"><p class="muted" id="amPrioText" style="margin:0;font-size:13px"></p></div>
+        </div>
         <div class="panel" id="impBar" hidden>
           <div class="panel-h"><span id="impSummary"></span><span class="grow"></span><button class="btn sm primary" id="glImport">Import</button></div>
         </div>
@@ -851,6 +894,7 @@ tr.got td{opacity:.5}
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
             <li>Open the guild bank before exporting and leave it open for a few seconds (only when materials are tracked). The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
             <li>Boss kills in dungeons and raids: <code>/amisia drops export</code> (expert mode) shows the text <b>Drops für die Website</b>. Paste it here, press <b>Preview import</b> and <b>Add the kills</b>. They build the drop rates on the Loot Tables tab and carry no player names.</li>
+            <li>Loot prio an officer changed in game (<code>/amisia prio</code> or the <b>Prio</b> button of the roll window) travels in the same export. <b>Preview import</b> lists it under <b>Loot prio changed in game</b>; <b>Take them over</b> puts it on the Loot Council tab, where the newest change of an item wins.</li>
           </ol>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Both exports can go into the box at the same time. Then press <b>Preview import</b>, check the rows, pick a class for new raiders, and <b>Import</b>.</p>
           <p class="muted" style="font-size:13px;margin:14px 0 0">Every Gargul format works (TMB, JSON, custom, DFT, RRobin) and every RCLootCouncil export (CSV, TSV, JSON). Any other addon works too as long as each line carries the item link or id, the winner's name and a date. JSON exports also bring each winner's class. Entries that were already imported are recognised by their Gargul checksum, or by the same date, item and raider, and are skipped. Disenchanted items and items that are not in the Forever loot tables are ignored.</p>
@@ -1097,7 +1141,7 @@ const nights = () => state.nights || (state.nights = []);
 // backup stay untouched and unseen. shelfGame names the game the top belongs to: a ledger from
 // before the shelf has none, and all of it was TBC. retired keeps the raiders that left the roster
 // but still have loot or raid nights in that game.
-const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones'];
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones', 'lootPrio'];
 // Puts Forever on top. A ledger with another game on top moves it to the shelf, in memory only; it
 // is saved with the next save of an editor. Nothing is deleted on the way.
 function fitShelf(s){
@@ -1690,10 +1734,11 @@ function renderHeader(){
   document.querySelector('.tab[data-view="import"]').hidden = readOnly;
   document.querySelector('.tab[data-view="settings"]').hidden = readOnly;
   const wishTab = document.querySelector('.tab[data-view="wish"]'); if (wishTab) wishTab.hidden = archiveOn;
+  const prioTab = document.querySelector('.tab[data-view="prio"]'); if (prioTab) prioTab.hidden = archiveOn;
   const dropTab = document.querySelector('.tab[data-view="drops"]'); if (dropTab) dropTab.hidden = archiveOn;
   document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.view === 'settings') return;   // no count on this tab
-    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='prio' ? Object.keys(lootPrio()).filter(id => prioOf(id)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -2542,9 +2587,9 @@ function wishAddonText(wishes){
   lines.push('#END');
   return lines.join('\n');
 }
-// "Copy for the addon": the wishes, and the alt links behind them when there are any (an addon
-// from before the alts reads up to the first #END and passes over them).
-const wishAndAltText = () => { const a = altAddonText(); return wishAddonText(WISHES) + (a ? '\n' + a : ''); };
+// "Copy for the addon": the wishes, and the alt links and the loot council's priority lists behind
+// them when there are any (an addon from before them reads up to the first #END and passes over them).
+const wishAndAltText = () => { const a = altAddonText(), p = prioAddonText(); return wishAddonText(WISHES) + (a ? '\n' + a : '') + (p ? '\n' + p : ''); };
 let wishPaste = [];   // the checked plan of "Paste from the addon"
 const WP_STATUS = {new: 'new', dup: 'already on the list', got: 'already received', noitem: 'not in the loot tables', noraider: 'unknown raider', limit: 'over the limit of 30'};
 function renderWishPaste(){
@@ -2584,6 +2629,184 @@ $('#wiAddon').addEventListener('click', () => {
 });
 $('#wiAddonCopy').addEventListener('click', async () => {
   const ta = $('#wiAddonText'); ta.value = wishAndAltText(); ta.select();
+  try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia wuensche, paste it into the box and press Importieren.'); }
+  catch (e) { say('Press Ctrl+C to copy the selected text.'); }
+});
+
+/* ---------------- loot council: notes and priority lists per item ---------------- */
+// state.lootPrio = {itemId: {prio: [{k:'p', name, label} | {k:'c', cls:'WARRIOR', label} | {k:'o'}], note, at, by}},
+// kept per game. at is the edit time in epoch seconds: the newest entry of an item wins, here and in
+// the Amisia addon. An entry with neither prio nor note is a cleared item; it stays so that the
+// clearing reaches the addon (it drops an older edit made in game).
+const lootPrio = () => state.lootPrio && typeof state.lootPrio === 'object' && !Array.isArray(state.lootPrio) ? state.lootPrio : (state.lootPrio = {});
+const PRIO_CLASS = {WARRIOR: 'Warrior', PALADIN: 'Paladin', HUNTER: 'Hunter', ROGUE: 'Rogue', PRIEST: 'Priest', SHAMAN: 'Shaman', MAGE: 'Mage', WARLOCK: 'Warlock', DRUID: 'Druid', DEATHKNIGHT: 'Death Knight', MONK: 'Monk'};
+const PRIO_MAX = 10;
+// A name for the prio: no digits or separators, at most 48 characters; '' when not valid.
+function prioName(s){
+  const n = String(s == null ? '' : s).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  return n && n.length <= 48 && !/[\d\u0000-\u001f,:;()|]/.test(n) ? n : '';
+}
+// A role or spec ("Tank", "Fury"): at most 16 bytes, no separators; '' when not valid.
+function prioLabel(s){
+  const n = String(s == null ? '' : s).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  return n && new TextEncoder().encode(n).length <= 16 && !/[\u0000-\u001f,:;()|]/.test(n) ? n : '';
+}
+// The token the addon reads: "p:Anna:Tank,c:WARRIOR:Fury,o" ("_" for a space, "-" for none); null when not valid.
+function prioParseToken(tok){
+  tok = String(tok == null ? '' : tok);
+  if (tok === '-') return [];
+  if (!tok) return null;
+  const out = [];
+  for (const part of tok.split(',')) {
+    if (out.length >= PRIO_MAX) return null;
+    if (part === 'o') { out.push({k: 'o'}); continue; }
+    const m = /^([pc]):([^:]+):?(.*)$/.exec(part); if (!m) return null;
+    const e = m[1] === 'p' ? {k: 'p', name: prioName(m[2])} : {k: 'c', cls: PRIO_CLASS[m[2]] ? m[2] : ''};
+    if (!(e.name || e.cls)) return null;
+    if (m[3]) { const l = prioLabel(m[3]); if (!l) return null; e.label = l; }
+    out.push(e);
+  }
+  return out;
+}
+function prioToken(list){
+  if (!Array.isArray(list) || !list.length) return '-';
+  const u = s => String(s).replace(/ /g, '_');
+  return list.map(e => e.k === 'o' ? 'o' : e.k + ':' + u(e.k === 'p' ? e.name : e.cls) + (e.label ? ':' + u(e.label) : '')).join(',');
+}
+// "1. Anna (Tank), 2. Warrior Fury, 3. open"; numbered false leaves the numbers out.
+function prioText(list, numbered){
+  return (list || []).map((e, i) => (numbered === false ? '' : (i + 1) + '. ') + (e.k === 'o' ? 'open' : e.k === 'c' ? PRIO_CLASS[e.cls] + (e.label ? ' ' + e.label : '') : e.name + (e.label ? ' (' + e.label + ')' : ''))).join(', ');
+}
+// The order as an officer types it: "Anna (Tank), Warrior Fury, open" (German class names too).
+// Returns {list} or {error}.
+function prioParseFree(text){
+  const list = [];
+  const clsOf = w => { const k = String(w).toLowerCase(), c = CLASS_ALIAS[k] || CLASS_ALIAS[k.replace(/\s+/g, '')]; return c ? Object.keys(PRIO_CLASS).find(x => PRIO_CLASS[x] === c) : null; };
+  for (let part of String(text == null ? '' : text).split(/[,;\n]/)) {
+    part = part.trim(); if (!part) continue;
+    if (list.length >= PRIO_MAX) return {error: 'At most ' + PRIO_MAX + ' entries.'};
+    const pm = /^(.*?)\s*\(([^()]*)\)$/.exec(part);
+    const body = pm ? pm[1] : part; let label = pm ? pm[2] : '';
+    if (!label && /^(open|offen|free|frei)$/i.test(body)) { list.push({k: 'o'}); continue; }
+    const words = body.split(/\s+/);
+    let e = null;
+    for (const n of [2, 1]) {
+      if (words.length < n) continue;
+      const c = clsOf(words.slice(0, n).join(' '));
+      if (c) { e = {k: 'c', cls: c}; if (!label) label = words.slice(n).join(' '); break; }
+    }
+    if (!e) { const name = prioName(body); if (!name) return {error: 'Not recognised: ' + part}; e = {k: 'p', name}; }
+    if (label) { const l = prioLabel(label); if (!l) return {error: 'Not recognised: ' + part}; e.label = l; }
+    list.push(e);
+  }
+  return {list};
+}
+const prioNote = s => String(s == null ? '' : s).replace(/[\u0000-\u001f|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+// The entry of an item worth showing (null for none or a cleared one).
+function prioOf(id){
+  const e = lootPrio()[id];
+  return e && typeof e === 'object' && ((Array.isArray(e.prio) && e.prio.length) || e.note) ? e : null;
+}
+// Sets the prio of an item (prio [] and note '' clear it). by: the officer's name, at: epoch seconds (now).
+function setPrio(id, prio, note, by, at){
+  lootPrio()[id] = {prio: prio || [], note: prioNote(note), at: at || Math.floor(Date.now() / 1000), by: by || ''};
+}
+// The text for the addon: "#AMISIA-LC 1 <game> <date>", one "C <item> <edited epoch> <token> [<note>]"
+// per item (cleared ones included), "#END". Empty when no item has an entry.
+function prioAddonText(){
+  const rows = Object.entries(lootPrio()).filter(([id, e]) => /^\d+$/.test(id) && e && typeof e === 'object').sort((a, b) => a[0] - b[0]);
+  if (!rows.length) return '';
+  return ['#AMISIA-LC 1 ' + PLAY + ' ' + today(), ...rows.map(([id, e]) => 'C ' + id + ' ' + (Math.floor(Number(e.at)) || 0) + ' ' + prioToken(e.prio) + (prioNote(e.note) ? ' ' + prioNote(e.note) : '')), '#END'].join('\n');
+}
+// The loot prio edited in game, from the addon's export:
+// "LC <itemID> <edited epoch> <officer> <token|-> [<note>]". Returns {rows, bad}; per item the newest line.
+function amParsePrio(blocks){
+  const by = {}; let bad = 0;
+  for (const b of blocks) for (const raw of b.split(/\r?\n/)) {
+    const f = raw.trim().split(/\s+/);
+    if (f[0] !== 'LC') continue;
+    const prio = f.length >= 5 ? prioParseToken(f[4]) : null;
+    if (!/^\d+$/.test(f[1] || '') || !/^\d+$/.test(f[2] || '') || !prio) { bad++; continue; }
+    const r = {item: Number(f[1]), at: Number(f[2]), by: prioName(f[3]) || '', prio, note: prioNote(f.slice(5).join(' '))};
+    if (!by[r.item] || r.at >= by[r.item].at) by[r.item] = r;
+  }
+  return {rows: Object.values(by).sort((a, b) => a.item - b.item), bad};
+}
+// What taking them over would do: status new (no entry yet), change (newer than the ledger's),
+// same (the ledger has it) or older (the ledger has a newer one).
+function prioPlan(rows){
+  return rows.map(r => {
+    const e = lootPrio()[r.item], at = e ? Number(e.at) || 0 : 0;
+    const status = !e ? 'new' : at > r.at ? 'older' : at === r.at && prioToken(e.prio) === prioToken(r.prio) && prioNote(e.note) === r.note ? 'same' : 'change';
+    return Object.assign({}, r, {status});
+  });
+}
+// Takes the new and changed rows of a plan over; returns how many.
+function prioApply(plan){
+  let n = 0;
+  for (const r of plan) if (r.status === 'new' || r.status === 'change') { setPrio(r.item, r.prio, r.note, r.by, r.at); n++; }
+  return n;
+}
+function renderPrio(){
+  const q = $('#lcSearch').value.trim().toLowerCase();
+  const all = Object.keys(lootPrio()).map(Number).filter(id => prioOf(id));
+  const rows = all.filter(id => { if (!q) return true; const e = prioOf(id); return (anyItemName(id) + ' ' + prioText(e.prio) + ' ' + (e.note || '')).toLowerCase().includes(q); })
+    .sort((a, b) => anyItemName(a).localeCompare(anyItemName(b)));
+  $('#lcCount').textContent = rows.length + ' of ' + all.length + ' items';
+  $('#lcSide').hidden = readOnly; $('#prioGrid').style.gridTemplateColumns = readOnly ? 'minmax(0,1fr)' : '';
+  if (!$('#lcAddonPanel').hidden) $('#lcAddonText').value = wishAndAltText();
+  if (!readOnly) renderPrioForm();
+  if (!rows.length) { $('#lcBody').innerHTML = '<tr><td colspan="5"><div class="empty"><b>' + (all.length ? 'Nothing matches' : 'No priority lists yet') + '</b>' + (all.length ? 'Try a different filter.' : (readOnly ? '' : 'Pick an item on the right and type the order.')) + '</div></td></tr>'; return; }
+  $('#lcBody').innerHTML = rows.map(id => {
+    const e = prioOf(id), it = ITEM[id];
+    const when = e.at ? new Date(e.at * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : '';
+    return '<tr><td><span class="item">' + icoHTML(it) + '<span><span class="nm">' + esc(anyItemName(id)) + '</span> <span class="sl">' + esc(itemKind(it)) + '</span></span></span></td>'
+      + '<td>' + (e.prio.length ? e.prio.map((x, i) => { const r = x.k === 'p' && state.raiders.find(y => y.name.toLowerCase() === x.name.toLowerCase()); return '<span class="prioent">' + (i + 1) + '. ' + (r ? rName(r) + (x.label ? ' <span class="faint">(' + esc(x.label) + ')</span>' : '') : esc(prioText([x], false))) + '</span>'; }).join(' ') : '<span class="faint">no order</span>') + '</td>'
+      + '<td class="note">' + esc(e.note || '') + '</td>'
+      + '<td class="faint" style="white-space:nowrap">' + esc(when) + (e.by ? ' · ' + esc(e.by) : '') + '</td>'
+      + '<td class="acts">' + (readOnly ? '' : '<button class="btn sm ghost" data-lcedit="' + id + '">Edit</button>') + '</td></tr>';
+  }).join('');
+}
+function renderPrioForm(){
+  const kb = $('#lcBoss').value, ki = $('#lcItem').value;
+  $('#lcBoss').innerHTML = '<option value="">Choose a boss…</option>' + bossOptions(kb, false);
+  const items = kb ? DATA.items.filter(i => i.sources.includes(kb)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+  $('#lcItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + (prioOf(i.id) ? ' · has a prio' : '') + '</option>').join('')
+    : (ki ? '<option value="' + esc(ki) + '" selected>' + esc(anyItemName(Number(ki))) + '</option>' : '<option value="">Pick the boss first</option>');
+}
+// Loads an item's entry into the form.
+function prioEdit(id){
+  const it = ITEM[id], e = prioOf(id);
+  $('#lcBoss').value = it && it.sources.length ? it.sources[0] : '';
+  renderPrioForm(); $('#lcItem').value = String(id);
+  if ($('#lcItem').value !== String(id)) { $('#lcItem').insertAdjacentHTML('beforeend', '<option value="' + id + '">' + esc(anyItemName(id)) + '</option>'); $('#lcItem').value = String(id); }
+  $('#lcOrder').value = e ? prioText(e.prio, false) : ''; $('#lcNote').value = e ? e.note || '' : '';
+  $('#lcOrder').focus();
+}
+$('#lcBoss').addEventListener('change', () => { $('#lcItem').value = ''; renderPrioForm(); });
+$('#lcItem').addEventListener('change', () => { const id = Number($('#lcItem').value), e = id ? prioOf(id) : null; $('#lcOrder').value = e ? prioText(e.prio, false) : ''; $('#lcNote').value = e ? e.note || '' : ''; });
+$('#lcSearch').addEventListener('input', renderPrio);
+$('#lcBody').addEventListener('click', ev => { const b = ev.target.closest('[data-lcedit]'); if (b) prioEdit(Number(b.dataset.lcedit)); });
+$('#lcForm').addEventListener('submit', ev => {
+  ev.preventDefault();
+  if (readOnly) return;
+  const id = Number($('#lcItem').value); if (!id) return say('Choose the item.');
+  const res = prioParseFree($('#lcOrder').value); if (res.error) return say(res.error);
+  setPrio(id, res.list, $('#lcNote').value, userName());
+  say(res.list.length || prioNote($('#lcNote').value) ? 'Saved the prio of ' + anyItemName(id) + '.' : 'Cleared the prio of ' + anyItemName(id) + '.');
+  markDirty();
+});
+$('#lcClear').addEventListener('click', async () => {
+  const id = Number($('#lcItem').value); if (!id || readOnly) return;
+  if (!prioOf(id) || !await ask('Clear the prio and note of ' + anyItemName(id) + '?', 'Clear')) return;
+  setPrio(id, [], '', userName()); $('#lcOrder').value = ''; $('#lcNote').value = ''; markDirty();
+});
+$('#lcAddon').addEventListener('click', () => {
+  const panel = $('#lcAddonPanel'); panel.hidden = !panel.hidden;
+  if (!panel.hidden) { $('#lcAddonText').value = wishAndAltText(); $('#lcAddonText').select(); }
+});
+$('#lcAddonCopy').addEventListener('click', async () => {
+  const ta = $('#lcAddonText'); ta.value = wishAndAltText(); ta.select();
   try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia wuensche, paste it into the box and press Importieren.'); }
   catch (e) { say('Press Ctrl+C to copy the selected text.'); }
 });
@@ -2961,6 +3184,18 @@ document.addEventListener('click', async ev => {
 const GL_CLASS = {1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',10:'Monk',11:'Druid'};
 let glRows = [], amRows = [], amBank = null;
 let amDrops = null;   // what "Add the kills" would do with the drop lines of the pasted text (dropPlan)
+let amPrio = null;    // what "Take them over" would do with the LC lines of the pasted text (prioPlan)
+function amPrioRender(){
+  const el = $('#amPrio');
+  if (!amPrio) { el.hidden = true; return; }
+  el.hidden = false;
+  const n = s => amPrio.plan.filter(r => r.status === s).length, take = n('new') + n('change');
+  $('#amPrioText').innerHTML = 'This text holds ' + amPrio.plan.length + ' item' + (amPrio.plan.length === 1 ? '' : 's') + ' whose loot prio an officer changed in game: '
+    + take + ' to take over' + (n('same') ? ', ' + n('same') + ' already in the ledger' : '') + (n('older') ? ', ' + n('older') + ' older than the ledger\'s' : '') + '.'
+    + (amPrio.bad ? ' ' + amPrio.bad + ' line' + (amPrio.bad === 1 ? '' : 's') + ' could not be read.' : '')
+    + amPrio.plan.filter(r => r.status === 'new' || r.status === 'change').map(r => '<br>' + esc(anyItemName(r.item)) + ': ' + esc(prioText(r.prio) || 'cleared') + (r.note ? ' · ' + esc(r.note) : '') + (r.by ? ' <span class="faint">(' + esc(r.by) + ')</span>' : '')).join('');
+  $('#amPrioAdd').disabled = !take;
+}
 function amDropsRender(){
   const el = $('#amDrops');
   if (!amDrops) { el.hidden = true; return; }
@@ -3860,12 +4095,16 @@ $('#glPreview').addEventListener('click', () => {
   const drops = blocks.length ? amParseDrops(blocks) : null;
   amDrops = drops && (drops.kills.length || drops.bad || Object.keys(drops.names).length || Object.keys(drops.zones).length) ? dropPlan(drops, state) : null;
   amDropsRender();
+  // the loot prio changed in game (LC lines) has its own button too
+  const lc = blocks.length ? amParsePrio(blocks) : null;
+  amPrio = lc && (lc.rows.length || lc.bad) ? {plan: prioPlan(lc.rows), bad: lc.bad} : null;
+  amPrioRender();
   // the addon's wishlist belongs on the Wishlist tab; the raid import leaves its lines alone
   const wishes = blocks.length ? amParseWishes(blocks).length : 0;
   $('#glWishHint').hidden = !wishes;
   const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
   glRows = (rawRows.length ? glResolve(rawRows) : []).concat(amGoneRows(amSessions));
-  if (!glRows.length && !amRows.length && !amBank && amDrops) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
+  if (!glRows.length && !amRows.length && !amBank && (amDrops || amPrio)) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
   if (!glRows.length && !amRows.length && !amBank) return say(wishes ? $('#glWishHint').textContent : 'Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
@@ -3944,6 +4183,15 @@ document.addEventListener('click', ev => {
   say(anyItemName(Number(item)) + ' now counts for ' + (r ? r.name : 'the looter') + ' instead of ' + (from ? from.name : 'the raider before') + '.');
 });
 
+$('#amPrioAdd').addEventListener('click', () => {
+  if (readOnly || !amPrio) return;
+  // planned again: another officer may have saved a newer prio since the preview
+  const n = prioApply(prioPlan(amPrio.plan));
+  amPrio = null; amPrioRender();
+  if (n) markDirty();
+  say(n ? 'Took over the loot prio of ' + n + ' item' + (n === 1 ? '' : 's') + '.' : 'Nothing new: the ledger already has these or newer ones.');
+});
+
 /* ---------------- tooltip ---------------- */
 const tip = $('#tip');
 function showTip(el, ev){
@@ -3997,6 +4245,7 @@ function renderAll(){
   if (ui.view === 'night') renderNight();
   if (ui.view === 'att') renderAttendance();
   if (ui.view === 'wish') renderWishes();
+  if (ui.view === 'prio') renderPrio();
   if (ui.view === 'matrix') renderMatrix();
   if (ui.view === 'craft') renderCraft();
   if (ui.view === 'drops') renderDrops();
@@ -4164,7 +4413,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (readOnly || !await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, lootPrio:d.lootPrio&&typeof d.lootPrio==='object'&&!Array.isArray(d.lootPrio)?d.lootPrio:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
   // a backup without game was TBC; the next fitShelf moves whatever is on top to the shelf and puts Forever there
   fitShelf(state); ui.openCard = null; markDirty(); if (gameKey !== PLAY) loadGame(PLAY);
 });
