@@ -1,5 +1,6 @@
 -- Export: the text block for the ledger's Import tab, of the new and changed raids or the selected ones.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local area, page
@@ -36,9 +37,9 @@ function ns.ShowExport(latestOnly)
         if not bankOnly then
             setExport("")
             if #src == 0 and not ns.Bank() then
-                ns.msg("Noch keine Raids und keine Gildenbank-Zählung zum Exportieren.")
+                ns.msg(L["Noch keine Raids und keine Gildenbank-Zählung zum Exportieren."])
             else
-                ns.msg("Nichts Neues seit dem letzten Export. Raids auf der Seite Raids ankreuzen, um sie noch einmal zu exportieren.")
+                ns.msg(L["Nichts Neues seit dem letzten Export. Raids auf der Seite Raids ankreuzen, um sie noch einmal zu exportieren."])
             end
             return
         end
@@ -46,7 +47,7 @@ function ns.ShowExport(latestOnly)
     setExport(ns.ExportText(list))
     ns.MarkExported(list)
     if onlyNew then
-        ns.msg(("Export: %d neue oder geänderte Raid(s)%s."):format(#list, ns.Bank() and " und die Gildenbank" or ""))
+        ns.msg(L["Export: %d neue oder geänderte Raid(s)%s."]:format(#list, ns.Bank() and L[" und die Gildenbank"] or ""))
     end
     if area then
         area.box:SetFocus()
@@ -60,15 +61,15 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
         local f = CreateFrame("Frame", nil, parent)
         local intro = W.Text(f, T.FONT.body, 590, true)
         intro:SetPoint("TOPLEFT", 0, -2)
-        intro:SetText("Text für den Import-Tab der Amisia-Loot-Seite.")
-        local newBtn = W.Button(f, "Neue und geänderte", 150, function()
+        intro:SetText(L["Text für den Import-Tab der Amisia-Loot-Seite."])
+        local newBtn = W.Button(f, L["Neue und geänderte"], 150, function()
             wipe(ns.RaidSelection)
             ns.ShowExport(false)
         end)
         newBtn:SetPoint("TOPLEFT", 0, -26)
-        local selBtn = W.Button(f, "Angekreuzte", 120, function()
+        local selBtn = W.Button(f, L["Angekreuzte"], 120, function()
             if not next(ns.RaidSelection) then
-                ns.msg("Zuerst Raids auf der Seite Raids ankreuzen.")
+                ns.msg(L["Zuerst Raids auf der Seite Raids ankreuzen."])
                 return
             end
             ns.ShowExport(false)
@@ -87,7 +88,7 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
         end)
         local hint = W.Text(f, T.FONT.hint, 590)
         hint:SetPoint("BOTTOMLEFT", 0, 4)
-        hint:SetText("Strg+A, Strg+C, im Import-Tab einfügen.")
+        hint:SetText(L["Strg+A, Strg+C, im Import-Tab einfügen."])
         -- the parts the layout tests read
         f.intro, f.newBtn, f.selBtn, f.area, f.hint = intro, newBtn, selBtn, area, hint
         page = f
@@ -95,13 +96,13 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
     end,
     refresh = function(f)
         local pending = #ns.PendingExport()
-        f.state:SetText(pending > 0 and ("%d Raid(s) neu oder geändert"):format(pending) or "alles exportiert")
+        f.state:SetText(pending > 0 and L["%d Raid(s) neu oder geändert"]:format(pending) or L["alles exportiert"])
     end }
 
 ns.RegisterCard{ key = "export", order = 60, officer = true, fill = function(c)
     local pending = #ns.PendingExport()
     c.title:SetText("Export")
-    c.line1:SetText(pending > 0 and ("%d Raid(s) neu oder geändert"):format(pending) or "Alles exportiert")
-    c.line2:SetText(ns.BankPending() and "Die Gildenbank-Zählung ist auch neu." or "")
-    if pending > 0 or ns.BankPending() then c:SetAction("Exportieren", function() wipe(ns.RaidSelection); ns.ShowExport(false) end) end
+    c.line1:SetText(pending > 0 and L["%d Raid(s) neu oder geändert"]:format(pending) or L["Alles exportiert"])
+    c.line2:SetText(ns.BankPending() and L["Die Gildenbank-Zählung ist auch neu."] or "")
+    if pending > 0 or ns.BankPending() then c:SetAction(L["Exportieren"], function() wipe(ns.RaidSelection); ns.ShowExport(false) end) end
 end }

@@ -1,5 +1,6 @@
 -- Overview: one card per registered feature, each with its state and at most one button.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 -- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12
 local GAP, SLOTS = 12, 6
@@ -9,7 +10,7 @@ local page
 -- For tests: the page frame once built.
 function ns.OverviewPageFrame() return page end
 
-ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
+ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
@@ -37,12 +38,12 @@ ns.RegisterPanel{ key = "overview", label = "Übersicht", icon = "Interface\\Ico
                 local ok, err = pcall(spec.fill, c)
                 if not ok then
                     c.title:SetText(spec.key)
-                    c.line1:SetText("Fehler")
+                    c.line1:SetText(L["Fehler"])
                     c.line2:SetText(tostring(err):match("^[^\n]*"))
                 end
                 c:Show()
             end
         end
         for i = n + 1, SLOTS do f.cards[i]:Hide() end
-        f.empty:SetText(n == 0 and "Noch nichts zu zeigen." or "")
+        f.empty:SetText(n == 0 and L["Noch nichts zu zeigen."] or "")
     end }

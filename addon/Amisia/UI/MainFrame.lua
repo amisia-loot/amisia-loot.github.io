@@ -3,6 +3,7 @@
 -- the left, the page itself in an inset on the right, and side tabs on the right edge for the side
 -- windows. Pages are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
+local L = ns.L
 
 local W, T = ns.W, ns.Theme
 local M = T.MAIN
@@ -19,13 +20,13 @@ local sideTabs = {}
 
 -- The side windows the tabs on the right edge open and close, top to bottom.
 local SIDE_TABS = {
-    { key = "gear", label = "Ausrüstungstabelle", icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
+    { key = "gear", label = L["Ausrüstungstabelle"], icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
     { key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", frame = "AmisiaRollFrame",
       visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
       toggle = function() ns.ToggleRollFrame() end },
-    { key = "softres", label = "Soft-Reserve-Import", icon = "Interface\\Icons\\INV_Scroll_03", frame = "AmisiaSoftResFrame",
+    { key = "softres", label = L["Soft-Reserve-Import"], icon = "Interface\\Icons\\INV_Scroll_03", frame = "AmisiaSoftResFrame",
       visible = function() return ns.IsOfficerView() and ns.ToggleSoftResFrame ~= nil end,
       toggle = function() ns.ToggleSoftResFrame() end },
 }
@@ -60,7 +61,7 @@ function ns.ResetPositions()
     windowState().point = nil
     if F then restorePosition() end
     if ns.ResetGearPosition then ns.ResetGearPosition() end
-    ns.msg("Fensterposition zurückgesetzt.")
+    ns.msg(L["Fensterposition zurückgesetzt."])
 end
 
 local function reportError(err)
@@ -72,7 +73,7 @@ local function errorPage(parent, err)
     local f = CreateFrame("Frame", nil, parent)
     local t = W.Text(f, T.FONT.title, 560, true)
     t:SetPoint("TOPLEFT", 10, -10)
-    t:SetText("Diese Seite konnte nicht geladen werden.\n|cff8f86a3" .. (tostring(err):match("^[^\n]*") or "?") .. "|r")
+    t:SetText(L["Diese Seite konnte nicht geladen werden."] .. "\n|cff8f86a3" .. (tostring(err):match("^[^\n]*") or "?") .. "|r")
     return f
 end
 
@@ -80,14 +81,14 @@ local function updateHeader()
     local act = ns.Active and ns.Active()
     if act then
         local late = ns.LateCount(act)
-        statusText:SetText(("%s|cff4fbf7a%s|r · %d Raider%s"):format(DOT, act.zone or "?", ns.MemberCount(act),
-            late > 0 and (" · |cffe0a344" .. late .. " zu spät|r") or ""))
+        statusText:SetText(("%s|cff4fbf7a%s|r · %s%s"):format(DOT, act.zone or "?", L["%d Raider"]:format(ns.MemberCount(act)),
+            late > 0 and (" · |cffe0a344" .. L["%d zu spät"]:format(late) .. "|r") or ""))
     elseif ns.IsEnabled() then
-        statusText:SetText("|cff8f86a3Keine Aufnahme, startet im Raid|r")
+        statusText:SetText("|cff8f86a3" .. L["Keine Aufnahme, startet im Raid"] .. "|r")
     else
-        statusText:SetText("|cffe0a344Aufnahme pausiert|r")
+        statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
-    pauseBtn:SetText(ns.IsEnabled() and "Pausieren" or "Fortsetzen")
+    pauseBtn:SetText(ns.IsEnabled() and L["Pausieren"] or L["Fortsetzen"])
 end
 
 -- The page list: per section of ns.PANEL_GROUPS with a visible page a bar, under it the visible
@@ -252,7 +253,7 @@ local function build()
     statusText:SetPoint("CENTER", bar, "CENTER", 0, 0)
     statusText:SetJustifyH("CENTER")
     if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
-    pauseBtn = W.Button(F, "Pausieren", M.PAUSE_W, function() ns.SetEnabled(not ns.IsEnabled()) end)
+    pauseBtn = W.Button(F, L["Pausieren"], M.PAUSE_W, function() ns.SetEnabled(not ns.IsEnabled()) end)
     pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
 
     -- the page list in an inset with the recipe list's ground, the page in an inset beside it
@@ -306,7 +307,7 @@ function ns.ShowPage(key)
         local ok, frame = pcall(p.create, content)
         if not ok or type(frame) ~= "table" then
             -- not passed to the error handler: the error page shows it and the window stays usable
-            frame = errorPage(content, ok and "create gab keinen Frame zurück" or frame)
+            frame = errorPage(content, ok and L["create gab keinen Frame zurück"] or frame)
         end
         frame:SetAllPoints(content)
         built[current] = frame
@@ -344,5 +345,5 @@ end
 ns.Listen("SETTING", function() ns.Refresh() end)
 ns.Listen("DATA_CHANGED", function() ns.Refresh() end)
 
-ns.RegisterSlash("einstellungen", { aliases = { "optionen", "config" }, desc = "Einstellungen öffnen",
+ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "config" }, desc = L["Einstellungen öffnen"],
     run = function() ns.ShowPage("settings") end })

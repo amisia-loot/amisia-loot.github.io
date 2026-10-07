@@ -132,15 +132,20 @@ end
 ---------------------------------------------------------------------------
 -- The report
 ---------------------------------------------------------------------------
+-- The marks of the report lines (OK, FEHLT, FEHLER, WERT) are the report's internal codes (the
+-- counts use them); the lines show them in the client's language.
+local FEHLT = "FEHLT" -- l10n-ok: the internal mark, shown through MARKS
+local MARKS = { FEHLT = L["FEHLT"], FEHLER = L["FEHLER"], WERT = L["WERT"] }
+
 local function newReport()
     return { lines = {}, problems = {}, counts = { OK = 0, FEHLT = 0, WERT = 0, FEHLER = 0 }, section = "" }
 end
 
 local function add(R, mark, label, value)
     R.counts[mark] = (R.counts[mark] or 0) + 1
-    local line = ("%-6s %s: %s"):format(mark, label, cut(value))
+    local line = ("%-6s %s: %s"):format(MARKS[mark] or mark, label, cut(value))
     R.lines[#R.lines + 1] = line
-    if mark == "FEHLT" or mark == "FEHLER" then R.problems[#R.problems + 1] = "[" .. R.section .. "] " .. line end
+    if mark == FEHLT or mark == "FEHLER" then R.problems[#R.problems + 1] = "[" .. R.section .. "] " .. line end
 end
 
 local function section(R, title)
@@ -164,7 +169,7 @@ local function check(R, label, f)
     end
     local text, missing = errorText(mark)
     if missing then
-        add(R, "FEHLT", label, L["%s fehlt"]:format(missing))
+        add(R, FEHLT, label, L["%s fehlt"]:format(missing))
     else
         add(R, "FEHLER", label, text)
     end
@@ -225,7 +230,7 @@ local function sectionLock(R)
     if #kinds == 0 then kinds = { { 1, "Encounter" }, { 5, "Chat" } } end
     table.sort(kinds, function(a, b) return a[1] < b[1] end)
     if not fn("C_RestrictedActions.IsAddOnRestrictionActive") then
-        add(R, "FEHLT", "C_RestrictedActions.IsAddOnRestrictionActive", L["fehlt"])
+        add(R, FEHLT, "C_RestrictedActions.IsAddOnRestrictionActive", L["fehlt"])
     else
         for _, k in ipairs(kinds) do
             check(R, ("IsAddOnRestrictionActive(%d %s)"):format(k[1], k[2]), function()
@@ -308,7 +313,7 @@ local function same(a, b, depth)
 end
 
 local SAMPLE = {
-    name = "Vulo Sturmwind", text = "Grüße aus Sturmwind", n = 123456, -- l10n-ok: test data for the round trip, never shown f = 1.5, yes = true,
+    name = "Vulo Sturmwind", text = "Grüße aus Sturmwind", n = 123456, f = 1.5, yes = true, -- l10n-ok: test data for the round trip, never shown
     list = { 1, 2, 3, 5, 8, 13 }, nested = { a = { b = { c = "tief" } }, filler = string.rep("Amisia ", 40) },
 }
 
@@ -316,26 +321,26 @@ local function roundTrip(R)
     local api = _G.C_EncodingUtil
     local method = _G.Enum and Enum.CompressionMethod and Enum.CompressionMethod.Deflate
     check(R, "Enum.CompressionMethod.Deflate", function()
-        if method == nil then return "FEHLT", L["fehlt (Rückfall 0)"] end
+        if method == nil then return FEHLT, L["fehlt (Rückfall 0)"] end
         return "OK", show(method)
     end)
     method = method or 0
     local raw, packed, text, back
     check(R, "SerializeCBOR", function()
         raw = api.SerializeCBOR(SAMPLE)
-        if type(raw) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(raw)) end
+        if type(raw) ~= "string" then return FEHLT, L["kein Text: %s"]:format(show(raw)) end
         return "OK", L["%d Bytes"]:format(#raw)
     end)
     if not raw then return end
     check(R, "CompressString(Deflate)", function()
         packed = api.CompressString(raw, method)
-        if type(packed) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(packed)) end
+        if type(packed) ~= "string" then return FEHLT, L["kein Text: %s"]:format(show(packed)) end
         return "OK", L["%d Bytes"]:format(#packed)
     end)
     if not packed then return end
     check(R, "EncodeBase64", function()
         text = api.EncodeBase64(packed)
-        if type(text) ~= "string" then return "FEHLT", L["kein Text: %s"]:format(show(text)) end
+        if type(text) ~= "string" then return FEHLT, L["kein Text: %s"]:format(show(text)) end
         return "OK", L["%d Zeichen, %d Teile zu 200"]:format(#text, math.ceil(#text / 200))
     end)
     if not text then return end
@@ -343,8 +348,8 @@ local function roundTrip(R)
         local p = api.DecodeBase64(text)
         local r = type(p) == "string" and api.DecompressString(p, method)
         back = type(r) == "string" and api.DeserializeCBOR(r)
-        if type(back) ~= "table" then return "FEHLT", L["kein Ergebnis"] end
-        if not same(SAMPLE, back) then return "FEHLT", L["Ergebnis anders als das Original"] end
+        if type(back) ~= "table" then return FEHLT, L["kein Ergebnis"] end
+        if not same(SAMPLE, back) then return FEHLT, L["Ergebnis anders als das Original"] end
         return "OK", L["gleich"]
     end)
 end
@@ -352,20 +357,20 @@ end
 local function sectionComm(R)
     check(R, L["Präfixe"], function()
         local list = ns.CommPrefixResults and ns.CommPrefixResults() or {}
-        if #list == 0 then return "FEHLT", L["keine Anmeldung (Funktion fehlt)"] end
+        if #list == 0 then return FEHLT, L["keine Anmeldung (Funktion fehlt)"] end
         local parts, bad = {}, false
         for _, r in ipairs(list) do
             local good = r.ok and (r.result == 0 or r.result == 1 or r.result == true)
             if not good then bad = true end
             parts[#parts + 1] = ("%s = %s"):format(r.prefix, r.ok and show(r.result) or L["Fehler %s"]:format(cut(r.result)))
         end
-        return bad and "FEHLT" or "OK", table.concat(parts, ", ") .. L[" (0 neu, 1 schon angemeldet)"]
+        return bad and FEHLT or "OK", table.concat(parts, ", ") .. L[" (0 neu, 1 schon angemeldet)"]
     end)
     if fn("C_ChatInfo.IsAddonMessagePrefixRegistered") then
         for _, p in ipairs({ "Amisia", "AmisiaD" }) do
             check(R, ("IsAddonMessagePrefixRegistered(%s)"):format(p), function()
                 local on = C_ChatInfo.IsAddonMessagePrefixRegistered(p)
-                return on and "OK" or "FEHLT", show(on)
+                return on and "OK" or FEHLT, show(on)
             end)
         end
     else
@@ -385,7 +390,7 @@ local function sectionComm(R)
     end)
     local api = _G.C_EncodingUtil
     if type(api) ~= "table" then
-        add(R, "FEHLT", "C_EncodingUtil", L["fehlt (kein Raid-Abgleich)"])
+        add(R, FEHLT, "C_EncodingUtil", L["fehlt (kein Raid-Abgleich)"])
         return
     end
     local missing = {}
@@ -393,7 +398,7 @@ local function sectionComm(R)
         if type(api[f]) ~= "function" then missing[#missing + 1] = f end
     end
     if #missing > 0 then
-        add(R, "FEHLT", "C_EncodingUtil", L["%s fehlt"]:format(table.concat(missing, ", ")))
+        add(R, FEHLT, "C_EncodingUtil", L["%s fehlt"]:format(table.concat(missing, ", ")))
         return
     end
     add(R, "OK", "C_EncodingUtil", L["alle sechs Funktionen"])
@@ -408,7 +413,7 @@ local function sectionComm(R)
         local sp, so = ns.SyncBuild(s)
         local pp, err = ns.CommPack(sp)
         local po = pp and ns.CommPack(so)
-        if not pp or not po then return "FEHLT", L["Packen fehlgeschlagen"] .. (err and (" (" .. err .. ")") or "") end
+        if not pp or not po then return FEHLT, L["Packen fehlgeschlagen"] .. (err and (" (" .. err .. ")") or "") end
         local back = ns.CommUnpack(pp)
         return "OK", L["öffentlich %d Zeichen in %d Teilen, Offiziere %d Zeichen in %d Teilen, zurück %s"]:format(
             #pp, #ns.CommChunks(pp), #po, #ns.CommChunks(po), type(back) == "table" and L["lesbar"] or L["NICHT lesbar"])
@@ -454,7 +459,7 @@ local function sectionGuild(R)
         return "WERT", show(ranks)
     end)
     if not fn("C_GuildInfo.GuildControlGetRankFlags") then
-        add(R, "FEHLT", "C_GuildInfo.GuildControlGetRankFlags", L["fehlt (Rückfall über Rangzahl)"])
+        add(R, FEHLT, "C_GuildInfo.GuildControlGetRankFlags", L["fehlt (Rückfall über Rangzahl)"])
     else
         for r = 1, math.min(ranks, 10) do
             check(R, L["Rang %d"]:format(r), function()
@@ -505,13 +510,13 @@ local function sectionMap(R, opts)
         return
     end
     check(R, L["Wegpunkt setzen"], function()
-        if not map or not pos or type(pos.x) ~= "number" or isSecret(pos.x) then return "FEHLT", L["keine Position auf der Karte"] end
+        if not map or not pos or type(pos.x) ~= "number" or isSecret(pos.x) then return FEHLT, L["keine Position auf der Karte"] end
         local point = call("UiMapPoint.CreateFromCoordinates", map, pos.x, pos.y)
         local ok = call("C_Map.SetUserWaypoint", point)
         if fn("C_SuperTrack.SetSuperTrackedUserWaypoint") then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
         local has = fn("C_Map.HasUserWaypoint") and C_Map.HasUserWaypoint()
         local tracked = fn("C_SuperTrack.IsSuperTrackingUserWaypoint") and C_SuperTrack.IsSuperTrackingUserWaypoint()
-        return has and "OK" or "FEHLT", L["Ergebnis %s, gesetzt %s, Wegweiser %s"]:format(show(ok), show(has), show(tracked))
+        return has and "OK" or FEHLT, L["Ergebnis %s, gesetzt %s, Wegweiser %s"]:format(show(ok), show(has), show(tracked))
     end)
 end
 
@@ -589,7 +594,7 @@ ST.ATLASES = ATLASES
 
 local function sectionAtlases(R)
     if not fn("C_Texture.GetAtlasInfo") then
-        add(R, "FEHLT", "C_Texture.GetAtlasInfo", L["fehlt (alle Atlanten im Rückfall)"])
+        add(R, FEHLT, "C_Texture.GetAtlasInfo", L["fehlt (alle Atlanten im Rückfall)"])
         return
     end
     local okCount = 0
@@ -600,7 +605,7 @@ local function sectionAtlases(R)
         elseif type(info) == "table" then
             okCount = okCount + 1
         else
-            add(R, "FEHLT", "Atlas " .. a, L["nicht im Client"])
+            add(R, FEHLT, "Atlas " .. a, L["nicht im Client"])
         end
     end
     add(R, okCount == #ATLASES and "OK" or "WERT", L["Atlanten"], L["%d von %d vorhanden"]:format(okCount, #ATLASES))
@@ -619,7 +624,7 @@ local artTexture, artModel
 local function sectionArt(R)
     local A = ns.DUNGEON_ART
     if type(A) ~= "table" or type(A.D) ~= "table" then
-        add(R, "FEHLT", L["Dungeonbilder"], L["keine Bilddaten"])
+        add(R, FEHLT, L["Dungeonbilder"], L["keine Bilddaten"])
         return
     end
     local ids, have = {}, {}
@@ -650,7 +655,7 @@ local function sectionArt(R)
         end
     end
     if #missing > 0 then
-        add(R, "FEHLT", L["Dungeonbilder"], L["%d von %d fehlen: %s"]:format(#missing, #ids, table.concat(missing, ", ")))
+        add(R, FEHLT, L["Dungeonbilder"], L["%d von %d fehlen: %s"]:format(#missing, #ids, table.concat(missing, ", ")))
     elseif silent > 0 then
         add(R, "WERT", L["Dungeonbilder"], L["%d Dateien, SetTexture ohne Antwort"]:format(#ids))
     else
@@ -701,9 +706,9 @@ local function tryTemplate(t)
     local ok, f = pcall(CreateFrame, t[1], nil, holder, t[2])
     local answer
     if not ok then
-        answer = { "FEHLT", cut(f) }
+        answer = { FEHLT, cut(f) }
     elseif not f then
-        answer = { "FEHLT", L["kein Rahmen"] }
+        answer = { FEHLT, L["kein Rahmen"] }
     else
         if f.Hide then pcall(f.Hide, f) end
         local lacking = {}
@@ -711,7 +716,7 @@ local function tryTemplate(t)
             if f[part] == nil then lacking[#lacking + 1] = part end
         end
         if #lacking > 0 then
-            answer = { "FEHLT", L["Teile fehlen: %s"]:format(table.concat(lacking, ", ")) }
+            answer = { FEHLT, L["Teile fehlen: %s"]:format(table.concat(lacking, ", ")) }
         else
             answer = { "OK", #t[3] > 0 and L["mit %s"]:format(table.concat(t[3], ", ")) or L["vorhanden"] }
         end
@@ -728,7 +733,7 @@ local function sectionTemplates(R)
         end)
     end
     check(R, "AmisiaMapPinTemplate", function()
-        return type(_G.AmisiaMapPinMixin) == "table" and "OK" or "FEHLT",
+        return type(_G.AmisiaMapPinMixin) == "table" and "OK" or FEHLT,
             type(_G.AmisiaMapPinMixin) == "table" and L["Mixin geladen (Vorlage aus MapPin.xml)"] or L["Mixin fehlt"]
     end)
 end
@@ -801,7 +806,7 @@ local function listLine(R, label, total, missing, what)
     if #missing == 0 then
         add(R, "OK", label, L["alle %d %s"]:format(total, what))
     else
-        add(R, "FEHLT", label, L["%d von %d fehlen: %s"]:format(#missing, total, table.concat(missing, ", ")))
+        add(R, FEHLT, label, L["%d von %d fehlen: %s"]:format(#missing, total, table.concat(missing, ", ")))
     end
 end
 
@@ -823,7 +828,7 @@ local function sectionFunctions(R)
     end)
     check(R, "WorldMapFrame:AddDataProvider", function()
         local w = _G.WorldMapFrame
-        return (type(w) == "table" and type(w.AddDataProvider) == "function") and "OK" or "FEHLT",
+        return (type(w) == "table" and type(w.AddDataProvider) == "function") and "OK" or FEHLT,
             (type(w) == "table" and type(w.AddDataProvider) == "function") and L["vorhanden"] or L["fehlt (keine Pins auf der Karte)"]
     end)
     check(R, "MapCanvasPinMixin.UseFrameLevelType", function()
@@ -880,9 +885,9 @@ local LOOT_STRINGS = { "LOOT_ITEM", "LOOT_ITEM_MULTIPLE", "LOOT_ITEM_SELF", "LOO
 local function sectionItems(R)
     check(R, "Enum.ItemClass", function()
         local c = _G.Enum and Enum.ItemClass
-        if type(c) ~= "table" then return "FEHLT", L["fehlt (Rückfall Handwerkswaren 7, Reagenzien 5)"] end
+        if type(c) ~= "table" then return FEHLT, L["fehlt (Rückfall Handwerkswaren 7, Reagenzien 5)"] end
         local bad = c.Tradegoods == nil or c.Reagent == nil
-        return bad and "FEHLT" or "OK", ("Tradegoods %s, Reagent %s, Recipe %s"):format(show(c.Tradegoods), show(c.Reagent), show(c.Recipe))
+        return bad and FEHLT or "OK", ("Tradegoods %s, Reagent %s, Recipe %s"):format(show(c.Tradegoods), show(c.Reagent), show(c.Recipe))
     end)
     for _, key in ipairs({ "ITEM_MIN_SKILL", "ITEM_REQ_SKILL", "ITEM_CLASSES_ALLOWED", "RESISTANCE0_NAME" }) do
         check(R, key, function()
@@ -896,7 +901,7 @@ local function sectionItems(R)
         if type(_G[key]) ~= "string" then lootMissing[#lootMissing + 1] = key end
     end
     if #lootMissing > 0 then
-        add(R, "FEHLT", L["Loot-Texte"], L["%s fehlt"]:format(table.concat(lootMissing, ", ")))
+        add(R, FEHLT, L["Loot-Texte"], L["%s fehlt"]:format(table.concat(lootMissing, ", ")))
     else
         add(R, "OK", L["Loot-Texte"], L["alle %d (LOOT_ITEM ...)"]:format(#LOOT_STRINGS))
     end
@@ -949,7 +954,7 @@ local STATS = { { 1, "str", N_("Stärke") }, { 2, "agi", N_("Beweglichkeit") }, 
 local RATINGS = {
     { "CR_HIT_MELEE", "hm" }, { "CR_HIT_RANGED", "hr" }, { "CR_HIT_SPELL", "hs" },
     { "CR_CRIT_MELEE", "cm" }, { "CR_CRIT_RANGED", "cr" }, { "CR_CRIT_SPELL", "cs" },
-    { "CR_HASTE_MELEE", "am" }, { "CR_HASTE_RANGED", "ar" }, { "CR_HASTE_SPELL", "as" },
+    { "CR_HASTE_MELEE", "am" }, { "CR_HASTE_RANGED", "ar" }, { "CR_HASTE_SPELL", "as" },  -- l10n-ok: keys of the machine line
     { "CR_DEFENSE_SKILL", "def" }, { "CR_DODGE", "dr" }, { "CR_PARRY", "pr" }, { "CR_BLOCK", "br" }, { "CR_EXPERTISE", "exp" },
 }
 ST.RATINGS = RATINGS
@@ -1108,30 +1113,30 @@ local function sectionProfessions(R)
             end
         end
         if #parts == 0 then return "WERT", L["keine"] end
-        if #unknown > 0 then return "FEHLT", table.concat(parts, ", ") .. L["; nicht in den Daten: %s"]:format(table.concat(unknown, ", ")) end
+        if #unknown > 0 then return FEHLT, table.concat(parts, ", ") .. L["; nicht in den Daten: %s"]:format(table.concat(unknown, ", ")) end
         return "OK", table.concat(parts, ", ")
     end)
     check(R, L["Reagenzien ohne Fenster"], function()
         local sch = call("C_TradeSkillUI.GetRecipeSchematic", PROF_RECIPE, false)
-        if type(sch) ~= "table" or type(sch.reagentSlotSchematics) ~= "table" then return "FEHLT", L["keine Antwort für %d"]:format(PROF_RECIPE) end
+        if type(sch) ~= "table" or type(sch.reagentSlotSchematics) ~= "table" then return FEHLT, L["keine Antwort für %d"]:format(PROF_RECIPE) end
         local parts = {}
         for _, slot in ipairs(sch.reagentSlotSchematics) do
             local first = type(slot.reagents) == "table" and slot.reagents[1]
             parts[#parts + 1] = ("%sx %s"):format(show(slot.quantityRequired), show(type(first) == "table" and first.itemID or nil))
         end
-        return #parts > 0 and "OK" or "FEHLT", ("%s: %s"):format(show(sch.name), #parts > 0 and table.concat(parts, ", ") or L["keine Plätze"])
+        return #parts > 0 and "OK" or FEHLT, ("%s: %s"):format(show(sch.name), #parts > 0 and table.concat(parts, ", ") or L["keine Plätze"])
     end)
     check(R, L["Rezeptname"], function()
         local name = call("C_Spell.GetSpellName", PROF_RECIPE)
-        return type(name) == "string" and name ~= "" and "OK" or "FEHLT", show(name)
+        return type(name) == "string" and name ~= "" and "OK" or FEHLT, show(name)
     end)
     check(R, L["Lagerbeschreibung"], function()
         local text = call("C_Spell.GetSpellDescription", PROF_CAMP)
-        return type(text) == "string" and text ~= "" and "OK" or "FEHLT", show(type(text) == "string" and text:sub(1, 120) or text)
+        return type(text) == "string" and text ~= "" and "OK" or FEHLT, show(type(text) == "string" and text:sub(1, 120) or text)
     end)
     check(R, L["Händlergunst"], function()
         local info = call("C_CurrencyInfo.GetCurrencyInfo", PROF_CURRENCY)
-        if type(info) ~= "table" then return "FEHLT", L["Währung %d unbekannt"]:format(PROF_CURRENCY) end
+        if type(info) ~= "table" then return FEHLT, L["Währung %d unbekannt"]:format(PROF_CURRENCY) end
         return "OK", ("%s: %s"):format(show(info.name), show(info.quantity))
     end)
     check(R, L["Gespeicherter Stand"], function()
@@ -1189,7 +1194,7 @@ local function kb(bytes) return ("%.1f KB"):format(bytes / 1024) end
 local function sectionData(R)
     local db = _G.AmisiaDB
     if type(db) ~= "table" then
-        add(R, "FEHLT", "AmisiaDB", L["keine gespeicherten Daten"])
+        add(R, FEHLT, "AmisiaDB", L["keine gespeicherten Daten"])
         return
     end
     check(R, L["Größe (geschätzt)"], function()
@@ -1445,8 +1450,11 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt]"],
     local opts = {}
     local short = false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
-        if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words short = true
-        elseif word == "wegpunkt" or word == "waypoint" then -- l10n-ok: the German and English sub-words opts.waypoint = true end
+        if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
+            short = true
+        elseif word == "wegpunkt" or word == "waypoint" then -- l10n-ok: the German and English sub-words
+            opts.waypoint = true
+        end
     end
     if short then ST.Short(opts) else ST.Show(opts) end
 end })

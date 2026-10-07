@@ -4,6 +4,7 @@
 -- (a patch renamed it), each widget falls back to the flat look of before (dark, gold) and stays
 -- usable; nothing is reported.
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local W = {}
@@ -622,7 +623,7 @@ end
 -- late for Escape to restore without a commit). The clear button commits the empty text when the
 -- box did not have the focus. Without the template a line edit with the hint.
 function W.SearchBox(parent, width, onCommit, hint)
-    hint = hint or SEARCH or "Suchen"
+    hint = hint or SEARCH or L["Suchen"]
     local e = inherit("EditBox", nil, parent, "SearchBoxTemplate", function(f) return f.Left and f.Instructions and f.clearButton end)
     if not e then
         e = W.LineEdit(parent, width, onCommit)
@@ -1063,7 +1064,7 @@ local function pickerPanel()
     if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaPicker") end
 
     -- the filter is a search box; Enter and Escape pick and close instead of committing
-    local filter = W.SearchBox(picker, nil, nil, SEARCH or "Suchen")
+    local filter = W.SearchBox(picker, nil, nil, SEARCH or L["Suchen"])
     filter:ClearAllPoints()
     local P, pad = T.PICKER, T.MENU.PAD
     filter:SetHeight(T.FIELD_H)

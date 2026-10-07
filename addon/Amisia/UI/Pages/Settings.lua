@@ -1,5 +1,6 @@
 -- Settings: built from the registered sections; changed rows carry a dot and a reset button.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local ROW_H, LABEL_W = 26, 300
@@ -12,8 +13,8 @@ function ns.SettingsPageFrame() return page end
 
 local function valueText(it, v)
     if it.type == "time" then return ns.FormatTime(v) end
-    if it.type == "toggle" then return v and "an" or "aus" end
-    if it.type == "text" then return (v == nil or v == "") and "leer" or tostring(v) end
+    if it.type == "toggle" then return v and L["an"] or L["aus"] end
+    if it.type == "text" then return (v == nil or v == "") and L["leer"] or tostring(v) end
     if it.type == "choice" then
         for _, c in ipairs(it.values) do if c[1] == v then return c[2] end end
     end
@@ -40,7 +41,7 @@ local function makeRow(it)
     elseif it.type == "time" then
         r.control = W.TimeBox(r, 70, function(text)
             local ok, why = ns.Set(path, text)
-            if not ok then ns.msg(why .. " Beispiel: 20:00" .. (it.allowOff and " oder aus" or "")) end
+            if not ok then ns.msg((it.allowOff and L["%s Beispiel: 20:00 oder aus"] or L["%s Beispiel: 20:00"]):format(why)) end
             ns.Refresh()
         end)
     elseif it.type == "text" then
@@ -61,13 +62,13 @@ local function makeRow(it)
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
         r.reset = W.ResetButton(r, T.RESET, function() ns.Reset(path) end)
         r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
-        W.Tooltip(r.reset, "Zurücksetzen", "Auf den Standard zurück.")
+        W.Tooltip(r.reset, L["Zurücksetzen"], L["Auf den Standard zurück."])
     end
     r:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(it.label or it.key, 1, 0.82, 0)
         if it.tip then GameTooltip:AddLine(it.tip, 0.85, 0.85, 0.85, true) end
-        if it.default ~= nil then GameTooltip:AddLine("Standard: " .. valueText(it, it.default), 0.6, 0.6, 0.6) end
+        if it.default ~= nil then GameTooltip:AddLine(L["Standard: %s"]:format(valueText(it, it.default)), 0.6, 0.6, 0.6) end
         GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -90,7 +91,7 @@ end
 
 local headers = {}
 
-ns.RegisterPanel{ key = "settings", label = "Einstellungen", icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
+ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         -- a plain scroll frame with the client's thin bar 4 px to its right (inside the page)
