@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.5 (2026-10-07)
+
+- Talents: 36 px icons, the frame 2 px outside the icon so its dark rim no longer covers it, less icon crop
+
 ## 2.9.4 (2026-10-07)
 
 - Map: the main window stays open under the world map and comes back on top when the map closes
