@@ -436,18 +436,18 @@ local function navShown()
 end
 NS.Set("ui.view", "raider")
 NS.Refresh()
-assert(navShown() == "#raid overview raidlog awards softres #gear gear map #amisia settings about", navShown())
+assert(navShown() == "#raid overview raidlog awards softres #gear gear map talents #amisia settings about", navShown())
 NS.Set("ui.view", "officer")
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map #guild export bank #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map talents #guild export bank #amisia settings about", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map talents #guild export bank tools #amisia settings about", navShown())
 -- the labels of the sections
 local labels = {}
 for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
 assert(table.concat(labels, ",") == "Raid,Ausrüstung,Gilde,Amisia", table.concat(labels, ","))
--- 4 bars and 13 rows fit the list: headers 25 high, rows 22, 4 px after each section
+-- 4 bars and 14 rows fit the list: headers 25 high, rows 22, 4 px after each section
 local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
 local parts = {}
 for _, e in ipairs(MF.navOrder) do
@@ -458,7 +458,7 @@ for _, e in ipairs(MF.navOrder) do
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
-assert(lastB == -(4 * 25 + 13 * 22 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
+assert(lastB == -(4 * 25 + 14 * 22 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
 -- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
 local ovRow
 for _, e in ipairs(MF.navOrder) do if e.button and e.button.key == "overview" then ovRow = e.button end end
@@ -476,7 +476,7 @@ for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then
 raidHdr:Click()
 assert(AmisiaDB.settings.window.collapsed.raid == true, "the state is saved")
 assert(NS.CurrentPage() == "raids", "the shown page stays")
-assert(navShown() == "#raid #gear gear map #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid #gear gear map talents #guild export bank tools #amisia settings about", navShown())
 raidHdr = nil
 for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
 assert(raidHdr.collapsed == true, "the bar shows the plus")

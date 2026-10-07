@@ -6,7 +6,7 @@ local ADDON, ns = ...
 
 local W = ns.W
 local WIDTH, HEIGHT = 806, 560
-local NAV_W, NAV_MAX, HEAD_MAX = 164, 14, 4
+local NAV_W, NAV_MAX, HEAD_MAX = 164, 16, 4   -- 16 rows: 4 bars, 3 gaps and 16 rows fit the 480 px list
 local HEAD_H, ROW_H, GAP, INDENT = 25, 22, 4, 8
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"

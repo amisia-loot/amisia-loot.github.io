@@ -41,6 +41,7 @@ BisData.lua [AllowLoadGameType camelot]
 MapData.lua [AllowLoadGameType camelot]
 DungeonData.lua [AllowLoadGameType camelot]
 DungeonQuestData.lua [AllowLoadGameType camelot]
+TalentData.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
 Bis.lua
@@ -48,6 +49,7 @@ Dungeons.lua
 GuildWishes.lua
 Compare.lua
 Need.lua
+Talents.lua
 Map.lua
 MapPins.lua
 MapPin.xml
@@ -60,6 +62,7 @@ Pages\Awards.lua
 Pages\SoftRes.lua
 Pages\Gear.lua
 Pages\Map.lua
+Pages\Talents.lua
 Pages\Export.lua
 Pages\Bank.lua
 Pages\Tools.lua

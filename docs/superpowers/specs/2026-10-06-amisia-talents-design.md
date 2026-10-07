@@ -71,7 +71,7 @@ Liste (fehlt eine, nur Warnung).
 
 ## Seite "Talente" (Gruppe Ausrüstung) und `/amisia talente [Code]`
 
-- Kopf: Klassenwahl (eigene Klasse zuerst), Stufe (Stepper 10-60, Standard eigene Stufe oder 60),
+- Kopf: Klassenwahl (eigene Klasse zuerst), Stufe (Stepper 1-60, Standard 60),
   Talentiert-Rang 0-5, "x / y Punkte" und die Mindeststufe.
 - Drei Bäume nebeneinander im klassischen Talentfenster-Stil: Kopfleiste mit Baumname, Punkten im
   Baum und Zurücksetzen-Knopf; darunter ein 4×7-Raster mit den Spell-Symbolen, Rang unten rechts
