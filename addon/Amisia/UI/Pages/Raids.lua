@@ -1,5 +1,6 @@
 -- Raids: the recorded sessions, a selection for the export, and the details of one session.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 8, 22
 
@@ -22,7 +23,7 @@ local function detailText(s)
     local people = {}
     for _, e in ipairs(names) do
         local main = ns.AltMain(e.name)
-        local alt = main and (" (Twink von %s)"):format(main) or ""
+        local alt = main and L[" (Twink von %s)"]:format(main) or ""
         people[#people + 1] = e.m.late and ("|cffe0a344%s (%s)%s|r"):format(e.name, date("%H:%M", e.m.first or 0), alt) or (e.name .. alt)
     end
     local loot = {}
@@ -42,9 +43,9 @@ local function detailText(s)
         local text
         if a.to == "bank" or a.to == "de" then
             local who = (a.name and a.name ~= "-") and (" (" .. a.name .. ")") or ""
-            text = ("%s: %s%s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or "entzaubert", who)
+            text = ("%s: %s%s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or L["entzaubert"], who)
         else
-            text = ("%s an %s%s"):format(ns.ItemName(a.item), a.name, (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
+            text = L["%s an %s%s"]:format(ns.ItemName(a.item), a.name, (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
         end
         awards[#awards + 1] = text .. (a.note and (" (" .. a.note .. ")") or "")
     end
@@ -54,19 +55,19 @@ local function detailText(s)
         if r.kill then
             bosses[#bosses + 1] = ("%s %s%s"):format(r.name, date("%H:%M", r.t), r.wipes > 0 and (" (" .. ns.WipeText(r.wipes) .. ")") or "")
         else
-            bosses[#bosses + 1] = ("%s (%s, kein Kill)"):format(r.name, ns.WipeText(r.wipes))
+            bosses[#bosses + 1] = L["%s (%s, kein Kill)"]:format(r.name, ns.WipeText(r.wipes))
         end
     end
     local bench = {}
     for _, x in ipairs(ns.BenchList and ns.BenchList(s) or {}) do bench[#bench + 1] = x.name end
     return table.concat({
         ("|cffe2b857%s, %s|r"):format(s.zone or "?", s.date or "?"),
-        ("|cffe2b857Raider (%d):|r %s"):format(#names, #people > 0 and table.concat(people, ", ") or "keine"),
-        "|cffe2b857Bosse:|r " .. (#bosses > 0 and table.concat(bosses, ", ") or "keine"),
-        "|cffe2b857Ersatzbank:|r " .. (#bench > 0 and table.concat(bench, ", ") or "keine"),
-        "|cffe2b857Loot:|r " .. (#loot > 0 and table.concat(loot, ", ") or "keiner"),
-        "|cffe2b857In Lootfenstern:|r " .. (#drops > 0 and table.concat(drops, ", ") or "nichts"),
-        "|cffe2b857Vergaben:|r " .. (#awards > 0 and table.concat(awards, ", ") or "keine"),
+        L["|cffe2b857Raider (%d):|r %s"]:format(#names, #people > 0 and table.concat(people, ", ") or L["keine"]),
+        L["|cffe2b857Bosse:|r %s"]:format(#bosses > 0 and table.concat(bosses, ", ") or L["keine"]),
+        L["|cffe2b857Ersatzbank:|r %s"]:format(#bench > 0 and table.concat(bench, ", ") or L["keine"]),
+        L["|cffe2b857Loot:|r %s"]:format(#loot > 0 and table.concat(loot, ", ") or L["keiner##Loot"]),
+        L["|cffe2b857In Lootfenstern:|r %s"]:format(#drops > 0 and table.concat(drops, ", ") or L["nichts"]),
+        L["|cffe2b857Vergaben:|r %s"]:format(#awards > 0 and table.concat(awards, ", ") or L["keine"]),
     }, "\n\n")
 end
 ns.RaidDetailText = detailText
@@ -101,9 +102,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         head:SetHeight(18)
         head:SetPoint("TOPLEFT")
         head:SetPoint("TOPRIGHT")
-        col(head, 30, 80, "Datum")
+        col(head, 30, 80, L["Datum"])
         col(head, 112, 200, "Raid")
-        col(head, 316, 60, "Raider")
+        col(head, 316, 60, L["Raider##Spalte"])
         f.matHead = {}
         for i = 1, 3 do f.matHead[i] = col(head, MAT_X + (i - 1) * MAT_STEP, MAT_W) end
         f.gemHead = col(head, MAT_X + 2 * MAT_STEP, 90)
@@ -152,9 +153,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, -2)
         f.pageText = W.Text(f, T.FONT.hint, 200)
         f.pageText:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
-        f.del = W.Button(f, "Löschen", 100, function()
+        f.del = W.Button(f, L["Löschen##Knopf"], 100, function()
             if not next(ns.RaidSelection) then
-                ns.msg("Zuerst Raids in der Liste ankreuzen.")
+                ns.msg(L["Zuerst Raids in der Liste ankreuzen."])
                 return
             end
             -- the dialog strata is below the main window's; lift it so it is not hidden behind
@@ -162,7 +163,7 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
         end)
         f.del:SetPoint("TOPRIGHT", f.list, "BOTTOMRIGHT", 0, -4)
-        f.all = W.Button(f, "Alle wählen", 100, function()
+        f.all = W.Button(f, L["Alle wählen"], 100, function()
             local all, allOn = ordered(), true
             for _, s in ipairs(all) do if not ns.RaidSelection[s.id] then allOn = false end end
             wipe(ns.RaidSelection)
@@ -188,22 +189,22 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         end
         f.gemHead:ClearAllPoints()
         f.gemHead:SetPoint("LEFT", MAT_X + nMat * MAT_STEP, 0)
-        if hasGems then f.gemHead:SetText("Edelsteine"); f.gemHead:Show() else f.gemHead:Hide() end
+        if hasGems then f.gemHead:SetText(L["Edelsteine"]); f.gemHead:Show() else f.gemHead:Hide() end
         f.list:SetItems(all)
-        f.pageText:SetText(#all == 0 and "Noch keine Raids aufgezeichnet." or ("%d Raids"):format(#all))
+        f.pageText:SetText(#all == 0 and L["Noch keine Raids aufgezeichnet."] or (#all == 1 and L["1 Raids##eins"] or L["%d Raids"]:format(#all)))
         local s = exists[detailId] or all[1]
         detailId = s and s.id or nil
         f.detail:SetText(s and detailText(s) or "")
     end }
 
 StaticPopupDialogs["AMISIA_DELETE"] = {
-    text = "Die angekreuzten Raids aus Amisia löschen?",
-    button1 = "Löschen",
-    button2 = "Abbrechen",
+    text = L["Die angekreuzten Raids aus Amisia löschen?"],
+    button1 = L["Löschen##Knopf"],
+    button2 = L["Abbrechen"],
     OnAccept = function()
         local n = ns.DeleteSessions(ns.RaidSelection)
         wipe(ns.RaidSelection)
-        ns.msg(("%d Raid(s) gelöscht."):format(n))
+        ns.msg(L["%d Raid(s) gelöscht."]:format(n))
         ns.Refresh()
     end,
     timeout = 0,
@@ -215,19 +216,20 @@ StaticPopupDialogs["AMISIA_DELETE"] = {
 ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     local all = ns.Sessions()
     local s = ns.Active() or all[#all]
-    c.title:SetText(ns.Active() and "Aufnahme läuft" or "Letzter Raid")
+    c.title:SetText(ns.Active() and L["Aufnahme läuft"] or L["Letzter Raid"])
     if not s then
-        c.line1:SetText("Noch kein Raid aufgezeichnet")
-        c.line2:SetText("Die Aufnahme startet in einer Raidinstanz mit Raidgruppe.")
+        c.line1:SetText(L["Noch kein Raid aufgezeichnet"])
+        c.line2:SetText(L["Die Aufnahme startet in einer Raidinstanz mit Raidgruppe."])
         return
     end
     c.line1:SetText(("%s, %s"):format(s.zone or "?", s.date or "?"))
     local m = ns.MatCounts(s)
     local late = ns.LateCount(s)
-    local parts = { ("%d Raider"):format(ns.MemberCount(s)) }
+    local parts = { L["%d Raider"]:format(ns.MemberCount(s)) }
     local _, _, bosses = ns.KillCount(s)
-    if bosses > 0 then parts[#parts + 1] = bosses == 1 and "1 Boss" or (bosses .. " Bosse") end
-    if late > 0 then parts[#parts + 1] = late .. " zu spät" end
+    if bosses > 0 then parts[#parts + 1] = bosses == 1 and L["1 Boss"] or L["%d Bosse"]:format(bosses) end
+    if late > 0 then parts[#parts + 1] = L["%d zu spät"]:format(late) end
+
     local mats = ns.MatLine(m)
     if mats ~= "" then parts[#parts + 1] = mats end
     c.line2:SetText(table.concat(parts, " · "))

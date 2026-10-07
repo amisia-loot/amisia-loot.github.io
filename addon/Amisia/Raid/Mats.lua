@@ -6,6 +6,7 @@
 -- read it as before. An officer takes a material out (it stays remembered as hidden, so it is not
 -- learned again) or adds one by link.
 local ADDON, ns = ...
+local L = ns.L
 
 local CAP = 40            -- materials in the list at most
 local HIDDEN_CAP = 100    -- materials taken out that are remembered, oldest go first
@@ -136,7 +137,7 @@ local function learn(id, link, q, first)
     if countVisible() >= CAP then
         if not fullNoted then
             fullNoted = true
-            msg(("Die Materialliste ist voll (%d). /amisia mats weg <Link> macht Platz."):format(CAP))
+            msg(L["Die Materialliste ist voll (%d). /amisia mats weg <Link> macht Platz."]:format(CAP))
         end
         return false
     end
@@ -152,21 +153,21 @@ function ns.LearnMat(id, link, q)
     if not learn(id, link, q) then return false end
     changed()
     if ns.IsOfficerView() then
-        msg(("Neues Raidmaterial: %s. /amisia mats weg <Link> nimmt es wieder heraus."):format(ns.MATS[tonumber(id)] or "?"))
+        msg(L["Neues Raidmaterial: %s. /amisia mats weg <Link> nimmt es wieder heraus."]:format(ns.MATS[tonumber(id)] or "?"))
     end
     return true
 end
 
 -- By hand (an officer): any item. Returns ok and the message for the chat.
 function ns.AddMat(item)
-    if not (DB and DB.mats) then return false, "Amisia ist noch nicht geladen." end
+    if not (DB and DB.mats) then return false, L["Amisia ist noch nicht geladen."] end
     local id = tonumber(item) or ns.ItemID(item)
-    if not id then return false, "Kein Gegenstand erkannt. Mit Shift-Klick einen Link einfügen." end
+    if not id then return false, L["Kein Gegenstand erkannt. Mit Shift-Klick einen Link einfügen."] end
     local link = type(item) == "string" and item or nil
     local e = DB.mats[id]
-    if visible(e) then return false, ("%s steht schon in der Liste."):format(e.name) end
+    if visible(e) then return false, L["%s steht schon in der Liste."]:format(e.name) end
     if countVisible() >= CAP then
-        return false, ("Die Materialliste ist voll (%d). Zuerst eins herausnehmen."):format(CAP)
+        return false, L["Die Materialliste ist voll (%d). Zuerst eins herausnehmen."]:format(CAP)
     end
     if e then
         e.hide = nil
@@ -176,19 +177,19 @@ function ns.AddMat(item)
         if ns.RememberItem and not (DB.itemNames and DB.itemNames[id]) then ns.RememberItem(id, link, q) end
     end
     changed()
-    return true, ("%s steht jetzt in der Materialliste."):format(DB.mats[id].name)
+    return true, L["%s steht jetzt in der Materialliste."]:format(DB.mats[id].name)
 end
 
 -- Takes a material out; it stays remembered, so it is not learned again.
 function ns.RemoveMat(item)
-    if not (DB and DB.mats) then return false, "Amisia ist noch nicht geladen." end
+    if not (DB and DB.mats) then return false, L["Amisia ist noch nicht geladen."] end
     local id = tonumber(item) or ns.ItemID(item)
     local e = id and DB.mats[id]
-    if not visible(e) then return false, "Das steht nicht in der Materialliste." end
+    if not visible(e) then return false, L["Das steht nicht in der Materialliste."] end
     e.hide = time()
     pruneHidden()
     changed()
-    return true, ("%s ist aus der Materialliste heraus. /amisia mats add <Link> holt es zurück."):format(e.name)
+    return true, L["%s ist aus der Materialliste heraus. /amisia mats add <Link> holt es zurück."]:format(e.name)
 end
 
 -- Raids recorded before the list was learned teach their materials once.
@@ -232,37 +233,38 @@ end
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "mats", label = "Raidmaterialien", order = 41, officer = true, items = {
-    { key = "mats.learn", type = "toggle", label = "Materialien im Raid lernen", default = true,
-      tip = "Handwerkswaren, die in einer Raidaufnahme droppen, geplündert oder vergeben werden, kommen von selbst in die Materialliste (höchstens 40)." },
-    { key = "mats.quality", type = "choice", label = "Lernen ab Qualität", default = 2,
-      values = { { 1, "Weiß" }, { 2, "Grün" }, { 3, "Blau" }, { 4, "Episch" } },
-      tip = "Schlechtere Handwerkswaren lernt Amisia nicht. Von Hand lässt sich jeder Gegenstand eintragen." },
+ns.RegisterSettings{ key = "mats", label = L["Raidmaterialien"], order = 41, officer = true, items = {
+    { key = "mats.learn", type = "toggle", label = L["Materialien im Raid lernen"], default = true,
+      tip = L["Handwerkswaren, die in einer Raidaufnahme droppen, geplündert oder vergeben werden, kommen von selbst in die Materialliste (höchstens 40)."] },
+    { key = "mats.quality", type = "choice", label = L["Lernen ab Qualität"], default = 2,
+      values = { { 1, L["Weiß"] }, { 2, L["Grün"] }, { 3, L["Blau"] }, { 4, L["Episch"] } },
+      tip = L["Schlechtere Handwerkswaren lernt Amisia nicht. Von Hand lässt sich jeder Gegenstand eintragen."] },
 }}
 
-ns.RegisterSlash("mats", { aliases = { "materialien" }, args = "[add|weg <Link>]",
-    desc = "Raidmaterialien zeigen, von Hand eintragen oder herausnehmen", run = function(rest)
+ns.RegisterSlash("mats", { aliases = { "materialien" }, args = L["[add|weg <Link>]"],
+    desc = L["Raidmaterialien zeigen, von Hand eintragen oder herausnehmen"], run = function(rest)
         local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
         word = (word or ""):lower()
         if word == "" then
             local list = ns.MatEntries()
             if #list == 0 then
-                msg("Noch keine Raidmaterialien. Amisia lernt sie in Raidaufnahmen von selbst.")
+                msg(L["Noch keine Raidmaterialien. Amisia lernt sie in Raidaufnahmen von selbst."])
                 return
             end
             local names = {}
             for i, e in ipairs(list) do names[i] = e.name end
-            msg(("Raidmaterialien (%d von %d): %s."):format(#list, CAP, table.concat(names, ", ")))
+            msg(L["Raidmaterialien (%d von %d): %s."]:format(#list, CAP, table.concat(names, ", ")))
             return
         end
-        local add = word == "add" or word == "neu" or word == "dazu"
-        local remove = word == "weg" or word == "entfernen" or word == "remove"
+        local add = word == "add" or word == "neu" or word == "dazu"   -- l10n-ok: typed sub-words
+        local remove = word == "weg" or word == "entfernen" or word == "remove"   -- l10n-ok: typed sub-words
         if not add and not remove then
-            msg("Aufruf: /amisia mats [add|weg <Link>]")
+            msg(L["Aufruf: /amisia mats [add|weg <Link>]"])
             return
         end
         if not ns.IsOfficerView() then
-            msg("Die Materialliste ändern nur Offiziere.")
+            msg(L["Die Materialliste ändern nur Offiziere."])
+
             return
         end
         local _, text

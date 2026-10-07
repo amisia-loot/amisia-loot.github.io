@@ -1,6 +1,7 @@
 -- Amisia soft-reserves: a pasted list (softres.it CSV or "Name [item]" lines), shown in item
 -- tooltips and on the loot window, and ranked first in roll rounds.
 local ADDON, ns = ...
+local L = ns.L
 
 local GetItemInfo = C_Item.GetItemInfo
 
@@ -180,7 +181,7 @@ function ns.SoftResRoster()
         end
     end
     if not s then return {}, nil end
-    return sortedKeys(s.members or {}), "letzter Raid, " .. date("%d.%m.", s.start or time())
+    return sortedKeys(s.members or {}), L["letzter Raid, %s"]:format(ns.FmtDay(s.start or time()))
 end
 
 -- Edit distance of two strings (bytes).
@@ -389,8 +390,9 @@ end
 
 -- "05.10." from the list's "2026-10-05".
 function ns.SoftResShortDate(iso)
-    local m, d = tostring(iso or ""):match("^%d+%-(%d+)%-(%d+)$")
-    return d and (d .. "." .. m .. ".") or tostring(iso or "?")
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    if not d then return tostring(iso or "?") end
+    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 -- Whole days since the list was loaded, or nil without a list or date.
@@ -441,15 +443,15 @@ function ns.SoftResTooltipText(id)
             end
         end
         if inGroup then
-            local label = ns.SameNameIn(name, me, roster) and "du" or name
+            local label = ns.SameNameIn(name, me, roster) and L["du"] or name
             local n = timesOf(sr, id, name)
             shown[#shown + 1] = n > 1 and ("%s x%d"):format(label, n) or label
         else
             outside = outside + 1
         end
     end
-    local text = "Reserviert: " .. (#shown > 0 and table.concat(shown, ", ") or "niemand aus der Gruppe")
-    if outside > 0 then text = text .. (" (+%d außerhalb)"):format(outside) end
+    local text = L["Reserviert: %s"]:format(#shown > 0 and table.concat(shown, ", ") or L["niemand aus der Gruppe"])
+    if outside > 0 then text = text .. L[" (+%d außerhalb)"]:format(outside) end
     return text
 end
 
@@ -538,7 +540,7 @@ ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkSoftResLoot) 
 ---------------------------------------------------------------------------
 local REPLY_LINES = 3     -- lines of one answer
 local SUMMARY_LINES = 2
-local REMIND_TEXT = "Amisia: Du hast für heute noch nichts reserviert."
+local REMIND_TEXT = L["Amisia: Du hast für heute noch nichts reserviert."]
 
 -- Lines of head and parts (ns.ChatLines) within maxLines: the parts that do not fit become
 -- "und n weitere" at the end of the last part kept. suffix goes after the last part.
@@ -556,7 +558,7 @@ local function cappedLines(head, parts, maxLines, sep, suffix)
     for k = #parts - 1, 0, -1 do
         local cut = {}
         for i = 1, k do cut[i] = parts[i] end
-        local more = ("und %d weitere"):format(#parts - k)
+        local more = L["und %d weitere"]:format(#parts - k)
         if k > 0 then cut[k] = cut[k] .. " " .. more else cut[1] = more end
         lines = build(cut)
         if #lines <= maxLines then return lines end
@@ -587,7 +589,7 @@ function ns.SoftResReminders(check)
     return out
 end
 
-local LOCKED = "Chat ist gerade gesperrt (Bosskampf). Nach dem Kampf erneut."
+local LOCKED = L["Chat ist gerade gesperrt (Bosskampf). Nach dem Kampf erneut."]
 
 -- Whispers everyone of ns.SoftResReminders() once (ttl 120) and marks them. Returns the number,
 -- and the reason when nothing could be sent. Never in the chat lockdown: a whisper queued there
@@ -612,23 +614,23 @@ end
 
 -- Asks before whispering (officers, in a raid). The dialog is lifted above the main window.
 function ns.ConfirmSoftResReminders()
-    if not ns.IsOfficerView() then ns.msg("Erinnern nur in der Offiziersansicht.") return end
-    if not (AmisiaDB and AmisiaDB.softres) then ns.msg("Keine Soft-Reserves geladen.") return end
-    if not IsInRaid() then ns.msg("Erinnern geht nur im Raid.") return end
+    if not ns.IsOfficerView() then ns.msg(L["Erinnern nur in der Offiziersansicht."]) return end
+    if not (AmisiaDB and AmisiaDB.softres) then ns.msg(L["Keine Soft-Reserves geladen."]) return end
+    if not IsInRaid() then ns.msg(L["Erinnern geht nur im Raid."]) return end
     if ns.ChatLocked and ns.ChatLocked() then ns.msg(LOCKED) return end
     local n = #ns.SoftResReminders()
-    if n == 0 then ns.msg("Alle ohne Reserve wurden schon erinnert.") return end
+    if n == 0 then ns.msg(L["Alle ohne Reserve wurden schon erinnert."]) return end
     local d = StaticPopup_Show("AMISIA_SR_REMIND", n)
     if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
 end
 
 StaticPopupDialogs["AMISIA_SR_REMIND"] = {
-    text = "%d Raidern ohne Reserve flüstern?",
-    button1 = "Flüstern",
-    button2 = "Abbrechen",
+    text = L["%d Raidern ohne Reserve flüstern?"],
+    button1 = L["Flüstern"],
+    button2 = L["Abbrechen"],
     OnAccept = function()
         local n, why = ns.SendSoftResReminders()
-        ns.msg(why or ("%d Raider erinnert."):format(n))
+        ns.msg(why or L["%d Raider erinnert."]:format(n))
     end,
     timeout = 0,
     whileDead = true,
@@ -640,14 +642,14 @@ StaticPopupDialogs["AMISIA_SR_REMIND"] = {
 -- most. Returns the number of lines, or nil and the reason.
 function ns.PostSoftResSummary()
     local sr = AmisiaDB and AmisiaDB.softres
-    if not sr then return nil, "Keine Soft-Reserves geladen." end
-    if not IsInRaid() then return nil, "Posten geht nur im Raid." end
+    if not sr then return nil, L["Keine Soft-Reserves geladen."] end
+    if not IsInRaid() then return nil, L["Posten geht nur im Raid."] end
     local c = ns.SoftResCheck(sr)
     local lines
     if #c.missing == 0 then
-        lines = { ("Soft-Reserves: alle %d haben reserviert."):format(c.roster) }
+        lines = { L["Soft-Reserves: alle %d haben reserviert."]:format(c.roster) }
     else
-        lines = cappedLines(("Soft-Reserves: %d von %d haben reserviert. Ohne Reserve: "):format(#c.ok, c.roster),
+        lines = cappedLines(L["Soft-Reserves: %d von %d haben reserviert. Ohne Reserve: "]:format(#c.ok, c.roster),
             c.missing, SUMMARY_LINES, ", ", ".")
     end
     for _, line in ipairs(lines) do ns.Say(line, "RAID") end
@@ -657,20 +659,20 @@ end
 -- The check as lines for one's own chat (/amisia sr pruefen).
 function ns.SoftResCheckLines()
     local sr = AmisiaDB and AmisiaDB.softres
-    if not sr then return { "Keine Soft-Reserves geladen." } end
+    if not sr then return { L["Keine Soft-Reserves geladen."] } end
     local roster, label = ns.SoftResRoster()
-    if not label then return { "Kein Raid zum Abgleichen." } end
+    if not label then return { L["Kein Raid zum Abgleichen."] } end
     local c = ns.SoftResCheck(sr, roster)
-    local out = { ("Abgleich mit %s: %d reserviert, %d ohne Reserve, %d nicht im Raid, %d unklar%s."):format(
-        (label:gsub("^letzter ", "letztem ")), #c.ok, #c.missing, #c.absent, #c.unclear,
-        #c.over > 0 and (", " .. #c.over .. " zu viel") or "") }
-    if #c.missing > 0 then out[#out + 1] = "Ohne Reserve: " .. table.concat(c.missing, ", ") end
-    if #c.absent > 0 then out[#out + 1] = "Nicht im Raid: " .. table.concat(c.absent, ", ") end
+    local out = { L["Abgleich mit %s: %d reserviert, %d ohne Reserve, %d nicht im Raid, %d unklar%s."]:format(
+        (label:gsub("^letzter ", "letztem ")), #c.ok, #c.missing, #c.absent, #c.unclear,   -- l10n-ok: German case of the label (English has no match)
+        #c.over > 0 and L[", %d zu viel"]:format(#c.over) or "") }
+    if #c.missing > 0 then out[#out + 1] = L["Ohne Reserve: %s"]:format(table.concat(c.missing, ", ")) end
+    if #c.absent > 0 then out[#out + 1] = L["Nicht im Raid: %s"]:format(table.concat(c.absent, ", ")) end
     for _, u in ipairs(c.unclear) do
-        out[#out + 1] = ("Unklar: %s (%s?)"):format(u.name, table.concat(u.suggest, ", "))
+        out[#out + 1] = L["Unklar: %s (%s?)"]:format(u.name, table.concat(u.suggest, ", "))
     end
-    for _, o in ipairs(c.over) do out[#out + 1] = ("Zu viele: %s (%d)"):format(o.name, o.n) end
-    for _, m in ipairs(c.multi) do out[#out + 1] = ("Mehrfach: %s, %s x%d"):format(m.name, ns.ItemName(m.item), m.n) end
+    for _, o in ipairs(c.over) do out[#out + 1] = L["Zu viele: %s (%d)"]:format(o.name, o.n) end
+    for _, m in ipairs(c.multi) do out[#out + 1] = L["Mehrfach: %s, %s x%d"]:format(m.name, ns.ItemName(m.item), m.n) end
     return out
 end
 
@@ -682,9 +684,11 @@ local function chatLink(id)
     return "[" .. ns.ItemName(id) .. "]"
 end
 
+local NOBODY = L["niemand"]
+
 local function reserversText(sr, item)
     local names = ns.ReservedBy(item)
-    if #names == 0 then return "niemand" end
+    if #names == 0 then return NOBODY end
     local parts = {}
     for _, name in ipairs(names) do
         local n = timesOf(sr, item, name)
@@ -696,24 +700,24 @@ end
 -- The answer to "!sr" (rest empty) or "!sr <link or part of a name>" as chat lines.
 local function answer(sr, sender, rest)
     local age = ns.SoftResAge(sr) or 0
-    local suffix = age > (tonumber(ns.Get("softres.warnDays")) or 7) and (" (Liste ist %d Tage alt)"):format(age) or ""
+    local suffix = age > (tonumber(ns.Get("softres.warnDays")) or 7) and L[" (Liste ist %d Tage alt)"]:format(age) or ""
     local when = ns.SoftResShortDate(sr.date)
     if rest == "" then
         local mine = ns.ReservesOf(sender)
         if #mine == 0 then
-            return { ("Amisia: Du hast nichts reserviert (Liste vom %s).%s"):format(when, suffix) }
+            return { L["Amisia: Du hast nichts reserviert (Liste vom %s).%s"]:format(when, suffix) }
         end
         local parts = {}
         for _, e in ipairs(mine) do
             parts[#parts + 1] = chatLink(e.item) .. (e.n > 1 and (" x" .. e.n) or "")
         end
-        return cappedLines(("Amisia: Deine Reservierungen (Liste vom %s): "):format(when), parts, REPLY_LINES, ", ", suffix)
+        return cappedLines(L["Amisia: Deine Reservierungen (Liste vom %s): "]:format(when), parts, REPLY_LINES, ", ", suffix)
     end
     local id = ns.ItemID(rest)
     if id then
         local link = rest:match("(|c%x+|Hitem:.-|h|r)") or chatLink(id)
         local who = reserversText(sr, id)
-        return { ("Amisia: %s reserviert von %s%s%s"):format(link, who, who == "niemand" and "." or "", suffix) }
+        return { L["Amisia: %s reserviert von %s%s%s"]:format(link, who, who == NOBODY and "." or "", suffix) }
     end
     local q = rest:gsub("|", ""):lower():sub(1, 40)
     local hits = {}
@@ -722,14 +726,14 @@ local function answer(sr, sender, rest)
         if name:lower():find(q, 1, true) then hits[#hits + 1] = { item = item, sort = name } end
     end
     if #hits == 0 then
-        return { ("Amisia: Kein reserviertes Item passt zu \"%s\".%s"):format(q, suffix) }
+        return { L["Amisia: Kein reserviertes Item passt zu \"%s\".%s"]:format(q, suffix) }
     end
     table.sort(hits, function(a, b) if a.sort ~= b.sort then return a.sort < b.sort end return a.item < b.item end)
     local parts = {}
     for i = 1, math.min(3, #hits) do
-        parts[i] = ("%s reserviert von %s"):format(chatLink(hits[i].item), reserversText(sr, hits[i].item))
+        parts[i] = L["%s reserviert von %s"]:format(chatLink(hits[i].item), reserversText(sr, hits[i].item))
     end
-    if #hits > 3 then suffix = (" (%d weitere Treffer)"):format(#hits - 3) .. suffix end
+    if #hits > 3 then suffix = L[" (%d weitere Treffer)"]:format(#hits - 3) .. suffix end
     return cappedLines("Amisia: ", parts, REPLY_LINES, "; ", suffix)
 end
 
@@ -769,19 +773,19 @@ function ns.SoftResPreviewText(text)
     local byItem, _, bad, times, total = ns.ParseSoftRes(text)
     local roster, label = ns.SoftResRoster()
     local c = ns.SoftResCheck({ byItem = byItem, times = times }, roster)
-    local head = ("%d Raider, %d %s"):format(c.reservers, total, plural(total, "Reservierung", "Reservierungen"))
+    local head = L["%d Raider, %d %s"]:format(c.reservers, total, plural(total, L["Reservierung"], L["Reservierungen"]))
     local parts = {}
     if label then
-        head = ("Vorschau gegen %s: %s"):format(label:gsub("^letzter ", "letzten "), head)
-        if #c.missing > 0 then parts[#parts + 1] = ("%d ohne Reserve"):format(#c.missing) end
-        if #c.absent > 0 then parts[#parts + 1] = ("%d nicht im Raid"):format(#c.absent) end
-        if #c.unclear > 0 then parts[#parts + 1] = ("%d %s unklar"):format(#c.unclear, plural(#c.unclear, "Name", "Namen")) end
-        if #c.over > 0 then parts[#parts + 1] = ("%d zu viel"):format(#c.over) end
+        head = L["Vorschau gegen %s: %s"]:format((label:gsub("^letzter ", "letzten ")), head)   -- l10n-ok: German case of the label (English has no match)
+        if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
+        if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
+        if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
+        if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
     else
-        head = "Vorschau: " .. head
-        parts[#parts + 1] = "kein Raid zum Abgleichen"
+        head = L["Vorschau: %s"]:format(head)
+        parts[#parts + 1] = L["kein Raid zum Abgleichen"]
     end
-    if #bad > 0 then parts[#parts + 1] = ("%d %s nicht erkannt"):format(#bad, plural(#bad, "Zeile", "Zeilen")) end
+    if #bad > 0 then parts[#parts + 1] = L["%d %s nicht erkannt"]:format(#bad, plural(#bad, L["Zeile"], L["Zeilen"])) end
     if #parts == 0 then return head end
     return head .. " · " .. table.concat(parts, " · ")
 end
@@ -811,11 +815,11 @@ local function refresh()
     if sr then
         local today = date("%Y-%m-%d")
         dateText:SetText(sr.date == today
-            and ("|cff4fbf7aListe von heute:|r %d Reservierungen"):format(sr.count or 0)
-            or ("|cffe0a344Liste vom %s:|r %d Reservierungen. Für einen neuen Raid neu einfügen."):format(ns.SoftResShortDate(sr.date), sr.count or 0))
+            and L["|cff4fbf7aListe von heute:|r %d Reservierungen"]:format(sr.count or 0)
+            or L["|cffe0a344Liste vom %s:|r %d Reservierungen. Für einen neuen Raid neu einfügen."]:format(ns.SoftResShortDate(sr.date), sr.count or 0))
         if editBox:GetText() == "" then editBox:SetText(sr.raw or "") end
     else
-        dateText:SetText("|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV oder Zeilen wie 'Name [Item-Link]' einfügen.")
+        dateText:SetText(L["|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV oder Zeilen wie 'Name [Item-Link]' einfügen."])
     end
 end
 
@@ -829,7 +833,7 @@ local function build()
     -- a dialog in the client's frame without a portrait, the title in its bar; the side tab of the
     -- main window follows it
     local W = ns.W
-    F = W.Window("AmisiaSoftResFrame", 440, 380, { title = "Soft-Reserves", strata = "FULLSCREEN_DIALOG",
+    F = W.Window("AmisiaSoftResFrame", 440, 380, { title = L["Soft-Reserves"], strata = "FULLSCREEN_DIALOG",
         onShow = refresh,
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     F:SetPoint("CENTER", 0, 40)
@@ -867,19 +871,19 @@ local function build()
     resultText:SetWordWrap(true)
     resultText:SetMaxLines(2)
 
-    local apply = W.Button(F, "Übernehmen", 110, function()
+    local apply = W.Button(F, L["Übernehmen"], 110, function()
         local count, bad = ns.SetSoftRes(editBox:GetText())
-        resultText:SetText(("%d Reservierungen übernommen, %d Zeilen nicht erkannt."):format(count, #bad)
-            .. (#bad > 0 and (" Erste: " .. bad[1]:sub(1, 40)) or ""))
+        resultText:SetText(L["%d Reservierungen übernommen, %d Zeilen nicht erkannt."]:format(count, #bad)
+            .. (#bad > 0 and L[" Erste: %s"]:format(bad[1]:sub(1, 40)) or ""))
         refresh()
     end)
     apply:SetPoint("BOTTOMLEFT", 12, 10)
 
-    local clear = W.Button(F, "Leeren", 90, function()
+    local clear = W.Button(F, L["Leeren"], 90, function()
         ns.ClearSoftRes()
         editBox:SetText("")
         previewText:SetText("")
-        resultText:SetText("Liste geleert.")
+        resultText:SetText(L["Liste geleert."])
         refresh()
     end)
     clear:SetPoint("LEFT", apply, "RIGHT", 6, 0)
@@ -905,18 +909,18 @@ local function cleanRemindText(v)
     return table.concat(out)
 end
 
-ns.RegisterSettings{ key = "softres", label = "Soft-Reserves", order = 30, items = {
-    { key = "softres.tooltip", type = "toggle", label = "Tooltip-Zeile \"Reserviert: ...\"", default = true },
-    { key = "softres.lootMark", type = "toggle", label = "SR-Markierung im Lootfenster und an den Würfelfenstern", default = true,
+ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 30, items = {
+    { key = "softres.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Reserviert: ...\""], default = true },
+    { key = "softres.lootMark", type = "toggle", label = L["SR-Markierung im Lootfenster und an den Würfelfenstern"], default = true,
       onChange = function() ns.MarkSoftResLoot() end },
-    { key = "softres.warnDays", type = "slider", label = "Warnen, wenn die Liste älter ist als (Tage)", default = 7, min = 1, max = 30, step = 1 },
-    { key = "softres.tooltipGroup", type = "toggle", label = "Im Tooltip nur Reservierungen aus der Gruppe", default = true },
-    { key = "softres.limit", type = "slider", label = "Reservierungen pro Raider (0 = keine Prüfung)", default = 0, min = 0, max = 6, step = 1,
+    { key = "softres.warnDays", type = "slider", label = L["Warnen, wenn die Liste älter ist als (Tage)"], default = 7, min = 1, max = 30, step = 1 },
+    { key = "softres.tooltipGroup", type = "toggle", label = L["Im Tooltip nur Reservierungen aus der Gruppe"], default = true },
+    { key = "softres.limit", type = "slider", label = L["Reservierungen pro Raider (0 = keine Prüfung)"], default = 0, min = 0, max = 6, step = 1,
       officer = true },
-    { key = "softres.chat", type = "toggle", label = "Auf !sr antworten", default = true, officer = true,
-      tip = "Nur als Lootleitung, per Flüsterung." },
-    { key = "softres.remindText", type = "text", label = "Zusatz in der Erinnerung", default = "", officer = true,
-      tip = "Z. B. Link zur Liste.", validate = cleanRemindText },
+    { key = "softres.chat", type = "toggle", label = L["Auf !sr antworten"], default = true, officer = true,
+      tip = L["Nur als Lootleitung, per Flüsterung."] },
+    { key = "softres.remindText", type = "text", label = L["Zusatz in der Erinnerung"], default = "", officer = true,
+      tip = L["Z. B. Link zur Liste."], validate = cleanRemindText },
 }}
 -- Forgets the remembered name fixes (AmisiaDB.srAliases): all of them, or the ones of name (as
 -- written in a list or as fixed). The loaded list stays as it is. Returns the number forgotten.
@@ -946,21 +950,22 @@ local function forgetCommand(name)
     name = (name or ""):match("^%s*(.-)%s*$")
     local n = ns.ForgetSoftResAliases(name)
     if name == "" then
-        ns.msg(n > 0 and ("%d gemerkte Namenskorrekturen vergessen. Die geladene Liste bleibt, wie sie ist."):format(n)
-            or "Keine gemerkten Namenskorrekturen.")
+        ns.msg(n > 0 and L["%d gemerkte Namenskorrekturen vergessen. Die geladene Liste bleibt, wie sie ist."]:format(n)
+            or L["Keine gemerkten Namenskorrekturen."])
     else
-        ns.msg(n > 0 and ("Gemerkte Namenskorrektur für %s vergessen. Die geladene Liste bleibt, wie sie ist."):format(name)
-            or ("Keine gemerkte Namenskorrektur für %s."):format(name))
+        ns.msg(n > 0 and L["Gemerkte Namenskorrektur für %s vergessen. Die geladene Liste bleibt, wie sie ist."]:format(name)
+            or L["Keine gemerkte Namenskorrektur für %s."]:format(name))
     end
 end
 
-local SUBWORDS = { pruefen = "check", ["prüfen"] = "check", check = "check", erinnern = "remind", remind = "remind",
+local SUBWORDS = { pruefen = "check", ["prüfen"] = "check", check = "check", erinnern = "remind", remind = "remind",   -- l10n-ok: typed sub-words, both languages work
                    posten = "post", post = "post", vergessen = "forget", forget = "forget" }
-ns.RegisterSlash("sr", { args = "[pruefen|erinnern|posten|vergessen [Name]]", desc = "Soft-Reserves anzeigen", run = function(rest)
+local SR_ARGS = L["[pruefen|erinnern|posten|vergessen [Name]]"]
+ns.RegisterSlash("sr", { args = SR_ARGS, desc = L["Soft-Reserves anzeigen"], run = function(rest)
     local word, tail = (rest or ""):match("^(%S+)%s*(.-)$")
     local sub = word and SUBWORDS[word:lower()]
     if word and not sub then
-        ns.msg("Aufruf: /amisia sr [pruefen|erinnern|posten|vergessen [Name]]")
+        ns.msg(L["Aufruf: /amisia sr %s"]:format(SR_ARGS))
         return
     end
     if sub == "forget" then
@@ -970,7 +975,8 @@ ns.RegisterSlash("sr", { args = "[pruefen|erinnern|posten|vergessen [Name]]", de
     elseif sub == "remind" then
         ns.ConfirmSoftResReminders()
     elseif sub == "post" then
-        if not ns.IsOfficerView() then ns.msg("Posten nur in der Offiziersansicht.") return end
+        if not ns.IsOfficerView() then ns.msg(L["Posten nur in der Offiziersansicht."]) return end
+
         local n, why = ns.PostSoftResSummary()
         if not n then ns.msg(why) end
     elseif ns.ShowPage then

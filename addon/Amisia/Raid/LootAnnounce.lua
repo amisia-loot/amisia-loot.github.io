@@ -6,6 +6,7 @@
 -- With sync.askUpgrades it then asks the raid clients who needs the items (Need.lua).
 -- Every client marks reserved items on the roll frames with "SR".
 local ADDON, ns = ...
+local L = ns.L
 
 local LM = Enum and Enum.LootMethod or {}
 local MASTER = LM.Masterlooter or 2
@@ -107,12 +108,12 @@ local function reserversText(id, raid)
             outside = outside + 1
         end
     end
-    local text = #shown > 0 and ("SR: " .. table.concat(shown, ", ")) or "frei"
-    if outside > 0 then text = text .. (" (+%d nicht im Raid)"):format(outside) end
+    local text = #shown > 0 and ("SR: " .. table.concat(shown, ", ")) or L["frei##SR"]
+    if outside > 0 then text = text .. L[" (+%d nicht im Raid)"]:format(outside) end
     return text, #shown > 0
 end
 
-local function items(n) return n == 1 and "1 Item" or ("%d Items"):format(n) end
+local function items(n) return n == 1 and L["1 Item"] or L["%d Items"]:format(n) end
 
 -- head ("Amisia Loot (Illidan Sturmgrimm)"), then one line per item, at most 8, into the raid chat;
 -- with loot.warning a raid warning as well, when this client may give one.
@@ -124,10 +125,10 @@ local function announce(head, links)
         if here then reserved = reserved + 1 end
         if i <= MAX_LINES then lines[#lines + 1] = ("%d. %s %s"):format(i, e.link, text) end
     end
-    if #links > MAX_LINES then lines[#lines + 1] = ("und %d weitere"):format(#links - MAX_LINES) end
+    if #links > MAX_LINES then lines[#lines + 1] = L["und %d weitere"]:format(#links - MAX_LINES) end
     for _, line in ipairs(lines) do ns.Say(line, "RAID", nil, { ttl = TTL }) end
     if ns.Get("loot.warning") and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
-        ns.Say(("Loot: %s, %d reserviert. Liste im Schlachtzugschat."):format(items(#links), reserved),
+        ns.Say(L["Loot: %s, %d reserviert. Liste im Schlachtzugschat."]:format(items(#links), reserved),
             "RAID_WARNING", nil, { ttl = TTL })
     end
     -- "Wer braucht das?": one question for the announced items (by addon message, never in the chat)
@@ -242,11 +243,11 @@ ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
 
 -- /amisia ansage: the open loot window once more, without the key check.
 local function announceAgain()
-    if not ns.IsOfficerView() then ns.msg("Ansagen nur in der Offiziersansicht.") return end
-    if not lootOpen then ns.msg("Kein Lootfenster offen.") return end
-    if not IsInRaid() then ns.msg("Ansagen nur im Raid.") return end
+    if not ns.IsOfficerView() then ns.msg(L["Ansagen nur in der Offiziersansicht."]) return end
+    if not lootOpen then ns.msg(L["Kein Lootfenster offen."]) return end
+    if not IsInRaid() then ns.msg(L["Ansagen nur im Raid."]) return end
     local groups = lootGroups()
-    if #groups == 0 then ns.msg("Nichts anzusagen: kein Item ab der Qualitätsgrenze.") return end
+    if #groups == 0 then ns.msg(L["Nichts anzusagen: kein Item ab der Qualitätsgrenze."]) return end
     for _, g in ipairs(groups) do
         announce(lootHead(g), g.links)
         remember({ g.key })
@@ -282,7 +283,7 @@ local function flush()
         end
     end
     if #links == 0 then return end
-    announce("Amisia Würfeln", links)
+    announce(L["Amisia Würfeln"], links)
     remember(keys)
 end
 
@@ -329,7 +330,7 @@ local function markRoll(frame)
             text = "SR"
             local me, roster = ns.UnitFullName("player"), ns.GroupRoster()
             for _, n in ipairs(names) do
-                if ns.SameNameIn(n, me, roster) then text = "SR (du)" break end
+                if ns.SameNameIn(n, me, roster) then text = L["SR (du)"] break end
             end
         end
     end
@@ -377,19 +378,20 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "loot", label = "Loot-Ansage", order = 22, officer = true, items = {
-    { key = "loot.announce", type = "toggle", label = "Loot im Schlachtzugschat ansagen", default = true,
-      tip = "Einmal pro Leiche, nur als Lootleitung. Gildenmaterialien nie." },
-    { key = "loot.quality", type = "choice", label = "Ansagen ab Qualität", default = 4,
-      values = { { 3, "Selten" }, { 4, "Episch" }, { 5, "Legendär" } } },
-    { key = "loot.groupLoot", type = "toggle", label = "Auch bei Gruppenplündern ansagen", default = true,
-      tip = "Aus den Würfelfenstern: Würfe, die zusammen beginnen, stehen in einer Ansage." },
-    { key = "loot.warning", type = "toggle", label = "Zusätzlich eine Schlachtzugswarnung", default = false,
-      tip = "Nur als Leiter oder Assistent." },
-    { key = "loot.lead", type = "choice", label = "Ansage und !sr-Antworten", default = "auto",
-      values = { { "auto", "Plündermeister, sonst Leiter" }, { "me", "Immer ich" } },
-      tip = "Antwortet nur ein Amisia im Raid, posten zwei Offiziere nicht doppelt. \"Immer ich\", wenn der Leiter Amisia nicht hat." },
+ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 22, officer = true, items = {
+    { key = "loot.announce", type = "toggle", label = L["Loot im Schlachtzugschat ansagen"], default = true,
+      tip = L["Einmal pro Leiche, nur als Lootleitung. Gildenmaterialien nie."] },
+    { key = "loot.quality", type = "choice", label = L["Ansagen ab Qualität"], default = 4,
+      values = { { 3, L["Selten"] }, { 4, L["Episch"] }, { 5, L["Legendär"] } } },
+    { key = "loot.groupLoot", type = "toggle", label = L["Auch bei Gruppenplündern ansagen"], default = true,
+      tip = L["Aus den Würfelfenstern: Würfe, die zusammen beginnen, stehen in einer Ansage."] },
+    { key = "loot.warning", type = "toggle", label = L["Zusätzlich eine Schlachtzugswarnung"], default = false,
+      tip = L["Nur als Leiter oder Assistent."] },
+    { key = "loot.lead", type = "choice", label = L["Ansage und !sr-Antworten"], default = "auto",
+      values = { { "auto", L["Plündermeister, sonst Leiter"] }, { "me", L["Immer ich"] } },
+      tip = L["Antwortet nur ein Amisia im Raid, posten zwei Offiziere nicht doppelt. \"Immer ich\", wenn der Leiter Amisia nicht hat."] },
 }}
 
-ns.RegisterSlash("ansage", { aliases = { "announce" }, officer = true, desc = "offenes Lootfenster erneut ansagen",
+ns.RegisterSlash("ansage", { en = "announce", officer = true, desc = L["offenes Lootfenster erneut ansagen"],
+
     run = function() announceAgain() end })

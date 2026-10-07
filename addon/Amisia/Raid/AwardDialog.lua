@@ -285,8 +285,8 @@ local function build()
         refresh()
     end)
     D.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
-    local artLab = W.Text(D, T.FONT.text, 22)
-    artLab:SetPoint("LEFT", D.winner, "RIGHT", 10, 0)
+    local artLab = W.Text(D, T.FONT.text, 24)
+    artLab:SetPoint("LEFT", D.winner, "RIGHT", 8, 0)
     artLab:SetText(L["Art"])
     D.kinds = {}
     local prev = artLab

@@ -367,7 +367,7 @@ local PRIO_WORD = { [3] = L["hoch##Prio"], [2] = L["mittel##Prio"], [1] = L["nie
 
 local function upText(e)
     local slot = e.slot and ns.BIS_SLOT_NAME and ns.BIS_SLOT_NAME[e.slot]
-    return ("%s +%d %%%s"):format(e.name, e.pct, slot and (" (" .. L[slot] .. ")") or "")
+    return ("%s +%d %%%s"):format(e.name, e.pct, slot and (" (" .. slot .. ")") or "")
 end
 
 local function wishText(e)

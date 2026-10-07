@@ -1,13 +1,14 @@
 -- Awards: every hand-out of a raid for officers, to look through, change, delete and take back;
 -- raiders see their own items. Changes apply on the click and land on the undo stack.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local ROWS, ROW_H = 12, 22
 local GREY = T.GREY
 local KINDS = { "MS", "OS", "SR", "-" }
 local MAX_SUGGEST = 3
-local TO_TEXT = { bank = "Bank", de = "Entzaubern" }
+local TO_TEXT = { bank = "Bank", de = L["Entzaubern"] }
 
 local GetItemInfo = C_Item.GetItemInfo
 
@@ -36,10 +37,11 @@ local function byId(id)
     return nil
 end
 
--- "02.10." from a raid's "2026-10-02".
+-- "02.10." (English "Oct 2") from a raid's "2026-10-02".
 local function shortDate(iso)
-    local m, d = tostring(iso or ""):match("^%d+%-(%d+)%-(%d+)$")
-    return d and (d .. "." .. m .. ".") or tostring(iso or "?")
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    if not d then return tostring(iso or "?") end
+    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 local function raidText(s)
@@ -230,30 +232,30 @@ local function buildOfficer(parent)
     O.search = W.SearchBox(O, 172, function(text)
         query = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
-    end, "Name oder Item")
+    end, L["Name oder Item"])
     O.search:SetPoint("LEFT", O.raid, "RIGHT", 8, 0)
-    O.undo = W.Button(O, "Rückgängig", 100, function()
+    O.undo = W.Button(O, L["Rückgängig"], 100, function()
         local text = ns.UndoAward()
-        ns.msg(text and ("Rückgängig: %s."):format(text) or "Nichts rückgängig zu machen.")
+        ns.msg(text and L["Rückgängig: %s."]:format(text) or L["Nichts rückgängig zu machen."])
         ns.Refresh()
     end)
     O.undo:SetPoint("TOPRIGHT", 0, -1)
     O.undo:SetScript("OnEnter", function(self)
         local label = ns.UndoLabel()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Rückgängig", 1, 0.82, 0)
-        GameTooltip:AddLine(label or "Nichts rückgängig zu machen.", 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(L["Rückgängig"], 1, 0.82, 0)
+        GameTooltip:AddLine(label or L["Nichts rückgängig zu machen."], 0.85, 0.85, 0.85, true)
         GameTooltip:Show()
     end)
     O.undo:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    O.add = W.Button(O, "Hinzufügen", 100, function()
+    O.add = W.Button(O, L["Hinzufügen##Knopf"], 100, function()
         local s = targetRaid()
         if not s then
-            ns.msg("Noch kein Raid aufgezeichnet.")
+            ns.msg(L["Noch kein Raid aufgezeichnet."])
         elseif ns.ShowAwardDialog then
             ns.ShowAwardDialog(nil, s)
         else
-            ns.msg("Vergaben von Hand: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]")
+            ns.msg(L["Vergaben von Hand: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]"])
         end
     end)
     O.add:SetPoint("RIGHT", O.undo, "LEFT", -6, 0)
@@ -271,7 +273,7 @@ local function buildOfficer(parent)
     O.syncHit:EnableMouse(true)
     O.syncHit:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-        GameTooltip:AddLine("Abgleich des Raid-Stands", 1, 0.82, 0)
+        GameTooltip:AddLine(L["Abgleich des Raid-Stands"], 1, 0.82, 0)
         for _, l in ipairs(self.tip or {}) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
@@ -281,12 +283,12 @@ local function buildOfficer(parent)
     head:SetHeight(18)
     head:SetPoint("TOPLEFT", 0, -44)
     head:SetPoint("TOPRIGHT", 0, -44)
-    col(head, 6, 44, "Zeit")
+    col(head, 6, 44, L["Zeit"])
     col(head, 52, 200, "Item")
-    col(head, 256, 140, "Gewinner")
-    col(head, 400, 30, "Art")
+    col(head, 256, 140, L["Gewinner"])
+    col(head, 400, 30, L["Art"])
     col(head, 434, 24, "+1")
-    col(head, 462, 124, "Quelle")
+    col(head, 462, 124, L["Quelle"])
 
     O.list = W.List(O, ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -317,11 +319,11 @@ local function buildOfficer(parent)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, function(r, e)
         local a = e.a
-        r.time:SetText(date(O.list.all and "%d.%m." or "%H:%M", a.t or 0))
+        r.time:SetText(O.list.all and ns.FmtDay(a.t or 0) or date("%H:%M", a.t or 0))
         r.itemText:SetText(itemText(a.item))
         -- a change of this officer the keeper has not confirmed yet
         local waiting = ns.SyncWaiting and ns.SyncWaiting(e.s, a.id)
-        r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. " · wartet|r") or ""))
+        r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. L[" · wartet|r"]) or ""))
         r.kind:SetText(a.kind or "-")
         r.plus:SetText((a.kind == "MS" and (a.to == nil or a.to == "player")) and tostring(ns.PlusCount(a.name)) or "")
         r.src:SetText(a.src or "?")
@@ -340,14 +342,14 @@ local function buildOfficer(parent)
     E.title:SetPoint("TOPLEFT", 6, -2)
     local lab = W.Text(E, T.FONT.text, 60)
     lab:SetPoint("TOPLEFT", 6, -26)
-    lab:SetText("Gewinner")
+    lab:SetText(L["Gewinner"])
     E.winner = W.Picker(E, 150, function(v)
         edit({ name = v, to = "player" })
     end)
     E.winner:SetPoint("LEFT", lab, "RIGHT", 4, 0)
     local artLab = W.Text(E, T.FONT.text, 24)
     artLab:SetPoint("LEFT", E.winner, "RIGHT", 12, 0)
-    artLab:SetText("Art")
+    artLab:SetText(L["Art"])
     E.kinds = {}
     local prev = artLab
     for i, k in ipairs(KINDS) do
@@ -358,7 +360,7 @@ local function buildOfficer(parent)
     end
     local noteLab = W.Text(E, T.FONT.text, 32)
     noteLab:SetPoint("LEFT", prev, "RIGHT", 12, 0)
-    noteLab:SetText("Notiz")
+    noteLab:SetText(L["Notiz"])
     -- up to 6 px before the panel's right edge (602 px of content)
     E.note = W.LineEdit(E, 150, function(text) edit({ note = text }) end)
     E.note:SetPoint("LEFT", noteLab, "RIGHT", 4, 0)
@@ -369,13 +371,13 @@ local function buildOfficer(parent)
         if a.to == "bank" then E.winner:Open() else edit({ to = "bank" }) end
     end)
     E.bank:SetPoint("TOPLEFT", 6, -52)
-    E.de = W.Button(E, "Entzaubern", 90, function()
+    E.de = W.Button(E, L["Entzaubern"], 90, function()
         local _, a = editTarget()
         if not a then return end
         if a.to == "de" then E.winner:Open() else edit({ to = "de" }) end
     end)
     E.de:SetPoint("LEFT", E.bank, "RIGHT", 6, 0)
-    E.del = W.Button(E, "Löschen", 90, function()
+    E.del = W.Button(E, L["Löschen##Knopf"], 90, function()
         local s, a = editTarget()
         if not s then return end
         settleNote(O, false)
@@ -421,13 +423,13 @@ local function buildOfficer(parent)
     B.text:SetPoint("TOPLEFT", 6, -5)
     B.mine = W.Text(B, T.FONT.text, 318)
     B.mine:SetPoint("BOTTOMLEFT", 6, 7)
-    B.drop = W.Button(B, "Verwerfen", 90, function(self)
+    B.drop = W.Button(B, L["Verwerfen"], 90, function(self)
         local c = B.conflict
         if c then ns.SyncResolve(c.s, c.opid, false) end
         ns.Refresh()
     end)
     B.drop:SetPoint("BOTTOMRIGHT", -6, 2)
-    B.take = W.Button(B, "Meine übernehmen", 130, function(self)
+    B.take = W.Button(B, L["Meine übernehmen"], 130, function(self)
         local c = B.conflict
         if not c then return end
         local ok, why = ns.SyncResolve(c.s, c.opid, true)
@@ -445,7 +447,7 @@ local function buildOfficer(parent)
     B:SetScript("OnEnter", function(self)
         if not self.tip then return end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Konflikt", 1, 0.82, 0)
+        GameTooltip:AddLine(L["Konflikt"], 1, 0.82, 0)
         for _, l in ipairs(self.tip) do GameTooltip:AddLine(l, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
@@ -473,18 +475,18 @@ local function changeText(a, f, short)
     if f.name ~= nil or f.kind ~= nil or f.to ~= nil then
         local to = f.to or a.to
         if to == "bank" then
-            parts[1] = "an die Bank"
+            parts[1] = L["an die Bank"]
         elseif to == "de" then
-            parts[1] = "zum Entzaubern"
+            parts[1] = L["zum Entzaubern"]
         else
-            parts[1] = ("an %s (%s)"):format(tostring(f.name or a.name or "?"), tostring(f.kind or a.kind or "-"))
+            parts[1] = L["an %s (%s)"]:format(tostring(f.name or a.name or "?"), tostring(f.kind or a.kind or "-"))
         end
     end
     if f.note ~= nil then
-        parts[#parts + 1] = (f.note and f.note ~= "") and ("Notiz \"%s\""):format(short and cutText(f.note, 20) or f.note)
-            or "Notiz gelöscht"
+        parts[#parts + 1] = (f.note and f.note ~= "") and L["Notiz \"%s\""]:format(short and cutText(f.note, 20) or f.note)
+            or L["Notiz gelöscht"]
     end
-    return #parts > 0 and table.concat(parts, ", ") or "geändert"
+    return #parts > 0 and table.concat(parts, ", ") or L["geändert"]
 end
 
 -- The bar of the first conflict of raid s, or hidden.
@@ -500,13 +502,13 @@ local function fillConflict(O, s)
     B.conflict = { s = s, opid = c.opid, id = c.id }
     local a = c.id and ns.FindAward(s, c.id) or {}
     local mine = type(c.mine) == "table" and c.mine or {}
-    local n = #list > 1 and (" (1 von %d)"):format(#list) or ""
+    local n = #list > 1 and L[" (1 von %d)"]:format(#list) or ""
     local by = tostring(c.by or "?")
     -- the bar shows notes cut short; the tooltip (B.tip) has both sentences in full
     local function sentences(short)
         local keeper
         if c.why == "GONE" then
-            keeper = ("Konflikt%s: %s hat diese Vergabe gelöscht."):format(n, by)
+            keeper = L["Konflikt%s: %s hat diese Vergabe gelöscht."]:format(n, by)
         else
             -- the keeper's state of what the own change touched
             local theirs = {}
@@ -514,19 +516,19 @@ local function fillConflict(O, s)
                 if mine[k] ~= nil or mine.deleted then theirs[k] = a[k] == nil and false or a[k] end
             end
             if mine.deleted then theirs.note = nil end
-            keeper = ("Konflikt%s: %s hat diese Vergabe zuerst geändert: %s."):format(n, by, changeText(a, theirs, short))
+            keeper = L["Konflikt%s: %s hat diese Vergabe zuerst geändert: %s."]:format(n, by, changeText(a, theirs, short))
         end
-        return keeper, ("Deine Änderung: %s."):format(mine.deleted and "gelöscht" or changeText(a, mine, short))
+        return keeper, L["Deine Änderung: %s."]:format(mine.deleted and L["gelöscht"] or changeText(a, mine, short))
     end
     local keeper, own = sentences(true)
     B.text:SetText(keeper)
     B.mine:SetText(own)
     B.tip = { sentences(false) }
     if c.why == "GONE" then
-        B.take:SetText("Wiederherstellen und ändern")
+        B.take:SetText(L["Wiederherstellen und ändern"])
         B.take:SetWidth(170)
     else
-        B.take:SetText("Meine übernehmen")
+        B.take:SetText(L["Meine übernehmen"])
         B.take:SetWidth(130)
     end
     B:Show()
@@ -568,23 +570,23 @@ local function fillEdit(E)
     end
     E:Show()
     E.title:SetText(("%s · %s · %s"):format(itemText(a.item), date("%H:%M", a.t or 0), a.src or "?"))
-    E.winner:SetValues(winnerNames(s), "Anderer Name")
+    E.winner:SetValues(winnerNames(s), L["Anderer Name"])
     E.winner:SetValue(a.to == "player" and a.name or ((a.name and a.name ~= "-") and a.name or nil))
     for _, k in ipairs(KINDS) do E.kinds[k]:SetOn(a.kind == k) end
     if not E.note:HasFocus() then E.note:SetText(a.note or "") end
-    E.bank:SetText(a.to == "bank" and "An Spieler" or "Bank")
-    E.de:SetText(a.to == "de" and "An Spieler" or "Entzaubern")
+    E.bank:SetText(a.to == "bank" and L["An Spieler"] or "Bank")
+    E.de:SetText(a.to == "de" and L["An Spieler"] or L["Entzaubern"])
     local parts = {}
     if a.edited then
-        parts[#parts + 1] = ("geändert %s%s"):format(date("%H:%M", a.edited), a.orig and (", zuerst an " .. a.orig) or "")
+        parts[#parts + 1] = L["geändert %s%s"]:format(date("%H:%M", a.edited), a.orig and L[", zuerst an %s"]:format(a.orig) or "")
     elseif a.orig then
-        parts[#parts + 1] = "zuerst an " .. a.orig
+        parts[#parts + 1] = L["zuerst an %s"]:format(a.orig)
     end
     -- the keeper took this change from an officer's wish
     local by = type(s.sync) == "table" and type(s.sync.by) == "table" and s.sync.by[a.id]
-    if type(by) == "string" then parts[#parts + 1] = "geändert von " .. by end
-    if a.manual then parts[#parts + 1] = "von Hand eingetragen" end
-    if a.note then parts[#parts + 1] = ("Notiz %d/60"):format(#a.note) end
+    if type(by) == "string" then parts[#parts + 1] = L["geändert von %s"]:format(by) end
+    if a.manual then parts[#parts + 1] = L["von Hand eingetragen"] end
+    if a.note then parts[#parts + 1] = L["Notiz %d/60"]:format(#a.note) end
     E.status:SetText(table.concat(parts, " · "))
     -- the name hint: a player's name outside the members, with the members it may mean
     local _, known = memberOf(s, a.name)
@@ -600,7 +602,7 @@ local function fillEdit(E)
         if o.name == a.name then same = same + 1 end
     end
     E.hint:Show()
-    E.hint:SetText(("Hinweis: \"%s\" steht nicht in der Anwesenheit.%s"):format(a.name, #sug > 0 and " Gemeint:" or ""))
+    E.hint:SetText(L["Hinweis: \"%s\" steht nicht in der Anwesenheit.%s"]:format(a.name, #sug > 0 and L[" Gemeint:"] or ""))
     local i = 0
     for _, name in ipairs(sug) do
         if i >= #chips then break end
@@ -614,7 +616,7 @@ local function fillEdit(E)
         if same > 1 and i < #chips then
             i = i + 1
             local all = chips[i]
-            all.label:SetText(("alle %d"):format(same))
+            all.label:SetText(L["alle %d"]:format(same))
             W.FitChip(all)
             all.target, all.all = name, true
             all:SetOn(false)
@@ -624,12 +626,12 @@ local function fillEdit(E)
     for j = i + 1, #chips do chips[j]:Hide() end
 end
 
-local EXPORT_TEXT = { new = "Raid nicht exportiert", changed = "Raid geändert seit dem Export", done = "Raid exportiert" }
+local EXPORT_TEXT = { new = L["Raid nicht exportiert"], changed = L["Raid geändert seit dem Export"], done = L["Raid exportiert"] }
 
 local function refreshOfficer(O)
     local values = {}
     for _, s in ipairs(ordered()) do values[#values + 1] = { value = s.id, text = raidText(s) } end
-    values[#values + 1] = { value = "all", text = "Alle Raids" }
+    values[#values + 1] = { value = "all", text = L["Alle Raids"] }
     O.raid:SetValues(values)
     local s, all = chosen()
     O.raid:SetValue(all and "all" or (s and s.id) or nil)
@@ -644,25 +646,25 @@ local function refreshOfficer(O)
         if e.a.to == "bank" then bank = bank + 1 elseif e.a.to == "de" then de = de + 1 end
         raids[e.s] = true
     end
-    local parts = { ("%d Vergaben"):format(n) }
-    if bank > 0 then parts[#parts + 1] = ("%d Bank"):format(bank) end
-    if de > 0 then parts[#parts + 1] = ("%d Entzaubern"):format(de) end
+    local parts = { L["%d Vergaben"]:format(n) }
+    if bank > 0 then parts[#parts + 1] = L["%d Bank"]:format(bank) end
+    if de > 0 then parts[#parts + 1] = L["%d Entzaubern"]:format(de) end
     if all then
         local count = 0
         for _ in pairs(raids) do count = count + 1 end
-        parts[#parts + 1] = ("in %d Raids"):format(count)
+        parts[#parts + 1] = L["in %d Raids"]:format(count)
     elseif s then
         parts[#parts + 1] = EXPORT_TEXT[ns.ExportState(s)] or ""
     else
-        parts = { "Noch kein Raid aufgezeichnet." }
+        parts = { L["Noch kein Raid aufgezeichnet."] }
     end
     -- conflicts of the running raid while another raid (or all) is shown: a gold mark right after
     -- the count, so it is not cut off
     local act = ns.Active()
     local actConflicts = (act and act ~= s and ns.SyncConflicts) and #ns.SyncConflicts(act) or 0
     if actConflicts > 0 then
-        table.insert(parts, 2, ("|cffe2b857%d %s im laufenden Raid|r"):format(actConflicts,
-            actConflicts == 1 and "Konflikt" or "Konflikte"))
+        table.insert(parts, 2, L["|cffe2b857%d %s im laufenden Raid|r"]:format(actConflicts,
+            actConflicts == 1 and L["Konflikt"] or L["Konflikte"]))
     end
     O.head:SetText(table.concat(parts, " · "))
     O.undo:SetEnabled(ns.UndoLabel() ~= nil)
@@ -767,8 +769,8 @@ local function buildAll(R)
     head:SetPoint("TOPLEFT", 0, -50)
     head:SetPoint("TOPRIGHT", 0, -50)
     A.cols = {
-        time = col(head, 6, 54, "Zeit"), item = col(head, 64, 226, "Item"), name = col(head, 294, 176, "Gewinner"),
-        kind = col(head, 474, 46, "Art"), plus = col(head, 524, 36, "+1"),
+        time = col(head, 6, 54, L["Zeit"]), item = col(head, 64, 226, "Item"), name = col(head, 294, 176, L["Gewinner"]),
+        kind = col(head, 474, 46, L["Art"]), plus = col(head, 524, 36, "+1"),
     }
     A.list = W.List(A, ROWS, ROW_H, function(r)
         r.time = col(r, 6, 54, nil, T.FONT.text)
@@ -803,7 +805,7 @@ local function buildAll(R)
     A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
     A.empty = W.Text(A, T.FONT.dim, 590)
     A.empty:SetPoint("TOPLEFT", A.list, "TOPLEFT", 6, -6)
-    A.empty:SetText("Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen.")
+    A.empty:SetText(L["Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen."])
     A.foot = W.Text(A, T.FONT.hint, 590)
     A.foot:SetPoint("TOPLEFT", A.list, "BOTTOMLEFT", 6, -10)
     A:Hide()
@@ -825,7 +827,7 @@ local function fillAll(A, raids)
     A.list:SetItems(rows)
     if #rows == 0 then A.empty:Show() else A.empty:Hide() end
     local sync = s and s.sync
-    A.foot:SetText(sync and ("Stand von %s, %s · Notizen sehen nur Offiziere."):format(tostring(sync.keeper), date("%H:%M", tonumber(sync.at) or 0)) or "")
+    A.foot:SetText(sync and L["Stand von %s, %s · Notizen sehen nur Offiziere."]:format(tostring(sync.keeper), date("%H:%M", tonumber(sync.at) or 0)) or "")
 end
 
 local function buildRaider(parent)
@@ -833,10 +835,10 @@ local function buildRaider(parent)
     R:SetAllPoints(parent)
     R.title = W.Text(R, T.FONT.title, 300)
     R.title:SetPoint("TOPLEFT", 0, -2)
-    R.title:SetText("Deine Items")
-    R.mineChip = W.Chip(R, "Deine Items", 100, function() setRaiderView("mine") end)
+    R.title:SetText(L["Deine Items"])
+    R.mineChip = W.Chip(R, L["Deine Items"], 100, function() setRaiderView("mine") end)
     R.mineChip:SetPoint("LEFT", R.title, "RIGHT", 6, 0)
-    R.allChip = W.Chip(R, "Alle Vergaben", 110, function() setRaiderView("all") end)
+    R.allChip = W.Chip(R, L["Alle Vergaben"], 110, function() setRaiderView("all") end)
     R.allChip:SetPoint("LEFT", R.mineChip, "RIGHT", 6, 0)
     -- "Deine Items": the own loot of every saved raid
     local M = CreateFrame("Frame", nil, R)
@@ -846,10 +848,10 @@ local function buildRaider(parent)
     head:SetHeight(18)
     head:SetPoint("TOPLEFT", 0, -24)
     head:SetPoint("TOPRIGHT", 0, -24)
-    col(head, 6, 60, "Datum")
+    col(head, 6, 60, L["Datum"])
     col(head, 70, 230, "Item")
     col(head, 306, 200, "Raid")
-    col(head, 510, 40, "Art")
+    col(head, 510, 40, L["Art"])
     R.list = W.List(M, ROWS, ROW_H, function(r)
         r.date = col(r, 6, 60, nil, T.FONT.text)
         r.itemText = col(r, 70, 230, nil, T.FONT.text)
@@ -878,7 +880,7 @@ local function buildRaider(parent)
     R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
     R.text = W.Text(M, T.FONT.hint, 590, true)
     R.text:SetPoint("TOPLEFT", R.list, "BOTTOMLEFT", 6, -10)
-    R.text:SetText("Vergaben anderer siehst du auf der Amisia-Loot-Seite.")
+    R.text:SetText(L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
     -- "Alle Vergaben": every award of a raid as the loot lead sent it
     R.all = buildAll(R)
     return R
@@ -892,7 +894,7 @@ local function refreshRaider(R)
     R.allChip:SetShown(any)
     R.mineChip:SetOn(view == "mine")
     R.allChip:SetOn(view == "all")
-    R.title:SetText(view == "all" and "Alle Vergaben" or "Deine Items")
+    R.title:SetText(view == "all" and L["Alle Vergaben"] or L["Deine Items"])
     if view == "all" then
         R.mine:Hide()
         R.all:Show()
@@ -902,8 +904,8 @@ local function refreshRaider(R)
     R.all:Hide()
     R.mine:Show()
     R.list:SetItems(myItems())
-    R.text:SetText(any and "Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."
-        or "Vergaben anderer siehst du auf der Amisia-Loot-Seite.")
+    R.text:SetText(any and L["Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."]
+        or L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
 end
 
 ---------------------------------------------------------------------------
@@ -921,7 +923,7 @@ function ns.ShowAwards(sessionId)
     ns.ShowPage("awards")
 end
 
-ns.RegisterPanel{ key = "awards", label = "Vergaben", icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35, group = "raid",
+ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
@@ -963,9 +965,9 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
     local all = ns.Sessions()
     local last = all[#all]
     local officer = ns.IsOfficerView()
-    c.title:SetText(officer and "Vergaben letzte Nacht" or "Deine Items letzte Nacht")
+    c.title:SetText(officer and L["Vergaben letzte Nacht"] or L["Deine Items letzte Nacht"])
     if not last then
-        c.line1:SetText("Keine")
+        c.line1:SetText(L["Keine"])
         return
     end
     local night = {}
@@ -977,17 +979,17 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
         for _, e in ipairs(myItems()) do
             if e.s.date == last.date then n = n + 1 end
         end
-        c.line1:SetText(("%d Items am %s"):format(n, last.date))
+        c.line1:SetText(L["%d Items am %s"]:format(n, last.date))
         -- with a snapshot of the loot lead: the own plus-one as he counts it
         local me = ns.UnitFullName("player")
         for i = #night, 1, -1 do
             local plus = me and keeperPlus(night[i], me)
             if plus then
-                c.line2:SetText(("Dein Plus-Eins: %d"):format(plus))
+                c.line2:SetText(L["Dein Plus-Eins: %d"]:format(plus))
                 break
             end
         end
-        c:SetAction("Öffnen", function() ns.ShowPage("awards") end)
+        c:SetAction(L["Öffnen"], function() ns.ShowPage("awards") end)
         return
     end
     local n, bank, de, pending = 0, 0, 0, false
@@ -998,17 +1000,19 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
         end
         if ns.ExportState(s) ~= "done" then pending = true end
     end
-    c.line1:SetText(("%d Items am %s"):format(n, last.date))
+    c.line1:SetText(L["%d Items am %s"]:format(n, last.date))
     local parts = {}
-    if bank > 0 then parts[#parts + 1] = ("%d Bank"):format(bank) end
-    if de > 0 then parts[#parts + 1] = ("%d Entzaubern"):format(de) end
-    if pending then parts[#parts + 1] = "noch nicht exportiert" end
+    if bank > 0 then parts[#parts + 1] = L["%d Bank"]:format(bank) end
+    if de > 0 then parts[#parts + 1] = L["%d Entzaubern"]:format(de) end
+    if pending then parts[#parts + 1] = L["noch nicht exportiert"] end
     if #parts > 0 then
-        c.line2:SetText((bank + de > 0 and "davon " or "") .. table.concat(parts, " · "))
+        local text = table.concat(parts, " · ")
+        c.line2:SetText(bank + de > 0 and L["davon %s"]:format(text) or text)
     else
-        c.line2:SetText(n == 0 and "Master Loot hat nichts vergeben." or "")
+        c.line2:SetText(n == 0 and L["Master Loot hat nichts vergeben."] or "")
     end
-    c:SetAction("Öffnen", function() ns.ShowAwards(last.id) end)
+    c:SetAction(L["Öffnen"], function() ns.ShowAwards(last.id) end)
 end }
 
-ns.RegisterSlash("vergaben", { aliases = { "awards" }, desc = "Seite Vergaben öffnen", run = function() ns.ShowPage("awards") end })
+ns.RegisterSlash("vergaben", { en = "awards", desc = L["Seite Vergaben öffnen"], run = function() ns.ShowPage("awards") end })
+

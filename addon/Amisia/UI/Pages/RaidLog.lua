@@ -3,12 +3,13 @@
 -- Everyone sees the timeline and the bench; entering bosses, editing the bench and the Discord text
 -- are for officers.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local LOG_ROWS, BENCH_ROWS, ROW_H = 12, 10, 22
 local MAX_PARTS = 6
 local OUTSIDE_FOR = 600   -- seconds: the group outside offered for "Alle eintragen"
 local GREY, GREEN, RED, ORANGE, LABEL = T.GREY, T.GREEN, "|cffe05a5a", T.ORANGE, T.LABEL
-local SRC_TEXT = { enc = "Kampf", kill = "Kampf (Ende)", loot = "Lootfenster", hand = "von Hand" }
+local SRC_TEXT = { enc = L["Kampf"], kill = L["Kampf (Ende)"], loot = L["Lootfenster"], hand = L["von Hand"] }
 local VIEWS = { verlauf = "verlauf", log = "verlauf", bench = "bench", ersatzbank = "bench", ersatz = "bench", discord = "discord" }
 local KIND_ORDER = { start = 1, late = 2, bench = 2, kill = 3, pull = 4, ["end"] = 5 }
 
@@ -32,10 +33,11 @@ local focusDiscord = false
 ---------------------------------------------------------------------------
 local function hm(t) return date("%H:%M", t or 0) end
 
--- "05.10." from "2026-10-05".
+-- "05.10." (English "Oct 5") from "2026-10-05".
 local function shortDate(iso)
-    local m, d = tostring(iso or ""):match("^%d+%-(%d+)%-(%d+)$")
-    return d and (d .. "." .. m .. ".") or tostring(iso or "?")
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    if not d then return tostring(iso or "?") end
+    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
 local function byId(id)
@@ -66,8 +68,8 @@ local function officer() return ns.IsOfficerView() end
 
 -- No raid log to show: tonight before the raid while raids are saved, or no raid at all.
 local function noRaidText(s)
-    if s == "next" and #ns.Sessions() > 0 then return "Für heute vor dem Raid gibt es noch keinen Raid-Log." end
-    return "Noch kein Raid aufgezeichnet."
+    if s == "next" and #ns.Sessions() > 0 then return L["Für heute vor dem Raid gibt es noch keinen Raid-Log."] end
+    return L["Noch kein Raid aufgezeichnet."]
 end
 
 -- A kill or wipe entered by hand without anyone read for it: who was there is not known.
@@ -130,23 +132,23 @@ local function countsText(s)
     if s == "next" then
         -- the history says it in its middle; the line stays empty there
         if #ns.Sessions() == 0 and shownView() ~= "bench" then
-            return shownView() == "verlauf" and "" or "Noch kein Raid aufgezeichnet."
+            return shownView() == "verlauf" and "" or L["Noch kein Raid aufgezeichnet."]
         end
         local b = tonightBench()
         local n = b and #ns.BenchList(b) or 0
-        return ("Heute, vor dem Raid · %d auf der Ersatzbank"):format(n)
+        return L["Heute, vor dem Raid · %d auf der Ersatzbank"]:format(n)
     end
     local _, wipes, bosses = ns.KillCount(s)
     local parts = {}
-    if bosses > 0 then parts[#parts + 1] = bosses == 1 and "1 Boss" or (bosses .. " Bosse") end
+    if bosses > 0 then parts[#parts + 1] = bosses == 1 and L["1 Boss"] or L["%d Bosse"]:format(bosses) end
     if wipes > 0 then parts[#parts + 1] = ns.WipeText(wipes) end
-    parts[#parts + 1] = ("%s bis %s"):format(hm(s.firstScan or s.start), hm(s.last or s.start))
+    parts[#parts + 1] = L["%s bis %s"]:format(hm(s.firstScan or s.start), hm(s.last or s.start))
     local members = ns.MemberCount(s)
-    if members > 0 then parts[#parts + 1] = members .. " Raider" end
+    if members > 0 then parts[#parts + 1] = L["%d Raider"]:format(members) end
     local late = ns.LateCount(s)
-    if late > 0 then parts[#parts + 1] = late .. " zu spät" end
+    if late > 0 then parts[#parts + 1] = L["%d zu spät"]:format(late) end
     local bench = #ns.BenchList(s)
-    if bench > 0 then parts[#parts + 1] = bench .. " Ersatzbank" end
+    if bench > 0 then parts[#parts + 1] = L["%d Ersatzbank"]:format(bench) end
     return table.concat(parts, " · ")
 end
 
@@ -179,21 +181,21 @@ end
 local function fillLogRow(r, e)
     local when, event, result, dur, who, src = hm(e.t), "", "", "", "", ""
     if e.kind == "start" then
-        event = "Aufnahme gestartet"
+        event = L["Aufnahme gestartet"]
     elseif e.kind == "end" then
-        event = "Aufnahme beendet"
+        event = L["Aufnahme beendet"]
     elseif e.kind == "late" then
-        event, result = e.name .. " kommt", ORANGE .. "zu spät|r"
+        event, result = L["%s kommt"]:format(e.name), ORANGE .. L["zu spät"] .. "|r"
     elseif e.kind == "bench" then
-        event = e.name .. " kommt von der Ersatzbank"
+        event = L["%s kommt von der Ersatzbank"]:format(e.name)
     elseif e.kind == "pull" then
         event = e.p.name or "?"
-        result = LABEL .. "läuft|r"
+        result = LABEL .. L["läuft"] .. "|r"
         dur = ns.FightLength(time() - (e.p.start or time()))
-        src = "Kampf"
+        src = L["Kampf"]
     elseif e.kind == "kill" then
         local k = e.k
-        if k.src == "loot" then when = GREY .. "ca. " .. hm(k.t) .. "|r" end
+        if k.src == "loot" then when = GREY .. L["ca. ##Uhrzeit"] .. hm(k.t) .. "|r" end
         event = k.name or "?"
         result = k.ok and (GREEN .. "Kill|r") or (RED .. "Wipe|r")
         dur = lengthText(k) or ""
@@ -222,12 +224,12 @@ local function buildLog(f)
     head:SetHeight(18)
     head:SetPoint("TOPLEFT", 0, 0)
     head:SetPoint("TOPRIGHT", 0, 0)
-    head.time = col(head, 2, 48, "Zeit")
-    head.event = col(head, 54, 246, "Ereignis")
-    head.result = col(head, 304, 76, "Ergebnis")
-    head.dur = col(head, 384, 46, "Dauer")
-    head.who = col(head, 434, 46, "Dabei")
-    head.src = col(head, 484, 106, "Quelle")
+    head.time = col(head, 2, 48, L["Zeit"])
+    head.event = col(head, 54, 246, L["Ereignis"])
+    head.result = col(head, 304, 76, L["Ergebnis"])
+    head.dur = col(head, 384, 46, L["Dauer"])
+    head.who = col(head, 434, 46, L["Dabei"])
+    head.src = col(head, 484, 106, L["Quelle"])
     V.head = head
     V.list = W.List(V, LOG_ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -260,7 +262,7 @@ local function buildLog(f)
     -- the detail area under the list
     V.title = W.Text(V, T.FONT.title, 490)
     V.title:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 6, -6)
-    V.del = W.Button(V, "Löschen", 90, function()
+    V.del = W.Button(V, L["Löschen##Knopf"], 90, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" or type(chosenKill) ~= "table" then return end
         lift(StaticPopup_Show("AMISIA_RAIDLOG_DELETE", nil, nil, { s = s, k = chosenKill }))
@@ -291,19 +293,19 @@ local function buildLog(f)
         ns.Refresh()
     end)
     A.wipe:SetPoint("LEFT", A.kill, "RIGHT", 4, 0)
-    A.ok = W.Button(A, "Eintragen", 90, function()
+    A.ok = W.Button(A, L["Eintragen"], 90, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
         if s ~= addFor then
             -- another raid is shown now (a recording started): the line was for the one before
             adding, addName, addAt, addFor = false, nil, nil, nil
             A.pick:SetValue(nil)
-            ns.msg("Der Raid hat gewechselt. Bitte den Boss neu eintragen.")
+            ns.msg(L["Der Raid hat gewechselt. Bitte den Boss neu eintragen."])
             ns.Refresh()
             return
         end
         if not addName then
-            ns.msg("Zuerst einen Boss wählen oder einen Namen eingeben.")
+            ns.msg(L["Zuerst einen Boss wählen oder einen Namen eingeben."])
             return
         end
         local live = s == ns.Active()
@@ -313,14 +315,14 @@ local function buildLog(f)
             ns.msg(why)
             return
         end
-        ns.msg(("%s eingetragen: %s (%s)."):format(k.ok and "Kill" or "Wipe", k.name, hm(k.t)))
+        ns.msg(L["%s eingetragen: %s (%s)."]:format(k.ok and "Kill" or "Wipe", k.name, hm(k.t)))
         adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         chosenKill = k
         ns.Refresh()
     end)
     A.ok:SetPoint("LEFT", A.wipe, "RIGHT", 10, 0)
-    A.cancel = W.Button(A, "Abbrechen", 90, function()
+    A.cancel = W.Button(A, L["Abbrechen"], 90, function()
         adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         ns.Refresh()
@@ -335,24 +337,24 @@ end
 local function detailLines(s, k)
     local lines = {}
     if unknownWho(k) then
-        lines[#lines + 1] = LABEL .. "Dabei:|r unbekannt (von Hand nachgetragen)"
+        lines[#lines + 1] = LABEL .. L["Dabei:|r unbekannt (von Hand nachgetragen)"]
         if not k.ok then return lines end
     elseif not k.ok then
-        lines[#lines + 1] = ("%sDabei:|r %d Raider"):format(LABEL, tonumber(k.n) or 0)
+        lines[#lines + 1] = L["%sDabei:|r %d Raider"]:format(LABEL, tonumber(k.n) or 0)
         return lines
     end
     local inWho = {}
     if unknownWho(k) then
         -- nobody to list as there or not there
     elseif k.wait then
-        lines[#lines + 1] = LABEL .. "Dabei:|r wird nach dem Kampf gelesen"
+        lines[#lines + 1] = LABEL .. L["Dabei:|r wird nach dem Kampf gelesen"]
     else
         local who = {}
         for _, name in ipairs(k.who or {}) do
             inWho[name:lower()] = true
             who[#who + 1] = memberColored(s, name)
         end
-        lines[#lines + 1] = ("%sDabei (%d):|r %s"):format(LABEL, #who, #who > 0 and table.concat(who, ", ") or "niemand")
+        lines[#lines + 1] = L["%sDabei (%d):|r %s"]:format(LABEL, #who, #who > 0 and table.concat(who, ", ") or L["niemand"])
         local missing = {}
         for name, m in pairs(s.members or {}) do
             local there = inWho[name:lower()]
@@ -368,24 +370,24 @@ local function detailLines(s, k)
             local words = {}
             for i, x in ipairs(missing) do
                 local text = memberColored(s, x.name)
-                if (x.m.first or 0) > (k.t or 0) then text = text .. (" (kam %s)"):format(hm(x.m.first)) end
+                if (x.m.first or 0) > (k.t or 0) then text = text .. L[" (kam %s)"]:format(hm(x.m.first)) end
                 words[i] = text
             end
-            lines[#lines + 1] = LABEL .. "Nicht dabei:|r " .. table.concat(words, ", ")
+            lines[#lines + 1] = LABEL .. L["Nicht dabei:|r %s"]:format(table.concat(words, ", "))
         end
     end
     local bench = {}
     for _, x in ipairs(ns.BenchList(s)) do
         if not inWho[x.name:lower()] then bench[#bench + 1] = classColored(x.name, x.e.class) end
     end
-    if #bench > 0 then lines[#lines + 1] = LABEL .. "Ersatzbank:|r " .. table.concat(bench, ", ") end
+    if #bench > 0 then lines[#lines + 1] = LABEL .. L["Ersatzbank:|r %s"]:format(table.concat(bench, ", ")) end
     local loot = {}
     for _, a in ipairs(s.awards or {}) do
         if ns.KillFor(s, a.src, a.t) == k then
             if a.to == "bank" or a.to == "de" then
-                loot[#loot + 1] = ("%s: %s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or "entzaubert")
+                loot[#loot + 1] = ("%s: %s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or L["entzaubert"])
             else
-                loot[#loot + 1] = ("%s an %s%s"):format(ns.ItemName(a.item), a.name or "?", (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
+                loot[#loot + 1] = L["%s an %s%s"]:format(ns.ItemName(a.item), a.name or "?", (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
             end
         end
     end
@@ -407,8 +409,8 @@ local function refreshLog(V, s)
     if not chosenKill then chosenKill = kills[#kills] end
     V.list:SetItems(items)
     if s == "next" and #ns.Sessions() == 0 then
-        V.empty:Set("Noch kein Raid aufgezeichnet",
-            "Amisia zeichnet von selbst auf, sobald du einen Schlachtzug betrittst: Anwesenheit, Bosskills und Loot. Hier stehen dann die Bosse des Abends.")
+        V.empty:Set(L["Noch kein Raid aufgezeichnet"],
+            L["Amisia zeichnet von selbst auf, sobald du einen Schlachtzug betrittst: Anwesenheit, Bosskills und Loot. Hier stehen dann die Bosse des Abends."])
         V.empty:Show()
         V.head:Hide()
     else
@@ -436,9 +438,9 @@ local function refreshLog(V, s)
             return a < b
         end)
         local values = {}
-        for i, n in ipairs(names) do values[i] = { value = n, text = ("%s (Lootfenster %s)"):format(n, hm(first[n])) } end
+        for i, n in ipairs(names) do values[i] = { value = n, text = L["%s (Lootfenster %s)"]:format(n, hm(first[n])) } end
         A.times = first
-        A.pick:SetValues(values, "Anderer Name")
+        A.pick:SetValues(values, L["Anderer Name"])
         A.kill:SetOn(addOk)
         A.wipe:SetOn(not addOk)
         A:Show()
@@ -459,20 +461,20 @@ local function refreshLog(V, s)
     end
     if k == "pull" then
         local p = s.pull
-        V.title:SetText(("%s · %släuft seit %s|r"):format(p.name or "?", LABEL, hm(p.start)))
+        V.title:SetText(L["%s · %släuft seit %s|r"]:format(p.name or "?", LABEL, hm(p.start)))
         V.del:Hide()
-        V.detail:SetText(("%sDer Kampf läuft seit %s.|r"):format(GREY, ns.FightLength(time() - (p.start or time()))))
+        V.detail:SetText(L["%sDer Kampf läuft seit %s.|r"]:format(GREY, ns.FightLength(time() - (p.start or time()))))
         return
     end
     if not k then
         V.title:SetText("")
         V.del:Hide()
-        V.detail:SetText(GREY .. "Noch kein Bossversuch in diesem Raid. Offiziere tragen Bosse mit \"Boss eintragen\" ein.|r")
+        V.detail:SetText(GREY .. L["Noch kein Bossversuch in diesem Raid. Offiziere tragen Bosse mit \"Boss eintragen\" ein.|r"])
         return
     end
     local len = lengthText(k)
-    V.title:SetText(("%s · %s %s%s%s"):format(k.name or "?", k.ok and "Kill" or "Wipe", k.src == "loot" and "ca. " or "", hm(k.t),
-        len and (" · Kampf " .. len) or ""))
+    V.title:SetText(("%s · %s %s%s%s"):format(k.name or "?", k.ok and "Kill" or "Wipe", k.src == "loot" and L["ca. "] or "", hm(k.t),
+        len and L[" · Kampf %s"]:format(len) or ""))
     if officer() and not adding then V.del:Show() else V.del:Hide() end
     V.detail:SetText(table.concat(detailLines(s, k), "\n"))
 end
@@ -513,7 +515,7 @@ local function buildBench(f)
     local open = B.pick.Open
     function B.pick:Open()
         local s = chosen()
-        self:SetValues(ns.BenchSuggestions(benchOf(s) or { list = {} }), "Anderer Name")
+        self:SetValues(ns.BenchSuggestions(benchOf(s) or { list = {} }), L["Anderer Name"])
         return open(self)
     end
     B.note = W.LineEdit(B, 200)
@@ -523,7 +525,7 @@ local function buildBench(f)
         local s = chosen()
         local name = benchName or B.pick:GetValue()
         if not name then
-            ns.msg("Zuerst einen Namen wählen.")
+            ns.msg(L["Zuerst einen Namen wählen."])
             return
         end
         -- tonight before the raid: ns.BenchTarget() (benchNext, or the recording if one started)
@@ -533,13 +535,13 @@ local function buildBench(f)
             ns.msg(key)
             return
         end
-        ns.msg(("%s steht auf der Ersatzbank%s."):format(key, e.note and (" (" .. e.note .. ")") or ""))
+        ns.msg(L["%s steht auf der Ersatzbank%s."]:format(key, e.note and (" (" .. e.note .. ")") or ""))
         benchName = nil
         B.pick:SetValue(nil)
         B.note:SetText("")
         ns.Refresh()
     end
-    B.addBtn = W.Button(B, "Eintragen", 90, addBench)
+    B.addBtn = W.Button(B, L["Eintragen"], 90, addBench)
     B.addBtn:SetPoint("LEFT", B.note, "RIGHT", 6, 0)
     -- Enter in the note enters the name, like the button
     B.note:SetScript("OnEnterPressed", function(self)
@@ -552,11 +554,11 @@ local function buildBench(f)
     head:SetPoint("TOPLEFT", 0, -44)
     head:SetPoint("TOPRIGHT", 0, -44)
     head.name = col(head, 4, 130, "Name")
-    head.since = col(head, 138, 36, "Seit")
-    head.how = col(head, 178, 110, "Wie")
+    head.since = col(head, 138, 36, L["Seit"])
+    head.how = col(head, 178, 110, L["Wie"])
     -- the note gives 12 px to the list's scroll bar, so "eingewechselt 20:15" keeps its width
-    head.note = col(head, 292, 148, "Notiz")
-    head.joined = col(head, 444, 118, "Im Raid")
+    head.note = col(head, 292, 148, L["Notiz"])
+    head.joined = col(head, 444, 118, L["Im Raid"])
     B.head = head
     B.list = W.List(B, BENCH_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 130, nil, T.FONT.text)
@@ -569,18 +571,18 @@ local function buildBench(f)
             local target = benchOf(chosen())
             if not x or not officer() or not target then return end
             local ok, res = ns.BenchRemove(target, x.name)
-            ns.msg(ok and ("%s steht nicht mehr auf der Ersatzbank."):format(res) or res)
+            ns.msg(ok and L["%s steht nicht mehr auf der Ersatzbank."]:format(res) or res)
             ns.Refresh()
         end)
         r.x:SetPoint("RIGHT", -4, 0)
-        W.Tooltip(r.x, "Austragen", "Von der Ersatzbank nehmen.")
+        W.Tooltip(r.x, L["Austragen"], L["Von der Ersatzbank nehmen."])
     end, function(r, x)
         local e = x.e
         r.name:SetText(classColored(x.name, e.class))
         r.since:SetText(hm(e.t))
-        r.how:SetText(e.self and "selbst, !bench" or ("von " .. (e.by or "?")))
+        r.how:SetText(e.self and L["selbst, !bench"] or L["von %s"]:format(e.by or "?"))
         r.note:SetText(e.note or "")
-        r.joined:SetText(x.joined and ("eingewechselt " .. hm(x.joined)) or "")
+        r.joined:SetText(x.joined and L["eingewechselt %s"]:format(hm(x.joined)) or "")
         if officer() then r.x:Show() else r.x:Hide() end
     end)
     -- 12 px short of the right edge: room for the list's scroll bar
@@ -590,29 +592,29 @@ local function buildBench(f)
     -- ends 6 px before "Alle eintragen", which moved left with the list
     B.outside = W.Text(B, T.FONT.text, 478)
     B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -10)
-    B.all = W.Button(B, "Alle eintragen", 100, function()
+    B.all = W.Button(B, L["Alle eintragen"], 100, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
         local n = 0
         for _, name in ipairs(outsideNames(s)) do
             if ns.BenchAdd(s, name, {}) then n = n + 1 end
         end
-        ns.msg(("%d auf die Ersatzbank eingetragen."):format(n))
+        ns.msg(L["%d auf die Ersatzbank eingetragen."]:format(n))
         ns.Refresh()
     end)
     B.all:SetPoint("TOPRIGHT", B.list, "BOTTOMRIGHT", 0, -6)
     B.hint = W.Text(B, T.FONT.hint, 590, true)
     B.hint:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -40)
-    B.hint:SetText("Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung.")
+    B.hint:SetText(L["Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung."])
     return B
 end
 
 local function refreshBench(B, s)
     local off = officer()
     if s == "next" then
-        B.label:SetText("Für heute, vor dem Raid:")
+        B.label:SetText(L["Für heute, vor dem Raid:"])
     else
-        B.label:SetText("Ersatzbank: " .. ns.BenchLabel(s))
+        B.label:SetText(L["Ersatzbank: %s"]:format(ns.BenchLabel(s)))
     end
     local target = benchOf(s)
     B.list:SetItems(target and ns.BenchList(target) or {})
@@ -621,7 +623,7 @@ local function refreshBench(B, s)
     end
     local outside = off and outsideNames(s) or {}
     if #outside > 0 then
-        B.outside:SetText("In der Gruppe, nicht in der Instanz: " .. table.concat(outside, ", "))
+        B.outside:SetText(L["In der Gruppe, nicht in der Instanz: %s"]:format(table.concat(outside, ", ")))
         B.outside:Show()
         B.all:Show()
     else
@@ -648,7 +650,7 @@ local function buildDiscord(f)
     D:SetPoint("BOTTOMRIGHT", 0, 0)
     D.chips = {}
     for i = 1, MAX_PARTS do
-        local c = W.Chip(D, "Teil " .. i, 60, function()
+        local c = W.Chip(D, L["Teil %d"]:format(i), 60, function()
             part = i
             discordText = nil
             ns.Refresh()
@@ -706,8 +708,8 @@ local function refreshDiscord(D, s)
         D.area.box:SetFocus()
         D.area.box:HighlightText()
     end
-    D.hint:SetText(("Strg+A, Strg+C, in Discord einfügen. %d Zeichen.%s"):format(ns.TextLength(text),
-        #parts > 1 and (" Teil %d von %d."):format(part, #parts) or ""))
+    D.hint:SetText(L["Strg+A, Strg+C, in Discord einfügen. %d Zeichen.%s"]:format(ns.TextLength(text),
+        #parts > 1 and L[" Teil %d von %d."]:format(part, #parts) or ""))
 end
 
 ---------------------------------------------------------------------------
@@ -738,7 +740,7 @@ function ns.ShowRaidLog(v, sessionId)
     ns.ShowPage("raidlog")
 end
 
-ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25, group = "raid",
+ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
@@ -749,9 +751,9 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
             ns.Refresh()
         end)
         f.raid:SetPoint("TOPLEFT", 0, -2)
-        f.discordBtn = W.Button(f, "Discord-Text", 110, function() setView("discord") end)
+        f.discordBtn = W.Button(f, L["Discord-Text"], 110, function() setView("discord") end)
         f.discordBtn:SetPoint("TOPRIGHT", 0, -1)
-        f.addBoss = W.Button(f, "Boss eintragen", 110, function()
+        f.addBoss = W.Button(f, L["Boss eintragen"], 110, function()
             if not officer() then return end
             local s = chosen()
             if type(s) ~= "table" then
@@ -767,9 +769,9 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
         f.counts = W.Text(f, T.FONT.hint, 590)
         f.counts:SetPoint("TOPLEFT", 6, -28)
         f.views = {}
-        f.views.verlauf = W.Chip(f, "Verlauf", 70, function() setView("verlauf") end)
+        f.views.verlauf = W.Chip(f, L["Verlauf"], 70, function() setView("verlauf") end)
         f.views.verlauf:SetPoint("TOPLEFT", 0, -48)
-        f.views.bench = W.Chip(f, "Ersatzbank", 110, function() setView("bench") end)
+        f.views.bench = W.Chip(f, L["Ersatzbank"], 110, function() setView("bench") end)
         f.views.bench:SetPoint("LEFT", f.views.verlauf, "RIGHT", 4, 0)
         f.views.discord = W.Chip(f, "Discord", 70, function() setView("discord") end)
         f.views.discord:SetPoint("LEFT", f.views.bench, "RIGHT", 4, 0)
@@ -788,7 +790,7 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
         -- the raid choice: the recording (or tonight before the raid) first, then the saved raids
         local values, act = {}, ns.Active()
         if not act then
-            values[1] = { value = "next", text = ("Heute, vor dem Raid (%s)"):format(shortDate(ns.NightOf(time()))) }
+            values[1] = { value = "next", text = L["Heute, vor dem Raid (%s)"]:format(shortDate(ns.NightOf(time()))) }
         end
         for _, r in ipairs(ordered()) do
             values[#values + 1] = { value = r.id, text = ("%s%s, %s"):format(r == act and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "",
@@ -800,7 +802,7 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
         else f.addBoss:Hide(); f.discordBtn:Hide(); f.views.discord:Hide() end
         f.counts:SetText(countsText(s))
         local target = benchOf(s)
-        f.views.bench.label:SetText(("Ersatzbank (%d)"):format(target and #ns.BenchList(target) or 0))
+        f.views.bench.label:SetText(L["Ersatzbank (%d)"]:format(target and #ns.BenchList(target) or 0))
         f.views.verlauf:SetOn(v == "verlauf")
         f.views.bench:SetOn(v == "bench")
         f.views.discord:SetOn(v == "discord")
@@ -818,9 +820,10 @@ ns.RegisterPanel{ key = "raidlog", label = "Raid-Log", icon = "Interface\\Icons\
     end }
 
 StaticPopupDialogs["AMISIA_RAIDLOG_DELETE"] = {
-    text = "Diesen Eintrag aus dem Raid-Log löschen?",
-    button1 = "Löschen",
-    button2 = "Abbrechen",
+    text = L["Diesen Eintrag aus dem Raid-Log löschen?"],
+    button1 = L["Löschen##Knopf"],
+    button2 = L["Abbrechen"],
+
     OnAccept = function(_, data)
         if type(data) == "table" and data.s and data.k then
             ns.DeleteKill(data.s, data.k)

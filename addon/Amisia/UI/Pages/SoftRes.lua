@@ -1,6 +1,7 @@
 -- Soft-reserves: the loaded list in three views (items, raiders, the check against the raid),
 -- name fixes with one click, importing and clearing for officers, and the overview card.
 local ADDON, ns = ...
+local L = ns.L
 local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 14, 22
 local GREY, ORANGE, RED = T.GREY, T.ORANGE, "|cffff5050"
@@ -84,7 +85,7 @@ local function classOf(ctx, name)
 end
 
 local function coloured(ctx, name)
-    if ctx.absent[name] then return GREY .. name .. " (nicht im Raid)|r" end
+    if ctx.absent[name] then return GREY .. name .. L[" (nicht im Raid)|r"] end
     local class = classOf(ctx, name)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     return c and ("|c%s%s|r"):format(c.colorStr, name) or name
@@ -121,12 +122,12 @@ end
 local function checkLine(ctx)
     local c = ctx.check
     if not c then return "" end
-    if not ctx.label then return "Kein Raid zum Abgleichen." end
-    local parts = { ("Abgleich mit %s: %d reserviert"):format((ctx.label:gsub("^letzter ", "letztem ")), #c.ok) }
-    if #c.missing > 0 then parts[#parts + 1] = ("%d ohne"):format(#c.missing) end
-    if #c.absent > 0 then parts[#parts + 1] = ("%d nicht im Raid"):format(#c.absent) end
-    if #c.unclear > 0 then parts[#parts + 1] = ("%d unklar"):format(#c.unclear) end
-    if #c.over > 0 then parts[#parts + 1] = ("%d zu viel"):format(#c.over) end
+    if not ctx.label then return L["Kein Raid zum Abgleichen."] end
+    local parts = { L["Abgleich mit %s: %d reserviert"]:format((ctx.label:gsub("^letzter ", "letztem ")), #c.ok) }   -- l10n-ok: German case of the label (English has no match)
+    if #c.missing > 0 then parts[#parts + 1] = L["%d ohne"]:format(#c.missing) end
+    if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
+    if #c.unclear > 0 then parts[#parts + 1] = L["%d unklar"]:format(#c.unclear) end
+    if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
     return table.concat(parts, " · ")
 end
 
@@ -139,7 +140,7 @@ local function itemRows(ctx, me)
         local parts, mine = {}, false
         for _, name in ipairs(names) do
             local label = withTimes(name, times(ctx.sr, item, name))
-            parts[#parts + 1] = ctx.absent[name] and (GREY .. label .. " (nicht im Raid)|r") or label
+            parts[#parts + 1] = ctx.absent[name] and (GREY .. label .. L[" (nicht im Raid)|r"]) or label
             if me and ns.SameName(name, me) then mine = true end
         end
         out[#out + 1] = { kind = "item", item = item, sort = ns.ItemName(item), text = table.concat(parts, ", "), mine = mine }
@@ -157,7 +158,7 @@ local function raiderRows(ctx, me)
                           was = ctx.sr and ctx.sr.renamed and ctx.sr.renamed[name] or nil }
     end
     for _, name in ipairs(ctx.check and ctx.check.missing or {}) do
-        out[#out + 1] = { kind = "raider", name = name, n = 0, text = "keine", mine = me and ns.SameName(name, me) or false }
+        out[#out + 1] = { kind = "raider", name = name, n = 0, text = L["keine"], mine = me and ns.SameName(name, me) or false }
     end
     table.sort(out, function(a, b)
         local la, lb = a.name:lower(), b.name:lower()
@@ -177,27 +178,27 @@ local function checkRows(ctx)
     for _, u in ipairs(c.unclear) do
         unclear[u.name] = true
         out[#out + 1] = { kind = "unclear", name = u.name, suggest = u.suggest,
-                          label = ORANGE .. "Unklar:|r " .. u.name .. (u.kind == "surname" and " (ohne Nachnamen)" or " (Schreibweise?)") }
+                          label = ORANGE .. L["Unklar:|r %s"]:format(u.name) .. (u.kind == "surname" and L[" (ohne Nachnamen)"] or L[" (Schreibweise?)"]) }
     end
     local limit = tonumber(ns.Get("softres.limit")) or 0
     for _, o in ipairs(c.over) do
-        out[#out + 1] = { kind = "over", name = o.name, label = RED .. "Zu viel:|r " .. o.name,
-                          text = ("%d Reservierungen, erlaubt %d"):format(o.n, limit) }
+        out[#out + 1] = { kind = "over", name = o.name, label = RED .. L["Zu viel:|r %s"]:format(o.name),
+                          text = L["%d Reservierungen, erlaubt %d"]:format(o.n, limit) }
     end
     local reminded = sr and sr.reminded or {}
     for _, name in ipairs(c.missing) do
         local at = tonumber(reminded[name])
-        out[#out + 1] = { kind = "missing", name = name, label = "Ohne Reserve: " .. name,
-                          text = at and ("erinnert " .. date("%H:%M", at)) or "" }
+        out[#out + 1] = { kind = "missing", name = name, label = L["Ohne Reserve: %s"]:format(name),
+                          text = at and L["erinnert %s"]:format(date("%H:%M", at)) or "" }
     end
     for _, name in ipairs(c.absent) do
         if not unclear[name] then
-            out[#out + 1] = { kind = "absent", name = name, label = GREY .. "Nicht im Raid:|r " .. name,
+            out[#out + 1] = { kind = "absent", name = name, label = GREY .. L["Nicht im Raid:|r %s"]:format(name),
                               text = names[name] and itemsText(names[name].items) or "" }
         end
     end
     for _, m in ipairs(c.multi) do
-        out[#out + 1] = { kind = "multi", name = m.name, label = GREY .. "Mehrfach:|r " .. m.name,
+        out[#out + 1] = { kind = "multi", name = m.name, label = GREY .. L["Mehrfach:|r %s"]:format(m.name),
                           text = withTimes(ns.ItemName(m.item), m.n) }
     end
     return out
@@ -226,9 +227,9 @@ local function col(parent, x, w, template)
 end
 
 local HEADS = {
-    items = { "Item", "", "Reserviert von" },
-    raider = { "Raider", "SR", "Items" },
-    check = { "Befund", "", "Vorschläge und Details" },
+    items = { "Item", "", L["Reserviert von"] },
+    raider = { L["Raider##Spalte"], "SR", "Items" },
+    check = { L["Befund"], "", L["Vorschläge und Details"] },
 }
 
 local function buildRow(r)
@@ -242,7 +243,7 @@ local function buildRow(r)
             if not self.from or not self.to then return end
             local from, to = self.from, self.to
             if ns.RenameReserve(from, to, true) > 0 then
-                ns.msg(("Soft-Reserves: %s heißt jetzt %s, auch in kommenden Listen."):format(from, to))
+                ns.msg(L["Soft-Reserves: %s heißt jetzt %s, auch in kommenden Listen."]:format(from, to))
             end
         end)
         if i == 1 then
@@ -268,15 +269,15 @@ local function buildRow(r)
         elseif e.kind == "unclear" then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(e.name, 1, 0.82, 0)
-            GameTooltip:AddLine("Ein Klick auf einen Vorschlag korrigiert den Namen in der Liste und merkt die Korrektur für kommende Listen.",
+            GameTooltip:AddLine(L["Ein Klick auf einen Vorschlag korrigiert den Namen in der Liste und merkt die Korrektur für kommende Listen."],
                 0.85, 0.85, 0.85, true)
             GameTooltip:Show()
         elseif e.kind == "raider" and e.was then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(e.name, 1, 0.82, 0)
-            GameTooltip:AddLine(("In der Liste als %s, korrigiert."):format(e.was), 0.85, 0.85, 0.85, true)
+            GameTooltip:AddLine(L["In der Liste als %s, korrigiert."]:format(e.was), 0.85, 0.85, 0.85, true)
             if ns.SoftResAlias(e.was) then
-                GameTooltip:AddLine(("Die Korrektur gilt auch für kommende Listen. \"/amisia sr vergessen %s\" nimmt sie zurück, ohne Namen vergisst es alle gemerkten Korrekturen."):format(e.was),
+                GameTooltip:AddLine(L["Die Korrektur gilt auch für kommende Listen. \"/amisia sr vergessen %s\" nimmt sie zurück, ohne Namen vergisst es alle gemerkten Korrekturen."]:format(e.was),
                     0.85, 0.85, 0.85, true)
             end
             GameTooltip:Show()
@@ -297,7 +298,7 @@ local function fillRow(r, e)
         r.c:SetText(e.text)
     elseif e.kind == "raider" then
         local was = e.was
-        r.a:SetText((ctx and coloured(ctx, e.name) or e.name) .. (was and (GREY .. " (Liste: " .. was .. ")|r") or ""))
+        r.a:SetText((ctx and coloured(ctx, e.name) or e.name) .. (was and (GREY .. L[" (Liste: %s)|r"]:format(was)) or ""))
         r.b:SetText(e.over and (RED .. e.n .. "|r") or tostring(e.n))
         r.c:SetText(e.text)
     else
@@ -325,16 +326,16 @@ local function fillRow(r, e)
     if raiderView and e.mine then r.sel:Show() else r.sel:Hide() end
 end
 
-ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\Icons\\INV_Scroll_03", order = 40, group = "raid",
+ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface\\Icons\\INV_Scroll_03", order = 40, group = "raid",
     create = function(parent)
         local f = CreateFrame("Frame", nil, parent)
         page = f
         -- line 1: the list, import and clear on the right
         f.state = W.Text(f, T.FONT.body, 390)
         f.state:SetPoint("TOPLEFT", 0, -2)
-        f.clear = W.Button(f, "Löschen", 90, function() ns.ClearSoftRes() end)
+        f.clear = W.Button(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
         f.clear:SetPoint("TOPRIGHT", 0, 0)
-        f.import = W.Button(f, "Importieren", 110, function() ns.ToggleSoftResFrame() end)
+        f.import = W.Button(f, L["Importieren"], 110, function() ns.ToggleSoftResFrame() end)
         f.import:SetPoint("RIGHT", f.clear, "LEFT", -6, 0)
         -- line 2: the check
         f.check = W.Text(f, T.FONT.text, 590)
@@ -343,20 +344,20 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         f.views = {}
         f.views.items = W.Chip(f, "Items", 60, function() chooseView("items") end)
         f.views.items:SetPoint("TOPLEFT", 0, -50)
-        f.views.raider = W.Chip(f, "Raider", 60, function() chooseView("raider") end)
+        f.views.raider = W.Chip(f, L["Raider##Spalte"], 60, function() chooseView("raider") end)
         f.views.raider:SetPoint("LEFT", f.views.items, "RIGHT", 4, 0)
-        f.views.check = W.Chip(f, "Abgleich", 70, function() chooseView("check") end)
+        f.views.check = W.Chip(f, L["Abgleich"], 70, function() chooseView("check") end)
         f.views.check:SetPoint("LEFT", f.views.raider, "RIGHT", 4, 0)
         -- officers: remind and post on the right of the views
-        f.post = W.Button(f, "Im Raid posten", 120, function()
+        f.post = W.Button(f, L["Im Raid posten"], 120, function()
             local n, why = ns.PostSoftResSummary()
             if not n and why then ns.msg(why) end
         end)
         f.post:SetPoint("TOPRIGHT", 0, -49)
-        f.remind = W.Button(f, "Erinnern", 110, function() ns.ConfirmSoftResReminders() end)
+        f.remind = W.Button(f, L["Erinnern"], 110, function() ns.ConfirmSoftResReminders() end)
         f.remind:SetPoint("RIGHT", f.post, "LEFT", -6, 0)
-        W.Tooltip(f.remind, "Erinnern", "Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage.")
-        W.Tooltip(f.post, "Im Raid posten", "Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat.")
+        W.Tooltip(f.remind, L["Erinnern"], L["Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage."])
+        W.Tooltip(f.post, L["Im Raid posten"], L["Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat."])
         -- column heads
         local head = CreateFrame("Frame", nil, f)
         head:SetHeight(18)
@@ -381,11 +382,11 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
             local old = ns.SoftResAge(sr) or 0
             local warn = old > (ns.Get("softres.warnDays") or 7)
             local reservers = ctx.check and ctx.check.reservers or 0
-            f.state:SetText(("%sListe vom %s:|r %d Reservierungen von %d %s%s"):format(warn and ORANGE or "|cff4fbf7a",
-                ns.SoftResShortDate(sr.date), sr.count or 0, reservers, plural(reservers, "Raider", "Raidern"),
-                warn and (", " .. old .. " Tage alt") or ""))
+            f.state:SetText(L["%sListe vom %s:|r %d Reservierungen von %d %s%s"]:format(warn and ORANGE or "|cff4fbf7a",
+                ns.SoftResShortDate(sr.date), sr.count or 0, reservers, plural(reservers, L["Raider##von"], L["Raidern##von"]),
+                warn and L[", %d Tage alt"]:format(old) or ""))
         else
-            f.state:SetText(GREY .. "Keine Soft-Reserves geladen.|r")
+            f.state:SetText(GREY .. L["Keine Soft-Reserves geladen."] .. "|r")
         end
         f.check:SetText(checkLine(ctx))
         f.views.items:Show(); f.views.raider:Show()
@@ -395,7 +396,7 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
             f.views.check:Show()
             local raid = IsInRaid() and sr ~= nil
             local open = raid and #ns.SoftResReminders(ctx.check) or 0
-            f.remind:SetText(("Erinnern (%d)"):format(open))
+            f.remind:SetText(L["Erinnern (%d)"]:format(open))
             f.remind:SetEnabled(raid and open > 0)
             f.post:SetEnabled(raid)
             f.remind:Show(); f.post:Show()
@@ -419,11 +420,11 @@ ns.RegisterPanel{ key = "softres", label = "Soft-Reserves", icon = "Interface\\I
         end
         f.list:SetItems(list)
         if not sr then
-            f.hint:SetText(officer and "Importieren nimmt eine softres.it-CSV oder Zeilen wie 'Name [Item-Link]'." or "")
+            f.hint:SetText(officer and L["Importieren nimmt eine softres.it-CSV oder Zeilen wie 'Name [Item-Link]'."] or "")
         elseif shown == "check" then
-            f.hint:SetText(#list == 0 and "Nichts zu prüfen." or "Vorschläge korrigieren den Namen und gelten auch für kommende Listen.")
+            f.hint:SetText(#list == 0 and L["Nichts zu prüfen."] or L["Vorschläge korrigieren den Namen und gelten auch für kommende Listen."])
         elseif shown == "items" then
-            f.hint:SetText("Shift-Klick auf ein Item fügt den Link in den Chat ein.")
+            f.hint:SetText(L["Shift-Klick auf ein Item fügt den Link in den Chat ein."])
         else
             f.hint:SetText("")
         end
@@ -444,28 +445,29 @@ end)
 
 ns.RegisterCard{ key = "softres", order = 20, fill = function(c)
     local sr = AmisiaDB and AmisiaDB.softres
-    c.title:SetText("Soft-Reserves")
+    c.title:SetText(L["Soft-Reserves"])
     if not sr then
-        c.line1:SetText("Keine Liste geladen")
-        if ns.IsOfficerView() then c:SetAction("Importieren", function() ns.ToggleSoftResFrame() end) end
+        c.line1:SetText(L["Keine Liste geladen"])
+        if ns.IsOfficerView() then c:SetAction(L["Importieren"], function() ns.ToggleSoftResFrame() end) end
         return
     end
-    c.line1:SetText(("%d Reservierungen, vom %s"):format(sr.count or 0, sr.date))
+    c.line1:SetText(L["%d Reservierungen, vom %s"]:format(sr.count or 0, sr.date))
     local roster, label = ns.SoftResRoster()
     local chk = ns.SoftResCheck(sr, roster)
     local unclear = chk and #chk.unclear or 0
-    local tail = unclear > 0 and (" · %d %s unklar"):format(unclear, plural(unclear, "Name", "Namen")) or ""
+    local tail = unclear > 0 and L[" · %d %s unklar"]:format(unclear, plural(unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) or ""
     if not label or not chk then
         c.line2:SetText("")
     elseif IsInRaid() then
-        c.line2:SetText(("%d von %d im Raid reserviert"):format(#chk.ok, chk.roster) .. tail)
+        c.line2:SetText(L["%d von %d im Raid reserviert"]:format(#chk.ok, chk.roster) .. tail)
     else
-        c.line2:SetText("Abgleich mit letztem Raid: "
-            .. (#chk.missing > 0 and ("%d ohne Reserve"):format(#chk.missing) or "alle reserviert") .. tail)
+        c.line2:SetText(L["Abgleich mit letztem Raid: %s"]:format(#chk.missing > 0 and L["%d ohne Reserve"]:format(#chk.missing)
+            or L["alle reserviert"]) .. tail)
     end
     if ns.IsOfficerView() and unclear > 0 then
-        c:SetAction("Prüfen", function() ns.ShowSoftRes("check") end)
+        c:SetAction(L["Prüfen"], function() ns.ShowSoftRes("check") end)
     else
-        c:SetAction("Ansehen", function() ns.ShowPage("softres") end)
+        c:SetAction(L["Ansehen"], function() ns.ShowPage("softres") end)
+
     end
 end }

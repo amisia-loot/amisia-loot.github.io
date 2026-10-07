@@ -1875,7 +1875,7 @@ end
 local function onSO(name, sender, so, key)
     local s = sessionFor(key)
     if not s or type(so) ~= "table" then return end
-    if takeover and takeover.key == key and role == "keeper" then return gatherPart(name, "so", so) end
+    if takeover and takeover.key == key and role == "keeper" then return gatherPart(name, "so", so) end   -- l10n-ok: comm part name
     if not officerSelf() or not fromKeeper(name, key) then return end
     touchClaim(name)
     local p = pend[key]
@@ -2234,7 +2234,7 @@ function ns.SyncNow()
     return nil, L["Kein Hüter im Raid."]
 end
 
-ns.RegisterSyncCommand("jetzt", function()
+ns.RegisterSyncCommand("jetzt", function()   -- l10n-ok: sub-word, English "now" in Comm.lua
     if not ns.IsOfficerView() then
         ns.msg(L["Nur in der Offiziersansicht."])
         return
@@ -2305,7 +2305,7 @@ ns.RegisterSyncCommand("an", function()
     ns.msg(L["Raid-Abgleich an."])
 end)
 
-ns.RegisterSyncCommand("aus", function()
+ns.RegisterSyncCommand("aus", function()   -- l10n-ok: sub-word, English "off" in Comm.lua
     ns.Set("sync.enabled", false)
     ns.msg(L["Raid-Abgleich aus."])
 end)

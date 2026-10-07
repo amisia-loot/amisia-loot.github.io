@@ -6,6 +6,7 @@
 -- a kill are read once the encounter restriction has lifted (with a fallback to the roster
 -- snapshots of the recording after 60 s).
 local ADDON, ns = ...
+local L = ns.L
 
 local RESTRICTION_ENCOUNTER = 1   -- Enum.AddOnRestrictionType.Encounter
 local SAME_FIGHT = 120            -- seconds: two kill events of one encounter this close are one kill
@@ -209,14 +210,14 @@ local function lootKillBefore(s, t, start)
 end
 
 local function eventText(enc, name, extra)
-    return ("%s %s%s"):format(tostring(enc or "?"), name or "(ohne Namen)", extra or "")
+    return ("%s %s%s"):format(tostring(enc or "?"), name or L["(ohne Namen)"], extra or "")
 end
 
 ns.OnEvent("ENCOUNTER_START", function(enc, name, diff, size)
     enc, name, diff, size = plainNumber(enc), plainText(name), plainNumber(diff), plainNumber(size)
     local s = recording()
-    remember("ENCOUNTER_START", eventText(enc, name, (", %s Spieler, Schwierigkeit %s%s"):format(tostring(size or "?"),
-        tostring(diff or "?"), s and "" or " (nicht aufgezeichnet)")))
+    remember("ENCOUNTER_START", eventText(enc, name, L[", %s Spieler, Schwierigkeit %s%s"]:format(tostring(size or "?"),
+        tostring(diff or "?"), s and "" or L[" (nicht aufgezeichnet)"])))
     if s then s.encSeen = true end
     if not s or not enc then return end
     -- an open attempt of another encounter never saw its end
@@ -227,8 +228,8 @@ end)
 ns.OnEvent("ENCOUNTER_END", function(enc, name, diff, size, success)
     enc, name, diff, size, success = plainNumber(enc), plainText(name), plainNumber(diff), plainNumber(size), plainNumber(success)
     local s = recording()
-    local result = success == 1 and "Kill" or (success == 0 and "Wipe" or "Ergebnis ?")
-    remember("ENCOUNTER_END", eventText(enc, name, ": " .. result .. (s and "" or " (nicht aufgezeichnet)")))
+    local result = success == 1 and "Kill" or (success == 0 and "Wipe" or L["Ergebnis ?"])
+    remember("ENCOUNTER_END", eventText(enc, name, ": " .. result .. (s and "" or L[" (nicht aufgezeichnet)"])))
     if s then s.encSeen = true end
     if not s or not enc then return end
     local t = time()
@@ -283,7 +284,7 @@ end)
 ns.OnEvent("BOSS_KILL", function(enc, name)
     enc, name = plainNumber(enc), plainText(name)
     local s = recording()
-    remember("BOSS_KILL", eventText(enc, name, s and "" or " (nicht aufgezeichnet)"))
+    remember("BOSS_KILL", eventText(enc, name, s and "" or L[" (nicht aufgezeichnet)"]))
     if s then s.encSeen = true end
     if not s or not enc then return end
     local t = time()
@@ -338,7 +339,7 @@ ns.OnEvent("LOOT_OPENED", function()
     local who = presentSafe() or membersAt(s, d.t - 60, d.t)
     local k = { enc = 0, name = name, start = d.t, t = d.t, ok = true, size = 0, diff = 0, src = "loot", who = who, n = #who }
     insert(s, k)
-    remember("LOOT", name .. " (Lootfenster)")
+    remember("LOOT", name .. L[" (Lootfenster)"])
     ns.Fire("DATA_CHANGED")
     synced(s, "kill+", k)
 end)
@@ -383,10 +384,10 @@ end
 
 -- A kill or wipe by hand: { name, ok, t, start, enc }. Works on old raids too and never moves s.last.
 function ns.AddKill(s, spec)
-    if type(s) ~= "table" then return nil, "Kein Raid." end
+    if type(s) ~= "table" then return nil, L["Kein Raid."] end
     spec = type(spec) == "table" and spec or {}
     local name = ns.CleanNote(type(spec.name) == "string" and spec.name or nil)
-    if not name then return nil, "Name fehlt." end
+    if not name then return nil, L["Name fehlt."] end
     s.kills = s.kills or {}
     local t = tonumber(spec.t) or time()
     local ok = spec.ok ~= false
@@ -483,11 +484,11 @@ end
 -- Settings and commands
 ---------------------------------------------------------------------------
 -- Bench.lua adds its items to this section.
-ns.RaidLogSettings = { key = "raidlog", label = "Raid-Log", order = 12, items = {
-    { key = "raidlog.track", type = "toggle", label = "Bosskämpfe aufzeichnen", default = true,
-      tip = "Kills und Wipes mit Uhrzeit und Anwesenden." },
-    { key = "raidlog.lootKills", type = "toggle", label = "Boss am Lootfenster erkennen", default = true, expert = true,
-      tip = "Wenn der Client keine Kampfereignisse meldet." },
+ns.RaidLogSettings = { key = "raidlog", label = L["Raid-Log"], order = 12, items = {
+    { key = "raidlog.track", type = "toggle", label = L["Bosskämpfe aufzeichnen"], default = true,
+      tip = L["Kills und Wipes mit Uhrzeit und Anwesenden."] },
+    { key = "raidlog.lootKills", type = "toggle", label = L["Boss am Lootfenster erkennen"], default = true, expert = true,
+      tip = L["Wenn der Client keine Kampfereignisse meldet."] },
 }}
 ns.RegisterSettings(ns.RaidLogSettings)
 
@@ -502,25 +503,25 @@ ns.NewestRaid = newestRaid
 
 local function printLog(s)
     if not s then
-        ns.msg("Noch kein Raid aufgezeichnet.")
+        ns.msg(L["Noch kein Raid aufgezeichnet."])
         return
     end
     local kills, wipes = ns.KillCount(s)
-    ns.msg(("Raid-Log %s (%s): %d Kills, %d Wipes."):format(s.zone or "?", s.date or "?", kills, wipes))
+    ns.msg(L["Raid-Log %s (%s): %d Kills, %d Wipes."]:format(s.zone or "?", s.date or "?", kills, wipes))
     for _, k in ipairs(ns.Kills(s)) do
         DEFAULT_CHAT_FRAME:AddMessage(("  %s %s, %s"):format(date("%H:%M", k.t), k.name or "?", k.ok and "Kill" or "Wipe"))
     end
 end
 
-ns.RegisterSlash("log", { aliases = { "raidlog" }, args = "[ereignisse]",
-    desc = "Raid-Log des Raids; \"ereignisse\" zeigt die letzten Kampfereignisse", run = function(rest)
+ns.RegisterSlash("log", { aliases = { "raidlog" }, args = L["[ereignisse]"],
+    desc = L["Raid-Log des Raids; \"ereignisse\" zeigt die letzten Kampfereignisse"], run = function(rest)
         local word = (rest or ""):lower():match("^%s*(%S*)")
-        if word == "ereignisse" or word == "events" then
+        if word == "ereignisse" or word == "events" then   -- l10n-ok: typed sub-words, both work
             if #trace == 0 then
-                ns.msg("Seit dem Laden kein Kampfereignis.")
+                ns.msg(L["Seit dem Laden kein Kampfereignis."])
                 return
             end
-            ns.msg("Letzte Kampfereignisse:")
+            ns.msg(L["Letzte Kampfereignisse:"])
             for _, e in ipairs(trace) do
                 DEFAULT_CHAT_FRAME:AddMessage(("  %s %s %s"):format(date("%H:%M:%S", e.t), e.event, e.text))
             end
@@ -531,10 +532,10 @@ ns.RegisterSlash("log", { aliases = { "raidlog" }, args = "[ereignisse]",
         end
     end })
 
-ns.RegisterSlash("boss", { aliases = { "kill" }, officer = true, args = "<Name> [wipe]",
-    desc = "Bosskill oder Wipe von Hand eintragen", run = function(rest)
+ns.RegisterSlash("boss", { aliases = { "kill" }, officer = true, args = L["<Name> [wipe]"],
+    desc = L["Bosskill oder Wipe von Hand eintragen"], run = function(rest)
         if not ns.IsOfficerView() then
-            ns.msg("Bosse von Hand nur in der Offiziersansicht.")
+            ns.msg(L["Bosse von Hand nur in der Offiziersansicht."])
             return
         end
         rest = (rest or ""):match("^%s*(.-)%s*$")
@@ -542,12 +543,12 @@ ns.RegisterSlash("boss", { aliases = { "kill" }, officer = true, args = "<Name> 
         local head = rest:match("^(.-)%s+[Ww][Ii][Pp][Ee]$")
         if head then name, wipe = head, true end
         if name == "" or rest:lower() == "wipe" then
-            ns.msg("Aufruf: /amisia boss <Name> [wipe]")
+            ns.msg(L["Aufruf: /amisia boss <Name> [wipe]"])
             return
         end
         local s = newestRaid()
         if not s then
-            ns.msg("Noch kein Raid aufgezeichnet.")
+            ns.msg(L["Noch kein Raid aufgezeichnet."])
             return
         end
         local live = s == ns.Active()
@@ -556,5 +557,6 @@ ns.RegisterSlash("boss", { aliases = { "kill" }, officer = true, args = "<Name> 
             ns.msg(why)
             return
         end
-        ns.msg(("%s eingetragen: %s (%s, %s)."):format(wipe and "Wipe" or "Kill", k.name, s.zone or "?", s.date or "?"))
+        ns.msg(L["%s eingetragen: %s (%s, %s)."]:format(wipe and "Wipe" or "Kill", k.name, s.zone or "?", s.date or "?"))
+
     end })
