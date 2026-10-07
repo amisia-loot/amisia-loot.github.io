@@ -73,8 +73,8 @@ T.PAGE_W, T.PAGE_H = 602, 478
 -- the main window (MainFrame.lua)
 T.MAIN = {
     W = 806, H = 560,
-    NAV_W = 164, NAV_ROWS = 16, NAV_HEADS = 4,   -- 4 bars, 3 gaps and 16 rows fill the 480 px list
-    NAV_ROW_H = 22, NAV_GAP = 4, NAV_INDENT = 8, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
+    NAV_W = 164, NAV_ROWS = 18, NAV_HEADS = 4,   -- 4 bars, 3 gaps and 18 rows of 20 fill 472 of the 480 px list
+    NAV_ROW_H = 20, NAV_GAP = 4, NAV_INDENT = 8, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
     LIST_W = 176,         -- the page list's inset
