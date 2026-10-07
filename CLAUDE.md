@@ -1,6 +1,7 @@
 # Amisia loot ledger
 
 - The old claude.ai artifact copy of the site (the "twin") is no longer maintained (since 2026-10-06); the live site on GitHub Pages is the only one.
+- The addon speaks German (deDE) and English (every other client): new user-visible text goes in German inside `L["…"]` with its English in `addon/Amisia/Locales/enUS_<area>.lua`; `python3 tools/l10n.py check` must stay clean (see tools/README.md, Languages).
 - Bump `BUILD_ID` in `index.html` whenever a data file changes, or browsers keep the cached copy.
 - One entry point: `python3 tools/build.py check` (syntax, addon tests, layout rules, tool tests, UTF-8, TOC, luacheck), `python3 tools/build.py data [--sv FILE] [--wago DIR]` (every generated file in `addon/Amisia/Data`, in order), `python3 tools/build.py snapshots [--out DIR] [--compare DIR]` (PNGs of every page and window from the test stub, an index.html, the shots whose layout changed) and `python3 tools/build.py release X.Y.Z -m "summary"` (version in the TOC, check, zip, CHANGELOG.md, commit, push, `tools/release_addon.sh`). Details in `tools/README.md`.
 - Lazy data (since 2026-10-07): GearData, MapData, QuestData, ProfessionData and TalentData hand their table to `ns.LazyData` as text (the generators call `tools/lua_data.py` `lazy()`); read them with `ns.Data("GEAR")` etc., check them with `ns.HasData`/`ns.DataSize` (never build data in an availability check or at login; `tools/load_cost.py` and `addon/tests/test_lazy_data.lua` show it).

@@ -684,3 +684,27 @@ and stops WTL again. Syncthing (folder `amisia-wago`) brings the files to `~/add
 Licences: wow.tools.local, TACTSharp and DBCD are MIT; the WoWDBDefs definitions are CC BY-SA 4.0
 (code BSD-3-Clause). The tool is only run, nothing of it is shipped. The exported tables are
 Blizzard's game data, as with the wago.tools downloads: read by the build scripts, never committed.
+
+## Languages (Locales/, l10n.py)
+
+The addon speaks German on a German client (deDE) and English on every other client. German is the
+source text in the code and the key: `L["Vergaben"]` shows "Vergaben" on deDE and the entry of
+`Locales/enUS_*.lua` elsewhere. A key may carry a context after `##` (`L["Löschen##Knopf"]`); German
+shows the part before it. `ns.N_("…")` marks German text kept as data and shown later through
+`L[var]`. Numbers and dates go through `ns.Num`, `ns.FmtDay`, `ns.FmtDate`, `ns.FmtDayTime`.
+
+- Machine formats stay as they are in every language: export lines (`#AMISIA 2`), addon messages,
+  `AMISIA-WERTE`, talent codes, SavedVariables keys. Texts the addon sends to chat go out in the
+  sender's language. Slash commands keep the German word and add an English one (`en =` in
+  `ns.RegisterSlash`); both work in both languages.
+- English lives in the part files `Locales/enUS_{core,selftest,raid,raid2,gear,world}.lua` (one per
+  area of the code); a key stands in exactly one of them.
+- New text: write it German in the code inside `L["…"]`, add the English to the part file of that
+  area, run `python3 tools/l10n.py check` (no German outside L, every key translated, none unused or
+  twice, format specifiers in the same order). A literal that must stay German (a typed sub-word, a
+  data key) gets a `-- l10n-ok` comment at the end of its line.
+- A further language: copy the enUS part files to `<locale>_*.lua`, change `ns.NewLocale("enUS")` to
+  the locale, add them to the TOC after `Locales/Locale.lua`, and translate.
+- `python3 tools/build.py check` runs the addon tests in German and English, the translation check
+  and the layout rules in both languages; `python3 tools/build.py snapshots --locale enUS` draws the
+  English pages.

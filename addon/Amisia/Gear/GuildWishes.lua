@@ -396,7 +396,7 @@ end
 
 StaticPopupDialogs["AMISIA_GUILDWISH_CLEAR"] = {
     text = L["Die Gildenwünsche löschen?"],
-    button1 = L["Löschen"],
+    button1 = L["Löschen##Knopf"],
     button2 = L["Abbrechen"],
     OnAccept = function() ns.ClearGuildWishes() end,
     timeout = 0,
