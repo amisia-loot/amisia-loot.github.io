@@ -552,6 +552,23 @@ end)
 ---------------------------------------------------------------------------
 
 -- Opens the world map on the point's zone (not in combat). Returns true when it did.
+-- The main window under the world map while the map is open; its own strata back when the map hides.
+local mainStrata, hookedMap
+function ns.MapLowerMain(map, main)
+    if not (map and main and main.SetFrameStrata) then return end
+    mainStrata = mainStrata or (main.GetFrameStrata and main:GetFrameStrata()) or "FULLSCREEN"
+    local below = (map.GetFrameStrata and map:GetFrameStrata()) or "HIGH"
+    main:SetFrameStrata(below == "FULLSCREEN" and "HIGH" or "MEDIUM")
+    if not hookedMap and map.HookScript then
+        hookedMap = true
+        map:HookScript("OnHide", function()
+            local m = _G.AmisiaFrame
+            if m and mainStrata then m:SetFrameStrata(mainStrata) end
+            mainStrata = nil
+        end)
+    end
+end
+
 function ns.MapShowOnWorldMap(point)
     if type(point) ~= "table" or type(point.map) ~= "number" then return false end
     if InCombatLockdown and InCombatLockdown() then
@@ -560,9 +577,11 @@ function ns.MapShowOnWorldMap(point)
     end
     local frame = _G.WorldMapFrame
     if not frame then return false end
-    -- the main window is fullscreen and toplevel: the map would open underneath it
+    -- the main window stays open: while the map is shown it steps one strata below it (the map
+    -- would otherwise open underneath the fullscreen window) and comes back up when the map closes
     local main = _G.AmisiaFrame
-    if main and main.IsShown and main:IsShown() then main:Hide() end
+    local keep = main and main.IsShown and main:IsShown()
+    if keep then ns.MapLowerMain(frame, main) end
     if not frame:IsShown() then
         if OpenWorldMap then
             OpenWorldMap(point.map)
@@ -571,6 +590,9 @@ function ns.MapShowOnWorldMap(point)
         end
     end
     if frame.SetMapID then frame:SetMapID(point.map) end
+    -- the client's panel manager may close the special frames as the map opens: show it again
+    if keep and not main:IsShown() then main:Show() end
+    if frame.Raise then frame:Raise() end
     return frame:IsShown() and true or false
 end
 

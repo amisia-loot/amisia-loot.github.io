@@ -1,5 +1,5 @@
 -- Review of 1.9: the fallback position (UnitPosition returns positionX, positionY), the world map
--- hides the main window instead of opening underneath it, the map button's tooltip, click and menu
+-- keeps the main window open one strata below the map instead of covering it, the map button's tooltip, click and menu
 -- on a Hier row name the same place, item names that arrive late fill the map page, another zone
 -- starts at the top of the list, the empty text with both switches off, a hint when the arrow is
 -- hidden by its menu, and a degenerate map rectangle projects nothing on the continent.
@@ -58,19 +58,21 @@ do
 end
 
 ---------------------------------------------------------------------------
--- 2. the world map takes the main window out of the way
+-- 2. the world map opens over the main window, which stays open
 ---------------------------------------------------------------------------
 NS.Dispatch("karte")
 local f = NS.MapPageFrame()
 assert(AmisiaFrame:IsShown(), "the window shows the map page")
 WorldMapFrame:Hide()
 assert(NS.MapShowOnWorldMap({ map = 1411, x = 0.5, y = 0.5 }))
-assert(WorldMapFrame:IsShown() and not AmisiaFrame:IsShown(), "the map opens, the window steps aside")
+assert(WorldMapFrame:IsShown() and AmisiaFrame:IsShown(), "the map opens, the window stays open")
+assert(AmisiaFrame:GetFrameStrata() ~= "FULLSCREEN", "the window lies under the map: " .. AmisiaFrame:GetFrameStrata())
 WorldMapFrame:Hide()
+assert(AmisiaFrame:GetFrameStrata() == "FULLSCREEN", "back on top once the map closes")
 NS.ShowMap()
 assert(AmisiaFrame:IsShown())
 f.open:Click()
-assert(WorldMapFrame:IsShown() and not AmisiaFrame:IsShown(), "the button on the page too")
+assert(WorldMapFrame:IsShown() and AmisiaFrame:IsShown(), "the button on the page too")
 WorldMapFrame:Hide()
 NS.ShowMap()
 
