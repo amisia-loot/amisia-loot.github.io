@@ -383,6 +383,16 @@ tr.got td{opacity:.5}
 .want button{font-family:var(--label);font-size:13px;letter-spacing:.04em;font-weight:600;padding:2px 9px;border-radius:12px;border:1px solid var(--line-2);background:var(--panel-3);cursor:pointer}
 .want button:hover{border-color:var(--gold)}
 .want button .p{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-left:5px}
+.strow{cursor:pointer}
+.strow.open td,.stdetail td{background:var(--panel-2)}
+.stwks{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;font-size:13px}
+.stbars{display:flex;gap:6px;align-items:flex-end}
+.stwk{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:22px;height:56px}
+.stwk i{display:block;width:12px;background:var(--gold);border-radius:2px 2px 0 0;min-height:1px}
+.stwk span{font-size:11px;color:var(--muted);line-height:14px}
+.stfame{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.stfame:last-of-type{border-bottom:0}
+.stfame .t{font-family:var(--label);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
 .topwish{display:flex;gap:8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)}
 .topwish:last-child{border-bottom:0}
 .topwish .n{font-family:var(--label);font-weight:600;color:var(--gold);min-width:18px}
@@ -451,6 +461,7 @@ tr.got td{opacity:.5}
     <button class="tab" role="tab" data-view="log">Loot Log</button>
     <button class="tab" role="tab" data-view="night">Nights</button>
     <button class="tab" role="tab" data-view="att">Attendance</button>
+    <button class="tab" role="tab" data-view="stats">Stats</button>
     <button class="tab" role="tab" data-view="wish">Wishlist</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
     <button class="tab" role="tab" data-view="drops">Loot Tables</button>
@@ -598,6 +609,22 @@ tr.got td{opacity:.5}
           <div class="panel-b" id="nightList"></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="view" id="view-stats" hidden>
+    <div class="toolbar">
+      <div class="field"><label for="stRange">Range</label><select class="inp" id="stRange"><option value="4w">Last 4 weeks</option><option value="phase">This phase</option><option value="all" selected>Every night</option></select></div>
+      <div class="field"><label for="stClass">Class</label><select class="inp" id="stClass"><option value="">Every class</option></select></div>
+      <div class="field"><label for="stRole">Role</label><select class="inp" id="stRole"><option value="">Every role</option><option value="dps">Damage dealer</option><option value="unknown">Role unknown</option></select></div>
+      <div class="spacer"></div>
+      <div class="count" id="stCount"></div>
+    </div>
+    <p class="crhint" id="stHint"></p>
+    <div class="matgrid" style="margin-top:0">
+      <div class="tblwrap"><table id="stTable"><thead id="stHead"></thead><tbody id="stBody"></tbody></table></div>
+      <div class="stack"><div class="panel"><div class="panel-h">Hall of Fame</div><div class="panel-b" id="stFame"></div></div></div>
     </div>
   </section>
 
@@ -1172,7 +1199,7 @@ let movedOnLoad = null;
 const noteMove = s => { const have = s && (s.shelfGame || 'tbc'); movedOnLoad = s && have !== PLAY ? have : null; };
 // The role decides readOnly outside the archive; inside it nobody writes.
 function setReadOnly(ro){ liveReadOnly = ro; readOnly = archiveOn || ro; }
-const ARCHIVE_TABS = ['armory', 'log', 'night', 'att', 'matrix', 'craft', 'mats', 'roster'];
+const ARCHIVE_TABS = ['armory', 'log', 'night', 'att', 'stats', 'matrix', 'craft', 'mats', 'roster'];
 function enterArchive(){
   if (archiveOn || busy()) return;
   fitShelf(state);
@@ -2621,6 +2648,158 @@ function renderMatrix(){
   }).join('');
 }
 
+/* ---------------- stats ---------------- */
+// Loot and attendance per player: a main with the characters of its alts, as on the Attendance tab.
+// Roles the page can tell from the class alone: these classes only deal damage, every other one may tank or heal.
+const STAT_DPS = ['Mage', 'Warlock', 'Rogue', 'Hunter'];
+const statRole = cls => STAT_DPS.includes(cls) ? 'dps' : 'unknown';
+const statRoleWord = r => r === 'dps' ? 'damage dealer' : 'role unknown';
+// The kind of an award from its note, as the imports write it: OS or SR first, else main spec.
+const statKind = a => { const p = String((a && a.note) || '').split(' · '); return p.includes('OS') ? 'os' : p.includes('SR') ? 'sr' : 'ms'; };
+const dayNum = d => { const [y, m, dd] = String(d).split('-').map(Number); return Math.round(Date.UTC(y, m - 1, dd) / 864e5); };
+// The phase: the nights since the newest raid first showed up in the awards, {zone, name, from} or null.
+function statPhase(){
+  const first = {};
+  for (const a of state.awards) { const z = BOSSZONE[a.boss]; if (z && (!first[z] || a.date < first[z])) first[z] = a.date; }
+  let best = null;
+  for (const [zone, from] of Object.entries(first)) if (!best || from > best.from) best = {zone, name: ZONE[zone] || zone, from};
+  return best;
+}
+// The statistics over a range ('4w', 'phase', 'all'), filtered by class (cls) and role. A player
+// counts from the first counted night one of its characters was there or on the bench; the bench
+// counts by benchMode (attended, left out of the rate, missed), late nights still count as there.
+// weeks: items in each of the last 8 weeks, the newest first, whatever the range.
+function buildStats(opts){
+  opts = opts || {};
+  const phase = statPhase(), now = dayNum(today()), mode = benchMode();
+  const from = opts.range === '4w' ? now - 28 : opts.range === 'phase' ? (phase ? dayNum(phase.from) : Infinity) : -Infinity;
+  const per = countedNights().slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+    .map(n => ({date: n.date, here: presentOn(n.date), late: lateOn(n.date), bench: benchOn(n.date), kills: nightKills(n.date), inRange: dayNum(n.date) >= from}));
+  const all = [], players = [], awards = [];
+  for (const r of mainRaiders()) {
+    const ids = groupIds(r.id);
+    const p = {id: r.id, name: r.name, cls: r.cls, role: statRole(r.cls), items: 0, ms: 0, os: 0, sr: 0, raids: 0, total: 0, late: 0, bench: 0,
+      bosses: 0, streak: 0, last: null, weeks: [0, 0, 0, 0, 0, 0, 0, 0],
+      chars: ids.map(id => ({id, name: (raiderById(id) || {}).name || id, items: 0, raids: 0}))};
+    let seen = false, run = 0, active = false;
+    for (const x of per) {
+      const there = ids.filter(id => x.here.has(id)), benched = !there.length && ids.some(id => id in x.bench);
+      if (there.length || benched) seen = true;
+      if (!seen || !x.inRange) continue;
+      for (const c of p.chars) if (x.here.has(c.id)) c.raids++;
+      for (const k of x.kills) if (k.ok && Array.isArray(k.present) && k.present.some(id => ids.includes(id))) p.bosses++;
+      if (there.length) { p.raids++; p.total++; active = true; if (there.every(id => id in x.late)) p.late++; run++; }
+      else if (benched) {
+        p.bench++; active = true;
+        if (mode === 'excused') continue;
+        p.total++;
+        if (mode === 'present') { p.raids++; run++; } else run = 0;
+      }
+      else { p.total++; run = 0; }
+      if (run > p.streak) p.streak = run;
+    }
+    for (const a of awardsOfGroup(r.id)) {
+      const d = dayNum(a.date), w = Math.floor((now - d) / 7);
+      if (w >= 0 && w < 8) p.weeks[w]++;
+      if (d < from) continue;
+      const k = statKind(a);
+      p.items++; p[k]++; active = true;
+      const c = p.chars.find(x => x.id === a.raider); if (c) c.items++;
+      if (!p.last || a.date > p.last) p.last = a.date;
+      awards.push({p, item: a.item, date: a.date});
+    }
+    p.rate = p.total ? p.raids / p.total : 0;
+    p.perRaid = p.raids ? p.items / p.raids : 0;
+    if (!active) continue;
+    all.push(p);
+    if ((!opts.cls || p.cls === opts.cls) && (!opts.role || p.role === opts.role)) players.push(p);
+  }
+  sortStats(players, 'items', true);
+  return {nights: per.filter(x => x.inRange).length, phase, players, all, awards};
+}
+const STAT_SORT = ['name', 'items', 'ms', 'os', 'sr', 'perRaid', 'rate', 'bosses', 'streak', 'last'];
+// Sorts by a column, the largest first with desc; ties by name; a player without an item sorts last by date.
+function sortStats(list, col, desc){
+  if (!STAT_SORT.includes(col)) col = 'name';
+  const val = p => col === 'last' ? (p.last ? dayNum(p.last) : -1) : p[col];
+  return list.sort((a, b) => {
+    if (col === 'name') return desc ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+    const x = val(a), y = val(b);
+    if (x !== y) return desc ? y - x : x - y;
+    return a.name.localeCompare(b.name);
+  });
+}
+// The hall of fame of a result: [{key, title, name, n, text, item}], an entry only where someone has
+// a number above zero. Best attendance needs 3 nights since first seen. The most wanted item is the
+// won item whose winner had it on the wishlist, with the most wishes for it.
+function statsFame(res){
+  const out = [], list = res.players;
+  const best = (val, ok) => { let top = null; for (const p of list) { const v = val(p); if (v > 0 && (!ok || ok(p)) && (!top || v > top.v || (v === top.v && p.raids > top.p.raids))) top = {p, v}; } return top; };
+  const add = (key, title, top, text) => { if (top) out.push({key, title, name: top.p.name, n: top.v, text}); };
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+  let t = best(p => p.items); add('items', 'Most items', t, t && plural(t.v, 'item', 'items'));
+  t = best(p => p.rate, p => p.total >= 3); add('rate', 'Best attendance', t, t && Math.round(t.v * 100) + '% (' + t.p.raids + '/' + t.p.total + ')');
+  t = best(p => p.bosses); add('bosses', 'Most bosses seen', t, t && plural(t.v, 'boss kill', 'boss kills'));
+  t = best(p => p.streak); add('streak', 'Longest streak', t, t && plural(t.v, 'night', 'nights') + ' in a row');
+  const wishes = wishesHere(), count = {}, shown = new Set(list);
+  for (const w of wishes) count[w.item] = (count[w.item] || 0) + 1;
+  let w = null;
+  for (const a of res.awards) {
+    if (!shown.has(a.p) || !count[a.item]) continue;
+    const ids = groupIds(a.p.id);
+    if (!wishes.some(x => x.item === a.item && ids.includes(x.raider))) continue;
+    if (!w || count[a.item] > w.v || (count[a.item] === w.v && a.date > w.date)) w = {p: a.p, v: count[a.item], item: a.item, date: a.date};
+  }
+  if (w) { add('wanted', 'Most wanted item won', w, (ITEM[w.item] ? ITEM[w.item].name : 'Item ' + w.item) + ', on ' + w.v + ' wishlist' + (w.v === 1 ? '' : 's')); out[out.length - 1].item = w.item; }
+  return out;
+}
+// The columns of the table: key, head, tooltip.
+function statCols(){
+  return [['name', 'Player'], ['items', 'Items', 'Items won, every character of the player'], ['ms', 'MS'], ['os', 'OS'], ['sr', 'SR'],
+  ['perRaid', 'Per night', 'Items per night the player was there'], ['rate', 'Attendance', 'Nights there of the nights since first seen; the bench counts as set on the Attendance tab'],
+  ['bosses', 'Bosses', 'Boss kills the player was there for'], ['streak', 'Streak', 'The longest run of nights without missing one'], ['last', 'Last item']];
+}
+const statCharText = c => c.name + ': ' + c.items + ' item' + (c.items === 1 ? '' : 's') + ', ' + c.raids + ' night' + (c.raids === 1 ? '' : 's');
+function renderStats(){
+  const range = $('#stRange').value, cls = $('#stClass').value, role = $('#stRole').value;
+  const res = buildStats({range, cls, role}), cols = statCols();
+  const classes = [...new Set(res.all.map(p => p.cls).filter(Boolean))].sort();
+  $('#stClass').innerHTML = '<option value="">Every class</option>' + classes.map(c => '<option' + (c === cls ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+  const col = ui.stSort || 'items', desc = ui.stDesc !== false;
+  sortStats(res.players, col, desc);
+  $('#stCount').textContent = res.players.length + ' player' + (res.players.length === 1 ? '' : 's') + ' · ' + res.nights + ' night' + (res.nights === 1 ? '' : 's');
+  $('#stHint').textContent = 'Every character of a player counts together, alts for their main. Attendance counts the nights since the player first showed up; late nights count as there.'
+    + (range === 'phase' ? (res.phase ? ' This phase: since ' + fmtDate(res.phase.from) + ', when ' + res.phase.name + ' first showed up.' : ' No phase yet: no award names a raid.') : '')
+    + ' Click a row for the weeks.';
+  $('#stHead').innerHTML = '<tr>' + cols.map(([k, label, tip]) => '<th class="sortable' + (k === 'name' ? '' : ' num') + (k === col ? ' sorted' : '') + '" data-stsort="' + k + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + label + (k === col ? (desc ? ' ▼' : ' ▲') : '') + '</th>').join('') + '</tr>';
+  if (!res.players.length) {
+    $('#stBody').innerHTML = '<tr><td colspan="' + cols.length + '"><div class="empty"><b>Nothing to count yet</b>' + (state.awards.length || nights().length ? 'Nobody matches these filters.' : 'Record raid nights and awards first.') + '</div></td></tr>';
+  } else {
+    const start = dayNum(today());
+    const weekOf = i => new Date((start - 7 * i - 6) * 864e5).toISOString().slice(0, 10);
+    $('#stBody').innerHTML = res.players.map(p => {
+      const open = ui.stOpen === p.id;
+      const row = '<tr class="strow' + (open ? ' open' : '') + '" data-stopen="' + esc(p.id) + '" title="' + esc(p.chars.map(statCharText).join('\n')) + '">'
+        + '<td><span class="rname" style="color:' + clsVar(p.cls) + '">' + esc(p.name) + '</span>' + (p.chars.length > 1 ? ' <span class="faint">+' + (p.chars.length - 1) + '</span>' : '') + '</td>'
+        + '<td class="num">' + p.items + '</td><td class="num">' + p.ms + '</td><td class="num">' + p.os + '</td><td class="num">' + p.sr + '</td>'
+        + '<td class="num">' + (p.raids ? p.perRaid.toFixed(2) : '–') + '</td>'
+        + '<td class="num">' + (p.total ? Math.round(p.rate * 100) + '% <span class="faint">' + p.raids + '/' + p.total + '</span>' : '–') + '</td>'
+        + '<td class="num">' + p.bosses + '</td><td class="num">' + p.streak + '</td><td class="num">' + (p.last ? fmtShort(p.last) : '–') + '</td></tr>';
+      if (!open) return row;
+      const top = Math.max(1, ...p.weeks);
+      const weeks = p.weeks.map((n, i) => '<div class="stwk" title="' + n + ' item' + (n === 1 ? '' : 's') + ' in the week from ' + fmtShort(weekOf(i)) + '"><i style="height:' + Math.round(n / top * 40) + 'px"></i><span>' + n + '</span></div>').reverse().join('');
+      return row + '<tr class="stdetail"><td colspan="' + cols.length + '"><div class="stwks"><span class="muted">Items per week, last 8 weeks</span><div class="stbars">' + weeks + '</div></div>'
+        + '<div class="muted" style="font-size:13px;margin-top:6px">' + p.chars.map(c => esc(statCharText(c))).join(' · ')
+        + ' · late ' + p.late + ' · bench ' + p.bench + ' · ' + statRoleWord(p.role) + '</div></td></tr>';
+    }).join('');
+  }
+  const fame = statsFame(res);
+  $('#stFame').innerHTML = fame.length
+    ? fame.map(e => '<div class="stfame"><div class="t">' + esc(e.title) + '</div><div><b>' + esc(e.name) + '</b> <span class="muted">' + esc(e.text) + '</span></div></div>').join('')
+      + '<p class="faint" style="font-size:12px;margin:10px 0 0">Best attendance needs 3 nights. Only what the ledger holds: how big an upgrade was is not recorded.</p>'
+    : '<span class="muted" style="font-size:13px">Nothing for the hall of fame yet.</span>';
+}
+
 /* ---------------- crafting ---------------- */
 /* ---------------- loot tables from the guild's boss kills ---------------- */
 const DROP_KIND = {party: 'Dungeon', raid: 'Raid'};
@@ -3996,6 +4175,7 @@ function renderAll(){
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
   if (ui.view === 'night') renderNight();
   if (ui.view === 'att') renderAttendance();
+  if (ui.view === 'stats') renderStats();
   if (ui.view === 'wish') renderWishes();
   if (ui.view === 'matrix') renderMatrix();
   if (ui.view === 'craft') renderCraft();
@@ -4075,6 +4255,9 @@ $('#fItem').addEventListener('keydown', ev => {
 $('#itemList').addEventListener('mousedown', ev => { const o = ev.target.closest('[data-pick]'); if (o) { pickItem(Number(o.dataset.pick)); ev.preventDefault(); $('#fRaider').focus(); } });
 document.addEventListener('click', ev => { if (!ev.target.closest('#itemCombo')) $('#itemList').hidden = true; });
 ['#mxSearch','#mxShow','#mxPhase'].forEach(s => $(s).addEventListener('input', renderMatrix));
+['#stRange','#stClass','#stRole'].forEach(s => $(s).addEventListener('input', renderStats));
+$('#stHead').addEventListener('click', ev => { const th = ev.target.closest('[data-stsort]'); if (!th) return; const k = th.dataset.stsort; if ((ui.stSort || 'items') === k) ui.stDesc = ui.stDesc === false; else { ui.stSort = k; ui.stDesc = k !== 'name'; } renderStats(); });
+$('#stBody').addEventListener('click', ev => { const tr = ev.target.closest('[data-stopen]'); if (!tr) return; ui.stOpen = ui.stOpen === tr.dataset.stopen ? null : tr.dataset.stopen; renderStats(); });
 $('#mxHead').addEventListener('click', ev => { const th = ev.target.closest('[data-sort]'); if (th) { ui.mxSort = th.dataset.sort; renderMatrix(); } });
 $('#mxBody').addEventListener('click', ev => {
   const o = ev.target.closest('[data-open]'), c = ev.target.closest('[data-close]');
