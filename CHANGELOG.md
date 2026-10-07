@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.9.1 (2026-10-07)
+
+- Data rebuilt from the user's own client export (talents identical, profession reagents from SpellReagents); build_talents accepts the export's Index column
+
 ## 2.9.0 (2026-10-07)
 
 - Locales: ns.L with German keys and English for every other client locale (Locales/Locale.lua, enUS parts), ns.Num/FmtDay/FmtDate, N_ marker; English slash words (def.en, collisions are errors); run.py --locale enUS (text assertions shown, Lua errors and missing texts fail), tools/l10n.py scan/check, layout rules in deDE and enUS, build.py check runs both
