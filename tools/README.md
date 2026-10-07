@@ -1,5 +1,59 @@
 # Tools
 
+## build.py
+
+The one entry point for the addon's data, checks and releases. It needs `lupa` and `pytest`; when
+the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, so on the N100
+`python3 tools/build.py ...` is enough.
+
+```
+python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
+python3 tools/build.py check
+python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
+```
+
+- `data` runs the data builds in dependency order: `build_dungeons.py --wago`, `build_gear.py`,
+  `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
+  `build_talents.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
+  that fails and ends with `git diff --stat` of `addon/Amisia/Data` and `tools`. `--wago` is the
+  folder of the client tables (default `~/addons/_wago`); professions and talents are skipped with a
+  note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
+  dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
+  `build_bis.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
+  `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
+- `check` runs `addon/tests/syntax.cjs`, `addon/tests/run.py`, `pytest tools/tests` (which holds the
+  "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
+  the TOC against the addon folder (every listed file exists, every `.lua`/`.xml` is listed) and
+  luacheck with `.luacheckrc`. One line per step; the exit code is 1 when one fails. A missing
+  node/luaparse or luacheck is reported as `skip`.
+- `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
+  unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
+  version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts
+  everything back when it fails, builds `addon/Amisia.zip` (tracked files under `Amisia/`, no
+  dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
+  commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
+  `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
+
+### luacheck
+
+`.luacheckrc` in the repo root: Lua 5.1, the client globals the addon reads (`read_globals`), the
+globals it writes (`AmisiaDB`, `SLASH_AMISIA1`, `AmisiaMapPinMixin`, the compartment callbacks,
+`SlashCmdList`, `StaticPopupDialogs`). A new client API in the code needs its name in
+`read_globals`. On the N100 luacheck 1.2.0 runs from the Debian packages unpacked without root into
+`~/.local/luacheck` (`apt-get download lua-check lua5.1 liblua5.1-0 lua-filesystem lua-argparse`,
+`dpkg -x` each into that folder) through the wrapper `~/.local/bin/luacheck`. GitHub Actions
+installs `lua-check` with apt.
+
+## Addon layout
+
+`addon/Amisia/`: `Core/` (registry, core, names, chat queue, comm, trust, version, minimap button,
+selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid log, bench, sync,
+raid text, need), `Collect/` (item scan, collector, drops and their guild exchange, quest XP),
+`Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes, comparison marks,
+map and map pins), `Data/` (only generated files, from the build scripts below), `UI/` (widgets,
+main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads them in dependency
+order; `build.py check` fails when a file is missing from it.
+
 ## build_scan.py
 
 Builds `data/forever.js`, the loot tables for World of Warcraft: Forever, from what the Amisia
