@@ -510,7 +510,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "professions", label = "Berufe", icon = ICON, order = 56, group = "gear",
+ns.RegisterPanel{ key = "professions", label = "Berufe", icon = ICON, order = 57, group = "gear",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
 
 function ns.ProfessionsPageFrame() return page end

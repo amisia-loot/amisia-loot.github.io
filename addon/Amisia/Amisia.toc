@@ -42,11 +42,13 @@ MapData.lua [AllowLoadGameType camelot]
 DungeonData.lua [AllowLoadGameType camelot]
 DungeonQuestData.lua [AllowLoadGameType camelot]
 ProfessionData.lua [AllowLoadGameType camelot]
+QuestData.lua [AllowLoadGameType camelot]
 Gear.lua
 GearFrame.lua
 Bis.lua
 Dungeons.lua
 Professions.lua
+Quests.lua
 GuildWishes.lua
 Compare.lua
 Need.lua
@@ -63,6 +65,7 @@ Pages\SoftRes.lua
 Pages\Gear.lua
 Pages\Map.lua
 Pages\Professions.lua
+Pages\Quests.lua
 Pages\Export.lua
 Pages\Bank.lua
 Pages\Tools.lua

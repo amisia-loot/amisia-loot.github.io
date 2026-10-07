@@ -110,6 +110,18 @@ def test_what_a_refresh_keeps():
     assert not att_data.kept('zzOLD/10 - Professions/x.lua') and not att_data.kept('00 - Missing DB/MissingItems.txt')
 
 
+def test_class_race_profession_and_flags(db):
+    q = db['quests']
+    assert q[72001]['classes'] == 1 << 2 and q[72001]['races'] == 1 << 3 and q[72001]['faction'] == 'A', 'a night elf hunter'
+    assert q[72002]['pre'] == [72001] and q[72002]['rewards'] == [61090, 61098]
+    assert q[72003]['skill'] == 171 and q[72003]['races'] == 0 and q[72003]['faction'] == 'A', 'ALCHEMY by name'
+    assert q[72004]['breadcrumb'] and q[72004]['repeatable'] and q[72004]['races'] == 0, 'all Alliance races are no race limit'
+    assert q[72005]['alt'] == [72006] and q[72005]['skill'] == 164 and not q[72005]['breadcrumb']
+    assert q[71001]['races'] == 1 | 4, 'Human and Dwarf'
+    assert q[72100]['old'] and q[72100]['skill'] == 164 and q[72100]['minLevel'] == 20
+    assert q[71001]['skill'] == 0 and not q[71001]['repeatable']
+
+
 def test_names_from_comments():
     src = ('q(5, {\t-- A Quest -- note\n\t["qg"] = 7,\t-- Giver <Title>\n\tcrs = {\n\t\t8,\t-- Mob\n\t},\n'
            'i(9),\t-- Sword [Classic] / New Name [CATA+]\nn(10, {\t-- Vendor (PET!)\n')
