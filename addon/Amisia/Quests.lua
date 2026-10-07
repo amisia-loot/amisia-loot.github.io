@@ -703,7 +703,7 @@ end
 -- The list
 ---------------------------------------------------------------------------
 
-local function lower(s) return type(s) == "string" and s:lower() or "" end
+local lower = ns.Fold
 
 local function matches(idx, r, needle)
     if needle == "" then return true end

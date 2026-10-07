@@ -1099,7 +1099,7 @@ local function sectionProfessions(R)
     check(R, "Eigene Berufe", function()
         local idx = { call("GetProfessions") }
         local parts, unknown = {}, {}
-        for i = 1, 5 do
+        for i = 1, 7 do
             if type(idx[i]) == "number" then
                 local name, _, rank, max, _, _, skill = call("GetProfessionInfo", idx[i])
                 parts[#parts + 1] = ("%s (%s) %s/%s"):format(show(name), show(skill), show(rank), show(max))

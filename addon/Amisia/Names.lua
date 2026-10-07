@@ -72,6 +72,14 @@ function ns.Plain(v)
     return v
 end
 
+-- A text for a search: lower case, the German capitals folded too (lower() leaves the bytes of
+-- Ä, Ö and Ü as they are). nil and other values give "".
+local FOLD = { ["Ä"] = "ä", ["Ö"] = "ö", ["Ü"] = "ü" }
+function ns.Fold(s)
+    if type(s) ~= "string" then return "" end
+    return (s:gsub("\195[\132\150\156]", FOLD):lower())
+end
+
 function ns.ExportName(name)
     return (tostring(name or "?"):gsub(" ", "_"))
 end

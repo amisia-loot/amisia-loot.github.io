@@ -208,8 +208,9 @@ end
 function Pr.Own()
     local out, seen = {}, {}
     if type(GetProfessions) == "function" and type(GetProfessionInfo) == "function" then
+        -- prim1, prim2 and up to five secondary ones (Camelot: cooking, first aid, fishing, poisons, ...)
         local list = { call(GetProfessions) }
-        for i = 1, 5 do
+        for i = 1, 7 do
             local idx = list[i]
             if type(idx) == "number" then
                 local name, _, rank, max, _, _, skill = call(GetProfessionInfo, idx)
@@ -276,8 +277,14 @@ function Pr.ReadTradeSkill()
     local info = call(T.GetBaseProfessionInfo)
     local skill = type(info) == "table" and tonumber(ns.Plain(info.professionID)) or nil
     if not skill or not Pr.Key(skill) then return false end
-    local ids = call(T.GetAllRecipeIDs) or call(T.GetFilteredRecipeIDs)
+    -- every recipe where the client tells them all; else the list the window shows, which follows its
+    -- search and filters: what it shows joins what was known, nothing goes
+    local ids = call(T.GetAllRecipeIDs)
+    local full = type(ids) == "table"
+    if not full then ids = call(T.GetFilteredRecipeIDs) end
     if type(ids) ~= "table" then return false end
+    local old = store(false)
+    old = old and type(old[skill]) == "table" and type(old[skill].known) == "table" and old[skill].known or nil
     local known, n = {}, 0
     for _, id in ipairs(ids) do
         local r = call(T.GetRecipeInfo, id)
@@ -289,7 +296,15 @@ function Pr.ReadTradeSkill()
             end
         end
     end
-    if n == 0 and #ids > 0 then return false end   -- the list is not filled yet
+    if n == 0 and #ids > 0 and (full or not old) then return false end   -- the list is not filled yet
+    if not full and old then
+        for spell in pairs(old) do
+            if not known[spell] and n < KNOWN_CAP then
+                known[spell] = true
+                n = n + 1
+            end
+        end
+    end
     local c = store(true)
     c[skill] = { rank = tonumber(ns.Plain(info.skillLevel)) or 0, max = tonumber(ns.Plain(info.maxSkillLevel)) or 0,
         day = ns.DropsToday and ns.DropsToday() or 0, known = known }
@@ -546,7 +561,7 @@ end
 ---------------------------------------------------------------------------
 -- The list the page shows
 ---------------------------------------------------------------------------
-local function lower(s) return type(s) == "string" and s:lower() or "" end
+local lower = ns.Fold
 
 -- The recipes of a skill line after the filters: opts.search (part of the recipe or item name, any
 -- case), opts.known ("known", "unknown"), opts.learnable (the own rank reaches the learn rank),

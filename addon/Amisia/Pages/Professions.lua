@@ -321,6 +321,8 @@ local function refresh(f)
     f.known:SetValue(s.known or "all")
     f.source:SetValue(s.source or "all")
     f.learn:SetOn(s.learnable and true or false)
+    local text = s.search or ""
+    if not f.search:HasFocus() and f.search:GetText() ~= text then f.search:SetText(text) end
     for _, w in ipairs({ f.known, f.source, f.learn, f.search }) do
         if isRecipes then w:Show() else w:Hide() end
     end
@@ -518,14 +520,14 @@ function ns.ProfessionsPageFrame() return page end
 -- Opens the page; what: a profession (German name or key, a prefix is enough), "lager" or "gunst".
 function ns.ShowProfessions(what)
     if AmisiaDB and AmisiaDB.settings and type(what) == "string" and what ~= "" then
-        local w = what:lower()
+        local w = ns.Fold(what)
         if w:find("^lager") or w:find("^camp") then
             state().view = CAMP
         elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then
             state().view = FAVOR
         else
             for _, skill in ipairs(Pr.Skills()) do
-                local name, key = Pr.Name(skill):lower(), Pr.Key(skill)
+                local name, key = ns.Fold(Pr.Name(skill)), Pr.Key(skill)
                 if name:sub(1, #w) == w or key:sub(1, #w) == w then
                     state().view = skill
                     break
