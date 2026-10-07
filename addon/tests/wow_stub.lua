@@ -596,6 +596,14 @@ for _, s in ipairs({ "", "-hover", "-pressed", "-pressedhover", "-open", "-disab
     STUB.atlases["common-dropdown-b-button" .. s] = { 143, 26 }
 end
 STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
+-- the client's talent window (Blizzard_SharedTalentUI, Blizzard_PlayerSpells/Camelot)
+for _, name in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
+                        "talents-arrow-head-yellow", "talents-arrow-head-gray" }) do
+    STUB.atlases[name] = { 44, 44 }
+end
+for _, cls in ipairs({ "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid" }) do
+    STUB.atlases["talent-background-" .. cls] = { 1612, 750 }
+end
 for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
     for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
 end

@@ -576,6 +576,12 @@ for _, name in ipairs({ "common-dropdown-a-button-shadowless", "common-dropdown-
                         "common-dropdown-a-button-open-shadowless", "common-dropdown-a-button-disabled-shadowless" }) do
     ATLASES[#ATLASES + 1] = name
 end
+-- the talent page (Pages/Talents.lua): the node frames and arrow heads of the client's talent
+-- window and its class backgrounds
+for _, name in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
+                        "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage" }) do
+    ATLASES[#ATLASES + 1] = name
+end
 ST.ATLASES = ATLASES
 
 local function sectionAtlases(R)
@@ -714,6 +720,9 @@ local OPTIONAL = {
     -- the quest tracker: all done quests in one call (else one call per quest), the race for race
     -- quests
     "C_QuestLog.GetAllCompletedQuestIDs", "UnitRace",
+    -- the talent calculator: the live talents and the client's own texts
+    "C_ClassTalents.GetActiveConfigID", "C_Traits.GetConfigInfo", "C_Traits.GetNodeInfo", "C_Traits.GetTreeCurrencyInfo",
+    "C_Traits.GetTraitDescription", "C_Traits.GetGroupDisplayInfoByTreeID", "C_Spell.GetSpellName", "C_Spell.GetSpellTexture",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -776,7 +785,7 @@ local EVENTS = {
     "GUILDBANKBAGSLOTS_CHANGED", "GUILDBANK_UPDATE_TABS", "ITEM_DATA_LOAD_RESULT", "ITEM_SEARCH_RESULTS_UPDATED", "LOOT_CLOSED",
     "LOOT_OPENED", "LOOT_SLOT_CLEARED", "MERCHANT_SHOW", "PLAYERBANKSLOTS_CHANGED", "PLAYER_ENTERING_WORLD",
     "PLAYER_EQUIPMENT_CHANGED", "PLAYER_LEVEL_UP", "PLAYER_LOGIN", "PLAYER_TALENT_UPDATE", "PLAYER_TARGET_CHANGED",
-    "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "USER_WAYPOINT_UPDATED",
+    "QUEST_ACCEPTED", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_REMOVED", "QUEST_TURNED_IN", "SKILL_LINES_CHANGED", "START_LOOT_ROLL", "TRAIT_CONFIG_UPDATED", "USER_WAYPOINT_UPDATED",
     "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
     "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA",
 }
@@ -1175,6 +1184,92 @@ local function sectionData(R)
 end
 
 ---------------------------------------------------------------------------
+-- Talents: what the calculator reads from the client (all optional: without it the page works
+-- from its data)
+---------------------------------------------------------------------------
+local function sectionTalents(R)
+    local T, d = ns.Talents, ns.TALENTS
+    if not T or not T.Available() then
+        add(R, "WERT", "Talentdaten", "keine (TalentData.lua nicht geladen)")
+        return
+    end
+    local classes, nodes = T.Classes(), 0
+    for _, cls in ipairs(classes) do nodes = nodes + #(T.Class(cls).data.nodes or {}) end
+    add(R, "WERT", "Talentdaten", ("Build %s, %d Klassen, %d Talente, %d Punkte"):format(tostring(d.build), #classes, nodes, T.Max()))
+    local _, mine = UnitClass("player")
+    local own = T.Class(mine)
+    local config
+    if fn("C_ClassTalents.GetActiveConfigID") then
+        check(R, "Aktive Konfiguration", function()
+            config = call("C_ClassTalents.GetActiveConfigID")
+            if isSecret(config) then
+                config = nil
+                return "WERT", "<geheim>"
+            end
+            return "WERT", config and tostring(config) or "keine"
+        end)
+    else
+        add(R, "WERT", "Aktive Konfiguration", "C_ClassTalents.GetActiveConfigID fehlt")
+    end
+    if config and own then
+        check(R, "Talentbaum", function()
+            local info = call("C_Traits.GetConfigInfo", config)
+            local ids = type(info) == "table" and type(info.treeIDs) == "table" and info.treeIDs or {}
+            local found = false
+            for _, id in ipairs(ids) do found = found or id == own.tree end
+            return found and "OK" or "WERT", ("Client %s, Daten %d"):format(#ids > 0 and table.concat(ids, ",") or "keiner", own.tree)
+        end)
+        check(R, "Knoten im Client", function()
+            local known, total, other = 0, 0, 0
+            for id, n in pairs(own.byId) do
+                total = total + 1
+                local info = call("C_Traits.GetNodeInfo", config, id)
+                if type(info) == "table" and info.ID == id then
+                    known = known + 1
+                    if type(info.maxRanks) == "number" and info.maxRanks ~= n[ns.Talents.F.MAX] then other = other + 1 end
+                end
+            end
+            local live = T.Live()
+            return known == total and other == 0 and "OK" or "WERT",
+                ("%d von %d bekannt, %d mit anderem Höchstrang; gesetzt %d Punkte"):format(known, total, other,
+                    live and T.Spent(live) or 0)
+        end)
+        check(R, "Talentpunkte", function()
+            local list = call("C_Traits.GetTreeCurrencyInfo", config, own.tree, false)
+            local c = type(list) == "table" and list[1]
+            if type(c) ~= "table" then return "WERT", "keine Angabe" end
+            return "WERT", ("frei %s, ausgegeben %s, höchstens %s"):format(show(c.quantity), show(c.spent), show(c.maxQuantity))
+        end)
+    end
+    -- another class: do its texts and tree names come without a configuration of that class?
+    local other
+    for _, cls in ipairs(classes) do
+        if cls ~= mine then other = cls break end
+    end
+    local oc = other and T.Class(other)
+    local n = oc and oc.order[1][1]
+    if not n then return end
+    local F = T.F
+    if fn("C_Traits.GetTraitDescription") then
+        check(R, "Text fremde Klasse", function()
+            local text = call("C_Traits.GetTraitDescription", n[F.ENTRY], 1)
+            return type(text) == "string" and text ~= "" and "OK" or "WERT", ("%s %s: %s"):format(other, show(n[F.NAME]), show(text))
+        end)
+    end
+    if fn("C_Traits.GetGroupDisplayInfoByTreeID") then
+        check(R, "Baumnamen fremde Klasse", function()
+            local infos = call("C_Traits.GetGroupDisplayInfoByTreeID", oc.tree)
+            local names = {}
+            for _, info in ipairs(type(infos) == "table" and infos or {}) do names[#names + 1] = show(info.displayName) end
+            return #names == 3 and "OK" or "WERT", #names > 0 and table.concat(names, ", ") or "keine"
+        end)
+    end
+    if fn("C_Spell.GetSpellName") then
+        check(R, "Spell-Name", function() return "WERT", show(call("C_Spell.GetSpellName", n[F.SPELL])) end)
+    end
+end
+
+---------------------------------------------------------------------------
 -- Running it
 ---------------------------------------------------------------------------
 -- The whole test: { lines, problems, counts, text }. opts.waypoint sets a waypoint at the own
@@ -1196,6 +1291,7 @@ function ST.Run(opts)
     runSection(R, "Item-Konstanten", sectionItems)
     runSection(R, "Werte", sectionValues)
     runSection(R, "Berufe", sectionProfessions)
+    runSection(R, "Talente", sectionTalents)
     runSection(R, "Gespeicherte Daten", sectionData)
     local c = R.counts
     local build = "?"

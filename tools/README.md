@@ -411,6 +411,38 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
 Tests: `tools/tests/test_build_professions.py` on hand-made CSVs (`tools/tests/fixtures/wago_prof`)
 and a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`).
 
+## build_talents.py
+
+Builds `addon/Amisia/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
+for the talent calculator (`/amisia talente`): per class its trait tree, the three trees (node group,
+name, icon), the row locks (counting groups) and the talents with row, column, ranks, prerequisites,
+name and text (enUS, placeholders resolved; what changes per rank as `{1}` with the values per rank).
+
+```
+python tools/build_talents.py [--wago DIR ...] [--out FILE]
+```
+
+- Forever keeps its talents in the trait system (`C_Traits`): one `TraitTree` per class, split into
+  three node groups. The old `Talent`/`TalentTab` tables still hold Classic's talents and are not
+  read. Points: the tree's currency (`SourcedMax` 51, one per level 10-60); the legacy perk
+  "Talented" only gives them earlier (rank k from level 10-k), never more.
+- Client tables read (CSV in wago.tools' format, `--wago`, default `~/addons/_wago`; the first
+  folder with a table wins): `TraitNode`, `TraitNodeEntry`, `TraitNodeXTraitNodeEntry`,
+  `TraitDefinition`, `TraitDefinitionEffectPoints`, `CurvePoint`, `TraitEdge`, `TraitNodeGroup`,
+  `TraitNodeGroupXTraitNode`, `TraitNodeGroupXTraitCond`, `TraitCond`, `TraitNodeGroupDisplayInfo`,
+  `TraitCurrency`, `TraitCurrencySource`, `TraitTreeXTraitCurrency`, `SkillLineXTraitTree`,
+  `SkillLine`, `SkillRaceClassInfo`, `ChrClasses`, `Spell`, `SpellName`, `SpellMisc`, `SpellEffect`;
+  when present also `TraitNodeXTraitCond`, `ChrSpecialization`, `SpellDuration`, `SpellRadius`,
+  `SpellAuraOptions`. A missing required table stops the build with the `export_db2.ps1 -Tables`
+  line to run.
+- Nodes far off the 600 grid (old, replaced ones the client parks out of sight) are left out and
+  reported; so is a node that would share a cell.
+- The addon shows the client's own German texts and names at runtime (`C_Traits.GetTraitDescription`,
+  `C_Spell.GetSpellName`, `C_Traits.GetGroupDisplayInfoByTreeID`); the data is the fallback.
+
+Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixture CSVs
+(`tools/tests/fixtures/talents`, a mage, a warrior and a legacy tree).
+
 ## make_icons.py
 
 Draws the addon's icons from scratch as genuine 32-bit TGAs: `Amisia.tga` (128x128, the window
@@ -474,7 +506,9 @@ Exports the Forever client tables the build scripts read (`ItemSparse`, `Item`, 
 `ItemSetSpell`, `ItemXItemEffect`, `ItemEffect`, `SpellEffect`, `SpellName`, `Spell`, `SpellMisc`,
 `SpellItemEnchantment`, `RandPropPoints`, `LFGDungeons`, `ContentTuning`, `UiMapAssignment`,
 `AreaTable`, `Map`, the `Journal*` and `DungeonEncounter` tables, plus the item damage and armour
-tables `ItemDamage*`, `ItemArmor*` and `ArmorLocation`, which `build_bis.py` reads) as CSV straight from
+tables `ItemDamage*`, `ItemArmor*` and `ArmorLocation`, which `build_bis.py` reads, and the talent
+tables `Trait*`, `CurvePoint`, `SkillLine*`, `SkillRaceClassInfo`, `ChrClasses`, `ChrSpecialization`,
+`SpellDuration`, `SpellRadius` and `SpellAuraOptions` for `build_talents.py`) as CSV straight from
 the WoW install on the PC, instead of downloading them from wago.tools by hand. Runs on the PC only (it needs the WoW install).
 
 It drives [wow.tools.local](https://github.com/Marlamin/wow.tools.local) (WTL), which reads the local

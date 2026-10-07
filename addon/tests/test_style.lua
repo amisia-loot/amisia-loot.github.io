@@ -436,13 +436,13 @@ local function navShown()
 end
 NS.Set("ui.view", "raider")
 NS.Refresh()
-assert(navShown() == "#raid overview raidlog awards softres #gear gear map quests professions #amisia settings about", navShown())
+assert(navShown() == "#raid overview raidlog awards softres #gear gear map quests professions talents #amisia settings about", navShown())
 NS.Set("ui.view", "officer")
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions #guild export bank #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
 -- the labels of the sections
 local labels = {}
 for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
@@ -479,7 +479,7 @@ for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then
 raidHdr:Click()
 assert(AmisiaDB.settings.window.collapsed.raid == true, "the state is saved")
 assert(NS.CurrentPage() == "raids", "the shown page stays")
-assert(navShown() == "#raid #gear gear map quests professions #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
 raidHdr = nil
 for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
 assert(raidHdr.collapsed == true, "the bar shows the plus")
