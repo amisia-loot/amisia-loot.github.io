@@ -61,7 +61,7 @@ assert(has(plain(f.data:GetText()), "06.10.2026") and has(plain(f.data:GetText()
 
 -- the locked chip: the reason in the row
 f.show.locked:Click()
-assert(f.show.locked.on and AmisiaDB.settings.quests.show.locked)
+assert(f.show.locked.on and AmisiaDB.settings.questsPage.show.locked)
 assert(plain(rowOf("Investigate").status:GetText()) == "Vorquest fehlt: Kobold Camp Cleanup")
 assert(plain(rowOf("Westfall Stew").level:GetText()) == "14" and plain(rowOf("Westfall Stew").status:GetText()) == "ab Level 14")
 assert(plain(rowOf("Skirmish").reward:GetText()) == "neu", "the best reward's mark: " .. plain(rowOf("Skirmish").reward:GetText()))
@@ -72,14 +72,14 @@ f.mine:Click()
 
 -- a click opens the chain and the rewards below the quest
 rowOf("Skirmish"):Click()
-assert(AmisiaDB.settings.quests.expanded[21])
+assert(AmisiaDB.settings.questsPage.expanded[21])
 t = texts()
 local at
 for i, x in ipairs(t) do if has(x, "Skirmish at Echo Ridge") then at = i break end end
 assert(t[at + 1] == "      1. Kobold Camp Cleanup" and t[at + 3] == "      3. Skirmish at Echo Ridge", tostring(t[at + 1]))
 assert(has(t[at + 4], "Echohelm"), tostring(t[at + 4]))
 rowOf("Skirmish"):Click()
-assert(not AmisiaDB.settings.quests.expanded[21])
+assert(not AmisiaDB.settings.questsPage.expanded[21])
 
 -- the waypoint button
 rowOf("Kobold").go:Click()
@@ -88,7 +88,7 @@ NS.MapClearTarget()
 
 -- a zone row folds
 rowOf("Wald von Elwynn"):Click()
-assert(AmisiaDB.settings.quests.collapsed[1429] and plain(texts()[1]) == "+ Wald von Elwynn (3)" and not rowOf("Kobold"))
+assert(AmisiaDB.settings.questsPage.collapsed[1429] and plain(texts()[1]) == "+ Wald von Elwynn (3)" and not rowOf("Kobold"))
 rowOf("Wald von Elwynn"):Click()
 assert(rowOf("Kobold"))
 

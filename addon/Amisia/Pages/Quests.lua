@@ -20,12 +20,10 @@ local HINT = "Klick auf eine Quest: Reihe und Belohnungen. Weg: Wegpunkt zum Que
 local page
 local nameMissing = false
 
--- The window state in settings.quests: search, zone ("all", "here" or a uiMapID), show (status
--- chips), chains, upgrades, mine, collapsed and expanded.
+-- The window state in settings.questsPage (Quests.PageState): search, zone ("all", "here" or a
+-- uiMapID), show (status chips), chains, upgrades, mine, collapsed and expanded.
 local function state()
-    local s = AmisiaDB.settings
-    s.quests = type(s.quests) == "table" and s.quests or {}
-    local q = s.quests
+    local q = Q.PageState()
     if type(q.show) ~= "table" then q.show = { open = true, active = true, locked = false, done = false } end
     if type(q.collapsed) ~= "table" then q.collapsed = {} end
     if type(q.expanded) ~= "table" then q.expanded = {} end
@@ -42,7 +40,7 @@ end
 
 local function itemText(id)
     local f = C_Item and C_Item.GetItemInfo
-    local name, q
+    local name, q, _
     if f then name, _, q = f(id) end
     if not name then nameMissing = true end
     return ("|c%s%s|r"):format(QUALITY[q or 1] or QUALITY[1], name or ("Item " .. tostring(id)))
@@ -386,7 +384,7 @@ ns.Listen("QUESTS_CHANGED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("COLLECT_CHANGED", function(kind) if kind == nil or kind == "q" then schedule() end end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
-    if AmisiaDB and AmisiaDB.settings and type(AmisiaDB.settings.quests) == "table" and AmisiaDB.settings.quests.zone == "here" then
+    if AmisiaDB and AmisiaDB.settings and Q.PageState().zone == "here" then
         schedule()
     end
 end)

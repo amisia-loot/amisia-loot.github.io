@@ -864,6 +864,27 @@ ns.RegisterSettings{ key = "quests", label = "Quests", order = 48, items = {
       end },
 } }
 
+-- The page's window state: settings.questsPage (search, zone, show, chains, upgrades, mine,
+-- collapsed, expanded). Until 2.5 it shared settings.quests with the switch quests.enabled; the
+-- first call moves it out once, the switch stays.
+function Q.PageState()
+    local s = AmisiaDB.settings
+    if type(s.questsPage) ~= "table" then
+        local p = {}
+        local old = s.quests
+        if type(old) == "table" then
+            for k, v in pairs(old) do
+                if k ~= "enabled" then
+                    p[k] = v
+                    old[k] = nil
+                end
+            end
+        end
+        s.questsPage = p
+    end
+    return s.questsPage
+end
+
 -- A text for why there is no list: nil when there is one.
 function Q.WhyText(why)
     if why == "off" then return "Die Quest-Seite ist aus (Einstellungen, Quests)." end
@@ -879,9 +900,7 @@ ns.RegisterSlash("quests", { aliases = { "quest" }, args = "[suche]", desc = "Qu
             return
         end
         if AmisiaDB and AmisiaDB.settings then
-            local s = AmisiaDB.settings
-            s.quests = type(s.quests) == "table" and s.quests or {}
-            s.quests.search = (rest or ""):match("^%s*(.-)%s*$") or ""
+            Q.PageState().search = (rest or ""):match("^%s*(.-)%s*$") or ""
         end
         if ns.ShowPage then ns.ShowPage("quests") end
     end })

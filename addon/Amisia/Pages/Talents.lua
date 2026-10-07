@@ -178,10 +178,21 @@ local function cellOffset(n)
     return GRID.left + n[F.COL] * GRID.pitchX + GRID.pad, -(GRID.top + n[F.ROW] * GRID.pitchY)
 end
 
--- An arrow from the prerequisite src to node dst (both on one tree, one column or one row).
+-- An arrow from the prerequisite src to node dst (both on one tree, one column or one row); its
+-- textures come from the tree's pool (a class switch reuses them, nothing is made again).
 local function arrow(tree, srcBtn, dstBtn, src, dst)
-    local a = { line = tree:CreateTexture(nil, "ARTWORK"), head = tree:CreateTexture(nil, "OVERLAY") }
-    a.head:SetSize(14, 14)
+    tree.arrowPool = tree.arrowPool or {}
+    tree.arrowsUsed = (tree.arrowsUsed or 0) + 1
+    local a = tree.arrowPool[tree.arrowsUsed]
+    if not a then
+        a = { line = tree:CreateTexture(nil, "ARTWORK"), head = tree:CreateTexture(nil, "OVERLAY") }
+        a.head:SetSize(14, 14)
+        tree.arrowPool[tree.arrowsUsed] = a
+    end
+    a.line:ClearAllPoints()
+    a.head:ClearAllPoints()
+    a.line:Show()
+    a.head:Show()
     if src[F.COL] == dst[F.COL] then
         a.dir = src[F.ROW] < dst[F.ROW] and "down" or "up"
         a.line:SetWidth(4)
@@ -225,6 +236,7 @@ local function buildClass(cls)
     for _, b in pairs(page.buttons) do b:Hide() end
     for _, a in pairs(page.arrows) do a.line:Hide() a.head:Hide() end
     page.buttons, page.arrows = {}, {}
+    for t = 1, 3 do page.trees[t].arrowsUsed = 0 end
     page.pool = page.pool or { {}, {}, {} }
     local used = { 0, 0, 0 }
     local c = T.Class(cls)

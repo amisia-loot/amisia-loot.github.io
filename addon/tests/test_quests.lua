@@ -233,9 +233,9 @@ NS.MapClearTarget()
 ---------------------------------------------------------------------------
 STUB.chat = {}
 NS.Dispatch("quests Echo")
-assert(NS.CurrentPage() == "quests" and AmisiaDB.settings.quests.search == "Echo", "the command opens the page with the search")
+assert(NS.CurrentPage() == "quests" and AmisiaDB.settings.questsPage.search == "Echo", "the command opens the page with the search")
 NS.Dispatch("quests")
-assert(AmisiaDB.settings.quests.search == "", "without a word the search is cleared")
+assert(AmisiaDB.settings.questsPage.search == "", "without a word the search is cleared")
 NS.Set("quests.enabled", false)
 assert(NS.QuestIndex() == nil and select(2, NS.QuestIndex()) == "off")
 assert(not NS.Visible(NS.Panel("quests")), "no page while the switch is off")

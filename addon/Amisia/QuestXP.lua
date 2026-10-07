@@ -109,6 +109,8 @@ end
 -- unknown): value, how, seenLevel. how: "log" (the quest log says so now), "seen" (seen at this
 -- value for this level), "scaled" (worked out from another level by the quest level: an estimate),
 -- "other" (seen at another level, the quest level is unknown: the value as seen). nil when never seen.
+local function recording() return AmisiaDB ~= nil and ns.Get("collect.quests") end
+
 function QX.For(qid, q, p)
     qid = tonumber(qid)
     if not qid then return nil end
@@ -117,7 +119,8 @@ function QX.For(qid, q, p)
     if p == me then
         local xp = logXP(qid)
         if xp then
-            QX.Record(qid, xp, me)
+            -- kept only while the quests are recorded (the switch collect.quests)
+            if recording() then QX.Record(qid, xp, me) end
             return xp, "log", me
         end
     end
@@ -135,7 +138,6 @@ end
 ---------------------------------------------------------------------------
 -- The recorder
 ---------------------------------------------------------------------------
-local function recording() return AmisiaDB ~= nil and ns.Get("collect.quests") end
 
 -- The quest window: the quest shown and its XP for the player now.
 local function onWindow()
