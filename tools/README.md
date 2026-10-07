@@ -9,6 +9,7 @@ the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, s
 ```
 python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
 python3 tools/build.py check
+python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
 python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
 ```
 
@@ -21,7 +22,8 @@ python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
   `build_bis.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
-- `check` runs `addon/tests/syntax.cjs`, `addon/tests/run.py`, `pytest tools/tests` (which holds the
+- `check` runs `addon/tests/syntax.cjs`, `addon/tests/run.py`, the layout rules of every page and
+  window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
   the TOC against the addon folder (every listed file exists, every `.lua`/`.xml` is listed) and
   luacheck with `.luacheckrc`. One line per step; the exit code is 1 when one fails. A missing
@@ -33,6 +35,8 @@ python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
   dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
   commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
   `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
+- `snapshots` draws every page and side window into PNGs with a contact sheet (`tools/ui_layout.py
+  snapshots`, below); default folder `/tmp/amisia-snapshots`.
 
 ### luacheck
 
@@ -44,14 +48,64 @@ globals it writes (`AmisiaDB`, `SLASH_AMISIA1`, `AmisiaMapPinMixin`, the compart
 `dpkg -x` each into that folder) through the wrapper `~/.local/bin/luacheck`. GitHub Actions
 installs `lua-check` with apt.
 
+## ui_layout.py: UI snapshots and layout rules
+
+Small visual bugs (a cut-off label, a button 2 px over a list, a chip narrower than its word) are
+caught before the game. The test stub (`addon/tests/wow_stub.lua`) keeps every frame it makes with
+its parent, anchors, size, text, font object and atlas; `addon/tests/uidump.lua` hands that tree
+over as JSON; `addon/tests/ui_scene.lua` is the world the shots show (an officer's raid with loot,
+rolls, awards and soft-reserves, a level 24 priest with professions). `tools/ui_layout.py` solves
+the anchors, checks the rules and draws.
+
+```
+python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
+python3 tools/ui_layout.py rules [--locale deDE]
+```
+
+- Shots: every registered page in the raider, officer and expert view (with the gear page's views,
+  the raid log's bench and Discord view, the soft-reserve views and the professions' camp, favor and
+  recipe views, `S.STATES` in the scene), plus the roll window, the award dialog, the soft-reserve
+  window, the gear window and the self-test window, each at the window's real size.
+- `snapshots` writes `<view>-<shot>.png` (frames as boxes: red buttons and chips, edit boxes, pickers,
+  lists, scroll frames, check boxes and arrows in their own colours; atlases outlined and named;
+  text in its colour at the font object's size, each character at its estimated width, so a text
+  wider than its box shows; whatever a rule found framed in red), `<view>-<shot>.boxes.json` and an
+  `index.html` contact sheet with the findings under each shot. `--mono` draws text in a fixed 0.6 em
+  grid. Not committed (they would change with every layout change).
+- `--compare DIR` reads the `.boxes.json` of an earlier run and names the shots whose layout boxes
+  (kind, rectangle, text, atlas, font) changed: run it before a refactor, again after, and expect
+  "no layout box changed".
+- Rules (`rules`; `build.py check` runs them; exit 1 on a finding):
+  - **bounds**: every visible frame, texture and text lies inside its page (the content inset) or
+    its window. The client template's own parts and the side tabs are left out.
+  - **overlap**: no two visible interactive widgets (buttons, chips, edit boxes, check boxes,
+    pickers, lists, arrows, scroll frames, row buttons) overlap unless one holds the other.
+  - **text**: a one-line text fits its width (a font string held by two anchors or a set width);
+    the label of a button or chip stays inside it; wrapped text with a fixed height fits it. Cells
+    of list rows may end in the client's ellipsis (the tooltip shows them whole).
+  - **minwidth**: every button and chip is as wide as its text plus `ns.Theme.CHIP_PAD` (8 px) on
+    both sides (`W.FitChip` sizes one so).
+  - **atlas**: only atlases of `ns.Theme.ATLASES` (the style allow-list) are used.
+  - **nav**: every visible page opens and has its row inside the page list.
+- Text widths are estimated (`addon/tests/textwidth.py`, shared with the stub's `GetStringWidth`):
+  per-character advances close to Friz Quadrata, on the safe side, times the font object's size
+  (Arial Narrow faces narrower), times the locale's factor. `LOCALES` in `ui_layout.py` holds the
+  locales the rules run in (German now; English joins with its strings and factor).
+- `UI/Theme.lua` holds the design tokens the rules and the widgets share (sizes, gaps, paddings,
+  fonts, colours, the atlas allow-list); `W.Row`, `W.Column`, `W.Grid` and `W.FitChip` in
+  `UI/Widgets.lua` lay out chip rows, headers, settings rows and cards.
+
+Tests: `tools/tests/test_ui_layout.py` (each rule on a made-up tree, the anchors, the drawing and
+the comparison) and `addon/tests/test_layout_helpers.lua`.
+
 ## Addon layout
 
 `addon/Amisia/`: `Core/` (registry, core, names, chat queue, comm, trust, version, minimap button,
 selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid log, bench, sync,
 raid text, need), `Collect/` (item scan, collector, drops and their guild exchange, quest XP),
 `Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes, comparison marks,
-map and map pins), `Data/` (only generated files, from the build scripts below), `UI/` (widgets,
-main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads them in dependency
+map and map pins), `Data/` (only generated files, from the build scripts below), `UI/` (theme,
+widgets, main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads them in dependency
 order; `build.py check` fails when a file is missing from it.
 
 ## build_scan.py

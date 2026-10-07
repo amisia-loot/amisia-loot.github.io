@@ -2,15 +2,20 @@
 
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
     python3 tools/build.py check
+    python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
     python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy]
 
 data     rebuilds every generated file in addon/Amisia/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, dungeon art, BiS), stops at the first error
          and shows what changed. A step whose client tables are missing in --wago is skipped with a
          note (the tables come only from the user's own tools/export_db2.ps1 run, never downloaded).
-check    the syntax check, the addon tests, the tool tests (they include the "generated file is
-         current" checks), a UTF-8 check of the addon files, the TOC against the folder, luacheck.
-         Exit code 1 when anything fails.
+check    the syntax check, the addon tests, the layout rules of every page and window
+         (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
+         a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
+         anything fails.
+snapshots  draws every page (raider, officer and expert view) and side window from the test stub
+         into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
+         the shots whose layout boxes differ from an earlier run's folder.
 release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
          fails), builds addon/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
          commits "Amisia X.Y.Z: <summary>", pushes origin main and copies the release to the folder
@@ -31,6 +36,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON_REL = 'addon/Amisia'
 VENV_PY = os.path.expanduser('~/.venvs/amisia/bin/python')
 WAGO = os.path.expanduser('~/addons/_wago')
+SNAPSHOTS = '/tmp/amisia-snapshots'
 NODE_DIRS = (os.path.expanduser('~/.local/node/bin'),)
 LUAPARSE_DIRS = (os.path.join(ROOT, 'node_modules'), os.path.expanduser('~/addons/VuloForeverUI/tools/node_modules'))
 TRAILER = 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
@@ -263,6 +269,13 @@ def cmd_check(args=None):
         rc, out = run([py, os.path.join(ROOT, 'addon', 'tests', 'run.py')], capture=True)
         return ('ok', []) if rc == 0 else ('FAIL', fail_lines(out))
 
+    def layout_rules():
+        rc, out = run([py, os.path.join(ROOT, 'tools', 'ui_layout.py'), 'rules'], capture=True)
+        if rc == 0:
+            return 'ok', []
+        lines = [ln for ln in out.splitlines() if ln.strip()]
+        return 'FAIL', lines[-40:]
+
     def tool_tests():
         rc, out = run([py, '-m', 'pytest', os.path.join(ROOT, 'tools', 'tests'), '-q', '-p', 'no:cacheprovider'],
                       capture=True)
@@ -285,6 +298,7 @@ def cmd_check(args=None):
 
     step('syntax (luaparse, Lua 5.1)', syntax)
     step('addon tests (addon/tests/run.py)', addon_tests)
+    step('layout rules (tools/ui_layout.py rules, every page and window)', layout_rules)
     step('tool tests (pytest tools/tests, incl. generated files current)', tool_tests)
     step('UTF-8 of the addon files', utf8)
     step('TOC against the addon folder', toc)
@@ -405,6 +419,19 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     return 0
 
 
+def cmd_snapshots(args):
+    tools = os.path.join(ROOT, 'tools')
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    import ui_layout
+    argv = ['snapshots', '--out', args.out, '--scale', str(args.scale)]
+    if args.compare:
+        argv += ['--compare', args.compare]
+    if args.mono:
+        argv.append('--mono')
+    return ui_layout.main(argv)
+
+
 def cmd_release(args):
     return release(ROOT, args.version, summary=args.message, push=not args.no_push, copy=not args.no_copy)
 
@@ -420,6 +447,11 @@ def main(argv=None):
     d.add_argument('--wago', default=WAGO, help=f'folder of the client table CSVs (default {WAGO})')
     d.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever data first')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
+    sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
+    sn.add_argument('--out', default=SNAPSHOTS, help=f'output folder (default {SNAPSHOTS})')
+    sn.add_argument('--compare', default=None, help='an earlier run\'s folder: list the shots whose layout changed')
+    sn.add_argument('--scale', type=int, default=1, help='pixels per UI pixel (default 1)')
+    sn.add_argument('--mono', action='store_true', help='text in a fixed 0.6 em grid instead of the estimated widths')
     r = sub.add_parser('release', help='check, version, zip, changelog, commit, push, copy to Syncthing')
     r.add_argument('version', help='X.Y.Z')
     r.add_argument('-m', '--message', default=None,
@@ -432,7 +464,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'check': cmd_check, 'release': cmd_release}[args.cmd](args)
+    return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release}[args.cmd](args)
 
 
 if __name__ == '__main__':
