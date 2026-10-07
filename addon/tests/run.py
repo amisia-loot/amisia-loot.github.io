@@ -41,6 +41,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
 
 
+def toc_meta():
+    """The TOC's "## Field: value" lines as a dict (the stub's C_AddOns.GetAddOnMetadata answers from it)."""
+    out = {}
+    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+        for line in fh:
+            m = re.match(r'##\s*([^:]+?)\s*:\s*(.*?)\s*$', line)
+            if m:
+                out[m.group(1)] = m.group(2)
+    return out
+
+
 def toc_files():
     out = []
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
@@ -65,6 +76,9 @@ def fresh(source='', player=None, setup=None):
     lua = LuaRuntime(unpack_returned_tuples=True)
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
+    meta = lua.globals().STUB.tocMeta
+    for k, v in toc_meta().items():
+        meta[k] = v
     pre = PRELOAD.match(source)
     if pre:
         lua.execute(pre.group(1))
