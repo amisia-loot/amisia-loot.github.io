@@ -564,6 +564,8 @@ local ATLASES = {
     "Profession-Background-Overview", "Professions-background-summarylist", "Professions_Recipe_Active",
     "Professions_Recipe_Hover", "Professions-skillbar-bg", "Professions-skillbar-frame", "common-insideframe",
     "common-dropdown-bg", "common-search-border-left", "common-search-border-middle", "common-search-border-right",
+    -- the quest giver marks on the world map
+    "QuestNormal",
 }
 for _, base in ipairs({ "common-dropdown-a-button", "common-dropdown-b-button" }) do
     ATLASES[#ATLASES + 1] = base
@@ -608,6 +610,63 @@ local function sectionAtlases(R)
         sizes[#sizes + 1] = ("%s %sx%s"):format(name, info and tostring(info.width) or "?", info and tostring(info.height) or "?")
     end
     add(R, "WERT", "Atlasgrößen", table.concat(sizes, ", "))
+end
+
+-- The dungeon images (DungeonArt.lua): every file id of the client's loading screens, drawn once on
+-- a hidden texture; SetTexture answers whether the client has the file. And the boss model's frame.
+local artTexture, artModel
+local function sectionArt(R)
+    local A = ns.DUNGEON_ART
+    if type(A) ~= "table" or type(A.D) ~= "table" then
+        add(R, "FEHLT", "Dungeonbilder", "keine Bilddaten")
+        return
+    end
+    local ids, seen = {}, {}
+    local function take(a)
+        if type(a) == "table" and type(a[1]) == "number" and not seen[a[1]] then
+            seen[a[1]] = true
+            ids[#ids + 1] = a[1]
+        end
+    end
+    for _, a in pairs(A.D) do take(a) end
+    take(A.party)
+    take(A.raid)
+    table.sort(ids)
+    if not artTexture then
+        local f = CreateFrame("Frame", nil, UIParent)
+        f:Hide()
+        artTexture = f:CreateTexture()
+    end
+    local found, missing, silent = 0, {}, 0
+    for _, id in ipairs(ids) do
+        local good, res = pcall(artTexture.SetTexture, artTexture, id)
+        if not good or res == false then
+            missing[#missing + 1] = tostring(id)
+        elseif res == true then
+            found = found + 1
+        else
+            silent = silent + 1
+        end
+    end
+    if #missing > 0 then
+        add(R, "FEHLT", "Dungeonbilder", ("%d von %d fehlen: %s"):format(#missing, #ids, table.concat(missing, ", ")))
+    elseif silent > 0 then
+        add(R, "WERT", "Dungeonbilder", ("%d Dateien, SetTexture ohne Antwort"):format(#ids))
+    else
+        add(R, "OK", "Dungeonbilder", ("%d von %d vorhanden"):format(found, #ids))
+    end
+    check(R, "Bossmodell", function()
+        -- made once per session, as the template frames
+        if not artModel then
+            local good, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+            artModel = good and m or false
+        end
+        local good, m = artModel ~= false, artModel
+        if not good or not m then return "WERT", "kein PlayerModel (kein Bossmodell)" end
+        m:Hide()
+        if type(m.SetCreature) == "function" then return "OK", "SetCreature vorhanden" end
+        return "WERT", "SetCreature fehlt (kein Bossmodell)"
+    end)
 end
 
 -- kind, template, the parts Amisia needs from it (as the widgets probe them)
@@ -723,6 +782,8 @@ local OPTIONAL = {
     -- the talent calculator: the live talents and the client's own texts
     "C_ClassTalents.GetActiveConfigID", "C_Traits.GetConfigInfo", "C_Traits.GetNodeInfo", "C_Traits.GetTreeCurrencyInfo",
     "C_Traits.GetTraitDescription", "C_Traits.GetGroupDisplayInfoByTreeID", "C_Spell.GetSpellName", "C_Spell.GetSpellTexture",
+    -- the dungeon view: the dressing room on Ctrl-click, the quest XP
+    "DressUpLink", "IsModifiedClick", "GetRewardXP", "GetQuestLogRewardXP",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -1285,6 +1346,7 @@ function ST.Run(opts)
     runSection(R, "Woche, Karte, Wegpunkt", sectionMap, opts)
     runSection(R, "Loot", sectionLoot)
     runSection(R, "Atlanten", sectionAtlases)
+    runSection(R, "Dungeonbilder", sectionArt)
     runSection(R, "Vorlagen", sectionTemplates)
     runSection(R, "Client-Funktionen", sectionFunctions)
     runSection(R, "Ereignisse", sectionEvents)

@@ -63,9 +63,15 @@ assert(r.upgrades:GetText() == "3" and r.sel:IsShown(), "three upgrades, chosen:
 assert(r.run:GetText() == ("%+d"):format(math.floor(nextE.perRun + 0.5)) and r.quests:GetText() == ("%+d"):format(math.floor(nextE.once + 0.5)))
 assert(r.value:GetText() == tostring(math.floor(nextE.value + 0.5)), r.value:GetText())
 assert(rows.deadmines and rows.deadmines.level:GetText() == "~16-18" and rows.deadmines.fit:GetText() == "passt", "the client's level, the high end from the items")
--- a dungeon above the level (Blackfathom Deeps at the client's level 22, no items in this data set)
+-- a dungeon above the level (Blackfathom Deeps at the client's level 22, no items in this data set),
+-- further down the list (six rows since the image came): scrolled to
+for i, it in ipairs(D.list.items) do if it.key == "bfd" then D.list.offset = i - 1 end end
+D.list:Redraw()
+for _, rr in ipairs(D.list.rows) do if rr.item then rows[rr.item.key] = rr end end
 assert(rows.bfd and rows.bfd.level:GetText() == "~22" and rows.bfd.fit:GetText() == "zu hoch" and rows.bfd.value:GetText() == "",
     "not computed")
+D.list.offset = 0
+D.list:Redraw()
 
 -- the chosen dungeon: header, bosses with their items, quests
 assert(D.header.ButtonText:GetText() == "Hall of Thanes · Bosse", D.header.ButtonText:GetText())

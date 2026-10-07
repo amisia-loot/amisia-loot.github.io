@@ -604,6 +604,8 @@ end
 for _, cls in ipairs({ "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid" }) do
     STUB.atlases["talent-background-" .. cls] = { 1612, 750 }
 end
+-- the quest icon of the map legend (Forever loads the mainline MapLegendFrameData): the quest giver marks
+STUB.atlases["QuestNormal"] = { 28, 28 }
 for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
     for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
 end

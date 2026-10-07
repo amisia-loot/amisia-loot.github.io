@@ -16,7 +16,7 @@ local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
-local DUNGEON_ROWS, DETAIL_ROWS = 8, 5
+local DUNGEON_ROWS, DETAIL_ROWS = 6, 5
 local PRIO_TEXT = { [3] = "hoch", [2] = "mittel", [1] = "niedrig" }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = " (hoch)", [1] = " (niedrig)" }
@@ -146,14 +146,16 @@ local function insertLink(link)
     end
 end
 
--- Shift or Ctrl on an item: the client's modified click (link into the chat, dressing room).
+-- Shift or Ctrl on an item: the client's modified click (link into the chat, dressing room, as the
+-- player's key bindings say); Ctrl the client does not take opens the dressing room itself.
 local function modifiedClick(id)
-    if not id or not HandleModifiedItemClick then return false end
-    if (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown()) then
-        HandleModifiedItemClick(linkOf(id))
-        return true
-    end
-    return false
+    if not id then return false end
+    local ctrl = IsControlKeyDown and IsControlKeyDown() or false
+    if not ((IsShiftKeyDown and IsShiftKeyDown()) or ctrl) then return false end
+    local link = linkOf(id)
+    local handled = HandleModifiedItemClick and HandleModifiedItemClick(link)
+    if not handled and ctrl and type(DressUpLink) == "function" then pcall(DressUpLink, link) end
+    return true
 end
 
 local function itemTooltip(owner, id)
@@ -834,6 +836,24 @@ end
 ---------------------------------------------------------------------------
 
 local GOLD_TEXT = "|cffe3b857"
+-- the texts of the journal parts (image, XP, marks, dressing room), in one place for the translation
+local DTEXT = {
+    level = "Level %s · %s",
+    mark = "Alle auf Karte",
+    unmark = "Karte leeren",
+    markTitle = "Alle Questgeber auf der Karte",
+    markTip = "Markiert die Questgeber aller offenen Quests dieses Dungeons auf der Weltkarte (bei einer Questreihe den Geber der ersten offenen Vorquest). Noch einmal klicken: Markierung entfernen.",
+    marked = "%d Questgeber auf der Weltkarte markiert.",
+    unmarked = "Markierung der Questgeber entfernt.",
+    itemHint = "Strg-Klick: Anprobe. Shift-Klick: in den Chat.",
+    xpLine = "EP: %s",
+    xpLog = "laut Questlog",
+    xpSeen = "gesehen bei Level %d",
+    xpScaled = "geschätzt, gesehen bei Level %d",
+    xpOther = "gesehen bei Level %d, Questlevel unbekannt",
+    xpNone = "EP: noch nicht gesehen",
+}
+local ART_W, ART_H = 590, 48
 
 local function signed(x) return ("%+d"):format(math.floor(x + 0.5)) end
 
@@ -974,6 +994,7 @@ local function questLevelText(q)
 end
 
 local function fillDetailRow(r, e)
+    r.xp:SetText("")
     if e.kind == "boss" then
         r.name:SetText(GOLD_TEXT .. e.text .. "|r")
         r.slot:SetText("")
@@ -1007,6 +1028,8 @@ local function fillDetailRow(r, e)
         r.gain:SetText(not pre and q.best and ((q.done and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
         local where = ns.Dungeons.QuestStartText(q)
         r.rate:SetText((st and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
+        local xp = ns.Dungeons.XPText(ns.Dungeons.QuestXP(q))
+        r.xp:SetText(q.done and xp ~= "" and (GREY .. xp .. "|r") or xp)
     end
 end
 
@@ -1023,11 +1046,69 @@ local function questTip(self)
     GameTooltip:AddLine(st and STATE_TEXT[st] or "offen", 0.85, 0.85, 0.85)
     local where = ns.Dungeons.QuestStartText(q)
     if where ~= "" then GameTooltip:AddLine("Start: " .. where, 0.85, 0.85, 0.85, true) end
+    local value, how, seen = ns.Dungeons.QuestXP(q)
+    if value then
+        local from = how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
+            or how == "other" and DTEXT.xpOther:format(seen) or DTEXT.xpSeen:format(seen or 0)
+        GameTooltip:AddDoubleLine(DTEXT.xpLine:format(ns.Dungeons.XPText(value, how, seen)), from, 0.85, 0.85, 0.85, 0.6, 0.6, 0.6)
+    else
+        GameTooltip:AddLine(DTEXT.xpNone, 0.6, 0.6, 0.6)
+    end
     for _, n in ipairs(q.chain or {}) do
         GameTooltip:AddLine(("Vorquest: %s%s"):format(n.title, n.done and " (erledigt)" or ""), 0.6, 0.6, 0.6, true)
     end
     if q.start ~= "X" then GameTooltip:AddLine("Klick: Wegpunkt zum Start", 0.31, 0.82, 0.42) end
     GameTooltip:Show()
+end
+
+-- The boss model of the image: the NPC's creature where the client has a model frame for it.
+local function setModelNpc(a, npc)
+    local m = a.model
+    if not npc or not m or type(m.SetCreature) ~= "function" then
+        a.npc = nil
+        if m then m:Hide() end
+        return
+    end
+    m:Show()
+    if a.npc ~= npc then
+        if not pcall(m.SetCreature, m, npc) then
+            a.npc = nil
+            m:Hide()
+            return
+        end
+        if m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, 0.7) end
+        a.npc = npc
+    end
+end
+
+-- The header image of the chosen dungeon: the middle of the client's loading screen, darkened to the
+-- left, the name and level on it, the boss model and the mark button to the right.
+local function buildArt(B)
+    local a = CreateFrame("Frame", nil, B)
+    a:SetPoint("TOPLEFT", 0, -199)
+    a:SetPoint("TOPRIGHT", -12, -199)
+    a:SetHeight(ART_H)
+    a.tex = a:CreateTexture(nil, "BACKGROUND")
+    a.tex:SetAllPoints()
+    a.shade = a:CreateTexture(nil, "BORDER")
+    a.shade:SetAllPoints()
+    a.shade:SetColorTexture(0, 0, 0, 1)
+    if a.shade.SetGradient and CreateColor then
+        a.shade:SetGradient("HORIZONTAL", CreateColor(0, 0, 0, 0.85), CreateColor(0, 0, 0, 0.1))
+    else
+        a.shade:SetAlpha(0.45)
+    end
+    a.edges = W.Border(a, W.GOLD[1], W.GOLD[2], W.GOLD[3], 0.7)
+    a.title = W.Text(a, "GameFontNormalLarge", 330)
+    a.title:SetPoint("TOPLEFT", 10, -7)
+    a.info = W.Text(a, "GameFontHighlightSmall", 330)
+    a.info:SetPoint("BOTTOMLEFT", 10, 7)
+    a.model = CreateFrame("PlayerModel", nil, a)
+    a.model:SetSize(ART_H - 4, ART_H - 4)
+    a.model:SetPoint("RIGHT", -2, 0)
+    a.model:Hide()
+    a.SetModelNpc = setModelNpc
+    return a
 end
 
 local function buildDungeons(f)
@@ -1083,6 +1164,20 @@ local function buildDungeons(f)
     end, fillDungeonRow)
     B.list:SetPoint("TOPLEFT", 0, -52)
     B.list:SetPoint("TOPRIGHT", -12, -52)
+    B.art = buildArt(B)
+    B.mark = W.Button(B.art, DTEXT.mark, 110, function()
+        if not B.chosen then return end
+        if ns.DungeonMarked() == B.chosen then
+            ns.DungeonClearMarks()
+            ns.msg(DTEXT.unmarked)
+        else
+            local n, why = ns.DungeonMarkQuests(B.chosen)
+            if n then ns.msg(DTEXT.marked:format(n)) else say(nil, why) end
+        end
+        B.mark:SetText(ns.DungeonMarked() == B.chosen and DTEXT.unmark or DTEXT.mark)
+    end)
+    B.mark:SetPoint("RIGHT", -(ART_H + 4), 0)
+    W.Tooltip(B.mark, DTEXT.markTitle, DTEXT.markTip)
 
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, -250)
@@ -1100,11 +1195,13 @@ local function buildDungeons(f)
     B.way:SetPoint("TOPRIGHT", 0, -251)
     W.Tooltip(B.way, "Wegpunkt zum Eingang", "Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons.")
     B.detail = W.List(B, DETAIL_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 256, nil, "GameFontHighlightSmall")
-        r.slot = col(r, 264, 70, nil, "GameFontHighlightSmall")
-        r.gain = col(r, 338, 40, nil, "GameFontHighlightSmall")
+        r.name = col(r, 4, 220, nil, "GameFontHighlightSmall")
+        r.slot = col(r, 228, 62, nil, "GameFontHighlightSmall")
+        r.gain = col(r, 292, 40, nil, "GameFontHighlightSmall")
         r.gain:SetJustifyH("RIGHT")
-        r.rate = col(r, 382, 204, nil, "GameFontHighlightSmall")
+        r.xp = col(r, 336, 56, nil, "GameFontHighlightSmall")
+        r.xp:SetJustifyH("RIGHT")
+        r.rate = col(r, 398, 188, nil, "GameFontHighlightSmall")
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -1122,9 +1219,22 @@ local function buildDungeons(f)
         end)
         r:SetScript("OnEnter", function(self)
             local e = self.item
-            if e and e.q then questTip(self) elseif e and e.id then itemTooltip(self, e.id) end
+            if e and e.q then
+                questTip(self)
+            elseif e and e.id then
+                itemTooltip(self, e.id)
+                GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
+                GameTooltip:Show()
+            elseif e and e.kind == "boss" then
+                -- the hovered boss in the image
+                B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, e.b))
+            end
         end)
-        r:SetScript("OnLeave", hideTip)
+        r:SetScript("OnLeave", function(self)
+            hideTip()
+            local e = self.item
+            if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
+        end)
     end, fillDetailRow)
     B.detail:SetPoint("TOPLEFT", 0, -280)
     B.detail:SetPoint("TOPRIGHT", -12, -280)
@@ -1133,6 +1243,30 @@ local function buildDungeons(f)
     B.hint:SetHeight(24)
     B.hint:SetJustifyV("TOP")
     return B
+end
+
+-- The image, its texts, the boss model and the mark button of the chosen dungeon e.
+local function fillArt(B, e)
+    local a = B.art
+    if not e then
+        a:Hide()
+        return
+    end
+    a:Show()
+    local Dn = ns.Dungeons
+    local fid, kind = Dn.Art(e.key)
+    if fid then
+        a.tex:SetTexture(fid)
+        a.tex:SetTexCoord(Dn.ArtCoords(kind, ART_W, ART_H))
+        a.tex:Show()
+    else
+        a.tex:Hide()
+    end
+    a.title:SetText(e.name)
+    local range = Dn.RangeText(e)
+    a.info:SetText(range ~= "" and DTEXT.level:format(range, Dn.FitText(e)) or Dn.FitText(e))
+    a:SetModelNpc(Dn.ModelNpc(e))
+    B.mark:SetText(ns.DungeonMarked() == e.key and DTEXT.unmark or DTEXT.mark)
 end
 
 local function fillDungeons(B)
@@ -1158,6 +1292,8 @@ local function fillDungeons(B)
     B.chosen = e and e.key or nil
     B.list:SetItems(shown)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
+    B.entry = e
+    fillArt(B, e)
     local part = state().dpart == "quests" and "quests" or "bosses"
     for k, chip in pairs(B.parts) do chip:SetOn(k == part) end
     -- another dungeon or part starts at the top
@@ -1184,10 +1320,16 @@ local function fillDungeons(B)
     if part == "quests" then
         hint = Dn.QuestStatusText(status) or ""
         if e and #B.detail.items == 0 and hint == "" then hint = "Für diesen Dungeon kennt Amisia keine Quests." end
-        hint = hint .. (hint ~= "" and " " or "") .. "Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich."
+        local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
+        local parts = {}
+        for _, t in ipairs({ xp, hint, "Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich.", DTEXT.itemHint }) do
+            if t ~= "" then parts[#parts + 1] = t end
+        end
+        hint = table.concat(parts, " ")
     else
         hint = "Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."
         if e and e.computed and #B.detail.items == 0 then hint = "In diesem Dungeon gibt es nichts mehr für dich. " .. hint end
+        hint = hint .. " " .. DTEXT.itemHint
     end
     B.hint:SetText(hint)
 end

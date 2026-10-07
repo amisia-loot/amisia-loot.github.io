@@ -103,7 +103,7 @@ $OptionalTables = @(
     'ItemDamageAmmo', 'ItemArmorQuality', 'ItemArmorShield', 'ItemArmorTotal', 'ArmorLocation',
     'ItemRandomProperties', 'ItemRandomSuffix',
     # tools/build_professions.py: recipe -> profession, reagents, profession names
-    'SkillLineAbility', 'SpellReagents', 'SkillLine'
+    'SkillLineAbility', 'SpellReagents', 'SkillLine', 'LoadingScreens'
 )
 # The talent trees (tools/build_talents.py); a miss is only a warning like the optional ones.
 $TalentTables = @(
