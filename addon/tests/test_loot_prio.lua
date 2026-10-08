@@ -254,7 +254,7 @@ STUB.fire("LOOT_CLOSED"); STUB.fire("LOOT_OPENED", false)
 assert(#STUB.chat == 3 and not has(STUB.chat[2].text, "Prio"), "off by default: " .. (STUB.chat[2] and STUB.chat[2].text or "-"))
 assert(NS.Set("loot.prio", true))
 STUB.tick(10); STUB.chat = {}
-NS.LootAnnounceAgain()
+NS.Dispatch("ansage")
 assert(#STUB.chat == 3, #STUB.chat)
 assert(STUB.chat[2].text == "1. " .. link .. " frei · Prio: Anna (Tank), Krieger, offen", STUB.chat[2].text)
 assert(STUB.chat[3].text == "2. " .. plain .. " frei", STUB.chat[3].text)

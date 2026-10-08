@@ -176,6 +176,12 @@ for _, path in ipairs({ "GetTitleText", "C_MerchantFrame.GetItemInfo" }) do loca
 -- Forever 1.60.1.70245 dropped GetMerchantItemInfo: only optional now
 for _, p in ipairs(ST.REQUIRED) do assert(p ~= "GetMerchantItemInfo", "GetMerchantItemInfo is no longer required") end
 do local found = false; for _, p in ipairs(ST.OPTIONAL) do found = found or p == "GetMerchantItemInfo" end; assert(found, "GetMerchantItemInfo optional") end
+-- the guild bank log copes without its functions: optional, not required
+for _, path in ipairs({ "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
+    "GetGuildBankMoneyTransaction" }) do
+    for _, p in ipairs(ST.REQUIRED) do assert(p ~= path, path .. " is not required") end
+    local found = false; for _, p in ipairs(ST.OPTIONAL) do found = found or p == path end; assert(found, path .. " optional")
+end
 local hasProgress = false; for _, e in ipairs(ST.EVENTS) do hasProgress = hasProgress or e == "QUEST_PROGRESS" end; assert(hasProgress, "QUEST_PROGRESS listed")
 
 -- nothing went to chat or to other players

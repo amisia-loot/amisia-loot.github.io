@@ -746,8 +746,7 @@ local REQUIRED = {
     "GetRealZoneText", "GetZoneText", "InCombatLockdown", "IsAltKeyDown", "IsShiftKeyDown", "IsControlKeyDown",
     "GetCursorPosition", "IsInGuild", "GetGuildInfo", "GetNumGuildMembers", "GetGuildRosterInfo", "GuildControlGetNumRanks",
     "GuildControlGetRankName", "GetNumGuildBankTabs", "GetGuildBankTabInfo", "GetGuildBankItemInfo", "GetGuildBankItemLink",
-    "GetCurrentGuildBankTab", "QueryGuildBankTab", "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction",
-    "GetNumGuildBankMoneyTransactions", "GetGuildBankMoneyTransaction", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
+    "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
     "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "C_MerchantFrame.GetItemInfo",
@@ -801,6 +800,9 @@ local OPTIONAL = {
     "C_LootHistory.GetSortedInfoForDrop", "C_LootHistory.GetAllEncounterInfos", "GetLootRollItemInfo",
     -- the scrolls page: which spells (charm, Study, Research) the mage knows
     "IsPlayerSpell", "C_SpellBook.IsSpellKnown", "IsSpellKnown",
+    -- the guild bank log (BankLog.lua reads nothing without them)
+    "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
+    "GetGuildBankMoneyTransaction",
 }
 ST.OPTIONAL = OPTIONAL
 

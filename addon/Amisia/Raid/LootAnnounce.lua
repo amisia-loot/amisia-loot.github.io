@@ -257,8 +257,6 @@ local function announceAgain()
     end
 end
 
-ns.LootAnnounceAgain = announceAgain
-
 ---------------------------------------------------------------------------
 -- Group loot: START_LOOT_ROLL(rollID, rollTime), collected over 1.5 s
 ---------------------------------------------------------------------------
