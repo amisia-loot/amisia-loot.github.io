@@ -114,13 +114,6 @@ local function lengthText(k)
     return nil
 end
 
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
-
 local function lift(d)
     -- the dialog strata is below the main window's; lift it so it is not hidden behind
     if d and d.SetFrameStrata then
@@ -217,29 +210,19 @@ local function fillLogRow(r, e)
     if sel then r.sel:Show() else r.sel:Hide() end
 end
 
+-- the timeline's columns (the list is 590 wide, its bar beside it)
+local LOG_COLS = { { "time", 6, 44, L["Zeit"] }, { "event", 54, 246, L["Ereignis"] }, { "result", 304, 76, L["Ergebnis"] },
+    { "dur", 384, 46, L["Dauer"] }, { "who", 434, 46, L["Dabei"] }, { "src", 484, 102, L["Quelle"] } }
+
 local function buildLog(f)
-    local V = CreateFrame("Frame", nil, f)
-    V:SetPoint("TOPLEFT", 0, -72)
-    V:SetPoint("BOTTOMRIGHT", 0, 0)
-    local head = CreateFrame("Frame", nil, V)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, 0)
-    head:SetPoint("TOPRIGHT", 0, 0)
-    head.time = col(head, 2, 48, L["Zeit"])
-    head.event = col(head, 54, 246, L["Ereignis"])
-    head.result = col(head, 304, 76, L["Ergebnis"])
-    head.dur = col(head, 384, 46, L["Dauer"])
-    head.who = col(head, 434, 46, L["Dabei"])
-    head.src = col(head, 484, 106, L["Quelle"])
-    V.head = head
-    V.list = W.List(V, LOG_ROWS, ROW_H, function(r)
+    local V = W.Page(f, { view = true })
+    local headFrame, head = V:Columns(LOG_COLS)
+    -- the head frame's Show/Hide stands for the column heads, the cells for the tests
+    for k, fs in pairs(head) do headFrame[k] = fs end
+    V.head = headFrame
+    V.list = V:List(LOG_ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.time = col(r, 2, 48, nil, T.FONT.text)
-        r.event = col(r, 54, 246, nil, T.FONT.text)
-        r.result = col(r, 304, 76, nil, T.FONT.text)
-        r.dur = col(r, 384, 46, nil, T.FONT.text)
-        r.who = col(r, 434, 46, nil, T.FONT.text)
-        r.src = col(r, 484, 106, nil, T.FONT.text)
+        W.Cells(r, LOG_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -253,12 +236,8 @@ local function buildLog(f)
             ns.Refresh()
         end)
     end, fillLogRow)
-    -- 12 px short of the right edge: room for the list's scroll bar
-    V.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    V.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    -- no raid yet: the page says so in its middle instead of an empty table
-    V.empty = W.EmptyState(V, 440)
-    V.empty:SetPoint("TOP", V, "TOP", 0, -110)
+    -- no raid yet: the page says so over the list instead of an empty table
+    V.empty = V:Empty(440)
 
     -- the detail area under the list
     V.title = W.Text(V, T.FONT.title, 490)
@@ -270,9 +249,9 @@ local function buildLog(f)
     end)
     V.del:SetPoint("TOPRIGHT", V.list, "BOTTOMRIGHT", 0, -4)
     V.detail = W.ScrollText(V)
-    V.detail:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 0, -28)
+    V.detail:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -28)
     -- the text ends with the list; its bar lies under the list's
-    V.detail:SetPoint("BOTTOMRIGHT", -12, 0)
+    V.detail:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
 
     -- "Boss eintragen": [Boss v] [Kill] [Wipe] [Eintragen] [Abbrechen]
     local A = CreateFrame("Frame", nil, V)
@@ -504,14 +483,16 @@ local function outsideNames(s)
     return out
 end
 
+-- the bench's columns; the note gives 12 px to the list's scroll bar, so "eingewechselt 20:15" keeps its width
+local BENCH_COLS = { { "name", 6, 128, "Name" }, { "since", 138, 36, L["Seit"] }, { "how", 178, 110, L["Wie"] },
+    { "note", 292, 148, L["Notiz"] }, { "joined", 444, 118, L["Im Raid"] } }
+
 local function buildBench(f)
-    local B = CreateFrame("Frame", nil, f)
-    B:SetPoint("TOPLEFT", 0, -72)
-    B:SetPoint("BOTTOMRIGHT", 0, 0)
-    B.label = W.Text(B, T.FONT.text, 590)
-    B.label:SetPoint("TOPLEFT", 6, 0)
+    local B = W.Page(f, { view = true })
+    -- whose bench, then the entry line (officers)
+    B:Bands({ "line", "row" })
+    B.label = B:Line(1)
     B.pick = W.Picker(B, 200, function(v) benchName = v end)
-    B.pick:SetPoint("TOPLEFT", 0, -18)
     -- the suggestions are read when the list opens, not on every refresh (guild rosters can be long)
     local open = B.pick.Open
     function B.pick:Open()
@@ -520,7 +501,6 @@ local function buildBench(f)
         return open(self)
     end
     B.note = W.LineEdit(B, 200)
-    B.note:SetPoint("LEFT", B.pick, "RIGHT", 6, 0)
     local function addBench()
         if not officer() then return end
         local s = chosen()
@@ -543,31 +523,22 @@ local function buildBench(f)
         ns.Refresh()
     end
     B.addBtn = W.Button(B, L["Eintragen"], 90, addBench)
-    B.addBtn:SetPoint("LEFT", B.note, "RIGHT", 6, 0)
+    W.FitChip(B.addBtn, 90)
+    B:Place(2, { B.pick, B.note, B.addBtn })
     -- Enter in the note enters the name, like the button
     B.note:SetScript("OnEnterPressed", function(self)
         self:ClearFocus()
         addBench()
     end)
+    B:Footer({ "hint" })
+    B.hint:SetText(L["Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung."])
 
-    local head = CreateFrame("Frame", nil, B)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -44)
-    head:SetPoint("TOPRIGHT", 0, -44)
-    head.name = col(head, 4, 130, "Name")
-    head.since = col(head, 138, 36, L["Seit"])
-    head.how = col(head, 178, 110, L["Wie"])
-    -- the note gives 12 px to the list's scroll bar, so "eingewechselt 20:15" keeps its width
-    head.note = col(head, 292, 148, L["Notiz"])
-    head.joined = col(head, 444, 118, L["Im Raid"])
-    B.head = head
-    B.list = W.List(B, BENCH_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 130, nil, T.FONT.text)
-        r.since = col(r, 138, 36, nil, T.FONT.text)
-        r.how = col(r, 178, 110, nil, T.FONT.text)
-        r.note = col(r, 292, 148, nil, T.FONT.text)
-        r.joined = col(r, 444, 118, nil, T.FONT.text)
-        r.x = W.ResetButton(r, 18, function(self)
+    local headFrame, head = B:Columns(BENCH_COLS)
+    for k, fs in pairs(head) do headFrame[k] = fs end
+    B.head = headFrame
+    B.list = B:List(BENCH_ROWS, ROW_H, function(r)
+        W.Cells(r, BENCH_COLS)
+        r.x = W.ResetButton(r, T.RESET, function(self)
             local x = self:GetParent().item
             local target = benchOf(chosen())
             if not x or not officer() or not target then return end
@@ -586,13 +557,12 @@ local function buildBench(f)
         r.joined:SetText(x.joined and L["eingewechselt %s"]:format(hm(x.joined)) or "")
         if officer() then r.x:Show() else r.x:Hide() end
     end)
-    -- 12 px short of the right edge: room for the list's scroll bar
-    B.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    B.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
+    B.empty = B:Empty()
+    B.empty:Set(L["Niemand auf der Ersatzbank"], L["Offiziere tragen oben ein, Raider sich selbst mit !bench."])
 
-    -- ends 6 px before "Alle eintragen", which moved left with the list
+    -- the group outside the instance, with a button that enters them all, under the list
     B.outside = W.Text(B, T.FONT.text, 478)
-    B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -10)
+    B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -10)
     B.all = W.Button(B, L["Alle eintragen"], 100, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
@@ -604,9 +574,6 @@ local function buildBench(f)
         ns.Refresh()
     end)
     B.all:SetPoint("TOPRIGHT", B.list, "BOTTOMRIGHT", 0, -6)
-    B.hint = W.Text(B, T.FONT.hint, 590, true)
-    B.hint:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", 6, -40)
-    B.hint:SetText(L["Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung."])
     return B
 end
 
@@ -618,7 +585,9 @@ local function refreshBench(B, s)
         B.label:SetText(L["Ersatzbank: %s"]:format(ns.BenchLabel(s)))
     end
     local target = benchOf(s)
-    B.list:SetItems(target and ns.BenchList(target) or {})
+    local benched = target and ns.BenchList(target) or {}
+    B.list:SetItems(benched)
+    B.empty:SetShown(#benched == 0)
     for _, w in ipairs({ B.pick, B.note, B.addBtn, B.hint }) do
         if off then w:Show() else w:Hide() end
     end
@@ -646,9 +615,9 @@ local function setDiscord(D, text, s)
 end
 
 local function buildDiscord(f)
-    local D = CreateFrame("Frame", nil, f)
-    D:SetPoint("TOPLEFT", 0, -72)
-    D:SetPoint("BOTTOMRIGHT", 0, 0)
+    local D = W.Page(f, { view = true })
+    -- the parts as chips, the text down to the footer
+    local top = D:Bands({ "row" })
     D.chips = {}
     for i = 1, MAX_PARTS do
         local c = W.Chip(D, L["Teil %d"]:format(i), 60, function()
@@ -656,14 +625,15 @@ local function buildDiscord(f)
             discordText = nil
             ns.Refresh()
         end)
-        c:SetPoint("TOPLEFT", (i - 1) * 64, 0)
+        W.FitChip(c, 60)
         c:Hide()
         D.chips[i] = c
     end
+    D:Place(1, D.chips)
+    D:Footer({ "hint" })
     D.area = W.EditArea(D)
-    D.area:SetPoint("TOPLEFT", 0, -24)
-    D.area:SetPoint("TOPRIGHT", 0, -24)
-    D.area:SetHeight(340)
+    D.area:SetPoint("TOPLEFT", 0, top)
+    D.area:SetPoint("BOTTOMRIGHT", 0, D:Bottom())
     -- read-only like the export box: typing puts the text back and marks it
     D.area.box:SetScript("OnTextChanged", function(self, userInput)
         if userInput then
@@ -676,8 +646,6 @@ local function buildDiscord(f)
     D.area.box:SetScript("OnEditFocusLost", function()
         if page and page:IsShown() and D:IsShown() then ns.Refresh() end
     end)
-    D.hint = W.Text(D, T.FONT.hint, 590)
-    D.hint:SetPoint("TOPLEFT", D.area, "BOTTOMLEFT", 0, -6)
     return D
 end
 
@@ -743,17 +711,18 @@ end
 
 ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25, group = "raid",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         page = f
+        -- the head row: the raid, entering a boss and the Discord text (officers); then the counts
+        -- and the views
+        f:Bands({ "row", "line", "row" })
         f.raid = W.Picker(f, 220, function(v)
             chosenRaid = v
             chosenKill, adding, part = nil, false, 1
             discordText = nil
             ns.Refresh()
         end)
-        f.raid:SetPoint("TOPLEFT", 0, -2)
         f.discordBtn = W.Button(f, L["Discord-Text"], 110, function() setView("discord") end)
-        f.discordBtn:SetPoint("TOPRIGHT", 0, -1)
         f.addBoss = W.Button(f, L["Boss eintragen"], 110, function()
             if not officer() then return end
             local s = chosen()
@@ -766,18 +735,17 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
             if f.log then f.log.add.pick:SetValue(nil) end
             ns.Refresh()
         end)
-        f.addBoss:SetPoint("RIGHT", f.discordBtn, "LEFT", -6, 0)
-        f.counts = W.Text(f, T.FONT.hint, 590)
-        f.counts:SetPoint("TOPLEFT", 6, -28)
+        W.FitChip(f.addBoss, 110)
+        W.FitChip(f.discordBtn, 110)
+        f:Place(1, { f.raid }, { f.addBoss, f.discordBtn })
+        f.counts = f:Line(2)
         f.views = {}
         f.views.verlauf = W.Chip(f, L["Verlauf"], 70, function() setView("verlauf") end)
-        f.views.verlauf:SetPoint("TOPLEFT", 0, -48)
         f.views.bench = W.Chip(f, L["Ersatzbank"], 110, function() setView("bench") end)
-        f.views.bench:SetPoint("LEFT", f.views.verlauf, "RIGHT", 4, 0)
         f.views.rolls = W.Chip(f, L["Würfe"], 90, function() setView("rolls") end)
-        f.views.rolls:SetPoint("LEFT", f.views.bench, "RIGHT", 4, 0)
         f.views.discord = W.Chip(f, "Discord", 70, function() setView("discord") end)
-        f.views.discord:SetPoint("LEFT", f.views.rolls, "RIGHT", 4, 0)
+        f.viewRow = { f.views.verlauf, f.views.bench, f.views.rolls, f.views.discord }
+        f:Place(3, f.viewRow)
         f.log = buildLog(f)
         f.bench = buildBench(f)
         f.discord = buildDiscord(f)

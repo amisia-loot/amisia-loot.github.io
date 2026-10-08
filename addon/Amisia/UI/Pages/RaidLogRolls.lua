@@ -97,13 +97,6 @@ local function fill(r, x)
     if e == chosenEntry then r.sel:Show() else r.sel:Hide() end
 end
 
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
-
 -- The choices of a roll, the winner first, then by choice and number.
 local function detail(x)
     if not x or not x.e then return GREY .. L["Einen Wurf wählen."] .. "|r" end
@@ -127,10 +120,14 @@ local function detail(x)
     return table.concat(lines, "\n")
 end
 
+-- the columns (the list is 590 wide, its bar beside it)
+local COLS = { { "time", 6, 44, L["Zeit"] }, { "what", 54, 250, L["Gegenstand"] }, { "result", 308, 226, L["Ergebnis"] },
+    { "n", 538, 40, L["Wahl"] } }
+
 function R.Build(f)
-    V = CreateFrame("Frame", nil, f)
-    V:SetPoint("TOPLEFT", 0, -72)
-    V:SetPoint("BOTTOMRIGHT", 0, 0)
+    V = W.Page(f, { view = true })
+    -- the source and its counts, then the list
+    V:Bands({ "row" })
     V.source = W.Choice(V, 110, function(v)
         source = v
         chosenEntry = nil
@@ -139,23 +136,14 @@ function R.Build(f)
     V.source:SetValues({ { "raid", L["Dieser Raid"] }, { "runs", L["Dungeons"] } })
     V.source:SetValue(source)
     W.Tooltip(V.source, L["Würfe"], L["Die Würfe des gewählten Raids oder der Dungeon-Läufe."])
-    V.counts = W.Text(V, T.FONT.hint, 470)
-    W.Row(V, { V.source, { V.counts, gap = 10, y = -4 } }, T.CHIP_GAP, 0, 0)
-    local head = CreateFrame("Frame", nil, V)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -24)
-    head:SetPoint("TOPRIGHT", 0, -24)
-    head.time = col(head, 2, 48, L["Zeit"])
-    head.what = col(head, 54, 250, L["Gegenstand"])
-    head.result = col(head, 308, 226, L["Ergebnis"])
-    head.n = col(head, 538, 52, L["Wahl"])
+    V.counts = W.Text(V, T.FONT.hint)
+    V:Place(1, { V.source, { V.counts, fill = true } })
+    local head, cells = V:Columns(COLS)
+    for k, fs in pairs(cells) do head[k] = fs end
     V.head = head
-    V.list = W.List(V, ROWS, ROW_H, function(r)
+    V.list = V:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.time = col(r, 2, 48, nil, T.FONT.text)
-        r.what = col(r, 54, 250, nil, T.FONT.text)
-        r.result = col(r, 308, 226, nil, T.FONT.text)
-        r.n = col(r, 538, 40, nil, T.FONT.text)
+        W.Cells(r, COLS)
         r:SetScript("OnClick", function(self)
             local x = self.item
             if not x or not x.e then return end
@@ -163,15 +151,13 @@ function R.Build(f)
             ns.Refresh()
         end)
     end, fill)
-    V.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    V.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    V.empty = W.EmptyState(V, 440)
-    V.empty:SetPoint("TOP", V, "TOP", 0, -100)
-    V.title = W.Text(V, T.FONT.title, 590)
-    V.title:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 6, -6)
+    V.empty = V:Empty(440)
+    -- the chosen roll under the list, as in the timeline
+    V.title = W.Text(V, T.FONT.title, 578)
+    V.title:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -6)
     V.detail = W.ScrollText(V)
-    V.detail:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", 0, -28)
-    V.detail:SetPoint("BOTTOMRIGHT", -12, 0)
+    V.detail:SetPoint("TOPLEFT", V.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -28)
+    V.detail:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
     V:Hide()
     return V
 end

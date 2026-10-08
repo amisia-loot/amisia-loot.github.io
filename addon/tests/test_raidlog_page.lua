@@ -386,7 +386,8 @@ Lay.inside("discord box", D.area)
 column("discord", f.views.discord, D.chips[1], D.area, D.hint)
 local _, at = vspan(D.area)
 local top = vspan(D.area)
-assert(top - at == 340, "the box is 340 high: " .. (top - at))
+-- from under the part chips (26 of the view's 406) down to the footer line (16 and the gap)
+assert(top - at == 360, "the box is 360 high: " .. (top - at))
 
 ---------------------------------------------------------------------------
 -- tonight before the raid: the bench goes to benchNext
