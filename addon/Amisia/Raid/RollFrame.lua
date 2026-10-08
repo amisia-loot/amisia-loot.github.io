@@ -13,6 +13,7 @@
 -- (gold by name, grey by class) and, for officers, a "Prio" button that edits it.
 -- In a DKP or EPGP guild the rows are bids (with the bidder's standing) or need/greed sorted by PR
 -- (EP/GP beside it); the entry row then takes a bid, or need (MS) and greed (OS) without a number.
+-- A row's tooltip names what its roller already got (AwardHistory.lua), for officers.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -302,6 +303,17 @@ local function prioMark(r, e)
     return (how == "name" and PRIO_GOLD or GREY) .. "P" .. rank .. "|r"
 end
 
+-- The tooltip of a roller's row: the name (an alt with its main), what the player got in the last
+-- four weeks (every character, MS/OS/SR) and the newest item with its day (AwardHistory.lua).
+local function rowTooltip(row)
+    if not row.who or not ns.AwardHistoryLines or not ns.IsOfficerView() then return end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    local main = ns.AltMain(row.who)
+    GameTooltip:AddLine(row.who .. (main and L[" (Twink von %s)"]:format(main) or ""), 1, 0.82, 0)
+    for _, line in ipairs(ns.AwardHistoryLines(row.who)) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85) end
+    GameTooltip:Show()
+end
+
 -- Enters the roll of the entry row; a reason stays in the hint line until the next try.
 local function addEntry()
     local e, why = ns.AddManualRoll(F.namePick:GetValue(), F.valueEdit:GetText(), entryKind)
@@ -475,6 +487,10 @@ local function build()
         row.award = W.Button(row, L["Vergeben"], 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         W.FitChip(row.award, 64)
         row.award:SetPoint("RIGHT", -2, 0)
+        -- the roller's award history in the row's tooltip (officers, as on the page Statistik)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", rowTooltip)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
         row:Hide()
         rows[i] = row
     end

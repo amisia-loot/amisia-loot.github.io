@@ -293,6 +293,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du als Offizier `/amisia korrektur <Name> +10 <Grund>` eingibst, dann steht die Korrektur auf der Seite Punkte und geht mit dem nächsten Export an die Website.
 - Prüfung: Wenn ein Raid mit Punkten läuft und ein Item verteilt wird, dann bieten die Raider (offen oder verdeckt) bzw. würfeln nach PR, und ein laufender Raid behält sein System, auch wenn die Website umstellt.
 
+### F-073 Vergabe-Verlauf im Tooltip und im Roll-Fenster
+- Version: 2.15.0
+- Status: gebaut
+- Prüfung: Wenn du mit der Maus über ein Item gehst, das in einem aufgezeichneten Raid vergeben wurde (Taschen, Lootfenster, Link im Chat), dann steht im Tooltip z. B. "Vergeben: Fraktur (MS), 09.09."; höchstens drei Zeilen, neueste zuerst, darunter "+N weitere".
+- Prüfung: Wenn du `/amisia rueckgaengig` nach einer Vergabe eingibst und das Item wieder ansiehst, dann ist die zurückgenommene Vergabe aus dem Tooltip verschwunden; eine Vergabe an Bank oder Entzauberer steht als "Vergeben: Bank, ..." bzw. "Vergeben: Entzaubern, ...".
+- Prüfung: Wenn du unter Einstellungen, Vergaben "Vergabe-Verlauf im Item-Tooltip" ausschaltest, dann steht die Zeile nicht mehr im Tooltip; als Raider findest du den Schalter auch.
+- Prüfung: Wenn du als Offizier im Roll-Fenster mit der Maus über einen Wurf gehst, dann zeigt der Tooltip den Namen, "Letzte 4 Wochen: 2 Items (1 MS, 1 OS)" (oder "Letzte 4 Wochen: nichts bekommen") und "Zuletzt: <Item>, <Tag>".
+- Notiz: Twinks zählen im Roll-Fenster für ihren Main; im Item-Tooltip steht ein Twink als "Kleinfrak (Twink von Fraktur, MS)". DECISIONS D-36.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

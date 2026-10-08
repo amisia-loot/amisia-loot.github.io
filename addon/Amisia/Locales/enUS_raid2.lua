@@ -672,3 +672,12 @@ L["Zu viele Korrekturen, die die Website noch nicht hat: erst exportieren und ih
 L["Der laufende Raid bleibt beim Würfeln; %s gilt ab dem nächsten Raid. /amisia punkteraid an zählt ihn schon jetzt."] = "The running raid keeps rolling; %s starts with the next raid. /amisia raidpoints on counts this one now."
 L["Der laufende Raid behält sein System (%s); %s gilt ab dem nächsten Raid."] = "The running raid keeps its system (%s); %s starts with the next raid."
 L["Vergabe ohne Punkte gespeichert: die Kosten (%s) trägt ein Offizier auf der Seite Vergaben ein."] = "Award saved without points: an officer enters the cost (%s) on the Awards page."
+
+-- Raid/AwardHistory.lua, the awards settings
+L["Vergabe-Verlauf im Item-Tooltip"] = "Award history in the item tooltip"
+L["Zeigt im Tooltip eines Items, wer es in aufgezeichneten Raids bekommen hat (die letzten drei)."] = "Shows in an item's tooltip who received it in recorded raids (the last three)."
+L["Twink von %s"] = "alt of %s"
+L["Vergeben: %s, %s"] = "Awarded: %s, %s"
+L["Letzte 4 Wochen: nichts bekommen"] = "Last 4 weeks: nothing received"
+L["Letzte 4 Wochen: %s"] = "Last 4 weeks: %s"
+L["Zuletzt: %s, %s"] = "Latest: %s, %s"

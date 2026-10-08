@@ -48,7 +48,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `UI/Widgets.lua` | `ns.W`: window, buttons, chips, rows, lists in the Forever look | - | Theme |
 | `Raid/Awards.lua` | Award book (ids, tombstones `s.gone`, undo), master loot hand-out confirmation | `awardsVersion` (migration mark) | Alts, Sync, Points, Rolls, AwardDialog |
 | `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1) | - | PointsRounds, RollFrame, SoftRes, Awards, Chat |
-| `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, Widgets |
+| `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |
 | `Raid/SoftRes.lua` | Soft-reserves paste, tooltip, loot window "SR" | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
 | `Raid/LootAnnounce.lua` | Loot lead (`ns.IsLootLead`), loot announcement, `!sr` | - | SoftRes, Awards, Need, LootPrio, Chat |
@@ -62,6 +62,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/PointsSync.lua` | KV/KQ/KS/KC share of standings and costs | - (`points.shared`) | Comm, Points, Trust, Sync, Alts |
 | `Raid/RaidText.lua` | Discord text of a raid | - | RaidLog, Bench, Awards |
 | `Raid/Stats.lua` | Loot statistics, hall of fame | - | Alts, GuildWishes |
+| `Raid/AwardHistory.lua` | Award history: who got an item (item tooltip, `awards.tooltip`) and what a player got (roll window row tooltip); one index built on first use, dropped on `DATA_CHANGED`/`ALTS`/`RECORDING` | - | Alts, Stats |
 | `Raid/BankNeeds.lua` | Guild bank needs and pledges (GN/GQ/GP, BQ/BP lines) | `bankNeeds`, `bankPledges`, `exportedNeeds` | Comm, Trust, MainFrame |
 | `Raid/BankLog.lua` | Guild bank log (BT lines) | `bankLog` | MainFrame |
 | `Collect/Scan.lua` | `/amisia scan`: every item id, throttled | `scan` | LazyData, Collect |
@@ -367,6 +368,10 @@ step, ... }`. `ns.Get(path)` returns the stored value or the default, `ns.Set` v
 | `loot` | Raid/LootAnnounce.lua | `bis` | Gear/Bis.lua |
 | `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
 | `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
+
+A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
+is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item
+tooltip, D-36); its other items are the officers'.
 
 ## Locales
 

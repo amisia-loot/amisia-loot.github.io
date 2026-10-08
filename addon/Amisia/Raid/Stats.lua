@@ -11,6 +11,7 @@ local DAY = 86400
 local WEEK = 7 * DAY
 local WEEKS = 8           -- items per week: this many weeks back
 local RANGE_DAYS = 28     -- "letzte 4 Wochen"
+ns.STATS_RANGE_DAYS = RANGE_DAYS   -- the roll window's award history counts the same days
 local FAME_MIN_RAIDS = 3  -- best attendance needs this many raids since first seen
 -- classes that only deal damage; every other class may tank or heal, so its role is unknown
 local DPS = { MAGE = true, WARLOCK = true, ROGUE = true, HUNTER = true }

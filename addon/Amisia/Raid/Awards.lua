@@ -629,16 +629,19 @@ local function validName(v)
     return name
 end
 
-ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 25, officer = true, items = {
-    { key = "awards.plusScope", type = "choice", label = L["Plus-Eins zählt"], default = "raid",
+-- The section is everyone's for the tooltip line; the rest are the officers' items.
+ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 25, items = {
+    { key = "awards.tooltip", type = "toggle", label = L["Vergabe-Verlauf im Item-Tooltip"], default = true,
+      tip = L["Zeigt im Tooltip eines Items, wer es in aufgezeichneten Raids bekommen hat (die letzten drei)."] },
+    { key = "awards.plusScope", type = "choice", label = L["Plus-Eins zählt"], default = "raid", officer = true,
       values = { { "raid", L["Dieser Raid"] }, { "week", L["Diese ID-Woche"] } },
       tip = L["Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid."] },
-    { key = "awards.plusOrder", type = "toggle", label = L["Plus-Eins in der Roll-Reihenfolge"], default = false,
+    { key = "awards.plusOrder", type = "toggle", label = L["Plus-Eins in der Roll-Reihenfolge"], default = false, officer = true,
       tip = L["Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec."] },
-    { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true },
-    { key = "awards.bankName", type = "text", label = L["Bank-Charakter"], default = "", validate = validName,
+    { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true, officer = true },
+    { key = "awards.bankName", type = "text", label = L["Bank-Charakter"], default = "", validate = validName, officer = true,
       tip = L["Master Loot an diesen Namen zählt als Bank."], invalid = L["Name ohne Ziffern, höchstens ein Leerzeichen."] },
-    { key = "awards.deName", type = "text", label = L["Entzauberer"], default = "", validate = validName,
+    { key = "awards.deName", type = "text", label = L["Entzauberer"], default = "", validate = validName, officer = true,
       tip = L["Master Loot an diesen Namen zählt als Entzaubern."], invalid = L["Name ohne Ziffern, höchstens ein Leerzeichen."] },
 }}
 

@@ -45,6 +45,7 @@ Raid\PointsRounds.lua
 Raid\PointsSync.lua
 Raid\RaidText.lua
 Raid\Stats.lua
+Raid\AwardHistory.lua
 Raid\BankNeeds.lua
 Raid\BankLog.lua
 Collect\Scan.lua

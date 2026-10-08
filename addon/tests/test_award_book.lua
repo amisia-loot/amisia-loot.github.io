@@ -251,7 +251,9 @@ NS.RollKind = nil
 ---------------------------------------------------------------------------
 local sec
 for _, x in ipairs(NS.schema) do if x.key == "awards" then sec = x end end
-assert(sec and sec.order == 25 and sec.officer and sec.label == "Vergaben")
+-- the section is everyone's for the tooltip line (AwardHistory.lua); every other item is the officers'
+assert(sec and sec.order == 25 and not sec.officer and sec.label == "Vergaben")
+for _, it in ipairs(sec.items) do assert(it.officer == (it.key ~= "awards.tooltip" or nil), it.key) end
 assert(NS.SettingItem("awards.bankName").type == "text" and NS.SettingItem("awards.deName").type == "text")
 assert(NS.Get("awards.plusScope") == "raid" and NS.Get("awards.plusOrder") == false and NS.Get("awards.modClick") == true)
 assert(NS.Set("awards.plusScope", "week") and not NS.Set("awards.plusScope", "month"))
