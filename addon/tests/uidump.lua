@@ -3,6 +3,7 @@
 -- here: the Python side solves the anchors, draws the snapshot and checks the layout rules.
 -- Load with dofile(ADDON_DIR .. "/../tests/uidump.lua"); it returns dump(root, marks) -> JSON text
 -- { "nodes": [...], "marks": { name: id } } (root is node 1; marks names frames the rules need).
+-- Parts of the page scaffold (W.Page) carry lrole (layoutRole) and lband (the id of their band).
 local function esc(s)
     s = tostring(s)
     s = s:gsub('[%c"\\]', function(c)
@@ -108,6 +109,10 @@ return function(root, marks)
         add("enabled", f.enabled ~= nil and tostring(f.enabled) or nil)
         add("on", f.on ~= nil and f.UpdateChip and tostring(f.on and true or false) or nil)
         add("scale", f._scale and num(f._scale))
+        -- the page scaffold's parts (W.Page): their role and the band they sit in
+        add("lrole", type(f.layoutRole) == "string" and esc(f.layoutRole) or nil)
+        add("lband", f.layoutBand and ids[f.layoutBand] and tostring(ids[f.layoutBand]) or nil)
+        add("emptyState", f.isEmptyState and "true" or nil)
         local text = f.text
         if type(text) == "number" then text = tostring(text) end
         if type(text) == "string" and text ~= "" then add("text", esc(text)) end

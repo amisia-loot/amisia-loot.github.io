@@ -123,6 +123,73 @@ def test_rule_nav():
     assert any('gear lies outside the list' in f for f in found)
 
 
+GRID = {'ROW_H': 22, 'LINE_H': 16, 'GAP': 4, 'TEXT_X': 6, 'COLHEAD_H': 18, 'EMPTY_Y': 36,
+        'hint': 'GameFontDisableSmall', 'head': 'GameFontNormalSmall'}
+
+
+def page_shot(*kids):
+    """A window (1) with a page (2, 600 x 400) built with W.Page, and kids in it."""
+    nodes = [node(1, None, w=600, h=400),
+             node(2, 1, lrole='page', points=[('TOPLEFT', None, 'TOPLEFT', 0, 0), ('BOTTOMRIGHT', None, 'BOTTOMRIGHT', 0, 0)])]
+    return shot(nodes + list(kids), marks={'window': 1, 'page': 2}, extra={'page': 'p', 'grid': GRID})
+
+
+def test_rule_grid_head_row_lines_and_columns():
+    good = page_shot(
+        node(3, 2, lrole='headband', h=22, points=[('TOPLEFT', None, 'TOPLEFT', 0, 0), ('TOPRIGHT', None, 'TOPRIGHT', 0, 0)]),
+        node(4, 2, role='chip', lrole='head', lband=3, w=50, h=20, points=[('LEFT', 3, 'LEFT', 0, 0)]),
+        node(5, 2, role='button', lrole='head', lband=3, w=50, h=22, points=[('RIGHT', 3, 'RIGHT', 0, 0)]),
+        node(6, 2, lrole='band', h=16, points=[('TOPLEFT', None, 'TOPLEFT', 0, -26), ('TOPRIGHT', None, 'TOPRIGHT', 0, -26)]),
+        node(7, 2, 'FontString', text='3 Raids', font='GameFontDisableSmall', lrole='line', lband=6,
+             points=[('LEFT', 6, 'LEFT', 6, 0), ('RIGHT', 6, 'RIGHT', -6, 0)]),
+        node(8, 2, lrole='colhead', h=18, points=[('TOPLEFT', None, 'TOPLEFT', 0, -46), ('TOPRIGHT', None, 'TOPRIGHT', -12, -46)]),
+        node(9, 8, 'FontString', text='Name', font='GameFontNormalSmall', w=80, points=[('LEFT', None, 'LEFT', 6, 0)]))
+    assert 'grid' not in U.check_shot(good)
+    bad = page_shot(
+        node(3, 2, lrole='headband', h=22, points=[('TOPLEFT', None, 'TOPLEFT', 0, -2), ('TOPRIGHT', None, 'TOPRIGHT', 0, -2)]),
+        node(4, 2, role='chip', lrole='head', lband=3, w=50, h=20, points=[('TOPLEFT', 3, 'TOPLEFT', 0, 0)]),
+        node(7, 2, 'FontString', text='3 Raids', font='GameFontHighlight', lrole='line', w=200,
+             points=[('TOPLEFT', None, 'TOPLEFT', 4, -30)]),
+        node(8, 2, lrole='colhead', h=14, points=[('TOPLEFT', None, 'TOPLEFT', 0, -46), ('TOPRIGHT', None, 'TOPRIGHT', -12, -46)]),
+        node(9, 8, 'FontString', text='Name', font='GameFontDisableSmall', w=80, points=[('LEFT', None, 'LEFT', 6, 0)]),
+        node(10, 2, emptyState=True, w=100, h=50, points=[('TOP', None, 'TOP', 0, -100)]))
+    found = U.check_shot(bad)['grid']
+    text = '\n'.join(found)
+    assert 'the head row lies at y 2' in text
+    assert 'is not centred on its band' in text
+    assert 'is a line in GameFontHighlight' in text and 'lines start at 6' in text
+    assert 'column heads are 18' in text and 'column heads are in GameFontNormalSmall' in text
+    assert 'not placed by the page scaffold' in text
+    assert len(found) == 7, found
+
+
+def test_rule_grid_footer():
+    foot = [node(3, 2, lrole='footer', h=32, points=[('BOTTOMLEFT', None, 'BOTTOMLEFT', 0, 0), ('BOTTOMRIGHT', None, 'BOTTOMRIGHT', 0, 0)]),
+            node(4, 3, 'FontString', text='Klick: Details', font='GameFontDisableSmall', lrole='foot',
+                 points=[('BOTTOMLEFT', None, 'BOTTOMLEFT', 6, 16), ('TOPRIGHT', None, 'BOTTOMRIGHT', -6, 32)])]
+    ok = page_shot(*foot, node(5, 2, role='list', h=300, points=[('TOPLEFT', None, 'TOPLEFT', 0, -40), ('TOPRIGHT', None, 'TOPRIGHT', -12, -40)]))
+    assert 'grid' not in U.check_shot(ok)
+    into = page_shot(*foot, node(5, 2, role='list', h=340, points=[('TOPLEFT', None, 'TOPLEFT', 0, -40), ('TOPRIGHT', None, 'TOPRIGHT', -12, -40)]))
+    found = U.check_shot(into)['grid']
+    assert len(found) == 1 and 'reaches into the footer' in found[0], found
+    lifted = page_shot(node(3, 2, lrole='footer', h=16, points=[('BOTTOMLEFT', None, 'BOTTOMLEFT', 0, 4), ('BOTTOMRIGHT', None, 'BOTTOMRIGHT', 0, 4)]))
+    assert 'ends 4 px above the page bottom' in U.check_shot(lifted)['grid'][0]
+
+
+def test_rule_grid_needs_the_scaffold(monkeypatch):
+    s = page_shot()
+    s['nodes'][1].pop('lrole')
+    monkeypatch.setattr(U, 'REQUIRE_SCAFFOLD', True)
+    assert U.check_shot(s)['grid'] == ['page p is not built with W.Page']
+    monkeypatch.setattr(U, 'REQUIRE_SCAFFOLD', False)
+    assert 'grid' not in U.check_shot(s), 'not asked for: a page without the scaffold passes'
+    w = page_shot()
+    w['extra'].pop('grid')
+    w['nodes'][1].pop('lrole')
+    monkeypatch.setattr(U, 'REQUIRE_SCAFFOLD', True)
+    assert 'grid' not in U.check_shot(w), 'a side window (no grid in extra) is not a page'
+
+
 def test_atlas_allow_list():
     assert U.check_atlases(['a', 'b'], ['a']) == ['atlas b is not in the style allow-list (ns.Theme.ATLASES)']
     assert U.check_atlases(['a'], []) and 'missing' in U.check_atlases(['a'], [])[0]

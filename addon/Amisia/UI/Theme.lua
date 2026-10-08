@@ -71,6 +71,23 @@ T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 -- the page area of the main window (the content inset less its 7 px margin)
 T.PAGE_W, T.PAGE_H = 602, 478
 
+-- The page scaffold (W.Page): every page is built of the same parts, top to bottom: bands (the head
+-- row first, then rows of controls or lines of text), the content (column heads, a list, a detail
+-- beside or under it, an empty state over it), a bottom row of controls and the footer (hint and
+-- data lines). The layout rules (tools/ui_layout.py, rule "grid") check the pages against these.
+T.LAYOUT = {
+    ROW_H = 22,       -- a band of controls: as high as the red button; chips, pickers and fields sit centred
+    LINE_H = 16,      -- a band of text: the hint or counts line under the head row, a footer line
+    GAP = 4,          -- between two bands, after the last band, and before the bottom row or the footer
+    ITEM_GAP = 6,     -- between two controls of a band (between two chips: T.CHIP_GAP)
+    TEXT_X = 6,       -- a line's text from the page's edges (as the cells of a list and a picker's text)
+    COLHEAD_H = 18,   -- the column heads over a list (gold, T.FONT.head)
+    SPLIT_X = 306,    -- a list with a detail inset beside it: the list 290 wide, its bar, then the inset
+    SPLIT_LIST_W = 290,
+    EMPTY_Y = 36,     -- the empty state's top below the top of the list it stands for
+    DETAIL = { PAD = 8, ICON = 32, TITLE_X = 44, TITLE_H = 18, SUB_Y = 28, BODY_Y = 46, BUTTONS = 32 },
+}
+
 -- the main window (MainFrame.lua)
 T.MAIN = {
     W = 806, H = 560,
@@ -91,7 +108,7 @@ T.MAIN = {
 
 -- an overview card
 T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON_Y = 8 }
--- the empty state of a page
+-- the empty state of a page: a short title (no full stop) and a sentence of help
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6 }
 -- the shared popup menu and the picker's panel
 T.MENU = { W = 182, ROW_W = 170, ROW_H = 20, PAD = 6, LABEL_W = 160, GROUND_X = 10, GROUND_Y = 3, ALPHA = 0.925 }

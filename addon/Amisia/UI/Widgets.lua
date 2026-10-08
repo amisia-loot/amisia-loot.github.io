@@ -331,12 +331,14 @@ function W.SlicedAtlas(holder, layer, sublevel, atlas, cap, height)
 end
 
 -- The empty state of a page: the addon's emblem faint, a title and a line of help, centred in
--- the place the list would fill. e:Set(title, text) fills it; Show/Hide as any frame.
+-- the place the list would fill. e:Set(title, text) fills it (e:SetText and e:GetText: the line of
+-- help alone); Show/Hide as any frame. Pages place it with p:Empty (W.Page).
 W.EMBLEM = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 function W.EmptyState(parent, width)
     local e = CreateFrame("Frame", nil, parent)
     local E = T.EMPTY
     width = width or E.W
+    e.isEmptyState = true
     e:SetSize(width, E.H)
     e.icon = e:CreateTexture(nil, "ARTWORK")
     e.icon:SetSize(E.ICON, E.ICON)
@@ -355,6 +357,8 @@ function W.EmptyState(parent, width)
         self.title:SetText(title or "")
         self.text:SetText(text or "")
     end
+    function e:SetText(text) self.text:SetText(text or "") end
+    function e:GetText() return self.text:GetText() end
     e:Hide()
     return e
 end
@@ -1301,4 +1305,316 @@ function W.Window(name, width, height, opts)
     -- Escape closes it, unless opts.escape is false (a window that stays through Escape)
     if name and UISpecialFrames and opts.escape ~= false then tinsert(UISpecialFrames, name) end
     return F
+end
+
+---------------------------------------------------------------------------
+-- The page scaffold
+---------------------------------------------------------------------------
+-- W.Page(parent) makes a page (it fills the content inset, 602 x 478) whose shared parts are all
+-- placed by ns.Theme.LAYOUT, so every page has its head row, column heads, empty state and footer
+-- in the same places. Its methods, each usable once or again on a refresh:
+--   p:Bands(spec)            the bands at the top, top to bottom: "row" (controls, ROW_H) or "line"
+--                            (text, LINE_H; { "line", lines = 2 } for two). The first band of a page
+--                            is its head row. p.bands[i]; returns the content top (p.top, a y offset).
+--   p:Place(i, left, right, opts)  controls and texts in band i, each centred on it: left from the
+--                            left edge, right up to the right edge (both listed left to right). The
+--                            gap: T.CHIP_GAP between two chips, ITEM_GAP else, { frame, gap = n } its
+--                            own before it; a text keeps TEXT_X from the page's edge; { fs, fill = true }
+--                            takes the room the others leave. opts.shown passes over hidden items.
+--   p:Line(i, fs)            a hint line filling band i (a new font string without fs); returns it.
+--   p:Columns(cols, opts)    the column heads at the content top (opts.top), as wide as the list
+--                            (opts.width, else the page less the scroll bar's room). cols: { { key,
+--                            x, w, label, justify = "RIGHT" } }; opts.sort(key) makes them buttons.
+--                            Returns the frame and { key = head }. W.Cells(row, cols) makes a list
+--                            row's cells at the same places.
+--   p:List(rows, rowH, build, fill, opts)  a W.List under the column heads (or at opts.top), as
+--                            wide as they are (opts.width).
+--   p:Detail(opts)           the inset beside a split list (SPLIT_X, opts.top, opts.height): icon,
+--                            title (on d.head, which takes the mouse), sub line (opts.sub), scrolling
+--                            body; d:Buttons(list) puts red buttons at its bottom right.
+--   p:Empty(width, anchor)   the empty state, centred over anchor (the last list, else the content).
+--   p:Footer(spec)           the lines at the bottom, listed top to bottom: { "hint", "data" } makes
+--                            p.hint over p.data; { "hint", lines = 2 } a hint of two lines.
+--   p:BottomRow(left, right) a row of controls right above the footer (at the bottom without one).
+--   p:Bottom()               the content's lower end, as a BOTTOM offset (above the bottom row and
+--                            the footer, GAP apart).
+-- W.Page(parent, { view = true }) is a view inside a page (its views switch with chips): it starts
+-- at the page's content top and has the same methods; its bands are not the head row.
+-- Every part carries layoutRole (and the band it sits in, layoutBand); tools/ui_layout.py checks
+-- the pages by them (rule "grid").
+local LAY = T.LAYOUT
+local Scaffold = {}
+
+local function isText(f) return f.CreateTexture == nil and f.GetStringWidth ~= nil end
+local function isChip(f) return f.UpdateChip ~= nil end
+local function scaffoldEntry(e)
+    if type(e) == "table" and type(e[1]) == "table" then return e[1], e end
+    return e, nil
+end
+
+-- The items of one side of a band, without the hidden ones when only shown ones count.
+local function bandItems(list, onlyShown)
+    local out = {}
+    for _, e in ipairs(list or {}) do
+        local f, opt = scaffoldEntry(e)
+        if f and not (onlyShown and not f:IsShown()) then
+            out[#out + 1] = { f = f, gap = opt and opt.gap, fill = opt and opt.fill }
+        end
+    end
+    return out
+end
+
+local function gapOf(a, b)
+    if b.gap then return b.gap end
+    if isChip(a.f) and isChip(b.f) then return T.CHIP_GAP end
+    return LAY.ITEM_GAP
+end
+
+local function placeIn(band, width, left, right, opts, role)
+    local onlyShown = opts and opts.shown
+    local R, Lf = bandItems(right, onlyShown), bandItems(left, onlyShown)
+    -- the right side, from the edge leftwards
+    local at = 0
+    for k = #R, 1, -1 do
+        local it = R[k]
+        if k == #R and isText(it.f) then at = LAY.TEXT_X end
+        it.f:ClearAllPoints()
+        it.f:SetPoint("RIGHT", band, "RIGHT", -at, 0)
+        at = at + (it.f:GetWidth() or 0)
+        if k > 1 then at = at + gapOf(R[k - 1], it) end
+    end
+    local rightUsed = #R > 0 and (at + LAY.ITEM_GAP) or 0
+    -- the left side; a filling item takes what the others leave
+    local used, fillItem = 0, nil
+    for k, it in ipairs(Lf) do
+        if k == 1 and isText(it.f) then used = LAY.TEXT_X end
+        if k > 1 then used = used + gapOf(Lf[k - 1], it) end
+        if it.fill then fillItem = it else used = used + (it.f:GetWidth() or 0) end
+    end
+    if fillItem then
+        local edge = rightUsed > 0 and rightUsed or (isText(fillItem.f) and LAY.TEXT_X or 0)
+        fillItem.f:SetWidth(math.max(10, width - used - edge))
+    end
+    local x = 0
+    for k, it in ipairs(Lf) do
+        if k == 1 and isText(it.f) then x = LAY.TEXT_X end
+        if k > 1 then x = x + gapOf(Lf[k - 1], it) end
+        it.f:ClearAllPoints()
+        it.f:SetPoint("LEFT", band, "LEFT", x, 0)
+        x = x + (it.f:GetWidth() or 0)
+    end
+    for _, it in ipairs(R) do it.f.layoutRole, it.f.layoutBand = role, band end
+    for _, it in ipairs(Lf) do it.f.layoutRole, it.f.layoutBand = role, band end
+end
+
+function Scaffold:Bands(spec)
+    self.bands = self.bands or {}
+    local y = 0
+    for i, s in ipairs(spec) do
+        local kind, lines = s, 1
+        if type(s) == "table" then kind, lines = s[1], s.lines or 1 end
+        local h = kind == "row" and LAY.ROW_H or LAY.LINE_H * lines
+        local b = self.bands[i] or CreateFrame("Frame", nil, self)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 0, y)
+        b:SetPoint("TOPRIGHT", 0, y)
+        b:SetHeight(h)
+        b.bandKind, b.bandLines = kind, lines
+        b.layoutRole = (i == 1 and not self.isView) and "headband" or "band"
+        self.bands[i] = b
+        y = y - h - LAY.GAP
+    end
+    self.top = #spec > 0 and y or 0
+    self.listTop = nil
+    return self.top
+end
+
+function Scaffold:Place(i, left, right, opts)
+    local band = assert(self.bands and self.bands[i], "no band " .. tostring(i))
+    placeIn(band, T.PAGE_W, left, right, opts, (i == 1 and not self.isView) and "head" or "band")
+end
+
+function Scaffold:Line(i, fs)
+    local band = assert(self.bands and self.bands[i], "no band " .. tostring(i))
+    fs = fs or W.Text(self, T.FONT.hint)
+    fs:ClearAllPoints()
+    local lines = band.bandLines or 1
+    if lines > 1 then
+        fs:SetWordWrap(true)
+        fs:SetMaxLines(lines)
+        fs:SetJustifyV("TOP")
+        fs:SetPoint("TOPLEFT", band, "TOPLEFT", LAY.TEXT_X, 0)
+        fs:SetPoint("BOTTOMRIGHT", band, "BOTTOMRIGHT", -LAY.TEXT_X, 0)
+    else
+        fs:SetPoint("LEFT", band, "LEFT", LAY.TEXT_X, 0)
+        fs:SetPoint("RIGHT", band, "RIGHT", -LAY.TEXT_X, 0)
+    end
+    fs.layoutRole, fs.layoutBand = "line", band
+    return fs
+end
+
+-- A list row's cells (font strings, T.FONT.text unless a column says font) at the columns' places;
+-- a column with cell = false gets none. row[key] is the cell.
+function W.Cells(row, cols, font)
+    for _, c in ipairs(cols) do
+        if c.cell ~= false then
+            local fs = W.Text(row, c.font or font or T.FONT.text, c.cw or c[3])
+            fs:SetPoint("LEFT", c.cx or c[2], 0)
+            if c.justify then fs:SetJustifyH(c.justify) end
+            row[c[1]] = fs
+        end
+    end
+    return row
+end
+
+function Scaffold:Columns(cols, opts)
+    opts = opts or {}
+    local top = opts.top or self.top or 0
+    local h = CreateFrame("Frame", nil, self)
+    h:SetHeight(LAY.COLHEAD_H)
+    h:SetPoint("TOPLEFT", opts.x or 0, top)
+    if opts.width then h:SetWidth(opts.width) else h:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top) end
+    h.layoutRole = "colhead"
+    local cells = {}
+    for _, c in ipairs(cols) do
+        local key, x, w = c[1], c[2], c[3]
+        local fs
+        if opts.sort then
+            local b = CreateFrame("Button", nil, h)
+            b:SetSize(w, LAY.COLHEAD_H)
+            b:SetPoint("LEFT", x, 0)
+            b.label = W.Text(b, T.FONT.head, w)
+            b.label:SetPoint("LEFT")
+            b:SetScript("OnClick", function() opts.sort(key) end)
+            fs = b.label
+            cells[key] = b
+        else
+            fs = W.Text(h, T.FONT.head, w)
+            fs:SetPoint("LEFT", x, 0)
+            cells[key] = fs
+        end
+        if c.justify then fs:SetJustifyH(c.justify) end
+        fs:SetText(c[4] or "")
+    end
+    h.cells = cells
+    self.listTop = top - LAY.COLHEAD_H
+    return h, cells
+end
+
+function Scaffold:List(rows, rowH, build, fill, opts)
+    opts = opts or {}
+    local top = opts.top or self.listTop or self.top or 0
+    local list = W.List(self, rows, rowH, build, fill, opts)
+    list:SetPoint("TOPLEFT", opts.x or 0, top)
+    if opts.width then list:SetWidth(opts.width) else list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top) end
+    list.layoutRole = "list"
+    self.lastList = list
+    return list
+end
+
+function Scaffold:Empty(width, anchor)
+    local e = W.EmptyState(self, width)
+    anchor = anchor or self.lastList
+    if anchor then
+        e:SetPoint("TOP", anchor, "TOP", 0, -LAY.EMPTY_Y)
+    else
+        e:SetPoint("TOP", self, "TOP", 0, (self.top or 0) - LAY.EMPTY_Y)
+    end
+    e.layoutRole = "empty"
+    return e
+end
+
+function Scaffold:Footer(spec)
+    local foot = self.foot or CreateFrame("Frame", nil, self)
+    foot:ClearAllPoints()
+    foot.layoutRole = "footer"
+    local y = 0
+    for k = #spec, 1, -1 do
+        local s = spec[k]
+        local name, lines = s, 1
+        if type(s) == "table" then name, lines = s[1], s.lines or 1 end
+        local h = LAY.LINE_H * lines
+        local fs = self[name] or W.Text(foot, T.FONT.hint, nil, lines > 1)
+        fs:ClearAllPoints()
+        fs:SetPoint("BOTTOMLEFT", foot, "BOTTOMLEFT", LAY.TEXT_X, y)
+        fs:SetPoint("TOPRIGHT", foot, "BOTTOMRIGHT", -LAY.TEXT_X, y + h)
+        if lines > 1 then fs:SetMaxLines(lines) end
+        fs.layoutRole = "foot"
+        self[name] = fs
+        y = y + h
+    end
+    foot:SetPoint("BOTTOMLEFT", 0, 0)
+    foot:SetPoint("BOTTOMRIGHT", 0, 0)
+    foot:SetHeight(y)
+    self.foot, self.footH = foot, y
+    if self.bottomRow then self:BottomRow() end
+    return foot
+end
+
+function Scaffold:BottomRow(left, right, opts)
+    local b = self.bottomRow or CreateFrame("Frame", nil, self)
+    b:ClearAllPoints()
+    local y = (self.footH or 0) > 0 and (self.footH + LAY.GAP) or 0
+    b:SetPoint("BOTTOMLEFT", 0, y)
+    b:SetPoint("BOTTOMRIGHT", 0, y)
+    b:SetHeight(LAY.ROW_H)
+    b.layoutRole = "band"
+    self.bottomRow = b
+    if left or right then self.bottomItems = { left, right, opts } end
+    local items = self.bottomItems
+    if items then placeIn(b, T.PAGE_W, items[1], items[2], items[3], "band") end
+    return b
+end
+
+function Scaffold:Bottom()
+    local y = (self.footH or 0) > 0 and (self.footH + LAY.GAP) or 0
+    if self.bottomRow then y = y + LAY.ROW_H + LAY.GAP end
+    return y
+end
+
+function Scaffold:Detail(opts)
+    local D = LAY.DETAIL
+    opts = opts or {}
+    local d = W.Inset(self)
+    local top = opts.top or self.top or 0
+    d:SetPoint("TOPLEFT", LAY.SPLIT_X, top)
+    d:SetPoint("TOPRIGHT", 0, top)
+    d:SetHeight(opts.height or 200)
+    d.layoutRole = "detail"
+    local inner = T.PAGE_W - LAY.SPLIT_X - D.TITLE_X - D.PAD
+    d.icon = d:CreateTexture(nil, "ARTWORK")
+    d.icon:SetSize(D.ICON, D.ICON)
+    d.icon:SetPoint("TOPLEFT", D.PAD, -D.PAD)
+    d.head = CreateFrame("Button", nil, d)
+    d.head:SetPoint("TOPLEFT", D.TITLE_X, -D.PAD)
+    d.head:SetPoint("TOPRIGHT", -D.PAD, -D.PAD)
+    d.head:SetHeight(D.TITLE_H)
+    d.title = W.Text(d.head, T.FONT.title, inner)
+    d.title:SetPoint("LEFT", 0, 0)
+    if opts.sub then
+        d.sub = W.Text(d, T.FONT.text, inner)
+        d.sub:SetPoint("TOPLEFT", D.TITLE_X, -D.SUB_Y)
+    end
+    d.body = W.ScrollText(d)
+    d.body:SetPoint("TOPLEFT", D.PAD, -D.BODY_Y)
+    d.body:SetPoint("BOTTOMRIGHT", -(D.PAD + T.SCROLL_ROOM - T.SCROLLBAR_GAP), D.BUTTONS)
+    function d:Buttons(list)
+        W.Row(self, list, LAY.ITEM_GAP, D.PAD, D.PAD, { right = true, point = "BOTTOMRIGHT" })
+    end
+    return d
+end
+
+function W.Page(parent, opts)
+    local view = opts and opts.view
+    local p = CreateFrame("Frame", nil, parent)
+    for k, fn in pairs(Scaffold) do p[k] = fn end
+    if view then
+        p.isView = true
+        p:SetPoint("TOPLEFT", 0, opts.top or parent.top or 0)
+        p:SetPoint("BOTTOMRIGHT", 0, 0)
+        p.layoutRole = "view"
+    else
+        p.layoutRole = "page"
+    end
+    return p
 end

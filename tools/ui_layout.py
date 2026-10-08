@@ -90,8 +90,11 @@ if mode == "pages" then
             end
             local keys = {}
             for i, k in ipairs(visible) do keys[i] = ("%q"):format(k) end
-            shot(p.name, F, marks, ('{"page":%q,"current":%q,"visible":[%s]}'):format(p.key, NS.CurrentPage() or "",
-                table.concat(keys, ",")))
+            local G, FT = NS.Theme.LAYOUT, NS.Theme.FONT
+            local grid = ('{"ROW_H":%s,"LINE_H":%s,"GAP":%s,"TEXT_X":%s,"COLHEAD_H":%s,"EMPTY_Y":%s,"hint":%q,"head":%q}'):format(
+                G.ROW_H, G.LINE_H, G.GAP, G.TEXT_X, G.COLHEAD_H, G.EMPTY_Y, FT.hint, FT.head)
+            shot(p.name, F, marks, ('{"page":%q,"current":%q,"visible":[%s],"grid":%s}'):format(p.key, NS.CurrentPage() or "",
+                table.concat(keys, ","), grid))
         end
     end
 else
@@ -531,8 +534,92 @@ def rule_nav(tree, shot):
     return out
 
 
+# every page must be built with W.Page (on once all pages are)
+REQUIRE_SCAFFOLD = False
+
+
+def rule_grid(tree, shot):
+    """The page scaffold (W.Page, ns.Theme.LAYOUT): every page is built with it; its head row starts
+    at the page's top and is ROW_H high; what a band holds sits centred on it; hint lines and footer
+    lines are in the hint font, a line TEXT_X in from the edge; column heads are COLHEAD_H high in the
+    head font; the footer ends at the page's bottom and nothing of the content reaches into it; every
+    empty state is placed by the scaffold."""
+    extra = shot.get('extra') or {}
+    grid = extra.get('grid')
+    page = tree.marks.get('page')
+    if not grid or page is None:
+        return []
+    out = []
+    pn = tree.nodes.get(page)
+    if pn is None or pn.get('lrole') != 'page':
+        if not REQUIRE_SCAFFOLD:
+            return out
+        tree.bad.add(page)
+        return [f'page {extra.get("page")} is not built with W.Page']
+    pr = tree.rect(page)
+    if pr is None:
+        return out
+
+    def bad(i, text):
+        tree.bad.add(i)
+        out.append(f'{tree.path(i)} {text}')
+
+    footer = None
+    for i, n in tree.nodes.items():
+        role = n.get('lrole')
+        if n.get('emptyState') and role != 'empty' and tree.visible(i) and tree.under(i, page):
+            bad(i, 'is an empty state not placed by the page scaffold (p:Empty)')
+        if not role or not tree.visible(i) or not tree.under(i, page):
+            continue
+        r = tree.rect(i)
+        if r is None:
+            continue
+        if role == 'headband':
+            if n.get('parent') == page and (abs(r[1] - pr[1]) > TOL or abs((r[3] - r[1]) - grid['ROW_H']) > TOL):
+                bad(i, f'the head row lies at y {r[1] - pr[1]:.0f}, {r[3] - r[1]:.0f} high '
+                       f'(0, {grid["ROW_H"]} on every page)')
+        elif role in ('head', 'band') and n.get('lband'):
+            br = tree.rect(int(n['lband']))
+            if br and abs((r[1] + r[3]) / 2 - (br[1] + br[3]) / 2) > TOL:
+                bad(i, f'is not centred on its band: y {r[1]:.0f}..{r[3]:.0f}, the band {br[1]:.0f}..{br[3]:.0f}')
+        elif role == 'line':
+            if n.get('font') != grid['hint']:
+                bad(i, f'is a line in {n.get("font")}, lines are in {grid["hint"]}')
+            if abs(r[0] - (pr[0] + grid['TEXT_X'])) > TOL:
+                bad(i, f'starts at x {r[0] - pr[0]:.0f}, lines start at {grid["TEXT_X"]}')
+        elif role == 'colhead':
+            if abs((r[3] - r[1]) - grid['COLHEAD_H']) > TOL:
+                bad(i, f'is {r[3] - r[1]:.0f} high, column heads are {grid["COLHEAD_H"]}')
+            for k, m in tree.nodes.items():
+                if m['kind'] == 'FontString' and m.get('text') and tree.visible(k) and tree.under(k, i) \
+                        and m.get('font') != grid['head']:
+                    bad(k, f'is a column head in {m.get("font")}, column heads are in {grid["head"]}')
+        elif role == 'foot':
+            if n.get('font') != grid['hint']:
+                bad(i, f'is a footer line in {n.get("font")}, footer lines are in {grid["hint"]}')
+        elif role == 'footer':
+            if abs(r[3] - pr[3]) > TOL:
+                bad(i, f'ends {pr[3] - r[3]:.0f} px above the page bottom (the footer ends at it)')
+            elif r[3] - r[1] > 0.5:
+                footer = (i, r)
+    if footer:
+        fi, fr = footer
+        for i, n in tree.nodes.items():
+            if not tree.visible(i) or tree.under(i, fi) or i in tree.ancestors(fi) or not tree.under(i, page):
+                continue
+            texted = n['kind'] == 'FontString' and plain(n.get('text') or '')[0].strip()
+            if not (texted or n.get('role') in INTERACTIVE):
+                continue
+            if tree.tpl_part(i) or n.get('layer') == 'HIGHLIGHT':
+                continue
+            r = _clipped(tree, i)
+            if r and _area(r, fr) > 0:
+                bad(i, f'reaches into the footer: y {r[1]:.0f}..{r[3]:.0f}, the footer {fr[1]:.0f}..{fr[3]:.0f}')
+    return out
+
+
 RULES = {'bounds': rule_bounds, 'overlap': rule_overlap, 'text': rule_text, 'minwidth': rule_minwidth,
-         'nav': rule_nav}
+         'nav': rule_nav, 'grid': rule_grid}
 
 
 def check_shot(shot, factor=1.0):
