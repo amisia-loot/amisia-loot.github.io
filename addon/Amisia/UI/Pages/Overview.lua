@@ -12,7 +12,8 @@ function ns.OverviewPageFrame() return page end
 
 ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        -- the cards fill the page from its top; no head row (each card has its own button)
+        local f = W.Page(parent)
         page = f
         f.cards = {}
         for i = 1, SLOTS do
@@ -21,8 +22,8 @@ ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\
             f.cards[i] = c
         end
         W.Grid(f, f.cards, 2, GAP, GAP, 0, 0)
-        f.empty = W.Text(f, T.FONT.dim, 500)
-        f.empty:SetPoint("TOPLEFT", 4, -4)
+        f.empty = f:Empty()
+        f.empty:Set(L["Noch nichts zu zeigen"], L["Hier stehen Karten zu Raid, Vergaben und Ausrüstung, sobald es etwas gibt."])
         return f
     end,
     refresh = function(f)
@@ -45,5 +46,5 @@ ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\
             end
         end
         for i = n + 1, SLOTS do f.cards[i]:Hide() end
-        f.empty:SetText(n == 0 and L["Noch nichts zu zeigen."] or "")
+        f.empty:SetShown(n == 0)
     end }

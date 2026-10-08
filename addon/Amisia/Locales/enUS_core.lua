@@ -194,7 +194,8 @@ L["Einstellungen öffnen"] = "open the settings"
 -- UI/Pages/Overview.lua
 L["Übersicht"] = "Overview"
 L["Fehler"] = "Error"
-L["Noch nichts zu zeigen."] = "Nothing to show yet."
+L["Noch nichts zu zeigen"] = "Nothing to show yet"
+L["Hier stehen Karten zu Raid, Vergaben und Ausrüstung, sobald es etwas gibt."] = "Cards on the raid, awards and gear show here once there is something."
 
 -- UI/Pages/Settings.lua
 L["leer"] = "empty"
