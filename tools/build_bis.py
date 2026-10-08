@@ -2244,7 +2244,7 @@ def scan_stats(sv):
 
 def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEAR_DATA, facts_path=FACTS,
         archive_path=DROP_ARCHIVE, sv_path=SV_DEFAULT, att=None, out_weights=OUT_WEIGHTS, out_bis=OUT_BIS,
-        built=None, specs=None, picks_path=None):
+        built=None, specs=None, picks_path=None, scan_path=None):
     """The whole build; returns a report dict. att: the neutral AllTheThings data (or None).
     picks_path: tools/bis_picks.json (None: no picks); a pick the checks refuse raises PickError
     before anything but the game data cache is written."""
@@ -2270,6 +2270,10 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
     conv = Conv(load_measured(measured_path))
     stat_map = gear_stat_map()
     sv = load_sv(sv_path)
+    if scan_path:
+        # the scan archive (tools/scan_archive.json) under the file: a trimmed file loses nothing
+        import build_scan_archive
+        sv = build_scan_archive.overlay(sv, scan_path)
     # what the scans saw: GearData's ST, and the SavedVariables' item scan for the planner's items and
     # picks ST lacks (they still get computed stats: the addon has no scan of them)
     scanned = dict(gear['ST'])
@@ -2363,6 +2367,8 @@ def main(argv=None):
     ap.add_argument('--werte', action='append', default=[],
                     help='an AMISIA-WERTE line from the self-test; added to the samples of --measured')
     ap.add_argument('--sv', default=SV_DEFAULT, help='Amisia SavedVariables for observed random suffixes')
+    ap.add_argument('--scan-archive', default=os.path.join(HERE, 'scan_archive.json'),
+                    help='the scan archive read under the SavedVariables (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--att', default=None, help='AllTheThings download (default ~/addons/_cache/att)')
     ap.add_argument('--picks', default=PICKS, help='hand-kept BiS picks (default tools/bis_picks.json)')
     ap.add_argument('--no-att', action='store_true', help='build without AllTheThings (no boss NPC ids)')
@@ -2399,7 +2405,8 @@ def main(argv=None):
         else:
             log(f'no AllTheThings download in {base}: dungeon bosses stay without NPC ids')
     try:
-        report, _ = run(wago=args.wago, measured_path=args.measured, sv_path=args.sv, att=att, picks_path=args.picks)
+        report, _ = run(wago=args.wago, measured_path=args.measured, sv_path=args.sv, att=att, picks_path=args.picks,
+                        scan_path=args.scan_archive)
     except PickError as e:
         log(f'{os.path.relpath(args.picks, ROOT) if args.picks else "picks"} refused, nothing written: {e}')
         return 2

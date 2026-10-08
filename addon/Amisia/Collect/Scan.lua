@@ -261,6 +261,8 @@ function ns.ScanCommand(rest)
         if not ok and why then ns.msg(why) end
     elseif word == "status" then
         ns.msg(ns.ScanStatus())
+    elseif word == "aufräumen" or word == "aufraeumen" or word == "cleanup" then   -- l10n-ok: typed sub-words
+        if ns.ScanTrimNow then ns.ScanTrimNow() end
     elseif word == "gear" then
         local ids = ns.GearScanIDs()
         if not ids then
@@ -279,7 +281,7 @@ function ns.ScanCommand(rest)
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | retry | stop | status | rate <n>"])
+            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | retry | aufräumen | stop | status | rate <n>"])
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))
@@ -291,7 +293,9 @@ ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, expert =
     { key = "tools.collect", type = "toggle", label = L["Item-Sammler"], default = true,
       tip = L["Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle."] },
     { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10 },
+    { key = "tools.scanAutotrim", type = "toggle", label = L["Ausgewertete Scan-Daten beim Login entfernen"], default = true,
+      tip = L["Was der Build schon im Scan-Archiv hat (Data/ScanDone.lua), fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
 }}
-ns.RegisterSlash("scan", { args = L["[von bis] | gear | retry | stop | status | rate <n>"], desc = L["Item-Scan"], run = function(rest)
+ns.RegisterSlash("scan", { args = L["[von bis] | gear | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan"], run = function(rest)
     ns.ScanCommand(rest)
 end })

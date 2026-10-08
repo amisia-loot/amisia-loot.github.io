@@ -13,14 +13,14 @@ python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono
 python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
 ```
 
-- `data` runs the data builds in dependency order: `build_dungeons.py --wago`, `build_gear.py`,
+- `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
   `build_talents.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
   that fails and ends with `git diff --stat` of `addon/Amisia/Data` and `tools`. `--wago` is the
   folder of the client tables (default `~/addons/_wago`); professions and talents are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
-  `build_bis.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
+  `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
 - `check` runs `addon/tests/syntax.cjs`, `addon/tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
@@ -176,6 +176,40 @@ for the officer view).
   entry no export carried yet. The site keeps the newest needs list with its pledges
   (`state.bankNeeds`) and merges the log by the same rule (`state.bankLog`, 1000 entries); the Mats
   tab shows a need line per material and the log under the requests.
+
+## build_scan_archive.py: the scan archive and the trim marker
+
+```
+python3 tools/build_scan_archive.py [update] [--sv FILE...] [--wago DIR] [--archive FILE] [--marker FILE]
+python3 tools/build_scan_archive.py marker
+```
+
+`AmisiaDB.scan` (the item lines of `/amisia scan` and the collector, the collector's notes, the random
+suffixes) only exists to reach the N100. It made the SavedVariables 2.3 MB and cost about 7 MB of Lua
+memory at every login, so it is kept here for good and the addon lets go of what is kept.
+
+- `update` (the first step of `build.py data`) joins the scan of the SavedVariables (`--sv`, default
+  `~/addons/_SavedVariables/Amisia.lua` and an installed Forever client's file) into
+  `tools/scan_archive.json`: an item line of the file replaces the archive's (the file is newer), notes
+  and suffixes join, nothing is dropped. With `ItemSparse` in `--wago` the ids the client knows are
+  kept too (ranges). `updated` changes only with the content. Committed (2.5 MB, about 480 KB in git):
+  after the addon trimmed its file, the archive is the only copy, so commit and push it.
+- Then it writes `addon/Amisia/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
+  `I` per archived item `<step>.<hash of the line>`, `S` per item with notes `<step>.<hash>...`, `C` the
+  client's ids as `<step>.<length>` up to `cmax`; numbers base 36, hash
+  `h = (h * 31 + byte) % 1000000007` over the UTF-8 bytes (the same in `Collect/ScanTrim.lua`).
+- In game `Collect/ScanTrim.lua` removes, 8 s after the login in steps of a small budget
+  (`ns.SCAN_TRIM`), the item lines whose hash the marker has, the notes it has, and the retry ids the
+  archive holds or the client does not know (up to `cmax`); then the marker is let go. Setting
+  `tools.scanAutotrim` (default on), `/amisia scan aufräumen` (`cleanup`) at once with a report.
+  The scan's progress (`next`, `from`, `to`) and the suffixes stay. The file shrinks at the next logout.
+- `build_gear.py`, `build_scan.py` (full) and `build_bis.py` read the archive under the files
+  (`--scan-archive`, `""` for none); `build_scan.collect` hands items and notes in id order, so the
+  trimmed file builds the same `GearData.lua` and `forever.js` (`tools/tests/test_scan_archive.py`
+  runs that round trip with the real files when they are there).
+
+Measured 2026-10-08 with the file of 2026-10-07 (stub, lupa): the addon load with the SavedVariables
+10.5 MB of Lua memory, after the trim 7.5 MB (with the marker still held; it is let go after the run).
 
 ## build_scan.py
 

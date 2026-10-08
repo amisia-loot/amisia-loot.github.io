@@ -121,6 +121,9 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
     what happens without them: 'skip' or the args to use instead)."""
     sv_args = ['--sv', sv] if sv else []
     return [
+        # the scan archive first: the SavedVariables' scan joins it, the builds read both, and the
+        # marker Data/ScanDone.lua tells the addon what it may trim
+        ('scan archive', 'build_scan_archive.py', ['update', '--wago', wago] + sv_args, None, None),
         # the dungeon facts first: the gear build places dungeon sources by them
         ('dungeons', 'build_dungeons.py', ['--wago', wago], [('LFGDungeons', 'AreaTable')], []),
         ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else []), None, None),

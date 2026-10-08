@@ -61,6 +61,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/BankLog.lua` | Guild bank log (BT lines) | `bankLog` | MainFrame |
 | `Collect/Scan.lua` | `/amisia scan`: every item id, throttled | `scan` | LazyData, Collect |
 | `Collect/Collect.lua` | Item collector: items met, source notes (`scan.sources`) | (`scan`) | Scan, Gear, Drops, Collector, Bis |
+| `Collect/ScanTrim.lua` | Takes out of `scan` what the N100's scan archive already holds (marker `SCAN_DONE`), at login in steps, `/amisia scan aufräumen` | (`scan`, `scan.trim`) | LazyData, Scan, Data/ScanDone |
 | `Collect/Drops.lua` | Boss kill drop records (no player names), drops text | `drops` | Data/BisData, Tools page |
 | `Collect/DropSync.lua` | Drop exchange DV/DQ/DI/DR/DW/DK | - | Drops, Comm, Trust |
 | `Collect/Collector.lua` | Source collector (quests, vendors, world drops; own vs heard) | `collect` | Drops, CollectSync |
@@ -77,6 +78,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/TalentData.lua` | generated (`build_talents.py`), lazy | - | LazyData |
 | `Data/MageScrollData.lua` | generated (`build_magescrolls.py`), lazy | - | LazyData |
 | `Data/DungeonArt.lua` | generated (`build_dungeonart.py`) | - | - |
+| `Data/ScanDone.lua` | generated (`build_scan_archive.py`), lazy `SCAN_DONE`: what `tools/scan_archive.json` holds | - | LazyData |
 | `Gear/Gear.lua` | Gear planner core: scoring with own weights, best items per level range | `gear` (stats cache) | LazyData, Data/BisData, Data/GearWeights, Bis |
 | `Gear/GearFrame.lua` | Gear table window (`/amisia gear`) | - | Bis, Gear, Widgets |
 | `Gear/Bis.lua` | Best items for the own character, wishes, `ns.UpgradeOf` | `bis` | Gear, Awards, Map, Chat |
@@ -119,7 +121,10 @@ in game                                  N100 / tools                         si
 -------                                  ------------                         -----------------
 Scan/Collect/Collector/Drops/QuestXP ->  AmisiaDB (SavedVariables)
    (and /amisia selbsttest AMISIA-WERTE)    -> Syncthing (PC -> ~/addons/_SavedVariables/Amisia.lua)
-                                            -> tools/build_*.py  -> addon/Amisia/Data/*.lua (next release)
+                                            -> tools/build_scan_archive.py -> tools/scan_archive.json (all scan data
+                                               for good) + addon/Amisia/Data/ScanDone.lua (marker)
+                                            -> tools/build_*.py (archive + file) -> addon/Amisia/Data/*.lua (next release)
+ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of AmisiaDB.scan
                                             -> tools/build_scan.py -> data/forever.js, tools/drop_obs.json
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
 AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att -> build_gear/map/quests/...
@@ -134,6 +139,14 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
   user's client table export, AllTheThings (MIT), and the user-accepted inputs wowsrc.com,
   OneForAll, AtlasLoot (PC only). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
   script (see DECISIONS).
+- The scan data (`AmisiaDB.scan`: item lines, collector notes, suffixes) lives for good in
+  `tools/scan_archive.json` (committed, about 2.5 MB; git keeps it compressed). `build.py data` joins
+  the SavedVariables into it first and writes the marker `Data/ScanDone.lua`; `build_gear.py`,
+  `build_scan.py` (full) and `build_bis.py` read the archive under the files (the file's line wins,
+  notes join; `--scan-archive ""` for none), and `build_scan.collect` hands items in id order, so a
+  file the addon trimmed builds the same data (`tools/tests/test_scan_archive.py`, round trip with
+  the real files). The marker holds per item a hash of its line, per item the hashes of its notes and
+  the ids the client table ItemSparse knows; the addon removes only what it covers.
 - Every generated file names its generator and sources in its header; files with AllTheThings data
   are listed in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`. "Generated file is current" tests
   live in `tools/tests/test_build_*.py`.
@@ -319,7 +332,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `bankNeeds` | `{rev, by, list = {[id] = {min, target}}}` | BankNeeds.lua | `ns.BankNeedsLoaded` |
 | `bankPledges` | `{{name, item, count, t}}` | BankNeeds.lua | expire after `bank.pledgeDays` |
 | `bankLog` | guild bank log entries with time windows | BankLog.lua | `ns.BankLogLoaded`; `bank.logDays`, 1000 entries |
-| `scan` | `{items, sources, suffix, retry, ...}` item scan and collector notes | Scan.lua, Collect.lua | rate moved to settings (2.0) |
+| `scan` | `{items, sources, suffix, retry, next, from, to, count, sourceCount, trim, ...}` item scan and collector notes; `trim = {built, at, items, notes, retry, total}` the last trim | Scan.lua, Collect.lua, ScanTrim.lua | rate moved to settings (2.0); `ScanTrim.lua` removes from `items`, `sources` and `retry` what `Data/ScanDone.lua` covers |
 | `drops` | `{v = 1, me = client id, k = records, inst, npc, enc}` | Drops.lua | `ns.DropsMigrate`; 28 days, 4000 records |
 | `collect` | `{ver = 2, q, s, w}` records as strings (own mask) | Collector.lua | `ns.CollectMigrate`; v1 kept as heard |
 | `questxp` | `[questID] = {xp, level}` | QuestXP.lua | `QX.Migrate` |
@@ -369,7 +382,7 @@ step, ... }`. `ns.Get(path)` returns the stored value or the default, `ns.Set` v
 
 | Command | Does |
 |---|---|
-| `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
+| `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, index.html, changed layouts |
 | `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | clean tree, TOC version, check (TOC restored on failure), `addon/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh` |
@@ -383,7 +396,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 |---|---|
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
 | `~/addons/_release/Amisia` | committed HEAD of `addon/Amisia`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` |
-| `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only |
+| `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1` |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |

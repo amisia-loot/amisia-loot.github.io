@@ -58,6 +58,7 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
+import build_scan_archive  # noqa: E402  (the scan archive the builds read under the SavedVariables)
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
 FOREVER_ADDONS = os.path.join(WOW_ROOT, '_classic_beta_', 'Interface', 'AddOns')
@@ -1004,6 +1005,8 @@ def main(argv=None):
     ap.add_argument('--wago', default=WAGO, help='folder with client tables from wago.tools (UiMapAssignment, AreaTable; default ~/addons/_wago)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files with item scans (default: repo dumps, '
                                             '~/addons/_SavedVariables/Amisia.lua, installed Forever client)')
+    ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
+                    help='the scan archive read under the SavedVariables (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
@@ -1023,15 +1026,19 @@ def main(argv=None):
 
     svs = args.sv if args.sv is not None else default_svs()
     scan_items, collected, observed = {}, {}, {}
+    dbs = [build_scan.load_sv(p) for p in svs]
+    # the scan archive under the files (theirs win): what the addon trimmed after a build is kept there
+    scan_dbs = build_scan_archive.with_archive(dbs, args.scan_archive)
+    if scan_dbs:
+        scan_items, _, collected = build_scan.collect(scan_dbs)
     if svs:
-        dbs = [build_scan.load_sv(p) for p in svs]
-        scan_items, _, collected = build_scan.collect(dbs)
         # own observations, heard ones only where two accounts agree, item ids the client has
         item_ok = build_scan.observed_item_filter(args.wago)
         if item_ok is None:
             log(f'no ItemSparse in {args.wago}: the source collector\'s item ids are not checked against the client')
         observed = build_scan.collect_observed(dbs, item_ok)
-    log(f'scan: {len(scan_items)} items from {len(svs)} file(s), {len(collected)} with collector notes; source collector: '
+    log(f'scan: {len(scan_items)} items from {len(svs)} file(s)' + (' and the scan archive' if len(scan_dbs) > len(dbs) else '')
+        + f', {len(collected)} with collector notes; source collector: '
         f'{len((observed or {}).get("q", {}))} quests, {len((observed or {}).get("s", {}))} vendors, '
         f'{len((observed or {}).get("w", {}))} mobs')
 

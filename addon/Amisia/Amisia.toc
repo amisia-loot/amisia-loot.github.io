@@ -49,6 +49,7 @@ Raid\BankNeeds.lua
 Raid\BankLog.lua
 Collect\Scan.lua
 Collect\Collect.lua
+Collect\ScanTrim.lua
 Collect\Drops.lua
 Collect\DropSync.lua
 Collect\Collector.lua
@@ -65,6 +66,7 @@ Data\QuestData.lua [AllowLoadGameType camelot]
 Data\TalentData.lua [AllowLoadGameType camelot]
 Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
+Data\ScanDone.lua [AllowLoadGameType camelot]
 Gear\Gear.lua
 Gear\GearFrame.lua
 Gear\Bis.lua

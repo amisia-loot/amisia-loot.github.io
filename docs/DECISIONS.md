@@ -390,3 +390,25 @@ Realtime-Presence. Mitgliederdaten stehen nicht im Ledger-JSON.
 **Grund:** Datenschutz; Deadlocks und verlorene Speicherungen in der Praxis.
 **Folge:** Nach jeder Änderung an `data/*.js` `BUILD_ID` in `index.html` erhöhen.
 **Durchgesetzt durch:** `tools/tests/test_data_files.py::test_build_id_is_new_since_1_9` (nur BUILD_ID; der Rest ist nicht maschinell geprüft).
+
+## D-34 Scan-Daten leben auf dem N100, das Addon räumt Ausgewertetes weg
+
+**Datum:** 2026-10-08
+**Entscheidung:** Was `/amisia scan` und der Item-Sammler liefern (`AmisiaDB.scan`: Itemzeilen,
+Quellennotizen, Suffixe), wird auf dem N100 für immer in `tools/scan_archive.json` (im Repo)
+gesammelt; jeder Build liest Archiv und SavedVariables zusammen. Das Addon bekommt mit
+`Data/ScanDone.lua` eine Markierung dessen, was das Archiv beim Build hatte, und entfernt genau das
+einige Sekunden nach dem Login in kleinen Schritten aus `scan.items`, `scan.sources` und
+`scan.retry` (dazu IDs, die die Client-Tabelle ItemSparse nicht kennt). Schalter
+`tools.scanAutotrim` (Standard an; im Abschnitt Werkzeuge, wo die Scan-Rate steht),
+`/amisia scan aufräumen` (en `cleanup`) sofort. Nie wird entfernt, was die Markierung nicht abdeckt:
+eine seit dem Build geänderte Zeile (anderer Hash) bleibt; Fortschritt (`next`, `from`, `to`) und
+Suffixe (liest Gear.lua im Spiel) bleiben.
+**Grund:** Die SavedVariables waren am 2026-10-07 2,3 MB groß und kosteten bei jedem Login etwa
+7 MB Lua-Speicher, fast alles Scan-Daten, die das Addon im Spiel nicht braucht.
+**Folge:** Das Archiv ist die einzige Kopie getrimmter Daten: committen und pushen. Ein Build ohne
+Archiv (`--scan-archive ""`) sieht nach dem Trimmen weniger. Builds geben Items in ID-Reihenfolge
+aus, damit getrimmte und volle Datei dieselben Daten bauen.
+**Durchgesetzt durch:** `tools/tests/test_scan_archive.py::test_a_build_after_the_trim_gives_the_same_data`,
+`tools/tests/test_scan_archive.py::test_absorb_loses_nothing_and_the_file_wins`,
+`tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`, `addon/tests/test_scan_trim.lua`.

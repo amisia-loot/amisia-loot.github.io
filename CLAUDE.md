@@ -16,6 +16,9 @@
 - UI: sizes, fonts, colours and allowed atlases from `UI/Theme.lua`; rows with `W.Row`/`W.Column`/`W.Grid`,
   chips with `W.FitChip`. Before and after a UI refactor: `build.py snapshots --out A`, then `--out B --compare A`.
 - Lazy data: read generated tables with `ns.Data("GEAR")` etc., check with `ns.HasData`/`ns.DataSize`.
+- Scan data (`AmisiaDB.scan`) lives for good in `tools/scan_archive.json`; `build.py data` joins the
+  SavedVariables into it and writes `Data/ScanDone.lua`, after which the addon trims its file (D-34).
+  Commit and push the archive: it is the only copy of what the addon trimmed.
 - Bump `BUILD_ID` in `index.html` whenever a `data/*.js` file changes.
 - Saving in `addon/Amisia` does not reach the game: only `tools/build.py release` (via
   `tools/release_addon.sh`) copies a committed version to the Syncthing release folder; then `/reload`.

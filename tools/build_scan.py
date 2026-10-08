@@ -1383,6 +1383,8 @@ def main(argv=None):
     ap.add_argument('--archive', default=DROP_ARCHIVE, help='the archive of drop records (default tools/drop_obs.json)')
     ap.add_argument('--obs', action='append', default=[], help='the site\'s "Download observations" file (repeatable)')
     ap.add_argument('--drops', action='append', default=[], help='a text "Drops für die Website" of the addon (repeatable)')
+    ap.add_argument('--scan-archive', default=os.path.join(HERE, 'scan_archive.json'),
+                    help='the scan archive read under the SavedVariables (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--no-icons', action='store_true', help='skip the icon names and the sprite')
     ap.add_argument('--catalog', action='store_true', help='add awardable scanned items without a drop under "Unknown source"')
     ap.add_argument('--catalog-ilvl', type=int, default=60, help='lowest item level for rare items in the catalog (default 60)')
@@ -1400,7 +1402,9 @@ def main(argv=None):
     if not args.files:
         return update_in_place(args, zones_cfg)
     dbs = [load_sv(p) for p in args.files]
-    items, sessions, collected = collect(dbs)
+    # the scan archive under the files (theirs win): what the addon trimmed after a build is kept there
+    import build_scan_archive
+    items, sessions, collected = collect(build_scan_archive.with_archive(dbs, args.scan_archive))
     # what the source collector saw (quests, vendors, world drops) joins the notes
     item_ok = observed_item_filter(args.wago)
     if item_ok is None:
