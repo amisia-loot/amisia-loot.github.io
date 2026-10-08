@@ -232,7 +232,9 @@ def collect(dbs):
     for k, v in names.items():
         if k not in items:
             items[k] = {'name': v['name'], 'q': v['q'], 'ilvl': 0, 'min': 0, 'classID': 0, 'subclassID': 0, 'equipLoc': '', 'icon': '', 'bind': 0}
-    return items, sessions, collected
+    # in id order: what the builds write does not hang on the order a file (or the scan archive in
+    # front of it) holds its items in, so a trimmed file and the archive build the same data
+    return dict(sorted(items.items())), sessions, dict(sorted(collected.items()))
 
 
 # ---------------------------------------------------------------- the source collector
