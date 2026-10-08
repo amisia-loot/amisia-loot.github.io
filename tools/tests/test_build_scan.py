@@ -372,3 +372,15 @@ def test_the_source_collector_records():
     collected = b.add_notes({5: ['Quest: Sieben [7]']}, notes)
     assert collected[5] == ['Quest: Sieben [7]'] and collected[7001] == ['Drop: Wolf [299]']
     assert b.note_label('Quest: Sieben [7]') == 'Quest: Sieben'
+
+
+def test_wowhead_icon_lookup_is_off_by_default(monkeypatch):
+    # D-03: no scripted fetches from Wowhead unless --wowhead is given
+    import build_scan
+    calls = []
+    monkeypatch.setattr(build_scan, 'fetch', lambda url, *a, **k: calls.append(url) or b'')
+    items = [{'id': 4242, 'icon': ''}]
+    build_scan.icon_names(items, cache_path='/nonexistent/cache.json', log=lambda *a: None, fileids={}, wowhead=False)
+    assert calls == [] and items[0]['icon'] == ''
+    ap_src = open(build_scan.__file__, encoding='utf-8').read()
+    assert "wowhead=args.wowhead and not args.no_wowhead" in ap_src

@@ -41,7 +41,7 @@ item catalog of the last full build stays. Nothing here needs the client tables 
 
 Icons: the scan stores icon file ids. --listfile <community-listfile.csv> (wowdev/wow-listfile)
 turns them into icon names; the ones used are kept in tools/icon-fileids.json, so later builds
-work without the big file. Anything still unnamed falls back to Wowhead by item id (cached in tools/icon-cache.json) and are packed into a
+work without the big file. Anything still unnamed stays without an icon unless --wowhead asks Wowhead by item id (cached in tools/icon-cache.json); the named ones are packed into a
 sprite next to the data file with Pillow. --no-icons skips that and writes the icon names only.
 """
 import argparse
@@ -1381,12 +1381,14 @@ def main(argv=None):
     ap.add_argument('--archive', default=DROP_ARCHIVE, help='the archive of drop records (default tools/drop_obs.json)')
     ap.add_argument('--obs', action='append', default=[], help='the site\'s "Download observations" file (repeatable)')
     ap.add_argument('--drops', action='append', default=[], help='a text "Drops für die Website" of the addon (repeatable)')
-    ap.add_argument('--no-icons', action='store_true', help='skip Wowhead lookups and the sprite')
+    ap.add_argument('--no-icons', action='store_true', help='skip the icon names and the sprite')
     ap.add_argument('--catalog', action='store_true', help='add awardable scanned items without a drop under "Unknown source"')
     ap.add_argument('--catalog-ilvl', type=int, default=60, help='lowest item level for rare items in the catalog (default 60)')
     ap.add_argument('--field-quality', type=int, default=3, help='lowest quality for a drop the collector saw outside a raid (default 3, blue)')
     ap.add_argument('--listfile', help='community-listfile.csv from wowdev/wow-listfile, names the icon file ids')
-    ap.add_argument('--no-wowhead', action='store_true', help='never ask Wowhead for an icon name')
+    ap.add_argument('--wowhead', action='store_true', help='ask Wowhead for icon names the listfile and the cache lack '
+                    '(off by default: no scripted fetches from Wowhead, docs/DECISIONS.md D-03)')
+    ap.add_argument('--no-wowhead', action='store_true', help='(the default; kept for old command lines)')
     ap.add_argument('--wago', default=WAGO, help='folder with the client tables ItemSparse and Item from wago.tools (default '
                                                  '~/addons/_wago): item ids of the source collector they lack are left out')
     args = ap.parse_args(argv)
@@ -1418,7 +1420,7 @@ def main(argv=None):
     obs_items = obs.get('obsItems') or []
     sprite = None
     if not args.no_icons:
-        icon_names(out_items + obs_items, fileids=fileid_names(out_items + obs_items, args.listfile), wowhead=not args.no_wowhead)
+        icon_names(out_items + obs_items, fileids=fileid_names(out_items + obs_items, args.listfile), wowhead=args.wowhead and not args.no_wowhead)
         sprite = build_sprite(out_items + obs_items, os.path.dirname(os.path.abspath(args.out)))
     write_js(args.out, zones, bosses, out_items, sprite, obs)
     print(f'{len(items)} scanned items, {len(sessions)} sessions, {len(collected)} collected sources, {len(zones)} zones, {len(bosses)} bosses, '
