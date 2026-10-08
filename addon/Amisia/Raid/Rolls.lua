@@ -258,6 +258,19 @@ function ns.CurrentRoll() return current end
 function ns.LastRoll() return last end
 function ns.RollHistory() return history end
 
+-- The rounds of an item, newest first: the running one, then the finished ones that ended up to
+-- KEEP ago (an award can follow several rounds later, when the loot window is emptied at the end).
+function ns.RoundsOf(item)
+    local out = {}
+    if not item then return out end
+    if current and not current.done and current.item == item then out[1] = current end
+    local now = time()
+    for _, r in ipairs(history) do
+        if r.item == item and now - (r.ended or r.started or 0) <= KEEP then out[#out + 1] = r end
+    end
+    return out
+end
+
 -- Starts the tie-break of the current round, if it ended in a tie.
 function ns.RerollTie()
     local r = current or last
@@ -446,21 +459,21 @@ local function rollCommand(rest)
     if r and r.done and r.dirty then ns.msg(L["Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an."]) end
 end
 
--- MS, OS or SR for an award: what the recipient reserved or rolled in the last round for this item.
+-- MS, OS or SR for an award: what the recipient reserved, rolled or said in the newest round of
+-- this item that knows the name (ns.RoundsOf), "-" when none does.
 function ns.RollKind(item, name)
-    local r = (current and current.item == item) and current or ((last and last.item == item) and last or nil)
-    if not r or (time() - r.started) > KEEP then return "-" end
-    if r.mode then
-        local e = r.rolls[name]
-        if not e then
-            for k, x in pairs(r.rolls) do if ns.SameName(k, name) then e = x break end end
+    for _, r in ipairs(ns.RoundsOf(item)) do
+        if r.mode then
+            local key = keyIn(r, r.rolls, name)
+            local e = key and r.rolls[key]
+            if e then return e.kind == "OS" and "OS" or "MS" end
+        else
+            if reservedIn(r, name) then return "SR" end
+            local e = r.rolls[name]
+            if e and e.kind then return e.kind end
         end
-        if not e then return "-" end
-        return e.kind == "OS" and "OS" or "MS"
     end
-    if reservedIn(r, name) then return "SR" end
-    local e = r.rolls[name]
-    return e and e.kind or "-"
+    return "-"
 end
 
 ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, officer = true, items = {

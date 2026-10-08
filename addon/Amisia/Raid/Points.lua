@@ -9,7 +9,7 @@
 -- PX outside). Points belong to the main (ns.MainOf).
 --
 -- Stored in AmisiaDB.points = { site = { date, at, by, asOf, sys, cfg, n, list = { [lower] = { name, a, b } },
--- raids = { [sid] = true }, ids = { [id] = true } }, adj = { { id, name, pool, n, t, by, reason } },
+-- raids = { [sid] = true }, keys = { [date:instance] = true }, ids = { [id] = true } }, adj = { { id, name, pool, n, t, by, reason } },
 -- shared = (PointsSync.lua) }; a raid keeps s.points = { sys, cfg, off, charges = { [awardId] = { p, n, at, by } } }.
 -- Pools: "D" DKP, "E" EP, "G" GP. Every pasted or typed text is untrusted.
 local ADDON, ns = ...
@@ -69,6 +69,7 @@ local function int(v, lo, hi)
 end
 
 local function fire() ns.Fire("POINTS") end
+local noteRunningRaid   -- (Settings below) a switch of the system leaves the running raid alone
 
 ---------------------------------------------------------------------------
 -- The models
@@ -80,7 +81,8 @@ function ns.PointsRound(x)
     return -math.floor(-x + 0.5)
 end
 
--- A standing after a decay of pct percent.
+-- A standing after a decay of pct percent. Test hook: the decay is the site's; the tests hold this
+-- rounding against it (tools/tests/test_points_site.py).
 function ns.PointsDecayed(v, pct)
     return ns.PointsRound((tonumber(v) or 0) * (100 - (tonumber(pct) or 0)) / 100)
 end
@@ -220,12 +222,13 @@ local function gameName(key) return GAME_NAMES[key] or stripCodes(tostring(key))
 --   CFG <key>=<value> ...
 --   P <main with _> <DKP> | P <main> <EP> <GP>
 --   R <session id> ...      raids whose earnings the site has
+--   K <date:instance> ...   the same raids by key (another officer's recording of one of them)
 --   I <12 hex> ...          awards with a cost and corrections the site has
 --   #END
--- Returns { game, date, sys, asOf, cfg, list = { [lower] = { name, a, b } }, raids, ids, n, skipped } or nil and why.
+-- Returns { game, date, sys, asOf, cfg, list = { [lower] = { name, a, b } }, raids, keys, ids, n, skipped } or nil and why.
 function ns.ParsePointsSite(text)
     if type(text) ~= "string" then return nil, HEAD_FAIL end
-    local res = { cfg = {}, list = {}, raids = {}, ids = {}, n = 0, skipped = 0 }
+    local res = { cfg = {}, list = {}, raids = {}, keys = {}, ids = {}, n = 0, skipped = 0 }
     local read, head = 0, false
     for raw in text:gmatch("[^\r\n]+") do
         local line = stripCodes(raw:sub(1, MAX_LINE)):match("^%s*(.-)%s*$")
@@ -280,6 +283,10 @@ function ns.ParsePointsSite(text)
                     for sid in rest:gmatch("%S+") do
                         if sid:match("^%d+%-%d+$") and #sid <= 40 then res.raids[sid] = true else res.skipped = res.skipped + 1 end
                     end
+                elseif kind == "K" then
+                    for key in rest:gmatch("%S+") do
+                        if key:match("^%d%d%d%d%-%d%d%-%d%d:%d+$") and #key <= 24 then res.keys[key] = true else res.skipped = res.skipped + 1 end
+                    end
                 elseif kind == "I" then
                     for id in rest:gmatch("%S+") do
                         if #id == 12 and id:match("^%x+$") then res.ids[id:lower()] = true else res.skipped = res.skipped + 1 end
@@ -308,7 +315,7 @@ function ns.SetPointsSite(text)
     local p = store(true)
     if not p then return nil, L["Amisia ist noch nicht geladen."] end
     p.site = { date = res.date, at = time(), by = ns.UnitFullName("player"), asOf = res.asOf, sys = res.sys, cfg = res.cfg,
-               n = res.n, list = res.list, raids = res.raids, ids = res.ids }
+               n = res.n, list = res.list, raids = res.raids, keys = res.keys, ids = res.ids }
     -- the values first: a change of the system freezes them into the running raid
     for key, v in pairs(res.cfg) do
         local def = CFG[key]
@@ -367,8 +374,10 @@ function ns.PointsNewSession(s)
     ns.PointsSession(s, true)
 end
 
+-- Takes raid s out of the count (off) or into it. "In" gives a raid recorded while the guild rolled
+-- the system of now: the one deliberate way to count a running raid after a switch.
 function ns.PointsRaidOff(s, off)
-    local p = ns.PointsSession(s, true)
+    local p = ns.PointsSession(s, not off)
     if not p then return nil end
     p.off = off and true or nil
     ns.Fire("DATA_CHANGED")
@@ -451,9 +460,10 @@ function ns.AwardPoints(s, id)
 end
 
 -- Takes a charge another officer set (newer time wins): true when it changed something.
+-- A raid without a system (recorded while the guild rolled) takes none.
 function ns.PointsTakeCharge(s, id, pool, n, at, by)
-    local p = ns.PointsSession(s, true)
-    if not p or not int(n, 0, MAX_AMOUNT) or (pool ~= "D" and pool ~= "G") then return false end
+    local p = ns.PointsSession(s)
+    if not p or not int(n, 0, MAX_AMOUNT) or not int(at, 0, math.huge) or (pool ~= "D" and pool ~= "G") then return false end
     local old = p.charges[id]
     if type(old) == "table" and (tonumber(old.at) or 0) >= at then return false end
     p.charges[id] = { p = pool, n = n, at = at, by = by }
@@ -463,17 +473,18 @@ function ns.PointsTakeCharge(s, id, pool, n, at, by)
 end
 
 -- Sets the cost of a living award to a player (an officer's change): DKP spent or GP charged.
--- Returns the charge or nil and why.
+-- Only in a raid recorded with a system (an old roll raid gets none afterwards: that would give
+-- everyone in it the raid's earnings). Returns the charge or nil and why.
 function ns.SetAwardPoints(s, id, n)
     if not ns.IsOfficerView() then return nil, L["Punkte ändern nur Offiziere."] end
+    local p = ns.PointsSession(s)
+    if not p then return nil, L["Dieser Raid hat kein Punktesystem."] end
     local a = living(s, id)
     if not a then return nil, L["Vergabe nicht mehr vorhanden."] end
     if a.to ~= nil and a.to ~= "player" then return nil, L["Bank und Entzaubern kosten keine Punkte."] end
     n = tonumber(n)
     if not int(n, 0, MAX_AMOUNT) then return nil, L["Ungültiger Betrag."] end
-    local p = ns.PointsSession(s, true)
-    if not p then return nil, L["Kein Punktesystem gewählt."] end
-    local c = { p = payPool(p.sys), n = n, at = math.floor(time()), by = ns.UnitFullName("player") }
+    local c = { p = payPool(p.sys), n = n, at = ns.ServerTime(), by = ns.UnitFullName("player") }
     local old = p.charges[id]
     -- two changes in one second: the later one still wins on the other clients
     if type(old) == "table" and (tonumber(old.at) or 0) >= c.at then c.at = old.at + 1 end
@@ -482,6 +493,20 @@ function ns.SetAwardPoints(s, id, n)
     fire()
     if ns.PointsShareCharge then ns.PointsShareCharge(s, id, c) end
     return c
+end
+
+-- The cost of a hand-out just recorded (master loot, the award dialog): set, else said in the chat.
+-- A loot master outside the officers records the award without it; an officer adds the cost on the
+-- Awards page (the award reaches the officers through the raid sync).
+function ns.AwardCostOrSay(s, id, n)
+    local c, why = ns.SetAwardPoints(s, id, n)
+    if c then return c end
+    if not ns.IsOfficerView() then
+        ns.msg(L["Vergabe ohne Punkte gespeichert: die Kosten (%s) trägt ein Offizier auf der Seite Vergaben ein."]:format(tostring(n)))
+    elseif why then
+        ns.msg(why)
+    end
+    return nil, why
 end
 
 ---------------------------------------------------------------------------
@@ -505,11 +530,21 @@ function ns.PointsAdjust(name, n, reason, poolWord)
     if sys == "dkp" then pool = "D" elseif pool == "D" then pool = "E" end
     local p = store(true)
     if not p then return nil, L["Amisia ist noch nicht geladen."] end
-    local t = math.floor(time())
+    -- a full list drops the oldest corrections the site already has, never one it has not
+    if #p.adj >= MAX_ADJ then
+        local site = siteRec()
+        local ids = site and site.ids or {}
+        local keep, drop = {}, #p.adj - MAX_ADJ + 1
+        for _, x in ipairs(p.adj) do
+            if drop > 0 and ids[x.id] then drop = drop - 1 else keep[#keep + 1] = x end
+        end
+        if #keep >= MAX_ADJ then return nil, L["Zu viele Korrekturen, die die Website noch nicht hat: erst exportieren und ihren Punktestand einfügen."] end
+        p.adj = keep
+    end
+    local t = ns.ServerTime()
     local e = { id = hexId(table.concat({ "adj", tostring(t), char, tostring(n), reason, tostring(math.random(0, 65535)) }, "\t")),
                 name = ns.MainOf(char) or char, n = n, pool = pool, t = t, by = ns.UnitFullName("player") or "?", reason = reason }
     p.adj[#p.adj + 1] = e
-    while #p.adj > MAX_ADJ do table.remove(p.adj, 1) end
     fire()
     return e
 end
@@ -547,11 +582,13 @@ local function walk(sys, fn)
         end
     end
     local raids, ids = hasSite and site.raids or {}, site and site.ids or {}
+    local keys = hasSite and type(site.keys) == "table" and site.keys or {}
     local pay = payPool(sys)
     for _, s in ipairs(ns.Sessions()) do
         local p = ns.PointsSession(s)
         if p then
-            if p.sys == sys and not raids[s.id] then
+            local key = ns.RaidKey and ns.RaidKey(s)
+            if p.sys == sys and not raids[s.id] and not (key and keys[key]) then
                 for _, e in ipairs(ns.PointsRaidEarnings(s)) do
                     fn(e.name, earnPool(sys), e.n, { code = e.code, t = e.t, boss = e.boss, src = "raid", s = s, char = e.char })
                 end
@@ -575,6 +612,17 @@ local function walk(sys, fn)
 end
 
 local function officerView() return ns.IsOfficerView() end
+
+-- The settings' system and parameters, with sys, base and minep of cfg when given.
+local function withSettings(cfg)
+    local c = ns.PointsConfig()
+    if type(cfg) == "table" and SYSTEMS[cfg.sys] then
+        c.sys = cfg.sys
+        if cfg.base ~= nil then c.base = cfg.base end
+        if cfg.minep ~= nil then c.minep = cfg.minep end
+    end
+    return c
+end
 
 -- The list an officer computes: lower main -> { name, a, b }.
 local function computed(sys)
@@ -621,8 +669,9 @@ end
 
 -- The standings this client shows, best first: { { name, a, b, pr, low } } (a: DKP or EP, b: GP).
 -- An officer sees everyone; a raider the officers' list when the site shows it (pub), else the own row.
-function ns.PointsStandings()
-    local cfg = ns.PointsConfig()
+-- cfg (optional): { sys, base, minep } of another system than the settings' (a raid that keeps its own).
+function ns.PointsStandings(cfg)
+    cfg = withSettings(cfg)
     if cfg.sys == "roll" then return {} end
     local list = {}
     if officerView() then
@@ -640,8 +689,9 @@ function ns.PointsStandings()
 end
 
 -- The standing of one player (its main): { name, a, b, pr, low }; 0 for someone without points.
-function ns.PointsOf(name)
-    local cfg = ns.PointsConfig()
+-- cfg as ns.PointsStandings takes it.
+function ns.PointsOf(name, cfg)
+    cfg = withSettings(cfg)
     local char = ns.FullName(name)
     if not char then return nil end
     local main = ns.MainOf(char) or char
@@ -693,10 +743,17 @@ local function oneLine(text) return (tostring(text or ""):gsub("[%c|]", " ")) en
 function ns.PointsSessionLines(s, lines)
     local p = ns.PointsSession(s)
     if not p or not SYSTEMS[p.sys] or p.sys == "roll" then return end
-    -- PS <D|E> <dkp|epgp> <on|off>
+    -- PS <D|E> <dkp|epgp> <on|off> <date:instance> <epoch>: the raid key as the raid sync names it (two
+    -- officers' recordings of one raid count once on the site) and the newest time of the raid (an
+    -- export older than the one the site has is left out there)
+    local earn = ns.PointsRaidEarnings(s)
+    local at = math.max(tonumber(s.last) or 0, tonumber(s.start) or 0)
+    for _, e in ipairs(earn) do at = math.max(at, e.t) end
+    local key = ns.RaidKey and ns.RaidKey(s)
     lines[#lines + 1] = ("PS %s %s %s"):format(earnPool(p.sys), p.sys, p.off and "off" or "on")
+        .. (key and (" %s %d"):format(key, math.floor(at)) or "")
     -- PE <id> <name> <amount> <R|B|T|N> <epoch> [<boss>]
-    for _, e in ipairs(ns.PointsRaidEarnings(s)) do
+    for _, e in ipairs(earn) do
         lines[#lines + 1] = ("PE %s %s %d %s %d%s"):format(e.id, ns.ExportName(e.char), e.n, e.code, e.t, e.boss and (" " .. oneLine(e.boss)) or "")
     end
     -- PA <award id> <D|G> <amount> <set epoch> <officer>
@@ -758,6 +815,23 @@ for _, word in ipairs({ "dkp", "ep", "epgp", "punkte", "points" }) do ns.Registe
 ---------------------------------------------------------------------------
 -- Settings
 ---------------------------------------------------------------------------
+-- A switch of the system leaves the running raid as it was recorded (no earnings afterwards for a
+-- raid that rolled); the new system starts with the next raid. Says so once per raid and system.
+local told = {}
+noteRunningRaid = function(v)
+    local s = ns.Active and ns.Active()
+    if not s or not SYSTEMS[v] or not ns.IsOfficerView() then return end
+    local p = ns.PointsSession(s)
+    local has = p and p.sys or "roll"
+    local key = tostring(s.id) .. ":" .. v
+    if has == v or told[key] then return end
+    told[key] = true
+    if not p then
+        ns.msg(L["Der laufende Raid bleibt beim Würfeln; %s gilt ab dem nächsten Raid. /amisia punkteraid an zählt ihn schon jetzt."]:format(SYS_NAME[v] or "?"))
+    else
+        ns.msg(L["Der laufende Raid behält sein System (%s); %s gilt ab dem nächsten Raid."]:format(SYS_NAME[has] or "?", SYS_NAME[v] or "?"))
+    end
+end
 local function isDkp() return ns.PointsSystem() == "dkp" end
 local function isEpgp() return ns.PointsSystem() == "epgp" end
 local function hasSys() return ns.PointsSystem() ~= "roll" end
@@ -767,8 +841,7 @@ ns.RegisterSettings{ key = "points", label = L["Punkte (DKP/EPGP)"], order = 21,
       values = { { "roll", L["Würfeln##System"] }, { "dkp", "DKP" }, { "epgp", "EPGP" } },
       tip = L["Die Website ist die Quelle: ihr Punkteblock (Kopieren für das Addon) setzt System und Werte. Ein laufender Raid behält sein System."],
       onChange = function(v)
-          local s = ns.Active and ns.Active()
-          if s and v ~= "roll" then ns.PointsSession(s, true) end
+          noteRunningRaid(v)
           fire()
       end },
     { key = "points.raid", type = "slider", label = L["Punkte pro Raid"], default = 10, min = 0, max = 1000, step = 1, available = hasSys },
@@ -856,7 +929,10 @@ local function raidCommand(rest)
             or L["Dieser Raid hat kein Punktesystem."])
         return
     end
-    if not ns.PointsRaidOff(s, OFF[w]) then ns.msg(L["Kein Punktesystem gewählt."]) return end
+    if not ns.PointsRaidOff(s, OFF[w]) then
+        ns.msg(OFF[w] and L["Dieser Raid hat kein Punktesystem."] or L["Kein Punktesystem gewählt."])
+        return
+    end
     ns.msg(OFF[w] and L["Dieser Raid zählt nicht für Punkte."] or L["Dieser Raid zählt für Punkte (%s)."]:format(SYS_NAME[s.points.sys] or "?"))
 end
 

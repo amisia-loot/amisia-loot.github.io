@@ -35,7 +35,10 @@ local KEY = S(VULO, "NS.RaidKey(s)")
 -- the officers paste the site's block; the keeper announces, the raider asks and gets the standings
 assert(C(VULO, ("return NS.SetPointsSite(%q) ~= nil"):format(SITE)))
 assert(C(FRAK, ("return NS.SetPointsSite(%q) ~= nil"):format(SITE)))
-assert(S(VULO, "s.points and s.points.sys") == "dkp", "the running raid takes the system")
+-- the raid was recorded while the guild rolled: it keeps rolling until an officer counts it on purpose
+assert(S(VULO, "s.points") == nil and S(FRAK, "s.points") == nil, "a paste does not change the running raid")
+assert(S(VULO, "NS.PointsRaidOff(s, false)") and S(FRAK, "NS.PointsRaidOff(s, false)"), "/amisia punkteraid an")
+assert(S(VULO, "s.points and s.points.sys") == "dkp", "the running raid counts now")
 BUS.tick(20)
 assert(BUS.count({ kind = "KV", sender = VULO, chan = "RAID" }) >= 1, "the keeper announced")
 assert(BUS.count({ kind = "KV", sender = FRAK }) == 0 and BUS.count({ kind = "KV", sender = KIM }) == 0, "only the keeper")

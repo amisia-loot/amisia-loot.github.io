@@ -73,6 +73,13 @@ function ns.Plain(v)
     return v
 end
 
+-- The realm's clock in epoch seconds (the same on every client of the raid), else the own clock:
+-- times that other clients or the site compare (costs, corrections, prio edits).
+function ns.ServerTime()
+    local t = type(GetServerTime) == "function" and tonumber(ns.Plain(GetServerTime())) or nil
+    return math.floor(t or time())
+end
+
 -- A text for a search: lower case, the German capitals folded too (lower() leaves the bytes of
 -- Ä, Ö and Ü as they are). nil and other values give "".
 local FOLD = { ["Ä"] = "ä", ["Ö"] = "ö", ["Ü"] = "ü" } -- l10n-ok: case folding, not text

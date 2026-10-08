@@ -67,11 +67,55 @@ function ns.PointsSharedList()
     return sh
 end
 
+-- Test hook: what was sent, taken and refused (addon/tests).
 function ns.PointsSyncStats() return stats end
 
 ---------------------------------------------------------------------------
 -- The keeper's state
 ---------------------------------------------------------------------------
+local hashOf
+
+-- The newest costs of t.c that fit with the rest into one KS blob (Comm.lua takes at most KS_PARTS
+-- parts): the oldest go first. The costs only help an officer who missed a KC; the standings in
+-- t.s already count them. The fit is remembered per content, so the tick packs only after a change.
+local KS_PARTS = 20
+local fitFor = { key = nil, n = nil }
+local function fits(t)
+    local packed = ns.CommPack and ns.CommPack(t)
+    return not packed or #ns.CommChunks(packed) <= KS_PARTS
+end
+local function fit(t)
+    if #t.c == 0 then return t end
+    local key = hashOf(t)
+    if fitFor.key ~= key then
+        local n = #t.c
+        if not fits(t) then
+            -- newest last: keep the tail, halve until it fits, then grow back in steps
+            local byAge = {}
+            for i, r in ipairs(t.c) do byAge[i] = r end
+            table.sort(byAge, function(x, y) if x[4] ~= y[4] then return x[4] < y[4] end return x[1] < y[1] end)
+            local function take(k)
+                local c = {}
+                for i = #byAge - k + 1, #byAge do c[#c + 1] = byAge[i] end
+                table.sort(c, function(x, y) return x[1] < y[1] end)
+                return c
+            end
+            local lo, hi = 0, n - 1   -- lo fits (no costs always does), hi the most worth a try
+            while lo < hi do
+                local mid = math.floor((lo + hi + 1) / 2)
+                if fits({ v = t.v, sys = t.sys, cfg = t.cfg, s = t.s, c = take(mid) }) then lo = mid else hi = mid - 1 end
+            end
+            n = lo
+            fitFor.take = take(n)
+        else
+            fitFor.take = nil
+        end
+        fitFor.key, fitFor.n = key, n
+    end
+    if fitFor.take then t.c = fitFor.take end
+    return t
+end
+
 -- What the keeper shares: { v, sys, cfg, s = { { name, a, b } } (the group's mains), c = { { id, p, n, at, by } } }.
 local function build(s)
     local cfg = ns.PointsConfig()
@@ -109,10 +153,10 @@ local function build(s)
         local c = p.charges[id]
         out.c[#out.c + 1] = { id, c.p, c.n, c.at, c.by or "" }
     end
-    return out
+    return fit(out)
 end
 
-local function hashOf(t)
+hashOf = function(t)
     local parts = { t.sys, tostring(t.cfg.mode) }
     local keys = {}
     for k in pairs(CFG) do keys[#keys + 1] = k end
@@ -229,9 +273,12 @@ local function check(t)
             if not MODES[v] then return nil end
             cfg.mode = v
         else
+            -- a key of a newer version is left out; a known one must be right
             local r = CFG[k]
-            if not r or not int(v, r[1], r[2]) then return nil end
-            cfg[k] = v
+            if r then
+                if not int(v, r[1], r[2]) then return nil end
+                cfg[k] = v
+            end
         end
     end
     local list, n = {}, 0
@@ -249,7 +296,7 @@ local function check(t)
         m = m + 1
         if m > MAX_COSTS or type(r) ~= "table" then return nil end
         local id, pool, amount, at, by = r[1], r[2], r[3], r[4], r[5]
-        if not idOk(id) or (pool ~= "D" and pool ~= "G") or not int(amount, 0, MAX_AMOUNT) or not int(at, 0, time() + 86400) or not byOk(by) then
+        if not idOk(id) or (pool ~= "D" and pool ~= "G") or not int(amount, 0, MAX_AMOUNT) or not int(at, 0, ns.ServerTime() + 86400) or not byOk(by) then
             return nil
         end
         costs[#costs + 1] = { id = id, p = pool, n = amount, at = at, by = by ~= "" and by or nil }
@@ -257,6 +304,9 @@ local function check(t)
     if m ~= #t.c then return nil end
     return { sys = t.sys, cfg = cfg, list = list, costs = costs }
 end
+
+-- Test hooks: the keeper's blob of raid s and the check of a received one (addon/tests).
+ns.PointsShareBlob, ns.PointsCheckShared = build, check
 
 ns.CommOnBlob("KS", function(sender, tbl, chan, key)
     if not shareOn() then return end
@@ -303,7 +353,7 @@ ns.CommOn("KC", function(sender, f, chan)
     local name = ns.TrustName(sender)
     if not name then return end
     local key, id, pool, amount, at = f[1], f[2], f[3], tonumber(f[4]), tonumber(f[5])
-    if at > time() + 86400 then return end
+    if type(id) ~= "string" or not at or at > ns.ServerTime() + 86400 then return end
     ns.TrustWait(name, "officer", function(ok)
         if not ok or not ns.InMyGroup(name) then
             stats.refused = stats.refused + 1

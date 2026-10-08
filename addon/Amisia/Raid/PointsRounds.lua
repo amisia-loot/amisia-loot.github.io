@@ -14,11 +14,27 @@ local L = ns.L
 local KEEP = 10 * 60          -- a finished round names the cost of an award for this long
 local MAX_IGNORED = 40
 local GREY = "|cff8f86a3"
-local lastRound               -- the newest points round (a tie-break roll after it keeps its costs)
+local notePaid                -- (Bids below) the won rounds already paid when a round starts
+
+-- The system and parameters of a new round: the settings', but an officer's running raid keeps the
+-- system it was recorded with (a roll raid keeps rolling after a switch to DKP or EPGP; a raid
+-- switched between DKP and EPGP keeps its own system and parameters).
+local function roundCfg()
+    local cfg = ns.PointsConfig()
+    local s = ns.Active and ns.Active()
+    if not s or not ns.IsOfficerView() then return cfg end
+    local p = ns.PointsSession(s)
+    if not p then return { sys = "roll" } end
+    if p.sys == cfg.sys or type(p.cfg) ~= "table" then return cfg end
+    local c = {}
+    for k, v in pairs(p.cfg) do c[k] = v end
+    c.sys = p.sys
+    return c
+end
 
 -- "bid", "pr" or nil (rolling) for a new round.
 function ns.PointsRoundMode()
-    local cfg = ns.PointsConfig()
+    local cfg = roundCfg()
     if cfg.sys == "dkp" then return cfg.mode == "fixed" and "pr" or "bid" end
     if cfg.sys == "epgp" then return "pr" end
     return nil
@@ -28,6 +44,9 @@ local function changed(r)
     if ns.OnRollChanged then ns.OnRollChanged(r) end
     if ns.CurrentPage and ns.CurrentPage() == "rolls" and ns.Refresh then ns.Refresh() end
 end
+
+-- The system and parameters a round runs with, as ns.PointsOf and ns.PointsStandings take them.
+local function cfgOf(r) return { sys = r.sys, base = r.base, minep = r.minep } end
 
 -- The standing of a name as the round froze it: { name, a, b, pr, low }.
 local function standing(r, name)
@@ -39,7 +58,7 @@ local function standing(r, name)
         end
     end
     if not e then
-        e = ns.PointsOf(main) or { name = main, a = 0, b = 0 }
+        e = ns.PointsOf(main, cfgOf(r)) or { name = main, a = 0, b = 0 }
         r.st[main:lower()] = e
     end
     return e
@@ -47,7 +66,7 @@ end
 
 -- Fills a new round of mode in (Rolls.lua calls it before the first announcement).
 function ns.PointsRoundStart(r, mode)
-    local cfg = ns.PointsConfig()
+    local cfg = roundCfg()
     r.mode, r.sys = mode, cfg.sys
     r.seal = (mode == "bid" and cfg.seal == 1) or nil
     r.min, r.step, r.base = tonumber(cfg.min) or 0, math.max(1, tonumber(cfg.step) or 1), tonumber(cfg.base) or 100
@@ -57,8 +76,8 @@ function ns.PointsRoundStart(r, mode)
         r.costOS = ns.PointsItemCost(r.item, "OS", cfg)
     end
     r.st = {}
-    for _, e in ipairs(ns.PointsStandings()) do r.st[e.name:lower()] = e end
-    lastRound = r
+    for _, e in ipairs(ns.PointsStandings(cfg)) do r.st[e.name:lower()] = e end
+    if mode == "bid" then notePaid(r) end
 end
 
 local function costText(n) return n and tostring(n) or "?" end
@@ -109,6 +128,54 @@ local function nextSeq(r)
     return r.seq
 end
 
+-- The cost the item of finished round x carries since it went to its winner's main in the running
+-- recording after the round ended, or nil while it is not paid.
+local function paid(x)
+    local s = ns.Active and ns.Active()
+    if not s or type(s.awards) ~= "table" then return nil end
+    for _, a in ipairs(s.awards) do
+        if a.item == x.item and (a.t or 0) >= (x.ended or x.started or 0) and ns.SameMain(a.name, x.winner) then
+            local _, _, gone = ns.FindAward(s, a.id)
+            local c = not gone and ns.AwardPoints(s, a.id)
+            if c then return c end
+        end
+    end
+    return nil
+end
+
+-- The finished bid rounds (up to KEEP ago) with a winner, other than r.
+local function wonRounds(r)
+    local out = {}
+    for _, x in ipairs(ns.RollHistory and ns.RollHistory() or {}) do
+        if x ~= r and x.mode == "bid" and x.done and x.winner and x.rolls[x.winner] and time() - (x.ended or x.started or 0) <= KEEP then
+            out[#out + 1] = x
+        end
+    end
+    return out
+end
+
+-- At the start of round r: the won rounds already paid, whose cost the frozen standings hold.
+notePaid = function(r)
+    r.paidBefore = {}
+    for _, x in ipairs(wonRounds(r)) do
+        if paid(x) then r.paidBefore[x] = true end
+    end
+end
+
+-- What name may bid at most: the standing the round froze, less what the main won in other rounds
+-- and the frozen standing does not hold yet (the bid while not paid, the cost once paid since).
+-- Returns the cap, the standing and what is owed.
+local function bidCap(r, name, st)
+    local bal, due = tonumber(st.a) or 0, 0
+    for _, x in ipairs(wonRounds(r)) do
+        if not (r.paidBefore and r.paidBefore[x]) and ns.SameMain(x.winner, name) then
+            local c = paid(x)
+            due = due + (c and (tonumber(c.n) or 0) or (tonumber(x.rolls[x.winner].value) or 0))
+        end
+    end
+    return bal - due, bal, due
+end
+
 local function highest(r)
     local best
     for _, e in pairs(r.rolls) do
@@ -128,7 +195,11 @@ function ns.PointsTakeBid(r, name, class, amount, chan, manual)
     if r.only and not keyIn(r, name) then return nil, L["nicht im Stechen"] end
     local st = standing(r, name)
     if amount < r.min then return nil, L["Unter dem Mindestgebot (%d)."]:format(r.min) end
-    if amount > (tonumber(st.a) or 0) then return nil, L["Mehr als der eigene Stand (%d)."]:format(tonumber(st.a) or 0) end
+    local cap, bal, due = bidCap(r, name, st)
+    if amount > cap then
+        if due > 0 then return nil, L["Mehr als frei: Stand %d, davon %d für gewonnene Items."]:format(bal, due) end
+        return nil, L["Mehr als der eigene Stand (%d)."]:format(bal)
+    end
     local key = keyIn(r, name) or name
     local own = r.rolls[key]
     if r.seal then
@@ -235,16 +306,18 @@ function ns.PointsResultText(r, top)
 end
 
 -- A standing as short as the roll window's cell needs it: from 10000 on in thousands ("12k").
-local function short(n)
+function ns.PointsShort(n)
     n = tonumber(n) or 0
     if math.abs(n) >= 10000 then return ("%dk"):format(n >= 0 and math.floor(n / 1000) or -math.floor(-n / 1000)) end
     return tostring(n)
 end
 
+local short = ns.PointsShort
+
 -- The roll window's cells of an entry: kind, value, the grey standing.
 function ns.PointsRowText(r, e)
     if r.mode == "bid" then
-        return L["Gebot"], tostring(e.value), GREY .. short(e.bal) .. "|r"
+        return L["Gebot"], short(e.value), GREY .. short(e.bal) .. "|r"
     end
     local word = e.kind == "MS" and L["Bedarf"] or L["Gier"]
     if r.sys == "epgp" then
@@ -253,20 +326,28 @@ function ns.PointsRowText(r, e)
     return word, short(e.a), ""
 end
 
--- The newest points round of an item, finished up to KEEP ago or running.
-local function roundOf(item)
-    local cands = { ns.CurrentRoll and ns.CurrentRoll() or false, ns.LastRoll and ns.LastRoll() or false, lastRound or false }
-    for _, r in ipairs(cands) do
-        if r and r.mode and r.item == item and (not r.done or time() - (r.ended or r.started or 0) <= KEEP) then return r end
+-- The points round of an item an award to name belongs to (running, or finished up to KEEP ago;
+-- ns.RoundsOf): the newest one name won, else the newest one name took part in, else the newest.
+local function roundOf(item, name)
+    local first, entered
+    for _, r in ipairs(ns.RoundsOf and ns.RoundsOf(item) or {}) do
+        if r.mode then
+            first = first or r
+            local key = name and keyIn(r, name)
+            if key then
+                if r.winner == key then return r end
+                entered = entered or r
+            end
+        end
     end
-    return nil
+    return entered or first
 end
 ns.PointsRoundOf = roundOf
 
 -- The cost an award to name takes over from the item's points round: the bid, or the round's cost
 -- of the said kind; nil without such a round or entry.
 function ns.PointsCostFor(item, name, kind)
-    local r = roundOf(tonumber(item) or ns.ItemID(item))
+    local r = roundOf(tonumber(item) or ns.ItemID(item), name)
     if not r or not name then return nil end
     local key = keyIn(r, name)
     local e = key and r.rolls[key]
@@ -277,14 +358,20 @@ function ns.PointsCostFor(item, name, kind)
 end
 
 -- The award dialog's amount for an item, a winner and a kind: the round's, else the formula's
--- (DKP bids: the round's only); nil when nothing is known.
-function ns.PointsDefaultCost(item, name, kind)
-    local r = roundOf(tonumber(item) or ns.ItemID(item))
+-- (DKP bids: the round's only), in the system of raid s when it has one; nil when nothing is known.
+function ns.PointsDefaultCost(item, name, kind, s)
+    local r = roundOf(tonumber(item) or ns.ItemID(item), name)
     if r and name and keyIn(r, name) then
         if r.mode == "bid" then return ns.PointsCostFor(item, name) end
         return ns.PointsCostFor(item, name, kind)
     end
+    local p = s and ns.PointsSession(s)
     local cfg = ns.PointsConfig()
+    if p and type(p.cfg) == "table" and p.sys ~= cfg.sys then
+        cfg = {}
+        for k, v in pairs(p.cfg) do cfg[k] = v end
+        cfg.sys = p.sys
+    end
     if cfg.sys == "dkp" and cfg.mode ~= "fixed" then return nil end
     return ns.PointsItemCost(item, kind or "MS", cfg)
 end

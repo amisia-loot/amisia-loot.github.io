@@ -9,6 +9,7 @@ the addon does not count again what the site already has (R and I lines).
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -84,7 +85,7 @@ def by_name(rows):
 
 def test_the_export_lines(dkp):
     lines = dkp['export'].split('\n')
-    assert 'PS D dkp on' in lines
+    assert any(re.match(r'^PS D dkp on \d{4}-\d{2}-\d{2}:533 \d+$', l) for l in lines), lines
     assert any(l.startswith('PA %s D 25 ' % dkp['uid']) for l in lines), lines
     assert any(l.startswith('PX %s Chorf D 7 ' % dkp['cid']) and l.endswith(' Vuloo Pünktlich nachgetragen') for l in lines), lines
     pe = [l for l in lines if l.startswith('PE ')]
@@ -204,7 +205,7 @@ def epgp():
 
 def test_epgp_round_trip(epgp):
     lines = epgp['export'].split('\n')
-    assert 'PS E epgp on' in lines and any(l.startswith('PA %s G 25 ' % epgp['uid']) for l in lines)
+    assert any(l.startswith('PS E epgp on ') for l in lines) and any(l.startswith('PA %s G 25 ' % epgp['uid']) for l in lines)
     site = by_name(epgp['out']['afterImport'])
     for name in ON_SITE:
         assert (site[name]['a'], site[name]['b']) == epgp['st'][name], (name, site[name], epgp['st'][name])

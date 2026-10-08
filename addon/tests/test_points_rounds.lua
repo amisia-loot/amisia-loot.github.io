@@ -132,7 +132,9 @@ STUB.tick(20)
 assert(r.winner == "Chorf", tostring(r.winner))
 local list = NS.RollRanking(r)
 assert(list[1].name == "Chorf" and list[2].name == "Fraktur" and #list == 2)
--- equal bids and equal standings: a tie, and "Nochmal" rolls among them
+-- equal bids and equal standings: a tie, and "Nochmal" rolls among them (ten minutes on: Chorf's
+-- won and not handed out 50 no longer count against his standing)
+STUB.now = STUB.now + 601
 assert(NS.SetPointsSite("#AMISIA-PTS 1 forever 2026-10-08 dkp 1791300000\nCFG mode=bid seal=1 min=10 step=5\nP Vuloo 100\nP Fraktur 100\nP Chorf 100\n#END"))
 assert(NS.StartRoll(link, 20))
 r = NS.CurrentRoll()
@@ -220,10 +222,18 @@ D.pts:SetFocus(); D.pts:SetText("150"); D.pts.scripts.OnEnterPressed(D.pts)
 D.give:Click()
 a = s.awards[#s.awards]
 assert(a.name == "Fraktur" and NS.AwardPoints(s, a.id).n == 150 and NS.AwardPoints(s, a.id).p == "G", "the typed amount")
--- rolling guilds: no field, the dialog as before
+-- back to rolling: the running raid keeps its system (field and need rounds), the next raid rolls
 NS.Set("points.system", "roll")
+assert(has(STUB.messages[#STUB.messages], "behält sein System (EPGP)"), "the officer hears that the raid keeps its system")
 NS.ShowAwardDialog(link, s)
-assert(not D.pts:IsShown(), "no field while the guild rolls")
+assert(D.pts:IsShown(), "the EPGP raid keeps its cost field")
+D:Hide()
+assert(NS.StartRoll(link, 10) and NS.CurrentRoll().mode == "pr", "and its need rounds")
+NS.StopRoll()
+local rolled = newRaid()
+assert(rolled.points == nil, "the next raid rolls")
+NS.ShowAwardDialog(link, rolled)
+assert(not D.pts:IsShown(), "no field in a raid that rolls")
 D:Hide()
 assert(NS.StartRoll(link, 10) and NS.CurrentRoll().mode == nil, "back to rolling")
 NS.StopRoll()

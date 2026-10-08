@@ -15,6 +15,7 @@ local view = "list"            -- "list" or "paste"
 local chosen                   -- lower name of the main in the detail
 local pool = "E"               -- EPGP: a correction of EP or GP
 
+-- Test hook: the page frame (addon/tests).
 function ns.PointsPageFrame() return page end
 
 -- The columns: key, x, width. They end at 576 of the 590 the list has.

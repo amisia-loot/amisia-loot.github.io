@@ -210,7 +210,7 @@ NS.Set("ui.view", "auto")
 -- export
 ---------------------------------------------------------------------------
 local exp = NS.ExportText({ s })
-assert(has(exp, "\nPS D dkp on\n"), "the system of the raid")
+assert(exp:find(("\nPS D dkp on %s %%d+\n"):format(NS.RaidKey(s):gsub("%-", "%%-"))), "the system of the raid, its key and newest time")
 assert(has(exp, ("\nPA %s D 60 "):format(a.id)), "the cost of the award")
 local pe = 0
 for line in exp:gmatch("[^\n]+") do
@@ -271,7 +271,7 @@ assert(NS.SetAwardPoints(s2, b.id, 100) and NS.AwardPoints(s2, b.id).p == "G")
 assert(NS.PointsOf("Fraktur").b == 150 and NS.PointsOf("Fraktur").a >= 300 + 10, "GP up, the raid's EP in")
 local corr = NS.PointsAdjust("Fraktur", 20, "Nachtrag", "gp")
 assert(corr and corr.pool == "G" and NS.PointsOf("Fraktur").b == 170)
-assert(has(NS.ExportText({ s2 }), "\nPS E epgp on\n"))
+assert(has(NS.ExportText({ s2 }), "\nPS E epgp on " .. NS.RaidKey(s2) .. " "))
 
 ---------------------------------------------------------------------------
 -- slash commands and the raider's view

@@ -192,7 +192,7 @@ function ns.ParseLootPrio(text)
                 id, at = tonumber(id), tonumber(at)
                 local prio = tok and ns.ParsePrioToken(tok)
                 -- a time more than a day ahead would win over every later edit
-                if not id or id < 1 or id > MAX_ID or not at or at > time() + 86400 or not prio then
+                if not id or id < 1 or id > MAX_ID or not at or at > ns.ServerTime() + 86400 or not prio then
                     res.skipped = res.skipped + 1
                 else
                     local old = res.list[id]
@@ -408,7 +408,7 @@ end
 local function putEdit(id, prio, note)
     local p = store(true)
     if not p then return nil, L["Amisia ist noch nicht geladen."] end
-    local e = { at = math.floor(time()), by = ns.UnitFullName("player"), note = note or "", prio = prio }
+    local e = { at = ns.ServerTime(), by = ns.UnitFullName("player"), note = note or "", prio = prio }
     p.edits[id] = e
     fire()
     return e
@@ -772,7 +772,7 @@ end)
 -- A received list, checked whole: id -> entry, or nil.
 local function checkList(tbl)
     if type(tbl) ~= "table" or tbl.v ~= 1 or type(tbl.l) ~= "table" then return nil end
-    local list, n, limit = {}, 0, time() + 86400
+    local list, n, limit = {}, 0, ns.ServerTime() + 86400
     for _, r in ipairs(tbl.l) do
         n = n + 1
         if n > MAX_SHARE or type(r) ~= "table" then return nil end

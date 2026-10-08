@@ -119,11 +119,11 @@ local function sourceOf(s, item)
     return "?"
 end
 
--- A finished round for the item with a winner, no older than PREFILL.
+-- The newest finished round for the item with a winner, no older than PREFILL (ns.RoundsOf: also
+-- one that ended before rounds of other items).
 local function roundFor(item)
-    local cur, last = ns.CurrentRoll(), ns.LastRoll()
-    for _, r in ipairs({ cur or false, last or false }) do
-        if r and r.item == item and r.done and r.winner and (time() - (r.started or 0)) <= PREFILL then return r end
+    for _, r in ipairs(ns.RoundsOf and ns.RoundsOf(item) or {}) do
+        if r.done and r.winner and (time() - (r.started or 0)) <= PREFILL then return r end
     end
     return nil
 end
@@ -139,9 +139,10 @@ local function itemLabel()
     return st.link or ("Item " .. tostring(st.item))
 end
 
--- Whether the guild uses DKP or EPGP (the cost row shows).
+-- Whether the dialog's raid was recorded with DKP or EPGP (the cost row shows): a raid that rolled
+-- takes no cost afterwards.
 pointsOn = function()
-    return ns.PointsSystem ~= nil and ns.PointsSystem() ~= "roll"
+    return ns.PointsSession ~= nil and ns.PointsSession(st.s) ~= nil
 end
 
 -- The default cost of the dialog's item for its winner and kind (nil: none known).
@@ -151,7 +152,7 @@ local function defaultCost()
         local r = ns.PointsRoundOf and ns.PointsRoundOf(st.item)
         if not (r and r.mode == "bid" and st.winner) then return 0 end
     end
-    return ns.PointsDefaultCost(st.item, st.winner, st.kind ~= "-" and st.kind or "MS")
+    return ns.PointsDefaultCost(st.item, st.winner, st.kind ~= "-" and st.kind or "MS", st.s)
 end
 
 ---------------------------------------------------------------------------
@@ -195,7 +196,7 @@ local function direct(name, to, hint)
         if why then ns.msg(why) end
         return false
     end
-    if to == "player" and st.pts ~= nil and pointsOn() then ns.SetAwardPoints(st.s, a.id, st.pts) end
+    if to == "player" and st.pts ~= nil and pointsOn() and ns.AwardCostOrSay then ns.AwardCostOrSay(st.s, a.id, st.pts) end
     local item = itemLabel()
     if to == "player" then
         ns.msg(L["Vergabe gespeichert: %s an %s (%s), von Hand eingetragen.%s"]:format(item, name, a.kind, hint and (" " .. hint) or ""))
@@ -424,11 +425,11 @@ local function showPoints()
     D.pts:SetShown(on)
     D.ptsHint:SetShown(on)
     if not on then return end
-    local sys = ns.PointsSystem()
+    local sys = ns.PointsSession(st.s).sys
     D.ptsLabel:SetText(sys == "epgp" and "GP" or "DKP")
     if not st.ptsTyped then st.pts = defaultCost() end
     if not D.pts:HasFocus() then D.pts:SetText(st.pts and tostring(st.pts) or "") end
-    local e = st.winner and ns.PointsOf(st.winner)
+    local e = st.winner and ns.PointsOf(st.winner, { sys = sys })
     if not e then
         D.ptsHint:SetText("")
     elseif sys == "epgp" then
