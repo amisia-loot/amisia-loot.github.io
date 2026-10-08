@@ -55,12 +55,6 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-local function col(parent, x, w, template)
-    local fs = W.Text(parent, template or T.FONT.text, w)
-    fs:SetPoint("LEFT", x, 0)
-    return fs
-end
-
 local function book(f)
     local name = f.who:GetValue()
     local n = tonumber((tostring(f.amount:GetText() or ""):gsub("^%+", "")))
@@ -77,30 +71,27 @@ local function book(f)
 end
 
 local function build_page(parent)
-    local f = CreateFrame("Frame", nil, parent)
-    f:SetAllPoints(parent)
+    local f = W.Page(parent)
     page = f
 
+    -- the head row: the two views; under it the system and the site's state
+    local top = f:Bands({ "row", "line" })
     f.view = {
         list = W.Chip(f, L["Stand##Punkte"], nil, function() view = "list" ns.Refresh() end),
         paste = W.Chip(f, L["Einfügen"], nil, function() view = "paste" ns.Refresh() end),
     }
     W.FitChip(f.view.list, 70)
     W.FitChip(f.view.paste, 70)
-    W.Row(f, { f.view.list, f.view.paste }, T.CHIP_GAP, 0, -2)
-    f.info = W.Text(f, T.FONT.hint, 590)
-    f.info:SetPoint("TOPLEFT", 6, -28)
+    f:Place(1, { f.view.list, f.view.paste })
+    f.info = f:Line(2)
+    -- the footer: what the last correction did
+    f:Footer({ "status" })
+    -- while the guild rolls: what to do instead of the list
+    f.empty = f:Empty(520)
 
-    local head = CreateFrame("Frame", nil, f)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -44)
-    head:SetPoint("TOPRIGHT", 0, -44)
-    f.heads = {}
-    for _, c in ipairs(COLS) do f.heads[c[1]] = col(head, c[2], c[3], T.FONT.head) end
-    f.headFrame = head
-
-    f.list = W.List(f, ROWS, ROW_H, function(r)
-        for _, c in ipairs(COLS) do r[c[1]] = col(r, c[2], c[3]) end
+    f.headFrame, f.heads = f:Columns(COLS)
+    f.list = f:List(ROWS, ROW_H, function(r)
+        W.Cells(r, COLS)
         r:SetScript("OnClick", function(self)
             if self.item then
                 chosen = self.item.name:lower()
@@ -119,40 +110,24 @@ local function build_page(parent)
         r.alts:SetText(#alts > 0 and (T.GREY .. table.concat(alts, ", ") .. "|r") or "")
         if r.sel then r.sel:SetShown(e.name:lower() == chosen) end
     end)
-    f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
     for _, r in ipairs(f.list.rows) do r.sel = W.SelectBar(r) end
 
-    f.detail = W.ScrollText(f)
-    f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
-    f.detail:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, 52)
-
-    -- officers: a correction with a reason, at the bottom
+    -- officers: a correction with a reason in the bottom row (the paste view puts its import there)
     f.adjLabel = W.Text(f, T.FONT.text, 66)
-    f.adjLabel:SetPoint("BOTTOMLEFT", 6, 32)
     f.adjLabel:SetText(L["Korrektur"])
     f.who = W.Picker(f, 140, function(v) chosen = v and v:lower() or chosen ns.Refresh() end)
-    f.who:SetPoint("LEFT", f.adjLabel, "RIGHT", 4, 0)
     f.amount = W.LineEdit(f, 56, function() end)
-    f.amount:SetPoint("LEFT", f.who, "RIGHT", 6, 0)
     f.amount:SetMaxLetters(8)
     f.pool = W.Choice(f, 44, function(v) pool = v end)
     f.pool:SetValues({ { "E", "EP" }, { "G", "GP" } })
-    f.pool:SetPoint("LEFT", f.amount, "RIGHT", 6, 0)
     f.reason = W.LineEdit(f, 170, function() end)
-    f.reason:SetPoint("LEFT", f.pool, "RIGHT", 6, 0)
     f.reason:SetMaxLetters(80)
-    f.book = W.Button(f, L["Buchen"], 70, function() book(f) end, { height = T.ROW_BUTTON_H })
+    f.book = W.Button(f, L["Buchen"], 70, function() book(f) end)
     W.FitChip(f.book, 70)
-    f.book:SetPoint("LEFT", f.reason, "RIGHT", 6, 0)
     W.Tooltip(f.book, L["Buchen"], L["Name, Betrag (mit Minus zum Abziehen) und ein Grund. Die Korrektur geht mit dem nächsten Export auf die Website."])
-    f.status = W.Text(f, T.FONT.hint, 590)
-    f.status:SetPoint("BOTTOMLEFT", 6, 10)
 
     -- the website's text
     f.paste = W.EditArea(f)
-    f.paste:SetPoint("TOPLEFT", 0, -44)
-    f.paste:SetPoint("BOTTOMRIGHT", 0, 32)
     f.import = W.Button(f, L["Importieren"], 100, function()
         local text, ok = ns.ImportSiteText(f.paste.box:GetText() or "")
         f.result:SetText((ok and T.GREEN or T.RED) .. tostring(text or "") .. "|r")
@@ -163,12 +138,16 @@ local function build_page(parent)
         ns.Refresh()
     end)
     W.FitChip(f.import, 100)
-    f.import:SetPoint("BOTTOMLEFT", 0, 4)
-    f.result = W.Text(f, T.FONT.hint, 480)
-    f.result:SetPoint("LEFT", f.import, "RIGHT", 8, 0)
+    f.result = W.Text(f, T.FONT.hint)
+    f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, { f.result, fill = true } }
+    f:BottomRow(f.bottomList)
+    f.paste:SetPoint("TOPLEFT", 0, top)
+    f.paste:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
 
-    f.empty = W.EmptyState(f, 520)
-    f.empty:SetPoint("TOP", 0, -90)
+    -- the chosen player's history under the list, down to the bottom row
+    f.detail = W.ScrollText(f)
+    f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -2 * T.LAYOUT.GAP)
+    f.detail:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, f:Bottom())
     return f
 end
 
@@ -190,8 +169,8 @@ local function refresh(f)
     setShown({ f.headFrame, f.list, f.detail }, listOn)
     setShown({ f.adjLabel, f.who, f.amount, f.reason, f.book, f.status }, listOn and officer)
     f.pool:SetShown(listOn and officer and sys == "epgp")
-    f.reason:ClearAllPoints()
-    f.reason:SetPoint("LEFT", sys == "epgp" and f.pool or f.amount, "RIGHT", 6, 0)
+    -- the bottom row holds what is shown: the correction (officers) or the import (paste)
+    f:BottomRow(f.bottomList, nil, { shown = true })
     f.empty:SetShown(rolling and not paste)
 
     -- the line under the chips: system, the site's block and what is live
