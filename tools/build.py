@@ -4,6 +4,9 @@
     python3 tools/build.py check
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
     python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy]
+    python3 tools/build.py testlist [--all] [--out FILE]
+    python3 tools/build.py tested F-001 [F-002 ...] [--raid]
+    python3 tools/build.py errors [--sv FILE] [--all]
 
 data     rebuilds every generated file in addon/Amisia/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, dungeon art, BiS), stops at the first error
@@ -13,7 +16,7 @@ check    the syntax check, the addon tests (German, then English), the translati
          (tools/l10n.py), the layout rules of every page and window in both locales
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
          a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
-         anything fails.
+         anything fails. Ends with a note (never a failure) when the game caught errors of Amisia.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
@@ -21,6 +24,14 @@ release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts 
          fails), builds addon/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
          commits "Amisia X.Y.Z: <summary>", pushes origin main and copies the release to the folder
          Syncthing sends (tools/release_addon.sh). --no-push and --no-copy leave those two out.
+         Before: a warning with Amisia's errors from the game, if any. After: the test list of the
+         features of this version from docs/FEATURES.md (a warning when no entry carries it).
+testlist the German check list for the user from docs/FEATURES.md: every feature "gebaut" he can check
+         alone, newest version first; --all adds the ones that need a group, guild or raid.
+tested   sets the status of the named features to "im Spiel geprüft (today)", --raid "im Raid bewährt".
+errors   the Lua errors the game caught that name Amisia (--all: every addon's), from the error
+         catcher's SavedVariables (default ~/addons/_SavedVariables/!BugGrabber.lua). check and
+         release mention them without failing; a missing file says nothing.
 
 The tests need lupa: without it in this Python, the build starts again in ~/.venvs/amisia.
 """
@@ -44,6 +55,7 @@ TRAILER = 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
 RELEASE_SUBJECT = re.compile(r'^Amisia (\d+\.\d+\.\d+): ')
 VERSION_LINE = re.compile(r'^(## Version:[ \t]*)(\S+)[ \t]*$', re.M)
 TEXT_EXT = ('.lua', '.toc', '.xml', '.txt', '.md')
+FEATURES_REL = 'docs/FEATURES.md'
 
 
 def say(msg=''):
@@ -63,6 +75,14 @@ def git(root, *args, check=True):
     if check and p.returncode != 0:
         raise SystemExit(f'git {" ".join(args)}: {p.stderr.strip()}')
     return p.stdout
+
+
+def tool_module(name):
+    """A module of tools/ (features, game_errors, ...)."""
+    tools = os.path.join(ROOT, 'tools')
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    return __import__(name)
 
 
 def has_lupa():
@@ -326,10 +346,105 @@ def cmd_check(args=None):
     step('UTF-8 of the addon files', utf8)
     step('TOC against the addon folder', toc)
     step('luacheck', luacheck)
+    note = game_errors_note()
+    if note:
+        say(note[0])
+        for ln in note[1:]:
+            say('      ' + ln)
     failed = results.count('FAIL')
     skipped = results.count('skip')
     say(('check: %d failed' % failed if failed else 'check: all ok') + (', %d skipped' % skipped if skipped else ''))
     return 1 if failed else 0
+
+
+# ---------------------------------------------------------------- errors from the game
+def game_errors_note(path=None, limit=10):
+    """Lines about Amisia's errors in the error catcher's file ("Fehler aus dem Spiel: N" first), or []
+    when the file is missing or holds none of Amisia's. Never raises."""
+    ge = tool_module('game_errors')
+    path = path or ge.DEFAULT_SV
+    try:
+        found = ge.amisia_errors(path)
+    except Exception as e:  # an unreadable file is a note, never a failure
+        return [f'note  Fehler aus dem Spiel: Datei nicht lesbar ({str(e).splitlines()[0][:120]})']
+    if not found or not found[1]:
+        return []
+    session, errors = found
+    out = [f'note  Fehler aus dem Spiel: {len(errors)} (python3 tools/build.py errors)']
+    out += ge.lines(errors, session)[:limit]
+    if len(errors) > limit:
+        out.append(f'... und {len(errors) - limit} weitere')
+    return out
+
+
+def cmd_errors(args):
+    ge = tool_module('game_errors')
+    text, rc = ge.report(os.path.expanduser(args.sv), all_=args.all)
+    say(text)
+    return rc
+
+
+# ---------------------------------------------------------------- features and test list
+def load_features(root=ROOT):
+    """The entries of docs/FEATURES.md, or None when the file is missing."""
+    path = os.path.join(root, FEATURES_REL)
+    if not os.path.exists(path):
+        return None
+    return tool_module('features').load(path)
+
+
+def cmd_testlist(args):
+    fe = tool_module('features')
+    try:
+        feats = load_features()
+    except fe.FeatureError as e:
+        say(f'{FEATURES_REL}:\n{e}')
+        return 1
+    if feats is None:
+        say(f'no {FEATURES_REL}')
+        return 1
+    text = fe.testlist(feats, all_=args.all, version=toc_version())
+    if args.out:
+        with open(args.out, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write(text)
+        say(f'written: {args.out}')
+    else:
+        say(text.rstrip('\n'))
+    return 0
+
+
+def cmd_tested(args):
+    fe = tool_module('features')
+    path = os.path.join(ROOT, FEATURES_REL)
+    with open(path, encoding='utf-8', newline='') as fh:
+        text = fh.read()
+    try:
+        new, msgs = fe.mark_tested(text, args.ids, raid=args.raid, day=time.strftime('%Y-%m-%d'))
+    except fe.FeatureError as e:
+        say(str(e))
+        return 1
+    with open(path, 'w', encoding='utf-8', newline='') as fh:
+        fh.write(new)
+    for m in msgs:
+        say(m)
+    say(f'{FEATURES_REL} updated; commit it')
+    return 0
+
+
+def release_test_list(root, version):
+    """What release prints at the end: the features of this version and their checks, or a warning."""
+    fe = tool_module('features')
+    try:
+        feats = load_features(root)
+    except fe.FeatureError as e:
+        return [f'WARNING: {FEATURES_REL} does not parse, no test list:', *str(e).splitlines()[:10]]
+    if feats is None:
+        return [f'WARNING: no {FEATURES_REL}, no test list for {version}']
+    text = fe.release_list(feats, version)
+    if not text:
+        return [f'WARNING: no feature in {FEATURES_REL} carries {version}: add the entries of this release '
+                f'(Version: {version}) with their checks and commit them']
+    return text.rstrip('\n').split('\n')
 
 
 # ---------------------------------------------------------------- release
@@ -383,8 +498,10 @@ def default_summary(subjects, limit=200):
     return text if len(text) <= limit else text[:limit - 1].rstrip() + '…'
 
 
-def release(root, version, summary=None, push=True, copy=True, check=None, day=None):
-    """The release steps; check() returns 0 when everything passes. Returns the exit code."""
+def release(root, version, summary=None, push=True, copy=True, check=None, day=None, errors_sv=None):
+    """The release steps; check() returns 0 when everything passes. Returns the exit code. Before it, a
+    warning with Amisia's errors from the game (errors_sv, default the synced file); after it, the
+    test list of this version's features."""
     if not re.fullmatch(r'\d+\.\d+\.\d+', version or ''):
         raise SystemExit('the version is X.Y.Z: ' + str(version))
     current = toc_version(root)
@@ -399,6 +516,11 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         raise SystemExit(f'releases are pushed from main, this is {branch} (or use --no-push)')
 
     touched = [ADDON_REL + '/Amisia.toc', 'addon/Amisia.zip', 'CHANGELOG.md']
+    note = game_errors_note(errors_sv)
+    if note:
+        say('WARNING: the game caught errors of Amisia; released anyway. Fixed already? Otherwise look first:')
+        for ln in note:
+            say('  ' + ln)
 
     def undo():
         """Back to HEAD: no version bump, zip or changelog entry is left behind by a failed release."""
@@ -430,16 +552,19 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         undo()
         raise
     say('committed ' + git(root, 'log', '-1', '--format=%h %s').strip())
+    rc = 0
     if push:
         rc, _ = run(['git', 'push', 'origin', 'main'], cwd=root)
         if rc != 0:
             say('push failed: the release commit is local; push it by hand, then run tools/release_addon.sh')
-            return 1
+            rc, copy = 1, False
     if copy:
         rc, _ = run(['bash', os.path.join(root, 'tools', 'release_addon.sh')], cwd=root)
-        if rc != 0:
-            return 1
-    return 0
+        rc = 1 if rc != 0 else 0
+    say()
+    for ln in release_test_list(root, version):
+        say(ln)
+    return rc
 
 
 def cmd_snapshots(args):
@@ -482,13 +607,24 @@ def main(argv=None):
                    help='the summary after "Amisia X.Y.Z: " (default: the commit subjects since the last release)')
     r.add_argument('--no-push', action='store_true', help='commit only, do not push')
     r.add_argument('--no-copy', action='store_true', help='do not run tools/release_addon.sh')
+    t = sub.add_parser('testlist', help=f'the German check list of the built features ({FEATURES_REL})')
+    t.add_argument('--all', action='store_true', help='also the features that need a group, guild or raid')
+    t.add_argument('--out', default=None, help='write it to FILE instead of printing it')
+    td = sub.add_parser('tested', help='record features the user checked in game (today\'s date)')
+    td.add_argument('ids', nargs='+', help='F-001 ...')
+    td.add_argument('--raid', action='store_true', help='"im Raid bewährt" instead of "im Spiel geprüft"')
+    e = sub.add_parser('errors', help='the Lua errors the game caught that name Amisia')
+    e.add_argument('--sv', default='~/addons/_SavedVariables/!BugGrabber.lua',
+                   help='the error catcher\'s SavedVariables (default ~/addons/_SavedVariables/!BugGrabber.lua)')
+    e.add_argument('--all', action='store_true', help='every addon\'s errors')
     args = ap.parse_args(argv)
     if not has_lupa() and os.path.exists(VENV_PY) and not os.environ.get('AMISIA_BUILD_VENV'):
         # once only: the venv's python is a link to the same binary, so the guard is the variable
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release}[args.cmd](args)
+    return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors}[args.cmd](args)
 
 
 if __name__ == '__main__':

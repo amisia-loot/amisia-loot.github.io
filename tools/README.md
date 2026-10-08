@@ -11,6 +11,9 @@ python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
 python3 tools/build.py check
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
 python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
+python3 tools/build.py testlist [--all] [--out FILE]
+python3 tools/build.py tested F-001 [F-002 ...] [--raid]
+python3 tools/build.py errors [--sv FILE] [--all]
 ```
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
@@ -37,6 +40,25 @@ python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
   dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
   commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
   `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
+- `release` also prints, before it starts, a warning with Amisia's errors from the game (see `errors`)
+  and, at the end, the test list of the new version: the entries of `docs/FEATURES.md` whose
+  `Version:` is the new one, with their checks, to pass on to the user. When no entry carries the
+  version it says so (a warning, the release still happens).
+- `testlist` prints the German check list for the user from `docs/FEATURES.md` (`tools/features.py`):
+  every feature with status `gebaut` and no `Braucht:` line, grouped by version, newest first, each
+  check as `- [ ] ...`. `--all` adds the features that need a group, guild or raid under
+  "Erst nach dem Start (Gruppe/Gilde/Raid)". `--out FILE` writes it instead of printing.
+- `tested F-001 [F-002 ...]` sets the `Status:` line of those entries to `im Spiel geprüft (YYYY-MM-DD)`
+  with today's date (`--raid`: `im Raid bewährt (YYYY-MM-DD)`) and touches nothing else; an unknown id
+  changes nothing and exits 1. Commit the file afterwards. The format of the file stands at its top;
+  `tools/tests/test_features.py` checks it.
+- `errors [--sv FILE] [--all]` reads the error catcher's SavedVariables (default
+  `~/addons/_SavedVariables/!BugGrabber.lua`, synced from the PC, read only) in the same sandbox as
+  Amisia's (`build_scan.run_sv`) and lists the errors whose message or stack names Amisia: count,
+  file:line (Amisia's own frame first), the first line of the message, session and time
+  (`tools/game_errors.py`). `--all` lists every addon's errors. A file that does not parse gives
+  "Fehlerdatei nicht lesbar" and exit 1. `check` ends with a note "Fehler aus dem Spiel: N" when the
+  file holds Amisia errors (never a failure); a missing file says nothing.
 - `snapshots` draws every page and side window into PNGs with a contact sheet (`tools/ui_layout.py
   snapshots`, below); default folder `/tmp/amisia-snapshots`.
 
