@@ -246,8 +246,8 @@ def refresh_itemsparse(csv_path, scan_items, path=ITEMSPARSE_JSON):
     """Keeps what the addon needs from an ItemSparse export: class limits, weapon speed and the
     profession an item needs to be worn (engineering goggles).
 
-    The export comes from wago.tools (product wow_classic_beta, with hotfixes):
-    https://wago.tools/db2/ItemSparse/csv?build=<build>&useHotfixes=1"""
+    The export is the user's own: tools/export_db2.ps1 on the PC (product wow_classic_beta, with
+    hotfixes), or wago.tools' ItemSparse CSV downloaded by hand in the browser. Never by script."""
     import csv
     classes, delay, skill = {}, {}, {}
     with open(csv_path, encoding='utf-8') as fh:
