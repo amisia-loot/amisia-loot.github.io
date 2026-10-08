@@ -10,7 +10,8 @@ local L = ns.L
 local F = T.F
 
 local ICON = "Interface\\Icons\\INV_Misc_Book_09"
-local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, 28, 398
+-- the trees start under the head row (ROW_H + GAP of ns.Theme.LAYOUT)
+local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, Theme.LAYOUT.ROW_H + Theme.LAYOUT.GAP, 398
 local HEAD_H = 24
 -- the grid inside a tree: a column for the row locks, then 4 columns and 7 rows
 local GRID = { left = 18, top = HEAD_H + 8, pitchX = 44, pitchY = 50, pad = 5 }
@@ -365,10 +366,12 @@ local function onCode(text)
 end
 
 local function create(parent)
-    local f = CreateFrame("Frame", nil, parent)
+    local f = W.Page(parent)
     page = f
     f.buttons, f.arrows = {}, {}
     f.layoutInfo = GRID
+    -- the head row: class, level and Talented, the points at the right; the trees under it
+    f:Bands({ "row" })
 
     f.class = W.Picker(f, 130, function(v) chooseClass(v) end)
     f.levelLabel = W.Text(f, Theme.FONT.text, 34)
@@ -385,15 +388,14 @@ local function create(parent)
         ns.Refresh()
     end)
     f.talented:Configure(0, 5, 1)
-    -- the class, then each stepper with its label in front (the labels 4 px lower, on the text line)
-    W.Row(f, { f.class, { f.levelLabel, gap = 10, y = -5 }, f.level, { f.talentedLabel, gap = 10, y = -5 }, f.talented },
-        2, 0, -1)
     f.talented:EnableMouse(true)
     W.Tooltip(f.talented, L["Talentiert (Vermächtnis)"],
         L["Jeder Rang gibt die Talentpunkte eine Stufe früher (ab Stufe 9 bis 5); mehr als 51 Punkte gibt es nie."])
     f.total = W.Text(f, Theme.FONT.body, 206)
     f.total:SetJustifyH("RIGHT")
-    f.total:SetPoint("TOPRIGHT", 0, -5)
+    -- the class, then each stepper with its label in front
+    f:Place(1, { f.class, { f.levelLabel, gap = 10 }, { f.level, gap = 2 }, { f.talentedLabel, gap = 10 }, { f.talented, gap = 2 } },
+        { f.total })
 
     f.bg = f:CreateTexture(nil, "BACKGROUND")
     f.bg:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -(TREE_TOP + 3))
@@ -401,11 +403,11 @@ local function create(parent)
     f.trees = {}
     for t = 1, 3 do f.trees[t] = makeTree(f, t) end
 
-    f.msg = W.Text(f, Theme.FONT.text, 330)
-    f.msg:SetPoint("TOPLEFT", 2, -(TREE_TOP + TREE_H + 4))
+    f.msg = W.Text(f, Theme.FONT.text, 320)
+    f.msg:SetPoint("TOPLEFT", Theme.LAYOUT.TEXT_X, -(TREE_TOP + TREE_H + 4))
     f.liveText = W.Text(f, Theme.FONT.text, 262)
     f.liveText:SetJustifyH("RIGHT")
-    f.liveText:SetPoint("TOPRIGHT", 0, -(TREE_TOP + TREE_H + 4))
+    f.liveText:SetPoint("TOPRIGHT", -Theme.LAYOUT.TEXT_X, -(TREE_TOP + TREE_H + 4))
 
     f.live = W.Button(f, L["Eigene laden"], 104, function()
         local plan, info = T.Live()
@@ -419,7 +421,6 @@ local function create(parent)
         say((L["Talente aus dem Spiel geladen (%d Punkte)."]):format(T.Spent(plan)))
         ns.Refresh()
     end)
-    f.live:SetPoint("BOTTOMLEFT", 0, 2)
     W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
     f.resetAll = W.Button(f, L["Alles zurücksetzen"], 128, function()
         T.Reset(page.plan)
@@ -427,12 +428,13 @@ local function create(parent)
         say("")
         ns.Refresh()
     end)
-    f.resetAll:SetPoint("LEFT", f.live, "RIGHT", 6, 0)
+    W.FitChip(f.live, 104)
+    W.FitChip(f.resetAll, 128)
     f.codeLabel = W.Text(f, Theme.FONT.text, 34)
-    f.codeLabel:SetPoint("LEFT", f.resetAll, "RIGHT", 10, 0)
     f.codeLabel:SetText("Code")
-    f.code = W.LineEdit(f, 600 - 104 - 6 - 128 - 10 - 34 - 4, onCode)
-    f.code:SetPoint("LEFT", f.codeLabel, "RIGHT", 4, 0)
+    f.code = W.LineEdit(f, 300, onCode)
+    -- the bottom row: load, reset, the share code taking the rest
+    f:BottomRow({ f.live, f.resetAll, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } })
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
     W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code einfügen und Enter drücken übernimmt ihn."])
