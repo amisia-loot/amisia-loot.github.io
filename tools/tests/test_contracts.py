@@ -376,8 +376,8 @@ def test_rage_of_the_storm_stays_at_30_to_34():
     assert (p['class'], p['spec'], p['from'], p['to'], p['slot']) == ('SHAMAN', 'enh', 30, 34, 'MAINHAND'), p
 
 
-# characters the game font has no glyph for (they draw as boxes): use "·" and textures
-NO_GLYPH = re.compile('[–—…←-↓→•●▶▸]')
+# characters the game font has no glyph for (they draw as boxes; the curly quotes unverified, so kept out): use "·", straight quotes and textures
+NO_GLYPH = re.compile('[–—…←-↓→•●▶▸„“”]')
 
 
 def test_no_characters_the_game_font_lacks():
