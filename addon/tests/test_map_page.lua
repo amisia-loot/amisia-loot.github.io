@@ -466,7 +466,7 @@ for _, view in ipairs({ "officer", "raider" }) do
     local _, gor = L.span(rows[1].go)
     local _, ghr = L.span(f.head.go)
     assert(lr == 590 and gor <= 590 and ghr <= 590, ("the list 590, the button %d, the head %d"):format(gor, ghr))
-    L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.hint, f.data, f.showHidden)
+    L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.showHidden, f.hint, f.data)
     L.column(view .. " target", f.counts, f.clear, f.head.kind)
     for _, fs in ipairs({ f.target, f.counts, f.hint, f.data, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
     assert(f.showHidden._w == 170 and f.open._w == 130 and f.clear._w == 110 and f.zone._w == 240, "the widths of the design")

@@ -152,6 +152,7 @@ L["Für diesen Client gibt es keine Kartendaten."] = "There is no map data for t
 L["Ziele und Wünsche sind ausgeblendet. Oben einschalten."] = "Goals and wishes are hidden. Turn them on above."
 L["Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung."] = "No goals or wishes yet. See the gear page."
 L["In dieser Zone liegt nichts aus deinen Zielen und Wünschen."] = "Nothing from your goals and wishes in this zone."
+L["Keine Orte"] = "No places"
 L["Kartendaten vom %s · Orte aus öffentlichen Questdaten, Namen englisch."] = "Map data of %s · places from public quest data, names in English."
 L["Ausgeblendete zeigen (%d)"] = "Show hidden (%d)"
 L["Ziele"] = "Goals"

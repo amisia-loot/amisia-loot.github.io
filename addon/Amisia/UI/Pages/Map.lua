@@ -11,7 +11,8 @@ local GREY = T.GREY
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
-local ROWS, ROW_H = 12, 24
+-- rows of 24 from the column heads (90) to the bottom row (416): 13
+local ROWS, ROW_H = 13, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local TICK = 0.5         -- seconds between two updates of the target line's distance
 local ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
@@ -273,13 +274,6 @@ local function fillRow(r, e)
     r.items:SetText(itemsText(e))
 end
 
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
-
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
@@ -346,13 +340,13 @@ local function refresh(f)
         f.empty:Hide()
     else
         if not ns.HasData("MAP") then
-            f.empty:SetText(L["Für diesen Client gibt es keine Kartendaten."])
+            f.empty:Set(L["Keine Orte"], L["Für diesen Client gibt es keine Kartendaten."])
         elseif not ns.Get("map.pinsTargets") and not ns.Get("map.pinsWishes") then
-            f.empty:SetText(L["Ziele und Wünsche sind ausgeblendet. Oben einschalten."])
+            f.empty:Set(L["Keine Orte"], L["Ziele und Wünsche sind ausgeblendet. Oben einschalten."])
         elseif idx.items == 0 then
-            f.empty:SetText(L["Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung."])
+            f.empty:Set(L["Keine Orte"], L["Noch keine Ziele oder Wünsche. Siehe Seite Ausrüstung."])
         else
-            f.empty:SetText(L["In dieser Zone liegt nichts aus deinen Zielen und Wünschen."])
+            f.empty:Set(L["Keine Orte"], L["In dieser Zone liegt nichts aus deinen Zielen und Wünschen."])
         end
         f.empty:Show()
     end
@@ -368,47 +362,53 @@ local function refresh(f)
     f.wait = 0
 end
 
+-- the list is 590 wide (12 px for its scroll bar): the items give them, the button moves left
+local COLS = { { "kind", 4, 66, L["Art"] }, { "src", 74, 186, L["Quelle"] }, { "where", 264, 100, L["Ort##Spalte"] },
+    { "items", 368, 164, "Items" }, { "go", 540, 46, L["Weg"], cell = false } }
+
 local function create(parent)
-    local f = CreateFrame("Frame", nil, parent)
+    local f = W.Page(parent)
     page = f
+    -- the head row: zone and the two switches, the world map at the right; then the counts and the
+    -- target with its clear button
+    f:Bands({ "row", "line", "row" })
     f.zone = W.Picker(f, 240, function(v)
         state().zone = (v ~= "here") and tonumber(v) or nil
         ns.Refresh()
     end)
-    f.zone:SetPoint("TOPLEFT", 0, -1)
     f.targets = W.Chip(f, L["Ziele"], 60, function() ns.Set("map.pinsTargets", not ns.Get("map.pinsTargets")) end)
-    f.targets:SetPoint("TOPLEFT", 248, -1)
     f.wishes = W.Chip(f, L["Wünsche"], 70, function() ns.Set("map.pinsWishes", not ns.Get("map.pinsWishes")) end)
-    f.wishes:SetPoint("TOPLEFT", 314, -1)
+    W.FitChip(f.targets, 60)
+    W.FitChip(f.wishes, 70)
     W.Tooltip(f.targets, L["Ziele"], L["Orte der Upgrades aus Ziele zeigen, hier und auf der Weltkarte."])
     W.Tooltip(f.wishes, L["Wünsche"], L["Orte der Wünsche zeigen, hier und auf der Weltkarte."])
     f.open = W.Button(f, L["Weltkarte öffnen"], 130, function()
         local zone = f.shownZone
         if zone then ns.MapShowOnWorldMap({ map = zone, x = 0.5, y = 0.5 }) end
     end)
-    f.open:SetPoint("TOPRIGHT", 0, 0)
-    f.counts = W.Text(f, T.FONT.hint, 598)
-    f.counts:SetPoint("TOPLEFT", 4, -28)
-    f.target = W.Text(f, T.FONT.text, 484)
-    f.target:SetPoint("TOPLEFT", 4, -52)
+    W.FitChip(f.open, 130)
+    f:Place(1, { f.zone, f.targets, f.wishes }, { f.open })
+    f.counts = f:Line(2)
+    f.target = W.Text(f, T.FONT.body)
     f.clear = W.Button(f, L["Ziel löschen"], 110, function()
         ns.MapClearTarget()
         ns.Refresh()
     end)
-    f.clear:SetPoint("TOPRIGHT", 0, -48)
+    W.FitChip(f.clear, 110)
+    f:Place(3, { { f.target, fill = true } }, { f.clear })
+    f:Footer({ "hint", "data" })
+    f.hint:SetText(L["Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."])
+    f.showHidden = W.Button(f, L["Ausgeblendete zeigen"], 170, function()
+        wipe(hiddenSet())
+        ns.Fire("MAP_TARGET")
+        ns.Refresh()
+    end)
+    f:BottomRow(nil, { f.showHidden })
+    f.showHidden:Hide()
 
-    local h = CreateFrame("Frame", nil, f)
-    h:SetHeight(14)
-    h:SetPoint("TOPLEFT", 0, -76)
-    h:SetPoint("TOPRIGHT", 0, -76)
-    -- the list is 590 wide (12 px for its scroll bar): the items give them, the button moves left
-    f.head = { kind = col(h, 4, 66, L["Art"]), src = col(h, 74, 186, L["Quelle"]), where = col(h, 264, 100, L["Ort##Spalte"]),
-        items = col(h, 368, 164, "Items"), go = col(h, 540, 46, L["Weg"]) }
-    f.list = W.List(f, ROWS, ROW_H, function(r)
-        r.kind = col(r, 4, 66, nil, T.FONT.text)
-        r.src = col(r, 74, 186, nil, T.FONT.text)
-        r.where = col(r, 264, 100, nil, T.FONT.text)
-        r.items = col(r, 368, 164, nil, T.FONT.text)
+    f.headFrame, f.head = f:Columns(COLS)
+    f.list = f:List(ROWS, ROW_H, function(r)
+        W.Cells(r, COLS)
         r.go = W.Button(r, L["Weg"], 54, function(self) go(self:GetParent().item) end)
         r.go:SetPoint("LEFT", 536, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -426,24 +426,7 @@ local function create(parent)
         r:SetScript("OnEnter", function(self) if self.item then Map.PlaceTooltip(self, self.item, ROW_HINT) end end)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
-    f.list:SetPoint("TOPLEFT", 0, -92)
-    f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -92)
-    f.empty = W.Text(f, T.FONT.hint, 590, true)
-    f.empty:SetPoint("TOPLEFT", 6, -100)
-    f.empty:Hide()
-
-    f.hint = W.Text(f, T.FONT.hint, 598)
-    f.hint:SetPoint("TOPLEFT", 4, -390)
-    f.hint:SetText(L["Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."])
-    f.data = W.Text(f, T.FONT.hint, 598)
-    f.data:SetPoint("TOPLEFT", 4, -408)
-    f.showHidden = W.Button(f, L["Ausgeblendete zeigen"], 170, function()
-        wipe(hiddenSet())
-        ns.Fire("MAP_TARGET")
-        ns.Refresh()
-    end)
-    f.showHidden:SetPoint("TOPRIGHT", 0, -428)
-    f.showHidden:Hide()
+    f.empty = f:Empty()
 
     -- the target line's distance follows the player while the page shows
     f.wait = 0

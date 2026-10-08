@@ -280,7 +280,7 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " map columns", mf.head.kind, mf.head.src, mf.head.where, mf.head.items, mf.head.go)
     L.row(view .. " map list", mf.list, mf.list.bar)
     L.inside(view .. " map list bar", mf.list.bar)
-    L.column(view .. " map page", mf.zone, mf.counts, mf.target, mf.head.kind, mf.list, mf.hint, mf.data, mf.showHidden)
+    L.column(view .. " map page", mf.zone, mf.counts, mf.target, mf.head.kind, mf.list, mf.showHidden, mf.hint, mf.data)
     L.fits(mf.hint); L.fits(mf.data); L.fits(mf.counts); L.fits(mf.target)
 end
 NS.Reset("ui.view")
