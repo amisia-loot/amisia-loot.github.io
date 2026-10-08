@@ -77,7 +77,7 @@ if mode == "pages" then
     end
     for _, st in ipairs(S.STATES or {}) do
         local p = NS.Panel(st.page)
-        if p and NS.Visible(p) then todo[#todo + 1] = { key = st.page, name = st.name, open = st.open } end
+        if p and (st.always or NS.Visible(p)) then todo[#todo + 1] = { key = st.page, name = st.name, open = st.open } end
     end
     for _, p in ipairs(todo) do
         do

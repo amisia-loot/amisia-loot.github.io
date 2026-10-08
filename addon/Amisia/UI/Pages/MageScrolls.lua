@@ -10,7 +10,8 @@ local L = ns.L
 local W, MS, T = ns.W, ns.MageScrolls, ns.Theme
 local GREY, GREEN, LABEL = T.GREY, T.GREEN, T.LABEL
 local ICON = "Interface\\Icons\\INV_Scroll_03"
-local ROWS, ROW_H = 17, 22
+-- rows of 22 from the head row to the footer (two hint lines and the data line): 26 + 18 x 22 = 422 of 426
+local ROWS, ROW_H = 18, 22
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local COLORS = { orange = "ffff8040", yellow = "ffffff00", green = "ff40bf40", grey = "ff808080", red = "ffff2020", none = "ffffffff" }
 local COLOR_WORD = { orange = ns.N_("orange"), yellow = ns.N_("gelb"), green = ns.N_("grün"), grey = ns.N_("grau"),
@@ -25,6 +26,12 @@ local nameMissing = false
 function ns.MageScrollsPageFrame() return page end
 
 local function color(c, text) return ("|c%s%s|r"):format(c, text) end
+
+-- "08.10.2026" (English "Oct 8, 2026") from the data's "2026-10-08".
+local function longDate(iso)
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
+end
 
 local function itemText(id, fallback)
     local name, q, known = MS.ItemName(id, fallback)
@@ -286,7 +293,7 @@ local function refresh(f)
         for _, b in ipairs(books) do if b.done then done = done + 1 end end
         f.counts:SetText(L["%d von %d Büchern abgegeben"]:format(done, #books))
     end
-    f.data:SetText(L["Daten: Client %s, AllTheThings %s · Namen aus dem Client."]:format(d.build or "?", d.att ~= "" and d.att or "-"))
+    f.data:SetText(L["Daten: Client %s, Stand %s · Namen aus dem Client."]:format(d.build or "?", longDate(d.built)))
 end
 
 local function choose(e)
@@ -321,8 +328,10 @@ local function col(parent, x, w)
 end
 
 local function create(parent)
-    local f = CreateFrame("Frame", nil, parent)
+    local f = W.Page(parent)
     page = f
+    -- the head row: the view and its counts, the own rank at the right
+    local top = f:Bands({ "row" })
     f.view = W.Choice(f, 120, function(v)
         view = v
         ns.Refresh()
@@ -331,13 +340,14 @@ local function create(parent)
     for i, v in ipairs(VIEWS) do values[i] = { v[1], L[v[2]] } end
     f.view:SetValues(values)
     W.Tooltip(f.view, L["Ansicht"], L["Schriftrollen, mögliche Ergebnisse oder die Bibliothek."])
-    f.counts = W.Text(f, T.FONT.hint, 240)
-    W.Row(f, { f.view, { f.counts, gap = 10, y = -4 } }, T.CHIP_GAP, 0, -1)
+    f.counts = W.Text(f, T.FONT.hint)
     f.rank = W.Text(f, T.FONT.head, 230)
-    f.rank:SetPoint("TOPRIGHT", -2, -5)
     f.rank:SetJustifyH("RIGHT")
+    f:Place(1, { f.view, { f.counts, fill = true } }, { f.rank })
+    -- the hint takes two lines when it needs them, the data line under it
+    f:Footer({ { "hint", lines = 2 }, "data" })
 
-    f.list = W.List(f, ROWS, ROW_H, function(r)
+    f.list = f:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
         r.name = col(r, 4, 190)
         r.mark = col(r, 198, 62)
@@ -347,38 +357,22 @@ local function create(parent)
         r:SetScript("OnClick", function(self) choose(self.item) end)
         r:SetScript("OnEnter", function(self) entryTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillRow)
-    f.list:SetPoint("TOPLEFT", 0, -28)
-    f.list:SetWidth(290)
+    end, fillRow, { top = top, width = T.LAYOUT.SPLIT_LIST_W })
 
-    local d = W.Inset(f)
-    d:SetPoint("TOPLEFT", 306, -28)
-    d:SetPoint("TOPRIGHT", 0, -28)
-    d:SetHeight(ROWS * ROW_H)
+    -- the chosen entry in the inset beside the list, as high as the list
+    local d = f:Detail({ top = top, height = ROWS * ROW_H })
     f.detail = d
-    d.icon = d:CreateTexture(nil, "ARTWORK")
-    d.icon:SetSize(32, 32)
-    d.icon:SetPoint("TOPLEFT", 8, -8)
-    d.title = W.Text(d, T.FONT.title, 236)
-    d.title:SetPoint("TOPLEFT", 44, -14)
-    d.body = W.ScrollText(d)
-    d.body:SetPoint("TOPLEFT", 8, -48)
-    d.body:SetPoint("BOTTOMRIGHT", -16, 32)
     d.go = W.Button(d, L["Weg"], 70, function()
         if d.point and ns.MapSetPoint then
             local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
             if not ok and why then ns.msg(why) end
         end
-    end, { height = 20 })
-    d.go:SetPoint("BOTTOMRIGHT", -8, 8)
+    end, { height = T.ROW_BUTTON_H })
+    W.FitChip(d.go, 70)
+    d:Buttons({ d.go })
     W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf den Ort des Eintrags."])
 
-    f.hint = W.Text(f, T.FONT.hint, 598, true)
-    f.hint:SetPoint("TOPLEFT", 4, -410)
-    f.hint:SetMaxLines(2)
     f.hint:SetText(L["Magier entziffern Schriftrollen mit Arkanem Verständnis; höhere Stufen brauchen einen höheren Rang. Farben wie im Berufsfenster."])
-    f.data = W.Text(f, T.FONT.hint, 598)
-    f.data:SetPoint("TOPLEFT", f.hint, "BOTTOMLEFT", 0, -8)
     return f
 end
 

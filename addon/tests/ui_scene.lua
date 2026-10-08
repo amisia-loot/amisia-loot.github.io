@@ -128,6 +128,9 @@ S.STATES = {
     { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
     { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
     { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
+    -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
+    -- keeps its row from then on
+    { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },
 }
 
 S.WINDOWS = {
