@@ -404,7 +404,7 @@ end
 ---------------------------------------------------------------------------
 
 local function data() return ns.Data("GEAR") end
-function Gear.Available() return ns.HasData("GEAR") and ns.GEAR_WEIGHTS ~= nil end
+function Gear.Available() return ns.HasData("GEAR") and ns.HasData("GEAR_WEIGHTS") end
 
 -- The level cap of the loaded data set.
 function Gear.Cap()

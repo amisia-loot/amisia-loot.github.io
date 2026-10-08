@@ -8,7 +8,8 @@ local _, ns = ...
 -- point, the rest per point. SPD_* weigh weapon speed in seconds above SPDREF_* by slot, DPS/RDPS melee and
 -- ranged weapon damage, OHDPS the share an off-hand weapon's damage counts. ratings: rating per 1 % at 60.
 -- unit: what one point of score is worth; ref: the reference character per bracket; why: the reason in short.
-ns.GEAR_WEIGHTS = {
+ns.LazyData("GEAR_WEIGHTS", [=[
+return {
     brackets = {9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 60},
     order = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"},
     ratings = {BLOCK = 5, CRIT = 14, DEF = 1.5, DODGE = 12, EXP = 10, HASTE = 10, HIT = 10, PARRY = 15, SHIT = 8},
@@ -1002,3 +1003,4 @@ ns.GEAR_WEIGHTS = {
         },
     },
 }
+]=], 9)

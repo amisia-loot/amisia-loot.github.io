@@ -68,7 +68,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Collect/CollectSync.lua` | Source exchange CV/CQ/CI/CR/CW/CK | - | Comm, Collector, Drops, Trust |
 | `Collect/QuestXP.lua` | Quest XP seen by this client (own data only, never sent) | `questxp` | - |
 | `Data/GearData.lua` | generated (`build_gear.py`), lazy `GEAR` | - | LazyData |
-| `Data/GearWeights.lua` | generated (`build_bis.py`), `ns.GEAR_WEIGHTS` | - | - |
+| `Data/GearWeights.lua` | generated (`build_bis.py`), lazy `GEAR_WEIGHTS` | - | LazyData |
 | `Data/BisData.lua` | generated (`build_bis.py`), `ns.BIS` | - | - |
 | `Data/MapData.lua` | generated (`build_map.py`), lazy `MAP` | - | LazyData |
 | `Data/DungeonData.lua` | generated (`build_dungeons.py`) | - | - |

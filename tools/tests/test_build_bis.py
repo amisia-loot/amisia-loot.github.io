@@ -406,11 +406,8 @@ def build(tmp_path, wago, gear, specs=(('WARRIOR', 'dps'), ('MAGE', 'frost'))):
 
 
 def lua_load(path):
-    from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
-    ns = lua.eval('{}')
-    lua.eval('function(s, ns) return assert(loadstring(s))("Amisia", ns) end')(path.read_text(encoding='utf-8'), ns)
-    return ns
+    import lua_data
+    return lua_data.load(path.read_text(encoding='utf-8'), path.name)
 
 
 def test_a_whole_build(tmp_path, wago):

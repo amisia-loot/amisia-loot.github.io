@@ -127,7 +127,7 @@ them in dependency order; `build.py check` fails when a file is missing from it.
 
 ### Lazy data
 
-The big generated files (`GearData`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`)
+The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`, `ScanDone`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a

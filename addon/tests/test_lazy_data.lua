@@ -3,7 +3,7 @@
 -- fixture or nil assigned to a waiting key replaces it; ns.DropData lets go; a broken text is
 -- reported and gives nil.
 local KEYS = { GEAR = "GearData", MAP = "MapData", QUEST_DATA = "QuestData", PROFESSIONS = "ProfessionData",
-               TALENTS = "TalentData" }
+               TALENTS = "TalentData", GEAR_WEIGHTS = "GearWeights" }
 
 local function built(k) return NS.DataBuilt()[k] ~= nil end
 
@@ -22,7 +22,7 @@ for k in pairs(KEYS) do
     assert(NS.HasData(k), k .. " is there")
     assert(rawget(NS, k) == nil and not built(k), k .. " is not built at login")
 end
-assert(NS.Gear.Available() and not built("GEAR"), "the availability check builds nothing")
+assert(NS.Gear.Available() and not built("GEAR") and not built("GEAR_WEIGHTS"), "the availability check builds nothing")
 
 -- the main window on the settings page: the sections ask only whether the data is there
 NS.ShowPage("settings")

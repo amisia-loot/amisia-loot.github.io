@@ -1851,7 +1851,8 @@ def render_weights(result, conv, info):
             lines[-1] = lines[-1] + ' },'
         lines.append('        },')
     lines += ['    },', '}', '']
-    return '\n'.join(lines)
+    # the addon builds the table on first use (Core/LazyData.lua); the count is the classes
+    return lua_data.lazy('\n'.join(lines), 'GEAR_WEIGHTS', len(CLASS_ORDER))
 
 
 # ---------------------------------------------------------------- item sets
