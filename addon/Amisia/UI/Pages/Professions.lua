@@ -16,7 +16,6 @@ local SOURCES = { { "all", L["Alle Quellen"] }, { "T", L["Lehrer"] }, { "V", L["
     { "D", "Drop" }, { "Q", "Quest" } }
 local KNOWN = { { "all", L["Alle"] }, { "known", L["Bekannt"] }, { "unknown", L["Unbekannt"] } }
 local CAMP, FAVOR = "camp", "favor"
-local COUNTS_W = 222
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
 local page
@@ -338,9 +337,8 @@ local function refresh(f)
     for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search }) do
         if isRecipes then w:Show() else w:Hide() end
     end
-    -- without the filters (camp, favor) the counts take the whole line
-    f.counts:SetWidth(isRecipes and COUNTS_W or 598)
-    W.Row(f, f.filterRow, T.CHIP_GAP, 0, -27, { shown = true })
+    -- without the filters (camp, favor) the counts take the whole band
+    f:Place(2, f.filterRow, nil, { shown = true })
     local rank, max = nil, nil
     if isRecipes then rank, max = Pr.Rank(v) end
     f.rank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (isRecipes and (GREY .. L["Beruf nicht erlernt"] .. "|r") or ""))
@@ -358,7 +356,7 @@ local function refresh(f)
     f.selected = f.selected or list[1]
     f.list:SetItems(list)
     if #list == 0 then
-        f.empty:SetText(Pr.Available() and L["Keine Rezepte zu diesen Filtern."] or L["Für diesen Client gibt es keine Berufsdaten."])
+        f.empty:Set(L["Keine Rezepte"], Pr.Available() and L["Keine Rezepte zu diesen Filtern."] or L["Für diesen Client gibt es keine Berufsdaten."])
         f.empty:Show()
     else
         f.empty:Hide()
@@ -425,8 +423,10 @@ local function col(parent, x, w, template)
 end
 
 local function create(parent)
-    local f = CreateFrame("Frame", nil, parent)
+    local f = W.Page(parent)
     page = f
+    -- the head row: the profession and the search, the own rank at the right; under it the filters
+    local top = f:Bands({ "row", "row" })
     f.prof = W.Picker(f, 200, function(v)
         state().view = (v == CAMP or v == FAVOR) and v or tonumber(v)
         ns.Refresh()
@@ -435,10 +435,9 @@ local function create(parent)
         state().search = text ~= "" and text or nil
         ns.Refresh()
     end, L["Rezept suchen"])
-    W.Row(f, { f.prof, f.search }, 10, 0, -1)
     f.rank = W.Text(f, T.FONT.head, 210)
-    f.rank:SetPoint("TOPRIGHT", -2, -5)
     f.rank:SetJustifyH("RIGHT")
+    f:Place(1, { f.prof, f.search }, { f.rank })
 
     f.known = W.Choice(f, 100, function(v)
         state().known = v
@@ -464,12 +463,14 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.guild, L["Gilde"], L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."])
-    f.counts = W.Text(f, T.FONT.hint, COUNTS_W)
-    -- the filters, then the counts on the text line beside them
-    f.filterRow = { f.known, f.source, f.learn, f.guild, { f.counts, gap = 8, y = -31 } }
-    W.Row(f, f.filterRow, T.CHIP_GAP, 0, -27)
+    f.counts = W.Text(f, T.FONT.hint)
+    -- the filters, then the counts beside them (the whole band in the camp and favor views)
+    f.filterRow = { f.known, f.source, f.learn, f.guild, { f.counts, fill = true } }
+    f:Place(2, f.filterRow)
+    -- the hint takes two lines when it needs them (the favor vendors), the data line under it
+    f:Footer({ { "hint", lines = 2 }, "data" })
 
-    f.list = W.List(f, ROWS, ROW_H, function(r)
+    f.list = f:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
         r.name = col(r, 4, 196)
         r.mark = col(r, 204, 44)
@@ -487,41 +488,20 @@ local function create(parent)
         end)
         r:SetScript("OnEnter", function(self) entryTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillRow)
-    f.list:SetPoint("TOPLEFT", 0, -54)
-    f.list:SetWidth(290)
-    f.empty = W.Text(f, T.FONT.hint, 280, true)
-    f.empty:SetPoint("TOPLEFT", 6, -62)
-    f.empty:Hide()
+    end, fillRow, { top = top, width = T.LAYOUT.SPLIT_LIST_W })
+    f.empty = f:Empty(T.LAYOUT.SPLIT_LIST_W - 10)
 
-    local d = W.Inset(f)
-    d:SetPoint("TOPLEFT", 306, -54)
-    d:SetPoint("TOPRIGHT", 0, -54)
-    d:SetHeight(ROWS * ROW_H)
+    -- the chosen recipe in the inset beside the list, as high as the list
+    local d = f:Detail({ top = top, height = ROWS * ROW_H, sub = true })
     f.detail = d
-    d.icon = d:CreateTexture(nil, "ARTWORK")
-    d.icon:SetSize(32, 32)
-    d.icon:SetPoint("TOPLEFT", 8, -8)
-    d.head = CreateFrame("Button", nil, d)
-    d.head:SetPoint("TOPLEFT", 44, -8)
-    d.head:SetPoint("TOPRIGHT", -8, -8)
-    d.head:SetHeight(18)
-    d.title = W.Text(d.head, T.FONT.title, 236)
-    d.title:SetPoint("LEFT", 0, 0)
     d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
     d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    d.sub = W.Text(d, T.FONT.text, 236)
-    d.sub:SetPoint("TOPLEFT", 44, -28)
-    d.body = W.ScrollText(d)
-    d.body:SetPoint("TOPLEFT", 8, -46)
-    d.body:SetPoint("BOTTOMRIGHT", -16, 32)
     d.go = W.Button(d, L["Weg"], 70, function()
         if d.point and ns.MapSetPoint then
             local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
             if not ok and why then ns.msg(why) end
         end
-    end, { height = 20 })
-    d.go:SetPoint("BOTTOMRIGHT", -8, 8)
+    end, { height = T.ROW_BUTTON_H })
     W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
     d.ask = W.Button(d, L["Fragen"], 70, function()
         local e, who = d.entry, d.askWho
@@ -530,16 +510,11 @@ local function create(parent)
         local link
         if r.item > 0 then link = select(3, Pr.ItemInfo(r.item)) end
         Cr.Whisper(who.name, link or e.name)
-    end, { height = 20 })
-    d.ask:SetPoint("RIGHT", d.go, "LEFT", -T.CHIP_GAP, 0)
+    end, { height = T.ROW_BUTTON_H })
+    W.FitChip(d.go, 70)
+    W.FitChip(d.ask, 70)
+    d:Buttons({ d.ask, d.go })
     W.Tooltip(d.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
-
-    -- the hint takes two lines when it needs them (the favor vendors), the data line moves down
-    f.hint = W.Text(f, T.FONT.hint, 598, true)
-    f.hint:SetPoint("TOPLEFT", 4, -436)
-    f.hint:SetMaxLines(2)
-    f.data = W.Text(f, T.FONT.hint, 598)
-    f.data:SetPoint("TOPLEFT", f.hint, "BOTTOMLEFT", 0, -8)
     return f
 end
 

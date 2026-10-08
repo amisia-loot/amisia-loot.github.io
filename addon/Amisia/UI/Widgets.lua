@@ -1449,6 +1449,7 @@ function Scaffold:Line(i, fs)
         fs:SetPoint("LEFT", band, "LEFT", LAY.TEXT_X, 0)
         fs:SetPoint("RIGHT", band, "RIGHT", -LAY.TEXT_X, 0)
     end
+    fs:SetWidth(T.PAGE_W - 2 * LAY.TEXT_X)
     fs.layoutRole, fs.layoutBand = "line", band
     return fs
 end
@@ -1539,6 +1540,8 @@ function Scaffold:Footer(spec)
         fs:SetPoint("BOTTOMLEFT", foot, "BOTTOMLEFT", LAY.TEXT_X, y)
         fs:SetPoint("TOPRIGHT", foot, "BOTTOMRIGHT", -LAY.TEXT_X, y + h)
         if lines > 1 then fs:SetMaxLines(lines) end
+        -- the width the anchors give, also set (a refresh may measure the text against it)
+        fs:SetWidth(T.PAGE_W - 2 * LAY.TEXT_X)
         fs.layoutRole = "foot"
         self[name] = fs
         y = y + h
