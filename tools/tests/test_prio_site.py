@@ -7,6 +7,7 @@ the site's block through ns.ParseLootPrio, an export the addon wrote through the
 and back, so the addon drops its in-game edits once the site has them.
 """
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -149,7 +150,8 @@ def test_the_tab_sets_and_edits_a_prio(page):
     assert '1. Anna (Tank)' in page['row'] and '2. Warrior Furor' in page['row'] and '3. open' in page['row'] and 'data-lcedit="32235"' in page['row']
     assert page['refused'] == 'Not recognised: X1', 'a broken order changes nothing'
     assert page['form'] == ['32235', 'Anna (Tank), Warrior Furor, open', 'erst Tanks'], 'Edit fills the form again'
-    assert page['text'].endswith('#AMISIA-LC 1 forever 2026-10-07\nC 32235 %d p:Anna:Tank,c:WARRIOR:Furor,o erst Tanks\n#END' % s['at'])
+    # the page stamps today's date into the block
+    assert re.search(r'#AMISIA-LC 1 forever \d{4}-\d{2}-\d{2}\nC 32235 %d p:Anna:Tank,c:WARRIOR:Furor,o erst Tanks\n#END$' % s['at'], page['text']), page['text']
     assert page['readOnly'] == {'side': True, 'edit': False}, 'viewers only read'
 
 
