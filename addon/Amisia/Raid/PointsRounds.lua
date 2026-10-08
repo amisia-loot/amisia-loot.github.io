@@ -325,7 +325,10 @@ local function onBid(sender, rest, chan)
     if not e then
         ignore(r, full, n, why, sender)
     elseif r.seal then
-        ns.Say(L["Amisia: Gebot %d angenommen."]:format(e.value), "WHISPER", sender, { ttl = 30 })
+        -- a quiet confirmation, at most one per bidder every few seconds (Chat.lua)
+        if ns.ReplyGate("bidok", full:lower()) then
+            ns.Say(L["Amisia: Gebot %d angenommen."]:format(e.value), "WHISPER", sender, { ttl = 30 })
+        end
     else
         ns.Say(L["Höchstgebot: %d (%s)."]:format(e.value, e.name), "RAID", nil, { ttl = 10 })
     end

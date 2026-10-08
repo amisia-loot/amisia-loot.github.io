@@ -140,6 +140,10 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   so verfallen, als wäre er rechtzeitig da gewesen.
 - **Runden**: alle Beträge ganze Zahlen; nach dem Verfall wird kaufmännisch gerundet (0,5 weg von 0).
   PR wird mit zwei Nachkommastellen angezeigt, verglichen wird exakt (Kreuzprodukt).
+- **Doppelt zählen**: hat die Website einen Raid (R) oder eine Vergabe mit Kosten bzw. eine
+  Korrektur (I), zählt das Addon dafür nur noch den Stand der Website. Was sich danach im Spiel an
+  diesem Raid ändert, geht mit dem nächsten Export hinüber (die Website ersetzt den Raid ganz) und
+  erscheint im Spiel nach dem nächsten Einfügen.
 - **Systemwechsel**: ein laufender Raid behält sein System; das Protokoll bleibt, die Rangliste zeigt
   nur das aktive System (DKP-Einträge zählen nicht als EP).
 - **Beta-Bug der SavedVariables** und Lockdown: wie bisher; Gebote im Bosskampf von Hand.

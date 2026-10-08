@@ -79,10 +79,20 @@ local function build(s)
     local out = { v = 1, sys = cfg.sys, cfg = {}, s = {}, c = {} }
     for k in pairs(CFG) do out.cfg[k] = tonumber(cfg[k]) or 0 end
     out.cfg.mode = MODES[cfg.mode] and cfg.mode or "bid"
+    -- the standings once (a walk over every saved raid), then the group's mains out of them
+    local all = {}
+    for _, e in ipairs(ns.PointsStandings()) do all[e.name:lower()] = e end
     local seen = {}
     for _, name in ipairs(ns.GroupRoster()) do
-        local e = ns.PointsOf(name)
-        if e and not seen[e.name:lower()] and #out.s < MAX_LIST then
+        local main = ns.MainOf(name) or name
+        local e = all[main:lower()]
+        if not e then
+            for _, x in pairs(all) do
+                if ns.SameName(x.name, main) then e = x break end
+            end
+        end
+        e = e or { name = main, a = 0, b = 0 }
+        if not seen[e.name:lower()] and #out.s < MAX_LIST then
             seen[e.name:lower()] = true
             out.s[#out.s + 1] = { e.name, e.a, e.b }
         end

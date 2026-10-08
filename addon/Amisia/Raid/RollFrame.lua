@@ -322,6 +322,7 @@ refresh = function()
     -- a bid needs the number only, need and greed the chips only
     local mode = r and r.mode
     F.valueEdit:SetShown(mode ~= "pr")
+    F.valueEdit:SetMaxLetters(mode == "bid" and 6 or 3)
     F.msChip:SetShown(mode ~= "bid")
     F.osChip:SetShown(mode ~= "bid")
     if not r then
