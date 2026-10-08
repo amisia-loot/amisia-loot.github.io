@@ -955,7 +955,21 @@ function _G.CreateFrame(kind, name, parent, template)
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) if on then self:Show() else self:Hide() end end
     f.IsVisible = f.IsShown
-    f.SetText = function(self, t) self.text = t end
+    -- an edit box keeps at most its max letters (characters, not bytes), as the client does
+    f.SetMaxLetters = function(self, n) self.maxLetters = n; if n and n > 0 then self:SetText(self.text) end end
+    f.GetMaxLetters = function(self) return self.maxLetters or 0 end
+    f.SetText = function(self, t)
+        local max = self.maxLetters
+        if max and max > 0 and type(t) == "string" then
+            local n, cut = 0, nil
+            for pos, ch in t:gmatch("()([%z\1-\127\194-\244][\128-\191]*)") do
+                n = n + 1
+                if n > max then cut = pos - 1 break end
+            end
+            if cut then t = t:sub(1, cut) end
+        end
+        self.text = t
+    end
     f.GetText = function(self) return self.text end
     f.CreateFontString = function(self, _, layer, template) return region(self, "FontString", layer, template) end
     f.CreateTexture = function(self, _, layer) return region(self, "Texture", layer) end

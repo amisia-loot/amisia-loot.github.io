@@ -585,7 +585,7 @@ local function buildDialog()
     lab:SetText(L["Reihenfolge"])
     D.order = W.LineEdit(D, DW - 24 - 84, function() end)
     D.order:SetPoint("LEFT", lab, "RIGHT", 4, 0)
-    D.order:SetMaxLetters(200)
+    D.order:SetMaxLetters(MAX_LINE)   -- ten full names with roles reach about 700 characters
     local noteLab = W.Text(D, T.FONT.text, 80)
     noteLab:SetPoint("TOPLEFT", 12, -88)
     noteLab:SetText(L["Notiz"])

@@ -275,6 +275,23 @@ assert(has(lastMsg(), "Prioliste vom 2026-10-08"), lastMsg())
 SlashCmdList.AMISIA("prio " .. link)
 assert(NS.PrioDialog:IsShown() and NS.PrioDialog.order:GetText() == "Vuloo, Anna")
 NS.PrioDialog:Hide()
+-- a long valid list (ten full names with roles) survives the dialog: shown whole, saved whole
+do
+    local names = { "Annabelle Sturmwind", "Brunhilde Eisherz", "Cassandra Dornfeld", "Dietlinde Morgentau", "Eleonora Feuerkind",
+        "Friederike Nachtlied", "Gwendolyn Rabenfels", "Hildegard Wolkenbruch", "Isabella Steinbrecher", "Josefine Sonnenwind" }
+    local parts = {}
+    for i, n in ipairs(names) do parts[i] = "p:" .. n:gsub(" ", "_") .. ":Heiler-Schamane" end
+    local long = NS.LootPrioFreeText(NS.ParsePrioToken(table.concat(parts, ",")))
+    assert(#long > 300, #long)
+    assert(NS.EditLootPrio(link, long, ""))
+    SlashCmdList.AMISIA("prio " .. link)
+    local D = NS.PrioDialog
+    assert(D.order:GetText() == long, "shown whole: " .. #D.order:GetText() .. " of " .. #long)
+    D.save:Click()
+    local p = NS.LootPrioOf(32235).prio
+    assert(#p == 10 and p[10].name == "Josefine Sonnenwind" and p[10].label == "Heiler-Schamane", "saved whole")
+    assert(NS.EditLootPrio(link, "Vuloo, Anna", ""))
+end
 assert(NS.Set("ui.view", "raider"))
 STUB.messages = {}
 SlashCmdList.AMISIA("prio " .. link)
