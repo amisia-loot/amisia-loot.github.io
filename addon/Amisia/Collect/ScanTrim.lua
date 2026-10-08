@@ -169,6 +169,15 @@ local function trim(m, s, pause)
         s.retry = keep
     end
 
+    -- a Lua table keeps its size when its keys go: new tables with what is left give the memory back now
+    -- (in one step: anything added meanwhile is copied too)
+    for _, key in ipairs({ "items", "sources" }) do
+        if type(s[key]) == "table" then
+            local fresh = {}
+            for k, v in pairs(s[key]) do fresh[k] = v end
+            s[key] = fresh
+        end
+    end
     s.count = count(s.items)
     s.sourceCount = count(s.sources)
     return res
