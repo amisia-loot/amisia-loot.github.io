@@ -12,7 +12,7 @@ ns.GEAR_WEIGHTS = {
     brackets = {9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 60},
     order = {"WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"},
     ratings = {BLOCK = 5, CRIT = 14, DEF = 1.5, DODGE = 12, EXP = 10, HASTE = 10, HIT = 10, PARRY = 15, SHIT = 8},
-    built = "2026-10-07",
+    built = "2026-10-08",
     specs = {
         WARRIOR = {
             { key = "dps", name = "Waffen/Furor", role = "dps", unit = "AP",
@@ -108,7 +108,7 @@ ns.GEAR_WEIGHTS = {
             { key = "ret", name = "Vergeltung", role = "dps", unit = "AP",
               why = "Vergeltung: Waffenschaden und Stärke zuerst, langsame Zweihänder für Siegel; Intelligenz für das Mana.",
               Speedrun = {
-                {AGI = 0.727, AP = 1, ARMOR = 0.0058, BLOCK = 0.05, CRIT = 3.328, DEF = 0.022, DODGE = 0.168, DPS = 14, EXP = 4.303, HASTE = 3.718, HIT = 4.303, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.168, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 9.46, SPD_MH = 9.632, SPI = 0.054, STA = 0.2, STR = 2},
+                {AGI = 0.727, AP = 1, ARMOR = 0.00579, BLOCK = 0.05, CRIT = 3.325, DEF = 0.022, DODGE = 0.168, DPS = 14, EXP = 4.302, HASTE = 3.717, HIT = 4.302, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.168, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 9.457, SPD_MH = 9.629, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.657, AP = 1, ARMOR = 0.00706, BLOCK = 0.073, CRIT = 4.151, DEF = 0.032, DODGE = 0.242, DPS = 14, EXP = 5.239, HASTE = 4.526, HIT = 5.239, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.242, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 21.25, SPD_MH = 21.973, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.564, AP = 1, ARMOR = 0.00653, BLOCK = 0.08, CRIT = 4.843, DEF = 0.035, DODGE = 0.266, DPS = 14, EXP = 5.984, HASTE = 5.17, HIT = 5.984, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.266, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 33.794, SPD_MH = 35.414, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.553, AP = 1, ARMOR = 0.00665, BLOCK = 0.084, CRIT = 6.046, DEF = 0.037, DODGE = 0.279, DPS = 14, EXP = 7.558, HASTE = 6.53, HIT = 7.558, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.279, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 53.091, SPD_MH = 56.295, SPI = 0.054, STA = 0.2, STR = 2},
@@ -122,7 +122,7 @@ ns.GEAR_WEIGHTS = {
                 {AGI = 0.58, AP = 1, ARMOR = 0.00914, BLOCK = 0.28, CRIT = 15.52, DEF = 0.123, DODGE = 0.932, DPS = 14, EXP = 17.891, HASTE = 16.621, HIT = 17.891, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.932, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 200.254, SPD_MH = 218.698, SPI = 0.054, STA = 0.2, STR = 2},
               },
               Hardcore = {
-                {AGI = 0.824, AP = 1, ARMOR = 0.018, BLOCK = 0.157, CRIT = 3.328, DEF = 0.069, DODGE = 0.524, DPS = 14, EXP = 4.303, HASTE = 3.718, HIT = 4.303, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.524, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 9.46, SPD_MH = 9.632, SPI = 0.054, STA = 0.6, STR = 2},
+                {AGI = 0.824, AP = 1, ARMOR = 0.018, BLOCK = 0.157, CRIT = 3.325, DEF = 0.069, DODGE = 0.524, DPS = 14, EXP = 4.302, HASTE = 3.717, HIT = 4.302, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.524, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 9.457, SPD_MH = 9.629, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.756, AP = 1, ARMOR = 0.021, BLOCK = 0.218, CRIT = 4.151, DEF = 0.096, DODGE = 0.726, DPS = 14, EXP = 5.239, HASTE = 4.526, HIT = 5.239, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.726, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 21.25, SPD_MH = 21.973, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.647, AP = 1, ARMOR = 0.02, BLOCK = 0.239, CRIT = 4.843, DEF = 0.105, DODGE = 0.797, DPS = 14, EXP = 5.984, HASTE = 5.17, HIT = 5.984, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.797, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 33.794, SPD_MH = 35.414, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.627, AP = 1, ARMOR = 0.02, BLOCK = 0.251, CRIT = 6.046, DEF = 0.11, DODGE = 0.836, DPS = 14, EXP = 7.558, HASTE = 6.53, HIT = 7.558, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.836, RDPS = 1, SP = 0.25, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 53.091, SPD_MH = 56.295, SPI = 0.054, STA = 0.6, STR = 2},
@@ -512,7 +512,7 @@ ns.GEAR_WEIGHTS = {
             { key = "enh", name = "Verstärkung", role = "dps", unit = "AP",
               why = "Verstärkung: Waffenschaden und Stärke zuerst, langsame Waffen für Windzorn und Sturmschlag.",
               Speedrun = {
-                {AGI = 0.638, AP = 1, ARMOR = 0.00473, BLOCK = 0.031, CRIT = 2.961, DEF = 0.014, DODGE = 0.105, DPS = 14, EXP = 4.055, HASTE = 3.504, HIT = 4.055, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.105, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 8.915, SPD_MH = 9.076, SPI = 0.054, STA = 0.2, STR = 2},
+                {AGI = 0.638, AP = 1, ARMOR = 0.00477, BLOCK = 0.032, CRIT = 2.96, DEF = 0.014, DODGE = 0.106, DPS = 14, EXP = 4.054, HASTE = 3.503, HIT = 4.054, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.106, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 8.912, SPD_MH = 9.073, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.587, AP = 1, ARMOR = 0.00638, BLOCK = 0.052, CRIT = 3.753, DEF = 0.023, DODGE = 0.175, DPS = 14, EXP = 5.021, HASTE = 4.338, HIT = 5.021, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.175, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 20.367, SPD_MH = 21.059, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.505, AP = 1, ARMOR = 0.0057, BLOCK = 0.055, CRIT = 4.398, DEF = 0.024, DODGE = 0.182, DPS = 14, EXP = 5.727, HASTE = 4.948, HIT = 5.727, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.182, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 32.342, SPD_MH = 33.893, SPI = 0.054, STA = 0.2, STR = 2},
                 {AGI = 0.432, AP = 1, ARMOR = 0.00665, BLOCK = 0.073, CRIT = 4.659, DEF = 0.032, DODGE = 0.242, DPS = 14, EXP = 6.214, HASTE = 5.369, HIT = 6.214, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.242, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 43.647, SPD_MH = 46.281, SPI = 0.054, STA = 0.2, STR = 2},
@@ -526,7 +526,7 @@ ns.GEAR_WEIGHTS = {
                 {AGI = 0.538, AP = 1, ARMOR = 0.01, BLOCK = 0.278, CRIT = 14.241, DEF = 0.123, DODGE = 0.927, DPS = 14, EXP = 17.995, HASTE = 16.134, HIT = 17.995, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.927, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 194.39, SPD_MH = 212.295, SPI = 0.054, STA = 0.2, STR = 2},
               },
               Hardcore = {
-                {AGI = 0.7, AP = 1, ARMOR = 0.014, BLOCK = 0.096, CRIT = 2.961, DEF = 0.043, DODGE = 0.32, DPS = 14, EXP = 4.055, HASTE = 3.504, HIT = 4.055, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.32, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 8.915, SPD_MH = 9.076, SPI = 0.054, STA = 0.6, STR = 2},
+                {AGI = 0.7, AP = 1, ARMOR = 0.014, BLOCK = 0.097, CRIT = 2.96, DEF = 0.043, DODGE = 0.321, DPS = 14, EXP = 4.054, HASTE = 3.503, HIT = 4.054, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.321, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 8.912, SPD_MH = 9.073, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.664, AP = 1, ARMOR = 0.019, BLOCK = 0.157, CRIT = 3.753, DEF = 0.069, DODGE = 0.524, DPS = 14, EXP = 5.021, HASTE = 4.338, HIT = 5.021, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.524, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 20.367, SPD_MH = 21.059, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.567, AP = 1, ARMOR = 0.017, BLOCK = 0.164, CRIT = 4.398, DEF = 0.072, DODGE = 0.546, DPS = 14, EXP = 5.727, HASTE = 4.948, HIT = 5.727, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.546, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 32.342, SPD_MH = 33.893, SPI = 0.054, STA = 0.6, STR = 2},
                 {AGI = 0.5, AP = 1, ARMOR = 0.02, BLOCK = 0.218, CRIT = 4.659, DEF = 0.096, DODGE = 0.727, DPS = 14, EXP = 6.214, HASTE = 5.369, HIT = 6.214, INT = 0.45, MP5 = 0.36, OHDPS = 0.39, PARRY = 0.727, RDPS = 1, SP = 0.2, SPDREF_2H = 3.3, SPDREF_MH = 2.6, SPD_2H = 43.647, SPD_MH = 46.281, SPI = 0.054, STA = 0.6, STR = 2},
