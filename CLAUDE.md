@@ -1,22 +1,25 @@
 # Amisia loot ledger
 
-- The old claude.ai artifact copy of the site (the "twin") is no longer maintained (since 2026-10-06); the live site on GitHub Pages is the only one.
-- The addon speaks German (deDE) and English (every other client): new user-visible text goes in German inside `L["…"]` with its English in `addon/Amisia/Locales/enUS_<area>.lua`; `python3 tools/l10n.py check` must stay clean (see tools/README.md, Languages).
-- Bump `BUILD_ID` in `index.html` whenever a data file changes, or browsers keep the cached copy.
-- One entry point: `python3 tools/build.py check` (syntax, addon tests, layout rules, tool tests, UTF-8, TOC, luacheck), `python3 tools/build.py data [--sv FILE] [--wago DIR]` (every generated file in `addon/Amisia/Data`, in order), `python3 tools/build.py snapshots [--out DIR] [--compare DIR]` (PNGs of every page and window from the test stub, an index.html, the shots whose layout changed) and `python3 tools/build.py release X.Y.Z -m "summary"` (version in the TOC, check, zip, CHANGELOG.md, commit, push, `tools/release_addon.sh`). Details in `tools/README.md`.
-- Lazy data (since 2026-10-07): GearData, MapData, QuestData, ProfessionData and TalentData hand their table to `ns.LazyData` as text (the generators call `tools/lua_data.py` `lazy()`); read them with `ns.Data("GEAR")` etc., check them with `ns.HasData`/`ns.DataSize` (never build data in an availability check or at login; `tools/load_cost.py` and `addon/tests/test_lazy_data.lua` show it).
-- UI (since 2026-10-07): sizes, gaps, paddings, fonts, colours and the allowed atlases come from `UI/Theme.lua` (`ns.Theme`); lay out chip rows, headers and rows with `W.Row`/`W.Column`/`W.Grid`, size chips and buttons to their text with `W.FitChip`. Before and after a UI refactor run `build.py snapshots --out A`, then `--out B --compare A`. A new atlas goes into `ns.Theme.ATLASES` only if it fits the Forever style.
-- Tests one by one: `python -m pytest tools/tests -q`, `python addon/tests/run.py [name]` and `node addon/tests/syntax.cjs`.
-- Addon layout (since 2026-10-07): `addon/Amisia/{Core,Raid,Gear,Collect,Data,UI,UI/Pages}`; `Data/` holds only generated files. The version stands only in `## Version:` of `Amisia.toc` (Core reads it at load). A new file goes into the TOC at its place in the load order; a new client global into `read_globals` of `.luacheckrc`.
-
-## Addon development on the N100 (since 2026-10-04)
-
-- The working copy for the addon is `~/addons/Amisia` on the N100. Syncthing sends the release folder `~/addons/_release/Amisia` (send-only, folder `amisia`) to `C:\Users\aobiw\VuloSync\Amisia` on the PC; the `Amisia` folder in `_classic_beta_` is a junction on it (the `_anniversary_` one is gone: Amisia is WoW Forever only since 2.0, the TBC ledger lives on only as the read-only archive of the site).
-- Saving in `addon/Amisia` does not reach the game (since 2026-10-04). A finished, committed version goes there with `tools/release_addon.sh` (`tools/build.py release` runs it); then `/reload` in game shows it.
-- Amisia's SavedVariables (`Amisia.lua`, Forever account) come back from the PC to `~/addons/_SavedVariables/Amisia.lua` through the receive-only Syncthing folder `vfui-savedvariables` (its `.stignore` lets `/Amisia.lua` through since 2026-10-05). Read only; build_scan.py and the drop archive can use it on the N100.
-- The wago.tools client tables (CSV, downloaded by hand in the browser per Forever build) come from the PC to `~/addons/_wago` through the receive-only Syncthing folder `amisia-wago` (since 2026-10-06). `tools/build_bis.py --wago ~/addons/_wago` reads them.
-- Never download from wago.tools (or wowhead, foreverchanges) by script or from the N100: its robots.txt forbids bots. Client tables come only from the user's own export (`tools/export_db2.ps1` on the PC, into `~/addons/_wago`); add a missing table to that script's lists and ask the user to run it.
-- `tools/sync_addon.ps1` skips junctioned targets, so the PC never writes into the received copy.
-- On the N100 the tests run with the venv `~/.venvs/amisia`: `~/.venvs/amisia/bin/python addon/tests/run.py`, `~/.venvs/amisia/bin/python -m pytest tools/tests -q`, and `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node addon/tests/syntax.cjs` (Node lives in `~/.local/node/bin`).
-- `tools/build_gear.py`, `tools/build_map.py` and `tools/build_dungeonquests.py` run on the N100 from the AllTheThings cache `~/addons/_cache/att` (MIT, read only through the sandboxed `tools/att_data.py`; `--refresh-att` updates it). No QuestieDB (it has no licence; removed 2026-10-06). PC-only inputs are optional: AtlasLoot, OneForAll, RXP and the SavedVariables; `tools/build_scan.py` and `tools/build_bossnames.py` (archive only) still read the WoW install.
-- The codex CLI is not installed on the N100. Subagents only as `opus-medium` (implementation, reviews) or `sonnet-medium` (simple tasks), defined in ~/.claude/agents; never Fable.
+- **Read `docs/ARCHITECTURE.md` and `docs/DECISIONS.md` before changing anything.** Update them in the
+  same commit when you change a protocol (addon message kind, blob art), an export line or paste-in
+  block, a saved `AmisiaDB` key, a settings section, a TOC file or a decision. `tools/tests/test_contracts.py`
+  fails when the code and the documents drift apart.
+- Repo: WoW Forever addon `addon/Amisia`, the site `index.html` (+ `data/*.js`, GitHub Pages, the only
+  live copy; the claude.ai twin is unmaintained), builders and tests in `tools/`.
+- One entry point: `python3 tools/build.py check` (must stay green), `data [--sv FILE] [--wago DIR]`,
+  `snapshots [--out DIR] [--compare DIR]`, `release X.Y.Z -m "summary"`. Details in `tools/README.md`.
+  Tests one by one: `~/.venvs/amisia/bin/python -m pytest tools/tests -q`,
+  `~/.venvs/amisia/bin/python addon/tests/run.py [name]`,
+  `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node addon/tests/syntax.cjs` (Node in `~/.local/node/bin`).
+- New user-visible text: German inside `L["…"]`, English in `addon/Amisia/Locales/enUS_<area>.lua`;
+  `python3 tools/l10n.py check` stays clean.
+- UI: sizes, fonts, colours and allowed atlases from `UI/Theme.lua`; rows with `W.Row`/`W.Column`/`W.Grid`,
+  chips with `W.FitChip`. Before and after a UI refactor: `build.py snapshots --out A`, then `--out B --compare A`.
+- Lazy data: read generated tables with `ns.Data("GEAR")` etc., check with `ns.HasData`/`ns.DataSize`.
+- Bump `BUILD_ID` in `index.html` whenever a `data/*.js` file changes.
+- Saving in `addon/Amisia` does not reach the game: only `tools/build.py release` (via
+  `tools/release_addon.sh`) copies a committed version to the Syncthing release folder; then `/reload`.
+  Machines and folders: ARCHITECTURE.md, "Machines".
+- Never download from wago.tools, Wowhead or foreverchanges by script (DECISIONS D-03): a missing client
+  table goes into `tools/export_db2.ps1` and the user runs it on the PC.
+- Subagents only `opus-medium` or `sonnet-medium`, never Fable, no nested agents (DECISIONS D-31).

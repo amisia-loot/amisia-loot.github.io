@@ -254,7 +254,7 @@ ns.BIS = {
     OI = {},
     EF = { A = 2, C = 2, D = 3, DMAX = 30, P = 25, Q = 2, QSTEP = 1, R = 8, V = 1, W = 20, X = 6 },
     PICK = {
-        { class = "SHAMAN", from = 30, item = 280604, note = "BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung. Questreihe nach der Luft-Totem-Quest: den letzten Boss in Kral der Klingenhauer looten, dann je 5 Totems von Murlocs (Düstermarschen), Zentauren (Desolace), Verlorenen (Sümpfe des Elends) und Troggs (Ödland) sammeln.", slot = "MAINHAND", spec = "enh", src = "Schamanen-Quest „The Tempest's Weapons“", to = 34 },
+        { class = "SHAMAN", from = 30, item = 280604, note = "BiS für Verstärkung auf Stufe 30; ihr Effekt fehlt in der Wertung. Questreihe nach der Luft-Totem-Quest: den letzten Boss in Kral der Klingenhauer looten, dann je 5 Totems von Murlocs (Düstermarschen), Zentauren (Desolace), Verlorenen (Sümpfe des Elends) und Troggs (Ödland) sammeln.", slot = "MAINHAND", spec = "enh", src = "Schamanen-Quest \"The Tempest's Weapons\"", to = 34 },
     },
     PI = {
         [280604] = { "2HWEAPON", 2, 5, 30, 3, 1, 40, 0, 3.6, 0, name = "Rage of the Storm" },

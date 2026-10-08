@@ -26,7 +26,9 @@ python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
   the TOC against the addon folder (every listed file exists, every `.lua`/`.xml` is listed) and
-  luacheck with `.luacheckrc`. One line per step; the exit code is 1 when one fails. A missing
+  luacheck with `.luacheckrc`. The tool tests include `tools/tests/test_contracts.py`, which holds
+  `docs/ARCHITECTURE.md` (message kinds, blob arts, export lines, paste-in blocks, saved keys,
+  settings sections, module map) and `docs/DECISIONS.md` against the code. One line per step; the exit code is 1 when one fails. A missing
   node/luaparse or luacheck is reported as `skip`.
 - `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the

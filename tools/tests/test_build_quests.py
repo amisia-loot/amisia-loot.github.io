@@ -142,7 +142,7 @@ def test_the_licence_names_every_file_from_allthethings():
             if name.endswith('.lua'):
                 with open(os.path.join(base, name), encoding='utf-8') as fh:
                     top = ''.join(fh.readline() for _ in range(15))
-                if top.startswith('-- GENERATED') and 'AllTheThings' in top:
+                if top.upper().startswith('-- GENERATED') and 'AllTheThings' in top:
                     users.append(os.path.relpath(os.path.join(base, name), ADDON).replace(os.sep, '/'))
     assert 'Data/ProfessionData.lua' in users and 'Data/QuestData.lua' in users
     missing = [n for n in users if n not in head]
