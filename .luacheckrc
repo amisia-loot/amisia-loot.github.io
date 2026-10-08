@@ -38,7 +38,7 @@ read_globals = {
     "GetQuestItemLink", "GetQuestLogIndexByID", "GetQuestLogTitle", "GetRaidRosterInfo", "GetRealZoneText",
     "GetServerTime", "GetSpellDescription", "GetSpellHitModifier", "GetSpellInfo", "GetTime", "GetTitleText",
     "GetZoneText", "GiveMasterLoot", "GuildControlGetNumRanks", "GuildControlGetRankName",
-    "HandleModifiedItemClick", "hooksecurefunc", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown",
+    "HandleModifiedItemClick", "hooksecurefunc", "InCombatLockdown", "UpdateAddOnMemoryUsage", "GetAddOnMemoryUsage", "IsAltKeyDown", "IsControlKeyDown",
     "IsInGroup", "IsInGuild", "IsInInstance", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
     "ITEM_CLASSES_ALLOWED", "LE_PARTY_CATEGORY_HOME", "LootFrame", "MapCanvasDataProviderMixin",
     "MapCanvasPinMixin", "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",

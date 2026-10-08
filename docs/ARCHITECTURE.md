@@ -35,7 +35,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Locales/enUS_world.lua` | English of Collect, map, quests, crafters | - | Locale |
 | `Locales/enUS_selftest.lua` | English of the self-test | - | Locale |
 | `Core/Registry.lua` | Pages, cards, settings schema (`ns.Get/Set`), slash words, `ns.Listen/Fire` | `settings` (via `ns.ApplySettings`) | MainFrame, Minimap (late) |
-| `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataSize`: generated tables built on first use | - | - |
+| `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataSize`: generated tables built on first use; `/amisia speicher` (memory before/after a full collection, data built) | - | - |
 | `Core/Core.lua` | Recording (sessions, members, loot, drops), guild bank count, export text, event frame, `ns.OnEvent`, item shim | `sessions`, `itemNames`, `exported`, `exportedBank`, `bank` | Awards, Mats, Bench, RaidLog, Points, BankNeeds, BankLog, LootPrio, GroupRolls (export hooks) |
 | `Core/Names.lua` | `ns.FullName`, `ns.SameName(In)`, `ns.ExportName` ("_" for the space) | - | - |
 | `Raid/Alts.lua` | Alt -> main (site paste), `ns.MainOf`, `ns.ImportSiteText` (all paste-in blocks) | `alts` | GuildWishes, LootPrio, Points |

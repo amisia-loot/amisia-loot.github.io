@@ -331,3 +331,12 @@ L["Vergebene Items, ohne Bank und Entzaubern."] = "Items awarded, without bank a
 L["Woche ab %s:"] = "Week from %s:"
 L["Zu spät: %d · Ersatzbank: %d"] = "Late: %d · bench: %d"
 L["Zu spät: %d · Ersatzbank: %d · Bosse gesehen: %d"] = "Late: %d · bench: %d · bosses seen: %d"
+
+-- Core/LazyData.lua (/amisia speicher)
+L["Nicht im Kampf: das Messen räumt den Speicher auf."] = "Not in combat: measuring collects the garbage."
+L["Speicher: %s, davon Müll %s, echte Daten %s."] = "Memory: %s, of it garbage %s, real data %s."
+L["Der Client nennt den Speicher der Addons nicht."] = "The client does not report the addons' memory."
+L["Geladene Daten: %s."] = "Data loaded: %s."
+L["Noch nicht geladen: %s."] = "Not loaded yet: %s."
+L["Gespeicherter Scan: %d Items, %d Quellen (räumt /amisia scan aufräumen auf)."] = "Saved scan: %d items, %d sources (/amisia scan cleanup clears it)."
+L["Speicher von Amisia messen (Daten und Müll)"] = "measure Amisia's memory (data and garbage)"

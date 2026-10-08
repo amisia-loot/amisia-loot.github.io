@@ -119,6 +119,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Gildenmitglied eine neuere Version hat, dann meldet Amisia einmal "Es gibt eine neuere Version (...)".
 - Prüfung: Wenn du auf "Über und Befehle" "Gilde fragen" klickst, dann füllt sich die Liste mit den Gildenmitgliedern, die Amisia haben.
 
+### F-071 Speicher messen
+- Version: 2.13.1
+- Status: gebaut
+- Prüfung: Wenn du `/amisia speicher` eingibst, dann nennt der Chat "Speicher: X MB, davon Müll Y MB, echte Daten Z MB." und die geladenen Datenteile mit ihrer Größe.
+- Prüfung: Wenn du vorher die Seite Ausrüstung öffnest, dann steht danach GEAR unter "Geladene Daten" statt unter "Noch nicht geladen".
+- Prüfung: Wenn du im Kampf bist, dann misst der Befehl nicht und sagt das.
+
 ## Addon: Raid und Loot
 
 ### F-013 Raid-Aufnahme (Anwesenheit, Bosse, Loot)
@@ -349,7 +356,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-043 BiS-Empfehlungen (von Hand gesetzte Picks)
 - Version: 2.5.3
-- Status: im Spiel geprüft (2026-10-07)
+- Status: gebaut
 - Prüfung: Wenn du als Verstärkungs-Schamane der Stufen 30 bis 34 die Seite Ausrüstung, Ziele öffnest, dann steht in der Haupthand Wut des Sturms (280604) mit dem Abzeichen "BiS-Empfehlung".
 - Prüfung: Wenn du den Tooltip oder "Warum?" ansiehst, dann nennt die Quelle die Schamanen-Quest nach dem Luft-Totem (Kral der Klingenhauer, letzter Boss und 20 Totems).
 - Notiz: Der Nutzer hat den Pick am 2026-10-06 bestellt und am 2026-10-07 nach dem Blick auf Stufe und Questreihe bestätigt: bleibt 30 bis 34 (DECISIONS D-10). Ein ausdrückliches "klappt im Spiel" gibt es nicht; ein schwacher Beleg.
@@ -433,10 +440,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-054 Scan-Daten aufräumen
 - Version: 2.13.0
-- Status: gebaut
+- Status: im Spiel geprüft (2026-10-08)
 - Prüfung: Wenn du `/amisia scan aufräumen` eingibst, dann meldet der Chat "Scan aufgeräumt (Stand ...): N Items, N Quellen und N offene IDs entfernt, etwa N KB ...".
 - Prüfung: Wenn du danach `/reload` machst und ausloggst, dann ist Amisia.lua auf wenige KB geschrumpft (vorher rund 2,4 MB).
 - Prüfung: Wenn "Ausgewertete Scan-Daten beim Login entfernen" (Einstellungen, Werkzeuge) an ist, dann räumt Amisia das einige Sekunden nach dem Login von selbst auf, ohne Ruckler.
+- Notiz: 2026-10-08: die Amisia.lua des Nutzers kam nach dem ersten Login mit 2.13.0 mit 15 KB statt 2,3 MB an, die Marke `scan.trim` trägt den Stand 2026-10-08; das automatische Aufräumen lief.
 
 ### F-055 Quellen-Sammler: Quests, Händler, Weltdrops
 - Version: 2.6.0

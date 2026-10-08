@@ -69,6 +69,60 @@ end
 -- What was built so far: { key = { ms, kb } } (the self-test and the tests read it).
 function ns.DataBuilt() return built end
 
+-- /amisia speicher: what the client counts for Amisia before and after a full garbage collection
+-- (the difference is garbage the client had not collected yet), the data tables built so far and
+-- the entries of the saved scan that still wait for the trim. Not in combat: a full collection can
+-- stutter for a moment.
+local function addonKB()
+    if not (UpdateAddOnMemoryUsage and GetAddOnMemoryUsage) then return nil end
+    UpdateAddOnMemoryUsage()
+    return GetAddOnMemoryUsage(ADDON)
+end
+
+local function mb(kb) return ("%.1f MB"):format(kb / 1024) end
+
+local function countKeys(t)
+    local n = 0
+    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
+    return n
+end
+
+function ns.MemoryReport()
+    local L = ns.L
+    if InCombatLockdown and InCombatLockdown() then return { L["Nicht im Kampf: das Messen räumt den Speicher auf."] } end
+    local before = addonKB()
+    collectgarbage("collect")
+    local after = addonKB()
+    local out = {}
+    if before and after then
+        out[#out + 1] = L["Speicher: %s, davon Müll %s, echte Daten %s."]:format(mb(before), mb(math.max(0, before - after)), mb(after))
+    else
+        out[#out + 1] = L["Der Client nennt den Speicher der Addons nicht."]
+    end
+    local keys = {}
+    for key in pairs(built) do if made[key] ~= nil then keys[#keys + 1] = key end end
+    table.sort(keys, function(a, b) return (built[a].kb or 0) > (built[b].kb or 0) end)
+    local parts = {}
+    for _, key in ipairs(keys) do parts[#parts + 1] = ("%s %s"):format(key, mb(built[key].kb or 0)) end
+    out[#out + 1] = L["Geladene Daten: %s."]:format(#parts > 0 and table.concat(parts, ", ") or L["keine"])
+    local waiting = {}
+    for key in pairs(pending) do waiting[#waiting + 1] = key end
+    table.sort(waiting)
+    if #waiting > 0 then out[#out + 1] = L["Noch nicht geladen: %s."]:format(table.concat(waiting, ", ")) end
+    local scan = AmisiaDB and AmisiaDB.scan
+    if type(scan) == "table" then
+        out[#out + 1] = L["Gespeicherter Scan: %d Items, %d Quellen (räumt /amisia scan aufräumen auf)."]
+            :format(countKeys(scan.items), countKeys(scan.sources))
+    end
+    return out
+end
+
+if ns.RegisterSlash then
+    ns.RegisterSlash("speicher", { en = "memory", desc = ns.L["Speicher von Amisia messen (Daten und Müll)"], run = function()
+        for _, line in ipairs(ns.MemoryReport()) do ns.msg(line) end
+    end })
+end
+
 -- ns.KEY reads go through ns.Data too; an assignment to a key that still waits replaces it.
 setmetatable(ns, {
     __index = function(t, k)

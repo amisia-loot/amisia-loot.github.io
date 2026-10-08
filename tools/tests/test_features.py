@@ -83,13 +83,18 @@ def test_ids_are_unique(real):
 
 
 def test_versions_are_real_versions(real):
+    # an entry may already carry the coming release (written before `build.py release`), but only
+    # one such version, and only as `gebaut`
     current = build.toc_version()
+    coming = set()
     for f in real:
         if f.status == fe.PLANNED and f.version == '-':
             continue
         assert re.fullmatch(r'\d+\.\d+\.\d+', f.version), f.id
-        assert fe.version_key(f.version) <= fe.version_key(current), \
-            f'{f.id}: version {f.version} is newer than the TOC version {current}'
+        if fe.version_key(f.version) > fe.version_key(current):
+            assert f.status == fe.BUILT, f'{f.id}: version {f.version} is newer than the TOC version {current}'
+            coming.add(f.version)
+    assert len(coming) <= 1, f'more than one coming release: {sorted(coming)}'
 
 
 def test_addon_and_site_have_their_sections(real):
