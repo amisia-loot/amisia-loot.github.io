@@ -83,49 +83,42 @@ function ns.AboutPageFrame() return page end
 
 ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
-        f.head = W.Text(f, T.FONT.title, 590)
-        f.head:SetPoint("TOPLEFT", 0, 0)
-        f.sub = W.Text(f, T.FONT.text, 590)
-        f.sub:SetPoint("TOPLEFT", 0, -18)
-        f.newer = W.Text(f, T.FONT.text, 590)
-        f.newer:SetPoint("TOPLEFT", 0, -38)
-        f.title = W.Text(f, T.FONT.title, 360)
-        f.title:SetPoint("TOPLEFT", 0, -62)
-        f.askGuild = W.Button(f, L["Gilde fragen"], 110, function() ask("guild") end)
-        f.askGuild:SetPoint("TOPRIGHT", 0, -58)
-        f.askRaid = W.Button(f, L["Raid fragen"], 110, function() ask("raid") end)
-        f.askRaid:SetPoint("TOPRIGHT", -116, -58)
-        tipButton(f.askGuild)
-        tipButton(f.askRaid)
-        f.summary = W.Text(f, T.FONT.text, 590)
-        f.summary:SetPoint("TOPLEFT", 0, -86)
-        f.cols = {}
-        for _, col in ipairs(COLS) do
-            local fs = W.Text(f, T.FONT.hint, col[3])
-            fs:SetPoint("TOPLEFT", col[2], -104)
-            fs:SetText(col[4])
-            f.cols[#f.cols + 1] = fs
-        end
-        f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
-        -- 12 px short of the right edge: room for the thin scroll bar (the old bar needed 24)
-        f.list:SetPoint("TOPLEFT", 0, -122)
-        f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -122)
-        f.empty = W.Text(f, T.FONT.hint, 560)
-        f.empty:SetPoint("TOPLEFT", 6, -126)
-        f.cmdTitle = W.Text(f, T.FONT.title, 300)
-        f.cmdTitle:SetPoint("TOPLEFT", 0, -290)
-        f.cmdTitle:SetText(L["Befehle"])
+        local f = W.Page(parent)
+        -- the head row: the version and the self-test; the line under it, a newer version; then who
+        -- runs Amisia in raid and guild with the buttons that ask, and the summary
+        f:Bands({ "row", "line", "line", "row", "line" })
+        f.head = W.Text(f, T.FONT.title)
         -- the in-game self-test: a report of the client to copy into a chat with the developers
         f.selfTest = W.Button(f, L["Selbsttest"], 110, function() if ns.ShowSelfTest then ns.ShowSelfTest() end end)
-        -- between the list (ends at -282) and the command text (starts at -308)
-        f.selfTest:SetPoint("TOPRIGHT", -12, -284)
+        W.FitChip(f.selfTest, 110)
         f.selfTest.tip = L["Prüft Namen, Sperren, Gildenränge, Atlanten, Vorlagen und Client-Funktionen und zeigt einen Bericht zum Kopieren. Sendet nichts."]
         tipButton(f.selfTest)
+        f:Place(1, { { f.head, fill = true } }, { f.selfTest })
+        f.sub = f:Line(2)
+        f.newer = f:Line(3)
+        f.title = W.Text(f, T.FONT.title, 360)
+        f.askGuild = W.Button(f, L["Gilde fragen"], 110, function() ask("guild") end)
+        f.askRaid = W.Button(f, L["Raid fragen"], 110, function() ask("raid") end)
+        W.FitChip(f.askGuild, 110)
+        W.FitChip(f.askRaid, 110)
+        tipButton(f.askGuild)
+        tipButton(f.askRaid)
+        f:Place(4, { f.title }, { f.askRaid, f.askGuild })
+        f.summary = f:Line(5)
+        local _, heads = f:Columns(COLS)
+        f.cols = {}
+        for i, col in ipairs(COLS) do f.cols[i] = heads[col[1]] end
+        f.list = f:List(ROWS, ROW_H, buildRow, fillRow)
+        f.empty = f:Empty()
+        f.empty:Set(L["Niemand gesehen"], "")
+        -- the commands under the list, down to the page's end
+        f.cmdTitle = W.Text(f, T.FONT.title, 300)
+        f.cmdTitle:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -6)
+        f.cmdTitle:SetText(L["Befehle"])
         f.text = W.ScrollText(f)
-        f.text:SetPoint("TOPLEFT", 0, -308)
+        f.text:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -24)
         -- the text ends with the list; its bar lies under the list's
-        f.text:SetPoint("BOTTOMRIGHT", -12, 0)
+        f.text:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
         page = f
         return f
     end,

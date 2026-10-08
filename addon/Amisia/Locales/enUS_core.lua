@@ -225,6 +225,7 @@ L[" · %d von %d, Mausrad"] = " · %d of %d, mouse wheel"
 L["Raid: %d von %d mit Amisia%s · %s"] = "Raid: %d of %d with Amisia%s · %s"
 L[" · %d veraltet"] = " · %d outdated"
 L["Noch keine anderen Amisia-Clients gesehen."] = "No other Amisia clients seen yet."
+L["Niemand gesehen"] = "Nobody seen"
 
 -- UI/Pages/Export.lua
 L["Noch keine Raids und keine Gildenbank-Zählung zum Exportieren."] = "No raids and no guild bank count to export yet."
