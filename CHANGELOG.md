@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.13.2 (2026-10-08)
+
+- speicher: the data sizes are labelled as measured when built, garbage included; F-071 checked in game
+- Settings: the row the player changed keeps its place on screen when sections come or go above it (the view, expert mode); the stub's GetPoint reads the points set
+
 ## 2.13.1 (2026-10-08)
 
 - build_scan.run_sv: runs the text of any SavedVariables file in the sandbox and returns its globals; load_sv uses it for AmisiaDB
