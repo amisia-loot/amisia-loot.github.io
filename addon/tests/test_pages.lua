@@ -134,7 +134,8 @@ do
     local ef = NS.ExportPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(ef, 602, 478)
     L.row("export buttons", ef.newBtn, ef.selBtn, ef.state)
-    L.column("export page", ef.intro, ef.newBtn, ef.area, ef.hint)
+    -- the head row (buttons), the line under it, the text, the footer
+    L.column("export page", ef.newBtn, ef.intro, ef.area, ef.hint)
     L.inside("export area", ef.area)
     assert(ef.area.bar and ef.area.bar.inherits.MinimalScrollBar, "the export text scrolls with the thin bar")
     L.inside("export bar", ef.area.bar)

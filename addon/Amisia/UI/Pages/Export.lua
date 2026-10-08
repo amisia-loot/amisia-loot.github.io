@@ -61,15 +61,14 @@ end
 
 ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 60, group = "guild", officer = true,
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
-        local intro = W.Text(f, T.FONT.body, 590, true)
-        intro:SetPoint("TOPLEFT", 0, -2)
-        intro:SetText(L["Text für den Import-Tab der Amisia-Loot-Seite."])
+        local f = W.Page(parent)
+        -- the head row: what to export, and how much is new; under it what the text is for
+        local top = f:Bands({ "row", "line" })
         local newBtn = W.Button(f, L["Neue und geänderte"], 150, function()
             wipe(ns.RaidSelection)
             ns.ShowExport(false)
         end)
-        newBtn:SetPoint("TOPLEFT", 0, -26)
+        W.FitChip(newBtn, 150)
         local selBtn = W.Button(f, L["Angekreuzte"], 120, function()
             if not next(ns.RaidSelection) then
                 ns.msg(L["Zuerst Raids auf der Seite Raids ankreuzen."])
@@ -77,21 +76,23 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
             end
             ns.ShowExport(false)
         end)
-        selBtn:SetPoint("LEFT", newBtn, "RIGHT", 6, 0)
-        f.state = W.Text(f, T.FONT.hint, 300)
-        f.state:SetPoint("LEFT", selBtn, "RIGHT", 10, 0)
+        W.FitChip(selBtn, 120)
+        f.state = W.Text(f, T.FONT.hint)
+        f:Place(1, { newBtn, selBtn, { f.state, fill = true } })
+        local intro = f:Line(2)
+        intro:SetText(L["Text für den Import-Tab der Amisia-Loot-Seite."])
+        f:Footer({ "hint" })
+        local hint = f.hint
+        hint:SetText(L["Strg+A, Strg+C, im Import-Tab einfügen."])
         area = W.EditArea(f)
-        area:SetPoint("TOPLEFT", 0, -56)
-        area:SetPoint("BOTTOMRIGHT", 0, 24)
+        area:SetPoint("TOPLEFT", 0, top)
+        area:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
         area.box:SetScript("OnTextChanged", function(self, userInput)
             if userInput then
                 self:SetText(exportText)
                 self:HighlightText()
             end
         end)
-        local hint = W.Text(f, T.FONT.hint, 590)
-        hint:SetPoint("BOTTOMLEFT", 0, 4)
-        hint:SetText(L["Strg+A, Strg+C, im Import-Tab einfügen."])
         -- the parts the layout tests read
         f.intro, f.newBtn, f.selBtn, f.area, f.hint = intro, newBtn, selBtn, area, hint
         page = f
