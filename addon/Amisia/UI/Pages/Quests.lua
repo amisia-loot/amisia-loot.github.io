@@ -324,7 +324,7 @@ local function create(parent)
         r.go = W.Button(r, L["Weg"], 54, function(self)
             local e = self:GetParent().item
             if e and e.qid then say(ns.QuestWaypoint(e.qid)) end
-        end)
+        end, { height = T.ROW_BUTTON_H })
         r.go:SetPoint("LEFT", 536, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", onRowClick)

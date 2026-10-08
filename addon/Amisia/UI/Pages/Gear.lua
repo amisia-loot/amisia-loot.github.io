@@ -776,7 +776,7 @@ local function buildHere(f)
         r.wishBtn = W.Button(r, L["Wunsch##Knopf"], 82, function(self)
             local e = self:GetParent().item
             if e then toggleWish(e.id, e.wished) end
-        end)
+        end, { height = T.ROW_BUTTON_H })
         r.wishBtn:SetPoint("LEFT", 508, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)

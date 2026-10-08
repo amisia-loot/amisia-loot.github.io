@@ -12,9 +12,9 @@ local W, T = ns.W, ns.Theme
 
 local box   -- the link box of the editor, for the shift-click hook below
 local page
-local BANK_ROWS = 17      -- 26 (chips) + 70 + 17 * 22 = 470 of 478 px
-local NEED_ROWS, PLEDGE_ROWS, LOG_ROWS = 8, 7, 19
-local TOP = 26            -- the views start under the chips
+local BANK_ROWS = 17      -- 26 (chips) + 62 (state, editor) + 17 * 22 = 462 of 478 px
+-- the log: 18 rows of 22 under the filters and the column heads (44 + 396 of the view's 452)
+local NEED_ROWS, PLEDGE_ROWS, LOG_ROWS = 8, 7, 18
 local VIEWS = { bestand = true, bedarf = true, log = true, text = true }
 local view                -- the chosen view; nil: by the officer view
 
@@ -42,12 +42,14 @@ local LEVEL_COLOR = { low = T.RED, target = T.ORANGE, ok = T.GREEN, unknown = T.
 -- Bestand: the counted materials and the editor
 ---------------------------------------------------------------------------
 local function buildStock(f)
-    f.state = W.Text(f, T.FONT.body, 590, true)
-    f.state:SetPoint("TOPLEFT", 0, -TOP - 2)
+    -- the count's state (two lines), the editor (officers), the list
+    local S = W.Page(f, { view = true })
+    f.stock = S
+    S:Bands({ { "line", lines = 2 }, "row" })
+    f.state = S:Line(1)
     -- add by link: shift-click an item while the box has the focus, or type an item id
     f.add = {}
-    f.add.box = W.LineEdit(f, 260)
-    f.add.box:SetPoint("TOPLEFT", 0, -TOP - 40)
+    f.add.box = W.LineEdit(S, 260)
     box = f.add.box
     local function add()
         local ok, text = ns.AddMat(f.add.box:GetText() or "")
@@ -59,14 +61,13 @@ local function buildStock(f)
         self:ClearFocus()
         add()
     end)
-    f.add.button = W.Button(f, L["Hinzufügen##Bank"], 110, add)
-    f.add.button:SetPoint("LEFT", f.add.box, "RIGHT", 6, 0)
-    -- ends at 594, inside the page (220 reached 2 px past it)
-    f.add.hint = W.Text(f, T.FONT.hint, 210)
-    f.add.hint:SetPoint("LEFT", f.add.button, "RIGHT", 8, 0)
+    f.add.button = W.Button(S, L["Hinzufügen##Bank"], 110, add)
+    W.FitChip(f.add.button, 110)
+    f.add.hint = W.Text(S, T.FONT.hint)
     f.add.hint:SetText(L["Link mit Shift-Klick einfügen"])
-    -- 17 rows fit the page under the chips and the editor; the wheel scrolls the rest
-    f.list = W.List(f, BANK_ROWS, 22, function(r)
+    S:Place(2, { f.add.box, f.add.button, { f.add.hint, fill = true } })
+    -- 17 rows fit the page under the chips, the state and the editor; the wheel scrolls the rest
+    f.list = S:List(BANK_ROWS, 22, function(r)
         r.name = W.Text(r, T.FONT.text, 300)
         r.name:SetPoint("LEFT", 6, 0)
         r.count = W.Text(r, T.FONT.text, 80)
@@ -77,7 +78,7 @@ local function buildStock(f)
             local _, text = ns.RemoveMat(row.item.id)
             ns.msg(text)
             ns.Refresh()
-        end)
+        end, { height = T.ROW_BUTTON_H })
         r.remove:SetPoint("RIGHT", -4, 0)
         -- as wide as its word needs ("Weg", "Remove"); the count stays 10 px to its left
         W.FitChip(r.remove, 46)
@@ -88,14 +89,11 @@ local function buildStock(f)
         r.count:SetText(e.count and tostring(e.count) or "-")
         if ns.IsOfficerView() then r.remove:Show() else r.remove:Hide() end
     end)
-    -- 12 px short of the right edge: room for the list's scroll bar; the count and the button
-    -- hang on the row's right and move with it
-    f.list:SetPoint("TOPLEFT", 0, -TOP - 70)
-    f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -TOP - 70)
+    -- the count and the button hang on the row's right and move with it
 end
 
 local function refreshStock(f, on)
-    for _, w in ipairs({ f.state, f.list }) do w:SetShown(on) end
+    for _, w in ipairs({ f.stock, f.state, f.list }) do w:SetShown(on) end
     local officer = ns.IsOfficerView()
     for _, w in ipairs({ f.add.box, f.add.button, f.add.hint }) do w:SetShown(on and officer) end
     if not on then return end
@@ -143,11 +141,10 @@ local function pickNeed(N, id)
 end
 
 local function buildNeeds(f)
-    local N = CreateFrame("Frame", nil, f)
-    N:SetPoint("TOPLEFT", 0, -TOP)
-    N:SetPoint("BOTTOMRIGHT", 0, 0)
-    N.state = W.Text(N, T.FONT.hint, 590)
-    N.state:SetPoint("TOPLEFT", 0, -2)
+    -- the state, the officers' editor, the pledge line, the needs, the pledges
+    local N = W.Page(f, { view = true })
+    N:Bands({ "line", "row", "row" })
+    N.state = N:Line(1)
     -- the officers' editor: material, minimum, target
     N.pick = W.Picker(N, 190, function(v) pickNeed(N, v) end)
     N.minLabel = W.Text(N, T.FONT.text)
@@ -174,7 +171,7 @@ local function buildNeeds(f)
     W.Tooltip(N.set, L["Bedarf setzen"], L["Minimum und Ziel 0 nehmen den Bedarf heraus. Die Liste geht an alle Amisia-Nutzer der Gilde; es zählt nur die eines Offiziers."])
     N.minLabel:SetWidth(N.minLabel:GetStringWidth() + 2)
     N.targetLabel:SetWidth(N.targetLabel:GetStringWidth() + 2)
-    W.Row(N, { N.pick, { N.minLabel, y = -24 }, { N.min, gap = 4 }, { N.targetLabel, y = -24 }, { N.target, gap = 4 }, N.set }, 8, 0, -20)
+    N:Place(2, { N.pick, { N.minLabel, gap = 8 }, { N.min, gap = 4 }, { N.targetLabel, gap = 8 }, { N.target, gap = 4 }, { N.set, gap = 8 } })
     -- everybody: pledge a donation for a needed material
     N.pPick = W.Picker(N, 190, function(v) pickNeed(N, v) end)
     N.pCount = W.Stepper(N, 100)
@@ -202,27 +199,15 @@ local function buildNeeds(f)
         ns.Refresh()
     end, { height = T.ROW_BUTTON_H })
     W.FitChip(N.withdraw, 80)
-    W.Row(N, { N.pPick, N.pCount, N.pledge, N.withdraw }, 8, 0, -46)
-    -- column heads
-    N.heads = {}
-    local function head(key, text, right)
-        local h = W.Text(N, T.FONT.head, right and NUM_W or 180)
-        h:SetText(text)
-        if right then
-            h:SetJustifyH("RIGHT")
-            h:SetPoint("TOPLEFT", COL[key] - NUM_W, -74)
-        else
-            h:SetPoint("TOPLEFT", COL[key], -74)
-        end
-        N.heads[key] = h
+    N:Place(3, { N.pPick, { N.pCount, gap = 8 }, { N.pledge, gap = 8 }, { N.withdraw, gap = 8 } })
+    -- column heads: the numbers right-aligned on their right edges
+    local cols = { { "name", COL.name, 180, L["Material"] } }
+    for _, c in ipairs({ { "have", L["Bestand"] }, { "min", L["Minimum"] }, { "target", L["Ziel"] }, { "short", L["Fehlt"] },
+        { "pledged", L["Zugesagt"] } }) do
+        cols[#cols + 1] = { c[1], COL[c[1]] - NUM_W, NUM_W, c[2], justify = "RIGHT" }
     end
-    head("name", L["Material"])
-    head("have", L["Bestand"], true)
-    head("min", L["Minimum"], true)
-    head("target", L["Ziel"], true)
-    head("short", L["Fehlt"], true)
-    head("pledged", L["Zugesagt"], true)
-    N.list = W.List(N, NEED_ROWS, 22, function(r)
+    N.headFrame, N.heads = N:Columns(cols)
+    N.list = N:List(NEED_ROWS, 22, function(r)
         r.name = W.Text(r, T.FONT.text, 190)
         r.name:SetPoint("LEFT", COL.name, 0)
         r.cells = {}
@@ -252,14 +237,12 @@ local function buildNeeds(f)
         r.cells.pledged:SetText(e.pledged > 0 and tostring(e.pledged) or "-")
         r.remove:SetShown(ns.IsOfficerView())
     end)
-    N.list:SetPoint("TOPLEFT", 0, -90)
-    N.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -90)
-    N.empty = W.EmptyState(N, 420)
-    N.empty:SetPoint("TOP", N.list, "TOP", -6, -20)
-    -- the pledges
-    N.pledgeHead = W.Text(N, T.FONT.title, 590)
-    N.pledgeHead:SetPoint("TOPLEFT", 0, -274)
-    N.pledges = W.List(N, PLEDGE_ROWS, 20, function(r)
+    N.empty = N:Empty(420)
+    -- the pledges: their count and how long they last in the column head
+    local pledgeTop = N.listTop - NEED_ROWS * 22 - 2 * T.LAYOUT.GAP
+    local _, ph = N:Columns({ { "title", 6, 580 } }, { top = pledgeTop })
+    N.pledgeHead = ph.title
+    N.pledges = N:List(PLEDGE_ROWS, 20, function(r)
         r.name = W.Text(r, T.FONT.text, 180)
         r.name:SetPoint("LEFT", 6, 0)
         r.what = W.Text(r, T.FONT.text, 200)
@@ -284,8 +267,6 @@ local function buildNeeds(f)
         r.till:SetText(L["bis %s"]:format(ns.FmtDate(p.expires)))
         r.remove:SetShown(ns.IsOfficerView() or ns.SameName(p.name, ns.UnitFullName("player")))
     end)
-    N.pledges:SetPoint("TOPLEFT", 0, -292)
-    N.pledges:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -292)
     f.need = N
 end
 
@@ -345,10 +326,13 @@ end
 ---------------------------------------------------------------------------
 local logFilter = { tab = "all", kind = "all", q = "" }
 
+local LOG_COLS = { { "when", 6, 84, L["Zeit"], font = T.FONT.hint }, { "text", 94, 384, L["Eintrag"] },
+    { "tab", 482, 102, "Tab", justify = "RIGHT", font = T.FONT.hint } }
+
 local function buildLog(f)
-    local G = CreateFrame("Frame", nil, f)
-    G:SetPoint("TOPLEFT", 0, -TOP)
-    G:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- the filters, the log
+    local G = W.Page(f, { view = true })
+    G:Bands({ "row" })
     G.tab = W.Choice(G, 120, function(v)
         logFilter.tab = v
         ns.Refresh()
@@ -364,17 +348,10 @@ local function buildLog(f)
         logFilter.q = text or ""
         ns.Refresh()
     end, L["Name oder Gegenstand"])
-    G.state = W.Text(G, T.FONT.hint, 180)
-    W.Row(G, { G.tab, G.kind, G.search, { G.state, y = -4 } }, 6, 0, 0)
-    G.list = W.List(G, LOG_ROWS, 22, function(r)
-        r.when = W.Text(r, T.FONT.hint, 84)
-        r.when:SetPoint("LEFT", 6, 0)
-        r.text = W.Text(r, T.FONT.text, 384)
-        r.text:SetPoint("LEFT", 94, 0)
-        r.tab = W.Text(r, T.FONT.hint, 96)
-        r.tab:SetJustifyH("RIGHT")
-        r.tab:SetPoint("RIGHT", -6, 0)
-    end, function(r, e)
+    G.state = W.Text(G, T.FONT.hint)
+    G:Place(1, { G.tab, G.kind, G.search, { G.state, fill = true } })
+    G:Columns(LOG_COLS)
+    G.list = G:List(LOG_ROWS, 22, function(r) W.Cells(r, LOG_COLS) end, function(r, e)
         -- the latest moment it can have happened; "~" when the window is wider than two hours
         r.when:SetText((e.hi - e.lo > 7200 and "~" or "") .. ns.FmtDayTime(e.hi))
         local text = ns.BankLogText(e)
@@ -382,10 +359,7 @@ local function buildLog(f)
         r.text:SetText(text)
         r.tab:SetText(ns.BankTabName(e.k))
     end)
-    G.list:SetPoint("TOPLEFT", 0, -26)
-    G.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -26)
-    G.empty = W.EmptyState(G, 420)
-    G.empty:SetPoint("TOP", G.list, "TOP", -6, -60)
+    G.empty = G:Empty(420)
     f.log = G
 end
 
@@ -428,13 +402,12 @@ end
 local copyText = ""
 
 local function buildText(f)
-    local X = CreateFrame("Frame", nil, f)
-    X:SetPoint("TOPLEFT", 0, -TOP)
-    X:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- the text down to the footer with its hint
+    local X = W.Page(f, { view = true })
+    X:Footer({ "hint" })
     X.area = W.EditArea(X)
     X.area:SetPoint("TOPLEFT", 0, 0)
-    X.area:SetPoint("TOPRIGHT", 0, 0)
-    X.area:SetHeight(400)
+    X.area:SetPoint("BOTTOMRIGHT", 0, X:Bottom())
     -- read-only like the export box: typing puts the text back and marks it
     X.area.box:SetScript("OnTextChanged", function(self, userInput)
         if userInput then
@@ -442,8 +415,6 @@ local function buildText(f)
             self:HighlightText()
         end
     end)
-    X.hint = W.Text(X, T.FONT.hint, 590)
-    X.hint:SetPoint("TOPLEFT", X.area, "BOTTOMLEFT", 0, -6)
     X.hint:SetText(L["Strg+A, Strg+C, dann in den Gildenchat oder in Discord einfügen."])
     f.text = X
 end
@@ -463,7 +434,9 @@ end
 ---------------------------------------------------------------------------
 ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, group = "guild",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
+        -- the head row: the four views; each view below is a view of the scaffold
+        f:Bands({ "row" })
         f.views = {}
         f.views.bestand = W.Chip(f, L["Bestand"], nil, function() setView("bestand") end)
         f.views.bedarf = W.Chip(f, L["Bedarf##Bank"], nil, function() setView("bedarf") end)
@@ -486,7 +459,7 @@ ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], icon = "Interface\\Icon
             W.FitChip(c, 60)
             c:SetOn(key == v)
         end
-        W.Row(f, { f.views.bestand, f.views.bedarf, f.views.log, f.views.text }, T.CHIP_GAP, 0, 0)
+        f:Place(1, { f.views.bestand, f.views.bedarf, f.views.log, f.views.text })
         refreshStock(f, v == "bestand")
         refreshNeeds(f, v == "bedarf")
         refreshLog(f, v == "log")
