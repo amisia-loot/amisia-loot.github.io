@@ -140,13 +140,19 @@ end
 SV_BUDGET = 200000000   # Lua instructions
 
 
-def load_sv(path):
+def run_sv(text, name, budget=SV_BUDGET):
+    """Runs the text of a SavedVariables file in the sandbox. Returns (its globals as a Lua table, None)
+    or (None, the Lua error)."""
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
     run = lua.execute(SV_SANDBOX)
+    res = run(text, name, budget)
+    return res if isinstance(res, tuple) else (res, None)
+
+
+def load_sv(path):
     with open(path, encoding='utf-8') as fh:
-        res = run(fh.read(), os.path.basename(path), SV_BUDGET)
-    env, err = res if isinstance(res, tuple) else (res, None)
+        env, err = run_sv(fh.read(), os.path.basename(path))
     if env is None:
         raise SystemExit(f'{path}: {err}')
     db = env['AmisiaDB']
