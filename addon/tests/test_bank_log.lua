@@ -83,6 +83,14 @@ assert(NS.MergeBankLog({ row("Fraktur", 61001, 19, 1), row("Fraktur", 61001, 20,
 assert(NS.MergeBankLog({ { k = 0, y = "repair", n = "Chorf", i = 0, c = 12345, ago = 24 * 35, fuzzy = true } }, T0) == 1)
 assert(NS.MergeBankLog({ { k = 0, y = "repair", n = "Chorf", i = 0, c = 12345, ago = 24 * 33, fuzzy = true } }, T0 + 86400) == 0,
     "a fuzzy entry matches within its days")
+-- a row older than bank.logDays is no new entry, on any read
+assert(NS.Set("bank.logDays", 14))
+local stale = { { k = 1, y = "deposit", n = "Anna", i = 61001, c = 5, ago = 20 * 24 } }
+local kept = #NS.BankLog().list
+assert(NS.MergeBankLog(stale, math.floor(time())) == 0 and NS.MergeBankLog(stale, math.floor(time()) + 3600) == 0,
+    "older than the days kept: not counted")
+assert(#NS.BankLog().list <= kept)
+NS.Reset("bank.logDays")
 
 ---------------------------------------------------------------------------
 -- reading the bank: every visible tab and the money log, one after another

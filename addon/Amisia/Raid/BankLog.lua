@@ -58,10 +58,13 @@ local function valid(e)
         and type(e.i) == "number" and type(e.c) == "number" and type(e.lo) == "number" and type(e.hi) == "number" and e.lo <= e.hi
 end
 
+-- The oldest end of a window kept (bank.logDays).
+local function keepFrom() return now() - (tonumber(ns.Get("bank.logDays")) or 90) * DAY end
+
 -- By age (bank.logDays) and size (the newest 1000).
 local function prune()
     if not DB then return end
-    local limit = now() - (tonumber(ns.Get("bank.logDays")) or 90) * DAY
+    local limit = keepFrom()
     local keep = {}
     for _, e in ipairs(DB.bankLog.list) do
         if valid(e) and e.hi >= limit then
@@ -99,29 +102,32 @@ function ns.MergeBankLog(rows, readAt)
         bySig[k] = bySig[k] or {}
         table.insert(bySig[k], e)
     end
-    local used, added = {}, 0
+    local used, added, limit = {}, 0, keepFrom()
     for _, r in ipairs(rows) do
         local ago = math.max(0, tonumber(r.ago) or 0)
         local hi = readAt - ago * HOUR
         local lo = hi - HOUR
         if r.fuzzy then lo, hi = lo - FUZZ, math.min(readAt, hi + FUZZ) end
-        local e = { k = r.k, y = r.y, n = r.n, i = r.i or 0, c = r.c or 0, a = r.a, b = r.b }
-        local best, bestOver
-        for _, old in ipairs(bySig[sig(e)] or {}) do
-            if not used[old] then
-                local over = math.min(old.hi, hi) - math.max(old.lo, lo)
-                if over >= -SLACK and (not best or over > bestOver) then best, bestOver = old, over end
+        -- older than bank.logDays: prune would drop it at once (and it would count as new every time)
+        if hi >= limit then
+            local e = { k = r.k, y = r.y, n = r.n, i = r.i or 0, c = r.c or 0, a = r.a, b = r.b }
+            local best, bestOver
+            for _, old in ipairs(bySig[sig(e)] or {}) do
+                if not used[old] then
+                    local over = math.min(old.hi, hi) - math.max(old.lo, lo)
+                    if over >= -SLACK and (not best or over > bestOver) then best, bestOver = old, over end
+                end
             end
-        end
-        if best then
-            used[best] = true
-            local nlo, nhi = math.max(best.lo, lo), math.min(best.hi, hi)
-            if nlo <= nhi then best.lo, best.hi = nlo, nhi end
-        else
-            e.lo, e.hi, e.s = lo, hi, readAt
-            DB.bankLog.list[#DB.bankLog.list + 1] = e
-            used[e] = true
-            added = added + 1
+            if best then
+                used[best] = true
+                local nlo, nhi = math.max(best.lo, lo), math.min(best.hi, hi)
+                if nlo <= nhi then best.lo, best.hi = nlo, nhi end
+            else
+                e.lo, e.hi, e.s = lo, hi, readAt
+                DB.bankLog.list[#DB.bankLog.list + 1] = e
+                used[e] = true
+                added = added + 1
+            end
         end
     end
     if added > 0 then prune() end
