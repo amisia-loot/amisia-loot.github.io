@@ -2931,7 +2931,8 @@ $('#lcAddonCopy').addEventListener('click', async () => {
 /* ---------------- points: DKP and EPGP ---------------- */
 // The guild's loot system per ledger: rolling (the default), DKP or EPGP. state.points = {sys, cfg, log, decays, raids}
 // is kept per game: log = [{id, at, raider, pool: 'D'|'E'|'G', n, code: 'R'|'B'|'T'|'N'|'X', reason, by, sid, boss, src}],
-// decays = [{at, pct, by}], raids = {sid: {date, sys, on}} (the raids whose earnings the ledger has). The cost of an
+// decays = [{at, pct, by}], raids = {sid: {date, sys, on, key, at}} (the raids whose earnings the ledger has; key the raid's
+// date:instance as the addon's raid sync names it, at the newest time of the export taken over). The cost of an
 // award stands at the award (award.pts = {p, n, at, by}), so removing or moving the award takes its cost along.
 // Standings are never stored: pointsStandings() replays the log, the costs and the decays in time order, per main.
 // The Amisia addon gets them as "#AMISIA-PTS" behind the wishes, alts and prio (pointsAddonText) and sends what it
@@ -2949,6 +2950,7 @@ const PT_CODE = {R: 'Raid', B: 'Boss', T: 'On time', N: 'Bench', X: 'Correction'
 const PT_SLOT = {head: 1, chest: 1, legs: 1, shoulder: 0.75, hands: 0.75, waist: 0.75, feet: 0.75, trinket: 0.75, neck: 0.5, back: 0.5, wrist: 0.5, finger: 0.5,
   weapon: 1.5, weapon2: 2, offhand: 0.5, ranged: 0.5, relic: 0.5};
 const PT_ID = /^[0-9a-f]{12}$/;
+const PT_KEY = /^\d{4}-\d{2}-\d{2}:\d+$/;   // a raid: date:instance (the addon's ns.RaidKey)
 // The ledger's points, created for a change (a viewer's read never adds them).
 function pointsState(){
   let p = state.points;
@@ -2961,6 +2963,21 @@ function pointsState(){
   return p;
 }
 const ptRead = () => state.points && typeof state.points === 'object' && !Array.isArray(state.points) ? state.points : {};
+// The points of a backup, every part checked (null without any): what pointsState keeps, nothing else.
+function ptClean(p){
+  const obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  if (!obj(p)) return null;
+  const raids = {};
+  if (obj(p.raids)) for (const [sid, r] of Object.entries(p.raids)) if (/^\d+-\d+$/.test(sid) && obj(r)) raids[sid] = r;
+  return {sys: PT_SYS.includes(p.sys) ? p.sys : 'roll', cfg: obj(p.cfg) ? p.cfg : {}, log: Array.isArray(p.log) ? p.log.filter(obj) : [],
+    decays: Array.isArray(p.decays) ? p.decays.filter(obj) : [], raids};
+}
+// The raid key of a stored raid: its own, else the night's date and the instance at the end of the session id.
+function ptRaidKey(sid, r){
+  if (r && typeof r.key === 'string' && PT_KEY.test(r.key)) return r.key;
+  const m = /-(\d+)$/.exec(String(sid)), d = r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)) ? r.date : null;
+  return m && d ? d + ':' + Number(m[1]) : null;
+}
 const ptLog = () => Array.isArray(ptRead().log) ? ptRead().log : [];
 // The system and its parameters, every value checked: {sys, raid, boss, ...}.
 function ptCfg(){
@@ -2980,20 +2997,6 @@ const ptPR = (ep, gp, base) => ep / Math.max(1, gp + base);
 // > 0 when x stands higher by PR, exactly (cross product).
 const ptCompare = (x, y, base) => x.a * Math.max(1, y.b + base) - y.a * Math.max(1, x.b + base);
 const ptPRText = pr => pr.toFixed(Math.abs(pr) >= 10 ? 1 : 2);
-function ptSlot(it){
-  if (!it) return 'other';
-  if (it.slot === 'weapon' && /two.?hand|2h|staff|polearm|zweihand|stab\b|stangen/i.test(String(it.sub || ''))) return 'weapon2';
-  return it.slot;
-}
-// GP (EPGP) or the fixed price (DKP) of an item for a kind: MS and SR full, OS the off spec share, '-' nothing.
-// null when the loot table has no item level for it.
-function ptItemCost(id, kind, cfg){
-  cfg = cfg || ptCfg();
-  if (kind === '-') return 0;
-  const it = ITEM[id]; if (!it || !it.ilvl) return null;
-  const full = ptFormula(it.ilvl, ptSlot(it), itemQ(it), cfg.sys === 'dkp' ? cfg.price : cfg.scale, cfg.ref);
-  return kind === 'OS' ? ptRound(full * cfg.os / 100) : full;
-}
 const ptFormula = (ilvl, slot, q, scale, ref) => ptRound(scale * 2 ** ((ilvl - ref) / 26) * (PT_SLOT[slot] || 1) * 2 ** (q - 4));
 // An award's time in epoch seconds (its stamp, else noon of its night).
 function ptAwardAt(a){
@@ -3073,24 +3076,29 @@ function pointsDecay(by){
   return true;
 }
 const ptLastDecay = () => (Array.isArray(ptRead().decays) ? ptRead().decays : []).reduce((m, d) => Math.max(m, Number(d.at) || 0), 0);
-// The text for the addon: "#AMISIA-PTS 1 <game> <date> <system> <as-of epoch>", CFG, a P line per main, R lines with
-// the raids whose earnings the ledger has, I lines with the awards with a cost and the addon's corrections it has, "#END".
+// The text for the addon: "#AMISIA-PTS 1 <game> <date> <system> <as-of epoch>", CFG, a P line per main (for a viewer
+// only what ptVisible shows), R lines with the raids whose earnings the ledger has (K: the same raids by date:instance),
+// I lines with the awards with a cost and the addon's corrections it has, "#END".
 // Empty while the ledger never had a points system.
 function pointsAddonText(){
   if (!state.points || typeof state.points !== 'object') return '';
   const cfg = ptCfg(), sys = cfg.sys, u = s => String(s).replace(/[\r\n|]+/g, ' ').trim().replace(/ /g, '_');
   const lines = ['#AMISIA-PTS 1 ' + PLAY + ' ' + today() + ' ' + sys + ' ' + Math.floor(Date.now() / 1000),
     'CFG ' + Object.keys(PT_DEFAULTS).map(k => k + '=' + cfg[k]).join(' ')];
-  for (const s of pointsStandings(sys)) lines.push('P ' + u(s.name) + ' ' + s.a + (sys === 'epgp' ? ' ' + s.b : ''));
-  const sids = Object.keys(ptRead().raids || {}).filter(x => /^\d+-\d+$/.test(x)).sort();
+  // a viewer gets what the Points tab shows them: everyone with pub, else the own main
+  for (const s of ptVisible(pointsStandings(sys))) lines.push('P ' + u(s.name) + ' ' + s.a + (sys === 'epgp' ? ' ' + s.b : ''));
+  const had = ptRead().raids || {}, sids = Object.keys(had).filter(x => /^\d+-\d+$/.test(x)).sort();
   for (let i = 0; i < sids.length; i += 20) lines.push('R ' + sids.slice(i, i + 20).join(' '));
+  // the same raids by key: another officer's recording of a raid the ledger has counts once
+  const keys = [...new Set(sids.map(x => ptRaidKey(x, had[x])).filter(Boolean))].sort();
+  for (let i = 0; i < keys.length; i += 20) lines.push('K ' + keys.slice(i, i + 20).join(' '));
   const ids = [...new Set([...state.awards.filter(a => a.pts && PT_ID.test(String(a.am || '').toLowerCase())).map(a => String(a.am).toLowerCase()),
     ...ptLog().filter(e => e && e.code === 'X' && PT_ID.test(String(e.id))).map(e => e.id)])].sort();
   for (let i = 0; i < ids.length; i += 20) lines.push('I ' + ids.slice(i, i + 20).join(' '));
   lines.push('#END');
   return lines.join('\n');
 }
-// The points lines of the addon's export. Returns {raids: [{sid, date, sys, pool, on, earn: [{id, name, n, code, at, boss}]}],
+// The points lines of the addon's export. Returns {raids: [{sid, date, key, at, sys, pool, on, earn: [{id, name, n, code, at, boss}]}],
 // costs: [{uid, p, n, at, by}], adjust: [{id, name, pool, n, at, by, reason}], bad}. A time more than a day ahead is refused.
 function amParsePoints(blocks){
   const raids = {}, order = [], costs = {}, adjust = {}, latest = Math.floor(Date.now() / 1000) + 86400; let bad = 0;
@@ -3101,13 +3109,16 @@ function amParsePoints(blocks){
     for (const raw of b.split(/\r?\n/)) {
       const line = raw.trim(); if (!line || line[0] === '#') continue;
       const f = line.split(/\s+/);
-      if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) { cur = {sid: f[1], date: f[2]}; raid = null; continue; }
+      if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) { cur = {sid: f[1], date: f[2], inst: /^\d+$/.test(f[3]) ? Number(f[3]) : null}; raid = null; continue; }
       if (f[0] === 'E') { cur = null; raid = null; continue; }
       if (f[0] === 'PS') {
-        // PS <D|E> <dkp|epgp> <on|off>: the system of the raid; its earnings follow
+        // PS <D|E> <dkp|epgp> <on|off> [<date:instance> <epoch>]: the system of the raid; its earnings follow. The raid key
+        // and the newest time of the raid are newer; an export of an older addon keys the raid by the S line's date and instance.
         if (!cur || !/^\d+-\d+$/.test(cur.sid) || !((f[1] === 'D' && f[2] === 'dkp') || (f[1] === 'E' && f[2] === 'epgp')) || !['on', 'off'].includes(f[3])) { bad++; raid = null; continue; }
         if (!raids[cur.sid]) order.push(cur.sid);
-        raid = raids[cur.sid] = {sid: cur.sid, date: cur.date, sys: f[2], pool: f[1], on: f[3] === 'on', earn: []};
+        const key = PT_KEY.test(f[4] || '') ? f[4] : cur.inst != null ? cur.date + ':' + cur.inst : null;
+        const at = PT_KEY.test(f[4] || '') && isNum(f[5]) && Number(f[5]) <= latest ? Number(f[5]) : null;
+        raid = raids[cur.sid] = {sid: cur.sid, date: cur.date, key, at, sys: f[2], pool: f[1], on: f[3] === 'on', earn: []};
       } else if (f[0] === 'PE') {
         // PE <id> <name> <amount> <R|B|T|N> <epoch> [<boss>]
         const name = nm(f[2]);
@@ -3127,20 +3138,30 @@ function amParsePoints(blocks){
       }
     }
   }
+  // an export without the raid's time (an older addon): the newest of its earnings
+  for (const sid of order) { const r = raids[sid]; if (r.at == null && r.earn.length) r.at = Math.max(...r.earn.map(e => e.at)); }
   return {raids: order.map(s => raids[s]), costs: Object.values(costs), adjust: Object.values(adjust), bad};
 }
 const ptRaider = name => state.raiders.find(r => r.name.toLowerCase() === String(name).toLowerCase());
-// What taking the points over would do: a raid new, update or same (its earnings are replaced whole); a cost new, change,
-// same, older or noaward (the award is not in the ledger yet); a correction new, dup or noraider.
+// What taking the points over would do: a raid new, update, same or older (its earnings are replaced whole; a raid is the
+// same raid by its key date:instance too, so two officers' exports of one raid count once, and an export older than the
+// one the ledger took over is left); a cost new, change, same, older or noaward (the award is not in the ledger yet); a
+// correction new, dup or noraider.
 function pointsPlan(parsed){
   const log = ptLog(), had = ptRead().raids || {};
   const sig = list => list.map(e => e.id + ':' + e.n).sort().join(',');
   const raids = parsed.raids.map(r => {
     const known = r.earn.filter(e => ptRaider(e.name)), unknown = [...new Set(r.earn.filter(e => !ptRaider(e.name)).map(e => e.name))];
-    const before = log.filter(e => e && e.sid === r.sid);
-    const was = had[r.sid];
-    const status = !was && !before.length ? 'new' : sig(before) === sig(r.on ? known : []) && was && was.on === r.on ? 'same' : 'update';
-    return Object.assign({}, r, {known, unknown, status, total: known.reduce((n, e) => n + e.n, 0)});
+    // the ledger's copies of this raid: the same session, or another recording of the same raid
+    const prior = Object.keys(had).filter(sid => sid === r.sid || (r.key && ptRaidKey(sid, had[sid]) === r.key));
+    if (!prior.includes(r.sid) && log.some(e => e && e.sid === r.sid)) prior.push(r.sid);
+    const before = log.filter(e => e && prior.includes(e.sid));
+    const was = had[r.sid], other = prior.some(sid => sid !== r.sid);
+    const prevAt = prior.reduce((m, sid) => Math.max(m, Number(had[sid] && had[sid].at) || 0), 0);
+    const status = !prior.length && !before.length ? 'new'
+      : r.at != null && prevAt && r.at < prevAt ? 'older'
+      : !other && sig(before) === sig(r.on ? known : []) && was && was.on === r.on ? 'same' : 'update';
+    return Object.assign({}, r, {known, unknown, status, prior, other, total: known.reduce((n, e) => n + e.n, 0)});
   });
   const costs = parsed.costs.map(c => {
     const a = state.awards.find(x => String(x.am || '').toLowerCase() === c.uid);
@@ -3156,17 +3177,20 @@ function pointsPlan(parsed){
 // Takes what is new or changed over; returns how many things changed.
 function pointsApply(plan){
   let n = 0;
-  const go = plan.raids.some(r => r.status !== 'same') || plan.costs.some(c => c.status === 'new' || c.status === 'change') || plan.adjust.some(x => x.status === 'new');
+  const take = r => r.status === 'new' || r.status === 'update';
+  const go = plan.raids.some(take) || plan.costs.some(c => c.status === 'new' || c.status === 'change') || plan.adjust.some(x => x.status === 'new');
   if (!go) return 0;
   const p = pointsState();
-  for (const r of plan.raids) if (r.status !== 'same') {
-    p.log = p.log.filter(e => !e || e.sid !== r.sid);
+  for (const r of plan.raids) if (take(r)) {
+    const prior = r.prior || [r.sid];
+    p.log = p.log.filter(e => !e || (e.sid !== r.sid && !prior.includes(e.sid)));
+    for (const sid of prior) if (sid !== r.sid) delete p.raids[sid];
     if (r.on) for (const e of r.known) {
       const x = {id: e.id, at: e.at, raider: ptRaider(e.name).id, pool: r.pool, n: e.n, code: e.code, sid: r.sid, src: 'addon'};
       if (e.boss) x.boss = e.boss;
       p.log.push(x);
     }
-    p.raids[r.sid] = {date: r.date, sys: r.sys, on: r.on};
+    p.raids[r.sid] = Object.assign({date: r.date, sys: r.sys, on: r.on}, r.key ? {key: r.key} : {}, r.at != null ? {at: r.at} : {});
     n++;
   }
   for (const c of plan.costs) if (c.status === 'new' || c.status === 'change') {
@@ -3868,7 +3892,8 @@ function amPointsRender(){
   el.hidden = false;
   const p = amPoints, parts = [];
   for (const r of p.raids) parts.push(esc(fmtDate(r.date)) + ' (' + esc(r.sys.toUpperCase()) + '): ' + (r.on ? r.total + (r.pool === 'E' ? ' EP' : ' DKP') + ' for ' + new Set(r.known.map(e => e.name.toLowerCase())).size + ' raiders' : 'not counted')
-    + ' · ' + ({new: 'new', update: 'replaces the earlier import', same: 'already in the ledger'})[r.status]
+    + ' · ' + ({new: 'new', update: r.other ? 'replaces another export of this raid' : 'replaces the earlier import', same: 'already in the ledger',
+      older: '<span class="warn">older than the ledger\'s copy of this raid, left out</span>'})[r.status]
     + (r.unknown.length ? ' · <span class="warn">not on the roster: ' + esc(r.unknown.join(', ')) + '</span>' : ''));
   const c = s => p.costs.filter(x => x.status === s).length, a = s => p.adjust.filter(x => x.status === s).length;
   if (p.costs.length) parts.push(p.costs.length + ' award cost' + (p.costs.length === 1 ? '' : 's') + ': ' + (c('new') + c('change')) + ' to take over'
@@ -3878,7 +3903,7 @@ function amPointsRender(){
     + (a('dup') ? ', ' + a('dup') + ' already in the ledger' : '') + (a('noraider') ? ', <span class="warn">' + a('noraider') + ' for raiders not on the roster</span>' : ''));
   if (p.bad) parts.push(p.bad + ' line' + (p.bad === 1 ? '' : 's') + ' could not be read.');
   $('#amPointsText').innerHTML = parts.join('<br>');
-  $('#amPointsAdd').disabled = !(p.raids.some(r => r.status !== 'same') || c('new') + c('change') || a('new'));
+  $('#amPointsAdd').disabled = !(p.raids.some(r => r.status === 'new' || r.status === 'update') || c('new') + c('change') || a('new'));
 }
 function amPrioRender(){
   const el = $('#amPrio');
@@ -5201,7 +5226,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (readOnly || !await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, bankNeeds:d.bankNeeds&&typeof d.bankNeeds==='object'&&d.bankNeeds.items&&typeof d.bankNeeds.items==='object'?d.bankNeeds:null, bankLog:Array.isArray(d.bankLog)?d.bankLog:[], wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, lootPrio:d.lootPrio&&typeof d.lootPrio==='object'&&!Array.isArray(d.lootPrio)?d.lootPrio:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, bankNeeds:d.bankNeeds&&typeof d.bankNeeds==='object'&&d.bankNeeds.items&&typeof d.bankNeeds.items==='object'?d.bankNeeds:null, bankLog:Array.isArray(d.bankLog)?d.bankLog:[], wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, lootPrio:d.lootPrio&&typeof d.lootPrio==='object'&&!Array.isArray(d.lootPrio)?d.lootPrio:{}, ...(ptClean(d.points) ? {points:ptClean(d.points)} : {}), shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
   // a backup without game was TBC; the next fitShelf moves whatever is on top to the shelf and puts Forever there
   fitShelf(state); ui.openCard = null; markDirty(); if (gameKey !== PLAY) loadGame(PLAY);
 });

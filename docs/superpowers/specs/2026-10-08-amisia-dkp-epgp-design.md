@@ -21,8 +21,9 @@ Raid, kein anderer Ablauf im Roll-Fenster.
   - `bid` (Bieten, Standard): `!bid 50` im Flüstern an die Lootleitung oder im Raidchat.
     Offen (`seal=0`) oder verdeckt (`seal=1`, dann nur geflüstert). Mindestgebot `min` (10),
     Schritt `step` (5): offen muss ein Gebot das bisherige Höchstgebot um mindestens `step`
-    übertreffen; verdeckt darf jeder sein Gebot nur erhöhen. Höchstens der eigene Kontostand
-    (`max = Kontostand`). Der Gewinner zahlt sein Gebot (Erstpreis).
+    übertreffen; verdeckt darf jeder sein Gebot nur erhöhen. Höchstens der eigene Kontostand, weniger
+    die Gebote, die der Main in anderen Runden der letzten 10 Minuten gewonnen und noch nicht bezahlt hat
+    (keine Vergabe mit Betrag an ihn seit dem Ende der Runde). Der Gewinner zahlt sein Gebot (Erstpreis).
   - `fixed` (feste Preise): Raider sagen `!need` / `!greed`; der Preis kommt aus derselben Formel
     wie GP (siehe unten) mit `price` als Basis (Standard 50); Offspec zahlt `os` Prozent.
     Reihenfolge: Bedarf vor Gier, dann höherer Kontostand.
@@ -62,14 +63,21 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   Korrekturen, deren Id der Block nicht nennt).
 - **Export**: neue Zeilentypen im `#AMISIA 2`-Text, keine bestehende Zeile ändert sich. In einem
   Raid-Block (`S` … `E`), nur wenn der Raid ein Punktesystem hatte:
-  - `PS <D|E> <dkp|epgp> <on|off>` – das System dieses Raids (D: DKP, E: EP),
+  - `PS <D|E> <dkp|epgp> <on|off> <Datum:Instanz> <Epoche>` – das System dieses Raids (D: DKP, E: EP),
+    der Raid-Schlüssel wie beim Raid-Sync (`ns.RaidKey`) und die neueste Zeit des Raids (letzte Aufzeichnung,
+    neuester Verdienst); ältere Exporte ohne die beiden Felder bleiben lesbar,
   - `PE <id> <Name> <Betrag> <R|B|T|N> <Epoche> [<Boss>]` – ein Verdienst (Raid, Boss, pünktlich,
     Ersatzbank); die Id ist eine Prüfsumme aus Raid, Name, Art und Boss, also bei jedem Export gleich,
   - `PA <Vergabe-Id> <D|G> <Betrag> <Epoche> <Offizier>` – die Kosten einer Vergabe.
   Außerhalb der Raids (wie `LC`): `PX <id> <Name> <D|E|G> <±Betrag> <Epoche> <Offizier> <Grund>` –
   eine Korrektur im Spiel.
-  Die Seite ersetzt beim Import den Verdienst eines Raids ganz (pro `sid`), übernimmt Kosten pro
-  Vergabe-Id (neuere Zeit gewinnt) und Korrekturen pro Id (einmalig).
+  Die Seite ersetzt beim Import den Verdienst eines Raids ganz, übernimmt Kosten pro
+  Vergabe-Id (neuere Zeit gewinnt) und Korrekturen pro Id (einmalig). Ein Raid ist derselbe Raid über
+  seine `sid` **oder** seinen Schlüssel Datum:Instanz (alte Exporte: Datum und Instanz der `S`-Zeile), so
+  zählen die Exporte zweier Offiziere desselben Raids einmal (der zweite ersetzt den ersten, „replaces
+  another export of this raid“). Die Seite merkt sich die Zeit des übernommenen Exports (`raids[sid].at`);
+  ein älterer Export desselben Raids (etwa eine Kopie aus der Raidmitte) ist `older` und wird nicht
+  übernommen. Ohne Zeit auf der `PS`-Zeile (älteres Addon) gilt der neueste Verdienst.
 - **Import auf der Seite** (Import-Tab, eigenes Feld „Punkte aus dem Addon“ wie bei der Loot-Prio),
   nur für Editoren.
 - **Zurück ins Spiel**: „Copy for the addon“ hängt einen Block an Wünsche, Twinks und Prio:
@@ -79,16 +87,21 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   CFG raid=10 boss=5 time=5 bench=10 mode=bid seal=0 min=10 step=5 decay=10 price=50 base=100 minep=0 scale=100 ref=66 os=50 pub=1
   P <Main> <DKP>            (DKP)   bzw.   P <Main> <EP> <GP>   (EPGP)
   R <sid> <sid> …           Raids, deren Verdienst die Seite hat
+  K <Datum:Instanz> …       dieselben Raids über ihren Schlüssel (Aufzeichnung eines anderen Offiziers)
   I <id> <id> …             Vergaben mit Kosten und Korrekturen, die die Seite hat
   #END
   ```
 
   Offiziere übernehmen damit auch System und Parameter in die Einstellungen des Addons; Raider sehen
-  ihren Stand (und die Liste, wenn `pub=1`).
+  ihren Stand (und die Liste, wenn `pub=1`). Für Betrachter ohne Schreibrecht enthält der Block nur die
+  `P`-Zeilen, die ihnen der Tab Punkte zeigt. `pub` ist nur eine Anzeige-Einstellung: das Ledger-JSON ist
+  öffentlich, wer es liest, kann jeden Stand ausrechnen.
 
 ## Ablauf im Spiel
 
-- **Raid**: eine neue Aufzeichnung friert System und Parameter ein (`s.points`), wie `lateAt`.
+- **Raid**: eine neue Aufzeichnung friert System und Parameter ein (`s.points`), wie `lateAt`. Ein Raid,
+  der beim Würfeln aufgezeichnet wurde, bekommt nachträglich keine Punkte: kein Betrag in der Vergabe
+  („Dieser Raid hat kein Punktesystem.“), keine Kosten von anderen Offizieren, kein Verdienst.
   `/amisia punkteraid aus` (en `raidpoints off`) nimmt einen Raid aus der Wertung (Trash-Abend).
 - **Roll-Fenster**: Alt-Klick startet je nach System eine Würfel-, Gebots- oder Bedarfsrunde.
   - Gebot: Zeilen nach Gebot, Spalte „Stand“, abgelehnte Gebote grau mit Grund. Offene Gebote werden
@@ -96,7 +109,9 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   - Bedarf (EPGP und DKP mit festen Preisen): Bedarf vor Gier, dann PR (bzw. Stand); Spalten EP/GP und PR.
   - Die Eingabezeile unten trägt im Bosskampf (geheimer Chat) Gebote bzw. Bedarf/Gier von Hand ein.
   - „Nochmal“ bei Gleichstand startet einen normalen Wurf unter den Gleichen.
-- **Vergabe-Dialog**: Feld „DKP“ bzw. „GP“, vorbelegt mit dem Gewinnergebot, dem GP nach Art (MS voll,
+- **Lootleitung ohne Offiziersrecht**: die Vergabe wird gespeichert (und per Raid-Sync verteilt), der
+  Betrag nicht; der Chat sagt, dass ein Offizier ihn auf der Seite Vergaben einträgt.
+- **Vergabe-Dialog** (nur für Raids mit Punktesystem): Feld „DKP“ bzw. „GP“, vorbelegt mit dem Gewinnergebot, dem GP nach Art (MS voll,
   OS Anteil) oder dem festen Preis. Der Betrag landet an der Vergabe (`s.points.charges[id]`); auf der
   Seite Vergaben lässt er sich ändern. Rückgängig/Löschen/Umbenennen der Vergabe wirken mit, weil
   die Kosten nur zählen, solange die Vergabe lebt, und immer dem aktuellen Gewinner gelten.
@@ -112,7 +127,9 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   Korrekturen brauchen einen Grund.
 - **Raid-Sync wie bei der Loot-Prio (LV/LQ/LC)**: der Sync-Keeper sagt `KV <Raid> <Hash> <n>` in den
   Raid; wer einen anderen Stand hat, fragt per Flüstern `KQ <Raid> <eigener Hash>`; der Keeper
-  schickt den ganzen Stand als Blob `KS` (System, Parameter für Gebote, Stände, Kosten des Raids).
+  schickt den ganzen Stand als Blob `KS` (System, Parameter für Gebote, Stände, Kosten des Raids;
+  höchstens 20 Teile: passt er nicht, fallen die ältesten Kosten weg, die Stände zählen sie schon; ein
+  unbekannter Parameter einer neueren Version wird übergangen, ein bekannter muss stimmen).
   Ein Offizier, der eine Vergabe mit Betrag versieht, schickt `KC <Raid> <Vergabe-Id> <D|G> <Betrag>
   <Epoche>` in den Raid; andere Offiziere übernehmen die neuere. Angenommen wird nur von verifizierten
   Offizieren der eigenen Gilde in der eigenen Gruppe; ein Blob wird ganz geprüft oder ganz verworfen.
@@ -133,7 +150,10 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   Bank war und dann kam, zählt als anwesend und pünktlich. Nur der erste Raid eines Abends kennt
   „zu spät“ (bestehende Regel).
 - **Korrekturen**: nie Änderung eines Eintrags, immer ein neuer Eintrag mit Grund; im Spiel wie auf
-  der Seite. Ein falscher Eintrag wird durch eine Gegenbuchung ausgeglichen; auf der Seite kann ein
+  der Seite. Das Addon hält höchstens 1000 Korrekturen, die die Seite noch nicht hat; es verwirft nie
+  eine davon, sondern lehnt die nächste ab, bis exportiert und der Stand der Seite eingefügt ist.
+- **Zeiten**: Kosten (`at`), Korrekturen und Prio-Änderungen tragen die Zeit des Realms
+  (`GetServerTime`, sonst `time()`), damit „neuere gewinnt“ zwischen Clients mit falsch gehender Uhr gilt. Ein falscher Eintrag wird durch eine Gegenbuchung ausgeglichen; auf der Seite kann ein
   Editor eine eigene Korrektur löschen (Protokoll bleibt in der Versionsgeschichte des Ledgers).
 - **Verfall**: nur auf der Seite, per Knopf für Editoren, einmal pro Woche (ein zweiter innerhalb
   von 6 Tagen fragt nach). Ein später importierter Raid mit früherem Datum wird beim Rechnen
@@ -145,5 +165,9 @@ einen Twink belastet den Main. Die Rangliste zeigt nur Mains.
   diesem Raid ändert, geht mit dem nächsten Export hinüber (die Website ersetzt den Raid ganz) und
   erscheint im Spiel nach dem nächsten Einfügen.
 - **Systemwechsel**: ein laufender Raid behält sein System; das Protokoll bleibt, die Rangliste zeigt
-  nur das aktive System (DKP-Einträge zählen nicht als EP).
+  nur das aktive System (DKP-Einträge zählen nicht als EP). Entschieden: auch ein Raid, der beim
+  Würfeln begann, bleibt beim Würfeln, wenn mitten im Raid umgestellt oder der erste Block eingefügt
+  wird (sonst bekäme jeder nachträglich Raid- und Pünktlich-Punkte); seine Runden bleiben Würfelrunden,
+  das neue System gilt ab dem nächsten Raid, der Offizier bekommt einen Hinweis.
+  `/amisia punkteraid an` nimmt den laufenden Raid bewusst schon jetzt mit dem System von jetzt dazu.
 - **Beta-Bug der SavedVariables** und Lockdown: wie bisher; Gebote im Bosskampf von Hand.
