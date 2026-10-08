@@ -120,71 +120,51 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-local function col(parent, x, w, template)
-    local fs = W.Text(parent, template or T.FONT.text, w)
-    fs:SetPoint("LEFT", x, 0)
-    return fs
-end
 
 local function build_page(parent)
-    local f = CreateFrame("Frame", nil, parent)
-    f:SetAllPoints(parent)
+    local f = W.Page(parent)
     page = f
 
-    -- view chips left, range chips right
+    -- the head row: view chips left, range chips right; under it class and role (officers) and the counts
+    f:Bands({ "row", "row" })
     f.view = {
         players = W.Chip(f, L["Spieler"], nil, function() view = "players" ns.Refresh() end),
         fame = W.Chip(f, L["Ruhmeshalle"], nil, function() view = "fame" ns.Refresh() end),
     }
     W.FitChip(f.view.players, 70)
     W.FitChip(f.view.fame, 70)
-    W.Row(f, { f.view.players, f.view.fame }, T.CHIP_GAP, 0, -2)
     f.range = {
         w4 = W.Chip(f, L["4 Wochen"], nil, function() range = "4w" ns.Refresh() end),
         phase = W.Chip(f, L["Phase"], nil, function() range = "phase" ns.Refresh() end),
         all = W.Chip(f, L["Alle Raids"], nil, function() range = "all" ns.Refresh() end),
     }
     for _, c in pairs(f.range) do W.FitChip(c, 60) end
-    W.Row(f, { f.range.w4, f.range.phase, f.range.all }, T.CHIP_GAP, 0, -2, { right = true })
+    f:Place(1, { f.view.players, f.view.fame }, { f.range.w4, f.range.phase, f.range.all })
     W.Tooltip(f.range.phase, L["Phase"], L["Die Raids, seit der neueste Raid zum ersten Mal aufgezeichnet wurde."])
 
-    -- class and role (officers), the status line
     f.class = W.Picker(f, 130, function(v) classPick = v or "all" ns.Refresh() end)
     f.role = W.Picker(f, 130, function(v) rolePick = v or "all" ns.Refresh() end)
     f.role:SetValues({ { value = "all", text = L["Alle Rollen"] }, { value = "dps", text = ROLE_TEXT.dps },
                        { value = "unknown", text = ROLE_TEXT.unknown } })
-    f.info = W.Text(f, T.FONT.hint, 314)
-    W.Row(f, { f.class, f.role, f.info }, 8, 0, -27)
+    f.info = W.Text(f, T.FONT.hint)
+    f:Place(2, { f.class, f.role, { f.info, fill = true } })
+    f:Footer({ "hint" })
 
     -- column heads: a click sorts, a second click turns the order round
-    local head = CreateFrame("Frame", nil, f)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -52)
-    head:SetPoint("TOPRIGHT", 0, -52)
-    f.heads = {}
+    f.headFrame, f.heads = f:Columns(COLS, { sort = function(key)
+        if sortCol == key then
+            sortDesc = not sortDesc
+        else
+            sortCol, sortDesc = key, key ~= "name"
+        end
+        ns.Refresh()
+    end })
     for _, c in ipairs(COLS) do
-        local key, x, w, label = c[1], c[2], c[3], c[4]
-        local b = CreateFrame("Button", nil, head)
-        b:SetSize(w, 18)
-        b:SetPoint("LEFT", x, 0)
-        b.label = W.Text(b, T.FONT.head, w)
-        b.label:SetPoint("LEFT")
-        b.label:SetText(label)
-        b:SetScript("OnClick", function()
-            if sortCol == key then
-                sortDesc = not sortDesc
-            else
-                sortCol, sortDesc = key, key ~= "name"
-            end
-            ns.Refresh()
-        end)
-        W.Tooltip(b, label, (HEAD_TIP[key] and (HEAD_TIP[key] .. " ") or "") .. L["Klicken sortiert."])
-        f.heads[key] = b
+        W.Tooltip(f.heads[c[1]], c[4], (HEAD_TIP[c[1]] and (HEAD_TIP[c[1]] .. " ") or "") .. L["Klicken sortiert."])
     end
-    f.headFrame = head
 
-    f.list = W.List(f, ROWS, ROW_H, function(r)
-        for _, c in ipairs(COLS) do r[c[1]] = col(r, c[2], c[3]) end
+    f.list = f:List(ROWS, ROW_H, function(r)
+        W.Cells(r, COLS)
         r:SetScript("OnClick", function(self)
             if self.item then
                 chosen = self.item.key
@@ -214,25 +194,20 @@ local function build_page(parent)
         r.last:SetText(p.last and ns.FmtDay(p.last) or "-")
         if r.sel then r.sel:SetShown(p.key == chosen) end
     end)
-    f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    -- room for the list's scroll bar at the right
-    f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
     for _, r in ipairs(f.list.rows) do r.sel = W.SelectBar(r) end
-    f.empty = W.Text(f, T.FONT.dim, 580, true)
-    f.empty:SetPoint("TOPLEFT", f.list, "TOPLEFT", 6, -6)
-    f.empty:SetText(L["Noch keine Raids aufgezeichnet. Die Statistik füllt sich mit jedem Raid, den Amisia aufzeichnet."])
-    f.hint = W.Text(f, T.FONT.hint, 580)
-    f.hint:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -4)
+    f.empty = f:Empty()
+    f.empty:Set(L["Noch kein Raid aufgezeichnet"], L["Noch keine Raids aufgezeichnet. Die Statistik füllt sich mit jedem Raid, den Amisia aufzeichnet."])
 
-    -- the chosen player: characters and items per week
+    -- the chosen player under the list: characters and items per week
+    local G = T.LAYOUT
     f.detail = W.ScrollText(f)
-    f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -22)
-    f.detail:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
+    f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", G.TEXT_X, -2 * G.GAP)
+    f.detail:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, f:Bottom())
 
-    -- the hall of fame
+    -- the hall of fame, from the content top
     f.fame = W.ScrollText(f)
-    f.fame:SetPoint("TOPLEFT", 6, -56)
-    f.fame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
+    f.fame:SetPoint("TOPLEFT", G.TEXT_X, f.top)
+    f.fame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SCROLL_ROOM, f:Bottom())
     f.fame:Hide()
     return f
 end
@@ -263,7 +238,7 @@ local function refresh(f)
     f.role:SetValue(rolePick)
     f.class:SetShown(officer and view == "players")
     f.role:SetShown(officer and view == "players")
-    W.Row(f, { f.class, f.role, f.info }, 8, 0, -27, { shown = true })
+    f:Place(2, { f.class, f.role, { f.info, fill = true } }, nil, { shown = true })
 
     local info = L["%d %s"]:format(res.raids, plural(res.raids, L["Raid"], L["Raids"]))
     if range == "phase" and res.phase then
