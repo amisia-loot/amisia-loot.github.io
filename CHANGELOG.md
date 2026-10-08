@@ -2,6 +2,18 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.13.0 (2026-10-08)
+
+- build_scan: the Wowhead icon lookup is off by default (--wowhead to ask); D-03 updated
+- fill_quality.py removed: Forever takes the quality from the scan and ItemSparse, the TBC archive is done (one less scripted Wowhead fetch)
+- build_scan.collect hands items and collector notes in id order: what the builds write no longer hangs on the order a SavedVariables file holds its items in (GearData.lua: the same sources, interned in id order)
+- Scan archive on the N100 and the trim in game: tools/build_scan_archive.py keeps every item line, collector note and suffix the SavedVariables ever delivered in tools/scan_archive.json (back-filled from the file of 2026-10-07: 20,935 items, 3,357 with notes; the file's line wins, notes join, nothing is dropped) and writes the marker Data/ScanDone.lua (lazy SCAN_DONE: per item a hash of its line, per item the hashes of its notes, the ids ItemSparse knows, a stamp); build.py data runs it first; build_gear, build_scan (full) and build_bis read the archive under the files (--scan-archive). Collect/ScanTrim.lua removes 8 s after the login, in small steps, what the marker covers from scan.items, scan.sources and scan.retry (and retry ids the client does not know), never anything else; setting tools.scanAutotrim (default on), /amisia scan aufräumen (cleanup) at once with a report. A build from the trimmed file gives the same GearData.lua and forever.js (round trip test with the real files). D-34
+- load_cost.py: what every TOC file holds after it loaded, grouped (code, English texts, lazy data texts, data tables, saved data) with the biggest files (--files), --locale, and --sv to load a SavedVariables file and see what the scan trim gives back
+- GearWeights.lua waits as text until the first score (lazy GEAR_WEIGHTS, built by build_bis.py through lua_data.lazy); Gear.Available asks ns.HasData. The addon load in the stub: 6.36 -> 5.96 MB (the weights table held 559 KB, its text 145 KB)
+- ScanTrim: what is left of scan.items and scan.sources goes into new tables, so the memory comes back in the same session (a Lua table keeps its size when its keys go; stub: 7.5 -> 6.6 MB after the trim of the file of 2026-10-07)
+- Lazy data texts without the blanks the parser does not need (lua_data.compact in lazy(): no indentation, no blank next to , ; { } ( ) [ ] =; strings, comments and line breaks stay); every lazy file rebuilt, the tables the same (checked against the old files). The texts held at login: 1.72 -> 1.41 MB; the addon load in the stub 5.96 -> 5.62 MB. build_gear.previous_stats and the tests that read generated text take either form
+- README: what the trimmed SavedVariables weigh (6 KB instead of 2.4 MB, a login with them 20 KB over the addon alone)
+
 ## 2.12.0 (2026-10-08)
 
 - UI: Seitengerüst W.Page (Bänder, Kopfzeile, Spaltenköpfe, Liste, Detail, leerer Zustand, untere Zeile, Fußzeile) mit Maßen aus ns.Theme.LAYOUT; Layout-Regel grid prüft Kopfzeile, Bänder, Zeilen, Spaltenköpfe, Fußzeile und leere Zustände

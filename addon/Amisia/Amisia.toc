@@ -3,7 +3,7 @@
 ## Notes: Records raid members, loot and awards per raid, runs rolls and soft reserves, exports everything for the Amisia loot site and shows the best gear per level range.
 ## Notes-deDE: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
-## Version: 2.12.0
+## Version: 2.13.0
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 ## AddonCompartmentFunc: Amisia_OnAddonCompartmentClick
