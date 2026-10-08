@@ -1,11 +1,15 @@
 """What loading the addon costs in the test stub: per data file the time and memory to load it, and
 the whole login (every file of the TOC, ADDON_LOADED, PLAYER_LOGIN, PLAYER_ENTERING_WORLD and ten
-seconds of timers), then the first use of each lazy data table.
+seconds of timers), then the first use of each lazy data table, and what each file of the TOC holds
+after it loaded (grouped: code, English texts, lazy data texts, data tables).
 
-    python3 tools/load_cost.py [--eager]
+    python3 tools/load_cost.py [--eager] [--files N] [--locale enUS] [--sv FILE]
 
 --eager loads the data files with their tables built at once (as before Core/LazyData.lua), for the
-comparison. The numbers are Lua 5.1 under lupa: the client's own differ, the ratio is what counts.
+comparison. --files N lists the N biggest files (default 25, 0 for none). --locale loads as another
+client language (default deDE). --sv loads a SavedVariables file first, as the client does, and shows
+what it costs and what the scan trim (Collect/ScanTrim.lua) gives back. The numbers are Lua 5.1 under
+lupa: the client's own differ, the ratio is what counts.
 """
 import argparse
 import os
@@ -105,10 +109,87 @@ def login(eager):
     return load_ms, load_kb, login_ms, login_kb, built, first
 
 
+GC = 'function() collectgarbage("collect"); collectgarbage("collect"); return collectgarbage("count") end'
+
+
+def group_of(name, src):
+    """The kind of a TOC file for the breakdown."""
+    if name.startswith('Locales'):
+        return 'English texts' if 'enUS_' in name else 'locale code'
+    if name.startswith('Data'):
+        return 'lazy data texts' if 'ns.LazyData(' in src else 'data tables'
+    return 'code'
+
+
+def per_toc(locale='deDE'):
+    """[(KB held, file, KB of source, group)] for every TOC file in load order, then ADDON_LOADED;
+    and the KB the stub itself holds."""
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    gc = lua.eval(GC)
+    m0 = gc()
+    with open(os.path.join(ROOT, 'addon', 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
+        lua.execute(fh.read())
+    lua.globals().STUB.locale = locale
+    lua.globals().STUB.measure = addon_run.measure
+    meta = lua.globals().STUB.tocMeta
+    for k, v in addon_run.toc_meta().items():
+        meta[k] = v
+    stub = gc() - m0
+    ns = lua.eval('{}')
+    loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
+    rows, prev = [], gc()
+    for name in addon_run.toc_files():
+        with open(os.path.join(addon_run.ADDON, name), encoding='utf-8') as fh:
+            src = fh.read()
+        loader(src, name)('Amisia', ns)
+        now = gc()
+        rows.append((now - prev, name.replace(os.sep, '/'), len(src.encode('utf-8')) / 1024, group_of(name, src)))
+        prev = now
+    lua.eval('function(ns) NS = ns; STUB.fire("ADDON_LOADED", "Amisia") end')(ns)
+    now = gc()
+    rows.append((now - prev, 'ADDON_LOADED', 0, 'saved data'))
+    return rows, stub
+
+
+def print_files(rows, stub, top):
+    total = sum(r[0] for r in rows)
+    print(f'  per file after it loaded ({total / 1024:.2f} MB the addon, {stub / 1024:.2f} MB the stub):')
+    groups = {}
+    for kb, _, _, g in rows:
+        groups[g] = groups.get(g, 0) + kb
+    for g, kb in sorted(groups.items(), key=lambda x: -x[1]):
+        print(f'    {g:16} {kb:7.0f} KB')
+    for kb, name, size, g in sorted(rows, reverse=True)[:top]:
+        print(f'    {kb:7.0f} KB  {name:34} {size:6.0f} KB source  ({g})')
+
+
+def with_saved_variables(path):
+    """The addon load with a SavedVariables file, then the scan trim at login."""
+    with open(path, encoding='utf-8') as fh:
+        text = fh.read()
+    lua = addon_run.fresh('', setup=lambda l: l.execute(text))
+    gc = lua.eval(GC)
+    loaded = gc()
+    lua.execute('STUB.fire("PLAYER_LOGIN"); STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick((NS.SCAN_TRIM and NS.SCAN_TRIM.delay or 0) + 60)')
+    trimmed = gc()
+    return loaded, trimmed, os.path.getsize(path)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--eager', action='store_true', help='also measure with the tables built at load (before)')
+    ap.add_argument('--files', type=int, default=25, help='list the N biggest files (0: none)')
+    ap.add_argument('--locale', default='deDE', help='the client language to load as (default deDE)')
+    ap.add_argument('--sv', help='a SavedVariables file to load first (its cost and the scan trim)')
     args = ap.parse_args(argv)
+    if args.files:
+        print(f'== what each file holds ({args.locale})')
+        print_files(*per_toc(args.locale), args.files)
+    if args.sv:
+        loaded, trimmed, size = with_saved_variables(args.sv)
+        print(f'== with {args.sv} ({size / 1024 / 1024:.2f} MB)')
+        print(f'  addon load with it: {loaded / 1024:6.1f} MB; after the login and the scan trim: {trimmed / 1024:6.1f} MB')
     for eager in ([True, False] if args.eager else [False]):
         label = 'eager (tables at load)' if eager else 'lazy (text at load, tables on first use)'
         print(f'== {label}')

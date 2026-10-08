@@ -138,11 +138,14 @@ replaces what waits; `ns.DropData` lets it go. Consumers read through `ns.Data`,
 `ns.HasData`/`ns.DataSize`, so a login, the settings page or the page list build none of them.
 
 ```
-python3 tools/load_cost.py [--eager]
+python3 tools/load_cost.py [--eager] [--files N] [--locale enUS] [--sv FILE]
 ```
 
 measures in the test stub what each data file costs to load and what the addon load and login cost,
 then each table's first use; `--eager` adds the numbers with the tables built at load (as before).
+First it lists what every TOC file holds after it loaded, grouped (code, English texts, lazy data
+texts, data tables, saved data) with the `--files` biggest (default 25); `--sv` loads a SavedVariables
+file as the client does and shows its cost before and after the scan trim at login.
 On 2026-10-07: data files 30 ms and 4.3 MB of tables at load before, 5.5 ms and 1.5 MB of text now;
 the whole addon load 98 ms and 8.3 MB of Lua memory before, 59 ms and 5.7 MB now; nothing is built at
 login; the first use costs 13 ms (gear), 4 ms (quests), 1-2 ms (map, professions, talents).
