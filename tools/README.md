@@ -219,7 +219,8 @@ memory at every login, so it is kept here for good and the addon lets go of what
 
 Measured 2026-10-08 with the file of 2026-10-07 (2.24 MB; stub, lupa, `tools/load_cost.py --sv`): the
 addon load with it 10.5 MB of Lua memory (the addon alone 6.4 MB, so the file cost about 4 MB here),
-after the trim at login 6.6 MB; at the next login the trimmed file costs next to nothing.
+after the trim at login 6.6 MB. The trimmed table written back is 6 KB instead of 2.4 MB, and a login
+with it costs 20 KB over the addon alone.
 
 ## build_scan.py
 
