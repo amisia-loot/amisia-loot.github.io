@@ -7,6 +7,7 @@ local ROW_H, LABEL_W = 26, 300
 
 local rows = {}   -- path -> row
 local scroll, child, page
+local touched     -- the path of the row the player changed last: it keeps its place on screen
 
 function ns.SettingsRows() return rows end
 function ns.SettingsPageFrame() return page end
@@ -34,33 +35,35 @@ local function makeRow(it)
     r.label:SetText(it.label or it.key)
     local path = it.key
     if it.type == "toggle" then
-        r.control = W.Toggle(r, function(v) ns.Set(path, v) end)
+        r.control = W.Toggle(r, function(v) touched = path; ns.Set(path, v) end)
     elseif it.type == "slider" then
-        r.control = W.Stepper(r, 130, function(v) ns.Set(path, v) end)
+        r.control = W.Stepper(r, 130, function(v) touched = path; ns.Set(path, v) end)
         r.control:Configure(it.min, it.max, it.step)
     elseif it.type == "time" then
         r.control = W.TimeBox(r, 70, function(text)
+            touched = path
             local ok, why = ns.Set(path, text)
             if not ok then ns.msg((it.allowOff and L["%s Beispiel: 20:00 oder aus"] or L["%s Beispiel: 20:00"]):format(why)) end
             ns.Refresh()
         end)
     elseif it.type == "text" then
         r.control = W.LineEdit(r, 150, function(text)
+            touched = path
             local ok, why = ns.Set(path, text)
             if not ok then ns.msg(why) end
             ns.Refresh()
         end)
     elseif it.type == "choice" then
-        r.control = W.Choice(r, 150, function(v) ns.Set(path, v) end)
+        r.control = W.Choice(r, 150, function(v) touched = path; ns.Set(path, v) end)
         r.control:SetValues(it.values)
     elseif it.type == "button" then
-        r.control = W.Button(r, it.label, 230, function() it.run() end)
+        r.control = W.Button(r, it.label, 230, function() touched = path; it.run() end)
         r.label:SetText("")
     end
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
     if it.type ~= "button" and it.type ~= "desc" then
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
-        r.reset = W.ResetButton(r, T.RESET, function() ns.Reset(path) end)
+        r.reset = W.ResetButton(r, T.RESET, function() touched = path; ns.Reset(path) end)
         r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
         W.Tooltip(r.reset, L["Zurücksetzen"], L["Auf den Standard zurück."])
     end
@@ -91,6 +94,46 @@ end
 
 local headers = {}
 
+-- The offset of a placed row or header from the top of the list (W.Column anchors TOPLEFT).
+local function topOf(f)
+    for i = 1, f.GetNumPoints and f:GetNumPoints() or 1 do
+        local point, _, _, _, y = f:GetPoint(i)
+        if point == "TOPLEFT" then return y and -y end
+    end
+end
+
+-- A setting can show or hide whole sections above it (the view, the expert mode): before the new
+-- layout, remember the row the player just changed (else the topmost row in view) and how far below
+-- the top of the view it sits; the returned function scrolls so that it sits there again.
+local function holdPlace()
+    local top, h = scroll:GetVerticalScroll() or 0, scroll:GetHeight() or 0
+    local anchor = touched and rows[touched]
+    local at = anchor and anchor:IsShown() and topOf(anchor)
+    if not (at and at >= top and at < top + h) then
+        anchor, at = nil, nil
+        local function consider(f)
+            local y = f:IsShown() and topOf(f)
+            if y and y >= top and (not at or y < at) then anchor, at = f, y end
+        end
+        for _, f in pairs(rows) do consider(f) end
+        for _, f in pairs(headers) do consider(f) end
+    end
+    if not anchor then return function() end end
+    local screen = at - top
+    local function apply()
+        local now = anchor:IsShown() and topOf(anchor)
+        if not now then return end
+        if scroll.UpdateScrollChildRect then scroll:UpdateScrollChildRect() end
+        local max = math.max(0, (child:GetHeight() or 0) - (scroll:GetHeight() or 0))
+        scroll:SetVerticalScroll(math.max(0, math.min(max, now - screen)))
+    end
+    return function()
+        apply()
+        -- the client takes the new scroll range on the next frame: place again then
+        if C_Timer and C_Timer.After then C_Timer.After(0, apply) end
+    end
+end
+
 ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
@@ -109,6 +152,7 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
     end,
     refresh = function()
         -- hide only what this pass leaves out: hiding a row would take the focus from its edit box
+        local restore = holdPlace()
         local column, placed = {}, {}
         for _, section in ipairs(ns.schema) do
             if ns.Visible(section) then
@@ -142,4 +186,5 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
         -- the headers span the width, the rows keep theirs; the last section's gap ends the list
         local bottom = W.Column(child, column, 0, 0, 0)
         child:SetHeight(math.max(10, -bottom + (#column > 0 and T.SECTION_GAP or 0)))
+        restore()
     end }

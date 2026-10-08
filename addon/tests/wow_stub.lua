@@ -500,6 +500,8 @@ end
 local NOOP = function() end
 -- Anchors are recorded (points[point] = { rel, relPoint, x, y }, rel nil for the parent), so a test
 -- can lay out a row and check that nothing overlaps or leaves its frame.
+local POINT_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
+
 local function setPoint(self, point, a, b, c, d)
     local rel, relPoint, x, y
     if type(a) == "table" then
@@ -989,7 +991,26 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetToplevel = function(self, on) self.toplevel = on and true or false end
     f.Raise = function(self) self.raised = (self.raised or 0) + 1 end
     f.GetFrameStrata = function(self) return self.strata or (parent and parent.GetFrameStrata and parent:GetFrameStrata()) or "MEDIUM" end
-    f.GetPoint = function(self) return self._point or "CENTER", nil, self._point or "CENTER", self._x or 0, self._y or 0 end
+    -- the points in the client's order (TOPLEFT first); a frame without one reads as CENTER 0 0,
+    -- a moved one (_point) as where the test moved it
+    f.GetNumPoints = function(self)
+        local n = 0
+        for _ in pairs(self.points or {}) do n = n + 1 end
+        return n
+    end
+    f.GetPoint = function(self, i)
+        -- a test that simulates a drag sets _point, _x, _y (StartMoving leaves one point)
+        if self._point then return self._point, nil, self._point, self._x or 0, self._y or 0 end
+        local k = 0
+        for _, p in ipairs(POINT_ORDER) do
+            local e = self.points and self.points[p]
+            if e then
+                k = k + 1
+                if k == (i or 1) then return p, e.rel, e.relPoint, e.x, e.y end
+            end
+        end
+        return "CENTER", nil, "CENTER", 0, 0
+    end
     -- a template's own size (tplW, tplH) counts until the addon sets one
     f.GetWidth = function(self) return self._w or self.tplW or 400 end
     f.GetHeight = function(self) return self._h or self.tplH or 300 end

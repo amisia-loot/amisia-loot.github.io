@@ -66,11 +66,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia minimap` eingibst, dann verschwindet der Button; noch einmal holt ihn zurück.
 
 ### F-005 Einstellungen und Ansichten
-- Version: 1.4.0
+- Version: 2.13.2
 - Status: gebaut
 - Prüfung: Wenn du `/amisia einstellungen` eingibst, dann öffnet sich die Seite Einstellungen mit ihren Abschnitten (Aufnahme, Oberfläche und weitere), jede Einstellung mit Tooltip und "Zurücksetzen".
 - Prüfung: Wenn du unter Oberfläche die Ansicht auf "Offizier" stellst, dann erscheinen die Offiziersseiten (Raids, Rolls, Export); auf "Raider" verschwinden sie wieder.
 - Prüfung: Wenn du "Expertenmodus" einschaltest, dann erscheint die Seite Werkzeuge mit dem Abschnitt Werkzeuge in den Einstellungen.
+- Prüfung: Wenn du ganz unten bei Ansicht oder Expertenmodus klickst und dadurch Abschnitte dazukommen oder wegfallen, dann bleibt die angeklickte Zeile an derselben Stelle im Fenster (die Liste springt nicht).
+- Notiz: 2026-10-08 im Spiel: die Ansicht war schwer zu finden (Oberfläche ganz unten), und ein Klick auf "Offizier" ließ die Liste springen; behoben in 2.13.2.
 
 ### F-006 Befehle und Seite "Über und Befehle"
 - Version: 2.1.0
