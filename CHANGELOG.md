@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.14.0 (2026-10-08)
+
+- View switch in the head and /amisia ansicht; a search on the settings page (label, tip, choices, section name; a new search starts at the top)
+
 ## 2.13.3 (2026-10-08)
 
 - Side tabs: icons pulled 4 px into the tab's interior, sharp dice (INV_Misc_Dice_01); settings: the clicked row is put back when the client takes the new scroll range (the bar kept its old share); the stub's textures read their points
