@@ -88,6 +88,7 @@ UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua
 UI\Pages\Awards.lua
 UI\Pages\Stats.lua
+UI\Pages\Points.lua
 UI\Pages\SoftRes.lua
 UI\Pages\Gear.lua
 UI\Pages\Map.lua

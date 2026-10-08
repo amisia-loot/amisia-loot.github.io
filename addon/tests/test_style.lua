@@ -440,10 +440,11 @@ NS.Refresh()
 assert(navShown() == "#raid overview raidlog awards stats softres #gear gear map quests professions talents #guild bank #amisia settings about", navShown())
 NS.Set("ui.view", "officer")
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards stats softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
+-- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there)
+assert(navShown() == "#raid overview raids raidlog rolls awards stats points softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards stats softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
+assert(navShown() == "#raid overview raids raidlog rolls awards stats points softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
 -- every visible page has a row (officer and expert: all of them); a page past the rows the list has
 -- would be dropped without a word, so the test says so
 local function missingRows()
@@ -455,12 +456,11 @@ local function missingRows()
     return table.concat(miss, ",")
 end
 assert(missingRows() == "", "pages without a row in the page list (more rows needed): " .. missingRows())
--- 17 pages in the expert view, 18 rows: one more page fits, a second has no row
-NS.RegisterPanel({ key = "extra18", label = "Extra", group = "amisia", order = 998, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+-- 18 pages in the expert view (since the page Punkte), 18 rows: the list is full, one more page has no row
 NS.RegisterPanel({ key = "extra19", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
 NS.Refresh()
 assert(missingRows() == "extra19", "the check sees a page without a row: " .. missingRows())
-for _, key in ipairs({ "extra18", "extra19" }) do
+for _, key in ipairs({ "extra19" }) do
     for i, p in ipairs(NS.panels) do if p.key == key then table.remove(NS.panels, i) break end end
 end
 NS.Refresh()

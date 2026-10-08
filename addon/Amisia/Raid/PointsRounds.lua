@@ -234,16 +234,23 @@ function ns.PointsResultText(r, top)
     return L["Stand %d, %s"]:format(top.a, word)
 end
 
+-- A standing as short as the roll window's cell needs it: from 10000 on in thousands ("12k").
+local function short(n)
+    n = tonumber(n) or 0
+    if math.abs(n) >= 10000 then return ("%dk"):format(n >= 0 and math.floor(n / 1000) or -math.floor(-n / 1000)) end
+    return tostring(n)
+end
+
 -- The roll window's cells of an entry: kind, value, the grey standing.
 function ns.PointsRowText(r, e)
     if r.mode == "bid" then
-        return L["Gebot"], tostring(e.value), GREY .. tostring(e.bal) .. "|r"
+        return L["Gebot"], tostring(e.value), GREY .. short(e.bal) .. "|r"
     end
     local word = e.kind == "MS" and L["Bedarf"] or L["Gier"]
     if r.sys == "epgp" then
-        return word, ns.PointsPRText(e.pr), (e.low and "|cffe0574a" or GREY) .. ("%d/%d"):format(e.a, e.b) .. "|r"
+        return word, ns.PointsPRText(e.pr), (e.low and "|cffe0574a" or GREY) .. short(e.a) .. "/" .. short(e.b) .. "|r"
     end
-    return word, tostring(e.a), ""
+    return word, short(e.a), ""
 end
 
 -- The newest points round of an item, finished up to KEEP ago or running.

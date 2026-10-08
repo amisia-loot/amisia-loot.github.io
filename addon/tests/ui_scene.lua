@@ -88,6 +88,21 @@ function S.setup()
     STUB.rolls[2] = LINK2
     STUB.fire("START_LOOT_ROLL", 2, 60000, 2)
     STUB.fire("CHAT_MSG_LOOT", LOOT_ROLL_NEED:format("Kimtaro", LINK2), "", "", "", "")
+    -- the guild bids DKP: the site's standings (the list shown to everyone) and the two awards' costs
+    S.dkp()
+    if s then
+        for i, a in ipairs(s.awards) do NS.SetAwardPoints(s, a.id, i == 1 and 60 or 25) end
+    end
+end
+
+-- The site's DKP block (bids, open) and its EPGP block.
+function S.dkp()
+    NS.SetPointsSite("#AMISIA-PTS 1 forever 2026-10-07 dkp 1788000000\nCFG raid=10 boss=5 time=5 bench=10 mode=bid seal=0 min=10 step=5 decay=10 pub=1\n"
+        .. "P Vuloo 240\nP Fraktur 185\nP Chorf 90\nP Anna_Bergmann 310\nP Kimtaro 45\nP Bobbington 1200\n#END")
+end
+function S.epgp()
+    NS.SetPointsSite("#AMISIA-PTS 1 forever 2026-10-07 epgp 1788000000\nCFG raid=10 boss=10 time=5 bench=10 base=100 minep=50 scale=100 ref=66 os=50 decay=10 pub=1\n"
+        .. "P Vuloo 1240 380\nP Fraktur 985 120\nP Chorf 40 0\nP Anna_Bergmann 1310 640\nP Kimtaro 450 75\nP Bobbington 2200 1500\n#END")
 end
 
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
@@ -111,10 +126,14 @@ S.STATES = {
     { page = "bank", name = "bank-needs", open = function() NS.ShowBank("bedarf") end },
     { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
     { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
+    { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
+    { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
 }
 
 S.WINDOWS = {
     { key = "rollframe", view = "officer", open = function()
+        -- a rolling guild's round (the scene's guild bids DKP; the windows after it show that)
+        NS.Set("points.system", "roll")
         NS.StartRoll(LINK2, 30)
         STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Kimtaro", 92, 1, 100))
         STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Bobbington", 41, 1, 100))
@@ -128,6 +147,30 @@ S.WINDOWS = {
     { key = "priodialog", view = "officer", open = function()
         NS.ShowPrioDialog(LINK2)
         return AmisiaPrioDialog
+    end },
+    { key = "rollframe-bid", view = "officer", open = function()
+        S.dkp()
+        NS.StartRoll(LINK2, 30)
+        STUB.fire("CHAT_MSG_RAID", "!bid 50", "Kimtaro")
+        STUB.fire("CHAT_MSG_RAID", "!bid 80", "Anna Bergmann")
+        STUB.fire("CHAT_MSG_RAID", "!bid 900", "Chorf")
+        NS.ShowRollFrame()
+        return AmisiaRollFrame
+    end },
+    { key = "rollframe-need", view = "officer", open = function()
+        S.epgp()
+        NS.StartRoll(LINK3, 30)
+        STUB.fire("CHAT_MSG_RAID", "!need", "Anna Bergmann")
+        STUB.fire("CHAT_MSG_RAID", "!need", "Chorf")
+        STUB.fire("CHAT_MSG_WHISPER", "!greed", "Kimtaro")
+        STUB.fire("CHAT_MSG_RAID", "!need", "Bobbington")
+        NS.ShowRollFrame()
+        return AmisiaRollFrame
+    end },
+    { key = "awarddialog-points", view = "officer", open = function()
+        NS.StopRoll()
+        NS.ShowAwardDialog(LINK3)
+        return AmisiaAwardDialog
     end },
     { key = "softresframe", view = "officer", open = function()
         NS.ToggleSoftResFrame()

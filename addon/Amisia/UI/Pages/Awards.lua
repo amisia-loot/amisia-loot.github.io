@@ -287,7 +287,8 @@ local function buildOfficer(parent)
     col(head, 52, 200, "Item")
     col(head, 256, 140, L["Gewinner"])
     col(head, 400, 30, L["Art"])
-    col(head, 434, 24, "+1")
+    -- the plus-one, or in a DKP or EPGP raid the award's cost
+    O.plusHead = col(head, 434, 24, "+1")
     col(head, 462, 124, L["Quelle"])
 
     O.list = W.List(O, ROWS, ROW_H, function(r)
@@ -325,7 +326,13 @@ local function buildOfficer(parent)
         local waiting = ns.SyncWaiting and ns.SyncWaiting(e.s, a.id)
         r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. L[" · wartet|r"]) or ""))
         r.kind:SetText(a.kind or "-")
-        r.plus:SetText((a.kind == "MS" and (a.to == nil or a.to == "player")) and tostring(ns.PlusCount(a.name)) or "")
+        local pts = ns.PointsSession and ns.PointsSession(e.s)
+        if pts then
+            local c = ns.AwardPoints(e.s, a.id)
+            r.plus:SetText(c and tostring(c.n) or "")
+        else
+            r.plus:SetText((a.kind == "MS" and (a.to == nil or a.to == "player")) and tostring(ns.PlusCount(a.name)) or "")
+        end
         r.src:SetText(a.src or "?")
         if a.id == chosenId then r.sel:Show() else r.sel:Hide() end
     end)
@@ -387,6 +394,22 @@ local function buildOfficer(parent)
         ns.Refresh()
     end)
     E.del:SetPoint("LEFT", E.de, "RIGHT", 6, 0)
+    -- DKP or EPGP: the award's cost
+    E.ptsLabel = W.Text(E, T.FONT.text, 30)
+    E.ptsLabel:SetPoint("LEFT", E.del, "RIGHT", 12, 0)
+    E.pts = W.LineEdit(E, 50, function(text)
+        local s, a = editTarget()
+        if not s then return end
+        local c = ns.AwardPoints(s, a.id)
+        local n = tonumber(text)
+        if text == "" or (c and n == c.n) or (not c and not n) then return end
+        local ok, why = ns.SetAwardPoints(s, a.id, n)
+        if not ok and why then ns.msg(why) end
+        ns.Refresh()
+    end)
+    E.pts:SetPoint("LEFT", E.ptsLabel, "RIGHT", 4, 0)
+    E.pts:SetNumeric(true)
+    E.pts:SetMaxLetters(6)
     E.status = W.Text(E, T.FONT.hint)
     E.status:SetPoint("LEFT", E.del, "RIGHT", 12, 0)
     E.status:SetJustifyH("RIGHT")
@@ -574,6 +597,17 @@ local function fillEdit(E)
     E.winner:SetValue(a.to == "player" and a.name or ((a.name and a.name ~= "-") and a.name or nil))
     for _, k in ipairs(KINDS) do E.kinds[k]:SetOn(a.kind == k) end
     if not E.note:HasFocus() then E.note:SetText(a.note or "") end
+    -- the cost of a player's award in a DKP or EPGP raid; the status moves behind it
+    local p = ns.PointsSession and ns.PointsSession(s)
+    local ptsOn = p ~= nil and a.to == "player"
+    E.ptsLabel:SetShown(ptsOn)
+    E.pts:SetShown(ptsOn)
+    if ptsOn then
+        E.ptsLabel:SetText(p.sys == "epgp" and "GP" or "DKP")
+        local c = ns.AwardPoints(s, a.id)
+        if not E.pts:HasFocus() then E.pts:SetText(c and tostring(c.n) or "") end
+    end
+    E.status:SetPoint("LEFT", ptsOn and E.pts or E.del, "RIGHT", 12, 0)
     E.bank:SetText(a.to == "bank" and L["An Spieler"] or "Bank")
     E.de:SetText(a.to == "de" and L["An Spieler"] or L["Entzaubern"])
     local parts = {}
@@ -638,6 +672,9 @@ local function refreshOfficer(O)
     if not O.search:HasFocus() then O.search:SetText(query) end
     local list = entries()
     O.list.all = all
+    -- the column of the plus-one shows the cost in a DKP or EPGP raid
+    local pts = s and ns.PointsSession and ns.PointsSession(s)
+    O.plusHead:SetText(pts and (pts.sys == "epgp" and "GP" or "DKP") or "+1")
     O.list:SetItems(list)
     -- the head line: counts and the export state
     local n, bank, de, raids = 0, 0, 0, {}
