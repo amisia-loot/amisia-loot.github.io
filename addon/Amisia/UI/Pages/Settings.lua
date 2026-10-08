@@ -93,7 +93,7 @@ local headers = {}
 
 ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         -- a plain scroll frame with the client's thin bar 4 px to its right (inside the page)
         scroll = CreateFrame("ScrollFrame", nil, f)
         scroll:SetPoint("TOPLEFT")
