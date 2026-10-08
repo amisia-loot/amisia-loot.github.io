@@ -34,7 +34,7 @@ BUS.tick(30)
 assert(C(VULO, "NS.SyncIsKeeper()") == true)
 
 ---------------------------------------------------------------------------
--- 1. the guild bank: 18 rows on the 478 px page, the wheel for the rest
+-- 1. the guild bank: 18 rows on the 478 px page (2.10: 17 under the view chips), the wheel for the rest
 ---------------------------------------------------------------------------
 local bank = C(VULO, [[
     local function page(n)
@@ -58,12 +58,12 @@ local bank = C(VULO, [[
     L.column("bank rows", f.list.rows[1], f.list.rows[#f.list.rows])
     local out = { rows = #f.list.rows, shown = shown, state = f.state:GetText() }
     for _ = 1, 20 do f.list:GetScript("OnMouseWheel")(f.list, -1) end
-    out.last = f.list.rows[18].item and f.list.rows[18].item.id
+    out.last = f.list.rows[17].item and f.list.rows[17].item.id
     local g = page(10)
     out.small = g.state:GetText()
     return out]])
-assert(bank.rows == 18 and bank.shown == 18, "18 rows: " .. bank.rows .. " / " .. bank.shown)
-assert(bank.state:find("18 von 30 sichtbar, Mausrad", 1, true), bank.state)
+assert(bank.rows == 17 and bank.shown == 17, "17 rows: " .. bank.rows .. " / " .. bank.shown)
+assert(bank.state:find("17 von 30 sichtbar, Mausrad", 1, true), bank.state)
 assert(bank.last == 20030, "the wheel reaches the last material")
 assert(not bank.small:find("Mausrad", 1, true), "no hint while all fit: " .. bank.small)
 

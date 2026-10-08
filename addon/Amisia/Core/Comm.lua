@@ -34,7 +34,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, GQ = 30 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
@@ -275,6 +275,11 @@ local function collectBucketEntry(e)
     return b ~= nil and collectBucket(b) and isNum(n, 1, 999999)
 end
 local function hex4(e) return isHex(e, 4) end
+-- a guild bank need "itemID:min:target"
+local function needEntry(e)
+    local id, min, target = e:match("^(%d+):(%d+):(%d+)$")
+    return id ~= nil and isNum(id, 1, 9999999) and isNum(min, 0, 99999) and isNum(target, 0, 99999)
+end
 
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
@@ -328,6 +333,15 @@ local VALID = {
         return true
     end,
     CW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
+    -- guild bank needs (BankNeeds.lua): GN <rev> <part> <parts> <set by> <id:min:target,...|->;
+    -- GQ <rev> (who has a newer list); GP <itemID> <count> <epoch> (a pledge, 0 takes it back)
+    GN = function(f)
+        if #f < 5 or not isNum(f[1], 0, 4294967295) or not isNum(f[2], 1, 5) or not isNum(f[3], 1, 5) then return false end
+        if tonumber(f[2]) > tonumber(f[3]) or f[4] == "" or #f[4] > 60 or f[4]:find("[%s,:]") then return false end
+        return commaList(f[5], 8, needEntry, true)
+    end,
+    GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
+    GP = function(f) return #f >= 3 and isNum(f[1], 1, 9999999) and isNum(f[2], 0, 99999) and isNum(f[3], 0, 4294967295) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

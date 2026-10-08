@@ -50,6 +50,26 @@ function S.setup()
     end
     NS.SetSoftRes("Vuloo 32235\nFraktur 32235\nBobbington 32837\nAnna Bergmann 30000\nGustav 32837\n")
     STUB.fire("LOOT_CLOSED")
+    -- the guild bank: three learned materials, a count, the officers' needs, a pledge, a few log entries
+    for i, m in ipairs({ { 61001, "Feuerkern", 3 }, { 61002, "Runenstoff", 1 }, { 61003, "Arkanit", 2 } }) do
+        STUB.item(m[1], m[2], m[3])
+        AmisiaDB.mats[m[1]] = { name = m[2], q = m[3], first = i }
+    end
+    NS.RebuildMats()
+    AmisiaDB.bank = { at = STUB.now - 600, counts = { [61001] = 12, [61002] = 80, [61003] = 300 }, tabs = 3, filled = 3, total = 4, by = "Vuloo" }
+    NS.SetBankNeed(61001, 40, 80)
+    NS.SetBankNeed(61002, 50, 100)
+    NS.SetBankNeed(61003, 100)
+    AmisiaDB.bankPledges = { { name = "Anna Bergmann", item = 61001, count = 20, t = math.floor(STUB.now) - 3600 } }
+    AmisiaDB.bankLog.tabs = { [1] = "Raidmaterial", [2] = "Rüstungen", [3] = "Verbrauchsgüter" }
+    NS.MergeBankLog({
+        { k = 1, y = "deposit", n = "Anna Bergmann", i = 61001, c = 20, ago = 1 },
+        { k = 1, y = "withdraw", n = "Bobbington", i = 61002, c = 10, ago = 5 },
+        { k = 2, y = "move", n = "Vuloo", i = 61003, c = 20, a = 2, b = 1, ago = 26 },
+        { k = 0, y = "deposit", n = "Fraktur", i = 0, c = 1234567, ago = 30 },
+        { k = 0, y = "repair", n = "Chorf", i = 0, c = 52340, ago = 50 },
+    }, math.floor(STUB.now))
+    AmisiaDB.bankLog.at = math.floor(STUB.now)
 end
 
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
@@ -67,6 +87,10 @@ S.STATES = {
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },
+    { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
+    { page = "bank", name = "bank-needs", open = function() NS.ShowBank("bedarf") end },
+    { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
+    { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
 }
 
 S.WINDOWS = {

@@ -27,10 +27,10 @@ end
 panel.refresh(frame)
 local shown = 0
 for _, r in ipairs(frame.list.rows) do if r.shown and r.item then shown = shown + 1 end end
--- (2.1: the list keeps 18 rows on the page; the wheel brings every material into view)
-assert(#frame.list.items == 30 and #frame.list.rows == 18 and shown == 18, "18 rows of 30 materials: " .. #frame.list.rows)
+-- (2.1: the list keeps 18 rows on the page; 2.10: 17 under the view chips; the wheel brings every material into view)
+assert(#frame.list.items == 30 and #frame.list.rows == 17 and shown == 17, "17 rows of 30 materials: " .. #frame.list.rows)
 for _ = 1, 20 do frame.list.scripts.OnMouseWheel(frame.list, -1) end
-assert(frame.list.rows[18].item and frame.list.rows[18].item.id == 9030, "the last material is reachable")
+assert(frame.list.rows[17].item and frame.list.rows[17].item.id == 9030, "the last material is reachable")
 for i = 1, 30 do NS.MATS[9000 + i], NS.MAT_ORDER[i] = nil, nil end
 AmisiaDB.bank = nil
 

@@ -130,6 +130,36 @@ On 2026-10-07: data files 30 ms and 4.3 MB of tables at load before, 5.5 ms and 
 the whole addon load 98 ms and 8.3 MB of Lua memory before, 59 ms and 5.7 MB now; nothing is built at
 login; the first use costs 13 ms (gear), 4 ms (quests), 1-2 ms (map, professions, talents).
 
+### Guild bank needs, pledges and log
+
+`Raid/BankNeeds.lua`, `Raid/BankLog.lua` and the four views of `UI/Pages/Bank.lua` (Bestand, Bedarf,
+Protokoll, Text; `/amisia bank [bedarf|protokoll|text]`; the page is for everyone, its editors only
+for the officer view).
+
+- Needs travel by addon message, not as a pasted text: they change often and members must see them
+  without anybody pasting. `GN <rev> <part> <parts> <set by> <id:min:target,...|->` (8 needs per
+  part) goes to the guild a moment after an officer's change; receivers take it only from a verified
+  officer (Trust.lua: the sender as the server names it, its rank from the roster) and only with a
+  newer `rev`; a list with a part missing is not taken. `GQ <rev>` after the login: officers with a
+  newer list answer by whisper, members answer an asking officer with their own pledges.
+  `GP <itemID> <count> <epoch>` is a pledge (0 takes it back), first-hand only; it lasts
+  `bank.pledgeDays` (7) on each client. An officer's tick on someone else's pledge is local.
+- The log: when the guild bank opens, every tab the character may view and the money log
+  (`QueryGuildBankLog(MAX_GUILDBANK_TABS + 1)`) are queried one after another and read on
+  `GUILDBANKLOG_UPDATE` (or after 3 s). The client gives years, months, days and hours ago; an entry
+  read at R with h hours ago lies in (R - (h+1) h, R - h h], months count 30 days, years 365, and a
+  month-old entry gets three days of slack. Dedupe: same tab, kind, name, item, count (copper) and move
+  tabs with overlapping windows (one minute of slack) is the same entry; one to one per read, so two
+  equal deposits in an hour stay two; a match narrows the window. Limits: an entry that left the
+  client's short log while an identical one came in within the same hour reads as the old one; a
+  renamed or deleted character counts as another name. Kept: `bank.logDays` (90) and 1000 entries.
+- Export lines (new, nothing old changed): `BQ <itemID> <min> <target|0> <set epoch> <set by>` (item 0:
+  the list is empty now), `BP <itemID> <count> <epoch> <name>`, and
+  `BT <from> <to> <tab|0> <kind> <itemID|0> <count|copper> <tab1|0> <tab2|0> <name>` for each log
+  entry no export carried yet. The site keeps the newest needs list with its pledges
+  (`state.bankNeeds`) and merges the log by the same rule (`state.bankLog`, 1000 entries); the Mats
+  tab shows a need line per material and the log under the requests.
+
 ## build_scan.py
 
 Builds `data/forever.js`, the loot tables for World of Warcraft: Forever, from what the Amisia

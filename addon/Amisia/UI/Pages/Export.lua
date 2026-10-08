@@ -33,7 +33,8 @@ function ns.ShowExport(latestOnly)
         onlyNew = true
     end
     if #list == 0 then
-        local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and ns.Bank())
+        -- the bank count, the needs and pledges, the bank log (BankPending also covers the last two)
+        local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and (ns.Bank() or ns.BankPending()))
         if not bankOnly then
             setExport("")
             if #src == 0 and not ns.Bank() then

@@ -39,6 +39,8 @@ Raid\RaidLog.lua
 Raid\Bench.lua
 Raid\Sync.lua
 Raid\RaidText.lua
+Raid\BankNeeds.lua
+Raid\BankLog.lua
 Collect\Scan.lua
 Collect\Collect.lua
 Collect\Drops.lua

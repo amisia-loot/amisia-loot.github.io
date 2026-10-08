@@ -20,6 +20,7 @@ T.CHIP_OFF = 0.45                           -- vertex shade of a chip that is of
 T.GREY = "|cff8f86a3"
 T.ORANGE = "|cffe0a344"
 T.GREEN = "|cff4fbf7a"
+T.RED = "|cffe0574a"                        -- a shortfall below the minimum
 T.LABEL = "|cffe2b857"
 T.GOLD_TEXT = "|cffe3b857"
 
