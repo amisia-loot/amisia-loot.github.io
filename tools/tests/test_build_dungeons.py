@@ -52,9 +52,9 @@ def repo_names():
         gear = fh.read()
     with open(os.path.join(ADDON, 'Data', 'MapData.lua'), encoding='utf-8') as fh:
         mapdata = fh.read()
-    names = set(re.findall(r'\{"D", "((?:[^"\\]|\\.)*)"', gear))
+    names = set(re.findall(r'\{"D",\s*"((?:[^"\\]|\\.)*)"', gear))
     # Q {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon}
-    for m in re.finditer(r'\{"Q", "(?:[^"\\]|\\.)*", [^\n]*?, "((?:[^"\\]|\\.)*)"\},', gear):
+    for m in re.finditer(r'\{"Q",\s*"(?:[^"\\]|\\.)*",[^\n]*?,\s*"((?:[^"\\]|\\.)*)"\},', gear):
         names.add(m.group(1))
     names |= set(re.findall(r'\["N:((?:[^"\\]|\\.)*)"\]', mapdata))
     return {n.replace("\\'", "'") for n in names} - {'A', 'H'}
@@ -96,7 +96,7 @@ def test_every_label_says_where_its_facts_can_be_checked():
     assert 'forever' not in sources and 'Blizzard' not in json.dumps(sources), 'no claim the repo cannot back'
     with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
-    d_recs = set(re.findall(r'\{"D", "((?:[^"\\]|\\.)*)", "((?:[^"\\]|\\.)*)"', gear))
+    d_recs = set(re.findall(r'\{"D",\s*"((?:[^"\\]|\\.)*)",\s*"((?:[^"\\]|\\.)*)"', gear))
     d_recs = {(a.replace("\\'", "'"), b.replace("\\'", "'")) for a, b in d_recs}
     names = repo_names()
     labelled = 0

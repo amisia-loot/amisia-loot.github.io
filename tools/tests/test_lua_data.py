@@ -21,7 +21,8 @@ def test_lazy_and_back():
     text = lua_data.lazy(PLAIN, 'X', 2)
     assert text.startswith('local _, ns = ...\n\n-- a comment\nns.LazyData("X", [==[\nreturn {\n')
     assert text.endswith('}\n]==], 2)\n'), 'a level the text does not hold, the count at the end'
-    assert lua_data.eager(text) == PLAIN
+    assert lua_data.eager(text) == PLAIN.replace('    a = "x]=]y [[z]]"', 'a="x]=]y [[z]]"').replace('    b = { 1, 2 }', 'b={1,2}'), \
+        'the table compacted, the rest as it was'
     assert lua_data.eager(PLAIN) == PLAIN, 'a plain file stays as it is'
     # level 1 at least: Lua 5.1 refuses "[[" inside a level-0 long string
     assert lua_data.lazy(PLAIN.replace(']=]', ''), 'X').endswith('}\n]=])\n'), 'level 1 and no count'
@@ -47,3 +48,18 @@ def test_shipped_files_wait_for_their_first_use(name):
     ns = lua_data.load(text, name + '.lua')
     n = int(text.rsplit(', ', 1)[1].rstrip(')\n'))
     assert n == len(list(ns[key][field].keys())), 'the count is the number of entries'
+
+
+def test_compact_keeps_strings_comments_and_lines():
+    src = ('{\n    a = "x, y = ]] -- z",\n    b = { 1, -2, - -3 },  -- c "q\n    [ [=[a b]=]] = 1,\n'
+           '    x = nil, y = true and 1 .. 2, z = \'it\\\'s , = \',\n}')
+    out = lua_data.compact(src)
+    assert out == ('{\na="x, y = ]] -- z",\nb={1,-2,- -3},-- c "q\n[ [=[a b]=]]=1,\n'
+                   'x=nil,y=true and 1 .. 2,z=\'it\\\'s , = \',\n}')
+    assert lua_data.compact(out) == out, 'twice is once'
+    pytest.importorskip('lupa')
+    from lupa.lua51 import LuaRuntime
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    a, b = lua.eval(src), lua.eval(out)
+    assert a.a == b.a and b.b[3] == 3 and b['a b'] == 1 and b.z == "it's , = " and b.y == '12'
+

@@ -9,6 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import att_data  # noqa: E402
 import build_gear  # noqa: E402
+import lua_data  # noqa: E402
 
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 
@@ -295,7 +296,7 @@ def test_output_header_names_the_sources_and_no_guard(tmp_path):
     assert 'Questie' not in text and 'GPL-3.0' not in text
     assert lines[2] == 'local _, ns = ...' and lines[3] == ''
     assert 'IsForever' not in text
-    assert '    game = "forever", cap = 60, built = "2026-10-05",' in lines
+    assert lua_data.compact('game = "forever", cap = 60, built = "2026-10-05",') in lines
 
     # the stat weights are Amisia's own (build_bis.py): this build has no writer for them any more
     assert not hasattr(build_gear, 'write_weights') and not hasattr(build_gear, 'load_rxp_weights')
@@ -367,7 +368,7 @@ def test_zone_names_only_for_zone_fields(tmp_path):
     out = tmp_path / 'GearData.lua'
     build_gear.write_lua(str(out), src, keep, {230: 'Uldaman', 301: 'Razorfen Kraul'}, {'built': '2026-10-06'})
     text = out.read_text(encoding='utf-8')
-    assert '[301] = "Razorfen Kraul",' in text and '"Uldaman"' not in text
+    assert '[301]="Razorfen Kraul",' in text and '"Uldaman"' not in text
 
 
 def test_the_facts_carry_the_client_instance_ids():

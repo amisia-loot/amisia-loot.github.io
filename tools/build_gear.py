@@ -910,11 +910,12 @@ def previous_stats(path=OUT):
         return {}
     with open(path, encoding='utf-8') as fh:
         text = fh.read()
-    m = re.search(r'\n    ST = \{\n(.*?)\n    \},', text, re.S)
+    # the lazy text is compacted (lua_data.compact): no indentation, no blank around "=" and ","
+    m = re.search(r'\n\s*ST\s*=\s*\{\n(.*?)\n\s*\},', text, re.S)
     if not m:
         return {}
     # stat texts are KEY=value pairs: no quotes or escapes in them
-    return {int(i): v for i, v in re.findall(r'^\s*\[(\d+)\] = "([^"\\]*)",$', m.group(1), re.M)}
+    return {int(i): v for i, v in re.findall(r'^\s*\[(\d+)\]\s*=\s*"([^"\\]*)",$', m.group(1), re.M)}
 
 
 def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):

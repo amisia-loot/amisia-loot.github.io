@@ -141,12 +141,12 @@ def test_output_header_without_guard_sorted_and_repeatable(tmp_path, resolved):
     assert 'AllTheThings' in lines[1] and 'MIT' in lines[1] and 'LICENSES' in lines[1] and 'f8d7232b7c' in lines[1]
     assert 'Questie' not in text and 'GPL' not in text
     assert lines[2] == 'local _, ns = ...' and lines[3] == '', 'no guard line'
-    assert '    game = "forever", built = "2026-10-06", source = "f8d7232b7c",' in lines
-    keys = [ln.split('"')[1] for ln in lines if ln.startswith('        ["')]
+    assert lua_data.compact('game = "forever", built = "2026-10-06", source = "f8d7232b7c",') in lines
+    keys = [ln.split('"')[1] for ln in lines if ln.startswith('["')]
     pkeys = keys[:len([k for k in P if P[k]])]
     assert pkeys == sorted(pkeys)
     assert '["U:81004"]' not in text, 'keys without points stay out'
-    assert '["Q:71001"] = "1426:4000:6000",' in text
+    assert '["Q:71001"]="1426:4000:6000",' in text
     first = text
     build_map.write_lua(str(out), P, G, 'f8d7232b7c988cb31f927f076d4692bc85c6fd0c', '2026-10-06')
     assert out.read_text(encoding='utf-8') == first

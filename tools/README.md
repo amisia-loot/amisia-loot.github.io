@@ -149,6 +149,12 @@ file as the client does and shows its cost before and after the scan trim at log
 On 2026-10-07: data files 30 ms and 4.3 MB of tables at load before, 5.5 ms and 1.5 MB of text now;
 the whole addon load 98 ms and 8.3 MB of Lua memory before, 59 ms and 5.7 MB now; nothing is built at
 login; the first use costs 13 ms (gear), 4 ms (quests), 1-2 ms (map, professions, talents).
+On 2026-10-08 (`--files`): of 6.36 MB the addon held at load, 3.9 MB were code, 1.8 MB lazy data
+texts, 0.75 MB data tables (GearWeights 559 KB of them) and 16 KB English texts (a German client loads
+no English). GearWeights is lazy now and `lazy()` compacts the table's text (`lua_data.compact`: no
+indentation, no blank next to `, ; { } ( ) [ ] =`; strings, comments and line breaks stay, so a diff
+still shows one entry per line; the tables are the same): 1.72 MB of lazy texts became 1.41 MB, the
+addon load 6.36 -> 5.62 MB (stub, without the scan marker of 0.23 MB, which goes after the trim).
 
 ### Guild bank needs, pledges and log
 
@@ -211,8 +217,9 @@ memory at every login, so it is kept here for good and the addon lets go of what
   trimmed file builds the same `GearData.lua` and `forever.js` (`tools/tests/test_scan_archive.py`
   runs that round trip with the real files when they are there).
 
-Measured 2026-10-08 with the file of 2026-10-07 (stub, lupa): the addon load with the SavedVariables
-10.5 MB of Lua memory, after the trim 7.5 MB (with the marker still held; it is let go after the run).
+Measured 2026-10-08 with the file of 2026-10-07 (2.24 MB; stub, lupa, `tools/load_cost.py --sv`): the
+addon load with it 10.5 MB of Lua memory (the addon alone 6.4 MB, so the file cost about 4 MB here),
+after the trim at login 6.6 MB; at the next login the trimmed file costs next to nothing.
 
 ## build_scan.py
 

@@ -336,7 +336,8 @@ einmal pro Leiche; Chat nur über `ns.Say`, in der Sperre wird gewartet.
 **Entscheidung:** Große generierte Tabellen liegen beim Login nur als Text vor (`ns.LazyData`) und
 werden beim ersten `ns.Data(...)` gebaut; Verfügbarkeitsprüfungen nur über `ns.HasData`/`ns.DataSize`.
 **Grund:** Kurzer Login, wenig Speicher für Spieler, die die Seiten nie öffnen.
-**Folge:** Neue große Daten über `tools/lua_data.py` `lazy()`.
+**Folge:** Neue große Daten über `tools/lua_data.py` `lazy()`; seit 2026-10-08 ohne überflüssige
+Leerzeichen (`lua_data.compact`, Zeilen bleiben) und auch die Gewichte (`GEAR_WEIGHTS`).
 **Durchgesetzt durch:** `addon/tests/test_lazy_data.lua`, `tools/tests/test_lua_data.py`.
 
 ## D-29 Wertung der Ersatzbank und Discord-Text

@@ -17,6 +17,62 @@ import re
 LAZY = re.compile(r'^ns\.LazyData\("([A-Z_]+)", \[(=*)\[\nreturn (\{.*?\})\n\]\2\](?:, \d+)?\)\n', re.S | re.M)
 
 
+PUNCT = set(',;{}()[]=')
+
+
+def compact(body):
+    """A table's Lua source without the blanks the parser does not need: no indentation, no blank
+    next to , ; { } ( ) [ ] =; strings, comments and line breaks stay as they are (a diff of a data
+    file still shows one entry per line). The text is what the client holds at login, so every byte
+    counts there."""
+    out = []
+    i, n = 0, len(body)
+    pending = False   # a run of blanks waits: kept as one only between two other characters
+    while i < n:
+        c = body[i]
+        if c in ' \t':
+            pending = True
+            i += 1
+            continue
+        if pending:
+            prev = out[-1][-1] if out and out[-1] else '\n'
+            join = prev + c
+            if prev not in PUNCT and prev != '\n' and c not in PUNCT and c != '\n' or join in ('[[', ']]', '--'):
+                out.append(' ')
+            pending = False
+        if c in '"\'':
+            j = i + 1
+            while j < n and body[j] != c:
+                if body[j] == '\\':
+                    j += 1
+                elif body[j] == '\n':
+                    raise ValueError('a string runs over a line end')
+                j += 1
+            out.append(body[i:j + 1])
+            i = j + 1
+        elif body.startswith('--', i):
+            j = body.find('\n', i)
+            j = n if j < 0 else j
+            out.append(body[i:j])
+            i = j
+        elif c == '[' and body[i + 1:i + 2] in ('[', '='):
+            m = re.match(r'\[(=*)\[', body[i:])
+            if not m:
+                out.append(c)
+                i += 1
+                continue
+            end = body.find(']' + m.group(1) + ']', i)
+            if end < 0:
+                raise ValueError('a long string without its end')
+            end += len(m.group(1)) + 2
+            out.append(body[i:end])
+            i = end
+        else:
+            out.append(c)
+            i += 1
+    return ''.join(out)
+
+
 def lazy(text, key, n=None):
     """text (a generated file with `ns.<key> = {` at the start of a line, the table to the end) in
     the lazy form; n, the number of entries, rides along when given."""
@@ -27,6 +83,7 @@ def lazy(text, key, n=None):
     body = text[m.start() + len(f'ns.{key} = '):].rstrip('\n')
     if not body.endswith('}'):
         raise ValueError(f'the table of ns.{key} does not end the text')
+    body = compact(body)
     # level 1 at least: Lua 5.1 refuses a "[[" inside a level-0 long string ("nesting of [[...]] is
     # deprecated"), and a quest or recipe name may hold one some day
     level = 1
