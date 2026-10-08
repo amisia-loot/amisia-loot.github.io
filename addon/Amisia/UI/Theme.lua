@@ -74,7 +74,9 @@ T.PAGE_W, T.PAGE_H = 602, 478
 -- the main window (MainFrame.lua)
 T.MAIN = {
     W = 806, H = 560,
-    NAV_W = 164, NAV_ROWS = 18, NAV_HEADS = 4,   -- 4 bars, 3 gaps and 18 rows of 20 fill 472 of the 480 px list
+    -- the page list: up to 23 rows (4 bars, 3 gaps and 23 rows of 16 fill the 480 px); rows are 20 high and shrink (to 16 at least) when more pages than
+    -- fit the 480 px list are shown (a mage officer in the expert view has 19)
+    NAV_W = 164, NAV_ROWS = 23, NAV_HEADS = 4, NAV_LIST_H = 480, NAV_ROW_MIN = 16,
     NAV_ROW_H = 20, NAV_GAP = 4, NAV_INDENT = 8, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)

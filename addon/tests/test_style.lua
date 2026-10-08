@@ -456,15 +456,32 @@ local function missingRows()
     return table.concat(miss, ",")
 end
 assert(missingRows() == "", "pages without a row in the page list (more rows needed): " .. missingRows())
--- 18 pages in the expert view (since the page Punkte), 18 rows: the list is full, one more page has no row
+-- a 19th page (a mage officer in the expert view has the scrolls page too): every page keeps its row,
+-- the rows get lower and the list still fits its 480 px
 NS.RegisterPanel({ key = "extra19", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
 NS.Refresh()
-assert(missingRows() == "extra19", "the check sees a page without a row: " .. missingRows())
-for _, key in ipairs({ "extra19" }) do
-    for i, p in ipairs(NS.panels) do if p.key == key then table.remove(NS.panels, i) break end end
+assert(missingRows() == "", "19 pages, all with a row: " .. missingRows())
+assert(MF.navRowH < 20 and MF.navRowH >= 16, "the rows got lower: " .. tostring(MF.navRowH))
+do
+    local last = MF.navOrder[#MF.navOrder]
+    local fr = last.header or last.button
+    local NL2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
+    local _, bottom = NL2.vspan(fr)
+    assert(-bottom <= 480, "19 pages fit the list: " .. bottom)
+end
+-- past the 23 rows of the pool (23 rows of 16 fill the list) a page has no row, and the check says so
+for i = 20, 24 do
+    NS.RegisterPanel({ key = "extra" .. i, label = "Extra", group = "amisia", order = 999 + i, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+end
+NS.Refresh()
+assert(missingRows() == "extra24", "the check sees a page without a row: " .. missingRows())
+for i = 19, 24 do
+    local key = "extra" .. i
+    for j, p in ipairs(NS.panels) do if p.key == key then table.remove(NS.panels, j) break end end
 end
 NS.Refresh()
 assert(missingRows() == "")
+assert(MF.navRowH == 20, "back to 20 high")
 -- the labels of the sections
 local labels = {}
 for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
@@ -476,13 +493,13 @@ for _, e in ipairs(MF.navOrder) do
     local fr = e.header or e.button
     parts[#parts + 1] = fr
     NL.inside("nav part", fr)
-    if e.header then assert(fr._h == 25) else assert(fr._h == 20 and fr.points.TOPLEFT.x == 8, "rows 20 high, 8 indented") end
+    if e.header then assert(fr._h == 25) else assert(fr._h == MF.navRowH and MF.navRowH >= 16 and MF.navRowH <= 20 and fr.points.TOPLEFT.x == 8, "rows 16..20 high, 8 indented") end
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
 local nRows = 0
 for _, e in ipairs(MF.navOrder) do if not e.header then nRows = nRows + 1 end end
-assert(lastB == -(4 * 25 + nRows * 20 + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
+assert(lastB == -(4 * 25 + nRows * MF.navRowH + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
 assert(-lastB <= 480, "the list fits its 480 px: " .. lastB)
 -- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
 local ovRow

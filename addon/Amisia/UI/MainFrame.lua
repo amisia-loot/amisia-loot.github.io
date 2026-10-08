@@ -8,7 +8,7 @@ local L = ns.L
 local W, T = ns.W, ns.Theme
 local M = T.MAIN
 local WIDTH, HEIGHT = M.W, M.H
-local NAV_W, NAV_MAX, HEAD_MAX = M.NAV_W, M.NAV_ROWS, M.NAV_HEADS   -- 18 rows: 4 bars, 3 gaps and 18 rows fit the 480 px list
+local NAV_W, NAV_MAX, HEAD_MAX = M.NAV_W, M.NAV_ROWS, M.NAV_HEADS
 local HEAD_H, ROW_H, GAP, INDENT = T.HEADER_H, M.NAV_ROW_H, M.NAV_GAP, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
@@ -97,6 +97,23 @@ end
 local function updateNav()
     local collapsed = windowState().collapsed or {}
     local order, y, usedRows, usedHeads = {}, 0, 0, 0
+    -- the row height: 20, less when the shown rows would not fit the list (at least NAV_ROW_MIN)
+    local nHeads, nRows = 0, 0
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local n = 0
+        for _, p in ipairs(ns.panels) do
+            if ns.PanelGroup(p) == g.key and ns.Visible(p) then n = n + 1 end
+        end
+        if n > 0 then
+            nHeads = nHeads + 1
+            if not collapsed[g.key] then nRows = nRows + n end
+        end
+    end
+    local rowH = ROW_H
+    if nRows > 0 then
+        local room = M.NAV_LIST_H - nHeads * HEAD_H - math.max(0, nHeads - 1) * GAP
+        rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(room / nRows)))
+    end
     for _, g in ipairs(ns.PANEL_GROUPS) do
         local pages = {}
         for _, p in ipairs(ns.panels) do
@@ -128,19 +145,20 @@ local function updateNav()
                     b.key = p.key
                     b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
                     b.label:SetText(p.label)
+                    b:SetHeight(rowH)
                     b:ClearAllPoints()
                     b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
                     if p.key == current then b.sel:Show() else b.sel:Hide() end
                     b:Show()
                     order[#order + 1] = { button = b }
-                    y = y - ROW_H
+                    y = y - rowH
                 end
             end
         end
     end
     for i = usedRows + 1, NAV_MAX do navButtons[i]:Hide() end
     for i = usedHeads + 1, HEAD_MAX do navHeaders[i]:Hide() end
-    F.navOrder = order
+    F.navOrder, F.navRowH = order, rowH
 end
 
 local function toggleGroup(group, isCollapsed)
