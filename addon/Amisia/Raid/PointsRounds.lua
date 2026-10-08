@@ -16,11 +16,6 @@ local MAX_IGNORED = 40
 local GREY = "|cff8f86a3"
 local lastRound               -- the newest points round (a tie-break roll after it keeps its costs)
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
-
 -- "bid", "pr" or nil (rolling) for a new round.
 function ns.PointsRoundMode()
     local cfg = ns.PointsConfig()
@@ -348,5 +343,3 @@ for _, w in ipairs({ "bid", "gebot" }) do ns.RegisterChatCommand(w, onBid) end -
 for _, w in ipairs({ "need", "bedarf", "ms" }) do ns.RegisterChatCommand(w, needWord("MS")) end -- l10n-ok: chat words
 for _, w in ipairs({ "greed", "gier", "os" }) do ns.RegisterChatCommand(w, needWord("OS")) end -- l10n-ok: chat words
 for _, w in ipairs({ "pass", "passe" }) do ns.RegisterChatCommand(w, needWord(nil)) end -- l10n-ok: chat words
-
-ns.PointsRoundsReport = report

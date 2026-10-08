@@ -164,9 +164,21 @@ local function siteRec()
     return s
 end
 
-function ns.PointsSystem()
+-- The system of the settings (what a new raid freezes).
+local function settingsSys()
     local v = ns.Get("points.system")
     return SYSTEMS[v] and v or "roll"
+end
+
+-- The system this client shows: the settings', for a raider without one the officers' of the
+-- running raid (PointsSync.lua).
+function ns.PointsSystem()
+    local v = settingsSys()
+    if v == "roll" and not ns.IsOfficerView() then
+        local sh = ns.PointsSharedList and ns.PointsSharedList()
+        if sh and SYSTEMS[sh.sys] then return sh.sys end
+    end
+    return v
 end
 
 -- The system and its parameters as they stand now: { sys, raid, boss, time, bench, mode, seal, min,
@@ -184,6 +196,13 @@ function ns.PointsConfig()
     local sc = site and type(site.cfg) == "table" and site.cfg or {}
     c.decay = tonumber(sc.decay) or 0
     c.pub = tonumber(sc.pub) or 0
+    -- a raider following the officers' list of the running raid reads its parameters
+    if not ns.IsOfficerView() then
+        local sh = ns.PointsSharedList and ns.PointsSharedList()
+        if sh and sh.sys == c.sys and type(sh.cfg) == "table" then
+            for k, v in pairs(sh.cfg) do c[k] = v end
+        end
+    end
     return c
 end
 
@@ -290,11 +309,12 @@ function ns.SetPointsSite(text)
     if not p then return nil, L["Amisia ist noch nicht geladen."] end
     p.site = { date = res.date, at = time(), by = ns.UnitFullName("player"), asOf = res.asOf, sys = res.sys, cfg = res.cfg,
                n = res.n, list = res.list, raids = res.raids, ids = res.ids }
-    ns.Set("points.system", res.sys)
+    -- the values first: a change of the system freezes them into the running raid
     for key, v in pairs(res.cfg) do
         local def = CFG[key]
         if def and def[1] then ns.Set(def[1], settingValue(def, v)) end
     end
+    ns.Set("points.system", res.sys)
     local keep = {}
     for _, e in ipairs(p.adj) do
         if not res.ids[e.id] then keep[#keep + 1] = e end
@@ -334,8 +354,9 @@ function ns.PointsSession(s, make)
         return p
     end
     if not make then return nil end
+    if settingsSys() == "roll" then return nil end
     local cfg = ns.PointsConfig()
-    if cfg.sys == "roll" then return nil end
+    cfg.sys = settingsSys()
     p = { sys = cfg.sys, cfg = copyCfg(cfg), charges = {} }
     s.points = p
     return p
@@ -452,7 +473,7 @@ function ns.SetAwardPoints(s, id, n)
     if not int(n, 0, MAX_AMOUNT) then return nil, L["Ungültiger Betrag."] end
     local p = ns.PointsSession(s, true)
     if not p then return nil, L["Kein Punktesystem gewählt."] end
-    local c = { p = payPool(p.sys), n = n, at = time(), by = ns.UnitFullName("player") }
+    local c = { p = payPool(p.sys), n = n, at = math.floor(time()), by = ns.UnitFullName("player") }
     local old = p.charges[id]
     -- two changes in one second: the later one still wins on the other clients
     if type(old) == "table" and (tonumber(old.at) or 0) >= c.at then c.at = old.at + 1 end
@@ -484,7 +505,7 @@ function ns.PointsAdjust(name, n, reason, poolWord)
     if sys == "dkp" then pool = "D" elseif pool == "D" then pool = "E" end
     local p = store(true)
     if not p then return nil, L["Amisia ist noch nicht geladen."] end
-    local t = time()
+    local t = math.floor(time())
     local e = { id = hexId(table.concat({ "adj", tostring(t), char, tostring(n), reason, tostring(math.random(0, 65535)) }, "\t")),
                 name = ns.MainOf(char) or char, n = n, pool = pool, t = t, by = ns.UnitFullName("player") or "?", reason = reason }
     p.adj[#p.adj + 1] = e

@@ -42,6 +42,7 @@ Raid\Sync.lua
 Raid\LootPrio.lua
 Raid\Points.lua
 Raid\PointsRounds.lua
+Raid\PointsSync.lua
 Raid\RaidText.lua
 Raid\Stats.lua
 Raid\BankNeeds.lua
