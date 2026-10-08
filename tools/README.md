@@ -87,13 +87,28 @@ python3 tools/ui_layout.py rules [--locale deDE]
     both sides (`W.FitChip` sizes one so).
   - **atlas**: only atlases of `ns.Theme.ATLASES` (the style allow-list) are used.
   - **nav**: every visible page opens and has its row inside the page list.
+  - **grid**: every page is built with the page scaffold `W.Page` (UI/Widgets.lua) and keeps its
+    measures (`ns.Theme.LAYOUT`): the head row at the page's top and 22 high on every page; what a
+    band (a row of controls, a line of text) holds sits centred on it; hint lines and footer lines
+    in the hint font, a line 6 px in from the edge; column heads 18 high in the gold head font; the
+    footer ends at the page's bottom and nothing of the content reaches into it; every empty state
+    (`W.EmptyState`) is placed by the scaffold (`p:Empty`). The scaffold tags its parts
+    (`layoutRole`, `layoutBand`), `addon/tests/uidump.lua` hands the tags over.
 - Text widths are estimated (`addon/tests/textwidth.py`, shared with the stub's `GetStringWidth`):
   per-character advances close to Friz Quadrata, on the safe side, times the font object's size
   (Arial Narrow faces narrower), times the locale's factor. `LOCALES` in `ui_layout.py` holds the
   locales the rules run in (German now; English joins with its strings and factor).
 - `UI/Theme.lua` holds the design tokens the rules and the widgets share (sizes, gaps, paddings,
-  fonts, colours, the atlas allow-list); `W.Row`, `W.Column`, `W.Grid` and `W.FitChip` in
-  `UI/Widgets.lua` lay out chip rows, headers, settings rows and cards.
+  fonts, colours, the atlas allow-list, `LAYOUT` for the page scaffold); `W.Row`, `W.Column`,
+  `W.Grid` and `W.FitChip` in `UI/Widgets.lua` lay out chip rows, headers, settings rows and cards.
+- Every page is a `W.Page`: `p:Bands{ "row", "line", ... }` (the head row first), `p:Place(i, left,
+  right)` (controls and texts centred on a band, left from the left edge, right up to the right one,
+  `{ fs, fill = true }` takes the room left), `p:Line(i)`, `p:Columns(cols)` with `W.Cells(row, cols)`,
+  `p:List`, `p:Detail` (the inset beside a split list), `p:Empty`, `p:BottomRow(left, right)`,
+  `p:Footer{ "hint", "data" }` and `p:Bottom()` (where the content ends). Views a page switches
+  with chips are `W.Page(page, { view = true })` with the same methods. A new page uses it, or the
+  layout rule `grid` fails.
+- The page scene also opens the mage scrolls (`scrolls`, by command), so its layout is checked too.
 
 Tests: `tools/tests/test_ui_layout.py` (each rule on a made-up tree, the anchors, the drawing and
 the comparison) and `addon/tests/test_layout_helpers.lua`.

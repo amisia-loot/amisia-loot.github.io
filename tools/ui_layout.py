@@ -22,6 +22,11 @@ Rules (RULES below), each over every shot:
   minwidth   every button and chip is at least as wide as its text plus the padding on both sides
   atlas      only atlases of the style allow-list (ns.Theme.ATLASES) are used
   nav        every visible page has a row in the page list, inside the list
+  grid       every page is built with the page scaffold (W.Page, ns.Theme.LAYOUT): its head row at
+             the page's top, ROW_H high; what a band holds centred on it; hint lines and footer
+             lines in the hint font, TEXT_X from the edge; column heads COLHEAD_H high in the head
+             font; the footer at the page's bottom with nothing of the content in it; every empty
+             state placed by the scaffold
 The locales the rules run in: LOCALES (German and English).
 """
 import argparse
@@ -534,8 +539,8 @@ def rule_nav(tree, shot):
     return out
 
 
-# every page must be built with W.Page (on once all pages are)
-REQUIRE_SCAFFOLD = False
+# every page must be built with W.Page
+REQUIRE_SCAFFOLD = True
 
 
 def rule_grid(tree, shot):
