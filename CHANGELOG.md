@@ -2,6 +2,18 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.11.0 (2026-10-08)
+
+- Design: DKP und EPGP als Alternative zum Würfeln
+- Punkte: DKP und EPGP im Addon (Modelle, Stände, Gebote, Bedarf nach PR, Kosten der Vergabe)
+- Punkte im Raid teilen: KV/KQ/KS vom Keeper, KC für die Kosten einer Vergabe
+- Seite Punkte: Rangliste, Verlauf, Korrektur mit Grund, Einfügen des Website-Blocks
+- Website: Tab Points, Import der Punkte aus dem Addon, Block für das Addon
+- Punkte: Keeper rechnet den geteilten Stand einmal, Bestätigung verdeckter Gebote gedrosselt, Gebote von Hand bis sechs Stellen
+- Merge DKP/EPGP; the page list lowers its rows when more pages are shown (19 for a mage officer in the expert view)
+- Punkte: Runde eines früheren Items findet ihr Gebot, gewonnene Gebote mindern den freien Stand, Würfel-Raids bekommen keine Punkte nachträglich
+- Website: Punkte-Import pro Raid-Schlüssel und Zeit, Sicherung behält die Punkte, Betrachter bekommen nur ihre Stände
+
 ## 2.10.1 (2026-10-08)
 
 - Data rebuilt from AllTheThings e9311f6 and the latest scan and collector records
