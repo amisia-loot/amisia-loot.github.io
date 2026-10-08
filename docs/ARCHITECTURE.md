@@ -6,6 +6,11 @@ commit as a protocol, an export line, a saved key, a settings section or a TOC f
 `tools/tests/test_contracts.py` (run by `python3 tools/build.py check`) holds the tables marked
 "(checked)" against the code, both ways.
 
+The other documents: [DECISIONS.md](DECISIONS.md) (the user's decisions), `docs/FEATURES.md`
+(every user-visible feature with version, status and the checks the user does in game; read by
+`tools/features.py`) and `docs/specs` (a short spec before each larger feature, `README.md` says
+when and how, `TEMPLATE.md` the headings; older drafts in `docs/superpowers`). See D-35.
+
 Three parts:
 
 | Part | Where | What |
@@ -385,7 +390,10 @@ step, ... }`. `ns.Get(path)` returns the stored value or the default, `ns.Set` v
 | `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, index.html, changed layouts |
-| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | clean tree, TOC version, check (TOC restored on failure), `addon/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh` |
+| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version, check (TOC restored on failure), `addon/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
+| `testlist [--all] [--out FILE]` | the German check list of the features with status `gebaut` from `docs/FEATURES.md`, newest version first; `--all` adds those that need a group, guild or raid |
+| `tested F-001 [...] [--raid]` | sets their status in `docs/FEATURES.md` to `im Spiel geprüft (today)` (`im Raid bewährt`) |
+| `errors [--sv FILE] [--all]` | the Lua errors in `~/addons/_SavedVariables/!BugGrabber.lua` that name Amisia (`--all`: every addon's), via `tools/game_errors.py`; `check` adds a non-failing note "Fehler aus dem Spiel: N" |
 
 The version stands only in `## Version:` of `Amisia.toc` (`ns.VERSION` reads it at load). GitHub
 Actions (`.github/workflows/check.yml`) runs the checks on push.
@@ -397,6 +405,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
 | `~/addons/_release/Amisia` | committed HEAD of `addon/Amisia`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` |
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
+| `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1` |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |

@@ -4,6 +4,9 @@
   same commit when you change a protocol (addon message kind, blob art), an export line or paste-in
   block, a saved `AmisiaDB` key, a settings section, a TOC file or a decision. `tools/tests/test_contracts.py`
   fails when the code and the documents drift apart.
+- Features and their status: `docs/FEATURES.md`; larger features get a spec in `docs/specs` first (README
+  there). After a release relay the test list; record results with `build.py tested F-xxx`; game errors:
+  `build.py errors`.
 - Repo: WoW Forever addon `addon/Amisia`, the site `index.html` (+ `data/*.js`, GitHub Pages, the only
   live copy; the claude.ai twin is unmaintained), builders and tests in `tools/`.
 - One entry point: `python3 tools/build.py check` (must stay green), `data [--sv FILE] [--wago DIR]`,

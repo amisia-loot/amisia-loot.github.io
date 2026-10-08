@@ -465,3 +465,32 @@ def test_every_test_the_decisions_name_exists():
 def test_claude_md_points_to_the_documents():
     text = read(os.path.join(ROOT, 'CLAUDE.md'))
     assert 'docs/ARCHITECTURE.md' in text and 'docs/DECISIONS.md' in text
+
+
+# ---------------------------------------------------------------- specs (DECISIONS D-35)
+SPECS = os.path.join(ROOT, 'docs', 'specs')
+
+
+def template_headings():
+    heads = [ln[3:].strip() for ln in read(os.path.join(SPECS, 'TEMPLATE.md')).splitlines() if ln.startswith('## ')]
+    assert heads == ['Ziel', 'Was es tut', 'Was es ausdrücklich nicht tut', 'Abläufe', 'Abnahmekriterien',
+                     'Sonderfälle', 'Missbrauch/Vertrauen', 'Daten', 'Offene Fragen', 'Entscheidungen'], heads
+    return heads
+
+
+def test_every_spec_has_the_template_headings():
+    heads = template_headings()
+    assert os.path.exists(os.path.join(SPECS, 'README.md'))
+    for name in sorted(os.listdir(SPECS)):
+        if not name.endswith('.md') or name in ('README.md', 'TEMPLATE.md'):
+            continue
+        have = [ln[3:].strip() for ln in read(os.path.join(SPECS, name)).splitlines() if ln.startswith('## ')]
+        missing = [h for h in heads if h not in have]
+        assert not missing, f'docs/specs/{name} lacks the headings: {", ".join(missing)}'
+
+
+def test_the_documents_point_to_features_and_specs(arch):
+    claude = read(os.path.join(ROOT, 'CLAUDE.md'))
+    for doc in ('docs/FEATURES.md', 'docs/specs'):
+        assert doc in claude, f'CLAUDE.md does not name {doc}'
+        assert doc in arch, f'ARCHITECTURE.md does not name {doc}'
