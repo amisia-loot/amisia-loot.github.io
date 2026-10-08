@@ -13,7 +13,7 @@ local HEAD_H, ROW_H, GAP, INDENT = T.HEADER_H, M.NAV_ROW_H, M.NAV_GAP, M.NAV_IND
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
-local F, nav, content, statusText, pauseBtn
+local F, nav, content, statusText, pauseBtn, viewBtn
 local built, current = {}, nil
 local navButtons, navHeaders = {}, {}
 local sideTabs = {}
@@ -89,6 +89,14 @@ local function updateHeader()
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
     pauseBtn:SetText(ns.IsEnabled() and L["Pausieren"] or L["Fortsetzen"])
+    viewBtn:SetText(ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"])
+end
+
+-- The view switch in the head: a click shows the other view (and sets it, as the setting
+-- "Ansicht" does); "Automatisch" stays in the settings and in /amisia ansicht auto.
+function ns.ToggleView()
+    ns.Set("ui.view", ns.IsOfficerView() and "raider" or "officer")
+    ns.Refresh()
 end
 
 -- The page list: per section of ns.PANEL_GROUPS with a visible page a bar, under it the visible
@@ -296,7 +304,7 @@ local function build()
 
     -- the head: the recording state as plain text between the portrait and the button, on the
     -- frame's own ground (a dark bar there did not fit the window's look)
-    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - 12
+    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - M.VIEW_GAP - M.VIEW_W - 12
     local bar = CreateFrame("Frame", nil, F)
     bar:SetSize(BAR_W, M.HEAD_H)
     bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
@@ -306,6 +314,9 @@ local function build()
     if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
     pauseBtn = W.Button(F, L["Pausieren"], M.PAUSE_W, function() ns.SetEnabled(not ns.IsEnabled()) end)
     pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
+    viewBtn = W.Button(F, L["Raider-Ansicht"], M.VIEW_W, function() ns.ToggleView() end)
+    viewBtn:SetPoint("TOPRIGHT", pauseBtn, "TOPLEFT", -M.VIEW_GAP, 0)
+    W.Tooltip(viewBtn, L["Ansicht"], L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Raids, Rolls, Punkte und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."])
 
     -- the page list in an inset with the recipe list's ground, the page in an inset beside it
     local listInset = W.Inset(F)
@@ -333,7 +344,7 @@ local function build()
         if tab then sideTabs[def.key] = tab end
     end
     -- test hooks and the parts the layout tests read
-    F.statusBar, F.statusText, F.pauseBtn = bar, statusText, pauseBtn
+    F.statusBar, F.statusText, F.pauseBtn, F.viewBtn = bar, statusText, pauseBtn, viewBtn
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
     F.sideTabs, F.navOrder = sideTabs, {}
 end
@@ -395,6 +406,24 @@ end
 
 ns.Listen("SETTING", function() ns.Refresh() end)
 ns.Listen("DATA_CHANGED", function() ns.Refresh() end)
+
+local VIEW_WORDS = { offizier = "officer", officer = "officer", raider = "raider", auto = "auto", automatisch = "auto" }   -- l10n-ok: typed words
+ns.RegisterSlash("ansicht", { en = "view", args = L["[offizier|raider|auto]"], desc = L["Offiziers- oder Raider-Ansicht"],
+    run = function(rest)
+        local word = (type(rest) == "string" and rest:match("^%s*(%S*)") or ""):lower()
+        local view = VIEW_WORDS[word]
+        if word ~= "" and not view then
+            ns.msg(L["Aufruf: /amisia ansicht [offizier|raider|auto]"])
+            return
+        end
+        if view then
+            ns.Set("ui.view", view)
+            if ns.Refresh then ns.Refresh() end
+        end
+        local set = ns.Get("ui.view")
+        ns.msg(L["Ansicht: %s%s."]:format(ns.IsOfficerView() and L["Offizier"] or "Raider",
+            set == "auto" and (" (" .. L["Automatisch"] .. ")") or ""))
+    end })
 
 ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "config" }, desc = L["Einstellungen öffnen"],
     run = function() ns.ShowPage("settings") end })

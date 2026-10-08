@@ -9,6 +9,8 @@ local rows = {}   -- path -> row
 local scroll, child, page
 local touched     -- the path of the row the player changed last: it keeps its place on screen
 local placeAgain  -- while set: put that row back in place when the client takes the new scroll range
+local query = ""  -- the search text, lower case ("" shows everything)
+local fromTop     -- the next layout starts at the top (a new search)
 
 function ns.SettingsRows() return rows end
 function ns.SettingsPageFrame() return page end
@@ -95,6 +97,18 @@ end
 
 local headers = {}
 
+-- Whether text holds the search text (plain, any case).
+local function hit(text)
+    return type(text) == "string" and text:lower():find(query, 1, true) ~= nil
+end
+
+-- An item matches by its label, its tip or the names of its choices; a section by its name.
+local function itemHits(it)
+    if query == "" or hit(it.label) or hit(it.tip) or hit(it.key) then return true end
+    for _, c in ipairs(it.values or {}) do if hit(c[2]) then return true end end
+    return false
+end
+
 -- The offset of a placed row or header from the top of the list (W.Column anchors TOPLEFT).
 local function topOf(f)
     for i = 1, f.GetNumPoints and f:GetNumPoints() or 1 do
@@ -144,9 +158,22 @@ end
 ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
+        -- the head row: the search, beside it how many settings it finds
+        local top = f:Bands({ "row" })
+        f.search = W.SearchBox(f, 220, nil, L["Einstellung suchen"])
+        f.search:HookScript("OnTextChanged", function(self)
+            local text = (self:GetText() or ""):match("^%s*(.-)%s*$"):lower()
+            if text == query then return end
+            query = text
+            -- a new search starts at the top of what it finds
+            touched, fromTop = nil, true
+            ns.Refresh()
+        end)
+        f.found = W.Text(f, T.FONT.hint)
+        f:Place(1, { f.search, { f.found, fill = true } })
         -- a plain scroll frame with the client's thin bar 4 px to its right (inside the page)
         scroll = CreateFrame("ScrollFrame", nil, f)
-        scroll:SetPoint("TOPLEFT")
+        scroll:SetPoint("TOPLEFT", 0, top)
         scroll:SetPoint("BOTTOMRIGHT", -16, 0)
         child = CreateFrame("Frame", nil, scroll)
         child:SetSize(560, 10)
@@ -162,13 +189,19 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
     refresh = function()
         -- hide only what this pass leaves out: hiding a row would take the focus from its edit box
         local restore = holdPlace()
-        local column, placed = {}, {}
+        if fromTop then
+            fromTop = nil
+            restore = function() placeAgain = nil; scroll:SetVerticalScroll(0) end
+        end
+        local column, placed, found = {}, {}, 0
         for _, section in ipairs(ns.schema) do
             if ns.Visible(section) then
                 local shown = {}
+                local whole = query ~= "" and hit(section.label)
                 for _, it in ipairs(section.items) do
-                    if it.key and ns.Visible(it) then shown[#shown + 1] = it end
+                    if it.key and ns.Visible(it) and (whole or itemHits(it)) then shown[#shown + 1] = it end
                 end
+                found = found + #shown
                 if #shown > 0 then
                     local h = headers[section.key]
                     if not h then
@@ -195,5 +228,12 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
         -- the headers span the width, the rows keep theirs; the last section's gap ends the list
         local bottom = W.Column(child, column, 0, 0, 0)
         child:SetHeight(math.max(10, -bottom + (#column > 0 and T.SECTION_GAP or 0)))
+        if query == "" then
+            page.found:SetText("")
+        elseif found == 0 then
+            page.found:SetText(L["Nichts gefunden. Manches nur als Offizier oder im Expertenmodus."])
+        else
+            page.found:SetText(L["%d Einstellungen gefunden"]:format(found))
+        end
         restore()
     end }

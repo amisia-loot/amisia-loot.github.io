@@ -340,3 +340,15 @@ L["Geladene Daten (beim Aufbau, mit Müll): %s."] = "Data loaded (when built, ga
 L["Noch nicht geladen: %s."] = "Not loaded yet: %s."
 L["Gespeicherter Scan: %d Items, %d Quellen (räumt /amisia scan aufräumen auf)."] = "Saved scan: %d items, %d sources (/amisia scan cleanup clears it)."
 L["Speicher von Amisia messen (Daten und Müll)"] = "measure Amisia's memory (data and garbage)"
+
+-- UI/MainFrame.lua (view switch, /amisia ansicht), UI/Pages/Settings.lua (search)
+L["Offiziersansicht"] = "Officer view"
+L["Raider-Ansicht"] = "Raider view"
+L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Raids, Rolls, Punkte und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] = "A click shows the other view: raiders see their pages, officers also raids, rolls, points and the export. It does not make you an officer for the guild; Amisia checks rights by rank. The view by rank (Automatic) is under Settings, Interface."
+L["[offizier|raider|auto]"] = "[officer|raider|auto]"
+L["Offiziers- oder Raider-Ansicht"] = "officer or raider view"
+L["Aufruf: /amisia ansicht [offizier|raider|auto]"] = "Usage: /amisia view [officer|raider|auto]"
+L["Ansicht: %s%s."] = "View: %s%s."
+L["Einstellung suchen"] = "Search settings"
+L["Nichts gefunden. Manches nur als Offizier oder im Expertenmodus."] = "Nothing found. Some settings are for officers or in expert mode only."
+L["%d Einstellungen gefunden"] = "%d settings found"

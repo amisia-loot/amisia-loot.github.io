@@ -103,6 +103,7 @@ T.MAIN = {
     PAGE_PAD = 7,         -- the page inside the content inset
     HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the button
     PAUSE_W = 110,
+    VIEW_W = 120, VIEW_GAP = 6,  -- the view switch left of the pause button
     TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
     TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
 }
