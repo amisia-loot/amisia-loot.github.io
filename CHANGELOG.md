@@ -2,6 +2,27 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.10.0 (2026-10-08)
+
+- Loot council: per item an officers' note and priority list (#AMISIA-LC from the site, in-game edit dialog, LC export lines), shown in the roll window, award dialog, tooltip, roll frames and optionally the loot announcement, shared by the keeper (LV/LQ/LC, verified officers only)
+- Site: Loot Council tab (prio and note per item, kept per game in state.lootPrio), the #AMISIA-LC block in Copy for the addon, the addon's LC lines taken over on the Import tab, backups keep it
+- Group loot roll log: Need/Greed/Disenchant/Pass, numbers and winner per item, in the raid or a dungeon run
+- Guild crafters: share known recipes in the guild (PV/PQ/PW, PK blob), "Hergestellt von" on the professions page, a "Gilde" filter, an ask-by-whisper button and a "Kann herstellen" tooltip line
+- Statistik page: items won (MS/OS/SR), items per raid, attendance since first seen, bosses seen, streak and items per week per player over all characters, ranges 4 weeks/phase/all, class and role filters, sortable columns, hall of fame; raiders see their own row. Page list rows 20 high so 18 pages fit
+- Site: Stats tab with loot and attendance per player (alts counted for their main, the bench rule of the Attendance tab), ranges, class and role filters, sortable columns, items per week and the hall of fame
+- att_data: library books folder, quest givers of a header (aqd/hqd), quest maps, newer map constants
+- Guild bank: needs with pledges and the guild bank log
+- l10n: Item/Items only once (the stats page and the raid area both added them)
+- Site prio test: the copy block's date is today, not a fixed day
+- Mage scrolls: Comprehension page for mages (/amisia schriftrollen) from the client tables and AllTheThings
+- Crafters: a sender speaks only of itself and its known alts; lists keep only indexed spells; caps per sender and for the store
+- Bank needs: pledges only for needed materials, capped per name; a cleared list reaches who missed it; no revision from the future
+- Loot prio dialog: the order field holds a whole list; the test stub enforces SetMaxLetters
+- Bank log: rows older than bank.logDays are skipped, not counted as new on every open
+- Loot prio: times more than a day ahead are refused (paste, site import); the LC list goes at the lowest priority; site prio names count bytes, a damaged prio renders
+- Group roll log: one row per player, whatever spelling a roll line uses
+- SelfTest: the guild bank log functions are optional; drop the unused ns.LootAnnounceAgain
+
 ## 2.9.6 (2026-10-07)
 
 - Collector: a vendor price of 0 is unknown - a real price replaces it (prices recorded while the merchant API was missing stayed 0 forever)
