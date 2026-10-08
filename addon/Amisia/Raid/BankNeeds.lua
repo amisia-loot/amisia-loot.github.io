@@ -22,6 +22,9 @@ local MAX_NEEDS = 40          -- materials with a need at most (the size of the 
 local PER_PART = 8            -- needs in one GN message (8 * 19 bytes + the head stay below 250; 40 / 8 = 5 parts, as Comm.lua allows)
 local MAX_COUNT = 99999
 local MAX_PLEDGES = 200
+local PER_NAME = MAX_NEEDS    -- pledges of one name at most (one per needed material)
+local LINE_GAP = 60           -- seconds between two chat lines about the pledges of one name
+local FUTURE = 86400          -- a received revision may run this far ahead of the own clock
 local SEND_AFTER = 2          -- seconds a change waits, so several changes go out as one list
 local ASK_AFTER, ASK_SPREAD = 25, 20   -- the question after the login
 local PART_WAIT = 30          -- seconds a list waits for its missing parts
@@ -29,6 +32,7 @@ local PART_WAIT = 30          -- seconds a list waits for its missing parts
 local DB
 local sendPending = false
 local incoming = {}           -- sender (lower case) -> { rev, n, parts, at }
+local lineAt = {}             -- pledger (lower case) -> GetTime() of the last chat line about it
 
 local function msg(text) if ns.msg then ns.msg(text) end end
 local function now() return math.floor(time()) end
@@ -77,19 +81,50 @@ local function cleanList(list)
     return out
 end
 
--- Drops pledges that ran out (pledgeDays) or are broken; keeps the newest 200.
+-- Drops pledges that ran out (pledgeDays), are broken or name a material without a need (once a list
+-- is known); keeps
+-- PER_NAME per name and MAX_PLEDGES in all (above that the oldest of the name with the most go, so
+-- one name never pushes out the pledges of the others).
 local function prunePledges()
     if not DB then return end
     local keep, limit = {}, now() - pledgeDays() * 86400
+    -- (before any list arrived nothing is dropped for its material)
+    local n = DB.bankNeeds
+    local list = type(n) == "table" and (tonumber(n.rev) or 0) > 0 and n.list or nil
     for _, p in ipairs(DB.bankPledges) do
         if type(p) == "table" and type(p.name) == "string" and p.name ~= "" and itemId(p.item) and count(p.count)
-            and p.count > 0 and tonumber(p.t) and p.t >= limit then
+            and p.count > 0 and tonumber(p.t) and p.t >= limit and (not list or list[p.item]) then
             keep[#keep + 1] = p
         end
     end
-    if #keep > MAX_PLEDGES then
-        table.sort(keep, function(a, b) return a.t > b.t end)
-        for i = #keep, MAX_PLEDGES + 1, -1 do keep[i] = nil end
+    -- newest first: what goes is taken from the end of a name's list
+    table.sort(keep, function(a, b)
+        if a.t ~= b.t then return a.t > b.t end
+        if a.item ~= b.item then return a.item < b.item end
+        return a.name < b.name
+    end)
+    local byName, out = {}, {}
+    for _, p in ipairs(keep) do
+        local low = p.name:lower()
+        byName[low] = byName[low] or {}
+        if #byName[low] < PER_NAME then
+            byName[low][#byName[low] + 1] = p
+            out[#out + 1] = p
+        end
+    end
+    local total = #out
+    while total > MAX_PLEDGES do
+        local most
+        for _, ps in pairs(byName) do
+            if not most or #ps > #most then most = ps end
+        end
+        most[#most].gone = true
+        most[#most] = nil
+        total = total - 1
+    end
+    keep = {}
+    for _, p in ipairs(out) do
+        if p.gone then p.gone = nil else keep[#keep + 1] = p end
     end
     DB.bankPledges = keep
 end
@@ -98,7 +133,7 @@ end
 function ns.BankNeedsLoaded(root)
     DB = root
     local n = type(root.bankNeeds) == "table" and root.bankNeeds or {}
-    root.bankNeeds = { rev = tonumber(n.rev) or 0, by = type(n.by) == "string" and n.by or nil, list = cleanList(n.list) }
+    root.bankNeeds = { rev = math.min(tonumber(n.rev) or 0, now() + FUTURE), by = type(n.by) == "string" and n.by or nil, list = cleanList(n.list) }
     root.bankPledges = type(root.bankPledges) == "table" and root.bankPledges or {}
     prunePledges()
 end
@@ -173,6 +208,7 @@ function ns.SetBankNeed(id, min, target)
     local n = needs()
     n.rev = math.max(now(), (n.rev or 0) + 1)
     n.by = me()
+    if min == 0 and target == 0 then prunePledges() end
     scheduleSend()
     changed()
     return true
@@ -200,6 +236,7 @@ local function applyList(name, set)
     local n = needs()
     if set.rev <= (n.rev or 0) then return end
     DB.bankNeeds = { rev = set.rev, by = set.by, list = cleanList(list) }
+    prunePledges()
     changed()
     if ns.IsOfficerView() then
         local c = 0
@@ -213,6 +250,8 @@ ns.CommOn("GN", function(sender, f)
     local name = ns.TrustName(sender)
     if not name then return end
     local rev, part, parts = tonumber(f[1]), tonumber(f[2]), tonumber(f[3])
+    -- a revision far ahead of the own clock would make every later list look old
+    if rev > now() + FUTURE then return end
     ns.TrustWait(name, "officer", function(ok)
         if not ok or rev <= (needs().rev or 0) then return end
         local key, t = name:lower(), GetTime()
@@ -316,6 +355,8 @@ ns.CommOn("GP", function(sender, f)
     if not id or not n or not t then return end
     t = math.min(t, now())
     if n > 0 and t < now() - pledgeDays() * 86400 then return end
+    -- only for a material with a need (a pledge for anything else would push out real ones)
+    if n > 0 and not needs().list[id] then return end
     ns.TrustWait(name, "member", function(ok)
         if not ok then return end
         local before = findPledge(name, id)
@@ -323,7 +364,12 @@ ns.CommOn("GP", function(sender, f)
         if not storePledge(name, id, n, t) then return end
         changed()
         if n > 0 and had ~= n and ns.IsOfficerView() then
-            msg(L["%s sagt %d %s für die Gildenbank zu."]:format(name, n, ns.ItemName(id)))
+            -- one line per pledger and minute
+            local low, at = name:lower(), GetTime()
+            if not lineAt[low] or at - lineAt[low] >= LINE_GAP then
+                lineAt[low] = at
+                msg(L["%s sagt %d %s für die Gildenbank zu."]:format(name, n, ns.ItemName(id)))
+            end
         end
     end)
 end)
@@ -352,7 +398,8 @@ ns.CommOn("GQ", function(sender, f)
         if not ok then return end
         -- an officer with a newer list answers with it
         local n = needs()
-        if (n.rev or 0) > asked and next(n.list) ~= nil and ns.SelfIsOfficer(true) then
+        -- (an empty list too: a member who missed the clearing still holds the old one)
+        if (n.rev or 0) > asked and ns.SelfIsOfficer(true) then
             C_Timer.After(1 + spread(3), function() sendNeeds("WHISPER", sender) end)
         end
         -- an asking officer gets the own pledges again (one may have been offline)
@@ -445,7 +492,8 @@ function ns.BankNeedsPending()
 end
 
 function ns.MarkBankNeedsExported()
-    if DB then DB.exportedNeeds = now() end
+    -- the revision may run ahead of the clock (several changes in one second)
+    if DB then DB.exportedNeeds = math.max(now(), needs().rev or 0) end
 end
 -- The setting bank.pledgeDays (how long a pledge counts, on this client) is in the "bank" section
 -- of Core.lua.

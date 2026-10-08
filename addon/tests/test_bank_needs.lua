@@ -159,7 +159,7 @@ assert(ex:find("\nN 61001 %d Feuerkern\n"), "the needed items are named: " .. ex
 ---------------------------------------------------------------------------
 -- pledges expire
 ---------------------------------------------------------------------------
-C(VULO, "STUB.now = STUB.now + 8 * 86400")
+for _, name in ipairs(CLIENTS) do C(name, "STUB.now = STUB.now + 8 * 86400") end
 assert(C(VULO, "#NS.BankPledgeList()") == 0, "older than 7 days")
 
 ---------------------------------------------------------------------------

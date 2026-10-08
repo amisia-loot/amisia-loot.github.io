@@ -345,7 +345,7 @@ local VALID = {
     -- GQ <rev> (who has a newer list); GP <itemID> <count> <epoch> (a pledge, 0 takes it back)
     GN = function(f)
         if #f < 5 or not isNum(f[1], 0, 4294967295) or not isNum(f[2], 1, 5) or not isNum(f[3], 1, 5) then return false end
-        if tonumber(f[2]) > tonumber(f[3]) or f[4] == "" or #f[4] > 60 or f[4]:find("[%s,:]") then return false end
+        if tonumber(f[2]) > tonumber(f[3]) or f[4] == "" or #f[4] > 60 or f[4]:find("[%s%c,:|]") then return false end
         return commaList(f[5], 8, needEntry, true)
     end,
     GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
