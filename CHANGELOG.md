@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.13.1 (2026-10-08)
+
+- build_scan.run_sv: runs the text of any SavedVariables file in the sandbox and returns its globals; load_sv uses it for AmisiaDB
+- docs/FEATURES.md: 70 features of addon and site with version, status and checks in game; build.py testlist [--all], tested F-xxx [--raid], errors [--sv] [--all]; release prints the test list of its version (warns when none carries it) and warns about Amisia's errors from the game; check notes them without failing
+- Specs before larger features (docs/specs README and TEMPLATE), D-35 (features, specs, errors from the game), ARCHITECTURE and CLAUDE.md name them; contract test: every spec has the template headings
+- /amisia speicher: memory before and after a full collection, the data built, the saved scan; F-071; F-054 checked in game (Amisia.lua 2.3 MB -> 15 KB, 33 -> 6.5 MB in game); F-043 back to gebaut; a feature entry may carry the coming release
+
 ## 2.13.0 (2026-10-08)
 
 - build_scan: the Wowhead icon lookup is off by default (--wowhead to ask); D-03 updated
