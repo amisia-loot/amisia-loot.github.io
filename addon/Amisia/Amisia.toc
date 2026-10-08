@@ -56,6 +56,7 @@ Data\DungeonQuestData.lua [AllowLoadGameType camelot]
 Data\ProfessionData.lua [AllowLoadGameType camelot]
 Data\QuestData.lua [AllowLoadGameType camelot]
 Data\TalentData.lua [AllowLoadGameType camelot]
+Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
 Gear\Gear.lua
 Gear\GearFrame.lua
@@ -67,6 +68,7 @@ Gear\GuildWishes.lua
 Gear\Compare.lua
 Raid\Need.lua
 Gear\Talents.lua
+Gear\MageScrolls.lua
 Gear\Map.lua
 Gear\MapPins.lua
 Gear\MapPin.xml
@@ -83,6 +85,7 @@ UI\Pages\Map.lua
 UI\Pages\Professions.lua
 UI\Pages\Quests.lua
 UI\Pages\Talents.lua
+UI\Pages\MageScrolls.lua
 UI\Pages\Export.lua
 UI\Pages\Bank.lua
 UI\Pages\Tools.lua

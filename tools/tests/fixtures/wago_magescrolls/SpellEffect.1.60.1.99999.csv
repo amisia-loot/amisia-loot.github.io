@@ -1,0 +1,5 @@
+ID,EffectAura,DifficultyID,EffectIndex,Effect,EffectAuraPeriod,EffectItemType,EffectBasePointsF,EffectMiscValue_0,EffectRadiusIndex_0,EffectRadiusIndex_1,SpellID
+1,30,0,0,6,0,0,25,3012,0,0,8011
+2,13,0,0,6,0,0,8,4,0,0,8020
+3,0,0,0,24,0,69500,3,0,0,0,8200
+4,0,0,0,24,0,9030,1,0,0,0,8103

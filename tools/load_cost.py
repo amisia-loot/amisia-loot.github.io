@@ -19,9 +19,9 @@ sys.path.insert(0, HERE)
 import lua_data  # noqa: E402
 import run as addon_run  # noqa: E402
 
-LAZY = ('GEAR', 'MAP', 'QUEST_DATA', 'PROFESSIONS', 'TALENTS')
+LAZY = ('GEAR', 'MAP', 'QUEST_DATA', 'PROFESSIONS', 'TALENTS', 'MAGESCROLLS')
 FILES = {'GEAR': 'GearData', 'MAP': 'MapData', 'QUEST_DATA': 'QuestData', 'PROFESSIONS': 'ProfessionData',
-         'TALENTS': 'TalentData'}
+         'TALENTS': 'TalentData', 'MAGESCROLLS': 'MageScrollData'}
 
 MEASURE = r'''
 return function(src, name, eager)

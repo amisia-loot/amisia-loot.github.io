@@ -177,7 +177,8 @@ def test_expansion_features_quest_givers_of_a_header_and_quest_maps():
     assert db['errors'] == {} and db['files'] == ['expansion features/library books.lua']
     q = db['quests']
     assert q[78501]['name'] == 'A Dusty Tome' and q[78501]['givers'] == [81501, 81502], 'aqd and hqd give every quest below'
-    assert q[78501]['startItem'] and q[78501]['rewards'] == [69500] and q[78501]['maps'] == [1426]
+    assert q[78501]['startItem'] and q[78501]['startItems'] == [69501] and q[78501]['rewards'] == [69500]
+    assert q[78501]['maps'] == [1426] and q[78503]['startItems'] == []
     assert q[78502]['faction'] == 'A' and q[78502]['maps'] == [1455, 1426], 'a map constant or a number'
     assert q[78503]['pre'] == [78501, 78502] and q[78503]['sqreq'] == 2 and q[78503]['minLevel'] == 20
     n = db['npcs']

@@ -1,0 +1,12 @@
+ID,Description_lang,Display_lang,RequiredSkill,RequiredSkillRank,ItemLevel,RequiredLevel,AllowableClass,OverallQualityID
+61015,A Mage can decipher this with their Comprehension skill.,Scroll: AAA,3012,1,10,1,128,1
+9002,A Mage can decipher this with their Comprehension skill.,Scroll: BBB,3012,1,10,1,128,1
+9003,A Mage can decipher this with their Comprehension skill.,Scroll: CCC,3012,15,20,1,128,1
+69500,Aids the translation of scrolls and spell notes.,Comprehension Charm,0,0,1,1,128,1
+9011,,Scroll of Comprehension,0,0,15,0,128,1
+9020,,Scroll of Imbue Test,0,0,25,16,128,2
+9021,,Scroll of Raid Thing,0,0,71,1,128,1
+9022,,Scroll of Everyone,0,0,15,1,-1,1
+9023,,Scroll of Armor,0,0,15,1,128,1
+9024,,Scroll of No Spell,0,0,15,12,128,1
+9030,,Bundle of Scrolls,0,0,15,0,-1,1

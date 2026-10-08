@@ -796,6 +796,8 @@ local OPTIONAL = {
     "C_Spell.RequestLoadSpellData", "C_Spell.IsSpellDataCached",
     -- the group loot roll log: the client's own roll list (Forever's loot history), the item of a roll
     "C_LootHistory.GetSortedInfoForDrop", "C_LootHistory.GetAllEncounterInfos", "GetLootRollItemInfo",
+    -- the scrolls page: which spells (charm, Study, Research) the mage knows
+    "IsPlayerSpell", "C_SpellBook.IsSpellKnown", "IsSpellKnown",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -1186,6 +1188,16 @@ local function sectionProfessions(R)
         add(R, "WERT", L["Daten"], L["%d Berufe, Client %s, gebaut %s"]:format(#d.P, show(d.client), show(d.built)))
     else
         add(R, "WERT", L["Daten"], L["keine Berufsdaten"])
+    end
+    -- the mage scrolls: the Comprehension rank and the charm spell as the client tells them
+    local MS = ns.MageScrolls
+    if MS and MS.Available() then
+        check(R, L["Arkanes Verständnis"], function()
+            local rank, max = MS.Rank()
+            local d = MS.Data()
+            return "WERT", L["Rang %s / %s, Talisman-Zauber %s, %d Schriftrollen in den Daten"]:format(show(rank), show(max),
+                show(MS.Known(d.conjure)), #d.scrolls)
+        end)
     end
 end
 

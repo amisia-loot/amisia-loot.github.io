@@ -411,14 +411,14 @@ local function walk(v, ctx, depth)
     elseif kind == "m" then
         c.zone = mapOf(id) or ctx.zone
     elseif kind == "q" and type(id) == "number" then
-        local givers, objs, startItem = ids(t.qg), {}, t.qs ~= nil or t.qi ~= nil or t.qis ~= nil
+        local givers, objs, startItem, sitems = ids(t.qg), {}, t.qs ~= nil or t.qi ~= nil or t.qis ~= nil, {}
         for _, g in ipairs(ids(t.qgs)) do givers[#givers + 1] = g end
         local provs = plain(t.providers) and t.providers or { t.provider }
         for _, p in ipairs(provs) do
             if plain(p) and type(p[2]) == "number" then
                 if p[1] == "n" then givers[#givers + 1] = p[2]
                 elseif p[1] == "o" then objs[#objs + 1] = p[2]
-                elseif p[1] == "i" then startItem = true end
+                elseif p[1] == "i" then startItem = true; sitems[#sitems + 1] = p[2] end
             end
         end
         if #givers == 0 and ctx.qd then for _, g in ipairs(ctx.qd) do givers[#givers + 1] = g end end
@@ -433,7 +433,7 @@ local function walk(v, ctx, depth)
                          pre = pre, sqreq = type(t.sourceQuestNumRequired) == "number" and t.sourceQuestNumRequired or nil,
                          alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
                          breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true,
-                         maps = mapList(t.maps) })
+                         maps = mapList(t.maps), sitems = sitems })
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
         local npc
@@ -769,7 +769,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                      'startItem', 'inside', 'zone', 'inst', 'pre', 'sqreq' (how many of pre are needed:
                      0 all, else ATT's sourceQuestNumRequired), 'alt', 'rewards', 'file', 'old',
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
-                     'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest)}},
+                     'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
+                     'startItems' (the items that start it)}},
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
@@ -841,7 +842,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                'rewards': [], 'file': r['file'], 'old': old(r['file']),
                'races': int(r.get('raceMask') or 0), 'skill': _int(r.get('skill')) or 0,
                'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable')),
-               'maps': [int(m) for m in r.get('maps') or []]}
+               'maps': [int(m) for m in r.get('maps') or []],
+               'startItems': [int(i) for i in r.get('sitems') or []]}
         have = quests.get(qid)
         if have is None:
             quests[qid] = rec
