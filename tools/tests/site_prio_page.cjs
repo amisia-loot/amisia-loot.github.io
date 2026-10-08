@@ -7,6 +7,8 @@ process.env.TZ = 'UTC';
 const fs = require('fs');
 const path = require('path');
 
+// the clock stands just before the export below was written (a time more than a day ahead is refused)
+Date.now = () => 1890999000 * 1000;
 const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
 const script = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.length > 100000)
   .replace(/^\s*\(function\(\)\{/, '').replace(/\}\)\(\);\s*$/, '');
@@ -83,6 +85,11 @@ const api = new Function(...names, script + `
   // the same text again: nothing new
   await el('#glPreview').fire('click');
   out.again = {text: el('#amPrioText').innerHTML, disabled: el('#amPrioAdd').disabled};
+  // a damaged entry (prio not a list) does not break the tab
+  api.lootPrio()[30005] = {prio: {k: 'o'}, note: 'kaputt', at: 1, by: ''};
+  api.showView('prio');
+  out.damaged = el('#lcBody').innerHTML.includes('kaputt') && el('#lcBody').innerHTML.includes('no order');
+  delete api.lootPrio()[30005];
   // a backup keeps the prio
   await el('#exportBtn').fire('click');
   const backup = JSON.parse(el('#backup').value);

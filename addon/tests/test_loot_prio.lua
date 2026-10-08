@@ -8,6 +8,9 @@ local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 assert(NS.Set("bis.tooltip", false))
 assert(NS.Set("drops.tooltip", false))
 
+-- the site's times below lie in late October 2026: the clock stands after them (a time more than a
+-- day ahead is refused)
+STUB.now = 1791400000
 local link = STUB.item(32235, "Cursed Vision of Sargeras", 4)
 local link2 = STUB.item(32837, "Warglaive of Azzinoth", 4)
 local plain = STUB.item(30000, "Ohne Prio", 4)
@@ -27,6 +30,11 @@ assert(NS.ParsePrioToken("p:Anna,c:NOCLASS") == nil, "an unknown class refuses t
 assert(NS.ParsePrioToken("p:X1") == nil, "a digit in a name")
 assert(NS.ParsePrioToken("q:Anna") == nil and NS.ParsePrioToken("") == nil and NS.ParsePrioToken(nil) == nil)
 assert(NS.ParsePrioToken(("o,"):rep(12) .. "o") == nil, "at most ten entries")
+do
+    local future = ("#AMISIA-LC 1 forever 2026-10-07\nC 32235 %d p:Anna\nC 32837 1788000000 p:Anna\n#END"):format(math.floor(time()) + 3 * 86400)
+    local res = NS.ParseLootPrio(future)
+    assert(res and res.list[32235] == nil and res.list[32837] and res.skipped == 1, "a time three days ahead is skipped")
+end
 assert(NS.ParsePrioToken("p:Anna:" .. ("x"):rep(30)) == nil, "a label of at most 16 bytes")
 assert(NS.LootPrioText(e) == "1. Anna (Tank), 2. Krieger Furor, 3. offen, 4. Vulo Sturmwind", NS.LootPrioText(e))
 

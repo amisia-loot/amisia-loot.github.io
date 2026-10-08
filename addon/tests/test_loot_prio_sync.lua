@@ -26,8 +26,15 @@ assert(C(VULO, "NS.SyncIsKeeper()") == true, "Vulo keeps the raid")
 assert(BUS.count({ kind = "LV" }) == 0, "nothing to share, nothing announced")
 
 -- the keeper pastes the site's list: LV into the raid, the others ask, the list arrives
+C(VULO, [[local send = NS.CommSendBlob
+    LC_OPTS = {}
+    NS.CommSendBlob = function(art, key, tbl, chan, target, opts)
+        if art == "LC" then LC_OPTS[#LC_OPTS + 1] = opts or {} end
+        return send(art, key, tbl, chan, target, opts)
+    end]])
 assert(C(VULO, ("return NS.SetLootPrio(%q) ~= nil"):format(LIST)))
 BUS.tick(20)
+assert(C(VULO, "#LC_OPTS >= 1 and LC_OPTS[1].low == true"), "the list goes at the lowest priority (the raid sync first)")
 assert(BUS.count({ kind = "LV", sender = VULO, chan = "RAID" }) >= 1, "the keeper announced it")
 assert(BUS.count({ kind = "LV", sender = FRAK }) == 0 and BUS.count({ kind = "LV", sender = KIM }) == 0, "only the keeper announces")
 assert(BUS.count({ kind = "LQ", sender = KIM, chan = "WHISPER" }) >= 1, "the raider asked")

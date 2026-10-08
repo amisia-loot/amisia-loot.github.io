@@ -2678,10 +2678,10 @@ $('#wiAddonCopy').addEventListener('click', async () => {
 const lootPrio = () => state.lootPrio && typeof state.lootPrio === 'object' && !Array.isArray(state.lootPrio) ? state.lootPrio : (state.lootPrio = {});
 const PRIO_CLASS = {WARRIOR: 'Warrior', PALADIN: 'Paladin', HUNTER: 'Hunter', ROGUE: 'Rogue', PRIEST: 'Priest', SHAMAN: 'Shaman', MAGE: 'Mage', WARLOCK: 'Warlock', DRUID: 'Druid', DEATHKNIGHT: 'Death Knight', MONK: 'Monk'};
 const PRIO_MAX = 10;
-// A name for the prio: no digits or separators, at most 48 characters; '' when not valid.
+// A name for the prio: no digits or separators, at most 48 bytes (UTF-8, as the addon counts); '' when not valid.
 function prioName(s){
   const n = String(s == null ? '' : s).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
-  return n && n.length <= 48 && !/[\d\u0000-\u001f,:;()|]/.test(n) ? n : '';
+  return n && new TextEncoder().encode(n).length <= 48 && !/[\d\u0000-\u001f,:;()|]/.test(n) ? n : '';
 }
 // A role or spec ("Tank", "Fury"): at most 16 bytes, no separators; '' when not valid.
 function prioLabel(s){
@@ -2712,7 +2712,7 @@ function prioToken(list){
 }
 // "1. Anna (Tank), 2. Warrior Fury, 3. open"; numbered false leaves the numbers out.
 function prioText(list, numbered){
-  return (list || []).map((e, i) => (numbered === false ? '' : (i + 1) + '. ') + (e.k === 'o' ? 'open' : e.k === 'c' ? PRIO_CLASS[e.cls] + (e.label ? ' ' + e.label : '') : e.name + (e.label ? ' (' + e.label + ')' : ''))).join(', ');
+  return (Array.isArray(list) ? list : []).map((e, i) => (numbered === false ? '' : (i + 1) + '. ') + (e.k === 'o' ? 'open' : e.k === 'c' ? PRIO_CLASS[e.cls] + (e.label ? ' ' + e.label : '') : e.name + (e.label ? ' (' + e.label + ')' : ''))).join(', ');
 }
 // The order as an officer types it: "Anna (Tank), Warrior Fury, open" (German class names too).
 // Returns {list} or {error}.
@@ -2757,13 +2757,14 @@ function prioAddonText(){
 }
 // The loot prio edited in game, from the addon's export:
 // "LC <itemID> <edited epoch> <officer> <token|-> [<note>]". Returns {rows, bad}; per item the newest line.
+// A time more than a day ahead is refused (it would win over every later edit, as in the addon).
 function amParsePrio(blocks){
-  const by = {}; let bad = 0;
+  const by = {}, latest = Math.floor(Date.now() / 1000) + 86400; let bad = 0;
   for (const b of blocks) for (const raw of b.split(/\r?\n/)) {
     const f = raw.trim().split(/\s+/);
     if (f[0] !== 'LC') continue;
     const prio = f.length >= 5 ? prioParseToken(f[4]) : null;
-    if (!/^\d+$/.test(f[1] || '') || !/^\d+$/.test(f[2] || '') || !prio) { bad++; continue; }
+    if (!/^\d+$/.test(f[1] || '') || !/^\d+$/.test(f[2] || '') || Number(f[2]) > latest || !prio) { bad++; continue; }
     const r = {item: Number(f[1]), at: Number(f[2]), by: prioName(f[3]) || '', prio, note: prioNote(f.slice(5).join(' '))};
     if (!by[r.item] || r.at >= by[r.item].at) by[r.item] = r;
   }
@@ -2795,10 +2796,10 @@ function renderPrio(){
   if (!readOnly) renderPrioForm();
   if (!rows.length) { $('#lcBody').innerHTML = '<tr><td colspan="5"><div class="empty"><b>' + (all.length ? 'Nothing matches' : 'No priority lists yet') + '</b>' + (all.length ? 'Try a different filter.' : (readOnly ? '' : 'Pick an item on the right and type the order.')) + '</div></td></tr>'; return; }
   $('#lcBody').innerHTML = rows.map(id => {
-    const e = prioOf(id), it = ITEM[id];
+    const e = prioOf(id), it = ITEM[id], pl = Array.isArray(e.prio) ? e.prio : [];
     const when = e.at ? new Date(e.at * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : '';
     return '<tr><td><span class="item">' + icoHTML(it) + '<span><span class="nm">' + esc(anyItemName(id)) + '</span> <span class="sl">' + esc(itemKind(it)) + '</span></span></span></td>'
-      + '<td>' + (e.prio.length ? e.prio.map((x, i) => { const r = x.k === 'p' && state.raiders.find(y => y.name.toLowerCase() === x.name.toLowerCase()); return '<span class="prioent">' + (i + 1) + '. ' + (r ? rName(r) + (x.label ? ' <span class="faint">(' + esc(x.label) + ')</span>' : '') : esc(prioText([x], false))) + '</span>'; }).join(' ') : '<span class="faint">no order</span>') + '</td>'
+      + '<td>' + (pl.length ? pl.map((x, i) => { const r = x.k === 'p' && state.raiders.find(y => y.name.toLowerCase() === x.name.toLowerCase()); return '<span class="prioent">' + (i + 1) + '. ' + (r ? rName(r) + (x.label ? ' <span class="faint">(' + esc(x.label) + ')</span>' : '') : esc(prioText([x], false))) + '</span>'; }).join(' ') : '<span class="faint">no order</span>') + '</td>'
       + '<td class="note">' + esc(e.note || '') + '</td>'
       + '<td class="faint" style="white-space:nowrap">' + esc(when) + (e.by ? ' · ' + esc(e.by) : '') + '</td>'
       + '<td class="acts">' + (readOnly ? '' : '<button class="btn sm ghost" data-lcedit="' + id + '">Edit</button>') + '</td></tr>';

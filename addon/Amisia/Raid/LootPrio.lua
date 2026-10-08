@@ -191,7 +191,8 @@ function ns.ParseLootPrio(text)
                 local id, at, tok, note = line:match("^C%s+(%d+)%s+(%d+)%s+(%S+)%s*(.-)$")
                 id, at = tonumber(id), tonumber(at)
                 local prio = tok and ns.ParsePrioToken(tok)
-                if not id or id < 1 or id > MAX_ID or not at or not prio then
+                -- a time more than a day ahead would win over every later edit
+                if not id or id < 1 or id > MAX_ID or not at or at > time() + 86400 or not prio then
                     res.skipped = res.skipped + 1
                 else
                     local old = res.list[id]
@@ -723,11 +724,12 @@ local function sendList()
             list = half
         end
     end
+    -- at the lowest priority: the parts of the raid sync go first
     if #who >= ANSWER_RAID then
-        send("RAID", nil, { ttl = 600 })
+        send("RAID", nil, { ttl = 600, low = true })
         return
     end
-    for _, s in ipairs(who) do send("WHISPER", s, { ttl = 600, key = "LC:" .. s }) end
+    for _, s in ipairs(who) do send("WHISPER", s, { ttl = 600, key = "LC:" .. s, low = true }) end
 end
 
 ns.CommOn("LV", function(sender, f, chan)

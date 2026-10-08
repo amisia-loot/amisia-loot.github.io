@@ -61,6 +61,10 @@ process.stdin.on('end', () => {
     // an older line than the ledger's is left
     out.older = api.prioPlan([{item: 32235, at: 1, by: 'X', prio: [], note: ''}]).map(r => r.status);
   }
+  const now = Math.floor(Date.now() / 1000);
+  out.future = api.amParsePrio(['#AMISIA 2 X\nLC 7 ' + (now + 3 * 86400) + ' X o\nLC 8 ' + (now + 3600) + ' X o\n#END']);
+  out.nameBytes = [api.prioParseToken('p:' + 'Ä'.repeat(24)), api.prioParseToken('p:' + 'Ä'.repeat(25))].map(x => x && x[0].name);
+  out.textOfObject = api.prioText({0: {k: 'o'}});
   out.bad = api.amParsePrio(['#AMISIA 2 X\nLC 1 2 X p:X1\nLC abc 2 X o\nLC 5 2 X\nLC 6 7 Y o fine\n#END']);
   process.stdout.write(JSON.stringify(out));
 });

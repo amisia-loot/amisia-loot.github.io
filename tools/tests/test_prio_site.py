@@ -124,6 +124,19 @@ def test_broken_export_lines(out):
     assert b['bad'] == 3 and [r['item'] for r in b['rows']] == [6] and b['rows'][0]['note'] == 'fine'
 
 
+def test_a_time_far_ahead_is_refused(out):
+    f = out['future']
+    assert f['bad'] == 1 and [r['item'] for r in f['rows']] == [8], 'more than a day ahead: refused; an hour: taken'
+
+
+def test_a_name_counts_bytes_like_the_addon(out):
+    assert out['nameBytes'] == ['Ä' * 24, None], '48 bytes at most (UTF-8), as NAME_MAX in the addon'
+
+
+def test_the_text_of_a_damaged_list(out):
+    assert out['textOfObject'] == '', 'a prio that is no list shows nothing and throws nothing'
+
+
 def test_the_page_wires_it_up():
     page = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
     assert 'data-view="prio"' in page and 'id="view-prio"' in page
@@ -165,3 +178,4 @@ def test_the_import_tab_takes_the_changes_made_in_game(page):
     assert i['toast'] == 'Took over the loot prio of 2 items.' and i['panel']
     assert page['again']['disabled'] and '0 to take over, 2 already in the ledger' in page['again']['text']
     assert page['backupHas'], 'a backup carries the prio'
+    assert page['damaged'], 'a prio that is no list does not break the tab'
