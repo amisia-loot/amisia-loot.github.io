@@ -36,7 +36,7 @@ function ns.RollsPageFrame() return page end
 -- the last rounds: one column of 578 px (the list is 590 wide, its scroll bar beside it)
 local COLS = { { "text", 6, 578, L["Letzte Runden"] } }
 
-ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", order = 30, group = "raid", officer = true,
+ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Icons\\INV_Misc_Dice_01", order = 30, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: the running round, the roll window at the right

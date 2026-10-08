@@ -104,6 +104,7 @@ T.MAIN = {
     HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the button
     PAUSE_W = 110,
     TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
+    TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
 }
 
 -- an overview card

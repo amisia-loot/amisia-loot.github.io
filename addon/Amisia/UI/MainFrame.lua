@@ -23,7 +23,7 @@ local SIDE_TABS = {
     { key = "gear", label = L["Ausrüstungstabelle"], icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
-    { key = "rolls", label = "Rolls", icon = "Interface\\Buttons\\UI-GroupLoot-Dice-Up", frame = "AmisiaRollFrame",
+    { key = "rolls", label = "Rolls", icon = "Interface\\Icons\\INV_Misc_Dice_01", frame = "AmisiaRollFrame",
       visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
       toggle = function() ns.ToggleRollFrame() end },
     { key = "softres", label = L["Soft-Reserve-Import"], icon = "Interface\\Icons\\INV_Scroll_03", frame = "AmisiaSoftResFrame",
@@ -169,6 +169,38 @@ local function toggleGroup(group, isCollapsed)
     updateNav()
 end
 
+-- The client fills the tab's interior with the icon (fillToInterior, through SetChecked); the
+-- player found that too large: pull the icon in by M.TAB_ICON_INSET on every side. Done after each
+-- SetChecked, and only on the anchors the client set (not twice on ours).
+local function insetIcon(tab)
+    local icon, d = tab.Icon, M.TAB_ICON_INSET or 0
+    if not icon or d <= 0 or not icon.GetNumPoints then return end
+    local n = icon:GetNumPoints()
+    local p1, _, _, x1, y1 = icon:GetPoint(1)
+    local w1, h1 = icon:GetSize()
+    -- what we left last time, unchanged: done (the size counts only for an icon on one point; on
+    -- two the client works it out later, and comparing it would pull the icon in again and again)
+    local was = tab.insetAt
+    if n == 0 or (was and was[1] == p1 and was[2] == x1 and was[3] == y1 and was[6] == n
+        and (n >= 2 or (was[4] == w1 and was[5] == h1))) then return end
+    if n >= 2 then
+        local pts = {}
+        for i = 1, n do pts[i] = { icon:GetPoint(i) } end
+        icon:ClearAllPoints()
+        for _, p in ipairs(pts) do
+            local point, rel, relPoint, x, y = p[1], p[2], p[3], p[4] or 0, p[5] or 0
+            local dx = point:find("LEFT") and d or point:find("RIGHT") and -d or 0
+            local dy = point:find("TOP") and -d or point:find("BOTTOM") and d or 0
+            icon:SetPoint(point, rel, relPoint, x + dx, y + dy)
+        end
+    elseif (w1 or 0) > 2 * d and (h1 or 0) > 2 * d then
+        icon:SetSize(w1 - 2 * d, h1 - 2 * d)
+    end
+    local p2, _, _, x2, y2 = icon:GetPoint(1)
+    local w2, h2 = icon:GetSize()
+    tab.insetAt = { p2, x2, y2, w2, h2, n }
+end
+
 -- Shows, places (one under the other, no gaps) and marks the side tabs. Runs in ns.Refresh and
 -- whenever a side window shows or hides (each window calls it through W.Window's onVisibility, so
 -- the windows need not know this file).
@@ -193,6 +225,7 @@ function ns.UpdateSideTabs()
                 tab:Hide()
             end
             tab:SetChecked(win ~= nil and win:IsShown() and true or false)
+            insetIcon(tab)
         end
     end
     -- the tabs hang outside the frame on the right: keep them on the screen when moving it, but only

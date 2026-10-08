@@ -502,6 +502,24 @@ local NOOP = function() end
 -- can lay out a row and check that nothing overlaps or leaves its frame.
 local POINT_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
 
+local function getNumPoints(self)
+    local n = 0
+    for _ in pairs(self.points or {}) do n = n + 1 end
+    return n
+end
+
+local function getPoint(self, i)
+    local k = 0
+    for _, p in ipairs(POINT_ORDER) do
+        local e = self.points and self.points[p]
+        if e then
+            k = k + 1
+            if k == (i or 1) then return p, e.rel, e.relPoint, e.x, e.y end
+        end
+    end
+    return "CENTER", nil, "CENTER", 0, 0
+end
+
 local function setPoint(self, point, a, b, c, d)
     local rel, relPoint, x, y
     if type(a) == "table" then
@@ -550,6 +568,8 @@ local function region(parent, kind, layer, template)
     f.GetAlpha = function(self) return self.alpha or 1 end
     f.SetPoint = setPoint
     f.SetAllPoints = setAllPoints
+    f.GetNumPoints, f.GetPoint = getNumPoints, getPoint
+    f.GetSize = function(self) return self._w, self._h end
     f.ClearAllPoints = function(self) self.points = {} end
     f.SetWidth = function(self, w) self._w = w end
     f.SetHeight = function(self, h) self._h = h end
@@ -826,7 +846,16 @@ TEMPLATES.LargeSideTabButtonTemplate = function(f)
     f.Icon = f:CreateTexture(nil, "ARTWORK")
     f.SelectedTexture = f:CreateTexture(nil, "OVERLAY")
     f.SelectedTexture:Hide()
-    f.SetChecked = function(self, on) self.checked = on and true or false; self.SelectedTexture:SetShown(self.checked) end
+    -- as SidePanelTabButtonMixin: SetChecked lays the icon over the tab's interior when fillToInterior
+    f.SetChecked = function(self, on)
+        self.checked = on and true or false
+        self.SelectedTexture:SetShown(self.checked)
+        if self.fillToInterior then
+            self.Icon:ClearAllPoints()
+            self.Icon:SetPoint("TOPLEFT", self, "TOPLEFT", 3, -5)
+            self.Icon:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 5)
+        end
+    end
     f.SetCustomOnMouseUpHandler = function(self, fn) self.customMouseUpHandler = fn end
     tplScript(f, "OnMouseUp", function(self, button, upInside)
         if self.customMouseUpHandler then self.customMouseUpHandler(self, button, upInside) end
@@ -993,23 +1022,11 @@ function _G.CreateFrame(kind, name, parent, template)
     f.GetFrameStrata = function(self) return self.strata or (parent and parent.GetFrameStrata and parent:GetFrameStrata()) or "MEDIUM" end
     -- the points in the client's order (TOPLEFT first); a frame without one reads as CENTER 0 0,
     -- a moved one (_point) as where the test moved it
-    f.GetNumPoints = function(self)
-        local n = 0
-        for _ in pairs(self.points or {}) do n = n + 1 end
-        return n
-    end
+    f.GetNumPoints = getNumPoints
     f.GetPoint = function(self, i)
         -- a test that simulates a drag sets _point, _x, _y (StartMoving leaves one point)
         if self._point then return self._point, nil, self._point, self._x or 0, self._y or 0 end
-        local k = 0
-        for _, p in ipairs(POINT_ORDER) do
-            local e = self.points and self.points[p]
-            if e then
-                k = k + 1
-                if k == (i or 1) then return p, e.rel, e.relPoint, e.x, e.y end
-            end
-        end
-        return "CENTER", nil, "CENTER", 0, 0
+        return getPoint(self, i)
     end
     -- a template's own size (tplW, tplH) counts until the addon sets one
     f.GetWidth = function(self) return self._w or self.tplW or 400 end

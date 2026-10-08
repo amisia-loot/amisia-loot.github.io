@@ -552,8 +552,19 @@ end
 assert(tabs.gear.tooltipText == "Ausrüstungstabelle" and tabs.rolls.tooltipText == "Rolls"
     and tabs.softres.tooltipText == "Soft-Reserve-Import")
 assert(tabs.gear.Icon.texture == "Interface\\Icons\\INV_Chest_Chain_05"
-    and tabs.rolls.Icon.texture == "Interface\\Buttons\\UI-GroupLoot-Dice-Up"
+    and tabs.rolls.Icon.texture == "Interface\\Icons\\INV_Misc_Dice_01"
     and tabs.softres.Icon.texture == "Interface\\Icons\\INV_Scroll_03")
+-- the icon sits TAB_ICON_INSET inside the interior the client gives it, once, also after more refreshes
+local inset = NS.Theme.MAIN.TAB_ICON_INSET
+assert(inset and inset > 0, "an inset")
+for _ = 1, 3 do NS.UpdateSideTabs() end
+local tl, br = tabs.gear.Icon.points.TOPLEFT, tabs.gear.Icon.points.BOTTOMRIGHT
+assert(tl.x == 3 + inset and tl.y == -5 - inset and br.x == -5 - inset and br.y == 5 + inset,
+    ("icon inset: %s %s %s %s"):format(tl.x, tl.y, br.x, br.y))
+-- a client that resolves the icon's size later does not pull it in again
+tabs.gear.Icon._w, tabs.gear.Icon._h = 30, 40
+NS.UpdateSideTabs()
+assert(tabs.gear.Icon.points.TOPLEFT.x == 3 + inset, "inset once: " .. tabs.gear.Icon.points.TOPLEFT.x)
 NS.Set("ui.view", "officer")
 local function tabsShown()
     local out = {}

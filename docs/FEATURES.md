@@ -40,11 +40,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-001 Hauptfenster im Forever-Stil
-- Version: 2.2.0
+- Version: 2.13.3
 - Status: gebaut
 - Prüfung: Wenn du `/amisia` eingibst, dann öffnet sich das Amisia-Fenster mit Porträt oben links, goldenem Titel und rotem Schließen-X, links die Seitenliste mit den Abschnitten Raid, Ausrüstung, Gilde und Amisia.
 - Prüfung: Wenn du eine Seite in der Liste anklickst, dann wechselt das Fenster auf sie; Escape schließt das Fenster.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche die Fenstergröße (%) verschiebst, dann ändert sich die Größe sofort, und "Fensterposition zurücksetzen" holt es in die Mitte.
+- Prüfung: Wenn du die Reiter rechts am Fenster ansiehst (Ausrüstungstabelle, in der Offiziersansicht auch Rolls und Soft-Reserve-Import), dann sitzen die Symbole mit etwas Rand im Reiter, und die Würfel der Rolls sind scharf.
+- Notiz: 2026-10-08 im Spiel: Symbole füllten den Reiter ganz aus, die Würfel (UI-GroupLoot-Dice-Up, 32 px) waren verpixelt; 2.13.3 zieht die Symbole 4 px ein und nimmt INV_Misc_Dice_01.
 
 ### F-002 Einheitliches Seitengerüst
 - Version: 2.12.0
@@ -66,13 +68,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia minimap` eingibst, dann verschwindet der Button; noch einmal holt ihn zurück.
 
 ### F-005 Einstellungen und Ansichten
-- Version: 2.13.2
+- Version: 2.13.3
 - Status: gebaut
 - Prüfung: Wenn du `/amisia einstellungen` eingibst, dann öffnet sich die Seite Einstellungen mit ihren Abschnitten (Aufnahme, Oberfläche und weitere), jede Einstellung mit Tooltip und "Zurücksetzen".
 - Prüfung: Wenn du unter Oberfläche die Ansicht auf "Offizier" stellst, dann erscheinen die Offiziersseiten (Raids, Rolls, Export); auf "Raider" verschwinden sie wieder.
 - Prüfung: Wenn du "Expertenmodus" einschaltest, dann erscheint die Seite Werkzeuge mit dem Abschnitt Werkzeuge in den Einstellungen.
 - Prüfung: Wenn du ganz unten bei Ansicht oder Expertenmodus klickst und dadurch Abschnitte dazukommen oder wegfallen, dann bleibt die angeklickte Zeile an derselben Stelle im Fenster (die Liste springt nicht).
-- Notiz: 2026-10-08 im Spiel: die Ansicht war schwer zu finden (Oberfläche ganz unten), und ein Klick auf "Offizier" ließ die Liste springen; behoben in 2.13.2.
+- Notiz: 2026-10-08 im Spiel: die Ansicht war schwer zu finden (Oberfläche ganz unten), und ein Klick auf "Offizier" ließ die Liste springen; behoben in 2.13.2. Danach sprang sie noch beim Klick auf "Automatisch" (Abschnitte kamen dazu; die Bildlaufleiste des Clients behielt den alten Anteil); 2.13.3 setzt die Zeile auch beim Wechsel des Bildlaufbereichs zurück.
 
 ### F-006 Befehle und Seite "Über und Befehle"
 - Version: 2.1.0

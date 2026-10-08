@@ -8,6 +8,7 @@ local ROW_H, LABEL_W = 26, 300
 local rows = {}   -- path -> row
 local scroll, child, page
 local touched     -- the path of the row the player changed last: it keeps its place on screen
+local placeAgain  -- while set: put that row back in place when the client takes the new scroll range
 
 function ns.SettingsRows() return rows end
 function ns.SettingsPageFrame() return page end
@@ -129,8 +130,14 @@ local function holdPlace()
     end
     return function()
         apply()
-        -- the client takes the new scroll range on the next frame: place again then
-        if C_Timer and C_Timer.After then C_Timer.After(0, apply) end
+        -- the client takes the new scroll range later (and its scroll bar then keeps the old share
+        -- of the range, which moved the row when sections came in): place again on the range change
+        -- and on the next frame, for a moment
+        placeAgain = apply
+        if C_Timer and C_Timer.After then
+            C_Timer.After(0, apply)
+            C_Timer.After(0.3, function() if placeAgain == apply then placeAgain = nil end end)
+        end
     end
 end
 
@@ -146,6 +153,8 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
         scroll:SetScrollChild(child)
         f.scroll, f.child = scroll, child
         f.bar = W.Scroll(scroll, f)
+        -- after the scroll bar's own handler (HookScript runs after it)
+        scroll:HookScript("OnScrollRangeChanged", function() if placeAgain then placeAgain() end end)
         f.headers = headers
         page = f
         return f
