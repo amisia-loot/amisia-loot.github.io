@@ -17,7 +17,8 @@ local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
-local DUNGEON_ROWS, DETAIL_ROWS = 6, 5
+-- the dungeon planner: 5 dungeons and 5 rows of the chosen one between its image and the footer
+local DUNGEON_ROWS, DETAIL_ROWS = 5, 5
 local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = L[" (hoch)"], [1] = L[" (niedrig)"] }
@@ -286,14 +287,6 @@ local function col(parent, x, w, label, template)
     return fs
 end
 
-local function head(parent, y)
-    local h = CreateFrame("Frame", nil, parent)
-    h:SetHeight(14)
-    h:SetPoint("TOPLEFT", 0, y)
-    h:SetPoint("TOPRIGHT", 0, y)
-    return h
-end
-
 -- Every place key the data knows (raids, dungeons, zones), per data set.
 local knownFor, known
 local function placeKnown(place)
@@ -394,6 +387,7 @@ local function fillHead(f, o, res, v)
     if Gear.Available() then f.open:Show() else f.open:Hide() end
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
+    f:Place(2, { { f.counts, fill = true } }, { f.reset }, { shown = true })
     -- the source chips, in a row; the dungeon planner does not use them, its body takes their room
     local shown, row = {}, {}
     for _, def in ipairs(v == "dungeons" and {} or chipSet()) do
@@ -407,7 +401,6 @@ local function fillHead(f, o, res, v)
         end
         chip:Show()
     end
-    W.Row(f, row, T.CHIP_GAP, 0, -48)
     for k, chip in pairs(f.src) do if not shown[k] then chip:Hide() end end
     if v == "goals" then
         local plans = {}
@@ -418,6 +411,7 @@ local function fillHead(f, o, res, v)
     else
         f.plan:Hide()
     end
+    f:Place(3, row, { f.plan }, { shown = true })
 end
 
 ---------------------------------------------------------------------------
@@ -477,23 +471,17 @@ local function fillGoalRow(r, e)
     if e.key == selectedSlot() then r.sel:Show() else r.sel:Hide() end
 end
 
+-- the list is 590 wide (12 px for its scroll bar): the source gives them, the gain moves left; the
+-- slot names in gold
+local GOAL_COLS = { { "slot", 4, 66, "Slot", font = T.FONT.head }, { "worn", 74, 156, L["Angelegt"] },
+    { "best", 234, 186, L["Bestes"] }, { "src", 424, 114, L["Quelle"] }, { "gain", 542, 44, L["Zuwachs"], justify = "RIGHT" } }
+
 local function buildGoals(f)
-    local G = CreateFrame("Frame", nil, f)
-    G:SetPoint("TOPLEFT", 0, -72)
-    G:SetPoint("BOTTOMRIGHT", 0, 0)
-    local h = head(G, 0)
-    -- the list is 590 wide (12 px for its scroll bar): the source gives them, the gain moves left
-    G.head = { slot = col(h, 4, 66, "Slot"), worn = col(h, 74, 156, L["Angelegt"]), best = col(h, 234, 186, L["Bestes"]),
-        src = col(h, 424, 114, L["Quelle"]), gain = col(h, 542, 44, L["Zuwachs"]) }
-    G.head.gain:SetJustifyH("RIGHT")
-    G.list = W.List(G, GOAL_ROWS, ROW_H, function(r)
+    local G = W.Page(f, { view = true })
+    G.headFrame, G.head = G:Columns(GOAL_COLS)
+    G.list = G:List(GOAL_ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.slot = col(r, 4, 66)
-        r.worn = col(r, 74, 156, nil, T.FONT.text)
-        r.best = col(r, 234, 186, nil, T.FONT.text)
-        r.src = col(r, 424, 114, nil, T.FONT.text)
-        r.gain = col(r, 542, 44, nil, T.FONT.text)
-        r.gain:SetJustifyH("RIGHT")
+        W.Cells(r, GOAL_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -506,16 +494,14 @@ local function buildGoals(f)
         end)
         r:SetScript("OnLeave", hideTip)
     end, fillGoalRow)
-    -- 11 of 17 slots: 12 px short of the right edge, room for the list's scroll bar
-    G.list:SetPoint("TOPLEFT", 0, -16)
-    G.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -16)
+    -- 11 of 17 slots (18 + 264 = 282 of the view's 406)
 
     G.title = W.Text(G, T.FONT.title, 440)
-    G.title:SetPoint("TOPLEFT", 4, -284)
+    G.title:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -286)
     -- why the weights are as they are (tooltip), and the simulation of another class or level
-    -- 20 high, between the list (it ends at -280) and the first option (-300)
+    -- 20 high, between the list (it ends at -282) and the first option (-302)
     G.why = W.Button(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
-    G.why:SetPoint("TOPRIGHT", -92, -280)
+    G.why:SetPoint("TOPRIGHT", -92, -282)
     G.why:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Warum diese Gewichte"])
@@ -524,14 +510,14 @@ local function buildGoals(f)
     end)
     G.why:SetScript("OnLeave", hideTip)
     G.sim = W.Button(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
-    G.sim:SetPoint("TOPRIGHT", 0, -280)
+    G.sim:SetPoint("TOPRIGHT", 0, -282)
     W.Tooltip(G.sim, L["Simulation"], L["Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz."])
     G.opts = {}
     for i = 1, 3 do
         local b = CreateFrame("Button", nil, G)
         b:SetHeight(25)
-        b:SetPoint("TOPLEFT", 0, -300 - (i - 1) * 26)
-        b:SetPoint("TOPRIGHT", 0, -300 - (i - 1) * 26)
+        b:SetPoint("TOPLEFT", 0, -302 - (i - 1) * 26)
+        b:SetPoint("TOPRIGHT", 0, -302 - (i - 1) * 26)
         W.Flat(b, 1, 1, 1, 0.04)
         -- lights up as the recipe list's rows do
         b.hover = b:CreateTexture(nil, "HIGHLIGHT")
@@ -574,9 +560,9 @@ local function buildGoals(f)
         b:SetScript("OnLeave", hideTip)
         G.opts[i] = b
     end
-    G.explain = W.Text(G, T.FONT.text, 598, true)
-    G.explain:SetPoint("TOPLEFT", 4, -380)
-    G.explain:SetHeight(26)
+    G.explain = W.Text(G, T.FONT.text, 590, true)
+    G.explain:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -382)
+    G.explain:SetHeight(24)
     G.explain:SetJustifyV("TOP")
     G.explain:SetMaxLines(2)
     -- the explanation in full on hover: option 1 against 2 and against what is worn
@@ -751,28 +737,26 @@ local function fillHereRow(r, e)
     end
 end
 
+-- the list is 590 wide (12 px for its scroll bar): the gain gives 6, the button moves left; the
+-- boss cell starts after the map button (cx)
+local HERE_COLS = { { "boss", 4, 146, "Boss", cx = 22, cw = 128 }, { "name", 154, 216, "Item" }, { "slot", 374, 76, "Slot" },
+    { "gain", 454, 50, L["Zuwachs"], justify = "RIGHT" } }
+
 local function buildHere(f)
-    local Hh = CreateFrame("Frame", nil, f)
-    Hh:SetPoint("TOPLEFT", 0, -72)
-    Hh:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- the place, the list, what the place offers in the footer
+    local Hh = W.Page(f, { view = true })
+    Hh:Bands({ "row" })
     Hh.pick = W.Picker(Hh, 240, function(v)
         placeGone = false
         state().place = (v ~= "here") and v or nil
         ns.Refresh()
     end)
-    Hh.pick:SetPoint("TOPLEFT", 0, -2)
-    local h = head(Hh, -26)
-    -- the list is 590 wide (12 px for its scroll bar): the gain gives 6, the button moves left
-    Hh.head = { boss = col(h, 4, 146, "Boss"), name = col(h, 154, 216, "Item"), slot = col(h, 374, 76, "Slot"),
-        gain = col(h, 454, 50, L["Zuwachs"]) }
-    Hh.head.gain:SetJustifyH("RIGHT")
-    Hh.list = W.List(Hh, HERE_ROWS, ROW_H, function(r)
+    Hh:Place(1, { Hh.pick })
+    Hh:Footer({ "hint" })
+    Hh.headFrame, Hh.head = Hh:Columns(HERE_COLS)
+    Hh.list = Hh:List(HERE_ROWS, ROW_H, function(r)
         r.map = mapButton(r, 4)
-        r.boss = col(r, 22, 128, nil, T.FONT.text)
-        r.name = col(r, 154, 216, nil, T.FONT.text)
-        r.slot = col(r, 374, 76, nil, T.FONT.text)
-        r.gain = col(r, 454, 50, nil, T.FONT.text)
-        r.gain:SetJustifyH("RIGHT")
+        W.Cells(r, HERE_COLS)
         r.wishBtn = W.Button(r, L["Wunsch##Knopf"], 82, function(self)
             local e = self:GetParent().item
             if e then toggleWish(e.id, e.wished) end
@@ -791,10 +775,6 @@ local function buildHere(f)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
     end, fillHereRow)
-    Hh.list:SetPoint("TOPLEFT", 0, -42)
-    Hh.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -42)
-    Hh.hint = W.Text(Hh, T.FONT.hint, 598)
-    Hh.hint:SetPoint("TOPLEFT", 4, -384)
     return Hh
 end
 
@@ -1086,10 +1066,10 @@ end
 
 -- The header image of the chosen dungeon: the middle of the client's loading screen, darkened to the
 -- left, the name and level on it, the boss model and the mark button to the right.
-local function buildArt(B)
+local function buildArt(B, top)
     local a = CreateFrame("Frame", nil, B)
-    a:SetPoint("TOPLEFT", 0, -199)
-    a:SetPoint("TOPRIGHT", -12, -199)
+    a:SetPoint("TOPLEFT", 0, top)
+    a:SetPoint("TOPRIGHT", -12, top)
     a:SetHeight(ART_H)
     a.tex = a:CreateTexture(nil, "BACKGROUND")
     a.tex:SetAllPoints()
@@ -1115,14 +1095,12 @@ local function buildArt(B)
 end
 
 local function buildDungeons(f)
-    -- the source chips are hidden here, so the body starts below the counts
-    local B = CreateFrame("Frame", nil, f)
-    B:SetPoint("TOPLEFT", 0, -48)
-    B:SetPoint("BOTTOMRIGHT", 0, 0)
-    B.next = W.Text(B, T.FONT.title, 412)
-    B.next:SetPoint("TOPLEFT", 4, -2)
-    B.why = W.Text(B, T.FONT.text, 598)
-    B.why:SetPoint("TOPLEFT", 4, -18)
+    -- the source chips are hidden here, so the body starts in their band: the recommendation with
+    -- the order chips, why, the list, the image, the bosses or quests, the hint in the footer
+    local B = W.Page(f, { view = true, top = f.bands[3] and -(T.LAYOUT.ROW_H + T.LAYOUT.LINE_H + 2 * T.LAYOUT.GAP) })
+    B:Bands({ "row", "line" })
+    B.next = W.Text(B, T.FONT.title)
+    B.why = B:Line(2)
     -- the order of the list: by level, by value (the ranking), the chain
     B.sorts = {}
     local sortDefs = { { "level", "Level", 50, L["Nach Level"], L["Die Dungeons nach ihrem Levelbereich."] },
@@ -1138,25 +1116,18 @@ local function buildDungeons(f)
         B.sorts[d[1]] = chip
         sortRow[i] = chip
     end
-    -- at the right edge, in the order of sortDefs
-    W.Row(B, sortRow, T.CHIP_GAP, 0, 0, { right = true })
-    local h = head(B, -36)
+    -- the recommendation, the order chips at the right edge (in the order of sortDefs)
+    B:Place(1, { { B.next, fill = true } }, sortRow)
+    B:Footer({ { "hint", lines = 2 } })
     -- the list is 590 wide (12 px for its scroll bar)
-    B.head = { name = col(h, 4, 170, "Dungeon"), level = col(h, 178, 46, "Level"), fit = col(h, 228, 56, L["Passung"]),
-        upgrades = col(h, 288, 56, "Upgrades"), run = col(h, 348, 66, L["Je Lauf"]), quests = col(h, 418, 66, "Quests"),
-        value = col(h, 488, 60, L["Wert"]) }
-    for _, k in ipairs({ "upgrades", "run", "quests", "value" }) do B.head[k]:SetJustifyH("RIGHT") end
-    B.list = W.List(B, DUNGEON_ROWS, ROW_H, function(r)
+    local cols = { { "name", 4, 170, "Dungeon" }, { "level", 178, 46, "Level" }, { "fit", 228, 56, L["Passung"] },
+        { "upgrades", 288, 56, "Upgrades", justify = "RIGHT" }, { "run", 348, 66, L["Je Lauf"], justify = "RIGHT" },
+        { "quests", 418, 66, "Quests", justify = "RIGHT" }, { "value", 488, 60, L["Wert"], justify = "RIGHT" } }
+    B.headFrame, B.head = B:Columns(cols)
+    B.list = B:List(DUNGEON_ROWS, ROW_H, function(r)
         r.owner = B
         r.sel = W.SelectBar(r)
-        r.name = col(r, 4, 170, nil, T.FONT.text)
-        r.level = col(r, 178, 46, nil, T.FONT.text)
-        r.fit = col(r, 228, 56, nil, T.FONT.text)
-        r.upgrades = col(r, 288, 56, nil, T.FONT.text)
-        r.run = col(r, 348, 66, nil, T.FONT.text)
-        r.quests = col(r, 418, 66, nil, T.FONT.text)
-        r.value = col(r, 488, 60, nil, T.FONT.text)
-        for _, k in ipairs({ "upgrades", "run", "quests", "value" }) do r[k]:SetJustifyH("RIGHT") end
+        W.Cells(r, cols)
         r:SetScript("OnClick", function(self)
             if not self.item then return end
             state().dungeon = self.item.key
@@ -1165,9 +1136,11 @@ local function buildDungeons(f)
         r:SetScript("OnEnter", dungeonTip)
         r:SetScript("OnLeave", hideTip)
     end, fillDungeonRow)
-    B.list:SetPoint("TOPLEFT", 0, -52)
-    B.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -52)
-    B.art = buildArt(B)
+    -- the image under the list, the bosses' or quests' header under it, then their list
+    local G = T.LAYOUT
+    local artTop = B.listTop - DUNGEON_ROWS * ROW_H - G.GAP
+    B.art = buildArt(B, artTop)
+    local headerTop = artTop - ART_H - G.GAP
     B.mark = W.Button(B.art, DTEXT.mark, 110, function()
         if not B.chosen then return end
         if ns.DungeonMarked() == B.chosen then
@@ -1183,8 +1156,8 @@ local function buildDungeons(f)
     W.Tooltip(B.mark, DTEXT.markTitle, DTEXT.markTip)
 
     B.header = W.SectionHeader(B, "", false)
-    B.header:SetPoint("TOPLEFT", 0, -250)
-    B.header:SetPoint("TOPRIGHT", -244, -250)
+    B.header:SetPoint("TOPLEFT", 0, headerTop)
+    B.header:SetPoint("TOPRIGHT", -244, headerTop)
     -- the lower part: the bosses or the quests of the chosen dungeon
     B.parts = {}
     B.parts.bosses = W.Chip(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
@@ -1194,7 +1167,7 @@ local function buildDungeons(f)
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     -- the two chips and the waypoint button at the right end of the header's line
-    W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = 6 } }, T.CHIP_GAP, 0, -251, { right = true })
+    W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = G.ITEM_GAP } }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
     B.detail = W.List(B, DETAIL_ROWS, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
@@ -1238,12 +1211,8 @@ local function buildDungeons(f)
             if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
         end)
     end, fillDetailRow)
-    B.detail:SetPoint("TOPLEFT", 0, -280)
-    B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -280)
-    B.hint = W.Text(B, T.FONT.hint, 598, true)
-    B.hint:SetPoint("TOPLEFT", 4, -404)
-    B.hint:SetHeight(24)
-    B.hint:SetJustifyV("TOP")
+    B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
+    B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     return B
 end
 
@@ -1363,26 +1332,25 @@ local function setExport(V, text)
     V.area.box:SetText(exportText)
 end
 
+-- the list is 590 wide (12 px for its scroll bar): the source gives them, what follows moves left;
+-- the source cell after the map button, the priority a chip
+local WISH_COLS = { { "name", 4, 216, "Item" }, { "slot", 224, 76, "Slot" }, { "src", 304, 154, L["Quelle"], cx = 322, cw = 136 },
+    { "prio", 462, 58, L["Priorität"], cell = false }, { "state", 524, 44, "" } }
+
 local function buildWish(f)
-    local V = CreateFrame("Frame", nil, f)
-    V:SetPoint("TOPLEFT", 0, -72)
-    V:SetPoint("BOTTOMRIGHT", 0, 0)
-    local h = head(V, 0)
-    -- the list is 590 wide (12 px for its scroll bar): the source gives them, what follows moves left
-    V.head = { name = col(h, 4, 216, "Item"), slot = col(h, 224, 76, "Slot"), src = col(h, 304, 154, L["Quelle"]),
-        prio = col(h, 462, 58, L["Priorität"]), state = col(h, 524, 44, "") }
-    V.list = W.List(V, WISH_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 216, nil, T.FONT.text)
-        r.slot = col(r, 224, 76, nil, T.FONT.text)
+    -- the wishes (or their text for the website), the buttons in the bottom row, the hint in the footer
+    local V = W.Page(f, { view = true })
+    V:Footer({ { "hint", lines = 2 } })
+    V.headFrame, V.head = V:Columns(WISH_COLS)
+    V.list = V:List(WISH_ROWS, ROW_H, function(r)
+        W.Cells(r, WISH_COLS)
         r.map = mapButton(r, 304)
-        r.src = col(r, 322, 136, nil, T.FONT.text)
         r.prio = W.Chip(r, "", 58, function(self)
             local e = self:GetParent().item
             if e then ns.WishSetPrio(e.id, PRIO_NEXT[e.e.prio] or 2) end
         end)
         r.prio:SetPoint("LEFT", 462, 0)
-        r.state = col(r, 524, 44, nil, T.FONT.text)
-        r.del = W.ResetButton(r, 18, function(self)
+        r.del = W.ResetButton(r, T.RESET, function(self)
             local e = self:GetParent().item
             if e then ns.WishRemove(e.id) end
         end)
@@ -1400,12 +1368,10 @@ local function buildWish(f)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
     end, fillWishRow)
-    V.list:SetPoint("TOPLEFT", 0, -16)
-    V.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -16)
 
     V.area = W.EditArea(V)
-    V.area:SetPoint("TOPLEFT", 0, -16)
-    V.area:SetPoint("TOPRIGHT", 0, -16)
+    V.area:SetPoint("TOPLEFT", 0, V.listTop)
+    V.area:SetPoint("TOPRIGHT", 0, V.listTop)
     V.area:SetHeight(120)
     -- read-only like the export box: typing puts the text back and marks it
     V.area.box:SetScript("OnTextChanged", function(self, userInput)
@@ -1415,8 +1381,8 @@ local function buildWish(f)
         end
     end)
     V.area:Hide()
-    V.areaHint = W.Text(V, T.FONT.hint, 598, true)
-    V.areaHint:SetPoint("TOPLEFT", 4, -142)
+    V.areaHint = W.Text(V, T.FONT.hint, 590, true)
+    V.areaHint:SetPoint("TOPLEFT", V.area, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -T.LAYOUT.GAP)
     V.areaHint:SetHeight(28)
     V.areaHint:SetText(L["Strg+A, Strg+C, auf der Website im Reiter Wishlist bei Paste from the addon einfügen."])
     V.areaHint:Hide()
@@ -1432,16 +1398,14 @@ local function buildWish(f)
         end
         ns.Refresh()
     end)
-    V.web:SetPoint("TOPLEFT", 0, -310)
     V.clean = W.Button(V, L["Erhaltene entfernen"], 140, function()
         for _, e in ipairs(ns.Wishes()) do
             if e.owned then ns.WishRemove(e.id) end
         end
     end)
-    V.clean:SetPoint("LEFT", V.web, "RIGHT", 6, 0)
-    V.hint = W.Text(V, T.FONT.hint, 598, true)
-    V.hint:SetPoint("TOPLEFT", 4, -338)
-    V.hint:SetHeight(28)
+    W.FitChip(V.web, 120)
+    W.FitChip(V.clean, 140)
+    V:BottomRow({ V.web, V.clean })
     return V
 end
 
@@ -1541,23 +1505,23 @@ local function guildItems(only)
     return out
 end
 
+-- the list is 590 wide (12 px for its scroll bar), the wishers give them
+local GUILD_COLS = { { "name", 4, 256, "Item" }, { "who", 264, 322, L["Wünschende"] } }
+
 local function buildGuild(f)
-    local U = CreateFrame("Frame", nil, f)
-    U:SetPoint("TOPLEFT", 0, -72)
-    U:SetPoint("BOTTOMRIGHT", 0, 0)
-    U.info = W.Text(U, T.FONT.text, 470)
-    U.info:SetPoint("TOPLEFT", 4, -4)
+    -- the list's state with "Nur Gruppe", the wishes; officers paste the website's text under it
+    local U = W.Page(f, { view = true })
+    U:Bands({ "row" })
+    U.info = W.Text(U, T.FONT.text)
     U.group = W.Chip(U, L["Nur Gruppe"], 100, function()
         groupOnly = not onlyGroup()
         ns.Refresh()
     end)
-    U.group:SetPoint("TOPRIGHT", 0, -2)
-    local h = head(U, -26)
-    -- the list is 590 wide (12 px for its scroll bar), the wishers give them
-    U.head = { name = col(h, 4, 256, "Item"), who = col(h, 264, 322, L["Wünschende"]) }
-    U.list = W.List(U, GUILD_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 256, nil, T.FONT.text)
-        r.who = col(r, 264, 322, nil, T.FONT.text)
+    W.FitChip(U.group, 100)
+    U:Place(1, { { U.info, fill = true } }, { U.group })
+    U.headFrame, U.head = U:Columns(GUILD_COLS)
+    U.list = U:List(GUILD_ROWS, ROW_H, function(r)
+        W.Cells(r, GUILD_COLS)
         r:SetScript("OnClick", function(self) if self.item then modifiedClick(self.item.id) end end)
         r:SetScript("OnEnter", function(self) if self.item then itemTooltip(self, self.item.id) end end)
         r:SetScript("OnLeave", hideTip)
@@ -1565,12 +1529,7 @@ local function buildGuild(f)
         r.name:SetText(itemText(e.id))
         r.who:SetText(e.who)
     end)
-    U.list:SetPoint("TOPLEFT", 0, -40)
-    U.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -40)
     U.area = W.EditArea(U)
-    U.area:SetPoint("TOPLEFT", 0, -308)
-    U.area:SetPoint("TOPRIGHT", 0, -308)
-    U.area:SetHeight(70)
     U.importBtn = W.Button(U, L["Importieren"], 100, function()
         -- the website's text: the wishes, the alts and the loot prio (any of them)
         local text, ok = ns.ImportSiteText(U.area.box:GetText())
@@ -1581,13 +1540,17 @@ local function buildGuild(f)
         guildResult = text
         ns.Refresh()
     end)
-    U.importBtn:SetPoint("TOPLEFT", 0, -382)
     U.clearBtn = W.Button(U, L["Löschen##Gildenwünsche"], 80, function()
         lift(StaticPopup_Show("AMISIA_GUILDWISH_CLEAR"))
     end)
-    U.clearBtn:SetPoint("LEFT", U.importBtn, "RIGHT", 6, 0)
-    U.hint = W.Text(U, T.FONT.hint, 410)
-    U.hint:SetPoint("TOPLEFT", 192, -386)
+    W.FitChip(U.importBtn, 100)
+    W.FitChip(U.clearBtn, 80)
+    U.hint = W.Text(U, T.FONT.hint)
+    -- the import, clear and what the last import said in the bottom row; the box between it and the list
+    U.bottomList = { U.importBtn, U.clearBtn, { U.hint, fill = true } }
+    U:BottomRow(U.bottomList)
+    U.area:SetPoint("TOPLEFT", U.list, "BOTTOMLEFT", 0, -T.LAYOUT.GAP)
+    U.area:SetPoint("BOTTOMRIGHT", 0, U:Bottom())
     return U
 end
 
@@ -1616,6 +1579,8 @@ local function fillGuild(U)
         U.area:Hide(); U.importBtn:Hide(); U.clearBtn:Hide()
         U.hint:SetText(age or "")
     end
+    -- raiders: the hint alone in the bottom row
+    U:BottomRow(U.bottomList, nil, { shown = true })
 end
 
 ---------------------------------------------------------------------------
@@ -1657,10 +1622,13 @@ local function fillSimRow(r, e)
     end
 end
 
+local SIM_COLS = { { "slot", 4, 66, "Slot", font = T.FONT.head }, { "best", 74, 250, L["Bestes"] },
+    { "src", 328, 200, L["Quelle"] }, { "score", 532, 54, L["Wertung"], justify = "RIGHT" } }
+
 local function buildSim(f)
-    local S = CreateFrame("Frame", nil, f)
-    S:SetPoint("TOPLEFT", 0, -72)
-    S:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- the simulated character with the way back, the list, what the weights mean in the footer
+    local S = W.Page(f, { view = true })
+    S:Bands({ "row" })
     S.class = W.Picker(S, 118, function(v)
         local sim = simState()
         sim.class, sim.spec = v, nil
@@ -1678,19 +1646,13 @@ local function buildSim(f)
         simState().plan = v
         simChanged()
     end)
-    W.Row(S, { S.class, S.spec, S.level, S.plan }, 6, 0, 0)
     S.back = W.Button(S, L["Zurück"], 84, function() setView("goals") end)
-    S.back:SetPoint("TOPRIGHT", 0, 1)
-    local h = head(S, -28)
-    S.head = { slot = col(h, 4, 66, "Slot"), best = col(h, 74, 250, L["Bestes"]), src = col(h, 328, 200, L["Quelle"]),
-        score = col(h, 532, 54, L["Wertung"]) }
-    S.head.score:SetJustifyH("RIGHT")
-    S.list = W.List(S, SIM_ROWS, ROW_H, function(r)
-        r.slot = col(r, 4, 66)
-        r.best = col(r, 74, 250, nil, T.FONT.text)
-        r.src = col(r, 328, 200, nil, T.FONT.text)
-        r.score = col(r, 532, 54, nil, T.FONT.text)
-        r.score:SetJustifyH("RIGHT")
+    W.FitChip(S.back, 84)
+    S:Place(1, { S.class, S.spec, S.level, S.plan }, { S.back })
+    S:Footer({ { "info", lines = 3 } })
+    S.headFrame, S.head = S:Columns(SIM_COLS)
+    S.list = S:List(SIM_ROWS, ROW_H, function(r)
+        W.Cells(r, SIM_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if e and e.opt then modifiedClick(e.opt[1]) end
@@ -1701,13 +1663,6 @@ local function buildSim(f)
         end)
         r:SetScript("OnLeave", hideTip)
     end, fillSimRow)
-    S.list:SetPoint("TOPLEFT", 0, -44)
-    S.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -44)
-    S.info = W.Text(S, T.FONT.text, 598, true)
-    S.info:SetPoint("TOPLEFT", 4, -44 - SIM_ROWS * ROW_H - 6)
-    S.info:SetHeight(40)
-    S.info:SetJustifyV("TOP")
-    S.info:SetMaxLines(3)
     return S
 end
 
@@ -1767,8 +1722,11 @@ StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
 ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "gear",
     available = function() return Gear.Available() end,
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         page = f
+        -- the head row: spec, views, the table; the counts with the reset of exclusions; the source
+        -- chips with the weapon plan; the views under them (the dungeon planner from the chips' band)
+        f:Bands({ "row", "line", "row" })
         f.spec = W.Picker(f, 180, function(v) ns.BisSetSpec(v ~= "" and v or nil) end)
         f.views = {}
         f.views.goals = W.Chip(f, L["Ziele"], 52, function() setView("goals") end)
@@ -1776,20 +1734,19 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         f.views.dungeons = W.Chip(f, "Dungeons", 74, function() setView("dungeons") end)
         f.views.wish = W.Chip(f, L["Wunschliste"], 104, function() setView("wish") end)
         f.views.guild = W.Chip(f, L["Gilde"], 56, function() setView("guild") end)
-        -- the spec, then the views
-        W.Row(f, { f.spec, { f.views.goals, gap = 6 }, f.views.here, f.views.dungeons, f.views.wish, f.views.guild },
-            T.CHIP_GAP, 0, -1)
         -- 64 wide since the dungeons chip came: the tooltip says what the table is
         f.open = W.Button(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
-        f.open:SetPoint("TOPRIGHT", 0, 0)
         W.Tooltip(f.open, L["Ausrüstungstabelle"], L["Die besten Items aller Levelbereiche für jede Spezialisierung."])
-        f.counts = W.Text(f, T.FONT.hint, 488)
-        f.counts:SetPoint("TOPLEFT", 4, -28)
-        f.reset = W.Button(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
-        f.reset:SetPoint("TOPRIGHT", 0, -24)
+        f.headRow = { f.spec, f.views.goals, f.views.here, f.views.dungeons, f.views.wish, f.views.guild }
+        f:Place(1, f.headRow, { f.open })
+        f.counts = W.Text(f, T.FONT.hint)
+        -- a row button (20 high): it stands in the counts' line, between the bands around it
+        f.reset = W.Button(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end,
+            { height = T.ROW_BUTTON_H })
+        W.FitChip(f.reset, 104)
+        f:Place(2, { { f.counts, fill = true } }, { f.reset })
         -- the weapon plan of the own character, beside the source chips of the targets
         f.plan = W.Picker(f, 132, function(v) say(ns.BisSetPlan(v)) end)
-        f.plan:SetPoint("TOPLEFT", 466, -48)
         f.src = {}
         for _, def in ipairs(CHIPS) do
             local key = def[1]
@@ -1804,7 +1761,6 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
             end)
             -- as wide as given, wider where the text (English) needs it
             W.FitChip(f.src[key], def[3])
-            f.src[key]:SetPoint("TOPLEFT", 0, -48)
         end
         f.goals = buildGoals(f)
         f.here = buildHere(f)
