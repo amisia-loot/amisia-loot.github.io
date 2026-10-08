@@ -665,19 +665,6 @@ Archive only: `data/bossnames.js` holds just the TBC table (the read-only TBC ar
 so this runs again only if the archive ever needs new names, which is practically never. It reads
 the WoW install, so it runs on the PC.
 
-## fill_quality.py
-
-Writes the item quality into `data/tbc.js`, so names and icon frames get their colour. Archive
-only: Forever gets its quality from the item scan (`build_scan.py`).
-
-```
-python tools/fill_quality.py [tbc] [--all]
-```
-
-Only items without a quality are looked up, through the Wowhead tooltip endpoint; every answer is
-kept in `tools/item-quality.json`, so a second run costs nothing. Epic is the page's default and
-is not written. Bump `BUILD_ID` afterwards.
-
 ## sync_addon.ps1
 
 Mirrors `addon/Amisia` into the AddOns folder of the Forever client (`_classic_beta_`): changed

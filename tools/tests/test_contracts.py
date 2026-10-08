@@ -311,7 +311,7 @@ def test_no_links_to_fan_sites():
 
 
 # fetchers kept from the TBC ledger and the first Forever builds; see DECISIONS.md D-03
-WOWHEAD_FETCH_KNOWN = {'fill_quality.py', 'build_scan.py'}
+WOWHEAD_FETCH_KNOWN = {'build_scan.py'}
 
 
 def test_no_tool_fetches_from_the_forbidden_sites():
