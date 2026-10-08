@@ -206,14 +206,14 @@ end
 -- The website's text: wishes, alts and the loot prio (LootPrio.lua) in one paste
 ---------------------------------------------------------------------------
 
--- Splits a pasted text into its blocks: { wl = text, alts = text, lc = text } (any may be missing).
+-- Splits a pasted text into its blocks: { wl = text, alts = text, lc = text, pts = text } (any may be missing).
 function ns.SiteBlocks(text)
     local out, cur, buf = {}, nil, nil
     if type(text) ~= "string" then return out end
     for raw in text:gmatch("[^\r\n]+") do
         local line = raw:gsub("^\239\187\191", ""):match("^%s*(.-)%s*$")
         local kind = line:match("^#AMISIA%-WL%s") and "wl" or line:match("^#AMISIA%-ALTS%s") and "alts"
-            or line:match("^#AMISIA%-LC%s") and "lc" or nil
+            or line:match("^#AMISIA%-LC%s") and "lc" or line:match("^#AMISIA%-PTS%s") and "pts" or nil
         if kind then
             cur, buf = kind, { line }
         elseif cur then
@@ -229,12 +229,12 @@ function ns.SiteBlocks(text)
     return out
 end
 
--- Imports what the text holds: the guild wishes, the alts, the loot prio, or several. Returns the result
+-- Imports what the text holds: the guild wishes, the alts, the loot prio, the points, or several. Returns the result
 -- line and whether anything was taken. A text with neither block goes to the wishes' parser, so
 -- its refusal reads as before.
 function ns.ImportSiteText(text)
     local blocks = ns.SiteBlocks(text)
-    if not blocks.wl and not blocks.alts and not blocks.lc then
+    if not blocks.wl and not blocks.alts and not blocks.lc and not blocks.pts then
         local _, why = ns.SetGuildWishes(text)
         return why, false
     end
@@ -265,6 +265,16 @@ function ns.ImportSiteText(text)
             ok = true
             parts[#parts + 1] = L["%d %s mit Prio übernommen, %d %s nicht erkannt."]:format(res.n, res.n == 1 and L["Item"] or L["Items"],
                 res.skipped, res.skipped == 1 and L["Zeile"] or L["Zeilen"])
+        else
+            parts[#parts + 1] = why
+        end
+    end
+    if blocks.pts and ns.SetPointsSite then
+        local res, why = ns.SetPointsSite(blocks.pts)
+        if res then
+            ok = true
+            parts[#parts + 1] = L["%d %s übernommen (%s)."]:format(res.n, res.n == 1 and L["Punktestand"] or L["Punktestände"],
+                ns.PointsSystemName(res.sys))
         else
             parts[#parts + 1] = why
         end

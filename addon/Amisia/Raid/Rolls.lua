@@ -2,6 +2,8 @@
 -- own RANDOM_ROLL_RESULT string, so the range of every roll is known: 1-100 is mainspec,
 -- 1-99 offspec. Reserved names rank first, then MS, then OS, then the higher roll. With the
 -- plus-one in the order (awards.plusOrder), fewer mainspec wins rank first among the MS rolls.
+-- In a DKP or EPGP guild a round takes bids or need/greed instead (r.mode, PointsRounds.lua); the
+-- tie-break of such a round is a roll again.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -92,6 +94,7 @@ end
 -- Two entries of the same rank are equal when their rolls match and, among mainspec rolls with
 -- the plus-one in the order, their plus-one too.
 local function sameStanding(r, a, b)
+    if r.mode then return a.tieKey == b.tieKey end
     if a.value ~= b.value or rankOf(r, a) ~= rankOf(r, b) then return false end
     if rankOf(r, a) == RANK.MS and plusOrder() then return plusOf(r, a.name) == plusOf(r, b.name) end
     return true
@@ -100,6 +103,7 @@ end
 -- Entries of a round in winning order; each gets .rank = "SR", "MS" or "OS". With awards.plusOrder
 -- fewer plus-one ranks first among the mainspec rolls; reservations stay first, offspec untouched.
 function ns.RollRanking(r)
+    if r.mode and ns.PointsRanking then return ns.PointsRanking(r) end
     local list = {}
     for _, name in ipairs(r.order) do list[#list + 1] = r.rolls[name] end
     local byPlus = plusOrder()
@@ -120,6 +124,7 @@ end
 -- "+n" for a mainspec roller of round r: when the count is above zero, or always while the
 -- plus-one is in the order. Nothing for a reservation or an offspec roll.
 function ns.PlusLabel(r, name)
+    if r and r.mode then return nil end
     local e = r and r.rolls and r.rolls[name]
     if not e or rankOf(r, e) ~= RANK.MS then return nil end
     local n = plusOf(r, name)
@@ -149,6 +154,7 @@ function ns.RollDecide(r)
         end
     end
     if #tie > 1 then r.tie = tie else r.winner = top.name end
+    if r.mode and ns.PointsResultText then return list, top, ns.PointsResultText(r, top) end
     local plus = ns.PlusLabel(r, top.name)
     local standing = plus and ("%d, %s, %s"):format(top.value, top.rank, plus) or ("%d, %s"):format(top.value, top.rank)
     return list, top, standing
@@ -187,7 +193,8 @@ local function finish()
     changed()
 end
 
--- Starts a round for an item link. onlyNames restricts who counts (the tie-break).
+-- Starts a round for an item link. onlyNames restricts who counts (the tie-break, always a roll);
+-- otherwise a DKP or EPGP guild gets a round of bids or need/greed (PointsRounds.lua).
 function ns.StartRoll(link, seconds, onlyNames)
     local id = ns.ItemID(link)
     if not id then return nil, L["Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]"] end
@@ -222,7 +229,11 @@ function ns.StartRoll(link, seconds, onlyNames)
         for _, n in ipairs(onlyNames) do current.only[n] = true end
     end
     if not matcher then matcher = ns.BuildMatcher(RANDOM_ROLL_RESULT) end
-    if onlyNames then
+    local mode = not onlyNames and ns.PointsRoundMode and ns.PointsRoundMode() or nil
+    if mode then
+        ns.PointsRoundStart(current, mode)
+        ns.Announce(ns.PointsRoundAnnounce(current, seconds))
+    elseif onlyNames then
         ns.Announce(L["Stechen: %s. /roll. %d Sekunden."]:format(table.concat(onlyNames, ", "), seconds))
     else
         ns.Announce(L["Roll auf %s: /roll für Mainspec, /roll 99 für Offspec. %d Sekunden."]:format(link, seconds))
@@ -260,7 +271,7 @@ local function nextSeq(r)
 end
 
 local function onSystem(text)
-    if not current or current.done or not matcher then return end
+    if not current or current.done or not matcher or current.mode then return end
     -- a secret line (boss fight on the Forever client) cannot be read: counted, so the window can
     -- say that rolls may be missing and are to be entered by hand
     text = ns.Plain(text)
@@ -365,7 +376,8 @@ local function awardedAfter(r)
 end
 
 -- Enters a roll by hand into the running round or the last finished one (up to 10 minutes):
--- kind "MS" (1-100) or "OS" (1-99), replacing a roll of the same name. A finished round is decided
+-- kind "MS" (1-100) or "OS" (1-99), replacing a roll of the same name (a points round: the bid, or
+-- need "MS" / greed "OS" with no number). A finished round is decided
 -- anew and marked dirty; its result is announced only through ns.AnnounceRollResult.
 function ns.AddManualRoll(name, value, kind)
     local r = handRound()
@@ -373,7 +385,8 @@ function ns.AddManualRoll(name, value, kind)
     kind = tostring(kind or "MS"):upper()
     local high = HIGH[kind]
     value = tonumber(value)
-    if not high or not value or value % 1 ~= 0 or value < 1 or value > high then return nil, RANGE end
+    -- a bid or need/greed is checked by PointsRounds.lua
+    if not r.mode and (not high or not value or value % 1 ~= 0 or value < 1 or value > high) then return nil, RANGE end
     local typed = ns.FullName(ns.Plain(name))
     if not typed then return nil, L["Kein Name."] end
     local full, class, ambiguous = knownName(typed)
@@ -387,6 +400,11 @@ function ns.AddManualRoll(name, value, kind)
     end
     key = key or full
     if awardedAfter(r) then return nil, L["Das Item ist schon vergeben; erst die Vergabe ändern."] end
+    if r.mode and ns.PointsManualEntry then
+        local pe, pwhy = ns.PointsManualEntry(r, key, class, value, kind)
+        if pe then changed() end
+        return pe, pwhy
+    end
     local e = { name = key, value = value, low = 1, high = high, kind = kind, t = nextSeq(r), class = class, manual = true }
     if not r.rolls[key] then r.order[#r.order + 1] = key end
     r.rolls[key] = e
@@ -432,6 +450,14 @@ end
 function ns.RollKind(item, name)
     local r = (current and current.item == item) and current or ((last and last.item == item) and last or nil)
     if not r or (time() - r.started) > KEEP then return "-" end
+    if r.mode then
+        local e = r.rolls[name]
+        if not e then
+            for k, x in pairs(r.rolls) do if ns.SameName(k, name) then e = x break end end
+        end
+        if not e then return "-" end
+        return e.kind == "OS" and "OS" or "MS"
+    end
     if reservedIn(r, name) then return "SR" end
     local e = r.rolls[name]
     return e and e.kind or "-"

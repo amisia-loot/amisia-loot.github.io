@@ -40,6 +40,9 @@ Raid\Bench.lua
 Raid\GroupRolls.lua
 Raid\Sync.lua
 Raid\LootPrio.lua
+Raid\Points.lua
+Raid\PointsRounds.lua
+Raid\PointsSync.lua
 Raid\RaidText.lua
 Raid\Stats.lua
 Raid\BankNeeds.lua
@@ -85,6 +88,7 @@ UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua
 UI\Pages\Awards.lua
 UI\Pages\Stats.lua
+UI\Pages\Points.lua
 UI\Pages\SoftRes.lua
 UI\Pages\Gear.lua
 UI\Pages\Map.lua
