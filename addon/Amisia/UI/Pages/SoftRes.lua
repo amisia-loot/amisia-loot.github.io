@@ -3,11 +3,13 @@
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
-local ROWS, ROW_H = 14, 22
+-- rows of 22 from the column heads (90) to the footer (458): 16
+local ROWS, ROW_H = 16, 22
 local GREY, ORANGE, RED = T.GREY, T.ORANGE, "|cffff5050"
 local MAX_CHIPS, CHIP_MAX_W = 3, 100
 -- the columns of a row; the list is 590 px wide (602 of the content less 12 for its scroll bar)
 local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 312
+local COLS = { { "a", COL_A, COL_A_W }, { "b", COL_B, COL_B_W }, { "c", COL_C, COL_C_W } }
 
 local GetItemInfo = C_Item.GetItemInfo
 
@@ -328,49 +330,37 @@ end
 
 ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface\\Icons\\INV_Scroll_03", order = 40, group = "raid",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         page = f
-        -- line 1: the list, import and clear on the right
-        f.state = W.Text(f, T.FONT.body, 390)
-        f.state:SetPoint("TOPLEFT", 0, -2)
+        -- the head row: the list, import and clear on the right; then the check; then the views with
+        -- remind and post (officers) on the right
+        f:Bands({ "row", "line", "row" })
+        f.state = W.Text(f, T.FONT.body)
         f.clear = W.Button(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
-        f.clear:SetPoint("TOPRIGHT", 0, 0)
         f.import = W.Button(f, L["Importieren"], 110, function() ns.ToggleSoftResFrame() end)
-        f.import:SetPoint("RIGHT", f.clear, "LEFT", -6, 0)
-        -- line 2: the check
-        f.check = W.Text(f, T.FONT.text, 590)
-        f.check:SetPoint("TOPLEFT", 0, -28)
-        -- line 3: the views
+        W.FitChip(f.clear, 90)
+        W.FitChip(f.import, 110)
+        f:Place(1, { { f.state, fill = true } }, { f.import, f.clear })
+        f.check = f:Line(2)
         f.views = {}
         f.views.items = W.Chip(f, "Items", 60, function() chooseView("items") end)
-        f.views.items:SetPoint("TOPLEFT", 0, -50)
         f.views.raider = W.Chip(f, L["Raider##Spalte"], 60, function() chooseView("raider") end)
-        f.views.raider:SetPoint("LEFT", f.views.items, "RIGHT", 4, 0)
         f.views.check = W.Chip(f, L["Abgleich"], 70, function() chooseView("check") end)
-        f.views.check:SetPoint("LEFT", f.views.raider, "RIGHT", 4, 0)
-        -- officers: remind and post on the right of the views
+        for _, c in pairs(f.views) do W.FitChip(c, 60) end
         f.post = W.Button(f, L["Im Raid posten"], 120, function()
             local n, why = ns.PostSoftResSummary()
             if not n and why then ns.msg(why) end
         end)
-        f.post:SetPoint("TOPRIGHT", 0, -49)
         f.remind = W.Button(f, L["Erinnern"], 110, function() ns.ConfirmSoftResReminders() end)
-        f.remind:SetPoint("RIGHT", f.post, "LEFT", -6, 0)
+        W.FitChip(f.post, 120)
         W.Tooltip(f.remind, L["Erinnern"], L["Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage."])
         W.Tooltip(f.post, L["Im Raid posten"], L["Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat."])
-        -- column heads
-        local head = CreateFrame("Frame", nil, f)
-        head:SetHeight(18)
-        head:SetPoint("TOPLEFT", 0, -76)
-        head:SetPoint("TOPRIGHT", 0, -76)
-        f.heads = { col(head, COL_A, COL_A_W, T.FONT.head), col(head, COL_B, COL_B_W, T.FONT.head),
-                    col(head, COL_C, COL_C_W, T.FONT.head) }
-        f.list = W.List(f, ROWS, ROW_H, buildRow, fillRow)
-        f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-        -- 12 px short of the right edge: room for the list's scroll bar
-        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-        f.hint = W.Text(f, T.FONT.hint, 590, true)
-        f.hint:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
+        f:Place(3, { f.views.items, f.views.raider, f.views.check }, { f.remind, f.post })
+        f:Footer({ "hint" })
+        local _, heads = f:Columns(COLS)
+        f.heads = { heads.a, heads.b, heads.c }
+        f.list = f:List(ROWS, ROW_H, buildRow, fillRow)
+        f.empty = f:Empty()
         return f
     end,
     refresh = function(f)
@@ -397,6 +387,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
             local raid = IsInRaid() and sr ~= nil
             local open = raid and #ns.SoftResReminders(ctx.check) or 0
             f.remind:SetText(L["Erinnern (%d)"]:format(open))
+            W.FitChip(f.remind, 110)
             f.remind:SetEnabled(raid and open > 0)
             f.post:SetEnabled(raid)
             f.remind:Show(); f.post:Show()
@@ -405,6 +396,12 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
             f.views.check:Hide()
             f.remind:Hide(); f.post:Hide()
         end
+        f:Place(3, { f.views.items, f.views.raider, f.views.check }, { f.remind, f.post }, { shown = true })
+        if not sr then
+            f.empty:Set(L["Keine Soft-Reserves"], officer and L["Importieren nimmt eine softres.it-CSV oder Zeilen wie 'Name [Item-Link]'."]
+                or L["Die Lootleitung hat noch keine Liste geladen."])
+        end
+        f.empty:SetShown(not sr)
         local shown = view
         if shown == "check" and not officer then shown = "items" end
         for key, chip in pairs(f.views) do chip:SetOn(key == shown) end
@@ -420,7 +417,8 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         end
         f.list:SetItems(list)
         if not sr then
-            f.hint:SetText(officer and L["Importieren nimmt eine softres.it-CSV oder Zeilen wie 'Name [Item-Link]'."] or "")
+            -- the empty state over the list says how to import
+            f.hint:SetText("")
         elseif shown == "check" then
             f.hint:SetText(#list == 0 and L["Nichts zu prüfen."] or L["Vorschläge korrigieren den Namen und gelten auch für kommende Listen."])
         elseif shown == "items" then
