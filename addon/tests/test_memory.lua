@@ -17,7 +17,7 @@ lines = NS.MemoryReport()
 assert(calls == 2, "measured twice: " .. calls)
 assert(has(lines[1], "Speicher: 2.0 MB, davon Müll 1.0 MB, echte Daten 1.0 MB."), lines[1])
 local text = table.concat(lines, "\n")
-assert(has(text, "Geladene Daten: ") and has(text, "MAGESCROLLS"), text)
+assert(has(text, "Geladene Daten (beim Aufbau, mit Müll): ") and has(text, "MAGESCROLLS"), text)
 assert(has(text, "Noch nicht geladen: ") and has(text, "GEAR"), text)
 assert(has(text, "Gespeicherter Scan: 2 Items, 1 Quellen"), text)
 

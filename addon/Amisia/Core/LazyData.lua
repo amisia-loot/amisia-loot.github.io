@@ -104,7 +104,7 @@ function ns.MemoryReport()
     table.sort(keys, function(a, b) return (built[a].kb or 0) > (built[b].kb or 0) end)
     local parts = {}
     for _, key in ipairs(keys) do parts[#parts + 1] = ("%s %s"):format(key, mb(built[key].kb or 0)) end
-    out[#out + 1] = L["Geladene Daten: %s."]:format(#parts > 0 and table.concat(parts, ", ") or L["keine"])
+    out[#out + 1] = L["Geladene Daten (beim Aufbau, mit Müll): %s."]:format(#parts > 0 and table.concat(parts, ", ") or L["keine"])
     local waiting = {}
     for key in pairs(pending) do waiting[#waiting + 1] = key end
     table.sort(waiting)

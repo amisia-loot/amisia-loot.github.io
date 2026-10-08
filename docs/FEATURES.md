@@ -121,10 +121,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-071 Speicher messen
 - Version: 2.13.1
-- Status: gebaut
+- Status: im Spiel geprüft (2026-10-08)
 - Prüfung: Wenn du `/amisia speicher` eingibst, dann nennt der Chat "Speicher: X MB, davon Müll Y MB, echte Daten Z MB." und die geladenen Datenteile mit ihrer Größe.
 - Prüfung: Wenn du vorher die Seite Ausrüstung öffnest, dann steht danach GEAR unter "Geladene Daten" statt unter "Noch nicht geladen".
 - Prüfung: Wenn du im Kampf bist, dann misst der Befehl nicht und sagt das.
+- Notiz: 2026-10-08 im Spiel: "Speicher: 7.2 MB, davon Müll 1.1 MB, echte Daten 6.1 MB", GEAR und GEAR_WEIGHTS geladen, der Rest wartet. Die Größen der Datenteile messen den Aufbau samt Müll (GEAR 5.1 MB), daher seit 2.13.2 so beschriftet. Im Kampf nicht geprüft.
 
 ## Addon: Raid und Loot
 
