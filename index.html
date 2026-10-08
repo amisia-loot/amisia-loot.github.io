@@ -308,6 +308,11 @@ select.inp.craddr:hover{color:var(--gold);border-color:var(--gold)}
 .mat .counted{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .mat .counted b{color:var(--gold);font-variant-numeric:tabular-nums}
 .mat .counted .warn{color:var(--warn)}
+.mat .need{margin-top:6px;font-size:13px;color:var(--muted)}
+.mat .need b{font-variant-numeric:tabular-nums}
+.mat .need .low{color:var(--bad)}
+.mat .need .tgt{color:var(--warn)}
+.mat .need .ok{color:var(--good)}
 .matgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;margin-top:18px;align-items:start}
 .matgrid > *{min-width:0}
 @media (max-width:900px){.matgrid{grid-template-columns:minmax(0,1fr)}}
@@ -778,6 +783,10 @@ tr.got td{opacity:.5}
           <div class="panel-h">Received per raider</div>
           <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table id="matRaiderTable"><thead id="matRaiderHead"></thead><tbody id="matRaiderBody"></tbody></table></div>
         </div>
+        <div class="panel" id="matLogPanel" hidden>
+          <div class="panel-h">Guild bank log<span class="grow"></span><input class="inp" id="matLogSearch" placeholder="Name or item…" style="max-width:200px;text-transform:none;letter-spacing:0"></div>
+          <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table id="matLogTable"><thead><tr><th>When</th><th>Who</th><th>What</th><th class="num">Qty</th><th>Tab</th></tr></thead><tbody id="matLogBody"></tbody></table></div>
+        </div>
       </div>
       <div class="stack" id="matSide">
         <div class="panel" id="matReqPanel">
@@ -920,6 +929,7 @@ tr.got td{opacity:.5}
             <li>Unpack it into the <code>Interface\AddOns</code> folder of your WoW Forever install. It records every raid on its own: who was in the raid group, who looted a tracked material (it learns the trade goods that drop in raids on its own; <code>/amisia mats</code> shows the list), every blue and epic item looted, what lay in the loot windows you open, and every item the master looter hands out (with MS, OS or SR from the roll round). Hand-outs appear in the award preview below like a Gargul export; loot without an award shows up as Other loot on the Nights tab and in the Loot Log. In game: <code>/amisia roll [item]</code> or Alt-click in the loot window starts a roll round, <code>/amisia sr</code> opens the soft-reserve list, <code>/amisia award Name [item]</code> records a hand-out by hand.</li>
             <li>After the raid type <code>/amisia</code>, press <b>Export erstellen</b>, then <code>Ctrl+A</code>, <code>Ctrl+C</code> and paste it here.</li>
             <li>Open the guild bank before exporting and leave it open for a few seconds (only when materials are tracked). The export then carries a count of every tracked material in the bank, which shows up on the Mats tab.</li>
+            <li>The guild bank needs the officers set in the addon, the members' pledges and the guild bank log the addon read come along too: the Mats tab shows what is missing per material and the log under the requests.</li>
             <li>Boss kills in dungeons and raids: <code>/amisia drops export</code> (expert mode) shows the text <b>Drops für die Website</b>. Paste it here, press <b>Preview import</b> and <b>Add the kills</b>. They build the drop rates on the Loot Tables tab and carry no player names.</li>
             <li>Loot prio an officer changed in game (<code>/amisia prio</code> or the <b>Prio</b> button of the roll window) travels in the same export. <b>Preview import</b> lists it under <b>Loot prio changed in game</b>; <b>Take them over</b> puts it on the Loot Council tab, where the newest change of an item wins.</li>
           </ol>
@@ -1168,7 +1178,7 @@ const nights = () => state.nights || (state.nights = []);
 // backup stay untouched and unseen. shelfGame names the game the top belongs to: a ledger from
 // before the shelf has none, and all of it was TBC. retired keeps the raiders that left the roster
 // but still have loot or raid nights in that game.
-const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones', 'lootPrio'];
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'bankNeeds', 'bankLog', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones', 'lootPrio'];
 // Puts Forever on top. A ledger with another game on top moves it to the shelf, in memory only; it
 // is saved with the next save of an editor. Nothing is deleted on the way.
 function fitShelf(s){
@@ -3128,6 +3138,8 @@ function matsHere(){
   for (const x of (state.matloot || [])) if (x && Number(x.item) > 0) ids.add(Number(x.item));
   const b = state.bank;
   if (b && b.items && typeof b.items === 'object') for (const k of Object.keys(b.items)) if (Number(k) > 0) ids.add(Number(k));
+  const q = state.bankNeeds;
+  if (q && q.items && typeof q.items === 'object') for (const k of Object.keys(q.items)) if (Number(k) > 0) ids.add(Number(k));
   return [...ids].map(id => ({id, name: anyItemName(id)})).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
 }
 const ORDER = {open: 0, received: 1, declined: 2};
@@ -3161,6 +3173,43 @@ function bankLine(id){
   return '<div class="counted" title="Counted in the guild bank by the Amisia addon. Loot deposited or handed out after '+esc(fmtShort(b.date)+' '+b.time)+' is not in this number.">Counted in the bank: <b>'+b.items[id]+'</b> · '+esc(fmtShort(b.date))+' '+esc(b.time)+' · '+esc(b.by)
     + (bankIncomplete(b) ? ' · <span class="warn">'+(b.total > b.tabs ? (b.total - b.tabs)+' tab'+(b.total - b.tabs === 1 ? '' : 's')+' hidden' : 'not every tab loaded')+'</span>' : '') + '</div>';
 }
+// The need the officers set in the addon against the last count: short (red) below the minimum,
+// below the target (amber), ok (green); the pledges of members for it.
+function needInfo(id){
+  const q = state.bankNeeds, e = q && q.items && q.items[id];
+  if (!e) return null;
+  const b = state.bank, have = b && b.items && id in b.items ? Number(b.items[id]) : null;
+  const pledges = (q.pledges || []).filter(p => p.item === id);
+  const pledged = pledges.reduce((s, p) => s + p.count, 0);
+  let level = 'unknown', short = null;
+  if (have != null) {
+    if (have < e.min) { level = 'low'; short = e.min - have; }
+    else if (e.target && have < e.target) { level = 'tgt'; short = e.target - have; }
+    else { level = 'ok'; short = 0; }
+  }
+  return {min: e.min, target: e.target || 0, have, short, level, pledged, pledges};
+}
+function needLine(id){
+  const n = needInfo(id);
+  if (!n) return '';
+  const want = (n.min ? 'at least <b>' + n.min + '</b>' : '') + (n.target ? (n.min ? ', ' : '') + 'target <b>' + n.target + '</b>' : '');
+  const where = n.level === 'low' ? '<span class="low"><b>' + n.short + '</b> missing</span>' : n.level === 'tgt' ? '<span class="tgt"><b>' + n.short + '</b> to the target</span>' : n.level === 'ok' ? '<span class="ok">enough</span>' : 'not counted yet';
+  return '<div class="need" title="' + esc(n.pledges.map(p => p.name + ': ' + p.count).join(', ')) + '">Guild needs ' + want + ' · ' + where + (n.pledged ? ' · <b>' + n.pledged + '</b> pledged' : '') + '</div>';
+}
+// The guild bank log the addon exported, newest first, filtered by name or item.
+function renderBankLog(){
+  const list = state.bankLog || [];
+  $('#matLogPanel').hidden = archiveOn || !list.length;
+  if (archiveOn || !list.length) return;
+  const q = $('#matLogSearch').value.trim().toLowerCase();
+  const KIND = {deposit: 'deposit', withdraw: 'withdraw', move: 'move', repair: 'repair', withdrawForTab: 'withdraw for a tab', buyTab: 'buy a tab', depositSummary: 'loot earnings'};
+  const money = c => { const g = Math.floor(c / 10000), s = Math.floor(c / 100) % 100; return (g ? g + 'g ' : '') + (s || !g ? s + 's' : ''); };
+  const rows = list.filter(e => !q || (e.name + ' ' + (e.item ? anyItemName(e.item) : 'gold')).toLowerCase().includes(q)).slice(0, 200);
+  $('#matLogBody').innerHTML = rows.map(e => '<tr><td class="muted" style="white-space:nowrap">' + esc(new Date(e.hi * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})) + '</td>'
+    + '<td>' + esc(e.name) + '</td><td>' + esc(KIND[e.kind] || e.kind) + ' · ' + (e.item ? esc(anyItemName(e.item)) : 'gold') + '</td>'
+    + '<td class="num">' + (e.item ? e.count : esc(money(e.count))) + '</td><td class="muted">' + (e.tab ? 'Tab ' + e.tab : 'Money') + (e.kind === 'move' ? ' (' + e.t1 + ' → ' + e.t2 + ')' : '') + '</td></tr>').join('')
+    || '<tr><td colspan="5"><div class="empty" style="padding:24px"><b>Nothing matches</b>Try another name or item.</div></td></tr>';
+}
 function matOptions(sel){ return matsHere().map(m => '<option value="'+m.id+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
 function renderMats(){
   const mats = matsHere();
@@ -3169,13 +3218,14 @@ function renderMats(){
     $('#matStock').innerHTML = mats.map(m => { const st = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span><b>'+st.looted+'</b>looted in raids</span></div>'+bankLine(m.id)+'</div></div>'; }).join('');
     return;
   }
-  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+'</div></div>'; }).join('')
+  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+needLine(m.id)+'</div></div>'; }).join('')
     : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive. The Amisia addon learns them on its own: trade goods that drop in a raid and are looted or handed out there show up here after the next import.</div>';
   for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
   for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
   $('#matReqForm').hidden = !user; $('#matReqLogin').hidden = !!user;
   $('#matGivePanel').hidden = !isEditor; $('#matStockPanel').hidden = !isEditor;
   $('#matGrid').classList.toggle('solo', !mats.length);
+  renderBankLog();
   $('#matSide').hidden = !mats.length;
   const q = $('#matSearch').value.trim().toLowerCase(), fi = Number($('#matItem').value || 0), show = $('#matShow').value;
   const rows = MATROWS.filter(r => {
@@ -3253,6 +3303,7 @@ $('#matStockForm').addEventListener('submit', ev => {
   matWrite(() => SUPA.from('mat_requests').insert({kind: 'stock', item, qty, purpose: note, status: 'received', received_at: new Date().toISOString(), received_by: userName(), requested_by: user.id, requested_name: userName()}), 'Stock corrected.').then(() => { $('#msNote').value = ''; });
 });
 ['#matSearch','#matItem','#matShow'].forEach(s => $(s).addEventListener('input', renderMats));
+$('#matLogSearch').addEventListener('input', renderBankLog);
 $('#matBody').addEventListener('click', async ev => {
   const rc = ev.target.closest('[data-mrecv]'), ro = ev.target.closest('[data-mopen]'), rd = ev.target.closest('[data-mdel]'), rx = ev.target.closest('[data-mdecl]');
   if (rx) { const why = await ask('Decline this request? The raider sees the reply on the request.', 'Decline', 'Reply for the raider (optional)'); if (why === false) return; matWrite(() => SUPA.from('mat_requests').update({status: 'declined', received_at: new Date().toISOString(), received_by: userName(), reply: why || ''}).eq('id', rx.dataset.mdecl)); }
@@ -3362,6 +3413,7 @@ document.addEventListener('click', async ev => {
 /* ---------------- Gargul import ---------------- */
 const GL_CLASS = {1:'Warrior',2:'Paladin',3:'Hunter',4:'Rogue',5:'Priest',6:'Death Knight',7:'Shaman',8:'Mage',9:'Warlock',10:'Monk',11:'Druid'};
 let glRows = [], amRows = [], amBank = null;
+let amGuild = null;   // the guild bank needs, pledges and log of the pasted text (amGuildResolve)
 let amDrops = null;   // what "Add the kills" would do with the drop lines of the pasted text (dropPlan)
 let amPrio = null;    // what "Take them over" would do with the LC lines of the pasted text (prioPlan)
 function amPrioRender(){
@@ -3530,6 +3582,70 @@ function amParseBank(blocks){
     if (snap && Object.keys(snap.items).length && (!best || snap.at > best.at)) best = snap;
   }
   return best;
+}
+// The guild bank needs, pledges and log of the addon, in any Amisia block:
+// "BQ <itemID> <min> <target|0> <set epoch> <set by>" (an officer's need; the newest list wins),
+// "BP <itemID> <count> <epoch> <name>" (a pledge, in the block of the needs it belongs to) and
+// "BT <from> <to> <tab|0> <kind> <itemID|0> <count|copper> <tab1|0> <tab2|0> <name>" (a guild bank log
+// entry: it happened between from and to; tab 0 is the money log). Names carry "_" for the space.
+function amParseGuildBank(blocks){
+  let needs = null; const log = [];
+  const n = x => Math.max(0, Math.floor(Number(x) || 0));
+  const who = x => glCleanName(String(x || '').replace(/_/g, ' ')) || '?';
+  for (const b of blocks) {
+    let bn = null; const bp = [];
+    for (const raw of b.split(/\r?\n/)) {
+      const f = raw.trim().split(/\s+/);
+      if (f[0] === 'BQ' && f.length >= 6 && /^\d+$/.test(f[1]) && /^\d+$/.test(f[4])) {
+        const at = n(f[4]);
+        if (!bn || at > bn.at) bn = {at, by: who(f[5]), items: {}};
+        if (at === bn.at && (n(f[2]) || n(f[3]))) bn.items[Number(f[1])] = {min: n(f[2]), target: n(f[3])};
+      } else if (f[0] === 'BP' && f.length >= 5 && /^\d+$/.test(f[1]) && n(f[2]) > 0) {
+        bp.push({item: Number(f[1]), count: n(f[2]), at: n(f[3]), name: who(f[4])});
+      } else if (f[0] === 'BT' && f.length >= 10 && /^\d+$/.test(f[1]) && /^\d+$/.test(f[2]) && /^[A-Za-z]{1,20}$/.test(f[4])) {
+        log.push({lo: n(f[1]), hi: n(f[2]), tab: n(f[3]), kind: f[4], item: n(f[5]), count: n(f[6]), t1: n(f[7]), t2: n(f[8]), name: who(f[9])});
+      }
+    }
+    if (bn && (!needs || bn.at > needs.at)) needs = Object.assign(bn, {pledges: bp});
+  }
+  return {needs, log};
+}
+// Merges guild bank log entries into a saved list by the addon's rule: the same tab, kind, name,
+// item, count and move tabs with overlapping time windows (a minute of slack) is the same entry,
+// matched one to one per import, so two equal deposits in one hour stay two. Keeps the newest 1000.
+function bankLogMerge(cur, add){
+  const list = (cur || []).map(e => Object.assign({}, e)), used = new Set();
+  const sig = e => [e.tab, e.kind, String(e.name).toLowerCase(), e.item, e.count, e.t1 || 0, e.t2 || 0].join('|');
+  let added = 0;
+  for (const e of add) {
+    let best = null, bestOver = 0;
+    for (const o of list) {
+      if (used.has(o) || sig(o) !== sig(e)) continue;
+      const over = Math.min(o.hi, e.hi) - Math.max(o.lo, e.lo);
+      if (over >= -60 && (!best || over > bestOver)) { best = o; bestOver = over; }
+    }
+    if (best) {
+      used.add(best);
+      const lo = Math.max(best.lo, e.lo), hi = Math.min(best.hi, e.hi);
+      if (lo <= hi) { best.lo = lo; best.hi = hi; }
+    } else {
+      const x = Object.assign({}, e); list.push(x); used.add(x); added++;
+    }
+  }
+  list.sort((a, b) => b.hi - a.hi);
+  return {list: list.slice(0, 1000), added};
+}
+// What an import of the parsed guild bank lines would change: newer needs (an older list never rolls
+// a newer one back; the same list with other pledges replaces them) and the log entries the ledger
+// does not have yet.
+function amGuildResolve(g, st){
+  if (!g) return null;
+  const cur = st.bankNeeds;
+  const needs = g.needs && (!cur || g.needs.at > cur.at || (g.needs.at === cur.at && JSON.stringify(g.needs.pledges) !== JSON.stringify(cur.pledges || []))) ? g.needs : null;
+  const merged = g.log.length ? bankLogMerge(st.bankLog, g.log) : null;
+  const logNew = merged ? merged.added : 0;
+  if (!needs && !logNew) return null;
+  return {needs, logNew, log: merged ? merged.list : null};
 }
 // The wishes in the addon's text for the Wishlist tab (a text of its own, never in a raid export):
 // "WL <itemID> <prio 1-3> <epoch> <name> [<note>]", the name with "_" for a space. A line without
@@ -3863,7 +3979,7 @@ function impRender(){
   const okG = glRows.filter(r => r.status === 'ok').length, okA = amRows.filter(s => s.status === 'ok').length, fills = glRows.filter(r => r.status === 'fill').length;
   const changes = glRows.filter(r => r.status === 'change').length, gone = glRows.filter(r => r.status === 'gone').length;
   $('#glResult').hidden = !glRows.length;
-  $('#impBar').hidden = !(glRows.length || amRows.length || amBank);
+  $('#impBar').hidden = !(glRows.length || amRows.length || amBank || amGuild);
   const parts = [];
   if (okG) parts.push(okG + ' award' + (okG === 1 ? '' : 's'));
   if (fills) parts.push('more detail for ' + fills + ' award' + (fills === 1 ? '' : 's') + ' already in the ledger');
@@ -3871,6 +3987,8 @@ function impRender(){
   if (gone) parts.push(gone + ' award' + (gone === 1 ? '' : 's') + ' removed in game');
   if (okA) parts.push(okA + ' raid session' + (okA === 1 ? '' : 's'));
   if (amBank && amBank.status === 'ok') parts.push('the guild bank count');
+  if (amGuild && amGuild.needs) parts.push('the guild bank needs');
+  if (amGuild && amGuild.logNew) parts.push(amGuild.logNew + ' guild bank log entr' + (amGuild.logNew === 1 ? 'y' : 'ies'));
   $('#impSummary').textContent = parts.length ? parts.join(' and ') + ' ready to import' : 'Nothing new, everything in this export is already in the ledger';
   $('#glImport').disabled = !parts.length;
   $('#glImport').textContent = parts.length ? 'Import ' + parts.join(' and ') : 'Import';
@@ -4270,6 +4388,7 @@ $('#glPreview').addEventListener('click', () => {
   const amSessions = blocks.length ? amParse(blocks) : [];
   amRows = amSessions.length ? amResolve(amSessions) : [];
   amBank = blocks.length ? amBankResolve(amParseBank(blocks)) : null;
+  amGuild = blocks.length ? amGuildResolve(amParseGuildBank(blocks), state) : null;
   // the boss kills of the text "Drops für die Website" have their own button
   const drops = blocks.length ? amParseDrops(blocks) : null;
   amDrops = drops && (drops.kills.length || drops.bad || Object.keys(drops.names).length || Object.keys(drops.zones).length) ? dropPlan(drops, state) : null;
@@ -4283,8 +4402,8 @@ $('#glPreview').addEventListener('click', () => {
   $('#glWishHint').hidden = !wishes;
   const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
   glRows = (rawRows.length ? glResolve(rawRows) : []).concat(amGoneRows(amSessions));
-  if (!glRows.length && !amRows.length && !amBank && (amDrops || amPrio)) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
-  if (!glRows.length && !amRows.length && !amBank) return say(wishes ? $('#glWishHint').textContent : 'Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
+  if (!glRows.length && !amRows.length && !amBank && !amGuild && (amDrops || amPrio)) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
+  if (!glRows.length && !amRows.length && !amBank && !amGuild) return say(wishes ? $('#glWishHint').textContent : 'Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
 });
@@ -4296,7 +4415,7 @@ $('#glDups').addEventListener('change', () => {
 });
 $('#glImport').addEventListener('click', () => {
   const ok = glRows.filter(r => r.status === 'ok');
-  if (!ok.length && !glRows.some(r => r.status === 'fill' || r.status === 'change' || r.status === 'gone') && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok')) return;
+  if (!ok.length && !glRows.some(r => r.status === 'fill' || r.status === 'change' || r.status === 'gone') && !amRows.some(s => s.status === 'ok') && !(amBank && amBank.status === 'ok') && !amGuild) return;
   const clsFor = {}; document.querySelectorAll('[data-glcls]').forEach(s => clsFor[s.dataset.glcls] = s.value);
   document.querySelectorAll('[data-glboss]').forEach(s => { const r = glRows[+s.dataset.glboss]; if (r) r.boss = s.value; });
   let created = 0, base = Date.now();
@@ -4331,7 +4450,11 @@ $('#glImport').addEventListener('click', () => {
     // the counted materials keep their names for the Mats tab, as the items of a session do
     for (const [id, v] of Object.entries(bank.names || {})) if (id in bank.items && !ITEM[id]) itemNames()[id] = v;
   }
-  glRows = []; amRows = []; amBank = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; $('#glWishHint').hidden = true;
+  // the guild bank needs and log, checked again at import time like the count
+  const guild = amGuild ? amGuildResolve(amParseGuildBank(amSplit($('#glText').value).blocks), state) : null;
+  if (guild && guild.needs) state.bankNeeds = {at: guild.needs.at, by: guild.needs.by, items: guild.needs.items, pledges: guild.needs.pledges};
+  if (guild && guild.logNew) state.bankLog = guild.log;
+  glRows = []; amRows = []; amBank = null; amGuild = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; $('#glWishHint').hidden = true;
   markDirty();
   const said = [];
   if (ok.length) said.push(ok.length + ' award' + (ok.length===1?'':'s'));
@@ -4340,6 +4463,8 @@ $('#glImport').addEventListener('click', () => {
   if (ch.changed) said.push(ch.changed + ' change' + (ch.changed === 1 ? '' : 's') + ' from the addon');
   if (ch.gone) said.push(ch.gone + ' award' + (ch.gone === 1 ? '' : 's') + ' removed in game');
   if (bank) said.push('the guild bank count');
+  if (guild && guild.needs) said.push('the guild bank needs');
+  if (guild && guild.logNew) said.push(guild.logNew + ' guild bank log entr' + (guild.logNew === 1 ? 'y' : 'ies'));
   say(said.length ? 'Imported ' + said.join(' and ') + (created ? ', ' + created + ' new raider' + (created===1?'':'s') : '') + '.' : 'Nothing new to import.');
 });
 
@@ -4596,7 +4721,7 @@ $('#importBtn').addEventListener('click', async () => {
   let d; try { d = JSON.parse($('#backup').value); } catch(e) { return say('The box does not contain valid JSON.'); }
   if (!d || !Array.isArray(d.raiders) || !Array.isArray(d.awards)) return say('This does not look like a ledger backup.');
   if (readOnly || !await ask('Replace the whole ledger with this backup ('+d.raiders.length+' raiders, '+d.awards.length+' awards)?', 'Restore')) return;
-  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, lootPrio:d.lootPrio&&typeof d.lootPrio==='object'&&!Array.isArray(d.lootPrio)?d.lootPrio:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
+  state = {version:1, guild:d.guild||'', realm:d.realm||'', ruleset:d.ruleset||'', faction:d.faction||'', game:d.game||'tbc', example:false, raiders:d.raiders, awards:d.awards, crafters:Array.isArray(d.crafters)?d.crafters:[], nights:Array.isArray(d.nights)?d.nights:[], matloot:Array.isArray(d.matloot)?d.matloot:[], addonSessions:Array.isArray(d.addonSessions)?d.addonSessions:[], bank:d.bank&&typeof d.bank==='object'&&Number(d.bank.at)>0&&d.bank.items&&typeof d.bank.items==='object'?d.bank:null, bankNeeds:d.bankNeeds&&typeof d.bankNeeds==='object'&&d.bankNeeds.items&&typeof d.bankNeeds.items==='object'?d.bankNeeds:null, bankLog:Array.isArray(d.bankLog)?d.bankLog:[], wclReports:Array.isArray(d.wclReports)?d.wclReports:[], dropped:Array.isArray(d.dropped)?d.dropped:[], lootOk:Array.isArray(d.lootOk)?d.lootOk:[], otherLoot:Array.isArray(d.otherLoot)?d.otherLoot:[], lootDrops:Array.isArray(d.lootDrops)?d.lootDrops:[], lootAway:Array.isArray(d.lootAway)?d.lootAway:[], dropObs:Array.isArray(d.dropObs)?d.dropObs:[], dropNames:d.dropNames&&typeof d.dropNames==='object'&&!Array.isArray(d.dropNames)?d.dropNames:{}, dropZones:d.dropZones&&typeof d.dropZones==='object'&&!Array.isArray(d.dropZones)?d.dropZones:{}, itemNames:d.itemNames&&typeof d.itemNames==='object'&&!Array.isArray(d.itemNames)?d.itemNames:{}, lootPrio:d.lootPrio&&typeof d.lootPrio==='object'&&!Array.isArray(d.lootPrio)?d.lootPrio:{}, shelf:d.shelf&&typeof d.shelf==='object'&&!Array.isArray(d.shelf)?d.shelf:{}, shelfGame:d.shelfGame||'tbc', ...(BENCH_MODES.includes(d.benchMode) ? {benchMode:d.benchMode} : {})};
   // a backup without game was TBC; the next fitShelf moves whatever is on top to the shelf and puts Forever there
   fitShelf(state); ui.openCard = null; markDirty(); if (gameKey !== PLAY) loadGame(PLAY);
 });

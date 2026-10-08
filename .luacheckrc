@@ -42,6 +42,8 @@ read_globals = {
     "IsInGroup", "IsInGuild", "IsInInstance", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
     "ITEM_CLASSES_ALLOWED", "LE_PARTY_CATEGORY_HOME", "LootFrame", "MapCanvasDataProviderMixin",
     "MapCanvasPinMixin", "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",
+    "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
+    "GetGuildBankMoneyTransaction", "MAX_GUILDBANK_TABS",
     "RAID_CLASS_COLORS", "RANDOM_ROLL_RESULT", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",
     "time", "tinsert", "ToggleWorldMap", "TooltipDataProcessor", "TooltipUtil", "UiMapPoint", "UIParent",
     "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitFactionGroup", "UnitFullName",

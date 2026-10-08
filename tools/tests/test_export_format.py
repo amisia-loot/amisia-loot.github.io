@@ -548,3 +548,60 @@ def test_the_drop_text_round_trips_to_the_site(drops):
              'day': (datetime.date.fromisoformat(k['date']) - day0).days, 'o': k['o'], 'src': k['src'],
              'items': {str(i): n for i, n in k['items'].items()}} for k in ref['kills']]
     assert got['kills'] == want
+
+
+def guild_bank_from_addon():
+    """An officer's needs, a member's pledge and a read of the guild bank log, exported."""
+    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    lua = run.fresh()
+    lua.execute(r'''
+        STUB.item(61001, "Feuerkern", 3); STUB.item(61002, "Runenstoff", 1)
+        AmisiaDB.mats[61001] = { name = "Feuerkern", q = 3, first = 1 }
+        NS.RebuildMats()
+        assert(NS.SetBankNeed(61001, 40, 80))
+        assert(NS.SetBankNeed(61002, 0, 200))
+        AmisiaDB.bankPledges = { { name = "Anna Bergmann", item = 61001, count = 15, t = math.floor(STUB.now) - 60 } }
+        NS.MergeBankLog({
+            { k = 1, y = "deposit", n = "Anna Bergmann", i = 61001, c = 20, ago = 1 },
+            { k = 1, y = "deposit", n = "Anna Bergmann", i = 61001, c = 20, ago = 1 },
+            { k = 2, y = "move", n = "Vuloo", i = 61002, c = 5, a = 2, b = 3, ago = 0 },
+            { k = 0, y = "repair", n = "Chorf", i = 0, c = 51234, ago = 30 },
+        }, math.floor(STUB.now))
+        EXPORT = NS.ExportText({})
+        AGAIN = NS.ExportText({})
+        NS.MarkExported({})
+        AFTER = NS.ExportText({})
+    ''')
+    g = lua.globals()
+    return g.EXPORT, g.AGAIN, g.AFTER
+
+
+@pytest.fixture(scope='module')
+def guild_bank():
+    text, again, after = guild_bank_from_addon()
+    return text, again, after, read_back(text)
+
+
+def test_the_guild_bank_lines_reach_the_site(guild_bank):
+    text, again, after, out = guild_bank
+    for letter in ('BQ', 'BP', 'BT'):
+        assert ('\n' + letter + ' ') in text, letter
+        assert letter in out['letters'], 'the site reads ' + letter
+    g = out['guildBank']
+    assert g['needs']['by'] == 'Vuloo' and g['needs']['at'] > 0
+    assert g['needs']['items'] == {'61001': {'min': 40, 'target': 80}, '61002': {'min': 0, 'target': 200}}
+    assert g['needs']['pledges'] == [{'item': 61001, 'count': 15, 'at': g['needs']['pledges'][0]['at'], 'name': 'Anna Bergmann'}]
+    log = sorted(g['log'], key=lambda e: (e['tab'], e['kind']))
+    assert [(e['tab'], e['kind'], e['item'], e['count'], e['name']) for e in log] == [
+        (0, 'repair', 0, 51234, 'Chorf'), (1, 'deposit', 61001, 20, 'Anna Bergmann'), (1, 'deposit', 61001, 20, 'Anna Bergmann'),
+        (2, 'move', 61002, 5, 'Vuloo')], 'two equal deposits stay two'
+    mv = [e for e in log if e['kind'] == 'move'][0]
+    assert mv['t1'] == 2 and mv['t2'] == 3 and mv['hi'] - mv['lo'] == 3600
+    assert out['sessions'] == [] and out['bank'] is None, 'no raid, no count'
+
+
+def test_the_log_goes_out_once(guild_bank):
+    text, again, after, out = guild_bank
+    assert again == text, 'until it is marked exported'
+    assert '\nBT ' not in after, 'an exported log entry does not come again'
+    assert '\nBQ ' in after and '\nBP ' in after, 'the needs always come along'

@@ -752,6 +752,12 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, items = 
 ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 40, officer = true, items = {
     { key = "bank.count", type = "toggle", label = L["Beim Öffnen der Gildenbank zählen"], default = true,
       tip = L["Zählt die Gildenmaterialien in allen sichtbaren Tabs."] },
+    { key = "bank.log", type = "toggle", label = L["Gildenbank-Protokoll mitschreiben"], default = true,
+      tip = L["Liest beim Öffnen der Gildenbank das Protokoll jedes sichtbaren Tabs und das Goldprotokoll."] },
+    { key = "bank.logDays", type = "slider", label = L["Protokoll aufbewahren (Tage)"], default = 90, min = 14, max = 365, step = 1,
+      tip = L["Ältere Einträge fallen heraus; höchstens 1000 Einträge."] },
+    { key = "bank.pledgeDays", type = "slider", label = L["Spendenzusagen gelten (Tage)"], default = 7, min = 1, max = 30,
+      tip = L["Danach fällt eine Zusage aus der Bedarfsliste."] },
 }}
 
 function ns.LateCount(s)
@@ -970,10 +976,14 @@ function ns.PendingExport()
     return out
 end
 
--- Whether the guild bank count is newer than the last export that carried it.
+-- Whether the guild bank count is newer than the last export that carried it, or the needs, the
+-- pledges or the bank log have something no export carried yet.
 function ns.BankPending()
     local bank = ns.Bank()
-    return (bank and bank.counts and (bank.at or 0) > (DB.exportedBank or 0)) and true or false
+    if bank and bank.counts and (bank.at or 0) > (DB.exportedBank or 0) then return true end
+    if ns.BankNeedsPending and ns.BankNeedsPending() then return true end
+    if ns.BankLogPending and #ns.BankLogPending() > 0 then return true end
+    return false
 end
 
 -- Remembers what an export carried, so the next one without a selection can leave it out.
@@ -984,6 +994,8 @@ function ns.MarkExported(list)
         DB.exported[s.id] = { h = ns.SessionHash(s), at = t }
     end
     if DB.bank and DB.bank.counts then DB.exportedBank = DB.bank.at or 0 end
+    if ns.MarkBankNeedsExported then ns.MarkBankNeedsExported() end
+    if ns.MarkBankLogExported then ns.MarkBankLogExported() end
     refresh()
 end
 
@@ -1007,6 +1019,32 @@ function ns.ExportText(list)
     -- LC <itemID> <edited epoch> <officer> <prio token|-> [<note>]: the loot prio edited in game (LootPrio.lua)
     if ns.LootPrioExportLines then
         for _, line in ipairs(ns.LootPrioExportLines()) do lines[#lines + 1] = line end
+    end
+    -- BQ <itemID> <min> <target|0> <set epoch> <set by>: the guild bank needs of an officer
+    local needs = ns.BankNeeds and ns.BankNeeds()
+    if needs and next(needs.list) then
+        local ids = {}
+        for id in pairs(needs.list) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            local e = needs.list[id]
+            lines[#lines + 1] = ("BQ %d %d %d %d %s"):format(id, e.min, e.target or 0, needs.rev or 0, ns.ExportName(needs.by or "?"))
+            used[id] = true
+        end
+        -- BP <itemID> <count> <epoch> <name>: a member's pledge to donate, while it counts
+        for _, p in ipairs(ns.BankPledgeList()) do
+            lines[#lines + 1] = ("BP %d %d %d %s"):format(p.item, p.count, p.t, ns.ExportName(p.name))
+            used[p.item] = true
+        end
+    elseif needs and (needs.rev or 0) > 0 then
+        -- every need was taken out: item 0 says "the list is empty now"
+        lines[#lines + 1] = ("BQ 0 0 0 %d %s"):format(needs.rev, ns.ExportName(needs.by or "?"))
+    end
+    -- BT <from> <to> <tab|0> <kind> <itemID|0> <count|copper> <tab1|0> <tab2|0> <name>: a guild bank
+    -- log entry no export carried yet (tab 0: the money log; from..to: when it happened)
+    for _, e in ipairs(ns.BankLogPending and ns.BankLogPending() or {}) do
+        lines[#lines + 1] = ("BT %d %d %d %s %d %d %d %d %s"):format(e.lo, e.hi, e.k, e.y, e.i, e.c, e.a or 0, e.b or 0, ns.ExportName(e.n))
+        if e.i > 0 then used[e.i] = true end
     end
     for _, s in ipairs(list) do
         sessionLines(s, lines, used)

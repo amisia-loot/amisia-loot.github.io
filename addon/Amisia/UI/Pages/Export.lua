@@ -33,7 +33,8 @@ function ns.ShowExport(latestOnly)
         onlyNew = true
     end
     if #list == 0 then
-        local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and ns.Bank())
+        -- the bank count, the needs and pledges, the bank log (BankPending also covers the last two)
+        local bankOnly = onlyNew and ns.BankPending() or (not onlyNew and (ns.Bank() or ns.BankPending()))
         -- the loot prio edited in game goes to the site on its own too
         local prioOnly = ns.LootPrioPending and ns.LootPrioPending() > 0
         if not bankOnly and not prioOnly then
