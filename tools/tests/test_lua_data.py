@@ -11,7 +11,8 @@ import lua_data  # noqa: E402
 
 ADDON = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'addon', 'Amisia')
 SHIPPED = {'GearData': ('GEAR', 'I'), 'MapData': ('MAP', 'P'), 'QuestData': ('QUEST_DATA', 'Q'),
-           'ProfessionData': ('PROFESSIONS', 'P'), 'TalentData': ('TALENTS', 'classes')}
+           'ProfessionData': ('PROFESSIONS', 'P'), 'TalentData': ('TALENTS', 'classes'),
+           'MageScrollData': ('MAGESCROLLS', 'scrolls')}
 
 PLAIN = 'local _, ns = ...\n\n-- a comment\nns.X = {\n    a = "x]=]y [[z]]",\n    b = { 1, 2 },\n}\n'
 

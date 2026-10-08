@@ -170,3 +170,33 @@ def test_load_takes_the_area_table_of_the_download():
 def test_a_refresh_keeps_the_area_and_tuning_tables():
     assert att_data.kept('.config/.wago/AreaTable.1.60.1.70170.csv') and att_data.kept('.config/.wago/ContentTuning.1.60.1.70170.csv')
     assert not att_data.kept('.config/.wago/AreaTableX.1.60.1.70170.csv')
+
+
+def test_expansion_features_quest_givers_of_a_header_and_quest_maps():
+    db = att_data.load(FIXTURE, items=False, dirs=('expansion features',))
+    assert db['errors'] == {} and db['files'] == ['expansion features/library books.lua']
+    q = db['quests']
+    assert q[78501]['name'] == 'A Dusty Tome' and q[78501]['givers'] == [81501, 81502], 'aqd and hqd give every quest below'
+    assert q[78501]['startItem'] and q[78501]['startItems'] == [69501] and q[78501]['rewards'] == [69500]
+    assert q[78501]['maps'] == [1426] and q[78503]['startItems'] == []
+    assert q[78502]['faction'] == 'A' and q[78502]['maps'] == [1455, 1426], 'a map constant or a number'
+    assert q[78503]['pre'] == [78501, 78502] and q[78503]['sqreq'] == 2 and q[78503]['minLevel'] == 20
+    n = db['npcs']
+    assert n[81501]['name'] == 'Fixture Librarian' and n[81501]['title'] == 'Librarian'
+    assert n[81501]['faction'] == 'A' and n[81501]['points'] == [(1455, 4900, 8640)]
+    assert n[81502]['faction'] == 'H' and n[81502]['points'] == [(1426, 7360, 3300)]
+
+
+def test_the_default_folders_leave_expansion_features_out(db):
+    assert not any(f.startswith('expansion features/') for f in db['files'])
+    assert 78501 not in db['quests']
+    assert att_data.kept('expansion features/library books.lua')
+
+
+def test_map_constants_of_the_newer_file_fill_the_shared_map():
+    # since October 2026 the file keeps its constants in a local _MAP and copies them into MAP
+    src = ('local _MAP = setmetatable({ TEST_TOWN = 1453; }, { __index = function(t, k) error("x") end });\n'
+           'for k, v in pairs(_MAP) do _G[k] = v; MAP[k] = v end\n')
+    lua, S = att_data.sandbox()
+    S.maps(src)
+    assert dict(S.mapNames()) == {'TEST_TOWN': 1453}

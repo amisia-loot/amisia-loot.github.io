@@ -71,7 +71,7 @@ for _, w in ipairs({ "/amisia announce - announce the open loot window again", "
                      "/amisia sr [check|remind|post|forget [name]] - show soft reserves",
                      "/amisia mats [add|remove <link>] - show raid materials",
                      "/amisia bench [name] [note] | remove <name>", "/amisia addroll <name> <number> [os]",
-                     "/amisia rolltime <5-120>", "/amisia log [events] - the raid's raid log",
+                     "/amisia rolltime <5-120>", "/amisia log [events|rolls] - the raid's raid log",
                      "/amisia boss <name> [wipe] - enter a boss kill or wipe by hand", "/amisia alts [name|clear]" }) do
     assert(has(help, w), w .. "\n" .. help)
 end

@@ -111,6 +111,11 @@ def version_key(v):
 
 
 # ---------------------------------------------------------------- data
+# the client tables tools/build_magescrolls.py needs (its REQUIRED; kept here so build.py imports no builder)
+MAGESCROLL_TABLES = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spell', 'SpellName', 'SpellMisc', 'SpellEffect',
+                     'ItemEffect', 'ItemXItemEffect']
+
+
 def data_steps(sv=None, wago=WAGO, refresh_att=False):
     """The data builds in dependency order: (name, script, args, client tables it needs or None,
     what happens without them: 'skip' or the args to use instead)."""
@@ -124,6 +129,8 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('quests', 'build_quests.py', [], None, None),
         ('professions', 'build_professions.py', ['--wago', wago], ['ItemSparse', 'SkillLineAbility'], 'skip'),
         ('talents', 'build_talents.py', ['--wago', wago], 'talents', 'skip'),
+        # after the gear build's --refresh-att: the library books and world drops of the AllTheThings cache
+        ('mage scrolls', 'build_magescrolls.py', ['--wago', wago], MAGESCROLL_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),
         ('bis', 'build_bis.py', ['--wago', wago] + sv_args, None, None),
     ]

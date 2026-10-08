@@ -110,7 +110,7 @@ them in dependency order; `build.py check` fails when a file is missing from it.
 
 ### Lazy data
 
-The five big generated files (`GearData`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`)
+The big generated files (`GearData`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
@@ -602,6 +602,23 @@ python tools/build_talents.py [--wago DIR ...] [--out FILE]
 
 Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixture CSVs
 (`tools/tests/fixtures/talents`, a mage, a warrior and a legacy tree).
+
+## build_magescrolls.py
+
+Builds `addon/Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
+(`/amisia schriftrollen`, under Ausrüstung for mages): WoW Forever's mage scrolls and the
+Comprehension skill line ("Arkanes Verständnis"). From the client tables (`--wago`, default
+`~/addons/_wago`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
+SpellEffect, ItemEffect, ItemXItemEffect, optional SpellDuration/SpellRadius/SpellAuraOptions):
+the untranslated scrolls (`RequiredSkill` = Comprehension) with their rank, the tiers (the distinct
+ranks) with the yellow/grey steps of the "Comprehend Scroll" abilities matched in rank order, the
+mage-only consumable scrolls the client knows as possible results (what a scroll gives is the
+server's choice; no table says it), the Comprehension Charm and the spell that conjures it, the item
+whose use spell raises the skill, Study (bundle of scrolls) and Research. From AllTheThings
+(`att_data.load(dirs=('expansion features', 'world drops'))`): which scrolls are world drops, the
+library books with their librarians (Stormwind, Undercity) and the Friend of the Library quests.
+`--no-att` builds without sources, `--refresh-att` updates the cache first. `build.py data` runs it
+after the talents (skipped without the tables).
 
 ## make_icons.py
 

@@ -16,6 +16,8 @@ large to clone) into ~/addons/_cache/att, outside the repo:
   - .config/exports/ItemDB.lua: the Forever client's item table as ATT exports it (slot, class,
     subclass, item level, quality, bind, required level, classes, required skill line);
   - .config/.wago/UiMapAssignment.*.csv: uiMapID -> instance map id (the client table ATT ships);
+  - expansion features/: the library books (quests that turn in a book for a Comprehension Charm,
+    the librarians who take them; build_magescrolls.py reads them with load(dirs=...));
   - .config/.wago/AreaTable.*.csv: area id -> the map (ContinentID) it lies on, which for an
     instance's own area is the instance map id; ContentTuning.*.csv: the level the client tunes a
     dungeon to (build_dungeons.py, with the LFGDungeons table of the user's wago.tools download);
@@ -50,7 +52,7 @@ USER_AGENT = 'AmisiaGuildTool/1.0 (+https://amisia-loot.github.io)'
 # What refresh() keeps of the folder (paths relative to it).
 KEEP_DIRS = ('dungeons & raids/', 'zones/', 'world drops/', 'pvp/', 'crafted items/',
              'zzOLD/01 - Dungeons Raids/', 'zzOLD/02 - Outdoor Zones/', '.config/constants/',
-             'profession db/', '.config/structures/')
+             'profession db/', '.config/structures/', 'expansion features/')
 KEEP_FILES = ('.config/exports/ItemDB.lua',)
 KEEP_WAGO = ('UiMapAssignment', 'AreaTable', 'ContentTuning', 'SkillLineAbility')
 # The data folders load() reads, in this order; a later folder never overwrites an earlier record.
@@ -132,10 +134,11 @@ def commit_of(base):
     return None
 
 
-def data_files(base):
-    """The data files of a download, folder by folder in DATA_DIRS order, sorted within."""
+def data_files(base, dirs=DATA_DIRS):
+    """The data files of a download, folder by folder in the order of dirs (default DATA_DIRS),
+    sorted within."""
     out = []
-    for sub in DATA_DIRS:
+    for sub in dirs:
         d = os.path.join(base, sub)
         found = []
         for root, _, files in os.walk(d):
@@ -234,7 +237,9 @@ local S = {}
 -- coordinates fall away instead of failing the file)
 function S.maps(src)
     local f = assert(loadstring(src, "@maps.lua"))
-    local menv = setmetatable({ print = function() end }, { __index = SAFE })
+    -- MAP: the shared table the newer file (since October 2026) fills from its local _MAP; the older
+    -- one assigns MAP itself
+    local menv = setmetatable({ print = function() end, MAP = {} }, { __index = SAFE })
     -- the file copies the constants into "_G": here that is its own environment
     menv._G = menv
     setfenv(f, menv)
@@ -276,6 +281,12 @@ local function ids(v)
     local out = {}
     if type(v) == "number" then out[1] = v
     elseif plain(v) then for _, x in ipairs(v) do if type(x) == "number" then out[#out + 1] = x end end end
+    return out
+end
+-- uiMapIDs of a list of map constants or numbers ({ THE_BARRENS, 1426 })
+local function mapList(v)
+    local out = {}
+    if plain(v) then for _, x in ipairs(v) do local m = mapOf(x); if m then out[#out + 1] = m end end end
     return out
 end
 local function raceCode(v, inherited)
@@ -375,6 +386,18 @@ local function walk(v, ctx, depth)
     local c = setmetatable({}, { __index = ctx })
     c.races = raceCode(t.races, ctx.races)
     c.raceMask = raceMask(t.races, ctx.raceMask)
+    -- aqd/hqd: the Alliance and the Horde quest giver of every quest below (ATT's
+    -- "alliance/horde quest data", e.g. the librarians of the library books)
+    for _, side in ipairs({ { "aqd", "A" }, { "hqd", "H" } }) do
+        local qd = t[side[1]]
+        local npc = plain(qd) and ids(qd.qg)[1]
+        if npc then
+            emit("npcs", { id = npc, file = ctx.file, zone = ctx.zone, inst = ctx.inst, kind = "npc", pts = points(qd),
+                           races = side[2] })
+            if rawget(c, "qd") == nil then c.qd = {} end
+            c.qd[#c.qd + 1] = npc
+        end
+    end
     if kind == "inst" then
         local maps = ids(t.mapID)
         for _, m in ipairs(ids(t.maps)) do maps[#maps + 1] = m end
@@ -388,16 +411,17 @@ local function walk(v, ctx, depth)
     elseif kind == "m" then
         c.zone = mapOf(id) or ctx.zone
     elseif kind == "q" and type(id) == "number" then
-        local givers, objs, startItem = ids(t.qg), {}, t.qs ~= nil or t.qi ~= nil or t.qis ~= nil
+        local givers, objs, startItem, sitems = ids(t.qg), {}, t.qs ~= nil or t.qi ~= nil or t.qis ~= nil, {}
         for _, g in ipairs(ids(t.qgs)) do givers[#givers + 1] = g end
         local provs = plain(t.providers) and t.providers or { t.provider }
         for _, p in ipairs(provs) do
             if plain(p) and type(p[2]) == "number" then
                 if p[1] == "n" then givers[#givers + 1] = p[2]
                 elseif p[1] == "o" then objs[#objs + 1] = p[2]
-                elseif p[1] == "i" then startItem = true end
+                elseif p[1] == "i" then startItem = true; sitems[#sitems + 1] = p[2] end
             end
         end
+        if #givers == 0 and ctx.qd then for _, g in ipairs(ctx.qd) do givers[#givers + 1] = g end end
         local pre = ids(t.sourceQuests)
         for _, p in ipairs(ids(t.sourceQuest)) do pre[#pre + 1] = p end
         local inside = true
@@ -408,7 +432,8 @@ local function walk(v, ctx, depth)
                          classes = classMask(t.classes), lvl = type(t.lvl) == "number" and t.lvl or nil,
                          pre = pre, sqreq = type(t.sourceQuestNumRequired) == "number" and t.sourceQuestNumRequired or nil,
                          alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
-                         breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true })
+                         breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true,
+                         maps = mapList(t.maps), sitems = sitems })
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
         local npc
@@ -735,7 +760,7 @@ def read_itemdb(base, lua_S=None):
     return out
 
 
-def load(base=ATT_CACHE, items=True, wago=None):
+def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
     """The neutral form of a download (see NEUTRAL in tools/README.md, section att_data.py):
 
     {'commit', 'files', 'errors': {file: text}, 'maps': {MAP constant: uiMapID},
@@ -744,7 +769,8 @@ def load(base=ATT_CACHE, items=True, wago=None):
                      'startItem', 'inside', 'zone', 'inst', 'pre', 'sqreq' (how many of pre are needed:
                      0 all, else ATT's sourceQuestNumRequired), 'alt', 'rewards', 'file', 'old',
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
-                     'breadcrumb', 'repeatable'}},
+                     'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
+                     'startItems' (the items that start it)}},
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
@@ -752,6 +778,7 @@ def load(base=ATT_CACHE, items=True, wago=None):
      'crafted': [(item, profession key)], 'items': {id: item dict (read_itemdb)}, 'uimap_instance': {},
      'item_names': {id: English name from the comments}}
 
+    dirs: the data folders to read (default DATA_DIRS; build_magescrolls.py reads 'expansion features').
     Points are (uiMapID, x, y) in hundredths of a percent. Files under zzOLD/ are "old": the
     Classic records the authors have not moved into the Forever folders yet; a quest or NPC a
     Forever file knows keeps its Forever record."""
@@ -760,7 +787,7 @@ def load(base=ATT_CACHE, items=True, wago=None):
         S.maps(fh.read())
     raw = S.new()
     names, errors, files = {}, {}, []
-    for path in data_files(base):
+    for path in data_files(base, dirs):
         rel = os.path.relpath(path, base).replace(os.sep, '/')
         with open(path, encoding='utf-8-sig') as fh:
             src = preprocess(fh.read())
@@ -814,7 +841,9 @@ def load(base=ATT_CACHE, items=True, wago=None):
                'pre': [int(p) for p in r.get('pre') or []], 'sqreq': _int(r.get('sqreq')) or 0, 'alt': [int(p) for p in r.get('alt') or []],
                'rewards': [], 'file': r['file'], 'old': old(r['file']),
                'races': int(r.get('raceMask') or 0), 'skill': _int(r.get('skill')) or 0,
-               'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable'))}
+               'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable')),
+               'maps': [int(m) for m in r.get('maps') or []],
+               'startItems': [int(i) for i in r.get('sitems') or []]}
         have = quests.get(qid)
         if have is None:
             quests[qid] = rec

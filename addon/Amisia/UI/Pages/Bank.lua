@@ -466,7 +466,7 @@ ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], icon = "Interface\\Icon
         local f = CreateFrame("Frame", nil, parent)
         f.views = {}
         f.views.bestand = W.Chip(f, L["Bestand"], nil, function() setView("bestand") end)
-        f.views.bedarf = W.Chip(f, L["Bedarf"], nil, function() setView("bedarf") end)
+        f.views.bedarf = W.Chip(f, L["Bedarf##Bank"], nil, function() setView("bedarf") end)
         f.views.log = W.Chip(f, L["Protokoll"], nil, function() setView("log") end)
         f.views.text = W.Chip(f, L["Text für Chat##Bank"], nil, function() setView("text") end)
         buildStock(f)
@@ -481,7 +481,7 @@ ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], icon = "Interface\\Icon
         local rows = ns.BankNeedList()
         local low = 0
         for _, r in ipairs(rows) do if r.level == "low" then low = low + 1 end end
-        f.views.bedarf.label:SetText(low > 0 and L["Bedarf (%d)"]:format(low) or L["Bedarf"])
+        f.views.bedarf.label:SetText(low > 0 and L["Bedarf (%d)"]:format(low) or L["Bedarf##Bank"])
         for key, c in pairs(f.views) do
             W.FitChip(c, 60)
             c:SetOn(key == v)

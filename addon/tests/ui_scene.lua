@@ -73,6 +73,21 @@ function S.setup()
         { k = 0, y = "repair", n = "Chorf", i = 0, c = 52340, ago = 50 },
     }, math.floor(STUB.now))
     AmisiaDB.bankLog.at = math.floor(STUB.now)
+    -- two group loot rolls: one won, one still open
+    _G.LOOT_ROLL_NEED = _G.LOOT_ROLL_NEED or "%s hat Bedarf ausgewählt für: %s"
+    _G.LOOT_ROLL_GREED = _G.LOOT_ROLL_GREED or "%s hat Gier ausgewählt für: %s"
+    _G.LOOT_ROLL_ROLLED_NEED = _G.LOOT_ROLL_ROLLED_NEED or "Bedarfswurf - %d für %s von %s"
+    _G.LOOT_ROLL_WON = _G.LOOT_ROLL_WON or "%s gewinnt: %s"
+    if NS.GroupRolls then NS.GroupRolls._resetMatchers() end
+    STUB.rolls[1] = LINK3
+    STUB.fire("START_LOOT_ROLL", 1, 60000, 1)
+    for _, line in ipairs({ LOOT_ROLL_NEED:format("Anna Bergmann", LINK3), LOOT_ROLL_GREED:format("Chorf", LINK3),
+                            LOOT_ROLL_ROLLED_NEED:format(71, LINK3, "Anna Bergmann"), LOOT_ROLL_WON:format("Anna Bergmann", LINK3) }) do
+        STUB.fire("CHAT_MSG_LOOT", line, "", "", "", "")
+    end
+    STUB.rolls[2] = LINK2
+    STUB.fire("START_LOOT_ROLL", 2, 60000, 2)
+    STUB.fire("CHAT_MSG_LOOT", LOOT_ROLL_NEED:format("Kimtaro", LINK2), "", "", "", "")
 end
 
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
@@ -84,6 +99,7 @@ S.STATES = {
     { page = "gear", name = "gear-guild", open = function() NS.ShowGear("guild") end },
     { page = "gear", name = "gear-sim", open = function() NS.ShowGear("sim") end },
     { page = "raidlog", name = "raidlog-bench", open = function() NS.ShowRaidLog("bench") end },
+    { page = "raidlog", name = "raidlog-rolls", open = function() NS.ShowRaidLog("rolls") end },
     { page = "raidlog", name = "raidlog-discord", open = function() NS.ShowRaidLog("discord") end },
     { page = "stats", name = "stats-fame", open = function() NS.ShowStats("fame") end },
     { page = "softres", name = "softres-raider", open = function() NS.ShowSoftRes("raider") end },

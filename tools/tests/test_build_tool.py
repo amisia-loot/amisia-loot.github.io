@@ -122,11 +122,14 @@ def test_check_utf8(tmp_path):
 def test_data_steps_order():
     names = [s[0] for s in build.data_steps()]
     assert names == ['dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'professions', 'talents',
-                     'dungeon art', 'bis']
+                     'mage scrolls', 'dungeon art', 'bis']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['talents'][4] == 'skip' and steps['professions'][4] == 'skip'
+    assert steps['mage scrolls'][2] == ['--wago', '/w'] and steps['mage scrolls'][4] == 'skip'
+    import build_magescrolls
+    assert steps['mage scrolls'][3] == build_magescrolls.REQUIRED
     assert steps['dungeon art'][4] == [] and steps['dungeons'][4] == [], 'without tables: from the snapshot'
 
 

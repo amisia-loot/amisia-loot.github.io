@@ -1,0 +1,5 @@
+ID,SkillLine,Spell,MinSkillLineRank,AcquireMethod,TrivialSkillLineRankHigh,TrivialSkillLineRankLow
+1,3012,8102,1,1,75,50
+2,3012,8101,1,1,30,15
+3,3012,8103,1,0,0,0
+4,6,8999,1,0,5,1
