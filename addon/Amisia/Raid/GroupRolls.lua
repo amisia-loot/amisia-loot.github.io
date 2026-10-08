@@ -129,9 +129,32 @@ local function count(by)
     return n
 end
 
--- Notes a choice (and number) of name; an entry full of names takes no new one.
+-- The key of name in by: the same spelling, else the one key ns.SameName matches ("Anna" and "Anna
+-- Sturmwind": the chat line and the loot history spell a name differently); nil for none or two.
+local function keyIn(by, name)
+    if by[name] then return name end
+    local hit
+    for k in pairs(by) do
+        if ns.SameName(k, name) then
+            if hit then return nil end
+            hit = k
+        end
+    end
+    return hit
+end
+GR._keyIn = keyIn
+
+-- Notes a choice (and number) of name; an entry full of names takes no new one. One player is one
+-- row, under the fullest spelling heard.
 local function note(c, e, name, choice, roll, cls)
-    local p = e.by[name]
+    local k = keyIn(e.by, name)
+    if k and k ~= name and name:find(" ", 1, true) and not k:find(" ", 1, true) then
+        e.by[name], e.by[k] = e.by[k], nil
+        if e.win == k then e.win = name end
+        k = name
+    end
+    local p = k and e.by[k]
+    if p then name = k end
     if not p then
         if count(e.by) >= GR.MAX_PLAYERS then return end
         p = {}
@@ -143,7 +166,7 @@ local function note(c, e, name, choice, roll, cls)
 end
 
 local function finish(e, winner)
-    if winner then e.win = winner end
+    if winner then e.win = keyIn(e.by, winner) or winner end
     e.done = true
 end
 
@@ -265,11 +288,11 @@ local function entryFor(c, item, kind, name)
         return nil
     end
     for i = #open, 1, -1 do
-        local p = open[i].by[name]
+        local p = open[i].by[keyIn(open[i].by, name) or name]
         if not p or (kind == "rolled" and not p.r) or (kind == "chose" and not p.c) then return open[i] end
     end
     for i = #recent, 1, -1 do
-        if not recent[i].by[name] then return recent[i] end
+        if not keyIn(recent[i].by, name) then return recent[i] end
     end
     if #recent > 0 then return false end
     return nil
@@ -347,7 +370,7 @@ local function readDrop(enc, key)
     local winner = w and plainText(w.playerName)
     if w and type(w.playerName) ~= "nil" and not winner then complete = false end
     -- the result: closed only once every value was read (a waiting entry is read again)
-    if all == true then e.all = true elseif winner then e.win = ns.FullName(winner) end
+    if all == true then e.all = true elseif winner then e.win = keyIn(e.by, ns.FullName(winner)) or ns.FullName(winner) end
     if complete and (e.all or e.win) then e.done = true end
     e.wait = (not complete) or nil
     if ns.Refresh then ns.Refresh() end

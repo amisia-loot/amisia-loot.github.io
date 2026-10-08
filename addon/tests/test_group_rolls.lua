@@ -214,6 +214,28 @@ end
 assert(#GR.Runs() == GR.MAX_RUNS, "runs capped: " .. #GR.Runs())
 assert(AmisiaDB.groupRolls and AmisiaDB.groupRolls.runs == GR.Runs(), "kept in the saved data")
 
+-- one player is one row, whatever spelling a line uses ("Chorf" in one line, "Chorf Eisenfaust" in another)
+do
+    STUB.rolls[3000] = glaive
+    STUB.fire("START_LOOT_ROLL", 3000, 60000, 3001)
+    local x
+    for _, run in ipairs(GR.Runs()) do
+        for _, y in ipairs(GR.Entries(run)) do if y.roll == 3000 then x = y end end
+    end
+    assert(x and x.item == 32837 and not x.done)
+    loot("Chorf has selected Need for: " .. glaive)
+    loot("Need Roll - 50 for " .. glaive .. " by Chorf Eisenfaust")
+    loot("Fraktur has selected Greed for: " .. glaive)
+    loot("Chorf won: " .. glaive)
+    local n = 0
+    for _ in pairs(x.by) do n = n + 1 end
+    assert(n == 2 and x.by["Chorf Eisenfaust"] and x.by["Chorf Eisenfaust"].c == "N" and x.by["Chorf Eisenfaust"].r == 50 and x.by.Chorf == nil,
+        "one row under the full name: " .. n)
+    assert(x.win == "Chorf Eisenfaust", tostring(x.win))
+    -- two players with that first name: a short spelling matches neither
+    assert(GR._keyIn({ ["Chorf Eisenfaust"] = {}, ["Chorf Stein"] = {} }, "Chorf") == nil)
+end
+
 -- the choice names
 assert(GR.ChoiceText("N") == "Bedarf" and GR.ChoiceText("G") == "Gier" and GR.ChoiceText("P") == "Passen"
     and GR.ChoiceText("D") == "Entzaubern", "choice texts")
