@@ -11,6 +11,8 @@
 -- Above them the officers' loot prio of the item (LootPrio.lua: "Prio: 1. Anna (Tank), 2. Krieger
 -- Furor" and the note, everything in its tooltip), "P1", "P2" in the rows of the listed rollers
 -- (gold by name, grey by class) and, for officers, a "Prio" button that edits it.
+-- In a DKP or EPGP guild the rows are bids (with the bidder's standing) or need/greed sorted by PR
+-- (EP/GP beside it); the entry row then takes a bid, or need (MS) and greed (OS) without a number.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -137,6 +139,8 @@ local function showHint(r)
         hint:SetText("|cffe05050" .. F.reason .. "|r")
     elseif r and r.lockdown then
         hint:SetText("|cffe0a344" .. L["Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen."]:format(r.hidden or 0) .. "|r")
+    elseif r and r.mode and ns.PointsRoundHint then
+        hint:SetText(GREY .. ns.PointsRoundHint(r) .. "|r")
     else
         hint:SetText(GREY .. L["Alt-Klick im Lootfenster startet eine Runde."] .. "|r")
     end
@@ -315,6 +319,11 @@ refresh = function()
     local r = ns.CurrentRoll() or ns.LastRoll()
     F.namePick:SetValues(entryNames(), L["Anderer Name"])
     showHint(r)
+    -- a bid needs the number only, need and greed the chips only
+    local mode = r and r.mode
+    F.valueEdit:SetShown(mode ~= "pr")
+    F.msChip:SetShown(mode ~= "bid")
+    F.osChip:SetShown(mode ~= "bid")
     if not r then
         header:SetText(L["Keine Roll-Runde. Alt-Klick auf ein Item im Lootfenster startet eine."])
         timer:SetText("")
@@ -347,10 +356,17 @@ refresh = function()
         -- an alt names its main in grey: its plus-one is the main's
         local main = ns.AltMain(e.name)
         row.name:SetText(("|c%s%s|r"):format(classColor(e.class), e.name) .. (main and (" |cff9d9d9d(" .. main .. ")|r") or ""))
-        local plus = ns.PlusLabel(r, e.name)
-        row.kind:SetText((e.rank or e.kind or "") .. (plus and (" " .. plus) or ""))
-        row.value:SetText(tostring(e.value))
-        row.up:SetText(info and rollerText(info, e.name) or "")
+        if r.mode and ns.PointsRowText then
+            local kind, value, up = ns.PointsRowText(r, e)
+            row.kind:SetText(kind)
+            row.value:SetText(value)
+            row.up:SetText(up)
+        else
+            local plus = ns.PlusLabel(r, e.name)
+            row.kind:SetText((e.rank or e.kind or "") .. (plus and (" " .. plus) or ""))
+            row.value:SetText(tostring(e.value))
+            row.up:SetText(info and rollerText(info, e.name) or "")
+        end
         row.prio:SetText(hasPrio and prioMark(r, e) or "")
         row.hand:SetText(e.manual and L["Hand##Wurf"] or "")
         row.why:SetText(r.winner == e.name and ("|cff4fbf7a" .. L["Gewinner"] .. "|r") or "")

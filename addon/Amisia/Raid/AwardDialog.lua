@@ -6,6 +6,10 @@
 --
 -- On the Forever client names can be secret during a boss fight; every name goes through
 -- ns.Plain and a secret one is left out of the list.
+--
+-- In a DKP or EPGP guild a row under the note takes the award's cost (DKP spent or GP charged),
+-- filled with the bid or the cost of the item's points round, else the GP formula (PointsRounds.lua);
+-- the rows below move down by PTS_DY. Rolling guilds see the dialog as before.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -14,13 +18,15 @@ local KINDS = { "MS", "OS", "SR", "-" }
 local PREFILL = 10 * 60      -- a finished round this recent fills the winner in
 local WIDTH, HEIGHT = 380, 268
 local ASK_W = 60
+local PTS_Y, PTS_DY = -120, 26          -- the cost row and how far it moves the rows under it
 
 local GetItemInfo = C_Item.GetItemInfo
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
 local GetItemIconByID = C_Item.GetItemIconByID
 
 local D
-local st = {}                -- s, item, link, winner, kind, note
+local pointsOn             -- forward
+local st = {}                -- s, item, link, winner, kind, note, pts, ptsTyped
 local lootOpen = false
 
 ---------------------------------------------------------------------------
@@ -133,6 +139,21 @@ local function itemLabel()
     return st.link or ("Item " .. tostring(st.item))
 end
 
+-- Whether the guild uses DKP or EPGP (the cost row shows).
+pointsOn = function()
+    return ns.PointsSystem ~= nil and ns.PointsSystem() ~= "roll"
+end
+
+-- The default cost of the dialog's item for its winner and kind (nil: none known).
+local function defaultCost()
+    if not st.item or not ns.PointsDefaultCost then return nil end
+    if st.kind == "-" then
+        local r = ns.PointsRoundOf and ns.PointsRoundOf(st.item)
+        if not (r and r.mode == "bid" and st.winner) then return 0 end
+    end
+    return ns.PointsDefaultCost(st.item, st.winner, st.kind ~= "-" and st.kind or "MS")
+end
+
 ---------------------------------------------------------------------------
 -- Writing
 ---------------------------------------------------------------------------
@@ -144,6 +165,7 @@ local function giveML(slot, name, kind, note)
     local p = ns.PendingAward(slot)
     if p and p ~= before and p.item == st.item and ns.SameName(p.name, name) then
         p.kind, p.note = kind, note
+        if kind ~= "-" and pointsOn() then p.pts = st.pts end
         return true
     end
     return false
@@ -173,6 +195,7 @@ local function direct(name, to, hint)
         if why then ns.msg(why) end
         return false
     end
+    if to == "player" and st.pts ~= nil and pointsOn() then ns.SetAwardPoints(st.s, a.id, st.pts) end
     local item = itemLabel()
     if to == "player" then
         ns.msg(L["Vergabe gespeichert: %s an %s (%s), von Hand eingetragen.%s"]:format(item, name, a.kind, hint and (" " .. hint) or ""))
@@ -184,9 +207,13 @@ local function direct(name, to, hint)
     return true
 end
 
--- The note as it stands in the box, also when it was typed without Enter.
+-- The note and the cost as they stand in the boxes, also when typed without Enter.
 local function takeNote()
     st.note = ns.CleanNote(D.note:GetText())
+    if D.pts:IsShown() then
+        local n = tonumber(D.pts:GetText())
+        st.pts = n and n >= 0 and n == math.floor(n) and n or nil
+    end
 end
 
 local function give()
@@ -242,6 +269,7 @@ local function setItem(x)
         link = l
     end
     st.item, st.link = id, link
+    st.ptsTyped = nil
     -- the round's winner and his kind, when a finished round for this item is recent
     local r = roundFor(id)
     if r then
@@ -312,6 +340,21 @@ local function build()
     end)
     D.note:SetPoint("LEFT", noteLab, "RIGHT", 4, 0)
 
+    -- DKP or EPGP: the cost of the award
+    D.ptsLabel = W.Text(D, T.FONT.text, 56)
+    D.ptsLabel:SetPoint("TOPLEFT", 12, PTS_Y - 4)
+    D.pts = W.LineEdit(D, 80, function(text)
+        local n = tonumber(text)
+        st.pts = n and n >= 0 and n == math.floor(n) and n or nil
+        st.ptsTyped = true
+        refresh()
+    end)
+    D.pts:SetPoint("LEFT", D.ptsLabel, "RIGHT", 4, 0)
+    D.pts:SetNumeric(true)
+    D.pts:SetMaxLetters(6)
+    D.ptsHint = W.Text(D, T.FONT.hint, 208)
+    D.ptsHint:SetPoint("LEFT", D.pts, "RIGHT", 8, 0)
+
     D.roll = W.Text(D, T.FONT.text, 356)
     D.roll:SetPoint("TOPLEFT", 12, -120)
     -- the officers' prio and note (LootPrio.lua), cut to the width
@@ -356,9 +399,49 @@ local function build()
     D.cancel:SetPoint("BOTTOMRIGHT", -12, 12)
 end
 
+-- Moves the rows under the note down by dy (the cost row) and the window with them.
+local function place(dy)
+    if D.dy == dy then return end
+    D.dy = dy
+    D:SetHeight(HEIGHT + dy)
+    local function at(f, point, x, y)
+        f:ClearAllPoints()
+        f:SetPoint(point, x, y - dy)
+    end
+    at(D.roll, "TOPLEFT", 12, -120)
+    at(D.prio, "TOPLEFT", 12, -140)
+    at(D.need, "TOPLEFT", 12, -160)
+    at(D.needHit, "TOPLEFT", 12, -159)
+    at(D.ask, "TOPRIGHT", -12, -156)
+    at(D.hint, "TOPLEFT", 12, -180)
+end
+
+-- The cost row: shown for DKP and EPGP, filled with the default until an officer types a number.
+local function showPoints()
+    local on = pointsOn()
+    place(on and PTS_DY or 0)
+    D.ptsLabel:SetShown(on)
+    D.pts:SetShown(on)
+    D.ptsHint:SetShown(on)
+    if not on then return end
+    local sys = ns.PointsSystem()
+    D.ptsLabel:SetText(sys == "epgp" and "GP" or "DKP")
+    if not st.ptsTyped then st.pts = defaultCost() end
+    if not D.pts:HasFocus() then D.pts:SetText(st.pts and tostring(st.pts) or "") end
+    local e = st.winner and ns.PointsOf(st.winner)
+    if not e then
+        D.ptsHint:SetText("")
+    elseif sys == "epgp" then
+        D.ptsHint:SetText(L["EP %d · GP %d · PR %s"]:format(e.a, e.b, ns.PointsPRText(e.pr)))
+    else
+        D.ptsHint:SetText(L["Stand: %d DKP"]:format(e.a))
+    end
+end
+
 refresh = function()
     if not D or not D:IsShown() then return end
     local s = st.s
+    showPoints()
     local slot = lootSlot(st.item)
     if st.item then
         D.itemEdit:Hide()
@@ -378,7 +461,10 @@ refresh = function()
     if not D.note:HasFocus() then D.note:SetText(st.note or "") end
     -- the round's result
     local r = st.item and roundFor(st.item)
-    if r then
+    if r and r.mode and ns.PointsResultText then
+        local e = r.rolls[r.winner]
+        D.roll:SetText(e and L["Runde: %s (%s)"]:format(r.winner, ns.PointsResultText(r, e)) or "")
+    elseif r then
         local e = r.rolls[r.winner]
         local list = ns.RollRanking(r)
         D.roll:SetText(("Roll: %s %d (%s) · +1: %d"):format(r.winner, e and e.value or 0, (list[1] and list[1].rank) or "?", ns.PlusCount(r.winner)))

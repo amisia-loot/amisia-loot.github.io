@@ -646,7 +646,7 @@ ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 25, officer 
 -- Hand-outs through master loot
 ---------------------------------------------------------------------------
 local PENDING_TTL = 5
-local pending = {}   -- loot slot -> { slot, name, item, link, src, t, token, kind, note }
+local pending = {}   -- loot slot -> { slot, name, item, link, src, t, token, kind, note, pts }
 local lastSlot       -- slot of the latest hand-out
 
 -- The open hand-out of a loot slot, or of the latest hand-out when no slot is given.
@@ -676,6 +676,12 @@ local function commit(a)
         kind = a.kind or (ns.RollKind and ns.RollKind(a.item, a.name)) or "-"
     end
     local ok, why = ns.AddAwardTo(ns.Active(), { name = a.name, item = a.item, kind = kind, src = a.src, t = time(), to = to, note = a.note })
+    -- DKP or EPGP: the amount of the dialog, else the bid or the cost of the item's points round
+    if ok and to == "player" and ns.SetAwardPoints and ns.PointsSystem and ns.PointsSystem() ~= "roll" then
+        local pts = a.pts
+        if pts == nil and ns.PointsCostFor then pts = ns.PointsCostFor(a.item, a.name, kind) end
+        if pts ~= nil then ns.SetAwardPoints(ns.Active(), ok.id, pts) end
+    end
     if ok then
         local item = a.link or ("Item " .. a.item)
         if to == "player" then

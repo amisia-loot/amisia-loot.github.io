@@ -343,6 +343,8 @@ local function newSession(zone, instanceID)
     end
     -- the bench gathered tonight before the raid
     if ns.TakeBenchNext then ns.TakeBenchNext(s) end
+    -- the loot system of the guild (DKP, EPGP) is frozen with the raid, as the late line is
+    if ns.PointsNewSession then ns.PointsNewSession(s) end
     return s
 end
 
@@ -935,6 +937,8 @@ local function sessionLines(s, lines, used, legacy)
         end
         -- R <itemID> <epoch> <W|A|O> <winner|-> <name>:<choice>[:<roll>] ...: group loot rolls (GroupRolls.lua)
         if ns.GroupRollLines and type(s.rolls) == "table" then ns.GroupRollLines(s, lines, used) end
+        -- PS, PE, PA: the raid's DKP or EPGP (Points.lua), only for a raid with a points system
+        if ns.PointsSessionLines then ns.PointsSessionLines(s, lines) end
     end
     lines[#lines + 1] = "E"
     return lines
@@ -1021,6 +1025,10 @@ function ns.ExportText(list)
     -- LC <itemID> <edited epoch> <officer> <prio token|-> [<note>]: the loot prio edited in game (LootPrio.lua)
     if ns.LootPrioExportLines then
         for _, line in ipairs(ns.LootPrioExportLines()) do lines[#lines + 1] = line end
+    end
+    -- PX <id> <name> <D|E|G> <amount> <epoch> <officer> <reason>: point corrections made in game (Points.lua)
+    if ns.PointsExportLines then
+        for _, line in ipairs(ns.PointsExportLines()) do lines[#lines + 1] = line end
     end
     -- BQ <itemID> <min> <target|0> <set epoch> <set by>: the guild bank needs of an officer
     local needs = ns.BankNeeds and ns.BankNeeds()
