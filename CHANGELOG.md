@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.13.3 (2026-10-08)
+
+- Side tabs: icons pulled 4 px into the tab's interior, sharp dice (INV_Misc_Dice_01); settings: the clicked row is put back when the client takes the new scroll range (the bar kept its old share); the stub's textures read their points
+
 ## 2.13.2 (2026-10-08)
 
 - speicher: the data sizes are labelled as measured when built, garbage included; F-071 checked in game
