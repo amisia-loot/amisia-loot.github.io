@@ -8,7 +8,8 @@ local page
 local exportOpen = false
 local exportText = ""
 
-local DROP_ROWS, DROP_ROW_H = 15, 18
+-- rows of 18 under the drop controls down to the footer (14 x 18 = 252 of 269)
+local DROP_ROWS, DROP_ROW_H = 14, 18
 local GOLD = { 1, 0.82, 0 }
 local GREY = { 0.56, 0.53, 0.64 }
 local WHITE = { 1, 1, 1 }
@@ -35,23 +36,20 @@ local function itemTooltip(owner, id)
 end
 
 local function buildDrops(f)
-    local D = {}
-    D.head = W.SectionHeader(f, L["Drop-Daten"], false)
-    D.head:SetPoint("TOPLEFT", 0, -110)
-    D.head:SetPoint("TOPRIGHT", 0, -110)
-    D.state = W.Text(f, T.FONT.text, 590, true)
-    D.state:SetPoint("TOPLEFT", 4, -140)
-    D.state:SetHeight(28)
-    D.state:SetJustifyV("TOP")
+    -- the guild's drop data under its section header: the state, sharing and the text for the website,
+    -- the list (or the text) down to the footer
+    local D = W.Page(f, { view = true })
+    local top = D:Bands({ "header", { "line", lines = 2 }, "row" })
+    D.head = W.SectionHeader(D, L["Drop-Daten"], false)
+    D.head:SetAllPoints(D.bands[1])
+    D.state = D:Line(2)
 
-    D.share = W.Toggle(f, function(on) ns.Set("drops.share", on) end)
-    D.share:SetPoint("TOPLEFT", 0, -174)
-    D.shareLabel = W.Text(f, T.FONT.text, 180)
-    D.shareLabel:SetPoint("LEFT", D.share, "RIGHT", 6, 0)
+    D.share = W.Toggle(D, function(on) ns.Set("drops.share", on) end)
+    D.shareLabel = W.Text(D, T.FONT.text, 180)
     D.shareLabel:SetText(L["Mit der Gilde teilen"])
     W.Tooltip(D.share, L["Drop-Daten mit der Gilde teilen"], L["Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern."])
 
-    D.web = W.Button(f, L["Drops für die Website"], 160, function()
+    D.web = W.Button(D, L["Drops für die Website"], 160, function()
         exportOpen = not exportOpen
         if exportOpen then
             setExport(D, ns.DropsExportText())
@@ -62,11 +60,12 @@ local function buildDrops(f)
         end
         ns.Refresh()
     end)
-    D.web:SetPoint("TOPRIGHT", 0, -172)
+    W.FitChip(D.web, 160)
+    D:Place(3, { D.share, D.shareLabel }, { D.web })
+    D:Footer({ "areaHint" })
 
-    -- 15 rows of 18 under the controls (202 + 270 = 472 of 478 px); the list is 590 wide, its thin
-    -- bar beside it
-    D.list = W.List(f, DROP_ROWS, DROP_ROW_H, function(r)
+    -- rows of 18 under the controls down to the footer; the list is 590 wide, its thin bar beside it
+    D.list = D:List(DROP_ROWS, DROP_ROW_H, function(r)
         r.name = W.Text(r, T.FONT.text, 330)
         r.name:SetPoint("LEFT", 6, 0)
         r.rate = W.Text(r, T.FONT.text, 240)
@@ -85,12 +84,9 @@ local function buildDrops(f)
         r.rate:SetText(e.rate)
         r.rate:SetTextColor(rateColor[1], rateColor[2], rateColor[3])
     end)
-    D.list:SetPoint("TOPLEFT", 0, -202)
-    D.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -202)
-
-    D.area = W.EditArea(f)
-    D.area:SetPoint("TOPLEFT", 0, -202)
-    D.area:SetPoint("BOTTOMRIGHT", 0, 24)
+    D.area = W.EditArea(D)
+    D.area:SetPoint("TOPLEFT", 0, top)
+    D.area:SetPoint("BOTTOMRIGHT", 0, D:Bottom())
     -- read-only like the export box: typing puts the text back and marks it
     D.area.box:SetScript("OnTextChanged", function(self, userInput)
         if userInput then
@@ -99,8 +95,6 @@ local function buildDrops(f)
         end
     end)
     D.area:Hide()
-    D.areaHint = W.Text(f, T.FONT.hint, 590)
-    D.areaHint:SetPoint("BOTTOMLEFT", 0, 4)
     D.areaHint:SetText(L["Strg+A, Strg+C, auf der Website im Reiter Import einfügen."])
     D.areaHint:Hide()
     return D
@@ -139,21 +133,20 @@ end
 
 ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
-        f.state = W.Text(f, T.FONT.body, 590, true)
-        f.state:SetPoint("TOPLEFT", 0, -2)
+        local f = W.Page(parent)
+        -- the head row: the scan's buttons; under it its state and what to do with it (two lines each)
+        f:Bands({ "row", { "line", lines = 2 }, { "line", lines = 2 } })
         local gear = W.Button(f, L["Ausrüstungs-Scan"], 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
-        gear:SetPoint("TOPLEFT", 0, -40)
         local resume = W.Button(f, L["Scan fortsetzen"], 130, function() ns.ScanCommand(""); ns.Refresh() end)
-        resume:SetPoint("LEFT", gear, "RIGHT", 6, 0)
         local retry = W.Button(f, L["Offene wiederholen"], 140, function() ns.ScanCommand("retry"); ns.Refresh() end)
-        retry:SetPoint("LEFT", resume, "RIGHT", 6, 0)
         local stop = W.Button(f, L["Anhalten"], 90, function() ns.ScanStop(); ns.Refresh() end)
-        stop:SetPoint("LEFT", retry, "RIGHT", 6, 0)
-        local hint = W.Text(f, T.FONT.hint, 590, true)
-        hint:SetPoint("TOPLEFT", 0, -76)
-        hint:SetHeight(28)
-        hint:SetJustifyV("TOP")
+        W.FitChip(gear, 140)
+        W.FitChip(resume, 130)
+        W.FitChip(retry, 140)
+        W.FitChip(stop, 90)
+        f:Place(1, { gear, resume, retry, stop })
+        f.state = f:Line(2)
+        local hint = f:Line(3)
         hint:SetText(L["Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen."])
         f.drops = buildDrops(f)
         -- the parts the layout tests read

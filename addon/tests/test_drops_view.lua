@@ -189,7 +189,7 @@ assert(NS.Get("drops.share") == true, "on again")
 -- layout at the main window's size
 do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
-    L.column("tools page with drops", tf.state, tf.buttons[1], tf.hint, D.head, D.state, D.share, D.list)
+    L.column("tools page with drops", tf.buttons[1], tf.state, tf.hint, D.head, D.state, D.share, D.list)
     L.row("drop controls", D.share, D.shareLabel, D.web)
     L.row("drop list", D.list, D.list.bar)
     L.inside("drop list bar", D.list.bar)

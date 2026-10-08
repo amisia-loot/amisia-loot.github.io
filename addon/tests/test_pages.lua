@@ -168,7 +168,7 @@ do
     local tf = NS.ToolsPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
     L.row("tools buttons", unpack(tf.buttons))
-    L.column("tools page", tf.state, tf.buttons[1], tf.hint)
+    L.column("tools page", tf.buttons[1], tf.state, tf.hint)
     for _, b in ipairs(tf.buttons) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
 end
 NS.Reset("ui.expert")

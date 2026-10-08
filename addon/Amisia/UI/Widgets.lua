@@ -1313,8 +1313,9 @@ end
 -- W.Page(parent) makes a page (it fills the content inset, 602 x 478) whose shared parts are all
 -- placed by ns.Theme.LAYOUT, so every page has its head row, column heads, empty state and footer
 -- in the same places. Its methods, each usable once or again on a refresh:
---   p:Bands(spec)            the bands at the top, top to bottom: "row" (controls, ROW_H) or "line"
---                            (text, LINE_H; { "line", lines = 2 } for two). The first band of a page
+--   p:Bands(spec)            the bands at the top, top to bottom: "row" (controls, ROW_H), "line"
+--                            (text, LINE_H; { "line", lines = 2 } for two) or "header" (a section
+--                            header, W.SectionHeader, T.HEADER_H). The first band of a page
 --                            is its head row. p.bands[i]; returns the content top (p.top, a y offset).
 --   p:Place(i, left, right, opts)  controls and texts in band i, each centred on it: left from the
 --                            left edge, right up to the right edge (both listed left to right). The
@@ -1414,7 +1415,7 @@ function Scaffold:Bands(spec)
     for i, s in ipairs(spec) do
         local kind, lines = s, 1
         if type(s) == "table" then kind, lines = s[1], s.lines or 1 end
-        local h = kind == "row" and LAY.ROW_H or LAY.LINE_H * lines
+        local h = kind == "row" and LAY.ROW_H or kind == "header" and T.HEADER_H or LAY.LINE_H * lines
         local b = self.bands[i] or CreateFrame("Frame", nil, self)
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", 0, y)
