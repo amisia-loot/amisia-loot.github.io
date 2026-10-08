@@ -12,7 +12,8 @@ local RED = "|cffff6040"
 local YELLOW = "|cffffd100"
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 local ICON = "Interface\\Icons\\INV_Misc_Book_08"
-local ROWS, ROW_H = 13, 24
+-- rows of 24 from the column heads (90) to the footer (442): 14
+local ROWS, ROW_H = 14, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local STATUS_COLOR = { active = YELLOW, open = GREEN, locked = RED, done = GREY }
 local HINT = L["Klick auf eine Quest: Reihe und Belohnungen. Weg: Wegpunkt zum Questgeber."]
@@ -206,13 +207,6 @@ local function onRowClick(self, button)
     ns.Refresh()
 end
 
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
-
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
@@ -255,7 +249,7 @@ local function refresh(f)
     if #rows > 0 then
         f.empty:Hide()
     else
-        f.empty:SetText(Q.WhyText(why) or L["Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren."])
+        f.empty:Set(L["Nichts gefunden"], Q.WhyText(why) or L["Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren."])
         f.empty:Show()
     end
     local d = ns.Data("QUEST_DATA")
@@ -266,9 +260,15 @@ local function refresh(f)
     end
 end
 
+-- the columns of the list (590 wide, 12 px for its scroll bar); the waypoint button has no text cell
+local COLS = { { "title", 4, 232, "Quest" }, { "level", 240, 40, "Level" }, { "status", 284, 150, "Status" },
+    { "reward", 438, 92, L["Belohnung"] }, { "go", 540, 46, L["Weg"], cell = false } }
+
 local function create(parent)
-    local f = CreateFrame("Frame", nil, parent)
+    local f = W.Page(parent)
     page = f
+    -- the head row: zone and search; under it the chips and the counts
+    f:Bands({ "row", "row", "line" })
     f.zone = W.Picker(f, 200, function(v)
         state().zone = (v == "all" or v == "here") and v or tonumber(v) or "all"
         ns.Refresh()
@@ -277,7 +277,7 @@ local function create(parent)
         state().search = (text or ""):match("^%s*(.-)%s*$") or ""
         ns.Refresh()
     end, L["Quest, Questgeber, Zone"])
-    W.Row(f, { f.zone, f.search }, 12, 0, -1)
+    f:Place(1, { f.zone, f.search })
 
     -- the status chips, then the filters
     f.show = {}
@@ -313,23 +313,14 @@ local function create(parent)
     row[#row + 1] = { f.chains, gap = 16 }
     row[#row + 1] = f.upgrades
     row[#row + 1] = f.mine
-    W.Row(f, row, T.CHIP_GAP, 0, -27)
+    f:Place(2, row)
+    f.counts = f:Line(3)
+    f:Footer({ "hint", "data" })
+    f.hint:SetText(HINT)
 
-    f.counts = W.Text(f, T.FONT.hint, 598)
-    f.counts:SetPoint("TOPLEFT", 4, -54)
-
-    local h = CreateFrame("Frame", nil, f)
-    h:SetHeight(14)
-    h:SetPoint("TOPLEFT", 0, -70)
-    h:SetPoint("TOPRIGHT", 0, -70)
-    -- the list is 590 wide (12 px for its scroll bar)
-    f.head = { title = col(h, 4, 232, "Quest"), level = col(h, 240, 40, "Level"), status = col(h, 284, 150, "Status"),
-        reward = col(h, 438, 92, L["Belohnung"]), go = col(h, 540, 46, L["Weg"]) }
-    f.list = W.List(f, ROWS, ROW_H, function(r)
-        r.title = col(r, 4, 232, nil, T.FONT.text)
-        r.level = col(r, 240, 40, nil, T.FONT.text)
-        r.status = col(r, 284, 150, nil, T.FONT.text)
-        r.reward = col(r, 438, 92, nil, T.FONT.text)
+    f.headFrame, f.head = f:Columns(COLS)
+    f.list = f:List(ROWS, ROW_H, function(r)
+        W.Cells(r, COLS)
         r.go = W.Button(r, L["Weg"], 54, function(self)
             local e = self:GetParent().item
             if e and e.qid then say(ns.QuestWaypoint(e.qid)) end
@@ -340,17 +331,7 @@ local function create(parent)
         r:SetScript("OnEnter", questTip)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
-    f.list:SetPoint("TOPLEFT", 0, -86)
-    f.list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, -86)
-    f.empty = W.Text(f, T.FONT.hint, 590, true)
-    f.empty:SetPoint("TOPLEFT", 6, -94)
-    f.empty:Hide()
-
-    f.hint = W.Text(f, T.FONT.hint, 598)
-    f.hint:SetPoint("TOPLEFT", 4, -406)
-    f.hint:SetText(HINT)
-    f.data = W.Text(f, T.FONT.hint, 598)
-    f.data:SetPoint("TOPLEFT", 4, -424)
+    f.empty = f:Empty()
     return f
 end
 

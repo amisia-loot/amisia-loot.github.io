@@ -1601,8 +1601,8 @@ function Scaffold:Detail(opts)
     d.body = W.ScrollText(d)
     d.body:SetPoint("TOPLEFT", D.PAD, -D.BODY_Y)
     d.body:SetPoint("BOTTOMRIGHT", -(D.PAD + T.SCROLL_ROOM - T.SCROLLBAR_GAP), D.BUTTONS)
-    function d:Buttons(list)
-        W.Row(self, list, LAY.ITEM_GAP, D.PAD, D.PAD, { right = true, point = "BOTTOMRIGHT" })
+    d.Buttons = function(_, list)
+        W.Row(d, list, LAY.ITEM_GAP, D.PAD, D.PAD, { right = true, point = "BOTTOMRIGHT" })
     end
     return d
 end
