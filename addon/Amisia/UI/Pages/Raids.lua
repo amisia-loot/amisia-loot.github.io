@@ -190,7 +190,7 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         f.gemHead:SetPoint("LEFT", MAT_X + nMat * MAT_STEP, 0)
         if hasGems then f.gemHead:SetText(L["Edelsteine"]); f.gemHead:Show() else f.gemHead:Hide() end
         f.list:SetItems(all)
-        f.pageText:SetText(#all == 1 and L["1 Raids##eins"] or L["%d Raids"]:format(#all))
+        f.pageText:SetText(#all == 1 and L["1 Raid"] or L["%d Raids"]:format(#all))
         f.empty:SetShown(#all == 0)
         local s = exists[detailId] or all[1]
         detailId = s and s.id or nil
