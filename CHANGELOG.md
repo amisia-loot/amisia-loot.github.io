@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.15.0 (2026-10-08)
+
+- Award history: who got an item in its tooltip ("Vergeben: Fraktur (MS), 09.09.", newest three, "+N weitere", bank/disenchant, alt with main, deleted and undone awards left out; awards.tooltip, everyone), and what a roller got in the roll window's row tooltip (last 4 weeks as Stats, MS/OS/SR, latest item; officers); one lazy index dropped on DATA_CHANGED/ALTS/RECORDING or a new raid list (D-36, F-073)
+- Spec: Loot-Abend schneller (loot rules, roll window for raiders, trade helper), waiting for the user's ok
+
 ## 2.14.0 (2026-10-08)
 
 - View switch in the head and /amisia ansicht; a search on the settings page (label, tip, choices, section name; a new search starts at the top)
