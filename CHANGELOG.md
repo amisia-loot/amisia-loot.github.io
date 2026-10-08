@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.10.1 (2026-10-08)
+
+- Data rebuilt from AllTheThings e9311f6 and the latest scan and collector records
+
 ## 2.10.0 (2026-10-08)
 
 - Loot council: per item an officers' note and priority list (#AMISIA-LC from the site, in-game edit dialog, LC export lines), shown in the roll window, award dialog, tooltip, roll frames and optionally the loot announcement, shared by the keeper (LV/LQ/LC, verified officers only)
