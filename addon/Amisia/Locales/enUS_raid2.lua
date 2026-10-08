@@ -263,6 +263,8 @@ L["Keine laufende Runde."] = "No running round."
 L["Alt-Klick auf ein Item im Lootfenster startet eine Runde."] = "Alt-click on an item in the loot window starts a round."
 L["Alt-Klick ist ausgeschaltet. /amisia roll <Item-Link> startet eine Runde."] = "Alt-click is turned off. /amisia roll <item link> starts a round."
 L[" Im Bosskampf Würfe im Roll-Fenster von Hand eintragen."] = " In a boss fight, enter rolls by hand in the roll window."
+L["Noch keine Runde"] = "No round yet"
+L["Die Runden dieser Sitzung stehen hier, sobald eine gewürfelt wurde."] = "The rounds of this session show here once one was rolled."
 
 -- UI/Pages/Raids.lua
 L[" (Twink von %s)"] = " (alt of %s)"
