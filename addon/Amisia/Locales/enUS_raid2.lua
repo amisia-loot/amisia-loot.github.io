@@ -415,6 +415,9 @@ L["Öffnen"] = "Open"
 L["noch nicht exportiert"] = "not exported yet"
 L["davon %s"] = "of which %s"
 L["Master Loot hat nichts vergeben."] = "Master loot gave nothing out."
+L["Keine Vergaben"] = "No awards"
+L["Noch keine Items"] = "No items yet"
+L["Was du in aufgezeichneten Raids bekommst, steht hier."] = "What you get in recorded raids shows here."
 L["Seite Vergaben öffnen"] = "open the Awards page"
 
 -- UI/Pages/SoftRes.lua

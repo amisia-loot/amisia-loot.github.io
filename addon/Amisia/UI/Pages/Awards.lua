@@ -139,13 +139,6 @@ local function entries()
     return out, all
 end
 
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
-
 -- Names to pick a winner from: the raid's members, in the recording also the group, merged by
 -- ns.SameName and sorted.
 local function winnerNames(s)
@@ -216,30 +209,30 @@ end
 ---------------------------------------------------------------------------
 -- Officer view
 ---------------------------------------------------------------------------
-local function buildOfficer(parent)
-    local O = CreateFrame("Frame", nil, parent)
-    O:SetAllPoints(parent)
+-- the columns of the officer's list (590 wide, its bar beside it)
+local OFFICER_COLS = { { "time", 6, 44, L["Zeit"] }, { "itemText", 52, 200, "Item" }, { "name", 256, 140, L["Gewinner"] },
+    { "kind", 400, 30, L["Art"] }, { "plus", 434, 24, "+1" }, { "src", 462, 124, L["Quelle"] } }
 
+local function buildOfficer(parent)
+    local O = W.Page(parent, { view = true, top = 0, head = true })
+    -- the head row: raid and search, add and undo at the right; under it the counts and the sync state
+    O:Bands({ "row", "line" })
     O.raid = W.Picker(O, 210, function(v)
         settleNote(O, true)
         chosenRaid = v
         chosenId = nil
         ns.Refresh()
     end)
-    O.raid:SetPoint("TOPLEFT", 0, -2)
-    -- the head line fills the 602 px of the content: raid 210, search 172, two buttons of 100;
     -- the search box shows its hint while empty
     O.search = W.SearchBox(O, 172, function(text)
         query = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
     end, L["Name oder Item"])
-    O.search:SetPoint("LEFT", O.raid, "RIGHT", 8, 0)
     O.undo = W.Button(O, L["Rückgängig"], 100, function()
         local text = ns.UndoAward()
         ns.msg(text and L["Rückgängig: %s."]:format(text) or L["Nichts rückgängig zu machen."])
         ns.Refresh()
     end)
-    O.undo:SetPoint("TOPRIGHT", 0, -1)
     O.undo:SetScript("OnEnter", function(self)
         local label = ns.UndoLabel()
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -258,18 +251,19 @@ local function buildOfficer(parent)
             ns.msg(L["Vergaben von Hand: /amisia award <Name> <Item-Link oder ID> [ms|os|sr]"])
         end
     end)
-    O.add:SetPoint("RIGHT", O.undo, "LEFT", -6, 0)
+    W.FitChip(O.add, 100)
+    W.FitChip(O.undo, 100)
+    O:Place(1, { O.raid, O.search }, { O.add, O.undo })
 
     -- the counts on the left (up to 330 px), the sync state right-aligned in the space the counts
     -- leave (fillSync sizes it), with its details as tooltip
     O.head = W.Text(O, T.FONT.hint, 330)
-    O.head:SetPoint("TOPLEFT", 6, -28)
     O.sync = W.Text(O, T.FONT.hint, 260)
-    O.sync:SetPoint("TOPRIGHT", -6, -28)
     O.sync:SetJustifyH("RIGHT")
+    O:Place(2, { O.head }, { O.sync })
     O.syncHit = CreateFrame("Frame", nil, O)
-    O.syncHit:SetSize(260, 16)
-    O.syncHit:SetPoint("TOPRIGHT", -6, -27)
+    O.syncHit:SetSize(260, T.LAYOUT.LINE_H)
+    O.syncHit:SetPoint("RIGHT", O.sync, "RIGHT", 0, 0)
     O.syncHit:EnableMouse(true)
     O.syncHit:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
@@ -279,26 +273,13 @@ local function buildOfficer(parent)
     end)
     O.syncHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    local head = CreateFrame("Frame", nil, O)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -44)
-    head:SetPoint("TOPRIGHT", 0, -44)
-    col(head, 6, 44, L["Zeit"])
-    col(head, 52, 200, "Item")
-    col(head, 256, 140, L["Gewinner"])
-    col(head, 400, 30, L["Art"])
+    local _, heads = O:Columns(OFFICER_COLS)
     -- the plus-one, or in a DKP or EPGP raid the award's cost
-    O.plusHead = col(head, 434, 24, "+1")
-    col(head, 462, 124, L["Quelle"])
+    O.plusHead = heads.plus
 
-    O.list = W.List(O, ROWS, ROW_H, function(r)
+    O.list = O:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
-        r.time = col(r, 6, 44, nil, T.FONT.text)
-        r.itemText = col(r, 52, 200, nil, T.FONT.text)
-        r.name = col(r, 256, 140, nil, T.FONT.text)
-        r.kind = col(r, 400, 30, nil, T.FONT.text)
-        r.plus = col(r, 434, 24, nil, T.FONT.text)
-        r.src = col(r, 462, 124, nil, T.FONT.text)
+        W.Cells(r, OFFICER_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if not e then return end
@@ -336,9 +317,7 @@ local function buildOfficer(parent)
         r.src:SetText(a.src or "?")
         if a.id == chosenId then r.sel:Show() else r.sel:Hide() end
     end)
-    -- 12 px short of the right edge: room for the list's scroll bar
-    O.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    O.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
+    O.empty = O:Empty()
 
     -- the edit panel under the list, over the full width again (past the list's bar)
     local E = CreateFrame("Frame", nil, O)
@@ -676,6 +655,11 @@ local function refreshOfficer(O)
     local pts = s and ns.PointsSession and ns.PointsSession(s)
     O.plusHead:SetText(pts and (pts.sys == "epgp" and "GP" or "DKP") or "+1")
     O.list:SetItems(list)
+    if #list == 0 then
+        O.empty:Set(L["Keine Vergaben"], query ~= "" and L["Kein Eintrag passt zu den Filtern."]
+            or ((s or all) and L["Master Loot hat nichts vergeben."] or L["Noch kein Raid aufgezeichnet."]))
+    end
+    O.empty:SetShown(#list == 0)
     -- the head line: counts and the export state
     local n, bank, de, raids = 0, 0, 0, {}
     for _, e in ipairs(list) do
@@ -793,28 +777,25 @@ end
 
 local chosenAll   -- session id of the raid in "Alle Vergaben"
 
+local ALL_COLS = { { "time", 6, 54, L["Zeit"] }, { "itemText", 64, 226, "Item" }, { "name", 294, 176, L["Gewinner"] },
+    { "kind", 474, 46, L["Art"] }, { "plus", 524, 36, "+1" } }
+local MINE_COLS = { { "date", 6, 60, L["Datum"] }, { "itemText", 70, 230, "Item" }, { "zone", 306, 200, "Raid" },
+    { "kind", 510, 40, L["Art"] } }
+
 local function buildAll(R)
-    local A = CreateFrame("Frame", nil, R)
-    A:SetAllPoints(R)
+    -- "Alle Vergaben": the raid, its awards, the loot lead's state in the footer
+    local A = W.Page(R, { view = true, top = R.top })
+    A:Bands({ "row" })
     A.raid = W.Picker(A, 240, function(v)
         chosenAll = v
         ns.Refresh()
     end)
-    A.raid:SetPoint("TOPLEFT", 0, -26)
-    local head = CreateFrame("Frame", nil, A)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -50)
-    head:SetPoint("TOPRIGHT", 0, -50)
-    A.cols = {
-        time = col(head, 6, 54, L["Zeit"]), item = col(head, 64, 226, "Item"), name = col(head, 294, 176, L["Gewinner"]),
-        kind = col(head, 474, 46, L["Art"]), plus = col(head, 524, 36, "+1"),
-    }
-    A.list = W.List(A, ROWS, ROW_H, function(r)
-        r.time = col(r, 6, 54, nil, T.FONT.text)
-        r.itemText = col(r, 64, 226, nil, T.FONT.text)
-        r.name = col(r, 294, 176, nil, T.FONT.text)
-        r.kind = col(r, 474, 46, nil, T.FONT.text)
-        r.plus = col(r, 524, 36, nil, T.FONT.text)
+    A:Place(1, { A.raid })
+    A:Footer({ "foot" })
+    local _, cols = A:Columns(ALL_COLS)
+    A.cols = { time = cols.time, item = cols.itemText, name = cols.name, kind = cols.kind, plus = cols.plus }
+    A.list = A:List(ROWS, ROW_H, function(r)
+        W.Cells(r, ALL_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.a.item)) end
@@ -837,14 +818,8 @@ local function buildAll(R)
         local plus = (a.kind == "MS" and (a.to == nil or a.to == "player")) and keeperPlus(e.s, a.name) or nil
         r.plus:SetText(plus and tostring(plus) or "")
     end)
-    A.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    -- 12 px short of the right edge: room for the list's scroll bar
-    A.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    A.empty = W.Text(A, T.FONT.dim, 590)
-    A.empty:SetPoint("TOPLEFT", A.list, "TOPLEFT", 6, -6)
-    A.empty:SetText(L["Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen."])
-    A.foot = W.Text(A, T.FONT.hint, 590)
-    A.foot:SetPoint("TOPLEFT", A.list, "BOTTOMLEFT", 6, -10)
+    A.empty = A:Empty()
+    A.empty:Set(L["Keine Vergaben"], L["Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen."])
     A:Hide()
     return A
 end
@@ -868,32 +843,24 @@ local function fillAll(A, raids)
 end
 
 local function buildRaider(parent)
-    local R = CreateFrame("Frame", nil, parent)
-    R:SetAllPoints(parent)
-    R.title = W.Text(R, T.FONT.title, 300)
-    R.title:SetPoint("TOPLEFT", 0, -2)
+    local R = W.Page(parent, { view = true, top = 0, head = true })
+    -- the head row: what is shown, and the chips to switch (once the loot lead sent a raid)
+    R:Bands({ "row" })
+    R.title = W.Text(R, T.FONT.title, 160)
     R.title:SetText(L["Deine Items"])
     R.mineChip = W.Chip(R, L["Deine Items"], 100, function() setRaiderView("mine") end)
-    R.mineChip:SetPoint("LEFT", R.title, "RIGHT", 6, 0)
     R.allChip = W.Chip(R, L["Alle Vergaben"], 110, function() setRaiderView("all") end)
-    R.allChip:SetPoint("LEFT", R.mineChip, "RIGHT", 6, 0)
+    W.FitChip(R.mineChip, 100)
+    W.FitChip(R.allChip, 110)
+    R:Place(1, { R.title, R.mineChip, R.allChip })
     -- "Deine Items": the own loot of every saved raid
-    local M = CreateFrame("Frame", nil, R)
-    M:SetAllPoints(R)
+    local M = W.Page(R, { view = true, top = R.top })
     R.mine = M
-    local head = CreateFrame("Frame", nil, M)
-    head:SetHeight(18)
-    head:SetPoint("TOPLEFT", 0, -24)
-    head:SetPoint("TOPRIGHT", 0, -24)
-    col(head, 6, 60, L["Datum"])
-    col(head, 70, 230, "Item")
-    col(head, 306, 200, "Raid")
-    col(head, 510, 40, L["Art"])
-    R.list = W.List(M, ROWS, ROW_H, function(r)
-        r.date = col(r, 6, 60, nil, T.FONT.text)
-        r.itemText = col(r, 70, 230, nil, T.FONT.text)
-        r.zone = col(r, 306, 200, nil, T.FONT.text)
-        r.kind = col(r, 510, 40, nil, T.FONT.text)
+    M:Footer({ "note" })
+    R.text = M.note
+    M:Columns(MINE_COLS)
+    R.list = M:List(ROWS, ROW_H, function(r)
+        W.Cells(r, MINE_COLS)
         r:SetScript("OnClick", function(self)
             local e = self.item
             if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(itemLink(e.item)) end
@@ -912,11 +879,8 @@ local function buildRaider(parent)
         r.zone:SetText(e.s.zone or "?")
         r.kind:SetText((e.kind and e.kind ~= "-") and e.kind or "")
     end)
-    R.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, 0)
-    -- 12 px short of the right edge: room for the list's scroll bar
-    R.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, 0)
-    R.text = W.Text(M, T.FONT.hint, 590, true)
-    R.text:SetPoint("TOPLEFT", R.list, "BOTTOMLEFT", 6, -10)
+    R.empty = M:Empty()
+    R.empty:Set(L["Noch keine Items"], L["Was du in aufgezeichneten Raids bekommst, steht hier."])
     R.text:SetText(L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
     -- "Alle Vergaben": every award of a raid as the loot lead sent it
     R.all = buildAll(R)
@@ -940,7 +904,9 @@ local function refreshRaider(R)
     end
     R.all:Hide()
     R.mine:Show()
-    R.list:SetItems(myItems())
+    local mine = myItems()
+    R.list:SetItems(mine)
+    R.empty:SetShown(#mine == 0)
     R.text:SetText(any and L["Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."]
         or L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
 end
@@ -962,7 +928,7 @@ end
 
 ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35, group = "raid",
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         page = f
         f.officer = buildOfficer(f)
         f.raider = buildRaider(f)

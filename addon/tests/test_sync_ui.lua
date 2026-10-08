@@ -241,7 +241,7 @@ r = raider([[table.insert(AmisiaDB.sessions, 1, { id = "leer", date = "2026-09-0
 assert(r.n == 2 and r.empty and not r.rows, "the empty raid")
 assert(r.text == "Für diesen Raid hat Amisia noch keine Vergaben von der Lootleitung bekommen.", r.text)
 raider([[local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-    L.fits(A.empty)
+    L.inside("empty", A.empty)
     table.remove(AmisiaDB.sessions, 1); A.raid.onPick(s.id)]])
 -- back to "Deine Items"
 r = raider([[R.mineChip:Click(); return { view = AmisiaDB.settings.awards.raiderView, list = R.mine:IsShown(), all = A:IsShown() }]])

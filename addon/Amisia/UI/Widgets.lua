@@ -1339,7 +1339,8 @@ end
 --   p:Bottom()               the content's lower end, as a BOTTOM offset (above the bottom row and
 --                            the footer, GAP apart).
 -- W.Page(parent, { view = true }) is a view inside a page (its views switch with chips): it starts
--- at the page's content top and has the same methods; its bands are not the head row.
+-- at the page's content top (opts.top) and has the same methods; its bands are not the head row,
+-- unless opts.head (a view filling the page, as the officer and raider halves of a page).
 -- Every part carries layoutRole (and the band it sits in, layoutBand); tools/ui_layout.py checks
 -- the pages by them (rule "grid").
 local LAY = T.LAYOUT
@@ -1526,7 +1527,7 @@ function Scaffold:Empty(width, anchor)
 end
 
 function Scaffold:Footer(spec)
-    local foot = self.foot or CreateFrame("Frame", nil, self)
+    local foot = self.footFrame or CreateFrame("Frame", nil, self)
     foot:ClearAllPoints()
     foot.layoutRole = "footer"
     local y = 0
@@ -1549,7 +1550,7 @@ function Scaffold:Footer(spec)
     foot:SetPoint("BOTTOMLEFT", 0, 0)
     foot:SetPoint("BOTTOMRIGHT", 0, 0)
     foot:SetHeight(y)
-    self.foot, self.footH = foot, y
+    self.footFrame, self.footH = foot, y
     if self.bottomRow then self:BottomRow() end
     return foot
 end
@@ -1612,7 +1613,8 @@ function W.Page(parent, opts)
     local p = CreateFrame("Frame", nil, parent)
     for k, fn in pairs(Scaffold) do p[k] = fn end
     if view then
-        p.isView = true
+        -- opts.head: a view that fills the page (one per mode) and has the head row itself
+        p.isView = not opts.head
         p:SetPoint("TOPLEFT", 0, opts.top or parent.top or 0)
         p:SetPoint("BOTTOMRIGHT", 0, 0)
         p.layoutRole = "view"

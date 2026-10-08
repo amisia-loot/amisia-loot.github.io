@@ -575,7 +575,7 @@ def rule_grid(tree, shot):
         if r is None:
             continue
         if role == 'headband':
-            if n.get('parent') == page and (abs(r[1] - pr[1]) > TOL or abs((r[3] - r[1]) - grid['ROW_H']) > TOL):
+            if abs(r[1] - pr[1]) > TOL or abs((r[3] - r[1]) - grid['ROW_H']) > TOL:
                 bad(i, f'the head row lies at y {r[1] - pr[1]:.0f}, {r[3] - r[1]:.0f} high '
                        f'(0, {grid["ROW_H"]} on every page)')
         elif role in ('head', 'band') and n.get('lband'):
