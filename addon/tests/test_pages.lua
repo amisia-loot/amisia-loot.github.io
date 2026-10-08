@@ -61,7 +61,8 @@ do
     L.row("raids buttons", rp.pageText, rp.all, rp.del)
     L.row("raids detail", rp.detail, rp.detail.bar)
     L.inside("raids detail bar", rp.detail.bar)
-    L.column("raids page", rp.list, rp.del, rp.detail)
+    -- the head row (count and buttons), the list, the chosen raid
+    L.column("raids page", rp.del, rp.list, rp.detail)
     assert(r1.sel.atlas == "Professions_Recipe_Active" and r1.sel:IsShown(), "the shown raid glows like the recipe list's")
 end
 NS.ShowPage("overview")

@@ -94,21 +94,41 @@ local function shortName(id)
     return (ns.ItemName(id):match("%S+")) or "?"
 end
 
+-- the columns; the material and gem columns move with the materials there are (refresh)
+local COLS = { { "date", 30, 80, L["Datum"] }, { "zone", 112, 200, "Raid" }, { "raiders", 316, 60, L["Raider##Spalte"] },
+    { "mat1", MAT_X, MAT_W }, { "mat2", MAT_X + MAT_STEP, MAT_W }, { "mat3", MAT_X + 2 * MAT_STEP, MAT_W },
+    { "gems", MAT_X + 2 * MAT_STEP, 90 } }
+
 ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 20, group = "raid", officer = true,
     create = function(parent)
-        local f = CreateFrame("Frame", nil, parent)
+        local f = W.Page(parent)
         page = f
-        local head = CreateFrame("Frame", nil, f)
-        head:SetHeight(18)
-        head:SetPoint("TOPLEFT")
-        head:SetPoint("TOPRIGHT")
-        col(head, 30, 80, L["Datum"])
-        col(head, 112, 200, "Raid")
-        col(head, 316, 60, L["Raider##Spalte"])
-        f.matHead = {}
-        for i = 1, 3 do f.matHead[i] = col(head, MAT_X + (i - 1) * MAT_STEP, MAT_W) end
-        f.gemHead = col(head, MAT_X + 2 * MAT_STEP, 90)
-        f.list = W.List(f, ROWS, ROW_H, function(r)
+        -- the head row: how many raids, select all and delete at the right
+        f:Bands({ "row" })
+        f.pageText = W.Text(f, T.FONT.hint)
+        f.del = W.Button(f, L["Löschen##Knopf"], 100, function()
+            if not next(ns.RaidSelection) then
+                ns.msg(L["Zuerst Raids in der Liste ankreuzen."])
+                return
+            end
+            -- the dialog strata is below the main window's; lift it so it is not hidden behind
+            local d = StaticPopup_Show("AMISIA_DELETE")
+            if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
+        end)
+        f.all = W.Button(f, L["Alle wählen"], 100, function()
+            local all, allOn = ordered(), true
+            for _, s in ipairs(all) do if not ns.RaidSelection[s.id] then allOn = false end end
+            wipe(ns.RaidSelection)
+            if not allOn then for _, s in ipairs(all) do ns.RaidSelection[s.id] = true end end
+            ns.Refresh()
+        end)
+        W.FitChip(f.del, 100)
+        W.FitChip(f.all, 100)
+        f:Place(1, { { f.pageText, fill = true } }, { f.all, f.del })
+        local _, heads = f:Columns(COLS)
+        f.matHead = { heads.mat1, heads.mat2, heads.mat3 }
+        f.gemHead = heads.gems
+        f.list = f:List(ROWS, ROW_H, function(r)
             r.box = W.Toggle(r, function(on)
                 if r.item then ns.RaidSelection[r.item.id] = on or nil end
             end)
@@ -148,33 +168,12 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
             if hasGems then r.gems:SetText(ns.GemCount(c)); r.gems:Show() else r.gems:Hide() end
             if s.id == detailId then r.sel:Show() else r.sel:Hide() end
         end)
-        -- 12 px short of the right edge: room for the list's scroll bar
-        f.list:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -2)
-        f.list:SetPoint("TOPRIGHT", head, "BOTTOMRIGHT", -12, -2)
-        f.pageText = W.Text(f, T.FONT.hint, 200)
-        f.pageText:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 6, -8)
-        f.del = W.Button(f, L["Löschen##Knopf"], 100, function()
-            if not next(ns.RaidSelection) then
-                ns.msg(L["Zuerst Raids in der Liste ankreuzen."])
-                return
-            end
-            -- the dialog strata is below the main window's; lift it so it is not hidden behind
-            local d = StaticPopup_Show("AMISIA_DELETE")
-            if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
-        end)
-        f.del:SetPoint("TOPRIGHT", f.list, "BOTTOMRIGHT", 0, -4)
-        f.all = W.Button(f, L["Alle wählen"], 100, function()
-            local all, allOn = ordered(), true
-            for _, s in ipairs(all) do if not ns.RaidSelection[s.id] then allOn = false end end
-            wipe(ns.RaidSelection)
-            if not allOn then for _, s in ipairs(all) do ns.RaidSelection[s.id] = true end end
-            ns.Refresh()
-        end)
-        f.all:SetPoint("RIGHT", f.del, "LEFT", -6, 0)
+        f.empty = f:Empty()
+        f.empty:Set(L["Noch kein Raid aufgezeichnet"], L["Die Aufnahme startet in einer Raidinstanz mit Raidgruppe."])
+        -- the chosen raid under the list; the text ends with the list, its bar lies under the list's
         f.detail = W.ScrollText(f)
-        f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", 0, -34)
-        -- the text ends with the list; its bar lies under the list's
-        f.detail:SetPoint("BOTTOMRIGHT", -12, 0)
+        f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -T.LAYOUT.GAP * 2)
+        f.detail:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, f:Bottom())
         return f
     end,
     refresh = function(f)
@@ -191,7 +190,8 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         f.gemHead:SetPoint("LEFT", MAT_X + nMat * MAT_STEP, 0)
         if hasGems then f.gemHead:SetText(L["Edelsteine"]); f.gemHead:Show() else f.gemHead:Hide() end
         f.list:SetItems(all)
-        f.pageText:SetText(#all == 0 and L["Noch keine Raids aufgezeichnet."] or (#all == 1 and L["1 Raids##eins"] or L["%d Raids"]:format(#all)))
+        f.pageText:SetText(#all == 1 and L["1 Raids##eins"] or L["%d Raids"]:format(#all))
+        f.empty:SetShown(#all == 0)
         local s = exists[detailId] or all[1]
         detailId = s and s.id or nil
         f.detail:SetText(s and detailText(s) or "")
