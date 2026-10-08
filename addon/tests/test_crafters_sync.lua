@@ -28,6 +28,7 @@ for _, name in ipairs(CLIENTS) do
         STUB.instance = { name = "Durotar", type = "none", id = 0 }
         STUB.combat = false
         AmisiaDB.drops.me = %q
+        assert(NS.SetAlts("#AMISIA-ALTS 1 forever 2026-10-06\nA Vulo_Zweit Vulo_Sturmwind\n#END"))
         STUB.fire("GUILD_ROSTER_UPDATE")]]):format(ME[name]))
 end
 local D = C(VULO, "NS.DropsToday()")
@@ -198,13 +199,12 @@ for i, tbl in ipairs(BADL) do
     assert(stat(KIM, "bad") == bad0 + #BAD + i, "malformed list " .. i .. " refused")
 end
 assert(C(KIM, "STUB.dump(AmisiaDB.crafters.c)") == now, "nothing changed")
--- hostile: a crafter outside the guild is left out, the crafter's own word stays
-local out0, kept0 = stat(KIM, "outsider"), stat(KIM, "kept")
+-- hostile: a crafter that is not the sender or its alt is left out (in the guild or not)
+local for0 = stat(KIM, "foreign")
 blob(5200, [[{ v = 1, d = "0badf00d", f = "B", c = { { "Nicht Hier", { { 185, 300, 300, "00000000", "01" } } },
     { "Vulo Sturmwind", { { 164, 300, 300, "00000000", "ff" } } }, { "Fraktur", { { 185, 12, 75, "]] .. H185 .. [[", "01" } } } } }]])
-assert(stat(KIM, "outsider") == out0 + 1 and crafter(KIM, "Nicht Hier") == nil, "not in the roster")
-assert(stat(KIM, "kept") == kept0 + 1 and crafter(KIM, VULO).p[164].r == 46 and crafter(KIM, VULO).via == VULO,
-    "Fraktur cannot overwrite what Vulo said of himself")
+assert(stat(KIM, "foreign") == for0 + 2 and crafter(KIM, "Nicht Hier") == nil, "not the sender's")
+assert(crafter(KIM, VULO).p[164].r == 46 and crafter(KIM, VULO).via == VULO, "Fraktur cannot overwrite what Vulo said of himself")
 assert(crafter(KIM, FRAK).p[185].r == 12, "his own crafter is taken")
 -- a whole answer drops the sender's crafters it no longer names; a cut one keeps them
 C(KIM, "AmisiaDB.crafters.c['Vulo Zweit'].via = 'Fraktur'")

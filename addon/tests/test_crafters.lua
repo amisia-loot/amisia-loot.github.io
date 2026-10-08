@@ -161,7 +161,14 @@ assert(said[1] == "Anna Amboss" and said[2] == "Hallo! Kannst du mir [Kupferarms
 ChatFrameUtil.SendTellWithMessage = nil
 local opened
 ChatFrame_OpenChat = function(text) opened = text end
-assert(Cr.Whisper("Anna Amboss", "X") and opened == "/w Anna Amboss Hallo! Kannst du mir X herstellen? Die Materialien bringe ich mit.")
+assert(Cr.Whisper("Anna", "X") and opened == "/w Anna Hallo! Kannst du mir X herstellen? Die Materialien bringe ich mit.")
+-- "/w Anna Amboss X" would whisper "Anna": a name with a space only opens the whisper to the whole name
+opened = nil
+assert(Cr.Whisper("Anna Amboss", "X") == false and opened == nil, "no /w line for a name with a space")
+local told
+ChatFrame_SendTell = function(name) told = name end
+assert(Cr.Whisper("Anna Amboss", "X") and told == "Anna Amboss" and opened == nil)
+ChatFrame_SendTell = nil
 ChatFrame_OpenChat = nil
 assert(Cr.Whisper("Anna Amboss", "X") == false, "no way to whisper: nothing breaks")
 assert(Cr.Whisper(nil, "X") == false)

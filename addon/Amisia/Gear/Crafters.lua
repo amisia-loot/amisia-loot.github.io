@@ -11,7 +11,8 @@
 -- (other data), as a list of spell steps. A busy or spent sender says so (PW). Both sides pull,
 -- neither pushes: a blob nobody asked for is dropped, a request takes its one answer. Only between
 -- guild members, only the sender's own characters of this guild, and a heard crafter must stand in
--- the roster; never in an instance, a battleground, in combat, in the lockdown or while a raid is
+-- the roster and be the sender or its known alt (the website's alts list); a list keeps only the
+-- spells of the own recipe index; per sender and in all the store stays within byte caps; never in an instance, a battleground, in combat, in the lockdown or while a raid is
 -- synced; at the lowest priority of the queue within fixed byte caps.
 --
 -- Crafter protocol 1. Older clients do not know PV and drop it as an unknown message; they never send
@@ -49,6 +50,8 @@ local LIM = {
     keepDays = 45,                      -- a crafter not heard of for 45 days is forgotten
     selfDays = 14,                      -- what a crafter sent itself is not replaced by another sender's word for 14 days
     storeMax = 500,                     -- crafters kept at most (the oldest go first)
+    storeBytes = 393216,                -- bytes of bitsets and lists kept at most (the oldest crafters go first)
+    viaBytes = 24576,                   -- bytes of bitsets and lists kept at most from one sender
     bitsMax = 300,                      -- hex characters of one bitset (1200 recipes)
 }
 ns.CRAFTERS_LIMITS = LIM
@@ -57,7 +60,8 @@ local PART_OVERHEAD = 45
 local KEY_PREFIX = "0000-00-01:"
 
 local stats = { bytes = 0, pv = 0, pq = 0, pw = 0, served = 0, blobs = 0, crafters = 0, bad = 0, unasked = 0, refused = 0,
-                outsider = 0, kept = 0, mismatch = 0, pulls = 0, busy = 0, other = 0, pruned = 0, missed = 0 }
+                outsider = 0, kept = 0, mismatch = 0, pulls = 0, busy = 0, other = 0, pruned = 0, missed = 0, foreign = 0,
+                capped = 0, unknown = 0 }
 local pqTimes = {}
 local asked = {}          -- nonce -> { low, f, at }
 local peers = {}          -- { name, low, d, n, at, nb, f, retry }
@@ -122,6 +126,15 @@ local function validProf(skill, p)
     return type(p.l) == "string" and #p.l <= LIM.knownMax * 8 and p.l:match("^[%d,]*$") ~= nil
 end
 
+-- The bytes of a crafter's bitsets and lists.
+function Cr.Bytes(c)
+    local n = 0
+    for _, p in pairs(type(c) == "table" and type(c.p) == "table" and c.p or {}) do
+        if type(p) == "table" then n = n + #(type(p.l) == "string" and p.l or type(p.b) == "string" and p.b or "") end
+    end
+    return n
+end
+
 -- Drops what is malformed, what was not heard of for keepDays and, above storeMax, the oldest.
 -- Returns how many crafters went.
 function Cr.Prune()
@@ -147,14 +160,22 @@ function Cr.Prune()
             gone = gone + 1
         end
     end
-    if #list > LIM.storeMax then
+    -- above storeMax crafters or storeBytes of bitsets and lists: the oldest go
+    local bytes = 0
+    for _, x in ipairs(list) do
+        x.bytes = Cr.Bytes(s.c[x.name])
+        bytes = bytes + x.bytes
+    end
+    if #list > LIM.storeMax or bytes > LIM.storeBytes then
         table.sort(list, function(a, b)
             if a.seen ~= b.seen then return a.seen < b.seen end
             return a.name < b.name
         end)
-        for i = 1, #list - LIM.storeMax do
+        local left = #list
+        for i = 1, #list do
+            if left <= LIM.storeMax and bytes <= LIM.storeBytes then break end
             s.c[list[i].name] = nil
-            gone = gone + 1
+            gone, left, bytes = gone + 1, left - 1, bytes - list[i].bytes
         end
     end
     for low, e in pairs(s.src) do
@@ -598,17 +619,72 @@ local function dataBuilt() return rawget(ns, "PROFESSIONS") ~= nil end
 -- is not replaced by another sender's word for selfDays; a whole answer drops the sender's crafters
 -- it no longer names (a cut one keeps them and is pulled again at the next announcement). Returns
 -- true when a bitset did not fit the own index (other data).
+-- Whether name is the sender or one of its characters: a known alt of the sender's main (the alts
+-- list pasted from the website). Another member's word about someone else is never taken.
+local function sameAccount(senderName, name)
+    if name:lower() == senderName:lower() then return true end
+    local ms = ns.AltMain and ns.AltMain(senderName)
+    local mn = ns.AltMain and ns.AltMain(name)
+    if not ms and not mn then return false end
+    return ns.SameName(ms or senderName, mn or name)
+end
+
+-- The spells of a list kept: only those of the own recipe index of the profession (nil when the
+-- profession has no index here).
+local function knownList(skill, l)
+    local ix = indexOf(skill)
+    if not ix then return nil end
+    local inIx = ix.set
+    if not inIx then
+        inIx = {}
+        for _, spell in ipairs(ix.list) do inIx[spell] = true end
+        ix.set = inIx
+    end
+    local out = {}
+    for spell in l:gmatch("%d+") do
+        spell = tonumber(spell)
+        if inIx[spell] and #out < #ix.list then out[#out + 1] = spell end
+    end
+    return table.concat(out, ",")
+end
+
 local function apply(senderName, low, list, tbl)
     local s = store(true)
     local d, mismatch, names = today(), false, {}
     local own = {}
     for _, c in ipairs(Cr.Own()) do own[c.name:lower()] = true end
+    -- what this sender gave already (a cut answer keeps it): counted against the caps per sender
+    local held, heldN, heldBytes = {}, 0, 0
+    for name, c in pairs(s.c) do
+        if type(c) == "table" and type(c.via) == "string" and c.via:lower() == low then
+            held[name], heldN, heldBytes = Cr.Bytes(c), heldN + 1, heldBytes + Cr.Bytes(c)
+        end
+    end
     for _, x in ipairs(list) do
         local cl = x.name:lower()
+        if tbl.f == "L" then
+            for skill, p in pairs(x.p) do
+                local l = knownList(skill, p.l)
+                if l then
+                    p.l = l
+                else
+                    x.p[skill] = nil
+                    stats.unknown = stats.unknown + 1
+                end
+            end
+        end
+        local bytes = Cr.Bytes(x)
         if own[cl] then
             stats.kept = stats.kept + 1
+        elseif not sameAccount(senderName, x.name) then
+            stats.foreign = stats.foreign + 1
         elseif ns.IsVerifiedMember(x.name) ~= true then
             stats.outsider = stats.outsider + 1
+        elseif next(x.p) == nil then
+            stats.unknown = stats.unknown + 1
+        elseif (not held[x.name] and heldN >= LIM.crafterMax)
+            or heldBytes - (held[x.name] or 0) + bytes > LIM.viaBytes then
+            stats.capped = stats.capped + 1
         else
             local cur = s.c[x.name]
             local self = cl == low
@@ -616,6 +692,9 @@ local function apply(senderName, low, list, tbl)
                 and d - (cur.seen or 0) < LIM.selfDays then
                 stats.kept = stats.kept + 1
             else
+                if not held[x.name] then heldN = heldN + 1 end
+                heldBytes = heldBytes - (held[x.name] or 0) + bytes
+                held[x.name] = bytes
                 names[x.name] = true
                 s.c[x.name] = { via = senderName, self = self or nil, seen = d, p = x.p }
                 stats.crafters = stats.crafters + 1
@@ -1070,6 +1149,11 @@ function Cr.Whisper(name, what)
     local util = _G.ChatFrameUtil
     if type(util) == "table" and type(util.SendTellWithMessage) == "function" then
         return (pcall(util.SendTellWithMessage, name, text))
+    end
+    -- "/w First Surname text" would whisper "First": a name with a space only opens the whisper
+    if name:find(" ", 1, true) then
+        if type(_G.ChatFrame_SendTell) == "function" then return (pcall(_G.ChatFrame_SendTell, name)) end
+        return false
     end
     if type(_G.ChatFrame_OpenChat) == "function" then
         return (pcall(_G.ChatFrame_OpenChat, ("/w %s %s"):format(name, text)))
