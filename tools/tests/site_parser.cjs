@@ -27,10 +27,10 @@ module.exports = {grab};
 if (require.main !== module) return;
 
 const NEEDED = ['GL_CLASS', 'CLASS_ALIAS', 'glCleanName', 'classFromAny', 'amSplit', 'amParse', 'amParseBank', 'amAwardRows', 'amParseWishes',
-  'DROP_DAY0', 'dropDay', 'dropName', 'amParseDrops', 'PRIO_CLASS', 'PRIO_MAX', 'prioName', 'prioLabel', 'prioParseToken', 'prioNote', 'amParsePrio', 'amParseGuildBank'];
+  'DROP_DAY0', 'dropDay', 'dropName', 'amParseDrops', 'PRIO_CLASS', 'PRIO_MAX', 'prioName', 'prioLabel', 'prioParseToken', 'prioNote', 'amParsePrio', 'amParseGuildBank', 'PT_ID', 'amParsePoints'];
 const parts = NEEDED.map(grab);
 // amAwardRows looks up the class of the raider in the session, nothing else of the page is needed.
-const src2 = parts.join('\n\n') + '\n;module.exports = {amSplit, amParse, amParseBank, amAwardRows, amParseWishes, amParseDrops, amParsePrio, amParseGuildBank, source: ' + JSON.stringify(parts.join('\n')) + '};';
+const src2 = parts.join('\n\n') + '\n;module.exports = {amSplit, amParse, amParseBank, amAwardRows, amParseWishes, amParseDrops, amParsePrio, amParseGuildBank, amParsePoints, source: ' + JSON.stringify(parts.join('\n')) + '};';
 const mod = {exports: {}};
 new Function('module', 'exports', src2)(mod, mod.exports);
 const api = mod.exports;
@@ -53,5 +53,6 @@ process.stdin.on('end', () => {
     drops: api.amParseDrops(blocks),
     prio: api.amParsePrio(blocks),
     guildBank: api.amParseGuildBank(blocks),
+    points: api.amParsePoints(blocks),
   }));
 });

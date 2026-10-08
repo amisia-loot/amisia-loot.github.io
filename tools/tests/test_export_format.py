@@ -17,6 +17,7 @@ ADDON_TESTS = os.path.join(ROOT, 'addon', 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
 CORE = os.path.join(ROOT, 'addon', 'Amisia', 'Core', 'Core.lua')
 PRIO = os.path.join(ROOT, 'addon', 'Amisia', 'Raid', 'LootPrio.lua')
+POINTS = os.path.join(ROOT, 'addon', 'Amisia', 'Raid', 'Points.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
@@ -84,9 +85,10 @@ def test_every_line_the_addon_writes_is_read(parsed):
     text, out = parsed
     import re
     written = set()
-    for path in (CORE, PRIO):
+    for path in (CORE, PRIO, POINTS):
         written |= set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(path, encoding='utf-8').read(), re.M))
     assert 'LC' in written, 'the loot prio lines are found in LootPrio.lua'
+    assert {'PS', 'PE', 'PA', 'PX'} <= written, 'the DKP/EPGP lines are found in Points.lua'
     read = set(out['letters'])
     assert not (written - read), 'the addon writes lines the site throws away: ' + ', '.join(sorted(written - read))
 

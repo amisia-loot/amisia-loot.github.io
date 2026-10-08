@@ -469,6 +469,7 @@ tr.got td{opacity:.5}
     <button class="tab" role="tab" data-view="stats">Stats</button>
     <button class="tab" role="tab" data-view="wish">Wishlist</button>
     <button class="tab" role="tab" data-view="prio">Loot Council</button>
+    <button class="tab" role="tab" data-view="points">Points</button>
     <button class="tab" role="tab" data-view="matrix">Slot Coverage</button>
     <button class="tab" role="tab" data-view="drops">Loot Tables</button>
     <button class="tab" role="tab" data-view="craft">Crafting</button>
@@ -727,6 +728,78 @@ tr.got td{opacity:.5}
     </div>
   </section>
 
+  <!-- ============ POINTS ============ -->
+  <section class="view" id="view-points" hidden>
+    <div class="matgrid" id="ptGrid">
+      <div class="stack">
+        <div class="toolbar" style="margin:4px 0 0">
+          <div class="field"><label for="ptSearch">Search</label><input class="inp" id="ptSearch" placeholder="Raider…"></div>
+          <div class="spacer"></div>
+          <div class="count" id="ptCount"></div>
+          <button class="btn" id="ptAddon" type="button">Copy for the addon</button>
+        </div>
+        <p class="crhint" id="ptHint"></p>
+        <div class="panel" id="ptAddonPanel" hidden>
+          <div class="panel-h">Wishlist, alts, priority lists and points for the Amisia addon</div>
+          <div class="panel-b stack">
+            <textarea class="inp" id="ptAddonText" readonly spellcheck="false" style="min-height:90px"></textarea>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><button class="btn sm primary" id="ptAddonCopy" type="button">Copy</button><span class="muted" style="font-size:13px">The same text as the Wishlist's <b>Copy for the addon</b>, with the standings and the system at the end. In game: <code>/amisia punkte</code>, <b>Einfügen</b>, paste it and press <b>Importieren</b>. What the addon records in a raid comes back with its export on the Import tab.</span></div>
+          </div>
+        </div>
+        <div class="tblwrap"><table id="ptTable"><thead id="ptHead"></thead><tbody id="ptBody"></tbody></table></div>
+        <div class="panel" id="ptHistPanel" hidden>
+          <div class="panel-h" id="ptHistHead"></div>
+          <div class="tblwrap" style="border:0;border-radius:0 0 6px 6px"><table><tbody id="ptHist"></tbody></table></div>
+        </div>
+      </div>
+      <div class="stack" id="ptSide">
+        <div class="panel">
+          <div class="panel-h">Loot system</div>
+          <div class="panel-b stack matform">
+            <form id="ptCfgForm" class="stack" autocomplete="off">
+              <div class="field"><label for="ptSys">System</label><select class="inp" id="ptSys"><option value="roll">Rolling</option><option value="dkp">DKP</option><option value="epgp">EPGP</option></select></div>
+              <div data-ptsys="dkp epgp" class="stack">
+                <div class="row"><div class="field"><label for="ptCfg_raid">Per raid</label><input class="inp" id="ptCfg_raid" inputmode="numeric"></div><div class="field"><label for="ptCfg_boss">Per boss</label><input class="inp" id="ptCfg_boss" inputmode="numeric"></div></div>
+                <div class="row"><div class="field"><label for="ptCfg_time">On time</label><input class="inp" id="ptCfg_time" inputmode="numeric"></div><div class="field"><label for="ptCfg_bench">Bench</label><input class="inp" id="ptCfg_bench" inputmode="numeric"></div></div>
+                <div class="row"><div class="field"><label for="ptCfg_decay">Decay % a week</label><input class="inp" id="ptCfg_decay" inputmode="numeric"></div><div class="field"><label for="ptCfg_os">Off spec %</label><input class="inp" id="ptCfg_os" inputmode="numeric"></div></div>
+              </div>
+              <div data-ptsys="dkp" class="stack">
+                <div class="field"><label for="ptCfg_mode">Spending</label><select class="inp" id="ptCfg_mode"><option value="bid">Bids (!bid)</option><option value="fixed">Fixed prices (!need / !greed)</option></select></div>
+                <div class="row"><div class="field"><label for="ptCfg_min">Minimum bid</label><input class="inp" id="ptCfg_min" inputmode="numeric"></div><div class="field"><label for="ptCfg_step">Step</label><input class="inp" id="ptCfg_step" inputmode="numeric"></div></div>
+                <div class="row"><div class="field"><label for="ptCfg_price">Base price</label><input class="inp" id="ptCfg_price" inputmode="numeric"></div><div class="field"><label class="mini" style="margin-top:22px"><input type="checkbox" id="ptCfg_seal"> Sealed</label></div></div>
+              </div>
+              <div data-ptsys="epgp" class="stack">
+                <div class="row"><div class="field"><label for="ptCfg_scale">GP base value</label><input class="inp" id="ptCfg_scale" inputmode="numeric"></div><div class="field"><label for="ptCfg_ref">Ref. item level</label><input class="inp" id="ptCfg_ref" inputmode="numeric"></div></div>
+                <div class="row"><div class="field"><label for="ptCfg_base">Base GP</label><input class="inp" id="ptCfg_base" inputmode="numeric"></div><div class="field"><label for="ptCfg_minep">Minimum EP</label><input class="inp" id="ptCfg_minep" inputmode="numeric"></div></div>
+              </div>
+              <label class="mini" data-ptsys="dkp epgp"><input type="checkbox" id="ptCfg_pub"> Show everyone the whole list</label>
+              <button class="btn primary" type="submit">Save</button>
+            </form>
+            <p class="muted" style="margin:0;font-size:13px">GP and fixed prices: base value × 2^((item level − ref.)/26) × slot weight × 2^(quality − 4). PR = EP / (GP + base GP). A raid in the addon keeps the system it started with.</p>
+            <div class="row" data-ptsys="dkp epgp"><div class="field"><label for="ptCalcIlvl">Item level</label><input class="inp" id="ptCalcIlvl" inputmode="numeric" placeholder="e.g. 78"></div><div class="field"><label for="ptCalcQ">Quality</label><select class="inp" id="ptCalcQ"><option value="3">Rare</option><option value="4" selected>Epic</option><option value="5">Legendary</option></select></div></div>
+            <div class="row" data-ptsys="dkp epgp"><div class="field"><label for="ptCalcSlot">Slot</label><select class="inp" id="ptCalcSlot"><option value="head">Helm, chest, legs</option><option value="shoulder">Shoulder, gloves, belt, boots, trinket</option><option value="neck">Neck, back, wrist, ring</option><option value="weapon">One-hand weapon</option><option value="weapon2">Two-hand weapon</option><option value="offhand">Off hand, ranged, relic</option><option value="token">Token, other</option></select></div><div class="field"><label>Cost</label><span class="muted" id="ptCalcOut" style="font-size:13px"></span></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Weekly decay</div>
+          <div class="panel-b stack matform"><p class="muted" id="ptDecayText" style="margin:0;font-size:13px"></p><button class="btn" id="ptDecay" type="button">Apply the decay</button></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">Correction</div>
+          <div class="panel-b stack matform">
+            <form id="ptAdjForm" class="stack" autocomplete="off">
+              <div class="field"><label for="ptAdjRaider">Raider</label><select class="inp" id="ptAdjRaider"></select></div>
+              <div class="row"><div class="field"><label for="ptAdjN">Amount</label><input class="inp" id="ptAdjN" placeholder="+10 or -25" maxlength="8"></div><div class="field" id="ptAdjPoolF"><label for="ptAdjPool">Pool</label><select class="inp" id="ptAdjPool"><option value="E">EP</option><option value="G">GP</option></select></div></div>
+              <div class="field"><label for="ptAdjReason">Reason</label><input class="inp" id="ptAdjReason" placeholder="required" maxlength="80"></div>
+              <button class="btn primary" type="submit">Book</button>
+            </form>
+            <p class="muted" style="margin:0;font-size:13px">A correction never changes an entry: it is a new one with its reason. An alt's points count for its main.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ MATRIX ============ -->
   <section class="view" id="view-matrix" hidden>
     <div class="toolbar">
@@ -896,6 +969,10 @@ tr.got td{opacity:.5}
         <div class="panel" id="amPrio" hidden>
           <div class="panel-h">Loot prio changed in game<span class="grow"></span><button class="btn sm primary" id="amPrioAdd" type="button">Take them over</button></div>
           <div class="panel-b"><p class="muted" id="amPrioText" style="margin:0;font-size:13px"></p></div>
+        </div>
+        <div class="panel" id="amPoints" hidden>
+          <div class="panel-h">DKP / EPGP from the addon<span class="grow"></span><button class="btn sm primary" id="amPointsAdd" type="button">Take them over</button></div>
+          <div class="panel-b"><p class="muted" id="amPointsText" style="margin:0;font-size:13px"></p></div>
         </div>
         <div class="panel" id="impBar" hidden>
           <div class="panel-h"><span id="impSummary"></span><span class="grow"></span><button class="btn sm primary" id="glImport">Import</button></div>
@@ -1178,7 +1255,7 @@ const nights = () => state.nights || (state.nights = []);
 // backup stay untouched and unseen. shelfGame names the game the top belongs to: a ledger from
 // before the shelf has none, and all of it was TBC. retired keeps the raiders that left the roster
 // but still have loot or raid nights in that game.
-const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'bankNeeds', 'bankLog', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones', 'lootPrio'];
+const PER_GAME = ['awards', 'nights', 'crafters', 'matloot', 'otherLoot', 'lootDrops', 'lootAway', 'lootOk', 'itemNames', 'addonSessions', 'bank', 'bankNeeds', 'bankLog', 'wclReports', 'dropped', 'retired', 'dropObs', 'dropNames', 'dropZones', 'lootPrio', 'points'];
 // Puts Forever on top. A ledger with another game on top moves it to the shelf, in memory only; it
 // is saved with the next save of an editor. Nothing is deleted on the way.
 function fitShelf(s){
@@ -1772,10 +1849,12 @@ function renderHeader(){
   document.querySelector('.tab[data-view="settings"]').hidden = readOnly;
   const wishTab = document.querySelector('.tab[data-view="wish"]'); if (wishTab) wishTab.hidden = archiveOn;
   const prioTab = document.querySelector('.tab[data-view="prio"]'); if (prioTab) prioTab.hidden = archiveOn;
+  // the points: never in the archive, for viewers only while the guild uses DKP or EPGP
+  const ptTab = document.querySelector('.tab[data-view="points"]'); if (ptTab) ptTab.hidden = archiveOn || (readOnly && ptCfg().sys === 'roll');
   const dropTab = document.querySelector('.tab[data-view="drops"]'); if (dropTab) dropTab.hidden = archiveOn;
   document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.view === 'settings') return;   // no count on this tab
-    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='prio' ? Object.keys(lootPrio()).filter(id => prioOf(id)).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='prio' ? Object.keys(lootPrio()).filter(id => prioOf(id)).length : t.dataset.view==='points' ? ptVisible(pointsStandings()).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -2624,9 +2703,9 @@ function wishAddonText(wishes){
   lines.push('#END');
   return lines.join('\n');
 }
-// "Copy for the addon": the wishes, and the alt links and the loot council's priority lists behind
+// "Copy for the addon": the wishes, and the alt links, the loot council's priority lists and the points behind
 // them when there are any (an addon from before them reads up to the first #END and passes over them).
-const wishAndAltText = () => { const a = altAddonText(), p = prioAddonText(); return wishAddonText(WISHES) + (a ? '\n' + a : '') + (p ? '\n' + p : ''); };
+const wishAndAltText = () => { const a = altAddonText(), p = prioAddonText(), t = pointsAddonText(); return wishAddonText(WISHES) + (a ? '\n' + a : '') + (p ? '\n' + p : '') + (t ? '\n' + t : ''); };
 let wishPaste = [];   // the checked plan of "Paste from the addon"
 const WP_STATUS = {new: 'new', dup: 'already on the list', got: 'already received', noitem: 'not in the loot tables', noraider: 'unknown raider', limit: 'over the limit of 30'};
 function renderWishPaste(){
@@ -2846,6 +2925,371 @@ $('#lcAddon').addEventListener('click', () => {
 $('#lcAddonCopy').addEventListener('click', async () => {
   const ta = $('#lcAddonText'); ta.value = wishAndAltText(); ta.select();
   try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia wuensche, paste it into the box and press Importieren.'); }
+  catch (e) { say('Press Ctrl+C to copy the selected text.'); }
+});
+
+/* ---------------- points: DKP and EPGP ---------------- */
+// The guild's loot system per ledger: rolling (the default), DKP or EPGP. state.points = {sys, cfg, log, decays, raids}
+// is kept per game: log = [{id, at, raider, pool: 'D'|'E'|'G', n, code: 'R'|'B'|'T'|'N'|'X', reason, by, sid, boss, src}],
+// decays = [{at, pct, by}], raids = {sid: {date, sys, on}} (the raids whose earnings the ledger has). The cost of an
+// award stands at the award (award.pts = {p, n, at, by}), so removing or moving the award takes its cost along.
+// Standings are never stored: pointsStandings() replays the log, the costs and the decays in time order, per main.
+// The Amisia addon gets them as "#AMISIA-PTS" behind the wishes, alts and prio (pointsAddonText) and sends what it
+// recorded back in its export: PS/PE/PA inside a raid, PX for a correction made in game (amParsePoints).
+const PT_DEFAULTS = {raid: 10, boss: 5, time: 5, bench: 10, mode: 'bid', seal: 0, min: 10, step: 5, decay: 10, price: 50, base: 100, minep: 0, scale: 100, ref: 66, os: 50, pub: 0};
+const PT_RANGE = {raid: [0, 1000], boss: [0, 1000], time: [0, 1000], bench: [0, 1000], seal: [0, 1], min: [0, 100000], step: [1, 10000], decay: [0, 100],
+  price: [0, 100000], base: [1, 100000], minep: [0, 1000000], scale: [1, 100000], ref: [1, 1000], os: [0, 100], pub: [0, 1]};
+const PT_SYS = ['roll', 'dkp', 'epgp'];
+const PT_CHECK = ['seal', 'pub'];   // the settings the form shows as check boxes
+const PT_LABEL = {raid: 'Per raid', boss: 'Per boss', time: 'On time', bench: 'Bench', seal: 'Sealed', min: 'Minimum bid', step: 'Step', decay: 'Decay',
+  price: 'Base price', base: 'Base GP', minep: 'Minimum EP', scale: 'GP base value', ref: 'Ref. item level', os: 'Off spec', pub: 'Show everyone'};
+const PT_SYSNAME = {roll: 'Rolling', dkp: 'DKP', epgp: 'EPGP'};
+const PT_CODE = {R: 'Raid', B: 'Boss', T: 'On time', N: 'Bench', X: 'Correction'};
+// slot weights of the GP formula, the same numbers as the addon's (Raid/Points.lua)
+const PT_SLOT = {head: 1, chest: 1, legs: 1, shoulder: 0.75, hands: 0.75, waist: 0.75, feet: 0.75, trinket: 0.75, neck: 0.5, back: 0.5, wrist: 0.5, finger: 0.5,
+  weapon: 1.5, weapon2: 2, offhand: 0.5, ranged: 0.5, relic: 0.5};
+const PT_ID = /^[0-9a-f]{12}$/;
+// The ledger's points, created for a change (a viewer's read never adds them).
+function pointsState(){
+  let p = state.points;
+  if (!p || typeof p !== 'object' || Array.isArray(p)) p = state.points = {};
+  if (!PT_SYS.includes(p.sys)) p.sys = 'roll';
+  if (!p.cfg || typeof p.cfg !== 'object' || Array.isArray(p.cfg)) p.cfg = {};
+  if (!Array.isArray(p.log)) p.log = [];
+  if (!Array.isArray(p.decays)) p.decays = [];
+  if (!p.raids || typeof p.raids !== 'object' || Array.isArray(p.raids)) p.raids = {};
+  return p;
+}
+const ptRead = () => state.points && typeof state.points === 'object' && !Array.isArray(state.points) ? state.points : {};
+const ptLog = () => Array.isArray(ptRead().log) ? ptRead().log : [];
+// The system and its parameters, every value checked: {sys, raid, boss, ...}.
+function ptCfg(){
+  const p = ptRead(), c = p.cfg && typeof p.cfg === 'object' ? p.cfg : {};
+  const out = {sys: PT_SYS.includes(p.sys) ? p.sys : 'roll'};
+  for (const k of Object.keys(PT_DEFAULTS)) {
+    if (k === 'mode') { out.mode = c.mode === 'fixed' ? 'fixed' : 'bid'; continue; }
+    const v = Number(c[k]), r = PT_RANGE[k];
+    out[k] = Number.isInteger(v) && v >= r[0] && v <= r[1] ? v : PT_DEFAULTS[k];
+  }
+  return out;
+}
+// Rounds to the nearest whole number, .5 away from zero (as the addon).
+const ptRound = x => x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5);
+const ptDecayed = (v, pct) => ptRound(v * (100 - pct) / 100);
+const ptPR = (ep, gp, base) => ep / Math.max(1, gp + base);
+// > 0 when x stands higher by PR, exactly (cross product).
+const ptCompare = (x, y, base) => x.a * Math.max(1, y.b + base) - y.a * Math.max(1, x.b + base);
+const ptPRText = pr => pr.toFixed(Math.abs(pr) >= 10 ? 1 : 2);
+function ptSlot(it){
+  if (!it) return 'other';
+  if (it.slot === 'weapon' && /two.?hand|2h|staff|polearm|zweihand|stab\b|stangen/i.test(String(it.sub || ''))) return 'weapon2';
+  return it.slot;
+}
+// GP (EPGP) or the fixed price (DKP) of an item for a kind: MS and SR full, OS the off spec share, '-' nothing.
+// null when the loot table has no item level for it.
+function ptItemCost(id, kind, cfg){
+  cfg = cfg || ptCfg();
+  if (kind === '-') return 0;
+  const it = ITEM[id]; if (!it || !it.ilvl) return null;
+  const full = ptFormula(it.ilvl, ptSlot(it), itemQ(it), cfg.sys === 'dkp' ? cfg.price : cfg.scale, cfg.ref);
+  return kind === 'OS' ? ptRound(full * cfg.os / 100) : full;
+}
+const ptFormula = (ilvl, slot, q, scale, ref) => ptRound(scale * 2 ** ((ilvl - ref) / 26) * (PT_SLOT[slot] || 1) * 2 ** (q - 4));
+// An award's time in epoch seconds (its stamp, else noon of its night).
+function ptAwardAt(a){
+  if (a.ts) return Math.floor(a.ts / 1000);
+  const [y, m, d] = String(a.date || '').split('-').map(Number);
+  return y ? Math.floor(Date.UTC(y, m - 1, d, 12) / 1000) : 0;
+}
+// Everything that makes the standings of sys, oldest first: {at, rid, pool, n, e|award} or {at, decay}.
+function pointsEvents(sys){
+  const out = [], pools = sys === 'epgp' ? ['E', 'G'] : ['D'], pay = sys === 'epgp' ? 'G' : 'D';
+  for (const e of ptLog()) if (e && pools.includes(e.pool) && raiderById(e.raider) && Number.isFinite(Number(e.n))) out.push({at: Number(e.at) || 0, rid: e.raider, pool: e.pool, n: Number(e.n), e});
+  for (const a of state.awards) if (a.pts && a.pts.p === pay && raiderById(a.raider)) out.push({at: ptAwardAt(a), rid: a.raider, pool: pay, n: sys === 'dkp' ? -Number(a.pts.n) || 0 : Number(a.pts.n) || 0, award: a});
+  for (const d of (Array.isArray(ptRead().decays) ? ptRead().decays : [])) if (d && Number(d.pct) > 0) out.push({at: Number(d.at) || 0, decay: Number(d.pct)});
+  // the same second: the entries before the decay
+  return out.sort((x, y) => x.at - y.at || (x.decay != null) - (y.decay != null));
+}
+// The standings of sys (default the ledger's), best first: [{rid (main), name, a (DKP or EP), b (GP), pr, low}].
+function pointsStandings(sys){
+  const cfg = ptCfg(); sys = sys || cfg.sys;
+  if (sys === 'roll') return [];
+  const by = {};
+  for (const ev of pointsEvents(sys)) {
+    if (ev.decay != null) { for (const s of Object.values(by)) { s.a = ptDecayed(s.a, ev.decay); if (sys === 'epgp') s.b = ptDecayed(s.b, ev.decay); } continue; }
+    const m = mainIdOf(ev.rid), s = by[m] || (by[m] = {rid: m, a: 0, b: 0});
+    if (ev.pool === 'G') s.b += ev.n; else s.a += ev.n;
+  }
+  const list = Object.values(by).filter(s => raiderById(s.rid)).map(s => Object.assign(s, {name: raiderById(s.rid).name,
+    pr: sys === 'epgp' ? ptPR(s.a, s.b, cfg.base) : null, low: sys === 'epgp' && cfg.minep > 0 && s.a < cfg.minep}));
+  return list.sort((x, y) => {
+    if (sys === 'epgp') {
+      if (x.low !== y.low) return x.low ? 1 : -1;
+      const c = ptCompare(x, y, cfg.base); if (c) return c > 0 ? -1 : 1;
+    }
+    return y.a - x.a || x.name.localeCompare(y.name);
+  });
+}
+// The history of a main, newest first: [{at, n, pool, text, after: {a, b}, id, code}] (a decay as text too).
+function pointsHistory(mid, sys){
+  sys = sys || ptCfg().sys;
+  const s = {a: 0, b: 0}, rows = [];
+  for (const ev of pointsEvents(sys)) {
+    if (ev.decay != null) {
+      if (!rows.length) continue;
+      const before = s.a; s.a = ptDecayed(s.a, ev.decay); if (sys === 'epgp') s.b = ptDecayed(s.b, ev.decay);
+      rows.push({at: ev.at, n: s.a - before, pool: sys === 'epgp' ? 'E' : 'D', text: 'Decay ' + ev.decay + ' %', after: {a: s.a, b: s.b}, code: 'Y'});
+      continue;
+    }
+    if (mainIdOf(ev.rid) !== mid) continue;
+    if (ev.pool === 'G') s.b += ev.n; else s.a += ev.n;
+    const who = ev.rid !== mid && raiderById(ev.rid) ? ' (' + raiderById(ev.rid).name + ')' : '';
+    let text;
+    if (ev.award) text = 'Award: ' + anyItemName(ev.award.item);
+    else if (ev.e.code === 'X') text = 'Correction: ' + (ev.e.reason || '?') + (ev.e.by ? ' · ' + ev.e.by : '');
+    else if (ev.e.code === 'B') text = 'Boss' + (ev.e.boss ? ': ' + ev.e.boss : '');
+    else text = PT_CODE[ev.e.code] || ev.e.code || '?';
+    rows.push({at: ev.at, n: ev.n, pool: ev.pool, text: text + who, after: {a: s.a, b: s.b}, id: ev.e ? ev.e.id : null, code: ev.award ? 'A' : ev.e.code, src: ev.e ? ev.e.src : null});
+  }
+  return rows.reverse();
+}
+// A correction made on the site: raider id, pool, a whole number not 0, a reason. Returns null or why not.
+function pointsAdjust(rid, pool, n, reason, by){
+  const cfg = ptCfg();
+  if (cfg.sys === 'roll') return 'Choose DKP or EPGP first.';
+  if (!raiderById(rid)) return 'Pick a raider.';
+  n = Number(n);
+  if (!Number.isInteger(n) || !n || Math.abs(n) > 999999) return 'The amount must be a whole number other than 0.';
+  reason = String(reason == null ? '' : reason).replace(/[\u0000-\u001f|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  if (!reason) return 'Give a reason.';
+  if (cfg.sys === 'dkp') pool = 'D'; else if (pool !== 'G') pool = 'E';
+  pointsState().log.push({id: uid(), at: Math.floor(Date.now() / 1000), raider: rid, pool, n, code: 'X', reason, by: by || '', src: 'site'});
+  return null;
+}
+// The weekly decay: one entry with the percent of the settings, now.
+function pointsDecay(by){
+  const cfg = ptCfg(); if (cfg.sys === 'roll' || !cfg.decay) return false;
+  pointsState().decays.push({at: Math.floor(Date.now() / 1000), pct: cfg.decay, by: by || ''});
+  return true;
+}
+const ptLastDecay = () => (Array.isArray(ptRead().decays) ? ptRead().decays : []).reduce((m, d) => Math.max(m, Number(d.at) || 0), 0);
+// The text for the addon: "#AMISIA-PTS 1 <game> <date> <system> <as-of epoch>", CFG, a P line per main, R lines with
+// the raids whose earnings the ledger has, I lines with the awards with a cost and the addon's corrections it has, "#END".
+// Empty while the ledger never had a points system.
+function pointsAddonText(){
+  if (!state.points || typeof state.points !== 'object') return '';
+  const cfg = ptCfg(), sys = cfg.sys, u = s => String(s).replace(/[\r\n|]+/g, ' ').trim().replace(/ /g, '_');
+  const lines = ['#AMISIA-PTS 1 ' + PLAY + ' ' + today() + ' ' + sys + ' ' + Math.floor(Date.now() / 1000),
+    'CFG ' + Object.keys(PT_DEFAULTS).map(k => k + '=' + cfg[k]).join(' ')];
+  for (const s of pointsStandings(sys)) lines.push('P ' + u(s.name) + ' ' + s.a + (sys === 'epgp' ? ' ' + s.b : ''));
+  const sids = Object.keys(ptRead().raids || {}).filter(x => /^\d+-\d+$/.test(x)).sort();
+  for (let i = 0; i < sids.length; i += 20) lines.push('R ' + sids.slice(i, i + 20).join(' '));
+  const ids = [...new Set([...state.awards.filter(a => a.pts && PT_ID.test(String(a.am || '').toLowerCase())).map(a => String(a.am).toLowerCase()),
+    ...ptLog().filter(e => e && e.code === 'X' && PT_ID.test(String(e.id))).map(e => e.id)])].sort();
+  for (let i = 0; i < ids.length; i += 20) lines.push('I ' + ids.slice(i, i + 20).join(' '));
+  lines.push('#END');
+  return lines.join('\n');
+}
+// The points lines of the addon's export. Returns {raids: [{sid, date, sys, pool, on, earn: [{id, name, n, code, at, boss}]}],
+// costs: [{uid, p, n, at, by}], adjust: [{id, name, pool, n, at, by, reason}], bad}. A time more than a day ahead is refused.
+function amParsePoints(blocks){
+  const raids = {}, order = [], costs = {}, adjust = {}, latest = Math.floor(Date.now() / 1000) + 86400; let bad = 0;
+  const nm = s => glCleanName(String(s || '').replace(/_/g, ' '));
+  const isNum = s => /^\d+$/.test(s || '');
+  for (const b of blocks) {
+    let cur = null, raid = null;
+    for (const raw of b.split(/\r?\n/)) {
+      const line = raw.trim(); if (!line || line[0] === '#') continue;
+      const f = line.split(/\s+/);
+      if (f[0] === 'S' && f.length >= 4 && /^\d{4}-\d{2}-\d{2}$/.test(f[2])) { cur = {sid: f[1], date: f[2]}; raid = null; continue; }
+      if (f[0] === 'E') { cur = null; raid = null; continue; }
+      if (f[0] === 'PS') {
+        // PS <D|E> <dkp|epgp> <on|off>: the system of the raid; its earnings follow
+        if (!cur || !/^\d+-\d+$/.test(cur.sid) || !((f[1] === 'D' && f[2] === 'dkp') || (f[1] === 'E' && f[2] === 'epgp')) || !['on', 'off'].includes(f[3])) { bad++; raid = null; continue; }
+        if (!raids[cur.sid]) order.push(cur.sid);
+        raid = raids[cur.sid] = {sid: cur.sid, date: cur.date, sys: f[2], pool: f[1], on: f[3] === 'on', earn: []};
+      } else if (f[0] === 'PE') {
+        // PE <id> <name> <amount> <R|B|T|N> <epoch> [<boss>]
+        const name = nm(f[2]);
+        if (!raid || !PT_ID.test(String(f[1] || '').toLowerCase()) || !name || /\d/.test(name) || !isNum(f[3]) || Number(f[3]) > 999999 || !/^[RBTN]$/.test(f[4] || '') || !isNum(f[5]) || Number(f[5]) > latest) { bad++; continue; }
+        raid.earn.push({id: f[1].toLowerCase(), name, n: Number(f[3]), code: f[4], at: Number(f[5]), boss: f[4] === 'B' ? f.slice(6).join(' ').slice(0, 60) : ''});
+      } else if (f[0] === 'PA') {
+        // PA <award id> <D|G> <amount> <set epoch> <officer>
+        if (!cur || !PT_ID.test(String(f[1] || '').toLowerCase()) || !['D', 'G'].includes(f[2]) || !isNum(f[3]) || Number(f[3]) > 999999 || !isNum(f[4]) || Number(f[4]) > latest) { bad++; continue; }
+        const r = {uid: f[1].toLowerCase(), p: f[2], n: Number(f[3]), at: Number(f[4]), by: nm(f[5]) || ''};
+        if (!costs[r.uid] || r.at >= costs[r.uid].at) costs[r.uid] = r;
+      } else if (f[0] === 'PX') {
+        // PX <id> <name> <D|E|G> <amount> <epoch> <officer> <reason>
+        const name = nm(f[2]), n = Number(f[4]), reason = f.slice(7).join(' ').replace(/[\u0000-\u001f|]+/g, ' ').trim().slice(0, 80);
+        if (!PT_ID.test(String(f[1] || '').toLowerCase()) || !name || /\d/.test(name) || !['D', 'E', 'G'].includes(f[3]) || !/^-?\d+$/.test(f[4] || '') || !n || Math.abs(n) > 999999
+          || !isNum(f[5]) || Number(f[5]) > latest || !reason) { bad++; continue; }
+        adjust[f[1].toLowerCase()] = {id: f[1].toLowerCase(), name, pool: f[3], n, at: Number(f[5]), by: nm(f[6]) || '', reason};
+      }
+    }
+  }
+  return {raids: order.map(s => raids[s]), costs: Object.values(costs), adjust: Object.values(adjust), bad};
+}
+const ptRaider = name => state.raiders.find(r => r.name.toLowerCase() === String(name).toLowerCase());
+// What taking the points over would do: a raid new, update or same (its earnings are replaced whole); a cost new, change,
+// same, older or noaward (the award is not in the ledger yet); a correction new, dup or noraider.
+function pointsPlan(parsed){
+  const log = ptLog(), had = ptRead().raids || {};
+  const sig = list => list.map(e => e.id + ':' + e.n).sort().join(',');
+  const raids = parsed.raids.map(r => {
+    const known = r.earn.filter(e => ptRaider(e.name)), unknown = [...new Set(r.earn.filter(e => !ptRaider(e.name)).map(e => e.name))];
+    const before = log.filter(e => e && e.sid === r.sid);
+    const was = had[r.sid];
+    const status = !was && !before.length ? 'new' : sig(before) === sig(r.on ? known : []) && was && was.on === r.on ? 'same' : 'update';
+    return Object.assign({}, r, {known, unknown, status, total: known.reduce((n, e) => n + e.n, 0)});
+  });
+  const costs = parsed.costs.map(c => {
+    const a = state.awards.find(x => String(x.am || '').toLowerCase() === c.uid);
+    const status = !a ? 'noaward' : !a.pts ? 'new' : (Number(a.pts.at) || 0) > c.at ? 'older' : Number(a.pts.n) === c.n && a.pts.p === c.p ? 'same' : 'change';
+    return Object.assign({}, c, {award: a ? a.id : null, status});
+  });
+  const adjust = parsed.adjust.map(x => {
+    const r = ptRaider(x.name);
+    return Object.assign({}, x, {raider: r ? r.id : null, status: log.some(e => e && e.id === x.id) ? 'dup' : !r ? 'noraider' : 'new'});
+  });
+  return {raids, costs, adjust, bad: parsed.bad, parsed};
+}
+// Takes what is new or changed over; returns how many things changed.
+function pointsApply(plan){
+  let n = 0;
+  const go = plan.raids.some(r => r.status !== 'same') || plan.costs.some(c => c.status === 'new' || c.status === 'change') || plan.adjust.some(x => x.status === 'new');
+  if (!go) return 0;
+  const p = pointsState();
+  for (const r of plan.raids) if (r.status !== 'same') {
+    p.log = p.log.filter(e => !e || e.sid !== r.sid);
+    if (r.on) for (const e of r.known) {
+      const x = {id: e.id, at: e.at, raider: ptRaider(e.name).id, pool: r.pool, n: e.n, code: e.code, sid: r.sid, src: 'addon'};
+      if (e.boss) x.boss = e.boss;
+      p.log.push(x);
+    }
+    p.raids[r.sid] = {date: r.date, sys: r.sys, on: r.on};
+    n++;
+  }
+  for (const c of plan.costs) if (c.status === 'new' || c.status === 'change') {
+    const a = state.awards.find(x => x.id === c.award); if (!a) continue;
+    a.pts = {p: c.p, n: c.n, at: c.at, by: c.by};
+    n++;
+  }
+  for (const x of plan.adjust) if (x.status === 'new') {
+    p.log.push({id: x.id, at: x.at, raider: x.raider, pool: x.pool, n: x.n, code: 'X', reason: x.reason, by: x.by, src: 'addon'});
+    n++;
+  }
+  return n;
+}
+// What a viewer may see: editors everything; others the list when the guild shows it (pub), else their own main.
+function ptVisible(list){
+  if (!readOnly || ptCfg().pub) return list;
+  const m = typeof myMember === 'function' ? myMember() : null, mine = m && raiderById(m.raider) ? mainIdOf(m.raider) : null;
+  return mine ? list.filter(s => s.rid === mine) : [];
+}
+function renderPoints(){
+  const cfg = ptCfg(), sys = cfg.sys, all = pointsStandings(sys), q = $('#ptSearch').value.trim().toLowerCase();
+  const list = ptVisible(all).filter(s => !q || s.name.toLowerCase().includes(q));
+  $('#ptSide').hidden = readOnly; $('#ptGrid').style.gridTemplateColumns = readOnly ? 'minmax(0,1fr)' : '';
+  $('#ptCount').textContent = sys === 'roll' ? '' : list.length + ' of ' + all.length + ' players';
+  const last = ptLastDecay();
+  $('#ptHint').textContent = sys === 'roll' ? 'The guild rolls. An editor can switch to DKP or EPGP on the right; the Amisia addon takes the system over with Copy for the addon.'
+    : PT_SYSNAME[sys] + (sys === 'dkp' ? (cfg.mode === 'fixed' ? ' with fixed prices' : cfg.seal ? ', sealed bids' : ', open bids') + ', at least ' + cfg.min + ', step ' + cfg.step
+      : ', PR = EP / (GP + ' + cfg.base + ')' + (cfg.minep ? ', at least ' + cfg.minep + ' EP' : '')) + ' · decay ' + cfg.decay + ' % a week'
+      + (last ? ', last ' + new Date(last * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'}) : '')
+      + (readOnly && !cfg.pub ? ' · The officers show only your own standing.' : '');
+  if (!$('#ptAddonPanel').hidden) $('#ptAddonText').value = wishAndAltText();
+  $('#ptHead').innerHTML = sys === 'roll' ? '' : '<tr><th class="num">#</th><th>Player</th><th class="num">' + (sys === 'epgp' ? 'EP</th><th class="num">GP</th><th class="num">PR' : 'DKP') + '</th><th>Alts</th></tr>';
+  if (sys === 'roll' || !list.length) {
+    $('#ptBody').innerHTML = '<tr><td colspan="6"><div class="empty"><b>' + (sys === 'roll' ? 'No points system' : all.length ? 'Nothing to show' : 'No points yet')
+      + '</b>' + (sys === 'roll' ? '' : all.length ? (q ? 'Try a different search.' : '') : 'Import a raid from the Amisia addon or book a correction.') + '</div></td></tr>';
+  } else {
+    $('#ptBody').innerHTML = list.map(s => '<tr class="' + (ui.ptPick === s.rid ? 'sel' : '') + '" data-ptpick="' + esc(s.rid) + '" style="cursor:pointer"><td class="num">' + (all.indexOf(s) + 1) + '</td>'
+      + '<td>' + rName(raiderById(s.rid)) + '</td><td class="num">' + s.a + '</td>'
+      + (sys === 'epgp' ? '<td class="num">' + s.b + '</td><td class="num' + (s.low ? ' warn' : '') + '"' + (s.low ? ' title="below the minimum EP"' : '') + '>' + ptPRText(s.pr) + '</td>' : '')
+      + '<td class="faint">' + esc(altsOf(s.rid).map(r => r.name).join(', ')) + '</td></tr>').join('');
+  }
+  // the history of the chosen main
+  const pick = list.find(s => s.rid === ui.ptPick);
+  $('#ptHistPanel').hidden = !pick;
+  if (pick) {
+    $('#ptHistHead').textContent = pick.name + ': ' + (sys === 'epgp' ? 'EP ' + pick.a + ', GP ' + pick.b + ', PR ' + ptPRText(pick.pr) : pick.a + ' DKP');
+    const rows = pointsHistory(pick.rid, sys);
+    $('#ptHist').innerHTML = rows.length ? rows.slice(0, 200).map(h => '<tr><td class="faint" style="white-space:nowrap">' + (h.at ? new Date(h.at * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '') + '</td>'
+      + '<td class="num">' + (h.n > 0 ? '+' : '') + h.n + (h.pool === 'G' ? ' GP' : sys === 'epgp' ? ' EP' : '') + '</td><td>' + esc(h.text) + '</td>'
+      + '<td class="num faint">' + (sys === 'epgp' ? h.after.a + ' / ' + h.after.b : h.after.a) + '</td>'
+      + '<td class="acts">' + (!readOnly && h.code === 'X' && h.src === 'site' && h.id ? '<button class="btn sm ghost danger" data-ptdel="' + esc(h.id) + '">Remove</button>' : '') + '</td></tr>').join('')
+      : '<tr><td><span class="faint">Nothing yet.</span></td></tr>';
+  }
+  if (!readOnly) renderPointsForm(cfg);
+}
+function renderPointsForm(cfg){
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#ptCfgForm')) return;
+  $('#ptSys').value = cfg.sys;
+  for (const k of Object.keys(PT_DEFAULTS)) { const el = $('#ptCfg_' + k); if (!el) continue; if (PT_CHECK.includes(k)) el.checked = !!cfg[k]; else el.value = cfg[k]; }
+  document.querySelectorAll('[data-ptsys]').forEach(el => { el.hidden = !el.dataset.ptsys.split(' ').includes($('#ptSys').value); });
+  const pr = $('#ptAdjRaider').value;
+  $('#ptAdjRaider').innerHTML = '<option value="">Choose a raider…</option>' + [...state.raiders].sort((a, b) => a.name.localeCompare(b.name)).map(r => '<option value="' + esc(r.id) + '"' + (r.id === pr ? ' selected' : '') + '>' + esc(r.name) + '</option>').join('');
+  $('#ptAdjPoolF').hidden = cfg.sys !== 'epgp';
+  const last = ptLastDecay();
+  $('#ptDecayText').textContent = cfg.sys === 'roll' ? 'Only with DKP or EPGP.' : !cfg.decay ? 'The decay is 0 %.' : 'Takes ' + cfg.decay + ' % off every standing' + (cfg.sys === 'epgp' ? ' (EP and GP)' : '') + '. '
+    + (last ? 'Last one: ' + new Date(last * 1000).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) + '.' : 'None yet.');
+  $('#ptDecay').disabled = cfg.sys === 'roll' || !cfg.decay;
+  ptCalc();
+}
+function ptCalc(){
+  const cfg = Object.assign(ptCfg(), {sys: $('#ptSys').value});
+  const ilvl = Number($('#ptCalcIlvl').value), slot = $('#ptCalcSlot').value, q = Number($('#ptCalcQ').value);
+  if (cfg.sys === 'roll' || !Number.isFinite(ilvl) || ilvl <= 0) { $('#ptCalcOut').textContent = ''; return; }
+  const full = ptFormula(ilvl, slot, q, cfg.sys === 'dkp' ? cfg.price : cfg.scale, cfg.ref);
+  $('#ptCalcOut').textContent = (cfg.sys === 'dkp' ? 'Price ' + full + ' DKP' : full + ' GP') + ', off spec ' + ptRound(full * cfg.os / 100) + (cfg.sys === 'dkp' && cfg.mode !== 'fixed' ? ' (only with fixed prices)' : '');
+}
+$('#ptSearch').addEventListener('input', renderPoints);
+$('#ptBody').addEventListener('click', ev => { const tr = ev.target.closest('[data-ptpick]'); if (!tr) return; ui.ptPick = ui.ptPick === tr.dataset.ptpick ? null : tr.dataset.ptpick; renderPoints(); });
+$('#ptHist').addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-ptdel]'); if (!b || readOnly) return;
+  if (!await ask('Remove this correction?', 'Remove')) return;
+  const p = pointsState(); p.log = p.log.filter(e => !e || e.id !== b.dataset.ptdel);
+  markDirty();
+});
+$('#ptSys').addEventListener('change', () => { document.querySelectorAll('[data-ptsys]').forEach(el => { el.hidden = !el.dataset.ptsys.split(' ').includes($('#ptSys').value); }); ptCalc(); });
+['#ptCalcIlvl', '#ptCalcSlot', '#ptCalcQ'].forEach(id => $(id).addEventListener('input', ptCalc));
+$('#ptCfgForm').addEventListener('submit', ev => {
+  ev.preventDefault(); if (readOnly) return;
+  const p = pointsState(), sys = $('#ptSys').value, cfg = {};
+  for (const k of Object.keys(PT_DEFAULTS)) {
+    const el = $('#ptCfg_' + k); if (!el) continue;
+    if (k === 'mode') { cfg.mode = el.value === 'fixed' ? 'fixed' : 'bid'; continue; }
+    const v = PT_CHECK.includes(k) ? (el.checked ? 1 : 0) : Number(el.value), r = PT_RANGE[k];
+    if (!Number.isInteger(v) || v < r[0] || v > r[1]) return say(PT_LABEL[k] + ' must be a whole number from ' + r[0] + ' to ' + r[1] + '.');
+    cfg[k] = v;
+  }
+  p.sys = PT_SYS.includes(sys) ? sys : 'roll'; p.cfg = cfg;
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  say('Saved: ' + PT_SYSNAME[p.sys] + '. The Amisia addon takes it over with Copy for the addon.');
+  markDirty();
+});
+$('#ptDecay').addEventListener('click', async () => {
+  if (readOnly) return;
+  const cfg = ptCfg(), last = ptLastDecay();
+  if (last && Date.now() / 1000 - last < 6 * 86400 && !await ask('The last decay was less than six days ago. Apply another ' + cfg.decay + ' %?', 'Apply')) return;
+  if (!last && !await ask('Take ' + cfg.decay + ' % off every standing now?', 'Apply')) return;
+  if (pointsDecay(userName())) { say('Applied a decay of ' + cfg.decay + ' %.'); markDirty(); }
+});
+$('#ptAdjForm').addEventListener('submit', ev => {
+  ev.preventDefault(); if (readOnly) return;
+  const why = pointsAdjust($('#ptAdjRaider').value, $('#ptAdjPool').value, $('#ptAdjN').value, $('#ptAdjReason').value, userName());
+  if (why) return say(why);
+  ui.ptPick = mainIdOf($('#ptAdjRaider').value);
+  $('#ptAdjN').value = ''; $('#ptAdjReason').value = '';
+  say('Booked.'); markDirty();
+});
+$('#ptAddon').addEventListener('click', () => {
+  const panel = $('#ptAddonPanel'); panel.hidden = !panel.hidden;
+  if (!panel.hidden) { $('#ptAddonText').value = wishAndAltText(); $('#ptAddonText').select(); }
+});
+$('#ptAddonCopy').addEventListener('click', async () => {
+  const ta = $('#ptAddonText'); ta.value = wishAndAltText(); ta.select();
+  try { await navigator.clipboard.writeText(ta.value); say('Copied. In game: /amisia punkte, Einfügen, paste it and press Importieren.'); }
   catch (e) { say('Press Ctrl+C to copy the selected text.'); }
 });
 
@@ -3417,6 +3861,25 @@ let glRows = [], amRows = [], amBank = null;
 let amGuild = null;   // the guild bank needs, pledges and log of the pasted text (amGuildResolve)
 let amDrops = null;   // what "Add the kills" would do with the drop lines of the pasted text (dropPlan)
 let amPrio = null;    // what "Take them over" would do with the LC lines of the pasted text (prioPlan)
+let amPoints = null;  // what "Take them over" would do with the PS/PE/PA/PX lines of the pasted text (pointsPlan)
+function amPointsRender(){
+  const el = $('#amPoints');
+  if (!amPoints) { el.hidden = true; return; }
+  el.hidden = false;
+  const p = amPoints, parts = [];
+  for (const r of p.raids) parts.push(esc(fmtDate(r.date)) + ' (' + esc(r.sys.toUpperCase()) + '): ' + (r.on ? r.total + (r.pool === 'E' ? ' EP' : ' DKP') + ' for ' + new Set(r.known.map(e => e.name.toLowerCase())).size + ' raiders' : 'not counted')
+    + ' · ' + ({new: 'new', update: 'replaces the earlier import', same: 'already in the ledger'})[r.status]
+    + (r.unknown.length ? ' · <span class="warn">not on the roster: ' + esc(r.unknown.join(', ')) + '</span>' : ''));
+  const c = s => p.costs.filter(x => x.status === s).length, a = s => p.adjust.filter(x => x.status === s).length;
+  if (p.costs.length) parts.push(p.costs.length + ' award cost' + (p.costs.length === 1 ? '' : 's') + ': ' + (c('new') + c('change')) + ' to take over'
+    + (c('same') ? ', ' + c('same') + ' already in the ledger' : '') + (c('older') ? ', ' + c('older') + ' older than the ledger\'s' : '')
+    + (c('noaward') ? ', <span class="warn">' + c('noaward') + ' for awards not imported yet (press Import first)</span>' : ''));
+  if (p.adjust.length) parts.push(p.adjust.length + ' correction' + (p.adjust.length === 1 ? '' : 's') + ' made in game: ' + a('new') + ' new'
+    + (a('dup') ? ', ' + a('dup') + ' already in the ledger' : '') + (a('noraider') ? ', <span class="warn">' + a('noraider') + ' for raiders not on the roster</span>' : ''));
+  if (p.bad) parts.push(p.bad + ' line' + (p.bad === 1 ? '' : 's') + ' could not be read.');
+  $('#amPointsText').innerHTML = parts.join('<br>');
+  $('#amPointsAdd').disabled = !(p.raids.some(r => r.status !== 'same') || c('new') + c('change') || a('new'));
+}
 function amPrioRender(){
   const el = $('#amPrio');
   if (!amPrio) { el.hidden = true; return; }
@@ -4398,12 +4861,16 @@ $('#glPreview').addEventListener('click', () => {
   const lc = blocks.length ? amParsePrio(blocks) : null;
   amPrio = lc && (lc.rows.length || lc.bad) ? {plan: prioPlan(lc.rows), bad: lc.bad} : null;
   amPrioRender();
+  // the DKP or EPGP of the raids and the corrections made in game have their own button as well
+  const pts = blocks.length ? amParsePoints(blocks) : null;
+  amPoints = pts && (pts.raids.length || pts.costs.length || pts.adjust.length || pts.bad) ? pointsPlan(pts) : null;
+  amPointsRender();
   // the addon's wishlist belongs on the Wishlist tab; the raid import leaves its lines alone
   const wishes = blocks.length ? amParseWishes(blocks).length : 0;
   $('#glWishHint').hidden = !wishes;
   const rawRows = (rest.trim() ? glParse(rest) : []).concat(amAwardRows(amSessions));
   glRows = (rawRows.length ? glResolve(rawRows) : []).concat(amGoneRows(amSessions));
-  if (!glRows.length && !amRows.length && !amBank && !amGuild && (amDrops || amPrio)) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
+  if (!glRows.length && !amRows.length && !amBank && !amGuild && (amDrops || amPrio || amPoints)) { $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; return; }
   if (!glRows.length && !amRows.length && !amBank && !amGuild) return say(wishes ? $('#glWishHint').textContent : 'Nothing recognisable in the text. Copy the whole export window from Gargul or from the Amisia addon.');
   if (glRows.length) glRender();
   amRender(); impRender();
@@ -4455,6 +4922,8 @@ $('#glImport').addEventListener('click', () => {
   const guild = amGuild ? amGuildResolve(amParseGuildBank(amSplit($('#glText').value).blocks), state) : null;
   if (guild && guild.needs) state.bankNeeds = {at: guild.needs.at, by: guild.needs.by, items: guild.needs.items, pledges: guild.needs.pledges};
   if (guild && guild.logNew) state.bankLog = guild.log;
+  // the costs of the awards just imported can now be taken over
+  if (amPoints) { amPoints = pointsPlan(amPoints.parsed); amPointsRender(); }
   glRows = []; amRows = []; amBank = null; amGuild = null; $('#glText').value = ''; $('#glResult').hidden = true; $('#amResult').hidden = true; $('#impBar').hidden = true; $('#glWishHint').hidden = true;
   markDirty();
   const said = [];
@@ -4488,6 +4957,14 @@ document.addEventListener('click', ev => {
   say(anyItemName(Number(item)) + ' now counts for ' + (r ? r.name : 'the looter') + ' instead of ' + (from ? from.name : 'the raider before') + '.');
 });
 
+$('#amPointsAdd').addEventListener('click', () => {
+  if (readOnly || !amPoints) return;
+  // planned again: another editor may have saved since the preview
+  const plan = pointsPlan(amPoints.parsed), n = pointsApply(plan);
+  amPoints = pointsPlan(amPoints.parsed); amPointsRender();
+  if (n) markDirty();
+  say(n ? 'Took over ' + n + ' raid' + (n === 1 ? '' : 's') + ', cost' + (n === 1 ? '' : 's') + ' and correction' + (n === 1 ? '' : 's') + ' of the DKP / EPGP.' : 'Nothing new: the ledger already has these.');
+});
 $('#amPrioAdd').addEventListener('click', () => {
   if (readOnly || !amPrio) return;
   // planned again: another officer may have saved a newer prio since the preview
@@ -4544,6 +5021,7 @@ function renderAll(){
   if (archiveOn && !ARCHIVE_TABS.includes(ui.view)) { showView('armory'); return; }
   // a viewer never stays on the Import tab, once the server has said what the role is
   if (readOnly && roleKnown && (ui.view === 'import' || ui.view === 'settings')) { showView('armory'); return; }
+  if (ui.view === 'points' && (archiveOn || (readOnly && ptCfg().sys === 'roll'))) { showView('armory'); return; }
   renderHeader();
   if (ui.view === 'armory') renderArmory();
   if (ui.view === 'log') { renderLogFilters(); renderForm(); renderLog(); }
@@ -4552,6 +5030,7 @@ function renderAll(){
   if (ui.view === 'stats') renderStats();
   if (ui.view === 'wish') renderWishes();
   if (ui.view === 'prio') renderPrio();
+  if (ui.view === 'points') renderPoints();
   if (ui.view === 'matrix') renderMatrix();
   if (ui.view === 'craft') renderCraft();
   if (ui.view === 'drops') renderDrops();

@@ -715,13 +715,13 @@ end
 function ns.PointsExportLines()
     local p, site = store(), siteRec()
     local ids = site and site.ids or {}
-    local out = {}
+    local lines = {}
     for _, e in ipairs(p and p.adj or {}) do
         if not ids[e.id] then
-            out[#out + 1] = ("PX %s %s %s %d %d %s %s"):format(e.id, ns.ExportName(e.name), e.pool, e.n, e.t, ns.ExportName(e.by), oneLine(e.reason))
+            lines[#lines + 1] = ("PX %s %s %s %d %d %s %s"):format(e.id, ns.ExportName(e.name), e.pool, e.n, e.t, ns.ExportName(e.by), oneLine(e.reason))
         end
     end
-    return out
+    return lines
 end
 
 ---------------------------------------------------------------------------

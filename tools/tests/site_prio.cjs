@@ -18,6 +18,7 @@ const WISHES = [];
 const wishAddonText = () => '#AMISIA-WL 1 forever 2026-10-07\\nW 32235 3 Anna\\n#END';
 let altText = '';
 const altAddonText = () => altText;
+const pointsAddonText = () => '';
 `;
 const src = STUBS + NEEDED.map(grab).join('\n\n') + `
 ;module.exports = {prioParseToken, prioToken, prioText, prioParseFree, prioOf, setPrio, prioAddonText, amSplit, amParsePrio, prioPlan, prioApply,

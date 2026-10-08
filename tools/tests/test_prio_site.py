@@ -140,7 +140,7 @@ def test_the_text_of_a_damaged_list(out):
 def test_the_page_wires_it_up():
     page = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
     assert 'data-view="prio"' in page and 'id="view-prio"' in page
-    assert "'dropZones', 'lootPrio'];" in page, 'kept per game'
+    assert "'dropZones', 'lootPrio', 'points'];" in page, 'kept per game'
     assert "if (ui.view === 'prio') renderPrio();" in page
     assert "amPrio = lc && (lc.rows.length || lc.bad)" in page, 'the import reads the LC lines'
 
