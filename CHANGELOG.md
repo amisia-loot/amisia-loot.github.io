@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.17.1 (2026-10-09)
+
+- Roll window: content 12 px from the frame's edges (T.WINDOW_PAD; 8 lay under the border in the game), window 330 wide; the test round lasts the roll time setting
+
 ## 2.17.0 (2026-10-09)
 
 - Vergabe: genau ein passender Kandidat auch im Vergabe-Dialog und im Roll-Fenster (ns.LootCandidate, geteilt mit den Lootregeln)
