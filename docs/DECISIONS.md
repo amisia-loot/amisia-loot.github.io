@@ -327,7 +327,7 @@ sonst der Schlachtzugsleiter, in Offiziersansicht (`loot.lead = "me"` übernimmt
 Amisia nicht hat). Antworten immer per Flüstern an den rohen Absender. Ansagen nur im Schlachtzug,
 einmal pro Leiche; Chat nur über `ns.Say`, in der Sperre wird gewartet.
 **Grund:** Zwei Offiziere mit Amisia sollen nicht doppelt posten.
-**Folge:** Der Nutzer erwartet Master Loot (eine Tausch-Warteschlange ist nicht gewünscht).
+**Folge:** Der Nutzer erwartet Master Loot (eine Tausch-Warteschlange ist nicht gewünscht). Ausnahme (2026-10-09, Spec `docs/specs/2026-10-08-loot-abend.md`): ein Handel-Helfer für vergebene Items, die doch in einer Tasche liegen, als Liste mit Knopf, keine Warteschlange für jeden Loot.
 **Durchgesetzt durch:** `addon/tests/test_lootannounce.lua`, `addon/tests/test_srchat.lua`, `addon/tests/test_chat.lua`.
 
 ## D-28 Daten werden erst bei Bedarf gebaut

@@ -379,3 +379,12 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
 
 - 2026-10-08: Spec auf Wunsch des Nutzers geschrieben (Paket "Loot-Abend schneller"); noch nicht
   freigegeben, gebaut wird erst nach "passt".
+- 2026-10-09: Nutzer gibt frei ("mach dein Vorschlag", Antworten auf die Fragen 4, 5 und 14):
+  - Frage 4: der Handel-Helfer kommt nur für Ausnahmen (Master Loot bleibt der Weg, D-27 bekommt
+    dazu einen Satz).
+  - Frage 5: Lootregeln laufen **automatisch** als Standard (nicht "Ein Klick"); Pause und
+    `/amisia regeln probe` bleiben, die Schutzregeln (Reservierung, Prio, Wunsch, Upgrade) auch.
+  - Frage 14: kein zweites Konto; Gruppenprüfungen erst ab 2026-11-04.
+  - Die übrigen Fragen nach den Vorschlägen der Spec (Reihenfolge Lootregeln, Würfel-Fenster,
+    Handel-Helfer; Einlegen per Knopf; im Kampf nichts einlegen; Spieler-Regeln nur für benannte
+    Items; fremde Regeln nur per "Übernehmen"; "Passen" als Addon-Nachricht).
