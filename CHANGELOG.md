@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.16.0 (2026-10-09)
+
+- Spec Loot-Abend approved: trade helper for exceptions only (D-27 note), loot rules automatic by default, no second account
+- Lootregeln: master looter hands out small loot by rules, automatic or one click, shared between officers (MR/MQ)
+- Lootregeln review: unclear names never get loot, the chat line names only what arrived, the announcement leaves what a rule hands out
+
 ## 2.15.0 (2026-10-08)
 
 - Award history: who got an item in its tooltip ("Vergeben: Fraktur (MS), 09.09.", newest three, "+N weitere", bank/disenchant, alt with main, deleted and undone awards left out; awards.tooltip, everyone), and what a roller got in the roll window's row tooltip (last 4 weeks as Stats, MS/OS/SR, latest item; officers); one lazy index dropped on DATA_CHANGED/ALTS/RECORDING or a new raid list (D-36, F-073)
