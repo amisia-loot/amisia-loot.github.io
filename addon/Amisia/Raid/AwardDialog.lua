@@ -214,10 +214,11 @@ local function takeNote()
     end
 end
 
--- Why a name gets nothing through master loot: not a candidate, or several candidates fit.
-local function notCandidate(name, unclear)
-    if unclear then return L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."]:format(name, itemLabel()) end
-    return nil
+-- Several candidates fit the name: nothing is given and nothing is written (a direct entry here
+-- and then a give through the client's master loot menu, whose hook records too, made two awards);
+-- the dialog stays open, the master looter gives it through the client's menu, Amisia records that.
+local function unclearName(name)
+    ns.msg(L["%s ist unter den Kandidaten für %s nicht eindeutig. Gib es über das Plündermeister-Menü des Spiels, Amisia zeichnet die Vergabe dann auf."]:format(name, itemLabel()))
 end
 
 local function give()
@@ -233,9 +234,11 @@ local function give()
         local idx, unclear = candidate(slot, st.winner)
         if idx then
             done = giveML(slot, st.winner, st.kind, st.note)
+        elseif unclear then
+            unclearName(st.winner)
         else
-            done = direct(st.winner, "player", notCandidate(st.winner, unclear)
-                or L["%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."]:format(st.winner))
+            done = direct(st.winner, "player",
+                L["%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."]:format(st.winner))
         end
     else
         done = direct(st.winner, "player")
@@ -255,9 +258,11 @@ local function giveTo(to)
     if slot and type(who) == "string" and who ~= "" then idx, unclear = candidate(slot, who) end
     if idx then
         done = giveML(slot, who, "-", st.note)
+    elseif unclear then
+        unclearName(who)
     else
         local hint
-        if slot and type(who) == "string" and who ~= "" then hint = notCandidate(who, unclear) or L["%s ist kein Kandidat für dieses Item."]:format(who) end
+        if slot and type(who) == "string" and who ~= "" then hint = L["%s ist kein Kandidat für dieses Item."]:format(who) end
         done = direct("-", to, hint)
     end
     if done then D:Hide() end

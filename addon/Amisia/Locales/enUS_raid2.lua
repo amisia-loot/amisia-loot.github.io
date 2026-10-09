@@ -779,6 +779,7 @@ L["schon verteilt"] = "already handed out"
 L["angesagt"] = "announced"
 L["Name nicht eindeutig"] = "name not unique"
 L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."] = "%s is not unique among the candidates for %s. The item stays."
+L["%s ist unter den Kandidaten für %s nicht eindeutig. Gib es über das Plündermeister-Menü des Spiels, Amisia zeichnet die Vergabe dann auf."] = "%s is not unique among the candidates for %s. Give it through the game's master loot menu; Amisia records that award."
 L["nicht bestätigt"] = "not confirmed"
 L["%s an %s ist nicht bestätigt (Taschen voll oder außer Reichweite?). Prüf, ob das Item noch liegt."] = "%s to %s was not confirmed (bags full or out of range?). Check whether the item is still there."
 -- the roll window for raiders (RollWindow.lua)

@@ -30,7 +30,8 @@ idx, unclear = NS.LootCandidate(1, "Mira Sturmwind")
 assert(idx == nil and unclear == true, "two candidates called Mira")
 assert(NS.LootCandidate(1, "Chorf") == 4, "a unique first name still fits")
 
--- the award dialog: nothing through master loot, a direct entry with the reason
+-- the award dialog: nothing through master loot and nothing written (the client's menu gives it,
+-- its hook records), the dialog stays open
 NS.ShowAwardDialog(link)
 local D = AmisiaAwardDialog
 assert(D and D:IsShown() and D.give:GetText() == "Vergeben")
@@ -39,15 +40,17 @@ STUB.given = nil
 local n = #s.awards
 D.give:Click()
 assert(STUB.given == nil, "the first loose match is not given the item")
-assert(#s.awards == n + 1 and s.awards[n + 1].name == "Mira Sturmwind" and s.awards[n + 1].manual == true, "entered directly")
-assert(lastMsg():find("nicht eindeutig", 1, true), lastMsg())
+assert(#s.awards == n, "no direct entry: a later give through the menu would make it twice")
+assert(D:IsShown(), "the dialog stays open")
+assert(lastMsg():find("nicht eindeutig", 1, true) and lastMsg():find("Plündermeister-Menü", 1, true), lastMsg())
 
 -- bank: the bank character's first name fits two candidates
 NS.Set("awards.bankName", "Mira")
 NS.ShowAwardDialog(link)
 STUB.given = nil
+n = #s.awards
 D.bank:Click()
-assert(STUB.given == nil, "the bank name is not unique: nothing given")
+assert(STUB.given == nil and #s.awards == n, "the bank name is not unique: nothing given, nothing written")
 assert(lastMsg():find("nicht eindeutig", 1, true), lastMsg())
 
 -- the roll window's hand-out

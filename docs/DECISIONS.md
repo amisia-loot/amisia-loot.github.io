@@ -475,7 +475,9 @@ einem DKP-/EPGP-Raid. Reserviert oder wünscht ein Name, den mehrere Raider trag
 Vorname), oder ist ein Name im Raid verborgen, gilt das Item als reserviert bzw. gewünscht. Ist das
 Ziel kein Kandidat oder passt es auf mehrere Kandidaten, bleibt das Item liegen und der Chat sagt es
 (dieselbe Regel, `ns.LootCandidate` in Awards.lua, gilt seit 2026-10-09 auch für den Vergabe-Dialog
-und den Knopf "Vergeben" des Roll-Fensters).
+und den Knopf "Vergeben" des Roll-Fensters; der Vergabe-Dialog trägt bei mehrdeutigem Namen auch
+nichts von Hand ein, der Plündermeister gibt über das Menü des Spiels, dessen Vergabe Amisia
+aufzeichnet: sonst entstünden zwei Vergaben).
 Die Loot-Ansage lässt im Modus Automatisch die Items weg, die eine Item- oder Spieler-Regel selbst
 verteilt (keine Ansage, keine "Wer braucht das?"-Frage für ein Item, das eine Sekunde später weg
 ist); eine Qualitätsregel fasst kein Item an, das die Ansage nennt ("angesagt"). Jede Ausgabe wird
