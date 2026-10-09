@@ -354,6 +354,10 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
    (erwartet 36), `/dump BIND_TRADE_TIME_REMAINING` (die Textvorlage), `/dump ERR_TRADE_COMPLETE`,
    `/dump C_Item.GetItemGUID(ItemLocation:CreateFromBagAndSlot(0,1))` (eine GUID, wenn in Tasche 0
    Platz 1 etwas liegt).
+   **Ergebnis 2026-10-09 (Nutzer, Client 1.60.1):** `TradeTimeRemaining` = 36; `BIND_TRADE_TIME_REMAINING`
+   = "Ihr könnt diesen Gegenstand innerhalb von %s (inklusive Zeit offline) mit anderen Spielern
+   handeln, die ebenfalls berechtigt waren, diesen Gegenstand zu plündern."; `ERR_TRADE_COMPLETE` =
+   "Handel abgeschlossen." Die GUID-Prüfung steht noch aus.
 10. **Prüfung mit Gruppe: gibt es die 2 Stunden Handelszeit in Forever?** Nach einem Item, das in der
     Gruppe geplündert wurde und beim Aufheben gebunden ist:
     `/run for b=0,4 do for s=1,C_Container.GetContainerNumSlots(b) do local d=C_TooltipInfo.GetBagItem(b,s) for _,l in ipairs(d and d.lines or {}) do if l.type==36 then print(b,s,l.leftText) end end end end`
