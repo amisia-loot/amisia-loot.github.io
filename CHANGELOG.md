@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.17.0 (2026-10-09)
+
+- Vergabe: genau ein passender Kandidat auch im Vergabe-Dialog und im Roll-Fenster (ns.LootCandidate, geteilt mit den Lootregeln)
+- Würfel-Fenster für Raider: Runde der Lootleitung mit Mainspec, Offspec, Passen, Gebot oder Bedarf/Gier, Gewinner am Ende (WS/WE/WA)
+- Würfel-Fenster review: Antworten zählen auch mit Realm-Endung, fremde Würfe und Rundenenden mit gleichem Vornamen zählen nicht, gehaltene Runde verfällt nach 5 s, Gebot steht
+- Award dialog: an unclear candidate name writes nothing (the game's master loot menu gives it and the hook records it), so no second award
+
 ## 2.16.0 (2026-10-09)
 
 - Spec Loot-Abend approved: trade helper for exceptions only (D-27 note), loot rules automatic by default, no second account
