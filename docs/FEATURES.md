@@ -343,11 +343,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-08-loot-abend.md, Teil 3; DECISIONS D-38. Im Bosskampf (Kampfsperre) sind die Knöpfe aus ("Würfeln erst nach dem Kampf."); ob eine fremde Würfelzeile im Bosskampf lesbar ist, prüft Spec-Frage 13 erst mit Gruppe ab 2026-11-04.
 
 ### F-079 Würfel-Fenster: Probe und Einstellungen
-- Version: 2.17.0
+- Version: 2.17.1
 - Status: gebaut
 - Prüfung: Wenn du `/amisia wuerfeln test` eingibst, dann erscheint das Fenster "Würfeln" mit dem Ruhestein, "Reserviert von dir", dem Zeitbalken und "Mainspec", "Offspec", "Passen", und der Chat sagt "Probe-Runde nur bei dir: nichts wird gesendet. ..."
 - Prüfung: Wenn du dort "Offspec" klickst, dann zeigt dein Chat die Würfelzeile des Spiels mit "(1-99)", das Fenster "Gewürfelt: Offspec" und die Zahl, und beide Würfelknöpfe sind aus; "Passen" zeigt "Gepasst. Probe: nichts gesendet."
-- Prüfung: Wenn du `/amisia wuerfeln test dkp` (oder `bedarf`) eingibst, dann zeigt das Fenster ein Zahlenfeld mit "Bieten" und "Mindestgebot: 10" (bzw. "Bedarf (Preis 50)" und "Gier (Preis 25)"); das Fenster lässt sich ziehen, das X schließt es, nach 30 Sekunden und 3 Sekunden Nachlauf schließt es von selbst.
+- Prüfung: Wenn du `/amisia wuerfeln test dkp` (oder `bedarf`) eingibst, dann zeigt das Fenster ein Zahlenfeld mit "Bieten" und "Mindestgebot: 10" (bzw. "Bedarf (Preis 50)" und "Gier (Preis 25)"); das Fenster lässt sich ziehen, das X schließt es, nach der Roll-Dauer (Einstellungen, Rolls und Vergabe, "Roll-Dauer (Sekunden)", oder `/amisia rollzeit <5-120>`) und 3 Sekunden Nachlauf schließt es von selbst.
 - Prüfung: Wenn du `/amisia wuerfeln` eingibst, dann öffnen sich die Einstellungen beim Abschnitt Würfel-Fenster mit "Würfel-Fenster zeigen, wenn die Lootleitung eine Runde startet", "Nur zeigen, wenn reserviert, Upgrade oder Wunsch", "Ton, wenn das Fenster aufgeht", "Größe des Würfel-Fensters (%)" und "Position zurücksetzen".
 - Prüfung: Wenn du `/amisia wuerfeln aus` eingibst, dann sagt der Chat "Würfel-Fenster aus. ..."; `/amisia wuerfeln an` sagt "Würfel-Fenster an."
 - Notiz: Was allein prüfbar ist (F-075 braucht Gruppe und Gilde). Spec-Frage 13 (allein): `/run RandomRoll(1,99)` zeigt dieselbe Zeile wie der Knopf.

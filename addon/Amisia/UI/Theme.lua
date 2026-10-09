@@ -60,6 +60,7 @@ T.RESET = 18          -- the red reset circle
 T.HEADER_H = 25       -- the section header (ListHeaderVisualTemplate)
 T.HEADER_TEXT_X = 8   -- its text from the left edge (and the collapse mark's room on the right: 24)
 T.SECTION_GAP = 12    -- after a section of rows (settings)
+T.WINDOW_PAD = 12     -- content of a side window from its left and right edge (the frame's border covers less)
 T.SCROLLBAR_W = 8     -- the client's minimal scroll bar
 T.SCROLLBAR_GAP = 4   -- between a list and its bar
 T.SCROLL_ROOM = 12    -- what a list leaves free at its right for the bar (gap + width)

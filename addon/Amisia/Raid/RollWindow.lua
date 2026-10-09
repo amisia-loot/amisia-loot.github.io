@@ -16,8 +16,8 @@ local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
-local WIDTH = 320
-local PAD = 8
+local WIDTH = 330
+local PAD = T.WINDOW_PAD                -- 8 lay under the frame's left border in the game (2026-10-09)
 local ICON = 36
 local TEXT_X = PAD + ICON + 8            -- the item's name and the hints right of the icon
 local TEXT_W = WIDTH - TEXT_X - PAD
@@ -39,7 +39,6 @@ local ANSWER_TTL = 15
 local ANSWER_GAP = 2.2                    -- the lead takes one answer per round every 2 s (KEYED_GAP)
 local TICK = 0.1
 local TEST_ITEM = 6948                    -- the hearthstone: every client knows it
-local TEST_SECONDS = 30
 local SINCE = "2.17.0"                    -- the first version with the window ("ohne Antwort")
 local BAR_COLOR = { 0.89, 0.62, 0.18 }
 local GREEN, ORANGE, GREY, GOLD = T.GREEN, T.ORANGE, T.GREY, T.GOLD_TEXT
@@ -836,7 +835,7 @@ function ns.RollWindowTest(link, art)
     art = art or "R"
     local my = me()
     local item = itemString(link) or ("item:" .. TEST_ITEM)
-    local f = { "7e57", item, tostring(TEST_SECONDS), art, "-", okName(my) and my or "-",
+    local f = { "7e57", item, tostring(math.max(5, math.min(120, math.floor(tonumber(ns.Get("rolls.seconds")) or 20)))), art, "-", okName(my) and my or "-",
                 art == "B" and "10" or (art == "N" and "50") or "-", art == "N" and "25" or "-", "-" }
     local r = startRound(f, nil, nil, { test = true })
     return r and F or nil
