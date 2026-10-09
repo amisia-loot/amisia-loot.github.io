@@ -46,7 +46,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Core/Version.lua` | HI/VQ version check | `sync` | Comm, Trust, Sync, LootAnnounce |
 | `UI/Theme.lua` | Design tokens `ns.Theme` (sizes, fonts, colours, `ATLASES`) | - | - |
 | `UI/Widgets.lua` | `ns.W`: window, buttons, chips, rows, lists in the Forever look | - | Theme |
-| `Raid/Awards.lua` | Award book (ids, tombstones `s.gone`, undo), master loot hand-out confirmation | `awardsVersion` (migration mark) | Alts, Sync, Points, Rolls, AwardDialog |
+| `Raid/Awards.lua` | Award book (ids, tombstones `s.gone`, undo), master loot hand-out confirmation, `ns.LootCandidate` (exactly one matching candidate, for every hand-out) | `awardsVersion` (migration mark) | Alts, Sync, Points, Rolls, AwardDialog |
 | `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1) | - | PointsRounds, RollFrame, SoftRes, Awards, Chat |
 | `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |

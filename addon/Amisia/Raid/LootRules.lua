@@ -512,24 +512,6 @@ end
 ---------------------------------------------------------------------------
 -- Handing out
 ---------------------------------------------------------------------------
--- The candidate index of name for a slot: the one candidate that is name (ns.SameName: a side
--- without surname matches on the first name). nil, and true when two or more fit (the item stays).
-local function candidateIndex(slot, name)
-    local exact, loose, nExact, nLoose = nil, nil, 0, 0
-    for i = 1, 40 do
-        local c = ns.FullName(ns.Plain(GetMasterLootCandidate(slot, i)))
-        if c then
-            if c:lower() == name:lower() then
-                exact, nExact = i, nExact + 1
-            elseif ns.SameName(c, name) then
-                loose, nLoose = i, nLoose + 1
-            end
-        end
-    end
-    if nExact + nLoose == 1 then return exact or loose end
-    return nil, nExact + nLoose > 1
-end
-
 -- "[Item] an die Bank (Name)", "[Item] zum Entzaubern (Name)", "[Item] an Name"
 local function givenText(e)
     if e.rule.to == "bank" then return ("%s %s"):format(e.link, L["an die Bank (%s)"]:format(e.name)) end
@@ -598,7 +580,7 @@ local function run(manual)
     local n = 0
     for _, e in ipairs(todo) do
         if not (ns.PendingAward and ns.PendingAward(e.slot)) and ns.ItemID(ns.Plain(GetLootSlotLink(e.slot))) == e.id then
-            local idx, unclear = candidateIndex(e.slot, e.name)
+            local idx, unclear = ns.LootCandidate(e.slot, e.name)
             if not idx then
                 failed[e.slot] = unclear and L["Name nicht eindeutig"] or L["kein Kandidat"]
                 msg((unclear and L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."]

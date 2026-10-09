@@ -706,6 +706,28 @@ local function commit(a)
     end
 end
 
+-- The master loot candidate index of name for a loot slot: the one candidate that is name
+-- (ns.SameName: a side without surname matches on the first name). nil, and true when two or more
+-- fit (then nobody gets the item: it could go to the wrong raider); nil alone when none fits.
+-- Secret candidate names are skipped.
+function ns.LootCandidate(slot, name)
+    name = ns.FullName(ns.Plain(name))
+    if not slot or not name or type(GetMasterLootCandidate) ~= "function" then return nil end
+    local exact, loose, nExact, nLoose = nil, nil, 0, 0
+    for i = 1, 40 do
+        local c = ns.FullName(ns.Plain(GetMasterLootCandidate(slot, i)))
+        if c then
+            if c:lower() == name:lower() then
+                exact, nExact = i, nExact + 1
+            elseif ns.SameName(c, name) then
+                loose, nLoose = i, nLoose + 1
+            end
+        end
+    end
+    if nExact + nLoose == 1 then return exact or loose end
+    return nil, nExact + nLoose > 1
+end
+
 local function onGive(slot, candidate)
     local link = GetLootSlotLink and GetLootSlotLink(slot)
     local id = ns.ItemID(link)

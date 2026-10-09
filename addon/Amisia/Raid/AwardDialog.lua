@@ -58,14 +58,11 @@ local function lootSlot(item)
     return nil
 end
 
--- The candidate index of a name for a loot slot, or nil.
+-- The candidate index of a name for a loot slot: exactly one candidate fits, else nil (and true
+-- when several fit). ns.LootCandidate, the rule the loot rules use too.
 local function candidate(slot, name)
-    if not slot or not ns.FullName(name) then return nil end
-    for i = 1, 40 do
-        local c = ns.Plain(GetMasterLootCandidate(slot, i))
-        if c and ns.SameName(c, name) then return i end
-    end
-    return nil
+    if not slot then return nil end
+    return ns.LootCandidate(slot, name)
 end
 
 -- The names to pick from: the raid's members, in the recording the group too, and the master
@@ -217,6 +214,12 @@ local function takeNote()
     end
 end
 
+-- Why a name gets nothing through master loot: not a candidate, or several candidates fit.
+local function notCandidate(name, unclear)
+    if unclear then return L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."]:format(name, itemLabel()) end
+    return nil
+end
+
 local function give()
     if not st.item then return end
     takeNote()
@@ -227,10 +230,12 @@ local function give()
     local slot = lootSlot(st.item)
     local done
     if slot then
-        if candidate(slot, st.winner) then
+        local idx, unclear = candidate(slot, st.winner)
+        if idx then
             done = giveML(slot, st.winner, st.kind, st.note)
         else
-            done = direct(st.winner, "player", L["%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."]:format(st.winner))
+            done = direct(st.winner, "player", notCandidate(st.winner, unclear)
+                or L["%s ist kein Kandidat für dieses Item (zu weit weg?), das Item liegt noch im Lootfenster."]:format(st.winner))
         end
     else
         done = direct(st.winner, "player")
@@ -246,11 +251,13 @@ local function giveTo(to)
     local who = ns.Get(to == "bank" and "awards.bankName" or "awards.deName")
     local slot = lootSlot(st.item)
     local done
-    if slot and type(who) == "string" and who ~= "" and candidate(slot, who) then
+    local idx, unclear
+    if slot and type(who) == "string" and who ~= "" then idx, unclear = candidate(slot, who) end
+    if idx then
         done = giveML(slot, who, "-", st.note)
     else
         local hint
-        if slot and type(who) == "string" and who ~= "" then hint = L["%s ist kein Kandidat für dieses Item."]:format(who) end
+        if slot and type(who) == "string" and who ~= "" then hint = notCandidate(who, unclear) or L["%s ist kein Kandidat für dieses Item."]:format(who) end
         done = direct("-", to, hint)
     end
     if done then D:Hide() end

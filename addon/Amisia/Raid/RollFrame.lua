@@ -81,12 +81,15 @@ function ns.AwardFromRoll(name, item, link)
         ns.msg(L["Das Item liegt nicht mehr im Lootfenster."])
         return
     end
-    for i = 1, 40 do
-        local c = GetMasterLootCandidate(slot, i)
-        if c and ns.SameName(c, name) then
-            GiveMasterLoot(slot, i)
-            return
-        end
+    -- exactly one candidate must fit (ns.LootCandidate): a first name two raiders share gives nothing
+    local idx, unclear = ns.LootCandidate(slot, name)
+    if idx then
+        GiveMasterLoot(slot, idx)
+        return
+    end
+    if unclear then
+        ns.msg(L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."]:format(name, link or ("Item " .. item)))
+        return
     end
     ns.msg(L["%s ist kein Kandidat für dieses Item (zu weit weg?)."]:format(name))
 end
