@@ -16,8 +16,8 @@ local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
-local WIDTH = 330
-local PAD = T.WINDOW_PAD                -- 8 lay under the frame's left border in the game (2026-10-09)
+local WIDTH = 340
+local PAD = T.WINDOW_PAD                -- 8 lay under the frame's left border in the game, 12 touched it (2026-10-09)
 local ICON = 36
 local TEXT_X = PAD + ICON + 8            -- the item's name and the hints right of the icon
 local TEXT_W = WIDTH - TEXT_X - PAD
