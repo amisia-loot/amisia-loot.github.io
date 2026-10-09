@@ -331,6 +331,27 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Offizier sich nach dem Senden erst einloggt, dann bekommt er den Vorschlag etwa eine Minute nach dem Login.
 - Prüfung: Wenn ein Raider ohne Offiziersrang Regeln sendet (z. B. mit einem veränderten Addon), dann erscheint bei niemandem ein Vorschlag.
 
+### F-075 Würfel-Fenster für Raider
+- Version: 2.17.0
+- Status: gebaut
+- Braucht: Gruppe, Gilde
+- Prüfung: Wenn die Lootleitung (Offizier, Plündermeister, beide mit Amisia im Schlachtzug) mit Alt-Klick im Lootfenster eine Runde startet, dann sieht der andere Spieler das Fenster "Würfeln" mit Item, Zeitbalken und "Mainspec", "Offspec", "Passen"; die Ansage im Raidchat bleibt (Raider ohne Amisia sehen nur sie).
+- Prüfung: Wenn der Raider "Mainspec" klickt, dann steht sein Wurf (1-100) im Roll-Fenster der Lootleitung wie bei `/roll`, und sein Fenster zeigt "Gewürfelt: Mainspec" mit der Zahl; die Würfelknöpfe sind danach aus.
+- Prüfung: Wenn der Raider "Passen" klickt, dann steht nichts im Chat, und das Roll-Fenster der Lootleitung zeigt unten "passt: 1 · ohne Antwort: 0".
+- Prüfung: Wenn die Runde endet (Zeit oder "Stopp"), dann zeigt das Fenster 5 Sekunden "Gewinner: <Name> (95, MS)" und schließt; bei Gleichstand bekommen nur die Beteiligten mit "Nochmal" ein Fenster mit "Stechen: <Namen>".
+- Prüfung: Wenn in einem DKP-Raid der Raider im Fenster eine Zahl über seinem Stand eingibt und "Bieten" klickt, dann flüstert die Lootleitung "Amisia: Gebot abgelehnt: Mehr als der eigene Stand (...)." wie bei `!bid`; ein Spieler ohne Offiziersrang oder ein Offizier, der nicht die Lootleitung ist, öffnet mit einer Runde bei niemandem ein Fenster.
+- Notiz: Spec docs/specs/2026-10-08-loot-abend.md, Teil 3; DECISIONS D-38. Im Bosskampf (Kampfsperre) sind die Knöpfe aus ("Würfeln erst nach dem Kampf."); ob eine fremde Würfelzeile im Bosskampf lesbar ist, prüft Spec-Frage 13 erst mit Gruppe ab 2026-11-04.
+
+### F-079 Würfel-Fenster: Probe und Einstellungen
+- Version: 2.17.0
+- Status: gebaut
+- Prüfung: Wenn du `/amisia wuerfeln test` eingibst, dann erscheint das Fenster "Würfeln" mit dem Ruhestein, "Reserviert von dir", dem Zeitbalken und "Mainspec", "Offspec", "Passen", und der Chat sagt "Probe-Runde nur bei dir: nichts wird gesendet. ..."
+- Prüfung: Wenn du dort "Offspec" klickst, dann zeigt dein Chat die Würfelzeile des Spiels mit "(1-99)", das Fenster "Gewürfelt: Offspec" und die Zahl, und beide Würfelknöpfe sind aus; "Passen" zeigt "Gepasst. Probe: nichts gesendet."
+- Prüfung: Wenn du `/amisia wuerfeln test dkp` (oder `bedarf`) eingibst, dann zeigt das Fenster ein Zahlenfeld mit "Bieten" und "Mindestgebot: 10" (bzw. "Bedarf (Preis 50)" und "Gier (Preis 25)"); das Fenster lässt sich ziehen, das X schließt es, nach 30 Sekunden und 3 Sekunden Nachlauf schließt es von selbst.
+- Prüfung: Wenn du `/amisia wuerfeln` eingibst, dann öffnen sich die Einstellungen beim Abschnitt Würfel-Fenster mit "Würfel-Fenster zeigen, wenn die Lootleitung eine Runde startet", "Nur zeigen, wenn reserviert, Upgrade oder Wunsch", "Ton, wenn das Fenster aufgeht", "Größe des Würfel-Fensters (%)" und "Position zurücksetzen".
+- Prüfung: Wenn du `/amisia wuerfeln aus` eingibst, dann sagt der Chat "Würfel-Fenster aus. ..."; `/amisia wuerfeln an` sagt "Würfel-Fenster an."
+- Notiz: Was allein prüfbar ist (F-075 braucht Gruppe und Gilde). Spec-Frage 13 (allein): `/run RandomRoll(1,99)` zeigt dieselbe Zeile wie der Knopf.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

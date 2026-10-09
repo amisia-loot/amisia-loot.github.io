@@ -79,6 +79,7 @@ Gear\GuildWishes.lua
 Gear\Compare.lua
 Raid\Need.lua
 Raid\LootRules.lua
+Raid\RollWindow.lua
 Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua

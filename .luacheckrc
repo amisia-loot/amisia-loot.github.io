@@ -44,7 +44,7 @@ read_globals = {
     "MapCanvasPinMixin", "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",
     "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
     "GetGuildBankMoneyTransaction", "MAX_GUILDBANK_TABS",
-    "RAID_CLASS_COLORS", "RANDOM_ROLL_RESULT", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",
+    "RAID_CLASS_COLORS", "RandomRoll", "RANDOM_ROLL_RESULT", "ITEM_QUALITY_COLORS", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",
     "time", "tinsert", "ToggleWorldMap", "TooltipDataProcessor", "TooltipUtil", "UiMapPoint", "UIParent",
     "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitFactionGroup", "UnitFullName",
     "UnitGUID", "UnitIsDead", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsUnit", "UnitLevel",

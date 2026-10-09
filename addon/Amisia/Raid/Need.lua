@@ -111,6 +111,9 @@ local function isLead(name)
     return false
 end
 
+-- The roll window (RollWindow.lua) trusts a round by the same rule as a question.
+ns.IsLootLeadName = isLead
+
 local function shareOn()
     return ns.CommReady() and ns.Get("sync.shareUpgrades") ~= false
 end
@@ -308,20 +311,23 @@ local function byPrio(a, b)
     return a.name:lower() < b.name:lower()
 end
 
--- Raid members with Amisia (a hello this client accepted) but this client.
-local function expected()
+-- Raid members with Amisia (a hello this client accepted) but this client; with since, only those
+-- whose hello named that version or a newer one.
+local function expected(since)
     local out = {}
     local d = AmisiaDB and type(AmisiaDB.sync) == "table" and AmisiaDB.sync.seen
     if type(d) ~= "table" then return out end
     local me = ns.UnitFullName("player")
     for name, e in pairs(d) do
-        if type(name) == "string" and type(e) == "table" and (tonumber(e.p) or 0) >= 1 and not ns.SameName(name, me) and ns.InMyGroup(name) then
+        if type(name) == "string" and type(e) == "table" and (tonumber(e.p) or 0) >= 1 and not ns.SameName(name, me) and ns.InMyGroup(name)
+            and (not since or (type(e.v) == "string" and e.v:match("^%d+%.%d+%.%d+$") and ns.CompareVersion(e.v, since) >= 0)) then
             out[#out + 1] = name
         end
     end
     table.sort(out, function(a, b) return a:lower() < b:lower() end)
     return out
 end
+ns.AmisiaInGroup = expected
 
 -- Who needs an item of the current loot: { up = { { name, gain, pct, slot } } (best first),
 -- wish = { { name, prio } }, none = n (answered nothing), asked = n (clients expected to answer),

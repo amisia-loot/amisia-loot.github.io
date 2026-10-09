@@ -202,6 +202,31 @@ S.WINDOWS = {
         STUB.fire("LOOT_OPENED", false)
         return NS.LootRulesBar()
     end },
+    { key = "rollwindow", view = "raider", open = function()
+        -- the raiders' roll window: the result of the round before under the running one
+        local rw = NS._rollWindow
+        rw.start({ "a1b2", "item:32837", "20", "R", "-", "-", "-", "-", "-" }, "Fraktur", "Fraktur")
+        rw.finish("a1b2", "Fraktur", "Anna Bergmann", "95:MS", false, "D")
+        rw.start({ "c3d4", "item:32235::::::::70", "20", "R", "-", "Vuloo,Chorf", "-", "-", "-" }, "Fraktur", "Fraktur")
+        return AmisiaRollWindow
+    end },
+    { key = "rollwindow-bid", view = "raider", open = function()
+        S.dkp()
+        NS.RollWindowTest(LINK, "B")
+        return AmisiaRollWindow
+    end },
+    { key = "rollwindow-need", view = "raider", open = function()
+        S.epgp()
+        NS._rollWindow.start({ "e5f6", "item:30000", "20", "N", "-", "-", "150", "75", "-" }, "Fraktur", "Fraktur")
+        return AmisiaRollWindow
+    end },
+    { key = "rollwindow-tie", view = "raider", open = function()
+        STUB.chatLock = true
+        NS._rollWindow.start({ "0707", "item:32837", "10", "R", "T", "-", "-", "-", "Vuloo,Kimtaro" }, "Fraktur", "Fraktur")
+        NS._rollWindow.refresh()
+        STUB.chatLock = false
+        return AmisiaRollWindow
+    end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame

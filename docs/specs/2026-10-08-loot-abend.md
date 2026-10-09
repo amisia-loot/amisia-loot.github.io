@@ -390,3 +390,6 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
   - Die übrigen Fragen nach den Vorschlägen der Spec (Reihenfolge Lootregeln, Würfel-Fenster,
     Handel-Helfer; Einlegen per Knopf; im Kampf nichts einlegen; Spieler-Regeln nur für benannte
     Items; fremde Regeln nur per "Übernehmen"; "Passen" als Addon-Nachricht).
+- 2026-10-09: Teil 3 gebaut (F-075, F-079, DECISIONS D-38): `WS`/`WE`/`WA`, Abschnitt `rollwin`,
+  `/amisia wuerfeln test` (en `rolltest`). "Mehrere Items" heißt dabei: das Ergebnis der vorigen
+  Runde steht 5 Sekunden unter der neuen; eine neue Runde ersetzt die laufende (keine parallelen Runden).

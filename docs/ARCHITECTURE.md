@@ -47,7 +47,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `UI/Theme.lua` | Design tokens `ns.Theme` (sizes, fonts, colours, `ATLASES`) | - | - |
 | `UI/Widgets.lua` | `ns.W`: window, buttons, chips, rows, lists in the Forever look | - | Theme |
 | `Raid/Awards.lua` | Award book (ids, tombstones `s.gone`, undo), master loot hand-out confirmation, `ns.LootCandidate` (exactly one matching candidate, for every hand-out) | `awardsVersion` (migration mark) | Alts, Sync, Points, Rolls, AwardDialog |
-| `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1) | - | PointsRounds, RollFrame, SoftRes, Awards, Chat |
+| `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1); start and end go to the roll window | - | PointsRounds, RollFrame, RollWindow, SoftRes, Awards, Chat |
 | `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |
 | `Raid/SoftRes.lua` | Soft-reserves paste, tooltip, loot window "SR" | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
@@ -58,7 +58,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/Sync.lua` | Raid sync: keeper, snapshots SP/SO, wishes OP, OK/NO/NW/ST/RQ | - (per raid `s.sync`) | Comm, Trust, Awards, Bench, RaidLog, LootAnnounce |
 | `Raid/LootPrio.lua` | Loot council prio (site paste, local edits, LV/LQ/LC share) | `prio` | Comm, Trust, Sync, Awards, Alts |
 | `Raid/Points.lua` | DKP/EPGP standings, earnings, costs, PS/PE/PA/PX lines | `points` | Alts, PointsSync, Awards, Sync, Chat |
-| `Raid/PointsRounds.lua` | Bid and need/greed rounds inside Rolls | - | Points, Rolls, RollFrame, Alts, Chat |
+| `Raid/PointsRounds.lua` | Bid and need/greed rounds inside Rolls; `ns.PointsChatWord` (the whispered words, also for the roll window) | - | Points, Rolls, RollFrame, Alts, Chat |
 | `Raid/PointsSync.lua` | KV/KQ/KS/KC share of standings and costs | - (`points.shared`) | Comm, Points, Trust, Sync, Alts |
 | `Raid/RaidText.lua` | Discord text of a raid | - | RaidLog, Bench, Awards |
 | `Raid/Stats.lua` | Loot statistics, hall of fame | - | Alts, GuildWishes |
@@ -94,8 +94,9 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/Quests.lua` | World quest tracker | - | Bis, Map, Gear, Collector |
 | `Gear/GuildWishes.lua` | Site wishlist paste-in (W lines), tooltip, "W" marks | (`bis.guild`) | Bis, SoftRes, Awards |
 | `Gear/Compare.lua` | Upgrade marks on roll frames and quest rewards | - | Bis, Gear |
-| `Raid/Need.lua` | "Wer braucht das?" UQ/UA | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
+| `Raid/Need.lua` | "Wer braucht das?" UQ/UA; `ns.IsLootLeadName` (who leads the loot, also for WS), `ns.AmisiaInGroup` | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
 | `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line of the hand-outs whose slot cleared; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
+| `Raid/RollWindow.lua` | The raiders' roll window (D-38): the loot lead's round start (WS) and end (WE) from Rolls.lua; every raider client shows the item, the hints (reserved, plus-one, upgrade, wishlist), a timer bar and Mainspec/Offspec (RandomRoll 1-100/1-99), a bid or need/greed, Passen (WA to the lead, counted through `ns.PointsChatWord` like the whispered words); the lead's tally "passt · ohne Antwort" in the roll window; `/amisia wuerfeln test` | (`settings.rollWindow`) | Rolls, PointsRounds, Need, SoftRes, Bis, GuildWishes, Awards, Points, Comm, Trust, Chat, Widgets, Theme |
 | `Gear/Talents.lua` | Talent calculator rules | `talents` | LazyData |
 | `Gear/MageScrolls.lua` | Mage scrolls (Comprehension) | - | LazyData, Professions |
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |
@@ -226,6 +227,9 @@ sender is always the server's sender name, never a field.
 | `GP` | member -> GUILD (or WHISPER to an asking officer) | member; only for a needed item, max 40 per name, 200 in all | none | item id, count (0 takes back), epoch | BankNeeds.lua |
 | `MR` | officer -> GUILD on "An Offiziere senden"; WHISPER as answer to MQ (only a set the officer sent and has not changed since) | officer; only a newer rev than the own set, the offer and a declined set (max 1 day ahead), all parts within 30 s; becomes an offer, never active before "Übernehmen" | none (a new set per officer at most every 30 s, in LootRules.lua) | rev, part, parts (max 4), set by, rules `id:kind:value:target` (max 6; `q:2`/`q:3` and `m:-` to `bank`/`de`, `i:<id+id...>` (max 50) to `bank`/`de`, `p:<item id>` to a name with `_`, no digits; a long list takes several entries of one id) or `-` | LootRules.lua |
 | `MQ` | officer -> GUILD once 35-55 s after the login (low) | officer | 30 s | newest rev the asker knows | LootRules.lua |
+| `WS` | loot lead -> RAID when a round starts (ttl the round's seconds: held by the lockdown, it falls) | officer, in group, the elected loot lead (as `UQ`); not in battlegrounds or arenas; a tie-break shows only to the tied | 1 s | 4 hex round id, item string without colours (`item:...`, max 120), seconds 5-120, art `R` roll / `B` bid / `N` need-greed, flags (`T` tie-break, `S` sealed, `-`), reservers (comma, max 8, as many as fit) or `-`, [min bid or need price or `-`], [greed price or `-`], [tie names (max 10) or `-`] | RollWindow.lua |
+| `WE` | loot lead -> RAID when the round ends | only the lead of the shown round, only for that round | none | round id, `D` done / `X` cancelled (read; this version sends only `D`), winner or `-`, [result `value:kind` (kind `MS`/`OS`/`SR`/`BID`/`NEED`/`GREED`, value empty for need/greed), `T` tie or `-`] | RollWindow.lua |
+| `WA` | raider -> loot lead WHISPER (a second answer within 2 s waits and replaces the first) | member, in group, only for the running round with that id (and its tie names); `P` is noted for the tally (and is `!pass` in a need/greed round), `N`/`G`/`B` go through `ns.PointsChatWord` like a whispered `!need`/`!greed`/`!bid` (same checks, same replies); never a roll | keyed 2 s per round id | round id, `P` pass / `N` need / `G` greed / `B` bid, [amount 1-9999999] | RollWindow.lua |
 | `BL` | any blob part, prefix `AmisiaD` | verified guild member (before unpacking); then the art's rule | sender limits | art, key `YYYY-MM-DD:n`, set number, part, parts, 1-200 Base64 chars | Comm.lua |
 
 ### Blob arts (checked)
@@ -321,7 +325,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | Key | Shape | Owner | Migration / cleanup |
 |---|---|---|---|
 | `sessions` | list of raids `{id, date, instanceID, zone, start, last, members, loot, items, drops, awards, gone, kills, bench, outside, rolls, sync, points, announced...}` | Core.lua | Core fills missing lists, cleans `s.sync` (pending < 1 day, 20 conflicts of tonight), award `v` |
-| `settings` | `{version = 2, <section> = {<name> = value}, window, minimap}` | Registry.lua | `ns.ApplySettings`: flat 1.3 keys moved once; invalid values dropped |
+| `settings` | `{version = 2, <section> = {<name> = value}, window, minimap, rollWindow = {point, x, y}}` | Registry.lua | `ns.ApplySettings`: flat 1.3 keys moved once; invalid values dropped |
 | `itemNames` | `[id] = {n, q}` | Core.lua | - |
 | `exported` | `[session id] = {h = hash, at}` | Core.lua | marks of deleted sessions dropped |
 | `exportedBank` | epoch of the last exported bank count | Core.lua | - |
@@ -373,7 +377,7 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 | `loot` | Raid/LootAnnounce.lua | `bis` | Gear/Bis.lua |
 | `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
 | `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
-| `lootrules` | Raid/LootRules.lua (officers) | | |
+| `lootrules` | Raid/LootRules.lua (officers) | `rollwin` | Raid/RollWindow.lua (everyone; `rollwin.self` officers) |
 
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item

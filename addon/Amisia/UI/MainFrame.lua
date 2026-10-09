@@ -61,6 +61,7 @@ function ns.ResetPositions()
     windowState().point = nil
     if F then restorePosition() end
     if ns.ResetGearPosition then ns.ResetGearPosition() end
+    if ns.ResetRollWindowPosition then ns.ResetRollWindowPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

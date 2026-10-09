@@ -436,6 +436,14 @@ local function needWord(kind)
     end
 end
 
+-- The same handlers for an answer from the roll window (RollWindow.lua, an addon whisper): it counts
+-- exactly like the whispered word.
+local WORDS = { bid = onBid, need = needWord("MS"), greed = needWord("OS"), pass = needWord(nil) }
+function ns.PointsChatWord(word, sender, rest, chan)
+    local fn = WORDS[word]
+    if fn then fn(sender, rest or "", chan) end
+end
+
 for _, w in ipairs({ "bid", "gebot" }) do ns.RegisterChatCommand(w, onBid) end -- l10n-ok: chat words
 for _, w in ipairs({ "need", "bedarf", "ms" }) do ns.RegisterChatCommand(w, needWord("MS")) end -- l10n-ok: chat words
 for _, w in ipairs({ "greed", "gier", "os" }) do ns.RegisterChatCommand(w, needWord("OS")) end -- l10n-ok: chat words

@@ -34,10 +34,10 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
--- question per kind, a source request per kind and bucket
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
+-- question per kind, a source request per kind and bucket; a roll window answer per round
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
@@ -302,6 +302,20 @@ local function ruleEntry(e)
     return ruleTarget(to)
 end
 
+-- the roll window (RollWindow.lua): a character's name in a field (no digits, commas, colons or bars)
+local function rollName(v)
+    return type(v) == "string" and v ~= "" and #v <= 48 and not v:find("[%c,:|%d]")
+end
+local ROUND_ART = { R = true, B = true, N = true }
+local ANSWER = { P = true, N = true, G = true, B = true }
+-- the result of a round: "value:kind" (value may be empty: need or greed), "T" a tie, "-" none
+local function rollResult(v)
+    if v == "-" or v == "T" then return true end
+    local value, kind = (v or ""):match("^(%d*):(%u+)$")
+    return kind ~= nil and #value <= 7 and #kind <= 5
+end
+local function optNum(v) return v == nil or v == "-" or isNum(v, 0, 9999999) end
+
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
@@ -385,6 +399,18 @@ local VALID = {
         return commaList(f[5], 6, ruleEntry, true)
     end,
     MQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
+    -- the roll window (RollWindow.lua): WS <round id> <item string> <seconds> <R|B|N> <flags T/S|->
+    -- <reservers|-> [<min bid or price|->] [<price offspec|->] [<tie names|->]; WE <round id> <D|X>
+    -- <winner|-> [<result>]; WA <round id> <P|N|G|B> [<bid>]
+    WS = function(f)
+        if #f < 6 or not isHex(f[1], 4) or type(f[2]) ~= "string" or #f[2] > 120 or not f[2]:match("^item:%d+[%-%d:]*$") then return false end
+        if not isNum(f[3], 5, 120) or not ROUND_ART[f[4]] or not isFlags(f[5], "TS") then return false end
+        if not commaList(f[6], 8, rollName, true) or not optNum(f[7]) or not optNum(f[8]) then return false end
+        return f[9] == nil or commaList(f[9], 10, rollName, true)
+    end,
+    WE = function(f) return #f >= 3 and isHex(f[1], 4) and (f[2] == "D" or f[2] == "X") and (f[3] == "-" or rollName(f[3]))
+                         and (f[4] == nil or rollResult(f[4])) end,
+    WA = function(f) return #f >= 2 and isHex(f[1], 4) and ANSWER[f[2]] == true and (f[2] ~= "B" or isNum(f[3], 1, 9999999)) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

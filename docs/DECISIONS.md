@@ -493,3 +493,37 @@ Liste, MR in höchstens 4 Teilen, ein Vorschlag pro Offizier alle 30 Sekunden.
 **Durchgesetzt durch:** `addon/tests/test_loot_rules.lua`, `addon/tests/test_loot_rules_share.lua`,
 `addon/tests/test_loot_rules_review.lua`, `addon/tests/test_award_candidate.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
+
+## D-38 Würfel-Fenster: die Zahl nur vom Server, Runden nur von der geprüften Lootleitung
+
+**Datum:** 2026-10-09
+**Entscheidung:** Startet die Lootleitung eine Roll- oder Punkterunde, schickt ihr Client `WS` in den
+Raid; jeder Raider mit Amisia sieht ein kleines Fenster (Item mit Symbol und Tooltip, die Hinweise
+"Reserviert von dir", "Dein Plus-Eins", "Upgrade für dich", "Auf deiner Wunschliste", Zeitbalken) mit
+"Mainspec" (`RandomRoll(1, 100)`), "Offspec" (`RandomRoll(1, 99)`) und "Passen", in Punkterunden
+einem Zahlenfeld mit "Bieten" bzw. "Bedarf (Preis N)" und "Gier (Preis N)". Die Würfelzahl kommt nur
+aus der Systemzeile des Servers, nie aus einer Addon-Nachricht. "Passen", Bedarf, Gier und Gebote
+gehen nur als Flüstern (`WA`) an die Lootleitung und zählen dort durch dieselben Funktionen wie
+geflüstertes `!pass`, `!need`, `!greed`, `!bid` (gleiche Prüfungen, gleiche Antworten); "Passen"
+schreibt nichts in den Chat, wer gepasst hat, darf bis zum Ende noch würfeln. Eine Runde zählt nur
+von der Lootleitung mit Offiziersrang in der eigenen Gruppe (dieselbe Prüfung wie bei "Wer braucht
+das?"), höchstens eine pro Sekunde und Absender; eine neue Runde ersetzt die laufende, nie zwei
+laufende Runden. Mehrere Items stehen untereinander nur so: das Ergebnis der vorigen Runde bleibt
+5 Sekunden unter der neuen stehen (höchstens drei Zeilen). Ein Stechen sehen nur die Beteiligten.
+Am Ende (`WE`) zeigt das Fenster 5 Sekunden "Gewinner: Anna (95, MS)"; ohne `WE` schließt es
+3 Sekunden nach der eigenen Uhr. In der Kampfsperre sind die Knöpfe aus ("Würfeln erst nach dem
+Kampf.") bis `ADDON_RESTRICTION_STATE_CHANGED`; ein `WS` in der Sperre verfällt nach der Rundendauer.
+Das Roll-Fenster der Lootleitung zeigt "passt: N · ohne Antwort: M" (Raider mit Amisia ab dieser
+Version). Abschnitt "Würfel-Fenster" (`rollwin`, für alle): an/aus, nur bei Reservierung, Upgrade
+oder Wunsch, Ton, auch bei eigenen Runden (Lootleitung), Größe, Position zurücksetzen.
+`/amisia wuerfeln test` (en `rolltest`) zeigt eine Proberunde nur bei dir, sendet nichts; die
+Würfelknöpfe würfeln wirklich.
+**Grund:** Spec `docs/specs/2026-10-08-loot-abend.md` (Teil 3), vom Nutzer am 2026-10-09
+freigegeben ("Passen" als Addon-Nachricht, Gebote und Bedarf als Addon-Nachricht, die wie geflüstert
+zählt). Raider sollen mit einem Klick im richtigen Bereich würfeln, ohne dass ein verändertes Addon
+eine Zahl fälschen oder eine Runde vortäuschen kann.
+**Folge:** Kein "immer automatisch Mainspec", keine parallelen Runden, kein Fenster für Gäste
+außerhalb der Gilde, in Schlachtfeldern und Arenen; Raider ohne Amisia würfeln weiter mit `/roll`, die
+Ansage im Raidchat bleibt. Gespeichert wird nur die Position (`settings.rollWindow`).
+**Durchgesetzt durch:** `addon/tests/test_roll_window.lua`, `addon/tests/test_roll_window_raid.lua`,
+`tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.

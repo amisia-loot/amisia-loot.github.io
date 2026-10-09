@@ -136,18 +136,23 @@ local function entryNames()
     return out
 end
 
--- The hint line: a reason from the last entry (red), the lockdown, else the alt-click hint.
+-- The hint line: a reason from the last entry (red), the lockdown, else the alt-click hint; in front
+-- of it, while the raiders' roll windows have the round, who passed and who has not answered
+-- ("passt: 3 · ohne Antwort: 5", RollWindow.lua).
 local function showHint(r)
     if F.reason and F.reasonRound ~= r then F.reason = nil end
+    local tally = r and ns.RollWindowTally and ns.RollWindowTally(r)
+    local line
     if F.reason then
-        hint:SetText("|cffe05050" .. F.reason .. "|r")
+        line = "|cffe05050" .. F.reason .. "|r"
     elseif r and r.lockdown then
-        hint:SetText("|cffe0a344" .. L["Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen."]:format(r.hidden or 0) .. "|r")
+        line = "|cffe0a344" .. L["Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen."]:format(r.hidden or 0) .. "|r"
     elseif r and r.mode and ns.PointsRoundHint then
-        hint:SetText(GREY .. ns.PointsRoundHint(r) .. "|r")
+        line = GREY .. ns.PointsRoundHint(r) .. "|r"
     else
-        hint:SetText(GREY .. L["Alt-Klick im Lootfenster startet eine Runde."] .. "|r")
+        line = GREY .. L["Alt-Klick im Lootfenster startet eine Runde."] .. "|r"
     end
+    hint:SetText(tally and (GREY .. tally .. " · |r" .. line) or line)
     hint:Show()
 end
 

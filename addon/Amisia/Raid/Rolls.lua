@@ -15,6 +15,8 @@ local matcher
 -- Round: { item, link, name, started, seconds, leftAt, only = {[name]=true}|nil,
 --          rolls = { [name] = { name, value, low, high, kind, t, class, manual } }, order = { names },
 --          ignored = { { name, value, low, high, why } }, reserved = { names }, reservedSet = {},
+--          onlyList = { names } (the tie-break's names in their order),
+--          wid, wsSent, passed = { [name] = true }   -- the raiders' roll window (RollWindow.lua)
 --          roster = { names }   -- the group when the round starts (who a bare first name means)
 --          plus = { [name] = n }   -- plus-one of every roller, frozen when the round starts
 --          done, ended, winner, tie = { names }|nil,
@@ -187,6 +189,8 @@ local function finish()
     current.ended = time()
     current.leftAt = 0
     ns.AnnounceRollResult(current, L["Stopp! "])
+    -- the raiders' roll windows show the result (RollWindow.lua)
+    if ns.RollWindowEnded then ns.RollWindowEnded(current) end
     last = current
     table.insert(history, 1, current)
     while #history > 10 do table.remove(history) end
@@ -225,8 +229,11 @@ function ns.StartRoll(link, seconds, onlyNames)
         end
     end
     if onlyNames then
-        current.only = {}
-        for _, n in ipairs(onlyNames) do current.only[n] = true end
+        current.only, current.onlyList = {}, {}
+        for _, n in ipairs(onlyNames) do
+            current.only[n] = true
+            current.onlyList[#current.onlyList + 1] = n
+        end
     end
     if not matcher then matcher = ns.BuildMatcher(RANDOM_ROLL_RESULT) end
     local mode = not onlyNames and ns.PointsRoundMode and ns.PointsRoundMode() or nil
@@ -249,6 +256,8 @@ function ns.StartRoll(link, seconds, onlyNames)
         end
         if left <= 0 then finish() else changed() end
     end)
+    -- the raiders with Amisia get the round in their roll window (RollWindow.lua)
+    if ns.RollWindowStarted then ns.RollWindowStarted(current) end
     changed()
     return true
 end
