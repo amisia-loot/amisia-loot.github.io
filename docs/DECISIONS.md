@@ -564,6 +564,11 @@ die 2 Stunden Handelszeit kennt und ob Einlegen ohne Klick ginge (Spec-Fragen 10
 einer Gruppe prüfbar (D-32); deshalb gibt es "automatisch" nicht.
 **Folge:** Keine Warteschlange, kein Tausch für persönliches Plündern, keine Nachricht an andere
 Spieler, kein Vermerk auf der Website. Zwei gleiche Items in den Taschen kann Amisia nicht
-unterscheiden: es ordnet sie den Vergaben in Zeitfolge zu.
+unterscheiden: es ordnet sie den Vergaben in Zeitfolge zu; nach dem Handel zählt deshalb die Anzahl
+(Review 2026-10-09): die Kopien eines Items, die gingen, erfüllen zuerst die Vergaben an den
+Handelspartner, und eine Vergabe, deren Kopie stattdessen ging, behält die gebliebene. Von einem
+Stapel legt der Knopf nur eines ein (geteilt); übergeben ist es, wenn der Stapel kleiner wurde. Ein
+Klick merkt sich die Handelsplätze, die er schon belegt hat (das Spiel meldet sie erst nach dem
+Server), und zählt nur, was die Maus wirklich aufgenommen hat.
 **Durchgesetzt durch:** `addon/tests/test_handover.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.

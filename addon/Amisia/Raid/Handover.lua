@@ -157,11 +157,22 @@ local function guidAt(bag, slot)
     return guid, bound
 end
 
-local function lockedAt(bag, slot)
+local function slotInfo(bag, slot)
     local api = C_Container and C_Container.GetContainerItemInfo
-    if type(api) ~= "function" then return false end
+    if type(api) ~= "function" then return nil end
     local ok, info = pcall(api, bag, slot)
-    return ok and type(info) == "table" and ns.Plain(info.isLocked) == true
+    return ok and type(info) == "table" and info or nil
+end
+
+local function lockedAt(bag, slot)
+    local info = slotInfo(bag, slot)
+    return info ~= nil and ns.Plain(info.isLocked) == true
+end
+
+-- The stack size in bag, slot (1 when the client does not tell).
+local function stackAt(bag, slot)
+    local info = slotInfo(bag, slot)
+    return info and tonumber(ns.Plain(info.stackCount)) or 1
 end
 
 -- Every copy in the bags (0 to NUM_BAG_SLOTS) of the item ids in want: { bag, slot, id, link, guid,
@@ -181,7 +192,8 @@ local function bagCopies(want)
                 local link = C_Container.GetContainerItemLink and ns.Plain(C_Container.GetContainerItemLink(bag, slot))
                 local tradeable = (line and not (left and left <= 0)) or (not line and bound ~= true)
                 out[#out + 1] = { bag = bag, slot = slot, id = id, link = type(link) == "string" and link or nil, guid = guid,
-                                  left = left, line = line, tradeable = tradeable and true or false, bound = bound, readAt = now() }
+                                  left = left, line = line, tradeable = tradeable and true or false, bound = bound, readAt = now(),
+                                  count = stackAt(bag, slot) }
             end
         end
     end
@@ -581,9 +593,11 @@ local function tradeLink(i)
     return type(link) == "string" and link or nil
 end
 
-local function freeTradeSlot()
+-- The first trade slot that is empty and not taken by this click: the slots answer only after the
+-- server (TRADE_PLAYER_ITEM_CHANGED), so a slot just filled still reads empty.
+local function freeTradeSlot(taken)
     for i = 1, MAX_SLOTS do
-        if not tradeLink(i) then return i end
+        if not taken[i] and not tradeLink(i) then return i end
     end
     return nil
 end
@@ -612,8 +626,15 @@ local function locate(e)
     return nil
 end
 
+-- What the check after the trade needs of an entry's copy (at TRADE_SHOW and when Amisia puts it in).
+local function tradeCopy(e, bag, slot, count)
+    local c = e.copy
+    return { guid = c.guid, item = e.item, bag = bag or c.bag, slot = slot or c.slot,
+             count = count or c.count or 1, to = e.to, a = e.a }
+end
+
 -- The click on "Amisia: N Items einlegen": the partner's items one after another into free trade
--- slots. Never in combat; nothing while the cursor holds something.
+-- slots. Never in combat; nothing while the cursor holds something. Of a stack only one goes in.
 local function insert()
     if not trade or not trade.partner then return end
     if InCombatLockdown and InCombatLockdown() then
@@ -626,21 +647,31 @@ local function insert()
     end
     if not (C_Container and C_Container.PickupContainerItem) or type(ClickTradeButton) ~= "function" then return end
     scan()
-    local n, full = 0, false
+    local n, full, taken = 0, false, {}
     for _, e in ipairs(waiting(trade.partner)) do
-        local slot = freeTradeSlot()
+        local slot = freeTradeSlot(taken)
         if not slot then full = true break end
         local bag, bslot = locate(e)
         if bag then
-            C_Container.PickupContainerItem(bag, bslot)
-            if cursorHolds() then ClickTradeButton(slot) end
-            if cursorHolds() then
-                -- the trade window did not take it: back into the bag, stop
-                if type(ClearCursor) == "function" then ClearCursor() end
-                break
+            local count = stackAt(bag, bslot)
+            if count > 1 then
+                if C_Container.SplitContainerItem then C_Container.SplitContainerItem(bag, bslot, 1) end
+            else
+                C_Container.PickupContainerItem(bag, bslot)
             end
-            trade.inserted[e.key] = true
-            n = n + 1
+            -- the client did not hand it over (a locked slot): not put in, the next one
+            if cursorHolds() then
+                ClickTradeButton(slot)
+                if cursorHolds() then
+                    -- the trade window did not take it: back into the bag, stop
+                    if type(ClearCursor) == "function" then ClearCursor() end
+                    break
+                end
+                taken[slot] = true
+                trade.inserted[e.key] = true
+                if trade.copies then trade.copies[e.key] = tradeCopy(e, bag, bslot, count) end
+                n = n + 1
+            end
         end
     end
     if n == 1 then
@@ -729,7 +760,7 @@ ns.OnEvent("TRADE_SHOW", function()
     if not ok then report(err) end
     -- the copies in the bags now: what is missing after the trade left with it
     trade.copies = {}
-    for _, e in ipairs(entries) do trade.copies[e.key] = { guid = e.copy.guid, item = e.item, bag = e.copy.bag, slot = e.copy.slot } end
+    for _, e in ipairs(entries) do trade.copies[e.key] = tradeCopy(e) end
     refreshHelper()
 end)
 
@@ -759,63 +790,67 @@ ns.OnEvent("UI_INFO_MESSAGE", function(kind, text)
     end
 end)
 
--- After the trade: an entry whose copy left the bags went with it. With the receiver: marked handed
--- over; with someone else: a hint (the award stays as it is).
+-- After the trade: the copies that left the bags (as many of an item as the trade held) went with
+-- it. Copies of one item cannot be told apart, so they fill the partner's awards of that item first
+-- (marked handed over; an award whose copy went instead keeps the partner's copy that stayed); a
+-- copy beyond them went to someone else than its award says: a hint, the award stays as it is.
 local function verify(tr)
     if not tr.copies or not tr.partner then return end
     local roster = ns.GroupRoster()
-    -- the entries the trade held: those Amisia put in, and per item id of the trade's slots
-    local held, count = {}, {}
-    for _, id in ipairs(tr.slots or {}) do count[id] = (count[id] or 0) + 1 end
-    local list = {}
-    for key, c in pairs(tr.copies) do list[#list + 1] = { key = key, c = c } end
-    table.sort(list, function(x, y) return x.key < y.key end)
-    for _, x in ipairs(list) do
-        if tr.inserted[x.key] then
-            held[x.key] = x.c
-            count[x.c.item] = (count[x.c.item] or 1) - 1
-        end
+    -- how many of each item the trade held: its slots, at least the copies Amisia put in
+    local inTrade, put = {}, {}
+    for _, id in ipairs(tr.slots or {}) do inTrade[id] = (inTrade[id] or 0) + 1 end
+    for key, c in pairs(tr.copies) do
+        if tr.inserted[key] then put[c.item] = (put[c.item] or 0) + 1 end
     end
-    for _, x in ipairs(list) do
-        if not held[x.key] and (count[x.c.item] or 0) > 0 then
-            held[x.key] = x.c
-            count[x.c.item] = count[x.c.item] - 1
-        end
-    end
+    for id, k in pairs(put) do inTrade[id] = math.max(inTrade[id] or 0, k) end
+    -- the bags now: per GUID (else place and item) the stack size
     local present = {}
     for bag = 0, tonumber(_G.NUM_BAG_SLOTS) or 4 do
         for slot = 1, tonumber(ns.Plain(C_Container.GetContainerNumSlots(bag))) or 0 do
             local id = tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot)))
             if id then
                 local g = guidAt(bag, slot)
-                present[g or (bag .. ":" .. slot .. ":" .. id)] = true
+                local k = g or (bag .. ":" .. slot .. ":" .. id)
+                present[k] = (present[k] or 0) + stackAt(bag, slot)
             end
         end
     end
+    local list = {}
+    for key, c in pairs(tr.copies) do list[#list + 1] = { key = key, c = c } end
+    table.sort(list, function(x, y) return x.key < y.key end)
+    local byItem, items = {}, {}
+    for _, x in ipairs(list) do
+        local c = x.c
+        local here = present[c.guid or (c.bag .. ":" .. c.slot .. ":" .. c.item)]
+        x.gone = not here or here < (c.count or 1)
+        x.partner = c.to and ns.SameNameIn(c.to, tr.partner, roster) or false
+        if not byItem[c.item] then byItem[c.item] = {}; items[#items + 1] = c.item end
+        table.insert(byItem[c.item], x)
+    end
     local db = saved()
     local any = false
-    for _, x in ipairs(list) do
-        local key, c = x.key, held[x.key]
-        local stays = not c or (c.guid and present[c.guid]) or (not c.guid and present[c.bag .. ":" .. c.slot .. ":" .. c.item])
-        if not stays then
-            -- the award (its entry may have left the list already: the bags changed before this check)
-            local a
-            for _, o in ipairs(entries) do if o.key == key then a = o.a end end
-            if not a then
-                for _, sess in ipairs(ns.Sessions()) do
-                    for _, aw in ipairs(sess.awards or {}) do
-                        if keyOf(sess, aw) == key then a = aw end
-                    end
+    for _, item in ipairs(items) do
+        local group = byItem[item]
+        -- the copies that went: the partner's own first; the partner's awards: those whose copy went first
+        local went, awards = {}, {}
+        for _, x in ipairs(group) do if x.gone and x.partner then went[#went + 1] = x end end
+        for _, x in ipairs(group) do if x.gone and not x.partner then went[#went + 1] = x end end
+        for _, x in ipairs(group) do if x.partner and x.gone then awards[#awards + 1] = x end end
+        for _, x in ipairs(group) do if x.partner and not x.gone then awards[#awards + 1] = x end end
+        for i = 1, math.min(#went, inTrade[item] or 0) do
+            local x, aw = went[i], awards[i]
+            if aw then
+                if db then db[aw.key] = { t = time(), to = tr.partner, g = x.c.guid } end
+                tracked[aw.key] = nil
+                if aw ~= x then
+                    -- x's copy went for the partner's award: x's award takes the copy that stayed
+                    tracked[x.key] = aw.c.guid
                 end
-            end
-            local to = a and receiverOf(a)
-            local view = { item = c.item, a = a or { to = "player" }, to = to or "?", copy = { link = nil } }
-            if to and ns.SameNameIn(to, tr.partner, roster) then
-                if db then db[key] = { t = time(), to = tr.partner, g = c.guid } end
-                tracked[key] = nil
-                ns.msg(L["Übergeben: %s an %s."]:format(itemLink(view), tr.partner))
+                ns.msg(L["Übergeben: %s an %s."]:format(itemLink({ item = item, copy = {} }), tr.partner))
                 any = true
-            elseif to then
+            elseif x.c.to then
+                local view = { item = item, a = x.c.a or { to = "player" }, to = x.c.to, copy = {} }
                 ns.msg(ORANGE .. L["%s ging an %s, vergeben ist es an %s. Vergabe ändern? Seite Vergaben (/amisia vergaben)."]:format(
                     itemLink(view), tr.partner, toText(view)) .. "|r")
             end

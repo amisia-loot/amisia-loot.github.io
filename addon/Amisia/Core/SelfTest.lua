@@ -805,8 +805,8 @@ local OPTIONAL = {
     "GetGuildBankMoneyTransaction",
     -- the trade helper: the bag item's GUID, bound state and trade time, the trade window, the cursor
     "C_Item.GetItemGUID", "C_Item.DoesItemExist", "C_Item.IsBound", "C_TooltipInfo.GetBagItem",
-    "C_Container.GetContainerItemInfo", "C_Container.PickupContainerItem", "ClickTradeButton", "GetTradePlayerItemLink",
-    "CursorHasItem", "ClearCursor", "GetGameMessageInfo",
+    "C_Container.GetContainerItemInfo", "C_Container.PickupContainerItem", "C_Container.SplitContainerItem", "ClickTradeButton",
+    "GetTradePlayerItemLink", "CursorHasItem", "ClearCursor", "GetGameMessageInfo",
 }
 ST.OPTIONAL = OPTIONAL
 

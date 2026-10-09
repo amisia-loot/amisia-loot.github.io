@@ -1296,9 +1296,10 @@ _G.C_Container = {
     GetContainerItemLink = function(bag, slot) return select(2, bagEntry(bag, slot)) end,
 }
 -- The trade helper's client (Handover.lua). Per bag slot STUB.bagInfo[bag][slot] = { guid, trade =
--- the text of the tooltip line TradeTimeRemaining (type 36) or nil, bound = true/false/nil };
--- the cursor holds STUB.cursor = { bag, slot } after PickupContainerItem; ClickTradeButton(i) puts
--- it into STUB.tradeSlots[i] (the bag slot is then locked). UnitName("NPC") is the trade partner
+-- the text of the tooltip line TradeTimeRemaining (type 36) or nil, bound = true/false/nil, count =
+-- the stack size (1) }; the cursor holds STUB.cursor = { bag, slot } after PickupContainerItem
+-- ({ bag, slot, count } after SplitContainerItem); ClickTradeButton(i) puts it into
+-- STUB.tradeSlots[i] (the bag slot is then locked). UnitName("NPC") is the trade partner
 -- (STUB.npc). STUB.gameMessages[type] is GetGameMessageInfo's name of a message type.
 STUB.bagInfo, STUB.tradeSlots, STUB.gameMessages, STUB.cursor = {}, {}, {}, nil
 local function slotInfo(bag, slot)
@@ -1314,7 +1315,12 @@ end
 C_Container.GetContainerItemInfo = function(bag, slot)
     local id, link = bagEntry(bag, slot)
     if not id then return nil end
-    return { itemID = id, hyperlink = link, stackCount = 1, isLocked = lockedSlot(bag, slot), iconFileID = 134 }
+    local i = slotInfo(bag, slot)
+    return { itemID = id, hyperlink = link, stackCount = i and i.count or 1, isLocked = lockedSlot(bag, slot), iconFileID = 134 }
+end
+C_Container.SplitContainerItem = function(bag, slot, n)
+    if STUB.cursor then return end
+    if bagEntry(bag, slot) then STUB.cursor = { bag = bag, slot = slot, count = n } end
 end
 C_Container.PickupContainerItem = function(bag, slot)
     if STUB.cursor then
@@ -1330,7 +1336,7 @@ _G.ClickTradeButton = function(i)
     STUB.clicks[#STUB.clicks + 1] = i
     if not STUB.cursor or STUB.tradeSlots[i] then return end
     local c = STUB.cursor
-    STUB.tradeSlots[i] = { bag = c.bag, slot = c.slot, link = select(2, bagEntry(c.bag, c.slot)) }
+    STUB.tradeSlots[i] = { bag = c.bag, slot = c.slot, link = select(2, bagEntry(c.bag, c.slot)), count = c.count }
     STUB.cursor = nil
 end
 _G.GetTradePlayerItemLink = function(i) local t = STUB.tradeSlots[i]; return t and t.link end

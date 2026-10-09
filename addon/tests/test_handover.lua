@@ -347,3 +347,92 @@ for _ in pairs(root.handover) do n = n + 1 end
 assert(n == 1 and root.handover["2026-10-08:409/0123456789ab"].to == "Anna", "old and malformed marks dropped")
 NS.HandoverLoaded(root)
 assert(root.handover["2026-10-08:409/0123456789ab"], "twice without change")
+
+---------------------------------------------------------------------------
+-- review 2026-10-09: the click with two items, a pick-up that fails, a stack, another copy
+---------------------------------------------------------------------------
+local function emptyBags()
+    for b = 0, 4 do STUB.bags[b] = {}; STUB.bagInfo[b] = {} end
+    bags()
+end
+emptyBags()
+assert(#list() == 0)
+local i1 = STUB.item(40001, "Gürtel der Probe", 4)
+local i2 = STUB.item(40002, "Helm der Probe", 4)
+local i3 = STUB.item(40003, "Ring der Probe", 4)
+local i4 = STUB.item(40004, "Splitter der Probe", 4)
+local b1 = NS.AddAwardTo(s, { name = "Anna Bergmann", item = 40001, kind = "MS", src = "Illidan Stormrage" })
+local b2 = NS.AddAwardTo(s, { name = "Anna Bergmann", item = 40002, kind = "MS", src = "Illidan Stormrage" })
+STUB.bags[0] = { i1, i2 }
+STUB.bagInfo[0] = { [1] = { guid = "Item-9-G1", trade = "1 Std. 30 Min." }, [2] = { guid = "Item-9-H1", trade = "1 Std. 40 Min." } }
+bags()
+assert(#list() == 2)
+
+-- the trade slots answer only after the server (TRADE_PLAYER_ITEM_CHANGED): the second item must not
+-- go into the slot the first just took
+openTrade("Anna Bergmann")
+assert(helper().button:GetText() == "Amisia: 2 Items einlegen", helper().button:GetText())
+local realLink = _G.GetTradePlayerItemLink
+_G.GetTradePlayerItemLink = function() return nil end
+STUB.clicks, STUB.messages = {}, {}
+helper().button:Click()
+_G.GetTradePlayerItemLink = realLink
+assert(STUB.tradeSlots[1] and STUB.tradeSlots[2] and STUB.cursor == nil, "both items in their own slots: " .. table.concat(STUB.clicks, ","))
+assert(STUB.clicks[1] == 1 and STUB.clicks[2] == 2, table.concat(STUB.clicks, ","))
+assert(said("2 Items eingelegt."))
+STUB.fire("TRADE_PLAYER_ITEM_CHANGED", 2)
+closeTrade("cancel")
+assert(#list() == 2)
+
+-- a pick-up the client refuses (the slot is locked): not counted as put in
+openTrade("Anna Bergmann")
+local realPickup = C_Container.PickupContainerItem
+C_Container.PickupContainerItem = function() end
+STUB.messages = {}
+helper().button:Click()
+C_Container.PickupContainerItem = realPickup
+assert(STUB.tradeSlots[1] == nil and not said("eingelegt."), table.concat(STUB.messages, "\n"))
+assert(helper().button:GetText() == "Amisia: 2 Items einlegen", "still to put in: " .. helper().button:GetText())
+closeTrade("cancel")
+
+-- a copy in a stack: only one of the stack goes into the trade; the trade that took it marks it
+emptyBags()
+NS.DeleteAward(s, b1.id); NS.DeleteAward(s, b2.id)
+local b4 = NS.AddAwardTo(s, { name = "Chorf", item = 40004, kind = "OS", src = "Illidan Stormrage" })
+STUB.bags[0] = { i4 }
+STUB.bagInfo[0] = { [1] = { guid = "Item-9-ST", bound = false, count = 3 } }
+bags()
+assert(#list() == 1 and list()[1].a == b4)
+openTrade("Chorf")
+helper().button:Click()
+assert(STUB.tradeSlots[1] and STUB.tradeSlots[1].count == 1, "one of the stack of 3, not all")
+STUB.fire("TRADE_PLAYER_ITEM_CHANGED", 1)
+STUB.messages = {}
+STUB.bagInfo[0][1].count = 2
+STUB.tradeSlots = {}
+STUB.fire("TRADE_CLOSED")
+STUB.fire("BAG_UPDATE_DELAYED")
+STUB.tick(2)
+assert(NS.HandedOver(s, b4) and said(" an Chorf."), "the stack shrank by the traded one: " .. table.concat(STUB.messages, "\n"))
+emptyBags()
+
+-- two copies of one item for Anna and Fraktur; the copy Amisia meant for Fraktur goes to Anna by
+-- hand: Anna has hers, Fraktur keeps the other copy
+local c1 = NS.AddAwardTo(s, { name = "Anna Bergmann", item = 40003, kind = "MS", src = "Illidan Stormrage" })
+STUB.tick(5)
+local c2 = NS.AddAwardTo(s, { name = "Fraktur", item = 40003, kind = "MS", src = "Illidan Stormrage" })
+STUB.bags[0] = { i3, i3 }
+STUB.bagInfo[0] = { [1] = { guid = "Item-9-R1", trade = "1 Std. 10 Min." }, [2] = { guid = "Item-9-R2", trade = "1 Std. 20 Min." } }
+bags()
+l = list()
+assert(#l == 2 and l[1].a == c1 and l[1].copy.guid == "Item-9-R1" and l[2].copy.guid == "Item-9-R2")
+openTrade("Anna Bergmann")
+STUB.cursor = { bag = 0, slot = 2 }
+ClickTradeButton(1)
+STUB.fire("TRADE_PLAYER_ITEM_CHANGED", 1)
+STUB.messages = {}
+closeTrade("done")
+assert(NS.HandedOver(s, c1) and not NS.HandedOver(s, c2), "Anna's award is done: " .. table.concat(STUB.messages, "\n"))
+assert(said("Übergeben: ") and not said("vergeben ist es an"), table.concat(STUB.messages, "\n"))
+l = list()
+assert(#l == 1 and l[1].a == c2 and l[1].copy.guid == "Item-9-R1", "Fraktur keeps the copy still here")
