@@ -88,6 +88,13 @@ function S.setup()
     STUB.rolls[2] = LINK2
     STUB.fire("START_LOOT_ROLL", 2, 60000, 2)
     STUB.fire("CHAT_MSG_LOOT", LOOT_ROLL_NEED:format("Kimtaro", LINK2), "", "", "", "")
+    -- the officers' loot rules: three own (the disenchanter's name is missing) and an offer
+    NS.Set("awards.bankName", "Bobbington")
+    NS.AddLootRule({ k = "m", to = "bank" })
+    NS.AddLootRule({ k = "q", q = 3, to = "de" })
+    NS.AddLootRule({ k = "p", items = "32837", to = "Kimtaro" })
+    AmisiaDB.lootRules.offer = { from = "Fraktur", rev = math.floor(STUB.now) + 5, at = math.floor(STUB.now),
+        list = { AmisiaDB.lootRules.list[1], { id = "beef", k = "i", items = { 30000, 32235 }, to = "bank", by = "Fraktur" } } }
     -- the guild bids DKP: the site's standings (the list shown to everyone) and the two awards' costs
     S.dkp()
     if s then
@@ -127,6 +134,7 @@ S.STATES = {
     { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
     { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
     { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
+    { page = "settings", name = "settings-lootrules", open = function() NS.ShowSettings(NS.L["Lootregeln"]) end },
     { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
@@ -182,6 +190,17 @@ S.WINDOWS = {
     { key = "gearframe", view = "raider", open = function()
         NS.ToggleGearFrame()
         return AmisiaGearFrame
+    end },
+    { key = "lootrules-bar", view = "officer", open = function()
+        -- one click: the bar beside the loot window with what the rules would hand out
+        NS.Set("lootrules.mode", "click")
+        NS.Set("awards.deName", "Chorf")
+        STUB.lootMethod, STUB.mlRaidID, STUB.playerRaidIndex = 2, 1, 1
+        local green = STUB.item(70001, "Grüner Gürtel", 2)
+        STUB.loot = { { link = green, name = "Grüner Gürtel", src = "Creature-0-1-1-1-22918-1" },
+                      { link = STUB.item(61001, "Feuerkern", 3), name = "Feuerkern", src = "Creature-0-1-1-1-22918-1" } }
+        STUB.fire("LOOT_OPENED", false)
+        return NS.LootRulesBar()
     end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()

@@ -147,6 +147,8 @@ end
 _G.GetLootSourceInfo = function(s) local l = STUB.loot[s]; return l and l.src or "Creature-0-1-1-1-22917-1", l and l.qty or 1 end
 _G.GetMasterLootCandidate = function(slot, i) return STUB.roster[i] and STUB.roster[i].name end
 _G.GiveMasterLoot = function(slot, i) STUB.given = { slot = slot, i = i } end
+-- The loot threshold of the group (STUB.lootThreshold, default 2: uncommon).
+_G.GetLootThreshold = function() return STUB.lootThreshold or 2 end
 -- The chat's link insertion: remembers the last link handed to it. The client calls
 -- ChatFrameUtil.InsertLink; its deprecated alias ChatEdit_InsertLink exists only with the
 -- deprecation fallbacks switched on, so the stub has none.

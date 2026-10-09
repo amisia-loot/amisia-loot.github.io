@@ -302,6 +302,35 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du als Offizier im Roll-Fenster mit der Maus über einen Wurf gehst, dann zeigt der Tooltip den Namen, "Letzte 4 Wochen: 2 Items (1 MS, 1 OS)" (oder "Letzte 4 Wochen: nichts bekommen") und "Zuletzt: <Item>, <Tag>".
 - Notiz: Twinks zählen im Roll-Fenster für ihren Main; im Item-Tooltip steht ein Twink als "Kleinfrak (Twink von Fraktur, MS)". DECISIONS D-36.
 
+### F-074 Lootregeln anlegen, proben und pausieren
+- Version: 2.16.0
+- Status: gebaut
+- Prüfung: Wenn du als Offizier `/amisia regeln` eingibst, dann öffnen sich die Einstellungen beim Abschnitt Lootregeln mit "Pause", "Modus" (Automatisch / Ein Klick), "Eine Zeile im Raidchat" und "Noch keine Regeln. Ohne Regeln verteilt Amisia nichts von selbst."
+- Prüfung: Wenn du dort "Qualität", "bis Selten", "Entzaubern" wählst und "Hinzufügen" klickst, dann steht "1. Qualität bis Selten -> Entzaubern" in der Liste, rechts der Entzauberer-Name oder rot "Name fehlt" (der Tooltip sagt "Entzauberer fehlt (Einstellungen, Vergaben)"); "Hoch" verschiebt eine Regel, das rote X entfernt sie.
+- Prüfung: Wenn du "Itemliste" wählst, ins Feld klickst und mit Shift-Klick zwei Items aus der Tasche einfügst, dann legt "Hinzufügen" eine Regel "2 Items -> Bank" an; "Item an Spieler" nimmt genau ein Item und einen Namen.
+- Prüfung: Wenn du allein eine Leiche oder Truhe öffnest und `/amisia regeln probe` eingibst, dann nennt dein Chat für jedes Item die Regel oder den Grund ("keine Regel", "reserviert", "Loot-Prio") und am Ende den Grund, warum jetzt nichts verteilt würde (allein: "Jetzt würde nichts verteilt: Lootregeln nur im Raid."); nichts wird verteilt. `/amisia regeln probe` mit einem Item-Link prüft dieses Item.
+- Prüfung: Wenn du `/amisia regeln pause` eingibst, dann ist "Pause" in den Einstellungen an und der Chat sagt "Lootregeln pausiert"; `/amisia regeln weiter` schaltet zurück.
+- Notiz: Spec docs/specs/2026-10-08-loot-abend.md, Teil 2; DECISIONS D-37. Die Spec nannte F-074 bis F-076; F-075 und F-076 bleiben für Würfel-Fenster und Handel-Helfer, die Teile der Lootregeln, die eine Gruppe oder Gilde brauchen, stehen unter F-077 und F-078.
+
+### F-077 Lootregeln im Raid: automatisch oder mit einem Klick verteilen
+- Version: 2.16.0
+- Status: gebaut
+- Braucht: Gruppe
+- Prüfung: Wenn du als Plündermeister (Master Loot, Offiziersansicht) mit Regel "Qualität bis Selten -> Entzaubern" die erste Leiche des Raids öffnest, dann sagt dein Chat einmal "Lootregeln aktiv: 1 (Pause: /amisia regeln pause)", eine Sekunde später bekommt der Entzauberer das grüne Item, die Seite Vergaben zeigt "zum Entzaubern" mit Notiz "Regel: Qualität bis Selten -> Entzaubern", und im Raidchat steht "Amisia-Regeln: [Item] zum Entzaubern (Name)."
+- Prüfung: Wenn ein Item reserviert ist (oder eine Loot-Prio, einen Gildenwunsch oder eine Upgrade-Antwort hat), dann fasst keine Regel es an, und es steht in der normalen Ansage.
+- Prüfung: Wenn der Entzauberer zu weit weg ist, dann bleibt das Item liegen und dein Chat sagt "Name ist kein Kandidat für [Item]. Das Item bleibt liegen."
+- Prüfung: Wenn du unter Lootregeln den Modus "Ein Klick" wählst und eine Leiche öffnest, dann steht neben dem Lootfenster die Leiste "Lootregeln: 2 Items nach Regeln verteilen" mit dem Knopf "Verteilen"; erst der Klick gibt die Items aus. Im Modus Automatisch zeigt die Leiste nur, was verteilt wurde ("Verteilt: ...").
+- Prüfung: Wenn du eine Leiche direkt nach einem Bosskill noch in der Kampfsperre öffnest, dann sagt der Chat "Lootregeln warten bis nach dem Kampf (Kampfsperre)." und verteilt, sobald die Sperre endet, solange das Lootfenster offen ist.
+- Notiz: Spec-Frage 12 (Master Loot in Forever, GiveMasterLoot ohne Klick) ist erst mit der Gruppe ab 2026-11-04 prüfbar (D-32).
+
+### F-078 Lootregeln an Offiziere senden
+- Version: 2.16.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn du unter Lootregeln "An Offiziere senden" klickst, dann sieht ein anderer Offizier mit Amisia "Neue Lootregeln von <Name> (N Regeln): ..." und unter Einstellungen, Lootregeln "Neue Lootregeln von <Name>: N neu, M geändert, K entfernt" mit "Übernehmen" und "Ablehnen"; seine eigenen Regeln bleiben, bis er "Übernehmen" klickt.
+- Prüfung: Wenn ein Offizier sich nach dem Senden erst einloggt, dann bekommt er den Vorschlag etwa eine Minute nach dem Login.
+- Prüfung: Wenn ein Raider ohne Offiziersrang Regeln sendet (z. B. mit einem veränderten Addon), dann erscheint bei niemandem ein Vorschlag.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

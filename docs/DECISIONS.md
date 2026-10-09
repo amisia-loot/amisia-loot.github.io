@@ -456,3 +456,30 @@ Regeln entschieden.
 **Folge:** Ein Raider sieht nur, was seine Raids enthalten (über den Abgleich der Lootleitung); ein
 Offizier alle Raids, die er aufgezeichnet hat.
 **Durchgesetzt durch:** `addon/tests/test_award_history.lua`.
+
+## D-37 Lootregeln: nur der Plündermeister, nie Reserviertes, Priorisiertes oder Gewünschtes; fremde Regeln erst nach Übernehmen
+
+**Datum:** 2026-10-09
+**Entscheidung:** Offiziere legen in Einstellungen, Lootregeln eine geordnete Liste von Regeln an
+(Qualität bis Ungewöhnlich/Selten, Raidmaterialien oder eine Itemliste an Bank oder Entzauberer; ein
+einzelnes, benanntes Item an einen Spieler); die erste passende gilt. Ohne Regeln (frische
+Installation) passiert nichts. Modus "Automatisch" (Standard, eine Sekunde nach dem Öffnen der Leiche)
+oder "Ein Klick" (Leiste am Lootfenster mit "Verteilen"), Schalter "Pause", `/amisia regeln probe`
+sagt nur im eigenen Chat, was passieren würde, und gibt nichts aus. Regeln wirken nur auf dem Client
+des Plündermeisters, nur unter Master Loot, im Raid, mit Offiziersrang, Offiziersansicht und
+laufender Aufnahme, nie in Kampf oder Kampfsperre (der Lauf wartet auf
+`ADDON_RESTRICTION_STATE_CHANGED`). Keine Regel fasst ein Item an, das jemand im Raid reserviert hat,
+das eine Loot-Prio hat, auf der Gildenwunschliste eines Raiders steht, eine Upgrade- oder
+Wunsch-Antwort bekam, eine Roll- oder Punkterunde hat oder legendär ist; Spieler-Regeln ruhen in
+einem DKP-/EPGP-Raid. Ist das Ziel kein Kandidat, bleibt das Item liegen und der Chat sagt es. Jede
+Ausgabe wird eine normale Vergabe mit der Notiz "Regel: ...", die Lootleitung schreibt eine Zeile in
+den Raidchat (abschaltbar). Regeln anderer Offiziere (MR/MQ) sind nur ein Vorschlag, bis jemand
+"Übernehmen" klickt; Nachrichten von Nicht-Offizieren oder Gildenfremden werden verworfen.
+**Grund:** Spec `docs/specs/2026-10-08-loot-abend.md` (Teil 2), vom Nutzer am 2026-10-09 freigegeben:
+automatisch als Standard, beide Modi wählbar; Kleinkram soll ohne Klicks verteilt werden, ohne dass
+eine Regel je über ein umkämpftes Item entscheidet.
+**Folge:** Keine Regeln nach Klasse, Spec, Plus-Eins oder Würfen, keine ganze Qualitätsstufe an einen
+Spieler, keine Regeln von der Website und keine bei Gruppenplündern. Höchstens 30 Regeln, 50 Items pro
+Liste, MR in höchstens 4 Teilen, ein Vorschlag pro Offizier alle 30 Sekunden.
+**Durchgesetzt durch:** `addon/tests/test_loot_rules.lua`, `addon/tests/test_loot_rules_share.lua`,
+`tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.

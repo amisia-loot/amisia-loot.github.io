@@ -385,6 +385,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
   - Frage 5: Lootregeln laufen **automatisch** als Standard (nicht "Ein Klick"); Pause und
     `/amisia regeln probe` bleiben, die Schutzregeln (Reservierung, Prio, Wunsch, Upgrade) auch.
   - Frage 14: kein zweites Konto; Gruppenprüfungen erst ab 2026-11-04.
+  - Nachtrag 2026-10-09: Lootregeln haben **beide Modi** zur Wahl, "Automatisch" (Standard) und
+    "Ein Klick" (Leiste am Lootfenster mit einem Knopf); Schutzregeln, Probe und Vergabe gleich.
   - Die übrigen Fragen nach den Vorschlägen der Spec (Reihenfolge Lootregeln, Würfel-Fenster,
     Handel-Helfer; Einlegen per Knopf; im Kampf nichts einlegen; Spieler-Regeln nur für benannte
     Items; fremde Regeln nur per "Übernehmen"; "Passen" als Addon-Nachricht).

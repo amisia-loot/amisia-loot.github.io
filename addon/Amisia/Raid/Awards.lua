@@ -655,6 +655,15 @@ local lastSlot       -- slot of the latest hand-out
 -- The open hand-out of a loot slot, or of the latest hand-out when no slot is given.
 function ns.PendingAward(slot) return pending[slot or lastSlot or 0] end
 
+-- Gives the open hand-out of a slot a note and a kind (the loot rules: "Regel: ...", "-"), right
+-- after GiveMasterLoot; the award written on confirmation carries them. false without one.
+function ns.TagPendingAward(slot, note, kind)
+    local a = slot and pending[slot]
+    if not a then return false end
+    a.note, a.kind = note, kind
+    return true
+end
+
 -- Short name without the realm part.
 local function shortName(name)
     return ns.FullName(name)

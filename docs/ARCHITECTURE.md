@@ -95,6 +95,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/GuildWishes.lua` | Site wishlist paste-in (W lines), tooltip, "W" marks | (`bis.guild`) | Bis, SoftRes, Awards |
 | `Gear/Compare.lua` | Upgrade marks on roll frames and quest rewards | - | Bis, Gear |
 | `Raid/Need.lua` | "Wer braucht das?" UQ/UA | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
+| `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
 | `Gear/Talents.lua` | Talent calculator rules | `talents` | LazyData |
 | `Gear/MageScrolls.lua` | Mage scrolls (Comprehension) | - | LazyData, Professions |
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |
@@ -223,6 +224,8 @@ sender is always the server's sender name, never a field.
 | `GN` | officer -> GUILD after a change; WHISPER as answer to GQ | officer; only a newer rev (max 1 day ahead), all parts within 30 s | none | rev, part, parts (max 5), set by, `id:min:target` (max 8) or `-` | BankNeeds.lua |
 | `GQ` | everyone -> GUILD after login (low) | member | 30 s | own rev | BankNeeds.lua |
 | `GP` | member -> GUILD (or WHISPER to an asking officer) | member; only for a needed item, max 40 per name, 200 in all | none | item id, count (0 takes back), epoch | BankNeeds.lua |
+| `MR` | officer -> GUILD on "An Offiziere senden"; WHISPER as answer to MQ (only a set the officer sent and has not changed since) | officer; only a newer rev than the own set, the offer and a declined set (max 1 day ahead), all parts within 30 s; becomes an offer, never active before "Übernehmen" | none (a new set per officer at most every 30 s, in LootRules.lua) | rev, part, parts (max 4), set by, rules `id:kind:value:target` (max 6; `q:2`/`q:3` and `m:-` to `bank`/`de`, `i:<id+id...>` (max 50) to `bank`/`de`, `p:<item id>` to a name with `_`, no digits; a long list takes several entries of one id) or `-` | LootRules.lua |
+| `MQ` | officer -> GUILD once 35-55 s after the login (low) | officer | 30 s | newest rev the asker knows | LootRules.lua |
 | `BL` | any blob part, prefix `AmisiaD` | verified guild member (before unpacking); then the art's rule | sender limits | art, key `YYYY-MM-DD:n`, set number, part, parts, 1-200 Base64 chars | Comm.lua |
 
 ### Blob arts (checked)
@@ -348,12 +351,14 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `prof` | `{chars = {[name] = {[skill] = {rank, max, day, known}}}, guild}` | Professions.lua, Crafters.lua | checked on load |
 | `crafters` | `{v = 1, src, c}` heard crafters | Crafters.lua | `Cr.Prune`: malformed dropped, 45 days, 500 crafters, byte caps |
 | `talents` | `{class, level, talented, plans}` | Talents.lua | - |
+| `lootRules` | `{v = 1, rev, by, at, sent, seen, list = {{id (4 hex), k = q/m/i/p, q (2/3), items, to = bank/de/name, by}}, offer = {from, rev, at, list}}` | LootRules.lua | `ns.LootRulesLoaded`: every field checked, a bad rule or offer dropped; 30 rules, 50 items per list, a player rule exactly one item |
 
 ## Settings registry
 
 `ns.RegisterSettings{ key = "<section>", label, order, officer, expert, items = {...} }`; an item is
-`{ key = "<section>.<name>", type = toggle/slider/time/choice/text/button/desc, default, min, max,
-step, ... }`. `ns.Get(path)` returns the stored value or the default, `ns.Set` validates and fires
+`{ key = "<section>.<name>", type = toggle/slider/time/choice/text/button/desc/custom, default, min, max,
+step, ... }`; a `custom` item brings `build(parent)` and `fill(frame)` (the frame sets its own height;
+the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` returns the stored value or the default, `ns.Set` validates and fires
 `SETTING`. The settings page is built from the schema. Sections (checked):
 
 | Section | File | Section | File |
@@ -368,6 +373,7 @@ step, ... }`. `ns.Get(path)` returns the stored value or the default, `ns.Set` v
 | `loot` | Raid/LootAnnounce.lua | `bis` | Gear/Bis.lua |
 | `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
 | `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
+| `lootrules` | Raid/LootRules.lua (officers) | | |
 
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item

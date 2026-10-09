@@ -178,9 +178,10 @@ local function check(it, v)
 end
 
 -- Section: { key, label, order, officer, expert, available, items = { item... } }
--- Item: { key = "section.name", type = toggle|slider|time|choice|text|button|desc, label, tip,
+-- Item: { key = "section.name", type = toggle|slider|time|choice|text|button|desc|custom, label, tip,
 --         default, min, max, step, allowOff, values = { { value, text } }, officer, expert,
 --         available, validate = fn, onChange = fn(value), run = fn (buttons), invalid = "reason" }
+--         (custom: build = fn(parent) -> frame, fill = fn(frame); the settings page shows the frame)
 function ns.RegisterSettings(section)
     assert(type(section.key) == "string" and type(section.items) == "table", "RegisterSettings needs key and items")
     for _, it in ipairs(section.items) do

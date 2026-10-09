@@ -34,7 +34,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60 }
@@ -281,6 +281,27 @@ local function needEntry(e)
     return id ~= nil and isNum(id, 1, 9999999) and isNum(min, 0, 99999) and isNum(target, 0, 99999)
 end
 
+-- a loot rule "id:kind:value:target" (LootRules.lua): q with 2 or 3 and m with "-" to bank or de, i
+-- with item ids joined by "+" (at most 50) to bank or de, p with one item id to a player's name ("_"
+-- for the space, no digits)
+local function ruleTarget(v) return v == "bank" or v == "de" end
+local function ruleName(v)
+    return type(v) == "string" and v ~= "" and #v <= 48 and not v:find("[%s%c,:|+%d]") and not ruleTarget(v:lower())
+end
+local function ruleEntry(e)
+    local _, k, value, to = e:match("^(%x%x%x%x):([qmip]):([^:]+):([^:]+)$")
+    if not k then return false end
+    if k == "q" then return (value == "2" or value == "3") and ruleTarget(to) end
+    if k == "m" then return value == "-" and ruleTarget(to) end
+    if k == "p" then return isNum(value, 1, 9999999) and ruleName(to) end
+    local n = 0
+    for x in (value .. "+"):gmatch("([^+]*)%+") do
+        n = n + 1
+        if n > 50 or not isNum(x, 1, 9999999) then return false end
+    end
+    return ruleTarget(to)
+end
+
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
@@ -356,6 +377,14 @@ local VALID = {
     end,
     GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
     GP = function(f) return #f >= 3 and isNum(f[1], 1, 9999999) and isNum(f[2], 0, 99999) and isNum(f[3], 0, 4294967295) end,
+    -- loot rules (LootRules.lua): MR <rev> <part> <parts> <set by> <id:kind:value:target,...|->, an
+    -- officer's set in at most 4 parts; MQ <rev> (who has a newer set)
+    MR = function(f)
+        if #f < 5 or not isNum(f[1], 0, 4294967295) or not isNum(f[2], 1, 4) or not isNum(f[3], 1, 4) then return false end
+        if tonumber(f[2]) > tonumber(f[3]) or f[4] == "" or #f[4] > 60 or f[4]:find("[%s%c,:|]") then return false end
+        return commaList(f[5], 6, ruleEntry, true)
+    end,
+    MQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

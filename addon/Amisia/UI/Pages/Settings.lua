@@ -26,6 +26,13 @@ local function valueText(it, v)
 end
 
 local function makeRow(it)
+    -- a custom item (the loot rules' editor) builds its own frame and sets its height when filled
+    if it.type == "custom" then
+        local r = it.build(child)
+        r.it = it
+        rows[it.key] = r
+        return r
+    end
     local r = CreateFrame("Frame", nil, child)
     r:SetSize(560, ROW_H)
     r:EnableMouse(true)
@@ -84,6 +91,10 @@ local function makeRow(it)
 end
 
 local function fillRow(r)
+    if r.it.type == "custom" then
+        r.it.fill(r)
+        return
+    end
     local it, v = r.it, ns.Get(r.it.key)
     if it.type == "toggle" then r.control:SetChecked(v)
     elseif it.type == "slider" then r.control:SetValue(v)
@@ -152,6 +163,17 @@ local function holdPlace()
             C_Timer.After(0, apply)
             C_Timer.After(0.3, function() if placeAgain == apply then placeAgain = nil end end)
         end
+    end
+end
+
+-- Opens the settings with a search text (a section's name shows the whole section).
+function ns.ShowSettings(text)
+    if ns.ShowPage then ns.ShowPage("settings") end
+    if page and page.search then
+        page.search:SetText(text or "")
+        query = (text or ""):lower()
+        fromTop = true
+        ns.Refresh()
     end
 end
 
