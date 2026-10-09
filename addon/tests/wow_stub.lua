@@ -16,7 +16,7 @@ _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
 _G.UnitName = function(u)
     if u == "target" then return STUB.target end
-    if u == "npc" then return STUB.npc end
+    if u == "npc" or u == "NPC" then return STUB.npc end
     if u == "mouseover" then return STUB.mouseover end
     return STUB.player
 end
@@ -1295,6 +1295,70 @@ _G.C_Container = {
     GetContainerItemID = function(bag, slot) return (bagEntry(bag, slot)) end,
     GetContainerItemLink = function(bag, slot) return select(2, bagEntry(bag, slot)) end,
 }
+-- The trade helper's client (Handover.lua). Per bag slot STUB.bagInfo[bag][slot] = { guid, trade =
+-- the text of the tooltip line TradeTimeRemaining (type 36) or nil, bound = true/false/nil };
+-- the cursor holds STUB.cursor = { bag, slot } after PickupContainerItem; ClickTradeButton(i) puts
+-- it into STUB.tradeSlots[i] (the bag slot is then locked). UnitName("NPC") is the trade partner
+-- (STUB.npc). STUB.gameMessages[type] is GetGameMessageInfo's name of a message type.
+STUB.bagInfo, STUB.tradeSlots, STUB.gameMessages, STUB.cursor = {}, {}, {}, nil
+local function slotInfo(bag, slot)
+    local b = STUB.bagInfo[bag]
+    return b and b[slot]
+end
+local function lockedSlot(bag, slot)
+    for _, t in pairs(STUB.tradeSlots) do
+        if t.bag == bag and t.slot == slot then return true end
+    end
+    return STUB.cursor ~= nil and STUB.cursor.bag == bag and STUB.cursor.slot == slot
+end
+C_Container.GetContainerItemInfo = function(bag, slot)
+    local id, link = bagEntry(bag, slot)
+    if not id then return nil end
+    return { itemID = id, hyperlink = link, stackCount = 1, isLocked = lockedSlot(bag, slot), iconFileID = 134 }
+end
+C_Container.PickupContainerItem = function(bag, slot)
+    if STUB.cursor then
+        STUB.cursor = nil
+        return
+    end
+    if bagEntry(bag, slot) then STUB.cursor = { bag = bag, slot = slot } end
+end
+_G.CursorHasItem = function() return STUB.cursor ~= nil end
+_G.ClearCursor = function() STUB.cursor = nil end
+STUB.clicks = {}
+_G.ClickTradeButton = function(i)
+    STUB.clicks[#STUB.clicks + 1] = i
+    if not STUB.cursor or STUB.tradeSlots[i] then return end
+    local c = STUB.cursor
+    STUB.tradeSlots[i] = { bag = c.bag, slot = c.slot, link = select(2, bagEntry(c.bag, c.slot)) }
+    STUB.cursor = nil
+end
+_G.GetTradePlayerItemLink = function(i) local t = STUB.tradeSlots[i]; return t and t.link end
+_G.GetGameMessageInfo = function(kind) return STUB.gameMessages[kind] end
+_G.ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end }
+C_Item.DoesItemExist = function(loc) return bagEntry(loc.bag, loc.slot) ~= nil end
+C_Item.GetItemGUID = function(loc)
+    local i = slotInfo(loc.bag, loc.slot)
+    return i and i.guid
+end
+C_Item.IsBound = function(loc)
+    local i = slotInfo(loc.bag, loc.slot)
+    if i and i.bound ~= nil then return i.bound end
+    return true
+end
+_G.C_TooltipInfo = _G.C_TooltipInfo or {}
+C_TooltipInfo.GetBagItem = function(bag, slot)
+    local id = bagEntry(bag, slot)
+    if not id then return nil end
+    local lines = { { type = 0, leftText = STUB.items[id] and STUB.items[id].name or ("Item " .. id) } }
+    local i = slotInfo(bag, slot)
+    if i and i.trade then lines[#lines + 1] = { type = 36, leftText = i.trade } end
+    return { lines = lines }
+end
+Enum.TooltipDataLineType = { TradeTimeRemaining = 36 }
+_G.BIND_TRADE_TIME_REMAINING = "Ihr könnt diesen Gegenstand innerhalb von %s (inklusive Zeit offline) mit anderen Spielern handeln, die ebenfalls berechtigt waren, diesen Gegenstand zu plündern."
+_G.ERR_TRADE_COMPLETE = "Handel abgeschlossen."
+_G.ERR_TRADE_CANCELLED = "Handel abgebrochen."
 -- counts over bags 0-4 and worn items; with includeBank also the bank bags and STUB.bank
 C_Item.GetItemCount = function(item, includeBank)
     local id = itemId(item)

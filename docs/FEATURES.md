@@ -352,6 +352,25 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia wuerfeln aus` eingibst, dann sagt der Chat "Würfel-Fenster aus. ..."; `/amisia wuerfeln an` sagt "Würfel-Fenster an."
 - Notiz: Was allein prüfbar ist (F-075 braucht Gruppe und Gilde). Spec-Frage 13 (allein): `/run RandomRoll(1,99)` zeigt dieselbe Zeile wie der Knopf.
 
+### F-076 Handel-Helfer: vergebene Items aus den Taschen übergeben
+- Version: 2.18.0
+- Status: gebaut
+- Braucht: Gruppe
+- Prüfung: Wenn du als Plündermeister ein Item dir selbst gibst und es danach im Vergabe-Dialog an Anna vergibst, dann öffnet die Seite Vergaben oben "Noch zu übergeben" mit dem Item, "Anna", der Restzeit (z. B. "noch 1:58 h") und "Vergabe von", und `/amisia uebergabe` nennt es im Chat ("[Item] an Anna, noch 1:58 h"); "Zu den Vergaben" zeigt die Vergaben mit "1 zu übergeben" in der Kopfzeile.
+- Prüfung: Wenn Anna den Handel mit dir öffnet, dann steht rechts am Handelsfenster das Fenster "Handel-Helfer" mit "Für Anna: [Item]", "laut Vergabe von <Name>" und dem Knopf "Amisia: 1 Item einlegen"; ein Klick legt das Item in den ersten freien Platz, der Knopf zeigt dann "Amisia: alles eingelegt". Mit einem anderen Spieler erscheint das Fenster nicht.
+- Prüfung: Wenn du im Kampf auf den Knopf klickst, dann legt Amisia nichts ein und der Chat sagt "Im Kampf legt Amisia nichts ein. Nach dem Kampf noch einmal klicken."
+- Prüfung: Wenn beide "Handeln" gedrückt haben, dann meldet der Chat "Übergeben: [Item] an Anna.", der Eintrag ist aus der Liste, und die Vergabe zeigt "· übergeben"; bricht einer den Handel ab, bleibt der Eintrag stehen.
+- Prüfung: Wenn nur noch 30 bzw. 10 Minuten bleiben, dann warnt dein Chat mit Ton "Noch 30 Minuten: [Item] an Anna übergeben." (je einmal); läuft die Zeit ab, sagt er "Nicht mehr handelbar: [Item] (vergeben an Anna)." und der Eintrag verschwindet.
+- Notiz: Spec docs/specs/2026-10-08-loot-abend.md, Teil 1; DECISIONS D-39 (Ausnahme zu D-27). Offen bis zur Gruppe ab 2026-11-04: Spec-Frage 10 (gibt es die Tooltipzeile mit der Handelszeit; ohne sie steht "Handelszeit unbekannt" und es gibt keine Warnung) und Frage 11 (Partnername, "Handel abgeschlossen").
+
+### F-080 Handel-Helfer: Befehl, Einstellungen und Selbsttest
+- Version: 2.18.0
+- Status: gebaut
+- Prüfung: Wenn du `/amisia uebergabe` eingibst und nichts offen ist, dann meldet der Chat "Nichts zu übergeben." (`/amisia handover` ebenso).
+- Prüfung: Wenn du die Einstellungen öffnest, dann gibt es den Abschnitt "Handel-Helfer" mit "Vergebene Items in deinen Taschen verfolgen", "Warnungen" (bei 30 und 10 Minuten / nur bei 10 Minuten / aus) und "Ton bei einer Warnung"; ist der Helfer aus, sagt `/amisia uebergabe` "Der Handel-Helfer ist aus (Einstellungen, Handel-Helfer)."
+- Prüfung: Wenn du mit einem Item in Tasche 0, Platz 1 (dem ersten Platz des Rucksacks) `/amisia selbsttest` ausführst, dann steht unter "Item-Konstanten" "Enum.TooltipDataLineType.TradeTimeRemaining: 36", "Item-GUID (Tasche 0, Platz 1)" mit einer GUID (beginnt mit "Item-") und "Handelszeit in den Taschen".
+- Notiz: Was allein prüfbar ist (F-076 braucht Gruppe). Die Zeile Item-GUID ist der offene Teil von Spec-Frage 9.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

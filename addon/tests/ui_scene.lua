@@ -112,6 +112,15 @@ function S.epgp()
         .. "P Vuloo 1240 380\nP Fraktur 985 120\nP Chorf 40 0\nP Anna_Bergmann 1310 640\nP Kimtaro 450 75\nP Bobbington 2200 1500\n#END")
 end
 
+-- Awarded items still in the own bags (the trade helper, Handover.lua): Anna's belt with 72 minutes
+-- and Fraktur's helm with 25 minutes to trade.
+function S.handover()
+    STUB.bags[0] = { LINK3, LINK }
+    STUB.bagInfo[0] = { [1] = { guid = "Item-1-A", trade = "1 Std. 12 Min." }, [2] = { guid = "Item-1-B", trade = "25 Min." } }
+    STUB.fire("BAG_UPDATE_DELAYED")
+    STUB.tick(1)
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -136,6 +145,7 @@ S.STATES = {
     { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
     { page = "settings", name = "settings-lootrules", open = function() NS.ShowSettings(NS.L["Lootregeln"]) end },
     { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
+    { page = "awards", name = "awards-handover", open = function() S.handover(); NS.ShowHandover() end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },
@@ -226,6 +236,14 @@ S.WINDOWS = {
         NS._rollWindow.refresh()
         STUB.chatLock = false
         return AmisiaRollWindow
+    end },
+    { key = "tradehelper", view = "raider", open = function()
+        -- the trade window with Anna: the helper beside it
+        S.handover()
+        _G.TradeFrame = _G.TradeFrame or CreateFrame("Frame", "TradeFrame", UIParent)
+        STUB.npc = "Anna Bergmann"
+        STUB.fire("TRADE_SHOW")
+        return AmisiaTradeHelper
     end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()

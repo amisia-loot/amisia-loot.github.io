@@ -803,6 +803,10 @@ local OPTIONAL = {
     -- the guild bank log (BankLog.lua reads nothing without them)
     "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
     "GetGuildBankMoneyTransaction",
+    -- the trade helper: the bag item's GUID, bound state and trade time, the trade window, the cursor
+    "C_Item.GetItemGUID", "C_Item.DoesItemExist", "C_Item.IsBound", "C_TooltipInfo.GetBagItem",
+    "C_Container.GetContainerItemInfo", "C_Container.PickupContainerItem", "ClickTradeButton", "GetTradePlayerItemLink",
+    "CursorHasItem", "ClearCursor", "GetGameMessageInfo",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -870,6 +874,7 @@ local EVENTS = {
     "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "NEW_RECIPE_LEARNED",
     "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA", "GUILD_ROSTER_UPDATE",
     "LOOT_ROLLS_COMPLETE", "LOOT_ITEM_ROLL_WON", "LOOT_HISTORY_UPDATE_DROP",
+    "TRADE_SHOW", "TRADE_CLOSED", "TRADE_ACCEPT_UPDATE", "TRADE_PLAYER_ITEM_CHANGED", "UI_INFO_MESSAGE",
 }
 ST.EVENTS = EVENTS
 
@@ -960,6 +965,43 @@ local function sectionItems(R)
         table.sort(keys)
         table.sort(unknown)
         return "WERT", ("%s: %s%s"):format(link, table.concat(keys, " "), #unknown > 0 and L["; unbekannt: %s"]:format(table.concat(unknown, " ")) or "")
+    end)
+    -- the trade helper (Handover.lua, spec question 9): the tooltip line, its text, the GUID of a bag item
+    check(R, "Enum.TooltipDataLineType.TradeTimeRemaining", function()
+        local e = _G.Enum and Enum.TooltipDataLineType
+        local v = type(e) == "table" and e.TradeTimeRemaining or nil
+        return v == 36 and "OK" or "WERT", show(v)
+    end)
+    for _, key in ipairs({ "BIND_TRADE_TIME_REMAINING", "ERR_TRADE_COMPLETE", "ERR_TRADE_CANCELLED" }) do
+        check(R, key, function() return "WERT", show(_G[key]) end)
+    end
+    check(R, L["Item-GUID (Tasche 0, Platz 1)"], function()
+        local IL = _G.ItemLocation
+        if type(IL) ~= "table" or type(IL.CreateFromBagAndSlot) ~= "function" then error({ missing = "ItemLocation" }) end
+        local loc = IL:CreateFromBagAndSlot(0, 1)
+        if fn("C_Item.DoesItemExist") and not C_Item.DoesItemExist(loc) then return "WERT", L["Platz leer"] end
+        return "WERT", show(call("C_Item.GetItemGUID", loc))
+    end)
+    check(R, L["Handelszeit in den Taschen"], function()
+        local get = fn("C_TooltipInfo.GetBagItem")
+        if not get or not fn("C_Container.GetContainerNumSlots") then error({ missing = "C_TooltipInfo.GetBagItem" }) end
+        local found, first = 0, nil
+        for bag = 0, tonumber(_G.NUM_BAG_SLOTS) or 4 do
+            for slot = 1, tonumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+                local ok, data = pcall(get, bag, slot)
+                for _, line in ipairs(ok and type(data) == "table" and type(data.lines) == "table" and data.lines or {}) do
+                    if type(line) == "table" and line.type == 36 then
+                        found = found + 1
+                        if not first then
+                            local secs = ns.HandoverParseLine and ns.HandoverParseLine(line.leftText)
+                            first = ("%d/%d %s = %s s"):format(bag, slot, show(line.leftText), secs and tostring(secs) or "?")
+                        end
+                    end
+                end
+            end
+        end
+        if found == 0 then return "WERT", L["kein Item mit Handelszeit"] end
+        return "WERT", L["%d Items, zuerst %s"]:format(found, first)
     end)
 end
 

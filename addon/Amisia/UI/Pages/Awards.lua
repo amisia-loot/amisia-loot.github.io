@@ -305,7 +305,8 @@ local function buildOfficer(parent)
         r.itemText:SetText(itemText(a.item))
         -- a change of this officer the keeper has not confirmed yet
         local waiting = ns.SyncWaiting and ns.SyncWaiting(e.s, a.id)
-        r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. L[" · wartet|r"]) or ""))
+        r.name:SetText(winnerText(e.s, a) .. (waiting and (GREY .. L[" · wartet|r"]) or "")
+            .. ((ns.HandedOver and ns.HandedOver(e.s, a)) and (GREY .. L[" · übergeben|r"]) or ""))
         r.kind:SetText(a.kind or "-")
         local pts = ns.PointsSession and ns.PointsSession(e.s)
         if pts then
@@ -683,6 +684,9 @@ local function refreshOfficer(O)
     -- the count, so it is not cut off
     local act = ns.Active()
     local actConflicts = (act and act ~= s and ns.SyncConflicts) and #ns.SyncConflicts(act) or 0
+    -- awarded items in the own bags while the page shows the awards: how many, in front
+    local open = ns.HandoverEntries and #ns.HandoverEntries() or 0
+    if open > 0 then table.insert(parts, 1, T.ORANGE .. L["%d zu übergeben"]:format(open) .. "|r") end
     if actConflicts > 0 then
         table.insert(parts, 2, L["|cffe2b857%d %s im laufenden Raid|r"]:format(actConflicts,
             actConflicts == 1 and L["Konflikt"] or L["Konflikte"]))
@@ -813,7 +817,7 @@ local function buildAll(R)
         local a = e.a
         r.time:SetText(date("%H:%M", a.t or 0))
         r.itemText:SetText(itemText(a.item))
-        r.name:SetText(raiderWinner(e.s, a))
+        r.name:SetText(raiderWinner(e.s, a) .. ((ns.HandedOver and ns.HandedOver(e.s, a)) and (GREY .. L[" · übergeben|r"]) or ""))
         r.kind:SetText((a.kind and a.kind ~= "-") and a.kind or "")
         local plus = (a.kind == "MS" and (a.to == nil or a.to == "player")) and keeperPlus(e.s, a.name) or nil
         r.plus:SetText(plus and tostring(plus) or "")
@@ -909,12 +913,97 @@ local function refreshRaider(R)
     R.empty:SetShown(#mine == 0)
     R.text:SetText(any and L["Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."]
         or L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
+    local open = ns.HandoverEntries and #ns.HandoverEntries() or 0
+    if open > 0 then R.text:SetText(T.ORANGE .. L["%d Items noch zu übergeben: /amisia uebergabe"]:format(open) .. "|r") end
+end
+
+---------------------------------------------------------------------------
+-- Noch zu übergeben: awarded items that still lie in the own bags (Handover.lua, D-39), shortest
+-- time first. The page shows this view first while it has entries; "Zu den Vergaben" puts it away
+-- until a new entry comes (or /amisia uebergabe).
+---------------------------------------------------------------------------
+local HANDOVER_COLS = { { "itemText", 6, 224, "Item" }, { "to", 234, 150, L["An##Übergabe"] }, { "left", 388, 100, L["Restzeit"] },
+    { "by", 492, 92, L["Vergabe von"] } }
+local handoverMode       -- true: shown, false: put away, nil: shown while it has entries
+local handoverSeen = {}  -- the keys of the list when it was put away
+
+local function buildHandover(parent)
+    local H = W.Page(parent, { view = true, top = 0, head = true })
+    H:Bands({ "row", "line" })
+    H.title = W.Text(H, T.FONT.title, 300)
+    H.title:SetText(L["Noch zu übergeben"])
+    H.back = W.Button(H, L["Zu den Vergaben"], 130, function()
+        handoverMode = false
+        handoverSeen = {}
+        for _, e in ipairs(ns.HandoverEntries and ns.HandoverEntries() or {}) do handoverSeen[e.key] = true end
+        ns.Refresh()
+    end)
+    W.FitChip(H.back, 130)
+    H:Place(1, { H.title }, { H.back })
+    H.hint = H:Line(2)
+    H.hint:SetText(L["Kürzeste Restzeit zuerst. Handelt der Empfänger mit dir, legt ein Knopf am Handelsfenster die Items ein."])
+    H:Columns(HANDOVER_COLS)
+    H:Footer({ "foot" })
+    H.foot:SetText(L["Den Vermerk \"übergeben\" sieht nur dein Amisia. Warnungen: Einstellungen, Handel-Helfer."])
+    H.list = H:List(ROWS, ROW_H, function(r)
+        W.Cells(r, HANDOVER_COLS)
+        r:SetScript("OnClick", function(self)
+            local e = self.item
+            if e and IsShiftKeyDown and IsShiftKeyDown() then insertLink(ns.HandoverItemText(e)) end
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if not e or not GameTooltip.SetHyperlink then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetHyperlink(itemLink(e.item))
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end, function(r, e)
+        r.itemText:SetText(itemText(e.item))
+        r.to:SetText(ns.HandoverToText(e))
+        local left = ns.HandoverLeft(e)
+        local color = (left and left <= 600 and T.RED) or (left and left <= 1800 and T.ORANGE) or (not left and GREY) or ""
+        r.left:SetText(color .. ns.HandoverLeftText(e) .. (color ~= "" and "|r" or ""))
+        r.by:SetText(e.by or "")
+    end)
+    H.empty = H:Empty()
+    H.empty:Set(L["Nichts zu übergeben"], L["Liegt ein vergebenes Item noch in deinen Taschen, steht es hier mit seiner Restzeit."])
+    H:Hide()
+    return H
+end
+
+local function showsHandover(list)
+    if handoverMode == true then return true end
+    if #list == 0 then return false end
+    if handoverMode == false then
+        -- a new entry brings the list back
+        for _, e in ipairs(list) do
+            if not handoverSeen[e.key] then
+                handoverMode = nil
+                return true
+            end
+        end
+        return false
+    end
+    return true
+end
+
+local function fillHandover(H, list)
+    H.list:SetItems(list)
+    H.empty:SetShown(#list == 0)
 end
 
 ---------------------------------------------------------------------------
 -- The page, the card and the commands
 ---------------------------------------------------------------------------
 function ns.AwardsPageFrame() return page end
+
+-- Opens the page on "Noch zu übergeben" (/amisia uebergabe).
+function ns.ShowHandover()
+    handoverMode = true
+    ns.ShowPage("awards")
+end
 
 -- Opens the page on one raid.
 function ns.ShowAwards(sessionId)
@@ -932,11 +1021,21 @@ ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icon
         page = f
         f.officer = buildOfficer(f)
         f.raider = buildRaider(f)
+        f.handover = buildHandover(f)
         f.officer:Hide()
         f.raider:Hide()
         return f
     end,
     refresh = function(f)
+        local open = ns.HandoverEntries and ns.HandoverEntries() or {}
+        if showsHandover(open) then
+            f.officer:Hide()
+            f.raider:Hide()
+            f.handover:Show()
+            fillHandover(f.handover, open)
+            return
+        end
+        f.handover:Hide()
         if ns.IsOfficerView() then
             f.raider:Hide()
             f.officer:Show()

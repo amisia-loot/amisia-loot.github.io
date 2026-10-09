@@ -97,6 +97,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/Need.lua` | "Wer braucht das?" UQ/UA; `ns.IsLootLeadName` (who leads the loot, also for WS), `ns.AmisiaInGroup` | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
 | `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line of the hand-outs whose slot cleared; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
 | `Raid/RollWindow.lua` | The raiders' roll window (D-38): the loot lead's round start (WS) and end (WE) from Rolls.lua; every raider client shows the item, the hints (reserved, plus-one, upgrade, wishlist), a timer bar and Mainspec/Offspec (RandomRoll 1-100/1-99), a bid or need/greed, Passen (WA to the lead, counted through `ns.PointsChatWord` like the whispered words); the lead's tally "passt · ohne Antwort" in the roll window; `/amisia wuerfeln test` | (`settings.rollWindow`) | Rolls, PointsRounds, Need, SoftRes, Bis, GuildWishes, Awards, Points, Comm, Trust, Chat, Widgets, Theme |
+| `Raid/Handover.lua` | The trade helper (D-39), only for the exceptions of master loot: an award (player, bank, disenchanter) of the last two hours whose copy still lies tradeable in the own bags ("Noch zu übergeben" on the Vergaben page, `/amisia uebergabe`); time left from the tooltip line TradeTimeRemaining (type 36, `BIND_TRADE_TIME_REMAINING`), own chat warnings at 30 and 10 minutes; copies followed by item GUID (else bag and slot); beside the trade window with the receiver "Amisia: N Items einlegen" (a click, never in combat); after the trade the copies that left the bags are marked handed over (only on this client) | `handover` | Awards, Sync (`ns.RaidKey`), Widgets, Theme, Awards page |
 | `Gear/Talents.lua` | Talent calculator rules | `talents` | LazyData |
 | `Gear/MageScrolls.lua` | Mage scrolls (Comprehension) | - | LazyData, Professions |
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |
@@ -355,6 +356,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `prof` | `{chars = {[name] = {[skill] = {rank, max, day, known}}}, guild}` | Professions.lua, Crafters.lua | checked on load |
 | `crafters` | `{v = 1, src, c}` heard crafters | Crafters.lua | `Cr.Prune`: malformed dropped, 45 days, 500 crafters, byte caps |
 | `talents` | `{class, level, talented, plans}` | Talents.lua | - |
+| `handover` | `{ ["<raid key>/<award id>"] = {t, to, g} }` only the mark "übergeben" (when, to whom, the copy's GUID); the open list is built from the awards and the bags, never saved | Handover.lua | `ns.HandoverLoaded`: keys and fields checked, older than 3 days dropped, 200 at most (the newest) |
 | `lootRules` | `{v = 1, rev, by, at, sent, seen, list = {{id (4 hex), k = q/m/i/p, q (2/3), items, to = bank/de/name, by}}, offer = {from, rev, at, list}}` | LootRules.lua | `ns.LootRulesLoaded`: every field checked, a bad rule or offer dropped; 30 rules, 50 items per list, a player rule exactly one item |
 
 ## Settings registry
@@ -378,6 +380,7 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 | `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
 | `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
 | `lootrules` | Raid/LootRules.lua (officers) | `rollwin` | Raid/RollWindow.lua (everyone; `rollwin.self` officers) |
+| `trade` | Raid/Handover.lua (everyone) | | |
 
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item

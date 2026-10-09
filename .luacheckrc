@@ -49,4 +49,6 @@ read_globals = {
     "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitFactionGroup", "UnitFullName",
     "UnitGUID", "UnitIsDead", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsUnit", "UnitLevel",
     "UnitName", "UnitPosition", "UnitRace", "wipe",
+    -- the trade helper (Handover.lua)
+    "ClickTradeButton", "ClearCursor", "CursorHasItem", "GetGameMessageInfo", "GetTradePlayerItemLink",
 }

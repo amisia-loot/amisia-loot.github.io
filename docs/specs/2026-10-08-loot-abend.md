@@ -357,7 +357,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
    **Ergebnis 2026-10-09 (Nutzer, Client 1.60.1):** `TradeTimeRemaining` = 36; `BIND_TRADE_TIME_REMAINING`
    = "Ihr könnt diesen Gegenstand innerhalb von %s (inklusive Zeit offline) mit anderen Spielern
    handeln, die ebenfalls berechtigt waren, diesen Gegenstand zu plündern."; `ERR_TRADE_COMPLETE` =
-   "Handel abgeschlossen." Die GUID-Prüfung steht noch aus.
+   "Handel abgeschlossen." Die GUID-Prüfung steht noch aus (seit 2.18.0 eine Zeile in `/amisia selbsttest`,
+   F-080).
 10. **Prüfung mit Gruppe: gibt es die 2 Stunden Handelszeit in Forever?** Nach einem Item, das in der
     Gruppe geplündert wurde und beim Aufheben gebunden ist:
     `/run for b=0,4 do for s=1,C_Container.GetContainerNumSlots(b) do local d=C_TooltipInfo.GetBagItem(b,s) for _,l in ipairs(d and d.lines or {}) do if l.type==36 then print(b,s,l.leftText) end end end end`
@@ -398,3 +399,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. D
 - 2026-10-09: Teil 3 gebaut (F-075, F-079, DECISIONS D-38): `WS`/`WE`/`WA`, Abschnitt `rollwin`,
   `/amisia wuerfeln test` (en `rolltest`). "Mehrere Items" heißt dabei: das Ergebnis der vorigen
   Runde steht 5 Sekunden unter der neuen; eine neue Runde ersetzt die laufende (keine parallelen Runden).
+- 2026-10-09: Teil 1 gebaut (F-076, F-080, DECISIONS D-39), nur für Ausnahmen, Einlegen nur per Knopf,
+  im Kampf nichts. Abweichend vom Entwurf: ohne Tooltipzeile keine Schätzung "Erhalt plus 2 Stunden",
+  sondern "Handelszeit unbekannt" ohne Warnung; eine abgelaufene Kopie meldet der Chat einmal und sie
+  verschwindet aus der Liste (statt rot stehen zu bleiben); ist ein Vorname nicht eindeutig, erscheint
+  kein Knopf (statt einer Auswahl). "Automatisch einlegen" gibt es nicht, solange Frage 11 offen ist.
