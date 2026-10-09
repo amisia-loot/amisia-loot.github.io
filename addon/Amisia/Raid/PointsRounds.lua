@@ -379,11 +379,23 @@ end
 ---------------------------------------------------------------------------
 -- The chat
 ---------------------------------------------------------------------------
+-- Whether name is in the group, its class and its group spelling: the same spelling, else the one
+-- member a first name alone means (ns.SameNameIn: "Kim" is nobody while "Kim" and "Kim Eisherz"
+-- are both in the raid, never the first of them).
 local function groupClass(name)
+    local members = {}
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
         n = ns.FullName(ns.Plain(n))
-        if n and ns.SameName(n, name) then return true, ns.Plain(class), n end
+        if n then
+            if n:lower() == name:lower() then return true, ns.Plain(class), n end
+            members[#members + 1] = { n, class }
+        end
+    end
+    local roster = {}
+    for i, m in ipairs(members) do roster[i] = m[1] end
+    for _, m in ipairs(members) do
+        if ns.SameNameIn(m[1], name, roster) then return true, ns.Plain(m[2]), m[1] end
     end
     return false
 end
@@ -399,10 +411,12 @@ end
 
 local CHANNELS = { WHISPER = true, RAID = true, PARTY = true }
 
-local function onBid(sender, rest, chan)
+-- who: the sender's group spelling when the caller knows it (the roll window's WA, Trust.lua), else
+-- the sender as the chat gives it.
+local function onBid(sender, rest, chan, who)
     local r = ns.CurrentRoll and ns.CurrentRoll()
     if not r or r.done or r.mode ~= "bid" or not CHANNELS[chan] then return end
-    local name = ns.FullName(sender)
+    local name = ns.FullName(who or sender)
     if not name then return end
     local ok, class, full = groupClass(name)
     if not ok then return end
@@ -423,10 +437,10 @@ local function onBid(sender, rest, chan)
 end
 
 local function needWord(kind)
-    return function(sender, rest, chan)
+    return function(sender, rest, chan, who)
         local r = ns.CurrentRoll and ns.CurrentRoll()
         if not r or r.done or r.mode ~= "pr" or not CHANNELS[chan] then return end
-        local name = ns.FullName(sender)
+        local name = ns.FullName(who or sender)
         if not name then return end
         local ok, class, full = groupClass(name)
         if not ok then return end
@@ -437,11 +451,12 @@ local function needWord(kind)
 end
 
 -- The same handlers for an answer from the roll window (RollWindow.lua, an addon whisper): it counts
--- exactly like the whispered word.
+-- exactly like the whispered word. sender gets the reply; who (optional) is its group spelling, the
+-- name the entry is for (an addon sender may carry a realm ending).
 local WORDS = { bid = onBid, need = needWord("MS"), greed = needWord("OS"), pass = needWord(nil) }
-function ns.PointsChatWord(word, sender, rest, chan)
+function ns.PointsChatWord(word, sender, rest, chan, who)
     local fn = WORDS[word]
-    if fn then fn(sender, rest or "", chan) end
+    if fn then fn(sender, rest or "", chan, who) end
 end
 
 for _, w in ipairs({ "bid", "gebot" }) do ns.RegisterChatCommand(w, onBid) end -- l10n-ok: chat words

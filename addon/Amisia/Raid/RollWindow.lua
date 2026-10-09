@@ -34,6 +34,7 @@ local MSG_BYTES = 250                     -- one addon message (Comm.lua)
 local WINNER_FOR = 5                      -- seconds the result stays
 local GRACE = 3                           -- the window closes this long after its clock without WE
 local END_TTL = 10
+local START_TTL = 5                       -- a held WS (lockdown, throttle) falls after this: its seconds would lie
 local ANSWER_TTL = 15
 local ANSWER_GAP = 2.2                    -- the lead takes one answer per round every 2 s (KEYED_GAP)
 local TICK = 0.1
@@ -427,6 +428,11 @@ end
 
 local function fillRow(row, r)
     row.r = r
+    -- a row taking another round starts with an empty bid field (no amount of the round before)
+    if row.bidFor ~= r then
+        row.bidFor = r
+        row.bidEdit:SetText("")
+    end
     if not r.name then
         -- read once the client has the item (asked for on the first try)
         local name, link, quality, icon = itemInfo(r.item, not r.asked)
@@ -461,10 +467,11 @@ local function fillRow(row, r)
         W.FitChip(row.need, 60)
         W.FitChip(row.greed, 60)
     end
-    -- a roll is final (a second one would not count); a pass can still be followed by a roll
+    -- a roll is final (a second one would not count); a pass can still be followed by a roll; a bid
+    -- stands (a pass would not take it back at the loot lead, as !pass in a bid round)
     row.ms:SetEnabled(act and not rolled)
     row.os:SetEnabled(act and not rolled)
-    row.pass:SetEnabled(act and not rolled and r.choice ~= "P")
+    row.pass:SetEnabled(act and not rolled and r.choice ~= "P" and r.choice ~= "B")
     row.need:SetEnabled(act)
     row.greed:SetEnabled(act)
     row.bidBtn:SetEnabled(act)
@@ -586,10 +593,13 @@ local function resultText(winner, res, how)
     return L["Gewinner: %s"]:format(winner)
 end
 
--- The end of round rid from lead (WE), or of the own round (own = true).
+-- The end of round rid from lead (WE), or of the own round (own = true). The sender must be the
+-- round's lead (ns.SameNameIn: "Fraktur Stein" never ends the round of "Fraktur").
 local function endRound(rid, lead, winner, res, own, how)
+    local roster = ns.GroupRoster()
     for _, r in ipairs(rounds) do
-        if r.rid == rid and not r.done and not r.test and ((own and r.own) or (not own and not r.own and lead and ns.SameName(r.lead, lead))) then
+        if r.rid == rid and not r.done and not r.test
+            and ((own and r.own) or (not own and not r.own and lead and r.lead and ns.SameNameIn(r.lead, lead, roster))) then
             r.done = true
             r.result = resultText(winner, res, how)
             r.closeAt = now() + WINNER_FOR
@@ -656,19 +666,21 @@ end
 
 -- An answer from a raider's window (or the lead's own) in round r: a pass is noted for the tally (and
 -- in a need/greed round takes the entry out, as !pass); need, greed and a bid go through the very
--- functions of the whispered words, with their checks and replies (PointsRounds.lua).
+-- functions of the whispered words, with their checks and replies (PointsRounds.lua). sender is the
+-- raw sender (the reply goes there), name its group spelling (who the entry is: a realm ending on
+-- the sender must not lose the answer).
 takeAnswer = function(r, sender, name, what, value)
     if not tiedIn(r, name) then return end
     r.passed = r.passed or {}
     if what == "P" then
         r.passed[name] = true
-        if r.mode == "pr" and ns.PointsChatWord then ns.PointsChatWord("pass", sender, "", "WHISPER") end
+        if r.mode == "pr" and ns.PointsChatWord then ns.PointsChatWord("pass", sender, "", "WHISPER", name) end
     elseif (what == "N" or what == "G") and r.mode == "pr" then
         r.passed[name] = nil
-        if ns.PointsChatWord then ns.PointsChatWord(what == "N" and "need" or "greed", sender, "", "WHISPER") end
+        if ns.PointsChatWord then ns.PointsChatWord(what == "N" and "need" or "greed", sender, "", "WHISPER", name) end
     elseif what == "B" and r.mode == "bid" then
         r.passed[name] = nil
-        if ns.PointsChatWord then ns.PointsChatWord("bid", sender, tostring(value or ""), "WHISPER") end
+        if ns.PointsChatWord then ns.PointsChatWord("bid", sender, tostring(value or ""), "WHISPER", name) end
     else
         return
     end
@@ -683,8 +695,9 @@ function ns.RollWindowStarted(r)
     r.passed = {}
     if not (ns.NeedCanAsk and ns.NeedCanAsk()) then return end
     local fields = wsFields(r)
-    -- held by the lockdown, it falls after the round's time
-    if not ns.CommSend("WS", fields, "RAID", nil, { ttl = r.seconds, key = "WS" }) then return end
+    -- held by the lockdown (or the throttle), it falls after a few seconds: the raiders' clocks start
+    -- when it arrives, so a late round would show more time than the lead's round has left
+    if not ns.CommSend("WS", fields, "RAID", nil, { ttl = math.min(r.seconds, START_TTL), key = "WS" }) then return end
     r.wsSent = true
     if ns.Get("rollwin.enabled") and ns.Get("rollwin.self") then startRound(fields, me(), nil, { own = true }) end
 end
@@ -779,7 +792,9 @@ ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     if type(text) ~= "string" then return end
     if not matcher then matcher = ns.BuildMatcher(RANDOM_ROLL_RESULT) end
     local a = matcher(text)
-    if not a or not ns.SameName(a[1], me()) then return end
+    -- the own line only: a first name alone counts while only one raider carries it (another
+    -- raider's number never shows as the own, nor closes the own buttons)
+    if not a or not ns.SameNameIn(a[1], me(), ns.GroupRoster()) then return end
     local value, low, high = tonumber(a[2]), tonumber(a[3]), tonumber(a[4])
     local kind = (low == 1 and high == 100 and "MS") or (low == 1 and high == 99 and "OS") or nil
     if not kind or not value then return end

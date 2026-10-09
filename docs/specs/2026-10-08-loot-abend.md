@@ -146,7 +146,8 @@ wirklich gewürfelt wird, und niemand mehr fragt "/roll oder /roll 99?".
 1. Die Lootleitung startet eine Runde wie heute. Die Ansage im Raidchat bleibt, damit Raider ohne
    Amisia wissen, was los ist.
 2. Zusätzlich schickt Amisia eine Addon-Nachricht "Runde beginnt" in den Raid. Hält die Kampfsperre
-   sie auf, verfällt sie nach der Rundendauer.
+   sie auf, verfällt sie nach der Rundendauer. (Umgesetzt 2026-10-09: nach höchstens 5 Sekunden, D-38;
+   die Uhr der Raider beginnt bei der Ankunft und zeigte sonst zu viel Zeit.)
 3. Jeder Raider-Client prüft den Absender: Offiziersrang in der eigenen Gilde, in der Gruppe und
    Lootleitung (dieselbe Prüfung wie bei "Wer braucht das?"). Dann erscheint das Fenster.
 4. Klick "Mainspec": Amisia würfelt für den Raider 1-100, "Offspec" 1-99. Der Server schreibt die
