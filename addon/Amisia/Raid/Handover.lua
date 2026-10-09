@@ -111,16 +111,17 @@ end
 -- the line at all.
 local function tradeLeft(bag, slot)
     local api = _G.C_TooltipInfo
-    if type(api) ~= "table" or type(api.GetBagItem) ~= "function" then return nil, false end
+    if type(api) ~= "table" or type(api.GetBagItem) ~= "function" then return nil, false, false end
     local ok, data = pcall(api.GetBagItem, bag, slot)
-    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return nil, false end
+    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" or #data.lines == 0 then return nil, false, false end
     local want = lineType()
     for _, line in ipairs(data.lines) do
         if type(line) == "table" and ns.Plain(line.type) == want then
-            return ns.HandoverParseLine(line.leftText), true
+            return ns.HandoverParseLine(line.leftText), true, true
         end
     end
-    return nil, false
+    -- the lines were read and the trade line is not among them
+    return nil, false, true
 end
 
 ---------------------------------------------------------------------------
@@ -188,12 +189,12 @@ local function bagCopies(want)
             local id = tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot)))
             if id and want[id] then
                 local guid, bound = guidAt(bag, slot)
-                local left, line = tradeLeft(bag, slot)
+                local left, line, read = tradeLeft(bag, slot)
                 local link = C_Container.GetContainerItemLink and ns.Plain(C_Container.GetContainerItemLink(bag, slot))
                 local tradeable = (line and not (left and left <= 0)) or (not line and bound ~= true)
                 out[#out + 1] = { bag = bag, slot = slot, id = id, link = type(link) == "string" and link or nil, guid = guid,
                                   left = left, line = line, tradeable = tradeable and true or false, bound = bound, readAt = now(),
-                                  count = stackAt(bag, slot) }
+                                  count = stackAt(bag, slot), unread = not read }
             end
         end
     end
@@ -469,7 +470,8 @@ local function scan()
             for _, e in ipairs(assign(open, mine, copies)) do
                 e.left = leftOf(e.copy)
                 if not e.copy.tradeable then
-                    runOut(e)
+                    -- a tooltip that could not be read says nothing: no "run out" from one bad read
+                    if not e.copy.unread then runOut(e) end
                 else
                     out[#out + 1] = e
                     listed[e.key] = true
@@ -482,7 +484,7 @@ local function scan()
                     for _, c in ipairs(copies) do
                         local same = (b.copy.guid and c.guid == b.copy.guid)
                             or (not b.copy.guid and c.id == b.item and c.bag == b.copy.bag and c.slot == b.copy.slot)
-                        if same and not c.tradeable then
+                        if same and not c.tradeable and not c.unread then
                             runOut(b)
                             break
                         end

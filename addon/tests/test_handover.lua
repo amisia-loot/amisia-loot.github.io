@@ -292,6 +292,15 @@ STUB.bags[3] = { link2 }
 STUB.bagInfo[3] = { [1] = { guid = "Item-1-ZZZ", trade = "1 Min." } }
 bags()
 assert(#list() == 1 and list()[1].a == a6)
+-- a tooltip that cannot be read once (no data) is no "run out": the entry stays and comes back
+local realTip = C_TooltipInfo.GetBagItem
+C_TooltipInfo.GetBagItem = function() return nil end
+STUB.messages = {}
+bags()
+assert(not said("Nicht mehr handelbar"), "one bad read does not run the copy out")
+C_TooltipInfo.GetBagItem = realTip
+bags()
+assert(#list() == 1 and list()[1].a == a6, "listed again once the tooltip reads")
 STUB.messages = {}
 STUB.bagInfo[3][1].trade = "0 Min."
 bags()
