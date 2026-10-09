@@ -37,6 +37,7 @@ local OFFER_GAP = 30          -- a new set from one officer at most this often
 local FUTURE = 86400          -- a received revision may run this far ahead of the own clock
 local ASK_AFTER, ASK_SPREAD = 35, 20
 local AUTO_DELAY = 1          -- seconds after the loot window opens ("automatisch")
+local ARRIVE_WAIT = 3         -- seconds a hand-out has to clear its slot; else it did not arrive
 local NEED_WAIT, NEED_TRIES = 3, 2   -- an open "Wer braucht das?" question holds the run this long
 local CORPSE_KEEP = 12 * 3600
 local NOTE_MARK = "Regel: "   -- l10n-ok: the fixed marker of a rule's award note (data, read on the site)
@@ -47,7 +48,9 @@ local SPECIAL = { bank = true, de = true }
 local DB                      -- AmisiaDB
 local lootOpen, fromItem, serial = false, false, 0
 local given, failed = {}, {}  -- loot slot -> link: handed out / left lying in this loot window
-local givenList = {}          -- the plan entries the rules gave in this loot window (the bar in automatic mode)
+local sentTo = {}             -- loot slot -> plan entry: given, its LOOT_SLOT_CLEARED not yet come
+local arrived = {}            -- plan entries whose slot cleared, not yet in the raid chat line
+local givenList = {}          -- the plan entries whose hand-out arrived in this loot window (the bar in automatic mode)
 local waiting                 -- { serial, manual }: a run held by combat or the lockdown
 local waitTold                -- serial of the window whose waiting was told
 local told = {}               -- raid id -> true: "Lootregeln aktiv" was said
@@ -354,6 +357,25 @@ local function matches(r, id, q)
     return false
 end
 
+-- Whether a name may be in the raid: any spelling of it (a first name alone matches every member
+-- with that first name), and always while the client hides a member's name. A reservation or wish
+-- by an unclear name keeps the item from the rules.
+local function inRaid(name)
+    local roster = ns.GroupRoster()
+    if #roster < (tonumber(ns.Plain(GetNumGroupMembers())) or 0) then return true end
+    for _, r in ipairs(roster) do
+        if ns.SameName(name, r) then return true end
+    end
+    return false
+end
+
+-- Whether the loot announcement (LootAnnounce.lua) names an item of this quality: such an item
+-- goes the normal way, a quality rule leaves it.
+local function announced(id, q)
+    if not ns.Get("loot.announce") or ns.MATS[id] or (ns.IGNORE and ns.IGNORE[id]) then return false end
+    return q ~= nil and q >= (tonumber(ns.Get("loot.quality")) or 4)
+end
+
 local function pointsRaid()
     local p = ns.PointsSession and ns.PointsSession(ns.Active())
     return p ~= nil and (p.sys == "dkp" or p.sys == "epgp")
@@ -364,24 +386,31 @@ end
 function ns.LootRuleGuard(id, q)
     if q and q >= 5 then return L["legendär"] end
     for _, name in ipairs(ns.ReservedBy and ns.ReservedBy(id) or {}) do
-        if ns.InMyGroup(name) then return L["reserviert"] end
+        if inRaid(name) then return L["reserviert"] end
     end
     if ns.LootPrioOf and ns.LootPrioOf(id) then return L["Loot-Prio"] end
-    if ns.WishersOf and #ns.WishersOf(id, true) > 0 then return L["Gildenwunsch"] end
+    for _, w in ipairs(ns.WishersOf and ns.WishersOf(id) or {}) do
+        if inRaid(w.name) then return L["Gildenwunsch"] end
+    end
     local need = ns.NeedOf and ns.NeedOf(id)
     if need and (#need.up > 0 or #need.wish > 0) then return L["Upgrade oder Wunsch gemeldet"] end
     if ns.RoundsOf and #ns.RoundsOf(id) > 0 then return L["Roll-Runde"] end
     return nil
 end
 
--- One item through the rules: { rule, index, name } when a rule gives it, else { why }.
+-- One item through the rules: { rule, index, name } when a rule gives it, else { why }. A quality
+-- rule passes over an item the loot announcement names (a later item or player rule may take it).
 local function decide(id, q)
     if q and q >= 5 then return { why = L["legendär"] } end
     local list = ns.LootRules().list
-    local rule, index
+    local rule, index, held
     for i, r in ipairs(list) do
-        if matches(r, id, q) then rule, index = r, i break end
+        if matches(r, id, q) then
+            if r.k ~= "q" or not announced(id, q) then rule, index = r, i break end
+            held = held or i
+        end
     end
+    if not rule and held then return { why = L["angesagt"], rule = list[held], index = held, blocked = true } end
     if not rule then return { why = L["keine Regel"] } end
     local guard = ns.LootRuleGuard(id, q)
     if guard then return { why = guard, rule = rule, index = index, blocked = true } end
@@ -404,6 +433,17 @@ local function lootThreshold()
     local ok, v = pcall(fn)
     v = ok and ns.Plain(v) or nil
     return type(v) == "number" and v or 0
+end
+
+-- Whether the rules hand an item out by themselves on this client (automatic mode, an item or
+-- player rule, at or above the loot threshold): the loot announcement leaves such an item out, so
+-- the raid is not asked for an item that is gone a second later.
+function ns.LootRuleTakes(id, q)
+    id = tonumber(id)
+    if not id or ns.Get("lootrules.mode") ~= "auto" or whyNot() then return false end
+    if q and q < lootThreshold() then return false end
+    local e = decide(id, q)
+    return e.name ~= nil and not e.blocked and (e.rule.k == "i" or e.rule.k == "p")
 end
 
 -- The items of the open loot window through the rules: { slot, link, id, q, rule, index, name, why }
@@ -472,12 +512,22 @@ end
 ---------------------------------------------------------------------------
 -- Handing out
 ---------------------------------------------------------------------------
+-- The candidate index of name for a slot: the one candidate that is name (ns.SameName: a side
+-- without surname matches on the first name). nil, and true when two or more fit (the item stays).
 local function candidateIndex(slot, name)
+    local exact, loose, nExact, nLoose = nil, nil, 0, 0
     for i = 1, 40 do
-        local c = ns.Plain(GetMasterLootCandidate(slot, i))
-        if c and ns.SameName(c, name) then return i end
+        local c = ns.FullName(ns.Plain(GetMasterLootCandidate(slot, i)))
+        if c then
+            if c:lower() == name:lower() then
+                exact, nExact = i, nExact + 1
+            elseif ns.SameName(c, name) then
+                loose, nLoose = i, nLoose + 1
+            end
+        end
     end
-    return nil
+    if nExact + nLoose == 1 then return exact or loose end
+    return nil, nExact + nLoose > 1
 end
 
 -- "[Item] an die Bank (Name)", "[Item] zum Entzaubern (Name)", "[Item] an Name"
@@ -488,6 +538,32 @@ local function givenText(e)
 end
 
 local refreshBar
+
+-- The hand-outs of the run are settled: the arrived ones go into one raid chat line, only from the
+-- loot lead (D-27); with timeout the ones whose slot did not clear within 3 s (all of them when the
+-- window closes) are told to the master looter (bags full, out of range) and stay off the line, the
+-- bar and a second try.
+local function settle(timeout, all)
+    if timeout then
+        local t = GetTime()
+        for slot, e in pairs(sentTo) do
+            if all or t - e.sentAt >= ARRIVE_WAIT - 0.05 then
+                sentTo[slot] = nil
+                failed[slot], given[slot] = L["nicht bestätigt"], nil
+                msg(L["%s an %s ist nicht bestätigt (Taschen voll oder außer Reichweite?). Prüf, ob das Item noch liegt."]:format(e.link, e.name))
+            end
+        end
+    end
+    if #arrived == 0 then return end
+    local parts = {}
+    for _, e in ipairs(arrived) do parts[#parts + 1] = givenText(e) end
+    wipe(arrived)
+    if ns.Get("lootrules.chat") and ns.IsLootLead and ns.IsLootLead() then
+        local lines = ns.ChatLines(L["Amisia-Regeln: "], parts)
+        lines[#lines] = lines[#lines] .. "."
+        for _, line in ipairs(lines) do ns.Say(line, "RAID", nil, { ttl = 600 }) end
+    end
+end
 
 -- Hands out what the rules give in the open loot window. manual: a click or a command (a corpse the
 -- rules already ran on is done again; the reason is told). Returns the number given and, when
@@ -519,22 +595,23 @@ local function run(manual)
         return 0, "blocked"
     end
     waiting = nil
-    local parts, n = {}, 0
+    local n = 0
     for _, e in ipairs(todo) do
         if not (ns.PendingAward and ns.PendingAward(e.slot)) and ns.ItemID(ns.Plain(GetLootSlotLink(e.slot))) == e.id then
-            local idx = candidateIndex(e.slot, e.name)
+            local idx, unclear = candidateIndex(e.slot, e.name)
             if not idx then
-                failed[e.slot] = L["kein Kandidat"]
-                msg(L["%s ist kein Kandidat für %s. Das Item bleibt liegen."]:format(e.name, e.link))
+                failed[e.slot] = unclear and L["Name nicht eindeutig"] or L["kein Kandidat"]
+                msg((unclear and L["%s ist unter den Kandidaten für %s nicht eindeutig. Das Item bleibt liegen."]
+                    or L["%s ist kein Kandidat für %s. Das Item bleibt liegen."]):format(e.name, e.link))
             else
                 local ok = pcall(GiveMasterLoot, e.slot, idx)
                 if ok then
                     given[e.slot] = e.link
-                    givenList[#givenList + 1] = e
+                    e.sentAt = GetTime()
+                    sentTo[e.slot] = e
                     if ns.TagPendingAward then
                         ns.TagPendingAward(e.slot, NOTE_MARK .. ns.LootRuleLabel(e.rule), "-")
                     end
-                    parts[#parts + 1] = givenText(e)
                     n = n + 1
                 else
                     failed[e.slot] = L["nicht gegeben"]
@@ -543,11 +620,15 @@ local function run(manual)
         end
     end
     markDone(key)
-    -- one line in the raid chat, only from the loot lead (D-27)
-    if n > 0 and ns.Get("lootrules.chat") and ns.IsLootLead and ns.IsLootLead() then
-        local lines = ns.ChatLines(L["Amisia-Regeln: "], parts)
-        lines[#lines] = lines[#lines] .. "."
-        for _, line in ipairs(lines) do ns.Say(line, "RAID", nil, { ttl = 600 }) end
+    -- the raid chat line names what arrived: when every slot cleared, at the latest after 3 s
+    if n > 0 then
+        local at = serial
+        C_Timer.After(ARRIVE_WAIT, function()
+            if at == serial and lootOpen then
+                settle(true)
+                if refreshBar then refreshBar() end
+            end
+        end)
     end
     if refreshBar then refreshBar() end
     return n
@@ -690,9 +771,12 @@ local function tellOnce()
 end
 
 ns.OnEvent("LOOT_OPENED", function(_, isFromItem)
+    if lootOpen then settle(true, true) end
     lootOpen = true
     serial = serial + 1
     wipe(given)
+    wipe(sentTo)
+    wipe(arrived)
     wipe(failed)
     wipe(givenList)
     waiting = nil
@@ -709,14 +793,25 @@ ns.OnEvent("LOOT_OPENED", function(_, isFromItem)
     end
 end)
 
-ns.OnEvent("LOOT_SLOT_CLEARED", function()
-    if lootOpen and refreshBar then refreshBar() end
+ns.OnEvent("LOOT_SLOT_CLEARED", function(slot)
+    if not lootOpen then return end
+    local e = slot and sentTo[slot]
+    if e then
+        sentTo[slot] = nil
+        arrived[#arrived + 1] = e
+        givenList[#givenList + 1] = e
+        if not next(sentTo) then settle(false) end
+    end
+    if refreshBar then refreshBar() end
 end)
 
 ns.OnEvent("LOOT_CLOSED", function()
+    if lootOpen then settle(true, true) end
     lootOpen = false
     waiting = nil
     wipe(given)
+    wipe(sentTo)
+    wipe(arrived)
     wipe(failed)
     wipe(givenList)
     if bar then bar:Hide() end

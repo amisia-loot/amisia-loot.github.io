@@ -51,7 +51,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |
 | `Raid/SoftRes.lua` | Soft-reserves paste, tooltip, loot window "SR" | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
-| `Raid/LootAnnounce.lua` | Loot lead (`ns.IsLootLead`), loot announcement, `!sr` | - | SoftRes, Awards, Need, LootPrio, Chat |
+| `Raid/LootAnnounce.lua` | Loot lead (`ns.IsLootLead`), loot announcement (without the items an item or player loot rule hands out by itself, `ns.LootRuleTakes`), `!sr` | - | SoftRes, Awards, Need, LootPrio, Chat |
 | `Raid/RaidLog.lua` | Boss attempts from encounter events, presence at kills | - | Sync, Awards |
 | `Raid/Bench.lua` | Bench per raid, `!bench` | `benchNext` | Sync, Trust, LootAnnounce, RaidLog |
 | `Raid/GroupRolls.lua` | Group loot roll log (R lines) | `groupRolls` | RaidLog |
@@ -95,7 +95,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/GuildWishes.lua` | Site wishlist paste-in (W lines), tooltip, "W" marks | (`bis.guild`) | Bis, SoftRes, Awards |
 | `Gear/Compare.lua` | Upgrade marks on roll frames and quest rewards | - | Bis, Gear |
 | `Raid/Need.lua` | "Wer braucht das?" UQ/UA | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
-| `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
+| `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line of the hand-outs whose slot cleared; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
 | `Gear/Talents.lua` | Talent calculator rules | `talents` | LazyData |
 | `Gear/MageScrolls.lua` | Mage scrolls (Comprehension) | - | LazyData, Professions |
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |

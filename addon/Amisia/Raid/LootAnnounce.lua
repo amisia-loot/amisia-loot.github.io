@@ -169,12 +169,14 @@ end
 
 -- The items of the open loot window grouped by source, in slot order: { key, name, links }.
 -- A source is the slot's GUID (GetLootSourceInfo), else the target's; without a usable one (secret
--- or missing) the sorted item ids are the key. Containers from the bags are left out.
-local function lootGroups()
+-- or missing) the sorted item ids are the key. Containers from the bags are left out; with
+-- skipRules also the items the loot rules hand out by themselves (LootRules.lua, D-37).
+local function lootGroups(skipRules)
     local groups, byKey, loose = {}, {}, nil
     local sourceInfo = _G.GetLootSourceInfo
     for slot = 1, (GetNumLootItems and GetNumLootItems() or 0) do
         local id, link = worth(GetLootSlotLink(slot))
+        if id and skipRules and ns.LootRuleTakes and ns.LootRuleTakes(id, ns.LinkQuality(link)) then id = nil end
         if id then
             local raw, hasApi = nil, type(sourceInfo) == "function"
             if hasApi then
@@ -234,7 +236,7 @@ local function onLootOpened(_, isFromItem)
     if not ns.Get("loot.announce") or not ns.IsLootLead() then return end
     -- under group loot the items are rolled for, and START_LOOT_ROLL announces them already
     if ns.Get("loot.groupLoot") and select(4, lootMethod()) then return end
-    for _, g in ipairs(lootGroups()) do
+    for _, g in ipairs(lootGroups(true)) do
         if not seen(g.key) then
             announce(lootHead(g), g.links)
             remember({ g.key })
