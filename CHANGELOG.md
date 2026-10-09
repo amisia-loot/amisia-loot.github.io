@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.18.0 (2026-10-09)
+
+- Spec: in-game check 9 (trade time constants) done
+- Trade helper (F-076, F-080, D-39): awarded items in the own bags, "Noch zu übergeben", insert by click
+- Trade helper review: two items per click in their own slots, a refused pick-up not counted, one of a stack, same-item copies after the trade
+- Handover: a tooltip that cannot be read is no 'run out' (only a read tooltip without the trade line is)
+
 ## 2.17.2 (2026-10-09)
 
 - Roll window: content 18 px from the frame's edges (12 still touched the border), 340 wide
