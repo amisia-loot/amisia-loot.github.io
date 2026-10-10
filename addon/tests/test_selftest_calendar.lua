@@ -200,8 +200,19 @@ STUB.tick(20)
 text = report()
 assert(has(text, "WERT   Antwort auf OpenCalendar: kein CALENDAR_UPDATE_EVENT_LIST / _GUILD_EVENTS nach 5 s"), text)
 assert(has(text, "WERT   GetNumGuildEvents: 0") and has(text, "WERT   Am weitesten voraus: kein Termin"), text)
-assert(has(text, "kein Gildenereignis der Art Schlachtzug"), text)
-assert(has(lastMsg(), "Kalender-Prüfung: 0 Gildenereignisse, Teilnehmerliste übersprungen (kein Schlachtzug-Ereignis)"), lastMsg())
+assert(has(text, "kein Gildenereignis (GUILD_EVENT)"), text)
+assert(has(lastMsg(), "Kalender-Prüfung: 0 Gildenereignisse, Teilnehmerliste übersprungen (kein Gildenereignis)"), lastMsg())
+
+-- 5b. only a meeting-type guild event (the raid type needs a raid instance the client may not offer
+-- yet): the probe reads its invite list all the same; an announcement is never taken
+cal = makeCalendar({ loaded = true, events = { guildEvent("Ankündigung", 1, 0, "GUILD_ANNOUNCEMENT", 0),
+                                               guildEvent("test123", 1, 3, "GUILD_EVENT", 6) } })
+cal.dispatch("selbsttest kalender")
+STUB.tick(20)
+text = report()
+assert(has(text, "test123") and not has(text, "kein Gildenereignis (GUILD_EVENT)"), text)
+assert(has(text, "Vulo Hunt"), "the invite list was read: " .. text)
+assert(cal.writes == 0)
 
 -- 6. functions missing: read functions FEHLT by name, write functions only listed, nothing raises
 cal = makeCalendar({ loaded = true, remove = { "EventGetInviteResponseTime", "RemoveEvent", "EventDecline" } })

@@ -332,16 +332,23 @@ check18 = function(P)
     local R = P.R
     K.section(R, L["18 Teilnehmerliste ohne Kalenderfenster"])
     P.phase = "18"
+    -- a raid-type guild event first; else any guild event (the client asks for a raid instance with
+    -- the type "Schlachtzug", which Forever may not offer before its raids open: 2026-10-10)
+    local any
     for _, ev in ipairs(P.events) do
         local e = ev.info
-        if not isSecret(e.eventType) and e.eventType == 0 and not isSecret(e.calendarType) and e.calendarType == "GUILD_EVENT" then
-            P.target = ev
-            break
+        if not isSecret(e.calendarType) and e.calendarType == "GUILD_EVENT" then
+            if not isSecret(e.eventType) and e.eventType == 0 then
+                P.target = ev
+                break
+            end
+            any = any or ev
         end
     end
+    P.target = P.target or any
     if not P.target then
-        add(R, "WERT", L["Ereignis"], L["kein Gildenereignis der Art Schlachtzug (GUILD_EVENT, Art 0): eins anlegen und neu prüfen"])
-        P.skipped = L["kein Schlachtzug-Ereignis"]
+        add(R, "WERT", L["Ereignis"], L["kein Gildenereignis (GUILD_EVENT): eins anlegen und neu prüfen"])
+        P.skipped = L["kein Gildenereignis"]
         return finishProbe(P)
     end
     add(R, "WERT", L["Ereignis"], L["Nummer %d: %s"]:format(P.target.index, show(P.target.info.title)))

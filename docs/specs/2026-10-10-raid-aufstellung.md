@@ -840,3 +840,7 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
 - 2026-10-10: Gebaut: der Prüfbefehl `/amisia selbsttest kalender` (en `selftest calendar`) als F-085
   (2.23.0): macht die Prüfungen 17 bis 20 selbst (nur lesend, die Schreibfunktionen für 23 bis 25 nur
   nachgeschlagen) und zeigt den Bericht im Selbsttest-Fenster. Teil G heißt damit F-086, Teil H F-087.
+- 2026-10-10: Im Spiel (Prüfung 17, Client 70338): das Ereignis des Nutzers kam als Art "Sonstiges"
+  bzw. "Treffen" an. Die Art "Schlachtzug" verlangt im Kalender eine Raid-Instanz (Bildauswahl), die
+  Forever vor dem Raidstart wohl nicht anbietet. Daher nimmt Teil G (und die Prüfung) jedes
+  Gildenereignis (GUILD_EVENT); Schlachtzug-Ereignisse stehen nur vorn. Frage 22 ist damit geändert.
