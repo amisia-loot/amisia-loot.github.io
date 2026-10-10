@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.19.0 (2026-10-10)
+
+- Talents in the classic three-tree look: centred head, square framed icons, rank plate, gold lines
+
 ## 2.18.0 (2026-10-09)
 
 - Spec: in-game check 9 (trade time constants) done
