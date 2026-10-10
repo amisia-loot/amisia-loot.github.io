@@ -869,3 +869,14 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Nacht, ein zweiter Klick für dieselbe Nacht wartet 11 s statt verworfen zu werden, ein in der
   Wartezeit fremd geöffnetes Ereignis wird nicht gelesen, die Kalender-Prüfung wartet auf das Lesen.
   Nutzer: Abmelden per Befehl nur `/amisia abmelden` (en `signoff`), `anmelden ab`/`off` entfällt.
+- 2026-10-11: Nutzer (nach dem Test im Spiel: Anmelden und Abmelden klappen, Kalender zeigt bei
+  Ereignissen mit Anmeldung nur "Anmelden", "Vorläufig", "Entfernen"):
+  - H3 bauen: Amisia trägt Anmelden / Vorläufig / Abmelden (= Entfernen) auch im Spiel-Kalender ein,
+    vorher eine Schreibprüfung (Fragen 23 bis 25) als eigener Befehl.
+  - Neu Teil I: ein großes Fenster "Raid-Kalender" (Knopf "Kalender" neben "Anmelden" auf der
+    Karte und im Anmeldefenster): Termine links, rechts wer angemeldet, vorläufig, abgemeldet oder
+    ohne Antwort ist, mit Klasse, Rolle, Notiz und Quelle.
+  - Sichtbarkeit (ändert Frage 30): **alle in der Gilde** sehen diese Liste mit Rolle und Notiz
+    (der Spiel-Kalender zeigt die Teilnehmer ohnehin, die Notizen gehen schon an die ganze Gilde).
+  - Feinschliff: Anmeldefenster kompakter; auf der Karte "Ändern" statt "Anmelden", wenn schon
+    angemeldet.
