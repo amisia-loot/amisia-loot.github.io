@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.23.1 (2026-10-10)
+
+- Calendar probe: any guild event when none is of the raid type (that type needs a raid instance Forever may not offer yet); spec note
+
 ## 2.23.0 (2026-10-10)
 
 - Spec Raid-Aufstellung: Teil G (calendar) and H (sign-up in Amisia), not approved yet
