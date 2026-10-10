@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.20.0 (2026-10-10)
+
+- Big talent window "Talentrechner": one builder for page and window, page trees clear of the borders
+
 ## 2.19.0 (2026-10-10)
 
 - Talents in the classic three-tree look: centred head, square framed icons, rank plate, gold lines
