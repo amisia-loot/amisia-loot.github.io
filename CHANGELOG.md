@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.24.0 (2026-10-10)
+
+- Spec: in-game results of calendar checks 17-20
+- Raid-Aufstellung: Kalender lesen (F-086) und Anmelden in Amisia (F-087), D-42
+- Raid-Anmeldung: Prüfung nach dem Bau (G/H) behoben, /amisia abmelden
+- Sign-up note hint says what is true: the guild can read it (AN goes to the guild channel)
+
 ## 2.23.1 (2026-10-10)
 
 - Calendar probe: any guild event when none is of the raid type (that type needs a raid instance Forever may not offer yet); spec note
