@@ -107,5 +107,6 @@ UI\Pages\Bank.lua
 UI\Pages\Tools.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua
+UI\Setup.lua
 Core\Minimap.lua
 Core\SelfTest.lua

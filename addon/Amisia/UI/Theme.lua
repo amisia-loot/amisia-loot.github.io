@@ -180,6 +180,29 @@ T.TALENT = {
     WINDOW = { TOP = 32, BOTTOM = 12, SCALE_STEP = 5 },
 }
 
+-- the setup assistant (UI/Setup.lua, "Amisia einrichten"): one window, one step at a time. Its
+-- content keeps T.WINDOW_PAD from the left and right edge; the step line and the step's title at
+-- the top, the step's rows in the middle, a status line and the red buttons at the bottom.
+T.SETUP = {
+    W = 560, H = 430,     -- the window (AmisiaSetupFrame)
+    STEP_Y = 32,          -- the step line ("Schritt 2 von 6") below the window's top, under the title bar
+    TITLE_Y = 50,         -- the step's title (gold) below the window's top
+    BODY_Y = 76,          -- a step's content starts this far below the window's top
+    LINE_H = 14,          -- one line of a wrapped explanation (T.FONT.text)
+    ROW_H = 26,           -- a row of one setting: its label, then the controls
+    ROW_GAP = 4,          -- between two parts of a step
+    LABEL_W = 180,        -- the label column; the controls start LABEL_GAP after it
+    LABEL_GAP = 8,
+    PICK_W = 170,         -- the name pickers of step 1
+    BOTTOM = 14,          -- the button row from the window's bottom edge
+    STATUS_GAP = 6,       -- the status line above the button row
+    NAV_W = 90,           -- the red buttons Zurück, Überspringen, Weiter, Fertig (at least; FitChip)
+    CHANGE_W = 70,        -- "Ändern" on a line of the summary
+    RULE_ROWS = 5,        -- loot rules listed in step 5 (then "+N weitere")
+    -- the one-time offer at the first open of the main window (AmisiaSetupOffer)
+    OFFER_W = 420, OFFER_H = 116, OFFER_TEXT_Y = 34,
+}
+
 ---------------------------------------------------------------------------
 -- Atlases: the client's art Amisia may use (the style allow-list; the layout rules fail on any
 -- other). Not on it on purpose: common-dropdown-b-button (the filter button carries a baked-in

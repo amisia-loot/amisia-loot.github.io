@@ -371,6 +371,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit einem Item in Tasche 0, Platz 1 (dem ersten Platz des Rucksacks) `/amisia selbsttest` ausführst, dann steht unter "Item-Konstanten" "Enum.TooltipDataLineType.TradeTimeRemaining: 36", "Item-GUID (Tasche 0, Platz 1)" mit einer GUID (beginnt mit "Item-") und "Handelszeit in den Taschen".
 - Notiz: Was allein prüfbar ist (F-076 braucht Gruppe). Die Zeile Item-GUID ist der offene Teil von Spec-Frage 9.
 
+### F-082 Einrichtungshilfe für den Gildenstart
+- Version: 2.21.0
+- Status: gebaut
+- Prüfung: Wenn du als Offizier nach dem Login zum ersten Mal `/amisia` öffnest, dann erscheint "Amisia einrichten? Ein paar Schritte vor dem ersten Raid." mit "Los", "Später" und "Nicht mehr fragen"; nach "Später" kommt die Frage erst beim nächsten Login (oder `/reload`) wieder, nach "Nicht mehr fragen" nie mehr.
+- Prüfung: Wenn du `/amisia einrichten` eingibst, dann öffnet sich "Amisia einrichten" mit "Schritt 1 von 6", "Bank und Entzauberer"; "Mich eintragen" setzt deinen Namen als Entzauberer, und unter Einstellungen, Vergaben steht er sofort bei "Entzauberer".
+- Prüfung: Wenn du mit "Weiter" bis "Erste Lootregeln" gehst und "Grünes zum Entzaubern" klickst, dann steht darunter "1. Qualität bis Ungewöhnlich -> Entzaubern" mit dem Namen des Entzauberers; ein zweiter Klick sagt "Diese Regel gibt es schon." und legt keine zweite an.
+- Prüfung: Wenn du in der "Zusammenfassung" bei "Roll-Dauer (Sekunden): ..." auf "Ändern" klickst, dann springt das Fenster zu Schritt 4; "Fertig" schließt es mit "Einrichtung fertig. ..." im Chat, und nach dem nächsten Login fragt Amisia nicht mehr.
+- Prüfung: Wenn ein Raider ohne Offiziersrang `/amisia einrichten` eingibt, dann sagt der Chat nur "Die Einrichtung ist für Offiziere. Für dich: Einstellungen, Würfel-Fenster."
+- Notiz: DECISIONS D-40; schreibt nur bestehende Einstellungen über ns.Set, "Weiter" und "Überspringen" ändern nichts. `/amisia setup` auf englischen Clients.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

@@ -302,6 +302,8 @@ local function build()
         onShow = function(self)
             if self.Raise then self:Raise() end
             ns.Refresh()
+            -- the setup offer (Setup.lua) at the first open after a login
+            ns.Fire("MAIN_SHOWN")
         end,
         onDragStop = function() savePosition() end })
     restorePosition()

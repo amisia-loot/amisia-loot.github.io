@@ -105,6 +105,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/MapPin.xml` | Pin template `AmisiaMapPinMixin` | - | - |
 | `UI/MainFrame.lua` | Main window, page list, side tabs | (`settings.window`) | GearFrame, Widgets, Gear, Theme, SoftRes, RollFrame, Talents page |
 | `UI/Pages/*.lua` | One page each (`ns.RegisterPanel`), drawn from the logic files; no logic of their own beyond the view. `Pages/Talents.lua` also builds the window "Talentrechner" (`AmisiaTalentFrame`, `/amisia talente gross`): one builder draws the talent view on the page (`ns.Theme.TALENT.PAGE`) and in the window (`TALENT.BIG`), both on one plan; the window scales by `ui.talentScale` (Ctrl + mouse wheel) | (`settings.talentWindow`) | MainFrame, Widgets, Theme, their logic file |
+| `UI/Setup.lua` | The setup assistant (D-40): `/amisia einrichten` (en `setup`) and, for an officer (officer rank or officer view) without the done or "never" mark, a one-time offer at the first open of the main window after a login ("Los" / "Später" / "Nicht mehr fragen"; MainFrame fires `MAIN_SHOWN`); six steps in `AmisiaSetupFrame` (bank and disenchanter, loot lead, loot system with its main points settings, roll duration and countdown, first loot rules as presets through `ns.AddLootRule`, summary with "Ändern"); it sets only existing settings, at once through `ns.Set`; "Weiter"/"Überspringen"/"Zurück" write nothing | `setup` | MainFrame, Widgets, Theme, Trust, LootRules, the settings of Awards, LootAnnounce, Points, Rolls, LootRules |
 | `Core/Minimap.lua` | Minimap button, addon compartment | (`settings.minimap`) | MainFrame, Widgets, Gear, GearFrame, Map |
 | `Core/SelfTest.lua` | `/amisia selbsttest`: in-game checks, `AMISIA-WERTE` line | - | read-only on everything |
 
@@ -358,6 +359,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `talents` | `{class, level, talented, plans}` | Talents.lua | - |
 | `handover` | `{ ["<raid key>/<award id>"] = {t, to, g} }` only the mark "übergeben" (when, to whom, the copy's GUID); the open list is built from the awards and the bags, never saved | Handover.lua | `ns.HandoverLoaded`: keys and fields checked, older than 3 days dropped, 200 at most (the newest) |
 | `lootRules` | `{v = 1, rev, by, at, sent, seen, list = {{id (4 hex), k = q/m/i/p, q (2/3), items, to = bank/de/name, by}}, offer = {from, rev, at, list}}` | LootRules.lua | `ns.LootRulesLoaded`: every field checked, a bad rule or offer dropped; 30 rules, 50 items per list, a player rule exactly one item |
+| `setup` | `{done = epoch, never = epoch}` the setup assistant: "Fertig" clicked, "Nicht mehr fragen" clicked (either ends the offer at the first open of the main window) | Setup.lua | `ns.SetupLoaded`: both must be positive whole numbers, other fields dropped |
 
 ## Settings registry
 

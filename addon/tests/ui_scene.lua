@@ -264,6 +264,32 @@ S.WINDOWS = {
         STUB.fire("TRADE_SHOW")
         return AmisiaTradeHelper
     end },
+    -- the setup assistant (Setup.lua): the offer and each of its six steps
+    { key = "setup-offer", view = "officer", open = function()
+        return NS._setup.showOffer()
+    end },
+    { key = "setup-1", view = "officer", open = function()
+        NS.Set("awards.deName", "")
+        return NS.ShowSetup(1)
+    end },
+    { key = "setup-2", view = "officer", open = function() return NS.ShowSetup(2) end },
+    { key = "setup-3", view = "officer", open = function()
+        -- a DKP guild: the system's points rows show
+        NS.Set("points.system", "dkp")
+        return NS.ShowSetup(3)
+    end },
+    { key = "setup-3-epgp", view = "officer", open = function()
+        NS.Set("points.system", "epgp")
+        return NS.ShowSetup(3)
+    end },
+    { key = "setup-4", view = "officer", open = function() return NS.ShowSetup(4) end },
+    { key = "setup-5", view = "officer", open = function()
+        -- the scene's three rules and the materials preset (already there: the status line says so)
+        NS.ShowSetup(5)
+        NS._setup.addPreset(NS._setup.presets[3])
+        return NS._setup.frame()
+    end },
+    { key = "setup-6", view = "officer", open = function() return NS.ShowSetup(6) end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame
