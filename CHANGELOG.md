@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.21.0 (2026-10-10)
+
+- Spec: Raid-Aufstellung (sign-up paste, planner, invite, sort, bench), approved by the user
+- MageScrollData: header from the client tables 1.60.1.70338 (content unchanged)
+- Setup assistant "Amisia einrichten": six steps over the existing settings, one-time offer for officers
+- Data from build 1.60.1.70338 (warrior talents reworked, 29 talents changed, weapons re-timed); the pick test takes computed stats without the damage while old scans fail the melee check
+
 ## 2.20.0 (2026-10-10)
 
 - Big talent window "Talentrechner": one builder for page and window, page trees clear of the borders
