@@ -5,6 +5,12 @@
 -- the bench on the evening's bench (ns.BenchAdd). Saved per raid night in AmisiaDB.lineup.
 -- Inviting (part C) and sorting the groups in the game (part D) wait for the in-game checks of the
 -- spec (docs/specs/2026-10-10-raid-aufstellung.md); nothing here invites, sorts or sends.
+-- Parts G and H (D-42): the invite list of a guild event of the game calendar (Raid/Calendar.lua,
+-- read only) and the sign-ups raiders send from Amisia (Raid/Signup.lua) join the same night. One
+-- row per name with the marks of its sources (L list, K calendar, A Amisia); the status is the
+-- player's newest statement (Amisia's click time, the time Amisia saw the calendar status change; a
+-- pasted list is older than both; Amisia wins within 2 minutes of the calendar); what the officer
+-- did by hand (group, hold, bench, role) stays.
 --
 -- The pasted text is untrusted: colour codes and bars stripped, each line cut to 200 bytes, at most
 -- 2000 lines read and 80 sign-ups taken, names without digits or control characters, 48 at most.
@@ -21,14 +27,27 @@ local ALIAS_MAX = 300       -- remembered name fixes (shared with the soft-reser
 local OWN_GAME = "forever"
 local GROUP_SIZE = 5
 local SIZES = { [10] = true, [20] = true, [40] = true }
+local SAME_CLICK = 120      -- Amisia and the calendar within this many seconds: one click, Amisia counts
+local MAX_GONE = 80         -- names removed by the officer, remembered per night
+local DAYS_AHEAD = 14       -- sign-ups from Amisia: tonight up to this many days ahead
+-- statuses (st, d, ks): A signed up, B confirmed, V tentative, E standby, X declined or absent,
+-- I invited, O no answer, G no longer in the calendar; Amisia's own: A, V, X
+local CODES = { A = true, B = true, V = true, E = true, X = true, I = true, O = true, G = true }
+local OWN = { A = true, V = true, X = true }
+-- these are not placed (shown grey at the bottom), unless the officer holds the player
+local OUT = { X = true, I = true, O = true, G = true }
+local SOURCES = { "L", "K", "A" }
 
 ns.LINEUP_ROLES = { "T", "H", "M", "R" }
+ns.LINEUP_CODES = CODES
 local IS_ROLE = { T = true, H = true, M = true, R = true }
 local CLASSES = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, PRIEST = true, SHAMAN = true, MAGE = true,
                   WARLOCK = true, DRUID = true }
 -- a role from the class when the list names none (the spec, part A step 4); shown grey with "?"
 local GUESS = { WARRIOR = "M", ROGUE = "M", HUNTER = "R", MAGE = "R", WARLOCK = "R", PRIEST = "H", PALADIN = "H",
                 SHAMAN = "H", DRUID = "H" }
+ns.LINEUP_GUESS = GUESS
+ns.LINEUP_CLASSES = CLASSES
 -- "DPS" in a list: melee or ranged by the class
 local DPS_ROLE = { WARRIOR = "M", ROGUE = "M", PALADIN = "M", SHAMAN = "M", DRUID = "M", HUNTER = "R", MAGE = "R",
                    WARLOCK = "R", PRIEST = "R" }
@@ -497,6 +516,75 @@ function ns.LineupNight(night, create)
     return n
 end
 
+---------------------------------------------------------------------------
+-- Sources and the valid statement (parts G and H)
+---------------------------------------------------------------------------
+-- The source marks of an entry in the order L, K, A; an entry without marks came from a list.
+local function sourcesOf(e) return e.f or "L" end
+local function hasSrc(e, src) return sourcesOf(e):find(src, 1, true) ~= nil end
+local function withSrc(f, src, on)
+    local out = ""
+    for _, x in ipairs(SOURCES) do
+        local has = (x == src and on) or (x ~= src and (f or ""):find(x, 1, true) ~= nil)
+        if has then out = out .. x end
+    end
+    return out
+end
+ns.LineupHasSource = hasSrc
+
+-- The player's valid statement: status, time (nil: none known), source. The pasted list counts as
+-- older than every statement of the calendar or Amisia; a calendar status seen first (kt 0, no
+-- change seen) is older than any Amisia click; within SAME_CLICK of each other Amisia counts.
+local function statementOf(e)
+    local st, t, src
+    if e.d then st, t, src = e.d, -1, "L" end
+    if e.ks then
+        local kt = e.kt or 0
+        if not src or kt > t then st, t, src = e.ks, kt, "K" end
+    end
+    if e.as then
+        local ag = e.ag or 0
+        if not src or ag > t or (src == "K" and math.abs(ag - t) < SAME_CLICK) then st, t, src = e.as, ag, "A" end
+    end
+    return st, t, src
+end
+
+-- Applies the valid statement to e: st and t, maybe (V), not placed (X, I, O, G: out of the group,
+-- unless held), standby (E: on the bench when not in a group). notify: a placed player who signs
+-- off gets the officer one chat line.
+local function settle(e, notify)
+    local st, t = statementOf(e)
+    if not st then return end
+    local was = e.st
+    e.st, e.t = st, (t and t > 0) and t or nil
+    e.m = st == "V" or nil
+    if OUT[st] then
+        local group = e.g
+        if notify and st == "X" and was ~= "X" and group then
+            if e.k then
+                ns.msg(L["Aufstellung: %s hat sich abgemeldet (Gruppe %d, festgehalten)."]:format(e.n, group))
+            else
+                ns.msg(L["Aufstellung: %s hat sich abgemeldet (war Gruppe %d)."]:format(e.n, group))
+            end
+        end
+        if e.k then
+            e.a = nil
+        else
+            e.a = true
+            e.g, e.b, e.v = nil, nil, nil
+        end
+    else
+        e.a = nil
+        if st == "E" and not e.g then e.b = true end
+    end
+end
+
+local function posNum(v)
+    v = tonumber(v)
+    if v and v > 0 and v < 4294967296 then return math.floor(v) end
+    return nil
+end
+
 local function cleanEntry(e)
     if type(e) ~= "table" then return nil end
     local n = type(e.n) == "string" and cleanName(e.n)
@@ -519,10 +607,46 @@ local function cleanEntry(e)
         end
         if #o > 0 then out.o = o end
     end
+    -- the sources and statements of parts G and H
+    if type(e.f) == "string" then
+        local f = withSrc(e.f, "", false)
+        if f ~= "" then out.f = f end
+    end
+    if CODES[e.st] then out.st, out.t = e.st, posNum(e.t) end
+    if type(e.w) == "string" then out.w = ns.CleanNote(stripCodes(e.w), 40) end
+    if e.h == true and out.r then out.h = true end
+    if CODES[e.d] then out.d = e.d end
+    if CODES[e.ks] then out.ks, out.kt = e.ks, posNum(e.kt) or 0 end
+    if OWN[e.as] then out.as, out.ag = e.as, posNum(e.ag) or 0 end
+    if IS_ROLE[e.ar] then out.ar = e.ar end
+    if IS_ROLE[e.lr] then out.lr = e.lr end
     -- placed and benched exclude each other; the absent are neither
     if out.a then out.g, out.b, out.v, out.k = nil, nil, nil, nil end
     if out.b or out.v then out.g = nil end
     return out
+end
+
+-- The calendar event of a night: { id (digits), at (epoch), title (40), read (epoch), lost }.
+local function cleanCal(c)
+    if type(c) ~= "table" or not posNum(c.at) then return nil end
+    local id = type(c.id) == "string" and #c.id <= 20 and c.id:match("^%d+$") and c.id or nil
+    return { id = id, at = posNum(c.at), title = ns.CleanNote(stripCodes(type(c.title) == "string" and c.title or ""), 40),
+             read = posNum(c.read), lost = c.lost == true or nil }
+end
+
+-- The names the officer removed: { [lower name] = { t = when, k = the calendar status then } }.
+local function cleanGone(g)
+    if type(g) ~= "table" then return nil end
+    local list = {}
+    for low, v in pairs(g) do
+        if type(low) == "string" and #low <= NAME_MAX and type(v) == "table" and posNum(v.t) then
+            list[#list + 1] = { low = low, t = posNum(v.t), k = CODES[v.k] and v.k or nil }
+        end
+    end
+    table.sort(list, function(a, b) return a.t > b.t end)
+    local out = {}
+    for i = 1, math.min(#list, MAX_GONE) do out[list[i].low] = { t = list[i].t, k = list[i].k } end
+    return next(out) and out or nil
 end
 
 -- Core, ADDON_LOADED: every field checked, 8 nights (the newest), 80 names per night.
@@ -546,7 +670,8 @@ function ns.LineupLoaded(root)
             end
             local size = tonumber(n.size)
             nights[night] = { at = tonumber(n.at) or 0, by = type(n.by) == "string" and cleanName(n.by) or nil,
-                              title = ns.CleanNote(n.title, 40), size = SIZES[size] and size or 40, list = list }
+                              title = ns.CleanNote(n.title, 40), size = SIZES[size] and size or 40, list = list,
+                              cal = cleanCal(n.cal), gone = cleanGone(n.gone) }
         end
     end
     root.lineup = { v = 1, nights = nights }
@@ -581,8 +706,15 @@ local function lastRole(name, except)
     return nil
 end
 
+-- The role (part H, rule 5): set by the officer, else the Amisia sign-up's, else the list's, else
+-- the last lineup's, else from the class (guessed, "?"). The calendar names none.
 local function settleRole(e, except)
-    if e.r then e.q = nil return end
+    if e.h and e.r then e.q = nil return end
+    e.h = nil
+    if e.ar then e.r, e.q = e.ar, nil return end
+    if e.lr then e.r, e.q = e.lr, nil return end
+    if e.r and not e.q then return end
+    e.r, e.q = nil, nil
     local r = lastRole(e.n, except)
     if r then
         e.r, e.q = r, nil
@@ -628,23 +760,44 @@ function ns.SetLineupText(text, night)
     local old = ns.LineupNight(night, false)
     local before = {}
     for _, e in ipairs(old and old.list or {}) do before[e.n:lower()] = e end
-    local list = {}
+    local list, kept = {}, {}
     for _, e in ipairs(res.list) do
         matchEntry(k, e)
-        local was = before[e.n:lower()]
-        if was and not e.a then
+        local low = e.n:lower()
+        -- the list's statement: absent, maybe or signed up; its role
+        e.f, e.lr = "L", e.r
+        e.d = e.a and "X" or (e.m and "V") or "A"
+        local was = before[low]
+        if was then
+            kept[low] = true
+            -- what the calendar and Amisia said, the note and the officer's role stay
+            for _, fld in ipairs({ "ks", "kt", "as", "ag", "ar", "w", "h" }) do e[fld] = was[fld] end
+            if was.h then e.r = was.r end
+            e.f = withSrc(sourcesOf(was), "L", true)
             if not e.b then e.g, e.k, e.v = was.g, was.k, was.v end
             if not e.r and was.r and not was.q then e.r = was.r end
             if was.b and not e.b and not e.g then e.b = was.b end
         end
+        settle(e)
         settleRole(e, night)
         if e.a then e.g, e.b, e.v, e.k = nil, nil, nil, nil end
         list[#list + 1] = cleanEntry(e)
     end
+    local pasted = #list
+    -- rows of the calendar or Amisia the new list does not name stay, without the list's mark
+    for _, was in ipairs(old and old.list or {}) do
+        local low = was.n:lower()
+        if not kept[low] and (hasSrc(was, "K") or hasSrc(was, "A")) and #list < MAX_SIGNUPS then
+            was.f, was.d, was.lr = withSrc(sourcesOf(was), "L", false), nil, nil
+            settle(was)
+            settleRole(was, night)
+            list[#list + 1] = cleanEntry(was)
+        end
+    end
     local n = ns.LineupNight(night, true)
     n.list, n.at, n.by = list, time(), ns.UnitFullName("player")
     if res.title then n.title = res.title end
-    local line = summary(list, res.over or 0, k.guild)
+    local line = summary({ unpack(list, 1, pasted) }, res.over or 0, k.guild)
     changed()
     return night, line
 end
@@ -779,7 +932,8 @@ end
 function ns.LineupSetRole(night, i, r)
     local e = entry(night, i)
     if not e or not IS_ROLE[r] then return false end
-    e.r, e.q = r, nil
+    -- a role by hand stays over the sign-up's and the list's (part H, rule 5)
+    e.r, e.q, e.h = r, nil, true
     changed()
     return true
 end
@@ -796,6 +950,11 @@ function ns.LineupRemove(night, i)
     local e, n = entry(night, i)
     if not e then return false end
     table.remove(n.list, i)
+    -- remembered: a statement of the calendar or Amisia from before brings the name back only when
+    -- it is new (a new click, another calendar status)
+    n.gone = n.gone or {}
+    n.gone[e.n:lower()] = { t = math.floor(time()), k = e.ks }
+    n.gone = cleanGone(n.gone)
     changed()
     return true
 end
@@ -878,6 +1037,8 @@ function ns.LineupCopy(from, night)
         local c = cleanEntry(e)
         if c and not c.a then
             c.v, c.m = nil, nil
+            -- the copy is a start of its own: no sources, statements or notes of the old night
+            for _, fld in ipairs({ "f", "st", "t", "w", "d", "ks", "kt", "as", "ag", "ar", "lr" }) do c[fld] = nil end
             dst.list[#dst.list + 1] = c
         end
     end
@@ -1086,6 +1247,216 @@ function ns.LineupCounts(night)
 end
 
 ---------------------------------------------------------------------------
+-- Parts G and H: the calendar's invite list and the sign-ups from Amisia
+---------------------------------------------------------------------------
+local function findEntry(n, low)
+    for i, e in ipairs(n.list) do
+        if e.n:lower() == low then return e, i end
+    end
+    return nil
+end
+
+-- The nights a sign-up from Amisia may be for: tonight up to DAYS_AHEAD days ahead.
+local function signupNight(night)
+    if type(night) ~= "string" or not night:match("^%d%d%d%d%-%d%d%-%d%d$") then return false end
+    local now = time()
+    return night >= tonight() and night <= ns.NightOf(now + DAYS_AHEAD * 86400)
+end
+ns.LineupSignupNight = signupNight
+
+-- One sign-up from Amisia (part H): name (the sender, never a field of the message) for night with
+-- rec = { s = "A"/"V"/"X", r = role or nil, c = class token or nil, t = epoch of the click, w = note }.
+-- A newer click replaces the older one; one older than the last removal by the officer is ignored.
+-- A night without a lineup is made. notify: the officer's chat line when a placed player signs
+-- off. Returns whether the lineup changed.
+function ns.LineupSignup(night, name, rec, notify)
+    name = cleanName(name)
+    if not name or type(rec) ~= "table" or not OWN[rec.s] or not signupNight(night) then return false end
+    local t = posNum(rec.t)
+    if not t then return false end
+    t = math.min(t, math.floor(time()))
+    local low = name:lower()
+    local n = ns.LineupNight(night, false)
+    local e = n and findEntry(n, low)
+    if not e then
+        local gone = n and n.gone and n.gone[low]
+        if gone and t <= gone.t then return false end
+        if n and #n.list >= MAX_SIGNUPS then return false end
+        n = n or ns.LineupNight(night, true)
+        e = { n = name, f = "A" }
+        n.list[#n.list + 1] = e
+    elseif e.ag and t <= e.ag then
+        return false
+    end
+    e.f = withSrc(sourcesOf(e), "A", true)
+    e.as, e.ag, e.ar = rec.s, t, IS_ROLE[rec.r] and rec.r or nil
+    e.w = type(rec.w) == "string" and ns.CleanNote(stripCodes(rec.w), 40) or nil
+    if CLASSES[rec.c] and not e.c then e.c = rec.c end
+    -- the sender is a guild member by the roster: the name is no longer unknown
+    if e.x == "u" then e.x = nil end
+    settle(e, notify)
+    settleRole(e, night)
+    changed()
+    return true
+end
+
+-- Every night (tonight on) in which name signed up through Amisia.
+function ns.LineupSignupNights(name)
+    local out, low = {}, type(name) == "string" and name:lower() or ""
+    local d = db(false)
+    for night, n in pairs(d and d.nights or {}) do
+        if night >= tonight() then
+            local e = findEntry(n, low)
+            if e and e.as then out[#out + 1] = night end
+        end
+    end
+    return out
+end
+
+-- The invite list of a calendar event (part G, Raid/Calendar.lua) into the night of the event: ev
+-- of ns.Cal.Events(), invites of ns.Cal.ReadOpen(). Each name through the same match as a list; a
+-- name already there gets the calendar's mark; the status follows the newest statement. Another
+-- event of the same night replaces the calendar's rows; who left the calendar and came only from it
+-- stays grey "nicht mehr im Kalender". quiet: no chat summary (a re-read). Returns the night and the
+-- chat line.
+function ns.LineupCalendar(ev, invites, quiet)
+    local night = ev.night or ns.NightOf(ev.at)
+    local n = ns.LineupNight(night, true)
+    local now = math.floor(time())
+    if n.cal and n.cal.id ~= ev.id then
+        local keep = {}
+        for _, e in ipairs(n.list) do
+            if hasSrc(e, "K") then
+                e.f, e.ks, e.kt = withSrc(sourcesOf(e), "K", false), nil, nil
+                if e.f ~= "" then
+                    settle(e)
+                    keep[#keep + 1] = e
+                end
+            else
+                keep[#keep + 1] = e
+            end
+        end
+        n.list = keep
+    end
+    n.cal = { id = ev.id, at = ev.at, title = ns.CleanNote(stripCodes(ev.title or ""), 40), read = now }
+    local k = knownPeople()
+    local seen = {}
+    local c = { all = 0, A = 0, V = 0, X = 0, E = 0, I = 0, O = 0 }
+    for _, inv in ipairs(invites or {}) do
+        local name = cleanName(inv.name)
+        if name and not seen[name:lower()] then
+            seen[name:lower()] = true
+            local code = CODES[inv.code] and inv.code or "O"
+            c.all = c.all + 1
+            local key = (code == "B") and "A" or code
+            if c[key] then c[key] = c[key] + 1 end
+            local e = findEntry(n, name:lower())
+            if not e then
+                local gone = n.gone and n.gone[name:lower()]
+                if not (gone and gone.k == code) and #n.list < MAX_SIGNUPS then
+                    e = { n = name, c = CLASSES[inv.class] and inv.class or nil, f = "K" }
+                    matchEntry(k, e)
+                    -- the calendar's spelling is the game's: a name the roster lacks is a guest
+                    -- (no roster yet: taken as it is)
+                    if e.x == "u" then e.x = k.guild and "g" or nil end
+                    local other = findEntry(n, e.n:lower())
+                    if other then
+                        e = other
+                    else
+                        n.list[#n.list + 1] = e
+                    end
+                end
+            end
+            if e then
+                seen[e.n:lower()] = true
+                e.f = withSrc(sourcesOf(e), "K", true)
+                if e.ks ~= code then
+                    -- first seen: older than any Amisia click; a change: the time Amisia saw it
+                    e.kt = e.ks and now or 0
+                    e.ks = code
+                end
+                if CLASSES[inv.class] and not e.c then e.c = inv.class end
+                settle(e, true)
+                settleRole(e, night)
+            end
+        end
+    end
+    -- the calendar's rows that are not in it any more
+    for _, e in ipairs(n.list) do
+        if hasSrc(e, "K") and not seen[e.n:lower()] then
+            if sourcesOf(e) == "K" then
+                if e.ks ~= "G" then e.ks, e.kt = "G", now end
+            else
+                e.f, e.ks, e.kt = withSrc(sourcesOf(e), "K", false), nil, nil
+            end
+            settle(e, true)
+        end
+    end
+    changed()
+    local line = L["Aufstellung: Kalender %s, %s: %d Einträge, %d angemeldet, %d vorläufig, %d abgesagt."]:format(
+        n.cal.title or "?", ns.Cal.When(ev.at), c.all, c.A, c.V, c.X)
+    if c.E > 0 then line = line .. " " .. L["%d auf Ersatz."]:format(c.E) end
+    if c.I + c.O > 0 then line = line .. " " .. L["%d ohne Antwort."]:format(c.I + c.O) end
+    if quiet then line = nil end
+    return night, line
+end
+
+-- "Übernehmen" of an event (the page): reads its invite list into its night. fn(night, line) or
+-- fn(nil, the reason's text).
+function ns.LineupReadCalendar(ev, fn)
+    if not ns.LineupAllowed() then return fn(nil, L["Die Aufstellung ist nur für Offiziere."]) end
+    ns.Cal.Read(ev, function(invites, why)
+        if not invites then return fn(nil, ns.Cal.Why(why)) end
+        fn(ns.LineupCalendar(ev, invites))
+    end)
+end
+
+-- Reads the calendar event of night again (the page is open and the calendar changed): the event by
+-- its id; one that is gone or moved to another night is marked lost (the rows stay, the mark turns
+-- grey). fn(ok, why) when given. Returns false when the night has no event.
+function ns.LineupCalendarAgain(night, fn)
+    local n = ns.LineupNight(night, false)
+    if not n or not n.cal or not ns.LineupAllowed() then return false end
+    -- the client's list as it is (no OpenCalendar: its answer would count as the next change);
+    -- loaded first only when it is empty
+    -- fresh: the list was just loaded (an empty one is real, not "not loaded yet")
+    local function go(list, fresh)
+        local ev
+        for _, e in ipairs(list or {}) do
+            if n.cal.id and e.id == n.cal.id then ev = e break end
+        end
+        if not ev or ev.night ~= night then
+            if list and (#list > 0 or fresh) and not n.cal.lost then
+                n.cal.lost = true
+                changed()
+            end
+            if fn then fn(false, "gone") end
+            return
+        end
+        if n.cal.lost then n.cal.lost = nil end
+        ns.Cal.Read(ev, function(invites, why)
+            if invites then ns.LineupCalendar(ev, invites, true) end
+            if fn then fn(invites ~= nil, why) end
+        end)
+    end
+    local list = ns.Cal.Events()
+    if #list > 0 then go(list) else ns.Cal.Load(function(l) go(l, true) end) end
+    return true
+end
+
+-- How many rows of a night carry each source mark: { L, K, A }.
+function ns.LineupSources(night)
+    local n = ns.LineupNight(night, false)
+    local c = { L = 0, K = 0, A = 0 }
+    for _, e in ipairs(n and n.list or {}) do
+        for _, x in ipairs(SOURCES) do
+            if hasSrc(e, x) then c[x] = c[x] + 1 end
+        end
+    end
+    return c
+end
+
+---------------------------------------------------------------------------
 -- Teil E: the bench of the evening through ns.BenchAdd
 ---------------------------------------------------------------------------
 -- Puts "Ersatz" and the overflow that are online on tonight's bench, with the note "Aufstellung".
@@ -1144,6 +1515,8 @@ ns.RegisterSettings{ key = "lineup", label = L["Raid-Aufstellung"], order = 24, 
       tip = L["Gäste (nicht in der Gilde) werden nur damit eingeteilt und auf die Ersatzbank gesetzt."] },
     { key = "lineup.autoBench", type = "toggle", label = L["Ersatz automatisch eintragen, sobald die Aufnahme läuft"], default = false,
       tip = L["Trägt \"Ersatz\" und Überzählige von heute, die online sind, auf die Ersatzbank ein."] },
+    { key = "lineup.signups", type = "toggle", label = L["Anmeldungen aus Amisia annehmen"], default = true,
+      tip = L["Raider mit Amisia melden sich im Spiel an (Rolle und Notiz); ihre Anmeldungen stehen in der Aufstellung der Nacht mit der Quelle \"Amisia\"."] },
 }}
 
 ns.RegisterSlash("aufstellung", { en = "lineup", officer = true, desc = L["Raid-Aufstellung: Anmeldeliste einfügen und Gruppen planen"],
@@ -1157,4 +1530,4 @@ ns.RegisterSlash("aufstellung", { en = "lineup", officer = true, desc = L["Raid-
 
 -- for the tests
 ns._lineup = { oneOff = oneOff, norm = norm, cleanLine = cleanLine, lineWords = lineWords, MAX_SIGNUPS = MAX_SIGNUPS,
-               MAX_NIGHTS = MAX_NIGHTS }
+               MAX_NIGHTS = MAX_NIGHTS, statementOf = statementOf, SAME_CLICK = SAME_CLICK }

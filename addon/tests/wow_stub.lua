@@ -1579,3 +1579,69 @@ function STUB.mapPins(template)
     local pool = WorldMapFrame.pinPools[template]
     return pool and pool.active or {}
 end
+
+-- A game calendar (C_Calendar) for the raid lineup and sign-up (Raid/Calendar.lua): STUB.calendar(opts)
+-- installs it and returns its state. opts.events: guild events { title, days (from now), hour (or at,
+-- an epoch),
+-- eventType, calendarType (default GUILD_EVENT), inviteStatus, id }; opts.invites[id]: the invite
+-- list of an event { { name, classFilename, level, inviteStatus, notes } }. The state: calls (every
+-- call's name), opens, closes, open (an event is open), writes (a write function was called: it
+-- raises). OpenCalendar loads the list after 0.5 s (CALENDAR_UPDATE_GUILD_EVENTS); OpenEvent fires
+-- CALENDAR_OPEN_EVENT at once, like the client 70338 (no CALENDAR_UPDATE_INVITE_LIST).
+function STUB.calendar(opts)
+    opts = opts or {}
+    local cal = { calls = {}, opens = 0, closes = 0, writes = 0, loaded = opts.loaded ~= false, events = {}, invites = opts.invites or {} }
+    local function log(n) cal.calls[#cal.calls + 1] = n end
+    function cal.set(events)
+        cal.events = {}
+        for i, e in ipairs(events or {}) do
+            local t = os.date("*t", e.at or (STUB.now + (e.days or 1) * 86400))
+            cal.events[i] = { eventID = e.id or (1000 + i), year = t.year, month = t.month, monthDay = t.day, weekday = t.wday,
+                hour = e.at and t.hour or e.hour or 20, minute = e.at and t.min or e.minute or 0, eventType = e.eventType or 0, title = e.title or "Molten Core",
+                calendarType = e.calendarType or "GUILD_EVENT", inviteStatus = e.inviteStatus or 7, texture = 0, clubID = 77 }
+        end
+    end
+    cal.set(opts.events or { { title = "Molten Core", days = 1 } })
+    local C = {}
+    C.OpenCalendar = function()
+        log("OpenCalendar")
+        C_Timer.After(0.5, function()
+            cal.loaded = true
+            STUB.fire("CALENDAR_UPDATE_GUILD_EVENTS")
+        end)
+    end
+    C.GetNumGuildEvents = function() log("GetNumGuildEvents") return cal.loaded and #cal.events or 0 end
+    C.GetGuildEventInfo = function(i) log("GetGuildEventInfo") return cal.loaded and cal.events[i] or nil end
+    C.GetGuildEventSelectionInfo = function(i)
+        log("GetGuildEventSelectionInfo")
+        local e = cal.events[i]
+        return e and { offsetMonths = 0, monthDay = e.monthDay, eventIndex = i } or nil
+    end
+    C.OpenEvent = function(offset, day, index)
+        log("OpenEvent")
+        if opts.refuse then return false end
+        cal.opens = cal.opens + 1
+        cal.open = cal.events[index]
+        if not opts.silent then STUB.fire("CALENDAR_OPEN_EVENT", "GUILD_EVENT") end
+        return true
+    end
+    C.IsEventOpen = function() return cal.open ~= nil end
+    C.GetEventInfo = function()
+        local e = cal.open
+        if not e then return nil end
+        return { title = e.title, calendarType = e.calendarType, eventType = e.eventType, inviteType = 1,
+                 time = { year = e.year, month = e.month, monthDay = e.monthDay, hour = e.hour, minute = e.minute } }
+    end
+    local function list() return cal.open and cal.invites[cal.open.eventID] or {} end
+    C.GetNumInvites = function() log("GetNumInvites") return #list() end
+    C.EventGetInvite = function(i) log("EventGetInvite") return list()[i] end
+    C.EventGetInviteResponseTime = function() return nil end
+    C.CloseEvent = function() log("CloseEvent") cal.open = nil cal.closes = cal.closes + 1 end
+    for _, name in ipairs({ "ContextMenuSelectEvent", "ContextMenuEventSignUp", "ContextMenuInviteTentative", "ContextMenuInviteAvailable",
+                            "ContextMenuInviteDecline", "EventSignUp", "EventAvailable", "EventTentative", "EventDecline", "RemoveEvent",
+                            "AddEvent", "UpdateEvent", "EventInvite", "EventSetInviteStatus", "EventRemoveInvite" }) do
+        C[name] = function() cal.writes = cal.writes + 1 error("calendar write called: " .. name) end
+    end
+    _G.C_Calendar = C
+    return cal
+end

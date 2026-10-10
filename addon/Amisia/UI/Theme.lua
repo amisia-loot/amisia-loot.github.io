@@ -203,6 +203,27 @@ T.SETUP = {
     OFFER_W = 420, OFFER_H = 116, OFFER_TEXT_Y = 34,
 }
 
+-- the raid sign-up window (UI/Signup.lua, "Raid-Anmeldung", AmisiaSignupFrame): the date picker,
+-- the state of the own sign-up, the role chips and the note, the hints, the three red buttons at the
+-- bottom. Its content keeps T.WINDOW_PAD from the left and right edge.
+T.SIGNUP = {
+    W = 400, H = 286,     -- the window
+    PICK_Y = 34,          -- the date picker below the window's top, under the title bar
+    STATE_Y = 62,         -- "Deine Anmeldung: ..." (T.FONT.body)
+    ROLE_Y = 88,          -- the row "Rolle" with the chips T, H, N, F
+    NOTE_Y = 116,         -- the row "Notiz" with the field (40 characters)
+    HINT_Y = 142,         -- "Für alle Offiziere sichtbar." under the note
+    ALTS_Y = 162,         -- the other characters of the account with a sign-up for the date
+    CAL_Y = 192,          -- "Bitte auch im Kalender eintragen" and the button that opens the calendar
+    LABEL_W = 70,         -- the labels "Rolle" and "Notiz"; the controls start LABEL_GAP after them
+    LABEL_GAP = 8,
+    ROLE_W = 40,          -- a role chip
+    CAL_W = 130,          -- "Kalender öffnen" (at least; FitChip)
+    BUTTON_W = 100,       -- Anmelden, Vorläufig, Abmelden (at least; FitChip)
+    BOTTOM = 14,          -- the button row from the window's bottom edge
+    LINE_H = 14,          -- one line of a hint (T.FONT.hint)
+}
+
 ---------------------------------------------------------------------------
 -- Atlases: the client's art Amisia may use (the style allow-list; the layout rules fail on any
 -- other). Not on it on purpose: common-dropdown-b-button (the filter button carries a baked-in

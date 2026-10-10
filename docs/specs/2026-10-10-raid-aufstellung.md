@@ -1,6 +1,6 @@
 # Spec: Raid-Aufstellung (Anmeldeliste, Einladen, Gruppen sortieren)
 
-Stand: 2026-10-10 · Status: freigegeben, Teile A, B und E gebaut ·
+Stand: 2026-10-10 · Status: freigegeben, Teile A, B, E, G und H (ohne H3) gebaut ·
 Feature: F-083 (Aufstellung: Einfügen, Abgleich, Planer, Ersatzbank), F-084 (Einladen, Sortieren);
 F-082 war beim Bau schon vergeben (Einrichtungshilfe). Regel: DECISIONS D-41.
 
@@ -854,3 +854,13 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Ereignisses 1 Signup; EventGetInviteResponseTime gibt nil. Folge: Teil G liest nach
   CALENDAR_OPEN_EVENT (Update-Ereignis nur zusätzlich), automatisches Neulesen ohne Klick ist erlaubt;
   die Antwortzeit fehlt, "neueste Angabe" nimmt die Zeit, zu der Amisia einen Statuswechsel sah.
+- 2026-10-10: Gebaut: Teil G (G1 und G2) als F-086 und Teil H1 und H2 als F-087 (2.24.0), Regel D-42.
+  Beim Bau entschieden: ein Lesecode `Raid/Calendar.lua` für Aufstellung, Anmeldung und die
+  Kalender-Prüfung; ein zum ersten Mal gesehener Kalender-Status ist älter als jeder Amisia-Klick (es
+  gibt keine Antwortzeit), ein Wechsel zählt mit der Zeit, zu der Amisia ihn sah; die Einstellung
+  `lineup.calendarAll` entfällt (jede Art zählt); neu gelesen wird bei Änderungen (höchstens alle
+  5 Sekunden) und alle 30 Sekunden, solange die Seite offen ist; das Wiederholen nach dem Login nicht
+  innerhalb von 30 Minuten (auch nicht nach `/reload`); ein vom Offizier entfernter Name kommt nur mit
+  einer neuen Angabe zurück. Kein `AT`. Teil H3 (Eintragen im Spielkalender) wartet auf die Prüfungen
+  23 bis 25: das Fenster sagt "Bitte auch im Kalender eintragen." mit "Kalender öffnen", die Einstellung
+  `signup.calendar` gibt es noch nicht.

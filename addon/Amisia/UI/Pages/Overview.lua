@@ -2,9 +2,10 @@
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
--- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12
-local GAP, SLOTS = 12, 6
-local CARD_W, CARD_H = (T.PAGE_W - GAP) / 2, 112
+-- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12; four rows of 110
+-- and three gaps fill the 478 px (an officer has seven cards since the raid sign-up's)
+local GAP, SLOTS = 12, 8
+local CARD_W, CARD_H = (T.PAGE_W - GAP) / 2, 110
 
 local page
 -- For tests: the page frame once built.

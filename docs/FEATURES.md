@@ -407,6 +407,28 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du das Kalenderfenster offen lässt und `/amisia selbsttest kalender` eingibst, dann steht unter 18 "Kalenderfenster: offen: 18 und 19 übersprungen ...", und im Kalender hat sich nichts geändert (keine Anmeldung, kein Status).
 - Notiz: Prüfungen 17 bis 20 der Spec 2026-10-10 (Teil G); nur lesend: die Schreibfunktionen für 23 bis 25 stehen nur als "da"/"fehlen" im Bericht. Den Bericht bitte an uns, danach wird Teil G gebaut.
 
+### F-086 Raid-Aufstellung: Anmeldungen aus dem Spielkalender
+- Version: 2.24.0
+- Status: gebaut
+- Prüfung: Wenn du als Vulo Hunt im Spielkalender ein Gildenereignis für morgen 20:00 anlegst, das Kalenderfenster schließt und auf der Seite Aufstellung "Kalender" klickst, dann steht dein Ereignis in der Liste (Wann, Gildenereignis, Art, "du: bestätigt") und ist gewählt; nach "Übernehmen" meldet der Chat "Aufstellung: Kalender <Titel>, <Tag> 20:00: 1 Einträge, 1 angemeldet, 0 vorläufig, 0 abgesagt.", die Seite zeigt die Nacht von morgen mit Vulo Hunt (Quelle "K", "bestätigt"), und darüber steht "Kalender: <Titel> · <Tag> 20:00 · gelesen <Uhrzeit>".
+- Prüfung: Wenn sich Vulo Pala im Kalenderfenster des Spiels für dieses Ereignis anmeldet und du danach als Vulo Hunt "Kalender" und "Übernehmen" klickst, dann steht Vulo Pala grün "angemeldet" als Paladin, mit grauem "H?" (oder der Rolle aus der letzten Aufstellung).
+- Prüfung: Wenn du danach "Einfügen" klickst und die zwei Zeilen "Heiler" und "Vulo Pala" übernimmst, dann bleiben die Kalender-Zeilen stehen, Vulo Pala steht einmal da mit den Quellen "L K" und der Rolle H, und die Zeile oben sagt "... · Liste 1 · Kalender 2 · Amisia 0".
+- Prüfung: Wenn im Kalenderfenster des Spiels ein anderes Ereignis offen ist und du "Übernehmen" klickst, dann sagt der Chat "Kalenderfenster schließen, dann Übernehmen."; nach einem "Übernehmen" ist im Kalender nichts verändert (keine neue Einladung, kein anderer Status).
+- Prüfung: Wenn du das Ereignis im Spielkalender löschst, während die Seite Aufstellung offen ist, dann steht oben nach höchstens einer halben Minute "Ereignis nicht mehr im Kalender", das "K" der Zeilen wird grau, und die Zeilen bleiben.
+- Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein anderes Gildenmitglied im Kalender anmeldet oder absagt, während deine Seite Aufstellung offen ist, dann ändert sich seine Zeile nach wenigen Sekunden ohne Klick ("abgemeldet" nimmt einen Eingeteilten aus der Gruppe, mit der Chatzeile "Aufstellung: <Name> hat sich abgemeldet (war Gruppe N).").
+- Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil G (G1 und G2); DECISIONS D-42. Jedes Gildenereignis zählt, die Art Schlachtzug ist vorgewählt (Prüfung 17). Der Lesecode ist Raid/Calendar.lua, derselbe wie in `/amisia selbsttest kalender` (F-085).
+
+### F-087 Raid-Anmeldung in Amisia
+- Version: 2.24.0
+- Status: gebaut
+- Prüfung: Wenn du als Vulo Hunt (Gildenereignis für morgen angelegt) etwa eine Minute nach dem Login die Übersicht öffnest, dann zeigt die Karte "Raid-Anmeldung" "<Tag> 20:00 <Titel> · noch offen" und den Knopf "Anmelden".
+- Prüfung: Wenn du "Anmelden" klickst, im Fenster "Raid-Anmeldung" die Rolle "T" wählst, unter "Notiz" "komme 20:15" schreibst und "Anmelden" klickst, dann sagt der Chat "Raid-Anmeldung: <Tag> 20:00 <Titel> · angemeldet als Tank. Gesendet.", die Karte zeigt "angemeldet (T)", und auf der Seite Aufstellung von morgen steht Vulo Hunt mit Quelle "A", Rolle T und einem goldenen "*" am Namen; der Tooltip zeigt "Notiz: komme 20:15".
+- Prüfung: Wenn du dich als Vulo Pala mit `/amisia anmelden` (Rolle "H", Knopf "Vorläufig") vorläufig anmeldest und danach als Vulo Hunt einloggst, dann steht Vulo Pala auf der Seite Aufstellung von morgen orange "vorläufig" mit H und Quelle "A" (derselbe Account, ohne Nachricht); im Fenster von Vulo Hunt steht "Deine anderen Charaktere: Vulo Pala: vorläufig (H)".
+- Prüfung: Wenn du Vulo Pala als Vulo Hunt im Planer in eine Gruppe setzt, dich als Vulo Pala mit `/amisia anmelden ab` abmeldest (Chat: "... · abgemeldet. ...") und als Vulo Hunt die Seite Aufstellung öffnest, dann liest der Chat "Aufstellung: Vulo Pala hat sich abgemeldet (war Gruppe N)." und Vulo Pala steht grau "abgemeldet" unten, nicht mehr in der Gruppe.
+- Prüfung: Wenn du einen Discord-Text mit "Heiler" und "Vulo Pala" einfügst und Vulo Pala sich danach in Amisia abmeldet, dann steht er "abgemeldet" mit dem Hinweis "Discord: angemeldet".
+- Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein Raider anmeldet, während kein Offizier online ist ("Kein Offizier online: Amisia schickt es, sobald einer kommt."), und sich später ein Offizier einloggt, während der Raider online ist, dann steht die Anmeldung nach höchstens 2 Minuten in der Aufstellung des Offiziers (Frage AQ, Antwort per Flüstern). Wenn ein Raider eine Notiz mit Farbcode und 100 Zeichen sendet, dann zeigt der Offizier höchstens 40 Zeichen ohne Farbe, und kein Chat zeigt die Notiz.
+- Notiz: Teil H3 (derselbe Klick trägt auch im Spielkalender ein) ist noch nicht gebaut: das Fenster zeigt "Bitte auch im Kalender eintragen." mit "Kalender öffnen"; kommt nach den Prüfungen 23 bis 25. Einstellungen: "Raid-Anmeldung", "Karte auf der Übersicht" (an); "Raid-Aufstellung", "Anmeldungen aus Amisia annehmen" (an). `/amisia signup`, `off` auf englischen Clients. Spec Teil H (H1 und H2), DECISIONS D-42; Raider sehen keine Liste anderer.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

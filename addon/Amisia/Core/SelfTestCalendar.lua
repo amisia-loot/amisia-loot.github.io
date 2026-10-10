@@ -7,7 +7,7 @@
 -- functions the later checks 23 to 25 need are only looked up, never called. Every call is
 -- protected; a missing function is FEHLT, never an error.
 local ADDON, ns = ...
-local L, N_ = ns.L, ns.N_
+local L = ns.L
 
 local ST = ns.SelfTest
 local K = ST.Kit
@@ -39,15 +39,10 @@ local LIST_EVENTS = { "CALENDAR_UPDATE_EVENT_LIST", "CALENDAR_UPDATE_GUILD_EVENT
 local OPEN_EVENTS = { "CALENDAR_OPEN_EVENT", "CALENDAR_UPDATE_INVITE_LIST" }
 local BLOCK_EVENTS = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
 
--- Enum.CalendarStatus: the client's name and what Amisia will show (spec, part G)
-local STATUS = {
-    [0] = { "Invited", N_("eingeladen") }, [1] = { "Available", N_("angemeldet") }, [2] = { "Declined", N_("abgesagt") },
-    [3] = { "Confirmed", N_("bestätigt") }, [4] = { "Out", N_("abgesagt") }, [5] = { "Standby", N_("Ersatz") },
-    [6] = { "Signedup", N_("angemeldet") }, [7] = { "NotSignedup", N_("ohne Antwort") }, [8] = { "Tentative", N_("vorläufig") },
-}
--- Enum.CalendarEventType and Enum.CalendarInviteType (client names)
-local EVENT_TYPES = { [0] = "Raid", [1] = "Dungeon", [2] = "PvP", [3] = "Meeting", [4] = "Other", [5] = "HeroicDeprecated" }
-local INVITE_TYPES = { [0] = "Normal", [1] = "Signup" }
+-- the status and type tables, the time stamp, the window check, the month offset and the choice of
+-- the event are the calendar module's (Raid/Calendar.lua), shared with the raid lineup and sign-up
+local Cal = ns.Cal
+local EVENT_TYPES, INVITE_TYPES = Cal.EVENT_TYPES, Cal.INVITE_TYPES
 
 local function enumText(v, names)
     if isSecret(v) then return L["<geheim>"] end
@@ -57,26 +52,14 @@ end
 
 local function statusText(v)
     if isSecret(v) then return L["<geheim>"] end
-    local s = type(v) == "number" and STATUS[v]
-    return s and ("%d %s (%s)"):format(v, s[1], L[s[2]]) or show(v)
+    local s = type(v) == "number" and Cal.STATUS[v]
+    return s and ("%d %s (%s)"):format(v, s[1], L[s[3]]) or show(v)
 end
 
 local function plain(v) return not isSecret(v) and v or nil end
 
--- "2026-10-11 20:00" from a table with year, month, monthDay, hour, minute; nil when one is not a number.
-local function stamp(t)
-    if type(t) ~= "table" then return nil end
-    local y, m, d, h, mi = plain(t.year), plain(t.month), plain(t.monthDay), plain(t.hour), plain(t.minute)
-    for _, v in ipairs({ y, m, d, h, mi }) do if type(v) ~= "number" then return nil end end
-    return ("%04d-%02d-%02d %02d:%02d"):format(y, m, d, h, mi), { year = y, month = m, day = d, hour = h, min = mi }
-end
-
-local function calendarWindow()
-    local f = _G.CalendarFrame
-    if type(f) ~= "table" or type(f.IsShown) ~= "function" then return nil end
-    local ok, on = pcall(f.IsShown, f)
-    return ok and on and true or false
-end
+local stamp = Cal.Stamp
+local calendarWindow = Cal.WindowShown
 
 ---------------------------------------------------------------------------
 -- The probe: one at a time, its own event frame only while it runs
@@ -228,7 +211,7 @@ local function openTarget(P, fromKey, read, after)
             show(s.monthDay), show(s.eventIndex))
     end)
     if not sel then return after(false, false) end
-    local offset = plain(sel.offsetMonths) or plain(sel.offsetMonth) or 0
+    local offset = Cal.Offset(sel)
     local okCall, result
     step(P, OPEN_EVENTS, "all", function()
         okCall, result = pcall(call, "C_Calendar.OpenEvent", offset, sel.monthDay, sel.eventIndex)
@@ -334,18 +317,7 @@ check18 = function(P)
     P.phase = "18"
     -- a raid-type guild event first; else any guild event (the client asks for a raid instance with
     -- the type "Schlachtzug", which Forever may not offer before its raids open: 2026-10-10)
-    local any
-    for _, ev in ipairs(P.events) do
-        local e = ev.info
-        if not isSecret(e.calendarType) and e.calendarType == "GUILD_EVENT" then
-            if not isSecret(e.eventType) and e.eventType == 0 then
-                P.target = ev
-                break
-            end
-            any = any or ev
-        end
-    end
-    P.target = P.target or any
+    P.target = Cal.PickTarget(P.events)
     if not P.target then
         add(R, "WERT", L["Ereignis"], L["kein Gildenereignis (GUILD_EVENT): eins anlegen und neu prüfen"])
         P.skipped = L["kein Gildenereignis"]
@@ -439,6 +411,7 @@ finishProbe = function(P)
     if P.open and fn("C_Calendar.CloseEvent") then pcall(C_Calendar.CloseEvent) end
     if P.started then pcall(section20, P) end
     listen(false)
+    Cal.Hold(false)
     if run == P then run = nil end
     local R = K.finish(P.R, L["Amisia-Kalender-Prüfung %s | Client %s | %s"])
     CT.last = R
@@ -482,6 +455,8 @@ function CT.Start()
     add(R, "WERT", L["Kalenderfenster"], window == nil and L["nicht geladen"] or (window and L["offen"] or L["zu"]))
     P.started = true
     listen(true)
+    -- the lineup and the sign-up open nothing while the probe has the calendar
+    Cal.Hold(true)
     ns.msg(L["Kalender-Prüfung läuft (bis etwa %d s) ..."]:format(3 * CT.WAIT + CT.DELAY))
     K.section(R, L["17 Termine lesen"])
     if not fn("C_Calendar.OpenCalendar") then

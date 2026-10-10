@@ -157,6 +157,51 @@ function S.lineup()
     end
 end
 
+-- The game calendar (Raid/Calendar.lua): tonight's raid "Geschmolzener Kern" (an hour from now),
+-- a meeting and Onyxia later; the raid's invite list holds names of the pasted list (one declined,
+-- one tentative) and names only the calendar knows.
+local calendarDone
+function S.calendar()
+    if calendarDone then return end
+    calendarDone = true
+    STUB.calendar({ events = {
+        { title = "Geschmolzener Kern", at = STUB.now + 3600, eventType = 0, id = 31, inviteStatus = 3 },
+        { title = "Gildentreffen", days = 2, eventType = 3, id = 32 },
+        { title = "Onyxia", days = 4, eventType = 0, id = 33, inviteStatus = 6 },
+    }, invites = { [31] = {
+        { name = "Bob Eisherz", classFilename = "WARRIOR", level = 60, inviteStatus = 6 },
+        { name = "Mara Quell", classFilename = "SHAMAN", level = 60, inviteStatus = 8 },
+        { name = "Sven Dorn", classFilename = "ROGUE", level = 60, inviteStatus = 2 },
+        { name = "Vuloo", classFilename = "PRIEST", level = 60, inviteStatus = 3 },
+        { name = "Lea Morgen", classFilename = "MAGE", level = 60, inviteStatus = 6 },
+        { name = "Tim Abend", classFilename = "DRUID", level = 60, inviteStatus = 5 },
+        { name = "Ute Still", classFilename = "PRIEST", level = 60, inviteStatus = 7 },
+    } } })
+    STUB.guild[#STUB.guild + 1] = { name = "Lea Morgen", class = "MAGE", rank = 3 }
+    STUB.guild[#STUB.guild + 1] = { name = "Tim Abend", class = "DRUID", rank = 3 }
+    STUB.guild[#STUB.guild + 1] = { name = "Ute Still", class = "PRIEST", rank = 4, online = false }
+    STUB.fire("GUILD_ROSTER_UPDATE")
+    STUB.tick(11)
+    NS.SignupLoadTerms()
+    STUB.tick(1)
+end
+
+-- Tonight's lineup with the calendar's invite list and two sign-ups from Amisia (a note, a sign-off).
+local lineupCalDone
+function S.lineupCalendar()
+    S.lineup()
+    S.calendar()
+    if lineupCalDone then return end
+    lineupCalDone = true
+    local ev = NS.Cal.Events()[1]
+    NS.LineupReadCalendar(ev, function() end)
+    STUB.tick(1)
+    local night = ev.night
+    NS.LineupSignup(night, "Pia Pfeil", { s = "A", r = "R", c = "HUNTER", t = math.floor(STUB.now), w = "komme 20:15" }, false)
+    NS.LineupSignup(night, "Jo Klinge", { s = "X", r = "M", c = "ROGUE", t = math.floor(STUB.now) }, false)
+    NS.LineupSignup(night, "Lea Morgen", { s = "A", r = "R", c = "MAGE", t = math.floor(STUB.now), w = "Feuer" }, false)
+end
+
 -- A priest build with every talent state: full (gold frame, glow), partly learned, reachable,
 -- locked, met and unmet prerequisite lines.
 function S.priestPlan()
@@ -197,6 +242,23 @@ S.STATES = {
     { page = "lineup", name = "lineup-match", open = function() S.lineup(); NS.ShowLineup("match") end },
     { page = "lineup", name = "lineup-planner", open = function() S.lineup(); NS.ShowLineup("planner") end },
     { page = "lineup", name = "lineup-paste", open = function() S.lineup(); NS.ShowLineup("paste") end },
+    -- the lineup with the calendar: the events to choose, then the rows with their sources
+    { page = "lineup", name = "lineup-calendar", open = function() S.lineup(); S.calendar(); NS.ShowLineup("calendar"); STUB.tick(1) end },
+    { page = "lineup", name = "lineup-sources", open = function()
+        S.lineupCalendar()
+        NS.ShowLineup("match", NS.Cal.Events()[1].night)
+    end },
+    { page = "lineup", name = "lineup-sources-planner", open = function()
+        S.lineupCalendar()
+        NS.ShowLineup("planner", NS.Cal.Events()[1].night)
+    end },
+    -- the card "Raid-Anmeldung" with the own sign-up for the first date
+    { page = "overview", name = "overview-signup", open = function()
+        S.calendar()
+        local t = NS.SignupTerms()
+        if t and t[1] and not NS.SignupOf()[t[1].night] then NS.SignupSet(t[1], "V", "H", "komme 20:15") end
+        NS.ShowPage("overview")
+    end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },
@@ -330,6 +392,11 @@ S.WINDOWS = {
         return NS._setup.frame()
     end },
     { key = "setup-6", view = "officer", open = function() return NS.ShowSetup(6) end },
+    -- the raid sign-up window (UI/Signup.lua) with the first date chosen
+    { key = "signup", view = "raider", open = function()
+        S.calendar()
+        return NS.ShowSignup()
+    end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame

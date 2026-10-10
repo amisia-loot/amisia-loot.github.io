@@ -1,8 +1,12 @@
 -- Aufstellung (officers only, D-41): the sign-up list of a raid night in two views, the match
 -- against the guild ("Abgleich": found, likely, ambiguous, unknown, guest, with one click to fix)
 -- and the planner ("Planer": the groups of the raid size, not placed, bench; click a name, then
--- another or a free place to swap or move, or drag; right click for role, bench, hold, remove), and
--- the paste field. The logic lives in Raid/Lineup.lua; this page only shows it.
+-- another or a free place to swap or move, or drag; right click for role, bench, hold, remove), the
+-- paste field and the calendar view ("Kalender": the guild events of the next 14 days, the next of
+-- the raid type chosen, "Übernehmen" reads its invite list into the event's night, D-42). Each row
+-- carries the marks of its sources (L list, K calendar, A Amisia) and the valid status; while the
+-- page is open a change in the calendar reads the night's event again (at most every 5 s). The
+-- logic lives in Raid/Lineup.lua and Raid/Calendar.lua; this page only shows it.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -14,19 +18,26 @@ local GROUP_W, GROUP_GAP, HEAD_H, SLOT_H = 146, 6, 18, 17
 local GROUP_H = HEAD_H + 5 * SLOT_H + 1
 local SLOT_INSET = 3
 -- the two lists under the groups: not placed (left) and bench (right)
-local LIST_ROWS, LIST_ROW_H = 7, 18
+local LIST_ROWS, LIST_ROW_H = 6, 18
 local LEFT_W, RIGHT_X, RIGHT_W = 285, 303, 287
 local SIDE_COLS = { { "r", 4, 18 }, { "name", 24, 170 }, { "info", 198, 84 } }
--- the match view: rows of 22 from the column heads to the footer (16)
-local MATCH_ROWS, MATCH_ROW_H = 16, 22
-local MATCH_COLS = { { "r", 6, 26 }, { "name", 36, 166 }, { "state", 206, 100 }, { "level", 310, 36 },
-                     { "online", 350, 50 }, { "act", 404, 186 } }
-local ACT_X, MAX_CHIPS, CHIP_MAX_W = 404, 3, 90
+-- the match view: rows of 22 from the column heads to the footer (15)
+local MATCH_ROWS, MATCH_ROW_H = 15, 22
+local MATCH_COLS = { { "r", 6, 26 }, { "src", 34, 30 }, { "name", 66, 148 }, { "state", 216, 100 }, { "level", 318, 30 },
+                     { "online", 352, 48 }, { "act", 402, 188 } }
+local ACT_X, MAX_CHIPS, CHIP_MAX_W = 402, 3, 90
+-- the calendar view: one row per guild event
+local CAL_ROWS, CAL_ROW_H = 15, 22
+local CAL_COLS = { { "when", 6, 120 }, { "title", 130, 230 }, { "kind", 364, 90 }, { "own", 458, 130 } }
+local RELOAD_GAP = 5       -- the calendar is read again at most this often while the page is open
+local POLL = 30            -- and every this many seconds (the client does not tell every change)
 
 local page
-local view = "match"      -- "match", "planner" or "paste"
+local view = "match"      -- "match", "planner", "paste" or "calendar"
 local night               -- the night shown (nil: tonight)
 local selected            -- the index of the entry a click chose (swap and move)
+local calList             -- the guild events of the calendar view (ns.Cal.Events()), nil while read
+local calPick             -- the id (else the index) of the event chosen in the calendar view
 
 function ns.LineupPageFrame() return page end
 
@@ -56,9 +67,48 @@ local STATE = {
     u = RED .. L["unbekannt"] .. "|r",
     g = GREY .. L["Gast"] .. "|r",
 }
+-- the valid status of parts G and H (st)
+local STATUS = {
+    A = GREEN .. L["angemeldet"] .. "|r", B = GREEN .. L["bestätigt"] .. "|r", V = ORANGE .. L["vorläufig"] .. "|r",
+    E = YELLOW .. L["Ersatz"] .. "|r", X = GREY .. L["abgemeldet"] .. "|r", I = GREY .. L["eingeladen"] .. "|r",
+    O = GREY .. L["ohne Antwort"] .. "|r", G = GREY .. L["nicht mehr im Kalender"] .. "|r",
+}
+local STATUS_PLAIN = { A = L["angemeldet"], B = L["bestätigt"], V = L["vorläufig"], E = L["Ersatz"], X = L["abgemeldet"],
+                       I = L["eingeladen"], O = L["ohne Antwort"], G = L["nicht mehr im Kalender"] }
+-- a row only from a pasted list shows the match as before; one with the calendar or Amisia its status
+local function fromList(e) return not ns.LineupHasSource(e, "K") and not ns.LineupHasSource(e, "A") end
 local function stateText(e)
-    if e.a then return GREY .. L["abgemeldet"] .. "|r" end
-    return STATE[e.x] or (GREEN .. L["gefunden"] .. "|r")
+    if fromList(e) or not e.st then
+        if e.a then return GREY .. L["abgemeldet"] .. "|r" end
+        return STATE[e.x] or (GREEN .. L["gefunden"] .. "|r")
+    end
+    -- an unclear name first: it needs a click
+    if e.x and e.x ~= "g" then return STATE[e.x] end
+    -- a held player who signed off stays in the group: red
+    if e.st == "X" and e.k and e.g then return RED .. L["abgemeldet"] .. "|r" end
+    return STATUS[e.st] or ""
+end
+
+-- the source marks: L list, K calendar (grey when its event is gone), A Amisia
+local SRC_COLOR = { L = "|cffd8d8d8", K = "|cff8fb3ff", A = T.GOLD_TEXT }
+local SRC_WORD = { L = L["L##Quelle"], K = L["K##Quelle"], A = L["A##Quelle"] }
+local SRC_NAME = { L = L["Liste"], K = L["Kalender"], A = L["Amisia"] }
+local function sourceText(e, lost)
+    local out = {}
+    for _, x in ipairs({ "L", "K", "A" }) do
+        if ns.LineupHasSource(e, x) then
+            local c = (x == "K" and lost) and GREY or SRC_COLOR[x]
+            out[#out + 1] = c .. SRC_WORD[x] .. "|r"
+        end
+    end
+    return table.concat(out, " ")
+end
+
+-- "Discord: angemeldet" when the pasted list says something else than the valid status
+local SAME = { B = "A" }   -- "bestätigt" is "angemeldet" for the list
+local function listHint(e)
+    if not e.d or not e.st or e.d == (SAME[e.st] or e.st) or fromList(e) then return nil end
+    return GREY .. L["Discord: %s"]:format(STATUS_PLAIN[e.d] or "?") .. "|r"
 end
 
 -- "Heute, 05.10. (38)" for the night picker
@@ -148,6 +198,17 @@ local function tooltip(owner, e)
     if e.r then bits[#bits + 1] = ROLE_NAME[e.r] .. (e.q and L[" (geraten)"] or "") end
     if p then bits[#bits + 1] = p.online and (GREEN .. L["online"] .. "|r") or (GREY .. L["offline"] .. "|r") end
     GameTooltip:AddLine(table.concat(bits, " · "), 0.85, 0.85, 0.85)
+    local src = {}
+    for _, x in ipairs({ "L", "K", "A" }) do
+        if ns.LineupHasSource(e, x) then src[#src + 1] = SRC_NAME[x] end
+    end
+    if not fromList(e) then GameTooltip:AddLine(L["Quellen: %s"]:format(table.concat(src, ", ")), 0.85, 0.85, 0.85) end
+    if e.st and e.t and not fromList(e) then
+        GameTooltip:AddLine(L["%s seit %s"]:format(STATUS_PLAIN[e.st] or "?", ns.FmtDayTime(e.t)), 0.85, 0.85, 0.85)
+    end
+    if e.w then GameTooltip:AddLine(L["Notiz: %s"]:format(e.w), 1, 1, 1, true) end
+    local hint = listHint(e)
+    if hint then GameTooltip:AddLine(hint, 0.85, 0.85, 0.85) end
     if e.k then GameTooltip:AddLine(L["Festgehalten: \"Automatisch einteilen\" bewegt diesen Spieler nicht."], 0.85, 0.85, 0.85, true) end
     if e.m then GameTooltip:AddLine(L["Vielleicht"], 0.85, 0.85, 0.85) end
     if e.v then GameTooltip:AddLine(L["Überzählig: kein Platz mehr frei."], 0.85, 0.85, 0.85, true) end
@@ -375,17 +436,21 @@ local function fillMatch(row, it)
     for _, c in ipairs(row.chips) do c:Hide() end
     row.edit:Hide()
     row.r:SetText(roleText(e))
+    row.src:SetText(sourceText(e, page.calLost))
     local name = classColored(e.n, e.c, e.a or (e.x ~= nil and e.x ~= "l"))
+    -- a note (Amisia): a small gold mark, the note itself in the tooltip
+    if e.w then name = name .. T.GOLD_TEXT .. " *|r" end
     if e.s then name = name .. GREY .. L[" (Liste: %s)"]:format(e.s) .. "|r" end
     row.name:SetText(name)
-    row.state:SetText(stateText(e) .. (e.m and (GREY .. L[", vielleicht"] .. "|r") or ""))
+    row.state:SetText(stateText(e) .. ((e.m and fromList(e)) and (GREY .. L[", vielleicht"] .. "|r") or ""))
     -- below the highest level: orange (invited anyway when placed)
     local top = type(GetMaxPlayerLevel) == "function" and tonumber(GetMaxPlayerLevel()) or nil
     row.level:SetText(p and p.level and ((top and p.level < top) and (ORANGE .. p.level .. "|r") or tostring(p.level)) or "")
     row.online:SetText(p and (p.online and (GREEN .. L["online"] .. "|r") or (GREY .. L["offline"] .. "|r")) or "")
     row.act:SetText("")
     if e.a then
-        -- nothing to do
+        -- nothing to do but the list's other word
+        row.act:SetText(listHint(e) or "")
     elseif e.x == "l" then
         chip(row, 1, L["Bestätigen"]).pick = true
         placeChips(row)
@@ -405,6 +470,8 @@ local function fillMatch(row, it)
         local b = chip(row, 1, L["tauschen"], 70)
         b.alt = it.alt
         placeChips(row, ACT_X + math.min(110, row.act:GetStringWidth() + 6))
+    elseif listHint(e) then
+        row.act:SetText(listHint(e))
     end
 end
 
@@ -414,9 +481,98 @@ end
 -- Opens the page (the officers only), in a view when given ("match", "planner", "paste").
 function ns.ShowLineup(which, key)
     if which == "match" or which == "planner" or which == "paste" then view = which end
+    if which == "calendar" then return ns.LineupShowCalendar() end
     if key then night = key end
     ns.ShowPage("lineup")
 end
+
+---------------------------------------------------------------------------
+-- The calendar view: the guild events of the next 14 days, "Übernehmen"
+---------------------------------------------------------------------------
+local function calChosen()
+    for _, ev in ipairs(calList or {}) do
+        if (ev.id or ev.index) == calPick then return ev end
+    end
+    return nil
+end
+
+-- Opens the calendar view and reads the guild events (the next of the raid type chosen).
+function ns.LineupShowCalendar()
+    view, calList = "calendar", nil
+    ns.ShowPage("lineup")
+    ns.Cal.Load(function(list)
+        calList = list or {}
+        if not calChosen() then
+            local nxt = ns.Cal.Next(calList)
+            calPick = nxt and (nxt.id or nxt.index) or nil
+        end
+        if ns.CurrentPage and ns.CurrentPage() == "lineup" then ns.Refresh() end
+    end)
+end
+
+local function takeCalendar()
+    local ev = calChosen()
+    if not ev then return end
+    ns.LineupReadCalendar(ev, function(key, line)
+        if key then
+            night, selected, view = key, nil, "match"
+        end
+        if line then ns.msg(line) end
+        ns.Refresh()
+    end)
+end
+
+local function buildCal(row)
+    W.Cells(row, CAL_COLS)
+    row.sel = W.SelectBar(row)
+    row:SetScript("OnClick", function(self)
+        if self.item then
+            calPick = self.item.id or self.item.index
+            ns.Refresh()
+        end
+    end)
+    row:SetScript("OnDoubleClick", function(self)
+        if self.item then
+            calPick = self.item.id or self.item.index
+            takeCalendar()
+        end
+    end)
+end
+
+local function fillCal(row, ev)
+    row.when:SetText(("%s %s"):format(ns.FmtDay(ev.at), ns.Cal.When(ev.at)))
+    row.title:SetText(ev.raid and (T.GOLD_TEXT .. ev.title .. "|r") or ev.title)
+    local word = ev.type and ns.Cal.TYPE_WORD[ev.type]
+    row.kind:SetText(word and L[word] or "")
+    local own = ev.own and STATUS[ev.own]
+    row.own:SetText(own and L["du: %s"]:format(own) or "")
+    show(row.sel, (ev.id or ev.index) == calPick)
+end
+
+-- Reads the shown night's event again while the page is open: after a change in the calendar (at
+-- most every RELOAD_GAP seconds) and every POLL seconds.
+local lastReload = 0
+local reloadPending = false
+local function pageOpen()
+    local main = _G.AmisiaFrame
+    return page ~= nil and page:IsVisible() and (not main or main:IsShown()) and ns.CurrentPage and ns.CurrentPage() == "lineup"
+end
+local function reloadCalendar()
+    if not pageOpen() or view == "paste" then return end
+    local n = ns.LineupNight(curNight(), false)
+    if not n or not n.cal or InCombatLockdown() then return end
+    if reloadPending then return end
+    local wait = RELOAD_GAP - (GetTime() - lastReload)
+    reloadPending = true
+    C_Timer.After(math.max(0, wait), function()
+        reloadPending = false
+        if not pageOpen() then return end
+        lastReload = GetTime()
+        ns.LineupCalendarAgain(curNight())
+    end)
+end
+ns.Listen("CALENDAR_CHANGED", reloadCalendar)
+ns.LineupReloadCalendar = reloadCalendar
 
 local function apply(f)
     local key, line = ns.SetLineupText(f.paste.box:GetText() or "", curNight())
@@ -450,7 +606,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.people = {}
         -- head row: the night on the left, paste and auto-assign on the right; the counts; the
         -- views with the view's action on the right
-        local top = f:Bands({ "row", "line", "row" })
+        local top = f:Bands({ "row", "line", "line", "row" })
         f.night = W.Picker(f, 150, function(v)
             night, selected = v, nil
             ns.Refresh()
@@ -460,6 +616,16 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             ns.Refresh()
             if view == "paste" then f.paste.box:SetFocus() else f.paste.box:ClearFocus() end
         end)
+        f.calBtn = W.Button(f, L["Kalender"], 80, function()
+            if view == "calendar" then
+                view = "match"
+                ns.Refresh()
+            else
+                ns.LineupShowCalendar()
+            end
+        end)
+        W.FitChip(f.calBtn, 80)
+        W.Tooltip(f.calBtn, L["Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
         f.auto = W.Button(f, L["Automatisch einteilen"], 160, function()
             local placed, over = ns.LineupAutoAssign(curNight())
             selected, view = nil, "planner"
@@ -470,8 +636,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         W.FitChip(f.pasteBtn, 90)
         W.FitChip(f.auto, 160)
         W.Tooltip(f.auto, L["Automatisch einteilen"], L["Tanks ab Gruppe 1, ein Heiler pro Gruppe, Nahkampf zusammen mit einem Schamanen oder Krieger, Fernkampf zusammen. Festgehaltene bleiben stehen."])
-        f:Place(1, { f.night }, { f.pasteBtn, f.auto })
+        f:Place(1, { f.night }, { f.calBtn, f.pasteBtn, f.auto })
         f.counts = f:Line(2)
+        f.calLine = f:Line(3)
         f.views = {
             match = W.Chip(f, L["Abgleich"], 70, function() view, selected = "match", nil ns.Refresh() end),
             planner = W.Chip(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
@@ -497,7 +664,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             f.paste.box:ClearFocus()
             ns.Refresh()
         end)
-        for _, b in ipairs({ f.rematch, f.bench, f.take, f.cancel }) do W.FitChip(b, 100) end
+        f.calTake = W.Button(f, L["Übernehmen"], 110, takeCalendar)
+        W.Tooltip(f.calTake, L["Übernehmen"], L["Liest die Teilnehmerliste des gewählten Ereignisses in die Aufstellung seiner Nacht. Bleibt die Seite offen, liest Amisia sie bei Änderungen neu."])
+        for _, b in ipairs({ f.rematch, f.bench, f.take, f.cancel, f.calTake }) do W.FitChip(b, 100) end
         f:Footer({ { "hint", lines = 2 } })
         -- the paste field
         f.paste = W.EditArea(f)
@@ -521,15 +690,33 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.benchList = f.plan:List(LIST_ROWS, LIST_ROW_H, buildSide, fillSide, { top = sideTop, x = RIGHT_X, width = RIGHT_W })
         f.plan.people = f.people
         f.openHead, f.benchHead = f.plan.openHead, f.plan.benchHead
+        -- the calendar view
+        f.cal = W.Page(f, { view = true, top = top })
+        local _, cheads = f.cal:Columns(CAL_COLS)
+        cheads.when:SetText(L["Wann"])
+        cheads.title:SetText(L["Gildenereignis"])
+        cheads.kind:SetText(L["Art"])
+        cheads.own:SetText(L["Status"])
+        f.calRows = f.cal:List(CAL_ROWS, CAL_ROW_H, buildCal, fillCal)
         f.empty = f:Empty()
+        -- the calendar of the shown night is read again now and then while the page is open
+        C_Timer.NewTicker(POLL, function()
+            local n = pageOpen() and ns.LineupNight(curNight(), false)
+            -- asks the client for the newest state: a change comes back as CALENDAR_CHANGED
+            if n and n.cal and not InCombatLockdown() and ns.Cal.Available() then pcall(C_Calendar.OpenCalendar) end
+        end)
         return f
     end,
     refresh = function(f)
+        -- the officer takes the sign-ups of the own characters of this account (no message);
+        -- a change fires LINEUP and so one more refresh
+        if ns.SignupTakeOwn then ns.SignupTakeOwn() end
         local key = curNight()
         local n = ns.LineupNight(key, false)
         f.people = ns.LineupPeople()
         f.plan.people = f.people
         f.list = n and n.list or {}
+        f.calLost = n and n.cal and n.cal.lost or false
         if selected and not f.list[selected] then selected = nil end
         -- the night picker: tonight, then the saved nights
         local values, seen = {}, {}
@@ -544,13 +731,17 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.night:SetValues(values)
         f.night:SetValue(key)
         local has = #f.list > 0
-        local paste = view == "paste"
-        local shown = paste and "paste" or view
+        local paste, calendar = view == "paste", view == "calendar"
+        local other = paste or calendar
+        local shown = view
         f.views.match:SetOn(shown == "match")
         f.views.planner:SetOn(shown == "planner")
         f.pasteBtn:SetText(paste and L["Zurück"] or L["Einfügen"])
         W.FitChip(f.pasteBtn, 90)
-        f.auto:SetEnabled(has and not paste)
+        f.calBtn:SetText(calendar and L["Zurück"] or L["Kalender"])
+        W.FitChip(f.calBtn, 80)
+        f.calBtn:SetEnabled(calendar or ns.Cal.CanReadInvites())
+        f.auto:SetEnabled(has and not other)
         -- the counts
         local c = ns.LineupCounts(key)
         if has then
@@ -565,8 +756,27 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         else
             f.counts:SetText(n and n.title or "")
         end
-        -- the view's buttons on the right of the third band
-        local prev = not has and not paste and previousNight() or nil
+        -- the calendar of the night and the sources: "Kalender: Molten Core · Fr 20:00 · gelesen 19:42 · Liste 9 · ..."
+        local parts = {}
+        if not ns.Cal.CanReadInvites() then
+            parts[1] = GREY .. L["Kalender nicht verfügbar."] .. "|r"
+        elseif n and n.cal then
+            parts[1] = L["Kalender: %s · %s"]:format(n.cal.title or "?", ns.Cal.When(n.cal.at))
+            if n.cal.lost then
+                parts[#parts + 1] = GREY .. L["Ereignis nicht mehr im Kalender"] .. "|r"
+            elseif n.cal.read then
+                parts[#parts + 1] = L["gelesen %s"]:format(date("%H:%M", n.cal.read))
+            end
+        end
+        if has then
+            local src = ns.LineupSources(key)
+            if src.K + src.A > 0 then
+                parts[#parts + 1] = L["Liste %d · Kalender %d · Amisia %d"]:format(src.L, src.K, src.A)
+            end
+        end
+        f.calLine:SetText(table.concat(parts, " · "))
+        -- the view's buttons on the right of the last band
+        local prev = not has and not other and previousNight() or nil
         if prev then
             f.copy:SetText(L["Von %s übernehmen"]:format(nightLabel(prev):match("^(.-) %(") or prev))
             W.FitChip(f.copy, 120)
@@ -576,26 +786,39 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         show(f.bench, has and shown == "planner")
         f.bench:SetEnabled(key == ns.LineupTonight() and (c.bench > 0))
         show(f.take, paste)
-        show(f.cancel, paste)
-        show(f.views.match, not paste)
-        show(f.views.planner, not paste)
-        f:Place(3, { f.views.match, f.views.planner }, { f.copy, f.rematch, f.bench, f.cancel, f.take }, { shown = true })
+        show(f.cancel, other)
+        show(f.calTake, calendar)
+        f.calTake:SetEnabled(calendar and calChosen() ~= nil)
+        show(f.views.match, not other)
+        show(f.views.planner, not other)
+        f:Place(4, { f.views.match, f.views.planner }, { f.copy, f.rematch, f.bench, f.cancel, f.take, f.calTake }, { shown = true })
         show(f.paste, paste)
         show(f.match, shown == "match" and has)
         show(f.plan, shown == "planner" and has)
-        if not has and not paste then
+        show(f.cal, calendar and calList ~= nil and #calList > 0)
+        if calendar then
+            if not calList then
+                f.empty:Set(L["Kalender wird gelesen ..."], L["Amisia fragt den Spielkalender nach den Gildenereignissen."])
+            elseif #calList == 0 then
+                f.empty:Set(L["Keine Gildenereignisse"], L["In den nächsten 14 Tagen steht kein Gildenereignis im Spielkalender. Ein Offizier legt es dort an (Gilden-Ereignis)."])
+            else
+                f.calRows:SetItems(calList)
+            end
+        elseif not has and not paste then
             f.empty:Set(L["Noch keine Anmeldungen"], prev and L["\"Einfügen\" nimmt die Anmeldeliste, oder übernimm die Aufstellung einer früheren Nacht."]
                 or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID."])
         end
-        show(f.empty, not has and not paste)
+        show(f.empty, (calendar and (not calList or #calList == 0)) or (not has and not other))
         if paste then
             f.hint:SetText(L["Discord-Text eines Anmelde-Bots (Überschriften wie \"Tanks\", \"Heiler\", \"Ersatz\", \"Abgemeldet\"), Zeilen wie \"Anna Tank\" oder \"Bob, Nahkampf\", oder der Block #AMISIA-RAID. Dann \"Übernehmen\"."])
+        elseif calendar then
+            f.hint:SetText(L["Gildenereignisse der nächsten 14 Tage, Schlachtzug zuerst gewählt. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht des Ereignisses; im Kalender ändert Amisia nichts."])
         elseif shown == "planner" then
             f.hint:SetText(L["Klick auf einen Namen, dann auf einen anderen oder einen freien Platz: tauschen oder verschieben (Ziehen geht auch). Rot umrandet: Gruppe ohne Heiler. Rechtsklick: Rolle, Ersatz, Festhalten."])
         else
             f.hint:SetText(has and L["Gelb: ein Klick bestätigt. Orange: den Richtigen wählen. Rot: den Namen eintippen (Amisia merkt ihn sich). Rechtsklick: Rolle, Ersatz, Festhalten, Entfernen."] or "")
         end
-        if not has then return end
+        if not has or calendar then return end
         -- the rows of both views
         local matchItems, open, bench, absent = {}, {}, {}, {}
         for i, e in ipairs(f.list) do

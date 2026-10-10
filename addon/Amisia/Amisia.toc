@@ -81,7 +81,9 @@ Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua
 Raid\Handover.lua
+Raid\Calendar.lua
 Raid\Lineup.lua
+Raid\Signup.lua
 Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua
@@ -110,6 +112,7 @@ UI\Pages\Tools.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Setup.lua
+UI\Signup.lua
 Core\Minimap.lua
 Core\SelfTest.lua
 Core\SelfTestCalendar.lua

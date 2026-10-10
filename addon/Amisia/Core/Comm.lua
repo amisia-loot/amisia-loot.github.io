@@ -34,10 +34,11 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
--- question per kind, a source request per kind and bucket; a roll window answer per round
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2 }
+-- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
+-- sign-up per night
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
@@ -316,6 +317,13 @@ local function rollResult(v)
 end
 local function optNum(v) return v == nil or v == "-" or isNum(v, 0, 9999999) end
 
+-- the raid sign-up (Raid/Signup.lua): a night, a role, a class token
+local function isNight(v) return type(v) == "string" and v:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil end
+local SIGN_STATUS = { A = true, V = true, X = true }
+local SIGN_ROLE = { T = true, H = true, M = true, R = true, ["-"] = true }
+local CLASS_TOKEN = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, PRIEST = true, SHAMAN = true, MAGE = true,
+                      WARLOCK = true, DRUID = true, ["-"] = true }
+
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
@@ -411,6 +419,14 @@ local VALID = {
     WE = function(f) return #f >= 3 and isHex(f[1], 4) and (f[2] == "D" or f[2] == "X") and (f[3] == "-" or rollName(f[3]))
                          and (f[4] == nil or rollResult(f[4])) end,
     WA = function(f) return #f >= 2 and isHex(f[1], 4) and ANSWER[f[2]] == true and (f[2] ~= "B" or isNum(f[3], 1, 9999999)) end,
+    -- the raid sign-up (Raid/Signup.lua): AN <night> <A|V|X> <T|H|M|R|-> <class|-> <epoch> <event id|->
+    -- [<note|->] (the note is cleaned and cut to 40 by the receiver); AQ <O|-> <rev> (an officer asks)
+    AN = function(f)
+        return #f >= 6 and isNight(f[1]) and SIGN_STATUS[f[2]] == true and SIGN_ROLE[f[3]] == true and CLASS_TOKEN[f[4]] == true
+            and isNum(f[5], 1, 4294967295) and (f[6] == "-" or (#f[6] <= 20 and isNum(f[6], 0, math.huge)))
+            and (f[7] == nil or #f[7] <= 120)
+    end,
+    AQ = function(f) return #f >= 2 and (f[1] == "O" or f[1] == "-") and isNum(f[2], 0, 4294967295) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
