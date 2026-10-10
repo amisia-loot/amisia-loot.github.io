@@ -547,10 +547,10 @@ assert(raidHdr.ButtonText:GetText() == "Raid", "expanded: the plain name, " .. t
 NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
--- the side tabs: the gear table, the rolls, the soft-reserve import, right outside the frame
+-- the side tabs: the gear table, the talent window, the rolls, the soft-reserve import, right outside the frame
 local tabs = MF.sideTabs
-assert(tabs.gear and tabs.rolls and tabs.softres)
-for _, k in ipairs({ "gear", "rolls", "softres" }) do
+assert(tabs.gear and tabs.talents and tabs.rolls and tabs.softres)
+for _, k in ipairs({ "gear", "talents", "rolls", "softres" }) do
     assert(tabs[k].inherits.LargeSideTabButtonTemplate and tabs[k].fillToInterior == true, k)
 end
 assert(tabs.gear.tooltipText == "Ausrüstungstabelle" and tabs.rolls.tooltipText == "Rolls"
@@ -572,28 +572,37 @@ assert(tabs.gear.Icon.points.TOPLEFT.x == 3 + inset, "inset once: " .. tabs.gear
 NS.Set("ui.view", "officer")
 local function tabsShown()
     local out = {}
-    for _, k in ipairs({ "gear", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
+    for _, k in ipairs({ "gear", "talents", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
     return table.concat(out, " ")
 end
-assert(tabsShown() == "gear rolls softres", tabsShown())
+assert(tabsShown() == "gear talents rolls softres", tabsShown())
 -- one under the other, the first at the frame's top right, outside the frame
 local p1 = tabs.gear.points.TOPLEFT
 assert(p1.rel == MF and p1.relPoint == "TOPRIGHT" and p1.x == 0 and p1.y == -60, "the first at the top right")
-local p2 = tabs.rolls.points.TOPLEFT
+local p2 = tabs.talents.points.TOPLEFT
 assert(p2.rel == tabs.gear and p2.relPoint == "BOTTOMLEFT" and p2.y == -2)
+assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents)
 assert(MF.clampInsets and MF.clampInsets[2] == tabs.gear:GetWidth(), "the tabs stay on the screen")
--- a raider sees the gear tab only; without gear data a raider sees none, an officer two without gaps
+-- a raider sees the gear and talent tabs; without gear data a raider sees the talents' only, an
+-- officer three without gaps
 NS.Set("ui.view", "raider")
-assert(tabsShown() == "gear", tabsShown())
+assert(tabsShown() == "gear talents", tabsShown())
 local keepGear = NS.GEAR
 NS.GEAR = nil
 NS.UpdateSideTabs()
+assert(tabsShown() == "talents", tabsShown())
+assert(tabs.talents.points.TOPLEFT.rel == MF and tabs.talents.points.TOPLEFT.y == -60, "no gap for the hidden gear tab")
+-- without talent data either: none, and no inset on the right
+local talentsAvailable = NS.Talents.Available
+NS.Talents.Available = function() return false end
+NS.UpdateSideTabs()
 assert(tabsShown() == "", tabsShown())
 assert(MF.clampInsets[2] == 0, "no tab shown: no inset on the right")
+NS.Talents.Available = talentsAvailable
 NS.Set("ui.view", "officer")
 assert(MF.clampInsets[2] == tabs.rolls:GetWidth(), "tabs shown again: the inset is back")
-assert(tabsShown() == "rolls softres", tabsShown())
-assert(tabs.rolls.points.TOPLEFT.rel == MF and tabs.rolls.points.TOPLEFT.y == -60, "no gap for the hidden tab")
+assert(tabsShown() == "talents rolls softres", tabsShown())
+assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents, "no gap for the hidden tab")
 assert(tabs.softres.points.TOPLEFT.rel == tabs.rolls)
 NS.GEAR = keepGear
 NS.UpdateSideTabs()

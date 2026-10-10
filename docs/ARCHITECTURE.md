@@ -103,8 +103,8 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |
 | `Gear/MapPins.lua` | World map pins via data provider | - | Bis, Map, Dungeons, Widgets, Gear |
 | `Gear/MapPin.xml` | Pin template `AmisiaMapPinMixin` | - | - |
-| `UI/MainFrame.lua` | Main window, page list, side tabs | (`settings.window`) | GearFrame, Widgets, Gear, Theme, SoftRes, RollFrame |
-| `UI/Pages/*.lua` | One page each (`ns.RegisterPanel`), drawn from the logic files; no logic of their own beyond the view | - | MainFrame, Widgets, Theme, their logic file |
+| `UI/MainFrame.lua` | Main window, page list, side tabs | (`settings.window`) | GearFrame, Widgets, Gear, Theme, SoftRes, RollFrame, Talents page |
+| `UI/Pages/*.lua` | One page each (`ns.RegisterPanel`), drawn from the logic files; no logic of their own beyond the view. `Pages/Talents.lua` also builds the window "Talentrechner" (`AmisiaTalentFrame`, `/amisia talente gross`): one builder draws the talent view on the page (`ns.Theme.TALENT.PAGE`) and in the window (`TALENT.BIG`), both on one plan; the window scales by `ui.talentScale` (Ctrl + mouse wheel) | (`settings.talentWindow`) | MainFrame, Widgets, Theme, their logic file |
 | `Core/Minimap.lua` | Minimap button, addon compartment | (`settings.minimap`) | MainFrame, Widgets, Gear, GearFrame, Map |
 | `Core/SelfTest.lua` | `/amisia selbsttest`: in-game checks, `AMISIA-WERTE` line | - | read-only on everything |
 
@@ -326,7 +326,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | Key | Shape | Owner | Migration / cleanup |
 |---|---|---|---|
 | `sessions` | list of raids `{id, date, instanceID, zone, start, last, members, loot, items, drops, awards, gone, kills, bench, outside, rolls, sync, points, announced...}` | Core.lua | Core fills missing lists, cleans `s.sync` (pending < 1 day, 20 conflicts of tonight), award `v` |
-| `settings` | `{version = 2, <section> = {<name> = value}, window, minimap, rollWindow = {point, x, y}}` | Registry.lua | `ns.ApplySettings`: flat 1.3 keys moved once; invalid values dropped |
+| `settings` | `{version = 2, <section> = {<name> = value}, window, minimap, rollWindow = {point, x, y}, talentWindow = {point, x, y}}` | Registry.lua | `ns.ApplySettings`: flat 1.3 keys moved once; invalid values dropped |
 | `itemNames` | `[id] = {n, q}` | Core.lua | - |
 | `exported` | `[session id] = {h = hash, at}` | Core.lua | marks of deleted sessions dropped |
 | `exportedBank` | epoch of the last exported bank count | Core.lua | - |
@@ -385,6 +385,9 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item
 tooltip, D-36); its other items are the officers'.
+`ui` holds the window sizes: `ui.scale` (the main window, 70-130 %) and `ui.talentScale` (the talent
+window, 70-150 %, also Ctrl + mouse wheel over it); `ui.resetPosition` resets the main window, the gear
+table, the roll window and the talent window.
 
 ## Locales
 

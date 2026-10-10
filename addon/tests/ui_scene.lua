@@ -121,6 +121,15 @@ function S.handover()
     STUB.tick(1)
 end
 
+-- A priest build with every talent state: full (gold frame, glow), partly learned, reachable,
+-- locked, met and unmet prerequisite lines.
+function S.priestPlan()
+    local plan = NS.Talents.NewPlan("PRIEST")
+    plan.ranks[105849], plan.ranks[105850], plan.ranks[105846] = 5, 1, 3
+    plan.ranks[105833], plan.ranks[105832] = 5, 1
+    return plan
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -138,15 +147,8 @@ S.STATES = {
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },
-    -- a priest build with every talent state: full (gold frame, glow), partly learned, reachable,
-    -- locked, met and unmet prerequisite lines
-    { page = "talents", name = "talents-plan", open = function()
-        local T = NS.Talents
-        local plan = T.NewPlan("PRIEST")
-        plan.ranks[105849], plan.ranks[105850], plan.ranks[105846] = 5, 1, 3
-        plan.ranks[105833], plan.ranks[105832] = 5, 1
-        NS.ShowTalents(T.Encode(plan))
-    end },
+    -- the priest build of S.priestPlan (every talent state)
+    { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
     { page = "bank", name = "bank-needs", open = function() NS.ShowBank("bedarf") end },
     { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
@@ -209,6 +211,14 @@ S.WINDOWS = {
     { key = "gearframe", view = "raider", open = function()
         NS.ToggleGearFrame()
         return AmisiaGearFrame
+    end },
+    { key = "talentframe", view = "raider", open = function()
+        -- the big talent window ("Talentrechner") with the priest build of the page's state
+        local plan = S.priestPlan()
+        NS.Talents.State().class = plan.class
+        NS.TalentsSetPlan(plan)
+        NS.ShowTalentFrame()
+        return AmisiaTalentFrame
     end },
     { key = "lootrules-bar", view = "officer", open = function()
         -- one click: the bar beside the loot window with what the rules would hand out

@@ -118,29 +118,20 @@ T.MENU = { W = 182, ROW_W = 170, ROW_H = 20, PAD = 6, LABEL_W = 160, GROUND_X = 
 T.PICKER = { ROWS = 8, ROW_H = 20, MIN_W = 180, FILTER_Y = 6, LIST_Y = 30, ARROW_ROOM = 26 }
 -- the talent calculator (Pages/Talents.lua) in the look of the game's classic three-tree talent
 -- window: three dark panels side by side, a centred head (name over points), square icons with a
--- thin square frame, a rank plate at the lower right, straight prerequisite lines behind them
+-- thin square frame, a rank plate at the lower right, straight prerequisite lines behind them.
+-- One builder draws it in two sizes: PAGE (the page in the main window) and BIG (the window
+-- "Talentrechner", AmisiaTalentFrame). What both share stands here, the sizes in the two profiles.
+-- A button is ICON + 2 x FRAME; the 4 columns sit centred in the tree, so the outer buttons keep
+-- (TREE_W - 3 x PITCH - button) / 2 to the tree's edges, less the glow (3 px) or the plate's
+-- overhang (PLATE_X) on the outside: at least MARGIN (the tests and the layout rules check it).
 T.TALENT = {
-    TREE_W = 198, TREE_GAP = 4, TREE_H = 398,   -- 3 x 198 + 2 x 4 = the page width (602)
-    HEAD_H = 42,          -- the head of a tree: the name, the points under it (mouse area for the reset)
-    NAME_Y = 7,           -- the name's top below the tree's top
-    PTS_GAP = 2,          -- between the name and the points
-    NAME_FONT = "GameFontNormalLarge",          -- the tree name: large, gold
-    PTS_FONT = "GameFontHighlightSmall",        -- "N Punkte": small, white
-    RANK_FONT = "NumberFontNormalSmall",        -- the rank on its plate
     RESET = 14,           -- the red reset X at the head's top right, shown while the mouse is on the head
     RESET_X = 5,          -- its distance from the tree's top right corner
-    ICON = 36,            -- a talent's icon (cropped 0.07..0.93)
-    CROP = 0.07,
-    FRAME = 1,            -- the square frame around the icon (the button is ICON + 2 x FRAME)
-    PITCH = 50,           -- button to button, across and down: 14 px between two icons
-    GRID_TOP = 46,        -- the first row's top below the tree's top (under the head)
+    CROP = 0.07,          -- a talent's icon is cropped CROP..1-CROP
+    FRAME = 1,            -- the square frame around the icon
     GLOW = { 0.6, 0.35, 0.15 },  -- a maxed talent's soft glow: alpha of the rings 1, 2, 3 px outside its frame
-    PLATE_W = 24, PLATE_H = 12,  -- the dark plate under the rank text
-    PLATE_X = 3, PLATE_Y = -3,   -- its lower right corner from the button's: over the icon's lower right edge
-    PLATE_ALPHA = 0.75,
+    PLATE_ALPHA = 0.75,   -- the dark plate under the rank text
     DIM = 0.5,            -- an unreachable talent's icon: desaturated and this bright
-    LINE = 3,             -- a prerequisite line's thickness
-    ARROW = 10,           -- the arrow head at the line's end, in the gap before the talent
     -- the frame per state: unreachable grey-brown, reachable the classic gold-brown, partly learned
     -- green, maxed bright gold (with the glow)
     FRAME_COLOR = { locked = { 0.36, 0.33, 0.28 }, free = { 0.66, 0.53, 0.3 }, partial = { 0.3, 0.85, 0.3 },
@@ -148,6 +139,45 @@ T.TALENT = {
     -- the rank text per state: grey, white, green, gold
     RANK_COLOR = { locked = { 0.5, 0.5, 0.5 }, free = { 1, 1, 1 }, partial = { 0.25, 1, 0.25 }, maxed = { 1, 0.82, 0 } },
     LINE_COLOR = { met = { 1, 0.82, 0, 0.9 }, unmet = { 0.3, 0.28, 0.25, 0.9 } },
+    -- the page in the main window: 3 x 198 + 2 x 4 = the page width (602). 34 px icons 12 px apart
+    -- leave 12 px to the tree's edges, 9 past the glow and the plate (2.19.0: 36 px, 14 apart, 2 px:
+    -- the outer buttons touched the borders in the game)
+    PAGE = {
+        TREE_W = 198, TREE_GAP = 4, TREE_H = 398,
+        HEAD_H = 42,          -- the head of a tree: the name, the points under it (mouse area for the reset)
+        NAME_Y = 7,           -- the name's top below the tree's top
+        PTS_GAP = 2,          -- between the name and the points
+        NAME_FONT = "GameFontNormalLarge",      -- the tree name: large, gold
+        PTS_FONT = "GameFontHighlightSmall",    -- "N Punkte": small, white
+        RANK_FONT = "NumberFontNormalSmall",    -- the rank on its plate
+        ICON = 34,            -- a talent's icon
+        PITCH = 46,           -- button to button, across and down: 10 px between two buttons
+        GRID_TOP = 46,        -- the first row's top below the tree's top (under the head)
+        PLATE_W = 24, PLATE_H = 12,  -- the dark plate under the rank text
+        PLATE_X = 3, PLATE_Y = -3,   -- its lower right corner from the button's: over the icon's lower right edge
+        LINE = 3,             -- a prerequisite line's thickness
+        ARROW = 10,           -- the arrow head at the line's end, in the gap before the talent
+        MARGIN = 8,           -- at least this from a tree's edge to the outside of its outer buttons
+        LIVE_W = 262,         -- the line "Im Spiel: ..." under the trees (the message takes the rest)
+    },
+    -- the window "Talentrechner": 3 x 270 + 2 x 6 = 822 wide, T.WINDOW_PAD on both sides; 44 px
+    -- icons 16 px apart, 19 px to the tree's edges (16 past the glow and the plate)
+    BIG = {
+        TREE_W = 270, TREE_GAP = 6, TREE_H = 488,
+        HEAD_H = 48, NAME_Y = 8, PTS_GAP = 3,
+        NAME_FONT = "GameFontNormalLarge",
+        PTS_FONT = "GameFontHighlight",
+        RANK_FONT = "NumberFontNormal",
+        ICON = 44, PITCH = 62, GRID_TOP = 52,
+        PLATE_W = 30, PLATE_H = 15, PLATE_X = 3, PLATE_Y = -3,
+        LINE = 4, ARROW = 12,
+        MARGIN = 14,
+        LIVE_W = 360,
+    },
+    -- the window around the BIG view: the view starts TOP below the window's top (under the title
+    -- bar), leaves BOTTOM free at the bottom; scale from the setting ui.talentScale (Ctrl + mouse
+    -- wheel over the window: SCALE_STEP)
+    WINDOW = { TOP = 32, BOTTOM = 12, SCALE_STEP = 5 },
 }
 
 ---------------------------------------------------------------------------

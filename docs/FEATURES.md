@@ -494,11 +494,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Version: 2.19.0
 - Status: gebaut
 - Prüfung: Wenn du `/amisia talente` eingibst, dann öffnet sich die Seite Talente mit den drei Bäumen deiner Klasse wie im klassischen Talentfenster: jeder Baum ein dunkles Feld, oben mittig der Baumname groß in Gold und darunter klein "N Punkte", keine Stufenzahlen links; fährst du mit der Maus über den Kopf, erscheint oben rechts ein rotes X, und ein Klick darauf oder ein Rechtsklick auf den Kopf setzt nur diesen Baum zurück.
-- Prüfung: Wenn du die Knöpfe ansiehst, dann sind es eckige 36-px-Symbole mit dünnem eckigem Rahmen und dem Rang ("0/5") auf einem dunklen Schild unten rechts: noch nicht erreichbar grau und abgedunkelt, erreichbar farbig mit weißem Rang, angefangen mit grünem Rang und grünem Rahmen, voll mit hellgoldenem Rahmen, goldenem Leuchten und goldenem Rang.
+- Prüfung: Wenn du die Knöpfe ansiehst, dann sind es eckige 34-px-Symbole mit dünnem eckigem Rahmen und dem Rang ("0/5") auf einem dunklen Schild unten rechts: noch nicht erreichbar grau und abgedunkelt, erreichbar farbig mit weißem Rang, angefangen mit grünem Rang und grünem Rahmen, voll mit hellgoldenem Rahmen, goldenem Leuchten und goldenem Rang.
 - Prüfung: Wenn ein Talent ein anderes voraussetzt, dann verbindet eine gerade Linie mit Pfeilspitze die beiden Knöpfe, golden sobald die Voraussetzung voll ist, sonst dunkelgrau; der Tooltip eines gesperrten Talents nennt "Benötigt N Punkte in <Baum>".
 - Prüfung: Wenn du einen Knoten links anklickst, dann steigt sein Rang (rechts: sinkt, Shift: alle Ränge), und die Punktezahl oben stimmt.
 - Prüfung: Wenn du "Eigene laden" klickst, dann meldet der Chat "Talente aus dem Spiel geladen (N Punkte)" und die Bäume zeigen deine echten Talente.
 - Notiz: 2.9.5 im Spiel geprüft (2026-10-07, runder Rahmen). 2.19.0: Aussehen wie das klassische Talentfenster nach dem Bildschirmfoto des Nutzers 2026-10-10 ("können wir talente auch so machen"); Baum und Knoten laut Selbsttest 2026-10-07 gleich dem Client.
+- Notiz: 2.20.0: auf der Seite 34 px statt 36 px und 10 px statt 14 px zwischen den Knöpfen, damit die äußeren Knöpfe (mit Leuchten und Rangschild) mindestens 8 px vom Rand ihres Baums bleiben (Bildschirmfoto des Nutzers 2026-10-10: links und rechts klebten sie am Rand); größer im Talentrechner-Fenster, F-081.
 
 ### F-050 Talent-Code teilen und übernehmen
 - Version: 2.7.0
@@ -506,6 +507,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Talente den Build-Code kopierst (Strg+C), dann beginnt er mit "AT1." und deiner Klasse.
 - Prüfung: Wenn du `/amisia talente <Code>` eingibst (oder den Code in das Feld einfügst und Enter drückst), dann meldet der Chat "Code übernommen: <Klasse>, N Punkte." und die Bäume zeigen den Build.
 - Prüfung: Wenn der Code kaputt ist, dann meldet der Chat, was nicht stimmt (z. B. "Kein Amisia-Talentcode ..."), und nichts ändert sich.
+
+### F-081 Großes Talentfenster
+- Version: 2.20.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Talente unten rechts "Großes Fenster" klickst (oder `/amisia talente gross` eingibst, oder den Reiter mit dem Bogenschützen-Symbol rechts am Amisia-Fenster), dann öffnet sich das Fenster "Talentrechner" mit denselben drei Bäumen, größer (44-px-Symbole), mit Klasse, Stufe, Talentiert, Punkten, "Eigene laden", "Alles zurücksetzen", Code und dem Hinweis "Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"; kein Knopf und kein Rangschild berührt den Rand seines Baums.
+- Prüfung: Wenn du im Fenster ein Talent anklickst, dann zeigt die Seite Talente denselben Rang und dieselben Punkte (und umgekehrt); der Reiter am Amisia-Fenster ist markiert, solange das Fenster offen ist.
+- Prüfung: Wenn du Strg gedrückt hältst und über dem Fenster das Mausrad drehst, dann wird es in 5-%-Schritten größer oder kleiner (zwischen 70 und 150 %), und unter Einstellungen, Oberfläche steht derselbe Wert bei "Größe des Talentfensters (%)"; der Schieber dort ändert die Größe sofort.
+- Prüfung: Wenn du das Fenster verschiebst und `/reload` machst, dann öffnet es sich an derselben Stelle; "Fensterposition zurücksetzen" (Einstellungen, Oberfläche) setzt es in die Bildschirmmitte, Escape schließt es.
+- Notiz: Wunsch des Nutzers 2026-10-10 ("können wir das fenster wo die talente sind größer machen oder besser skalieren") mit Bildschirmfoto von 2.19.0.
 
 ### F-051 Berufe: Rezepte, Lager, Händlergunst
 - Version: 2.9.1

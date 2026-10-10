@@ -7,6 +7,8 @@
 -- code box (copy and import), the tooltip, the command, the client's art, and the layout at the
 -- main window's size (602 x 478).
 local T = NS.Talents
+local TT = NS.Theme.TALENT
+local PP = TT.PAGE
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 
 local LEVELS = {}
@@ -66,7 +68,7 @@ do
     local tr = f.trees[1]
     assert(tr.name.justifyH == "CENTER" and tr.name.points.TOP and tr.name.points.TOP.relPoint == "TOP" and tr.name.points.TOP.x == 0,
         "the name centred")
-    assert(tr.name.font == NS.Theme.TALENT.NAME_FONT and tr.pts.font == NS.Theme.TALENT.PTS_FONT, "large gold name, small white points")
+    assert(tr.name.font == PP.NAME_FONT and tr.pts.font == PP.PTS_FONT, "large gold name, small white points")
     assert(tr.pts.justifyH == "CENTER" and tr.pts.points.TOP.rel == tr.name and tr.pts.points.TOP.x == 0, "the points under the name")
     assert(tr.icon == nil and tr.rowLabels == nil, "no tree icon, no row locks")
     assert(not tr.reset:IsShown(), "the X waits for the mouse")
@@ -84,8 +86,7 @@ local L = f.layoutInfo
 assert(b[102].points.TOPLEFT.x == L.left + 1 * L.pitch and b[103].points.TOPLEFT.y == -(L.top + 1 * L.pitch), "row and column")
 assert(b[301].points.TOPLEFT.y == -(L.top + 6 * L.pitch), "row 7")
 -- the grid is centred in the tree, the 4 columns fill it evenly
-local TT = NS.Theme.TALENT
-assert(L.left * 2 + 3 * L.pitch + TT.ICON + 2 * TT.FRAME <= TT.TREE_W and L.left >= 4, "centred: " .. L.left)
+assert(L.left * 2 + 3 * L.pitch + PP.ICON + 2 * TT.FRAME <= PP.TREE_W and L.left >= 4, "centred: " .. L.left)
 -- states: reachable with 0 points in colour, normal frame, white rank; unreachable desaturated,
 -- dimmed, grey-brown frame, grey rank; no glow; the rank on its dark plate
 local function frameIs(btn, c)
@@ -165,7 +166,7 @@ tip = tipText()
 assert(has(tip, "Rang 1/2") and has(tip, "by 5.") and has(tip, "Nächster Rang:") and has(tip, "by 10."), tip)
 -- a locked one names what is missing, in red
 local fresh = T.NewPlan("MAGE")
-f.plan = fresh
+NS.TalentsSetPlan(fresh)
 NS.Refresh()
 lines = {}
 b[103]:GetScript("OnEnter")(b[103])
@@ -179,7 +180,7 @@ b[103]:GetScript("OnLeave")(b[103])
 ---------------------------------------------------------------------------
 -- level and Talented: fewer points, adding stops
 ---------------------------------------------------------------------------
-f.plan = assert(T.Decode("AT1.MAGE.0511.."))
+NS.TalentsSetPlan(assert(T.Decode("AT1.MAGE.0511..")))
 f.level.minus:Click()
 assert(f.level.current == 59 and AmisiaDB.talents.level == 59)
 AmisiaDB.talents.level = 12
@@ -197,19 +198,19 @@ NS.Refresh()
 -- resets
 ---------------------------------------------------------------------------
 f.trees[1].reset:Click()
-assert(f.trees[1].pts:GetText() == "0 Punkte" and T.Spent(f.plan) == 0)
+assert(f.trees[1].pts:GetText() == "0 Punkte" and T.Spent(NS.TalentsPlan()) == 0)
 -- a right click on the head resets the tree too
-f.plan.ranks[101] = 2
+NS.TalentsPlan().ranks[101] = 2
 NS.Refresh()
 assert(f.trees[1].pts:GetText() == "2 Punkte")
 f.trees[1].head:GetScript("OnMouseUp")(f.trees[1].head, "LeftButton")
-assert(T.Spent(f.plan, 1) == 2, "a left click leaves it")
+assert(T.Spent(NS.TalentsPlan(), 1) == 2, "a left click leaves it")
 f.trees[1].head:GetScript("OnMouseUp")(f.trees[1].head, "RightButton")
-assert(T.Spent(f.plan, 1) == 0 and f.trees[1].pts:GetText() == "0 Punkte", "right click: tree reset")
-f.plan.ranks[201] = 2
+assert(T.Spent(NS.TalentsPlan(), 1) == 0 and f.trees[1].pts:GetText() == "0 Punkte", "right click: tree reset")
+NS.TalentsPlan().ranks[201] = 2
 NS.Refresh()
 f.resetAll:Click()
-assert(T.Spent(f.plan) == 0 and AmisiaDB.talents.plans.MAGE == nil)
+assert(T.Spent(NS.TalentsPlan()) == 0 and AmisiaDB.talents.plans.MAGE == nil)
 
 ---------------------------------------------------------------------------
 -- another class keeps its own plan
@@ -271,11 +272,15 @@ Lay.column("parts", f.class, f.trees[1], f.msg, f.live)
 Lay.row("foot", f.live, f.resetAll, f.codeLabel, f.code)
 for id, btn in pairs(f.buttons) do Lay.inside("talent " .. id, btn) end
 -- the rank plates stay inside their tree, the glow too
+-- and keep at least MARGIN (8 px) from the tree's edges: the outer buttons no longer touch the borders
 for _, btn in pairs(f.buttons) do
     local p = btn.points.TOPLEFT
-    assert(p.x - #TT.GLOW >= 0 and p.x + TT.ICON + 2 * TT.FRAME + TT.PLATE_X <= TT.TREE_W, "inside the tree across")
-    assert(-p.y + TT.ICON + 2 * TT.FRAME - TT.PLATE_Y <= TT.TREE_H, "inside the tree down")
+    local size = PP.ICON + 2 * TT.FRAME
+    local out = math.max(#TT.GLOW, PP.PLATE_X)
+    assert(p.x - #TT.GLOW >= PP.MARGIN and p.x + size + out <= PP.TREE_W - PP.MARGIN, "clear of the tree's sides: " .. p.x)
+    assert(-p.y + size - PP.PLATE_Y <= PP.TREE_H - PP.MARGIN, "inside the tree down")
 end
+assert(PP.MARGIN >= 8 and 3 * PP.TREE_W + 2 * PP.TREE_GAP == 602, "the page: three trees fill its 602 px")
 -- without the client's art: no arrow heads, the lines and frames stay, nothing breaks
 STUB.missingAtlases["talents-arrow-head-yellow"] = true
 STUB.missingAtlases["talents-arrow-head-gray"] = true
@@ -291,7 +296,7 @@ NS.Refresh()
 do
     local any
     for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
-    assert(any and any._w == 38 and any._h == 38, "36 px icon + 1 px frame")
+    assert(any and any._w == 36 and any._h == 36, "34 px icon + 1 px frame")
     assert(any.icon.points.TOPLEFT.x == 1 and any.icon.points.BOTTOMRIGHT.x == -1, "the icon inside the frame")
     assert(any.mask == nil and any.border == nil, "square: no mask, no node atlas")
     for _, e in ipairs(any.frame) do assert(e.atlas == nil and e.color, "a drawn frame") end

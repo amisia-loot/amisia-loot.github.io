@@ -23,6 +23,9 @@ local SIDE_TABS = {
     { key = "gear", label = L["Ausrüstungstabelle"], icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
+    { key = "talents", label = L["Talentrechner"], icon = "Interface\\Icons\\Ability_Marksmanship", frame = "AmisiaTalentFrame",
+      visible = function() return ns.Talents ~= nil and ns.Talents.Available() and ns.ToggleTalentFrame ~= nil end,
+      toggle = function() ns.ToggleTalentFrame() end },
     { key = "rolls", label = "Rolls", icon = "Interface\\Icons\\INV_Misc_Dice_01", frame = "AmisiaRollFrame",
       visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
       toggle = function() ns.ToggleRollFrame() end },
@@ -62,6 +65,7 @@ function ns.ResetPositions()
     if F then restorePosition() end
     if ns.ResetGearPosition then ns.ResetGearPosition() end
     if ns.ResetRollWindowPosition then ns.ResetRollWindowPosition() end
+    if ns.ResetTalentWindowPosition then ns.ResetTalentWindowPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

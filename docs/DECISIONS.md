@@ -91,19 +91,25 @@ wie er ist + Goldtext, aus: abgedunkelt + grauer Text). Dropdown- und Pfeilknöp
 eingebrannte Pfeil sah falsch aus; graue Flachboxen waren "graue kacke"). Zurücksetzen mit
 `auctionhouse-ui-filter-redx`. Kein dunkler Balken im Kopf. Talentrechner seit 2026-10-10 (2.19.0)
 wie das klassische Talentfenster des Spiels: Baumkopf mittig (Name groß in Gold, "N Punkte" klein,
-kein Symbol, keine Stufenspalte), eckige 36-px-Symbole mit dünnem gezeichnetem eckigem Rahmen
+kein Symbol, keine Stufenspalte), eckige Symbole mit dünnem gezeichnetem eckigem Rahmen
 (grau-braun gesperrt, gold-braun erreichbar, grün angefangen, hellgold voll mit weichem Leuchten),
 Rang auf dunklem Schild unten rechts, gerade Linien mit den Pfeilspitzen `talents-arrow-head-*`; Maße
 und Farben in `ns.Theme.TALENT`. Das ersetzt den runden Rand der Aktionsleiste
 (`UI-HUD-ActionBar-IconFrame` mit Maske, 2026-10-07) und die dicken `talents-node-square-*`-Atlanten.
+Seit 2026-10-10 (2.20.0) zeichnet ein Baukasten die Talente in zwei Größen: auf der Seite 34-px-Symbole
+mit mindestens 8 px zum Rand des Baums (`TALENT.PAGE`), im eigenen Fenster "Talentrechner" 44-px-Symbole
+mit mindestens 14 px (`TALENT.BIG`); beide zeigen denselben Plan. Das Fenster skaliert für sich
+(Einstellung "Größe des Talentfensters (%)", 70 bis 150, Strg + Mausrad) statt die Seite zu vergrößern.
 **Grund:** Bildschirmfotos und Wünsche des Nutzers 2026-10-05/06/07; für die Talente das Foto des
-klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen").
+klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen") und das Foto von 2.19.0
+("können wir das fenster wo die talente sind größer machen oder besser skalieren").
 **Folge:** Client-Vorlagen und -Atlanten vor eigenen flachen Frames; ein neuer Atlas kommt nur in
 `ns.Theme.ATLASES`, wenn er zum Stil passt. Kein `UIDropDownMenu`/`EasyMenu`/`MenuUtil`, keine
 Blizzard-Einstellungskategorie, keine fremden Bibliotheken.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_forever_look`,
 `tools/tests/test_contracts.py::test_no_foreign_libraries_menus_or_combat_log`, die Layoutregeln
-(`tools/ui_layout.py`, Atlasliste) und `addon/tests/test_style.lua`.
+(`tools/ui_layout.py`, Atlasliste), `addon/tests/test_style.lua` und für die Talente
+`addon/tests/test_talents_page.lua` und `addon/tests/test_talent_window.lua` (Abstände beider Größen).
 
 ## D-07 Nur Zeichen, die die Spielschrift hat
 

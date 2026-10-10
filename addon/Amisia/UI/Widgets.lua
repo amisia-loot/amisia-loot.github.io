@@ -1342,6 +1342,8 @@ end
 -- W.Page(parent, { view = true }) is a view inside a page (its views switch with chips): it starts
 -- at the page's content top (opts.top) and has the same methods; its bands are not the head row,
 -- unless opts.head (a view filling the page, as the officer and raider halves of a page).
+-- W.Page(parent, { width = n }) is a page n wide (a side window built with the scaffold, as the big
+-- talent window); without it a page is T.PAGE_W wide.
 -- Every part carries layoutRole (and the band it sits in, layoutBand); tools/ui_layout.py checks
 -- the pages by them (rule "grid").
 local LAY = T.LAYOUT
@@ -1433,7 +1435,7 @@ end
 
 function Scaffold:Place(i, left, right, opts)
     local band = assert(self.bands and self.bands[i], "no band " .. tostring(i))
-    placeIn(band, T.PAGE_W, left, right, opts, (i == 1 and not self.isView) and "head" or "band")
+    placeIn(band, self.pageW or T.PAGE_W, left, right, opts, (i == 1 and not self.isView) and "head" or "band")
 end
 
 function Scaffold:Line(i, fs)
@@ -1451,7 +1453,7 @@ function Scaffold:Line(i, fs)
         fs:SetPoint("LEFT", band, "LEFT", LAY.TEXT_X, 0)
         fs:SetPoint("RIGHT", band, "RIGHT", -LAY.TEXT_X, 0)
     end
-    fs:SetWidth(T.PAGE_W - 2 * LAY.TEXT_X)
+    fs:SetWidth((self.pageW or T.PAGE_W) - 2 * LAY.TEXT_X)
     fs.layoutRole, fs.layoutBand = "line", band
     return fs
 end
@@ -1543,7 +1545,7 @@ function Scaffold:Footer(spec)
         fs:SetPoint("TOPRIGHT", foot, "BOTTOMRIGHT", -LAY.TEXT_X, y + h)
         if lines > 1 then fs:SetMaxLines(lines) end
         -- the width the anchors give, also set (a refresh may measure the text against it)
-        fs:SetWidth(T.PAGE_W - 2 * LAY.TEXT_X)
+        fs:SetWidth((self.pageW or T.PAGE_W) - 2 * LAY.TEXT_X)
         fs.layoutRole = "foot"
         self[name] = fs
         y = y + h
@@ -1567,7 +1569,7 @@ function Scaffold:BottomRow(left, right, opts)
     self.bottomRow = b
     if left or right then self.bottomItems = { left, right, opts } end
     local items = self.bottomItems
-    if items then placeIn(b, T.PAGE_W, items[1], items[2], items[3], "band") end
+    if items then placeIn(b, self.pageW or T.PAGE_W, items[1], items[2], items[3], "band") end
     return b
 end
 
@@ -1613,6 +1615,8 @@ function W.Page(parent, opts)
     local view = opts and opts.view
     local p = CreateFrame("Frame", nil, parent)
     for k, fn in pairs(Scaffold) do p[k] = fn end
+    -- opts.width: a page of another width than the main window's (a side window drawn with the scaffold)
+    p.pageW = opts and opts.width
     if view then
         -- opts.head: a view that fills the page (one per mode) and has the head row itself
         p.isView = not opts.head

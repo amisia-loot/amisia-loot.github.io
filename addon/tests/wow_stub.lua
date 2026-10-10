@@ -1169,7 +1169,8 @@ end
 _G.SlashCmdList = {}
 -- the client's font objects by name (the ones a template or a SetFontObject call names)
 for _, n in ipairs({ "ChatFontNormal", "GameFontNormal", "GameFontHighlight", "GameFontHighlightSmall", "GameFontNormalSmall",
-                     "GameFontDisable", "GameFontDisableSmall", "GameFontNormalLarge", "NumberFontNormalSmall" }) do
+                     "GameFontDisable", "GameFontDisableSmall", "GameFontNormalLarge", "NumberFontNormalSmall",
+                     "NumberFontNormal" }) do
     _G[n] = { fontName = n }
 end
 _G.RAID_CLASS_COLORS = {

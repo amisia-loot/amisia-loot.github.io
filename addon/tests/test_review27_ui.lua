@@ -71,7 +71,7 @@ check("9 talent arrows pooled", function()
     end
     for _ = 1, 10 do
         for _, cls in ipairs({ "MAGE", "WARLOCK" }) do
-            NS.Talents.State().class = cls; f.plan = nil; NS.Refresh()
+            NS.Talents.State().class = cls; NS.TalentsSetPlan(nil); NS.Refresh()
         end
     end
     assert(n <= 30, "textures made by 20 class switches: " .. n)

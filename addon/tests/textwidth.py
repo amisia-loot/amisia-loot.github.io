@@ -12,7 +12,7 @@ FONTS = {
     'GameFontNormal': (12, False), 'GameFontHighlight': (12, False), 'GameFontDisable': (12, False),
     'GameFontNormalSmall': (10, False), 'GameFontHighlightSmall': (10, False), 'GameFontDisableSmall': (10, False),
     'GameFontNormalLarge': (16, False), 'GameFontHighlightLarge': (16, False), 'GameFontNormalMed3': (14, False),
-    'NumberFontNormalSmall': (12, True), 'ChatFontNormal': (14, True), 'Game15Font_Shadow': (15, False),
+    'NumberFontNormalSmall': (12, True), 'NumberFontNormal': (14, True), 'ChatFontNormal': (14, True), 'Game15Font_Shadow': (15, False),
 }
 DEFAULT_FONT = (12, False)
 
