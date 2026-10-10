@@ -844,3 +844,13 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   bzw. "Treffen" an. Die Art "Schlachtzug" verlangt im Kalender eine Raid-Instanz (Bildauswahl), die
   Forever vor dem Raidstart wohl nicht anbietet. Daher nimmt Teil G (und die Prüfung) jedes
   Gildenereignis (GUILD_EVENT); Schlachtzug-Ereignisse stehen nur vorn. Frage 22 ist damit geändert.
+- 2026-10-10 21:37, Prüfung 17 bis 20 im Spiel (Client 70338, `/amisia selbsttest kalender`):
+  Gildenereignisse lesbar (GetGuildEventInfo mit eventType, calendarType "GUILD_EVENT", eigener
+  Status); GetGuildEventSelectionInfo liefert `offsetMonths` (nicht `offsetMonth`); OpenEvent geht
+  aus dem Tastendruck **und** aus einem C_Timer ohne Sperre; auf das Öffnen kam nur
+  CALENDAR_OPEN_EVENT, **kein** CALENDAR_UPDATE_INVITE_LIST (Liste trotzdem sofort lesbar:
+  GetNumInvites 2); EventGetInvite liefert Namen **mit Nachnamen** ("Vulo Hunt"), classFilename,
+  level, inviteStatus (3 bestätigt, 6 angemeldet), modStatus, type 1 Signup; Einladungsart des
+  Ereignisses 1 Signup; EventGetInviteResponseTime gibt nil. Folge: Teil G liest nach
+  CALENDAR_OPEN_EVENT (Update-Ereignis nur zusätzlich), automatisches Neulesen ohne Klick ist erlaubt;
+  die Antwortzeit fehlt, "neueste Angabe" nimmt die Zeit, zu der Amisia einen Statuswechsel sah.
