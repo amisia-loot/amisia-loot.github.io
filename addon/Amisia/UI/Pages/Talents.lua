@@ -1,36 +1,25 @@
--- The page "Talente": WoW Forever's talent trees of every class in the look of the classic talent
--- window: three trees side by side, each with its name, its points and a reset button, a 4 x 7
--- grid of the talents with their rank, the points a row needs at its left, arrows for the
--- prerequisites. Left click +1, right click -1, shift for all ranks. Level and the Talented perk
--- set the free points; the plan of each class is kept as its share code. The own class can load
--- its talents from the game. The rules live in Talents.lua.
+-- The page "Talente": WoW Forever's talent trees of every class in the look of the game's classic
+-- three-tree talent window: three dark panels side by side, each with its name and points centred
+-- at the top (right-click there or its red X on hover resets the tree), a 4 x 7 grid of square
+-- icons with a thin square frame and a rank plate, straight gold lines for the prerequisites.
+-- Left click +1, right click -1, shift for all ranks; the tooltip names what a talent still needs.
+-- Level and the Talented perk set the free points; the plan of each class is kept as its share
+-- code. The own class can load its talents from the game. The rules live in Talents.lua, the sizes
+-- and colours in ns.Theme.TALENT.
 local ADDON, ns = ...
 local W, T, Theme = ns.W, ns.Talents, ns.Theme
 local L = ns.L
 local F = T.F
+local TT = Theme.TALENT
 
 local ICON = "Interface\\Icons\\INV_Misc_Book_09"
 -- the trees start under the head row (ROW_H + GAP of ns.Theme.LAYOUT)
-local TREE_W, TREE_GAP, TREE_TOP, TREE_H = 196, 7, Theme.LAYOUT.ROW_H + Theme.LAYOUT.GAP, 398
-local HEAD_H = 24
--- the grid inside a tree: a column for the row locks, then 4 columns and 7 rows
-local GRID = { left = 18, top = HEAD_H + 8, pitchX = 44, pitchY = 50, pad = 5 }
--- 36 px icons with the action bar's rounded mask and its thin rounded frame, tinted by the state
--- (green: can be raised, gold: full, grey: locked); the frame lies 2 px outside the icon so its
--- dark inner edge does not cover the icon; 4 px between neighbouring frames at the 44 px pitch
-local BTN = 36
-local FRAME = BTN + 4
-local MASK = "UI-HUD-ActionBar-IconFrame-Mask"
-local RIM = "UI-HUD-ActionBar-IconFrame"
-local RIM_COLOR = { maxed = { 1, 0.82, 0 }, partial = { 0.25, 1, 0.25 }, free = { 0.25, 1, 0.25 }, locked = { 0.55, 0.55, 0.55 } }
-local ROWS = 7
-local GOLD = { 1, 0.82, 0 }
-local GREEN = { 0.25, 1, 0.25 }
-local GREY = { 0.5, 0.5, 0.5 }
+local TREE_W, TREE_GAP, TREE_TOP, TREE_H = TT.TREE_W, TT.TREE_GAP, Theme.LAYOUT.ROW_H + Theme.LAYOUT.GAP, TT.TREE_H
+-- a button: the icon with its frame around it; the grid of 4 columns centred in the tree
+local BTN = TT.ICON + 2 * TT.FRAME
+local GRID = { left = math.floor((TREE_W - (3 * TT.PITCH + BTN)) / 2), top = TT.GRID_TOP, pitch = TT.PITCH }
+local GOLD = TT.FRAME_COLOR.maxed
 local RED = { 1, 0.1, 0.1 }
-local BORDER = { maxed = "talents-node-square-yellow", partial = "talents-node-square-green",
-                 free = "talents-node-square-green", locked = "talents-node-square-gray" }
-local BORDER_COLOR = { maxed = GOLD, partial = GREEN, free = GREEN, locked = GREY }
 local TURN = { down = 0, right = math.pi / 2, left = -math.pi / 2, up = math.pi }
 local HINT = L["Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"]
 
@@ -133,106 +122,120 @@ end
 ---------------------------------------------------------------------------
 -- Building: the trees, the buttons and arrows of the shown class
 ---------------------------------------------------------------------------
+-- A square ring of four colour textures around frame b: its outer edge out px outside b (negative:
+-- inside), size px thick. Returns the four textures.
+local function ring(b, out, size, layer, r, g, bl, a)
+    local function edge(p1, x1, y1, p2, x2, y2, w, h)
+        local t = b:CreateTexture(nil, layer)
+        t:SetColorTexture(r, g, bl, a)
+        t:SetPoint(p1, b, p1, x1, y1)
+        t:SetPoint(p2, b, p2, x2, y2)
+        if w then t:SetWidth(w) end
+        if h then t:SetHeight(h) end
+        return t
+    end
+    return { edge("TOPLEFT", -out, out, "TOPRIGHT", out, out, nil, size),
+             edge("BOTTOMLEFT", -out, -out, "BOTTOMRIGHT", out, -out, nil, size),
+             edge("TOPLEFT", -out, out - size, "BOTTOMLEFT", -out, -out + size, size, nil),
+             edge("TOPRIGHT", out, out - size, "BOTTOMRIGHT", out, -out + size, size, nil) }
+end
+
+-- A talent button as in the classic talent window: the square icon, a thin square frame around it
+-- tinted by the state, a soft gold glow outside the frame when the talent is full, the rank on a
+-- dark plate over the icon's lower right edge.
 local function talentButton(tree)
     local b = CreateFrame("Button", nil, tree)
     b:SetSize(BTN, BTN)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetAllPoints()
-    b.icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)
-    -- rounded corners, as the client's square icons (the action bar's icon mask)
-    if b.CreateMaskTexture and hasAtlas(MASK) then
-        b.mask = b:CreateMaskTexture()
-        b.mask:SetAtlas(MASK, false)
-        b.mask:SetAllPoints(b.icon)
-        b.icon:AddMaskTexture(b.mask)
+    b.icon:SetPoint("TOPLEFT", TT.FRAME, -TT.FRAME)
+    b.icon:SetPoint("BOTTOMRIGHT", -TT.FRAME, TT.FRAME)
+    b.icon:SetTexCoord(TT.CROP, 1 - TT.CROP, TT.CROP, 1 - TT.CROP)
+    b.frame = ring(b, 0, TT.FRAME, "BORDER", 0, 0, 0, 1)
+    b.glow = {}
+    for i, a in ipairs(TT.GLOW) do
+        for _, t in ipairs(ring(b, i, 1, "BACKGROUND", GOLD[1], GOLD[2], GOLD[3], a)) do b.glow[#b.glow + 1] = t end
     end
-    b.border = b:CreateTexture(nil, "OVERLAY")
-    b.border:SetPoint("CENTER")
-    b.border:SetSize(FRAME, FRAME)
-    b.edges = W.Border(b, GREY[1], GREY[2], GREY[3], 0)
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints(b.icon)
     hl:SetColorTexture(1, 1, 1, 0.15)
-    b.rankBg = b:CreateTexture(nil, "OVERLAY", nil, 1)
-    b.rankBg:SetSize(26, 12)
-    b.rankBg:SetPoint("BOTTOMRIGHT", 4, -5)
-    b.rankBg:SetColorTexture(0, 0, 0, 0.8)
-    b.rank = W.Text(b, "NumberFontNormalSmall", 26)
+    b.plate = b:CreateTexture(nil, "OVERLAY", nil, 1)
+    b.plate:SetSize(TT.PLATE_W, TT.PLATE_H)
+    b.plate:SetPoint("BOTTOMRIGHT", TT.PLATE_X, TT.PLATE_Y)
+    b.plate:SetColorTexture(0, 0, 0, TT.PLATE_ALPHA)
+    b.rank = W.Text(b, TT.RANK_FONT, TT.PLATE_W)
     b.rank:SetDrawLayer("OVERLAY", 2)
     b.rank:SetJustifyH("CENTER")
-    b.rank:SetPoint("CENTER", b.rankBg, "CENTER", 0, 0)
+    b.rank:SetPoint("CENTER", b.plate, "CENTER", 0, 0)
     b:SetScript("OnClick", click)
     b:SetScript("OnEnter", tooltip)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return b
 end
 
+-- state: locked (a tier or prerequisite missing), free (reachable, no point), partial, maxed
 local function setState(b, state)
     b.state = state
-    local atlas = hasAtlas(RIM) and RIM or BORDER[state]
-    if hasAtlas(atlas) and b.border:SetAtlas(atlas) then
-        local c = RIM_COLOR[state] or RIM_COLOR.locked
-        if atlas == RIM then b.border:SetVertexColor(c[1], c[2], c[3]) else b.border:SetVertexColor(1, 1, 1) end
-        b.border:Show()
-        W.SetBorderColor(b.edges, 0, 0, 0, 0)
-    else
-        b.border:SetColorTexture(0, 0, 0, 0)
-        b.border.atlas = nil
-        b.border.color = BORDER_COLOR[state]
-        local c = BORDER_COLOR[state]
-        W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
-    end
+    local c = TT.FRAME_COLOR[state] or TT.FRAME_COLOR.locked
+    W.SetBorderColor(b.frame, c[1], c[2], c[3], 1)
+    b.frameColor = c
+    local maxed = state == "maxed"
+    for _, t in ipairs(b.glow) do t:SetShown(maxed) end
+    b.glowShown = maxed
     local locked = state == "locked"
     b.icon:SetDesaturated(locked)
     b.icon.desaturated = locked
-    b.icon:SetVertexColor(locked and 0.6 or 1, locked and 0.6 or 1, locked and 0.6 or 1)
-    local c = state == "maxed" and GOLD or (locked and GREY or GREEN)
-    b.rank:SetTextColor(c[1], c[2], c[3])
+    local v = locked and TT.DIM or 1
+    b.icon:SetVertexColor(v, v, v)
+    local rc = TT.RANK_COLOR[state] or TT.RANK_COLOR.locked
+    b.rank:SetTextColor(rc[1], rc[2], rc[3])
 end
 
 local function cellOffset(n)
-    return GRID.left + n[F.COL] * GRID.pitchX + GRID.pad, -(GRID.top + n[F.ROW] * GRID.pitchY)
+    return GRID.left + n[F.COL] * GRID.pitch, -(GRID.top + n[F.ROW] * GRID.pitch)
 end
 
--- An arrow from the prerequisite src to node dst (both on one tree, one column or one row); its
--- textures come from the tree's pool (a class switch reuses them, nothing is made again).
+-- A line from the prerequisite src to node dst (both on one tree, one column or one row: the
+-- client's data has no other), drawn behind the buttons, with an arrow head in the gap before dst;
+-- its textures come from the tree's pool (a class switch reuses them, nothing is made again).
 local function arrow(tree, srcBtn, dstBtn, src, dst)
     tree.arrowPool = tree.arrowPool or {}
     tree.arrowsUsed = (tree.arrowsUsed or 0) + 1
     local a = tree.arrowPool[tree.arrowsUsed]
     if not a then
         a = { line = tree:CreateTexture(nil, "ARTWORK"), head = tree:CreateTexture(nil, "OVERLAY") }
-        a.head:SetSize(14, 14)
+        a.head:SetSize(TT.ARROW, TT.ARROW)
         tree.arrowPool[tree.arrowsUsed] = a
     end
     a.line:ClearAllPoints()
     a.head:ClearAllPoints()
     a.line:Show()
     a.head:Show()
+    -- the head sits in the gap, its tip on dst's frame; the line runs under the head's back half
+    local tip, back = TT.ARROW / 2, TT.ARROW - 2
     if src[F.COL] == dst[F.COL] then
         a.dir = src[F.ROW] < dst[F.ROW] and "down" or "up"
-        a.line:SetWidth(4)
+        a.line:SetWidth(TT.LINE)
         if a.dir == "down" then
             a.line:SetPoint("TOP", srcBtn, "BOTTOM", 0, 0)
-            a.line:SetPoint("BOTTOM", dstBtn, "TOP", 0, 4)
-            a.head:SetPoint("CENTER", dstBtn, "TOP", 0, 3)
+            a.line:SetPoint("BOTTOM", dstBtn, "TOP", 0, back)
+            a.head:SetPoint("CENTER", dstBtn, "TOP", 0, tip)
         else
             a.line:SetPoint("BOTTOM", srcBtn, "TOP", 0, 0)
-            a.line:SetPoint("TOP", dstBtn, "BOTTOM", 0, -4)
-            a.head:SetPoint("CENTER", dstBtn, "BOTTOM", 0, -3)
+            a.line:SetPoint("TOP", dstBtn, "BOTTOM", 0, -back)
+            a.head:SetPoint("CENTER", dstBtn, "BOTTOM", 0, -tip)
         end
     else
         a.dir = src[F.COL] < dst[F.COL] and "right" or "left"
-        a.line:SetHeight(4)
+        a.line:SetHeight(TT.LINE)
         if a.dir == "right" then
             a.line:SetPoint("LEFT", srcBtn, "RIGHT", 0, 0)
-            a.line:SetPoint("RIGHT", dstBtn, "LEFT", -4, 0)
-            a.head:SetPoint("CENTER", dstBtn, "LEFT", -3, 0)
+            a.line:SetPoint("RIGHT", dstBtn, "LEFT", -back, 0)
+            a.head:SetPoint("CENTER", dstBtn, "LEFT", -tip, 0)
         else
             a.line:SetPoint("RIGHT", srcBtn, "LEFT", 0, 0)
-            a.line:SetPoint("LEFT", dstBtn, "RIGHT", 4, 0)
-            a.head:SetPoint("CENTER", dstBtn, "RIGHT", 3, 0)
+            a.line:SetPoint("LEFT", dstBtn, "RIGHT", back, 0)
+            a.head:SetPoint("CENTER", dstBtn, "RIGHT", tip, 0)
         end
     end
     if a.head.SetRotation then a.head:SetRotation(TURN[a.dir]) end
@@ -240,11 +243,13 @@ local function arrow(tree, srcBtn, dstBtn, src, dst)
     return a
 end
 
+-- gold when the prerequisite is full, dark grey while it is not
 local function paintArrow(a, plan)
     local met = T.Rank(plan, a.src) >= T.Node(plan.class, a.src)[F.MAX]
     local atlas = met and "talents-arrow-head-yellow" or "talents-arrow-head-gray"
-    local c = met and GOLD or GREY
-    a.line:SetColorTexture(c[1], c[2], c[3], 0.9)
+    local c = met and TT.LINE_COLOR.met or TT.LINE_COLOR.unmet
+    a.line:SetColorTexture(c[1], c[2], c[3], c[4])
+    a.met = met
     if hasAtlas(atlas) and a.head:SetAtlas(atlas) then a.head:Show() else a.head:Hide() end
 end
 
@@ -275,17 +280,6 @@ local function buildClass(cls)
             b:Show()
             page.buttons[n[F.NODE]] = b
         end
-        -- the row locks: the highest a row's talents need
-        for row = 1, ROWS do
-            local req = 0
-            for _, n in ipairs(c.order[t]) do
-                if n[F.ROW] == row - 1 then req = math.max(req, T.GateReq(n)) end
-            end
-            local label = tree.rowLabels[row]
-            label:SetText(req > 0 and tostring(req) or "")
-            label:SetShown(req > 0)
-        end
-        tree.icon:SetTexture(T.TreeIcon(cls, t) or ICON)
     end
     -- the client's class background, once behind all three trees (it shows the whole talent window)
     local bg = "talent-background-" .. cls:lower()
@@ -310,39 +304,55 @@ local function buildClass(cls)
     page.builtClass = cls
 end
 
+local function resetTree(t)
+    T.ResetTree(page.plan, t)
+    save()
+    say("")
+    ns.Refresh()
+end
+
+-- A tree: a dark panel, its head centred at the top (the name large and gold, "N Punkte" small
+-- under it). The head takes the mouse: a right click resets the tree, hovering shows its red X.
 local function makeTree(f, t)
     local tree = W.Inset(f)
     tree:SetSize(TREE_W, TREE_H)
     tree:SetPoint("TOPLEFT", f, "TOPLEFT", (t - 1) * (TREE_W + TREE_GAP), -TREE_TOP)
-    tree.head = CreateFrame("Frame", nil, tree)
-    tree.head:SetPoint("TOPLEFT", 4, -4)
-    tree.head:SetPoint("TOPRIGHT", -4, -4)
-    tree.head:SetHeight(HEAD_H - 4)
-    W.Flat(tree.head, 0, 0, 0, 0.55)
-    tree.icon = tree.head:CreateTexture(nil, "ARTWORK")
-    tree.icon:SetSize(16, 16)
-    tree.icon:SetPoint("LEFT", 3, 0)
-    tree.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    tree.name = W.Text(tree.head, Theme.FONT.title, 120)
-    tree.name:SetPoint("LEFT", 24, 0)
-    tree.pts = W.Text(tree.head, Theme.FONT.body, 26)
-    tree.pts:SetJustifyH("RIGHT")
-    tree.pts:SetPoint("RIGHT", -24, 0)
-    tree.reset = W.ResetButton(tree.head, 16, function()
-        T.ResetTree(page.plan, t)
-        save()
-        say("")
-        ns.Refresh()
-    end)
-    tree.reset:SetPoint("RIGHT", -3, 0)
+    local head = CreateFrame("Frame", nil, tree)
+    tree.head = head
+    head:SetPoint("TOPLEFT", 0, 0)
+    head:SetPoint("TOPRIGHT", 0, 0)
+    head:SetHeight(TT.HEAD_H)
+    head:EnableMouse(true)
+    -- the name keeps the X's room free on both sides, so it stays centred
+    local nameW = TREE_W - 2 * (TT.RESET + TT.RESET_X + 2)
+    tree.name = W.Text(head, TT.NAME_FONT, nameW)
+    tree.name:SetJustifyH("CENTER")
+    tree.name:SetPoint("TOP", head, "TOP", 0, -TT.NAME_Y)
+    tree.pts = W.Text(head, TT.PTS_FONT, nameW)
+    tree.pts:SetJustifyH("CENTER")
+    tree.pts:SetPoint("TOP", tree.name, "BOTTOM", 0, -TT.PTS_GAP)
+    tree.reset = W.ResetButton(head, TT.RESET, function() resetTree(t) end)
+    tree.reset:SetPoint("TOPRIGHT", head, "TOPRIGHT", -TT.RESET_X, -TT.RESET_X)
     W.Tooltip(tree.reset, L["Baum zurücksetzen"], L["Nimmt alle Punkte aus diesem Baum."])
-    tree.rowLabels = {}
-    for row = 1, ROWS do
-        local l = W.Text(tree, Theme.FONT.hint, 16)
-        l:SetJustifyH("CENTER")
-        l:SetPoint("TOPLEFT", 1, -(GRID.top + (row - 1) * GRID.pitchY + BTN / 2 - 6))
-        tree.rowLabels[row] = l
+    tree.reset:Hide()
+    local function away()
+        if not head:IsMouseOver() then tree.reset:Hide() end
     end
+    head:SetScript("OnEnter", function(self)
+        tree.reset:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(tree.name:GetText() or "", GOLD[1], GOLD[2], GOLD[3])
+        GameTooltip:AddLine(L["Rechtsklick: Baum zurücksetzen"], 0.56, 0.53, 0.64)
+        GameTooltip:Show()
+    end)
+    head:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+        away()
+    end)
+    head:SetScript("OnMouseUp", function(_, button)
+        if button == "RightButton" then resetTree(t) end
+    end)
+    tree.reset:HookScript("OnLeave", away)
     return tree
 end
 
@@ -467,7 +477,8 @@ local function refresh(f)
     for t = 1, 3 do
         local tree = f.trees[t]
         tree.name:SetText(T.TreeName(cls, t))
-        tree.pts:SetText(tostring(T.Spent(plan, t)))
+        local inTree = T.Spent(plan, t)
+        tree.pts:SetText((inTree == 1 and L["%d Punkt"] or L["%d Punkte"]):format(inTree))
     end
     for id, b in pairs(f.buttons) do
         local n = b.node

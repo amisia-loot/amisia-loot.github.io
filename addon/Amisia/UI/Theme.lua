@@ -116,6 +116,39 @@ T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP 
 -- the shared popup menu and the picker's panel
 T.MENU = { W = 182, ROW_W = 170, ROW_H = 20, PAD = 6, LABEL_W = 160, GROUND_X = 10, GROUND_Y = 3, ALPHA = 0.925 }
 T.PICKER = { ROWS = 8, ROW_H = 20, MIN_W = 180, FILTER_Y = 6, LIST_Y = 30, ARROW_ROOM = 26 }
+-- the talent calculator (Pages/Talents.lua) in the look of the game's classic three-tree talent
+-- window: three dark panels side by side, a centred head (name over points), square icons with a
+-- thin square frame, a rank plate at the lower right, straight prerequisite lines behind them
+T.TALENT = {
+    TREE_W = 198, TREE_GAP = 4, TREE_H = 398,   -- 3 x 198 + 2 x 4 = the page width (602)
+    HEAD_H = 42,          -- the head of a tree: the name, the points under it (mouse area for the reset)
+    NAME_Y = 7,           -- the name's top below the tree's top
+    PTS_GAP = 2,          -- between the name and the points
+    NAME_FONT = "GameFontNormalLarge",          -- the tree name: large, gold
+    PTS_FONT = "GameFontHighlightSmall",        -- "N Punkte": small, white
+    RANK_FONT = "NumberFontNormalSmall",        -- the rank on its plate
+    RESET = 14,           -- the red reset X at the head's top right, shown while the mouse is on the head
+    RESET_X = 5,          -- its distance from the tree's top right corner
+    ICON = 36,            -- a talent's icon (cropped 0.07..0.93)
+    CROP = 0.07,
+    FRAME = 1,            -- the square frame around the icon (the button is ICON + 2 x FRAME)
+    PITCH = 50,           -- button to button, across and down: 14 px between two icons
+    GRID_TOP = 46,        -- the first row's top below the tree's top (under the head)
+    GLOW = { 0.6, 0.35, 0.15 },  -- a maxed talent's soft glow: alpha of the rings 1, 2, 3 px outside its frame
+    PLATE_W = 24, PLATE_H = 12,  -- the dark plate under the rank text
+    PLATE_X = 3, PLATE_Y = -3,   -- its lower right corner from the button's: over the icon's lower right edge
+    PLATE_ALPHA = 0.75,
+    DIM = 0.5,            -- an unreachable talent's icon: desaturated and this bright
+    LINE = 3,             -- a prerequisite line's thickness
+    ARROW = 10,           -- the arrow head at the line's end, in the gap before the talent
+    -- the frame per state: unreachable grey-brown, reachable the classic gold-brown, partly learned
+    -- green, maxed bright gold (with the glow)
+    FRAME_COLOR = { locked = { 0.36, 0.33, 0.28 }, free = { 0.66, 0.53, 0.3 }, partial = { 0.3, 0.85, 0.3 },
+                    maxed = { 1, 0.82, 0 } },
+    -- the rank text per state: grey, white, green, gold
+    RANK_COLOR = { locked = { 0.5, 0.5, 0.5 }, free = { 1, 1, 1 }, partial = { 0.25, 1, 0.25 }, maxed = { 1, 0.82, 0 } },
+    LINE_COLOR = { met = { 1, 0.82, 0, 0.9 }, unmet = { 0.3, 0.28, 0.25, 0.9 } },
+}
 
 ---------------------------------------------------------------------------
 -- Atlases: the client's art Amisia may use (the style allow-list; the layout rules fail on any
@@ -134,9 +167,9 @@ T.ATLASES = {
     "common-dropdown-a-button-shadowless", "common-dropdown-a-button-hover-shadowless",
     "common-dropdown-a-button-pressed-shadowless", "common-dropdown-a-button-pressedhover-shadowless",
     "common-dropdown-a-button-open-shadowless", "common-dropdown-a-button-disabled-shadowless",
-    -- the talent calculator (the client's talent window)
-    "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
-    "UI-HUD-ActionBar-IconFrame-Mask", "UI-HUD-ActionBar-IconFrame",
+    -- the talent calculator (the client's talent window): the arrow heads of its edges and the class
+    -- backgrounds; the square frames are drawn (T.TALENT), not the thick talents-node-square atlases
+    -- nor the action bar's rounded rim
     "talents-arrow-head-yellow", "talents-arrow-head-gray",
     "talent-background-warrior", "talent-background-paladin", "talent-background-hunter", "talent-background-rogue",
     "talent-background-priest", "talent-background-shaman", "talent-background-mage", "talent-background-warlock",

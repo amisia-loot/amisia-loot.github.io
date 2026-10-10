@@ -138,6 +138,15 @@ S.STATES = {
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },
+    -- a priest build with every talent state: full (gold frame, glow), partly learned, reachable,
+    -- locked, met and unmet prerequisite lines
+    { page = "talents", name = "talents-plan", open = function()
+        local T = NS.Talents
+        local plan = T.NewPlan("PRIEST")
+        plan.ranks[105849], plan.ranks[105850], plan.ranks[105846] = 5, 1, 3
+        plan.ranks[105833], plan.ranks[105832] = 5, 1
+        NS.ShowTalents(T.Encode(plan))
+    end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
     { page = "bank", name = "bank-needs", open = function() NS.ShowBank("bedarf") end },
     { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },

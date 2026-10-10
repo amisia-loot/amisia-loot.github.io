@@ -584,10 +584,9 @@ for _, name in ipairs({ "common-dropdown-a-button-shadowless", "common-dropdown-
                         "common-dropdown-a-button-open-shadowless", "common-dropdown-a-button-disabled-shadowless" }) do
     ATLASES[#ATLASES + 1] = name
 end
--- the talent page (Pages/Talents.lua): the node frames and arrow heads of the client's talent
--- window and its class backgrounds
-for _, name in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
-                        "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage" }) do
+-- the talent page (Pages/Talents.lua): the arrow heads of the client's talent window and its class
+-- backgrounds
+for _, name in ipairs({ "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage" }) do
     ATLASES[#ATLASES + 1] = name
 end
 ST.ATLASES = ATLASES

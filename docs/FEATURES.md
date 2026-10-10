@@ -491,12 +491,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du bei einer Quest "Weg" klickst, dann setzt Amisia einen Wegpunkt zum Questgeber; ein Klick auf die Quest klappt Reihe und Belohnungen auf.
 
 ### F-049 Talentrechner
-- Version: 2.9.5
-- Status: im Spiel geprüft (2026-10-07)
-- Prüfung: Wenn du `/amisia talente` eingibst, dann öffnet sich die Seite Talente mit den drei Bäumen deiner Klasse; die Knöpfe sind 36 px groß, voll sichtbar, mit dünnem abgerundetem Rahmen (grün frei, gold voll, grau gesperrt).
+- Version: 2.19.0
+- Status: gebaut
+- Prüfung: Wenn du `/amisia talente` eingibst, dann öffnet sich die Seite Talente mit den drei Bäumen deiner Klasse wie im klassischen Talentfenster: jeder Baum ein dunkles Feld, oben mittig der Baumname groß in Gold und darunter klein "N Punkte", keine Stufenzahlen links; fährst du mit der Maus über den Kopf, erscheint oben rechts ein rotes X, und ein Klick darauf oder ein Rechtsklick auf den Kopf setzt nur diesen Baum zurück.
+- Prüfung: Wenn du die Knöpfe ansiehst, dann sind es eckige 36-px-Symbole mit dünnem eckigem Rahmen und dem Rang ("0/5") auf einem dunklen Schild unten rechts: noch nicht erreichbar grau und abgedunkelt, erreichbar farbig mit weißem Rang, angefangen mit grünem Rang und grünem Rahmen, voll mit hellgoldenem Rahmen, goldenem Leuchten und goldenem Rang.
+- Prüfung: Wenn ein Talent ein anderes voraussetzt, dann verbindet eine gerade Linie mit Pfeilspitze die beiden Knöpfe, golden sobald die Voraussetzung voll ist, sonst dunkelgrau; der Tooltip eines gesperrten Talents nennt "Benötigt N Punkte in <Baum>".
 - Prüfung: Wenn du einen Knoten links anklickst, dann steigt sein Rang (rechts: sinkt, Shift: alle Ränge), und die Punktezahl oben stimmt.
 - Prüfung: Wenn du "Eigene laden" klickst, dann meldet der Chat "Talente aus dem Spiel geladen (N Punkte)" und die Bäume zeigen deine echten Talente.
-- Notiz: Aussehen nach den Korrekturen des Nutzers (2.9.2 bis 2.9.5); auf die Frage "Wie sieht der Talentrechner aus?" (Punkt 2) am 2026-10-07: "2. ist ok". Baum und Knoten laut Selbsttest 2026-10-07 gleich dem Client.
+- Notiz: 2.9.5 im Spiel geprüft (2026-10-07, runder Rahmen). 2.19.0: Aussehen wie das klassische Talentfenster nach dem Bildschirmfoto des Nutzers 2026-10-10 ("können wir talente auch so machen"); Baum und Knoten laut Selbsttest 2026-10-07 gleich dem Client.
 
 ### F-050 Talent-Code teilen und übernehmen
 - Version: 2.7.0

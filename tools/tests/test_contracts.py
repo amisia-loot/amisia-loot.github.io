@@ -396,7 +396,11 @@ def test_the_forever_look():
     assert atlases, 'Theme.lua keeps its atlas list'
     listed = set(re.findall(r'"([^"]+)"', atlases.group(1)))
     assert 'common-dropdown-a-button' in listed, 'dropdown and arrow buttons use the client\'s dropdown atlas'
-    assert 'UI-HUD-ActionBar-IconFrame' in listed, 'talent nodes keep the thin rounded action button rim'
+    # D-06 (2026-10-10): talent nodes are square as in the classic talent window, a thin drawn frame;
+    # neither the action bar's rounded rim nor the thick talents-node-square atlases
+    assert 'UI-HUD-ActionBar-IconFrame' not in listed, 'talent nodes are square, no rounded action button rim'
+    assert not any(a.startswith('talents-node-') for a in listed), 'no thick talent node atlases'
+    assert re.search(r'T\.TALENT = \{', theme), 'the talent page\'s sizes and colours are theme tokens'
     assert 'common-dropdown-b-button' not in listed, 'no filter-button chips with the baked-in arrow'
     for rel, text in code_files():
         if rel == 'Core/SelfTest.lua':

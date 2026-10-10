@@ -89,9 +89,15 @@ goldener Titel, rotes Schließen-X), rote Knöpfe (`SharedButtonSmallTemplate`),
 wie er ist + Goldtext, aus: abgedunkelt + grauer Text). Dropdown- und Pfeilknöpfe aus dem Atlas
 `common-dropdown-a-button`. Keine Chips mit dem Filterknopf-Atlas `common-dropdown-b-button` (der
 eingebrannte Pfeil sah falsch aus; graue Flachboxen waren "graue kacke"). Zurücksetzen mit
-`auctionhouse-ui-filter-redx`. Talentknoten 34 px mit dem dünnen runden Rand der Aktionsleiste
-(`UI-HUD-ActionBar-IconFrame`, grün/gold/grau) und Maske. Kein dunkler Balken im Kopf.
-**Grund:** Bildschirmfotos und Wünsche des Nutzers 2026-10-05/06/07.
+`auctionhouse-ui-filter-redx`. Kein dunkler Balken im Kopf. Talentrechner seit 2026-10-10 (2.19.0)
+wie das klassische Talentfenster des Spiels: Baumkopf mittig (Name groß in Gold, "N Punkte" klein,
+kein Symbol, keine Stufenspalte), eckige 36-px-Symbole mit dünnem gezeichnetem eckigem Rahmen
+(grau-braun gesperrt, gold-braun erreichbar, grün angefangen, hellgold voll mit weichem Leuchten),
+Rang auf dunklem Schild unten rechts, gerade Linien mit den Pfeilspitzen `talents-arrow-head-*`; Maße
+und Farben in `ns.Theme.TALENT`. Das ersetzt den runden Rand der Aktionsleiste
+(`UI-HUD-ActionBar-IconFrame` mit Maske, 2026-10-07) und die dicken `talents-node-square-*`-Atlanten.
+**Grund:** Bildschirmfotos und Wünsche des Nutzers 2026-10-05/06/07; für die Talente das Foto des
+klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen").
 **Folge:** Client-Vorlagen und -Atlanten vor eigenen flachen Frames; ein neuer Atlas kommt nur in
 `ns.Theme.ATLASES`, wenn er zum Stil passt. Kein `UIDropDownMenu`/`EasyMenu`/`MenuUtil`, keine
 Blizzard-Einstellungskategorie, keine fremden Bibliotheken.

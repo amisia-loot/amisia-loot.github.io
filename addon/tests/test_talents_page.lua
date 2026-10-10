@@ -1,6 +1,8 @@
--- The page "Talente" (Pages/Talents.lua): three trees side by side with their names and points,
--- a button per talent on its row and column with rank and state, the row locks, the arrows of the
--- prerequisites, left/right/shift clicks, the reset per tree and of everything, the level and the
+-- The page "Talente" (Pages/Talents.lua), the classic three-tree look: three trees side by side
+-- with their names and points centred in the head (no icon, no row locks), a square button per
+-- talent on its row and column with its frame, glow, rank plate and state, the lines and arrows of
+-- the prerequisites, left/right/shift clicks, the reset per tree (its X, a right click on the head)
+-- and of everything, the level and the
 -- Talented perk, the class choice with a plan per class, the live talents ("Eigene laden"), the
 -- code box (copy and import), the tooltip, the command, the client's art, and the layout at the
 -- main window's size (602 x 478).
@@ -27,8 +29,7 @@ NS.TALENTS = { build = "test", max = 51, levels = LEVELS, talented = { 9, 8, 7, 
         nodes = { { 401, 4001, 8001, 41, 1, 0, 0, 3, 0, 0, "Improved Heroic Strike", "Cost -{1}.", { { "1", "2", "3" } } } } },
 } }
 T._reset()
-for _, a in ipairs({ "talents-node-square-yellow", "talents-node-square-green", "talents-node-square-gray",
-                     "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage", "talent-background-warrior" }) do
+for _, a in ipairs({ "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage", "talent-background-warrior" }) do
     STUB.atlases[a] = { 40, 40 }
 end
 STUB.class, STUB.level = "MAGE", 30
@@ -58,42 +59,89 @@ assert(has(f.total:GetText(), "0 / 51"), f.total:GetText())
 
 -- three trees with name and points, a button per talent at its place
 assert(#f.trees == 3)
-assert(has(f.trees[1].name:GetText(), "Arcane") and f.trees[1].pts:GetText() == "0")
+assert(has(f.trees[1].name:GetText(), "Arcane") and f.trees[1].pts:GetText() == "0 Punkte", f.trees[1].pts:GetText())
+-- the head: the name centred at the top in the large gold font, the points centred under it; no
+-- icon, no dark bar, the reset X only while the mouse is on the head
+do
+    local tr = f.trees[1]
+    assert(tr.name.justifyH == "CENTER" and tr.name.points.TOP and tr.name.points.TOP.relPoint == "TOP" and tr.name.points.TOP.x == 0,
+        "the name centred")
+    assert(tr.name.font == NS.Theme.TALENT.NAME_FONT and tr.pts.font == NS.Theme.TALENT.PTS_FONT, "large gold name, small white points")
+    assert(tr.pts.justifyH == "CENTER" and tr.pts.points.TOP.rel == tr.name and tr.pts.points.TOP.x == 0, "the points under the name")
+    assert(tr.icon == nil and tr.rowLabels == nil, "no tree icon, no row locks")
+    assert(not tr.reset:IsShown(), "the X waits for the mouse")
+    tr.head:GetScript("OnEnter")(tr.head)
+    assert(tr.reset:IsShown(), "hovering the head shows the X")
+    tr.head:GetScript("OnLeave")(tr.head)
+    assert(not tr.reset:IsShown(), "leaving hides it again")
+end
 assert(f.bg:GetAtlas() == "talent-background-mage", "the client's class background")
 local b = f.buttons
 local count = 0
 for _ in pairs(b) do count = count + 1 end
 assert(count == 7, "one button per talent: " .. count)
 local L = f.layoutInfo
-assert(b[102].points.TOPLEFT.x == L.left + 1 * L.pitchX + L.pad and b[103].points.TOPLEFT.y == -(L.top + 1 * L.pitchY), "row and column")
-assert(b[301].points.TOPLEFT.y == -(L.top + 6 * L.pitchY), "row 7")
--- state: free talents green, locked ones grey and desaturated, rank text
+assert(b[102].points.TOPLEFT.x == L.left + 1 * L.pitch and b[103].points.TOPLEFT.y == -(L.top + 1 * L.pitch), "row and column")
+assert(b[301].points.TOPLEFT.y == -(L.top + 6 * L.pitch), "row 7")
+-- the grid is centred in the tree, the 4 columns fill it evenly
+local TT = NS.Theme.TALENT
+assert(L.left * 2 + 3 * L.pitch + TT.ICON + 2 * TT.FRAME <= TT.TREE_W and L.left >= 4, "centred: " .. L.left)
+-- states: reachable with 0 points in colour, normal frame, white rank; unreachable desaturated,
+-- dimmed, grey-brown frame, grey rank; no glow; the rank on its dark plate
+local function frameIs(btn, c)
+    for _, e in ipairs(btn.frame) do
+        if e.color[1] ~= c[1] or e.color[2] ~= c[2] or e.color[3] ~= c[3] then return false end
+    end
+    return #btn.frame == 4
+end
+local function glowShown(btn)
+    for _, t in ipairs(btn.glow) do if not t:IsShown() then return false end end
+    return #btn.glow == 12
+end
+local function glowHidden(btn)
+    for _, t in ipairs(btn.glow) do if t:IsShown() then return false end end
+    return true
+end
 assert(b[101].rank:GetText() == "0/2" and b[101].state == "free" and not b[101].icon.desaturated)
-assert(b[103].state == "locked" and b[103].icon.desaturated, "row 2 is locked")
-assert(b[101].border:GetAtlas() == "UI-HUD-ActionBar-IconFrame" and b[101].border.vertexColor[2] == 1 and b[101].border.vertexColor[1] < 0.5, "green frame")
-assert(b[103].border.vertexColor[1] == 0.55 and b[103].border.vertexColor[2] == 0.55, "grey frame")
--- the row lock beside row 2 of the first tree
-assert(f.trees[1].rowLabels[2]:GetText() == "5" and f.trees[1].rowLabels[2]:IsShown() and not f.trees[1].rowLabels[1]:IsShown())
+assert(b[101].icon.vertexColor[1] == 1 and frameIs(b[101], TT.FRAME_COLOR.free) and glowHidden(b[101]), "reachable: colour, normal frame")
+assert(b[101].rank.textColor[1] == 1 and b[101].rank.textColor[2] == 1 and b[101].rank.textColor[3] == 1, "white rank")
+assert(b[103].state == "locked" and b[103].icon.desaturated and b[103].icon.vertexColor[1] == TT.DIM, "row 2 is locked: desaturated, dimmed")
+assert(frameIs(b[103], TT.FRAME_COLOR.locked) and b[103].rank.textColor[1] == 0.5, "grey-brown frame, grey rank")
+assert(b[101].plate.color[1] == 0 and b[101].plate.color[4] == TT.PLATE_ALPHA and b[101].rank.points.CENTER.rel == b[101].plate,
+    "the rank on a dark plate")
+assert(b[101].plate.points.BOTTOMRIGHT.x > 0 and b[101].plate.points.BOTTOMRIGHT.y < 0, "over the icon's lower right edge")
+assert(b[101].icon.texCoord[1] == TT.CROP and b[101].icon.texCoord[2] == 1 - TT.CROP, "the icon cropped")
 -- the arrows: 102 -> 103 down, 103 -> 105 to the right
 local down, right = f.arrows["102>103"], f.arrows["103>105"]
 assert(down and right, "an arrow per prerequisite")
 assert(down.dir == "down" and right.dir == "right")
 assert(down.head:GetAtlas() == "talents-arrow-head-gray" and down.head.rotation == 0)
+assert(not down.met and down.line.color[1] < 0.5, "unmet: a dark line")
+-- the line joins the right buttons: from 102's bottom to the head before 103's top; behind them
+assert(down.line.points.TOP.rel == b[102] and down.line.points.TOP.relPoint == "BOTTOM", "from the prerequisite")
+assert(down.line.points.BOTTOM.rel == b[103] and down.line.points.BOTTOM.relPoint == "TOP", "to the talent")
+assert(right.line.points.LEFT.rel == b[103] and right.line.points.RIGHT.rel == b[105], "103 -> 105")
+assert(down.line.layer == "ARTWORK", "behind the buttons")
 assert(math.abs(right.head.rotation - math.pi / 2) < 1e-6)
 
 ---------------------------------------------------------------------------
 -- clicks
 ---------------------------------------------------------------------------
 b[101]:GetScript("OnClick")(b[101], "LeftButton")
-assert(b[101].rank:GetText() == "1/2" and b[101].state == "partial" and f.trees[1].pts:GetText() == "1")
+assert(b[101].rank:GetText() == "1/2" and b[101].state == "partial" and f.trees[1].pts:GetText() == "1 Punkt")
+assert(b[101].rank.textColor[1] < 0.5 and b[101].rank.textColor[2] == 1 and frameIs(b[101], TT.FRAME_COLOR.partial) and glowHidden(b[101]),
+    "partly learned: green rank, green frame, no glow")
 assert(has(f.total:GetText(), "1 / 51"))
 b[101]:GetScript("OnClick")(b[101], "RightButton")
 assert(b[101].rank:GetText() == "0/2")
 _G.IsShiftKeyDown = function() return true end
 b[102]:GetScript("OnClick")(b[102], "LeftButton")
 _G.IsShiftKeyDown = function() return false end
-assert(b[102].rank:GetText() == "5/5" and b[102].state == "maxed" and b[102].border.vertexColor[1] == 1 and b[102].border.vertexColor[2] == 0.82, "gold frame")
+assert(b[102].rank:GetText() == "5/5" and b[102].state == "maxed" and frameIs(b[102], { 1, 0.82, 0 }), "gold frame")
+assert(glowShown(b[102]) and b[102].glow[1].color[1] == 1 and b[102].glow[1].color[2] == 0.82, "maxed: the gold glow shows")
+assert(b[102].rank.textColor[1] == 1 and b[102].rank.textColor[2] == 0.82, "gold rank")
 assert(b[103].state == "free" and down.head:GetAtlas() == "talents-arrow-head-yellow", "unlocked, the arrow lights up")
+assert(down.met and down.line.color[1] == 1 and down.line.color[2] == 0.82, "a met prerequisite: a gold line")
 b[103]:GetScript("OnClick")(b[103], "LeftButton")
 b[105]:GetScript("OnClick")(b[105], "LeftButton")
 assert(b[105].rank:GetText() == "1/1")
@@ -149,7 +197,15 @@ NS.Refresh()
 -- resets
 ---------------------------------------------------------------------------
 f.trees[1].reset:Click()
-assert(f.trees[1].pts:GetText() == "0" and T.Spent(f.plan) == 0)
+assert(f.trees[1].pts:GetText() == "0 Punkte" and T.Spent(f.plan) == 0)
+-- a right click on the head resets the tree too
+f.plan.ranks[101] = 2
+NS.Refresh()
+assert(f.trees[1].pts:GetText() == "2 Punkte")
+f.trees[1].head:GetScript("OnMouseUp")(f.trees[1].head, "LeftButton")
+assert(T.Spent(f.plan, 1) == 2, "a left click leaves it")
+f.trees[1].head:GetScript("OnMouseUp")(f.trees[1].head, "RightButton")
+assert(T.Spent(f.plan, 1) == 0 and f.trees[1].pts:GetText() == "0 Punkte", "right click: tree reset")
 f.plan.ranks[201] = 2
 NS.Refresh()
 f.resetAll:Click()
@@ -214,24 +270,30 @@ Lay.row("trees", f.trees[1], f.trees[2], f.trees[3])
 Lay.column("parts", f.class, f.trees[1], f.msg, f.live)
 Lay.row("foot", f.live, f.resetAll, f.codeLabel, f.code)
 for id, btn in pairs(f.buttons) do Lay.inside("talent " .. id, btn) end
--- without the client's art: plain borders, nothing breaks
-STUB.missingAtlases["talents-node-square-green"] = true
-STUB.missingAtlases["UI-HUD-ActionBar-IconFrame"] = true
+-- the rank plates stay inside their tree, the glow too
+for _, btn in pairs(f.buttons) do
+    local p = btn.points.TOPLEFT
+    assert(p.x - #TT.GLOW >= 0 and p.x + TT.ICON + 2 * TT.FRAME + TT.PLATE_X <= TT.TREE_W, "inside the tree across")
+    assert(-p.y + TT.ICON + 2 * TT.FRAME - TT.PLATE_Y <= TT.TREE_H, "inside the tree down")
+end
+-- without the client's art: no arrow heads, the lines and frames stay, nothing breaks
+STUB.missingAtlases["talents-arrow-head-yellow"] = true
+STUB.missingAtlases["talents-arrow-head-gray"] = true
 STUB.missingAtlases["talent-background-mage"] = true
 NS.Refresh()
-assert(f.buttons[201].border:GetAtlas() == nil and f.buttons[201].border.color ~= nil, "a coloured frame instead")
-print("test_talents_page ok")
-
--- the button: a 36 px icon with the action bar's rounded mask and its thin rounded frame, tinted
--- green (can be raised), gold (full) or grey (locked)
-STUB.missingAtlases["talents-node-square-green"] = nil
-STUB.missingAtlases["UI-HUD-ActionBar-IconFrame"] = nil
+for _, a in pairs(f.arrows) do assert(a.line:IsShown() and not a.head:IsShown(), "a line without its head") end
+STUB.missingAtlases["talents-arrow-head-yellow"] = nil
+STUB.missingAtlases["talents-arrow-head-gray"] = nil
 STUB.missingAtlases["talent-background-mage"] = nil
 NS.Refresh()
+
+-- the button: a 36 px icon in a thin square frame (no rounded mask, no node atlas)
 do
     local any
     for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
-    assert(any and any._w == 36 and any._h == 36, "36 px button")
-    assert(any.border._w == 40 and any.border.atlas == "UI-HUD-ActionBar-IconFrame", "the thin rounded frame")
-    assert(any.mask and any.mask.atlas == "UI-HUD-ActionBar-IconFrame-Mask", "rounded icon")
+    assert(any and any._w == 38 and any._h == 38, "36 px icon + 1 px frame")
+    assert(any.icon.points.TOPLEFT.x == 1 and any.icon.points.BOTTOMRIGHT.x == -1, "the icon inside the frame")
+    assert(any.mask == nil and any.border == nil, "square: no mask, no node atlas")
+    for _, e in ipairs(any.frame) do assert(e.atlas == nil and e.color, "a drawn frame") end
 end
+print("test_talents_page ok")
