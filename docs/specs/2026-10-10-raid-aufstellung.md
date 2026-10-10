@@ -16,6 +16,18 @@ ziehen, die Ersatzbank eintragen. Mit Amisia fügt ein Offizier die Anmeldeliste
 Einteilung und klickt "Alle einladen". Gelöst ist es, wenn ein Raid mit 40 Anmeldungen in wenigen
 Minuten steht, jede Gruppe einen Heiler hat und keiner fragt "in welcher Gruppe bin ich?".
 
+### Teil G: Kalender
+
+Viele Raider melden sich im Spielkalender an, nicht in Discord. Mit Teil G holt der Offizier diese
+Anmeldungen mit einem Klick in dieselbe Aufstellung. Gelöst ist es, wenn niemand mehr Namen aus dem
+Kalender abschreibt. (Teil G und H sind ein Entwurf vom 2026-10-10, noch nicht freigegeben.)
+
+### Teil H: Anmelden in Amisia
+
+Raider mit Amisia melden sich im Spiel an: mit Rolle und kurzer Notiz, ohne Discord. Gelöst ist es,
+wenn der Offizier vor dem Raid jede Anmeldung mit Rolle in der Aufstellung sieht, egal ob sie aus
+Discord, aus dem Kalender oder aus Amisia kommt.
+
 ## Was es tut
 
 ### Teil A: Liste einfügen und abgleichen
@@ -91,6 +103,63 @@ Neuer Abschnitt **"Raid-Aufstellung"** (nur Offiziere): Raidgröße (10, 20, 40;
 Einladung flüstern (aus), Automatisch sortieren (an), Gäste einladen (aus), Ersatz automatisch
 eintragen (aus).
 
+### Teil G: Kalender
+
+- Auf der Seite Aufstellung ein neuer Knopf **"Kalender"**. Er zeigt die kommenden Gildenereignisse
+  aus dem Spielkalender: nur die Art "Schlachtzug", die nächsten 14 Tage. Ein Häkchen "Alle Arten
+  zeigen" nimmt Dungeon, PvP, Treffen und Sonstiges dazu. Das nächste Schlachtzug-Ereignis ab heute
+  ist schon gewählt.
+- **"Übernehmen"** liest die Teilnehmerliste dieses Ereignisses in die Aufstellung. Die Raidnacht ist
+  das Datum des Ereignisses (vor 06:00 zählt zur Nacht davor, D-23).
+- Jede Zeile bekommt die Quelle **"Kalender"** (kleines Kalender-Zeichen) und den Status aus dem
+  Kalender:
+
+  | Im Kalender (`Enum.CalendarStatus`) | Amisia zeigt | Was es heißt |
+  |---|---|---|
+  | Signedup (6), Available (1) | angemeldet | wird eingeteilt |
+  | Confirmed (3) | bestätigt | wird eingeteilt |
+  | Tentative (8) | vorläufig | wie "vielleicht" |
+  | Standby (5) | Ersatz | steht bei "Ersatz" |
+  | Declined (2), Out (4) | abgesagt | wie "abgemeldet", nicht eingeteilt |
+  | Invited (0) | eingeladen | grau unten, nicht eingeteilt |
+  | NotSignedup (7) | ohne Antwort | grau unten, nicht eingeteilt |
+
+- Klasse und Stufe kommen aus dem Kalender. Die **Rolle** steht nicht im Kalender. Sie kommt aus
+  Teil H (der Spieler hat sich auch in Amisia angemeldet), sonst aus der letzten Aufstellung, sonst
+  aus der Klasse (grau mit "?").
+- Solange die Seite offen ist, liest Amisia die Liste neu, sobald sich im Kalender etwas ändert. Oben
+  steht: "Kalender: Molten Core · Fr 20:00 · gelesen 19:42".
+- Abgleich, Planer und Ersatzbank wie bei Teil A, B und E.
+- Amisia **schreibt nie** in den Kalender des Offiziers: kein Einladen, kein Status, kein Ereignis
+  anlegen oder ändern. Die einzige Ausnahme ist Teil H: ein Spieler meldet sich selbst an.
+
+### Teil H: Anmelden in Amisia
+
+- **Termine:** Raider sehen die kommenden Raidtermine. Die Termine kommen aus dem Spielkalender
+  (Gildenereignisse der Art Schlachtzug, die nächsten 14 Tage). Nur wenn der Kalender in Forever
+  nicht trägt, kündigt ein Offizier einen **"Raidtermin"** in Amisia an (Ersatzweg, Frage 26).
+- **Karte "Raid-Anmeldung"** auf der Übersicht (für alle, auch Raider): die nächsten drei Termine,
+  je eine Zeile, z. B. "Fr 20:00 Molten Core · angemeldet (H)" oder "noch offen". Ein Klick öffnet
+  das kleine Fenster "Anmelden".
+- **Fenster "Anmelden":** drei Knöpfe **Anmelden / Vorläufig / Abmelden**, die Rolle **T / H / N / F**
+  (vorgewählt: die letzte eigene Rolle, sonst aus der Klasse) und ein Feld **Notiz** (höchstens 40
+  Zeichen, z. B. "komme 20:15"). Darunter klein: "Für alle Offiziere sichtbar."
+- **Befehl** `/amisia anmelden` (en `signup`): öffnet das Fenster für den nächsten Termin.
+  `/amisia anmelden ab` (en `off`) meldet für den nächsten Termin ab, `/amisia anmelden H komme 20:15`
+  meldet als Heiler mit Notiz an.
+- **Chat** (nur beim Spieler selbst): "Raid-Anmeldung: Fr 20:00 Molten Core · angemeldet als Heiler."
+  Und dahinter "Gesendet." oder "Kein Offizier online: Amisia schickt es, sobald einer kommt."
+- **Kalender gleich mit:** Ist der Termin ein Gildenereignis mit Anmeldung, trägt derselbe Klick den
+  Spieler auch im Spielkalender ein (Anmelden, Vorläufig, Abmelden). So sehen es auch Spieler ohne
+  Amisia. Das geht nur, wenn das Spiel es aus einem Addon-Knopf erlaubt (Prüfungen 23 bis 25). Sonst
+  zeigt das Fenster "Bitte auch im Kalender eintragen" mit einem Knopf, der den Kalender öffnet.
+  Einstellung "Auch im Spielkalender eintragen" (an).
+- **Beim Offizier:** Jede Anmeldung landet in der Aufstellung der Nacht, mit der Quelle **"Amisia"**,
+  der Rolle und der Notiz (im Tooltip, dazu ein kleines Notiz-Zeichen). Die Zählung oben sagt
+  zusätzlich "Liste 9 · Kalender 20 · Amisia 12".
+- Meldet sich ein eingeteilter Spieler ab, schreibt Amisia dem Offizier eine Zeile:
+  "Aufstellung: Anna Tankfrau hat sich abgemeldet (war Gruppe 3)."
+
 ## Was es ausdrücklich nicht tut
 
 - **Kein Rauswerfen.** Amisia wirft nie jemanden aus der Gruppe (auch nicht, wer nicht angemeldet
@@ -107,6 +176,28 @@ eintragen (aus).
   Discord oder dem Netz.
 - **Nicht im Kampf**: kein Einladen, Umwandeln und Sortieren im Kampf und in der Kampfsperre.
 - Kein automatisches Wiederholen von Einladungen. Jede neue Einladung braucht einen Klick.
+
+### Teil G: Kalender
+
+- **Kein Schreiben in den Kalender** durch den Offizier-Teil: kein Einladen, kein "Bestätigt" oder
+  "Ersatz" setzen, kein Ereignis anlegen, kopieren oder löschen. Das bleibt im Kalenderfenster.
+- **Keine Rollen im Kalender.** Der Kalender kennt keine.
+- **Keine persönlichen Ereignisse und keine Gemeinschafts-Ereignisse**, nur Gildenereignisse.
+- **Kein Lesen im Hintergrund:** Amisia liest den Kalender beim Offizier nur, wenn die Seite
+  Aufstellung offen ist oder er klickt.
+
+### Teil H: Anmelden in Amisia
+
+- **Kein Anmelden für andere.** Jeder meldet nur sich selbst an: den Charakter, mit dem er gerade
+  spielt.
+- **Keine Anmeldung ohne Termin.**
+- **Keine Website, kein eigener Discord-Bot** (Nutzer, 2026-10-10).
+- **Kein Chat an andere:** die Anmeldung ist eine Addon-Nachricht. Die Notiz steht nie in einem Chat
+  und nie im Export.
+- **Kein Einladen auf Anmeldung.** Einladen bleibt der Klick des Offiziers (Teil C).
+- **Keine Teilnehmerliste für Raider** ("wer kommt noch?"). Nur Offiziere sehen die Anmeldungen in
+  Amisia (Frage 30); im Kalender sieht sie jeder wie bisher.
+- **Keine Erinnerung im Chat** beim Login (Frage 31); nur die Karte zeigt "noch offen".
 
 ## Abläufe
 
@@ -185,6 +276,74 @@ Die Regeln sind einfach, damit man sie nachvollziehen kann. Festgehaltene Spiele
 3. Kommt ein Ersatzspieler später doch in den Raid, gilt er wie heute als "von der Ersatzbank" und
    ist nie zu spät.
 
+### Teil G: Kalender
+
+1. Ein Offizier legt im Spielkalender ein Gildenereignis an ("Gilden-Ereignis erstellen", Art
+   Schlachtzug, Datum, Uhrzeit). Raider melden sich dort an, oder über Amisia (Teil H).
+2. Der Offizier öffnet die Seite Aufstellung und klickt "Kalender". Amisia fragt den Kalender ab und
+   zeigt die Ereignisse. Das nächste Schlachtzug-Ereignis ist gewählt.
+3. "Übernehmen": Amisia öffnet das Ereignis im Hintergrund, wartet auf die Antwort des Spiels und
+   liest jeden Eintrag: Name, Klasse, Stufe, Status und wann er geantwortet hat.
+4. Jeder Name geht durch denselben Abgleich wie bei Teil A (Korrektur, genau, Vorname ...). Steht
+   der Name schon in der Liste (aus Discord oder Amisia), kommt er nicht doppelt hinein. Die Zeile
+   bekommt die Quelle "Kalender" dazu, und der Status folgt der Regel "Welche Angabe gilt" (Teil H).
+5. Die Nacht merkt sich das Ereignis (Titel, Beginn). Solange die Seite offen ist, liest Amisia bei
+   jeder Änderung im Kalender neu, höchstens alle 5 Sekunden. Schließt der Offizier die Seite, schließt
+   Amisia das Ereignis wieder.
+6. Wer aus dem Kalender verschwindet und nur aus dem Kalender kam: grau "nicht mehr im Kalender",
+   aus der Gruppe genommen (außer festgehalten).
+7. Der Chat meldet: "Aufstellung: Kalender Molten Core, Fr 20:00: 22 Einträge, 18 angemeldet,
+   2 vorläufig, 2 abgesagt."
+8. Fügt der Offizier danach eine Liste ein (Teil A), ersetzt sie nur die Zeilen, die aus einer
+   eingefügten Liste kamen. Zeilen aus Kalender und Amisia bleiben.
+
+### Teil H: Anmelden in Amisia
+
+Beim Raider:
+
+1. 40 bis 70 Sekunden nach dem Login (nicht im Kampf) liest Amisia die Termine aus dem Kalender. Die
+   Karte zeigt sie.
+2. Der Raider klickt bei einem Termin "Anmelden", wählt Rolle und Notiz und klickt "Senden".
+3. Amisia speichert die Anmeldung bei ihm (Charakter, Termin, Status, Rolle, Notiz, Zeit).
+4. Amisia schickt eine Nachricht `AN` an die Gilde. Jeder Offizier mit Amisia, der online ist,
+   nimmt sie in seine Aufstellung.
+5. Ist der Termin ein Gildenereignis mit Anmeldung und die Einstellung an: derselbe Klick trägt ihn
+   im Spielkalender ein. Nur beim Klick, nie beim Wiederholen.
+6. Ändern: dasselbe Fenster, neuer Klick. Die neue Angabe ersetzt die alte.
+7. Wiederholen, damit keine Anmeldung verloren geht: beim nächsten eigenen Login schickt Amisia die
+   Anmeldungen für kommende Termine einmal erneut (höchstens 4, gedrosselt). Und wenn ein Offizier
+   sich einloggt, fragt sein Amisia einmal in die Gilde (`AQ`); jeder Raider-Client antwortet ihm per
+   Flüstern mit seinen offenen Anmeldungen, verteilt über 0 bis 20 Sekunden.
+
+Beim Offizier:
+
+8. Amisia prüft den Absender (Gildenmitglied laut Gildenliste; der Name ist der Absender, den der
+   Server setzt), das Datum (heute bis 14 Tage) und jedes Feld. Dann kommt die Anmeldung in die
+   Nacht, auch wenn es für die Nacht noch keine Aufstellung gibt.
+9. Eigene Charaktere desselben Kontos: Amisia übernimmt ihre Anmeldungen direkt aus dem eigenen
+   Speicher, ohne Nachricht.
+
+**Welche Angabe gilt** (pro Name und Nacht):
+
+1. **Was der Offizier von Hand macht, bleibt:** Gruppe, Festhalten, Ersatz, Rolle von Hand. Eine
+   neue Anmeldung verschiebt niemanden. Hat der Offizier jemanden entfernt und der meldet sich
+   danach neu an, steht er wieder unter "Nicht eingeteilt".
+2. **Status** (angemeldet, vorläufig, abgemeldet): Es gilt die **neueste Angabe des Spielers selbst**,
+   aus Amisia (Zeit des Klicks) oder aus dem Kalender (Antwortzeit des Kalenders). Liegen beide
+   weniger als 2 Minuten auseinander, gilt Amisia (meist derselbe Klick; Amisia hat Rolle und Notiz).
+3. Eine **eingefügte Liste** (Discord, Teil A) hat keine Zeit pro Zeile. Sie gilt als **älter** als
+   jede Angabe in Amisia oder im Kalender. Ein Abmelden in Amisia oder im Kalender schlägt also
+   immer ein "angemeldet" aus Discord, und umgekehrt. Weicht die Liste ab, zeigt die Zeile einen
+   Hinweis: "Discord: angemeldet".
+4. Was ein Offizier im Kalender setzt ("Bestätigt", "Ersatz", "Raus"), zählt wie eine Angabe des
+   Kalenders mit ihrer Zeit.
+5. **Rolle:** von Hand (Offizier) vor Amisia-Anmeldung vor eingefügter Liste vor letzter Aufstellung
+   vor Klasse (geraten, "?"). Der Kalender kennt keine Rolle.
+6. **Abmelden** eines Eingeteilten: er kommt aus der Gruppe, und der Offizier bekommt eine
+   Chatzeile. Ein Festgehaltener bleibt in seiner Gruppe, rot "abgemeldet"; der Offizier entscheidet.
+7. Ein Name aus mehreren Quellen ist **eine** Zeile mit allen Quellen-Zeichen (Liste, Kalender,
+   Amisia).
+
 ## Abnahmekriterien
 
 Allein prüfbar vor 2026-11-04 sind nur die Zeilen ohne "(braucht: ...)". Der Nutzer hat kein
@@ -216,6 +375,52 @@ zweites Konto; alle Gruppenprüfungen ab 2026-11-04 (D-32).
   Planer. (braucht: Raid)
 - Wenn du "Ersatz auf die Ersatzbank" klickst, dann stehen die Ersatzspieler mit der Notiz
   "Aufstellung" im Raid-Log unter Ersatzbank (`/amisia ersatz` zeigt sie).
+
+"Allein" heißt bei Teil G und H: mit den eigenen Charakteren Vulo Hunt (Offizier) und Vulo Pala
+(Veteran) desselben Kontos, nacheinander eingeloggt. Alles mit "(braucht: ...)" ab 2026-11-04 (D-32).
+
+### Teil G: Kalender
+
+F-085 (Vorschlag).
+
+- Wenn du als Vulo Hunt im Spielkalender ein Gildenereignis "Schlachtzug" für morgen 20:00 anlegst
+  und auf der Seite Aufstellung "Kalender" klickst, dann ist dieses Ereignis gewählt, und nach
+  "Übernehmen" steht Vulo Hunt mit Quelle "Kalender" und Status "bestätigt" in der Aufstellung von
+  morgen. (allein)
+- Wenn sich Vulo Pala im Kalenderfenster des Spiels für dieses Ereignis anmeldet und du danach als
+  Vulo Hunt "Übernehmen" klickst, dann steht Vulo Pala grün "angemeldet" als Paladin, mit der Rolle
+  aus der letzten Aufstellung oder grau "H?". (allein)
+- Wenn du nach dem Kalender einen Discord-Text einfügst, dann bleiben die Kalender-Zeilen stehen, und
+  ein Name, der in beiden steht, steht einmal da, mit zwei Quellen-Zeichen. (allein)
+- Wenn du "Übernehmen" geklickt hast, dann ist im Kalenderfenster nichts verändert: keine neuen
+  Einladungen, kein anderer Status. (allein)
+- Wenn sich ein anderes Gildenmitglied im Kalender anmeldet oder absagt, während deine Seite
+  Aufstellung offen ist, dann ändert sich seine Zeile nach wenigen Sekunden ohne Klick.
+  (braucht: Gilde)
+
+### Teil H: Anmelden in Amisia
+
+F-086 (Vorschlag).
+
+- Wenn du als Vulo Hunt auf der Karte "Raid-Anmeldung" beim Termin von morgen "Anmelden" mit Rolle T
+  und der Notiz "komme 20:15" sendest, dann steht Vulo Hunt in der Aufstellung von morgen mit Quelle
+  "Amisia", Rolle T und der Notiz im Tooltip. (allein)
+- Wenn du dich als Vulo Pala mit `/amisia anmelden` vorläufig als Heiler anmeldest und danach als
+  Vulo Hunt einloggst, dann steht Vulo Pala orange "vorläufig" mit H und Quelle "Amisia". (allein:
+  derselbe Account, ohne Nachricht)
+- Wenn Vulo Pala über Amisia "Anmelden" klickt, dann zeigt das Kalenderfenster des Spiels bei
+  Vulo Pala "Angemeldet", und Vulo Hunt sieht ihn danach mit den Quellen Kalender und Amisia.
+  (allein; erst nach den Prüfungen 23 bis 25)
+- Wenn du nach "Anmelden" "Abmelden" klickst, dann steht dein Name grau "abgemeldet" und ist aus
+  seiner Gruppe genommen, und der Offizier liest im Chat "Aufstellung: ... hat sich abgemeldet (war
+  Gruppe N)." (allein)
+- Wenn du einen Discord-Text mit Vulo Pala als "Heiler" einfügst und Vulo Pala sich danach in Amisia
+  abmeldet, dann steht er "abgemeldet" mit dem Hinweis "Discord: angemeldet". (allein)
+- Wenn sich ein Raider anmeldet, während kein Offizier online ist, und sich später ein Offizier
+  einloggt, während der Raider online ist, dann steht die Anmeldung nach höchstens 2 Minuten in der
+  Aufstellung des Offiziers. (braucht: Gilde)
+- Wenn ein Raider eine Notiz mit Farbcode und 100 Zeichen sendet, dann zeigt der Offizier höchstens
+  40 Zeichen ohne Farbe, und kein Chat zeigt die Notiz. (braucht: Gilde)
 
 ## Sonderfälle
 
@@ -254,6 +459,47 @@ zweites Konto; alle Gruppenprüfungen ab 2026-11-04 (D-32).
   Freundesliste, sonst "unbekannt"; der Chat sagt "Gildenliste noch nicht geladen, gleich nochmal".
 - **Leere oder kaputte Liste:** "Kein Name erkannt." und nichts wird überschrieben.
 
+### Teil G: Kalender
+
+- **Kalender aus oder leer** (Forever schaltet ihn ab, `C_Calendar` fehlt, keine Ereignisse): der Knopf
+  "Kalender" ist grau mit dem Grund. Teil A geht wie bisher.
+- **Kalenderfenster des Spiels offen:** Amisia öffnet dann kein Ereignis, denn das würde im Fenster
+  das gewählte Ereignis wechseln. Ist im Fenster genau das gewählte Ereignis offen, liest Amisia es;
+  sonst steht da "Kalenderfenster schließen, dann Übernehmen".
+- **Keine Antwort:** Kommt nach 10 Sekunden nichts, sagt Amisia "Kalender antwortet nicht, gleich
+  nochmal". Fehler zeigt das Spiel selbst als Fenster.
+- **Unvollständige Liste:** Meldet das Spiel, dass die Liste noch nicht ganz da ist, wartet Amisia auf
+  den Rest. Höchstens 80 Namen wie bei Teil A.
+- **Name ohne Nachname im Kalender** (Prüfung 20): Abgleich über den eindeutigen Vornamen wie bei
+  Teil A, Schritt 4.
+- **Zwei Schlachtzug-Ereignisse an einem Abend:** der Offizier wählt eines. Wechselt er, ersetzt das
+  neue Ereignis die Kalender-Zeilen.
+- **Ereignis um 00:30:** gehört zur Nacht davor (D-23).
+- **Ereignis gelöscht oder verschoben:** "Ereignis nicht mehr im Kalender". Die Zeilen bleiben, das
+  Kalender-Zeichen wird grau.
+- **Kampf, Kampfsperre:** Amisia liest den Kalender nicht im Kampf; es wartet bis danach.
+
+### Teil H: Anmelden in Amisia
+
+- **Kein Termin:** die Karte sagt "Keine Raidtermine in den nächsten 14 Tagen." Anmelden geht nicht.
+- **Kein Offizier online:** gespeichert und später geschickt (Abläufe, Schritt 7). Der Chat sagt es.
+- **Nicht in einer Gilde:** die Karte sagt "Nur in einer Gilde". Nichts wird gesendet.
+- **Twinks:** angemeldet ist der Charakter, mit dem man spielt. Die Karte zeigt die Anmeldungen der
+  anderen eigenen Charaktere dazu ("Vulo Pala: angemeldet"), damit keiner zwei Charaktere anmeldet.
+  Beim Offizier hilft der Twink-Tausch aus Teil A.
+- **Kampf, Kampfsperre:** die Nachricht wartet, bis die Sperre vorbei ist (wie jede Nachricht). Der
+  Kalender-Eintrag geht im Kampf nicht: der Knopf sagt "Nach dem Kampf".
+- **`/reload`:** die Anmeldungen sind gespeichert. Das Wiederholen kommt nur einmal pro Sitzung.
+- **Zwei Offiziere:** beide bekommen jede Anmeldung, jeder in seiner Aufstellung (kein Teilen,
+  Frage 9).
+- **Falsche Uhr des Raiders:** liegt die Zeit in der Zukunft, nimmt der Offizier "jetzt". Eine
+  Wiederholung trägt die Zeit des ersten Klicks.
+- **Termin vorbei:** nach 06:00 des nächsten Tages keine Anmeldung mehr; alte werden gelöscht.
+- **Englischer Client:** die Rollen heißen dort Tank, Healer, Melee, Ranged; die Nachricht trägt
+  immer T/H/M/R.
+- **Gast** (kein Gildenmitglied): kann sich nicht in Amisia anmelden (Gildenkanal). Der Offizier
+  sieht ihn nur über den Kalender oder die eingefügte Liste.
+
 ## Missbrauch/Vertrauen
 
 - **Nur Offiziere.** Seite, Befehle und Einstellungen gibt es nur in der Offiziersansicht und nur
@@ -272,6 +518,39 @@ zweites Konto; alle Gruppenprüfungen ab 2026-11-04 (D-32).
 - **Keine Kicks**, kein Leiterwechsel, keine Beförderung zum Assistenten.
 - **Ersatzbank:** nur über den bestehenden Weg (`ns.BenchAdd`), mit dem Offizier als "eingetragen
   von"; der Raid-Abgleich zeigt es den anderen Offizieren wie heute.
+
+### Teil G: Kalender
+
+- **Nur Offiziere** (D-41). Das Lesen verrät nichts Neues: jedes Mitglied sieht dieselbe Liste im
+  Spiel.
+- **Kalender-Texte sind unvertraut:** Titel, Namen und Notizen ohne Farbcodes und Striche, Titel und
+  Notizen höchstens 40 Zeichen, Namen wie bei Teil A (48 Zeichen, keine Ziffern). Nur angezeigt.
+- **Amisia schreibt beim Offizier nichts in den Kalender.** Ein Fehler kann dort niemanden einladen,
+  ausladen oder umstellen.
+
+### Teil H: Anmelden in Amisia
+
+- **Nur für sich selbst:** der Name ist der Absender, den der Server setzt, nie ein Feld der
+  Nachricht. Niemand kann einen anderen an- oder abmelden.
+- **Nur Gildenmitglieder:** der Offizier nimmt `AN` nur von Mitgliedern laut Gildenliste. Fremde
+  werden verworfen.
+- **Offiziere kann man nicht vortäuschen:** ein Raider antwortet auf die Frage `AQ` nur, wenn der
+  Fragende laut Gildenliste Offiziersrang hat (Rangrecht 22, D-18). Ein Raidtermin (`AT`, falls
+  gebaut) zählt nur von einem geprüften Offizier. Was die Nachricht über den Absender sagt, zählt nie.
+- **Fluten:** pro Absender und Nacht höchstens eine `AN` alle 10 Sekunden, eine `AQ` alle
+  30 Sekunden, dazu die Grenzen aller Nachrichten (40 in 10 Sekunden). Der Offizier nimmt höchstens
+  4 Nächte pro Absender, nur heute bis 14 Tage, 80 Namen pro Nacht. Ein Raider antwortet einem
+  Offizier höchstens einmal in 10 Minuten, mit höchstens 4 Nachrichten.
+- **Notiz:** höchstens 40 Zeichen, ohne Farbcodes, Links, Striche `|`, Tabulator und Steuerzeichen.
+  Nur im Tooltip der Seite, nie in einem Chat, nie im Export. Sie geht an alle Amisia-Clients der
+  Gilde; darum der Hinweis "Für alle Offiziere sichtbar".
+- **Rolle und Klasse** nur aus festen Listen (T/H/M/R, die neun Klassen). Ein anderer Wert verwirft
+  die ganze Nachricht.
+- **Kalender-Eintrag** nur auf den eigenen Klick und nur für den eigenen Charakter (die Funktionen
+  des Spiels kennen keinen anderen). Nie von einer Nachricht ausgelöst.
+- **Raider ohne Amisia** merken nichts. Sie bekommen keine Nachricht und melden sich wie bisher an.
+- **Kein Dauerfunk** (D-19): eine `AQ` pro Sitzung, das Wiederholen einmal pro Sitzung, nichts im
+  Schlachtfeld; in der Sperre wartet es.
 
 ## Daten
 
@@ -318,6 +597,88 @@ blocks, SavedVariables, Settings) und die Regel in `docs/DECISIONS.md`.
 - **DECISIONS:** neue Regel (nächste freie Nummer, heute D-40): "Raid-Aufstellung: nur Offiziere,
   Einladen nur per Klick und gedrosselt, nie Kicks, kein Einladen auf Flüstern, Gäste nur mit
   Einstellung, eingefügter Text unvertraut."
+
+### Teil G: Kalender
+
+- **Neue Datei** `Raid/Calendar.lua`: Termine und Teilnehmerliste lesen, Status übersetzen (für
+  Teil G und H). Eine Zeile in der TOC und der Module map.
+- **`AmisiaDB.lineup`** bleibt `v = 1`; neue Felder, beim Laden Feld für Feld geprüft:
+  - pro Nacht `cal = { id = Kennung des Ereignisses, at = Beginn (Epoch), title (40), read = Epoch
+    des letzten Lesens }`;
+  - pro Eintrag `f` = Quellen (Buchstaben `L` Liste, `K` Kalender, `A` Amisia), `st` = Status der
+    geltenden Angabe (`A` angemeldet, `B` bestätigt, `V` vorläufig, `E` Ersatz, `X` abgesagt oder
+    abgemeldet, `I` eingeladen, `O` ohne Antwort, `G` nicht mehr im Kalender), `t` = Zeit dieser
+    Angabe, `w` = Notiz (40), `h = true` Rolle vom Offizier gesetzt, `d` = abweichender Status der
+    eingefügten Liste (für "Discord: angemeldet"). Die bisherigen Felder `m` (vielleicht), `a`
+    (abgemeldet) und `b` (Ersatz) folgen dem Status.
+- **Einstellung** im Abschnitt `lineup`: `lineup.calendarAll` "Alle Arten von Gildenereignissen
+  zeigen" (aus).
+- **Keine Nachricht, keine Blob-Art, keine Exportzeile, kein Einfügeblock.**
+- **Spiel-Funktionen** (laut `Blizzard_APIDocumentationGenerated/CalendarDocumentation.lua`, Forever
+  1.60.1.70205; Zeilennummer in Klammern):
+  - Termine: `C_Calendar.OpenCalendar()` (821) lädt die Daten; `GetNumGuildEvents()` (733),
+    `GetGuildEventInfo(i)` (625: `eventID`, Jahr, Monat, Tag, Stunde, Minute, `eventType`, `title`,
+    `calendarType`, eigener `inviteStatus`), `GetGuildEventSelectionInfo(i)` (641: Monat-Versatz,
+    Tag, Index im Tag). Ereignis `CALENDAR_UPDATE_GUILD_EVENTS` (981).
+  - Liste: `OpenEvent(monat, tag, index)` (825, gibt true/false), dann `CALENDAR_OPEN_EVENT` (926);
+    `GetEventInfo()` (599: Titel, Art, `calendarType`, `inviteType`, Zeit, gesperrt);
+    `GetNumInvites()` (742), `EventGetInvite(i)` (246: `name`, `level`, `className`,
+    `classFilename`, `inviteStatus`, `modStatus`, `type`, `notes`, `guid`; Aufbau Zeile 1066);
+    `EventGetInviteResponseTime(i)` (263); `CALENDAR_UPDATE_INVITE_LIST` (987, mit
+    `hasCompleteList`); `IsEventOpen()` (787), `CloseEvent()` (43).
+  - Arten: `Enum.CalendarEventType` Raid 0, Dungeon 1, PvP 2, Meeting 3, Other 4
+    (`CalendarConstantsDocumentation.lua` 128); `Enum.CalendarStatus` 0 bis 8 (dort 241);
+    `Enum.CalendarInviteType` Normal 0, Signup 1 (216); `calendarType` ist ein Text: `"GUILD_EVENT"`,
+    `"GUILD_ANNOUNCEMENT"`, `"PLAYER"`, `"COMMUNITY_EVENT"` (Blizzard_Calendar.lua 725-731).
+  - Sperren: nur `AddEvent` (11) und `UpdateEvent` (877) tragen `HasRestrictions`; Lesen und
+    Anmelden tragen kein Sperr-Kennzeichen, viele nur `SecretArguments = "AllowedWhenUntainted"`
+    (heißt: keine geheimen Werte als Argument). Ob ein Addon sie ohne Tastendruck rufen darf:
+    Prüfungen 19 und 23.
+  - Achtung: das Kalenderfenster des Spiels reagiert auf jedes `CALENDAR_OPEN_EVENT` und zeigt das
+    Ereignis an (Blizzard_Calendar.lua 1106-1120); darum öffnet Amisia nichts, solange es offen ist.
+
+### Teil H: Anmelden in Amisia
+
+- **Neue Dateien:** `Raid/Signup.lua` (eigene Anmeldungen, Nachrichten, Übernahme beim Offizier,
+  Kalender-Eintrag) und `UI/Signup.lua` (Karte "Raid-Anmeldung", Fenster "Anmelden"), je eine Zeile
+  in TOC und Module map. Texte in `L["…"]`, Englisch in `Locales/enUS_raid2.lua`.
+- **`AmisiaDB.signup`** (neu, Owner `Raid/Signup.lua`): `{ v = 1, chars = { [Name] = { ["JJJJ-MM-TT"]
+  = { s = A/V/X, r = T/H/M/R, t = Epoch des Klicks, w = Notiz (40), e = Kennung des
+  Kalenderereignisses oder nil, k = "ok"/"err" (Kalender-Eintrag) } } }, sent = Epoch }`. Beim Laden
+  geprüft: Nächte vor heute weg, 4 Nächte pro Charakter, 12 Charaktere.
+- **Beim Offizier** keine eigene Tabelle: die Anmeldungen stehen in `AmisiaDB.lineup` (Felder siehe
+  Teil G). Eine Anmeldung für eine Nacht ohne Aufstellung legt die Nacht an (zählt zu den 8 Nächten).
+- **Nur falls der Ersatzweg gebaut wird** (Frage 26): `AmisiaDB.raidDates = { rev, by, list =
+  { { d = JJJJ-MM-TT, hm = HHMM, title (40) } } }`, höchstens 4 Termine.
+- **Einstellungsabschnitt** `signup` "Raid-Anmeldung" (für alle, `Raid/Signup.lua`):
+  `signup.calendar` "Auch im Spielkalender eintragen" (an), `signup.card` "Karte auf der Übersicht"
+  (an). Im Abschnitt `lineup` (Offiziere): `lineup.signups` "Anmeldungen aus Amisia annehmen" (an).
+- **Befehl** `/amisia anmelden` (en `signup`), für alle; Unterwort `ab` (en `off`).
+- **Karte** `signup` auf der Übersicht (`ns.RegisterCard`, für alle).
+- **Neue Nachrichtenarten** (Präfix `Amisia`; Zeilen für ARCHITECTURE "Message kinds", `VALID`,
+  `KIND_GAP`/`KEYED_GAP` in `Core/Comm.lua`; keine neue Protokollnummer, unbekannte Arten werfen
+  alte Clients weg):
+
+  | Kind | Sender -> channel | Receiver trust | Gap (per sender) | Fields (after the kind) |
+  |---|---|---|---|---|
+  | `AN` | raider -> GUILD on the click and once per session after the login (low); WHISPER as answer to an officer's `AQ` | member (the name is the sender); kept only in officer view with officer rank and `lineup.signups`; night today .. +14 days; 4 nights per sender | keyed 10 s per night | night `yyyy-mm-dd`, status `A`/`V`/`X`, role `T`/`H`/`M`/`R`/`-`, class token or `-`, epoch of the click, calendar event id (digits, max 20) or `-`, [note or `-`, 40 bytes, no `\|`, tab or control] |
+  | `AQ` | everyone -> GUILD once 40-70 s after the login (low) | member; answered with WHISPER `AN` only to a verified officer, with `AT` only by an officer | 30 s | flag `O` (asks for sign-ups) or `-`, known raid date rev (0: none) |
+  | `AT` | only with the fallback (question 26): officer -> GUILD after a change; WHISPER as answer to `AQ` | officer; only a newer rev (max 1 day ahead) | 30 s | rev, set by, dates `yyyymmdd:hhmm` (max 4, comma) or `-`, [title of the first, 40] |
+
+- **Keine Blob-Art, keine Exportzeile, kein Einfügeblock, kein Website-Zustand.** Wer sich anmeldet,
+  geht nicht an die Website (wie bei Teil A).
+- **Spiel-Funktionen zum Eintragen** (CalendarDocumentation.lua): `ContextMenuSelectEvent(monat, tag,
+  index)` (165) mit `ContextMenuEventSignUp()` (135), `ContextMenuInviteAvailable()` (149),
+  `ContextMenuInviteTentative()` (161), `ContextMenuInviteDecline()` (153); nach `OpenEvent`:
+  `EventSignUp()` (507), `EventAvailable()` (193), `EventTentative()` (522), `EventDecline()` (224),
+  `RemoveEvent()` (842). Das Kalenderfenster ruft bei einem Ereignis mit Anmeldung
+  `EventSignUp`/`EventTentative`, zeigt dort kein "Absagen" (Blizzard_Calendar.lua 3055-3070) und
+  nimmt die Anmeldung mit "Entfernen" = `RemoveEvent()` zurück (2947-2949). Bei einer normalen
+  Einladung: `EventAvailable`, `EventTentative`, `EventDecline` (2909-2934).
+- **DECISIONS:** neue Regel (nächste freie Nummer, heute D-42): "Anmelden in Amisia und Kalender:
+  nur für sich selbst, nur Gildenmitglieder, Offiziere laut Gildenliste, Kalender schreiben nur der
+  Spieler per Klick für sich, der Offizier-Teil liest nur."
+- **FEATURES:** F-085 (Teil G), F-086 (Teil H).
 
 ## Offene Fragen
 
@@ -383,6 +744,74 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
 16. **Zweites Konto?** Laut Loot-Abend-Spec (2026-10-09) keins; alle Zeilen mit "(braucht: ...)"
     warten bis 2026-11-04 (D-32). Stimmt das noch?
 
+### Teil G: Kalender
+
+17. **Prüfung allein: Termine lesen.** Als Vulo Hunt ein Gildenereignis "Schlachtzug" für morgen
+    anlegen. Dann `/run C_Calendar.OpenCalendar()` und nach zwei Sekunden
+    `/dump C_Calendar.GetNumGuildEvents(), C_Calendar.GetGuildEventInfo(1)`
+    (erwartet: 1 oder mehr; eine Tabelle mit `eventType = 0`, `calendarType = "GUILD_EVENT"`, Titel,
+    Datum, Uhrzeit). Dasselbe als Vulo Pala. Und ein Ereignis in 10 Tagen: zeigt die Liste so weit
+    voraus? (Sonst nimmt Amisia die Tage aus `GetNumDayEvents`/`GetDayEvent`.)
+18. **Prüfung allein: Teilnehmerliste ohne Kalenderfenster.** Kalenderfenster zu, dann
+    `/run local i=C_Calendar.GetGuildEventSelectionInfo(1) print(C_Calendar.OpenEvent(i.offsetMonths or i.offsetMonth or 0, i.monthDay, i.eventIndex))`
+    (erwartet: true; die Doku sagt `offsetMonths`, das Spiel selbst liest `offsetMonth`), dann
+    `/dump C_Calendar.GetEventInfo()` und `/dump C_Calendar.GetNumInvites(), C_Calendar.EventGetInvite(1)`
+    (erwartet: Titel, `calendarType = "GUILD_EVENT"`; ein Eintrag mit `name`, `classFilename =
+    "HUNTER"`, `level`, `inviteStatus = 3`). Danach `/run C_Calendar.CloseEvent()`.
+19. **Prüfung allein: ohne Tastendruck.** Wie 18, aber in
+    `/run C_Timer.After(1,function() ... end)`, mit `/etrace` auf `ADDON_ACTION_BLOCKED`,
+    `CALENDAR_OPEN_EVENT` und `CALENDAR_UPDATE_INVITE_LIST`. Erwartet: nichts blockiert. Sonst liest
+    Amisia nur beim Klick auf "Übernehmen", und die Liste aktualisiert sich nicht von selbst.
+20. **Prüfung allein: Name und Zeit.** Steht in `EventGetInvite(1).name` "Vulo Hunt" (mit Nachname)
+    oder nur "Vulo"? Und `/dump C_Calendar.EventGetInviteResponseTime(1)` (erwartet: Jahr, Monat,
+    Tag, Stunde, Minute).
+21. **Notizen im Kalender:** `EventGetInvite(i).notes` gibt es, aber die Doku kennt keine Funktion,
+    die eine eigene Notiz setzt. Vorschlag: anzeigen, wenn eine da ist; sonst nichts.
+22. **Entscheidung:** nur die Art "Schlachtzug" vorschlagen, "Alle Arten zeigen" aus; neu lesen nur,
+    solange die Seite offen ist. Vorschlag: ja.
+
+### Teil H: Anmelden in Amisia
+
+23. **Prüfung allein: Anmelden im Kalender aus Addon-Code.** Als Vulo Pala (noch nicht angemeldet)
+    bei Vulo Hunts Ereignis, Kalenderfenster zu:
+    `/run local i=C_Calendar.GetGuildEventSelectionInfo(1) C_Calendar.ContextMenuSelectEvent(i.offsetMonths or i.offsetMonth or 0,i.monthDay,i.eventIndex) C_Calendar.ContextMenuEventSignUp()`
+    (erwartet: im Kalenderfenster "Angemeldet"; `/dump C_Calendar.GetGuildEventInfo(1).inviteStatus`
+    gibt 6). Mit `/etrace` auf `ADDON_ACTION_BLOCKED` und `ADDON_ACTION_FORBIDDEN` achten. Geht es
+    nicht, öffnet Amisia nur das Kalenderfenster, und der Spieler klickt dort selbst.
+24. **Prüfung allein: Vorläufig.** Nach dem Öffnen wie in 18: `/run C_Calendar.EventTentative()`
+    (erwartet: "Vorläufig", Status 8). Und ohne Öffnen:
+    `/run ... C_Calendar.ContextMenuSelectEvent(...) C_Calendar.ContextMenuInviteTentative()` (geht das
+    bei einem Ereignis mit Anmeldung?).
+25. **Prüfung allein: Abmelden.** Das Spiel zeigt bei Ereignissen mit Anmeldung kein "Absagen", nur
+    "Entfernen" (= `C_Calendar.RemoveEvent()`). Nach dem Öffnen `/run C_Calendar.EventDecline()`:
+    steht Vulo Pala dann beim Offizier "abgesagt" (Status 2)? Sonst `/run C_Calendar.RemoveEvent()`:
+    verschwindet der Name? Vorschlag: nehmen, was den Namen "abgesagt" stehen lässt; sonst Entfernen,
+    und Amisias Abmeldung sagt dem Offizier den Grund.
+26. **Entscheidung Termine.** Vorschlag: der Kalender ist die einzige Quelle der Termine. Den
+    Ersatzweg "Raidtermin in Amisia" (`AT`) bauen wir nur, wenn 17 oder 18 scheitern oder die Gilde
+    den Kalender nicht nutzen will. Alternative: beides von Anfang an.
+27. **Entscheidung Rangfolge:** wie unter "Welche Angabe gilt" (Abläufe, Teil H). Vorschlag: ja; vor
+    allem gilt eine eingefügte Discord-Liste immer als älter als Amisia und Kalender.
+28. **Entscheidung Weg der Nachricht.** Vorschlag: eine Nachricht an die Gilde (alle Offiziere online
+    bekommen sie; die Notiz können alle Amisia-Clients der Gilde lesen). Alternative: Flüstern nur an
+    Offiziere, die Amisia haben (mehr Nachrichten, Notiz privater).
+29. **Entscheidung Wiederholen.** Vorschlag: ja, einmal pro Sitzung beim eigenen Login und als
+    Antwort auf die Frage eines Offiziers, der sich einloggt.
+30. **Entscheidung:** Sehen Raider, wer sich angemeldet hat? Vorschlag: nein, nur Offiziere.
+31. **Entscheidung:** Erinnerung im Chat beim Login ("Raid morgen 20:00: noch nicht angemeldet")?
+    Vorschlag: nein, nur die Karte.
+32. **Reihenfolge des Baus (G und H).** Vorschlag:
+    1. Prüfungen 17 bis 20 und 23 bis 25 im Spiel, allein (der Nutzer, etwa 15 Minuten).
+    2. Teil G1: Termine lesen und Auswahl auf der Seite Aufstellung (S).
+    3. Teil G2: Teilnehmerliste lesen, Status übersetzen, mit Quellen zusammenführen, neu lesen bei
+       Änderungen (M). Danach ist F-085 allein prüfbar.
+    4. Teil H1: Karte, Fenster, `/amisia anmelden`, eigener Speicher, Übernahme der eigenen
+       Charaktere ohne Nachricht, Regel "Welche Angabe gilt" (M). Allein prüfbar.
+    5. Teil H2: Nachrichten `AN` und `AQ`, Annahme beim Offizier, Wiederholen (M). Voll prüfbar ab
+       2026-11-04.
+    6. Teil H3: Kalender-Eintrag aus dem Knopf (S), nur nach den Prüfungen 23 bis 25.
+    7. Nur falls nötig (Frage 26): Raidtermin in Amisia, `AT` (S bis M).
+
 ## Entscheidungen
 
 - 2026-10-10: Der Nutzer wählt das Feature "Raid-Aufstellung": Amisia nimmt eine Anmeldeliste, lädt
@@ -402,3 +831,4 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Gildenliste geht; nur Gäste warten auf "Gäste einladen". Der eigene Charakter zählt immer als online
   (Ersatzbank allein prüfbar). Die Einstellungen von Teil C und D (Flüstern, automatisch sortieren)
   kommen mit ihnen. `#AMISIA-RAID` liest nur das Addon (Ausnahme im Vertragstest), Teil F entfällt.
+- 2026-10-10: Teil G und H auf Wunsch des Nutzers ergänzt; noch nicht freigegeben.
