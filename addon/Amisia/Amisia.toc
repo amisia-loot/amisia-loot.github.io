@@ -81,6 +81,7 @@ Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua
 Raid\Handover.lua
+Raid\Lineup.lua
 Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua
@@ -89,6 +90,7 @@ Gear\MapPin.xml
 UI\MainFrame.lua
 UI\Pages\Overview.lua
 UI\Pages\Raids.lua
+UI\Pages\Lineup.lua
 UI\Pages\RaidLogRolls.lua
 UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua

@@ -381,6 +381,25 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Raider ohne Offiziersrang `/amisia einrichten` eingibt, dann sagt der Chat nur "Die Einrichtung ist für Offiziere. Für dich: Einstellungen, Würfel-Fenster."
 - Notiz: DECISIONS D-40; schreibt nur bestehende Einstellungen über ns.Set, "Weiter" und "Überspringen" ändern nichts. `/amisia setup` auf englischen Clients.
 
+### F-083 Raid-Aufstellung planen
+- Version: 2.22.0
+- Status: gebaut
+- Prüfung: Wenn du als Offizier `/amisia aufstellung` eingibst, dann öffnet sich unter Raid die Seite "Aufstellung" mit "Noch keine Anmeldungen", "Einfügen" und "Automatisch einteilen"; nach `/amisia ansicht raider` fehlt sie in der Seitenliste, und `/amisia aufstellung` sagt "Die Aufstellung ist nur für Offiziere." (`/amisia lineup` auf englischen Clients).
+- Prüfung: Wenn du "Einfügen" klickst, diesen Text einfügst und "Übernehmen" klickst: "Tanks", "Anna Tankfrau", "Healers", "Bert Heilmann", "Bench", "Carl Bankmann" (je eine Zeile), dann meldet der Chat "Aufstellung: 3 Anmeldungen, ...", unter "Abgleich" stehen Anna mit T und Bert mit H, und unter "Planer" steht Carl rechts bei "Ersatz (1)".
+- Prüfung: Wenn du 40 Zeilen "Vorname Nachname Rolle" mit 3 Tanks, 8 Heilern (Rolle "Heiler"), Nahkampf und Fernkampf einfügst (ausgedachte Namen stehen rot "unbekannt", werden aber eingeteilt) und "Automatisch einteilen" klickst, dann zeigt der Planer acht Gruppen mit je 5/5 und einem H, keine ist rot umrandet, die Tanks stehen in Gruppe 1 bis 3, und die Zeile oben sagt "Tanks 3 · Heiler 8 · ...".
+- Prüfung: Wenn du im Planer einen Namen anklickst und dann einen anderen (oder einen Namen auf einen anderen ziehst), dann tauschen die beiden ihren Platz; Rechtsklick "Festhalten" zeigt ein Schloss, und nach erneutem "Automatisch einteilen" und `/reload` steht er noch in derselben Gruppe.
+- Prüfung: Wenn du deinen eigenen Namen per Rechtsklick auf "Ersatz" setzt und "Ersatz auf die Ersatzbank" klickst (außerhalb eines Raids), dann meldet der Chat "Ersatzbank: <dein Name> (Notiz "Aufstellung").", und `/amisia ersatz` zeigt dich mit der Notiz "Aufstellung".
+- Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teile A, B und E; DECISIONS D-41. Mit der Gilde online (ab 2026-11-04, D-32): "Vulo Hunt Tank" und "vulo pala heiler" stehen grün "gefunden", "Niemand Nirgends Nahkampf" rot "unbekannt"; ein eindeutiger Vorname gelb "vermutlich" ("Bestätigen"), zwei Gleichnamige orange "nicht eindeutig" (Auswahl); ein offline angemeldeter Spieler mit genau einem Twink online zeigt "Twink online: <Name>" mit "tauschen".
+- Notiz: Einstellungen, "Raid-Aufstellung": Raidgröße (10/20/40), "Gäste einladen" (aus: Gäste stehen grau "Gast" und werden nicht eingeteilt), "Ersatz automatisch eintragen, sobald die Aufnahme läuft" (aus). Einladen und Sortieren (Teile C und D) sind F-084.
+
+### F-084 Raid-Aufstellung: einladen und Gruppen sortieren
+- Version: -
+- Status: geplant
+- Braucht: Gruppe, Gilde, Raid
+- Prüfung: Wenn du "Alle einladen" klickst, dann bekommen alle eingeteilten Online-Spieler eine Einladung, der Raid wird nach dem ersten Beitritt umgewandelt, und die Status wechseln auf "eingeladen" und "im Raid".
+- Prüfung: Wenn alle im Raid sind und du "Gruppen sortieren" klickst, dann stehen alle in der Gruppe aus dem Planer.
+- Notiz: Teile C und D der Spec 2026-10-10, erst nach den Prüfungen 10, 11 und 13 im Spiel (D-41).
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

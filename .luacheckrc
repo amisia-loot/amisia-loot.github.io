@@ -31,7 +31,7 @@ read_globals = {
     "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition",
     "geterrorhandler", "GetGuildBankItemInfo", "GetGuildBankItemLink", "GetGuildBankTabInfo", "GetGuildInfo",
     "GetGuildRosterInfo", "GetHitModifier", "GetInstanceInfo", "GetLocale", "AMISIA_LOCALE", "GetInventoryItemLink", "GetLootSlotInfo",
-    "GetLootSlotLink", "GetLootSourceInfo", "GetMasterLootCandidate", "GetMerchantItemInfo",
+    "GetLootSlotLink", "GetLootSourceInfo", "GetMasterLootCandidate", "GetMaxPlayerLevel", "GetMerchantItemInfo",
     "GetMerchantItemLink", "GetMerchantNumItems", "GetNormalizedRealmName", "GetNumGroupMembers",
     "GetNumGuildBankTabs", "GetNumGuildMembers", "GetNumLootItems", "GetNumQuestChoices",
     "GetNumQuestRewards", "GetPlayerFacing", "GetProfessionInfo", "GetProfessions", "GetQuestID",

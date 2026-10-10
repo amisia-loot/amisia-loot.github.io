@@ -143,6 +143,9 @@ local function friendList()
     return out
 end
 
+-- for the lineup (Lineup.lua): the same readers of the group and the friend list
+ns.BenchGroupRows, ns.BenchFriendRows = groupRows, friendList
+
 local requestedAt
 -- Asks the client for a fresh guild roster, at most every 10 s; true when asked.
 function ns.RequestGuildRoster()

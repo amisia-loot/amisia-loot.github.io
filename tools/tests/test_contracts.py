@@ -218,8 +218,13 @@ def test_paste_in_blocks(arch):
     in_addon = set()
     for _, text in code_files():
         in_addon |= set(re.findall(r'#AMISIA%-([A-Z]+)', text))
-    doc = {k.replace('#AMISIA-', '') for k in rows(arch, 'Paste-in blocks')}
-    assert on_site == doc, f'blocks the site writes {sorted(on_site)} against ARCHITECTURE.md {sorted(doc)}'
+    table = rows(arch, 'Paste-in blocks')
+    doc = {k.replace('#AMISIA-', '') for k in table}
+    # a block the site does not write (site writer "-", read by the addon only: #AMISIA-RAID, written
+    # by hand since the site's sign-up tab was dropped, D-41) needs no site writer
+    addon_only = {k.replace('#AMISIA-', '') for k, cells in table.items() if cells[2].startswith('-')}
+    assert on_site == doc - addon_only, f'blocks the site writes {sorted(on_site)} against ARCHITECTURE.md {sorted(doc - addon_only)}'
+    assert not on_site & addon_only, f'blocks marked "read by the addon only" that the site writes: {sorted(on_site & addon_only)}'
     assert in_addon == doc, f'blocks the addon reads {sorted(in_addon)} against ARCHITECTURE.md {sorted(doc)}'
     pts = read(os.path.join(ADDON, 'Raid', 'Points.lua'))
     parser = re.search(r'^function ns\.ParsePointsSite\(.*?^end', pts, re.M | re.S)

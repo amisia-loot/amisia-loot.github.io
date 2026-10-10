@@ -121,6 +121,42 @@ function S.handover()
     STUB.tick(1)
 end
 
+-- A raid night's sign-ups (the lineup, Lineup.lua): a bot's text with headings, 22 guild members,
+-- a likely, an ambiguous and an unknown name, a guest from the group, the bench and the absent;
+-- then "Automatisch einteilen" with one held player.
+local lineupDone
+function S.lineup()
+    if lineupDone then return end
+    lineupDone = true
+    local add = {
+        { "Bob Eisherz", "WARRIOR" }, { "Grimm Felsfaust", "WARRIOR" }, { "Lina Sonnfeld", "PALADIN" },
+        { "Mara Quell", "SHAMAN" }, { "Tobi Hain", "DRUID" }, { "Ella Licht", "PRIEST" }, { "Rurik Stahl", "WARRIOR" },
+        { "Sven Dorn", "ROGUE" }, { "Jo Klinge", "ROGUE" }, { "Uli Donner", "SHAMAN" }, { "Pia Pfeil", "HUNTER" },
+        { "Nora Frost", "MAGE" }, { "Zed Schatten", "WARLOCK" }, { "Ida Funke", "MAGE" }, { "Vulo Hunt", "HUNTER" },
+        { "Vulo Pala", "PALADIN", 52 }, { "Kai Wind", "HUNTER" }, { "Eda Glut", "WARLOCK" },
+    }
+    for _, a in ipairs(add) do
+        STUB.guild[#STUB.guild + 1] = { name = a[1], class = a[2], rank = 3, level = a[3], online = a[1] ~= "Ida Funke" }
+    end
+    STUB.guild[1].class, STUB.guild[2].class, STUB.guild[3].class = "PRIEST", "SHAMAN", "WARRIOR"
+    STUB.guild[4].class, STUB.guild[5].class = "PRIEST", "ROGUE"
+    STUB.fire("GUILD_ROSTER_UPDATE")
+    STUB.tick(11)
+    NS.SetLineupText(table.concat({
+        "**Geschmolzener Kern** Donnerstag 20:00",
+        "Tanks (3)", "1. :Warrior: Bob Eisherz", "2. :Warrior: Grimm Felsfaust", "3. :Paladin: Lina Sonnfeld",
+        "Heiler (5)", "Mara Quell", "Tobi Hain", "Ella Licht", "Anna", "Vuloo",
+        "Nahkampf", "Rurik Stahl", "Sven Dorn", "Jo Klinge", "Uli Donner", "Chorf", "Kimtaro",
+        "Fernkampf", "Pia Pfeil", "Nora Frost", "Zed Schatten", "Ida Funke", "Bobbington", "Vulo", "Kai Windd",
+        "Ersatz", "Eda Glut", "Fraktur", "Abgemeldet", "Niemand Nirgends",
+    }, "\n"))
+    NS.LineupAutoAssign()
+    local n = NS.LineupNight()
+    for i, e in ipairs(n.list) do
+        if e.n == "Nora Frost" then NS.LineupHold(nil, i, true) end
+    end
+end
+
 -- A priest build with every talent state: full (gold frame, glow), partly learned, reachable,
 -- locked, met and unmet prerequisite lines.
 function S.priestPlan()
@@ -157,6 +193,10 @@ S.STATES = {
     { page = "settings", name = "settings-lootrules", open = function() NS.ShowSettings(NS.L["Lootregeln"]) end },
     { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
     { page = "awards", name = "awards-handover", open = function() S.handover(); NS.ShowHandover() end },
+    -- the lineup: the match view, the planner, the paste field
+    { page = "lineup", name = "lineup-match", open = function() S.lineup(); NS.ShowLineup("match") end },
+    { page = "lineup", name = "lineup-planner", open = function() S.lineup(); NS.ShowLineup("planner") end },
+    { page = "lineup", name = "lineup-paste", open = function() S.lineup(); NS.ShowLineup("paste") end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

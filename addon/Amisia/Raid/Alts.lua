@@ -206,14 +206,17 @@ end
 -- The website's text: wishes, alts and the loot prio (LootPrio.lua) in one paste
 ---------------------------------------------------------------------------
 
--- Splits a pasted text into its blocks: { wl = text, alts = text, lc = text, pts = text } (any may be missing).
+-- Splits a pasted text into its blocks: { wl = text, alts = text, lc = text, pts = text, raid = text }
+-- (any may be missing). #AMISIA-RAID (the lineup, Lineup.lua) the site does not write; it is read here
+-- so a hand-written block works in the same paste.
 function ns.SiteBlocks(text)
     local out, cur, buf = {}, nil, nil
     if type(text) ~= "string" then return out end
     for raw in text:gmatch("[^\r\n]+") do
         local line = raw:gsub("^\239\187\191", ""):match("^%s*(.-)%s*$")
         local kind = line:match("^#AMISIA%-WL%s") and "wl" or line:match("^#AMISIA%-ALTS%s") and "alts"
-            or line:match("^#AMISIA%-LC%s") and "lc" or line:match("^#AMISIA%-PTS%s") and "pts" or nil
+            or line:match("^#AMISIA%-LC%s") and "lc" or line:match("^#AMISIA%-PTS%s") and "pts"
+            or line:match("^#AMISIA%-RAID%s") and "raid" or nil
         if kind then
             cur, buf = kind, { line }
         elseif cur then
@@ -234,7 +237,7 @@ end
 -- its refusal reads as before.
 function ns.ImportSiteText(text)
     local blocks = ns.SiteBlocks(text)
-    if not blocks.wl and not blocks.alts and not blocks.lc and not blocks.pts then
+    if not blocks.wl and not blocks.alts and not blocks.lc and not blocks.pts and not blocks.raid then
         local _, why = ns.SetGuildWishes(text)
         return why, false
     end
@@ -278,6 +281,11 @@ function ns.ImportSiteText(text)
         else
             parts[#parts + 1] = why
         end
+    end
+    if blocks.raid and ns.LineupImport then
+        local night, line = ns.LineupImport(blocks.raid)
+        if night then ok = true end
+        parts[#parts + 1] = line
     end
     return table.concat(parts, " "), ok
 end

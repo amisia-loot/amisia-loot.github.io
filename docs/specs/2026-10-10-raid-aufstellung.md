@@ -1,8 +1,8 @@
 # Spec: Raid-Aufstellung (Anmeldeliste, Einladen, Gruppen sortieren)
 
-Stand: 2026-10-10 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
-Feature: F-082 (Aufstellung: Einfügen, Abgleich, Planer), F-083 (Einladen, Sortieren, Ersatzbank);
-sind die Nummern beim Freigeben schon vergeben, die dann nächsten freien.
+Stand: 2026-10-10 · Status: freigegeben, Teile A, B und E gebaut ·
+Feature: F-083 (Aufstellung: Einfügen, Abgleich, Planer, Ersatzbank), F-084 (Einladen, Sortieren);
+F-082 war beim Bau schon vergeben (Einrichtungshilfe). Regel: DECISIONS D-41.
 
 Vom Nutzer am 2026-10-10 gewählt. Das Paket hat fünf Teile, die nacheinander gebaut werden und
 einzeln ausgeliefert werden können: **A** Liste einfügen und Namen abgleichen, **B** Planer
@@ -392,3 +392,13 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Text; Gäste nur mit der Einstellung "Gäste einladen" (Standard aus); die Einteilungsregeln wie
   beschrieben. Die übrigen Fragen nach den Vorschlägen der Spec. Bau zuerst Teil A, B und E (allein
   prüfbar); Teil C und D nach den Prüfungen 10, 11 und 13.
+- 2026-10-10: Nutzer: kein eigener Discord-Bot und kein Anmelde-Reiter auf der Website (Teil F
+  entfällt). Discord nur über das Einfügen des Bot-Texts (Teil A). Neu vorgesehen: Anmeldungen aus
+  dem Ingame-Kalender (Gildenereignis mit Anmeldung, C_Calendar laut FrameXML 1.60.1 vorhanden) in
+  dieselbe Liste; eigene Ergänzung der Spec, sobald der Nutzer im Spiel bestätigt hat, dass ein
+  Gildenereignis mit Anmeldung angelegt werden kann.
+- 2026-10-10: Gebaut: Teil A, B und E als F-083 (2.22.0), Regel D-41. Beim Bau entschieden: unklare
+  und unbekannte Namen werden mit eingeteilt (orange/rot im Planer), damit der Planer auch ohne
+  Gildenliste geht; nur Gäste warten auf "Gäste einladen". Der eigene Charakter zählt immer als online
+  (Ersatzbank allein prüfbar). Die Einstellungen von Teil C und D (Flüstern, automatisch sortieren)
+  kommen mit ihnen. `#AMISIA-RAID` liest nur das Addon (Ausnahme im Vertragstest), Teil F entfällt.

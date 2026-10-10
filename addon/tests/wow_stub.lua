@@ -394,7 +394,7 @@ function STUB.dump(v, seen)
     return "{" .. table.concat(parts, ",") .. "}"
 end
 
--- The guild roster: STUB.guild = { { name, class (token), online, rank } } (rank: rank order, 1 =
+-- The guild roster: STUB.guild = { { name, class (token), online, rank, level } } (rank: rank order, 1 =
 -- guild master, default 3); requests are counted.
 STUB.guild, STUB.guildRequests = {}, 0
 C_GuildInfo.GuildRoster = function() STUB.guildRequests = STUB.guildRequests + 1 end
@@ -429,7 +429,8 @@ _G.C_Club = {
         local m = club == 77 and STUB.guild[id - 1000]
         if not m then return nil end
         return { isSelf = m.name == STUB.player, memberId = id, name = m.name, guildRankOrder = m.rank or 3,
-                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1, classID = STUB.classIDs[m.class] }
+                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1, classID = STUB.classIDs[m.class],
+                 level = m.level or 70 }
     end,
 }
 -- Class ids and GetClassInfo(id): localized name, class token, id.
@@ -449,7 +450,7 @@ _G.GetGuildRosterInfo = function(i)
     local m = STUB.guild[i]
     if not m then return nil end
     local rank = m.rank or 3
-    return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
+    return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, m.level or 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
 end
 -- Friends: STUB.friends = { { name, className (localized), online } }.
 STUB.friends = {}

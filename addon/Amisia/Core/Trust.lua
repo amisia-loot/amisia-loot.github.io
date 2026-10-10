@@ -61,7 +61,7 @@ local function clubMembers()
                 -- presence: 0 unknown, 1 online, 2 mobile, 3 offline, 4 away, 5 busy
                 out[#out + 1] = { name = name, rank = rank, guid = ns.Plain(info.guid),
                                   online = presence == 1 or presence == 4 or presence == 5, self = ns.Plain(info.isSelf) == true,
-                                  class = classFile(ns.Plain(info.classID)) }
+                                  class = classFile(ns.Plain(info.classID)), level = tonumber(ns.Plain(info.level)) }
             end
         end
     end
@@ -77,12 +77,12 @@ local function rosterMembers()
     if n <= 0 then return nil end
     local out = {}
     for i = 1, n do
-        local okRow, name, _, rankIndex, _, _, _, _, _, online, _, class = pcall(GetGuildRosterInfo, i)
+        local okRow, name, _, rankIndex, level, _, _, _, _, online, _, class = pcall(GetGuildRosterInfo, i)
         if okRow then
             name, rankIndex, online, class = ns.FullName(ns.Plain(name)), tonumber(ns.Plain(rankIndex)), ns.Plain(online), ns.Plain(class)
             if name and rankIndex then
                 out[#out + 1] = { name = name, rank = rankIndex + 1, online = online and true or false,
-                                  class = type(class) == "string" and class or "" }
+                                  class = type(class) == "string" and class or "", level = tonumber(ns.Plain(level)) }
             end
         end
     end
@@ -175,7 +175,7 @@ function ns.GuildMember(name)
     return { name = m.name, rank = m.rank, guid = m.guid, online = m.online }
 end
 
--- The guild roster for reading only: { { name, rank, guid, online, class } }, the roster built
+-- The guild roster for reading only: { { name, rank, guid, online, class, level } }, the roster built
 -- before a lockdown in it; nil when it cannot be read (no guild, empty, nothing built yet). Never
 -- asks the client for it.
 function ns.GuildRoster()

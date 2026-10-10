@@ -614,3 +614,44 @@ Gespeichert wird nur `AmisiaDB.setup = { done, never }` (Zeitpunkte). Neue wicht
 kommen als weiterer Schritt oder Zeile dazu, nicht als Kopie.
 **Durchgesetzt durch:** `addon/tests/test_setup.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
+
+## D-41 Raid-Aufstellung: nur Offiziere, eingefügter Text unvertraut, einladen nur per Klick, nie Kicks
+
+**Datum:** 2026-10-10
+**Entscheidung:** Die Seite "Aufstellung" (Gruppe Raid, `/amisia aufstellung`, en `lineup`) und ihr
+Einstellungsabschnitt "Raid-Aufstellung" gibt es nur in der Offiziersansicht und nur mit Offiziersrang
+laut Gildenliste (Rangrecht 22, D-18). Ein Offizier fügt die Anmeldeliste einer Raidnacht ein: den
+Block `#AMISIA-RAID` (von Hand, die Website schreibt ihn nicht), Zeilen "Name Rolle" oder den Text
+eines Anmelde-Bots aus Discord (Überschriften, Emoji-Codes, Nummern, Zeiten; deutsche und englische
+Rollen- und Klassenwörter). Amisia gleicht jeden Namen ab (gemerkte Korrektur, genau, ohne Groß/klein
+und Umlaute, eindeutiger Vorname "vermutlich", ein Buchstabe anders "vermutlich", zwei Gleichnamige
+"nicht eindeutig", "unbekannt", "Gast" außerhalb der Gilde) und rät fehlende Rollen aus der letzten
+Aufstellung, sonst aus der Klasse (grau mit "?"). "Automatisch einteilen" folgt einfachen Regeln: Tanks
+ab Gruppe 1, ein Heiler pro Gruppe (Schamanen und Paladine zu Nahkampf-, Priester und Druiden zu
+Fernkampf-Gruppen, übrige Heiler zu den Tanks), Nahkampf zusammen mit je einem Krieger oder Schamanen,
+Fernkampf zusammen; bei mehr Anmeldungen als Plätzen erst Tanks und Heiler (bis jede Gruppe einen hat),
+dann die Reihenfolge der Liste, der Rest "überzählig" auf Ersatz. Festgehaltene bleiben stehen; "Ersatz"
+aus der Liste oder vom Offizier bleibt Ersatz. Eingeteilt wird jede Anmeldung außer Abgemeldeten;
+Gäste nur mit der Einstellung "Gäste einladen" (Standard aus). Unklare und unbekannte Namen werden mit
+eingeteilt (der Planer geht so auch ohne Gildenliste) und stehen orange bzw. rot da, bis der Offizier
+sie klärt; auf die Ersatzbank kommen sie nicht. "Ersatz auf die Ersatzbank" trägt "Ersatz" und Überzählige, die online sind, über
+`ns.BenchAdd` mit der Notiz "Aufstellung" auf die Ersatzbank des Abends (nur für heute; nicht
+Abgemeldete, Offline, Unklare); automatisch beim Start der Aufnahme nur mit der Einstellung (Standard
+aus). Gespeichert pro Raidnacht (ab 06:00, D-23) in `AmisiaDB.lineup`, 8 Nächte, 80 Namen pro Nacht.
+Namenskorrekturen teilen sich die Liste `srAliases` mit den Soft-Reserves (eine Wahl zwischen zwei
+Gleichnamigen wird nicht gemerkt).
+**Grund:** Spec `docs/specs/2026-10-10-raid-aufstellung.md`, vom Nutzer am 2026-10-10 freigegeben ("ja
+passt so"): Flüstern beim Einladen Standard aus mit festem Text, Gäste nur mit Einstellung, die
+Einteilungsregeln wie beschrieben, zuerst die allein prüfbaren Teile A, B und E. Kein eigener Bot und
+kein Anmelde-Reiter auf der Website (Teil F entfällt).
+**Folge:** Gebaut sind die Teile A, B und E (2.22.0). Einladen (Teil C: nur per Klick, gedrosselt,
+höchstens drei Einladungen pro Name und Abend, kein Einladen auf Flüstern, Gäste nur mit Einstellung)
+und Sortieren im Spiel (Teil D) kommen erst nach den Prüfungen 10, 11 und 13 der Spec; ihre
+Einstellungen (`lineup.whisper`, `lineup.autoSort`) gibt es bis dahin nicht. Nie Kicks, kein
+Leiterwechsel, keine Beförderung. Das Paket sendet und empfängt keine Addon-Nachrichten, keine neue
+Exportzeile; eingefügter Text ist unvertraut (D-26: Codes und Striche entfernt, 200 Bytes pro Zeile,
+2000 Zeilen, Namen ohne Ziffern und Steuerzeichen, 48 Zeichen). Die Website schreibt `#AMISIA-RAID`
+nicht; der Vertragstest kennt dafür die Ausnahme "liest nur das Addon".
+**Durchgesetzt durch:** `addon/tests/test_lineup.lua`, `addon/tests/test_lineup_page.lua`,
+`tools/tests/test_contracts.py::test_paste_in_blocks`,
+`tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.

@@ -143,6 +143,8 @@ check("10 suggestions quick", function()
     g[1001] = { name = "Chorf", class = "WARRIOR" }        -- in the raid
     g[1002] = { name = "Kim Eisherz", class = "MAGE" }     -- on the bench as "Kim"
     STUB.guild = g
+    -- the client announces a new roster (the lineup's officer check reads the roster on every page refresh)
+    STUB.fire("GUILD_ROSTER_UPDATE")
     s.bench.Kim = { t = STUB.now, class = "MAGE", by = "Vuloo" }
     local t0 = os.clock()
     local v = NS.BenchSuggestions(s)

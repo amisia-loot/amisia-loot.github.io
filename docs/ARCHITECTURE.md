@@ -38,7 +38,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataSize`: generated tables built on first use; `/amisia speicher` (memory before/after a full collection, data built) | - | - |
 | `Core/Core.lua` | Recording (sessions, members, loot, drops), guild bank count, export text, event frame, `ns.OnEvent`, item shim | `sessions`, `itemNames`, `exported`, `exportedBank`, `bank` | Awards, Mats, Bench, RaidLog, Points, BankNeeds, BankLog, LootPrio, GroupRolls (export hooks) |
 | `Core/Names.lua` | `ns.FullName`, `ns.SameName(In)`, `ns.ExportName` ("_" for the space) | - | - |
-| `Raid/Alts.lua` | Alt -> main (site paste), `ns.MainOf`, `ns.ImportSiteText` (all paste-in blocks) | `alts` | GuildWishes, LootPrio, Points |
+| `Raid/Alts.lua` | Alt -> main (site paste), `ns.MainOf`, `ns.ImportSiteText` (all paste-in blocks) | `alts` | GuildWishes, LootPrio, Points, Lineup |
 | `Raid/Mats.lua` | Learned raid materials, `ns.MATS`/`ns.MAT_ORDER` | `mats`, `matsScan` | MainFrame |
 | `Core/Chat.lua` | `ns.Say` chat queue (waits in the lockdown), `!word` dispatch, `ns.ChatLocked` | - | - |
 | `Core/Comm.lua` | Addon message layer (see Comm) | - | Trust, Chat |
@@ -98,6 +98,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line of the hand-outs whose slot cleared; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
 | `Raid/RollWindow.lua` | The raiders' roll window (D-38): the loot lead's round start (WS) and end (WE) from Rolls.lua; every raider client shows the item, the hints (reserved, plus-one, upgrade, wishlist), a timer bar and Mainspec/Offspec (RandomRoll 1-100/1-99), a bid or need/greed, Passen (WA to the lead, counted through `ns.PointsChatWord` like the whispered words); the lead's tally "passt · ohne Antwort" in the roll window; `/amisia wuerfeln test` | (`settings.rollWindow`) | Rolls, PointsRounds, Need, SoftRes, Bis, GuildWishes, Awards, Points, Comm, Trust, Chat, Widgets, Theme |
 | `Raid/Handover.lua` | The trade helper (D-39), only for the exceptions of master loot: an award (player, bank, disenchanter) of the last two hours whose copy still lies tradeable in the own bags ("Noch zu übergeben" on the Vergaben page, `/amisia uebergabe`); time left from the tooltip line TradeTimeRemaining (type 36, `BIND_TRADE_TIME_REMAINING`), own chat warnings at 30 and 10 minutes; copies followed by item GUID (else bag and slot); beside the trade window with the receiver "Amisia: N Items einlegen" (a click, never in combat); after the trade the copies that left the bags are marked handed over (only on this client) | `handover` | Awards, Sync (`ns.RaidKey`), Widgets, Theme, Awards page |
+| `Raid/Lineup.lua` | The raid lineup (D-41, officers only, parts A, B and E of the spec 2026-10-10): `ns.ParseLineup` reads `#AMISIA-RAID`, plain "Name Rolle" lines and a sign-up bot's text (headings, emoji codes, numbering, times; German and English role and class words); the match against the guild roster, then the group and the friend list (alias from `srAliases`, exact, case and umlauts aside, a unique first name "vermutlich", one letter off, two members of one first name "nicht eindeutig", "unbekannt", "Gast"); the role from the list, the last lineup, else the class (guessed, "?"); "Automatisch einteilen" (`ns.LineupAutoAssign`), swap, move, hold, remove, copy a night; the bench through `ns.BenchAdd` (note "Aufstellung"); `/amisia aufstellung` (en `lineup`). No invites, no sorting, no messages yet (parts C and D wait for the in-game checks) | `lineup` (+ `srAliases`) | Alts, Bench, Trust, SoftRes, Core (`ns.NightOf`, `RECORDING`), Lineup page |
 | `Gear/Talents.lua` | Talent calculator rules | `talents` | LazyData |
 | `Gear/MageScrolls.lua` | Mage scrolls (Comprehension) | - | LazyData, Professions |
 | `Gear/Map.lua` | One target, client waypoint or own arrow | `map` | Bis, LazyData, Widgets, Gear |
@@ -315,9 +316,12 @@ text is untrusted: codes and bars stripped, every field checked and capped, at m
 | `#AMISIA-ALTS` | `A <alt> <main>` | altAddonText | ns.ParseAlts -> `alts` |
 | `#AMISIA-LC` | `C <item> <edited epoch> <token or -> [note]` | prioAddonText | ns.ParseLootPrio -> `prio.site` |
 | `#AMISIA-PTS` | head adds `<roll/dkp/epgp> <as-of epoch>`; `CFG k=v...`, `P <main> <a> [<b>]`, `R <sid>...`, `K <date:inst>...`, `I <12 hex>...` | pointsAddonText | ns.ParsePointsSite -> `points.site` |
+| `#AMISIA-RAID` | head adds `[<title...>]`; `S <name with _> <T/H/M/R/-> [<class token or ->] [<B bench / ? maybe / ->]` | - (read by the addon only: written by hand; the site's sign-up tab was dropped on 2026-10-10) | ns.ParseLineup -> `lineup.nights[date]` (also the paste field of the page Aufstellung) |
 
 Soft-reserves are not a site block: a softres CSV or `Name [item]` lines pasted in game
-(`ns.SetSoftRes`, saved as `softres`).
+(`ns.SetSoftRes`, saved as `softres`). Neither are the lineup's plain "Name Rolle" lines and a sign-up
+bot's text (`ns.ParseLineup`, Lineup.lua). A block whose site writer is `-` is read by the addon
+only (`test_paste_in_blocks` lets it pass without a site writer).
 
 ## SavedVariables `AmisiaDB` (checked)
 
@@ -338,7 +342,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `matsScan` | 1 once the old raids taught the material list | Mats.lua | `ns.MatsLoaded` |
 | `alts` | `{game, date, at, by, n, list = {{alt, main}}}` | Alts.lua | replaced by each paste |
 | `softres` | soft-reserve list, data model 2 (`byItem`, `version`) | SoftRes.lua | `ns.MigrateSoftRes` |
-| `srAliases` | `[lower list name] = fixed name` | SoftRes.lua | `ns.MigrateSoftRes` |
+| `srAliases` | `[lower list name] = fixed name`; the name fixes of the soft-reserves and of the lineup (one list for both; the lineup adds none once 300 are stored) | SoftRes.lua, Lineup.lua | `ns.MigrateSoftRes` |
 | `benchNext` | bench gathered before tonight's first recording | Bench.lua | earlier night falls away |
 | `groupRolls` | `{runs = ...}` group loot outside raids | GroupRolls.lua | caps MAX_RUNS/ITEMS/PLAYERS |
 | `sync` | `{v = 1, seen = {[name] = {v, p, mp, flags, k, o, at}}}` versions seen | Version.lua | 30 days, 300 entries |
@@ -359,6 +363,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `talents` | `{class, level, talented, plans}` | Talents.lua | - |
 | `handover` | `{ ["<raid key>/<award id>"] = {t, to, g} }` only the mark "übergeben" (when, to whom, the copy's GUID); the open list is built from the awards and the bags, never saved | Handover.lua | `ns.HandoverLoaded`: keys and fields checked, older than 3 days dropped, 200 at most (the newest) |
 | `lootRules` | `{v = 1, rev, by, at, sent, seen, list = {{id (4 hex), k = q/m/i/p, q (2/3), items, to = bank/de/name, by}}, offer = {from, rev, at, list}}` | LootRules.lua | `ns.LootRulesLoaded`: every field checked, a bad rule or offer dropped; 30 rules, 50 items per list, a player rule exactly one item |
+| `lineup` | `{v = 1, nights = {["yyyy-mm-dd"] = {at, by, title, size = 10/20/40, list = {{n = name, r = T/H/M/R, c = class token, g = group 1-8, b = bench (list or officer), v = overflow bench of "Automatisch einteilen", k = held, q = role guessed, m = maybe, a = absent, s = the list's spelling when another, x = match l/a/u/g (nil: found), o = options of an ambiguous name (5)}}}}}`; the invite states of part C are never saved | Lineup.lua | `ns.LineupLoaded`: every field checked (bad entries, doubles and bad nights dropped; the absent and the benched hold no group), 8 nights (the newest), 80 names per night |
 | `setup` | `{done = epoch, never = epoch}` the setup assistant: "Fertig" clicked, "Nicht mehr fragen" clicked (either ends the offer at the first open of the main window) | Setup.lua | `ns.SetupLoaded`: both must be positive whole numbers, other fields dropped |
 
 ## Settings registry
@@ -382,7 +387,7 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 | `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
 | `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
 | `lootrules` | Raid/LootRules.lua (officers) | `rollwin` | Raid/RollWindow.lua (everyone; `rollwin.self` officers) |
-| `trade` | Raid/Handover.lua (everyone) | | |
+| `trade` | Raid/Handover.lua (everyone) | `lineup` | Raid/Lineup.lua (officers with the officer rank) |
 
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item
