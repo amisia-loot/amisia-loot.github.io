@@ -72,7 +72,7 @@ assert(has(F.pick.label:GetText(), "Molten Core") and has(F.state:GetText(), "De
 local on
 for _, b in ipairs(F.roles) do if b.on then on = b.role end end
 assert(on == "H", "a paladin: healer")
-assert(has(F.hint:GetText(), "Für alle Offiziere sichtbar."))
+assert(has(F.hint:GetText(), "Für die Gilde lesbar."))
 assert(F.calHint:IsShown() and has(F.calHint:GetText(), "Bitte auch im Kalender eintragen"), "part H3 is not built: the player signs up there too")
 F.roles[1]:Click()   -- T
 F.roles[2]:Click()   -- H again

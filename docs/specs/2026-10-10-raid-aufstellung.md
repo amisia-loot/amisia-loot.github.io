@@ -143,7 +143,7 @@ eintragen (aus).
   das kleine Fenster "Anmelden".
 - **Fenster "Anmelden":** drei Knöpfe **Anmelden / Vorläufig / Abmelden**, die Rolle **T / H / N / F**
   (vorgewählt: die letzte eigene Rolle, sonst aus der Klasse) und ein Feld **Notiz** (höchstens 40
-  Zeichen, z. B. "komme 20:15"). Darunter klein: "Für alle Offiziere sichtbar."
+  Zeichen, z. B. "komme 20:15"). Darunter klein: "Für die Gilde lesbar."
 - **Befehl** `/amisia anmelden` (en `signup`): öffnet das Fenster für den nächsten Termin.
   `/amisia abmelden` (en `signoff`) meldet für den nächsten Termin ab, `/amisia anmelden H komme 20:15`
   meldet als Heiler mit Notiz an.
@@ -543,7 +543,7 @@ F-087 (Vorschlag).
   Offizier höchstens einmal in 10 Minuten, mit höchstens 4 Nachrichten.
 - **Notiz:** höchstens 40 Zeichen, ohne Farbcodes, Links, Striche `|`, Tabulator und Steuerzeichen.
   Nur im Tooltip der Seite, nie in einem Chat, nie im Export. Sie geht an alle Amisia-Clients der
-  Gilde; darum der Hinweis "Für alle Offiziere sichtbar".
+  Gilde; darum der Hinweis "Für die Gilde lesbar" (die Nachricht geht an die ganze Gilde).
 - **Rolle und Klasse** nur aus festen Listen (T/H/M/R, die neun Klassen). Ein anderer Wert verwirft
   die ganze Nachricht.
 - **Kalender-Eintrag** nur auf den eigenen Klick und nur für den eigenen Charakter (die Funktionen
