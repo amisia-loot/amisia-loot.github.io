@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.22.0 (2026-10-10)
+
+- Raid lineup "Aufstellung" (parts A, B and E): paste the sign-up list, match it against the guild, plan the groups, bench through ns.BenchAdd
+- Data: the user's gear scan of build 70338 joined (melee computed stats proven again: Rage of the Storm 35.61 DPS at 3.3 s)
+
 ## 2.21.0 (2026-10-10)
 
 - Spec: Raid-Aufstellung (sign-up paste, planner, invite, sort, bench), approved by the user
