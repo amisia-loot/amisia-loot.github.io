@@ -1,5 +1,5 @@
 {
- "build": "1.60.1.70235",
+ "build": "1.60.1.70338",
  "dungeons": {
   "bfd": [
    131823,
@@ -107,7 +107,7 @@
   "n"
  ],
  "tables": {
-  "LoadingScreens": "LoadingScreens.1.60.1.70235.csv",
-  "Map": "Map.1.60.1.70235.csv"
+  "LoadingScreens": "LoadingScreens.1.60.1.70338.csv",
+  "Map": "Map.1.60.1.70338.csv"
  }
 }
