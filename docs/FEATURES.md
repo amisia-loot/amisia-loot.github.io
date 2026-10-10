@@ -419,9 +419,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil G (G1 und G2); DECISIONS D-42. Jedes Gildenereignis zählt, die Art Schlachtzug ist vorgewählt (Prüfung 17). Der Lesecode ist Raid/Calendar.lua, derselbe wie in `/amisia selbsttest kalender` (F-085).
 
 ### F-087 Raid-Anmeldung in Amisia
-- Version: 2.24.0
+- Version: 2.25.0
 - Status: gebaut
-- Prüfung: Wenn du als Vulo Hunt (Gildenereignis für morgen angelegt) etwa eine Minute nach dem Login die Übersicht öffnest, dann zeigt die Karte "Raid-Anmeldung" "<Tag> 20:00 <Titel> · noch offen" und den Knopf "Anmelden".
+- Prüfung: Wenn du als Vulo Hunt (Gildenereignis für morgen angelegt) etwa eine Minute nach dem Login die Übersicht öffnest, dann zeigt die Karte "Raid-Anmeldung" "<Tag> 20:00 <Titel> · noch offen" und den Knopf "Anmelden"; nach dem Anmelden heißt der Knopf "Ändern", und das Fenster "Raid-Anmeldung" hat unter "Für die Gilde lesbar." keine leere Lücke mehr (die Knöpfe folgen direkt).
 - Prüfung: Wenn du "Anmelden" klickst, im Fenster "Raid-Anmeldung" die Rolle "T" wählst, unter "Notiz" "komme 20:15" schreibst und "Anmelden" klickst, dann sagt der Chat "Raid-Anmeldung: <Tag> 20:00 <Titel> · angemeldet als Tank. Gesendet.", die Karte zeigt "angemeldet (T)", und auf der Seite Aufstellung von morgen steht Vulo Hunt mit Quelle "A", Rolle T und einem goldenen "*" am Namen; der Tooltip zeigt "Notiz: komme 20:15".
 - Prüfung: Wenn du dich als Vulo Pala mit `/amisia anmelden` (Rolle "H", Knopf "Vorläufig") vorläufig anmeldest und danach als Vulo Hunt einloggst, dann steht Vulo Pala auf der Seite Aufstellung von morgen orange "vorläufig" mit H und Quelle "A" (derselbe Account, ohne Nachricht); im Fenster von Vulo Hunt steht "Deine anderen Charaktere: Vulo Pala: vorläufig (H)".
 - Prüfung: Wenn du Vulo Pala als Vulo Hunt im Planer in eine Gruppe setzt, dich als Vulo Pala mit `/amisia abmelden` abmeldest (Chat: "... · abgemeldet. ...") und als Vulo Hunt die Seite Aufstellung öffnest, dann liest der Chat "Aufstellung: Vulo Pala hat sich abgemeldet (war Gruppe N)." und Vulo Pala steht grau "abgemeldet" unten, nicht mehr in der Gruppe; `/amisia hilfe` zeigt `/amisia anmelden [T/H/N/F [Notiz]]` und `/amisia abmelden`, `/amisia anmelden ab` nur "Aufruf: /amisia anmelden [T/H/N/F [Notiz]]".

@@ -205,16 +205,19 @@ T.SETUP = {
 
 -- the raid sign-up window (UI/Signup.lua, "Raid-Anmeldung", AmisiaSignupFrame): the date picker,
 -- the state of the own sign-up, the role chips and the note, the hints, the three red buttons at the
--- bottom. Its content keeps T.WINDOW_PAD from the left and right edge.
+-- bottom. Its content keeps T.WINDOW_PAD from the left and right edge. Compact (2.25.0): under the
+-- note hint only what is shown (the other characters, the calendar hint) follows, GAP apart, and
+-- the window ends BOTTOM under the button row (its height follows the content).
 T.SIGNUP = {
-    W = 400, H = 286,     -- the window
+    W = 400, H = 202,     -- the window; H without the other characters and the calendar hint
     PICK_Y = 34,          -- the date picker below the window's top, under the title bar
     STATE_Y = 62,         -- "Deine Anmeldung: ..." (T.FONT.body)
     ROLE_Y = 88,          -- the row "Rolle" with the chips T, H, N, F
     NOTE_Y = 116,         -- the row "Notiz" with the field (40 characters)
     HINT_Y = 142,         -- "Für die Gilde lesbar." under the note
-    ALTS_Y = 162,         -- the other characters of the account with a sign-up for the date
-    CAL_Y = 192,          -- "Bitte auch im Kalender eintragen" and the button that opens the calendar
+    GAP = 10,             -- between the note hint, the other characters, the calendar hint and the buttons
+    LINE_GAP = 4,         -- between the note hint and the other characters
+    CAL_OPEN_W = 80,      -- "Kalender" (the raid calendar window) beside the date picker (at least; FitChip)
     LABEL_W = 70,         -- the labels "Rolle" and "Notiz"; the controls start LABEL_GAP after them
     LABEL_GAP = 8,
     ROLE_W = 40,          -- a role chip

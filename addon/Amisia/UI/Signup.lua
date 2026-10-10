@@ -65,7 +65,9 @@ ns.RegisterCard{ key = "signup", order = 15, available = function() return ns.Ge
         end
     end
     c.line2:SetText(table.concat(more, "\n"))
-    c:SetAction(L["Anmelden"], function() ns.ShowSignup() end)
+    -- "Ändern" when the player has a sign-up for the date the card shows first
+    local first = terms[1].night
+    c:SetAction(ns.SignupOf()[first] and L["Ändern##Anmeldung"] or L["Anmelden"], function() ns.ShowSignup(first) end)
 end }
 
 ---------------------------------------------------------------------------
@@ -134,8 +136,6 @@ local function build()
     F.hint:SetPoint("TOPLEFT", PAD + S.LABEL_W + S.LABEL_GAP, -S.HINT_Y)
     F.hint:SetText(L["Für die Gilde lesbar."])
     F.alts = W.Text(F, T.FONT.hint, CW, true)
-    F.alts:SetPoint("TOPLEFT", PAD, -S.ALTS_Y)
-    F.alts:SetHeight(2 * S.LINE_H)
     F.alts:SetJustifyV("TOP")
     F.calHint = W.Text(F, T.FONT.text, CW - S.CAL_W - T.LAYOUT.ITEM_GAP, true)
     F.calHint:SetText(L["Bitte auch im Kalender eintragen."])
@@ -149,14 +149,34 @@ local function build()
     W.FitChip(F.calBtn, S.CAL_W)
     F.calHint:SetHeight(T.BUTTON_H)
     F.calHint:SetJustifyV("MIDDLE")
-    F.calHint:SetPoint("TOPLEFT", PAD, -S.CAL_Y)
-    F.calBtn:SetPoint("TOPRIGHT", -PAD, -S.CAL_Y)
     W.Tooltip(F.calBtn, L["Kalender öffnen"], L["Amisia trägt dich (noch) nicht selbst im Spielkalender ein. So sehen es auch Offiziere ohne Amisia."])
     F.yes = W.Button(F, L["Anmelden"], S.BUTTON_W, function() send("A") end)
     F.maybe = W.Button(F, L["Vorläufig"], S.BUTTON_W, function() send("V") end)
     F.no = W.Button(F, L["Abmelden"], S.BUTTON_W, function() send("X") end)
     for _, b in ipairs({ F.yes, F.maybe, F.no }) do W.FitChip(b, S.BUTTON_W) end
     W.Row(F, { F.yes, F.maybe, F.no }, T.LAYOUT.ITEM_GAP, PAD, S.BOTTOM, { point = "BOTTOMLEFT" })
+end
+
+-- Compact: under the note hint only what is shown follows (the other characters, the calendar
+-- hint), S.GAP apart; the window ends S.BOTTOM under the buttons, so no empty band stays between.
+local function layout()
+    local y = S.HINT_Y + S.LINE_H
+    if F.alts:IsShown() then
+        -- one line, two when the names do not fit the width
+        local lines = (F.alts:GetStringWidth() or 0) > CW and 2 or 1
+        F.alts:SetHeight(lines * S.LINE_H)
+        F.alts:ClearAllPoints()
+        F.alts:SetPoint("TOPLEFT", PAD, -(y + S.LINE_GAP))
+        y = y + S.LINE_GAP + lines * S.LINE_H
+    end
+    if F.calHint:IsShown() then
+        F.calHint:ClearAllPoints()
+        F.calHint:SetPoint("TOPLEFT", PAD, -(y + S.GAP))
+        F.calBtn:ClearAllPoints()
+        F.calBtn:SetPoint("TOPRIGHT", -PAD, -(y + S.GAP))
+        y = y + S.GAP + T.BUTTON_H
+    end
+    F:SetHeight(y + S.GAP + T.BUTTON_H + S.BOTTOM)
 end
 
 refresh = function()
@@ -184,11 +204,13 @@ refresh = function()
     local alts = {}
     for _, a in ipairs(t and ns.SignupAlts(t.night) or {}) do alts[#alts + 1] = ("%s: %s"):format(a.name, colored(a.rec)) end
     F.alts:SetText(#alts > 0 and (L["Deine anderen Charaktere: %s"]:format(table.concat(alts, ", "))) or "")
+    F.alts:SetShown(#alts > 0)
     -- part H3 (writing into the calendar) waits for the in-game checks: the player does it there
     local calendar = t ~= nil and not ns.SignupCalendarWrite()
     F.calHint:SetShown(calendar)
     F.calBtn:SetShown(calendar and type(ToggleCalendar) == "function")
     for _, b in ipairs({ F.yes, F.maybe, F.no }) do b:SetEnabled(t ~= nil) end
+    layout()
 end
 
 -- Opens the window at night (default: the next date); the dates are read first when they are not.
