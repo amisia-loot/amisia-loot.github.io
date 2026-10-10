@@ -99,10 +99,30 @@ assert(has(card().line1:GetText(), "vorläufig (H)"), card().line1:GetText())
 STUB.guild[1].online = false
 STUB.fire("GUILD_ROSTER_UPDATE"); STUB.tick(11)
 STUB.messages = {}
-NS.Dispatch("anmelden ab")
+NS.Dispatch("abmelden")
 STUB.tick(1)
 assert(AmisiaDB.signup.chars["Vulo Pala"][night].s == "X", "signed off")
 assert(said("Molten Core · abgemeldet. Kein Offizier online: Amisia schickt es, sobald einer kommt."), STUB.messages[1])
+-- /amisia abmelden and its English word signoff; "anmelden ab" / "signup off" are no sub-words (usage)
+for _, word in ipairs({ "anmelden ab", "signup off" }) do
+    STUB.messages = {}
+    NS.Dispatch(word)
+    assert(said("Aufruf: /amisia anmelden [T/H/N/F [Notiz]]"), word .. ": usage")
+end
+for _, word in ipairs({ "abmelden", "signoff" }) do
+    STUB.tick(11)
+    NS.Dispatch("anmelden h")
+    STUB.tick(1)
+    assert(AmisiaDB.signup.chars["Vulo Pala"][night].s == "A")
+    STUB.tick(11)
+    STUB.messages = {}
+    NS.Dispatch(word)
+    STUB.tick(1)
+    assert(AmisiaDB.signup.chars["Vulo Pala"][night].s == "X", word .. ": signed off")
+    assert(said("Molten Core · abgemeldet. Kein Offizier online: Amisia schickt es, sobald einer kommt."), word .. ": " .. tostring(STUB.messages[1]))
+end
+local help = table.concat(NS.SlashHelpLines(false), "\n")
+assert(has(help, "/amisia anmelden [T/H/N/F [Notiz]] - ") and has(help, "/amisia abmelden - Vom nächsten Termin"), help)
 STUB.tick(11)
 STUB.messages = {}
 NS.Dispatch("signup h komme 20:15")
@@ -146,7 +166,7 @@ NS.SignupLoaded(AmisiaDB)
 STUB.inGuild = false
 STUB.messages = {}
 local before = #sent("AN")
-NS.Dispatch("anmelden ab")
+NS.Dispatch("abmelden")
 assert(said("Nur in einer Gilde."))
 assert(#sent("AN") == before)
 NS.Refresh()

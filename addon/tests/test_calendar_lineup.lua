@@ -262,4 +262,84 @@ assert(said("Der Kalender wird gerade gelesen."), tostring(STUB.messages[1]) .. 
 assert(cal.opens == 0)
 Cal.Hold(false)
 assert(cal.writes == 0, "no calendar write function was called")
+-- review 2026-10-10: another event comes open during the read (the player's click in the calendar
+-- window, the probe): it is not read into the night; one the window shows stays open
+cal = STUB.calendar({ events = { { title = "Onyxia", days = 3, id = 21 }, { title = "Zul'Gurub", days = 4, id = 22 } },
+    invites = { [21] = { { name = "Bob Eisherz", classFilename = "WARRIOR", inviteStatus = 6 } },
+                [22] = { { name = "Fremder Zwei", classFilename = "MAGE", inviteStatus = 6 } } } })
+local openEvent = C_Calendar.OpenEvent
+C_Calendar.OpenEvent = function(o, d) return openEvent(o, d, 2) end
+local ony = Cal.Events()[1]
+assert(ony.title == "Onyxia")
+local got, why = false, nil
+Cal.Read(ony, function(list, w) got, why = list, w end)
+STUB.tick(1)
+assert(got == nil and why == "other", "another event is not read: " .. tostring(why))
+assert(cal.closes == 1 and not cal.open, "the own open closed")
+assert(has(Cal.Why("other"), "Ein anderes Ereignis"))
+C_Calendar.OpenEvent = function(o, d)
+    local r = openEvent(o, d, 2)
+    CalendarFrame:Show()
+    return r
+end
+Cal.Read(ony, function(list, w) got, why = list, w end)
+STUB.tick(1)
+assert(why == "other" and cal.closes == 1 and cal.open, "the window's event stays open")
+CalendarFrame:Hide()
+cal.open = nil
+C_Calendar.OpenEvent = openEvent
+-- the probe does not start while the lineup reads an event (it would take the probe's answer)
+cal = STUB.calendar({ silent = true, events = { { title = "Onyxia", days = 3, id = 21 } }, invites = { [21] = {} } })
+Cal.Read(Cal.Events()[1], function() end)
+assert(Cal.Busy())
+STUB.messages = {}
+NS.Dispatch("selbsttest kalender")
+assert(said("Der Kalender wird gerade gelesen."), tostring(STUB.messages[1]))
+assert(cal.opens == 1, "the probe opened nothing")
+STUB.tick(11)
+assert(not Cal.Busy())
+
+-- review 2026-10-10: a raider's clock ahead: a re-send of the same click (it carries the first
+-- click's time) does not beat a later change in the calendar, nor a removal by the officer
+AmisiaFrame:Hide()
+cal = STUB.calendar({ events = { { title = "Onyxia", days = 3, id = 21 } },
+    invites = { [21] = { { name = "Bob Eisherz", classFilename = "WARRIOR", inviteStatus = 6 } } } })
+local oev = Cal.Events()[1]
+local onight = oev.night
+local function oe(name)
+    for _, x in ipairs(NS.LineupNight(onight).list) do if x.n == name then return x end end
+end
+local click = time() + 600     -- Bob's clock is 10 minutes ahead
+assert(NS.LineupSignup(onight, "Bob Eisherz", { s = "A", r = "M", t = click }, true))
+assert(oe("Bob Eisherz").ag <= time(), "counts as now")
+NS.LineupCalendar(oev, { { name = "Bob Eisherz", class = "WARRIOR", code = "A" } }, true)
+STUB.tick(200)
+NS.LineupCalendar(oev, { { name = "Bob Eisherz", class = "WARRIOR", code = "X" } }, true)
+assert(oe("Bob Eisherz").st == "X", "the calendar's later decline")
+STUB.tick(200)
+assert(not NS.LineupSignup(onight, "Bob Eisherz", { s = "A", r = "M", t = click }, true), "the re-send is no new click")
+assert(oe("Bob Eisherz").st == "X", "the decline stays")
+assert(NS.LineupSignup(onight, "Bob Eisherz", { s = "A", r = "M", t = click + 1 }, true), "a new click counts")
+assert(oe("Bob Eisherz").st == "A")
+local ol = NS.LineupNight(onight).list
+for i, x in ipairs(ol) do if x.n == "Bob Eisherz" then NS.LineupRemove(onight, i) break end end
+STUB.tick(1000)
+assert(not NS.LineupSignup(onight, "Bob Eisherz", { s = "A", r = "M", t = click + 1 }, true), "removed: the re-send does not bring him back")
+assert(not oe("Bob Eisherz"))
+assert(NS.LineupSignup(onight, "Bob Eisherz", { s = "A", r = "M", t = time() + 900 }, true), "a new click does")
+
+-- review 2026-10-10: sign-ups never push tonight's or a coming night's lineup out of the 8 kept
+AmisiaDB.lineup = nil
+local tn = NS.LineupTonight()
+NS.SetLineupText("Vuloo Heiler", tn)
+for d = 1, 7 do NS.LineupNight(NS.NightOf(time() + d * 86400), true) end
+assert(#NS.LineupNights() == 8)
+local far = NS.NightOf(time() + 9 * 86400)
+assert(not NS.LineupSignup(far, "Bob Eisherz", { s = "A", t = time() }, true), "no ninth night from a sign-up")
+assert(NS.LineupNight(tn) and #NS.LineupNight(tn).list == 1 and not NS.LineupNight(far), "tonight's lineup stays")
+-- an old night makes room
+AmisiaDB.lineup.nights[NS.LineupNights()[1]] = nil
+AmisiaDB.lineup.nights["2020-01-01"] = { at = 0, size = 40, list = {} }
+assert(NS.LineupSignup(far, "Bob Eisherz", { s = "A", t = time() }, true), "the oldest night was over")
+assert(not AmisiaDB.lineup.nights["2020-01-01"] and NS.LineupNight(tn), "the old night went, tonight stays")
 print("calendar lineup ok")

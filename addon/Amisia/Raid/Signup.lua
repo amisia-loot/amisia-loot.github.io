@@ -219,10 +219,20 @@ end
 ---------------------------------------------------------------------------
 -- Sending and the officer's side
 ---------------------------------------------------------------------------
+-- The officer drops a second AN of a sender for the same night within 10 s (Core/Comm.lua, keyed
+-- gap): a message for a night waits until AN_GAP seconds after the last one for it went, so a quick
+-- second click (another role, "Abmelden") is not lost.
+local AN_GAP = 11
+local lastSent = {}       -- [night] = GetTime() when its last AN went
+
 local function sendAN(night, rec, chan, target, opts)
     if not (ns.CommReady and ns.CommReady()) then return false end
     local fields = { night, rec.s, rec.r or "-", rec.c or "-", tostring(rec.t), rec.e or "-", rec.w or "-" }
-    return ns.CommSend("AN", fields, chan, target, opts) and true or false
+    local o = {}
+    for k, v in pairs(opts or {}) do o[k] = v end
+    o.when = function() return not lastSent[night] or GetTime() - lastSent[night] >= AN_GAP end
+    o.sent = function() lastSent[night] = GetTime() end
+    return ns.CommSend("AN", fields, chan, target, o) and true or false
 end
 
 -- Whether a guild officer other than oneself is online (by the roster): nil when it cannot be read.
@@ -410,10 +420,33 @@ ns.RegisterSettings{ key = "signup", label = L["Raid-Anmeldung"], order = 23, it
 }}
 
 local function usage()
-    ns.msg(L["Aufruf: /amisia anmelden [ab | T/H/N/F [Notiz]]"])
+    ns.msg(L["Aufruf: /amisia anmelden [T/H/N/F [Notiz]]"])
 end
 
-ns.RegisterSlash("anmelden", { en = "signup", args = L["[ab | T/H/N/F [Notiz]]"],
+-- Signs the own character up (status A with role and note) or off (X) for the next date.
+local function signupFor(status, role, note)
+    if not IsInGuild() then
+        ns.msg(L["Nur in einer Gilde."])
+        return
+    end
+    ns.SignupLoadTerms(function(list, why)
+        if not list then
+            ns.msg(why == "off" and ns.Cal.Why("off") or L["Nur in einer Gilde."])
+            return
+        end
+        local term = ns.SignupNextTerm()
+        if not term then
+            ns.msg(L["Keine Raidtermine in den nächsten 14 Tagen."])
+            return
+        end
+        local old = ns.SignupOf()[term.night]
+        local _, line = ns.SignupSet(term, status, role or (old and old.r) or ns.SignupDefaultRole(), note)
+        if line then ns.msg(line) end
+    end)
+end
+
+-- /amisia anmelden [T/H/N/F [Notiz]]: the window, or signed up with a role and a note.
+ns.RegisterSlash("anmelden", { en = "signup", args = L["[T/H/N/F [Notiz]]"],
     desc = L["Raid-Anmeldung für den nächsten Termin aus dem Spielkalender"], run = function(rest)
         local word, more = (rest or ""):match("^(%S*)%s*(.-)$")
         word = (word or ""):lower()
@@ -425,30 +458,13 @@ ns.RegisterSlash("anmelden", { en = "signup", args = L["[ab | T/H/N/F [Notiz]]"]
             if ns.ShowSignup then ns.ShowSignup() end
             return
         end
-        local status, role, note
-        if word == "ab" or word == "off" then -- l10n-ok: the typed sub-words
-            status = "X"
-        elseif ROLE_WORD[word] then
-            status, role, note = "A", ROLE_WORD[word], more
-        else
-            return usage()
-        end
-        ns.SignupLoadTerms(function(list, why)
-            if not list then
-                ns.msg(why == "off" and ns.Cal.Why("off") or L["Nur in einer Gilde."])
-                return
-            end
-            local term = ns.SignupNextTerm()
-            if not term then
-                ns.msg(L["Keine Raidtermine in den nächsten 14 Tagen."])
-                return
-            end
-            local old = ns.SignupOf()[term.night]
-            local _, line = ns.SignupSet(term, status, role or (old and old.r) or ns.SignupDefaultRole(), note)
-            if line then ns.msg(line) end
-        end)
+        if not ROLE_WORD[word] then return usage() end
+        signupFor("A", ROLE_WORD[word], more)
     end })
+-- /amisia abmelden: signed off for the next date.
+ns.RegisterSlash("abmelden", { en = "signoff", desc = L["Vom nächsten Termin aus dem Spielkalender abmelden"],
+    run = function() signupFor("X") end })
 
 -- for the tests
-ns._signup = { termOf = termOf, reset = function() resent, asked, answered, terms, loading = false, false, {}, nil, false end,
+ns._signup = { termOf = termOf, reset = function() resent, asked, answered, terms, loading, lastSent = false, false, {}, nil, false, {} end,
                MAX_NIGHTS = MAX_NIGHTS }

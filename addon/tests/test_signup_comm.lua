@@ -131,6 +131,19 @@ C(PALA, "STUB.calendar({ events = { { title = 'Molten Core', days = 1, id = 12 }
 assert(C(PALA, "NS.SignupResend()") == 0, "not again within 30 minutes")
 -- Kim (no guild) sends nothing at all
 assert(C(KIM, "NS.SignupResend()") == 0 and BUS.count({ kind = "AN", sender = KIM, chan = "GUILD" }) == 0)
+-- review 2026-10-10: a second click for the same night within 10 s is not lost (the officer drops a
+-- second AN within 10 s): it waits until 11 s after the first went
+C(HUNT, "AmisiaDB.lineup = nil")
+C(BOB, "NS.SignupLoadTerms()")
+BUS.tick(1)
+C(BOB, "NS.SignupSet(NS.SignupTerms()[1], 'A', 'M')")
+BUS.tick(2)
+assert(entry(BOB) and entry(BOB).st == "A")
+C(BOB, "NS.SignupSet(NS.SignupTerms()[1], 'X', 'M')")
+BUS.tick(2)
+assert(entry(BOB).st == "A", "still waiting")
+BUS.tick(10)
+assert(entry(BOB).st == "X", "the second click arrived")
 for _, name in ipairs(CLIENTS) do
     assert(C(name, "#STUB.chat") == 0, "no chat line to others: " .. name)
 end

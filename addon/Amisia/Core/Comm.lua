@@ -572,6 +572,10 @@ local function attempt(i)
         msgTokens[e.prefix] = msgTokens[e.prefix] - 1
         byteTokens = byteTokens - cost(e)
         removeAt(i)
+        if e.sent then
+            local okSent, err = pcall(e.sent)
+            if not okSent then report(err) end
+        end
         debugLine("> " .. e.chan .. (e.chan == "WHISPER" and (" " .. tostring(e.target)) or "") .. " " .. e.desc)
         return true
     elseif result == 3 or result == 8 then
@@ -711,7 +715,8 @@ local function entry(kind, text, chan, target, opts, desc)
     local low = opts.low and true or nil
     return { prefix = prefixOf(kind), text = text, chan = chan, target = target, key = opts.key, kind = kind,
              expires = t + (tonumber(opts.ttl) or (low and LOW_TTL or DEFAULT_TTL)), ready = t + (jitter > 0 and math.random() * jitter or 0),
-             tries = 0, desc = desc, low = low, when = type(opts.when) == "function" and opts.when or nil }
+             tries = 0, desc = desc, low = low, when = type(opts.when) == "function" and opts.when or nil,
+             sent = type(opts.sent) == "function" and opts.sent or nil }
 end
 
 local function envelope(kind, fields)
@@ -732,7 +737,7 @@ end
 -- or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
--- entry waits while it does not return true).
+-- entry waits while it does not return true), opts.sent (a function called once the message went).
 function ns.CommSend(kind, fields, chan, target, opts)
     if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
     if kind == "BL" then return nil, L["Daten gehen über CommSendBlob."] end

@@ -269,10 +269,21 @@ local function close()
     pcall(C_Calendar.CloseEvent)
 end
 
+-- Whether the event the client opened is ev: start and title as far as they can be read (another
+-- open in between, the player's click in the calendar window or the probe's, opens another one).
+local function openedIs(ev)
+    local info = call("GetEventInfo")
+    if type(info) ~= "table" then return true end
+    local at, title = Cal.Epoch(info.time), Cal.Clean(info.title)
+    if at and at ~= ev.at then return false end
+    if title and title ~= ev.title then return false end
+    return true
+end
+
 -- Reads the invite list of ev (an entry of Cal.Events()): fn(invites, n) or fn(nil, why) with why
 -- "off" (no calendar or a function missing), "busy", "combat", "window" (the calendar window shows
 -- another event), "gone" (the event is not in the calendar any more), "open" (OpenEvent refused),
--- "timeout" (no answer within Cal.WAIT). With the window showing exactly ev, it reads what the
+-- "timeout" (no answer within Cal.WAIT), "other" (another event came open meanwhile: not read). With the window showing exactly ev, it reads what the
 -- window has open and leaves it open; else it opens ev itself and always closes it again.
 function Cal.Read(ev, fn)
     if not Cal.CanReadInvites() then return fn(nil, "off") end
@@ -291,14 +302,16 @@ function Cal.Read(ev, fn)
     local sel = call("GetGuildEventSelectionInfo", now.index)
     if type(sel) ~= "table" then return fn(nil, "gone") end
     busy = true
-    local function finish(list, n)
-        close()
+    local function finish(list, n, keep)
+        if not keep then close() end
         busy = false
         quietUntil = GetTime() + Cal.QUIET
         fn(list, n)
     end
     local cancel = wait({ "CALENDAR_OPEN_EVENT", "CALENDAR_UPDATE_INVITE_LIST" }, function(event)
         if not event then return finish(nil, "timeout") end
+        -- another event came open: not read; one the calendar window shows stays open
+        if not openedIs(ev) then return finish(nil, "other", Cal.WindowShown()) end
         finish(Cal.ReadOpen())
     end)
     local ok, opened = pcall(C_Calendar.OpenEvent, Cal.Offset(sel), plain(sel.monthDay), plain(sel.eventIndex))
@@ -320,6 +333,7 @@ local WHY = {
     gone = N_("Ereignis nicht mehr im Kalender."),
     open = N_("Der Kalender hat das Ereignis nicht geöffnet. Gleich noch einmal."),
     timeout = N_("Kalender antwortet nicht, gleich nochmal."),
+    other = N_("Ein anderes Ereignis wurde gleichzeitig geöffnet. Gleich noch einmal."),
 }
 function Cal.Why(why) return L[WHY[why] or WHY.off] end
 

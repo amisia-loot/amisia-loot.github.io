@@ -427,6 +427,11 @@ function CT.Start()
         ns.msg(L["Kalender-Prüfung läuft schon."])
         return
     end
+    -- the lineup reads an event right now: its open would take the probe's answer (and close it)
+    if Cal.Busy() then
+        ns.msg(Cal.Why("busy"))
+        return
+    end
     local P = { R = K.newReport(), blocked = {}, at = GetTime(), phase = "17" }
     P.blocked19 = function() return #blockedLines(P, "19") > 0 end
     run = P

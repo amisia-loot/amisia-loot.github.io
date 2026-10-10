@@ -617,7 +617,7 @@ local function cleanEntry(e)
     if e.h == true and out.r then out.h = true end
     if CODES[e.d] then out.d = e.d end
     if CODES[e.ks] then out.ks, out.kt = e.ks, posNum(e.kt) or 0 end
-    if OWN[e.as] then out.as, out.ag = e.as, posNum(e.ag) or 0 end
+    if OWN[e.as] then out.as, out.ag, out.au = e.as, posNum(e.ag) or 0, posNum(e.au) end
     if IS_ROLE[e.ar] then out.ar = e.ar end
     if IS_ROLE[e.lr] then out.lr = e.lr end
     -- placed and benched exclude each other; the absent are neither
@@ -634,18 +634,19 @@ local function cleanCal(c)
              read = posNum(c.read), lost = c.lost == true or nil }
 end
 
--- The names the officer removed: { [lower name] = { t = when, k = the calendar status then } }.
+-- The names the officer removed: { [lower name] = { t = when, k = the calendar status then, u = the
+-- sender's clock time of the last Amisia click then } }.
 local function cleanGone(g)
     if type(g) ~= "table" then return nil end
     local list = {}
     for low, v in pairs(g) do
         if type(low) == "string" and #low <= NAME_MAX and type(v) == "table" and posNum(v.t) then
-            list[#list + 1] = { low = low, t = posNum(v.t), k = CODES[v.k] and v.k or nil }
+            list[#list + 1] = { low = low, t = posNum(v.t), k = CODES[v.k] and v.k or nil, u = posNum(v.u) }
         end
     end
     table.sort(list, function(a, b) return a.t > b.t end)
     local out = {}
-    for i = 1, math.min(#list, MAX_GONE) do out[list[i].low] = { t = list[i].t, k = list[i].k } end
+    for i = 1, math.min(#list, MAX_GONE) do out[list[i].low] = { t = list[i].t, k = list[i].k, u = list[i].u } end
     return next(out) and out or nil
 end
 
@@ -771,7 +772,7 @@ function ns.SetLineupText(text, night)
         if was then
             kept[low] = true
             -- what the calendar and Amisia said, the note and the officer's role stay
-            for _, fld in ipairs({ "ks", "kt", "as", "ag", "ar", "w", "h" }) do e[fld] = was[fld] end
+            for _, fld in ipairs({ "ks", "kt", "as", "ag", "au", "ar", "w", "h" }) do e[fld] = was[fld] end
             if was.h then e.r = was.r end
             e.f = withSrc(sourcesOf(was), "L", true)
             if not e.b then e.g, e.k, e.v = was.g, was.k, was.v end
@@ -953,7 +954,7 @@ function ns.LineupRemove(night, i)
     -- remembered: a statement of the calendar or Amisia from before brings the name back only when
     -- it is new (a new click, another calendar status)
     n.gone = n.gone or {}
-    n.gone[e.n:lower()] = { t = math.floor(time()), k = e.ks }
+    n.gone[e.n:lower()] = { t = math.floor(time()), k = e.ks, u = e.au }
     n.gone = cleanGone(n.gone)
     changed()
     return true
@@ -1038,7 +1039,7 @@ function ns.LineupCopy(from, night)
         if c and not c.a then
             c.v, c.m = nil, nil
             -- the copy is a start of its own: no sources, statements or notes of the old night
-            for _, fld in ipairs({ "f", "st", "t", "w", "d", "ks", "kt", "as", "ag", "ar", "lr" }) do c[fld] = nil end
+            for _, fld in ipairs({ "f", "st", "t", "w", "d", "ks", "kt", "as", "ag", "au", "ar", "lr" }) do c[fld] = nil end
             dst.list[#dst.list + 1] = c
         end
     end
@@ -1272,24 +1273,33 @@ ns.LineupSignupNight = signupNight
 function ns.LineupSignup(night, name, rec, notify)
     name = cleanName(name)
     if not name or type(rec) ~= "table" or not OWN[rec.s] or not signupNight(night) then return false end
-    local t = posNum(rec.t)
-    if not t then return false end
-    t = math.min(t, math.floor(time()))
+    -- raw: the click's time by the sender's clock, which orders the sender's own clicks (a re-send
+    -- carries the first click's time); t: the same, never later than now, for the comparison with
+    -- the calendar (a clock ahead counts as now)
+    local raw = posNum(rec.t)
+    if not raw then return false end
+    local t = math.min(raw, math.floor(time()))
     local low = name:lower()
     local n = ns.LineupNight(night, false)
     local e = n and findEntry(n, low)
     if not e then
         local gone = n and n.gone and n.gone[low]
-        if gone and t <= gone.t then return false end
+        if gone and (t <= gone.t or (gone.u and raw <= gone.u)) then return false end
         if n and #n.list >= MAX_SIGNUPS then return false end
-        n = n or ns.LineupNight(night, true)
+        if not n then
+            -- a sign-up never pushes tonight's or a coming night's lineup out of the 8 kept: it
+            -- makes a night only while there is room or the oldest kept night is over
+            local all = ns.LineupNights()
+            if #all >= MAX_NIGHTS and all[#all] >= tonight() then return false end
+            n = ns.LineupNight(night, true)
+        end
         e = { n = name, f = "A" }
         n.list[#n.list + 1] = e
-    elseif e.ag and t <= e.ag then
+    elseif (e.au or e.ag) and raw <= (e.au or e.ag) then
         return false
     end
     e.f = withSrc(sourcesOf(e), "A", true)
-    e.as, e.ag, e.ar = rec.s, t, IS_ROLE[rec.r] and rec.r or nil
+    e.as, e.ag, e.au, e.ar = rec.s, t, raw, IS_ROLE[rec.r] and rec.r or nil
     e.w = type(rec.w) == "string" and ns.CleanNote(stripCodes(rec.w), 40) or nil
     if CLASSES[rec.c] and not e.c then e.c = rec.c end
     -- the sender is a guild member by the roster: the name is no longer unknown

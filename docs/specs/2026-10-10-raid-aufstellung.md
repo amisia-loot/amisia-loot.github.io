@@ -145,7 +145,7 @@ eintragen (aus).
   (vorgewählt: die letzte eigene Rolle, sonst aus der Klasse) und ein Feld **Notiz** (höchstens 40
   Zeichen, z. B. "komme 20:15"). Darunter klein: "Für alle Offiziere sichtbar."
 - **Befehl** `/amisia anmelden` (en `signup`): öffnet das Fenster für den nächsten Termin.
-  `/amisia anmelden ab` (en `off`) meldet für den nächsten Termin ab, `/amisia anmelden H komme 20:15`
+  `/amisia abmelden` (en `signoff`) meldet für den nächsten Termin ab, `/amisia anmelden H komme 20:15`
   meldet als Heiler mit Notiz an.
 - **Chat** (nur beim Spieler selbst): "Raid-Anmeldung: Fr 20:00 Molten Core · angemeldet als Heiler."
   Und dahinter "Gesendet." oder "Kein Offizier online: Amisia schickt es, sobald einer kommt."
@@ -653,7 +653,7 @@ blocks, SavedVariables, Settings) und die Regel in `docs/DECISIONS.md`.
 - **Einstellungsabschnitt** `signup` "Raid-Anmeldung" (für alle, `Raid/Signup.lua`):
   `signup.calendar` "Auch im Spielkalender eintragen" (an), `signup.card` "Karte auf der Übersicht"
   (an). Im Abschnitt `lineup` (Offiziere): `lineup.signups` "Anmeldungen aus Amisia annehmen" (an).
-- **Befehl** `/amisia anmelden` (en `signup`), für alle; Unterwort `ab` (en `off`).
+- **Befehl** `/amisia anmelden` (en `signup`), für alle; Abmelden mit `/amisia abmelden` (en `signoff`); die Unterwörter `ab`/`off` entfallen (Nutzer, 2026-10-10).
 - **Karte** `signup` auf der Übersicht (`ns.RegisterCard`, für alle).
 - **Neue Nachrichtenarten** (Präfix `Amisia`; Zeilen für ARCHITECTURE "Message kinds", `VALID`,
   `KIND_GAP`/`KEYED_GAP` in `Core/Comm.lua`; keine neue Protokollnummer, unbekannte Arten werfen
@@ -864,3 +864,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   einer neuen Angabe zurück. Kein `AT`. Teil H3 (Eintragen im Spielkalender) wartet auf die Prüfungen
   23 bis 25: das Fenster sagt "Bitte auch im Kalender eintragen." mit "Kalender öffnen", die Einstellung
   `signup.calendar` gibt es noch nicht.
+- 2026-10-10: Prüfung nach dem Bau (Teil G/H) behoben: Wiederholungen ordnet die Uhr des Absenders
+  (kein neuer Klick, auch bei vorgehender Uhr), Anmeldungen verdrängen keine heutige oder kommende
+  Nacht, ein zweiter Klick für dieselbe Nacht wartet 11 s statt verworfen zu werden, ein in der
+  Wartezeit fremd geöffnetes Ereignis wird nicht gelesen, die Kalender-Prüfung wartet auf das Lesen.
+  Nutzer: Abmelden per Befehl nur `/amisia abmelden` (en `signoff`), `anmelden ab`/`off` entfällt.
