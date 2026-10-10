@@ -381,7 +381,7 @@ zweites Konto; alle Gruppenprüfungen ab 2026-11-04 (D-32).
 
 ### Teil G: Kalender
 
-F-085 (Vorschlag).
+F-086 (Vorschlag).
 
 - Wenn du als Vulo Hunt im Spielkalender ein Gildenereignis "Schlachtzug" für morgen 20:00 anlegst
   und auf der Seite Aufstellung "Kalender" klickst, dann ist dieses Ereignis gewählt, und nach
@@ -400,7 +400,7 @@ F-085 (Vorschlag).
 
 ### Teil H: Anmelden in Amisia
 
-F-086 (Vorschlag).
+F-087 (Vorschlag).
 
 - Wenn du als Vulo Hunt auf der Karte "Raid-Anmeldung" beim Termin von morgen "Anmelden" mit Rolle T
   und der Notiz "komme 20:15" sendest, dann steht Vulo Hunt in der Aufstellung von morgen mit Quelle
@@ -678,7 +678,7 @@ blocks, SavedVariables, Settings) und die Regel in `docs/DECISIONS.md`.
 - **DECISIONS:** neue Regel (nächste freie Nummer, heute D-42): "Anmelden in Amisia und Kalender:
   nur für sich selbst, nur Gildenmitglieder, Offiziere laut Gildenliste, Kalender schreiben nur der
   Spieler per Klick für sich, der Offizier-Teil liest nur."
-- **FEATURES:** F-085 (Teil G), F-086 (Teil H).
+- **FEATURES:** F-086 (Teil G), F-087 (Teil H).
 
 ## Offene Fragen
 
@@ -804,7 +804,7 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
     1. Prüfungen 17 bis 20 und 23 bis 25 im Spiel, allein (der Nutzer, etwa 15 Minuten).
     2. Teil G1: Termine lesen und Auswahl auf der Seite Aufstellung (S).
     3. Teil G2: Teilnehmerliste lesen, Status übersetzen, mit Quellen zusammenführen, neu lesen bei
-       Änderungen (M). Danach ist F-085 allein prüfbar.
+       Änderungen (M). Danach ist F-086 allein prüfbar.
     4. Teil H1: Karte, Fenster, `/amisia anmelden`, eigener Speicher, Übernahme der eigenen
        Charaktere ohne Nachricht, Regel "Welche Angabe gilt" (M). Allein prüfbar.
     5. Teil H2: Nachrichten `AN` und `AQ`, Annahme beim Offizier, Wiederholen (M). Voll prüfbar ab
@@ -837,3 +837,6 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   nach den Vorschlägen. Reihenfolge: zuerst ein Prüfbefehl `/amisia selbsttest kalender`, der die
   Prüfungen 17 bis 20 selbst macht und meldet; dann G, dann H1/H2; H3 (Eintrag in den Kalender)
   erst nach grüner Prüfung 23 bis 25.
+- 2026-10-10: Gebaut: der Prüfbefehl `/amisia selbsttest kalender` (en `selftest calendar`) als F-085
+  (2.23.0): macht die Prüfungen 17 bis 20 selbst (nur lesend, die Schreibfunktionen für 23 bis 25 nur
+  nachgeschlagen) und zeigt den Bericht im Selbsttest-Fenster. Teil G heißt damit F-086, Teil H F-087.

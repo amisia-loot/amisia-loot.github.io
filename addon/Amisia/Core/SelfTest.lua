@@ -1423,11 +1423,17 @@ local function sectionTalents(R)
     end
 end
 
+-- The report helpers for the other probes (SelfTestCalendar.lua).
+ST.Kit = { newReport = newReport, add = add, section = section, check = check, runSection = runSection, show = show,
+           showAll = showAll, fn = fn, call = call, cut = cut, isSecret = isSecret, FEHLT = FEHLT }
+
 ---------------------------------------------------------------------------
 -- Running it
 ---------------------------------------------------------------------------
 -- The whole test: { lines, problems, counts, text }. opts.waypoint sets a waypoint at the own
 -- position (the only change the test makes).
+local finish
+
 function ST.Run(opts)
     opts = opts or {}
     local R = newReport()
@@ -1448,12 +1454,18 @@ function ST.Run(opts)
     runSection(R, L["Berufe"], sectionProfessions)
     runSection(R, L["Talente"], sectionTalents)
     runSection(R, L["Gespeicherte Daten"], sectionData)
+    return finish(R, L["Amisia-Selbsttest %s | Client %s | %s"])
+end
+
+-- Puts the head on top of the report (first line from headFormat with version, build and date,
+-- the counts, the values line, the problems) and joins R.text.
+finish = function(R, headFormat)
     local c = R.counts
     local build = "?"
     local okBuild, version, number = pcall(GetBuildInfo)
     if okBuild then build = ("%s (%s)"):format(tostring(version), tostring(number)) end
     local head = {
-        L["Amisia-Selbsttest %s | Client %s | %s"]:format(tostring(ns.VERSION), build, date("%Y-%m-%d %H:%M")),
+        headFormat:format(tostring(ns.VERSION), build, date("%Y-%m-%d %H:%M")),
         L["Ergebnis: %d OK, %d FEHLT, %d FEHLER, %d WERT"]:format(c.OK, c.FEHLT, c.FEHLER, c.WERT),
     }
     -- the values in one line to paste (section "Werte")
@@ -1466,11 +1478,12 @@ function ST.Run(opts)
     R.text = table.concat(R.lines, "\n")
     return R
 end
+ST.Kit.finish = finish
 
 ---------------------------------------------------------------------------
 -- The dialog: the report in a read-only box to copy
 ---------------------------------------------------------------------------
-local D, reportText
+local D, reportText, rerun
 
 local function build()
     local W = ns.W
@@ -1497,19 +1510,24 @@ local function build()
         D.area.box:HighlightText()
     end)
     D.mark:SetPoint("BOTTOMRIGHT", -12, 12)
-    D.again = W.Button(D, L["Erneut prüfen"], 120, function() ST.Show() end)
+    D.again = W.Button(D, L["Erneut prüfen"], 120, function() if rerun then rerun() end end)
     D.again:SetPoint("RIGHT", D.mark, "LEFT", -6, 0)
 end
 
--- Runs the test and shows the report; returns it.
-function ST.Show(opts)
-    local R = ST.Run(opts)
-    reportText = R.text
+-- Shows a report text in the dialog; "Erneut prüfen" then calls again().
+function ST.ShowText(text, again)
+    reportText, rerun = text, again
     if not D then build() end
     D.area.box:SetText(reportText)
     D:Show()
     D.area.box:SetFocus()
     D.area.box:HighlightText()
+end
+
+-- Runs the test and shows the report; returns it.
+function ST.Show(opts)
+    local R = ST.Run(opts)
+    ST.ShowText(R.text, function() ST.Show() end)
     return R
 end
 
@@ -1532,16 +1550,20 @@ end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt]"],
-    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat)"], run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung)"], run = function(rest)
     local opts = {}
-    local short = false
+    local short, calendar = false, false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
         if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
             short = true
         elseif word == "wegpunkt" or word == "waypoint" then -- l10n-ok: the German and English sub-words
             opts.waypoint = true
+        elseif word == "kalender" or word == "calendar" then -- l10n-ok: the German and English sub-words
+            calendar = true
         end
     end
+    -- the calendar probe (SelfTestCalendar.lua) runs on its own: it waits for the client's answers
+    if calendar and ST.Calendar then return ST.Calendar.Start() end
     if short then ST.Short(opts) else ST.Show(opts) end
 end })

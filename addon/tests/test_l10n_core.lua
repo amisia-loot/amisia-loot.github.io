@@ -109,7 +109,7 @@ assert(has(ab.head:GetText(), "sync protocol"), ab.head:GetText())
 assert(ab.askGuild:GetText() == "Ask guild" and ab.askRaid:GetText() == "Ask raid" and ab.selfTest:GetText() == "Self-test")
 assert(ab.cmdTitle:GetText() == "Commands")
 local help = table.concat(NS.SlashHelpLines(true), "\n")
-for _, w in ipairs({ "/amisia settings - open the settings", "/amisia selftest [short] [waypoint] - checks the client",
+for _, w in ipairs({ "/amisia settings - open the settings", "/amisia selftest [short] [waypoint] [calendar] - checks the client",
                      "/amisia late <HH:MM>|off - raid start", "/amisia names - shows how Amisia reads names",
                      "/amisia help - all commands", "/amisia sync [now|on|off|ranks|debug|selftest] - state of the sync" }) do
     assert(has(help, w), w .. "\n" .. help)

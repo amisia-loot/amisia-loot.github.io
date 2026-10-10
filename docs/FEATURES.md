@@ -400,6 +400,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn alle im Raid sind und du "Gruppen sortieren" klickst, dann stehen alle in der Gruppe aus dem Planer.
 - Notiz: Teile C und D der Spec 2026-10-10, erst nach den Prüfungen 10, 11 und 13 im Spiel (D-41).
 
+### F-085 Kalender-Prüfung
+- Version: 2.23.0
+- Status: gebaut
+- Prüfung: Wenn du als Vulo Hunt ein Gildenereignis "Schlachtzug" für morgen anlegst, das Kalenderfenster schließt und `/amisia selbsttest kalender` eingibst, dann meldet der Chat nach einigen Sekunden "Kalender-Prüfung: N Gildenereignisse, Teilnehmerliste gelesen (N), ohne Tastendruck geht ..." und das Fenster zeigt den Bericht "Amisia-Kalender-Prüfung ..." mit den Abschnitten 17 bis 20 (Termine mit Datum, Art und deinem Status, "Am weitesten voraus", die Teilnehmer mit Klasse und Status, "Blockiert", "Namen mit Nachname", "EventGetInviteResponseTime(1)") zum Kopieren (`/amisia selftest calendar` auf englischen Clients).
+- Prüfung: Wenn du das Kalenderfenster offen lässt und `/amisia selbsttest kalender` eingibst, dann steht unter 18 "Kalenderfenster: offen: 18 und 19 übersprungen ...", und im Kalender hat sich nichts geändert (keine Anmeldung, kein Status).
+- Notiz: Prüfungen 17 bis 20 der Spec 2026-10-10 (Teil G); nur lesend: die Schreibfunktionen für 23 bis 25 stehen nur als "da"/"fehlen" im Bericht. Den Bericht bitte an uns, danach wird Teil G gebaut.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

@@ -252,6 +252,6 @@ about.selfTest:Click()
 assert(ST.Frame():IsShown(), "the button opens the report")
 local listed = false
 for _, line in ipairs(NS.SlashHelpLines(false)) do
-    if has(line, "/amisia selbsttest [kurz] [wegpunkt]") then listed = true end
+    if has(line, "/amisia selbsttest [kurz] [wegpunkt] [kalender]") then listed = true end
 end
 assert(listed, "help lists the command")

@@ -112,3 +112,4 @@ UI\Pages\About.lua
 UI\Setup.lua
 Core\Minimap.lua
 Core\SelfTest.lua
+Core\SelfTestCalendar.lua
