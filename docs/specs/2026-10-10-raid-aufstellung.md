@@ -832,3 +832,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   (Ersatzbank allein prüfbar). Die Einstellungen von Teil C und D (Flüstern, automatisch sortieren)
   kommen mit ihnen. `#AMISIA-RAID` liest nur das Addon (Ausnahme im Vertragstest), Teil F entfällt.
 - 2026-10-10: Teil G und H auf Wunsch des Nutzers ergänzt; noch nicht freigegeben.
+- 2026-10-10: Nutzer gibt Teil G und H frei ("ja"): Kalender einzige Terminquelle (AT nur falls
+  nötig), Raider sehen keine Teilnehmerliste, keine Chat-Erinnerung beim Login, die übrigen Fragen
+  nach den Vorschlägen. Reihenfolge: zuerst ein Prüfbefehl `/amisia selbsttest kalender`, der die
+  Prüfungen 17 bis 20 selbst macht und meldet; dann G, dann H1/H2; H3 (Eintrag in den Kalender)
+  erst nach grüner Prüfung 23 bis 25.
