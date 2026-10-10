@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.23.0 (2026-10-10)
+
+- Spec Raid-Aufstellung: Teil G (calendar) and H (sign-up in Amisia), not approved yet
+- Spec Raid-Aufstellung G/H approved
+- Kalender-Prüfung: /amisia selbsttest kalender (F-085) macht die Prüfungen 17 bis 20 selbst
+
 ## 2.22.0 (2026-10-10)
 
 - Raid lineup "Aufstellung" (parts A, B and E): paste the sign-up list, match it against the guild, plan the groups, bench through ns.BenchAdd
