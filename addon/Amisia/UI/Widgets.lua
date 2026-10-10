@@ -910,7 +910,8 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
     return f
 end
 
--- An overview card: an inset with a gold title, two lines and at most one red button.
+-- An overview card: an inset with a gold title, two lines and at most two red buttons (the second
+-- right of the first, c:SetAction2; c:SetAction(nil) hides both).
 function W.Card(parent, width, height)
     local C = T.CARD
     local c = W.Inset(parent)
@@ -924,6 +925,9 @@ function W.Card(parent, width, height)
     c.line2:SetPoint("TOPLEFT", C.PAD, -C.LINE2_Y)
     c.button = W.Button(c, "", C.BUTTON_W)
     c.button:SetPoint("BOTTOMLEFT", C.PAD, C.BUTTON_Y)
+    c.button2 = W.Button(c, "", C.BUTTON2_W)
+    c.button2:SetPoint("LEFT", c.button, "RIGHT", T.LAYOUT.ITEM_GAP, 0)
+    c.button2:Hide()
     function c:SetAction(label, fn)
         if label then
             self.button:SetText(label)
@@ -931,6 +935,17 @@ function W.Card(parent, width, height)
             self.button:Show()
         else
             self.button:Hide()
+            self.button2:Hide()
+        end
+    end
+    function c:SetAction2(label, fn)
+        if label then
+            self.button2:SetText(label)
+            W.FitChip(self.button2, C.BUTTON2_W)
+            self.button2:SetScript("OnClick", fn)
+            self.button2:Show()
+        else
+            self.button2:Hide()
         end
     end
     return c

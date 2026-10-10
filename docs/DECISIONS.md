@@ -659,7 +659,7 @@ nicht; der Vertragstest kennt dafür die Ausnahme "liest nur das Addon".
 
 ## D-42 Anmelden in Amisia und Kalender: nur für sich selbst, nur Gildenmitglieder, der Offizier-Teil liest nur
 
-**Datum:** 2026-10-10
+**Datum:** 2026-10-10 (geändert 2026-10-11: die Teilnehmerliste sieht die ganze Gilde, D-43)
 **Entscheidung:** Teil G und H der Spec `docs/specs/2026-10-10-raid-aufstellung.md`. **Kalender (Teil G):**
 Auf der Seite Aufstellung zeigt "Kalender" die Gildenereignisse (`GUILD_EVENT`) der Raidnacht von heute
 bis 14 Tage voraus, jede Art (die Art "Schlachtzug" verlangt in Forever eine Raid-Instanz; Prüfung 17 im
@@ -711,11 +711,40 @@ Login, die übrigen Fragen nach den Vorschlägen); Prüfungen 17 bis 20 im Spiel
 anlegen, ändern oder löschen). Das Eintragen des Spielers selbst in den Spielkalender (Teil H3:
 `EventSignUp`, `EventTentative`, `EventDecline`, `RemoveEvent`) kommt erst nach den Prüfungen 23 bis 25;
 bis dahin zeigt das Fenster "Bitte auch im Kalender eintragen." mit "Kalender öffnen", und die
-Einstellung `signup.calendar` gibt es nicht. Kein `AT` (Raidtermin in Amisia), keine Teilnehmerliste für
-Raider, keine Erinnerung im Chat, die Notiz nie in einem Chat oder im Export. Die Einstellung "Alle Arten
+Einstellung `signup.calendar` gibt es nicht. Kein `AT` (Raidtermin in Amisia), keine Erinnerung im Chat, die Notiz nie in einem Chat oder im Export. Die Einstellung "Alle Arten
 von Gildenereignissen zeigen" (`lineup.calendarAll`) der Spec entfällt: es zählt ohnehin jede Art. Der
 Kalender-Lesecode ist einer (`Raid/Calendar.lua`) für Aufstellung, Anmeldung und die Kalender-Prüfung.
+Alter Stand bis 2026-10-11: "keine Teilnehmerliste für Raider" (Frage 30); seitdem sieht jeder in der
+Gilde die Liste im Fenster "Raid-Kalender" (D-43), und jeder Client behält die empfangenen `AN`.
 **Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
 `addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
+`tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
+
+## D-43 Raid-Kalender: alle in der Gilde sehen, wer kommt
+
+**Datum:** 2026-10-11
+**Entscheidung:** Teil I der Spec `docs/specs/2026-10-10-raid-aufstellung.md`. Das Fenster "Raid-Kalender"
+(`/amisia kalender`, en `calendar`; Knopf "Kalender" auf der Karte "Raid-Anmeldung" und im Fenster
+"Raid-Anmeldung") zeigt **jedem in der Gilde** links die Termine der nächsten 14 Tage (Gildenereignisse
+aus dem Spielkalender) und rechts die Teilnehmer des gewählten Termins in den Gruppen "Angemeldet /
+Bestätigt", "Vorläufig", "Ersatz", "Abgemeldet", "Ohne Antwort" (Zahl im Kopf), je Zeile Rolle (grau "?"
+wenn geraten), Name in Klassenfarbe, Stufe, Quellen (K Kalender, A Amisia) und Notiz (ganz im Tooltip),
+darüber "Tanks · Heiler · Nahkampf · Fernkampf" der Angemeldeten. Die Daten: die Teilnehmerliste des
+Ereignisses (gelesen wie in Teil G: nie, solange das Kalenderfenster ein anderes Ereignis zeigt, immer
+`CloseEvent`, nicht im Kampf; neu bei Änderungen höchstens alle 5 Sekunden und alle 30 Sekunden, solange
+das Fenster offen ist) und die Anmeldungen aus Amisia, die **jeder Client** jetzt behält: empfangene
+`AN` von Gildenmitgliedern (`AmisiaDB.signup.seen`: heute bis 14 Tage, 4 Nächte pro Absender, 80 Namen
+pro Nacht, beim Laden gekürzt) und die eigenen Charaktere des Kontos. Welche Angabe gilt, entscheidet
+dieselbe Funktion wie in der Aufstellung (`ns.LineupResolve`). Offiziere haben zusätzlich "Zur
+Aufstellung". `AQ` bleibt bei den Offizieren, keine neue Nachrichtenart.
+**Grund:** Nutzer am 2026-10-11 nach dem Test im Spiel: "Teil I", alle in der Gilde sehen die Liste mit
+Rolle und Notiz (der Spielkalender zeigt die Teilnehmer ohnehin, die Notizen gehen schon an die ganze
+Gilde, "Für die Gilde lesbar.").
+**Folge:** Frage 30 der Spec ist geändert (D-42 nennt den alten Stand). Ein Raider sieht nur, was sein
+Client empfangen hat: wer sich anmeldete, während er offline war, fehlt ihm bis zur Wiederholung beim
+nächsten Login des anderen (keine neue Nachricht, kein `AQ` für Raider). Das Fenster schreibt nichts in
+den Kalender. Seine Position steht in `settings.calendarWindow`; "Fensterposition zurücksetzen" setzt
+sie zurück.
+**Durchgesetzt durch:** `addon/tests/test_raid_calendar.lua`, `addon/tests/test_signup_comm.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.

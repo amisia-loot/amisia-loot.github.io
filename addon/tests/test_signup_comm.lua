@@ -41,8 +41,13 @@ assert(BUS.count({ kind = "AN", sender = PALA, chan = "GUILD" }) == 1)
 local e = entry(PALA)
 assert(e and e.f == "A" and e.st == "A" and e.r == "H" and e.w == "komme 20:15" and e.c == "PALADIN", "in the officer's lineup")
 assert(entry(PALA, N1) and not entry(BOB), "only the sender")
--- Bob (a member, no officer) keeps nothing
-assert(C(BOB, "NS.LineupNight(" .. ("%q"):format(N1) .. ") == nil"), "a raider keeps no list")
+-- Bob (a member, no officer) keeps no lineup, but the sign-up for the raid calendar window (part I)
+assert(C(BOB, "NS.LineupNight(" .. ("%q"):format(N1) .. ") == nil"), "a raider keeps no lineup")
+local seenB = C(BOB, ("local r = NS.SignupSeen(%q)['Vulo Pala'] return r and (r.s .. r.r .. (r.w or '')) or false"):format(N1))
+assert(seenB == "AHkomme 20:15", "a raider keeps the received sign-up: " .. tostring(seenB))
+assert(C(BOB, ("local s = AmisiaDB.signup.seen[%q] return s and s['Vulo Pala'] and s['Vulo Pala'].g ~= nil"):format(N1)), "saved with the time received")
+-- the window of a raider shows it (everyone in the guild sees the list)
+assert(C(BOB, ("for _, e in ipairs(NS.RaidCal.List(%q)) do if e.n == 'Vulo Pala' then return e.st == 'A' and e.r == 'H' and e.w == 'komme 20:15' and e.f == 'A' end end return false"):format(N1)))
 
 -- a second message for the night within 10 s is dropped (keyed gap); later it counts
 local function send(from, fields, chan, target)
@@ -86,6 +91,9 @@ assert(entry(PALA).st == "V" and entry(PALA).ag <= C(HUNT, "time()"), "a clock a
 send(KIM, { N1, "A", "T", "MAGE", tostring(now + 70), "-", "-" }, "WHISPER", HUNT)
 BUS.tick(2)
 assert(not entry(KIM), "not a guild member")
+send(KIM, { N1, "A", "T", "MAGE", tostring(now + 71), "-", "-" })
+BUS.tick(2)
+assert(C(BOB, ("NS.SignupSeen(%q)['Kim Fremd'] == nil"):format(N1)), "a raider keeps nothing from outside the guild")
 -- too far ahead and a fifth night
 local far = C(HUNT, "NS.NightOf(time() + 20 * 86400)")
 send(BOB, { far, "A", "M", "WARRIOR", tostring(now + 70), "-", "-" })
@@ -98,6 +106,8 @@ end
 local nights = C(HUNT, "#NS.LineupSignupNights('Bob Eisherz')")
 assert(nights == 4, "4 nights per sender: " .. tostring(nights))
 assert(not entry(BOB, night(5)), "the fifth is dropped")
+assert(C(PALA, ("NS.SignupSeen(%q)['Bob Eisherz'] == nil and NS.SignupSeen(%q)['Bob Eisherz'] ~= nil"):format(night(5), night(4))),
+    "a raider keeps 4 nights per sender too")
 
 -- the officer asks after his login (AQ); Pala answers by whisper with her sign-ups, once in 10 minutes
 C(PALA, "NS.SignupSet(NS.SignupTerms()[2], 'A', 'H')")

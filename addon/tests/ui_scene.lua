@@ -397,6 +397,26 @@ S.WINDOWS = {
         S.calendar()
         return NS.ShowSignup()
     end },
+    -- the raid calendar window (UI/RaidCalendar.lua, part I): tonight's raid with the calendar's
+    -- invites and sign-ups from Amisia (notes, a sign-off), the dates on the left
+    { key = "raidcalendar", view = "raider", open = function()
+        S.calendar()
+        local ev = NS.Cal.Events()[1]
+        local keep, t = NS._signup.keepSeen, math.floor(STUB.now)
+        keep(ev.night, "Pia Pfeil", { s = "A", r = "R", c = "HUNTER", t = t, w = "komme 20:15" })
+        keep(ev.night, "Jo Klinge", { s = "X", r = "M", c = "ROGUE", t = t, w = "Nachtschicht, sorry" })
+        keep(ev.night, "Lea Morgen", { s = "A", r = "R", c = "MAGE", t = t, w = "Feuer" })
+        keep(ev.night, "Bob Eisherz", { s = "A", r = "T", c = "WARRIOR", t = t })
+        NS.ShowRaidCalendar(ev.night)
+        STUB.tick(1)
+        return AmisiaRaidCalendarFrame
+    end },
+    { key = "raidcalendar-officer", view = "officer", open = function()
+        S.calendar()
+        NS.ShowRaidCalendar(NS.Cal.Events()[1].night)
+        STUB.tick(1)
+        return AmisiaRaidCalendarFrame
+    end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame

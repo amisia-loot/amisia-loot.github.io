@@ -110,7 +110,7 @@ T.MAIN = {
 }
 
 -- an overview card
-T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON_Y = 8 }
+T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6 }
 -- the shared popup menu and the picker's panel
@@ -225,6 +225,31 @@ T.SIGNUP = {
     BUTTON_W = 100,       -- Anmelden, Vorläufig, Abmelden (at least; FitChip)
     BOTTOM = 14,          -- the button row from the window's bottom edge
     LINE_H = 14,          -- one line of a hint (T.FONT.hint)
+}
+
+-- the raid calendar window (UI/RaidCalendar.lua, "Raid-Kalender", AmisiaRaidCalendarFrame, part I):
+-- the dates of the next 14 days on the left (two lines each), the chosen date's participants on the
+-- right (a head, the role summary, the list grouped by status), the status line and the red buttons
+-- at the bottom. Its content keeps T.WINDOW_PAD from the left and right edge: 18 + 220 (dates) + 12
+-- (their bar) + 8 + 450 (participants) + 12 (their bar) = 720.
+T.RAIDCAL = {
+    W = 720, H = 470,     -- the window
+    TOP = 34,             -- the content below the window's top, under the title bar
+    DATES_W = 220,        -- the date list
+    DATE_ROW_H = 34,      -- a date: "Fr 10.10. 20:00" and the own state over the title
+    DATE_ROWS = 11,
+    DATE_TEXT_X = 6,      -- the date's texts from the row's left and right edge
+    RIGHT_X = 258,        -- the participants from the window's left edge (18 + 220 + 12 + 8)
+    RIGHT_W = 432,        -- the participant list (its bar right of it, 12 px room to the edge pad)
+    HEAD_H = 18,          -- the chosen date's title (gold)
+    SUM_Y = 54,           -- the role summary "Tanks 2 · Heiler 5 · ..." below the window's top
+    LIST_Y = 74,          -- the participant list below the window's top
+    ROW_H = 18,           -- a participant or a group head
+    ROWS = 19,
+    -- the participant columns: role, name (class colour), level, sources, note (cut; the tooltip has it whole)
+    COLS = { { "r", 4, 22 }, { "name", 30, 160 }, { "level", 194, 26 }, { "src", 224, 30 }, { "note", 258, 170 } },
+    BOTTOM = 14,          -- the button row from the window's bottom edge
+    BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
 ---------------------------------------------------------------------------

@@ -10,9 +10,11 @@
 --   AN <night> <A|V|X> <T|H|M|R|-> <class|-> <epoch of the click> <event id|-> [<note|->]
 --        raider -> GUILD on the click and once after the login (low); WHISPER as the answer to AQ
 --   AQ <O|-> <rev>   an officer -> GUILD once 40-70 s after the login (low): "who signed up?"
--- Trust: the name is the sender the server sets (never a field); the officer takes AN only from a
--- guild member, for tonight up to 14 days ahead, 4 nights per sender; a raider answers AQ only to a
--- verified officer (rank flag 22), at most once in 10 minutes with at most 4 messages.
+-- Trust: the name is the sender the server sets (never a field); every client keeps AN only from a
+-- guild member, for tonight up to 14 days ahead, 4 nights per sender, 80 names per night (part I:
+-- the raid calendar window shows them to everyone, D-43); the officer also takes them into the
+-- lineup; a raider answers AQ only to a verified officer (rank flag 22), at most once in 10 minutes
+-- with at most 4 messages.
 -- Writing into the game calendar (part H3: EventSignUp, EventTentative, EventDecline, RemoveEvent)
 -- waits for the in-game checks 23 to 25; until then the window says "Bitte auch im Kalender
 -- eintragen" with a button that opens the client's calendar window (ns.SignupCalendarWrite is the
@@ -22,6 +24,7 @@ local L = ns.L
 
 local MAX_NIGHTS = 4       -- sign-ups kept per character (the soonest); nights per sender at the officer
 local MAX_CHARS = 12       -- characters kept
+local SEEN_MAX = 80        -- received sign-ups kept per night (the lineup's 80 names)
 local NOTE_MAX = 40        -- bytes of a note
 local LOGIN_AFTER, LOGIN_SPREAD = 40, 30   -- the login's work 40-70 s after the login
 local RESEND_EVERY = 1800  -- the own sign-ups go out again after a login at most this often (/reload too)
@@ -64,23 +67,58 @@ local function eventId(v)
     return type(v) == "string" and #v <= 20 and v:match("^%d+$") and v or nil
 end
 
+-- k: how the calendar entry of the click went (part H3): "ok", "err", "off" (signup.calendar off)
+local CAL_RESULT = { ok = true, err = true, off = true }
 local function cleanRec(r)
     if type(r) ~= "table" or not OWN[r.s] or not posNum(r.t) then return nil end
     return { s = r.s, r = IS_ROLE[r.r] and r.r or nil, c = ns.LINEUP_CLASSES[r.c] and r.c or nil, t = posNum(r.t),
-             w = cleanNote(r.w), e = eventId(r.e) }
+             w = cleanNote(r.w), e = eventId(r.e), k = CAL_RESULT[r.k] and r.k or nil }
 end
 
 ---------------------------------------------------------------------------
--- Saved: AmisiaDB.signup = { v = 1, chars = { [name] = { [night] = { s, r, c, t, w, e } } }, sent }
+-- Saved: AmisiaDB.signup = { v = 1, chars = { [name] = { [night] = { s, r, c, t, w, e, k } } }, sent,
+-- seen = { [night] = { [name] = { s, r, c, t, w, e, g } } } }
 ---------------------------------------------------------------------------
+local function validName(name)
+    local cn = type(name) == "string" and ns.FullName(name)
+    if cn and #cn <= 48 and not cn:find("[%d%c|]") then return cn end
+    return nil
+end
+
+-- The received sign-ups (part I): nights tonight up to 14 days ahead, every field checked, the 80
+-- newest clicks per night.
+local function cleanSeen(seen)
+    local out = {}
+    for night, map in pairs(type(seen) == "table" and seen or {}) do
+        if type(night) == "string" and ns.LineupSignupNight(night) and type(map) == "table" then
+            local list = {}
+            for name, r in pairs(map) do
+                local cn, rec = validName(name), cleanRec(r)
+                if cn and rec then
+                    rec.k = nil
+                    rec.g = posNum(type(r) == "table" and r.g)
+                    list[#list + 1] = { name = cn, rec = rec }
+                end
+            end
+            table.sort(list, function(a, b) return a.rec.t > b.rec.t end)
+            if #list > 0 then
+                local keep = {}
+                for i = 1, math.min(#list, SEEN_MAX) do keep[list[i].name] = list[i].rec end
+                out[night] = keep
+            end
+        end
+    end
+    return out
+end
+
 -- Nights before tonight go, 4 nights per character (the soonest), 12 characters (the newest clicks).
 function ns.SignupLoaded(root)
     local s = type(root.signup) == "table" and root.signup or {}
     local first = tonight()
     local chars = {}
     for name, nights in pairs(type(s.chars) == "table" and s.chars or {}) do
-        local cn = type(name) == "string" and ns.FullName(name)
-        if cn and #cn <= 48 and not cn:find("[%d%c|]") and type(nights) == "table" then
+        local cn = validName(name)
+        if cn and type(nights) == "table" then
             local list = {}
             for night, r in pairs(nights) do
                 local rec = type(night) == "string" and night:match("^%d%d%d%d%-%d%d%-%d%d$") and night >= first and cleanRec(r)
@@ -100,7 +138,7 @@ function ns.SignupLoaded(root)
     table.sort(chars, function(a, b) return a.newest > b.newest end)
     local out = {}
     for i = 1, math.min(#chars, MAX_CHARS) do out[chars[i].name] = chars[i].map end
-    root.signup = { v = 1, chars = out, sent = posNum(s.sent) }
+    root.signup = { v = 1, chars = out, sent = posNum(s.sent), seen = cleanSeen(s.seen) }
     DB = root
 end
 
@@ -251,6 +289,41 @@ local function takes()
     return ns.LineupAllowed and ns.LineupAllowed() and ns.Get("lineup.signups") ~= false
 end
 
+-- Every client keeps the sign-ups it receives (part I, the raid calendar window for the whole guild):
+-- name the sender (a guild member), the sender's clock orders its clicks, 4 nights per sender, 80
+-- names per night. Returns whether it changed.
+local function keepSeen(night, name, rec)
+    if not DB or not ns.LineupSignupNight(night) then return false end
+    rec = cleanRec(rec)
+    if not rec then return false end
+    local st = DB.signup
+    st.seen = st.seen or {}
+    local map = st.seen[night]
+    local old = map and map[name]
+    if old and old.t >= rec.t then return false end
+    if not old then
+        local nights = 0
+        for _, m in pairs(st.seen) do if m[name] then nights = nights + 1 end end
+        if nights >= MAX_NIGHTS then return false end
+        local n = 0
+        for _ in pairs(map or {}) do n = n + 1 end
+        if n >= SEEN_MAX then return false end
+    end
+    rec.k, rec.g = nil, math.floor(time())
+    map = map or {}
+    map[name] = rec
+    st.seen[night] = map
+    ns.Fire("SIGNUP_SEEN", night)
+    return true
+end
+
+-- The sign-ups received for night: { [name] = rec } (the own account's characters are in
+-- ns.SignupState().chars).
+function ns.SignupSeen(night)
+    local st = ns.SignupState()
+    return st and st.seen and st.seen[night] or {}
+end
+
 -- The officer: the sign-ups of every character of this account into the lineup, without a
 -- message (AmisiaDB is account-wide). Returns how many changed it.
 function ns.SignupTakeOwn()
@@ -266,14 +339,17 @@ function ns.SignupTakeOwn()
 end
 
 ns.CommOn("AN", function(sender, f)
-    if not DB or not takes() then return end
+    if not DB or not IsInGuild() then return end
     local name = ns.TrustName(sender)
     local night = f[1]
     if not name or not ns.LineupSignupNight(night) then return end
     local rec = { s = f[2], r = IS_ROLE[f[3]] and f[3] or nil, c = f[4] ~= "-" and f[4] or nil, t = tonumber(f[5]),
-                  w = f[7] and f[7] ~= "-" and cleanNote(f[7]) or nil }
+                  w = f[7] and f[7] ~= "-" and cleanNote(f[7]) or nil, e = f[6] ~= "-" and f[6] or nil }
     ns.TrustWait(name, "member", function(ok)
-        if not ok or not takes() then return end
+        if not ok then return end
+        -- everyone keeps it (the raid calendar window); only an officer takes it into the lineup
+        keepSeen(night, name, rec)
+        if not takes() then return end
         -- at most 4 nights per sender
         local nights = ns.LineupSignupNights(name)
         if #nights >= MAX_NIGHTS then
@@ -467,4 +543,4 @@ ns.RegisterSlash("abmelden", { en = "signoff", desc = L["Vom nächsten Termin au
 
 -- for the tests
 ns._signup = { termOf = termOf, reset = function() resent, asked, answered, terms, loading, lastSent = false, false, {}, nil, false, {} end,
-               MAX_NIGHTS = MAX_NIGHTS }
+               MAX_NIGHTS = MAX_NIGHTS, SEEN_MAX = SEEN_MAX, keepSeen = keepSeen }

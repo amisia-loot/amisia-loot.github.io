@@ -1310,6 +1310,16 @@ function ns.LineupSignup(night, name, rec, notify)
     return true
 end
 
+-- The valid status and role of an entry built outside the lineup (the raid calendar window, part I,
+-- Raid/RaidCalendar.lua) by the same rules as a lineup row: e = { n, c, ks, kt (calendar), as, ag,
+-- ar, w (Amisia) }; sets e.st, e.t, e.a, e.r and e.q (no chat line, nothing saved). One function
+-- for both, so the window and the officer's lineup never disagree.
+function ns.LineupResolve(e, night)
+    settle(e)
+    settleRole(e, night)
+    return e
+end
+
 -- Every night (tonight on) in which name signed up through Amisia.
 function ns.LineupSignupNights(name)
     local out, low = {}, type(name) == "string" and name:lower() or ""

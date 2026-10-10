@@ -15,7 +15,7 @@ assert(terms and #terms == 2)
 
 local function card()
     for _, c in ipairs(NS.OverviewPageFrame().cards) do
-        if c:IsShown() and c.title:GetText() == "Raid-Anmeldung" then return c end
+        if c:IsShown() and c.title:GetText() == NS.L["Raid-Anmeldung"] then return c end
     end
 end
 NS.ShowPage("overview")

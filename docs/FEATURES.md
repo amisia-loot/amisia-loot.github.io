@@ -429,6 +429,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein Raider anmeldet, während kein Offizier online ist ("Kein Offizier online: Amisia schickt es, sobald einer kommt."), und sich später ein Offizier einloggt, während der Raider online ist, dann steht die Anmeldung nach höchstens 2 Minuten in der Aufstellung des Offiziers (Frage AQ, Antwort per Flüstern). Wenn ein Raider eine Notiz mit Farbcode und 100 Zeichen sendet, dann zeigt der Offizier höchstens 40 Zeichen ohne Farbe, und kein Chat zeigt die Notiz.
 - Notiz: Teil H3 (derselbe Klick trägt auch im Spielkalender ein) ist noch nicht gebaut: das Fenster zeigt "Bitte auch im Kalender eintragen." mit "Kalender öffnen"; kommt nach den Prüfungen 23 bis 25. Einstellungen: "Raid-Anmeldung", "Karte auf der Übersicht" (an); "Raid-Aufstellung", "Anmeldungen aus Amisia annehmen" (an). `/amisia signup` und `/amisia signoff` auf englischen Clients. Spec Teil H (H1 und H2), DECISIONS D-42; Raider sehen keine Liste anderer.
 
+### F-088 Raid-Kalender: wer kommt (für die ganze Gilde)
+- Version: 2.25.0
+- Status: gebaut
+- Prüfung: Wenn du als Vulo Pala (kein Offizier) `/amisia kalender` eingibst, dann öffnet sich das Fenster "Raid-Kalender": links die Gildenereignisse der nächsten 14 Tage (z. B. "Mo 12.10. 20:00", Titel, rechts dein Stand), rechts für Vulo Hunts Ereignis die Gruppe "Angemeldet / Bestätigt (1)" mit Vulo Hunt (Rolle grau "F?" oder die seiner Amisia-Anmeldung, Stufe, Quelle "K", mit Amisia-Anmeldung "K A"), darüber die Zählung "Tanks · Heiler · Nahkampf · Fernkampf", unten "Kalender gelesen <Uhrzeit>"; einen Knopf "Zur Aufstellung" gibt es nicht.
+- Prüfung: Wenn du als Vulo Pala im Fenster "Anmelden ..." klickst, im Fenster "Raid-Anmeldung" Rolle "H" und die Notiz "komme 20:15" wählst und "Vorläufig" klickst, dann steht Vulo Pala im Raid-Kalender unter "Vorläufig (1)" mit "H", Quelle "A" und der Notiz; die Maus auf der Zeile zeigt "Notiz: komme 20:15" und "Quellen: Amisia"; der Knopf heißt jetzt "Ändern ...".
+- Prüfung: Wenn du auf der Übersicht bei der Karte "Raid-Anmeldung" "Kalender" klickst (oder im Fenster "Raid-Anmeldung" "Kalender" neben dem Datum), dann öffnet sich derselbe Raid-Kalender; du kannst ihn verschieben, Escape schließt ihn, und nach `/reload` öffnet er sich an derselben Stelle.
+- Prüfung: Wenn du danach als Vulo Hunt `/amisia kalender` öffnest, dann siehst du Vulo Pala mit "H", "A" und der Notiz (dieselbe Liste wie in der Aufstellung) und unten zusätzlich "Zur Aufstellung", das die Seite Aufstellung mit dieser Nacht öffnet.
+- Prüfung: Wenn das Kalenderfenster des Spiels ein anderes Ereignis zeigt, während der Raid-Kalender offen ist, dann steht unten "Kalenderfenster des Spiels schließen, dann liest Amisia die Liste." und im Kalender ändert sich nichts.
+- Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein anderes Gildenmitglied mit Amisia anmeldet, während du online bist, dann steht es nach wenigen Sekunden in deinem Raid-Kalender mit Rolle und Notiz (auch als Raider).
+- Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil I; DECISIONS D-43 (alle in der Gilde sehen die Liste, Nutzer 2026-10-11). Die Daten: Teilnehmerliste des Kalenders (K) und Anmeldungen aus Amisia (A: empfangene AN und die eigenen Charaktere), dieselbe Regel "Welche Angabe gilt" wie die Aufstellung. `/amisia calendar` auf englischen Clients.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

@@ -1,6 +1,6 @@
 # Spec: Raid-Aufstellung (Anmeldeliste, Einladen, Gruppen sortieren)
 
-Stand: 2026-10-10 · Status: freigegeben, Teile A, B, E, G und H (ohne H3) gebaut ·
+Stand: 2026-10-11 · Status: freigegeben, Teile A, B, E, G, H (ohne H3) und I gebaut ·
 Feature: F-083 (Aufstellung: Einfügen, Abgleich, Planer, Ersatzbank), F-084 (Einladen, Sortieren);
 F-082 war beim Bau schon vergeben (Einrichtungshilfe). Regel: DECISIONS D-41.
 
@@ -880,3 +880,12 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
     (der Spiel-Kalender zeigt die Teilnehmer ohnehin, die Notizen gehen schon an die ganze Gilde).
   - Feinschliff: Anmeldefenster kompakter; auf der Karte "Ändern" statt "Anmelden", wenn schon
     angemeldet.
+- 2026-10-11: Gebaut: Feinschliff (Anmeldefenster kompakt, Karte "Ändern") zu F-087 und Teil I als
+  F-088 (2.25.0), Regel D-43 (D-42 geändert: Frage 30). Beim Bau entschieden: das Fenster heißt
+  "Raid-Kalender" (`AmisiaRaidCalendarFrame`, `/amisia kalender`, en `calendar`); Knöpfe für die eigene
+  Anmeldung nicht im Fenster selbst, sondern "Anmelden ..."/"Ändern ..." öffnet das Fenster
+  "Raid-Anmeldung" am gewählten Termin; die Zählung oben zählt nur "Angemeldet / Bestätigt"; jeder
+  Client behält empfangene `AN` (`signup.seen`), ein Raider ohne `AQ` sieht nur, was er empfangen hat;
+  der Kalender-Status merkt sich die Zeit eines Wechsels nur im Speicher (wie die Aufstellung, aber
+  nicht gespeichert); "Welche Angabe gilt" ist eine Funktion für Aufstellung und Fenster
+  (`ns.LineupResolve`).

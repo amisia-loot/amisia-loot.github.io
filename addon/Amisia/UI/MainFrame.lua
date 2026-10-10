@@ -66,6 +66,7 @@ function ns.ResetPositions()
     if ns.ResetGearPosition then ns.ResetGearPosition() end
     if ns.ResetRollWindowPosition then ns.ResetRollWindowPosition() end
     if ns.ResetTalentWindowPosition then ns.ResetTalentWindowPosition() end
+    if ns.ResetRaidCalendarPosition then ns.ResetRaidCalendarPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 
