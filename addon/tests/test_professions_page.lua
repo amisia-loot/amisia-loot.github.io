@@ -47,14 +47,18 @@ NS.Refresh()
 local rows = f.list.rows
 assert(has(rows[1].name:GetText(), "Kupferarmschienen") and has(rows[1].name:GetText(), "(bekannt)"), rows[1].name:GetText())
 assert(has(rows[1].name:GetText(), "|c" .. Pr.COLORS.green), "green at rank 45 (20/40/60)")
-assert(has(rows[2].name:GetText(), "|c" .. Pr.COLORS.yellow) and not has(rows[2].name:GetText(), "bekannt"), rows[2].name:GetText())
-assert(has(rows[4].name:GetText(), "|c" .. Pr.COLORS.red), "unknown and above the own rank")
-assert(rows[2].rank:GetText():find("10"), "the learn rank")
+assert(has(rows[4].name:GetText(), "|c" .. Pr.COLORS.yellow) and not has(rows[4].name:GetText(), "bekannt"), rows[4].name:GetText())
+assert(has(rows[5].name:GetText(), "|c" .. Pr.COLORS.red), "unknown and above the own rank")
+assert(rows[4].rank:GetText():find("10"), "the learn rank")
+-- sorted by the learn rank, then by when it turns yellow (the data had 3321 second)
+local order = {}
+for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
+assert(table.concat(order, ",") == "2663,9999,1252229,3321,1301421", table.concat(order, ","))
 assert(not has(f.counts:GetText(), "Berufsfenster"), f.counts:GetText())
 
 -- the detail of the first row is shown; a click chooses another
 assert(f.selected and f.selected.recipe.spell == 2663, "the first row is chosen")
-rows[2]:Click()
+rows[4]:Click()
 assert(f.selected.recipe.spell == 3321 and AmisiaDB.settings.professions.sel["164"] == 3321, "chosen and kept")
 local d = f.detail
 assert(has(d.title:GetText(), "Kupferkettenweste"), d.title:GetText())

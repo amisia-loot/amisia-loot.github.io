@@ -613,7 +613,7 @@ local lower = ns.Fold
 -- The recipes of a skill line after the filters: opts.search (part of the recipe or item name, any
 -- case), opts.known ("known", "unknown"), opts.learnable (the own rank reaches the learn rank),
 -- opts.source ("T", "V", "F", "D", "Q"), opts.guild (someone of the guild knows it, Crafters.lua).
--- Each entry is the recipe with name, known, color.
+-- Each entry is the recipe with name, known, color; sorted by the learn rank.
 function Pr.List(skill, opts)
     opts = opts or {}
     local rank = Pr.Rank(skill)
@@ -636,6 +636,15 @@ function Pr.List(skill, opts)
             out[#out + 1] = { recipe = r, name = name, known = known, color = Pr.Difficulty(r, rank, known) }
         end
     end
+    -- by the skill needed to learn it (the number the list shows), then by when it turns yellow,
+    -- then by name (the user, 2026-10-11: the data's order put a few recipes out of line)
+    table.sort(out, function(a, b)
+        local ra, rb = a.recipe, b.recipe
+        if ra.learn ~= rb.learn then return ra.learn < rb.learn end
+        if ra.yellow ~= rb.yellow then return ra.yellow < rb.yellow end
+        if a.name ~= b.name then return tostring(a.name) < tostring(b.name) end
+        return ra.spell < rb.spell
+    end)
     return out
 end
 

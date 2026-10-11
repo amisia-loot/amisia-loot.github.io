@@ -614,6 +614,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du das Berufsfenster einmal öffnest, dann zeigt der Filter "Bekannt" genau die Rezepte, die du kennst.
 - Prüfung: Wenn du `/amisia berufe lager` eingibst, dann siehst du die Lagerobjekte (Camping) mit Beschreibung ("Beschreibung lädt ..." nur kurz).
 - Prüfung: Wenn du `/amisia berufe gunst` eingibst, dann zeigt die Seite die Händlergunst und welche Items einen Handwerksauftrag haben.
+- Notiz: seit 2026-10-11 ist die Rezeptliste nach der Lernstufe sortiert (dann nach Gelb, dann Name); vorher die Reihenfolge der Daten.
 
 ### F-052 Magier-Schriftrollen
 - Version: 2.10.0
