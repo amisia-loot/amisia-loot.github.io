@@ -121,9 +121,14 @@ local function tick()
     local batch = math.max(1, math.floor(s.rate / 10))
     if queue then
         while batch > 0 and pendingCount < MAX_PENDING and #queue > 0 do
-            send(table.remove(queue, 1), 1)
-            pendingCount = pendingCount + 1
-            batch = batch - 1
+            -- an id twice in the list (parked by two scans of one range) is asked once: a second
+            -- count would never come down and the scan would never end
+            local id = table.remove(queue, 1)
+            if not pending[id] then
+                send(id, 1)
+                pendingCount = pendingCount + 1
+                batch = batch - 1
+            end
         end
         if #queue == 0 and pendingCount == 0 then finish(L["fertig"]) end
         return
