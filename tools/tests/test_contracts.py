@@ -427,11 +427,42 @@ OTHER_ADDONS = ('gargul', 'rclootcouncil', 'questie', 'atlasloot', 'oneforall', 
                 'bigwigs', 'deadly boss mods', 'cepgp', 'monolithdkp', 'essentialdkp', 'zygor', 'guidelime')
 
 
+# D-05, exception of 2026-10-11 (spec docs/specs/2026-10-11-softres-gargul.md): "Gargul" only in these
+# files, and there only in a comment or inside a text of L[...] (the import preview and its messages,
+# the roll window mark "(Gargul)", the lead's hint); never in code, a setting key or a chat line sent.
+NAMED_HERE = {
+    'gargul': {'Raid/SoftRes.lua', 'Raid/Rolls.lua', 'Raid/RollWindow.lua', 'Raid/RollWatch.lua', 'Raid/RollFrame.lua',
+               'UI/Pages/SoftRes.lua', 'Locales/enUS_raid.lua', 'Locales/enUS_raid2.lua'},
+}
+
+
+def _named_where_allowed(rel, line, name):
+    if rel not in NAMED_HERE.get(name, ()):
+        return False
+    low = line.lower()
+    at = low.find(name)
+    comment = low.find('--')
+    if comment != -1 and comment < at:
+        return True
+    # inside L["..."]: every occurrence on the line stands in a quoted text after L[
+    texts = re.findall(r'L\["((?:[^"\\]|\\.)*)"\]', line) + (re.findall(r'=\s*"((?:[^"\\]|\\.)*)"\s*$', line) if rel.startswith('Locales/') else [])
+    return low.count(name) == sum(t.lower().count(name) for t in texts)
+
+
 def test_other_addons_are_not_named_in_the_addon():
     for rel, text in addon_files(exts=('.lua', '.toc', '.xml'), skip=('Data/',)):
-        low = text.lower()
-        for name in OTHER_ADDONS:
-            assert name not in low, f'{rel} names {name}'
+        for n, line in enumerate(text.splitlines(), 1):
+            low = line.lower()
+            for name in OTHER_ADDONS:
+                if name in low:
+                    assert _named_where_allowed(rel, line, name), f'{rel}:{n} names {name}'
+
+
+def test_the_named_exception_stays_narrow():
+    assert set(NAMED_HERE) == {'gargul'}
+    assert not _named_where_allowed('Raid/Awards.lua', '-- Gargul', 'gargul')
+    assert not _named_where_allowed('Raid/Rolls.lua', 'local x = "Gargul"', 'gargul')
+    assert _named_where_allowed('Raid/Rolls.lua', 'ns.msg(L["Gargul-Runde"])', 'gargul')
 
 
 def test_the_version_stands_only_in_the_toc():

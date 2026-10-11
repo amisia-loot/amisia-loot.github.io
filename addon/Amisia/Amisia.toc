@@ -80,6 +80,7 @@ Gear\Compare.lua
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua
+Raid\RollWatch.lua
 Raid\Handover.lua
 Raid\Calendar.lua
 Raid\CalendarWrite.lua

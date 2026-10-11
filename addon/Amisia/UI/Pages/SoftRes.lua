@@ -398,7 +398,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         end
         f:Place(3, { f.views.items, f.views.raider, f.views.check }, { f.remind, f.post }, { shown = true })
         if not sr then
-            f.empty:Set(L["Keine Soft-Reserves"], officer and L["Importieren nimmt eine softres.it-CSV oder Zeilen wie 'Name [Item-Link]'."]
+            f.empty:Set(L["Keine Soft-Reserves"], officer and L["Importieren nimmt eine softres.it-CSV, ihren Gargul-Code oder Zeilen wie 'Name [Item-Link]'."]
                 or L["Die Lootleitung hat noch keine Liste geladen."])
         end
         f.empty:SetShown(not sr)

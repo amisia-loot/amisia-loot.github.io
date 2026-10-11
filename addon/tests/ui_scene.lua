@@ -331,6 +331,14 @@ S.WINDOWS = {
         NS.ToggleSoftResFrame()
         return AmisiaSoftResFrame
     end },
+    { key = "softresframe-code", view = "officer", open = function()
+        -- the softres.it code (its Gargul export) in the import window: the preview of the code
+        NS.ToggleSoftResFrame()
+        local F = AmisiaSoftResFrame
+        F.editBox:SetText("eNpljzFPxDAMhf+L5wxNVdoj27EwggSIAXVwa1dEpMnJSVmq/ncSDkErMsXv6X1+XmHmhIQJwaxgCQzgoOuRQMEojInpnMDo7la3N1V+CpYLHWX9LQtaekooKf46bd0U590SsQczoYusgGwcg9CLuLwMNgUxTEk4snxyBPO2gseZs3f2HksNhzHr8CiWY8qCD6nY+XdxS3zwJZXX2MTzNV/O0KeTbja1H/oy/rDvwrBDv6KIDfLHfkb/ceDrf/yu6tqM7PN9KHTof/XrqlEwZaqBe+uId81Lagh+iRKcK5l++wJJR3km")
+        F.previewText:SetText(NS.SoftResPreviewText(F.editBox:GetText()))
+        return F
+    end },
     { key = "gearframe", view = "raider", open = function()
         NS.ToggleGearFrame()
         return AmisiaGearFrame
@@ -360,6 +368,11 @@ S.WINDOWS = {
         rw.start({ "a1b2", "item:32837", "20", "R", "-", "-", "-", "-", "-" }, "Fraktur", "Fraktur")
         rw.finish("a1b2", "Fraktur", "Anna Bergmann", "95:MS", false, "D")
         rw.start({ "c3d4", "item:32235::::::::70", "20", "R", "-", "Vuloo,Chorf", "-", "-", "-" }, "Fraktur", "Fraktur")
+        return AmisiaRollWindow
+    end },
+    { key = "rollwindow-gargul", view = "raider", open = function()
+        -- a round the loot lead started with Gargul: the window marked "(Gargul)" with its note
+        NS.RollWindowForeign({ link = "item:32235::::::::70", secs = 20, note = "Tanks zuerst" }, "Fraktur", "Fraktur")
         return AmisiaRollWindow
     end },
     { key = "rollwindow-bid", view = "raider", open = function()

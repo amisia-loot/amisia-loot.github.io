@@ -47,10 +47,10 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `UI/Theme.lua` | Design tokens `ns.Theme` (sizes, fonts, colours, `ATLASES`) | - | - |
 | `UI/Widgets.lua` | `ns.W`: window, buttons, chips, rows, lists in the Forever look; `W.Confirm` the question window (`AmisiaConfirmFrame`, tokens `T.CONFIRM`: text, the red buttons "<ok>" and "Abbrechen"; ok runs inside the click, Abbrechen/X/Escape run onCancel) | - | Theme |
 | `Raid/Awards.lua` | Award book (ids, tombstones `s.gone`, undo), master loot hand-out confirmation, `ns.LootCandidate` (exactly one matching candidate, for every hand-out) | `awardsVersion` (migration mark) | Alts, Sync, Points, Rolls, AwardDialog |
-| `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1); start and end go to the roll window | - | PointsRounds, RollFrame, RollWindow, SoftRes, Awards, Chat |
+| `Raid/Rolls.lua` | One roll round at a time (MS 1-100, OS 1-99, SR first, +1); start and end go to the roll window; a hard reserve asks before the start; a round the lead started with Gargul is only watched (`r.foreign`: no announcement, no `WS`, no result); `rolls.announceEnglish` adds the announcement in English on a German client | - | PointsRounds, RollFrame, RollWindow, RollWatch, SoftRes, Awards, Chat |
 | `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |
-| `Raid/SoftRes.lua` | Soft-reserves paste, tooltip, loot window "SR" | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
+| `Raid/SoftRes.lua` | Soft-reserves paste (a softres.it CSV, its code = the "Gargul" export unpacked with `C_EncodingUtil` (Base64, zlib, JSON), or `Name [item]` lines), tooltip (note, softres +1 as a hint, "HR: ..."), loot window "SR"/"HR", `ns.HardReserveOf` | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
 | `Raid/LootAnnounce.lua` | Loot lead (`ns.IsLootLead`), loot announcement (without the items an item or player loot rule hands out by itself, `ns.LootRuleTakes`), `!sr` | - | SoftRes, Awards, Need, LootPrio, Chat |
 | `Raid/RaidLog.lua` | Boss attempts from encounter events, presence at kills | - | Sync, Awards |
 | `Raid/Bench.lua` | Bench per raid, `!bench` | `benchNext` | Sync, Trust, LootAnnounce, RaidLog |
@@ -96,6 +96,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Gear/Compare.lua` | Upgrade marks on roll frames and quest rewards | - | Bis, Gear |
 | `Raid/Need.lua` | "Wer braucht das?" UQ/UA; `ns.IsLootLeadName` (who leads the loot, also for WS), `ns.AmisiaInGroup` | - | Trust, Bis, Comm, Gear, LootAnnounce, Sync |
 | `Raid/LootRules.lua` | Loot rules of the master looter (D-37): ordered rules (quality, raid materials, item list -> bank/disenchant; one item -> a player), applied by GiveMasterLoot automatically or by one click on the bar beside the loot window, awards with the note "Regel: ...", one raid chat line of the hand-outs whose slot cleared; the editor in the settings (custom item); MR/MQ share between officers (an offer until "Übernehmen") | `lootRules` | Awards, LootAnnounce, SoftRes, LootPrio, GuildWishes, Need, Rolls, Points, Mats, Chat, Comm, Trust, Widgets, Settings page |
+| `Raid/RollWatch.lua` | Rounds started with Gargul (D-44): reads its start ("You have N seconds to roll on [Item]", German "Du hast N Sekunden um auf [Item] zu würfeln", " - note") and end ("Stop your rolls!", "Stopp deine Würfe!") from the raid chat and raid warnings, only from the master looter (without master loot the leader) with the officer rank in the own group (`ns.IsLootBossName`, Need.lua); the raiders' window opens marked "(Gargul)" (`ns.RollWindowForeign`), the lead's Amisia watches (`ns.WatchForeignRoll`); sends nothing | - | Rolls, RollWindow, Need, LootAnnounce, Trust |
 | `Raid/RollWindow.lua` | The raiders' roll window (D-38): the loot lead's round start (WS) and end (WE) from Rolls.lua; every raider client shows the item, the hints (reserved, plus-one, upgrade, wishlist), a timer bar and Mainspec/Offspec (RandomRoll 1-100/1-99), a bid or need/greed, Passen (WA to the lead, counted through `ns.PointsChatWord` like the whispered words); the lead's tally "passt · ohne Antwort" in the roll window; `/amisia wuerfeln test` | (`settings.rollWindow`) | Rolls, PointsRounds, Need, SoftRes, Bis, GuildWishes, Awards, Points, Comm, Trust, Chat, Widgets, Theme |
 | `Raid/Handover.lua` | The trade helper (D-39), only for the exceptions of master loot: an award (player, bank, disenchanter) of the last two hours whose copy still lies tradeable in the own bags ("Noch zu übergeben" on the Vergaben page, `/amisia uebergabe`); time left from the tooltip line TradeTimeRemaining (type 36, `BIND_TRADE_TIME_REMAINING`), own chat warnings at 30 and 10 minutes; copies followed by item GUID (else bag and slot); beside the trade window with the receiver "Amisia: N Items einlegen" (a click, never in combat); after the trade the copies that left the bags are marked handed over (only on this client) | `handover` | Awards, Sync (`ns.RaidKey`), Widgets, Theme, Awards page |
 | `Raid/Calendar.lua` | `ns.Cal`: the game calendar read only (D-42), shared by the lineup, the sign-up and the calendar probe: the guild events of tonight's night up to 14 days ahead (every `GUILD_EVENT`, the raid type chosen first; `Cal.Events`, `Cal.Load`, `Cal.Next`/`Cal.PickTarget`), the invite list of one event (`Cal.Read`: never while the client's calendar window shows another event, not in combat, `OpenEvent` with `offsetMonths`, read after `CALENDAR_OPEN_EVENT` (or `CALENDAR_UPDATE_INVITE_LIST`), always `CloseEvent`, 10 s for an answer, an open or a wait whose answer got lost counts as over 5 s after that (`Cal.STUCK`); an event that came open but is not the chosen one by start and title is not read, "other", and stays open when the client's window shows it), the status table (`Enum.CalendarStatus` -> codes A/B/V/E/X/I/O), the status groups `Cal.IN`/`Cal.TENT`/`Cal.OUT` and `Cal.Target` (an event found again by its id with its day event, `GetDayEvent`: own status, sign-up type, creator; nothing opened), `CALENDAR_CHANGED` for the page (not during and 3 s after an own read); `Cal.Open` holds an event open for the write module (same rules, never while the client's window is shown). Never calls a calendar write function | - | Lineup, Signup, SelfTestCalendar |
@@ -197,6 +198,10 @@ member only (an outsider's parts are dropped unread for 60 s), 3 open sets per s
 and 18000 Base64 bytes per sender, a set waits 30 s for its next part (`COMM_BLOB_LOST`), a finished
 set id is remembered 60 s; unpacked size max 65536 bytes; packing is the client's `C_EncodingUtil`
 (CBOR, Deflate, Base64), 200 characters per part.
+
+Chat lines of another addon (read only, never sent): `Raid/RollWatch.lua` reads the start and end
+lines of a Gargul round in the raid chat and raid warnings (D-44); Amisia registers no prefix of
+another addon and never answers one.
 
 Trust words below: **member** = `ns.TrustWait(name, "member")` (in the own guild by the roster);
 **officer** = officer rank (rank flag 22) in the own guild; **in group** = `ns.InMyGroup`. The
@@ -328,8 +333,10 @@ text is untrusted: codes and bars stripped, every field checked and capped, at m
 | `#AMISIA-PTS` | head adds `<roll/dkp/epgp> <as-of epoch>`; `CFG k=v...`, `P <main> <a> [<b>]`, `R <sid>...`, `K <date:inst>...`, `I <12 hex>...` | pointsAddonText | ns.ParsePointsSite -> `points.site` |
 | `#AMISIA-RAID` | head adds `[<title...>]`; `S <name with _> <T/H/M/R/-> [<class token or ->] [<B bench / ? maybe / ->]` | - (read by the addon only: written by hand; the site's sign-up tab was dropped on 2026-10-10) | ns.ParseLineup -> `lineup.nights[date]` (also the paste field of the page Aufstellung) |
 
-Soft-reserves are not a site block: a softres CSV or `Name [item]` lines pasted in game
-(`ns.SetSoftRes`, saved as `softres`). Neither are the lineup's plain "Name Rolle" lines and a sign-up
+Soft-reserves are not a site block: a softres CSV, the softres.it code (its "Gargul" export: Base64 of
+zlib-packed JSON, unpacked with the client's `C_EncodingUtil`; softreserves, hard reserves, notes,
+classes and the softres +1 are read, bonus rolls left out) or `Name [item]` lines pasted in game
+(`ns.SetSoftRes`, also `/amisia sr <code>`, saved as `softres`). Neither are the lineup's plain "Name Rolle" lines and a sign-up
 bot's text (`ns.ParseLineup`, Lineup.lua). A block whose site writer is `-` is read by the addon
 only (`test_paste_in_blocks` lets it pass without a site writer).
 
@@ -351,7 +358,7 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 | `mats` | `[id] = {name, q, first, manual, hide}` learned materials | Mats.lua | `ns.MatsLoaded` |
 | `matsScan` | 1 once the old raids taught the material list | Mats.lua | `ns.MatsLoaded` |
 | `alts` | `{game, date, at, by, n, list = {{alt, main}}}` | Alts.lua | replaced by each paste |
-| `softres` | soft-reserve list, data model 2 (`byItem`, `version`) | SoftRes.lua | `ns.MigrateSoftRes` |
+| `softres` | soft-reserve list, data model 3: `{version = 3, date, raw, count, byItem, times, renamed, reminded, src = csv/lines/code, sid (softres id), updated (epoch), notes = {[name] = text}, classes = {[name] = class}, plus = {[name] = n} (softres +1, a hint only), hard = {[item id] = {to, note}}}` | SoftRes.lua | `ns.MigrateSoftRes` (2 to 3: the new fields empty; every field checked) |
 | `srAliases` | `[lower list name] = fixed name`; the name fixes of the soft-reserves and of the lineup (one list for both; the lineup adds none once 300 are stored) | SoftRes.lua, Lineup.lua | `ns.MigrateSoftRes` |
 | `benchNext` | bench gathered before tonight's first recording | Bench.lua | earlier night falls away |
 | `groupRolls` | `{runs = ...}` group loot outside raids | GroupRolls.lua | caps MAX_RUNS/ITEMS/PLAYERS |
@@ -404,6 +411,8 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item
 tooltip, D-36); its other items are the officers'.
+`rolls` holds `rolls.announceEnglish` (the announcement in English too, off) and `rolls.foreignWatch`
+(watch rounds of other loot addons, on); `rollwin` holds `rollwin.foreign` (the window for them, on).
 `lineup` holds `lineup.signups` ("Anmeldungen aus Amisia annehmen", on) since part H; `signup` holds
 `signup.card` ("Karte auf der Übersicht", on) and, since part H3 (2.25.0), `signup.calendar` ("Auch im
 Spielkalender eintragen", on).

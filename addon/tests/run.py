@@ -38,10 +38,12 @@ on a Lua runtime error (attempt to index nil, bad argument, a format without its
 text the addon asked for that Locales/enUS*.lua lacks. A test with its own locale line counts every
 failure. "-v" lists the text assertions too.
 """
+import base64
 import glob
 import os
 import re
 import sys
+import zlib
 
 from lupa.lua51 import LuaRuntime
 
@@ -84,6 +86,23 @@ def toc_files():
     return out
 
 
+_FIXTURES = None
+
+
+def softres_fixtures():
+    """(code, JSON text) of every addon/tests/fixtures/softres_*.txt: Base64 of zlib-packed JSON, as
+    softres.it writes its code (tools/tests/test_softres_samples.py checks them)."""
+    global _FIXTURES
+    if _FIXTURES is None:
+        _FIXTURES = []
+        for path in sorted(glob.glob(os.path.join(ROOT, 'tests', 'fixtures', 'softres_*.txt'))):
+            with open(path, encoding='ascii') as fh:
+                code = fh.read().strip()
+            text = zlib.decompress(base64.b64decode(code)).decode('utf-8')
+            _FIXTURES.append((code, text))
+    return _FIXTURES
+
+
 LOCALE = os.environ.get('AMISIA_LOCALE') or 'deDE'
 LOCALE_LINE = re.compile(r'^--\[\[locale (\w+)\]\]\s*$', re.M)
 # what a Lua runtime error (not a failed assertion of a test) says
@@ -118,6 +137,9 @@ def fresh(source='', player=None, setup=None, locale=None):
         lua.execute(pre.group(1))
     if player is not None:
         lua.globals().STUB.player = player
+    # the softres.it codes of addon/tests/fixtures: the stub cannot inflate zlib, Python unpacks them
+    for code, text in softres_fixtures():
+        lua.globals().STUB.addInflate(code, text)
     # a client without C_EncodingUtil (STUB.noEncoding set in the preload)
     lua.execute('if STUB.noEncoding then C_EncodingUtil = nil end')
     if setup:

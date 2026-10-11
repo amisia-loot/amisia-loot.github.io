@@ -107,6 +107,15 @@ L["Standard-Dauer einer Roll-Runde"] = "default length of a roll round"
 L["Roll-Dauer: %d Sekunden."] = "Roll duration: %d seconds."
 L["Aufruf: /amisia rollzeit <5-120>"] = "Usage: /amisia rolltime <5-120>"
 
+L["Gargul-Runde: Gargul sagt den Gewinner an."] = "Gargul round: Gargul announces the winner."
+L["Hard-Reserve für %s: erst die Rückfrage beantworten."] = "Hard reserve for %s: answer the question first."
+L["Hard-Reserve für %s. Trotzdem würfeln?"] = "Hard reserve for %s. Roll anyway?"
+L["Gargul-Runde von %s auf %s erkannt, während eine Amisia-Runde läuft."] = "Gargul round by %s on %s seen while an Amisia round runs."
+L["Rundenansage auch auf Englisch"] = "Round announcement in English too"
+L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec."] = "On a German client a second line in English, so raiders with another loot addon or an English client understand it: /roll for main spec, /roll 99 for off spec."
+L["Runden anderer Loot-Addons erkennen"] = "Recognise rounds of other loot addons"
+L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon, schreibt Amisia die Würfe still mit (keine Ansage). Den Gewinner sagt das andere Addon an."] = "When the loot lead starts a round with another loot addon, Amisia records the rolls silently (no announcement). The other addon announces the winner."
+
 -- Raid/RollFrame.lua
 L["Aussehen: bekommen laut Blizzard alle Berechtigten schon beim Plündern. Nicht nur fürs Aussehen würfeln."] = "Appearance: per Blizzard everyone eligible gets it when looted. Don't roll just for the look."
 L["Lootfenster öffnen und Master Loot nutzen, oder /amisia award %s %s"] = "Open the loot window and use master loot, or /amisia award %s %s"

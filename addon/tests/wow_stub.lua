@@ -351,13 +351,114 @@ do
         end,
         CompressString = function(s, method) return "DF" .. tostring(method or 0) .. ":" .. s end,
         DecompressString = function(s, method)
+            -- zlib (1): only the fixtures run.py unpacked with Python (STUB.inflate), else nothing
+            if method == 1 then return type(s) == "string" and STUB.inflate[s] or nil end
             local mark = "DF" .. tostring(method or 0) .. ":"
             if type(s) ~= "string" or s:sub(1, #mark) ~= mark then return nil end
             return s:sub(#mark + 1)
         end,
         EncodeBase64 = function(s) return encode64(s) end,
         DecodeBase64 = function(s) return decode64(s) end,
+        DeserializeJSON = function(s) return STUB.json(s) end,
     }
+    -- The zlib texts of addon/tests/fixtures/softres_*.txt, by their Base64 code: run.py unpacks them
+    -- with Python's zlib (the stub has no inflate) and hands them over with STUB.addInflate.
+    STUB.inflate = {}
+    function STUB.addInflate(code, text)
+        local raw = decode64(code)
+        if raw then STUB.inflate[raw] = text end
+    end
+end
+
+-- A small JSON reader for the stub's DeserializeJSON: objects, arrays (1-based), strings with the
+-- usual escapes (\u to UTF-8), numbers, true, false, null (nil). Bad input raises, as the client does.
+function STUB.json(s)
+    if type(s) ~= "string" then error("not a string") end
+    local pos = 1
+    local function ws() pos = s:find("[^ \t\r\n]", pos) or (#s + 1) end
+    local value
+    local function str()
+        local out = {}
+        pos = pos + 1
+        while true do
+            local c = s:sub(pos, pos)
+            if c == "" then error("open string") end
+            if c == '"' then pos = pos + 1 break end
+            if c == "\\" then
+                local e = s:sub(pos + 1, pos + 1)
+                local map = { ['"'] = '"', ["\\"] = "\\", ["/"] = "/", b = "\b", f = "\f", n = "\n", r = "\r", t = "\t" }
+                if map[e] then
+                    out[#out + 1] = map[e]
+                    pos = pos + 2
+                elseif e == "u" then
+                    local n = tonumber(s:sub(pos + 2, pos + 5), 16)
+                    if not n then error("bad escape") end
+                    if n < 128 then out[#out + 1] = string.char(n)
+                    elseif n < 2048 then out[#out + 1] = string.char(192 + math.floor(n / 64), 128 + n % 64)
+                    else out[#out + 1] = string.char(224 + math.floor(n / 4096), 128 + math.floor(n / 64) % 64, 128 + n % 64) end
+                    pos = pos + 6
+                else
+                    error("bad escape")
+                end
+            else
+                out[#out + 1] = c
+                pos = pos + 1
+            end
+        end
+        return table.concat(out)
+    end
+    value = function(depth)
+        if depth > 50 then error("too deep") end
+        ws()
+        local c = s:sub(pos, pos)
+        if c == "{" then
+            local t = {}
+            pos = pos + 1
+            ws()
+            if s:sub(pos, pos) == "}" then pos = pos + 1 return t end
+            while true do
+                ws()
+                if s:sub(pos, pos) ~= '"' then error("key expected at " .. pos) end
+                local k = str()
+                ws()
+                if s:sub(pos, pos) ~= ":" then error(": expected at " .. pos) end
+                pos = pos + 1
+                t[k] = value(depth + 1)
+                ws()
+                local d = s:sub(pos, pos)
+                pos = pos + 1
+                if d == "}" then return t end
+                if d ~= "," then error(", expected at " .. pos) end
+            end
+        elseif c == "[" then
+            local t, n = {}, 0
+            pos = pos + 1
+            ws()
+            if s:sub(pos, pos) == "]" then pos = pos + 1 return t end
+            while true do
+                n = n + 1
+                t[n] = value(depth + 1)
+                ws()
+                local d = s:sub(pos, pos)
+                pos = pos + 1
+                if d == "]" then return t end
+                if d ~= "," then error(", expected at " .. pos) end
+            end
+        elseif c == '"' then
+            return str()
+        elseif s:sub(pos, pos + 3) == "true" then pos = pos + 4 return true
+        elseif s:sub(pos, pos + 4) == "false" then pos = pos + 5 return false
+        elseif s:sub(pos, pos + 3) == "null" then pos = pos + 4 return nil
+        end
+        local num = s:match("^-?%d+%.?%d*[eE]?[-+]?%d*", pos)
+        if not num or num == "" then error("bad value at " .. pos) end
+        pos = pos + #num
+        return tonumber(num) or error("bad number")
+    end
+    local v = value(0)
+    ws()
+    if pos <= #s then error("trailing text at " .. pos) end
+    return v
 end
 
 -- Any value as Lua source ("return " .. STUB.dump(v) gives it back): tables with sorted keys,

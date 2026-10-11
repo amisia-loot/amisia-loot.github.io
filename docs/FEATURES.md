@@ -197,6 +197,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Raider `!sr` flüstert, dann antwortet die Lootleitung per Flüstern mit seinen Reservierungen.
 - Prüfung: Wenn du "Erinnern" klickst, dann bekommt jeder im Raid ohne Reservierung nach einer Rückfrage einmal ein Flüstern.
 - Notiz: 2.25.2 (2026-10-11): die heutige softres.it-CSV hat den Namen in "Raider Name"; vorher kamen 0 Reservierungen an.
+- Notiz: Den Code von softres.it (Knopf "Gargul") liest F-091 (2.26.0).
 
 ### F-020 Roll-Runden und Roll-Fenster
 - Version: 1.6.0
@@ -461,6 +462,33 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn das Kalenderfenster des Spiels offen ist (oder du im Kampf bist) und du "Anmelden" klickst, dann sagt der Chat "Spielkalender: nicht eingetragen (Das Kalenderfenster des Spiels ist offen.) Bitte auch im Kalender eintragen.", und das Fenster zeigt "Bitte auch im Kalender eintragen." mit "Kalender öffnen" (Tooltip: der Grund). Ebenso ohne Kalender-Eintrag, aber mit dem Hinweis: mit "Auch im Spielkalender eintragen" (Einstellungen, "Raid-Anmeldung") aus.
 - Prüfung: Wenn Vulo Hunt Vulo Pala im Kalender auf "Bestätigt" (oder "Ersatz", "Raus") gesetzt hat und Vulo Pala in Amisia "Anmelden" oder "Vorläufig" klickt, dann ändert sich im Kalender nichts und der Chat sagt einmal "Spielkalender: ein Offizier hat deinen Stand gesetzt (bestätigt), dort bleibt er." ("Abmelden" entfernt ihn dort wie "Entfernen"); nach Mitternacht (vor 06:00) beim Raid von gestern Abend sagt er stattdessen "Spielkalender: der Termin liegt an einem vergangenen Tag, dort ändert sich nichts mehr.".
 - Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil H3; DECISIONS D-42. Erst `/amisia selbsttest kalender schreiben` (F-089) laufen lassen: zeigt der Bericht, dass ein Aufruf nicht geht, passen wir `CW.PLAN` in Raid/CalendarWrite.lua an. Die Wiederholung nach dem Login und die Antwort auf `AQ` schreiben nie in den Kalender.
+
+### F-091 Soft-Reserves: softres.it-Code (Gargul-Export) einlesen
+- Version: 2.26.0
+- Status: gebaut
+- Prüfung: Wenn du auf softres.it bei deinem Raid "Gargul" öffnest, "Copy to Clipboard" klickst, in Amisia auf der Seite Soft-Reserves "Importieren" klickst und den Text einfügst, dann beginnt die Zeile unter dem Textfeld nach einem Moment mit "Gargul-Code erkannt: N Reservierungen, M Hard-Reserves", und "Übernehmen" meldet "N Reservierungen übernommen, Hard-Reserves: M." mit denselben Zahlen wie auf softres.it.
+- Prüfung: Wenn du stattdessen den Beispielcode `eNpljzFPxDAMhf+L5wxNVdoj27EwggSIAXVwa1dEpMnJSVmq/ncSDkErMsXv6X1+XmHmhIQJwaxgCQzgoOuRQMEojInpnMDo7la3N1V+CpYLHWX9LQtaekooKf46bd0U590SsQczoYusgGwcg9CLuLwMNgUxTEk4snxyBPO2gseZs3f2HksNhzHr8CiWY8qCD6nY+XdxS3zwJZXX2MTzNV/O0KeTbja1H/oy/rDvwrBDv6KIDfLHfkb/ceDrf/yu6tqM7PN9KHTof/XrqlEwZaqBe+uId81Lagh+iRKcK5l++wJJR3km` einfügst und "Übernehmen" klickst, dann zeigt die Vorschau "Gargul-Code erkannt: 3 Reservierungen, 1 Hard-Reserve", die Seite Soft-Reserves Anna mit [Choker of the Fire Lord] x2 und Bob mit [Bonereaver's Edge], und der Tooltip von [Bonereaver's Edge] auf der Seite "Reserviert: Bob (Tank, softres +1: 1)"; `/amisia plus Bob` bleibt bei 0.
+- Prüfung: Wenn du aus dem Code ein Zeichen in der Mitte löschst, dann sagt die Vorschau "Der Code ist unvollständig oder verändert. Auf softres.it 'Gargul' öffnen, ..." und "Übernehmen" sagt dasselbe und lässt die geladene Liste, wie sie ist.
+- Prüfung: Wenn du nach dem Beispielcode in der Offiziersansicht `/amisia roll item:17204 20` eingibst, dann fragt ein Fenster "Hard-Reserve für Gilde. Trotzdem würfeln?"; erst "Würfeln" startet die Runde (das Roll-Fenster öffnet sich), "Abbrechen" startet keine.
+- Notiz: Spec docs/specs/2026-10-11-softres-gargul.md, Teil A2; DECISIONS D-44 und die Ausnahme von D-05. Entpackt mit `C_EncodingUtil` des Spiels (im Spiel geprüft: `DeserializeJSON` da, Zlib = 1). Bonus-Würfe werden nicht übernommen ("N Bonus-Würfe nicht übernommen"); das softres +1 ist nur ein Hinweis (D-22). Hard-Reserves stehen als "HR: <für>" im Tooltip und als "HR" im Lootfenster, Lootregeln fassen sie nicht an. `/amisia sr <Code>` geht auch, aber eine Chatzeile fasst nur 255 Zeichen: echte Codes gehören ins Fenster.
+
+### F-092 Gargul-Runden: Würfel-Fenster und stilles Mitschreiben
+- Version: 2.26.0
+- Status: gebaut
+- Braucht: Gruppe
+- Prüfung: Wenn ein Gildenmitglied mit Offiziersrang als Plündermeister (ohne Master Loot: als Leiter) mit Gargul eine Runde startet ("You have 20 seconds to roll on [Item]" oder "Du hast 20 Sekunden um auf [Item] zu würfeln"), dann öffnet sich bei dir das Würfel-Fenster mit dem Item und oben "Runde von <Name> (Gargul)"; "Mainspec" würfelt 1-100, "Offspec" 1-99, "Passen" schließt nur.
+- Prüfung: Wenn du selbst als Plündermeister in der Offiziersansicht mit Gargul eine Runde startest, dann öffnet sich Amisias Roll-Fenster mit dem Hinweis "Gargul-Runde: Gargul sagt den Gewinner an.", zeigt die Würfe der anderen, und Amisia schreibt nichts in den Chat; bei Gargul's "Stop your rolls!" endet die Runde, und "Ergebnis ansagen" bleibt aus.
+- Prüfung: Wenn ein Raider ohne Leiter- oder Plündermeister-Rolle (oder ohne Offiziersrang) eine Gargul-Runde startet, dann öffnet sich bei dir kein Fenster.
+- Prüfung: Wenn eine Amisia-Runde läuft und die Lootleitung dazu mit Gargul ein anderes Item startet, dann bleibt die Amisia-Runde, und der Chat der Lootleitung sagt "Gargul-Runde von <Name> auf [Item] erkannt, während eine Amisia-Runde läuft."
+- Notiz: Spec Teil B1 ("wer startet, entscheidet"); DECISIONS D-44. Du hast Gargul selbst installiert: in einer Gruppe mit einem Gildenmitglied, das Amisia hat, kannst du mit Gargul starten und beide Seiten prüfen. Einstellungen: Rolls und Vergabe, "Runden anderer Loot-Addons erkennen" (an); Würfel-Fenster, "Fenster auch bei Runden anderer Loot-Addons" (an). Amisia liest nur Gargul's Chatzeilen (Englisch und Deutsch) und sendet nichts an Gargul; im Bosskampf sind die Zeilen geheim, dann gibt es kein Fenster.
+
+### F-093 Rundenansage auch auf Englisch
+- Version: 2.26.0
+- Status: gebaut
+- Braucht: Gruppe
+- Prüfung: Wenn du unter Einstellungen, Rolls und Vergabe "Rundenansage auch auf Englisch" einschaltest und in einer Gruppe als Lootleitung eine Runde startest, dann steht nach "Roll auf [Item]: /roll für Mainspec, /roll 99 für Offspec. 20 Sekunden." die Zeile "Roll on [Item]: /roll for main spec, /roll 99 for off spec. 20 seconds." (mit "Reserved by ..." bei reservierten Items).
+- Prüfung: Wenn die Einstellung aus ist (Standard), dann kommt nur die deutsche Ansage.
+- Notiz: Spec Teil B4; DECISIONS D-44. Für Raider mit Gargul oder englischem Client: sie würfeln mit `/roll` (MS) und `/roll 99` (OS), genau Gargul's Standardbereiche. Ein englischer Client sagt ohnehin Englisch an und schreibt keine zweite Zeile.
 
 ## Addon: Gilde
 

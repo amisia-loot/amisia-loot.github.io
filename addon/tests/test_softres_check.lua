@@ -7,7 +7,9 @@ AmisiaDB = { softres = { date = "2026-09-30", byItem = { [32235] = { "Fraktur" }
 
 -- the move on load
 local sr = AmisiaDB.softres
-assert(sr.version == 2, "moved on ADDON_LOADED")
+-- (data model 3 since 2.26.0: the code's notes, classes, softres +1 and hard reserves, empty)
+assert(sr.version == 3, "moved on ADDON_LOADED")
+assert(type(sr.notes) == "table" and type(sr.classes) == "table" and type(sr.plus) == "table" and type(sr.hard) == "table")
 assert(type(sr.times) == "table" and type(sr.renamed) == "table" and type(sr.reminded) == "table")
 assert(sr.byItem[32235][1] == "Fraktur" and sr.count == 1 and sr.raw == "Fraktur 32235" and sr.date == "2026-09-30", "nothing lost")
 assert(type(AmisiaDB.srAliases) == "table")
@@ -15,7 +17,7 @@ assert(type(AmisiaDB.srAliases) == "table")
 sr.times[32235] = { Fraktur = 2 }
 AmisiaDB.srAliases["x"] = "Y"
 NS.MigrateSoftRes(AmisiaDB)
-assert(sr.times[32235].Fraktur == 2 and AmisiaDB.srAliases.x == "Y" and sr.version == 2)
+assert(sr.times[32235].Fraktur == 2 and AmisiaDB.srAliases.x == "Y" and sr.version == 3)
 AmisiaDB.srAliases.x = nil
 -- no list: only the aliases appear
 local db = {}
@@ -33,7 +35,7 @@ assert(times[32235].Vulo == 3 and times[32235].Fraktur == nil and times[32837] =
 assert(total == 5, "all reservations " .. tostring(total))
 NS.SetSoftRes("Vulo 32235\nVulo 32235\nFraktur 32235\n")
 sr = AmisiaDB.softres
-assert(sr.version == 2 and sr.count == 3 and sr.times[32235].Vulo == 2, "stored count holds doubles")
+assert(sr.version == 3 and sr.src == "lines" and sr.count == 3 and sr.times[32235].Vulo == 2, "stored count holds doubles")
 assert(next(sr.renamed) == nil and next(sr.reminded) == nil)
 -- reminded is cleared by a new import
 sr.reminded.Chorf = 1

@@ -114,6 +114,16 @@ end
 -- The roll window (RollWindow.lua) trusts a round by the same rule as a question.
 ns.IsLootLeadName = isLead
 
+-- Whether name is the master looter, or without master loot the raid leader: who may start a round
+-- of another loot addon that Amisia follows (RollWatch.lua; no keeper, no hello: the chat line is all
+-- there is).
+function ns.IsLootBossName(name)
+    if type(name) ~= "string" then return false end
+    local ml = masterLooter()
+    if ml then return ns.SameName(ml, name) end
+    return isLeader(name)
+end
+
 local function shareOn()
     return ns.CommReady() and ns.Get("sync.shareUpgrades") ~= false
 end

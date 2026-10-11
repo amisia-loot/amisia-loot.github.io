@@ -382,12 +382,14 @@ local function pointsRaid()
 end
 
 -- Why no rule may touch an item (the normal way takes it), or nil: legendary, reserved by someone
--- in the raid, a loot prio, a raider's guild wish, an upgrade or wish answer, a roll round.
+-- in the raid, a hard reserve, a loot prio, a raider's guild wish, an upgrade or wish answer, a roll round.
 function ns.LootRuleGuard(id, q)
     if q and q >= 5 then return L["legendär"] end
     for _, name in ipairs(ns.ReservedBy and ns.ReservedBy(id) or {}) do
         if inRaid(name) then return L["reserviert"] end
     end
+    -- a hard reserve of the softres.it code belongs to someone already (spec 2026-10-11, A2)
+    if ns.HardReserveOf and ns.HardReserveOf(id) then return L["Hard-Reserve"] end
     if ns.LootPrioOf and ns.LootPrioOf(id) then return L["Loot-Prio"] end
     for _, w in ipairs(ns.WishersOf and ns.WishersOf(id) or {}) do
         if inRaid(w.name) then return L["Gildenwunsch"] end

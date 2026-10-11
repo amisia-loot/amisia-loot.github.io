@@ -12,6 +12,10 @@
 -- the running one (never two windows, never two running rounds). In the chat lockdown the buttons
 -- wait (the lead could not read a roll). Nothing is saved but the settings (section rollwin) and
 -- the window's place (settings.rollWindow).
+-- A round the loot lead started with Gargul (RollWatch.lua, spec 2026-10-11-softres-gargul, B1) opens
+-- the window too (rollwin.foreign), marked "Runde von X (Gargul)": the same buttons (MS 1-100, OS 1-99,
+-- Gargul's defaults); "Passen" only closes it (nothing is sent, as in Gargul); the starter's
+-- "Stop your rolls!" ends it. An Amisia round goes first.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -45,7 +49,8 @@ local GREEN, ORANGE, GREY, GOLD = T.GREEN, T.ORANGE, T.GREY, T.GOLD_TEXT
 
 -- Shown rounds, newest first: { rid, item, link, secs, art "R"|"B"|"N", sealed, tie = { names }|nil,
 -- reservers = { names }, min, cost, costOS, lead, leadRaw, own, test, startAt, endsAt, choice
--- ("MS"/"OS"/"P"/"N"/"G"/"B"), amount, rolled, done, result, closeAt, hints = { text, mine } }
+-- ("MS"/"OS"/"P"/"N"/"G"/"B"), amount, rolled, done, result, closeAt, hints = { text, mine },
+-- foreign (a round of another loot addon), fnote (its note) }
 local rounds = {}
 local F
 local rows = {}
@@ -146,6 +151,8 @@ local function hintsOf(r)
     local out, mine = {}, false
     local my = me()
     local id = ns.ItemID(r.item)
+    if r.foreign then out[#out + 1] = GREY .. L["Runde von %s (Gargul)"]:format(r.lead or "?") .. "|r" end
+    if r.fnote then out[#out + 1] = r.fnote end
     if r.tie then out[#out + 1] = ORANGE .. L["Stechen: %s"]:format(table.concat(r.tie, ", ")) .. "|r" end
     -- reservations as the loot lead sent them
     local others = 0
@@ -279,6 +286,9 @@ local function answer(r, what, amount)
     r.choice, r.amount, r.note = what, amount, nil
     if r.test then
         r.note = L["Probe: nichts gesendet."]
+    elseif r.foreign then
+        -- a round of another loot addon: its "Pass" sends nothing either
+        r.note = nil
     elseif r.own then
         local cur = ownRound(r)
         local my = me()
@@ -543,7 +553,7 @@ local function startRound(f, lead, leadRaw, opts, arrived)
     local r = { rid = f[1], item = f[2], secs = tonumber(f[3]) or 20, art = f[4], reservers = splitNames(f[6]),
                 min = tonumber(f[7]), cost = f[4] == "N" and tonumber(f[7]) or nil, costOS = tonumber(f[8]),
                 sealed = flags:find("S", 1, true) and true or nil, lead = lead, leadRaw = leadRaw,
-                own = opts.own, test = opts.test }
+                own = opts.own, test = opts.test, foreign = opts.foreign, fnote = opts.note }
     if r.art ~= "B" then r.min = nil end
     if flags:find("T", 1, true) then r.tie = splitNames(f[9]) end
     r.startAt = arrived or now()
@@ -714,6 +724,43 @@ local function resultField(r)
     return ("%d:%s"):format(v, top.rank or top.kind or "MS")
 end
 
+-- RollWatch.lua: the trusted loot lead (lead, its raw sender leadRaw) started a round with Gargul,
+-- s = { link, secs, note }. Shown unless the window or rollwin.foreign is off, or an Amisia round runs
+-- (it goes first; the lead who started the item with both addons gives no second window). Returns
+-- the round when the window shows it.
+function ns.RollWindowForeign(s, lead, leadRaw, arrived)
+    if not ns.Get("rollwin.enabled") or not ns.Get("rollwin.foreign") or inPvP() then return nil end
+    if type(s) ~= "table" or not lead then return nil end
+    local t = now()
+    for _, r in ipairs(rounds) do
+        if not r.done and not r.foreign and t < r.endsAt then return nil end
+    end
+    local item = itemString(s.link)
+    if not item then return nil end
+    local secs = math.max(5, math.min(120, math.floor(tonumber(s.secs) or 20)))
+    local reserved = ns.ReservedBy and ns.ReservedBy(ns.ItemID(item)) or {}
+    local f = { ("%04x"):format(math.random(0, 65535)), item, tostring(secs), "R", "-",
+                nameList(reserved, MAX_RESERVERS, 200), "-", "-", "-" }
+    return startRound(f, lead, leadRaw, { foreign = true, note = s.note }, arrived)
+end
+
+-- RollWatch.lua: lead said "Stop your rolls!": its rounds end ("Runde vorbei.", the winner comes from
+-- the other addon in the chat).
+function ns.RollWindowForeignEnd(lead)
+    local roster = ns.GroupRoster()
+    local hit
+    for _, r in ipairs(rounds) do
+        if r.foreign and not r.done and r.lead and ns.SameNameIn(r.lead, lead, roster) then
+            r.done = true
+            r.result = L["Runde vorbei."]
+            r.closeAt = now() + WINNER_FOR
+            hit = r
+        end
+    end
+    if hit then refresh() end
+    return hit
+end
+
 -- Rolls.lua: round r ended (time or Stopp); the raiders' windows show the winner.
 function ns.RollWindowEnded(r)
     if not r or not r.wsSent or r.weSent then return end
@@ -849,6 +896,8 @@ ns.RegisterSettings{ key = "rollwin", label = L["Würfel-Fenster"], order = 21, 
       tip = L["Ein kleines Fenster mit dem Item und den Knöpfen Mainspec (1-100), Offspec (1-99) und Passen. Gewürfelt wird über das Spiel, Passen geht nur an die Lootleitung."] },
     { key = "rollwin.onlyMine", type = "toggle", label = L["Nur zeigen, wenn reserviert, Upgrade oder Wunsch"], default = false },
     { key = "rollwin.sound", type = "toggle", label = L["Ton, wenn das Fenster aufgeht"], default = true },
+    { key = "rollwin.foreign", type = "toggle", label = L["Fenster auch bei Runden anderer Loot-Addons"], default = true,
+      tip = L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon (seine Ansage im Raid), öffnet sich dein Fenster auch: Mainspec 1-100, Offspec 1-99."] },
     { key = "rollwin.self", type = "toggle", label = L["Auch bei eigenen Runden (Lootleitung)"], default = true, officer = true },
     { key = "rollwin.scale", type = "slider", label = L["Größe des Würfel-Fensters (%)"], default = 100, min = 70, max = 150, step = 5,
       onChange = function() applyScale() end },

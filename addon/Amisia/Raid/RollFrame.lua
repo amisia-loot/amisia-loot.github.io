@@ -145,6 +145,9 @@ local function showHint(r)
     local line
     if F.reason then
         line = "|cffe05050" .. F.reason .. "|r"
+    elseif r and r.foreign then
+        -- a round the lead started with Gargul: watched, Gargul decides (RollWatch.lua)
+        line = "|cffe0a344" .. L["Gargul-Runde: Gargul sagt den Gewinner an."] .. "|r"
     elseif r and r.lockdown then
         line = "|cffe0a344" .. L["Bosskampf: Würfe im Chat nicht lesbar (%d Zeilen). Würfe von Hand eintragen."]:format(r.hidden or 0) .. "|r"
     elseif r and r.mode and ns.PointsRoundHint then
@@ -365,8 +368,8 @@ refresh = function()
         timer:SetText(("%d s"):format(r.leftAt or 0))
     end
     if r.done then stopBtn:Disable() else stopBtn:Enable() end
-    if r.done and r.tie then againBtn:Enable() else againBtn:Disable() end
-    F.resultBtn:SetEnabled((r.done and r.dirty) and true or false)
+    if r.done and r.tie and not r.foreign then againBtn:Enable() else againBtn:Disable() end
+    F.resultBtn:SetEnabled((r.done and r.dirty and not r.foreign) and true or false)
     local list = ns.RollRanking(r)
     local i = 0
     for _, e in ipairs(list) do

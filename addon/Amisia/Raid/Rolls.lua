@@ -4,6 +4,9 @@
 -- plus-one in the order (awards.plusOrder), fewer mainspec wins rank first among the MS rolls.
 -- In a DKP or EPGP guild a round takes bids or need/greed instead (r.mode, PointsRounds.lua); the
 -- tie-break of such a round is a roll again.
+-- A round the loot lead started with Gargul (RollWatch.lua, spec docs/specs/2026-10-11-softres-gargul.md,
+-- B1) is only watched (r.foreign = the starter): no announcement, no WS, no result; whoever starts
+-- decides. With rolls.announceEnglish a German client adds the announcement in English (B4).
 local ADDON, ns = ...
 local L = ns.L
 
@@ -23,7 +26,8 @@ local matcher
 --          lockdown = true   -- ran wholly or partly in the chat lockdown of a boss fight
 --          hidden = n        -- secret system lines during the round (not all of them rolls)
 --          dirty = true      -- changed by hand after the end, result not announced yet
---          seq = n }         -- running number for the order of equal rolls
+--          seq = n           -- running number for the order of equal rolls
+--          foreign = name }  -- watched round of another loot addon, started by name (RollWatch.lua)
 
 local function shortName(name)
     return ns.FullName(name)
@@ -164,9 +168,12 @@ end
 
 -- Announces the result of round r (default the newest); prefix starts the line ("Stopp! " when
 -- the round ends, else the item). Clears r.dirty.
+local FOREIGN = L["Gargul-Runde: Gargul sagt den Gewinner an."]
+
 function ns.AnnounceRollResult(r, prefix)
     r = r or current or last
     if not r then return nil, L["Keine Runde."] end
+    if r.foreign then return nil, FOREIGN end
     if not r.done then return nil, L["Die Runde läuft noch."] end
     local list, _, standing = ns.RollDecide(r)
     prefix = prefix or L["Ergebnis %s: "]:format(r.link or r.name or "?")
@@ -188,20 +195,43 @@ local function finish()
     current.done = true
     current.ended = time()
     current.leftAt = 0
-    ns.AnnounceRollResult(current, L["Stopp! "])
-    -- the raiders' roll windows show the result (RollWindow.lua)
-    if ns.RollWindowEnded then ns.RollWindowEnded(current) end
+    if current.foreign then
+        -- the addon that started it announces the winner; Amisia only decides for its own window
+        ns.RollDecide(current)
+    else
+        ns.AnnounceRollResult(current, L["Stopp! "])
+        -- the raiders' roll windows show the result (RollWindow.lua)
+        if ns.RollWindowEnded then ns.RollWindowEnded(current) end
+    end
     last = current
     table.insert(history, 1, current)
     while #history > 10 do table.remove(history) end
     changed()
 end
 
+-- The roll announcement in English for a German client (rolls.announceEnglish, B4): raiders with
+-- another loot addon or an English client read it; not translated, it is English on every client.
+local function englishLine(link, seconds, reserved)
+    local line = ("Roll on %s: /roll for main spec, /roll 99 for off spec. %d seconds."):format(link, seconds)
+    if #reserved > 0 then line = line .. (" Reserved by %s."):format(table.concat(reserved, ", ")) end
+    return line
+end
+
 -- Starts a round for an item link. onlyNames restricts who counts (the tie-break, always a roll);
--- otherwise a DKP or EPGP guild gets a round of bids or need/greed (PointsRounds.lua).
-function ns.StartRoll(link, seconds, onlyNames)
+-- otherwise a DKP or EPGP guild gets a round of bids or need/greed (PointsRounds.lua). opts.foreign
+-- (the starter's name) watches a round of another loot addon (ns.WatchForeignRoll); an item with a
+-- hard reserve asks first (opts.confirmed: asked).
+function ns.StartRoll(link, seconds, onlyNames, opts)
+    opts = opts or {}
     local id = ns.ItemID(link)
     if not id then return nil, L["Kein Item-Link. Aufruf: /amisia roll <Item-Link> [Sekunden]"] end
+    local hard = not onlyNames and not opts.foreign and not opts.confirmed and ns.HardReserveOf and ns.HardReserveOf(id)
+    if hard then
+        local to = hard.to ~= "" and hard.to or L["unbekannt"]
+        local d = StaticPopup_Show("AMISIA_HR_ROLL", to, nil, { link = link, seconds = seconds })
+        if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
+        return nil, L["Hard-Reserve für %s: erst die Rückfrage beantworten."]:format(to)
+    end
     if current and not current.done then finish() end
     -- a round changed by hand and not announced cannot be announced any more once a newer one runs
     for _, old in ipairs(history) do
@@ -217,7 +247,7 @@ function ns.StartRoll(link, seconds, onlyNames)
         item = id, link = link, name = link:match("|h%[(.-)%]|h") or ("Item " .. id),
         started = time(), seconds = seconds, leftAt = seconds,
         rolls = {}, order = {}, ignored = {}, reserved = reserved, reservedSet = {}, plus = {}, roster = {},
-        lockdown = ns.ChatLocked and ns.ChatLocked() or nil, hidden = 0, seq = 0,
+        lockdown = ns.ChatLocked and ns.ChatLocked() or nil, hidden = 0, seq = 0, foreign = opts.foreign,
     }
     for _, n in ipairs(reserved) do current.reservedSet[n] = true end
     -- the plus-one of everyone in the group as of now; whoever is missing here is counted on the roll
@@ -236,8 +266,10 @@ function ns.StartRoll(link, seconds, onlyNames)
         end
     end
     if not matcher then matcher = ns.BuildMatcher(RANDOM_ROLL_RESULT) end
-    local mode = not onlyNames and ns.PointsRoundMode and ns.PointsRoundMode() or nil
-    if mode then
+    local mode = not onlyNames and not opts.foreign and ns.PointsRoundMode and ns.PointsRoundMode() or nil
+    if opts.foreign then
+        -- watched only: the starter's addon has announced it
+    elseif mode then
         ns.PointsRoundStart(current, mode)
         ns.Announce(ns.PointsRoundAnnounce(current, seconds))
     elseif onlyNames then
@@ -245,21 +277,68 @@ function ns.StartRoll(link, seconds, onlyNames)
     else
         ns.Announce(L["Roll auf %s: /roll für Mainspec, /roll 99 für Offspec. %d Sekunden."]:format(link, seconds))
         if #reserved > 0 then ns.Announce(L["Reserviert von %s."]:format(table.concat(reserved, ", "))) end
+        if ns.GERMAN and ns.Get("rolls.announceEnglish") then ns.Announce(englishLine(link, seconds, reserved)) end
     end
     local left = seconds
     ticker = C_Timer.NewTicker(1, function()
         left = left - 1
         if current then current.leftAt = left end
-        if ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
+        if not opts.foreign and ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
             -- a countdown is worthless after a few seconds (it waits during the chat lockdown)
             ns.Announce(L["%d Sekunden."]:format(left), 3)
         end
         if left <= 0 then finish() else changed() end
     end)
     -- the raiders with Amisia get the round in their roll window (RollWindow.lua)
-    if ns.RollWindowStarted then ns.RollWindowStarted(current) end
+    if not opts.foreign and ns.RollWindowStarted then ns.RollWindowStarted(current) end
     changed()
     return true
+end
+
+StaticPopupDialogs["AMISIA_HR_ROLL"] = {
+    text = L["Hard-Reserve für %s. Trotzdem würfeln?"],
+    button1 = L["Würfeln"],
+    button2 = L["Abbrechen"],
+    OnAccept = function(_, data)
+        if not data then return end
+        local ok, why = ns.StartRoll(data.link, data.seconds, nil, { confirmed = true })
+        if ok then
+            if ns.ShowRollFrame then ns.ShowRollFrame() end
+        elseif why then
+            ns.msg(why)
+        end
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+
+local SAME_ROUND = 3   -- seconds: the lead started the item with both addons, it is one round
+
+-- RollWatch.lua: the loot lead started a round with Gargul (by: the starter). Amisia watches it
+-- silently: reads the rolls, ranks them, never announces. Its own running round goes first (D-38:
+-- never two rounds); the same item started with both addons within 3 s is that round.
+function ns.WatchForeignRoll(link, seconds, by)
+    local id = ns.ItemID(link)
+    if not id or type(by) ~= "string" then return nil end
+    if current and not current.done and not current.foreign then
+        if current.item == id and time() - (current.started or 0) <= SAME_ROUND then return nil end
+        ns.msg(L["Gargul-Runde von %s auf %s erkannt, während eine Amisia-Runde läuft."]:format(by, link))
+        return nil
+    end
+    local ok = ns.StartRoll(link, seconds, nil, { foreign = by })
+    if ok and ns.ShowRollFrame then ns.ShowRollFrame() end
+    return ok
+end
+
+-- RollWatch.lua: by said "Stop your rolls!": the round by started ends here too.
+function ns.StopForeignRoll(by)
+    if current and not current.done and current.foreign and ns.SameName(current.foreign, by) then
+        finish()
+        return true
+    end
+    return false
 end
 
 function ns.StopRoll() finish() end
@@ -284,6 +363,7 @@ end
 function ns.RerollTie()
     local r = current or last
     if not r or not r.tie then return nil, L["Kein Gleichstand."] end
+    if r.foreign then return nil, FOREIGN end
     return ns.StartRoll(r.link, 10, r.tie)
 end
 
@@ -492,6 +572,10 @@ ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, 
     { key = "rolls.channel", type = "choice", label = L["Ansagekanal"], default = "RAID_WARNING",
       values = { { "RAID_WARNING", L["Schlachtzugswarnung"] }, { "RAID", L["Schlachtzug"] } },
       tip = L["Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug."] },
+    { key = "rolls.announceEnglish", type = "toggle", label = L["Rundenansage auch auf Englisch"], default = false,
+      tip = L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec."] },
+    { key = "rolls.foreignWatch", type = "toggle", label = L["Runden anderer Loot-Addons erkennen"], default = true,
+      tip = L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon, schreibt Amisia die Würfe still mit (keine Ansage). Den Gewinner sagt das andere Addon an."] },
     { key = "rolls.altClick", type = "toggle", label = L["Alt-Klick im Lootfenster startet einen Roll"], default = true,
       tip = L["Ausschalten, wenn ein anderes Loot-Addon Alt-Klick selbst benutzt."] },
     { key = "rolls.lookHint", type = "choice", label = L["Hinweis im Roll-Fenster: Aussehen schon vergeben"], default = "dungeon",

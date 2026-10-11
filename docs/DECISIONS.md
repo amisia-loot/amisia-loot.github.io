@@ -77,9 +77,18 @@ eine Datenquelle, deren Lizenz die Nennung verlangt (D-04). Die Notizen zur Konk
 des Repos (`~/addons/_research`).
 **Grund:** Wunsch des Nutzers seit der Konkurrenzrecherche.
 **Folge:** Gargul-Importe der Seite heißen dort weiter so (die Seite liest deren Export); im Addon
-nirgends.
+nirgends, mit einer Ausnahme:
+**Ausnahme (2026-10-11, Spec `docs/specs/2026-10-11-softres-gargul.md`, Frage 1, Vorschlag übernommen):**
+"Gargul" und "softres.it" dürfen genau dort stehen, wo der Nutzer sie zum Verstehen braucht: in der
+Vorschau und den Meldungen des Soft-Reserve-Imports ("Gargul-Code erkannt: ...", der Fehlertext mit
+softres.it's Knopf "Gargul"), in der Markierung des Würfel-Fensters ("Runde von X (Gargul)"), im Hinweis
+des Roll-Fensters der Lootleitung ("Gargul-Runde: Gargul sagt den Gewinner an.") und in Kommentaren.
+Die Chatmuster (`Raid/RollWatch.lua`) nennen kein Addon. Einstellungen heißen weiter "andere
+Loot-Addons". Kein anderes Addon wird genannt.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_other_addons_are_not_named_in_the_addon`
-(Liste bekannter Addon-Namen; Commits nicht maschinell geprüft).
+(Liste bekannter Addon-Namen; die Ausnahme `NAMED_HERE` erlaubt "gargul" nur in acht Dateien und dort
+nur in Kommentaren und Texten von `L[...]`),
+`tools/tests/test_contracts.py::test_the_named_exception_stays_narrow` (Commits nicht maschinell geprüft).
 
 ## D-06 Aussehen: klassischer Forever-Stil
 
@@ -286,8 +295,9 @@ weniger MS-Gewinne zuerst unter den MS-Würfen.
 **Entscheidung:** Plus-Eins zählt nur lebende MS-Vergaben an Spieler; SR, OS, Bank und Entzaubern
 zählen nicht (SR-Gewinne als +1: bewusst nein). Twinks zählen für ihren Main.
 **Grund:** Entscheidung im Vergabe-Baustein (Assistent, vom Nutzer nicht widersprochen).
-**Folge:** -
-**Durchgesetzt durch:** `addon/tests/test_plusone.lua`, `addon/tests/test_alts.lua`.
+**Folge:** Das "+1" eines softres.it-Codes (2026-10-11, D-44) ist nur ein Hinweis im Tooltip und
+ändert Amisias Zählung nie.
+**Durchgesetzt durch:** `addon/tests/test_plusone.lua`, `addon/tests/test_alts.lua`, `addon/tests/test_softres_code.lua`.
 
 ## D-23 Zu spät: nur der erste Raid der Nacht zählt; Raidnacht beginnt um 06:00
 
@@ -503,7 +513,8 @@ automatisch als Standard, beide Modi wählbar; Kleinkram soll ohne Klicks vertei
 eine Regel je über ein umkämpftes Item entscheidet.
 **Folge:** Keine Regeln nach Klasse, Spec, Plus-Eins oder Würfen, keine ganze Qualitätsstufe an einen
 Spieler, keine Regeln von der Website und keine bei Gruppenplündern. Höchstens 30 Regeln, 50 Items pro
-Liste, MR in höchstens 4 Teilen, ein Vorschlag pro Offizier alle 30 Sekunden.
+Liste, MR in höchstens 4 Teilen, ein Vorschlag pro Offizier alle 30 Sekunden. Seit 2026-10-11 fasst keine
+Regel eine Hard-Reserve des softres.it-Codes an (D-44).
 **Durchgesetzt durch:** `addon/tests/test_loot_rules.lua`, `addon/tests/test_loot_rules_share.lua`,
 `addon/tests/test_loot_rules_review.lua`, `addon/tests/test_award_candidate.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
@@ -541,7 +552,9 @@ zählt). Raider sollen mit einem Klick im richtigen Bereich würfeln, ohne dass 
 eine Zahl fälschen oder eine Runde vortäuschen kann.
 **Folge:** Kein "immer automatisch Mainspec", keine parallelen Runden, kein Fenster für Gäste
 außerhalb der Gilde, in Schlachtfeldern und Arenen; Raider ohne Amisia würfeln weiter mit `/roll`, die
-Ansage im Raidchat bleibt. Gespeichert wird nur die Position (`settings.rollWindow`).
+Ansage im Raidchat bleibt. Gespeichert wird nur die Position (`settings.rollWindow`). Seit 2026-10-11
+öffnet auch eine Runde, die die Lootleitung mit Gargul startet, das Fenster (D-44, aus dem Chat, kein
+`WS`); eine Amisia-Runde geht vor.
 **Durchgesetzt durch:** `addon/tests/test_roll_window.lua`, `addon/tests/test_roll_window_raid.lua`,
 `addon/tests/test_roll_window_names.lua`, `addon/tests/test_roll_window_review.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
@@ -784,3 +797,45 @@ wird auch gelesen (nach Zeit und Titel), ein belegter Kalender sagt es nach 8 Se
 ohne Antwort hält den Kalender höchstens `Cal.WAIT` + 5 Sekunden belegt.
 **Durchgesetzt durch:** `addon/tests/test_raid_calendar.lua`, `addon/tests/test_raid_calendar_read.lua`, `addon/tests/test_signup_comm.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
+
+## D-44 softres.it-Code und Gargul-Runden: lesen, nie senden; wer startet, entscheidet
+
+**Datum:** 2026-10-11
+**Entscheidung:** Spec `docs/specs/2026-10-11-softres-gargul.md`, Teile A2, B1 und B4 (B2 erst bei
+Bedarf, B3 nicht).
+**A2:** Der Soft-Reserve-Import (Fenster "Soft-Reserves" und `/amisia sr <Code>`) liest den Code von
+softres.it (Knopf "Gargul"): Base64, `C_EncodingUtil.DecompressString` (zlib) und
+`C_EncodingUtil.DeserializeJSON` des Clients, jeder Schritt unter `pcall`, keine fremde Bibliothek. Er
+übernimmt die Soft-Reserves (Name, Klasse, Notiz auf 60 Zeichen, Items; doppelt = "2x"), die
+Hard-Reserves (`hard`, "HR: <für>" im Tooltip, "HR" im Lootfenster, beim Start einer Runde die Rückfrage
+"Hard-Reserve für X. Trotzdem würfeln?", keine Lootregel fasst sie an, D-37) und das softres +1 nur als
+Hinweis (D-22 bleibt); Bonus-Würfe nicht ("N Bonus-Würfe nicht übernommen"). Die Vorschau sagt
+"Gargul-Code erkannt: N Reservierungen, M Hard-Reserves"; ein kaputter Code, ein fehlender Client-Aufruf
+oder ein leerer Code ergeben eine deutliche Meldung, und nichts wird übernommen. Höchstens 64 KB Code,
+256 KB entpackt, 2000 Reservierungen; Namen ohne Codes und "-Realm".
+**B1:** Startet die Lootleitung eine Runde mit Gargul, liest Amisia dessen Zeile im Raidchat oder als
+Schlachtzugswarnung ("You have N seconds to roll on [Item]", deutsch "Du hast N Sekunden um auf [Item]
+zu würfeln", dahinter vielleicht " - Notiz"), nur vom Plündermeister oder, ohne Master Loot, vom
+Leiter, in der eigenen Gruppe und mit Offiziersrang, höchstens eine pro Sekunde und Absender. Jeder
+Raider mit Amisia bekommt sein Würfel-Fenster mit "Runde von X (Gargul)" (Mainspec 1-100, Offspec 1-99
+wie Gargul's Standard; "Passen" schließt nur, wie bei Gargul; `rollwin.foreign`, an). Die Amisia der
+Lootleitung schreibt die Würfe still mit (`rolls.foreignWatch`, an): keine Ansage, kein `WS`, kein
+Ergebnis, "Ergebnis ansagen" und "Nochmal" gehen nicht; das Roll-Fenster sagt "Gargul-Runde: Gargul
+sagt den Gewinner an." Es endet bei "Stop your rolls!" / "Stopp deine Würfe!" des Starters oder nach
+Ablauf der Zeit. Eine laufende Amisia-Runde geht vor (nie zwei Runden, D-38); dasselbe Item binnen
+3 Sekunden mit beiden Addons gestartet ist eine Runde; sonst sagt der Chat der Lootleitung "Gargul-Runde
+von X auf [Item] erkannt, während eine Amisia-Runde läuft." Eine geheime Zeile im Bosskampf wird nicht
+gelesen; läuft die Runde schon, warten die Knöpfe wie im Würfel-Fenster.
+**B4:** `rolls.announceEnglish` ("Rundenansage auch auf Englisch", aus): ein deutscher Client sagt eine
+Amisia-Runde zusätzlich auf Englisch an ("Roll on [Item]: /roll for main spec, /roll 99 for off spec. N
+seconds.", mit "Reserved by ..."), damit Raider mit Gargul sie verstehen.
+**Grund:** Spec vom 2026-10-11, Entscheidungen "Gebaut wird nach der Empfehlung" und die übernommenen
+Vorschläge der offenen Fragen; der Nutzer hat Gargul selbst installiert, die Client-Aufrufe sind im
+Spiel geprüft (`DeserializeJSON` da, `Enum.CompressionMethod.Zlib` = 1).
+**Folge:** Amisia sendet nie etwas an Gargul, meldet kein fremdes Präfix an (D-19 bleibt) und übernimmt
+keinen Gargul-Code (Gargul ist "All Rights Reserved"); Gargul-Raider bekommen bei Amisia-Runden kein
+Gargul-Fenster (B3 nicht gebaut), sie würfeln mit `/roll` und `/roll 99`. Stellt der Starter Gargul auf
+eine andere Sprache um oder schaltet die Ansage ab, sieht Amisia nichts. Die Bereiche stehen nicht im
+Chat: Amisia nimmt 100/99 an. `AmisiaDB.softres` hat Datenmodell 3.
+**Durchgesetzt durch:** `addon/tests/test_softres_code.lua`, `addon/tests/test_roll_watch.lua`,
+`tools/tests/test_softres_samples.py`, `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow`.

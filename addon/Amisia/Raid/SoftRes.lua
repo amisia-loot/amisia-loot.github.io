@@ -61,12 +61,132 @@ local function aliased(name, renamed)
     return name
 end
 
+---------------------------------------------------------------------------
+-- The softres.it code (its "Gargul" export, spec docs/specs/2026-10-11-softres-gargul.md, A2):
+-- Base64 of zlib-packed JSON, unpacked only with the client's C_EncodingUtil. The text is untrusted
+-- (D-26): every step under pcall, every field checked and capped, unknown fields passed over.
+---------------------------------------------------------------------------
+local MAX_CODE = 65536        -- characters of a pasted code
+local MAX_JSON = 262144       -- bytes unpacked
+local MAX_RESERVES = 2000
+local MAX_NAME, MAX_NOTE = 48, 60
+local ZLIB = 1                -- Enum.CompressionMethod.Zlib (in game 2026-10-11)
+
+-- s without colour codes, bars and control characters, trimmed, at most max characters (UTF-8 kept
+-- whole); nil when nothing is left.
+local function cleanText(s, max)
+    if type(s) ~= "string" then return nil end
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|", ""):gsub("%c", " ")
+    s = s:match("^%s*(.-)%s*$")
+    local out, n = {}, 0
+    for ch in s:gmatch("[%z\1-\127\192-\253][\128-\191]*") do
+        n = n + 1
+        if n > max then break end
+        out[n] = ch
+    end
+    s = table.concat(out):match("^%s*(.-)%s*$")
+    return s ~= "" and s or nil
+end
+
+-- A name of the code: cleaned, "-Realm" dropped, no digits or separators.
+local function codeName(s)
+    s = cleanText(s, MAX_NAME)
+    s = s and s:gsub("%-.*$", "")
+    if not s or s == "" or s:find("[%d,;:]") then return nil end
+    return shortName(s)
+end
+
+local function codeItem(v)
+    if type(v) == "table" then v = v.id end
+    v = tonumber(v)
+    if not v or v % 1 ~= 0 or v < 1 or v > 999999 then return nil end
+    return v
+end
+
+-- The pasted text as a code, or nil: one word of Base64 characters (line breaks around and inside it
+-- dropped), at least 24 long. "Anna 18814" or a CSV never is one.
+function ns.SoftResCode(text)
+    if type(text) ~= "string" then return nil end
+    local code = text:match("^%s*(.-)%s*$"):gsub("[\r\n]+", "")
+    if #code < 24 or not code:match("^[%w+/]+=?=?$") then return nil end
+    return code
+end
+
+-- Unpacks a code: the JSON as a table, or nil and why ("api" the client lacks a function, "big",
+-- "broken").
+function ns.DecodeSoftResCode(code)
+    local E = _G.C_EncodingUtil
+    if type(E) ~= "table" or type(E.DecodeBase64) ~= "function" or type(E.DecompressString) ~= "function"
+        or type(E.DeserializeJSON) ~= "function" then
+        return nil, "api"
+    end
+    if type(code) ~= "string" or #code > MAX_CODE then return nil, "big" end
+    local method = (Enum and Enum.CompressionMethod and Enum.CompressionMethod.Zlib) or ZLIB
+    local ok, raw = pcall(E.DecodeBase64, code)
+    if not ok or type(raw) ~= "string" or raw == "" then return nil, "broken" end
+    local ok2, json = pcall(E.DecompressString, raw, method)
+    if not ok2 or type(json) ~= "string" or json == "" then return nil, "broken" end
+    if #json > MAX_JSON then return nil, "big" end
+    local ok3, data = pcall(E.DeserializeJSON, json)
+    if not ok3 or type(data) ~= "table" then return nil, "broken" end
+    return data
+end
+
+local CODE_ERRORS = {
+    api = L["Dieser Client kann den Code nicht entpacken. Bitte den CSV-Export nehmen."],
+    big = L["Code zu groß."],
+    broken = L["Der Code ist unvollständig oder verändert. Auf softres.it 'Gargul' öffnen, 'Copy to Clipboard', hier ohne weitere Zeichen einfügen."],
+    empty = L["Code gelesen, aber keine Reservierungen darin."],
+}
+function ns.SoftResCodeError(why) return why and CODE_ERRORS[why] or nil end
+
+-- The reservations of a code through add(item, name); fills extra (notes, classes, the softres +1,
+-- hard reserves, bonus rolls counted, the softres id and its last change) or sets extra.err.
+local function readCode(code, add, extra, count)
+    local data, why = ns.DecodeSoftResCode(code)
+    if not data then extra.err = why return end
+    local function list(v) return type(v) == "table" and v or {} end
+    for _, sr in ipairs(list(data.softreserves)) do
+        local name = type(sr) == "table" and codeName(sr.name)
+        if name then
+            local key = aliased(name)
+            for _, it in ipairs(list(sr.items)) do
+                if count() >= MAX_RESERVES then break end
+                local id = codeItem(it)
+                if id then add(id, name) end
+            end
+            extra.notes[key] = cleanText(sr.note, MAX_NOTE)
+            local class = cleanText(sr.class, 20)
+            extra.classes[key] = class and class:match("^%a+$") and class or nil
+            local plus = tonumber(sr.plusOnes)
+            extra.plus[key] = (plus and plus >= 1 and plus % 1 == 0 and plus <= 99) and plus or nil
+        end
+    end
+    for _, h in ipairs(list(data.hardreserves)) do
+        local id = type(h) == "table" and codeItem(h.id)
+        if id and not extra.hard[id] and extra.hardCount < MAX_RESERVES then
+            extra.hard[id] = { to = cleanText(h["for"], MAX_NAME) or "", note = cleanText(h.note, MAX_NOTE) or "" }
+            extra.hardCount = extra.hardCount + 1
+        end
+    end
+    extra.bonus = math.min(#list(data.bonusrolls), 999)
+    local meta = list(data.metadata)
+    local sid = cleanText(meta.id, 40)
+    extra.sid = sid and sid:match("^[%w%-_]+$") or nil
+    local updated = tonumber(meta.updatedAt)
+    extra.updated = (updated and updated >= 0 and updated < 4e9) and math.floor(updated) or nil
+    if count() == 0 and extra.hardCount == 0 then extra.err = "empty" end
+end
+
 -- Returns byItem { [itemID] = { names } }, the number of distinct reservations (name and item),
 -- the unrecognised lines, times { [itemID] = { [name] = n } } for names that reserved an item more
--- than once, the number of all reservations (doubles included) and renamed { [fixed] = listName }
--- for names a remembered fix changed.
+-- than once, the number of all reservations (doubles included), renamed { [fixed] = listName }
+-- for names a remembered fix changed and extra { src = "csv"|"lines"|"code" }; a code adds notes,
+-- classes, plus (softres +1, a hint only, D-22), hard { [itemID] = { to, note } }, hardCount, bonus,
+-- sid, updated, or err ("api", "big", "broken", "empty") and nothing else.
 function ns.ParseSoftRes(text)
     local byItem, sets, bad, count, times, total, renamed = {}, {}, {}, 0, {}, 0, {}
+    local extra = { src = "lines" }
     local function add(item, name)
         if not item or not name then return false end
         name = aliased(name, renamed)
@@ -84,8 +204,17 @@ function ns.ParseSoftRes(text)
         end
         return true
     end
+    local code = ns.SoftResCode(text)
+    if code then
+        extra = { src = "code", notes = {}, classes = {}, plus = {}, hard = {}, hardCount = 0, bonus = 0 }
+        readCode(code, add, extra, function() return total end)
+        if extra.err and extra.err ~= "empty" then byItem, count, times, total, renamed = {}, 0, {}, 0, {} end
+        for _, names in pairs(byItem) do table.sort(names) end
+        return byItem, count, bad, times, total, renamed, extra
+    end
     local all = splitLines(text)
     if #all > 0 and all[1]:lower():gsub("%s", ""):find("itemid", 1, true) then
+        extra.src = "csv"
         local head = all[1]
         local delim = (select(2, head:gsub(";", "")) > select(2, head:gsub(",", ""))) and ";" or ","
         local cols = {}
@@ -119,21 +248,35 @@ function ns.ParseSoftRes(text)
         end
     end
     for _, names in pairs(byItem) do table.sort(names) end
-    return byItem, count, bad, times, total, renamed
+    return byItem, count, bad, times, total, renamed, extra
 end
 
--- Stores a pasted list. Returns the number of reservations (doubles included) and the bad lines.
+-- Stores a pasted list. Returns the number of reservations (doubles included), the bad lines, and
+-- for a code that cannot be read the reason as text (then nothing is stored), and extra
+-- (ns.ParseSoftRes).
 function ns.SetSoftRes(text)
-    local byItem, _, bad, times, total, renamed = ns.ParseSoftRes(text)
-    AmisiaDB.softres = { version = 2, date = date("%Y-%m-%d"), byItem = byItem, raw = text or "", count = total,
-                         times = times, renamed = renamed, reminded = {} }
+    local byItem, _, bad, times, total, renamed, extra = ns.ParseSoftRes(text)
+    if extra.err then return 0, {}, ns.SoftResCodeError(extra.err), extra end
+    AmisiaDB.softres = { version = 3, date = date("%Y-%m-%d"), byItem = byItem, raw = text or "", count = total,
+                         times = times, renamed = renamed, reminded = {}, src = extra.src, sid = extra.sid,
+                         updated = extra.updated, notes = extra.notes or {}, classes = extra.classes or {},
+                         plus = extra.plus or {}, hard = extra.hard or {} }
     ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
-    return total, bad
+    return total, bad, nil, extra
 end
 
--- The list of 1.5 gets the fields of data model 2; called by Core on ADDON_LOADED. Its doubles
--- were merged already and count once. Running it again changes nothing.
+local function nameMap(t, ok)
+    local out = {}
+    for k, v in pairs(type(t) == "table" and t or {}) do
+        if type(k) == "string" and ok(v) then out[k] = v end
+    end
+    return out
+end
+
+-- The list of 1.5 gets the fields of data model 2, a list of 2.25 those of data model 3 (the code's
+-- notes, classes, softres +1 and hard reserves, empty); called by Core on ADDON_LOADED. The doubles
+-- of 1.5 were merged already and count once. Running it again changes nothing.
 function ns.MigrateSoftRes(DB)
     if type(DB) ~= "table" then return end
     DB.srAliases = type(DB.srAliases) == "table" and DB.srAliases or {}
@@ -147,6 +290,34 @@ function ns.MigrateSoftRes(DB)
     sr.times = type(sr.times) == "table" and sr.times or {}
     sr.renamed = type(sr.renamed) == "table" and sr.renamed or {}
     sr.reminded = type(sr.reminded) == "table" and sr.reminded or {}
+    if sr.version < 3 then sr.version = 3 end
+    local function str(v) return type(v) == "string" end
+    sr.notes = nameMap(sr.notes, str)
+    sr.classes = nameMap(sr.classes, str)
+    sr.plus = nameMap(sr.plus, function(v) return type(v) == "number" and v >= 1 end)
+    local hard = {}
+    for id, h in pairs(type(sr.hard) == "table" and sr.hard or {}) do
+        if type(id) == "number" and type(h) == "table" then
+            hard[id] = { to = str(h.to) and h.to or "", note = str(h.note) and h.note or "" }
+        end
+    end
+    sr.hard = hard
+end
+
+-- The hard reserve of an item from the loaded code ({ to, note }), or nil.
+function ns.HardReserveOf(item)
+    local sr = AmisiaDB and AmisiaDB.softres
+    local h = sr and type(sr.hard) == "table" and sr.hard[tonumber(item) or 0]
+    return type(h) == "table" and h or nil
+end
+
+-- "HR: Gilde (Bank)" for an item with a hard reserve, else nil.
+function ns.HardReserveText(item)
+    local h = ns.HardReserveOf(item)
+    if not h then return nil end
+    local text = L["HR: %s"]:format(h.to ~= "" and h.to or L["unbekannt"])
+    if h.note ~= "" then text = text .. " (" .. h.note .. ")" end
+    return text
 end
 
 -- How often name (as in the list) reserved item.
@@ -448,7 +619,14 @@ function ns.SoftResTooltipText(id)
         if inGroup then
             local label = ns.SameNameIn(name, me, roster) and L["du"] or name
             local n = timesOf(sr, id, name)
-            shown[#shown + 1] = n > 1 and ("%s x%d"):format(label, n) or label
+            label = n > 1 and ("%s x%d"):format(label, n) or label
+            -- a code's note and its softres +1 (a hint only: Amisia's plus-one stays its own, D-22)
+            local extra = {}
+            local note = sr and type(sr.notes) == "table" and sr.notes[name]
+            if type(note) == "string" and note ~= "" then extra[#extra + 1] = note end
+            local plus = sr and type(sr.plus) == "table" and tonumber(sr.plus[name])
+            if plus and plus > 0 then extra[#extra + 1] = L["softres +1: %d"]:format(plus) end
+            shown[#shown + 1] = #extra > 0 and (label .. " (" .. table.concat(extra, ", ") .. ")") or label
         else
             outside = outside + 1
         end
@@ -462,8 +640,10 @@ end
 ns.OnItemTooltip("softres", function(tip, _, id)
     if not ns.Get("softres.tooltip") then return false end
     local text = ns.SoftResTooltipText(id)
-    if not text then return false end
-    tip:AddLine(text, 0.89, 0.72, 0.34)
+    local hard = ns.HardReserveText(id)
+    if not text and not hard then return false end
+    if hard then tip:AddLine(hard, 0.89, 0.72, 0.34) end
+    if text then tip:AddLine(text, 0.89, 0.72, 0.34) end
     return true
 end)
 
@@ -479,17 +659,20 @@ local function markButton(btn, slot)
     local icon = btn.Item
     if type(icon) ~= "table" or type(icon.CreateFontString) ~= "function" then return end
     local link = slot and GetLootSlotLink and GetLootSlotLink(slot)
-    local reserved = link and #ns.ReservedBy(ns.ItemID(link)) > 0
+    local id = link and ns.ItemID(link)
+    -- a hard reserve (from a softres.it code) is "HR", before a soft reserve
+    local hard = id and ns.HardReserveOf(id) ~= nil
+    local reserved = hard or (id and #ns.ReservedBy(id) > 0)
     local mark = marks[btn]
     if reserved and not mark then
         -- on the item icon, top left (the quality text sits at the element's top right)
         mark = icon:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         mark:SetPoint("TOPLEFT", icon, "TOPLEFT", 1, -1)
-        mark:SetText("SR")
         mark:SetTextColor(0.89, 0.72, 0.34)
         marks[btn] = mark
     end
     if mark then
+        mark:SetText(hard and "HR" or "SR")
         if reserved then mark:Show() else mark:Hide() end
     end
 end
@@ -773,18 +956,34 @@ local function plural(n, one, many) return n == 1 and one or many end
 -- ns.SoftResRoster(); nothing is stored. "" for an empty text.
 function ns.SoftResPreviewText(text)
     if not (text or ""):find("%S") then return "" end
-    local byItem, _, bad, times, total = ns.ParseSoftRes(text)
+    local byItem, _, bad, times, total, _, extra = ns.ParseSoftRes(text)
+    if extra.err then return ns.SoftResCodeError(extra.err) end
     local roster, label = ns.SoftResRoster()
     local c = ns.SoftResCheck({ byItem = byItem, times = times }, roster)
     local head = L["%d Raider, %d %s"]:format(c.reservers, total, plural(total, L["Reservierung"], L["Reservierungen"]))
     local parts = {}
-    if label then
+    if extra.src == "code" then
+        -- the code: what it holds, then the check against the raid as for a CSV
+        head = L["Gargul-Code erkannt: %d %s, %d %s"]:format(total, plural(total, L["Reservierung"], L["Reservierungen"]),
+            extra.hardCount, plural(extra.hardCount, L["Hard-Reserve"], L["Hard-Reserves"]))
+        local loaded = AmisiaDB and AmisiaDB.softres
+        if extra.sid and loaded and loaded.sid == extra.sid then parts[#parts + 1] = L["gleicher Raid wie die geladene Liste"] end
+        if extra.bonus > 0 then parts[#parts + 1] = L["%d Bonus-Würfe nicht übernommen"]:format(extra.bonus) end
+        if label then
+            if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
+            if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
+            if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
+            if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
+        else
+            parts[#parts + 1] = L["kein Raid zum Abgleichen"]
+        end
+    elseif label then
         head = L["Vorschau gegen %s: %s"]:format((label:gsub("^letzter ", "letzten ")), head)   -- l10n-ok: German case of the label (English has no match)
         if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
         if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
         if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
         if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
-    else
+    elseif extra.src ~= "code" then
         head = L["Vorschau: %s"]:format(head)
         parts[#parts + 1] = L["kein Raid zum Abgleichen"]
     end
@@ -822,7 +1021,7 @@ local function refresh()
             or L["|cffe0a344Liste vom %s:|r %d Reservierungen. Für einen neuen Raid neu einfügen."]:format(ns.SoftResShortDate(sr.date), sr.count or 0))
         if editBox:GetText() == "" then editBox:SetText(sr.raw or "") end
     else
-        dateText:SetText(L["|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV oder Zeilen wie 'Name [Item-Link]' einfügen."])
+        dateText:SetText(L["|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV, Gargul-Code oder Zeilen wie 'Name [Item-Link]' einfügen."])
     end
 end
 
@@ -875,9 +1074,15 @@ local function build()
     resultText:SetMaxLines(2)
 
     local apply = W.Button(F, L["Übernehmen"], 110, function()
-        local count, bad = ns.SetSoftRes(editBox:GetText())
-        resultText:SetText(L["%d Reservierungen übernommen, %d Zeilen nicht erkannt."]:format(count, #bad)
-            .. (#bad > 0 and L[" Erste: %s"]:format(bad[1]:sub(1, 40)) or ""))
+        local count, bad, err, extra = ns.SetSoftRes(editBox:GetText())
+        if err then
+            resultText:SetText(err)
+        elseif extra and extra.src == "code" then
+            resultText:SetText(L["%d Reservierungen übernommen, Hard-Reserves: %d."]:format(count, extra.hardCount))
+        else
+            resultText:SetText(L["%d Reservierungen übernommen, %d Zeilen nicht erkannt."]:format(count, #bad)
+                .. (#bad > 0 and L[" Erste: %s"]:format(bad[1]:sub(1, 40)) or ""))
+        end
         refresh()
     end)
     apply:SetPoint("BOTTOMLEFT", 12, 10)
@@ -964,7 +1169,17 @@ end
 local SUBWORDS = { pruefen = "check", ["prüfen"] = "check", check = "check", erinnern = "remind", remind = "remind",   -- l10n-ok: typed sub-words, both languages work
                    posten = "post", post = "post", vergessen = "forget", forget = "forget" }
 local SR_ARGS = L["[pruefen|erinnern|posten|vergessen [Name]]"]
+-- "/amisia sr <code>": a softres.it code straight from the chat line (officers; the chat line takes
+-- 255 characters, a longer code goes into the import window).
+local function codeCommand(code)
+    if not ns.IsOfficerView() then ns.msg(L["Importieren nur in der Offiziersansicht."]) return end
+    local count, _, err, extra = ns.SetSoftRes(code)
+    ns.msg(err or L["%d Reservierungen übernommen, Hard-Reserves: %d."]:format(count, extra.hardCount))
+end
+
 ns.RegisterSlash("sr", { args = SR_ARGS, desc = L["Soft-Reserves anzeigen"], run = function(rest)
+    local code = ns.SoftResCode(ns.Plain(rest))
+    if code then codeCommand(code) return end
     local word, tail = (rest or ""):match("^(%S+)%s*(.-)$")
     local sub = word and SUBWORDS[word:lower()]
     if word and not sub then

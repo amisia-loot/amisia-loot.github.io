@@ -1,8 +1,8 @@
 # Spec: softres.it-Exporte und gemischte Gilde mit Gargul
 
-Stand: 2026-10-11 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
-Feature: F-091 (Teil A, softres.it-Exporte), F-092 (Teil B, gemischte Gilde); sind die Nummern beim
-Freigeben schon vergeben, die dann nächsten freien.
+Stand: 2026-10-11 · Status: freigegeben (A2, B1, B4 gebaut für 2.26.0) ·
+Feature: F-091 (A2, softres.it-Code), F-092 (B1, Gargul-Runden), F-093 (B4, Ansage auf Englisch); A1 war
+eine Fehlerbehebung von F-019 (2.25.2).
 
 Diese Spec nennt Gargul beim Namen, weil der Nutzer genau dieses Addon meint. Nach D-05 heißen andere
 Addons in Entwürfen sonst "andere Loot-Addons". Ob das hier und in Amisias Texten gelockert wird,
@@ -348,3 +348,11 @@ sich auch ihr Gargul-Fenster.
   der Namenstest bekommt dafür eine Ausnahme; softres-+1 nur als Hinweis (D-22 bleibt); Hard-Reserves
   als "HR" markiert mit Rückfrage beim Start; eine erkannte Gargul-Runde zählt nur vom Plündermeister
   oder Leiter mit Offiziersrang in der eigenen Gruppe.
+- 2026-10-11: A2, B1 und B4 gebaut (für 2.26.0, noch nicht veröffentlicht): F-091, F-092, F-093;
+  DECISIONS D-44 und die Ausnahme in D-05 (der Namenstest erlaubt "gargul" nur in acht Dateien, dort nur
+  in Kommentaren und Texten von `L[...]`). Abweichungen von der Spec: die Vorschau sagt, wie beauftragt,
+  "Gargul-Code erkannt: N Reservierungen, M Hard-Reserves" (statt "Code erkannt (softres.it): ...");
+  der Hard-Reserve-Eintrag heißt `{to, note}` (`for` ist in Lua ein Schlüsselwort); die Notiz steht im
+  Tooltip, nicht im Würfel-Fenster (sie käme nur über `WS`); die Klasse wird gespeichert, aber noch
+  nicht zum Namensabgleich benutzt; der Selbsttest bekommt die Zeile aus Frage 2 nicht (im Spiel schon
+  geprüft).
