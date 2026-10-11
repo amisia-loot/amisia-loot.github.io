@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.26.0 (2026-10-11)
+
+- FEATURES: note on the softres.it CSV fix
+- Spec softres/Gargul: in-game checks, build A2 + B1 + B4 with the proposed answers
+- Soft-reserves read the softres.it code; Gargul rounds open the roll window; English announcement (2.26.0, not released)
+- Review of the softres.it code and Gargul rounds: no freeze from a pasted code, bounded unpacking, no cut English line (2.26.0, not released)
+
 ## 2.25.2 (2026-10-11)
 
 - Soft-reserves: read softres.it's CSV of today (name in 'Raider Name'; it gave 0 reservations); spec softres.it + Gargul compatibility (not approved yet)
