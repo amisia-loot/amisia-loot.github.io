@@ -436,12 +436,30 @@ NAMED_HERE = {
 }
 
 
+def _comment_start(line):
+    """Where the Lua comment of line starts ("--" outside a quoted text), or -1."""
+    quote, i = None, 0
+    while i < len(line):
+        c = line[i]
+        if quote:
+            if c == '\\':
+                i += 1
+            elif c == quote:
+                quote = None
+        elif c in '"\'':
+            quote = c
+        elif line.startswith('--', i):
+            return i
+        i += 1
+    return -1
+
+
 def _named_where_allowed(rel, line, name):
     if rel not in NAMED_HERE.get(name, ()):
         return False
     low = line.lower()
     at = low.find(name)
-    comment = low.find('--')
+    comment = _comment_start(low)
     if comment != -1 and comment < at:
         return True
     # inside L["..."]: every occurrence on the line stands in a quoted text after L[
@@ -463,6 +481,11 @@ def test_the_named_exception_stays_narrow():
     assert not _named_where_allowed('Raid/Awards.lua', '-- Gargul', 'gargul')
     assert not _named_where_allowed('Raid/Rolls.lua', 'local x = "Gargul"', 'gargul')
     assert _named_where_allowed('Raid/Rolls.lua', 'ns.msg(L["Gargul-Runde"])', 'gargul')
+    assert _named_where_allowed('Raid/Rolls.lua', 'local x = 1 -- "Gargul"', 'gargul')
+    # a "--" inside a quoted text starts no comment: a chat line naming it is code, not a comment
+    assert not _named_where_allowed('Raid/Rolls.lua', 'ns.Say("-- Gargul round", "RAID")', 'gargul')
+    assert not _named_where_allowed('Raid/Rolls.lua', "local x = '--' .. 'Gargul'", 'gargul')
+    assert not _named_where_allowed('Raid/Rolls.lua', 'local x = "a\\"--" .. "Gargul"', 'gargul')
 
 
 def test_the_version_stands_only_in_the_toc():

@@ -241,7 +241,7 @@ sich auch ihr Gargul-Fenster.
   heute (Namenskorrekturen, `ns.SameNameIn`). Gargul-Namen mit "-Realm" werden gekürzt.
 - **Client auf Englisch:** B1 kennt beide Sprachen der Gargul-Ansage, unabhängig von der Sprache des
   eigenen Clients.
-- **Leere oder riesige Codes:** über 64 KB Text oder über 256 KB entpackt: "Code zu groß". Höchstens
+- **Leere oder riesige Codes:** über 24 KB Text (bis zur Prüfung nach dem Bau 64 KB) oder über 256 KB entpackt: "Code zu groß". Höchstens
   2000 Reservierungen.
 - **`/reload` während einer beobachteten Runde:** Die Runde ist weg, wie bei Amisia-Runden.
 
@@ -356,3 +356,7 @@ sich auch ihr Gargul-Fenster.
   Tooltip, nicht im Würfel-Fenster (sie käme nur über `WS`); die Klasse wird gespeichert, aber noch
   nicht zum Namensabgleich benutzt; der Selbsttest bekommt die Zeile aus Frage 2 nicht (im Spiel schon
   geprüft).
+- 2026-10-11, Prüfung nach dem Bau: höchstens 24 KB Code (zlib kann bis 1032:1 entpacken, und
+  `DecompressString` kennt keine Grenze), JSON höchstens 20 Ebenen tief, Leerzeichen in linearer Zeit
+  entfernt; Hand-Eingaben machen eine beobachtete Runde nicht "nicht angesagt"; die englische Ansage
+  schneidet keine Reservierenden mehr ab; Zeilen von Raidern warten nicht auf die Gildenliste (D-44).

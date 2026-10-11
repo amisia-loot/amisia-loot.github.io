@@ -106,6 +106,9 @@ local function onChat(text, sender)
     if not (ns.Get("rolls.foreignWatch") or (ns.Get("rollwin.enabled") and ns.Get("rollwin.foreign"))) then return end
     local name = ns.TrustName(sender)
     if not name then return end
+    -- the group roles first (no roster needed): a raider's lines never take a place in the queue of
+    -- senders waiting for the guild roster (ns.TrustWait, shared with WS and the other messages)
+    if not ns.InMyGroup(name) or not (ns.IsLootBossName and ns.IsLootBossName(name)) then return end
     local arrived = GetTime()
     if start then
         local key = name:lower()

@@ -66,26 +66,53 @@ end
 -- Base64 of zlib-packed JSON, unpacked only with the client's C_EncodingUtil. The text is untrusted
 -- (D-26): every step under pcall, every field checked and capped, unknown fields passed over.
 ---------------------------------------------------------------------------
-local MAX_CODE = 65536        -- characters of a pasted code
+-- DecompressString has no output limit: zlib packs at most 1032:1, so the code's length is the only
+-- bound before the client allocates. 24 KB of Base64 are 18 KB packed, at most about 19 MB unpacked
+-- (a raid of 40 with notes is under 7 KB); MAX_JSON is checked only after unpacking.
+local MAX_CODE = 24576        -- characters of a pasted code
 local MAX_JSON = 262144       -- bytes unpacked
+local MAX_DEPTH = 20          -- nesting of the JSON (the code has 5); the client's reader is not asked deeper
 local MAX_RESERVES = 2000
 local MAX_NAME, MAX_NOTE = 48, 60
 local ZLIB = 1                -- Enum.CompressionMethod.Zlib (in game 2026-10-11)
+
+-- s without the spaces around it, in linear time ("^%s*(.-)%s*$" is quadratic on a long run of
+-- spaces inside s, and a code can unpack to 256 KB of them).
+local function trim(s)
+    local first = s:find("%S")
+    if not first then return "" end
+    return s:match(".*%S", first)
+end
 
 -- s without colour codes, bars and control characters, trimmed, at most max characters (UTF-8 kept
 -- whole); nil when nothing is left.
 local function cleanText(s, max)
     if type(s) ~= "string" then return nil end
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|", ""):gsub("%c", " ")
-    s = s:match("^%s*(.-)%s*$")
+    s = trim(s)
     local out, n = {}, 0
     for ch in s:gmatch("[%z\1-\127\192-\253][\128-\191]*") do
         n = n + 1
         if n > max then break end
         out[n] = ch
     end
-    s = table.concat(out):match("^%s*(.-)%s*$")
+    s = trim(table.concat(out))
     return s ~= "" and s or nil
+end
+
+-- Whether json nests deeper than max (strings left out): checked before the client's reader.
+local function tooDeep(json, max)
+    local bare = json:gsub("\\.", ""):gsub('"[^"]*"', "")
+    local depth = 0
+    for c in bare:gmatch("[%[{%]}]") do
+        if c == "[" or c == "{" then
+            depth = depth + 1
+            if depth > max then return true end
+        else
+            depth = depth - 1
+        end
+    end
+    return false
 end
 
 -- A name of the code: cleaned, "-Realm" dropped, no digits or separators.
@@ -107,7 +134,7 @@ end
 -- dropped), at least 24 long. "Anna 18814" or a CSV never is one.
 function ns.SoftResCode(text)
     if type(text) ~= "string" then return nil end
-    local code = text:match("^%s*(.-)%s*$"):gsub("[\r\n]+", "")
+    local code = trim(text):gsub("[\r\n]+", "")
     if #code < 24 or not code:match("^[%w+/]+=?=?$") then return nil end
     return code
 end
@@ -127,6 +154,7 @@ function ns.DecodeSoftResCode(code)
     local ok2, json = pcall(E.DecompressString, raw, method)
     if not ok2 or type(json) ~= "string" or json == "" then return nil, "broken" end
     if #json > MAX_JSON then return nil, "big" end
+    if tooDeep(json, MAX_DEPTH) then return nil, "broken" end
     local ok3, data = pcall(E.DeserializeJSON, json)
     if not ok3 or type(data) ~= "table" then return nil, "broken" end
     return data

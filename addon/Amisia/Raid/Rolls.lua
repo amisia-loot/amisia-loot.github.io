@@ -211,10 +211,13 @@ end
 
 -- The roll announcement in English for a German client (rolls.announceEnglish, B4): raiders with
 -- another loot addon or an English client read it; not translated, it is English on every client.
-local function englishLine(link, seconds, reserved)
+-- One line; reservers that do not fit into its 255 bytes go on the next line (never cut off).
+local function englishLines(link, seconds, reserved)
     local line = ("Roll on %s: /roll for main spec, /roll 99 for off spec. %d seconds."):format(link, seconds)
-    if #reserved > 0 then line = line .. (" Reserved by %s."):format(table.concat(reserved, ", ")) end
-    return line
+    if #reserved == 0 then return { line } end
+    local lines = ns.ChatLines(line .. " Reserved by ", reserved)
+    lines[#lines] = lines[#lines] .. "."
+    return lines
 end
 
 -- Starts a round for an item link. onlyNames restricts who counts (the tie-break, always a roll);
@@ -277,7 +280,9 @@ function ns.StartRoll(link, seconds, onlyNames, opts)
     else
         ns.Announce(L["Roll auf %s: /roll für Mainspec, /roll 99 für Offspec. %d Sekunden."]:format(link, seconds))
         if #reserved > 0 then ns.Announce(L["Reserviert von %s."]:format(table.concat(reserved, ", "))) end
-        if ns.GERMAN and ns.Get("rolls.announceEnglish") then ns.Announce(englishLine(link, seconds, reserved)) end
+        if ns.GERMAN and ns.Get("rolls.announceEnglish") then
+            for _, line in ipairs(englishLines(link, seconds, reserved)) do ns.Announce(line) end
+        end
     end
     local left = seconds
     ticker = C_Timer.NewTicker(1, function()
@@ -513,7 +518,8 @@ function ns.AddManualRoll(name, value, kind)
     plusOf(r, key)
     if r.done then
         ns.RollDecide(r)
-        r.dirty = true
+        -- a watched round of another loot addon is never announced, so it is never "not announced yet"
+        if not r.foreign then r.dirty = true end
     end
     changed()
     return e
