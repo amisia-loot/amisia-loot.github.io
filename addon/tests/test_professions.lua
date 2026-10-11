@@ -117,13 +117,14 @@ local function spells(list)
     for _, e in ipairs(list) do out[#out + 1] = e.recipe.spell end
     return table.concat(out, ",")
 end
-assert(spells(Pr.List(164, { search = "KUPFER" })) == "2663,3321,1252229", spells(Pr.List(164, { search = "KUPFER" })))
+-- sorted by the learn rank, then by yellow
+assert(spells(Pr.List(164, { search = "KUPFER" })) == "2663,1252229,3321", spells(Pr.List(164, { search = "KUPFER" })))
 assert(spells(Pr.List(164, { known = "known" })) == "2663,1252229")
-assert(spells(Pr.List(164, { known = "unknown" })) == "3321,1301421,9999")
-assert(spells(Pr.List(164, { learnable = true })) == "3321,9999", "unknown and the rank allows it")
+assert(spells(Pr.List(164, { known = "unknown" })) == "9999,3321,1301421")
+assert(spells(Pr.List(164, { learnable = true })) == "9999,3321", "unknown and the rank allows it")
 assert(spells(Pr.List(164, { source = "V" })) == "3321")
 assert(spells(Pr.List(164, { source = "D" })) == "1301421", "the collector's drop counts too")
-assert(spells(Pr.List(164, { source = "T" })) == "2663,1252229,9999", "with the profession, the trainer, or nothing known")
+assert(spells(Pr.List(164, { source = "T" })) == "2663,9999,1252229", "with the profession, the trainer, or nothing known")
 assert(spells(Pr.List(171, { source = "F" })) == "1234001")
 local first = Pr.List(164)[1]
 assert(first.name == "Kupferarmschienen" and first.known == true and first.color == "green", first.color)

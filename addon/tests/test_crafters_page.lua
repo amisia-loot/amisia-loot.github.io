@@ -34,8 +34,8 @@ local said
 ChatFrameUtil.SendTellWithMessage = function(name, text) said = { name, text } end
 d.ask:Click()
 assert(said and said[1] == "Anna Amboss" and has(said[2], "[Kupferarmschienen]"), said and said[2])
--- the vest only Anna knows; a recipe nobody knows says so and cannot be asked
-f.list.rows[2]:Click()
+-- the vest only Anna knows (fourth by learn rank); a recipe nobody knows says so and cannot be asked
+f.list.rows[4]:Click()
 assert(has(d.body.fs:GetText(), "Hergestellt von: Anna Amboss (300)"), d.body.fs:GetText())
 f.list.rows[3]:Click()
 assert(has(d.body.fs:GetText(), "Hergestellt von: niemand aus der Gilde bekannt") and not d.ask:IsEnabled())
