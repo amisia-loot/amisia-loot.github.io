@@ -578,6 +578,7 @@ local function region(parent, kind, layer, template)
     f.SetHeight = function(self, h) self._h = h end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetTexture = function(self, t) self.texture = t end
+    f.SetDesaturated = function(self, on) self.desaturated = on and true or false end
     f.SetFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetWordWrap = function(self, on) self.wordWrap = on and true or false end
     f.SetJustifyH = function(self, j) self.justifyH = j end
@@ -678,6 +679,11 @@ for _, cls in ipairs({ "warrior", "paladin", "hunter", "rogue", "priest", "shama
 end
 -- the quest icon of the map legend (Forever loads the mainline MapLegendFrameData): the quest giver marks
 STUB.atlases["QuestNormal"] = { 28, 28 }
+-- the group finder's role and class icons (Blizzard_UIPanelTemplates/Camelot, Blizzard_GroupFinder_VanillaStyle)
+for _, r in ipairs({ "tank", "heal", "dps" }) do STUB.atlases["groupfinder-icon-role-large-" .. r] = { 18, 18 } end
+for _, cls in ipairs({ "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid" }) do
+    STUB.atlases["groupfinder-icon-class-" .. cls] = { 18, 18 }
+end
 for _, part in ipairs({ "128-RedButton-Left", "128-RedButton-Right", "_128-RedButton-Center" }) do
     for _, s in ipairs({ "", "-Pressed", "-Disabled" }) do STUB.atlases[part .. s] = { part:find("Center") and 64 or 114, 128 } end
 end

@@ -54,8 +54,28 @@ STUB.tick(1)
 local F = NS._raidCalUI.frame()
 assert(F and F:IsShown(), "the window for a raider")
 assert(#F.dates.items == 2 and F.dates.items[1].title == "Molten Core", "the dates on the left")
-assert(has(F.dates.rows[1].own:GetText(), "vorläufig (H)"), "the own state beside the date: " .. F.dates.rows[1].own:GetText())
-assert(has(F.head:GetText(), "Molten Core"), F.head:GetText())
+local own = F.dates.rows[1].own
+assert(own.text:GetText() == "vorläufig (H)" and own:IsShown(), "the own state as a badge beside the date: " .. tostring(own.text:GetText()))
+assert(own.text.textColor[1] > 0.8 and own.ground.color[4] > 0, "tentative: an orange badge on its faint ground")
+assert(F.dates.rows[1].day:GetText():find("^%a%a %d%d%.%d%d%.$") and F.dates.rows[1].time:GetText() == "20:00", "the day large, the time")
+assert(F.dates.rows[1].sel:IsShown() and not F.dates.rows[2].sel:IsShown(), "the chosen date has the selection glow")
+assert(F.datesInset.ground.atlas == "Professions-background-summarylist", "the dates on the recipe list's ground")
+assert(F.head:GetText() == "Molten Core" and F.head.font == "GameFontNormalLarge", "the title large: " .. F.head:GetText())
+assert(has(F.when:GetText(), "20:00") and has(F.when:GetText(), "Schlachtzug"), F.when:GetText())
+assert(F.icon:IsShown() and F.icon.texture == "Interface\\LFGFrame\\LFGIcon-Raid", "the raid's type icon: " .. tostring(F.icon.texture))
+-- the layer: in the main window's strata, top level, raised when shown (2.25.1: it opened behind it)
+assert(F.strata == "FULLSCREEN" and F.toplevel and (F.raised or 0) >= 1, "above the main window: " .. tostring(F.strata))
+local raised = F.raised
+NS.ShowRaidCalendar()
+assert(F.raised > raised, "opened again while shown: to the front")
+raised = F.raised
+F:GetScript("OnMouseDown")(F)
+assert(F.raised > raised, "a click brings it to the front")
+-- the column heads
+local heads = {}
+for _, k in ipairs({ "r", "name", "level", "src", "note" }) do heads[#heads + 1] = F.colHeads[k]:GetText() end
+assert(table.concat(heads, ",") == "Rolle,Name,Stufe,Quelle,Notiz" and F.cols:IsShown(), table.concat(heads, ","))
+assert(F.colHeads.level.justifyH == "RIGHT", "the level right-aligned")
 assert(not F.lineup:IsShown(), "no lineup button for a raider")
 assert(has(F.status:GetText(), "Kalender gelesen"), F.status:GetText())
 assert(cal.opens == 1 and cal.closes >= 1 and cal.writes == 0, "read once, closed, nothing written")
@@ -84,7 +104,15 @@ assert(entry("Eda Glut").st == "E" and entry("Dora Stein").st == "O" and entry("
 assert(entry("Finn Laub").r == "T" and not entry("Finn Laub").q)
 assert(entry("Vulo Hunt").r == "R" and entry("Vulo Hunt").q, "a hunter: ranged, guessed")
 -- the summary counts those signed up or confirmed: Hunt (R?) and Finn (T)
-assert(F.sum:GetText() == "Tanks 1 · Heiler 0 · Nahkampf 0 · Fernkampf 1", F.sum:GetText())
+-- (now as badges with the group finder's role icons)
+assert(F.roles.T.count == 1 and F.roles.H.count == 0 and F.roles.M.count == 0 and F.roles.R.count == 1, "the role badges")
+assert(F.roles.T.icon.atlas == "groupfinder-icon-role-large-tank" and F.roles.H.icon.atlas == "groupfinder-icon-role-large-heal"
+    and F.roles.R.icon.atlas == "groupfinder-icon-role-large-dps", "the role icons")
+assert(has(F.roles.T.text:GetText(), "Tank") and has(F.roles.T.text:GetText(), "1"), F.roles.T.text:GetText())
+assert(F.roles.R.names[1] == "Vulo Hunt" and F.roles.T.names[1] == "Finn Laub", "the badge's tooltip names them")
+-- the totals per status: 2 signed up, 2 tentative, 1 bench, 2 signed off, 1 without answer
+local tot = F.totals:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+assert(tot == "angemeldet 2  ·  vorläufig 2  ·  Ersatz 1  ·  abgemeldet 2  ·  ohne Antwort 1", tot)
 
 -- the rows on screen: role, name in class colour, level, marks, note; the note whole in the tooltip
 local function rowOf(name)
@@ -94,10 +122,15 @@ local function rowOf(name)
 end
 local finn = rowOf("Finn Laub")
 assert(has(finn.cells.r:GetText(), "T") and not has(finn.cells.r:GetText(), "?"))
+assert(finn.roleIcon:IsShown() and finn.roleIcon.atlas == "groupfinder-icon-role-large-tank" and not finn.roleIcon.desaturated, "the role icon")
+assert(finn.classIcon:IsShown() and finn.classIcon.atlas == "groupfinder-icon-class-druid", "the class icon")
+assert(finn.cells.level.justifyH == "RIGHT")
 assert(has(finn.cells.name:GetText(), "Finn Laub") and has(finn.cells.name:GetText(), "|c"), "class colour")
 assert(finn.cells.level:GetText() == "55" and has(finn.cells.src:GetText(), "A") and not has(finn.cells.src:GetText(), "K"))
 assert(has(finn.cells.note:GetText(), "komme 20:15"))
-assert(has(rowOf("Vulo Hunt").cells.r:GetText(), "F?"), "guessed: grey with ?")
+local hunt = rowOf("Vulo Hunt")
+assert(has(hunt.cells.r:GetText(), "F?"), "guessed: grey with ?")
+assert(hunt.roleIcon.atlas == "groupfinder-icon-role-large-dps" and hunt.roleIcon.desaturated and hunt.roleIcon.alpha < 1, "guessed: the icon grey and faint")
 local anna = rowOf("Anna Bergmann")
 assert(has(anna.cells.src:GetText(), "K") and has(anna.cells.src:GetText(), "A"))
 local tip = {}
@@ -107,7 +140,12 @@ local all = table.concat(tip, "\n")
 assert(has(all, "Notiz: Kind krank, sorry") and has(all, "Quellen: Kalender, Amisia") and has(all, "abgemeldet"), all)
 -- a head row shows only its text
 for _, r in ipairs(F.list.rows) do
-    if r:IsShown() and r.item and r.item.head then assert(r.head:IsShown() and r.cells.name:GetText() == "") end
+    if r:IsShown() and r.item and r.item.head then
+        assert(r.bar:IsShown() and r.cells.name:GetText() == "" and not r.roleIcon:IsShown(), "a group's section bar")
+        assert(has(r.bar.ButtonText:GetText(), r.item.head) and has(r.bar.ButtonText:GetText(), tostring(r.item.count)), r.bar.ButtonText:GetText())
+    elseif r:IsShown() and r.item then
+        assert(not r.bar:IsShown())
+    end
 end
 
 -- the calendar changes (Bob signs up there after his tentative): read again within 5 s, the change
@@ -147,6 +185,15 @@ assert(F.signup:GetText() == "Ändern ...", F.signup:GetText())
 F.signup:Click()
 local S = NS._signupUI.frame()
 assert(S:IsShown() and S.pick:GetValue() == N1)
+-- the sign-up window in the same strata, in front of the calendar; clicked again while open: to the front again
+assert(S.strata == "FULLSCREEN" and S.toplevel and (S.raised or 0) >= 1, "the sign-up window above the main window: " .. tostring(S.strata))
+local sr = S.raised
+F.signup:Click()
+assert(S.raised > sr, "the sign-up window comes to the front")
+-- the question window stands above all of them (one strata higher)
+local Q = NS.W.Confirm("Frage", "Text", "Ausführen", function() end)
+assert(Q.strata == "FULLSCREEN_DIALOG" and (Q.raised or 0) >= 1, "the confirm above every Amisia window")
+Q:Hide()
 -- the sign-up window's "Kalender" and the card's open this window too
 F:Hide()
 S.calOpen:Click()

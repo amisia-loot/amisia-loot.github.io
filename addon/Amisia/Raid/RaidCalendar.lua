@@ -20,6 +20,7 @@ ns.RaidCal = RC
 RC.RELOAD_GAP = 5     -- a date is read again at most this often while the window is open
 RC.POLL = 30          -- and every this many seconds (the client does not tell every change)
 RC.BUSY_RETRY = 2     -- the calendar is read by the lineup or the probe: again after this many seconds
+RC.BUSY_SHOW = 8      -- busy this long without a break: the window says so instead of "wird gelesen"
 
 -- The groups of the window, top to bottom, by the valid status (Lineup's codes).
 RC.GROUPS = {
@@ -143,26 +144,28 @@ function RC.List(night)
     return list
 end
 
--- The rows of the window: a head per group with its count ({ head = label, count }), then its
--- names ({ e = entry }); empty groups are left out. And the roles of those signed up or confirmed:
--- { T, H, M, R }.
+-- The rows of the window: a head per group with its count ({ head = label, count, key }), then its
+-- names ({ e = entry, key }); empty groups are left out. And the roles of those signed up or
+-- confirmed ({ T, H, M, R }, guessed roles count), the number of names and the count per group
+-- ({ in, maybe, bench, out, none }).
 function RC.Rows(night)
     local list = RC.List(night)
-    local rows, roles = {}, { T = 0, H = 0, M = 0, R = 0 }
+    local rows, roles, groups = {}, { T = 0, H = 0, M = 0, R = 0 }, {}
     for gi, g in ipairs(RC.GROUPS) do
         local members = {}
         for _, e in ipairs(list) do
             if e.group == gi then members[#members + 1] = e end
         end
+        groups[g.key] = #members
         if #members > 0 then
             rows[#rows + 1] = { head = L[g.label], count = #members, key = g.key }
             for _, e in ipairs(members) do
-                rows[#rows + 1] = { e = e }
+                rows[#rows + 1] = { e = e, key = g.key }
                 if g.key == "in" and e.r then roles[e.r] = roles[e.r] + 1 end
             end
         end
     end
-    return rows, roles, #list
+    return rows, roles, #list, groups
 end
 
 -- for the tests

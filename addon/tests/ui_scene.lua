@@ -186,6 +186,27 @@ function S.calendar()
     STUB.tick(1)
 end
 
+-- The sign-ups from Amisia this client keeps for tonight's raid (the raid calendar window): every
+-- role, tentative and signed off ones, a long note.
+local rcSignupsDone
+function S.raidCalendarSignups()
+    S.calendar()
+    if rcSignupsDone then return end
+    rcSignupsDone = true
+    local ev = NS.Cal.Events()[1]
+    local keep, t = NS._signup.keepSeen, math.floor(STUB.now)
+    keep(ev.night, "Pia Pfeil", { s = "A", r = "R", c = "HUNTER", t = t, w = "komme 20:15" })
+    keep(ev.night, "Jo Klinge", { s = "X", r = "M", c = "ROGUE", t = t, w = "Nachtschicht, sorry" })
+    keep(ev.night, "Lea Morgen", { s = "A", r = "R", c = "MAGE", t = t, w = "Feuer" })
+    keep(ev.night, "Bob Eisherz", { s = "A", r = "T", c = "WARRIOR", t = t })
+    keep(ev.night, "Hanna Licht", { s = "A", r = "H", c = "PALADIN", t = t,
+        w = "komme etwas später, muss noch das Kind ins Bett bringen" })
+    keep(ev.night, "Kai Fels", { s = "A", r = "M", c = "WARRIOR", t = t })
+    keep(ev.night, "Nele Mond", { s = "V", r = "H", c = "DRUID", t = t, w = "vielleicht" })
+    keep(ev.night, "Olaf Grimm", { s = "V", r = "T", c = "PALADIN", t = t })
+    keep(ev.night, "Rike Sturm", { s = "X", r = "R", c = "WARLOCK", t = t, w = "Urlaub" })
+end
+
 -- Tonight's lineup with the calendar's invite list and two sign-ups from Amisia (a note, a sign-off).
 local lineupCalDone
 function S.lineupCalendar()
@@ -408,20 +429,16 @@ S.WINDOWS = {
     end },
     -- the raid calendar window (UI/RaidCalendar.lua, part I): tonight's raid with the calendar's
     -- invites and sign-ups from Amisia (notes, a sign-off), the dates on the left
+    -- (every group and role, a long note, guessed roles from the calendar's names; more names than
+    -- rows, so the list scrolls)
     { key = "raidcalendar", view = "raider", open = function()
-        S.calendar()
-        local ev = NS.Cal.Events()[1]
-        local keep, t = NS._signup.keepSeen, math.floor(STUB.now)
-        keep(ev.night, "Pia Pfeil", { s = "A", r = "R", c = "HUNTER", t = t, w = "komme 20:15" })
-        keep(ev.night, "Jo Klinge", { s = "X", r = "M", c = "ROGUE", t = t, w = "Nachtschicht, sorry" })
-        keep(ev.night, "Lea Morgen", { s = "A", r = "R", c = "MAGE", t = t, w = "Feuer" })
-        keep(ev.night, "Bob Eisherz", { s = "A", r = "T", c = "WARRIOR", t = t })
-        NS.ShowRaidCalendar(ev.night)
+        S.raidCalendarSignups()
+        NS.ShowRaidCalendar(NS.Cal.Events()[1].night)
         STUB.tick(1)
         return AmisiaRaidCalendarFrame
     end },
     { key = "raidcalendar-officer", view = "officer", open = function()
-        S.calendar()
+        S.raidCalendarSignups()
         NS.ShowRaidCalendar(NS.Cal.Events()[1].night)
         STUB.tick(1)
         return AmisiaRaidCalendarFrame

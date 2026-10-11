@@ -20,6 +20,7 @@ Cal.WAIT = 10             -- seconds to wait for the client's answer
 Cal.MAX_INVITES = 80      -- invites read of one event (the lineup's 80 names)
 Cal.TITLE_MAX = 40
 Cal.QUIET = 3             -- seconds after an own read in which calendar events are no change
+Cal.STUCK = 5             -- an open or a wait still running this long after Cal.WAIT lost its answer
 local DAY = 86400
 
 -- Enum.CalendarStatus: the client's name, Amisia's code (the lineup's st) and the probe's word
@@ -136,7 +137,8 @@ local function call(name, ...)
 end
 
 -- The guild events loaded now, from tonight's raid night up to Cal.DAYS days ahead, by time:
--- { { index, id (digits), title, at, type, raid, own = status code or nil } }. The client lists
+-- { { index, id (digits), title, at, type, raid, own = status code or nil, tex = the event's
+-- texture (file id, the raid's picture) or nil } }. The client lists
 -- what OpenCalendar loaded; nothing is asked for here.
 function Cal.Events()
     local out = {}
@@ -153,9 +155,11 @@ function Cal.Events()
                 local id = plain(e.eventID)
                 local typ = plain(e.eventType)
                 local st = plain(e.inviteStatus)
+                local tex = plain(e.texture)
                 out[#out + 1] = { index = i, id = type(id) == "number" and ("%.0f"):format(id) or nil, at = at, night = night,
                     title = Cal.Clean(e.title) or "?", type = type(typ) == "number" and typ or nil, raid = typ == 0,
-                    own = type(st) == "number" and Cal.STATUS[st] and Cal.STATUS[st][2] or nil, info = e }
+                    own = type(st) == "number" and Cal.STATUS[st] and Cal.STATUS[st][2] or nil,
+                    tex = type(tex) == "number" and tex > 0 and tex or nil, info = e }
             end
         end
     end
@@ -211,6 +215,7 @@ end
 local held              -- the calendar probe runs (Cal.Hold)
 local waiter            -- { want = { event = true }, done = fn(gotEvent) }
 local busy = false      -- an own open is running
+local busyAt = 0        -- since when (GetTime)
 local quietUntil = 0    -- calendar events until then come from the own read
 
 -- The page listens to Cal changes through ns.Listen("CALENDAR_CHANGED").
@@ -243,7 +248,7 @@ local function wait(want, fn)
         -- on the next frame: the client fills its lists after the event's handlers
         C_Timer.After(0, function() fn(event) end)
     end
-    waiter = { want = set, done = done, token = token }
+    waiter = { want = set, done = done, token = token, at = GetTime() }
     C_Timer.After(Cal.WAIT, function() done(nil) end)
     -- cancels the wait without calling fn
     return function()
@@ -252,9 +257,22 @@ local function wait(want, fn)
     end
 end
 
+-- An open or a wait whose answer got lost (an error in a handler after the open, a timer the client
+-- dropped) must not keep the calendar busy until the next /reload: still running Cal.STUCK seconds
+-- after its own time-out, it counts as over (2.25.1: the raid calendar window said "Kalender wird
+-- gelesen ..." for good while every read came back "busy").
+local function unstick()
+    local now = GetTime()
+    if busy and now - busyAt > Cal.WAIT + Cal.STUCK then busy = false end
+    if waiter and now - (waiter.at or 0) > Cal.WAIT + Cal.STUCK then waiter = nil end
+end
+
 -- Whether an own open runs or a calendar probe holds the calendar (nothing else may open or write
 -- an event then).
-function Cal.Busy() return busy or held or false end
+function Cal.Busy()
+    unstick()
+    return busy or held or false
+end
 
 -- The calendar probes (/amisia selbsttest kalender [schreiben]) open events themselves: while one
 -- runs, nothing here opens one, the calendar write waits and no change is reported.
@@ -265,6 +283,7 @@ function Cal.Hold(on) held = on and true or false end
 -- client for the newest state; a change comes as CALENDAR_CHANGED).
 function Cal.Load(fn)
     if not Cal.Available() then return fn(nil, "off") end
+    unstick()
     local before = tonumber(plain(call("GetNumGuildEvents"))) or 0
     if before > 0 then
         pcall(C_Calendar.OpenCalendar)
@@ -339,7 +358,7 @@ local function openFor(ev, use, fn)
     if not now then return fn(nil, "gone") end
     local sel = call("GetGuildEventSelectionInfo", now.index)
     if type(sel) ~= "table" then return fn(nil, "gone") end
-    busy = true
+    busy, busyAt = true, GetTime()
     local function finish(result, extra, keep)
         if not keep then close() end
         busy = false
@@ -365,6 +384,7 @@ end
 
 function Cal.Open(ev, use, fn)
     if not Cal.CanReadInvites() then return fn(nil, "off") end
+    unstick()
     if busy or waiter or held then return fn(nil, "busy") end
     if InCombatLockdown() then return fn(nil, "combat") end
     if Cal.WindowShown() then return fn(nil, "window") end
@@ -379,6 +399,7 @@ end
 -- ev itself and always closes it again.
 function Cal.Read(ev, fn)
     if not Cal.CanReadInvites() then return fn(nil, "off") end
+    unstick()
     if busy or waiter or held then return fn(nil, "busy") end
     if InCombatLockdown() then return fn(nil, "combat") end
     if Cal.WindowShown() then
@@ -402,4 +423,4 @@ local WHY = {
 function Cal.Why(why) return L[WHY[why] or WHY.off] end
 
 -- for the tests
-Cal._reset = function() waiter, busy, quietUntil, held = nil, false, 0, false end
+Cal._reset = function() waiter, busy, busyAt, quietUntil, held = nil, false, 0, 0, false end

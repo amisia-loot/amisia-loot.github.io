@@ -589,6 +589,11 @@ end
 for _, name in ipairs({ "talents-arrow-head-yellow", "talents-arrow-head-gray", "talent-background-mage" }) do
     ATLASES[#ATLASES + 1] = name
 end
+-- the raid calendar window (UI/RaidCalendar.lua): the group finder's role and class icons
+for _, name in ipairs({ "groupfinder-icon-role-large-tank", "groupfinder-icon-role-large-heal", "groupfinder-icon-role-large-dps",
+                        "groupfinder-icon-class-warrior", "groupfinder-icon-class-priest" }) do
+    ATLASES[#ATLASES + 1] = name
+end
 ST.ATLASES = ATLASES
 
 local function sectionAtlases(R)

@@ -95,7 +95,8 @@ local function send(status)
 end
 
 local function build()
-    F = W.Window("AmisiaSignupFrame", S.W, S.H, { title = L["Raid-Anmeldung"], strata = "DIALOG",
+    -- the main window's strata (it opened behind it before 2.25.1), in front when shown (D-43)
+    F = W.Window("AmisiaSignupFrame", S.W, S.H, { title = L["Raid-Anmeldung"], strata = "FULLSCREEN",
         onShow = function(self) if self.Raise then self:Raise() end refresh() end })
     F:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
     -- "Kalender" beside the date picker: the raid calendar window (part I) at the chosen date
@@ -238,7 +239,12 @@ function ns.ShowSignup(night)
     local rec = cur and ns.SignupOf()[cur]
     role = rec and rec.r or nil
     F.note:SetText(rec and rec.w or "")
-    if F:IsShown() then refresh() else F:Show() end
+    if F:IsShown() then
+        if F.Raise then F:Raise() end
+        refresh()
+    else
+        F:Show()
+    end
     if not ns.SignupTerms() then
         ns.SignupLoadTerms(function()
             local r2 = cur and ns.SignupOf()[cur]

@@ -227,27 +227,56 @@ T.SIGNUP = {
     LINE_H = 14,          -- one line of a hint (T.FONT.hint)
 }
 
--- the raid calendar window (UI/RaidCalendar.lua, "Raid-Kalender", AmisiaRaidCalendarFrame, part I):
--- the dates of the next 14 days on the left (two lines each), the chosen date's participants on the
--- right (a head, the role summary, the list grouped by status), the status line and the red buttons
--- at the bottom. Its content keeps T.WINDOW_PAD from the left and right edge: 18 + 220 (dates) + 12
--- (their bar) + 8 + 450 (participants) + 12 (their bar) = 720.
+-- the raid calendar window (UI/RaidCalendar.lua, "Raid-Kalender", AmisiaRaidCalendarFrame, part I),
+-- in the profession window's look (2.25.1): left the dates of the next 14 days in an inset with the
+-- recipe list's ground (each row the day large, the time, the title and the own state as a badge),
+-- right an inset with the chosen date's head (the event's icon, the title large and gold, the date
+-- line, a badge per role with the client's role icon, the totals per status), the column heads and
+-- the participants grouped by status under section bars; the status of the calendar read and the red
+-- buttons at the bottom. 18 (pad) + 232 (dates) + 8 + 484 (participants) + 18 (pad) = 760.
 T.RAIDCAL = {
-    W = 720, H = 470,     -- the window
-    TOP = 34,             -- the content below the window's top, under the title bar
-    DATES_W = 220,        -- the date list
-    DATE_ROW_H = 34,      -- a date: "Fr 10.10. 20:00" and the own state over the title
-    DATE_ROWS = 11,
-    DATE_TEXT_X = 6,      -- the date's texts from the row's left and right edge
-    RIGHT_X = 258,        -- the participants from the window's left edge (18 + 220 + 12 + 8)
-    RIGHT_W = 432,        -- the participant list (its bar right of it, 12 px room to the edge pad)
-    HEAD_H = 18,          -- the chosen date's title (gold)
-    SUM_Y = 54,           -- the role summary "Tanks 2 · Heiler 5 · ..." below the window's top
-    LIST_Y = 74,          -- the participant list below the window's top
-    ROW_H = 18,           -- a participant or a group head
-    ROWS = 19,
-    -- the participant columns: role, name (class colour), level, sources, note (cut; the tooltip has it whole)
-    COLS = { { "r", 4, 22 }, { "name", 30, 160 }, { "level", 194, 26 }, { "src", 224, 30 }, { "note", 258, 170 } },
+    W = 760, H = 500,     -- the window
+    TOP = 32,             -- the insets below the window's top, under the title bar
+    INSET_BOTTOM = 44,    -- the insets end this far above the window's bottom: BOTTOM + BUTTON_H + 8
+    INSET_GAP = 8,        -- between the two insets
+    INNER = 6,            -- the date list inside its inset
+    -- the dates (left inset): the list is DATES_W - 2 x INNER - SCROLL_ROOM wide
+    DATES_W = 232,
+    DATE_ROW_H = 40,      -- a date: day and time on the first line, the title under it
+    DATE_ROWS = 10,
+    DATE_X = 8,           -- the date's texts from the row's left and right edge
+    DAY_Y = 5,            -- the first line below the row's top (T.FONT.title: "Do 10.09.")
+    TIME_GAP = 6,         -- between the day and the time (T.FONT.body)
+    TITLE_Y = 23,         -- the title below the row's top (T.FONT.text)
+    BADGE_H = 14,         -- the own state's badge at the first line's right end
+    BADGE_PAD = 5,        -- its text from its edges
+    BADGE_ALPHA = 0.22,   -- its ground: the state's colour this strong
+    -- the participants (right inset, RIGHT_X from the window's left, RIGHT_W wide)
+    RIGHT_X = 258,        -- 18 + 232 + 8
+    RIGHT_W = 484,
+    PAD = 8,              -- the head, the column heads and the list from the inset's edges
+    ICON = 36,            -- the event's icon at the head's top left
+    TITLE_X = 52,         -- the title and the date line from the inset's left edge (PAD + ICON + 8)
+    HEAD_Y = 8,           -- the title (T.FONT.big, gold) below the inset's top
+    WHEN_Y = 30,          -- the date line (T.FONT.text)
+    ROLES_Y = 52,         -- the role badges below the inset's top
+    ROLE_ICON = 16,       -- a role badge's icon; its count and word follow ROLE_TEXT_GAP after it
+    ROLE_TEXT_GAP = 4,
+    ROLE_GAP = 16,        -- between two role badges
+    TOTALS_Y = 74,        -- the totals per status (T.FONT.text)
+    COLHEAD_Y = 94,       -- the column heads (T.LAYOUT.COLHEAD_H high)
+    LIST_Y = 112,         -- the participant list
+    ROW_H = 20,           -- a participant or a group's section bar
+    ROWS = 15,            -- 112 + 15 x 20 = 412 of the inset's 424
+    LIST_W = 456,         -- RIGHT_W - 2 x PAD - SCROLL_ROOM
+    CELL_ICON = 14,       -- the role icon and the class icon in a row
+    -- the participant columns { key, x, width, justify }: role (icon and letter), class icon, name
+    -- (class colour), level (right), sources K/A, note (cut with the client's ellipsis, whole in the
+    -- tooltip); the heads stand over the same x. The name's head covers the class icon too.
+    COLS = { { "r", 4, 36 }, { "class", 44, 14 }, { "name", 62, 142 }, { "level", 206, 34, "RIGHT" },
+             { "src", 250, 42 }, { "note", 298, 154 } },
+    ROLE_LETTER_X = 21,   -- the role's letter after its icon (within the role column)
+    EMPTY_Y = 40,         -- the empty state below the list's top
     BOTTOM = 14,          -- the button row from the window's bottom edge
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
@@ -289,4 +318,10 @@ T.ATLASES = {
     "talent-background-druid",
     -- the map legend's quest giver mark
     "QuestNormal",
+    -- the raid calendar window: the group finder's role icons (Blizzard_UIPanelTemplates/Camelot,
+    -- LFGVanilla) and its class icons (Blizzard_GroupFinder_VanillaStyle)
+    "groupfinder-icon-role-large-tank", "groupfinder-icon-role-large-heal", "groupfinder-icon-role-large-dps",
+    "groupfinder-icon-class-warrior", "groupfinder-icon-class-paladin", "groupfinder-icon-class-hunter",
+    "groupfinder-icon-class-rogue", "groupfinder-icon-class-priest", "groupfinder-icon-class-shaman",
+    "groupfinder-icon-class-mage", "groupfinder-icon-class-warlock", "groupfinder-icon-class-druid",
 }
