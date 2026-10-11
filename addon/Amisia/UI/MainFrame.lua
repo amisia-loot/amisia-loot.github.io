@@ -534,6 +534,9 @@ local function build()
         local tab = sideTab(def)
         if tab then sideTabs[def.key] = tab end
     end
+    -- the client's tab mixin sizes its tabs again on show and on a display change by these fields of
+    -- the parent: the same as Amisia's sizing
+    F.tabPadding, F.minTabWidth = 0, M.BTAB_MIN_W
     for _, g in ipairs(ns.PANEL_GROUPS) do bottomTabs[g.key] = bottomTab(g) end
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.pauseBtn, F.viewBtn = bar, statusText, pauseBtn, viewBtn
