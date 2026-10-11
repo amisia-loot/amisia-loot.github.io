@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.27.1 (2026-10-11)
+
+- Calendar page: the groups' heads as flat one-line bars in the small font, the day's inset clear of 'Heute', a date's time and title on one line each in the cells
+
 ## 2.27.0 (2026-10-11)
 
 - Spec: Reiter unten am Hauptfenster, Suchfeld oben links, Monatskalender als Reiter (freigegeben 2026-10-11)
