@@ -12,7 +12,7 @@ local _, ns = ...
 -- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".
 ns.LazyData("PROFESSIONS", [=[
 return {
-built="2026-10-10",client="1.60.1.70338",source="e9311f6dff",
+built="2026-10-11",client="1.60.1.70338",source="e9311f6dff",
 P={{171,"alchemy"},{164,"blacksmithing"},{333,"enchanting"},{202,"engineering"},{165,"leatherworking"},{197,"tailoring"},{185,"cooking"},{129,"firstaid"},{356,"fishing"},{182,"herbalism"},{186,"mining"},{393,"skinning"},{40,"poisons"}},
 R={
 [171]={
