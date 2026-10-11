@@ -117,3 +117,14 @@ local ok = pcall(STUB.showTooltip, GameTooltip)
 geterrorhandler = errh
 assert(ok, "the hook does not raise")
 assert(caught and tostring(caught):find("kaputt", 1, true), tostring(caught))
+
+-- softres.it's CSV of 2026: "Raider Name" holds the name (the old "Name" column is gone), lines end
+-- in CRLF, quoted fields with commas
+do
+    local csv = "Item Name,Item ID,From,Raider Name,Raider Class,Raider Spec,Raider Note,Extra Reserves,Date\r\n"
+        .. "\"Cursed Vision of Sargeras\",32235,\"Illidan Stormrage\",Fraktur,Warrior,Arms,\"bitte, danke\",0,2026-10-11 20:00:00\r\n"
+        .. "Warglaive of Azzinoth,32837,Illidan Stormrage,Anna,Rogue,Combat,,0,2026-10-11 20:01:00\r\n"
+    local byItem, count, bad = NS.ParseSoftRes(csv)
+    assert(count == 2 and #bad == 0, "two reservations: " .. tostring(count) .. ", bad " .. #bad)
+    assert(byItem[32235] and byItem[32235][1] == "Fraktur" and byItem[32837][1] == "Anna", "names from Raider Name")
+end

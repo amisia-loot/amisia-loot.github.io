@@ -91,7 +91,10 @@ function ns.ParseSoftRes(text)
         local cols = {}
         for i, h in ipairs(splitCsv(head, delim)) do cols[(h:lower():gsub("%s", ""))] = i end
         local cItem = cols["itemid"]
-        local cName = cols["name"] or cols["character"] or cols["player"]
+        -- softres.it heads its CSV "Item Name,Item ID,From,Raider Name,Raider Class,..." (2026); older
+        -- exports and other tools used "Name" or "Character"
+        local cName = cols["raidername"] or cols["name"] or cols["character"] or cols["charactername"]
+            or cols["player"] or cols["playername"]
         for i = 2, #all do
             local f = splitCsv(all[i], delim)
             local item = cItem and tonumber((f[cItem] or ""):match("(%d+)"))
