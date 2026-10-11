@@ -470,5 +470,6 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |
 
 In-game tests are the user's (PC); `/reload` after a release (a new file or texture needs a full
-client restart). PC-only builders: `tools/build_scan.py` (full), `tools/build_bossnames.py` (archive);
+client restart). PC-only builder: `tools/build_scan.py` (full; `Amisia-Website/data/bossnames.js`, the TBC
+archive's boss names, is frozen and has no builder);
 optional PC-only build inputs: AtlasLoot, OneForAll and the live SavedVariables.

@@ -714,23 +714,11 @@ to draw the images and does not ship in the addon. `--preview DIR` also writes P
 changed texture needs a full client restart before WoW shows it; `/reload` is not enough. Requires
 Pillow.
 
-## build_bossnames.py
+## bossnames.js (frozen)
 
-Builds `Amisia-Website/data/bossnames.js`: the boss name a localized client shows, mapped to the name the loot
-tables use. The addon exports the source name its own client gives it ("Illidan Sturmgrimm" on a
-German client), and without this the site cannot tell which boss an item came from.
-
-```
-python tools/build_bossnames.py [<locale folder>...]
-```
-
-The pairs come from the locale files of the installed loot addon the tables were built from;
-without an argument the copy under the WoW folder is read (`AMISIA_WOW_ROOT` overrides the path).
-Names that stay untranslated are listed at the end. Bump `BUILD_ID` afterwards.
-
-Archive only: `Amisia-Website/data/bossnames.js` holds just the TBC table (the read-only TBC archive of the site),
-so this runs again only if the archive ever needs new names, which is practically never. It reads
-the WoW install, so it runs on the PC.
+`Amisia-Website/data/bossnames.js` maps the boss names a localized client shows to the names of the
+TBC archive's loot tables. It is frozen: the archive is read-only, the builder (`build_bossnames.py`)
+is gone, and `tools/tests/test_data_files.py` holds its TBC table unchanged.
 
 ## export_db2.ps1
 
