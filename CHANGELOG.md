@@ -2,6 +2,16 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.25.0 (2026-10-11)
+
+- Spec: H3, part I (raid calendar window, visible to the guild), polish - user decisions 2026-10-11
+- Raid-Anmeldung: Fenster kompakter, Karte zeigt "Ändern" bei vorhandener Anmeldung
+- Raid-Kalender: Fenster für die ganze Gilde, wer zu den Terminen kommt (Teil I, D-43)
+- Kalender-Schreibprüfung: /amisia selbsttest kalender schreiben (Prüfungen 23 bis 25)
+- Raid-Anmeldung trägt auch im Spielkalender ein (Teil H3)
+- Kalender-Eintrag und Schreibprüfung: nie für das falsche Ereignis, nie neben einer Prüfung
+- Spielkalender: Stand vom Offizier bleibt, kein Eintrag an vergangenen Tagen
+
 ## 2.24.0 (2026-10-10)
 
 - Spec: in-game results of calendar checks 17-20
