@@ -86,7 +86,7 @@ assert(said("aus einem Timer blockiert"), STUB.messages[#STUB.messages])
 
 -- only own events: no question, nothing written
 cal = run(calendar({ events = { { title = "Eigenes", days = 1, id = 11, modStatus = "CREATOR", inviteStatus = 3, inviteType = 1 } } }))
-assert(said("braucht ein Gildenereignis der nächsten 14 Tage, das ein anderer Charakter angelegt hat"), STUB.messages[1])
+assert(said("braucht ein Gildenereignis mit Anmeldung der nächsten 14 Tage, das ein anderer Charakter angelegt hat"), STUB.messages[1])
 assert(not confirmFrame():IsShown() and cal.writes == 0)
 -- in combat or with the calendar window open: nothing
 STUB.combat = true

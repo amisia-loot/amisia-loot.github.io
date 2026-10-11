@@ -715,8 +715,10 @@ Kalender-Lesecode ist einer (`Raid/Calendar.lua`) für Aufstellung, Anmeldung un
 Alter Stand bis 2026-10-11: "keine Teilnehmerliste für Raider" (Frage 30); seitdem sieht jeder in der
 Gilde die Liste im Fenster "Raid-Kalender" (D-43), und jeder Client behält die empfangenen `AN`.
 Die Schreibprüfung `/amisia selbsttest kalender schreiben` (Prüfungen 23 bis 25, 2026-10-11) schreibt
-nur nach Warnung im Chat und "Ausführen" im Fragefenster, nur für den eigenen Charakter, nie bei einem
-selbst angelegten Ereignis, und stellt danach den alten Stand wieder her.
+nur nach Warnung im Chat und "Ausführen" im Fragefenster, nur für den eigenen Charakter, nur bei einem
+Gildenereignis mit Anmeldung (nie bei einer normalen Einladung: Entfernen nähme sie weg), nie bei einem
+selbst angelegten Ereignis, und stellt danach den alten Stand wieder her (die letzten 3 der 24 Schreibvorgänge
+bleiben dafür frei).
 **Teil H3 (2026-10-11):** Der Klick auf Anmelden / Vorläufig / Abmelden (und `/amisia anmelden`,
 `/amisia abmelden`) trägt den Spieler bei einem Gildenereignis mit Anmeldung auch im Spielkalender ein,
 mit den Aufrufen des Spiels selbst (Anmelden: Kontextmenü-Anmeldung im Klick, aus "vorläufig" erst
@@ -725,9 +727,13 @@ Einstellung `signup.calendar` (an). Danach liest Amisia den eigenen Status neu; 
 Kalenderfehler oder kein neuer Stand: "Bitte auch im Kalender eintragen." mit "Kalender öffnen" und
 einmal der Grund im Chat. Nie für andere, nie im Kampf, nie bei offenem Kalenderfenster, nie beim
 eigenen Ereignis (Ersteller), nie aus einer Wiederholung (`AN` nach dem Login, Antwort auf `AQ`), nie
-erneut aus einem Timer. Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
+erneut aus einem Timer. Nachtrag 2026-10-11 (Prüfung nach dem Bau): nie, solange eine Kalender-Prüfung läuft;
+nie, wenn der Kalender nicht sagt, wer das Ereignis angelegt hat, oder den eigenen Stand nicht nennt; das
+Tagesereignis muss die Kennung des Ereignisses tragen, und vor jedem Aufruf am geöffneten Ereignis prüft
+Amisia Titel, Beginn und Anmeldung und dass das Kalenderfenster zu ist (sonst wird nichts aufgerufen). Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
 **Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
 `addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`, `addon/tests/test_signup_calendar.lua`,
+`addon/tests/test_calendar_write_review.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 

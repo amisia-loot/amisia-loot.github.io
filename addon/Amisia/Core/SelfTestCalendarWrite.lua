@@ -1,6 +1,6 @@
 -- /amisia selbsttest kalender schreiben (en selftest calendar write): the in-game checks 23 to 25 of
 -- the raid lineup spec (part H3) done by the addon itself. It WRITES into the calendar: on the first
--- guild event the player did not create (modStatus ~= "CREATOR", a sign-up event first) it signs up,
+-- guild event with sign-up the player did not create (modStatus ~= "CREATOR") it signs up,
 -- goes tentative, removes the sign-up and declines with every way the client offers (the right-click
 -- menu ContextMenuSelectEvent + ContextMenuEventSignUp / ContextMenuInviteTentative, and after
 -- OpenEvent EventSignUp, EventTentative, EventDecline, RemoveEvent), reads the own status after each
@@ -26,7 +26,10 @@ ST.CalendarWrite = WP
 WP.WAIT = 5          -- seconds to wait for each answer of the client (the open, a change after a write)
 WP.SETTLE = 1        -- seconds after a write's first calendar event before the status is read
 local MAX_STEPS = 24 -- writes of one run (the tests, the steps between them, the restore)
-local STALE = 180    -- a run older than this counts as gone
+local RESTORE_STEPS = 3 -- of them kept for the restore: the tests stop before
+-- seconds after which a run counts as gone: longer than the longest run (every write waits at
+-- most for the open, the change and the read's open)
+local function stale() return MAX_STEPS * (3 * WP.WAIT + WP.SETTLE) + 60 end
 
 -- The statuses (Enum.CalendarStatus) a test starts from or expects: NS not signed up (NotSignedup,
 -- Invited), IN signed up, TENT tentative, DECL declined.
@@ -263,6 +266,16 @@ local function write(P, label, how, callName, expect, fromKey, after)
             closeEvent(P)
             return report(false, L["im Kampf"])
         end
+        -- the client's calendar window opened meanwhile, or another event came open (the player's
+        -- click there): nothing is called
+        if Cal.WindowShown() then
+            closeEvent(P)
+            return report(false, L["Kalenderfenster geöffnet"])
+        end
+        if not Cal.OpenIsSignup(P.ev) then
+            closeEvent(P)
+            return report(false, L["ein anderes Ereignis ist offen"])
+        end
         local ok, err = pcall(C_Calendar[callName])
         closeEvent(P)
         report(ok, err)
@@ -272,10 +285,11 @@ end
 ---------------------------------------------------------------------------
 -- The run: the tests in order, the steps between them, the restore
 ---------------------------------------------------------------------------
-local function stop(P)
+-- why the run cannot write on (nil: it can); the tests leave RESTORE_STEPS writes for the restore
+local function stop(P, restoring)
     if InCombatLockdown() then return L["Kampf"] end
     if Cal.WindowShown() then return L["Kalenderfenster geöffnet"] end
-    if P.steps >= MAX_STEPS then return L["zu viele Schritte"] end
+    if P.steps >= MAX_STEPS - (restoring and 0 or RESTORE_STEPS) then return L["zu viele Schritte"] end
     return nil
 end
 
@@ -295,7 +309,7 @@ local function restore(P)
     end
     local function step(i)
         if IS[want][P.cur] then return check() end
-        local why = stop(P)
+        local why = stop(P, true)
         if why or i > 3 then
             if why then add(P.R, "FEHLER", L["Abgebrochen"], why) end
             return check()
@@ -377,7 +391,11 @@ end
 local function execute(P)
     if InCombatLockdown() then return ns.msg(Cal.Why("combat")) end
     if Cal.WindowShown() then return ns.msg(L["Kalenderfenster schließen, dann noch einmal."]) end
-    if Cal.Busy() or (ns.CalWrite and ns.CalWrite.Busy()) then return ns.msg(Cal.Why("busy")) end
+    -- another run (a question answered late), the read probe or a calendar write of a click
+    if (run and run ~= P and not run.finished and GetTime() - (run.at or 0) < stale()) or Cal.Busy()
+        or (ns.CalWrite and ns.CalWrite.Busy()) then
+        return ns.msg(Cal.Why("busy"))
+    end
     local t = where(P)
     if not t then return ns.msg(Cal.Why("gone")) end
     run = P
@@ -404,22 +422,19 @@ end
 ---------------------------------------------------------------------------
 -- The start (the slash command): the checks, the warning, the question
 ---------------------------------------------------------------------------
--- The first guild event the player did not create, a sign-up event first; nil when there is none.
+-- The first guild event with sign-up the player did not create (the client says so); nil when there
+-- is none. Never an event with a normal invite: its RemoveEvent drops the invitation, which nobody
+-- but its creator can give back.
 local function pick(list)
-    local any
     for _, ev in ipairs(list or {}) do
         local t = Cal.Target(ev)
-        if t and not t.creator then
-            if t.signup then return ev, t end
-            any = any or ev
-        end
+        if t and t.creator == false and t.signup then return ev, t end
     end
-    if any then return any, Cal.Target(any) end
     return nil
 end
 
 function WP.Start()
-    if run and not run.finished and GetTime() - (run.at or 0) < STALE then
+    if run and not run.finished and GetTime() - (run.at or 0) < stale() then
         ns.msg(L["Kalender-Schreibprüfung läuft schon."])
         return
     end
@@ -442,7 +457,7 @@ function WP.Start()
     Cal.Load(function(list)
         local ev, t = pick(list)
         if not ev then
-            ns.msg(L["Kalender-Schreibprüfung: braucht ein Gildenereignis der nächsten 14 Tage, das ein anderer Charakter angelegt hat (bei deinem eigenen bist du der Ersteller)."])
+            ns.msg(L["Kalender-Schreibprüfung: braucht ein Gildenereignis mit Anmeldung der nächsten 14 Tage, das ein anderer Charakter angelegt hat (bei deinem eigenen bist du der Ersteller)."])
             return
         end
         local P = { R = K.newReport(), blocked = {}, errors = {}, done = {}, tried = {}, results = {}, steps = 0, ev = ev, pos = t }

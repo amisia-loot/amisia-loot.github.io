@@ -151,7 +151,11 @@ local WHY = {
     unchanged = N_("Der Kalender zeigt keinen neuen Stand."),
     open = N_("Der Kalender hat das Ereignis nicht geöffnet."),
     failed = N_("Der Aufruf im Kalender ging schief."),
+    status = N_("Der Kalender nennt deinen Stand bei diesem Ereignis nicht."),
+    unknown = N_("Der Kalender sagt nicht, wer das Ereignis angelegt hat."),
 }
+-- what a refusal inside the open event (Write's use) turns into
+local OPEN_WHY = { combat = "combat", window = "window", other = "open" }
 function CW.Why(why) return L[WHY[why] or WHY.failed] end
 
 function CW.Busy() return job ~= nil end
@@ -223,6 +227,10 @@ function CW.Write(term, want, fn)
         fn(true, "creator")
         return true, "creator"
     end
+    -- the creator's remove may delete the event for everyone: unknown counts as no
+    if t.creator == nil then return no("unknown") end
+    -- an own status the groups do not know: nothing to plan, and not "the same"
+    if not CW.Group(t.status) then return no("status") end
     local steps = CW.Plan(want, t.status)
     if not steps then
         fn(true, "same")
@@ -237,7 +245,7 @@ function CW.Write(term, want, fn)
         j.called = true
         if not ok then
             j.detail = err
-            return finish(j, false, j.blocked and "blocked" or (err == "combat" and "combat" or "failed"))
+            return finish(j, false, j.blocked and "blocked" or OPEN_WHY[err] or "failed")
         end
         if j.blocked then return finish(j, false, "blocked") end
         schedule(j, CW.CHECK_AFTER)
@@ -250,8 +258,11 @@ function CW.Write(term, want, fn)
     end
     -- the event opened first: the client's buttons act on the open event
     ns.Cal.Open(t.ev, function()
-        -- a fight that began while the client opened it: nothing is called
+        -- a fight that began while the client opened it, the client's calendar window opened
+        -- meanwhile, or another event open (the player's click, another addon): nothing is called
         if InCombatLockdown() then return { false, "combat" } end
+        if ns.Cal.WindowShown() then return { false, "window" } end
+        if not ns.Cal.OpenIsSignup(t.ev) then return { false, "other" } end
         return { runSteps(t, steps) }
     end, function(res, whyOpen)
         if j.done then return end

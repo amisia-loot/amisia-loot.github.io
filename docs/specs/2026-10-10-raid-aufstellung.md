@@ -907,3 +907,9 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Status (Tagesereignis, zuletzt das Ereignis neu geöffnet); sonst der Hinweis mit Grund. Auch die Befehle
   `/amisia anmelden` und `/amisia abmelden` schreiben (eigene Eingabe des Spielers); beim eigenen Ereignis
   (Ersteller) schreibt Amisia nichts.
+- 2026-10-11: Prüfung nach dem Bau (H3 und Schreibprüfung) behoben: der Kalender-Eintrag eines Klicks wartet,
+  solange eine Kalender-Prüfung läuft; nie, wenn der Kalender den Ersteller oder den eigenen Stand nicht
+  nennt; das Tagesereignis muss die Kennung des Ereignisses tragen; vor jedem Aufruf am geöffneten Ereignis
+  (Klick und Schreibprüfung) prüft Amisia Titel, Beginn, Anmeldung und das geschlossene Kalenderfenster. Die
+  Schreibprüfung nimmt nur Gildenereignisse mit Anmeldung (Entfernen nähme eine normale Einladung weg), hält
+  3 der 24 Schreibvorgänge für das Wiederherstellen frei und läuft nur einmal gleichzeitig.

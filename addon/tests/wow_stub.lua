@@ -1623,6 +1623,9 @@ function STUB.calendar(opts)
         if opts.refuse then return false end
         cal.opens = cal.opens + 1
         cal.open = cal.events[index]
+        -- opts.onOpen(cal, index): what happens while the client opens it (the player opens the
+        -- calendar window, another event comes open)
+        if opts.onOpen then opts.onOpen(cal, index) end
         if not opts.silent then STUB.fire("CALENDAR_OPEN_EVENT", "GUILD_EVENT") end
         return true
     end

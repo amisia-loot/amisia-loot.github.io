@@ -179,8 +179,9 @@ Cal.OUT = { [0] = true, [2] = true, [4] = true, [7] = true }
 
 -- An event of Cal.Events() as it stands now, found again by its id, with its day event (GetDayEvent,
 -- read only, nothing opened): { ev, offset, day, index, status (Enum.CalendarStatus, the own),
--- signup (a guild event with sign-up), creator (the player created it), modStatus, inviteType };
--- nil and "gone" when it is not in the calendar any more.
+-- signup (a guild event with sign-up), creator (true: the player created it, false: not, nil: the
+-- client did not say, a write treats it as unknown), modStatus, inviteType }; nil and "gone" when it
+-- is not in the calendar any more or the day event at its place is another one (its eventID).
 function Cal.Target(ev)
     local now
     for _, e in ipairs(Cal.Events()) do
@@ -192,12 +193,16 @@ function Cal.Target(ev)
     local offset, day, index = Cal.Offset(sel), plain(sel.monthDay), plain(sel.eventIndex)
     local d = call("GetDayEvent", offset, day, index)
     d = type(d) == "table" and d or {}
+    -- the day event at that place must be this event: the menu's sign-up selects it by its place
+    local did = plain(d.eventID)
+    if type(did) == "number" and now.id and ("%.0f"):format(did) ~= now.id then return nil, "gone" end
     local status = plain(d.inviteStatus)
     if type(status) ~= "number" then status = plain(now.info and now.info.inviteStatus) end
     local ctype = plain(d.calendarType) or plain(now.info and now.info.calendarType)
     local itype, mod = plain(d.inviteType), plain(d.modStatus)
     return { ev = now, offset = offset, day = day, index = index, status = type(status) == "number" and status or nil,
-             signup = itype == 1 and ctype == "GUILD_EVENT", creator = mod == "CREATOR", modStatus = mod, inviteType = itype }
+             signup = itype == 1 and ctype == "GUILD_EVENT", creator = (type(mod) == "string" or nil) and mod == "CREATOR",
+             modStatus = mod, inviteType = itype }
 end
 
 ---------------------------------------------------------------------------
@@ -247,10 +252,12 @@ local function wait(want, fn)
     end
 end
 
-function Cal.Busy() return busy end
+-- Whether an own open runs or a calendar probe holds the calendar (nothing else may open or write
+-- an event then).
+function Cal.Busy() return busy or held or false end
 
--- The calendar probe (/amisia selbsttest kalender) opens events itself: while it runs, nothing
--- here opens one and no change is reported.
+-- The calendar probes (/amisia selbsttest kalender [schreiben]) open events themselves: while one
+-- runs, nothing here opens one, the calendar write waits and no change is reported.
 function Cal.Hold(on) held = on and true or false end
 
 -- Loads the guild events (OpenCalendar) and calls fn(list) with Cal.Events(), or fn(nil, why):
@@ -308,6 +315,15 @@ local function openedIs(ev)
     if at and at ~= ev.at then return false end
     if title and title ~= ev.title then return false end
     return true
+end
+
+-- Whether the event the client has open now is ev, strictly, before a write: its info readable, the
+-- same title and start, a guild event with sign-up (an unreadable info is not ev here).
+function Cal.OpenIsSignup(ev)
+    local info = call("GetEventInfo")
+    if type(info) ~= "table" or type(ev) ~= "table" then return false end
+    if Cal.Clean(info.title) ~= ev.title or Cal.Epoch(info.time) ~= ev.at then return false end
+    return plain(info.calendarType) == "GUILD_EVENT" and plain(info.inviteType) == 1
 end
 
 -- Opens ev (an entry of Cal.Events()) and calls use() while it is open, then closes it again:
