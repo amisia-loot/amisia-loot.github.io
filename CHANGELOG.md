@@ -2,6 +2,14 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.27.0 (2026-10-11)
+
+- Spec: Reiter unten am Hauptfenster, Suchfeld oben links, Monatskalender als Reiter (freigegeben 2026-10-11)
+- Hauptfenster: Reiter unten statt Abschnittsleisten, Suchfeld oben links, Kalender-Seite als Monatsblatt (2.27.0, not released)
+- Hauptfenster-Reiter: tabPadding und minTabWidth am Fenster, damit die Reiter-Vorlage beim Zeigen gleich groß misst
+- Review Kalender-Seite: Teilnehmer je Termin statt je Nacht, kein Lesen im Hintergrund bei geschlossenem Fenster (2.27.0, not released)
+- Hauptfenster-Reiter: Klick auf einen Reiter leert die Suche, Rückfall auf die Übersicht überschreibt die gemerkte Seite nicht (2.27.0, not released)
+
 ## 2.26.0 (2026-10-11)
 
 - FEATURES: note on the softres.it CSV fix
