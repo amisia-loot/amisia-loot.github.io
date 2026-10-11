@@ -442,13 +442,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-089 Kalender-Schreibprüfung
 - Version: 2.25.0
-- Status: gebaut
+- Status: im Spiel geprüft (2026-10-11)
 - Prüfung: Wenn du als Vulo Hunt ein Gildenereignis mit Anmeldung für morgen anlegst, dich als Vulo Pala einloggst (dort noch nicht angemeldet), das Kalenderfenster schließt und `/amisia selbsttest kalender schreiben` eingibst, dann steht im Chat "Kalender-Schreibprüfung: schreibt in den Kalender: meldet dich beim gewählten Ereignis an, vorläufig, entfernt dich und stellt danach deinen alten Stand wieder her. Ereignis: <Titel>, ..." und ein Fenster fragt mit "Ausführen" und "Abbrechen"; bis zum Klick ändert sich im Kalender nichts.
 - Prüfung: Wenn du dort "Abbrechen" klickst, dann sagt der Chat "Kalender-Schreibprüfung abgebrochen: nichts geschrieben." und im Kalender ist nichts verändert.
 - Prüfung: Wenn du "Ausführen" klickst und etwa eine Minute wartest (nicht kämpfen, Kalenderfenster zu lassen), dann meldet der Chat "Kalender-Schreibprüfung: Anmelden (Menü) ..., Anmelden (EventSignUp) ..., Vorläufig ..., Entfernen ..., Absagen ...; aus einem Timer ...; alter Stand wiederhergestellt. Bericht im Fenster." und das Selbsttest-Fenster zeigt je Versuch "vorher ..., nachher ..." mit OK/WERT/FEHLER; danach steht Vulo Pala im Kalender wieder so wie vorher (nicht angemeldet).
 - Prüfung: Wenn du `/amisia selbsttest kalender schreiben` als Vulo Hunt eingibst und es nur seine eigenen Ereignisse gibt, dann sagt der Chat "... braucht ein Gildenereignis mit Anmeldung der nächsten 14 Tage, das ein anderer Charakter angelegt hat ..." und es kommt keine Frage.
 - Prüfung: Wenn Vulo Pala bei dem Ereignis schon "Bestätigt", "Ersatz", "Raus" oder "Eingeladen" ist, dann sagt der Chat "Kalender-Schreibprüfung: dein Stand bei ... ist ..., von einem Offizier gesetzt; ... Bitte ein Ereignis nehmen, bei dem du noch nicht angemeldet bist (7 NotSignedup)." und es kommt keine Frage.
 - Notiz: Prüfungen 23 bis 25 der Spec 2026-10-10 (Teil H3). Den Bericht bitte an uns: er zeigt, welche Aufrufe gehen; die Anmeldung aus Amisia (F-090) nutzt die Aufrufe, die das Spiel selbst nimmt, und meldet jeden Fehlschlag. `/amisia selftest calendar write` auf englischen Clients.
+- Notiz: 2026-10-11 im Spiel (Vulo Pala auf Vulo Hunts Ereignis): alle Schreibwege gehen aus einem Timer, EventTentative aus "angemeldet" und EventDecline ohne Wirkung, alter Stand wiederhergestellt.
 
 ### F-090 Raid-Anmeldung trägt auch im Spielkalender ein
 - Version: 2.25.0

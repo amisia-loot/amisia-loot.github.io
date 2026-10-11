@@ -919,3 +919,10 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Abmelden aus bestätigt/Ersatz bleibt Entfernen. Kein Eintrag bei einem Ereignis eines vergangenen
   Kalendertags (auch zwischen 00:00 und 06:00). Die Schreibprüfung startet nicht aus eingeladen, bestätigt,
   raus oder Ersatz.
+- 2026-10-11 09:12, Schreibprüfung im Spiel (Client 70338, `/amisia selbsttest kalender schreiben`,
+  Vulo Pala auf Vulo Hunts Anmelde-Ereignis): **alle Schreibwege gehen auch aus einem Timer** (kein
+  Tastendruck nötig, nichts blockiert): ContextMenuSelectEvent + ContextMenuEventSignUp 7 -> 6,
+  EventSignUp nach OpenEvent 7 -> 6, RemoveEvent 6 -> 7 und 8 -> 7, EventTentative 7 -> 8,
+  ContextMenuInviteTentative 7 -> 8. **Ohne Wirkung:** EventTentative aus 6 (erst entfernen, wie
+  CW.PLAN es tut) und EventDecline aus 6 (Abmelden bleibt RemoveEvent). Alter Stand wiederhergestellt.
+  CW.PLAN stimmt damit; Fragen 23 bis 25 sind beantwortet.
