@@ -32,21 +32,34 @@ RC.GROUPS = {
 }
 local ROLE_ORDER = { T = 1, H = 2, M = 3, R = 4 }
 
--- What the calendar said per date (memory only): [night] = { id, read = epoch of the last read,
--- why = reason of the last failed read, invites, seen = { [lower name] = { code, t } } }.
-local state = {}
+-- What the calendar said per event (memory only): [night "#" id] = { id, read = epoch of the last
+-- read, why = reason of the last failed read, invites, seen = { [lower name] = { code, t } } }; and
+-- per night the state of its event read last. A night can have two dates (a meeting before the raid):
+-- the raid calendar window reads the night's first, the calendar page the chosen one, and each must
+-- show its own event's list, not the one the other read last (2.27.0 review).
+local state, latest = {}, {}
+
+local function eventKey(night, ev)
+    return tostring(night) .. "#" .. tostring(ev.id or ("@" .. tostring(ev.at)))
+end
 
 local function stateOf(ev)
-    local s = state[ev.night]
-    if not s or s.id ~= ev.id then
+    local k = eventKey(ev.night, ev)
+    local s = state[k]
+    if not s then
         s = { id = ev.id, seen = {} }
-        state[ev.night] = s
+        state[k] = s
     end
+    latest[ev.night] = s
     return s
 end
 
--- The calendar state of night (nil: never read).
-function RC.State(night) return state[night] end
+-- The calendar state of the event ev of night (an entry of ns.Cal.Events()), else of the night's
+-- event read last (nil: never read).
+function RC.State(night, ev)
+    if ev then return state[eventKey(night, ev)] end
+    return latest[night]
+end
 
 -- Reads the invite list of ev (an entry of ns.Cal.Events()) and keeps it for its night. A status seen
 -- first counts as older than any Amisia click (t 0); a changed one with the time Amisia saw the
@@ -79,8 +92,9 @@ function RC.Read(ev, fn)
 end
 
 -- The participants of night: { { n, c (class token), lvl, f ("K", "A", "KA"), st (valid status), r,
--- q (role guessed), w (note), as (Amisia status) } }, by group order, role and name.
-function RC.List(night)
+-- q (role guessed), w (note), as (Amisia status) } }, by group order, role and name. With ev the
+-- calendar's list of that event (none while it was not read), else of the night's event read last.
+function RC.List(night, ev)
     local byLow, list = {}, {}
     local function get(name)
         local low = name:lower()
@@ -92,7 +106,7 @@ function RC.List(night)
         end
         return e
     end
-    local s = state[night]
+    local s = RC.State(night, ev)
     for _, inv in ipairs(s and s.invites or {}) do
         local e = get(inv.name)
         local seen = s.seen[inv.name:lower()]
@@ -148,8 +162,8 @@ end
 -- names ({ e = entry, key }); empty groups are left out. And the roles of those signed up or
 -- confirmed ({ T, H, M, R }, guessed roles count), the number of names and the count per group
 -- ({ in, maybe, bench, out, none }).
-function RC.Rows(night)
-    local list = RC.List(night)
+function RC.Rows(night, ev)
+    local list = RC.List(night, ev)
     local rows, roles, groups = {}, { T = 0, H = 0, M = 0, R = 0 }, {}
     for gi, g in ipairs(RC.GROUPS) do
         local members = {}
@@ -169,4 +183,4 @@ function RC.Rows(night)
 end
 
 -- for the tests
-RC._reset = function() state = {} end
+RC._reset = function() state, latest = {}, {} end

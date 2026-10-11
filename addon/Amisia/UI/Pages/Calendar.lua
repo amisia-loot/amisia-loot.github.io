@@ -385,13 +385,19 @@ local function build(parent)
     f:BottomRow({ { f.status, fill = true } }, { f.lineup, f.signup }, { shown = true })
     f.hint:SetText(L["Klick auf einen Tag: seine Termine und wer kommt. Der Punkt zeigt deinen Stand."])
 
-    reader = V.Reader({ shown = function() return page ~= nil and page:IsShown() and ns.CurrentPage() == "calendar" end,
+    -- shown: on the screen, not only the open page of a closed window (that read the calendar on every
+    -- change in the background; the lineup page asks the same)
+    reader = V.Reader({ shown = function()
+            local main = _G.AmisiaFrame
+            return page ~= nil and page:IsVisible() and (not main or main:IsShown()) and ns.CurrentPage() == "calendar"
+        end,
         term = currentTerm, refresh = function() if ns.CurrentPage() == "calendar" then ns.Refresh() end end })
     -- the chosen date is read when the page shows (and on a click on a day), never from a refresh:
     -- a read that fails at once would refresh and read again without end
+    -- (on the next frame: the main window shows after its page on the first open)
     f:SetScript("OnShow", function()
         ensureChosen()
-        reader.Read(false)
+        C_Timer.After(0, function() reader.Read(false) end)
     end)
     return f
 end
@@ -432,7 +438,7 @@ local function fillRight(f, terms, raids)
     end
     local list, n, groups = {}, 0, {}
     if t then
-        local rows2, _, count, byGroup = ns.RaidCal.Rows(t.night)
+        local rows2, _, count, byGroup = ns.RaidCal.Rows(t.night, t)
         list, n, groups = rows2, count, byGroup
     end
     f.list:SetItems(list)

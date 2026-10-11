@@ -166,7 +166,7 @@ local function Reader(opts)
         if not opts.shown() then return end
         local t = opts.term()
         if not t then return end
-        local s = RC.State(t.night)
+        local s = RC.State(t.night, t)
         if not force and s and s.read and s.id == t.id and time() - s.read < RC.RELOAD_GAP then return end
         lastRead = GetTime()
         local night = t.night
@@ -201,7 +201,7 @@ local function Reader(opts)
     function rd.Status(t)
         if not t then return "" end
         if not ns.Cal.CanReadInvites() then return L["Nur Anmeldungen aus Amisia (Teilnehmerliste des Kalenders nicht lesbar)."] end
-        local s = RC.State(t.night)
+        local s = RC.State(t.night, t)
         if s and s.why == "window" then return L["Kalenderfenster des Spiels schließen, dann liest Amisia die Liste."] end
         if s and s.why and s.why ~= "busy" then return ns.Cal.Why(s.why) end
         if s and s.read then return L["Kalender gelesen %s"]:format(date("%H:%M", s.read)) end
@@ -548,7 +548,7 @@ refresh = function()
     F.dates:SetItems(terms or {})
     local t = termNow()
     local rows, roles, n, groups = {}, { T = 0, H = 0, M = 0, R = 0 }, 0, {}
-    if t then rows, roles, n, groups = RC.Rows(t.night) end
+    if t then rows, roles, n, groups = RC.Rows(t.night, t) end
     F.list:SetItems(rows)
     -- the names per role of those signed up (the badges' tooltips)
     local names = { T = {}, H = {}, M = {}, R = {} }

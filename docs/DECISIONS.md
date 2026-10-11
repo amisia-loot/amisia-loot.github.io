@@ -881,5 +881,5 @@ Item-Suche öffnet keine Item-Seite: die Seite Ausrüstung kennt nur Ansicht und
 Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, solange das
 Kalenderfenster des Spiels ein anderes Ereignis zeigt.
 **Durchgesetzt durch:** `addon/tests/test_main_tabs.lua`, `addon/tests/test_search.lua`,
-`addon/tests/test_calendar_page.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
+`addon/tests/test_calendar_page.lua`, `addon/tests/test_calendar_page_review.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).
