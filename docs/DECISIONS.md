@@ -716,8 +716,11 @@ von Gildenereignissen zeigen" (`lineup.calendarAll`) der Spec entfällt: es zäh
 Kalender-Lesecode ist einer (`Raid/Calendar.lua`) für Aufstellung, Anmeldung und die Kalender-Prüfung.
 Alter Stand bis 2026-10-11: "keine Teilnehmerliste für Raider" (Frage 30); seitdem sieht jeder in der
 Gilde die Liste im Fenster "Raid-Kalender" (D-43), und jeder Client behält die empfangenen `AN`.
+Die Schreibprüfung `/amisia selbsttest kalender schreiben` (Prüfungen 23 bis 25, 2026-10-11) schreibt
+nur nach Warnung im Chat und "Ausführen" im Fragefenster, nur für den eigenen Charakter, nie bei einem
+selbst angelegten Ereignis, und stellt danach den alten Stand wieder her.
 **Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
-`addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`,
+`addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 

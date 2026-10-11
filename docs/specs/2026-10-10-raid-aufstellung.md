@@ -889,3 +889,11 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   der Kalender-Status merkt sich die Zeit eines Wechsels nur im Speicher (wie die Aufstellung, aber
   nicht gespeichert); "Welche Angabe gilt" ist eine Funktion für Aufstellung und Fenster
   (`ns.LineupResolve`).
+- 2026-10-11: Gebaut: die Schreibprüfung `/amisia selbsttest kalender schreiben` (en `selftest calendar
+  write`) als F-089 (2.25.0) für die Prüfungen 23 bis 25. Beim Bau entschieden: erst eine Warnung im Chat
+  und ein Fragefenster ("Ausführen"/"Abbrechen", `W.Confirm`); das Ereignis ist das erste der nächsten
+  14 Tage, das der Spieler nicht angelegt hat (modStatus nicht CREATOR, `GetDayEvent`); die
+  Kontextmenü-Anmeldung läuft im Klick, alles danach wartet auf die Antworten des Spiels (Timer) und der
+  Bericht sagt, ob ein Schreiben aus einem Timer blockiert wurde; nach jedem Versuch wird das Ereignis
+  neu geöffnet und der eigene Status gelesen; am Ende stellt sie den alten Stand wieder her
+  ("bestätigt"/"Ersatz" kann nur der Ersteller setzen: zurück als "angemeldet").

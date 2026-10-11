@@ -118,3 +118,4 @@ UI\RaidCalendar.lua
 Core\Minimap.lua
 Core\SelfTest.lua
 Core\SelfTestCalendar.lua
+Core\SelfTestCalendarWrite.lua

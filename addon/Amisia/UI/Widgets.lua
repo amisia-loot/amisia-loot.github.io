@@ -1323,6 +1323,53 @@ function W.Window(name, width, height, opts)
 end
 
 ---------------------------------------------------------------------------
+-- A question before something that cannot be taken back (the calendar write probe): a small window
+-- in the look of the others with the text and two red buttons, "okLabel" and "Abbrechen". onOk runs
+-- inside the click on the first; Abbrechen, the close button and Escape run onCancel. One at a time:
+-- a new question replaces an open one (its onCancel runs).
+---------------------------------------------------------------------------
+local confirm
+function W.Confirm(title, text, okLabel, onOk, onCancel)
+    local C = T.CONFIRM
+    if not confirm then
+        confirm = W.Window("AmisiaConfirmFrame", C.W, C.H, { strata = "FULLSCREEN_DIALOG" })
+        confirm:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+        confirm.text = W.Text(confirm, T.FONT.body, C.W - 2 * T.WINDOW_PAD, true)
+        confirm.text:SetPoint("TOPLEFT", T.WINDOW_PAD, -C.TEXT_Y)
+        confirm.text:SetJustifyV("TOP")
+        confirm.cancel = W.Button(confirm, L["Abbrechen"], C.BUTTON_W, function() confirm:Hide() end)
+        confirm.ok = W.Button(confirm, "", C.BUTTON_W, function()
+            local fn = confirm.onOk
+            confirm.onOk, confirm.onCancel = nil, nil
+            confirm:Hide()
+            if fn then fn() end
+        end)
+        -- closed without "ok" (Abbrechen, the X, Escape, another question): onCancel
+        confirm:SetScript("OnHide", function(self)
+            local fn = self.onCancel
+            self.onOk, self.onCancel = nil, nil
+            if fn then fn() end
+        end)
+    end
+    if confirm:IsShown() then confirm:Hide() end
+    confirm:SetTitle(title or "")
+    confirm.ok:SetText(okLabel or "")
+    W.FitChip(confirm.ok, C.BUTTON_W)
+    W.FitChip(confirm.cancel, C.BUTTON_W)
+    W.Row(confirm, { confirm.ok, confirm.cancel }, T.LAYOUT.ITEM_GAP, T.WINDOW_PAD, C.BOTTOM, { point = "BOTTOMRIGHT", right = true })
+    confirm.text:SetText(text or "")
+    -- the lines the text wraps to (one more for the word breaks)
+    local lines = math.ceil((confirm.text:GetStringWidth() or 0) / (C.W - 2 * T.WINDOW_PAD)) + 1
+    local h = lines * C.LINE_H
+    confirm.text:SetHeight(h)
+    confirm:SetHeight(C.TEXT_Y + h + C.GAP + T.BUTTON_H + C.BOTTOM)
+    confirm.onOk, confirm.onCancel = onOk, onCancel
+    confirm:Show()
+    if confirm.Raise then confirm:Raise() end
+    return confirm
+end
+
+---------------------------------------------------------------------------
 -- The page scaffold
 ---------------------------------------------------------------------------
 -- W.Page(parent) makes a page (it fills the content inset, 602 x 478) whose shared parts are all

@@ -170,6 +170,35 @@ function Cal.Next(list)
     return Cal.PickTarget(list)
 end
 
+-- Enum.CalendarStatus in groups (the calendar write of part H3 and its probe): signed up (Available,
+-- Confirmed, Standby, Signedup), tentative, out (Invited, Declined, Out, NotSignedup).
+Cal.IN = { [1] = true, [3] = true, [5] = true, [6] = true }
+Cal.TENT = { [8] = true }
+Cal.OUT = { [0] = true, [2] = true, [4] = true, [7] = true }
+
+-- An event of Cal.Events() as it stands now, found again by its id, with its day event (GetDayEvent,
+-- read only, nothing opened): { ev, offset, day, index, status (Enum.CalendarStatus, the own),
+-- signup (a guild event with sign-up), creator (the player created it), modStatus, inviteType };
+-- nil and "gone" when it is not in the calendar any more.
+function Cal.Target(ev)
+    local now
+    for _, e in ipairs(Cal.Events()) do
+        if (ev.id and e.id == ev.id) or (not ev.id and e.at == ev.at and e.title == ev.title) then now = e break end
+    end
+    if not now then return nil, "gone" end
+    local sel = call("GetGuildEventSelectionInfo", now.index)
+    if type(sel) ~= "table" then return nil, "gone" end
+    local offset, day, index = Cal.Offset(sel), plain(sel.monthDay), plain(sel.eventIndex)
+    local d = call("GetDayEvent", offset, day, index)
+    d = type(d) == "table" and d or {}
+    local status = plain(d.inviteStatus)
+    if type(status) ~= "number" then status = plain(now.info and now.info.inviteStatus) end
+    local ctype = plain(d.calendarType) or plain(now.info and now.info.calendarType)
+    local itype, mod = plain(d.inviteType), plain(d.modStatus)
+    return { ev = now, offset = offset, day = day, index = index, status = type(status) == "number" and status or nil,
+             signup = itype == 1 and ctype == "GUILD_EVENT", creator = mod == "CREATOR", modStatus = mod, inviteType = itype }
+end
+
 ---------------------------------------------------------------------------
 -- Waiting for the client: one wait at a time
 ---------------------------------------------------------------------------

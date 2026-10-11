@@ -417,6 +417,12 @@ S.WINDOWS = {
         STUB.tick(1)
         return AmisiaRaidCalendarFrame
     end },
+    -- the question before the calendar write probe (W.Confirm): the warning, "Ausführen", "Abbrechen"
+    { key = "confirm", view = "raider", open = function()
+        local text = NS.L["Kalender-Schreibprüfung: schreibt in den Kalender: meldet dich beim gewählten Ereignis an, vorläufig, entfernt dich und stellt danach deinen alten Stand wieder her. Ereignis: %s, %s (dein Status %s)."]:format(
+            "test123", "12.10. 20:00", "7 NotSignedup")
+        return NS.W.Confirm(NS.L["Kalender-Schreibprüfung"], text, NS.L["Ausführen"], function() end)
+    end },
     { key = "selftest", view = "officer", open = function()
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame

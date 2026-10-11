@@ -440,6 +440,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein anderes Gildenmitglied mit Amisia anmeldet, während du online bist, dann steht es nach wenigen Sekunden in deinem Raid-Kalender mit Rolle und Notiz (auch als Raider).
 - Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil I; DECISIONS D-43 (alle in der Gilde sehen die Liste, Nutzer 2026-10-11). Die Daten: Teilnehmerliste des Kalenders (K) und Anmeldungen aus Amisia (A: empfangene AN und die eigenen Charaktere), dieselbe Regel "Welche Angabe gilt" wie die Aufstellung. `/amisia calendar` auf englischen Clients.
 
+### F-089 Kalender-Schreibprüfung
+- Version: 2.25.0
+- Status: gebaut
+- Prüfung: Wenn du als Vulo Hunt ein Gildenereignis mit Anmeldung für morgen anlegst, dich als Vulo Pala einloggst (dort noch nicht angemeldet), das Kalenderfenster schließt und `/amisia selbsttest kalender schreiben` eingibst, dann steht im Chat "Kalender-Schreibprüfung: schreibt in den Kalender: meldet dich beim gewählten Ereignis an, vorläufig, entfernt dich und stellt danach deinen alten Stand wieder her. Ereignis: <Titel>, ..." und ein Fenster fragt mit "Ausführen" und "Abbrechen"; bis zum Klick ändert sich im Kalender nichts.
+- Prüfung: Wenn du dort "Abbrechen" klickst, dann sagt der Chat "Kalender-Schreibprüfung abgebrochen: nichts geschrieben." und im Kalender ist nichts verändert.
+- Prüfung: Wenn du "Ausführen" klickst und etwa eine Minute wartest (nicht kämpfen, Kalenderfenster zu lassen), dann meldet der Chat "Kalender-Schreibprüfung: Anmelden (Menü) ..., Anmelden (EventSignUp) ..., Vorläufig ..., Entfernen ..., Absagen ...; aus einem Timer ...; alter Stand wiederhergestellt. Bericht im Fenster." und das Selbsttest-Fenster zeigt je Versuch "vorher ..., nachher ..." mit OK/WERT/FEHLER; danach steht Vulo Pala im Kalender wieder so wie vorher (nicht angemeldet).
+- Prüfung: Wenn du `/amisia selbsttest kalender schreiben` als Vulo Hunt eingibst und es nur seine eigenen Ereignisse gibt, dann sagt der Chat "... braucht ein Gildenereignis der nächsten 14 Tage, das ein anderer Charakter angelegt hat ..." und es kommt keine Frage.
+- Notiz: Prüfungen 23 bis 25 der Spec 2026-10-10 (Teil H3). Den Bericht bitte an uns: er zeigt, welche Aufrufe gehen; die Anmeldung aus Amisia (F-090) nutzt die Aufrufe, die das Spiel selbst nimmt, und meldet jeden Fehlschlag. `/amisia selftest calendar write` auf englischen Clients.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

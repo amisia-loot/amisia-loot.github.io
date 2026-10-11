@@ -1598,7 +1598,8 @@ function STUB.calendar(opts)
             local t = os.date("*t", e.at or (STUB.now + (e.days or 1) * 86400))
             cal.events[i] = { eventID = e.id or (1000 + i), year = t.year, month = t.month, monthDay = t.day, weekday = t.wday,
                 hour = e.at and t.hour or e.hour or 20, minute = e.at and t.min or e.minute or 0, eventType = e.eventType or 0, title = e.title or "Molten Core",
-                calendarType = e.calendarType or "GUILD_EVENT", inviteStatus = e.inviteStatus or 7, texture = 0, clubID = 77 }
+                calendarType = e.calendarType or "GUILD_EVENT", inviteStatus = e.inviteStatus or 7, texture = 0, clubID = 77,
+                inviteType = e.inviteType, modStatus = e.modStatus }
         end
     end
     cal.set(opts.events or { { title = "Molten Core", days = 1 } })
@@ -1629,7 +1630,8 @@ function STUB.calendar(opts)
     C.GetEventInfo = function()
         local e = cal.open
         if not e then return nil end
-        return { title = e.title, calendarType = e.calendarType, eventType = e.eventType, inviteType = 1,
+        return { title = e.title, calendarType = e.calendarType, eventType = e.eventType, inviteType = e.inviteType or 1,
+                 inviteStatus = e.inviteStatus, modStatus = e.modStatus,
                  time = { year = e.year, month = e.month, monthDay = e.monthDay, hour = e.hour, minute = e.minute } }
     end
     local function list() return cal.open and cal.invites[cal.open.eventID] or {} end
@@ -1641,6 +1643,77 @@ function STUB.calendar(opts)
                             "ContextMenuInviteDecline", "EventSignUp", "EventAvailable", "EventTentative", "EventDecline", "RemoveEvent",
                             "AddEvent", "UpdateEvent", "EventInvite", "EventSetInviteStatus", "EventRemoveInvite" }) do
         C[name] = function() cal.writes = cal.writes + 1 error("calendar write called: " .. name) end
+    end
+    -- opts.writable: the write functions act like the client's on a guild event with sign-up (the
+    -- own status of the event: e.inviteStatus; e.inviteType 1, e.modStatus): the menu's sign-up and
+    -- EventSignUp only while not signed up (7/0), EventTentative only while not signed up unless
+    -- opts.switch, RemoveEvent back to 7 (not for the creator), EventDecline only with opts.decline,
+    -- ContextMenuInviteTentative only with opts.menuTentative. Each change fires
+    -- CALENDAR_UPDATE_EVENT_LIST after 0.2 s and changes the own row of the invite list.
+    -- opts.block[name]: ADDON_ACTION_BLOCKED for Amisia instead; opts.fail[name]: CALENDAR_UPDATE_ERROR;
+    -- opts.ignore[name]: no change. cal.log: every write { name, when = STUB.now, inClick = STUB.inClick }.
+    if opts.writable then
+        cal.log = {}
+        local NS7 = { [7] = true, [0] = true }
+        local function setOwn(e, status)
+            e.inviteStatus = status
+            local list = cal.invites[e.eventID] or {}
+            cal.invites[e.eventID] = list
+            local row
+            for _, v in ipairs(list) do if v.name == STUB.player then row = v end end
+            if status == 7 and row then
+                for i, v in ipairs(list) do if v == row then table.remove(list, i) break end end
+            elseif status ~= 7 then
+                if not row then
+                    row = { name = STUB.player, classFilename = STUB.class, level = 60 }
+                    list[#list + 1] = row
+                end
+                row.inviteStatus = status
+            end
+            C_Timer.After(0.2, function() STUB.fire("CALENDAR_UPDATE_EVENT_LIST") end)
+        end
+        local function act(name, e, fn)
+            cal.log[#cal.log + 1] = { name = name, when = STUB.now, inClick = STUB.inClick, event = e and e.eventID }
+            cal.writes = cal.writes + 1
+            if (opts.block or {})[name] then
+                STUB.fire("ADDON_ACTION_BLOCKED", "Amisia", "C_Calendar." .. name .. "()")
+                return
+            end
+            if (opts.fail or {})[name] then
+                STUB.fire("CALENDAR_UPDATE_ERROR", "CALENDAR_ERROR_EVENT_INVALID")
+                return
+            end
+            if (opts.ignore or {})[name] or not e then return end
+            fn(e)
+        end
+        C.GetDayEvent = function(offset, day, index)
+            local e = cal.events[index]
+            if not e then return nil end
+            return { eventID = e.eventID, title = e.title, calendarType = e.calendarType, eventType = e.eventType,
+                     inviteStatus = e.inviteStatus, inviteType = e.inviteType or 1, modStatus = e.modStatus or "" }
+        end
+        C.ContextMenuSelectEvent = function(offset, day, index)
+            cal.log[#cal.log + 1] = { name = "ContextMenuSelectEvent", when = STUB.now, inClick = STUB.inClick }
+            cal.selected = cal.events[index]
+        end
+        C.ContextMenuEventSignUp = function()
+            act("ContextMenuEventSignUp", cal.selected, function(e) if NS7[e.inviteStatus] then setOwn(e, 6) end end)
+        end
+        C.ContextMenuInviteTentative = function()
+            act("ContextMenuInviteTentative", cal.selected, function(e) if opts.menuTentative then setOwn(e, 8) end end)
+        end
+        C.EventSignUp = function()
+            act("EventSignUp", cal.open, function(e) if NS7[e.inviteStatus] then setOwn(e, 6) end end)
+        end
+        C.EventTentative = function()
+            act("EventTentative", cal.open, function(e) if NS7[e.inviteStatus] or opts.switch then setOwn(e, 8) end end)
+        end
+        C.EventDecline = function()
+            act("EventDecline", cal.open, function(e) if opts.decline then setOwn(e, 2) end end)
+        end
+        C.RemoveEvent = function()
+            act("RemoveEvent", cal.open, function(e) if e.modStatus ~= "CREATOR" then setOwn(e, 7) end end)
+        end
     end
     _G.C_Calendar = C
     return cal

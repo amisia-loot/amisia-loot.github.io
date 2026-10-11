@@ -1550,10 +1550,10 @@ end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender]"],
-    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung)"], run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender)"], run = function(rest)
     local opts = {}
-    local short, calendar = false, false
+    local short, calendar, write = false, false, false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
         if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
             short = true
@@ -1561,8 +1561,12 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [k
             opts.waypoint = true
         elseif word == "kalender" or word == "calendar" then -- l10n-ok: the German and English sub-words
             calendar = true
+        elseif word == "schreiben" or word == "write" then -- l10n-ok: the German and English sub-words
+            write = true
         end
     end
+    -- the calendar write probe (SelfTestCalendarWrite.lua): asks first, then writes
+    if calendar and write and ST.CalendarWrite then return ST.CalendarWrite.Start() end
     -- the calendar probe (SelfTestCalendar.lua) runs on its own: it waits for the client's answers
     if calendar and ST.Calendar then return ST.Calendar.Start() end
     if short then ST.Short(opts) else ST.Show(opts) end

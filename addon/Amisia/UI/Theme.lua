@@ -252,6 +252,17 @@ T.RAIDCAL = {
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
+-- the question window (W.Confirm, AmisiaConfirmFrame): the text under the title bar, wrapped, the
+-- two red buttons at the bottom right; its height follows the text.
+T.CONFIRM = {
+    W = 440, H = 140,     -- the window (H before the text is set)
+    TEXT_Y = 34,          -- the text below the window's top, under the title bar
+    LINE_H = 16,          -- one line of the text (T.FONT.body)
+    GAP = 12,             -- between the text and the buttons
+    BUTTON_W = 100,       -- the two buttons (at least; FitChip)
+    BOTTOM = 14,          -- the button row from the window's bottom edge
+}
+
 ---------------------------------------------------------------------------
 -- Atlases: the client's art Amisia may use (the style allow-list; the layout rules fail on any
 -- other). Not on it on purpose: common-dropdown-b-button (the filter button carries a baked-in
