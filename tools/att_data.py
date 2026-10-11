@@ -2,7 +2,7 @@
 (build_gear.py, build_map.py, build_dungeonquests.py). Runs without a WoW install (on the N100).
 
 Source: the folder .contrib/.db/forever of https://github.com/ATTWoWAddon/AllTheThings, MIT licence
-(Copyright (c) 2026 AllTheThings WoW Addon); the licence text ships in addon/Amisia/LICENSES/.
+(Copyright (c) 2026 AllTheThings WoW Addon); the licence text ships in Amisia/LICENSES/.
 refresh() downloads the files the builds read through the GitHub API (the repository is far too
 large to clone) into ~/addons/_cache/att, outside the repo:
 

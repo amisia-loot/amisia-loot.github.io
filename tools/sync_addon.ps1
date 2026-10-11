@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Copies addon/Amisia into the WoW AddOns folders, so a change in the repository is in the game.
+Copies Amisia into the WoW AddOns folders, so a change in the repository is in the game.
 
 .DESCRIPTION
 The addon is written once in this repository and runs in the Forever beta. This mirrors the

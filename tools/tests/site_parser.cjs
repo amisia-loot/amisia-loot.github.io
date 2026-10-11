@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PAGE = path.join(__dirname, '..', '..', 'index.html');
+const PAGE = path.join(__dirname, '..', '..', 'Amisia-Website', 'index.html');
 const src = fs.readFileSync(PAGE, 'utf8').replace(/\r\n/g, '\n');
 
 // The page is one big script, so the few functions of the import are cut out by name. A function

@@ -7,14 +7,16 @@
 - Features and their status: `docs/FEATURES.md`; larger features get a spec in `docs/specs` first (README
   there). After a release relay the test list; record results with `build.py tested F-xxx`; game errors:
   `build.py errors`.
-- Repo: WoW Forever addon `addon/Amisia`, the site `index.html` (+ `data/*.js`, GitHub Pages, the only
-  live copy; the claude.ai twin is unmaintained), builders and tests in `tools/`.
+- Folders: `Amisia/` the WoW Forever addon only (what the release copies, TOC at its root);
+  `Amisia-Website/` the site (`index.html`, `data/*.js`, `Amisia.zip`, `supabase/` not deployed; GitHub
+  Pages via `.github/workflows/pages.yml`, the only live copy; the claude.ai twin is unmaintained);
+  `tests/` the addon's Lua tests; `tools/` builders and tool tests; `docs/` the documents.
 - One entry point: `python3 tools/build.py check` (must stay green), `data [--sv FILE] [--wago DIR]`,
   `snapshots [--out DIR] [--compare DIR]`, `release X.Y.Z -m "summary"`. Details in `tools/README.md`.
   Tests one by one: `~/.venvs/amisia/bin/python -m pytest tools/tests -q`,
-  `~/.venvs/amisia/bin/python addon/tests/run.py [name]`,
-  `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node addon/tests/syntax.cjs` (Node in `~/.local/node/bin`).
-- New user-visible text: German inside `L["…"]`, English in `addon/Amisia/Locales/enUS_<area>.lua`;
+  `~/.venvs/amisia/bin/python tests/run.py [name]`,
+  `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node tests/syntax.cjs` (Node in `~/.local/node/bin`).
+- New user-visible text: German inside `L["…"]`, English in `Amisia/Locales/enUS_<area>.lua`;
   `python3 tools/l10n.py check` stays clean.
 - UI: sizes, fonts, colours and allowed atlases from `UI/Theme.lua`; rows with `W.Row`/`W.Column`/`W.Grid`,
   chips with `W.FitChip`. Before and after a UI refactor: `build.py snapshots --out A`, then `--out B --compare A`.
@@ -22,8 +24,8 @@
 - Scan data (`AmisiaDB.scan`) lives for good in `tools/scan_archive.json`; `build.py data` joins the
   SavedVariables into it and writes `Data/ScanDone.lua`, after which the addon trims its file (D-34).
   Commit and push the archive: it is the only copy of what the addon trimmed.
-- Bump `BUILD_ID` in `index.html` whenever a `data/*.js` file changes.
-- Saving in `addon/Amisia` does not reach the game: only `tools/build.py release` (via
+- Bump `BUILD_ID` in `Amisia-Website/index.html` whenever an `Amisia-Website/data/*.js` file changes.
+- Saving in `Amisia/` does not reach the game: only `tools/build.py release` (via
   `tools/release_addon.sh`) copies a committed version to the Syncthing release folder; then `/reload`.
   Machines and folders: ARCHITECTURE.md, "Machines".
 - Never download from wago.tools, Wowhead or foreverchanges by script (DECISIONS D-03): a missing client

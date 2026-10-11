@@ -53,7 +53,7 @@ def test_the_need_line_of_a_material(out):
 
 
 def test_the_page_wires_the_import_and_the_mats_tab():
-    src = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    src = open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8').read()
     assert "'bankNeeds', 'bankLog'" in src, 'kept per game'
     assert 'bankNeeds:d.bankNeeds' in src and 'bankLog:Array.isArray(d.bankLog)' in src, 'kept on load'
     assert "+bankLine(m.id)+needLine(m.id)+" in src, 'the need line on each material'

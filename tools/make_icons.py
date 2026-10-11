@@ -1,10 +1,10 @@
 """Draws the addon's icons from scratch, as genuine 32-bit TGAs (WoW reads textures by file
 extension, so a PNG renamed to .tga stays invisible):
 
-- addon/Amisia/Media/Icons/Amisia.tga (128x128): the window portrait and the addon list icon. The
+- Amisia/Media/Icons/Amisia.tga (128x128): the window portrait and the addon list icon. The
   golden A over the infinity loop of the guild logo, on the logo's turquoise stone. Round; the
   portrait frame of the client lays its own gold ring over the edge.
-- addon/Amisia/Media/Icons/Minimap.tga (64x64): the same with a gold rim of its own.
+- Amisia/Media/Icons/Minimap.tga (64x64): the same with a gold rim of its own.
 
     python tools/make_icons.py [--preview DIR]
 
@@ -20,7 +20,7 @@ import random
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ICONS = os.path.join(os.path.dirname(HERE), 'addon', 'Amisia', 'Media', 'Icons')
+ICONS = os.path.join(os.path.dirname(HERE), 'Amisia', 'Media', 'Icons')
 FONT = os.path.join(HERE, 'fonts', 'Cinzel.ttf')
 SCALE = 4
 

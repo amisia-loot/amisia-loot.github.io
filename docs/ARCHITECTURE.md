@@ -15,9 +15,15 @@ Three parts:
 
 | Part | Where | What |
 |---|---|---|
-| Addon | `addon/Amisia` | WoW Forever addon (TOC Interface 16001 only): raid recording, awards, rolls, DKP/EPGP, sync between Amisia clients, gear/BiS/map/quests/professions/talents, collectors. |
-| Site | `index.html` (+ `data/*.js`) | The guild ledger on GitHub Pages; state in Supabase (`ledgers.main`). Reads the addon's export lines, writes the paste-in blocks for the addon. TBC is a read-only archive. |
-| Tools | `tools/` | Python builders of `addon/Amisia/Data/*.lua` and `data/forever.js`, the build/check/release entry point `tools/build.py`, tests in `tools/tests` and `addon/tests`. |
+| Addon | `Amisia/` | WoW Forever addon (TOC Interface 16001 only): raid recording, awards, rolls, DKP/EPGP, sync between Amisia clients, gear/BiS/map/quests/professions/talents, collectors. |
+| Site | `Amisia-Website/index.html` (+ `Amisia-Website/data/*.js`) | The guild ledger on GitHub Pages; state in Supabase (`ledgers.main`). Reads the addon's export lines, writes the paste-in blocks for the addon. TBC is a read-only archive. |
+| Tools | `tools/` | Python builders of `Amisia/Data/*.lua` and `Amisia-Website/data/forever.js`, the build/check/release entry point `tools/build.py`, tests in `tools/tests` and `tests/` (the addon's Lua tests). |
+
+Folders: `Amisia/` is the addon and nothing else (exactly what `tools/release_addon.sh` copies to
+the game, TOC at its root); `Amisia-Website/` is the site (`index.html`, its images, `data/`, the
+download `Amisia.zip`, and `supabase/`, the database sources, which `.github/workflows/pages.yml`
+leaves out of the deploy); `tests/` holds the addon's Lua tests and stub, `tools/` the builders and
+tool tests, `docs/` the documents.
 
 ## Module map (checked)
 
@@ -132,21 +138,21 @@ restart), `LICENSES/` (licence texts shipped with the addon).
   `if ns.X then ns.X() end`. At load time it only defines and registers.
 - `Data/*` carry `[AllowLoadGameType camelot]` (Forever only); they are generated, never edited.
 - Saved data is shaped on `ADDON_LOADED` (Core calls the migrations, others listen); nothing is
-  built at login (lazy data, see `addon/tests/test_lazy_data.lua`, `tools/load_cost.py`).
+  built at login (lazy data, see `tests/test_lazy_data.lua`, `tools/load_cost.py`).
 - A new client global goes into `read_globals` of `.luacheckrc`.
 
 ## Data flow
 
 ```
-in game                                  N100 / tools                         site (index.html)
--------                                  ------------                         -----------------
+in game                                  N100 / tools                         site (Amisia-Website/index.html)
+-------                                  ------------                         --------------------------------
 Scan/Collect/Collector/Drops/QuestXP ->  AmisiaDB (SavedVariables)
    (and /amisia selbsttest AMISIA-WERTE)    -> Syncthing (PC -> ~/addons/_SavedVariables/Amisia.lua)
                                             -> tools/build_scan_archive.py -> tools/scan_archive.json (all scan data
-                                               for good) + addon/Amisia/Data/ScanDone.lua (marker)
-                                            -> tools/build_*.py (archive + file) -> addon/Amisia/Data/*.lua (next release)
+                                               for good) + Amisia/Data/ScanDone.lua (marker)
+                                            -> tools/build_*.py (archive + file) -> Amisia/Data/*.lua (next release)
 ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of AmisiaDB.scan
-                                            -> tools/build_scan.py -> data/forever.js, tools/drop_obs.json
+                                            -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
 AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att -> build_gear/map/quests/...
 raid recording, awards, bank, points  -> "#AMISIA 2" export text --- paste --> Import tab (amParse...)
@@ -169,9 +175,9 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
   the real files). The marker holds per item a hash of its line, per item the hashes of its notes and
   the ids the client table ItemSparse knows; the addon removes only what it covers.
 - Every generated file names its generator and sources in its header; files with AllTheThings data
-  are listed in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`. "Generated file is current" tests
+  are listed in `Amisia/LICENSES/AllTheThings-MIT.txt`. "Generated file is current" tests
   live in `tools/tests/test_build_*.py`.
-- After a change to a `data/*.js` file, bump `BUILD_ID` in `index.html`.
+- After a change to an `Amisia-Website/data/*.js` file, bump `BUILD_ID` in `Amisia-Website/index.html`.
 
 ## Comm (addon messages)
 
@@ -442,8 +448,8 @@ table, the roll window, the talent window and the raid calendar window.
 |---|---|
 | `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
-| `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, index.html, changed layouts |
-| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version, check (TOC restored on failure), `addon/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
+| `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
+| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version, check (TOC restored on failure), `Amisia-Website/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
 | `testlist [--all] [--out FILE]` | the German check list of the features with status `gebaut` from `docs/FEATURES.md`, newest version first; `--all` adds those that need a group, guild or raid |
 | `tested F-001 [...] [--raid]` | sets their status in `docs/FEATURES.md` to `im Spiel geprüft (today)` (`im Raid bewährt`) |
 | `errors [--sv FILE] [--all]` | the Lua errors in `~/addons/_SavedVariables/!BugGrabber.lua` that name Amisia (`--all`: every addon's), via `tools/game_errors.py`; `check` adds a non-failing note "Fehler aus dem Spiel: N" |
@@ -456,7 +462,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | Path | Role |
 |---|---|
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
-| `~/addons/_release/Amisia` | committed HEAD of `addon/Amisia`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` |
+| `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` |
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1` |

@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import lua_data  # noqa: E402
 
-ADDON = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'addon', 'Amisia')
+ADDON = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'Amisia')
 SHIPPED = {'GearData': ('GEAR', 'I'), 'MapData': ('MAP', 'P'), 'QuestData': ('QUEST_DATA', 'Q'),
            'ProfessionData': ('PROFESSIONS', 'P'), 'TalentData': ('TALENTS', 'classes'),
            'MageScrollData': ('MAGESCROLLS', 'scrolls'), 'GearWeights': ('GEAR_WEIGHTS', 'specs')}

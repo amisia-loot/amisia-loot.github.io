@@ -3,7 +3,7 @@
 tools/tests/site_wishes.cjs cuts the wishlist code out of the page: amParseWishes reads the WL
 lines of the addon's "Für die Website" text, wishImportPlan decides what "Paste from the addon"
 adds, and wishAddonText writes the text for the addon. That text goes through the addon's own
-parser (ns.ParseGuildWishes, under the Lua stub of addon/tests, as the Forever client) and must come
+parser (ns.ParseGuildWishes, under the Lua stub of tests, as the Forever client) and must come
 out the same. The site keeps the wishlist for WoW Forever only; a TBC wish counts as another game.
 """
 import json
@@ -16,7 +16,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_wishes.cjs')
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 
 
 @pytest.fixture(scope='module')
@@ -95,7 +95,7 @@ def test_the_text_for_the_addon(out):
 
 
 def parse_in_addon(text, toc=16001):
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh('--[[preload\nSTUB.toc = %d\n]]' % toc)
     parse = lua.eval('function(t) local res, why = NS.ParseGuildWishes(t); return res, why end')
     res, why = parse(text)

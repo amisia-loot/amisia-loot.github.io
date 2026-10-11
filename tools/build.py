@@ -8,7 +8,7 @@
     python3 tools/build.py tested F-001 [F-002 ...] [--raid]
     python3 tools/build.py errors [--sv FILE] [--all]
 
-data     rebuilds every generated file in addon/Amisia/Data in dependency order (dungeons, gear, map,
+data     rebuilds every generated file in Amisia/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, dungeon art, BiS), stops at the first error
          and shows what changed. A step whose client tables are missing in --wago is skipped with a
          note (the tables come only from the user's own tools/export_db2.ps1 run, never downloaded).
@@ -21,7 +21,7 @@ snapshots  draws every page (raider, officer and expert view) and side window fr
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
 release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
-         fails), builds addon/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
+         fails), builds Amisia-Website/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
          commits "Amisia X.Y.Z: <summary>", pushes origin main and copies the release to the folder
          Syncthing sends (tools/release_addon.sh). --no-push and --no-copy leave those two out.
          Before: a warning with Amisia's errors from the game, if any. After: the test list of the
@@ -45,7 +45,7 @@ import time
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADDON_REL = 'addon/Amisia'
+ADDON_REL = 'Amisia'
 VENV_PY = os.path.expanduser('~/.venvs/amisia/bin/python')
 WAGO = os.path.expanduser('~/addons/_wago')
 SNAPSHOTS = '/tmp/amisia-snapshots'
@@ -290,18 +290,18 @@ def cmd_check(args=None):
     def syntax():
         if not node:
             return 'skip', ['node not found']
-        rc, out = run([node, os.path.join(ROOT, 'addon', 'tests', 'syntax.cjs')], env=env, capture=True)
+        rc, out = run([node, os.path.join(ROOT, 'tests', 'syntax.cjs')], env=env, capture=True)
         if rc == 2:
             return 'skip', ['luaparse not found (npm install luaparse, or NODE_PATH)']
         n = sum(1 for ln in out.splitlines() if ln.startswith('ok'))
         return ('ok', [f'{n} files']) if rc == 0 else ('FAIL', fail_lines(out))
 
     def addon_tests():
-        rc, out = run([py, os.path.join(ROOT, 'addon', 'tests', 'run.py')], capture=True)
+        rc, out = run([py, os.path.join(ROOT, 'tests', 'run.py')], capture=True)
         return ('ok', []) if rc == 0 else ('FAIL', fail_lines(out))
 
     def addon_tests_en():
-        rc, out = run([py, os.path.join(ROOT, 'addon', 'tests', 'run.py'), '--locale', 'enUS'], capture=True)
+        rc, out = run([py, os.path.join(ROOT, 'tests', 'run.py'), '--locale', 'enUS'], capture=True)
         summary = [ln for ln in out.splitlines() if ln.startswith('locale ')]
         return ('ok', summary) if rc == 0 else ('FAIL', fail_lines(out))
 
@@ -338,7 +338,7 @@ def cmd_check(args=None):
         return ('ok', []) if rc == 0 else ('FAIL', fail_lines(out, 40))
 
     step('syntax (luaparse, Lua 5.1)', syntax)
-    step('addon tests (addon/tests/run.py)', addon_tests)
+    step('addon tests (tests/run.py)', addon_tests)
     step('addon tests in English (run.py --locale enUS: no Lua error, no missing text)', addon_tests_en)
     step('translations (tools/l10n.py check: no German outside L, enUS complete)', translations)
     step('layout rules (tools/ui_layout.py rules, every page and window)', layout_rules)
@@ -449,11 +449,12 @@ def release_test_list(root, version):
 
 # ---------------------------------------------------------------- release
 def build_zip(root, out=None):
-    """addon/Amisia.zip from the tracked addon files, under Amisia/, without dotfiles."""
-    out = out or os.path.join(root, 'addon', 'Amisia.zip')
+    """Amisia-Website/Amisia.zip from the tracked addon files, under Amisia/, without dotfiles."""
+    out = out or os.path.join(root, 'Amisia-Website', 'Amisia.zip')
     files = [f for f in git(root, 'ls-files', '--', ADDON_REL).splitlines() if f]
     base = os.path.join(root, ADDON_REL)
     n = 0
+    os.makedirs(os.path.dirname(out), exist_ok=True)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
         for rel in sorted(files):
             inner = os.path.relpath(os.path.join(root, rel), base).replace(os.sep, '/')
@@ -515,7 +516,7 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     if push and branch != 'main':
         raise SystemExit(f'releases are pushed from main, this is {branch} (or use --no-push)')
 
-    touched = [ADDON_REL + '/Amisia.toc', 'addon/Amisia.zip', 'CHANGELOG.md']
+    touched = [ADDON_REL + '/Amisia.toc', 'Amisia-Website/Amisia.zip', 'CHANGELOG.md']
     note = game_errors_note(errors_sv)
     if note:
         say('WARNING: the game caught errors of Amisia; released anyway. Fixed already? Otherwise look first:')

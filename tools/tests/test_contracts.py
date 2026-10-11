@@ -14,11 +14,11 @@ import re
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 TOOLS = os.path.join(ROOT, 'tools')
 ARCH = os.path.join(ROOT, 'docs', 'ARCHITECTURE.md')
 DECISIONS = os.path.join(ROOT, 'docs', 'DECISIONS.md')
-SITE = os.path.join(ROOT, 'index.html')
+SITE = os.path.join(ROOT, 'Amisia-Website', 'index.html')
 
 
 def read(path):
@@ -515,7 +515,7 @@ def test_every_decision_says_how_it_is_kept():
 
 def test_every_test_the_decisions_name_exists():
     text = read(DECISIONS)
-    named = re.findall(r'`((?:tools|addon)/[\w./-]+?)(?:::(\w+))?`', text)
+    named = re.findall(r'`((?:tools|tests|Amisia|Amisia-Website)/[\w./-]+?)(?:::(\w+))?`', text)
     assert named
     for path, func in named:
         full = os.path.join(ROOT, path)

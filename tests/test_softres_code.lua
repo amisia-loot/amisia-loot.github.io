@@ -1,6 +1,6 @@
 -- The softres.it code (its "Gargul" export, spec docs/specs/2026-10-11-softres-gargul.md, A2):
 -- Base64 -> C_EncodingUtil.DecompressString(zlib) -> DeserializeJSON. The made-up codes are in
--- addon/tests/fixtures (run.py unpacks them with Python for the stub; tools/tests/test_softres_samples.py
+-- tests/fixtures (run.py unpacks them with Python for the stub; tools/tests/test_softres_samples.py
 -- proves them valid). Decoding, the preview, storing (data model 3), notes and the softres +1 as hints
 -- only, hard reserves ("HR" in the tooltip and the loot window, the question at the round's start, no
 -- loot rule), bonus rolls left out, untrusted fields cleaned, a broken code, a missing client

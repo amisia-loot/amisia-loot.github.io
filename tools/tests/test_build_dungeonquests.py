@@ -13,7 +13,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 sys.path.insert(0, TOOLS)
 import build_dungeonquests as bdq  # noqa: E402

@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 Date.now = () => 1791500000 * 1000;
-const html = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', '..', 'Amisia-Website', 'index.html'), 'utf8');
 const script = [...html.matchAll(/<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).find(s => s.length > 100000)
   .replace(/^\s*\(function\(\)\{/, '').replace(/\}\)\(\);\s*$/, '');
 const ledger = html.match(/<script[^>]*id="ledger-data"[^>]*>([\s\S]*?)<\/script>/)[1];

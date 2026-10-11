@@ -1,4 +1,4 @@
-"""Runs every addon/tests/test_*.lua under Lua 5.1 with the small client stub.
+"""Runs every tests/test_*.lua under Lua 5.1 with the small client stub.
 
 Each test file gets a fresh runtime: the stub, then the test's preload block, then every addon
 file in TOC order, then ADDON_LOADED. A preload block is a comment at the very top of a test file,
@@ -90,7 +90,7 @@ _FIXTURES = None
 
 
 def softres_fixtures():
-    """(code, JSON text) of every addon/tests/fixtures/softres_*.txt: Base64 of zlib-packed JSON, as
+    """(code, JSON text) of every tests/fixtures/softres_*.txt: Base64 of zlib-packed JSON, as
     softres.it writes its code (tools/tests/test_softres_samples.py checks them)."""
     global _FIXTURES
     if _FIXTURES is None:
@@ -137,7 +137,7 @@ def fresh(source='', player=None, setup=None, locale=None):
         lua.execute(pre.group(1))
     if player is not None:
         lua.globals().STUB.player = player
-    # the softres.it codes of addon/tests/fixtures: the stub cannot inflate zlib, Python unpacks them
+    # the softres.it codes of tests/fixtures: the stub cannot inflate zlib, Python unpacks them
     for code, text in softres_fixtures():
         lua.globals().STUB.addInflate(code, text)
     # a client without C_EncodingUtil (STUB.noEncoding set in the preload)

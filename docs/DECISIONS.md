@@ -19,9 +19,9 @@ Spielwähler; der TBC-Ledger der Gilde bleibt als schreibgeschütztes Archiv les
 **Grund:** Die Gilde zieht nach Forever (Start 2026-11-04); zwei Clients verdoppelten Arbeit und
 Review-Funde.
 **Folge:** Nie wieder TBC-/Fremdversions-Code oder -Daten; beim Anfassen geteilten Codes TBC-Zweige
-löschen statt halten. Generierte Daten tragen `[AllowLoadGameType camelot]`. `data/tbc.js` und Co.
+löschen statt halten. Generierte Daten tragen `[AllowLoadGameType camelot]`. `Amisia-Website/data/tbc.js` und Co.
 sind nur noch Archiv (kein Neubau).
-**Durchgesetzt durch:** `addon/tests/test_forever_only.lua`, `tools/tests/test_data_files.py::test_data_holds_forever_and_the_tbc_archive_only`,
+**Durchgesetzt durch:** `tests/test_forever_only.lua`, `tools/tests/test_data_files.py::test_data_holds_forever_and_the_tbc_archive_only`,
 `tools/tests/test_site_archive.py`, `tools/tests/test_contracts.py::test_toc_is_forever_only`,
 `tools/tests/test_contracts.py::test_no_tbc_client_left_in_the_addon`.
 
@@ -57,7 +57,7 @@ wird nicht erweitert. wowsrc.com ist eine vom Nutzer akzeptierte Eingabe (D-04),
 
 **Datum:** 2026-10-06
 **Entscheidung:** AllTheThings (MIT) ist freigegeben, mit dem Lizenztext in
-`addon/Amisia/LICENSES/AllTheThings-MIT.txt` (in einer Lizenzdatei, nicht in der UI). QuestieDB hat
+`Amisia/LICENSES/AllTheThings-MIT.txt` (in einer Lizenzdatei, nicht in der UI). QuestieDB hat
 keine Lizenz und ist entfernt. wowsrc.com, OneForAll und AtlasLoot bleiben Eingaben der Builds
 ("Ja können wir alles nutzen"; die Lizenzen hat der Nutzer entschieden, nicht geprüft).
 Daten, die andere Repos von Wowhead/foreverchanges kopiert haben, sind nicht nutzbar, auch wenn das
@@ -117,8 +117,8 @@ klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen") und
 Blizzard-Einstellungskategorie, keine fremden Bibliotheken.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_forever_look`,
 `tools/tests/test_contracts.py::test_no_foreign_libraries_menus_or_combat_log`, die Layoutregeln
-(`tools/ui_layout.py`, Atlasliste), `addon/tests/test_style.lua` und für die Talente
-`addon/tests/test_talents_page.lua` und `addon/tests/test_talent_window.lua` (Abstände beider Größen).
+(`tools/ui_layout.py`, Atlasliste), `tests/test_style.lua` und für die Talente
+`tests/test_talents_page.lua` und `tests/test_talent_window.lua` (Abstände beider Größen).
 
 ## D-07 Nur Zeichen, die die Spielschrift hat
 
@@ -134,13 +134,13 @@ U+2026, Pfeile, U+2022, U+25CF). Symbole sind Texturen.
 
 **Datum:** 2026-10-06
 **Entscheidung:** deDE-Clients sehen Deutsch, alle anderen Englisch. Deutsch ist Quelltext und
-Schlüssel (`L["..."]`), Englisch steht in `addon/Amisia/Locales/enUS_*.lua`.
+Schlüssel (`L["..."]`), Englisch steht in `Amisia/Locales/enUS_*.lua`.
 Maschinenformate (Export, Nachrichten, gespeicherte Schlüssel) übersetzt man nie.
 **Grund:** Wahl des Nutzers aus dem Dungeon-Journal-Vergleich; umgesetzt in 2.9.0.
 **Folge:** Neuer Text deutsch in `L[...]` plus englischer Eintrag im passenden Teil; Code-Kommentare
 englisch; Texte der Website englisch.
 **Durchgesetzt durch:** `tools/l10n.py` (in `build.py check`), `tools/tests/test_l10n.py::test_the_addon_is_translated`,
-`addon/tests/test_locale_en.lua`, die englischen Addon-Tests (`run.py --locale enUS`).
+`tests/test_locale_en.lua`, die englischen Addon-Tests (`run.py --locale enUS`).
 
 ## D-09 BiS-Picks heißen "BiS-Empfehlung", nicht Gildenempfehlung
 
@@ -186,7 +186,7 @@ zwei Konten einigen. Drop-, Quellen- und Rezeptaustausch: nur Gildenmitglieder, 
 beide Seiten ziehen, niemand ist maßgeblich; Daten werden vereinigt, nie überschrieben.
 **Grund:** Ein gehörter, falscher Satz verdrängte sonst echte Beobachtungen.
 **Folge:** Jeder empfangene Satz wird geprüft wie ein gespeicherter.
-**Durchgesetzt durch:** `addon/tests/test_collector.lua`, `addon/tests/test_collect_trust.lua`,
+**Durchgesetzt durch:** `tests/test_collector.lua`, `tests/test_collect_trust.lua`,
 `tools/tests/test_collect_records.py::test_the_build_trusts_own_values_and_heard_ones_two_accounts_agree_on`.
 
 ## D-13 Wegpunkte und Pins nur aus eigenen (oder bestätigten) Daten
@@ -196,7 +196,7 @@ beide Seiten ziehen, niemand ist maßgeblich; Daten werden vereinigt, nie übers
 Client selbst gesehen hat; nur Gehörtes setzt keinen Wegpunkt.
 **Grund:** Wunsch des Nutzers.
 **Folge:** Gilt für Quests, Dungeons und Berufe.
-**Durchgesetzt durch:** `addon/tests/test_quests.lua`, `addon/tests/test_dungeon_guide.lua`, `addon/tests/test_professions.lua`.
+**Durchgesetzt durch:** `tests/test_quests.lua`, `tests/test_dungeon_guide.lua`, `tests/test_professions.lua`.
 
 ## D-14 Ein laufender Raid behält sein Punktesystem
 
@@ -206,7 +206,7 @@ System, mit dem er begann; erst der nächste Raid nimmt das neue. Würfel-Raids 
 nachträglich.
 **Grund:** Vom Nutzer bestätigt.
 **Folge:** Die Seite ist die Wahrheit der Stände; das Addon liefert nur Neues (PS/PE/PA/PX).
-**Durchgesetzt durch:** `addon/tests/test_points_rounds.lua`, `addon/tests/test_points.lua`, `tools/tests/test_points_site.py`.
+**Durchgesetzt durch:** `tests/test_points_rounds.lua`, `tests/test_points.lua`, `tools/tests/test_points_site.py`.
 
 ## D-15 Nur fertige Versionen erreichen das Spiel
 
@@ -222,12 +222,12 @@ Neustart. Ingame-Tests macht der Nutzer.
 ## D-16 Die Version steht nur in der TOC
 
 **Datum:** 2026-10-07
-**Entscheidung:** `## Version:` in `addon/Amisia/Amisia.toc` ist die einzige Stelle; Core liest sie
+**Entscheidung:** `## Version:` in `Amisia/Amisia.toc` ist die einzige Stelle; Core liest sie
 beim Laden. Releases nur über `python3 tools/build.py release X.Y.Z`.
 **Grund:** Zwei Stellen liefen auseinander.
 **Folge:** Keine Versions-Literale im Lua.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_version_stands_only_in_the_toc`,
-`tools/tests/test_build_tool.py::test_the_repo_toc_has_the_version_and_matches_the_folder`, `addon/tests/test_version_toc.lua`.
+`tools/tests/test_build_tool.py::test_the_repo_toc_has_the_version_and_matches_the_folder`, `tests/test_version_toc.lua`.
 
 ## D-17 Exportregel: Bestehendes bleibt Byte für Byte
 
@@ -253,8 +253,8 @@ Versionsmeldungen. Offiziersnotizen gehen nur per Flüstern an geprüfte Offizie
 Raid wird abgeglichen, Schlüssel `Datum:Instanz`.
 **Grund:** Schrittweiser Abgleich zwischen Offizieren ist in anderen Addons auseinandergelaufen.
 **Folge:** Was eine Nachricht über ihren Absender sagt, dient nur der Anzeige.
-**Durchgesetzt durch:** `addon/tests/test_sync_raid.lua`, `addon/tests/test_sync_terms.lua`, `addon/tests/test_sync_ops.lua`,
-`addon/tests/test_trust.lua`, `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
+**Durchgesetzt durch:** `tests/test_sync_raid.lua`, `tests/test_sync_terms.lua`, `tests/test_sync_ops.lua`,
+`tests/test_trust.lua`, `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
 
 ## D-19 Nachrichten: zwei Präfixe, nichts in Sperre und Schlachtfeld, kein Dauerfunk
 
@@ -266,7 +266,7 @@ Gilde geht eine Versionsmeldung pro Sitzung; Fragen nur auf Knopfdruck (5 Minute
 Packen nur mit `C_EncodingUtil` des Clients.
 **Grund:** Forevers Sperren und Drosselung; keine fremden Bibliotheken.
 **Folge:** Jede neue Nachricht läuft durch `Core/Comm.lua` und bekommt eine Zeile in ARCHITECTURE.md.
-**Durchgesetzt durch:** `addon/tests/test_comm.lua`, `addon/tests/test_comm_bus.lua`,
+**Durchgesetzt durch:** `tests/test_comm.lua`, `tests/test_comm_bus.lua`,
 `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`, `tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.
 
 ## D-20 Kein Kampflog, keine Kampfdaten
@@ -277,7 +277,7 @@ Packen nur mit `C_EncodingUtil` des Clients.
 Geheime Werte (Forever) werden über `ns.Plain` erkannt und übersprungen, nie verglichen.
 **Grund:** Forever gibt Addons kein Kampflog; Blizzards Linie.
 **Folge:** Namen beim Kill werden nach der Sperre gelesen.
-**Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_foreign_libraries_menus_or_combat_log`, `addon/tests/test_raidlog.lua`.
+**Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_foreign_libraries_menus_or_combat_log`, `tests/test_raidlog.lua`.
 
 ## D-21 Würfelbereiche und Rangfolge
 
@@ -287,7 +287,7 @@ werden aber gezeigt. Reihenfolge: Reservierung (SR), dann MS, dann OS, dann der 
 weniger MS-Gewinne zuerst unter den MS-Würfen.
 **Grund:** Wahl des Nutzers; der Bereich in der Systemmeldung macht jeden Wurf eindeutig.
 **Folge:** Gildenwünsche und Loot-Prio ändern die Würfelordnung nicht.
-**Durchgesetzt durch:** `addon/tests/test_rolls.lua`, `addon/tests/test_plusone.lua`, `addon/tests/test_guild_wishes.lua`.
+**Durchgesetzt durch:** `tests/test_rolls.lua`, `tests/test_plusone.lua`, `tests/test_guild_wishes.lua`.
 
 ## D-22 Plus-Eins zählt nur Mainspec-Gewinne
 
@@ -297,7 +297,7 @@ zählen nicht (SR-Gewinne als +1: bewusst nein). Twinks zählen für ihren Main.
 **Grund:** Entscheidung im Vergabe-Baustein (Assistent, vom Nutzer nicht widersprochen).
 **Folge:** Das "+1" eines softres.it-Codes (2026-10-11, D-44) ist nur ein Hinweis im Tooltip und
 ändert Amisias Zählung nie.
-**Durchgesetzt durch:** `addon/tests/test_plusone.lua`, `addon/tests/test_alts.lua`, `addon/tests/test_softres_code.lua`.
+**Durchgesetzt durch:** `tests/test_plusone.lua`, `tests/test_alts.lua`, `tests/test_softres_code.lua`.
 
 ## D-23 Zu spät: nur der erste Raid der Nacht zählt; Raidnacht beginnt um 06:00
 
@@ -307,7 +307,7 @@ einer Nacht (Hyjal zuerst, BT danach). Nur die erste Sichtung zählt; wer von de
 (Offizierseintrag oder `!bench` vor der Grenze), ist nie zu spät.
 **Grund:** Regel des Nutzers.
 **Folge:** Addon und Seite setzen dieselbe Regel um.
-**Durchgesetzt durch:** `addon/tests/test_late.lua`, `addon/tests/test_bench.lua`, `tools/tests/test_late_rule.py`.
+**Durchgesetzt durch:** `tests/test_late.lua`, `tests/test_bench.lua`, `tools/tests/test_late_rule.py`.
 
 ## D-24 Materialien: gelernt, Maximum statt Summe
 
@@ -318,7 +318,7 @@ Auf der Seite zählt pro Nacht, Raider und Item das Größere aus Vergabe und Ad
 Eine Bankzählung schreibt nie Bestandskorrekturen.
 **Grund:** Wunsch des Nutzers ("alle Materialien, die in Raids droppen"); Doppelzählung vermeiden.
 **Folge:** Materialien gehen nach Hausregel an die Gildenbank und werden nie angesagt.
-**Durchgesetzt durch:** `addon/tests/test_mats_learn.lua`, `addon/tests/test_mats_migrate.lua`, `tools/tests/test_site_mats.py`.
+**Durchgesetzt durch:** `tests/test_mats_learn.lua`, `tests/test_mats_migrate.lua`, `tools/tests/test_site_mats.py`.
 
 ## D-25 Keine Spielernamen in Drop-Daten
 
@@ -327,7 +327,7 @@ Eine Bankzählung schreibt nie Bestandskorrekturen.
 Client-Kennung, keinen Spielernamen; Exportzeilen und Seitendaten ebenso.
 **Grund:** Datensparsamkeit beim Gildenaustausch.
 **Folge:** Der gleiche Kill zählt einmal, egal wie viele ihn sehen.
-**Durchgesetzt durch:** `addon/tests/test_drops.lua`, `tools/tests/test_drop_import.py`.
+**Durchgesetzt durch:** `tests/test_drops.lua`, `tools/tests/test_drop_import.py`.
 
 ## D-26 Gewünschtes ändert keine Vergaberegel; Loot-Prio und Wünsche kommen von der Seite
 
@@ -338,7 +338,7 @@ für Wünsche, Twinks, Loot-Prio und Punkte; das Addon bekommt sie als Einfügeb
 Änderungen als Exportzeilen zurück. "Wer braucht das?" geht nie in den Raidchat.
 **Grund:** Offiziere entscheiden; die Seite ist der gemeinsame Ort.
 **Folge:** Eingefügter Text ist unvertraut und wird Feld für Feld geprüft.
-**Durchgesetzt durch:** `addon/tests/test_guild_wishes.lua`, `addon/tests/test_loot_prio.lua`, `addon/tests/test_need.lua`,
+**Durchgesetzt durch:** `tests/test_guild_wishes.lua`, `tests/test_loot_prio.lua`, `tests/test_need.lua`,
 `tools/tests/test_contracts.py::test_paste_in_blocks`.
 
 ## D-27 Eine Lootleitung pro Raid, Antworten per Flüstern
@@ -350,7 +350,7 @@ Amisia nicht hat). Antworten immer per Flüstern an den rohen Absender. Ansagen 
 einmal pro Leiche; Chat nur über `ns.Say`, in der Sperre wird gewartet.
 **Grund:** Zwei Offiziere mit Amisia sollen nicht doppelt posten.
 **Folge:** Der Nutzer erwartet Master Loot (eine Tausch-Warteschlange ist nicht gewünscht). Ausnahme (2026-10-09, Spec `docs/specs/2026-10-08-loot-abend.md`): ein Handel-Helfer für vergebene Items, die doch in einer Tasche liegen, als Liste mit Knopf, keine Warteschlange für jeden Loot (gebaut als D-39).
-**Durchgesetzt durch:** `addon/tests/test_lootannounce.lua`, `addon/tests/test_srchat.lua`, `addon/tests/test_chat.lua`.
+**Durchgesetzt durch:** `tests/test_lootannounce.lua`, `tests/test_srchat.lua`, `tests/test_chat.lua`.
 
 ## D-28 Daten werden erst bei Bedarf gebaut
 
@@ -360,7 +360,7 @@ werden beim ersten `ns.Data(...)` gebaut; Verfügbarkeitsprüfungen nur über `n
 **Grund:** Kurzer Login, wenig Speicher für Spieler, die die Seiten nie öffnen.
 **Folge:** Neue große Daten über `tools/lua_data.py` `lazy()`; seit 2026-10-08 ohne überflüssige
 Leerzeichen (`lua_data.compact`, Zeilen bleiben) und auch die Gewichte (`GEAR_WEIGHTS`).
-**Durchgesetzt durch:** `addon/tests/test_lazy_data.lua`, `tools/tests/test_lua_data.py`.
+**Durchgesetzt durch:** `tests/test_lazy_data.lua`, `tools/tests/test_lua_data.py`.
 
 ## D-29 Wertung der Ersatzbank und Discord-Text
 
@@ -399,7 +399,7 @@ Arbeit, halbe Worktrees).
 Bosskampf werden mit der Gruppe/Gilde erst nach dem Start von WoW Forever (2026-11-04) geprüft; bis
 dahin nur Solo-Prüfungen (`/amisia selbsttest`).
 **Grund:** Vorher keine Gruppe.
-**Folge:** Alles Gruppenbezogene bleibt bis dahin nur im Test-Stub belegt (`addon/tests/run.py`
+**Folge:** Alles Gruppenbezogene bleibt bis dahin nur im Test-Stub belegt (`tests/run.py`
 Mehr-Client-Tests).
 **Nicht maschinell geprüft**
 
@@ -411,7 +411,7 @@ Im `onAuthStateChange`-Callback nie auf Supabase warten. `refreshRole` setzt die
 Antwort zurück. Wer online ist, läuft über die Tabelle `presence` (Herzschlag), nicht über
 Realtime-Presence. Mitgliederdaten stehen nicht im Ledger-JSON.
 **Grund:** Datenschutz; Deadlocks und verlorene Speicherungen in der Praxis.
-**Folge:** Nach jeder Änderung an `data/*.js` `BUILD_ID` in `index.html` erhöhen.
+**Folge:** Nach jeder Änderung an `Amisia-Website/data/*.js` `BUILD_ID` in `Amisia-Website/index.html` erhöhen.
 **Durchgesetzt durch:** `tools/tests/test_data_files.py::test_build_id_is_new_since_1_9` (nur BUILD_ID; der Rest ist nicht maschinell geprüft).
 
 ## D-34 Scan-Daten leben auf dem N100, das Addon räumt Ausgewertetes weg
@@ -434,7 +434,7 @@ Archiv (`--scan-archive ""`) sieht nach dem Trimmen weniger. Builds geben Items 
 aus, damit getrimmte und volle Datei dieselben Daten bauen.
 **Durchgesetzt durch:** `tools/tests/test_scan_archive.py::test_a_build_after_the_trim_gives_the_same_data`,
 `tools/tests/test_scan_archive.py::test_absorb_loses_nothing_and_the_file_wins`,
-`tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`, `addon/tests/test_scan_trim.lua`.
+`tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`, `tests/test_scan_trim.lua`.
 
 ## D-35 Features mit Status und Prüfungen, Specs vor größeren Features, Fehler aus dem Spiel
 
@@ -477,7 +477,7 @@ Vom Nutzer gewünscht (2026-10-08); die Sichtbarkeit hat der umsetzende Agent na
 Regeln entschieden.
 **Folge:** Ein Raider sieht nur, was seine Raids enthalten (über den Abgleich der Lootleitung); ein
 Offizier alle Raids, die er aufgezeichnet hat.
-**Durchgesetzt durch:** `addon/tests/test_award_history.lua`.
+**Durchgesetzt durch:** `tests/test_award_history.lua`.
 
 ## D-37 Lootregeln: nur der Plündermeister, nie Reserviertes, Priorisiertes oder Gewünschtes; fremde Regeln erst nach Übernehmen
 
@@ -515,8 +515,8 @@ eine Regel je über ein umkämpftes Item entscheidet.
 Spieler, keine Regeln von der Website und keine bei Gruppenplündern. Höchstens 30 Regeln, 50 Items pro
 Liste, MR in höchstens 4 Teilen, ein Vorschlag pro Offizier alle 30 Sekunden. Seit 2026-10-11 fasst keine
 Regel eine Hard-Reserve des softres.it-Codes an (D-44).
-**Durchgesetzt durch:** `addon/tests/test_loot_rules.lua`, `addon/tests/test_loot_rules_share.lua`,
-`addon/tests/test_loot_rules_review.lua`, `addon/tests/test_award_candidate.lua`,
+**Durchgesetzt durch:** `tests/test_loot_rules.lua`, `tests/test_loot_rules_share.lua`,
+`tests/test_loot_rules_review.lua`, `tests/test_award_candidate.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
 
 ## D-38 Würfel-Fenster: die Zahl nur vom Server, Runden nur von der geprüften Lootleitung
@@ -555,8 +555,8 @@ außerhalb der Gilde, in Schlachtfeldern und Arenen; Raider ohne Amisia würfeln
 Ansage im Raidchat bleibt. Gespeichert wird nur die Position (`settings.rollWindow`). Seit 2026-10-11
 öffnet auch eine Runde, die die Lootleitung mit Gargul startet, das Fenster (D-44, aus dem Chat, kein
 `WS`); eine Amisia-Runde geht vor.
-**Durchgesetzt durch:** `addon/tests/test_roll_window.lua`, `addon/tests/test_roll_window_raid.lua`,
-`addon/tests/test_roll_window_names.lua`, `addon/tests/test_roll_window_review.lua`,
+**Durchgesetzt durch:** `tests/test_roll_window.lua`, `tests/test_roll_window_raid.lua`,
+`tests/test_roll_window_names.lua`, `tests/test_roll_window_review.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
 
 ## D-39 Handel-Helfer: nur Ausnahmen, Einlegen nur per Klick, der Vermerk bleibt beim Spieler
@@ -595,7 +595,7 @@ Handelspartner, und eine Vergabe, deren Kopie stattdessen ging, behält die gebl
 Stapel legt der Knopf nur eines ein (geteilt); übergeben ist es, wenn der Stapel kleiner wurde. Ein
 Klick merkt sich die Handelsplätze, die er schon belegt hat (das Spiel meldet sie erst nach dem
 Server), und zählt nur, was die Maus wirklich aufgenommen hat.
-**Durchgesetzt durch:** `addon/tests/test_handover.lua`,
+**Durchgesetzt durch:** `tests/test_handover.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
 ## D-40 Einrichtungshilfe: nur bestehende Einstellungen, jede Änderung sofort, nichts ohne Klick
@@ -625,7 +625,7 @@ für eine Einstellung gibt.
 **Folge:** Keine eigenen Einstellungen der Hilfe, keine Vorgaben, die ohne Klick etwas anlegen.
 Gespeichert wird nur `AmisiaDB.setup = { done, never }` (Zeitpunkte). Neue wichtige Einstellungen
 kommen als weiterer Schritt oder Zeile dazu, nicht als Kopie.
-**Durchgesetzt durch:** `addon/tests/test_setup.lua`,
+**Durchgesetzt durch:** `tests/test_setup.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
 ## D-41 Raid-Aufstellung: nur Offiziere, eingefügter Text unvertraut, einladen nur per Klick, nie Kicks
@@ -666,7 +666,7 @@ Leiterwechsel, keine Beförderung. Die Teile A bis E senden und empfangen keine 
 Exportzeile; eingefügter Text ist unvertraut (D-26: Codes und Striche entfernt, 200 Bytes pro Zeile,
 2000 Zeilen, Namen ohne Ziffern und Steuerzeichen, 48 Zeichen). Die Website schreibt `#AMISIA-RAID`
 nicht; der Vertragstest kennt dafür die Ausnahme "liest nur das Addon".
-**Durchgesetzt durch:** `addon/tests/test_lineup.lua`, `addon/tests/test_lineup_page.lua`,
+**Durchgesetzt durch:** `tests/test_lineup.lua`, `tests/test_lineup_page.lua`,
 `tools/tests/test_contracts.py::test_paste_in_blocks`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
@@ -750,9 +750,9 @@ bleibt er ("Spielkalender: ein Offizier hat deinen Stand gesetzt (...), dort ble
 bestätigt/Ersatz ist Entfernen (das Spiel bietet es dort an). Nie bei einem Ereignis eines vergangenen
 Kalendertags (auch nicht in der Raidnacht nach 00:00). Die Schreibprüfung startet nicht aus einem vom Offizier
 gesetzten Stand (eingeladen, bestätigt, raus, Ersatz). Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
-**Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
-`addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`, `addon/tests/test_signup_calendar.lua`,
-`addon/tests/test_calendar_write_review.lua`, `addon/tests/test_calendar_write_officer.lua`,
+**Durchgesetzt durch:** `tests/test_calendar_lineup.lua`, `tests/test_signup.lua`,
+`tests/test_signup_comm.lua`, `tests/test_selftest_calendar.lua`, `tests/test_selftest_calendar_write.lua`, `tests/test_signup_calendar.lua`,
+`tests/test_calendar_write_review.lua`, `tests/test_calendar_write_officer.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
@@ -795,7 +795,7 @@ Gruppen als Abschnittsleisten; Rollen- und Klassensymbole sind Atlanten der Grup
 Die Zeile unten sagt "Kalender wird gelesen ..." nur, solange gelesen wird; ein Termin ohne Kennung
 wird auch gelesen (nach Zeit und Titel), ein belegter Kalender sagt es nach 8 Sekunden, und ein Öffnen
 ohne Antwort hält den Kalender höchstens `Cal.WAIT` + 5 Sekunden belegt.
-**Durchgesetzt durch:** `addon/tests/test_raid_calendar.lua`, `addon/tests/test_raid_calendar_read.lua`, `addon/tests/test_signup_comm.lua`,
+**Durchgesetzt durch:** `tests/test_raid_calendar.lua`, `tests/test_raid_calendar_read.lua`, `tests/test_signup_comm.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
 ## D-44 softres.it-Code und Gargul-Runden: lesen, nie senden; wer startet, entscheidet
@@ -846,8 +846,8 @@ keinen Gargul-Code (Gargul ist "All Rights Reserved"); Gargul-Raider bekommen be
 Gargul-Fenster (B3 nicht gebaut), sie würfeln mit `/roll` und `/roll 99`. Stellt der Starter Gargul auf
 eine andere Sprache um oder schaltet die Ansage ab, sieht Amisia nichts. Die Bereiche stehen nicht im
 Chat: Amisia nimmt 100/99 an. `AmisiaDB.softres` hat Datenmodell 3.
-**Durchgesetzt durch:** `addon/tests/test_softres_code.lua`, `addon/tests/test_roll_watch.lua`,
-`addon/tests/test_softres_code_review.lua`, `addon/tests/test_roll_watch_review.lua`,
+**Durchgesetzt durch:** `tests/test_softres_code.lua`, `tests/test_roll_watch.lua`,
+`tests/test_softres_code_review.lua`, `tests/test_roll_watch_review.lua`,
 `tools/tests/test_softres_samples.py`, `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow`.
 
 ## D-45 Hauptfenster: Reiter unten statt Abschnittsleisten, Suche oben links, Kalender als Reiter
@@ -882,6 +882,6 @@ Item-Suche öffnet keine Item-Seite: die Seite Ausrüstung kennt nur Ansicht und
 (`ns.ShowGear(view, slot)`), darum kommt der Link in die Chatzeile, der Tooltip zeigt das Item. Die
 Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, solange das
 Kalenderfenster des Spiels ein anderes Ereignis zeigt.
-**Durchgesetzt durch:** `addon/tests/test_main_tabs.lua`, `addon/tests/test_search.lua`,
-`addon/tests/test_calendar_page.lua`, `addon/tests/test_calendar_page_review.lua`, `addon/tests/test_main_tabs_review.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
+**Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`,
+`tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).

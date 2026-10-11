@@ -19,13 +19,13 @@ python3 tools/build.py errors [--sv FILE] [--all]
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
   `build_talents.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
-  that fails and ends with `git diff --stat` of `addon/Amisia/Data` and `tools`. `--wago` is the
+  that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. `--wago` is the
   folder of the client tables (default `~/addons/_wago`); professions and talents are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
   `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
-- `check` runs `addon/tests/syntax.cjs`, `addon/tests/run.py`, the layout rules of every page and
+- `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
   the TOC against the addon folder (every listed file exists, every `.lua`/`.xml` is listed) and
@@ -36,7 +36,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
 - `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
   version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts
-  everything back when it fails, builds `addon/Amisia.zip` (tracked files under `Amisia/`, no
+  everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, no
   dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
   commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
   `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
@@ -75,9 +75,9 @@ installs `lua-check` with apt.
 ## ui_layout.py: UI snapshots and layout rules
 
 Small visual bugs (a cut-off label, a button 2 px over a list, a chip narrower than its word) are
-caught before the game. The test stub (`addon/tests/wow_stub.lua`) keeps every frame it makes with
-its parent, anchors, size, text, font object and atlas; `addon/tests/uidump.lua` hands that tree
-over as JSON; `addon/tests/ui_scene.lua` is the world the shots show (an officer's raid with loot,
+caught before the game. The test stub (`tests/wow_stub.lua`) keeps every frame it makes with
+its parent, anchors, size, text, font object and atlas; `tests/uidump.lua` hands that tree
+over as JSON; `tests/ui_scene.lua` is the world the shots show (an officer's raid with loot,
 rolls, awards and soft-reserves, a level 24 priest with professions). `tools/ui_layout.py` solves
 the anchors, checks the rules and draws.
 
@@ -117,8 +117,8 @@ python3 tools/ui_layout.py rules [--locale deDE]
     in the hint font, a line 6 px in from the edge; column heads 18 high in the gold head font; the
     footer ends at the page's bottom and nothing of the content reaches into it; every empty state
     (`W.EmptyState`) is placed by the scaffold (`p:Empty`). The scaffold tags its parts
-    (`layoutRole`, `layoutBand`), `addon/tests/uidump.lua` hands the tags over.
-- Text widths are estimated (`addon/tests/textwidth.py`, shared with the stub's `GetStringWidth`):
+    (`layoutRole`, `layoutBand`), `tests/uidump.lua` hands the tags over.
+- Text widths are estimated (`tests/textwidth.py`, shared with the stub's `GetStringWidth`):
   per-character advances close to Friz Quadrata, on the safe side, times the font object's size
   (Arial Narrow faces narrower), times the locale's factor. `LOCALES` in `ui_layout.py` holds the
   locales the rules run in (German now; English joins with its strings and factor).
@@ -135,11 +135,11 @@ python3 tools/ui_layout.py rules [--locale deDE]
 - The page scene also opens the mage scrolls (`scrolls`, by command), so its layout is checked too.
 
 Tests: `tools/tests/test_ui_layout.py` (each rule on a made-up tree, the anchors, the drawing and
-the comparison) and `addon/tests/test_layout_helpers.lua`.
+the comparison) and `tests/test_layout_helpers.lua`.
 
 ## Addon layout
 
-`addon/Amisia/`: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version,
+`Amisia/`: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version,
 minimap button, selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid
 log, bench, sync, raid text, need), `Collect/` (item scan, collector, drops and their guild exchange,
 quest XP), `Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes,
@@ -225,7 +225,7 @@ memory at every login, so it is kept here for good and the addon lets go of what
   and suffixes join, nothing is dropped. With `ItemSparse` in `--wago` the ids the client knows are
   kept too (ranges). `updated` changes only with the content. Committed (2.5 MB, about 480 KB in git):
   after the addon trimmed its file, the archive is the only copy, so commit and push it.
-- Then it writes `addon/Amisia/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
+- Then it writes `Amisia/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
   `I` per archived item `<step>.<hash of the line>`, `S` per item with notes `<step>.<hash>...`, `C` the
   client's ids as `<step>.<length>` up to `cmax`; numbers base 36, hash
   `h = (h * 31 + byte) % 1000000007` over the UTF-8 bytes (the same in `Collect/ScanTrim.lua`).
@@ -246,7 +246,7 @@ with it costs 20 KB over the addon alone.
 
 ## build_scan.py
 
-Builds `data/forever.js`, the loot tables for World of Warcraft: Forever, from what the Amisia
+Builds `Amisia-Website/data/forever.js`, the loot tables for World of Warcraft: Forever, from what the Amisia
 addon saved.
 
 1. In game, outside any instance: `/amisia scan 1 250000` (takes a while; `/amisia scan status`
@@ -267,7 +267,7 @@ addon saved.
    Wowhead is asked only with `--wowhead` (off by default since 2026-10-08, docs/DECISIONS.md D-03).
 3. Read the warnings: add unknown instances to `tools/forever_zones.json`, mark trash sources
    or rename bosses in `tools/forever_bosses.json`, run again.
-4. Bump `BUILD_ID` in `index.html`, so browsers fetch the new `data/forever.js`, then commit and
+4. Bump `BUILD_ID` in `Amisia-Website/index.html`, so browsers fetch the new `Amisia-Website/data/forever.js`, then commit and
    push. The `forever` entry of `GAMES` already points at the file.
 
 The boss loot tables grow with the raids: every item that lay in an opened loot window is
@@ -277,7 +277,7 @@ listed under its source. Requires `lupa`; icons need `Pillow` and internet acces
 
 The addon records every boss kill whose loot window a guild member opens in a dungeon or raid
 (no player names) and shares the records in the guild. `build_scan.py` keeps all of them for good in
-`tools/drop_obs.json` (committed) and writes the loot tables per boss into `data/forever.js`
+`tools/drop_obs.json` (committed) and writes the loot tables per boss into `Amisia-Website/data/forever.js`
 (`obsBosses` with kills and per item the kills that had it, `obsZones`, `obsItems`, and
 `obsThrough`, the newest day in the archive; the site adds only the kills it imported after it).
 The records come from:
@@ -288,7 +288,7 @@ The records come from:
 
 Without SavedVariables on the command line only the observations change: the records of
 `~/addons/_SavedVariables/Amisia.lua` (when Syncthing brings the file to the N100), `--drops` and
-`--obs` go into the archive and the observation keys of `data/forever.js` are replaced in place; the
+`--obs` go into the archive and the observation keys of `Amisia-Website/data/forever.js` are replaced in place; the
 item catalog of the last full build stays. This needs no WoW install and no client tables, so it
 runs on the N100:
 
@@ -305,7 +305,7 @@ Tests: `python -m pytest tools/tests -q`.
 The shared reader of AllTheThings' hand-kept WoW Forever data for `build_gear.py`, `build_map.py`
 and `build_dungeonquests.py`: the folder `.contrib/.db/forever` of
 https://github.com/ATTWoWAddon/AllTheThings, MIT licence (Copyright (c) 2026 AllTheThings WoW Addon;
-the licence text ships in `addon/Amisia/LICENSES/AllTheThings-MIT.txt`, approved by the user on
+the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by the user on
 2026-10-06).
 
 - `--refresh-att` (on each of the three builds) downloads through the GitHub API (the token of `gh`)
@@ -342,7 +342,7 @@ Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixt
 
 ## build_gear.py
 
-Builds `addon/Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
+Builds `Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
 every item a levelling character can wear and where it comes from. The stat weights
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
@@ -393,7 +393,7 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   every one it has).
 - Dungeon names are those of `tools/forever_dungeons.json` (ATT's and the other sources' spellings
   map to them through the names and aliases there).
-- Forever raids: drops the site recorded in `data/forever.js` for a zone that
+- Forever raids: drops the site recorded in `Amisia-Website/data/forever.js` for a zone that
   `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
   raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
 - `GearData.lua` carries `game = "forever"`, `cap = 60`; it and `GearWeights.lua` are loaded through
@@ -403,7 +403,7 @@ Runs on the N100. On the PC it also takes the scan and the PC-only sources. `AMI
 overrides the WoW install path. Requires `lupa`.
 
 Licences of the data: AllTheThings MIT (`GearData.lua`, `MapData.lua`, `DungeonQuestData.lua`;
-`addon/Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
+`Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
 the installed folder), wago.tools
 exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). Still open:
 OneForAll's licence (check its installed folder on the PC) and wowsrc.com, whose pages state no
@@ -412,7 +412,7 @@ data: it has no licence.
 
 ## build_map.py
 
-Builds `addon/Amisia/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
+Builds `Amisia/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
 stands, as up to four points `uiMapID:x:y` (x, y in hundredths of a percent) under a stable key per
 source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>`,
 `N:<dungeon name>`).
@@ -440,7 +440,7 @@ Runs on the N100 (no WoW install needed). Run it after every `build_gear.py`, th
 Requires `lupa`.
 ## build_dungeons.py
 
-Builds `addon/Amisia/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
+Builds `Amisia/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
 `[AllowLoadGameType camelot]`) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
 planner: every dungeon and raid of WoW Forever with its level range, size, bosses known so far,
 opening date and instance id where known. Facts only, never a loot table or a drop chance; every
@@ -474,8 +474,8 @@ Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the 
 
 ## build_bis.py
 
-Builds `addon/Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
-`addon/Amisia/Data/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
+Builds `Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
+`Amisia/Data/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
 install, no network:
 
 ```
@@ -499,7 +499,7 @@ Inputs:
   runs from that file. Forever has no `ItemRandomProperties`, `ItemRandomSuffix` or `gt*` table, and
   its `Journal*` tables are empty (1.60.1.70235). `ContentTuning` is read through
   `build_dungeons.tuning_levels` (one reader for both builds).
-- `addon/Amisia/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
+- `Amisia/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
   (with the client's level and instance id of `build_dungeons.client_facts`, from the CSVs of this
   build when they are there, else `tools/forever_dungeons_client.json`), AllTheThings' Forever data
   (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
@@ -592,7 +592,7 @@ worn; while it is worn nothing else is an upgrade for that row). The setting `bi
 
 ## build_dungeonquests.py
 
-Builds `addon/Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
+Builds `Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
 `[AllowLoadGameType camelot]`) for the quest list of the dungeon planner: per dungeon of
 `tools/forever_dungeons.json` its quests, and per quest the level, faction, where it starts (quest
 giver with up to four map points, inside the dungeon, or by an item), its pre-quests (each with its
@@ -604,7 +604,7 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
 
 - Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
   https://github.com/ATTWoWAddon/AllTheThings, **MIT licence**. The copyright line and the licence
-  text ship with the addon in `addon/Amisia/LICENSES/AllTheThings-MIT.txt` (approved by the user on
+  text ship with the addon in `Amisia/LICENSES/AllTheThings-MIT.txt` (approved by the user on
   2026-10-06; the UI does not name it). `--refresh-att` downloads it into `~/addons/_cache/att` (see
   `att_data.py`, the shared reader, which runs the files in its sandbox).
 - Only the Forever folders count here (not the Classic zzOLD ones). A dungeon file is matched to the
@@ -621,7 +621,7 @@ hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real d
 
 ## build_professions.py
 
-Builds `addon/Amisia/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
+Builds `Amisia/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
 `[AllowLoadGameType camelot]`) for the professions page (`/amisia berufe`): every recipe of every
 profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
 `TrivialSkillLineRankHigh` grey, green between), how it is learned (with the profession, trainer
@@ -657,7 +657,7 @@ and a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`).
 
 ## build_talents.py
 
-Builds `addon/Amisia/Data/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
+Builds `Amisia/Data/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
 for the talent calculator (`/amisia talente`): per class its trait tree, the three trees (node group,
 name, icon), the row locks (counting groups) and the talents with row, column, ranks, prerequisites,
 name and text (enUS, placeholders resolved; what changes per rank as `{1}` with the values per rank).
@@ -689,7 +689,7 @@ Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixtur
 
 ## build_magescrolls.py
 
-Builds `addon/Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
+Builds `Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
 (`/amisia schriftrollen`, under Ausrüstung for mages): WoW Forever's mage scrolls and the
 Comprehension skill line ("Arkanes Verständnis"). From the client tables (`--wago`, default
 `~/addons/_wago`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
@@ -716,7 +716,7 @@ Pillow.
 
 ## build_bossnames.py
 
-Builds `data/bossnames.js`: the boss name a localized client shows, mapped to the name the loot
+Builds `Amisia-Website/data/bossnames.js`: the boss name a localized client shows, mapped to the name the loot
 tables use. The addon exports the source name its own client gives it ("Illidan Sturmgrimm" on a
 German client), and without this the site cannot tell which boss an item came from.
 
@@ -728,13 +728,13 @@ The pairs come from the locale files of the installed loot addon the tables were
 without an argument the copy under the WoW folder is read (`AMISIA_WOW_ROOT` overrides the path).
 Names that stay untranslated are listed at the end. Bump `BUILD_ID` afterwards.
 
-Archive only: `data/bossnames.js` holds just the TBC table (the read-only TBC archive of the site),
+Archive only: `Amisia-Website/data/bossnames.js` holds just the TBC table (the read-only TBC archive of the site),
 so this runs again only if the archive ever needs new names, which is practically never. It reads
 the WoW install, so it runs on the PC.
 
 ## sync_addon.ps1
 
-Mirrors `addon/Amisia` into the AddOns folder of the Forever client (`_classic_beta_`): changed
+Mirrors `Amisia` into the AddOns folder of the Forever client (`_classic_beta_`): changed
 files are copied, files gone from the repository are deleted, folders and files starting with a
 dot (editor and Claude Code settings) stay out. A junctioned target is skipped (the N100 sends
 that copy through Syncthing), so on the N100 setup it has nothing to do.
@@ -743,7 +743,7 @@ that copy through Syncthing), so on the N100 setup it has nothing to do.
 pwsh -File tools/sync_addon.ps1 [-Watch] [-Quiet] [-NoCheck]
 ```
 
-It parses the Lua files first (`addon/tests/syntax.cjs`) and copies nothing when one does not
+It parses the Lua files first (`tests/syntax.cjs`) and copies nothing when one does not
 parse, because a single broken file keeps the whole addon from loading; `-NoCheck` skips that.
 `-Watch` copies again on every change, `AMISIA_WOW_ROOT` overrides the WoW folder. A running
 client picks the files up at the next `/reload`.

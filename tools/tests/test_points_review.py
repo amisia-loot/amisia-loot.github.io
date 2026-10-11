@@ -65,5 +65,5 @@ def test_a_viewer_gets_only_what_the_points_tab_shows(out):
 
 
 def test_no_dead_points_code():
-    html = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    html = open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8').read()
     assert 'ptItemCost' not in html and 'ptSlot' not in html

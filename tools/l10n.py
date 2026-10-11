@@ -20,7 +20,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 LOCALES = os.path.join(ADDON, 'Locales')
 ENUS = os.path.join(LOCALES, 'enUS.lua')
 SKIP_DIRS = ('Data', 'Locales')

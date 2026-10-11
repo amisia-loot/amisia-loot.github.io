@@ -128,7 +128,7 @@ def test_an_empty_ledger(out):
 
 
 def test_the_tab_is_on_the_page():
-    with open(os.path.join(ROOT, 'index.html'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8') as fh:
         page = fh.read()
     assert 'data-view="stats"' in page and 'id="view-stats"' in page
     assert "if (ui.view === 'stats') renderStats();" in page

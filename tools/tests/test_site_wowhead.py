@@ -46,7 +46,7 @@ def test_the_tbc_archive_stays_on_tbc(out):
 
 def test_the_icon_lookup_runs_in_the_browser():
     # the page asks Wowhead itself (fetch in the visitor's browser); no tool fetches for the site
-    with open(os.path.join(ROOT, 'index.html'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8') as fh:
         page = fh.read()
     assert "fetch('https://nether.wowhead.com/tooltip/item/'" in page
     assert 'WOWHEAD_ENV = {tbc: 5, forever: 16}' in page

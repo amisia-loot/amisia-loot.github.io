@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const {grab} = require('./site_parser.cjs');
 
-const PAGE = fs.readFileSync(path.join(__dirname, '..', '..', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
+const PAGE = fs.readFileSync(path.join(__dirname, '..', '..', 'Amisia-Website', 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 // the ledger the page starts with (and the twin keeps): TBC on top, from before the shelf
 const START = PAGE.match(/<script id="ledger-data" type="application\/json">([\s\S]*?)<\/script>/)[1];
 

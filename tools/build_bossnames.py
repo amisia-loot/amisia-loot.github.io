@@ -25,7 +25,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-DATA = os.path.join(ROOT, 'data')
+DATA = os.path.join(ROOT, 'Amisia-Website', 'data')
 OUT = os.path.join(DATA, 'bossnames.js')
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')

@@ -4,8 +4,8 @@
     python3 tools/ui_layout.py snapshots [--out DIR] [--compare DIR] [--scale N] [--locale enUS]
 
 Every registered page is opened in the raider, officer and expert view of the scene
-(addon/tests/ui_scene.lua), and the side windows (roll window, award dialog, soft-reserve window,
-gear window, self-test) once each. addon/tests/uidump.lua hands the stub's frame tree over as JSON
+(tests/ui_scene.lua), and the side windows (roll window, award dialog, soft-reserve window,
+gear window, self-test) once each. tests/uidump.lua hands the stub's frame tree over as JSON
 (anchors, sizes, texts, font objects, atlases); this file solves the anchors, checks the layout rules
 and draws each window into a PNG.
 
@@ -37,7 +37,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TESTS = os.path.join(ROOT, 'addon', 'tests')
+TESTS = os.path.join(ROOT, 'tests')
 DEFAULT_OUT = '/tmp/amisia-snapshots'
 VIEWS = ('raider', 'officer', 'expert')
 
@@ -128,7 +128,7 @@ return out, atlases, allow
 
 
 def _runtime(locale):
-    import run as addon_run  # addon/tests/run.py, the stub loader
+    import run as addon_run  # tests/run.py, the stub loader
     factor = LOCALES.get(locale, 1.0)
 
     def setup(lua):

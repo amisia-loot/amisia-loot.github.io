@@ -20,7 +20,7 @@ Runs on the N100; needs no WoW install. Inputs:
     conversions (agility or intellect per percent crit, rating per percent, mana per spirit) are
     documented defaults that in-game measurements override (tools/bis_measured.json, see
     load_measured);
-  - addon/Amisia/Data/GearData.lua (tools/build_gear.py): items, sources and scanned stats (read only);
+  - Amisia/Data/GearData.lua (tools/build_gear.py): items, sources and scanned stats (read only);
   - tools/forever_dungeons.json: the dungeon facts; AllTheThings' Forever data (tools/att_data.py,
     MIT) for the bosses' NPC ids per dungeon;
   - tools/drop_obs.json: the guild's drop records (tools/build_scan.py) for the base stock;
@@ -30,7 +30,7 @@ Runs on the N100; needs no WoW install. Inputs:
   - tools/bis_picks.json: hand-kept BiS picks (items the scoring alone misses), checked against the
     client tables (check_picks) and written as ns.BIS.PICK and ns.BIS.PI.
 
-Outputs: addon/Amisia/Data/GearWeights.lua (ns.GEAR_WEIGHTS) and addon/Amisia/Data/BisData.lua (ns.BIS).
+Outputs: Amisia/Data/GearWeights.lua (ns.GEAR_WEIGHTS) and Amisia/Data/BisData.lua (ns.BIS).
 The scoring formula exists twice, here (score) and in Gear.lua (Gear.Score); tools/tests/
 test_score_parity.py holds them equal.
 """
@@ -49,7 +49,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import lua_data  # noqa: E402  (the lazy form of the data files)
 
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 GEAR_DATA = os.path.join(ADDON, 'Data', 'GearData.lua')
 GEAR_LUA = os.path.join(ADDON, 'Gear', 'Gear.lua')
 OUT_WEIGHTS = os.path.join(ADDON, 'Data', 'GearWeights.lua')

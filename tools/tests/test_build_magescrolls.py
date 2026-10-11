@@ -1,6 +1,6 @@
 """tools/build_magescrolls.py: the mage scrolls (Comprehension) from the client tables (hand-made
 fixture CSVs in tests/fixtures/wago_magescrolls, not real data) and the AllTheThings fixture (the
-library books, a world drop), and the generated addon/Amisia/Data/MageScrollData.lua (valid Lua,
+library books, a world drop), and the generated Amisia/Data/MageScrollData.lua (valid Lua,
 lazy, in the TOC before the scrolls page)."""
 import os
 import sys
@@ -10,7 +10,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
 import build_magescrolls  # noqa: E402

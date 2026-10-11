@@ -67,7 +67,7 @@ function ns.PointsSharedList()
     return sh
 end
 
--- Test hook: what was sent, taken and refused (addon/tests).
+-- Test hook: what was sent, taken and refused (tests).
 function ns.PointsSyncStats() return stats end
 
 ---------------------------------------------------------------------------
@@ -305,7 +305,7 @@ local function check(t)
     return { sys = t.sys, cfg = cfg, list = list, costs = costs }
 end
 
--- Test hooks: the keeper's blob of raid s and the check of a received one (addon/tests).
+-- Test hooks: the keeper's blob of raid s and the check of a received one (tests).
 ns.PointsShareBlob, ns.PointsCheckShared = build, check
 
 ns.CommOnBlob("KS", function(sender, tbl, chan, key)

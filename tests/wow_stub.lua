@@ -72,7 +72,7 @@ _G.GetBuildInfo = function() return "1.60.1", "70205", "Oct 1 2026", STUB.toc en
 -- The client's locale: German unless a test (run.py --locale, a "--[[locale enUS]]" line) sets another.
 STUB.locale = "deDE"
 _G.GetLocale = function() return STUB.locale end
--- The TOC's "## Field: value" lines (run.py fills them from addon/Amisia/Amisia.toc).
+-- The TOC's "## Field: value" lines (run.py fills them from Amisia/Amisia.toc).
 STUB.tocMeta = {}
 _G.C_AddOns = { GetAddOnMetadata = function(addon, field)
     if addon ~= "Amisia" then return nil end
@@ -363,7 +363,7 @@ do
         DecodeBase64 = function(s) return decode64(s) end,
         DeserializeJSON = function(s) return STUB.json(s) end,
     }
-    -- The zlib texts of addon/tests/fixtures/softres_*.txt, by their Base64 code: run.py unpacks them
+    -- The zlib texts of tests/fixtures/softres_*.txt, by their Base64 code: run.py unpacks them
     -- with Python's zlib (the stub has no inflate) and hands them over with STUB.addInflate.
     STUB.inflate = {}
     function STUB.addInflate(code, text)
@@ -710,7 +710,7 @@ local function region(parent, kind, layer, template)
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) self.shown = on and true or false end
     -- the width the client would draw the text in, estimated per character and font object
-    -- (addon/tests/textwidth.py through STUB.measure, which run.py sets); 6 px a character without it
+    -- (tests/textwidth.py through STUB.measure, which run.py sets); 6 px a character without it
     f.GetStringWidth = function(self)
         if STUB.measure then return STUB.measure(tostring(self.text or ""), self.font) end
         return #tostring(self.text or "") * 6

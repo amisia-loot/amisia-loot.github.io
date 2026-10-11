@@ -13,7 +13,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 WAGO = os.path.join(HERE, 'fixtures', 'wago_prof')
 REAGENTS = os.path.join(WAGO, 'reagents')
 ATT = os.path.join(HERE, 'fixtures', 'att_prof')

@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/Data/QuestData.lua (WoW Forever): every quest of the world for the addon's quest
+"""Builds Amisia/Data/QuestData.lua (WoW Forever): every quest of the world for the addon's quest
 tracker - zone, name, required level, faction, class and race limits, profession, the quest giver
 and where it stands, pre-quests, quests it excludes, gear rewards. Runs without a WoW install (on
 the N100).
@@ -7,7 +7,7 @@ the N100).
 
 - --att DIR (default ~/addons/_cache/att): AllTheThings' hand-kept Forever data, the folder
   .contrib/.db/forever of https://github.com/ATTWoWAddon/AllTheThings (MIT licence; the copyright
-  line and the licence text ship in addon/Amisia/LICENSES/). --refresh-att downloads it through the
+  line and the licence text ship in Amisia/LICENSES/). --refresh-att downloads it through the
   GitHub API. The shared reader tools/att_data.py runs the files in its sandbox; this build reads
   its usual folders (the Forever ones and the Classic zzOLD ones the authors have not moved yet, a
   Forever record winning). The class and profession quests live in the zone files there; the
@@ -33,7 +33,7 @@ import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_gear  # noqa: E402  (Lua strings)
 
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'QuestData.lua')
+OUT = os.path.join(ROOT, 'Amisia', 'Data', 'QuestData.lua')
 ATT_CACHE = att_data.ATT_CACHE
 MAX_POINTS = 4
 GEAR_CLASSES = (2, 4)      # weapon, armour

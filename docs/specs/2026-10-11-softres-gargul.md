@@ -285,15 +285,15 @@ sich auch ihr Gargul-Fenster.
   ARCHITECTURE.md kommt dafür eine eigene Tabelle "Fremde Präfixe (nur lesen)" mit Präfix, beachteten
   Aktionen 10/11, Deckel und Prüfung, und D-19 wird ergänzt (Frage 10). Keine neue Amisia-Nachricht,
   keine Blob-Art, keine Exportzeile, kein Einfügeblock, nichts auf der Website.
-- Bibliotheken und Lizenzen: keine neuen. `addon/Amisia/LICENSES` und die TOC bleiben, wie sie sind.
+- Bibliotheken und Lizenzen: keine neuen. `Amisia/LICENSES` und die TOC bleiben, wie sie sind.
 - Tests:
-  - `addon/tests/test_softres_export.lua` prüft die neue CSV-Kopfzeile, abgewählte Spalten, CRLF,
+  - `tests/test_softres_export.lua` prüft die neue CSV-Kopfzeile, abgewählte Spalten, CRLF,
     Anführungszeichen und den Gargul-Code.
   - Der Test-Stub entpackt zlib nicht. Darum schreibt `run.py` beim Start die erfundenen Beispielcodes
-    aus `addon/tests/fixtures/softres_*.txt` mit Pythons `zlib` und `json` vor und reicht sie dem Stub
+    aus `tests/fixtures/softres_*.txt` mit Pythons `zlib` und `json` vor und reicht sie dem Stub
     (`STUB.inflate`). `DeserializeJSON` bekommt im Stub einen kleinen Lua-Leser.
   - `tools/tests/test_softres_samples.py` prüft, dass jedes Beispiel echt Base64 → zlib → JSON ist.
-  - Für B2: Beispielbytes im LibSerialize-Format, nur in `addon/tests/fixtures` erzeugt, nicht im
+  - Für B2: Beispielbytes im LibSerialize-Format, nur in `tests/fixtures` erzeugt, nicht im
     Addon.
   - Beispielinhalt des Codes oben: `metadata.id = "ab12cd"`, Anna (Priest) 18814 zweimal, Bob
     (Warrior, Notiz "Tank", plusOnes 1) 17076, Hard-Reserve 17204 "für Gilde".

@@ -10,13 +10,14 @@ import os
 import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA = os.path.join(ROOT, 'data')
+SITE = os.path.join(ROOT, 'Amisia-Website')
+DATA = os.path.join(SITE, 'data')
 # sha256 of the line window.__BOSSNAMES["tbc"]=...; as it was before classic, sod and mop went
 TBC_BOSSNAMES_SHA256 = 'd189170c86d1ab92355f39d226f93eaa2d98292d50c05bf9cf4d748c5e67d605'
 
 
 def page():
-    with open(os.path.join(ROOT, 'index.html'), encoding='utf-8') as fh:
+    with open(os.path.join(SITE, 'index.html'), encoding='utf-8') as fh:
         return fh.read()
 
 
@@ -59,10 +60,10 @@ def test_every_file_the_page_loads_exists():
     files.add('data/bossnames.js')
     assert files == {'data/forever.js', 'data/tbc.js', 'data/craft-tbc.js', 'data/bossnames.js'}, files
     for f in sorted(files):
-        assert os.path.isfile(os.path.join(ROOT, f)), f
+        assert os.path.isfile(os.path.join(SITE, f)), f
         sp = sprite_of(os.path.basename(f))
         if sp:
-            assert os.path.isfile(os.path.join(ROOT, sp)), sp
+            assert os.path.isfile(os.path.join(SITE, sp)), sp
 
 
 def test_build_id_is_new_since_1_9():

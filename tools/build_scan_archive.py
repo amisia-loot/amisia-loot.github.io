@@ -13,7 +13,7 @@ SavedVariables of 2026-10-07 were 2.3 MB and cost about 7 MB of Lua memory at ev
   `tools/scan_archive.json` (committed): an item's line of the SavedVariables replaces the archive's
   (newer wins), notes and suffixes are joined, nothing is ever dropped. With the client table
   ItemSparse in `--wago` it also keeps the ids the client knows (as ranges). Then it writes the marker.
-- The marker `addon/Amisia/Data/ScanDone.lua` (lazy, `ns.Data("SCAN_DONE")`) says what the archive
+- The marker `Amisia/Data/ScanDone.lua` (lazy, `ns.Data("SCAN_DONE")`) says what the archive
   holds: per item id a hash of its line, per item the hashes of its notes, the ids the client's
   ItemSparse knows, and a stamp. The addon (Collect/ScanTrim.lua) removes from `scan.items`,
   `scan.sources` and `scan.retry` only what the marker covers, so its file keeps only what is new.
@@ -37,7 +37,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 ARCHIVE = os.path.join(HERE, 'scan_archive.json')
-MARKER = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'ScanDone.lua')
+MARKER = os.path.join(ROOT, 'Amisia', 'Data', 'ScanDone.lua')
 DEFAULT_SV = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')

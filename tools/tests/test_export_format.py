@@ -1,6 +1,6 @@
 """The addon writes the export, the site reads it: this test holds the two against each other.
 
-The addon runs under the Lua stub of addon/tests and writes a real export; the ledger's own
+The addon runs under the Lua stub of tests and writes a real export; the ledger's own
 parser is cut out of index.html and reads it back (tools/tests/site_parser.cjs). A line the addon
 starts writing differently, or a field it moves, fails here instead of quietly disappearing from
 the site.
@@ -13,18 +13,18 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ADDON_TESTS = os.path.join(ROOT, 'addon', 'tests')
+ADDON_TESTS = os.path.join(ROOT, 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
-CORE = os.path.join(ROOT, 'addon', 'Amisia', 'Core', 'Core.lua')
-PRIO = os.path.join(ROOT, 'addon', 'Amisia', 'Raid', 'LootPrio.lua')
-POINTS = os.path.join(ROOT, 'addon', 'Amisia', 'Raid', 'Points.lua')
+CORE = os.path.join(ROOT, 'Amisia', 'Core', 'Core.lua')
+PRIO = os.path.join(ROOT, 'Amisia', 'Raid', 'LootPrio.lua')
+POINTS = os.path.join(ROOT, 'Amisia', 'Raid', 'Points.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
 
 def export_from_addon():
     """Records a raid with the real addon code and returns its export text."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         -- ten minutes before the raid start of that night, so the first roster is punctual
@@ -95,7 +95,7 @@ def test_every_line_the_addon_writes_is_read(parsed):
 
 def test_the_loot_prio_lines_reach_the_site():
     """An export with loot prio edited in game: the LC lines stand outside the raid blocks."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     text = lua.eval('''function()
         STUB.now = 1788100000
@@ -171,7 +171,7 @@ def test_a_surname_survives_the_round_trip(parsed):
 def export_awards_from_addon():
     """Records a raid whose awards carry the history of 1.5: a renamed award with a note, one to the
     guild bank, one disenchanted and one deleted."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         STUB.roster = {
@@ -249,7 +249,7 @@ def test_version_one_exports_still_read():
 
 def test_a_marker_in_a_note_survives_the_round_trip():
     """A note is free text on the AX line: "#END" or "#AMISIA" inside it must not end the block."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
@@ -272,7 +272,7 @@ def test_a_marker_in_a_note_survives_the_round_trip():
 def export_log_from_addon():
     """Records a raid of 1.7 with the real addon: a boss fight (START/END) with who was there, a
     wipe, a bench entry with a note from an officer and one the raider made himself."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         STUB.roster = {
@@ -348,13 +348,13 @@ def test_strange_log_lines_are_ignored():
     assert s['bench'] == [], 'a BN without a name or its fields is dropped'
 
 
-BIS = os.path.join(ROOT, 'addon', 'Amisia', 'Gear', 'Bis.lua')
+BIS = os.path.join(ROOT, 'Amisia', 'Gear', 'Bis.lua')
 
 
 def export_wishes_from_addon():
     """Records a raid, exports it, puts three wishes on the list (one with a note that holds spaces
     and a bar) and exports the raid again; returns both raid exports and the wishlist text."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         STUB.player = "Vulo Sturmwind"
@@ -412,14 +412,14 @@ def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
     assert '\nWL ' not in after
 
 
-DROPS = os.path.join(ROOT, 'addon', 'Amisia', 'Collect', 'Drops.lua')
-PAGE = os.path.join(ROOT, 'index.html')
+DROPS = os.path.join(ROOT, 'Amisia', 'Collect', 'Drops.lua')
+PAGE = os.path.join(ROOT, 'Amisia-Website', 'index.html')
 
 
 def drops_from_addon(record):
     """Records a raid with two boss loot windows (one after a kill event, one with an epic) and a
     dungeon boss; returns the raid export, its fingerprint and the text "Drops fuer die Website"."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         NS.Set("drops.record", %s)
@@ -554,7 +554,7 @@ def test_the_drop_text_round_trips_to_the_site(drops):
 
 def guild_bank_from_addon():
     """An officer's needs, a member's pledge and a read of the guild bank log, exported."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh()
     lua.execute(r'''
         STUB.item(61001, "Feuerkern", 3); STUB.item(61002, "Runenstoff", 1)

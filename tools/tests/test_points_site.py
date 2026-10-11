@@ -18,7 +18,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_points.cjs')
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 
 ON_SITE = ('Vuloo', 'Fraktur', 'Chorf')   # names of the page's own ledger the addon's raid uses
 
@@ -31,7 +31,7 @@ def node():
 
 
 def addon():
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     return run.fresh('--[[preload\nSTUB.toc = 16001\n]]')
 
 
@@ -223,7 +223,7 @@ def test_epgp_round_trip(epgp):
 
 
 def test_the_page_wires_it_up():
-    page = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    page = open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8').read()
     assert 'data-view="points"' in page and 'id="view-points"' in page
     assert "'lootPrio', 'points'];" in page, 'kept per game'
     assert "if (ui.view === 'points') renderPoints();" in page

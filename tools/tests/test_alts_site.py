@@ -16,7 +16,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_alts.cjs')
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 
 
 @pytest.fixture(scope='module')
@@ -100,7 +100,7 @@ def test_the_text_for_the_addon(out):
 
 
 def test_the_addon_reads_the_text_back(out):
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh('--[[preload\nSTUB.toc = 16001\n]]')
     parse = lua.eval('function(t) local res, why = NS.ParseAlts(t); return res, why end')
     res, why = parse(out['text'])
@@ -111,10 +111,10 @@ def test_the_addon_reads_the_text_back(out):
 
 def test_wishes_and_alts_in_one_paste(out):
     """The wishlist's "Copy for the addon" puts the alt block behind the wishes."""
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     lua = run.fresh('--[[preload\nSTUB.toc = 16001\n]]')
     imp = lua.eval('function(t) local text, ok = NS.ImportSiteText(t); return text, ok, NS.AltsInfo() and NS.AltsInfo().n or 0 end')
     text, ok, n = imp('#AMISIA-WL 1 forever 2026-10-06\nW 28830 3 Anna\n#END\n' + out['text'])
     assert ok and n == 2 and '1 Wunsch' in text and '2 Twinks' in text, text
-    page = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    page = open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8').read()
     assert "wishAddonText(WISHES) + (a ? '\\n' + a : '')" in page, 'the copy joins both blocks'

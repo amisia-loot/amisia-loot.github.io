@@ -11,12 +11,12 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 import build_scan_archive as sa  # noqa: E402
 import build_scan  # noqa: E402
 
 REAL_ARCHIVE = os.path.join(ROOT, 'tools', 'scan_archive.json')
-REAL_MARKER = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'ScanDone.lua')
+REAL_MARKER = os.path.join(ROOT, 'Amisia', 'Data', 'ScanDone.lua')
 
 
 def sv(items=None, sources=None, suffix=None, **rest):
@@ -162,7 +162,7 @@ def test_the_committed_marker_is_current():
 
 
 def test_the_marker_is_in_the_toc_after_the_other_data():
-    with open(os.path.join(ROOT, 'addon', 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
         toc = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
     assert 'Data\\ScanDone.lua [AllowLoadGameType camelot]' in toc and 'Collect\\ScanTrim.lua' in toc
 

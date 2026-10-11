@@ -1,6 +1,6 @@
-"""Builds data/forever.js from Amisia SavedVariables files.
+"""Builds Amisia-Website/data/forever.js from Amisia SavedVariables files.
 
-    python tools/build_scan.py <Amisia.lua>... [--out data/forever.js] [--no-icons]
+    python tools/build_scan.py <Amisia.lua>... [--out Amisia-Website/data/forever.js] [--no-icons]
 
 Each file is the addon's saved table: `scan.items` from `/amisia scan` (name, quality, item level,
 required level, class, subclass, equip location, icon, bind type per item) and the raid sessions
@@ -1385,7 +1385,7 @@ def update_in_place(args, zones_cfg):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('files', nargs='*', help='Amisia.lua SavedVariables files (none: update the drop observations only)')
-    ap.add_argument('--out', default=os.path.join(ROOT, 'data', 'forever.js'))
+    ap.add_argument('--out', default=os.path.join(ROOT, 'Amisia-Website', 'data', 'forever.js'))
     ap.add_argument('--archive', default=DROP_ARCHIVE, help='the archive of drop records (default tools/drop_obs.json)')
     ap.add_argument('--obs', action='append', default=[], help='the site\'s "Download observations" file (repeatable)')
     ap.add_argument('--drops', action='append', default=[], help='a text "Drops für die Website" of the addon (repeatable)')

@@ -37,7 +37,7 @@ def write(path, text, mode='w'):
 
 
 def make_addon(root, version='1.0.0'):
-    a = os.path.join(root, 'addon', 'Amisia')
+    a = os.path.join(root, 'Amisia')
     write(os.path.join(a, 'Amisia.toc'), TOC.format(v=version))
     write(os.path.join(a, 'Core', 'Core.lua'), 'local ADDON, ns = ...\nns.x = "ü"\n')
     write(os.path.join(a, 'Data', 'GearData.lua'), '-- GENERATED\n')
@@ -56,11 +56,12 @@ def repo(tmp_path):
     sh(root, 'git', 'config', 'user.email', 'test@example.invalid')
     sh(root, 'git', 'config', 'commit.gpgsign', 'false')
     make_addon(root)
+    write(os.path.join(root, 'Amisia-Website', 'index.html'), '<!doctype html>\n')
     marker = str(tmp_path / 'copied')
     write(os.path.join(root, 'tools', 'release_addon.sh'), f'#!/usr/bin/env bash\necho copied > "{marker}"\n')
     sh(root, 'git', 'add', '-A')
     sh(root, 'git', 'commit', '-q', '-m', 'Amisia 1.0.0: the first')
-    write(os.path.join(root, 'addon', 'Amisia', 'Core', 'Core.lua'), 'local ADDON, ns = ...\nns.x = 2\n')
+    write(os.path.join(root, 'Amisia', 'Core', 'Core.lua'), 'local ADDON, ns = ...\nns.x = 2\n')
     sh(root, 'git', 'commit', '-q', '-am', 'Core: x is two')
     write(os.path.join(root, 'notes.txt'), 'n\n')
     sh(root, 'git', 'add', 'notes.txt')
@@ -171,7 +172,7 @@ def test_release(repo):
     assert subject == 'Amisia 1.1.0: Core: x is two; Notes for the next steps'
     assert head(root, '%B').rstrip().endswith(build.TRAILER)
     assert sh(root, 'git', 'status', '--porcelain') == '', 'everything committed'
-    with zipfile.ZipFile(os.path.join(root, 'addon', 'Amisia.zip')) as zf:
+    with zipfile.ZipFile(os.path.join(root, 'Amisia-Website', 'Amisia.zip')) as zf:
         names = sorted(zf.namelist())
         assert names == ['Amisia/Amisia.toc', 'Amisia/Core/Core.lua', 'Amisia/Data/GearData.lua',
                          'Amisia/Media/Icons/x.tga'], names
@@ -218,7 +219,7 @@ def test_release_never_bumps_on_a_failed_check(repo):
     with pytest.raises(SystemExit, match='already has 1.1.0'):
         build.release(root, '1.1.0', push=False, copy=False, check=lambda: 0)
     assert build.toc_version(root) == '1.0.0' and sh(root, 'git', 'status', '--porcelain') == ''
-    assert not os.path.exists(os.path.join(root, 'addon', 'Amisia.zip'))
+    assert not os.path.exists(os.path.join(root, 'Amisia-Website', 'Amisia.zip'))
     assert head(root) == 'A changelog'
 
 
@@ -232,10 +233,10 @@ def test_release_refuses(repo):
     with pytest.raises(SystemExit, match='not clean'):
         build.release(root, '1.1.0', push=False, copy=False, check=lambda: 0)
     sh(root, 'git', 'checkout', '--', 'notes.txt')
-    write(os.path.join(root, 'addon', 'Amisia', 'Core', 'Untracked.lua'), '-- new\n')
+    write(os.path.join(root, 'Amisia', 'Core', 'Untracked.lua'), '-- new\n')
     with pytest.raises(SystemExit, match='not clean'):
         build.release(root, '1.1.0', push=False, copy=False, check=lambda: 0)
-    os.remove(os.path.join(root, 'addon', 'Amisia', 'Core', 'Untracked.lua'))
+    os.remove(os.path.join(root, 'Amisia', 'Core', 'Untracked.lua'))
     sh(root, 'git', 'checkout', '-q', '-b', 'dev')
     with pytest.raises(SystemExit, match='from main'):
         build.release(root, '1.1.0', push=True, copy=False, check=lambda: 0)

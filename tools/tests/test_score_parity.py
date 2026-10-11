@@ -8,7 +8,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 import build_bis as bb  # noqa: E402
 import run  # noqa: E402
 

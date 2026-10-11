@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/Data/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
+"""Builds Amisia/Data/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
 tools/forever_dungeons.json for the addon's dungeon planner - where each quest starts (the quest
 giver with map points, inside the dungeon, or by an item), its level, faction, pre-quests and gear
 rewards. Runs without a WoW install (on the N100).
@@ -10,7 +10,7 @@ and render() writes the Lua file from that form only.
 
 - --att DIR (default ~/addons/_cache/att): AllTheThings' hand-kept Forever data, the folder
   .contrib/.db/forever of https://github.com/ATTWoWAddon/AllTheThings (MIT licence; the copyright
-  line and the licence text ship in addon/Amisia/LICENSES/). --refresh-att downloads that folder
+  line and the licence text ship in Amisia/LICENSES/). --refresh-att downloads that folder
   through the GitHub API (the repository is far too large to clone). The shared reader
   tools/att_data.py runs the files (a Lua builder language) in a sandbox; read_att() takes the
   quests of its Forever folders from there.
@@ -34,7 +34,7 @@ import att_data  # noqa: E402  (the AllTheThings reader)
 import build_gear  # noqa: E402  (dungeon name keys, Lua strings)
 
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'DungeonQuestData.lua')
+OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonQuestData.lua')
 ATT_CACHE = att_data.ATT_CACHE
 ATT_SOURCE = att_data.ATT_SOURCE
 

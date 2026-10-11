@@ -1,6 +1,6 @@
-"""The made-up softres.it codes the addon tests use (addon/tests/fixtures/softres_*.txt) are real codes:
+"""The made-up softres.it codes the addon tests use (tests/fixtures/softres_*.txt) are real codes:
 Base64 of zlib-packed JSON, as softres.it writes its "Gargul" export (spec
-docs/specs/2026-10-11-softres-gargul.md, A2). The stub cannot inflate zlib, so addon/tests/run.py
+docs/specs/2026-10-11-softres-gargul.md, A2). The stub cannot inflate zlib, so tests/run.py
 unpacks them with Python; these tests prove the samples themselves are valid, and that the sample
 of the spec's acceptance criteria is the one the addon tests read.
 """
@@ -12,7 +12,7 @@ import re
 import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FIXTURES = os.path.join(ROOT, 'addon', 'tests', 'fixtures')
+FIXTURES = os.path.join(ROOT, 'tests', 'fixtures')
 SPEC = os.path.join(ROOT, 'docs', 'specs', '2026-10-11-softres-gargul.md')
 
 
@@ -38,7 +38,7 @@ def test_the_spec_sample_is_the_fixture_and_holds_what_the_spec_says():
     with open(SPEC, encoding='utf-8') as fh:
         spec = fh.read()
     code = code_of('softres_sample.txt')
-    assert '`' + code + '`' in spec, 'the acceptance sample of the spec is addon/tests/fixtures/softres_sample.txt'
+    assert '`' + code + '`' in spec, 'the acceptance sample of the spec is tests/fixtures/softres_sample.txt'
     data = json.loads(unpack(code))
     assert data['metadata']['id'] == 'ab12cd'
     by_name = {sr['name']: sr for sr in data['softreserves']}

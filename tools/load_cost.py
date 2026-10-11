@@ -18,7 +18,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 sys.path.insert(0, HERE)
 import lua_data  # noqa: E402
 import run as addon_run  # noqa: E402
@@ -70,7 +70,7 @@ def per_file(eager):
     out = []
     for key in LAZY:
         lua = LuaRuntime(unpack_returned_tuples=True)
-        with open(os.path.join(ROOT, 'addon', 'Amisia', 'Data', FILES[key] + '.lua'), encoding='utf-8') as fh:
+        with open(os.path.join(ROOT, 'Amisia', 'Data', FILES[key] + '.lua'), encoding='utf-8') as fh:
             src = fh.read()
         ms, kb, _ = lua.execute(MEASURE)(src, FILES[key] + '.lua', eager)
         out.append((FILES[key], len(src.encode('utf-8')) // 1024, ms, kb))
@@ -128,7 +128,7 @@ def per_toc(locale='deDE'):
     lua = LuaRuntime(unpack_returned_tuples=True)
     gc = lua.eval(GC)
     m0 = gc()
-    with open(os.path.join(ROOT, 'addon', 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
     lua.globals().STUB.locale = locale
     lua.globals().STUB.measure = addon_run.measure

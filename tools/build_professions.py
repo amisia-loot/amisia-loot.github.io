@@ -1,4 +1,4 @@
-"""Builds addon/Amisia/Data/ProfessionData.lua (WoW Forever): every recipe of every profession for the
+"""Builds Amisia/Data/ProfessionData.lua (WoW Forever): every recipe of every profession for the
 addon's professions page - what it makes, its difficulty, how it is learned (trainer, with the
 profession, a recipe item and where that item comes from), the reagents when the client table is
 there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (on the N100).
@@ -14,7 +14,7 @@ Inputs:
   certifications, writs), SpellName and Spell (only to recognise camp objects and writs; no text
   goes into the file), SpellReagents (optional: reagents; without it the addon asks the client).
   SkillLineAbility falls back to the copy AllTheThings ships (.config/.wago).
-- AllTheThings' Forever data (MIT, see tools/att_data.py and addon/Amisia/LICENSES/):
+- AllTheThings' Forever data (MIT, see tools/att_data.py and Amisia/LICENSES/):
   .config/structures/*.lua (trainer recipes per tier, Merchant's Favor recipes with price and
   standing per faction), profession db/*.lua (recipe item -> recipe), and the zone and dungeon files
   through att_data.load() (vendors, drops, quests of the recipe items; the favor vendors).
@@ -36,7 +36,7 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
-OUT = os.path.join(ROOT, 'addon', 'Amisia', 'Data', 'ProfessionData.lua')
+OUT = os.path.join(ROOT, 'Amisia', 'Data', 'ProfessionData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 ATT_CACHE = att_data.ATT_CACHE
 

@@ -101,7 +101,7 @@ def test_the_start_ledger_keeps_every_award(out):
 
 
 def page():
-    with open(os.path.join(ROOT, 'index.html'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8') as fh:
         return fh.read()
 
 

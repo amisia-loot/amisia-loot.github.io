@@ -1,10 +1,10 @@
 -- luacheck configuration of the Amisia addon (WoW Forever, Lua 5.1).
--- Run: luacheck addon/Amisia   (python tools/build.py check runs it too)
+-- Run: luacheck Amisia   (python tools/build.py check runs it too)
 std = "lua51"
 max_line_length = false          -- long lines are the house style; not reflowed
 codes = true
 -- only the addon is linted; the tests run against a stub with globals of their own
-exclude_files = { "addon/tests/**", "tools/**", ".claude/**" }
+exclude_files = { "tests/**", "tools/**", "Amisia-Website/**", ".claude/**" }
 ignore = {
     "211/ADDON",   -- "local ADDON, ns = ..." heads every file; most never need the name
     "212",         -- unused arguments: client callbacks and handlers keep their full signature

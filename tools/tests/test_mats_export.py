@@ -1,6 +1,6 @@
 """A raid material the addon learned on its own reaches the site with its name.
 
-The addon runs under the Lua stub of addon/tests: a trade good drops in a raid recording, is looted
+The addon runs under the Lua stub of tests: a trade good drops in a raid recording, is looted
 and counted in the guild bank. The export carries it as an L line and a B line, both named in an N
 line, and the ledger's own parser (tools/tests/site_parser.cjs) reads loot, count and name back.
 """
@@ -13,7 +13,7 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ADDON_TESTS = os.path.join(ROOT, 'addon', 'tests')
+ADDON_TESTS = os.path.join(ROOT, 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
 
 sys.path.insert(0, ADDON_TESTS)
@@ -38,7 +38,7 @@ end
 
 @pytest.fixture(scope='module')
 def parsed():
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     node = shutil.which('node')
     if not node:
         pytest.skip('node is not installed')

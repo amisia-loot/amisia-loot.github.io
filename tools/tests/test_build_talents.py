@@ -1,7 +1,7 @@
 """tools/build_talents.py: the talent trees of WoW Forever from the client's Trait* tables (fixture
 CSVs in tests/fixtures/talents: a mage with three trees, two gated rows, a prerequisite, a parked
 node and rank curves; a warrior with one node per tree; a legacy perk tree that is no class tree),
-the description placeholders, and the generated addon/Amisia/Data/TalentData.lua (valid Lua, in the
+the description placeholders, and the generated Amisia/Data/TalentData.lua (valid Lua, in the
 TOC, the shape the addon reads)."""
 import os
 import re
@@ -12,7 +12,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'addon', 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia')
 sys.path.insert(0, TOOLS)
 import build_talents  # noqa: E402
 import lua_data  # noqa: E402

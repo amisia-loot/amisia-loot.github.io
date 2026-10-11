@@ -17,7 +17,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_prio.cjs')
-sys.path.insert(0, os.path.join(ROOT, 'addon', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'tests'))
 
 
 def node():
@@ -35,7 +35,7 @@ def drive(export=None):
 
 
 def addon():
-    run = pytest.importorskip('run', reason='addon/tests/run.py needs lupa')
+    run = pytest.importorskip('run', reason='tests/run.py needs lupa')
     return run.fresh('--[[preload\nSTUB.toc = 16001\n]]')
 
 
@@ -138,7 +138,7 @@ def test_the_text_of_a_damaged_list(out):
 
 
 def test_the_page_wires_it_up():
-    page = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    page = open(os.path.join(ROOT, 'Amisia-Website', 'index.html'), encoding='utf-8').read()
     assert 'data-view="prio"' in page and 'id="view-prio"' in page
     assert "'dropZones', 'lootPrio', 'points'];" in page, 'kept per game'
     assert "if (ui.view === 'prio') renderPrio();" in page
