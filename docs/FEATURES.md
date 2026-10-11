@@ -196,6 +196,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Soft-Reserves eine softres.it-CSV einfügst und "Importieren" klickst, dann steht dort "N Reservierungen, vom <Datum>", und "Prüfen" zeigt, wer nicht im Raid oder ohne Reserve ist.
 - Prüfung: Wenn ein Raider `!sr` flüstert, dann antwortet die Lootleitung per Flüstern mit seinen Reservierungen.
 - Prüfung: Wenn du "Erinnern" klickst, dann bekommt jeder im Raid ohne Reservierung nach einer Rückfrage einmal ein Flüstern.
+- Notiz: 2.25.2 (2026-10-11): die heutige softres.it-CSV hat den Namen in "Raider Name"; vorher kamen 0 Reservierungen an.
 
 ### F-020 Roll-Runden und Roll-Fenster
 - Version: 1.6.0
