@@ -338,3 +338,13 @@ sich auch ihr Gargul-Fenster.
 ## Entscheidungen
 
 - 2026-10-11: Spec als Entwurf angelegt; noch keine Entscheidung des Nutzers.
+- 2026-10-11, Prüfungen im Spiel (Client 70338): `C_EncodingUtil.DeserializeJSON` vorhanden,
+  `Enum.CompressionMethod.Zlib` = 1 (Frage 2: ja, keine eigene JSON-Lesung nötig); Gargul ist beim
+  Nutzer selbst installiert und geladen (`IsAddOnLoaded("Gargul")` = true true).
+- 2026-10-11: A1 (CSV-Spalte "Raider Name") gebaut und in 2.25.2 veröffentlicht.
+- 2026-10-11: Gebaut wird nach der Empfehlung: A2, B1 + B4 ("wer startet, entscheidet"); B2 erst bei
+  Bedarf, B3 nicht. Vorschläge der offenen Fragen übernommen, solange der Nutzer nichts anderes sagt:
+  D-05 erlaubt "Gargul" und "softres.it" an den nötigen Stellen (Vorschau, Würfel-Fenster, Muster),
+  der Namenstest bekommt dafür eine Ausnahme; softres-+1 nur als Hinweis (D-22 bleibt); Hard-Reserves
+  als "HR" markiert mit Rückfrage beim Start; eine erkannte Gargul-Runde zählt nur vom Plündermeister
+  oder Leiter mit Offiziersrang in der eigenen Gruppe.
