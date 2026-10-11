@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.25.2 (2026-10-11)
+
+- Soft-reserves: read softres.it's CSV of today (name in 'Raider Name'; it gave 0 reservations); spec softres.it + Gargul compatibility (not approved yet)
+- Soft-reserves: read softres.it's CSV of today (name in 'Raider Name'; it gave 0 reservations); spec softres.it + Gargul compatibility (not approved yet)
+- Revert "Soft-reserves: read softres.it's CSV of today (name in 'Raider Name'; it gave 0 reservations); spec softres.it + Gargul compatibility (not approved yet)"
+
 ## 2.25.1 (2026-10-11)
 
 - Calendar write probe results from the game (all writes work from timers); F-089 checked
