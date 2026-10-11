@@ -88,7 +88,7 @@ end
 local function send(status)
     local t = termNow()
     if not t then return end
-    local ok, line = ns.SignupSet(t, status, role, F.note:GetText())
+    local ok, line = ns.SignupSet(t, status, role, F.note:GetText(), { click = true })
     if line then ns.msg(line) end
     if ok then F.note:ClearFocus() end
     refresh()
@@ -156,7 +156,15 @@ local function build()
     W.FitChip(F.calBtn, S.CAL_W)
     F.calHint:SetHeight(T.BUTTON_H)
     F.calHint:SetJustifyV("MIDDLE")
-    W.Tooltip(F.calBtn, L["Kalender öffnen"], L["Amisia trägt dich (noch) nicht selbst im Spielkalender ein. So sehen es auch Offiziere ohne Amisia."])
+    -- the tooltip names why the calendar entry of the last click did not work
+    F.calBtn:HookScript("OnEnter", function(self)
+        local _, why = ns.SignupCalendarState(cur)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["Kalender öffnen"], 1, 0.82, 0)
+        GameTooltip:AddLine(why or L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."], 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    F.calBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     F.yes = W.Button(F, L["Anmelden"], S.BUTTON_W, function() send("A") end)
     F.maybe = W.Button(F, L["Vorläufig"], S.BUTTON_W, function() send("V") end)
     F.no = W.Button(F, L["Abmelden"], S.BUTTON_W, function() send("X") end)
@@ -212,9 +220,12 @@ refresh = function()
     for _, a in ipairs(t and ns.SignupAlts(t.night) or {}) do alts[#alts + 1] = ("%s: %s"):format(a.name, colored(a.rec)) end
     F.alts:SetText(#alts > 0 and (L["Deine anderen Charaktere: %s"]:format(table.concat(alts, ", "))) or "")
     F.alts:SetShown(#alts > 0)
-    -- part H3 (writing into the calendar) waits for the in-game checks: the player does it there
-    local calendar = t ~= nil and not ns.SignupCalendarWrite()
-    F.calHint:SetShown(calendar)
+    -- part H3: after a click whose calendar entry did not work (or with signup.calendar off) the
+    -- player does it there; while the entry runs a grey line says so
+    local pending = t ~= nil and ns.SignupCalendarState(t.night)
+    local calendar = rec ~= nil and rec.k ~= "ok" and not pending
+    F.calHint:SetText(pending and (T.GREY .. L["Wird im Spielkalender eingetragen ..."] .. "|r") or L["Bitte auch im Kalender eintragen."])
+    F.calHint:SetShown(calendar or pending)
     F.calBtn:SetShown(calendar and type(ToggleCalendar) == "function")
     for _, b in ipairs({ F.yes, F.maybe, F.no }) do b:SetEnabled(t ~= nil) end
     layout()

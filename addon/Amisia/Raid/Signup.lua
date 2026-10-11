@@ -15,10 +15,11 @@
 -- the raid calendar window shows them to everyone, D-43); the officer also takes them into the
 -- lineup; a raider answers AQ only to a verified officer (rank flag 22), at most once in 10 minutes
 -- with at most 4 messages.
--- Writing into the game calendar (part H3: EventSignUp, EventTentative, EventDecline, RemoveEvent)
--- waits for the in-game checks 23 to 25; until then the window says "Bitte auch im Kalender
--- eintragen" with a button that opens the client's calendar window (ns.SignupCalendarWrite is the
--- seam for it).
+-- Part H3: the same click (the window's buttons, /amisia anmelden, /amisia abmelden) also signs up,
+-- tentative or off in the game calendar when the date is a guild event with sign-up and
+-- signup.calendar is on (Raid/CalendarWrite.lua: the client's own calls, the status read again);
+-- a write that fails or is blocked turns to "Bitte auch im Kalender eintragen." with "Kalender
+-- öffnen" and says why once. The re-send after the login and the answers to AQ never write.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -434,14 +435,48 @@ end)
 ---------------------------------------------------------------------------
 -- The click: Anmelden, Vorläufig, Abmelden
 ---------------------------------------------------------------------------
--- Writing into the game calendar (part H3) waits for the in-game checks 23 to 25: false, so the
--- window asks the player to sign up in the calendar too.
-function ns.SignupCalendarWrite() return false end
+local calPending = {}     -- [night] = true while the calendar write of a click runs
+local calWhy = {}         -- [night] = the reason the last write failed (the hint's tooltip)
+
+-- Whether the calendar write of night's click still runs, and why the last one failed.
+function ns.SignupCalendarState(night) return calPending[night] == true, calWhy[night] end
+
+-- "Spielkalender: angemeldet."
+local CAL_DONE = { A = L["Spielkalender: angemeldet."], V = L["Spielkalender: vorläufig."], X = L["Spielkalender: entfernt."] }
+
+-- Part H3: the calendar entry of a click (never of a message). Writes rec.k ("ok", "err", "off")
+-- when it is done and says it in the chat once (a failure with its reason).
+function ns.SignupCalendarWrite(term, rec)
+    local night = term.night
+    if ns.Get("signup.calendar") == false then
+        rec.k = "off"
+        return false
+    end
+    rec.k = nil
+    calPending[night], calWhy[night] = true, nil
+    ns.CalWrite.Write(term, rec.s, function(ok, why)
+        calPending[night] = nil
+        rec.k = ok and "ok" or "err"
+        if ok then
+            if why == "creator" then
+                ns.msg(L["Spielkalender: du hast das Ereignis angelegt, dort bleibt dein Stand."])
+            elseif why ~= "same" then
+                ns.msg(CAL_DONE[rec.s])
+            end
+        else
+            calWhy[night] = ns.CalWrite.Why(why)
+            ns.msg(L["Spielkalender: nicht eingetragen (%s) Bitte auch im Kalender eintragen."]:format(calWhy[night]))
+        end
+        ns.Fire("SIGNUP")
+    end)
+    return true
+end
 
 -- Signs the own character up for term (an entry of ns.SignupTerms()) with status "A", "V" or "X",
 -- role (T/H/M/R) and note. Saves, sends AN to the guild, takes it into the own lineup (an officer).
--- Returns true and the chat line, or nil and the reason.
-function ns.SignupSet(term, status, role, note)
+-- opts.click: the player's own click or command: the calendar entry too (part H3). Returns true and
+-- the chat line, or nil and the reason.
+function ns.SignupSet(term, status, role, note, opts)
     if not DB then return nil, L["Amisia ist noch nicht geladen."] end
     if not IsInGuild() then return nil, L["Nur in einer Gilde."] end
     if type(term) ~= "table" or not term.night or not ns.LineupSignupNight(term.night) then
@@ -477,6 +512,12 @@ function ns.SignupSet(term, status, role, note)
     else
         line = line .. " " .. L["Gesendet."]
     end
+    -- the chat line first, then the calendar's (its result may come at once)
+    if opts and opts.click then
+        ns.msg(line)
+        line = nil
+        ns.SignupCalendarWrite(term, rec)
+    end
     ns.Fire("SIGNUP")
     return true, line
 end
@@ -490,6 +531,8 @@ end
 -- Settings and /amisia anmelden
 ---------------------------------------------------------------------------
 ns.RegisterSettings{ key = "signup", label = L["Raid-Anmeldung"], order = 23, items = {
+    { key = "signup.calendar", type = "toggle", label = L["Auch im Spielkalender eintragen"], default = true,
+      tip = L["Anmelden, Vorläufig und Abmelden in Amisia tragen dich auch im Spielkalender ein (nur bei Gildenereignissen mit Anmeldung, nie im Kampf). Geht es nicht, sagt Amisia es und bittet dich, es im Kalender selbst zu tun."] },
     { key = "signup.card", type = "toggle", label = L["Karte auf der Übersicht"], default = true,
       tip = L["Die Karte \"Raid-Anmeldung\" zeigt die nächsten drei Termine aus dem Spielkalender mit deiner Anmeldung."],
       onChange = function() if ns.Refresh then ns.Refresh() end end },
@@ -516,7 +559,7 @@ local function signupFor(status, role, note)
             return
         end
         local old = ns.SignupOf()[term.night]
-        local _, line = ns.SignupSet(term, status, role or (old and old.r) or ns.SignupDefaultRole(), note)
+        local _, line = ns.SignupSet(term, status, role or (old and old.r) or ns.SignupDefaultRole(), note, { click = true })
         if line then ns.msg(line) end
     end)
 end

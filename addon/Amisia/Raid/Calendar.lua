@@ -7,7 +7,8 @@
 -- offsetMonth); an event is never opened while the client's calendar window is shown (it shows every
 -- opened event); the invite list is read after CALENDAR_OPEN_EVENT (CALENDAR_UPDATE_INVITE_LIST
 -- counts too, the client 70338 sends only the first) and the event is closed after every read.
--- Nothing here signs up, invites, creates, changes or removes anything in the calendar.
+-- Nothing here signs up, invites, creates, changes or removes anything in the calendar; Cal.Open
+-- only holds an event open for the write module (Raid/CalendarWrite.lua, part H3).
 local ADDON, ns = ...
 local L, N_ = ns.L, ns.N_
 
@@ -309,19 +310,11 @@ local function openedIs(ev)
     return true
 end
 
--- Reads the invite list of ev (an entry of Cal.Events()): fn(invites, n) or fn(nil, why) with why
--- "off" (no calendar or a function missing), "busy", "combat", "window" (the calendar window shows
--- another event), "gone" (the event is not in the calendar any more), "open" (OpenEvent refused),
--- "timeout" (no answer within Cal.WAIT), "other" (another event came open meanwhile: not read). With the window showing exactly ev, it reads what the
--- window has open and leaves it open; else it opens ev itself and always closes it again.
-function Cal.Read(ev, fn)
-    if not Cal.CanReadInvites() then return fn(nil, "off") end
-    if busy or waiter or held then return fn(nil, "busy") end
-    if InCombatLockdown() then return fn(nil, "combat") end
-    if Cal.WindowShown() then
-        if openIs(ev) then return fn(Cal.ReadOpen()) end
-        return fn(nil, "window")
-    end
+-- Opens ev (an entry of Cal.Events()) and calls use() while it is open, then closes it again:
+-- fn(use's result) or fn(nil, why) with why "off", "busy", "combat", "window" (the calendar window is
+-- shown: never opened then), "gone", "open", "timeout", "other" (see Cal.Read). The calendar write of
+-- part H3 (Raid/CalendarWrite.lua) has the event open this way for the client's buttons' calls.
+local function openFor(ev, use, fn)
     -- the index may have moved since the list was read: find the event by its id (else its time)
     local now
     for _, e in ipairs(Cal.Events()) do
@@ -331,17 +324,18 @@ function Cal.Read(ev, fn)
     local sel = call("GetGuildEventSelectionInfo", now.index)
     if type(sel) ~= "table" then return fn(nil, "gone") end
     busy = true
-    local function finish(list, n, keep)
+    local function finish(result, extra, keep)
         if not keep then close() end
         busy = false
         quietUntil = GetTime() + Cal.QUIET
-        fn(list, n)
+        fn(result, extra)
     end
     local cancel = wait({ "CALENDAR_OPEN_EVENT", "CALENDAR_UPDATE_INVITE_LIST" }, function(event)
         if not event then return finish(nil, "timeout") end
-        -- another event came open: not read; one the calendar window shows stays open
+        -- another event came open: not used; one the calendar window shows stays open
         if not openedIs(ev) then return finish(nil, "other", Cal.WindowShown()) end
-        finish(Cal.ReadOpen())
+        local a, b = use()
+        finish(a, b)
     end)
     local ok, opened = pcall(C_Calendar.OpenEvent, Cal.Offset(sel), plain(sel.monthDay), plain(sel.eventIndex))
     if not ok or opened == false then
@@ -351,6 +345,31 @@ function Cal.Read(ev, fn)
         quietUntil = GetTime() + Cal.QUIET
         return fn(nil, "open")
     end
+end
+
+function Cal.Open(ev, use, fn)
+    if not Cal.CanReadInvites() then return fn(nil, "off") end
+    if busy or waiter or held then return fn(nil, "busy") end
+    if InCombatLockdown() then return fn(nil, "combat") end
+    if Cal.WindowShown() then return fn(nil, "window") end
+    openFor(ev, use, fn)
+end
+
+-- Reads the invite list of ev (an entry of Cal.Events()): fn(invites, n) or fn(nil, why) with why
+-- "off" (no calendar or a function missing), "busy", "combat", "window" (the calendar window shows
+-- another event), "gone" (the event is not in the calendar any more), "open" (OpenEvent refused),
+-- "timeout" (no answer within Cal.WAIT), "other" (another event came open meanwhile: not read). With
+-- the window showing exactly ev, it reads what the window has open and leaves it open; else it opens
+-- ev itself and always closes it again.
+function Cal.Read(ev, fn)
+    if not Cal.CanReadInvites() then return fn(nil, "off") end
+    if busy or waiter or held then return fn(nil, "busy") end
+    if InCombatLockdown() then return fn(nil, "combat") end
+    if Cal.WindowShown() then
+        if openIs(ev) then return fn(Cal.ReadOpen()) end
+        return fn(nil, "window")
+    end
+    openFor(ev, Cal.ReadOpen, fn)
 end
 
 -- The chat text of a reason of Cal.Read / Cal.Load.

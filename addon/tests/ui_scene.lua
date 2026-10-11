@@ -397,6 +397,15 @@ S.WINDOWS = {
         S.calendar()
         return NS.ShowSignup()
     end },
+    -- the sign-up window after a click whose calendar entry did not work (part H3: the scene's
+    -- calendar cannot write): the hint with "Kalender öffnen"
+    { key = "signup-calendar-hint", view = "raider", open = function()
+        S.calendar()
+        local t = NS.SignupTerms()[1]
+        _G.ToggleCalendar = _G.ToggleCalendar or function() end
+        NS.SignupSet(t, "A", "H", "komme 20:15", { click = true })
+        return NS.ShowSignup(t.night)
+    end },
     -- the raid calendar window (UI/RaidCalendar.lua, part I): tonight's raid with the calendar's
     -- invites and sign-ups from Amisia (notes, a sign-off), the dates on the left
     { key = "raidcalendar", view = "raider", open = function()

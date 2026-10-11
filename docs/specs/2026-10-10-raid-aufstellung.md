@@ -1,6 +1,6 @@
 # Spec: Raid-Aufstellung (Anmeldeliste, Einladen, Gruppen sortieren)
 
-Stand: 2026-10-11 · Status: freigegeben, Teile A, B, E, G, H (ohne H3) und I gebaut ·
+Stand: 2026-10-11 · Status: freigegeben, Teile A, B, E, G, H (mit H3) und I gebaut ·
 Feature: F-083 (Aufstellung: Einfügen, Abgleich, Planer, Ersatzbank), F-084 (Einladen, Sortieren);
 F-082 war beim Bau schon vergeben (Einrichtungshilfe). Regel: DECISIONS D-41.
 
@@ -897,3 +897,13 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Bericht sagt, ob ein Schreiben aus einem Timer blockiert wurde; nach jedem Versuch wird das Ereignis
   neu geöffnet und der eigene Status gelesen; am Ende stellt sie den alten Stand wieder her
   ("bestätigt"/"Ersatz" kann nur der Ersteller setzen: zurück als "angemeldet").
+- 2026-10-11: Gebaut: Teil H3 als F-090 (2.25.0), Einstellung `signup.calendar` (an), Regel D-42 ergänzt.
+  Beim Bau entschieden (vor dem Ergebnis der Schreibprüfung, nach den Knöpfen des Spiels): Anmelden aus
+  "nicht angemeldet" über die Kontextmenü-Anmeldung im Klick, aus "vorläufig" Entfernen und
+  `EventSignUp`; Vorläufig mit `EventTentative`, aus "angemeldet" vorher `RemoveEvent` (das Spiel bietet
+  "Vorläufig" nur ohne Anmeldung); Abmelden = Entfernen (`RemoveEvent`, kein `EventDecline`: das
+  Kalenderfenster zeigt bei Anmelde-Ereignissen kein "Absagen"); die Aufrufe stehen in einer Tabelle
+  (`CW.PLAN`), die nach dem Bericht der Schreibprüfung angepasst wird. Danach liest Amisia den eigenen
+  Status (Tagesereignis, zuletzt das Ereignis neu geöffnet); sonst der Hinweis mit Grund. Auch die Befehle
+  `/amisia anmelden` und `/amisia abmelden` schreiben (eigene Eingabe des Spielers); beim eigenen Ereignis
+  (Ersteller) schreibt Amisia nichts.

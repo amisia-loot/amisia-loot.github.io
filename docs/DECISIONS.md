@@ -659,7 +659,7 @@ nicht; der Vertragstest kennt dafür die Ausnahme "liest nur das Addon".
 
 ## D-42 Anmelden in Amisia und Kalender: nur für sich selbst, nur Gildenmitglieder, der Offizier-Teil liest nur
 
-**Datum:** 2026-10-10 (geändert 2026-10-11: die Teilnehmerliste sieht die ganze Gilde, D-43)
+**Datum:** 2026-10-10 (geändert 2026-10-11: die Teilnehmerliste sieht die ganze Gilde, D-43; Teil H3 gebaut)
 **Entscheidung:** Teil G und H der Spec `docs/specs/2026-10-10-raid-aufstellung.md`. **Kalender (Teil G):**
 Auf der Seite Aufstellung zeigt "Kalender" die Gildenereignisse (`GUILD_EVENT`) der Raidnacht von heute
 bis 14 Tage voraus, jede Art (die Art "Schlachtzug" verlangt in Forever eine Raid-Instanz; Prüfung 17 im
@@ -708,10 +708,8 @@ Login, die übrigen Fragen nach den Vorschlägen); Prüfungen 17 bis 20 im Spiel
 (Gildenereignisse lesbar, `offsetMonths`, `OpenEvent` aus einem Timer ohne Sperre, nur
 `CALENDAR_OPEN_EVENT`, Namen mit Nachnamen, keine Antwortzeit).
 **Folge:** Amisia schreibt nie in den Kalender des Offiziers (kein Einladen, kein Status, kein Ereignis
-anlegen, ändern oder löschen). Das Eintragen des Spielers selbst in den Spielkalender (Teil H3:
-`EventSignUp`, `EventTentative`, `EventDecline`, `RemoveEvent`) kommt erst nach den Prüfungen 23 bis 25;
-bis dahin zeigt das Fenster "Bitte auch im Kalender eintragen." mit "Kalender öffnen", und die
-Einstellung `signup.calendar` gibt es nicht. Kein `AT` (Raidtermin in Amisia), keine Erinnerung im Chat, die Notiz nie in einem Chat oder im Export. Die Einstellung "Alle Arten
+anlegen, ändern oder löschen). Das Eintragen des Spielers selbst in den Spielkalender (Teil H3) ist seit 2026-10-11 gebaut
+(siehe oben). Kein `AT` (Raidtermin in Amisia), keine Erinnerung im Chat, die Notiz nie in einem Chat oder im Export. Die Einstellung "Alle Arten
 von Gildenereignissen zeigen" (`lineup.calendarAll`) der Spec entfällt: es zählt ohnehin jede Art. Der
 Kalender-Lesecode ist einer (`Raid/Calendar.lua`) für Aufstellung, Anmeldung und die Kalender-Prüfung.
 Alter Stand bis 2026-10-11: "keine Teilnehmerliste für Raider" (Frage 30); seitdem sieht jeder in der
@@ -719,8 +717,17 @@ Gilde die Liste im Fenster "Raid-Kalender" (D-43), und jeder Client behält die 
 Die Schreibprüfung `/amisia selbsttest kalender schreiben` (Prüfungen 23 bis 25, 2026-10-11) schreibt
 nur nach Warnung im Chat und "Ausführen" im Fragefenster, nur für den eigenen Charakter, nie bei einem
 selbst angelegten Ereignis, und stellt danach den alten Stand wieder her.
+**Teil H3 (2026-10-11):** Der Klick auf Anmelden / Vorläufig / Abmelden (und `/amisia anmelden`,
+`/amisia abmelden`) trägt den Spieler bei einem Gildenereignis mit Anmeldung auch im Spielkalender ein,
+mit den Aufrufen des Spiels selbst (Anmelden: Kontextmenü-Anmeldung im Klick, aus "vorläufig" erst
+Entfernen; Vorläufig: `EventTentative`, aus "angemeldet" erst `RemoveEvent`; Abmelden: `RemoveEvent`),
+Einstellung `signup.calendar` (an). Danach liest Amisia den eigenen Status neu; blockiert,
+Kalenderfehler oder kein neuer Stand: "Bitte auch im Kalender eintragen." mit "Kalender öffnen" und
+einmal der Grund im Chat. Nie für andere, nie im Kampf, nie bei offenem Kalenderfenster, nie beim
+eigenen Ereignis (Ersteller), nie aus einer Wiederholung (`AN` nach dem Login, Antwort auf `AQ`), nie
+erneut aus einem Timer. Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
 **Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
-`addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`,
+`addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`, `addon/tests/test_signup_calendar.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 

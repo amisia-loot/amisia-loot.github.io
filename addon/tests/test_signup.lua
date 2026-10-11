@@ -73,7 +73,7 @@ local on
 for _, b in ipairs(F.roles) do if b.on then on = b.role end end
 assert(on == "H", "a paladin: healer")
 assert(has(F.hint:GetText(), "Für die Gilde lesbar."))
-assert(F.calHint:IsShown() and has(F.calHint:GetText(), "Bitte auch im Kalender eintragen"), "part H3 is not built: the player signs up there too")
+assert(not F.calHint:IsShown(), "no calendar hint before a click (part H3)")
 F.roles[1]:Click()   -- T
 F.roles[2]:Click()   -- H again
 F.note:SetText("|cffff0000rot|r " .. ("x"):rep(100))
@@ -90,6 +90,10 @@ assert(#an == 1 and an[1].chan == "GUILD", "one message to the guild")
 local fl = fields(an[1])
 assert(fl[1] == night and fl[2] == "V" and fl[3] == "H" and fl[4] == "PALADIN" and fl[6] == "12" and fl[7] == rec.w, an[1].text)
 assert(not has(an[1].text, "|"), "no codes in the message")
+-- this stub's calendar cannot write (no GetDayEvent): the hint with its reason, said once
+assert(F.calHint:IsShown() and has(F.calHint:GetText(), "Bitte auch im Kalender eintragen"))
+assert(said("Spielkalender: nicht eingetragen (Der Spielkalender bietet die nötigen Funktionen nicht.)"), table.concat(STUB.messages, "\n"))
+assert(rec.k == "err")
 assert(has(F.state:GetText(), "vorläufig (H)"))
 assert(#STUB.chat == 0, "nothing in a chat channel: the note never")
 NS.Refresh()

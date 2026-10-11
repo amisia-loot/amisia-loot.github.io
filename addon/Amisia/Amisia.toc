@@ -82,6 +82,7 @@ Raid\LootRules.lua
 Raid\RollWindow.lua
 Raid\Handover.lua
 Raid\Calendar.lua
+Raid\CalendarWrite.lua
 Raid\Lineup.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
