@@ -2,6 +2,18 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.27.2 (2026-10-11)
+
+- Pages workflow (interim: stages the site from the root) so the Pages source can switch to GitHub Actions before the site moves
+- Restructure: move the addon to Amisia/, its tests to tests/, the site to Amisia-Website/ (move only)
+- Restructure: paths follow the move (tools, tests, docs, luacheck, the site's zip link, the Pages workflow stages Amisia-Website/)
+- Remove tools/sync_addon.ps1: the PC only receives the release folder through Syncthing
+- Remove Amisia/.stignore: the addon folder is no longer a Syncthing folder (the release folder keeps its own)
+- Remove .nojekyll: Pages deploys through the pages workflow, not Jekyll
+- Remove tools/build_bossnames.py: data/bossnames.js serves only the read-only TBC archive and stays frozen
+- Drop the .gitignore lines of tools/cache (QuestieDB is gone) and the addon folder's old Syncthing marker
+- Data: the newest scan and collector notes from the SavedVariables joined
+
 ## 2.27.1 (2026-10-11)
 
 - Calendar page: the groups' heads as flat one-line bars in the small font, the day's inset clear of 'Heute', a date's time and title on one line each in the cells
