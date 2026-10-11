@@ -141,11 +141,12 @@ local function placeTag()
 end
 ns.PlaceTag = placeTag
 
--- The name of a unit token whose GUID is the given one, if any.
+-- The name of a unit token whose GUID is the given one, if any. A secret GUID or name (a boss
+-- fight on Forever) is skipped, never compared.
 local function nameOfGUID(guid)
     if not guid then return nil end
     for _, unit in ipairs({ "target", "mouseover", "focus" }) do
-        if UnitGUID(unit) == guid then return UnitName(unit) end
+        if ns.Plain(UnitGUID(unit)) == guid then return ns.Plain((UnitName(unit))) end
     end
     return nil
 end
@@ -189,8 +190,8 @@ end)
 ---------------------------------------------------------------------------
 ns.OnEvent("MERCHANT_SHOW", function()
     if not enabled() or not GetMerchantNumItems or not GetMerchantItemLink then return end
-    local who = UnitName("npc") or UnitName("target") or "?"
-    local npc = ns.NpcID(UnitGUID("npc"))
+    local who = ns.Plain((UnitName("npc"))) or ns.Plain((UnitName("target"))) or "?"
+    local npc = ns.NpcID(ns.Plain(UnitGUID("npc")))
     local note = "Haendler: " .. who .. (npc and (" [" .. npc .. "]") or "") .. placeTag()   -- l10n-ok: a stored source note build_scan.py parses
     for i = 1, GetMerchantNumItems() or 0 do
         local link = GetMerchantItemLink(i)
@@ -265,7 +266,7 @@ ns.OnEvent("LOOT_OPENED", function()
         if link and not (type(src) == "string" and src:find("^Item%-")) then
             -- the corpse this slot came from: its NPC id always, its name when it is targeted
             local npc = ns.NpcID(src)
-            local who = nameOfGUID(src) or (not npc and UnitName("target")) or nil
+            local who = nameOfGUID(src) or (not npc and ns.Plain((UnitName("target")))) or nil
             if who or npc then
                 ns.NoteItem(link, "Drop: " .. (who or "?") .. (npc and (" [" .. npc .. "]") or "") .. place)   -- l10n-ok: a stored source note
             else
@@ -276,6 +277,7 @@ ns.OnEvent("LOOT_OPENED", function()
 end)
 
 ns.OnEvent("CHAT_MSG_LOOT", function(text)
+    text = ns.Plain(text)
     if not enabled() or type(text) ~= "string" then return end
     for id in text:gmatch("item:(%d+)") do ns.NoteItem(tonumber(id)) end
 end)
@@ -288,7 +290,9 @@ ns.OnItemTooltip("collect", function(_, link)
     if enabled() then ns.NoteItem(link) end
 end)
 
+-- the raid, party, whisper and system lines are secret in the chat lockdown: skipped then
 local function chatLinks(text)
+    text = ns.Plain(text)
     if not enabled() or type(text) ~= "string" then return end
     for id in text:gmatch("|Hitem:(%d+)") do ns.NoteItem(tonumber(id)) end
 end
