@@ -913,3 +913,9 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   (Klick und Schreibprüfung) prüft Amisia Titel, Beginn, Anmeldung und das geschlossene Kalenderfenster. Die
   Schreibprüfung nimmt nur Gildenereignisse mit Anmeldung (Entfernen nähme eine normale Einladung weg), hält
   3 der 24 Schreibvorgänge für das Wiederherstellen frei und läuft nur einmal gleichzeitig.
+- 2026-10-11: Auf der sicheren Seite (Koordination nach der Prüfung): Anmelden und Vorläufig schreiben nur aus
+  "nicht angemeldet" (7) und zwischen angemeldet und vorläufig, wie die Knöpfe des Spiels; einen vom Offizier
+  gesetzten Stand (eingeladen, abgesagt, bestätigt, raus, Ersatz) lässt Amisia stehen und sagt es einmal;
+  Abmelden aus bestätigt/Ersatz bleibt Entfernen. Kein Eintrag bei einem Ereignis eines vergangenen
+  Kalendertags (auch zwischen 00:00 und 06:00). Die Schreibprüfung startet nicht aus eingeladen, bestätigt,
+  raus oder Ersatz.

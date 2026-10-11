@@ -62,6 +62,9 @@ local LABEL = {
     ["25c"] = L["25 Entfernen aus Vorläufig (RemoveEvent)"],
     ["24c"] = L["24 Vorläufig über das Kontextmenü (ContextMenuInviteTentative)"],
 }
+-- statuses an officer set that the run could not put back (only the creator or a moderator sets
+-- them): Invited, Confirmed, Out, Standby; the run refuses to start from them
+local SET_BY_OFFICER = { [0] = true, [3] = true, [4] = true, [5] = true }
 -- the steps that bring the status to a test's start (the client window's own calls)
 local TO = { NS = "RemoveEvent", IN = "EventSignUp", TENT = "EventTentative" }
 
@@ -398,6 +401,7 @@ local function execute(P)
     end
     local t = where(P)
     if not t then return ns.msg(Cal.Why("gone")) end
+    if SET_BY_OFFICER[t.status] then return WP.SayOfficerSet(P.ev, t.status) end
     run = P
     P.at = GetTime()
     listen(true)
@@ -425,6 +429,12 @@ end
 -- The first guild event with sign-up the player did not create (the client says so); nil when there
 -- is none. Never an event with a normal invite: its RemoveEvent drops the invitation, which nobody
 -- but its creator can give back.
+-- The chat line when the start status was set by an officer: nothing is written.
+function WP.SayOfficerSet(ev, status)
+    ns.msg(L["Kalender-Schreibprüfung: dein Stand bei %s ist %s, von einem Offizier gesetzt; die Prüfung könnte ihn nicht wiederherstellen und schreibt nichts. Bitte ein Ereignis nehmen, bei dem du noch nicht angemeldet bist (7 NotSignedup)."]:format(
+        tostring(ev and ev.title or "?"), statusText(status)))
+end
+
 local function pick(list)
     for _, ev in ipairs(list or {}) do
         local t = Cal.Target(ev)
@@ -460,6 +470,7 @@ function WP.Start()
             ns.msg(L["Kalender-Schreibprüfung: braucht ein Gildenereignis mit Anmeldung der nächsten 14 Tage, das ein anderer Charakter angelegt hat (bei deinem eigenen bist du der Ersteller)."])
             return
         end
+        if SET_BY_OFFICER[t and t.status] then return WP.SayOfficerSet(ev, t.status) end
         local P = { R = K.newReport(), blocked = {}, errors = {}, done = {}, tried = {}, results = {}, steps = 0, ev = ev, pos = t }
         local warning = L["Kalender-Schreibprüfung: schreibt in den Kalender: meldet dich beim gewählten Ereignis an, vorläufig, entfernt dich und stellt danach deinen alten Stand wieder her. Ereignis: %s, %s (dein Status %s)."]:format(
             ev.title, ns.FmtDayTime(ev.at), statusText(t and t.status))

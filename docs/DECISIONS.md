@@ -730,10 +730,16 @@ eigenen Ereignis (Ersteller), nie aus einer Wiederholung (`AN` nach dem Login, A
 erneut aus einem Timer. Nachtrag 2026-10-11 (Prüfung nach dem Bau): nie, solange eine Kalender-Prüfung läuft;
 nie, wenn der Kalender nicht sagt, wer das Ereignis angelegt hat, oder den eigenen Stand nicht nennt; das
 Tagesereignis muss die Kennung des Ereignisses tragen, und vor jedem Aufruf am geöffneten Ereignis prüft
-Amisia Titel, Beginn und Anmeldung und dass das Kalenderfenster zu ist (sonst wird nichts aufgerufen). Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
+Amisia Titel, Beginn und Anmeldung und dass das Kalenderfenster zu ist (sonst wird nichts aufgerufen).
+Anmelden und Vorläufig schreiben nur aus "nicht angemeldet" (7) und zwischen angemeldet (6) und vorläufig (8),
+wie die Knöpfe des Spiels; hat ein Offizier den Stand gesetzt (eingeladen, abgesagt, bestätigt, raus, Ersatz),
+bleibt er ("Spielkalender: ein Offizier hat deinen Stand gesetzt (...), dort bleibt er."); Abmelden aus
+bestätigt/Ersatz ist Entfernen (das Spiel bietet es dort an). Nie bei einem Ereignis eines vergangenen
+Kalendertags (auch nicht in der Raidnacht nach 00:00). Die Schreibprüfung startet nicht aus einem vom Offizier
+gesetzten Stand (eingeladen, bestätigt, raus, Ersatz). Alter Stand bis 2026-10-11: H3 wartete, das Fenster zeigte den Hinweis immer.
 **Durchgesetzt durch:** `addon/tests/test_calendar_lineup.lua`, `addon/tests/test_signup.lua`,
 `addon/tests/test_signup_comm.lua`, `addon/tests/test_selftest_calendar.lua`, `addon/tests/test_selftest_calendar_write.lua`, `addon/tests/test_signup_calendar.lua`,
-`addon/tests/test_calendar_write_review.lua`,
+`addon/tests/test_calendar_write_review.lua`, `addon/tests/test_calendar_write_officer.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 

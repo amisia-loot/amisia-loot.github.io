@@ -454,12 +454,17 @@ function ns.SignupCalendarWrite(term, rec)
     end
     rec.k = nil
     calPending[night], calWhy[night] = true, nil
-    ns.CalWrite.Write(term, rec.s, function(ok, why)
+    ns.CalWrite.Write(term, rec.s, function(ok, why, detail)
         calPending[night] = nil
         rec.k = ok and "ok" or "err"
         if ok then
             if why == "creator" then
                 ns.msg(L["Spielkalender: du hast das Ereignis angelegt, dort bleibt dein Stand."])
+            elseif why == "officer" then
+                local word = ns.Cal.STATUS[detail] and L[ns.Cal.STATUS[detail][3]] or tostring(detail)
+                ns.msg(L["Spielkalender: ein Offizier hat deinen Stand gesetzt (%s), dort bleibt er."]:format(word))
+            elseif why == "past" then
+                ns.msg(L["Spielkalender: der Termin liegt an einem vergangenen Tag, dort ändert sich nichts mehr."])
             elseif why ~= "same" then
                 ns.msg(CAL_DONE[rec.s])
             end

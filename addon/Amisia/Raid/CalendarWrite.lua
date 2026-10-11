@@ -38,6 +38,33 @@ CW.PLAN = {
     V = { OUT = { "EventTentative" }, IN = { "RemoveEvent", "EventTentative" } },
     X = { IN = { "RemoveEvent" }, TENT = { "RemoveEvent" } },
 }
+-- Statuses an officer set (Invited, Declined, Confirmed, Out, Standby): the client's own buttons offer
+-- "Anmelden" and "Vorläufig" only while not signed up (7), so Amisia writes neither then and the
+-- officer's status stays; "Abmelden" stays RemoveEvent ("Entfernen" is offered for every status but 7).
+CW.OFFICER = { [0] = true, [2] = true, [3] = true, [4] = true, [5] = true }
+
+-- The calendar day today (the client's calendar time, else the own clock): "yyyy-mm-dd".
+local function today()
+    local C = _G.C_DateAndTime
+    local f = type(C) == "table" and C.GetCurrentCalendarTime
+    if type(f) == "function" then
+        local ok, d = pcall(f)
+        if ok and type(d) == "table" then
+            local y, m, dd = plain(d.year), plain(d.month), plain(d.monthDay)
+            if type(y) == "number" and type(m) == "number" and type(dd) == "number" then
+                return ("%04d-%02d-%02d"):format(y, m, dd)
+            end
+        end
+    end
+    return date("%Y-%m-%d")
+end
+
+-- Whether ev (an entry of ns.Cal.Events()) is on a calendar day before today: the client takes no
+-- answer there any more (its isTodayOrLater), also while the raid night of 00:00-06:00 still shows it.
+function CW.Past(ev)
+    return type(ev) == "table" and type(ev.at) == "number" and date("%Y-%m-%d", ev.at) < today()
+end
+
 -- the client functions a plan may call (and the reads it needs)
 CW.FUNCS = { "GetDayEvent", "ContextMenuSelectEvent", "ContextMenuEventSignUp", "EventSignUp", "EventTentative", "RemoveEvent" }
 
@@ -208,7 +235,8 @@ end
 
 -- The player's click: want (A/V/X) for term (an entry of ns.SignupTerms()). fn(ok, why) when it is
 -- done (ok true: the calendar shows it, or there was nothing to do; why "creator" when the player
--- created the event: nothing written). Returns false and why when nothing could start (fn is called
+-- created the event, "officer" (third: the status) when an officer set the status and the click
+-- is Anmelden or Vorläufig, "past" for an event of a past calendar day: nothing written). Returns false and why when nothing could start (fn is called
 -- too), true when it runs.
 function CW.Write(term, want, fn)
     local function no(why)
@@ -223,6 +251,11 @@ function CW.Write(term, want, fn)
     local t, why = CW.Target(term)
     if not t then return no(why) end
     if not t.signup then return no("nosignup") end
+    -- an event of a past calendar day: the client's buttons are off there, nothing is written
+    if CW.Past(t.ev) then
+        fn(true, "past")
+        return true, "past"
+    end
     if t.creator then
         fn(true, "creator")
         return true, "creator"
@@ -231,6 +264,11 @@ function CW.Write(term, want, fn)
     if t.creator == nil then return no("unknown") end
     -- an own status the groups do not know: nothing to plan, and not "the same"
     if not CW.Group(t.status) then return no("status") end
+    -- an officer set the status: Anmelden and Vorläufig leave it (the client offers neither)
+    if want ~= "X" and CW.OFFICER[t.status] then
+        fn(true, "officer", t.status)
+        return true, "officer"
+    end
     local steps = CW.Plan(want, t.status)
     if not steps then
         fn(true, "same")
