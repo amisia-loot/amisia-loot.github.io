@@ -222,6 +222,9 @@ local function buildCell(f, i)
     for k = 1, 3 do
         local fs = W.Text(cell, T.FONT.text, inner)
         fs:SetPoint("TOPLEFT", C.PAD, -(C.EVENT_Y + (k - 1) * C.LINE_H))
+        -- one line each: "19:30" wrapped to "19:3" + "0" over the title in the game
+        if fs.SetWordWrap then fs:SetWordWrap(false) end
+        if fs.SetNonSpaceWrap then fs:SetNonSpaceWrap(false) end
         cell.lines[k] = fs
     end
     cell:SetScript("OnClick", function(self) if self.info then choose(self.info.key, nil) end end)
@@ -352,8 +355,8 @@ local function build(parent)
 
     -- the chosen day on the right
     f.right = W.Inset(f)
-    f.right:SetPoint("TOPLEFT", C.RIGHT_X, -C.GRID_Y)
-    f.right:SetSize(C.RIGHT_W, C.HEAD_H + 6 * C.CELL_H)
+    f.right:SetPoint("TOPLEFT", C.RIGHT_X, -(C.GRID_Y + C.RIGHT_TOP))
+    f.right:SetSize(C.RIGHT_W, C.HEAD_H + 6 * C.CELL_H - C.RIGHT_TOP)
     f.right.fill(0, 0, 0, 0.25)
     f.dayTitle = W.Text(f.right, T.FONT.title, C.RIGHT_W - 2 * C.INNER)
     f.dayTitle:SetPoint("TOPLEFT", C.INNER, -C.INNER)

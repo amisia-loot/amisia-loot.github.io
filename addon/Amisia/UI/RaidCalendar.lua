@@ -342,10 +342,30 @@ local function buildRow(r, spec)
     r.classIcon = r:CreateTexture(nil, "ARTWORK")
     r.classIcon:SetSize(spec.CELL_ICON, spec.CELL_ICON)
     r.classIcon:SetPoint("LEFT", col.class[2], 0)
-    -- a group's section bar fills the row
-    r.bar = W.SectionHeader(r, "", false)
-    r.bar:SetPoint("TOPLEFT", 0, 0)
-    r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
+    -- a group's head fills the row: the client's section bar in the window; a flat one-line bar in a
+    -- small font where the row is narrow (spec.COMPACT_HEAD: the calendar page; the client's bar
+    -- has a large font that wrapped "Angemeldet / Bestätigt 2" over the next row in the game)
+    if spec.COMPACT_HEAD then
+        local bar = CreateFrame("Frame", nil, r)
+        bar:SetAllPoints()
+        bar.bg = bar:CreateTexture(nil, "BACKGROUND")
+        bar.bg:SetAllPoints()
+        bar.bg:SetColorTexture(1, 1, 1, 0.08)
+        bar.line = bar:CreateTexture(nil, "BORDER")
+        bar.line:SetPoint("BOTTOMLEFT", 0, 0)
+        bar.line:SetPoint("BOTTOMRIGHT", 0, 0)
+        bar.line:SetHeight(1)
+        bar.line:SetColorTexture(T.GOLD[1], T.GOLD[2], T.GOLD[3], 0.5)
+        bar.text = W.Text(bar, T.FONT.head, spec.LIST_W or 170)
+        bar.text:SetPoint("LEFT", 4, 0)
+        if bar.text.SetWordWrap then bar.text:SetWordWrap(false) end
+        function bar:SetHeaderText(t) self.text:SetText(t) end
+        r.bar = bar
+    else
+        r.bar = W.SectionHeader(r, "", false)
+        r.bar:SetPoint("TOPLEFT", 0, 0)
+        r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
+    end
     r.bar:Hide()
     r:SetScript("OnEnter", function(self)
         if self.item and self.item.e then tooltip(self, self.item.e) end

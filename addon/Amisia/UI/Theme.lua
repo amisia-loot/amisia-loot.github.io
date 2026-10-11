@@ -140,6 +140,7 @@ T.CALPAGE = {
     TODAY = 2,            -- the gold frame round today
     -- the day's inset on the right
     RIGHT_X = 400, RIGHT_W = 202,
+    RIGHT_TOP = 6,        -- the day's inset starts this far below the grid's top: its frame art reached "Heute" in the game
     INNER = 6,            -- its texts from its edges
     TERM_Y = 26,          -- the day's dates (TERM_H each, TERMS at most) under the day's title
     TERM_H = 18, TERMS = 2,
@@ -152,6 +153,7 @@ T.CALPAGE = {
     -- class icon, name (class colour), sources K/A
     COLS = { { "r", 2, 34 }, { "class", 38, 14 }, { "name", 54, 90 }, { "src", 146, 30 } },
     ROLE_LETTER_X = 17,
+    COMPACT_HEAD = true,  -- the groups' heads as flat one-line bars in the small gold font (RaidCalendar.lua)
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
