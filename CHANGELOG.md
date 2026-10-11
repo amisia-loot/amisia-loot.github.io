@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.25.1 (2026-10-11)
+
+- Calendar write probe results from the game (all writes work from timers); F-089 checked
+- Professions: the recipe list sorted by learn rank, then yellow, then name
+- Raid-Kalender über dem Hauptfenster und im Stil des Berufsfensters; Lesestand stimmt wieder
+- Tests follow the recipe order by learn rank; English 'signed off' for abgemeldet everywhere
+
 ## 2.25.0 (2026-10-11)
 
 - Spec: H3, part I (raid calendar window, visible to the guild), polish - user decisions 2026-10-11
