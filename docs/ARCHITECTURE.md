@@ -472,4 +472,3 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 In-game tests are the user's (PC); `/reload` after a release (a new file or texture needs a full
 client restart). PC-only builders: `tools/build_scan.py` (full), `tools/build_bossnames.py` (archive);
 optional PC-only build inputs: AtlasLoot, OneForAll and the live SavedVariables.
-`tools/sync_addon.ps1` (PC) skips junctioned targets, so the PC never writes into the received copy.

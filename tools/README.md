@@ -732,22 +732,6 @@ Archive only: `Amisia-Website/data/bossnames.js` holds just the TBC table (the r
 so this runs again only if the archive ever needs new names, which is practically never. It reads
 the WoW install, so it runs on the PC.
 
-## sync_addon.ps1
-
-Mirrors `Amisia` into the AddOns folder of the Forever client (`_classic_beta_`): changed
-files are copied, files gone from the repository are deleted, folders and files starting with a
-dot (editor and Claude Code settings) stay out. A junctioned target is skipped (the N100 sends
-that copy through Syncthing), so on the N100 setup it has nothing to do.
-
-```
-pwsh -File tools/sync_addon.ps1 [-Watch] [-Quiet] [-NoCheck]
-```
-
-It parses the Lua files first (`tests/syntax.cjs`) and copies nothing when one does not
-parse, because a single broken file keeps the whole addon from loading; `-NoCheck` skips that.
-`-Watch` copies again on every change, `AMISIA_WOW_ROOT` overrides the WoW folder. A running
-client picks the files up at the next `/reload`.
-
 ## export_db2.ps1
 
 Exports the Forever client tables the build scripts read (`ItemSparse`, `Item`, `ItemSet`,
