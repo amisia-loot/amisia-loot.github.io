@@ -1,5 +1,5 @@
 # Runs the checks of tools/build.py (syntax, addon tests, tool tests, UTF-8, TOC, luacheck) on every
-# push and pull request. It deploys nothing: GitHub Pages serves index.html from the root as before.
+# push and pull request. It deploys nothing: pages.yml publishes the site.
 name: check
 
 on:
