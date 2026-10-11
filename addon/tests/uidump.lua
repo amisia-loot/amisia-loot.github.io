@@ -42,6 +42,8 @@ local function role(f)
     if K(f) == "Button" then
         local t = f.template or ""
         if t:find("SharedButtonSmallTemplate", 1, true) or t:find("UIPanelButtonTemplate", 1, true) then return "button" end
+        -- the bottom tabs of the main window hang under it on purpose, as the side tabs at its side
+        if t:find("PanelTabButtonTemplate", 1, true) then return "tab" end
         return "plain"
     end
     if f.SetCustomOnMouseUpHandler then return "tab" end

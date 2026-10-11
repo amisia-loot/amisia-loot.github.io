@@ -126,6 +126,8 @@ _G.C_Item = {
     end,
     RequestLoadItemDataByID = function(id) STUB.requested[#STUB.requested + 1] = id end,
     GetItemIconByID = function(x) local it = STUB.items[itemId(x)]; return it and it.icon or 134 end,
+    -- an item the client holds (no server question): the registered ones
+    IsItemDataCachedByID = function(x) return STUB.items[itemId(x)] ~= nil end,
 }
 -- Area names (C_Map.GetAreaInfo) and faction names (GetFactionInfoByID) the client knows.
 STUB.areas, STUB.factions = {}, {}
@@ -972,6 +974,58 @@ TEMPLATES.LargeSideTabButtonTemplate = function(f)
     end)
 end
 function STUB.clickTab(tab) tab.scripts.OnMouseUp(tab, "LeftButton", true) end
+-- The bottom tab of a panel (PanelTabButtonTemplate, Blizzard_SharedXML): the six slices of its
+-- art (atlases the template sets, so they are not counted as the addon's), the label in Text (its
+-- normal font GameFontNormalSmall); the client's PanelTemplates_* functions below size and select it.
+TEMPLATES.PanelTabButtonTemplate = function(f)
+    f.tplW, f.tplH = 10, 32
+    local atl = { Left = "uiframe-tab-left", Middle = "_uiframe-tab-center", Right = "uiframe-tab-right",
+                  LeftActive = "uiframe-activetab-left", MiddleActive = "_uiframe-activetab-center",
+                  RightActive = "uiframe-activetab-right" }
+    f.TabTextures = {}
+    for _, key in ipairs({ "LeftActive", "RightActive", "MiddleActive", "Left", "Right", "Middle" }) do
+        local t = part(f, key, "BACKGROUND")
+        t.atlas = atl[key]
+        t._w = key:find("Middle") and nil or 20
+        f.TabTextures[#f.TabTextures + 1] = t
+    end
+    f.Text = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.Text:SetPoint("CENTER", 0, 2)
+    local setText = f.SetText
+    f.SetText = function(self, t) setText(self, t); self.Text:SetText(t) end
+    f.GetFontString = function(self) return self.Text end
+    f.SetDisabledFontObject = function(self, obj) self.disabledFont = STUB.fontName(obj) end
+    tplScript(f, "OnShow", function(self)
+        if _G.PanelTemplates_TabResize then _G.PanelTemplates_TabResize(self, 0) end
+    end)
+    f.motionScriptsWhileDisabled = true
+end
+-- the client's tab helpers (SharedUIPanelTemplates.lua of Forever 1.60.1), as far as Amisia calls them
+_G.PanelTemplates_TabResize = function(tab, padding, absoluteSize, minWidth, maxWidth)
+    tab.Text:SetWidth(0)
+    local width = tab.Text:GetStringWidth() + 20 + (padding or 0)
+    local sides = tab.Left:GetWidth() + tab.Right:GetWidth()
+    minWidth = minWidth or sides
+    if absoluteSize then width = math.max(sides, absoluteSize)
+    elseif maxWidth and width > maxWidth then width = maxWidth
+    elseif minWidth and width < minWidth then width = minWidth end
+    tab.Text:SetWidth(width - 20 - (padding or 0))
+    tab:SetWidth(width)
+end
+_G.PanelTemplates_SelectTab = function(tab)
+    tab.Left:Hide(); tab.Middle:Hide(); tab.Right:Hide()
+    tab:Disable()
+    tab.Text:SetPoint("CENTER", tab, "CENTER", 0, -3)
+    tab.LeftActive:Show(); tab.MiddleActive:Show(); tab.RightActive:Show()
+    tab.selected = true
+end
+_G.PanelTemplates_DeselectTab = function(tab)
+    tab.Left:Show(); tab.Middle:Show(); tab.Right:Show()
+    tab:Enable()
+    tab.Text:SetPoint("CENTER", tab, "CENTER", 0, 2)
+    tab.LeftActive:Hide(); tab.MiddleActive:Hide(); tab.RightActive:Hide()
+    tab.selected = false
+end
 local function inputVisual(f)
     f.tplH = 20
     f.Left = f:CreateTexture(nil, "BACKGROUND")

@@ -691,6 +691,7 @@ local TEMPLATES = {
     { "Button", "ListHeaderVisualTemplate, ListHeaderCodeTemplate", { "ButtonText", "SetClickHandler", "SetHeaderText" } },
     { "EventFrame", "MinimalScrollBar", { "SetScrollPercentage", "RegisterCallback" } },
     { "Frame", "LargeSideTabButtonTemplate", { "SetCustomOnMouseUpHandler", "Icon", "SetChecked" } },
+    { "Button", "PanelTabButtonTemplate", { "Text", "Left", "LeftActive" } },
     { "Button", "TooltipBackdropTemplate", { "NineSlice" } },
 }
 ST.TEMPLATES = TEMPLATES

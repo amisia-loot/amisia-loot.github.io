@@ -280,6 +280,31 @@ S.STATES = {
         if t and t[1] and not NS.SignupOf()[t[1].night] then NS.SignupSet(t[1], "V", "H", "komme 20:15") end
         NS.ShowPage("overview")
     end },
+    -- the calendar page with the scene's dates: tonight's raid chosen (its participants on the right),
+    -- the meeting in two days, Onyxia in four, the recorded raid of the scene
+    { page = "calendar", name = "calendar-dates", open = function()
+        S.raidCalendarSignups()
+        NS.ShowCalendar(NS.Cal.Events()[1].night)
+        STUB.tick(1)
+    end },
+    -- a day without a date (ten days on): the day's inset says so, no buttons
+    { page = "calendar", name = "calendar-empty-day", open = function()
+        S.calendar()
+        NS.ShowCalendar(NS.NightOf(time() + 10 * 86400))
+    end },
+    -- the search over the page list: pages, settings, items and (officers) players
+    { page = "overview", name = "search-ra", open = function()
+        NS.ShowPage("overview")
+        local box = AmisiaFrame.search
+        box:SetText("ra")
+        box.scripts.OnTextChanged(box, true)
+    end },
+    { page = "overview", name = "search-cursed", open = function()
+        NS.ShowPage("overview")
+        local box = AmisiaFrame.search
+        box:SetText("cursed")
+        box.scripts.OnTextChanged(box, true)
+    end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

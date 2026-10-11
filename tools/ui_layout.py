@@ -21,7 +21,7 @@ Rules (RULES below), each over every shot:
              the font object's size, times the locale's factor), on the safe side
   minwidth   every button and chip is at least as wide as its text plus the padding on both sides
   atlas      only atlases of the style allow-list (ns.Theme.ATLASES) are used
-  nav        every visible page has a row in the page list, inside the list
+  nav        every visible page of the open tab has a row in the page list, inside the list
   grid       every page is built with the page scaffold (W.Page, ns.Theme.LAYOUT): its head row at
              the page's top, ROW_H high; what a band holds centred on it; hint lines and footer
              lines in the hint font, TEXT_X from the edge; column heads COLHEAD_H high in the head
@@ -72,10 +72,6 @@ if mode == "pages" then
     local panels = {}
     for _, p in ipairs(NS.panels) do panels[#panels + 1] = p end
     table.sort(panels, function(a, b) return (a.order or 99) < (b.order or 99) end)
-    local visible = {}
-    for _, p in ipairs(panels) do
-        if NS.Visible(p) then visible[#visible + 1] = p.key end
-    end
     local todo = {}
     for _, p in ipairs(panels) do
         if NS.Visible(p) then todo[#todo + 1] = { key = p.key, name = p.key, open = function() NS.ShowPage(p.key) end } end
@@ -86,7 +82,14 @@ if mode == "pages" then
     end
     for _, p in ipairs(todo) do
         do
+            if NS.ClearSearch then NS.ClearSearch() end
             p.open()
+            -- the page list shows the pages of the open page's tab (D-45)
+            local visible = {}
+            local tab = NS.Panel(NS.CurrentPage() or "") and NS.PanelGroup(NS.Panel(NS.CurrentPage()))
+            for _, q in ipairs(panels) do
+                if NS.Visible(q) and NS.PanelGroup(q) == tab then visible[#visible + 1] = q.key end
+            end
             local page
             for _, k in ipairs(F.content.kids or {}) do if k.shown then page = k end end
             local marks = { window = F, content = F.content, nav = F.nav, page = page }
@@ -721,7 +724,7 @@ def render(shot, path, scale=1, mono=False):
     tree = Tree(shot['nodes'], shot['marks'])
     root = tree.marks.get('window', 1)
     wr = tree.rect(root)
-    pad_l, pad_t, pad_r, pad_b = 10, 10, 60, 10
+    pad_l, pad_t, pad_r, pad_b = 10, 10, 60, 40   # room for the side tabs and the bottom tabs
     W = int((wr[2] - wr[0] + pad_l + pad_r) * scale)
     H = int((wr[3] - wr[1] + pad_t + pad_b) * scale)
     img = Image.new('RGB', (W, H), (14, 12, 18))

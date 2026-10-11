@@ -89,13 +89,19 @@ T.LAYOUT = {
     DETAIL = { PAD = 8, ICON = 32, TITLE_X = 44, TITLE_H = 18, SUB_Y = 28, BODY_Y = 46, BUTTONS = 32 },
 }
 
--- the main window (MainFrame.lua)
+-- the main window (MainFrame.lua): the page list of the chosen bottom tab on the left, under the
+-- search box; the page in the content inset on the right; the client's panel tabs (one per page
+-- group, ns.PANEL_GROUPS) hang under the window's bottom edge, the side tabs at its right edge.
 T.MAIN = {
     W = 806, H = 560,
-    -- the page list: up to 23 rows (4 bars, 3 gaps and 23 rows of 16 fill the 480 px); rows are 20 high and shrink (to 16 at least) when more pages than
-    -- fit the 480 px list are shown (a mage officer in the expert view has 19)
-    NAV_W = 164, NAV_ROWS = 23, NAV_HEADS = 4, NAV_LIST_H = 480, NAV_ROW_MIN = 16,
-    NAV_ROW_H = 20, NAV_GAP = 4, NAV_INDENT = 8, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
+    -- the page list: only the pages of the chosen tab, rows 20 high (16 at least when more pages than
+    -- fit the 454 px under the search box are shown); a pool of 23 rows
+    NAV_W = 164, NAV_ROWS = 23, NAV_LIST_H = 454, NAV_ROW_MIN = 16,
+    NAV_ROW_H = 20, NAV_INDENT = 0, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
+    -- the search box at the top of the page list (T.FIELD_H high), the list SEARCH_GAP under it;
+    -- typing turns the list into the results (RES_ROWS rows of RES_ROW_H, a group's bar the same
+    -- height), at least SEARCH_MIN characters, at most RES_MAX hits per group
+    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 22, RES_ROW_H = 20, RES_MAX = 8, RES_ICON = 14,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
     LIST_W = 176,         -- the page list's inset
@@ -107,6 +113,46 @@ T.MAIN = {
     VIEW_W = 120, VIEW_GAP = 6,  -- the view switch left of the pause button
     TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
     TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
+    -- the bottom tabs (PanelTabButtonTemplate, as under the character window): the first BTAB_X from
+    -- the window's left edge, reaching BTAB_Y into the frame, BTAB_GAP apart (the client's
+    -- PanelTemplates_AnchorTabs), BTAB_H high (the template); each as wide as its text + 20, at least
+    -- BTAB_MIN_W
+    BTAB_X = 11, BTAB_Y = 2, BTAB_GAP = 3, BTAB_H = 32, BTAB_MIN_W = 70,
+}
+
+-- the calendar page (UI/Pages/Calendar.lua, the tab "Kalender"): the head row with the month (gold,
+-- arrows left and right, "Heute" on the right), the month grid on the left (a weekday bar, 6 rows of
+-- 7 day cells on the client calendar's parchment), the chosen day's dates and participants in an inset
+-- on the right, the bottom row (the calendar read's state, Zur Aufstellung, Anmelden ...) and the hint.
+-- 26 (head row and gap) + 20 + 6 x 64 + 4 + 22 + 4 + 16 = 478; 7 x 56 + 8 + 202 = 602.
+T.CALPAGE = {
+    TITLE_W = 160,        -- the month's title between the arrows (T.FONT.big, gold, centred)
+    TODAY_W = 70,         -- "Heute" (at least; FitChip)
+    GRID_Y = 26,          -- the grid below the page's top (under the head row)
+    CELL_W = 56, CELL_H = 64,
+    HEAD_H = 20,          -- the weekday bar (the client calendar's weekday art)
+    PAD = 4,              -- a cell's texts from its edges
+    DAY_Y = 3,            -- the day's number below the cell's top (T.FONT.body)
+    EVENT_Y = 20,         -- the first date's time below the cell's top, its title LINE_H under it
+    LINE_H = 12,          -- one line of a date in a cell (T.FONT.text)
+    DOT = 8,              -- the own state's dot at the cell's top right
+    DARK = 0.45,          -- a day of another month: its ground this bright
+    TODAY = 2,            -- the gold frame round today
+    -- the day's inset on the right
+    RIGHT_X = 400, RIGHT_W = 202,
+    INNER = 6,            -- its texts from its edges
+    TERM_Y = 26,          -- the day's dates (TERM_H each, TERMS at most) under the day's title
+    TERM_H = 18, TERMS = 2,
+    TOTALS_Y = 64,        -- the totals of the chosen date
+    LIST_Y = 84,          -- the participants (rows ROW_H high)
+    ROW_H = 18, ROWS = 17,
+    LIST_W = 178,         -- RIGHT_W - 2 x INNER - T.SCROLL_ROOM
+    CELL_ICON = 14,
+    -- the participant columns, as the raid calendar window's (T.RAIDCAL.COLS): role (icon and letter),
+    -- class icon, name (class colour), sources K/A
+    COLS = { { "r", 2, 34 }, { "class", 38, 14 }, { "name", 54, 90 }, { "src", 146, 30 } },
+    ROLE_LETTER_X = 17,
+    BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
 -- an overview card

@@ -16,6 +16,7 @@ local range = "all"             -- "4w", "phase", "all"
 local classPick, rolePick = "all", "all"
 local sortCol, sortDesc = "items", true
 local chosen                    -- key of the player in the detail
+local wanted                    -- a player name to choose at the next refresh (ns.ShowStats, the search)
 
 function ns.StatsPageFrame() return page end
 
@@ -261,6 +262,24 @@ local function refresh(f)
         local on = key == sortCol
         b.label:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3])
     end
+    -- a player asked for by name (the search): his row, scrolled into view
+    if wanted then
+        local low = wanted:lower()
+        for i, p in ipairs(rows) do
+            local mine = p.key == low or tostring(p.name):lower() == low
+            for _, c in ipairs(type(p.chars) == "table" and p.chars or {}) do
+                if type(c.name) == "string" and (c.name:lower() == low or (ns.SameName and ns.SameName(c.name, wanted))) then
+                    mine = true
+                end
+            end
+            if mine then
+                chosen = p.key
+                f.list.offset = math.max(0, i - 1)
+                break
+            end
+        end
+        wanted = nil
+    end
     -- the chosen player, else the first row
     local pick
     for _, p in ipairs(rows) do
@@ -275,9 +294,13 @@ local function refresh(f)
     f.detail:SetText(detailText(pick))
 end
 
--- Opens the page, in a view ("players" or "fame") when given.
-function ns.ShowStats(which)
+-- Opens the page, in a view ("players" or "fame") when given; with name the players' view with that
+-- player chosen (every range, class and role, so the row is there when the view shows it).
+function ns.ShowStats(which, name)
     if which == "players" or which == "fame" then view = which end
+    if type(name) == "string" and name ~= "" then
+        view, range, classPick, rolePick, wanted = "players", "all", "all", "all", name
+    end
     ns.ShowPage("stats")
     ns.Refresh()
 end

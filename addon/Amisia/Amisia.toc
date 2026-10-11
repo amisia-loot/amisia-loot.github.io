@@ -92,6 +92,7 @@ Gear\MageScrolls.lua
 Gear\Map.lua
 Gear\MapPins.lua
 Gear\MapPin.xml
+UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua
 UI\Pages\Raids.lua
@@ -117,6 +118,7 @@ UI\Pages\About.lua
 UI\Setup.lua
 UI\Signup.lua
 UI\RaidCalendar.lua
+UI\Pages\Calendar.lua
 Core\Minimap.lua
 Core\SelfTest.lua
 Core\SelfTestCalendar.lua

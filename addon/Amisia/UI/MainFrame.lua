@@ -1,22 +1,26 @@
 -- Amisia main window in the look of Forever's profession window: the client's portrait frame, a
--- status bar with the recording state, a list of the registered pages in collapsible sections on
--- the left, the page itself in an inset on the right, and side tabs on the right edge for the side
--- windows. Pages are built the first time they are opened and refreshed only while shown.
+-- status bar with the recording state, a search box and under it the pages of the chosen tab on the
+-- left, the page itself in an inset on the right, the client's panel tabs under the window (one per
+-- page group, ns.PANEL_GROUPS; D-45) and side tabs on the right edge for the side windows. Typing
+-- two characters into the search box turns the page list into the results (UI/Search.lua). Pages
+-- are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
 local L = ns.L
 
 local W, T = ns.W, ns.Theme
 local M = T.MAIN
 local WIDTH, HEIGHT = M.W, M.H
-local NAV_W, NAV_MAX, HEAD_MAX = M.NAV_W, M.NAV_ROWS, M.NAV_HEADS
-local HEAD_H, ROW_H, GAP, INDENT = T.HEADER_H, M.NAV_ROW_H, M.NAV_GAP, M.NAV_INDENT
+local NAV_W, NAV_MAX = M.NAV_W, M.NAV_ROWS
+local ROW_H, INDENT = M.NAV_ROW_H, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
-local F, nav, content, statusText, pauseBtn, viewBtn
+local F, nav, content, statusText, pauseBtn, viewBtn, search, results, noHits
 local built, current = {}, nil
-local navButtons, navHeaders = {}, {}
+local navButtons = {}
 local sideTabs = {}
+local bottomTabs = {}     -- group key -> the tab under the window
+local query = ""          -- the search text, trimmed and lower case
 
 -- The side windows the tabs on the right edge open and close, top to bottom.
 local SIDE_TABS = {
@@ -34,9 +38,15 @@ local SIDE_TABS = {
       toggle = function() ns.ToggleSoftResFrame() end },
 }
 
+-- settings.window: the place (point, rel, x, y), the last tab (tab: a group key) and the last page
+-- of each tab (pages: { [group] = page key }); the collapsed sections of before 2.27.0 are dropped.
 local function windowState()
-    AmisiaDB.settings.window = AmisiaDB.settings.window or {}
-    return AmisiaDB.settings.window
+    AmisiaDB.settings.window = type(AmisiaDB.settings.window) == "table" and AmisiaDB.settings.window or {}
+    local w = AmisiaDB.settings.window
+    w.collapsed = nil
+    if type(w.pages) ~= "table" then w.pages = {} end
+    if w.tab ~= nil and type(w.tab) ~= "string" then w.tab = nil end
+    return w
 end
 
 local function savePosition()
@@ -59,7 +69,7 @@ function ns.ApplyScale(v)
     if F then F:SetScale((v or ns.Get("ui.scale") or 100) / 100) end
 end
 
--- The collapsed sections stay (settings.window.collapsed), only the position goes.
+-- The remembered tab and pages stay (settings.window.tab, pages), only the position goes.
 function ns.ResetPositions()
     windowState().point = nil
     if F then restorePosition() end
@@ -105,82 +115,248 @@ function ns.ToggleView()
     ns.Refresh()
 end
 
--- The page list: per section of ns.PANEL_GROUPS with a visible page a bar, under it the visible
--- pages as indented rows unless the section is collapsed; 4 px after each section. F.navOrder
--- holds what is shown, top to bottom ({ header = bar } or { button = row }).
+local function groupOf(key)
+    local p = ns.Panel(key)
+    return p and ns.PanelGroup(p) or nil
+end
+
+-- The visible pages of a tab, in their order.
+local function pagesOf(group)
+    local out = {}
+    for _, p in ipairs(ns.panels) do
+        if ns.PanelGroup(p) == group and ns.Visible(p) then out[#out + 1] = p end
+    end
+    return out
+end
+
+-- The page list: the visible pages of the open page's tab, one row each from the top; the rows are
+-- 20 high, lower (NAV_ROW_MIN at least) when more than fit the list. F.navOrder holds what is shown,
+-- top to bottom ({ button = row }).
 local function updateNav()
-    local collapsed = windowState().collapsed or {}
-    local order, y, usedRows, usedHeads = {}, 0, 0, 0
-    -- the row height: 20, less when the shown rows would not fit the list (at least NAV_ROW_MIN)
-    local nHeads, nRows = 0, 0
-    for _, g in ipairs(ns.PANEL_GROUPS) do
-        local n = 0
-        for _, p in ipairs(ns.panels) do
-            if ns.PanelGroup(p) == g.key and ns.Visible(p) then n = n + 1 end
-        end
-        if n > 0 then
-            nHeads = nHeads + 1
-            if not collapsed[g.key] then nRows = nRows + n end
-        end
-    end
+    local order, y = {}, 0
+    local pages = pagesOf(groupOf(current))
     local rowH = ROW_H
-    if nRows > 0 then
-        local room = M.NAV_LIST_H - nHeads * HEAD_H - math.max(0, nHeads - 1) * GAP
-        rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(room / nRows)))
+    if #pages > 0 then
+        rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(M.NAV_LIST_H / #pages)))
     end
-    for _, g in ipairs(ns.PANEL_GROUPS) do
-        local pages = {}
-        for _, p in ipairs(ns.panels) do
-            if ns.PanelGroup(p) == g.key and ns.Visible(p) then pages[#pages + 1] = p end
-        end
-        local h = #pages > 0 and navHeaders[usedHeads + 1]
-        if h then
-            usedHeads = usedHeads + 1
-            if #order > 0 then y = y - GAP end
-            h.group = g.key
-            -- a collapsed section hides its rows, so its bar names the open page in grey
-            local openPage
-            if collapsed[g.key] then
-                for _, p in ipairs(pages) do if p.key == current then openPage = p end end
-            end
-            h:SetHeaderText(openPage and (g.label .. " |cff8f86a3\194\183 " .. openPage.label .. "|r") or g.label)
-            h:SetCollapsed(collapsed[g.key] and true or false)
-            h:ClearAllPoints()
-            h:SetPoint("TOPLEFT", nav, "TOPLEFT", 0, y)
-            h:SetPoint("TOPRIGHT", nav, "TOPRIGHT", 0, y)
-            h:Show()
-            order[#order + 1] = { header = h }
-            y = y - HEAD_H
-            if not collapsed[g.key] then
-                for _, p in ipairs(pages) do
-                    local b = navButtons[usedRows + 1]
-                    if not b then break end
-                    usedRows = usedRows + 1
-                    b.key = p.key
-                    b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-                    b.label:SetText(p.label)
-                    b:SetHeight(rowH)
-                    b:ClearAllPoints()
-                    b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
-                    if p.key == current then b.sel:Show() else b.sel:Hide() end
-                    b:Show()
-                    order[#order + 1] = { button = b }
-                    y = y - rowH
-                end
-            end
-        end
+    local used = 0
+    for _, p in ipairs(pages) do
+        local b = navButtons[used + 1]
+        if not b then break end
+        used = used + 1
+        b.key = p.key
+        b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        b.label:SetText(p.label)
+        b:SetHeight(rowH)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
+        if p.key == current then b.sel:Show() else b.sel:Hide() end
+        b:Show()
+        order[#order + 1] = { button = b }
+        y = y - rowH
     end
-    for i = usedRows + 1, NAV_MAX do navButtons[i]:Hide() end
-    for i = usedHeads + 1, HEAD_MAX do navHeaders[i]:Hide() end
+    for i = used + 1, NAV_MAX do navButtons[i]:Hide() end
     F.navOrder, F.navRowH = order, rowH
 end
 
-local function toggleGroup(group, isCollapsed)
-    if not group then return end
-    local w = windowState()
-    w.collapsed = w.collapsed or {}
-    w.collapsed[group] = isCollapsed and true or nil
-    updateNav()
+---------------------------------------------------------------------------
+-- The tabs under the window
+---------------------------------------------------------------------------
+-- The page a tab opens: the one last open there when it is still shown, else its first.
+local function tabPage(group)
+    local pages = pagesOf(group)
+    local last = windowState().pages[group]
+    for _, p in ipairs(pages) do
+        if p.key == last then return p.key end
+    end
+    return pages[1] and pages[1].key or nil
+end
+
+-- Opens the tab of group (its last page); nothing when it has no visible page.
+function ns.ShowTab(group)
+    local key = tabPage(group)
+    if key then ns.ShowPage(key) end
+end
+
+-- The tab's look: the client's PanelTemplates helpers when there, else the slices by hand.
+local function selectTab(tab, on)
+    if tab.flat then
+        tab.ground:SetAlpha(on and 0.9 or 0.45)
+        tab.Text:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3])
+        tab:SetEnabled(not on)
+    elseif on and PanelTemplates_SelectTab then
+        PanelTemplates_SelectTab(tab)
+    elseif not on and PanelTemplates_DeselectTab then
+        PanelTemplates_DeselectTab(tab)
+    end
+    tab.selected = on and true or false
+end
+
+local function sizeTab(tab)
+    if not tab.flat and PanelTemplates_TabResize then
+        PanelTemplates_TabResize(tab, 0, nil, M.BTAB_MIN_W)
+    else
+        local w = math.max(M.BTAB_MIN_W, (tab.Text:GetStringWidth() or 0) + 20)
+        tab.Text:SetWidth(w - 20)
+        tab:SetWidth(w)
+    end
+end
+
+-- A tab under the window: the client's panel tab (PanelTabButtonTemplate, as under the character
+-- window); without the template a flat tab of the same size.
+local function bottomTab(g)
+    local ok, tab = pcall(CreateFrame, "Button", nil, F, "PanelTabButtonTemplate")
+    if not ok or not tab or not tab.Text or not tab.Left or not tab.LeftActive then
+        if ok and tab then tab:Hide() end
+        tab = CreateFrame("Button", nil, F)
+        tab:SetHeight(M.BTAB_H - 4)
+        tab.ground = W.Flat(tab, 0.18, 0.08, 0.05, 0.45)
+        tab.Text = W.Text(tab, "GameFontNormalSmall")
+        tab.Text:SetPoint("CENTER", 0, 2)
+        tab.flat = true
+    end
+    tab.group = g.key
+    tab:SetText(g.label)
+    if tab.flat then tab.Text:SetText(g.label) end
+    tab:SetScript("OnClick", function(self)
+        if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
+        ns.ShowTab(self.group)
+    end)
+    tab:Hide()
+    return tab
+end
+
+-- The window's clamp: the side tabs on the right and the bottom tabs below stay on the screen.
+local function clamp()
+    if not F.SetClampRectInsets then return end
+    local right = 0
+    for _, def in ipairs(SIDE_TABS) do
+        local tab = sideTabs[def.key]
+        if tab and tab:IsShown() then right = tab:GetWidth() break end
+    end
+    local below = 0
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local tab = bottomTabs[g.key]
+        if tab and tab:IsShown() then below = M.BTAB_H - M.BTAB_Y break end
+    end
+    F:SetClampRectInsets(0, right, 0, -below)
+end
+
+-- Shows the tabs whose group has a visible page, left to right without gaps, the open page's selected.
+local function updateTabs()
+    local open = groupOf(current)
+    local prev
+    F.tabOrder = {}
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local tab = bottomTabs[g.key]
+        if tab then
+            if #pagesOf(g.key) > 0 then
+                tab:ClearAllPoints()
+                if prev then
+                    tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", M.BTAB_GAP, 0)
+                else
+                    tab:SetPoint("TOPLEFT", F, "BOTTOMLEFT", M.BTAB_X, M.BTAB_Y)
+                end
+                tab:Show()
+                sizeTab(tab)
+                selectTab(tab, g.key == open)
+                F.tabOrder[#F.tabOrder + 1] = g.key
+                prev = tab
+            else
+                tab:Hide()
+            end
+        end
+    end
+    clamp()
+end
+
+---------------------------------------------------------------------------
+-- The search over the page list (UI/Search.lua finds, this shows)
+---------------------------------------------------------------------------
+local function showResults()
+    local searching = #query >= M.SEARCH_MIN
+    nav:SetShown(not searching)
+    results:SetShown(searching)
+    if not searching then
+        noHits:Hide()
+        return
+    end
+    local rows = {}
+    for _, grp in ipairs(ns.Search(query)) do
+        rows[#rows + 1] = { head = grp.label, count = #grp.hits }
+        for _, hit in ipairs(grp.hits) do rows[#rows + 1] = hit end
+    end
+    results.offset = 0
+    results:SetItems(rows)
+    noHits:SetShown(#rows == 0)
+end
+
+local function setQuery(text)
+    text = (tostring(text or ""):match("^%s*(.-)%s*$") or ""):lower()
+    if text == query then return end
+    query = text
+    showResults()
+end
+
+-- Clears the search box (Escape, the clear button, a click on a result).
+function ns.ClearSearch()
+    if not search then return end
+    search:SetText("")
+    search:ClearFocus()
+    setQuery("")
+end
+
+local function buildResult(r)
+    r.bar = W.SectionHeader(r, "", false)
+    r.bar:SetPoint("TOPLEFT", 0, 0)
+    r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
+    r.bar:Hide()
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(M.RES_ICON, M.RES_ICON)
+    r.icon:SetPoint("LEFT", 4, 0)
+    r.label = W.Text(r, T.FONT.text, NAV_W - T.SCROLL_ROOM - M.NAV_LABEL_X + 4)
+    r.label:SetPoint("LEFT", M.NAV_LABEL_X - 4, 0)
+    r:SetScript("OnClick", function(self)
+        local hit = self.item
+        if not hit or hit.head or not hit.run then return end
+        ns.ClearSearch()
+        hit.run()
+    end)
+    r:SetScript("OnEnter", function(self)
+        local hit = self.item
+        if not hit or hit.head then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if hit.item and GameTooltip.SetItemByID then
+            GameTooltip:SetItemByID(hit.item)
+        else
+            GameTooltip:AddLine(hit.text, 1, 0.82, 0)
+            if hit.tip then GameTooltip:AddLine(hit.tip, 0.85, 0.85, 0.85, true) end
+        end
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+local function fillResult(r, hit)
+    if hit.head then
+        r.bar:SetHeaderText(("%s |cffffffff%d|r"):format(hit.head, hit.count))
+        r.bar:Show()
+        r.bg:Hide()
+        r.icon:Hide()
+        r.label:SetText("")
+        return
+    end
+    r.bar:Hide()
+    r.bg:Show()
+    r.icon:SetTexCoord(0, 1, 0, 1)
+    if hit.atlas and W.HasAtlas(hit.atlas) then
+        r.icon:SetAtlas(hit.atlas)
+    else
+        r.icon:SetTexture(hit.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    end
+    r.icon:Show()
+    r.label:SetText(hit.label or hit.text)
 end
 
 -- The client fills the tab's interior with the icon (fillToInterior, through SetChecked); the
@@ -220,13 +396,12 @@ end
 -- the windows need not know this file).
 function ns.UpdateSideTabs()
     if not F then return end
-    local prev, firstShown
+    local prev
     for _, def in ipairs(SIDE_TABS) do
         local tab = sideTabs[def.key]
         if tab then
             local win = _G[def.frame]
             if def.visible() then
-                firstShown = firstShown or tab
                 tab:ClearAllPoints()
                 if prev then
                     tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -M.TAB_GAP)
@@ -243,8 +418,8 @@ function ns.UpdateSideTabs()
         end
     end
     -- the tabs hang outside the frame on the right: keep them on the screen when moving it, but only
-    -- while at least one is shown
-    if F.SetClampRectInsets then F:SetClampRectInsets(0, firstShown and firstShown:GetWidth() or 0, 0, 0) end
+    -- while at least one is shown (and the bottom tabs below it)
+    clamp()
 end
 
 local function navRow()
@@ -268,13 +443,6 @@ local function navRow()
     b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
     b:Hide()
     return b
-end
-
-local function navHeader()
-    local h
-    h = W.SectionHeader(nav, "", true, function(isCollapsed) toggleGroup(h.group, isCollapsed) end)
-    h:Hide()
-    return h
 end
 
 -- A side tab as on the profession window (LargeSideTabButtonTemplate); nil without the template,
@@ -336,11 +504,26 @@ local function build()
     contentInset:SetPoint("TOPLEFT", M.CONTENT_X, -M.TOP)
     contentInset:SetPoint("BOTTOMRIGHT", -M.MARGIN, M.MARGIN)
 
+    -- the search box at the list's top, the pages (or the results) under it
+    search = W.SearchBox(listInset, NAV_W, nil)
+    search:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    search:HookScript("OnTextChanged", function(self) setQuery(self:GetText()) end)
+    search:SetScript("OnEscapePressed", function() ns.ClearSearch() end)
+    if search.clearButton then search.clearButton:HookScript("OnClick", function() ns.ClearSearch() end) end
+    local listTop = M.INNER + T.FIELD_H + M.SEARCH_GAP
     nav = CreateFrame("Frame", nil, listInset)
-    nav:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    nav:SetPoint("TOPLEFT", M.INNER, -listTop)
     nav:SetPoint("BOTTOMRIGHT", -M.INNER, M.INNER)
-    for i = 1, HEAD_MAX do navHeaders[i] = navHeader() end
     for i = 1, NAV_MAX do navButtons[i] = navRow() end
+    results = W.List(listInset, M.RES_ROWS, M.RES_ROW_H, buildResult, fillResult)
+    results:SetPoint("TOPLEFT", M.INNER, -listTop)
+    results:SetWidth(NAV_W - T.SCROLL_ROOM)
+    results:Hide()
+    noHits = W.Text(listInset, T.FONT.hint, NAV_W - 8, true)
+    noHits:SetPoint("TOP", results, "TOP", 0, -T.LAYOUT.EMPTY_Y)
+    noHits:SetJustifyH("CENTER")
+    noHits:SetText(L["Nichts gefunden."])
+    noHits:Hide()
 
     -- 602 x 478, as before: the pages keep their layout
     content = CreateFrame("Frame", nil, contentInset)
@@ -351,10 +534,12 @@ local function build()
         local tab = sideTab(def)
         if tab then sideTabs[def.key] = tab end
     end
+    for _, g in ipairs(ns.PANEL_GROUPS) do bottomTabs[g.key] = bottomTab(g) end
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.pauseBtn, F.viewBtn = bar, statusText, pauseBtn, viewBtn
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
-    F.sideTabs, F.navOrder = sideTabs, {}
+    F.sideTabs, F.navOrder, F.tabs, F.tabOrder = sideTabs, {}, bottomTabs, {}
+    F.search, F.results, F.noHits = search, results, noHits
 end
 
 function ns.CurrentPage() return current end
@@ -370,6 +555,10 @@ function ns.ShowPage(key)
     end
     if not p then return end
     current = p.key
+    -- the tab follows the page; both are remembered for the next open
+    local w = windowState()
+    w.tab = ns.PanelGroup(p)
+    w.pages[w.tab] = current
     for k, frame in pairs(built) do
         if k ~= current then frame:Hide() end
     end
@@ -395,6 +584,8 @@ function ns.Refresh()
     end
     updateHeader()
     updateNav()
+    updateTabs()
+    if #query >= M.SEARCH_MIN then showResults() end
     ns.UpdateSideTabs()
     local frame = built[current]
     if p.refresh and frame then
@@ -403,8 +594,15 @@ function ns.Refresh()
     end
 end
 
+-- The page the window opens with: the open one, else the last of the last tab, else the overview.
+local function startPage()
+    if current then return current end
+    local w = AmisiaDB and AmisiaDB.settings and windowState()
+    return (w and w.tab and tabPage(w.tab)) or "overview"
+end
+
 function ns.ToggleMain()
-    if F and F:IsShown() then F:Hide() else ns.ShowPage(current or "overview") end
+    if F and F:IsShown() then F:Hide() else ns.ShowPage(startPage()) end
 end
 
 -- The old entry point: /amisia export and the minimap called it with the newest session.

@@ -51,4 +51,6 @@ read_globals = {
     "UnitName", "UnitPosition", "UnitRace", "wipe",
     -- the trade helper (Handover.lua)
     "ClickTradeButton", "ClearCursor", "CursorHasItem", "GetGameMessageInfo", "GetTradePlayerItemLink",
+    -- the bottom tabs of the main window and the calendar page's first weekday (2.27.0)
+    "PanelTemplates_SelectTab", "PanelTemplates_DeselectTab", "PanelTemplates_TabResize", "CALENDAR_FIRST_WEEKDAY",
 }

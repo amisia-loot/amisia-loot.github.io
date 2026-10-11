@@ -112,6 +112,9 @@ function Cal.PickTarget(list)
     return any
 end
 
+-- The short weekday (1 Sunday .. 7 Saturday, as date("*t").wday) in the client's language.
+function Cal.WeekdayShort(wday) return L[WEEKDAY[wday] or WEEKDAY[1]] end
+
 -- "Fr 20:00" (the weekday short in the client's language).
 function Cal.When(at)
     if type(at) ~= "number" then return "?" end

@@ -34,12 +34,23 @@ local F = AmisiaFrame
 assert(F and F:IsShown(), "the window opens")
 assert(F.pauseBtn:GetText() == "Pause", F.pauseBtn:GetText())
 assert(F.statusText:GetText():find("Not recording, starts in a raid", 1, true), F.statusText:GetText())
-local nav = {}
-for _, e in ipairs(F.navOrder) do
-    if e.button then nav[#nav + 1] = e.button.label:GetText() end
+-- the page list shows the open tab's pages; the tabs under the window carry the English group names
+local function navText()
+    local nav = {}
+    for _, e in ipairs(F.navOrder) do
+        if e.button then nav[#nav + 1] = e.button.label:GetText() end
+    end
+    return table.concat(nav, ", ")
 end
-nav = table.concat(nav, ", ")
-assert(has(nav, "Overview") and has(nav, "Guild bank") and has(nav, "Settings") and has(nav, "About and commands"), nav)
+assert(has(navText(), "Overview") and has(navText(), "Raid log"), navText())
+local tabs = {}
+for _, k in ipairs(F.tabOrder) do tabs[#tabs + 1] = F.tabs[k].Text:GetText() end
+assert(table.concat(tabs, ",") == "Raid,Gear,Guild,Calendar,Amisia", table.concat(tabs, ","))
+NS.ShowTab("guild")
+assert(has(navText(), "Guild bank"), navText())
+NS.ShowTab("amisia")
+assert(has(navText(), "Settings") and has(navText(), "About and commands"), navText())
+NS.ShowPage("overview")
 NS.SetEnabled(false)
 assert(F.pauseBtn:GetText() == "Resume" and has(F.statusText:GetText(), "Recording paused"), F.statusText:GetText())
 NS.SetEnabled(true)

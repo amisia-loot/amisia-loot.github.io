@@ -849,3 +849,37 @@ Chat: Amisia nimmt 100/99 an. `AmisiaDB.softres` hat Datenmodell 3.
 **Durchgesetzt durch:** `addon/tests/test_softres_code.lua`, `addon/tests/test_roll_watch.lua`,
 `addon/tests/test_softres_code_review.lua`, `addon/tests/test_roll_watch_review.lua`,
 `tools/tests/test_softres_samples.py`, `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow`.
+
+## D-45 Hauptfenster: Reiter unten statt Abschnittsleisten, Suche oben links, Kalender als Reiter
+
+**Datum:** 2026-10-11
+**Entscheidung:** Spec `docs/specs/2026-10-11-fenster-reiter-kalender.md`. Unter dem Hauptfenster
+stehen die Reiter des Spiels für Fenster (`PanelTabButtonTemplate`, wie unter dem Charakterfenster),
+einer je Seitengruppe aus `ns.PANEL_GROUPS`: Raid, Ausrüstung, Gilde, Kalender, Amisia. Ein Reiter ohne
+sichtbare Seite fehlt. Links stehen nur die Seiten des gewählten Reiters, ohne Abschnittsleisten und
+ohne Titelleiste (die aufklappbaren Abschnitte von 2.13 entfallen, `settings.window.collapsed` wird
+gelöscht). Der letzte Reiter und je Reiter die letzte Seite bleiben gemerkt (`settings.window.tab`,
+`pages`); jede Seite, die sich öffnet (Klick, Befehl, Karte), wählt ihren Reiter. Die Seitenreiter
+rechts bleiben. Oben links über der Seitenliste steht ein Suchfeld: ab 2 Zeichen ersetzt die
+Ergebnisliste die Seitenliste, Gruppen "Seiten" (nur sichtbare), "Einstellungen" (Name, Hilfetext,
+Auswahlwerte), "Items" (nur Namen, die der Client schon hat: Amisias Itemnamen und zwischengespeicherte
+Items der Ausrüstungsdaten; keine Frage an den Server; die Ausrüstungsdaten werden erst ab 3 Zeichen
+gebaut), "Spieler" (nur in der Offiziersansicht, aus Raids, Vergaben und Aufstellung), je höchstens 8.
+Escape und das X leeren das Feld. Der Reiter "Kalender" hat die Seite "Kalender": ein Monatsblatt im
+Aussehen des Spielkalenders (seine Bilder `Interface\Calendar\CalendarBackground` und `Highlights`,
+Woche ab dem Wochentag des Spielkalenders), die Termine, die Amisia ohnehin liest (heute bis 14 Tage),
+und die aufgezeichneten Raids; Klick auf einen Tag zeigt dessen Termine und die Teilnehmer wie das
+Fenster "Raid-Kalender" (dieselben Daten, dieselbe Zeile, derselbe Leser nach den Regeln von D-42).
+**Grund:** Nutzer am 2026-10-11 mit Bildschirmfotos eines anderen Addons: gewählt "Reiter unten am
+Fenster", "Monatskalender", "Suchfeld oben links", der Kalender als eigener Reiter im Hauptfenster; das
+Fenster "Raid-Kalender" bleibt. Nicht gewählt: eine Symbolleiste. Die Seitenliste war mit 19 Seiten
+und vier Abschnitten zu lang geworden (Zeilen auf 16 px geschrumpft).
+**Folge:** Eine neue Seite braucht `group` (ihr Reiter); eine neue Gruppe ist ein neuer Reiter und
+passt in die Breite des Fensters (auch englisch). Die Spielersuche zeigt Raidern nichts (D-36). Die
+Item-Suche öffnet keine Item-Seite: die Seite Ausrüstung kennt nur Ansicht und Platz
+(`ns.ShowGear(view, slot)`), darum kommt der Link in die Chatzeile, der Tooltip zeigt das Item. Die
+Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, solange das
+Kalenderfenster des Spiels ein anderes Ereignis zeigt.
+**Durchgesetzt durch:** `addon/tests/test_main_tabs.lua`, `addon/tests/test_search.lua`,
+`addon/tests/test_calendar_page.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
+Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).

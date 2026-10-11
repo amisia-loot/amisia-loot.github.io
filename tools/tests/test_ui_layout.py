@@ -204,7 +204,7 @@ def test_render_and_compare(tmp_path):
                                                                              ('BOTTOMRIGHT', None, 'BOTTOMRIGHT', 0, 0)])))
     path = tmp_path / 'x.png'
     w, h = U.render(s, str(path))
-    assert path.exists() and (w, h) == (400 + 70, 300 + 20)
+    assert path.exists() and (w, h) == (400 + 70, 300 + 50)   # room for the side tabs and the bottom tabs
     with open(tmp_path / 'officer-t.boxes.json', 'w', encoding='utf-8') as fh:
         json.dump(U.boxes(s), fh)
     assert U.compare(str(tmp_path), [s]) == [], 'the same boxes'

@@ -146,74 +146,87 @@ function ns.ResetRaidCalendarPosition()
 end
 
 ---------------------------------------------------------------------------
--- Reading the chosen date
+-- Reading the chosen date (the window and the calendar page each have a reader)
 ---------------------------------------------------------------------------
-local refresh
-local lastRead, pending = 0, false
-local reading            -- { night, at }: a read of this window runs (its answer not yet back)
-local busySince          -- { night, at }: the calendar answered "busy" since then, without a break
-
--- Reads the chosen date's event now (force) or when its last read is older than RELOAD_GAP; the
+-- A reader of the chosen date: opts.shown() whether its view is shown, opts.term() the chosen date
+-- (an entry of ns.SignupTerms()) or nil, opts.refresh() draws the view again. reader.Read(force)
+-- reads the chosen date's event now (force) or when its last read is older than RELOAD_GAP; the
 -- calendar busy with another reader (the lineup page, the probe, a sign-up's calendar entry): once
 -- more a moment later. A date without an event id is read too (Cal.Read finds it by its time and
 -- title; until 2.25.1 it was never read and the line said "Kalender wird gelesen ..." for good).
-local function readNow(force)
-    if not F or not F:IsShown() then return end
-    local t = termNow()
-    if not t then return end
-    local s = RC.State(t.night)
-    if not force and s and s.read and s.id == t.id and time() - s.read < RC.RELOAD_GAP then return end
-    lastRead = GetTime()
-    local night = t.night
-    reading = { night = night, at = GetTime() }
-    RC.Read(t, function(_, why)
-        reading = nil
-        if why == "busy" then
-            if not (busySince and busySince.night == night) then busySince = { night = night, at = GetTime() } end
-            C_Timer.After(RC.BUSY_RETRY, function() readNow(true) end)
-        else
-            busySince = nil
+-- reader.OnChange() reads again after a change in the calendar, at most every RELOAD_GAP seconds;
+-- reader.Status(t) is the line about the read; reader.Reset() forgets a busy calendar (a new date).
+local function Reader(opts)
+    local rd = {}
+    local lastRead, pending = 0, false
+    local reading            -- { night, at }: a read of this view runs (its answer not yet back)
+    local busySince          -- { night, at }: the calendar answered "busy" since then, without a break
+
+    function rd.Read(force)
+        if not opts.shown() then return end
+        local t = opts.term()
+        if not t then return end
+        local s = RC.State(t.night)
+        if not force and s and s.read and s.id == t.id and time() - s.read < RC.RELOAD_GAP then return end
+        lastRead = GetTime()
+        local night = t.night
+        reading = { night = night, at = GetTime() }
+        RC.Read(t, function(_, why)
+            reading = nil
+            if why == "busy" then
+                if not (busySince and busySince.night == night) then busySince = { night = night, at = GetTime() } end
+                C_Timer.After(RC.BUSY_RETRY, function() rd.Read(true) end)
+            else
+                busySince = nil
+            end
+            opts.refresh()
+        end)
+        -- the answer comes later: the line says that the read runs
+        if reading then opts.refresh() end
+    end
+
+    function rd.OnChange()
+        if not opts.shown() or pending then return end
+        pending = true
+        C_Timer.After(math.max(0, RC.RELOAD_GAP - (GetTime() - lastRead)), function()
+            pending = false
+            rd.Read(true)
+        end)
+    end
+
+    function rd.Reset() busySince = nil end
+
+    -- "Kalender gelesen 19:42", the reason of a failed read, or that it is being read. A calendar busy
+    -- with another reader for longer than RC.BUSY_SHOW seconds says so (the read is tried again).
+    function rd.Status(t)
+        if not t then return "" end
+        if not ns.Cal.CanReadInvites() then return L["Nur Anmeldungen aus Amisia (Teilnehmerliste des Kalenders nicht lesbar)."] end
+        local s = RC.State(t.night)
+        if s and s.why == "window" then return L["Kalenderfenster des Spiels schließen, dann liest Amisia die Liste."] end
+        if s and s.why and s.why ~= "busy" then return ns.Cal.Why(s.why) end
+        if s and s.read then return L["Kalender gelesen %s"]:format(date("%H:%M", s.read)) end
+        if busySince and busySince.night == t.night and GetTime() - busySince.at >= RC.BUSY_SHOW then
+            return L["Kalender belegt (Aufstellung, Anmeldung oder Prüfung liest), Amisia versucht es weiter ..."]
         end
-        refresh()
-    end)
-    -- the answer comes later: the line says that the read runs
-    if reading then refresh() end
+        if (reading and reading.night == t.night) or (busySince and busySince.night == t.night) then
+            return L["Kalender wird gelesen ..."]
+        end
+        return L["Kalender noch nicht gelesen."]
+    end
+
+    ns.Listen("CALENDAR_CHANGED", function() rd.OnChange() end)
+    return rd
 end
 
--- A change in the calendar while the window is open: read again, at most every RELOAD_GAP seconds.
-local function onChange()
-    if not F or not F:IsShown() or pending then return end
-    pending = true
-    C_Timer.After(math.max(0, RC.RELOAD_GAP - (GetTime() - lastRead)), function()
-        pending = false
-        readNow(true)
-    end)
-end
-ns.Listen("CALENDAR_CHANGED", onChange)
+local refresh
+local reader = Reader({ shown = function() return F ~= nil and F:IsShown() end, term = termNow,
+    refresh = function() refresh() end })
 
 local function choose(night)
     cur = night
-    busySince = nil
+    reader.Reset()
     refresh()
-    readNow(false)
-end
-
--- "Kalender gelesen 19:42", the reason of a failed read, or that it is being read. A calendar busy
--- with another reader for longer than RC.BUSY_SHOW seconds says so (the read is tried again).
-local function statusText(t)
-    if not t then return "" end
-    if not ns.Cal.CanReadInvites() then return L["Nur Anmeldungen aus Amisia (Teilnehmerliste des Kalenders nicht lesbar)."] end
-    local s = RC.State(t.night)
-    if s and s.why == "window" then return L["Kalenderfenster des Spiels schließen, dann liest Amisia die Liste."] end
-    if s and s.why and s.why ~= "busy" then return ns.Cal.Why(s.why) end
-    if s and s.read then return L["Kalender gelesen %s"]:format(date("%H:%M", s.read)) end
-    if busySince and busySince.night == t.night and GetTime() - busySince.at >= RC.BUSY_SHOW then
-        return L["Kalender belegt (Aufstellung, Anmeldung oder Prüfung liest), Amisia versucht es weiter ..."]
-    end
-    if (reading and reading.night == t.night) or (busySince and busySince.night == t.night) then
-        return L["Kalender wird gelesen ..."]
-    end
-    return L["Kalender noch nicht gelesen."]
+    reader.Read(false)
 end
 
 ---------------------------------------------------------------------------
@@ -303,9 +316,15 @@ end
 local COL = {}
 for _, c in ipairs(R.COLS) do COL[c[1]] = c end
 
-local function buildRow(r)
+-- A participant row (the window's list and the calendar page's): spec = { COLS, CELL_ICON,
+-- ROLE_LETTER_X } of the theme (T.RAIDCAL or T.CALPAGE); the columns r and class are needed, level,
+-- src and note are shown when the spec has them.
+local function buildRow(r, spec)
+    spec = spec or R
+    local col = {}
+    for _, c in ipairs(spec.COLS) do col[c[1]] = c end
     r.cells = {}
-    for _, c in ipairs(R.COLS) do
+    for _, c in ipairs(spec.COLS) do
         if c[1] ~= "class" then
             local fs = W.Text(r, T.FONT.text, c[3])
             fs:SetPoint("LEFT", c[2], 0)
@@ -315,14 +334,14 @@ local function buildRow(r)
     end
     -- the role: the icon, the letter after it
     r.roleIcon = r:CreateTexture(nil, "ARTWORK")
-    r.roleIcon:SetSize(R.CELL_ICON, R.CELL_ICON)
-    r.roleIcon:SetPoint("LEFT", COL.r[2], 0)
+    r.roleIcon:SetSize(spec.CELL_ICON, spec.CELL_ICON)
+    r.roleIcon:SetPoint("LEFT", col.r[2], 0)
     r.cells.r:ClearAllPoints()
-    r.cells.r:SetPoint("LEFT", COL.r[2] + R.ROLE_LETTER_X, 0)
-    r.cells.r:SetWidth(COL.r[3] - R.ROLE_LETTER_X)
+    r.cells.r:SetPoint("LEFT", col.r[2] + spec.ROLE_LETTER_X, 0)
+    r.cells.r:SetWidth(col.r[3] - spec.ROLE_LETTER_X)
     r.classIcon = r:CreateTexture(nil, "ARTWORK")
-    r.classIcon:SetSize(R.CELL_ICON, R.CELL_ICON)
-    r.classIcon:SetPoint("LEFT", COL.class[2], 0)
+    r.classIcon:SetSize(spec.CELL_ICON, spec.CELL_ICON)
+    r.classIcon:SetPoint("LEFT", col.class[2], 0)
     -- a group's section bar fills the row
     r.bar = W.SectionHeader(r, "", false)
     r.bar:SetPoint("TOPLEFT", 0, 0)
@@ -350,9 +369,9 @@ local function fillRow(r, item)
     setRole(r.roleIcon, r.cells.r, e.r, e.q)
     setClassIcon(r.classIcon, e.c)
     r.cells.name:SetText(classColored(e.n, e.c))
-    r.cells.level:SetText(e.lvl and tostring(e.lvl) or "")
-    r.cells.src:SetText(sourceText(e))
-    r.cells.note:SetText(e.w and (GREY .. e.w .. "|r") or "")
+    if r.cells.level then r.cells.level:SetText(e.lvl and tostring(e.lvl) or "") end
+    if r.cells.src then r.cells.src:SetText(sourceText(e)) end
+    if r.cells.note then r.cells.note:SetText(e.w and (GREY .. e.w .. "|r") or "") end
 end
 
 -- A role badge of the head: the role icon, the word and the count of those signed up.
@@ -396,7 +415,7 @@ local function build()
         end,
         onVisibility = function(self)
             if ticker then ticker:Cancel() ticker = nil end
-            if self:IsShown() then ticker = C_Timer.NewTicker(RC.POLL, function() readNow(true) end) end
+            if self:IsShown() then ticker = C_Timer.NewTicker(RC.POLL, function() reader.Read(true) end) end
         end })
     -- a click anywhere on it brings it to the front (the client raises a top-level frame on a click;
     -- this does it for frames that take the click themselves too)
@@ -453,7 +472,7 @@ local function build()
             F.colHeads[c[1]] = fs
         end
     end
-    F.list = W.List(P, R.ROWS, R.ROW_H, buildRow, fillRow)
+    F.list = W.List(P, R.ROWS, R.ROW_H, function(r) buildRow(r, R) end, fillRow)
     F.list:SetWidth(R.LIST_W)
     F.list:SetPoint("TOPLEFT", R.PAD, -R.LIST_Y)
     F.empty = W.Text(P, T.FONT.dim, R.LIST_W - 40, true)
@@ -554,7 +573,7 @@ refresh = function()
     F.datesEmpty:SetText(datesEmpty or "")
     F.datesEmpty:SetShown(datesEmpty ~= nil)
     F.cols:SetShown(t ~= nil and n > 0)
-    F.status:SetText(statusText(t))
+    F.status:SetText(reader.Status(t))
     local rec = t and ns.SignupOf()[t.night]
     F.signup:SetText(rec and L["Ändern ..."] or L["Anmelden ..."])
     W.FitChip(F.signup, R.BUTTON_W)
@@ -568,7 +587,7 @@ function ns.ShowRaidCalendar(night)
     if not F then build() end
     if night and night ~= cur then
         cur = night
-        busySince = nil
+        reader.Reset()
     end
     if F:IsShown() then
         if F.Raise then F:Raise() end
@@ -579,10 +598,10 @@ function ns.ShowRaidCalendar(night)
     if not ns.SignupTerms() then
         ns.SignupLoadTerms(function()
             refresh()
-            readNow(false)
+            reader.Read(false)
         end)
     else
-        readNow(false)
+        reader.Read(false)
     end
     return F
 end
@@ -596,6 +615,12 @@ ns.RegisterSlash("kalender", { en = "calendar", desc = L["Raid-Kalender: die Ter
     end
     ns.ShowRaidCalendar()
 end })
+
+-- What the calendar page (UI/Pages/Calendar.lua) shares with this window: the reader of a chosen
+-- date, the participant row, the own state of a date and its day text, the role icons.
+ns.RaidCalView = { Reader = Reader, BuildRow = buildRow, FillRow = fillRow, Tooltip = tooltip, OwnState = ownState,
+    DayText = dayText, RGB = RGB, CODE_COLOR = CODE_COLOR, GROUP_COLOR = GROUP_COLOR, GROUP_WORD = GROUP_WORD,
+    TYPE_TEXTURE = TYPE_TEXTURE }
 
 -- for the tests
 ns._raidCalUI = { frame = function() return F end }

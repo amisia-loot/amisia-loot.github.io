@@ -50,23 +50,25 @@ end
 ---------------------------------------------------------------------------
 -- Page: { key, label, icon, order, group, officer, expert, available = fn, create = fn(parent) -> frame,
 --         refresh = fn(frame) }. Built the first time it is opened, refreshed only while shown.
--- group names the section of the page list (ns.PANEL_GROUPS); bottom (the old sidebar) is still
--- allowed but no longer read.
+-- group names the page's tab (ns.PANEL_GROUPS); bottom (the old sidebar) is still allowed but no
+-- longer read.
 function ns.RegisterPanel(spec)
     assert(type(spec.key) == "string" and type(spec.create) == "function", "RegisterPanel needs key and create")
     upsert(ns.panels, spec, "key")
 end
 
--- The sections of the page list, top to bottom.
+-- The tabs under the main window, left to right (since 2.27.0, D-45; until then the collapsible
+-- sections of the page list): the page list shows the pages of the chosen tab.
 ns.PANEL_GROUPS = {
     { key = "raid", label = "Raid" },
     { key = "gear", label = L["Ausrüstung"] },
     { key = "guild", label = L["Gilde"] },
+    { key = "calendar", label = L["Kalender"] },
     { key = "amisia", label = "Amisia" },
 }
 
--- The section of a page: its group, else by its order (a page without one or with an unknown one,
--- a test page).
+-- The tab of a page: its group, else by its order (a page without one or with an unknown one, a
+-- test page).
 function ns.PanelGroup(p)
     for _, g in ipairs(ns.PANEL_GROUPS) do
         if g.key == p.group then return p.group end
@@ -195,6 +197,17 @@ function ns.RegisterSettings(section)
 end
 
 function ns.SettingItem(path) return items[path] end
+
+-- Whether a settings item matches a search text (plain, lower case, not empty): by its label, its
+-- tip, its path or the names of its choices. The settings page and the main window's search use it.
+function ns.SettingHits(it, query)
+    local function hit(text)
+        return type(text) == "string" and text:lower():find(query, 1, true) ~= nil
+    end
+    if query == "" or hit(it.label) or hit(it.tip) or hit(it.key) then return true end
+    for _, c in ipairs(it.values or {}) do if hit(c[2]) then return true end end
+    return false
+end
 
 local function stored()
     return AmisiaDB and AmisiaDB.settings

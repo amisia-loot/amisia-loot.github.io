@@ -40,19 +40,39 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-001 Hauptfenster im Forever-Stil
-- Version: 2.13.3
+- Version: 2.27.0
 - Status: gebaut
-- Prüfung: Wenn du `/amisia` eingibst, dann öffnet sich das Amisia-Fenster mit Porträt oben links, goldenem Titel und rotem Schließen-X, links die Seitenliste mit den Abschnitten Raid, Ausrüstung, Gilde und Amisia.
+- Prüfung: Wenn du `/amisia` eingibst, dann öffnet sich das Amisia-Fenster mit Porträt oben links, goldenem Titel und rotem Schließen-X, links oben das Suchfeld und darunter die Seiten des gewählten Reiters, unten am Fenster die Reiter Raid, Ausrüstung, Gilde, Kalender und Amisia.
 - Prüfung: Wenn du eine Seite in der Liste anklickst, dann wechselt das Fenster auf sie; Escape schließt das Fenster.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche die Fenstergröße (%) verschiebst, dann ändert sich die Größe sofort, und "Fensterposition zurücksetzen" holt es in die Mitte.
 - Prüfung: Wenn du die Reiter rechts am Fenster ansiehst (Ausrüstungstabelle, in der Offiziersansicht auch Rolls und Soft-Reserve-Import), dann sitzen die Symbole mit etwas Rand im Reiter, und die Würfel der Rolls sind scharf.
 - Notiz: 2026-10-08 im Spiel: Symbole füllten den Reiter ganz aus, die Würfel (UI-GroupLoot-Dice-Up, 32 px) waren verpixelt; 2.13.3 zieht die Symbole 4 px ein und nimmt INV_Misc_Dice_01.
+- Notiz: 2.27.0: die aufklappbaren Abschnitte der Seitenliste sind durch die Reiter unten ersetzt (F-094, D-45); das Suchfeld ist F-095, die Kalender-Seite F-096.
+
+### F-094 Reiter unten am Hauptfenster
+- Version: 2.27.0
+- Status: gebaut
+- Prüfung: Wenn du `/amisia` öffnest, dann hängen unten am Fenster die Reiter "Raid", "Ausrüstung", "Gilde", "Kalender" und "Amisia" im Stil der Reiter unter dem Charakterfenster; der gewählte ist hell, und links stehen nur seine Seiten (bei "Raid" Übersicht, Raid-Log, Vergaben, Statistik, Soft-Reserves; in der Offiziersansicht auch Raids, Rolls, Punkte).
+- Prüfung: Wenn du auf "Ausrüstung" klickst, dort "Karte" wählst, auf "Raid" und wieder auf "Ausrüstung" klickst, dann öffnet sich wieder "Karte"; nach `/reload` öffnet `/amisia` den Reiter "Ausrüstung" mit "Karte".
+- Prüfung: Wenn du `/amisia einstellungen` eingibst, dann ist der Reiter "Amisia" gewählt und links stehen Einstellungen und "Über und Befehle"; `/amisia statistik` wählt "Raid".
+- Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlt unter "Gilde" die Seite Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
+- Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Die Reiter sind die Vorlage des Spiels (`PanelTabButtonTemplate`); ein Reiter ohne sichtbare Seite fehlt. Gemerkt in `settings.window.tab` und `pages`.
+
+### F-095 Suchfeld oben links im Hauptfenster
+- Version: 2.27.0
+- Status: gebaut
+- Prüfung: Wenn du oben links ins Suchfeld "experten" tippst, dann wird die Seitenliste zur Ergebnisliste mit der Leiste "Einstellungen 1" und dem Eintrag "Expertenmodus"; ein Klick öffnet die Einstellungen mit "Expertenmodus" im Suchfeld der Seite, und das Suchfeld oben links ist wieder leer.
+- Prüfung: Wenn du "ra" tippst, dann stehen unter "Seiten" die passenden Seiten (in der Offiziersansicht "Raids" und "Raid-Log"), unter "Einstellungen" höchstens 8 Einträge und in der Offiziersansicht unter "Spieler" Namen aus deinen Raids; ein Klick auf einen Spieler öffnet die Statistik mit ihm unter der Liste.
+- Prüfung: Wenn du den Namen eines Items tippst, das in deinen Raids fiel (mindestens drei Buchstaben), dann steht es unter "Items"; die Maus darauf zeigt seinen Tooltip, ein Klick setzt den Link in die Chatzeile.
+- Prüfung: Wenn du nur einen Buchstaben tippst, dann bleibt die Seitenliste; bei "qqqxx" steht "Nichts gefunden."; Escape oder das X im Feld leeren es und die Seitenliste kommt zurück.
+- Notiz: DECISIONS D-45. Items nur mit Namen, die der Client schon kennt (keine Frage an den Server); die Spielersuche gibt es nur in der Offiziersansicht (D-36).
 
 ### F-002 Einheitliches Seitengerüst
 - Version: 2.12.0
 - Status: gebaut
 - Prüfung: Wenn du jede Seite der Seitenliste einmal öffnest, dann haben alle denselben Aufbau (Kopfzeile, Filter, Liste, Fußzeile), und kein Text oder Knopf ragt über den Rand oder ist abgeschnitten.
 - Prüfung: Wenn eine Seite nichts zu zeigen hat (z. B. Statistik ohne Raid: "Noch kein Raid aufgezeichnet"), dann steht ein Leerzustand mit Erklärung in der Mitte statt einer leeren Liste.
+- Notiz: Seit 2.27.0 stehen die Seiten unter ihren Reitern (F-094); "jede Seite der Seitenliste" heißt: jeden Reiter durchklicken. Die Kalender-Seite (F-096) ist mit demselben Gerüst gebaut.
 
 ### F-003 Übersicht mit Karten
 - Version: 1.4.0
@@ -441,6 +461,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn das Kalenderfenster des Spiels ein anderes Ereignis zeigt, während der Raid-Kalender offen ist, dann steht unten "Kalenderfenster des Spiels schließen, dann liest Amisia die Liste." und im Kalender ändert sich nichts. Liest gerade die Aufstellung oder eine Kalender-Prüfung, steht nach 8 Sekunden "Kalender belegt (Aufstellung, Anmeldung oder Prüfung liest), Amisia versucht es weiter ..." und danach wieder "Kalender gelesen <Uhrzeit>".
 - Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein anderes Gildenmitglied mit Amisia anmeldet, während du online bist, dann steht es nach wenigen Sekunden in deinem Raid-Kalender mit Rolle und Notiz (auch als Raider).
 - Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil I; DECISIONS D-43 (alle in der Gilde sehen die Liste, Nutzer 2026-10-11; Ebene und Aussehen 2.25.1). Die Daten: Teilnehmerliste des Kalenders (K) und Anmeldungen aus Amisia (A: empfangene AN und die eigenen Charaktere), dieselbe Regel "Welche Angabe gilt" wie die Aufstellung. `/amisia calendar` auf englischen Clients. Fehlen die Rollen- oder Klassensymbole im Spiel, zeigt `/amisia selbsttest` sie unter den Atlanten als fehlend; die Buchstaben T/H/N/F bleiben dann.
+
+### F-096 Kalender-Seite: Monatsblatt im Hauptfenster
+- Version: 2.27.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn du als Vulo Pala im Hauptfenster unten auf "Kalender" klickst, dann zeigt die Seite oben golden den Monat ("Oktober 2026") zwischen zwei Pfeilen, darunter auf der braunroten Leiste "Mo" bis "So" und 6 Reihen Tage auf Pergament; Tage anderer Monate sind dunkler, heute hat einen goldenen Rahmen, und der Tag von Vulo Hunts Raid zeigt "20:00", den Titel und einen Punkt (grau ohne Anmeldung, grün angemeldet, orange vorläufig).
+- Prüfung: Wenn du auf den Tag des Raids klickst, dann stehen rechts der Tag ("Mo 12.10."), "20:00 <Titel>", die Summen "angemeldet N · vorläufig N" und die Teilnehmer wie im Fenster "Raid-Kalender" (Leisten "Angemeldet / Bestätigt", "Vorläufig" ..., Rollen- und Klassensymbol, Name, "K A"); unten "Kalender gelesen <Uhrzeit>" und "Anmelden ..." (nach der Anmeldung "Ändern ..."), das das Fenster "Raid-Anmeldung" öffnet.
+- Prüfung: Wenn du auf einen Tag ohne Termin klickst, dann steht rechts "Kein Termin an diesem Tag." und es gibt keinen Knopf; ein Tag mit aufgezeichnetem Raid zeigt die Zone, rechts "Aufgezeichnet: <Zone>", und ein Klick darauf öffnet den Raid-Log dieses Raids.
+- Prüfung: Wenn du die Pfeile klickst, dann geht es vorwärts nur bis zum Monat, in dem die gelesenen 14 Tage enden, und zurück bis zum Monat deines ersten aufgezeichneten Raids; "Heute" springt zum heutigen Monat.
+- Prüfung: Wenn du als Vulo Hunt (Offizier) dieselbe Seite öffnest, dann steht unten zusätzlich "Zur Aufstellung", das die Aufstellung mit dieser Nacht öffnet; ist das Kalenderfenster des Spiels offen, liest die Seite nicht und sagt "Kalenderfenster des Spiels schließen, dann liest Amisia die Liste.".
+- Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Dieselben Daten, dieselbe Zeile und derselbe Leser wie der Raid-Kalender (F-088), das Fenster bleibt. Woche ab Montag auf einem deutschen Client, ab Sonntag auf einem englischen (wie der Spielkalender). Die Bilder sind die des Spielkalenders (`Interface\Calendar\CalendarBackground`, `Highlights`); fehlen sie im Spiel, bitte melden.
 
 ### F-089 Kalender-Schreibprüfung
 - Version: 2.25.0

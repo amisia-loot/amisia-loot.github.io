@@ -430,120 +430,123 @@ local ct, cb = ML.vspan(MF.content)
 assert(cl == 191 and ct == -69 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
 ML.inside("content", MF.content)
 
--- the sections and their order for a raider, an officer, an expert
+-- the tabs under the window (D-45): one per page group, the page list shows the open tab's pages
 local function navShown()
     local out = {}
-    for _, e in ipairs(MF.navOrder) do
-        out[#out + 1] = e.header and ("#" .. e.header.group) or e.button.key
-    end
+    for _, e in ipairs(MF.navOrder) do out[#out + 1] = e.button.key end
     return table.concat(out, " ")
 end
+local function tabOf(key) return MF.tabs[key] end
 NS.Set("ui.view", "raider")
-NS.Refresh()
+NS.ShowPage("overview")
+assert(table.concat(MF.tabOrder, " ") == "raid gear guild calendar amisia", table.concat(MF.tabOrder, " "))
 -- (2.10: the guild bank page is for everyone: its needs and pledges are for the raiders too)
-assert(navShown() == "#raid overview raidlog awards stats softres #gear gear map quests professions talents #guild bank #amisia settings about", navShown())
+assert(navShown() == "overview raidlog awards stats softres", navShown())
+NS.ShowTab("gear"); assert(navShown() == "gear map quests professions talents", navShown())
+NS.ShowTab("guild"); assert(navShown() == "bank", navShown())
+NS.ShowTab("calendar"); assert(navShown() == "calendar" and NS.CurrentPage() == "calendar", navShown())
+NS.ShowTab("amisia"); assert(navShown() == "settings about", navShown())
 NS.Set("ui.view", "officer")
-NS.Refresh()
+NS.ShowTab("raid")
 -- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there)
-assert(navShown() == "#raid overview raids raidlog rolls awards stats points softres #gear gear map quests professions talents #guild export bank #amisia settings about", navShown())
+assert(navShown() == "overview raids raidlog rolls awards stats points softres", navShown())
+NS.ShowTab("guild"); assert(navShown() == "export bank", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "#raid overview raids raidlog rolls awards stats points softres #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
--- every visible page has a row (officer and expert: all of them); a page past the rows the list has
--- would be dropped without a word, so the test says so
+assert(navShown() == "export bank tools", navShown())
+-- the client's panel tabs under the window: the first 11 px in, 2 px into the frame, the others 3 px
+-- apart; the open page's tab selected (the client's active art), the others not
+local t1, t2 = tabOf("raid"), tabOf("gear")
+for _, k in ipairs(MF.tabOrder) do
+    local t = tabOf(k)
+    assert(t.inherits.PanelTabButtonTemplate and t:IsShown(), k)
+    assert(t._w >= 70 and t._w >= t.Text:GetStringWidth() + 20, "a tab fits its label: " .. k)
+end
+local p1 = t1.points.TOPLEFT
+assert(p1.rel == MF and p1.relPoint == "BOTTOMLEFT" and p1.x == 11 and p1.y == 2, "the first tab under the window's left edge")
+local p2 = t2.points.TOPLEFT
+assert(p2.rel == t1 and p2.relPoint == "TOPRIGHT" and p2.x == 3 and p2.y == 0, "the next 3 px right of it")
+assert(tabOf("guild").selected and not t1.selected and tabOf("guild").LeftActive:IsShown() and not t1.LeftActive:IsShown())
+assert(t1.Text:GetText() == "Raid" and t2.Text:GetText() == "Ausrüstung" and tabOf("calendar").Text:GetText() == "Kalender")
+assert(MF.clampInsets and MF.clampInsets[4] == -30, "the tabs below stay on the screen")
+-- a click on a tab opens its last page; a page opened elsewhere switches the tab
+t2:Click(); assert(NS.CurrentPage() == "gear" and t2.selected, NS.CurrentPage())
+NS.ShowPage("map")
+t1:Click(); assert(NS.CurrentPage() == "raids" or NS.CurrentPage() == "overview", NS.CurrentPage())
+t2:Click(); assert(NS.CurrentPage() == "map", "the tab remembers its last page: " .. NS.CurrentPage())
+assert(AmisiaDB.settings.window.tab == "gear" and AmisiaDB.settings.window.pages.gear == "map")
+NS.ShowPage("settings"); assert(tabOf("amisia").selected and not t2.selected and navShown() == "settings about")
+NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and t1.selected, NS.CurrentPage())
+-- a tab whose group has no visible page is not shown; the next takes its place
+local bank = NS.Panel("bank")
+local keepAvail = bank.available
+NS.Set("ui.view", "raider")
+NS.Set("ui.expert", false)
+bank.available = function() return false end
+NS.Refresh()
+assert(table.concat(MF.tabOrder, " ") == "raid gear calendar amisia" and not tabOf("guild"):IsShown(), table.concat(MF.tabOrder, " "))
+assert(tabOf("calendar").points.TOPLEFT.rel == t2, "no gap for the hidden tab")
+bank.available = keepAvail
+NS.Set("ui.view", "officer")
+NS.Set("ui.expert", true)
+NS.ShowPage("overview")
+-- many pages in one tab: every page keeps its row, the rows get lower and the list still fits its
+-- 454 px under the search box
 local function missingRows()
     local rows, miss = {}, {}
-    for _, e in ipairs(MF.navOrder) do if e.button then rows[e.button.key] = true end end
+    for _, e in ipairs(MF.navOrder) do rows[e.button.key] = true end
     for _, p in ipairs(NS.panels) do
-        if NS.Visible(p) and not rows[p.key] then miss[#miss + 1] = p.key end
+        if NS.Visible(p) and NS.PanelGroup(p) == "raid" and not rows[p.key] then miss[#miss + 1] = p.key end
     end
     return table.concat(miss, ",")
 end
-assert(missingRows() == "", "pages without a row in the page list (more rows needed): " .. missingRows())
--- a 19th page (a mage officer in the expert view has the scrolls page too): every page keeps its row,
--- the rows get lower and the list still fits its 480 px
-NS.RegisterPanel({ key = "extra19", label = "Extra", group = "amisia", order = 999, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+assert(missingRows() == "", missingRows())
+for i = 1, 15 do
+    NS.RegisterPanel({ key = "extra" .. i, label = "Extra", group = "raid", order = 45 + i / 100, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+end
 NS.Refresh()
-assert(missingRows() == "", "19 pages, all with a row: " .. missingRows())
+assert(missingRows() == "", "23 pages, all with a row: " .. missingRows())
 assert(MF.navRowH < 20 and MF.navRowH >= 16, "the rows got lower: " .. tostring(MF.navRowH))
 do
-    local last = MF.navOrder[#MF.navOrder]
-    local fr = last.header or last.button
-    local NL2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
-    local _, bottom = NL2.vspan(fr)
-    assert(-bottom <= 480, "19 pages fit the list: " .. bottom)
+    local last = MF.navOrder[#MF.navOrder].button
+    local NL2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
+    local _, bottom = NL2.vspan(last)
+    assert(-bottom <= 454, "the pages fit the list: " .. bottom)
 end
--- past the 23 rows of the pool (23 rows of 16 fill the list) a page has no row, and the check says so
-for i = 20, 24 do
-    NS.RegisterPanel({ key = "extra" .. i, label = "Extra", group = "amisia", order = 999 + i, create = function(parent) return CreateFrame("Frame", nil, parent) end })
+for i = 1, 15 do
+    for j, p in ipairs(NS.panels) do if p.key == "extra" .. i then table.remove(NS.panels, j) break end end
 end
 NS.Refresh()
-assert(missingRows() == "extra24", "the check sees a page without a row: " .. missingRows())
-for i = 19, 24 do
-    local key = "extra" .. i
-    for j, p in ipairs(NS.panels) do if p.key == key then table.remove(NS.panels, j) break end end
-end
-NS.Refresh()
-assert(missingRows() == "")
-assert(MF.navRowH == 20, "back to 20 high")
--- the labels of the sections
-local labels = {}
-for _, e in ipairs(MF.navOrder) do if e.header then labels[#labels + 1] = e.header.ButtonText:GetText() end end
-assert(table.concat(labels, ",") == "Raid,Ausrüstung,Gilde,Amisia", table.concat(labels, ","))
--- 4 bars and all rows fit the list: headers 25 high, rows 20, 4 px after each section
-local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 480)
+assert(missingRows() == "" and MF.navRowH == 20, "back to 20 high")
+-- the rows packed from the list's top, 20 high, not indented; the list under the search box
+local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
 local parts = {}
 for _, e in ipairs(MF.navOrder) do
-    local fr = e.header or e.button
-    parts[#parts + 1] = fr
-    NL.inside("nav part", fr)
-    if e.header then assert(fr._h == 25) else assert(fr._h == MF.navRowH and MF.navRowH >= 16 and MF.navRowH <= 20 and fr.points.TOPLEFT.x == 8, "rows 16..20 high, 8 indented") end
+    parts[#parts + 1] = e.button
+    NL.inside("nav part", e.button)
+    assert(e.button._h == 20 and e.button.points.TOPLEFT.x == 0, "rows 20 high, not indented")
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
-local nRows = 0
-for _, e in ipairs(MF.navOrder) do if not e.header then nRows = nRows + 1 end end
-assert(lastB == -(4 * 25 + nRows * MF.navRowH + 3 * 4), "packed without gaps but the 4 px after a section: " .. lastB)
-assert(-lastB <= 480, "the list fits its 480 px: " .. lastB)
+assert(lastB == -(#parts * 20), "packed without gaps: " .. lastB)
+assert(MF.nav.points.TOPLEFT.y == -(6 + 20 + 6) and MF.search.points.TOPLEFT.y == -6, "the search box over the list")
+assert(MF.search._w == 164 and MF.search.inherits.SearchBoxTemplate)
 -- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
-local ovRow
-for _, e in ipairs(MF.navOrder) do if e.button and e.button.key == "overview" then ovRow = e.button end end
+local ovRow, raidsRow
+for _, e in ipairs(MF.navOrder) do
+    if e.button.key == "overview" then ovRow = e.button end
+    if e.button.key == "raids" then raidsRow = e.button end
+end
 assert(ovRow.icon._w == 16 and ovRow.icon.points.LEFT.x == 4)
 assert(ovRow.label._w == 130 and ovRow.label.points.LEFT.x == 26)
 assert(ovRow.sel.atlas == "Professions_Recipe_Active" and ovRow.sel:IsShown(), "the shown page glows")
 assert(ovRow.hover.atlas == "Professions_Recipe_Hover" and ovRow.hover.alpha == 0.5)
 -- a click on a row shows its page
-local raidsRow
-for _, e in ipairs(MF.navOrder) do if e.button and e.button.key == "raids" then raidsRow = e.button end end
 raidsRow:Click(); assert(NS.CurrentPage() == "raids" and raidsRow.sel:IsShown() and not ovRow.sel:IsShown())
--- collapsing a section: a click on its bar, the state is kept, the shown page stays open
-local raidHdr
-for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
-raidHdr:Click()
-assert(AmisiaDB.settings.window.collapsed.raid == true, "the state is saved")
-assert(NS.CurrentPage() == "raids", "the shown page stays")
-assert(navShown() == "#raid #gear gear map quests professions talents #guild export bank tools #amisia settings about", navShown())
-raidHdr = nil
-for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
-assert(raidHdr.collapsed == true, "the bar shows the plus")
--- the collapsed section holding the open page names it in grey; cleared when expanded or elsewhere
-do
-    local label = raidHdr.ButtonText:GetText()
-    assert(label:find("^Raid") and label:find("\194\183", 1, true) and label:find(NS.Panel("raids").label, 1, true)
-        and label:find("|cff8f86a3", 1, true), "the collapsed bar names the open page: " .. label)
-    NS.ShowPage("settings")
-    for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
-    assert(not raidHdr.ButtonText:GetText():find("\194\183", 1, true), "no marker when the open page is elsewhere")
-    NS.ShowPage("raids")
-    for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
-    assert(raidHdr.ButtonText:GetText():find("\194\183", 1, true))
-end
--- kept over a refresh and a new build of the list
-NS.Refresh(); assert(navShown():sub(1, 12) == "#raid #gear ", navShown())
-raidHdr:Click()
-assert(not AmisiaDB.settings.window.collapsed.raid and navShown():sub(1, 15) == "#raid overview ", navShown())
-for _, e in ipairs(MF.navOrder) do if e.header and e.header.group == "raid" then raidHdr = e.header end end
-assert(raidHdr.ButtonText:GetText() == "Raid", "expanded: the plain name, " .. tostring(raidHdr.ButtonText:GetText()))
+-- the collapsed sections of before 2.27.0 are dropped
+AmisiaDB.settings.window.collapsed = { raid = true }
+NS.ShowPage("overview")
+assert(AmisiaDB.settings.window.collapsed == nil)
 NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
@@ -831,7 +834,8 @@ for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Lat
 assert(NS.PANEL_GROUPS[2].label == "Ausrüstung")
 -- every page names its section
 for _, p in ipairs(NS.panels) do
-    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "amisia", "a group for " .. p.key)
+    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "calendar" or p.group == "amisia",
+        "a group for " .. p.key)
 end
 
 ---------------------------------------------------------------------------

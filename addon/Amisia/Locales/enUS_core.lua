@@ -394,3 +394,8 @@ L["Lootregeln: %d"] = "Loot rules: %d"
 L["Zusammenfassung"] = "Summary"
 L["Das ist jetzt eingestellt. \"Ändern\" führt zurück zu seinem Schritt; alles steht auch unter Einstellungen."] = "This is set now. \"Change\" goes back to its step; everything is also under Settings."
 L["Ändern##Knopf"] = "Change"
+-- the main window's search (2.27.0)
+L["Nichts gefunden."] = "Nothing found."
+L["Seiten"] = "Pages"
+L["Spieler##Suche"] = "Players"
+L["Öffnet die Statistik dieses Spielers."] = "Opens this player's statistics."

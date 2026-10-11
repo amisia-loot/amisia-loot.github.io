@@ -113,12 +113,9 @@ local function hit(text)
     return type(text) == "string" and text:lower():find(query, 1, true) ~= nil
 end
 
--- An item matches by its label, its tip or the names of its choices; a section by its name.
-local function itemHits(it)
-    if query == "" or hit(it.label) or hit(it.tip) or hit(it.key) then return true end
-    for _, c in ipairs(it.values or {}) do if hit(c[2]) then return true end end
-    return false
-end
+-- An item matches by its label, its tip or the names of its choices (ns.SettingHits, shared with the
+-- main window's search); a section by its name.
+local function itemHits(it) return ns.SettingHits(it, query) end
 
 -- The offset of a placed row or header from the top of the list (W.Column anchors TOPLEFT).
 local function topOf(f)
