@@ -218,8 +218,10 @@ local function bottomTab(g)
     tab.group = g.key
     tab:SetText(g.label)
     if tab.flat then tab.Text:SetText(g.label) end
+    -- a click while the search shows its results clears it: the tab's page list comes back
     tab:SetScript("OnClick", function(self)
         if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
+        ns.ClearSearch()
         ns.ShowTab(self.group)
     end)
     tab:Hide()
@@ -242,8 +244,10 @@ local function clamp()
     F:SetClampRectInsets(0, right, 0, -below)
 end
 
--- Shows the tabs whose group has a visible page, left to right without gaps, the open page's selected.
+-- Shows the tabs whose group has a visible page, left to right without gaps, the open page's selected
+-- (and, while the search shows its results, still clickable: a click brings its page list back).
 local function updateTabs()
+    local searching = #query >= M.SEARCH_MIN
     local open = groupOf(current)
     local prev
     F.tabOrder = {}
@@ -260,6 +264,7 @@ local function updateTabs()
                 tab:Show()
                 sizeTab(tab)
                 selectTab(tab, g.key == open)
+                if searching and g.key == open then tab:SetEnabled(true) end
                 F.tabOrder[#F.tabOrder + 1] = g.key
                 prev = tab
             else
@@ -296,6 +301,7 @@ local function setQuery(text)
     if text == query then return end
     query = text
     showResults()
+    if F and F:IsShown() then updateTabs() end
 end
 
 -- Clears the search box (Escape, the clear button, a click on a result).
@@ -547,7 +553,10 @@ end
 
 function ns.CurrentPage() return current end
 
-function ns.ShowPage(key)
+-- Shows the page key (a page not shown now: the overview, else the first shown). chosen: the player
+-- (or a command) asked for it, so it is remembered as its tab's page; a redirect is not (the page
+-- before it stays the tab's page, and the tab follows what is shown).
+local function showPage(key, chosen)
     if not F then build() end
     local p = ns.Panel(key)
     if not ns.Visible(p) then p = ns.Panel("overview") end
@@ -558,10 +567,10 @@ function ns.ShowPage(key)
     end
     if not p then return end
     current = p.key
-    -- the tab follows the page; both are remembered for the next open
+    -- the tab follows the page; both are remembered for the next open, the page only when asked for
     local w = windowState()
     w.tab = ns.PanelGroup(p)
-    w.pages[w.tab] = current
+    if chosen and p.key == key then w.pages[w.tab] = current end
     for k, frame in pairs(built) do
         if k ~= current then frame:Hide() end
     end
@@ -578,11 +587,13 @@ function ns.ShowPage(key)
     if F:IsShown() then ns.Refresh() else F:Show() end
 end
 
+function ns.ShowPage(key) showPage(key, true) end
+
 function ns.Refresh()
     if not F or not F:IsShown() then return end
     local p = ns.Panel(current)
     if not ns.Visible(p) then
-        ns.ShowPage("overview")
+        showPage("overview", false)
         return
     end
     updateHeader()

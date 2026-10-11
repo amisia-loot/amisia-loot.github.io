@@ -859,13 +859,15 @@ einer je Seitengruppe aus `ns.PANEL_GROUPS`: Raid, Ausrüstung, Gilde, Kalender,
 sichtbare Seite fehlt. Links stehen nur die Seiten des gewählten Reiters, ohne Abschnittsleisten und
 ohne Titelleiste (die aufklappbaren Abschnitte von 2.13 entfallen, `settings.window.collapsed` wird
 gelöscht). Der letzte Reiter und je Reiter die letzte Seite bleiben gemerkt (`settings.window.tab`,
-`pages`); jede Seite, die sich öffnet (Klick, Befehl, Karte), wählt ihren Reiter. Die Seitenreiter
+`pages`); jede Seite, die sich öffnet (Klick, Befehl, Karte), wählt ihren Reiter. Gemerkt wird nur eine
+Seite, die der Spieler oder ein Befehl gewählt hat: fällt die offene Seite auf die Übersicht zurück (Wechsel
+der Ansicht, Seite nicht mehr sichtbar), bleibt die gemerkte Seite des Reiters. Die Seitenreiter
 rechts bleiben. Oben links über der Seitenliste steht ein Suchfeld: ab 2 Zeichen ersetzt die
 Ergebnisliste die Seitenliste, Gruppen "Seiten" (nur sichtbare), "Einstellungen" (Name, Hilfetext,
 Auswahlwerte), "Items" (nur Namen, die der Client schon hat: Amisias Itemnamen und zwischengespeicherte
 Items der Ausrüstungsdaten; keine Frage an den Server; die Ausrüstungsdaten werden erst ab 3 Zeichen
 gebaut), "Spieler" (nur in der Offiziersansicht, aus Raids, Vergaben und Aufstellung), je höchstens 8.
-Escape und das X leeren das Feld. Der Reiter "Kalender" hat die Seite "Kalender": ein Monatsblatt im
+Escape, das X und ein Klick auf einen Reiter (auch den offenen) leeren das Feld. Der Reiter "Kalender" hat die Seite "Kalender": ein Monatsblatt im
 Aussehen des Spielkalenders (seine Bilder `Interface\Calendar\CalendarBackground` und `Highlights`,
 Woche ab dem Wochentag des Spielkalenders), die Termine, die Amisia ohnehin liest (heute bis 14 Tage),
 und die aufgezeichneten Raids; Klick auf einen Tag zeigt dessen Termine und die Teilnehmer wie das
@@ -881,5 +883,5 @@ Item-Suche öffnet keine Item-Seite: die Seite Ausrüstung kennt nur Ansicht und
 Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, solange das
 Kalenderfenster des Spiels ein anderes Ereignis zeigt.
 **Durchgesetzt durch:** `addon/tests/test_main_tabs.lua`, `addon/tests/test_search.lua`,
-`addon/tests/test_calendar_page.lua`, `addon/tests/test_calendar_page_review.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
+`addon/tests/test_calendar_page.lua`, `addon/tests/test_calendar_page_review.lua`, `addon/tests/test_main_tabs_review.lua`, `addon/tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).

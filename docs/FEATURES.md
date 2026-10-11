@@ -53,7 +53,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Version: 2.27.0
 - Status: gebaut
 - Prüfung: Wenn du `/amisia` öffnest, dann hängen unten am Fenster die Reiter "Raid", "Ausrüstung", "Gilde", "Kalender" und "Amisia" im Stil der Reiter unter dem Charakterfenster; der gewählte ist hell, und links stehen nur seine Seiten (bei "Raid" Übersicht, Raid-Log, Vergaben, Statistik, Soft-Reserves; in der Offiziersansicht auch Raids, Rolls, Punkte).
-- Prüfung: Wenn du auf "Ausrüstung" klickst, dort "Karte" wählst, auf "Raid" und wieder auf "Ausrüstung" klickst, dann öffnet sich wieder "Karte"; nach `/reload` öffnet `/amisia` den Reiter "Ausrüstung" mit "Karte".
+- Prüfung: Wenn du auf "Ausrüstung" klickst, dort "Karte" wählst, auf "Raid" und wieder auf "Ausrüstung" klickst, dann öffnet sich wieder "Karte"; nach `/reload` öffnet `/amisia` den Reiter "Ausrüstung" mit "Karte". Fällt eine Seite durch einen Wechsel der Ansicht auf die Übersicht zurück, bleibt die gemerkte Seite des Reiters.
 - Prüfung: Wenn du `/amisia einstellungen` eingibst, dann ist der Reiter "Amisia" gewählt und links stehen Einstellungen und "Über und Befehle"; `/amisia statistik` wählt "Raid".
 - Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlt unter "Gilde" die Seite Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
 - Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Die Reiter sind die Vorlage des Spiels (`PanelTabButtonTemplate`); ein Reiter ohne sichtbare Seite fehlt. Gemerkt in `settings.window.tab` und `pages`.
@@ -64,7 +64,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du oben links ins Suchfeld "experten" tippst, dann wird die Seitenliste zur Ergebnisliste mit der Leiste "Einstellungen 1" und dem Eintrag "Expertenmodus"; ein Klick öffnet die Einstellungen mit "Expertenmodus" im Suchfeld der Seite, und das Suchfeld oben links ist wieder leer.
 - Prüfung: Wenn du "ra" tippst, dann stehen unter "Seiten" die passenden Seiten (in der Offiziersansicht "Raids" und "Raid-Log"), unter "Einstellungen" höchstens 8 Einträge und in der Offiziersansicht unter "Spieler" Namen aus deinen Raids; ein Klick auf einen Spieler öffnet die Statistik mit ihm unter der Liste.
 - Prüfung: Wenn du den Namen eines Items tippst, das in deinen Raids fiel (mindestens drei Buchstaben), dann steht es unter "Items"; die Maus darauf zeigt seinen Tooltip, ein Klick setzt den Link in die Chatzeile.
-- Prüfung: Wenn du nur einen Buchstaben tippst, dann bleibt die Seitenliste; bei "qqqxx" steht "Nichts gefunden."; Escape oder das X im Feld leeren es und die Seitenliste kommt zurück.
+- Prüfung: Wenn du nur einen Buchstaben tippst, dann bleibt die Seitenliste; bei "qqqxx" steht "Nichts gefunden."; Escape oder das X im Feld leeren es und die Seitenliste kommt zurück. Ein Klick auf einen Reiter (auch den gewählten) leert es ebenso und zeigt die Seiten dieses Reiters.
 - Notiz: DECISIONS D-45. Items nur mit Namen, die der Client schon kennt (keine Frage an den Server); die Spielersuche gibt es nur in der Offiziersansicht (D-36).
 
 ### F-002 Einheitliches Seitengerüst
