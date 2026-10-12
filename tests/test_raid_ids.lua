@@ -164,3 +164,61 @@ assert(n == 300, "300 heard: " .. n)
 NS.Set("ui.view", "raider")
 local ok, why = NS.RaidIDsAsk()
 assert(ok == nil and has(why, "nur für Offiziere"))
+
+-- 8. the login's report: every character of the account to the guild, not again within 30 minutes
+-- (a /reload); a new ID or boss: the logged-in character, at most every 5 minutes; a boss kill asks
+-- the client after the fight
+NS.Set("ui.view", "officer")
+STUB.player, STUB.class, STUB.level = "Vulo Hunt", "HUNTER", 60
+SAVED = {}
+AmisiaDB.raidcheck.sent = nil
+STUB.addon = {}
+local function ivs(who)
+    local k = 0
+    for _, m in ipairs(STUB.addon) do
+        if m.text:find("^1IV\t") and (not who or m.text:find("^1IV\t" .. who .. "\t")) then k = k + 1 end
+    end
+    return k
+end
+NS.RaidIDsLogin()
+STUB.tick(5)
+local mine = 0
+for _ in pairs(AmisiaDB.raidcheck.own) do mine = mine + 1 end
+assert(ivs() == mine and mine == 12, "every character of the account: " .. ivs())
+assert(AmisiaDB.raidcheck.sent ~= nil)
+NS.RaidIDsLogin()
+STUB.tick(5)
+assert(ivs() == mine, "not again within 30 minutes")
+local mc = { unpack(MC) }
+SAVED = { mc }
+RequestRaidInfo()
+STUB.tick(1)
+assert(ivs("Vulo Hunt") == 2, "a new ID goes out")
+local text = STUB.addon[#STUB.addon].text
+assert(text:find("^1IV\tVulo Hunt\tHUNTER\t60\t409:9:%d+:4/10$"), text)
+mc[12] = 5
+RequestRaidInfo()
+STUB.tick(1)
+assert(ivs("Vulo Hunt") == 2, "the next boss waits (5 minutes)")
+STUB.tick(300)
+assert(ivs("Vulo Hunt") == 3 and STUB.addon[#STUB.addon].text:find(":5/10$"), "then it goes")
+RequestRaidInfo()
+STUB.tick(1)
+assert(ivs("Vulo Hunt") == 3, "no change, nothing sent")
+-- a boss kill in combat: the client is asked after the fight
+asked = 0
+STUB.combat = true
+STUB.fire("BOSS_KILL", 663, "Lucifron")
+STUB.tick(6)
+assert(asked == 0, "not in combat")
+STUB.combat = false
+STUB.fire("PLAYER_REGEN_ENABLED")
+STUB.tick(1)
+assert(asked == 1, "after the fight")
+-- raidcheck.lockouts off: nothing sent
+NS.Set("raidcheck.lockouts", false)
+AmisiaDB.raidcheck.sent = nil
+NS.RaidIDsLogin()
+STUB.tick(5)
+assert(ivs("Vulo Hunt") == 3, "off: nothing")
+NS.Set("raidcheck.lockouts", true)

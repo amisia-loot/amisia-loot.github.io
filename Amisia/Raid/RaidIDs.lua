@@ -35,6 +35,7 @@ local PER_SENDER = 12        -- characters one sender may report
 local SELF_WINS = 7 * 86400  -- a character's own report is not replaced by another sender's for this long
 local AHEAD = 31 * 86400     -- a reset further ahead than this drops the whole message
 local NAMES_MAX = 100
+local RESEND_EVERY = 1800    -- the login's report at most this often (a /reload sends nothing new)
 
 local DB
 local loginDone = false
@@ -88,7 +89,7 @@ end
 
 ---------------------------------------------------------------------------
 -- Saved: AmisiaDB.raidcheck = { v = 1, own = { [char] = { at, c, l, ids } }, heard = { [char] = { by,
--- at, c, l, ids } }, names = { [instance] = name } }
+-- at, c, l, ids } }, names = { [instance] = name }, sent = epoch of the last login report }
 ---------------------------------------------------------------------------
 -- IDs past their reset go; own characters after 60 days without a login, the 12 newest; heard ones
 -- after 30 days, the 300 newest; the instance names 100 at most.
@@ -121,7 +122,8 @@ function ns.RaidIDsLoaded(root)
             names[m], n = name, n + 1
         end
     end
-    root.raidcheck = { v = 1, own = own, heard = heard, names = names }
+    local sent = posNum(s.sent)
+    root.raidcheck = { v = 1, own = own, heard = heard, names = names, sent = (sent and sent > 0 and sent <= t + 86400) and sent or nil }
     DB = root
 end
 
@@ -255,25 +257,32 @@ local function ask()
     if type(f) == "function" then pcall(f) end
 end
 
+-- Runs fn now, or once after the fight (one waiting call per fn).
+local waiting, waitFrame = {}, nil
 local function afterCombat(fn)
     if not InCombatLockdown() then return fn() end
-    local fr = CreateFrame("Frame")
-    fr:RegisterEvent("PLAYER_REGEN_ENABLED")
-    fr:SetScript("OnEvent", function(self)
-        self:UnregisterAllEvents()
-        fn()
-    end)
+    waiting[fn] = true
+    if not waitFrame then
+        waitFrame = CreateFrame("Frame")
+        waitFrame:SetScript("OnEvent", function(self)
+            self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local list = waiting
+            waiting = {}
+            for f in pairs(list) do f() end
+        end)
+    end
+    waitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
-ns.OnEvent("UPDATE_INSTANCE_INFO", function()
-    afterCombat(function()
-        local changed = ns.RaidIDsReadOwn()
-        if changed and loginDone then reportNew() end
-    end)
-end)
+local function readAndReport()
+    local changed = ns.RaidIDsReadOwn()
+    if changed and loginDone then reportNew() end
+end
+ns.OnEvent("UPDATE_INSTANCE_INFO", function() afterCombat(readAndReport) end)
 
 -- A boss died: after the fight the client is asked for the IDs (UPDATE_INSTANCE_INFO follows).
 local function bossDied() C_Timer.After(5, function() afterCombat(ask) end) end
+local function askNow() afterCombat(ask) end
 ns.OnEvent("BOSS_KILL", bossDied)
 ns.OnEvent("ENCOUNTER_END", function(_, _, _, _, success)
     if ns.Plain(success) == 1 then bossDied() end
@@ -289,19 +298,25 @@ local loginSeen = false
 ns.OnEvent("PLAYER_LOGIN", function()
     if loginSeen then return end
     loginSeen = true
-    C_Timer.After(5, function() afterCombat(ask) end)
+    C_Timer.After(5, askNow)
     C_Timer.After(LOGIN_AFTER + spread(LOGIN_SPREAD), function()
-        afterCombat(function()
-            ask()
-            -- the answer of the client comes as UPDATE_INSTANCE_INFO; the report a moment later
-            C_Timer.After(3, function()
-                loginDone = true
-                ns.RaidIDsReadOwn()
-                ns.RaidIDsSendAll("GUILD", nil, { low = true, ttl = 120 })
-            end)
-        end)
+        afterCombat(ns.RaidIDsLogin)
     end)
 end)
+
+-- The login's report: the IDs asked for again, then every character of the account to the guild
+-- (low priority), not within 30 minutes of the last one (a /reload sends nothing new).
+function ns.RaidIDsLogin()
+    ask()
+    -- the client answers with UPDATE_INSTANCE_INFO; the report a moment later
+    C_Timer.After(3, function()
+        loginDone = true
+        ns.RaidIDsReadOwn()
+        local st = DB and DB.raidcheck
+        if not st or (st.sent and now() - st.sent < RESEND_EVERY) then return end
+        if ns.RaidIDsSendAll("GUILD", nil, { low = true, ttl = 120 }) > 0 then st.sent = now() end
+    end)
+end
 
 ---------------------------------------------------------------------------
 -- The officer: asking and what was heard
@@ -564,4 +579,5 @@ end
 
 -- for the tests
 ns._raidids = { reset = function() loginDone, lastNew, newPending, lastAsk, answered, chosen = false, -1e9, false, -1e9, {}, nil end,
+                reportNew = function() reportNew() end,
                 login = function() loginDone = true end, PER_SENDER = PER_SENDER, HEARD_MAX = HEARD_MAX }

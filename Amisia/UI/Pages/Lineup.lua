@@ -6,7 +6,10 @@
 -- the raid type chosen, "Übernehmen" reads its invite list into the event's night, D-42). Each row
 -- carries the marks of its sources (L list, K calendar, A Amisia) and the valid status; while the
 -- page is open a change in the calendar reads the night's event again (at most every 5 s). The
--- logic lives in Raid/Lineup.lua and Raid/Calendar.lua; this page only shows it.
+-- logic lives in Raid/Lineup.lua and Raid/Calendar.lua; this page only shows it. With raid IDs known
+-- (Raid/RaidIDs.lua, F-099) the match view marks each name "ID" for the instance chosen beside the
+-- views: green free, red locked, grey unknown; its tooltip names the bosses, the reset and the free
+-- alts of the player's main.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -24,8 +27,9 @@ local SIDE_COLS = { { "r", 4, 18 }, { "name", 24, 170 }, { "info", 198, 84 } }
 -- the match view: rows of 22 from the column heads to the footer (15)
 local MATCH_ROWS, MATCH_ROW_H = 15, 22
 local MATCH_COLS = { { "r", 6, 26 }, { "src", 34, 30 }, { "name", 66, 148 }, { "state", 216, 100 }, { "level", 318, 30 },
-                     { "online", 352, 48 }, { "act", 402, 188 } }
-local ACT_X, MAX_CHIPS, CHIP_MAX_W = 402, 3, 90
+                     { "online", 352, 48 }, { "id", 402, 20 }, { "act", 424, 166 } }
+local ACT_X, MAX_CHIPS, CHIP_MAX_W = 424, 3, 90
+local ALT_TEXT_MAX = 90    -- the alt's text before its chip "tauschen"
 -- the calendar view: one row per guild event
 local CAL_ROWS, CAL_ROW_H = 15, 22
 local CAL_COLS = { { "when", 6, 120 }, { "title", 130, 230 }, { "kind", 364, 90 }, { "own", 458, 130 } }
@@ -207,6 +211,21 @@ local function tooltip(owner, e)
     local hint = listHint(e)
     if hint then GameTooltip:AddLine(hint, 0.85, 0.85, 0.85) end
     if e.k then GameTooltip:AddLine(L["Festgehalten: \"Automatisch einteilen\" bewegt diesen Spieler nicht."], 0.85, 0.85, 0.85, true) end
+    -- the raid ID of the chosen instance (F-099)
+    local m = page and page.raidId
+    if m and ns.RaidIDOf then
+        local state, x = ns.RaidIDOf(e.n, m)
+        local where = ns.RaidIDsName(m)
+        if state == "locked" then
+            GameTooltip:AddLine(L["Raid-ID %s: gesperrt (%s)"]:format(where, ns.RaidIDText(x)), 0.88, 0.34, 0.29, true)
+        elseif state == "free" then
+            GameTooltip:AddLine(L["Raid-ID %s: frei"]:format(where), 0.4, 0.85, 0.5, true)
+        else
+            GameTooltip:AddLine(L["Raid-ID %s: unbekannt"]:format(where), 0.6, 0.6, 0.6, true)
+        end
+        local alts = ns.RaidIDFreeAlts(e.n, m)
+        if #alts > 0 then GameTooltip:AddLine(L["Freie Twinks: %s"]:format(table.concat(alts, ", ")), 1, 1, 1, true) end
+    end
     if e.m then GameTooltip:AddLine(L["Vielleicht"], 0.85, 0.85, 0.85) end
     if e.v then GameTooltip:AddLine(L["Überzählig: kein Platz mehr frei."], 0.85, 0.85, 0.85, true) end
     if view == "planner" then GameTooltip:AddLine(L["Klick: wählen. Rechtsklick: Rolle, Ersatz, Festhalten, Entfernen."], 0.6, 0.6, 0.6, true) end
@@ -444,6 +463,13 @@ local function fillMatch(row, it)
     local top = type(GetMaxPlayerLevel) == "function" and tonumber(GetMaxPlayerLevel()) or nil
     row.level:SetText(p and p.level and ((top and p.level < top) and (ORANGE .. p.level .. "|r") or tostring(p.level)) or "")
     row.online:SetText(p and (p.online and (GREEN .. L["online"] .. "|r") or (GREY .. L["offline"] .. "|r")) or "")
+    local m = page.raidId
+    if m and ns.RaidIDOf then
+        local state = ns.RaidIDOf(e.n, m)
+        row.id:SetText((state == "locked" and RED or state == "free" and GREEN or GREY) .. L["ID##Raid"] .. "|r")
+    else
+        row.id:SetText("")
+    end
     row.act:SetText("")
     if e.a then
         -- nothing to do but the list's other word
@@ -466,7 +492,7 @@ local function fillMatch(row, it)
         row.act:SetText(L["Twink online: %s"]:format(it.alt))
         local b = chip(row, 1, L["tauschen"], 70)
         b.alt = it.alt
-        placeChips(row, ACT_X + math.min(110, row.act:GetStringWidth() + 6))
+        placeChips(row, ACT_X + math.min(ALT_TEXT_MAX, row.act:GetStringWidth() + 6))
     elseif listHint(e) then
         row.act:SetText(listHint(e))
     end
@@ -640,6 +666,13 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             planner = W.Chip(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
         }
         for _, c in pairs(f.views) do W.FitChip(c, 70) end
+        -- the instance of the "ID" marks (raid IDs, F-099); shown when any ID is known
+        f.raidIdPick = W.Picker(f, 150, function(v)
+            if ns.RaidIDsChoose then ns.RaidIDsChoose(v ~= 0 and v or nil) end
+            f.raidIdOff = v == 0
+            ns.Refresh()
+        end)
+        W.Tooltip(f.raidIdPick, L["Raid-ID"], L["Für diese Instanz trägt jeder Name ein \"ID\": grün frei, rot gesperrt, grau unbekannt. Der Tooltip nennt Bosse, Reset und die freien Twinks."])
         f.rematch = W.Button(f, L["Neu abgleichen"], 120, function()
             local line = ns.LineupRematch(curNight())
             if line then ns.msg(line) end
@@ -677,6 +710,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         mheads.level:SetText(L["Stufe"])
         mheads.level:SetJustifyH("RIGHT")
         mheads.online:SetText(L["Status"])
+        mheads.id:SetText(L["ID##Raid"])
         f.mlist = f.match:List(MATCH_ROWS, MATCH_ROW_H, buildMatch, fillMatch)
         -- the planner
         f.plan = W.Page(f, { view = true, top = top })
@@ -787,7 +821,15 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.calTake:SetEnabled(calendar and calChosen() ~= nil)
         show(f.views.match, not other)
         show(f.views.planner, not other)
-        f:Place(4, { f.views.match, f.views.planner }, { f.copy, f.rematch, f.bench, f.cancel, f.take, f.calTake }, { shown = true })
+        -- the raid ID marks: the instances somebody known holds an ID for
+        local insts = ns.RaidIDsInstances and ns.RaidIDsInstances() or {}
+        local idValues = { { value = 0, text = L["Raid-ID: aus"] } }
+        for _, x in ipairs(insts) do idValues[#idValues + 1] = { value = x.m, text = L["ID: %s"]:format(x.name) } end
+        f.raidIdPick:SetValues(idValues)
+        f.raidId = (#insts > 0 and not f.raidIdOff) and ns.RaidIDsChosen() or nil
+        f.raidIdPick:SetValue(f.raidId or 0)
+        show(f.raidIdPick, not other and has and #insts > 0)
+        f:Place(4, { f.views.match, f.views.planner, f.raidIdPick }, { f.copy, f.rematch, f.bench, f.cancel, f.take, f.calTake }, { shown = true })
         show(f.paste, paste)
         show(f.match, shown == "match" and has)
         show(f.plan, shown == "planner" and has)
@@ -844,6 +886,10 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
     end }
 
 ns.Listen("LINEUP", function()
+    if ns.CurrentPage and ns.CurrentPage() == "lineup" then ns.Refresh() end
+end)
+-- raid IDs heard or read (F-099): the "ID" marks
+ns.Listen("RAIDIDS", function()
     if ns.CurrentPage and ns.CurrentPage() == "lineup" then ns.Refresh() end
 end)
 

@@ -223,6 +223,51 @@ function S.lineupCalendar()
     NS.LineupSignup(night, "Lea Morgen", { s = "A", r = "R", c = "MAGE", t = math.floor(STUB.now), w = "Feuer" }, false)
 end
 
+-- The raid check (Raid/RaidCheck.lua): the scene's raid with buffs (a flask, elixirs, food, class
+-- buffs; one raider out of sight with an own report, one without anything), the own reports of
+-- three raiders (durability red, orange, fine; empty and unenchanted slots; free points), and raid
+-- IDs of the account and of the guild (Molten Core: locked, free, heard from another).
+local raidCheckDone
+function S.raidCheck()
+    S.lineup()
+    if raidCheckDone then return end
+    raidCheckDone = true
+    local function aura(id, dur) return { name = "Buff " .. id, spellId = id, duration = dur, expirationTime = GetTime() + dur - 300 } end
+    local auras = {
+        raid1 = { aura(17626, 7200), aura(19705, 900), aura(10938, 1800), aura(10157, 1800) },
+        raid2 = { aura(17538, 3600), aura(11390, 3600), aura(19705, 900), aura(10938, 1800) },
+        raid3 = { aura(10938, 1800), aura(10157, 1800) },
+        raid4 = { aura(17627, 7200), aura(10938, 1800) },
+        raid6 = { aura(17626, 7200), aura(19705, 900), aura(10938, 1800), aura(10157, 1800) },
+    }
+    auras.player = auras.raid1
+    _G.C_UnitAuras = { GetAuraDataByIndex = function(unit, i) local l = auras[unit] return l and l[i] end }
+    _G.UnitIsVisible = function(u) return u ~= "raid5" end
+    STUB.playerRaidIndex = 1
+    local answers = NS._raidcheck.answers()
+    local t = math.floor(STUB.now)
+    answers["fraktur"] = { name = "Fraktur", at = t - 120, dur = 24, below = 2, ilvl = 61.3, empty = {}, unench = { 9, 8 }, free = 0, heard = true,
+                           cons = { elixirs = { {}, {} }, food = {}, have = {} } }
+    answers["chorf"] = { name = "Chorf", at = t - 40, dur = 46, below = 0, ilvl = 58.1, empty = { 18 }, unench = {}, free = 2, heard = true,
+                         cons = { elixirs = {}, have = {} } }
+    answers["bobbington"] = { name = "Bobbington", at = t - 300, dur = 88, below = 0, ilvl = 60.4, empty = {}, unench = { 15 }, free = 0, heard = true,
+                              cons = { flask = {}, elixirs = {}, food = {}, have = {} } }
+    local st = AmisiaDB.raidcheck
+    local r = t + 3 * 86400
+    st.names[409] = "Geschmolzener Kern"
+    st.names[249] = "Onyxias Hort"
+    st.own["Vuloo"] = { at = t, c = "PRIEST", l = 24, ids = {} }
+    st.own["Vulo Pala"] = { at = t - 3600, c = "PALADIN", l = 52, ids = { { m = 409, d = 9, r = r, k = 4, t = 10 } } }
+    st.heard["Vulo Hunt"] = { by = "Vulo Hunt", at = t - 600, c = "HUNTER", l = 60, ids = { { m = 409, d = 9, r = r, k = 10, t = 10 },
+                                                                                          { m = 249, d = 9, r = r, k = 1, t = 1 } } }
+    st.heard["Bob Eisherz"] = { by = "Bob Eisherz", at = t - 900, c = "WARRIOR", l = 60, ids = {} }
+    st.heard["Grimm Felsfaust"] = { by = "Bob Eisherz", at = t - 900, c = "WARRIOR", l = 60, ids = { { m = 409, d = 9, r = r, k = 2, t = 10 } } }
+    st.heard["Mara Quell"] = { by = "Mara Quell", at = t - 60, c = "SHAMAN", l = 60, ids = {} }
+    NS.ImportSiteText("#AMISIA-ALTS 1 forever 2026-10-12\nA Vulo_Pala Vulo_Hunt\nA Grimm_Felsfaust Bob_Eisherz\n#END")
+    NS.RaidIDsChoose(409)
+    NS.Set("raidcheck.chat", true)
+end
+
 -- A priest build with every talent state: full (gold frame, glow), partly learned, reachable,
 -- locked, met and unmet prerequisite lines.
 function S.priestPlan()
@@ -273,6 +318,11 @@ S.STATES = {
         S.lineupCalendar()
         NS.ShowLineup("planner", NS.Cal.Events()[1].night)
     end },
+    -- the raid check: buffs, gear, raid IDs; the lineup with the "ID" marks of Molten Core
+    { page = "raidcheck", name = "raidcheck-buffs", open = function() S.raidCheck(); NS.ShowRaidCheck("buffs") end },
+    { page = "raidcheck", name = "raidcheck-gear", open = function() S.raidCheck(); NS.ShowRaidCheck("gear") end },
+    { page = "raidcheck", name = "raidcheck-ids", open = function() S.raidCheck(); NS.ShowRaidCheck("ids") end },
+    { page = "lineup", name = "lineup-raidids", open = function() S.raidCheck(); NS.ShowLineup("match", NS.LineupTonight()) end },
     -- the card "Raid-Anmeldung" with the own sign-up for the first date
     { page = "overview", name = "overview-signup", open = function()
         S.calendar()
