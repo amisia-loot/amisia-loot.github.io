@@ -18,9 +18,9 @@ python3 tools/build.py errors [--sv FILE] [--all]
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
-  `build_talents.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
+  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
   that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. `--wago` is the
-  folder of the client tables (default `~/addons/_wago`); professions and talents are skipped with a
+  folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
   `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
@@ -149,7 +149,7 @@ them in dependency order; `build.py check` fails when a file is missing from it.
 
 ### Lazy data
 
-The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`, `ScanDone`)
+The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
@@ -703,6 +703,23 @@ whose use spell raises the skill, Study (bundle of scrolls) and Research. From A
 library books with their librarians (Stormwind, Undercity) and the Friend of the Library quests.
 `--no-att` builds without sources, `--refresh-att` updates the cache first. `build.py data` runs it
 after the talents (skipped without the tables).
+
+## build_raidcheck.py
+
+Builds `Amisia/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
+`Raid/RaidCheck.lua`): which buff is a flask, an elixir or food and which spells are the class
+buffs, from the client tables only (`--wago`, default `~/addons/_wago`; Item, ItemEffect,
+ItemXItemEffect, SpellEffect, SpellMisc, SpellDuration, SpellName; optional SpellEquippedItems with
+SkillLineAbility). Flasks: the use spells of consumables of subclass 3. Elixirs: subclass 2, only an
+aura of 10 minutes or more. Food: subclass 5, the auras of 10 minutes or more the use spell triggers
+(EffectTriggerSpell, two steps), and every spell named "Well Fed". Class buffs: a short list of
+English names in the builder, every rank by SpellName, each with the class that gives it (Divine
+Spirit marked as a talent: counted only when someone in the raid carries it). Enchanted slots: from
+SpellEquippedItems of the enchanting recipes (skill line 333, effect 53), head, shoulders and legs
+never; without that table (not exported before 2.29.0: `tools/export_db2.ps1 -Tables
+SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, shield, and a note.
+`build.py data` runs it after the mage scrolls (skipped without the tables). Tests:
+`tools/tests/test_build_raidcheck.py` on hand-made fixture CSVs (`tools/tests/fixtures/wago_raidcheck`).
 
 ## make_icons.py
 

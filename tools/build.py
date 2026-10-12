@@ -134,6 +134,8 @@ def version_key(v):
 # the client tables tools/build_magescrolls.py needs (its REQUIRED; kept here so build.py imports no builder)
 MAGESCROLL_TABLES = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spell', 'SpellName', 'SpellMisc', 'SpellEffect',
                      'ItemEffect', 'ItemXItemEffect']
+# the client tables tools/build_raidcheck.py needs (its REQUIRED)
+RAIDCHECK_TABLES = ['Item', 'ItemEffect', 'ItemXItemEffect', 'SpellEffect', 'SpellMisc', 'SpellDuration', 'SpellName']
 
 
 def data_steps(sv=None, wago=WAGO, refresh_att=False):
@@ -154,6 +156,8 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('talents', 'build_talents.py', ['--wago', wago], 'talents', 'skip'),
         # after the gear build's --refresh-att: the library books and world drops of the AllTheThings cache
         ('mage scrolls', 'build_magescrolls.py', ['--wago', wago], MAGESCROLL_TABLES, 'skip'),
+        # the raid check's flasks, elixirs, food and class buffs (SpellEquippedItems optional)
+        ('raid check', 'build_raidcheck.py', ['--wago', wago], RAIDCHECK_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),
         ('bis', 'build_bis.py', ['--wago', wago] + sv_args, None, None),
     ]

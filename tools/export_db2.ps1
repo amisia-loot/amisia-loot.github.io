@@ -105,7 +105,10 @@ $OptionalTables = @(
     # tools/build_professions.py: recipe -> profession, reagents, profession names
     'SkillLineAbility', 'SpellReagents', 'SkillLine',
     # tools/build_dungeonart.py: the loading screen of a dungeon
-    'LoadingScreens'
+    'LoadingScreens',
+    # tools/build_raidcheck.py: the slots the enchanting recipes target (with SkillLineAbility above);
+    # without it the raid check counts the fixed list of slots
+    'SpellEquippedItems'
 )
 # The talent trees (tools/build_talents.py); a miss is only a warning like the optional ones.
 $TalentTables = @(

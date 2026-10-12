@@ -68,6 +68,7 @@ Data\TalentData.lua [AllowLoadGameType camelot]
 Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
 Data\ScanDone.lua [AllowLoadGameType camelot]
+Data\RaidCheckData.lua [AllowLoadGameType camelot]
 Gear\Gear.lua
 Gear\GearFrame.lua
 Gear\Bis.lua

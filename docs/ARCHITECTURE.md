@@ -91,6 +91,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/MageScrollData.lua` | generated (`build_magescrolls.py`), lazy | - | LazyData |
 | `Data/DungeonArt.lua` | generated (`build_dungeonart.py`) | - | - |
 | `Data/ScanDone.lua` | generated (`build_scan_archive.py`), lazy `SCAN_DONE`: what `tools/scan_archive.json` holds | - | LazyData |
+| `Data/RaidCheckData.lua` | generated (`build_raidcheck.py`), lazy `RAIDCHECK`: flasks, elixirs, food ("Well Fed") as buff spell ids, the class buff groups with their class, the enchanted slots | - | LazyData |
 | `Gear/Gear.lua` | Gear planner core: scoring with own weights, best items per level range | `gear` (stats cache) | LazyData, Data/BisData, Data/GearWeights, Bis |
 | `Gear/GearFrame.lua` | Gear table window (`/amisia gear`) | - | Bis, Gear, Widgets |
 | `Gear/Bis.lua` | Best items for the own character, wishes, `ns.UpgradeOf` | `bis` | Gear, Awards, Map, Chat |
@@ -447,7 +448,7 @@ table, the roll window, the talent window and the raid calendar window.
 
 | Command | Does |
 |---|---|
-| `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
+| `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
 | `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version, check (TOC restored on failure), `Amisia-Website/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
