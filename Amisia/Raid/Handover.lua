@@ -876,12 +876,6 @@ ns.OnEvent("TRADE_CLOSED", function()
     end)
 end)
 
--- For tests and the snapshot scene: the helper window after a refresh, the open trade.
-function ns.HandoverHelper()
-    if refreshHelper then refreshHelper() end
-    return helper
-end
-
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------

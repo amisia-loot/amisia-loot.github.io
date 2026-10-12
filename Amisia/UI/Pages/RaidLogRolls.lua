@@ -14,7 +14,6 @@ local ORDER = { N = 1, O = 2, T = 3, G = 4, D = 5, P = 6 }
 local V
 local source = "raid"   -- "raid" (the chosen raid) or "runs" (the dungeon runs); kept until logout
 local chosenEntry       -- the roll in the detail area
-local nameMissing = false
 
 local R = {}
 ns.RaidLogRolls = R
@@ -29,7 +28,6 @@ local function itemText(id)
         if ok then name, q = ns.Plain(n), ns.Plain(quality) end
     end
     if type(name) ~= "string" then
-        nameMissing = true
         name = ns.ItemName and ns.ItemName(id) or nil
     end
     return ("|c%s%s|r"):format(QUALITY[tonumber(q) or 1] or QUALITY[1], name or ("Item " .. tostring(id)))
@@ -170,7 +168,6 @@ end
 function R.Refresh(view, s)
     V = view
     V.source:SetValue(source)
-    nameMissing = false
     local list = items(s)
     local found
     for _, x in ipairs(list) do
@@ -202,5 +199,3 @@ function R.Refresh(view, s)
     V.title:SetText(found and (itemText(found.e.item) .. GREY .. "  " .. hm(found.e.t) .. "|r") or "")
     V.detail:SetText(n > 0 and detail(found) or "")
 end
-
-function R.NameMissing() return nameMissing end

@@ -31,7 +31,6 @@ local READ_FOR = 300          -- seconds a history drop is read again at most
 local STATE = { [0] = "N", [1] = "O", [2] = "T", [3] = "G", [5] = "P" }
 local CHOICE_TEXT = { N = ns.N_("Bedarf"), O = ns.N_("Bedarf (Zweitspec)"), T = ns.N_("Transmog"), G = ns.N_("Gier"),
     D = ns.N_("Entzaubern"), P = ns.N_("Passen") }
-GR.CHOICES = { "N", "O", "T", "G", "D", "P" }
 
 function GR.ChoiceText(c) return L[CHOICE_TEXT[c] or "?"] end
 

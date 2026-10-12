@@ -807,9 +807,6 @@ function Map.UpdateArrow()
     if ns.MapTarget() and arrowWanted() then arrow:Show() end
 end
 
--- The arrow frame, if made (for the settings and the tests).
-function Map.Arrow() return arrow end
-
 -- Puts the arrow back to its start (the saved position is gone already).
 function ns.MapResetArrow()
     if arrow then arrowPlace(arrow) end

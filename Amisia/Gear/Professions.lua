@@ -405,7 +405,6 @@ function Pr.Learnable(r, rank) return rank ~= nil and rank >= r.learn end
 -- Reagents
 ---------------------------------------------------------------------------
 local reagentCache = {}
-function Pr._resetReagents() reagentCache = {} end
 
 -- The reagents of a recipe: { { item, n } }, and where they come from ("data", "client"); nil when
 -- neither knows them.

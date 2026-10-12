@@ -295,8 +295,6 @@ end)
 ---------------------------------------------------------------------------
 -- The page and the export
 ---------------------------------------------------------------------------
-local MONEY_KINDS = { repair = true, withdrawForTab = true, buyTab = true, depositSummary = true, buyRename = true, refundRename = true }
-
 -- The saved entries, newest first. filter: tab (a number, 0 the money log), kind ("deposit",
 -- "withdraw", "move" for items, "money" for the money log), q (part of a name or an item name).
 function ns.BankLogEntries(filter)
@@ -377,5 +375,3 @@ end
 function ns.MarkBankLogExported()
     for _, e in ipairs(log().list) do e.x = 1 end
 end
-
-ns.BANKLOG_MONEY_KINDS = MONEY_KINDS

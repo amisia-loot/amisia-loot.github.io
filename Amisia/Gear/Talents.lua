@@ -158,11 +158,6 @@ function T.TreeName(cls, i)
     return names[i] or c.trees[i][2] or "?"
 end
 
-function T.TreeIcon(cls, i)
-    local c = T.Class(cls)
-    return c and c.trees[i] and c.trees[i][3] or nil
-end
-
 function T.NodeName(n)
     if not n then return "?" end
     return plainString((call("C_Spell", "GetSpellName", n[SPELL]))) or n[NAME] or "?"
@@ -210,15 +205,6 @@ local function groupSpent(c, plan, gid)
     local n = 0
     for _, id in ipairs(c.gates[gid] or {}) do n = n + (plan.ranks[id] or 0) end
     return n
-end
-
--- The highest row lock of a node (points), 0 without one.
-function T.GateReq(n)
-    local g, req = n and n[GATES], 0
-    if type(g) == "table" then
-        for i = 2, #g, 2 do req = math.max(req, g[i]) end
-    end
-    return req
 end
 
 local function full(c, plan, id)

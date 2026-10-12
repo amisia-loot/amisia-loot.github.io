@@ -489,11 +489,6 @@ local function prune(c)
     return removed
 end
 
-function ns.CollectPrune()
-    local c = ns.CollectDB()
-    return c and prune(c) or 0
-end
-
 local function put(c, kind, id, s, quiet)
     local r = int(id, 1, MAX_ID) and ns.CollectParse(kind, s)
     if not r then return nil, "invalid" end
@@ -932,20 +927,10 @@ local function get(kind, id)
     return t and ns.CollectParse(kind, t[tonumber(id)]) or nil
 end
 function ns.CollectQuest(id) return get("q", id) end
-function ns.CollectVendor(npc) return get("s", npc) end
 function ns.CollectWorld(npc) return get("w", npc) end
 
--- Where an observed quest starts: the giver's name (nil when unknown) and its point "map:x:y"
--- (nil without coordinates).
-function ns.CollectQuestStart(id)
-    local r = get("q", id)
-    if not r then return nil, nil end
-    local point = r.gpos:match("^%d+:%d+:%d+$") and r.gpos or nil
-    return r.gname ~= "" and r.gname or nil, point
-end
-
--- The same from this client's own observation only (fields only heard from the guild left out):
--- the giver's name, the point "uiMapID:x:y"; for places a waypoint may go to.
+-- Where an observed quest starts, from this client's own observation only (fields only heard
+-- from the guild left out): the giver's name, the point "uiMapID:x:y"; for places a waypoint may go to.
 function ns.CollectQuestOwnStart(id)
     local r = get("q", id)
     if not r then return nil, nil end

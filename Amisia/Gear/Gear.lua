@@ -1456,8 +1456,6 @@ Gear.PROFESSIONS = {
     engineering = L["Ingenieurskunst"], alchemy = L["Alchimie"], enchanting = L["Verzauberkunst"], cooking = L["Kochkunst"],
     firstaid = L["Erste Hilfe"], jewelcrafting = L["Juwelierskunst"],
 }
-Gear.KIND_NAMES = { X = "Raid", Q = "Quest", D = "Dungeon", C = L["Beruf"], V = L["Händler"], R = L["Rar"], W = L["Weltdrop"],
-    A = L["Auktionshaus"], P = L["PvP-Händler"] }
 
 -- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised),
 -- else the source's own name.

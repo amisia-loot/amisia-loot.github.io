@@ -110,7 +110,6 @@ local function changed()
     gen = gen + 1
     ns.Fire("CRAFTERS_CHANGED")
 end
-function Cr.Gen() return gen end
 Cr.Changed = changed
 
 local function validName(v)
