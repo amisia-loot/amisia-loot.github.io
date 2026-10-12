@@ -170,3 +170,22 @@ do
     Lay.row("raid calendar bottom officer", F.status, F.page, F.lineup, F.signup)
 end
 print("quick actions ok")
+
+---------------------------------------------------------------------------
+-- /amisia prio löschen (the whole list) asks first; Abbrechen keeps it
+---------------------------------------------------------------------------
+NS.Set("ui.view", "officer")
+assert(NS.EditLootPrio(link, "Anna (Tank)", ""))
+assert(NS.LootPrioInfo(), "a list is there")
+SlashCmdList.AMISIA("prio löschen")
+local Q2 = AmisiaConfirmFrame
+assert(Q2 and Q2:IsShown() and has(Q2.text:GetText(), "die ganze Loot-Prio"), "the question first")
+assert(NS.LootPrioInfo(), "nothing deleted before the answer")
+Q2.cancel:Click()
+assert(NS.LootPrioInfo(), "Abbrechen keeps the list")
+SlashCmdList.AMISIA("prio löschen")
+STUB.messages = {}
+AmisiaConfirmFrame.ok:Click()
+assert(NS.LootPrioInfo() == nil and has(lastMsg(), "Prioliste gelöscht."), lastMsg())
+SlashCmdList.AMISIA("prio löschen")
+assert(has(lastMsg(), "Keine Prioliste geladen"), "nothing to delete: " .. lastMsg())

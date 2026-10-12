@@ -308,3 +308,8 @@ L["Items"] = "items"
 L[" · Prio: %s"] = " · Prio: %s"
 L["Loot-Prio hinter jedem Item ansagen"] = "Announce the loot prio behind each item"
 L["Die Reihenfolge der Offiziere aus der Prioliste, ohne Notiz."] = "The officers' order from the priority list, without the note."
+
+-- Raid/LootPrio.lua: /amisia prio löschen asks first
+L["Prioliste löschen?"] = "Delete the priority list?"
+L["Amisia löscht die ganze Loot-Prio (%d Items) und die eigenen Änderungen daran. Die Website behält ihre Liste."] = "Amisia deletes the whole loot priority list (%d items) and your own changes to it. The website keeps its list."
+L["Löschen##Knopf"] = "Delete"

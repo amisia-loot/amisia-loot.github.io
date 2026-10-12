@@ -863,8 +863,18 @@ ns.RegisterSlash("prio", { officer = true, args = L["[Item-Link|löschen]"], des
                 ns.msg(L["Loot-Prio bearbeiten nur Offiziere."])
                 return
             end
-            ns.ClearLootPrio()
-            ns.msg(L["Prioliste gelöscht."])
+            -- the whole list: ask first, like removing the points
+            local info = ns.LootPrioInfo and ns.LootPrioInfo()
+            if not info then
+                ns.msg(L["Keine Prioliste geladen. Auf der Website: Loot Council, Copy for the addon; im Spiel: /amisia wuensche."])
+                return
+            end
+            ns.W.Confirm(L["Prioliste löschen?"],
+                L["Amisia löscht die ganze Loot-Prio (%d Items) und die eigenen Änderungen daran. Die Website behält ihre Liste."]:format(info.n or 0),
+                L["Löschen##Knopf"], function()
+                    ns.ClearLootPrio()
+                    ns.msg(L["Prioliste gelöscht."])
+                end)
             return
         end
         -- "<Item-Link> löschen": that item's prio cleared at once, like the dialog's "Leeren"
