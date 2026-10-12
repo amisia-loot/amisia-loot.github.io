@@ -312,4 +312,3 @@ L["Die Reihenfolge der Offiziere aus der Prioliste, ohne Notiz."] = "The officer
 -- Raid/LootPrio.lua: /amisia prio löschen asks first
 L["Prioliste löschen?"] = "Delete the priority list?"
 L["Amisia löscht die ganze Loot-Prio (%d Items) und die eigenen Änderungen daran. Die Website behält ihre Liste."] = "Amisia deletes the whole loot priority list (%d items) and your own changes to it. The website keeps its list."
-L["Löschen##Knopf"] = "Delete"
