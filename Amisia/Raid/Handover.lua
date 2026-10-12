@@ -436,7 +436,6 @@ local function warn(e)
 end
 
 local function changed()
-    ns.Fire("HANDOVER")
     if ns.CurrentPage and ns.CurrentPage() == "awards" and ns.Refresh then ns.Refresh() end
 end
 

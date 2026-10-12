@@ -51,7 +51,6 @@ local function inGuild() return type(_G.IsInGuild) == "function" and ns.Plain(Is
 local function pledgeDays() return tonumber(ns.Get("bank.pledgeDays")) or 7 end
 
 local function changed()
-    ns.Fire("BANK_NEEDS_CHANGED")
     if ns.Refresh then ns.Refresh() end
 end
 

@@ -76,7 +76,6 @@ function QX.Record(qid, xp, level)
     local cur = t[qid]
     if cur and cur[1] >= xp then return false end
     t[qid] = { xp, level }
-    ns.Fire("QUESTXP_CHANGED", qid)
     return true
 end
 
