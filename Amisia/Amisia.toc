@@ -88,6 +88,7 @@ Raid\CalendarWrite.lua
 Raid\Lineup.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
+Raid\RaidCheckRead.lua
 Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua

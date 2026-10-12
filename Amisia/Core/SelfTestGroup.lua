@@ -10,6 +10,8 @@
 -- the free talent points. Read-mostly: the two invites go to a name nobody has (the server says
 -- "player not found"); nothing else changes, nothing goes to chat or other players. Every call is
 -- protected; a missing function is FEHLT, never an error. The report goes into the self-test window.
+-- The readers (auras, durability, item level, enchants, talent points, saved instances) are the raid
+-- check's (Raid/RaidCheckRead.lua, ns.RaidRead); this file only reports what they read.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -18,6 +20,7 @@ local K = ST.Kit
 local add, check, show, fn, call, isSecret, cut = K.add, K.check, K.show, K.fn, K.call, K.isSecret, K.cut
 local FEHLT = K.FEHLT
 
+local RR = ns.RaidRead
 local GT = {}
 ST.Group = GT
 
@@ -25,7 +28,6 @@ GT.NAME = "Niemand Nirgends" -- l10n-ok: a character name nobody has (first name
 GT.DELAY = 2         -- seconds between the invite from the key press and the one from a timer
 GT.WAIT = 4          -- seconds to wait for the server's answer to the second invite
 local STALE = 60     -- a probe older than this counts as gone (a new one may start)
-local MAX_AURAS = 40
 local SHOW_AURAS = 12
 local LONG_AURA = 600     -- seconds: a buff at least this long is listed as a flask, elixir or food candidate
 local MAX_SAVED = 30
@@ -46,21 +48,7 @@ GT.FUNCTIONS = {
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",
     "ERR_JOINED_GROUP_S", "ERR_RAID_MEMBER_ADDED_S" }
 local WATCH = { "CHAT_MSG_SYSTEM", "UI_ERROR_MESSAGE", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "UPDATE_INSTANCE_INFO" }
--- worn slots without durability or enchant interest are left out (shirt 4, tabard 19)
-local FALLBACK_SLOTS = { 1, 2, 3, 15, 5, 9, 10, 6, 7, 8, 11, 12, 13, 14, 16, 17, 18 }
-local ENCHANT_LINE = 15   -- Enum.TooltipDataLineType.ItemEnchantmentPermanent in 1.60.1
-
--- The worn slots in the gear planner's order with their names: { inv, name }.
-local function slots()
-    local list = {}
-    local G = ns.Gear
-    if G and type(G.SLOTS) == "table" then
-        for _, s in ipairs(G.SLOTS) do list[#list + 1] = { inv = s.inv, name = s.name } end
-    else
-        for _, inv in ipairs(FALLBACK_SLOTS) do list[#list + 1] = { inv = inv, name = L["Platz %d"]:format(inv) } end
-    end
-    return list
-end
+local slots = RR.Slots
 
 -- A message template ("Spieler '%s' nicht gefunden.") as a Lua pattern, or nil.
 local function templatePattern(t)
@@ -87,14 +75,8 @@ local function lineTypeNames()
     if type(enum) == "table" then
         for name, v in pairs(enum) do if type(v) == "number" then out[v] = name end end
     end
-    if not out[ENCHANT_LINE] then out[ENCHANT_LINE] = "ItemEnchantmentPermanent" end
+    if not out[RR.ENCHANT_LINE] then out[RR.ENCHANT_LINE] = "ItemEnchantmentPermanent" end
     return out
-end
-
-local function enchantLine()
-    local enum = _G.Enum and Enum.TooltipDataLineType
-    local v = type(enum) == "table" and enum.ItemEnchantmentPermanent
-    return type(v) == "number" and v or ENCHANT_LINE
 end
 
 -- The restriction now, as one text (auras are secret in combat and in encounters).
@@ -220,18 +202,14 @@ local function auraText(a)
         show(dur), left and ("%d s"):format(left) or "-", show(a.sourceUnit), show(a.applications))
 end
 
--- Reads the helpful auras of unit: { n, secret, list, long }.
+-- Reads the helpful auras of unit (RR.Auras): { n, secret, list (the first SHOW_AURAS), long }.
 local function readAuras(unit)
-    local out = { n = 0, secret = 0, list = {}, long = {} }
-    for i = 1, MAX_AURAS do
-        local a = call("C_UnitAuras.GetAuraDataByIndex", unit, i, "HELPFUL")
-        if a == nil then break end
-        out.n = out.n + 1
-        local secret = isSecret(a) or type(a) ~= "table" or isSecret(a.spellId)
-        if secret then out.secret = out.secret + 1 end
-        if #out.list < SHOW_AURAS then out.list[#out.list + 1] = a end
-        local dur = not secret and a.duration
-        if not isSecret(dur) and type(dur) == "number" and dur >= LONG_AURA then out.long[#out.long + 1] = a end
+    local a = RR.Auras(unit)
+    local out = { n = a.n, secret = a.secret, list = {}, long = {} }
+    for _, aura in ipairs(a.all) do
+        if #out.list < SHOW_AURAS then out.list[#out.list + 1] = aura end
+        local _, dur = RR.AuraInfo(aura)
+        if dur and dur >= LONG_AURA then out.long[#out.long + 1] = aura end
     end
     return out
 end
@@ -297,13 +275,12 @@ local function sectionDurability(P)
             empty[#empty + 1] = s.name
         else
             check(R, label, function()
-                local cur, max = call("GetInventoryItemDurability", s.inv)
-                if isSecret(cur) or isSecret(max) then return "WERT", L["<geheim>"] end
-                if type(cur) ~= "number" or type(max) ~= "number" or max <= 0 then
+                local cur, max, pct = RR.Durability(s.inv)
+                if cur == "secret" then return "WERT", L["<geheim>"] end
+                if not cur then
                     without = without + 1
                     return "WERT", L["ohne Haltbarkeit"]
                 end
-                local pct = math.floor(cur / max * 100 + 0.5)
                 if not low or pct < low then low, lowName = pct, s.name end
                 return "WERT", ("%d/%d (%d %%)"):format(cur, max, pct)
             end)
@@ -323,38 +300,26 @@ local function sectionGear(P)
     local R = P.R
     K.section(R, L["Ausrüstung"])
     check(R, "GetAverageItemLevel", function()
-        local avg, equipped, pvp = call("GetAverageItemLevel")
+        local avg, equipped, pvp = RR.ItemLevel()
         if not isSecret(equipped) and type(equipped) == "number" then P.ilvl = equipped end
         return type(equipped) == "number" and "OK" or "WERT", L["Schnitt %s, angelegt %s, PvP %s"]:format(show(avg), show(equipped), show(pvp))
     end)
     if not fn("C_TooltipInfo.GetInventoryItem") then
         add(R, FEHLT, "C_TooltipInfo.GetInventoryItem", L["fehlt"])
     end
-    local names, wanted = lineTypeNames(), enchantLine()
+    local names, wanted = lineTypeNames(), RR.EnchantLineType()
     local seen, inLink, asLine, both, read = {}, 0, 0, 0, 0
     for _, s in ipairs(slots()) do
         local okL, link = pcall(call, "GetInventoryItemLink", "player", s.inv)
         if okL and type(link) == "string" and not isSecret(link) then
             check(R, ("%s (%d)"):format(s.name, s.inv), function()
-                local id = tonumber(link:match("item:%-?%d+:(%-?%d*)") or "") or 0
+                local e = RR.Enchant(s.inv, link)
+                local id = e.id
                 if id ~= 0 then inLink = inLink + 1 end
-                local lineText, lineCount = nil, 0
-                if fn("C_TooltipInfo.GetInventoryItem") then
-                    local data = call("C_TooltipInfo.GetInventoryItem", "player", s.inv)
-                    if isSecret(data) then return "WERT", L["Tooltipdaten geheim"] end
-                    local lines = type(data) == "table" and type(data.lines) == "table" and data.lines or {}
-                    if #lines > 0 then read = read + 1 end
-                    for _, line in ipairs(lines) do
-                        local kind = type(line) == "table" and line.type
-                        if not isSecret(kind) and type(kind) == "number" then
-                            seen[kind] = (seen[kind] or 0) + 1
-                            if kind == wanted then
-                                lineCount = lineCount + 1
-                                if not lineText and not isSecret(line.leftText) then lineText = line.leftText end
-                            end
-                        end
-                    end
-                end
+                if e.secret then return "WERT", L["Tooltipdaten geheim"] end
+                if e.read then read = read + 1 end
+                for kind, n in pairs(e.kinds) do seen[kind] = (seen[kind] or 0) + n end
+                local lineText, lineCount = e.text, e.lines
                 if lineCount > 0 then asLine = asLine + 1 end
                 if lineCount > 0 and id ~= 0 then both = both + 1 end
                 return "WERT", L["Verzauberung im Link %s, Zeile Typ %d: %s"]:format(id ~= 0 and tostring(id) or L["keine"], wanted,
@@ -379,16 +344,15 @@ end
 local function sectionTalents(P)
     local R = P.R
     K.section(R, L["Talentpunkte"])
-    local T = ns.Talents
-    if not T or not T.Available or not T.Available() then
+    local free, info = RR.FreePoints()
+    if info == "nodata" then
         add(R, "WERT", L["Freie Punkte"], L["keine Talentdaten"])
         return
     end
     check(R, L["Freie Punkte"], function()
-        local plan, info = T.Live()
-        if not plan then return "WERT", show(info) end
-        if type(info.free) == "number" then
-            P.free = info.free
+        if type(info) ~= "table" then return "WERT", show(info) end
+        if free then
+            P.free = free
             return "OK", L["frei %s, ausgegeben %s, gesamt %s"]:format(show(info.free), show(info.spent), show(info.total))
         end
         return "WERT", L["frei unbekannt, ausgegeben %s (GetTreeCurrencyInfo ohne Angabe)"]:format(show(info.spent))
@@ -482,22 +446,23 @@ local function sectionSaved(P)
     end
     local n = 0
     check(R, "GetNumSavedInstances", function()
-        local v = call("GetNumSavedInstances")
-        n = not isSecret(v) and tonumber(v) or 0
+        local v
+        n, v = RR.SavedCount()
         return "WERT", show(v)
     end)
     P.saved = n
     local now = time()
     for i = 1, math.min(n, MAX_SAVED) do
         check(R, ("GetSavedInstanceInfo(%d)"):format(i), function()
-            local name, id, reset, difficulty, locked, extended, _, isRaid, maxPlayers, diffName, numEncounters, progress, _, mapID = call("GetSavedInstanceInfo", i)
+            local v = RR.Saved(i)
+            local reset = v.reset
             local when = "-"
             if not isSecret(reset) and type(reset) == "number" and reset > 0 then
                 when = L["%s (in %.1f Stunden)"]:format(date("%Y-%m-%d %H:%M", now + reset), reset / 3600)
             end
             return "WERT", L["%s, ID %s, Instanz %s, Schwierigkeit %s %s, %s Spieler, Raid %s, gesperrt %s, verlängert %s, Bosse %s/%s, Reset %s"]:format(
-                show(name), show(id), show(mapID), show(difficulty), show(diffName), show(maxPlayers), show(isRaid), show(locked), show(extended),
-                show(progress), show(numEncounters), when)
+                show(v.name), show(v.id), show(v.mapID), show(v.difficulty), show(v.diffName), show(v.maxPlayers), show(v.isRaid), show(v.locked),
+                show(v.extended), show(v.progress), show(v.encounters), when)
         end)
     end
     if n > MAX_SAVED then add(R, "WERT", L["Weitere"], L["%d weitere nicht gezeigt"]:format(n - MAX_SAVED)) end
