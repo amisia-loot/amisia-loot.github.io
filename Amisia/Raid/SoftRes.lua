@@ -569,6 +569,20 @@ function ns.RenameReserve(from, to, remember)
         end
     end
     if listName ~= to then sr.renamed[to] = sr.renamed[to] or listName end
+    -- the code's note, class and softres +1 of the name go with it (what the new name has stays)
+    for _, field in ipairs({ "notes", "classes", "plus" }) do
+        local t = sr[field]
+        if type(t) == "table" then
+            local moved = {}
+            for k in pairs(t) do
+                if type(k) == "string" and k:lower() == lowFrom and k ~= to then moved[#moved + 1] = k end
+            end
+            for _, k in ipairs(moved) do
+                if t[to] == nil then t[to] = t[k] end
+                t[k] = nil
+            end
+        end
+    end
     if remember and AmisiaDB then
         AmisiaDB.srAliases = AmisiaDB.srAliases or {}
         AmisiaDB.srAliases[from:lower()] = to
