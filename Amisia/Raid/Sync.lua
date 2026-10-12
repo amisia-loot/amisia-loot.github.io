@@ -1842,7 +1842,8 @@ local function onSP(name, sender, sp)
     if takeover and takeover.key == key and role == "keeper" then return gatherPart(name, "sp", sp) end
     if not fromKeeper(name, key) then return end
     touchClaim(name)
-    lastSP[key] = { r = sp.r, at = now() }
+    -- only a whole revision: a malformed one broke the next request() compare (l.r >= want)
+    if whole(sp.r, MAX_REV) then lastSP[key] = { r = sp.r, at = now() } end
     local ok, why = ns.SyncCheck(sp, nil, s)
     if not ok then return refuse(key, sp.r, why) end
     noteSeen(key, sp.e, sp.r, name)
