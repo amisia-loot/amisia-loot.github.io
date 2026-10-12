@@ -2,6 +2,17 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.27.4 (2026-10-12)
+
+- SoftRes: the loot window's SR mark reads the slot link through ns.Plain, a secret link gets no mark
+- Soft-reserve and awards pages: another view or raid starts at the top of its list
+- Roll frame, award dialog: the loot window's slot links go through ns.Plain before ns.ItemID
+- Kleine Aktionen: Im Kalender zeigen, Punkte entfernen, Loot-Prio Leeren mit einem Klick
+- SoftRes: a name fix of the loaded list also moves the code's note, class and softres +1 of that name
+- /amisia prio löschen asks before it deletes the whole priority list
+- l10n: 'Löschen##Knopf' was already translated
+- Sync: only a whole revision of a keeper's snapshot is remembered (a malformed one broke the next request)
+
 ## 2.27.3 (2026-10-12)
 
 - Scan: an id twice in the retry or list queue is asked once, so the scan and its ticker end
