@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.28.0 (2026-10-12)
+
+- Spec Raid-Aufstellung: user wants parts C and D now, plus invite on whisper and auto assist
+- Gruppen-Prüfung /amisia selbsttest gruppe (F-097)
+- Spec: Raid-Check (buffs and consumables, gear) and Raid-IDs, not approved yet
+
 ## 2.27.4 (2026-10-12)
 
 - SoftRes: the loot window's SR mark reads the slot link through ns.Plain, a secret link gets no mark
