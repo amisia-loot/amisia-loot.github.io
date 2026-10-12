@@ -285,3 +285,11 @@ Prüfungen im Spiel (die ersten drei macht `/amisia selbsttest gruppe` allein):
   Sortieren mit "inv" per Flüstern und automatischem Assist für Offiziere, in der Spec 2026-10-10
   Teil C/D). Diese Spec für 1, 6 und 9 geschrieben; noch nicht freigegeben. Vorher gebaut: der
   Prüfbefehl `/amisia selbsttest gruppe` (F-097).
+- 2026-10-12: Nutzer gibt frei ("ja mach deine Vorschläge"): eigene Seite "Raid-Check" im Reiter
+  Raid; versorgt = Fläschchen oder mindestens ein Elixier, dazu Essen; Haltbarkeit rot unter 30 %,
+  orange unter 50 %; beim Bereitschaftscheck meldet Amisia die Ausrüstung von selbst; Chatzeile wie
+  vorgeschlagen (aus, nur Offiziere, nur per Klick, nie in der Sperre); alle Charaktere des Kontos
+  melden ihre Raid-IDs. Frage "Raid-IDs für wen" hatte keinen Vorschlag: angenommen **nur
+  Offiziere** (wie die Zahlen anderer Spieler, D-36); jeder sieht seine eigenen. Die übrigen Fragen
+  nach den Vorschlägen der Spec. Einladen und Sortieren (Spec 2026-10-10 Teil C/D) folgen nach dem
+  Bericht von `/amisia selbsttest gruppe`.
