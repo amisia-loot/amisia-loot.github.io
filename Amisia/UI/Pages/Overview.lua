@@ -36,6 +36,9 @@ ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\
                 c.title:SetText("")
                 c.line1:SetText("")
                 c.line2:SetText("")
+                -- a card's fill may limit its second line (the gear card: two lines); the next card in
+                -- this slot starts unlimited again
+                if c.line2.SetMaxLines then c.line2:SetMaxLines(0) end
                 c:SetAction(nil)
                 local ok, err = pcall(spec.fill, c)
                 if not ok then

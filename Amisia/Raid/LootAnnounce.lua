@@ -21,6 +21,8 @@ local function lootMethod()
     if type(info) == "table" and type(info.GetLootMethod) == "function" then
         local ok, method, partyID, raidID = pcall(info.GetLootMethod)
         if ok then
+            -- as Need.lua and Sync.lua read it: a secret value counts as unknown
+            method, partyID, raidID = ns.Plain(method), ns.Plain(partyID), ns.Plain(raidID)
             local rolls = type(method) == "number" and method ~= MASTER and method ~= FREE and method ~= PERSONAL
             return method == MASTER, partyID, raidID, rolls
         end

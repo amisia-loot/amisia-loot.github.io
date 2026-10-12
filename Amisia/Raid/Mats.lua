@@ -162,7 +162,8 @@ end
 function ns.AddMat(item)
     if not (DB and DB.mats) then return false, L["Amisia ist noch nicht geladen."] end
     local id = tonumber(item) or ns.ItemID(item)
-    if not id then return false, L["Kein Gegenstand erkannt. Mit Shift-Klick einen Link einfügen."] end
+    -- a whole positive id only ("0" or "-5" made a junk entry and a B line until the next load)
+    if not id or id < 1 or id % 1 ~= 0 then return false, L["Kein Gegenstand erkannt. Mit Shift-Klick einen Link einfügen."] end
     local link = type(item) == "string" and item or nil
     local e = DB.mats[id]
     if visible(e) then return false, L["%s steht schon in der Liste."]:format(e.name) end
