@@ -17,6 +17,7 @@ Locales\enUS_raid2.lua
 Locales\enUS_gear.lua
 Locales\enUS_world.lua
 Locales\enUS_selftest.lua
+Locales\enUS_raidcheck.lua
 Core\Registry.lua
 Core\LazyData.lua
 Core\Core.lua
@@ -89,6 +90,8 @@ Raid\Lineup.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
 Raid\RaidCheckRead.lua
+Raid\RaidCheck.lua
+Raid\RaidIDs.lua
 Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua

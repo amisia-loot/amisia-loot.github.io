@@ -33,11 +33,11 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
--- sign-up per night
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10 }
+-- sign-up per night; the raid IDs of a character
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
@@ -325,6 +325,25 @@ local CLASS_TOKEN = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = tru
 
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
+-- the raid check (Raid/RaidCheck.lua): a worn slot 1-19; the consumables "F" (flask), "E<n>" (n
+-- elixirs, 1-9), "W" (well fed) in this order, or "-"
+local function slotEntry(e) return isNum(e, 1, 19) end
+local function consumables(v)
+    if v == "-" then return true end
+    if type(v) ~= "string" or v == "" then return false end
+    local fl, e, n = v:match("^(F?)(E?)(%d?)W?$")
+    if not fl or (e == "") ~= (n == "") or n == "0" then return false end
+    return true
+end
+-- raid IDs (Raid/RaidIDs.lua): a character's name (no digits, commas, colons or bars), an ID
+-- "instance:difficulty:reset epoch:killed/total"
+local function charName(v) return type(v) == "string" and v ~= "" and #v <= 48 and not v:find("[%c,:|%d]") end
+local function lockEntry(e)
+    local m, d, r, k, t = e:match("^(%d+):(%d+):(%d+):(%d+)/(%d+)$")
+    return m ~= nil and isNum(m, 1, 999999) and isNum(d, 0, 255) and isNum(r, 1, 4294967295) and isNum(k, 0, 99) and isNum(t, 0, 99)
+        and (tonumber(t) == 0 or tonumber(k) <= tonumber(t))
+end
+
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
 local VALID = {
     HI = function(f) return #f >= 4 and f[1]:match("^%d+%.%d+%.%d+$") and isNum(f[2], 0, 9) and isFlags(f[3], "OL")
@@ -426,6 +445,18 @@ local VALID = {
             and (f[7] == nil or #f[7] <= 120)
     end,
     AQ = function(f) return #f >= 2 and (f[1] == "O" or f[1] == "-") and isNum(f[2], 0, 4294967295) end,
+    -- the raid check (Raid/RaidCheck.lua): XQ <question id>; XA <question id|-> <lowest durability|->
+    -- <items under the threshold> <item level x10|-> <empty slots|-> <unenchanted slots|-> <free
+    -- points|-> <consumables|->; a value out of its bounds drops the whole message
+    XQ = function(f) return #f >= 1 and isHex(f[1], 4) end,
+    XA = function(f)
+        return #f >= 8 and (f[1] == "-" or isHex(f[1], 4)) and (f[2] == "-" or isNum(f[2], 0, 100)) and isNum(f[3], 0, 19)
+            and (f[4] == "-" or isNum(f[4], 0, 9999)) and commaList(f[5], 19, slotEntry, true) and commaList(f[6], 19, slotEntry, true)
+            and (f[7] == "-" or isNum(f[7], 0, 99)) and consumables(f[8])
+    end,
+    -- raid IDs (Raid/RaidIDs.lua): IV <character> <class|-> <level> <ids|-> (6 at most); IQ - (an officer asks)
+    IV = function(f) return #f >= 4 and charName(f[1]) and CLASS_TOKEN[f[2]] == true and isNum(f[3], 1, 99) and commaList(f[4], 6, lockEntry, true) end,
+    IQ = function(f) return #f >= 1 and f[1] == "-" end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

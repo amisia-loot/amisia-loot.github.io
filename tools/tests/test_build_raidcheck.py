@@ -105,6 +105,7 @@ def test_shipped_data_file_in_toc_and_valid():
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         toc = fh.read()
     assert 'Data\\RaidCheckData.lua [AllowLoadGameType camelot]' in toc
+    assert toc.index('Data\\RaidCheckData.lua') < toc.index('Raid\\RaidCheck.lua')
     with open(OUT, encoding='utf-8') as fh:
         src = fh.read()
     lupa = pytest.importorskip('lupa.lua51')
