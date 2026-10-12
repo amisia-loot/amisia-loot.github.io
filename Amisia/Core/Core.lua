@@ -498,7 +498,9 @@ end
 function ns.InGroup(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        if n and ns.SameName(n, name) then return true, class end
+        -- a secret name (boss fight on Forever) is skipped, never compared
+        n, class = ns.Plain(n), ns.Plain(class)
+        if type(n) == "string" and ns.SameName(n, name) then return true, class end
     end
     return false
 end
@@ -561,8 +563,10 @@ end
 -- same corpse keeps the larger total instead of adding it again.
 local function onLootOpened()
     if not active or not GetNumLootItems or not GetLootSlotLink then return end
-    local targetGUID = UnitGUID and UnitGUID("target")
-    local targetName = UnitName("target")
+    -- the target's GUID and name may be secret in an instance on Forever: never a table key or a
+    -- stored source name then (the loot then counts under "?")
+    local targetGUID = UnitGUID and ns.Plain(UnitGUID("target"))
+    local targetName = ns.Plain(UnitName("target"))
     local seen = {}   -- source -> { [itemID] = count in this window }
     for slot = 1, GetNumLootItems() or 0 do
         local link = ns.Plain(GetLootSlotLink(slot))
@@ -577,7 +581,7 @@ local function onLootOpened()
             if drop then
                 local _, _, qty = GetLootSlotInfo(slot)
                 seen[source] = seen[source] or {}
-                seen[source][id] = (seen[source][id] or 0) + (tonumber(qty) or 1)
+                seen[source][id] = (seen[source][id] or 0) + (tonumber(ns.Plain(qty)) or 1)
                 rememberItem(id, link, q)
             end
         end

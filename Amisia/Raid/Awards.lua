@@ -670,12 +670,17 @@ local function shortName(name)
 end
 
 -- Name of what a loot slot came from: the drop recorded for its source, else the current target.
+-- On Forever the slot's GUID, the target's GUID and its name may be secret in an instance: such a
+-- value is never a table key, compared or returned (the source is "?" then).
 function ns.LootSourceName(slot)
     local s = ns.Active()
-    local guid = (slot and slot > 0 and GetLootSourceInfo) and GetLootSourceInfo(slot) or nil
+    local raw = (slot and slot > 0 and GetLootSourceInfo) and GetLootSourceInfo(slot) or nil
+    local guid = ns.Plain(raw)
+    if guid == nil and type(raw) ~= "nil" then return "?" end
     if s and guid and s.drops[guid] and s.drops[guid].src ~= "?" then return s.drops[guid].src end
-    local target = UnitName("target")
-    if target and (not guid or guid == (UnitGUID and UnitGUID("target"))) then return target end
+    local target = ns.Plain(UnitName("target"))
+    if type(target) ~= "string" or target == "" then return "?" end
+    if not guid or guid == (UnitGUID and ns.Plain(UnitGUID("target"))) then return target end
     return "?"
 end
 
@@ -729,9 +734,9 @@ function ns.LootCandidate(slot, name)
 end
 
 local function onGive(slot, candidate)
-    local link = GetLootSlotLink and GetLootSlotLink(slot)
+    local link = GetLootSlotLink and ns.Plain(GetLootSlotLink(slot))
     local id = ns.ItemID(link)
-    local name = shortName(GetMasterLootCandidate and GetMasterLootCandidate(slot, candidate))
+    local name = shortName(GetMasterLootCandidate and ns.Plain(GetMasterLootCandidate(slot, candidate)))
     if not id or not name then return end
     local token = {}
     -- a new hand-out of the same slot replaces the old one: that one never arrived
@@ -748,7 +753,8 @@ end
 
 ns.OnEvent("CHAT_MSG_LOOT", function(text)
     if not next(pending) then return end
-    local who, id = ns.ParseLoot(text)
+    -- a secret line (boss fight on Forever) is skipped; the emptied slot confirms the hand-out
+    local who, id = ns.ParseLoot(ns.Plain(text))
     who = shortName(who)
     if not who then return end
     -- the oldest open hand-out of that item to that player: two copies of one token leave in order

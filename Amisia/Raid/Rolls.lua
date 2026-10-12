@@ -36,7 +36,9 @@ end
 local function inGroup(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        if n and ns.SameName(n, name) then return true, class end
+        -- a secret name (boss fight on Forever) is skipped, never compared
+        n, class = ns.Plain(n), ns.Plain(class)
+        if type(n) == "string" and ns.SameName(n, name) then return true, class end
     end
     return false
 end
