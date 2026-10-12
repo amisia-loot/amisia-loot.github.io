@@ -651,6 +651,10 @@ local function refreshOfficer(O)
     O.raid:SetValue(all and "all" or (s and s.id) or nil)
     if not O.search:HasFocus() then O.search:SetText(query) end
     local list = entries()
+    -- another raid (or "Alle Raids") starts at the top of the list; a refresh of the same keeps the place
+    local shownRaid = all and "all" or (s and s.id) or false
+    if O.shownRaid ~= shownRaid then O.list.offset = 0 end
+    O.shownRaid = shownRaid
     O.list.all = all
     -- the column of the plus-one shows the cost in a DKP or EPGP raid
     local pts = s and ns.PointsSession and ns.PointsSession(s)
@@ -840,6 +844,8 @@ local function fillAll(A, raids)
     A.raid:SetValue(chosenAll)
     local rows = {}
     for _, a in ipairs(s and s.awards or {}) do rows[#rows + 1] = { s = s, a = a } end
+    if A.shownRaid ~= chosenAll then A.list.offset = 0 end
+    A.shownRaid = chosenAll
     A.list:SetItems(rows)
     if #rows == 0 then A.empty:Show() else A.empty:Hide() end
     local sync = s and s.sync

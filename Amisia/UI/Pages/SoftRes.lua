@@ -406,6 +406,9 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         if shown == "check" and not officer then shown = "items" end
         for key, chip in pairs(f.views) do chip:SetOn(key == shown) end
         for i, text in ipairs(HEADS[shown]) do f.heads[i]:SetText(text) end
+        -- another view starts at its top; a refresh of the same one keeps the place
+        if f.shownView ~= shown then f.list.offset = 0 end
+        f.shownView = shown
         local me = ns.UnitFullName("player")
         local list
         if shown == "raider" then
