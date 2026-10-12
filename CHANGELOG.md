@@ -2,6 +2,20 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.27.3 (2026-10-12)
+
+- Scan: an id twice in the retry or list queue is asked once, so the scan and its ticker end
+- Collect: skip secret chat text, unit names and GUIDs instead of reading them into source notes
+- Core, Awards, Rolls: secret names and GUIDs of the loot window and the roster are skipped, never keys or compared
+- Audit leftovers: an overview card slot starts without the previous card's line limit; a material id must be a whole positive number; the loot method is read through ns.Plain as elsewhere
+- Dead code: unused collector readers, crafter/map/talent/profession accessors, the handover helper hook, the bank log money kinds, gear kind names and the group roll choice list removed
+- Dead code: 35 export lines nothing reads removed, the locals stay
+- Theme: unused tokens SCROLLBAR_W, PAGE_H and RAIDCAL.INSET_GAP removed; their numbers stay in the comments of SCROLL_ROOM, PAGE_W and RAIDCAL.RIGHT_X
+- Calendar page: today's gold frame is CALPAGE.TODAY (2 px) thick as the token says, not 1 px
+- Dead events: QUESTXP_CHANGED, BANK_NEEDS_CHANGED and HANDOVER had no listener; the Fire calls go
+- Comm: the reason "Daten zu groß." comes translated like every other reason of CommSendBlob
+- /amisia punkte opens the standings view, not the view used last
+
 ## 2.27.2 (2026-10-11)
 
 - Pages workflow (interim: stages the site from the root) so the Pages source can switch to GitHub Actions before the site moves
