@@ -336,6 +336,36 @@ function ns.ClearPoints()
     fire()
 end
 
+-- Whether anything of the points is stored: the site's block, a correction or the raid's shared list.
+function ns.PointsStored()
+    local p = store()
+    if not p then return false end
+    return type(p.site) == "table" or #p.adj > 0 or type(p.shared) == "table"
+end
+
+-- "Punkte entfernen" (the paste view's button, /amisia punkte löschen): officers only, after the
+-- question; what goes is said there (the corrections the site does not have yet are counted). The
+-- raids' earnings and the awards' costs stay in the raids, the system stays in the settings.
+function ns.AskClearPoints()
+    if not ns.IsOfficerView() then
+        ns.msg(L["Punkte ändern nur Offiziere."])
+        return nil
+    end
+    if not ns.PointsStored() then
+        ns.msg(L["Kein Punktestand gespeichert."])
+        return nil
+    end
+    local text = L["Amisia löscht den eingefügten Stand der Website (DKP/EPGP) und die Korrekturen aus dem Spiel. Die Website behält ihren Stand; das Lootsystem, die Raids und die Vergaben bleiben."]
+    local open = #ns.PointsExportLines()
+    if open > 0 then
+        text = text .. " " .. L["Korrekturen, die noch nicht auf der Website sind: %d. Sie gehen verloren (vorher exportieren)."]:format(open)
+    end
+    return ns.W.Confirm(L["Punktestand entfernen?"], text, L["Entfernen"], function()
+        ns.ClearPoints()
+        ns.msg(L["Punktestand entfernt. Einfügen holt ihn von der Website zurück."])
+    end)
+end
+
 -- { date, n, sys, asOf, by } of the pasted block, or nil.
 function ns.PointsInfo()
     local s = siteRec()
@@ -869,8 +899,13 @@ ns.RegisterSettings{ key = "points", label = L["Punkte (DKP/EPGP)"], order = 21,
 ---------------------------------------------------------------------------
 -- Commands
 ---------------------------------------------------------------------------
+local CLEAR = { ["löschen"] = true, loeschen = true, clear = true }   -- l10n-ok: typed sub-words
 local function pointsCommand(rest)
     rest = type(rest) == "string" and rest:match("^%s*(.-)%s*$") or ""
+    if CLEAR[rest:lower()] then
+        ns.AskClearPoints()
+        return
+    end
     local cfg = ns.PointsConfig()
     if cfg.sys == "roll" then
         ns.msg(L["Kein Punktesystem gewählt: die Gilde würfelt. Einstellungen, Punkte (DKP/EPGP)."])
@@ -937,7 +972,7 @@ local function raidCommand(rest)
     ns.msg(OFF[w] and L["Dieser Raid zählt nicht für Punkte."] or L["Dieser Raid zählt für Punkte (%s)."]:format(SYS_NAME[s.points.sys] or "?"))
 end
 
-ns.RegisterSlash("punkte", { en = "points", args = L["[Name]"], desc = L["Punktestand (DKP/EPGP)"], run = pointsCommand })
+ns.RegisterSlash("punkte", { en = "points", args = L["[Name|löschen]"], desc = L["Punktestand (DKP/EPGP)"], run = pointsCommand })
 ns.RegisterSlash("korrektur", { en = "adjust", officer = true, args = L["<Name> <±Zahl> [ep|gp] <Grund>"], desc = L["Punkte korrigieren, mit Grund"],
     run = adjustCommand })
 ns.RegisterSlash("punkteraid", { en = "raidpoints", officer = true, args = L["an|aus"], desc = L["Laufenden Raid für Punkte zählen oder nicht"],

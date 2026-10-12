@@ -565,6 +565,11 @@ L["Gildenbank: Bestand, Bedarf und Zusagen, Protokoll"] = "Guild bank: stock, ne
 L["Material wählen"] = "Pick a material"
 
 -- Raid/Points.lua
+L["Kein Punktestand gespeichert."] = "No standings stored."
+L["Amisia löscht den eingefügten Stand der Website (DKP/EPGP) und die Korrekturen aus dem Spiel. Die Website behält ihren Stand; das Lootsystem, die Raids und die Vergaben bleiben."] = "Amisia deletes the pasted website standings (DKP/EPGP) and the corrections made in game. The website keeps its standings; the loot system, the raids and the awards stay."
+L["Korrekturen, die noch nicht auf der Website sind: %d. Sie gehen verloren (vorher exportieren)."] = "Corrections not on the website yet: %d. They will be lost (export first)."
+L["Punktestand entfernen?"] = "Remove the standings?"
+L["Punktestand entfernt. Einfügen holt ihn von der Website zurück."] = "Standings removed. Paste brings them back from the website."
 L[" (unter Mindest-EP %d)"] = " (below the minimum EP %d)"
 L["%s: %d DKP"] = "%s: %d DKP"
 L["%s: EP %d, GP %d, PR %s%s"] = "%s: EP %d, GP %d, PR %s%s"
@@ -661,6 +666,8 @@ L["Runde: %s (%s)"] = "Round: %s (%s)"
 L["Stand: %d DKP"] = "Standing: %d DKP"
 
 -- UI/Pages/Points.lua
+L["Punkte entfernen"] = "Remove points"
+L["Löscht den eingefügten Stand der Website und die Korrekturen aus dem Spiel, nach einer Frage. Die Website behält ihren Stand."] = "Deletes the pasted website standings and the corrections made in game, after a question. The website keeps its standings."
 L["Buchen"] = "Book"
 L["DKP oder EPGP stellt die Website ein: Punkte, Kopieren für das Addon, hier unter Einfügen einfügen. Oder Einstellungen, Punkte (DKP/EPGP)."] = "The website sets up DKP or EPGP: Points, Copy for the addon, paste it here under Paste. Or Settings, Points (DKP/EPGP)."
 L["Die Gilde würfelt"] = "The guild rolls"
@@ -1091,6 +1098,8 @@ L["Wer zu den Terminen kommt: angemeldet, vorläufig, abgemeldet, mit Rolle und 
 L["Zur Aufstellung"] = "To the lineup"
 L["Ändern ..."] = "Change ..."
 L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."] = "Opens the lineup page at this date's night (officers only)."
+L["Im Kalender zeigen"] = "Show in calendar"
+L["Öffnet im Hauptfenster den Reiter Kalender bei diesem Tag; dieses Fenster schließt sich."] = "Opens the main window's Calendar tab at this day; this window closes."
 
 -- the calendar entry of a click (Raid/CalendarWrite.lua, part H3)
 L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."] = "Amisia did not sign you up in the game calendar. There players without Amisia see it too."

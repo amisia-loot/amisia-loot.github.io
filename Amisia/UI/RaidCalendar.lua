@@ -9,8 +9,9 @@
 -- "Abgemeldet", "Ohne Antwort", the count in each), each row the role icon (desaturated and "?" when
 -- guessed), the class icon, the name in its class colour, the level, the source marks (K calendar,
 -- A Amisia) and the note (cut; whole in the tooltip). At the bottom the state of the calendar read
--- ("Kalender gelesen 21:37" or why not), "Anmelden ..." / "Ändern ..." (the sign-up window at that
--- date) and, for officers, "Zur Aufstellung". Opened by the card's "Kalender", the sign-up window's
+-- ("Kalender gelesen 21:37" or why not), "Im Kalender zeigen" (the main window's calendar page at
+-- that date, 2.27.4), "Anmelden ..." / "Ändern ..." (the sign-up window at that date) and, for
+-- officers, "Zur Aufstellung". Opened by the card's "Kalender", the sign-up window's
 -- "Kalender" and /amisia kalender (en calendar). It stands in the main window's strata (FULLSCREEN,
 -- over the world map like it) and comes to the front when shown or clicked (D-43). Draggable, the
 -- place is kept (AmisiaDB.settings.calendarWindow), Escape closes it. While it is open the chosen
@@ -508,6 +509,17 @@ local function build()
     end)
     W.FitChip(F.lineup, R.BUTTON_W)
     W.Tooltip(F.lineup, L["Zur Aufstellung"], L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."])
+    -- the main window's calendar page at this date; this window closes (the page shows the same)
+    F.page = W.Button(F, L["Im Kalender zeigen"], R.BUTTON_W, function()
+        local night = cur
+        if not night or not ns.ShowCalendar then return end
+        F:Hide()
+        ns.ShowCalendar(night)
+        local main = _G.AmisiaFrame
+        if main and main.Raise then main:Raise() end
+    end)
+    W.FitChip(F.page, R.BUTTON_W)
+    W.Tooltip(F.page, L["Im Kalender zeigen"], L["Öffnet im Hauptfenster den Reiter Kalender bei diesem Tag; dieses Fenster schließt sich."])
     F.status = W.Text(F, T.FONT.hint, 200)
     F.status:SetHeight(T.BUTTON_H)
     F.status:SetJustifyV("MIDDLE")
@@ -515,11 +527,16 @@ local function build()
     place()
 end
 
--- The bottom row: the status left, the buttons right (Zur Aufstellung only for officers).
-local function bottomRow(officer)
+-- The bottom row: the status left, the buttons right (Zur Aufstellung only for officers;
+-- Im Kalender zeigen with a chosen date).
+local function bottomRow(officer, dated)
     F.signup:Show()
     F.lineup:SetShown(officer)
-    local items = officer and { F.lineup, F.signup } or { F.signup }
+    F.page:SetShown(dated)
+    local items = {}
+    if dated then items[#items + 1] = F.page end
+    if officer then items[#items + 1] = F.lineup end
+    items[#items + 1] = F.signup
     local used = W.Row(F, items, T.LAYOUT.ITEM_GAP, PAD, R.BOTTOM, { point = "BOTTOMRIGHT", right = true })
     F.status:SetWidth(math.max(40, R.W - PAD - used - T.LAYOUT.ITEM_GAP - PAD))
 end
@@ -598,7 +615,7 @@ refresh = function()
     F.signup:SetText(rec and L["Ändern ..."] or L["Anmelden ..."])
     W.FitChip(F.signup, R.BUTTON_W)
     F.signup:SetEnabled(t ~= nil)
-    bottomRow(t ~= nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false)
+    bottomRow(t ~= nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false, t ~= nil)
 end
 
 -- Opens the window at night (default: the next date) in front of the other windows; the dates are

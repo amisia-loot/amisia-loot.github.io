@@ -1,7 +1,8 @@
 -- Punkte: the DKP or EPGP standings (Raid/Points.lua). Officers see every main with the history of
 -- the chosen one and book a correction with a reason; a raider sees the own row, the whole list only
 -- when the website shows it (pub). The view "Einfügen" takes the website's text (the points block
--- with the wishes, alts and prio, Alts.lua ns.ImportSiteText). While the guild rolls, officers see a
+-- with the wishes, alts and prio, Alts.lua ns.ImportSiteText); officers remove the stored standing
+-- there ("Punkte entfernen", after a question, 2.27.4). While the guild rolls, officers see a
 -- hint how to switch and raiders do not see the page at all.
 local ADDON, ns = ...
 local L = ns.L
@@ -138,8 +139,12 @@ local function build_page(parent)
         ns.Refresh()
     end)
     W.FitChip(f.import, 100)
+    -- officers: the stored standing removed, after the question (ns.AskClearPoints)
+    f.clear = W.Button(f, L["Punkte entfernen"], 100, function() ns.AskClearPoints() end)
+    W.FitChip(f.clear, 100)
+    W.Tooltip(f.clear, L["Punkte entfernen"], L["Löscht den eingefügten Stand der Website und die Korrekturen aus dem Spiel, nach einer Frage. Die Website behält ihren Stand."])
     f.result = W.Text(f, T.FONT.hint)
-    f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, { f.result, fill = true } }
+    f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, f.clear, { f.result, fill = true } }
     f:BottomRow(f.bottomList)
     f.paste:SetPoint("TOPLEFT", 0, top)
     f.paste:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
@@ -164,6 +169,8 @@ local function refresh(f)
 
     local paste = view == "paste"
     setShown({ f.paste, f.import, f.result }, paste)
+    f.clear:SetShown(paste and officer)
+    f.clear:SetEnabled(ns.PointsStored())
     local rolling = sys == "roll"
     local listOn = not paste and not rolling
     setShown({ f.headFrame, f.list, f.detail }, listOn)

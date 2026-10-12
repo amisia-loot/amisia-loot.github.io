@@ -576,6 +576,23 @@ local function dialogSave()
     D:Hide()
 end
 
+-- The item's prio cleared at once: an empty edit (ns.ClearLootPrioItem, the same as an empty
+-- "Speichern"), exported and shared like any edit; the dialog closes, the chat says so.
+local function itemLabel(id)
+    local link = C_Item and C_Item.GetItemInfo and select(2, C_Item.GetItemInfo(id))
+    return link or ("Item " .. id)
+end
+
+local function dialogClear()
+    local id = D.item
+    if not ns.ClearLootPrioItem(id) then
+        D.hint:SetText("|cffe05050" .. L["Kein Item."] .. "|r")
+        return
+    end
+    D:Hide()
+    ns.msg(L["Loot-Prio von %s geleert."]:format(itemLabel(id)))
+end
+
 local function buildDialog()
     D = W.Window("AmisiaPrioDialog", DW, DH, { title = L["Loot-Prio"], strata = "FULLSCREEN_DIALOG" })
     D:SetPoint("CENTER", 0, 160)
@@ -600,10 +617,9 @@ local function buildDialog()
     D.save = W.Button(D, L["Speichern"], 90, dialogSave)
     W.FitChip(D.save, 90)
     D.save:SetPoint("BOTTOMLEFT", 12, 12)
-    D.clear = W.Button(D, L["Leeren"], 80, function()
-        D.order:SetText("")
-        D.note:SetText("")
-    end)
+    -- one click: the item's prio goes at once (the same empty edit "Leeren" and "Speichern" made)
+    D.clear = W.Button(D, L["Leeren"], 80, function() dialogClear() end)
+    W.Tooltip(D.clear, L["Leeren"], L["Löscht die Prio dieses Items sofort (auch die der Website und des Raids)."])
     W.FitChip(D.clear, 80)
     D.clear:SetPoint("LEFT", D.save, "RIGHT", 6, 0)
     D.cancel = W.Button(D, L["Abbrechen"], 86, function() D:Hide() end)
@@ -634,7 +650,7 @@ function ns.ShowPrioDialog(item)
     local p = ns.LootPrioOf(id, true)
     D.order:SetText(p and ns.LootPrioFreeText(p.prio) or "")
     D.note:SetText(p and p.note or "")
-    D.hint:SetText(L["Spieler mit Rolle in Klammern, Klassen mit Spezialisierung, \"offen\"; durch Kommas getrennt. Leer und gespeichert löscht die Prio."])
+    D.hint:SetText(L["Spieler mit Rolle in Klammern, Klassen mit Spezialisierung, \"offen\"; durch Kommas getrennt. \"Leeren\" löscht die Prio sofort."])
     D:Show()
     return D
 end
@@ -837,17 +853,35 @@ ns.RegisterSettings{ key = "prio", label = L["Loot-Prio"], order = 23, items = {
       tip = L["Die Lootleitung schickt ihre Liste an alle Amisia-Clients im Raid. Angenommen wird sie nur von Offizieren der eigenen Gilde."] },
 }}
 
+local CLEAR_WORD = { ["löschen"] = true, loeschen = true, clear = true }   -- l10n-ok: typed sub-words
 ns.RegisterSlash("prio", { officer = true, args = L["[Item-Link|löschen]"], desc = L["Loot-Prio eines Items bearbeiten"],
     run = function(rest)
         rest = type(rest) == "string" and rest:match("^%s*(.-)%s*$") or ""
         local word = rest:lower()
-        if word == "löschen" or word == "loeschen" or word == "clear" then -- l10n-ok: sub-words
+        if CLEAR_WORD[word] then
             if not ns.IsOfficerView() then
                 ns.msg(L["Loot-Prio bearbeiten nur Offiziere."])
                 return
             end
             ns.ClearLootPrio()
             ns.msg(L["Prioliste gelöscht."])
+            return
+        end
+        -- "<Item-Link> löschen": that item's prio cleared at once, like the dialog's "Leeren"
+        local itemPart, last = rest:match("^(.-)%s+(%S+)$")
+        last = last and last:lower()
+        if itemPart and CLEAR_WORD[last] and (ns.ItemID(itemPart) or tonumber(itemPart)) then
+            if not ns.IsOfficerView() then
+                ns.msg(L["Loot-Prio bearbeiten nur Offiziere."])
+                return
+            end
+            local id = itemId(itemPart)
+            if not id or not ns.ClearLootPrioItem(id) then
+                ns.msg(L["Kein Item."])
+                return
+            end
+            if ns.PrioDialog and ns.PrioDialog:IsShown() and ns.PrioDialog.item == id then ns.PrioDialog:Hide() end
+            ns.msg(L["Loot-Prio von %s geleert."]:format(itemLabel(id)))
             return
         end
         if ns.ItemID(rest) or tonumber(rest) then

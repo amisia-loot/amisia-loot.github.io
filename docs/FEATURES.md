@@ -286,10 +286,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Twink im Raid ist, dann steht er auf der Seite Raids als "(Twink von <Main>)", und Plus-Eins und Statistik zählen für den Main.
 
 ### F-029 Loot-Rat und Loot-Prio
-- Version: 2.10.0
+- Version: 2.27.4
 - Status: gebaut
 - Prüfung: Wenn du als Offizier `/amisia prio <Item-Link>` eingibst, dann öffnet sich der Dialog "Loot-Prio", in dem du Spieler in eine Reihenfolge bringst und eine Notiz schreibst.
 - Prüfung: Wenn ein Item eine Prio hat, dann zeigt sein Tooltip "Prio: ...".
+- Prüfung: Wenn du im Dialog "Loot-Prio" eines Items mit Prio "Leeren" klickst, dann schließt sich der Dialog sofort, der Chat sagt "Loot-Prio von <Item> geleert." und der Tooltip zeigt keine Prio mehr; `/amisia prio <Item-Link> löschen` tut dasselbe ohne Dialog.
 - Prüfung: Wenn du auf der Website im Reiter Loot Council "Copy for the addon" kopierst und im Addon importierst, dann meldet der Chat "N Items mit Prio übernommen".
 
 ### F-030 Statistik und Ruhmeshalle
@@ -307,11 +308,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du im Raid-Log die Würfe öffnest und "Dungeons" wählst, dann stehen dort die Würfe der Dungeon-Läufe.
 
 ### F-032 DKP und EPGP
-- Version: 2.11.0
+- Version: 2.27.4
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn die Website (Reiter Points) DKP oder EPGP einstellt und du "Copy for the addon" auf der Seite Punkte bei "Einfügen" einfügst, dann zeigt die Seite Punkte den Stand jedes Spielers und "Website vom <Datum>".
 - Prüfung: Wenn du `/amisia punkte` eingibst, dann nennt der Chat deinen Punktestand.
+- Prüfung: Wenn du als Offizier auf der Seite Punkte bei "Einfügen" den roten Knopf "Punkte entfernen" klickst, dann fragt ein Fenster "Punktestand entfernen?" (mit der Zahl der Korrekturen, die noch nicht auf der Website sind); "Abbrechen" ändert nichts, "Entfernen" löscht den Stand und der Chat sagt "Punktestand entfernt. Einfügen holt ihn von der Website zurück."; `/amisia punkte löschen` fragt genauso, als Raider gibt es den Knopf nicht.
 - Prüfung: Wenn du als Offizier `/amisia korrektur <Name> +10 <Grund>` eingibst, dann steht die Korrektur auf der Seite Punkte und geht mit dem nächsten Export an die Website.
 - Prüfung: Wenn ein Raid mit Punkten läuft und ein Item verteilt wird, dann bieten die Raider (offen oder verdeckt) bzw. würfeln nach PR, und ein laufender Raid behält sein System, auch wenn die Website umstellt.
 
@@ -452,11 +454,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Teil H3 (derselbe Klick trägt auch im Spielkalender ein) ist F-090 (2.25.0). Einstellungen: "Raid-Anmeldung", "Karte auf der Übersicht" (an); "Raid-Aufstellung", "Anmeldungen aus Amisia annehmen" (an). `/amisia signup` und `/amisia signoff` auf englischen Clients. Spec Teil H (H1 und H2), DECISIONS D-42; Raider sehen keine Liste anderer.
 
 ### F-088 Raid-Kalender: wer kommt (für die ganze Gilde)
-- Version: 2.25.1
+- Version: 2.27.4
 - Status: gebaut
 - Prüfung: Wenn du als Vulo Pala (kein Offizier) `/amisia kalender` eingibst, dann öffnet sich das Fenster "Raid-Kalender" im Stil des Berufsfensters: links in einem Rahmen die Gildenereignisse der nächsten 14 Tage (je Zeile groß "Mo 12.10.", daneben "20:00", darunter der Titel, rechts dein Stand als farbiges Abzeichen, z. B. grün "angemeldet (H)"; der gewählte Termin leuchtet wie ein gewähltes Rezept), rechts in einem Rahmen für Vulo Hunts Ereignis oben das Symbol der Ereignisart, der Titel groß in Gold, darunter "Mo 12.10. · 20:00 · Schlachtzug", eine Reihe Abzeichen "Tank 0", "Heiler 0", "Nahkampf 0", "Fernkampf 1" mit den Rollen-Symbolen der Gruppensuche und die Summen "angemeldet 1 · vorläufig 0 · abgemeldet 0 · ohne Antwort 0"; darunter die Spaltenköpfe "Rolle, Name, Stufe, Quelle, Notiz" und die Leiste "Angemeldet / Bestätigt 1" mit Vulo Hunt (Rollen-Symbol grau mit "F?" oder farbig wie seine Amisia-Anmeldung, Klassensymbol, Name in Klassenfarbe, Stufe rechtsbündig, Quelle "K", mit Amisia-Anmeldung "K A"); unten links "Kalender gelesen <Uhrzeit>" (nach wenigen Sekunden, nie dauerhaft "Kalender wird gelesen ..."); einen Knopf "Zur Aufstellung" gibt es nicht.
 - Prüfung: Wenn du als Vulo Pala im Fenster "Anmelden ..." klickst, im Fenster "Raid-Anmeldung" Rolle "H" und die Notiz "komme 20:15" wählst und "Vorläufig" klickst, dann steht Vulo Pala im Raid-Kalender unter der Leiste "Vorläufig 1" mit dem Heiler-Symbol und "H", Quelle "A" (nach dem nächsten Lesen "K A") und der Notiz; links steht dein Stand orange "vorläufig (H)"; die Maus auf der Zeile zeigt "Notiz: komme 20:15" und die Quellen; die Maus auf dem Abzeichen "Heiler" zeigt die Namen; der Knopf heißt jetzt "Ändern ...".
-- Prüfung: Wenn du auf der Übersicht bei der Karte "Raid-Anmeldung" "Kalender" klickst (oder im Fenster "Raid-Anmeldung" "Kalender" neben dem Datum), dann öffnet sich derselbe Raid-Kalender über dem Amisia-Hauptfenster (ein Klick ins Hauptfenster holt dieses nach vorn, ein Klick in den Raid-Kalender ihn wieder; "Anmelden ..." öffnet "Raid-Anmeldung" darüber); du kannst ihn verschieben, Escape schließt ihn, und nach `/reload` öffnet er sich an derselben Stelle.
+- Prüfung: Wenn du auf der Übersicht bei der Karte "Raid-Anmeldung" "Kalender" klickst (oder im Fenster "Raid-Anmeldung" "Kalender" neben dem Datum), dann öffnet sich derselbe Raid-Kalender über dem Amisia-Hauptfenster (ein Klick ins Hauptfenster holt dieses nach vorn, ein Klick in den Raid-Kalender ihn wieder; "Anmelden ..." öffnet "Raid-Anmeldung" darüber); du kannst ihn verschieben, Escape schließt ihn, und nach `/reload` öffnet er sich an derselben Stelle. Klickst du unten "Im Kalender zeigen", dann schließt er sich, und das Hauptfenster zeigt den Reiter Kalender mit dem Monat und dem Tag dieses Termins gewählt.
 - Prüfung: Wenn du danach als Vulo Hunt `/amisia kalender` öffnest, dann siehst du Vulo Pala mit Heiler-Symbol, "H", "K A" und der Notiz (dieselbe Liste wie in der Aufstellung) und unten zusätzlich "Zur Aufstellung", das die Seite Aufstellung mit dieser Nacht öffnet. Sind mehr Namen da, als Zeilen passen, rollt die Liste mit dem Mausrad und der dünnen Leiste.
 - Prüfung: Wenn das Kalenderfenster des Spiels ein anderes Ereignis zeigt, während der Raid-Kalender offen ist, dann steht unten "Kalenderfenster des Spiels schließen, dann liest Amisia die Liste." und im Kalender ändert sich nichts. Liest gerade die Aufstellung oder eine Kalender-Prüfung, steht nach 8 Sekunden "Kalender belegt (Aufstellung, Anmeldung oder Prüfung liest), Amisia versucht es weiter ..." und danach wieder "Kalender gelesen <Uhrzeit>".
 - Notiz: Braucht: Gilde (ab 2026-11-04, D-32): Wenn sich ein anderes Gildenmitglied mit Amisia anmeldet, während du online bist, dann steht es nach wenigen Sekunden in deinem Raid-Kalender mit Rolle und Notiz (auch als Raider).
