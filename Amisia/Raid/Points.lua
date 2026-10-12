@@ -877,7 +877,8 @@ local function pointsCommand(rest)
         return
     end
     if rest == "" then
-        if ns.ShowPage then ns.ShowPage("points") end
+        -- always the standings, not the view used last (the paste view)
+        if ns.ShowPoints then ns.ShowPoints("list") elseif ns.ShowPage then ns.ShowPage("points") end
         return
     end
     local name = ns.FullName(rest)
