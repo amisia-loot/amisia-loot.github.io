@@ -57,7 +57,7 @@ end
 -- Whether an item currently lies in the open loot window.
 function ns.InLootWindow(id)
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
-        if ns.ItemID(GetLootSlotLink(i)) == id then return true end
+        if ns.ItemID(ns.Plain(GetLootSlotLink(i))) == id then return true end
     end
     return false
 end
@@ -75,7 +75,7 @@ function ns.AwardFromRoll(name, item, link)
     end
     local slot
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
-        if ns.ItemID(GetLootSlotLink(i)) == item then slot = i break end
+        if ns.ItemID(ns.Plain(GetLootSlotLink(i))) == item then slot = i break end
     end
     if not slot then
         ns.msg(L["Das Item liegt nicht mehr im Lootfenster."])

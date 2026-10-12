@@ -51,7 +51,7 @@ end
 local function lootSlot(item)
     if not item or not st.s or st.s ~= ns.Active() or not lootOpen or type(GiveMasterLoot) ~= "function" or type(GetMasterLootCandidate) ~= "function" then return nil end
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
-        if ns.ItemID(GetLootSlotLink(i)) == item then
+        if ns.ItemID(ns.Plain(GetLootSlotLink(i))) == item then
             return GetMasterLootCandidate(i, 1) and i or nil
         end
     end
