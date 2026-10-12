@@ -734,7 +734,7 @@ local function broadcast(s)
     s.sync.key, s.sync.hash, s.sync.keeper, s.sync.at = key, sp.h, me(), time()
     local ok, why = ns.CommSendBlob("SP", key, sp, "RAID", nil, { key = "SP:" .. key, ttl = DATA_TTL })
     if not ok then
-        if why == "Daten zu groß." and not warnedSize then   -- l10n-ok: Comm's reason, compared
+        if why == L["Daten zu groß."] and not warnedSize then   -- Comm's reason (translated)
             warnedSize = true
             ns.msg(L["Der Raid-Stand ist zu groß für den Abgleich."])
         end

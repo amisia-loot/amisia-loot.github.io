@@ -40,7 +40,7 @@ local ANSWER_AFTER = 2         -- requests within this go out together
 local ANSWER_RAID = 3          -- this many requesters: one send into the raid
 local LINE_MAX = 80            -- characters of the prio in a loot announcement line
 local ZERO = "0000000000000000"
-local TOO_BIG = N_("Daten zu groß.")   -- Comm's reason for a blob over its parts (compared, not shown)
+local TOO_BIG = N_("Daten zu groß.")   -- Comm's reason for a blob over its parts: compared as L[TOO_BIG]
 local GOLD = { 1, 0.82, 0 }
 
 -- class tokens and their names (German in the code, English through L)
@@ -716,7 +716,7 @@ local function sendList()
         while true do
             local ok, why = ns.CommSendBlob("LC", key, { v = 1, l = list }, chan, target, opts)
             if ok then stats.sent = stats.sent + 1 return end
-            if why ~= TOO_BIG or #list <= 10 then return end
+            if why ~= L[TOO_BIG] or #list <= 10 then return end
             table.sort(list, function(a, b) return a[2] > b[2] end)
             local half = {}
             for i = 1, math.floor(#list / 2) do half[i] = list[i] end

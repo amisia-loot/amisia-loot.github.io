@@ -4,7 +4,6 @@
 -- lockdown and reads every send result, no sending in battlegrounds, receive limits per sender.
 local ADDON, ns = ...
 local L = ns.L
-local N_ = ns.N_
 
 ns.SYNC_PROTO = 1        -- protocol of this client
 ns.SYNC_MIN_PROTO = 1    -- the oldest protocol this client still reads
@@ -764,7 +763,8 @@ function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     local packed, err = ns.CommPack(tbl)
     if not packed then return nil, err end
     local chunks = ns.CommChunks(packed)
-    if #chunks > (ART_PARTS[art] or MAX_PARTS) then return nil, N_("Daten zu groß.") end -- l10n-ok: Raid/Sync.lua compares the reason; shown through L[why]
+    -- translated like every reason here; Raid/Sync.lua and Raid/LootPrio.lua compare it with L["Daten zu groß."]
+    if #chunks > (ART_PARTS[art] or MAX_PARTS) then return nil, L["Daten zu groß."] end
     seq = seq % 999999 + 1
     opts = opts or {}
     local list, bytes = {}, 0
