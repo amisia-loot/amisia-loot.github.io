@@ -585,7 +585,6 @@ local function unitId(guid)
     if kind == "GameObject" then return -id end
     return nil
 end
-Co.UnitId = unitId
 
 -- Where the player stands: "map:x:y", "map" (no coordinates, as in an instance) or "".
 local function here()

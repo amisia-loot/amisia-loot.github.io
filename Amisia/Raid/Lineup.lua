@@ -39,7 +39,6 @@ local OUT = { X = true, I = true, O = true, G = true }
 local SOURCES = { "L", "K", "A" }
 
 ns.LINEUP_ROLES = { "T", "H", "M", "R" }
-ns.LINEUP_CODES = CODES
 local IS_ROLE = { T = true, H = true, M = true, R = true }
 local CLASSES = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, PRIEST = true, SHAMAN = true, MAGE = true,
                   WARLOCK = true, DRUID = true }
@@ -405,7 +404,6 @@ local function knownPeople()
     for _, f in ipairs(ns.BenchFriendRows and ns.BenchFriendRows() or {}) do add(f.name, f.class, f.online, nil, false) end
     return k
 end
-ns.LineupKnown = knownPeople
 
 local function names(list)
     local out = {}

@@ -189,7 +189,6 @@ local TREE = {
     WARLOCK = { { "affli" }, { "destro", "affli" }, { "destro" } },
     DRUID = { { "balance" }, { "feral" }, { "resto" } },
 }
-ns.BIS_TREE = TREE
 
 -- Points spent in a talent tree: C_SpecializationInfo.GetSpecializationInfo (7th return), else the
 -- compatibility GetTalentTabInfo (5th); nil when the client tells nothing.

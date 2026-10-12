@@ -328,7 +328,6 @@ local function whyNot()
     end
     return nil
 end
-ns.LootRulesWhyNot = whyNot
 
 local function restrictionOn(kind)
     local api = _G.C_RestrictedActions

@@ -23,7 +23,6 @@ local NO_START = L["Für diese Quest kennt Amisia keinen Startort."]
 local ITEM_START = L["Diese Quest startet durch ein Item."]
 local NO_MAP = L["Keine Kartendaten für diesen Client."]
 local MICRO, ORPHAN = 5, 6    -- Enum.UIMapType of sub zones that count as the zone above them
-Q.NO_START, Q.ITEM_START = NO_START, ITEM_START
 
 -- the fields of a parsed record (an array, a third of the memory of named fields)
 -- NEED: how many of PRE are needed (the flag N<n>), false for all of them
@@ -47,7 +46,6 @@ for id, name in pairs(SKILL_NAMES) do
     SKILL_BY_NAME[name:lower()] = id
     SKILL_BY_NAME[L[name]:lower()] = id
 end
-Q.SKILL_NAMES = SKILL_NAMES
 local STATUS_RANK = { active = 1, open = 2, locked = 3, done = 4 }
 local STATUS_OF = { a = "active", o = "open", l = "locked", d = "done" }
 Q.STATUS_TEXT = { active = L["im Log"], open = L["annehmbar"], locked = L["gesperrt"], done = L["erledigt"] }
@@ -97,7 +95,6 @@ local function eachId(v)
         return s and tonumber(s) or nil
     end
 end
-Q.EachId = eachId
 
 -- One record of the data as an array (see ID..FLAGS), or nil when it does not parse.
 local function parse(qid, s)
@@ -296,7 +293,6 @@ local function isActive(qid)
     end
     return v
 end
-Q.IsDone, Q.IsActive = isDone, isActive
 
 -- A quest counts as done for the quests after it when it or one of its alternatives is done.
 local function satisfied(idx, qid)
@@ -829,7 +825,6 @@ local function bump()
     gen = gen + 1
     ns.Fire("QUESTS_CHANGED")
 end
-Q.Bump = bump
 
 -- Test hook: forget everything parsed and kept.
 function Q._reset()

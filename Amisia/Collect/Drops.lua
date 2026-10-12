@@ -229,7 +229,6 @@ local function capItems(it)
     for i = 1, math.min(#ids, MAX_ITEMS) do out[ids[i]] = math.min(it[ids[i]], MAX_COUNT) end
     return out
 end
-ns.DropsCapItems = capItems
 
 local function bump()
     version = version + 1

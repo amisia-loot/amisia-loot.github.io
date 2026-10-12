@@ -55,7 +55,6 @@ local function lengthOf(k)
     if k and k.src == "enc" and k.start and k.t and k.t > k.start then return k.t - k.start end
     return nil
 end
-ns.KillLength = lengthOf
 
 local function itemName(id)
     local name = ns.ItemName(id)

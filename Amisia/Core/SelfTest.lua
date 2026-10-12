@@ -594,7 +594,6 @@ for _, name in ipairs({ "groupfinder-icon-role-large-tank", "groupfinder-icon-ro
                         "groupfinder-icon-class-warrior", "groupfinder-icon-class-priest" }) do
     ATLASES[#ATLASES + 1] = name
 end
-ST.ATLASES = ATLASES
 
 local function sectionAtlases(R)
     if not fn("C_Texture.GetAtlasInfo") then
@@ -694,7 +693,6 @@ local TEMPLATES = {
     { "Button", "PanelTabButtonTemplate", { "Text", "Left", "LeftActive" } },
     { "Button", "TooltipBackdropTemplate", { "NineSlice" } },
 }
-ST.TEMPLATES = TEMPLATES
 
 -- Test frames are made once per session and kept hidden under one hidden holder (a frame cannot be
 -- destroyed); a second run reuses the answers.
@@ -1028,7 +1026,6 @@ local RATINGS = {
     { "CR_HASTE_MELEE", "am" }, { "CR_HASTE_RANGED", "ar" }, { "CR_HASTE_SPELL", "as" },  -- l10n-ok: keys of the machine line
     { "CR_DEFENSE_SKILL", "def" }, { "CR_DODGE", "dr" }, { "CR_PARRY", "pr" }, { "CR_BLOCK", "br" }, { "CR_EXPERTISE", "exp" },
 }
-ST.RATINGS = RATINGS
 
 -- A number for the machine line: integers plain, else up to four decimals; nil for anything else.
 local function num(v)

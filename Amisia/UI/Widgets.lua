@@ -375,7 +375,6 @@ local ARROW = {
              pressedhover = "common-dropdown-a-button-pressedhover-shadowless",
              open = "common-dropdown-a-button-open-shadowless", disabled = "common-dropdown-a-button-disabled-shadowless" },
 }
-W.ARROW_ATLAS = ARROW
 local TURN = { down = 0, right = math.pi / 2, up = math.pi, left = -math.pi / 2 }
 
 -- The atlas for the state of button b: its own flags (over, down) and isOpen() of the owner.

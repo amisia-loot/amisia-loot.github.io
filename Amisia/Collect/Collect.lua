@@ -139,7 +139,6 @@ local function placeTag()
     local zone = (GetRealZoneText and GetRealZoneText()) or (GetZoneText and GetZoneText()) or ""
     return zone ~= "" and (" @" .. zone) or ""
 end
-ns.PlaceTag = placeTag
 
 -- The name of a unit token whose GUID is the given one, if any. A secret GUID or name (a boss
 -- fight on Forever) is skipped, never compared.

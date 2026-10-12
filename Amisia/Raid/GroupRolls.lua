@@ -92,7 +92,6 @@ local function container(create)
     while #g.runs > GR.MAX_RUNS do table.remove(g.runs, 1) end
     return run
 end
-GR._container = container
 
 local function add(c, e)
     c.rolls[#c.rolls + 1] = e
@@ -317,7 +316,6 @@ local function onChat(text)
     end
     if ns.Refresh then ns.Refresh() end
 end
-GR._onChat = onChat
 
 ---------------------------------------------------------------------------
 -- C_LootHistory (Forever)

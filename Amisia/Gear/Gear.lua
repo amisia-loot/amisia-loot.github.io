@@ -311,7 +311,6 @@ local function capped(key, converted, cap)
     if room == nil then return converted end
     return math.max(0, math.min(converted, room))
 end
-Gear.Capped = capped
 
 -- Score of a stat table for one weight set at one level. kind is the weapon's place: "2H", "MH",
 -- "OH" or "RANGED"; nil for everything else. cap (optional): the hit still useful, see capped().
@@ -857,7 +856,6 @@ local function fxEnglish(text)
     end
     return table.concat(lines, "; ")
 end
-Gear.FxEnglish = fxEnglish
 
 local fxShown = {}   -- German text -> English text
 function Gear.EffectText(id)
@@ -1001,7 +999,6 @@ local function sourceEffort(rec, ef)
     local key = KIND_EFFORT[k]
     return key and ef[key] or nil
 end
-Gear.SourceEffort = sourceEffort
 
 -- Orders the options within tie percent of the best by effort (cheapest first), the score
 -- deciding among equal efforts; an option moved ahead of a better one is marked easier. Scores
@@ -1143,7 +1140,6 @@ local function setPlan(res, w, level, class)
         res.sets[#res.sets + 1] = info
     end
 end
-Gear.SetPlan = setPlan
 
 -- BiS picks (ns.BIS.PICK, from tools/bis_picks.json): hand-kept items the scoring alone misses
 -- (procs, equip effects), each { class, spec, from, to, slot, item, note, src }. The picks of a

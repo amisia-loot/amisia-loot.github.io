@@ -45,7 +45,7 @@ local ITEM_START = L["Diese Quest startet durch ein Item."]
 local CHAIN_END = L["Danach hat kein Dungeon mehr Upgrades für dich."]
 local CHAIN_STEPS = 5
 local MAX_CHAIN = 30      -- pre-quest levels walked at most
-D.NO_DATA, D.NO_HIT, D.NO_QUESTS = NO_DATA, NO_HIT, NO_QUESTS
+D.NO_DATA = NO_DATA
 
 local FIT_TEXT = { fit = L["passt"], soon = L["bald"], easy = L["leicht"], high = L["zu hoch"] }
 local FIT_ORDER = { fit = 1, soon = 2 }
@@ -1307,7 +1307,6 @@ local TEXT = {
     giverInside = L["Questgeber %s (im Dungeon)"],
     preFor = L["%s (Vorquest für %s)"],
 }
-D.TEXT = TEXT
 
 -- The client's own loading screen of a dungeon (DungeonArt.lua): file data id, kind ("n" a 4:3
 -- picture in a square texture, "w" a wide one); the general screen of its kind without its own; nil

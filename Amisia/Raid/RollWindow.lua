@@ -404,7 +404,6 @@ local function build()
     F.rows = rows
     place()
     applyScale()
-    ns.RollWindow = F
 end
 
 -- The status line of a round: the result, what this client did, the lockdown, the end of the clock.

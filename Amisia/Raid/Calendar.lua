@@ -45,7 +45,6 @@ local function api(name)
     local f = type(C) == "table" and C[name]
     return type(f) == "function" and f or nil
 end
-Cal.Api = api
 
 -- Whether the guild events can be read (the sign-up's dates).
 function Cal.Available()
@@ -96,7 +95,6 @@ local function isGuildEvent(info)
     local ct = type(info) == "table" and plain(info.calendarType)
     return ct == "GUILD_EVENT"
 end
-Cal.IsGuildEvent = isGuildEvent
 
 -- The event to take from a list of { info = GetGuildEventInfo } in its order: the first guild
 -- event of the raid type, else the first guild event; nil when there is none.

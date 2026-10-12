@@ -64,7 +64,6 @@ local function upgradeMark(item)
     if not short then return nil end
     return u.up and (GREEN .. short .. "|r") or (GREY .. short .. "|r"), u
 end
-ns.ProfUpgradeMark = upgradeMark
 
 ---------------------------------------------------------------------------
 -- The list

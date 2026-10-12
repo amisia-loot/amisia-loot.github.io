@@ -119,7 +119,6 @@ local function nightLabel(key, n)
     if key == ns.LineupTonight() then return L["Heute, %s (%d)"]:format(day, count) end
     return ("%s (%d)"):format(day, count)
 end
-ns.LineupNightLabel = nightLabel
 
 local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 
@@ -158,7 +157,6 @@ local function click(target)
         act(selected, target)
     end
 end
-ns._lineupClick = click
 
 local function menuFor(owner, i)
     local n = ns.LineupNight(curNight(), false)
@@ -185,7 +183,6 @@ local function menuFor(owner, i)
     end }
     return W.Menu(owner, entries)
 end
-ns._lineupMenu = menuFor
 
 local function tooltip(owner, e)
     if not e then return end
@@ -572,7 +569,6 @@ local function reloadCalendar()
     end)
 end
 ns.Listen("CALENDAR_CHANGED", reloadCalendar)
-ns.LineupReloadCalendar = reloadCalendar
 
 local function apply(f)
     local key, line = ns.SetLineupText(f.paste.box:GetText() or "", curNight())

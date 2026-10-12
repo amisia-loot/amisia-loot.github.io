@@ -171,7 +171,6 @@ local function choose(night, index)
     ns.Refresh()
     if reader then reader.Read(false) end
 end
-ns.CalendarChoose = choose
 
 -- Opens the page at a night (default: the next date, else today).
 function ns.ShowCalendar(night)

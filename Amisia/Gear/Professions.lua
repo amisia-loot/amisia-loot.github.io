@@ -486,7 +486,6 @@ local function money(copper)
     if s > 0 then return ("%ds %dc"):format(s, c) end
     return ("%dc"):format(c)
 end
-Pr.Money = money
 
 local function where(npc)
     if not npc then return nil end

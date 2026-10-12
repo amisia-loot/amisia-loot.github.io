@@ -142,4 +142,3 @@ function Amisia_OnAddonCompartmentClick(_, mouse) click(mouse) end
 function Amisia_OnAddonCompartmentEnter(_, frame) tooltip(frame, "ANCHOR_LEFT") end
 function Amisia_OnAddonCompartmentLeave() GameTooltip:Hide() end
 
-ns._minimap = { place = place, follow = follow, button = function() return button end }
