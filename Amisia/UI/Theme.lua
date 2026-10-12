@@ -61,16 +61,15 @@ T.HEADER_H = 25       -- the section header (ListHeaderVisualTemplate)
 T.HEADER_TEXT_X = 8   -- its text from the left edge (and the collapse mark's room on the right: 24)
 T.SECTION_GAP = 12    -- after a section of rows (settings)
 T.WINDOW_PAD = 18     -- content of a side window from its left and right edge (12 still touched the border in the game)
-T.SCROLLBAR_W = 8     -- the client's minimal scroll bar
 T.SCROLLBAR_GAP = 4   -- between a list and its bar
-T.SCROLL_ROOM = 12    -- what a list leaves free at its right for the bar (gap + width)
+T.SCROLL_ROOM = 12    -- what a list leaves free at its right for the bar (gap + the client's minimal scroll bar, 8)
 T.HOVER_ALPHA = 0.5   -- the recipe list's hover glow on rows
 T.ROW_SHADE = { 0.025, 0.045 }   -- the faint shade of odd and even list rows
 T.EDIT_W = 60         -- W.TimeBox without a width
 T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 
--- the page area of the main window (the content inset less its 7 px margin)
-T.PAGE_W, T.PAGE_H = 602, 478
+-- the width of the page area of the main window (the content inset less its 7 px margin; 478 high)
+T.PAGE_W = 602
 
 -- The page scaffold (W.Page): every page is built of the same parts, top to bottom: bands (the head
 -- row first, then rows of controls or lines of text), the content (column heads, a list, a detail
@@ -286,7 +285,6 @@ T.RAIDCAL = {
     W = 760, H = 500,     -- the window
     TOP = 32,             -- the insets below the window's top, under the title bar
     INSET_BOTTOM = 44,    -- the insets end this far above the window's bottom: BOTTOM + BUTTON_H + 8
-    INSET_GAP = 8,        -- between the two insets
     INNER = 6,            -- the date list inside its inset
     -- the dates (left inset): the list is DATES_W - 2 x INNER - SCROLL_ROOM wide
     DATES_W = 232,
@@ -300,7 +298,7 @@ T.RAIDCAL = {
     BADGE_PAD = 5,        -- its text from its edges
     BADGE_ALPHA = 0.22,   -- its ground: the state's colour this strong
     -- the participants (right inset, RIGHT_X from the window's left, RIGHT_W wide)
-    RIGHT_X = 258,        -- 18 + 232 + 8
+    RIGHT_X = 258,        -- 18 + 232 + 8 (the gap between the two insets)
     RIGHT_W = 484,
     PAD = 8,              -- the head, the column heads and the list from the inset's edges
     ICON = 36,            -- the event's icon at the head's top left
