@@ -64,6 +64,9 @@ local cellOf = {}
 for _, c in ipairs(P.cells) do cellOf[c.info.key] = c end
 local today = cellOf[os.date("%Y-%m-%d", time())]
 assert(today and today.today[1]:IsShown(), "today framed in gold")
+local thick = NS.Theme.CALPAGE.TODAY
+assert(thick == 2 and today.today[1]._h == thick and today.today[2]._h == thick and today.today[3]._w == thick
+    and today.today[4]._w == thick, "the gold frame is CALPAGE.TODAY thick")
 local other
 for _, c in ipairs(P.cells) do
     if c ~= today then assert(not c.today[1]:IsShown(), "only today is framed") end

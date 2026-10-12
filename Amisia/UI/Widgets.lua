@@ -137,7 +137,9 @@ function W.Flat(parent, r, g, b, a, layer)
     return t
 end
 
-function W.Border(frame, r, g, b, a)
+-- A frame of four edges round frame in one colour; px: their thickness (1 without).
+function W.Border(frame, r, g, b, a, px)
+    px = px or 1
     local function edge(p1, p2, w, h)
         local t = frame:CreateTexture(nil, "BORDER")
         t:SetColorTexture(r, g, b, a)
@@ -147,8 +149,8 @@ function W.Border(frame, r, g, b, a)
         if h then t:SetHeight(h) end
         return t
     end
-    return { edge("TOPLEFT", "TOPRIGHT", nil, 1), edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1),
-             edge("TOPLEFT", "BOTTOMLEFT", 1, nil), edge("TOPRIGHT", "BOTTOMRIGHT", 1, nil) }
+    return { edge("TOPLEFT", "TOPRIGHT", nil, px), edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, px),
+             edge("TOPLEFT", "BOTTOMLEFT", px, nil), edge("TOPRIGHT", "BOTTOMRIGHT", px, nil) }
 end
 
 function W.SetBorderColor(edges, r, g, b, a)

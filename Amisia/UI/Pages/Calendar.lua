@@ -208,7 +208,7 @@ local function buildCell(f, i)
     cell.hover:SetTexCoord(0, 0.34375, 0, 0.6875)
     cell.hover:SetBlendMode("ADD")
     cell.hover:SetAlpha(0.5)
-    cell.today = W.Border(cell, T.GOLD[1], T.GOLD[2], T.GOLD[3], 1)
+    cell.today = W.Border(cell, T.GOLD[1], T.GOLD[2], T.GOLD[3], 1, C.TODAY)
     for _, e in ipairs(cell.today) do e:SetDrawLayer("OVERLAY") end
     local inner = C.CELL_W - 2 * C.PAD
     cell.day = W.Text(cell, T.FONT.body, inner - C.DOT - 2)
