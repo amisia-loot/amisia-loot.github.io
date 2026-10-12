@@ -1,6 +1,6 @@
 # Spec: Raid-Check (Buffs & Verbrauch, Ausrüstung) und Raid-IDs
 
-Stand: 2026-10-12 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-12 · Status: freigegeben, gebaut (2.29.0, D-46) ·
 Feature: F-098 (Raid-Check), F-099 (Raid-IDs von Mains und Twinks); F-097 ist der Prüfbefehl
 `/amisia selbsttest gruppe`. Einladen und Sortieren (Idee 10) stehen in der Spec
 `2026-10-10-raid-aufstellung.md`, Teil C und D (F-084).
@@ -293,3 +293,17 @@ Prüfungen im Spiel (die ersten drei macht `/amisia selbsttest gruppe` allein):
   Offiziere** (wie die Zahlen anderer Spieler, D-36); jeder sieht seine eigenen. Die übrigen Fragen
   nach den Vorschlägen der Spec. Einladen und Sortieren (Spec 2026-10-10 Teil C/D) folgen nach dem
   Bericht von `/amisia selbsttest gruppe`.
+- 2026-10-12: Gebaut für 2.29.0 (F-098, F-099, D-46): Seite "Raid-Check" mit drei Ansichten, "ID" auf der
+  Seite Aufstellung, `XQ`/`XA`/`IV`/`IQ`, `AmisiaDB.raidcheck`, Abschnitt `raidcheck`,
+  `tools/build_raidcheck.py` (9 Fläschchen, 70 Elixiere, 33 Satt-Zauber in Build 70338; Plätze aus der
+  festen Liste, `SpellEquippedItems` steht jetzt in `tools/export_db2.ps1`). Amisia meldet auch
+  Charaktere ohne ID ("frei" statt "unbekannt"). Die Leser teilen sich Raid-Check und
+  `/amisia selbsttest gruppe`.
+- 2026-10-12 17:46, Prüfbericht im Spiel (allein): `C_Secrets.HasSecretRestrictions` true, aber
+  `ShouldAurasBeSecret` false außerhalb des Kampfs; die Buffs eines Ziels sind lesbar (5 Buffs, 0
+  geheim: Seelenverbindung, Dämonisches Wissen, Segen der Könige); Haltbarkeit je Platz lesbar;
+  `GetAverageItemLevel` geht; keine Verzauberung zum Prüfen da (Zeilenarten gesehen: SellPrice,
+  ItemBinding, EquipSlot, ItemName, UsageRequirement, ItemSpellTriggerOnEquip — Typ 15 noch
+  unbestätigt); Talentpunkte über ns.Talents.Live lesbar, `UnitCharacterPoints` fehlt;
+  `RequestRaidInfo` → UPDATE_INSTANCE_INFO kommt, noch keine Raid-IDs. Eigene lange Buffs: keine
+  (kein Fläschchen/Essen genommen).

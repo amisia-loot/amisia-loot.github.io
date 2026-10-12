@@ -934,3 +934,9 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   Tastendruck und aus einem Timer) und für die Datenquellen der Spec 2026-10-12 (Raid-IDs, Buffs,
   Haltbarkeit, Verzauberungen, Talentpunkte); Prüfung 13 (Sortieren) braucht einen Raid, der Befehl schlägt
   `SetRaidSubgroup`/`SwapRaidSubgroup`/`PromoteToAssistant` nur nach.
+- 2026-10-12 17:46, `/amisia selbsttest gruppe` im Spiel (Client 70338, allein): alle Funktionen für
+  Einladen, Umwandeln, Sortieren, Assistent und Bereitschaftscheck vorhanden; `InviteUnit` geht **aus
+  dem Tastendruck und aus einem C_Timer** ohne Sperre (Systemmeldung "Spieler '%s' ist nicht
+  auffindbar." = ERR_BAD_PLAYER_NAME_S); die ERR_*-Vorlagen auf Deutsch stehen im Bericht. Prüfung 11
+  damit beantwortet: "Alle einladen" darf gedrosselt aus einem Timer einladen. Umwandeln und Sortieren
+  (Prüfungen 12, 13) brauchen eine Gruppe.
