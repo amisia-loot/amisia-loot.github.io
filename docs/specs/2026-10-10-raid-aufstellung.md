@@ -929,3 +929,8 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
 - 2026-10-12: Nutzer wählt nach der Recherche über Gilden-Addons Teil C und D (Einladen, Sortieren)
   zum Bauen, dazu **"inv" per Flüstern** (ändert Frage 8: jetzt ja) und **automatischer Assist für
   Offiziere**. Vorher die Prüfungen 10, 11 und 13 (als Prüfbefehl wie beim Kalender).
+- 2026-10-12: Gebaut: der Prüfbefehl `/amisia selbsttest gruppe` (en `selftest group`) als F-097 (2.28.0) für
+  die Prüfungen 10 und 11 (Funktionen, Textvorlagen, Einladen eines Namens, den es nicht gibt, aus dem
+  Tastendruck und aus einem Timer) und für die Datenquellen der Spec 2026-10-12 (Raid-IDs, Buffs,
+  Haltbarkeit, Verzauberungen, Talentpunkte); Prüfung 13 (Sortieren) braucht einen Raid, der Befehl schlägt
+  `SetRaidSubgroup`/`SwapRaidSubgroup`/`PromoteToAssistant` nur nach.

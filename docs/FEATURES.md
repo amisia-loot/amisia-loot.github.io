@@ -523,6 +523,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn die Einstellung aus ist (Standard), dann kommt nur die deutsche Ansage.
 - Notiz: Spec Teil B4; DECISIONS D-44. Für Raider mit Gargul oder englischem Client: sie würfeln mit `/roll` (MS) und `/roll 99` (OS), genau Gargul's Standardbereiche. Ein englischer Client sagt ohnehin Englisch an und schreibt keine zweite Zeile.
 
+### F-097 Gruppen-Prüfung
+- Version: 2.28.0
+- Status: gebaut
+- Prüfung: Wenn du außerhalb des Kampfes `/amisia selbsttest gruppe` eingibst, dann steht im Chat sofort "Spieler 'Niemand Nirgends' nicht gefunden." (oder die Meldung deines Clients), nach etwa 2 Sekunden noch einmal, und nach etwa 6 Sekunden "Gruppen-Prüfung: Einladen aus dem Tastendruck Spieler nicht gefunden, aus einem Timer ...; N Raid-IDs; Buffs ...; Haltbarkeit ... %; Itemstufe ...; Verzauberungen ...; freie Talentpunkte ...; N Problem(e). Bericht im Fenster." (`/amisia selftest group` auf englischen Clients).
+- Prüfung: Wenn du vorher ein Fläschchen oder Essen nimmst, dann listet der Bericht unter "Auren" die Buffs mit Zauber-ID und Dauer und unter "Lange Buffs (Fläschchen, Elixier, Essen?)" diesen Buff; unter "Haltbarkeit" steht jedes angelegte Item mit "aktuell/maximal (Prozent)", unter "Ausrüstung" je Item "Verzauberung im Link ..., Zeile Typ 15: ..." und "Zeilenarten gesehen: ...".
+- Prüfung: Wenn du diese Woche in einem Dungeon oder Raid gespeichert bist, dann stehen unter "Raid-IDs" "UPDATE_INSTANCE_INFO: 1-mal nach RequestRaidInfo" und je Raid-ID Name, ID, Schwierigkeit, gesperrt und Reset mit Datum.
+- Prüfung: Wenn du im Kampf (an einer Übungspuppe) `/amisia selbsttest gruppe` eingibst, dann wird niemand eingeladen ("übersprungen (im Kampf)"), und unter "Auren" steht, wie viele Buffs jetzt geheim sind.
+- Notiz: Prüfungen 10 und 11 der Spec 2026-10-10 (Teil C) und die Datenquellen der Spec 2026-10-12 (Raid-Check, Raid-IDs), allein; Prüfung 13 (Sortieren) und Umwandeln brauchen einen Raid, der Befehl schlägt dafür nur die Funktionen nach. Den Bericht bitte an uns, danach werden Einladen/Sortieren (F-084) und der Raid-Check gebaut. Lädt nur den Namen ein, den es nicht gibt; wandelt nie um, sortiert, befördert und startet keinen Bereitschaftscheck.
+
 ## Addon: Gilde
 
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll

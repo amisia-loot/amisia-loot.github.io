@@ -1553,10 +1553,10 @@ end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]]"],
-    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender)"], run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]] [gruppe]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender; gruppe: Einladen, Raid-IDs, Buffs, Haltbarkeit, Verzauberungen)"], run = function(rest)
     local opts = {}
-    local short, calendar, write = false, false, false
+    local short, calendar, write, group = false, false, false, false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
         if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
             short = true
@@ -1566,8 +1566,12 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [k
             calendar = true
         elseif word == "schreiben" or word == "write" then -- l10n-ok: the German and English sub-words
             write = true
+        elseif word == "gruppe" or word == "group" then -- l10n-ok: the German and English sub-words
+            group = true
         end
     end
+    -- the group probe (SelfTestGroup.lua): its first invite runs inside this key press
+    if group and ST.Group then return ST.Group.Start() end
     -- the calendar write probe (SelfTestCalendarWrite.lua): asks first, then writes
     if calendar and write and ST.CalendarWrite then return ST.CalendarWrite.Start() end
     -- the calendar probe (SelfTestCalendar.lua) runs on its own: it waits for the client's answers
