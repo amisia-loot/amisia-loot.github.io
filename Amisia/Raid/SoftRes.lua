@@ -686,7 +686,8 @@ local function markButton(btn, slot)
     end
     local icon = btn.Item
     if type(icon) ~= "table" or type(icon.CreateFontString) ~= "function" then return end
-    local link = slot and GetLootSlotLink and GetLootSlotLink(slot)
+    -- a secret link (the loot window in a boss fight on Forever) is never read: no mark then
+    local link = slot and GetLootSlotLink and ns.Plain(GetLootSlotLink(slot))
     local id = link and ns.ItemID(link)
     -- a hard reserve (from a softres.it code) is "HR", before a soft reserve
     local hard = id and ns.HardReserveOf(id) ~= nil
