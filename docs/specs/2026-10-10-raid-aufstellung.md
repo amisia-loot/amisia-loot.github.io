@@ -926,3 +926,6 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   ContextMenuInviteTentative 7 -> 8. **Ohne Wirkung:** EventTentative aus 6 (erst entfernen, wie
   CW.PLAN es tut) und EventDecline aus 6 (Abmelden bleibt RemoveEvent). Alter Stand wiederhergestellt.
   CW.PLAN stimmt damit; Fragen 23 bis 25 sind beantwortet.
+- 2026-10-12: Nutzer wählt nach der Recherche über Gilden-Addons Teil C und D (Einladen, Sortieren)
+  zum Bauen, dazu **"inv" per Flüstern** (ändert Frage 8: jetzt ja) und **automatischer Assist für
+  Offiziere**. Vorher die Prüfungen 10, 11 und 13 (als Prüfbefehl wie beim Kalender).
