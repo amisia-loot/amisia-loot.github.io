@@ -506,7 +506,11 @@ for i = 1, 15 do
 end
 NS.Refresh()
 assert(missingRows() == "", "23 pages, all with a row: " .. missingRows())
-assert(MF.navRowH < 20 and MF.navRowH >= 16, "the rows got lower: " .. tostring(MF.navRowH))
+assert(MF.navRowH < 21 and MF.navRowH >= 16, "the rows got lower: " .. tostring(MF.navRowH))
+do  -- the bars' art follows the lower rows
+    local b = MF.navOrder[1].button
+    assert(b._h == MF.navRowH and b.art.normal._h == math.floor(MF.navRowH * 32 / 21 + 0.5), "the art fits the row")
+end
 do
     local last = MF.navOrder[#MF.navOrder].button
     local NL2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
@@ -517,30 +521,53 @@ for i = 1, 15 do
     for j, p in ipairs(NS.panels) do if p.key == "extra" .. i then table.remove(NS.panels, j) break end end
 end
 NS.Refresh()
-assert(missingRows() == "" and MF.navRowH == 20, "back to 20 high")
--- the rows packed from the list's top, 20 high, not indented; the list under the search box
+assert(missingRows() == "" and MF.navRowH == 21, "back to 21 high")
+-- the worst case: the most pages a tab shows (the officer + expert Raid tab) keep the full 21 px
+do
+    local most, mostGroup = 0, nil
+    for _, g in ipairs(NS.PANEL_GROUPS) do
+        local n = 0
+        for _, p in ipairs(NS.panels) do
+            if NS.Visible(p) and NS.PanelGroup(p) == g.key then n = n + 1 end
+        end
+        if n > most then most, mostGroup = n, g.key end
+    end
+    assert(mostGroup == "raid" and most * 21 <= 454 and most <= 23, ("the fullest tab fits: %s %d"):format(tostring(mostGroup), most))
+    NS.ShowTab(mostGroup)
+    assert(#MF.navOrder == most and MF.navRowH == 21, "all of them at full height")
+    NS.ShowPage("overview")
+end
+-- the rows packed from the list's top, 21 high, not indented; the list under the search box
 local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
 local parts = {}
 for _, e in ipairs(MF.navOrder) do
     parts[#parts + 1] = e.button
     NL.inside("nav part", e.button)
-    assert(e.button._h == 20 and e.button.points.TOPLEFT.x == 0, "rows 20 high, not indented")
+    assert(e.button._h == 21 and e.button.points.TOPLEFT.x == 0, "rows 21 high, not indented")
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
-assert(lastB == -(#parts * 20), "packed without gaps: " .. lastB)
+assert(lastB == -(#parts * 21), "packed without gaps: " .. lastB)
 assert(MF.nav.points.TOPLEFT.y == -(6 + 20 + 6) and MF.search.points.TOPLEFT.y == -6, "the search box over the list")
 assert(MF.search._w == 164 and MF.search.inherits.SearchBoxTemplate)
--- a row: the icon at x 4, the white name from x 26, 130 wide; the chosen row glows
+-- a row: a bar of the auction house's category list (the dark bar 2 px wider on each side, 32/21 of
+-- the row high, from its top), no icon, the gold name from x 8, 150 wide (white under the mouse); the
+-- chosen row has the bright gold rim (added light), the hover its glow
 local ovRow, raidsRow
 for _, e in ipairs(MF.navOrder) do
     if e.button.key == "overview" then ovRow = e.button end
     if e.button.key == "raids" then raidsRow = e.button end
 end
-assert(ovRow.icon._w == 16 and ovRow.icon.points.LEFT.x == 4)
-assert(ovRow.label._w == 130 and ovRow.label.points.LEFT.x == 26)
-assert(ovRow.sel.atlas == "Professions_Recipe_Active" and ovRow.sel:IsShown(), "the shown page glows")
-assert(ovRow.hover.atlas == "Professions_Recipe_Hover" and ovRow.hover.alpha == 0.5)
+assert(ovRow.icon == nil, "no icon in the list")
+local art = ovRow.art
+assert(art.normal.atlas == "auctionhouse-nav-button" and art.normal.layer == "BACKGROUND" and art.normal._h == 32
+    and art.normal.points.TOPLEFT.x == -2 and art.normal.points.TOPRIGHT.x == 2, "the bar")
+assert(ovRow.label._w == 150 and ovRow.label.points.LEFT.x == 8 and ovRow.label.font == "GameFontNormal", "the gold name")
+assert(ovRow.sel == art.sel and art.sel.atlas == "auctionhouse-nav-button-select" and art.sel.blend == "ADD"
+    and art.sel.layer == "ARTWORK" and art.sel:IsShown(), "the shown page has the gold rim")
+assert(ovRow.hover == art.hover and art.hover.atlas == "auctionhouse-nav-button-highlight" and art.hover.layer == "HIGHLIGHT")
+ovRow.scripts.OnEnter(ovRow); assert(ovRow.label.font == "GameFontHighlight", "white under the mouse")
+ovRow.scripts.OnLeave(ovRow); assert(ovRow.label.font == "GameFontNormal", "gold again")
 -- a click on a row shows its page
 raidsRow:Click(); assert(NS.CurrentPage() == "raids" and raidsRow.sel:IsShown() and not ovRow.sel:IsShown())
 -- the collapsed sections of before 2.27.0 are dropped
@@ -858,6 +885,10 @@ end
 ALLOWED["common-dropdown-a-button-shadowless"] = true
 -- the client's reset button (UIResetButtonTemplate)
 ALLOWED["auctionhouse-ui-filter-redx"] = true
+-- the auction house's category bars (W.NavBar: the page list, the search results)
+for _, part in ipairs({ "", "-select", "-highlight", "-secondary", "-secondary-select", "-secondary-highlight" }) do
+    ALLOWED["auctionhouse-nav-button" .. part] = true
+end
 for name in pairs(STUB.atlasCalls) do
     assert(ALLOWED[name], "an atlas outside the design: " .. name)
 end

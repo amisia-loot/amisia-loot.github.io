@@ -57,6 +57,6 @@ NS.Refresh()
 assert(F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear guild calendar amisia")
 assert(exp.officer, "export stays an officer page")
 
--- the list's rows: normal height with the few pages of a tab
-assert(F.navRowH == 20)
+-- the list's rows: normal height (the auction house's 21) with the few pages of a tab
+assert(F.navRowH == 21)
 print("main tabs ok")

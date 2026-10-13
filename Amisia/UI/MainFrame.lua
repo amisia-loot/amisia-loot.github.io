@@ -129,9 +129,9 @@ local function pagesOf(group)
     return out
 end
 
--- The page list: the visible pages of the open page's tab, one row each from the top; the rows are
--- 20 high, lower (NAV_ROW_MIN at least) when more than fit the list. F.navOrder holds what is shown,
--- top to bottom ({ button = row }).
+-- The page list: the visible pages of the open page's tab, one bar each from the top, packed as the
+-- auction house's category list; the bars are NAV_ROW_H high, lower (NAV_ROW_MIN at least) when more
+-- than fit the list. F.navOrder holds what is shown, top to bottom ({ button = row }).
 local function updateNav()
     local order, y = {}, 0
     local pages = pagesOf(groupOf(current))
@@ -145,12 +145,13 @@ local function updateNav()
         if not b then break end
         used = used + 1
         b.key = p.key
-        b.icon:SetTexture(p.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
         b.label:SetText(p.label)
+        b.label:SetFontObject(T.FONT.title)
         b:SetHeight(rowH)
+        if b.art then b.art:Fit(rowH) end
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
-        if p.key == current then b.sel:Show() else b.sel:Hide() end
+        b:SetSelected(p.key == current)
         b:Show()
         order[#order + 1] = { button = b }
         y = y - rowH
@@ -312,16 +313,28 @@ function ns.ClearSearch()
     setQuery("")
 end
 
+-- A result row: a group as the auction house's category bar (gold name, the count white), a hit as
+-- its indented sub-category bar (white, from RES_HIT_X); no icons, as there. Without the client's
+-- bars: the group as a section bar and the hit as a plain list row, as before 2.29.0.
 local function buildResult(r)
-    r.bar = W.SectionHeader(r, "", false)
-    r.bar:SetPoint("TOPLEFT", 0, 0)
-    r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
-    r.bar:Hide()
-    r.icon = r:CreateTexture(nil, "ARTWORK")
-    r.icon:SetSize(M.RES_ICON, M.RES_ICON)
-    r.icon:SetPoint("LEFT", 4, 0)
-    r.label = W.Text(r, T.FONT.text, NAV_W - T.SCROLL_ROOM - M.NAV_LABEL_X + 4)
-    r.label:SetPoint("LEFT", M.NAV_LABEL_X - 4, 0)
+    local w = NAV_W - T.SCROLL_ROOM
+    r.headArt = W.NavBar(r, false)
+    r.hitArt = r.headArt and W.NavBar(r, true)
+    if r.headArt and r.hitArt then
+        r.headArt:Fit(M.RES_ROW_H - 1)
+        r.hitArt:Fit(M.RES_ROW_H - 1)
+        r.bg:Hide()
+        r.hover:SetAlpha(0)       -- the bars bring their own glow
+        r.headArt.hover:Hide()    -- a group is no button: no glow over it
+    else
+        r.headArt, r.hitArt = nil, nil
+        r.bar = W.SectionHeader(r, "", false)
+        r.bar:SetPoint("TOPLEFT", 0, 0)
+        r.bar:SetPoint("BOTTOMRIGHT", 0, 0)
+        r.bar:Hide()
+    end
+    r.label = W.Text(r, T.FONT.text, w - M.RES_HIT_X - 6)
+    r.label:SetPoint("LEFT", M.RES_HIT_X, 0)
     r:SetScript("OnClick", function(self)
         local hit = self.item
         if not hit or hit.head or not hit.run then return end
@@ -344,24 +357,34 @@ local function buildResult(r)
 end
 
 local function fillResult(r, hit)
-    if hit.head then
+    local head = hit.head ~= nil
+    if r.headArt then
+        r.headArt.normal:SetShown(head)
+        r.hitArt.normal:SetShown(not head)
+        r.hitArt.hover:SetShown(not head)
+        r.label:ClearAllPoints()
+        if head then
+            r.label:SetPoint("LEFT", M.NAV_LABEL_X, 0)
+            r.label:SetWidth(NAV_W - T.SCROLL_ROOM - M.NAV_LABEL_X - 6)
+            r.label:SetFontObject(T.FONT.title)
+            r.label:SetText(("%s |cffffffff%d|r"):format(hit.head, hit.count))
+        else
+            r.label:SetPoint("LEFT", M.RES_HIT_X, 0)
+            r.label:SetWidth(NAV_W - T.SCROLL_ROOM - M.RES_HIT_X - 6)
+            r.label:SetFontObject(T.FONT.text)
+            r.label:SetText(hit.label or hit.text)
+        end
+        return
+    end
+    if head then
         r.bar:SetHeaderText(("%s |cffffffff%d|r"):format(hit.head, hit.count))
         r.bar:Show()
         r.bg:Hide()
-        r.icon:Hide()
         r.label:SetText("")
         return
     end
     r.bar:Hide()
     r.bg:Show()
-    r.icon:SetTexCoord(0, 1, 0, 1)
-    if hit.atlas and W.HasAtlas(hit.atlas) then
-        r.icon:SetAtlas(hit.atlas)
-    else
-        r.icon:SetTexture(hit.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
-        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    end
-    r.icon:Show()
     r.label:SetText(hit.label or hit.text)
 end
 
@@ -428,25 +451,34 @@ function ns.UpdateSideTabs()
     clamp()
 end
 
+-- A row of the page list: a bar of the auction house's category list (W.NavBar), the page's name
+-- gold from NAV_LABEL_X (white while the mouse is over it, as the client's highlight font), no icon
+-- (the pages keep theirs for the search and other places). Without the client's bars: the recipe
+-- list's glow when chosen and its hover, the same gold name.
 local function navRow()
     local b = CreateFrame("Button", nil, nav)
     b:SetSize(NAV_W - INDENT, ROW_H)
-    b.sel = W.SelectBar(b)
-    b.hover = b:CreateTexture(nil, "HIGHLIGHT")
-    b.hover:SetAllPoints()
-    if W.HasAtlas("Professions_Recipe_Hover") then
-        b.hover:SetAtlas("Professions_Recipe_Hover")
-        b.hover:SetAlpha(T.HOVER_ALPHA)
+    b.art = W.NavBar(b, false)
+    if b.art then
+        b.sel, b.hover = b.art.sel, b.art.hover
     else
-        b.hover:SetColorTexture(1, 1, 1, 0.08)
+        b.sel = W.SelectBar(b)
+        b.hover = b:CreateTexture(nil, "HIGHLIGHT")
+        b.hover:SetAllPoints()
+        if W.HasAtlas("Professions_Recipe_Hover") then
+            b.hover:SetAtlas("Professions_Recipe_Hover")
+            b.hover:SetAlpha(T.HOVER_ALPHA)
+        else
+            b.hover:SetColorTexture(1, 1, 1, 0.08)
+        end
     end
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(M.NAV_ICON, M.NAV_ICON)
-    b.icon:SetPoint("LEFT", 4, 0)
-    b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    b.label = W.Text(b, T.FONT.body, M.NAV_LABEL_W)
+    function b:SetSelected(on) self.sel:SetShown(on and true or false) end
+    b.label = W.Text(b, T.FONT.title, M.NAV_LABEL_W)
     b.label:SetPoint("LEFT", M.NAV_LABEL_X, 0)
+    if b.label.SetShadowOffset then b.label:SetShadowOffset(1, -1) end
     b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
+    b:SetScript("OnEnter", function(self) self.label:SetFontObject(T.FONT.body) end)
+    b:SetScript("OnLeave", function(self) self.label:SetFontObject(T.FONT.title) end)
     b:Hide()
     return b
 end

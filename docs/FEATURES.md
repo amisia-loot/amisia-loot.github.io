@@ -48,6 +48,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Reiter rechts am Fenster ansiehst (Ausrüstungstabelle, in der Offiziersansicht auch Rolls und Soft-Reserve-Import), dann sitzen die Symbole mit etwas Rand im Reiter, und die Würfel der Rolls sind scharf.
 - Notiz: 2026-10-08 im Spiel: Symbole füllten den Reiter ganz aus, die Würfel (UI-GroupLoot-Dice-Up, 32 px) waren verpixelt; 2.13.3 zieht die Symbole 4 px ein und nimmt INV_Misc_Dice_01.
 - Notiz: 2.27.0: die aufklappbaren Abschnitte der Seitenliste sind durch die Reiter unten ersetzt (F-094, D-45); das Suchfeld ist F-095, die Kalender-Seite F-096.
+- Notiz: 2.29.0: die Seitenliste sieht aus wie die Kategorienliste des Auktionshauses (D-06): dunkle Balken mit Bronzerand, goldene Namen, die gewählte Seite mit hellem Goldrand, keine Symbole. Prüfung: Wenn du `/amisia` öffnest, dann ist jede Seite links ein solcher Balken; unter der Maus leuchtet er und der Name wird weiß; in der Offiziersansicht mit Expertenmodus passen alle Seiten von "Raid" ohne kleinere Zeilen.
 
 ### F-094 Reiter unten am Hauptfenster
 - Version: 2.27.0
@@ -57,6 +58,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia einstellungen` eingibst, dann ist der Reiter "Amisia" gewählt und links stehen Einstellungen und "Über und Befehle"; `/amisia statistik` wählt "Raid".
 - Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlt unter "Gilde" die Seite Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
 - Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Die Reiter sind die Vorlage des Spiels (`PanelTabButtonTemplate`); ein Reiter ohne sichtbare Seite fehlt. Gemerkt in `settings.window.tab` und `pages`.
+- Notiz: 2.29.0: die Seiten links unter den Reitern stehen als Balken der Kategorienliste des Auktionshauses (21 px, ohne Symbole); in der Suche ist eine Gruppe ein Balken, ihre Treffer eingerückte Unterbalken (D-06, Nachtrag D-45).
 
 ### F-095 Suchfeld oben links im Hauptfenster
 - Version: 2.27.0

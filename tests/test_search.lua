@@ -92,8 +92,18 @@ type_("experten")
 assert(not F.nav:IsShown() and F.results:IsShown(), "the results in place of the list")
 local items = F.results.items
 assert(items[1].head == "Einstellungen" and items[1].count == 1 and items[2].text == "Expertenmodus", tostring(items[1].head))
-local row = F.results.rows[1]
-assert(row.bar:IsShown() and has(row.bar.ButtonText:GetText(), "Einstellungen"), "a group's bar")
+-- a group as the auction house's category bar (gold, the count white), a hit as its indented
+-- sub-category bar (white); no icons, no list shade
+local row, hitRow = F.results.rows[1], F.results.rows[2]
+assert(row.headArt.normal.atlas == "auctionhouse-nav-button" and row.headArt.normal:IsShown()
+    and not row.hitArt.normal:IsShown() and not row.headArt.hover:IsShown(), "a group's bar")
+assert(has(row.label:GetText(), "Einstellungen") and row.label.font == "GameFontNormal" and row.label.points.LEFT.x == 8)
+assert(hitRow.hitArt.normal.atlas == "auctionhouse-nav-button-secondary" and hitRow.hitArt.normal:IsShown()
+    and not hitRow.headArt.normal:IsShown() and hitRow.hitArt.hover:IsShown(), "a hit's bar")
+assert(hitRow.hitArt.hover.atlas == "auctionhouse-nav-button-secondary-highlight" and hitRow.hitArt.hover.points.TOPLEFT.x == 10)
+assert(hitRow.label:GetText() == "Expertenmodus" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
+assert(hitRow.icon == nil and not row.bg:IsShown() and row.hover.alpha == 0, "no icon, no shade, the bars' own glow")
+assert(F.results.rowCount == 21 and F.results._h == 21 * 21 and hitRow._h == 20, "21 rows of 21")
 F.results.rows[2]:Click()
 assert(NS.CurrentPage() == "settings" and box:GetText() == "" and F.nav:IsShown() and not F.results:IsShown(),
     "a click opens the settings and empties the box")

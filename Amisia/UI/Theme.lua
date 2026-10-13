@@ -93,14 +93,18 @@ T.LAYOUT = {
 -- group, ns.PANEL_GROUPS) hang under the window's bottom edge, the side tabs at its right edge.
 T.MAIN = {
     W = 806, H = 560,
-    -- the page list: only the pages of the chosen tab, rows 20 high (16 at least when more pages than
-    -- fit the 454 px under the search box are shown); a pool of 23 rows
+    -- the page list: only the pages of the chosen tab, one bar of the auction house's category list
+    -- each (T.NAVBAR, no icon), 21 high as there and packed without a gap (the client's list spacing
+    -- is 0); 16 at least when more pages than fit the 454 px under the search box are shown (21 pages
+    -- still fit at 21: the officer + expert Raid tab has 9); a pool of 23 rows. The gold name from
+    -- NAV_LABEL_X (the client's 8), NAV_LABEL_W wide (the bar less 8 on the left and 6 on the right)
     NAV_W = 164, NAV_ROWS = 23, NAV_LIST_H = 454, NAV_ROW_MIN = 16,
-    NAV_ROW_H = 20, NAV_INDENT = 0, NAV_ICON = 16, NAV_LABEL_X = 26, NAV_LABEL_W = 130,
+    NAV_ROW_H = 21, NAV_INDENT = 0, NAV_LABEL_X = 8, NAV_LABEL_W = 150,
     -- the search box at the top of the page list (T.FIELD_H high), the list SEARCH_GAP under it;
-    -- typing turns the list into the results (RES_ROWS rows of RES_ROW_H, a group's bar the same
-    -- height), at least SEARCH_MIN characters, at most RES_MAX hits per group
-    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 22, RES_ROW_H = 20, RES_MAX = 8, RES_ICON = 14,
+    -- typing turns the list into the results (RES_ROWS rows of RES_ROW_H: a group as a category bar,
+    -- its hits as the indented sub-category bars, RES_HIT_X the hit's text as the client's 18),
+    -- at least SEARCH_MIN characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 454
+    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 21, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
     LIST_W = 176,         -- the page list's inset
@@ -117,6 +121,19 @@ T.MAIN = {
     -- PanelTemplates_AnchorTabs), BTAB_H high (the template); each as wide as its text + 20, at least
     -- BTAB_MIN_W
     BTAB_X = 11, BTAB_Y = 2, BTAB_GAP = 3, BTAB_H = 32, BTAB_MIN_W = 70,
+}
+
+-- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
+-- AuctionHouseFilterButton_SetUp dresses it, Blizzard_AuctionHouseUI/Mainline; W.NavBar): the art is
+-- TEX_H / BAR_H of the bar's height (136 x 32 on a 132 x 21 button) and hangs from its top, so a bar
+-- reaches a little under the next one as in the client. TOP: a category (the page list, a search
+-- group): the art X left of the button and R past its right edge, the chosen rim and the hover glow
+-- over the whole button. SUB: a sub-category (a search hit): the art from X, R past the right edge,
+-- the rim and the glow from HL_X (indented as in the client).
+T.NAVBAR = {
+    TEX_H = 32, BAR_H = 21,
+    TOP = { X = -2, R = 2, HL_X = 0 },
+    SUB = { X = 1, R = 1, HL_X = 10 },
 }
 
 -- the calendar page (UI/Pages/Calendar.lua, the tab "Kalender"): the head row with the month (gold,
@@ -347,6 +364,10 @@ T.ATLASES = {
     -- windows, insets, lists
     "Profession-Background-Overview", "Professions-background-summarylist", "common-insideframe",
     "Professions_Recipe_Active", "Professions_Recipe_Hover", "Professions-skillbar-bg", "Professions-skillbar-frame",
+    -- the page list and the search results: the auction house's category bars (W.NavBar)
+    "auctionhouse-nav-button", "auctionhouse-nav-button-select", "auctionhouse-nav-button-highlight",
+    "auctionhouse-nav-button-secondary", "auctionhouse-nav-button-secondary-select",
+    "auctionhouse-nav-button-secondary-highlight",
     -- fields, menus, buttons
     "common-search-border-left", "common-search-border-middle", "common-search-border-right",
     "common-dropdown-bg", "auctionhouse-ui-filter-redx",

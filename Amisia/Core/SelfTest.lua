@@ -572,6 +572,10 @@ local ATLASES = {
     "common-dropdown-bg", "common-search-border-left", "common-search-border-middle", "common-search-border-right",
     -- the quest giver marks on the world map
     "QuestNormal",
+    -- the page list and the search results: the auction house's category bars (W.NavBar)
+    "auctionhouse-nav-button", "auctionhouse-nav-button-select", "auctionhouse-nav-button-highlight",
+    "auctionhouse-nav-button-secondary", "auctionhouse-nav-button-secondary-select",
+    "auctionhouse-nav-button-secondary-highlight",
 }
 for _, base in ipairs({ "common-dropdown-a-button", "common-dropdown-b-button" }) do
     ATLASES[#ATLASES + 1] = base

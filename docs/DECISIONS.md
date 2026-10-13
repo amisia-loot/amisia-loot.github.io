@@ -109,16 +109,28 @@ Seit 2026-10-10 (2.20.0) zeichnet ein Baukasten die Talente in zwei Größen: au
 mit mindestens 8 px zum Rand des Baums (`TALENT.PAGE`), im eigenen Fenster "Talentrechner" 44-px-Symbole
 mit mindestens 14 px (`TALENT.BIG`); beide zeigen denselben Plan. Das Fenster skaliert für sich
 (Einstellung "Größe des Talentfensters (%)", 70 bis 150, Strg + Mausrad) statt die Seite zu vergrößern.
+Seit 2026-10-12 (2.29.0) sieht die Seitenliste links im Hauptfenster aus wie die Kategorienliste des
+Auktionshauses: jede Seite ein dunkler Balken mit dünnem Bronzerand (`auctionhouse-nav-button`), der
+Name golden (`GameFontNormal`, unter der Maus weiß), die gewählte Seite mit dem hellen Goldrand
+(`-select`, additiv), Leuchten unter der Maus (`-highlight`), 21 px hoch ohne Abstand wie im Spiel,
+keine Symbole (die Seiten behalten ihre Symbole für andere Stellen). In den Suchergebnissen ist eine
+Gruppe ein solcher Balken, ein Treffer der eingerückte Unterbalken (`auctionhouse-nav-button-secondary*`),
+ebenfalls ohne Symbol. Die Vorlage `AuctionCategoryButtonTemplate` selbst wird nicht geerbt (sie liegt
+im Auktionshaus-Addon, das erst am Auktionshaus lädt); `W.NavBar` baut ihre Atlanten und Maße nach
+(`ns.Theme.NAVBAR`). Fehlt ein Atlas, bleibt das Aussehen von vorher (Leuchten der Rezeptliste).
 **Grund:** Bildschirmfotos und Wünsche des Nutzers 2026-10-05/06/07; für die Talente das Foto des
 klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen") und das Foto von 2.19.0
 ("können wir das fenster wo die talente sind größer machen oder besser skalieren").
+Für die Seitenliste zwei Bildschirmfotos des Nutzers am 2026-10-12 (die Liste und die Kategorienliste
+des Auktionshauses: "so soll es aussehen").
 **Folge:** Client-Vorlagen und -Atlanten vor eigenen flachen Frames; ein neuer Atlas kommt nur in
 `ns.Theme.ATLASES`, wenn er zum Stil passt. Kein `UIDropDownMenu`/`EasyMenu`/`MenuUtil`, keine
 Blizzard-Einstellungskategorie, keine fremden Bibliotheken.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_forever_look`,
 `tools/tests/test_contracts.py::test_no_foreign_libraries_menus_or_combat_log`, die Layoutregeln
 (`tools/ui_layout.py`, Atlasliste), `tests/test_style.lua` und für die Talente
-`tests/test_talents_page.lua` und `tests/test_talent_window.lua` (Abstände beider Größen).
+`tests/test_talents_page.lua` und `tests/test_talent_window.lua` (Abstände beider Größen), für die
+Seitenliste `tests/test_style.lua`, `tests/test_search.lua` und `tests/test_nav_bars_noatlas.lua`.
 
 ## D-07 Nur Zeichen, die die Spielschrift hat
 
@@ -882,6 +894,8 @@ Item-Suche öffnet keine Item-Seite: die Seite Ausrüstung kennt nur Ansicht und
 (`ns.ShowGear(view, slot)`), darum kommt der Link in die Chatzeile, der Tooltip zeigt das Item. Die
 Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, solange das
 Kalenderfenster des Spiels ein anderes Ereignis zeigt.
+**Nachtrag 2026-10-12 (2.29.0):** Die Seitenliste und die Suchergebnisse tragen die Balken der
+Kategorienliste des Auktionshauses, ohne Symbole (D-06).
 **Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`,
 `tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).

@@ -699,6 +699,44 @@ function W.SelectBar(row)
     return t
 end
 
+-- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
+-- AuctionHouseFilterButton_SetUp dresses it): the dark bar with the thin bronze rim
+-- (auctionhouse-nav-button), the bright gold rim when chosen (-select, added light) and the glow on
+-- hover (-highlight); sub: the indented bar of a sub-category (-secondary). The template itself is
+-- not used: it lives in the auction house's addon, loaded only at the auction house. Returns nil when
+-- the client lacks one of the three atlases (the caller keeps its own look), else the art:
+-- bar:Fit(h) sizes it to a row h high (T.NAVBAR: the art hangs from the bar's top, TEX_H / BAR_H of
+-- its height), bar:SetSelected(on) shows the chosen rim; bar.normal, bar.sel, bar.hover.
+function W.NavBar(b, sub)
+    local N = T.NAVBAR
+    local base = sub and "auctionhouse-nav-button-secondary" or "auctionhouse-nav-button"
+    for _, name in ipairs({ base, base .. "-select", base .. "-highlight" }) do
+        if not hasAtlas(name) then return nil end
+    end
+    local g = sub and N.SUB or N.TOP
+    local bar = {}
+    bar.normal = b:CreateTexture(nil, "BACKGROUND")
+    bar.normal:SetAtlas(base, false)
+    bar.normal:SetPoint("TOPLEFT", g.X, 0)
+    bar.normal:SetPoint("TOPRIGHT", g.R, 0)
+    bar.hover = b:CreateTexture(nil, "HIGHLIGHT")
+    bar.hover:SetAtlas(base .. "-highlight", false)
+    bar.hover:SetPoint("TOPLEFT", g.HL_X, 0)
+    bar.hover:SetPoint("BOTTOMRIGHT", 0, 0)
+    bar.sel = b:CreateTexture(nil, "ARTWORK")
+    bar.sel:SetAtlas(base .. "-select", false)
+    bar.sel:SetBlendMode("ADD")
+    bar.sel:SetPoint("TOPLEFT", g.HL_X, 0)
+    bar.sel:SetPoint("BOTTOMRIGHT", 0, 0)
+    bar.sel:Hide()
+    function bar:Fit(h)
+        self.normal:SetHeight(math.floor((h or N.BAR_H) * N.TEX_H / N.BAR_H + 0.5))
+    end
+    function bar:SetSelected(on) self.sel:SetShown(on and true or false) end
+    bar:Fit(b:GetHeight() ~= 0 and b:GetHeight() or nil)
+    return bar
+end
+
 -- A section header as in the profession window's recipe list (ListHeaderVisualTemplate with
 -- ListHeaderCodeTemplate): gold text on the dark bar, 25 high, a minus to collapse when
 -- collapsible. A click turns the state and hands it to onToggle(collapsed); h:SetCollapsed(on)

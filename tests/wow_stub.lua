@@ -686,6 +686,7 @@ local function region(parent, kind, layer, template)
     f.SetWordWrap = function(self, on) self.wordWrap = on and true or false end
     f.SetJustifyH = function(self, j) self.justifyH = j end
     f.SetDrawLayer = function(self, layer) self.layer = layer end
+    f.SetBlendMode = function(self, mode) self.blend = mode end
     -- the line limit of a font string is kept, so a test can tell a clamped one
     f.SetMaxLines = function(self, n) self.maxLines = n end
     -- an atlas of the client's art by name; the test reads it back. Every call is counted
@@ -770,6 +771,13 @@ for _, s in ipairs({ "", "-hover", "-pressed", "-pressedhover", "-open", "-disab
     STUB.atlases["common-dropdown-b-button" .. s] = { 143, 26 }
 end
 STUB.atlases["auctionhouse-ui-filter-redx"] = { 23, 23 }
+-- the auction house's category bars (Blizzard_AuctionHouseUI/Mainline AuctionHouseFilterButton_SetUp)
+STUB.atlases["auctionhouse-nav-button"] = { 136, 32 }
+STUB.atlases["auctionhouse-nav-button-select"] = { 132, 21 }
+STUB.atlases["auctionhouse-nav-button-highlight"] = { 132, 21 }
+STUB.atlases["auctionhouse-nav-button-secondary"] = { 133, 32 }
+STUB.atlases["auctionhouse-nav-button-secondary-select"] = { 122, 21 }
+STUB.atlases["auctionhouse-nav-button-secondary-highlight"] = { 122, 21 }
 -- the client's talent window (Blizzard_SharedTalentUI, Blizzard_PlayerSpells/Camelot)
 STUB.atlases["UI-HUD-ActionBar-IconFrame-Mask"] = { 64, 64 }
 STUB.atlases["UI-HUD-ActionBar-IconFrame"] = { 46, 45 }
