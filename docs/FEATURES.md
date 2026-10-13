@@ -419,12 +419,24 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Einstellungen, "Raid-Aufstellung": Raidgröße (10/20/40), "Gäste einladen" (aus: Gäste stehen grau "Gast" und werden nicht eingeteilt), "Ersatz automatisch eintragen, sobald die Aufnahme läuft" (aus). Einladen und Sortieren (Teile C und D) sind F-084.
 
 ### F-084 Raid-Aufstellung: einladen und Gruppen sortieren
-- Version: -
-- Status: geplant
+- Version: 2.30.0
+- Status: gebaut
 - Braucht: Gruppe, Gilde, Raid
-- Prüfung: Wenn du "Alle einladen" klickst, dann bekommen alle eingeteilten Online-Spieler eine Einladung, der Raid wird nach dem ersten Beitritt umgewandelt, und die Status wechseln auf "eingeladen" und "im Raid".
-- Prüfung: Wenn alle im Raid sind und du "Gruppen sortieren" klickst, dann stehen alle in der Gruppe aus dem Planer.
-- Notiz: Teile C und D der Spec 2026-10-10, erst nach den Prüfungen 10, 11 und 13 im Spiel (D-41).
+- Prüfung: Wenn du auf der Seite Aufstellung in der Ansicht "Einladen" "Alle einladen (N)" klickst, dann sagt der Chat "Einladen: N Spieler, einer alle 0,5 Sekunden.", die eingeteilten Online-Spieler bekommen nacheinander eine Einladung (allein erst vier; sobald der Erste angenommen hat, wird die Gruppe ein Raid, dann folgt der Rest), die Spalte "Einladung" wechselt von "geplant" auf "eingeladen" und "im Raid", und am Ende sagt der Chat "Einladen: N eingeladen.".
+- Prüfung: Wenn jemand die Einladung ablehnt, dann steht er rot "abgelehnt" mit "1/3" unter "Versuche", und "Nochmal einladen (1)" lädt ihn erneut ein; wer schon in einer Gruppe ist, steht orange "schon in Gruppe", wer 90 Sekunden nicht antwortet orange "keine Antwort", ein falsch geschriebener Name rot "unbekannt"; nach der dritten Einladung eines Namens gibt es an diesem Abend keine vierte.
+- Prüfung: Wenn alle im Raid sind und du in der Ansicht "Planer" "Gruppen sortieren" klickst, dann steht jeder in seiner Gruppe aus dem Planer, wer nicht auf der Liste steht, bleibt, und der Chat sagt "Gruppen sortiert: N Schritte."; beginnt dabei ein Kampf, hört es mit "Sortieren nach dem Kampf fortsetzen." auf, und der Knopf heißt nach dem Kampf "Sortieren fortsetzen".
+- Prüfung: Wenn in den Einstellungen `Einladen auf Flüstern "inv"` an ist, heute eine Aufstellung steht und dir ein Gildenmitglied "inv" flüstert, dann wird es eingeladen, und dein Chat sagt "Einladen auf Flüstern: <Name> wird eingeladen."; flüstert dir jemand außerhalb der Gilde "inv", bekommt er nichts, und dein Chat sagt "Einladen auf Flüstern: <Name> ist nicht in der Gilde, nicht eingeladen.".
+- Prüfung: Wenn "Offiziere automatisch zum Assistenten" an ist und ein Offizier deiner Gilde deinem Raid beitritt, während du Leiter bist, dann ist er nach etwa 2 Sekunden Assistent, und dein Chat sagt "Assistent: <Name> (Offiziersrang)."; ein Raider ohne Offiziersrang wird es nicht.
+- Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teile C und D; DECISIONS D-41, D-47. Die Prüfungen 12 und 13 der Spec (Umwandeln ohne Nachfrage, Sortieren als Leiter und als Assistent) beantwortet der erste Raid: bitte melden, wenn der Chat "Einladen angehalten: Umwandeln in einen Raid ging nicht." oder "Sortieren angehalten: das Spiel hat <Name> nicht verschoben." sagt. Mit "Einladung flüstern" bekommt jeder Eingeladene einmal am Abend "Amisia: Einladung zum Raid (Gruppe N). Bitte annehmen."; "Automatisch sortieren, wenn jemand beitritt" sortiert nur auf dem Client, der "Alle einladen" geklickt hat. `/amisia aufstellung einladen` und `/amisia aufstellung sortieren` (en `lineup invite`, `lineup sort`).
+
+### F-100 Raid-Aufstellung: Ansicht "Einladen" und ihre Einstellungen
+- Version: 2.30.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Aufstellung mit einer eingeteilten Liste die Ansicht "Einladen" wählst, dann steht jede eingeteilte Zeile mit Gruppe, Rolle, Name und "geplant" (offline grau "offline", ein unklarer Name rot "unbekannt", du selbst grün "im Raid"), daneben ein Knopf "Einladen", darüber "Im Raid ... · noch einzuladen N" und rechts "Nochmal einladen (0)" (grau) und "Alle einladen (N)".
+- Prüfung: Wenn du an einer Übungspuppe im Kampf bist, dann heißt der Knopf "Nicht im Kampf", ist grau, die Zeile darüber sagt rot "Nicht im Kampf", und niemand wird eingeladen; nach dem Kampf heißt er wieder "Alle einladen (N)".
+- Prüfung: Wenn du allein in der Ansicht "Planer" bist, dann ist "Gruppen sortieren" grau, und die Zeile darüber sagt rot "Sortieren: Nur im Raid"; `/amisia aufstellung sortieren` sagt im Chat "Nur im Raid".
+- Prüfung: Wenn du in den Einstellungen "Raid-Aufstellung" öffnest, dann stehen dort "Einladung flüstern" (aus), "Automatisch sortieren, wenn jemand beitritt" (an), `Einladen auf Flüstern "inv"` (aus) und "Offiziere automatisch zum Assistenten" (aus), jede mit ihrer Erklärung unter der Maus.
+- Notiz: Der allein prüfbare Teil von F-084 (DECISIONS D-47).
 
 ### F-085 Kalender-Prüfung
 - Version: 2.23.0

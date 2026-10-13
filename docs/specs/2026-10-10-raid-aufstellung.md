@@ -1,6 +1,6 @@
 # Spec: Raid-Aufstellung (Anmeldeliste, Einladen, Gruppen sortieren)
 
-Stand: 2026-10-11 · Status: freigegeben, Teile A, B, E, G, H (mit H3) und I gebaut ·
+Stand: 2026-10-13 · Status: freigegeben, Teile A bis E, G, H (mit H3) und I gebaut ·
 Feature: F-083 (Aufstellung: Einfügen, Abgleich, Planer, Ersatzbank), F-084 (Einladen, Sortieren);
 F-082 war beim Bau schon vergeben (Einrichtungshilfe). Regel: DECISIONS D-41.
 
@@ -165,7 +165,8 @@ eintragen (aus).
 - **Kein Rauswerfen.** Amisia wirft nie jemanden aus der Gruppe (auch nicht, wer nicht angemeldet
   ist). Das macht der Leiter von Hand.
 - **Kein Einladen auf Flüstern** ("inv" an den Leiter) in diesem Paket: das öffnet Tür und Tor
-  für Spam und Fremde (siehe Frage 8).
+  für Spam und Fremde (siehe Frage 8). Geändert am 2026-10-12 (Nutzer): mit der Einstellung
+  "Einladen auf Flüstern" (Standard aus), nur Gildenmitglieder, siehe Entscheidungen und D-47.
 - **Keine Raidziele, Markierungen oder Aufgaben** (wer welchen Boss tankt, Heiler-Zuteilung). Das
   ist ein eigenes Thema.
 - **Kein Teilen zwischen Offizieren.** Die Aufstellung liegt bei dem Offizier, der einlädt. Ein
@@ -515,7 +516,9 @@ F-087 (Vorschlag).
   Abend, nie automatisch wiederholt.
 - **Gäste** (nicht in der Gilde) werden nur mit eigener Einstellung eingeladen, damit eine
   untergeschobene Liste keine Fremden in den Raid holt.
-- **Keine Kicks**, kein Leiterwechsel, keine Beförderung zum Assistenten.
+- **Keine Kicks**, kein Leiterwechsel, keine Beförderung zum Assistenten (geändert am 2026-10-12:
+  Offiziere der Gilde werden mit der Einstellung "Offiziere automatisch zum Assistenten", Standard aus,
+  einmal pro Raid Assistent; D-47).
 - **Ersatzbank:** nur über den bestehenden Weg (`ns.BenchAdd`), mit dem Offizier als "eingetragen
   von"; der Raid-Abgleich zeigt es den anderen Offizieren wie heute.
 
@@ -593,7 +596,8 @@ blocks, SavedVariables, Settings) und die Regel in `docs/DECISIONS.md`.
     (`UnitIsGroupLeader`/`UnitIsGroupAssistant`). Ob sie im Kampf gehen: Frage 13.
   - Sperren: `C_RestrictedActions.IsAddOnRestrictionActive(0)` (Kampf), `(1)` (Bosskampf),
     `(5)` (Chat), `InCombatLockdown()`.
-  - `UninviteUnit` und `PromoteToAssistant` nutzt Amisia nicht.
+  - `UninviteUnit` nutzt Amisia nicht; `C_PartyInfo.PromoteToAssistant(name, true)` nur für den
+    automatischen Assistenten (2026-10-12).
 - **DECISIONS:** neue Regel (nächste freie Nummer, heute D-40): "Raid-Aufstellung: nur Offiziere,
   Einladen nur per Klick und gedrosselt, nie Kicks, kein Einladen auf Flüstern, Gäste nur mit
   Einstellung, eingefügter Text unvertraut."
@@ -940,3 +944,23 @@ Zuerst die Reihenfolge, dann die Entscheidungen, dann die Prüfungen im Spiel. P
   auffindbar." = ERR_BAD_PLAYER_NAME_S); die ERR_*-Vorlagen auf Deutsch stehen im Bericht. Prüfung 11
   damit beantwortet: "Alle einladen" darf gedrosselt aus einem Timer einladen. Umwandeln und Sortieren
   (Prüfungen 12, 13) brauchen eine Gruppe.
+- 2026-10-13: Gebaut: Teile C und D als F-084 (2.30.0), dazu "inv" per Flüstern und der automatische
+  Assistent; der allein prüfbare Teil (Ansicht "Einladen", Knöpfe, Einstellungen) ist F-100; Regel D-47
+  (D-41 geändert). Neue Dateien `Raid/LineupInvite.lua` und `Raid/LineupSort.lua`, Ansicht "Einladen"
+  auf der Seite Aufstellung, "Gruppen sortieren" im Planer, `/amisia aufstellung einladen`/`sortieren`
+  (en `invite`/`sort`), Einstellungen `lineup.whisper` (aus), `lineup.autoSort` (an), `lineup.inv` (aus),
+  `lineup.autoAssist` (aus). Beim Bau entschieden: der Status "in anderer Gruppe" heißt "schon in
+  Gruppe"; unklare Namen (vermutlich, nicht eindeutig, unbekannt) werden nicht eingeladen, bis der
+  Offizier sie klärt; "Nochmal einladen" nimmt abgelehnt, keine Antwort und schon in Gruppe; ein Name
+  pro Zeile lässt sich auch einzeln einladen (Knopf "Einladen", zählt mit); die Status und der Zähler
+  der drei Einladungen leben nur im Speicher (nach `/reload` aus der Raidliste neu); umgewandelt wird
+  nur, wenn mehr Namen kommen, als die Fünfergruppe fasst; automatisch sortiert nur der Client, der
+  heute "Alle einladen" geklickt hat; beim Sortieren wird nie jemand verschoben, der nicht auf der
+  Liste steht (eine volle Zielgruppe ohne Tauschpartner: "N nicht verschoben (Zielgruppe voll)"); zwei
+  Schritte ohne Wirkung beenden das Sortieren. "inv": nur der ganze Text "inv" oder "invite", nur
+  Gildenmitglieder laut Gildenliste (Gäste nur von der heutigen Aufstellung und mit "Gäste einladen"),
+  nur solange eine Aufnahme läuft oder heute eine Aufstellung steht, auch allein (der erste Beitritt
+  macht die Gruppe), 30 Sekunden pro Absender, 10 pro Minute, Meldungen nur im eigenen Chat.
+  Assistent: nur als Schlachtzugsleiter, Offiziersrang laut Gildenliste (D-18), einmal pro Raid, nicht
+  im Kampf und nicht in der Sperre. Prüfungen 12 und 13 (Umwandeln, Sortieren, als Assistent) ab
+  2026-11-04 im ersten Raid.
