@@ -1765,7 +1765,9 @@ function STUB.calendar(opts)
         cal.events = {}
         for i, e in ipairs(events or {}) do
             local t = os.date("*t", e.at or (STUB.now + (e.days or 1) * 86400))
-            cal.events[i] = { eventID = e.id or (1000 + i), year = t.year, month = t.month, monthDay = t.day, weekday = t.wday,
+            local id = e.id or (1000 + i)
+            if e.noId then id = nil end   -- an event the client gives no id
+            cal.events[i] = { eventID = id, year = t.year, month = t.month, monthDay = t.day, weekday = t.wday,
                 hour = e.at and t.hour or e.hour or 20, minute = e.at and t.min or e.minute or 0, eventType = e.eventType or 0, title = e.title or "Molten Core",
                 calendarType = e.calendarType or "GUILD_EVENT", inviteStatus = e.inviteStatus or 7, texture = 0, clubID = 77,
                 inviteType = e.inviteType, modStatus = e.modStatus }
