@@ -319,7 +319,7 @@ local function fillOverview()
                 -- only upgrades over what the player wears, in the player's own range
                 local mine, link = nil, nil
                 if c == myCol then mine, link = equippedScore(slot, c) end
-                if ns.Get("gear.upgradeDot") and mine and e[2] - mine > math.abs(mine) * 0.02 and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end
+                if ns.Get("gear.upgradeDot") and mine and ns.BisIsUpgrade(e[2] - mine, mine) and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end
                 if g.class == myClass and ns.BisOwned and ns.BisOwned(e[1]) then b.own:Show() else b.own:Hide() end
             else
                 b.id, b.score = nil, nil
