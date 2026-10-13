@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.31.0 (2026-10-13)
+
+- FEATURES: Prüfungen der Korrekturen von 2.30.1
+- /amisia einstellungen <Abschnitt>: öffnet den genannten Abschnitt, sonst die Suche danach
+- Hilfetext für jede Einstellung (62 neu, deutsch und englisch), Test hält es so
+
 ## 2.30.1 (2026-10-13)
 
 - Spec: Seite Dungeons und Einstellungen nach Reitern mit Zahnrad (Entwurf)
