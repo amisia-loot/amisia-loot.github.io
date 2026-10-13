@@ -202,6 +202,17 @@ STUB.fire("GROUP_ROSTER_UPDATE")
 STUB.tick(10)
 assert(subOf("Anna Eins") == 1 and subOf("Bert Zwei") == 1, "no automatic sort with the setting off")
 NS.Set("lineup.autoSort", true)
+-- the invite view open (review 2026-10-13): its refresh reads the roster between the join and the
+-- roster event; the join still counts and sorts
+raid({ { "Vuloo", 1, 2 }, { "Anna Eins", 2 } })
+STUB.tick(5)
+NS.ShowLineup("invite", night)
+STUB.roster[#STUB.roster + 1] = { name = "Cora Drei", sub = 3 }
+STUB.fire("CHAT_MSG_SYSTEM", ERR_RAID_MEMBER_ADDED_S:format("Cora Drei"))
+NS.Refresh()
+STUB.fire("GROUP_ROSTER_UPDATE")
+STUB.tick(10)
+assert(subOf("Cora Drei") == 1, "a join the open invite view saw first still sorts: " .. tostring(subOf("Cora Drei")))
 
 ---------------------------------------------------------------------------
 -- the automatic assistant

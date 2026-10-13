@@ -156,7 +156,8 @@ end
 
 -- Brings the statuses of night up to date: in the group "im Raid" (one who left: "geplant"),
 -- offline "offline" (online again: "geplant", marked back), an unclear name "unbekannt". Returns
--- the names that just joined.
+-- the names that just joined and fires LINEUP_JOINED for them itself: the page's refresh reads the
+-- roster too and may see a join before the roster event does (review 2026-10-13).
 local function sync(night)
     -- in the lockdown the roster's names are secret: nobody would seem in the raid
     if IV.Fight() == "lock" then return {} end
@@ -192,6 +193,7 @@ local function sync(night)
             joined[#joined + 1] = r.n
         end
     end
+    if #joined > 0 then ns.Fire("LINEUP_JOINED", night, joined) end
     return joined
 end
 
@@ -519,10 +521,7 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     local night = run and run.night or tonight()
     if not nights[night] then return end
     local joined = sync(night)
-    if #joined > 0 then
-        ns.Fire("LINEUP_JOINED", night, joined)
-        changed()
-    end
+    if #joined > 0 then changed() end
     -- the run waits for a join or the raid: go on now
     if run and (run.converting or pending() > 0) then
         if run.converting and homeRaid() then run.converting = nil end
