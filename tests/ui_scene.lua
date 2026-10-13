@@ -281,7 +281,6 @@ end
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
     { page = "gear", name = "gear-here", open = function() NS.ShowGear("here") end },
-    { page = "gear", name = "gear-dungeons", open = function() NS.ShowGear("dungeons") end },
     { page = "gear", name = "gear-wish", open = function() NS.ShowGear("wish") end },
     { page = "gear", name = "gear-guild", open = function() NS.ShowGear("guild") end },
     { page = "gear", name = "gear-sim", open = function() NS.ShowGear("sim") end },
