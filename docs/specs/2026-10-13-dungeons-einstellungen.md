@@ -130,7 +130,7 @@ Spielern. Offiziersabschnitte bleiben in der Raider-Ansicht verborgen, wie bishe
   in der Modulkarte, und `Gear.lua` verliert den Planer.
 - Die Seite Ausrüstung kennt die Ansicht `dungeons` nicht mehr. Eine gespeicherte `dungeons`-Ansicht
   wird beim Laden zu `goals`.
-- Neue Regel D-48 in `docs/DECISIONS.md`: Einstellungen nach Reitern, Zahnrad je Seite, keine
+- Neue Regel D-49 in `docs/DECISIONS.md`: Einstellungen nach Reitern, Zahnrad je Seite, keine
   Einstellungen in Seiten.
 - Es gibt keine Exportzeilen, Einfügeblöcke, Nachrichten oder Blob-Arten.
 

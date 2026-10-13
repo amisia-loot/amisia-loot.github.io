@@ -1105,6 +1105,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.settings = DB.settings or {}
         DB.itemNames = DB.itemNames or {}
         DB.exported = DB.exported or {}   -- session id -> { h = fingerprint, at = epoch } of its last export
+        -- the steps of the saved data's version first: they may move a setting before it is checked
+        if ns.Migrate then ns.Migrate(DB) end
         ns.ApplySettings(DB)
         local loadedAt, tonight = time(), ns.NightOf(time())
         for _, s in ipairs(DB.sessions) do

@@ -45,6 +45,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataSize`: generated tables built on first use; `/amisia speicher` (memory before/after a full collection, data built) | - | - |
 | `Core/Core.lua` | Recording (sessions, members, loot, drops), guild bank count, export text, event frame, `ns.OnEvent`, item shim | `sessions`, `itemNames`, `exported`, `exportedBank`, `bank` | Awards, Mats, Bench, RaidLog, Points, BankNeeds, BankLog, LootPrio, GroupRolls (export hooks) |
 | `Core/Names.lua` | `ns.FullName`, `ns.SameName(In)`, `ns.ExportName` ("_" for the space) | - | - |
+| `Core/Migrate.lua` | The saved data's version (D-48): `ns.MIGRATIONS` (ordered steps, never reordered or removed), `ns.Migrate` (Core runs it on `ADDON_LOADED` before `ns.ApplySettings`; a failing step stops the chain and is tried again next load; a file of a newer Amisia stays untouched, one chat line at login), `ns.MigrateMoveSetting` (a stored setting to another path) | `schema` | - |
 | `Raid/Alts.lua` | Alt -> main (site paste), `ns.MainOf`, `ns.ImportSiteText` (all paste-in blocks) | `alts` | GuildWishes, LootPrio, Points, Lineup |
 | `Raid/Mats.lua` | Learned raid materials, `ns.MATS`/`ns.MAT_ORDER` | `mats`, `matsScan` | MainFrame |
 | `Core/Chat.lua` | `ns.Say` chat queue (waits in the lockdown), `!word` dispatch, `ns.ChatLocked`, `ns.TemplatePattern`/`ns.TemplateName` (a client message template such as `ERR_DECLINE_GROUP_S` as a pattern, the captured name without link and brackets; the lineup's invite status and the group probe read system messages through them) | - | - |
@@ -362,13 +363,17 @@ only (`test_paste_in_blocks` lets it pass without a site writer).
 ## SavedVariables `AmisiaDB` (checked)
 
 One account-wide table. Every key is shaped on `ADDON_LOADED`; a migration runs twice without
-change (tests assert that). Settings live in `settings.<section>.<name>`.
+change (tests assert that). Settings live in `settings.<section>.<name>`; window state may stand beside
+them (`settings.bis.view`, `settings.gear.class`, ...), never under the name of a registered setting
+(`tests/test_settings_state.lua`). `schema` counts the steps of `Core/Migrate.lua` (D-48): a change of the
+saved structure that crosses parts (a setting moved to another section first of all) is a new step there.
 
 | Key | Shape | Owner | Migration / cleanup |
 |---|---|---|---|
 | `sessions` | list of raids `{id, date, instanceID, zone, start, last, members, loot, items, drops, awards, gone, kills, bench, outside, rolls, sync, points, announced...}` | Core.lua | Core fills missing lists, cleans `s.sync` (pending < 1 day, 20 conflicts of tonight), award `v` |
 | `settings` | `{version = 2, <section> = {<name> = value}, window = {point, rel, x, y, tab = group key of the last tab, pages = {[group key] = last page key}}, minimap, rollWindow = {point, x, y}, talentWindow = {point, x, y}, calendarWindow = {point, x, y}}` | Registry.lua, MainFrame.lua (`window`) | `ns.ApplySettings`: flat 1.3 keys moved once; invalid values dropped; `window.collapsed` (the sections before 2.27.0) dropped when the main window reads it, a `tab` that is no string dropped |
 | `itemNames` | `[id] = {n, q}` | Core.lua | - |
+| `schema` | number of the last step of `ns.MIGRATIONS` the file has had | Migrate.lua | `ns.Migrate` |
 | `exported` | `[session id] = {h = hash, at}` | Core.lua | marks of deleted sessions dropped |
 | `exportedBank` | epoch of the last exported bank count | Core.lua | - |
 | `exportedNeeds` | epoch of the last exported needs | BankNeeds.lua | - |

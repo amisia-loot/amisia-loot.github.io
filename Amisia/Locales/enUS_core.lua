@@ -411,3 +411,6 @@ L["Größe des Amisia-Fensters in Prozent."] = "Size of the Amisia window in per
 L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] = "Puts the main window, the gear table, the roll window, the talent window and the raid calendar back in their default places."
 -- Core/Version.lua
 L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] = "A note in the chat when someone in your guild or group has a newer Amisia version."
+
+-- Core/Migrate.lua
+L["Die gespeicherten Daten stammen von einer neueren Amisia-Version (Stand %d, diese kennt %d). Bitte Amisia aktualisieren."] = "The saved data comes from a newer Amisia version (state %d, this one knows %d). Please update Amisia."

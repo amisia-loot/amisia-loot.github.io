@@ -22,6 +22,7 @@ Core\Registry.lua
 Core\LazyData.lua
 Core\Core.lua
 Core\Names.lua
+Core\Migrate.lua
 Raid\Alts.lua
 Raid\Mats.lua
 Core\Chat.lua

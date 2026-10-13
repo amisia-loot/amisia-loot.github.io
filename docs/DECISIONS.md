@@ -1003,3 +1003,20 @@ einladende Client sortiert automatisch). Prüfungen 12 und 13 (Umwandeln, Sortie
 Assistent) und alle Gruppenprüfungen erst ab 2026-11-04 (D-32).
 **Durchgesetzt durch:** `tests/test_lineup_invite.lua`, `tests/test_lineup_sort.lua`,
 `tests/test_lineup_inv_whisper.lua`, `tests/test_lineup_invite_en.lua`.
+
+## D-48 Speicherstand mit Versionsnummer, Migrationen in einer Liste
+
+**Datum:** 2026-10-13
+**Entscheidung:** `AmisiaDB.schema` zählt die Schritte von `ns.MIGRATIONS` (`Core/Migrate.lua`). Ändert ein
+Release die Form gespeicherter Daten über Teile hinweg, vor allem wenn eine Einstellung in einen anderen
+Abschnitt zieht, kommt ein neuer Schritt ans Ende der Liste (nie umsortieren, nie löschen; ein
+überflüssiger Schritt wird eine leere Funktion). Die Schritte laufen beim Laden vor der Prüfung der
+Einstellungen, jeder genau einmal; ein Fehler hält die Kette an und sie läuft beim nächsten Laden weiter.
+Eine Datei einer neueren Amisia bleibt unverändert (eine Chatzeile beim Login). Die eigenen Marken der
+Teile (`settings.version`, `awardsVersion`, `softres.version`, die `v`-Felder) bleiben. Fensterzustand darf
+neben den Einstellungen eines Abschnitts stehen, aber nie unter dem Namen einer Einstellung.
+**Grund:** Auftrag des Nutzers vom 2026-10-13 ("Bestehende Einstellungen der Nutzer dürfen NICHT verloren
+gehen ... eine Migration mit Versionsnummer"); Grundlage für das Neuordnen der Einstellungen.
+**Folge:** Ohne Schritt in der Liste darf keine Einstellung umziehen.
+**Durchgesetzt durch:** `tests/test_migrate.lua`, `tests/test_settings_state.lua`.
+
