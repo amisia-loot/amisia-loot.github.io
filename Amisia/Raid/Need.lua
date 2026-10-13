@@ -495,7 +495,7 @@ end)
 ---------------------------------------------------------------------------
 -- /amisia wer <Item-Link>
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "need", label = L["Wer braucht das?"], order = 22, items = {
+ns.RegisterSettings{ key = "need", label = L["Wer braucht das?"], order = 22, group = "raid", pages = { "rolls" }, items = {
     { key = "need.share", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true,
       tip = L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] },
     { key = "need.ask", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true,

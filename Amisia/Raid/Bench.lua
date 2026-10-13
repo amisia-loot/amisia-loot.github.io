@@ -459,7 +459,7 @@ ns.RegisterChatCommand("ersatz", onBench)
 ---------------------------------------------------------------------------
 -- Settings and /amisia ersatz
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "bench", label = L["Ersatzbank"], order = 12, officer = true, items = {
+ns.RegisterSettings{ key = "bench", label = L["Ersatzbank"], order = 12, group = "raid", pages = { "raidlog", "raids", "lineup" }, officer = true, items = {
     { key = "bench.chat", type = "toggle", label = L["Auf !bench antworten"], default = true, officer = true,
       tip = L["Nur als Lootleitung, per Flüsterung."] },
     { key = "bench.guildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true, tip = L["Nur Gildenmitglieder können sich mit !bench auf die Ersatzbank setzen."] },

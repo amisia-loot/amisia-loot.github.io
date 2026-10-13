@@ -1536,7 +1536,7 @@ end)
 ---------------------------------------------------------------------------
 -- Settings and /amisia aufstellung
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "lineup", label = L["Raid-Aufstellung"], order = 30, officer = true,
+ns.RegisterSettings{ key = "lineup", label = L["Raid-Aufstellung"], order = 30, group = "raid", pages = { "lineup" }, officer = true,
     available = function() return ns.LineupAllowed() end, items = {
     { key = "lineup.size", type = "choice", label = L["Raidgröße"], default = 40,
       values = { { 10, "10" }, { 20, "20" }, { 40, "40" } },

@@ -414,3 +414,14 @@ L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Vers
 
 -- Core/Migrate.lua
 L["Die gespeicherten Daten stammen von einer neueren Amisia-Version (Stand %d, diese kennt %d). Bitte Amisia aktualisieren."] = "The saved data comes from a newer Amisia version (state %d, this one knows %d). Please update Amisia."
+
+-- the settings by tabs (2.33.0, D-49)
+L["Allgemein"] = "General"
+L["Einstellungen: %s"] = "Settings: %s"
+L["Zurück zu %s"] = "Back to %s"
+L["Alle Einstellungen in %s auf den Standard setzen?"] = "Set all settings in %s to their defaults?"
+L["Setzt alle Einstellungen in %s auf den Standard."] = "Sets all settings in %s to their defaults."
+L["%d Einstellungen auf den Standard gesetzt."] = "%d settings set to their defaults."
+L["Alle Einstellungen zurücksetzen"] = "Reset all settings"
+L["Setzt nach einer Rückfrage alle Einstellungen aller Abschnitte auf ihren Standard. Raids, Listen, Wünsche und Fensterplätze bleiben."] = "After asking, sets every setting of every section to its default. Raids, lists, wishes and window places stay."
+L["Alle Einstellungen aller Abschnitte auf den Standard setzen? Raids, Listen, Wünsche und Fensterplätze bleiben."] = "Set every setting of every section to its default? Raids, lists, wishes and window places stay."

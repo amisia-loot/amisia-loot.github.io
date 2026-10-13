@@ -62,7 +62,8 @@ local ov = NS.OverviewPageFrame()
 assert(ov, "overview built")
 
 -- settings: labels, a reset tooltip, the default line, the value words
-NS.ShowPage("settings")
+-- a search over every section: "a" finds the minimap row and the raid start (D-49: else one section)
+NS.ShowSettings("a")
 local rows = NS.SettingsRows()
 local mm = assert(rows["ui.minimap"], "minimap row")
 assert(mm.label:GetText() == "Minimap button", mm.label:GetText())

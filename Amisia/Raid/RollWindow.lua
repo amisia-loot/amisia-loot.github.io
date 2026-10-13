@@ -890,7 +890,7 @@ end
 -- What tests and the snapshot scene reach: start and end a round as the messages do.
 ns._rollWindow = { start = startRound, finish = endRound, rounds = function() return rounds end, refresh = function() refresh() end }
 
-ns.RegisterSettings{ key = "rollwin", label = L["Würfel-Fenster"], order = 21, items = {
+ns.RegisterSettings{ key = "rollwin", label = L["Würfel-Fenster"], order = 21, group = "raid", pages = { "rolls", "overview" }, items = {
     { key = "rollwin.enabled", type = "toggle", label = L["Würfel-Fenster zeigen, wenn die Lootleitung eine Runde startet"], default = true,
       tip = L["Ein kleines Fenster mit dem Item und den Knöpfen Mainspec (1-100), Offspec (1-99) und Passen. Gewürfelt wird über das Spiel, Passen geht nur an die Lootleitung."] },
     { key = "rollwin.onlyMine", type = "toggle", label = L["Nur zeigen, wenn reserviert, Upgrade oder Wunsch"], default = false, tip = L["Das Würfel-Fenster geht nur für Items auf, die du reserviert hast, die ein Upgrade für dich sind oder auf deiner Wunschliste stehen."] },

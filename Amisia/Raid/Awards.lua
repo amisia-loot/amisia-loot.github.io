@@ -630,7 +630,7 @@ local function validName(v)
 end
 
 -- The section is everyone's for the tooltip line; the rest are the officers' items.
-ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 28, items = {
+ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 28, group = "raid", pages = { "awards" }, items = {
     { key = "awards.tooltip", type = "toggle", label = L["Vergabe-Verlauf im Item-Tooltip"], default = true,
       tip = L["Zeigt im Tooltip eines Items, wer es in aufgezeichneten Raids bekommen hat (die letzten drei)."] },
     { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true, officer = true, tip = L["Alt+Shift-Klick auf einen Item-Link öffnet den Vergabe-Dialog für dieses Item."] },

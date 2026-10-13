@@ -1059,7 +1059,7 @@ ns.OnEvent("CHAT_MSG_ADDON", onMessage)
 ---------------------------------------------------------------------------
 -- The "sync" settings section; later parts add their items to SYNC_SETTINGS.items and register it
 -- again.
-ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, items = {
+ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, group = "amisia", pages = { "about" }, items = {
     { key = "sync.enabled", type = "toggle", label = L["Raid-Stand mit anderen Amisia-Clients abgleichen"], default = true,
       tip = L["Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids. Die Lootleitung hält den Stand."] },
     { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true, tip = L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] },

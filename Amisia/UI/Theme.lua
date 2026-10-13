@@ -96,9 +96,12 @@ T.MAIN = {
     -- the page list: only the pages of the chosen tab, one bar of the auction house's category list
     -- each (T.NAVBAR, no icon), 21 high as there and packed without a gap (the client's list spacing
     -- is 0); 16 at least when more pages than fit the 454 px under the search box are shown (21 pages
-    -- still fit at 21: the officer + expert Raid tab has 9); a pool of 23 rows. The gold name from
+    -- still fit at 21: the officer + expert Raid tab has 9). The gold name from
     -- NAV_LABEL_X (the client's 8), NAV_LABEL_W wide (the bar less 8 on the left and 6 on the right)
-    NAV_W = 164, NAV_ROWS = 23, NAV_LIST_H = 454, NAV_ROW_MIN = 16,
+    -- 28 rows: under the open page "Einstellungen" the tabs and the chosen tab's sections come too
+    -- (D-49: two pages, five tabs, up to 16 sections of the Raid tab), as the category list's sub-category
+    -- bars from NAV_SUB_X (a tab, gold) and NAV_SUB2_X (a section, white)
+    NAV_W = 164, NAV_ROWS = 28, NAV_LIST_H = 454, NAV_ROW_MIN = 16, NAV_SUB_X = 18, NAV_SUB2_X = 30,
     NAV_ROW_H = 21, NAV_INDENT = 0, NAV_LABEL_X = 8, NAV_LABEL_W = 150,
     -- the search box at the top of the page list (T.FIELD_H high), the list SEARCH_GAP under it;
     -- typing turns the list into the results (RES_ROWS rows of RES_ROW_H: a group as a category bar,
@@ -114,6 +117,7 @@ T.MAIN = {
     HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the button
     PAUSE_W = 110,
     VIEW_W = 120, VIEW_GAP = 6,  -- the view switch left of the pause button
+    SETTINGS_W = 100,     -- "Einstellungen" left of the view switch, when the open page has settings (D-49)
     TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
     TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
     -- the bottom tabs (PanelTabButtonTemplate, as under the character window): the first BTAB_X from

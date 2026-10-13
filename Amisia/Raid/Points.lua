@@ -866,7 +866,7 @@ local function isDkp() return ns.PointsSystem() == "dkp" end
 local function isEpgp() return ns.PointsSystem() == "epgp" end
 local function hasSys() return ns.PointsSystem() ~= "roll" end
 
-ns.RegisterSettings{ key = "points", label = L["Punkte (DKP/EPGP)"], order = 26, officer = true, items = {
+ns.RegisterSettings{ key = "points", label = L["Punkte (DKP/EPGP)"], order = 26, group = "raid", pages = { "points" }, officer = true, items = {
     { key = "points.system", type = "choice", label = L["Lootsystem"], default = "roll",
       values = { { "roll", L["Würfeln##System"] }, { "dkp", "DKP" }, { "epgp", "EPGP" } },
       tip = L["Die Website ist die Quelle: ihr Punkteblock (Kopieren für das Addon) setzt System und Werte. Ein laufender Raid behält sein System."],

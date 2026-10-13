@@ -258,5 +258,5 @@ for _, it in ipairs(sec.items) do assert(it.officer == (it.key ~= "awards.toolti
 assert(NS.SettingItem("awards.bankName").type == "text" and NS.SettingItem("awards.deName").type == "text")
 assert(NS.Get("rolls.plusScope") == "raid" and NS.Get("rolls.plusOrder") == false and NS.Get("awards.modClick") == true)
 assert(NS.Set("rolls.plusScope", "week") and not NS.Set("rolls.plusScope", "month"))
-NS.ShowPage("settings"); NS.Refresh()
+NS.ShowSettingsSection("awards")
 assert(NS.SettingsRows()["awards.bankName"] and NS.SettingsRows()["awards.bankName"]:IsShown(), "the text row is placed without a control")

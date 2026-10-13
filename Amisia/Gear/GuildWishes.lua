@@ -415,7 +415,7 @@ ns.RegisterSlash("wuensche", { en = "wishes", officer = true, desc = L["Gildenw�
         ns.ShowGear("guild")
     end })
 
-ns.RegisterSettings{ key = "wishes", label = L["Gildenw체nsche"], order = 46, officer = true, items = {
+ns.RegisterSettings{ key = "wishes", label = L["Gildenw체nsche"], order = 46, group = "gear", pages = { "gear" }, officer = true, items = {
     { key = "wishes.tooltip", type = "toggle", label = L["Gildenw체nsche im Tooltip"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, die sich das Item auf der Website gew체nscht haben."] },
     { key = "wishes.lootMark", type = "toggle", label = L["W-Markierung im Lootfenster und an den W체rfelfenstern"], default = true,
       officer = true, tip = L["Gew체nschte Items tragen im Lootfenster und an den W체rfelfenstern ein \"W\"."] },

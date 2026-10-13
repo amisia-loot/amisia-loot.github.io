@@ -184,6 +184,9 @@ end
 --         default, min, max, step, allowOff, values = { { value, text } }, officer, expert,
 --         available, validate = fn, onChange = fn(value), run = fn (buttons), invalid = "reason" }
 --         (custom: build = fn(parent) -> frame, fill = fn(frame); the settings page shows the frame)
+-- Section: { key, label, order, group = the tab it belongs to (a key of ns.PANEL_GROUPS; "amisia" is
+--            "Allgemein"), pages = { page keys whose head button "Einstellungen" opens it }, officer,
+--            expert, available, items } (D-49)
 function ns.RegisterSettings(section)
     assert(type(section.key) == "string" and type(section.items) == "table", "RegisterSettings needs key and items")
     for _, it in ipairs(section.items) do
@@ -197,6 +200,69 @@ function ns.RegisterSettings(section)
 end
 
 function ns.SettingItem(path) return items[path] end
+
+-- The visible sections, by their tab (ns.PANEL_GROUPS order), then their order: { { key, label,
+-- sections = { section, ... } }, ... }; a tab without a visible section is left out.
+function ns.SettingsGroups()
+    local out, byKey = {}, {}
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local e = { key = g.key, label = g.key == "amisia" and L["Allgemein"] or g.label, sections = {} }
+        out[#out + 1], byKey[g.key] = e, e
+    end
+    for _, sec in ipairs(ns.schema) do
+        local e = byKey[sec.group] or byKey.amisia
+        if ns.Visible(sec) then e.sections[#e.sections + 1] = sec end
+    end
+    local shown = {}
+    for _, e in ipairs(out) do
+        if #e.sections > 0 then
+            table.sort(e.sections, function(a, b)
+                if (a.order or 50) ~= (b.order or 50) then return (a.order or 50) < (b.order or 50) end
+                return a.key < b.key
+            end)
+            shown[#shown + 1] = e
+        end
+    end
+    return shown
+end
+
+-- The visible sections whose head button a page shows (section.pages), in the list's order.
+function ns.SettingsSectionsOf(pageKey)
+    local out = {}
+    for _, g in ipairs(ns.SettingsGroups()) do
+        for _, sec in ipairs(g.sections) do
+            for _, p in ipairs(sec.pages or {}) do
+                if p == pageKey then out[#out + 1] = sec break end
+            end
+        end
+    end
+    return out
+end
+
+-- Whether a section holds a setting that is not on its default.
+function ns.SectionChanged(sec)
+    for _, it in ipairs(sec.items or {}) do
+        if it.key and it.type ~= "button" and it.type ~= "desc" and it.type ~= "custom" and not ns.IsDefault(it.key) then
+            return true
+        end
+    end
+    return false
+end
+
+-- Sets every setting of the sections back to its default (buttons, notes and the loot rules' editor
+-- store nothing). Returns how many changed.
+function ns.ResetSections(list)
+    local n = 0
+    for _, sec in ipairs(list) do
+        for _, it in ipairs(sec.items or {}) do
+            if it.key and it.type ~= "button" and it.type ~= "desc" and it.type ~= "custom" and not ns.IsDefault(it.key) then
+                ns.Reset(it.key)
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
 
 -- The visible settings section a word names: its key ("map"), its name ("Karte und Wegpunkt") or the
 -- start of its name ("karte"), any case; nil when none does.
@@ -367,7 +433,7 @@ ns.RegisterSlash("hilfe", { en = "help", aliases = { "?" }, desc = L["alle Befeh
 ---------------------------------------------------------------------------
 -- Interface settings that belong to no single feature
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, items = {
+ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "amisia", pages = { "about" }, items = {
     { key = "ui.minimap", type = "toggle", label = L["Minimap-Button"], default = true,
       tip = L["Der runde Amisia-Button am Rand der Minimap."],
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
@@ -383,4 +449,13 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, items = {
       tip = L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] },
     { key = "ui.expert", type = "toggle", label = L["Expertenmodus"], default = false,
       tip = L["Zeigt die Werkzeuge und seltene Einstellungen."] },
+    { key = "ui.resetAll", type = "button", label = L["Alle Einstellungen zurücksetzen"],
+      tip = L["Setzt nach einer Rückfrage alle Einstellungen aller Abschnitte auf ihren Standard. Raids, Listen, Wünsche und Fensterplätze bleiben."],
+      run = function()
+          ns.W.Confirm(L["Alle Einstellungen zurücksetzen"], L["Alle Einstellungen aller Abschnitte auf den Standard setzen? Raids, Listen, Wünsche und Fensterplätze bleiben."],
+              L["Zurücksetzen"], function()
+                  local n = ns.ResetSections(ns.schema)
+                  ns.msg(L["%d Einstellungen auf den Standard gesetzt."]:format(n))
+              end)
+      end },
 }}

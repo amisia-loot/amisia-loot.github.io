@@ -4,7 +4,9 @@
 local function topOf(f) local p, _, _, _, y = f:GetPoint(1); assert(p == "TOPLEFT", p); return -y end
 
 NS.Set("ui.view", "raider")
-NS.ShowPage("settings")
+-- a search that finds rows of nearly every section, so that sections come and go above the row (D-49:
+-- without a search the page shows one section)
+NS.ShowSettings("e")
 NS.Refresh()
 local page = NS.SettingsPageFrame()
 local scroll, rows = page.scroll, NS.SettingsRows()

@@ -1263,7 +1263,7 @@ local function setPaused(on)
     if refreshBar then refreshBar() end
 end
 
-ns.RegisterSettings{ key = "lootrules", label = L["Lootregeln"], order = 24, officer = true, items = {
+ns.RegisterSettings{ key = "lootrules", label = L["Lootregeln"], order = 24, group = "raid", pages = { "rolls" }, officer = true, items = {
     { key = "lootrules.paused", type = "toggle", label = L["Pause"], default = false,
       tip = L["Solange an, verteilen die Regeln nichts; alle Items gehen den normalen Weg."],
       onChange = function() if refreshBar then refreshBar() end end },

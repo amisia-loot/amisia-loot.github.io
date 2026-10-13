@@ -484,7 +484,7 @@ end
 -- Settings and commands
 ---------------------------------------------------------------------------
 -- GroupRolls.lua adds its item to this section.
-ns.RaidLogSettings = { key = "raidlog", label = L["Raid-Log"], order = 11, items = {
+ns.RaidLogSettings = { key = "raidlog", label = L["Raid-Log"], order = 11, group = "raid", pages = { "raidlog" }, items = {
     { key = "raidlog.track", type = "toggle", label = L["Bosskämpfe aufzeichnen"], default = true,
       tip = L["Kills und Wipes mit Uhrzeit und Anwesenden."] },
     { key = "raidlog.lootKills", type = "toggle", label = L["Boss am Lootfenster erkennen"], default = true, expert = true,

@@ -758,7 +758,7 @@ function ns.SetLateTime(text)
     return (ns.Set("record.lateAt", text)) or nil
 end
 
-ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, items = {
+ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, group = "raid", pages = { "raidlog", "overview" }, items = {
     { key = "record.enabled", type = "toggle", label = L["Aufnahme im Raid"], default = true,
       tip = L["Zeichnet in Raidinstanzen mit Raidgruppe Anwesenheit und Loot auf."],
       onChange = function() evaluate() end },
@@ -770,7 +770,7 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, items = 
     { key = "record.nightStart", type = "time", label = L["Raidnacht beginnt um"], default = 6 * 60, expert = true,
       tip = L["Ein Raid vor dieser Uhrzeit zählt zur Nacht davor."] },
 }}
-ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 60, officer = true, items = {
+ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 60, group = "guild", pages = { "bank" }, officer = true, items = {
     { key = "bank.count", type = "toggle", label = L["Beim Öffnen der Gildenbank zählen"], default = true,
       tip = L["Zählt die Gildenmaterialien in allen sichtbaren Tabs."] },
     { key = "bank.log", type = "toggle", label = L["Gildenbank-Protokoll mitschreiben"], default = true,

@@ -382,7 +382,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and /amisia discord
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "discord", label = L["Discord-Text"], order = 13, officer = true, items = {
+ns.RegisterSettings{ key = "discord", label = L["Discord-Text"], order = 13, group = "raid", pages = { "raidlog" }, officer = true, items = {
     { key = "discord.wipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text nennt auch die Versuche ohne Kill."] },
     { key = "discord.loot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text listet die vergebenen Items mit ihren Empfängern."] },
     { key = "discord.names", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true, tip = L["Der Discord-Text nennt alle Anwesenden mit Namen, nicht nur ihre Zahl."] },

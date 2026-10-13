@@ -1,4 +1,7 @@
--- Settings: built from the registered sections; changed rows carry a dot and a reset button.
+-- Settings: built from the registered sections; changed rows carry a dot and a reset button. The page
+-- shows one section (chosen in the page list, which lists the sections under their tabs while this page
+-- is open: UI/MainFrame.lua), the sections of a page (its head button "Einstellungen", with "Zurück zu
+-- <Seite>"), or, while the search box holds text, the hits of every section (D-49).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -9,8 +12,9 @@ local rows = {}   -- path -> row
 local scroll, child, page
 local touched     -- the path of the row the player changed last: it keeps its place on screen
 local placeAgain  -- while set: put that row back in place when the client takes the new scroll range
-local query = ""  -- the search text, folded (ns.Fold; "" shows everything)
+local query = ""  -- the search text, folded (ns.Fold; "" shows the chosen sections)
 local fromTop     -- the next layout starts at the top (a new search)
+local forPage     -- the page whose sections show (its head button); nil: the chosen section
 
 function ns.SettingsRows() return rows end
 function ns.SettingsPageFrame() return page end
@@ -163,6 +167,44 @@ local function holdPlace()
     end
 end
 
+-- The window state of the main window (settings.window): section, the section chosen last.
+local function windowState()
+    local s = AmisiaDB and AmisiaDB.settings
+    if type(s) ~= "table" then return {} end
+    s.window = type(s.window) == "table" and s.window or {}
+    return s.window
+end
+
+-- The section shown: the one chosen last while it is visible, else the first visible one.
+local function chosenSection()
+    local groups = ns.SettingsGroups()
+    local want = windowState().section
+    for _, g in ipairs(groups) do
+        for _, sec in ipairs(g.sections) do
+            if sec.key == want then return sec end
+        end
+    end
+    return groups[1] and groups[1].sections[1] or nil
+end
+
+-- What the page list shows under "Einstellungen": the chosen section's key, or the keys of the
+-- sections a page's head button opened (set); nil while the search box holds text.
+function ns.SettingsChosen()
+    if query ~= "" then return nil end
+    if forPage then
+        local set = {}
+        for _, sec in ipairs(ns.SettingsSectionsOf(forPage)) do set[sec.key] = true end
+        if next(set) then return nil, set end
+    end
+    local sec = chosenSection()
+    return sec and sec.key or nil
+end
+
+local function clearSearch()
+    query = ""
+    if page and page.search then page.search:SetText("") end
+end
+
 -- Opens the settings with a search text (a section's name shows the whole section).
 function ns.ShowSettings(text)
     if ns.ShowPage then ns.ShowPage("settings") end
@@ -174,10 +216,48 @@ function ns.ShowSettings(text)
     end
 end
 
+-- Opens the settings at one section (nil: the one chosen last).
+function ns.ShowSettingsSection(key)
+    if key then windowState().section = key end
+    forPage = nil
+    clearSearch()
+    fromTop = true
+    if ns.ShowPage then ns.ShowPage("settings") end
+    ns.Refresh()
+end
+
+-- Opens the settings with the sections of a page (its head button), "Zurück zu <Seite>" above them.
+function ns.ShowSettingsFor(pageKey)
+    if #ns.SettingsSectionsOf(pageKey) == 0 then return ns.ShowSettingsSection() end
+    forPage = pageKey
+    clearSearch()
+    fromTop = true
+    if ns.ShowPage then ns.ShowPage("settings") end
+    ns.Refresh()
+end
+
+-- The sections the page shows now (not while searching).
+local function shownSections()
+    if forPage then
+        local list = ns.SettingsSectionsOf(forPage)
+        if #list > 0 then return list end
+        forPage = nil
+    end
+    local sec = chosenSection()
+    return sec and { sec } or {}
+end
+
+local function sectionNames(list)
+    local names = {}
+    for _, sec in ipairs(list) do names[#names + 1] = sec.label end
+    return table.concat(names, ", ")
+end
+
 ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
-        -- the head row: the search, beside it how many settings it finds
+        -- the head row: the search, beside it how many settings it finds; on the right "Zurück zu
+        -- <Seite>" (the sections of a page) and "Zurücksetzen" (the shown sections)
         local top = f:Bands({ "row" })
         f.search = W.SearchBox(f, 220, nil, L["Einstellung suchen"])
         f.search:HookScript("OnTextChanged", function(self)
@@ -189,7 +269,30 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
             ns.Refresh()
         end)
         f.found = W.Text(f, T.FONT.hint)
-        f:Place(1, { f.search, { f.found, fill = true } })
+        f.back = W.Button(f, L["Zurück"], nil, function()
+            local to = forPage
+            forPage = nil
+            if to and ns.ShowPage then ns.ShowPage(to) end
+        end, { height = T.ROW_BUTTON_H })
+        f.reset = W.Button(f, L["Zurücksetzen"], nil, function()
+            local list = shownSections()
+            W.Confirm(L["Zurücksetzen"], L["Alle Einstellungen in %s auf den Standard setzen?"]:format(sectionNames(list)),
+                L["Zurücksetzen"], function()
+                    local n = ns.ResetSections(list)
+                    ns.msg(L["%d Einstellungen auf den Standard gesetzt."]:format(n))
+                end)
+        end, { height = T.ROW_BUTTON_H })
+        W.FitChip(f.reset, 90)
+        f.reset:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L["Zurücksetzen"], 1, 0.82, 0)
+            GameTooltip:AddLine(L["Setzt alle Einstellungen in %s auf den Standard."]:format(sectionNames(shownSections())), 0.85, 0.85, 0.85, true)
+            GameTooltip:Show()
+        end)
+        f.reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f:Place(1, { f.search, { f.found, fill = true } }, { f.back, f.reset })
+        -- leaving the page ends the sections of a page: the next open shows the chosen section
+        f:HookScript("OnHide", function() forPage = nil end)
         -- a plain scroll frame with the client's thin bar 4 px to its right (inside the page)
         scroll = CreateFrame("ScrollFrame", nil, f)
         scroll:SetPoint("TOPLEFT", 0, top)
@@ -213,10 +316,18 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
             restore = function() placeAgain = nil; scroll:SetVerticalScroll(0) end
         end
         local column, placed, found = {}, {}, 0
-        for _, section in ipairs(ns.schema) do
+        local list, searching = {}, query ~= ""
+        if searching then
+            for _, g in ipairs(ns.SettingsGroups()) do
+                for _, sec in ipairs(g.sections) do list[#list + 1] = sec end
+            end
+        else
+            list = shownSections()
+        end
+        for _, section in ipairs(list) do
             if ns.Visible(section) then
                 local shown = {}
-                local whole = query ~= "" and hit(section.label)
+                local whole = not searching or hit(section.label)
                 for _, it in ipairs(section.items) do
                     if it.key and ns.Visible(it) and (whole or itemHits(it)) then shown[#shown + 1] = it end
                 end
@@ -247,7 +358,23 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
         -- the headers span the width, the rows keep theirs; the last section's gap ends the list
         local bottom = W.Column(child, column, 0, 0, 0)
         child:SetHeight(math.max(10, -bottom + (#column > 0 and T.SECTION_GAP or 0)))
-        if query == "" then
+        -- the head: "Zurück zu <Seite>" for the sections of a page, "Zurücksetzen" while one is changed
+        local from = not searching and forPage and ns.Panel(forPage)
+        if from then
+            page.back:SetText(L["Zurück zu %s"]:format(from.label))
+            W.FitChip(page.back, 90)
+            page.back:Show()
+        else
+            page.back:Hide()
+        end
+        page:Place(1, { page.search, { page.found, fill = true } }, from and { page.back, page.reset } or { page.reset })
+        local changed = false
+        for _, sec in ipairs(searching and {} or list) do
+            if ns.SectionChanged(sec) then changed = true end
+        end
+        page.reset:SetShown(not searching)
+        page.reset:SetEnabled(changed)
+        if not searching then
             page.found:SetText("")
         elseif found == 0 then
             page.found:SetText(L["Nichts gefunden. Manches nur als Offizier oder im Expertenmodus."])

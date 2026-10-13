@@ -29,10 +29,11 @@ Abschnittsliste.
 
 **Teil B: Einstellungen nach Reitern (F-103)**
 
-- Die Seite Einstellungen hat links eine Abschnittsliste in der Art der Seitenliste (Kategorie-Leisten
-  des Auktionshauses): Überschriften in der Reihenfolge der Reiter (Raid, Kalender, Ausrüstung, Gilde,
-  Allgemein; eine Überschrift ohne sichtbaren Abschnitt fehlt), darunter ihre Abschnitte. Rechts stehen nur
-  die Zeilen des gewählten Abschnitts; lange Bezeichnungen brechen um. Ein Abschnitt mit geänderten Werten
+- Steht man auf der Seite Einstellungen, zeigt die Seitenliste links darunter die Reiter in ihrer
+  Reihenfolge (Raid, Ausrüstung, Gilde, Kalender, Allgemein; einer ohne sichtbaren Abschnitt fehlt) als
+  Unter-Leisten des Auktionshauses und unter dem Reiter des gewählten Abschnitts dessen Abschnitte; die Seite
+  zeigt rechts nur die Zeilen des gewählten Abschnitts in voller Breite. (Bauentscheidung 2026-10-13: die Liste
+  in der Seitenliste statt in der Seite, damit Zeilen und der Editor der Lootregeln ihre 560 px behalten.) Ein Abschnitt mit geänderten Werten
   trägt in der Liste den goldenen Punkt. Der gewählte Abschnitt bleibt gemerkt.
 - Das Suchfeld steht oben links über der Liste und sucht wie bisher in allen Abschnitten; rechts stehen
   dann die Treffer, nach Abschnitt gruppiert; Escape oder das X leeren das Feld.
@@ -110,8 +111,8 @@ Abschnittsliste.
 - **Gemerkter Abschnitt nicht mehr sichtbar** (Ansicht gewechselt): der erste sichtbare ist gewählt.
 - **Kampf:** Seiten und Einstellungen sind keine geschützten Rahmen; nichts Neues.
 - **Englischer Client:** Überschriften, Knopf und Rückfragen aus der Locale.
-- **Platz:** rechts bleiben neben der Liste etwa 420 px; Bezeichnungen brechen um, der Editor der Lootregeln
-  bekommt diese Breite. Geprüft mit `build.py snapshots` vor und nach dem Umbau.
+- **Platz:** die Seitenliste hat Platz für 28 Leisten (zwei Seiten, fünf Reiter, bis zu 16 Abschnitte des
+  Reiters Raid); die Seite behält ihre Breite. Geprüft mit `build.py snapshots` vor und nach dem Umbau.
 
 ## Missbrauch/Vertrauen
 
@@ -121,7 +122,7 @@ Raider-Ansicht verborgen.
 ## Daten
 
 - `ns.RegisterSettings` bekommt `group` (Reiter-Schlüssel aus `ns.PANEL_GROUPS`, Pflicht;
-  `tools/tests/test_contracts.py` prüft es) und `pages` (Seiten mit dem Knopf).
+  `tests/test_settings_pages.lua` prüft es) und `pages` (Seiten mit dem Knopf).
 - `ns.ShowSettings(text)` bleibt (Suche); neu `ns.ShowSettingsSection(key)` und `ns.ShowSettingsFor(pageKey)`.
 - `settings.window.section`: der zuletzt gewählte Abschnitt (Fensterzustand neben `tab` und `pages`).
 - Neue Einstellung `ui.resetAll` (Knopf, speichert nichts).

@@ -11,7 +11,7 @@ NS.ShowPage("settings")
 NS.Refresh()
 local page = NS.SettingsPageFrame()
 local all = shownRows()
-assert(all > 10 and page.found:GetText() == "", "everything without a search: " .. all)
+assert(all > 0 and page.found:GetText() == "", "the chosen section without a search (D-49): " .. all)
 
 -- typing filters at once: by label, by the name of a choice, by the section's name
 local function search(text)
@@ -20,7 +20,7 @@ local function search(text)
 end
 search("ansicht")
 local n, keys = shownRows()
-assert(keys["ui.view"] and n < all, "the view row: " .. n)
+assert(keys["ui.view"] and n >= 1, "the view row: " .. n)
 assert(has(page.found:GetText(), "Einstellungen gefunden"), page.found:GetText())
 search("OFFIZIER")
 _, keys = shownRows()
@@ -35,7 +35,7 @@ page.scroll:SetVerticalScroll(200)
 search("minimap")
 assert(page.scroll:GetVerticalScroll() == 0, "back to the top")
 search("")
-assert(shownRows() == all and page.found:GetText() == "", "cleared: all again")
+assert(shownRows() == all and page.found:GetText() == "", "cleared: the chosen section again")
 
 -- the view switch in the head
 local F = NS.MainFrame and NS.MainFrame() or AmisiaFrame

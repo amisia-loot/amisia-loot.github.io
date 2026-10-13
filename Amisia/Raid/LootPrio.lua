@@ -844,7 +844,7 @@ end)
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "prio", label = L["Loot-Prio"], order = 25, items = {
+ns.RegisterSettings{ key = "prio", label = L["Loot-Prio"], order = 25, group = "raid", pages = { "rolls" }, items = {
     { key = "prio.tooltip", type = "toggle", label = L["Loot-Prio im Item-Tooltip"], default = true,
       tip = L["Offiziere sehen ihre Liste, Raider die der Offiziere im Raid."] },
     { key = "prio.lootMark", type = "toggle", label = L["\"P\" auf den Würfelfenstern"], default = true,

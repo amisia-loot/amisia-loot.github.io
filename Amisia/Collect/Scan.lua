@@ -294,7 +294,7 @@ function ns.ScanCommand(rest)
     end
 end
 
-ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, expert = true, items = {
+ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, group = "amisia", pages = { "tools" }, expert = true, items = {
     { key = "tools.collect", type = "toggle", label = L["Item-Sammler"], default = true,
       tip = L["Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle."] },
     { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10, tip = L["So viele Items fragt /amisia scan pro Sekunde beim Spiel an. Weniger ist schonender."] },

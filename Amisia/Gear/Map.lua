@@ -863,7 +863,7 @@ end
 -- Settings and commands
 ---------------------------------------------------------------------------
 
-ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, available = function() return ns.HasData("MAP") end, items = {
+ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, group = "gear", pages = { "map" }, available = function() return ns.HasData("MAP") end, items = {
     { key = "map.pins", type = "toggle", label = L["Orte auf der Weltkarte zeigen"], default = true,
       tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol."] },
     { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Upgrades zu holen sind (Seite Ausrüstung, Ziele)."] },

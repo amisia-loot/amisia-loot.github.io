@@ -290,8 +290,8 @@ assert(need.label == "Wer braucht das?" and not need.officer)
 assert(need.items[1] == "Der Lootleitung meine Upgrades nennen" and need.items[2] == "Beim Ansagen fragen, für wen ein Item ein Upgrade ist"
     and need.items[3] == "Tooltip-Zeile Upgrade für")
 -- the rows on the settings page: officer items for officers, not for raiders
-assert(C(FRAK, "NS.ShowPage('settings'); NS.Refresh(); return NS.SettingsRows()['need.ask']:IsShown()") == true)
-assert(C(KIM, "NS.ShowPage('settings'); NS.Refresh(); local r = NS.SettingsRows()['need.ask']; return r ~= nil and r:IsShown()") == false)
+assert(C(FRAK, "NS.ShowSettingsSection('need'); return NS.SettingsRows()['need.ask']:IsShown()") == true)
+assert(C(KIM, "NS.ShowSettingsSection('need'); local r = NS.SettingsRows()['need.ask']; return r ~= nil and r:IsShown()") == false)
 assert(C(KIM, "return NS.SettingsRows()['need.share']:IsShown()") == true)
 
 ---------------------------------------------------------------------------

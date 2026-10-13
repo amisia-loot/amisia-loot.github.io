@@ -81,7 +81,7 @@ assert(lastMsg():find("Nichts Neues", 1, true) == nil, "a selected session expor
 NS.RaidSelection[s.id] = nil
 
 -- settings page: toggling a row writes the setting
-NS.ShowPage("settings")
+NS.ShowSettingsSection("record")
 local rows = NS.SettingsRows()
 assert(rows["record.enabled"] and rows["record.enabled"].control:GetChecked() == true)
 rows["record.enabled"].control:Click()
@@ -92,6 +92,7 @@ assert(rows["record.enabled"].control:GetChecked() == true)
 
 -- a text row writes its setting on Enter, refuses what validate refuses, and keeps the typed text
 -- while it has the focus
+NS.ShowSettingsSection("awards")
 local bank = rows["awards.bankName"]
 assert(bank and bank.control and bank.control:GetText() == "", "the text row is built for officers")
 bank.control:SetFocus(); bank.control:SetText("Vulobank"); bank.control.scripts.OnEnterPressed(bank.control)
@@ -172,8 +173,9 @@ do
     for _, b in ipairs(tf.buttons) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
 end
 NS.Reset("ui.expert")
--- settings: a plain scroll frame with the thin bar, the sections under the client's list header
-NS.ShowPage("settings")
+-- settings: a plain scroll frame with the thin bar, the sections under the client's list header (a
+-- search that finds rows of many sections; without one the page shows one section, D-49)
+NS.ShowSettings("e")
 do
     local sp = NS.SettingsPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(sp, 602, 478)

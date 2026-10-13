@@ -385,7 +385,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 23, officer = true, items = {
+ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 23, group = "raid", pages = { "rolls" }, officer = true, items = {
     { key = "loot.announce", type = "toggle", label = L["Loot im Schlachtzugschat ansagen"], default = true,
       tip = L["Einmal pro Leiche, nur als Lootleitung. Gildenmaterialien nie."] },
     { key = "loot.quality", type = "choice", label = L["Ansagen ab Qualität"], default = 4,

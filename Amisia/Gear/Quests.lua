@@ -857,7 +857,7 @@ function Q.OnLoaded(name)
 end
 ns.OnEvent("ADDON_LOADED", Q.OnLoaded)
 
-ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, items = {
+ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, group = "gear", pages = { "quests", "dungeons" }, items = {
     { key = "quests.enabled", type = "toggle", label = L["Quest-Seite"], default = true,
       tip = L["Alle Quests der Welt mit Status, Reihen, Belohnungen und Wegpunkt. Aus: die Questdaten werden beim nächsten Einloggen oder /reload nicht mehr geladen und belegen keinen Speicher."],
       onChange = function(v)

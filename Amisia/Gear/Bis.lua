@@ -1908,7 +1908,7 @@ function ns.BisItemReport(arg)
     end
 end
 
-ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order = 45, available = function() return Gear.Available() end, items = {   -- l10n-ok: command word / internal key
+ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order = 45, group = "gear", pages = { "gear" }, available = function() return Gear.Available() end, items = {   -- l10n-ok: command word / internal key
     { key = "bis.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Upgrade für dich\""], default = true, tip = L["Der Item-Tooltip zeigt, um wie viel Prozent das Item besser ist als dein angelegtes."] },   -- l10n-ok: setting key
     { key = "bis.compare", type = "toggle", label = L["Mit angelegter Ausrüstung vergleichen (Prozent)"], default = true,   -- l10n-ok: setting key
       tip = L["Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster."] },

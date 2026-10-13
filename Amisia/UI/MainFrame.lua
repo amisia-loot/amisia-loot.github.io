@@ -15,7 +15,7 @@ local ROW_H, INDENT = M.NAV_ROW_H, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
-local F, nav, content, statusText, pauseBtn, viewBtn, search, results, noHits
+local F, nav, content, statusText, pauseBtn, viewBtn, settingsBtn, search, results, noHits
 local built, current = {}, nil
 local navButtons = {}
 local sideTabs = {}
@@ -106,6 +106,7 @@ local function updateHeader()
     end
     pauseBtn:SetText(ns.IsEnabled() and L["Pausieren"] or L["Fortsetzen"])
     viewBtn:SetText(ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"])
+    settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
 end
 
 -- The view switch in the head: a click shows the other view (and sets it, as the setting
@@ -129,31 +130,60 @@ local function pagesOf(group)
     return out
 end
 
--- The page list: the visible pages of the open page's tab, one bar each from the top, packed as the
--- auction house's category list; the bars are NAV_ROW_H high, lower (NAV_ROW_MIN at least) when more
--- than fit the list. F.navOrder holds what is shown, top to bottom ({ button = row }).
+-- What the page list shows: the visible pages of the open page's tab; while the settings page is open,
+-- under it its tabs and, under the tab of the chosen section, that tab's sections (D-49):
+-- { kind = "page"|"group"|"section", key, label, on = chosen, changed }.
+local function navEntries()
+    local out = {}
+    for _, p in ipairs(pagesOf(groupOf(current))) do
+        out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
+        if p.key == "settings" and current == "settings" and ns.SettingsGroups and ns.SettingsChosen then
+            local chosen, set = ns.SettingsChosen()
+            for _, g in ipairs(ns.SettingsGroups()) do
+                local open = false
+                for _, sec in ipairs(g.sections) do
+                    if sec.key == chosen or (set and set[sec.key]) then open = true end
+                end
+                out[#out + 1] = { kind = "group", key = g.key, label = g.label, first = g.sections[1].key, open = open }
+                if open then
+                    for _, sec in ipairs(g.sections) do
+                        out[#out + 1] = { kind = "section", key = sec.key, label = sec.label,
+                            on = sec.key == chosen or (set and set[sec.key]) or false, changed = ns.SectionChanged(sec) }
+                    end
+                end
+            end
+        end
+    end
+    return out
+end
+
+-- The page list: one bar each from the top, packed as the auction house's category list (a page as a
+-- category bar, a settings tab and section as its sub-category bars); the bars are NAV_ROW_H high,
+-- lower (NAV_ROW_MIN at least) when more than fit the list. F.navOrder holds what is shown, top to
+-- bottom ({ button = row, entry = what it shows }).
 local function updateNav()
     local order, y = {}, 0
-    local pages = pagesOf(groupOf(current))
+    local entries = navEntries()
     local rowH = ROW_H
-    if #pages > 0 then
-        rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(M.NAV_LIST_H / #pages)))
+    if #entries > 0 then
+        rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(M.NAV_LIST_H / #entries)))
     end
     local used = 0
-    for _, p in ipairs(pages) do
+    for _, e in ipairs(entries) do
         local b = navButtons[used + 1]
         if not b then break end
         used = used + 1
-        b.key = p.key
-        b.label:SetText(p.label)
-        b.label:SetFontObject(T.FONT.title)
+        b.key, b.entry = e.key, e
+        b:SetKind(e.kind)
+        b.label:SetText(e.kind == "section" and e.changed and (DOT .. e.label) or e.label)
         b:SetHeight(rowH)
         if b.art then b.art:Fit(rowH) end
+        if b.subArt then b.subArt:Fit(rowH) end
         b:ClearAllPoints()
         b:SetPoint("TOPLEFT", nav, "TOPLEFT", INDENT, y)
-        b:SetSelected(p.key == current)
+        b:SetSelected(e.on)
         b:Show()
-        order[#order + 1] = { button = b }
+        order[#order + 1] = { button = b, entry = e }
         y = y - rowH
     end
     for i = used + 1, NAV_MAX do navButtons[i]:Hide() end
@@ -472,13 +502,52 @@ local function navRow()
             b.hover:SetColorTexture(1, 1, 1, 0.08)
         end
     end
-    function b:SetSelected(on) self.sel:SetShown(on and true or false) end
+    -- a settings tab or section: the sub-category bar (D-49)
+    b.subArt = b.art and W.NavBar(b, true)
+    if b.subArt then b.subArt.normal:Hide(); b.subArt.hover:Hide() end
+    function b:SetSelected(on)
+        local sub = self.kind ~= "page" and self.subArt
+        self.sel:SetShown(not sub and on and true or false)
+        if self.subArt then self.subArt:SetSelected(sub and on) end
+    end
+    -- the bar, the indent and the font of what the row shows: a page gold on the category bar, a
+    -- settings tab gold and a section white on the sub-category bar
+    function b:SetKind(kind)
+        self.kind = kind
+        local sub = kind ~= "page" and self.subArt
+        if self.art then
+            self.art.normal:SetShown(not sub)
+            self.art.hover:SetShown(not sub)
+        end
+        if self.subArt then
+            self.subArt.normal:SetShown(sub and true or false)
+            self.subArt.hover:SetShown(sub and true or false)
+        end
+        local x = kind == "group" and M.NAV_SUB_X or kind == "section" and M.NAV_SUB2_X or M.NAV_LABEL_X
+        self.label:ClearAllPoints()
+        self.label:SetPoint("LEFT", x, 0)
+        self.label:SetWidth(NAV_W - INDENT - x - 6)
+        self.font = kind == "section" and T.FONT.text or T.FONT.title
+        self.label:SetFontObject(self.font)
+    end
     b.label = W.Text(b, T.FONT.title, M.NAV_LABEL_W)
     b.label:SetPoint("LEFT", M.NAV_LABEL_X, 0)
     if b.label.SetShadowOffset then b.label:SetShadowOffset(1, -1) end
-    b:SetScript("OnClick", function(self) ns.ShowPage(self.key) end)
+    b.kind, b.font = "page", T.FONT.title
+    b:SetScript("OnClick", function(self)
+        local e = self.entry
+        if e and e.kind == "section" then
+            ns.ShowSettingsSection(e.key)
+        elseif e and e.kind == "group" then
+            ns.ShowSettingsSection(e.first)
+        elseif self.key == "settings" and current == "settings" and ns.ShowSettingsSection then
+            ns.ShowSettingsSection()
+        else
+            ns.ShowPage(self.key)
+        end
+    end)
     b:SetScript("OnEnter", function(self) self.label:SetFontObject(T.FONT.body) end)
-    b:SetScript("OnLeave", function(self) self.label:SetFontObject(T.FONT.title) end)
+    b:SetScript("OnLeave", function(self) self.label:SetFontObject(self.font or T.FONT.title) end)
     b:Hide()
     return b
 end
@@ -518,7 +587,7 @@ local function build()
 
     -- the head: the recording state as plain text between the portrait and the button, on the
     -- frame's own ground (a dark bar there did not fit the window's look)
-    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - M.VIEW_GAP - M.VIEW_W - 12
+    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - M.VIEW_GAP - M.VIEW_W - M.VIEW_GAP - M.SETTINGS_W - 12
     local bar = CreateFrame("Frame", nil, F)
     bar:SetSize(BAR_W, M.HEAD_H)
     bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
@@ -531,6 +600,18 @@ local function build()
     viewBtn = W.Button(F, L["Raider-Ansicht"], M.VIEW_W, function() ns.ToggleView() end)
     viewBtn:SetPoint("TOPRIGHT", pauseBtn, "TOPLEFT", -M.VIEW_GAP, 0)
     W.Tooltip(viewBtn, L["Ansicht"], L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Raids, Rolls, Punkte und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."])
+    -- the settings of the open page (D-49): shown only when it has some
+    settingsBtn = W.Button(F, L["Einstellungen"], M.SETTINGS_W, function() ns.ShowSettingsFor(current) end)
+    settingsBtn:SetPoint("TOPRIGHT", viewBtn, "TOPLEFT", -M.VIEW_GAP, 0)
+    settingsBtn:SetScript("OnEnter", function(self)
+        local names = {}
+        for _, sec in ipairs(ns.SettingsSectionsOf(current)) do names[#names + 1] = sec.label end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(L["Einstellungen: %s"]:format(table.concat(names, ", ")), 1, 0.82, 0, true)
+        GameTooltip:Show()
+    end)
+    settingsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    settingsBtn:Hide()
 
     -- the page list in an inset with the recipe list's ground, the page in an inset beside it
     local listInset = W.Inset(F)
@@ -577,7 +658,7 @@ local function build()
     F.tabPadding, F.minTabWidth = 0, M.BTAB_MIN_W
     for _, g in ipairs(ns.PANEL_GROUPS) do bottomTabs[g.key] = bottomTab(g) end
     -- test hooks and the parts the layout tests read
-    F.statusBar, F.statusText, F.pauseBtn, F.viewBtn = bar, statusText, pauseBtn, viewBtn
+    F.statusBar, F.statusText, F.pauseBtn, F.viewBtn, F.settingsBtn = bar, statusText, pauseBtn, viewBtn, settingsBtn
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
     F.sideTabs, F.navOrder, F.tabs, F.tabOrder = sideTabs, {}, bottomTabs, {}
     F.search, F.results, F.noHits = search, results, noHits
@@ -684,5 +765,5 @@ ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "co
         rest = rest:match("^%s*(.-)%s*$") or ""
         if rest == "" then return ns.ShowPage("settings") end
         local sec = ns.SettingsSection(rest)
-        if ns.ShowSettings then ns.ShowSettings(sec and sec.label or rest) end
+        if sec then ns.ShowSettingsSection(sec.key) elseif ns.ShowSettings then ns.ShowSettings(rest) end
     end })
