@@ -115,10 +115,24 @@ local function tooDeep(json, max)
     return false
 end
 
+-- A name of the code without its "-Realm". A Forever surname may hold a dash ("Anna Stein-Herz"):
+-- with a surname only the own realm or a second dash in the surname is taken for the realm.
+local function dropRealm(s)
+    local base, tail = s:match("^(.-)%-([^%-]*)$")
+    if not base then return s end
+    local sur = s:match("^%S+ (.+)$")
+    if not sur then return (s:gsub("%-.*$", "")) end
+    local realm = type(GetNormalizedRealmName) == "function" and ns.Plain(GetNormalizedRealmName())
+    local function flat(x) return (x:gsub("[%s']", ""):lower()) end
+    if type(realm) == "string" and realm ~= "" and flat(tail) == flat(realm) then return base end
+    if select(2, sur:gsub("%-", "")) >= 2 then return base end
+    return s
+end
+
 -- A name of the code: cleaned, "-Realm" dropped, no digits or separators.
 local function codeName(s)
     s = cleanText(s, MAX_NAME)
-    s = s and s:gsub("%-.*$", "")
+    s = s and dropRealm(s)
     if not s or s == "" or s:find("[%d,;:]") then return nil end
     return shortName(s)
 end
