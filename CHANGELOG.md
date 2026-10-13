@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.35.1 (2026-10-13)
+
+- Review 2.35: Kandidatenliste bei geheimen Namen vollständig, Abschnitt zurücksetzen nur sichtbare Einstellungen, Soft-Reserve-Name aus einem Wort ohne Realm, Export-Erinnerung höchstens alle 10 Minuten, Checkliste für Einstellungen
+
 ## 2.35.0 (2026-10-13)
 
 - Leistung: Versionsliste ohne Gruppenliste pro Eintrag (23 -> 0,5 ms), Export-Status alter Raids 5 s gemerkt (32 -> 0,2 ms), Aufstellung baut die Spielerliste einmal pro Bild
