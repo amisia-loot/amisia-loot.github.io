@@ -59,9 +59,11 @@ function RR.Auras(unit)
     local out = { n = 0, secret = 0, all = {} }
     for i = 1, RR.MAX_AURAS do
         local a = call("C_UnitAuras.GetAuraDataByIndex", unit, i, "HELPFUL")
-        if a == nil then break end
+        -- a secret answer is never compared (not even with nil)
+        local secret = isSecret(a)
+        if not secret and a == nil then break end
         out.n = out.n + 1
-        if isSecret(a) or type(a) ~= "table" or isSecret(a.spellId) then out.secret = out.secret + 1 end
+        if secret or type(a) ~= "table" or isSecret(a.spellId) then out.secret = out.secret + 1 end
         out.all[#out.all + 1] = a
     end
     return out

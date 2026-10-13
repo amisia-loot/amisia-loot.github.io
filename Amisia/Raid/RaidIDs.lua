@@ -46,6 +46,16 @@ local answered = {}          -- [officer, lower] = GetTime() of the last answer
 local chosen                 -- the instance chosen on the page (and the lineup's "ID" marks)
 
 local function me() return ns.UnitFullName("player") end
+-- RAIDIDS once for a burst of reports (an IQ brings up to 12 per guild member): the pages redraw once
+local firePending = false
+local function fireSoon()
+    if firePending then return end
+    firePending = true
+    C_Timer.After(0.5, function()
+        firePending = false
+        ns.Fire("RAIDIDS")
+    end)
+end
 local function now() return math.floor(ns.ServerTime and ns.ServerTime() or time()) end
 
 local function posNum(v, max)
@@ -403,7 +413,7 @@ function ns.RaidIDsTake(from, f)
         if n >= HEARD_MAX then return false end
     end
     heard[char] = { by = from, at = t, c = f[2] ~= "-" and f[2] or nil, l = tonumber(f[3]), ids = ids }
-    ns.Fire("RAIDIDS")
+    fireSoon()
     return true
 end
 
@@ -421,14 +431,52 @@ end)
 ---------------------------------------------------------------------------
 -- The record of a character: the own account's first, else what was heard; and whether it is the
 -- character's own word ("self") or another's ("by").
-local function recOf(name)
+-- An index of own and heard by the lower name and by the first name: one lookup per name instead of
+-- a pass over all of them (the view asks for every name of the guild roster).
+local function firstOf(low) return low:match("^(%S+)") or low end
+local function nameIndex()
     local st = DB and DB.raidcheck
-    if not st or not name then return nil end
-    for cn, r in pairs(st.own) do
-        if ns.SameName(cn, name) then return r, "own" end
+    local idx = {}
+    for i, map in ipairs({ st and st.own or {}, st and st.heard or {} }) do
+        -- first: every record by its first name; bare: those without a surname (a name with a
+        -- surname matches only them besides its exact spelling, ns.SameName)
+        local part = { exact = {}, first = {}, bare = {} }
+        for cn, r in pairs(map) do
+            local low = type(cn) == "string" and cn:lower()
+            if low then
+                part.exact[low] = { cn, r }
+                local f = firstOf(low)
+                part.first[f] = part.first[f] or {}
+                table.insert(part.first[f], { cn, r })
+                if not low:find(" ", 1, true) then
+                    part.bare[f] = part.bare[f] or {}
+                    table.insert(part.bare[f], { cn, r })
+                end
+            end
+        end
+        idx[i] = part
     end
-    for cn, r in pairs(st.heard) do
-        if ns.SameName(cn, name) then return r, ns.SameName(r.by, cn) and "self" or "by" end
+    return idx
+end
+
+local function recOf(name, idx)
+    local cn0 = ns.FullName(name)
+    if not DB or not cn0 then return nil end
+    idx = idx or nameIndex()
+    local low = cn0:lower()
+    for i, part in ipairs(idx) do
+        local hit = part.exact[low]
+        if not hit then
+            local cands = low:find(" ", 1, true) and part.bare or part.first
+            for _, e in ipairs(cands[firstOf(low)] or {}) do
+                if ns.SameName(e[1], cn0) then hit = e break end
+            end
+        end
+        if hit then
+            local cn, r = hit[1], hit[2]
+            if i == 1 then return r, "own" end
+            return r, ns.SameName(r.by, cn) and "self" or "by"
+        end
     end
     return nil
 end
@@ -445,8 +493,8 @@ end
 
 -- The state of a character for instance m: "free", "locked" or "unknown", the ID (locked), the
 -- record and its source ("own", "self", "by").
-function ns.RaidIDOf(name, m)
-    local rec, src = recOf(name)
+function ns.RaidIDOf(name, m, idx)
+    local rec, src = recOf(name, idx)
     if not rec then return "unknown" end
     local t = now()
     for _, x in ipairs(rec.ids or {}) do
@@ -497,11 +545,12 @@ end
 -- The free alts of a name's main for instance m (the alt list), without the name itself.
 function ns.RaidIDFreeAlts(name, m)
     local out = {}
+    local idx = nameIndex()
     local main = ns.MainOf and ns.MainOf(name) or name
     local cands = ns.AltsOf and ns.AltsOf(main) or {}
     cands[#cands + 1] = main
     for _, alt in ipairs(cands) do
-        if not ns.SameName(alt, name) and ns.RaidIDOf(alt, m) == "free" then out[#out + 1] = alt end
+        if not ns.SameName(alt, name) and ns.RaidIDOf(alt, m, idx) == "free" then out[#out + 1] = alt end
     end
     table.sort(out)
     return out
@@ -531,8 +580,9 @@ function ns.RaidIDsRows(m, opts)
     for name, r in pairs(st and st.heard or {}) do add(name, r.c, r.l) end
     local top = tonumber(type(GetMaxPlayerLevel) == "function" and GetMaxPlayerLevel()) or 60
     local mains = {}
+    local idx = nameIndex()
     for _, p in pairs(people) do
-        local state, x, rec, src = ns.RaidIDOf(p.n, m)
+        local state, x, rec, src = ns.RaidIDOf(p.n, m, idx)
         p.state, p.id = state, x
         p.l = p.l or (rec and rec.l)
         p.by = src == "by" and rec.by or nil

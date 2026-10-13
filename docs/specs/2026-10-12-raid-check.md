@@ -174,6 +174,8 @@ ab 2026-11-04 (D-32), Raids ab 2026-12-09.
   (`ns.Plain`) und zeigt die letzten Werte mit Uhrzeit. `XQ`/`XA`/`IV` warten nicht in der Sperre:
   eine Antwort, die nicht innerhalb von 10 Sekunden rausgeht, verfällt.
 - **Bereitschaftscheck im Bosskampf:** das Ereignis ist dann geheim; Amisia antwortet nicht.
+- **Bereitschaftscheck eines Fremden** (nicht in der eigenen Gilde, z. B. ein fremder Raid): Amisia
+  antwortet nicht von selbst (Prüfung 2026-10-13).
 - **Außer Sichtweite, tot, offline:** "außer Sicht" / "tot" / "offline"; Selbstauskunft gilt, wenn sie
   höchstens 10 Minuten alt ist.
 - **Stufe unter 60:** freie Talentpunkte sind normal; die Spalte zeigt sie grau.

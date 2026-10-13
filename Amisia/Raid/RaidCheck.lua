@@ -48,6 +48,17 @@ local lastAsk = -1e9        -- GetTime() of the own last XQ
 local lastRows              -- the rows of the last read (shown in combat): { at, list }
 
 local function me() return ns.UnitFullName("player") end
+-- RAIDCHECK once for a burst of answers (40 raiders answer within 3 s): the page reads the auras of
+-- the raid once, not once per answer
+local firePending = false
+local function fireSoon()
+    if firePending then return end
+    firePending = true
+    C_Timer.After(0.5, function()
+        firePending = false
+        ns.Fire("RAIDCHECK")
+    end)
+end
 
 -- Who may see and ask: the officer view with the officer rank (D-41, as the lineup).
 function ns.RaidCheckAllowed()
@@ -257,16 +268,19 @@ ns.CommOn("XA", function(sender, f, chan)
         if not ok or not ns.InMyGroup(name) then return end
         rep.name = name
         answers[name:lower()] = rep
-        ns.Fire("RAIDCHECK")
+        fireSoon()
     end)
 end)
 
--- The ready check: every Amisia answers once by itself, outside the lockdown; in a boss fight the
--- event is secret and nobody answers. The officer's page reads the buffs again.
+-- The ready check: every Amisia answers once by itself, outside the lockdown, when a member of the
+-- own guild started it (no answer in a raid of strangers); in a boss fight the event is secret and
+-- nobody answers. The officer's page reads the buffs again.
 ns.OnEvent("READY_CHECK", function(initiator)
-    if ns.Plain(initiator) == nil then return end
+    initiator = ns.Plain(initiator)
+    if type(initiator) ~= "string" then return end
     if RC.Locked() then return end
-    RC.Answer("-")
+    local who = ns.TrustName(initiator)
+    if who and ns.IsVerifiedMember(who) == true then RC.Answer("-") end
     if ns.RaidCheckAllowed() then
         lastRows = nil
         ns.Fire("RAIDCHECK")
@@ -409,7 +423,8 @@ function RC.Rows()
     local need = needed(list)
     for _, r in ipairs(list) do
         r.missing = {}
-        if r.cons then
+        -- the class buffs only from the auras read (an own report names no class buffs)
+        if r.cons and r.src == "read" then
             for _, key in ipairs(need) do
                 if not r.cons.have[key] then r.missing[#r.missing + 1] = key end
             end
@@ -431,9 +446,7 @@ function RC.Missing(rows)
         if r.cons then
             if not RC.Supplied(r.cons) then out.supplied = out.supplied + 1 end
             if not r.cons.food then out.food = out.food + 1 end
-            for _, key in ipairs(r.missing or {}) do
-                if r.src == "read" then out[key] = (out[key] or 0) + 1 end
-            end
+            for _, key in ipairs(r.missing or {}) do out[key] = (out[key] or 0) + 1 end
         end
     end
     return out

@@ -50,3 +50,27 @@ end
 assert(over == 0, "Kai cannot take over Bob's records past his 12: " .. over)
 -- a sender's own records it may renew
 assert(NS.RaidIDsTake("Kai Wind", iv("Mia Stern", "-")) == true, "renewing one of the own 12")
+
+-- 4. a burst of reports (the answers to an IQ) tells the pages once
+local fired = 0
+NS.Listen("RAIDIDS", function() fired = fired + 1 end)
+for i = 1, 11 do NS.RaidIDsTake("Bob Eisherz", iv("Twink " .. letters:sub(i, i) .. "bc", id)) end
+STUB.tick(1)
+assert(fired == 1, "one redraw for the burst: " .. fired)
+
+-- 5. the view of a big guild: one lookup per name, not a pass over every record per name
+for i = 1, 400 do
+    STUB.guild[#STUB.guild + 1] = { name = ("Gast %s%s%s"):format(string.char(65 + i % 26), string.char(97 + math.floor(i / 26) % 26), "x"), rank = 5, class = "MAGE", level = 60 }
+end
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.tick(11)
+for i = 1, 250 do
+    AmisiaDB.raidcheck.heard[("Gast %s%s%s"):format(string.char(65 + i % 26), string.char(97 + math.floor(i / 26) % 26), "x")] =
+        { by = "Kai Wind", at = T, ids = {} }
+end
+local calls, same = 0, NS.SameName
+NS.SameName = function(a, b) calls = calls + 1 return same(a, b) end
+local rows = NS.RaidIDsRows(409)
+NS.SameName = same
+assert(#rows >= 400, "every name: " .. #rows)
+assert(calls < 5000, "SameName calls for the view: " .. calls)
