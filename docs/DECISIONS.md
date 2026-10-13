@@ -982,7 +982,11 @@ oder "invite" ist (Groß/klein egal), von einem Gildenmitglied laut Gildenliste 
 der Gildenliste, eingeladen in deren Schreibweise; ein unklarer Vorname reicht nicht; ein Gast nur, wenn er
 auf der heutigen Aufstellung steht und `lineup.guests` an ist), nur solange eine Aufnahme läuft oder
 heute eine Aufstellung steht, als Leiter, Assistent oder allein; einmal in 30 Sekunden pro Absender,
-10 pro Minute; Meldungen nur im eigenen Chat. **Assistent** (`lineup.autoAssist`, aus): als
+10 pro Minute; Meldungen nur im eigenen Chat. Seit dem Review 2026-10-13: die Grenzen zählen erst nach
+der Prüfung der Gildenliste (Fremde verbrauchen sie nie, ein Fremder bekommt höchstens eine Zeile "nicht
+in der Gilde" pro 5 Minuten); ein Flüstern wandelt nie in einen Raid um (volle Fünfergruppe: nichts
+geht raus, eine Zeile "Gruppe voll, erst in einen Raid umwandeln."), und in einer Instanz für fünf
+Spieler lädt es nicht ein. **Assistent** (`lineup.autoAssist`, aus): als
 Schlachtzugsleiter wird jedes Gildenmitglied mit Offiziersrang laut Gildenliste (Rangrecht 22, D-18),
 das im Raid ist, einmal pro Raid Assistent; nicht im Kampf und nicht in der Sperre. Der Name in der
 Raidliste muss genau der Name der Gildenliste sein (Groß/klein egal); ein Vorname allein reicht für

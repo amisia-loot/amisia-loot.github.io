@@ -141,4 +141,60 @@ assert(said("Ida Fremd ist nicht in der Gilde"), STUB.messages[1])
 STUB.roster = {}
 whisper("inv", "Ida")
 assert(#INV == 1 and INV[1] == "Ida", tostring(INV[1]))
+
+-- strangers never use up the shared limit (review 2026-10-13): twelve strangers, then a member is
+-- still invited; a stranger gets at most one line in the own chat per five minutes
+IV._reset()
+STUB.tick(61)
+INV = {}
+STUB.messages = {}
+for i = 1, 12 do whisper("inv", "Fremder Nummer" .. ("abcdefghijkl"):sub(i, i)) end
+whisper("inv", "Anna Bergmann")
+assert(#INV == 1 and INV[1] == "Anna Bergmann", "the member after twelve strangers: " .. #INV)
+STUB.messages = {}
+STUB.tick(31)
+whisper("inv", "Fremder Nummera")
+STUB.tick(31)
+whisper("inv", "Fremder Nummera")
+assert(#STUB.messages == 0, "no second line for the same stranger: " .. tostring(STUB.messages[1]))
+STUB.tick(300)
+whisper("inv", "Fremder Nummera")
+assert(said("Fremder Nummera ist nicht in der Gilde"), "after five minutes one line again")
+
+-- a whisper never makes a raid (review 2026-10-13): a full party (no raid) sends nothing and says
+-- so once; not in a party instance (a 5-player dungeon) either
+local realRaid, realGroup = _G.IsInRaid, _G.IsInGroup
+_G.IsInRaid = function() return false end
+_G.IsInGroup = function(cat) return cat ~= LE_PARTY_CATEGORY_INSTANCE and #STUB.roster > 0 end
+local CONV = 0
+local realConv = C_PartyInfo.ConvertToRaid
+C_PartyInfo.ConvertToRaid = function() CONV = CONV + 1 end
+IV._reset()
+STUB.tick(61)
+INV = {}
+STUB.roster = { { name = "Vuloo" }, { name = "Rekrut Nummera" }, { name = "Rekrut Nummerb" }, { name = "Rekrut Nummerc" },
+                { name = "Rekrut Nummerd" } }
+STUB.messages = {}
+whisper("inv", "Bob Eisherz")
+STUB.tick(3)
+assert(#INV == 0 and CONV == 0, "a full party: no invite, no raid: " .. #INV .. " " .. CONV)
+assert(said("Einladen auf Flüstern: Gruppe voll, erst in einen Raid umwandeln."), STUB.messages[1])
+-- four in the party, three whisper at once: one is invited, nothing converts
+STUB.roster[5] = nil
+whisper("inv", "Bob Eisherz")
+whisper("inv", "Anna Bergmann")
+whisper("inv", "Rekrut Nummere")
+STUB.tick(3)
+assert(#INV == 1 and CONV == 0, "one place, one invite, no raid: " .. #INV .. " " .. CONV)
+-- a 5-player dungeon: nothing
+IV._reset()
+INV = {}
+STUB.roster = { { name = "Vuloo" } }
+STUB.instance = { name = "Todesminen", type = "party", id = 36 }
+whisper("inv", "Bob Eisherz")
+STUB.tick(3)
+assert(#INV == 0, "not in a party instance")
+STUB.instance = { name = "Shattrath", type = "none", id = 0 }
+_G.IsInRaid, _G.IsInGroup, C_PartyInfo.ConvertToRaid = realRaid, realGroup, realConv
+STUB.roster = {}
 NS.Set("lineup.inv", false)

@@ -12,7 +12,9 @@
 -- Invite on whisper (lineup.inv, off by default; user 2026-10-12): a whisper "inv" or "invite" (the
 -- whole text, any case) from a guild member (by the roster; a guest of tonight's lineup only with
 -- lineup.guests) is invited while a recording runs or tonight has a lineup, by the same engine; one
--- per sender every INV_GAP seconds, INV_PER_MIN a minute; lines only in the own chat.
+-- per sender every INV_GAP seconds, INV_PER_MIN a minute (members only); lines only in the own chat,
+-- for a stranger one per STRANGER_GAP. A whisper never converts a party into a raid (a full party:
+-- a line) and does nothing in a party instance.
 -- The states live in memory only (D-41: never saved); a /reload rebuilds them from the roster.
 local ADDON, ns = ...
 local L = ns.L
@@ -24,7 +26,8 @@ local NO_ANSWER = 90       -- seconds until an unanswered invite is "keine Antwo
 local MAX_TRIES = 3        -- invites per name and night (click, "Nochmal", whisper together)
 local CONVERT_WAIT = 10    -- seconds the run waits for the raid after ConvertToRaid
 local INV_GAP = 30         -- whisper "inv": one per sender in this many seconds
-local INV_PER_MIN = 10     -- and this many a minute in all
+local INV_PER_MIN = 10     -- and this many a minute in all (members only: checked after the roster)
+local STRANGER_GAP = 300   -- a non-member: one line in the own chat per sender in this many seconds
 local INV_WORDS = { inv = true, invite = true }
 -- the system messages the status reads: template global -> status (nil: no name in it)
 local MESSAGES = {
@@ -340,7 +343,8 @@ step = function()
     local count = members()
     if not homeRaid() then
         local need = count + pending() + #run.queue > PARTY
-        if need and count >= 2 then
+        -- a whisper run (quiet) never makes a raid: only the officer's click does (review 2026-10-13)
+        if need and count >= 2 and not run.quiet then
             -- the first has joined: the group becomes a raid (the leader only)
             if not UnitIsGroupLeader("player") then return finish(REASON.lead) end
             if not run.converting then
@@ -356,6 +360,10 @@ step = function()
         if count + pending() >= PARTY then
             -- the party is full of invites: wait for an answer
             if #run.queue == 0 then return finish() end
+            if run.quiet then
+                ns.msg(L["Einladen auf Flüstern: Gruppe voll, erst in einen Raid umwandeln."])
+                return finish()
+            end
             return schedule(1)
         end
     elseif count + pending() >= RAID_MAX then
@@ -553,7 +561,7 @@ ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function() C_Timer.After(0, change
 ---------------------------------------------------------------------------
 -- Invite on whisper "inv"
 ---------------------------------------------------------------------------
-local invLast, invTimes = {}, {}
+local invLast, invTimes, strangerSaid = {}, {}, {}
 
 local function invGate(key)
     local t = GetTime()
@@ -590,8 +598,22 @@ local function invOn()
     return n ~= nil and #n.list > 0
 end
 
+-- A party that is no raid and has no place left (with the invites out and queued): a whisper
+-- invite never converts it (review 2026-10-13).
+local function partyFull()
+    if homeRaid() then return false end
+    local queued = run and #run.queue or 0
+    return members() + pending() + queued >= PARTY
+end
+
+local function partyInstance()
+    if type(IsInInstance) ~= "function" then return false end
+    local _, kind = IsInInstance()
+    return ns.Plain(kind) == "party"
+end
+
 local function invTake(night, name)
-    if ns.LineupLeadBlocked() then return end
+    if ns.LineupLeadBlocked() or partyInstance() then return end
     if inSet(groupSet(), name) then return end
     local onLineup = false
     for _, it in ipairs(placed(ns.LineupNight(night, false))) do
@@ -604,6 +626,10 @@ local function invTake(night, name)
         return
     end
     if r.st == "I" then return end
+    if partyFull() then
+        ns.msg(L["Einladen auf Flüstern: Gruppe voll, erst in einen Raid umwandeln."])
+        return
+    end
     if enqueue(night, { { n = name } }, true) then
         ns.msg(L["Einladen auf Flüstern: %s wird eingeladen."]:format(name))
     end
@@ -618,7 +644,6 @@ function IV.Whisper(text, sender)
     if not invOn() or ns.LineupLeadBlocked() then return end
     local name = ns.TrustName(sender) or ns.StripOwnRealm(sender) or ns.FullName(sender)
     if not name or isMe(name) then return end
-    if not invGate(name:lower()) then return end
     local night = tonight()
     ns.TrustWait(name, "member", function(member)
         -- the roster may have taken a while: the setting and the night again
@@ -627,9 +652,22 @@ function IV.Whisper(text, sender)
         -- (ns.GuildMember's match when one side has no surname) is the one ns.TrustName found unclear
         -- (review 2026-10-13)
         local m = member and ns.GuildMember(name) or nil
-        if m and m.name:lower() == name:lower() then return invTake(night, m.name) end
-        local guest = lineupGuest(night, name)
-        if guest then return invTake(night, guest.n) end
+        local who = m and m.name:lower() == name:lower() and m.name or nil
+        if not who then
+            local guest = lineupGuest(night, name)
+            who = guest and guest.n
+        end
+        -- the limits only after the roster: strangers never use up the members' (review 2026-10-13)
+        if who then
+            if invGate(who:lower()) then invTake(night, who) end
+            return
+        end
+        local t, key = GetTime(), name:lower()
+        if strangerSaid[key] and t - strangerSaid[key] < STRANGER_GAP then return end
+        for k, at in pairs(strangerSaid) do
+            if t - at >= STRANGER_GAP then strangerSaid[k] = nil end
+        end
+        strangerSaid[key] = t
         ns.msg(L["Einladen auf Flüstern: %s ist nicht in der Gilde, nicht eingeladen."]:format(name))
     end)
 end
@@ -638,7 +676,7 @@ ns.OnEvent("CHAT_MSG_WHISPER", function(text, sender) IV.Whisper(text, sender) e
 -- for the tests and the scene
 IV._reset = function()
     nights, started, run, lastInvited, lastInvitedAt = {}, {}, nil, nil, nil
-    invLast, invTimes = {}, {}
+    invLast, invTimes, strangerSaid = {}, {}, {}
     if ticker then ticker:Cancel() ticker = nil end
 end
 IV._set = function(night, name, st, tries)
