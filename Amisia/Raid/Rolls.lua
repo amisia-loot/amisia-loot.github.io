@@ -1,7 +1,7 @@
 -- Amisia rolls: one round at a time. Results are read from the system chat through the client's
 -- own RANDOM_ROLL_RESULT string, so the range of every roll is known: 1-100 is mainspec,
 -- 1-99 offspec. Reserved names rank first, then MS, then OS, then the higher roll. With the
--- plus-one in the order (awards.plusOrder), fewer mainspec wins rank first among the MS rolls.
+-- plus-one in the order (rolls.plusOrder), fewer mainspec wins rank first among the MS rolls.
 -- In a DKP or EPGP guild a round takes bids or need/greed instead (r.mode, PointsRounds.lua); the
 -- tie-break of such a round is a roll again.
 -- A round the loot lead started with Gargul (RollWatch.lua, spec docs/specs/2026-10-11-softres-gargul.md,
@@ -94,7 +94,7 @@ local function plusOf(r, name)
     return n
 end
 
--- Whether the plus-one decides between mainspec rolls (setting awards.plusOrder).
+-- Whether the plus-one decides between mainspec rolls (setting rolls.plusOrder).
 local function plusOrder()
     return ns.Get("rolls.plusOrder") and true or false
 end
@@ -108,7 +108,7 @@ local function sameStanding(r, a, b)
     return true
 end
 
--- Entries of a round in winning order; each gets .rank = "SR", "MS" or "OS". With awards.plusOrder
+-- Entries of a round in winning order; each gets .rank = "SR", "MS" or "OS". With rolls.plusOrder
 -- fewer plus-one ranks first among the mainspec rolls; reservations stay first, offspec untouched.
 function ns.RollRanking(r)
     if r.mode and ns.PointsRanking then return ns.PointsRanking(r) end

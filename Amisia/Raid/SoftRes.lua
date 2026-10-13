@@ -120,8 +120,9 @@ end
 local function dropRealm(s)
     local base, tail = s:match("^(.-)%-([^%-]*)$")
     if not base then return s end
+    -- one word before the first dash: no surname, all after it is the realm ("Bob-Die Aldor")
+    if not s:match("^([^%-]*)"):find(" ", 1, true) then return (s:gsub("%-.*$", "")) end
     local sur = s:match("^%S+ (.+)$")
-    if not sur then return (s:gsub("%-.*$", "")) end
     local realm = type(GetNormalizedRealmName) == "function" and ns.Plain(GetNormalizedRealmName())
     local function flat(x) return (x:gsub("[%s']", ""):lower()) end
     if type(realm) == "string" and realm ~= "" and flat(tail) == flat(realm) then return base end

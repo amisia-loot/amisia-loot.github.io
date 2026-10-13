@@ -7,6 +7,7 @@ local function said(part)
     return nil
 end
 local function stop()
+    STUB.tick(601)   -- the reminder comes once in 10 minutes
     NS.Set("record.enabled", false); STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(1)
     NS.Set("record.enabled", true)
 end
@@ -17,6 +18,11 @@ assert(NS.Active(), "a recording runs")
 STUB.messages = {}
 stop()
 assert(said("1 Raid ist noch nicht auf der Website."), table.concat(STUB.messages, "\n"))
+-- a release to the graveyard and back within 10 minutes: no second reminder
+STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
+STUB.messages = {}
+NS.Set("record.enabled", false); STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(1); NS.Set("record.enabled", true)
+assert(not said("auf der Website"), "once in 10 minutes")
 
 -- exported: nothing
 NS.MarkExported(NS.PendingExport())

@@ -363,7 +363,7 @@ function ns.GuildWishRollMarkText(frame)
 end
 
 ---------------------------------------------------------------------------
--- Award dialog: wishers first (bis.guildAward), the rest as before
+-- Award dialog: wishers first (wishes.award), the rest as before
 ---------------------------------------------------------------------------
 
 -- names: the dialog's names, sorted. Returns the picker values with the wishers of the item first

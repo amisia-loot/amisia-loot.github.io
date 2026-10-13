@@ -86,6 +86,14 @@ AmisiaConfirmFrame.ok:Click()
 assert(NS.Get("rolls.seconds") == 20 and NS.Get("map.pins") == true and NS.Get("ui.expert") == false, "every section")
 assert(has(STUB.messages[#STUB.messages], "auf den Standard gesetzt"), STUB.messages[#STUB.messages])
 
+-- a hidden setting neither marks nor resets its section: the expert item of "Aufnahme"
+NS.Set("ui.expert", false)
+NS.Set("record.resumeHours", 5)
+local recordSec
+for _, sec in ipairs(NS.schema) do if sec.key == "record" then recordSec = sec end end
+assert(not NS.SectionChanged(recordSec), "only an expert item changed: no mark")
+assert(NS.ResetSections({ recordSec }) == 0 and NS.Get("record.resumeHours") == 5, "and not reset")
+assert(NS.ResetSections({ recordSec }, true) == 1 and NS.Get("record.resumeHours") == 2, "all: reset")
 -- the raider view: no officers' section, no tab without one
 NS.Set("ui.view", "raider")
 for _, g in ipairs(NS.SettingsGroups()) do

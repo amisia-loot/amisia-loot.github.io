@@ -120,3 +120,12 @@ assert(byItem[17204][1] == "Kim Sturmwind", tostring(byItem[17204][1]))
 local it = { key = "x.y", label = "Übergabe im Handel", tip = "" }
 assert(NS.SettingHits(it, NS.Fold("über")) and NS.SettingHits(it, NS.Fold("ÜBER")), "Ü and ü are one letter")
 assert(not NS.SettingHits(it, NS.Fold("unter")))
+
+-- review 2.35: a one-word name keeps nothing after its first dash, even a realm with a space; a dashed
+-- surname with a realm loses the realm
+fh = assert(io.open(ADDON_DIR .. "/../tests/fixtures/softres_dash2.txt", "rb"))
+code = fh:read("*a"):gsub("%s+$", "")
+fh:close()
+byItem = NS.ParseSoftRes(code)
+assert(byItem[17076][1] == "Bob", tostring(byItem[17076][1]))
+assert(byItem[18814][1] == "Anna Stein-Herz", tostring(byItem[18814][1]))

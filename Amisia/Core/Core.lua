@@ -448,9 +448,14 @@ local function stopTicker()
     end
 end
 
--- At the end of a recording, in the officer view: how many raids the site has not got yet.
+-- At the end of a recording, in the officer view: how many raids the site has not got yet; once in
+-- REMIND_EVERY seconds (a release to the graveyard and back ends and resumes the recording).
+local REMIND_EVERY = 600
+local remindedAt
 local function exportReminder()
     if not ns.IsOfficerView() or not ns.Get("record.exportWarn") then return end
+    if remindedAt and GetTime() - remindedAt < REMIND_EVERY then return end
+    remindedAt = GetTime()
     local n = #ns.PendingExport()
     if n > 0 then
         msg(n == 1 and L["1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export."]

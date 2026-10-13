@@ -67,7 +67,7 @@ end
 
 -- The names to pick from: the raid's members, in the recording the group too, and the master
 -- loot candidates of the slot; secret values skipped, spellings of one character merged. Who wished
--- for the item on the website's list comes first (GuildWishes.lua, bis.guildAward), then who
+-- for the item on the website's list comes first (GuildWishes.lua, wishes.award), then who
 -- answered upgrade or wish to "Wer braucht das?" (Need.lua).
 local function names(s, slot, item)
     local out = {}
@@ -88,7 +88,8 @@ local function names(s, slot, item)
     end
     if slot then
         for i = 1, 40 do
-            local c = ns.Plain(GetMasterLootCandidate(slot, i))
+            -- the end of the list is the first nil; a secret name is skipped by add, the rest still come
+            local c = GetMasterLootCandidate(slot, i)
             if c == nil then break end
             add(c)
         end

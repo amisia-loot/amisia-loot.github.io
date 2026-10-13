@@ -239,23 +239,28 @@ function ns.SettingsSectionsOf(pageKey)
     return out
 end
 
--- Whether a section holds a setting that is not on its default.
+-- Whether a setting stores a value that is not its default (buttons, notes and the loot rules' editor
+-- store nothing); all: hidden ones count too (officer items in the raider view, expert items).
+local function changedItem(it, all)
+    return it.key and it.type ~= "button" and it.type ~= "desc" and it.type ~= "custom"
+        and (all or ns.Visible(it)) and not ns.IsDefault(it.key)
+end
+
+-- Whether a section shows a setting that is not on its default.
 function ns.SectionChanged(sec)
     for _, it in ipairs(sec.items or {}) do
-        if it.key and it.type ~= "button" and it.type ~= "desc" and it.type ~= "custom" and not ns.IsDefault(it.key) then
-            return true
-        end
+        if changedItem(it) then return true end
     end
     return false
 end
 
--- Sets every setting of the sections back to its default (buttons, notes and the loot rules' editor
--- store nothing). Returns how many changed.
-function ns.ResetSections(list)
+-- Sets the shown settings of the sections back to their defaults (all: the hidden ones too, for "Alle
+-- Einstellungen zurücksetzen"). Returns how many changed.
+function ns.ResetSections(list, all)
     local n = 0
     for _, sec in ipairs(list) do
         for _, it in ipairs(sec.items or {}) do
-            if it.key and it.type ~= "button" and it.type ~= "desc" and it.type ~= "custom" and not ns.IsDefault(it.key) then
+            if changedItem(it, all) then
                 ns.Reset(it.key)
                 n = n + 1
             end
@@ -454,7 +459,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       run = function()
           ns.W.Confirm(L["Alle Einstellungen zurücksetzen"], L["Alle Einstellungen aller Abschnitte auf den Standard setzen? Raids, Listen, Wünsche und Fensterplätze bleiben."],
               L["Zurücksetzen"], function()
-                  local n = ns.ResetSections(ns.schema)
+                  local n = ns.ResetSections(ns.schema, true)
                   ns.msg(L["%d Einstellungen auf den Standard gesetzt."]:format(n))
               end)
       end },

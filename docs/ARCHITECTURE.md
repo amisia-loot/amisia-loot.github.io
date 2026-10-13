@@ -462,6 +462,13 @@ beitritt", on), `lineup.inv` ("Einladen auf Flüstern "inv"", off) and `lineup.a
 automatisch zum Assistenten", off); `signup` holds
 `signup.card` ("Karte auf der Übersicht", on) and, since part H3 (2.25.0), `signup.calendar` ("Auch im
 Spielkalender eintragen", on).
+**A new or changed setting, step by step** (each enforced by a test): the item gets a German `label` and a
+`tip` in `L[...]` with their English in `Locales/enUS_<area>.lua` (`tests/test_settings_tips.lua`,
+`tools/l10n.py check`); a new section gets a unique `order` within its tab's range, `group` and, when a page
+shows it, `pages` (`tests/test_settings_pages.lua`), and its row in the table above (`test_contracts.py`); a
+setting that moves to another path is a new step at the end of `ns.MIGRATIONS` (D-48, `tests/test_migrate.lua`);
+window state beside a section never takes the name of a setting (`tests/test_settings_state.lua`); officer and
+expert items carry `officer`/`expert` (section reset and the changed mark count only what the view shows).
 `record.exportWarn` (officers, on): at the end of a recording the officer view says how many raids `ns.PendingExport` holds, and raids kept over `record.keepSessions` because they are not exported are named.
 `ui` holds the window sizes: `ui.scale` (the main window, 70-130 %) and `ui.talentScale` (the talent
 window, 70-150 %, also Ctrl + mouse wheel over it); `ui.resetPosition` resets the main window, the gear

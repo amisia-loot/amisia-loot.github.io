@@ -3,7 +3,7 @@
 -- officer view. loot.lead = "me" makes this client the lead when the leader has no Amisia.
 -- The lead names the items of every corpse once in the raid chat, with the reservers from the
 -- raid: from the loot window (master loot or own looting) and from the group loot roll frames.
--- With sync.askUpgrades it then asks the raid clients who needs the items (Need.lua).
+-- With need.ask it then asks the raid clients who needs the items (Need.lua).
 -- Every client marks reserved items on the roll frames with "SR".
 local ADDON, ns = ...
 local L = ns.L
