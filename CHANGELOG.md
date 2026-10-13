@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.32.0 (2026-10-13)
+
+- Speicherstand mit Versionsnummer: AmisiaDB.schema und geordnete Migrationen (D-48), Schutz für Fensterzustand
+- Spec: Einstellungen in logische Abschnitte (freigegeben)
+- Einstellungen in logischen Abschnitten: Wer braucht das?, Ersatzbank, Discord-Text, Gildenwünsche; Plus-Eins zu Roll-Runden, Ausrüstung in Ausrüstung und Wünsche; Migrationsschritt 2
+
 ## 2.31.0 (2026-10-13)
 
 - FEATURES: Prüfungen der Korrekturen von 2.30.1
