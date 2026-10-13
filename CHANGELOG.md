@@ -2,6 +2,19 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.30.1 (2026-10-13)
+
+- Spec: Seite Dungeons und Einstellungen nach Reitern mit Zahnrad (Entwurf)
+- Alt-Klick im Lootfenster startet Runden nur in der Offiziersansicht; Vergabe-Dialog prüft geheime Kandidaten
+- Vergabe-Art aus dem Roll auch beim Kurznamen aus dem Chat (MS statt -)
+- Aufstellung: Kalendertermin ohne ID beim erneuten Lesen nach Zeit und Titel wiederfinden
+- Offiziersansicht: nicht exportierte Raids werden beim Aufräumen nicht mehr still gelöscht
+- Item-Sammler: ein Item pro Sitzung nur einmal speichern statt bei jedem Taschen-Update
+- Soft-Reserve-Code: Nachname mit Bindestrich bleibt erhalten, nur der Realm fällt weg
+- Suche und Einstellungssuche: Ä, Ö, Ü wie ä, ö, ü
+- Ausrüstungstabelle: Upgrade-Punkt nach derselben Schwelle wie der Tooltip
+- Tests für die Korrekturen der Prüfung vom 13.10.
+
 ## 2.30.0 (2026-10-13)
 
 - Systemmeldungen: Textvorlagen des Spiels als Muster in Core/Chat.lua (ns.TemplatePattern, ns.TemplateName)
