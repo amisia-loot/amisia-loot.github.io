@@ -677,5 +677,12 @@ ns.RegisterSlash("ansicht", { en = "view", args = L["[offizier|raider|auto]"], d
             set == "auto" and (" (" .. L["Automatisch"] .. ")") or ""))
     end })
 
-ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "config" }, desc = L["Einstellungen öffnen"],
-    run = function() ns.ShowPage("settings") end })
+-- With a word: the section it names (ns.SettingsSection), else the settings searched for it.
+ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "config" }, args = L["[Abschnitt oder Suchwort]"],
+    desc = L["Einstellungen öffnen"],
+    run = function(rest)
+        rest = rest:match("^%s*(.-)%s*$") or ""
+        if rest == "" then return ns.ShowPage("settings") end
+        local sec = ns.SettingsSection(rest)
+        if ns.ShowSettings then ns.ShowSettings(sec and sec.label or rest) end
+    end })

@@ -192,6 +192,7 @@ L["Pausieren"] = "Pause"
 L["Fortsetzen"] = "Resume"
 L["create gab keinen Frame zurück"] = "create returned no frame"
 L["Einstellungen öffnen"] = "open the settings"
+L["[Abschnitt oder Suchwort]"] = "[section or search word]"
 
 -- UI/Pages/Overview.lua
 L["Übersicht"] = "Overview"
@@ -399,3 +400,14 @@ L["Nichts gefunden."] = "Nothing found."
 L["Seiten"] = "Pages"
 L["Spieler##Suche"] = "Players"
 L["Öffnet die Statistik dieses Spielers."] = "Opens this player's statistics."
+
+-- the tips of the settings (2.31.0)
+-- Core/Comm.lua
+L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] = "Writes every sync message into the chat. Only for troubleshooting."
+-- Core/Core.lua
+L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] = "This many raids stay saved, the oldest go first. In the officer view a raid the site does not have yet stays (up to 200 raids)."
+-- Core/Registry.lua
+L["Größe des Amisia-Fensters in Prozent."] = "Size of the Amisia window in percent."
+L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] = "Puts the main window, the gear table, the roll window, the talent window and the raid calendar back in their default places."
+-- Core/Version.lua
+L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] = "A note in the chat when someone in your guild or group has a newer Amisia version."

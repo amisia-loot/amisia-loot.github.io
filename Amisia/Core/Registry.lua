@@ -198,6 +198,28 @@ end
 
 function ns.SettingItem(path) return items[path] end
 
+-- The visible settings section a word names: its key ("map"), its name ("Karte und Wegpunkt") or the
+-- start of its name ("karte"), any case; nil when none does.
+function ns.SettingsSection(word)
+    local w = ns.Fold((tostring(word or ""):match("^%s*(.-)%s*$")))
+    if w == "" then return nil end
+    local sections = {}
+    for _, sec in ipairs(ns.schema) do
+        if ns.Visible(sec) then sections[#sections + 1] = sec end
+    end
+    table.sort(sections, function(a, b)
+        if (a.order or 50) ~= (b.order or 50) then return (a.order or 50) < (b.order or 50) end
+        return a.key < b.key
+    end)
+    for _, sec in ipairs(sections) do
+        if sec.key == w or ns.Fold(sec.label) == w then return sec end
+    end
+    for _, sec in ipairs(sections) do
+        if ns.Fold(sec.label):sub(1, #w) == w then return sec end
+    end
+    return nil
+end
+
 -- Whether a settings item matches a search text (plain, lower case, not empty): by its label, its
 -- tip, its path or the names of its choices. The settings page and the main window's search use it.
 function ns.SettingHits(it, query)
@@ -350,12 +372,12 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, items = {
       tip = L["Der runde Amisia-Button am Rand der Minimap."],
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
     { key = "ui.scale", type = "slider", label = L["Fenstergröße (%)"], default = 100, min = 70, max = 130, step = 5,
-      onChange = function(v) if ns.ApplyScale then ns.ApplyScale(v) end end },
+      onChange = function(v) if ns.ApplyScale then ns.ApplyScale(v) end end, tip = L["Größe des Amisia-Fensters in Prozent."] },
     { key = "ui.talentScale", type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
-      run = function() if ns.ResetPositions then ns.ResetPositions() end end },
+      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
       tip = L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] },
