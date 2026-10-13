@@ -1331,6 +1331,18 @@ function ns.LineupSignupNights(name)
     return out
 end
 
+-- The title of a calendar event as the night keeps it.
+local function calTitle(t)
+    return ns.CleanNote(stripCodes(t or ""), 40)
+end
+
+-- Whether calendar event e is the night's event c: by its id, else (an event without one) by time
+-- and title, as Raid/Calendar.lua finds it again.
+local function sameEvent(c, e)
+    if c.id or e.id then return c.id == e.id end
+    return c.at == e.at and c.title == calTitle(e.title)
+end
+
 -- The invite list of a calendar event (part G, Raid/Calendar.lua) into the night of the event: ev
 -- of ns.Cal.Events(), invites of ns.Cal.ReadOpen(). Each name through the same match as a list; a
 -- name already there gets the calendar's mark; the status follows the newest statement. Another
@@ -1341,7 +1353,7 @@ function ns.LineupCalendar(ev, invites, quiet)
     local night = ev.night or ns.NightOf(ev.at)
     local n = ns.LineupNight(night, true)
     local now = math.floor(time())
-    if n.cal and n.cal.id ~= ev.id then
+    if n.cal and not sameEvent(n.cal, ev) then
         local keep = {}
         for _, e in ipairs(n.list) do
             if hasSrc(e, "K") then
@@ -1356,7 +1368,7 @@ function ns.LineupCalendar(ev, invites, quiet)
         end
         n.list = keep
     end
-    n.cal = { id = ev.id, at = ev.at, title = ns.CleanNote(stripCodes(ev.title or ""), 40), read = now }
+    n.cal = { id = ev.id, at = ev.at, title = calTitle(ev.title), read = now }
     local k = knownPeople()
     local seen = {}
     local c = { all = 0, A = 0, V = 0, X = 0, E = 0, I = 0, O = 0 }
@@ -1430,7 +1442,7 @@ function ns.LineupReadCalendar(ev, fn)
 end
 
 -- Reads the calendar event of night again (the page is open and the calendar changed): the event by
--- its id; one that is gone or moved to another night is marked lost (the rows stay, the mark turns
+-- its id (without one: time and title); one that is gone or moved to another night is marked lost (the rows stay, the mark turns
 -- grey). fn(ok, why) when given. Returns false when the night has no event.
 function ns.LineupCalendarAgain(night, fn)
     local n = ns.LineupNight(night, false)
@@ -1441,7 +1453,7 @@ function ns.LineupCalendarAgain(night, fn)
     local function go(list, fresh)
         local ev
         for _, e in ipairs(list or {}) do
-            if n.cal.id and e.id == n.cal.id then ev = e break end
+            if sameEvent(n.cal, e) then ev = e break end
         end
         if not ev or ev.night ~= night then
             if list and (#list > 0 or fresh) and not n.cal.lost then
