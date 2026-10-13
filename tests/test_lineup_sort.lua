@@ -265,4 +265,18 @@ STUB.fire("GROUP_ROSTER_UPDATE")
 STUB.tick(5)
 assert(#PROMOTED == 2, "only the officer view")
 NS.Set("ui.view", "officer")
+-- a first name is no proof (review 2026-10-13): the guild's officer "Ida" has no surname; "Ida Fremd"
+-- in the raid is somebody else and stays without assistant; "Olga" in the raid (no surname) neither
+STUB.guild[#STUB.guild + 1] = { name = "Ida", rank = 2, class = "MAGE" }
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.tick(11)
+SO._reset()
+PROMOTED = {}
+raid({ { "Vuloo", 1, 2 }, { "Ida Fremd", 1 }, { "Olga", 1 } })
+STUB.tick(5)
+assert(#PROMOTED == 0, "a first name alone promotes nobody: " .. table.concat(PROMOTED, ","))
+raid({ { "Vuloo", 1, 2 }, { "Ida", 1 }, { "olga offizier", 1 } })
+STUB.tick(5)
+table.sort(PROMOTED)
+assert(#PROMOTED == 2 and PROMOTED[1] == "Ida" and PROMOTED[2] == "olga offizier", table.concat(PROMOTED, ","))
 NS.Set("lineup.autoAssist", false)

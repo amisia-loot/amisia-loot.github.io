@@ -979,7 +979,9 @@ auf der heutigen Aufstellung steht und `lineup.guests` an ist), nur solange eine
 heute eine Aufstellung steht, als Leiter, Assistent oder allein; einmal in 30 Sekunden pro Absender,
 10 pro Minute; Meldungen nur im eigenen Chat. **Assistent** (`lineup.autoAssist`, aus): als
 Schlachtzugsleiter wird jedes Gildenmitglied mit Offiziersrang laut Gildenliste (Rangrecht 22, D-18),
-das im Raid ist, einmal pro Raid Assistent; nicht im Kampf und nicht in der Sperre.
+das im Raid ist, einmal pro Raid Assistent; nicht im Kampf und nicht in der Sperre. Der Name in der
+Raidliste muss genau der Name der Gildenliste sein (Groß/klein egal); ein Vorname allein reicht für
+die Beförderung nicht (Review 2026-10-13).
 **Grund:** Nutzer am 2026-10-12: Teile C und D jetzt bauen, dazu "inv" per Flüstern (ändert Frage 8 der
 Spec auf ja) und automatischer Assist für Offiziere. Prüfung 11 im Spiel (2026-10-12 17:46): InviteUnit
 geht aus dem Tastendruck und aus einem C_Timer ohne Sperre; die deutschen Vorlagen stehen im Bericht.

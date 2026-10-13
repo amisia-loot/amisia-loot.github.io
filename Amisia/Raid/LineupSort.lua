@@ -7,8 +7,9 @@
 -- sorts QUIET seconds after a planned player joined, but only on the client that clicked "Alle
 -- einladen" tonight (two officers do not sort against each other).
 -- Automatic assistant (lineup.autoAssist, off; user 2026-10-12): as raid leader Amisia promotes
--- every raider whose guild rank is an officer rank by the roster (never what a message says) once
--- per raid, out of combat and the lockdown.
+-- every raider whose guild rank is an officer rank by the roster (never what a message says; the
+-- raid's spelling must be the roster's, a first name alone is not enough) once per raid, out of
+-- combat and the lockdown.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -234,6 +235,16 @@ local function promote(name)
     return false
 end
 
+-- An officer of the own guild under exactly this spelling (any case): true, false, or nil while the
+-- roster cannot be read. The first name alone (ns.GuildMember's match when one side has no surname)
+-- is no proof for a promotion: "Ida Fremd" in the raid is not the guild's "Ida" (review 2026-10-13).
+local function officerByRoster(name)
+    local m, why = ns.GuildMember(name)
+    if why == "unknown" then return nil end
+    if not m or m.name:lower() ~= name:lower() then return false end
+    return ns.IsOfficerRank(m.rank)
+end
+
 -- Promotes the officers of the raid who are no assistant yet: only the raid leader, with the
 -- setting, out of combat and the lockdown; once per raider and raid.
 function SO.Assist()
@@ -249,7 +260,7 @@ function SO.Assist()
         if not promoted[low] and not ns.SameName(r.name, me) then
             if r.rank >= 1 then
                 promoted[low] = true
-            elseif ns.IsVerifiedOfficer(r.name) == true then
+            elseif officerByRoster(r.name) == true then
                 promoted[low] = true
                 if promote(r.name) then ns.msg(L["Assistent: %s (Offiziersrang)."]:format(r.name)) end
             end
