@@ -324,3 +324,26 @@ NS.ShowLineup("planner", night)
 assert(f.sortBtn:IsShown() and not f.inviteAll:IsShown())
 assert(not f.sortBtn:IsEnabled() and has(f.calLine:GetText(), "Sortieren: Nur im Raid"), "sorting needs a raid: " .. f.calLine:GetText())
 NS.ShowLineup("match", night)
+
+-- (review 2026-10-13) invites only for tonight's night: another night's view shows the reason
+IV._reset()
+alone()
+local other = NS.SetLineupText("Anna Bergmann Heiler\nBob Eisherz Tank", NS.NightOf(time() + 2 * 86400))
+assert(other and other ~= night, tostring(other))
+NS.LineupAutoAssign(other)
+INV = {}
+n, why = NS.LineupInviteAll(other)
+assert(n == nil and why == "Nur für heute Abend", tostring(why))
+n, why = NS.LineupInvite(other, "again")
+assert(n == nil and why == "Nur für heute Abend", tostring(why))
+n, why = NS.LineupInviteOne(other, "Anna Bergmann")
+assert(n == nil and why == "Nur für heute Abend", tostring(why))
+STUB.tick(3)
+assert(#INV == 0, "nobody invited for another night")
+NS.ShowLineup("invite", other)
+assert(f.inviteAll:GetText() == "Nur für heute Abend" and not f.inviteAll:IsEnabled() and not f.again:IsEnabled(), f.inviteAll:GetText())
+for _, r in ipairs(f.invRows.rows) do
+    assert(not (r:IsShown() and r.chip:IsShown()), "no row chip for another night")
+end
+NS.ShowLineup("invite", night)
+assert(f.inviteAll:IsEnabled(), "tonight again")

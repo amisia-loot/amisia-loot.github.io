@@ -900,7 +900,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         end
         -- the invite view: its counts and why the buttons are off
         local ic = (has and shown == "invite") and ns.LineupInviteCounts(key) or nil
-        local _, blocked = ns.LineupLeadBlocked()
+        local _, blocked = ns.LineupInviteBlocked(key)
         f.invBlocked = blocked
         if ic then
             parts = { L["Im Raid %d · eingeladen %d · abgelehnt %d · keine Antwort %d · offline %d · noch einzuladen %d"]:format(

@@ -8,7 +8,7 @@
 -- the unanswered and those in another group again, once per click; at most three invites per name
 -- and night. Optional, off by default: a whisper with a fixed text to each invited player, once per
 -- name and night. Guests only with lineup.guests. Never in combat, the lockdown or a battleground;
--- in a group only as leader or assistant (a party: the leader).
+-- in a group only as leader or assistant (a party: the leader); only for tonight's night.
 -- Invite on whisper (lineup.inv, off by default; user 2026-10-12): a whisper "inv" or "invite" (the
 -- whole text, any case) from a guild member (by the roster; a guest of tonight's lineup only with
 -- lineup.guests) is invited while a recording runs or tonight has a lineup, by the same engine; one
@@ -99,6 +99,7 @@ end
 local REASON = {
     officer = L["Nur für Offiziere"], combat = L["Nicht im Kampf"], lock = L["Nicht im Bosskampf"],
     pvp = L["Nicht im Schlachtfeld"], raid = L["Nur im Raid"], lead = L["Nur als Leiter oder Assistent"],
+    night = L["Nur für heute Abend"],
 }
 IV.REASON = REASON
 
@@ -117,6 +118,15 @@ function ns.LineupLeadBlocked(needRaid)
         end
     end
     if why then return why, REASON[why] end
+    return nil
+end
+
+-- Why the invite buttons of night are off: ns.LineupLeadBlocked, else "night" for any night but
+-- tonight's (review 2026-10-13: next week's lineup is not invited now).
+function ns.LineupInviteBlocked(night)
+    local why, text = ns.LineupLeadBlocked()
+    if why then return why, text end
+    if (night or tonight()) ~= tonight() then return "night", REASON.night end
     return nil
 end
 
@@ -404,7 +414,7 @@ end
 -- the number queued, or nil and the reason (also said in the chat by the caller).
 function ns.LineupInvite(night, which)
     night = night or tonight()
-    local _, text = ns.LineupLeadBlocked()
+    local _, text = ns.LineupInviteBlocked(night)
     if text then return nil, text end
     if run and not run.quiet then return nil, L["Einladen läuft schon"] end
     local items = pick(night, which or "all")
@@ -420,7 +430,7 @@ function ns.LineupInviteAll(night) return ns.LineupInvite(night, "all") end
 -- One name by its row's chip (a click): counts as an invite of that name.
 function ns.LineupInviteOne(night, name)
     night = night or tonight()
-    local _, text = ns.LineupLeadBlocked()
+    local _, text = ns.LineupInviteBlocked(night)
     if text then return nil, text end
     local n = ns.LineupNight(night, false)
     for _, it in ipairs(placed(n)) do
