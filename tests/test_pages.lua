@@ -254,14 +254,18 @@ assert(m:IsShown())
 NS.W.Menu(UIParent, { { "Eins", function() end } })
 assert(not m:IsShown(), "second click closes the menu")
 
--- the gear page with the real Forever data: every view builds and refreshes, for officers and raiders
+-- the gear page with the real Forever data: every view builds and refreshes, for officers and raiders;
+-- the dungeons page as well
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
-    for _, v in ipairs({ "goals", "here", "dungeons", "wish", "guild" }) do
+    for _, v in ipairs({ "goals", "here", "wish", "guild" }) do
         NS.ShowGear(v)
         NS.Refresh()
         assert(NS.CurrentPage() == "gear", "the gear page in " .. v)
     end
+    NS.ShowPage("dungeons")
+    NS.Refresh()
+    assert(NS.CurrentPage() == "dungeons", "the dungeons page")
 end
 NS.Reset("ui.view")
 -- the map page with the real Forever map data: builds and refreshes for officers and raiders, in

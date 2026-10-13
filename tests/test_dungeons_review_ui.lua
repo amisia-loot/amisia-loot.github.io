@@ -38,9 +38,8 @@ gear(531, "Ghulumhang", "CLOAK", 40, 16)
 NS.Gear._reset()
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 
-NS.ShowGear("dungeons")
-local f = NS.GearPageFrame()
-local D = f.dungeons
+NS.ShowPage("dungeons")
+local D = NS.DungeonsPageFrame()
 assert(NS.DungeonNext().key == "thanes" and D.chosen == "thanes")
 assert(#D.detail.items > D.detail.rowCount, "the thanes need the scroll bar: " .. #D.detail.items)
 

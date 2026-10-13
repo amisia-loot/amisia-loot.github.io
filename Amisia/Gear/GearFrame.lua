@@ -594,7 +594,8 @@ end
 -- While item data arrives, redraw at most once a second.
 local pagePending
 Gear.OnData(function()
-    if not pagePending and ns.CurrentPage and ns.CurrentPage() == "gear" then
+    local cur = ns.CurrentPage and ns.CurrentPage()
+    if not pagePending and (cur == "gear" or cur == "dungeons") then
         pagePending = true
         C_Timer.After(1, function() pagePending = false; ns.Refresh() end)
     end

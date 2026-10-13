@@ -1575,7 +1575,7 @@ local function sayQuests(word)
     end
 end
 
-ns.RegisterSlash("dungeon", { aliases = { "dungeons" }, args = L["[naechster|kette|quests <Dungeon>]"],
+ns.RegisterSlash("dungeon", { aliases = { "dungeons", "journal" }, args = L["[naechster|kette|quests <Dungeon>]"],
     desc = L["Dungeon-Planer: welcher Dungeon sich für dich lohnt, die Kette, die Quests eines Dungeons"],
     run = function(rest)
         local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
@@ -1608,5 +1608,5 @@ ns.RegisterSlash("dungeon", { aliases = { "dungeons" }, args = L["[naechster|ket
             ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
             return
         end
-        ns.ShowGear("dungeons")
+        ns.ShowPage("dungeons")
     end })

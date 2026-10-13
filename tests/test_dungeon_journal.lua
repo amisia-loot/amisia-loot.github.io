@@ -258,9 +258,8 @@ WorldMapFrame:Hide()
 ---------------------------------------------------------------------------
 -- the page: the banner, the XP column and line, the mark button, Ctrl-click
 ---------------------------------------------------------------------------
-NS.ShowGear("dungeons")
-local f = NS.GearPageFrame()
-local B = f.dungeons
+NS.ShowPage("dungeons")
+local B = NS.DungeonsPageFrame()
 for _, row in ipairs(B.list.rows) do if row.item and row.item.key == "thanes" then row:Click() end end
 assert(B.chosen == "thanes")
 assert(B.art and B.art:IsShown() and B.art.tex.texture == A.D.thanes[1], "the thanes' screen")
@@ -328,5 +327,5 @@ _G.HandleModifiedItemClick = oldHandle
 ctrl = false
 assert(has(B.hint:GetText(), "Strg-Klick"), B.hint:GetText())
 -- the layout at the main window's size
-local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
 Lay.row("parts", B.header, B.parts.bosses, B.parts.quests, B.way)

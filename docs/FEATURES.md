@@ -172,6 +172,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter "Sync und Version" nachsiehst, dann stehen dort nur noch Sync- und Versionsschalter; "Roll-Runden" hat die beiden Plus-Eins-Einstellungen.
 - Notiz: Spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`, Migrationsschritt 2 (D-48).
 
+### F-103 Einstellungen nach Reitern, Knopf "Einstellungen", Zurücksetzen
+- Version: 2.33.0
+- Status: gebaut
+- Prüfung: Wenn du die Einstellungen öffnest, dann stehen in der Seitenliste links unter "Einstellungen" die Gruppen Raid, Ausrüstung, Gilde, Kalender und Allgemein, unter der gewählten ihre Abschnitte; ein Klick auf einen Abschnitt zeigt rechts nur dessen Zeilen.
+- Prüfung: Wenn du auf der Seite Karte oben links neben der Ansicht "Einstellungen" klickst, dann zeigen die Einstellungen nur "Karte und Wegpunkt", oben "Zurück zu Karte"; der Knopf bringt dich zur Karte zurück.
+- Prüfung: Wenn du in einem Abschnitt etwas änderst und oben "Zurücksetzen" klickst, dann fragt Amisia nach und setzt nur diesen Abschnitt auf den Standard; der Abschnitt trägt vorher in der Liste den goldenen Punkt.
+- Prüfung: Wenn du unter Allgemein, Oberfläche "Alle Einstellungen zurücksetzen" klickst und bestätigst, dann meldet der Chat "N Einstellungen auf den Standard gesetzt.", und deine Raids und Listen sind noch da.
+- Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Talente) fehlt der Knopf.
+- Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
+
 ## Addon: Raid und Loot
 
 ### F-013 Raid-Aufnahme (Anwesenheit, Bosse, Loot)
@@ -692,6 +702,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Quests eines Dungeons ansiehst, dann steht bei jeder "EP: ..." (oder "EP: noch nicht gesehen").
 - Prüfung: Wenn du "Alle Questgeber auf der Karte" klickst, dann meldet der Chat "N Questgeber auf der Weltkarte markiert." und die Weltkarte zeigt sie; noch einmal entfernt die Markierung.
 - Prüfung: Wenn du mit Strg-Klick ein Item der Beuteliste anklickst, dann öffnet sich die Anprobe.
+
+### F-102 Seite Dungeons (Dungeon-Journal)
+- Version: 2.33.0
+- Status: gebaut
+- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann steht links "Dungeons" direkt unter "Ausrüstung", und die Seite zeigt Rangliste, Bild, Bossmodell und Quests wie bisher; auf der Seite Ausrüstung gibt es den Chip "Dungeons" nicht mehr.
+- Prüfung: Wenn du `/amisia journal` oder `/amisia dungeon` eingibst, dann öffnet sich die Seite Dungeons.
+- Prüfung: Wenn du auf der Seite Dungeons die Spezialisierung wechselst, dann ist sie auch auf der Seite Ausrüstung gewählt.
+- Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil A; vorher der Chip "Dungeons" der Seite Ausrüstung (F-046, F-047).
 
 ### F-048 Quest-Tracker
 - Version: 2.7.0

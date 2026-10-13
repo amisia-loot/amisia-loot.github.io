@@ -1,8 +1,8 @@
--- The view "Dungeons" of the gear page: the next dungeon with its reason on top, the list with
--- level range, fit, upgrades, gain per run, quests and value, the chosen dungeon's bosses with their
--- upgrades (gain, rate with kills, owned, wished) and its quests with the best reward, the waypoint
--- to the entrance; the view chip, the command, the overview card, no facts; the layout at the main
--- window's size (602 x 478) for officers and raiders.
+-- The dungeons page (the gear page's view "Dungeons" until it got a page of its own): the next
+-- dungeon with its reason on top, the list with level range, fit, upgrades, gain per run, quests and
+-- value, the chosen dungeon's bosses with their upgrades (gain, rate with kills, owned, wished) and
+-- its quests with the best reward, the waypoint to the entrance; the page, the command, the overview
+-- card, no facts; the layout at the main window's size (602 x 478) for officers and raiders.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 
@@ -44,11 +44,8 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 assert(NS.WishAdd(503))
 
 NS.ShowGear("dungeons")
-local f = NS.GearPageFrame()
-assert(NS.CurrentPage() == "gear" and f.views.dungeons.on and not f.views.goals.on, "the view chip")
-local D = f.dungeons
-assert(D:IsShown() and not f.goals:IsShown(), "the dungeons body")
-for _, k in ipairs({ "Q", "D", "C", "V", "W", "A", "P" }) do assert(not f.src[k]:IsShown(), "no source chips here: " .. k) end
+local D = NS.DungeonsPageFrame()
+assert(NS.CurrentPage() == "dungeons" and D:IsShown(), "the dungeons page")
 local nextE = NS.DungeonNext()
 assert(nextE and nextE.key == "thanes")
 assert(D.next:GetText() == "Nächster Dungeon: Hall of Thanes · Level 13-18", D.next:GetText())
@@ -121,27 +118,22 @@ card.fill(c)
 assert(has(c.line2:GetText(), "Bestes: ") and has(c.line2:GetText(), "Nächster Dungeon: Hall of Thanes"), c.line2:GetText())
 
 -- layout at the main window's size, officer and raider view
-local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(D, 602, 478)
 for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowGear("dungeons")
-    if f.views.guild:IsShown() then
-        Lay.row(view .. " head", f.spec, f.views.goals, f.views.here, f.views.dungeons, f.views.wish, f.views.guild, f.open)
-    else
-        Lay.row(view .. " head", f.spec, f.views.goals, f.views.here, f.views.dungeons, f.views.wish, f.open)
-    end
+    Lay.row(view .. " head", D.spec, D.sorts.level, D.sorts.value, D.sorts.chain)
     Lay.row(view .. " columns", D.head.name, D.head.level, D.head.fit, D.head.upgrades, D.head.run, D.head.quests, D.head.value)
     local lr = D.list.rows[1]
     Lay.row(view .. " list row", lr.name, lr.level, lr.fit, lr.upgrades, lr.run, lr.quests, lr.value)
     Lay.row(view .. " list", D.list, D.list.bar)
     Lay.inside(view .. " list bar", D.list.bar)
     Lay.row(view .. " detail head", D.header, D.parts.bosses, D.parts.quests, D.way)
-    Lay.row(view .. " sorts", D.next, D.sorts.level, D.sorts.value, D.sorts.chain)
     local dr = D.detail.rows[1]
     Lay.row(view .. " detail row", dr.name, dr.slot, dr.gain, dr.rate)
     Lay.row(view .. " detail", D.detail, D.detail.bar)
     Lay.inside(view .. " detail bar", D.detail.bar)
-    Lay.column(view .. " body", f.counts, D.next, D.why, D.head.name, D.list, D.header, D.detail, D.hint)
+    Lay.column(view .. " body", D.spec, D.next, D.why, D.head.name, D.list, D.header, D.detail, D.hint)
     local _, gr = Lay.span(lr.value)
     assert(gr <= 590, "the value ends in the row: " .. gr)
     Lay.fits(D.next); Lay.fits(D.why)
@@ -155,9 +147,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     end
 end
 NS.Reset("ui.view")
-assert(plain(f.views.dungeons.label:GetText()) == "Dungeons")
--- the other views keep their chips
+-- the gear page keeps its chips
 NS.ShowGear("goals")
+local f = NS.GearPageFrame()
 assert(f.src.Q:IsShown() and not D:IsShown() and f.goals:IsShown())
 
 -- without facts the view says so

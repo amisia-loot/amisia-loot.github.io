@@ -18,7 +18,7 @@ local function navShown()
     for _, e in ipairs(F.navOrder) do out[#out + 1] = e.button.key end
     return table.concat(out, " ")
 end
-assert(navShown() == "gear map quests professions talents", navShown())
+assert(navShown() == "gear dungeons map quests professions talents", navShown())
 -- the raid tab opens its own last page
 F.tabs.raid:Click()
 assert(NS.CurrentPage() == "awards" and F.tabs.raid.selected and not F.tabs.gear.selected, NS.CurrentPage())

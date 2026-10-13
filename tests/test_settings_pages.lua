@@ -12,7 +12,7 @@ local GROUPS = {}
 for _, g in ipairs(NS.PANEL_GROUPS) do GROUPS[g.key] = true end
 for _, sec in ipairs(NS.schema) do
     assert(GROUPS[sec.group], "the tab of " .. sec.key .. ": " .. tostring(sec.group))
-    for _, p in ipairs(sec.pages or {}) do assert(NS.Panel(p) or p == "dungeons" --[[TEMP]], sec.key .. " names a page that does not exist: " .. p) end
+    for _, p in ipairs(sec.pages or {}) do assert(NS.Panel(p), sec.key .. " names a page that does not exist: " .. p) end
 end
 
 NS.ToggleMain()

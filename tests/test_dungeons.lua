@@ -252,7 +252,7 @@ NS.Dispatch("dungeon naechster")
 local said = table.concat(STUB.messages, "\n")
 assert(has(said, "Nächster Dungeon (13-18): Hall of Thanes: ") and has(said, " Upgrades, 1 Quest mit Upgrade, Schwerpunkt "), said)
 NS.Dispatch("dungeons")
-assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "dungeons", "the view of the gear page")
+assert(NS.CurrentPage() == "dungeons", "the dungeons page")
 local lines = table.concat(NS.SlashHelpLines(false), "\n")
 assert(has(lines, "/amisia dungeon [naechster|kette|quests <Dungeon>]"), lines)
 

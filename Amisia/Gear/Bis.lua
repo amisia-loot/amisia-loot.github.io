@@ -1869,14 +1869,19 @@ local VIEW_OF = { goals = "goals", ziele = "goals", here = "here", hier = "here"
     wunschliste = "wish", guild = "guild", gilde = "guild", dungeons = "dungeons", dungeon = "dungeons", sim = "sim",
     simulation = "sim" }
 
--- Opens the gear page in a view ("goals", "here", "dungeons", "wish", "guild" or the German words)
--- with a slot chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
--- at the player's own place again.
+-- Opens the gear page in a view ("goals", "here", "wish", "guild" or the German words) with a slot
+-- chosen. The page reads settings.bis.view, settings.bis.slot and settings.bis.place; "here" starts
+-- at the player's own place again. "dungeons" (a view until the planner got its own page) opens the
+-- dungeons page.
 function ns.ShowGear(view, slotKey)
+    local v = VIEW_OF[tostring(view or ""):lower()]
+    if v == "dungeons" then
+        if ns.ShowPage then ns.ShowPage("dungeons") end
+        return
+    end
     local s = AmisiaDB and AmisiaDB.settings
     if s then
         s.bis = type(s.bis) == "table" and s.bis or {}
-        local v = VIEW_OF[tostring(view or ""):lower()]
         s.bis.view = v or s.bis.view or "goals"
         if v == "here" then s.bis.place = nil end
         if slotKey then s.bis.slot = slotKey end

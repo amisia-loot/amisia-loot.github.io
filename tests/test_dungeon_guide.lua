@@ -197,9 +197,8 @@ NS.MapClearTarget()
 -- the page: the sort chips, the chain on top, the quests part with its waypoint
 ---------------------------------------------------------------------------
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-NS.ShowGear("dungeons")
-local f = NS.GearPageFrame()
-local B = f.dungeons
+NS.ShowPage("dungeons")
+local B = NS.DungeonsPageFrame()
 B.sorts.value:Click()
 assert(B.sorts.value.on and not B.sorts.level.on and AmisiaDB.settings.bis.dsort == "value")
 assert(plain(B.list.rows[1].name:GetText()) == "1. Hall of Thanes" and plain(B.list.rows[2].name:GetText()) == "2. Ruins of Lordaeron",
@@ -221,8 +220,8 @@ assert(qrow and plain(qrow.slot:GetText()) == "18 (ab 14)" and has(plain(qrow.ra
 qrow:Click()
 assert(NS.MapTarget() and NS.MapTarget().label == "Questgeber Thane Giver", "a click on a quest: its giver")
 NS.MapClearTarget()
-local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-Lay.row("sorts", B.next, B.sorts.level, B.sorts.value, B.sorts.chain)
+local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
+Lay.row("head", B.spec, B.sorts.level, B.sorts.value, B.sorts.chain)
 Lay.row("parts", B.header, B.parts.bosses, B.parts.quests, B.way)
 B.sorts.level:Click()
 B.parts.bosses:Click()
