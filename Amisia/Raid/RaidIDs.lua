@@ -381,7 +381,11 @@ function ns.RaidIDsTake(from, f)
     local t = now()
     local ids = parseIds(f[4], t)
     if not char or not ids then return false end
-    if not ns.GuildMember(char) then return false end
+    -- the roster's spelling: another case or a first name alone is the same character (one record,
+    -- one keyed gap; its own report is found)
+    local member = ns.GuildMember(char)
+    char = member and validName(member.name)
+    if not char then return false end
     local heard = DB.raidcheck.heard
     local old = heard[char]
     local selfReport = ns.SameName(char, from)
@@ -391,7 +395,8 @@ function ns.RaidIDsTake(from, f)
         -- the character's own report of the last 7 days stays
         if old and ns.SameName(old.by, char) and t - old.at < SELF_WINS then return false end
     end
-    if not old and reportedBy(from, char) >= PER_SENDER then return false end
+    -- 12 characters per sender, also when it takes over records of other senders
+    if not (old and ns.SameName(old.by, from)) and reportedBy(from, char) >= PER_SENDER then return false end
     if not old then
         local n = 0
         for _ in pairs(heard) do n = n + 1 end

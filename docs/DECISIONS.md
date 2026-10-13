@@ -932,6 +932,6 @@ ID (`-`), damit "frei" von "unbekannt" (ohne Amisia) unterscheidbar ist. Die Les
 Itemstufe, Verzauberung, Talentpunkten und Raid-IDs teilen sich Raid-Check und `/amisia selbsttest
 gruppe` (`Raid/RaidCheckRead.lua`). Gruppen- und Gildenprüfungen erst nach dem Start (D-32).
 **Durchgesetzt durch:** `tests/test_raidcheck.lua`, `tests/test_raidcheck_comm.lua`, `tests/test_raid_ids.lua`,
-`tests/test_raidcheck_page.lua`, `tests/test_selftest_group.lua`, `tools/tests/test_build_raidcheck.py`,
+`tests/test_raidcheck_page.lua`, `tests/test_raid_ids_abuse.lua`, `tests/test_selftest_group.lua`, `tools/tests/test_build_raidcheck.py`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
