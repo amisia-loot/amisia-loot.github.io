@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.33.0 (2026-10-13)
+
+- Spec: Seite Dungeons und Einstellungen nach Reitern (freigegeben, mit Zurücksetzen)
+- Einstellungen nach Reitern: Abschnitte in der Seitenliste, Knopf "Einstellungen" je Seite mit "Zurück zu", Zurücksetzen pro Abschnitt und für alle (D-49)
+- Seite Dungeons: der Dungeon-Planer zieht von der Seite Ausrüstung auf eine eigene Seite im Reiter Ausrüstung (F-102, Teil A)
+
 ## 2.32.0 (2026-10-13)
 
 - Speicherstand mit Versionsnummer: AmisiaDB.schema und geordnete Migrationen (D-48), Schutz für Fensterzustand
