@@ -2260,20 +2260,20 @@ do
     for i, it in ipairs(items) do
         if it.key == "sync.enabled" then at = i + 1 end
     end
-    table.insert(items, at, { key = "sync.raiderAwards", type = "toggle", label = L["Vergaben des Raids von der Lootleitung empfangen"], default = true })
+    table.insert(items, at, { key = "sync.raiderAwards", type = "toggle", label = L["Vergaben des Raids von der Lootleitung empfangen"], default = true, tip = L["Übernimmt die Vergaben, die die Lootleitung im Raid einträgt, in deine eigene Aufnahme."] })
     local before = #items + 1
     for i, it in ipairs(items) do
         if it.key == "sync.officerRanks" then before = i end
     end
     table.insert(items, before, { key = "sync.notify", type = "toggle", label = L["Hüterwechsel und Konflikte im Chat melden"], default = true,
-        officer = true })
+        officer = true, tip = L["Sagt dir im Chat, wenn ein anderer Client die Aufnahme des Raids führt (Hüter) oder zwei Stände sich widersprechen."] })
     -- the switches of "Wer braucht das?" belong to the section too
     local have = {}
     for _, it in ipairs(items) do have[it.key] = true end
     for _, it in ipairs({
-        { key = "sync.shareUpgrades", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true },
-        { key = "sync.askUpgrades", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true },
-        { key = "sync.needTooltip", type = "toggle", label = L["Tooltip-Zeile Upgrade für"], default = true, officer = true },
+        { key = "sync.shareUpgrades", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true, tip = L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] },
+        { key = "sync.askUpgrades", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true, tip = L["Mit der Loot-Ansage fragt Amisia die Raider, für wen ein Item ein Upgrade ist."] },
+        { key = "sync.needTooltip", type = "toggle", label = L["Tooltip-Zeile Upgrade für"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, für die das Item laut ihrer Antwort ein Upgrade ist."] },
     }) do
         if not have[it.key] then items[#items + 1] = it end
     end

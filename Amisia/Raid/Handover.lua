@@ -884,7 +884,7 @@ ns.RegisterSettings{ key = "trade", label = L["Handel-Helfer"], order = 26, item
     { key = "trade.warn", type = "choice", label = L["Warnungen"], default = "both",
       values = { { "both", L["bei 30 und 10 Minuten"] }, { "ten", L["nur bei 10 Minuten"] }, { "off", L["aus##Warnungen"] } },
       tip = L["Nur in deinem Chat. Ohne Handelszeit im Tooltip des Items gibt es keine Warnung."] },
-    { key = "trade.sound", type = "toggle", label = L["Ton bei einer Warnung"], default = true },
+    { key = "trade.sound", type = "toggle", label = L["Ton bei einer Warnung"], default = true, tip = L["Spielt einen Ton zu den Warnungen bei 30 und 10 Minuten Restzeit."] },
 }}
 
 local function say(e)

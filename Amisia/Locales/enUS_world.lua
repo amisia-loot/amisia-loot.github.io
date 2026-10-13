@@ -445,3 +445,16 @@ L["Hergestellt von: %s"] = "Crafted by: %s"
 L["Hergestellt von: niemand aus der Gilde bekannt"] = "Crafted by: nobody of the guild known"
 L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."] = "Only recipes someone of the guild knows (shared by Amisia users)."
 L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."] = "Opens a whisper to someone of the guild who knows the recipe (online first)."
+
+-- the tips of the settings (2.31.0)
+-- Collect/Scan.lua
+L["So viele Items fragt /amisia scan pro Sekunde beim Spiel an. Weniger ist schonender."] = "This many items /amisia scan asks the game for per second. Fewer is gentler."
+-- Gear/Map.lua
+L["Bist du am Ziel angekommen, verschwinden Ziel und Pfeil."] = "When you reach the target, the target and the arrow go away."
+L["Die Pins stehen auch auf der Karte des Kontinents, nicht nur auf der Zonenkarte."] = "The pins also show on the continent map, not only on the zone map."
+L["Die Weltkarte zeigt Pins, wo deine Upgrades zu holen sind (Seite Ausrüstung, Ziele)."] = "The world map shows pins where your upgrades can be found (Gear page, Goals)."
+L["Die Weltkarte zeigt Pins, wo deine Wünsche zu holen sind."] = "The world map shows pins where your wishes can be found."
+L["Größe der Pins auf der Karte in Prozent."] = "Size of the map pins in percent."
+L["Mit gedrückter Shift-Taste nennt der Item-Tooltip, wo das Item zu finden ist."] = "With Shift held down, the item tooltip says where the item can be found."
+L["Setzt den Pfeil an seinen Standardplatz zurück."] = "Puts the arrow back in its default place."
+L["Zeigt die Orte wieder, die du auf der Karte ausgeblendet hast."] = "Shows the places you hid on the map again."

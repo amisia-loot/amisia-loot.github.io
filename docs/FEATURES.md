@@ -154,13 +154,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2026-10-08 im Spiel: "Speicher: 7.2 MB, davon Müll 1.1 MB, echte Daten 6.1 MB", GEAR und GEAR_WEIGHTS geladen, der Rest wartet. Die Größen der Datenteile messen den Aufbau samt Müll (GEAR 5.1 MB), daher seit 2.13.2 so beschriftet. Im Kampf nicht geprüft.
 
 ### F-072 Ansicht umschalten und Einstellungen suchen
-- Version: 2.30.1
+- Version: 2.31.0
 - Status: gebaut
 - Prüfung: Wenn du oben im Fenster links neben "Pausieren" auf "Raider-Ansicht" klickst, dann steht dort "Offiziersansicht", und links erscheinen die Offiziersseiten (Raids, Rolls, Punkte, Export); ein zweiter Klick schaltet zurück.
 - Prüfung: Wenn du `/amisia ansicht offizier`, `raider` oder `auto` eingibst, dann wechselt die Ansicht und der Chat nennt sie; ohne Wort nennt er nur die aktuelle.
-- Prüfung: Wenn du auf der Seite Einstellungen oben ins Suchfeld "ansicht" tippst, dann stehen nur noch passende Einstellungen da, mit "N Einstellungen gefunden"; ein Abschnittsname wie "Oberfläche" zeigt den ganzen Abschnitt.
-- Prüfung: Wenn du etwas suchst, das es nicht gibt, dann steht "Nichts gefunden ..."; das X im Suchfeld zeigt wieder alles.
-- Prüfung: Wenn du auf der Seite Einstellungen "ÜBERGABE" oder "übergabe" tippst, dann findest du in beiden Fällen dieselben Einstellungen (Groß- und Kleinschreibung der Umlaute zählt nicht).
+- Prüfung: Wenn du auf der Seite Einstellungen oben ins Suchfeld "ansicht" tippst, dann stehen nur noch passende Einstellungen da, mit "N Einstellungen gefunden"; ein Abschnittsname wie "Oberfläche" zeigt den ganzen Abschnitt, etwas, das es nicht gibt, "Nichts gefunden ...", und das X zeigt wieder alles; "ÜBERGABE" findet dasselbe wie "übergabe".
+- Prüfung: Wenn du `/amisia einstellungen karte` eingibst, dann öffnen sich die Einstellungen mit dem ganzen Abschnitt "Karte und Wegpunkt"; `/amisia einstellungen wegpunkt` sucht nach "wegpunkt".
+- Prüfung: Wenn du mit der Maus über eine beliebige Einstellung fährst, dann erklärt ihr Tooltip, was sie tut (keine Einstellung ohne Text).
 - Notiz: 2026-10-08: der Nutzer fand die Ansicht unten in den Einstellungen schwer.
 
 ## Addon: Raid und Loot

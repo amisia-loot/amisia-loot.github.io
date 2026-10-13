@@ -893,18 +893,18 @@ ns._rollWindow = { start = startRound, finish = endRound, rounds = function() re
 ns.RegisterSettings{ key = "rollwin", label = L["Würfel-Fenster"], order = 21, items = {
     { key = "rollwin.enabled", type = "toggle", label = L["Würfel-Fenster zeigen, wenn die Lootleitung eine Runde startet"], default = true,
       tip = L["Ein kleines Fenster mit dem Item und den Knöpfen Mainspec (1-100), Offspec (1-99) und Passen. Gewürfelt wird über das Spiel, Passen geht nur an die Lootleitung."] },
-    { key = "rollwin.onlyMine", type = "toggle", label = L["Nur zeigen, wenn reserviert, Upgrade oder Wunsch"], default = false },
-    { key = "rollwin.sound", type = "toggle", label = L["Ton, wenn das Fenster aufgeht"], default = true },
+    { key = "rollwin.onlyMine", type = "toggle", label = L["Nur zeigen, wenn reserviert, Upgrade oder Wunsch"], default = false, tip = L["Das Würfel-Fenster geht nur für Items auf, die du reserviert hast, die ein Upgrade für dich sind oder auf deiner Wunschliste stehen."] },
+    { key = "rollwin.sound", type = "toggle", label = L["Ton, wenn das Fenster aufgeht"], default = true, tip = L["Spielt einen kurzen Ton, wenn eine Runde das Würfel-Fenster öffnet."] },
     { key = "rollwin.foreign", type = "toggle", label = L["Fenster auch bei Runden anderer Loot-Addons"], default = true,
       tip = L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon (seine Ansage im Raid), öffnet sich dein Fenster auch: Mainspec 1-100, Offspec 1-99."] },
-    { key = "rollwin.self", type = "toggle", label = L["Auch bei eigenen Runden (Lootleitung)"], default = true, officer = true },
+    { key = "rollwin.self", type = "toggle", label = L["Auch bei eigenen Runden (Lootleitung)"], default = true, officer = true, tip = L["Die Lootleitung sieht das Würfel-Fenster auch bei ihren eigenen Runden und kann darin selbst würfeln."] },
     { key = "rollwin.scale", type = "slider", label = L["Größe des Würfel-Fensters (%)"], default = 100, min = 70, max = 150, step = 5,
-      onChange = function() applyScale() end },
+      onChange = function() applyScale() end, tip = L["Größe des Würfel-Fensters in Prozent."] },
     { key = "rollwin.reset", type = "button", label = L["Position zurücksetzen##Würfel-Fenster"],
       run = function()
           ns.ResetRollWindowPosition()
           ns.msg(L["Würfel-Fenster: Position zurückgesetzt."])
-      end },
+      end, tip = L["Setzt das Würfel-Fenster an seinen Standardplatz zurück."] },
 }}
 
 ns.RegisterSlash("wuerfeln", { en = "rolltest", args = L["[test [Item-Link] [dkp|bedarf]|an|aus]"],   -- l10n-ok: the German command word

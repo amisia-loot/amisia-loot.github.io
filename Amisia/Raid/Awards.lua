@@ -638,7 +638,7 @@ ns.RegisterSettings{ key = "awards", label = L["Vergaben"], order = 25, items = 
       tip = L["Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid."] },
     { key = "awards.plusOrder", type = "toggle", label = L["Plus-Eins in der Roll-Reihenfolge"], default = false, officer = true,
       tip = L["Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec."] },
-    { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true, officer = true },
+    { key = "awards.modClick", type = "toggle", label = L["Alt+Shift-Klick auf ein Item öffnet die Vergabe"], default = true, officer = true, tip = L["Alt+Shift-Klick auf einen Item-Link öffnet den Vergabe-Dialog für dieses Item."] },
     { key = "awards.bankName", type = "text", label = L["Bank-Charakter"], default = "", validate = validName, officer = true,
       tip = L["Master Loot an diesen Namen zählt als Bank."], invalid = L["Name ohne Ziffern, höchstens ein Leerzeichen."] },
     { key = "awards.deName", type = "text", label = L["Entzauberer"], default = "", validate = validName, officer = true,

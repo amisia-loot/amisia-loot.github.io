@@ -410,7 +410,9 @@ change (tests assert that). Settings live in `settings.<section>.<name>`.
 `{ key = "<section>.<name>", type = toggle/slider/time/choice/text/button/desc/custom, default, min, max,
 step, ... }`; a `custom` item brings `build(parent)` and `fill(frame)` (the frame sets its own height;
 the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` returns the stored value or the default, `ns.Set` validates and fires
-`SETTING`. The settings page is built from the schema. Sections (checked):
+`SETTING`. Every item but `custom` and `desc` carries a `tip` (its tooltip and the search read it;
+`tests/test_settings_tips.lua`). `ns.SettingsSection(word)` finds the visible section a word names (key, name or
+the start of the name, folded), for `/amisia einstellungen <word>`; another word is searched. The settings page is built from the schema. Sections (checked):
 
 | Section | File | Section | File |
 |---|---|---|---|

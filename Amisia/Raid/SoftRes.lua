@@ -1175,13 +1175,13 @@ local function cleanRemindText(v)
 end
 
 ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 30, items = {
-    { key = "softres.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Reserviert: ...\""], default = true },
+    { key = "softres.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Reserviert: ...\""], default = true, tip = L["Der Item-Tooltip nennt, wer das Item reserviert hat."] },
     { key = "softres.lootMark", type = "toggle", label = L["SR-Markierung im Lootfenster und an den Würfelfenstern"], default = true,
-      onChange = function() ns.MarkSoftResLoot() end },
-    { key = "softres.warnDays", type = "slider", label = L["Warnen, wenn die Liste älter ist als (Tage)"], default = 7, min = 1, max = 30, step = 1 },
-    { key = "softres.tooltipGroup", type = "toggle", label = L["Im Tooltip nur Reservierungen aus der Gruppe"], default = true },
+      onChange = function() ns.MarkSoftResLoot() end, tip = L["Reservierte Items tragen im Lootfenster und an den Würfelfenstern ein \"SR\"."] },
+    { key = "softres.warnDays", type = "slider", label = L["Warnen, wenn die Liste älter ist als (Tage)"], default = 7, min = 1, max = 30, step = 1, tip = L["Ist die eingefügte Liste älter, steht bei ihrer Anzeige, wie alt sie ist."] },
+    { key = "softres.tooltipGroup", type = "toggle", label = L["Im Tooltip nur Reservierungen aus der Gruppe"], default = true, tip = L["In einer Gruppe nennt der Tooltip nur die Reservierungen von Spielern, die dabei sind."] },
     { key = "softres.limit", type = "slider", label = L["Reservierungen pro Raider (0 = keine Prüfung)"], default = 0, min = 0, max = 6, step = 1,
-      officer = true },
+      officer = true, tip = L["Die Prüfung der Liste nennt Raider, die mehr Items reserviert haben. 0 schaltet das aus."] },
     { key = "softres.chat", type = "toggle", label = L["Auf !sr antworten"], default = true, officer = true,
       tip = L["Nur als Lootleitung, per Flüsterung."] },
     { key = "softres.remindText", type = "text", label = L["Zusatz in der Erinnerung"], default = "", officer = true,

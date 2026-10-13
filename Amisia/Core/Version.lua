@@ -372,7 +372,7 @@ do
     end
     table.insert(items, at, { key = "sync.versionCheck", type = "toggle", label = L["Versionsprüfung"], default = true,
         tip = L["Meldet die eigene Version einmal nach dem Login an die Gilde und beim Betreten eines Raids."] })
-    table.insert(items, at + 1, { key = "sync.outdatedWarn", type = "toggle", label = L["Hinweis auf eine neuere Amisia-Version"], default = true })
+    table.insert(items, at + 1, { key = "sync.outdatedWarn", type = "toggle", label = L["Hinweis auf eine neuere Amisia-Version"], default = true, tip = L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] })
     ns.RegisterSettings(ns.SYNC_SETTINGS)
 end
 

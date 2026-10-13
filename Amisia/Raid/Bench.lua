@@ -463,8 +463,8 @@ if ns.RaidLogSettings then
     for _, it in ipairs({
         { key = "raidlog.benchChat", type = "toggle", label = L["Auf !bench antworten"], default = true, officer = true,
           tip = L["Nur als Lootleitung, per Flüsterung."] },
-        { key = "raidlog.benchGuildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true },
-        { key = "raidlog.benchNotify", type = "toggle", label = L["Neue Einträge der Ersatzbank im Chat melden"], default = true, officer = true },
+        { key = "raidlog.benchGuildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true, tip = L["Nur Gildenmitglieder können sich mit !bench auf die Ersatzbank setzen."] },
+        { key = "raidlog.benchNotify", type = "toggle", label = L["Neue Einträge der Ersatzbank im Chat melden"], default = true, officer = true, tip = L["Sagt dir im eigenen Chat, wenn jemand neu auf der Ersatzbank steht."] },
     }) do
         table.insert(ns.RaidLogSettings.items, it)
     end

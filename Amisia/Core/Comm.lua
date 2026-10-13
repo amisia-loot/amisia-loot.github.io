@@ -1062,7 +1062,7 @@ ns.OnEvent("CHAT_MSG_ADDON", onMessage)
 ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, items = {
     { key = "sync.enabled", type = "toggle", label = L["Raid-Stand mit anderen Amisia-Clients abgleichen"], default = true,
       tip = L["Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids. Die Lootleitung hält den Stand."] },
-    { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true },
+    { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true, tip = L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] },
 } }
 ns.RegisterSettings(ns.SYNC_SETTINGS)
 

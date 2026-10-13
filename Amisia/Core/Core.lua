@@ -764,7 +764,7 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, items = 
       onChange = function() evaluate() end },
     { key = "record.lateAt", type = "time", allowOff = true, label = L["Raidbeginn (zu spät ab)"], default = 20 * 60,
       tip = L["Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab."] },
-    { key = "record.keepSessions", type = "slider", label = L["Raids aufbewahren"], default = 60, min = 10, max = 200, step = 10 },
+    { key = "record.keepSessions", type = "slider", label = L["Raids aufbewahren"], default = 60, min = 10, max = 200, step = 10, tip = L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] },
     { key = "record.resumeHours", type = "slider", label = L["Fortsetzen innerhalb von (Std.)"], default = 2, min = 1, max = 6,
       expert = true, tip = L["Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort."] },
     { key = "record.nightStart", type = "time", label = L["Raidnacht beginnt um"], default = 6 * 60, expert = true,

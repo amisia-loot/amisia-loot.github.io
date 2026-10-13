@@ -389,7 +389,7 @@ ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 22, officer
     { key = "loot.announce", type = "toggle", label = L["Loot im Schlachtzugschat ansagen"], default = true,
       tip = L["Einmal pro Leiche, nur als Lootleitung. Gildenmaterialien nie."] },
     { key = "loot.quality", type = "choice", label = L["Ansagen ab Qualität"], default = 4,
-      values = { { 3, L["Selten"] }, { 4, L["Episch"] }, { 5, L["Legendär"] } } },
+      values = { { 3, L["Selten"] }, { 4, L["Episch"] }, { 5, L["Legendär"] } }, tip = L["Items ab dieser Qualität kommen in die Loot-Ansage."] },
     { key = "loot.groupLoot", type = "toggle", label = L["Auch bei Gruppenplündern ansagen"], default = true,
       tip = L["Aus den Würfelfenstern: Würfe, die zusammen beginnen, stehen in einer Ansage."] },
     { key = "loot.prio", type = "toggle", label = L["Loot-Prio hinter jedem Item ansagen"], default = false,

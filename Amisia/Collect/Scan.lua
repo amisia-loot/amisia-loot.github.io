@@ -297,7 +297,7 @@ end
 ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, expert = true, items = {
     { key = "tools.collect", type = "toggle", label = L["Item-Sammler"], default = true,
       tip = L["Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle."] },
-    { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10 },
+    { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10, tip = L["So viele Items fragt /amisia scan pro Sekunde beim Spiel an. Weniger ist schonender."] },
     { key = "tools.scanAutotrim", type = "toggle", label = L["Ausgewertete Scan-Daten beim Login entfernen"], default = true,
       tip = L["Was der Build schon im Scan-Archiv hat (Data/ScanDone.lua), fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
 }}

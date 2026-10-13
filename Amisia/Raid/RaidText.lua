@@ -384,9 +384,9 @@ end
 ---------------------------------------------------------------------------
 if ns.RaidLogSettings then
     for _, it in ipairs({
-        { key = "raidlog.discordWipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true },
-        { key = "raidlog.discordLoot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true },
-        { key = "raidlog.discordNames", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true },
+        { key = "raidlog.discordWipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text nennt auch die Versuche ohne Kill."] },
+        { key = "raidlog.discordLoot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text listet die vergebenen Items mit ihren Empfängern."] },
+        { key = "raidlog.discordNames", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true, tip = L["Der Discord-Text nennt alle Anwesenden mit Namen, nicht nur ihre Zahl."] },
         { key = "raidlog.discordHead", type = "text", label = L["Erste Zeile im Discord-Text"], default = "", officer = true,
           tip = L["Zum Beispiel der Gildenname oder eine Erwähnung."],
           validate = function(v) return ns.CleanNote(v, 80) or "" end },

@@ -576,7 +576,7 @@ function ns.RollKind(item, name)
 end
 
 ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, officer = true, items = {
-    { key = "rolls.seconds", type = "slider", label = L["Roll-Dauer (Sekunden)"], default = 20, min = 5, max = 120, step = 1 },
+    { key = "rolls.seconds", type = "slider", label = L["Roll-Dauer (Sekunden)"], default = 20, min = 5, max = 120, step = 1, tip = L["So lange läuft eine Runde. Der Countdown im Chat zählt ihre letzten Sekunden."] },
     { key = "rolls.countdown", type = "toggle", label = L["Countdown ansagen"], default = true,
       tip = L["Sagt bei 10, 5 und 3 Sekunden die Restzeit an."] },
     { key = "rolls.channel", type = "choice", label = L["Ansagekanal"], default = "RAID_WARNING",

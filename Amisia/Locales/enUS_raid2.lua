@@ -1212,3 +1212,52 @@ L["geplant"] = "planned"
 L["im Raid"] = "in the raid"
 L["nicht angemeldet"] = "not signed up"
 L["schon in Gruppe"] = "in a group already"
+
+-- the tips of the settings (2.31.0)
+-- Raid/Awards.lua
+L["Alt+Shift-Klick auf einen Item-Link öffnet den Vergabe-Dialog für dieses Item."] = "Alt+Shift-click on an item link opens the award dialog for that item."
+-- Raid/Bench.lua
+L["Nur Gildenmitglieder können sich mit !bench auf die Ersatzbank setzen."] = "Only guild members can put themselves on the bench with !bench."
+L["Sagt dir im eigenen Chat, wenn jemand neu auf der Ersatzbank steht."] = "Tells you in your own chat when someone is newly on the bench."
+-- Raid/Handover.lua
+L["Spielt einen Ton zu den Warnungen bei 30 und 10 Minuten Restzeit."] = "Plays a sound with the warnings at 30 and 10 minutes left."
+-- Raid/LootAnnounce.lua
+L["Items ab dieser Qualität kommen in die Loot-Ansage."] = "Items of this quality and better go into the loot announcement."
+-- Raid/Points.lua
+L["Auf diesem Itemlevel kostet ein Item genau den Grundwert (siehe die Formel bei GP-Grundwert)."] = "At this item level an item costs exactly the base value (see the formula at GP base value)."
+L["Bekommt jeder Raider einmal für jeden Raid, in dem er dabei war."] = "Every raider gets this once for each raid they were in."
+L["Bekommt jeder, der auf der Ersatzbank des Raids stand."] = "Everyone on the raid's bench gets this."
+L["Bekommt jeder, der beim Kill eines Bosses im Raid war."] = "Everyone in the raid at a boss kill gets this."
+L["Bieten: das höchste Gebot gewinnt. Feste Preise: das Item kostet seinen Preis aus Grundpreis, Itemlevel, Slot und Qualität."] = "Bid: the highest bid wins. Fixed prices: the item costs its price from the base price, item level, slot and quality."
+L["Das kleinste Gebot, das eine Runde annimmt."] = "The smallest bid a round accepts."
+L["Ein Offspec-Gewinn kostet diesen Anteil des vollen Preises."] = "An offspec win costs this share of the full price."
+L["Gebote gehen nur per Flüstern an die Lootleitung; im Raid steht kein Höchstgebot."] = "Bids go only by whisper to the loot lead; the raid sees no highest bid."
+L["Raider mit weniger EP sind in der Punkteliste markiert."] = "Raiders with less EP are marked in the standings."
+L["Um so viel muss ein neues Gebot das Höchstgebot mindestens übertreffen."] = "A new bid must beat the highest bid by at least this much."
+L["Was ein Item auf dem Bezugs-Itemlevel kostet; höhere Items kosten mehr (dieselbe Formel wie GP)."] = "What an item at the reference item level costs; higher items cost more (the same formula as GP)."
+L["Wer !dkp schreibt, bekommt seinen Punktestand als Antwort."] = "Whoever writes !dkp gets their standing as an answer."
+L["Zusätzlich für alle, die nicht zu spät kamen (die Uhrzeit steht unter Aufnahme)."] = "Extra for everyone who was not late (the time is under Recording)."
+-- Raid/RaidText.lua
+L["Der Discord-Text listet die vergebenen Items mit ihren Empfängern."] = "The Discord text lists the items handed out and who got them."
+L["Der Discord-Text nennt alle Anwesenden mit Namen, nicht nur ihre Zahl."] = "The Discord text names everyone present, not only how many came."
+L["Der Discord-Text nennt auch die Versuche ohne Kill."] = "The Discord text also lists the attempts without a kill."
+-- Raid/RollWindow.lua
+L["Das Würfel-Fenster geht nur für Items auf, die du reserviert hast, die ein Upgrade für dich sind oder auf deiner Wunschliste stehen."] = "The roll window only opens for items you reserved, that are an upgrade for you or that are on your wishlist."
+L["Die Lootleitung sieht das Würfel-Fenster auch bei ihren eigenen Runden und kann darin selbst würfeln."] = "The loot lead sees the roll window for their own rounds too and can roll in it."
+L["Größe des Würfel-Fensters in Prozent."] = "Size of the roll window in percent."
+L["Setzt das Würfel-Fenster an seinen Standardplatz zurück."] = "Puts the roll window back in its default place."
+L["Spielt einen kurzen Ton, wenn eine Runde das Würfel-Fenster öffnet."] = "Plays a short sound when a round opens the roll window."
+-- Raid/Rolls.lua
+L["So lange läuft eine Runde. Der Countdown im Chat zählt ihre letzten Sekunden."] = "How long a round runs. The countdown in the chat counts its last seconds."
+-- Raid/SoftRes.lua
+L["Der Item-Tooltip nennt, wer das Item reserviert hat."] = "The item tooltip names who reserved the item."
+L["Die Prüfung der Liste nennt Raider, die mehr Items reserviert haben. 0 schaltet das aus."] = "The check of the list names raiders who reserved more items. 0 turns it off."
+L["In einer Gruppe nennt der Tooltip nur die Reservierungen von Spielern, die dabei sind."] = "In a group the tooltip only names the reservations of players who are in it."
+L["Ist die eingefügte Liste älter, steht bei ihrer Anzeige, wie alt sie ist."] = "When the pasted list is older, its display says how old it is."
+L["Reservierte Items tragen im Lootfenster und an den Würfelfenstern ein \"SR\"."] = "Reserved items carry an \"SR\" in the loot window and on the roll frames."
+-- Raid/Sync.lua
+L["Der Item-Tooltip nennt die Raider, für die das Item laut ihrer Antwort ein Upgrade ist."] = "The item tooltip names the raiders who answered that the item is an upgrade for them."
+L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] = "When the loot lead asks \"Who needs this?\", Amisia answers whether the item is an upgrade for you."
+L["Mit der Loot-Ansage fragt Amisia die Raider, für wen ein Item ein Upgrade ist."] = "With the loot announcement Amisia asks the raiders who an item is an upgrade for."
+L["Sagt dir im Chat, wenn ein anderer Client die Aufnahme des Raids führt (Hüter) oder zwei Stände sich widersprechen."] = "Tells you in the chat when another client keeps the raid's recording (the keeper) or two records disagree."
+L["Übernimmt die Vergaben, die die Lootleitung im Raid einträgt, in deine eigene Aufnahme."] = "Takes the awards the loot lead enters in the raid into your own recording."

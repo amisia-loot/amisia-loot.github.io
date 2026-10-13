@@ -547,3 +547,17 @@ L["Arkanes Verständnis"] = "Comprehension"
 L["Rang %s / %s, Talisman-Zauber %s, %d Schriftrollen in den Daten"] = "rank %s / %s, charm spell %s, %d scrolls in the data"
 
 -- end of part gear
+
+-- the tips of the settings (2.31.0)
+-- Gear/Bis.lua
+L["Bekommst du ein Item deiner Wunschliste, wird es von der Liste genommen."] = "When you get an item from your wishlist, it is taken off the list."
+L["Der Drop-Hinweis kommt auch für Upgrades, die nicht auf deiner Wunschliste stehen."] = "The drop alert also comes for upgrades that are not on your wishlist."
+L["Der Item-Tooltip nennt die Raider, die sich das Item auf der Website gewünscht haben."] = "The item tooltip names the raiders who wished for the item on the site."
+L["Der Item-Tooltip zeigt, um wie viel Prozent das Item besser ist als dein angelegtes."] = "The item tooltip shows by how many percent the item beats the one you wear."
+L["Der Tooltip sagt auch, wenn ein Item für dich kein Upgrade ist."] = "The tooltip also says when an item is no upgrade for you."
+L["Ein Item zählt erst als Upgrade, wenn seine Wertung um mindestens so viel Prozent höher ist. Gilt für Tooltip, Tabelle und Hinweise."] = "An item only counts as an upgrade when its score is at least this many percent higher. Applies to the tooltip, the table and the alerts."
+L["Gewünschte Items tragen im Lootfenster und an den Würfelfenstern ein \"W\"."] = "Wished items carry a \"W\" in the loot window and on the roll frames."
+L["Im Vergabe-Dialog stehen die Raider, die sich das Item wünschen, oben."] = "In the award dialog the raiders who wish for the item come first."
+L["Setboni zählen in der Wertung mit."] = "Set bonuses count in the score."
+L["Spielt einen Ton zum Drop-Hinweis."] = "Plays a sound with the drop alert."
+L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] = "Which crafted items can be targets: all, or only those of your own professions."

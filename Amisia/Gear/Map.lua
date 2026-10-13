@@ -866,27 +866,27 @@ end
 ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 47, available = function() return ns.HasData("MAP") end, items = {
     { key = "map.pins", type = "toggle", label = L["Orte auf der Weltkarte zeigen"], default = true,
       tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol."] },
-    { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true },
-    { key = "map.pinsWishes", type = "toggle", label = L["Pins für Wünsche"], default = true },
-    { key = "map.pinsContinent", type = "toggle", label = L["Pins auch auf der Kontinentkarte"], default = true },
-    { key = "map.pinScale", type = "slider", label = L["Pin-Größe (%)"], default = 100, min = 60, max = 160, step = 10, expert = true },
+    { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Upgrades zu holen sind (Seite Ausrüstung, Ziele)."] },
+    { key = "map.pinsWishes", type = "toggle", label = L["Pins für Wünsche"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Wünsche zu holen sind."] },
+    { key = "map.pinsContinent", type = "toggle", label = L["Pins auch auf der Kontinentkarte"], default = true, tip = L["Die Pins stehen auch auf der Karte des Kontinents, nicht nur auf der Zonenkarte."] },
+    { key = "map.pinScale", type = "slider", label = L["Pin-Größe (%)"], default = 100, min = 60, max = 160, step = 10, expert = true, tip = L["Größe der Pins auf der Karte in Prozent."] },
     { key = "map.arrow", type = "choice", label = L["Pfeil zum Ziel"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "on", L["Immer"] }, { "off", L["Aus"] } },
       tip = L["Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann."] },
-    { key = "map.autoClear", type = "toggle", label = L["Ziel beim Ankommen löschen"], default = true },
-    { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true },
+    { key = "map.autoClear", type = "toggle", label = L["Ziel beim Ankommen löschen"], default = true, tip = L["Bist du am Ziel angekommen, verschwinden Ziel und Pfeil."] },
+    { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true, tip = L["Mit gedrückter Shift-Taste nennt der Item-Tooltip, wo das Item zu finden ist."] },
     { key = "map.resetHidden", type = "button", label = L["Ausgeblendete Orte wieder zeigen"],
       run = function()
           local m = db()
           if m then wipe(m.hidden) end
           ns.Fire("MAP_TARGET")
-      end },
+      end, tip = L["Zeigt die Orte wieder, die du auf der Karte ausgeblendet hast."] },
     { key = "map.resetArrow", type = "button", label = L["Pfeilposition zurücksetzen"], expert = true,
       run = function()
           local s = AmisiaDB and AmisiaDB.settings
           if s and type(s.map) == "table" then s.map.arrowPos = nil end
           if ns.MapResetArrow then ns.MapResetArrow() end
-      end },
+      end, tip = L["Setzt den Pfeil an seinen Standardplatz zurück."] },
 }}
 
 -- The item of a command: a link, else a bare item id.

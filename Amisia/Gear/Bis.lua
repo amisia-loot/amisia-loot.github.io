@@ -1909,21 +1909,21 @@ function ns.BisItemReport(arg)
 end
 
 ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order = 45, available = function() return Gear.Available() end, items = {   -- l10n-ok: command word / internal key
-    { key = "bis.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Upgrade für dich\""], default = true },   -- l10n-ok: setting key
+    { key = "bis.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Upgrade für dich\""], default = true, tip = L["Der Item-Tooltip zeigt, um wie viel Prozent das Item besser ist als dein angelegtes."] },   -- l10n-ok: setting key
     { key = "bis.compare", type = "toggle", label = L["Mit angelegter Ausrüstung vergleichen (Prozent)"], default = true,   -- l10n-ok: setting key
       tip = L["Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster."] },
-    { key = "bis.tooltipNone", type = "toggle", label = L["Auch \"Kein Upgrade\" im Tooltip zeigen"], default = false },   -- l10n-ok: setting key
+    { key = "bis.tooltipNone", type = "toggle", label = L["Auch \"Kein Upgrade\" im Tooltip zeigen"], default = false, tip = L["Der Tooltip sagt auch, wenn ein Item für dich kein Upgrade ist."] },   -- l10n-ok: setting key
     { key = "bis.minGain", type = "slider", label = L["Upgrade erst ab (Prozent mehr Wertung)"], default = 2, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
-      expert = true },
+      expert = true, tip = L["Ein Item zählt erst als Upgrade, wenn seine Wertung um mindestens so viel Prozent höher ist. Gilt für Tooltip, Tabelle und Hinweise."] },
     { key = "bis.toast", type = "toggle", label = L["Hinweis, wenn ein Wunsch droppt"], default = true,   -- l10n-ok: setting key
       tip = L["Aus dem Lootfenster, beim Würfeln und aus der Loot-Ansage im Schlachtzugschat."] },
-    { key = "bis.toastUpgrade", type = "toggle", label = L["Hinweis auch für andere Upgrades"], default = true },   -- l10n-ok: setting key
-    { key = "bis.toastSound", type = "toggle", label = L["Ton beim Wunsch-Hinweis"], default = true },   -- l10n-ok: setting key
-    { key = "bis.wishAutoRemove", type = "toggle", label = L["Erhaltene Wünsche von der Liste nehmen"], default = true },   -- l10n-ok: setting key
+    { key = "bis.toastUpgrade", type = "toggle", label = L["Hinweis auch für andere Upgrades"], default = true, tip = L["Der Drop-Hinweis kommt auch für Upgrades, die nicht auf deiner Wunschliste stehen."] },   -- l10n-ok: setting key
+    { key = "bis.toastSound", type = "toggle", label = L["Ton beim Wunsch-Hinweis"], default = true, tip = L["Spielt einen Ton zum Drop-Hinweis."] },   -- l10n-ok: setting key
+    { key = "bis.wishAutoRemove", type = "toggle", label = L["Erhaltene Wünsche von der Liste nehmen"], default = true, tip = L["Bekommst du ein Item deiner Wunschliste, wird es von der Liste genommen."] },   -- l10n-ok: setting key
     { key = "bis.suffix", type = "choice", label = L["Zufallsboni"], default = "best",   -- l10n-ok: setting key
       values = { { "best", L["bester gesehener"] }, { "base", L["nur Grundwerte"] } },
       tip = L["Items mit Zufallsbonus (\"...des Adlers\") zählen mit dem besten Bonus, den Amisia an ihnen gesehen hat."] },
-    { key = "bis.sets", type = "toggle", label = L["Setboni werten"], default = true },   -- l10n-ok: setting key
+    { key = "bis.sets", type = "toggle", label = L["Setboni werten"], default = true, tip = L["Setboni zählen in der Wertung mit."] },   -- l10n-ok: setting key
     { key = "bis.picks", type = "toggle", label = L["BiS-Empfehlungen zeigen"], default = true,   -- l10n-ok: setting key
       tip = L["Von Hand gepflegte beste Items, die die Wertung allein verfehlt (Procs, Effekte), stehen in ihrem Slot zuerst."] },
     { key = "bis.hitCap", type = "toggle", label = L["Trefferwertung nur bis zur Grenze"], default = true,   -- l10n-ok: setting key
@@ -1931,11 +1931,11 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
     { key = "bis.effortTie", type = "slider", label = L["Gleichstand für Aufwand (Prozent)"], default = 3, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
       expert = true, tip = L["Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst."] },
     { key = "bis.prof", type = "choice", label = L["Hergestellte Items"], default = "all",   -- l10n-ok: setting key
-      values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } } },
-    { key = "bis.guildTooltip", type = "toggle", label = L["Gildenwünsche im Tooltip"], default = true, officer = true },   -- l10n-ok: setting key
+      values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } }, tip = L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] },
+    { key = "bis.guildTooltip", type = "toggle", label = L["Gildenwünsche im Tooltip"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, die sich das Item auf der Website gewünscht haben."] },   -- l10n-ok: setting key
     { key = "bis.guildLootMark", type = "toggle", label = L["W-Markierung im Lootfenster und an den Würfelfenstern"], default = true,   -- l10n-ok: setting key
-      officer = true },
-    { key = "bis.guildAward", type = "toggle", label = L["Wünschende zuerst im Vergabe-Dialog"], default = true, officer = true },   -- l10n-ok: setting key
+      officer = true, tip = L["Gewünschte Items tragen im Lootfenster und an den Würfelfenstern ein \"W\"."] },
+    { key = "bis.guildAward", type = "toggle", label = L["Wünschende zuerst im Vergabe-Dialog"], default = true, officer = true, tip = L["Im Vergabe-Dialog stehen die Raider, die sich das Item wünschen, oben."] },   -- l10n-ok: setting key
 }}
 
 -- The item at the start of a command (a link, else an item id) and the rest.
