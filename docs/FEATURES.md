@@ -154,12 +154,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2026-10-08 im Spiel: "Speicher: 7.2 MB, davon Müll 1.1 MB, echte Daten 6.1 MB", GEAR und GEAR_WEIGHTS geladen, der Rest wartet. Die Größen der Datenteile messen den Aufbau samt Müll (GEAR 5.1 MB), daher seit 2.13.2 so beschriftet. Im Kampf nicht geprüft.
 
 ### F-072 Ansicht umschalten und Einstellungen suchen
-- Version: 2.14.0
+- Version: 2.30.1
 - Status: gebaut
 - Prüfung: Wenn du oben im Fenster links neben "Pausieren" auf "Raider-Ansicht" klickst, dann steht dort "Offiziersansicht", und links erscheinen die Offiziersseiten (Raids, Rolls, Punkte, Export); ein zweiter Klick schaltet zurück.
 - Prüfung: Wenn du `/amisia ansicht offizier`, `raider` oder `auto` eingibst, dann wechselt die Ansicht und der Chat nennt sie; ohne Wort nennt er nur die aktuelle.
 - Prüfung: Wenn du auf der Seite Einstellungen oben ins Suchfeld "ansicht" tippst, dann stehen nur noch passende Einstellungen da, mit "N Einstellungen gefunden"; ein Abschnittsname wie "Oberfläche" zeigt den ganzen Abschnitt.
 - Prüfung: Wenn du etwas suchst, das es nicht gibt, dann steht "Nichts gefunden ..."; das X im Suchfeld zeigt wieder alles.
+- Prüfung: Wenn du auf der Seite Einstellungen "ÜBERGABE" oder "übergabe" tippst, dann findest du in beiden Fällen dieselben Einstellungen (Groß- und Kleinschreibung der Umlaute zählt nicht).
 - Notiz: 2026-10-08: der Nutzer fand die Ansicht unten in den Einstellungen schwer.
 
 ## Addon: Raid und Loot
@@ -222,10 +223,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Den Code von softres.it (Knopf "Gargul") liest F-091 (2.26.0).
 
 ### F-020 Roll-Runden und Roll-Fenster
-- Version: 1.6.0
+- Version: 2.30.1
 - Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du als Offizier mit Alt-Klick ein Item im Lootfenster anklickst (oder `/amisia roll <Item-Link>`), dann öffnet sich das Roll-Fenster mit der Runde, und `/roll` (MS) und `/roll 99` (OS) erscheinen darin.
+- Prüfung: Wenn du in der Raider-Ansicht mit Alt-Klick ein Item im Lootfenster anklickst, dann startet keine Runde und es kommt keine Ansage.
+- Prüfung: Wenn ein Raider würfelt und der Chat nur seinen Vornamen zeigt, dann steht bei seiner Vergabe "MS" (bzw. "OS"), nicht "-".
 - Prüfung: Wenn die Zeit um ist, dann ordnet das Fenster SR vor MS vor OS und steht der Gewinner oben; ein anderer Bereich als 1-100 oder 1-99 wird gezeigt, zählt aber nicht.
 - Prüfung: Wenn im Bosskampf Würfe nicht lesbar sind, dann trägst du sie mit `/amisia wurf <Name> <Zahl>` von Hand ein.
 
@@ -610,8 +613,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Ausrüstung und Welt
 
 ### F-038 Ausrüstungstabelle
-- Version: 1.4.1
+- Version: 2.30.1
 - Status: gebaut
+- Prüfung: Wenn du unter Einstellungen "Upgrade erst ab (Prozent mehr Wertung)" auf 10 stellst, dann verschwinden in deiner Spalte der Tabelle die Upgrade-Punkte der kleinen Verbesserungen, genau wie ihr "Upgrade für dich" im Tooltip.
 - Prüfung: Wenn du `/amisia gear` eingibst (oder auf der Seite Ausrüstung "Tabelle"), dann öffnet sich die Ausrüstungstabelle mit den besten Items aller Levelbereiche für jede Spezialisierung.
 - Prüfung: Wenn du deine eigene Spalte ansiehst, dann plant sie für deine Stufe, nicht für das obere Ende des Levelbereichs.
 
