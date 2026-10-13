@@ -9,7 +9,7 @@ local rows = {}   -- path -> row
 local scroll, child, page
 local touched     -- the path of the row the player changed last: it keeps its place on screen
 local placeAgain  -- while set: put that row back in place when the client takes the new scroll range
-local query = ""  -- the search text, lower case ("" shows everything)
+local query = ""  -- the search text, folded (ns.Fold; "" shows everything)
 local fromTop     -- the next layout starts at the top (a new search)
 
 function ns.SettingsRows() return rows end
@@ -110,7 +110,7 @@ local headers = {}
 
 -- Whether text holds the search text (plain, any case).
 local function hit(text)
-    return type(text) == "string" and text:lower():find(query, 1, true) ~= nil
+    return type(text) == "string" and ns.Fold(text):find(query, 1, true) ~= nil
 end
 
 -- An item matches by its label, its tip or the names of its choices (ns.SettingHits, shared with the
@@ -168,7 +168,7 @@ function ns.ShowSettings(text)
     if ns.ShowPage then ns.ShowPage("settings") end
     if page and page.search then
         page.search:SetText(text or "")
-        query = (text or ""):lower()
+        query = ns.Fold(text or "")
         fromTop = true
         ns.Refresh()
     end
@@ -181,7 +181,7 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
         local top = f:Bands({ "row" })
         f.search = W.SearchBox(f, 220, nil, L["Einstellung suchen"])
         f.search:HookScript("OnTextChanged", function(self)
-            local text = (self:GetText() or ""):match("^%s*(.-)%s*$"):lower()
+            local text = ns.Fold((self:GetText() or ""):match("^%s*(.-)%s*$"))
             if text == query then return end
             query = text
             -- a new search starts at the top of what it finds

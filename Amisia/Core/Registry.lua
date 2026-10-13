@@ -202,7 +202,7 @@ function ns.SettingItem(path) return items[path] end
 -- tip, its path or the names of its choices. The settings page and the main window's search use it.
 function ns.SettingHits(it, query)
     local function hit(text)
-        return type(text) == "string" and text:lower():find(query, 1, true) ~= nil
+        return type(text) == "string" and ns.Fold(text):find(query, 1, true) ~= nil
     end
     if query == "" or hit(it.label) or hit(it.tip) or hit(it.key) then return true end
     for _, c in ipairs(it.values or {}) do if hit(c[2]) then return true end end

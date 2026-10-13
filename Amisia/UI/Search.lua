@@ -19,7 +19,7 @@ Search.KEEP = 60           -- seconds an index is kept before it is built again
 local SETTINGS_ICON = "Interface\\Icons\\Trade_Engineering"
 
 local function hit(text, q)
-    return type(text) == "string" and text:lower():find(q, 1, true) ~= nil
+    return type(text) == "string" and ns.Fold(text):find(q, 1, true) ~= nil
 end
 
 local function now() return GetTime and GetTime() or 0 end
@@ -47,7 +47,7 @@ local function itemIndex(withGear)
         local name = type(e) == "table" and e.n
         if type(id) == "number" and type(name) == "string" and name ~= "" and name ~= ("Item " .. id) then
             seen[id] = true
-            out[#out + 1] = { id = id, name = name, low = name:lower(), q = tonumber(e.q) }
+            out[#out + 1] = { id = id, name = name, low = ns.Fold(name), q = tonumber(e.q) }
         end
     end
     local cached = C_Item and C_Item.IsItemDataCachedByID
@@ -57,7 +57,7 @@ local function itemIndex(withGear)
                 local name, _, q = itemInfo(id)
                 if type(name) == "string" and name ~= "" then
                     seen[id] = true
-                    out[#out + 1] = { id = id, name = name, low = name:lower(), q = q }
+                    out[#out + 1] = { id = id, name = name, low = ns.Fold(name), q = q }
                 end
             end
         end
@@ -108,7 +108,7 @@ local function playerIndex()
     local out, byLow = {}, {}
     local function add(name, class)
         if type(name) ~= "string" or name == "" or name == "-" then return end
-        local low = name:lower()
+        local low = ns.Fold(name)
         local e = byLow[low]
         if not e then
             e = { name = name, low = low }
@@ -183,7 +183,7 @@ end
 -- The hits of text: { { key, label, hits = { { text, label, icon or atlas, tip, item, run } } } },
 -- the groups without a hit left out; nothing under SEARCH_MIN characters.
 function ns.Search(text)
-    local q = (tostring(text or ""):match("^%s*(.-)%s*$") or ""):lower()
+    local q = ns.Fold(tostring(text or ""):match("^%s*(.-)%s*$") or "")
     if #q < M.SEARCH_MIN then return {} end
     local groups = {
         { key = "pages", label = L["Seiten"], find = pageHits },
