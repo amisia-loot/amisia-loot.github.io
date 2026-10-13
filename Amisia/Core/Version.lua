@@ -193,10 +193,28 @@ end
 function ns.VersionSeen()
     local out, d = {}, db()
     if not d then return out end
+    -- the group once per call (ns.InMyGroup per entry built it again for every name: 40 hellos as a
+    -- raid enters made a second of it), exact names first
+    local group = ns.GroupRoster()
+    local exact, byFirst = {}, {}
+    for _, n in ipairs(group) do
+        exact[n:lower()] = true
+        local f = n:match("^(%S+)"):lower()
+        byFirst[f] = byFirst[f] or {}
+        table.insert(byFirst[f], n)
+    end
+    -- the same name, else one of the group with the same first name (ns.SameNameIn matches no other)
+    local function inGroup(name)
+        if exact[name:lower()] then return true end
+        for _, n in ipairs(byFirst[(name:match("^(%S+)") or name):lower()] or {}) do
+            if ns.SameNameIn(name, n, group) then return true end
+        end
+        return false
+    end
     for name, e in pairs(d.seen) do
         if type(name) == "string" and type(e) == "table" then
             out[#out + 1] = { name = name, v = e.v, p = e.p, mp = e.mp, flags = e.flags, k = e.k, o = e.o,
-                              where = ns.InMyGroup(name) and "raid" or "guild", at = e.at }
+                              where = inGroup(name) and "raid" or "guild", at = e.at }
         end
     end
     table.sort(out, function(a, b)

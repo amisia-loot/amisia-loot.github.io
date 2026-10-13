@@ -997,11 +997,25 @@ function ns.SessionHash(s, legacy)
     return checksum(table.concat(sessionLines(s, {}, {}, legacy), "\n"))
 end
 
--- "new" (never exported), "changed" (exported, but more was recorded since) or "done".
-function ns.ExportState(s)
+-- The fingerprints of the raids that are not recording, kept HASH_KEEP seconds: the overview and
+-- the raid lists ask on every refresh (each loot line), and 60 exported raids cost 30 ms each time.
+local HASH_KEEP = 5
+local hashes = setmetatable({}, { __mode = "k" })   -- session -> { h, at }
+
+-- "new" (never exported), "changed" (exported, but more was recorded since) or "done". fresh: the
+-- fingerprint now (the export itself), else a kept one of a raid that is not recording.
+function ns.ExportState(s, fresh)
     local e = DB and DB.exported and DB.exported[s.id]
     if not e then return "new" end
-    return e.h == ns.SessionHash(s) and "done" or "changed"
+    local now, kept = GetTime(), hashes[s]
+    local h
+    if not fresh and s ~= active and kept and now - kept.at < HASH_KEEP then
+        h = kept.h
+    else
+        h = ns.SessionHash(s)
+        hashes[s] = { h = h, at = now }
+    end
+    return e.h == h and "done" or "changed"
 end
 
 function ns.ExportedAt(s)
@@ -1009,11 +1023,12 @@ function ns.ExportedAt(s)
     return e and e.at
 end
 
--- Sessions to export when none is selected: everything new or changed since its last export.
-function ns.PendingExport()
+-- Sessions to export when none is selected: everything new or changed since its last export (fresh:
+-- every fingerprint now, for the export itself).
+function ns.PendingExport(fresh)
     local out = {}
     for _, s in ipairs(ns.Sessions()) do
-        if ns.ExportState(s) ~= "done" then out[#out + 1] = s end
+        if ns.ExportState(s, fresh) ~= "done" then out[#out + 1] = s end
     end
     return out
 end
@@ -1033,7 +1048,9 @@ function ns.MarkExported(list)
     if not DB then return end
     local t = time()
     for _, s in ipairs(list) do
-        DB.exported[s.id] = { h = ns.SessionHash(s), at = t }
+        local h = ns.SessionHash(s)
+        DB.exported[s.id] = { h = h, at = t }
+        hashes[s] = { h = h, at = GetTime() }
     end
     if DB.bank and DB.bank.counts then DB.exportedBank = DB.bank.at or 0 end
     if ns.MarkBankNeedsExported then ns.MarkBankNeedsExported() end

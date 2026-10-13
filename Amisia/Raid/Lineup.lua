@@ -840,9 +840,12 @@ end
 -- What the page shows of an entry (not saved): class, level, online, alt online, placeable
 ---------------------------------------------------------------------------
 -- { [lower name] = { class, level, online, guild } } of the guild, the group and friends.
+-- Kept for the frame it was built in: the invite run and the page ask several times per roster event.
+local peopleAt, peopleK
 function ns.LineupPeople()
-    local k = knownPeople()
-    return k.lower, k.guild
+    local now = GetTime()
+    if not peopleK or peopleAt ~= now then peopleK, peopleAt = knownPeople(), now end
+    return peopleK.lower, peopleK.guild
 end
 
 -- Whether an entry can go into a group: not absent, a guest (not in the guild) only with

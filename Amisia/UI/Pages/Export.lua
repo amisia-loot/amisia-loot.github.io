@@ -29,7 +29,7 @@ function ns.ShowExport(latestOnly)
     elseif next(ns.RaidSelection or {}) then
         for _, s in ipairs(src) do if ns.RaidSelection[s.id] then list[#list + 1] = s end end
     else
-        list = ns.PendingExport()
+        list = ns.PendingExport(true)
         onlyNew = true
     end
     if #list == 0 then
