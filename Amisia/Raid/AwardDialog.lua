@@ -52,7 +52,7 @@ local function lootSlot(item)
     if not item or not st.s or st.s ~= ns.Active() or not lootOpen or type(GiveMasterLoot) ~= "function" or type(GetMasterLootCandidate) ~= "function" then return nil end
     for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
         if ns.ItemID(ns.Plain(GetLootSlotLink(i))) == item then
-            return GetMasterLootCandidate(i, 1) and i or nil
+            return ns.Plain(GetMasterLootCandidate(i, 1)) and i or nil
         end
     end
     return nil
@@ -88,7 +88,7 @@ local function names(s, slot, item)
     end
     if slot then
         for i = 1, 40 do
-            local c = GetMasterLootCandidate(slot, i)
+            local c = ns.Plain(GetMasterLootCandidate(slot, i))
             if c == nil then break end
             add(c)
         end
@@ -559,6 +559,7 @@ if type(HandleModifiedItemClick) == "function" then
     hooksecurefunc("HandleModifiedItemClick", function(link)
         if not (IsAltKeyDown() and IsShiftKeyDown()) then return end
         if not ns.Get("awards.modClick") or not ns.IsOfficerView() then return end
+        link = ns.Plain(link)
         if ns.ItemID(link) then ns.ShowAwardDialog(link) end
     end)
 end
