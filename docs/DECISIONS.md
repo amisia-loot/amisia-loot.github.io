@@ -974,7 +974,8 @@ nicht hingehört); wer nicht auf der Liste steht, bleibt, wo er ist. Ein Schritt
 Raidliste, höchstens 60 pro Klick; ein Kampf hält an ("Sortieren fortsetzen" per Klick). Automatisch
 (`lineup.autoSort`, an) 2 Sekunden nach einem Beitritt, aber nur auf dem Client, der heute "Alle
 einladen" geklickt hat. **Einladen auf Flüstern** (`lineup.inv`, aus): ein Flüstern, das genau "inv"
-oder "invite" ist (Groß/klein egal), von einem Gildenmitglied laut Gildenliste (ein Gast nur, wenn er
+oder "invite" ist (Groß/klein egal), von einem Gildenmitglied laut Gildenliste (unter genau dem Namen
+der Gildenliste, eingeladen in deren Schreibweise; ein unklarer Vorname reicht nicht; ein Gast nur, wenn er
 auf der heutigen Aufstellung steht und `lineup.guests` an ist), nur solange eine Aufnahme läuft oder
 heute eine Aufstellung steht, als Leiter, Assistent oder allein; einmal in 30 Sekunden pro Absender,
 10 pro Minute; Meldungen nur im eigenen Chat. **Assistent** (`lineup.autoAssist`, aus): als

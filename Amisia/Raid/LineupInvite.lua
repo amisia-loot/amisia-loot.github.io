@@ -610,7 +610,11 @@ function IV.Whisper(text, sender)
     ns.TrustWait(name, "member", function(member)
         -- the roster may have taken a while: the setting and the night again
         if not invOn() then return end
-        if member then return invTake(night, name) end
+        -- a member under exactly this spelling, invited as the roster writes it: a first name alone
+        -- (ns.GuildMember's match when one side has no surname) is the one ns.TrustName found unclear
+        -- (review 2026-10-13)
+        local m = member and ns.GuildMember(name) or nil
+        if m and m.name:lower() == name:lower() then return invTake(night, m.name) end
         local guest = lineupGuest(night, name)
         if guest then return invTake(night, guest.n) end
         ns.msg(L["Einladen auf Flüstern: %s ist nicht in der Gilde, nicht eingeladen."]:format(name))

@@ -124,4 +124,21 @@ assert(#INV == 0, "none of these invites")
 -- and now it goes
 whisper("inv", "Bob Eisherz")
 assert(#INV == 1, "then it goes")
+
+-- a first name is no proof (review 2026-10-13): the guild has "Ida" without surname, the raid an
+-- "Ida Gruen"; "Ida Fremd" whispers: the group makes the first name unclear, so the guild's first-name
+-- match must not let the stranger in; the guild's "Ida" herself still is
+STUB.guild[#STUB.guild + 1] = { name = "Ida", rank = 3, class = "MAGE" }
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.tick(61)
+IV._reset()
+INV = {}
+STUB.roster = { { name = "Vuloo" }, { name = "Ida Gruen" } }
+STUB.messages = {}
+whisper("inv", "Ida Fremd")
+assert(#INV == 0, "the stranger is not invited: " .. tostring(INV[1]))
+assert(said("Ida Fremd ist nicht in der Gilde"), STUB.messages[1])
+STUB.roster = {}
+whisper("inv", "Ida")
+assert(#INV == 1 and INV[1] == "Ida", tostring(INV[1]))
 NS.Set("lineup.inv", false)
