@@ -566,7 +566,9 @@ function ns.RollKind(item, name)
             if e then return e.kind == "OS" and "OS" or "MS" end
         else
             if reservedIn(r, name) then return "SR" end
-            local e = r.rolls[name]
+            -- the chat's "Vulo" is the candidate's "Vulo Sturmwind"
+            local key = keyIn(r, r.rolls, name)
+            local e = key and r.rolls[key]
             if e and e.kind then return e.kind end
         end
     end
