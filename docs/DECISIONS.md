@@ -640,7 +640,7 @@ kommen als weiterer Schritt oder Zeile dazu, nicht als Kopie.
 **Durchgesetzt durch:** `tests/test_setup.lua`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
-## D-41 Raid-Aufstellung: nur Offiziere, eingefügter Text unvertraut, einladen nur per Klick, nie Kicks
+## D-41 Raid-Aufstellung: nur Offiziere, eingefügter Text unvertraut, einladen per Klick (oder auf Flüstern mit Einstellung), nie Kicks
 
 **Datum:** 2026-10-10
 **Entscheidung:** Die Seite "Aufstellung" (Gruppe Raid, `/amisia aufstellung`, en `lineup`) und ihr
@@ -669,16 +669,16 @@ Gleichnamigen wird nicht gemerkt).
 passt so"): Flüstern beim Einladen Standard aus mit festem Text, Gäste nur mit Einstellung, die
 Einteilungsregeln wie beschrieben, zuerst die allein prüfbaren Teile A, B und E. Kein eigener Bot und
 kein Anmelde-Reiter auf der Website (Teil F entfällt).
-**Folge:** Gebaut sind die Teile A, B und E (2.22.0). Einladen (Teil C: nur per Klick, gedrosselt,
-höchstens drei Einladungen pro Name und Abend, kein Einladen auf Flüstern, Gäste nur mit Einstellung)
-und Sortieren im Spiel (Teil D) kommen erst nach den Prüfungen 10, 11 und 13 der Spec; ihre
-Einstellungen (`lineup.whisper`, `lineup.autoSort`) gibt es bis dahin nicht. Nie Kicks, kein
-Leiterwechsel, keine Beförderung. Die Teile A bis E senden und empfangen keine Addon-Nachrichten
+**Folge:** Gebaut sind die Teile A, B und E (2.22.0) und seit 2.30.0 die Teile C und D (Einladen,
+Sortieren) mit ihren Einstellungen `lineup.whisper` und `lineup.autoSort`; die Regeln dafür stehen in
+D-47. Geändert am 2026-10-12 (Nutzer): Einladen auf Flüstern "inv" (`lineup.inv`, Standard aus) und
+der automatische Assistent für Offiziere (`lineup.autoAssist`, Standard aus) kommen dazu; vorher galt
+"kein Einladen auf Flüstern, keine Beförderung zum Assistenten". Nie Kicks, kein Leiterwechsel. Die Teile A bis E senden und empfangen keine Addon-Nachrichten
 (die Anmeldungen aus Amisia und der Kalender kamen 2026-10-10 als Teile G und H dazu, D-42), keine neue
 Exportzeile; eingefügter Text ist unvertraut (D-26: Codes und Striche entfernt, 200 Bytes pro Zeile,
 2000 Zeilen, Namen ohne Ziffern und Steuerzeichen, 48 Zeichen). Die Website schreibt `#AMISIA-RAID`
 nicht; der Vertragstest kennt dafür die Ausnahme "liest nur das Addon".
-**Durchgesetzt durch:** `tests/test_lineup.lua`, `tests/test_lineup_page.lua`,
+**Durchgesetzt durch:** `tests/test_lineup.lua`, `tests/test_lineup_page.lua`, `tests/test_lineup_invite.lua`,
 `tools/tests/test_contracts.py::test_paste_in_blocks`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
 
@@ -949,3 +949,46 @@ gruppe` (`Raid/RaidCheckRead.lua`). Gruppen- und Gildenprüfungen erst nach dem 
 `tests/test_raidcheck_page.lua`, `tests/test_raid_ids_abuse.lua`, `tests/test_raidcheck_abuse.lua`, `tests/test_selftest_group.lua`, `tools/tests/test_build_raidcheck.py`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_every_saved_key_has_its_row`.
+
+## D-47 Einladen und Sortieren der Aufstellung: gedrosselt, nie im Kampf, nur mit Führung; "inv" und Assistent nur mit Einstellung
+
+**Datum:** 2026-10-13
+**Entscheidung:** Spec `docs/specs/2026-10-10-raid-aufstellung.md`, Teile C und D, mit den Wünschen des
+Nutzers vom 2026-10-12. Alles nur in der Offiziersansicht mit Offiziersrang (D-41), nie im Kampf, in
+der Kampfsperre eines Bosses oder im Schlachtfeld, in einer Gruppe nur als Leiter oder Assistent eines
+Raids (in einer Fünfergruppe nur als Leiter). **Einladen:** "Alle einladen" lädt die eingeteilten
+Spieler ein, die online und noch nicht in der Gruppe sind, aus einem Timer, eine Einladung alle
+0,5 Sekunden; allein oder in einer Gruppe erst bis fünf in der Gruppe, nach dem ersten Beitritt wandelt
+Amisia (als Leiter) in einen Raid um und lädt den Rest ein. Unklare Namen (vermutlich, nicht eindeutig,
+unbekannt) und Offline-Spieler werden nicht eingeladen, Gäste nur mit `lineup.guests`. Der Status pro
+Name kommt aus den Systemmeldungen über die Textvorlagen des Spiels (`ERR_*_S`, nie deutscher Text) und
+aus der Raidliste: geplant, eingeladen, im Raid, abgelehnt, keine Antwort (nach 90 Sekunden), schon in
+Gruppe, offline, unbekannt; eine geheime Meldung (Sperre) wird übersprungen. "Nochmal einladen" nimmt
+abgelehnt, keine Antwort und schon in Gruppe, einmal pro Klick; nie automatisch wiederholt; höchstens
+drei Einladungen pro Name und Abend (Klick und Flüstern zusammen). Die Status leben nur im Speicher
+(nach `/reload` neu aus der Raidliste, der Zähler beginnt neu). Flüstern beim Einladen
+(`lineup.whisper`, aus): fester Text, nur die Gruppe wechselt, einmal pro Name und Abend.
+**Sortieren:** "Gruppen sortieren" schiebt jeden Raider der Liste in seine Gruppe aus dem Planer
+(`SetRaidSubgroup` auf einen freien Platz, sonst `SwapRaidSubgroup` mit einem Raider der Liste, der dort
+nicht hingehört); wer nicht auf der Liste steht, bleibt, wo er ist. Ein Schritt pro Meldung der
+Raidliste, höchstens 60 pro Klick; ein Kampf hält an ("Sortieren fortsetzen" per Klick). Automatisch
+(`lineup.autoSort`, an) 2 Sekunden nach einem Beitritt, aber nur auf dem Client, der heute "Alle
+einladen" geklickt hat. **Einladen auf Flüstern** (`lineup.inv`, aus): ein Flüstern, das genau "inv"
+oder "invite" ist (Groß/klein egal), von einem Gildenmitglied laut Gildenliste (ein Gast nur, wenn er
+auf der heutigen Aufstellung steht und `lineup.guests` an ist), nur solange eine Aufnahme läuft oder
+heute eine Aufstellung steht, als Leiter, Assistent oder allein; einmal in 30 Sekunden pro Absender,
+10 pro Minute; Meldungen nur im eigenen Chat. **Assistent** (`lineup.autoAssist`, aus): als
+Schlachtzugsleiter wird jedes Gildenmitglied mit Offiziersrang laut Gildenliste (Rangrecht 22, D-18),
+das im Raid ist, einmal pro Raid Assistent; nicht im Kampf und nicht in der Sperre.
+**Grund:** Nutzer am 2026-10-12: Teile C und D jetzt bauen, dazu "inv" per Flüstern (ändert Frage 8 der
+Spec auf ja) und automatischer Assist für Offiziere. Prüfung 11 im Spiel (2026-10-12 17:46): InviteUnit
+geht aus dem Tastendruck und aus einem C_Timer ohne Sperre; die deutschen Vorlagen stehen im Bericht.
+**Folge:** Neue Dateien `Raid/LineupInvite.lua` und `Raid/LineupSort.lua`, die Ansicht "Einladen" auf
+der Seite Aufstellung, `/amisia aufstellung einladen` und `sortieren` (en `invite`, `sort`), vier
+Einstellungen im Abschnitt `lineup`. Keine Nachricht, keine Exportzeile, kein gespeicherter Schlüssel.
+Beim Bau entschieden: allein zählt beim Flüstern wie Leiter (der erste Beitritt macht die Gruppe);
+Umwandeln nur mit mehr Namen als fünf Plätzen; wer sortiert, entscheidet die Absprache (nur der
+einladende Client sortiert automatisch). Prüfungen 12 und 13 (Umwandeln, Sortieren, auch als
+Assistent) und alle Gruppenprüfungen erst ab 2026-11-04 (D-32).
+**Durchgesetzt durch:** `tests/test_lineup_invite.lua`, `tests/test_lineup_sort.lua`,
+`tests/test_lineup_inv_whisper.lua`, `tests/test_lineup_invite_en.lua`.

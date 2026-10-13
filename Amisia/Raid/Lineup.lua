@@ -3,8 +3,8 @@
 -- name against the guild roster (then the group and the friend list), guesses missing roles,
 -- divides the sign-ups into groups by simple rules, keeps what the officer holds in place, and puts
 -- the bench on the evening's bench (ns.BenchAdd). Saved per raid night in AmisiaDB.lineup.
--- Inviting (part C) and sorting the groups in the game (part D) wait for the in-game checks of the
--- spec (docs/specs/2026-10-10-raid-aufstellung.md); nothing here invites, sorts or sends.
+-- Inviting (part C, Raid/LineupInvite.lua) and sorting the groups in the game (part D,
+-- Raid/LineupSort.lua) are files of their own (F-084); nothing here invites, sorts or sends.
 -- Parts G and H (D-42): the invite list of a guild event of the game calendar (Raid/Calendar.lua,
 -- read only) and the sign-ups raiders send from Amisia (Raid/Signup.lua) join the same night. One
 -- row per name with the marks of its sources (L list, K calendar, A Amisia); the status is the
@@ -1535,12 +1535,37 @@ ns.RegisterSettings{ key = "lineup", label = L["Raid-Aufstellung"], order = 24, 
       tip = L["Trägt \"Ersatz\" und Überzählige von heute, die online sind, auf die Ersatzbank ein."] },
     { key = "lineup.signups", type = "toggle", label = L["Anmeldungen aus Amisia annehmen"], default = true,
       tip = L["Raider mit Amisia melden sich im Spiel an (Rolle und Notiz); ihre Anmeldungen stehen in der Aufstellung der Nacht mit der Quelle \"Amisia\"."] },
+    -- parts C and D (F-084, Raid/LineupInvite.lua, Raid/LineupSort.lua)
+    { key = "lineup.whisper", type = "toggle", label = L["Einladung flüstern"], default = false,
+      tip = L["Jeder Eingeladene bekommt einmal pro Abend: \"Amisia: Einladung zum Raid (Gruppe 3). Bitte annehmen.\" Der Text ist fest, nur die Gruppe ändert sich."] },
+    { key = "lineup.autoSort", type = "toggle", label = L["Automatisch sortieren, wenn jemand beitritt"], default = true,
+      tip = L["Nach \"Alle einladen\" schiebt Amisia jeden, der beitritt, nach 2 Sekunden Ruhe in seine Gruppe aus dem Planer (nur dein Client, nur als Leiter oder Assistent, nicht im Kampf)."] },
+    { key = "lineup.inv", type = "toggle", label = L["Einladen auf Flüstern \"inv\""], default = false,
+      tip = L["Flüstert dir ein Gildenmitglied \"inv\" oder \"invite\", lädt Amisia es ein: nur wenn eine Aufnahme läuft oder heute eine Aufstellung steht, nur als Leiter oder Assistent (oder allein), nicht im Kampf. Gäste der Aufstellung nur mit \"Gäste einladen\". Höchstens einmal in 30 Sekunden pro Spieler."] },
+    { key = "lineup.autoAssist", type = "toggle", label = L["Offiziere automatisch zum Assistenten"], default = false,
+      tip = L["Bist du Schlachtzugsleiter, macht Amisia jedes Gildenmitglied mit Offiziersrang (laut Gildenliste), das beitritt, einmal pro Raid zum Assistenten. Nicht im Kampf."] },
 }}
 
-ns.RegisterSlash("aufstellung", { en = "lineup", officer = true, desc = L["Raid-Aufstellung: Anmeldeliste einfügen und Gruppen planen"],
-    run = function()
+-- the sub-words of /amisia aufstellung: invite all, sort the groups (F-084)
+local SUB_INVITE = { einladen = true, invite = true } -- l10n-ok: typed sub-words
+local SUB_SORT = { sortieren = true, sort = true } -- l10n-ok: typed sub-words
+
+ns.RegisterSlash("aufstellung", { en = "lineup", officer = true, args = L["[einladen | sortieren]"],
+    desc = L["Raid-Aufstellung: Anmeldeliste einfügen und Gruppen planen"],
+    run = function(rest)
         if not ns.LineupAllowed() then
             ns.msg(L["Die Aufstellung ist nur für Offiziere."])
+            return
+        end
+        local sub = (rest or ""):lower():match("^(%S+)")
+        if sub and SUB_INVITE[sub] and ns.LineupInviteAll then
+            local count, why = ns.LineupInviteAll()
+            ns.msg(count and L["Einladen: %d Spieler, einer alle %s Sekunden."]:format(count, ns.Num(ns.LineupInv.GAP, 1)) or why)
+            if ns.ShowLineup then ns.ShowLineup("invite") end
+            return
+        elseif sub and SUB_SORT[sub] and ns.LineupSort then
+            local ok, why = ns.LineupSort()
+            if not ok then ns.msg(why) end
             return
         end
         if ns.ShowLineup then ns.ShowLineup() end

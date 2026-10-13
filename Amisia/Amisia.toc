@@ -87,6 +87,8 @@ Raid\Handover.lua
 Raid\Calendar.lua
 Raid\CalendarWrite.lua
 Raid\Lineup.lua
+Raid\LineupInvite.lua
+Raid\LineupSort.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
 Raid\RaidCheckRead.lua

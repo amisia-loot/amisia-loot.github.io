@@ -308,6 +308,19 @@ S.STATES = {
     { page = "lineup", name = "lineup-match", open = function() S.lineup(); NS.ShowLineup("match") end },
     { page = "lineup", name = "lineup-planner", open = function() S.lineup(); NS.ShowLineup("planner") end },
     { page = "lineup", name = "lineup-paste", open = function() S.lineup(); NS.ShowLineup("paste") end },
+    -- the invite view (F-084): every status, tries, the raiders not on the list
+    { page = "lineup", name = "lineup-invite", open = function()
+        S.lineup()
+        local IV = NS.LineupInv
+        IV._reset()
+        IV._set(nil, "Bob Eisherz", "I", 1)
+        IV._set(nil, "Grimm Felsfaust", "D", 1)
+        IV._set(nil, "Lina Sonnfeld", "N", 2)
+        IV._set(nil, "Mara Quell", "G", 1)
+        IV._set(nil, "Tobi Hain", "U", 1)
+        IV._set(nil, "Rurik Stahl", "D", 3)
+        NS.ShowLineup("invite")
+    end },
     -- the lineup with the calendar: the events to choose, then the rows with their sources
     { page = "lineup", name = "lineup-calendar", open = function() S.lineup(); S.calendar(); NS.ShowLineup("calendar"); STUB.tick(1) end },
     { page = "lineup", name = "lineup-sources", open = function()
