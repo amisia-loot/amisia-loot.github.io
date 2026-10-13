@@ -214,7 +214,7 @@ assert(NS.SettingItem("map.resetHidden").type == "button")
 assert(NS.SettingItem("map.arrow").tip == "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann.", NS.SettingItem("map.arrow").tip)
 local section
 for _, s in ipairs(NS.schema) do if s.key == "map" then section = s end end
-assert(section and section.label == "Karte und Wegpunkt" and section.order == 47)
+assert(section and section.label == "Karte und Wegpunkt" and section.order == 48)
 assert(section.available())
 NS.MAP = nil
 assert(not section.available(), "no data, no section")

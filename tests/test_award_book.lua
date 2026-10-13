@@ -252,10 +252,11 @@ NS.RollKind = nil
 local sec
 for _, x in ipairs(NS.schema) do if x.key == "awards" then sec = x end end
 -- the section is everyone's for the tooltip line (AwardHistory.lua); every other item is the officers'
-assert(sec and sec.order == 25 and not sec.officer and sec.label == "Vergaben")
+-- (the plus-one rules moved to the roll rounds in 2.32.0)
+assert(sec and sec.order == 28 and not sec.officer and sec.label == "Vergaben")
 for _, it in ipairs(sec.items) do assert(it.officer == (it.key ~= "awards.tooltip" or nil), it.key) end
 assert(NS.SettingItem("awards.bankName").type == "text" and NS.SettingItem("awards.deName").type == "text")
-assert(NS.Get("awards.plusScope") == "raid" and NS.Get("awards.plusOrder") == false and NS.Get("awards.modClick") == true)
-assert(NS.Set("awards.plusScope", "week") and not NS.Set("awards.plusScope", "month"))
+assert(NS.Get("rolls.plusScope") == "raid" and NS.Get("rolls.plusOrder") == false and NS.Get("awards.modClick") == true)
+assert(NS.Set("rolls.plusScope", "week") and not NS.Set("rolls.plusScope", "month"))
 NS.ShowPage("settings"); NS.Refresh()
 assert(NS.SettingsRows()["awards.bankName"] and NS.SettingsRows()["awards.bankName"]:IsShown(), "the text row is placed without a control")

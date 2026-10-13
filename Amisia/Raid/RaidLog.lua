@@ -483,8 +483,8 @@ end
 ---------------------------------------------------------------------------
 -- Settings and commands
 ---------------------------------------------------------------------------
--- Bench.lua adds its items to this section.
-ns.RaidLogSettings = { key = "raidlog", label = L["Raid-Log"], order = 12, items = {
+-- GroupRolls.lua adds its item to this section.
+ns.RaidLogSettings = { key = "raidlog", label = L["Raid-Log"], order = 11, items = {
     { key = "raidlog.track", type = "toggle", label = L["Bosskämpfe aufzeichnen"], default = true,
       tip = L["Kills und Wipes mit Uhrzeit und Anwesenden."] },
     { key = "raidlog.lootKills", type = "toggle", label = L["Boss am Lootfenster erkennen"], default = true, expert = true,

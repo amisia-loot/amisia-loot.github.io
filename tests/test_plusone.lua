@@ -51,7 +51,7 @@ assert(NS.PlusCount("Fraktur", "raid") == 1, "raid: the running recording only")
 assert(NS.PlusCount("Fraktur", "week") == 2, "week: the raid before the week does not count")
 assert(NS.PlusCount("Chorf", "week") == 1 and NS.PlusCount("Chorf", "raid") == 0)
 assert(NS.PlusCount("Fraktur") == 1, "the default scope is the raid")
-NS.Set("awards.plusScope", "week")
+NS.Set("rolls.plusScope", "week")
 assert(NS.PlusCount("Fraktur") == 2, "the setting picks the scope")
 -- without the reset time the week falls back to the raid
 STUB.weekReset = nil
@@ -62,8 +62,8 @@ assert(NS.PlusCount("Fraktur", "week") == 1, "no C_DateAndTime: raid")
 _G.C_DateAndTime = api
 STUB.weekReset = 3 * DAY
 assert(NS.PlusCount("Fraktur", "week") == 2)
-NS.Reset("awards.plusScope")
-local tip = NS.SettingItem("awards.plusScope").tip
+NS.Reset("rolls.plusScope")
+local tip = NS.SettingItem("rolls.plusScope").tip
 assert(tip and tip:find("Raid", 1, true) and tip:lower():find("reset", 1, true), "the tooltip tells about the fallback: " .. tostring(tip))
 
 -- the list of everyone with a plus-one, most first
@@ -76,7 +76,7 @@ assert(#NS.PlusList("raid") == 2)
 -- roll order: off by default, SR first, plus-one among MS only
 ---------------------------------------------------------------------------
 -- state now: raid scope, Fraktur +1, Vuloo +1, Chorf +0
-assert(NS.Get("awards.plusOrder") == false)
+assert(NS.Get("rolls.plusOrder") == false)
 assert(NS.StartRoll(link, 10)); local r = NS.CurrentRoll()
 roll("Fraktur", 90, 1, 100); roll("Chorf", 50, 1, 100); roll("Vuloo", 99, 1, 99)
 local rank = NS.RollRanking(r)
@@ -86,7 +86,7 @@ assert(NS.PlusLabel(r, "Fraktur") == "+1" and NS.PlusLabel(r, "Chorf") == nil, "
 NS.StopRoll()
 assert(lastChat():find("Gewinner: Fraktur (90, MS, +1)", 1, true), lastChat())
 
-NS.Set("awards.plusOrder", true)
+NS.Set("rolls.plusOrder", true)
 assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
 roll("Fraktur", 90, 1, 100); roll("Chorf", 50, 1, 100); roll("Vuloo", 99, 1, 99)
 rank = NS.RollRanking(r)
@@ -122,12 +122,12 @@ NS.StopRoll()
 assert(r.tie and #r.tie == 2, "equal plus-one and equal roll is a tie")
 assert(lastChat():find("Gleichstand: Fraktur und Vuloo (90, MS, +1)", 1, true), "the tie names the shared count: " .. lastChat())
 -- with plusOrder off the same rolls tie regardless of plus-one
-NS.Set("awards.plusOrder", false)
+NS.Set("rolls.plusOrder", false)
 assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
 roll("Fraktur", 90, 1, 100); roll("Chorf", 90, 1, 100)
 NS.StopRoll()
 assert(r.tie and #r.tie == 2, "without plusOrder the count does not break a tie")
-NS.Set("awards.plusOrder", true)
+NS.Set("rolls.plusOrder", true)
 
 ---------------------------------------------------------------------------
 -- frozen count: an award during the round does not move the order
@@ -147,7 +147,7 @@ assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
 roll("Chorf", 50, 1, 100); roll("Fraktur", 40, 1, 100)
 assert(NS.RollRanking(r)[1].name == "Fraktur" and r.plus.Chorf == 2)
 NS.StopRoll()
-NS.Reset("awards.plusOrder")
+NS.Reset("rolls.plusOrder")
 
 ---------------------------------------------------------------------------
 -- /amisia plus
@@ -159,10 +159,10 @@ NS.Dispatch("plus Fraktur")
 assert(lastMsg():find("Fraktur", 1, true) and lastMsg():find("1", 1, true), lastMsg())
 NS.Dispatch("plus Niemand")
 assert(lastMsg():find("Niemand", 1, true) and lastMsg():find("0", 1, true), lastMsg())
-NS.Set("awards.plusScope", "week")
+NS.Set("rolls.plusScope", "week")
 NS.Dispatch("plus")
 assert(lastMsg():find("Woche", 1, true) and lastMsg():find("Fraktur 2", 1, true), lastMsg())
-NS.Reset("awards.plusScope")
+NS.Reset("rolls.plusScope")
 assert(NS.SlashHelpLines(true)[1] and (function()
     for _, l in ipairs(NS.SlashHelpLines(true)) do if l:find("/amisia plus", 1, true) then return true end end
 end)(), "the command is in the officer help")

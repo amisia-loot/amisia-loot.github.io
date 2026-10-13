@@ -124,47 +124,47 @@ assert(not has(text, "Dabei"), "names only with raidlog.discordNames")
 for c in text:gmatch("[\196-\255][\128-\191]") do error("character above Latin-1 in the text: " .. c) end
 
 ---------------------------------------------------------------------------
--- settings: the section raidlog gets the Discord items, officers only
+-- settings: the section "Discord-Text" (since 2.32.0), officers only
 ---------------------------------------------------------------------------
-for _, key in ipairs({ "raidlog.discordWipes", "raidlog.discordLoot", "raidlog.discordNames", "raidlog.discordHead" }) do
+for _, key in ipairs({ "discord.wipes", "discord.loot", "discord.names", "discord.head" }) do
     local it = NS.SettingItem(key)
-    assert(it and it.officer and it.section.key == "raidlog", key)
+    assert(it and it.officer and it.section.key == "discord", key)
 end
-assert(NS.SettingItem("raidlog.discordWipes").default == true and NS.SettingItem("raidlog.discordLoot").default == true)
-assert(NS.SettingItem("raidlog.discordNames").default == false and NS.SettingItem("raidlog.discordHead").default == "")
-assert(NS.SettingItem("raidlog.discordWipes").label == "Wipes im Discord-Text")
-assert(NS.SettingItem("raidlog.discordHead").type == "text" and NS.SettingItem("raidlog.discordHead").label == "Erste Zeile im Discord-Text")
-assert(NS.Set("raidlog.discordHead", "Amisia | Raid\nbericht <@&123>"))
-assert(NS.Get("raidlog.discordHead") == "Amisia  Raid bericht <@&123>", NS.Get("raidlog.discordHead"))
-assert(NS.Set("raidlog.discordHead", ("x"):rep(100)) and #NS.Get("raidlog.discordHead") == 80, "at most 80 characters")
-assert(NS.Set("raidlog.discordHead", "") and NS.Get("raidlog.discordHead") == "", "empty switches it off")
+assert(NS.SettingItem("discord.wipes").default == true and NS.SettingItem("discord.loot").default == true)
+assert(NS.SettingItem("discord.names").default == false and NS.SettingItem("discord.head").default == "")
+assert(NS.SettingItem("discord.wipes").label == "Wipes im Discord-Text")
+assert(NS.SettingItem("discord.head").type == "text" and NS.SettingItem("discord.head").label == "Erste Zeile im Discord-Text")
+assert(NS.Set("discord.head", "Amisia | Raid\nbericht <@&123>"))
+assert(NS.Get("discord.head") == "Amisia  Raid bericht <@&123>", NS.Get("discord.head"))
+assert(NS.Set("discord.head", ("x"):rep(100)) and #NS.Get("discord.head") == 80, "at most 80 characters")
+assert(NS.Set("discord.head", "") and NS.Get("discord.head") == "", "empty switches it off")
 
 -- the head line first
-NS.Set("raidlog.discordHead", "Raid-Bericht <@&123>")
+NS.Set("discord.head", "Raid-Bericht <@&123>")
 text = NS.RaidSummary(s)[1]
 L = lines(text)
 assert(L[1] == "Raid-Bericht <@&123>" and L[2] == "**Schwarzer Tempel** · Freitag, 02.10.2026 · 20:02 bis 23:10", text)
-NS.Reset("raidlog.discordHead")
+NS.Reset("discord.head")
 
 -- without wipes
-NS.Set("raidlog.discordWipes", false)
+NS.Set("discord.wipes", false)
 text = NS.RaidSummary(s)[1]
 assert(lines(text)[2] == "Bosse: 4 · Raider: 5 · zu spät: 2 · Ersatzbank: 3", lines(text)[2])
 assert(lineIndex(text, "20:41 Supremus (Kampf 4:05)") and not has(text, "Wipe") and not has(text, "kein Kill"), text)
-NS.Reset("raidlog.discordWipes")
+NS.Reset("discord.wipes")
 
 -- without loot
-NS.Set("raidlog.discordLoot", false)
+NS.Set("discord.loot", false)
 text = NS.RaidSummary(s)[1]
 assert(not has(text, "**Loot**") and not has(text, "Bank:") and not has(text, "Zahn"), text)
 assert(has(text, "**Bosse**") and has(text, "**Zu spät:**"), text)
-NS.Reset("raidlog.discordLoot")
+NS.Reset("discord.loot")
 
 -- every name
-NS.Set("raidlog.discordNames", true)
+NS.Set("discord.names", true)
 text = NS.RaidSummary(s)[1]
 assert(lineIndex(text, "**Dabei:** Anna, Chorf, Fraktur, Kim, Vulo Sturmwind"), text)
-NS.Reset("raidlog.discordNames")
+NS.Reset("discord.names")
 
 ---------------------------------------------------------------------------
 -- group loot: no hand-outs, the looted items instead

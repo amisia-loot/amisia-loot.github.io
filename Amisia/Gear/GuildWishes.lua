@@ -225,7 +225,7 @@ function ns.GuildWishTooltipText(item)
 end
 
 ns.OnItemTooltip("guildwish", function(tip, _, id)
-    if not officerOn("bis.guildTooltip") then return false end   -- l10n-ok: setting key
+    if not officerOn("wishes.tooltip") then return false end   -- l10n-ok: setting key
     local text = ns.GuildWishTooltipText(id)
     if not text then return false end
     tip:AddLine(text, BLUE[1], BLUE[2], BLUE[3])
@@ -274,7 +274,7 @@ local function markButton(btn, slot, on)
 end
 
 local function markLoot()
-    local on = officerOn("bis.guildLootMark")   -- l10n-ok: setting key
+    local on = officerOn("wishes.lootMark")   -- l10n-ok: setting key
     local box = LootFrame and LootFrame.ScrollBox
     if box and box.ForEachFrame then
         box:ForEachFrame(function(frame)
@@ -294,7 +294,7 @@ end
 local scrollHooked
 local function onLootElement(_, frame)
     if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
-    local ok, err = pcall(function() markButton(frame, frame:GetSlotIndex(), officerOn("bis.guildLootMark")) end)   -- l10n-ok: setting key
+    local ok, err = pcall(function() markButton(frame, frame:GetSlotIndex(), officerOn("wishes.lootMark")) end)   -- l10n-ok: setting key
     if not ok then report(err) end
 end
 local function hookLootScroll()
@@ -310,7 +310,7 @@ hookLootScroll()
 local function markRoll(frame)
     local on = false
     local fn = _G.GetLootRollItemLink
-    if officerOn("bis.guildLootMark") and type(fn) == "function" then   -- l10n-ok: setting key
+    if officerOn("wishes.lootMark") and type(fn) == "function" then   -- l10n-ok: setting key
         local ok, link = pcall(fn, ns.Plain(frame.rollID))
         on = ok and wishedInGroup(link) or false
     end
@@ -348,7 +348,7 @@ ns.OnEvent("LOOT_OPENED", function()
 end)
 ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkGuildWishLoot) end)
 ns.Listen("SETTING", function(path)
-    if path == "bis.guildLootMark" or path == "ui.view" then refreshMarks() end   -- l10n-ok: setting key
+    if path == "wishes.lootMark" or path == "ui.view" then refreshMarks() end   -- l10n-ok: setting key
 end)
 
 -- For tests and the window: the W of a loot button and of a roll frame.
@@ -369,7 +369,7 @@ end
 -- names: the dialog's names, sorted. Returns the picker values with the wishers of the item first
 -- (by priority, "Anna (Wunsch hoch)"), or nil when nothing changes.
 function ns.GuildWishAwardValues(item, names)
-    if not item or not officerOn("bis.guildAward") then return nil end   -- l10n-ok: setting key
+    if not item or not officerOn("wishes.award") then return nil end   -- l10n-ok: setting key
     local wishers = ns.WishersOf(item)
     if #wishers == 0 then return nil end
     local first, rest = {}, {}
@@ -414,3 +414,10 @@ ns.RegisterSlash("wuensche", { en = "wishes", officer = true, desc = L["Gildenw�
         -- the gear page's guild view, with the import box
         ns.ShowGear("guild")
     end })
+
+ns.RegisterSettings{ key = "wishes", label = L["Gildenw체nsche"], order = 46, officer = true, items = {
+    { key = "wishes.tooltip", type = "toggle", label = L["Gildenw체nsche im Tooltip"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, die sich das Item auf der Website gew체nscht haben."] },
+    { key = "wishes.lootMark", type = "toggle", label = L["W-Markierung im Lootfenster und an den W체rfelfenstern"], default = true,
+      officer = true, tip = L["Gew체nschte Items tragen im Lootfenster und an den W체rfelfenstern ein \"W\"."] },
+    { key = "wishes.award", type = "toggle", label = L["W체nschende zuerst im Vergabe-Dialog"], default = true, officer = true, tip = L["Im Vergabe-Dialog stehen die Raider, die sich das Item w체nschen, oben."] },
+}}

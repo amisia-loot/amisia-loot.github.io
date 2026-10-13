@@ -16,12 +16,12 @@ assert(NS.Active() == nil, "no recording in the city")
 ---------------------------------------------------------------------------
 -- settings
 ---------------------------------------------------------------------------
-for _, key in ipairs({ "raidlog.benchChat", "raidlog.benchGuildOnly", "raidlog.benchNotify" }) do
+for _, key in ipairs({ "bench.chat", "bench.guildOnly", "bench.notify" }) do
     local it = NS.SettingItem(key)
-    assert(it and it.type == "toggle" and it.default == true and it.officer and it.section.key == "raidlog", key)
+    assert(it and it.type == "toggle" and it.default == true and it.officer and it.section.key == "bench", key)
 end
 assert(NS.SettingItem("raidlog.track"), "the section keeps its first items")
-assert(NS.SettingItem("raidlog.benchChat").label == "Auf !bench antworten")
+assert(NS.SettingItem("bench.chat").label == "Auf !bench antworten")
 
 ---------------------------------------------------------------------------
 -- before the raid: AmisiaDB.benchNext for tonight
@@ -231,10 +231,10 @@ assert(last().target == "Fraktur" and last().text == "Amisia: Du bist schon im R
 ask("!bench", "Fremder")
 assert(last().target == "Fremder" and last().text == "Amisia: Die Ersatzbank ist nur für Gildenmitglieder." and not s.bench.Fremder, last().text)
 later()
-NS.Set("raidlog.benchGuildOnly", false)
+NS.Set("bench.guildOnly", false)
 ask("!bench", "Fremder")
 assert(s.bench.Fremder and s.bench.Fremder.note == nil, "anyone when the setting is off")
-NS.Reset("raidlog.benchGuildOnly")
+NS.Reset("bench.guildOnly")
 NS.BenchRemove(s, "Fremder")
 -- the guild list cannot be read: accepted with a note
 later()
@@ -258,12 +258,12 @@ ask("!Ersatz", "Gastdrei", "CHAT_MSG_RAID")
 assert(last().target == "Gastdrei" and s.bench.Gastdrei, "the alias from the raid chat")
 -- benchNotify off: nothing in the own chat
 later()
-NS.Set("raidlog.benchNotify", false)
+NS.Set("bench.notify", false)
 msgs = #STUB.messages
 NS.BenchRemove(s, "Gastdrei")
 ask("!bench", "Gastdrei")
 assert(s.bench.Gastdrei and #STUB.messages == msgs, "quiet")
-NS.Reset("raidlog.benchNotify")
+NS.Reset("bench.notify")
 
 ---------------------------------------------------------------------------
 -- no answer
@@ -277,7 +277,7 @@ local function silent(why, fn, undo)
     assert(#STUB.chat == n and not s.bench.Gast, why)
     undo()
 end
-silent("benchChat off", function() NS.Set("raidlog.benchChat", false) end, function() NS.Reset("raidlog.benchChat") end)
+silent("benchChat off", function() NS.Set("bench.chat", false) end, function() NS.Reset("bench.chat") end)
 silent("not the loot lead", function() STUB.leader = false end, function() STUB.leader = true end)
 silent("raider view", function() NS.Set("ui.view", "raider") end, function() NS.Reset("ui.view") end)
 silent("secret sender", function() STUB.secret.Gast = true end, function() STUB.secret.Gast = nil end)

@@ -322,7 +322,7 @@ function ns.BisOpts()
     local spec, guessed = ns.BisSpec()
     local fac = UnitFactionGroup and UnitFactionGroup("player")
     local o = {
-        class = class, spec = spec, guessed = guessed, kind = ns.Get("gear.kind") or "Speedrun",
+        class = class, spec = spec, guessed = guessed, kind = ns.Get("bis.kind") or "Speedrun",   -- l10n-ok: setting key
         faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil,
         level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())),
         sources = sourceState(),
@@ -341,7 +341,7 @@ end
 function ns.BisFor(class, spec, level, opts)
     opts = opts or {}
     local o = {
-        class = class, spec = spec or (Gear.Specs(class)[1] or {}).key, kind = opts.kind or ns.Get("gear.kind") or "Speedrun",
+        class = class, spec = spec or (Gear.Specs(class)[1] or {}).key, kind = opts.kind or ns.Get("bis.kind") or "Speedrun",   -- l10n-ok: setting key
         faction = opts.faction, level = math.max(1, math.min(tonumber(level) or 1, Gear.Cap())),
         sources = opts.sources or sourceState(), prof = "all", plan = opts.plan or "auto", exclude = opts.exclude,
     }
@@ -1932,10 +1932,11 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
       expert = true, tip = L["Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst."] },
     { key = "bis.prof", type = "choice", label = L["Hergestellte Items"], default = "all",   -- l10n-ok: setting key
       values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } }, tip = L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] },
-    { key = "bis.guildTooltip", type = "toggle", label = L["Gildenwünsche im Tooltip"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, die sich das Item auf der Website gewünscht haben."] },   -- l10n-ok: setting key
-    { key = "bis.guildLootMark", type = "toggle", label = L["W-Markierung im Lootfenster und an den Würfelfenstern"], default = true,   -- l10n-ok: setting key
-      officer = true, tip = L["Gewünschte Items tragen im Lootfenster und an den Würfelfenstern ein \"W\"."] },
-    { key = "bis.guildAward", type = "toggle", label = L["Wünschende zuerst im Vergabe-Dialog"], default = true, officer = true, tip = L["Im Vergabe-Dialog stehen die Raider, die sich das Item wünschen, oben."] },   -- l10n-ok: setting key
+    { key = "bis.kind", type = "choice", label = L["Gewichtung"], default = "Speedrun",   -- l10n-ok: setting key
+      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
+      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] },
+    { key = "bis.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,   -- l10n-ok: setting key
+      tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
 }}
 
 -- The item at the start of a command (a link, else an item id) and the rest.

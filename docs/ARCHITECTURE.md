@@ -421,19 +421,27 @@ the start of the name, folded), for `/amisia einstellungen <word>`; another word
 
 | Section | File | Section | File |
 |---|---|---|---|
-| `ui` | Core/Registry.lua | `prio` | Raid/LootPrio.lua |
-| `record` | Core/Core.lua | `points` | Raid/Points.lua |
-| `bank` | Core/Core.lua | `tools` | Collect/Scan.lua |
-| `sync` | Core/Comm.lua (items added by Trust, Version, Sync) | `drops` | Collect/Drops.lua |
-| `awards` | Raid/Awards.lua | `collect` | Collect/Collector.lua |
-| `rolls` | Raid/Rolls.lua | `crafters` | Gear/Crafters.lua |
-| `softres` | Raid/SoftRes.lua | `gear` | Gear/GearFrame.lua |
-| `loot` | Raid/LootAnnounce.lua | `bis` | Gear/Bis.lua |
-| `raidlog` | Raid/RaidLog.lua | `map` | Gear/Map.lua |
-| `mats` | Raid/Mats.lua | `quests` | Gear/Quests.lua |
-| `lootrules` | Raid/LootRules.lua (officers) | `rollwin` | Raid/RollWindow.lua (everyone; `rollwin.self` officers) |
-| `trade` | Raid/Handover.lua (everyone) | `lineup` | Raid/Lineup.lua (officers with the officer rank) |
-| `signup` | Raid/Signup.lua (everyone) | `raidcheck` | Raid/RaidCheck.lua (everyone; `raidcheck.chat`, `raidcheck.durability` officers) |
+| `record` | Core/Core.lua | `signup` | Raid/Signup.lua (everyone) |
+| `raidlog` | Raid/RaidLog.lua (item added by GroupRolls) | `bis` | Gear/Bis.lua (since 2.32.0 with `bis.kind`, `bis.upgradeDot`) |
+| `bench` | Raid/Bench.lua (officers) | `wishes` | Gear/GuildWishes.lua (officers) |
+| `discord` | Raid/RaidText.lua (officers) | `drops` | Collect/Drops.lua |
+| `rolls` | Raid/Rolls.lua (officers; "Roll-Runden", with the plus-one rules) | `map` | Gear/Map.lua |
+| `rollwin` | Raid/RollWindow.lua (everyone; `rollwin.self` officers) | `quests` | Gear/Quests.lua |
+| `need` | Raid/Need.lua ("Wer braucht das?"; `need.ask`, `need.tooltip` officers) | `collect` | Collect/Collector.lua |
+| `loot` | Raid/LootAnnounce.lua | `crafters` | Gear/Crafters.lua |
+| `lootrules` | Raid/LootRules.lua (officers) | `bank` | Core/Core.lua |
+| `prio` | Raid/LootPrio.lua | `mats` | Raid/Mats.lua |
+| `points` | Raid/Points.lua | `sync` | Core/Comm.lua (items added by Trust, Version, Sync) |
+| `softres` | Raid/SoftRes.lua | `ui` | Core/Registry.lua |
+| `awards` | Raid/Awards.lua | `tools` | Collect/Scan.lua |
+| `trade` | Raid/Handover.lua (everyone) | `raidcheck` | Raid/RaidCheck.lua (everyone; `raidcheck.chat`, `raidcheck.durability` officers) |
+| `lineup` | Raid/Lineup.lua (officers with the officer rank) | | |
+
+The `order` of a section is unique and follows the tabs: Raid 10-31, Kalender 35, Ausrüstung 45-51, Gilde
+60-61, Allgemein 85-95 (spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`). A setting that moves to
+another section is a step of `Core/Migrate.lua` (D-48); step 2 moved `sync.shareUpgrades/askUpgrades/needTooltip`
+to `need.*`, `awards.plusScope/plusOrder` to `rolls.*`, `gear.kind/upgradeDot` to `bis.*`, `bis.guild*` to
+`wishes.*`, `raidlog.bench*` to `bench.*` and `raidlog.discord*` to `discord.*` (the section `gear` is gone).
 
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item

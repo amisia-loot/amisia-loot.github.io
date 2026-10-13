@@ -45,14 +45,14 @@ check("1 mentions", function()
         members = { ["@here"] = { class = "MAGE", first = time(), last = time(), late = true } }, loot = {}, items = {},
         drops = {}, awards = {}, gone = {}, kills = {}, bench = {}, outside = {} }
     NS.AddAwardTo(x, { name = "@here", item = 39001, kind = "MS", src = "@everyone", t = time() })
-    NS.Set("raidlog.discordNames", true)
+    NS.Set("discord.names", true)
     text = table.concat(NS.RaidSummary(x), "\n")
-    NS.Reset("raidlog.discordNames")
+    NS.Reset("discord.names")
     assert(not has(text, "@everyone") and not has(text, "@here"), text)
     -- the officer's own head line stays as typed
-    NS.Set("raidlog.discordHead", "Raid <@&99> @here")
+    NS.Set("discord.head", "Raid <@&99> @here")
     text = NS.RaidSummary(x)[1]
-    NS.Reset("raidlog.discordHead")
+    NS.Reset("discord.head")
     assert(lines(text)[1] == "Raid <@&99> @here", lines(text)[1])
     NS.BenchRemove(s, "Chorf")
 end)
@@ -159,9 +159,9 @@ check("5 wrapped lines", function()
         r.bench[name] = { t = time(), class = "MAGE", by = "Vuloo", note = ("Notiz %02d "):format(i) .. ("x"):rep(31) }
         r.members["Raider" .. name] = { class = "MAGE", first = time(), last = time() }
     end
-    NS.Set("raidlog.discordNames", true)
+    NS.Set("discord.names", true)
     parts = NS.RaidSummary(r)
-    NS.Reset("raidlog.discordNames")
+    NS.Reset("discord.names")
     checkParts(parts, "bench")
     all = table.concat(parts, "\n")
     for name in pairs(r.bench) do
@@ -225,10 +225,10 @@ check("6 bench cap", function()
     for _, name in ipairs(b) do NS.BenchRemove(s, name) end
 end)
 check("6 !bench aus: guild", function()
-    NS.Set("raidlog.benchGuildOnly", false)
+    NS.Set("bench.guildOnly", false)
     STUB.tick(20)
     STUB.fire("CHAT_MSG_WHISPER", "!bench", "Fremder")
-    NS.Reset("raidlog.benchGuildOnly")
+    NS.Reset("bench.guildOnly")
     assert(s.bench.Fremder and s.bench.Fremder.self, "entered while the setting was off")
     STUB.tick(20)
     STUB.chat = {}

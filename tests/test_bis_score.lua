@@ -240,7 +240,7 @@ _G.UnitClass = function() return "Krieger", "WARRIOR" end
 _G.UnitLevel = function() return 60 end
 _G.UnitFactionGroup = function() return "Alliance" end
 _G.GetInventoryItemLink = function() return nil end
-local section = NS.SettingItem("gear.kind").section
+local section = NS.SettingItem("bis.kind").section
 assert(NS.Visible(section), "the planner's settings with data")
 NS.ToggleGearFrame()
 assert(AmisiaGearFrame and AmisiaGearFrame:IsShown(), "the planner window")

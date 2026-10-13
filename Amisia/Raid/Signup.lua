@@ -535,7 +535,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and /amisia anmelden
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "signup", label = L["Raid-Anmeldung"], order = 23, items = {
+ns.RegisterSettings{ key = "signup", label = L["Raid-Anmeldung"], order = 35, items = {
     { key = "signup.calendar", type = "toggle", label = L["Auch im Spielkalender eintragen"], default = true,
       tip = L["Anmelden, Vorläufig und Abmelden in Amisia tragen dich auch im Spielkalender ein (nur bei Gildenereignissen mit Anmeldung, nie im Kampf). Geht es nicht, sagt Amisia es und bittet dich, es im Kalender selbst zu tun."] },
     { key = "signup.card", type = "toggle", label = L["Karte auf der Übersicht"], default = true,

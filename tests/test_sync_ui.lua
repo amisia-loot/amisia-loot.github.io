@@ -271,21 +271,28 @@ local items = C(FRAK, [[for _, sec in ipairs(NS.schema) do if sec.key == "sync" 
         return { label = sec.label, order = sec.order, items = out }
     end end]])
 assert(items.label == "Sync und Version" and items.order == 85)
-local want = { { "sync.enabled", true }, { "sync.raiderAwards", true }, { "sync.shareUpgrades", true }, { "sync.versionCheck", true },
-               { "sync.outdatedWarn", true }, { "sync.askUpgrades", true, "officer" }, { "sync.needTooltip", true, "officer" },
-               { "sync.notify", true, "officer" }, { "sync.officerRanks", "auto", "expert" }, { "sync.debug", false, "expert" } }
-assert(#items.items == #want, "ten entries: " .. #items.items)
+-- the three of "Wer braucht das?" have their own section since 2.32.0 (need)
+local want = { { "sync.enabled", true }, { "sync.raiderAwards", true }, { "sync.versionCheck", true },
+               { "sync.outdatedWarn", true }, { "sync.notify", true, "officer" }, { "sync.officerRanks", "auto", "expert" },
+               { "sync.debug", false, "expert" } }
+assert(#items.items == #want, "seven entries: " .. #items.items)
 for i, w in ipairs(want) do
     local it = items.items[i]
     assert(it.key == w[1] and it.default == w[2], i .. ": " .. tostring(it.key))
     assert((w[3] == "officer") == (it.officer == true) and (w[3] == "expert") == (it.expert == true), it.key)
 end
-assert(items.items[3].label == "Der Lootleitung meine Upgrades nennen")
-assert(items.items[6].label == "Beim Ansagen fragen, für wen ein Item ein Upgrade ist" and items.items[7].label == "Tooltip-Zeile Upgrade für")
+local need = C(FRAK, [[for _, sec in ipairs(NS.schema) do if sec.key == "need" then
+        local out = {}
+        for i, it in ipairs(sec.items) do out[i] = it.label end
+        return { label = sec.label, officer = sec.officer, items = out }
+    end end]])
+assert(need.label == "Wer braucht das?" and not need.officer)
+assert(need.items[1] == "Der Lootleitung meine Upgrades nennen" and need.items[2] == "Beim Ansagen fragen, für wen ein Item ein Upgrade ist"
+    and need.items[3] == "Tooltip-Zeile Upgrade für")
 -- the rows on the settings page: officer items for officers, not for raiders
-assert(C(FRAK, "NS.ShowPage('settings'); NS.Refresh(); return NS.SettingsRows()['sync.askUpgrades']:IsShown()") == true)
-assert(C(KIM, "NS.ShowPage('settings'); NS.Refresh(); local r = NS.SettingsRows()['sync.askUpgrades']; return r ~= nil and r:IsShown()") == false)
-assert(C(KIM, "return NS.SettingsRows()['sync.shareUpgrades']:IsShown()") == true)
+assert(C(FRAK, "NS.ShowPage('settings'); NS.Refresh(); return NS.SettingsRows()['need.ask']:IsShown()") == true)
+assert(C(KIM, "NS.ShowPage('settings'); NS.Refresh(); local r = NS.SettingsRows()['need.ask']; return r ~= nil and r:IsShown()") == false)
+assert(C(KIM, "return NS.SettingsRows()['need.share']:IsShown()") == true)
 
 ---------------------------------------------------------------------------
 -- the commands

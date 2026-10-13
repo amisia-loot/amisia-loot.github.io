@@ -385,7 +385,7 @@ end
 -- !bench for raiders without the addon
 ---------------------------------------------------------------------------
 local function notify(text)
-    if ns.Get("raidlog.benchNotify") then ns.msg(text) end
+    if ns.Get("bench.notify") then ns.msg(text) end
 end
 
 -- No answers from a battleground or an arena.
@@ -397,7 +397,7 @@ end
 
 -- sender is the raw (plain) text the client gave; the answer goes back to it by whisper.
 local function onBench(sender, rest)
-    if not ns.Get("raidlog.benchChat") or not ns.IsLootLead() or inBattleground() then return end
+    if not ns.Get("bench.chat") or not ns.IsLootLead() or inBattleground() then return end
     local name = ns.FullName(sender)
     if not name then return end
     if not ns.ReplyGate("bench", name:lower()) then return end
@@ -415,7 +415,7 @@ local function onBench(sender, rest)
     local off = word == "aus" or word == "off" or word == "weg" or word == "remove"   -- l10n-ok: chat words the addon reads
     local note = not off and ns.CleanNote(rest, NOTE_MAX) or nil
     local extra
-    if ns.Get("raidlog.benchGuildOnly") then
+    if ns.Get("bench.guildOnly") then
         ns.RequestGuildRoster()
         local member = inGuild(name)
         if member == false then
@@ -459,17 +459,12 @@ ns.RegisterChatCommand("ersatz", onBench)
 ---------------------------------------------------------------------------
 -- Settings and /amisia ersatz
 ---------------------------------------------------------------------------
-if ns.RaidLogSettings then
-    for _, it in ipairs({
-        { key = "raidlog.benchChat", type = "toggle", label = L["Auf !bench antworten"], default = true, officer = true,
-          tip = L["Nur als Lootleitung, per Flüsterung."] },
-        { key = "raidlog.benchGuildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true, tip = L["Nur Gildenmitglieder können sich mit !bench auf die Ersatzbank setzen."] },
-        { key = "raidlog.benchNotify", type = "toggle", label = L["Neue Einträge der Ersatzbank im Chat melden"], default = true, officer = true, tip = L["Sagt dir im eigenen Chat, wenn jemand neu auf der Ersatzbank steht."] },
-    }) do
-        table.insert(ns.RaidLogSettings.items, it)
-    end
-    ns.RegisterSettings(ns.RaidLogSettings)
-end
+ns.RegisterSettings{ key = "bench", label = L["Ersatzbank"], order = 12, officer = true, items = {
+    { key = "bench.chat", type = "toggle", label = L["Auf !bench antworten"], default = true, officer = true,
+      tip = L["Nur als Lootleitung, per Flüsterung."] },
+    { key = "bench.guildOnly", type = "toggle", label = L["!bench nur für Gildenmitglieder"], default = true, officer = true, tip = L["Nur Gildenmitglieder können sich mit !bench auf die Ersatzbank setzen."] },
+    { key = "bench.notify", type = "toggle", label = L["Neue Einträge der Ersatzbank im Chat melden"], default = true, officer = true, tip = L["Sagt dir im eigenen Chat, wenn jemand neu auf der Ersatzbank steht."] },
+}}
 
 -- "Vulo Sturmwind ab 21 Uhr": the name is the first word, or the first two when exactly those
 -- two make a known name (suggestions, bench, group, guild); the rest is the note.

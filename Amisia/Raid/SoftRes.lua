@@ -1174,7 +1174,7 @@ local function cleanRemindText(v)
     return table.concat(out)
 end
 
-ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 30, items = {
+ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 27, items = {
     { key = "softres.tooltip", type = "toggle", label = L["Tooltip-Zeile \"Reserviert: ...\""], default = true, tip = L["Der Item-Tooltip nennt, wer das Item reserviert hat."] },
     { key = "softres.lootMark", type = "toggle", label = L["SR-Markierung im Lootfenster und an den Würfelfenstern"], default = true,
       onChange = function() ns.MarkSoftResLoot() end, tip = L["Reservierte Items tragen im Lootfenster und an den Würfelfenstern ein \"SR\"."] },

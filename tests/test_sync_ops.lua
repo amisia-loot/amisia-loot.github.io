@@ -205,13 +205,13 @@ C(VULO, [[STUB.weekReset = 3 * 86400
     table.insert(AmisiaDB.sessions, 1, { id = "w1", date = "2026-01-01", instanceID = 409, zone = "Alt", start = time() - 86400,
         last = time() - 80000, members = {}, loot = {}, items = {}, drops = {}, awards = {
         { id = "0123456789ab", name = "Mara Stein", item = 1, kind = "MS", src = "X", t = time() - 86000, to = "player" } }, gone = {} })
-    NS.Set("awards.plusScope", "week")]])
+    NS.Set("rolls.plusScope", "week")]])
 S(VULO, "NS.EditAward(s, '" .. a1 .. "', { kind = 'MS' })")
 settle()
 assert(S(VULO, "NS.PlusCount('Mara Stein')") == 2 and S(KIM, "s.sync.plus.n['Mara Stein']") == 2)
 assert(C(KIM, "NS.PlusCount('Mara Stein')") == 2, "Kim counts with the keeper's number")
 assert(C(KIM, "NS.PlusCount('Fraktur')") == 0)
-C(VULO, "NS.Reset('awards.plusScope'); table.remove(AmisiaDB.sessions, 1); STUB.weekReset = nil")
+C(VULO, "NS.Reset('rolls.plusScope'); table.remove(AmisiaDB.sessions, 1); STUB.weekReset = nil")
 S(VULO, "NS.EditAward(s, '" .. a1 .. "', { kind = 'SR' })")
 settle()
 assert(C(KIM, "NS.PlusCount('Mara Stein')") == 0)

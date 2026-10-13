@@ -561,3 +561,6 @@ L["Im Vergabe-Dialog stehen die Raider, die sich das Item wünschen, oben."] = "
 L["Setboni zählen in der Wertung mit."] = "Set bonuses count in the score."
 L["Spielt einen Ton zum Drop-Hinweis."] = "Plays a sound with the drop alert."
 L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] = "Which crafted items can be targets: all, or only those of your own professions."
+
+-- the settings sections of 2.32.0
+L["Gildenwünsche"] = "Guild wishes"

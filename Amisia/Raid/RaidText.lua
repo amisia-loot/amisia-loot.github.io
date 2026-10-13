@@ -121,14 +121,14 @@ end
 
 local function headSection(s, bosses, wipes)
     local out = {}
-    local head = ns.Get("raidlog.discordHead")
+    local head = ns.Get("discord.head")
     -- the officer's own line stays as typed: a mention or Markdown of their own must work
     if type(head) == "string" and head ~= "" then out[#out + 1] = head end
     local wd, full = nightWords(s)
     out[#out + 1] = L["**%s** · %s, %s · %s bis %s"]:format(esc(s.zone or "?"), wd, full, hm(s.firstScan or s.start),
         hm(s.last or s.start))
     local parts = { L["Bosse: %d"]:format(bosses) }
-    if ns.Get("raidlog.discordWipes") and wipes > 0 then parts[#parts + 1] = ("Wipes: %d"):format(wipes) end
+    if ns.Get("discord.wipes") and wipes > 0 then parts[#parts + 1] = ("Wipes: %d"):format(wipes) end
     parts[#parts + 1] = ("Raider: %d"):format(ns.MemberCount(s))
     local late = ns.LateCount(s)
     if late > 0 then parts[#parts + 1] = L["zu spät: %d"]:format(late) end
@@ -140,7 +140,7 @@ end
 
 local function bossSection(s)
     local out = {}
-    for _, r in ipairs(ns.BossRuns(s, ns.Get("raidlog.discordWipes"))) do
+    for _, r in ipairs(ns.BossRuns(s, ns.Get("discord.wipes"))) do
         local extra = {}
         if r.wipes > 0 then extra[#extra + 1] = wipeText(r.wipes) end
         local k = r.kill
@@ -164,7 +164,7 @@ local function bossSection(s)
 end
 
 local function lootSection(s)
-    if not ns.Get("raidlog.discordLoot") then return nil end
+    if not ns.Get("discord.loot") then return nil end
     local groups, byKey, bank, de = {}, {}, {}, {}
     local list = {}
     for i, a in ipairs(s.awards or {}) do list[i] = a end
@@ -250,7 +250,7 @@ local function peopleSection(s)
         end
         out[#out + 1] = { head = L["**Ersatzbank:** "], items = words }
     end
-    if ns.Get("raidlog.discordNames") then
+    if ns.Get("discord.names") then
         local names = {}
         for name in pairs(s.members or {}) do names[#names + 1] = name end
         table.sort(names)
@@ -382,19 +382,14 @@ end
 ---------------------------------------------------------------------------
 -- Settings and /amisia discord
 ---------------------------------------------------------------------------
-if ns.RaidLogSettings then
-    for _, it in ipairs({
-        { key = "raidlog.discordWipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text nennt auch die Versuche ohne Kill."] },
-        { key = "raidlog.discordLoot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text listet die vergebenen Items mit ihren Empfängern."] },
-        { key = "raidlog.discordNames", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true, tip = L["Der Discord-Text nennt alle Anwesenden mit Namen, nicht nur ihre Zahl."] },
-        { key = "raidlog.discordHead", type = "text", label = L["Erste Zeile im Discord-Text"], default = "", officer = true,
-          tip = L["Zum Beispiel der Gildenname oder eine Erwähnung."],
-          validate = function(v) return ns.CleanNote(v, 80) or "" end },
-    }) do
-        table.insert(ns.RaidLogSettings.items, it)
-    end
-    ns.RegisterSettings(ns.RaidLogSettings)
-end
+ns.RegisterSettings{ key = "discord", label = L["Discord-Text"], order = 13, officer = true, items = {
+    { key = "discord.wipes", type = "toggle", label = L["Wipes im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text nennt auch die Versuche ohne Kill."] },
+    { key = "discord.loot", type = "toggle", label = L["Loot im Discord-Text"], default = true, officer = true, tip = L["Der Discord-Text listet die vergebenen Items mit ihren Empfängern."] },
+    { key = "discord.names", type = "toggle", label = L["Alle Anwesenden im Discord-Text nennen"], default = false, officer = true, tip = L["Der Discord-Text nennt alle Anwesenden mit Namen, nicht nur ihre Zahl."] },
+    { key = "discord.head", type = "text", label = L["Erste Zeile im Discord-Text"], default = "", officer = true,
+      tip = L["Zum Beispiel der Gildenname oder eine Erwähnung."],
+      validate = function(v) return ns.CleanNote(v, 80) or "" end },
+}}
 
 ns.RegisterSlash("discord", { officer = true, desc = L["Discord-Text des Raids zum Kopieren"], run = function()
     if not ns.IsOfficerView() then

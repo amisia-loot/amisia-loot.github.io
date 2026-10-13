@@ -1261,3 +1261,7 @@ L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein
 L["Mit der Loot-Ansage fragt Amisia die Raider, für wen ein Item ein Upgrade ist."] = "With the loot announcement Amisia asks the raiders who an item is an upgrade for."
 L["Sagt dir im Chat, wenn ein anderer Client die Aufnahme des Raids führt (Hüter) oder zwei Stände sich widersprechen."] = "Tells you in the chat when another client keeps the raid's recording (the keeper) or two records disagree."
 L["Übernimmt die Vergaben, die die Lootleitung im Raid einträgt, in deine eigene Aufnahme."] = "Takes the awards the loot lead enters in the raid into your own recording."
+
+-- the settings sections of 2.32.0
+L["Wer braucht das?"] = "Who needs this?"
+L["Roll-Runden"] = "Roll rounds"

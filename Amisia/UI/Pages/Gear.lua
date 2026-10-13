@@ -1697,7 +1697,7 @@ local function fillSim(S)
         items[#items + 1] = { key = sl.key, name = sl.name, opt = res[sl.key] and res[sl.key][1], plan = res.plan }
     end
     S.list:SetItems(items)
-    local o = { class = sim.class, spec = sim.spec, kind = ns.Get("gear.kind") or "Speedrun", level = sim.level }
+    local o = { class = sim.class, spec = sim.spec, kind = ns.Get("bis.kind") or "Speedrun", level = sim.level }   -- l10n-ok: setting key
     local lines = ns.BisWhy(o)
     S.info:SetText(GREY .. L["Ohne Besitz und Zuwachs, mit deinen Quellen."] .. " " .. table.concat(lines, " ") .. "|r")
 end

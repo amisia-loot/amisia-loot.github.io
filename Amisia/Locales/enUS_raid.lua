@@ -84,7 +84,6 @@ L["Würfe von Hand nur in der Offiziersansicht."] = "Rolls by hand only in the o
 L["Aufruf: /amisia wurf <Name> <Zahl> [os]"] = "Usage: /amisia addroll <name> <number> [os]"
 L["Wurf eingetragen: %s %d (%s)."] = "Roll entered: %s %d (%s)."
 L["Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an."] = "The round has ended: \"Announce result\" in the roll window announces the new result."
-L["Rolls und Vergabe"] = "Rolls and awards"
 L["Roll-Dauer (Sekunden)"] = "Roll duration (seconds)"
 L["Countdown ansagen"] = "Announce countdown"
 L["Sagt bei 10, 5 und 3 Sekunden die Restzeit an."] = "Announces the time left at 10, 5 and 3 seconds."

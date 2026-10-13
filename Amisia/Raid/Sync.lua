@@ -2144,7 +2144,7 @@ for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LOOT_METHOD_CHANGED", "PA
 end
 
 ns.Listen("SETTING", function(path)
-    if type(path) == "string" and (path:find("^sync%.") or path == "loot.lead" or path == "ui.view") then update() end
+    if type(path) == "string" and (path:find("^sync%.") or path:find("^need%.") or path == "loot.lead" or path == "ui.view") then update() end
 end)
 
 ---------------------------------------------------------------------------
@@ -2267,19 +2267,9 @@ do
     end
     table.insert(items, before, { key = "sync.notify", type = "toggle", label = L["Hüterwechsel und Konflikte im Chat melden"], default = true,
         officer = true, tip = L["Sagt dir im Chat, wenn ein anderer Client die Aufnahme des Raids führt (Hüter) oder zwei Stände sich widersprechen."] })
-    -- the switches of "Wer braucht das?" belong to the section too
-    local have = {}
-    for _, it in ipairs(items) do have[it.key] = true end
-    for _, it in ipairs({
-        { key = "sync.shareUpgrades", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true, tip = L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] },
-        { key = "sync.askUpgrades", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true, tip = L["Mit der Loot-Ansage fragt Amisia die Raider, für wen ein Item ein Upgrade ist."] },
-        { key = "sync.needTooltip", type = "toggle", label = L["Tooltip-Zeile Upgrade für"], default = true, officer = true, tip = L["Der Item-Tooltip nennt die Raider, für die das Item laut ihrer Antwort ein Upgrade ist."] },
-    }) do
-        if not have[it.key] then items[#items + 1] = it end
-    end
     -- the order of the section
-    local ORDER = { "sync.enabled", "sync.raiderAwards", "sync.shareUpgrades", "sync.versionCheck", "sync.outdatedWarn", "sync.askUpgrades",
-                    "sync.needTooltip", "sync.notify", "sync.officerRanks", "sync.debug" }
+    local ORDER = { "sync.enabled", "sync.raiderAwards", "sync.versionCheck", "sync.outdatedWarn", "sync.notify",
+                    "sync.officerRanks", "sync.debug" }
     local rank = {}
     for i, key in ipairs(ORDER) do rank[key] = i end
     for i, it in ipairs(items) do it.at = i end

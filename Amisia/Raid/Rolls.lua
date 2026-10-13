@@ -96,7 +96,7 @@ end
 
 -- Whether the plus-one decides between mainspec rolls (setting awards.plusOrder).
 local function plusOrder()
-    return ns.Get("awards.plusOrder") and true or false
+    return ns.Get("rolls.plusOrder") and true or false
 end
 
 -- Two entries of the same rank are equal when their rolls match and, among mainspec rolls with
@@ -575,7 +575,7 @@ function ns.RollKind(item, name)
     return "-"
 end
 
-ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, officer = true, items = {
+ns.RegisterSettings{ key = "rolls", label = L["Roll-Runden"], order = 20, officer = true, items = {
     { key = "rolls.seconds", type = "slider", label = L["Roll-Dauer (Sekunden)"], default = 20, min = 5, max = 120, step = 1, tip = L["So lange läuft eine Runde. Der Countdown im Chat zählt ihre letzten Sekunden."] },
     { key = "rolls.countdown", type = "toggle", label = L["Countdown ansagen"], default = true,
       tip = L["Sagt bei 10, 5 und 3 Sekunden die Restzeit an."] },
@@ -591,6 +591,11 @@ ns.RegisterSettings{ key = "rolls", label = L["Rolls und Vergabe"], order = 20, 
     { key = "rolls.lookHint", type = "choice", label = L["Hinweis im Roll-Fenster: Aussehen schon vergeben"], default = "dungeon",
       values = { { "dungeon", L["nur in Dungeons"] }, { "all", L["überall"] }, { "off", L["aus"] } },
       tip = L["Grüne und blaue Items, die beim Aufheben gebunden werden: laut Blizzards Ankündigung bekommen in Dungeons alle Berechtigten das Aussehen schon beim Plündern. Für Schlachtzüge ist das nicht angekündigt."] },
+    { key = "rolls.plusScope", type = "choice", label = L["Plus-Eins zählt"], default = "raid", officer = true,
+      values = { { "raid", L["Dieser Raid"] }, { "week", L["Diese ID-Woche"] } },
+      tip = L["Wie weit die Mainspec-Gewinne eines Spielers zurückgezählt werden. Kennt der Client die Zeit bis zum wöchentlichen Reset nicht, zählt nur dieser Raid."] },
+    { key = "rolls.plusOrder", type = "toggle", label = L["Plus-Eins in der Roll-Reihenfolge"], default = false, officer = true,
+      tip = L["Weniger Plus-Eins gewinnt vor dem höheren Wurf, nur bei Mainspec."] },
 }}
 ns.RegisterSlash("roll", { officer = true, args = L["<Item-Link> [Sekunden]"], desc = L["Roll-Runde starten"], run = function(rest)
     local link, secs = rest:match("^(.-)%s*(%d*)$")

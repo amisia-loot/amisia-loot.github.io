@@ -185,7 +185,7 @@ end
 local function askFor(r)
     if not r or r.done or r.needAsked or not compareOn() then return end
     r.needAsked = true
-    if ns.Get("sync.askUpgrades") == false or not ns.NeedAsk or not ns.NeedCanAsk or not ns.NeedCanAsk() then return end
+    if ns.Get("need.ask") == false or not ns.NeedAsk or not ns.NeedCanAsk or not ns.NeedCanAsk() then return end
     if ns.NeedOf and ns.NeedOf(r.item) then return end
     ns.NeedAsk({ r.item })
 end

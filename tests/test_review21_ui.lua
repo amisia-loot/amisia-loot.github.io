@@ -146,7 +146,7 @@ assert(not heads.running:find("Konflikt", 1, true) and heads.bar, "the running r
 ---------------------------------------------------------------------------
 -- the settings label and the About page
 ---------------------------------------------------------------------------
-assert(C(KIM, "NS.SettingItem('sync.shareUpgrades').label") == "Der Lootleitung meine Upgrades nennen")
+assert(C(KIM, "NS.SettingItem('need.share').label") == "Der Lootleitung meine Upgrades nennen")
 local about = C(VULO, [[local rows = {}
     for i = 1, 12 do rows[i] = { name = "Spieler" .. i, where = "guild", v = "2.1" } end
     rows[1].self = true

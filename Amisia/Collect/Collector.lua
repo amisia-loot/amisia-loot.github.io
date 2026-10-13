@@ -947,7 +947,7 @@ ns.OnEvent("ADDON_LOADED", function(name)
     prune(AmisiaDB.collect)
 end)
 
-ns.COLLECT_SETTINGS = { key = "collect", label = ns.L["Quellen-Sammler"], order = 47, items = {
+ns.COLLECT_SETTINGS = { key = "collect", label = ns.L["Quellen-Sammler"], order = 50, items = {
     { key = "collect.quests", type = "toggle", label = ns.L["Quests aufzeichnen"], default = true,
       tip = ns.L["Questgeber, Abgabe, Orte, Belohnungen und Level, wenn ein Questfenster offen ist."] },
     { key = "collect.vendors", type = "toggle", label = ns.L["Händler aufzeichnen"], default = true,

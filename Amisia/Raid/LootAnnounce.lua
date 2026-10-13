@@ -137,7 +137,7 @@ local function announce(head, links)
             "RAID_WARNING", nil, { ttl = TTL })
     end
     -- "Wer braucht das?": one question for the announced items (by addon message, never in the chat)
-    if ns.NeedAsk and ns.Get("sync.askUpgrades") ~= false then
+    if ns.NeedAsk and ns.Get("need.ask") ~= false then
         local ids = {}
         for _, e in ipairs(links) do ids[#ids + 1] = e.id end
         ns.NeedAsk(ids)
@@ -385,7 +385,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 22, officer = true, items = {
+ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 23, officer = true, items = {
     { key = "loot.announce", type = "toggle", label = L["Loot im Schlachtzugschat ansagen"], default = true,
       tip = L["Einmal pro Leiche, nur als Lootleitung. Gildenmaterialien nie."] },
     { key = "loot.quality", type = "choice", label = L["Ansagen ab Qualität"], default = 4,

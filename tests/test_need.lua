@@ -65,15 +65,15 @@ end
 C(KIM, "STUB.worn[1] = STUB.items[302].link; STUB.fire('PLAYER_EQUIPMENT_CHANGED')")
 C(ANNA, "STUB.worn[1] = STUB.items[301].link; STUB.worn[5] = STUB.items[305].link; STUB.fire('PLAYER_EQUIPMENT_CHANGED')")
 assert(C(ANNA, "NS.WishAdd(304, 3) ~= nil"), "Anna wishes chest A")
-assert(C(BOB, "NS.Set('sync.shareUpgrades', false)"))
+assert(C(BOB, "NS.Set('need.share', false)"))
 BUS.tick(30)
 assert(C(VULO, "NS.IsLootLead()") == true and C(KIM, "NS.IsLootLead()") == false)
 assert(C(VULO, "NS.IsVerifiedMember('Bob')") == true and C(VULO, "NS.IsVerifiedMember('Pug')") == false)
 
 -- the settings of the section
-assert(C(KIM, "NS.SettingItem('sync.shareUpgrades').default") == true)
-assert(C(KIM, "NS.SettingItem('sync.askUpgrades').default") == true and C(KIM, "NS.SettingItem('sync.askUpgrades').officer") == true)
-assert(C(KIM, "NS.SettingItem('sync.needTooltip').default") == true)
+assert(C(KIM, "NS.SettingItem('need.share').default") == true)
+assert(C(KIM, "NS.SettingItem('need.ask').default") == true and C(KIM, "NS.SettingItem('need.ask').officer") == true)
+assert(C(KIM, "NS.SettingItem('need.tooltip').default") == true)
 
 -- what Kim's own gear says about the items
 local kGain, kSlot, kMine = C(KIM, "NS.BisGain(301)")
@@ -221,9 +221,9 @@ local TIP = [[local tip = CreateFrame("GameTooltip")
 assert(C(VULO, TIP:format(301)) == ("Upgrade für: Kim Eisherz +%d %%"):format(kPct), tostring(C(VULO, TIP:format(301))))
 assert(C(VULO, TIP:format(304)) == "Upgrade für: Kim Eisherz +999 %, Anna", tostring(C(VULO, TIP:format(304))))
 assert(C(VULO, TIP:format(307)) == nil, "nobody needs it: no line")
-assert(C(VULO, "NS.Set('sync.needTooltip', false)"))
+assert(C(VULO, "NS.Set('need.tooltip', false)"))
 assert(C(VULO, TIP:format(301)) == nil, "switched off")
-C(VULO, "NS.Reset('sync.needTooltip')")
+C(VULO, "NS.Reset('need.tooltip')")
 assert(C(KIM, TIP:format(301)) == nil, "raiders get no line")
 
 ---------------------------------------------------------------------------
@@ -231,14 +231,14 @@ assert(C(KIM, TIP:format(301)) == nil, "raiders get no line")
 ---------------------------------------------------------------------------
 BUS.tick(6)
 uqBefore = BUS.count({ kind = "UQ" })
-assert(C(VULO, "NS.Set('sync.askUpgrades', false)"))
+assert(C(VULO, "NS.Set('need.ask', false)"))
 C(VULO, [[STUB.loot = { { link = STUB.items[305].link, name = "x", src = "Creature-0-1-1-1-22917-2" } }
     STUB.chat = {}
     STUB.fire("LOOT_CLOSED"); STUB.fire("LOOT_OPENED", false)]])
 BUS.tick(3)
 assert(C(VULO, "#STUB.chat") == 2, "announced")
 assert(BUS.count({ kind = "UQ" }) == uqBefore, "but not asked")
-C(VULO, "NS.Reset('sync.askUpgrades')")
+C(VULO, "NS.Reset('need.ask')")
 
 ---------------------------------------------------------------------------
 -- /amisia wer

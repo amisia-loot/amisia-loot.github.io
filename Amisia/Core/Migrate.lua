@@ -27,6 +27,32 @@ end
 ns.MIGRATIONS = {
     -- 1 (2.32.0): the count starts; nothing to move
     function(db) end,
+    -- 2 (2.32.0): the settings in their sections (spec 2026-10-13-einstellungen-abschnitte): "Wer braucht
+    -- das?", the plus-one rules to the roll rounds, the gear table's two into gear and wishes, the guild
+    -- wishes, the bench and the Discord text into sections of their own
+    function(db)
+        for _, m in ipairs({
+        { "sync.shareUpgrades", "need.share" },
+        { "sync.askUpgrades", "need.ask" },
+        { "sync.needTooltip", "need.tooltip" },
+        { "awards.plusScope", "rolls.plusScope" },
+        { "awards.plusOrder", "rolls.plusOrder" },
+        { "gear.kind", "bis.kind" },   -- l10n-ok: setting key
+        { "gear.upgradeDot", "bis.upgradeDot" },   -- l10n-ok: setting key
+        { "bis.guildTooltip", "wishes.tooltip" },   -- l10n-ok: setting key
+        { "bis.guildLootMark", "wishes.lootMark" },   -- l10n-ok: setting key
+        { "bis.guildAward", "wishes.award" },   -- l10n-ok: setting key
+        { "raidlog.benchChat", "bench.chat" },
+        { "raidlog.benchGuildOnly", "bench.guildOnly" },
+        { "raidlog.benchNotify", "bench.notify" },
+        { "raidlog.discordWipes", "discord.wipes" },
+        { "raidlog.discordLoot", "discord.loot" },
+        { "raidlog.discordNames", "discord.names" },
+        { "raidlog.discordHead", "discord.head" },
+        }) do
+            ns.MigrateMoveSetting(db, m[1], m[2])
+        end
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

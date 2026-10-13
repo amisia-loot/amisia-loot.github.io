@@ -125,7 +125,7 @@ assert(NS.PlusCount("Bob") == 1, "without the list Bob counts alone")
 assert(NS.SetAlts(ALTS))
 
 -- the roll order with the plus-one: Bob carries Anna's wins
-NS.Set("awards.plusOrder", true)
+NS.Set("rolls.plusOrder", true)
 assert(NS.StartRoll(link, 10)); local r = NS.CurrentRoll()
 roll("Bob", 90, 1, 100); roll("Vuloo", 50, 1, 100)
 local rank = NS.RollRanking(r)
@@ -137,7 +137,7 @@ for i = 1, 2 do names[i] = NS.RollFrame.rows[i].name:GetText() end
 assert(has(names[2], "Bob") and has(names[2], "(Anna)"), "the alt names its main: " .. names[2])
 assert(not has(names[1], "("), "a main names nobody: " .. names[1])
 NS.StopRoll()
-NS.Reset("awards.plusOrder")
+NS.Reset("rolls.plusOrder")
 
 -- the award page's plus-one column and /amisia plus
 NS.Dispatch("plus")

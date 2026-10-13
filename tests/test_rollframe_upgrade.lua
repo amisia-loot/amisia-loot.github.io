@@ -107,10 +107,10 @@ assert(NS.StartRoll(boe, 20))
 assert(#asked == before, "no question without the right to ask")
 NS.StopRoll()
 NS.NeedCanAsk = function() return true end
-assert(NS.Set("sync.askUpgrades", false))
+assert(NS.Set("need.ask", false))
 assert(NS.StartRoll(helm, 20))
 assert(#asked == before, "no question with asking switched off")
-NS.Reset("sync.askUpgrades")
+NS.Reset("need.ask")
 NS.StopRoll()
 
 -- switched off: no column, no line

@@ -21,7 +21,7 @@ assert(s.outside.Bob == s.members.Fraktur.last, "the group outside is remembered
 ---------------------------------------------------------------------------
 local sec
 for _, x in ipairs(NS.schema) do if x.key == "raidlog" then sec = x end end
-assert(sec and sec.label == "Raid-Log" and sec.order == 12 and not sec.officer, "settings section raidlog")
+assert(sec and sec.label == "Raid-Log" and sec.order == 11 and not sec.officer, "settings section raidlog")
 local track, lootKills = NS.SettingItem("raidlog.track"), NS.SettingItem("raidlog.lootKills")
 assert(track and track.type == "toggle" and track.default == true and track.label == "Bosskämpfe aufzeichnen" and not track.officer and not track.expert)
 assert(lootKills and lootKills.type == "toggle" and lootKills.default == true and lootKills.expert, "lootKills for experts")

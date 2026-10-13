@@ -878,7 +878,7 @@ end)
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "trade", label = L["Handel-Helfer"], order = 26, items = {
+ns.RegisterSettings{ key = "trade", label = L["Handel-Helfer"], order = 29, items = {
     { key = "trade.enabled", type = "toggle", label = L["Vergebene Items in deinen Taschen verfolgen"], default = true,
       tip = L["Liegt ein Item, das an jemand anderen vergeben ist, noch handelbar in deinen Taschen, steht es auf der Seite Vergaben unter \"Noch zu übergeben\". Eingelegt wird nur per Knopf am Handelsfenster, nie im Kampf; \"Handeln\" drückst du selbst."] },
     { key = "trade.warn", type = "choice", label = L["Warnungen"], default = "both",

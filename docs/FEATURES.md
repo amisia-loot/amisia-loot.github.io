@@ -163,6 +163,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit der Maus über eine beliebige Einstellung fährst, dann erklärt ihr Tooltip, was sie tut (keine Einstellung ohne Text).
 - Notiz: 2026-10-08: der Nutzer fand die Ansicht unten in den Einstellungen schwer.
 
+### F-101 Einstellungen in logischen Abschnitten
+- Version: 2.32.0
+- Status: gebaut
+- Prüfung: Wenn du vor dem Update eine der umgezogenen Einstellungen geändert hattest (z. B. "Plus-Eins in der Roll-Reihenfolge" an oder "Gewichtung" auf Hardcore), dann steht sie nach dem Update am neuen Ort unverändert.
+- Prüfung: Wenn du in der Offiziersansicht die Einstellungen öffnest, dann gibt es die Abschnitte "Wer braucht das?", "Ersatzbank", "Discord-Text" und "Gildenwünsche", aber keinen Abschnitt "Ausrüstung" mehr; "Gewichtung" und "Upgrade-Punkt in der Tabelle" stehen unter "Ausrüstung und Wünsche".
+- Prüfung: Wenn du `/amisia einstellungen ersatzbank` eingibst, dann öffnet sich der Abschnitt "Ersatzbank".
+- Prüfung: Wenn du unter "Sync und Version" nachsiehst, dann stehen dort nur noch Sync- und Versionsschalter; "Roll-Runden" hat die beiden Plus-Eins-Einstellungen.
+- Notiz: Spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`, Migrationsschritt 2 (D-48).
+
 ## Addon: Raid und Loot
 
 ### F-013 Raid-Aufnahme (Anwesenheit, Bosse, Loot)

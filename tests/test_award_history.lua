@@ -116,7 +116,7 @@ assert(#hover(5001) == 1)
 assert(NS.Set("ui.view", "raider"))
 assert(#hover(5001) == 1, "a raider sees who got the item")
 assert(NS.Visible(NS.SettingItem("awards.tooltip")) and NS.Visible(NS.SettingItem("awards.tooltip").section), "a raider finds the setting")
-assert(not NS.Visible(NS.SettingItem("awards.plusScope")), "the officers' award settings stay theirs")
+assert(not NS.Visible(NS.SettingItem("rolls.plusScope")), "the officers' award settings stay theirs")
 NS.Reset("ui.view")
 
 ---------------------------------------------------------------------------

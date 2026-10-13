@@ -1,7 +1,7 @@
 # Spec: Seite Dungeons und Einstellungen nach Reitern
 
 Stand: 2026-10-13 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
-Feature: F-101 (Seite Dungeons), F-102 (Einstellungen nach Reitern, Zahnrad)
+Feature: F-102 (Seite Dungeons), F-103 (Einstellungen nach Reitern, Zahnrad)
 
 ## Ziel
 
@@ -14,7 +14,7 @@ entweder von der Seite, um die es geht, oder über die nach Reitern geordnete Ab
 
 ## Was es tut
 
-**Teil A: Seite "Dungeons" (F-101)**
+**Teil A: Seite "Dungeons" (F-102)**
 
 - Neue Seite "Dungeons" im Reiter Ausrüstung, direkt unter "Ausrüstung", für alle. Inhalt ist der
   bisherige Dungeon-Planer, unverändert: Rangliste, Kette, Bild, Bossmodell, Beute, Quests mit EP,
@@ -26,7 +26,7 @@ entweder von der Seite, um die es geht, oder über die nach Reitern geordnete Ab
   Formen (`naechster`, `kette`, `quests <Dungeon>`) bleiben, wie sie sind.
 - Das Schnellmenü an der Minimap und die Suche finden die Seite, weil sie alle sichtbaren Seiten führen.
 
-**Teil B: Einstellungen nach Reitern (F-102)**
+**Teil B: Einstellungen nach Reitern (F-103)**
 
 - Die Seite Einstellungen hat links eine Abschnittsliste mit Überschriften in der Reihenfolge der
   Reiter: Raid, Ausrüstung, Gilde, Kalender und Allgemein (statt "Amisia"). Rechts stehen nur die

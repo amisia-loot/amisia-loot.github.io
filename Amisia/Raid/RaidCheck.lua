@@ -517,7 +517,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and /amisia raidcheck
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "raidcheck", label = L["Raid-Check"], order = 25, items = {
+ns.RegisterSettings{ key = "raidcheck", label = L["Raid-Check"], order = 31, items = {
     { key = "raidcheck.answer", type = "toggle", label = L["Auf Raid-Check antworten"], default = true,
       tip = L["Fragt ein Offizier deines Raids (\"Prüfen\" oder ein Bereitschaftscheck), schickt Amisia ihm Haltbarkeit, Itemstufe, leere und unverzauberte Plätze, freie Talentpunkte und deine Fläschchen, Elixiere und Essen."] },
     { key = "raidcheck.lockouts", type = "toggle", label = L["Raid-IDs der Gilde mitteilen"], default = true,

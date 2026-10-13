@@ -125,7 +125,7 @@ function ns.IsLootBossName(name)
 end
 
 local function shareOn()
-    return ns.CommReady() and ns.Get("sync.shareUpgrades") ~= false
+    return ns.CommReady() and ns.Get("need.share") ~= false
 end
 
 ---------------------------------------------------------------------------
@@ -485,7 +485,7 @@ function ns.NeedTooltipText(item)
 end
 
 ns.OnItemTooltip("need", function(tip, _, id)
-    if not ns.IsOfficerView() or ns.Get("sync.needTooltip") == false then return false end
+    if not ns.IsOfficerView() or ns.Get("need.tooltip") == false then return false end
     local text = ns.NeedTooltipText(id)
     if not text then return false end
     tip:AddLine(text, GREEN[1], GREEN[2], GREEN[3])
@@ -495,6 +495,15 @@ end)
 ---------------------------------------------------------------------------
 -- /amisia wer <Item-Link>
 ---------------------------------------------------------------------------
+ns.RegisterSettings{ key = "need", label = L["Wer braucht das?"], order = 22, items = {
+    { key = "need.share", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true,
+      tip = L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] },
+    { key = "need.ask", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true,
+      tip = L["Mit der Loot-Ansage fragt Amisia die Raider, für wen ein Item ein Upgrade ist."] },
+    { key = "need.tooltip", type = "toggle", label = L["Tooltip-Zeile Upgrade für"], default = true, officer = true,
+      tip = L["Der Item-Tooltip nennt die Raider, für die das Item laut ihrer Antwort ein Upgrade ist."] },
+}}
+
 ns.RegisterSlash("wer", { en = "upgrade", args = L["<Item-Link>"], officer = true,   -- l10n-ok: the German command word
     desc = L["Wer braucht das? Die Raider antworten aus ihrer Ausrüstung"],
     run = function(rest)

@@ -234,7 +234,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "mats", label = L["Raidmaterialien"], order = 41, officer = true, items = {
+ns.RegisterSettings{ key = "mats", label = L["Raidmaterialien"], order = 61, officer = true, items = {
     { key = "mats.learn", type = "toggle", label = L["Materialien im Raid lernen"], default = true,
       tip = L["Handwerkswaren, die in einer Raidaufnahme droppen, geplündert oder vergeben werden, kommen von selbst in die Materialliste (höchstens 40)."] },
     { key = "mats.quality", type = "choice", label = L["Lernen ab Qualität"], default = 2,
