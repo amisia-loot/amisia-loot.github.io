@@ -216,12 +216,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn unter Einstellungen, Vergaben "Plus-Eins in der Roll-Reihenfolge" an ist, dann steht im Roll-Fenster der MS-Wurf mit weniger Plus-Eins vor dem höheren.
 
 ### F-017 Export für die Website
-- Version: 1.5.0
+- Version: 2.34.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du als Offizier nach dem Raid die Seite Export öffnest, dann steht dort "1 Raid(s) neu oder geändert" und ein Text, der mit `#AMISIA 2` beginnt.
 - Prüfung: Wenn du den Text (Strg+A, Strg+C) auf der Website im Reiter Import einfügst, dann zeigt die Vorschau Raider, Bosse und Vergaben des Abends.
 - Prüfung: Wenn du danach noch einmal exportierst, dann steht "Nichts Neues seit dem letzten Export ...".
+- Prüfung: Wenn als Offizier eine Aufnahme endet und ein Raid noch nicht exportiert ist, dann meldet der Chat "1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export." (abschaltbar unter Aufnahme, "An nicht exportierte Raids erinnern").
 
 ### F-018 Loot-Ansage durch die Lootleitung
 - Version: 1.6.0

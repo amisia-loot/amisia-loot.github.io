@@ -330,6 +330,10 @@ local function trimSessions()
             table.remove(list, i)
         end
     end
+    -- kept over the limit: say why, so the officer exports them (record.exportWarn)
+    if guard and #list > keep and ns.Get("record.exportWarn") then
+        msg(L["%d Raids über \"Raids aufbewahren\" (%d) bleiben, weil die Website sie noch nicht hat. Bitte exportieren (Seite Export)."]:format(#list - keep, keep))
+    end
 end
 
 local function newSession(zone, instanceID)
@@ -444,10 +448,21 @@ local function stopTicker()
     end
 end
 
+-- At the end of a recording, in the officer view: how many raids the site has not got yet.
+local function exportReminder()
+    if not ns.IsOfficerView() or not ns.Get("record.exportWarn") then return end
+    local n = #ns.PendingExport()
+    if n > 0 then
+        msg(n == 1 and L["1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export."]
+            or L["%d Raids sind noch nicht auf der Website. Seite Export oder /amisia export."]:format(n))
+    end
+end
+
 local function stopRecording()
     if not active then return end
     snapshotRoster()
     msg(L["Aufnahme beendet: %s, %d Raider."]:format(active.zone, ns.MemberCount(active)))
+    exportReminder()
     local old = active
     active = nil
     stopTicker()
@@ -765,6 +780,8 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, group = 
     { key = "record.lateAt", type = "time", allowOff = true, label = L["Raidbeginn (zu spät ab)"], default = 20 * 60,
       tip = L["Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab."] },
     { key = "record.keepSessions", type = "slider", label = L["Raids aufbewahren"], default = 60, min = 10, max = 200, step = 10, tip = L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] },
+    { key = "record.exportWarn", type = "toggle", label = L["An nicht exportierte Raids erinnern"], default = true, officer = true,
+      tip = L["Am Ende einer Aufnahme und wenn mehr Raids bleiben als eingestellt: wie viele Raids die Website noch nicht hat. Aus, wenn ein anderer Offizier exportiert."] },
     { key = "record.resumeHours", type = "slider", label = L["Fortsetzen innerhalb von (Std.)"], default = 2, min = 1, max = 6,
       expert = true, tip = L["Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort."] },
     { key = "record.nightStart", type = "time", label = L["Raidnacht beginnt um"], default = 6 * 60, expert = true,

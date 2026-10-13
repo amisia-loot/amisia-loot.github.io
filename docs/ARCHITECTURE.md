@@ -462,6 +462,7 @@ beitritt", on), `lineup.inv` ("Einladen auf Flüstern "inv"", off) and `lineup.a
 automatisch zum Assistenten", off); `signup` holds
 `signup.card` ("Karte auf der Übersicht", on) and, since part H3 (2.25.0), `signup.calendar` ("Auch im
 Spielkalender eintragen", on).
+`record.exportWarn` (officers, on): at the end of a recording the officer view says how many raids `ns.PendingExport` holds, and raids kept over `record.keepSessions` because they are not exported are named.
 `ui` holds the window sizes: `ui.scale` (the main window, 70-130 %) and `ui.talentScale` (the talent
 window, 70-150 %, also Ctrl + mouse wheel over it); `ui.resetPosition` resets the main window, the gear
 table, the roll window, the talent window and the raid calendar window.

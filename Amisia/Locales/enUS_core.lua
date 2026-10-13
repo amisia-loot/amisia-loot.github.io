@@ -425,3 +425,10 @@ L["%d Einstellungen auf den Standard gesetzt."] = "%d settings set to their defa
 L["Alle Einstellungen zurücksetzen"] = "Reset all settings"
 L["Setzt nach einer Rückfrage alle Einstellungen aller Abschnitte auf ihren Standard. Raids, Listen, Wünsche und Fensterplätze bleiben."] = "After asking, sets every setting of every section to its default. Raids, lists, wishes and window places stay."
 L["Alle Einstellungen aller Abschnitte auf den Standard setzen? Raids, Listen, Wünsche und Fensterplätze bleiben."] = "Set every setting of every section to its default? Raids, lists, wishes and window places stay."
+
+-- the export reminder (2.34.0)
+L["An nicht exportierte Raids erinnern"] = "Remind me of raids not exported"
+L["Am Ende einer Aufnahme und wenn mehr Raids bleiben als eingestellt: wie viele Raids die Website noch nicht hat. Aus, wenn ein anderer Offizier exportiert."] = "At the end of a recording and when more raids stay than set: how many raids the site does not have yet. Off when another officer exports."
+L["1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export."] = "1 raid is not on the site yet. Export page or /amisia export."
+L["%d Raids sind noch nicht auf der Website. Seite Export oder /amisia export."] = "%d raids are not on the site yet. Export page or /amisia export."
+L["%d Raids über \"Raids aufbewahren\" (%d) bleiben, weil die Website sie noch nicht hat. Bitte exportieren (Seite Export)."] = "%d raids over \"Raids to keep\" (%d) stay because the site does not have them yet. Please export (Export page)."
