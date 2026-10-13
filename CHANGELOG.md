@@ -2,6 +2,19 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.30.0 (2026-10-13)
+
+- Systemmeldungen: Textvorlagen des Spiels als Muster in Core/Chat.lua (ns.TemplatePattern, ns.TemplateName)
+- Aufstellung: Alle einladen, Gruppen sortieren, "inv" per Flüstern und Assistent für Offiziere (F-084)
+- Features und Spec: F-084 gebaut (2.30.0), F-100 allein prüfbar, Entscheidung zum Bau von Teil C und D
+- Aufstellung: Beitritt, den die offene Einladen-Ansicht zuerst sieht, sortiert trotzdem automatisch
+- Assistent für Offiziere: nur bei genau dem Namen der Gildenliste, nie über den Vornamen allein
+- Einladen auf Flüstern: nur ein Gildenmitglied unter genau seinem Namen, eingeladen in der Schreibweise der Gildenliste
+- Gruppen sortieren: denselben Schritt erst nach 3 Sekunden wiederholen
+- Einladen: "Gruppe ist voll" nur innerhalb von 3 Sekunden nach Amisias letzter Einladung
+- Einladen nur für die Nacht von heute: andere Nächte zeigen "Nur für heute Abend"
+- Einladen auf Flüstern: Grenzen erst nach der Gildenprüfung, nie in einen Raid umwandeln, nicht in Fünfer-Instanzen
+
 ## 2.29.0 (2026-10-13)
 
 - Spec Raid-Check approved with the proposals
