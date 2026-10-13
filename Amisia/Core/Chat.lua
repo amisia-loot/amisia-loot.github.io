@@ -226,6 +226,29 @@ ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function()
 end)
 
 ---------------------------------------------------------------------------
+-- The client's message templates (ERR_*_S): read system messages in any client language
+---------------------------------------------------------------------------
+-- A message template ("Spieler '%s' ist nicht auffindbar.") as a Lua pattern that captures each
+-- %s (and %d), or nil when the template is missing or secret. Positional forms ("%1$s") count as
+-- plain ones.
+function ns.TemplatePattern(t)
+    t = ns.Plain(t)
+    if type(t) ~= "string" or t == "" then return nil end
+    local p = t:gsub("%%%d+%$([sd])", "%%%1")
+    p = p:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+    p = p:gsub("%%%%s", "(.+)"):gsub("%%%%d", "(%%d+)")
+    return "^" .. p .. "$"
+end
+
+-- The name a system message captured: a player link, its brackets and colour codes away.
+function ns.TemplateName(s)
+    if type(s) ~= "string" then return nil end
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H[^|]*|h", ""):gsub("|h", "")
+    s = s:gsub("[%[%]]", "")
+    return ns.FullName(s)
+end
+
+---------------------------------------------------------------------------
 -- Incoming "!word" commands
 ---------------------------------------------------------------------------
 local commands = {}   -- lower-case word -> fn(sender, rest, chan)

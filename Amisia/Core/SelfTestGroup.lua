@@ -50,19 +50,11 @@ GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_G
 local WATCH = { "CHAT_MSG_SYSTEM", "UI_ERROR_MESSAGE", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "UPDATE_INSTANCE_INFO" }
 local slots = RR.Slots
 
--- A message template ("Spieler '%s' nicht gefunden.") as a Lua pattern, or nil.
-local function templatePattern(t)
-    if type(t) ~= "string" or isSecret(t) or t == "" then return nil end
-    local p = t:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
-    p = p:gsub("%%%%s", "(.+)"):gsub("%%%%d", "(%%d+)")
-    return "^" .. p .. "$"
-end
-
--- The name of the template a system message fits, or nil.
+-- The name of the template a system message fits, or nil (the patterns of Core/Chat.lua).
 local function whichTemplate(text)
     if type(text) ~= "string" then return nil end
     for _, name in ipairs(GT.TEMPLATES) do
-        local p = templatePattern(rawget(_G, name))
+        local p = ns.TemplatePattern(rawget(_G, name))
         if p and text:find(p) then return name end
     end
     return nil
