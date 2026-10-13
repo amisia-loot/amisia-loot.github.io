@@ -315,6 +315,23 @@ function ns.NightOf(t)
     return date("%Y-%m-%d", (t or time()) - nightStart())
 end
 
+-- Keeps record.keepSessions raids, the oldest go first. In the officer view a raid the site has
+-- not got yet (not exported, or changed since) stays, up to KEEP_MAX raids in all.
+local KEEP_MAX = 200
+local function trimSessions()
+    local list = DB.sessions
+    local keep = ns.Get("record.keepSessions") or 60
+    local guard = ns.IsOfficerView()
+    local i = 1
+    while #list > keep and i < #list do
+        if guard and #list <= KEEP_MAX and ns.ExportState(list[i]) ~= "done" then
+            i = i + 1
+        else
+            table.remove(list, i)
+        end
+    end
+end
+
 local function newSession(zone, instanceID)
     local t = time()
     local night = ns.NightOf(t)
@@ -338,9 +355,7 @@ local function newSession(zone, instanceID)
         outside = {}, -- in the group, online, not in the instance: name -> last seen epoch
     }
     DB.sessions[#DB.sessions + 1] = s
-    while #DB.sessions > (ns.Get("record.keepSessions") or 60) do
-        table.remove(DB.sessions, 1)
-    end
+    trimSessions()
     -- the bench gathered tonight before the raid
     if ns.TakeBenchNext then ns.TakeBenchNext(s) end
     -- the loot system of the guild (DKP, EPGP) is frozen with the raid, as the late line is
