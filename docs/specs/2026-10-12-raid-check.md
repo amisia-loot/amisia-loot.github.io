@@ -295,7 +295,7 @@ Prüfungen im Spiel (die ersten drei macht `/amisia selbsttest gruppe` allein):
   Bericht von `/amisia selbsttest gruppe`.
 - 2026-10-12: Gebaut für 2.29.0 (F-098, F-099, D-46): Seite "Raid-Check" mit drei Ansichten, "ID" auf der
   Seite Aufstellung, `XQ`/`XA`/`IV`/`IQ`, `AmisiaDB.raidcheck`, Abschnitt `raidcheck`,
-  `tools/build_raidcheck.py` (9 Fläschchen, 70 Elixiere, 33 Satt-Zauber in Build 70338; Plätze aus der
+  `tools/build_raidcheck.py` (9 Fläschchen, 70 Elixiere, 33 Satt-Zauber in Build 70338, nach der Prüfung vom 2026-10-13 62 Elixiere ohne die reinen Nutz-Elixiere wie Wasseratmung und Untote entdecken; Plätze aus der
   festen Liste, `SpellEquippedItems` steht jetzt in `tools/export_db2.ps1`). Amisia meldet auch
   Charaktere ohne ID ("frei" statt "unbekannt"). Die Leser teilen sich Raid-Check und
   `/amisia selbsttest gruppe`.

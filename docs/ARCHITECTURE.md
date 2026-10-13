@@ -92,7 +92,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/MageScrollData.lua` | generated (`build_magescrolls.py`), lazy | - | LazyData |
 | `Data/DungeonArt.lua` | generated (`build_dungeonart.py`) | - | - |
 | `Data/ScanDone.lua` | generated (`build_scan_archive.py`), lazy `SCAN_DONE`: what `tools/scan_archive.json` holds | - | LazyData |
-| `Data/RaidCheckData.lua` | generated (`build_raidcheck.py`), lazy `RAIDCHECK`: flasks, elixirs, food ("Well Fed") as buff spell ids, the class buff groups with their class, the enchanted slots | - | LazyData |
+| `Data/RaidCheckData.lua` | generated (`build_raidcheck.py`), lazy `RAIDCHECK`: flasks, elixirs (no utility ones: water breathing, detection), food ("Well Fed") as buff spell ids, the class buff groups with their class, the enchanted slots | - | LazyData |
 | `Gear/Gear.lua` | Gear planner core: scoring with own weights, best items per level range | `gear` (stats cache) | LazyData, Data/BisData, Data/GearWeights, Bis |
 | `Gear/GearFrame.lua` | Gear table window (`/amisia gear`) | - | Bis, Gear, Widgets |
 | `Gear/Bis.lua` | Best items for the own character, wishes, `ns.UpgradeOf` | `bis` | Gear, Awards, Map, Chat |

@@ -7,7 +7,8 @@ enchanter enchants. From the client's own tables only (D-03), never from the net
 - Flasks: the items of class 0 (consumable) subclass 3 (flask); their use spell (ItemXItemEffect ->
   ItemEffect.SpellID) is the buff the raider carries.
 - Elixirs: class 0 subclass 2; only use spells that apply an aura (SpellEffect 6) for 10 minutes or
-  more (SpellMisc.DurationIndex -> SpellDuration), so healing potions and "Cure Poison" fall out.
+  more (SpellMisc.DurationIndex -> SpellDuration), so healing potions and "Cure Poison" fall out,
+  and not only utility auras (water breathing, water walking, detection, languages: UTILITY_AURAS).
 - Food: class 0 subclass 5; the use spell ("Nutritious Food", "Food") triggers the buff through
   EffectTriggerSpell (two steps at most); every triggered aura of 10 minutes or more counts, and
   every spell named "Well Fed" (enUS). Drinks without such a buff fall out.
@@ -45,6 +46,9 @@ CONSUMABLE = 0
 SUB_ELIXIR, SUB_FLASK, SUB_FOOD = 2, 3, 5
 EFFECT_APPLY_AURA = 6
 EFFECT_ENCHANT_ITEM = 53
+# the aura types of utility elixirs (they supply nobody for a raid): stealth and invisibility
+# detection, tracking (detect undead/demon), water breathing, water walking, languages
+UTILITY_AURAS = {17, 19, 44, 82, 104, 244, 299}
 LONG_MS = 600000           # an elixir's or food's buff lasts at least 10 minutes
 TRIGGER_DEPTH = 2
 WELL_FED = 'Well Fed'
@@ -160,6 +164,11 @@ def build(dirs):
         d = duration.get(sid, 0)
         return aura(sid) and (d >= LONG_MS or d < 0)
 
+    def raid_aura(sid):
+        """An aura that is not only a utility one (water breathing, detection, ...)."""
+        return any(num(e.get('Effect')) == EFFECT_APPLY_AURA and num(e.get('EffectAura')) not in UTILITY_AURAS
+                   for e in effects_of.get(sid, []))
+
     def of_kind(sub):
         return sorted(i for i, r in items.items() if num(r.get('ClassID'), -1) == CONSUMABLE and num(r.get('SubclassID'), -1) == sub)
 
@@ -169,7 +178,7 @@ def build(dirs):
             flask.setdefault(sid, i)
     for i in of_kind(SUB_ELIXIR):
         for sid in use.get(i, []):
-            if long_aura(sid):
+            if long_aura(sid) and raid_aura(sid):
                 elixir.setdefault(sid, i)
     for i in of_kind(SUB_FOOD):
         for first in use.get(i, []):

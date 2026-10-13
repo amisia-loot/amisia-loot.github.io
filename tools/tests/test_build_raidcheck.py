@@ -32,8 +32,10 @@ def test_flasks_are_the_use_spells_of_flask_items(data):
 
 
 def test_elixirs_only_long_auras(data):
-    # "Cure Poison" applies no aura, the short elixir lasts 2 minutes
+    # "Cure Poison" applies no aura, the short elixir lasts 2 minutes, water breathing (aura 82) is
+    # a utility elixir: no raider is "supplied" by it
     assert data['elixir'] == {5100: 200}
+    assert 5103 not in data['elixir']
 
 
 def test_food_follows_the_trigger_to_well_fed(data):
