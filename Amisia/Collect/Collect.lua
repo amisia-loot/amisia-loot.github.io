@@ -95,6 +95,18 @@ local function noteSuffix(id, link)
 end
 ns.NoteSuffix = noteSuffix
 
+-- Items stored complete this session: a bag update or a tooltip writes an item's line once, not on
+-- every event (gear only once its stats came, so a line without them is written again).
+local complete = {}
+
+local function isComplete(id)
+    local line = ns.ScanDB().items[id]
+    if type(line) ~= "string" then return false end
+    local _, tabs = line:gsub("\t", "")
+    local cls = tonumber(line:match("^[^\t]*\t[^\t]*\t[^\t]*\t[^\t]*\t([^\t]*)"))
+    return tabs >= 9 or (cls ~= 2 and cls ~= 4)
+end
+
 -- Records an item by id or link. Returns true when it is stored now, false when requested.
 function ns.NoteItem(idOrLink, source)
     if not enabled() then return nil end
@@ -102,7 +114,11 @@ function ns.NoteItem(idOrLink, source)
     if not id then return nil end
     addSource(id, source)
     if type(idOrLink) == "string" then pcall(noteSuffix, id, idOrLink) end
-    if ns.StoreItem(id) then return true end
+    if complete[id] then return true end
+    if ns.StoreItem(id) then
+        if isComplete(id) then complete[id] = true end
+        return true
+    end
     wanted[id] = source or false
     if C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(id) end
     return false
