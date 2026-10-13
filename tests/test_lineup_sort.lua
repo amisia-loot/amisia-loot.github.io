@@ -26,7 +26,7 @@ STUB.guild[#STUB.guild + 1] = { name = "Xaver Gast", rank = 4, class = "ROGUE" }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 NS.Set("ui.view", "officer")
 
-local GRP = { raid = true, ignore = false }
+local GRP = { raid = true, ignore = false, delay = 0.2 }
 _G.IsInRaid = function(cat)
     if cat == LE_PARTY_CATEGORY_INSTANCE then return false end
     return GRP.raid and #STUB.roster > 0
@@ -46,14 +46,14 @@ local SET, SWAP = {}, {}
 _G.SetRaidSubgroup = function(i, g)
     SET[#SET + 1] = { i, g }
     if GRP.ignore then return end
-    C_Timer.After(0.2, function()
+    C_Timer.After(GRP.delay, function()
         STUB.roster[i].sub = g
         STUB.fire("GROUP_ROSTER_UPDATE")
     end)
 end
 _G.SwapRaidSubgroup = function(i, j)
     SWAP[#SWAP + 1] = { i, j }
-    C_Timer.After(0.2, function()
+    C_Timer.After(GRP.delay, function()
         STUB.roster[i].sub, STUB.roster[j].sub = STUB.roster[j].sub, STUB.roster[i].sub
         STUB.fire("GROUP_ROSTER_UPDATE")
     end)
@@ -173,6 +173,24 @@ STUB.tick(20)
 assert(said("Sortieren angehalten: das Spiel hat Anna Eins nicht verschoben."), STUB.messages[1])
 assert(#SET <= 3, "a few tries, then it stops")
 GRP.ignore = false
+
+-- a slow server and a roster event of something else in between (review 2026-10-13): the step is
+-- not sent a second time before STEP_WAIT (a second swap would swap the two back)
+raid({ { "Vuloo", 1, 2 }, { "Anna Eins", 1 }, { "Bert Zwei", 1 }, { "Cora Drei", 1 }, { "Dino Vier", 1 },
+       { "Eva Fuenf", 2 }, { "Finn Sechs", 2 }, { "Zeno Sieben", 2 }, { "Wim Acht", 2 }, { "Xaver Gast", 2 } })
+GRP.delay = 1
+SET, SWAP = {}, {}
+STUB.messages = {}
+assert(NS.LineupSort(night) == true)
+STUB.tick(0.1)
+STUB.fire("GROUP_ROSTER_UPDATE")
+STUB.tick(0.5)
+STUB.fire("GROUP_ROSTER_UPDATE")
+STUB.tick(20)
+GRP.delay = 0.2
+assert(#SWAP == 2 and #SET == 1, "two swaps and one move: " .. #SWAP .. " " .. #SET .. " " .. table.concat(STUB.messages, " / "))
+assert(subOf("Anna Eins") == 2 and subOf("Eva Fuenf") == 1 and subOf("Wim Acht") == 3, "sorted")
+assert(said("Gruppen sortiert: 3 Schritte."), STUB.messages[#STUB.messages])
 
 ---------------------------------------------------------------------------
 -- the automatic sort: only after this client's "Alle einladen", with the setting

@@ -22,7 +22,7 @@ local GROUP_SIZE = 5
 local SO = {}
 ns.LineupSortState = SO
 
-local sort                 -- { night, steps, token, sig, stalls, quiet, moved }
+local sort                 -- { night, steps, token, sig, stalls, at (the last step), waiting, quiet, failed }
 local paused               -- the night whose sort a fight stopped ("Sortieren fortsetzen")
 
 local function IV() return ns.LineupInv end
@@ -145,6 +145,13 @@ stepNow = function()
     end
     local sig = act .. ":" .. a.name .. ":" .. (act == "set" and tostring(b) or b.name)
     if sig == sort.sig then
+        -- a roster event of something else came first: the server may not have moved him yet, and a
+        -- second swap would swap the two back; the same step again only after STEP_WAIT
+        local left = STEP_WAIT - (GetTime() - (sort.at or 0))
+        if left > 0.05 then
+            sort.waiting = true
+            return schedule(left)
+        end
         sort.stalls = sort.stalls + 1
         if sort.stalls >= MAX_STALLS then
             sort.failed = true
@@ -164,6 +171,7 @@ stepNow = function()
         return done(L["Sortieren angehalten: das Spiel hat %s nicht verschoben."]:format(a.name))
     end
     sort.steps = sort.steps + 1
+    sort.at = GetTime()
     sort.waiting = true
     schedule(STEP_WAIT)
 end
