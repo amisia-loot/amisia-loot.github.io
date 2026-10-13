@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.35.0 (2026-10-13)
+
+- Leistung: Versionsliste ohne Gruppenliste pro Eintrag (23 -> 0,5 ms), Export-Status alter Raids 5 s gemerkt (32 -> 0,2 ms), Aufstellung baut die Spielerliste einmal pro Bild
+
 ## 2.34.0 (2026-10-13)
 
 - Erinnerung an nicht exportierte Raids am Ende der Aufnahme und beim Aufbewahren (record.exportWarn)
