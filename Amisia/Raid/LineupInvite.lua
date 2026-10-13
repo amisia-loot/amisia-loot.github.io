@@ -266,6 +266,8 @@ local function watchAnswers()
 end
 
 local lastInvited          -- the record of the newest invite (ERR_GROUP_FULL names nobody)
+local lastInvitedAt        -- and when Amisia sent it: ERR_GROUP_FULL counts only within FULL_PIN s
+local FULL_PIN = 3
 
 local function invite(night, name, group)
     local r = rec(night, name, true)
@@ -274,7 +276,7 @@ local function invite(night, name, group)
     if type(fn) ~= "function" then return false end
     r.tries = r.tries + 1
     r.st, r.at, r.back, r.unclear = "I", GetTime(), nil, nil
-    lastInvited = r
+    lastInvited, lastInvitedAt = r, GetTime()
     local ok = pcall(fn, name)
     if not ok then
         r.st = "P"
@@ -487,9 +489,11 @@ ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     if not nights[night] then return end
     local full = pattern("ERR_GROUP_FULL")
     if full and text:find(full) then
-        -- the newest invite did not go out: back to "geplant", the invite not counted
+        -- the newest invite did not go out: back to "geplant", the invite not counted; only within
+        -- FULL_PIN seconds of Amisia's invite (later it answers the officer's own invite, review
+        -- 2026-10-13)
         local r = lastInvited
-        if r and r.st == "I" then
+        if r and r.st == "I" and lastInvitedAt and GetTime() - lastInvitedAt < FULL_PIN then
             r.st, r.tries = "P", math.max(0, r.tries - 1)
             -- the run stops: a full raid (or a party that is no raid yet) takes nobody more
             if run then finish(L["die Gruppe ist voll"]) end
@@ -505,7 +509,6 @@ ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
             if r then
                 if m[2] == "I" then
                     if r.st == "I" then r.at = GetTime() end
-                    lastInvited = r
                 elseif m[2] == "R" or r.st == "I" then
                     -- an answer only to a waiting invite; a join always
                     r.st = m[2]
@@ -624,7 +627,7 @@ ns.OnEvent("CHAT_MSG_WHISPER", function(text, sender) IV.Whisper(text, sender) e
 
 -- for the tests and the scene
 IV._reset = function()
-    nights, started, run, lastInvited = {}, {}, nil, nil
+    nights, started, run, lastInvited, lastInvitedAt = {}, {}, nil, nil, nil
     invLast, invTimes = {}, {}
     if ticker then ticker:Cancel() ticker = nil end
 end

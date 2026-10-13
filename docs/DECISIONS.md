@@ -963,7 +963,9 @@ Amisia (als Leiter) in einen Raid um und lädt den Rest ein. Unklare Namen (verm
 unbekannt) und Offline-Spieler werden nicht eingeladen, Gäste nur mit `lineup.guests`. Der Status pro
 Name kommt aus den Systemmeldungen über die Textvorlagen des Spiels (`ERR_*_S`, nie deutscher Text) und
 aus der Raidliste: geplant, eingeladen, im Raid, abgelehnt, keine Antwort (nach 90 Sekunden), schon in
-Gruppe, offline, unbekannt; eine geheime Meldung (Sperre) wird übersprungen. "Nochmal einladen" nimmt
+Gruppe, offline, unbekannt; eine geheime Meldung (Sperre) wird übersprungen; "Gruppe ist voll"
+(`ERR_GROUP_FULL`, ohne Namen) gilt nur innerhalb von 3 Sekunden nach Amisias letzter Einladung
+(Review 2026-10-13). "Nochmal einladen" nimmt
 abgelehnt, keine Antwort und schon in Gruppe, einmal pro Klick; nie automatisch wiederholt; höchstens
 drei Einladungen pro Name und Abend (Klick und Flüstern zusammen). Die Status leben nur im Speicher
 (nach `/reload` neu aus der Raidliste, der Zähler beginnt neu). Flüstern beim Einladen

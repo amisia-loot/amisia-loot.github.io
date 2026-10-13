@@ -237,6 +237,17 @@ local last = INV[#INV].name
 STUB.fire("CHAT_MSG_SYSTEM", ERR_GROUP_FULL)
 assert(state(last).st == "P" and state(last).tries == 0, "back to geplant")
 STUB.tick(5)
+-- (review 2026-10-13) only within 3 s of Amisia's invite: a "full" later is the officer's own invite
+IV._reset()
+alone()
+INV = {}
+NS.LineupInviteAll(night)
+STUB.tick(5)
+last = INV[#INV].name
+STUB.fire("CHAT_MSG_SYSTEM", ERR_GROUP_FULL)
+assert(state(last).st == "I" and state(last).tries == 1, "an old invite stays eingeladen: " .. state(last).st)
+assert(IV._run() ~= nil, "the run goes on")
+IV._reset()
 
 -- the whisper: off by default; on: the fixed text once per name and night
 IV._reset()
