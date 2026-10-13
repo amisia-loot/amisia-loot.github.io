@@ -2,6 +2,20 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.29.0 (2026-10-13)
+
+- Spec Raid-Check approved with the proposals
+- Raid-Check-Daten: tools/build_raidcheck.py (Fläschchen, Elixiere, Essen, Klassen-Buffs aus den Client-Tabellen)
+- Gemeinsame Leser für Raid-Check und Gruppen-Prüfung (Raid/RaidCheckRead.lua)
+- Raid-Check und Raid-IDs: XQ/XA, IV/IQ, eigener Bericht, AmisiaDB.raidcheck
+- Specs: in-game group probe results (invites work from timers, auras readable out of combat)
+- Seite Raid-Check (Buffs & Verbrauch, Ausrüstung, Raid-IDs) und ID-Zeichen in der Aufstellung
+- D-46, F-098 und F-099 (2.29.0, gebaut): Raid-Check und Raid-IDs
+- Raid-IDs: IV unter der Schreibweise der Gildenliste, 12 Charaktere pro Absender auch beim Übernehmen
+- Raid-Check: Nutz-Elixiere (Wasseratmung, Entdecken, Wasserwandeln, Sprachen) zählen nicht als versorgt
+- Raid-Check und Raid-IDs: Bereitschaftscheck nur aus der Gilde, ein Neuzeichnen pro Schwall, Namensindex
+- Seitenliste wie die Kategorienliste des Auktionshauses (2.29.0)
+
 ## 2.28.0 (2026-10-12)
 
 - Spec Raid-Aufstellung: user wants parts C and D now, plus invite on whisper and auto assist
