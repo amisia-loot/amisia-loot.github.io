@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.34.0 (2026-10-13)
+
+- Erinnerung an nicht exportierte Raids am Ende der Aufnahme und beim Aufbewahren (record.exportWarn)
+
 ## 2.33.0 (2026-10-13)
 
 - Spec: Seite Dungeons und Einstellungen nach Reitern (freigegeben, mit Zurücksetzen)
