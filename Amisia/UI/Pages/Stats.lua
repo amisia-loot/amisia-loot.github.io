@@ -61,11 +61,46 @@ end
 
 local function plural(n, one, many) return n == 1 and one or many end
 
--- The statistics as the page shows them: the range and the filters (officers), sorted.
+-- The statistics of a range without filters, kept until the raids change: an award, a sync, a
+-- deleted raid (DATA_CHANGED), the alt list (ALTS), a recording starting or ending (RECORDING), a raid
+-- more or less, a roster snapshot or a new raider, kill or award of the running raid, the hour (the
+-- weeks and the 4 weeks count from now). A sort, a row, the class or the role builds nothing.
+local cache = {}        -- range -> { stamp, res }
+local function invalidate() cache = {} end
+ns.Listen("DATA_CHANGED", invalidate)
+ns.Listen("ALTS", invalidate)
+ns.Listen("RECORDING", invalidate)
+
+local function dataStamp()
+    local act = ns.Active and ns.Active()
+    local n = #ns.Sessions()
+    if not act then return ("%d|%d"):format(n, math.floor(time() / 3600)) end
+    return ("%d|%s|%d|%d|%d|%d"):format(n, tostring(act.last), ns.MemberCount(act), type(act.kills) == "table" and #act.kills or 0,
+        type(act.awards) == "table" and #act.awards or 0, math.floor(time() / 3600))
+end
+
+local function statsOf(r)
+    local stamp = dataStamp()
+    local e = cache[r]
+    if not e or e.stamp ~= stamp then
+        e = { stamp = stamp, res = ns.StatsBuild({ range = r }) }
+        cache[r] = e
+    end
+    return e.res
+end
+
+-- The statistics as the page shows them: the range and the filters (officers), sorted. The players
+-- shown are res.all through the class and role test of ns.StatsBuild.
 local function build()
     local officer = ns.IsOfficerView()
-    local res = ns.StatsBuild({ range = range, class = officer and classPick ~= "all" and classPick or nil,
-                                role = officer and rolePick ~= "all" and rolePick or nil })
+    local class = officer and classPick ~= "all" and classPick or nil
+    local role = officer and rolePick ~= "all" and rolePick or nil
+    local full = statsOf(range)
+    local shown = {}
+    for _, p in ipairs(full.all) do
+        if (not class or p.class == class) and (not role or p.role == role) then shown[#shown + 1] = p end
+    end
+    local res = { from = full.from, phase = full.phase, awards = full.awards, raids = full.raids, all = full.all, players = shown }
     ns.StatsSort(res.players, sortCol, sortDesc)
     local rows = res.players
     if not officer then
@@ -301,8 +336,8 @@ function ns.ShowStats(which, name)
     if type(name) == "string" and name ~= "" then
         view, range, classPick, rolePick, wanted = "players", "all", "all", "all", name
     end
+    -- showing the page refreshes it
     ns.ShowPage("stats")
-    ns.Refresh()
 end
 
 ns.RegisterPanel{ key = "stats", label = L["Statistik"], icon = "Interface\\Icons\\INV_Misc_Note_05", order = 36, group = "raid",

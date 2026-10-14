@@ -187,9 +187,11 @@ NS.UndoAward()
 assert(o1.name == "Vulo" and o2.name == "Vulo")
 -- a name with no suggestion still gets the hint, without chips
 local o4 = NS.AddAwardTo(old, { name = "Niemand", item = 32235, kind = "MS", src = "?" })
+STUB.tick(0)   -- data changes redraw at the next frame
 rows[4]:Click()
 assert(O.edit.hint:IsShown() and not chips[1]:IsShown(), "no chips without a suggestion")
 NS.DeleteAward(old, o4.id)
+STUB.tick(0)
 assert(not O.edit:IsShown(), "the chosen award vanished with its deletion")
 
 -- the undo button carries the label as tooltip

@@ -29,7 +29,7 @@ assert(not F.tabs.gear:IsEnabled(), "not searching: the open tab is not clickabl
 NS.ShowPage("awards")
 NS.ShowPage("export")
 assert(W.pages.guild == "export" and W.pages.raid == "awards")
-NS.Set("ui.view", "raider")
+NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(NS.CurrentPage() == "overview" and F.tabs.raid.selected, "the page fell back to the overview")
 assert(W.pages.raid == "awards", "the raid tab keeps the page the player chose: " .. tostring(W.pages.raid))
 assert(W.pages.guild == "export")

@@ -66,7 +66,7 @@ NS.ShowSettingsSection("map")
 assert(not page.reset:IsEnabled(), "nothing to reset")
 NS.Set("map.pins", false)
 NS.Set("map.pinScale", 150)
-NS.Set("rolls.seconds", 30)
+NS.Set("rolls.seconds", 30); STUB.tick(0)
 assert(page.reset:IsEnabled())
 for _, e in ipairs(F.navOrder) do
     if e.entry.key == "map" then assert(has(e.button.label:GetText(), "dot"), "the changed mark") end

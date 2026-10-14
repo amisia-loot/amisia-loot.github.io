@@ -168,7 +168,24 @@ local function bestOf(col)
     return ns.BisFor(o.class, o.spec, o.level, o)
 end
 
-local function compute()
+-- What the results were computed for: the BiS stamp (gear, talents, settings, item data) and the
+-- window's choices. A reopen or a click that changes none of them computes nothing.
+local computedKey
+local function computeKey()
+    local g = settings()
+    local spec = g.specs[g.class] or (Gear.Specs(g.class)[1] or {}).key
+    local src = {}
+    for k, v in pairs(g.sources) do src[#src + 1] = tostring(k) .. "=" .. tostring(v) end
+    table.sort(src)
+    return table.concat({ tostring(ns.BisStamp()), tostring(g.view), tostring(g.col), tostring(g.class), tostring(spec),
+        tostring(ns.Get("bis.kind")), tostring(g.faction), table.concat(src, ","),   -- l10n-ok: setting key
+        tostring(UnitLevel and UnitLevel("player")) }, "|")
+end
+
+-- force: compute even with the same key (item data arrived).
+local function compute(force)
+    local key = computeKey()
+    if not force and key == computedKey then return end
     results = {}
     local g = settings()
     if g.view == "overview" then
@@ -176,6 +193,7 @@ local function compute()
     else
         results[g.col] = bestOf(g.col)
     end
+    computedKey = key
 end
 
 -- The equipped item's score, when the window shows the player's own class.
@@ -576,9 +594,11 @@ local function updateStatus()
     if not res then statusText:SetText("") end
 end
 
-function ns.GearRefresh(recompute)
+-- recompute: false keeps the results; otherwise they are computed when their key changed (force:
+-- always).
+function ns.GearRefresh(recompute, force)
     if not F or not F:IsShown() then return end
-    if recompute ~= false then compute() end
+    if recompute ~= false then compute(force) end
     updateControls()
     local g = settings()
     if g.view == "overview" then
@@ -603,7 +623,7 @@ Gear.OnData(function()
     refreshPending = true
     C_Timer.After(1, function()
         refreshPending = false
-        ns.GearRefresh(true)
+        ns.GearRefresh(true, true)
     end)
 end)
 

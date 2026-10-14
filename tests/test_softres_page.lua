@@ -62,7 +62,7 @@ assert(byName.Chorf and byName.Chorf.b:GetText() == "0" and byName.Chorf.c:GetTe
 assert(byName.Gustav and has(byName.Gustav.a:GetText(), "(nicht im Raid)"), "a name outside the raid")
 assert(byName.Bobbington and byName.Bobbington.c:GetText() == "keine")
 -- over the limit: the count turns red
-assert(NS.Set("softres.limit", 1))
+assert(NS.Set("softres.limit", 1)); STUB.tick(0)
 local red
 for _, r in ipairs(rows) do if r:IsShown() and has(r.a:GetText(), "Vuloo") then red = r end end
 assert(red and has(red.b:GetText(), "ff5050"), "red over the limit: " .. tostring(red and red.b:GetText()))

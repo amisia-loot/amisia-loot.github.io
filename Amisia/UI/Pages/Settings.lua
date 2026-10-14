@@ -49,9 +49,9 @@ local function makeRow(it)
     r.label:SetText(it.label or it.key)
     local path = it.key
     if it.type == "toggle" then
-        r.control = W.Toggle(r, function(v) touched = path; ns.Set(path, v) end)
+        r.control = W.Toggle(r, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
     elseif it.type == "slider" then
-        r.control = W.Stepper(r, 130, function(v) touched = path; ns.Set(path, v) end)
+        r.control = W.Stepper(r, 130, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
         r.control:Configure(it.min, it.max, it.step)
     elseif it.type == "time" then
         r.control = W.TimeBox(r, 70, function(text)
@@ -68,7 +68,7 @@ local function makeRow(it)
             ns.Refresh()
         end)
     elseif it.type == "choice" then
-        r.control = W.Choice(r, 150, function(v) touched = path; ns.Set(path, v) end)
+        r.control = W.Choice(r, 150, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
         r.control:SetValues(it.values)
     elseif it.type == "button" then
         r.control = W.Button(r, it.label, 230, function() touched = path; it.run() end)
@@ -77,7 +77,7 @@ local function makeRow(it)
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
     if it.type ~= "button" and it.type ~= "desc" then
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
-        r.reset = W.ResetButton(r, T.RESET, function() touched = path; ns.Reset(path) end)
+        r.reset = W.ResetButton(r, T.RESET, function() touched = path; ns.Reset(path); ns.Refresh() end)
         r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
         W.Tooltip(r.reset, L["Zurücksetzen"], L["Auf den Standard zurück."])
     end
@@ -222,8 +222,8 @@ function ns.ShowSettingsSection(key)
     forPage = nil
     clearSearch()
     fromTop = true
+    -- showing the page refreshes it
     if ns.ShowPage then ns.ShowPage("settings") end
-    ns.Refresh()
 end
 
 -- Opens the settings with the sections of a page (its head button), "Zurück zu <Seite>" above them.
@@ -232,8 +232,8 @@ function ns.ShowSettingsFor(pageKey)
     forPage = pageKey
     clearSearch()
     fromTop = true
+    -- showing the page refreshes it
     if ns.ShowPage then ns.ShowPage("settings") end
-    ns.Refresh()
 end
 
 -- The sections the page shows now (not while searching).

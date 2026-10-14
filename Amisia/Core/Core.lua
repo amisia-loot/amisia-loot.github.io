@@ -175,8 +175,9 @@ local function msg(text)
 end
 ns.msg = msg
 
+-- a data change: the window redraws once at the next frame however many come (MainFrame.lua)
 local function refresh()
-    if ns.Refresh then ns.Refresh() end
+    if ns.RefreshSoon then ns.RefreshSoon() elseif ns.Refresh then ns.Refresh() end
 end
 
 function ns.ItemName(id)
@@ -499,13 +500,15 @@ local function evaluate()
             started = true
         end
         startTicker()
+        -- the snapshot refreshes the window
         snapshotRoster()
         -- start or resume: the version check says hello, the sync claims or follows
         if started then ns.Fire("RECORDING", active) end
     elseif active then
         stopRecording()
+    else
+        refresh()
     end
-    refresh()
 end
 
 -- Remembers an item's name and quality from its link for the export.

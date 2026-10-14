@@ -412,7 +412,7 @@ local vb = MF.viewBtn
 assert(vb._w == 120 and vb.points.TOPRIGHT and vb.points.TOPRIGHT.rel == pause and vb.points.TOPRIGHT.x == -6)
 ML.row("head view", status, vb, pause)
 assert(MF.statusText._w == status._w - 20 and MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
-NS.SetEnabled(false); assert(pause:GetText() == "Fortsetzen" and MF.statusText:GetText():find("pausiert", 1, true))
+NS.SetEnabled(false); STUB.tick(0); assert(pause:GetText() == "Fortsetzen" and MF.statusText:GetText():find("pausiert", 1, true))
 pause:Click(); assert(NS.IsEnabled() and pause:GetText() == "Pausieren")
 -- the page list and the content field side by side, the page area exactly 602 x 478 at (191, -69)
 local listIn, contentIn = MF.listInset, MF.contentInset
@@ -616,7 +616,7 @@ assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents)
 assert(MF.clampInsets and MF.clampInsets[2] == tabs.gear:GetWidth(), "the tabs stay on the screen")
 -- a raider sees the gear and talent tabs; without gear data a raider sees the talents' only, an
 -- officer three without gaps
-NS.Set("ui.view", "raider")
+NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(tabsShown() == "gear talents", tabsShown())
 local keepGear = NS.GEAR
 NS.GEAR = nil
@@ -630,7 +630,7 @@ NS.UpdateSideTabs()
 assert(tabsShown() == "", tabsShown())
 assert(MF.clampInsets[2] == 0, "no tab shown: no inset on the right")
 NS.Talents.Available = talentsAvailable
-NS.Set("ui.view", "officer")
+NS.Set("ui.view", "officer"); STUB.tick(0)
 assert(MF.clampInsets[2] == tabs.rolls:GetWidth(), "tabs shown again: the inset is back")
 assert(tabsShown() == "talents rolls softres", tabsShown())
 assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents, "no gap for the hidden tab")

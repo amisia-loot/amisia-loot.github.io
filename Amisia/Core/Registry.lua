@@ -187,6 +187,7 @@ end
 -- Section: { key, label, order, group = the tab it belongs to (a key of ns.PANEL_GROUPS; "amisia" is
 --            "Allgemein"), pages = { page keys whose head button "Einstellungen" opens it }, officer,
 --            expert, available, items } (D-49)
+local groupsKept, keptN, keptVis = nil, 0, {}   -- ns.SettingsGroups, kept
 function ns.RegisterSettings(section)
     assert(type(section.key) == "string" and type(section.items) == "table", "RegisterSettings needs key and items")
     for _, it in ipairs(section.items) do
@@ -197,21 +198,33 @@ function ns.RegisterSettings(section)
         end
     end
     upsert(ns.schema, section, "key")
+    groupsKept = nil
 end
 
 function ns.SettingItem(path) return items[path] end
 
 -- The visible sections, by their tab (ns.PANEL_GROUPS order), then their order: { { key, label,
--- sections = { section, ... } }, ... }; a tab without a visible section is left out.
+-- sections = { section, ... } }, ... }; a tab without a visible section is left out. Kept while every
+-- section stays as visible as before (the view, expert mode, data there) and none is registered;
+-- the list is shared, callers only read it.
 function ns.SettingsGroups()
+    local same = groupsKept ~= nil and keptN == #ns.schema
+    for i, sec in ipairs(ns.schema) do
+        local v = ns.Visible(sec)
+        if keptVis[i] ~= v then
+            keptVis[i] = v
+            same = false
+        end
+    end
+    if same then return groupsKept end
     local out, byKey = {}, {}
     for _, g in ipairs(ns.PANEL_GROUPS) do
         local e = { key = g.key, label = g.key == "amisia" and L["Allgemein"] or g.label, sections = {} }
         out[#out + 1], byKey[g.key] = e, e
     end
-    for _, sec in ipairs(ns.schema) do
+    for i, sec in ipairs(ns.schema) do
         local e = byKey[sec.group] or byKey.amisia
-        if ns.Visible(sec) then e.sections[#e.sections + 1] = sec end
+        if keptVis[i] then e.sections[#e.sections + 1] = sec end
     end
     local shown = {}
     for _, e in ipairs(out) do
@@ -223,6 +236,7 @@ function ns.SettingsGroups()
             shown[#shown + 1] = e
         end
     end
+    groupsKept, keptN = shown, #ns.schema
     return shown
 end
 

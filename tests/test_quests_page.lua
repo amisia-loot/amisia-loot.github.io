@@ -123,7 +123,7 @@ L.column("page", f.zone, f.show.open, f.counts, f.head.title, f.list, f.hint, f.
 for _, fs in ipairs({ f.counts, f.hint, f.data, f.head.reward, f.head.go }) do L.fits(fs) end
 
 -- the switch takes the page away
-NS.Set("quests.enabled", false)
+NS.Set("quests.enabled", false); STUB.tick(0)
 assert(NS.CurrentPage() ~= "quests", "the page closes")
 NS.Set("quests.enabled", true)
 print("quests page: rows, chips, chain, waypoint, zones, search, layout")

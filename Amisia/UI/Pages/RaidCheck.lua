@@ -392,4 +392,14 @@ local function again()
 end
 ns.Listen("RAIDCHECK", again)
 ns.Listen("RAIDIDS", again)
-ns.OnEvent("GROUP_ROSTER_UPDATE", again)
+-- the roster comes in bursts (a raid forming, a group sort): one refresh 0.5 s after the first,
+-- only while the page is open, as each refresh reads the auras of the whole raid
+local rosterPending = false
+ns.OnEvent("GROUP_ROSTER_UPDATE", function()
+    if rosterPending or not (ns.CurrentPage and ns.CurrentPage() == "raidcheck") then return end
+    rosterPending = true
+    C_Timer.After(0.5, function()
+        rosterPending = false
+        again()
+    end)
+end)

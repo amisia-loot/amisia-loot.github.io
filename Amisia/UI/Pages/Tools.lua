@@ -44,7 +44,7 @@ local function buildDrops(f)
     D.head:SetAllPoints(D.bands[1])
     D.state = D:Line(2)
 
-    D.share = W.Toggle(D, function(on) ns.Set("drops.share", on) end)
+    D.share = W.Toggle(D, function(on) ns.Set("drops.share", on); ns.Refresh() end)
     D.shareLabel = W.Text(D, T.FONT.text, 180)
     D.shareLabel:SetText(L["Mit der Gilde teilen"])
     W.Tooltip(D.share, L["Drop-Daten mit der Gilde teilen"], L["Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern."])
