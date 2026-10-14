@@ -2,6 +2,14 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.36.0 (2026-10-14)
+
+- Leistung: Punktestand gemerkt für Raids (122 -> 3 ms, nach einer Änderung 6 ms), Punkte- und Prio-Stand des Keepers nur nach Änderungen neu (5-s-Takt 126 -> 2,6 ms), Export-Fingerabdruck alter Raids bis zu 60 s gemerkt, solange nichts geändert wurde (230 -> 0,2 ms)
+- Leistung: Gruppenliste einmal pro Bild statt pro Name (Roll-Zeile 70 -> 2,3 ms, Raider mit Amisia 33 -> 0,9 ms), Plus-Eins einmal pro Bild gezählt (40 Namen 11 -> 0,5 ms), Hallo ohne Neuaufbau der Versionsliste (3,6 -> 0,2 ms), stille Absender nach 10 Minuten vergessen
+- Leistung: BiS-Rechnung nur bei Wertungsänderung (Taschenänderung 54 -> 5 ms, Waffenfertigkeit 62 -> 0 ms), kein Aufwärmen im Kampf, Gear.Best mit Set-Index (51 -> 31 ms), Fertigkeitszeilen feuern nur bei echter Änderung (Handwerker-Index 9 -> 0 ms), Erz-Hover baut keine Ausrüstungsdaten (18,5 ms/5,4 MB -> 0,1 ms), Drop-Index erst beim Senden (20 -> 0,1 ms), LinkSuffix in einem Muster und bekannte Taschenlinks übersprungen, DropsMigrate ohne neue Tabellen (39 ms/2,3 MB -> 30 ms/64 KB), Tooltip-Cache der Handwerker begrenzt
+- Leistung: Statistik gemerkt (88 -> 0,7 ms je Aktualisierung, Neubau 86 -> 27 ms), Ausrüstungsfenster rechnet beim Öffnen nur bei Änderung (166 -> 3 ms), Raid-Check liest nach einer Gruppen-Welle einmal (30 x 5 ms -> 1), Fenster zeichnet Datenänderungen einmal im nächsten Bild
+- Review Leistung: Statistik nach einer Minute neu statt nach einer Stunde (Raids über der 4-Wochen-Grenze), BiS-Ziele im Kampf wieder vorbereitet wie vorher
+
 ## 2.35.1 (2026-10-13)
 
 - Review 2.35: Kandidatenliste bei geheimen Namen vollständig, Abschnitt zurücksetzen nur sichtbare Einstellungen, Soft-Reserve-Name aus einem Wort ohne Realm, Export-Erinnerung höchstens alle 10 Minuten, Checkliste für Einstellungen
