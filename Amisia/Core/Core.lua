@@ -529,16 +529,8 @@ function ns.AddAward(name, item, kind, src, t)
     return ns.AddAwardTo(active, { name = name, item = item, kind = kind, src = src, t = t })
 end
 
--- Whether a short name belongs to the current group; returns true and the class token.
-function ns.InGroup(name)
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        -- a secret name (boss fight on Forever) is skipped, never compared
-        n, class = ns.Plain(n), ns.Plain(class)
-        if type(n) == "string" and ns.SameName(n, name) then return true, class end
-    end
-    return false
-end
+-- ns.InGroup (whether a short name belongs to the current group, and its class) lives in Names.lua
+-- with the group index.
 
 -- Deletes the newest living award of the running recording (a tombstone, so it can be undone).
 function ns.RemoveLastAward()

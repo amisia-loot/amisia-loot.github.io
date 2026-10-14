@@ -323,23 +323,10 @@ end
 function ns.TrustName(raw)
     raw = ns.Plain(raw)
     if type(raw) ~= "string" or raw == "" then return nil end
-    -- the group (40 at most) first, then the guild through its index: the names of both, each
-    -- spelling once, the group's spelling first
-    local group, groupFirst = {}, {}
-    for _, n in ipairs(ns.GroupRoster()) do
-        local low = n:lower()
-        if not group[low] then
-            group[low] = n
-            local f = firstOf(low)
-            local e = groupFirst[f]
-            if not e then
-                e = { d = 0, n = n, lows = {} }
-                groupFirst[f] = e
-            end
-            e.d = e.d + 1
-            e.lows[#e.lows + 1] = low
-        end
-    end
+    -- the group (40 at most, its index read once per frame) first, then the guild through its
+    -- index: the names of both, each spelling once, the group's spelling first
+    local gIdx = ns.GroupIndex()
+    local group = gIdx.low
     local idx = readable(false) and rosterIdx or nil
     local function match(cand)
         cand = ns.FullName(cand)
@@ -350,15 +337,15 @@ function ns.TrustName(raw)
         if m then return m.name end
         -- a first name alone: only when exactly one name of group and guild carries it
         local f = firstOf(low)
-        local g, e = groupFirst[f], idx and idx.first[f]
+        local g, e = ns.GroupFirst(gIdx)[f], idx and idx.first[f]
         local d = (g and g.d or 0) + (e and e.d or 0)
         if g and e then
-            for _, l in ipairs(g.lows) do
-                if idx.low[l] then d = d - 1 end
+            for i = 1, g.d do
+                if idx.low[g[i]] then d = d - 1 end
             end
         end
         if d ~= 1 then return nil end
-        local n = g and g.n or e.m.name
+        local n = g and g.m or e.m.name
         if low:find(" ", 1, true) and n:find(" ", 1, true) then return nil end
         return n
     end
@@ -368,14 +355,7 @@ function ns.TrustName(raw)
     return base and match(base) or nil
 end
 
--- Whether a name is in the own group (ns.SameNameIn over the group).
-function ns.InMyGroup(name)
-    local group = ns.GroupRoster()
-    for _, n in ipairs(group) do
-        if ns.SameNameIn(name, n, group) then return true end
-    end
-    return false
-end
+-- ns.InMyGroup (whether a name is in the own group) lives in Names.lua with the group index.
 
 ---------------------------------------------------------------------------
 -- Waiting for the roster

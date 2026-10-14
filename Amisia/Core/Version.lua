@@ -180,10 +180,19 @@ end)
 ---------------------------------------------------------------------------
 -- What was seen
 ---------------------------------------------------------------------------
+-- A number that grows with every change of the seen list made here (Need.lua keeps its list of
+-- raiders with Amisia while it stays).
+local seenRev = 0
+function ns.VersionSeenRev() return seenRev end
+
 local function trim(d)
+    -- counted first: a hello mostly replaces an entry, and the list is only built when it is too long
+    local count = 0
+    for _ in pairs(d.seen) do count = count + 1 end
+    if count <= SEEN_MAX then return end
+    seenRev = seenRev + 1
     local list = {}
     for name, e in pairs(d.seen) do list[#list + 1] = { name = name, at = e.at } end
-    if #list <= SEEN_MAX then return end
     table.sort(list, function(a, b) return a.at < b.at end)
     for i = 1, #list - SEEN_MAX do d.seen[list[i].name] = nil end
 end
@@ -250,26 +259,38 @@ function ns.VersionNewer()
     return nil
 end
 
+-- The state of the last full check (seen list, warned version, own version) when it left nothing
+-- to say: a hello of the own version or an older one can then add nothing (it only takes entries
+-- out of the candidates), so only a newer one checks again.
+local checked = {}
+
 local function checkNewer()
+    checked.seen = nil
     if ns.Get("sync.outdatedWarn") == false then return end
     local v, name = ns.VersionNewer()
     local d = db()
-    if not v or not d then return end
-    if type(d.warned) == "string" and ns.CompareVersion(v, d.warned) <= 0 then return end
-    d.warned = v
-    ns.msg(L["Es gibt eine neuere Version (%s, gesehen bei %s). Du hast %s."]:format(v, name, ns.VERSION))
+    if not d then return end
+    if v and not (type(d.warned) == "string" and ns.CompareVersion(v, d.warned) <= 0) then
+        d.warned = v
+        ns.msg(L["Es gibt eine neuere Version (%s, gesehen bei %s). Du hast %s."]:format(v, name, ns.VERSION))
+    end
+    checked.seen, checked.warned, checked.version = d.seen, d.warned, ns.VERSION
 end
 
 local function record(name, e)
     local d = db()
     if not d then return end
     d.seen[name] = e
+    seenRev = seenRev + 1
     trim(d)
     if (e.mp or 0) > ns.SYNC_PROTO and e.flags:find("L", 1, true) and not warnedOld[name] then
         warnedOld[name] = true
         ns.msg(L["Deine Version ist zu alt für den Abgleich mit %s. Bitte aktualisieren."]:format(name))
     end
-    checkNewer()
+    if ns.CompareVersion(e.v, ns.VERSION) > 0 or checked.seen ~= d.seen or checked.warned ~= d.warned
+        or checked.version ~= ns.VERSION or ns.Get("sync.outdatedWarn") == false then
+        checkNewer()
+    end
     ns.Fire("SYNC_VERSIONS", name)
 end
 
@@ -297,6 +318,7 @@ function ns.VersionLoaded(DB)
         if type(name) ~= "string" or type(e) ~= "table" or type(e.at) ~= "number" or type(e.v) ~= "string"
             or type(e.flags) ~= "string" or t - e.at > SEEN_DAYS * 86400 then
             d.seen[name] = nil
+            seenRev = seenRev + 1
         end
     end
     trim(d)
