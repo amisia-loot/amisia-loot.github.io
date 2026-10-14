@@ -33,14 +33,9 @@ local function shortName(name)
     return ns.FullName(name)
 end
 
+-- in the group (a secret name, boss fight on Forever, is skipped, never compared) and its class
 local function inGroup(name)
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        -- a secret name (boss fight on Forever) is skipped, never compared
-        n, class = ns.Plain(n), ns.Plain(class)
-        if type(n) == "string" and ns.SameName(n, name) then return true, class end
-    end
-    return false
+    return ns.InGroup(name)
 end
 
 local function kindOf(low, high)

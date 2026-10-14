@@ -94,11 +94,13 @@ STUB.fire("LOOT_CLOSED")
 NS.SetSoftRes("Gustav 71005\n")
 local BLUE_X = STUB.item(71005, "Blauer Knopf", 3)
 STUB.secret["Zaubi"] = true
+STUB.fire("GROUP_ROSTER_UPDATE")
 corpse({ BLUE_X })
 STUB.fire("LOOT_CLOSED"); gives = {}
 STUB.fire("LOOT_OPENED", false)
 assert(NS.LootRulesPlan()[1].why == "reserviert", "a hidden name may be Gustav")
 STUB.secret["Zaubi"] = nil
+STUB.fire("GROUP_ROSTER_UPDATE")
 STUB.fire("LOOT_CLOSED")
 NS.ClearSoftRes()
 

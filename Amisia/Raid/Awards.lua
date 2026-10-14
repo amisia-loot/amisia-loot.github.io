@@ -126,13 +126,17 @@ local function report(op, s, info)
     if quiet == 0 and ns.SyncNote then ns.SyncNote(op, s, info) end
 end
 
+local dropPlus -- the plus-one tally of the frame (below) is out of date
+
 local function push(entry)
+    dropPlus()
     if quiet > 0 then return end
     undo[#undo + 1] = entry
     while #undo > UNDO_MAX do table.remove(undo, 1) end
 end
 
 local function changed()
+    dropPlus()
     ns.Fire("DATA_CHANGED")
 end
 
@@ -530,6 +534,65 @@ local function keeperPlus(scope)
     return p
 end
 
+-- The plus-one wins of the raids of a scope by the winner's spelling, counted once per frame: the
+-- roll start asks for 40 names, the award list for every row. { count = { name -> wins }, byMain =
+-- { lower main -> wins } of the winners whose name and main both carry a surname, slow = { the
+-- other winners, as first seen }, memo = { asked name -> plus-one } }. Two names with surnames
+-- belong to one player exactly when their mains are the same (ns.SameMain), so those winners are
+-- added up by the main; the others go through ns.SameMain one by one. Made again in the next frame, when
+-- the raids of the scope or their award counts change, with another alt list, and on every change
+-- of the book (also one by the sync).
+local tallyOf
+dropPlus = function() tallyOf = nil end
+ns.Listen("DATA_CHANGED", dropPlus)
+
+-- The lower main of a name when the name and its main both carry a surname, else nil.
+local function spacedMain(name)
+    local n = ns.FullName(name)
+    if not n or not n:find(" ", 1, true) then return nil end
+    local m = ns.FullName(ns.MainOf(n))
+    if not m or not m:find(" ", 1, true) then return nil end
+    return m:lower()
+end
+
+local function plusTally(scope)
+    local sessions = plusSessions(scope)
+    local alts = AmisiaDB and type(AmisiaDB.alts) == "table" and AmisiaDB.alts.list or nil
+    local t, c = GetTime(), tallyOf
+    if c and c.at == t and c.alts == alts and #c.sessions == #sessions then
+        for i, s in ipairs(sessions) do
+            if c.sessions[i] ~= s or c.sizes[i] ~= #(s.awards or {}) then c = nil break end
+        end
+    else
+        c = nil
+    end
+    if c then return c end
+    c = { at = t, alts = alts, sessions = sessions, sizes = {}, count = {}, order = {}, byMain = {}, slow = {}, memo = {} }
+    for i, s in ipairs(sessions) do
+        c.sizes[i] = #(s.awards or {})
+        for _, a in ipairs(s.awards or {}) do
+            -- a winner without a name counts for no one (ns.SameMain matches nothing)
+            if plusAward(a) and type(a.name) == "string" then
+                if not c.count[a.name] then
+                    c.count[a.name] = 0
+                    c.order[#c.order + 1] = a.name
+                end
+                c.count[a.name] = c.count[a.name] + 1
+            end
+        end
+    end
+    for _, w in ipairs(c.order) do
+        local key = spacedMain(w)
+        if key then
+            c.byMain[key] = (c.byMain[key] or 0) + c.count[w]
+        else
+            c.slow[#c.slow + 1] = w
+        end
+    end
+    tallyOf = c
+    return c
+end
+
 -- The plus-one of a player: the mainspec wins of the character and of every character linked
 -- to the same main (Alts.lua). The keeper's number, where it applies, is looked up by the name
 -- first, then by the main.
@@ -545,12 +608,16 @@ function ns.PlusCount(name, scope)
         end
         return 0
     end
-    local n = 0
-    for _, s in ipairs((plusSessions(scope))) do
-        for _, a in ipairs(s and s.awards or {}) do
-            if plusAward(a) and ns.SameMain(a.name, name) then n = n + 1 end
-        end
+    local tally = plusTally(scope)
+    local n = tally.memo[name]
+    if n then return n end
+    local key = spacedMain(name)
+    local list = key and tally.slow or tally.order
+    n = key and tally.byMain[key] or 0
+    for _, w in ipairs(list) do
+        if ns.SameMain(w, name) then n = n + tally.count[w] end
     end
+    tally.memo[name] = n
     return n
 end
 

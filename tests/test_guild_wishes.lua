@@ -100,8 +100,10 @@ assert(names(NS.WishersOf(28830)) == "Anna+,Bob,Vulo Sturmwind+", "in the group 
 assert(names(NS.WishersOf(28830, true)) == "Anna+,Vulo Sturmwind+", "only the group")
 assert(#NS.WishersOf(31000, true) == 0, "a first name alone is no one when two carry it")
 STUB.roster[4] = nil
+STUB.fire("GROUP_ROSTER_UPDATE")
 assert(names(NS.WishersOf(31000, true)) == "Vulo+", "and someone when it is clear")
 STUB.roster[4] = { name = "Vulo Eisherz", class = "SHAMAN" }
+STUB.fire("GROUP_ROSTER_UPDATE")
 assert(#NS.WishersOf(31001) == 2 and #NS.WishersOf(12345) == 0 and #NS.WishersOf(nil) == 0)
 
 ---------------------------------------------------------------------------

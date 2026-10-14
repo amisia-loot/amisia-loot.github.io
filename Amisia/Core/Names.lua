@@ -33,13 +33,71 @@ function ns.SameName(a, b)
     return false
 end
 
--- The plain names of the group (secret ones left out); {} when alone.
+-- The group, read once per frame (every addon message, roll line and roll window refresh asks for
+-- it, often once per name): list = the plain names in roster order (secret ones left out), class[i]
+-- = the plain class token of list[i]; low[lower name] = its first spelling. Read again in the next
+-- frame, when the member count changes, and on GROUP_ROSTER_UPDATE, the lockdown changing and an
+-- encounter (names turn secret or plain).
+local groupAt, groupCount, groupIdx
+local function groupIndex()
+    local t, count = GetTime(), GetNumGroupMembers() or 0
+    if groupIdx and groupAt == t and groupCount == count then return groupIdx end
+    local idx = { list = {}, class = {}, low = {} }
+    for i = 1, count do
+        local raw, _, _, _, _, class = GetRaidRosterInfo(i)
+        local n = ns.FullName(ns.Plain(raw))
+        if n then
+            local k = #idx.list + 1
+            idx.list[k], idx.class[k] = n, ns.Plain(class)
+            local low = n:lower()
+            if not idx.low[low] then idx.low[low] = n end
+        end
+    end
+    groupAt, groupCount, groupIdx = t, count, idx
+    return idx
+end
+-- read only: callers must not change it
+ns.GroupIndex = groupIndex
+
+-- The first names of the group index idx, made when a lookup needs them (a name the group does
+-- not hold as it is): first[lower first name] = { n = names carrying it, d = different spellings,
+-- m = the first of them, k = its index in list, [1..d] = those spellings in lower case }.
+local function groupFirst(idx)
+    idx = idx or groupIndex()
+    local first = idx.first
+    if first then return first end
+    first = {}
+    local seen = {}
+    for k, n in ipairs(idx.list) do
+        local low = n:lower()
+        local f = low:match("^(%S+)")
+        local e = first[f]
+        if not e then
+            e = { n = 0, d = 0, m = n, k = k }
+            first[f] = e
+        end
+        e.n = e.n + 1
+        if not seen[low] then
+            seen[low] = true
+            e.d = e.d + 1
+            e[e.d] = low
+        end
+    end
+    idx.first = first
+    return first
+end
+ns.GroupFirst = groupFirst
+
+local function dropGroup() groupIdx = nil end
+for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "ADDON_RESTRICTION_STATE_CHANGED", "ENCOUNTER_START", "ENCOUNTER_END",
+                         "PLAYER_ENTERING_WORLD" }) do
+    ns.OnEvent(event, dropGroup)
+end
+
+-- The plain names of the group (secret ones left out); {} when alone. A new table each call.
 function ns.GroupRoster()
     local out = {}
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then out[#out + 1] = n end
-    end
+    for i, n in ipairs(groupIndex().list) do out[i] = n end
     return out
 end
 
@@ -63,6 +121,54 @@ function ns.SameNameIn(a, b, roster)
     if a:lower() == b:lower() then return true end
     if not ns.SameName(a, b) then return false end
     return firstNameCount(a, roster) <= 1
+end
+
+-- ns.SameNameIn(a, b, ns.GroupRoster()) through the group index.
+function ns.SameNameInGroup(a, b)
+    a, b = ns.FullName(a), ns.FullName(b)
+    if not a or not b then return false end
+    if a:lower() == b:lower() then return true end
+    if not ns.SameName(a, b) then return false end
+    local e = groupFirst()[a:match("^(%S+)"):lower()]
+    return (e and e.n or 0) <= 1
+end
+
+-- Whether a name is in the own group (ns.SameNameIn over the group): the same spelling, else the
+-- one name of the group with its first name when one side has no surname.
+function ns.InMyGroup(name)
+    local idx = groupIndex()
+    if #idx.list == 0 then return false end
+    name = ns.FullName(name)
+    if not name then return false end
+    local low = name:lower()
+    if idx.low[low] then return true end
+    local e = groupFirst(idx)[low:match("^(%S+)")]
+    return e ~= nil and e.n == 1 and (not low:find(" ", 1, true) or not e.m:find(" ", 1, true))
+end
+
+-- Whether a name belongs to the group (ns.SameName, the first of the roster that fits); true and
+-- its class token.
+function ns.InGroup(name)
+    local idx = groupIndex()
+    if #idx.list == 0 then return false end
+    name = ns.FullName(name)
+    if not name then return false end
+    local low = name:lower()
+    local e = groupFirst(idx)[low:match("^(%S+)")]
+    if not e then return false end
+    local f, spaced = low:match("^(%S+)"), low:find(" ", 1, true)
+    -- the names with this first name, in roster order (the first at e.k)
+    local seen = 0
+    for k = e.k, #idx.list do
+        local n = idx.list[k]
+        local nl = n:lower()
+        if k == e.k or nl:match("^(%S+)") == f then
+            if not spaced or nl == low or not n:find(" ", 1, true) then return true, idx.class[k] end
+            seen = seen + 1
+            if seen == e.n then break end
+        end
+    end
+    return false
 end
 
 -- A value as it is, or nil when the client marks it secret (chat and unit names in a boss fight

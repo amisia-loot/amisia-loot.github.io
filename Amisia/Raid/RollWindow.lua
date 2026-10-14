@@ -776,8 +776,31 @@ end
 function ns.RollWindowTally(r)
     if not r or not r.wsSent then return nil end
     local roster = r.roster or ns.GroupRoster()
+    -- the keys of a set by their lower first name, once per call: ns.SameNameIn matches no key
+    -- with another first name
+    local byFirst = {}
+    local function keysOf(set)
+        local idx = byFirst[set]
+        if not idx then
+            idx = {}
+            for k in pairs(set) do
+                local n = ns.FullName(k)
+                if n then
+                    local f = n:match("^(%S+)"):lower()
+                    idx[f] = idx[f] or {}
+                    idx[f][#idx[f] + 1] = k
+                end
+            end
+            byFirst[set] = idx
+        end
+        return idx
+    end
     local function inSet(set, name)
-        for k in pairs(set or {}) do
+        if not set then return false end
+        local n = ns.FullName(name)
+        if not n then return false end
+        if set[name] ~= nil then return true end
+        for _, k in ipairs(keysOf(set)[n:match("^(%S+)"):lower()] or {}) do
             if ns.SameNameIn(k, name, roster) then return true end
         end
         return false
@@ -839,7 +862,7 @@ ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     local a = matcher(text)
     -- the own line only: a first name alone counts while only one raider carries it (another
     -- raider's number never shows as the own, nor closes the own buttons)
-    if not a or not ns.SameNameIn(a[1], me(), ns.GroupRoster()) then return end
+    if not a or not ns.SameNameInGroup(a[1], me()) then return end
     local value, low, high = tonumber(a[2]), tonumber(a[3]), tonumber(a[4])
     local kind = (low == 1 and high == 100 and "MS") or (low == 1 and high == 99 and "OS") or nil
     if not kind or not value then return end

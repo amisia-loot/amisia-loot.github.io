@@ -322,19 +322,30 @@ local function byPrio(a, b)
 end
 
 -- Raid members with Amisia (a hello this client accepted) but this client; with since, only those
--- whose hello named that version or a newer one.
+-- whose hello named that version or a newer one. Asked for every roll line and every second of a
+-- round: the list is kept for the frame, the group index and the seen list it came from (a hello
+-- recorded makes it again). A new table each call.
+local memo = {}   -- since (or false) -> { at, group, seen, rev, me, list }
 local function expected(since)
     local out = {}
     local d = AmisiaDB and type(AmisiaDB.sync) == "table" and AmisiaDB.sync.seen
     if type(d) ~= "table" then return out end
     local me = ns.UnitFullName("player")
-    for name, e in pairs(d) do
-        if type(name) == "string" and type(e) == "table" and (tonumber(e.p) or 0) >= 1 and not ns.SameName(name, me) and ns.InMyGroup(name)
-            and (not since or (type(e.v) == "string" and e.v:match("^%d+%.%d+%.%d+$") and ns.CompareVersion(e.v, since) >= 0)) then
-            out[#out + 1] = name
+    local at, group, rev = GetTime(), ns.GroupIndex(), ns.VersionSeenRev and ns.VersionSeenRev() or 0
+    local m = memo[since or false]
+    if not (m and m.at == at and m.group == group and m.seen == d and m.rev == rev and m.me == me) then
+        local list = {}
+        for name, e in pairs(d) do
+            if type(name) == "string" and type(e) == "table" and (tonumber(e.p) or 0) >= 1 and not ns.SameName(name, me) and ns.InMyGroup(name)
+                and (not since or (type(e.v) == "string" and e.v:match("^%d+%.%d+%.%d+$") and ns.CompareVersion(e.v, since) >= 0)) then
+                list[#list + 1] = name
+            end
         end
+        table.sort(list, function(a, b) return a:lower() < b:lower() end)
+        m = { at = at, group = group, seen = d, rev = rev, me = me, list = list }
+        memo[since or false] = m
     end
-    table.sort(out, function(a, b) return a:lower() < b:lower() end)
+    for i, name in ipairs(m.list) do out[i] = name end
     return out
 end
 ns.AmisiaInGroup = expected

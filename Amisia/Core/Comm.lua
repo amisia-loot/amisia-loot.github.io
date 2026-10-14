@@ -837,15 +837,28 @@ local function run(list, ...)
     end
 end
 
--- per sender (lower case): { times = { t }, bytes = { { t, n } }, ignoreUntil, kinds = { kind -> t } }
+-- per sender (lower case): { times = { t }, bytes = { { t, n } }, ignoreUntil, kinds = { kind -> t },
+-- last = the time of its latest message }
 local senders = {}
+-- A sender silent for 10 minutes without an open part set is forgotten: every limit and gap it
+-- held (10 s, 60 s, at most 5 minutes) has run out, so a fresh state means the same.
+local SENDER_IDLE, SENDER_SWEEP = 600, 60
+local sendersSweptAt = 0
 
 local function senderState(key)
+    local t = now()
+    if t - sendersSweptAt >= SENDER_SWEEP then
+        sendersSweptAt = t
+        for k, x in pairs(senders) do
+            if t - (x.last or 0) > SENDER_IDLE and #x.sets == 0 then senders[k] = nil end
+        end
+    end
     local s = senders[key]
     if not s then
         s = { times = {}, bytes = {}, kinds = {}, sets = {}, done = {} }
         senders[key] = s
     end
+    s.last = t
     return s
 end
 
