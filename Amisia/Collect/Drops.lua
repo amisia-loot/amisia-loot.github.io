@@ -230,6 +230,18 @@ local function capItems(it)
     return out
 end
 
+-- The item table itself when capItems would change nothing (no allocation), else capItems' answer.
+local function capItemsKept(it)
+    if type(it) ~= "table" then return nil end
+    local n = 0
+    for id, c in pairs(it) do
+        if not int(id, 1, 9999999) or not int(c, 1, 9999999) then return nil end
+        n = n + 1
+        if n > MAX_ITEMS or c > MAX_COUNT then return capItems(it) end
+    end
+    return it
+end
+
 local function bump()
     version = version + 1
     if ns.Fire then ns.Fire("DROPS_CHANGED") end
@@ -353,7 +365,7 @@ function ns.DropsMigrate(root)
     local today = ns.DropsToday()
     for id, r in pairs(d.k) do
         -- items of an older build (30 items, counts to 200) are brought within the caps
-        local it = type(r) == "table" and capItems(r.it) or nil
+        local it = type(r) == "table" and capItemsKept(r.it) or nil
         if it then r.it = it end
         if not isHex8(id) or not it or not validRecord(r, today, true) then
             d.k[id] = nil

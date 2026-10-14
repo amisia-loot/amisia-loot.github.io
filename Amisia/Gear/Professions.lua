@@ -349,9 +349,20 @@ function Pr.ReadTradeSkill()
         end
     end
     local c = store(true)
-    c[skill] = { rank = tonumber(ns.Plain(info.skillLevel)) or 0, max = tonumber(ns.Plain(info.maxSkillLevel)) or 0,
-        day = ns.DropsToday and ns.DropsToday() or 0, known = known }
-    ns.Fire("PROF_CHANGED", skill)
+    local prev = c[skill]
+    local rank, max = tonumber(ns.Plain(info.skillLevel)) or 0, tonumber(ns.Plain(info.maxSkillLevel)) or 0
+    c[skill] = { rank = rank, max = max, day = ns.DropsToday and ns.DropsToday() or 0, known = known }
+    -- the window updates its list often: news only when rank, cap or the known recipes changed
+    local same = type(prev) == "table" and prev.rank == rank and prev.max == max and type(prev.known) == "table"
+    if same then
+        local m = 0
+        for spell in pairs(prev.known) do
+            if not known[spell] then same = false break end
+            m = m + 1
+        end
+        same = same and m == n
+    end
+    if not same then ns.Fire("PROF_CHANGED", skill) end
     return true
 end
 
@@ -381,7 +392,19 @@ ns.OnEvent("TRADE_SKILL_SHOW", later)
 ns.OnEvent("TRADE_SKILL_LIST_UPDATE", later)
 ns.OnEvent("TRADE_SKILL_DATA_SOURCE_CHANGED", later)
 ns.OnEvent("NEW_RECIPE_LEARNED", onLearned)
-ns.OnEvent("SKILL_LINES_CHANGED", function() ns.Fire("PROF_CHANGED") end)
+-- every skill-up (weapon skills too) fires this: news only when the own professions changed
+local ownSig
+local function ownSignature()
+    local parts = {}
+    for _, p in ipairs(Pr.Own()) do parts[#parts + 1] = ("%d:%d:%d"):format(p.skill, p.rank, p.max) end
+    return table.concat(parts, ",")
+end
+ns.OnEvent("SKILL_LINES_CHANGED", function()
+    local sig = ownSignature()
+    if sig == ownSig then return end
+    ownSig = sig
+    ns.Fire("PROF_CHANGED")
+end)
 
 ---------------------------------------------------------------------------
 -- Difficulty

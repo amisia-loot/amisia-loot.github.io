@@ -578,6 +578,7 @@ local clock = 0
 local REQUESTS_PER_TICK, MAX_PENDING, TIMEOUT, MAX_TRIES = 15, 100, 6, 2
 local CACHE_VERSION = "v3"
 local arrived = false   -- an answer came by event since the last tick
+local waits = 0         -- how often Gear.Stats answered without the item's final stats
 local listeners = {}
 
 local function now() return GetTime and GetTime() or clock end
@@ -703,6 +704,10 @@ local function onLoaded(id, success)
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onLoaded)
 
+-- A counter raised whenever Gear.Stats answers for an item still waiting for its stats: a result
+-- made while it did not move holds only final stats (the client cannot change them any more).
+function Gear.StatsWaits() return waits end
+
 -- Stats of an item, or nil while unknown (it is then requested). The second value is true for an
 -- item the server never described, which is skipped rather than waited for; the stats the build
 -- computed for it (Gear.ComputedStats) still count then.
@@ -724,8 +729,11 @@ function Gear.Stats(id)
     end
     if not pending[id] and cached(id) then
         finishItem(id, Gear.ReadStats(id))
+        -- no stats: this answer is nil, the next one says failed
+        if not stats[id] then waits = waits + 1 end
         return stats[id] or nil
     end
+    waits = waits + 1
     if not queued[id] and not pending[id] then
         queued[id] = true
         queue[#queue + 1] = id
@@ -922,6 +930,7 @@ Gear._tick = tick
 function Gear._reset()
     wipe(stats); wipe(pending); wipe(queue); wipe(queued); wipe(suffixCache)
     arrived = false
+    waits = waits + 1
     memo, memoKey = {}, nil
     if ticker then ticker:Cancel(); ticker = nil end
 end
@@ -1087,6 +1096,18 @@ local function setPlan(res, w, level, class)
     local used = {}
     for _ = 1, 2 do
         local bestSet
+        -- per free slot the first option of every set (one pass per list)
+        local firstOf = {}
+        for _, slot in ipairs(SET_SLOTS) do
+            if not used[slot] then
+                local f = {}
+                for i, e in ipairs(res[slot]) do
+                    local sid = Gear.SetOf(e[1])
+                    if sid ~= nil and f[sid] == nil then f[sid] = i end
+                end
+                firstOf[slot] = f
+            end
+        end
         for sid, set in pairs(S) do
             local bon = setBonuses(sid, set)
             local scored = false
@@ -1097,11 +1118,9 @@ local function setPlan(res, w, level, class)
                 for _, slot in ipairs(SET_SLOTS) do
                     if not used[slot] then
                         local list = res[slot]
-                        for i, e in ipairs(list) do
-                            if Gear.SetOf(e[1]) == sid then
-                                pieces[#pieces + 1] = { slot = slot, i = i, loss = list[1][2] - e[2] }
-                                break
-                            end
+                        local i = firstOf[slot][sid]
+                        if i then
+                            pieces[#pieces + 1] = { slot = slot, i = i, loss = list[1][2] - list[i][2] }
                         end
                     end
                 end
@@ -1248,6 +1267,11 @@ function Gear.Best(opts)
         return e
     end
     local exItem = opts.exclude and opts.exclude.item
+    local curEffort
+    local function put(list, e)
+        e.effort = curEffort
+        list[#list + 1] = e
+    end
 
     for id, row in pairs(d.I) do
         if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
@@ -1276,10 +1300,7 @@ function Gear.Best(opts)
                     if not failed then res.missing = res.missing + 1 end
                 elseif not (s.CLASSES and not s.CLASSES[class]) then
                     local group = GROUP[row[1]]
-                    local function put(list, e)
-                        e.effort = effort
-                        list[#list + 1] = e
-                    end
+                    curEffort = effort
                     if group == "1H" or group == "MH" then
                         put(lists.MH, score(id, s, "MH", group))
                         if group == "1H" and dual then
