@@ -173,9 +173,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`, Migrationsschritt 2 (D-48).
 
 ### F-103 Einstellungen nach Reitern, Knopf "Einstellungen", Zurücksetzen
-- Version: 2.33.0
+- Version: 2.37.0
 - Status: gebaut
-- Prüfung: Wenn du die Einstellungen öffnest, dann stehen in der Seitenliste links unter "Einstellungen" die Gruppen Raid, Ausrüstung, Gilde, Kalender und Allgemein, unter der gewählten ihre Abschnitte; ein Klick auf einen Abschnitt zeigt rechts nur dessen Zeilen.
+- Prüfung: Wenn du die Einstellungen öffnest, dann stehen in der Seitenliste links unter "Einstellungen" die Gruppen Raid, Ausrüstung, Gilde, Kalender und Allgemein, unter der gewählten ihre Abschnitte; ein Klick auf einen Abschnitt zeigt rechts nur dessen Zeilen; ein Klick auf die offene Gruppe (z. B. "Raid") klappt sie zu und wieder auf, ein Klick auf "Einstellungen" alle Gruppen, der Abschnitt rechts bleibt.
 - Prüfung: Wenn du auf der Seite Karte oben links neben der Ansicht "Einstellungen" klickst, dann zeigen die Einstellungen nur "Karte und Wegpunkt", oben "Zurück zu Karte"; der Knopf bringt dich zur Karte zurück.
 - Prüfung: Wenn du in einem Abschnitt etwas änderst und oben "Zurücksetzen" klickst, dann fragt Amisia nach und setzt nur diesen Abschnitt auf den Standard; der Abschnitt trägt vorher in der Liste den goldenen Punkt.
 - Prüfung: Wenn du unter Allgemein, Oberfläche "Alle Einstellungen zurücksetzen" klickst und bestätigst, dann meldet der Chat "N Einstellungen auf den Standard gesetzt.", und deine Raids und Listen sind noch da.

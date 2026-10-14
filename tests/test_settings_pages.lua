@@ -61,6 +61,29 @@ for _, e in ipairs(F.navOrder) do
 end
 assert(NS.SettingsChosen() == "mats")
 
+-- folding, as the auction house's categories: the open tab folds and unfolds, "Einstellungen" folds
+-- the tabs; the section stays shown; another section unfolds everything again
+local function navRow(kind, key)
+    for _, e in ipairs(F.navOrder) do
+        if e.entry.kind == kind and e.button.key == key then return e.button end
+    end
+end
+navRow("group", "guild"):Click()
+assert(NS.SettingsChosen() == "mats", "folding keeps the section")
+assert(has(navShown(), "settings raid gear guild calendar") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
+navRow("group", "guild"):Click()
+assert(has(navShown(), "guild -bank") and has(navShown(), "-mats"), "unfolded: " .. navShown())
+navRow("group", "guild"):Click()
+navRow("group", "gear"):Click()
+assert(NS.SettingsChosen() == "bis" and has(navShown(), "gear -bis") and not has(navShown(), "-mats"), "another tab opens: " .. navShown())
+navRow("page", "settings"):Click()
+assert(NS.SettingsChosen() == "bis" and not navRow("group", "raid") and not navRow("section", "bis"), "the tabs folded: " .. navShown())
+navRow("page", "settings"):Click()
+assert(navRow("group", "raid") and navRow("section", "bis"), "the tabs unfolded: " .. navShown())
+navRow("page", "settings"):Click()
+NS.ShowSettingsSection("mats")
+assert(navRow("group", "raid") and navRow("section", "mats"), "another section unfolds: " .. navShown())
+
 -- "Zurücksetzen": grey while nothing is changed, then the shown section after asking
 NS.ShowSettingsSection("map")
 assert(not page.reset:IsEnabled(), "nothing to reset")

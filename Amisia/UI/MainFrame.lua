@@ -144,9 +144,25 @@ local function pagesByGroup()
     return out
 end
 
+-- What the settings show (the chosen section, or the sorted keys of a page's sections; "" while
+-- searching): a fold in the page list holds only while this stays the same.
+local function settingsShown(chosen, set)
+    if chosen then return chosen end
+    if not set then return "" end
+    local keys = {}
+    for k in pairs(set) do keys[#keys + 1] = k end
+    table.sort(keys)
+    return table.concat(keys, " ")
+end
+
+-- Folded by a click in the page list, as the auction house's categories: the tabs under "Einstellungen"
+-- (treeShut) and the open tab's sections (tabShut = { key, at }); both hold for what the settings show
+-- at the click (at), another section or page's sections unfold everything again.
+local treeShut, tabShut
+
 -- What the page list shows: the visible pages of the open page's tab; while the settings page is open,
--- under it its tabs and, under the tab of the chosen section, that tab's sections (D-49):
--- { kind = "page"|"group"|"section", key, label, on = chosen, changed }.
+-- under it its tabs and, under the tab of the chosen section, that tab's sections (D-49), unless folded:
+-- { kind = "page"|"group"|"section", key, label, on = chosen, changed, open, has }.
 local function navEntries(byGroup)
     local out = {}
     local group = groupOf(current)
@@ -154,12 +170,20 @@ local function navEntries(byGroup)
         out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
         if p.key == "settings" and current == "settings" and ns.SettingsGroups and ns.SettingsChosen then
             local chosen, set = ns.SettingsChosen()
-            for _, g in ipairs(ns.SettingsGroups()) do
-                local open = false
+            local at = settingsShown(chosen, set)
+            -- a fold ends once the settings show something else (and does not come back with it)
+            if treeShut ~= at then treeShut = nil end
+            if tabShut and tabShut.at ~= at then tabShut = nil end
+            local tree = treeShut == nil
+            out[#out].open, out[#out].at = tree, at
+            for _, g in ipairs(tree and ns.SettingsGroups() or {}) do
+                local has = false
                 for _, sec in ipairs(g.sections) do
-                    if sec.key == chosen or (set and set[sec.key]) then open = true end
+                    if sec.key == chosen or (set and set[sec.key]) then has = true end
                 end
-                out[#out + 1] = { kind = "group", key = g.key, label = g.label, first = g.sections[1].key, open = open }
+                local open = has and not (tabShut and tabShut.key == g.key and tabShut.at == at)
+                out[#out + 1] = { kind = "group", key = g.key, label = g.label, first = g.sections[1].key, open = open,
+                    has = has, at = at }
                 if open then
                     for _, sec in ipairs(g.sections) do
                         out[#out + 1] = { kind = "section", key = sec.key, label = sec.label,
@@ -554,9 +578,26 @@ local function navRow()
         if e and e.kind == "section" then
             ns.ShowSettingsSection(e.key)
         elseif e and e.kind == "group" then
-            ns.ShowSettingsSection(e.first)
+            -- an open tab folds, a folded one with the chosen section unfolds, another opens its first
+            if e.open then
+                tabShut = { key = e.key, at = e.at }
+                ns.Refresh()
+            elseif e.has then
+                tabShut = nil
+                ns.Refresh()
+            else
+                ns.ShowSettingsSection(e.first)
+            end
         elseif self.key == "settings" and current == "settings" and ns.ShowSettingsSection then
-            ns.ShowSettingsSection()
+            -- the chosen section with the tabs open, folds the tabs, unfolds them again
+            local chosen = ns.SettingsChosen()
+            if chosen and e then
+                treeShut = e.open and e.at or nil
+                ns.Refresh()
+            else
+                treeShut = nil
+                ns.ShowSettingsSection()
+            end
         else
             ns.ShowPage(self.key)
         end
