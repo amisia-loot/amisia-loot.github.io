@@ -624,7 +624,7 @@ local function wheel(_, delta)
     if not it then return end
     local cur = tonumber(ns.Get("ui.talentScale")) or it.default
     local v = math.max(it.min, math.min(it.max, cur + (delta > 0 and 1 or -1) * TT.WINDOW.SCALE_STEP))
-    if v ~= cur then ns.Set("ui.talentScale", v) end
+    if v ~= cur then ns.Set("ui.talentScale", v); ns.Refresh() end
 end
 
 local function buildWindow()

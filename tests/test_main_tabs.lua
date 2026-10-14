@@ -51,7 +51,7 @@ assert(navShown() == "export bank", navShown())
 local bank, exp = NS.Panel("bank"), NS.Panel("export")
 local keepBank = bank.available
 bank.available = function() return false end
-NS.Set("ui.view", "raider")      -- the guild tab has no page left for a raider: gone, the page falls back
+NS.Set("ui.view", "raider"); STUB.tick(0)      -- the guild tab has no page left for a raider: gone, the page falls back
 assert(not F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear calendar amisia", table.concat(F.tabOrder, " "))
 assert(NS.CurrentPage() == "overview", "the open page fell back: " .. NS.CurrentPage())
 bank.available = keepBank

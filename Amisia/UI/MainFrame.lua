@@ -130,12 +130,27 @@ local function pagesOf(group)
     return out
 end
 
+-- The visible pages of every tab at once (group -> pages, in their order): one pass for a refresh.
+local function pagesByGroup()
+    local out = {}
+    for _, g in ipairs(ns.PANEL_GROUPS) do out[g.key] = {} end
+    for _, p in ipairs(ns.panels) do
+        local g = ns.PanelGroup(p)
+        if ns.Visible(p) then
+            out[g] = out[g] or {}
+            out[g][#out[g] + 1] = p
+        end
+    end
+    return out
+end
+
 -- What the page list shows: the visible pages of the open page's tab; while the settings page is open,
 -- under it its tabs and, under the tab of the chosen section, that tab's sections (D-49):
 -- { kind = "page"|"group"|"section", key, label, on = chosen, changed }.
-local function navEntries()
+local function navEntries(byGroup)
     local out = {}
-    for _, p in ipairs(pagesOf(groupOf(current))) do
+    local group = groupOf(current)
+    for _, p in ipairs(byGroup and (byGroup[group] or {}) or pagesOf(group)) do
         out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
         if p.key == "settings" and current == "settings" and ns.SettingsGroups and ns.SettingsChosen then
             local chosen, set = ns.SettingsChosen()
@@ -161,9 +176,9 @@ end
 -- category bar, a settings tab and section as its sub-category bars); the bars are NAV_ROW_H high,
 -- lower (NAV_ROW_MIN at least) when more than fit the list. F.navOrder holds what is shown, top to
 -- bottom ({ button = row, entry = what it shows }).
-local function updateNav()
+local function updateNav(byGroup)
     local order, y = {}, 0
-    local entries = navEntries()
+    local entries = navEntries(byGroup)
     local rowH = ROW_H
     if #entries > 0 then
         rowH = math.max(M.NAV_ROW_MIN, math.min(ROW_H, math.floor(M.NAV_LIST_H / #entries)))
@@ -277,7 +292,7 @@ end
 
 -- Shows the tabs whose group has a visible page, left to right without gaps, the open page's selected
 -- (and, while the search shows its results, still clickable: a click brings its page list back).
-local function updateTabs()
+local function updateTabs(byGroup)
     local searching = #query >= M.SEARCH_MIN
     local open = groupOf(current)
     local prev
@@ -285,7 +300,7 @@ local function updateTabs()
     for _, g in ipairs(ns.PANEL_GROUPS) do
         local tab = bottomTabs[g.key]
         if tab then
-            if #pagesOf(g.key) > 0 then
+            if #(byGroup and byGroup[g.key] or pagesOf(g.key)) > 0 then
                 tab:ClearAllPoints()
                 if prev then
                     tab:SetPoint("TOPLEFT", prev, "TOPRIGHT", M.BTAB_GAP, 0)
@@ -595,7 +610,10 @@ local function build()
     statusText:SetPoint("CENTER", bar, "CENTER", 0, 0)
     statusText:SetJustifyH("CENTER")
     if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
-    pauseBtn = W.Button(F, L["Pausieren"], M.PAUSE_W, function() ns.SetEnabled(not ns.IsEnabled()) end)
+    pauseBtn = W.Button(F, L["Pausieren"], M.PAUSE_W, function()
+        ns.SetEnabled(not ns.IsEnabled())
+        ns.Refresh()
+    end)
     pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
     viewBtn = W.Button(F, L["Raider-Ansicht"], M.VIEW_W, function() ns.ToggleView() end)
     viewBtn:SetPoint("TOPRIGHT", pauseBtn, "TOPLEFT", -M.VIEW_GAP, 0)
@@ -702,16 +720,19 @@ end
 
 function ns.ShowPage(key) showPage(key, true) end
 
+local soonPending, soonDirty = false, false
 function ns.Refresh()
     if not F or not F:IsShown() then return end
+    soonDirty = false
     local p = ns.Panel(current)
     if not ns.Visible(p) then
         showPage("overview", false)
         return
     end
     updateHeader()
-    updateNav()
-    updateTabs()
+    local byGroup = pagesByGroup()
+    updateNav(byGroup)
+    updateTabs(byGroup)
     if #query >= M.SEARCH_MIN then showResults() end
     ns.UpdateSideTabs()
     local frame = built[current]
@@ -719,6 +740,20 @@ function ns.Refresh()
         local ok, err = pcall(p.refresh, frame)
         if not ok then reportError(err) end
     end
+end
+
+-- A refresh at the next frame for data changes (a loot line, an award, a sync, a roster snapshot, a
+-- setting): many in one frame make one refresh; nothing while the window is closed (its show
+-- refreshes). A refresh in between (a click) takes the place of the waiting one.
+function ns.RefreshSoon()
+    if not F or not F:IsShown() then return end
+    soonDirty = true
+    if soonPending then return end
+    soonPending = true
+    C_Timer.After(0, function()
+        soonPending = false
+        if soonDirty then ns.Refresh() end
+    end)
 end
 
 -- The page the window opens with: the open one, else the last of the last tab, else the overview.
@@ -737,8 +772,8 @@ function ns.Toggle(exportLatest)
     if exportLatest and ns.ShowExport then ns.ShowExport(true) else ns.ToggleMain() end
 end
 
-ns.Listen("SETTING", function() ns.Refresh() end)
-ns.Listen("DATA_CHANGED", function() ns.Refresh() end)
+ns.Listen("SETTING", function() ns.RefreshSoon() end)
+ns.Listen("DATA_CHANGED", function() ns.RefreshSoon() end)
 
 local VIEW_WORDS = { offizier = "officer", officer = "officer", raider = "raider", auto = "auto", automatisch = "auto" }   -- l10n-ok: typed words
 ns.RegisterSlash("ansicht", { en = "view", args = L["[offizier|raider|auto]"], desc = L["Offiziers- oder Raider-Ansicht"],

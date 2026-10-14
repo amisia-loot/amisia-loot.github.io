@@ -191,6 +191,8 @@ local function edit(fields)
     if not s then return end
     local ok, why = ns.EditAward(s, a.id, fields)
     if not ok and why then ns.msg(why) end
+    -- a click shows its change at once (DATA_CHANGED redraws only at the next frame)
+    ns.Refresh()
 end
 
 -- A note typed into the edit panel but not committed yet belongs to the award it was typed for:

@@ -239,8 +239,8 @@ end
 -- Opens the page, in a view ("list" or "paste") when given.
 function ns.ShowPoints(which)
     if which == "list" or which == "paste" then view = which end
+    -- showing the page refreshes it
     ns.ShowPage("points")
-    ns.Refresh()
 end
 
 ns.RegisterPanel{ key = "points", label = L["Punkte"], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 37, group = "raid",

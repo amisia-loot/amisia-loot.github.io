@@ -272,7 +272,7 @@ for i = 1, 80 do
     STUB.item(31000 + i, ("Langer Gegenstand der Prüfung Nummer %d"):format(i), 4)
     NS.AddAwardTo(s, { name = "Fraktur", item = 31000 + i, kind = "MS", src = "Hochkriegsfürst Naj'entus" })
 end
-parts = NS.RaidSummary(s)
+parts = NS.RaidSummary(s); STUB.tick(0)
 assert(#parts >= 2, #parts)
 assert(D.area.box:GetText() == parts[1], "DATA_CHANGED builds the text again")
 assert(D.chips[1]:IsShown() and D.chips[2]:IsShown() and D.chips[1].label:GetText() == "Teil 1" and D.chips[1].on, "chips per part")

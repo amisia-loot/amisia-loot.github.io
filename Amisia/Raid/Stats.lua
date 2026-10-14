@@ -66,8 +66,10 @@ function ns.StatsBuild(opts)
     end
     local players, byKey = {}, {}
 
-    -- the player of a character name: by its main first, then by ns.SameMain
-    local function playerOf(name)
+    -- the player of a character name: by its main first, then by ns.SameMain. Kept per raw name for
+    -- this build (a name maps to the same player once seen; the names come back in every raid).
+    local known = {}
+    local function findPlayer(name)
         name = ns.FullName(ns.Plain(name))
         if not name then return nil end
         local key = tostring(ns.MainOf(name) or name):lower()
@@ -86,16 +88,38 @@ function ns.StatsBuild(opts)
         byKey[key] = p
         return p, name
     end
-    -- the record of one character of p: spellings of the same character merge (the longer stays)
+    local function playerOf(raw)
+        local e = type(raw) == "string" and known[raw]
+        if e then return e[1], e[2] end
+        local p, name = findPlayer(raw)
+        if p and type(raw) == "string" then known[raw] = { p, name } end
+        return p, name
+    end
+    -- the record of one character of p: spellings of the same character merge (the longer stays).
+    -- Kept per player and name; a merge that renames a record forgets what was kept, as the first
+    -- record matching a name may change then.
+    local charKnown = {}
     local function charOf(p, name)
-        for _, c in ipairs(p.chars) do
-            if ns.SameName(c.name, name) then
-                if #name > #c.name then c.name = name end
-                return c
+        local kept = charKnown[p]
+        local c = kept and kept[name]
+        if c then return c end
+        for _, o in ipairs(p.chars) do
+            if ns.SameName(o.name, name) then
+                if #name > #o.name then
+                    o.name = name
+                    charKnown = {}
+                end
+                c = o
+                break
             end
         end
-        local c = { name = name, items = 0, raids = 0 }
-        p.chars[#p.chars + 1] = c
+        if not c then
+            c = { name = name, items = 0, raids = 0 }
+            p.chars[#p.chars + 1] = c
+        end
+        kept = charKnown[p] or {}
+        charKnown[p] = kept
+        kept[name] = c
         return c
     end
     local function noteClass(p, name, class)

@@ -315,7 +315,7 @@ assert(#STUB.chat == 1 and last().chan == "RAID")
 STUB.roster = {}
 NS.Refresh()
 assert(not f.remind:IsEnabled() and not f.post:IsEnabled(), "locked without a raid")
-NS.Set("ui.view", "raider")
+NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(not f.remind:IsShown() and not f.post:IsShown(), "no buttons for raiders")
 NS.Reset("ui.view")
 _G.StaticPopup_Show = origShow
