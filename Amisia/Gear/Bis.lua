@@ -1281,18 +1281,15 @@ local RANK_SLOTS = { FINGER = { "FINGER1", "FINGER2" }, TRINKET = { "TRINKET1", 
     SHIELD = { "OFFHAND" }, HELD = { "OFFHAND" } }
 
 -- The targets are never computed inside a hover: when they are missing, once after it (at most
--- every WARM_GAP seconds), so the next hover has them; not in combat, then once it ends.
-local warmPending, warmAt, warmAfterCombat = false, nil, false
-local function inCombat() return InCombatLockdown and InCombatLockdown() and true or false end
+-- every WARM_GAP seconds), so the next hover has them.
+local warmPending, warmAt = false, nil
 local function warmTargets()
     if warmPending then return end
-    if inCombat() then warmAfterCombat = true return end
     warmPending = true
     local t = GetTime and GetTime() or 0
     local wait = warmAt and math.max(0, WARM_GAP - (t - warmAt)) or 0
     C_Timer.After(wait, function()
         warmPending = false
-        if inCombat() then warmAfterCombat = true return end
         warmAt = GetTime and GetTime() or 0
         if ns.BisTargetsCached() then return end
         local ok, err = pcall(ns.BisTargets)
@@ -1302,12 +1299,6 @@ local function warmTargets()
         end
     end)
 end
-
-ns.OnEvent("PLAYER_REGEN_ENABLED", function()
-    if not warmAfterCombat then return end
-    warmAfterCombat = false
-    warmTargets()
-end)
 
 -- Rank (1-3) and row of an item among the cached targets.
 local function targetRank(res, id, group)

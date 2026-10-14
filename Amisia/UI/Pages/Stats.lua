@@ -74,9 +74,9 @@ ns.Listen("RECORDING", invalidate)
 local function dataStamp()
     local act = ns.Active and ns.Active()
     local n = #ns.Sessions()
-    if not act then return ("%d|%d"):format(n, math.floor(time() / 3600)) end
+    if not act then return ("%d|%d"):format(n, math.floor(time() / 60)) end
     return ("%d|%s|%d|%d|%d|%d"):format(n, tostring(act.last), ns.MemberCount(act), type(act.kills) == "table" and #act.kills or 0,
-        type(act.awards) == "table" and #act.awards or 0, math.floor(time() / 3600))
+        type(act.awards) == "table" and #act.awards or 0, math.floor(time() / 60))
 end
 
 local function statsOf(r)

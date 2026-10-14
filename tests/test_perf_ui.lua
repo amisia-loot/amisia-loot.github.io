@@ -104,6 +104,10 @@ local s3 = raid("s3", 1)
 s3.members = { Chorf = { class = "WARRIOR", first = s3.start } }
 NS.Refresh()
 assert(builds == 6, "a new raid builds again: " .. builds)
+-- the time counts too: a minute later the build runs again (a raid passes the 28-day line or a week edge)
+STUB.now = STUB.now + 61
+NS.Refresh()
+assert(builds == 7, "a minute later builds again: " .. builds)
 NS.StatsBuild = build
 
 ---------------------------------------------------------------------------

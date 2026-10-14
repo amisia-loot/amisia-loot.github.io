@@ -3,7 +3,7 @@
 -- across ownership changes (bags, equipment, weapon skill-ups) and made again after talents,
 -- settings, BiS changes, new stats or suffixes, with the same targets as a fresh calculation; a
 -- weapon skill-up fires no PROF_CHANGED and no new quest state, a profession skill-up and a new
--- recipe do; the targets are not warmed in combat, after it they are; ns.LinkSuffix gives what the
+-- recipe do; the targets are warmed in combat as before (cheap now); ns.LinkSuffix gives what the
 -- field-by-field reading gave; DropsMigrate keeps an item table within the caps; a bag link noted
 -- again is skipped, a note with a source still counts.
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
@@ -139,7 +139,7 @@ end, false)
 Gear.Best = realBest
 
 ---------------------------------------------------------------------------
--- Not warmed in combat, after it
+-- Warmed in combat too, as before the pass (a stamp-only change costs little now)
 ---------------------------------------------------------------------------
 NS.Set("bis.tooltipNone", false)
 STUB.combat = true
@@ -147,11 +147,8 @@ NS.BisBump()
 assert(NS.BisTargetsCached() == nil)
 NS.BisTooltipLines(STUB.worn[1])
 STUB.tick(5)
-assert(NS.BisTargetsCached() == nil, "no targets computed in combat")
+assert(NS.BisTargetsCached() ~= nil, "computed in combat, after the hover")
 STUB.combat = false
-STUB.fire("PLAYER_REGEN_ENABLED")
-STUB.tick(5)
-assert(NS.BisTargetsCached() ~= nil, "computed after the combat")
 
 ---------------------------------------------------------------------------
 -- Skill lines: PROF_CHANGED and the quest state only on a real change
