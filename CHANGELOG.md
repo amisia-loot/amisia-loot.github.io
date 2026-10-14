@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.37.0 (2026-10-14)
+
+- Einstellungen in der Seitenliste ein- und ausklappen: Klick auf die offene Gruppe klappt ihre Abschnitte zu, Klick auf Einstellungen alle Gruppen (wie das Auktionshaus)
+
 ## 2.36.0 (2026-10-14)
 
 - Leistung: Punktestand gemerkt für Raids (122 -> 3 ms, nach einer Änderung 6 ms), Punkte- und Prio-Stand des Keepers nur nach Änderungen neu (5-s-Takt 126 -> 2,6 ms), Export-Fingerabdruck alter Raids bis zu 60 s gemerkt, solange nichts geändert wurde (230 -> 0,2 ms)
