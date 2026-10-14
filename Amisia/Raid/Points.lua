@@ -428,9 +428,8 @@ end
 
 -- The earnings of raid s: { { id, char, name (main), n, code R|B|T|N, t, boss } }, the same ids on
 -- every call. Nothing for a raid without a system or taken out of the count.
-function ns.PointsRaidEarnings(s)
+local function raidEarnings(s, p)
     local out = {}
-    local p = ns.PointsSession(s)
     if not p or p.off or p.sys == "roll" then return out end
     local cfg = p.cfg or {}
     local function add(char, n, code, t, boss, key)
@@ -472,6 +471,96 @@ function ns.PointsRaidEarnings(s)
         end
     end
     return out
+end
+
+-- The earnings of a raid that is not recording are kept: the standings walk every saved raid (a
+-- checksum per earning), and the points sync asks every 5 seconds. Every change of an old raid fires
+-- DATA_CHANGED (or POINTS, SETTING; RECORDING when a raid starts or ends): after one, a kept list is
+-- used only while what it was made of reads the same (a plain text, no checksum); a new alts list
+-- (ALTS) drops them all, and a raid whose tables were replaced is counted again. The recording raid is
+-- compared on every call: its roster grows without an event. The list is shared: callers only read it.
+local earnMemo = setmetatable({}, { __mode = "k" })   -- session -> { list, sums, inputs, gen, the tables it was made of }
+local earnGen = 0
+for _, event in ipairs({ "DATA_CHANGED", "POINTS", "SETTING", "RECORDING" }) do
+    ns.Listen(event, function() earnGen = earnGen + 1 end)
+end
+ns.Listen("ALTS", function() earnMemo = setmetatable({}, { __mode = "k" }) end)
+
+local function altsList()
+    local a = AmisiaDB and AmisiaDB.alts
+    return type(a) == "table" and a.list or false
+end
+
+-- Everything raidEarnings reads of raid s, as one text.
+local function earningInputs(s, p)
+    local parts, n = {}, 0
+    local function put(v)
+        n = n + 1
+        parts[n] = tostring(v)
+    end
+    local cfg = p.cfg or {}
+    put(s.id); put(s.start); put(p.off); put(p.sys); put(cfg.raid); put(cfg.time); put(cfg.boss); put(cfg.bench)
+    put("M")
+    for name, m in pairs(s.members or {}) do
+        put(name); put(m.late and 1 or 0)
+    end
+    put("K")
+    for _, k in ipairs(s.kills or {}) do
+        local boss = tostring(k.name)
+        put(k.t); put(k.enc); put(k.ok and 1 or 0); put(k.wait and 1 or 0); put(#boss .. ":" .. boss)
+        if type(k.who) == "table" then
+            put(#k.who)
+            for _, who in ipairs(k.who) do put(who) end
+        else
+            put("-")
+        end
+    end
+    put("B")
+    for name, e in pairs(type(s.bench) == "table" and s.bench or {}) do
+        put(name); put(type(e) == "table" and e.t or "-")
+    end
+    return table.concat(parts, "\t")
+end
+
+function ns.PointsRaidEarnings(s)
+    local p = ns.PointsSession(s)
+    if not p or p.off or p.sys == "roll" then return raidEarnings(s, p) end
+    local m, alts = earnMemo[s], altsList()
+    if m and m.members == s.members and m.kills == s.kills and m.bench == s.bench and m.p == p and m.alts == alts then
+        if m.gen == earnGen and s ~= ns.Active() then return m.list end
+        local inputs = earningInputs(s, p)
+        if inputs == m.inputs then
+            m.gen = earnGen
+            return m.list
+        end
+    end
+    local list = raidEarnings(s, p)
+    earnMemo[s] = { list = list, inputs = earningInputs(s, p), gen = earnGen, members = s.members, kills = s.kills,
+                    bench = s.bench, p = p, alts = alts }
+    return list
+end
+
+-- The earnings of raid s summed per name, in the order the names first come: { { name, n } }, kept
+-- with the list (the standings add only the sums). Nil when an amount is no whole number: then the
+-- earnings are added one by one, so the sums stay exactly the same.
+local function raidSums(s)
+    local list = ns.PointsRaidEarnings(s)
+    local m = earnMemo[s]
+    if m and m.list == list and m.sums ~= nil then return m.sums or nil end
+    local sums, at = {}, {}
+    for _, e in ipairs(list) do
+        if e.n ~= math.floor(e.n) then sums = false break end
+        local x = at[e.name]
+        if x then
+            x[2] = x[2] + e.n
+        else
+            x = { e.name, e.n }
+            at[e.name] = x
+            sums[#sums + 1] = x
+        end
+    end
+    if m and m.list == list then m.sums = sums end
+    return sums or nil
 end
 
 ---------------------------------------------------------------------------
@@ -597,8 +686,8 @@ local function slot(map, name, make)
 end
 
 -- Walks everything that makes the standings of system sys: fn(main, pool, n, entry) where entry
--- is { code, t, reason, src }.
-local function walk(sys, fn)
+-- is { code, t, reason, src } (nil when bare: the sums only).
+local function walk(sys, fn, bare)
     local site = siteRec()
     local hasSite = site and site.sys == sys
     if hasSite then
@@ -619,15 +708,20 @@ local function walk(sys, fn)
         if p then
             local key = ns.RaidKey and ns.RaidKey(s)
             if p.sys == sys and not raids[s.id] and not (key and keys[key]) then
-                for _, e in ipairs(ns.PointsRaidEarnings(s)) do
-                    fn(e.name, earnPool(sys), e.n, { code = e.code, t = e.t, boss = e.boss, src = "raid", s = s, char = e.char })
+                local sums = bare and raidSums(s)
+                if sums then
+                    for _, x in ipairs(sums) do fn(x[1], earnPool(sys), x[2]) end
+                else
+                    for _, e in ipairs(ns.PointsRaidEarnings(s)) do
+                        fn(e.name, earnPool(sys), e.n, not bare and { code = e.code, t = e.t, boss = e.boss, src = "raid", s = s, char = e.char } or nil)
+                    end
                 end
             end
             for id, c in pairs(p.charges) do
                 local a = type(c) == "table" and c.p == pay and not ids[id] and living(s, id)
                 if a and (a.to == nil or a.to == "player") then
                     local main = ns.MainOf(a.name) or a.name
-                    fn(main, pay, sys == "dkp" and -c.n or c.n, { code = "A", t = a.t or c.at, item = a.item, src = "award", s = s, char = a.name })
+                    fn(main, pay, sys == "dkp" and -c.n or c.n, not bare and { code = "A", t = a.t or c.at, item = a.item, src = "award", s = s, char = a.name } or nil)
                 end
             end
         end
@@ -660,7 +754,7 @@ local function computed(sys)
     walk(sys, function(name, pool, n)
         local e = slot(map, name, true)
         if pool == "G" then e.b = e.b + n else e.a = e.a + n end
-    end)
+    end, true)
     return map
 end
 

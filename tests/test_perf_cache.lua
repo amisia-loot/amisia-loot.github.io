@@ -1,5 +1,6 @@
 -- The caches of the performance pass (2.35.0): an old raid's export fingerprint is kept 5 seconds,
--- the export itself and the recording raid always count now; the version list sorts a short chat name
+-- and up to 60 seconds while nothing changed (DATA_CHANGED and the other change events); the export
+-- itself and the recording raid always count now; the version list sorts a short chat name
 -- into the raid by its first name and keeps two of one first name apart; the lineup's people are built
 -- once per frame.
 STUB.roster = { { name = "Vulo Sturmwind", class = "WARRIOR" }, { name = "Mira Eisherz", class = "MAGE" },
@@ -19,8 +20,21 @@ local fresh = NS.PendingExport(true)
 local found = false
 for _, s in ipairs(fresh) do if s == old then found = true end end
 assert(found, "the export takes the changed raid at once")
-STUB.tick(6)
-assert(NS.ExportState(old) == "changed", "the kept fingerprint goes after 5 seconds")
+NS.MarkExported({ old })
+STUB.tick(1)
+old.awards[2] = { id = 2, name = "Vulo Sturmwind", item = 16801, t = 1756758100, kind = "OS", src = "Ragnaros" }
+assert(NS.ExportState(old) == "done", "a write without an event: the kept fingerprint")
+NS.Fire("DATA_CHANGED")
+STUB.tick(5)
+assert(NS.ExportState(old) == "changed", "after DATA_CHANGED the kept fingerprint goes after 5 seconds")
+NS.MarkExported({ old })
+STUB.tick(1)
+old.awards[3] = { id = 3, name = "Vulo Sturmwind", item = 16802, t = 1756758200, kind = "OS", src = "Ragnaros" }
+assert(NS.ExportState(old) == "done")
+STUB.tick(10)
+assert(NS.ExportState(old) == "done", "nothing changed: kept longer")
+STUB.tick(50)
+assert(NS.ExportState(old) == "changed", "and after 60 seconds at the latest")
 -- the recording raid is never kept
 local act = NS.Active()
 NS.MarkExported({ act })

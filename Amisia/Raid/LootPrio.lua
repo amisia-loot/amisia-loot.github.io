@@ -698,6 +698,22 @@ local function ownState()
     return hashOf(rows), #rows, rows
 end
 
+-- The hash and size for the 5 second tick, built again only after a change of the list (LOOT_PRIO;
+-- DATA_CHANGED), a list replaced without one, or every LV_REBUILD seconds.
+local LV_REBUILD = 30
+local lvState                  -- { p, at, h, n }
+local function lvDirty() lvState = nil end
+ns.Listen("LOOT_PRIO", lvDirty)
+ns.Listen("DATA_CHANGED", lvDirty)
+
+local function tickState()
+    local p, k = AmisiaDB and AmisiaDB.prio, lvState
+    if k and k.p == p and now() - k.at < LV_REBUILD then return k.h, k.n end
+    local h, n = ownState()
+    lvState = { p = p, at = now(), h = h, n = n }
+    return h, n
+end
+
 local function sendLV()
     if not shareOn() then return end
     local _, key = running()
@@ -705,7 +721,7 @@ local function sendLV()
         lastLV = nil
         return
     end
-    local h, n = ownState()
+    local h, n = tickState()
     if n == 0 then return end
     local t = now()
     if lastLV and lastLV.key == key then

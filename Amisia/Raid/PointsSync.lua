@@ -180,6 +180,21 @@ local function ownHash()
     return (type(sh) == "table" and sh.key == key and sh.hash) or ZERO
 end
 
+-- The keeper's state for the 5 second tick, built again only after a change: an event that can
+-- change the standings or the parameters, another group (its names as the build reads them) or
+-- raid roster, else every KV_REBUILD seconds.
+local KV_REBUILD = 30
+local kvState                  -- { s, key, sig, at, h, n }
+local function kvDirty() kvState = nil end
+for _, event in ipairs({ "DATA_CHANGED", "POINTS", "ALTS", "SETTING", "RECORDING" }) do ns.Listen(event, kvDirty) end
+ns.OnEvent("GROUP_ROSTER_UPDATE", kvDirty)
+
+local function kvSig(s)
+    local n = 0
+    for _ in pairs(s.members or {}) do n = n + 1 end
+    return n .. "\n" .. table.concat(ns.GroupRoster(), "\n")
+end
+
 local function sendKV()
     if not shareOn() then return end
     local s, key = running()
@@ -187,15 +202,25 @@ local function sendKV()
         lastKV = nil
         return
     end
-    local t = build(s)
-    if not t then return end
-    local h = hashOf(t)
+    local sig, k = kvSig(s), kvState
+    local h, n
+    if k and k.s == s and k.key == key and k.sig == sig and now() - k.at < KV_REBUILD then
+        h, n = k.h, k.n
+    else
+        local t = build(s)
+        if not t then
+            kvState = nil
+            return
+        end
+        h, n = hashOf(t), #t.s
+        kvState = { s = s, key = key, sig = sig, at = now(), h = h, n = n }
+    end
     local at = now()
     if lastKV and lastKV.key == key then
         if lastKV.h == h and at - lastKV.at < KV_EVERY then return end
         if at - lastKV.at < KV_GAP then return end
     end
-    if ns.CommSend("KV", { key, h, tostring(#t.s) }, "RAID", nil, { ttl = 60, key = "KV" }) then
+    if ns.CommSend("KV", { key, h, tostring(n) }, "RAID", nil, { ttl = 60, key = "KV" }) then
         lastKV = { h = h, key = key, at = at }
     end
 end

@@ -1002,10 +1002,17 @@ function ns.SessionHash(s, legacy)
     return checksum(table.concat(sessionLines(s, {}, {}, legacy), "\n"))
 end
 
--- The fingerprints of the raids that are not recording, kept HASH_KEEP seconds: the overview and
--- the raid lists ask on every refresh (each loot line), and 60 exported raids cost 30 ms each time.
-local HASH_KEEP = 5
-local hashes = setmetatable({}, { __mode = "k" })   -- session -> { h, at }
+-- The fingerprints of the raids that are not recording: the overview and the raid lists ask on every
+-- refresh (each loot line), and 60 exported raids cost 200 ms each time. A kept one holds HASH_SHORT
+-- seconds always (a burst of changes in the raid hashes once), and up to HASH_KEEP seconds while
+-- nothing changed (every edit of an old raid fires DATA_CHANGED or POINTS; RECORDING when a raid
+-- starts or ends).
+local HASH_SHORT, HASH_KEEP = 5, 60
+local hashes = setmetatable({}, { __mode = "k" })   -- session -> { h, at, gen }
+local hashGen = 0
+for _, event in ipairs({ "DATA_CHANGED", "POINTS", "ALTS", "SETTING", "RECORDING" }) do
+    ns.Listen(event, function() hashGen = hashGen + 1 end)
+end
 
 -- "new" (never exported), "changed" (exported, but more was recorded since) or "done". fresh: the
 -- fingerprint now (the export itself), else a kept one of a raid that is not recording.
@@ -1014,11 +1021,11 @@ function ns.ExportState(s, fresh)
     if not e then return "new" end
     local now, kept = GetTime(), hashes[s]
     local h
-    if not fresh and s ~= active and kept and now - kept.at < HASH_KEEP then
+    if not fresh and s ~= active and kept and (now - kept.at < HASH_SHORT or (kept.gen == hashGen and now - kept.at < HASH_KEEP)) then
         h = kept.h
     else
         h = ns.SessionHash(s)
-        hashes[s] = { h = h, at = now }
+        hashes[s] = { h = h, at = now, gen = hashGen }
     end
     return e.h == h and "done" or "changed"
 end
@@ -1055,7 +1062,7 @@ function ns.MarkExported(list)
     for _, s in ipairs(list) do
         local h = ns.SessionHash(s)
         DB.exported[s.id] = { h = h, at = t }
-        hashes[s] = { h = h, at = GetTime() }
+        hashes[s] = { h = h, at = GetTime(), gen = hashGen }
     end
     if DB.bank and DB.bank.counts then DB.exportedBank = DB.bank.at or 0 end
     if ns.MarkBankNeedsExported then ns.MarkBankNeedsExported() end
