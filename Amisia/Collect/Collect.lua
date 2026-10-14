@@ -46,28 +46,27 @@ end
 local MAX_SUFFIX_ITEMS, MAX_SUFFIXES = 1500, 12
 
 -- The suffix id of an item link (item:id:enchant:gem1:gem2:gem3:gem4:suffix:...), or nil for none.
+-- One match at the first "item:" with a field after it (each field digits and minus signs, as far as
+-- they go).
+local SUFFIX_FIELD = "^item:[%-%d]*:[%-%d]*:[%-%d]*:[%-%d]*:[%-%d]*:[%-%d]*:([%-%d]*)"
 function ns.LinkSuffix(link)
     if type(link) ~= "string" then return nil end
-    local body = link:match("item:([%-%d:]+)")
-    if not body then return nil end
-    local i = 0
-    for field in (body .. ":"):gmatch("([^:]*):") do
-        i = i + 1
-        if i == 7 then
-            local v = tonumber(field)
-            return (v and v ~= 0) and v or nil
-        end
-    end
-    return nil
+    local at = link:find("item:[%-%d:]")
+    local field = at and link:match(SUFFIX_FIELD, at)
+    if not field then return nil end
+    local v = tonumber(field)
+    return (v and v ~= 0) and v or nil
 end
 
+-- Returns true when the link's suffix needs nothing more (none, or kept), so noting it again would
+-- change nothing; nil when it may still be stored (caps, stats not there yet).
 local function noteSuffix(id, link)
     local suffix = ns.LinkSuffix(link)
-    if not suffix or not (C_Item and C_Item.GetItemStats) then return end
+    if not suffix or not (C_Item and C_Item.GetItemStats) then return true end
     local s = ns.ScanDB()
     s.suffix = type(s.suffix) == "table" and s.suffix or {}
     local seen = s.suffix[id]
-    if seen and seen[suffix] then return end
+    if seen and seen[suffix] then return true end
     if not seen then
         local n = 0
         for _ in pairs(s.suffix) do n = n + 1 end
@@ -92,12 +91,16 @@ local function noteSuffix(id, link)
     s.suffix[id] = seen
     seen[suffix] = table.concat(parts, ";")
     if ns.Gear and ns.Gear.SuffixNoted then ns.Gear.SuffixNoted(id) end
+    return true
 end
 ns.NoteSuffix = noteSuffix
 
 -- Items stored complete this session: a bag update or a tooltip writes an item's line once, not on
 -- every event (gear only once its stats came, so a line without them is written again).
 local complete = {}
+-- Links noted without a source whose item is complete and whose suffix needs nothing: noting them
+-- again (every bag update) does nothing, so it is skipped. At most DONE_LINKS_MAX, then anew.
+local doneLinks, doneLinksN, DONE_LINKS_MAX = {}, 0, 2000
 
 local function isComplete(id)
     local line = ns.ScanDB().items[id]
@@ -110,11 +113,24 @@ end
 -- Records an item by id or link. Returns true when it is stored now, false when requested.
 function ns.NoteItem(idOrLink, source)
     if not enabled() then return nil end
+    local isLink = type(idOrLink) == "string"
+    if isLink and not source and doneLinks[idOrLink] then return true end
     local id = tonumber(idOrLink) or ns.ItemID(idOrLink)
     if not id then return nil end
     addSource(id, source)
-    if type(idOrLink) == "string" then pcall(noteSuffix, id, idOrLink) end
-    if complete[id] then return true end
+    local settled = true
+    if isLink then
+        local ok, res = pcall(noteSuffix, id, idOrLink)
+        settled = ok and res == true
+    end
+    if complete[id] then
+        if isLink and settled and not source then
+            if doneLinksN >= DONE_LINKS_MAX then doneLinks, doneLinksN = {}, 0 end
+            doneLinks[idOrLink] = true
+            doneLinksN = doneLinksN + 1
+        end
+        return true
+    end
     if ns.StoreItem(id) then
         if isComplete(id) then complete[id] = true end
         return true

@@ -204,6 +204,34 @@ end
 ---------------------------------------------------------------------------
 
 local optsCache, optsGen
+-- The own skill lines { [skill line] = rank }, or nil when the client tells none.
+local function readSkills()
+    local info = _G.C_SkillInfo
+    if not (type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function") then
+        return nil
+    end
+    local out = {}
+    local ok, n = pcall(info.GetNumSkillLines)
+    for i = 1, (ok and tonumber(n)) or 0 do
+        local ok2, s = pcall(info.GetSkillLineInfo, i)
+        if ok2 and type(s) == "table" and not s.isHeader then
+            local id = tonumber(s.skillID)
+            if not id or id == 0 then id = type(s.name) == "string" and SKILL_BY_NAME[s.name:lower()] or nil end
+            if id then out[id] = math.max(out[id] or 0, tonumber(s.rank) or 0) end
+        end
+    end
+    return out
+end
+
+-- Which skill lines there are, as one string ("" for none, false without the client's list): the
+-- states read only that (limits), not the ranks.
+local function skillSet(sk)
+    if not sk then return false end
+    local ids = {}
+    for id in pairs(sk) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return table.concat(ids, ",")
+end
 -- The own character: { level, faction ("A"/"H"), class, race (id 1-8 or nil), skills ({ [skill line] = rank }
 -- or nil when the client tells none) }; made once per state.
 function ns.QuestOpts()
@@ -218,19 +246,7 @@ function ns.QuestOpts()
         id = tonumber(plain(id))
         o.race = (id and id >= 1 and id <= 8) and id or RACE_IDS[plain(file) or ""]
     end
-    local info = _G.C_SkillInfo
-    if type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function" then
-        o.skills = {}
-        local ok, n = pcall(info.GetNumSkillLines)
-        for i = 1, (ok and tonumber(n)) or 0 do
-            local ok2, s = pcall(info.GetSkillLineInfo, i)
-            if ok2 and type(s) == "table" and not s.isHeader then
-                local id = tonumber(s.skillID)
-                if not id or id == 0 then id = type(s.name) == "string" and SKILL_BY_NAME[s.name:lower()] or nil end
-                if id then o.skills[id] = math.max(o.skills[id] or 0, tonumber(s.rank) or 0) end
-            end
-        end
-    end
+    o.skills = readSkills()
     optsCache, optsGen = o, gen
     return o
 end
@@ -844,7 +860,19 @@ end)
 ns.OnEvent("QUEST_ACCEPTED", bump)
 ns.OnEvent("QUEST_REMOVED", bump)
 ns.OnEvent("PLAYER_LEVEL_UP", bump)
-ns.OnEvent("SKILL_LINES_CHANGED", bump)
+-- every skill-up (weapon skills too) fires this: a new state only when a skill line came or went
+local lastSkillSet
+ns.OnEvent("SKILL_LINES_CHANGED", function()
+    local sk = readSkills()
+    local set = skillSet(sk)
+    if set == lastSkillSet then
+        -- the ranks stay current in the kept options
+        if optsCache and optsGen == gen then optsCache.skills = sk end
+        return
+    end
+    lastSkillSet = set
+    bump()
+end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", bump)
 
 -- At login (and a /reload): with the switch off the strings go, nothing refers to them any more.

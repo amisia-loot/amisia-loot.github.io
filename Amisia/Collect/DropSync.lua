@@ -239,14 +239,25 @@ ns.OnEvent("PLAYER_LOGIN", setFirst)
 -- announces as soon as it has records and its pull is done (so the guild can pull from it too).
 -- Later DVs at most every 30 minutes: after new own records, and once in a session after records
 -- learned from the guild.
+-- Whether there is a record of the last four weeks (indexNow's total > 0), without building the index.
+local function anyRecent()
+    local today = ns.DropsToday()
+    if index and index.today == today then return index.total > 0 end
+    local d = ns.DropsDB()
+    for _, r in pairs(d and d.k or {}) do
+        local w = math.floor((today - r.day) / 7)
+        if w >= 0 and w <= 3 then return true end
+    end
+    return false
+end
+
 local function announce()
     -- a client that learned records before its login was seen (a /reload keeps no login) still
     -- announces them
     if not firstAt and learned > 0 then setFirst() end
     if not firstAt or now() < firstAt or not canTalk() then return end
-    local total = indexNow().total
     if not announced then
-        if total == 0 then
+        if not anyRecent() then
             emptyAtFirst = true
         elseif not (emptyAtFirst and pull) and sendDV() then
             announced, lastDV, addedAtDV, learnedAtDV = true, now(), ns.DropsAdded(), learned

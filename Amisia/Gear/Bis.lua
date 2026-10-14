@@ -26,8 +26,12 @@ ns.BIS_PLANS = { auto = L["automatisch"], ["2H"] = L["Zweihand"], DW = L["zwei W
 ns.BIS_PLAN_ORDER = { "auto", "2H", "DW", "SHIELD" }
 
 local stamp = 0          -- bumped by everything that changes a result; part of every cache key
+-- bumped (with stamp) by what changes Gear.Best's lists: data, item stats and suffixes, settings,
+-- talents, BiS changes; not by ownership, which only the targets' annotations read
+local scoreStamp = 0
 local function bump() stamp = stamp + 1 end
-ns.BisBump = bump
+local function bumpAll() stamp = stamp + 1; scoreStamp = scoreStamp + 1 end
+ns.BisBump = bumpAll
 -- The state counter: a page keeps what it showed until this changes.
 function ns.BisStamp() return stamp end
 
@@ -132,7 +136,7 @@ function ns.BisMigrate(root)
             b.guild.list = fixSet(b.guild.list, numKey, function(v) return type(v) == "table" and v or nil end)
         end
     end
-    bump()
+    bumpAll()
     return b
 end
 
@@ -372,10 +376,10 @@ local function capKey(cap)
     return table.concat(out, ",")
 end
 
--- Everything a result depends on, as one string.
-local function optsKey(o)
+-- Everything a result depends on, as one string; st is the counter in it (default the stamp).
+local function optsKey(o, st)
     local ex = o.exclude or {}
-    return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
+    return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), st or stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
         tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap) }, "|")
@@ -982,6 +986,7 @@ end
 local function wishOf(c, id) return c and c.wish[id] ~= nil or false end
 
 local targetKey, targetRes
+local bestKey, bestRes, bestWaits   -- Gear.Best's result, kept while the options and the scoreStamp stay
 local targetOwnStamp   -- the stamp at which targetRes was made with the own options, else nil
 -- Per slot up to three options { id, score, gain, mine, owned, wished, worn, upgrade, switch },
 -- best first; r.state[slot] "done" (option 1 worn), "bag"/"bank" (option 1 owned, not worn),
@@ -996,7 +1001,16 @@ function ns.BisTargets(opts)
         if not opts then targetOwnStamp = stamp end
         return targetRes
     end
-    local best = Gear.Best(o)
+    -- read only below: the annotations go into new tables. Kept only when no item was still
+    -- waiting for its stats (the client may have them by the next call).
+    local bkey = optsKey(o, scoreStamp)
+    local best = bestRes
+    if bkey ~= bestKey or bestWaits ~= Gear.StatsWaits() then
+        local w0 = Gear.StatsWaits()
+        best = Gear.Best(o)
+        bestWaits = Gear.StatsWaits()
+        bestKey, bestRes = (bestWaits == w0) and bkey or nil, best
+    end
     local r = emptyResult()
     r.plan, r.missing, r.total = best.plan, best.missing, best.total
     r.twoHandScore, r.oneHandScore = best.twoHandScore, best.oneHandScore
@@ -1223,15 +1237,32 @@ end
 -- What changes a result
 ---------------------------------------------------------------------------
 
-local function talentsChanged() guess = nil; bump() end
+local function talentsChanged() guess = nil; bumpAll() end
 ns.OnEvent("CHARACTER_POINTS_CHANGED", talentsChanged)
 ns.OnEvent("PLAYER_TALENT_UPDATE", talentsChanged)
 ns.OnEvent("ACTIVE_TALENT_GROUP_CHANGED", talentsChanged)
 ns.OnEvent("PLAYER_LEVEL_UP", bump)
-ns.OnEvent("SKILL_LINES_CHANGED", function() skills = nil; bump() end)
-ns.Listen("SETTING", bump)
-ns.Listen("BIS_CHANGED", function() guess = nil; bump() end)
-Gear.OnData(bump)
+-- every skill-up (weapon skills too) fires this: a new result only when a profession's rank changed
+local function sameSkills(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do if b[k] ~= v then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+ns.OnEvent("SKILL_LINES_CHANGED", function()
+    local old = skills
+    skills = nil
+    if old == nil or not sameSkills(old, ns.BisSkills() or false) then bump() end
+end)
+ns.Listen("SETTING", bumpAll)
+ns.Listen("BIS_CHANGED", function() guess = nil; bumpAll() end)
+Gear.OnData(bumpAll)
+-- a suffix the collector adds changes Gear.Best's lists (the targets pick it up with the next stamp)
+local suffixNoted = Gear.SuffixNoted
+function Gear.SuffixNoted(id)
+    suffixNoted(id)
+    scoreStamp = scoreStamp + 1
+end
 
 ---------------------------------------------------------------------------
 -- Tooltip line
@@ -1250,15 +1281,18 @@ local RANK_SLOTS = { FINGER = { "FINGER1", "FINGER2" }, TRINKET = { "TRINKET1", 
     SHIELD = { "OFFHAND" }, HELD = { "OFFHAND" } }
 
 -- The targets are never computed inside a hover: when they are missing, once after it (at most
--- every WARM_GAP seconds), so the next hover has them.
-local warmPending, warmAt = false, nil
+-- every WARM_GAP seconds), so the next hover has them; not in combat, then once it ends.
+local warmPending, warmAt, warmAfterCombat = false, nil, false
+local function inCombat() return InCombatLockdown and InCombatLockdown() and true or false end
 local function warmTargets()
     if warmPending then return end
+    if inCombat() then warmAfterCombat = true return end
     warmPending = true
     local t = GetTime and GetTime() or 0
     local wait = warmAt and math.max(0, WARM_GAP - (t - warmAt)) or 0
     C_Timer.After(wait, function()
         warmPending = false
+        if inCombat() then warmAfterCombat = true return end
         warmAt = GetTime and GetTime() or 0
         if ns.BisTargetsCached() then return end
         local ok, err = pcall(ns.BisTargets)
@@ -1268,6 +1302,12 @@ local function warmTargets()
         end
     end)
 end
+
+ns.OnEvent("PLAYER_REGEN_ENABLED", function()
+    if not warmAfterCombat then return end
+    warmAfterCombat = false
+    warmTargets()
+end)
 
 -- Rank (1-3) and row of an item among the cached targets.
 local function targetRank(res, id, group)
@@ -1375,6 +1415,17 @@ local function placeLine(id, shift)
     return line
 end
 
+-- Whether the client's item type alone says an item is no gear (as evaluate's "notgear"), without
+-- building the gear data: not when the client does not know it or a BiS pick has its row (ns.BIS.PI).
+local function notGear(id)
+    local B = ns.BIS
+    if type(B) == "table" and type(B.PI) == "table" and B.PI[id] then return false end
+    local _, _, _, loc, _, classID = itemInstant(id)
+    if type(loc) ~= "string" then return false end
+    local group = loc ~= "" and Gear.GROUP[(loc:gsub("^INVTYPE_", ""))]
+    return not (group and (classID == 2 or classID == 4))
+end
+
 function ns.BisTooltipLines(link)
     if not Gear.Available() then return nil end
     local id = ns.ItemID(link)
@@ -1397,7 +1448,12 @@ function ns.BisTooltipLines(link)
     local e = tipCache[key]
     if e and e.noTargets and ns.BisTargetsCached() then e = nil end
     if not e then
-        local lines, noTargets, keep = tipLines(link, id, shift)
+        local lines, noTargets, keep
+        if notGear(id) then
+            lines, noTargets, keep = {}, false, true
+        else
+            lines, noTargets, keep = tipLines(link, id, shift)
+        end
         e = { lines = lines, noTargets = noTargets }
         if keep then
             tipCache[key] = e

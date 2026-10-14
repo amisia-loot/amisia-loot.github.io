@@ -1098,17 +1098,23 @@ local function anyone()
 end
 
 -- The tooltip line of an item ("Kann herstellen: Anna (300), Bob (275)"), or nil; kept per item for
--- 30 s and while nothing changes. Builds the profession data only out of combat.
-local tipCache, tipGen = {}, -1
+-- 30 s and while nothing changes (at most TIP_CACHE_MAX items, then it starts again). Builds the
+-- profession data only out of combat.
+local TIP_CACHE_MAX = 200
+local tipCache, tipGen, tipN = {}, -1, 0
 function Cr.TooltipLine(item)
     item = tonumber(item)
     if not item or not AmisiaDB or not anyone() then return nil end
-    if tipGen ~= gen then tipCache, tipGen = {}, gen end
+    if tipGen ~= gen then tipCache, tipGen, tipN = {}, gen, 0 end
     local hit = tipCache[item]
     if hit and now() - hit.at < 30 then return hit.line or nil end
     if not dataBuilt() and type(InCombatLockdown) == "function" and InCombatLockdown() then return nil end
     local list = Cr.ForItem(item)
     local line = #list > 0 and L["Kann herstellen: %s"]:format(Cr.Text(list, 4)) or false
+    if not hit then
+        if tipN >= TIP_CACHE_MAX then tipCache, tipN = {}, 0 end
+        tipN = tipN + 1
+    end
     tipCache[item] = { at = now(), line = line }
     return line or nil
 end
