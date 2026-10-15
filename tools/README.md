@@ -723,9 +723,9 @@ SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, 
 
 ## make_icons.py
 
-Draws the addon's icons from scratch as genuine 32-bit TGAs: `Amisia.tga` (128x128, the window
-portrait and the addon list icon: the golden A over the infinity loop of the guild logo on the
-logo's turquoise stone) and `Minimap.tga` (64x64, the same with a gold rim). The A is set in Cinzel
+Draws the addon's icon from scratch as a genuine 32-bit TGA: `Amisia.tga` (128x128, the one icon of
+the addon everywhere it shows: window portraits, addon list and compartment, minimap button; the
+golden A over the infinity loop of the guild logo on the logo's turquoise stone). The A is set in Cinzel
 (`tools/fonts/Cinzel.ttf`, SIL Open Font License 1.1, `tools/fonts/OFL.txt`); the font is only used
 to draw the images and does not ship in the addon. `--preview DIR` also writes PNGs to look at. A
 changed texture needs a full client restart before WoW shows it; `/reload` is not enough. Requires

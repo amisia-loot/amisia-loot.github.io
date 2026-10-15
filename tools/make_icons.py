@@ -1,10 +1,10 @@
-"""Draws the addon's icons from scratch, as genuine 32-bit TGAs (WoW reads textures by file
+"""Draws the addon's icon from scratch, as a genuine 32-bit TGA (WoW reads textures by file
 extension, so a PNG renamed to .tga stays invisible):
 
-- Amisia/Media/Icons/Amisia.tga (128x128): the window portrait and the addon list icon. The
-  golden A over the infinity loop of the guild logo, on the logo's turquoise stone. Round; the
-  portrait frame of the client lays its own gold ring over the edge.
-- Amisia/Media/Icons/Minimap.tga (64x64): the same with a gold rim of its own.
+- Amisia/Media/Icons/Amisia.tga (128x128): the addon's one icon, everywhere it shows (window
+  portraits, addon list and compartment, minimap button). The golden A over the infinity loop of
+  the guild logo, on the logo's turquoise stone. Round; the portrait frame and the minimap button
+  lay their own gold ring over the edge.
 
     python tools/make_icons.py [--preview DIR]
 
@@ -166,29 +166,6 @@ def portrait(size):
     return round_mask(img, big / 2).resize((size, size), Image.LANCZOS)
 
 
-def minimap(size):
-    big = size * SCALE
-    c = big / 2
-    outer, inner = c - 1 * SCALE, c - 5 * SCALE
-    img = Image.new('RGBA', (big, big), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    # the gold rim, lit from the top left
-    rim = Image.new('RGBA', (big, big))
-    rp = rim.load()
-    for y in range(big):
-        for x in range(big):
-            t = ((x - c) + (y - c)) / (2 * outer) * 0.5 + 0.5
-            rp[x, y] = lerp((246, 214, 130), (128, 88, 28), t) + (255,)
-    img = round_mask(rim, outer)
-    st = stone(big, inner)
-    img.alpha_composite(st)
-    d = ImageDraw.Draw(img)
-    d.ellipse([c - inner, c - inner, c + inner, c + inner], outline=(40, 26, 8, 255), width=SCALE)
-    em = emblem(int(inner * 2.3))
-    img.alpha_composite(em, (int(c - em.width / 2), int(c - em.height / 2)))
-    return round_mask(img, outer).resize((size, size), Image.LANCZOS)
-
-
 def write_tga(img, path):
     """Uncompressed 32-bit TGA, top-left origin (descriptor 0x28), pixels as BGRA."""
     w, h = img.size
@@ -203,7 +180,7 @@ def main():
     ap.add_argument('--preview', help='also write PNGs (4x, nearest) into this folder')
     ap.add_argument('--out', default=ICONS, help='folder for the TGAs (default: the addon icons)')
     args = ap.parse_args()
-    for name, img in (('Amisia', portrait(128)), ('Minimap', minimap(64))):
+    for name, img in (('Amisia', portrait(128)),):
         path = os.path.join(args.out, name + '.tga')
         write_tga(img, path)
         assert os.path.getsize(path) == 18 + img.width * img.height * 4

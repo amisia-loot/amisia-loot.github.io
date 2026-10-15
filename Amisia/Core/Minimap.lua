@@ -4,7 +4,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\Minimap"
+local ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 local DEFAULT_ANGLE = 200
 local button
 
