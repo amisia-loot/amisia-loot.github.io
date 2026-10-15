@@ -723,13 +723,12 @@ SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, 
 
 ## make_icons.py
 
-Draws the addon's icon from scratch as a genuine 32-bit TGA: `Amisia.tga` (128x128, the one icon of
-the addon everywhere it shows: window portraits, addon list and compartment, minimap button; the
-golden A over the infinity loop of the guild logo on the logo's turquoise stone). The A is set in Cinzel
-(`tools/fonts/Cinzel.ttf`, SIL Open Font License 1.1, `tools/fonts/OFL.txt`); the font is only used
-to draw the images and does not ship in the addon. `--preview DIR` also writes PNGs to look at. A
-changed texture needs a full client restart before WoW shows it; `/reload` is not enough. Requires
-Pillow.
+Makes the addon's icon `Amisia.tga` (128x128, genuine 32-bit TGA) from the picture the user chose,
+`tools/art/Amisia.png` (see-through ground; not shipped). It is the one icon of the addon everywhere
+it shows: window portraits, addon list and compartment, minimap button. The picture is scaled so every
+visible pixel sits inside the round portrait; the windows and the minimap button lay a black disc under
+it (`W.DISC`). `--preview DIR` also writes PNGs to look at (one on the black disc). A changed texture
+needs a full client restart before WoW shows it; `/reload` is not enough. Requires Pillow.
 
 ## bossnames.js (frozen)
 
