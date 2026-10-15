@@ -453,3 +453,108 @@ def test_scan_gear_asks_only_for_ids_the_client_has(tmp_path):
     (tmp_path / 'ItemSparse.1.60.1.70235.csv').write_text('ID,Display_lang\n10,A\n30,C\n', encoding='utf-8')
     assert build_gear.client_known([10, 20, 30], str(tmp_path)) == [10, 30]
     assert build_gear.client_known([10, 20], str(tmp_path / 'none')) == [10, 20]
+
+
+# ---------------------------------------------------------------- OneForAll 5.x
+OFA_TOC = """## Interface: 16001
+## Version: 5.6.0
+Data.lua
+ProfessionData.lua
+Data\\Professions\\Tailoring.lua
+DungeonRegistry.lua
+Data\\Dungeons\\Kraul.lua
+Data\\Dungeons\\Spire.lua
+Data\\Dungeons\\Onyxia.lua
+DungeonData.lua
+Core.lua
+"""
+OFA_FILES = {
+    'Data.lua': 'local ADDON, FLT = ...\n_G[ADDON] = FLT\n',
+    'ProfessionData.lua': 'local _, FLT = ...\nFLT.PROFESSION_DATA = { ["Tailoring"] = {\n'
+                          '  ["Cloak"] = { craftedItemID = 250002, requiredSkill = 125 } } }\n',
+    'Data/Professions/Tailoring.lua': 'local _, FLT = ...\nFLT.PROFESSION_RECIPES = FLT.PROFESSION_RECIPES or {}\n'
+                                      'FLT.PROFESSION_RECIPES["Tailoring"] = {\n'
+                                      '  {s=1, i=250001, n="Robe", req=50, y=60},\n  {s=2, i=250002, n="Cloak", y=130},\n'
+                                      '  {s=3, i=4000, n="Old Shirt", req=1}, {s=4, n="An enchant"} }\n',
+    'DungeonRegistry.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY = FLT.DUNGEON_REGISTRY or {}\n',
+    'Data/Dungeons/Kraul.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY["Razorfen Kraul"] = {\n'
+                               '  bosses = { { name = "Roogug", loot = { {274149, "Thornweaver Drape", "Back", 2},'
+                               ' {6690, "Classic Loot", "Back", 2} } } },\n'
+                               '  trashLoot = { {252512, "Brawler\'s Leather Helm", "Head, Leather", 2} },\n'
+                               '  quests = { { id = 900001, name = "A Vengeful Fate", level = 29, requires = 24,'
+                               ' faction = "Horde", class = "WARRIOR", rewardItems = { {274084, "Quilboar Blaster", 2},'
+                               ' {6691, "Classic Reward", 2} } } } }\n',
+    'Data/Dungeons/Spire.lua': 'local _, FLT = ...\nlocal ok = (os == nil and io == nil and require == nil and loadstring == nil)\n'
+                               'if not ok then error("not sealed") end\n'
+                               'FLT.DUNGEON_REGISTRY["Sandbox"] = { bosses = {}, quests = {} }\n',
+    'Data/Dungeons/Onyxia.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY["Onyxia\'s Lair"] = {\n'
+                                '  bosses = { { name = "Onyxia", loot = { {280001, "Raid Drop", "Head", 4} } } } }\n',
+    'DungeonData.lua': 'error("not read")\n',
+    'Core.lua': 'error("not read")\n',
+}
+
+
+def ofa_folder(tmp_path, files=OFA_FILES, toc=OFA_TOC):
+    base = tmp_path / 'OneForAll'
+    for rel, text in dict(files, **{'OneForAll.toc': toc}).items():
+        p = base / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding='utf-8')
+    return str(base)
+
+
+def test_oneforall_5_reads_the_dungeon_registry_and_recipes(tmp_path):
+    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
+    assert ofa['version'] == '5.6.0' and ofa['errors'] == {}
+    kraul = ofa['dungeons']['Razorfen Kraul']
+    assert kraul['bosses'] == [('Roogug', [(274149, 'Thornweaver Drape'), (6690, 'Classic Loot')])]
+    assert kraul['trash'] == [(252512, "Brawler's Leather Helm")]
+    assert kraul['quests'] == [{'id': 900001, 'name': 'A Vengeful Fate', 'level': 29, 'requires': 24, 'faction': 'H',
+                                'classes': 1, 'rewards': [(274084, 'Quilboar Blaster'), (6691, 'Classic Reward')]}]
+    # the recipe's own skill, else the Merchant's Favor list's; a recipe without an item is no gear
+    assert ofa['crafts'] == {'tailoring': [(250001, 50), (250002, 125), (4000, 1)]}
+    # no os, io or loadstring in the sandbox (Spire.lua errs otherwise); DungeonData.lua and the
+    # addon's code (they err) never run
+
+
+def test_oneforall_runs_in_a_sandbox(tmp_path):
+    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
+    assert 'Sandbox' in ofa['dungeons']
+    files = dict(OFA_FILES)
+    files['Data/Dungeons/Spire.lua'] = 'local f = io.open("/tmp/x", "w")\n'
+    ofa = build_gear.load_oneforall(ofa_folder(tmp_path / 'b', files))
+    assert 'Data/Dungeons/Spire.lua' in ofa['errors'] and 'Razorfen Kraul' in ofa['dungeons']
+    files['Data/Dungeons/Spire.lua'] = 'while true do end\n'
+    ofa = build_gear.load_oneforall(ofa_folder(tmp_path / 'c', files), budget=100000)
+    assert 'budget' in ofa['errors']['Data/Dungeons/Spire.lua']
+
+
+def test_oneforall_before_5_is_left_out(tmp_path):
+    files = {k: v for k, v in OFA_FILES.items() if k != 'DungeonRegistry.lua'}
+    assert build_gear.load_oneforall(ofa_folder(tmp_path, files)) is None
+
+
+def test_oneforall_keeps_forever_ids_and_what_the_client_knows(tmp_path):
+    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
+    kept, gone = build_gear.oneforall_forever_only(ofa, known={6691})
+    kraul = kept['dungeons']['Razorfen Kraul']
+    assert kraul['bosses'] == [('Roogug', [(274149, 'Thornweaver Drape')])]
+    assert kraul['quests'][0]['rewards'] == [(274084, 'Quilboar Blaster'), (6691, 'Classic Reward')]
+    assert kept['crafts'] == {'tailoring': [(250001, 50), (250002, 125)]}
+    assert gone == {6690, 4000}
+
+
+def test_oneforall_joins_as_dungeon_quest_and_craft_sources(tmp_path):
+    ofa, _ = build_gear.oneforall_forever_only(build_gear.load_oneforall(ofa_folder(tmp_path)), set())
+    scan = {274149: scan_item('Thornweaver Drape', 'INVTYPE_CLOAK', lvl=27),
+            252512: scan_item("Brawler's Leather Helm", lvl=25),
+            274084: scan_item('Quilboar Blaster', 'INVTYPE_RANGEDRIGHT', lvl=24, cls=2),
+            250001: scan_item('Robe', 'INVTYPE_CHEST', lvl=10),
+            280001: scan_item('Raid Drop', q=4, lvl=60)}
+    src, keep, *_ = build_gear.build(scan, {}, att(), ofa=ofa)
+    recs = {iid: [src.rows[n - 1] for n in keep[iid][1]] for iid in keep}
+    assert recs[274149] == [('D', 'Razorfen Kraul', 'Roogug')]
+    assert recs[252512] == [('D', 'Razorfen Kraul', 'Trash')]
+    assert recs[274084] == [('Q', 'A Vengeful Fate', 29, 24, 'H', None, 900001, 1, 'Razorfen Kraul')]
+    assert recs[250001] == [('C', 'tailoring', 50)]
+    assert 280001 not in keep   # a raid's loot stays out of the levelling planner

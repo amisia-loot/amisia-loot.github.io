@@ -10,7 +10,7 @@ local _, ns = ...
 
 ns.LazyData("MAGESCROLLS", [=[
 return {
-build="1.60.1.70338",built="2026-10-11",att="e9311f6dff",skill=3012,
+build="1.60.1.70338",built="2026-10-15",att="e9311f6dff",skill=3012,
 charm=211779,conjure=435849,boost=215257,boostSpell=435563,bundle=277651,study=1302508,
 names={charm="Comprehension Charm",boost="Scroll of Comprehension",bundle="Bundle of Scrolls",conjure="Conjure Comprehension Charms"},
 tiers={{1,15,30,1309973},{15,50,75,1309965},{50,100,200,1310029},{175,250,300,1310030}},

@@ -36,7 +36,8 @@ Sammlungen. Amisia baut eigene Daten und Ansichten.
 **Folge:** Nie "Mehr Infos"-Links oder Link-outs als Feature vorschlagen. Einzelne Nachschläge von
 Hand zur Prüfung sind erlaubt, Übernahme von Daten oder BiS-Listen nicht.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_links_to_fan_sites` (erlaubte Hosts:
-Wowhead/zamimg und die eigenen Dienste der Seite), `tools/tests/test_site_wowhead.py`.
+Wowhead/zamimg und die eigenen Dienste der Seite; in `Amisia/LICENSES/` dazu fsf.org und gnu.org, weil
+der GPL-Text unverändert mitgeht), `tools/tests/test_site_wowhead.py`.
 
 ## D-03 Nie per Skript von wago.tools, Wowhead oder foreverchanges laden
 
@@ -55,18 +56,25 @@ wird nicht erweitert. wowsrc.com ist eine vom Nutzer akzeptierte Eingabe (D-04),
 
 ## D-04 Lizenzen der Datenquellen
 
-**Datum:** 2026-10-06
+**Datum:** 2026-10-15 (zuerst 2026-10-06)
 **Entscheidung:** AllTheThings (MIT) ist freigegeben, mit dem Lizenztext in
 `Amisia/LICENSES/AllTheThings-MIT.txt` (in einer Lizenzdatei, nicht in der UI). QuestieDB hat
 keine Lizenz und ist entfernt. wowsrc.com, OneForAll und AtlasLoot bleiben Eingaben der Builds
 ("Ja können wir alles nutzen"; die Lizenzen hat der Nutzer entschieden, nicht geprüft).
 Daten, die andere Repos von Wowhead/foreverchanges kopiert haben, sind nicht nutzbar, auch wenn das
-Repo MIT ist.
-**Grund:** Lizenztreue.
+Repo MIT ist. Ausnahme seit 2026-10-15: OneForAll 5.x (GPL-3.0-or-later, Lizenztext in
+`Amisia/LICENSES/OneForAll-GPL-3.0.txt`) ist ausdrücklich freigegeben ("Nutz OneForAll 5.6.0 als
+Quelle"), obwohl seine Quellenliste Wowhead und foreverchanges nennt; genommen werden nur Items mit
+Forever-ID (ab 200000) oder einer ID, die der Client kennt (`ItemSparse`, Scan).
+**Grund:** Lizenztreue; OneForAll füllt Boss-, Trash- und Questbeute der Forever-Dungeons, die
+AllTheThings noch nicht hat.
 **Folge:** Neue Daten nur aus diesen Quellen; jede generierte Datei nennt im Kopf Generator und
-Quellen, jede mit AllTheThings-Daten steht in der Lizenzdatei. Fremde Addons sonst nie nennen (D-05).
+Quellen, jede mit AllTheThings- oder OneForAll-Daten steht in deren Lizenzdatei. Bis 2026-10-15 las
+`build_gear.py` OneForAll nur auf dem PC und ohne Filter (das Format vor 5.0); die Classic-Beute
+seiner Tabellen bleibt jetzt draußen. Fremde Addons sonst nie nennen (D-05).
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`,
-`tools/tests/test_contracts.py::test_no_questie_data_left`, `tools/tests/test_build_quests.py::test_the_licence_names_every_file_from_allthethings`.
+`tools/tests/test_contracts.py::test_no_questie_data_left`, `tools/tests/test_build_quests.py::test_the_licence_names_every_file_from_allthethings`,
+`tools/tests/test_build_gear.py::test_oneforall_keeps_forever_ids_and_what_the_client_knows`.
 
 ## D-05 Keine anderen Addons nennen
 

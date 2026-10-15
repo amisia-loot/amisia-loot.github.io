@@ -307,12 +307,17 @@ ALLOWED_HOSTS = ('wowhead.com', 'zamimg.com', 'supabase.co', 'jsdelivr.net', 'fo
                  'github.com', 'blizzard.com', 'w3.org')
 
 
+# a licence text ships verbatim: the GPL names the FSF's pages (D-02)
+LICENCE_HOSTS = ('fsf.org', 'gnu.org')
+
+
 def test_no_links_to_fan_sites():
     texts = [('index.html', read(SITE))] + addon_files(exts=('.lua', '.toc', '.xml', '.txt'))
     for rel, text in texts:
         assert 'foreverchanges' not in text.lower(), f'{rel} names foreverchanges (no links to fan sites)'
+        allowed = ALLOWED_HOSTS + (LICENCE_HOSTS if rel.startswith('LICENSES/') else ())
         for host in re.findall(r'https?://([A-Za-z0-9.-]+)', text):
-            assert host.endswith(ALLOWED_HOSTS), f'{rel} links to {host}: only Wowhead and the site\'s own services'
+            assert host.endswith(allowed), f'{rel} links to {host}: only Wowhead and the site\'s own services'
 
 
 # fetchers kept from the TBC ledger and the first Forever builds; see DECISIONS.md D-03
@@ -345,6 +350,7 @@ def header(text):
 
 def test_every_generated_file_names_its_generator_and_sources():
     licence = read(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'))
+    ofa_licence = read(os.path.join(ADDON, 'LICENSES', 'OneForAll-GPL-3.0.txt'))
     data = addon_files(skip=('Core/', 'Raid/', 'Gear/', 'Collect/', 'UI/', 'Locales/'))
     data = [(rel, text) for rel, text in data if rel.startswith('Data/')]
     assert len(data) >= 10
@@ -358,8 +364,12 @@ def test_every_generated_file_names_its_generator_and_sources():
         if 'AllTheThings' in head:
             assert 'MIT' in head and 'LICENSES' in head, f'{rel}: AllTheThings data without its MIT credit'
             assert rel in licence, f'{rel} uses AllTheThings data but LICENSES/AllTheThings-MIT.txt does not list it'
-    for rel in re.findall(r'Data/\w+\.lua', licence):
-        assert os.path.exists(os.path.join(ADDON, rel)), f'LICENSES names {rel}, which does not exist'
+        if 'OneForAll' in head:
+            assert 'GPL-3.0' in head and 'LICENSES' in head, f'{rel}: OneForAll data without its GPL credit'
+            assert rel in ofa_licence, f'{rel} uses OneForAll data but LICENSES/OneForAll-GPL-3.0.txt does not list it'
+    for text in (licence, ofa_licence):
+        for rel in re.findall(r'Data/\w+\.lua', text):
+            assert os.path.exists(os.path.join(ADDON, rel)), f'LICENSES names {rel}, which does not exist'
 
 
 def test_bis_picks_are_a_bis_recommendation_not_a_guild_one():

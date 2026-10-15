@@ -3,6 +3,7 @@ where it comes from. The addon's gear window (/amisia gear) reads it, asks the c
 item's stats and picks the best item per slot and level range.
 
     python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv <Amisia.lua>...]
+                               [--oneforall DIR] [--refresh-oneforall]
                                [--refresh-wowsrc] [--no-wowsrc] [--itemsparse CSV] [--out FILE]
 
 Runs on the N100: everything it needs by default comes from the AllTheThings download and the
@@ -27,9 +28,13 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
   - The Amisia source collector (`collect`, shared in the guild): quests with giver, rewards and
     level, vendors, drops of non-boss NPCs. Below ATT: a quest or NPC ATT knows keeps ATT's record,
     the observation adds what ATT lacks (so a quest reward ATT lists as missing gets its source).
-  - Optional, PC only (the Forever AddOns folder; skipped when missing): OneForAll (dungeon bosses,
-    dungeon quests, Merchant's Favor recipes) and AtlasLootClassic (Forever dungeon tables, Classic
-    recipes with their skill).
+  - OneForAll 5.x (GPL-3.0-or-later, see LICENSES/): dungeon bosses and trash, dungeon quests with
+    their rewards, the skill of recipes. The N100 keeps a download in ~/addons/_cache/oneforall
+    (--refresh-oneforall), the PC reads the installed addon; skipped when neither is there. It runs in
+    a sandbox; only Forever's own item ids and the ids the client knows (ItemSparse, the scan) are
+    taken: its Classic dungeon tables list Classic loot the Forever client does not have.
+  - Optional, PC only (the Forever AddOns folder; skipped when missing): AtlasLootClassic (Forever
+    dungeon tables, Classic recipes with their skill).
   - wowsrc.com dungeon loot pages (drop chances), kept parsed in tools/gear_wowsrc.json;
     --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
 
@@ -98,7 +103,11 @@ TEST_ITEMS = {8350}   # The 1 Ring
 ATLAS_PROF = {1: 'firstaid', 2: 'blacksmithing', 3: 'leatherworking', 4: 'alchemy', 6: 'cooking',
               8: 'tailoring', 9: 'engineering', 10: 'enchanting', 14: 'jewelcrafting'}
 OFA_PROF = {'Alchemy': 'alchemy', 'Blacksmithing': 'blacksmithing', 'Leatherworking': 'leatherworking',
-            'Tailoring': 'tailoring', 'Engineering': 'engineering', 'Enchanting': 'enchanting', 'Cooking': 'cooking'}
+            'Tailoring': 'tailoring', 'Engineering': 'engineering', 'Enchanting': 'enchanting', 'Cooking': 'cooking',
+            'First Aid': 'firstaid'}
+# OneForAll's class tokens as the class mask of S.Q (bit classID - 1).
+OFA_CLASS = {'WARRIOR': 1, 'PALADIN': 2, 'HUNTER': 4, 'ROGUE': 8, 'PRIEST': 16, 'SHAMAN': 64, 'MAGE': 128,
+             'WARLOCK': 256, 'DRUID': 1024}
 # The name PvP rank gear gets as a source: ATT lists it per faction, not per quartermaster.
 PVP_SOURCE = 'Rank Quartermaster'
 
@@ -107,18 +116,198 @@ def log(*a):
     print(*a, file=sys.stderr)
 
 
-# ---------------------------------------------------------------- OneForAll
-def load_oneforall(base=os.path.join(FOREVER_ADDONS, 'OneForAll')):
+# ---------------------------------------------------------------- OneForAll (GPL-3.0-or-later)
+# The addon's folder: the N100 keeps a download (--refresh-oneforall), the PC has it installed.
+OFA_REPO = 'smoergi/OneForAll_Forever'
+OFA_CACHE = os.path.expanduser('~/addons/_cache/oneforall')
+OFA_LICENCE = 'GPL-3.0-or-later, Copyright (C) 2026 Smoergi; see LICENSES/'
+# The files the build reads, in the TOC's order: the dungeon registry (5.x) and the recipes.
+OFA_FILES = ('Data.lua', 'ProfessionData.lua', 'DungeonRegistry.lua')
+OFA_DIRS = ('Data/Professions/', 'Data/Dungeons/')
+
+
+def default_oneforall():
+    """The download of the N100 when there is one, else the installed addon of the PC."""
+    return OFA_CACHE if os.path.isdir(OFA_CACHE) else os.path.join(FOREVER_ADDONS, 'OneForAll')
+
+
+def refresh_oneforall(dest=OFA_CACHE, ref='HEAD'):
+    """Downloads the newest OneForAll from GitHub and keeps its Lua, TOC and text files (no art) in
+    dest, which it replaces. Returns the commit."""
+    import io
+    import shutil
+    import tarfile
+    token = att_data._token()
+
+    def get(url):
+        headers = {'User-Agent': att_data.USER_AGENT}
+        if token:
+            headers['Authorization'] = 'Bearer ' + token
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=120) as r:
+            return r.read()
+
+    api = f'https://api.github.com/repos/{OFA_REPO}'
+    commit = json.loads(get(f'{api}/commits/{ref}'))['sha']
+    tmp = dest + '.new'
+    shutil.rmtree(tmp, ignore_errors=True)
+    kept = 0
+    with tarfile.open(fileobj=io.BytesIO(get(f'{api}/tarball/{commit}')), mode='r:gz') as tar:
+        for m in tar.getmembers():
+            # <root>/OneForAll/<path>; only plain files with a plain relative path
+            parts = m.name.split('/')
+            if not m.isfile() or len(parts) < 3 or parts[1] != 'OneForAll' or '..' in parts or '' in parts[2:]:
+                continue
+            rel = '/'.join(parts[2:])
+            if not rel.endswith(('.lua', '.toc', '.txt')):
+                continue
+            out = os.path.join(tmp, *parts[2:])
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with open(out, 'wb') as fh:
+                fh.write(tar.extractfile(m).read())
+            kept += 1
+    if not kept:
+        raise SystemExit(f'the OneForAll download {commit[:10]} holds no OneForAll folder')
+    with open(os.path.join(tmp, 'COMMIT'), 'w', encoding='utf-8') as fh:
+        fh.write(commit + '\n')
+    shutil.rmtree(dest, ignore_errors=True)
+    os.replace(tmp, dest)
+    log(f'OneForAll {commit[:10]}: {kept} files -> {dest}')
+    return commit
+
+
+# The addon's files are third-party code. They run in a sandbox as AllTheThings does (tools/att_data.py):
+# lupa without its python bridge, an environment that holds only SAFE, the dangerous globals gone,
+# and an instruction budget.
+OFA_SANDBOX = r'''
+local loadstring, setfenv, pcall, tostring, error, setmetatable = loadstring, setfenv, pcall, tostring, error, setmetatable
+local sethook = debug.sethook
+local str = {}
+for k, v in pairs(string) do if k ~= "dump" then str[k] = v end end
+local SAFE = { pairs = pairs, ipairs = ipairs, type = type, tostring = tostring, tonumber = tonumber, next = next,
+    select = select, unpack = unpack, table = table, math = math, string = str, setmetatable = setmetatable,
+    getmetatable = getmetatable, rawget = rawget, rawset = rawset, assert = assert, error = error, pcall = pcall,
+    print = function() end }
+for _, k in ipairs({ "os", "io", "require", "package", "debug", "dofile", "loadfile", "load", "loadstring",
+                     "setfenv", "getfenv", "python", "collectgarbage", "module", "newproxy" }) do
+    _G[k] = nil
+end
+local env = setmetatable({}, { __index = SAFE })
+env._G = env
+local FLT = {}
+return function(src, name, budget)
+    if src == nil then return FLT end
+    local f, err = loadstring(src, "@" .. name)
+    if not f then return tostring(err) end
+    setfenv(f, env)
+    sethook(function() error("instruction budget spent") end, "", budget)
+    local ok, e = pcall(f, "OneForAll", FLT)
+    sethook()
+    if not ok then return tostring(e) end
+    return nil
+end
+'''
+
+
+def _ofa_ids(rows):
+    """[(item id, name)] of OneForAll's item rows {id, name, ...}."""
+    out = []
+    for r in rows or []:
+        if isinstance(r, list) and r and isinstance(r[0], int):
+            out.append((r[0], r[1] if len(r) > 1 and isinstance(r[1], str) else ''))
+    return out
+
+
+def load_oneforall(base, budget=200_000_000):
+    """OneForAll 5.x as the build needs it: {'version', 'dungeons': {name: {'bosses': [(boss,
+    [(item, name)])], 'trash': [(item, name)], 'quests': [{id, name, level, requires, faction, classes,
+    rewards}]}}, 'crafts': {profession key: [(item, skill)]}, 'errors': {file: text}}. An older
+    version (before the dungeon registry) gives None."""
+    toc = os.path.join(base, 'OneForAll.toc')
+    if not os.path.exists(os.path.join(base, 'DungeonRegistry.lua')) or not os.path.exists(toc):
+        log(f'OneForAll: {base} is older than 5.0 (no dungeon registry), left out')
+        return None
     from lupa.lua51 import LuaRuntime
-    lua = LuaRuntime(unpack_returned_tuples=True)
-    flt = lua.eval('{}')
-    loader = lua.eval('function(s, n) return assert(loadstring(s, n)) end')
-    for rel in ['Data.lua', 'ProfessionData.lua', 'DungeonJournalData.lua'] + sorted(
-            os.path.relpath(p, base) for p in glob.glob(os.path.join(base, 'Data', 'Dungeons', '*.lua'))):
-        with open(os.path.join(base, rel), encoding='utf-8') as fh:
-            loader(fh.read(), '@' + rel)('OneForAll', flt)
+    lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
+    run = lua.execute(OFA_SANDBOX)
+    version, errors = '', {}
+    with open(toc, encoding='utf-8-sig') as fh:
+        lines = fh.read().splitlines()
+    for line in lines:
+        m = re.match(r'##\s*Version:\s*(\S+)', line)
+        if m:
+            version = m.group(1)
+    files = [l.strip().replace('\\', '/') for l in lines if l.strip() and not l.startswith('#')]
+    for rel in files:
+        if rel not in OFA_FILES and not rel.startswith(OFA_DIRS):
+            continue
+        path = os.path.join(base, *rel.split('/'))
+        if not os.path.exists(path):
+            errors[rel] = 'missing'
+            continue
+        with open(path, encoding='utf-8') as fh:
+            err = run(fh.read(), rel, budget)
+        if err:
+            errors[rel] = err
+    flt = run(None, None, 0)
     py = build_scan.lua_to_py
-    return py(flt.DUNGEON_JOURNAL_DB) or {}, py(flt.PROFESSION_DATA) or {}
+    registry = py(flt.DUNGEON_REGISTRY) or {}
+    dungeons = {}
+    for dname, d in sorted(registry.items()):
+        if not isinstance(d, dict):
+            continue
+        bosses = [(b.get('name') or '?', _ofa_ids(b.get('loot'))) for b in d.get('bosses') or [] if isinstance(b, dict)]
+        quests = []
+        for q in d.get('quests') or []:
+            if not isinstance(q, dict):
+                continue
+            quests.append({'id': q.get('id') if isinstance(q.get('id'), int) else None, 'name': q.get('name') or '',
+                           'level': q.get('level') or 0, 'requires': q.get('requires') or 0,
+                           'faction': {'Alliance': 'A', 'Horde': 'H'}.get(q.get('faction')),
+                           'classes': OFA_CLASS.get(str(q.get('class') or '').upper(), 0),
+                           'rewards': _ofa_ids(q.get('rewardItems'))})
+        dungeons[dname] = {'bosses': bosses, 'trash': _ofa_ids(d.get('trashLoot')), 'quests': quests}
+    # the skill to learn a recipe: the recipe's own (req), else the Merchant's Favor list's; 0 unknown
+    favor = {}
+    for recipes in (py(flt.PROFESSION_DATA) or {}).values():
+        for r in (recipes or {}).values() if isinstance(recipes, dict) else ():
+            if isinstance(r, dict) and r.get('craftedItemID') and r.get('requiredSkill'):
+                favor[r['craftedItemID']] = r['requiredSkill']
+    crafts = {}
+    for prof, recipes in sorted((py(flt.PROFESSION_RECIPES) or {}).items()):
+        key = OFA_PROF.get(prof)
+        if not key:
+            continue
+        for r in recipes or []:
+            if isinstance(r, dict) and isinstance(r.get('i'), int):
+                crafts.setdefault(key, []).append((r['i'], r.get('req') or favor.get(r['i']) or 0))
+    if errors:
+        log(f'OneForAll: files that failed: {errors}')
+    return {'version': version, 'dungeons': dungeons, 'crafts': crafts, 'errors': errors}
+
+
+def oneforall_forever_only(ofa, known):
+    """OneForAll without the items Forever does not have: kept are Forever's own ids (FOREVER_IDS and
+    up) and the ids the client knows (known: its ItemSparse and the scan). Its tables of the Classic
+    dungeons list Classic loot the Forever client has never shown. Returns (ofa, ids left out)."""
+    if not ofa:
+        return ofa, set()
+    gone = set()
+
+    def keep(rows):
+        out = []
+        for row in rows:
+            if row[0] >= FOREVER_IDS or row[0] in known:
+                out.append(row)
+            else:
+                gone.add(row[0])
+        return out
+
+    dungeons = {}
+    for dname, d in ofa['dungeons'].items():
+        dungeons[dname] = {'bosses': [(b, keep(loot)) for b, loot in d['bosses']], 'trash': keep(d['trash']),
+                           'quests': [dict(q, rewards=keep(q['rewards'])) for q in d['quests']]}
+    crafts = {k: keep(rows) for k, rows in ofa['crafts'].items()}
+    return dict(ofa, dungeons=dungeons, crafts=crafts), gone
 
 
 # ---------------------------------------------------------------- AtlasLoot
@@ -218,14 +407,21 @@ def parse_wowsrc(page, slug):
 
 
 # ---------------------------------------------------------------- ItemSparse (client item table)
+def client_item_ids(wago_dir):
+    """The item ids of the client's own ItemSparse table; None without the table."""
+    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir and os.path.isdir(wago_dir) else None
+    if not path:
+        return None
+    with open(path, encoding='utf-8', newline='') as fh:
+        return {int(r['ID']) for r in csv.DictReader(fh) if (r.get('ID') or '').isdigit()}
+
+
 def client_known(ids, wago_dir):
     """The ids of ids the client's own ItemSparse table has (an id it lacks does not exist in Forever:
     /amisia scan gear would ask for it in vain). Without the table, all of them."""
-    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir and os.path.isdir(wago_dir) else None
-    if not path:
+    known = client_item_ids(wago_dir)
+    if known is None:
         return list(ids)
-    with open(path, encoding='utf-8', newline='') as fh:
-        known = {int(r['ID']) for r in csv.DictReader(fh) if (r.get('ID') or '').isdigit()}
     kept = [i for i in ids if i in known]
     if len(kept) < len(ids):
         log(f'scan gear: {len(ids) - len(kept)} ids left out, the client has no such item')
@@ -505,10 +701,11 @@ def is_junk(name):
     return bool(build_scan.JUNK_NAME.search(name)) or bool(re.match(r'OLD[A-Z]', name))
 
 
-def build(scan_items, collected, att, ofa=({}, {}), atlas_dungeons=(), atlas_crafts=None, wowsrc=None,
+def build(scan_items, collected, att, ofa=None, atlas_dungeons=(), atlas_crafts=None, wowsrc=None,
           itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
-    for none); ofa, atlas_dungeons and atlas_crafts are the optional PC sources; observed the source
+    for none); ofa is load_oneforall's form (None for none), atlas_dungeons and atlas_crafts the optional PC
+    sources; observed the source
     collector's records (build_scan.collect_observed). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
@@ -631,31 +828,38 @@ def build(scan_items, collected, att, ofa=({}, {}), atlas_dungeons=(), atlas_cra
     for item, fac in att.get('pvp', []):
         note(item, src.add('P', PVP_SOURCE, None, fac or None), 'pvp')
 
-    # --- OneForAll dungeons and dungeon quests (PC, optional)
-    for dname, d in ((ofa or ({}, {}))[0] or {}).items():
-        for boss in d.get('bosses') or []:
-            for tup in boss.get('loot') or []:
-                if isinstance(tup, list) and tup and isinstance(tup[0], int):
-                    pname, inst, area = places.of_name(dname)
-                    note(tup[0], src.add('D', pname or dname, boss.get('name') or '?', None, inst, area), 'dungeon')
-                    if len(tup) > 1:
-                        name_id(tup[1], tup[0])
-        for q in d.get('quests') or []:
-            fac = {'Alliance': 'A', 'Horde': 'H'}.get(q.get('faction'))
-            for tup in q.get('rewardItems') or []:
-                if isinstance(tup, list) and tup and isinstance(tup[0], int):
-                    num = src.add('Q', q.get('name') or '?', q.get('level') or 0, q.get('requires') or 0, fac, None,
-                                  q.get('id'), 0, dname)
-                    note(tup[0], num, 'quest')
-                    if len(tup) > 1:
-                        name_id(tup[1], tup[0])
-    crafted = {}   # item -> professions a PC source named with a skill
-    for prof, recipes in ((ofa or ({}, {}))[1] or {}).items():
-        key = OFA_PROF.get(prof)
-        for r in (recipes or {}).values():
-            item = r.get('craftedItemID')
-            if key and item:
-                note(item, src.add('C', key, r.get('requiredSkill') or 0), 'craft')
+    # --- OneForAll: dungeon bosses and trash, dungeon quests, recipes with their skill (load_oneforall,
+    # cut to Forever's items by oneforall_forever_only). A quest ATT knows keeps ATT's record.
+    ofa = ofa or {}
+    for dname, d in sorted((ofa.get('dungeons') or {}).items()):
+        pname, inst, area = places.of_name(dname)
+        if (pname or dname) in RAIDS:
+            continue
+        for boss, loot in d['bosses'] + [('Trash', d['trash'])]:
+            if not loot:
+                continue
+            num = src.add('D', pname or dname, boss, None, inst, area)
+            for item, name in loot:
+                note(item, num, 'dungeon')
+                name_id(name, item)
+        for q in d['quests']:
+            if not q['rewards']:
+                continue
+            aq = quests.get(q['id']) if q['id'] else None
+            num = quest_rec(q['id'], aq) if aq else None
+            if aq and num is None:
+                continue   # a raid quest
+            if num is None:
+                num = src.add('Q', q['name'] or '?', q['level'], q['requires'], q['faction'], None, q['id'],
+                              q['classes'], pname or dname)
+            for item, name in q['rewards']:
+                note(item, num, 'quest')
+                name_id(name, item)
+    crafted = {}   # item -> professions a source named with a skill
+    for key, rows in sorted((ofa.get('crafts') or {}).items()):
+        for item, skill in rows:
+            if skill:
+                note(item, src.add('C', key, skill), 'craft')
                 crafted.setdefault(item, set()).add(key)
 
     # --- AtlasLoot: Forever dungeons and Classic recipes (PC, optional)
@@ -1011,6 +1215,8 @@ def main(argv=None):
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
+    ap.add_argument('--oneforall', help=f'the OneForAll folder (default {OFA_CACHE} when it exists, else the installed addon)')
+    ap.add_argument('--refresh-oneforall', action='store_true', help='download the newest OneForAll from GitHub first')
     ap.add_argument('--show-unmatched', action='store_true')
     ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes), or a '
                                          'folder holding ItemSparse[.<build>].csv; refreshes tools/gear_itemsparse.json')
@@ -1059,13 +1265,20 @@ def main(argv=None):
     else:
         log('no tools/gear_itemsparse.json: weapon speeds come from tooltips in game')
 
-    ofa = optional('OneForAll', load_oneforall, os.path.join(FOREVER_ADDONS, 'OneForAll'), ({}, {}))
+    if args.refresh_oneforall:
+        refresh_oneforall(args.oneforall or OFA_CACHE)
+    ofa = optional('OneForAll', load_oneforall, args.oneforall or default_oneforall(), None)
+    if ofa:
+        # Forever's own ids and those the client knows (ItemSparse, the scan) only
+        ofa, gone = oneforall_forever_only(ofa, (client_item_ids(args.wago) or set()) | set(scan_items))
+        log(f'OneForAll {ofa["version"]}: {len(ofa["dungeons"])} dungeons, '
+            f'{sum(len(r) for r in ofa["crafts"].values())} recipes; {len(gone)} Classic item ids the client does not have left out')
     atlas_dungeons = optional('AtlasLoot dungeons', load_atlas_forever_dungeons,
                               os.path.join(FOREVER_ADDONS, 'AtlasLootClassic_DungeonsAndRaids', 'data.lua'), [])
     atlas_crafts = optional('AtlasLoot recipes', load_atlas_crafts,
                             os.path.join(FOREVER_ADDONS, 'AtlasLootClassic', 'Data', 'Profession.lua'), {})
     forever_raids = load_forever_raids()
-    log(f'oneforall: {len(ofa[0])} dungeons; atlasloot: {len(atlas_dungeons)} forever dungeon rows, '
+    log(f'atlasloot: {len(atlas_dungeons)} forever dungeon rows, '
         f'{len(atlas_crafts)} crafted items; wowsrc: {len(wowsrc.get("dungeons", []))} dungeons; '
         f'forever raids: {len(forever_raids)} drops')
 
@@ -1078,8 +1291,8 @@ def main(argv=None):
         prev_items, observed)
     missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
-    if ofa[0] or ofa[1]:
-        sources.append('OneForAll')
+    if ofa:
+        sources.append(f'OneForAll {ofa["version"]} ({OFA_LICENCE})')
     if atlas_dungeons or atlas_crafts:
         sources.append('AtlasLootClassic (GPL-2.0)')
     if wowsrc:

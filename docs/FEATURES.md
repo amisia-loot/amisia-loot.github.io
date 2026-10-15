@@ -705,12 +705,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit Strg-Klick ein Item der Beuteliste anklickst, dann öffnet sich die Anprobe.
 
 ### F-102 Seite Dungeons (Dungeon-Journal)
-- Version: 2.33.0
+- Version: 2.37.2
 - Status: gebaut
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann steht links "Dungeons" direkt unter "Ausrüstung", und die Seite zeigt Rangliste, Bild, Bossmodell und Quests wie bisher; auf der Seite Ausrüstung gibt es den Chip "Dungeons" nicht mehr.
 - Prüfung: Wenn du `/amisia journal` oder `/amisia dungeon` eingibst, dann öffnet sich die Seite Dungeons.
 - Prüfung: Wenn du auf der Seite Dungeons die Spezialisierung wechselst, dann ist sie auch auf der Seite Ausrüstung gewählt.
+- Prüfung: Wenn du mit einer Lederträger-Spezialisierung um Stufe 25 auf der Seite Dungeons Razorfen Kraul ansiehst, dann zählen "Thornweaver Drape" (Roogug) und die Forever-Lederhelme (z. B. "Brawler's Leather Helm") zur Beute, soweit sie Upgrades für dich sind.
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil A; vorher der Chip "Dungeons" der Seite Ausrüstung (F-046, F-047).
+- Notiz: 2.37.2: Boss-, Trash- und Questbeute der Dungeons zusätzlich aus OneForAll 5.6.0 (nur Items mit Forever-ID oder die der Client kennt; DECISIONS D-04).
 
 ### F-048 Quest-Tracker
 - Version: 2.7.0

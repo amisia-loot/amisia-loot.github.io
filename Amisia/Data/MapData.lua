@@ -8,7 +8,7 @@ local _, ns = ...
 -- G: [source key] = who stands there (the quest giver), English.
 ns.LazyData("MAP", [=[
 return {
-game="forever",built="2026-10-11",source="e9311f6dff",
+game="forever",built="2026-10-15",source="e9311f6dff",
 P={
 ["I:129"]="1413:5000:9200",
 ["I:189"]="1420:8260:3240",

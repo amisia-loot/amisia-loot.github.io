@@ -347,7 +347,8 @@ every item a levelling character can wear and where it comes from. The stat weig
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
 ```
-python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--no-wowsrc] [--itemsparse CSV|DIR]
+python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--oneforall DIR] [--refresh-oneforall]
+                           [--no-wowsrc] [--itemsparse CSV|DIR]
 ```
 
 - What an item is (slot, armour or weapon type, required level, quality, bind, class limits): the
@@ -361,8 +362,17 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   (trash inside a dungeon, the named mobs outside), world drops, PvP rank gear, crafted items (the
   profession; the skill is 0 = unknown unless AtlasLoot or OneForAll name it); and the Amisia item
   collector (drops, merchants, quests, the auction house as players met them; German names).
-- Optional, PC only, skipped with a note when missing: OneForAll (Forever dungeons, dungeon quests,
-  Merchant's Favor recipes), AtlasLootClassic (Forever dungeon tables, Classic recipes with skill).
+- OneForAll 5.x (GPL-3.0-or-later, `Amisia/LICENSES/OneForAll-GPL-3.0.txt`): dungeon bosses and
+  trash, dungeon quests with their rewards (a quest ATT knows keeps ATT's record), the skill to learn
+  a recipe. The N100 reads its download in `~/addons/_cache/oneforall` (`--refresh-oneforall`, or
+  `build.py data --refresh-oneforall`, fetches the newest from GitHub: Lua, TOC and text files only);
+  the PC reads the installed addon; `--oneforall DIR` names another folder; skipped with a note when
+  none is there, or when the folder is older than 5.0 (no `DungeonRegistry.lua`). Its files run in a
+  sandbox (no python bridge, no os/io/load, an instruction budget). Only items with a Forever id
+  (200000 and up) or an id the client knows (`ItemSparse` in `--wago`, the scan) are taken: its tables
+  of the Classic dungeons list Classic loot the Forever client does not have (5.6.0: 827 such gear ids).
+- Optional, PC only, skipped with a note when missing: AtlasLootClassic (Forever dungeon tables,
+  Classic recipes with skill).
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
@@ -405,8 +415,8 @@ overrides the WoW install path. Requires `lupa`.
 Licences of the data: AllTheThings MIT (`GearData.lua`, `MapData.lua`, `DungeonQuestData.lua`;
 `Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
 the installed folder), wago.tools
-exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). Still open:
-OneForAll's licence (check its installed folder on the PC) and wowsrc.com, whose pages state no
+exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). OneForAll is
+GPL-3.0-or-later since 5.x (`Amisia/LICENSES/OneForAll-GPL-3.0.txt`). Still open: wowsrc.com, whose pages state no
 licence (its robots.txt allows crawling, which is not one); `--no-wowsrc` leaves it out. No QuestieDB
 data: it has no licence.
 

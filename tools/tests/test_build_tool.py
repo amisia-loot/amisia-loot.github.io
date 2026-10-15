@@ -126,6 +126,7 @@ def test_data_steps_order():
                      'mage scrolls', 'raid check', 'dungeon art', 'bis']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
+    assert build.data_steps(wago='/w', refresh_oneforall=True)[2][2] == ['--wago', '/w', '--refresh-oneforall']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['scan archive'][2] == ['update', '--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['talents'][4] == 'skip' and steps['professions'][4] == 'skip'
@@ -152,7 +153,7 @@ def test_data_stops_at_the_first_error_and_skips_without_tables(tmp_path, monkey
         ran.append(os.path.basename(cmd[1]))
         return (3 if cmd[1].endswith('two.py') else 0), ''
     monkeypatch.setattr(build, 'run', fake_run)
-    monkeypatch.setattr(build, 'data_steps', lambda sv, wago, refresh: [
+    monkeypatch.setattr(build, 'data_steps', lambda sv, wago, refresh, refresh_oneforall=False: [
         ('one', 'one.py', [], None, None),
         ('needs', 'needs.py', [], ['NoSuchTable'], 'skip'),
         ('two', 'two.py', [], None, None),

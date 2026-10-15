@@ -164,6 +164,7 @@ ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of A
                                             -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
 AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att -> build_gear/map/quests/...
+OneForAll (GPL-3.0, --refresh-oneforall) -> ~/addons/_cache/oneforall -> build_gear (Forever item ids only)
 raid recording, awards, bank, points  -> "#AMISIA 2" export text --- paste --> Import tab (amParse...)
                                       <-- paste "#AMISIA-WL/ALTS/LC/PTS" --- "Copy for the addon"
 drops text ("Drops für die Website")  -> "#AMISIA 2" DZ/DN/DK ----- paste --> Loot Tables (amParseDrops)
@@ -173,7 +174,8 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 
 - Build inputs: own data first (scan, collector, drop records of the guild, SavedVariables), the
   user's client table export, AllTheThings (MIT), and the user-accepted inputs wowsrc.com,
-  OneForAll, AtlasLoot (PC only). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
+  OneForAll 5.x (GPL-3.0; a download on the N100, the installed addon on the PC; only items with a
+  Forever id or one the client knows) and AtlasLoot (PC only). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
   script (see DECISIONS).
 - The scan data (`AmisiaDB.scan`: item lines, collector notes, suffixes) lives for good in
   `tools/scan_archive.json` (committed, about 2.5 MB; git keeps it compressed). `build.py data` joins
@@ -514,9 +516,11 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1` |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
+| `~/addons/_cache/oneforall` | OneForAll download (GPL-3.0; Lua, TOC and text files only, `build_gear.py --refresh-oneforall`), read only in the sandbox of `build_gear.load_oneforall` |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |
 
 In-game tests are the user's (PC); `/reload` after a release (a new file or texture needs a full
 client restart). PC-only builder: `tools/build_scan.py` (full; `Amisia-Website/data/bossnames.js`, the TBC
 archive's boss names, is frozen and has no builder);
-optional PC-only build inputs: AtlasLoot, OneForAll and the live SavedVariables.
+optional PC-only build inputs: AtlasLoot and the live SavedVariables (OneForAll: the installed addon
+when the N100's download is missing).
