@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.37.1 (2026-10-15)
+
+- Minimap-Knopf und Addon-Fach mit dem Amisia-Icon (Amisia.tga) statt eigenem Minimap-Icon; Minimap.tga entfernt
+
 ## 2.37.0 (2026-10-14)
 
 - Einstellungen in der Seitenliste ein- und ausklappen: Klick auf die offene Gruppe klappt ihre Abschnitte zu, Klick auf Einstellungen alle Gruppen (wie das Auktionshaus)
