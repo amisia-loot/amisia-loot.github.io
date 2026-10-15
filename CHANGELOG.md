@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.37.2 (2026-10-15)
+
+- Schwarzer Grund unter dem Amisia-Icon im Fensterporträt und am Minimap-Knopf (Icon mit durchsichtigem Grund)
+- Neues Amisia-Icon (A mit Band, vom Nutzer) überall: Fensterporträts, Addon-Liste und -Fach, Minimap-Knopf; make_icons.py macht es aus tools/art/Amisia.png, Cinzel-Schrift entfernt
+- OneForAll 5.6.0 als Quelle der Ausrüstungsdaten: build_gear liest das neue Format (Dungeon-Registry, Rezeptlisten) abgeschottet, nur Items mit Forever-ID oder die der Client kennt; Download in ~/addons/_cache/oneforall (--refresh-oneforall); GearData 5520 -> 6036 Items
+
 ## 2.37.1 (2026-10-15)
 
 - Minimap-Knopf und Addon-Fach mit dem Amisia-Icon (Amisia.tga) statt eigenem Minimap-Icon; Minimap.tga entfernt
