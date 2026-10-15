@@ -389,6 +389,14 @@ AmisiaMenu:Hide()
 STUB.officer = true
 NS.ShowPage("overview")
 local MF = AmisiaFrame
+-- the portrait sits on a black disc of its size, under it (an icon with a see-through ground)
+do
+    local back, pic = MF.portraitBack, MF.PortraitContainer.portrait
+    assert(back and back.texture == W.DISC, "a disc under the portrait")
+    local c = back.vertexColor
+    assert(c and c[1] == 0 and c[2] == 0 and c[3] == 0 and c[4] == 1, "black")
+    assert(back.allPoints == pic or (back.points and next(back.points)), "on the portrait")
+end
 assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 560)
 assert(MF.strata == "FULLSCREEN")
 assert(MF.portraitAsset == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia", "the Amisia portrait")

@@ -336,6 +336,8 @@ end
 -- the place the list would fill. e:Set(title, text) fills it (e:SetText and e:GetText: the line of
 -- help alone); Show/Hide as any frame. Pages place it with p:Empty (W.Page).
 W.EMBLEM = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
+-- a white disc with soft edges (the client's round portrait mask), tinted for a round ground
+W.DISC = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 function W.EmptyState(parent, width)
     local e = CreateFrame("Frame", nil, parent)
     local E = T.EMPTY
@@ -1295,6 +1297,15 @@ function W.Window(name, width, height, opts)
     if F then
         if opts.portrait then
             F:SetPortraitToAsset(opts.portrait)
+            -- a black disc under the portrait: an icon with a see-through ground sits on black, not on
+            -- the window behind it
+            local p = F.PortraitContainer and F.PortraitContainer.portrait or F.portrait
+            if p then
+                F.portraitBack = (F.PortraitContainer or F):CreateTexture(nil, "OVERLAY", nil, -8)
+                F.portraitBack:SetTexture(W.DISC)
+                F.portraitBack:SetVertexColor(0, 0, 0, 1)
+                F.portraitBack:SetAllPoints(p)
+            end
         else
             if F.SetBorder then pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortrait") end
             if F.SetPortraitShown then F:SetPortraitShown(false) end
