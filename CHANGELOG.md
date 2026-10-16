@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.6 (2026-10-16)
+
+- Schiffe und Zeppelin poliert: glatter Rand, weicher Schatten; Zeppelin ohne Stacheln und Kasten-Schatten
+- F-105 in 2.39.6 (polierte Symbole)
+
 ## 2.39.5 (2026-10-16)
 
 - Flugmeister-Symbol: die abgetrennten hellen Stücke rechts und unter dem Stiefel samt Rand entfernt (vom Original aus)
