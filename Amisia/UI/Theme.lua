@@ -212,6 +212,23 @@ T.MEMBERS = {
     COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 78 }, { "prof", 320, 120 } },
 }
 
+-- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row
+-- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
+T.DUELS = {
+    CLASS_W = 130, SEARCH_W = 140,                 -- the second head row's class picker and search box
+    HIST_ROWS = 12, HIST_ROW_H = 32, LINE1_Y = -3, LINE2_Y = -17,
+    -- { key, x, width } of the history: time, winner, loser, result, place
+    HIST_COLS = { { "t", 6, 70 }, { "w", 80, 152 }, { "l", 236, 152 }, { "k", 392, 56 }, { "z", 452, 132 } },
+    ROWS = 19, ROW_H = 20,
+    -- the leaderboard: rank, name, class, games, wins-losses, win rate (a click on the last four heads sorts)
+    BOARD_COLS = { { "rank", 6, 28, justify = "RIGHT" }, { "name", 42, 176 }, { "class", 224, 92 },
+                   { "games", 318, 62, justify = "RIGHT" }, { "wins", 396, 80, justify = "CENTER" },
+                   { "rate", 484, 70, justify = "RIGHT" } },
+    -- the classes: rank and class, games, players, wins-losses, win rate
+    CLASS_COLS = { { "class", 6, 200 }, { "games", 214, 60, justify = "RIGHT" }, { "players", 288, 60, justify = "RIGHT" },
+                   { "wins", 366, 90, justify = "CENTER" }, { "rate", 470, 70, justify = "RIGHT" } },
+}
+
 -- an overview card
 T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help

@@ -641,6 +641,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Zeile anklickst und "Flüstern" wählst, dann steht "/w Name " in der Chatzeile.
 - Notiz: Spec `docs/specs/2026-10-16-gilde-mitglieder.md`.
 
+### F-106 Duelle: Verlauf, Rangliste, Klassen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du ein Duell gewinnst oder verlierst, dann steht es im Reiter PvP auf der Seite Duelle im Verlauf mit Zeit, beiden Namen in Klassenfarbe mit Klasse, "Sieg" und dem Ort.
+- Prüfung: Wenn zwei andere in deiner Nähe ein Duell beenden, dann steht auch ihr Duell im Verlauf.
+- Prüfung: Wenn jemand aus einem Duell flieht (Abstand), dann steht es als "Flucht" mit ihm als Verlierer.
+- Prüfung: Wenn ein Spieler "unbekannt" ist und du "Klassen suchen" klickst, dann geht kein Fenster auf, der Chat sagt "Duelle: /who ... brachte N Klassen", seine Klasse steht danach in allen seinen Duellen (sofern /who ihn findet) und die Zahl auf dem Knopf sinkt.
+- Prüfung: Wenn du die Ansicht Klassen öffnest, dann siehst du je Klasse Spiele, Spieler, S-N und Siegrate und unten, wie viel Prozent der Klassen bekannt sind; ein Klick auf eine Klasse zeigt sie gegen jede andere.
+- Notiz: Spec `docs/specs/2026-10-16-duelle.md`; DECISIONS D-52. Nichts wird gesendet; Duelle der Gilde teilen wäre ein eigenes Feature.
+
 ## Addon: Ausrüstung und Welt
 
 ### F-038 Ausrüstungstabelle

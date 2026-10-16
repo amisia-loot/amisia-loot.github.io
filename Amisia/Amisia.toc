@@ -29,6 +29,7 @@ Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
+Core\Duels.lua
 UI\Theme.lua
 UI\Widgets.lua
 Raid\Awards.lua
@@ -124,6 +125,7 @@ UI\Pages\MageScrolls.lua
 UI\Pages\Export.lua
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
+UI\Pages\Duels.lua
 UI\Pages\Tools.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua

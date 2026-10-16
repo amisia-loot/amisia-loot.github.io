@@ -45,7 +45,7 @@ end
 assert(has(navText(), "Overview") and has(navText(), "Raid log"), navText())
 local tabs = {}
 for _, k in ipairs(F.tabOrder) do tabs[#tabs + 1] = F.tabs[k].Text:GetText() end
-assert(table.concat(tabs, ",") == "Raid,Gear,Guild,Calendar,Amisia", table.concat(tabs, ","))
+assert(table.concat(tabs, ",") == "Raid,Gear,Guild,Calendar,PvP,Amisia", table.concat(tabs, ","))
 NS.ShowTab("guild")
 assert(has(navText(), "Guild bank"), navText())
 NS.ShowTab("amisia")

@@ -307,6 +307,8 @@ local function whisper(name)
     return false
 end
 
+ns.Whisper = whisper
+
 local function invite(name)
     local api = _G.C_PartyInfo
     local fn = type(api) == "table" and api.InviteUnit or _G.InviteUnit

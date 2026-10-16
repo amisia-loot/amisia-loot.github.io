@@ -64,6 +64,7 @@ ns.PANEL_GROUPS = {
     { key = "gear", label = L["Ausrüstung"] },
     { key = "guild", label = L["Gilde"] },
     { key = "calendar", label = L["Kalender"] },
+    { key = "pvp", label = "PvP" },
     { key = "amisia", label = "Amisia" },
 }
 

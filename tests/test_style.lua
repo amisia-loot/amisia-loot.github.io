@@ -447,7 +447,7 @@ end
 local function tabOf(key) return MF.tabs[key] end
 NS.Set("ui.view", "raider")
 NS.ShowPage("overview")
-assert(table.concat(MF.tabOrder, " ") == "raid gear guild calendar amisia", table.concat(MF.tabOrder, " "))
+assert(table.concat(MF.tabOrder, " ") == "raid gear guild calendar pvp amisia", table.concat(MF.tabOrder, " "))
 -- (2.10: the guild bank page is for everyone: its needs and pledges are for the raiders too)
 assert(navShown() == "overview raidlog awards stats softres", navShown())
 NS.ShowTab("gear"); assert(navShown() == "gear dungeons map quests professions talents", navShown())
@@ -493,7 +493,7 @@ NS.Set("ui.view", "raider")
 NS.Set("ui.expert", false)
 bank.available, members.available = function() return false end, function() return false end
 NS.Refresh()
-assert(table.concat(MF.tabOrder, " ") == "raid gear calendar amisia" and not tabOf("guild"):IsShown(), table.concat(MF.tabOrder, " "))
+assert(table.concat(MF.tabOrder, " ") == "raid gear calendar pvp amisia" and not tabOf("guild"):IsShown(), table.concat(MF.tabOrder, " "))
 assert(tabOf("calendar").points.TOPLEFT.rel == t2, "no gap for the hidden tab")
 bank.available, members.available = keepAvail, keepMembers
 NS.Set("ui.view", "officer")
@@ -870,7 +870,8 @@ for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Lat
 assert(NS.PANEL_GROUPS[2].label == "Ausrüstung")
 -- every page names its section
 for _, p in ipairs(NS.panels) do
-    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "calendar" or p.group == "amisia",
+    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "calendar" or p.group == "pvp"
+        or p.group == "amisia",
         "a group for " .. p.key)
 end
 

@@ -35,7 +35,7 @@ assert(NS.CurrentPage() == "overview" and F:IsShown())
 NS.Dispatch("einstellungen")
 -- under "Einstellungen" its tabs and the chosen tab's sections (D-49): the first is Raid, Aufnahme
 assert(NS.CurrentPage() == "settings" and F.tabs.amisia.selected and navShown():match("^settings raid record ")
-    and navShown():find(" gear calendar amisia about$"), navShown())
+    and navShown():find(" gear calendar pvp amisia about$"), navShown())
 assert(AmisiaDB.settings.window.tab == "amisia" and AmisiaDB.settings.window.pages.amisia == "settings")
 NS.Dispatch("kalender")   -- the raid calendar window (not in a guild here: a message), the page stays
 assert(NS.CurrentPage() == "settings")
@@ -52,11 +52,11 @@ local bank, exp, members = NS.Panel("bank"), NS.Panel("export"), NS.Panel("membe
 local keepBank, keepMembers = bank.available, members.available
 bank.available, members.available = function() return false end, function() return false end
 NS.Set("ui.view", "raider"); STUB.tick(0)      -- the guild tab has no page left for a raider: gone, the page falls back
-assert(not F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear calendar amisia", table.concat(F.tabOrder, " "))
+assert(not F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear calendar pvp amisia", table.concat(F.tabOrder, " "))
 assert(NS.CurrentPage() == "overview", "the open page fell back: " .. NS.CurrentPage())
 bank.available, members.available = keepBank, keepMembers
 NS.Refresh()
-assert(F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear guild calendar amisia")
+assert(F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear guild calendar pvp amisia")
 assert(exp.officer, "export stays an officer page")
 
 -- the list's rows: normal height (the auction house's 21) with the few pages of a tab

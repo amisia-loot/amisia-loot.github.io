@@ -51,7 +51,7 @@ assert(AmisiaDB.settings.window.section == "map", "remembered")
 
 -- the page list under "Einstellungen": the tabs, the chosen one open
 local nav = navShown()
-assert(has(nav, "settings raid gear -bis -wishes -drops -map -quests -collect -crafters guild calendar amisia about"), nav)
+assert(has(nav, "settings raid gear -bis -wishes -drops -map -quests -collect -crafters guild calendar pvp amisia about"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end

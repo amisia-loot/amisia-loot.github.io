@@ -197,6 +197,36 @@ function S.members()
     STUB.tick(11)
 end
 
+-- The duels page (F-106): an evening at the duel spot of Durotar: duels of strangers and own ones,
+-- a flight, players without a class, a tournament of three duels; the view chosen by the caller.
+local duelsDone
+function S.duels(view, class)
+    if not duelsDone then
+        duelsDone = true
+        local cast = { { "Tuoppi Foreverpvp", "WARLOCK" }, { "Dark Merlin", "PRIEST" }, { "Kovu Foreverpvp", "DRUID" },
+            { "Itskchief Foreverpvp" }, { "Fastwizard Fastwizard", "MAGE" }, { "Mcvisa Ppc" }, { "Saltar Grande", "HUNTER" },
+            { "Two Foreverpvp", "PRIEST" }, { "Hydra Foreverpvp", "PRIEST" }, { "Illi Foreverpvp" },
+            { "Rook Foreverpvp", "ROGUE" }, { "Curzy Foreverpvp", "PALADIN" }, { "Mitza Lock", "WARLOCK" },
+            { "Worstclass Foreverpvp", "WARRIOR" }, { "Ggwp Foreverpvp", "SHAMAN" }, { "Vuloo", "PRIEST" } }
+        local d = AmisiaDB.duels
+        d.zones = { "Durotar · Tor von Orgrimmar", "Durotar" }
+        local now = math.floor(STUB.now)
+        for i = 1, 40 do
+            local a, b = cast[(i * 7) % #cast + 1], cast[(i * 3 + 1) % #cast + 1]
+            if a == b then b = cast[(i * 3 + 2) % #cast + 1] end
+            local tour = i > 37 and "\t1" or ""
+            d.list[#d.list + 1] = ("%d\t%s\t%s\t%d\t%s"):format(now - (40 - i) * 95, a[1], b[1], i % 3 == 0 and 2 or 1,
+                i % 9 == 0 and "F" or "K") .. tour
+        end
+        for _, e in ipairs(cast) do if e[2] then d.cls[e[1]] = e[2] end end
+        d.tour = { n = 1 }
+        NS.Duels.Changed()
+    end
+    AmisiaDB.settings.window = AmisiaDB.settings.window or {}
+    AmisiaDB.settings.window.duels = { view = view or "hist", class = class or "all" }
+    NS.ShowDuels()
+end
+
 -- The game calendar (Raid/Calendar.lua): tonight's raid "Geschmolzener Kern" (an hour from now),
 -- a meeting and Onyxia later; the raid's invite list holds names of the pasted list (one declined,
 -- one tentative) and names only the calendar knows.
@@ -414,6 +444,11 @@ S.STATES = {
     -- the members page with the lineup's guild: zones, offline members with their last time online,
     -- a note, professions from the recipe exchange (main and secondary) and the own ones
     { page = "members", name = "members-guild", open = function() S.members(); NS.ShowMembers() end },
+    -- the duels page: the history, the leaderboard, the classes and one class against the others
+    { page = "duels", name = "duels-hist", open = function() S.duels("hist") end },
+    { page = "duels", name = "duels-board", open = function() S.duels("board") end },
+    { page = "duels", name = "duels-classes", open = function() S.duels("classes") end },
+    { page = "duels", name = "duels-priest", open = function() S.duels("classes", "PRIEST") end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },
