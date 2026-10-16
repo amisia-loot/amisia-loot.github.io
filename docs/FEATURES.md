@@ -631,8 +631,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Ort nur von einem anderen Spieler gemeldet ist, dann setzt Amisia keinen Wegpunkt dorthin; der Ort steht als Text mit "(von der Gilde)".
 
 ### F-104 Seite Mitglieder (Gildenliste mit Ort und Berufen)
-- Version: -
-- Status: geplant
+- Version: 2.38.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du im Reiter Gilde "Mitglieder" öffnest, dann steht dort jedes Gildenmitglied mit Name in Klassenfarbe, Stufe, Klasse, Rang und Ort; wer online ist, zuerst und grün.
 - Prüfung: Wenn ein Mitglied offline ist, dann steht unter dem Ort "zuletzt vor …" wie im Gildenfenster des Spiels.
