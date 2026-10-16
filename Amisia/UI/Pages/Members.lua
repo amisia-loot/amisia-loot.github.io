@@ -51,12 +51,13 @@ local function className(e)
     return names and names[e.class] or e.className or (e.class ~= "" and e.class) or nil
 end
 
-local function rankName(e) return e.rankName or L["Rang %d"]:format(e.rank or 0) end
+-- the guild master types the rank names: shown as plain text (a bar would start a code)
+local function rankName(e) return e.rankName and (tostring(e.rankName):gsub("|", "||")) or L["Rang %d"]:format(e.rank or 0) end
 
--- "Stufe 60 Priester · Offizier"
+-- "60 Priester · Offizier" (the level as the number only: the line holds the rank too)
 local function infoText(e)
     local cls = className(e)
-    return L["Stufe %s##Charakter"]:format(e.level and tostring(e.level) or "?") .. (cls and (" " .. cls) or "")
+    return (e.level and tostring(e.level) or "?") .. (cls and (" " .. cls) or "")
         .. " · " .. rankName(e)
 end
 
@@ -99,7 +100,7 @@ local function awayText(a, short)
             break
         end
     end
-    if #parts == 0 then return L["zuletzt vor weniger als 1 Stunde"] end
+    if #parts == 0 then return short and L["gerade offline"] or L["zuletzt vor weniger als 1 Stunde"] end
     return L["zuletzt vor %s"]:format(table.concat(parts, " "))
 end
 
@@ -107,6 +108,7 @@ local function lastText(e)
     if e.online then return T.GREEN .. L["online"] .. "|r" end
     return T.GREY .. awayText(e.last, true) .. "|r"
 end
+ns.MembersInfoText, ns.MembersLastText = infoText, lastText
 
 -- A note as plain text in a tooltip (a bar would start a code).
 local function plain(s) return (tostring(s):gsub("|", "||")) end
@@ -519,6 +521,11 @@ local function profValues(rows)
     return out
 end
 
+local function hasValue(values, v)
+    for _, e in ipairs(values) do if e.value == v then return true end end
+    return false
+end
+
 local function refresh(f)
     local st = state()
     local locked = ns.ChatLocked and ns.ChatLocked()
@@ -536,9 +543,15 @@ local function refresh(f)
         last = nil
     end
 
-    f.class:SetValues(classValues(rows))
+    -- a saved choice the guild no longer has (a class, a profession) goes back to "all"
+    local classes, profs = classValues(rows), profValues(rows)
+    if rows and #rows > 0 then
+        if not hasValue(classes, st.class) then st.class = "all" end
+        if not hasValue(profs, st.prof) then st.prof = "all" end
+    end
+    f.class:SetValues(classes)
     f.class:SetValue(st.class)
-    f.prof:SetValues(profValues(rows))
+    f.prof:SetValues(profs)
     f.prof:SetValue(st.prof)
     f.online:SetChecked(st.online == true)
     for key, b in pairs(f.heads) do

@@ -77,7 +77,7 @@ assert(has(f.data:GetText(), "12 Mitglieder, 7 online, 2 mit Amisia"), f.data:Ge
 local r1 = f.list.rows[1]
 assert(r1.classIcon:IsShown() and r1.classIcon.texture == NS.Theme.MEMBERS.CLASS_TEXTURE, "the round class icon")
 assert(has(r1.name:GetText(), "Anna Amboss") and has(r1.name:GetText(), "|c"), r1.name:GetText())
-assert(has(r1.info:GetText(), "Stufe 58 Krieger · Veteran"), r1.info:GetText())
+assert(has(r1.info:GetText(), "58 Krieger · Veteran") and not has(r1.info:GetText(), "Stufe"), r1.info:GetText())
 assert(r1.zone:GetText() == "Eisenschmiede" and has(r1.last:GetText(), "online") and has(r1.last:GetText(), NS.Theme.GREEN))
 -- Anna: smithing in the upper line, cooking in the lower
 local b1, b4 = r1.boxes[1], r1.boxes[NS.Theme.MEMBERS.MAIN_BOXES + 1]
@@ -261,6 +261,26 @@ do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
     L.row("head row", f.class, f.prof, f.online, f.onlineLabel, f.search)
     L.inside("members list", f.list)
+end
+
+---------------------------------------------------------------------------
+-- review: a saved class or profession the guild no longer has goes back to "all"; under an hour
+-- "gerade offline"; a bar in a rank name stays text; Cr.Own's empty list is one table (its caches hold)
+---------------------------------------------------------------------------
+do
+    AmisiaDB.settings.window.members.class = "NOSUCHCLASS"
+    AmisiaDB.settings.window.members.prof = 99999
+    NS.Refresh()
+    assert(AmisiaDB.settings.window.members.class == "all" and AmisiaDB.settings.window.members.prof == "all", "back to all")
+    assert(#f.list.items > 0, "the list is not empty")
+    local saved = AmisiaDB.prof
+    AmisiaDB.prof = nil
+    assert(Cr.Own() == Cr.Own(), "the same empty list")
+    AmisiaDB.prof = saved
+    local row = { name = "Lia", class = "MAGE", level = 60, rankName = "|TInterface\\Icons\\X:0|t Boss", online = false,
+        last = { y = 0, mo = 0, d = 0, h = 0 } }
+    assert(has(NS.MembersInfoText(row), "||T"), "the rank as text: " .. NS.MembersInfoText(row))
+    assert(has(NS.MembersLastText(row), "gerade offline"), NS.MembersLastText(row))
 end
 
 ---------------------------------------------------------------------------

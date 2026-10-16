@@ -218,12 +218,13 @@ end)
 -- The own crafters announced to the guild: { { name, profs = { { skill, rank, max, known = { [spell]
 -- = true }, day (read on that day) } } } }, the current character first, then by name; at most
 -- crafterMax with profMax professions each, only professions read from the window.
+local NONE = {}          -- the one empty list (the same table each time, so the caches keyed by it hold)
 function Cr.Own()
     local p, g = profDB(), guildName()
-    if not p then return {} end
+    if not p then return NONE end
     local me = ns.UnitFullName and ns.UnitFullName("player") or "?"
     markGuild(p, me)
-    if not g then return {} end
+    if not g then return NONE end
     if ownCache and ownCache.gen == ownGen and ownCache.guild == g and ownCache.me == me then return ownCache.list end
     local names = {}
     for name, c in pairs(p.chars) do
