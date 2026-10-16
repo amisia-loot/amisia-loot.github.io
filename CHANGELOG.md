@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.4 (2026-10-16)
+
+- Daten für Client-Build 1.60.1.70425: Talentbäume (Priester, Paladin, Krieger, Jäger u. a.), Berufe, Raid-Check, BiS
+
 ## 2.39.3 (2026-10-16)
 
 - Flugmeister-Symbol ohne den weißen Streifen rechts neben dem Stiefel
