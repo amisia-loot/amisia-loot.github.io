@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.3 (2026-10-16)
+
+- Flugmeister-Symbol ohne den weißen Streifen rechts neben dem Stiefel
+
 ## 2.39.2 (2026-10-16)
 
 - F-105 in 2.39.1 (richtige Symbole)
