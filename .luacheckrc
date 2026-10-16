@@ -39,7 +39,7 @@ read_globals = {
     "GetServerTime", "GetSpellDescription", "GetSpellHitModifier", "GetSpellInfo", "GetTime", "GetTitleText",
     "GetZoneText", "GiveMasterLoot", "GuildControlGetNumRanks", "GuildControlGetRankName",
     "HandleModifiedItemClick", "hooksecurefunc", "InCombatLockdown", "UpdateAddOnMemoryUsage", "GetAddOnMemoryUsage", "IsAltKeyDown", "IsControlKeyDown",
-    "IsInGroup", "IsInGuild", "IsInInstance", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
+    "IsInGroup", "IsInGuild", "IsInInstance", "IsInLFGDungeon", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
     "ITEM_CLASSES_ALLOWED", "LE_PARTY_CATEGORY_HOME", "LootFrame", "MapCanvasDataProviderMixin",
     "MapCanvasPinMixin", "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",
     "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",

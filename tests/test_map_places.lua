@@ -251,6 +251,14 @@ STUB.instance = { type = "party", name = "Kral", id = 47 }
 STUB.fire("PLAYER_ENTERING_WORLD")
 assert(AmisiaDB.entrances.list[47] == nil, "summoned: no entrance")
 STUB.tick(130)
+-- a group finder teleport: nothing
+STUB.instance = { type = "none", id = 1 }
+Map.SamplePlace()
+STUB.instance = { type = "party", name = "Kral", id = 47 }
+IsInLFGDungeon = function() return true end
+STUB.fire("PLAYER_ENTERING_WORLD")
+IsInLFGDungeon = nil
+assert(AmisiaDB.entrances.list[47] == nil, "group finder: no entrance")
 -- a battleground is no dungeon
 STUB.instance = { type = "none", id = 1 }
 Map.SamplePlace()

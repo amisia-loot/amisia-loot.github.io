@@ -1057,7 +1057,7 @@ gespeicherter Zustand), damit ein Abschnitt aus der Suche oder einem Seitenknopf
 Fraktion plus neutrale, alle gleich (nichts pro Charakter). Klick auf einen Eingang öffnet ihn in Amisia,
 Shift-Klick setzt das Ziel. Eingänge, die keine Quelle kennt, merkt sich Amisia beim Betreten
 (`AmisiaDB.entrances`): der letzte Ort im Freien, höchstens 20 s vor dem Ladebildschirm in eine Gruppen- oder
-Raid-Instanz, nach der Instanz-ID; nicht nach einer Beschwörung, höchstens 60. `build.py data` (Schritt map)
+Raid-Instanz, nach der Instanz-ID; nicht nach einer Beschwörung oder einem Teleport der Gruppensuche, höchstens 60. `build.py data` (Schritt map)
 nimmt sie in `tools/entrance_archive.json` auf (eine neuere Sichtung ersetzt die ältere, nichts fällt weg) und
 in `Data/MapData.lua`, als letzte Quelle nach Client-Tabelle Map, AllTheThings und OneForAll. Anders als bei den
 Scan-Daten (D-34) räumt das Addon nichts weg: der Schlüssel ist klein. Klassische Anleger stehen von Hand in

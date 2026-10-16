@@ -576,7 +576,8 @@ function Map.SamplePlace()
 end
 
 -- After a loading screen inside a dungeon or raid: the last place outdoors becomes its entrance
--- when it is at most 20 s old and no summon came in between. Returns the record or nil.
+-- when it is at most 20 s old and no summon or group finder teleport brought the player in.
+-- Returns the record or nil.
 function Map.LearnEntrance()
     local sample = last
     last = nil
@@ -586,6 +587,8 @@ function Map.LearnEntrance()
     if itype ~= "party" and itype ~= "raid" then return nil end
     if not sample or GetTime() - sample.at > LEARN_AGE then return nil end
     if summonedAt and GetTime() - summonedAt < SUMMON_GAP then return nil end
+    -- a group finder teleport brings the player in from anywhere: the last place is not the entrance
+    if IsInLFGDungeon and ns.Plain(IsInLFGDungeon()) then return nil end
     local name, _, _, _, _, _, _, id = GetInstanceInfo()
     id, name = ns.Plain(id), ns.Plain(name)
     if not int(id, 1) or not AmisiaDB then return nil end
