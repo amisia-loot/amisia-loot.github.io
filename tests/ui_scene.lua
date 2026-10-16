@@ -313,6 +313,7 @@ end
 function S.priestPlan()
     local plan = NS.Talents.NewPlan("PRIEST")
     plan.ranks[105849], plan.ranks[105850], plan.ranks[105846] = 5, 1, 3
+    plan.ranks[105848], plan.ranks[105845] = 3, 1   -- since 70425 Improved Power Word: Shield is in row 2 (10 points)
     plan.ranks[105833], plan.ranks[105832] = 5, 1
     return plan
 end
