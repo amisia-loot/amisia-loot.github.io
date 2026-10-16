@@ -2,6 +2,15 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.38.0 (2026-10-16)
+
+- Spec: Seite Mitglieder im Reiter Gilde (Entwurf)
+- Spec Mitglieder freigegeben (alle Ansichten, nur Gildenmitglieder, Twinks als eigene Zeile), F-104 geplant
+- Seite Mitglieder im Reiter Gilde: Name, Stufe, Rang, Ort, zuletzt online, Berufe mit Skill, Filter Klasse/Beruf/online (F-104)
+- Mitglieder: zwei breite Felder für die Hauptberufe (ganze Namen), drei für die Nebenberufe, in der Zeile 'zuletzt vor' nur die größte Einheit (Tooltip beide)
+- Review Mitglieder: Cr.Own gibt immer dieselbe leere Liste (Berufe-Cache greift), 'gerade offline' unter einer Stunde, Stufe als Zahl damit der Rang passt, gespeicherte Klasse/Beruf ohne Treffer zurück auf alle, Rangname als Text
+- F-104 gebaut in 2.38.0
+
 ## 2.37.2 (2026-10-15)
 
 - Schwarzer Grund unter dem Amisia-Icon im Fensterporträt und am Minimap-Knopf (Icon mit durchsichtigem Grund)
