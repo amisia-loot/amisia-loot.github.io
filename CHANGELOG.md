@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.1 (2026-10-16)
+
+- Karten-Orte mit richtigen Symbolen: Flügelstiefel für Flugmeister, Schiff in Fraktionsfarbe, Zeppelin von oben (Media/Icons/place_*.tga), kein Rahmen mehr
+
 ## 2.39.0 (2026-10-16)
 
 - Spec Orte auf der Weltkarte: Eingänge, Flugmeister, Zeppeline, Schiffe (F-105, Entwurf)
