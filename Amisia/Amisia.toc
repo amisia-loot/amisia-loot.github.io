@@ -122,6 +122,7 @@ UI\Pages\Talents.lua
 UI\Pages\MageScrolls.lua
 UI\Pages\Export.lua
 UI\Pages\Bank.lua
+UI\Pages\Members.lua
 UI\Pages\Tools.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua

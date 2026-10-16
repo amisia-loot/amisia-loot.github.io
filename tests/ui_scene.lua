@@ -157,6 +157,46 @@ function S.lineup()
     end
 end
 
+-- The members page (F-104): the lineup's guild with zones, some offline with their last time online,
+-- a note, and the professions of a few members from the recipe exchange (as lists of recipes).
+local membersDone
+function S.members()
+    S.lineup()
+    if membersDone then return end
+    membersDone = true
+    local zones = { "Sturmwind", "Eisenschmiede", "Tanaris", "Silithus", "Winterquell", "Brennende Steppe", "Feralas" }
+    local away = { { 0, 0, 2, 19 }, { 0, 0, 0, 5 }, { 0, 1, 3, 0 } }
+    local off = 0
+    for i, m in ipairs(STUB.guild) do
+        m.zone = zones[(i - 1) % #zones + 1]
+        m.level = m.level or 60
+        if m.online == false then
+            off = off + 1
+            m.last = away[(off - 1) % #away + 1]
+        end
+    end
+    STUB.guild[2].note = "Kasse und Bank"
+    local D = NS.DropsToday()
+    local function list(n)
+        local out = {}
+        for k = 1, n do out[k] = tostring(100000 + k) end
+        return table.concat(out, ",")
+    end
+    AmisiaDB.crafters = AmisiaDB.crafters or { v = 1, src = {}, c = {} }
+    local c = AmisiaDB.crafters.c
+    c["Fraktur"] = { via = "Fraktur", self = true, seen = D - 3, p = {
+        [171] = { r = 225, m = 300, l = list(84) }, [182] = { r = 240, m = 300, l = list(1) },
+        [185] = { r = 150, m = 225, l = list(20) }, [129] = { r = 225, m = 225, l = list(12) },
+        [356] = { r = 90, m = 150, l = list(1) } } }
+    c["Chorf"] = { via = "Chorf", self = true, seen = D, p = {
+        [164] = { r = 300, m = 300, l = list(140) }, [186] = { r = 285, m = 300, l = list(9) } } }
+    c["Bob Eisherz"] = { via = "Bob Eisherz", self = true, seen = D - 1, p = {
+        [202] = { r = 180, m = 225, l = list(40) }, [197] = { r = 60, m = 75, l = list(15) }, [185] = { r = 30, m = 75, l = list(4) } } }
+    NS.Crafters.Changed()
+    STUB.fire("GUILD_ROSTER_UPDATE")
+    STUB.tick(11)
+end
+
 -- The game calendar (Raid/Calendar.lua): tonight's raid "Geschmolzener Kern" (an hour from now),
 -- a meeting and Onyxia later; the raid's invite list holds names of the pasted list (one declined,
 -- one tentative) and names only the calendar knows.
@@ -370,6 +410,9 @@ S.STATES = {
         box:SetText("cursed")
         box.scripts.OnTextChanged(box, true)
     end },
+    -- the members page with the lineup's guild: zones, offline members with their last time online,
+    -- a note, professions from the recipe exchange (main and secondary) and the own ones
+    { page = "members", name = "members-guild", open = function() S.members(); NS.ShowMembers() end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

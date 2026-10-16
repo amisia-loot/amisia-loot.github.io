@@ -20,7 +20,19 @@ Pr.NAMES = {
     leatherworking = L["Lederverarbeitung"], tailoring = L["Schneiderei"], cooking = L["Kochkunst"], firstaid = L["Erste Hilfe"],
     fishing = L["Angeln"], herbalism = L["Kräuterkunde"], mining = L["Bergbau"], skinning = L["Kürschnerei"], poisons = L["Gifte"],
 }
-Pr.TIERS = { [0] = L["Lehrer"], L["Lehrer (Lehrling)"], L["Lehrer (Geselle)"], L["Lehrer (Experte)"], L["Lehrer (Fachmann)"] }
+-- Their icons (the client's), and the secondary professions (the others are main professions).
+Pr.ICONS = {
+    alchemy = "Interface\\Icons\\Trade_Alchemy", blacksmithing = "Interface\\Icons\\Trade_BlackSmithing",
+    enchanting = "Interface\\Icons\\Trade_Engraving", engineering = "Interface\\Icons\\Trade_Engineering",
+    leatherworking = "Interface\\Icons\\INV_Misc_ArmorKit_17", tailoring = "Interface\\Icons\\Trade_Tailoring",
+    cooking = "Interface\\Icons\\INV_Misc_Food_15", firstaid = "Interface\\Icons\\Spell_Holy_SealOfSacrifice",
+    fishing = "Interface\\Icons\\Trade_Fishing", herbalism = "Interface\\Icons\\Trade_Herbalism",
+    mining = "Interface\\Icons\\Trade_Mining", skinning = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01",
+    poisons = "Interface\\Icons\\Trade_BrewPoison",
+}
+Pr.ICON_UNKNOWN = "Interface\\Icons\\INV_Misc_QuestionMark"
+Pr.SECONDARY = { cooking = 1, firstaid = 2, fishing = 3, poisons = 4 }
+Pr.TIERS ={ [0] = L["Lehrer"], L["Lehrer (Lehrling)"], L["Lehrer (Geselle)"], L["Lehrer (Experte)"], L["Lehrer (Fachmann)"] }
 Pr.STANDING = { L["Hasserfüllt"], L["Feindselig"], L["Unfreundlich"], "Neutral", L["Freundlich"], L["Wohlwollend"], L["Respektvoll"],
     L["Ehrfürchtig"] }
 Pr.FACTION_NAME = { A = L["Allianz"], H = "Horde" }

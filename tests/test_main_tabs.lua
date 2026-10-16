@@ -47,14 +47,14 @@ assert(NS.CurrentPage() == "gear" and F.tabs.gear.selected)
 -- the view decides the tabs: the officer view adds the officer pages, never a tab without a page
 NS.Set("ui.view", "officer")
 NS.ShowTab("guild")
-assert(navShown() == "export bank", navShown())
-local bank, exp = NS.Panel("bank"), NS.Panel("export")
-local keepBank = bank.available
-bank.available = function() return false end
+assert(navShown() == "export members bank", navShown())
+local bank, exp, members = NS.Panel("bank"), NS.Panel("export"), NS.Panel("members")
+local keepBank, keepMembers = bank.available, members.available
+bank.available, members.available = function() return false end, function() return false end
 NS.Set("ui.view", "raider"); STUB.tick(0)      -- the guild tab has no page left for a raider: gone, the page falls back
 assert(not F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear calendar amisia", table.concat(F.tabOrder, " "))
 assert(NS.CurrentPage() == "overview", "the open page fell back: " .. NS.CurrentPage())
-bank.available = keepBank
+bank.available, members.available = keepBank, keepMembers
 NS.Refresh()
 assert(F.tabs.guild:IsShown() and table.concat(F.tabOrder, " ") == "raid gear guild calendar amisia")
 assert(exp.officer, "export stays an officer page")

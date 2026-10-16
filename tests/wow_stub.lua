@@ -497,8 +497,9 @@ function STUB.dump(v, seen)
     return "{" .. table.concat(parts, ",") .. "}"
 end
 
--- The guild roster: STUB.guild = { { name, class (token), online, rank, level } } (rank: rank order, 1 =
--- guild master, default 3); requests are counted.
+-- The guild roster: STUB.guild = { { name, class (token), online, rank, level, zone, note, onote (officer
+-- note), last = { years, months, days, hours } offline } } (rank: rank order, 1 = guild master, default
+-- 3; zone "Shattrath" by default); requests are counted.
 STUB.guild, STUB.guildRequests = {}, 0
 C_GuildInfo.GuildRoster = function() STUB.guildRequests = STUB.guildRequests + 1 end
 C_GuildInfo.IsGuildOfficer = function() return STUB.officer and true or false end
@@ -531,11 +532,20 @@ _G.C_Club = {
         STUB.clubCalls = STUB.clubCalls + 1
         local m = club == 77 and STUB.guild[id - 1000]
         if not m then return nil end
+        local last = m.online == false and m.last or nil
         return { isSelf = m.name == STUB.player, memberId = id, name = m.name, guildRankOrder = m.rank or 3,
                  guid = "Player-1-" .. id, presence = m.online == false and 3 or 1, classID = STUB.classIDs[m.class],
-                 level = m.level or 70 }
+                 level = m.level or 70, guildRank = STUB.rankNames[m.rank or 3], zone = m.zone or "Shattrath",
+                 memberNote = m.note or "", officerNote = m.onote or "",
+                 lastOnlineYear = last and last[1], lastOnlineMonth = last and last[2], lastOnlineDay = last and last[3],
+                 lastOnlineHour = last and last[4] }
     end,
 }
+-- Officer notes: the client shows them to an officer (STUB.officer) unless STUB.officerNotes says.
+C_GuildInfo.CanViewOfficerNote = function()
+    if STUB.officerNotes ~= nil then return STUB.officerNotes end
+    return STUB.officer and true or false
+end
 -- Class ids and GetClassInfo(id): localized name, class token, id.
 STUB.classIDs = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
 _G.GetClassInfo = function(id)
@@ -553,7 +563,14 @@ _G.GetGuildRosterInfo = function(i)
     local m = STUB.guild[i]
     if not m then return nil end
     local rank = m.rank or 3
-    return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, m.level or 70, m.class, "Shattrath", "", "", m.online ~= false, 0, m.class
+    return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, m.level or 70, m.class, m.zone or "Shattrath", m.note or "",
+        m.onote or "", m.online ~= false, 0, m.class
+end
+-- Offline since: m.last = { years, months, days, hours } of an offline member; nothing while online.
+_G.GetGuildRosterLastOnline = function(i)
+    local m = STUB.guild[i]
+    if not m or m.online ~= false or not m.last then return nil end
+    return m.last[1], m.last[2], m.last[3], m.last[4]
 end
 -- Friends: STUB.friends = { { name, className (localized), online } }.
 STUB.friends = {}

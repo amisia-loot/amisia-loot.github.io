@@ -451,7 +451,7 @@ assert(table.concat(MF.tabOrder, " ") == "raid gear guild calendar amisia", tabl
 -- (2.10: the guild bank page is for everyone: its needs and pledges are for the raiders too)
 assert(navShown() == "overview raidlog awards stats softres", navShown())
 NS.ShowTab("gear"); assert(navShown() == "gear dungeons map quests professions talents", navShown())
-NS.ShowTab("guild"); assert(navShown() == "bank", navShown())
+NS.ShowTab("guild"); assert(navShown() == "members bank", navShown())
 NS.ShowTab("calendar"); assert(navShown() == "calendar" and NS.CurrentPage() == "calendar", navShown())
 -- (D-49: under the open settings page its tabs and the chosen tab's sections)
 NS.ShowTab("amisia"); assert(navShown():match("^settings raid ") and navShown():find(" amisia about$"), navShown())
@@ -459,10 +459,10 @@ NS.Set("ui.view", "officer")
 NS.ShowTab("raid")
 -- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there)
 assert(navShown() == "overview raids raidlog rolls awards stats points softres", navShown())
-NS.ShowTab("guild"); assert(navShown() == "export bank", navShown())
+NS.ShowTab("guild"); assert(navShown() == "export members bank", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "export bank tools", navShown())
+assert(navShown() == "export members bank tools", navShown())
 -- the client's panel tabs under the window: the first 11 px in, 2 px into the frame, the others 3 px
 -- apart; the open page's tab selected (the client's active art), the others not
 local t1, t2 = tabOf("raid"), tabOf("gear")
@@ -487,15 +487,15 @@ assert(AmisiaDB.settings.window.tab == "gear" and AmisiaDB.settings.window.pages
 NS.ShowPage("settings"); assert(tabOf("amisia").selected and not t2.selected and navShown():match("^settings raid ") and navShown():find(" about$"))
 NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and t1.selected, NS.CurrentPage())
 -- a tab whose group has no visible page is not shown; the next takes its place
-local bank = NS.Panel("bank")
-local keepAvail = bank.available
+local bank, members = NS.Panel("bank"), NS.Panel("members")
+local keepAvail, keepMembers = bank.available, members.available
 NS.Set("ui.view", "raider")
 NS.Set("ui.expert", false)
-bank.available = function() return false end
+bank.available, members.available = function() return false end, function() return false end
 NS.Refresh()
 assert(table.concat(MF.tabOrder, " ") == "raid gear calendar amisia" and not tabOf("guild"):IsShown(), table.concat(MF.tabOrder, " "))
 assert(tabOf("calendar").points.TOPLEFT.rel == t2, "no gap for the hidden tab")
-bank.available = keepAvail
+bank.available, members.available = keepAvail, keepMembers
 NS.Set("ui.view", "officer")
 NS.Set("ui.expert", true)
 NS.ShowPage("overview")

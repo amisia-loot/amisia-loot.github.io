@@ -216,8 +216,8 @@ ns.Listen("PROF_CHANGED", function()
 end)
 
 -- The own crafters announced to the guild: { { name, profs = { { skill, rank, max, known = { [spell]
--- = true } } } } }, the current character first, then by name; at most crafterMax with profMax
--- professions each, only professions read from the window.
+-- = true }, day (read on that day) } } } }, the current character first, then by name; at most
+-- crafterMax with profMax professions each, only professions read from the window.
 function Cr.Own()
     local p, g = profDB(), guildName()
     if not p then return {} end
@@ -246,7 +246,7 @@ function Cr.Own()
             if #profs >= LIM.profMax then break end
             local s = p.chars[name][skill]
             profs[#profs + 1] = { skill = skill, rank = int(s.rank, 0, 999) and s.rank or 0, max = int(s.max, 0, 999) and s.max or 0,
-                known = s.known }
+                known = s.known, day = int(s.day, 0, 999999) and s.day or nil }
         end
         if #profs > 0 and #list < LIM.crafterMax then list[#list + 1] = { name = name, profs = profs } end
     end
@@ -1164,6 +1164,77 @@ function Cr.Whisper(name, what)
         return (pcall(_G.ChatFrame_OpenChat, ("/w %s %s"):format(name, text)))
     end
     return false
+end
+
+---------------------------------------------------------------------------
+-- The professions per crafter (the members page): read only, no profession data needed
+---------------------------------------------------------------------------
+local BITS = {}            -- [hex digit] = the bits it sets
+for i = 0, 15 do
+    local n, v = 0, i
+    while v > 0 do
+        n, v = n + v % 2, math.floor(v / 2)
+    end
+    BITS[("%x"):format(i)] = n
+end
+local function hexBits(hex)
+    local n = 0
+    for c in hex:lower():gmatch("%x") do n = n + BITS[c] end
+    return n
+end
+
+local profsCache          -- { gen, own (the list of Cr.Own it read), day, map }
+
+-- The professions of every crafter Amisia knows, the own characters of this guild and the heard
+-- ones: [lower name] = { { skill, rank, max, known = recipes known, age = days since it was read or
+-- heard (nil: unknown), own } } by skill line. Built again after a change of the crafters or the day.
+function Cr.Professions()
+    local own, d = Cr.Own(), today()
+    local c = profsCache
+    if c and c.gen == gen and c.own == own and c.day == d then return c.map end
+    local map = {}
+    for _, o in ipairs(own) do
+        local list = {}
+        for _, pr in ipairs(o.profs) do
+            local n = 0
+            for _, on in pairs(pr.known) do if on == true then n = n + 1 end end
+            list[#list + 1] = { skill = pr.skill, rank = pr.rank, max = pr.max, known = n,
+                                age = pr.day and math.max(0, d - pr.day) or nil, own = true }
+        end
+        map[o.name:lower()] = list
+    end
+    local s = store(false)
+    for name, e in pairs(s and s.c or {}) do
+        local low = type(name) == "string" and name:lower()
+        if low and not map[low] and type(e) == "table" and type(e.p) == "table" then
+            local skills = {}
+            for skill, p in pairs(e.p) do
+                if validProf(skill, p) then skills[#skills + 1] = skill end
+            end
+            table.sort(skills)
+            local list = {}
+            for _, skill in ipairs(skills) do
+                local p = e.p[skill]
+                local n = 0
+                if p.l then
+                    for _ in p.l:gmatch("%d+") do n = n + 1 end
+                else
+                    n = hexBits(p.b)
+                end
+                list[#list + 1] = { skill = skill, rank = p.r, max = p.m or 0, known = n,
+                                    age = int(e.seen, 0, 999999) and math.max(0, d - e.seen) or nil, own = false }
+            end
+            if #list > 0 then map[low] = list end
+        end
+    end
+    profsCache = { gen = gen, own = own, day = d, map = map }
+    return map
+end
+
+-- The professions of one name (Cr.Professions), or nil.
+function Cr.ProfessionsOf(name)
+    if type(name) ~= "string" then return nil end
+    return Cr.Professions()[name:lower()]
 end
 
 ---------------------------------------------------------------------------

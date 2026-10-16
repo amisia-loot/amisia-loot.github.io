@@ -177,8 +177,41 @@ T.CALPAGE = {
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
+-- the members page (UI/Pages/Members.lua, tab Gilde, F-104): the head row (class and profession
+-- dropdowns, "nur online", the name search), the column heads, ROWS rows of ROW_H and the footer line:
+-- 26 + 18 + 9 x 46 + 20 = 478. A row, left to right on the list's 590: the round class icon, the name
+-- in class colour over level, class and rank; the zone (map icon) over online or the last time online
+-- (clock icon); the professions as icon (skill on it) and bar (name on it, filled rank / max), the
+-- main professions in the upper line, the secondary ones in the lower, BOXES per line.
+T.MEMBERS = {
+    ROWS = 9, ROW_H = 46,
+    CLASS_W = 130, PROF_W = 130, SEARCH_W = 140,   -- the head row's dropdowns and the search box
+    ICON = 36, ICON_X = 6,                         -- the round class icon, centred on the row
+    CLASS_TEXTURE = "Interface\\TargetingFrame\\UI-Classes-Circles",
+    -- the class's part of CLASS_TEXTURE when the client's CLASS_ICON_TCOORDS lacks it
+    CLASS_COORDS = {
+        WARRIOR = { 0, 0.25, 0, 0.25 }, MAGE = { 0.25, 0.49609375, 0, 0.25 }, ROGUE = { 0.49609375, 0.7421875, 0, 0.25 },
+        DRUID = { 0.7421875, 0.98828125, 0, 0.25 }, HUNTER = { 0, 0.25, 0.25, 0.5 }, SHAMAN = { 0.25, 0.49609375, 0.25, 0.5 },
+        PRIEST = { 0.49609375, 0.7421875, 0.25, 0.5 }, WARLOCK = { 0.7421875, 0.98828125, 0.25, 0.5 },
+        PALADIN = { 0, 0.25, 0.5, 0.75 },
+    },
+    LINE1_Y = -8, LINE2_Y = -26,                   -- the two lines of text below the row's top
+    NAME_X = 48, NAME_W = 124,                     -- the name (T.FONT.body), under it level, class, rank
+    ZONE_X = 176, ZONE_W = 160,                    -- the zone and the time column
+    SMALL_ICON = 12, SMALL_GAP = 3,                -- the map and clock icons before their texts
+    MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01",
+    CLOCK_ICON = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+    PROF_X = 340, BOXES = 3,                       -- the professions: 3 x 80 + 2 x 4 = 248, to 588
+    BOX_W = 80, BOX_H = 18, BOX_GAP = 4, BOX_Y = -4, BOX_ROW_GAP = 3,
+    BOX_ICON = 18, BAR_H = 14, BAR_GAP = 2, BAR_PAD = 3,
+    BAR_COLOR = { 0.25, 0.42, 0.85 },              -- the bar's fill (the classic profession window's blue)
+    NUM_FONT = "NumberFontNormalSmall",            -- the skill on the icon
+    -- the column heads (sort on click; Berufe sorts by the skill), x and width on the list
+    COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 98 }, { "prof", 340, 120 } },
+}
+
 -- an overview card
-T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
+T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6 }
 -- the shared popup menu and the picker's panel

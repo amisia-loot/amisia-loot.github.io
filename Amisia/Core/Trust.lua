@@ -12,13 +12,13 @@ local WAIT_FOR = 60       -- seconds data of an unchecked sender waits for the r
 local WAIT_MAX = 20       -- waiting entries at most
 local OFFICER_FLAG = 22   -- "officer rank" in the rank permissions (Blizzard_GuildControlUI)
 
-local roster              -- { { name, rank, guid, online, class } } or nil before the first build
+local roster              -- { { name, rank, guid, online, class, ... } } (ns.GuildRoster) or nil before the first build
 local rosterIdx           -- the index of roster (see index), built with it
 local builtAt, dirty = nil, true
 
 local function now() return GetTime() end
 
--- The class token of a class id ("" when the client cannot tell).
+-- The class token of a class id ("" when the client cannot tell), and the client's name of the class.
 local function classFile(id)
     id = tonumber(id)
     if not id then return "" end
@@ -27,14 +27,42 @@ local function classFile(id)
         local ok, info = pcall(api.GetClassInfo, id)
         info = ok and ns.Plain(info) or nil
         local file = type(info) == "table" and ns.Plain(info.classFile)
-        if type(file) == "string" and file ~= "" then return file end
+        local name = type(info) == "table" and ns.Plain(info.className)
+        if type(file) == "string" and file ~= "" then return file, type(name) == "string" and name or nil end
     end
     if type(_G.GetClassInfo) == "function" then
-        local ok, _, file = pcall(GetClassInfo, id)
-        file = ok and ns.Plain(file) or nil
-        if type(file) == "string" and file ~= "" then return file end
+        local ok, name, file = pcall(GetClassInfo, id)
+        file, name = ok and ns.Plain(file) or nil, ok and ns.Plain(name) or nil
+        if type(file) == "string" and file ~= "" then return file, type(name) == "string" and name or nil end
     end
     return ""
+end
+
+-- A text of the roster (class, rank and zone name, a note) as it may be shown: a string, else nil.
+local function text(v)
+    v = ns.Plain(v)
+    if type(v) ~= "string" or v == "" then return nil end
+    return v
+end
+
+-- Whether the client shows the player the officer notes (C_GuildInfo, else the classic global).
+local function canViewOfficerNote()
+    local api = _G.C_GuildInfo
+    for _, fn in ipairs({ type(api) == "table" and api.CanViewOfficerNote or false, _G.CanViewOfficerNote or false }) do
+        if type(fn) == "function" then
+            local ok, on = pcall(fn)
+            return ok and ns.Plain(on) == true
+        end
+    end
+    return false
+end
+
+-- How long a member is offline as the client counts it: { y, mo, d, h } (years, months, days and
+-- hours since), nil when the client does not say.
+local function lastOnline(y, mo, d, h)
+    y, mo, d, h = tonumber(ns.Plain(y)), tonumber(ns.Plain(mo)), tonumber(ns.Plain(d)), tonumber(ns.Plain(h))
+    if not (y or mo or d or h) then return nil end
+    return { y = math.max(0, y or 0), mo = math.max(0, mo or 0), d = math.max(0, d or 0), h = math.max(0, h or 0) }
 end
 
 -- The members C_Club knows, or nil when it cannot tell.
@@ -50,6 +78,7 @@ local function clubMembers()
     local okIds, ids = pcall(club.GetClubMembers, clubId)
     if not okIds or type(ns.Plain(ids)) ~= "table" then return nil end
     local out = {}
+    local officerNotes = canViewOfficerNote()
     for _, id in ipairs(ids) do
         local okInfo, info = pcall(club.GetMemberInfo, clubId, id)
         info = okInfo and ns.Plain(info) or nil
@@ -59,9 +88,15 @@ local function clubMembers()
             local presence = ns.Plain(info.presence)
             if name and rank then
                 -- presence: 0 unknown, 1 online, 2 mobile, 3 offline, 4 away, 5 busy
+                local online = presence == 1 or presence == 4 or presence == 5
+                local class, className = classFile(ns.Plain(info.classID))
                 out[#out + 1] = { name = name, rank = rank, guid = ns.Plain(info.guid),
-                                  online = presence == 1 or presence == 4 or presence == 5, self = ns.Plain(info.isSelf) == true,
-                                  class = classFile(ns.Plain(info.classID)), level = tonumber(ns.Plain(info.level)) }
+                                  online = online, self = ns.Plain(info.isSelf) == true,
+                                  class = class, level = tonumber(ns.Plain(info.level)),
+                                  className = className, rankName = text(info.guildRank), zone = text(info.zone),
+                                  note = text(info.memberNote), officerNote = officerNotes and text(info.officerNote) or nil,
+                                  last = not online and lastOnline(info.lastOnlineYear, info.lastOnlineMonth,
+                                      info.lastOnlineDay, info.lastOnlineHour) or nil }
             end
         end
     end
@@ -76,13 +111,22 @@ local function rosterMembers()
     n = ok and tonumber(ns.Plain(n)) or 0
     if n <= 0 then return nil end
     local out = {}
+    local officerNotes = canViewOfficerNote()
+    local lastOf = _G.GetGuildRosterLastOnline
     for i = 1, n do
-        local okRow, name, _, rankIndex, level, _, _, _, _, online, _, class = pcall(GetGuildRosterInfo, i)
+        local okRow, name, rankName, rankIndex, level, className, zone, note, officerNote, online, _, class = pcall(GetGuildRosterInfo, i)
         if okRow then
             name, rankIndex, online, class = ns.FullName(ns.Plain(name)), tonumber(ns.Plain(rankIndex)), ns.Plain(online), ns.Plain(class)
             if name and rankIndex then
-                out[#out + 1] = { name = name, rank = rankIndex + 1, online = online and true or false,
-                                  class = type(class) == "string" and class or "", level = tonumber(ns.Plain(level)) }
+                local e = { name = name, rank = rankIndex + 1, online = online and true or false,
+                            class = type(class) == "string" and class or "", level = tonumber(ns.Plain(level)),
+                            className = text(className), rankName = text(rankName), zone = text(zone), note = text(note),
+                            officerNote = officerNotes and text(officerNote) or nil }
+                if not e.online and type(lastOf) == "function" then
+                    local okLast, y, mo, d, h = pcall(lastOf, i)
+                    if okLast then e.last = lastOnline(y, mo, d, h) end
+                end
+                out[#out + 1] = e
             end
         end
     end
@@ -175,9 +219,11 @@ function ns.GuildMember(name)
     return { name = m.name, rank = m.rank, guid = m.guid, online = m.online }
 end
 
--- The guild roster for reading only: { { name, rank, guid, online, class, level } }, the roster built
--- before a lockdown in it; nil when it cannot be read (no guild, empty, nothing built yet). Never
--- asks the client for it.
+-- The guild roster for reading only: { { name, rank, guid, online, class, level, className, rankName,
+-- zone, note, officerNote (only when the client shows the player officer notes), last = { y, mo, d, h }
+-- (offline since, as the client counts it) } } (the client's texts, or nil), the roster built before
+-- a lockdown in it; nil when it cannot be read (no guild, empty, nothing built yet). Never asks the
+-- client for it.
 function ns.GuildRoster()
     local list = readable(true, true)
     if not list or #list == 0 then return nil end
