@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.5 (2026-10-16)
+
+- Flugmeister-Symbol: die abgetrennten hellen Stücke rechts und unter dem Stiefel samt Rand entfernt (vom Original aus)
+- Client-Tabellen automatisch: Windows-Aufgabe exportiert nach jedem Patch, der N100 baut und prüft auf auto/data-<build>, veröffentlicht wird nur auf Zuruf (D-51)
+- Flugmeister-Symbol geglättet: weiche Kanten statt Zacken
+- Flugmeister-Symbol neu gezeichnet: eine geschlossene Form, gleichmäßiger dunkler Rand, weicher Schatten, keine Flecken
+
 ## 2.39.4 (2026-10-16)
 
 - Daten für Client-Build 1.60.1.70425: Talentbäume (Priester, Paladin, Krieger, Jäger u. a.), Berufe, Raid-Check, BiS
