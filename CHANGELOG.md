@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.40.0 (2026-10-16)
+
+- Spec Duelle: Verlauf, Rangliste, Klassen aus der Systemmeldung, Klassen suchen per Klick (F-106, Entwurf)
+- Duelle (F-106): Reiter PvP mit Verlauf, Rangliste und Klassen; Klassen suchen per Klick, Turnier-Modus; D-52
+- F-106 gebaut in 2.40.0
+
 ## 2.39.6 (2026-10-16)
 
 - Schiffe und Zeppelin poliert: glatter Rand, weicher Schatten; Zeppelin ohne Stacheln und Kasten-Schatten
