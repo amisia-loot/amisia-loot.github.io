@@ -112,17 +112,24 @@ assert(#list == 60 and list[1].kind == "entrance" and list[5].kind == "dock" and
 for i = #NS.MAP.F, 4, -1 do NS.MAP.F[i] = nil end
 Map._resetPlaces()
 
--- the client's own entrances or flight points on a map: that kind is left out
+-- the client's own entrances or flight points on a map: that kind is left out, but only where its
+-- pins stand on the map (Forever 2026-10-16: function and provider there, yet no pins)
 _G.C_TaxiMap = { GetTaxiNodesForMap = function(id) return id == 1413 and { { name = "Crossroads" } } or {} end }
-Map._resetPlaces()
-assert(has(kinds(Map.PlacePins(1413)), "flight:"), "the function alone: the client's map shows no flight points without its provider")
 _G.FlightPointDataProviderMixin = { RefreshAllData = function() end }
 local clientProvider = CreateFromMixins(_G.FlightPointDataProviderMixin)
 WorldMapFrame.dataProviders[clientProvider] = true
 Map._resetPlaces()
+assert(has(kinds(Map.PlacePins(1413)), "flight:"), "function and provider, but no pins of the game: Amisia's own")
+local shows, count, provider, pins = Map.ClientPlaces("flight", 1413)
+assert(not shows and count == 1 and provider and pins == 0)
+STUB.pinTemplates.FlightPointPinTemplate = "AmisiaMapPlaceMixin"
+WorldMapFrame.pinPools.FlightPointPinTemplate = { active = { {}, {} }, free = {} }
 assert(not has(kinds(Map.PlacePins(1413)), "flight:") and has(kinds(Map.PlacePins(1413)), "entrance:"), "no doubled flight points")
-local shows, count, provider = Map.ClientPlaces("flight", 1413)
-assert(shows and count == 1 and provider and select(2, Map.ClientPlaces("entrance", 1413)) == nil)
+shows, count, provider, pins = Map.ClientPlaces("flight", 1413)
+assert(shows and pins == 2 and select(2, Map.ClientPlaces("entrance", 1413)) == nil)
+WorldMapFrame.pinPools.FlightPointPinTemplate = nil
+STUB.pinTemplates.FlightPointPinTemplate = nil
+assert(has(kinds(Map.PlacePins(1413)), "flight:"), "the game's pins gone: Amisia's back")
 WorldMapFrame.dataProviders[clientProvider] = nil
 _G.C_TaxiMap, _G.FlightPointDataProviderMixin = nil, nil
 Map._resetPlaces()

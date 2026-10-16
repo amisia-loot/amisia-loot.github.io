@@ -145,11 +145,11 @@ end
 -- that kind out (no doubled pins)
 ---------------------------------------------------------------------------
 
+-- kind -> the client's function, its data provider and the template of the pins it puts on the map
 local CLIENT = {
-    entrance = { "C_EncounterJournal", "GetDungeonEntrancesForMap", "DungeonEntranceDataProviderMixin" },
-    flight = { "C_TaxiMap", "GetTaxiNodesForMap", "FlightPointDataProviderMixin" },
+    entrance = { "C_EncounterJournal", "GetDungeonEntrancesForMap", "DungeonEntranceDataProviderMixin", "DungeonEntrancePinTemplate" },
+    flight = { "C_TaxiMap", "GetTaxiNodesForMap", "FlightPointDataProviderMixin", "FlightPointPinTemplate" },
 }
-local clientSeen = {}   -- kind -> { [mapID] = true/false }, per session
 
 -- Whether the world map has the client's own data provider of the kind (read only: the map's list
 -- of providers is looked at, nothing in it is touched).
@@ -166,28 +166,38 @@ local function clientProvider(kind)
     return false
 end
 
--- Whether the client's own map shows that kind on the map: its data provider is on the world map and
--- the client's function returns entries for the map. Also the count (nil without the function) and
--- whether the provider is there.
+-- How many pins of the client's template of the kind stand on the world map now (read only).
+local function clientPins(kind)
+    local map = _G.WorldMapFrame
+    if type(map) ~= "table" or type(map.EnumeratePinsByTemplate) ~= "function" then return 0 end
+    local ok, iter, state, first = pcall(map.EnumeratePinsByTemplate, map, CLIENT[kind][4])
+    if not ok or type(iter) ~= "function" then return 0 end
+    local n = 0
+    for _ in iter, state, first do n = n + 1 end
+    return n
+end
+
+-- Whether the client's own map shows that kind on the shown map: pins of its template stand there
+-- (2026-10-16: Forever's C_TaxiMap returns 36 nodes and the provider is on the map, yet the world map
+-- shows no flight points, so the function and the provider alone mean nothing). Also the count of
+-- the client's function (nil without it), whether the provider is there and the pins counted.
 function Map.ClientPlaces(kind, mapID)
     local c = CLIENT[kind]
-    local t = c and _G[c[1]]
+    if not c then return false, nil, false, 0 end
+    local t = _G[c[1]]
     local f = type(t) == "table" and t[c[2]]
-    local provider = c and clientProvider(kind) or false
-    if type(f) ~= "function" then return false, nil, provider end
-    local ok, list = pcall(f, mapID)
-    local n = ok and type(list) == "table" and #list or 0
-    return n > 0 and provider, n, provider
+    local provider = clientProvider(kind)
+    local pins = clientPins(kind)
+    local n
+    if type(f) == "function" then
+        local ok, list = pcall(f, mapID)
+        n = ok and type(list) == "table" and #list or 0
+    end
+    return pins > 0, n, provider, pins
 end
 
 local function clientShows(kind, mapID)
-    local seen = clientSeen[kind]
-    if not seen then
-        seen = {}
-        clientSeen[kind] = seen
-    end
-    if seen[mapID] == nil then seen[mapID] = Map.ClientPlaces(kind, mapID) and true or false end
-    return seen[mapID]
+    return (Map.ClientPlaces(kind, mapID))
 end
 
 ---------------------------------------------------------------------------
@@ -252,10 +262,12 @@ function Map.PlacePins(mapID)
     if not mapID or not ns.HasData("MAP") then return {} end
     local stamp = version .. ":" .. tostring(ns.Data("MAP")) .. ":" .. tostring(ownSide())
     if stamp ~= cacheStamp then cache, cacheStamp = {}, stamp end
-    local list = cache[mapID]
+    -- the client's pins can come and go (its provider refreshes on its own): part of the key
+    local key = mapID .. (clientShows("entrance", mapID) and "e" or "") .. (clientShows("flight", mapID) and "f" or "")
+    local list = cache[key]
     if not list then
         list = buildPins(mapID)
-        cache[mapID] = list
+        cache[key] = list
     end
     return list
 end
@@ -264,9 +276,9 @@ ns.Listen("SETTING", function(path)
     if type(path) == "string" and path:sub(1, 4) == "map." then version = version + 1 end   -- l10n-ok: setting key prefix
 end)
 
--- Test hook: forget what was built and what the client showed.
+-- Test hook: forget what was built.
 function Map._resetPlaces()
-    built, cache, cacheStamp, clientSeen = {}, {}, nil, {}
+    built, cache, cacheStamp = {}, {}, nil
     version = version + 1
 end
 

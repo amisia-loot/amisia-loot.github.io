@@ -510,9 +510,9 @@ local function sectionMap(R, opts)
             if not fn(c[1]) then return "WERT", L["fehlt (Amisia zeigt die eigenen %s)"]:format(c[3]) end
             if not map then return "WERT", L["keine Karte"] end
             if not (ns.Map and ns.Map.ClientPlaces) then return "WERT", L["keine Karte"] end
-            local has, n, provider = ns.Map.ClientPlaces(c[2], map)
-            return "WERT", (has and L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt keine eigenen %s)"]
-                or L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt die eigenen %s)"]):format(map, n or 0, show(provider), c[3])
+            local has, n, provider, pins = ns.Map.ClientPlaces(c[2], map)
+            return "WERT", (has and L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt keine eigenen %s)"]
+                or L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt die eigenen %s)"]):format(map, n or 0, show(provider), pins or 0, c[3])
         end)
     end
     check(R, "C_Map.HasUserWaypoint", function() return "WERT", show(call("C_Map.HasUserWaypoint")) end)

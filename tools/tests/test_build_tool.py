@@ -199,6 +199,23 @@ def test_release(repo):
     assert log.count('# Changelog') == 1
 
 
+def test_restart_note(repo):
+    root = repo['root']
+    first = build.last_release_commit(root)
+    assert first and build.restart_note(root, first) == 'Im Spiel: /reload.', 'only Lua changed'
+    assert 'neu starten' in build.restart_note(root, None)
+    toc = os.path.join(root, 'Amisia', 'Amisia.toc')
+    with open(toc, encoding='utf-8') as fh:
+        text = fh.read()
+    write(toc, text.rstrip('\n') + '\nCore/New.lua\n')
+    write(os.path.join(root, 'Amisia', 'Core', 'New.lua'), '-- new\n')
+    write(os.path.join(root, 'Amisia', 'Media', 'Icons', 'y.tga'), b'\x00', 'wb')
+    sh(root, 'git', 'add', '-A')
+    sh(root, 'git', 'commit', '-q', '-m', 'A new file and a new icon')
+    note = build.restart_note(root, first)
+    assert 'neu starten' in note and 'TOC' in note and 'Bilder' in note, note
+
+
 def test_release_never_bumps_on_a_failed_check(repo):
     root = repo['root']
     before = head(root, '%H')

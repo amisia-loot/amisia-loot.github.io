@@ -44,6 +44,9 @@ python3 tools/build.py errors [--sv FILE] [--all]
   and, at the end, the test list of the new version: the entries of `docs/FEATURES.md` whose
   `Version:` is the new one, with their checks, to pass on to the user. When no entry carries the
   version it says so (a warning, the release still happens).
+- Before the test list `release` says what to do in the game: a full restart of WoW when the TOC's file
+  list changed or a file under `Amisia/Media` is new since the last release (the client reads both only
+  at start), otherwise `/reload`.
 - `testlist` prints the German check list for the user from `docs/FEATURES.md` (`tools/features.py`):
   every feature with status `gebaut` and no `Braucht:` line, grouped by version, newest first, each
   check as `- [ ] ...`. `--all` adds the features that need a group, guild or raid under

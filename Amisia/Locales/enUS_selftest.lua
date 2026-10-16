@@ -383,5 +383,5 @@ L["sichtbar %s, %d Buffs gelesen, %d geheim%s"] = "visible %s, %d buffs read, %d
 L["übersprungen (%s): außerhalb des Kampfes neu prüfen"] = "skipped (%s): check again out of combat"
 L["Eingänge"] = "entrances"
 L["fehlt (Amisia zeigt die eigenen %s)"] = "missing (Amisia shows its own %s)"
-L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt keine eigenen %s)"] = "map %d: %d entries, the map's display %s (Amisia shows no %s of its own)"
-L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt die eigenen %s)"] = "map %d: %d entries, the map's display %s (Amisia shows its own %s)"
+L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt keine eigenen %s)"] = "map %d: %d entries, the map's display %s, %d pins of the game (Amisia shows no %s of its own)"
+L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt die eigenen %s)"] = "map %d: %d entries, the map's display %s, %d pins of the game (Amisia shows its own %s)"

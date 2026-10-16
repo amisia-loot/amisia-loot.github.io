@@ -500,6 +500,40 @@ def update_changelog(root, version, subjects, day):
     return path
 
 
+def last_release_commit(root):
+    """The hash of the last release commit ("Amisia X.Y.Z: ..."), or None."""
+    for line in git(root, 'log', '--no-merges', '--format=%H %s').splitlines():
+        sha, _, subject = line.partition(' ')
+        if RELEASE_SUBJECT.match(subject):
+            return sha
+    return None
+
+
+def toc_lines(text):
+    """The file lines of a TOC (no ## metadata, no comments, no blank lines)."""
+    return [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith('#')]
+
+
+def restart_note(root, since):
+    """What the player has to do in the game after this release: the client reads the TOC and finds
+    new textures only when it starts, so a new or removed file in the TOC or a new file under Media
+    needs a full restart; everything else a /reload. Compares the commit since with HEAD."""
+    if not since:
+        return 'Im Spiel: WoW ganz neu starten (erste Version, /reload reicht nicht).'
+    toc = ADDON_REL + '/Amisia.toc'
+    old = git(root, 'show', f'{since}:{toc}', check=False)
+    new = git(root, 'show', f'HEAD:{toc}', check=False)
+    why = []
+    if toc_lines(old) != toc_lines(new):
+        why.append('neue Dateien in der TOC')
+    media = git(root, 'diff', '--name-only', '--diff-filter=AR', since, 'HEAD', '--', ADDON_REL + '/Media').strip()
+    if media:
+        why.append('neue Bilder')
+    if why:
+        return f'Im Spiel: WoW ganz neu starten ({", ".join(why)}; /reload reicht nicht).'
+    return 'Im Spiel: /reload.'
+
+
 def default_summary(subjects, limit=200):
     text = '; '.join(subjects) if subjects else 'maintenance'
     return text if len(text) <= limit else text[:limit - 1].rstrip() + '…'
@@ -523,6 +557,7 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         raise SystemExit(f'releases are pushed from main, this is {branch} (or use --no-push)')
 
     touched = [ADDON_REL + '/Amisia.toc', 'Amisia-Website/Amisia.zip', 'CHANGELOG.md']
+    previous = last_release_commit(root)
     note = game_errors_note(errors_sv)
     if note:
         say('WARNING: the game caught errors of Amisia; released anyway. Fixed already? Otherwise look first:')
@@ -568,6 +603,8 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     if copy:
         rc, _ = run(['bash', os.path.join(root, 'tools', 'release_addon.sh')], cwd=root)
         rc = 1 if rc != 0 else 0
+    say()
+    say(restart_note(root, previous))
     say()
     for ln in release_test_list(root, version):
         say(ln)

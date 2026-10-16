@@ -1675,6 +1675,10 @@ _G.C_SuperTrack = {
 _G.GetPlayerFacing = function() return STUB.facing end
 -- The world map: shown or not and the map it shows (mapID); OpenWorldMap opens it on a map.
 _G.WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
+WorldMapFrame.EnumeratePinsByTemplate = function(self, template)
+    local pool = self.pinPools[template]
+    return ipairs(pool and pool.active or {})
+end
 WorldMapFrame.SetMapID = function(self, id) self.mapID = id end
 WorldMapFrame.GetMapID = function(self) return self.mapID end
 _G.OpenWorldMap = function(id)
