@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.2 (2026-10-16)
+
+- F-105 in 2.39.1 (richtige Symbole)
+- Karten-Orte: eigene Flugmeister und Eingänge nur weglassen, wo Pins des Spiels auf der Karte stehen (Forever hat C_TaxiMap und Provider, zeigt aber keine); Release sagt, wann WoW neu starten muss
+
 ## 2.39.1 (2026-10-16)
 
 - Karten-Orte mit richtigen Symbolen: Flügelstiefel für Flugmeister, Schiff in Fraktionsfarbe, Zeppelin von oben (Media/Icons/place_*.tga), kein Rahmen mehr
