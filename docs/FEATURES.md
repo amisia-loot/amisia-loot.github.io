@@ -630,6 +630,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein anderes Gildenmitglied mit Amisia Quests, Händler und Weltdrops gesammelt hat, dann steigt bei dir nach einiger Zeit außerhalb von Instanzen "Gelernt" in `/amisia quellen`.
 - Prüfung: Wenn ein Ort nur von einem anderen Spieler gemeldet ist, dann setzt Amisia keinen Wegpunkt dorthin; der Ort steht als Text mit "(von der Gilde)".
 
+### F-104 Seite Mitglieder (Gildenliste mit Ort und Berufen)
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du im Reiter Gilde "Mitglieder" öffnest, dann steht dort jedes Gildenmitglied mit Name in Klassenfarbe, Stufe, Klasse, Rang und Ort; wer online ist, zuerst und grün.
+- Prüfung: Wenn ein Mitglied offline ist, dann steht unter dem Ort "zuletzt vor …" wie im Gildenfenster des Spiels.
+- Prüfung: Wenn ein Gildenmitglied mit Amisia Berufe hat, dann zeigt seine Zeile sie mit Skill (z. B. "Alchemie 225"); deine eigenen immer.
+- Prüfung: Wenn du Klasse oder Beruf im Dropdown wählst oder "nur online" anhakst, dann bleiben nur passende Zeilen, unten steht die Zahl.
+- Prüfung: Wenn du eine Zeile anklickst und "Flüstern" wählst, dann steht "/w Name " in der Chatzeile.
+- Notiz: Spec `docs/specs/2026-10-16-gilde-mitglieder.md`.
+
 ## Addon: Ausrüstung und Welt
 
 ### F-038 Ausrüstungstabelle

@@ -1,6 +1,6 @@
 # Spec: Seite Mitglieder (Gilde)
 
-Stand: 2026-10-16 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-16 · Status: freigegeben (2026-10-16) ·
 Feature: F-104
 
 ## Ziel
@@ -30,7 +30,7 @@ Auf einen Blick: wer ist in der Gilde, wie weit, wo, seit wann weg, und wer kann
 ## Was es ausdrücklich nicht tut
 
 - **Kein Gold und keine Erfahrungsleiste anderer:** das Spiel gibt beides nicht her; es zu verschicken
-  bräuchte eine neue Nachricht und ist bei Gold Privatsache. (Für die eigenen Charaktere siehe Frage 3.)
+  bräuchte eine neue Nachricht und ist bei Gold Privatsache. Auch keine Ansicht der eigenen Charaktere mit Gold und Erfahrung (Nutzer 2026-10-16).
 - Keine Gildenverwaltung (befördern, Notizen schreiben, entfernen): das kann das Spielfenster.
 - Kein Gildenbuch (Beitritte, Austritte, Rangwechsel mitschreiben): eigenes Feature, wenn gewünscht.
 - Keine neue Addon-Nachricht: Berufe kommen aus dem bestehenden Handwerker-Austausch (PV/PQ/PW/PK).
@@ -76,9 +76,8 @@ Client sie dem Spieler ohnehin zeigt (`C_GuildInfo.CanViewOfficerNote`).
 - Keine neue Nachricht, keine Exportzeile.
 - Neuer Code: `UI/Pages/Members.lua` (Seite), Zone und "zuletzt online" in der Gildenliste
   (`Core/Trust.lua`: `zone`, `last` aus `GetGuildRosterInfo`/`GetGuildRosterLastOnline` bzw. `C_Club`).
-- Gespeichert: nur die Filter der Seite im Fensterzustand (`settings.window.members`); bei Frage 3 "ja"
-  zusätzlich `AmisiaDB.chars` (je eigener Charakter: Stufe, Klasse, Volk, Ort, Gold, Erfahrung, Ruhe-EP,
-  Berufe, Zeit), dann neue Zeile in ARCHITECTURE.
+- Gespeichert: nur die Filter der Seite im Fensterzustand (`settings.window.members`); kein neuer
+  `AmisiaDB`-Schlüssel.
 
 ## Offene Fragen
 
@@ -92,4 +91,7 @@ Client sie dem Spieler ohnehin zeigt (`C_GuildInfo.CanViewOfficerNote`).
 
 ## Entscheidungen
 
-Nichts.
+- 2026-10-16: Frage 1: "tab member oder so" -> Seite "Mitglieder" (Vorschlag).
+- 2026-10-16: Frage 2: "Alle" -> für alle Ansichten.
+- 2026-10-16: Frage 3: "Nur Gildenmitglieder" -> keine Ansicht "Meine Charaktere", kein `AmisiaDB.chars`.
+- 2026-10-16: Frage 4: "Eigene Zeile, Main im Tooltip" -> jeder Charakter eine Zeile.
