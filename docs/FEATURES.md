@@ -699,6 +699,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Weltkarte öffnest, dann stehen Pins mit Item-Symbol für deine Upgrades und Wünsche (abschaltbar unter Einstellungen, Karte und Wegpunkt).
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
 
+### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht".
+- Prüfung: Wenn du auf den Eingang der Höhlen des Wehklagens klickst, dann öffnet sich Amisia auf der Seite Dungeons mit "Höhlen des Wehklagens" gewählt; mit Shift setzt der Klick das Ziel zum Eingang.
+- Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`.
+
 ### F-046 Dungeon-Planer: Rangliste, Kette, Quests
 - Version: 2.4.0
 - Status: gebaut

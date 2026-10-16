@@ -1,6 +1,6 @@
 # Spec: Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 
-Stand: 2026-10-16 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-16 · Status: freigegeben ·
 Feature: F-105
 
 ## Ziel
@@ -80,13 +80,21 @@ Nichts. Nur lokale Anzeige aus mitgelieferten Daten; nichts wird gesendet oder e
 ## Daten
 
 - Keine Nachricht, keine Exportzeile, kein Einfügeblock, nichts auf der Website.
-- `Data/MapData.lua` (`tools/build_map.py`) bekommt zwei Tabellen: `F` Flugmeister (aus den
-  `fp(...)`-Einträgen von AllTheThings: Koordinate, Fraktion, NPC; 68 Stück, MIT, steht schon in
-  LICENSES) und `T` Anleger (handgepflegt in `tools/forever_transports.json`, mit Quelle je Eintrag,
-  wie `forever_dungeons.json`).
-- Fehlende Eingänge klassischer Dungeons (Schwarzfelsspitze, Düsterbruch, Stratholme, Onyxias Hort
-  ...) handgepflegt in `tools/forever_dungeons.json` (Feld `entrance`, mit Quelle), solange
-  AllTheThings sie nicht hat.
+- Quellen (Suche 2026-10-16), je Punkt die aktuellste:
+  - Flugmeister, Zeppeline, Schiffe: OneForAll_Forever `Data/MapLandmarks.lua` (GPL-3.0, Stand
+    2026-10-16, 61 Flugmeister, 3 Zeppelintürme, 8 Anleger; Lizenz liegt schon in LICENSES). Der
+    Cache `~/addons/_cache/oneforall` (noch 5.6.0) wird dafür erneuert. Fehlt dort ein Flugmeister,
+    ergänzt AllTheThings (`fp(...)`, 68 Stück, MIT).
+  - Eingänge: zuerst die Client-Tabelle `Map` (Felder `Corpse_0/1`, `CorpseMapID`: der Ort auf dem
+    Kontinent, umgerechnet über `UiMapAssignment`; ohne Lizenzfrage), dann AllTheThings, dann
+    OneForAll `DungeonData.lua` (dort auch Hall of Thanes, Ruins of Lordaeron, Excavation Site; laut
+    OneForAll "ungefähr", D-04-Ausnahme wie bei den Items), zuletzt die beim Betreten gemerkten.
+  - Die Laufzeit-APIs des Clients (`C_TaxiMap.GetTaxiNodesForMap`,
+    `C_EncounterJournal.GetDungeonEntrancesForMap`) gibt es in Classic-Era-FrameXML; ob Forever sie
+    füllt, prüft eine Zeile in `/amisia selbsttest`. Zeigt die Karte des Spiels schon eigene
+    Flugpunkte oder Eingänge, lässt Amisia diese Art weg (keine doppelten Pins).
+- `Data/MapData.lua` (`tools/build_map.py`) bekommt `F` (Flugmeister: Karte, Punkt, Fraktion, Name)
+  und `T` (Anleger: Karte, Punkt, Art, Fraktion, Ziel); die Eingänge stehen weiter unter `I:`/`N:`.
 - Einstellungen: `map.entrances`, `map.flights`, `map.transports` (alle an) im Abschnitt `map`;
   ARCHITECTURE (Einstellungen, Data/MapData) im selben Commit.
 - Wenn Frage 4 "lernen" gewählt wird: neuer Schlüssel `AmisiaDB.entrances` (Dungeon -> Punkt),
@@ -111,4 +119,10 @@ Nichts. Nur lokale Anzeige aus mitgelieferten Daten; nichts wird gesendet oder e
 
 ## Entscheidungen
 
-Nichts.
+- 2026-10-16: Fragen 1-5: "mach deine vorschläge" -> 1 eigene Fraktion plus neutrale; 2 alle
+  Flugmeister gleich, nichts pro Charakter gespeichert; 3 Klick öffnet in Amisia, Shift-Klick setzt
+  das Ziel; 4 Amisia merkt sich den Eingang beim Betreten (`AmisiaDB.entrances`, Archiv beim nächsten
+  `build.py data`); 5 klassische Anleger von Hand, neue Forever-Routen nach Meldung.
+- 2026-10-16: Quellen: "AllTheThings ist nicht deine einzige Quelle", "such nach besseren
+  aktuelleren" -> jede Quelle aus D-04 (AllTheThings, OneForAll, Client-Tabellen) und neuere, die
+  die Suche findet; je Punkt die aktuellste, die Quelle steht im Generator.
