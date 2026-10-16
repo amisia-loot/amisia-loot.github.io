@@ -1,3 +1,6 @@
+place_flight.tga, place_ship_a.tga, place_ship_h.tga and place_zeppelin.tga come from OneForAll
+(GPL-3.0-or-later); see Amisia/LICENSES/OneForAll-GPL-3.0.txt.
+
 arrow.tga is the icon "navigation-2" of Lucide (lucide.dev), filled and rasterised at 64x64.
 Lucide is ISC licensed; this icon is derived from Feather (MIT). Both licences follow.
 

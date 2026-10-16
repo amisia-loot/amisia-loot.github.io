@@ -15,18 +15,20 @@ local L = ns.L
 
 local TEMPLATE = "AmisiaMapPlaceTemplate"
 local MAX_PLACES = 60
--- the client's dungeon and raid marks where the client has them, else plain icons; the flight
--- master is the taxi map's node, the docks plain icons (the client has no transport art for maps)
+-- the client's dungeon and raid marks (plain icons where the client lacks them); the flight master,
+-- ship and zeppelin art in Media/Icons/place_*.tga (made from client art; GPL-3.0, see
+-- LICENSES): the flight master's winged boot, the ship in its faction's colour, the zeppelin seen
+-- from above (twice as wide as high)
+local MEDIA = "Interface\\AddOns\\Amisia\\Media\\Icons\\"
 local ICON = {
-    party = { atlas = "Dungeon", file = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01" },
-    raid = { atlas = "Raid", file = "Interface\\Icons\\INV_Misc_Head_Dragon_01" },
-    flight = { file = "Interface\\TaxiFrame\\UI-Taxi-Icon-Green" },
-    Z = { file = "Interface\\Icons\\Spell_Nature_Cyclone" },
-    S = { file = "Interface\\Icons\\INV_Misc_Spyglass_02" },
+    party = { atlas = "Dungeon", file = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01", w = 24, h = 24 },
+    raid = { atlas = "Raid", file = "Interface\\Icons\\INV_Misc_Head_Dragon_01", w = 26, h = 26 },
+    flight = { file = MEDIA .. "place_flight", w = 20, h = 20 },
+    SA = { file = MEDIA .. "place_ship_a", w = 30, h = 30 },
+    SH = { file = MEDIA .. "place_ship_h", w = 30, h = 30 },
+    Z = { file = MEDIA .. "place_zeppelin", w = 36, h = 18 },
 }
-local SIZE = { entrance = 22, flight = 16, dock = 20 }
 local GOLD = W.GOLD
-local BORDER = { flight = { 0.55, 0.8, 1 }, dock = { 0.85, 0.85, 0.85 } }
 local SIDE_TEXT = { A = L["Allianz"], H = L["Horde"], N = L["beide Fraktionen"] }
 local TEXT = {
     entranceHint = L["Klick: in Amisia öffnen. Shift-Klick: Ziel setzen."],
@@ -426,7 +428,10 @@ end
 
 local function iconOf(e)
     if e.kind == "entrance" then return ICON[e.place.raid and "raid" or "party"] end
-    if e.kind == "dock" then return ICON[e.place.ship and "S" or "Z"] end
+    if e.kind == "dock" then
+        if not e.place.ship then return ICON.Z end
+        return e.place.side == "A" and ICON.SA or ICON.SH
+    end
     return ICON.flight
 end
 
@@ -438,25 +443,27 @@ function Pin:OnAcquired(entry, scale)
     self:SetScalingLimits(1, scale, 1.6 * scale)
     self:SetPosition(entry.x, entry.y)
     if self.ApplyCurrentScale then self:ApplyCurrentScale() end
-    local size = SIZE[entry.kind] or 20
-    self:SetSize(size, size)
     local icon = iconOf(entry)
+    self:SetSize(icon.w, icon.h)
     -- pins are pooled: the art is set every time
     if icon.atlas and W.HasAtlas(icon.atlas) then
         self.icon:SetAtlas(icon.atlas)
-        self.icon:SetSize(size + 4, size + 4)
+        self.icon:SetSize(icon.w + 4, icon.h + 4)
         self.icon:SetTexCoord(0, 1, 0, 1)
         for _, t in ipairs(self.edges) do t:Hide() end
-    else
+    elseif icon.atlas then
+        -- an icon of the client's icon set in a gold frame
         self.icon:SetTexture(icon.file)
-        self.icon:SetSize(size - 2, size - 2)
-        -- the icons of the client's icon set get a frame; the taxi node is round art of its own
-        local framed = entry.kind ~= "flight"
-        local cut = framed and 0.08 or 0
-        self.icon:SetTexCoord(cut, 1 - cut, cut, 1 - cut)
-        local c = entry.kind == "entrance" and GOLD or BORDER[entry.kind]
-        W.SetBorderColor(self.edges, c[1], c[2], c[3], 1)
-        for _, t in ipairs(self.edges) do t:SetShown(framed) end
+        self.icon:SetSize(icon.w - 2, icon.h - 2)
+        self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], 1)
+        for _, t in ipairs(self.edges) do t:Show() end
+    else
+        -- the place art brings its own outline
+        self.icon:SetTexture(icon.file)
+        self.icon:SetSize(icon.w, icon.h)
+        self.icon:SetTexCoord(0, 1, 0, 1)
+        for _, t in ipairs(self.edges) do t:Hide() end
     end
 end
 

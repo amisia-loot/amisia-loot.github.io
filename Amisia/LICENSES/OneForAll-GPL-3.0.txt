@@ -4,7 +4,9 @@ zeppelin towers, ship docks) and the approximate dungeon entrances of OneForAll 
 2026 Smoergi (https://github.com/smoergi/OneForAll_Forever), used under the GNU General Public
 License, version 3 or any later version. Only the facts are used (item ids, boss, dungeon and quest
 names, levels, recipe skills, map points, names of flight masters and destinations), and only for
-items WoW Forever has. The licence text follows.
+items WoW Forever has. Media/Icons/place_flight.tga, place_ship_a.tga, place_ship_h.tga and
+place_zeppelin.tga are OneForAll's map landmark icons (Assets/landmark_*.tga), unchanged. The licence
+text follows.
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
