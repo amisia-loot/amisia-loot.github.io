@@ -22,8 +22,8 @@ python3 tools/build.py errors [--sv FILE] [--all]
   that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. `--wago` is the
   folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
-  dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py` and
-  `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
+  dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
+  `build_map.py` (learned entrances), `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
 - `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
@@ -327,7 +327,8 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   points, start object or item, pre-quests, rewards, zone, dungeon), NPCs (name, title, points,
   zone, faction, kind: boss, rare, vendor, giver, mob), boss and rare drops, zone drops with their
   mobs, vendor stock, world drops, PvP gear per faction, crafted items per profession, the items of
-  the export, instances (name, area id, uiMaps, entrance, instance map id). A record of a Forever
+  the export, instances (name, area id, uiMaps, entrance, instance map id), flight paths (`fp()`: the
+  place from the comment, the flight master's NPC id and name, points, faction). A record of a Forever
   folder wins over the same quest or NPC in a zzOLD folder.
 - What ATT does not give: a quest's own level (the minimum level stands in), NPC levels, recipe
   skill levels, spawn points of mobs it only names, measured entrances of some dungeons (the new
@@ -428,7 +429,7 @@ source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>
 `N:<dungeon name>`).
 
 ```
-python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR]
+python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--oneforall DIR] [--sv FILE...] [--entrances FILE]
 ```
 
 - Places come from ATT's data (`att_data.py`): a quest's coordinates (where its giver or start
@@ -436,6 +437,27 @@ python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR]
   or for a mob only a drop names the drop's coordinates; dungeon and raid entrances from the
   instances' coordinates. A point on a dungeon's own map stands for its entrance; an entrance given
   as the middle of its zone (50, 50) is not measured and is left out.
+- F-105, the places on the world map (spec `docs/specs/2026-10-16-karte-orte.md`, D-50):
+  - Entrances of every dungeon and raid of the facts, under `I:<instance id>` (else `N:<name>`); the
+    gear data's `I:`/`N:` keys of a dungeon get the same points. Sources in this order, the first with a
+    point wins: the client table `Map` (`Corpse_0/1` on `CorpseMapID`, the ghost's place at the portal,
+    turned into a zone's x/y through the `UiMapAssignment` rectangles; of overlapping zones the one
+    AllTheThings or OneForAll names, else the one that holds it deepest), AllTheThings, OneForAll's
+    `DungeonData.lua` (approximate by its own words; zone by name through `AreaTable`), the learned ones.
+    A later client or AllTheThings point joins on a map the winner has none on (Uldaman's, Blackrock
+    Mountain's own outdoor map) or, when that source knows two entrances, 8 % away (Uldaman's back
+    door). Continent points are left out. `E` names the winner per key (`c`, `a`, `o`, `l`).
+  - Learned entrances: `AmisiaDB.entrances` of the SavedVariables (`--sv`, default as
+    `build_scan_archive.py`) join `tools/entrance_archive.json` (committed; a newer sighting replaces
+    the older), matched to the facts by instance id or the client's instance name (`Map`).
+  - Flight masters (`F`): OneForAll's `Data/MapLandmarks.lua`, then AllTheThings' `fp()` records it
+    lacks (neither the NPC's name nor a point within 2 %; a path without its flight master is left out).
+  - Docks (`T`): OneForAll's zeppelin towers (Horde) and ship docks, then `tools/forever_transports.json`
+    (by hand, a source per entry; the classic routes are listed there as checked). Destinations carry the
+    client's area id (`AreaTable`), so the addon shows the client's own name ("Beutebucht").
+  - OneForAll runs in `build_gear.run_oneforall`'s sandbox (`--oneforall DIR`, default
+    `~/addons/_cache/oneforall`; `build_gear.py --refresh-oneforall` fetches it); the report lists the
+    winning source per dungeon and the flight masters and docks per source.
 - Which keys are needed comes from `GearData.lua`: quests by their quest id (quests started by an
   item have no place), vendors, rare and named mobs by NPC id or by name (an NPC in the source's
   zone wins, names found in several zones are reported), raids and dungeons by instance id (matched

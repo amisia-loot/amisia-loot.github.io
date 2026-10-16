@@ -74,11 +74,18 @@ local function orderedDungeons(list, sort)
     return out, c.dorder[key][2]
 end
 
--- The chosen dungeon: the saved one while the list has it, else the recommended, else the first.
+-- The chosen dungeon: the saved one while the list has it, a raid below the level cap that
+-- ns.ShowDungeon asked for (the list holds raids from the cap on), else the recommended, else the
+-- first.
+local asked
 local function chosenDungeon(list, nextE)
     local key = state().dungeon
     for _, e in ipairs(list) do
         if e.key == key then return e end
+    end
+    if key and key == asked then
+        local e = ns.DungeonInfo(key)
+        if e then return e end
     end
     return nextE or list[1]
 end
@@ -524,6 +531,22 @@ end
 ---------------------------------------------------------------------------
 
 function ns.DungeonsPageFrame() return page end
+
+-- Opens the page Dungeons with that dungeon or raid chosen (a click on its entrance on the world
+-- map). While the world map shows, the window stays under it (F-011). Returns true when the window
+-- shows.
+function ns.ShowDungeon(key)
+    if type(key) ~= "string" then return false end
+    state().dungeon = key
+    asked = key
+    if ns.ShowPage then ns.ShowPage("dungeons") end
+    local main, map = _G.AmisiaFrame, _G.WorldMapFrame
+    if main and map and map.IsShown and map:IsShown() and ns.MapLowerMain then
+        ns.MapLowerMain(map, main)
+        if map.Raise then map:Raise() end
+    end
+    return main ~= nil and main:IsShown() and true or false
+end
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", icon = ICON, order = 51, group = "gear",
     available = function() return ns.Gear.Available() end,

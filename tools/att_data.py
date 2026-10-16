@@ -455,6 +455,9 @@ local function walk(v, ctx, depth)
         else
             c.hdr = headerName(id) or ctx.hdr
         end
+    elseif kind == "fp" and type(id) == "number" then
+        -- a flight path: its flight master (cr) and where he stands, the faction by races
+        emit("fps", { id = id, file = ctx.file, zone = ctx.zone, npc = ids(t.cr)[1], pts = points(t), races = c.races })
     elseif kind == "prof" then
         c.prof = NAMED[id] or ctx.prof
     elseif kind == "o" and type(id) == "number" then
@@ -471,7 +474,7 @@ local function walk(v, ctx, depth)
     for _, x in ipairs(t) do walk(x, c, depth + 1) end
 end
 
-function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {} } end
+function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {}, fps = {} } end
 -- runs one data file and walks what it handed to root(); the records go into out. Returns the
 -- error text when the file failed (what it recorded before still counts)
 function S.run(src, name, out)
@@ -584,7 +587,7 @@ def hundredths(v):
 
 # Names live in the files' comments: "q(166, {	-- The Defias Brotherhood (7/7)",
 # "qg = 234,	-- Gryan Stoutmantle <The People's Militia>", "n(644, {	-- Rhahk'Zor <The Foreman>".
-_NAMED_NODE = re.compile(r'\b(q|n|inst|e|o|i)\(\s*(\d+)\s*(?:,\s*\{|\)\s*,?)\s*--\s*([^\n]+)')
+_NAMED_NODE = re.compile(r'\b(q|n|inst|e|o|i|fp)\(\s*(\d+)\s*(?:,\s*\{|\)\s*,?)\s*--\s*([^\n]+)')
 _NPC_FIELD = re.compile(r'(?:\b(?:qg|cr|creatureID)|\["(?:qg|cr|creatureID)"\])\s*=\s*(\d+)\s*,\s*--\s*([^\n]+)')
 _NPC_LIST = re.compile(r'(?:\b(?:crs|qgs)|\["(?:crs|qgs)"\])\s*=\s*\{([^}]*)\}')
 _LIST_ENTRY = re.compile(r'(\d+)\s*,\s*--\s*([^\n]+)')
@@ -776,7 +779,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
      'sold': [(item, vendor id, old)], 'world': [item], 'pvp': [(item, faction)],
      'crafted': [(item, profession key)], 'items': {id: item dict (read_itemdb)}, 'uimap_instance': {},
-     'item_names': {id: English name from the comments}}
+     'item_names': {id: English name from the comments},
+     'flights': {flight path id: {'place' (the comment's "Thelsamar, Loch Modan"), 'npc', 'name' (of the
+                 flight master), 'points', 'faction' ('A', 'H' or '' for both), 'file', 'old'}}}
 
     dirs: the data folders to read (default DATA_DIRS; build_magescrolls.py reads 'expansion features').
     Points are (uiMapID, x, y) in hundredths of a percent. Files under zzOLD/ are "old": the
@@ -936,11 +941,21 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                 for p in drop_points.get(item, []):
                     if p not in rec['points']:
                         rec['points'].append(p)
+    flights = {}
+    for r in raw.get('fps') or []:
+        fid = int(r['id'])
+        if fid in flights:
+            continue
+        npc = _int(r.get('npc'))
+        flights[fid] = {'place': (names.get(('fp', fid)) or (None,))[0], 'npc': npc,
+                        'name': (names.get(('n', npc)) or (None,))[0] if npc is not None else None,
+                        'points': pts(r.get('pts')), 'faction': faction(r.get('races')), 'file': r['file'],
+                        'old': old(r['file'])}
     db = {'commit': commit_of(base), 'files': files, 'errors': errors, 'maps': _py(S.mapNames()),
           'instances': instances, 'quests': quests, 'npcs': npcs, 'drops': drops, 'zone_drops': zone_drops,
           'sold': sold, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
           'items': read_itemdb(base, S) if items else {}, 'uimap_instance': uimap_instance,
-          'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}}
+          'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights}
     return db
 
 
@@ -948,4 +963,4 @@ def empty_db():
     """The neutral form without any data (tests, or a build without a download)."""
     return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {},
             'drops': [], 'zone_drops': [], 'sold': [], 'world': [], 'pvp': [], 'crafted': [], 'items': {},
-            'uimap_instance': {}, 'item_names': {}}
+            'uimap_instance': {}, 'item_names': {}, 'flights': {}}

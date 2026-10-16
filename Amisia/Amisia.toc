@@ -99,6 +99,7 @@ Gear\Talents.lua
 Gear\MageScrolls.lua
 Gear\Map.lua
 Gear\MapPins.lua
+Gear\MapPlaces.lua
 Gear\MapPin.xml
 UI\Search.lua
 UI\MainFrame.lua

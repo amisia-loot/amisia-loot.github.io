@@ -1050,3 +1050,24 @@ Abschnitt bleibt. Das Zuklappen gilt nur für die Sitzung und nur, solange diese
 gespeicherter Zustand), damit ein Abschnitt aus der Suche oder einem Seitenknopf nie zugeklappt erscheint.
 **Durchgesetzt durch:** `tests/test_settings_pages.lua`.
 
+## D-50 Orte auf der Karte: Eingänge lernt Amisia beim Betreten, sie leben im Archiv auf dem N100
+
+**Datum:** 2026-10-16
+**Entscheidung:** Spec `docs/specs/2026-10-16-karte-orte.md` (Fragen 1-5). Flugmeister nur der eigenen
+Fraktion plus neutrale, alle gleich (nichts pro Charakter). Klick auf einen Eingang öffnet ihn in Amisia,
+Shift-Klick setzt das Ziel. Eingänge, die keine Quelle kennt, merkt sich Amisia beim Betreten
+(`AmisiaDB.entrances`): der letzte Ort im Freien, höchstens 20 s vor dem Ladebildschirm in eine Gruppen- oder
+Raid-Instanz, nach der Instanz-ID; nicht nach einer Beschwörung, höchstens 60. `build.py data` (Schritt map)
+nimmt sie in `tools/entrance_archive.json` auf (eine neuere Sichtung ersetzt die ältere, nichts fällt weg) und
+in `Data/MapData.lua`, als letzte Quelle nach Client-Tabelle Map, AllTheThings und OneForAll. Anders als bei den
+Scan-Daten (D-34) räumt das Addon nichts weg: der Schlüssel ist klein. Klassische Anleger stehen von Hand in
+`tools/forever_transports.json`, neue Forever-Routen kommen dazu, wenn der Nutzer sie meldet. Zeigt die Karte
+des Spiels selbst Eingänge oder Flugpunkte (ihr Daten-Provider ist auf der Karte und die Client-Funktion liefert
+Einträge), lässt Amisia diese Art weg.
+**Grund:** Antwort des Nutzers 2026-10-16: "mach deine vorschläge"; die neuen Forever-Dungeons und -Raids hat
+noch keine Quelle.
+**Folge:** Das Archiv committen; es ist die einzige Kopie der gelernten Orte außerhalb der SavedVariables. Ein
+falscher gelernter Ort wird erst durch eine neuere Sichtung oder eine bessere Quelle ersetzt.
+**Durchgesetzt durch:** `tests/test_map_places.lua`, `tools/tests/test_build_map.py::test_learned_entrances_join_the_archive`,
+`tools/tests/test_build_map.py::test_the_first_source_wins_and_only_real_second_entrances_join`.
+

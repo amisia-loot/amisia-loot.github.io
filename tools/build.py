@@ -150,7 +150,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False, refresh_oneforall=False):
         ('dungeons', 'build_dungeons.py', ['--wago', wago], [('LFGDungeons', 'AreaTable')], []),
         ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else [])
          + (['--refresh-oneforall'] if refresh_oneforall else []), None, None),
-        ('map', 'build_map.py', ['--wago', wago], None, None),
+        ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
         ('dungeon quests', 'build_dungeonquests.py', [], None, None),
         ('quests', 'build_quests.py', [], None, None),
         ('professions', 'build_professions.py', ['--wago', wago], ['ItemSparse', 'SkillLineAbility'], 'skip'),

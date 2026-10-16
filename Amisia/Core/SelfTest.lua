@@ -502,6 +502,19 @@ local function sectionMap(R, opts)
         pos = { x = x, y = y }
         return "WERT", showAll(x, y)
     end)
+    -- the client's own entrances and flight points on this map: where it has them, Amisia shows none
+    -- of that kind (MapPlaces.lua)
+    for _, c in ipairs({ { "C_EncounterJournal.GetDungeonEntrancesForMap", "entrance", L["Eingänge"] },
+                         { "C_TaxiMap.GetTaxiNodesForMap", "flight", L["Flugmeister"] } }) do
+        check(R, c[1], function()
+            if not fn(c[1]) then return "WERT", L["fehlt (Amisia zeigt die eigenen %s)"]:format(c[3]) end
+            if not map then return "WERT", L["keine Karte"] end
+            if not (ns.Map and ns.Map.ClientPlaces) then return "WERT", L["keine Karte"] end
+            local has, n, provider = ns.Map.ClientPlaces(c[2], map)
+            return "WERT", (has and L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt keine eigenen %s)"]
+                or L["Karte %d: %d Einträge, Anzeige der Karte %s (Amisia zeigt die eigenen %s)"]):format(map, n or 0, show(provider), c[3])
+        end)
+    end
     check(R, "C_Map.HasUserWaypoint", function() return "WERT", show(call("C_Map.HasUserWaypoint")) end)
     check(R, "C_SuperTrack.IsSuperTrackingUserWaypoint", function() return "WERT", show(call("C_SuperTrack.IsSuperTrackingUserWaypoint")) end)
     check(R, "GetPlayerFacing", function() return "WERT", show(call("GetPlayerFacing")) end)
@@ -570,8 +583,8 @@ local ATLASES = {
     "Profession-Background-Overview", "Professions-background-summarylist", "Professions_Recipe_Active",
     "Professions_Recipe_Hover", "Professions-skillbar-bg", "Professions-skillbar-frame", "common-insideframe",
     "common-dropdown-bg", "common-search-border-left", "common-search-border-middle", "common-search-border-right",
-    -- the quest giver marks on the world map
-    "QuestNormal",
+    -- the quest giver marks on the world map, the dungeon and raid entrances (MapPlaces.lua)
+    "QuestNormal", "Dungeon", "Raid",
     -- the page list and the search results: the auction house's category bars (W.NavBar)
     "auctionhouse-nav-button", "auctionhouse-nav-button-select", "auctionhouse-nav-button-highlight",
     "auctionhouse-nav-button-secondary", "auctionhouse-nav-button-secondary-select",
@@ -814,6 +827,9 @@ local OPTIONAL = {
     "C_Item.GetItemGUID", "C_Item.DoesItemExist", "C_Item.IsBound", "C_TooltipInfo.GetBagItem",
     "C_Container.GetContainerItemInfo", "C_Container.PickupContainerItem", "C_Container.SplitContainerItem", "ClickTradeButton",
     "GetTradePlayerItemLink", "CursorHasItem", "ClearCursor", "GetGameMessageInfo",
+    -- the places on the world map: the client's own entrances and flight points (then Amisia leaves
+    -- that kind out)
+    "C_EncounterJournal.GetDungeonEntrancesForMap", "C_TaxiMap.GetTaxiNodesForMap",
 }
 ST.OPTIONAL = OPTIONAL
 
@@ -882,6 +898,8 @@ local EVENTS = {
     "SPELL_DATA_LOAD_RESULT", "ZONE_CHANGED", "ZONE_CHANGED_NEW_AREA", "GUILD_ROSTER_UPDATE",
     "LOOT_ROLLS_COMPLETE", "LOOT_ITEM_ROLL_WON", "LOOT_HISTORY_UPDATE_DROP",
     "TRADE_SHOW", "TRADE_CLOSED", "TRADE_ACCEPT_UPDATE", "TRADE_PLAYER_ITEM_CHANGED", "UI_INFO_MESSAGE",
+    -- the learned entrances (MapPlaces.lua)
+    "LOADING_SCREEN_ENABLED", "PLAYER_LEAVING_WORLD", "CONFIRM_SUMMON",
 }
 ST.EVENTS = EVENTS
 

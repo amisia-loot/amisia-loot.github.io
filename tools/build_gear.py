@@ -217,20 +217,14 @@ def _ofa_ids(rows):
     return out
 
 
-def load_oneforall(base, budget=200_000_000):
-    """OneForAll 5.x as the build needs it: {'version', 'dungeons': {name: {'bosses': [(boss,
-    [(item, name)])], 'trash': [(item, name)], 'quests': [{id, name, level, requires, faction, classes,
-    rewards}]}}, 'crafts': {profession key: [(item, skill)]}, 'errors': {file: text}}. An older
-    version (before the dungeon registry) gives None."""
-    toc = os.path.join(base, 'OneForAll.toc')
-    if not os.path.exists(os.path.join(base, 'DungeonRegistry.lua')) or not os.path.exists(toc):
-        log(f'OneForAll: {base} is older than 5.0 (no dungeon registry), left out')
-        return None
+def run_oneforall(base, wanted, budget=200_000_000):
+    """Runs OneForAll's files that wanted(relative path) takes, in the TOC's order, in the sandbox.
+    Returns (its namespace FLT as a Lua table, the TOC's version, {file: error})."""
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
     run = lua.execute(OFA_SANDBOX)
     version, errors = '', {}
-    with open(toc, encoding='utf-8-sig') as fh:
+    with open(os.path.join(base, 'OneForAll.toc'), encoding='utf-8-sig') as fh:
         lines = fh.read().splitlines()
     for line in lines:
         m = re.match(r'##\s*Version:\s*(\S+)', line)
@@ -238,7 +232,7 @@ def load_oneforall(base, budget=200_000_000):
             version = m.group(1)
     files = [l.strip().replace('\\', '/') for l in lines if l.strip() and not l.startswith('#')]
     for rel in files:
-        if rel not in OFA_FILES and not rel.startswith(OFA_DIRS):
+        if not wanted(rel):
             continue
         path = os.path.join(base, *rel.split('/'))
         if not os.path.exists(path):
@@ -248,7 +242,19 @@ def load_oneforall(base, budget=200_000_000):
             err = run(fh.read(), rel, budget)
         if err:
             errors[rel] = err
-    flt = run(None, None, 0)
+    return run(None, None, 0), version, errors
+
+
+def load_oneforall(base, budget=200_000_000):
+    """OneForAll 5.x as the build needs it: {'version', 'dungeons': {name: {'bosses': [(boss,
+    [(item, name)])], 'trash': [(item, name)], 'quests': [{id, name, level, requires, faction, classes,
+    rewards}]}}, 'crafts': {profession key: [(item, skill)]}, 'errors': {file: text}}. An older
+    version (before the dungeon registry) gives None."""
+    toc = os.path.join(base, 'OneForAll.toc')
+    if not os.path.exists(os.path.join(base, 'DungeonRegistry.lua')) or not os.path.exists(toc):
+        log(f'OneForAll: {base} is older than 5.0 (no dungeon registry), left out')
+        return None
+    flt, version, errors = run_oneforall(base, lambda rel: rel in OFA_FILES or rel.startswith(OFA_DIRS), budget)
     py = build_scan.lua_to_py
     registry = py(flt.DUNGEON_REGISTRY) or {}
     dungeons = {}

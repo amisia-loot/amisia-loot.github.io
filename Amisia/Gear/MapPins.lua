@@ -143,6 +143,9 @@ local function mapKind(mapID)
     return ok and type(info) == "table" and ns.Plain(info.mapType) or nil
 end
 
+-- For the place pins (MapPlaces.lua): the same projection and map kinds.
+Map.ProjectPoint, Map.MapKindOf = project, mapKind
+
 local function samePoint(a, b)
     return a.map == b.map and math.abs(a.x - b.x) <= 0.001 and math.abs(a.y - b.y) <= 0.001
 end
@@ -474,7 +477,10 @@ local refreshes = 0
 
 function Provider:RemoveAllData()
     local map = self:GetMap()
-    if map then map:RemoveAllPinsByTemplate(TEMPLATE) end
+    if map then
+        map:RemoveAllPinsByTemplate(TEMPLATE)
+        if Map.PLACE_TEMPLATE then map:RemoveAllPinsByTemplate(Map.PLACE_TEMPLATE) end
+    end
 end
 
 -- Builds the list first; on an error no pin stays and the error goes to the error handler.
@@ -489,9 +495,12 @@ function Provider:RefreshAllData()
         for _, e in ipairs(list) do
             map:AcquirePin(TEMPLATE, e, e.continent and scale * 0.7 or scale)
         end
+        -- the places (entrances, flight masters, docks) of MapPlaces.lua
+        if Map.AcquirePlaces then Map.AcquirePlaces(map, scale) end
     end)
     if not ok then
         pcall(map.RemoveAllPinsByTemplate, map, TEMPLATE)
+        if Map.PLACE_TEMPLATE then pcall(map.RemoveAllPinsByTemplate, map, Map.PLACE_TEMPLATE) end
         report(err)
     end
 end
@@ -511,6 +520,7 @@ local function register()
         return false
     end
     fillMixin(MapCanvasPinMixin)
+    if Map.FillPlaceMixin then Map.FillPlaceMixin(MapCanvasPinMixin) end
     local p = CreateFromMixins(MapCanvasDataProviderMixin, Provider)
     local ok, err = pcall(map.AddDataProvider, map, p)
     if not ok then

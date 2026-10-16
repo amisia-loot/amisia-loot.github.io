@@ -5,4 +5,8 @@
 	<Frame name="AmisiaMapPinTemplate" mixin="AmisiaMapPinMixin" enableMouse="true" hidden="true" virtual="true">
 		<Size x="20" y="20"/>
 	</Frame>
+	<!-- The pin of the places (entrances, flight masters, docks), mixin from MapPlaces.lua. -->
+	<Frame name="AmisiaMapPlaceTemplate" mixin="AmisiaMapPlaceMixin" enableMouse="true" hidden="true" virtual="true">
+		<Size x="20" y="20"/>
+	</Frame>
 </Ui>

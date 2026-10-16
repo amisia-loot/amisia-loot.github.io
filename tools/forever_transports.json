@@ -1,0 +1,14 @@
+{
+ "checked": "2026-10-16",
+ "note": "Docks of zeppelins and ships that OneForAll's Data/MapLandmarks.lua lacks, kept by hand (tools/build_map.py adds them). Each entry: map (uiMapID), x, y (0-100), kind zeppelin/ship, faction A/H/AH, to (destinations, English, 'Place, Zone'), src (where the point comes from). New Forever routes go here when the user reports them (spec 2026-10-16-karte-orte, decision 5).",
+ "routes": [
+  {"route": "Orgrimmar - Undercity", "kind": "zeppelin", "covered": "OneForAll: Durotar tower and Tirisfal tower"},
+  {"route": "Orgrimmar - Grom'gol", "kind": "zeppelin", "covered": "OneForAll: Durotar tower and Grom'gol tower"},
+  {"route": "Undercity - Grom'gol", "kind": "zeppelin", "covered": "OneForAll: Tirisfal tower and Grom'gol tower"},
+  {"route": "Ratchet - Booty Bay", "kind": "ship", "covered": "OneForAll: both docks"},
+  {"route": "Menethil Harbor - Theramore Isle", "kind": "ship", "covered": "OneForAll: both docks"},
+  {"route": "Menethil Harbor - Auberdine", "kind": "ship", "covered": "OneForAll: both docks"},
+  {"route": "Auberdine - Rut'theran Village", "kind": "ship", "covered": "OneForAll: both docks"}
+ ],
+ "docks": []
+}

@@ -15,7 +15,7 @@ ignore = {
 -- mixin the XML template names, the addon compartment callbacks of the TOC, and the client's
 -- registries it adds entries to.
 globals = {
-    "AmisiaDB", "SLASH_AMISIA1", "SlashCmdList", "StaticPopupDialogs", "AmisiaMapPinMixin",
+    "AmisiaDB", "SLASH_AMISIA1", "SlashCmdList", "StaticPopupDialogs", "AmisiaMapPinMixin", "AmisiaMapPlaceMixin",
     "Amisia_OnAddonCompartmentClick", "Amisia_OnAddonCompartmentEnter", "Amisia_OnAddonCompartmentLeave",
 }
 

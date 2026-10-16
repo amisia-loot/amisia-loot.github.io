@@ -200,3 +200,11 @@ def test_map_constants_of_the_newer_file_fill_the_shared_map():
     lua, S = att_data.sandbox()
     S.maps(src)
     assert dict(S.mapNames()) == {'TEST_TOWN': 1453}
+
+
+def test_flight_paths_with_their_flight_master(db):
+    f = db['flights']
+    assert f[9001] == {'place': 'Hill Rest, Test Hills', 'npc': 80901, 'name': 'Wing Master', 'points': [(1426, 2050, 3025)],
+                       'faction': 'A', 'file': 'zones/eastern kingdoms/dun morogh.lua', 'old': False}
+    assert f[9002]['npc'] is None and f[9002]['faction'] == '', 'a path without its flight master, both factions'
+    assert att_data.empty_db()['flights'] == {}

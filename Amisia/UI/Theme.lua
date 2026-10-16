@@ -422,8 +422,8 @@ T.ATLASES = {
     "talent-background-warrior", "talent-background-paladin", "talent-background-hunter", "talent-background-rogue",
     "talent-background-priest", "talent-background-shaman", "talent-background-mage", "talent-background-warlock",
     "talent-background-druid",
-    -- the map legend's quest giver mark
-    "QuestNormal",
+    -- the map legend's quest giver mark, the dungeon and raid entrances (Gear/MapPlaces.lua)
+    "QuestNormal", "Dungeon", "Raid",
     -- the raid calendar window: the group finder's role icons (Blizzard_UIPanelTemplates/Camelot,
     -- LFGVanilla) and its class icons (Blizzard_GroupFinder_VanillaStyle)
     "groupfinder-icon-role-large-tank", "groupfinder-icon-role-large-heal", "groupfinder-icon-role-large-dps",

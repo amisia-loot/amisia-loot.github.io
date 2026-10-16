@@ -31,4 +31,14 @@ root(ROOTS.Zones, m(MAP.TEST_HILLS, {
 			lvl = 5,
 		}),
 	}),
+	n(FLIGHT_PATHS, {
+		fp(9001, {	-- Hill Rest, Test Hills
+			cr = 80901,	-- Wing Master <Gryphon Master>
+			coord = { 20.5, 30.25, MAP.TEST_HILLS },
+			races = ALLIANCE_ONLY,
+		}),
+		fp(9002, {	-- Tower Flight, Test Hills
+			coord = { 70.0, 70.0, MAP.TEST_HILLS },
+		}),
+	}),
 }));
