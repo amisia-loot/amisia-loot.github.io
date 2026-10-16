@@ -80,12 +80,13 @@ local function hoursAway(e)
     return a.y * 8760 + a.mo * 730 + a.d * 24 + a.h
 end
 
--- "zuletzt vor 2 Tagen 19 Stunden" as the client's guild window counts (the two largest units).
+-- "zuletzt vor 2 Tagen 19 Stunden" as the client's guild window counts (the two largest units; short:
+-- the largest only, for the row; the tooltip has both).
 local UNITS = {
     { "y", L["%d Jahr##vor"], L["%d Jahren##vor"] }, { "mo", L["%d Monat##vor"], L["%d Monaten##vor"] },
     { "d", L["%d Tag##vor"], L["%d Tagen##vor"] }, { "h", L["%d Stunde##vor"], L["%d Stunden##vor"] },
 }
-local function awayText(a)
+local function awayText(a, short)
     if not a then return L["offline"] end
     local parts = {}
     for i, u in ipairs(UNITS) do
@@ -94,7 +95,7 @@ local function awayText(a)
             parts[1] = (n == 1 and u[2] or u[3]):format(n)
             local nx = UNITS[i + 1]
             local m = nx and a[nx[1]] or 0
-            if m > 0 then parts[2] = (m == 1 and nx[2] or nx[3]):format(m) end
+            if m > 0 and not short then parts[2] = (m == 1 and nx[2] or nx[3]):format(m) end
             break
         end
     end
@@ -104,7 +105,7 @@ end
 
 local function lastText(e)
     if e.online then return T.GREEN .. L["online"] .. "|r" end
-    return T.GREY .. awayText(e.last) .. "|r"
+    return T.GREY .. awayText(e.last, true) .. "|r"
 end
 
 -- A note as plain text in a tooltip (a bar would start a code).
@@ -148,7 +149,7 @@ local function profLines(list)
         return a.skill < b.skill
     end)
     table.sort(other, function(a, b) return secondary(a.skill) < secondary(b.skill) end)
-    for i = #main, 3, -1 do main[i] = nil end
+    for i = #main, M.MAIN_BOXES + 1, -1 do main[i] = nil end
     for i = #other, M.BOXES + 1, -1 do other[i] = nil end
     return main, other
 end
@@ -333,9 +334,9 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-local function buildBox(r)
+local function buildBox(r, w)
     local b = CreateFrame("Button", nil, r)
-    b:SetSize(M.BOX_W, M.BOX_H)
+    b:SetSize(w, M.BOX_H)
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetSize(M.BOX_ICON, M.BOX_ICON)
     b.icon:SetPoint("LEFT", 0, 0)
@@ -344,7 +345,7 @@ local function buildBox(r)
     b.num:SetJustifyH("RIGHT")
     b.num:SetDrawLayer("OVERLAY", 7)
     -- the profession window's skill bar, filled by rank / max, the name on it
-    local barW = M.BOX_W - M.BOX_ICON - M.BAR_GAP
+    local barW = w - M.BOX_ICON - M.BAR_GAP
     b.bar = CreateFrame("Button", nil, b)
     b.bar:SetSize(barW, M.BAR_H)
     b.bar:SetPoint("LEFT", b.icon, "RIGHT", M.BAR_GAP, 0)
@@ -404,12 +405,14 @@ local function buildRow(r)
     r.clockIcon:SetSize(M.SMALL_ICON, M.SMALL_ICON)
     r.clockIcon:SetPoint("RIGHT", r.last, "LEFT", -M.SMALL_GAP, 0)
     r.clockIcon:SetTexture(M.CLOCK_ICON)
-    -- two lines of boxes: the main professions, under them the secondary ones
+    -- two lines of boxes: the main professions (two, wide: their names are long), under them the
+    -- secondary ones (three)
     r.boxes = {}
     for line = 1, 2 do
-        for i = 1, M.BOXES do
-            local b = buildBox(r)
-            b:SetPoint("TOPLEFT", M.PROF_X + (i - 1) * (M.BOX_W + M.BOX_GAP), M.BOX_Y - (line - 1) * (M.BOX_H + M.BOX_ROW_GAP))
+        local n, w = line == 1 and M.MAIN_BOXES or M.BOXES, line == 1 and M.MAIN_BOX_W or M.BOX_W
+        for i = 1, n do
+            local b = buildBox(r, w)
+            b:SetPoint("TOPLEFT", M.PROF_X + (i - 1) * (w + M.BOX_GAP), M.BOX_Y - (line - 1) * (M.BOX_H + M.BOX_ROW_GAP))
             r.boxes[#r.boxes + 1] = b
         end
     end
@@ -430,7 +433,7 @@ local function fillRow(r, e)
     end
     local main, other = profLines(e.profs)
     for i, p in ipairs(main) do fillBox(r.boxes[i], p) end
-    for i, p in ipairs(other) do fillBox(r.boxes[M.BOXES + i], p) end
+    for i, p in ipairs(other) do fillBox(r.boxes[M.MAIN_BOXES + i], p) end
 end
 
 local function buildPage(parent)

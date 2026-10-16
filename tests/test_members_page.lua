@@ -80,7 +80,7 @@ assert(has(r1.name:GetText(), "Anna Amboss") and has(r1.name:GetText(), "|c"), r
 assert(has(r1.info:GetText(), "Stufe 58 Krieger · Veteran"), r1.info:GetText())
 assert(r1.zone:GetText() == "Eisenschmiede" and has(r1.last:GetText(), "online") and has(r1.last:GetText(), NS.Theme.GREEN))
 -- Anna: smithing in the upper line, cooking in the lower
-local b1, b4 = r1.boxes[1], r1.boxes[NS.Theme.MEMBERS.BOXES + 1]
+local b1, b4 = r1.boxes[1], r1.boxes[NS.Theme.MEMBERS.MAIN_BOXES + 1]
 assert(b1:IsShown() and b1.num:GetText() == "225" and b1.label:GetText() == "Schmiedekunst", b1.label:GetText())
 assert(not r1.boxes[2]:IsShown(), "one main profession")
 assert(b4:IsShown() and b4.label:GetText() == "Kochkunst" and b4.num:GetText() == "10", "cooking below")
@@ -90,16 +90,16 @@ assert(NS.MembersProfText(b4.prof) == "Kochkunst 10/75, 1 Rezept, Stand vor 3 Ta
 local own = f.list.rows[7]
 assert(own.item.name == "Vuloo" and own.boxes[1].label:GetText() == "Alchimie" and own.boxes[1].num:GetText() == "120")
 assert(NS.MembersProfText(own.boxes[1].prof) == "Alchimie 120/150, 1 Rezept, Stand heute", NS.MembersProfText(own.boxes[1].prof))
-assert(NS.MembersProfText(own.boxes[NS.Theme.MEMBERS.BOXES + 1].prof) == "Kochkunst 40/75, 1 Rezept, Stand vor 1 Tag")
+assert(NS.MembersProfText(own.boxes[NS.Theme.MEMBERS.MAIN_BOXES + 1].prof) == "Kochkunst 40/75, 1 Rezept, Stand vor 1 Tag")
 -- a member without Amisia: no boxes
 for _, b in ipairs(f.list.rows[2].boxes) do assert(not b:IsShown(), "Bob shares nothing") end
 -- offline: grey zone placeholder, "zuletzt vor ..."
 local carlaRow = f.list.rows[8]
-assert(has(carlaRow.last:GetText(), "zuletzt vor 2 Tagen 19 Stunden"), carlaRow.last:GetText())
+assert(has(carlaRow.last:GetText(), "zuletzt vor 2 Tagen") and not has(carlaRow.last:GetText(), "Stunden"), "the row: the largest unit: " .. carlaRow.last:GetText())
 assert(has(f.list.rows[9].last:GetText(), "zuletzt vor 5 Stunden"), f.list.rows[9].last:GetText())
 -- the rows below the nine shown: the wheel scrolls
 f.list.scripts.OnMouseWheel(f.list, -1)
-assert(f.list.rows[9].item.name == "Fynn" and has(f.list.rows[9].last:GetText(), "zuletzt vor 1 Jahr 2 Monaten"),
+assert(f.list.rows[9].item.name == "Fynn" and has(f.list.rows[9].last:GetText(), "zuletzt vor 1 Jahr"),
     f.list.rows[9].last:GetText())
 f.list.scripts.OnMouseWheel(f.list, 1)
 -- Kai: offline, the client did not say since when

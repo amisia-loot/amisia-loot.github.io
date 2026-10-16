@@ -197,17 +197,19 @@ T.MEMBERS = {
     },
     LINE1_Y = -8, LINE2_Y = -26,                   -- the two lines of text below the row's top
     NAME_X = 48, NAME_W = 124,                     -- the name (T.FONT.body), under it level, class, rank
-    ZONE_X = 176, ZONE_W = 160,                    -- the zone and the time column
+    ZONE_X = 176, ZONE_W = 140,                    -- the zone and the time column
     SMALL_ICON = 12, SMALL_GAP = 3,                -- the map and clock icons before their texts
     MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01",
     CLOCK_ICON = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-    PROF_X = 340, BOXES = 3,                       -- the professions: 3 x 80 + 2 x 4 = 248, to 588
-    BOX_W = 80, BOX_H = 18, BOX_GAP = 4, BOX_Y = -4, BOX_ROW_GAP = 3,
+    -- the professions from PROF_X to 588: two main ones of 2 x 132 + 4 = 268, under them three
+    -- secondary ones of 3 x 86 + 2 x 4 = 266
+    PROF_X = 320, MAIN_BOXES = 2, MAIN_BOX_W = 132, BOXES = 3,
+    BOX_W = 86, BOX_H = 18, BOX_GAP = 4, BOX_Y = -4, BOX_ROW_GAP = 3,
     BOX_ICON = 18, BAR_H = 14, BAR_GAP = 2, BAR_PAD = 3,
     BAR_COLOR = { 0.25, 0.42, 0.85 },              -- the bar's fill (the classic profession window's blue)
     NUM_FONT = "NumberFontNormalSmall",            -- the skill on the icon
     -- the column heads (sort on click; Berufe sorts by the skill), x and width on the list
-    COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 98 }, { "prof", 340, 120 } },
+    COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 78 }, { "prof", 320, 120 } },
 }
 
 -- an overview card
