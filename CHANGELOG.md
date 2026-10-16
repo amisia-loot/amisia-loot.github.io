@@ -2,6 +2,15 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.39.0 (2026-10-16)
+
+- Spec Orte auf der Weltkarte: Eingänge, Flugmeister, Zeppeline, Schiffe (F-105, Entwurf)
+- Spec Orte auf der Karte freigegeben (Vorschläge 1-5), Quellen: OneForAll MapLandmarks, Client-Tabelle Map, AllTheThings; F-105 geplant
+- Daten neu gebaut (build.py data): OneForAll 5.6.2 statt 5.6.0, Scan-Archiv mit den SavedVariables vom 2026-10-16
+- Orte auf der Weltkarte: Eingänge, Flugmeister, Zeppeline und Schiffe; Eingänge beim Betreten gemerkt (F-105)
+- Gemerkte Eingänge: kein Eintrag nach einem Teleport der Gruppensuche (IsInLFGDungeon)
+- F-105 gebaut in 2.39.0; D-04: OneForAll auch für die Orte der Karte
+
 ## 2.38.0 (2026-10-16)
 
 - Spec: Seite Mitglieder im Reiter Gilde (Entwurf)
