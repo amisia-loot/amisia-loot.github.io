@@ -126,3 +126,5 @@ Nichts. Nur lokale Anzeige aus mitgelieferten Daten; nichts wird gesendet oder e
 - 2026-10-16: Quellen: "AllTheThings ist nicht deine einzige Quelle", "such nach besseren
   aktuelleren" -> jede Quelle aus D-04 (AllTheThings, OneForAll, Client-Tabellen) und neuere, die
   die Suche findet; je Punkt die aktuellste, die Quelle steht im Generator.
+- 2026-10-16: OneForAll nennt für Flugmeister, Anleger und Eingänge QuestieDB Forever und
+  foreverchanges als Herkunft: "OneForAll als Quelle passt, release 2.39.0." -> D-04 Ausnahme erweitert.

@@ -66,6 +66,9 @@ Repo MIT ist. Ausnahme seit 2026-10-15: OneForAll 5.x (GPL-3.0-or-later, Lizenzt
 `Amisia/LICENSES/OneForAll-GPL-3.0.txt`) ist ausdrücklich freigegeben ("Nutz OneForAll 5.6.0 als
 Quelle"), obwohl seine Quellenliste Wowhead und foreverchanges nennt; genommen werden nur Items mit
 Forever-ID (ab 200000) oder einer ID, die der Client kennt (`ItemSparse`, Scan).
+Seit 2026-10-16 auch die Orte der Karte (F-105): Flugmeister, Zeppeline und Schiffe aus
+`Data/MapLandmarks.lua` und die Eingänge aus `DungeonData.lua`, obwohl OneForAll sie aus QuestieDB
+Forever bzw. foreverchanges hat ("OneForAll als Quelle passt").
 **Grund:** Lizenztreue; OneForAll füllt Boss-, Trash- und Questbeute der Forever-Dungeons, die
 AllTheThings noch nicht hat.
 **Folge:** Neue Daten nur aus diesen Quellen; jede generierte Datei nennt im Kopf Generator und
