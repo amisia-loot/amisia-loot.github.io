@@ -700,14 +700,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
-- Version: 2.39.0
+- Version: 2.39.1
 - Status: gebaut
 - Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens und des Kral der Klingenhauer, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht".
 - Prüfung: Wenn du auf den Eingang der Höhlen des Wehklagens klickst, dann öffnet sich Amisia auf der Seite Dungeons mit diesem Dungeon gewählt, die Weltkarte bleibt vorn; mit Shift setzt der Klick das Ziel zum Eingang (Chat "Ziel ...", Pfeil).
 - Prüfung: Wenn du in den Einstellungen (Karte und Wegpunkt) "Flugmeister auf der Karte" ausschaltest oder im Rechtsklick eines Pins "Flugmeister ausblenden" wählst, dann verschwinden die Flugmeister-Pins sofort, die Eingänge bleiben.
 - Prüfung: Wenn du als Horde in Durotar und im Schlingendorntal schaust, dann siehst du keine Allianz-Flugmeister; in Beutebucht nur den deiner Fraktion.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann stehen dort Zeilen zu C_TaxiMap und C_EncounterJournal und zu den Symbolen Dungeon/Raid; nach dem Betreten eines Dungeons ohne bekannten Eingang (z. B. Hall of Thanes) hat er nach dem nächsten Daten-Build einen Pin.
-- Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (OneForAll-Orte). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Stellvertreter-Symbole für Zeppelin und Schiff.
+- Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (OneForAll-Orte). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Symbole ab 2.39.1: Flügelstiefel, Schiff in Fraktionsfarbe, Zeppelin (Media/Icons/place_*.tga).
 
 ### F-046 Dungeon-Planer: Rangliste, Kette, Quests
 - Version: 2.4.0
