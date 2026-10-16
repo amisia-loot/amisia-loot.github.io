@@ -520,7 +520,8 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` |
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
-| `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1` |
+| `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51) |
+| `~/addons/_auto/amisia-data.txt` | outcome of `tools/auto_data.py` (systemd user timer `amisia-auto-data.timer`, `tools/systemd/install.sh`): a new build's data built and checked on branch `auto/data-<build>` in the worktree `~/addons/.amisia-auto`, never released (D-51) |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
 | `~/addons/_cache/oneforall` | OneForAll download (GPL-3.0; Lua, TOC and text files only, `build_gear.py --refresh-oneforall`), read only in the sandbox of `build_gear.run_oneforall` (`build_gear.load_oneforall`, `build_map.load_ofa_places`) |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |

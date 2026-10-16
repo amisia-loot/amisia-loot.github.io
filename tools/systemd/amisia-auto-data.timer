@@ -1,0 +1,11 @@
+# Every 15 minutes (tools/auto_data.py stops at once when nothing is new).
+[Unit]
+Description=Amisia: neue Client-Tabellen alle 15 Minuten prüfen
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

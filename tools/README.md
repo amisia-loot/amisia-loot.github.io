@@ -44,6 +44,12 @@ python3 tools/build.py errors [--sv FILE] [--all]
   and, at the end, the test list of the new version: the entries of `docs/FEATURES.md` whose
   `Version:` is the new one, with their checks, to pass on to the user. When no entry carries the
   version it says so (a warning, the release still happens).
+- `tools/auto_data.py` (D-51): run every 15 minutes by the systemd user timer (`tools/systemd/install.sh`
+  installs it). When `~/addons/_wago` has a complete, settled export of a build newer than the data on main,
+  it builds and checks the data on branch `auto/data-<build>` in its own worktree and writes the outcome to
+  `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`.
+  On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
+  `export_db2.ps1` after logon and every two hours.
 - Before the test list `release` says what to do in the game: a full restart of WoW when the TOC's file
   list changed or a file under `Amisia/Media` is new since the last release (the client reads both only
   at start), otherwise `/reload`.

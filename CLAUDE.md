@@ -28,6 +28,9 @@
 - Saving in `Amisia/` does not reach the game: only `tools/build.py release` (via
   `tools/release_addon.sh`) copies a committed version to the Syncthing release folder; then `/reload`.
   Machines and folders: ARCHITECTURE.md, "Machines".
+- New client build: the PC exports the tables by itself and the N100 builds and checks them on branch
+  `auto/data-<build>` (D-51). At the start of a session read `~/addons/_auto/amisia-data.txt` and tell the
+  user when data is ready or red; release only when the user asks.
 - Never download from wago.tools, Wowhead or foreverchanges by script (DECISIONS D-03): a missing client
   table goes into `tools/export_db2.ps1` and the user runs it on the PC.
 - Subagents only `opus-medium` or `sonnet-medium`, never Fable, no nested agents (DECISIONS D-31).

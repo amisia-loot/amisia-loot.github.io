@@ -1,0 +1,11 @@
+# Amisia: builds and checks the data when the PC exported the tables of a new client build
+# (tools/auto_data.py, DECISIONS D-51). Installed with tools/systemd/install.sh.
+[Unit]
+Description=Amisia: Daten für neue Client-Tabellen bauen und prüfen
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/addons/Amisia
+ExecStart=/usr/bin/python3 %h/addons/Amisia/tools/auto_data.py
+Nice=10
+TimeoutStartSec=45min

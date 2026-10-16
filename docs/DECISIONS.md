@@ -1064,9 +1064,10 @@ Raid-Instanz, nach der Instanz-ID; nicht nach einer Beschwörung oder einem Tele
 nimmt sie in `tools/entrance_archive.json` auf (eine neuere Sichtung ersetzt die ältere, nichts fällt weg) und
 in `Data/MapData.lua`, als letzte Quelle nach Client-Tabelle Map, AllTheThings und OneForAll. Anders als bei den
 Scan-Daten (D-34) räumt das Addon nichts weg: der Schlüssel ist klein. Klassische Anleger stehen von Hand in
-`tools/forever_transports.json`, neue Forever-Routen kommen dazu, wenn der Nutzer sie meldet. Zeigt die Karte
-des Spiels selbst Eingänge oder Flugpunkte (ihr Daten-Provider ist auf der Karte und die Client-Funktion liefert
-Einträge), lässt Amisia diese Art weg.
+`tools/forever_transports.json`, neue Forever-Routen kommen dazu, wenn der Nutzer sie meldet. Stehen auf der Karte
+des Spiels selbst Pins für Eingänge oder Flugpunkte (`DungeonEntrancePinTemplate`/`FlightPointPinTemplate`), lässt
+Amisia diese Art weg; Client-Funktion und Daten-Provider allein zählen nicht (Forever hat beide, zeigt aber keine
+Flugpunkte, 2.39.2).
 **Grund:** Antwort des Nutzers 2026-10-16: "mach deine vorschläge"; die neuen Forever-Dungeons und -Raids hat
 noch keine Quelle.
 **Folge:** Das Archiv committen; es ist die einzige Kopie der gelernten Orte außerhalb der SavedVariables. Ein
@@ -1074,3 +1075,20 @@ falscher gelernter Ort wird erst durch eine neuere Sichtung oder eine bessere Qu
 **Durchgesetzt durch:** `tests/test_map_places.lua`, `tools/tests/test_build_map.py::test_learned_entrances_join_the_archive`,
 `tools/tests/test_build_map.py::test_the_first_source_wins_and_only_real_second_entrances_join`.
 
+## D-51 Neue Client-Tabellen: der PC exportiert, der N100 baut und prüft, veröffentlicht wird nur auf Zuruf
+
+**Datum:** 2026-10-16
+**Entscheidung:** Die Windows-Aufgabe "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, einmal als
+Administrator eingerichtet) startet 2 Minuten nach der Anmeldung und alle 2 Stunden im Hintergrund die neueste
+`tools/export_db2.ps1` von GitHub; ohne neuen Build endet sie sofort, läuft WoW, versucht es der nächste Lauf.
+Auf dem N100 schaut der systemd-Timer `amisia-auto-data.timer` (`tools/systemd/`, `tools/auto_data.py`) alle
+15 Minuten nach einem vollständigen Export eines neueren Builds als dem der Daten auf main; dann baut er in einem
+eigenen Worktree auf dem Branch `auto/data-<build>` (`build.py data`, `build.py check`), committet dort und
+schreibt das Ergebnis nach `~/addons/_auto/amisia-data.txt`. Er pusht nicht, mergt nicht nach main und
+veröffentlicht nicht.
+**Grund:** Nutzer 2026-10-16: "können wir das besser machen und automatisieren?", dann "der N100 soll nur bauen
+und prüfen, veröffentlichen will ich selbst anstoßen."
+**Folge:** Zu Beginn einer Sitzung liest Claude `~/addons/_auto/amisia-data.txt` und meldet einen bereiten oder
+roten Branch. Zum Veröffentlichen den Branch nach main mergen (oder `build.py data` auf main), dann
+`build.py release`. Jeder Build wird einmal versucht (`--force` erneut).
+**Durchgesetzt durch:** `tools/tests/test_auto_data.py`.
