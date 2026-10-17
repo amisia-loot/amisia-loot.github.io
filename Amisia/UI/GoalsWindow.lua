@@ -313,17 +313,31 @@ local function buildDoll(parent)
     return d
 end
 
+-- the hand a weapon is tried on in (the client's dressing room passes it, so two weapons show in
+-- both hands); the ranged slot first, then the hands
+local HAND = { MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT" }
+local TRY_ORDER = {}
+for _, sl in ipairs(Gear.SLOTS) do if sl.key == "RANGED" then table.insert(TRY_ORDER, 1, sl) end end
+for _, sl in ipairs(Gear.SLOTS) do if sl.key ~= "RANGED" then TRY_ORDER[#TRY_ORDER + 1] = sl end end
+
+-- TryOn with the hand; a client that refuses the second argument gets the link alone.
+local function tryOn(model, link, hand)
+    if type(model.TryOn) ~= "function" then return end
+    if hand and pcall(model.TryOn, model, link, hand) then return end
+    pcall(model.TryOn, model, link)
+end
+
 -- Dresses the model for the mode: what is worn, or undressed with the targets (the worn item where
 -- a slot has none). Only when what it wears changes.
 local function dress(d, res, m)
     local model = d.model
     if not model then return end
     local links, key = {}, { m }
-    for _, sl in ipairs(Gear.SLOTS) do
+    for _, sl in ipairs(TRY_ORDER) do
         local item = shownItem(res, sl.key, m)
         if item then
             local link = item.link or (item.id and K.linkOf(item.id))
-            links[#links + 1] = link
+            links[#links + 1] = { link, HAND[sl.key] }
             key[#key + 1] = tostring(link)
         end
     end
@@ -333,7 +347,7 @@ local function dress(d, res, m)
     call(model, "SetUnit", "player")
     if m == "goals" then
         call(model, "Undress")
-        for _, link in ipairs(links) do call(model, "TryOn", link) end
+        for _, e in ipairs(links) do tryOn(model, e[1], e[2]) end
     end
 end
 
@@ -1150,7 +1164,11 @@ ns.GOALS_SECTIONS = SECTIONS
 -- (once for a burst of item answers).
 local function changed() if built then refresh() end end
 ns.Listen("BIS_CHANGED", changed)
-ns.Listen("SETTING", changed)
+-- a setting under ui.* (the scale: ApplyGoalScale rescales) changes nothing the window shows
+ns.Listen("SETTING", function(path)
+    if type(path) == "string" and path:find("^ui%.") then return end
+    changed()
+end)
 ns.BisOnOwned(changed)
 local namesDue = false
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()

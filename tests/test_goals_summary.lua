@@ -105,3 +105,43 @@ assert(NS.BisSetPick("HEAD", 703))
 assert(B.score:GetText() == "Wertung " .. Gear.Num(NS.BisSummary().score, 1), "the head follows the pick")
 assert(B.best:GetText() == "Bestes auf Stufe 60: " .. Gear.Num(s.best, 1), "the best does not")
 assert(NS.BisSetPick("HEAD", nil))
+
+---------------------------------------------------------------------------
+-- review fixes (2026-10-17): the same two rings swapped between the slots score the same; a
+-- scale change and an own pick compute Gear.Best no more
+---------------------------------------------------------------------------
+gear(720, "Ring A", "FINGER", str(30), { 1 }, { sub = 0 })
+gear(721, "Ring B", "FINGER", str(20), { 1 }, { sub = 0 })
+Gear._reset()
+local function summaryWith(a, b)
+    STUB.worn = { [1] = LINKS[710], [5] = LINKS[711], [11] = LINKS[a], [12] = LINKS[b] }
+    STUB.fire("PLAYER_EQUIPMENT_CHANGED")
+    local x = NS.BisSummary()
+    local stats = {}
+    for _, d in ipairs(x.stats) do stats[#stats + 1] = d.text end
+    return x.score, x.now, table.concat(stats, ";")
+end
+local sc1, now1, st1 = summaryWith(720, 721)
+local sc2, now2, st2 = summaryWith(721, 720)
+assert(near(sc1, sc2) and near(now1, now2), ("swapped rings: %s / %s"):format(sc1, sc2))
+assert(st1 == st2, "the same changes: " .. st1 .. " | " .. st2)
+-- without the shipped BiS picks: the stub's client never describes their items, so a result made
+-- while they wait is never kept (in the game the client answers)
+local keepBis = NS.BIS
+NS.BIS = { PICK = {} }
+NS.BisBump()
+NS.BisTargets(); NS.BisSummary()
+local bestCalls = 0
+local origBest = Gear.Best
+Gear.Best = function(...) bestCalls = bestCalls + 1; return origBest(...) end
+assert(NS.Set("ui.goalScale", 110))
+NS.BisTargets(); NS.BisSummary()
+assert(bestCalls == 0, "a scale change computes nothing: " .. bestCalls)
+NS.Reset("ui.goalScale")
+assert(NS.BisSetPick("HEAD", 703))
+NS.BisTargets(); NS.BisSummary()
+assert(bestCalls == 0, "an own pick neither (Bestes ignores picks): " .. bestCalls)
+assert(NS.BisSetPick("HEAD", nil))
+Gear.Best = origBest
+NS.BIS = keepBis
+NS.BisBump()

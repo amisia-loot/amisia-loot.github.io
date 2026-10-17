@@ -403,12 +403,13 @@ local function capKey(cap)
 end
 
 -- Everything a result depends on, as one string; st is the counter in it (default the stamp).
-local function optsKey(o, st)
+-- noOwn: without the own picks (Gear.Best does not read them)
+local function optsKey(o, st, noOwn)
     local ex = o.exclude or {}
     return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), st or stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
-        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), sortedKeys(o.own) }, "|")
+        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), noOwn and "" or sortedKeys(o.own) }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -816,7 +817,7 @@ function ns.BisSetPick(slotKey, item)
             t[slotKey] = nil
             if not next(t) then c.pick[spec] = nil end
             if not next(c.pick) then c.pick = nil end
-            ns.Fire("BIS_CHANGED")
+            ns.Fire("BIS_CHANGED", "pick")
         end
         return true
     end
@@ -833,7 +834,7 @@ function ns.BisSetPick(slotKey, item)
     local twin = PICK_TWIN[slotKey]
     if twin and t[twin] == id then t[twin] = nil end
     t[slotKey] = id
-    ns.Fire("BIS_CHANGED")
+    ns.Fire("BIS_CHANGED", "pick")
     return true
 end
 
@@ -851,10 +852,14 @@ local function ownState(o, id, slotKey, against)
     if type(own) ~= "table" then return false, false end
     local second = SECOND_ROW_OF[slotKey]
     local mine = own[slotKey] == id or (second ~= nil and own[second] == id) or (slotKey == "MAINHAND" and own.OFFHAND == id)
-    local wornIds, ownWorn = worn().ids, false
+    -- suppressed only where an own pick is worn in the compared slot itself, whichever ring or
+    -- trinket row it was stored for
+    local links, ownWorn = worn().links, false
+    local picked = {}
+    for _, p in pairs(own) do picked[p] = true end
     for _, key in ipairs(against or {}) do
-        local p = own[key]
-        if p and p ~= id and wornIds[p] then ownWorn = true end
+        local wid = ns.ItemID(links[SLOT_INV[key]])
+        if wid and wid ~= id and picked[wid] then ownWorn = true end
     end
     return mine and true or false, ownWorn
 end
@@ -1406,7 +1411,8 @@ local function applyOwn(best, o)
         if pa or pb then
             local full = best[a] or {}
             local rowA = pa and front(ownEntry(a, pa, o, full), without(full, pb)) or without(best[a], pb)
-            local rowB = without(best[b], rowA[1] and rowA[1][1], pa)
+            -- from the whole list: the top item a pick displaced from the first row stays a target
+            local rowB = without(full, rowA[1] and rowA[1][1], pa)
             if pb then rowB = front(ownEntry(b, pb, o, full), rowB) end
             out[a], out[b] = rowA, rowB
         end
@@ -1432,7 +1438,7 @@ function ns.BisTargets(opts)
     end
     -- read only below: the annotations go into new tables. Kept only when no item was still
     -- waiting for its stats (the client may have them by the next call).
-    local bkey = optsKey(o, scoreStamp)
+    local bkey = optsKey(o, scoreStamp, true)
     local best = bestRes
     if bkey ~= bestKey or bestWaits ~= Gear.StatsWaits() then
         local w0 = Gear.StatsWaits()
@@ -1591,8 +1597,23 @@ function ns.BisSummary(res, o)
     local links = worn().links
     local adds, drops = {}, {}
     local mainFellBack = false
+    -- each row's worn item and score; a ring or trinket target worn in the other slot of its pair
+    -- is that row's item, the other worn one belongs to the other row
+    local rowCur, rowLink = {}, {}
+    for _, sl in ipairs(Gear.SLOTS) do rowCur[sl.key], rowLink[sl.key] = ctx.slot[sl.key] or 0, links[sl.inv] end
+    for _, pair in ipairs({ { "FINGER1", "FINGER2" }, { "TRINKET1", "TRINKET2" } }) do
+        local a, b = pair[1], pair[2]
+        local ta, tb = res[a] and res[a][1], res[b] and res[b][1]
+        local ia, ib = ns.ItemID(rowLink[a]), ns.ItemID(rowLink[b])
+        local aElsewhere = ta and ib == ta.id and ia ~= ta.id
+        local bElsewhere = tb and ia == tb.id and ib ~= tb.id
+        if aElsewhere or bElsewhere then
+            rowCur[a], rowCur[b] = rowCur[b], rowCur[a]
+            rowLink[a], rowLink[b] = rowLink[b], rowLink[a]
+        end
+    end
     for _, sl in ipairs(Gear.SLOTS) do
-        local k, cur = sl.key, ctx.slot[sl.key] or 0
+        local k, cur = sl.key, rowCur[sl.key]
         out.now = out.now + cur
         local first = res[k] and res[k][1]
         local use = first and not first.loading and (first.own or first.pick or first.upgrade or first.switch or first.owned)
@@ -1602,7 +1623,7 @@ function ns.BisSummary(res, o)
             else
                 out.score = out.score + first.score
                 adds[#adds + 1] = first
-                if links[sl.inv] then drops[#drops + 1] = links[sl.inv] end
+                if rowLink[k] then drops[#drops + 1] = rowLink[k] end
                 -- a two-hander puts the worn shield hand away too
                 if k == "MAINHAND" and res.plan == "2H" and links[17] then drops[#drops + 1] = links[17] end
             end
@@ -1663,10 +1684,13 @@ function ns.BisOvertaken(slotKey)
     local res = ns.BisTargets()
     local first = res[slotKey] and res[slotKey][1]
     if not (first and first.own and first.worn) then return nil end
+    -- against the pick's own score (a ring's gain would be held against the weaker worn ring)
+    local base = first.score or 0
     for _, e in ipairs((ns.BisRanking(slotKey, 10))) do
-        if e.id ~= first.id then
-            if not e.worn and ns.BisIsUpgrade(e.gain, e.mine) then
-                return { id = e.id, gain = e.gain, pct = (e.mine or 0) > 0 and math.floor(e.gain / e.mine * 100 + 0.5) or nil }
+        if e.id ~= first.id and not e.worn then
+            local gain = (e.score or 0) - base
+            if ns.BisIsUpgrade(gain, base) then
+                return { id = e.id, gain = gain, pct = base > 0 and math.floor(gain / base * 100 + 0.5) or nil }
             end
             return nil
         end
@@ -1870,8 +1894,16 @@ ns.OnEvent("SKILL_LINES_CHANGED", function()
     skills = nil
     if old == nil or not sameSkills(old, ns.BisSkills() or false) then bump() end
 end)
-ns.Listen("SETTING", bumpAll)
-ns.Listen("BIS_CHANGED", function() guess = nil; bumpAll() end)
+-- the window sizes and other ui.* settings change no result (each Ctrl + wheel notch over the goals
+-- window is one); an own pick changes no score, only the targets (D-54)
+ns.Listen("SETTING", function(path)
+    if type(path) == "string" and path:find("^ui%.") then return end
+    bumpAll()
+end)
+ns.Listen("BIS_CHANGED", function(kind)
+    guess = nil
+    if kind == "pick" then bump() else bumpAll() end
+end)
 Gear.OnData(bumpAll)
 -- a suffix the collector adds changes Gear.Best's lists (the targets pick it up with the next stamp)
 local suffixNoted = Gear.SuffixNoted

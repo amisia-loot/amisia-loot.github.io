@@ -98,6 +98,11 @@ assert(m and m.unit == "player" and m.undressed, "the model wears the player, un
 local tried = table.concat(m.tried, " ")
 assert(has(tried, "item:401") and has(tried, "item:403") and has(tried, "item:405"), "the targets tried on: " .. tried)
 assert(d.noModel and not d.noModel:IsShown(), "no hint while the model works")
+-- weapons are tried on in their hand (as the client's dressing room does)
+local hand
+for i, link in ipairs(m.tried) do if has(link, "item:405") then hand = m.hands[i] end end
+assert(hand == "MAINHANDSLOT", "the two-hander in the weapon hand: " .. tostring(hand))
+for i, link in ipairs(m.tried) do if has(link, "item:401") then assert(m.hands[i] == "", "armour without a hand") end end
 -- the slot's state dot: nothing worn of the targets yet
 assert(not d.slots.HEAD.dot:IsShown(), "no dot: still to get")
 -- Angelegt: the worn helm, the model as the player is

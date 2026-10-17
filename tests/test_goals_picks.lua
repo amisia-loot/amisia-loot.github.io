@@ -236,3 +236,37 @@ assert(NS.BisSetPlan("auto"))
 assert(#S.drops.items == 0 and has(S.dropEmpty:GetText(), "Kein Dungeon"), "no drops")
 S.all:Click()
 assert(NS.CurrentPage() == "dungeons", "Alle zeigen opens the page Dungeons")
+
+---------------------------------------------------------------------------
+-- review fixes (2026-10-17): rings 604 = 60, 605 = 40, 606 = 20
+---------------------------------------------------------------------------
+win:Hide()
+assert(NS.BisSetPick("HEAD", nil) and NS.BisSetPick("MAINHAND", nil))
+local function wear(t)
+    STUB.worn = t
+    STUB.fire("PLAYER_EQUIPMENT_CHANGED")
+end
+wear({})
+-- 1. a first-ring pick that is not the best leaves the best ring the second ring's target
+assert(NS.BisSetPick("FINGER1", 605))
+r = NS.BisTargets()
+assert(r.FINGER1[1].id == 605 and r.FINGER2[1].id == 604, "the displaced best ring stays a target: " .. ids(r.FINGER1) .. " / " .. ids(r.FINGER2))
+assert(NS.BisSetPick("FINGER1", nil))
+-- 4. a worn own ring suppresses only the slot it is worn in, whichever row it was stored for
+wear({ [12] = LINKS[604] })
+assert(NS.BisSetPick("FINGER1", 604))
+local g1 = NS.BisGain(605)
+assert(NS.BisSetPick("FINGER2", 604))
+local g2 = NS.BisGain(605)
+assert(g1 and g1 > 0 and g1 == g2, ("the empty slot 11 still takes an upgrade: %s / %s"):format(tostring(g1), tostring(g2)))
+assert(NS.BisSetPick("FINGER2", nil))
+-- 3. overtaken against the pick's own score, not the weaker (empty) ring slot
+wear({ [11] = LINKS[604] })
+assert(NS.BisSetPick("FINGER1", 604))
+assert(NS.BisOvertaken("FINGER1") == nil, "a weaker ring never overtakes the worn pick")
+assert(NS.BisSetPick("FINGER1", 605))
+wear({ [11] = LINKS[605] })
+over = NS.BisOvertaken("FINGER1")
+assert(over and over.id == 604 and over.pct == 50, "60 against the pick's 40: +50 %")
+assert(NS.BisSetPick("FINGER1", nil))
+wear({})

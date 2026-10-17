@@ -1284,9 +1284,12 @@ function _G.CreateFrame(kind, name, parent, template)
     end
     -- the character model of the goals window (STUB.noDressUp: the client has none of its methods)
     if kind == "DressUpModel" and not STUB.noDressUp then
-        f.SetUnit = function(self, unit) self.unit = unit; self.tried = {}; self.undressed = false end
-        f.Undress = function(self) self.undressed = true; self.tried = {} end
-        f.TryOn = function(self, link) self.tried = self.tried or {}; self.tried[#self.tried + 1] = link end
+        f.SetUnit = function(self, unit) self.unit = unit; self.tried = {}; self.hands = {}; self.undressed = false end
+        f.Undress = function(self) self.undressed = true; self.tried = {}; self.hands = {} end
+        f.TryOn = function(self, link, hand)
+            self.tried = self.tried or {}; self.tried[#self.tried + 1] = link
+            self.hands = self.hands or {}; self.hands[#self.hands + 1] = hand or ""
+        end
         f.SetRotation = function(self, r) self.rotation = r end
         f.GetRotation = function(self) return self.rotation or 0 end
         f.SetPortraitZoom = function(self, z) self.zoom = z end
