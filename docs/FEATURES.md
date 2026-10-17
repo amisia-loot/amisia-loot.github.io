@@ -748,8 +748,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn eine Questbelohnung ein Upgrade ist, dann ist sie im Questfenster markiert.
 
 ### F-115 Genaues Upgrade für deine Spezialisierung
-- Version: -
-- Status: geplant
+- Version: 2.43.0
+- Status: gebaut
 - Prüfung: Wenn du als Verstärkungs-Schamane über einen Umhang mit +5 Stärke, +5 Intelligenz, +5 Willenskraft fährst und einen Umhang ohne Werte trägst, dann steht "Upgrade für dich (Verstärkung): +x,x % Schaden (Rücken)" mit einer kleinen Zahl, nicht über 100 %.
 - Prüfung: Wenn du Shift hältst, dann zeigt der Tooltip die Zerlegung, "Slot: +N %" und eine Zeile mit den anderen Spezialisierungen deiner Klasse.
 - Prüfung: Wenn deine Trefferchance schon an der Grenze ist, dann bringt ein Item mit nur Trefferwertung 0 % und steht nicht als Upgrade da.
