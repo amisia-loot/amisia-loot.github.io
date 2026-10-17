@@ -37,7 +37,8 @@ for _, sl in ipairs(Gear.SLOTS) do INV[sl.key] = sl.inv end
 local win, built
 
 ---------------------------------------------------------------------------
--- State: settings.goalWindow = { point, x, y, mode = goals/worn, filter = all/todo/bag/ench, slot }
+-- State: settings.goalWindow = { point, x, y, mode = goals/worn/catalog, filter = all/todo/bag/ench, slot,
+-- cat, set, lo, hi } (cat, set, lo, hi: the catalog, F-123)
 ---------------------------------------------------------------------------
 
 local function winState()
@@ -47,8 +48,10 @@ local function winState()
     return st.goalWindow
 end
 
+local MODES = { goals = true, worn = true, catalog = true }
 local function mode()
-    return winState().mode == "worn" and "worn" or "goals"
+    local m = winState().mode
+    return MODES[m] and m or "goals"
 end
 
 local FILTERS = { "all", "todo", "bag", "ench" }
@@ -301,9 +304,12 @@ local function buildDoll(parent)
     -- the switch Ziele / Angelegt and what the mouse does with the model
     d.goals = W.Chip(d, L["Ziele"], G.SWITCH_W, function() winState().mode = "goals"; refresh() end)
     d.worn = W.Chip(d, L["Angelegt"], G.SWITCH_W, function() winState().mode = "worn"; refresh() end)
-    local w1, w2 = W.FitChip(d.goals, G.SWITCH_W), W.FitChip(d.worn, G.SWITCH_W)
+    -- the catalog (F-123): sets and every item in the place of the list and the slot panel
+    d.catalog = W.Chip(d, L["Katalog"], G.SWITCH_W, function() winState().mode = "catalog"; refresh() end)
+    W.Tooltip(d.catalog, L["Katalog"], L["Item-Sets nach Herkunft und die Suche über alle Items. Klick auf ein Item: am Modell anprobieren."])
+    local w1, w2, w3 = W.FitChip(d.goals, G.SWITCH_W), W.FitChip(d.worn, G.SWITCH_W), W.FitChip(d.catalog, G.SWITCH_W)
     local sy = -(G.MODEL_H + G.WEAPON_GAP + G.SLOT + G.SWITCH_GAP)
-    W.Row(d, { d.goals, d.worn }, T.CHIP_GAP, math.floor((G.DOLL_W - w1 - w2 - T.CHIP_GAP) / 2), sy)
+    W.Row(d, { d.goals, d.worn, d.catalog }, T.CHIP_GAP, math.floor((G.DOLL_W - w1 - w2 - w3 - 2 * T.CHIP_GAP) / 2), sy)
     d.hint = W.Text(d, T.FONT.hint, G.DOLL_W, true)
     d.hint:SetPoint("TOPLEFT", 0, sy - T.CHIP_H - 2)
     d.hint:SetHeight(G.HINT_H)
@@ -328,8 +334,9 @@ local function tryOn(model, link, hand)
 end
 
 -- Dresses the model for the mode: what is worn, or undressed with the targets (the worn item where
--- a slot has none). Only when what it wears changes.
-local function dress(d, res, m)
+-- a slot has none), then the catalog's items tried on (tries: item ids). Only when what it wears
+-- changes.
+local function dress(d, res, m, tries)
     local model = d.model
     if not model then return end
     local links, key = {}, { m }
@@ -341,6 +348,7 @@ local function dress(d, res, m)
             key[#key + 1] = tostring(link)
         end
     end
+    for _, id in ipairs(tries or {}) do key[#key + 1] = "+" .. id end
     local k = table.concat(key, "|")
     if d.dressed == k then return end
     d.dressed = k
@@ -348,6 +356,10 @@ local function dress(d, res, m)
     if m == "goals" then
         call(model, "Undress")
         for _, e in ipairs(links) do tryOn(model, e[1], e[2]) end
+    end
+    for _, id in ipairs(tries or {}) do
+        local link = K.linkOf(id)
+        if link then tryOn(model, link) end
     end
 end
 
@@ -1016,6 +1028,306 @@ local function planText(o, res)
     return L["Waffen: %s"]:format(ns.BIS_PLANS[plan] or plan)
 end
 
+---------------------------------------------------------------------------
+-- The catalog (F-123): the item sets by where they come from and the search over every item
+---------------------------------------------------------------------------
+
+local Cat = ns.Catalog
+local tries = {}        -- the catalog's items tried on the model (item ids, this session only)
+local query = ""        -- the search text (never saved)
+
+-- The catalog's choice: the category (default dungeon sets), the set shown open, the level range
+-- (default 1 to the own level, "Meine Stufe").
+local function catChoice()
+    local st = winState()
+    local cap = Gear.Cap()
+    local own = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, cap))
+    if not Cat.ValidCat(st.cat) then st.cat = nil end
+    local lo, hi = tonumber(st.lo), tonumber(st.hi)
+    if not (lo and hi and lo >= 1 and hi <= cap and lo <= hi and lo % 1 == 0 and hi % 1 == 0) then
+        st.lo, st.hi, lo, hi = nil, nil, 1, own
+    end
+    return st.cat or "dungeon", tonumber(st.set), lo, hi
+end
+
+local function setRange(lo, hi)
+    local st = winState()
+    st.lo, st.hi = lo, hi
+    refresh()
+end
+
+local function tryItem(id)
+    for _, x in ipairs(tries) do if x == id then return end end
+    tries[#tries + 1] = id
+end
+
+-- "Ausdauer +5, Stärke +4" of a set bonus (false: a bonus the score does not count).
+local function bonusText(stats)
+    if not stats then return L["nicht gewertet"] end
+    local parts = {}
+    for k, v in pairs(stats) do parts[#parts + 1] = ("%s %+d"):format(Gear.STAT_LABELS[k] or k, v) end
+    table.sort(parts)
+    return table.concat(parts, ", ")
+end
+
+local function setTip(owner, s)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(s.name, 1, 0.82, 0)
+    GameTooltip:AddLine(L["%d von %d Teilen hast du"]:format(s.have, s.total), 1, 1, 1)
+    if s.level > 0 then GameTooltip:AddLine(L["Stufe %d"]:format(s.level), 0.85, 0.85, 0.85) end
+    local b = Gear.SetBonusesOf(s.id)
+    local thr = {}
+    for n in pairs(b) do thr[#thr + 1] = n end
+    table.sort(thr)
+    for _, n in ipairs(thr) do GameTooltip:AddLine(("(%d) %s"):format(n, bonusText(b[n])), 0.31, 0.82, 0.42, true) end
+    GameTooltip:AddLine(L["Klick: Teile zeigen oder verbergen."], 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+local function itemGain(e)
+    if e.owned == "worn" then return GREEN .. L["angelegt"] .. "|r" end
+    if type(e.gain) ~= "number" then return "" end
+    return gainText(e)
+end
+
+local function fillCatRow(r, e)
+    r.sel:Hide()
+    if e.set then
+        local s = e.set
+        r.icon:Hide()
+        K.setMapButton(r.map, nil)
+        r.name:SetText(T.GOLD_TEXT .. (e.open and "- " or "+ ") .. s.name .. "|r")
+        r.slot:SetText((s.have > 0 and GREEN or GREY) .. ("%d/%d"):format(s.have, s.total) .. "|r")
+        r.level:SetText(s.level > 0 and tostring(s.level) or "")
+        r.gain:SetText("")
+        r.src:SetText("")
+        if e.open then r.sel:Show() end
+        return
+    end
+    if e.note then
+        r.icon:Hide()
+        K.setMapButton(r.map, nil)
+        r.name:SetText(GREY .. e.note .. "|r")
+        for _, k in ipairs({ "slot", "level", "gain", "src" }) do r[k]:SetText("") end
+        return
+    end
+    r.icon:SetTexture(iconOf(e.id) or QUESTION)
+    r.icon:Show()
+    r.name:SetText((e.piece and "   " or "") .. K.itemText(e.id))
+    r.slot:SetText(e.slotKey and ns.BIS_SLOT_NAME[e.slotKey] or (e.why and GREY .. L["nicht für dich"] .. "|r") or "")
+    r.level:SetText(e.level > 0 and tostring(e.level) or "")
+    r.gain:SetText(itemGain(e))
+    r.src:SetText(e.owned and K.OWNED_TEXT[e.owned] or K.sourceText(e.id))
+    K.setMapButton(r.map, e.id, nil, e.owned)
+end
+
+-- The menu of an item row: the own pick for its slot first (D-55), then the gear page's entries.
+local function catMenu(e)
+    local out = {}
+    if e.slotKey then
+        out[1] = { L["Als meine Wahl"], function()
+            local ok, why = ns.BisSetPick(e.slotKey, e.id)
+            if not ok and why then ns.msg(why) end
+        end }
+    end
+    for _, x in ipairs(K.menuEntries(e, ns.BisOpts())) do out[#out + 1] = x end
+    return out
+end
+
+local function buildCatalog(f)
+    local C = CreateFrame("Frame", nil, f)
+    C:SetPoint("TOPLEFT", G.LIST_X, -G.PROG_Y)
+    C:SetSize(G.CAT_W, G.H - G.PROG_Y - G.BOTTOM)
+    -- the search row: the box, the level range, Meine Stufe, Alle
+    C.search = W.SearchBox(C, G.CAT_SEARCH_W, function(text)
+        query = text or ""
+        refresh()
+    end, L["Alle Items durchsuchen ..."])
+    -- typing searches after a short pause
+    C.search:HookScript("OnTextChanged", function(self, user)
+        if not user then return end
+        local text = self:GetText()
+        C_Timer.After(0.3, function()
+            if self:GetText() == text and query ~= text then
+                query = text
+                refresh()
+            end
+        end)
+    end)
+    C.lo = W.Stepper(C, G.CAT_LEVEL_W, function(v)
+        local _, _, _, hi = catChoice()
+        setRange(v, math.max(v, hi))
+    end)
+    C.dash = W.Text(C, T.FONT.text, G.CAT_RANGE_W)
+    C.dash:SetJustifyH("CENTER")
+    C.dash:SetText("-")
+    C.hi = W.Stepper(C, G.CAT_LEVEL_W, function(v)
+        local _, _, lo = catChoice()
+        setRange(math.min(lo, v), v)
+    end)
+    for _, st in ipairs({ C.lo, C.hi }) do st:Configure(1, Gear.Cap(), 1) end
+    C.mine = W.Chip(C, L["Meine Stufe"], G.CAT_MINE_W, function()
+        setRange(1, math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())))
+    end)
+    W.Tooltip(C.mine, L["Meine Stufe"], L["Stufe 1 bis deine Stufe: alles, was du jetzt tragen kannst."])
+    C.all = W.Chip(C, L["Alle"], G.CAT_ALL_W, function() setRange(1, Gear.Cap()) end)
+    W.FitChip(C.mine, G.CAT_MINE_W)
+    W.FitChip(C.all, G.CAT_ALL_W)
+    W.Row(C, { C.search, { C.lo, gap = T.LAYOUT.ITEM_GAP * 2 }, C.dash, C.hi, { C.mine, gap = T.LAYOUT.ITEM_GAP * 2 }, C.all },
+        T.CHIP_GAP, 0, 0)
+    -- the categories left, as the page list's bars
+    C.cats = {}
+    local col = {}
+    for _, c in ipairs(Cat.CATS) do
+        local b = CreateFrame("Button", nil, C)
+        b:SetSize(G.CAT_NAV_W, G.CAT_NAV_H)
+        b.art = W.NavBar(b, false)
+        if b.art then
+            b.art:Fit(G.CAT_NAV_H)
+        else
+            b.selBar = W.SelectBar(b)
+        end
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetSize(G.CAT_NAV_H - 6, G.CAT_NAV_H - 6)
+        b.icon:SetPoint("LEFT", 6, 0)
+        b.icon:SetTexture(c.icon)
+        b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        b.label = W.Text(b, T.FONT.text, G.CAT_NAV_W - G.CAT_NAV_H - 30)
+        b.label:SetPoint("LEFT", G.CAT_NAV_H + 2, 0)
+        b.label:SetText(c.label)
+        b.count = W.Text(b, T.FONT.hint, 26)
+        b.count:SetPoint("RIGHT", -6, 0)
+        b.count:SetJustifyH("RIGHT")
+        b.key = c.key
+        b:SetScript("OnClick", function()
+            local st = winState()
+            st.cat, st.set = c.key, nil
+            query = ""
+            C.search:SetText("")
+            refresh()
+        end)
+        C.cats[c.key] = b
+        col[#col + 1] = b
+    end
+    W.Column(C, col, G.CAT_NAV_GAP, 0, -G.CAT_LIST_Y)
+    local btnY = -(G.CAT_LIST_Y + #col * (G.CAT_NAV_H + G.CAT_NAV_GAP) - G.CAT_NAV_GAP + G.CAT_BTN_GAP)
+    C.tryAll = W.Button(C, L["Set anprobieren"], G.CAT_NAV_W, function()
+        local _, sid = catChoice()
+        local s = sid and Cat.Set(sid)
+        if not s then return end
+        for _, id in ipairs(s.items) do tryItem(id) end
+        refresh()
+    end)
+    C.clear = W.Button(C, L["Anprobe leeren"], G.CAT_NAV_W, function()
+        tries = {}
+        refresh()
+    end)
+    W.Column(C, { C.tryAll, C.clear }, T.CHIP_GAP, 0, btnY)
+    -- the list right of the categories, its hint under it
+    local cols = {}
+    for _, c in ipairs(G.CAT_COLS) do cols[c[1]] = c end
+    C.list = W.List(C, G.CAT_ROWS, G.ROW_H, function(r)
+        r.sel = W.SelectBar(r)
+        r.icon = r:CreateTexture(nil, "ARTWORK")
+        r.icon:SetSize(G.CAT_ICON, G.CAT_ICON)
+        r.icon:SetPoint("LEFT", cols.icon[2], 0)
+        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        for _, k in ipairs({ "name", "slot", "level", "gain", "src" }) do
+            r[k] = W.Text(r, T.FONT.text, cols[k][3])
+            r[k]:SetPoint("LEFT", cols[k][2], 0)
+        end
+        r.level:SetJustifyH("RIGHT")
+        r.gain:SetJustifyH("RIGHT")
+        r.map = K.mapButton(r, cols.map[2])
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e or e.note then return end
+            if e.set then
+                local st = winState()
+                st.set = (not e.open) and e.set.id or nil
+                refresh()
+                return
+            end
+            if button == "RightButton" then
+                W.Menu(self, catMenu(e))
+                return
+            end
+            if K.modifiedClick(e.id) then return end
+            tryItem(e.id)
+            refresh()
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e and e.set then setTip(self, e.set)
+            elseif e and e.id then
+                K.itemTooltip(self, e.id)
+                GameTooltip:AddLine(L["Klick: am Modell anprobieren. Rechtsklick: Menü."], 0.6, 0.6, 0.6)
+                GameTooltip:Show()
+            end
+        end)
+        r:SetScript("OnLeave", K.hideTip)
+    end, fillCatRow)
+    C.list:SetPoint("TOPLEFT", G.CAT_LIST_X, -G.CAT_LIST_Y)
+    C.list:SetWidth(G.CAT_W - G.CAT_LIST_X - T.SCROLL_ROOM)
+    C.hint = W.Text(C, T.FONT.hint, G.CAT_W - G.CAT_LIST_X, true)
+    C.hint:SetPoint("TOPLEFT", G.CAT_LIST_X, -(G.CAT_LIST_Y + G.CAT_ROWS * G.ROW_H + 4))
+    C.hint:SetHeight(G.CAT_HINT_H)
+    C.hint:SetJustifyV("TOP")
+    C:Hide()
+    f.catalog = C
+end
+
+-- The catalog's rows: the hits of the search, or the sets of the category with the open one's
+-- pieces under it; the hint.
+local function fillCatalog(f, o)
+    local C = f.catalog
+    local cat, sid, lo, hi = catChoice()
+    C.lo:SetValue(lo)
+    C.hi:SetValue(hi)
+    local own = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap()))
+    C.mine:SetOn(lo == 1 and hi == own)
+    C.all:SetOn(lo == 1 and hi == Gear.Cap())
+    local searching = query:find("%S") ~= nil
+    for key, b in pairs(C.cats) do
+        local n = Cat.Count(key, lo, hi)
+        b.count:SetText(tostring(n))
+        local on = not searching and key == cat
+        if b.art then b.art:SetSelected(on) elseif b.selBar then b.selBar:SetShown(on) end
+        if n > 0 then b.label:SetTextColor(1, 0.82, 0) else b.label:SetTextColor(0.5, 0.48, 0.55) end
+    end
+    local rows, hint = {}
+    if searching then
+        local hits, n, missing = Cat.Search(query, lo, hi, o)
+        for _, e in ipairs(hits) do rows[#rows + 1] = e end
+        if n == 0 then rows[1] = { note = L["Kein Item gefunden."] } end
+        hint = L["%d Treffer auf Stufe %d-%d, das beste für dich oben."]:format(n, lo, hi)
+        if n > Cat.MAX then hint = hint .. " " .. L["Mehr als %d: die Suche eingrenzen."]:format(Cat.MAX) end
+        if missing > 0 then hint = hint .. " " .. L["%d Namen lädt der Client noch."]:format(missing) end
+        C.tryAll:SetEnabled(false)
+    else
+        local sets = Cat.Sets(cat, lo, hi)
+        local open
+        for _, s in ipairs(sets) do
+            local isOpen = s.id == sid
+            rows[#rows + 1] = { set = s, open = isOpen }
+            if isOpen then
+                open = s
+                for _, e in ipairs(Cat.Pieces(s.id, o)) do
+                    e.piece = true
+                    rows[#rows + 1] = e
+                end
+            end
+        end
+        if #sets == 0 then rows[1] = { note = L["Keine Sets dieser Art auf Stufe %d-%d."]:format(lo, hi) } end
+        hint = L["Klick auf ein Set: seine Teile. Klick auf ein Item: am Modell anprobieren, Rechtsklick: als deine Wahl. Grün: Upgrade für dich."]
+        C.tryAll:SetEnabled(open ~= nil)
+    end
+    C.clear:SetEnabled(#tries > 0)
+    C.list:SetItems(rows)
+    C.hint:SetText(hint)
+end
+
 local function buildHead(f)
     f.spec = K.specPicker(f)
     f.plan = W.Text(f, T.FONT.text, 200)
@@ -1042,6 +1354,9 @@ refresh = function()
     local o = ns.BisOpts()
     local res = ns.BisTargets()
     local m = mode()
+    -- the catalog shows the targets on the doll, as "Ziele"
+    local catalog = m == "catalog"
+    if catalog then m = "goals" end
     local chosen = chosenSlot(res)
     K.fillSpec(f.spec, o)
     f.plan:SetText(planText(o, res))
@@ -1053,9 +1368,19 @@ refresh = function()
         local hasTarget = res[key] and res[key][1]
         fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and G.STATE_COLOR[st] or nil)
     end
-    d.goals:SetOn(m == "goals")
+    d.goals:SetOn(m == "goals" and not catalog)
     d.worn:SetOn(m == "worn")
-    dress(d, res, m)
+    d.catalog:SetOn(catalog)
+    dress(d, res, m, catalog and tries or nil)
+    f.list:SetShown(not catalog)
+    f.progress:SetShown(not catalog)
+    if f.side then f.side:SetShown(not catalog) end
+    f.catalog:SetShown(catalog)
+    if catalog then
+        fillCatalog(f, o)
+        if f.score and f.fillScore then f.fillScore(f, o, res) end
+        return
+    end
     local ench = unenchanted()
     local counts = { todo = p.todo, bag = p.bag, ench = 0 }
     for _ in pairs(ench) do counts.ench = counts.ench + 1 end
@@ -1127,6 +1452,7 @@ local function build()
     buildProgress(win)
     buildSide(win)
     buildScore(win)
+    buildCatalog(win)
     win:EnableMouseWheel(true)
     win:SetScript("OnMouseWheel", wheel)
     place()

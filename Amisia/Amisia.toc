@@ -84,6 +84,7 @@ Gear\Crafters.lua
 Gear\Quests.lua
 Gear\GuildWishes.lua
 Gear\Compare.lua
+Gear\Catalog.lua
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua

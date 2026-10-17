@@ -1,6 +1,6 @@
 # Spec: Ausrüstungsziele: Katalog mit Set-Kategorien und Itemsuche
 
-Stand: 2026-10-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-17 · Status: freigegeben ·
 Feature: F-123
 
 ## Ziel
@@ -26,7 +26,7 @@ Gelöst, wenn man im Fenster ein Set oder Item findet, es am Modell anprobiert u
 - **Suchzeile** über der Liste: "Alle Items durchsuchen …", dazu Stufe von-bis (zwei Zahlenfelder),
   "Meine Stufe" (Bereich 1 bis deine Stufe: alles, was du jetzt tragen kannst) und "Alle" (1-60). Treffer: alle Items der Itemdaten,
   deren Name passt (Client-Name, Umlaute egal) und deren Stufe im Bereich liegt, nach Zuwachs für dich;
-  ohne Suchtext die Items der gewählten Kategorie im Bereich.
+  ohne Suchtext die Sets der gewählten Kategorie im Bereich.
 - In jeder Liste wie gewohnt: Strg-Klick anprobieren, Shift-Klick in den Chat, Rechtsklick-Menü
   (eigene Wahl, Wunschliste, ausschließen), Klick auf die Quelle öffnet Dungeon/Raid/Karte.
 
@@ -89,4 +89,9 @@ Nichts. Rein lokal, nichts gesendet oder empfangen.
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-17: "Passt, alle vier Vorschläge so. Bauen." -> Katalog als dritter Umschalter; Ruf, Reittiere,
+  Legendäres weggelassen; "Meine Stufe" = 1 bis deine Stufe; Suchtext nicht gespeichert, Kategorie,
+  offenes Set und Bereich gemerkt.
+- 2026-10-17 beim Bauen: ohne Suchtext zeigt die Liste die Sets der Kategorie (nicht ihre einzelnen Items);
+  ein Klick auf ein Item probiert es am Modell an (über den Zielen, nur bis zum `/reload`), Strg-Klick
+  bleibt die Anprobe des Spiels; "Anprobe leeren" zieht die Katalog-Items wieder aus.

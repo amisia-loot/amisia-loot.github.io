@@ -873,6 +873,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia talente <Code>` eingibst (oder den Code in das Feld einfügst und Enter drückst), dann meldet der Chat "Code übernommen: <Klasse>, N Punkte." und die Bäume zeigen den Build.
 - Prüfung: Wenn der Code kaputt ist, dann meldet der Chat, was nicht stimmt (z. B. "Kein Amisia-Talentcode ..."), und nichts ändert sich.
 
+### F-123 Ausrüstungsziele: Katalog mit Sets und Itemsuche
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Fenster Ausrüstungsziele "Katalog" klickst, dann stehen links Raid-Sets, Dungeon-Sets, PvP-Sets, Handwerks-Sets und Welt-Sets mit der Zahl ihrer Sets; leere grau.
+- Prüfung: Wenn du Handwerks-Sets und dann "Devilsaur Armor" anklickst, dann stehen beide Teile mit Slot, Stufe, Zuwachs und Quelle darunter, und "Set anprobieren" zieht sie dem Modell an; "Anprobe leeren" wieder aus.
+- Prüfung: Wenn du "Wolfs" in die Suche tippst und "Alle" klickst, dann listet Amisia jedes bekannte Item mit "Wolfs" im Namen, das beste für dich oben.
+- Prüfung: Wenn du "Meine Stufe" klickst, dann steht im Bereich 1 bis deine Stufe und die Liste folgt.
+- Prüfung: Wenn du ein Teil per Rechtsklick "Als meine Wahl" setzt, dann zeigt "Ziele" es in seinem Slot mit Stern.
+- Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons. Ruf fehlt, bis `export_db2.ps1` die Tabelle mitnimmt.
+
 ### F-122 Seite Raids
 - Version: -
 - Status: geplant

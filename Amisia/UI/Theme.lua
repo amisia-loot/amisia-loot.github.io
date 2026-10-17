@@ -363,6 +363,21 @@ T.GOALS = {
     ICON = 16,
     -- { key, x, width } on the list's 368 (LIST_W less T.SCROLL_ROOM): slot, icon, item, gain, map, source
     COLS = { { "slot", 4, 56 }, { "icon", 62, 16 }, { "name", 82, 150 }, { "gain", 236, 38 }, { "map", 280, 16 }, { "src", 298, 68 } },
+    -- the catalog (F-123) in the place of the list and the slot panel: the search row on top (the
+    -- box, the level range "von - bis", "Meine Stufe", "Alle"), the categories left as the page
+    -- list's bars with "Set anprobieren" and "Anprobe leeren" under them, the list of sets or hits
+    -- right of them, its hint under it. 30 + 24 x 20 + 4 + 28 = 542 of the 552 under PROG_Y.
+    CAT_W = 600,          -- the whole catalog: LIST_X to the right end of the slot panel
+    CAT_SEARCH_W = 220, CAT_LEVEL_W = 64, CAT_RANGE_W = 10, CAT_MINE_W = 90, CAT_ALL_W = 44,
+    CAT_LIST_Y = 30,      -- the list and the categories under the search row
+    CAT_NAV_W = 150, CAT_NAV_H = 24, CAT_NAV_GAP = 4,
+    CAT_BTN_GAP = 10,     -- between the last category and "Set anprobieren"
+    CAT_LIST_X = 160, CAT_ROWS = 24, CAT_HINT_H = 28,
+    -- { key, x, width } on the list's 428 (440 less T.SCROLL_ROOM): icon, item or set, slot or N/M,
+    -- level, gain, map, source
+    CAT_COLS = { { "icon", 4, 16 }, { "name", 24, 176 }, { "slot", 204, 58 }, { "level", 264, 28 }, { "gain", 296, 40 },
+        { "map", 340, 16 }, { "src", 360, 64 } },
+    CAT_ICON = 16,
     -- the slot panel on the right
     SIDE_X = 718, SIDE_W = 210,
     SIDE_ROW_H = 18, RANK_ROWS = 10,   -- the ranking's rows
