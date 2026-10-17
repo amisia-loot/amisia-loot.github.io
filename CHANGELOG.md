@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.43.0 (2026-10-17)
+
+- F-115 kommt mit 2.43 (2.42.0 war nur Duelle): Versionshinweise angepasst
+- F-115 gebaut in 2.43.0
+
 ## 2.42.0 (2026-10-17)
 
 - Spec genaues Upgrade für die Spezialisierung: Werte vom Charakterbogen, Vorher/Nachher-Modell, Gesamt-Prozent, Spezialisierung im Tooltip (F-115, Entwurf)
