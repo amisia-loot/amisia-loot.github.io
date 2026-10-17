@@ -1117,10 +1117,10 @@ function applyData(d){
   css += ZONES.map(z => '.zone.'+z.key+'{color:var(--z-'+z.key+');border-color:var(--z-'+z.key+')}').join('');
   if (DATA.sprite) css += '.ico .sp{background-image:url("' + DATA.sprite.file + '");background-size:' + (DATA.sprite.cols*100) + '% ' + (DATA.sprite.rows*100) + '%}';
   $('#zoneStyle').textContent = css;
-  $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
-  $('#mxShow').innerHTML = '<option value="all">Every raid</option>' + ZONES.map(z => '<option value="'+z.key+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
+  $('#armZone').innerHTML = '<option value="">Every raid</option>' + ZONES.map(z => '<option value="'+esc(z.key)+'">'+esc(z.name)+(z.soon?' (coming soon)':'')+'</option>').join('');
+  $('#mxShow').innerHTML = '<option value="all">Every raid</option>' + ZONES.map(z => '<option value="'+esc(z.key)+'">'+esc(z.name)+' loot</option>').join('') + '<option value="none">Raiders without loot</option>';
   const phases = (PHASES[gameKey] || []).map(p => ({name: p.name, zones: p.zones.filter(z => ZONE[z])})).filter(p => p.zones.length);
-  const phaseOpts = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+i+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
+  const phaseOpts = '<option value="">Every phase</option>' + phases.map((p, i) => '<option value="'+esc(i)+'">'+esc(p.name)+' · '+p.zones.map(z => esc(ZSHORT[z] || ZONE[z])).join(', ')+'</option>').join('');
   for (const id of ['mxPhase', 'armPhase']) { $('#'+id).innerHTML = phaseOpts; $('#'+id+'Field').hidden = !phases.length; }
 }
 let CRAFT = {profs:[], items:[]}, CITEM = {}, CRECIPE = {}, craftState = 'loading';
@@ -1132,7 +1132,7 @@ function applyCraft(d){
   const kp = $('#crProf').value, ks = $('#crSlot').value;
   $('#crProf').innerHTML = '<option value="">Every profession</option>' + CRAFT.profs.map(p => '<option'+(p===kp?' selected':'')+'>'+esc(p)+'</option>').join('');
   const have = new Set(CRAFT.items.map(c => c.slot));
-  $('#crSlot').innerHTML = '<option value="">Every slot</option>' + CSLOTS.filter(s => have.has(s)).map(s => '<option value="'+s+'"'+(s===ks?' selected':'')+'>'+CSLOTNAME[s]+'</option>').join('');
+  $('#crSlot').innerHTML = '<option value="">Every slot</option>' + CSLOTS.filter(s => have.has(s)).map(s => '<option value="'+esc(s)+'"'+(s===ks?' selected':'')+'>'+CSLOTNAME[s]+'</option>').join('');
 }
 function loadCraft(g){
   const key = g.craft;
@@ -1230,7 +1230,7 @@ function spriteStyle(it, sheet){
   const x = sp.cols > 1 ? (c / (sp.cols - 1) * 100) : 0, y = sp.rows > 1 ? (r / (sp.rows - 1) * 100) : 0;
   return 'background-position:' + x.toFixed(4) + '% ' + y.toFixed(4) + '%';
 }
-function icoInner(it){ return it.img ? '<img src="'+it.img+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
+function icoInner(it){ return it.img ? '<img src="'+esc(it.img)+'" alt="'+esc(it.name)+'">' : '<i class="sp" style="'+spriteStyle(it)+'" title="'+esc(it.name)+'"></i>'; }
 const WOWHEAD_DB = {tbc:'tbc', forever:'forever'};
 // The loot tables carry a quality only where it is not epic, and what the addon reported about
 // an item outside them counts too. qCls turns it into the class the colours hang on.
@@ -1245,7 +1245,7 @@ const qCls = x => { const q = itemQ(x); return q === 4 ? '' : ' q' + q; };
 function icoHTML(it, extra, count, link){
   if(!it) return '<span class="ico"><i class="sp" style="background-image:none"></i></span>';
   const tag = link === false ? 'span' : 'a';
-  return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+it.id+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'classic')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
+  return '<'+tag+' class="ico hot'+(it.token?' token':'')+qCls(it)+'" data-item="'+esc(it.id)+'" '+(link===false?'':'href="https://www.wowhead.com/'+(WOWHEAD_DB[gameKey]||'classic')+'/item='+it.id+'" target="_blank" rel="noopener" ')+(extra||'')+'>'+icoInner(it)+(count>1?'<span class="n">'+count+'</span>':'')+'</'+tag+'>';
 }
 const crafters = () => state.crafters || (state.crafters = []);
 const nights = () => state.nights || (state.nights = []);
@@ -1515,7 +1515,7 @@ function canCraft(c){
 const anyProfs = () => state.raiders.some(r => profsOf(r).length);
 function cicoHTML(c){
   const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey]||'classic') + '/' + (c.item ? 'item=' + c.item : 'spell=' + c.id);
-  return '<a class="ico hot q'+c.q+'" data-craft="'+c.id+'" href="'+href+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
+  return '<a class="ico hot q'+c.q+'" data-craft="'+esc(c.id)+'" href="'+esc(href)+'" target="_blank" rel="noopener"><i class="cp" style="'+spriteStyle(c, CRAFT.sprite)+'" title="'+esc(c.name)+'"></i></a>';
 }
 function dTag(it){ return it && it.diff ? '<span class="diff">'+esc(it.diff)+'</span>' : ''; }
 // What an item is beyond its slot, as far as the loot table knows: armour or weapon type, item
@@ -1539,7 +1539,7 @@ function bossOptions(sel, withAll){
 }
 function raiderOptions(sel, first){
   const rs = [...state.raiders].sort((a,b)=>a.name.localeCompare(b.name));
-  return (first||'') + rs.map(r => '<option value="'+r.id+'"'+(r.id===sel?' selected':'')+'>'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('');
+  return (first||'') + rs.map(r => '<option value="'+esc(r.id)+'"'+(r.id===sel?' selected':'')+'>'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('');
 }
 function classOptions(sel){ return CLASSES.concat(sel && !CLASSES.includes(sel) ? [sel] : []).map(c => '<option'+(c===sel?' selected':'')+'>'+c+'</option>').join(''); }
 
@@ -1682,7 +1682,7 @@ async function renderAccounts(){
     const m = a.id ? MEMBERS.find(x => x.user_id === a.id) : null, gone = m && !raiderById(m.raider);
     const link = !a.id ? '' : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;padding:2px 0 8px;border-bottom:1px solid var(--line)">'
       + '<select class="inp" data-mlraider="' + esc(a.id) + '" style="flex:1 1 130px;padding:4px 26px 4px 8px">' + raiderOptions(m ? m.raider : '', '<option value="">' + (gone ? 'Removed character' : 'No character') + '</option>') + '</select>'
-      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px">' + Object.keys(RANKNAME).filter(k => k !== 'spgod' || isOw).map(k => '<option value="' + k + '"' + ((m ? m.rank : isOw ? 'spgod' : isEd ? 'officer' : 'raider') === k ? ' selected' : '') + '>' + RANKNAME[k] + '</option>').join('') + '</select>'
+      + '<select class="inp" data-mlrank="' + esc(a.id) + '" style="width:auto;padding:4px 26px 4px 8px">' + Object.keys(RANKNAME).filter(k => k !== 'spgod' || isOw).map(k => '<option value="' + esc(k) + '"' + ((m ? m.rank : isOw ? 'spgod' : isEd ? 'officer' : 'raider') === k ? ' selected' : '') + '>' + RANKNAME[k] + '</option>').join('') + '</select>'
       + '<button class="btn sm" data-mlsave="' + esc(a.id) + '">' + (m ? 'Save' : 'Link') + '</button>'
       + (m ? '<button class="btn sm ghost danger" data-mlrm="' + esc(a.id) + '">Unlink</button>' : '') + '</div>';
     return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:120px">' + label + '</span><span class="faint">' + esc(a.provider) + ' · last ' + fmt(a.last_sign_in) + '</span>' + role + link + '</div>';
@@ -1700,7 +1700,7 @@ async function renderHistory(force){
   }
   const fmt = ts => new Date(ts).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
   $('#histList').innerHTML = '<div class="hrow now"><span class="v">now</span><span class="w">' + esc(state.guild || 'current version') + '</span><span class="c">' + state.raiders.length + ' / ' + state.awards.length + '</span></div>'
-    + (HIST.length ? HIST.map(h => '<div class="hrow"><span class="v">v' + h.version + '</span><span class="w">' + fmt(h.saved_at) + (h.saved_by ? ' · ' + esc(h.saved_by) : '') + '</span><span class="c" title="raiders / awards">' + h.raiders + ' / ' + h.awards + '</span><button class="btn sm ghost" data-hres="' + h.version + '">Restore</button></div>').join('')
+    + (HIST.length ? HIST.map(h => '<div class="hrow"><span class="v">v' + h.version + '</span><span class="w">' + fmt(h.saved_at) + (h.saved_by ? ' · ' + esc(h.saved_by) : '') + '</span><span class="c" title="raiders / awards">' + h.raiders + ' / ' + h.awards + '</span><button class="btn sm ghost" data-hres="' + esc(h.version) + '">Restore</button></div>').join('')
       : '<span class="muted" style="font-size:13px">No earlier version yet. The first one appears after the next save.</span>');
 }
 $('#histReload').addEventListener('click', () => renderHistory(true));
@@ -1794,7 +1794,7 @@ $('#edAdd').addEventListener('click', async () => {
 $('#accountsList').addEventListener('click', async ev => {
   const sv = ev.target.closest('[data-mlsave]'), rm = ev.target.closest('[data-mlrm]');
   if (sv) {
-    const id = sv.dataset.mlsave, raider = $('[data-mlraider="' + id + '"]').value, rank = $('[data-mlrank="' + id + '"]').value;
+    const id = sv.dataset.mlsave, raider = $('[data-mlraider="' + esc(id) + '"]').value, rank = $('[data-mlrank="' + esc(id) + '"]').value;
     if (!raider) return say('Choose the character of this account first.');
     const other = MEMBERS.find(x => x.raider === raider && x.user_id !== id);
     if (other) return say(raiderById(raider).name + ' is already linked to another account. Unlink it there first.');
@@ -1892,12 +1892,12 @@ function renderArmory(){
     const onAlt = a => a.raider !== r.id && raiderById(a.raider) ? '<span class="alttag" style="margin:0 6px 0 0">on '+esc(raiderById(a.raider).name)+'</span>' : '';
     const last = aw.length ? aw[aw.length-1] : null;
     const open = ui.openCard === r.id;
-    return '<article class="card'+(open?' open':'')+'" data-card="'+r.id+'">'
+    return '<article class="card'+(open?' open':'')+'" data-card="'+esc(r.id)+'">'
       + '<div class="top"><span class="name" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'+rankTag(r.id)+'<span class="cls">'+esc(r.cls)+'</span><span class="big">'+aw.length+'<small>items</small></span></div>'
       + (alts.length ? '<div class="alts" style="margin-top:-4px">alts: '+alts.map(a => esc(a.name)).join(', ')+'</div>' : '')
-      + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
+      + '<div class="icons">'+(aw.length ? aw.map(a => icoHTML(ITEM[a.item], 'data-award="'+esc(a.id)+'"')).join('') : '<span class="faint">No loot yet</span>')+'</div>'
       + '<div class="meta">'+perZone.map(([z,n]) => '<span><b>'+n+'</b> '+zTag(z)+'</span>').join('')+'<span><b>'+at.was+'</b> of '+at.total+' raid'+(at.total===1?'':'s')+'</span>'+(last?'<span>last: <b>'+fmtShort(last.date)+'</b></span>':'')+'</div>'
-      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td><td class="note">'+onAlt(a)+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
+      + '<div class="detail">'+(aw.length ? '<table><tbody>'+aw.slice().reverse().map(a => { const it = ITEM[a.item]; return '<tr><td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td><td>'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td><td><span class="item">'+icoHTML(it,'data-award="'+esc(a.id)+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td><td class="note">'+onAlt(a)+esc(a.note||'')+'</td></tr>'; }).join('')+'</tbody></table>' : '<span class="muted">Nothing awarded to '+esc(r.name)+' yet.</span>')+'</div>'
       + '</article>';
   }).join('');
 }
@@ -1909,7 +1909,7 @@ function renderLogFilters(){
   $('#logRaider').innerHTML = raiderOptions(r, '<option value="">Every raider</option>');
   $('#logBoss').innerHTML = bossOptions(b, true);
   const slots = ['head','neck','shoulder','back','chest','wrist','weapon','offhand','ranged','relic','hands','waist','legs','feet','finger','trinket','recipe'];
-  $('#logSlot').innerHTML = '<option value="">Every slot</option>' + slots.map(x => '<option value="'+x+'"'+(x===s?' selected':'')+'>'+SLOTNAME[x]+'</option>').join('');
+  $('#logSlot').innerHTML = '<option value="">Every slot</option>' + slots.map(x => '<option value="'+esc(x)+'"'+(x===s?' selected':'')+'>'+SLOTNAME[x]+'</option>').join('');
 }
 function renderExtraLog(kind){
   const q = $('#logSearch').value.trim().toLowerCase(), rf = $('#logRaider').value;
@@ -1960,16 +1960,16 @@ function renderLog(){
       lastDate = a.date;
       const nightAll = state.awards.filter(x => x.date === a.date);
       const zones = [...new Set(nightAll.map(x => BOSSZONE[x.boss]).filter(Boolean))];
-      h += '<tr class="night"><td colspan="6"><a data-goto="night" data-date="'+a.date+'" style="cursor:pointer">Raid night · '+fmtDate(a.date)+'</a>'+''+zones.map(z => '<span class="zone '+z+' bz">'+esc(ZONE[z] || z)+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
+      h += '<tr class="night"><td colspan="6"><a data-goto="night" data-date="'+esc(a.date)+'" style="cursor:pointer">Raid night · '+fmtDate(a.date)+'</a>'+''+zones.map(z => '<span class="zone '+z+' bz">'+esc(ZONE[z] || z)+'</span>').join('')+'<span class="n">'+nightAll.length+' award'+(nightAll.length===1?'':'s')+' · '+presentOn(a.date).size+' there</span></td></tr>';
     }
     const it = ITEM[a.item], r = raiderById(a.raider);
     h += '<tr>'
       + '<td class="muted" style="white-space:nowrap">'+fmtDate(a.date)+'</td>'
       + '<td style="white-space:nowrap">'+zTag(BOSSZONE[a.boss])+' '+esc(a.boss)+'</td>'
-      + '<td><span class="item">'+icoHTML(it,'data-award="'+a.id+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td>'
+      + '<td><span class="item">'+icoHTML(it,'data-award="'+esc(a.id)+'"')+'<span><span class="nm">'+esc(it?it.name:'Unknown item')+'</span> <span class="sl">'+esc(itemKind(it))+'</span></span></span></td>'
       + '<td>'+(r ? rName(r) : '<span class="faint">Removed raider</span>')+'</td>'
       + '<td class="note">'+esc(a.note||'')+'</td>'
-      + '<td class="acts">'+(readOnly?'':'<button class="btn sm ghost" data-edit="'+a.id+'">Edit</button><button class="btn sm ghost danger" data-del="'+a.id+'">Remove</button>')+'</td>'
+      + '<td class="acts">'+(readOnly?'':'<button class="btn sm ghost" data-edit="'+esc(a.id)+'">Edit</button><button class="btn sm ghost danger" data-del="'+esc(a.id)+'">Remove</button>')+'</td>'
       + '</tr>';
   }
   $('#logBody').innerHTML = h;
@@ -1989,7 +1989,7 @@ function renderCombo(){
   comboRows = itemMatches();
   const box = $('#itemList');
   if (!comboRows.length) { box.innerHTML = '<div class="none">'+(dataState === 'soon' ? 'No loot tables for this game version yet. Switch the game version on the Roster tab.' : dataState === 'loading' ? 'Loading loot tables…' : dataState === 'error' ? 'Loot tables could not be loaded. Reload the page.' : ($('#fBoss').value||$('#fItem').value ? 'No item matches.' : 'Choose a boss or start typing.'))+'</div>'; return; }
-  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+i.id+'">'+icoHTML(i,'',0,false)+'<span class="nm q'+(i.q||0)+'">'+esc(i.name)+'</span><span class="sl">'+esc(itemKind(i))+'</span>'+dTag(i)+bindTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
+  box.innerHTML = comboRows.map((i,k) => { const nw = wishesFor(i.id).length; return '<div class="opt'+(k===comboActive?' active':'')+'" data-pick="'+esc(i.id)+'">'+icoHTML(i,'',0,false)+'<span class="nm q'+(i.q||0)+'">'+esc(i.name)+'</span><span class="sl">'+esc(itemKind(i))+'</span>'+dTag(i)+bindTag(i)+(nw?'<span class="diff" title="'+esc(wishesFor(i.id).map(w=>w.raider_name).join(', '))+'">'+nw+' want</span>':'')+'<span class="bs">'+esc(ZSHORT[BOSSZONE[i.sources[0]]]+' · '+i.sources.join(' / '))+'</span></div>'; }).join('');
 }
 function pickItem(id){
   const it = ITEM[id]; $('#fItem').dataset.id = id; $('#fItem').value = it.name;
@@ -2135,7 +2135,7 @@ function anyItemIcon(id){
 function anyItemLink(id){
   const it = ITEM[id];
   const href = 'https://www.wowhead.com/' + (WOWHEAD_DB[gameKey] || 'classic') + '/item=' + Number(id);
-  return '<a href="' + href + '" target="_blank" rel="noopener"' + (it ? ' data-item="' + it.id + '"' : '') + '>' + esc(anyItemName(id)) + '</a>';
+  return '<a href="' + esc(href) + '" target="_blank" rel="noopener"' + (it ? ' data-item="' + esc(it.id) + '"' : '') + '>' + esc(anyItemName(id)) + '</a>';
 }
 // Items outside the loot tables have no icon here: their name links to Wowhead in its quality colour.
 function anyItemHTML(id){
@@ -2204,13 +2204,13 @@ function renderNight(){
   const list = allNights();
   if (!list.length) { $('#ntPick').innerHTML = ''; $('#ntBody').innerHTML = '<div class="empty"><b>No raid nights yet</b>They appear once loot is recorded or a night is entered on the Attendance tab.</div>'; return; }
   if (!ui.night || !list.some(n => n.date === ui.night)) ui.night = list[0].date;
-  $('#ntPick').innerHTML = list.map(n => '<option value="' + n.date + '"' + (n.date === ui.night ? ' selected' : '') + '>' + fmtDate(n.date) + (n.off ? ' (not counted for attendance)' : '') + '</option>').join('');
+  $('#ntPick').innerHTML = list.map(n => '<option value="' + esc(n.date) + '"' + (n.date === ui.night ? ' selected' : '') + '>' + fmtDate(n.date) + (n.off ? ' (not counted for attendance)' : '') + '</option>').join('');
   const i = list.findIndex(n => n.date === ui.night);
   $('#ntNext').disabled = i <= 0; $('#ntPrev').disabled = i >= list.length - 1;
   const d = nightData(ui.night);
   const loot = d.bosses.length ? d.bosses.map(b => '<tr class="night"><td colspan="3">' + (BOSSZONE[b] ? zTag(BOSSZONE[b]) + ' ' : '') + esc(b) + '<span class="n">' + d.byBoss[b].length + '</span></td></tr>'
       + d.byBoss[b].map(a => { const it = ITEM[a.item], r = raiderById(a.raider);
-          return '<tr><td><span class="item">' + icoHTML(it, 'data-award="' + a.id + '"') + '<span><span class="nm">' + esc(it ? it.name : 'Unknown item') + '</span> <span class="sl">' + esc(itemKind(it)) + '</span></span></span></td>'
+          return '<tr><td><span class="item">' + icoHTML(it, 'data-award="' + esc(a.id) + '"') + '<span><span class="nm">' + esc(it ? it.name : 'Unknown item') + '</span> <span class="sl">' + esc(itemKind(it)) + '</span></span></span></td>'
             + '<td>' + (r ? rName(r) : '<span class="faint">removed</span>') + '</td><td class="note">' + esc(a.note || '') + '</td></tr>'; }).join('')).join('')
     : '<tr><td colspan="3"><div class="empty" style="padding:26px"><b>No loot recorded</b>The night is on the books, nothing was awarded.</div></td></tr>';
   const bossKills = d.kills.filter(k => k.ok).length;
@@ -2239,7 +2239,7 @@ function renderNight(){
     + '<span class="k"><b>' + d.people.length + '</b>got loot</span></div>'
     + '<div class="ntcols"><div class="tblwrap"><table><thead><tr><th>Item</th><th>Raider</th><th>Note</th></tr></thead><tbody>' + loot + '</tbody></table></div>'
     + '<div class="stack"><div class="panel"><div class="panel-h">Items per raider</div><div class="panel-b">'
-    + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + a.id + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
+    + (d.people.length ? d.people.map(x => '<div class="ntper"><span class="n">' + x.list.length + '</span><span class="who" style="color:' + (x.r ? clsVar(x.r.cls) : 'inherit') + '">' + esc(x.r ? x.r.name : '—') + '</span><span class="ic">' + x.list.map(a => icoHTML(ITEM[a.item], 'data-award="' + esc(a.id) + '"')).join('') + '</span></div>').join('') : '<span class="muted" style="font-size:13px">Nobody received anything.</span>')
     + '</div></div>' + extraLootPanels(ui.night) + (d.matPeople.length ? '<div class="panel"><div class="panel-h">Materials looted</div><div class="panel-b">' + d.matPeople.map(x => '<div class="ntper"><span class="who" style="color:' + clsVar(x.r.cls) + '">' + esc(x.r.name) + '</span><span class="ic">' + Object.entries(x.per).map(([id, n]) => icoHTML(ITEM[Number(id)]) + '<b style="margin:0 8px 0 2px">' + n + '</b>').join('') + '</span></div>').join('') + '</div></div>' : '') + bossPanel + '<div class="panel"><div class="panel-h">Who was there</div><div class="panel-b"><div class="ntwho">'
     + (d.here.length ? d.here.map(r => r.id in d.late
         ? '<span class="late" title="joined after the raid start' + (lateTime(d.late[r.id]) ? ', first seen at ' + lateTime(d.late[r.id]) : '') + '"><span style="color:' + clsVar(r.cls) + '">' + esc(r.name) + '</span><b>late' + (lateTime(d.late[r.id]) ? ' ' + lateTime(d.late[r.id]) : '') + '</b></span>'
@@ -2280,7 +2280,7 @@ $('#ntCopy').addEventListener('click', async ev => {
 
 /* ---------------- attendance ---------------- */
 // A missed raid: a red hot potato, drawn here so it is red in every browser (the emoji is brown).
-const potato = size => '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" aria-hidden="true">'
+const potato = size => '<svg viewBox="0 0 24 24" width="' + esc(size) + '" height="' + esc(size) + '" aria-hidden="true">'
   + '<path d="M6.2 5.4C9 2.6 14.6 2.2 18 4.6c3.3 2.3 3.7 7 1.9 10.9-1.9 4.1-6 6.8-10.2 6.4C5.6 21.5 3 18.4 2.8 14.6 2.6 11 3.8 7.8 6.2 5.4z" fill="#d0493d"/>'
   + '<path d="M7.4 6.6c1.8-1.7 4.6-2.3 6.6-1.5" stroke="#ffb3a6" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".75"/>'
   + '<circle cx="9" cy="11" r="1.1" fill="#8a2a22"/><circle cx="14.6" cy="9.4" r=".9" fill="#8a2a22"/><circle cx="12.2" cy="15.6" r="1" fill="#8a2a22"/>'
@@ -2337,7 +2337,7 @@ function renderAttendance(){
             : bench ? ' title="' + esc(['on the bench' + as, bench.note || '', bench.self ? 'signed up themselves' : ''].filter(Boolean).join(' · ') + (readOnly ? '' : ' - click to change')) + '"'
             : won ? ' title="won loot that night' + esc(as) + '"' : here && as ? ' title="there' + esc(as) + (readOnly ? '' : ' - click to change') + '"' : readOnly ? '' : ' title="click to change"';
           // a click changes the character that was there (or on the bench), else the main
-          return '<td class="c' + (late ? ' lt' : '') + (readOnly || won ? '' : ' hot" data-att="' + (k.as || r.id) + '|' + n.date) + '"' + lock + '>'
+          return '<td class="c' + (late ? ' lt' : '') + (readOnly || won ? '' : ' hot" data-att="' + esc((k.as || r.id) + '|' + n.date)) + '"' + lock + '>'
             + (won ? '<span class="won">&#9733;</span>' : here ? '<span class="' + (late ? 'late' : 'yes') + '">&#10003;</span>' : bench ? '<span class="bench">B</span>' : '<span class="potato" title="missed this raid">' + potato(16) + '</span>') + '</td>';
         }).join('') + '</tr>';
   }).join('');
@@ -2349,8 +2349,8 @@ function renderNightList(){
     const p = presentOn(n.date).size, aw = state.awards.filter(a => a.date === n.date).length;
     const zones = [...new Set(state.awards.filter(a => a.date === n.date).map(a => BOSSZONE[a.boss]).filter(Boolean))];
     return '<div class="nightrow"' + (n.off ? ' style="opacity:.6"' : '') + '><span class="d">' + fmtShort(n.date) + '</span><span class="n">' + (n.off ? '<span class="st dup">Not counted</span> ' : '') + p + ' there · ' + aw + ' item' + (aw === 1 ? '' : 's') + ' ' + zones.map(z => zTag(z)).join(' ') + '</span>'
-      + (readOnly ? '' : '<button class="btn sm ghost" data-noff="' + n.date + '" title="' + (n.off ? 'Count this night for attendance again' : 'Not a raid night, e.g. trash only: leave it out of attendance, the loot stays') + '">' + (n.off ? 'Count' : 'Don\'t count') + '</button>')
-      + (readOnly || !n.rec ? '' : '<button class="btn sm ghost danger" data-nrm="' + n.date + '">Remove</button>') + '</div>';
+      + (readOnly ? '' : '<button class="btn sm ghost" data-noff="' + esc(n.date) + '" title="' + (n.off ? 'Count this night for attendance again' : 'Not a raid night, e.g. trash only: leave it out of attendance, the loot stays') + '">' + (n.off ? 'Count' : 'Don\'t count') + '</button>')
+      + (readOnly || !n.rec ? '' : '<button class="btn sm ghost danger" data-nrm="' + esc(n.date) + '">Remove</button>') + '</div>';
   }).join('') : '<span class="muted" style="font-size:13px">No raid nights yet.</span>';
 }
 $('#anAdd').addEventListener('click', () => {
@@ -2559,7 +2559,7 @@ function renderWishForm(){
   $('#wfRaider').innerHTML = raiderOptions(kr, '<option value="">Choose a raider…</option>');
   $('#wfBoss').innerHTML = '<option value="">Choose a boss…</option>' + bossOptions(kb, false);
   const items = kb ? DATA.items.filter(i => i.sources.includes(kb)).sort((a, b) => a.name.localeCompare(b.name)) : [];
-  $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + itemKind(i) + '</option>').join('')
+  $('#wfItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + esc(i.id) + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + ' · ' + itemKind(i) + '</option>').join('')
     : '<option value="">Pick the boss first</option>';
   $('#wishForm').hidden = !user; $('#wishLogin').hidden = !!user;
   $('#wishPastePanel').hidden = !user;
@@ -2881,14 +2881,14 @@ function renderPrio(){
       + '<td>' + (pl.length ? pl.map((x, i) => { const r = x.k === 'p' && state.raiders.find(y => y.name.toLowerCase() === x.name.toLowerCase()); return '<span class="prioent">' + (i + 1) + '. ' + (r ? rName(r) + (x.label ? ' <span class="faint">(' + esc(x.label) + ')</span>' : '') : esc(prioText([x], false))) + '</span>'; }).join(' ') : '<span class="faint">no order</span>') + '</td>'
       + '<td class="note">' + esc(e.note || '') + '</td>'
       + '<td class="faint" style="white-space:nowrap">' + esc(when) + (e.by ? ' · ' + esc(e.by) : '') + '</td>'
-      + '<td class="acts">' + (readOnly ? '' : '<button class="btn sm ghost" data-lcedit="' + id + '">Edit</button>') + '</td></tr>';
+      + '<td class="acts">' + (readOnly ? '' : '<button class="btn sm ghost" data-lcedit="' + esc(id) + '">Edit</button>') + '</td></tr>';
   }).join('');
 }
 function renderPrioForm(){
   const kb = $('#lcBoss').value, ki = $('#lcItem').value;
   $('#lcBoss').innerHTML = '<option value="">Choose a boss…</option>' + bossOptions(kb, false);
   const items = kb ? DATA.items.filter(i => i.sources.includes(kb)).sort((a, b) => a.name.localeCompare(b.name)) : [];
-  $('#lcItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + i.id + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + (prioOf(i.id) ? ' · has a prio' : '') + '</option>').join('')
+  $('#lcItem').innerHTML = kb ? '<option value="">Choose an item…</option>' + items.map(i => '<option value="' + esc(i.id) + '"' + (String(i.id) === ki ? ' selected' : '') + '>' + esc(i.name) + (prioOf(i.id) ? ' · has a prio' : '') + '</option>').join('')
     : (ki ? '<option value="' + esc(ki) + '" selected>' + esc(anyItemName(Number(ki))) + '</option>' : '<option value="">Pick the boss first</option>');
 }
 // Loads an item's entry into the form.
@@ -2896,7 +2896,7 @@ function prioEdit(id){
   const it = ITEM[id], e = prioOf(id);
   $('#lcBoss').value = it && it.sources.length ? it.sources[0] : '';
   renderPrioForm(); $('#lcItem').value = String(id);
-  if ($('#lcItem').value !== String(id)) { $('#lcItem').insertAdjacentHTML('beforeend', '<option value="' + id + '">' + esc(anyItemName(id)) + '</option>'); $('#lcItem').value = String(id); }
+  if ($('#lcItem').value !== String(id)) { $('#lcItem').insertAdjacentHTML('beforeend', '<option value="' + esc(id) + '">' + esc(anyItemName(id)) + '</option>'); $('#lcItem').value = String(id); }
   $('#lcOrder').value = e ? prioText(e.prio, false) : ''; $('#lcNote').value = e ? e.note || '' : '';
   $('#lcOrder').focus();
 }
@@ -3342,9 +3342,9 @@ function renderMatrix(){
       + MXCOLS.map(c => {
           const list = cells[c[0]]; if (!list.length) return '<td class="dash">–</td>';
           const last = list[list.length-1], key = r.id + '|' + c[0];
-          if (list.length === 1) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+last.id+'"')+'</td>';
-          if (!ui.mxOpen[key]) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+last.id+'" data-stack="'+list.map(x=>x.id).join(',')+'" data-open="'+esc(key)+'" title="Click to show all '+list.length+'"', list.length, false)+'</td>';
-          return '<td class="open"><div class="stack">'+list.map(a => icoHTML(ITEM[a.item], 'data-award="'+a.id+'"')).join('')+'<button class="btn sm ghost" data-close="'+esc(key)+'" title="Collapse">×</button></div></td>';
+          if (list.length === 1) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+esc(last.id)+'"')+'</td>';
+          if (!ui.mxOpen[key]) return '<td>'+icoHTML(ITEM[last.item], 'data-award="'+esc(last.id)+'" data-stack="'+esc(list.map(x=>x.id).join(','))+'" data-open="'+esc(key)+'" title="Click to show all '+list.length+'"', list.length, false)+'</td>';
+          return '<td class="open"><div class="stack">'+list.map(a => icoHTML(ITEM[a.item], 'data-award="'+esc(a.id)+'"')).join('')+'<button class="btn sm ghost" data-close="'+esc(key)+'" title="Collapse">×</button></div></td>';
         }).join('')
       + '</tr>';
   }).join('');
@@ -3473,9 +3473,9 @@ function renderStats(){
   $('#stHint').textContent = 'Every character of a player counts together, alts for their main. Attendance counts the nights since the player first showed up; late nights count as there.'
     + (range === 'phase' ? (res.phase ? ' This phase: since ' + fmtDate(res.phase.from) + ', when ' + res.phase.name + ' first showed up.' : ' No phase yet: no award names a raid.') : '')
     + ' Click a row for the weeks.';
-  $('#stHead').innerHTML = '<tr>' + cols.map(([k, label, tip]) => '<th class="sortable' + (k === 'name' ? '' : ' num') + (k === col ? ' sorted' : '') + '" data-stsort="' + k + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + label + (k === col ? (desc ? ' ▼' : ' ▲') : '') + '</th>').join('') + '</tr>';
+  $('#stHead').innerHTML = '<tr>' + cols.map(([k, label, tip]) => '<th class="sortable' + (k === 'name' ? '' : ' num') + (k === col ? ' sorted' : '') + '" data-stsort="' + esc(k) + '"' + (tip ? ' title="' + esc(tip) + '"' : '') + '>' + label + (k === col ? (desc ? ' ▼' : ' ▲') : '') + '</th>').join('') + '</tr>';
   if (!res.players.length) {
-    $('#stBody').innerHTML = '<tr><td colspan="' + cols.length + '"><div class="empty"><b>Nothing to count yet</b>' + (state.awards.length || nights().length ? 'Nobody matches these filters.' : 'Record raid nights and awards first.') + '</div></td></tr>';
+    $('#stBody').innerHTML = '<tr><td colspan="' + esc(cols.length) + '"><div class="empty"><b>Nothing to count yet</b>' + (state.awards.length || nights().length ? 'Nobody matches these filters.' : 'Record raid nights and awards first.') + '</div></td></tr>';
   } else {
     const start = dayNum(today());
     const weekOf = i => new Date((start - 7 * i - 6) * 864e5).toISOString().slice(0, 10);
@@ -3490,7 +3490,7 @@ function renderStats(){
       if (!open) return row;
       const top = Math.max(1, ...p.weeks);
       const weeks = p.weeks.map((n, i) => '<div class="stwk" title="' + n + ' item' + (n === 1 ? '' : 's') + ' in the week from ' + fmtShort(weekOf(i)) + '"><i style="height:' + Math.round(n / top * 40) + 'px"></i><span>' + n + '</span></div>').reverse().join('');
-      return row + '<tr class="stdetail"><td colspan="' + cols.length + '"><div class="stwks"><span class="muted">Items per week, last 8 weeks</span><div class="stbars">' + weeks + '</div></div>'
+      return row + '<tr class="stdetail"><td colspan="' + esc(cols.length) + '"><div class="stwks"><span class="muted">Items per week, last 8 weeks</span><div class="stbars">' + weeks + '</div></div>'
         + '<div class="muted" style="font-size:13px;margin-top:6px">' + p.chars.map(c => esc(statCharText(c))).join(' · ')
         + ' · late ' + p.late + ' · bench ' + p.bench + ' · ' + statRoleWord(p.role) + '</div></td></tr>';
     }).join('');
@@ -3572,17 +3572,17 @@ function renderCraft(){
     if (c.prof !== lastProf) { lastProf = c.prof; const n = rows.filter(x => x.c.prof === c.prof).length; h += '<tr class="night"><td colspan="4">'+esc(c.prof)+'<span class="n">'+n+' recipe'+(n===1?'':'s')+'</span></td></tr>'; }
     const listed = new Set(cr.map(x => x.r.id));
     const chips = cr.map(x => x.member
-      ? '<span class="crafter" style="color:'+clsVar(x.r.cls)+'" title="Listed by the raider">'+esc(x.r.name)+(!readOnly || (me && x.member.user_id === me.user_id) ? '<button class="x" data-mcoff="'+c.id+'|'+esc(x.r.id)+'" title="Remove">×</button>' : '')+'</span>'
+      ? '<span class="crafter" style="color:'+clsVar(x.r.cls)+'" title="Listed by the raider">'+esc(x.r.name)+(!readOnly || (me && x.member.user_id === me.user_id) ? '<button class="x" data-mcoff="'+esc(c.id)+'|'+esc(x.r.id)+'" title="Remove">×</button>' : '')+'</span>'
       : x.award
       ? '<span class="crafter inferred" style="color:'+clsVar(x.r.cls)+'" title="Received '+esc(ITEM[x.award.item] ? ITEM[x.award.item].name : 'the recipe')+' on '+esc(fmtDate(x.award.date))+'">'+esc(x.r.name)+'</span>'
-      : '<span class="crafter" style="color:'+clsVar(x.r.cls)+'">'+esc(x.r.name)+(readOnly ? '' : '<button class="x" data-crrm="'+x.id+'" title="Remove crafter">×</button>')+'</span>').join('');
-    const opt = r => '<option value="'+r.id+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>';
+      : '<span class="crafter" style="color:'+clsVar(x.r.cls)+'">'+esc(x.r.name)+(readOnly ? '' : '<button class="x" data-crrm="'+esc(x.id)+'" title="Remove crafter">×</button>')+'</span>').join('');
+    const opt = r => '<option value="'+esc(r.id)+'">'+esc(r.name)+' · '+esc(r.cls)+'</option>';
     const others = [...state.raiders].filter(r => !listed.has(r.id) && !profsOf(r).includes(c.prof)).sort((a,b) => a.name.localeCompare(b.name));
-    const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+c.id+'"><option value="">+ Crafter…</option>'
+    const add = readOnly ? '' : '<select class="inp craddr" data-craddr="'+esc(c.id)+'"><option value="">+ Crafter…</option>'
       + (can.length ? '<optgroup label="Has '+esc(c.prof)+'">'+can.map(opt).join('')+'</optgroup>' : '')
       + (others.length ? '<optgroup label="Other raiders">'+others.map(opt).join('')+'</optgroup>' : '') + '</select>';
     const iCan = meR && !listed.has(meR.id) && (!myProfs.length || myProfs.includes(c.prof))
-      ? '<button class="btn sm ghost" data-mcon="'+c.id+'|'+esc(meR.id)+'">I can craft this</button>' : '';
+      ? '<button class="btn sm ghost" data-mcon="'+esc(c.id)+'|'+esc(meR.id)+'">I can craft this</button>' : '';
     const canLine = can.length ? '<div class="cancraft" title="'+esc(can.map(r => r.name).join(', '))+'">Can craft: '+can.slice(0, 5).map(r => '<b style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</b>').join(', ')+(can.length > 5 ? ' <span class="faint">+'+(can.length-5)+' more</span>' : '')+'</div>' : '';
     h += '<tr>'
       + '<td><span class="item">'+cicoHTML(c)+'<span><span class="nm q'+c.q+'">'+esc(c.name)+'</span> <span class="sl">'+(CSLOTNAME[c.slot]||c.slot)+(c.ilvl ? ' · '+c.ilvl : '')+'</span>'+(c.bop ? '<span class="diff" title="Binds when picked up: the crafter keeps it">BoP</span>' : '')+'</span></span></td>'
@@ -3679,7 +3679,7 @@ function renderBankLog(){
     + '<td class="num">' + (e.item ? e.count : esc(money(e.count))) + '</td><td class="muted">' + (e.tab ? 'Tab ' + e.tab : 'Money') + (e.kind === 'move' ? ' (' + e.t1 + ' → ' + e.t2 + ')' : '') + '</td></tr>').join('')
     || '<tr><td colspan="5"><div class="empty" style="padding:24px"><b>Nothing matches</b>Try another name or item.</div></td></tr>';
 }
-function matOptions(sel){ return matsHere().map(m => '<option value="'+m.id+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
+function matOptions(sel){ return matsHere().map(m => '<option value="'+esc(m.id)+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
 function renderMats(){
   const mats = matsHere();
   $('#matGrid').hidden = archiveOn;
@@ -3784,7 +3784,7 @@ $('#matBody').addEventListener('click', async ev => {
 /* ---------------- roster ---------------- */
 function renderSettings(){
   $('#gName').value = state.guild||''; $('#gRealm').value = state.realm||''; $('#gFaction').value = state.faction||'';
-  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+g.key+'"'+(g.key===PLAY?' selected':'')+'>'+esc(g.name)+'</option>').join('');
+  $('#gGame').innerHTML = GAMES.map(g => '<option value="'+esc(g.key)+'"'+(g.key===PLAY?' selected':'')+'>'+esc(g.name)+'</option>').join('');
   renderPlaceField();
 }
 // Realm for games with realms, rule set for the ones without.
@@ -3809,7 +3809,7 @@ function mainSelect(r){
   const own = altsOf(r.id).length, cur = mainIdOf(r.id) !== r.id ? mainIdOf(r.id) : '';
   const opts = mainRaiders().filter(x => x.id !== r.id).sort((a, b) => a.name.localeCompare(b.name));
   return '<select class="inp" id="erMain"' + (own ? ' disabled title="' + esc(r.name) + ' has alts of their own"' : ' title="Alt of: attendance and loot count for the main"') + '>'
-    + '<option value="">Main character</option>' + opts.map(x => '<option value="' + x.id + '"' + (x.id === cur ? ' selected' : '') + '>Alt of ' + esc(x.name) + '</option>').join('') + '</select>';
+    + '<option value="">Main character</option>' + opts.map(x => '<option value="' + esc(x.id) + '"' + (x.id === cur ? ' selected' : '') + '>Alt of ' + esc(x.name) + '</option>').join('') + '</select>';
 }
 function renderRoster(){
   renderMyChar();
@@ -3833,7 +3833,7 @@ function renderRoster(){
                  : '<td'+(main ? ' class="altrow"' : '')+'>'+rName(r)+rankTag(r.id)+(main ? '<span class="alttag">alt of '+esc(main.name)+'</span>' : '')+'</td><td class="muted">'+esc(r.cls)+'</td><td class="profs">'+(profsOf(r).length ? esc(profsOf(r).join(' · ')) : '<span class="faint">–</span>')+'</td>')
       + '<td class="num">'+aw.length+'</td><td><span class="chips">'+perZone.map(([z,n]) => zTag(z).replace('</span>', ' '+n+'</span>')).join('')+'</span></td>'
       + '<td class="muted">'+(aw.length?fmtDate(aw[0].date):'—')+'</td><td class="muted">'+(aw.length?fmtDate(aw[aw.length-1].date):'—')+'</td>'
-      + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+r.id+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+r.id+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+r.id+'">Remove</button>'))+'</td>'
+      + '<td class="acts">'+(readOnly?'':(editing ? '<button class="btn sm primary" data-rsave="'+esc(r.id)+'">Save</button><button class="btn sm ghost" data-rcancel="1">Cancel</button>' : '<button class="btn sm ghost" data-redit="'+esc(r.id)+'">Edit</button><button class="btn sm ghost danger" data-rdel="'+esc(r.id)+'">Remove</button>'))+'</td>'
       + '</tr>';
   }).join('');
 }
@@ -4863,7 +4863,7 @@ function glRender(){
     else if (r.raider) cls = '<span class="muted">'+esc(r.raider.cls)+'</span>';
     else if (clsDone.has(r.name)) cls = '<span class="faint">as above</span>';
     else { clsDone.add(r.name); cls = '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glcls="'+esc(r.name)+'">'+CLASSES.map(c => '<option'+(c===clsPicked[r.name]?' selected':'')+'>'+c+'</option>').join('')+'<option'+(!clsPicked[r.name]?' selected':'')+'>Unknown</option></select>'; }
-    return '<tr class="'+r.status+'"><td>'+st+'</td><td class="muted" style="white-space:nowrap">'+esc(fmtDate(r.date))+'</td>'
+    return '<tr class="'+esc(r.status)+'"><td>'+st+'</td><td class="muted" style="white-space:nowrap">'+esc(fmtDate(r.date))+'</td>'
       + '<td>'+(r.it ? '<span class="item">'+icoHTML(r.it,'',0,false)+'<span><span class="nm">'+esc(r.it.name)+'</span> <span class="sl">'+SLOTNAME[r.it.slot]+'</span>'+dTag(r.it)+'</span></span>' : '<span class="faint">'+(r.item ? 'Item '+r.item : '—')+'</span>')+'</td>'
       + '<td style="white-space:nowrap">'+(r.boss ? zTag(BOSSZONE[r.boss])+' '+(r.status==='ok' && r.it.sources.length>1 ? '<select class="inp" style="padding:3px 26px 3px 8px;width:auto" data-glboss="'+glRows.indexOf(r)+'">'+r.it.sources.map(s => '<option'+(s===r.boss?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>' : esc(r.boss)) : '')+'</td>'
       + '<td>'+(r.raider ? rName(r.raider) : '<span class="rname">'+esc(r.name || r.rawName)+'</span>')+'</td>'

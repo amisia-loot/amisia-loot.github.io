@@ -888,7 +888,7 @@ end
 
 -- the reasons of bad() as shown (a message kind such as "HI" shows as it is)
 local BAD_REASONS = { Daten = L["Daten"], Absender = L["Absender"], Teile = L["Teile"], Grenze = L["Grenze"],
-                      Umschlag = L["Umschlag"], ["Präfix"] = L["Präfix"] } -- l10n-ok: the reasons as keys
+                      Umschlag = L["Umschlag"], ["Präfix"] = L["Präfix"], Kanal = L["Kanal"] } -- l10n-ok: the reasons as keys
 
 local function bad(reason)
     stats.bad = stats.bad + 1
@@ -1051,6 +1051,9 @@ local function onMessage(prefix, text, chan, sender)
     end
     if kind == "BL" then
         if not ns.CommPacking() then return end
+        -- no blob art goes to the guild channel (each is RAID or WHISPER): parts there are dropped
+        -- unread, before they could be unpacked (security audit 2026-10-17)
+        if chan ~= "RAID" and chan ~= "WHISPER" then return bad("Kanal") end
         -- data only from members of the own guild: an outsider's parts are dropped from the first
         -- one on, unread, for a minute
         if s.outsider and now() < s.outsider then return end

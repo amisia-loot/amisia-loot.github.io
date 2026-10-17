@@ -216,8 +216,8 @@ on `RAID` without a home raid, on `WHISPER` to a name neither in the group nor i
 
 Receive limits per sender: 40 messages in 10 s and 20480 bytes in 60 s, else ignored for 60 s;
 own echo dropped; per-kind gap below (a second message of the kind within the gap is dropped);
-keyed gaps per first field (`KEYED_GAP`, 64 keys per sender). Blob parts: from a verified guild
-member only (an outsider's parts are dropped unread for 60 s), 3 open sets per sender, 90 open parts
+keyed gaps per first field (`KEYED_GAP`, 64 keys per sender). Blob parts: only on RAID or WHISPER (no
+art goes to the guild; parts on GUILD are dropped unread), from a verified guild member only (an outsider's parts are dropped unread for 60 s), 3 open sets per sender, 90 open parts
 and 18000 Base64 bytes per sender, a set waits 30 s for its next part (`COMM_BLOB_LOST`), a finished
 set id is remembered 60 s; unpacked size max 65536 bytes; packing is the client's `C_EncodingUtil`
 (CBOR, Deflate, Base64), 200 characters per part.

@@ -435,7 +435,13 @@ Antwort zurück. Wer online ist, läuft über die Tabelle `presence` (Herzschlag
 Realtime-Presence. Mitgliederdaten stehen nicht im Ledger-JSON.
 **Grund:** Datenschutz; Deadlocks und verlorene Speicherungen in der Praxis.
 **Folge:** Nach jeder Änderung an `Amisia-Website/data/*.js` `BUILD_ID` in `Amisia-Website/index.html` erhöhen.
-**Durchgesetzt durch:** `tools/tests/test_data_files.py::test_build_id_is_new_since_1_9` (nur BUILD_ID; der Rest ist nicht maschinell geprüft).
+**Nachtrag 2026-10-17 (Sicherheitsprüfung):** Wer Besitzer oder Editor ist, entscheidet nur, was ein Konto
+nicht selbst ändern kann: die bestätigte E-Mail und die Discord-Identität (Benutzername, Kennung), nie
+`user_metadata` (jeder kann sie mit `auth.updateUser` umschreiben) und nie der Discord-Anzeigename
+(Migration `20261017_identities_from_providers.sql`). Jeder Wert aus dem Ledger, der in ein HTML-Attribut
+kommt, geht durch `esc()`.
+**Durchgesetzt durch:** `tools/tests/test_data_files.py::test_build_id_is_new_since_1_9` (BUILD_ID),
+`tools/tests/test_site_escape.py` (Attribute); die Identitätsregel ist nicht maschinell geprüft.
 
 ## D-34 Scan-Daten leben auf dem N100, das Addon räumt Ausgewertetes weg
 

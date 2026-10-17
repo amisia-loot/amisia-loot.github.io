@@ -315,6 +315,11 @@ for s = 2, 4 do recv("AmisiaD", open[s][2], "RAID", "Fraktur") end
 recv("AmisiaD", open[1][2], "RAID", "Fraktur")
 assert(#blobs == 5, "three of four sets completed: " .. #blobs)
 assert(blobs[3].t.s == 2 and blobs[5].t.s == 4)
+-- no blob art goes to the guild: parts on GUILD are dropped unread (security audit 2026-10-17)
+local guildParts = partsOf({ g = 1 }, "SP", KEY, 650)
+local before, badBefore = #blobs, NS.CommStats().bad
+recv("AmisiaD", guildParts[1], "GUILD", "Fraktur")
+assert(#blobs == before and NS.CommStats().bad == badBefore + 1, "a blob part on GUILD is dropped")
 -- bad data drops the whole set
 local bad1 = NS.CommStats().bad
 recv("AmisiaD", ("1BL\tSP\t%s\t%d\t1\t1\t%s"):format(KEY, 700, "!!notbase64!!"), "RAID", "Fraktur")
