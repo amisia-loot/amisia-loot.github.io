@@ -143,6 +143,34 @@ local function slotsOf()
     return d and d.slots or { 15, 5, 9, 10, 8, 16, 17 }, d and d.shield or SHIELD
 end
 
+-- The worn items in the enchanted slots of the data's list without a permanent enchant (by the
+-- item link, else the tooltip line type 15; the off hand only with a shield), as inventory slots.
+-- worn: { [inv] = link } (default: read now). Also the goals window's filter (F-113).
+function RC.Unenchanted(worn)
+    if not worn then
+        worn = {}
+        for _, s in ipairs(RR.Slots()) do
+            local okL, link = pcall(GetInventoryItemLink, "player", s.inv)
+            worn[s.inv] = okL and ns.Plain(link) or nil
+        end
+    end
+    local out = {}
+    local enchanted, shield = slotsOf()
+    for _, inv in ipairs(enchanted) do
+        local link = worn[inv]
+        if type(link) == "string" and not (inv == shield and equipLoc(link) ~= "INVTYPE_SHIELD") then
+            local e = RR.Enchant(inv, link, false)
+            local has = e.id ~= 0
+            if not has then
+                local okT, t = pcall(RR.Enchant, inv, link)
+                has = okT and t.lines > 0
+            end
+            if not has then out[#out + 1] = inv end
+        end
+    end
+    return out
+end
+
 -- The own report now: { at, dur (lowest %), below (items under the threshold), ilvl, empty = { inv },
 -- unench = { inv }, free, level, cons = classification, auras = readable or not }.
 function RC.Own()
@@ -174,19 +202,7 @@ function RC.Own()
             if not skip then o.empty[#o.empty + 1] = inv end
         end
     end
-    local enchanted, shield = slotsOf()
-    for _, inv in ipairs(enchanted) do
-        local link = worn[inv]
-        if link and not (inv == shield and equipLoc(link) ~= "INVTYPE_SHIELD") then
-            local e = RR.Enchant(inv, link, false)
-            local has = e.id ~= 0
-            if not has then
-                local okT, t = pcall(RR.Enchant, inv, link)
-                has = okT and t.lines > 0
-            end
-            if not has then o.unench[#o.unench + 1] = inv end
-        end
-    end
+    o.unench = RC.Unenchanted(worn)
     local okI, _, equipped = pcall(RR.ItemLevel)
     if okI and type(equipped) == "number" and not RR.isSecret(equipped) then o.ilvl = equipped end
     local okF, free = pcall(RR.FreePoints)

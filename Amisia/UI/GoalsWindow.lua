@@ -4,7 +4,9 @@
 -- (the model undressed, then the targets tried on, the worn item where a slot has none) or
 -- "Angelegt" (what is worn). In the middle the slots by section with item, gain and source, as the
 -- gear page's view Ziele shows them (its item texts, sources, map button, menu and clicks come from
--- ns.GearPageKit). Everything comes from ns.BisTargets: the window and the page show the same
+-- ns.GearPageKit), over it how many targets are got ("N/17 Ziele hast du", a bar of 17 parts) and
+-- the filters Alle / Zu holen / In der Tasche / Ohne Verzauberung (the raid check's enchant test).
+-- Everything comes from ns.BisTargets: the window and the page show the same
 -- targets. The window is moved and scaled on its own (settings.goalWindow, ui.goalScale, Ctrl +
 -- mouse wheel), as the talent window. Nothing is built before it opens; nothing is sent.
 local ADDON, ns = ...
@@ -29,7 +31,7 @@ for _, sl in ipairs(Gear.SLOTS) do INV[sl.key] = sl.inv end
 local win, built
 
 ---------------------------------------------------------------------------
--- State: settings.goalWindow = { point, x, y, mode = goals/worn, slot }
+-- State: settings.goalWindow = { point, x, y, mode = goals/worn, filter = all/todo/bag/ench, slot }
 ---------------------------------------------------------------------------
 
 local function winState()
@@ -41,6 +43,13 @@ end
 
 local function mode()
     return winState().mode == "worn" and "worn" or "goals"
+end
+
+local FILTERS = { "all", "todo", "bag", "ench" }
+local FILTER_OK = { all = true, todo = true, bag = true, ench = true }
+local function filter()
+    local f = winState().filter
+    return FILTER_OK[f] and f or "all"
 end
 
 -- The chosen slot: the saved one, else the first with an upgrade, else the first.
@@ -326,16 +335,119 @@ end
 -- The list in the middle: the slots by section
 ---------------------------------------------------------------------------
 
-local function listItems(res)
+-- The worn items without a permanent enchant in the raid check's enchanted slots, as a set of slot
+-- keys; read again only when what is worn changes.
+local enchKey, enchSet
+local function unenchanted()
+    local links = {}
+    for _, sl in ipairs(Gear.SLOTS) do links[#links + 1] = tostring(wornLink(sl.key)) end
+    local key = table.concat(links, "|")
+    if key == enchKey and enchSet then return enchSet end
+    local set = {}
+    local RC = ns.RaidCheck
+    if RC and RC.Unenchanted then
+        local ok, list = pcall(RC.Unenchanted)
+        local byInv = {}
+        for k, inv in pairs(INV) do byInv[inv] = k end
+        for _, inv in ipairs(ok and list or {}) do
+            if byInv[inv] then set[byInv[inv]] = true end
+        end
+    end
+    enchKey, enchSet = key, set
+    return set
+end
+
+local function passes(f, key, p, ench)
+    if f == "todo" then return p.slot[key] == "todo" end
+    if f == "bag" then return p.slot[key] == "bag" end
+    if f == "ench" then return ench[key] == true end
+    return true
+end
+
+-- The rows of the list: a head per section with the targets got ("Rüstung 2 von 9 hast du", over
+-- every slot of the section), then the slots the filter lets through; a section without one is left out.
+local function listItems(res, p, f, ench)
     local out = {}
     for _, sec in ipairs(SECTIONS) do
-        out[#out + 1] = { header = sec }
+        local have, rows = 0, {}
         for _, key in ipairs(sec.slots) do
-            out[#out + 1] = { key = key, name = ns.BIS_SLOT_NAME[key], opt = res[key] and res[key][1], plan = res.plan,
-                wornLink = wornLink(key) }
+            if p.slot[key] == "done" then have = have + 1 end
+            if passes(f, key, p, ench) then
+                rows[#rows + 1] = { key = key, name = ns.BIS_SLOT_NAME[key], opt = res[key] and res[key][1], plan = res.plan,
+                    wornLink = wornLink(key), status = p.slot[key] }
+            end
+        end
+        if #rows > 0 then
+            out[#out + 1] = { header = sec, count = " " .. GREY .. L["%d von %d hast du"]:format(have, #sec.slots) .. "|r" }
+            for _, r in ipairs(rows) do out[#out + 1] = r end
         end
     end
     return out
+end
+
+---------------------------------------------------------------------------
+-- Progress and filters over the list (F-113)
+---------------------------------------------------------------------------
+
+local FILTER_LABEL = { all = L["Alle"], todo = L["Zu holen %d"], bag = L["In der Tasche %d"], ench = L["Ohne Verzauberung %d"] }
+
+local function buildProgress(f)
+    local P = CreateFrame("Frame", nil, f)
+    P:SetPoint("TOPLEFT", G.LIST_X, -G.PROG_Y)
+    P:SetSize(G.LIST_W, G.FILTER_Y - G.PROG_Y + T.CHIP_H)
+    P.text = W.Text(P, T.FONT.title, G.PROG_TEXT_W)
+    P.text:SetPoint("TOPLEFT", 0, 0)
+    P.bar = CreateFrame("Frame", nil, P)
+    P.bar:SetSize(G.BAR_W, G.BAR_H)
+    P.bar:SetPoint("TOPLEFT", G.LIST_W - G.BAR_W - T.SCROLL_ROOM, -2)
+    P.parts = {}
+    local n = #Gear.SLOTS
+    local pw = (G.BAR_W - (n - 1) * G.BAR_PART_GAP) / n
+    for i = 1, n do
+        local t = P.bar:CreateTexture(nil, "ARTWORK")
+        t:SetSize(pw, G.BAR_H)
+        t:SetPoint("TOPLEFT", (i - 1) * (pw + G.BAR_PART_GAP), 0)
+        P.parts[i] = t
+    end
+    P.bar:EnableMouse(true)
+    P.bar:SetScript("OnEnter", function(self)
+        local p = self.progress
+        if not p then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["Ausrüstungsziele"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["%d angelegt, %d in Tasche oder Bank, %d zu holen, %d ohne Ziel"]:format(p.done, p.bag, p.todo, p.none),
+            1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    P.bar:SetScript("OnLeave", K.hideTip)
+    P.chips = {}
+    for _, key in ipairs(FILTERS) do
+        P.chips[key] = W.Chip(P, FILTER_LABEL[key], 40, function()
+            winState().filter = key
+            refresh()
+        end)
+    end
+    W.Tooltip(P.chips.ench, L["Ohne Verzauberung"], L["Angelegte Items in verzauberbaren Slots ohne Verzauberung (dieselbe Prüfung wie der Raid-Check). Nur ein Hinweis, keine Empfehlung."])
+    f.progress = P
+    f.fillProgress = function(win2, _, _, p, counts)
+        local Pr = win2.progress
+        Pr.text:SetText(L["%d/%d Ziele hast du"]:format(p.done, p.total))
+        Pr.bar.progress = p
+        for i, sl in ipairs(Gear.SLOTS) do
+            local c = G.STATE_COLOR[p.slot[sl.key]] or G.STATE_COLOR.none
+            Pr.parts[i]:SetColorTexture(c[1], c[2], c[3], 1)
+        end
+        local cur = filter()
+        local row = {}
+        for _, key in ipairs(FILTERS) do
+            local chip = Pr.chips[key]
+            chip.label:SetText(key == "all" and FILTER_LABEL.all or FILTER_LABEL[key]:format(counts[key] or 0))
+            W.FitChip(chip, 40)
+            chip:SetOn(key == cur)
+            row[#row + 1] = chip
+        end
+        W.Row(Pr, row, T.CHIP_GAP, 0, -(G.FILTER_Y - G.PROG_Y))
+    end
 end
 
 local function gainText(e)
@@ -470,8 +582,6 @@ end
 -- Refresh
 ---------------------------------------------------------------------------
 
-local STATE_DOT = { done = "done", bag = "bag", bank = "bag" }
-
 refresh = function()
     if not win or not win:IsShown() then return end
     local f = win
@@ -481,20 +591,26 @@ refresh = function()
     local chosen = chosenSlot(res)
     K.fillSpec(f.spec, o)
     f.plan:SetText(planText(o, res))
+    local p = ns.BisProgress(res)
     local d = f.doll
     for key, b in pairs(d.slots) do
-        local st = STATE_DOT[res.state[key]]
-        fillSlot(b, shownItem(res, key, m), key == chosen, st and G.STATE_COLOR[st])
+        -- the dot: green worn, yellow in bag or bank, none still to get
+        local st = p.slot[key]
+        local hasTarget = res[key] and res[key][1]
+        fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and G.STATE_COLOR[st] or nil)
     end
     d.goals:SetOn(m == "goals")
     d.worn:SetOn(m == "worn")
     dress(d, res, m)
-    local items = listItems(res)
+    local ench = unenchanted()
+    local counts = { todo = p.todo, bag = p.bag, ench = 0 }
+    for _ in pairs(ench) do counts.ench = counts.ench + 1 end
+    local items = listItems(res, p, filter(), ench)
     for _, e in ipairs(items) do e.chosen = chosen end
     f.list:SetItems(items)
+    f.fillProgress(f, o, res, p, counts)
     if f.side and f.fillSide then f.fillSide(f, o, res, chosen) end
     if f.score and f.fillScore then f.fillScore(f, o, res) end
-    if f.progress and f.fillProgress then f.fillProgress(f, o, res, items) end
 end
 
 ---------------------------------------------------------------------------
@@ -554,6 +670,7 @@ local function build()
     buildHead(win)
     win.doll = buildDoll(win)
     win.list = buildList(win)
+    buildProgress(win)
     if ns.GoalsBuildParts then ns.GoalsBuildParts(win) end
     win:EnableMouseWheel(true)
     win:SetScript("OnMouseWheel", wheel)

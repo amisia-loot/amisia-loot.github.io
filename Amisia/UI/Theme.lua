@@ -355,7 +355,7 @@ T.GOALS = {
     -- the list in the middle
     LIST_X = 328, LIST_W = 380,
     PROG_Y = 60,          -- "N/17 Ziele hast du" (T.FONT.title) and the bar of 17 parts beside it
-    BAR_H = 10, BAR_PART_GAP = 2,
+    PROG_TEXT_W = 148, BAR_W = 224, BAR_H = 10, BAR_PART_GAP = 2,
     FILTER_Y = 84,        -- the filter chips
     LIST_Y = 112,         -- the list (its rows ROW_H high, ROWS of them)
     ROW_H = 20, ROWS = 21,

@@ -1240,6 +1240,38 @@ function ns.BisTargetsCached()
     return nil
 end
 
+-- How far the targets are got (F-113), kept with the result: { slot = { [slotKey] = "done" (the
+-- target worn, or a worn item the target does not beat), "bag" (the target in bag or bank, not
+-- worn), "todo" (a target still to get), "none" (no target) }, done, bag, todo, none, total }. The
+-- shield hand beside a planned two-hander is done once the two-hander is worn.
+function ns.BisProgress(res)
+    res = res or ns.BisTargets()
+    if res.progress then return res.progress end
+    local p = { slot = {}, done = 0, bag = 0, todo = 0, none = 0, total = #Gear.SLOTS }
+    local w = worn()
+    for _, sl in ipairs(Gear.SLOTS) do
+        local st = res.state[sl.key]
+        local v
+        if st == "done" then
+            v = "done"
+        elseif st == "bag" or st == "bank" then
+            v = "bag"
+        elseif st == "upgrade" or st == "switch" then
+            v = "todo"
+        elseif st == "none" then
+            v = w.links[sl.inv] and "done" or "todo"
+        elseif sl.key == "OFFHAND" and res.plan == "2H" then
+            v = p.slot.MAINHAND == "done" and "done" or "none"
+        else
+            v = "none"
+        end
+        p.slot[sl.key] = v
+        p[v] = p[v] + 1
+    end
+    res.progress = p
+    return p
+end
+
 ---------------------------------------------------------------------------
 -- Exclusions
 ---------------------------------------------------------------------------
