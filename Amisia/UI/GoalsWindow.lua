@@ -8,7 +8,7 @@
 -- gear page's view Ziele shows them (its item texts, sources, map button, menu and clicks come from
 -- ns.GearPageKit), over it how many targets are got ("N/17 Ziele hast du", a bar of 17 parts) and
 -- the filters Alle / Zu holen / In der Tasche / Ohne Verzauberung (the raid check's enchant test).
--- Right the chosen slot's panel: the own pick ("Deine Wahl", D-54: ns.BisSetPick, star, red X,
+-- Right the chosen slot's panel: the own pick ("Deine Wahl", D-55: ns.BisSetPick, star, red X,
 -- "Überholt ... Übernehmen" and "Passt nicht zum Waffenplan"), the slot's ranking (ns.BisRanking: a
 -- click makes a row the own pick, again lifts it), up to three dungeon drops near the own level
 -- (the dungeon ranking; "Alle zeigen" opens the page Dungeons) and the field "Item-Link oder ID".

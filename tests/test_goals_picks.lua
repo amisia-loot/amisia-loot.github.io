@@ -1,4 +1,4 @@
--- The own pick of a slot (F-112, D-54): ns.BisSetPick checks the item (a link or a number; the
+-- The own pick of a slot (F-112, D-55): ns.BisSetPick checks the item (a link or a number; the
 -- slot, the class), stores it per character, spec and slot (AmisiaDB.bis.chars[name].pick) and
 -- cleans it on load; it takes option 1 of its slot in ns.BisTargets (an upgrade until worn, then
 -- nothing else is), beats a BiS pick, follows the weapon plan (kept but unused when it does not fit),
@@ -89,7 +89,7 @@ STUB.worn[1] = LINKS[603]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 r = NS.BisTargets()
 assert(r.state.HEAD == "done" and not r.HEAD[2].upgrade, "the worn pick is the target")
--- the dungeons' gain follows it (D-54), the tooltip's comparison does not
+-- the dungeons' gain follows it (D-55), the tooltip's comparison does not
 local g = NS.BisGain(601)
 assert(g == 0, "nothing else gains in the row of a worn pick: " .. tostring(g))
 local u = NS.UpgradeOf(LINKS[601])

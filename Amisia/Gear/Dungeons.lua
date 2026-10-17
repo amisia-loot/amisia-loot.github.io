@@ -623,7 +623,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
     local po = {}
     for k, v in pairs(o) do po[k] = v end
     po.sources = ALL_SOURCES
-    -- the own picks (D-54) are targets: they count as upgrades until worn
+    -- the own picks (D-55) are targets: they count as upgrades until worn
     local ownSet = ns.BisOwnPickSet and ns.BisOwnPickSet(o) or {}
 
     local function gainOf(id)

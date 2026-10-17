@@ -186,7 +186,7 @@ Slot und Spezialisierung (17 × 3 Zahlen je Charakter), also kein Wachstum der S
   `ns.BisSummary`, `ns.BisRanking`); TOC-Eintrag; Theme-Token `T.GOALS` in `UI/Theme.lua`; Slot-Bilder
   `Interface\PaperDoll\UI-PaperDoll-Slot-*` in `ns.Theme.ATLASES`/der Texturliste.
 - Selbsttest-Zeile "Charaktermodell" in `Core/SelfTest.lua`.
-- Neue Regel in `docs/DECISIONS.md` (D-54): eigene Wahl schlägt BiS-Empfehlung und Wertung, gilt je
+- Neue Regel in `docs/DECISIONS.md` (D-55): eigene Wahl schlägt BiS-Empfehlung und Wertung, gilt je
   Spezialisierung, wird nie automatisch geändert, wird nie gesendet.
 - Keine Nachrichten, Blob-Arten, Exportzeilen, Einfügeblöcke, kein Website-Zustand.
 

@@ -106,7 +106,7 @@ local function cleanChar(c)
     if c.class ~= nil and type(c.class) ~= "string" then c.class = nil end
     -- the weapon plan: auto | 2H | DW | SHIELD
     if c.plan ~= nil and not ns.BIS_PLANS[c.plan] then c.plan = "auto" end
-    -- the own picks (F-112, D-54): { [spec] = { [slot of Gear.SLOTS] = item id } }; an empty spec
+    -- the own picks (F-112, D-55): { [spec] = { [slot of Gear.SLOTS] = item id } }; an empty spec
     -- table falls away, at most PICK_SPECS specs
     if c.pick ~= nil then
         local pick = fixSet(c.pick, function(k) return (type(k) == "string" and k:find("^%a+$")) and k or nil end, function(t)
@@ -737,7 +737,7 @@ function ns.BisGroup(id)
 end
 
 ---------------------------------------------------------------------------
--- Own picks (F-112, D-54): per spec and row the item the player chose as the row's target. It
+-- Own picks (F-112, D-55): per spec and row the item the player chose as the row's target. It
 -- takes option 1 of its row wherever a target is used and beats a BiS pick; the tooltip's
 -- "Upgrade für dich" still compares the score with what is worn. Amisia never changes a pick by
 -- itself and never sends one.
@@ -1374,7 +1374,7 @@ local function front(e, list)
     return out
 end
 
--- Gear.Best's lists with the own picks of the options first in their rows (D-54): { [slot] = list,
+-- Gear.Best's lists with the own picks of the options first in their rows (D-55): { [slot] = list,
 -- plan = "2H"/"1H", rank = { [slot] = the slot's ranking without the own pick (both rings or both
 -- trinkets: the one list) } }. A two-hand pick makes the plan two-hand, a one-hand or off-hand pick
 -- one-hand; Gear.Best's lists are never changed.
@@ -1848,7 +1848,7 @@ function ns.BisHere(placeKey, opts)
                     if ev.code == "loading" then loading = loading + 1 end
                     if not ev.reason then
                         local wished = wishOf(c, id)
-                        -- an own pick is the row's target (D-54): one not worn counts, while one is
+                        -- an own pick is the row's target (D-55): one not worn counts, while one is
                         -- worn nothing else does
                         local up = not ev.switch and not ev.ownWorn
                             and ((ev.own and not worn().ids[id]) or ns.BisIsUpgrade(ev.gain, ev.mine))
@@ -1895,7 +1895,7 @@ ns.OnEvent("SKILL_LINES_CHANGED", function()
     if old == nil or not sameSkills(old, ns.BisSkills() or false) then bump() end
 end)
 -- the window sizes and other ui.* settings change no result (each Ctrl + wheel notch over the goals
--- window is one); an own pick changes no score, only the targets (D-54)
+-- window is one); an own pick changes no score, only the targets (D-55)
 ns.Listen("SETTING", function(path)
     if type(path) == "string" and path:find("^ui%.") then return end
     bumpAll()
