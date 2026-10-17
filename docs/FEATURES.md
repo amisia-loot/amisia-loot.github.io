@@ -779,29 +779,29 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Item einen Anlegen-Effekt hat, den die Wertung nicht zählt, dann steht "Effekt nicht gewertet" dabei.
 
 ### F-110 Fenster "Ausrüstungsziele" mit Puppe
-- Version: -
-- Status: geplant
+- Version: 2.44.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Großes Fenster" klickst (oder `/amisia bis gross` eingibst), dann öffnet sich das Fenster "Ausrüstungsziele" mit deinem Charaktermodell, den 17 Slots links, rechts und darunter, der Liste in der Mitte und rechts der Leiste des ersten Slots mit Upgrade.
 - Prüfung: Wenn du "Angelegt" wählst, dann tragen Modell und Slots deine jetzige Ausrüstung; mit "Ziele" die Ziele. Ziehen dreht, Mausrad zoomt, Rechtsklick setzt zurück.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann steht dort eine Zeile "Charaktermodell" (DressUpModel, SetUnit, Undress, TryOn: vorhanden oder was fehlt).
-- Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil A.
+- Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil A. Offen im Spiel: ob Forevers DressUpModel SetUnit/Undress/TryOn hat (Selbsttest-Zeile "Charaktermodell"), ob TryOn die Hand (MAINHANDSLOT/SECONDARYHANDSLOT/RANGEDSLOT) annimmt, die leeren Slot-Bilder und der Stern-Atlas.
 
 ### F-111 Ausrüstungsziele: Wertungs-Kopf
-- Version: -
-- Status: geplant
+- Version: 2.44.0
+- Status: gebaut
 - Prüfung: Wenn du im Fenster eine eigene Wahl triffst, dann ändern sich "Wertung", "+N" und die Wertänderungen unter der Puppe; der Balken endet bei "Bestes auf Stufe N", das sich durch deine Wahl nicht ändert.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil B.
 
 ### F-112 Ausrüstungsziele: Slot-Leiste und eigene Wahl
-- Version: -
-- Status: geplant
+- Version: 2.44.0
+- Status: gebaut
 - Prüfung: Wenn du ein Item der Rangliste anklickst, dann trägt es den Stern, ist in der Liste, auf der Seite Ziele und als Pin auf der Weltkarte das Ziel dieses Slots, und nach `/reload` noch immer; ein zweiter Klick (oder das rote X unter "Deine Wahl") nimmt die Wahl weg.
 - Prüfung: Wenn du einen Item-Link in das Feld der Leiste ziehst, der nicht in den Slot passt, dann sagt die Zeile darunter "Passt nicht in Kopf." und nichts ändert sich.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil C.
 
 ### F-113 Ausrüstungsziele: Fortschritt und Filter
-- Version: -
-- Status: geplant
+- Version: 2.44.0
+- Status: gebaut
 - Prüfung: Wenn du "Zu holen" wählst, dann zeigt die Liste nur Slots mit Ziel, das du nicht hast, der Chip sagt die Zahl; "Ohne Verzauberung" zeigt die angelegten Items in verzauberbaren Slots ohne Verzauberung.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil D.
 
