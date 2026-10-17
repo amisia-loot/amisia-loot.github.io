@@ -2,6 +2,17 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.44.0 (2026-10-17)
+
+- F-115: Prüfung "Warum?" nennt die Erklärzeile der Ziele und /amisia bis warum; offene Punkte fürs Spiel
+- Ausrüstungsziele (F-110): Fenster mit Puppe (Charaktermodell, 17 Slots wie im Charakterfenster, Ziele/Angelegt), Liste nach Rüstung/Schmuck/Waffen; Knopf "Großes Fenster" in Ziele, Seitenreiter, /amisia bis gross, Größe ui.goalScale; Selbsttest "Charaktermodell"; Spec 2026-10-17-ziele-fenster
+- Ausrüstungsziele (F-113): "N/17 Ziele hast du" mit Balken aus 17 Teilen, Abschnitte "Rüstung N von 9 hast du", Filter Alle / Zu holen / In der Tasche / Ohne Verzauberung (Prüfung des Raid-Checks, RC.Unenchanted); ns.BisProgress
+- Ausrüstungsziele (F-112): Slot-Leiste mit "Deine Wahl" (Stern, rotes X, "Überholt ... Übernehmen", "Passt nicht zum Waffenplan"), Rangliste der zehn besten (Klick: eigene Wahl), Dungeon-Drops nahe der Stufe, Feld "Item-Link oder ID"; eigene Wahl je Spezialisierung in bis.chars[].pick, Option 1 ihres Slots überall (Ziele, Karte, Hier, Dungeon-Rangliste), schlägt die BiS-Empfehlung; ns.BisPick/BisSetPick/BisRanking/BisOvertaken; D-54
+- Ausrüstungsziele (F-111): Wertungs-Kopf unter der Puppe ("Wertung X", "jetzt Y", "+Z", Balken bis "Bestes auf Stufe N" mit Strich für jetzt, die sechs größten Wertänderungen, alle im Tooltip); ns.BisSummary mit derselben Wertung wie überall (D-11), Bestes ohne Ausschlüsse und eigene Wahl; Fenster 946 x 624
+- Ausrüstungsziele, Review: zweiter Ring behält das verdrängte beste Item; Wertung paart Ringe/Schmuck nach Item statt Platz; "Überholt" gegen die Wertung der eigenen Wahl; eigene Wahl unterdrückt nur im Platz, in dem sie getragen wird; Anprobe der Waffen mit Hand (MAINHANDSLOT/SECONDARYHANDSLOT/RANGEDSLOT); ui.*-Einstellungen und eigene Wahl rechnen Gear.Best nicht neu
+- Ausrüstungsziele: Regel der eigenen Wahl heißt D-55 (D-54 ist das genaue Upgrade, F-115)
+- F-110..F-113 gebaut in 2.44.0
+
 ## 2.43.0 (2026-10-17)
 
 - F-115 kommt mit 2.43 (2.42.0 war nur Duelle): Versionshinweise angepasst
