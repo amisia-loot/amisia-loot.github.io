@@ -874,8 +874,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn der Code kaputt ist, dann meldet der Chat, was nicht stimmt (z. B. "Kein Amisia-Talentcode ..."), und nichts ändert sich.
 
 ### F-123 Ausrüstungsziele: Katalog mit Sets und Itemsuche
-- Version: -
-- Status: geplant
+- Version: 2.45.0
+- Status: gebaut
 - Prüfung: Wenn du im Fenster Ausrüstungsziele "Katalog" klickst, dann stehen links Raid-Sets, Dungeon-Sets, PvP-Sets, Handwerks-Sets und Welt-Sets mit der Zahl ihrer Sets; leere grau.
 - Prüfung: Wenn du Handwerks-Sets und dann "Devilsaur Armor" anklickst, dann stehen beide Teile mit Slot, Stufe, Zuwachs und Quelle darunter, und "Set anprobieren" zieht sie dem Modell an; "Anprobe leeren" wieder aus.
 - Prüfung: Wenn du "Wolfs" in die Suche tippst und "Alle" klickst, dann listet Amisia jedes bekannte Item mit "Wolfs" im Namen, das beste für dich oben.
@@ -884,8 +884,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons. Ruf fehlt, bis `export_db2.ps1` die Tabelle mitnimmt.
 
 ### F-122 Seite Raids
-- Version: -
-- Status: geplant
+- Version: 2.45.0
+- Status: gebaut
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann steht links "Raids" direkt unter "Dungeons", und die Seite listet Barrow Deeps (10), Hyjal Summit (20) und Onyxia's Lair (40), vor dem 09.12. mit "ab 09.12.".
 - Prüfung: Wenn du auf der Seite Dungeons bist, dann steht dort kein Raid mehr, auch nicht mit Stufe 60.
 - Prüfung: Wenn du Onyxia's Lair wählst, dann zeigt das Bild den Raid mit Onyxias Modell und darunter die bekannte Beute; "Wegpunkt" setzt das Kartenziel auf den Eingang in den Düstermarschen.
@@ -894,8 +894,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-17-raids-seite.md` (freigegeben 2026-10-17).
 
 ### F-121 Talentrechner: zwei Pläne je Klasse
-- Version: -
-- Status: geplant
+- Version: 2.45.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Talente (oder im Fenster Talentrechner) unten den Knopf "Primär" klickst, dann steht dort "Sekundär", die Bäume zeigen den zweiten Plan der Klasse (beim ersten Mal leer) und unten steht "Plan Sekundär".
 - Prüfung: Wenn du im Plan Sekundär Talente verteilst, zurück auf "Primär" und wieder auf "Sekundär" wechselst (auch nach `/reload`), dann sind beide Pläne noch so, wie du sie verlassen hast; Seite und Fenster zeigen denselben Plan.
 - Notiz: Wunsch des Nutzers 2026-10-17 ("können wir bei Talentrechner 2 preset speichern", Bildschirmfoto der Reiter Primär/Sekundär). Gespeichert in `AmisiaDB.talents.plans2`; der erste Plan bleibt in `plans`, alte Pläne sind also Primär.
