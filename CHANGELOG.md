@@ -2,6 +2,15 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.45.0 (2026-10-17)
+
+- Talentrechner: zwei Pläne je Klasse (Primär/Sekundär, F-121); TOC mit Category VuloUI
+- Spec: Seite Raids im Reiter Ausrüstung (F-122, Entwurf)
+- Seite Raids im Reiter Ausrüstung (F-122): alle Raids auf jeder Stufe mit Größe, Öffnungstag, Wert und eigener Raid-ID; Bild, Bosse mit Beute, Wegpunkt
+- Spec: Ausrüstungsziele, Katalog mit Set-Kategorien und Itemsuche (F-123, Entwurf)
+- Ausrüstungsziele: Katalog (F-123) mit Set-Kategorien und Suche über alle Items
+- F-121..F-123 gebaut in 2.45.0
+
 ## 2.44.0 (2026-10-17)
 
 - F-115: Prüfung "Warum?" nennt die Erklärzeile der Ziele und /amisia bis warum; offene Punkte fürs Spiel
