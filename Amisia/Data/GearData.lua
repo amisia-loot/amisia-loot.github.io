@@ -17,7 +17,7 @@ local _, ns = ...
 -- class (bits as in S.Q); speed 0 for non-weapons.
 ns.LazyData("GEAR", [=[
 return {
-game="forever",cap=60,built="2026-10-16",
+game="forever",cap=60,built="2026-10-17",
 S={
 {"Q","Bounty on Garrick Padfoot",0,2,"A",1429,6,0},
 {"Q","The Killing Fields",0,8,"A",1436,9,0},
