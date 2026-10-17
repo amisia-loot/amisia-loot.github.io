@@ -1185,3 +1185,27 @@ Vorschläge übernehmen und bauen".
 vergleichbar. Python (`m_*` in `build_bis.py`) und Lua (`Gear/Model.lua`) rechnen dieselben Formeln.
 **Durchgesetzt durch:** `tools/tests/test_upgrade_model.py` (Lua gleich Python, Steigung gleich Gewicht),
 `tests/test_upgrade_model.lua`, `tests/test_need.lua`.
+
+## D-55 Eigene Wahl je Slot: schlägt BiS-Empfehlung und Wertung, gilt je Spezialisierung, nie automatisch, nie gesendet
+
+**Datum:** 2026-10-17
+**Entscheidung:** Spec `docs/specs/2026-10-17-ziele-fenster.md` (F-110 bis F-113). Der Spieler kann im
+Fenster "Ausrüstungsziele" je Slot und Spezialisierung ein Item zum Ziel machen (`AmisiaDB.bis.chars[<Name>].pick`,
+`ns.BisSetPick`): aus der Rangliste per Klick oder über das Feld "Item-Link oder ID" (nur ein Item-Link
+oder eine Zahl; das Item muss in den Slot passen und für die Klasse tragbar sein; ein Item außerhalb der
+Daten zählt mit den Werten des Clients, Quelle "unbekannt", ohne Pin). Die eigene Wahl ist Option 1 ihres
+Slots überall, wo Amisia ein Ziel nutzt (`ns.BisTargets`: Seite Ziele, Fenster, Karten-Pins; "Hier" und
+die Dungeon-Rangliste zählen sie als Upgrade, bis sie angelegt ist, und dann in ihrem Slot nichts
+anderes) und schlägt eine BiS-Empfehlung (D-09). Der Tooltip "Upgrade für dich" rechnet weiter nur nach
+der Wertung gegen das Angelegte. Eine Wahl, die zum Waffenplan nicht passt (oder die die Klasse nicht mehr
+tragen kann), bleibt gespeichert, wird aber nicht genutzt ("Passt nicht zum Waffenplan"). Amisia ändert
+eine Wahl nie selbst: ist sie angelegt und das beste Item der Rangliste um mindestens `bis.minGain`
+besser, steht nur "Überholt: ... Übernehmen" da. Die Wahl wird nie gesendet (auch nicht an "Wer braucht
+das?"). Die Wertung des Fensters ist Amisias eigene (D-11): dieselbe Formel, kein fremder Name.
+**Grund:** Nutzer 2026-10-17 zur Spec nach der BiS-Liste eines anderen Addons: "passt, alle sechs Vorschläge
+so übernehmen".
+**Folge:** `ns.BisOpts` trägt die genutzten Wahlen (`own`) und die nicht genutzten (`ownUnused`), der
+Schlüssel der Ergebnisse auch; `ns.BisMigrate` prüft Spezialisierung, Slot und Zahl (höchstens 17 Zahlen je
+Spezialisierung, keine neue Migration nach D-48 nötig). Ein Teilen von Listen (Teil F) braucht einen
+eigenen Nachtrag zur Spec.
+**Durchgesetzt durch:** `tests/test_goals_picks.lua`.

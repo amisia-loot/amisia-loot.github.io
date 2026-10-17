@@ -20,6 +20,10 @@ end
 
 local MAX_WISH, NOTE_MAX = 50, 40
 ns.BIS_MAX_WISH = MAX_WISH
+local PICK_SPECS = 8          -- own picks (F-112): spec tables kept per character
+-- the rows of the targets (Gear.SLOTS): the keys an own pick may have
+local PICK_SLOT = {}
+for _, sl in ipairs(Gear.SLOTS) do PICK_SLOT[sl.key] = true end
 -- Weapon plans: auto (the larger sum of a two-hander and main hand plus off hand), only a
 -- two-hander, two weapons, weapon and shield (or a held item).
 ns.BIS_PLANS = { auto = L["automatisch"], ["2H"] = L["Zweihand"], DW = L["zwei Waffen"], SHIELD = L["Waffe und Schild"] }
@@ -102,6 +106,20 @@ local function cleanChar(c)
     if c.class ~= nil and type(c.class) ~= "string" then c.class = nil end
     -- the weapon plan: auto | 2H | DW | SHIELD
     if c.plan ~= nil and not ns.BIS_PLANS[c.plan] then c.plan = "auto" end
+    -- the own picks (F-112, D-54): { [spec] = { [slot of Gear.SLOTS] = item id } }; an empty spec
+    -- table falls away, at most PICK_SPECS specs
+    if c.pick ~= nil then
+        local pick = fixSet(c.pick, function(k) return (type(k) == "string" and k:find("^%a+$")) and k or nil end, function(t)
+            if type(t) ~= "table" then return nil end
+            fixSet(t, function(k) return PICK_SLOT[k] and k or nil end, numKey)
+            return next(t) and t or nil
+        end)
+        local specs = {}
+        for k in pairs(pick) do specs[#specs + 1] = k end
+        table.sort(specs)
+        for i = PICK_SPECS + 1, #specs do pick[specs[i]] = nil end
+        c.pick = next(pick) and pick or nil
+    end
 end
 
 -- Settings of the TBC data that WoW Forever has no use for: the content phase, and the source
@@ -319,9 +337,14 @@ local function scoringOpts(o)
     return o
 end
 
+-- set below (it needs the item rows): the own picks of the spec the options use, and those they
+-- keep but do not use (code "plan": not with the weapon plan; "class", "slot": not wearable now)
+local ownPicks
+
 -- The options of the own character: class, spec (guessed), weighting kind, faction (A/H), level up
 -- to the data's cap, source switches, professions ("all"/"mine") with the own skills, the
--- exclusions, the weapon plan, the scoring switches and (bis.hitCap) the hit still useful per row.
+-- exclusions, the weapon plan, the scoring switches, (bis.hitCap) the hit still useful per row and
+-- the own picks of the spec (own = { [slot] = id } in use, ownUnused = { [slot] = code }).
 function ns.BisOpts()
     local c = ns.BisChar()
     local _, class = UnitClass("player")
@@ -338,6 +361,7 @@ function ns.BisOpts()
     }
     scoringOpts(o)
     o.cap = ns.BisHitCaps and ns.BisHitCaps(o) or nil
+    o.own, o.ownUnused = ownPicks(c, o)
     return o
 end
 
@@ -384,7 +408,7 @@ local function optsKey(o, st)
     return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), st or stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
-        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap) }, "|")
+        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), sortedKeys(o.own) }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -558,6 +582,7 @@ local SLOT_OF = { HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", BACK = "B
 local KIND_OF = { ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" }
 local SLOT_NAME = {}
 local SLOT_INV = {}
+local SECOND_ROW_OF = { FINGER1 = "FINGER2", TRINKET1 = "TRINKET2" }   -- the rows one group fills twice
 for _, sl in ipairs(Gear.SLOTS) do SLOT_NAME[sl.key], SLOT_INV[sl.key] = sl.name, sl.inv end
 ns.BIS_SLOT_NAME = SLOT_NAME
 
@@ -710,6 +735,130 @@ function ns.BisGroup(id)
     return loc and Gear.GROUP[loc] or nil
 end
 
+---------------------------------------------------------------------------
+-- Own picks (F-112, D-54): per spec and row the item the player chose as the row's target. It
+-- takes option 1 of its row wherever a target is used and beats a BiS pick; the tooltip's
+-- "Upgrade für dich" still compares the score with what is worn. Amisia never changes a pick by
+-- itself and never sends one.
+---------------------------------------------------------------------------
+
+-- the groups a row takes (an armour row: its own group)
+local PICK_FIT = { MAINHAND = { ["2H"] = true, ["1H"] = true, MH = true }, OFFHAND = { ["1H"] = true, OHW = true, SHIELD = true, HELD = true },
+    FINGER1 = { FINGER = true }, FINGER2 = { FINGER = true }, TRINKET1 = { TRINKET = true }, TRINKET2 = { TRINKET = true },
+    RANGED = { RANGED = true } }
+local PICK_TWIN = { FINGER1 = "FINGER2", FINGER2 = "FINGER1", TRINKET1 = "TRINKET2", TRINKET2 = "TRINKET1" }
+
+-- Whether an item may be the own pick of a row for the options: true, or nil, the reason (German)
+-- and a code ("slot", "noitem", "notgear", "class"). An item the data does not list counts by the
+-- client's item type.
+local function pickFits(slotKey, id, o)
+    if not PICK_SLOT[slotKey] then return nil, L["Unbekannter Slot."], "slot" end
+    local loc, classID, sub, row = rowType(id)
+    if not loc then return nil, L["Kein Item."], "noitem" end
+    local group = Gear.GROUP[loc]
+    if not group or not (classID == 2 or classID == 4) then return nil, L["Keine Ausrüstung."], "notgear" end
+    local fit = PICK_FIT[slotKey] or { [slotKey] = true }
+    if not fit[group] then return nil, L["Passt nicht in %s."]:format(SLOT_NAME[slotKey] or slotKey), "slot" end
+    local cannot = L["Das kann dein Charakter nicht tragen."]
+    if not o.class or not Gear.Usable(o.class, { loc, classID, sub or 0 }, o.level, o.spec) then return nil, cannot, "class" end
+    if row and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], o.class) then return nil, cannot, "class" end
+    if slotKey == "OFFHAND" and group == "1H" and not Gear.CanDualWield(o.class, o.level, o.spec) then return nil, cannot, "class" end
+    return true
+end
+
+-- The own picks the options use: those that fit their row and the weapon plan (a two-hander in
+-- the weapon hand only with "auto" or "2H", and the shield hand then has none; a one-hander not
+-- with "2H"; an off-hand weapon not with "SHIELD", a shield or held item not with "DW").
+ownPicks = function(c, o)
+    local stored = c and type(c.pick) == "table" and o.spec and c.pick[o.spec]
+    if type(stored) ~= "table" or not next(stored) or not Gear.Available() then return nil, nil end
+    local used, unused = {}, {}
+    for slotKey, id in pairs(stored) do
+        local ok, _, code = pickFits(slotKey, id, o)
+        if ok then used[slotKey] = id else unused[slotKey] = code end
+    end
+    local plan = o.plan or "auto"
+    local mh = used.MAINHAND and ns.BisGroup(used.MAINHAND)
+    local oh = used.OFFHAND and ns.BisGroup(used.OFFHAND)
+    local function drop(k) used[k], unused[k] = nil, "plan" end
+    if (mh == "2H" and plan ~= "auto" and plan ~= "2H") or (mh and mh ~= "2H" and plan == "2H") then
+        drop("MAINHAND")
+        mh = nil
+    end
+    if oh then
+        local weapon = oh == "1H" or oh == "OHW"
+        if plan == "2H" or mh == "2H" or (weapon and plan == "SHIELD") or (not weapon and plan == "DW") then drop("OFFHAND") end
+    end
+    return next(used) and used or nil, next(unused) and unused or nil
+end
+
+-- The own pick of a row for a spec (default the one in use), also one the options do not use; nil
+-- without.
+function ns.BisPick(slotKey, spec)
+    local c = ns.BisChar()
+    spec = spec or ns.BisSpec()
+    local t = c and type(c.pick) == "table" and spec and c.pick[spec]
+    return type(t) == "table" and t[slotKey] or nil
+end
+
+-- Makes item (an id, a link or a number as text) the own pick of a row for the spec in use; nil
+-- lifts it. true, or nil and the reason (German): the item must fit the row and the character
+-- must be able to wear it. A ring or trinket is the pick of one of its two rows only.
+function ns.BisSetPick(slotKey, item)
+    local c = ns.BisChar()
+    if not c then return nil, L["Amisia ist noch nicht geladen."] end
+    if not PICK_SLOT[slotKey] then return nil, L["Unbekannter Slot."] end
+    local spec = ns.BisSpec()
+    if not spec then return nil, L["Keine Gewichtung."] end
+    if item == nil then
+        local t = type(c.pick) == "table" and c.pick[spec]
+        if t and t[slotKey] then
+            t[slotKey] = nil
+            if not next(t) then c.pick[spec] = nil end
+            if not next(c.pick) then c.pick = nil end
+            ns.Fire("BIS_CHANGED")
+        end
+        return true
+    end
+    local id = type(item) == "number" and item or ns.ItemID(item)
+    if not id and type(item) == "string" then id = tonumber(item:match("^%s*(%d+)%s*$")) end
+    if not id or id <= 0 or id % 1 ~= 0 then return nil, L["Kein Item."] end
+    local _, class = UnitClass("player")
+    local ok, why = pickFits(slotKey, id, { class = class, spec = spec,
+        level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())) })
+    if not ok then return nil, why end
+    c.pick = type(c.pick) == "table" and c.pick or {}
+    c.pick[spec] = type(c.pick[spec]) == "table" and c.pick[spec] or {}
+    local t = c.pick[spec]
+    local twin = PICK_TWIN[slotKey]
+    if twin and t[twin] == id then t[twin] = nil end
+    t[slotKey] = id
+    ns.Fire("BIS_CHANGED")
+    return true
+end
+
+-- The ids of the own picks the options use, as a set (empty without).
+function ns.BisOwnPickSet(o)
+    local out = {}
+    for _, id in pairs((o or ns.BisOpts()).own or {}) do out[id] = true end
+    return out
+end
+
+-- Whether an item is an own pick of its rows, and whether an own pick other than it is worn in a
+-- row it is compared against (then nothing else is an upgrade there, as with a worn BiS pick).
+local function ownState(o, id, slotKey, against)
+    local own = o.own
+    if type(own) ~= "table" then return false, false end
+    local second = SECOND_ROW_OF[slotKey]
+    local mine = own[slotKey] == id or (second ~= nil and own[second] == id) or (slotKey == "MAINHAND" and own.OFFHAND == id)
+    local wornIds, ownWorn = worn().ids, false
+    for _, key in ipairs(against or {}) do
+        local p = own[key]
+        if p and p ~= id and wornIds[p] then ownWorn = true end
+    end
+    return mine and true or false, ownWorn
+end
+
 -- BiS picks for the own character (Gear.PicksFor with the options' plan and exclusions; none with
 -- o.picks == false): the pick an item is in its rows (slotKey, and the second ring or trinket row),
 -- and whether a pick other than the item is worn in a row it is compared against. A pick is the
@@ -770,8 +919,9 @@ local function evaluate(item, o)
     local score = Gear.Score(s, w, o.level, kind, o.class, cap)
     local gain, mine, switch, against = gainFor(slotKey, group, id, score, context(o))
     local pick, pickWorn = pickState(o, id, slotKey, against)
+    local own, ownWorn = ownState(o, id, slotKey, against)
     return { id = id, s = s, w = w, kind = kind, group = group, slotKey = slotKey, score = score, gain = gain, mine = mine,
-        switch = switch, row = row, against = against, cap = cap, pick = pick, pickWorn = pickWorn }
+        switch = switch, row = row, against = against, cap = cap, pick = pick, pickWorn = pickWorn, own = own, ownWorn = ownWorn }
 end
 
 -- What an item (id or link; a link counts its random suffix) brings the own character:
@@ -781,7 +931,8 @@ function ns.BisGain(item, opts)
     local ev = evaluate(item, opts)
     if ev.reason then return nil, ev.reason, ev.code end
     if ev.switch then return nil, L["Waffenwechsel"], "switch", ev.slotKey end
-    if ev.pickWorn then return math.min(ev.gain, 0), ev.slotKey, ev.mine, ev.score end
+    -- a worn BiS pick or own pick is the row's target: nothing else is an upgrade there
+    if ev.pickWorn or ev.ownWorn then return math.min(ev.gain, 0), ev.slotKey, ev.mine, ev.score end
     return ev.gain, ev.slotKey, ev.mine, ev.score
 end
 
@@ -1164,6 +1315,105 @@ end
 
 local function wishOf(c, id) return c and c.wish[id] ~= nil or false end
 
+-- An option for an own pick: the entry of the slot's ranking when it is there (with its random
+-- suffix and set share), else scored now as Gear.Best scores a row (the best seen suffix; an item
+-- the data does not list counts with the client's stats, unknown = true); loading while the client
+-- has no stats yet.
+local function ownEntry(slotKey, id, o, list)
+    for _, e in ipairs(list or {}) do
+        if e[1] == id then
+            local copy = {}
+            for k, v in pairs(e) do copy[k] = v end
+            copy.own, copy.pick = true, nil
+            return copy
+        end
+    end
+    local group = ns.BisGroup(id)
+    local e = { id, 0, own = true, unknown = Gear.Item(id) == nil or nil }
+    local s = Gear.Stats(id)
+    local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
+    if not s or not w then
+        e.loading = true
+        return e
+    end
+    local place
+    if slotKey == "MAINHAND" then place = group == "2H" and "2H" or "MH"
+    elseif slotKey == "OFFHAND" then place = (group == "1H" or group == "OHW") and "OH" or nil
+    elseif slotKey == "RANGED" then place = "RANGED" end
+    local cap = o.cap and o.cap[Gear.CAP_ROW[group] or slotKey]
+    local v = Gear.Score(s, w, o.level, place, o.class, cap)
+    local variants = o.suffix ~= "base" and Gear.SuffixStats(id)
+    if variants then
+        for sfx, vs in pairs(variants) do
+            local x = Gear.Score(vs, w, o.level, place, o.class, cap)
+            if x > v then v, e.suffix = x, sfx end
+        end
+    end
+    e[2], e.sc = v, s.SC or nil
+    return e
+end
+
+local function without(list, a, b)
+    local out = {}
+    for _, e in ipairs(list or {}) do
+        if e[1] ~= a and e[1] ~= b then out[#out + 1] = e end
+    end
+    return out
+end
+
+local function front(e, list)
+    local out = { e }
+    for _, x in ipairs(list) do
+        if x[1] ~= e[1] then out[#out + 1] = x end
+    end
+    return out
+end
+
+-- Gear.Best's lists with the own picks of the options first in their rows (D-54): { [slot] = list,
+-- plan = "2H"/"1H", rank = { [slot] = the slot's ranking without the own pick (both rings or both
+-- trinkets: the one list) } }. A two-hand pick makes the plan two-hand, a one-hand or off-hand pick
+-- one-hand; Gear.Best's lists are never changed.
+local function applyOwn(best, o)
+    local own = o.own
+    local two = best.plan == "2H"
+    if own then
+        if own.MAINHAND then two = ns.BisGroup(own.MAINHAND) == "2H"
+        elseif own.OFFHAND then two = false end
+    end
+    local MH, OH = best.MAINHAND, best.OFFHAND
+    if two ~= (best.plan == "2H") then
+        if two then MH, OH = best.altMainhand or {}, {} else MH, OH = best.altMainhand or {}, best.altOffhand or {} end
+    end
+    local out = { plan = two and "2H" or "1H", rank = {} }
+    for _, sl in ipairs(Gear.SLOTS) do
+        local k = sl.key
+        local base = (k == "MAINHAND" and MH) or (k == "OFFHAND" and OH) or best[k] or {}
+        out[k] = base
+        out.rank[k] = (k == "FINGER2" and (best.FINGER1 or {})) or (k == "TRINKET2" and (best.TRINKET1 or {})) or base
+    end
+    if not own then return out end
+    for k, id in pairs(own) do
+        if k ~= "FINGER1" and k ~= "FINGER2" and k ~= "TRINKET1" and k ~= "TRINKET2" then
+            out[k] = front(ownEntry(k, id, o, out.rank[k]), out[k])
+        end
+    end
+    -- the same weapon in both hands only when it is the pick of both
+    if own.MAINHAND and own.OFFHAND ~= own.MAINHAND then out.OFFHAND = without(out.OFFHAND, own.MAINHAND) end
+    -- two rings and two trinkets: one list; an item is the target of one row only
+    for _, pair in ipairs({ { "FINGER1", "FINGER2" }, { "TRINKET1", "TRINKET2" } }) do
+        local a, b = pair[1], pair[2]
+        local pa, pb = own[a], own[b]
+        if pa or pb then
+            local full = best[a] or {}
+            local rowA = pa and front(ownEntry(a, pa, o, full), without(full, pb)) or without(best[a], pb)
+            local rowB = without(best[b], rowA[1] and rowA[1][1], pa)
+            if pb then rowB = front(ownEntry(b, pb, o, full), rowB) end
+            out[a], out[b] = rowA, rowB
+        end
+    end
+    return out
+end
+
 local targetKey, targetRes
 local bestKey, bestRes, bestWaits   -- Gear.Best's result, kept while the options and the scoreStamp stay
 local targetOwnStamp   -- the stamp at which targetRes was made with the own options, else nil
@@ -1191,28 +1441,32 @@ function ns.BisTargets(opts)
         bestKey, bestRes = (bestWaits == w0) and bkey or nil, best
     end
     local r = emptyResult()
-    r.plan, r.missing, r.total = best.plan, best.missing, best.total
+    local lists = applyOwn(best, o)
+    r.plan, r.missing, r.total = lists.plan, best.missing, best.total
     r.twoHandScore, r.oneHandScore = best.twoHandScore, best.oneHandScore
     r.dwScore, r.shieldScore, r.planWanted, r.sets = best.dwScore, best.shieldScore, best.planWanted, best.sets
+    -- the own picks in use and those kept but not used (F-112), each slot's ranking (ns.BisRanking)
+    r.own, r.ownUnused, r.rank = o.own, o.ownUnused, lists.rank
     local ctx = context(o)
     local c = ns.BisChar()
     for _, sl in ipairs(Gear.SLOTS) do
-        local list, out = best[sl.key] or {}, r[sl.key]
+        local list, out = lists[sl.key] or {}, r[sl.key]
         for i = 1, math.min(3, #list) do
             local id, score = list[i][1], list[i][2]
             local row = Gear.Item(id)
-            local group = row and Gear.GROUP[row[1]]
+            local group = row and Gear.GROUP[row[1]] or ns.BisGroup(id)
             local gain, mine, switch = gainFor(sl.key, group, id, score, ctx)
             local owned = ns.BisOwned(id)
             local src = list[i]
+            -- a BiS pick and an own pick are the row's target: an upgrade until worn
             out[i] = { id = id, score = score, gain = gain, mine = mine, owned = owned, worn = owned == "worn",
                 wished = wishOf(c, id), switch = switch or nil,
-                upgrade = (not switch and owned ~= "worn" and (src.pick ~= nil or ns.BisIsUpgrade(gain, mine))) or false,
+                upgrade = (not switch and owned ~= "worn" and (src.pick ~= nil or src.own or ns.BisIsUpgrade(gain, mine))) or false,
                 sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, setb = src.setb,
-                effort = src.effort, pick = src.pick }
+                effort = src.effort, pick = src.pick, own = src.own or nil, unknown = src.unknown, loading = src.loading }
         end
-        -- a BiS pick worn in the row: it is the target, nothing else is an upgrade there
-        if out[1] and out[1].pick and out[1].worn then
+        -- a BiS pick or own pick worn in the row: it is the target, nothing else is an upgrade there
+        if out[1] and (out[1].pick or out[1].own) and out[1].worn then
             for i = 2, #out do out[i].upgrade = false end
         end
         r.mine[sl.key] = ctx.slot[sl.key]
@@ -1270,6 +1524,52 @@ function ns.BisProgress(res)
     end
     res.progress = p
     return p
+end
+
+-- The ranking of a row for the own character (F-112): the best n (10) items of Gear.Best's list for
+-- the row, with the own sources and exclusions and without the own pick moved ahead, best first:
+-- { { id, score, gain, mine, owned, worn, upgrade, switch, own (the own pick), pick, suffix, setb } },
+-- and how many the list holds. Both rings (both trinkets) share one list. Kept with the targets.
+function ns.BisRanking(slotKey, n)
+    n = n or 10
+    local res = ns.BisTargets()
+    res.ranked = res.ranked or {}
+    local key = slotKey .. ":" .. n
+    local kept = res.ranked[key]
+    if kept then return kept[1], kept[2] end
+    local list = res.rank and res.rank[slotKey] or {}
+    local o = ns.BisOpts()
+    local ctx = context(o)
+    local mine = res.own and res.own[slotKey] or ns.BisPick(slotKey)
+    local out = {}
+    for i = 1, math.min(n, #list) do
+        local src = list[i]
+        local id = src[1]
+        local gain, worth, switch = gainFor(slotKey, ns.BisGroup(id), id, src[2], ctx)
+        local owned = ns.BisOwned(id)
+        out[i] = { id = id, score = src[2], gain = gain, mine = worth, owned = owned, worn = owned == "worn",
+            switch = switch or nil, own = mine == id or nil, pick = src.pick, suffix = src.suffix, setb = src.setb,
+            upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, worth)) or false }
+    end
+    res.ranked[key] = { out, #list }
+    return out, #list
+end
+
+-- The hint under a worn own pick (F-112): the best item of the row's ranking when it beats the pick
+-- by at least bis.minGain percent: { id, pct, gain } or nil. Amisia never takes it over by itself.
+function ns.BisOvertaken(slotKey)
+    local res = ns.BisTargets()
+    local first = res[slotKey] and res[slotKey][1]
+    if not (first and first.own and first.worn) then return nil end
+    for _, e in ipairs((ns.BisRanking(slotKey, 10))) do
+        if e.id ~= first.id then
+            if not e.worn and ns.BisIsUpgrade(e.gain, e.mine) then
+                return { id = e.id, gain = e.gain, pct = (e.mine or 0) > 0 and math.floor(e.gain / e.mine * 100 + 0.5) or nil }
+            end
+            return nil
+        end
+    end
+    return nil
 end
 
 ---------------------------------------------------------------------------
@@ -1422,7 +1722,10 @@ function ns.BisHere(placeKey, opts)
                     if ev.code == "loading" then loading = loading + 1 end
                     if not ev.reason then
                         local wished = wishOf(c, id)
-                        local up = not ev.switch and ns.BisIsUpgrade(ev.gain, ev.mine)
+                        -- an own pick is the row's target (D-54): one not worn counts, while one is
+                        -- worn nothing else does
+                        local up = not ev.switch and not ev.ownWorn
+                            and ((ev.own and not worn().ids[id]) or ns.BisIsUpgrade(ev.gain, ev.mine))
                         if up or wished then
                             list[#list + 1] = { id = id, rec = hit, slotKey = ev.slotKey, score = ev.score, gain = ev.gain, mine = ev.mine,
                                 owned = ns.BisOwned(id), wished = wished, upgrade = up or false, switch = ev.switch or nil }

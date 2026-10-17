@@ -1446,6 +1446,8 @@ function Gear.Best(opts)
         res.MAINHAND = lists["2H"]
         res.OFFHAND = {}
         res.altMainhand = lists.MH
+        -- the off hands beside a one-hander, for an own pick that turns the plan (Bis.lua)
+        res.altOffhand = ohAll
     else
         res.plan = "1H"
         res.MAINHAND = lists.MH

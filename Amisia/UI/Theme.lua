@@ -364,9 +364,16 @@ T.GOALS = {
     COLS = { { "slot", 4, 56 }, { "icon", 62, 16 }, { "name", 82, 150 }, { "gain", 236, 38 }, { "map", 280, 16 }, { "src", 298, 68 } },
     -- the slot panel on the right
     SIDE_X = 718, SIDE_W = 210,
-    SIDE_ROW_H = 18, RANK_ROWS = 10, DROP_ROWS = 3,
+    SIDE_ROW_H = 18, RANK_ROWS = 10,   -- the ranking's rows
+    DROP_ROWS = 3, DROP_ROW_H = 30,     -- the dungeon drops: item over boss and dungeon
+    HEAD_H = 16,          -- a head in the panel (the slot, Deine Wahl, Rangliste, ...)
     SECTION_GAP = 6,      -- before a section's head in the panel
+    PICK_H = 30,          -- the own pick: name over source (or the line without a pick)
+    TAKE_W = 76,          -- "Übernehmen" beside the hint "Überholt: ..."
+    RANK_GAIN_W = 44,     -- the gain at a ranking row's right end
+    ALL_W = 90,           -- "Alle zeigen" (at least; FitChip)
     FIELD_W = 132,        -- "Item-Link oder ID"; "Hinzufügen" takes the rest
+    MSG_H = 26,           -- what the field says (two lines)
     -- the score head under the doll (part B)
     SCORE_H = 20,         -- "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4" beside it
     SCORE_BAR_H = 10,     -- the bar up to "Bestes auf Stufe N"

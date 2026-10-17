@@ -623,6 +623,8 @@ local function compute(entry, e, x, seen, o, gains, limit)
     local po = {}
     for k, v in pairs(o) do po[k] = v end
     po.sources = ALL_SOURCES
+    -- the own picks (D-54) are targets: they count as upgrades until worn
+    local ownSet = ns.BisOwnPickSet and ns.BisOwnPickSet(o) or {}
 
     local function gainOf(id)
         local g = gains[id]
@@ -662,7 +664,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
                     local owned = ns.BisOwned(id)
                     local wished = c and c.wish[id] ~= nil or false
                     -- an owned upgrade is listed (with its mark) but not counted
-                    local better = ns.BisIsUpgrade(gain, mine)
+                    local better = ns.BisIsUpgrade(gain, mine) or ownSet[id] == true
                     local up = better and not owned or false
                     if better or wished then
                         local p0, est = chanceOf(rec), false
@@ -675,7 +677,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
                         ob.items[#ob.items + 1] = { id = id, gain = gain, slotKey = slotKey, mine = mine, p = p, rate = rate, n = n, K = K,
                             owned = owned, wished = wished, upgrade = up, rec = rec }
                         if up and not ob.tentative then
-                            ob.perRun = ob.perRun + gain * (p or 0)
+                            ob.perRun = ob.perRun + math.max(gain, 0) * (p or 0)
                             if not counted[id] then counted[id] = true; upgrades = upgrades + 1 end
                         end
                     end
@@ -702,7 +704,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
             for _, id in ipairs(q.items) do
                 if not exItem[id] and reqLevel(id) <= limit then
                     local g = gainOf(id)
-                    if g and not ns.BisOwned(id) and ns.BisIsUpgrade(g[1], g[3]) then
+                    if g and not ns.BisOwned(id) and (ns.BisIsUpgrade(g[1], g[3]) or ownSet[id]) then
                         ups[#ups + 1] = { id = id, gain = g[1], slotKey = g[2], mine = g[3] }
                         if not best or g[1] > best.gain then best = { id = id, gain = g[1], slotKey = g[2] } end
                     end
@@ -712,7 +714,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
             local done = questDone(rec[7]) or questGone(q.dq)
             quests[#quests + 1] = { qid = rec[7], title = questTitle(rec), level = rec[4], best = best, done = done, rec = rec, ups = ups }
             if best and not done then
-                once = once + best.gain
+                once = once + math.max(best.gain, 0)
                 questUps = questUps + 1
             end
         end

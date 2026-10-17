@@ -6,6 +6,10 @@
 -- gear page's view Ziele shows them (its item texts, sources, map button, menu and clicks come from
 -- ns.GearPageKit), over it how many targets are got ("N/17 Ziele hast du", a bar of 17 parts) and
 -- the filters Alle / Zu holen / In der Tasche / Ohne Verzauberung (the raid check's enchant test).
+-- Right the chosen slot's panel: the own pick ("Deine Wahl", D-54: ns.BisSetPick, star, red X,
+-- "Überholt ... Übernehmen" and "Passt nicht zum Waffenplan"), the slot's ranking (ns.BisRanking: a
+-- click makes a row the own pick, again lifts it), up to three dungeon drops near the own level
+-- (the dungeon ranking; "Alle zeigen" opens the page Dungeons) and the field "Item-Link oder ID".
 -- Everything comes from ns.BisTargets: the window and the page show the same
 -- targets. The window is moved and scaled on its own (settings.goalWindow, ui.goalScale, Ctrl +
 -- mouse wheel), as the talent window. Nothing is built before it opens; nothing is sent.
@@ -461,8 +465,9 @@ local function gainText(e)
     return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
 end
 
+local ownMark   -- below: the star of an own pick
 local function badge(e)
-    if e.own then return "|A:auctionhouse-icon-favorite:12:12|a " end
+    if e.own then return ownMark() end
     if e.pick then return T.GOLD_TEXT .. "BiS|r " end
     return ""
 end
@@ -542,6 +547,333 @@ local function buildList(parent)
     list:SetPoint("TOPLEFT", G.LIST_X, -G.LIST_Y)
     list:SetWidth(G.LIST_W - T.SCROLL_ROOM)
     return list
+end
+
+---------------------------------------------------------------------------
+-- The slot panel on the right (F-112)
+---------------------------------------------------------------------------
+
+local OWN_MARK, WISH_STAR = "|A:auctionhouse-icon-favorite:12:12|a ", "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t "
+ownMark = function()
+    -- the auction house's favourite star; without that atlas the raid star
+    if W.HasAtlas("auctionhouse-icon-favorite") then return OWN_MARK end
+    return WISH_STAR
+end
+
+local NORM = { FINGER2 = "FINGER1", TRINKET2 = "TRINKET1" }
+-- Up to n items of a slot from the dungeons whose level range fits (the dungeon ranking): { { id,
+-- gain, boss, dungeon, key } }, the biggest gain first, each item once.
+local function dropsFor(slotKey, n)
+    local out, seen = {}, {}
+    if not ns.DungeonRanking then return out end
+    local ok, list = pcall(ns.DungeonRanking)
+    local want = NORM[slotKey] or slotKey
+    for _, e in ipairs(ok and list or {}) do
+        for _, b in ipairs(e.bosses or {}) do
+            for _, it in ipairs(b.items or {}) do
+                if it.upgrade and not seen[it.id] and (NORM[it.slotKey] or it.slotKey) == want then
+                    seen[it.id] = true
+                    out[#out + 1] = { id = it.id, gain = it.gain, mine = it.mine, boss = b.name, dungeon = e.name, key = e.key }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.gain ~= b.gain then return a.gain > b.gain end
+        return a.id < b.id
+    end)
+    for i = #out, (n or 3) + 1, -1 do out[i] = nil end
+    return out
+end
+ns.GoalsDrops = dropsFor
+
+local function pctText(gain, mine, up)
+    if type(gain) ~= "number" then return "" end
+    local color = up and GREEN or GREY
+    if type(mine) == "number" and mine > 0 then return color .. ("%+d %%"):format(math.floor(gain / mine * 100 + 0.5)) .. "|r" end
+    return color .. ("%+d"):format(math.floor(gain + 0.5)) .. "|r"
+end
+
+local function sideTip(owner, id, extra)
+    K.itemTooltip(owner, id)
+    if extra and extra ~= "" then
+        GameTooltip:AddLine(extra, 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end
+end
+
+local function say(S, text) S.msg:SetText(text or "") end
+
+local function addFromField(S)
+    local text = S.field:GetText() or ""
+    if not text:find("%S") then return end
+    local ok, why = ns.BisSetPick(S.slot, text)
+    if ok then
+        S.field:SetText("")
+        S.field:ClearFocus()
+        say(S, "")
+    else
+        say(S, why)
+    end
+end
+
+local function buildSide(f)
+    local S = CreateFrame("Frame", nil, f)
+    S:SetPoint("TOPLEFT", G.SIDE_X, -G.COL_Y)
+    S:SetSize(G.SIDE_W, G.H - G.COL_Y - G.BOTTOM)
+    local SW, RH = G.SIDE_W, G.SIDE_ROW_H
+    S.title = W.Text(S, T.FONT.title, SW)
+    S.title:SetHeight(G.HEAD_H)
+    S.pickHead = W.Text(S, T.FONT.head, SW)
+    S.pickHead:SetHeight(G.HEAD_H)
+    S.pickHead:SetText(L["Deine Wahl"])
+    -- the own pick: icon, name with the star over its source, the red X
+    S.pick = CreateFrame("Button", nil, S)
+    S.pick:SetSize(SW, G.PICK_H)
+    S.pick.icon = S.pick:CreateTexture(nil, "ARTWORK")
+    S.pick.icon:SetSize(G.ICON, G.ICON)
+    S.pick.icon:SetPoint("TOPLEFT", 0, -2)
+    S.pick.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    S.pick.name = W.Text(S.pick, T.FONT.text, SW - G.ICON - T.RESET - 8)
+    S.pick.name:SetPoint("TOPLEFT", G.ICON + 4, -2)
+    S.pick.src = W.Text(S.pick, T.FONT.hint, SW - G.ICON - T.RESET - 8)
+    S.pick.src:SetPoint("TOPLEFT", G.ICON + 4, -16)
+    S.pick.del = W.ResetButton(S.pick, T.RESET, function() ns.BisSetPick(S.slot, nil) end)
+    S.pick.del:SetPoint("TOPRIGHT", 0, 0)
+    W.Tooltip(S.pick.del, L["Wahl entfernen"], L["Amisia nimmt wieder das Beste für diesen Slot."])
+    S.pick:SetScript("OnClick", function(self) if self.id then K.modifiedClick(self.id) end end)
+    S.pick:SetScript("OnEnter", function(self) if self.id then sideTip(self, self.id) end end)
+    S.pick:SetScript("OnLeave", K.hideTip)
+    S.none = W.Text(S, T.FONT.hint, SW, true)
+    S.none:SetHeight(G.PICK_H)
+    S.none:SetJustifyV("TOP")
+    S.none:SetText(L["Keine eigene Wahl: Amisia nimmt das Beste."])
+    -- the hint under the pick: overtaken (with "Übernehmen") or not with the weapon plan
+    S.note = W.Text(S, T.FONT.hint, SW - G.TAKE_W - T.LAYOUT.ITEM_GAP, true)
+    S.note:SetHeight(T.ROW_BUTTON_H + 4)
+    S.note:SetJustifyV("TOP")
+    S.take = W.Button(S, L["Übernehmen"], G.TAKE_W, function(self)
+        if self.id then ns.BisSetPick(S.slot, self.id) end
+    end, { height = T.ROW_BUTTON_H })
+    W.FitChip(S.take, G.TAKE_W, G.TAKE_W)
+    -- the ranking
+    S.rankHead = W.Text(S, T.FONT.head, SW)
+    S.rankHead:SetHeight(G.HEAD_H)
+    S.rank = W.List(S, G.RANK_ROWS, RH, function(r)
+        r.n = W.Text(r, T.FONT.head, 16)
+        r.n:SetPoint("LEFT", 0, 0)
+        r.n:SetJustifyH("RIGHT")
+        r.icon = r:CreateTexture(nil, "ARTWORK")
+        r.icon:SetSize(RH - 4, RH - 4)
+        r.icon:SetPoint("LEFT", 20, 0)
+        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        r.name = W.Text(r, T.FONT.text, SW - 20 - RH - G.RANK_GAIN_W - 6)
+        r.name:SetPoint("LEFT", 20 + RH, 0)
+        r.gain = W.Text(r, T.FONT.text, G.RANK_GAIN_W)
+        r.gain:SetPoint("RIGHT", 0, 0)
+        r.gain:SetJustifyH("RIGHT")
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e then return end
+            if button == "RightButton" then
+                W.Menu(self, K.menuEntries(e, ns.BisOpts()))
+                return
+            end
+            if K.modifiedClick(e.id) then return end
+            -- a click makes it the own pick, a second lifts it
+            local ok, why = ns.BisSetPick(S.slot, (not e.own) and e.id or nil)
+            say(S, ok and "" or why)
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e then sideTip(self, e.id, L["Quelle: %s"]:format(K.sourceText(e.id, nil, e.pick) or "")) end
+        end)
+        r:SetScript("OnLeave", K.hideTip)
+    end, function(r, e, i)
+        r.n:SetText(tostring(i))
+        r.icon:SetTexture(iconOf(e.id) or QUESTION)
+        r.name:SetText((e.own and ownMark() or "") .. K.itemText(e.id))
+        if e.owned then
+            r.gain:SetText(GREEN .. L["hast du"] .. "|r")
+        elseif e.switch then
+            r.gain:SetText(L["Wechsel"])
+        else
+            r.gain:SetText(pctText(e.gain, e.mine, e.upgrade))
+        end
+    end, { bar = false })
+    S.rank:SetWidth(SW)
+    S.rankEmpty = W.Text(S, T.FONT.hint, SW, true)
+    S.rankEmpty:SetHeight(28)
+    -- the dungeon drops near the own level
+    S.dropHead = W.Text(S, T.FONT.head, SW)
+    S.dropHead:SetHeight(G.HEAD_H)
+    S.dropHead:SetText(L["Dungeon-Drops nahe deiner Stufe"])
+    S.drops = W.List(S, G.DROP_ROWS, G.DROP_ROW_H, function(r)
+        r.icon = r:CreateTexture(nil, "ARTWORK")
+        r.icon:SetSize(G.ICON, G.ICON)
+        r.icon:SetPoint("TOPLEFT", 0, -2)
+        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        r.name = W.Text(r, T.FONT.text, SW - G.ICON - G.RANK_GAIN_W - 8)
+        r.name:SetPoint("TOPLEFT", G.ICON + 4, -2)
+        r.gain = W.Text(r, T.FONT.text, G.RANK_GAIN_W)
+        r.gain:SetPoint("TOPRIGHT", 0, -2)
+        r.gain:SetJustifyH("RIGHT")
+        r.where = W.Text(r, T.FONT.hint, SW - G.ICON - 4)
+        r.where:SetPoint("TOPLEFT", G.ICON + 4, -15)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e then return end
+            if button == "RightButton" then
+                W.Menu(self, K.menuEntries(e, ns.BisOpts()))
+                return
+            end
+            if K.modifiedClick(e.id) then return end
+            if ns.ShowDungeon then ns.ShowDungeon(e.key) end
+        end)
+        r:SetScript("OnEnter", function(self) if self.item then sideTip(self, self.item.id) end end)
+        r:SetScript("OnLeave", K.hideTip)
+    end, function(r, e)
+        r.icon:SetTexture(iconOf(e.id) or QUESTION)
+        r.name:SetText(K.itemText(e.id))
+        r.gain:SetText(pctText(e.gain, e.mine, true))
+        r.where:SetText(("%s · %s"):format(e.boss or "?", e.dungeon or "?"))
+    end, { bar = false })
+    S.drops:SetWidth(SW)
+    S.dropEmpty = W.Text(S, T.FONT.hint, SW, true)
+    S.dropEmpty:SetHeight(28)
+    S.all = W.Button(S, L["Alle zeigen"], G.ALL_W, function()
+        if ns.ShowGear then ns.ShowGear("dungeons") end
+    end, { height = T.ROW_BUTTON_H })
+    W.FitChip(S.all, G.ALL_W)
+    -- the field: a link or an item id becomes the own pick (Shift-click on a link puts it in)
+    S.fieldHead = W.Text(S, T.FONT.head, SW)
+    S.fieldHead:SetHeight(G.HEAD_H)
+    S.fieldHead:SetText(L["Item-Link oder ID"])
+    S.field = W.LineEdit(S, G.FIELD_W)
+    S.field:SetMaxLetters(255)
+    S.add = W.Button(S, L["Hinzufügen"], SW - G.FIELD_W - T.LAYOUT.ITEM_GAP, function() addFromField(S) end,
+        { height = T.FIELD_H })
+    -- the button as wide as its text needs (English is shorter), the field takes the rest
+    S.field:SetWidth(SW - W.FitChip(S.add, SW - G.FIELD_W - T.LAYOUT.ITEM_GAP) - T.LAYOUT.ITEM_GAP)
+    if S.field.HookScript then S.field:HookScript("OnEnterPressed", function() addFromField(S) end) end
+    S.msg = W.Text(S, T.FONT.hint, SW, true)
+    S.msg:SetHeight(G.MSG_H)
+    S.msg:SetJustifyV("TOP")
+    -- a link Shift-clicked while the field has the focus goes into it
+    local function takeLink(link)
+        if type(link) == "string" and S.field:HasFocus() then
+            S.field:SetText(link)
+            return true
+        end
+    end
+    if type(hooksecurefunc) == "function" then
+        if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+            hooksecurefunc(ChatFrameUtil, "InsertLink", takeLink)
+        elseif type(ChatEdit_InsertLink) == "function" then
+            hooksecurefunc("ChatEdit_InsertLink", takeLink)
+        end
+    end
+    S.takeLink = takeLink
+    f.side = S
+    f.fillSide = function(win2, o, res, chosen)
+        local P = win2.side
+        P.slot = chosen
+        local sp = Gear.SpecInfo(o.class, o.spec)
+        local specName = sp and L[sp.name] or "?"
+        P.title:SetText(("%s · %s"):format(ns.BIS_SLOT_NAME[chosen] or chosen, specName))
+        -- the own pick of this slot (also one kept but not used)
+        local stored = ns.BisPick(chosen)
+        local first = res[chosen] and res[chosen][1]
+        local y = W.Column(P, { P.title, { P.pickHead, gap = G.SECTION_GAP } }, 4, 0, 0)
+        local noteText, takeId
+        if stored then
+            P.pick.id = stored
+            P.pick.icon:SetTexture(iconOf(stored) or QUESTION)
+            P.pick.name:SetText(ownMark() .. K.itemText(stored))
+            local unused = res.ownUnused and res.ownUnused[chosen]
+            local srcText = (first and first.own and first.unknown) and L["unbekannt"] or K.sourceText(stored, nil, nil)
+            P.pick.src:SetText(srcText ~= "" and srcText or L["unbekannt"])
+            P.pick:Show()
+            P.none:Hide()
+            P.pick:ClearAllPoints()
+            P.pick:SetPoint("TOPLEFT", 0, y - 4)
+            if unused == "plan" then
+                noteText = T.ORANGE .. L["Passt nicht zum Waffenplan"] .. "|r"
+            elseif unused then
+                noteText = T.ORANGE .. L["Das kann dein Charakter nicht tragen."] .. "|r"
+            else
+                local over = ns.BisOvertaken(chosen)
+                if over then
+                    noteText = L["Überholt: %s ist %s besser"]:format(K.itemText(over.id),
+                        over.pct and ("+%d %%"):format(over.pct) or ("+%d"):format(math.floor(over.gain + 0.5)))
+                    takeId = over.id
+                end
+            end
+        else
+            P.pick.id = nil
+            P.pick:Hide()
+            P.none:Show()
+            P.none:ClearAllPoints()
+            P.none:SetPoint("TOPLEFT", 0, y - 4)
+        end
+        y = y - 4 - G.PICK_H
+        P.note:SetText(noteText or "")
+        P.note:ClearAllPoints()
+        P.note:SetPoint("TOPLEFT", 0, y)
+        P.take.id = takeId
+        P.take:ClearAllPoints()
+        P.take:SetPoint("TOPRIGHT", 0, y)
+        if takeId then P.take:Show() else P.take:Hide() end
+        y = y - T.ROW_BUTTON_H - 4
+        -- the ranking
+        local rank, total = ns.BisRanking(chosen, G.RANK_ROWS)
+        P.rankHead:SetText(L["Rangliste für %s · %d"]:format(specName, o.level))
+        P.rankHead:ClearAllPoints()
+        P.rankHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
+        y = y - G.SECTION_GAP - G.HEAD_H
+        P.rank:ClearAllPoints()
+        P.rank:SetPoint("TOPLEFT", 0, y)
+        P.rank:SetItems(rank)
+        P.rankEmpty:ClearAllPoints()
+        P.rankEmpty:SetPoint("TOPLEFT", 0, y)
+        if #rank == 0 then
+            P.rankEmpty:SetText((chosen == "OFFHAND" and res.plan == "2H") and L["Die Zweihandwaffe belegt beide Hände."]
+                or L["Für diesen Slot gibt es keine Option in den Daten."])
+            P.rankEmpty:Show()
+        else
+            P.rankEmpty:Hide()
+        end
+        P.rank.total = total
+        y = y - G.RANK_ROWS * RH
+        -- the dungeon drops
+        P.dropHead:ClearAllPoints()
+        P.dropHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
+        y = y - G.SECTION_GAP - G.HEAD_H
+        local drops = dropsFor(chosen, G.DROP_ROWS)
+        P.drops:ClearAllPoints()
+        P.drops:SetPoint("TOPLEFT", 0, y)
+        P.drops:SetItems(drops)
+        P.dropEmpty:ClearAllPoints()
+        P.dropEmpty:SetPoint("TOPLEFT", 0, y)
+        P.dropEmpty:SetText(#drops == 0 and L["Kein Dungeon nahe deiner Stufe hat ein Upgrade für diesen Slot."] or "")
+        y = y - G.DROP_ROWS * G.DROP_ROW_H
+        P.all:ClearAllPoints()
+        P.all:SetPoint("TOPRIGHT", 0, y - 2)
+        y = y - 2 - T.ROW_BUTTON_H
+        -- the field
+        P.fieldHead:ClearAllPoints()
+        P.fieldHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
+        y = y - G.SECTION_GAP - G.HEAD_H
+        W.Row(P, { P.field, P.add }, T.LAYOUT.ITEM_GAP, 0, y)
+        P.msg:ClearAllPoints()
+        P.msg:SetPoint("TOPLEFT", 0, y - T.FIELD_H - 4)
+        if P.lastSlot ~= chosen then
+            P.lastSlot = chosen
+            say(P, "")
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -671,7 +1003,7 @@ local function build()
     win.doll = buildDoll(win)
     win.list = buildList(win)
     buildProgress(win)
-    if ns.GoalsBuildParts then ns.GoalsBuildParts(win) end
+    buildSide(win)
     win:EnableMouseWheel(true)
     win:SetScript("OnMouseWheel", wheel)
     place()
