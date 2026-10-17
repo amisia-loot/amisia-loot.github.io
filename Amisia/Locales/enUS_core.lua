@@ -469,3 +469,10 @@ L["Zuletzt online"] = "Last online"
 L["zuletzt vor %s"] = "last online %s ago"
 L["zuletzt vor weniger als 1 Stunde"] = "last online less than 1 hour ago"
 L["gerade offline"] = "just went offline"
+
+-- UI/Search.lua: sections, recipes, dungeons (2026-10-17)
+L["Rezepte"] = "Recipes"
+L["%s, ab Fertigkeit %d. Öffnet das Rezept auf der Seite Berufe."] = "%s, from skill %d. Opens the recipe on the page Professions."
+L["Dungeon. Öffnet ihn auf der Seite Dungeons."] = "Dungeon. Opens it on the page Dungeons."
+L["Raid. Öffnet ihn auf der Seite Dungeons."] = "Raid. Opens it on the page Dungeons."
+L["Einstellungen, Reiter %s. Öffnet den Abschnitt."] = "Settings, tab %s. Opens the section."

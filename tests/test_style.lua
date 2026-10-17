@@ -574,7 +574,7 @@ assert(art.normal.atlas == "auctionhouse-nav-button" and art.normal.layer == "BA
 assert(ovRow.label._w == 150 and ovRow.label.points.LEFT.x == 8 and ovRow.label.font == "GameFontNormal", "the gold name")
 assert(ovRow.sel == art.sel and art.sel.atlas == "auctionhouse-nav-button-select" and art.sel.blend == "ADD"
     and art.sel.layer == "ARTWORK" and art.sel:IsShown(), "the shown page has the gold rim")
-assert(ovRow.hover == art.hover and art.hover.atlas == "auctionhouse-nav-button-highlight" and art.hover.layer == "HIGHLIGHT")
+assert(ovRow.hover == art.hover and art.hover.atlas == nil and art.hover.texture == nil, "no blue glow on hover")
 ovRow.scripts.OnEnter(ovRow); assert(ovRow.label.font == "GameFontHighlight", "white under the mouse")
 ovRow.scripts.OnLeave(ovRow); assert(ovRow.label.font == "GameFontNormal", "gold again")
 -- a click on a row shows its page

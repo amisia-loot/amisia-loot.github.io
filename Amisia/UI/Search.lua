@@ -1,5 +1,7 @@
 -- The main window's search (D-45): what the search box over the page list finds, grouped "Seiten",
--- "Einstellungen", "Items", "Spieler". UI/MainFrame.lua shows the hits in place of the page list and
+-- "Einstellungen" (a section by its name or its tab's, e.g. "Allgemein", then the single settings),
+-- "Rezepte" (every recipe of the profession data by the client's spell name), "Dungeons", "Items",
+-- "Spieler". UI/MainFrame.lua shows the hits in place of the page list and
 -- runs a hit's action on a click. Kept fast: nothing at all under T.MAIN.SEARCH_MIN characters,
 -- items only once the gear data is built or from 3 characters on (only then may the gear data be
 -- built), the indexes of items and players built once and kept for a while, at most RES_MAX hits per
@@ -151,6 +153,86 @@ local function playerHits(q)
 end
 
 ---------------------------------------------------------------------------
+-- Recipes and dungeons
+---------------------------------------------------------------------------
+local recipes, recipesData   -- { { name, low, skill, spell, learn } }, the profession table it read
+
+-- Every recipe by the client's spell name (spell names are the client's own data: no server question).
+-- Built once from Search.ITEM_MIN characters on (only then may the profession data be built).
+local function recipeIndex()
+    local Pr = ns.Prof
+    if not Pr or not Pr.Available() then return {} end
+    local d = ns.Data("PROFESSIONS")
+    if recipes and recipesData == d then return recipes end
+    local out = {}
+    for _, skill in ipairs(Pr.Skills()) do
+        for _, r in ipairs(Pr.Recipes(skill)) do
+            local name = Pr.SpellName(r.spell) or (r.item > 0 and Pr.ItemInfo(r.item)) or nil
+            if type(name) == "string" and name ~= "" then
+                out[#out + 1] = { name = name, low = ns.Fold(name), skill = skill, spell = r.spell, learn = r.learn }
+            end
+        end
+    end
+    recipes, recipesData = out, d
+    return out
+end
+
+local function byStart(q)
+    return function(a, b)
+        local sa, sb = a.low:sub(1, #q) == q, b.low:sub(1, #q) == q
+        if sa ~= sb then return sa end
+        if a.low ~= b.low then return a.low < b.low end
+        return (a.learn or 0) < (b.learn or 0)
+    end
+end
+
+local function recipeHits(q)
+    if #q < Search.ITEM_MIN then return {} end
+    local page = ns.Panel and ns.Panel("professions")
+    if not page or not ns.Visible(page) then return {} end
+    local found = {}
+    for _, e in ipairs(recipeIndex()) do
+        if e.low:find(q, 1, true) then found[#found + 1] = e end
+    end
+    table.sort(found, byStart(q))
+    local Pr, out = ns.Prof, {}
+    for i = 1, math.min(#found, M.RES_MAX) do
+        local e = found[i]
+        local key = Pr.Key(e.skill)
+        out[i] = { text = e.name, icon = key and Pr.ICONS[key] or nil,
+            tip = L["%s, ab Fertigkeit %d. Öffnet das Rezept auf der Seite Berufe."]:format(Pr.Name(e.skill), e.learn or 0),
+            run = function() if ns.ShowRecipe then ns.ShowRecipe(e.skill, e.spell, e.name) end end }
+    end
+    return out
+end
+
+local function dungeonHits(q)
+    local page = ns.Panel and ns.Panel("dungeons")
+    local Dn = ns.Dungeons
+    if not page or not ns.Visible(page) or not Dn or not Dn.Facts then return {} end
+    local found = {}
+    for _, e in ipairs(Dn.Facts() or {}) do
+        if type(e) == "table" and type(e.key) == "string" then
+            local name = Dn.Name(e)
+            local low = ns.Fold(name)
+            -- the client's name and the fact's (an English name on a German client) both find it
+            if low:find(q, 1, true) or hit(e.name, q) then
+                found[#found + 1] = { name = name, low = low, key = e.key, kind = e.kind }
+            end
+        end
+    end
+    table.sort(found, byStart(q))
+    local out = {}
+    for i = 1, math.min(#found, M.RES_MAX) do
+        local e = found[i]
+        out[i] = { text = e.name, icon = page.icon,
+            tip = e.kind == "raid" and L["Raid. Öffnet ihn auf der Seite Dungeons."] or L["Dungeon. Öffnet ihn auf der Seite Dungeons."],
+            run = function() if ns.ShowDungeon then ns.ShowDungeon(e.key) end end }
+    end
+    return out
+end
+
+---------------------------------------------------------------------------
 -- Pages and settings
 ---------------------------------------------------------------------------
 local function pageHits(q)
@@ -166,6 +248,18 @@ end
 
 local function settingHits(q)
     local out = {}
+    -- the sections first: by their name or their tab's ("Allgemein", "Raid", ...)
+    for _, g in ipairs(ns.SettingsGroups and ns.SettingsGroups() or {}) do
+        local tabHit = hit(g.label, q)
+        for _, section in ipairs(g.sections or {}) do
+            if #out >= M.RES_MAX then return out end
+            if tabHit or hit(section.label, q) then
+                out[#out + 1] = { text = section.label, icon = SETTINGS_ICON,
+                    tip = L["Einstellungen, Reiter %s. Öffnet den Abschnitt."]:format(g.label),
+                    run = function() if ns.ShowSettingsSection then ns.ShowSettingsSection(section.key) end end }
+            end
+        end
+    end
     for _, section in ipairs(ns.schema) do
         if ns.Visible(section) then
             for _, it in ipairs(section.items) do
@@ -188,6 +282,8 @@ function ns.Search(text)
     local groups = {
         { key = "pages", label = L["Seiten"], find = pageHits },
         { key = "settings", label = L["Einstellungen"], find = settingHits },
+        { key = "recipes", label = L["Rezepte"], find = recipeHits },
+        { key = "dungeons", label = "Dungeons", find = dungeonHits },
         { key = "items", label = "Items", find = itemHits },
         { key = "players", label = L["Spieler##Suche"], find = playerHits },
     }
@@ -206,6 +302,6 @@ function ns.Search(text)
 end
 
 -- for the tests: forget the indexes
-function Search._reset() items, itemsAt, itemsGear, players, playersAt = nil, nil, nil, nil, nil end
+function Search._reset() items, itemsAt, itemsGear, players, playersAt, recipes, recipesData = nil, nil, nil, nil, nil, nil, nil end
 
 ns.Listen("DATA_CHANGED", function() players = nil end)

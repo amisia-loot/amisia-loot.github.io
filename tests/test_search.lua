@@ -36,9 +36,9 @@ NS.SearchIndex._reset()
 -- under two characters: nothing; no data built
 assert(#NS.Search("") == 0 and #NS.Search("r") == 0 and #NS.Search(" c ") == 0, "nothing under two characters")
 assert(NS.DataBuilt().GEAR == nil and rawget(NS, "GEAR") == nil, "one character builds nothing")
--- two characters: pages, settings, players; items only from the names Amisia knows once the gear is built
+-- two characters: pages, settings, dungeons, players; items only from the names Amisia knows once the gear is built
 local g = NS.Search("ra")
-assert(keys(g) == "pages settings players", keys(g))
+assert(keys(g) == "pages settings dungeons players", keys(g))
 assert(has(texts(group(g, "pages")), "Raids") and has(texts(group(g, "pages")), "Raid-Log"), texts(group(g, "pages")))
 assert(NS.DataBuilt().GEAR == nil and rawget(NS, "GEAR") == nil, "two characters build no gear data")
 -- at most 8 per group
@@ -100,7 +100,7 @@ assert(row.headArt.normal.atlas == "auctionhouse-nav-button" and row.headArt.nor
 assert(has(row.label:GetText(), "Einstellungen") and row.label.font == "GameFontNormal" and row.label.points.LEFT.x == 8)
 assert(hitRow.hitArt.normal.atlas == "auctionhouse-nav-button-secondary" and hitRow.hitArt.normal:IsShown()
     and not hitRow.headArt.normal:IsShown() and hitRow.hitArt.hover:IsShown(), "a hit's bar")
-assert(hitRow.hitArt.hover.atlas == "auctionhouse-nav-button-secondary-highlight" and hitRow.hitArt.hover.points.TOPLEFT.x == 10)
+assert(hitRow.hitArt.hover.atlas == nil and hitRow.hitArt.hover.texture == nil, "no blue glow on hover")
 assert(hitRow.label:GetText() == "Expertenmodus" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
 assert(hitRow.icon == nil and not row.bg:IsShown() and row.hover.alpha == 0, "no icon, no shade, the bars' own glow")
 assert(F.results.rowCount == 21 and F.results._h == 21 * 21 and hitRow._h == 20, "21 rows of 21")

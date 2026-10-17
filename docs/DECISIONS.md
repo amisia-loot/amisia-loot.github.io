@@ -907,8 +907,12 @@ Kalender-Seite schreibt nie in den Kalender und liest nicht im Kampf und nicht, 
 Kalenderfenster des Spiels ein anderes Ereignis zeigt.
 **Nachtrag 2026-10-12 (2.29.0):** Die Seitenliste und die Suchergebnisse tragen die Balken der
 Kategorienliste des Auktionshauses, ohne Symbole (D-06).
+**Nachtrag 2026-10-17:** Kein blaues Leuchten mehr beim Überfahren der Balken (Nutzer: "dieses blaue
+weglassen"); der Name wird weiß. Die Suche findet auch Einstellungsabschnitte nach ihrem Namen oder dem
+ihres Reiters ("Allgemein"), Rezepte (ab 3 Zeichen, Namen aus dem Client) und Dungeons (Nutzer: "die
+Suche für allgemein und z. B. Rezepte checken, dass alles gefunden werden kann").
 **Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`,
-`tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, die Layoutregeln (`tools/ui_layout.py`,
+`tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, `tests/test_search_more.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).
 
 ## D-46 Raid-Check und Raid-IDs: nur Offiziere sehen andere, Selbstauskunft, nichts im Kampf

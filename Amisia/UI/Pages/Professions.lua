@@ -543,6 +543,19 @@ function ns.ShowProfessions(what)
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
+-- Opens the page at one recipe (a hit of the main window's search): its profession, the recipe's
+-- name in the search, the filters off so it shows, the recipe chosen.
+function ns.ShowRecipe(skill, spell, name)
+    if AmisiaDB and AmisiaDB.settings and type(skill) == "number" then
+        local s = state()
+        s.view = skill
+        s.search = type(name) == "string" and name ~= "" and name or nil
+        s.known, s.learnable, s.source, s.guild = nil, nil, nil, nil
+        if type(spell) == "number" then s.sel[tostring(skill)] = spell end
+    end
+    if ns.ShowPage then ns.ShowPage("professions") end
+end
+
 ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst]"],
     desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 

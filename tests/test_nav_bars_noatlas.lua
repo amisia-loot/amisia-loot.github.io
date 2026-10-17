@@ -1,6 +1,6 @@
 --[[preload
 STUB.missingAtlases["auctionhouse-nav-button"] = true
-STUB.missingAtlases["auctionhouse-nav-button-secondary-highlight"] = true
+STUB.missingAtlases["auctionhouse-nav-button-secondary"] = true
 ]]
 -- A client without the auction house's category bars (a patch renamed them): the page list keeps the
 -- look of before (the recipe list's glow on the chosen row and its hover), the gold name, no icon;

@@ -703,16 +703,18 @@ end
 
 -- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
 -- AuctionHouseFilterButton_SetUp dresses it): the dark bar with the thin bronze rim
--- (auctionhouse-nav-button), the bright gold rim when chosen (-select, added light) and the glow on
--- hover (-highlight); sub: the indented bar of a sub-category (-secondary). The template itself is
--- not used: it lives in the auction house's addon, loaded only at the auction house. Returns nil when
--- the client lacks one of the three atlases (the caller keeps its own look), else the art:
+-- (auctionhouse-nav-button) and the bright gold rim when chosen (-select, added light); no blue glow
+-- on hover (the client's -highlight, user 2026-10-17: "dieses blaue weglassen"), the name turns white
+-- instead; sub: the indented bar of a sub-category (-secondary). The template itself is not used: it
+-- lives in the auction house's addon, loaded only at the auction house. Returns nil when the client
+-- lacks one of the two atlases (the caller keeps its own look), else the art:
 -- bar:Fit(h) sizes it to a row h high (T.NAVBAR: the art hangs from the bar's top, TEX_H / BAR_H of
--- its height), bar:SetSelected(on) shows the chosen rim; bar.normal, bar.sel, bar.hover.
+-- its height), bar:SetSelected(on) shows the chosen rim; bar.normal, bar.sel, bar.hover (an empty
+-- texture, kept so callers may show or hide it).
 function W.NavBar(b, sub)
     local N = T.NAVBAR
     local base = sub and "auctionhouse-nav-button-secondary" or "auctionhouse-nav-button"
-    for _, name in ipairs({ base, base .. "-select", base .. "-highlight" }) do
+    for _, name in ipairs({ base, base .. "-select" }) do
         if not hasAtlas(name) then return nil end
     end
     local g = sub and N.SUB or N.TOP
@@ -722,7 +724,6 @@ function W.NavBar(b, sub)
     bar.normal:SetPoint("TOPLEFT", g.X, 0)
     bar.normal:SetPoint("TOPRIGHT", g.R, 0)
     bar.hover = b:CreateTexture(nil, "HIGHLIGHT")
-    bar.hover:SetAtlas(base .. "-highlight", false)
     bar.hover:SetPoint("TOPLEFT", g.HL_X, 0)
     bar.hover:SetPoint("BOTTOMRIGHT", 0, 0)
     bar.sel = b:CreateTexture(nil, "ARTWORK")
