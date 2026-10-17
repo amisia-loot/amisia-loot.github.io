@@ -560,6 +560,29 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn die Einstellung aus ist (Standard), dann kommt nur die deutsche Ansage.
 - Notiz: Spec Teil B4; DECISIONS D-44. Für Raider mit Gargul oder englischem Client: sie würfeln mit `/roll` (MS) und `/roll 99` (OS), genau Gargul's Standardbereiche. Ein englischer Client sagt ohnehin Englisch an und schreibt keine zweite Zeile.
 
+### F-107 Soft-Reserves mit der Gruppe teilen
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn die Lootleitung übernimmt, dann zeigt bei einem Raider mit Amisia nach höchstens 30 s der Tooltip eines reservierten Items "Reserviert: …" und die Seite "Liste vom … von <Name>".
+- Prüfung: Wenn ein Raider nach dem Übernehmen in die Gruppe kommt (oder `/reload` macht), dann hat er die Liste nach höchstens 60 s.
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil A.
+
+### F-108 Soft-Reserves: Vorschau im Import-Fenster und Hard-Reserve-Ansage
+- Version: -
+- Status: geplant
+- Braucht: Raid
+- Prüfung: Wenn du einen Gargul-Code einfügst, dann zeigt das Fenster vor "Übernehmen" jeden Raider mit seinen Items als Symbole, oben die Hard-Reserves, und im Kasten die Raidmitglieder ohne Reserve.
+- Prüfung: Wenn die Lootleitung im Raid übernimmt und es Hard-Reserves gibt, dann stehen im Raidchat die Zeile "Soft-Reserves geladen: …" und "Hard-Reserves: [Item] für …".
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil B.
+
+### F-109 Soft-Reserves: Klassen-Abgleich
+- Version: -
+- Status: geplant
+- Braucht: Raid
+- Prüfung: Wenn auf softres.it bei einem Raider eine andere Klasse steht als im Raid, dann steht in der Vorschau und in der Ansicht "Abgleich" "Klasse passt nicht" mit beiden Klassen.
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil C.
+
 ### F-097 Gruppen-Prüfung
 - Version: 2.28.0
 - Status: gebaut

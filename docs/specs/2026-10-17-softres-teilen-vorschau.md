@@ -1,6 +1,6 @@
 # Spec: Soft-Reserves teilen, Vorschau im Import-Fenster, Klassen-Abgleich
 
-Stand: 2026-10-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-17 · Status: freigegeben (2026-10-17) ·
 Feature: F-107 (A, Liste teilen), F-108 (B, Vorschau und Hard-Reserve-Ansage), F-109 (C, Klassen-Abgleich)
 
 Anstoß: der Nutzer hat am 2026-10-17 den Import eines anderen Loot-Addons gezeigt (Vorschau pro Spieler
@@ -192,4 +192,6 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-17: alle Fragen: "Passt, alle 5 Vorschläge so übernehmen und bauen (Reihenfolge C, B, A)." ->
+  1 jeder Offizier mit eigener Liste teilt; 2 Ansage beim Übernehmen automatisch, abschaltbar;
+  3 kein automatisches Zuordnen; 4 Angebot nur im Speicher; 5 die geteilte Liste bleibt.
