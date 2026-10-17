@@ -5,8 +5,6 @@ local L = ns.L
 
 local GetItemInfo = C_Item.GetItemInfo
 
-local F, editBox, resultText, dateText, previewText
-local previewGen = 0   -- the newest pending preview; older timers do nothing
 local marks = {}   -- loot element -> "SR" font string
 
 local function shortName(name)
@@ -161,9 +159,11 @@ function ns.SoftResClassName(token)
     return type(names) == "table" and names[token] or token
 end
 
--- "Klasse passt nicht: softres Magier, im Raid Priester" for a finding of check.class.
-function ns.SoftResClassText(f)
-    return L["Klasse passt nicht: softres %s, im Raid %s"]:format(ns.SoftResClassName(f.want), ns.SoftResClassName(f.have))
+-- "Klasse passt nicht: softres Magier, im Raid Priester" for a finding of check.class; short (the
+-- import preview's row): "Klasse: softres Magier, im Raid Priester".
+function ns.SoftResClassText(f, short)
+    return (short and L["Klasse: softres %s, im Raid %s"] or L["Klasse passt nicht: softres %s, im Raid %s"])
+        :format(ns.SoftResClassName(f.want), ns.SoftResClassName(f.have))
 end
 
 -- A list's class as written, kept only when it names a class ("Priest", "Death Knight").
@@ -675,6 +675,26 @@ function ns.RenameReserve(from, to, remember)
     return n
 end
 
+-- A suggestion clicked in the import preview: the loaded list is renamed when it holds the name,
+-- and the fix is remembered for the pasted text and coming lists either way (AmisiaDB.srAliases).
+function ns.RememberSoftResName(from, to)
+    if type(from) ~= "string" or type(to) ~= "string" or from == to or not AmisiaDB then return end
+    if ns.RenameReserve(from, to, true) == 0 then
+        AmisiaDB.srAliases = AmisiaDB.srAliases or {}
+        AmisiaDB.srAliases[from:lower()] = to
+    end
+    if ns.SoftResImportChanged then ns.SoftResImportChanged() end
+    if ns.Refresh then ns.Refresh() end
+end
+
+-- After an import by the window or "/amisia sr <code>": the list goes to the group (part A, F-107)
+-- and, in a raid with softres.announce, into the raid chat (F-108). Returns whether it was shared.
+function ns.SoftResAfterImport()
+    local shared = ns.SoftResShareNow and ns.SoftResShareNow() or false
+    if IsInRaid() and ns.IsOfficerView() and ns.Get("softres.announce") then ns.AnnounceSoftRes() end
+    return shared
+end
+
 function ns.ClearSoftRes()
     AmisiaDB.softres = nil
     ns.MarkSoftResLoot()
@@ -1050,6 +1070,90 @@ local function answer(sr, sender, rest)
     return cappedLines("Amisia: ", parts, REPLY_LINES, "; ", suffix)
 end
 
+-- The raid chat lines after an import (F-108): how many reserved and how to ask, then the hard
+-- reserves with their links ("[Name]" while the client does not know an item). english: the fixed
+-- English text for raiders with another addon or client (rolls.announceEnglish, as the roll
+-- announcement), else the client's language. At most 1 + 3 lines.
+function ns.SoftResAnnounceLines(sr, english)
+    sr = sr or (AmisiaDB and AmisiaDB.softres)
+    if not sr then return {} end
+    local raiders = {}
+    for _, names in pairs(sr.byItem or {}) do
+        for _, name in ipairs(names) do raiders[name] = true end
+    end
+    local n = 0
+    for _ in pairs(raiders) do n = n + 1 end
+    local ask = ns.Get("softres.chat") and (ns.IsLootLead() and ns.UnitFullName("player") or "") or nil
+    local lines = {}
+    if english then
+        local line = ("Soft reserves loaded: %d reserves from %d raiders."):format(sr.count or 0, n)
+        if ask then line = line .. (" Whisper '!sr' to %s to see yours."):format(ask ~= "" and ask or "the loot lead") end
+        lines[1] = line
+    else
+        local line = L["Soft-Reserves geladen: %d Reservierungen von %d Raidern."]:format(sr.count or 0, n)
+        if ask then
+            line = line .. " " .. (ask ~= "" and L["'!sr' an %s flüstern zeigt deine."]:format(ask)
+                or L["'!sr' an die Lootleitung flüstern zeigt deine."])
+        end
+        lines[1] = line
+    end
+    local hard = {}
+    for id, h in pairs(type(sr.hard) == "table" and sr.hard or {}) do
+        hard[#hard + 1] = { id = id, to = h.to or "", note = h.note or "", sort = ns.ItemName(id) }
+    end
+    if #hard == 0 then return lines end
+    table.sort(hard, function(a, b) if a.sort ~= b.sort then return a.sort < b.sort end return a.id < b.id end)
+    local parts = {}
+    for _, h in ipairs(hard) do
+        local part = chatLink(h.id)
+        if h.to ~= "" then part = part .. (english and (" for %s"):format(h.to) or L[" für %s"]:format(h.to)) end
+        if h.note ~= "" and h.note ~= h.to then part = part .. " (" .. h.note .. ")" end
+        parts[#parts + 1] = part
+    end
+    for _, line in ipairs(cappedLines(english and "Hard reserves: " or L["Hard-Reserves: "], parts, 3, ", ", ".")) do
+        lines[#lines + 1] = line
+    end
+    return lines
+end
+
+local announceGen = 0   -- the newest announcement waiting for its item links
+
+-- Says the lines of ns.SoftResAnnounceLines in the raid (officers, in a raid): waits up to 5 s for
+-- the links of the hard reserves, then the lines go through the chat queue (held in the lockdown,
+-- dropped after 120 s). Returns true, or nil and the reason.
+function ns.AnnounceSoftRes()
+    local sr = AmisiaDB and AmisiaDB.softres
+    if not ns.IsOfficerView() then return nil, L["Ansagen nur in der Offiziersansicht."] end
+    if not sr then return nil, L["Keine Soft-Reserves geladen."] end
+    if not IsInRaid() then return nil, L["Ansagen geht nur im Raid."] end
+    announceGen = announceGen + 1
+    local gen, waited = announceGen, 0
+    local function known()
+        for id in pairs(type(sr.hard) == "table" and sr.hard or {}) do
+            local _, link = GetItemInfo(id)
+            if not link then
+                if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+                return false
+            end
+        end
+        return true
+    end
+    local function say()
+        if gen ~= announceGen or AmisiaDB.softres ~= sr then return end
+        if not known() and waited < 5 then
+            waited = waited + 0.5
+            C_Timer.After(0.5, say)
+            return
+        end
+        for _, line in ipairs(ns.SoftResAnnounceLines(sr)) do ns.Say(line, "RAID", nil, { ttl = 120 }) end
+        if ns.GERMAN and ns.Get("rolls.announceEnglish") then
+            for _, line in ipairs(ns.SoftResAnnounceLines(sr, true)) do ns.Say(line, "RAID", nil, { ttl = 120 }) end
+        end
+    end
+    say()
+    return true
+end
+
 local function inGroup(name)
     for i = 1, GetNumGroupMembers() or 0 do
         local member = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
@@ -1075,7 +1179,7 @@ ns.RegisterChatCommand("sr", onSoftResCommand)
 ns.RegisterChatCommand("softres", onSoftResCommand)
 
 ---------------------------------------------------------------------------
--- Import window
+-- The import preview (the window is UI/SoftResImport.lua)
 ---------------------------------------------------------------------------
 local function plural(n, one, many) return n == 1 and one or many end
 
@@ -1121,117 +1225,87 @@ function ns.SoftResPreviewText(text)
     return head .. " · " .. table.concat(parts, " · ")
 end
 
-local function updatePreview()
-    if not F or not previewText then return end
-    local ok, text = pcall(ns.SoftResPreviewText, editBox:GetText())
-    previewText:SetText(ok and text or "")
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(text) end
-    end
-end
-
--- Recomputes the preview 0.3 s after the last change of the text.
-local function schedulePreview()
-    previewGen = previewGen + 1
-    local gen = previewGen
-    C_Timer.After(0.3, function()
-        if gen == previewGen then updatePreview() end
-    end)
-end
-
-local function refresh()
-    if not F or not F:IsShown() then return end
-    local sr = AmisiaDB.softres
-    if sr then
-        local today = date("%Y-%m-%d")
-        dateText:SetText(sr.date == today
-            and L["|cff4fbf7aListe von heute:|r %d Reservierungen"]:format(sr.count or 0)
-            or L["|cffe0a344Liste vom %s:|r %d Reservierungen. Für einen neuen Raid neu einfügen."]:format(ns.SoftResShortDate(sr.date), sr.count or 0))
-        if editBox:GetText() == "" then editBox:SetText(sr.raw or "") end
+-- The preview of the import window (F-108): the pasted text, or the loaded list when text is nil.
+-- Pure apart from reading the raid; nothing is stored. Returns nil for an empty text, else
+-- { err, head (ns.SoftResPreviewText), label (the roster's), raid (IsInRaid), same (the text is the
+--   loaded list), missing = { { name, class } }, hard = { { item, to, note } }, reservers,
+--   rows = { { name, class, items = { { item, n } }, n, status, tone, suggest, sort } } }:
+-- tone "unclear"/"class" (orange), "over" (red), "renamed" (gold), "absent" (grey) or nil; rows with
+-- a finding first, then those in the raid, then those not in it, each by name.
+function ns.SoftResPreview(text)
+    local loaded = AmisiaDB and AmisiaDB.softres
+    local list, head
+    if text == nil then
+        if not loaded then return nil end
+        list, head = loaded, ""
     else
-        dateText:SetText(L["|cff8f86a3Keine Soft-Reserves.|r softres.it-CSV, Gargul-Code oder Zeilen wie 'Name [Item-Link]' einfügen."])
+        if not text:find("%S") then return nil end
+        local byItem, _, _, times, _, renamed, extra = ns.ParseSoftRes(text)
+        head = ns.SoftResPreviewText(text)
+        if extra.err then return { err = head, head = head, rows = {}, missing = {}, hard = {}, reservers = 0 } end
+        list = { byItem = byItem, times = times, renamed = renamed, classes = extra.classes or {}, hard = extra.hard or {} }
     end
-end
-
--- The bottom of the import window, from below: buttons (10-32), result, preview, the text box.
-local TEXT_H = 26                       -- two lines of GameFontHighlightSmall
-local RESULT_Y = 38
-local PREVIEW_Y = RESULT_Y + TEXT_H + 4
-local BOX_BOTTOM = PREVIEW_Y + TEXT_H + 4
-
-local function build()
-    -- a dialog in the client's frame without a portrait, the title in its bar; the side tab of the
-    -- main window follows it
-    local W = ns.W
-    F = W.Window("AmisiaSoftResFrame", 440, 380, { title = L["Soft-Reserves"], strata = "FULLSCREEN_DIALOG",
-        onShow = refresh,
-        onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
-    F:SetPoint("CENTER", 0, 40)
-
-    dateText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    dateText:SetPoint("TOPLEFT", 12, -32)
-    dateText:SetWidth(410)
-    dateText:SetJustifyH("LEFT")
-
-    -- the pasted text: the shared edit area (an inset, the thin bar inside its right edge; a click
-    -- anywhere in it focuses the text)
-    local boxBg = W.EditArea(F)
-    boxBg:SetPoint("TOPLEFT", 12, -50)
-    boxBg:SetPoint("BOTTOMRIGHT", -12, BOX_BOTTOM)
-    editBox = boxBg.box
-    editBox:SetScript("OnTextChanged", schedulePreview)
-
-    -- the preview sits above the result of the last import; each has a fixed room of two lines,
-    -- so a long text is cut instead of growing into the other
-    previewText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    previewText:SetPoint("BOTTOMLEFT", 12, PREVIEW_Y)
-    previewText:SetSize(416, TEXT_H)
-    previewText:SetJustifyH("LEFT")
-    previewText:SetJustifyV("TOP")
-    previewText:SetWordWrap(true)
-    previewText:SetMaxLines(2)
-    previewText:SetTextColor(0.89, 0.72, 0.34)
-    previewText:SetText("")
-
-    resultText = F:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    resultText:SetPoint("BOTTOMLEFT", 12, RESULT_Y)
-    resultText:SetSize(416, TEXT_H)
-    resultText:SetJustifyH("LEFT")
-    resultText:SetJustifyV("TOP")
-    resultText:SetWordWrap(true)
-    resultText:SetMaxLines(2)
-
-    local apply = W.Button(F, L["Übernehmen"], 110, function()
-        local count, bad, err, extra = ns.SetSoftRes(editBox:GetText())
-        if err then
-            resultText:SetText(err)
-        elseif extra and extra.src == "code" then
-            resultText:SetText(L["%d Reservierungen übernommen, Hard-Reserves: %d."]:format(count, extra.hardCount))
-        else
-            resultText:SetText(L["%d Reservierungen übernommen, %d Zeilen nicht erkannt."]:format(count, #bad)
-                .. (#bad > 0 and L[" Erste: %s"]:format(bad[1]:sub(1, 40)) or ""))
+    local roster, label, classes = ns.SoftResRoster()
+    local c = ns.SoftResCheck(list, roster, classes)
+    local raw = loaded and loaded.raw or ""
+    local out = { head = head, label = label, raid = IsInRaid() and true or false, missing = {}, hard = {}, rows = {},
+                  reservers = c.reservers,
+                  same = loaded ~= nil and (text == nil or text:match("^%s*(.-)%s*$") == raw:match("^%s*(.-)%s*$")) }
+    for _, name in ipairs(c.missing) do out.missing[#out.missing + 1] = { name = name, class = classes[name:lower()] } end
+    for id, h in pairs(type(list.hard) == "table" and list.hard or {}) do
+        out.hard[#out.hard + 1] = { item = id, to = h.to or "", note = h.note or "", sort = ns.ItemName(id) }
+    end
+    table.sort(out.hard, function(a, b) if a.sort ~= b.sort then return a.sort < b.sort end return a.item < b.item end)
+    -- the findings per name, the strongest kept
+    local found = {}
+    local function note(name, status, tone, rank, suggest)
+        local f = found[name]
+        if not f or rank < f.rank then found[name] = { status = status, tone = tone, rank = rank, suggest = suggest } end
+    end
+    for _, u in ipairs(c.unclear) do
+        note(u.name, u.kind == "surname" and L["ohne Nachnamen, gemeint:"] or L["Name unklar, gemeint:"], "unclear", 1, u.suggest)
+    end
+    for _, f in ipairs(c.class) do note(f.name, ns.SoftResClassText(f, true), "class", 2) end
+    local limit = tonumber(ns.Get("softres.limit")) or 0
+    for _, o in ipairs(c.over) do note(o.name, L["zu viel: %d von %d"]:format(o.n, limit), "over", 3) end
+    local renamed = type(list.renamed) == "table" and list.renamed or {}
+    for name, was in pairs(renamed) do note(name, L["korrigiert aus %s"]:format(was), "renamed", 4) end
+    local absent = {}
+    for _, name in ipairs(c.absent) do
+        absent[name] = true
+        if label then note(name, L["nicht im Raid"], "absent", 5) end
+    end
+    -- the rows: every list name with its items
+    local rows = {}
+    for item, names in pairs(list.byItem or {}) do
+        for _, name in ipairs(names) do
+            local r = rows[name]
+            if not r then
+                local f = found[name]
+                local raider = c.match[name]
+                r = { name = name, items = {}, n = 0, class = (raider and classes[raider:lower()]) or ns.SoftResClassToken((list.classes or {})[name]),
+                      status = f and f.status or nil, tone = f and f.tone or nil, suggest = f and f.suggest or nil,
+                      group = (f and f.rank <= 3) and 1 or (absent[name] and 3 or 2) }
+                rows[name] = r
+                out.rows[#out.rows + 1] = r
+            end
+            local n = timesOf(list, item, name)
+            r.items[#r.items + 1] = { item = item, n = n, sort = ns.ItemName(item) }
+            r.n = r.n + n
         end
-        refresh()
+    end
+    for _, r in ipairs(out.rows) do
+        table.sort(r.items, function(a, b) if a.sort ~= b.sort then return a.sort < b.sort end return a.item < b.item end)
+    end
+    table.sort(out.rows, function(a, b)
+        if a.group ~= b.group then return a.group < b.group end
+        local la, lb = a.name:lower(), b.name:lower()
+        if la ~= lb then return la < lb end
+        return a.name < b.name
     end)
-    apply:SetPoint("BOTTOMLEFT", 12, 10)
-
-    local clear = W.Button(F, L["Leeren"], 90, function()
-        ns.ClearSoftRes()
-        editBox:SetText("")
-        previewText:SetText("")
-        resultText:SetText(L["Liste geleert."])
-        refresh()
-    end)
-    clear:SetPoint("LEFT", apply, "RIGHT", 6, 0)
-    F.editBox, F.resultText, F.dateText, F.applyBtn, F.clearBtn, F.previewText, F.box = editBox, resultText, dateText, apply, clear, previewText, boxBg
-    ns.SoftResFrame = F
+    return out
 end
 
-function ns.ToggleSoftResFrame()
-    if not F then build() end
-    if F:IsShown() then F:Hide() else F:Show() end
-end
 
 -- softres.remindText: no escape codes or line breaks, at most 120 characters (UTF-8 kept whole).
 local function cleanRemindText(v)
@@ -1256,6 +1330,8 @@ ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 27, gr
       officer = true, tip = L["Die Prüfung der Liste nennt Raider, die mehr Items reserviert haben. 0 schaltet das aus."] },
     { key = "softres.chat", type = "toggle", label = L["Auf !sr antworten"], default = true, officer = true,
       tip = L["Nur als Lootleitung, per Flüsterung."] },
+    { key = "softres.announce", type = "toggle", label = L["Beim Übernehmen im Raid ansagen"], default = true, officer = true,
+      tip = L["Nach dem Übernehmen sagt eine Zeile im Raidchat, wie viele reserviert haben und wie man mit '!sr' fragt; die Hard-Reserves folgen mit ihren Items."] },
     { key = "softres.remindText", type = "text", label = L["Zusatz in der Erinnerung"], default = "", officer = true,
       tip = L["Z. B. Link zur Liste."], validate = cleanRemindText },
 }}
@@ -1303,7 +1379,10 @@ local SR_ARGS = L["[pruefen|erinnern|posten|vergessen [Name]]"]
 local function codeCommand(code)
     if not ns.IsOfficerView() then ns.msg(L["Importieren nur in der Offiziersansicht."]) return end
     local count, _, err, extra = ns.SetSoftRes(code)
-    ns.msg(err or L["%d Reservierungen übernommen, Hard-Reserves: %d."]:format(count, extra.hardCount))
+    if err then ns.msg(err) return end
+    local shared = ns.SoftResAfterImport()
+    ns.msg(L["%d Reservierungen übernommen, Hard-Reserves: %d."]:format(count, extra.hardCount)
+        .. (shared and (" " .. L["Mit der Gruppe geteilt."]) or ""))
 end
 
 ns.RegisterSlash("sr", { args = SR_ARGS, desc = L["Soft-Reserves anzeigen"], run = function(rest)

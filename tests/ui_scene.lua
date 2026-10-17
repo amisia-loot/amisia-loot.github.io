@@ -505,7 +505,26 @@ S.WINDOWS = {
         NS.ToggleSoftResFrame()
         local F = AmisiaSoftResFrame
         F.editBox:SetText("eNpljzFPxDAMhf+L5wxNVdoj27EwggSIAXVwa1dEpMnJSVmq/ncSDkErMsXv6X1+XmHmhIQJwaxgCQzgoOuRQMEojInpnMDo7la3N1V+CpYLHWX9LQtaekooKf46bd0U590SsQczoYusgGwcg9CLuLwMNgUxTEk4snxyBPO2gseZs3f2HksNhzHr8CiWY8qCD6nY+XdxS3zwJZXX2MTzNV/O0KeTbja1H/oy/rDvwrBDv6KIDfLHfkb/ceDrf/yu6tqM7PN9KHTof/XrqlEwZaqBe+uId81Lagh+iRKcK5l++wJJR3km")
-        F.previewText:SetText(NS.SoftResPreviewText(F.editBox:GetText()))
+        NS.SoftResImportPreview()
+        return F
+    end },
+    { key = "softresframe-check", view = "officer", open = function()
+        -- a softres.it CSV against the raid: a wrong class, a misspelt name with its suggestion, a
+        -- raider not in the raid, doubles and a raider with more items than fit
+        NS.ToggleSoftResFrame()
+        local F = AmisiaSoftResFrame
+        local rows = { "Item Name,Item ID,From,Raider Name,Raider Class,Raider Spec,Raider Note,Extra Reserves,Date" }
+        for _, l in ipairs({ { 32235, "Fraktur", "Mage" }, { 32837, "Fraktur", "Mage" }, { 32235, "Bobingtn", "Mage" },
+                             { 30000, "Gustav", "Warrior" }, { 30000, "Gustav", "Warrior" }, { 32837, "Vuloo", "Priest" } }) do
+            rows[#rows + 1] = ("Item,%d,Boss,%s,%s,Spec,,0,2026-10-17"):format(l[1], l[2], l[3])
+        end
+        for i = 1, 10 do
+            local id = 40000 + i
+            STUB.item(id, "Testitem " .. i, 4)
+            rows[#rows + 1] = ("Item,%d,Boss,Kimtaro,Rogue,Spec,,0,2026-10-17"):format(id)
+        end
+        F.editBox:SetText(table.concat(rows, "\n"))
+        NS.SoftResImportPreview()
         return F
     end },
     { key = "gearframe", view = "raider", open = function()

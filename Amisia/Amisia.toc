@@ -115,6 +115,7 @@ UI\Pages\Awards.lua
 UI\Pages\Stats.lua
 UI\Pages\Points.lua
 UI\Pages\SoftRes.lua
+UI\SoftResImport.lua
 UI\Pages\Gear.lua
 UI\Pages\Dungeons.lua
 UI\Pages\Map.lua

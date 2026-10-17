@@ -50,17 +50,22 @@ check("7a tooltip of (Liste: Frak)", function()
 end)
 
 ---------------------------------------------------------------------------
--- 5. import window: preview and result never share a line
+-- 5. import window: preview and result never share a line (the window of 2.41: from the top the
+-- text box, the preview line, the box of raiders without a reservation, the list; the result above
+-- the buttons and below the list)
 ---------------------------------------------------------------------------
 check("5 import window rooms", function()
     NS.ToggleSoftResFrame()
     local F = NS.SoftResFrame
+    local S = NS.Theme.SRIMPORT
     local p, r, box = F.previewText, F.resultText, F.box
     assert(p._h and r._h and box, "fixed heights")
-    local py, ry = p.points.BOTTOMLEFT.y, r.points.BOTTOMLEFT.y
+    assert(p.points.TOPLEFT.y <= box.points.TOPLEFT.y - S.BOX_H, "the preview below the text box")
+    assert(F.miss.points.TOPLEFT.y <= p.points.TOPLEFT.y - p._h, "the box below the preview")
+    assert(F.list.points.TOPLEFT.y <= F.miss.points.TOPLEFT.y - S.MISS_H, "the list below the box")
+    local ry = r.points.BOTTOMLEFT.y
     assert(ry >= 10 + 22, "the result above the buttons")
-    assert(ry + r._h <= py, "the result below the preview")
-    assert(py + p._h <= box.points.BOTTOMRIGHT.y, "the preview below the text box")
+    assert(S.H + (S.LIST_Y - S.ROWS * S.ROW_H) >= ry + r._h, "the result below the list")
     assert(p._h >= 24 and r._h >= 24, "two lines each")
     NS.ToggleSoftResFrame()
 end)

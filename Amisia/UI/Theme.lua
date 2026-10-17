@@ -229,6 +229,22 @@ T.DUELS = {
                    { "wins", 366, 90, justify = "CENTER" }, { "rate", 470, 70, justify = "RIGHT" } },
 }
 
+-- the soft-reserve import window (F-108): from the top the list's date, the pasted text, the
+-- preview line, the box "Im Raid ohne Reserve", the head and the rows of the preview (two lines: the
+-- name in class colour, under it the finding; the items as icons on the right), then the result
+-- line and the buttons. Content T.WINDOW_PAD from both edges: 524 wide, the list 512 (its bar).
+T.SRIMPORT = {
+    W = 560, H = 614,
+    DATE_Y = -32, BOX_Y = -50, BOX_H = 84, PREVIEW_Y = -140, TEXT_H = 26,
+    MISS_Y = -172, MISS_H = 64, MISS_PAD = 8, MISS_TITLE_Y = -8, MISS_NAMES_Y = -32, MISS_BUTTON_Y = -5,
+    HEAD_Y = -244, LIST_Y = -262, ROWS = 7, ROW_H = 40,
+    NAME_X = 8, NAME_Y = -5, STATUS_Y = -21, STATUS_W = 232, SUGGEST_MAX_W = 120, SUGGEST_Y = -19,
+    ANNOUNCE_X = 140, ANNOUNCE_Y = -10,            -- "Ansagen" on the hard-reserve row
+    ICON = 28, ICON_GAP = 4, ICON_X = 248, ICONS = 8, ICON_Y = -6,
+    RESULT_Y = 38, BUTTON_Y = 10,
+    HARD = { 0.8, 0.22, 0.18, 0.9 },             -- the frame of the hard-reserve row
+}
+
 -- an overview card
 T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help

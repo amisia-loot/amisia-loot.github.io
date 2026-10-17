@@ -442,7 +442,7 @@ OTHER_ADDONS = ('gargul', 'rclootcouncil', 'questie', 'atlasloot', 'oneforall', 
 # the roll window mark "(Gargul)", the lead's hint); never in code, a setting key or a chat line sent.
 NAMED_HERE = {
     'gargul': {'Raid/SoftRes.lua', 'Raid/Rolls.lua', 'Raid/RollWindow.lua', 'Raid/RollWatch.lua', 'Raid/RollFrame.lua',
-               'UI/Pages/SoftRes.lua', 'Locales/enUS_raid.lua', 'Locales/enUS_raid2.lua'},
+               'UI/Pages/SoftRes.lua', 'UI/SoftResImport.lua', 'Locales/enUS_raid.lua', 'Locales/enUS_raid2.lua'},
 }
 
 
