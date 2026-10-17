@@ -754,8 +754,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du Shift hältst, dann zeigt der Tooltip die Zerlegung, "Slot: +N %" und eine Zeile mit den anderen Spezialisierungen deiner Klasse.
 - Prüfung: Wenn deine Trefferchance schon an der Grenze ist, dann bringt ein Item mit nur Trefferwertung 0 % und steht nicht als Upgrade da.
 - Prüfung: Wenn du im Kampf über ein Item fährst, dann rechnet Amisia mit dem Stand von vor dem Kampf und zeigt keinen Fehler.
-- Prüfung: Wenn du "Warum?" bei einem Item klickst, dann stehen dort deine Ausgangswerte (z. B. Angriffskraft, Krit, Treffer) und was sich durch den Tausch ändert.
-- Notiz: Spec `docs/specs/2026-10-17-upgrade-genau.md`; DECISIONS D-54.
+- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele mit der Maus über die Erklärzeile unter der Slot-Liste fährst (oder `/amisia bis warum <Item-Link>` eingibst), dann stehen dort "Gesamt: +x,x % ..." mit deinen Ausgangswerten (z. B. Angriffskraft, Krit, Treffer) und was sich durch den Tausch ändert.
+- Notiz: Spec `docs/specs/2026-10-17-upgrade-genau.md`; DECISIONS D-54. Im Spiel offen: ob `UnitStat`s posBuff auf Forever die Ausrüstung enthält (sonst bleibt der Prozent-Faktor für Talente bei 1) und ob Forever-Tooltips die Verzauberung als "Verzaubert: ..." schreiben (sonst fehlt die Shift-Zeile dazu).
 
 ### F-042 Wunschliste mit Drop-Hinweis
 - Version: 1.8.0
