@@ -277,14 +277,14 @@ L["Aufruf: /amisia bis vergleich <Item-Link> <Item-Link>"] = "Usage: /amisia bis
 L["Gewichte (%s, Level %d): %s"] = "Weights (%s, level %d): %s"
 L["Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %%"] = "Hit per character sheet: %s %% (weapons), %s %% (spells), cap %d %%"
 L["Trefferwertung zählt ohne Obergrenze (der Client nennt den eigenen Trefferwert nicht)."] = "Hit rating counts without a cap (the client does not tell your own hit)."
-L["[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"] = "[here | item <link> | exclude <link> | reset | compare <link> <link> | weights | plan <auto|2h|dw|shield> | sim]"
+L["[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"] = "[here | item <link> | exclude <link> | reset | compare <link> <link> | weights | plan <auto|2h|dw|shield> | sim | big]"
 L["beste Ausrüstung für deinen Charakter"] = "best gear for your character"
 L["%s ausgeschlossen. /amisia bis zurueck hebt alle Ausschlüsse auf."] = "%s excluded. /amisia bis reset lifts all exclusions."
 L["%d Ausschlüsse aufgehoben."] = "%d exclusions lifted."
 L["1 Ausschluss aufgehoben."] = "1 exclusion lifted."
 L["Aufruf: /amisia bis plan auto|2h|dw|schild"] = "Usage: /amisia bis plan auto|2h|dw|shield"
 L["Waffenplan: %s."] = "Weapon plan: %s."
-L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"] = "Usage: /amisia bis [here | item <link> | exclude <link> | reset | compare <link> <link> | weights | plan <auto|2h|dw|shield> | sim]"
+L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"] = "Usage: /amisia bis [here | item <link> | exclude <link> | reset | compare <link> <link> | weights | plan <auto|2h|dw|shield> | sim | big]"
 
 -- Dungeons.lua
 L["Keine Dungeon-Daten."] = "No dungeon data."
@@ -586,3 +586,11 @@ L["%s (Upgrade %s)"] = "%s (upgrade %s)"
 L[" (alt)"] = " (old)"
 L[" (ungefähr)"] = " (approximate)"
 L["%s, Platz leer"] = "%s, slot empty"
+
+-- the window "Ausrüstungsziele" (F-110 to F-113)
+L["Ausrüstungsziele"] = "Gear Goals"
+L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."] = "Paper doll, list and a ranking per slot in a big window."
+L["Schmuck##Abschnitt"] = "Jewelry"
+L["Modell nicht verfügbar"] = "Model not available"
+L["Ziehen dreht · Mausrad zoomt · Rechtsklick: zurück"] = "Drag turns · wheel zooms · right-click resets"
+L["Waffen"] = "Weapons"

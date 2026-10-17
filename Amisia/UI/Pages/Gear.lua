@@ -504,12 +504,14 @@ local function buildGoals(f)
     end, fillGoalRow)
     -- 11 of 17 slots (18 + 264 = 282 of the view's 406)
 
-    G.title = W.Text(G, T.FONT.title, 440)
-    G.title:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -286)
-    -- why the weights are as they are (tooltip), and the simulation of another class or level
-    -- 20 high, between the list (it ends at -282) and the first option (-302)
+    -- the window "Ausrüstungsziele" (UI/GoalsWindow.lua), why the weights are as they are
+    -- (tooltip), and the simulation of another class or level: 20 high, between the list (it ends
+    -- at -282) and the first option (-302), from the right edge; the title takes the rest
+    G.big = W.Button(G, L["Großes Fenster"], 110, function() if ns.ToggleGoalsFrame then ns.ToggleGoalsFrame() end end,
+        { height = T.ROW_BUTTON_H })
+    W.FitChip(G.big, 110)
+    W.Tooltip(G.big, L["Ausrüstungsziele"], L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."])
     G.why = W.Button(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
-    G.why:SetPoint("TOPRIGHT", -92, -282)
     G.why:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Warum diese Gewichte"])
@@ -518,8 +520,10 @@ local function buildGoals(f)
     end)
     G.why:SetScript("OnLeave", hideTip)
     G.sim = W.Button(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
-    G.sim:SetPoint("TOPRIGHT", 0, -282)
     W.Tooltip(G.sim, L["Simulation"], L["Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz."])
+    local reach = W.Row(G, { G.big, G.why, G.sim }, T.CHIP_GAP, 0, -282, { right = true })
+    G.title = W.Text(G, T.FONT.title, T.PAGE_W - reach - T.LAYOUT.ITEM_GAP - T.LAYOUT.TEXT_X)
+    G.title:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -286)
     G.opts = {}
     for i = 1, 3 do
         local b = CreateFrame("Button", nil, G)
@@ -1234,6 +1238,11 @@ ns.GearPageKit = {
     state = state, cached = cached, itemText = itemText, marks = marks, gainText = gainText,
     itemTooltip = itemTooltip, hideTip = hideTip, modifiedClick = modifiedClick, menuEntries = menuEntries,
     say = say, col = col, specPicker = specPicker, fillSpec = fillSpec,
+    -- for the window "Ausrüstungsziele": the source text, the map button, the link, the notes, the
+    -- explanation of a slot's option and whether a shown row had no item name yet
+    sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, linkText = linkText,
+    noteParts = noteParts, insertLink = insertLink, explainText = explainText, OWNED_TEXT = OWNED_TEXT,
+    nameMissing = function() return nameMissing end,
     -- a refresh starts with no missing item name; GET_ITEM_INFO_RECEIVED fills its rows again
     namesFresh = function() nameMissing = false end,
 }

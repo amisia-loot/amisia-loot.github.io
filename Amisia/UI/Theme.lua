@@ -328,6 +328,77 @@ T.TALENT = {
     WINDOW = { TOP = 32, BOTTOM = 12, SCALE_STEP = 5 },
 }
 
+-- the window "Ausrüstungsziele" (UI/GoalsWindow.lua, AmisiaGoalsFrame, F-110 to F-113) in the
+-- talent window's frame: the head row under the title bar; left the doll (the character model
+-- between the slot columns as on the character frame, the weapons under it, the switch Ziele /
+-- Angelegt, the score head), in the middle the progress, the filter chips and the list of slots by
+-- section, right the chosen slot's panel (own pick, ranking, dungeon drops, the item field).
+-- 18 + 300 + 10 + 380 + 10 + 210 + 18 = 946.
+T.GOALS = {
+    W = 946, H = 600,
+    TOP = 32,             -- the head row below the window's top, under the title bar
+    BOTTOM = 12,          -- what the columns leave free at the bottom
+    SCALE_STEP = 5,       -- Ctrl + mouse wheel: percent per notch (setting ui.goalScale)
+    COL_Y = 60,           -- the three columns below the window's top
+    -- the doll: 6 slots left (centred on the 8 right), the model between, the weapons under it
+    DOLL_X = 18, DOLL_W = 300,
+    SLOT = 36, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2,
+    DOT = 10,             -- the state dot at a slot's lower right corner
+    MODEL_GAP = 8,        -- between a slot column and the model
+    MODEL_H = 316,        -- 8 slots and their gaps
+    WEAPON_GAP = 8,       -- between the model and the weapon row
+    SWITCH_GAP = 6,       -- between the weapon row and the switch Ziele / Angelegt
+    SWITCH_W = 80,        -- each chip of the switch (at least; FitChip)
+    HINT_H = 24,          -- the model's hint under the switch (two lines at most)
+    ROTATE = 0.012,       -- radians per pixel the mouse is dragged
+    ZOOM_STEP = 0.1, ZOOM_MAX = 0.8,
+    -- the list in the middle
+    LIST_X = 328, LIST_W = 380,
+    PROG_Y = 60,          -- "N/17 Ziele hast du" (T.FONT.title) and the bar of 17 parts beside it
+    BAR_H = 10, BAR_PART_GAP = 2,
+    FILTER_Y = 84,        -- the filter chips
+    LIST_Y = 112,         -- the list (its rows ROW_H high, ROWS of them)
+    ROW_H = 20, ROWS = 21,
+    ICON = 16,
+    -- { key, x, width } on the list's 368 (LIST_W less T.SCROLL_ROOM): slot, icon, item, gain, map, source
+    COLS = { { "slot", 4, 56 }, { "icon", 62, 16 }, { "name", 82, 150 }, { "gain", 236, 38 }, { "map", 280, 16 }, { "src", 298, 68 } },
+    -- the slot panel on the right
+    SIDE_X = 718, SIDE_W = 210,
+    SIDE_ROW_H = 18, RANK_ROWS = 10, DROP_ROWS = 3,
+    SECTION_GAP = 6,      -- before a section's head in the panel
+    FIELD_W = 132,        -- "Item-Link oder ID"; "Hinzufügen" takes the rest
+    -- the score head under the doll (part B)
+    SCORE_H = 20,         -- "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4" beside it
+    SCORE_BAR_H = 10,     -- the bar up to "Bestes auf Stufe N"
+    STAT_ROWS = 3, STAT_H = 14,  -- six stat changes in two columns
+    -- an item's quality colour on its slot's frame (the client's item quality colours)
+    QUALITY = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
+        { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } },
+    -- the state colours: worn green, in bag or bank yellow, still to get grey, no target dark
+    STATE_COLOR = { done = { 0.31, 0.82, 0.42 }, bag = { 1, 0.82, 0.2 }, todo = { 0.5, 0.48, 0.55 }, none = { 0.16, 0.14, 0.18 } },
+    -- the empty slot art of the character frame, when the client's GetInventorySlotInfo does not say
+    SLOT_ART = {
+        HEAD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Head", NECK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Neck",
+        SHOULDER = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shoulder", BACK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest",
+        CHEST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest", WRIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Wrists",
+        HANDS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Hands", WAIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Waist",
+        LEGS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Legs", FEET = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Feet",
+        FINGER1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger", FINGER2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger",
+        TRINKET1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket", TRINKET2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket",
+        MAINHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand", OFFHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-SecondaryHand",
+        RANGED = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Ranged",
+    },
+    -- the client's slot names for GetInventorySlotInfo
+    SLOT_NAME = { HEAD = "HEADSLOT", NECK = "NECKSLOT", SHOULDER = "SHOULDERSLOT", BACK = "BACKSLOT", CHEST = "CHESTSLOT",
+        WRIST = "WRISTSLOT", HANDS = "HANDSSLOT", WAIST = "WAISTSLOT", LEGS = "LEGSSLOT", FEET = "FEETSLOT",
+        FINGER1 = "FINGER0SLOT", FINGER2 = "FINGER1SLOT", TRINKET1 = "TRINKET0SLOT", TRINKET2 = "TRINKET1SLOT",
+        MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT" },
+    -- the doll's slots as on the character frame
+    LEFT = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST" },
+    RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
+    BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
+}
+
 -- the setup assistant (UI/Setup.lua, "Amisia einrichten"): one window, one step at a time. Its
 -- content keeps T.WINDOW_PAD from the left and right edge; the step line and the step's title at
 -- the top, the step's rows in the middle, a status line and the red buttons at the bottom.
@@ -467,6 +538,8 @@ T.ATLASES = {
     "talent-background-warrior", "talent-background-paladin", "talent-background-hunter", "talent-background-rogue",
     "talent-background-priest", "talent-background-shaman", "talent-background-mage", "talent-background-warlock",
     "talent-background-druid",
+    -- the mark of an own pick in the window "Ausrüstungsziele" (the auction house's favourite star)
+    "auctionhouse-icon-favorite",
     -- the map legend's quest giver mark, the dungeon and raid entrances (Gear/MapPlaces.lua)
     "QuestNormal", "Dungeon", "Raid",
     -- the raid calendar window: the group finder's role icons (Blizzard_UIPanelTemplates/Camelot,

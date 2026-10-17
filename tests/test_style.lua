@@ -611,21 +611,21 @@ assert(tabs.gear.Icon.points.TOPLEFT.x == 3 + inset, "inset once: " .. tabs.gear
 NS.Set("ui.view", "officer")
 local function tabsShown()
     local out = {}
-    for _, k in ipairs({ "gear", "talents", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
+    for _, k in ipairs({ "gear", "talents", "goals", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
     return table.concat(out, " ")
 end
-assert(tabsShown() == "gear talents rolls softres", tabsShown())
+assert(tabsShown() == "gear talents goals rolls softres", tabsShown())
 -- one under the other, the first at the frame's top right, outside the frame
 local p1 = tabs.gear.points.TOPLEFT
 assert(p1.rel == MF and p1.relPoint == "TOPRIGHT" and p1.x == 0 and p1.y == -60, "the first at the top right")
 local p2 = tabs.talents.points.TOPLEFT
 assert(p2.rel == tabs.gear and p2.relPoint == "BOTTOMLEFT" and p2.y == -2)
-assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents)
+assert(tabs.goals.points.TOPLEFT.rel == tabs.talents and tabs.rolls.points.TOPLEFT.rel == tabs.goals, "the goals window's tab under the talents'")
 assert(MF.clampInsets and MF.clampInsets[2] == tabs.gear:GetWidth(), "the tabs stay on the screen")
 -- a raider sees the gear and talent tabs; without gear data a raider sees the talents' only, an
 -- officer three without gaps
 NS.Set("ui.view", "raider"); STUB.tick(0)
-assert(tabsShown() == "gear talents", tabsShown())
+assert(tabsShown() == "gear talents goals", tabsShown())
 local keepGear = NS.GEAR
 NS.GEAR = nil
 NS.UpdateSideTabs()

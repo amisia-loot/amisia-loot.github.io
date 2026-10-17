@@ -1282,6 +1282,17 @@ function _G.CreateFrame(kind, name, parent, template)
             if self.scripts.OnClick then self.scripts.OnClick(self, "LeftButton") end
         end
     end
+    -- the character model of the goals window (STUB.noDressUp: the client has none of its methods)
+    if kind == "DressUpModel" and not STUB.noDressUp then
+        f.SetUnit = function(self, unit) self.unit = unit; self.tried = {}; self.undressed = false end
+        f.Undress = function(self) self.undressed = true; self.tried = {} end
+        f.TryOn = function(self, link) self.tried = self.tried or {}; self.tried[#self.tried + 1] = link end
+        f.SetRotation = function(self, r) self.rotation = r end
+        f.GetRotation = function(self) return self.rotation or 0 end
+        f.SetPortraitZoom = function(self, z) self.zoom = z end
+        f.SetPosition = function(self, x, y, z) self.position = { x, y, z } end
+        f.RefreshUnit = function(self) end
+    end
     if name then _G[name] = f end
     if template ~= nil then
         f.inherits, f.template = {}, template

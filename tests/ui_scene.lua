@@ -539,6 +539,10 @@ S.WINDOWS = {
         NS.ShowTalentFrame()
         return AmisiaTalentFrame
     end },
+    { key = "goalsframe", view = "raider", open = function()
+        -- the window "Ausrüstungsziele" with the priest's targets, the first slot with an upgrade chosen
+        return NS.ShowGoalsFrame()
+    end },
     { key = "lootrules-bar", view = "officer", open = function()
         -- one click: the bar beside the loot window with what the rules would hand out
         NS.Set("lootrules.mode", "click")

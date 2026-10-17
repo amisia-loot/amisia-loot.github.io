@@ -640,7 +640,7 @@ end
 
 -- The dungeon images (DungeonArt.lua): every file id of the client's loading screens, drawn once on
 -- a hidden texture; SetTexture answers whether the client has the file. And the boss model's frame.
-local artTexture, artModel
+local artTexture, artModel, dollModel
 local function sectionArt(R)
     local A = ns.DUNGEON_ART
     if type(A) ~= "table" or type(A.D) ~= "table" then
@@ -692,6 +692,23 @@ local function sectionArt(R)
         m:Hide()
         if type(m.SetCreature) == "function" then return "OK", L["SetCreature vorhanden"] end
         return "WERT", L["SetCreature fehlt (kein Bossmodell)"]
+    end)
+    -- the character model of the window "Ausrüstungsziele" (F-110): a DressUpModel that wears the
+    -- player (SetUnit), undresses and tries items on
+    check(R, L["Charaktermodell"], function()
+        if not dollModel then
+            local good, m = pcall(CreateFrame, "DressUpModel", nil, UIParent)
+            dollModel = good and m or false
+        end
+        local m = dollModel
+        if not m then return FEHLT, L["kein DressUpModel (keine Puppe im Zielefenster)"] end
+        m:Hide()
+        local lacks = {}
+        for _, method in ipairs({ "SetUnit", "Undress", "TryOn" }) do
+            if type(m[method]) ~= "function" then lacks[#lacks + 1] = method end
+        end
+        if #lacks > 0 then return FEHLT, L["DressUpModel ohne %s (keine Puppe im Zielefenster)"]:format(table.concat(lacks, ", ")) end
+        return "OK", L["DressUpModel, SetUnit, Undress, TryOn vorhanden"]
     end)
 end
 

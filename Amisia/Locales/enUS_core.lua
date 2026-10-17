@@ -17,6 +17,8 @@ L["Minimap-Button"] = "Minimap button"
 L["Der runde Amisia-Button am Rand der Minimap."] = "The round Amisia button at the edge of the minimap."
 L["Fenstergröße (%)"] = "Window size (%)"
 L["Größe des Talentfensters (%)"] = "Talent window size (%)"
+L["Größe des Zielefensters (%)"] = "Gear goals window size (%)"
+L["Das Fenster Ausrüstungsziele. Strg + Mausrad über dem Fenster ändert die Größe auch."] = "The window Gear Goals. Ctrl + mouse wheel over the window changes the size too."
 L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."] = "The big talent window (talent calculator). Ctrl + mouse wheel over the window changes the size too."
 L["Fensterposition zurücksetzen"] = "Reset window position"
 L["Ansicht"] = "View"
@@ -409,7 +411,7 @@ L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] = "Writes ev
 L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] = "This many raids stay saved, the oldest go first. In the officer view a raid the site does not have yet stays (up to 200 raids)."
 -- Core/Registry.lua
 L["Größe des Amisia-Fensters in Prozent."] = "Size of the Amisia window in percent."
-L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] = "Puts the main window, the gear table, the roll window, the talent window and the raid calendar back in their default places."
+L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Ausrüstungsziele und Raid-Kalender an ihren Standardplatz zurück."] = "Puts the main window, the gear table, the roll window, the talent window, the gear goals and the raid calendar back in their default places."
 -- Core/Version.lua
 L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] = "A note in the chat when someone in your guild or group has a newer Amisia version."
 

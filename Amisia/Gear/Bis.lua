@@ -2353,7 +2353,7 @@ function ns.BisWeightsReport()
 end
 
 ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: command word / internal key
-    args = L["[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"],
+    args = L["[hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"],
     desc = L["beste Ausrüstung für deinen Charakter"],
     run = function(rest)
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
@@ -2391,7 +2391,9 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: co
             ns.msg(ok and L["Waffenplan: %s."]:format(ns.BIS_PLANS[want]) or why)
         elseif sub == "sim" or sub == "simulation" then
             ns.ShowGear("sim")
+        elseif sub == "gross" or sub == "gro\195\159" or sub == "big" then   -- l10n-ok: typed words
+            if ns.ShowGoalsFrame then ns.ShowGoalsFrame() end
         else
-            ns.msg(L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim]"])
+            ns.msg(L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"])
         end
     end })
