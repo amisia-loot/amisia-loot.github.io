@@ -2,6 +2,21 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.41.0 (2026-10-17)
+
+- Seitenliste ohne blaues Hover-Leuchten; Suche findet Einstellungsabschnitte (auch nach Reiter, z. B. Allgemein), Rezepte und Dungeons
+- Daten für Client-Build 1.60.1.70450 (automatisch gebaut, Prüfung grün)
+- Sicherheit: Rollen der Seite nur aus Konto-Daten, die niemand selbst ändern kann (Migration, noch nicht angewendet); Ledger-Werte in HTML-Attributen escaped; Blob-Teile auf GUILD verworfen
+- Spec Soft-Reserves teilen, Vorschau im Import-Fenster, Klassen-Abgleich (F-107..F-109, Entwurf)
+- Spec Soft-Reserves teilen/Vorschau/Klassen freigegeben; F-107..F-109 geplant
+- Soft-Reserves: Klassen-Abgleich (F-109): Klasse aus softres.it gegen den Raid, CSV-Spalte Raider Class, Vorschläge nach Klasse
+- Soft-Reserves: Vorschau im Import-Fenster (F-108): Raider mit Item-Symbolen und Befund, Kasten 'Im Raid ohne Reserve', Hard-Reserves oben; Ansage beim Übernehmen im Raid
+- Soft-Reserves mit dem Raid teilen (F-107, D-53): SV/SQ/SR, nur Offiziere mit eigener Liste, neueste gewinnt, Angebot für Offiziere; Doku
+- Spec Fenster Ausrüstungsziele: Puppe, Wertungs-Kopf, Slot-Leiste mit eigener Wahl, Fortschritt/Filter (F-110..F-113, Entwurf)
+- Spec Ausrüstungsziele freigegeben; F-110..F-113 geplant
+- Soft-Reserves Review: leeres Übernehmen ersetzt nichts, Löschen/Neu-Import kommen trotz Abstand an, Offizier behält eigene Liste, altes Angebot verfällt, ungültige Listen werden nicht angekündigt, Antwort nur für die aktuelle Liste, englische Ansage ohne Deutsch, Knopf nur bei Angebot
+- F-107..F-109 gebaut in 2.41.0
+
 ## 2.40.0 (2026-10-16)
 
 - Spec Duelle: Verlauf, Rangliste, Klassen aus der Systemmeldung, Klassen suchen per Klick (F-106, Entwurf)
