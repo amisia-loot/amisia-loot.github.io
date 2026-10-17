@@ -561,27 +561,31 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec Teil B4; DECISIONS D-44. Für Raider mit Gargul oder englischem Client: sie würfeln mit `/roll` (MS) und `/roll 99` (OS), genau Gargul's Standardbereiche. Ein englischer Client sagt ohnehin Englisch an und schreibt keine zweite Zeile.
 
 ### F-107 Soft-Reserves mit der Gruppe teilen
-- Version: -
-- Status: geplant
-- Braucht: Gruppe
-- Prüfung: Wenn die Lootleitung übernimmt, dann zeigt bei einem Raider mit Amisia nach höchstens 30 s der Tooltip eines reservierten Items "Reserviert: …" und die Seite "Liste vom … von <Name>".
-- Prüfung: Wenn ein Raider nach dem Übernehmen in die Gruppe kommt (oder `/reload` macht), dann hat er die Liste nach höchstens 60 s.
-- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil A.
+- Version: 2.41.0
+- Status: gebaut
+- Braucht: Raid
+- Prüfung: Wenn du als Offizier (Vulo Hunt) im Raid mit einem Gildenmitglied, das Amisia hat, eine Liste übernimmst, dann sagt die Ergebniszeile "… übernommen, … Mit der Gruppe geteilt.", und bei ihm zeigt nach höchstens 30 s die Seite Soft-Reserves "Liste vom … von Vulo Hunt" und der Tooltip eines reservierten Items "Reserviert: …".
+- Prüfung: Wenn das Gildenmitglied erst danach in den Raid kommt (oder `/reload` macht), dann hat es die Liste nach höchstens 60 s.
+- Prüfung: Wenn du danach "Löschen" klickst, dann ist die Liste beim Gildenmitglied nach höchstens 20 s weg.
+- Prüfung: Wenn das Gildenmitglied ein Offizier mit eigener, älterer Liste ist, dann behält es seine Liste, bekommt die Chatzeile "Soft-Reserves: Vulo Hunt hat eine neuere Liste geteilt …" und auf der Seite "Neuere Liste von Vulo Hunt (…)" mit dem Knopf "Liste übernehmen".
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil A; DECISIONS D-53. Nachrichten SV/SQ und Blob SR; geteilt wird nur im Raid, angenommen nur von Offizieren der eigenen Gilde. Einstellung Soft-Reserves "Liste mit dem Raid teilen" (an). Neue Dateien: nach dem Release WoW ganz neu starten.
 
 ### F-108 Soft-Reserves: Vorschau im Import-Fenster und Hard-Reserve-Ansage
-- Version: -
-- Status: geplant
-- Braucht: Raid
-- Prüfung: Wenn du einen Gargul-Code einfügst, dann zeigt das Fenster vor "Übernehmen" jeden Raider mit seinen Items als Symbole, oben die Hard-Reserves, und im Kasten die Raidmitglieder ohne Reserve.
-- Prüfung: Wenn die Lootleitung im Raid übernimmt und es Hard-Reserves gibt, dann stehen im Raidchat die Zeile "Soft-Reserves geladen: …" und "Hard-Reserves: [Item] für …".
-- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil B.
+- Version: 2.41.0
+- Status: gebaut
+- Prüfung: Wenn du in der Offiziersansicht auf der Seite Soft-Reserves "Importieren" klickst und den Beispielcode `eNpljzFPxDAMhf+L5wxNVdoj27EwggSIAXVwa1dEpMnJSVmq/ncSDkErMsXv6X1+XmHmhIQJwaxgCQzgoOuRQMEojInpnMDo7la3N1V+CpYLHWX9LQtaekooKf46bd0U590SsQczoYusgGwcg9CLuLwMNgUxTEk4snxyBPO2gseZs3f2HksNhzHr8CiWY8qCD6nY+XdxS3zwJZXX2MTzNV/O0KeTbja1H/oy/rDvwrBDv6KIDfLHfkb/ceDrf/yu6tqM7PN9KHTof/XrqlEwZaqBe+uId81Lagh+iRKcK5l++wJJR3km` einfügst, dann steht nach einem Moment unter dem Textfeld "Gargul-Code erkannt: 3 Reservierungen, 1 Hard-Reserve …", darunter der Kasten "Im Raid ohne Reserve" (ohne Raid und ohne aufgezeichneten Raid: "Kein Raid zum Abgleichen.") und die Liste "Vorschau" mit "2 Raider": oben rot umrandet "Hard-Reserves" mit einem Item-Symbol und "für Gilde", darunter Anna mit einem Symbol mit "2x" und Bob mit einem Symbol.
+- Prüfung: Wenn du mit der Maus auf ein Item-Symbol gehst, dann zeigt der Tooltip das Item (beim Hard-Reserve dazu "Hard-Reserve für Gilde"), und Shift-Klick setzt den Link in die Chatzeile.
+- Prüfung: Wenn du das Textfeld leerst und "Übernehmen" klickst, dann steht unten "Nichts eingefügt. Die geladene Liste bleibt; "Leeren" löscht sie.", und die geladene Liste bleibt.
+- Notiz: Braucht: Raid (ab 2026-11-04, D-32): Wenn du im Raid eine Liste einfügst, dann stehen im Kasten "Im Raid ohne Reserve · N" die Raidmitglieder ohne Reserve in Klassenfarbe, und "Erinnern (N)"/"Im Raid posten" gehen erst nach "Übernehmen". Wenn du im Raid übernimmst, dann stehen im Raidchat "Soft-Reserves geladen: N Reservierungen von M Raidern. '!sr' an … flüstern zeigt deine." und, mit Hard-Reserves, "Hard-Reserves: [Item] für …"; der Chip "Ansagen" in der Hard-Reserve-Zeile sagt es noch einmal.
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil B; DECISIONS D-53. Fenster jetzt UI/SoftResImport.lua (560 × 614). Einstellung Soft-Reserves "Beim Übernehmen im Raid ansagen" (an); Englisch dazu mit "Rundenansage auch auf Englisch".
 
 ### F-109 Soft-Reserves: Klassen-Abgleich
-- Version: -
-- Status: geplant
+- Version: 2.41.0
+- Status: gebaut
 - Braucht: Raid
-- Prüfung: Wenn auf softres.it bei einem Raider eine andere Klasse steht als im Raid, dann steht in der Vorschau und in der Ansicht "Abgleich" "Klasse passt nicht" mit beiden Klassen.
-- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil C.
+- Prüfung: Wenn auf softres.it bei einem Raider eine andere Klasse steht als im Raid, dann steht in der Vorschau des Import-Fensters orange "Klasse: softres <Klasse>, im Raid <Klasse>", in der Ansicht "Abgleich" der Seite die Zeile "Klasse: <Name>" mit "Klasse passt nicht: …" und in der Zeile darüber "1 Klasse falsch".
+- Prüfung: Wenn ein Name auf softres.it einen Tippfehler hat, dann steht bei ihm "Name unklar, gemeint:" mit einem Vorschlag; ein Raidmitglied der Klasse von softres.it steht dabei vorne.
+- Notiz: Spec docs/specs/2026-10-17-softres-teilen-vorschau.md, Teil C. Die Klasse kommt aus dem Gargul-Code oder der CSV-Spalte "Raider Class"; ein Hinweis, nichts wird gesperrt.
 
 ### F-097 Gruppen-Prüfung
 - Version: 2.28.0
