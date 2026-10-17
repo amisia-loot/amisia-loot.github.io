@@ -260,6 +260,8 @@ function ns.ParseSoftRes(text)
     local extra = { src = "lines" }
     local function add(item, name)
         if not item or not name then return false end
+        -- what the raid can be sent (F-107): item ids 1-9999999, names without digits or separators
+        if item < 1 or item > 9999999 or item % 1 ~= 0 or #name > MAX_NAME or name:find("[%d,;:|]") then return false end
         name = aliased(name, renamed)
         sets[item] = sets[item] or {}
         total = total + 1
@@ -884,8 +886,9 @@ local REMIND_TEXT = L["Amisia: Du hast für heute noch nichts reserviert."]
 
 -- Lines of head and parts (ns.ChatLines) within maxLines: the parts that do not fit become
 -- "und n weitere" at the end of the last part kept. suffix goes after the last part.
-local function cappedLines(head, parts, maxLines, sep, suffix)
+local function cappedLines(head, parts, maxLines, sep, suffix, moreText)
     suffix = suffix or ""
+    moreText = moreText or L["und %d weitere"]
     local function build(list)
         if #list == 0 then return ns.ChatLines(head .. suffix, {}, sep) end
         local copy = {}
@@ -898,7 +901,7 @@ local function cappedLines(head, parts, maxLines, sep, suffix)
     for k = #parts - 1, 0, -1 do
         local cut = {}
         for i = 1, k do cut[i] = parts[i] end
-        local more = L["und %d weitere"]:format(#parts - k)
+        local more = moreText:format(#parts - k)
         if k > 0 then cut[k] = cut[k] .. " " .. more else cut[1] = more end
         lines = build(cut)
         if #lines <= maxLines then return lines end
@@ -1118,7 +1121,8 @@ function ns.SoftResAnnounceLines(sr, english)
         if h.note ~= "" and h.note ~= h.to then part = part .. " (" .. h.note .. ")" end
         parts[#parts + 1] = part
     end
-    for _, line in ipairs(cappedLines(english and "Hard reserves: " or L["Hard-Reserves: "], parts, 3, ", ", ".")) do
+    for _, line in ipairs(cappedLines(english and "Hard reserves: " or L["Hard-Reserves: "], parts, 3, ", ", ".",
+        english and "and %d more" or nil)) do
         lines[#lines + 1] = line
     end
     return lines

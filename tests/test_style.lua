@@ -818,14 +818,15 @@ NS.ToggleSoftResFrame()
 local SF = AmisiaSoftResFrame
 assert(SF:IsShown())
 dialogFrame("soft-reserve import", SF, "Soft-Reserves")
-assert(SF._w == 440 and SF._h == 380 and special("AmisiaSoftResFrame"))
-local SL = headClear("soft-reserve import", SF, 440, 380)
+local SR = NS.Theme.SRIMPORT   -- the window of 2.41 (F-108) with its preview
+assert(SF._w == SR.W and SF._h == SR.H and special("AmisiaSoftResFrame"))
+local SL = headClear("soft-reserve import", SF, SR.W, SR.H)
 assert(SF.box.border and SF.box.border.atlas == "common-insideframe" and SF.box.ground.color[4] == 0.35, "an edit area: inset, dark ground")
 assert(SF.editBox == SF.box.box and SF.box.scroll.inherits == nil, "the edit area's own box, no old scroll template")
 assert(SF.box.bar and SF.box.bar.inherits.MinimalScrollBar, "the thin bar")
 assert(_G.AmisiaSoftResScroll == nil, "the global scroll name is gone")
 local bl, bt = SF.box.points.TOPLEFT.x, SF.box.points.TOPLEFT.y
-assert(bl == 12 and bt == -50 and SF.box.points.BOTTOMRIGHT.x == -12, "the same place as before")
+assert(bl == NS.Theme.WINDOW_PAD and bt == SR.BOX_Y and SF.box._w == SR.W - 2 * NS.Theme.WINDOW_PAD, "under the date line, the window's pad")
 SL.inside("soft-reserve box", SF.box)
 SL.inside("soft-reserve bar", SF.box.bar)
 for _, b in ipairs({ SF.applyBtn, SF.clearBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end

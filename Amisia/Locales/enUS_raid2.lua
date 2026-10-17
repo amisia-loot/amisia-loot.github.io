@@ -1309,3 +1309,5 @@ L["Soft-Reserves: %s hat eine neuere Liste geteilt (%d Reservierungen). Auf der 
 L["Liste übernehmen"] = "Take list"
 L["Ersetzt deine Liste durch die neuere, die ein anderer Offizier mit dem Raid geteilt hat."] = "Replaces your list with the newer one another officer shared with the raid."
 L["Neuere Liste von %s (%s, %d Reservierungen)"] = "Newer list from %s (%s, %d reserves)"
+L["Nichts eingefügt. Die geladene Liste bleibt; \"Leeren\" löscht sie."] = "Nothing pasted. The loaded list stays; \"Clear\" removes it."
+L["Soft-Reserves: diese Liste lässt sich nicht teilen (ungültige Einträge). Bitte neu einfügen."] = "Soft reserves: this list cannot be shared (invalid entries). Please paste it again."

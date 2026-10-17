@@ -258,7 +258,7 @@ sender is always the server's sender name, never a field.
 | `LV` | keeper -> RAID (10 s after a change, else every 240 s) | officer, in group | 8 s | raid key, 16 hex hash, item count | LootPrio.lua |
 | `LQ` | raider -> keeper WHISPER | member, in group | 15 s | raid key, own hash | LootPrio.lua |
 | `SV` | officer with his own soft-reserve list -> RAID (10 s after a change, else every 240 s, and soon after someone joins; `-` once after clearing) | officer, in group | 8 s | import epoch, 16 hex hash or `-`, reservations | SoftResShare.lua |
-| `SQ` | raider or officer -> that officer WHISPER (another state; a list only newer than the held one; an officer with an own list only for an offer) | member, in group; answered only for the officer's own list of that epoch | 15 s | import epoch, own hash or `-` | SoftResShare.lua |
+| `SQ` | raider or officer -> that officer WHISPER (another state; a list only newer than the held one; an officer with an own list only for an offer) | member, in group; answered only for the officer's own list of that epoch | keyed 5 s per epoch | import epoch, own hash or `-` | SoftResShare.lua |
 | `KV` | keeper -> RAID (10 s after a change, else every 240 s) | officer, in group | 8 s | raid key, 16 hex hash, players | PointsSync.lua |
 | `KQ` | raider -> keeper WHISPER | member, in group | 15 s | raid key, own hash | PointsSync.lua |
 | `KC` | officer -> RAID (an award's cost) | officer, in group; receiver in officer view | none | raid key, 12 hex award id, `D`/`G`, amount, epoch | PointsSync.lua |

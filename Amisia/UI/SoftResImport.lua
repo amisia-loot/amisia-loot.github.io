@@ -98,9 +98,12 @@ local function buildRow(r)
         end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         b:SetScript("OnClick", function(self)
-            if self.item and IsShiftKeyDown and IsShiftKeyDown() and ChatFrameUtil and ChatFrameUtil.InsertLink then
-                ChatFrameUtil.InsertLink(itemLink(self.item))
-            end
+            if not (self.item and IsShiftKeyDown and IsShiftKeyDown()) then return end
+            local _, link = GetItemInfo(self.item)
+            local CU = _G.ChatFrameUtil
+            if not link or not CU then return end
+            if CU.InsertLink and CU.InsertLink(link) then return end
+            if CU.OpenChat then CU.OpenChat(link) end
         end)
         r.icons[i] = b
     end
@@ -334,6 +337,11 @@ local function build()
     resultText:SetMaxLines(2)
 
     local apply = W.Button(F, L["Übernehmen"], 110, function()
+        -- an empty box shows the loaded list; taking "nothing" would replace it (and the raid's copies)
+        if not (editBox:GetText() or ""):find("%S") then
+            resultText:SetText(L["Nichts eingefügt. Die geladene Liste bleibt; \"Leeren\" löscht sie."])
+            return
+        end
         local count, bad, err, extra = ns.SetSoftRes(editBox:GetText())
         local text
         if err then
@@ -374,7 +382,7 @@ local function later()
     pending = true
     C_Timer.After(0.5, function()
         pending = false
-        if F and F:IsShown() then updatePreview() end
+        if F and F:IsShown() then refresh() end
     end)
 end
 ns.OnEvent("GROUP_ROSTER_UPDATE", later)

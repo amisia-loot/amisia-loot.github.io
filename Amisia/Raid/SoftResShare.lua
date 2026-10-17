@@ -16,11 +16,13 @@ local SV_EVERY = 240           -- an officer repeats his state this often
 local SV_GAP = 10              -- and not more often than this after a change
 local ANSWER_AFTER = 2         -- requests within this go out together
 local ANSWER_RAID = 3          -- this many requesters: one send into the raid
+local ANSWER_EVERY = 30        -- one blob per asker and list state this often
 local MAX_RAIDERS, MAX_ITEMS, MAX_HARD = 100, 2000, 200
 local MAX_NAME, MAX_NOTE, MAX_ID = 48, 60, 9999999
 
 local lastSV                   -- { at, h, t }: the last own announcement
 local asks, askTimer = {}, false
+local answered = {}            -- asker -> { h, t }: the last blob sent to him
 local wanted = {}              -- officer name -> { at, h }: the list asked for
 local offer                    -- { from, at, h, sr }: a newer list for an officer with his own
 local stats = { sent = 0, taken = 0, offered = 0, refused = 0, cleared = 0 }
@@ -42,6 +44,7 @@ end
 local function ownList()
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr or sr.from or not ns.IsOfficerView() then return nil end
+    if (tonumber(sr.count) or 0) == 0 and not (type(sr.hard) == "table" and next(sr.hard)) then return nil end
     if type(sr.at) ~= "number" then sr.at = ns.ServerTime() end
     return sr
 end
@@ -72,13 +75,22 @@ local function payloadOf(sr)
     local r = {}
     for _, name in ipairs(sortedNames(sr)) do
         table.sort(items[name])
-        r[#r + 1] = { n = name, c = (sr.classes or {})[name], i = items[name], o = (sr.notes or {})[name],
-                      p = (sr.plus or {})[name] }
+        -- what a receiver would refuse stays home: a class that names none, a note not clean, a bad +1
+        local c, o, p = (sr.classes or {})[name], (sr.notes or {})[name], (sr.plus or {})[name]
+        if type(c) ~= "string" or ns.SoftResClean(c, 20) ~= c or not ns.SoftResClassToken(c) then c = nil end
+        if type(o) ~= "string" or ns.SoftResClean(o, MAX_NOTE) ~= o then o = nil end
+        if type(p) ~= "number" or p % 1 ~= 0 or p < 1 or p > 99 then p = nil end
+        r[#r + 1] = { n = name, c = c, i = items[name], o = o, p = p }
     end
     local h, ids = {}, {}
     for id in pairs(type(sr.hard) == "table" and sr.hard or {}) do ids[#ids + 1] = id end
     table.sort(ids)
-    for _, id in ipairs(ids) do h[#h + 1] = { id, sr.hard[id].to or "", sr.hard[id].note or "" } end
+    for _, id in ipairs(ids) do
+        local to, note = sr.hard[id].to, sr.hard[id].note
+        to = (type(to) == "string" and ns.SoftResClean(to, MAX_NAME) == to) and to or ""
+        note = (type(note) == "string" and ns.SoftResClean(note, MAX_NOTE) == note) and note or ""
+        h[#h + 1] = { id, to, note }
+    end
     return { v = 1, at = sr.at, d = sr.date, sid = sr.sid, r = r, h = h }
 end
 
@@ -148,15 +160,26 @@ end
 ---------------------------------------------------------------------------
 -- Sending
 ---------------------------------------------------------------------------
+local refusedHash             -- the hash of an own list a receiver would refuse (said once)
+
+-- Announces the own list. The receivers keep 8 s between two SV of a sender (Comm's KIND_GAP): a
+-- new list or a clear waits for SV_GAP after the last one, so none is dropped there.
 local function sendSV()
     if not shareOn() or not homeRaid() then lastSV = nil return end
     local sr = ownList()
     if not sr then return end
     local h = hashOf(sr)
     local t = now()
-    if lastSV and lastSV.at == sr.at then
-        if lastSV.h == h and t - lastSV.t < SV_EVERY then return end
+    if lastSV then
         if t - lastSV.t < SV_GAP then return end
+        if lastSV.at == sr.at and lastSV.h == h and t - lastSV.t < SV_EVERY then return end
+    end
+    if refusedHash == h then return end
+    if not checkList(payloadOf(sr), sr.at) then
+        -- an entry the receivers would refuse (a list of an older version): nothing goes out
+        refusedHash = h
+        ns.msg(L["Soft-Reserves: diese Liste lässt sich nicht teilen (ungültige Einträge). Bitte neu einfügen."])
+        return
     end
     if ns.CommSend("SV", { tostring(sr.at), h, tostring(count(sr)) }, "RAID", nil, { ttl = 60, key = "SV" }) then
         lastSV = { at = sr.at, h = h, t = t }
@@ -167,9 +190,24 @@ local function sendList()
     askTimer = false
     local sr = ownList()
     local who = {}
-    for s in pairs(asks) do who[#who + 1] = s end
+    for s, at in pairs(asks) do
+        -- an asker of a list replaced since he asked waits for the next SV (he would refuse it)
+        if sr and at == sr.at then who[#who + 1] = s end
+    end
     asks = {}
     if not sr or not shareOn() then return end
+    -- one answer per asker and state in ANSWER_EVERY (an asker repeating SQ gets no blob each time)
+    local h, t = hashOf(sr), now()
+    local fresh = {}
+    for _, w in ipairs(who) do
+        local last = answered[w]
+        if not (last and last.h == h and t - last.t < ANSWER_EVERY) then
+            fresh[#fresh + 1] = w
+            answered[w] = { h = h, t = t }
+        end
+    end
+    who = fresh
+    if #who == 0 then return end
     local key = ("%s:%d"):format(sr.date, sr.at)
     local tbl = payloadOf(sr)
     local function send(chan, target, opts)
@@ -191,18 +229,29 @@ end
 -- list goes to the raid.
 function ns.SoftResShareNow()
     if not shareOn() or not homeRaid() or not ownList() then return false end
-    lastSV = nil
+    if lastSV then lastSV.h = nil end
     local ok, err = pcall(sendSV)
     if not ok then report(err) end
     return true
 end
 
--- The own list was cleared: the raid hears it once ("-"), so the copies of it go too.
+-- The own list was cleared: the raid hears it once ("-"), so the copies of it go too (after SV_GAP
+-- since the last SV, which the receivers' gap would drop otherwise).
+local clearGen = 0
 function ns.SoftResShareCleared(sr)
     offer = nil
     if not sr or sr.from or not lastSV or lastSV.at ~= sr.at or not homeRaid() then return end
-    ns.CommSend("SV", { tostring(sr.at), "-", "0" }, "RAID", nil, { ttl = 60, key = "SV" })
-    lastSV = nil
+    clearGen = clearGen + 1
+    local gen, at = clearGen, sr.at
+    local function send()
+        if gen ~= clearGen or not homeRaid() then return end
+        local wait = lastSV and (SV_GAP - (now() - lastSV.t)) or 0
+        if wait > 0 then C_Timer.After(wait + 0.1, send) return end
+        if ns.CommSend("SV", { tostring(at), "-", "0" }, "RAID", nil, { ttl = 60, key = "SV" }) then
+            lastSV = { at = at, h = "-", t = now() }
+        end
+    end
+    send()
 end
 
 ---------------------------------------------------------------------------
@@ -217,9 +266,20 @@ local function beats(from, at, sr)
 end
 
 -- Whether this client takes lists only as offers (an officer with his own list).
+-- An officer keeps his own list in the raider view too (only a player without the officer rank, by
+-- a roster that can be read, takes a newer list over an own one).
 local function offerOnly()
     local sr = AmisiaDB and AmisiaDB.softres
-    return sr ~= nil and sr.from == nil and ns.IsOfficerView()
+    if sr == nil or sr.from ~= nil then return false end
+    if ns.IsOfficerView() then return true end
+    return ns.IsVerifiedOfficer(ns.UnitFullName("player")) ~= false
+end
+
+-- The offer, while it still beats the own list (an own import after it makes it old).
+local function liveOffer()
+    if not offer or not offerOnly() then return nil end
+    if not beats(offer.from, offer.at, AmisiaDB.softres) then offer = nil return nil end
+    return offer
 end
 
 ns.CommOn("SV", function(sender, f, chan)
@@ -262,7 +322,7 @@ ns.CommOn("SQ", function(sender, f, chan)
         if not ok or not ns.InMyGroup(name) then return end
         local sr = ownList()
         if not sr or sr.at ~= tonumber(f[1]) then return end
-        asks[sender] = true
+        asks[sender] = sr.at
         if not askTimer then
             askTimer = true
             C_Timer.After(ANSWER_AFTER, function()
@@ -305,13 +365,13 @@ end)
 
 -- The offered list for the page: { from, at, n }, or nil.
 function ns.SoftResOffer()
-    if not offer or not offerOnly() then return nil end
-    return { from = offer.from, at = offer.at, n = offer.sr.count }
+    local o = liveOffer()
+    return o and { from = o.from, at = o.at, n = o.sr.count } or nil
 end
 
 -- Takes the offered list in place of the own one (the page's "Liste übernehmen").
 function ns.TakeSoftResOffer()
-    if not offer then return false end
+    if not liveOffer() then return false end
     AmisiaDB.softres = offer.sr
     offer = nil
     lastSV = nil

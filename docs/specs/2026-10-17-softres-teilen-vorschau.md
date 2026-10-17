@@ -128,7 +128,8 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
 - **Nachnamen:** Zuordnung über `ns.SameName` wie heute; der Klassen-Abgleich nur für eine eindeutige
   Zuordnung. Ein Listenname, der nur ein Vorname ist, bleibt "unklar".
 - **Zwei Offiziere mit Listen:** jeder sendet seine; Raider nehmen die mit der neuesten Übernahmezeit
-  (gleich: die der Lootleitung, sonst der kleinere Name). Offiziere mit eigener Liste bekommen nur das
+  (gleich, auf die Sekunde: der kleinere Name; Nachtrag beim Bau, die Lootleitung kennt der Empfänger
+  nicht sicher). Ein Offizier behält seine eigene Liste auch in der Raider-Ansicht. Offiziere mit eigener Liste bekommen nur das
   Angebot.
 - **Englischer Client:** Ansage einsprachig englisch; Klassen kommen von softres.it immer englisch.
 - **Leere Liste / nur Hard-Reserves:** wird geteilt; die Vorschau zeigt nur die HR-Zeile.
@@ -147,7 +148,7 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
 - Der Inhalt ist unvertraut (D-26): jedes Feld geprüft und gekappt wie beim Code-Import (Namen 48,
   Notizen 60, Items 1-9999999, höchstens 2000 Reservierungen, 100 Raider, Klassen nur aus der festen
   Liste); eine kaputte Liste ersetzt nichts. Farb- und Linkcodes werden entfernt.
-- Fluten: `SV` höchstens alle 8 s je Absender, Wiederholung alle 240 s; `SQ` 15 s je Frager; eine Antwort
+- Fluten: `SV` höchstens alle 8 s je Absender, Wiederholung alle 240 s; `SQ` 5 s je Frager und Liste; eine Antwort
   je Frager in 30 s; bei drei oder mehr Fragern innerhalb 2 s eine Sendung in die Gruppe (wie `LV/LQ/LC`).
 - Ansage und Erinnern nur in der Offiziersansicht und im Raid (wie heute); Offiziere bekommen eine
   fremde Liste nie ungefragt über ihre eigene.
@@ -159,7 +160,7 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
     dem Beitritt eines Mitglieds: Übernahmezeit (epoch, zugleich die Kennung der Liste), Stand (16 hex),
     Reservierungen; Stand `-` = gelöscht. Empfänger: Offizier, in Gruppe. Abstand 8 s.
   - `SQ` Empfänger → Absender WHISPER bei anderem Stand: Übernahmezeit, eigener Stand oder `-`.
-    Empfänger: Mitglied, in Gruppe. Abstand 15 s.
+    Empfänger: Mitglied, in Gruppe. Abstand 5 s je Liste (Übernahmezeit).
 - **Blob-Art** `SR`: Absender → WHISPER (drei und mehr Frager: Gruppe, niedrig); Empfänger: Offizier, in
   Gruppe, nur gefragt; höchstens 30 Teile;
   `{v = 1, at, d = Datum, sid, r = {{n = Name, c = Klasse, i = {Item-IDs, Doppelte wiederholt}, o = Notiz, p = +1}}, h = {{id, to, note}}}`;

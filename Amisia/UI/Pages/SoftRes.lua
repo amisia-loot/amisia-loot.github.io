@@ -393,7 +393,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
                 .. "|r" .. (line ~= "" and (" · " .. line) or "")
         end
         f.check:SetText(line)
-        f.take:SetShown(offer ~= nil)
+        f.take:SetShown(offer and true or false)
         f.views.items:Show(); f.views.raider:Show()
         if officer then
             f.import:Show(); f.clear:Show()
