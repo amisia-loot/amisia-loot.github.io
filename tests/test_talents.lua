@@ -207,4 +207,18 @@ assert(loaded.ranks[201] == 5 and T.Encode(loaded) == "AT1.MAGE.231.5.2")
 assert(T.LoadPlan("WARRIOR") and T.Spent(T.LoadPlan("WARRIOR")) == 0, "no plan: empty")
 AmisiaDB.talents.plans.WARRIOR = "kaputt"
 assert(T.Spent(T.LoadPlan("WARRIOR")) == 0, "a broken saved code: empty")
+-- two plans per class: slot 1 (Primär) in plans, slot 2 (Sekundär) in plans2
+assert(T.Slot() == 1 and type(st.plans2) == "table")
+T.SetSlot(2)
+assert(T.Slot() == 2 and AmisiaDB.talents.slot == 2)
+assert(T.Spent(T.LoadPlan("MAGE")) == 0, "slot 2 starts empty")
+local second = T.NewPlan("MAGE")
+T.Add(second, 101, 60)
+T.SavePlan(second)
+assert(AmisiaDB.talents.plans2.MAGE == T.Encode(second) and AmisiaDB.talents.plans.MAGE == "AT1.MAGE.231.5.2", "each slot its own code")
+assert(T.Encode(T.LoadPlan("MAGE", 1)) == "AT1.MAGE.231.5.2" and T.Rank(T.LoadPlan("MAGE"), 101) == 1)
+T.SetSlot(1)
+assert(AmisiaDB.talents.slot == nil and T.Encode(T.LoadPlan("MAGE")) == "AT1.MAGE.231.5.2")
+AmisiaDB.talents.slot = "x"
+assert(T.Slot() == 1 and AmisiaDB.talents.slot == nil, "a bad slot: 1")
 print("test_talents ok")

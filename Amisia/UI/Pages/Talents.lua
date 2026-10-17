@@ -4,8 +4,8 @@
 -- red X on hover resets the tree), a 4 x 7 grid of square icons with a thin square frame and a rank
 -- plate, straight gold lines for the prerequisites. Left click +1, right click -1, shift for all
 -- ranks; the tooltip names what a talent still needs. Level and the Talented perk set the free
--- points; the plan of each class is kept as its share code. The own class can load its talents from
--- the game. The rules live in Talents.lua, the sizes and colours in ns.Theme.TALENT.
+-- points; each class keeps two plans as share codes, "Primär" and "Sekundär" (the chip in the bottom
+-- row switches). The own class can load its talents from the game. The rules live in Talents.lua, the sizes and colours in ns.Theme.TALENT.
 -- One builder (buildView) draws the view for a parent in a size profile: TALENT.PAGE on the page in
 -- the main window, TALENT.BIG in the window. Both views show the one plan (S below): a click in
 -- one changes the other on its refresh. The window is moved and scaled on its own (settings
@@ -72,10 +72,11 @@ local function save()
     T.SavePlan(S.plan)
 end
 
--- The plan a class opens with: its saved one, else (the own class) the talents in the game.
+-- The plan a class opens with: its saved one in the shown slot, else (the own class, slot 1) the
+-- talents in the game.
 local function openPlan(cls)
     local plan, saved = T.LoadPlan(cls)
-    if not saved and cls == playerClass() then
+    if not saved and T.Slot() == 1 and cls == playerClass() then
         local live = T.Live()
         if live and T.Spent(live) > 0 then plan = live end
     end
@@ -88,6 +89,18 @@ local function chooseClass(cls)
     T.State().class = cls
     S.plan = openPlan(cls)
     say("")
+    refreshAll()
+end
+
+-- The other plan slot of the shown class: the current plan saved, the slot's plan opened.
+local SLOTS = { { 1, L["Primär"] }, { 2, L["Sekundär"] } }
+local function chooseSlot(slot)
+    if slot == T.Slot() then return end
+    local cls = S.plan and S.plan.class or T.State().class
+    if S.plan then save() end
+    T.SetSlot(slot)
+    if cls and T.Class(cls) then S.plan = openPlan(cls) else S.plan = nil end
+    say((L["Plan %s"]):format(SLOTS[slot][2]))
     refreshAll()
 end
 
@@ -476,6 +489,11 @@ local function buildView(parent, P, opts)
     end)
     W.FitChip(f.live, 104)
     W.FitChip(f.resetAll, 128)
+    -- the plan slot: Primär or Sekundär, a click switches
+    f.slot = W.Choice(f, 84, function(v) chooseSlot(v) end)
+    f.slot:SetValues(SLOTS)
+    W.Tooltip(f.slot, L["Zwei Pläne je Klasse"],
+        L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
     f.codeLabel = W.Text(f, Theme.FONT.text, 34)
     f.codeLabel:SetText("Code")
     f.code = W.LineEdit(f, 200, function(text) onCode(f, text) end)
@@ -493,7 +511,7 @@ local function buildView(parent, P, opts)
         f.hint:SetText(HINT)
     end
     -- the bottom row: load, reset, the share code taking the rest (and the window's button)
-    f:BottomRow({ f.live, f.resetAll, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
+    f:BottomRow({ f.live, f.resetAll, f.slot, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
     W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code einfügen und Enter drücken übernimmt ihn."])
@@ -516,6 +534,7 @@ refreshView = function(f)
     f.class:SetValue(cls)
     f.level:SetValue(s.level or 60)
     f.talented:SetValue(s.talented or 0)
+    f.slot:SetValue(T.Slot())
 
     local plan, pts = S.plan, points()
     local spent = T.Spent(plan)

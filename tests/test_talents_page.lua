@@ -226,6 +226,21 @@ f.class.onPick("MAGE")
 assert(f.buttons[201].rank:GetText() == "1/5" and AmisiaDB.talents.plans.WARRIOR == "AT1.WARRIOR.1..")
 
 ---------------------------------------------------------------------------
+-- two plans per class: the chip switches Primär / Sekundär, each keeps its own
+---------------------------------------------------------------------------
+assert(f.slot.label:GetText() == "Primär")
+f.slot:GetScript("OnClick")(f.slot)
+assert(f.slot.label:GetText() == "Sekundär" and T.Slot() == 2 and has(f.msg:GetText(), "Sekundär"))
+assert(T.Spent(NS.TalentsPlan()) == 0 and f.buttons[201].rank:GetText() == "0/5", "the second plan starts empty")
+f.buttons[101]:GetScript("OnClick")(f.buttons[101], "LeftButton")
+f.slot:GetScript("OnClick")(f.slot)
+assert(T.Slot() == 1 and f.buttons[201].rank:GetText() == "1/5" and f.buttons[101].rank:GetText() == "0/2", "back: the first plan")
+assert(AmisiaDB.talents.plans2.MAGE ~= nil and AmisiaDB.talents.plans.MAGE ~= AmisiaDB.talents.plans2.MAGE, "both saved")
+f.slot:GetScript("OnClick")(f.slot)
+assert(f.buttons[101].rank:GetText() == "1/2", "the second plan kept")
+f.slot:GetScript("OnClick")(f.slot)
+
+---------------------------------------------------------------------------
 -- the code box: paste and Enter imports; a bad code changes nothing
 ---------------------------------------------------------------------------
 f.code:SetText("schau: AT1.WARRIOR.3.. ")

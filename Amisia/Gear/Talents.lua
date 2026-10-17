@@ -483,24 +483,38 @@ function T.InspectTrees(cls)
 end
 
 ---------------------------------------------------------------------------
--- What the page keeps: AmisiaDB.talents = { class, level, talented, plans = { [class] = code } }
+-- What the page keeps: AmisiaDB.talents = { class, level, talented, slot, plans = { [class] = code },
+-- plans2 = { [class] = code } }: two plans per class, slot 1 "Primär" (plans) and slot 2
+-- "Sekundär" (plans2); slot is the one shown (nil: 1).
 ---------------------------------------------------------------------------
 function T.State()
-    if type(AmisiaDB) ~= "table" then return { plans = {} } end
+    if type(AmisiaDB) ~= "table" then return { plans = {}, plans2 = {} } end
     local s = type(AmisiaDB.talents) == "table" and AmisiaDB.talents or {}
     AmisiaDB.talents = s
     s.plans = type(s.plans) == "table" and s.plans or {}
+    s.plans2 = type(s.plans2) == "table" and s.plans2 or {}
+    if s.slot ~= 2 then s.slot = nil end
     return s
 end
 
-function T.SavePlan(plan)
+-- The plan slot shown: 1 (Primär) or 2 (Sekundär).
+function T.Slot() return T.State().slot == 2 and 2 or 1 end
+function T.SetSlot(slot) T.State().slot = slot == 2 and 2 or nil end
+
+local function slotPlans(slot)
     local s = T.State()
-    if T.Spent(plan) > 0 then s.plans[plan.class] = T.Encode(plan) else s.plans[plan.class] = nil end
+    return (slot or T.Slot()) == 2 and s.plans2 or s.plans
 end
 
--- The saved plan of a class (an empty one without, or when the code no longer fits the data).
-function T.LoadPlan(cls)
-    local code = T.State().plans[cls]
+function T.SavePlan(plan, slot)
+    local list = slotPlans(slot)
+    if T.Spent(plan) > 0 then list[plan.class] = T.Encode(plan) else list[plan.class] = nil end
+end
+
+-- The saved plan of a class in a slot (default the shown one; an empty plan without, or when the
+-- code no longer fits the data).
+function T.LoadPlan(cls, slot)
+    local code = slotPlans(slot)[cls]
     local plan = type(code) == "string" and T.Decode(code)
     if plan and plan.class == cls then return plan, true end
     return T.NewPlan(cls), false

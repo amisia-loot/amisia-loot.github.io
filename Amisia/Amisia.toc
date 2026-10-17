@@ -4,6 +4,7 @@
 ## Notes-deDE: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
 ## Author: mrvulo
 ## Version: 2.44.0
+## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
 ## AddonCompartmentFunc: Amisia_OnAddonCompartmentClick
@@ -129,8 +130,8 @@ UI\Pages\MageScrolls.lua
 UI\Pages\Export.lua
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
-UI\Pages\Duels.lua
 UI\DuelInfo.lua
+UI\Pages\Duels.lua
 UI\Pages\Tools.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua

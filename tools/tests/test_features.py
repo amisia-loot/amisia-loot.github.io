@@ -63,7 +63,7 @@ def real():
 
 # ---------------------------------------------------------------- the real file
 def test_the_real_file_parses_and_every_entry_is_complete(real):
-    assert 40 <= len(real) <= 120, f'{len(real)} entries'
+    assert 40 <= len(real) <= 200, f'{len(real)} entries'
     for f in real:
         assert re.fullmatch(r'F-\d{3}', f.id)
         assert f.title.strip(), f.id

@@ -873,6 +873,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia talente <Code>` eingibst (oder den Code in das Feld einfügst und Enter drückst), dann meldet der Chat "Code übernommen: <Klasse>, N Punkte." und die Bäume zeigen den Build.
 - Prüfung: Wenn der Code kaputt ist, dann meldet der Chat, was nicht stimmt (z. B. "Kein Amisia-Talentcode ..."), und nichts ändert sich.
 
+### F-121 Talentrechner: zwei Pläne je Klasse
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Seite Talente (oder im Fenster Talentrechner) unten den Knopf "Primär" klickst, dann steht dort "Sekundär", die Bäume zeigen den zweiten Plan der Klasse (beim ersten Mal leer) und unten steht "Plan Sekundär".
+- Prüfung: Wenn du im Plan Sekundär Talente verteilst, zurück auf "Primär" und wieder auf "Sekundär" wechselst (auch nach `/reload`), dann sind beide Pläne noch so, wie du sie verlassen hast; Seite und Fenster zeigen denselben Plan.
+- Notiz: Wunsch des Nutzers 2026-10-17 ("können wir bei Talentrechner 2 preset speichern", Bildschirmfoto der Reiter Primär/Sekundär). Gespeichert in `AmisiaDB.talents.plans2`; der erste Plan bleibt in `plans`, alte Pläne sind also Primär.
+
 ### F-081 Großes Talentfenster
 - Version: 2.20.0
 - Status: gebaut
