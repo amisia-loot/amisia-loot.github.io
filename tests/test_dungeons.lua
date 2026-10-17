@@ -135,6 +135,9 @@ assert(fitAt(14, "lordaeron") == "soon" and fitAt(10, "thanes") == "high")
 assert(fitAt(20, "thanes") == "easy" and fitAt(20, "lordaeron") == "fit")
 local at20 = NS.DungeonNext()
 assert(at20 and at20.fit == "fit" and at20.key ~= "thanes", "an easy dungeon is no recommendation")
+-- the raids at any level, below the cap out of reach
+local raid20 = find(NS.RaidList(), "barrow")
+assert(raid20 and raid20.fit ~= "fit" and raid20.computed, "a raid at 20: listed with its values")
 
 ---------------------------------------------------------------------------
 -- no hit, raids from 60
@@ -144,9 +147,14 @@ STUB.fire("PLAYER_LEVEL_UP")
 local none, text = NS.DungeonNext()
 assert(none == nil and text == "Für dein Level hat kein Dungeon noch Upgrades für dich.", tostring(text))
 list = NS.DungeonList()
+assert(not find(list, "onyxia") and not find(list, "barrow"), "the dungeon list holds no raid (the page Raids, F-122)")
+list = NS.RaidList()
 local ony = find(list, "onyxia")
-assert(ony and ony.kind == "raid" and ony.size == 40 and find(list, "barrow") and find(list, "hyjal"), "the raids at 60")
+assert(#list == 3 and ony and ony.kind == "raid" and ony.size == 40 and find(list, "barrow") and find(list, "hyjal"), "the raids at 60")
 assert(ony.fit == "later" and ony.min == 60, "the raids open on the 9th of December")
+local noRaid, raidWhy = NS.RaidNext()
+assert(noRaid == nil and has(raidWhy, "Raids öffnen ab"), tostring(raidWhy))
+assert(NS.Dungeons.IsRaid("onyxia") and not NS.Dungeons.IsRaid("thanes"))
 assert(#ony.bosses == 0 and ony.perRun == 0, "no rate without an observation")
 -- an observed kill: the boss appears with its item and the rate of the guild's kills
 local today = NS.DropsToday()

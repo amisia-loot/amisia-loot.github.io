@@ -74,9 +74,8 @@ local function orderedDungeons(list, sort)
     return out, c.dorder[key][2]
 end
 
--- The chosen dungeon: the saved one while the list has it, a raid below the level cap that
--- ns.ShowDungeon asked for (the list holds raids from the cap on), else the recommended, else the
--- first.
+-- The chosen dungeon: the saved one while the list has it, one out of reach that ns.ShowDungeon
+-- asked for, else the recommended, else the first.
 local asked
 local function chosenDungeon(list, nextE)
     local key = state().dungeon
@@ -309,6 +308,53 @@ local function buildArt(B, top)
     return a
 end
 
+-- The list of the chosen dungeon's or raid's rows on page B (rows high): bosses with their items, or
+-- quests; clicks, menus, tooltips, the hovered boss in B.art.
+local function buildDetail(B, rows)
+    return W.List(B, rows, ROW_H, function(r)
+        r.name = col(r, 4, 220, nil, T.FONT.text)
+        r.slot = col(r, 228, 62, nil, T.FONT.text)
+        r.gain = col(r, 292, 40, nil, T.FONT.text)
+        r.gain:SetJustifyH("RIGHT")
+        r.xp = col(r, 336, 56, nil, T.FONT.text)
+        r.xp:SetJustifyH("RIGHT")
+        r.rate = col(r, 398, 188, nil, T.FONT.text)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local e = self.item
+            if not e then return end
+            if (e.kind == "quest" or e.kind == "pre") and e.qid and button ~= "RightButton" then
+                say(ns.DungeonQuestWaypoint(e.qid))
+                return
+            end
+            if not e.id then return end
+            if button == "RightButton" then
+                if e.kind == "item" then W.Menu(self, menuEntries(e, ns.BisOpts())) end
+                return
+            end
+            modifiedClick(e.id)
+        end)
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if e and e.q then
+                questTip(self)
+            elseif e and e.id then
+                itemTooltip(self, e.id)
+                GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
+                GameTooltip:Show()
+            elseif e and e.kind == "boss" then
+                -- the hovered boss in the image
+                B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, e.b))
+            end
+        end)
+        r:SetScript("OnLeave", function(self)
+            hideTip()
+            local e = self.item
+            if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
+        end)
+    end, fillDetailRow)
+end
+
 local function create(parent)
     -- the head row: the spec (the gear page's) with the order chips; the recommendation, why, the
     -- list, the image, the bosses or quests, the hint in the footer
@@ -388,48 +434,7 @@ local function create(parent)
     -- the two chips and the waypoint button at the right end of the header's line
     W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = G.ITEM_GAP } }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
-    B.detail = W.List(B, DETAIL_ROWS, ROW_H, function(r)
-        r.name = col(r, 4, 220, nil, T.FONT.text)
-        r.slot = col(r, 228, 62, nil, T.FONT.text)
-        r.gain = col(r, 292, 40, nil, T.FONT.text)
-        r.gain:SetJustifyH("RIGHT")
-        r.xp = col(r, 336, 56, nil, T.FONT.text)
-        r.xp:SetJustifyH("RIGHT")
-        r.rate = col(r, 398, 188, nil, T.FONT.text)
-        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        r:SetScript("OnClick", function(self, button)
-            local e = self.item
-            if not e then return end
-            if (e.kind == "quest" or e.kind == "pre") and e.qid and button ~= "RightButton" then
-                say(ns.DungeonQuestWaypoint(e.qid))
-                return
-            end
-            if not e.id then return end
-            if button == "RightButton" then
-                if e.kind == "item" then W.Menu(self, menuEntries(e, ns.BisOpts())) end
-                return
-            end
-            modifiedClick(e.id)
-        end)
-        r:SetScript("OnEnter", function(self)
-            local e = self.item
-            if e and e.q then
-                questTip(self)
-            elseif e and e.id then
-                itemTooltip(self, e.id)
-                GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
-                GameTooltip:Show()
-            elseif e and e.kind == "boss" then
-                -- the hovered boss in the image
-                B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, e.b))
-            end
-        end)
-        r:SetScript("OnLeave", function(self)
-            hideTip()
-            local e = self.item
-            if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
-        end)
-    end, fillDetailRow)
+    B.detail = buildDetail(B, DETAIL_ROWS)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     return B
@@ -456,7 +461,7 @@ local function fillArt(B, e)
     local range = Dn.RangeText(e)
     a.info:SetText(range ~= "" and DTEXT.level:format(range, Dn.FitText(e)) or Dn.FitText(e))
     a:SetModelNpc(Dn.ModelNpc(e))
-    B.mark:SetText(ns.DungeonMarked() == e.key and DTEXT.unmark or DTEXT.mark)
+    if B.mark then B.mark:SetText(ns.DungeonMarked() == e.key and DTEXT.unmark or DTEXT.mark) end
 end
 
 local function refresh(B)
@@ -537,6 +542,8 @@ function ns.DungeonsPageFrame() return page end
 -- shows.
 function ns.ShowDungeon(key)
     if type(key) ~= "string" then return false end
+    -- a raid opens on the page Raids
+    if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key) end
     state().dungeon = key
     asked = key
     if ns.ShowPage then ns.ShowPage("dungeons") end
@@ -547,6 +554,10 @@ function ns.ShowDungeon(key)
     end
     return main ~= nil and main:IsShown() and true or false
 end
+
+-- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
+ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
+    ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", icon = ICON, order = 51, group = "gear",
     available = function() return ns.Gear.Available() end,

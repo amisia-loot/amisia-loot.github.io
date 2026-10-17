@@ -226,7 +226,7 @@ local function dungeonHits(q)
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
         out[i] = { text = e.name, icon = page.icon,
-            tip = e.kind == "raid" and L["Raid. Öffnet ihn auf der Seite Dungeons."] or L["Dungeon. Öffnet ihn auf der Seite Dungeons."],
+            tip = e.kind == "raid" and L["Raid. Öffnet ihn auf der Seite Raids."] or L["Dungeon. Öffnet ihn auf der Seite Dungeons."],
             run = function() if ns.ShowDungeon then ns.ShowDungeon(e.key) end end }
     end
     return out
@@ -240,7 +240,13 @@ local function pageHits(q)
     for _, p in ipairs(ns.panels) do
         if #out >= M.RES_MAX then break end
         if ns.Visible(p) and hit(p.label, q) then
-            out[#out + 1] = { text = p.label, icon = p.icon, run = function() ns.ShowPage(p.key) end }
+            -- the tab in the tooltip: two pages may share a name (Raids in Raid and in Ausrüstung)
+            local tab = ns.PanelGroup(p)
+            for _, g in ipairs(ns.PANEL_GROUPS) do
+                if g.key == tab then tab = g.label end
+            end
+            out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite im Reiter %s."]:format(tab),
+                run = function() ns.ShowPage(p.key) end }
         end
     end
     return out

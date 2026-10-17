@@ -1145,7 +1145,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.DROPS_SETTINGS = { key = "drops", label = L["Drop-Daten"], order = 47, group = "gear", pages = { "dungeons" }, items = {
+ns.DROPS_SETTINGS = { key = "drops", label = L["Drop-Daten"], order = 47, group = "gear", pages = { "dungeons", "raidjournal" }, items = {
     { key = "drops.record", type = "toggle", label = L["Boss-Loot in Dungeons und Raids aufzeichnen"], default = true,
       tip = L["Ein geöffnetes Lootfenster eines Bosses wird ein Kill mit seinen Items, ohne Spielernamen."] },
     { key = "drops.share", type = "toggle", label = L["Drop-Daten mit der Gilde teilen"], default = true,

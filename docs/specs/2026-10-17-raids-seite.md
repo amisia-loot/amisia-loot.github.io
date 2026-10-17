@@ -1,6 +1,6 @@
 # Spec: Seite "Raids" im Reiter Ausrüstung
 
-Stand: 2026-10-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-17 · Status: freigegeben ·
 Feature: F-122
 
 ## Ziel
@@ -86,4 +86,8 @@ bestehenden Abgleich mit seinen Prüfungen.
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-17: "Passt, alle drei Vorschläge so. Bauen." -> Frage 1: Raids nur noch auf der Seite Raids;
+  Frage 2: Spalte ID mit der eigenen Raid-ID; Frage 3: Raids auf jeder Stufe (grau unter 60).
+- 2026-10-17 beim Bauen: die Offiziersseite "Raids" (aufgezeichnete Raids, Reiter Raid) hat schon den
+  Schlüssel `raids`; die neue Seite heißt intern `raidjournal` (Datei `UI/Pages/RaidJournal.lua`),
+  sichtbar "Raids". Die Einstellungen "Drop-Daten" gelten auch für sie.

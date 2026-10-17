@@ -186,9 +186,9 @@ wc:OnClick("LeftButton")
 assert(AmisiaDB.settings.bis.dungeon == "wc" and AmisiaFrame:IsShown(), "the page Dungeons with Wailing Caverns")
 assert(WorldMapFrame:IsShown(), "the world map stays open")
 assert(AmisiaFrame:GetFrameStrata() ~= "FULLSCREEN", "the window under the map (F-011)")
--- a raid below the level cap: chosen all the same
+-- a raid (below the level cap too): chosen on the page Raids (F-122)
 pinOf("entrance", "I:249"):OnClick("LeftButton")
-assert(AmisiaDB.settings.bis.dungeon == "onyxia")
+assert(AmisiaDB.settings.bis.raid == "onyxia" and AmisiaDB.settings.bis.dungeon == "wc" and NS.CurrentPage() == "raidjournal")
 -- shift: the target to this entrance
 STUB.shift = true
 pinOf("entrance", "I:43"):OnClick("LeftButton")

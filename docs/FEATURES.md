@@ -873,6 +873,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia talente <Code>` eingibst (oder den Code in das Feld einfügst und Enter drückst), dann meldet der Chat "Code übernommen: <Klasse>, N Punkte." und die Bäume zeigen den Build.
 - Prüfung: Wenn der Code kaputt ist, dann meldet der Chat, was nicht stimmt (z. B. "Kein Amisia-Talentcode ..."), und nichts ändert sich.
 
+### F-122 Seite Raids
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann steht links "Raids" direkt unter "Dungeons", und die Seite listet Barrow Deeps (10), Hyjal Summit (20) und Onyxia's Lair (40), vor dem 09.12. mit "ab 09.12.".
+- Prüfung: Wenn du auf der Seite Dungeons bist, dann steht dort kein Raid mehr, auch nicht mit Stufe 60.
+- Prüfung: Wenn du Onyxia's Lair wählst, dann zeigt das Bild den Raid mit Onyxias Modell und darunter die bekannte Beute; "Wegpunkt" setzt das Kartenziel auf den Eingang in den Düstermarschen.
+- Prüfung: Wenn du `/amisia raids` eingibst oder in der Suche einen Raid anklickst, dann öffnet sich die Seite Raids.
+- Prüfung: Wenn du eine Raid-ID hast (braucht: Raid), dann steht in der Spalte ID "bis <Tag Uhrzeit>".
+- Notiz: Spec `docs/specs/2026-10-17-raids-seite.md` (freigegeben 2026-10-17).
+
 ### F-121 Talentrechner: zwei Pläne je Klasse
 - Version: -
 - Status: geplant

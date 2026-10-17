@@ -121,6 +121,7 @@ UI\Pages\SoftRes.lua
 UI\SoftResImport.lua
 UI\Pages\Gear.lua
 UI\Pages\Dungeons.lua
+UI\Pages\RaidJournal.lua
 UI\GoalsWindow.lua
 UI\Pages\Map.lua
 UI\Pages\Professions.lua

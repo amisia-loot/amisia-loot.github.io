@@ -783,7 +783,7 @@ end
 local listKey, listRes, nextKey, nextRes, nextWhy
 local infoKey, infoRes = nil, {}
 
--- Every dungeon (and from the level cap every raid) with a level range, by level:
+-- Every dungeon with a level range, by level (the raids have their own list, ns.RaidList):
 -- { key, name, kind, size, min, max, est, from, fit, value, once, perRun, upgrades, questUps,
 --   bosses = { { npc, name, perRun, items = { { id, gain, slotKey, p, rate, n, K, owned, wished,
 --   upgrade, rec } } } }, quests = { { qid, title, level, best = { id, gain, slotKey }, done } },
@@ -799,10 +799,9 @@ function ns.DungeonList(opts)
     local idx = getIndex(facts)
     local seen = observations(facts, idx)
     local gains = {}
-    local cap = Gear.Cap()
     local list = {}
     for _, e in ipairs(facts) do
-        if type(e) == "table" and type(e.key) == "string" and (e.kind ~= "raid" or o.level >= cap) then
+        if type(e) == "table" and type(e.key) == "string" and e.kind ~= "raid" then
             local x = idx.byKey[e.key]
             local entry = baseEntry(e, x, o)
             if entry then
@@ -812,7 +811,6 @@ function ns.DungeonList(opts)
         end
     end
     table.sort(list, function(a, b)
-        if (a.kind == "raid") ~= (b.kind == "raid") then return b.kind == "raid" end
         if a.min ~= b.min then return a.min < b.min end
         if a.max ~= b.max then return a.max < b.max end
         return a.name < b.name
@@ -886,6 +884,52 @@ function ns.DungeonInfo(dkey, opts)
     end
     infoRes[dkey] = found or false
     return found
+end
+
+-- Whether a fact key is a raid.
+function D.IsRaid(dkey)
+    for _, e in ipairs(D.Facts() or {}) do
+        if type(e) == "table" and e.key == dkey then return e.kind == "raid" end
+    end
+    return false
+end
+
+-- Every raid at any level, in the facts' order, each with its values (ns.DungeonInfo): below the
+-- level cap its fit is "soon" or "high", before its opening day "later".
+function ns.RaidList(opts)
+    local out = {}
+    for _, e in ipairs(D.Facts() or {}) do
+        if type(e) == "table" and e.kind == "raid" and type(e.key) == "string" then
+            local info = ns.DungeonInfo(e.key, opts)
+            if info then out[#out + 1] = info end
+        end
+    end
+    return out
+end
+
+-- The raid worth running now: open, at the level cap, with upgrades, the highest value. entry and
+-- reason ("Onyxia's Lair: 3 Upgrades, Schwerpunkt Onyxia"), or nil and why not.
+function ns.RaidNext(opts)
+    if not D.Facts() then return nil, NO_DATA end
+    local list = ns.RaidList(opts)
+    if #list == 0 then return nil, L["Keine Raid-Daten."] end
+    local best, later, low
+    for _, e in ipairs(list) do
+        if e.fit == "later" then
+            later = later or e
+        elseif e.fit ~= "fit" then
+            low = low or e
+        elseif e.computed and e.value > 0 and e.upgrades > 0 and (not best or e.value > best.value) then
+            best = e
+        end
+    end
+    if best then
+        best.why = whyOf(best)
+        return best, best.name .. ": " .. best.why
+    end
+    if later then return nil, L["Raids öffnen %s."]:format(D.FitText(later)) end
+    if low then return nil, L["Raids ab Stufe %d."]:format(low.min or Gear.Cap()) end
+    return nil, L["Kein Raid hat noch Upgrades für dich."]
 end
 
 ---------------------------------------------------------------------------
