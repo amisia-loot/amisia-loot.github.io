@@ -136,8 +136,8 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
   bekommt nur bei einem anderen Stand eine neue.
 - **Große Liste:** 40 Raider mit Notizen sind gepackt etwa 3-4 KB (unter 25 Teilen); mehr als
   `MAX_PARTS_SR` Teile wird nicht gesendet ("Liste zu groß zum Teilen", nur bei der Lootleitung).
-- **Gruppe statt Raid:** Teilen geht auch in einer 5er-Gruppe; Kasten, Erinnern und Ansage nur im Raid
-  (wie heute).
+- **Gruppe statt Raid:** geteilt wird nur im Raid (Nachtrag beim Bau: Amisias Addon-Nachrichten kennen
+  keinen PARTY-Kanal); Kasten, Erinnern und Ansage ebenso nur im Raid (wie heute).
 
 ## Missbrauch/Vertrauen
 
@@ -155,18 +155,19 @@ Kampfsperre: dann wartet die Zeile wie jede andere `ns.Say`-Zeile (ttl 120).
 ## Daten
 
 - **Nachrichtenarten** (Präfix wie `LV`/`LQ`, in ARCHITECTURE "Message kinds"):
-  - `SV` Lootleitung/Offizier mit eigener Liste → Gruppe, 10 s nach einer Änderung, sonst alle 240 s,
-    und beim Beitritt eines Mitglieds: Listen-ID (8 hex), Übernahmezeit (epoch), Stand (16 hex),
+  - `SV` Offizier mit eigener Liste → RAID, 10 s nach einer Änderung, sonst alle 240 s, und bald nach
+    dem Beitritt eines Mitglieds: Übernahmezeit (epoch, zugleich die Kennung der Liste), Stand (16 hex),
     Reservierungen; Stand `-` = gelöscht. Empfänger: Offizier, in Gruppe. Abstand 8 s.
-  - `SQ` Empfänger → Absender WHISPER bei anderem Stand: Listen-ID, eigener Stand oder `-`. Empfänger:
-    Mitglied, in Gruppe. Abstand 15 s.
+  - `SQ` Empfänger → Absender WHISPER bei anderem Stand: Übernahmezeit, eigener Stand oder `-`.
+    Empfänger: Mitglied, in Gruppe. Abstand 15 s.
 - **Blob-Art** `SR`: Absender → WHISPER (drei und mehr Frager: Gruppe, niedrig); Empfänger: Offizier, in
   Gruppe, nur gefragt; höchstens 30 Teile;
-  `{v = 1, id, at, d = Datum, sid, r = {{n = Name, c = Klasse, i = {Item-IDs, Doppelte wiederholt}, o = Notiz, p = +1}}, h = {{id, to, note}}}`.
-- **`AmisiaDB.softres` Datenmodell 4:** neu `id` (Listen-ID), `at` (Übernahmezeit), `from` (Name des
-  teilenden Offiziers, nur bei einer geteilten Liste), `offer` (eine angebotene Liste für Offiziere mit
-  eigener, nur im Speicher, Frage 4); Migration 3 → 4 setzt `id`/`at` für eine vorhandene Liste.
-  `classes` bekommt auch die CSV-Klassen.
+  `{v = 1, at, d = Datum, sid, r = {{n = Name, c = Klasse, i = {Item-IDs, Doppelte wiederholt}, o = Notiz, p = +1}}, h = {{id, to, note}}}`;
+  Schlüssel `<Datum der Liste>:<Übernahmezeit>`.
+- **`AmisiaDB.softres`** (Nachtrag beim Bau: Datenmodell 3 bleibt, die Felder sind wahlfrei und werden
+  beim Laden geprüft): neu `at` (Übernahmezeit), `from` (Name des teilenden Offiziers, nur bei einer
+  geteilten Liste), `hash` (Stand einer geteilten Liste), `src = "shared"`; ein Angebot an Offiziere mit
+  eigener Liste nur im Speicher (Frage 4). `classes` bekommt auch die CSV-Klassen.
 - **Einstellungen** im Abschnitt `softres`: `softres.share` (an, Offiziere), `softres.announce` (an,
   Offiziere).
 - **DECISIONS:** neue Entscheidung D-53 (Teilen nur von Offizieren an die Gruppe, ganze Liste,

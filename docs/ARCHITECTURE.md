@@ -60,6 +60,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Raid/RollFrame.lua` | Roll window | - | Rolls, LootPrio, Need, Bis, GuildWishes, AwardHistory, Widgets |
 | `Raid/AwardDialog.lua` | The one award dialog (winner list, kind, note, points cost) | - | Awards, Need, Points, LootPrio, Widgets |
 | `Raid/SoftRes.lua` | Soft-reserves paste (a softres.it CSV with its class column, its code = the "Gargul" export unpacked with `C_EncodingUtil` (Base64, zlib, JSON), or `Name [item]` lines), the check against the raid (`ns.SoftResCheck`: matches, missing, absent, unclear names with suggestions that weigh the class, too many, and the class check F-109: the list's class against the matched raider's), the import preview's model (`ns.SoftResPreview`, F-108), the raid chat announcement after an import (`ns.AnnounceSoftRes`: how many reserved and how to ask `!sr`, the hard reserves with their links; English lines with `rolls.announceEnglish`), tooltip (note, softres +1 as a hint, "HR: ..."), loot window "SR"/"HR", `ns.HardReserveOf` | `softres`, `srAliases` | Chat, LootAnnounce, Widgets |
+| `Raid/SoftResShare.lua` | The soft-reserve list shared with the raid (F-107, D-53): an officer in the officer view with his own list (`softres` without `from`) announces it (`SV`), a client with another state asks (`SQ`) and gets it whole (blob `SR`); raiders and officers without an own list take it (`from` = the officer), an officer with an own list gets an offer (`ns.SoftResOffer`, `ns.TakeSoftResOffer`, the page's "Liste übernehmen"); newest import wins; clearing goes out as `SV <epoch> -`; `ns.SoftResShareNow` after an import, `ns.SoftResHash` | (`softres`) | SoftRes, Comm, Trust |
 | `Raid/LootAnnounce.lua` | Loot lead (`ns.IsLootLead`), loot announcement (without the items an item or player loot rule hands out by itself, `ns.LootRuleTakes`), `!sr` | - | SoftRes, Awards, Need, LootPrio, Chat |
 | `Raid/RaidLog.lua` | Boss attempts from encounter events, presence at kills | - | Sync, Awards |
 | `Raid/Bench.lua` | Bench per raid, `!bench` | `benchNext` | Sync, Trust, LootAnnounce, RaidLog |
@@ -256,6 +257,8 @@ sender is always the server's sender name, never a field.
 | `CW` | sender -> asker WHISPER (busy) | only the sender being pulled | none | seconds 1-3600 | CollectSync.lua |
 | `LV` | keeper -> RAID (10 s after a change, else every 240 s) | officer, in group | 8 s | raid key, 16 hex hash, item count | LootPrio.lua |
 | `LQ` | raider -> keeper WHISPER | member, in group | 15 s | raid key, own hash | LootPrio.lua |
+| `SV` | officer with his own soft-reserve list -> RAID (10 s after a change, else every 240 s, and soon after someone joins; `-` once after clearing) | officer, in group | 8 s | import epoch, 16 hex hash or `-`, reservations | SoftResShare.lua |
+| `SQ` | raider or officer -> that officer WHISPER (another state; a list only newer than the held one; an officer with an own list only for an offer) | member, in group; answered only for the officer's own list of that epoch | 15 s | import epoch, own hash or `-` | SoftResShare.lua |
 | `KV` | keeper -> RAID (10 s after a change, else every 240 s) | officer, in group | 8 s | raid key, 16 hex hash, players | PointsSync.lua |
 | `KQ` | raider -> keeper WHISPER | member, in group | 15 s | raid key, own hash | PointsSync.lua |
 | `KC` | officer -> RAID (an award's cost) | officer, in group; receiver in officer view | none | raid key, 12 hex award id, `D`/`G`, amount, epoch | PointsSync.lua |
@@ -289,6 +292,7 @@ sender is always the server's sender name, never a field.
 | `CK` | sender -> asker WHISPER | only asked, member | 20 | `{v = 2, k = kind, r = {id, record, ...}}`; key `0000-00-00:<kind*100+bucket+1>` | CollectSync.lua; `COLLECT_BLOB_V` 2 |
 | `LC` | keeper -> RAID (many askers, low) or WHISPER | officer, in group | 40 | `{v = 1, l = {{id, at, by, token, note}}}` | LootPrio.lua |
 | `PK` | sender -> asker WHISPER | only asked, member | 20 | `{v = 1, d, f = B/L, m, c = crafters}`; key `0000-00-01:<request>` | Crafters.lua |
+| `SR` | officer -> asker WHISPER (three or more askers within 2 s: RAID, low) | officer, in group, only asked (`SQ`), whole list checked and its hash the announced one | 30 | `{v = 1, at, d = date, sid, r = {{n = name, c = class, i = {item ids, doubles repeated}, o = note, p = +1}} (names sorted, at most 100), h = {{id, to, note}} (at most 200)}`; key `<list date>:<import epoch>` | SoftResShare.lua |
 | `KS` | keeper -> RAID (many askers, low) or WHISPER | officer, in group | 20 | `{v = 1, sys, cfg, s = {{name, a, b}}, c = costs}` | PointsSync.lua |
 
 Exchange budgets (bytes per session, parts per 10 min, one blob per N s per asker): drops 61440 B,
@@ -390,7 +394,7 @@ saved structure that crosses parts (a setting moved to another section first of 
 | `mats` | `[id] = {name, q, first, manual, hide}` learned materials | Mats.lua | `ns.MatsLoaded` |
 | `matsScan` | 1 once the old raids taught the material list | Mats.lua | `ns.MatsLoaded` |
 | `alts` | `{game, date, at, by, n, list = {{alt, main}}}` | Alts.lua | replaced by each paste |
-| `softres` | soft-reserve list, data model 3: `{version = 3, date, raw, count, byItem, times, renamed, reminded, src = csv/lines/code, sid (softres id), updated (epoch), notes = {[name] = text}, classes = {[name] = class}, plus = {[name] = n} (softres +1, a hint only), hard = {[item id] = {to, note}}}` | SoftRes.lua | `ns.MigrateSoftRes` (2 to 3: the new fields empty; every field checked) |
+| `softres` | soft-reserve list, data model 3: `{version = 3, date, raw, count, byItem, times, renamed, reminded, src = csv/lines/code/shared, sid (softres id), updated (epoch), notes = {[name] = text}, classes = {[name] = class}, plus = {[name] = n} (softres +1, a hint only), hard = {[item id] = {to, note}}, at (import epoch, since 2.41), from (the officer who shared it, F-107), hash (of a shared list)}` | SoftRes.lua, SoftResShare.lua | `ns.MigrateSoftRes` (2 to 3: the new fields empty; every field checked) |
 | `srAliases` | `[lower list name] = fixed name`; the name fixes of the soft-reserves and of the lineup (one list for both; the lineup adds none once 300 are stored) | SoftRes.lua, Lineup.lua | `ns.MigrateSoftRes` |
 | `benchNext` | bench gathered before tonight's first recording | Bench.lua | earlier night falls away |
 | `groupRolls` | `{runs = ...}` group loot outside raids | GroupRolls.lua | caps MAX_RUNS/ITEMS/PLAYERS |
@@ -464,6 +468,8 @@ to `need.*`, `awards.plusScope/plusOrder` to `rolls.*`, `gear.kind/upgradeDot` t
 A section with `officer` is hidden in the raider view; an item can carry `officer` itself. `awards`
 is everyone's since 2.15.0 for its one raider item, `awards.tooltip` (the award history in the item
 tooltip, D-36); its other items are the officers'.
+`softres` holds since 2.41 `softres.share` ("Liste mit dem Raid teilen", officers, on, F-107) and `softres.announce`
+("Beim Übernehmen im Raid ansagen", officers, on, F-108).
 `rolls` holds `rolls.announceEnglish` (the announcement in English too, off) and `rolls.foreignWatch`
 (watch rounds of other loot addons, on); `rollwin` holds `rollwin.foreign` (the window for them, on).
 `lineup` holds `lineup.signups` ("Anmeldungen aus Amisia annehmen", on) since part H, and since parts C and D

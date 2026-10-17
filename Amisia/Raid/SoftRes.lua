@@ -166,6 +166,8 @@ function ns.SoftResClassText(f, short)
         :format(ns.SoftResClassName(f.want), ns.SoftResClassName(f.have))
 end
 
+ns.SoftResClean = function(s, max) return cleanText(s, max) end
+
 -- A list's class as written, kept only when it names a class ("Priest", "Death Knight").
 local function listClass(s)
     s = cleanText(s, 20)
@@ -336,7 +338,7 @@ function ns.SetSoftRes(text)
     AmisiaDB.softres = { version = 3, date = date("%Y-%m-%d"), byItem = byItem, raw = text or "", count = total,
                          times = times, renamed = renamed, reminded = {}, src = extra.src, sid = extra.sid,
                          updated = extra.updated, notes = extra.notes or {}, classes = extra.classes or {},
-                         plus = extra.plus or {}, hard = extra.hard or {} }
+                         plus = extra.plus or {}, hard = extra.hard or {}, at = ns.ServerTime() }
     ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
     return total, bad, nil, extra
@@ -378,6 +380,10 @@ function ns.MigrateSoftRes(DB)
         end
     end
     sr.hard = hard
+    -- since 2.41 (F-107): the import time and, for a list another officer shared, his name
+    if type(sr.at) ~= "number" or sr.at < 0 or sr.at ~= math.floor(sr.at) then sr.at = nil end
+    if type(sr.from) ~= "string" or sr.from == "" then sr.from = nil end
+    if type(sr.hash) ~= "string" or not sr.hash:match("^%x+$") or #sr.hash ~= 16 then sr.hash = nil end
 end
 
 -- The hard reserve of an item from the loaded code ({ to, note }), or nil.
@@ -696,7 +702,9 @@ function ns.SoftResAfterImport()
 end
 
 function ns.ClearSoftRes()
+    local sr = AmisiaDB.softres
     AmisiaDB.softres = nil
+    if sr and ns.SoftResShareCleared then ns.SoftResShareCleared(sr) end
     ns.MarkSoftResLoot()
     if ns.Refresh then ns.Refresh() end
 end
@@ -1330,6 +1338,8 @@ ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 27, gr
       officer = true, tip = L["Die Prüfung der Liste nennt Raider, die mehr Items reserviert haben. 0 schaltet das aus."] },
     { key = "softres.chat", type = "toggle", label = L["Auf !sr antworten"], default = true, officer = true,
       tip = L["Nur als Lootleitung, per Flüsterung."] },
+    { key = "softres.share", type = "toggle", label = L["Liste mit dem Raid teilen"], default = true, officer = true,
+      tip = L["Deine übernommene Liste geht an alle Amisia-Nutzer im Raid, auch an später Kommende. Angenommen wird sie nur von Offizieren der eigenen Gilde."] },
     { key = "softres.announce", type = "toggle", label = L["Beim Übernehmen im Raid ansagen"], default = true, officer = true,
       tip = L["Nach dem Übernehmen sagt eine Zeile im Raidchat, wie viele reserviert haben und wie man mit '!sr' fragt; die Hard-Reserves folgen mit ihren Items."] },
     { key = "softres.remindText", type = "text", label = L["Zusatz in der Erinnerung"], default = "", officer = true,

@@ -343,9 +343,12 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         f.state = W.Text(f, T.FONT.body)
         f.clear = W.Button(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
         f.import = W.Button(f, L["Importieren"], 110, function() ns.ToggleSoftResFrame() end)
+        f.take = W.Button(f, L["Liste übernehmen"], 130, function() ns.TakeSoftResOffer() end)
+        W.Tooltip(f.take, L["Liste übernehmen"], L["Ersetzt deine Liste durch die neuere, die ein anderer Offizier mit dem Raid geteilt hat."])
         W.FitChip(f.clear, 90)
         W.FitChip(f.import, 110)
-        f:Place(1, { { f.state, fill = true } }, { f.import, f.clear })
+        W.FitChip(f.take, 130)
+        f:Place(1, { { f.state, fill = true } }, { f.take, f.import, f.clear }, { shown = true })
         f.check = f:Line(2)
         f.views = {}
         f.views.items = W.Chip(f, "Items", 60, function() chooseView("items") end)
@@ -377,13 +380,20 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
             local old = ns.SoftResAge(sr) or 0
             local warn = old > (ns.Get("softres.warnDays") or 7)
             local reservers = ctx.check and ctx.check.reservers or 0
-            f.state:SetText(L["%sListe vom %s:|r %d Reservierungen von %d %s%s"]:format(warn and ORANGE or "|cff4fbf7a",
-                ns.SoftResShortDate(sr.date), sr.count or 0, reservers, plural(reservers, L["Raider##von"], L["Raidern##von"]),
-                warn and L[", %d Tage alt"]:format(old) or ""))
+            f.state:SetText(L["%sListe vom %s%s:|r %d Reservierungen von %d %s%s"]:format(warn and ORANGE or "|cff4fbf7a",
+                ns.SoftResShortDate(sr.date), sr.from and L[" von %s"]:format(sr.from) or "", sr.count or 0, reservers,
+                plural(reservers, L["Raider##von"], L["Raidern##von"]), warn and L[", %d Tage alt"]:format(old) or ""))
         else
             f.state:SetText(GREY .. L["Keine Soft-Reserves geladen."] .. "|r")
         end
-        f.check:SetText(checkLine(ctx))
+        local offer = officer and ns.SoftResOffer and ns.SoftResOffer()
+        local line = checkLine(ctx)
+        if offer then
+            line = ORANGE .. L["Neuere Liste von %s (%s, %d Reservierungen)"]:format(offer.from, date("%H:%M", offer.at), offer.n)
+                .. "|r" .. (line ~= "" and (" · " .. line) or "")
+        end
+        f.check:SetText(line)
+        f.take:SetShown(offer ~= nil)
         f.views.items:Show(); f.views.raider:Show()
         if officer then
             f.import:Show(); f.clear:Show()
@@ -401,6 +411,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
             f.views.check:Hide()
             f.remind:Hide(); f.post:Hide()
         end
+        f:Place(1, { { f.state, fill = true } }, { f.take, f.import, f.clear }, { shown = true })
         f:Place(3, { f.views.items, f.views.raider, f.views.check }, { f.remind, f.post }, { shown = true })
         if not sr then
             f.empty:Set(L["Keine Soft-Reserves"], officer and L["Importieren nimmt eine softres.it-CSV, ihren Gargul-Code oder Zeilen wie 'Name [Item-Link]'."]

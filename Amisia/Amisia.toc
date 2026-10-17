@@ -37,6 +37,7 @@ Raid\Rolls.lua
 Raid\RollFrame.lua
 Raid\AwardDialog.lua
 Raid\SoftRes.lua
+Raid\SoftResShare.lua
 Raid\LootAnnounce.lua
 Raid\RaidLog.lua
 Raid\Bench.lua
