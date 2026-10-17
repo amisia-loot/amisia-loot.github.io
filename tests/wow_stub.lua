@@ -883,6 +883,8 @@ TEMPLATES.UIPanelCloseButtonDefaultAnchors = function(f, kind, name)
     closeButton(f, kind, name)
     f:SetPoint("TOPRIGHT", -2, 1)
 end
+-- the client's tooltip (an own GameTooltip, e.g. the duel request card)
+TEMPLATES.GameTooltipTemplate = function() end
 TEMPLATES.UIPanelButtonTemplate = function(f)
     f.Text = f:CreateFontString()
     f.Left, f.Middle, f.Right = f:CreateTexture(), f:CreateTexture(), f:CreateTexture()
@@ -1376,7 +1378,7 @@ _G.LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d."
 _G.LOOT_ITEM_PUSHED_SELF = "You receive item: %s."
 _G.LOOT_ITEM_PUSHED_SELF_MULTIPLE = "You receive item: %sx%d."
 _G.RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"
-Enum.TooltipDataType = { Item = 0 }
+Enum.TooltipDataType = { Item = 0, Unit = 2 }
 Enum.LootMethod = { Freeforall = 0, Masterlooter = 2 }
 Enum.BankType = { Character = 0 }
 

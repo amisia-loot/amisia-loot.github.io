@@ -434,6 +434,54 @@ function T.Live()
     return plan, result
 end
 
+-- Points per tree (1-3) of the player's live talents, nil when the client gives none.
+function T.LiveTrees()
+    local plan = T.Live()
+    if not plan then return nil end
+    return { T.Spent(plan, 1), T.Spent(plan, 2), T.Spent(plan, 3) }
+end
+
+-- Points per tree (1-3) of the character the last NotifyInspect asked for, of class cls (after
+-- INSPECT_READY): the inspect talent configuration through C_Traits, else the classic clients'
+-- compatibility calls (C_SpecializationInfo.GetSpecializationInfo / GetTalentTabInfo with isInspect).
+-- nil when the client tells nothing.
+function T.InspectTrees(cls)
+    local c = T.Class(cls)
+    local TR = _G.C_Traits
+    if c and type(TR) == "table" and type(TR.GetNodeInfo) == "function" then
+        local consts = type(_G.Constants) == "table" and _G.Constants.TraitConsts
+        local config = type(consts) == "table" and consts.INSPECT_TRAIT_CONFIG_ID or -1
+        local pts, any = { 0, 0, 0 }, 0
+        for id, n in pairs(c.byId) do
+            local got, info = pcall(TR.GetNodeInfo, config, id)
+            local r = got and type(info) == "table" and ns.Plain(info.ranksPurchased) or nil
+            if type(r) == "number" and r > 0 and pts[n[TREE]] then
+                pts[n[TREE]] = pts[n[TREE]] + r
+                any = any + r
+            end
+        end
+        if any > 0 then return pts end
+    end
+    local pts, any = { 0, 0, 0 }, false
+    local SI = _G.C_SpecializationInfo
+    for i = 1, 3 do
+        local p
+        if type(SI) == "table" and type(SI.GetSpecializationInfo) == "function" then
+            local ok, _, _, _, _, _, _, v = pcall(SI.GetSpecializationInfo, i, true, false, nil)
+            p = ok and ns.Plain(v) or nil
+        end
+        if type(p) ~= "number" and type(_G.GetTalentTabInfo) == "function" then
+            local ok, _, _, _, _, v = pcall(_G.GetTalentTabInfo, i, true)
+            p = ok and ns.Plain(v) or nil
+        end
+        if type(p) == "number" and p >= 0 and p <= 100 then
+            pts[i] = p
+            any = any or p > 0
+        end
+    end
+    return any and pts or nil
+end
+
 ---------------------------------------------------------------------------
 -- What the page keeps: AmisiaDB.talents = { class, level, talented, plans = { [class] = code } }
 ---------------------------------------------------------------------------

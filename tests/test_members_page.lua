@@ -75,7 +75,7 @@ assert(has(f.data:GetText(), "12 Mitglieder, 7 online, 2 mit Amisia"), f.data:Ge
 
 -- a row: class icon, name in class colour, level class rank, zone, online; the boxes
 local r1 = f.list.rows[1]
-assert(r1.classIcon:IsShown() and r1.classIcon.texture == NS.Theme.MEMBERS.CLASS_TEXTURE, "the round class icon")
+assert(r1.classIcon:IsShown() and r1.classIcon.texture == NS.Theme.CLASS_ICON.TEXTURE, "the round class icon")
 assert(has(r1.name:GetText(), "Anna Amboss") and has(r1.name:GetText(), "|c"), r1.name:GetText())
 assert(has(r1.info:GetText(), "58 Krieger · Veteran") and not has(r1.info:GetText(), "Stufe"), r1.info:GetText())
 assert(r1.zone:GetText() == "Eisenschmiede" and has(r1.last:GetText(), "online") and has(r1.last:GetText(), NS.Theme.GREEN))

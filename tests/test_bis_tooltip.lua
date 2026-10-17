@@ -9,7 +9,9 @@ local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 STUB.class, STUB.level = "WARRIOR", 60
 
-assert(#STUB.tdp == 1 and STUB.tdp[1].kind == Enum.TooltipDataType.Item, "one shared item tooltip hook: " .. #STUB.tdp)
+local itemHooks = 0
+for _, e in ipairs(STUB.tdp) do if e.kind == Enum.TooltipDataType.Item then itemHooks = itemHooks + 1 end end
+assert(itemHooks == 1, "one shared item tooltip hook: " .. itemHooks)   -- (the duels add a unit one)
 
 -- a tooltip that records its lines and must never be rebuilt
 local tip = CreateFrame("GameTooltip", "TestTooltip")

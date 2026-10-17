@@ -61,17 +61,7 @@ local function infoText(e)
         .. " · " .. rankName(e)
 end
 
--- The round class icon: the client's class circles, the class's part of them.
-local function setClassIcon(tex, class)
-    local tc = type(_G.CLASS_ICON_TCOORDS) == "table" and _G.CLASS_ICON_TCOORDS[class] or M.CLASS_COORDS[class]
-    if tc then
-        tex:SetTexture(M.CLASS_TEXTURE)
-        tex:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
-        tex:Show()
-    else
-        tex:Hide()
-    end
-end
+local setClassIcon = W.SetClassIcon
 
 -- Hours since a member was online (0 online, a big number when the client does not say).
 local function hoursAway(e)

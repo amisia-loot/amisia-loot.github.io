@@ -1,11 +1,15 @@
 -- Duelle (tab PvP, F-106, spec docs/specs/2026-10-16-duelle.md): the duels Core/Duels.lua recorded.
--- Three views: Verlauf (time, winner, loser with class colour and class, Sieg/Flucht, place),
--- Rangliste (rank, player, class, games, wins-losses, win rate; a click on a head sorts) and Klassen
--- (per class games, players, wins-losses, win rate and the share of known classes; with a class
--- chosen: that class against each class). The head: the views, "Turnier starten/beenden", "Nur Turnier",
--- the class picker, the name search and "Klassen suchen (N)" (one /who per click). A click on a
--- name filters on that player, a right click whispers; a click on a class row chooses the class.
--- The view, class, sort and "Nur Turnier" stay in settings.window.duels.
+-- Three views: Verlauf (time, winner, loser with class icon, class colour, class and specialisation,
+-- Sieg/Flucht, place), Rangliste (rank, class icon and player, class and specialisation, games,
+-- wins-losses, win rate; a click on a head sorts) and Klassen (per class games, players, wins-losses,
+-- win rate and the share of known classes, the tooltip per specialisation; "Nach Spezialisierung"
+-- counts class and tree apart; with a class chosen: that class against each). A name's tooltip: the
+-- lines of UI/DuelInfo.lua (class, specialisation, record, you against him, streak, rivals). The
+-- head: the views, "Nach Spezialisierung", "Turnier starten/beenden", "Nur Turnier", the class and
+-- time pickers, the name search and "Klassen suchen (N)" (one /who per click). A click on a name
+-- filters on that player (the footer: his record and streak), a right click whispers; a click on a
+-- class row chooses the class. View, class, time, sort, spec and "Nur Turnier" stay in
+-- settings.window.duels.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -20,8 +24,10 @@ function ns.DuelsPageFrame() return page end
 
 local VIEWS = { hist = true, board = true, classes = true }
 local SORTS = { name = true, games = true, wins = true, rate = true }
+local RANGES = { all = true, day = true, week = true, month = true }
 
--- settings.window.duels: { view, class = class token or "all", sort, desc, tour = only the last tournament }
+-- settings.window.duels: { view, class = class token or "all", range = all/day/week/month, sort, desc,
+-- tour = only the last tournament, spec = the classes view by specialisation }
 local function state()
     local s = AmisiaDB and AmisiaDB.settings
     if type(s) ~= "table" then return { view = "hist", class = "all" } end
@@ -33,6 +39,8 @@ local function state()
     if not SORTS[d.sort] then d.sort = nil end
     d.desc = d.desc == true or nil
     d.tour = d.tour == true or nil
+    d.spec = d.spec == true or nil
+    if not RANGES[d.range] then d.range = "all" end
     return d
 end
 
@@ -42,6 +50,8 @@ local function className(c)
     local names = ns.Gear and ns.Gear.CLASS_NAMES
     return c and names and names[c] or c
 end
+
+local function classLine(c, tree) return ns.DuelInfo.ClassLine(c, tree) end
 
 local function colored(text, c)
     local col = c and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c]
@@ -78,15 +88,16 @@ end
 ---------------------------------------------------------------------------
 -- Verlauf
 ---------------------------------------------------------------------------
-local function nameTooltip(self)
-    local name = self.name
-    if not name then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    local c = ns.Duels.ClassOf(name)
-    GameTooltip:AddLine(colored(name, c), 1, 0.82, 0)
-    GameTooltip:AddLine(c and className(c) or L["Klasse unbekannt"], 0.85, 0.85, 0.85)
+-- A player's tooltip: the lines of UI/DuelInfo.lua (over every duel).
+local function playerTooltip(owner, name)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    ns.DuelInfo.AddLines(GameTooltip, name)
     GameTooltip:AddLine(L["Klick: nur seine Duelle · Rechtsklick: Flüstern"], 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
+end
+
+local function nameTooltip(self)
+    if self.name then playerTooltip(self, self.name) end
 end
 
 local function nameButton(row, col)
@@ -94,10 +105,14 @@ local function nameButton(row, col)
     b:SetSize(col[3], S.HIST_ROW_H)
     b:SetPoint("LEFT", col[2], 0)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    b.top = W.Text(b, T.FONT.body, col[3])
-    b.top:SetPoint("TOPLEFT", 0, S.LINE1_Y)
-    b.sub = W.Text(b, T.FONT.text, col[3])
-    b.sub:SetPoint("TOPLEFT", 0, S.LINE2_Y)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetSize(S.HIST_ICON, S.HIST_ICON)
+    b.icon:SetPoint("LEFT", 0, 0)
+    local x = S.HIST_ICON + S.ICON_GAP
+    b.top = W.Text(b, T.FONT.body, col[3] - x)
+    b.top:SetPoint("TOPLEFT", x, S.LINE1_Y)
+    b.sub = W.Text(b, T.FONT.text, col[3] - x)
+    b.sub:SetPoint("TOPLEFT", x, S.LINE2_Y)
     b:SetScript("OnEnter", nameTooltip)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     b:SetScript("OnClick", function(self, button)
@@ -135,16 +150,17 @@ local function buildHist(row)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local function fillName(b, name, c)
+local function fillName(b, name, c, tree)
     b.name = name
+    W.SetClassIcon(b.icon, c)
     b.top:SetText(colored(name, c))
-    b.sub:SetText(GREY .. (c and className(c) or L["unbekannt"]) .. "|r")
+    b.sub:SetText(GREY .. classLine(c, tree) .. "|r")
 end
 
 local function fillHist(row, r)
     row.t:SetText(ns.FmtDayTime(r.t))
-    fillName(row.w, r.w, r.wc)
-    fillName(row.l, r.l, r.lc)
+    fillName(row.w, r.w, r.wc, r.ws)
+    fillName(row.l, r.l, r.lc, r.ls)
     row.k:SetText(r.k == "F" and (ORANGE .. L["Flucht"] .. "|r") or L["Sieg"])
     row.z:SetText(zoneOnly(r.z) or (GREY .. "-|r"))
 end
@@ -155,19 +171,18 @@ end
 local function boardTooltip(self)
     local e = self.item
     if not e then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine(colored(e.name, e.c), 1, 0.82, 0)
-    GameTooltip:AddLine(e.c and className(e.c) or L["Klasse unbekannt"], 0.85, 0.85, 0.85)
-    GameTooltip:AddLine(L["%d Duelle, %d Siege, %d Niederlagen"]:format(e.g, e.w, e.l), 0.85, 0.85, 0.85)
+    playerTooltip(self, e.name)
     if e.g < ns.Duels.MIN_GAMES then
         GameTooltip:AddLine(L["Nach Siegrate gereiht wird ab %d Duellen."]:format(ns.Duels.MIN_GAMES), 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
     end
-    GameTooltip:AddLine(L["Klick: nur seine Duelle · Rechtsklick: Flüstern"], 0.6, 0.6, 0.6, true)
-    GameTooltip:Show()
 end
 
 local function buildBoard(row)
     W.Cells(row, S.BOARD_COLS)
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(S.BOARD_ICON, S.BOARD_ICON)
+    row.icon:SetPoint("LEFT", S.BOARD_COLS[2][2], 0)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnEnter", boardTooltip)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -181,8 +196,9 @@ end
 local function fillBoard(row, e)
     local ranked = e.g >= ns.Duels.MIN_GAMES
     row.rank:SetText(ranked and (e.rank .. ".") or (GREY .. e.rank .. ".|r"))
+    W.SetClassIcon(row.icon, e.c)
     row.name:SetText(colored(e.name, e.c))
-    row.class:SetText(GREY .. (e.c and className(e.c) or L["unbekannt"]) .. "|r")
+    row.class:SetText(GREY .. classLine(e.c, e.s) .. "|r")
     row.games:SetText(tostring(e.g))
     row.wins:SetText(wl(e.w, e.l))
     row.rate:SetText(ranked and pct(e.r, e.g) or (GREY .. pct(e.r, e.g) .. "|r"))
@@ -197,12 +213,20 @@ local function classTooltip(self)
     local chosen = state().class ~= "all" and state().class or nil
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     if chosen then
-        GameTooltip:AddLine(L["%s gegen %s"]:format(colored(className(chosen), chosen), colored(className(e.c), e.c)), 1, 0.82, 0)
+        GameTooltip:AddLine(L["%s gegen %s"]:format(colored(className(chosen), chosen), colored(classLine(e.c, e.t), e.c)), 1, 0.82, 0)
         GameTooltip:AddLine(L["%d Duelle, %d Siege, %d Niederlagen"]:format(e.g, e.w, e.l), 0.85, 0.85, 0.85)
         if e.c == chosen then GameTooltip:AddLine(L["Gleiche Klasse: jedes Duell ein Sieg und eine Niederlage."], 0.6, 0.6, 0.6, true) end
     else
-        GameTooltip:AddLine(colored(className(e.c), e.c), 1, 0.82, 0)
+        GameTooltip:AddLine(colored(classLine(e.c, e.t), e.c), 1, 0.82, 0)
         GameTooltip:AddLine(L["%d Duelle von %d Spielern, %d Siege, %d Niederlagen"]:format(e.g, e.p, e.w, e.l), 0.85, 0.85, 0.85, true)
+        -- per specialisation (the sides with a known tree)
+        for t = 1, 3 do
+            local sp, name = e.specs and e.specs[t], ns.Duels.TreeName(e.c, t)
+            if sp and name then
+                GameTooltip:AddDoubleLine(name, L["%d Duelle, %s, %s"]:format(sp.g, wl(sp.w, sp.l), pct(sp.w / sp.g, sp.g)),
+                    0.85, 0.85, 0.85, 0.85, 0.85, 0.85)
+            end
+        end
         GameTooltip:AddLine(L["Klick: wie schlägt sich die Klasse gegen jede andere?"], 0.6, 0.6, 0.6, true)
     end
     GameTooltip:Show()
@@ -210,6 +234,9 @@ end
 
 local function buildClass(row)
     W.Cells(row, S.CLASS_COLS)
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(S.BOARD_ICON, S.BOARD_ICON)
+    row.icon:SetPoint("LEFT", S.CLASS_COLS[1][2], 0)
     row:SetScript("OnEnter", classTooltip)
     row:SetScript("OnLeave", function() GameTooltip:Hide() end)
     row:SetScript("OnClick", function(self)
@@ -221,7 +248,8 @@ local function buildClass(row)
 end
 
 local function fillClass(row, e)
-    row.class:SetText(colored(e.rank .. ". " .. className(e.c), e.c))
+    W.SetClassIcon(row.icon, e.c)
+    row.class:SetText(colored(e.rank .. ". " .. (e.t and classLine(e.c, e.t) or className(e.c)), e.c))
     row.games:SetText(tostring(e.g))
     row.players:SetText(tostring(e.p))
     row.wins:SetText(wl(e.w, e.l))
@@ -238,6 +266,11 @@ local function classValues()
     table.sort(list, function(a, b) return a.text < b.text end)
     for _, e in ipairs(list) do out[#out + 1] = e end
     return out
+end
+
+local function rangeValues()
+    return { { value = "all", text = L["Alle Zeiten"] }, { value = "day", text = L["Heute"] },
+             { value = "week", text = L["Letzte 7 Tage"] }, { value = "month", text = L["Letzte 30 Tage"] } }
 end
 
 local function build(parent)
@@ -265,11 +298,22 @@ local function build(parent)
     end)
     W.FitChip(f.tourChip, 80)
     W.Tooltip(f.tourChip, L["Nur Turnier"], L["Zeigt Verlauf, Rangliste und Klassen nur für das laufende oder letzte Turnier."])
+    f.specChip = W.Chip(f, L["Nach Spezialisierung"], S.SPEC_CHIP_W, function()
+        state().spec = (not state().spec) or nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.specChip, S.SPEC_CHIP_W)
+    W.Tooltip(f.specChip, L["Nach Spezialisierung"], L["Zählt jede Klasse je Spezialisierung getrennt (z. B. Jäger · Treffsicherheit). Nur Duellanten mit bekannter Spezialisierung zählen."])
     f:Place(1, { f.views.hist, f.views.board, f.views.classes }, { f.tourChip, f.tourButton })
     f.class = W.Picker(f, S.CLASS_W, function(v)
         state().class = v or "all"
         ns.Refresh()
     end)
+    f.range = W.Picker(f, S.RANGE_W, function(v)
+        state().range = v or "all"
+        ns.Refresh()
+    end)
+    f.range:SetValues(rangeValues())
     f.search = W.SearchBox(f, S.SEARCH_W, function(text)
         query = text or ""
         if query ~= player then player = nil end
@@ -281,7 +325,7 @@ local function build(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.who, L["Klassen suchen"], L["Fragt das Spiel per /who nach Spielern ohne Klasse: der erste Klick nach deiner Zone (bis zu 50 Spieler auf einmal), jeder weitere nach einem Namen. Ein Klick, eine Frage, höchstens alle 5 Sekunden."])
-    f:Place(2, { f.class, f.search }, { f.who })
+    f:Place(2, { f.class, f.range, f.search }, { f.who })
     f:Footer({ "data" })
 
     -- Verlauf
@@ -326,6 +370,7 @@ local function refresh(f)
     local st = state()
     local D = ns.Duels
     D.FillKnown()
+    D.LearnOwnSpec()
     local tour = D.Tour()
     if tour.n == 0 then st.tour = nil end
     for k, c in pairs(f.views) do c:SetOn(k == st.view) end
@@ -333,14 +378,18 @@ local function refresh(f)
     W.FitChip(f.tourButton, 110)
     f.tourChip:SetOn(st.tour == true)
     f.tourChip:SetEnabled(tour.n > 0)
-    f:Place(1, { f.views.hist, f.views.board, f.views.classes }, { f.tourChip, f.tourButton })
+    f.specChip:SetOn(st.spec == true)
+    show(f.specChip, st.view == "classes")
+    f:Place(1, { f.views.hist, f.views.board, f.views.classes, st.view == "classes" and f.specChip or nil },
+        { f.tourChip, f.tourButton })
     f.class:SetValues(classValues())
     f.class:SetValue(st.class)
+    f.range:SetValue(st.range)
     local n, wait = D.UnknownCount(), D.WhoWait()
     f.who:SetText(wait > 0 and L["Bitte warten"] or L["Klassen suchen (%d)"]:format(n))
     W.FitChip(f.who, 130)
     f.who:SetEnabled(n > 0 and wait == 0)
-    f:Place(2, { f.class, f.search }, { f.who })
+    f:Place(2, { f.class, f.range, f.search }, { f.who })
     if wait > 0 then
         C_Timer.After(wait + 0.1, function()
             if page and page:IsVisible() and ns.CurrentPage and ns.CurrentPage() == "duels" then ns.RefreshSoon() end
@@ -351,7 +400,8 @@ local function refresh(f)
     show(f.boardView, st.view == "board")
     show(f.classView, st.view == "classes")
     f.empty:Hide()
-    local opts = { query = query, player = player, class = st.class, tour = st.tour }
+    local since = D.Since(st.range)
+    local opts = { query = query, player = player, class = st.class, tour = st.tour, since = since }
     local total = D.Count()
     local tourText = st.tour and (" · " .. L["Turnier %d"]:format(tour.n) .. (tour.on and (" " .. L["(läuft)"]) or "")) or ""
 
@@ -371,11 +421,12 @@ local function refresh(f)
         f.histList:SetItems(rows)
         local text = #rows == total and L["%d Duelle aufgezeichnet"]:format(total)
             or L["%d von %d Duellen"]:format(#rows, total)
-        -- one player chosen: his record
-        local board = player and D.Board(rows, { player = player }) or {}
-        if #board == 1 then
-            local e = board[1]
+        -- one player chosen: his record and streak in these duels
+        local e = player and D.Stats(rows)[player:lower()]
+        if e then
             text = L["%s: %d Duelle, %d - %d, %s"]:format(e.name, e.g, e.w, e.l, pct(e.r, e.g))
+            local streak = ns.DuelInfo.StreakText(e)
+            if streak then text = text .. " · " .. streak end
         end
         f.data:SetText(text .. tourText)
         if #rows == 0 then
@@ -383,7 +434,7 @@ local function refresh(f)
             f.empty:Show()
         end
     elseif st.view == "board" then
-        local rows = D.Filter({ tour = st.tour })
+        local rows = D.Filter({ tour = st.tour, since = since })
         local list = D.Board(rows, { query = query, player = player, class = st.class, sort = st.sort, desc = st.desc })
         f.boardList:SetItems(list)
         for key, b in pairs(f.boardHeads) do
@@ -396,14 +447,18 @@ local function refresh(f)
             f.empty:Show()
         end
     else
-        local rows = D.Filter({ query = query, player = player, tour = st.tour })
+        local rows = D.Filter({ query = query, player = player, tour = st.tour, since = since })
         local chosen = st.class ~= "all" and st.class or nil
-        local list, known, sides = D.ClassTable(rows, chosen)
+        local list, known, sides = D.ClassTable(rows, chosen, st.spec)
         f.classList:SetItems(list)
         f.classHeads.class:SetText(chosen and L["%s gegen##Klasse"]:format(className(chosen)) or L["Klasse"])
         local cover = sides > 0 and known / sides or 0
-        f.data:SetText(L["%d Duelle · %s Klassen bekannt"]:format(#rows, ns.Num(cover * 100, 1) .. " %") .. tourText)
-        if #list == 0 then
+        f.data:SetText((st.spec and L["%d Duelle · %s Spezialisierungen bekannt"] or L["%d Duelle · %s Klassen bekannt"])
+            :format(#rows, ns.Num(cover * 100, 1) .. " %") .. tourText)
+        if #list == 0 and st.spec then
+            f.empty:Set(L["Noch keine Spezialisierungen"], L["Amisia liest die Spezialisierung, wenn ein Duellant in deiner Nähe steht (Einstellungen, Duelle)."])
+            f.empty:Show()
+        elseif #list == 0 then
             f.empty:Set(L["Noch keine Klassen"], L["Für eine Klasse braucht es Duelle, deren Spieler eine bekannte Klasse haben. \"Klassen suchen\" fragt per /who nach."])
             f.empty:Show()
         end

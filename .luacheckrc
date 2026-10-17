@@ -55,4 +55,6 @@ read_globals = {
     "PanelTemplates_SelectTab", "PanelTemplates_DeselectTab", "PanelTemplates_TabResize", "CALENDAR_FIRST_WEEKDAY",
     -- inviting and sorting the lineup (LineupInvite.lua, LineupSort.lua, 2.30.0)
     "LE_PARTY_CATEGORY_INSTANCE", "SetRaidSubgroup", "SwapRaidSubgroup",
+    -- the duellists' specialisation by inspecting them (Duels.lua)
+    "CanInspect", "ClearInspectPlayer", "UnitAffectingCombat",
 }

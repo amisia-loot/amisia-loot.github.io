@@ -147,7 +147,9 @@ for _, e in ipairs(STUB.tdp) do
     if info.source:find("Core", 1, true) then tdp = e end
 end
 assert(tdp and tdp.kind == Enum.TooltipDataType.Item, "post call registered")
-assert(#STUB.tdp == 1, "one post call for all of Amisia: " .. #STUB.tdp)
+local itemCalls = 0
+for _, e in ipairs(STUB.tdp) do if e.kind == Enum.TooltipDataType.Item then itemCalls = itemCalls + 1 end end
+assert(itemCalls == 1, "one item post call for all of Amisia: " .. itemCalls)
 assert(GameTooltip.scripts.OnTooltipSetItem == nil, "no second path")
 NS.SetSoftRes("Fraktur 32235")
 local tip = CreateFrame("GameTooltip", "AmisiaTestTip")

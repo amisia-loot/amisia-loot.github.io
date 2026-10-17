@@ -177,6 +177,18 @@ T.CALPAGE = {
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
+-- the round class icons (W.SetClassIcon: the members page, the duels page): the client's class circles
+T.CLASS_ICON = {
+    TEXTURE = "Interface\\TargetingFrame\\UI-Classes-Circles",
+    -- the class's part of TEXTURE when the client's CLASS_ICON_TCOORDS lacks it
+    COORDS = {
+        WARRIOR = { 0, 0.25, 0, 0.25 }, MAGE = { 0.25, 0.49609375, 0, 0.25 }, ROGUE = { 0.49609375, 0.7421875, 0, 0.25 },
+        DRUID = { 0.7421875, 0.98828125, 0, 0.25 }, HUNTER = { 0, 0.25, 0.25, 0.5 }, SHAMAN = { 0.25, 0.49609375, 0.25, 0.5 },
+        PRIEST = { 0.49609375, 0.7421875, 0.25, 0.5 }, WARLOCK = { 0.7421875, 0.98828125, 0.25, 0.5 },
+        PALADIN = { 0, 0.25, 0.5, 0.75 },
+    },
+}
+
 -- the members page (UI/Pages/Members.lua, tab Gilde, F-104): the head row (class and profession
 -- dropdowns, "nur online", the name search), the column heads, ROWS rows of ROW_H and the footer line:
 -- 26 + 18 + 9 x 46 + 20 = 478. A row, left to right on the list's 590: the round class icon, the name
@@ -186,15 +198,7 @@ T.CALPAGE = {
 T.MEMBERS = {
     ROWS = 9, ROW_H = 46,
     CLASS_W = 130, PROF_W = 130, SEARCH_W = 140,   -- the head row's dropdowns and the search box
-    ICON = 36, ICON_X = 6,                         -- the round class icon, centred on the row
-    CLASS_TEXTURE = "Interface\\TargetingFrame\\UI-Classes-Circles",
-    -- the class's part of CLASS_TEXTURE when the client's CLASS_ICON_TCOORDS lacks it
-    CLASS_COORDS = {
-        WARRIOR = { 0, 0.25, 0, 0.25 }, MAGE = { 0.25, 0.49609375, 0, 0.25 }, ROGUE = { 0.49609375, 0.7421875, 0, 0.25 },
-        DRUID = { 0.7421875, 0.98828125, 0, 0.25 }, HUNTER = { 0, 0.25, 0.25, 0.5 }, SHAMAN = { 0.25, 0.49609375, 0.25, 0.5 },
-        PRIEST = { 0.49609375, 0.7421875, 0.25, 0.5 }, WARLOCK = { 0.7421875, 0.98828125, 0.25, 0.5 },
-        PALADIN = { 0, 0.25, 0.5, 0.75 },
-    },
+    ICON = 36, ICON_X = 6,                         -- the round class icon (T.CLASS_ICON), centred on the row
     LINE1_Y = -8, LINE2_Y = -26,                   -- the two lines of text below the row's top
     NAME_X = 48, NAME_W = 124,                     -- the name (T.FONT.body), under it level, class, rank
     ZONE_X = 176, ZONE_W = 140,                    -- the zone and the time column
@@ -215,17 +219,25 @@ T.MEMBERS = {
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row
 -- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
 T.DUELS = {
-    CLASS_W = 130, SEARCH_W = 140,                 -- the second head row's class picker and search box
+    CLASS_W = 130, SEARCH_W = 140, RANGE_W = 110,  -- the second head row's class and time pickers, search box
+    SPEC_CHIP_W = 120,                             -- "Nach Spezialisierung" (view Klassen)
+    -- the card under the client's duel request (UI/DuelInfo.lua): below the request window, without
+    -- one that far from the screen's top; hidden after CARD_TIME seconds without a request window
+    CARD_GAP = 6, CARD_Y = -140, CARD_TIME = 60,
     HIST_ROWS = 12, HIST_ROW_H = 32, LINE1_Y = -3, LINE2_Y = -17,
-    -- { key, x, width } of the history: time, winner, loser, result, place
-    HIST_COLS = { { "t", 6, 70 }, { "w", 80, 152 }, { "l", 236, 152 }, { "k", 392, 56 }, { "z", 452, 132 } },
+    -- { key, x, width } of the history: time, winner, loser, result, place; a name column holds the
+    -- round class icon (HIST_ICON) and beside it the name over class and specialisation
+    HIST_COLS = { { "t", 6, 66 }, { "w", 76, 166 }, { "l", 246, 166 }, { "k", 416, 50 }, { "z", 470, 114 } },
+    HIST_ICON = 24, ICON_GAP = 4,
     ROWS = 19, ROW_H = 20,
-    -- the leaderboard: rank, name, class, games, wins-losses, win rate (a click on the last four heads sorts)
-    BOARD_COLS = { { "rank", 6, 28, justify = "RIGHT" }, { "name", 42, 176 }, { "class", 224, 92 },
-                   { "games", 318, 62, justify = "RIGHT" }, { "wins", 396, 80, justify = "CENTER" },
-                   { "rate", 484, 70, justify = "RIGHT" } },
-    -- the classes: rank and class, games, players, wins-losses, win rate
-    CLASS_COLS = { { "class", 6, 200 }, { "games", 214, 60, justify = "RIGHT" }, { "players", 288, 60, justify = "RIGHT" },
+    -- the leaderboard: rank, class icon (BOARD_ICON at the name column's x) and name, class with
+    -- specialisation, games, wins-losses, win rate (a click on the last four heads sorts)
+    BOARD_COLS = { { "rank", 6, 26, justify = "RIGHT" }, { "name", 38, 164, cx = 58, cw = 144 }, { "class", 206, 150 },
+                   { "games", 360, 52, justify = "RIGHT" }, { "wins", 418, 76, justify = "CENTER" },
+                   { "rate", 500, 70, justify = "RIGHT" } },
+    BOARD_ICON = 16,
+    -- the classes: class icon (BOARD_ICON) with rank and class, games, players, wins-losses, win rate
+    CLASS_COLS = { { "class", 6, 200, cx = 26, cw = 180 }, { "games", 214, 60, justify = "RIGHT" }, { "players", 288, 60, justify = "RIGHT" },
                    { "wins", 366, 90, justify = "CENTER" }, { "rate", 470, 70, justify = "RIGHT" } },
 }
 

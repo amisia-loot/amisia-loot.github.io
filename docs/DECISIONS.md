@@ -1122,6 +1122,18 @@ sechsten Reiter "PvP" und ist für alle.
 **Folge:** Ein Austausch der Duelle mit der Gilde wäre ein eigenes Feature mit neuer Nachricht (Spec
 nötig). D-45 bekommt den Reiter "PvP" zwischen Kalender und Amisia; der Einstellungsabschnitt `duels`
 hat die Ordnung 70.
+**Nachtrag 2026-10-17 (F-114, Nutzer: "können wir klasse und spec hinzufügen"):** Die Spezialisierung ist der
+Talentbaum mit den meisten Punkten, je Name gespeichert (`AmisiaDB.duels.spec`). Die eigene kommt aus den
+Talenten; die anderen liest Amisia mit `duels.inspect` durch Betrachten (`NotifyInspect`, kein Fenster) eines
+Duellanten, der als Ziel, unter der Maus oder auf einer Namensplakette in der Nähe steht: jeder Name einmal pro
+Sitzung, eine Anfrage alle 2 s, nie im Kampf, in der Sperre oder bei offenem Betrachten-Fenster; eine fremde
+Anfrage dazwischen verwirft Amisias Antwort. Auch das sendet nichts an andere Spieler. Fremde Duellanten, die
+nie in der Nähe standen, bleiben ohne Spezialisierung (kein `/who`-Weg dafür).
+**Nachtrag 2026-10-17 (F-116..F-120, Nutzer: "bau zuerst die Ideen mit ein"):** Die Duell-Daten erscheinen auch
+außerhalb der Seite, nur lesend: eine Karte unter der Duell-Anfrage des Spiels (`duels.request`) und eine Zeile
+im Spieler-Tooltip (`duels.tooltip`); dazu Serien, Erzfeind/Lieblingsgegner, Zeitraum und Klassen nach
+Spezialisierung. Nicht gebaut (bräuchten eine eigene Spec): Turnierbaum, Elo-Wertung, Dauer und Restleben
+eigener Duelle, Stufenunterschiede.
 **Durchgesetzt durch:** `tests/test_duels.lua`.
 
 ## D-53 Soft-Reserves teilen: nur Offiziere mit eigener Liste, ganze Liste, neueste gewinnt

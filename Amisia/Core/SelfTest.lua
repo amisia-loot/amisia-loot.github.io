@@ -830,6 +830,8 @@ local OPTIONAL = {
     -- the places on the world map: the client's own entrances and flight points (then Amisia leaves
     -- that kind out)
     "C_EncounterJournal.GetDungeonEntrancesForMap", "C_TaxiMap.GetTaxiNodesForMap",
+    -- the duellists' specialisation: inspecting them (Duels.lua, F-114)
+    "NotifyInspect", "CanInspect", "ClearInspectPlayer",
 }
 ST.OPTIONAL = OPTIONAL
 

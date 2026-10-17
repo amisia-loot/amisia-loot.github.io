@@ -678,6 +678,45 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Ansicht Klassen öffnest, dann siehst du je Klasse Spiele, Spieler, S-N und Siegrate und unten, wie viel Prozent der Klassen bekannt sind; ein Klick auf eine Klasse zeigt sie gegen jede andere.
 - Notiz: Spec `docs/specs/2026-10-16-duelle.md`; DECISIONS D-52. Nichts wird gesendet; Duelle der Gilde teilen wäre ein eigenes Feature.
 
+### F-114 Duelle: Klassensymbol und Spezialisierung
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn du die Seite Duelle öffnest, dann steht vor jedem Namen mit bekannter Klasse das runde Klassensymbol und darunter "Klasse · Spezialisierung" (z. B. "Jäger · Treffsicherheit"), sobald die Spezialisierung bekannt ist; deine eigene sofort.
+- Prüfung: Wenn ein Duell in deiner Nähe endet und ein Duellant dein Ziel ist oder seine Namensplakette zu sehen ist, dann steht nach ein paar Sekunden seine Spezialisierung in allen seinen Duellen, ohne dass ein Fenster aufgeht.
+- Prüfung: Wenn dein Betrachten-Fenster offen ist oder du im Kampf bist, dann betrachtet Amisia niemanden; danach schon.
+- Prüfung: Wenn du mit der Maus über einen Namen fährst, dann zeigt der Tooltip Klasse, Spezialisierung, seine Bilanz und "Gegen dich: S - N".
+- Prüfung: Wenn du in der Ansicht Klassen über eine Klasse fährst, dann zeigt der Tooltip je Spezialisierung Duelle, S - N und Siegrate.
+- Notiz: Spec `docs/specs/2026-10-16-duelle.md` (Entscheidungen, 2026-10-17); DECISIONS D-52 Nachtrag. Im Spiel offen: ob Forever das Betrachten der Talente (Inspect-Konfiguration) liefert.
+
+### F-116 Duelle: Karte bei einer Duell-Anfrage
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn dich jemand zum Duell fordert, dann steht unter dem Anfrage-Fenster eine Karte "Amisia · Duell-Anfrage" mit seinem Namen in Klassenfarbe, Klasse und Spezialisierung, seiner Bilanz, "Du gegen ihn: S - N" und seiner Serie (oder "Noch kein Duell von ihm aufgezeichnet.").
+- Prüfung: Wenn du die Anfrage annimmst oder ablehnst, dann verschwindet die Karte mit dem Fenster.
+- Notiz: Einstellung Duelle "Bilanz bei Duell-Anfragen zeigen" (an). Neue Datei UI/DuelInfo.lua: nach dem Release WoW ganz neu starten.
+
+### F-117 Duelle: Bilanz im Spieler-Tooltip
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn du mit der Maus über einen Spieler fährst, gegen den Duelle aufgezeichnet sind, dann steht im Tooltip "Duelle: S - N (Prozent)", bei eigenen Duellen gegen ihn "du S - N", ab zwei Siegen oder Niederlagen in Folge die Serie.
+- Notiz: Einstellung Duelle "Duell-Bilanz im Spieler-Tooltip" (an).
+
+### F-118 Duelle: Serien, Erzfeind, Lieblingsgegner
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Duelle mit der Maus über einen Namen fährst, dann zeigt der Tooltip seine Bilanz, "Du gegen ihn", die Serie ("3 Siege in Folge"), die beste Serie sowie Erzfeind und Lieblingsgegner mit S - N.
+- Prüfung: Wenn du auf einen Namen klickst, dann steht unten neben seiner Bilanz seine aktuelle Serie.
+
+### F-119 Duelle: Zeitraum
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn du im Auswahlfeld neben der Klasse "Heute" wählst, dann zeigen Verlauf, Rangliste und Klassen nur die Duelle seit Mitternacht; "Letzte 7 Tage" und "Letzte 30 Tage" entsprechend, "Alle Zeiten" wieder alle.
+
+### F-120 Duelle: Klassen nach Spezialisierung
+- Version: 2.42.0
+- Status: gebaut
+- Prüfung: Wenn du in der Ansicht Klassen "Nach Spezialisierung" einschaltest, dann steht jede Klasse je Spezialisierung in einer eigenen Zeile (z. B. "1. Jäger · Treffsicherheit") und unten "… Spezialisierungen bekannt".
+
 ## Addon: Ausrüstung und Welt
 
 ### F-038 Ausrüstungstabelle

@@ -445,6 +445,19 @@ function W.ArrowButton(parent, dir, size, onClick)
 end
 
 -- On a template button the tooltip is hooked, so the template's own hover look stays.
+-- The round class icon on a texture: the client's class circles, the class's part of them; hidden
+-- for no class.
+function W.SetClassIcon(tex, class)
+    local tc = class and (type(_G.CLASS_ICON_TCOORDS) == "table" and _G.CLASS_ICON_TCOORDS[class] or T.CLASS_ICON.COORDS[class])
+    if tc then
+        tex:SetTexture(T.CLASS_ICON.TEXTURE)
+        tex:SetTexCoord(tc[1], tc[2], tc[3], tc[4])
+        tex:Show()
+    else
+        tex:Hide()
+    end
+end
+
 function W.Tooltip(frame, title, text)
     local set = frame.styled and frame.HookScript and frame.HookScript or frame.SetScript
     set(frame, "OnEnter", function(self)
