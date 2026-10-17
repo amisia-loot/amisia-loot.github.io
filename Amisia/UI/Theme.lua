@@ -333,9 +333,10 @@ T.TALENT = {
 -- between the slot columns as on the character frame, the weapons under it, the switch Ziele /
 -- Angelegt, the score head), in the middle the progress, the filter chips and the list of slots by
 -- section, right the chosen slot's panel (own pick, ranking, dungeon drops, the item field).
--- 18 + 300 + 10 + 380 + 10 + 210 + 18 = 946.
+-- 18 + 300 + 10 + 380 + 10 + 210 + 18 = 946 wide; the doll's column with the score head sets the
+-- height: 60 + 410 (model, weapons, switch, hint) + 4 + 20 + 4 + 10 + 14 + 4 + 84 (stats) + 12 = 622.
 T.GOALS = {
-    W = 946, H = 600,
+    W = 946, H = 624,
     TOP = 32,             -- the head row below the window's top, under the title bar
     BOTTOM = 12,          -- what the columns leave free at the bottom
     SCALE_STEP = 5,       -- Ctrl + mouse wheel: percent per notch (setting ui.goalScale)
@@ -374,10 +375,16 @@ T.GOALS = {
     ALL_W = 90,           -- "Alle zeigen" (at least; FitChip)
     FIELD_W = 132,        -- "Item-Link oder ID"; "Hinzufügen" takes the rest
     MSG_H = 26,           -- what the field says (two lines)
-    -- the score head under the doll (part B)
-    SCORE_H = 20,         -- "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4" beside it
-    SCORE_BAR_H = 10,     -- the bar up to "Bestes auf Stufe N"
-    STAT_ROWS = 3, STAT_H = 14,  -- six stat changes in two columns
+    -- the score head under the doll (part B): "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4"
+    -- beside it, the bar up to "Bestes auf Stufe N" with its line under it, the six biggest stat
+    -- changes one under the other (the German stat names do not fit two columns of 150 px), the label
+    -- left and the change right
+    SCORE_GAP = 4,        -- between the doll's hint and the score line, and between the parts
+    SCORE_H = 20, SCORE_W = 140, NOW_W = 86, GAIN_W = 62,
+    SCORE_BAR_H = 10, BEST_H = 14,
+    STAT_ROWS = 6, STAT_H = 14, STAT_W = 300, STAT_VALUE_W = 60,
+    MARK_W = 2,           -- the line in the bar for "jetzt"
+    DOWN_COLOR = { 0.88, 0.34, 0.29 },   -- a stat that falls (T.RED as a colour)
     -- an item's quality colour on its slot's frame (the client's item quality colours)
     QUALITY = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
         { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } },

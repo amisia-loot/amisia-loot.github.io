@@ -2,7 +2,9 @@
 -- the own character's targets at a glance. Left the doll: the character model (a DressUpModel)
 -- between the slot columns as on the character frame, the weapons under it, the switch "Ziele"
 -- (the model undressed, then the targets tried on, the worn item where a slot has none) or
--- "Angelegt" (what is worn). In the middle the slots by section with item, gain and source, as the
+-- "Angelegt" (what is worn), under it the score head (ns.BisSummary, Amisia's own score: with the
+-- targets, now, the gain, a bar up to "Bestes auf Stufe N" and the six biggest stat changes).
+-- In the middle the slots by section with item, gain and source, as the
 -- gear page's view Ziele shows them (its item texts, sources, map button, menu and clicks come from
 -- ns.GearPageKit), over it how many targets are got ("N/17 Ziele hast du", a bar of 17 parts) and
 -- the filters Alle / Zu holen / In der Tasche / Ohne Verzauberung (the raid check's enchant test).
@@ -753,7 +755,7 @@ local function buildSide(f)
     S.fieldHead:SetText(L["Item-Link oder ID"])
     S.field = W.LineEdit(S, G.FIELD_W)
     S.field:SetMaxLetters(255)
-    S.add = W.Button(S, L["Hinzufügen"], SW - G.FIELD_W - T.LAYOUT.ITEM_GAP, function() addFromField(S) end,
+    S.add = W.Button(S, L["Hinzufügen##Wahl"], SW - G.FIELD_W - T.LAYOUT.ITEM_GAP, function() addFromField(S) end,
         { height = T.FIELD_H })
     -- the button as wide as its text needs (English is shorter), the field takes the rest
     S.field:SetWidth(SW - W.FitChip(S.add, SW - G.FIELD_W - T.LAYOUT.ITEM_GAP) - T.LAYOUT.ITEM_GAP)
@@ -872,6 +874,112 @@ local function buildSide(f)
         if P.lastSlot ~= chosen then
             P.lastSlot = chosen
             say(P, "")
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- The score head under the doll (F-111)
+---------------------------------------------------------------------------
+
+local function statsTip(self)
+    local s = self.summary
+    if not s then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(L["Wertänderungen: Ziele gegen Angelegt"], 1, 0.82, 0)
+    for _, d in ipairs(s.stats) do
+        local c = d.up and G.STATE_COLOR.done or G.DOWN_COLOR
+        GameTooltip:AddLine(d.text, c[1], c[2], c[3])
+    end
+    if #s.stats == 0 then GameTooltip:AddLine(L["Keine Änderung."], 0.6, 0.6, 0.6) end
+    if s.fx > 0 then GameTooltip:AddLine(L["Effekt nicht gewertet: %d Ziele"]:format(s.fx), 0.6, 0.6, 0.6, true) end
+    GameTooltip:Show()
+end
+
+local function buildScore(f)
+    local B = CreateFrame("Frame", nil, f)
+    local top = G.COL_Y + G.MODEL_H + G.WEAPON_GAP + G.SLOT + G.SWITCH_GAP + T.CHIP_H + G.HINT_H + G.SCORE_GAP
+    B:SetPoint("TOPLEFT", G.DOLL_X, -top)
+    B:SetSize(G.DOLL_W, G.SCORE_H + G.SCORE_GAP + G.SCORE_BAR_H + G.BEST_H + G.SCORE_GAP + G.STAT_ROWS * G.STAT_H)
+    B.score = W.Text(B, T.FONT.big, G.SCORE_W)
+    B.now = W.Text(B, T.FONT.text, G.NOW_W)
+    B.gain = W.Text(B, T.FONT.text, G.GAIN_W)
+    W.Row(B, { B.score, { B.now, y = -4 }, { B.gain, y = -4 } }, G.SCORE_GAP, 0, 0)
+    -- the bar from 0 to the best on the level: filled up to the score with the targets, a line at now
+    B.bar = CreateFrame("Frame", nil, B)
+    B.bar:SetSize(G.DOLL_W, G.SCORE_BAR_H)
+    B.bar:SetPoint("TOPLEFT", 0, -(G.SCORE_H + G.SCORE_GAP))
+    B.bar.bg = W.Flat(B.bar, 0, 0, 0, 0.5)
+    B.bar.edges = W.Border(B.bar, GOLD[1], GOLD[2], GOLD[3], 0.35)
+    B.bar.fill = B.bar:CreateTexture(nil, "ARTWORK")
+    B.bar.fill:SetPoint("TOPLEFT", 0, 0)
+    B.bar.fill:SetHeight(G.SCORE_BAR_H)
+    B.bar.fill:SetColorTexture(G.STATE_COLOR.done[1], G.STATE_COLOR.done[2], G.STATE_COLOR.done[3], 0.8)
+    B.bar.mark = B.bar:CreateTexture(nil, "OVERLAY")
+    B.bar.mark:SetSize(G.MARK_W, G.SCORE_BAR_H + 4)
+    B.bar.mark:SetColorTexture(1, 1, 1, 0.9)
+    B.bar:EnableMouse(true)
+    B.bar:SetScript("OnEnter", function(self)
+        local s = self.summary
+        if not s then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["Bestes auf Stufe %d: %s"]:format(s.level, Gear.Num(s.best, 1)), 1, 0.82, 0)
+        GameTooltip:AddLine(L["Das Ergebnis der Simulation für deine Klasse, Spezialisierung und Stufe mit allen Quellen, ohne Ausschlüsse und ohne eigene Wahl. Die Füllung zeigt die Wertung mit deinen Zielen, der Strich die jetzige."],
+            0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    B.bar:SetScript("OnLeave", K.hideTip)
+    B.best = W.Text(B, T.FONT.hint, G.DOLL_W)
+    B.best:SetPoint("TOPLEFT", 0, -(G.SCORE_H + G.SCORE_GAP + G.SCORE_BAR_H + 2))
+    -- the six biggest stat changes, one under the other; all in the tooltip
+    B.stats = CreateFrame("Frame", nil, B)
+    B.stats:SetPoint("TOPLEFT", 0, -(G.SCORE_H + G.SCORE_GAP + G.SCORE_BAR_H + G.BEST_H + G.SCORE_GAP))
+    B.stats:SetSize(G.DOLL_W, G.STAT_ROWS * G.STAT_H)
+    B.stats:EnableMouse(true)
+    B.stats:SetScript("OnEnter", statsTip)
+    B.stats:SetScript("OnLeave", K.hideTip)
+    B.cells = {}
+    local cells = {}
+    for i = 1, G.STAT_ROWS do
+        local c = CreateFrame("Frame", nil, B.stats)
+        c:SetSize(G.STAT_W, G.STAT_H)
+        c.label = W.Text(c, T.FONT.text, G.STAT_W - G.STAT_VALUE_W - 2)
+        c.label:SetPoint("LEFT", 0, 0)
+        c.value = W.Text(c, T.FONT.text, G.STAT_VALUE_W)
+        c.value:SetPoint("RIGHT", 0, 0)
+        c.value:SetJustifyH("RIGHT")
+        B.cells[i] = c
+        cells[#cells + 1] = c
+    end
+    W.Column(B.stats, cells, 0, 0, 0)
+    f.score = B
+    f.fillScore = function(win2, o, res)
+        local Bx = win2.score
+        local s = ns.BisSummary(res, o)
+        Bx.score:SetText(L["Wertung %s"]:format(Gear.Num(s.score, 1)))
+        Bx.now:SetText(GREY .. L["jetzt %s"]:format(Gear.Num(s.now, 1)) .. "|r")
+        local g = s.gain
+        Bx.gain:SetText((g >= 0 and GREEN or T.RED) .. (g >= 0 and "+" or "-") .. Gear.Num(math.abs(g), 1) .. "|r")
+        local max = math.max(s.best, s.score, s.now, 1)
+        Bx.bar.summary, Bx.stats.summary = s, s
+        local fw = math.max(0, math.min(1, s.score / max)) * G.DOLL_W
+        Bx.bar.fill:SetWidth(math.max(1, fw))
+        if fw < 1 then Bx.bar.fill:Hide() else Bx.bar.fill:Show() end
+        Bx.bar.mark:ClearAllPoints()
+        Bx.bar.mark:SetPoint("CENTER", Bx.bar, "LEFT", math.max(0, math.min(1, s.now / max)) * G.DOLL_W, 0)
+        Bx.best:SetText(L["Bestes auf Stufe %d: %s"]:format(s.level, Gear.Num(s.best, 1)))
+        for i, c in ipairs(Bx.cells) do
+            local d = s.stats[i]
+            if d then
+                local col = d.up and GREEN or T.RED
+                c.label:SetText(d.label)
+                local amount = d.rating and ("%s%s %%"):format(d.up and "+" or "-", Gear.Num(math.abs(d.pct), 1))
+                    or ("%s%s"):format(d.up and "+" or "-", Gear.Num(math.abs(d.value)))
+                c.value:SetText(col .. amount .. "|r")
+                c:Show()
+            else
+                c:Hide()
+            end
         end
     end
 end
@@ -1004,6 +1112,7 @@ local function build()
     win.list = buildList(win)
     buildProgress(win)
     buildSide(win)
+    buildScore(win)
     win:EnableMouseWheel(true)
     win:SetScript("OnMouseWheel", wheel)
     place()

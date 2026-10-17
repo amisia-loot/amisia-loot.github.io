@@ -1555,6 +1555,108 @@ function ns.BisRanking(slotKey, n)
     return out, #list
 end
 
+-- "Bestes auf Stufe N" (F-111): the simulation's result for the class, spec, weighting, level and
+-- weapon plan with every source on, no exclusions and no own picks (both factions, all professions),
+-- as the sum of option 1 per row. Kept until the scores change.
+local ALL_SOURCES = { X = true, Q = true, D = true, C = true, V = true, W = true, A = true, P = true }
+local bestSumKey, bestSum
+local function bestAt(o)
+    local key = table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), scoreStamp, tostring(o.class), tostring(o.spec),
+        tostring(o.level), tostring(o.kind), tostring(o.plan) }, "|")
+    if key == bestSumKey then return bestSum end
+    local w0 = Gear.StatsWaits()
+    local b = ns.BisFor(o.class, o.spec, o.level, { sources = ALL_SOURCES, plan = o.plan, kind = o.kind })
+    local total = 0
+    for _, sl in ipairs(Gear.SLOTS) do
+        local e = b[sl.key] and b[sl.key][1]
+        if e then total = total + e[2] end
+    end
+    -- kept only when no item was still waiting for its stats
+    if Gear.StatsWaits() == w0 then bestSumKey, bestSum = key, total end
+    return total
+end
+
+-- The score head of the goals window (F-111, D-11: Amisia's own score): { score (the sum of the
+-- rows' scores with the targets: a target that is no upgrade and no pick leaves the worn item;
+-- a two-hander counts once), now (the worn ones), gain, best (bestAt), level, stats = { { key,
+-- label, points, value, pct, rating, text, up } } the changes targets against worn by weight, fx
+-- (targets with an equip effect the score does not count) }. Kept with the targets.
+function ns.BisSummary(res, o)
+    res = res or ns.BisTargets()
+    if res.summary then return res.summary end
+    o = o or ns.BisOpts()
+    local out = { score = 0, now = 0, gain = 0, best = 0, level = o.level, stats = {}, fx = 0 }
+    if not o.class or not Gear.Available() then return out end
+    local ctx = context(o)
+    local links = worn().links
+    local adds, drops = {}, {}
+    local mainFellBack = false
+    for _, sl in ipairs(Gear.SLOTS) do
+        local k, cur = sl.key, ctx.slot[sl.key] or 0
+        out.now = out.now + cur
+        local first = res[k] and res[k][1]
+        local use = first and not first.loading and (first.own or first.pick or first.upgrade or first.switch or first.owned)
+        if use then
+            if first.worn then
+                out.score = out.score + cur
+            else
+                out.score = out.score + first.score
+                adds[#adds + 1] = first
+                if links[sl.inv] then drops[#drops + 1] = links[sl.inv] end
+                -- a two-hander puts the worn shield hand away too
+                if k == "MAINHAND" and res.plan == "2H" and links[17] then drops[#drops + 1] = links[17] end
+            end
+        elseif k == "OFFHAND" and res.plan == "2H" then
+            if mainFellBack then out.score = out.score + cur end
+        else
+            out.score = out.score + cur
+            if k == "MAINHAND" then mainFellBack = true end
+        end
+    end
+    out.gain = out.score - out.now
+    out.best = bestAt(o)
+    -- the changes: every part of the targets less every part of the worn items they replace
+    local diff = {}
+    local function addParts(item, sign)
+        local by, ev = partsOf(item, o)
+        if not by then return end
+        if sign > 0 and Gear.EffectText(ev.id) then out.fx = out.fx + 1 end
+        for key, p in pairs(by) do
+            if key ~= "SPEED" then
+                local d = diff[key]
+                if not d then
+                    d = { key = key, label = p.label, points = 0, value = 0, pct = 0,
+                        rating = type(p.amount) == "string" and p.amount:find("%%") ~= nil }
+                    diff[key] = d
+                end
+                d.points = d.points + sign * p.points
+                d.value = d.value + sign * (p.value or 0)
+                if d.rating and p.weight ~= 0 then d.pct = d.pct + sign * p.points / p.weight end
+            end
+        end
+    end
+    for _, e in ipairs(adds) do addParts(e, 1) end
+    for _, link in ipairs(drops) do addParts(link, -1) end
+    for _, d in pairs(diff) do
+        if math.abs(d.points) >= 0.5 then
+            local sign = d.points >= 0 and "+" or "-"
+            if d.rating then
+                d.text = ("%s %s%s %%"):format(d.label, sign, Gear.Num(math.abs(d.pct), 1))
+            else
+                d.text = ("%s %s%s"):format(d.label, sign, Gear.Num(math.abs(d.value)))
+            end
+            d.up = d.points > 0
+            out.stats[#out.stats + 1] = d
+        end
+    end
+    table.sort(out.stats, function(a, b)
+        if math.abs(a.points) ~= math.abs(b.points) then return math.abs(a.points) > math.abs(b.points) end
+        return a.key < b.key
+    end)
+    res.summary = out
+    return out
+end
+
 -- The hint under a worn own pick (F-112): the best item of the row's ranking when it beats the pick
 -- by at least bis.minGain percent: { id, pct, gain } or nil. Amisia never takes it over by itself.
 function ns.BisOvertaken(slotKey)
