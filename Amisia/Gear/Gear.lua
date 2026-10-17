@@ -1066,6 +1066,13 @@ local function setBonuses(sid, set)
     return b
 end
 
+-- The bonuses of set sid per threshold (setBonuses), for Bis.lua's comparison with the worn gear.
+function Gear.SetBonusesOf(sid)
+    local S = type(ns.BIS) == "table" and type(ns.BIS.SET) == "table" and ns.BIS.SET or nil
+    local set = S and S[sid]
+    return set and setBonuses(sid, set) or {}
+end
+
 -- item -> set id, for the sets of ns.BIS.SET.
 local setOfItem, setOfFor = {}, nil
 function Gear.SetOf(id)

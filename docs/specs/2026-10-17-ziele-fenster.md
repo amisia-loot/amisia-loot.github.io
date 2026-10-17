@@ -88,7 +88,7 @@ Rechte Spalte, für den gewählten Slot (ohne Wahl: der erste Slot mit Upgrade):
   Klasse tragen kann, wird eigene Wahl, auch wenn es in den Daten fehlt (dann mit den Werten, die der
   Client kennt, Quelle "unbekannt"). Shift-Klick auf einen Link setzt ihn ins Feld.
 - **Überholt:** Ist die eigene Wahl angelegt und das beste Item der Rangliste um mindestens
-  "Upgrade erst ab" (`bis.minGain`) besser, steht unter der Wahl "Überholt: <Item> ist +N % besser" mit
+  "Upgrade erst ab" (`bis.minTotal`, seit F-115) besser, steht unter der Wahl "Überholt: <Item> ist +N % besser" mit
   "Übernehmen"; Amisia ändert die Wahl nie selbst.
 
 ### D: Fortschritt und Filter (F-113)

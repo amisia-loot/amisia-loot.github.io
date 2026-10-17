@@ -159,7 +159,7 @@ STUB.worn[1] = worn
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 local rw = NS.QuestRewards(21)
 assert(#rw.list == 2 and rw.list[1].id == 5001 and rw.list[1].up and rw.best == rw.list[1], "the upgrade first")
-assert(rw.list[1].mark == "+300%", tostring(rw.list[1].mark))
+assert(rw.list[1].mark == NS.UpgradeShort(NS.UpgradeOf(5001)) and rw.list[1].mark:find("^%+[%d,]+%%$"), tostring(rw.list[1].mark))
 assert(not rw.list[2].up)
 
 ---------------------------------------------------------------------------

@@ -32,6 +32,8 @@ local scoreStamp = 0
 local function bump() stamp = stamp + 1 end
 local function bumpAll() stamp = stamp + 1; scoreStamp = scoreStamp + 1 end
 ns.BisBump = bumpAll
+-- a change of the results only (the character sheet of Gear/Model.lua): Gear.Best's lists stay
+ns.BisBumpResults = bump
 -- The state counter: a page keeps what it showed until this changes.
 function ns.BisStamp() return stamp end
 
@@ -647,12 +649,20 @@ function ns.BisWornScores(o)
     return { slot = slot, two = ctx.twoWorn }
 end
 
-local function minGain() return tonumber(ns.Get("bis.minGain")) or 2 end   -- l10n-ok: setting key
+-- The least change of the whole output (percent) that counts as an upgrade (bis.minTotal, D-54).
+local function minTotal() return tonumber(ns.Get("bis.minTotal")) or 0.3 end   -- l10n-ok: setting key
+local function isUpTotal(total) return type(total) == "number" and total > 0.05 and total >= minTotal() - 1e-9 end
 
--- Whether a gain is worth calling an upgrade: more than a point and more than bis.minGain percent.
+local ownSize   -- defined with the model below
+
+-- Whether a gain (score points of the own spec) is worth calling an upgrade: at least bis.minTotal
+-- percent of the spec's whole output (Gear/Model.lua); without the model more than a point and two
+-- percent of the worn item's score.
 function ns.BisIsUpgrade(gain, mine)
     if type(gain) ~= "number" then return false end
-    return gain > math.max(1, math.abs(mine or 0) * minGain() / 100)
+    local size = ownSize and ownSize()
+    if size and size > 0 then return isUpTotal(gain / size * 100) end
+    return gain > math.max(1, math.abs(mine or 0) * 2 / 100)
 end
 
 -- The weaker of two rows (the first on a tie).
@@ -775,6 +785,133 @@ function ns.BisGain(item, opts)
     return ev.gain, ev.slotKey, ev.mine, ev.score
 end
 
+---------------------------------------------------------------------------
+-- The model: the change in percent of the spec's whole output (Gear/Model.lua, D-54)
+---------------------------------------------------------------------------
+
+local ROLE_WORD = { dps = L["Schaden"], heal = L["Heilung"], tank = L["Überleben"] }
+
+-- The own state per spec, kept until the gear, the level, the sheet or the options change:
+-- { p, st, approx, worn (Model.WornItems), w (the bracket's weights), size }.
+local ownCache = {}
+local function ownKey(o)
+    return table.concat({ tostring(worn()), tostring(o.level), ns.Model.SheetCount(), tostring(o.plan), tostring(o.kind),
+        tostring(ns.Data("GEAR")) }, "|")
+end
+local function ownOf(o, specKey)
+    local Model = ns.Model
+    if not (Model and Model.Available()) or not o.class or not specKey then return nil end
+    local p = Model.Params(o.class, specKey)
+    if not p then return nil end
+    Model.Sheet()   -- reads the sheet when it is due (and bumps the stamp then)
+    local key = ownKey(o)
+    local c = ownCache[specKey]
+    if c and c.key == key then return c end
+    local st, approx = Model.OwnState(o.class, specKey, p, o.plan)
+    if not st then return nil end
+    local wornNow, partial = Model.WornItems()
+    c = { key = ownKey(o), p = p, st = st, approx = approx, worn = wornNow,
+        w = Gear.Weights(o.class, specKey, o.kind, o.level) }
+    c.size = Model.Change(o.class, p, o.kind, st, {}, {}, c.w).size
+    -- a worn item without stats yet would count as an empty slot: asked again next time
+    if not partial then ownCache[specKey] = c end
+    return c
+end
+
+local sizeStamp, sizeValue
+ownSize = function()
+    if sizeStamp == stamp then return sizeValue end
+    local ok, o = pcall(ns.BisOpts)
+    local c = ok and o and ownOf(o, o.spec)
+    sizeStamp, sizeValue = stamp, c and c.size or nil
+    return sizeValue
+end
+
+-- Set bonuses an exchange breaks and completes: two lists of { stats } (bonuses without stats are
+-- not counted).
+local function setSwap(outIds, inId)
+    local before = {}
+    for id in pairs(worn().ids) do
+        local sid = Gear.SetOf(id)
+        if sid then before[sid] = (before[sid] or 0) + 1 end
+    end
+    local after = {}
+    for sid, n in pairs(before) do after[sid] = n end
+    for _, id in ipairs(outIds) do
+        local sid = Gear.SetOf(id)
+        if sid then after[sid] = (after[sid] or 0) - 1 end
+    end
+    local sid = inId and Gear.SetOf(inId)
+    if sid then after[sid] = (after[sid] or 0) + 1 end
+    local lost, won = {}, {}
+    for set, n1 in pairs(after) do
+        local n0 = before[set] or 0
+        if n1 ~= n0 then
+            for thr, stats in pairs(Gear.SetBonusesOf(set)) do
+                if stats then
+                    if n0 >= thr and n1 < thr then lost[#lost + 1] = { stats }
+                    elseif n1 >= thr and n0 < thr then won[#won + 1] = { stats } end
+                end
+            end
+        end
+    end
+    return lost, won
+end
+
+-- The model's change for an evaluated item in spec specKey: Model.Change's result and the own
+-- state (ownOf), or nil.
+local function modelChange(ev, o, specKey)
+    local c = ownOf(o, specKey)
+    if not c then return nil end
+    if worn().ids[ev.id] then
+        return { total = 0, main = 0, surv = c.p.model ~= "tank" and 0 or nil, threat = c.p.model == "tank" and 0 or nil,
+            gain = 0, size = c.size, after = c.st }, c
+    end
+    local outItems, outIds = {}, {}
+    for _, key in ipairs(ev.against or {}) do
+        local it = c.worn[SLOT_INV[key]]
+        if it then
+            outItems[#outItems + 1] = { it[1], it[2] }
+            local id = ns.ItemID(it[3])
+            if id then outIds[#outIds + 1] = id end
+        end
+    end
+    local inItems = { { ev.s, ev.kind } }
+    local lost, won = setSwap(outIds, ev.id)
+    for _, b in ipairs(lost) do outItems[#outItems + 1] = b end
+    for _, b in ipairs(won) do inItems[#inItems + 1] = b end
+    return ns.Model.Change(o.class, c.p, o.kind, c.st, outItems, inItems, c.w), c
+end
+
+-- "+1,6 %", "-0,4 %", "+12 %" (whole numbers from 10 on).
+local function pctText(x)
+    local a = math.abs(x)
+    return (x < 0 and "-" or "+") .. Gear.Num(a, a < 10 and 1 or 0) .. " %"
+end
+ns.UpgradePct = pctText
+
+-- The percent of an upgrade as shown everywhere: { total } (the whole output), else { pct } (the
+-- slot's score, an answer of an older Amisia: alt), 999 or nothing: "neu".
+function ns.UpgradePctText(e)
+    if type(e) ~= "table" then return L["neu"] end
+    if type(e.total) == "number" then return pctText(e.total) end
+    if type(e.pct) ~= "number" or e.pct == 999 then return L["neu"] end
+    return ("%+d %%"):format(e.pct) .. (e.alt and L[" (alt)"] or "")
+end
+-- The order of such entries: whole-output percents first, then old slot percents.
+function ns.UpgradeSortValue(e)
+    if type(e.total) == "number" then return e.total end
+    if e.pct == 999 then return 1e6 end
+    return -1e6 + (tonumber(e.pct) or 0)
+end
+
+-- The spec of an upgrade as the tooltip names it: "Verstärkung" or "Verstärkung, geraten".
+local function specText(u)
+    local sp = Gear.SpecInfo(u.class, u.spec)
+    local name = sp and L[sp.name] or tostring(u.spec)
+    return u.guessed and L["%s, geraten"]:format(name) or name
+end
+
 -- The level an item needs when it is above the own one (C_Item.GetItemInfo, fifth value), else nil.
 local function laterLevel(item)
     local info = C_Item and C_Item.GetItemInfo
@@ -801,8 +938,15 @@ function ns.UpgradeOf(item, opts)
     if ev.switch then return nil, L["Waffenwechsel"], "switch", ev.slotKey end
     local mine = ev.mine or 0
     local u = { gain = ev.gain, mine = mine, score = ev.score, slotKey = ev.slotKey, against = {},
-        weaker = (ev.group == "FINGER" or ev.group == "TRINKET") or nil }
+        weaker = (ev.group == "FINGER" or ev.group == "TRINKET") or nil, class = o.class, spec = o.spec,
+        guessed = o.guessed or nil }
     if mine > 0 then u.pct = math.floor(ev.gain / mine * 100 + 0.5) end
+    local mc, own = modelChange(ev, o, o.spec)
+    if mc then
+        u.total, u.main, u.surv, u.threat, u.approx = mc.total, mc.main, mc.surv, mc.threat, own.approx or nil
+        local sp = Gear.SpecInfo(o.class, o.spec)
+        u.role = sp and sp.role or nil
+    end
     local w = worn()
     for _, key in ipairs(ev.against or {}) do
         local link = w.links[SLOT_INV[key]]
@@ -810,12 +954,26 @@ function ns.UpgradeOf(item, opts)
     end
     u.later = laterLevel(type(item) == "string" and item or ev.id)
     u.pick, u.pickWorn = ev.pick, ev.pickWorn or nil
-    if ev.pickWorn then
-        u.up = false
-    else
-        u.up = (not u.later and not w.ids[ev.id] and (ev.pick ~= nil or ns.BisIsUpgrade(ev.gain, mine))) and true or false
-    end
+    -- better: the comparison alone (a pick counts as better until worn); up: and wearable now
+    if u.total then u.better = isUpTotal(u.total) else u.better = ns.BisIsUpgrade(ev.gain, mine) end
+    u.better = (not ev.pickWorn and (ev.pick ~= nil or u.better)) and true or false
+    u.up = (u.better and not u.later and not w.ids[ev.id]) and true or false
     return u
+end
+
+-- The same item for the other specs of the own class: { { name, total }, ... } in the weights' order.
+function ns.UpgradeOthers(item, opts)
+    local o = opts or ns.BisOpts()
+    local ev = evaluate(item, o)
+    if ev.reason or ev.switch then return {} end
+    local out = {}
+    for _, sp in ipairs(Gear.Specs(o.class)) do
+        if sp.key ~= o.spec then
+            local mc = modelChange(ev, o, sp.key)
+            if mc then out[#out + 1] = { name = L[sp.name], total = mc.total } end
+        end
+    end
+    return out
 end
 
 -- The short text of a comparison for an item mark: "+12%", "neu" (an empty slot), "ab 62" (a level
@@ -823,9 +981,30 @@ end
 function ns.UpgradeShort(u)
     if type(u) ~= "table" or type(u.gain) ~= "number" then return nil end
     if u.later then return u.gain > 0 and L["ab %d"]:format(u.later) or nil end
+    if u.total then return (pctText(u.total):gsub(" %%$", "%%")) end
     if u.pct then return ("%+d%%"):format(u.pct) end
     if u.up then return L["neu"] end
     return nil
+end
+
+-- The model's answer for an item on the own values (D-54): "Gesamt: +1,6 % Schaden (deine Werte vom
+-- Charakterbogen)", then the main values with what the exchange moves ("Angriffskraft: 300 -> 310");
+-- {} without the model.
+function ns.BisExplainModel(item, opts)
+    local o = opts or ns.BisOpts()
+    -- the sheet is the own character's: not for the simulation of another class or level
+    local own = ns.BisOpts()
+    if o.class ~= own.class or o.level ~= own.level then return {} end
+    local ev = evaluate(item, o)
+    if ev.reason or ev.switch then return {} end
+    local mc, c = modelChange(ev, o, o.spec)
+    if not mc then return {} end
+    local sp = Gear.SpecInfo(o.class, o.spec)
+    local role = ROLE_WORD[sp and sp.role] or L["Schaden"]
+    local lines = { (c.approx and L["Gesamt: %s %s (ungefähr, Grundwerte und Ausrüstung)"]
+        or L["Gesamt: %s %s (deine Werte vom Charakterbogen)"]):format(pctText(mc.total), role) }
+    for _, v in ipairs(ns.Model.Values(o.class, c.p, c.st, mc.after)) do lines[#lines + 1] = ("%s: %s"):format(v[1], v[2]) end
+    return lines
 end
 
 -- The score of an item explained as German lines: what it scores against what is worn, then every
@@ -1326,32 +1505,80 @@ local function againstText(u)
     return text
 end
 
+-- The enchantment on a worn item as its tooltip names it ("Rüstung +10"), or nil.
+local enchantCache = {}
+local function enchantOf(link)
+    if type(link) ~= "string" or not link:find("item:%d+:%d") then return nil end
+    local v = enchantCache[link]
+    if v ~= nil then return v or nil end
+    v = false
+    local pattern = type(ENCHANTED_TOOLTIP_LINE) == "string" and ("^" .. ENCHANTED_TOOLTIP_LINE:gsub("%%s", "(.+)") .. "$")
+    local ok, tip = pcall(function() return C_TooltipInfo and C_TooltipInfo.GetHyperlink and C_TooltipInfo.GetHyperlink(link) end)
+    if pattern and ok and type(tip) == "table" then
+        for _, line in ipairs(tip.lines or {}) do
+            local text = type(line.leftText) == "string" and line.leftText or nil
+            local name = text and text:match(pattern)
+            if name then v = name break end
+        end
+    end
+    enchantCache[link] = v
+    return v or nil
+end
+
+-- The parts of the change on Shift: "Schaden +2,0 %, Überleben -0,4 %" or, for a tank, "Überleben +1,1
+-- %, Bedrohung +0,3 %".
+local function partsText(u)
+    if u.threat then return L["Überleben %s, Bedrohung %s"]:format(pctText(u.main), pctText(u.threat)) end
+    if u.surv then return ("%s %s, %s %s"):format(ROLE_WORD[u.role] or L["Schaden"], pctText(u.main), L["Überleben"], pctText(u.surv)) end
+    return nil
+end
+
+-- The values the change moves, "Angriffskraft 512 -> 522", from the model (at most TIP_PARTS).
+local function valueLines(link, max)
+    local o = ns.BisOpts()
+    local ev = evaluate(link, o)
+    if ev.reason or ev.switch then return {} end
+    local mc, c = modelChange(ev, o, o.spec)
+    if not mc then return {} end
+    local out = {}
+    for _, v in ipairs(ns.Model.Values(o.class, c.p, c.st, mc.after, true)) do
+        if #out >= max then break end
+        out[#out + 1] = ("%s: %s"):format(v[1], v[2])
+    end
+    return out
+end
+
 local function tipLines(link, id, shift)
     local u, _, code = ns.UpgradeOf(link)
     if not u then
         if code == "switch" then return { { L["Waffenwechsel für dich"], TIP_GREY } }, false, true end
         return {}, false, code ~= "loading"
     end
-    local gain, slotKey, mine = u.gain, u.slotKey, u.mine
+    local gain, slotKey = u.gain, u.slotKey
     local compare = ns.Get("bis.compare") ~= false   -- l10n-ok: setting key
     local c = ns.BisChar()
     local isWorn = worn().ids[id] ~= nil
     -- a BiS pick is the slot's target: an upgrade until worn; while one is worn nothing else is
-    local up = not isWorn and not u.pickWorn and (u.pick ~= nil or ns.BisIsUpgrade(gain, mine))
+    local up = not isWorn and u.better
     local text, color, noTargets = nil, TIP_GREY, false
     local vs = up               -- the worn item goes under an upgrade or a "Kein Upgrade" line
     local points = math.floor(gain + 0.5)
     local slotName = SLOT_NAME[slotKey] or ""
-    if up and compare then
+    local spec = u.spec and specText(u)
+    local role = ROLE_WORD[u.role] or L["Schaden"]
+    local approx = u.approx and L[" (ungefähr)"] or ""
+    if up then
         local head = u.later and L["Upgrade für dich ab Stufe %d"]:format(u.later) or L["Upgrade für dich"]
-        if u.pct then
+        if spec then head = ("%s (%s)"):format(head, spec) end
+        local where = #u.against > 0 and slotName or L["%s, Platz leer"]:format(slotName)
+        if compare and u.total then
+            text = ("%s: %s %s (%s)%s"):format(head, pctText(u.total), role, where, approx)
+        elseif compare and u.pct then
             text = ("%s: %+d %% (%+d, %s)"):format(head, u.pct, points, slotName)
         else
-            text = L["%s: %+d (%s, Platz leer)"]:format(head, points, slotName)
+            text = ("%s: %s"):format(head, where)
         end
         color = u.later and TIP_ORANGE or TIP_GREEN
-    elseif up then
-        text, color = L["Upgrade für dich: %+d (%s)"]:format(points, slotName), TIP_GREEN
     else
         local res = ns.BisTargetsCached()
         local rank, rankSlot
@@ -1366,10 +1593,13 @@ local function tipLines(link, id, shift)
             text = (isWorn and L["angelegt, Option %d für %s"] or L["Option %d für %s"]):format(rank, SLOT_NAME[rankSlot] or "")
         elseif not isWorn and ns.Get("bis.tooltipNone") then   -- l10n-ok: setting key
             vs = true
-            if compare and u.pct then
-                text = L["Kein Upgrade für dich (%+d, %+d %%)"]:format(points, u.pct)
+            local head = spec and ("%s (%s)"):format(L["Kein Upgrade für dich"], spec) or L["Kein Upgrade für dich"]
+            if compare and u.total then
+                text = ("%s: %s %s%s"):format(head, pctText(u.total), role, approx)
+            elseif compare and u.pct then
+                text = ("%s: %+d, %+d %%"):format(head, points, u.pct)
             else
-                text = L["Kein Upgrade für dich (%+d)"]:format(points)
+                text = head
             end
         end
     end
@@ -1380,9 +1610,22 @@ local function tipLines(link, id, shift)
     if u.pick then out[#out + 1] = { ns.BisPickText(u.pick), TIP_GREEN } end
     local against = compare and vs and againstText(u)
     if against then out[#out + 1] = { against, TIP_GREY } end
-    if shift then
+    if shift and compare then
+        local parts = u.total and partsText(u)
+        if parts then out[#out + 1] = { parts, TIP_GREY } end
+        if u.pct then out[#out + 1] = { L["Slot: %+d %%"]:format(u.pct), TIP_GREY } end
+        if ns.Get("bis.otherSpecs") ~= false then   -- l10n-ok: setting key
+            local others = {}
+            for _, e in ipairs(ns.UpgradeOthers(link)) do others[#others + 1] = ("%s %s"):format(e.name, pctText(e.total)) end
+            if #others > 0 then out[#out + 1] = { L["Andere Spezialisierungen: %s"]:format(table.concat(others, ", ")), TIP_GREY } end
+        end
+        for _, line in ipairs(valueLines(link, TIP_PARTS)) do out[#out + 1] = { line, TIP_GREY } end
+        local first = u.against[1]
+        local ench = first and enchantOf(first)
+        if ench then out[#out + 1] = { L["Verzauberung bleibt am alten Item: %s"]:format(ench), TIP_GREY } end
+        if u.approx then out[#out + 1] = { L["Ungefähr: der Charakterbogen wird erst außerhalb des Kampfs gelesen."], TIP_GREY } end
+    elseif shift then
         local ex = ns.BisExplain(link)
-        -- the first line is the head (spec, slot, scores); the parts follow, biggest first
         for i = 2, math.min(#ex, TIP_PARTS + 1) do out[#out + 1] = { ex[i], TIP_GREY } end
     end
     return out, noTargets, true
@@ -1767,7 +2010,9 @@ local function show(entry)
         f.title:SetTextColor(0.31, 0.82, 0.42)
     end
     local extra = ""
-    if entry.gain and entry.slotKey and entry.pct and ns.Get("bis.compare") ~= false then   -- l10n-ok: setting key
+    if entry.slotKey and entry.total and ns.Get("bis.compare") ~= false then   -- l10n-ok: setting key
+        extra = (" %s (%s)"):format(pctText(entry.total), SLOT_NAME[entry.slotKey] or "")
+    elseif entry.gain and entry.slotKey and entry.pct and ns.Get("bis.compare") ~= false then   -- l10n-ok: setting key
         extra = (" %+d %% (%+d, %s)"):format(entry.pct, math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
     elseif entry.gain and entry.slotKey then
         extra = (" %+d (%s)"):format(math.floor(entry.gain + 0.5), SLOT_NAME[entry.slotKey] or "")
@@ -1798,6 +2043,7 @@ function ns.BisToast(id, why, link, src)
     entry.slotKey = u and SLOT_NAME[u.slotKey] and u.slotKey or nil
     entry.gain = u and u.gain or nil
     entry.pct = u and u.pct or nil
+    entry.total = u and u.total or nil
     if not entry.slotKey then
         local loc = rowType(id)
         local group = loc and Gear.GROUP[loc]
@@ -1950,6 +2196,7 @@ function ns.BisItemReport(arg)
     end
     local item = arg:find("item:", 1, true) and arg or id
     for _, line in ipairs(ns.BisExplain(item)) do ns.msg(line) end
+    for _, line in ipairs(ns.BisExplainModel(item)) do ns.msg(line) end
     -- what the client itself answered, so a stat name Amisia does not know shows up
     local raw = C_Item.GetItemStats(type(item) == "string" and item or ("item:" .. id))
     if type(raw) == "table" then
@@ -1965,8 +2212,11 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
     { key = "bis.compare", type = "toggle", label = L["Mit angelegter Ausrüstung vergleichen (Prozent)"], default = true,   -- l10n-ok: setting key
       tip = L["Prozent und verglichenes Item im Tooltip, Markierung an Würfelfenstern und Questbelohnungen, Upgrade-Spalte im Roll-Fenster."] },
     { key = "bis.tooltipNone", type = "toggle", label = L["Auch \"Kein Upgrade\" im Tooltip zeigen"], default = false, tip = L["Der Tooltip sagt auch, wenn ein Item für dich kein Upgrade ist."] },   -- l10n-ok: setting key
-    { key = "bis.minGain", type = "slider", label = L["Upgrade erst ab (Prozent mehr Wertung)"], default = 2, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
-      expert = true, tip = L["Ein Item zählt erst als Upgrade, wenn seine Wertung um mindestens so viel Prozent höher ist. Gilt für Tooltip, Tabelle und Hinweise."] },
+    { key = "bis.minTotal", type = "slider", label = L["Upgrade erst ab (Prozent mehr Leistung)"], default = 0.3, min = 0, max = 5, step = 0.1,   -- l10n-ok: setting key
+      fmt = function(v) return ns.Num(v, 1) end,
+      expert = true, tip = L["Ein Item zählt erst als Upgrade, wenn es deinen Schaden, deine Heilung oder dein Überleben (je nach Spezialisierung) um mindestens so viel Prozent erhöht. Gilt für Tooltip, Tabelle und Hinweise."] },
+    { key = "bis.otherSpecs", type = "toggle", label = L["Andere Spezialisierungen im Tooltip (Shift)"], default = true,   -- l10n-ok: setting key
+      tip = L["Mit Shift zeigt der Tooltip, was das Item den anderen Spezialisierungen deiner Klasse bringt."] },
     { key = "bis.toast", type = "toggle", label = L["Hinweis, wenn ein Wunsch droppt"], default = true,   -- l10n-ok: setting key
       tip = L["Aus dem Lootfenster, beim Würfeln und aus der Loot-Ansage im Schlachtzugschat."] },
     { key = "bis.toastUpgrade", type = "toggle", label = L["Hinweis auch für andere Upgrades"], default = true, tip = L["Der Drop-Hinweis kommt auch für Upgrades, die nicht auf deiner Wunschliste stehen."] },   -- l10n-ok: setting key

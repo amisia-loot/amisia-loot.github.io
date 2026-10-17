@@ -141,7 +141,7 @@ end
 -- The hints: what Amisia already knows about the item for this character
 ---------------------------------------------------------------------------
 local function pctText(u)
-    if u.pct then return ("+%d %%"):format(u.pct) end
+    if u.total or u.pct then return ns.UpgradePctText(u) end
     return L["neu"]
 end
 

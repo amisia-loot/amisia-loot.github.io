@@ -79,6 +79,10 @@ assert(C(KIM, "NS.SettingItem('need.tooltip').default") == true)
 local kGain, kSlot, kMine = C(KIM, "NS.BisGain(301)")
 assert(kSlot == "HEAD" and kGain > 0 and kMine > 0, "Kim: helm A beats helm B")
 local kPct = math.floor(kGain / kMine * 100 + 0.5)
+-- the whole output's change in tenths of a percent rides on the slot (D-54); shown in the lead's form
+local kT = math.floor(C(KIM, "NS.UpgradeOf(301).total") * 10 + 0.5)
+local kT4 = math.floor(C(KIM, "NS.UpgradeOf(304).total") * 10 + 0.5)
+local kText, kText4 = C(VULO, "NS.UpgradePct(" .. kT / 10 .. ")"), C(VULO, "NS.UpgradePct(" .. kT4 / 10 .. ")")
 local kGain4, kSlot4, kMine4 = C(KIM, "NS.BisGain(304)")
 assert(kSlot4 == "CHEST" and kMine4 == 0 and kGain4 > 0, "Kim has no chest")
 assert(C(ANNA, "NS.BisOwned(301)") == "worn")
@@ -107,7 +111,8 @@ local ua = last(BUS.sent, "UA", KIM)
 assert(ua and ua.chan == "WHISPER" and ua.target == VULO, "Kim whispers the lead")
 f = fields(ua)
 assert(f[1] == QID, "the answer names the question")
-local want = ("301:U:%d:%d:HEAD,304:U:%d:999:CHEST,307:-:0:0:-"):format(math.floor(kGain + 0.5), kPct, math.floor(kGain4 + 0.5))
+local want = ("301:U:%d:%d:HEAD-%d,304:U:%d:999:CHEST-%d,307:-:0:0:-"):format(math.floor(kGain + 0.5), kPct, kT,
+    math.floor(kGain4 + 0.5), kT4)
 assert(f[2] == want, f[2] .. " / " .. want)
 ua = last(BUS.sent, "UA", ANNA)
 assert(ua and fields(ua)[2] == "301:-:0:0:-,304:W:3:0:-,307:-:0:0:-", "Anna: owned, wish, nothing: " .. (ua and ua.text or "none"))
@@ -124,13 +129,14 @@ end
 
 -- collected per item at the lead
 local need = C(VULO, "NS.NeedOf(301)")
-assert(#need.up == 1 and need.up[1].name == KIM and need.up[1].pct == kPct and need.up[1].slot == "HEAD", "Kim's upgrade")
+assert(#need.up == 1 and need.up[1].name == KIM and need.up[1].pct == kPct and need.up[1].slot == "HEAD"
+    and math.abs(need.up[1].total - kT / 10) < 1e-9 and not need.up[1].alt, "Kim's upgrade")
 assert(#need.wish == 0 and need.none == 2 and need.missing == 1 and need.asked == 4, "two without upgrade, Bob without answer")
 need = C(VULO, "NS.NeedOf(304)")
 assert(#need.up == 1 and need.up[1].pct == 999 and #need.wish == 1 and need.wish[1].name == ANNA and need.wish[1].prio == 3)
-local text301 = ("Kim Eisherz +%d %% (Kopf) · 2 ohne Upgrade · 1 ohne Antwort"):format(kPct)
+local text301 = ("Kim Eisherz %s (Kopf) · 2 ohne Upgrade · 1 ohne Antwort"):format(kText)
 assert(C(VULO, "NS.NeedText(301)") == text301, C(VULO, "NS.NeedText(301)"))
-assert(C(VULO, "NS.NeedText(304)") == "Kim Eisherz +999 % (Brust), Anna Wunsch (hoch) · 1 ohne Upgrade · 1 ohne Antwort",
+assert(C(VULO, "NS.NeedText(304)") == ("Kim Eisherz %s (Brust), Anna Wunsch (hoch) · 1 ohne Upgrade · 1 ohne Antwort"):format(kText4),
     C(VULO, "NS.NeedText(304)"))
 assert(C(VULO, "NS.NeedText(307)") == "niemand · 3 ohne Upgrade · 1 ohne Antwort", C(VULO, "NS.NeedText(307)"))
 assert(C(VULO, "NS.NeedOf(302)") == nil and C(VULO, "NS.NeedText(302)") == nil, "never asked")
@@ -175,7 +181,7 @@ local dlg = C(VULO, [[local D = NS.ShowAwardDialog(STUB.items[301].link)
              ask = D.ask:IsShown(), roll = D.roll:GetText(), h = D:GetHeight() }]])
 assert(dlg.need == "Upgrade für: " .. text301, dlg.need)
 assert(dlg.vals == "Fraktur,Kim Eisherz,Anna,Bob,Pug,Vulo Sturmwind", "guild wisher, upgrade, the rest: " .. dlg.vals)
-assert(dlg.texts == ("Fraktur (Wunsch mittel),Kim Eisherz (Upgrade +%d %%),Anna,Bob,Pug,Vulo Sturmwind"):format(kPct), dlg.texts)
+assert(dlg.texts == ("Fraktur (Wunsch mittel),Kim Eisherz (Upgrade %s),Anna,Bob,Pug,Vulo Sturmwind"):format(kText), dlg.texts)
 assert(not dlg.ask, "answers there: no button")
 assert(not dlg.roll:find("Upgrade", 1, true), "the roll line stays")
 assert(dlg.h == 268, "the window is taller (the loot prio line)")
@@ -186,7 +192,7 @@ local tipLines = C(VULO, [[local D = AmisiaAwardDialog
     D.needHit:GetScript("OnEnter")(D.needHit)
     GameTooltip.AddLine = add
     return table.concat(out, "\n")]])
-assert(tipLines:find("Kim Eisherz +" .. kPct .. " % (Kopf)", 1, true) and tipLines:find("ohne Antwort: Bob", 1, true), tipLines)
+assert(tipLines:find("Kim Eisherz " .. kText .. " (Kopf)", 1, true) and tipLines:find("ohne Antwort: Bob", 1, true), tipLines)
 -- an item nobody was asked about: the button asks
 dlg = C(VULO, [[local D = NS.ShowAwardDialog(STUB.items[302].link)
     return { need = D.need:GetText(), ask = D.ask:IsShown(), texts = (function()
@@ -218,8 +224,8 @@ local TIP = [[local tip = CreateFrame("GameTooltip")
     STUB.showTooltip(tip, STUB.items[%d].link)
     for _, l in ipairs(out) do if l:find("^Upgrade für:") then return l end end
     return nil]]
-assert(C(VULO, TIP:format(301)) == ("Upgrade für: Kim Eisherz +%d %%"):format(kPct), tostring(C(VULO, TIP:format(301))))
-assert(C(VULO, TIP:format(304)) == "Upgrade für: Kim Eisherz +999 %, Anna", tostring(C(VULO, TIP:format(304))))
+assert(C(VULO, TIP:format(301)) == ("Upgrade für: Kim Eisherz %s"):format(kText), tostring(C(VULO, TIP:format(301))))
+assert(C(VULO, TIP:format(304)) == ("Upgrade für: Kim Eisherz %s, Anna"):format(kText4), tostring(C(VULO, TIP:format(304))))
 assert(C(VULO, TIP:format(307)) == nil, "nobody needs it: no line")
 assert(C(VULO, "NS.Set('need.tooltip', false)"))
 assert(C(VULO, TIP:format(301)) == nil, "switched off")
@@ -249,8 +255,9 @@ assert(BUS.count({ kind = "UQ" }) == uqBefore + 1, "the command asks")
 assert(count(VULO, "Antworten in 5 s") == 1)
 BUS.tick(5.5)
 local kGain5 = C(KIM, "NS.BisGain(305)")
+local kText5 = C(VULO, "NS.UpgradePct(" .. math.floor(C(KIM, "NS.UpgradeOf(305).total") * 10 + 0.5) / 10 .. ")")
 local line = C(VULO, "STUB.messages[#STUB.messages]")
-assert(line:find(("Upgrade für %s: Kim Eisherz +999 %% (Brust) · 2 ohne Upgrade · 1 ohne Antwort"):format(C(VULO, "STUB.items[305].link")), 1, true),
+assert(line:find(("Upgrade für %s: Kim Eisherz %s (Brust) · 2 ohne Upgrade · 1 ohne Antwort"):format(C(VULO, "STUB.items[305].link"), kText5), 1, true),
     line .. " " .. tostring(kGain5))
 C(VULO, "NS.Dispatch('upgrade')")
 assert(count(VULO, "Aufruf: /amisia wer <Item-Link>") == 1, "the alias without an item")
@@ -287,7 +294,7 @@ assert(BUS.count({ kind = "UA", sender = KIM }) == uaBefore + 2, "two answers: "
 assert(BUS.count(function(m) return m.kind == "UA" and #m.text > 250 end) == 0, "none longer than 250 bytes")
 for _, id in ipairs(LONG) do
     local n = C(VULO, "NS.NeedOf(" .. id .. ")")
-    assert(n and #n.up == 1 and n.up[1].name == KIM and n.up[1].pct == 999, "Kim's upgrade for " .. id)
+    assert(n and #n.up == 1 and n.up[1].name == KIM and n.up[1].pct == 999 and n.up[1].alt, "Kim's upgrade (no whole percent: as from an older Amisia) for " .. id)
 end
 -- a refused answer is not marked: the same question once more gets it
 C(KIM, [[STUB.realSend = NS.CommSend

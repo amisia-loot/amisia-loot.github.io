@@ -91,6 +91,10 @@ assert(NS.UpgradeShort({ up = true, pct = 12, gain = 5 }) == "+12%")
 assert(NS.UpgradeShort({ up = true, gain = 5, mine = 0 }) == "neu")
 assert(NS.UpgradeShort({ up = false, later = 62, gain = 5, pct = 20 }) == "ab 62")
 assert(NS.UpgradeShort({ up = false, pct = -8, gain = -3 }) == "-8%")
+-- the whole output's percent wins over the slot's (D-54)
+assert(NS.UpgradeShort({ up = true, pct = 140, total = 1.64, gain = 5 }) == "+1,6%")
+assert(NS.UpgradePctText({ total = -0.4 }) == "-0,4 %" and NS.UpgradePctText({ total = 12.3 }) == "+12 %")
+assert(NS.UpgradePctText({ pct = 25, alt = true }) == "+25 % (alt)" and NS.UpgradePctText({ pct = 999 }) == "neu")
 
 ---------------------------------------------------------------------------
 -- the tooltip: percent and what it is compared with
@@ -113,19 +117,20 @@ end
 wear({ [1] = 302, [11] = 320, [12] = 321 })
 u = NS.UpgradeOf(LINKS[301])
 show(LINKS[301])
-assert(lines[1] and lines[1].t == ("Upgrade für dich: +%d %% (+%d, Kopf)"):format(u.pct, math.floor(u.gain + 0.5)), "percent first: " .. texts())
+assert(lines[1] and lines[1].t == ("Upgrade für dich (Waffen/Furor, geraten): %s Schaden (Kopf) (ungefähr)"):format(NS.UpgradePct(u.total)),
+    "percent first: " .. texts())
 assert(lines[2] and lines[2].t == "statt Helm B" and lines[2].g < 0.7, "the worn helm, grey: " .. texts())
 show(LINKS[322])
 assert(lines[2] and lines[2].t == "statt Ring Schwach (schwächerer Ring)", "the weaker ring: " .. texts())
 show(LINKS[330])
 assert(lines[1] and has(lines[1].t, "(Brust, Platz leer)") and #lines == 1, "an empty slot: " .. texts())
 show(LINKS[303])
-assert(lines[1] and has(lines[1].t, "Upgrade für dich ab Stufe 62: +") and lines[1].r > 0.9 and lines[1].g < 0.8,
+assert(lines[1] and has(lines[1].t, "Upgrade für dich ab Stufe 62 (Waffen/Furor, geraten): +") and lines[1].r > 0.9 and lines[1].g < 0.8,
     "later, orange: " .. texts())
 -- switched off: the line as before, no "statt"
 assert(NS.Set("bis.compare", false))
 show(LINKS[301])
-assert(#lines == 1 and lines[1].t == ("Upgrade für dich: +%d (Kopf)"):format(math.floor(u.gain + 0.5)), "as before: " .. texts())
+assert(#lines == 1 and lines[1].t == "Upgrade für dich (Waffen/Furor, geraten): Kopf", "without percent: " .. texts())
 NS.Reset("bis.compare")
 
 ---------------------------------------------------------------------------
@@ -134,7 +139,7 @@ NS.Reset("bis.compare")
 local frame = GroupLootFrame2
 STUB.rolls[51], STUB.rolls[52], STUB.rolls[53] = LINKS[301], LINKS[307], LINKS[303]
 frame.rollID = 51; frame:Show()
-assert(NS.UpgradeMarkText(frame) == ("+%d%%"):format(u.pct), "the percent on the roll frame: " .. tostring(NS.UpgradeMarkText(frame)))
+assert(NS.UpgradeMarkText(frame) == NS.UpgradeShort(u), "the percent on the roll frame: " .. tostring(NS.UpgradeMarkText(frame)))
 frame:Hide(); frame.rollID = 52; frame:Show()
 assert(NS.UpgradeMarkText(frame) == nil, "no gear, no mark")
 frame:Hide(); frame.rollID = 53; frame:Show()
@@ -150,7 +155,8 @@ frame:Hide(); frame.rollID = 54; frame:Show()
 assert(NS.UpgradeMarkText(frame) == nil, "nothing while loading")
 gear(399, "Langsam", "HEAD", str(50), { q = 3 })
 STUB.tick(0.6)
-assert(NS.UpgradeMarkText(frame) == "+67%", "marked once the stats are there: " .. tostring(NS.UpgradeMarkText(frame)))
+assert(NS.UpgradeMarkText(frame) == NS.UpgradeShort(NS.UpgradeOf(slow)) and has(NS.UpgradeMarkText(frame), "%"),
+    "marked once the stats are there: " .. tostring(NS.UpgradeMarkText(frame)))
 -- an error never reaches the client's frame
 local errors = {}
 local realHandler, realOf = geterrorhandler, NS.UpgradeOf
@@ -171,14 +177,16 @@ local b2 = STUB.questButton(2, "choice", 2)
 local b3 = STUB.questButton(3, "reward", 1)
 local b4 = STUB.questButton(4, "reward", 1, "currency")
 QuestInfo_Display(QUEST_TEMPLATE_DETAIL)
-assert(NS.UpgradeMarkText(b1) == ("+%d%%"):format(u.pct), "choice 1: " .. tostring(NS.UpgradeMarkText(b1)))
+assert(NS.UpgradeMarkText(b1) == NS.UpgradeShort(u), "choice 1: " .. tostring(NS.UpgradeMarkText(b1)))
 local ring = NS.UpgradeOf(LINKS[322])
-assert(NS.UpgradeMarkText(b2) == ("+%d%%"):format(ring.pct), "choice 2 against the weaker ring")
+assert(NS.UpgradeMarkText(b2) == NS.UpgradeShort(ring), "choice 2 against the weaker ring")
 assert(NS.UpgradeMarkText(b3) == nil and NS.UpgradeMarkText(b4) == nil, "no gear, a currency: no mark")
 -- the quest log reads its own links; a reused button loses its old mark
 STUB.questLogItems.choice = { LINKS[307], LINKS[330] }
 QuestInfo_Display(QUEST_TEMPLATE_LOG)
-assert(NS.UpgradeMarkText(b1) == nil and NS.UpgradeMarkText(b2) == "neu", "the quest log: " .. tostring(NS.UpgradeMarkText(b2)))
+-- an empty slot: the whole output's percent too (it never is zero)
+assert(NS.UpgradeMarkText(b1) == nil and NS.UpgradeMarkText(b2) == NS.UpgradeShort(NS.UpgradeOf(LINKS[330])),
+    "the quest log: " .. tostring(NS.UpgradeMarkText(b2)))
 -- a hidden button keeps no mark
 b2:Hide()
 QuestInfo_Display(QUEST_TEMPLATE_LOG)
@@ -196,4 +204,4 @@ assert(NS.SettingItem("bis.compare").default == true)
 wear({ [1] = 302, [11] = 320, [12] = 321 })
 NS.BisToast(301, "upgrade", LINKS[301], "Test")
 local toast = NS.BisToastState().frame
-assert(toast and has(toast.item:GetText(), ("+%d %% (+%d, Kopf)"):format(u.pct, math.floor(u.gain + 0.5))), tostring(toast and toast.item:GetText()))
+assert(toast and has(toast.item:GetText(), (" %s (Kopf)"):format(NS.UpgradePct(u.total))), tostring(toast and toast.item:GetText()))

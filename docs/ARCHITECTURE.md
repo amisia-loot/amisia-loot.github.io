@@ -97,6 +97,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/ScanDone.lua` | generated (`build_scan_archive.py`), lazy `SCAN_DONE`: what `tools/scan_archive.json` holds | - | LazyData |
 | `Data/RaidCheckData.lua` | generated (`build_raidcheck.py`), lazy `RAIDCHECK`: flasks, elixirs (no utility ones: water breathing, detection), food ("Well Fed") as buff spell ids, the class buff groups with their class, the enchanted slots | - | LazyData |
 | `Gear/Gear.lua` | Gear planner core: scoring with own weights, best items per level range | `gear` (stats cache) | LazyData, Data/BisData, Data/GearWeights, Bis |
+| `Gear/Model.lua` | Upgrade model (D-54): the character sheet read out of combat, the four models (physical, caster, healer, tank) of `build_bis.py` run on it, `Model.Change` = the change of the spec's whole output in percent; `ns.UpgradeOf` takes `total` from it | - | Gear, Data/GearWeights, Bis |
 | `Gear/GearFrame.lua` | Gear table window (`/amisia gear`) | - | Bis, Gear, Widgets |
 | `Gear/Bis.lua` | Best items for the own character, wishes, `ns.UpgradeOf` | `bis` | Gear, Awards, Map, Chat |
 | `Gear/Dungeons.lua` | Dungeon planner, ranking, quests per dungeon; `/amisia dungeon` (alias `journal`) opens the page "Dungeons", `naechster`/`kette`/`quests <Dungeon>` answer in the chat | - (`map.quests`) | Bis, Drops, Map, Collector, QuestXP, Data/Dungeon* |
@@ -245,7 +246,7 @@ sender is always the server's sender name, never a field.
 | `NO` | keeper -> wisher WHISPER | only the keeper the wish went to | none | raid key, op id, reason `CONFLICT`/`GONE`/`DENIED`/`NORAID`/`BAD`, rev | Sync.lua |
 | `NW` | follower or asked officer -> keeper WHISPER (newer state / nothing newer) | member, in group | 10 s | raid key, rev, hash, term | Sync.lua |
 | `UQ` | loot lead -> RAID | officer, in group, the elected loot lead | 5 s | 4 hex question id, item ids (max 8, comma) | Need.lua |
-| `UA` | raider -> asker WHISPER | member, in group; only for an open question | none | question id, `id:U/W/-:gain:pct:slot` (max 8) | Need.lua |
+| `UA` | raider -> asker WHISPER | member, in group; only for an open question | none | question id, `id:U/W/-:gain:pct:slot` (max 8); since 2.42 an upgrade's slot ends in `-<tenths>`, the whole output's change in tenths of a percent (`HEAD-17` = +1.7 %, D-54); without it the answer is from an older Amisia (slot percent, shown "(alt)") | Need.lua |
 | `DV` | everyone -> GUILD (60-180 s after login, then max every 30 min) | member | 60 s | drop proto (2), records, newest day, weeks `w:hhhh:n` (max 4) | DropSync.lua; `DROP_PROTO` 2 |
 | `DQ` | asker -> sender WHISPER | member | keyed 60 s per week | week 0-3 | DropSync.lua |
 | `DI` | sender -> asker WHISPER | only the sender being pulled | none | week, part, parts (max 20), buckets `day:inst:hhhh:n` or `-` | DropSync.lua |

@@ -190,9 +190,10 @@ local function askFor(r)
     ns.NeedAsk({ r.item })
 end
 
-local function pctText(pct) return pct == 999 and L["neu"] or ("+%d %%"):format(pct) end
+local function pctText(e) return ns.UpgradePctText(e) end
 
--- What the round's item is for whom: { up = { { name, pct, own } } (best first, 999 = empty slot),
+-- What the round's item is for whom: { up = { { name, pct, total, alt, own } } (best first, as
+-- ns.UpgradeSortValue; pct 999 = empty slot),
 -- wish = { names }, need = ns.NeedOf, own = ns.UpgradeOf of this client }.
 local function upgradeInfo(r)
     local info = { up = {}, wish = {} }
@@ -201,10 +202,13 @@ local function upgradeInfo(r)
     local me = ns.UnitFullName("player")
     local own = ns.UpgradeOf(r.link or r.item)
     info.own = own
-    for _, e in ipairs(need and need.up or {}) do info.up[#info.up + 1] = { name = e.name, pct = e.pct } end
-    if own and own.up and me then info.up[#info.up + 1] = { name = me, pct = own.pct or 999, own = true } end
+    for _, e in ipairs(need and need.up or {}) do
+        info.up[#info.up + 1] = { name = e.name, pct = e.pct, total = e.total, alt = e.alt }
+    end
+    if own and own.up and me then info.up[#info.up + 1] = { name = me, pct = own.pct or 999, total = own.total, own = true } end
     table.sort(info.up, function(a, b)
-        if a.pct ~= b.pct then return a.pct > b.pct end
+        local va, vb = ns.UpgradeSortValue(a), ns.UpgradeSortValue(b)
+        if va ~= vb then return va > vb end
         return a.name:lower() < b.name:lower()
     end)
     local function wish(name)
@@ -219,7 +223,7 @@ end
 -- The roller's part: "+12%", "neu", "W", "ab 58" (the own row), coloured; "" when nothing is known.
 local function rollerText(info, name)
     for _, e in ipairs(info.up) do
-        if ns.SameName(e.name, name) then return UP_GREEN .. (e.pct == 999 and L["neu"] or ("+%d%%"):format(e.pct)) .. "|r" end
+        if ns.SameName(e.name, name) then return UP_GREEN .. pctText(e) .. "|r" end
     end
     for _, n in ipairs(info.wish) do
         if ns.SameName(n, name) then return UP_BLUE .. "W|r" end
@@ -240,7 +244,7 @@ local function upgradeLine(info)
             parts[#parts + 1] = L["und %d weitere"]:format(#info.up - LINE_NAMES)
             break
         end
-        parts[#parts + 1] = (e.own and L["du"] or e.name) .. " " .. pctText(e.pct)
+        parts[#parts + 1] = (e.own and L["du"] or e.name) .. " " .. pctText(e)
     end
     local line
     if #parts > 0 then line = L["Upgrade für: %s"]:format(table.concat(parts, ", ")) end
@@ -564,7 +568,7 @@ end
 ns.Listen("NEED", function() refresh() end)
 ns.Listen("LOOT_PRIO", function() refresh() end)
 ns.Listen("SETTING", function(path)
-    if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minGain" then refresh() end  -- l10n-ok: setting keys
+    if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minTotal" then refresh() end  -- l10n-ok: setting keys
 end)
 
 ns.OnEvent("LOOT_OPENED", function() lootOpen = true end)

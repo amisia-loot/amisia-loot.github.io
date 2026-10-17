@@ -1385,6 +1385,8 @@ def reference(items, picks, cls, level, conv):
 # Frostbolt's progression; each spec scales it by its own main spell (f) and uses its cast time.
 NUKE = [(1, 12), (4, 19), (8, 35), (14, 63), (20, 101), (26, 139), (32, 191), (38, 241), (44, 299), (50, 372),
         (56, 445), (60, 535)]
+# cast time of the main spell's rank a character has by level (for specs whose spell casts in 3 s or less)
+CAST_TIMES = [(1, 1.5), (8, 1.8), (14, 2.2), (20, 2.6), (26, 3.0)]
 HEAL_TABLE = [(1, 40), (4, 55), (10, 110), (16, 185), (22, 280), (28, 400), (34, 530), (40, 660), (46, 820),
               (52, 980), (58, 1200), (60, 1300)]
 
@@ -1570,7 +1572,7 @@ def caster_weights(cls, p, ref, conv, heal=False):
     removes misses, mana is worth what it buys while mana runs short (scarce share)."""
     L = ref['level']
     B = interp(HEAL_TABLE if heal else NUKE, L) * p['f']
-    T = min(p['cast'], interp([(1, 1.5), (8, 1.8), (14, 2.2), (20, 2.6), (26, 3.0)], L)) if p['cast'] <= 3.0 else p['cast']
+    T = min(p['cast'], interp(CAST_TIMES, L)) if p['cast'] <= 3.0 else p['cast']
     k = min(1.0, T / 3.5) * low_level_penalty(L)
     if heal:
         sp = ref['HEAL'] + ref['SPP']
@@ -1758,6 +1760,322 @@ def derive_spec(items, cls, model, p, conv, passes=16, tol=0.01):
     return sr, hc, shown_all, worst
 
 
+# ---------------------------------------------------------------- the upgrade model (Gear/Model.lua's twin)
+# The weights above are the slopes of four models at a reference character. The tooltip's "Upgrade für
+# dich" runs the same models on the character itself: a state (the character sheet in the addon, the
+# reference here), the state with the old item out and the new one in, and the change of the model's
+# output in percent. Hit over the cap, crit times attack power, mana against spell power come out of the
+# formulas themselves. DECISIONS D-54; Gear/Model.lua has the same functions, tools/tests/
+# test_upgrade_model.py holds the two equal and the slopes equal to the weights.
+PARRY_CLASSES = ('WARRIOR', 'PALADIN', 'ROGUE', 'HUNTER', 'SHAMAN')
+BLOCK_CLASSES = ('WARRIOR', 'PALADIN', 'SHAMAN')
+SCHOOL_KEYS = SCHOOLS
+
+
+def m_params(cls, model, p):
+    """The parameters the model of a spec runs with: the spec's own, and for a tank the physical
+    side its threat counts with."""
+    out = {k: v for k, v in p.items() if k != 'why'}
+    out['model'] = model
+    if model == 'tank':
+        out['threat'] = dict(ap_str=2, ap_agi=1 if p.get('form') else 0, r_spec=0, plan='SHIELD', form=bool(p.get('form')),
+                             noagi=not p.get('form'))
+    return out
+
+
+def m_state_from_ref(cls, p, ref, conv):
+    """A state from a reference character (reference() or the worn gear summed): totals as the
+    character sheet shows them."""
+    L = ref['level']
+    agi = ref['AGI']
+    apc, ipc = conv.agi_per_crit(cls, L), conv.int_per_crit(cls, L)
+    phys = p if p['model'] == 'phys' else p.get('threat') or {}
+    form = phys.get('form')
+    tankp = p if p['model'] == 'tank' else {}
+    mult = tankp.get('armor_mult', 1.0)
+    can_parry = tankp['parry'] if tankp else cls in PARRY_CLASSES
+    can_block = tankp['block'] if tankp else cls in BLOCK_CLASSES
+    d = ref.get('def', 0)
+    st = {
+        'level': L, 'STR': ref['STR'], 'AGI': agi, 'STA': ref['STA'], 'INT': ref['INT'], 'SPI': ref['SPI'],
+        'mult': {}, 'ap': ref['AP'] + ref['FAP'] + phys.get('ap_str', 0) * ref['STR'] + phys.get('ap_agi', 0) * agi
+        + (2 * L if form else 3 * L - 20),
+        'rap': ref['RAP'] + ref['AP'] + 2 * agi - 10,
+        'mhDPS': ref['wDPS'], 'mhSpeed': ref.get('speed', 2.6), 'ohDPS': 0.0,
+        'rDPS': ref['rDPS'], 'rSpeed': ref['rSpeed'],
+        'crit': conv.base_crit(cls) + agi / apc + ref['critRating'],
+        'hit': ref['hit'], 'exp': 0.0, 'haste': 0.0, 'shaste': 0.0,
+        'dw': phys.get('plan') == 'DW' and cls in DUAL_WIELD and L >= DUAL_WIELD[cls],
+        'spg': ref['SPD'] + ref['SPP'], 'school': {s: ref[s] for s in SCHOOL_KEYS},
+        'heal': ref['HEAL'] + ref['SPP'],
+        'scrit': conv.base_spell_crit(cls) + ref['INT'] / ipc + ref['spellCritRating'], 'shit': ref['spellhit'],
+        'mana': 18 * L + 15 * ref['INT'], 'mp5': ref['MP5'],
+        'hp': base_hp(cls, L) + 10 * ref['STA'], 'armor': ref['ARMOR'] * mult + 2 * agi,
+        'miss': 5 + d * 0.04, 'dodge': agi / apc + ref['dodgeRating'] + d * 0.04,
+        'parry': (5 + ref['parryRating'] + d * 0.04) if can_parry else 0.0,
+        'block': (5 + ref['block'] + d * 0.04) if can_block else 0.0,
+        'canParry': bool(can_parry), 'canBlock': bool(can_block), 'blockval': ref.get('BLOCKVAL', 0),
+    }
+    st['rcrit'] = st['crit']
+    return st
+
+
+def m_apply(cls, p, st, s, place, sign, conv):
+    """The state with an item's stats s added (sign 1) or taken away (sign -1). place: '2H', 'MH', 'OH',
+    'RANGED' or None, where the item's weapon damage and speed go. Returns a new state."""
+    st = dict(st, mult=dict(st['mult']), school=dict(st['school']))
+    L = st['level']
+    rp = lambda kind: conv.rating_pp(kind, L)  # noqa: E731
+    m = lambda k: st['mult'].get(k, 1.0)  # noqa: E731
+    phys = p if p['model'] == 'phys' else p.get('threat') or {}
+    mult = p.get('armor_mult', 1.0) if p['model'] == 'tank' else 1.0
+    apc, ipc = conv.agi_per_crit(cls, L), conv.int_per_crit(cls, L)
+
+    def v(k):
+        return sign * (s.get(k) or 0)
+    if v('STR'):
+        x = v('STR') * m('STR')
+        st['STR'] += x
+        st['ap'] += phys.get('ap_str', 0) * x
+    if v('AGI'):
+        x = v('AGI') * m('AGI')
+        st['AGI'] += x
+        st['ap'] += phys.get('ap_agi', 0) * x
+        st['rap'] += 2 * x
+        if not phys.get('noagi'):
+            st['crit'] += x / apc
+            st['rcrit'] += x / apc
+        st['armor'] += 2 * x
+        st['dodge'] += x / apc
+    if v('STA'):
+        x = v('STA') * m('STA')
+        st['STA'] += x
+        st['hp'] += 10 * x
+    if v('INT'):
+        x = v('INT') * m('INT')
+        st['INT'] += x
+        st['mana'] += 15 * x
+        st['scrit'] += x / ipc
+    if v('SPI'):
+        st['SPI'] += v('SPI') * m('SPI')
+    st['ap'] += v('AP') + (v('FAP') if cls == 'DRUID' else 0)
+    st['rap'] += v('AP') + v('RAP')
+    st['spg'] += v('SPD') + v('SPP')
+    st['heal'] += v('HEAL') + v('SPP')
+    for school in SCHOOL_KEYS:
+        if v(school):
+            st['school'][school] += v(school)
+    st['hit'] += (v('HIT') + v('MHIT')) * rp('HIT')
+    st['shit'] += (v('HIT') + v('SHIT')) * rp('SHIT')
+    st['crit'] += (v('CRIT') + v('MCRIT')) * rp('CRIT')
+    st['rcrit'] += (v('CRIT') + v('MCRIT')) * rp('CRIT')
+    st['scrit'] += (v('CRIT') + v('SCRIT')) * rp('CRIT')
+    st['haste'] += v('HASTE') * rp('HASTE')
+    st['shaste'] += (v('HASTE') + v('SHASTE')) * rp('HASTE')
+    st['exp'] += v('EXP') * rp('EXP')
+    st['dodge'] += v('DODGE') * rp('DODGE')
+    if st['canParry']:
+        st['parry'] += v('PARRY') * rp('PARRY')
+    if st['canBlock']:
+        st['block'] += v('BLOCK') * rp('BLOCK')
+    if v('DEF'):
+        x = v('DEF') * rp('DEF') * 0.04
+        st['miss'] += x
+        st['dodge'] += x
+        if st['canParry']:
+            st['parry'] += x
+        if st['canBlock']:
+            st['block'] += x
+    st['armor'] += v('ARMOR') * mult
+    st['blockval'] += v('BLOCKVAL')
+    st['mp5'] += v('MP5')
+    if v('DPS'):
+        if place == 'RANGED':
+            st['rDPS'] += v('DPS')
+        elif place == 'OH':
+            st['ohDPS'] += v('DPS')
+        elif place in ('2H', 'MH'):
+            st['mhDPS'] += v('DPS')
+    if sign > 0 and s.get('SPEED'):
+        if place == 'RANGED':
+            st['rSpeed'] = s['SPEED']
+        elif place in ('2H', 'MH'):
+            st['mhSpeed'] = s['SPEED']
+    # two weapons miss more: an off-hand weapon in starts it, out or a two-hander in ends it
+    if place == 'OH':
+        st['dw'] = sign > 0
+    elif place == '2H' and sign > 0:
+        st['dw'] = False
+    return st
+
+
+def m_ohdps():
+    t1 = 1 - MELEE_MISS / 100 - TARGET_DODGE / 100
+    tdw = 1 - DW_MISS / 100 - TARGET_DODGE / 100
+    return round(0.5 * tdw / t1, 3)
+
+
+def m_phys(cls, p, st):
+    """(damage per second, its size in attack power) of the physical model."""
+    L = st['level']
+    r = specials_rate(p.get('r_spec', 0), L)
+    if p.get('ranged'):
+        B = st['rDPS'] + max(st['rap'], 0) / 14
+        c, spd = st['rcrit'], st['rSpeed']
+    else:
+        wd = 0.9 * L if p.get('form') else st['mhDPS'] + m_ohdps() * st['ohDPS']
+        B = wd + max(st['ap'], 0) / 14
+        c, spd = st['crit'], (0 if p.get('form') else st['mhSpeed'])
+    miss = (0.6 * DW_MISS + 0.4 * MELEE_MISS) if st['dw'] and not p.get('ranged') else MELEE_MISS
+    t = max(0.5, 1 - max(0.0, miss - st['hit']) / 100 - max(0.0, TARGET_DODGE - st['exp']) / 100)
+    D = B * (1 + r * spd) * (1 + c / 100) * t * (1 + st['haste'] / 100)
+    return D, 14 * B
+
+
+def m_cast(cls, p, L):
+    """Base damage (or healing), cast time and coefficient of the spec's main spell at level L."""
+    heal = p['model'] == 'heal'
+    B = interp(HEAL_TABLE if heal else NUKE, L) * p['f']
+    T = min(p['cast'], interp(CAST_TIMES, L)) if p['cast'] <= 3.0 else p['cast']
+    k = min(1.0, T / 3.5) * low_level_penalty(L)
+    return B, T, k
+
+
+def m_power(p, st):
+    if p['model'] == 'heal':
+        return st['heal']
+    return st['spg'] + sum(share * st['school'][school] for school, share in p['school'].items())
+
+
+def m_bar(cls, p, st):
+    """Seconds a mana bar lasts at the state (the regeneration's time base, kept from the old state)."""
+    B, T, _ = m_cast(cls, p, st['level'])
+    return st['mana'] * p['eff'] * T / B / DUTY['heal' if p['model'] == 'heal' else 'caster']
+
+
+def m_caster(cls, p, st, bar, conv):
+    """(damage or healing per cast with crit, hit, haste and mana, its size in spell power)."""
+    L = st['level']
+    B, T, k = m_cast(cls, p, L)
+    dmg = B + k * m_power(p, st)
+    t = 1.0 if p['model'] == 'heal' else max(0.5, 1 - max(0.0, SPELL_MISS - st['shit']) / 100)
+    s = p['scarce']
+    pool = st['mana'] + st['mp5'] * bar / 5 + st['SPI'] * conv.spirit[cls] * CASTS_PER_BAR_SPIRIT * bar / 5
+    D = dmg * (1 + 0.5 * st['scrit'] / 100) * t * (1 + (1 - s) * st['shaste'] / 100) * max(pool, 1) ** s
+    return D, dmg / k
+
+
+def m_eh(st):
+    """(effective health against a target two levels higher, its size in stamina)."""
+    L = st['level']
+    K = 400 + 85 * (L + 2)
+    av = min(0.6, (st['miss'] + st['dodge'] + st['parry'] + 0.3 * st['block']) / 100)
+    return st['hp'] * (st['armor'] + K) / K / (1 - av), st['hp'] / 10
+
+
+def m_linear(cls, p, st, conv):
+    """Weights (in the spec's unit, per point as the item shows it) of what the model counts straight:
+    mana for physical specs, spell damage of hybrids, the other weapon's damage, block value."""
+    w = {}
+    model = p['model']
+    if model == 'phys':
+        if p.get('ranged'):
+            w['STR'] = 0.1
+            w['DPS_MELEE'] = p.get('melee_dps', 1.4)
+        else:
+            w['DPS_RANGED'] = 1.0
+    if model in ('caster', 'heal'):
+        w['DPS_MELEE'] = 0.1
+        if model == 'caster' and p.get('wand'):
+            L = st['level']
+            _, T, k = m_cast(cls, p, L)
+            c = st['scrit'] / 100
+            t = max(0.5, 1 - max(0.0, SPELL_MISS - st['shit']) / 100)
+            f = 0.4 if L < 20 else 0.25 if L < 40 else 0.15
+            w['DPS_RANGED'] = f * T / (k * (1 + 0.5 * c) * t)
+    if p.get('mana100') and model in ('phys', 'tank'):
+        mv = p['mana100'] / 100
+        w['INT'] = 15 * mv
+        w['MP5'] = 12 * mv
+        if model == 'phys':
+            w['SPI'] = mv * conv.spirit[cls] * 12 * 0.3
+    if p.get('sp'):
+        w['SPD'] = p['sp']
+        w['SPP'] = p['sp']
+    if model == 'tank':
+        w['HP5'] = 0.5
+        if p.get('block'):
+            L = st['level']
+            hit = 3 * (L + 2) + 0.25 * (L + 2) ** 2
+            av = min(0.6, (st['miss'] + st['dodge'] + st['parry'] + 0.3 * st['block']) / 100)
+            w['BLOCKVAL'] = st['block'] / hit * 0.001 * st['hp'] / (1 - av)
+    if model == 'phys' and not MANA_PER_SPIRIT_5.get(cls):
+        w['SPI'] = w.get('SPI', 0) + SPEEDRUN_SURVIVAL * UNIT_PER_BUDGET['AP'] * SPIRIT_HEALTH_SHARE
+    return w
+
+
+def m_linear_gain(w, s, place):
+    total = 0.0
+    for k, x in s.items():
+        if k == 'DPS':
+            key = 'DPS_RANGED' if place == 'RANGED' else 'DPS_MELEE'
+            total += w.get(key, 0) * x
+        elif k in w and isinstance(x, (int, float)):
+            total += w[k] * x
+    return total
+
+
+# keys only the weights know (no model part): gems, resilience, spell penetration, a set's bonus
+M_FALLBACK = {'SOCK': 'GEM', 'META': 'META', 'RES': 'RES', 'SPEN': 'SPEN'}
+
+
+def m_change(cls, p, kind, st, out_items, in_items, conv, wb=None):
+    """The change of the spec's output when out_items leave and in_items come: lists of (stats, place).
+    Returns {total, main, surv, threat (percent), gain (in the spec's unit), size (the output's size)}.
+    kind is 'Speedrun' or 'Hardcore' (the survival share of non-tanks); wb the bracket's weights for the
+    keys of M_FALLBACK and a set bonus (SETB)."""
+    after = st
+    for s, place in out_items:
+        after = m_apply(cls, p, after, s, place, -1, conv)
+    for s, place in in_items:
+        after = m_apply(cls, p, after, s, place, 1, conv)
+    lin = m_linear(cls, p, st, conv)
+    extra = 0.0
+    for sign, items in ((-1, out_items), (1, in_items)):
+        for s, place in items:
+            extra += sign * m_linear_gain(lin, s, place)
+            if wb:
+                for k, wk in M_FALLBACK.items():
+                    extra += sign * (s.get(k) or 0) * wb.get(wk, 0)
+            extra += sign * (s.get('SETB') or 0)
+    model = p['model']
+    eh0, vs = m_eh(st)
+    eh1, _ = m_eh(after)
+    surv = eh1 / eh0 - 1
+    if model == 'tank':
+        d0, vp = m_phys(cls, p['threat'], st)
+        d1, _ = m_phys(cls, p['threat'], after)
+        threat = d1 / d0 - 1
+        ts = THREAT_SHARE * 0.5
+        size = vs + ts * vp
+        gain = vs * surv + ts * vp * threat + extra
+        return {'total': 100 * gain / size, 'main': 100 * (surv + extra / vs), 'surv': None,
+                'threat': 100 * threat, 'gain': gain, 'size': size}
+    if model == 'phys':
+        d0, vo = m_phys(cls, p, st)
+        d1, _ = m_phys(cls, p, after)
+    else:
+        bar = m_bar(cls, p, st)
+        d0, vo = m_caster(cls, p, st, bar, conv)
+        d1, _ = m_caster(cls, p, after, bar, conv)
+    main = d1 / d0 - 1 + extra / vo
+    share = (HARDCORE_SHARE if kind == 'Hardcore' else SPEEDRUN_SURVIVAL) * UNIT_PER_BUDGET[UNIT[model]]
+    size = vo + share * vs
+    gain = vo * main + share * vs * surv
+    return {'total': 100 * gain / size, 'main': 100 * main, 'surv': 100 * surv, 'threat': None,
+            'gain': gain, 'size': size}
+
+
 # ---------------------------------------------------------------- Lua output
 _LUA_ESCAPES = {'\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r', '\t': '\\t'}
 
@@ -1810,6 +2128,28 @@ def weights_table(w):
     return '{' + ', '.join(f'{k} = {lua_num(v)}' for k, v in sorted(w.items())) + '}'
 
 
+def model_constants(conv):
+    """What Gear/Model.lua needs besides a spec's parameters: the conversions in use and the constants."""
+    return {
+        'agi60': {c: AGI_PER_CRIT_60[c] * conv.agi_scale.get(c, conv.agi_default) for c in CLASS_ORDER},
+        'int60': {c: INT_PER_CRIT_60[c] * conv.int_scale.get(c, conv.int_default) for c in CLASS_ORDER},
+        'baseCrit': {c: conv.base_crit(c) for c in CLASS_ORDER},
+        'baseSpellCrit': {c: conv.base_spell_crit(c) for c in CLASS_ORDER},
+        'spirit': {c: conv.spirit[c] for c in CLASS_ORDER},
+        'base60': {c: BASE_60[c] for c in CLASS_ORDER},
+        'hp': {c: HP_FACTOR[c] for c in CLASS_ORDER},
+        'dual': dict(DUAL_WIELD),
+        'parry': {c: True for c in PARRY_CLASSES}, 'block': {c: True for c in BLOCK_CLASSES},
+        'nuke': [list(x) for x in NUKE], 'heal': [list(x) for x in HEAL_TABLE],
+        'cast': [list(x) for x in CAST_TIMES],
+        'unitBudget': dict(UNIT_PER_BUDGET), 'units': dict(UNIT),
+        'meleeMiss': MELEE_MISS, 'dwMiss': DW_MISS, 'spellMiss': SPELL_MISS, 'targetDodge': TARGET_DODGE,
+        'threatShare': THREAT_SHARE, 'speedrun': SPEEDRUN_SURVIVAL, 'hardcore': HARDCORE_SHARE,
+        'castsSpi': CASTS_PER_BAR_SPIRIT, 'dutyCaster': DUTY['caster'], 'dutyHeal': DUTY['heal'],
+        'spiritHealth': SPIRIT_HEALTH_SHARE, 'fallback': dict(M_FALLBACK),
+    }
+
+
 def render_weights(result, conv, info):
     lines = [
         '-- GENERATED by tools/build_bis.py. Do not edit; rebuild instead.',
@@ -1827,6 +2167,7 @@ def render_weights(result, conv, info):
         '    order = {' + ', '.join(lua_str(c) for c in CLASS_ORDER) + '},',
         '    ratings = ' + weights_table(conv.rating60) + ',',
         '    built = ' + lua_str(info.get('built', '')) + ',',
+        '    model = ' + lua_val(model_constants(conv)) + ',',
         '    specs = {',
     ]
     by_class = {}
@@ -1839,6 +2180,7 @@ def render_weights(result, conv, info):
             lines.append(f'            {{ key = {lua_str(key)}, name = {lua_str(name)}, role = {lua_str(role)}, '
                          f'unit = {lua_str(UNIT[model])},')
             lines.append(f'              why = {lua_str(p["why"])},')
+            lines.append(f'              model = {lua_str(model)}, p = {lua_val(m_params(cls, model, p))},')
             for kind, sets in (('Speedrun', sr), ('Hardcore', hc)):
                 lines.append(f'              {kind} = {{')
                 for w in sets:

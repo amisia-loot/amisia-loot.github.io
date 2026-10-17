@@ -52,7 +52,7 @@ local function makeRow(it)
         r.control = W.Toggle(r, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
     elseif it.type == "slider" then
         r.control = W.Stepper(r, 130, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
-        r.control:Configure(it.min, it.max, it.step)
+        r.control:Configure(it.min, it.max, it.step, it.fmt)
     elseif it.type == "time" then
         r.control = W.TimeBox(r, 70, function(text)
             touched = path

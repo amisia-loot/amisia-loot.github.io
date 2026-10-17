@@ -55,6 +55,10 @@ read_globals = {
     "PanelTemplates_SelectTab", "PanelTemplates_DeselectTab", "PanelTemplates_TabResize", "CALENDAR_FIRST_WEEKDAY",
     -- inviting and sorting the lineup (LineupInvite.lua, LineupSort.lua, 2.30.0)
     "LE_PARTY_CATEGORY_INSTANCE", "SetRaidSubgroup", "SwapRaidSubgroup",
+    -- the character sheet of the upgrade model (Gear/Model.lua, 2.42) and the enchantment line
+    "UnitStat", "UnitAttackPower", "UnitRangedAttackPower", "GetCritChance", "GetRangedCritChance", "GetSpellBonusDamage",
+    "GetSpellCritChance", "GetSpellBonusHealing", "UnitPowerMax", "UnitHealthMax", "UnitArmor", "GetDodgeChance",
+    "GetParryChance", "GetBlockChance", "GetShieldBlock", "UnitDefense", "GetShapeshiftFormID", "ENCHANTED_TOOLTIP_LINE",
     -- the duellists' specialisation by inspecting them (Duels.lua)
     "CanInspect", "ClearInspectPlayer", "UnitAffectingCombat",
 }

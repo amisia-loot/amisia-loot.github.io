@@ -614,6 +614,11 @@ local function compareLines(o, list, wornLink)
             for i = 1, math.min(4, #cmp.lines) do lines[#lines + 1] = "  " .. cmp.lines[i] end
         end
     end
+    -- the exact change on the own values (D-54; BisExplainModel leaves out a simulation)
+    if not first.worn and ns.BisExplainModel then
+        local m = ns.BisExplainModel(first.id, o)
+        for i, line in ipairs(m) do lines[#lines + 1] = (i == 1 and "" or "  ") .. line end
+    end
     c.explain[key] = lines
     return lines
 end

@@ -1,6 +1,7 @@
 -- The upgrade line on item tooltips (Bis.lua): one shared, protected hook for every Amisia line;
--- one line per tooltip build; "Upgrade für dich: +N (Slot, Platz leer)" (percent and the worn item
--- in test_upgrade_compare.lua), "Option N für Slot", "angelegt,
+-- one line per tooltip build; "Upgrade für dich (Spec, geraten): +x,x % Schaden (Slot, Platz leer)
+-- (ungefähr)" (the stub has no character sheet; the sheet in test_upgrade_model.lua, the worn item in
+-- test_upgrade_compare.lua), "Option N für Slot", "angelegt,
 -- Option 1", "Kein Upgrade" only with its switch, the weapon switch, the wish suffix; nothing for
 -- items that are no gear, that the class cannot wear or that have no stats yet (then requested);
 -- the explanation on Shift; an error never breaks the tooltip; the switch; cached per link, and the
@@ -75,7 +76,9 @@ Gear.Best = function(...) best = best + 1; return realBest(...) end
 -- the upgrade line
 ---------------------------------------------------------------------------
 show(LINKS[301])
-assert(#lines == 1 and lines[1].t == "Upgrade für dich: +80 (Kopf, Platz leer)", "the upgrade: " .. texts())
+local HEAD = "Upgrade für dich (Waffen/Furor, geraten): +"
+assert(#lines == 1 and lines[1].t:sub(1, #HEAD) == HEAD and has(lines[1].t, " % Schaden (Kopf, Platz leer) (ungefähr)"),
+    "the upgrade: " .. texts())
 assert(lines[1].g > 0.7 and lines[1].r < 0.5, "green")
 -- handed to the hook twice in one build: still one line
 show(LINKS[301], true)
@@ -106,7 +109,8 @@ show(LINKS[312])
 assert(#lines == 0, "no option, no upgrade: nothing by default: " .. texts())
 assert(NS.Set("bis.tooltipNone", true))
 show(LINKS[312])
-assert(lines[1] and lines[1].t == "Kein Upgrade für dich (-60, -75 %)" and lines[2] and lines[2].t == "statt Helm A", "with the switch: " .. texts())
+assert(lines[1] and has(lines[1].t, "Kein Upgrade für dich (Waffen/Furor, geraten): -") and has(lines[1].t, " % Schaden (ungefähr)")
+    and lines[2] and lines[2].t == "statt Helm A", "with the switch: " .. texts())
 NS.Reset("bis.tooltipNone")
 STUB.tick(2)
 assert(best == 2, "a setting changes the targets: computed again, once, a little later: " .. best)
@@ -116,12 +120,13 @@ assert(best == 2, "a setting changes the targets: computed again, once, a little
 ---------------------------------------------------------------------------
 assert(NS.WishAdd(304))
 show(LINKS[304])
-assert(#lines == 1 and has(lines[1].t, "Upgrade für dich: +") and has(lines[1].t, " (Brust, Platz leer) · auf deiner Wunschliste"), texts())
+assert(#lines == 1 and has(lines[1].t, HEAD) and has(lines[1].t, " (Brust, Platz leer) (ungefähr) · auf deiner Wunschliste"), texts())
 STUB.shift = true
 show(LINKS[304])
-assert(#lines == 5, "the line and the four biggest parts: " .. texts())
-assert(has(lines[2].t, "50 Stärke x 2") and has(lines[2].t, "= 100"), "the biggest part first: " .. tostring(lines[2].t))
-for i = 2, 5 do assert(lines[i].r < 0.7 and not has(lines[i].t, "Waffen/Furor"), "grey parts, no head line: " .. lines[i].t) end
+assert(has(lines[2].t, "Schaden +") and has(lines[2].t, ", Überleben +"), "the parts first: " .. texts())
+assert(has(texts(), "Andere Spezialisierungen: Schutz ") and has(texts(), "Angriffskraft: ")
+    and has(texts(), "Ungefähr: der Charakterbogen"), "other specs, the values, approximate: " .. texts())
+for i = 2, #lines do assert(lines[i].r < 0.7, "grey: " .. lines[i].t) end
 STUB.shift = false
 show(LINKS[304])
 assert(#lines == 1, "without Shift the line alone")

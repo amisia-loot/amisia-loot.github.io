@@ -19,6 +19,7 @@ local ANSWERS_MAX, ANSWER_WINDOW = 10, 60   -- answers of this client per minute
 local WER_WAIT = 5
 local TIP_NAMES = 8
 local MAX_GAIN = 99999
+local MAX_TENTHS = 9999    -- the whole output's change in tenths of a percent (999.9 %)
 local LEAD_HELLO_FOR = 12 * 3600   -- a hello with "loot lead" counts for one raid night
 local GREEN = { 0.3, 0.9, 0.45 }
 local MASTER = (Enum and Enum.LootMethod and Enum.LootMethod.Masterlooter) or 2
@@ -191,7 +192,9 @@ end
 ---------------------------------------------------------------------------
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
--- One item as "id:art:gain:pct:slot": U upgrade, W wish (prio in the gain field), - nothing.
+-- One item as "id:art:gain:pct:slot": U upgrade, W wish (prio in the gain field), - nothing. Since
+-- 2.42 (D-54) an upgrade's slot carries the change of the whole output in tenths of a percent,
+-- "BACK-16" for +1.6 %; older versions read the slot as unknown and keep the slot percent in pct.
 local function answerFor(id)
     local nothing = id .. ":-:0:0:-"
     local okOwned, owned = pcall(ns.BisOwned, id)
@@ -200,7 +203,8 @@ local function answerFor(id)
     local ok, u = pcall(ns.UpgradeOf, id)
     local slot = ok and type(u) == "table" and u.slotKey
     if type(slot) == "string" and slot:match("^[%w_]+$") and u.up then
-        return ("%d:U:%d:%d:%s"):format(id, clamp(math.floor(u.gain + 0.5), 0, MAX_GAIN), clamp(u.pct or 999, 0, 999), slot)
+        local total = type(u.total) == "number" and ("-%d"):format(clamp(math.floor(u.total * 10 + 0.5), 0, MAX_TENTHS)) or ""
+        return ("%d:U:%d:%d:%s%s"):format(id, clamp(math.floor(u.gain + 0.5), 0, MAX_GAIN), clamp(u.pct or 999, 0, 999), slot, total)
     end
     local c = ns.BisChar()
     local w = c and type(c.wish) == "table" and c.wish[id]
@@ -284,6 +288,12 @@ local function record(name, qid, list)
             local a = { name = clean(name), art = art }
             if art == "U" then
                 a.gain, a.pct = clamp(tonumber(gain) or 0, 0, MAX_GAIN), clamp(tonumber(pct) or 0, 0, 999)
+                local base, tenths = slot:match("^([%w_]+)%-(%d+)$")
+                if base then
+                    slot, a.total = base, clamp(tonumber(tenths) or 0, 0, MAX_TENTHS) / 10
+                else
+                    a.alt = true
+                end
                 a.slot = (ns.BIS_SLOT_NAME and ns.BIS_SLOT_NAME[slot]) and slot or nil
             elseif art == "W" then
                 a.prio = clamp(tonumber(gain) or 2, 1, 3)
@@ -313,7 +323,8 @@ end)
 -- Reading
 ---------------------------------------------------------------------------
 local function byPct(a, b)
-    if a.pct ~= b.pct then return a.pct > b.pct end
+    local va, vb = ns.UpgradeSortValue(a), ns.UpgradeSortValue(b)
+    if va ~= vb then return va > vb end
     return a.name:lower() < b.name:lower()
 end
 local function byPrio(a, b)
@@ -350,7 +361,8 @@ local function expected(since)
 end
 ns.AmisiaInGroup = expected
 
--- Who needs an item of the current loot: { up = { { name, gain, pct, slot } } (best first),
+-- Who needs an item of the current loot: { up = { { name, gain, pct, total, alt, slot } } (best first;
+-- total: the whole output's change in percent, alt: an older Amisia sent only the slot percent),
 -- wish = { { name, prio } }, none = n (answered nothing), asked = n (clients expected to answer),
 -- missing = n, without = { names without an answer }, at }; nil when it was not asked in the last
 -- 30 minutes.
@@ -364,7 +376,7 @@ function ns.NeedOf(item)
     for _, a in pairs(n.answers) do
         answered[#answered + 1] = a.name
         if a.art == "U" then
-            out.up[#out.up + 1] = { name = a.name, gain = a.gain, pct = a.pct, slot = a.slot }
+            out.up[#out.up + 1] = { name = a.name, gain = a.gain, pct = a.pct, total = a.total, alt = a.alt, slot = a.slot }
         elseif a.art == "W" then
             out.wish[#out.wish + 1] = { name = a.name, prio = a.prio }
         else
@@ -394,7 +406,7 @@ local PRIO_WORD = { [3] = L["hoch##Prio"], [2] = L["mittel##Prio"], [1] = L["nie
 
 local function upText(e)
     local slot = e.slot and ns.BIS_SLOT_NAME and ns.BIS_SLOT_NAME[e.slot]
-    return ("%s +%d %%%s"):format(e.name, e.pct, slot and (" (" .. slot .. ")") or "")
+    return ("%s %s%s"):format(e.name, ns.UpgradePctText(e), slot and (" (" .. slot .. ")") or "")
 end
 
 local function wishText(e)
@@ -455,7 +467,7 @@ function ns.NeedAwardValues(item, values)
         local i = find(e.name)
         if i and not taken[i] then
             taken[i] = true
-            mid[#mid + 1] = { value = values[i].value, text = L["%s (Upgrade +%d %%)"]:format(values[i].value, e.pct) }
+            mid[#mid + 1] = { value = values[i].value, text = L["%s (Upgrade %s)"]:format(values[i].value, ns.UpgradePctText(e)) }
         end
     end
     for _, e in ipairs(need.wish) do
@@ -487,7 +499,7 @@ function ns.NeedTooltipText(item)
     local need = ns.NeedOf(item)
     if not need or (#need.up == 0 and #need.wish == 0) then return nil end
     local shown = {}
-    for _, e in ipairs(need.up) do shown[#shown + 1] = ("%s +%d %%"):format(e.name, e.pct) end
+    for _, e in ipairs(need.up) do shown[#shown + 1] = ("%s %s"):format(e.name, ns.UpgradePctText(e)) end
     for _, e in ipairs(need.wish) do shown[#shown + 1] = e.name end
     if #shown > TIP_NAMES then
         return L["Upgrade für: %s und %d weitere"]:format(table.concat(shown, ", ", 1, TIP_NAMES), #shown - TIP_NAMES)

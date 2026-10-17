@@ -14,10 +14,12 @@ brackets={9,14,19,24,29,34,39,44,49,54,59,60},
 order={"WARRIOR","PALADIN","HUNTER","ROGUE","PRIEST","SHAMAN","MAGE","WARLOCK","DRUID"},
 ratings={BLOCK=5,CRIT=14,DEF=1.5,DODGE=12,EXP=10,HASTE=10,HIT=10,PARRY=15,SHIT=8},
 built="2026-10-17",
+model={agi60={DRUID=29.292,HUNTER=77.6238,MAGE=29.292,PALADIN=29.292,PRIEST=29.292,ROGUE=42.4734,SHAMAN=29.292,WARLOCK=29.292,WARRIOR=29.292},base60={DRUID={AGI=60,INT=100,SPI=110,STA=70,STR=60},HUNTER={AGI=120,INT=60,SPI=65,STA=90,STR=55},MAGE={AGI=35,INT=125,SPI=120,STA=45,STR=30},PALADIN={AGI=70,INT=65,SPI=70,STA=100,STR=105},PRIEST={AGI=40,INT=120,SPI=125,STA=50,STR=35},ROGUE={AGI=130,INT=35,SPI=50,STA=75,STR=85},SHAMAN={AGI=55,INT=90,SPI=100,STA=95,STR=85},WARLOCK={AGI=50,INT=110,SPI=115,STA=75,STR=45},WARRIOR={AGI=80,INT=30,SPI=45,STA=110,STR=120}},baseCrit={DRUID=0.9,HUNTER=0,MAGE=0.2,PALADIN=0.7,PRIEST=3,ROGUE=0,SHAMAN=7.58,WARLOCK=1.7,WARRIOR=0},baseSpellCrit={DRUID=1.8,HUNTER=3.6,MAGE=0.2,PALADIN=3.3,PRIEST=0.8,ROGUE=0,SHAMAN=2.3,WARLOCK=1.7,WARRIOR=0},block={PALADIN=true,SHAMAN=true,WARRIOR=true},cast={{1,1.5},{8,1.8},{14,2.2},{20,2.6},{26,3}},castsSpi=0.5,dual={HUNTER=20,ROGUE=10,WARRIOR=20},dutyCaster=0.6,dutyHeal=0.4,dwMiss=27,fallback={META="META",RES="RES",SOCK="GEM",SPEN="SPEN"},hardcore=0.3,heal={{1,40},{4,55},{10,110},{16,185},{22,280},{28,400},{34,530},{40,660},{46,820},{52,980},{58,1200},{60,1300}},hp={DRUID=0.9,HUNTER=0.9,MAGE=0.8,PALADIN=0.95,PRIEST=0.8,ROGUE=0.9,SHAMAN=0.9,WARLOCK=0.85,WARRIOR=1},int60={DRUID=52.254,HUNTER=52.254,MAGE=51.8186,PALADIN=47.0286,PRIEST=51.5573,ROGUE=52.254,SHAMAN=51.5573,WARLOCK=52.7765,WARRIOR=52.254},meleeMiss=8,nuke={{1,12},{4,19},{8,35},{14,63},{20,101},{26,139},{32,191},{38,241},{44,299},{50,372},{56,445},{60,535}},parry={HUNTER=true,PALADIN=true,ROGUE=true,SHAMAN=true,WARRIOR=true},speedrun=0.1,spellMiss=6,spirit={DRUID=0.5,HUNTER=0.5,MAGE=0.625,PALADIN=0.5,PRIEST=0.625,ROGUE=0,SHAMAN=0.5,WARLOCK=0.5,WARRIOR=0},spiritHealth=0.5,targetDodge=5.6,threatShare=0.15,unitBudget={AP=2,HEAL=2.2,SP=1.2,STA=1},units={caster="SP",heal="HEAL",phys="AP",tank="STA"}},
 specs={
 WARRIOR={
 {key="dps",name="Waffen/Furor",role="dps",unit="AP",
 why="Krieger: Waffenschaden zählt voll, Stärke gibt 2 Angriffskraft, Beweglichkeit nur Krit; langsame Waffen für Spezialangriffe.",
+model="phys",p={ap_agi=0,ap_str=2,mana100=0,model="phys",plan="2H",r_spec=0.2},
 Speedrun={
 {AGI=0.738,AP=1,ARMOR=0.00611,BLOCK=0.054,CRIT=3.365,DEF=0.024,DODGE=0.179,DPS=14,EXP=4.349,HASTE=3.758,HIT=4.349,OHDPS=0.39,PARRY=0.179,RDPS=1,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=9.561,SPD_MH=9.734,SPI=0.1,STA=0.2,STR=2},
 {AGI=0.656,AP=1,ARMOR=0.00673,BLOCK=0.07,CRIT=4.16,DEF=0.031,DODGE=0.233,DPS=14,EXP=5.246,HASTE=4.532,HIT=5.246,OHDPS=0.39,PARRY=0.233,RDPS=1,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=21.279,SPD_MH=22.002,SPI=0.1,STA=0.2,STR=2},
@@ -62,6 +64,7 @@ ref={
 },},
 {key="tank",name="Schutz",role="tank",unit="STA",
 why="Schutzkrieger: Ausdauer, Rüstung und Vermeidung nach effektiver Gesundheit; Bedrohung (Stärke, Treffer) zählt zu 15 %.",
+model="tank",p={armor_mult=1,block=true,model="tank",parry=true,threat={ap_agi=0,ap_str=2,form=false,noagi=true,plan="SHIELD",r_spec=0}},
 Speedrun={
 {AGI=0.269,AP=0.075,ARMOR=0.03,BLOCK=0.307,BLOCKVAL=0.08,CRIT=0.184,DEF=0.135,DODGE=1.023,DPS=1.05,EXP=0.235,HIT=0.235,HP5=0.5,PARRY=1.023,STA=1,STR=0.15},
 {AGI=0.289,AP=0.075,ARMOR=0.036,BLOCK=0.444,BLOCKVAL=0.066,CRIT=0.237,DEF=0.195,DODGE=1.479,DPS=1.05,EXP=0.3,HIT=0.3,HP5=0.5,PARRY=1.479,STA=1,STR=0.15},
@@ -108,6 +111,7 @@ ref={
 PALADIN={
 {key="ret",name="Vergeltung",role="dps",unit="AP",
 why="Vergeltung: Waffenschaden und Stärke zuerst, langsame Zweihänder für Siegel; Intelligenz für das Mana.",
+model="phys",p={ap_agi=0,ap_str=2,mana100=3,model="phys",plan="2H",r_spec=0.2,sp=0.25},
 Speedrun={
 {AGI=0.727,AP=1,ARMOR=0.00579,BLOCK=0.05,CRIT=3.325,DEF=0.022,DODGE=0.168,DPS=14,EXP=4.302,HASTE=3.717,HIT=4.302,INT=0.45,MP5=0.36,OHDPS=0.39,PARRY=0.168,RDPS=1,SP=0.25,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=9.457,SPD_MH=9.629,SPI=0.054,STA=0.2,STR=2},
 {AGI=0.644,AP=1,ARMOR=0.0064,BLOCK=0.066,CRIT=4.096,DEF=0.029,DODGE=0.22,DPS=14,EXP=5.169,HASTE=4.466,HIT=5.169,INT=0.45,MP5=0.36,OHDPS=0.39,PARRY=0.22,RDPS=1,SP=0.25,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=20.969,SPD_MH=21.681,SPI=0.054,STA=0.2,STR=2},
@@ -152,6 +156,7 @@ ref={
 },},
 {key="holy",name="Heilig",role="heal",unit="HEAL",
 why="Heilig-Paladin: Heilung zuerst, Intelligenz für Mana und Krit; Willenskraft regeneriert wenig.",
+model="heal",p={cast=2.5,eff=3,f=0.75,model="heal",scarce=0.6},
 Speedrun={
 {AGI=0.051,ARMOR=0.00596,BLOCK=0.056,DEF=0.024,DODGE=0.186,DPS=0.1,HASTE=1.207,HEAL=1,INT=3.877,MP5=6.699,PARRY=0.186,SCRIT=1.448,SPI=1.675,STA=0.22},
 {AGI=0.046,ARMOR=0.00609,BLOCK=0.07,DEF=0.031,DODGE=0.233,DPS=0.1,HASTE=1.259,HEAL=1,INT=2.886,MP5=5.193,PARRY=0.233,SCRIT=1.513,SPI=1.298,STA=0.22},
@@ -196,6 +201,7 @@ ref={
 },},
 {key="tank",name="Schutz",role="tank",unit="STA",
 why="Schutzpaladin: effektive Gesundheit; Zauberschaden und Mana tragen die Bedrohung.",
+model="tank",p={armor_mult=1,block=true,mana100=2,model="tank",parry=true,sp=0.3,threat={ap_agi=0,ap_str=2,form=false,noagi=true,plan="SHIELD",r_spec=0}},
 Speedrun={
 {AGI=0.258,AP=0.075,ARMOR=0.029,BLOCK=0.295,BLOCKVAL=0.078,CRIT=0.16,DEF=0.13,DODGE=0.983,DPS=1.05,EXP=0.204,HIT=0.204,HP5=0.5,INT=0.3,MP5=0.24,PARRY=0.983,SP=0.3,STA=1,STR=0.15},
 {AGI=0.275,AP=0.075,ARMOR=0.035,BLOCK=0.42,BLOCKVAL=0.062,CRIT=0.173,DEF=0.185,DODGE=1.4,DPS=1.05,EXP=0.218,HIT=0.218,HP5=0.5,INT=0.3,MP5=0.24,PARRY=1.4,SP=0.3,STA=1,STR=0.15},
@@ -242,6 +248,7 @@ ref={
 HUNTER={
 {key="dps",name="Jäger",role="dps",unit="AP",
 why="Jäger: Distanzwaffe zählt voll, Beweglichkeit gibt 2 Distanzangriffskraft und Krit; Intelligenz für das Mana.",
+model="phys",p={ap_agi=2,ap_str=0,mana100=4,melee_dps=1.4,model="phys",plan="2H",r_spec=0.12,ranged=true},
 Speedrun={
 {AGI=2.214,AP=1,ARMOR=0.00503,CRIT=2.54,DEF=0.013,DODGE=0.104,DPS=1.4,EXP=3.088,HASTE=2.668,HIT=3.088,INT=0.6,MP5=0.48,PARRY=0.104,RAP=1,RDPS=14,SPDREF_RANGED=2.8,SPD_RANGED=4.261,SPI=0.072,STA=0.2,STR=0.1},
 {AGI=2.199,AP=1,ARMOR=0.00698,CRIT=3.151,DEF=0.023,DODGE=0.194,DPS=1.4,EXP=3.83,HASTE=3.309,HIT=3.83,INT=0.6,MP5=0.48,PARRY=0.194,RAP=1,RDPS=14,SPDREF_RANGED=2.8,SPD_RANGED=10.151,SPI=0.072,STA=0.2,STR=0.1},
@@ -288,6 +295,7 @@ ref={
 ROGUE={
 {key="dps",name="Schurke",role="dps",unit="AP",
 why="Schurke: Waffenschaden zählt voll, Beweglichkeit gibt Angriffskraft und Krit, Treffer bis 6 %.",
+model="phys",p={ap_agi=1,ap_str=1,mana100=0,model="phys",plan="DW",r_spec=0.2},
 Speedrun={
 {AGI=1.379,AP=1,ARMOR=0.00467,CRIT=2.521,DEF=0.012,DODGE=0.1,DPS=14,EXP=3.181,HASTE=2.749,HIT=3.181,OHDPS=0.39,PARRY=0.1,RDPS=1,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=6.994,SPD_MH=7.121,SPI=0.1,STA=0.2,STR=1},
 {AGI=1.375,AP=1,ARMOR=0.00579,CRIT=3.441,DEF=0.02,DODGE=0.165,DPS=14,EXP=5.001,HASTE=3.751,HIT=5.001,OHDPS=0.39,PARRY=0.165,RDPS=1,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=17.611,SPD_MH=18.209,SPI=0.1,STA=0.2,STR=1},
@@ -334,6 +342,7 @@ ref={
 PRIEST={
 {key="shadow",name="Schatten",role="dps",unit="SP",
 why="Schatten: Schattenschaden und Zauberschaden voll, Intelligenz für Mana und Krit; der Zauberstab zählt beim Leveln.",
+model="caster",p={cast=2,eff=1.8,f=0.9,model="caster",scarce=0.5,school={SP_SHADOW=1},wand=true},
 Speedrun={
 {AGI=0.015,ARMOR=0.00277,DEF=0.00371,DODGE=0.046,DPS=0.1,HASTE=0.745,INT=1.4,MP5=2.337,RDPS=2.819,SCRIT=0.722,SHIT=1.584,SP=1,SPI=0.73,SP_SHADOW=1,STA=0.12},
 {AGI=0.017,ARMOR=0.00328,DEF=0.0058,DODGE=0.072,DPS=0.1,HASTE=0.929,INT=1.21,MP5=1.966,RDPS=2.064,SCRIT=0.901,SHIT=1.976,SP=1,SPI=0.614,SP_SHADOW=1,STA=0.12},
@@ -378,6 +387,7 @@ ref={
 },},
 {key="disc",name="Disziplin",role="dps",unit="SP",
 why="Disziplin: Heiligschaden und Zauberschaden voll, dazu Mana und Krit aus Intelligenz.",
+model="caster",p={cast=2.5,eff=1.9,f=1,model="caster",scarce=0.5,school={SP_HOLY=1},wand=true},
 Speedrun={
 {AGI=0.015,ARMOR=0.00277,DEF=0.00371,DODGE=0.046,DPS=0.1,HASTE=0.818,INT=1.538,MP5=2.436,RDPS=2.819,SCRIT=0.792,SHIT=1.739,SP=1,SPI=0.761,SP_HOLY=1,STA=0.12},
 {AGI=0.017,ARMOR=0.00328,DEF=0.0058,DODGE=0.072,DPS=0.1,HASTE=0.936,INT=1.219,MP5=2.07,RDPS=2.064,SCRIT=0.908,SHIT=1.991,SP=1,SPI=0.647,SP_HOLY=1,STA=0.12},
@@ -422,6 +432,7 @@ ref={
 },},
 {key="holy",name="Heilig",role="heal",unit="HEAL",
 why="Heilig-Priester: Heilung zuerst, Intelligenz und Willenskraft halten das Mana.",
+model="heal",p={cast=2.5,eff=2.4,f=1,model="heal",scarce=0.6},
 Speedrun={
 {AGI=0.031,ARMOR=0.0056,DEF=0.00752,DODGE=0.094,DPS=0.1,HASTE=1.545,HEAL=1,INT=4.244,MP5=5.146,SCRIT=1.871,SPI=1.608,STA=0.22},
 {AGI=0.031,ARMOR=0.00592,DEF=0.01,DODGE=0.13,DPS=0.1,HASTE=1.624,HEAL=1,INT=3.082,MP5=4.019,SCRIT=1.967,SPI=1.256,STA=0.22},
@@ -468,6 +479,7 @@ ref={
 SHAMAN={
 {key="ele",name="Elementar",role="dps",unit="SP",
 why="Elementar: Natur- und Zauberschaden voll, Feuer zu 30 %; Intelligenz für Mana und Krit.",
+model="caster",p={cast=2.5,eff=1.9,f=1,model="caster",scarce=0.5,school={SP_FIRE=0.3,SP_NATURE=1}},
 Speedrun={
 {AGI=0.02,ARMOR=0.00275,BLOCK=0.022,DEF=0.00951,DODGE=0.073,DPS=0.1,HASTE=0.846,INT=1.772,MP5=2.52,PARRY=0.073,SCRIT=0.817,SHIT=1.799,SP=1,SPI=0.63,SP_FIRE=0.3,SP_NATURE=1,STA=0.12},
 {AGI=0.023,ARMOR=0.00389,BLOCK=0.032,DEF=0.014,DODGE=0.105,DPS=0.1,HASTE=0.921,INT=1.315,MP5=2.037,PARRY=0.105,SCRIT=0.889,SHIT=1.959,SP=1,SPI=0.509,SP_FIRE=0.3,SP_NATURE=1,STA=0.12},
@@ -512,6 +524,7 @@ ref={
 },},
 {key="enh",name="Verstärkung",role="dps",unit="AP",
 why="Verstärkung: Waffenschaden und Stärke zuerst, langsame Waffen für Windzorn und Sturmschlag.",
+model="phys",p={ap_agi=0,ap_str=2,mana100=3,model="phys",plan="2H",r_spec=0.2,sp=0.2},
 Speedrun={
 {AGI=0.641,AP=1,ARMOR=0.00477,BLOCK=0.032,CRIT=2.979,DEF=0.014,DODGE=0.106,DPS=14,EXP=4.074,HASTE=3.52,HIT=4.074,INT=0.45,MP5=0.36,OHDPS=0.39,PARRY=0.106,RDPS=1,SP=0.2,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=8.957,SPD_MH=9.12,SPI=0.054,STA=0.2,STR=2},
 {AGI=0.575,AP=1,ARMOR=0.00556,BLOCK=0.046,CRIT=3.701,DEF=0.02,DODGE=0.152,DPS=14,EXP=4.952,HASTE=4.278,HIT=4.952,INT=0.45,MP5=0.36,OHDPS=0.39,PARRY=0.152,RDPS=1,SP=0.2,SPDREF_2H=3.3,SPDREF_MH=2.6,SPD_2H=20.085,SPD_MH=20.768,SPI=0.054,STA=0.2,STR=2},
@@ -556,6 +569,7 @@ ref={
 },},
 {key="resto",name="Wiederherstellung",role="heal",unit="HEAL",
 why="Wiederherstellung: Heilung zuerst, Mana alle 5 Sek. und Intelligenz halten durch.",
+model="heal",p={cast=2.5,eff=2.3,f=0.9,model="heal",scarce=0.6},
 Speedrun={
 {AGI=0.038,ARMOR=0.00505,BLOCK=0.04,DEF=0.018,DODGE=0.134,DPS=0.1,HASTE=1.424,HEAL=1,INT=4.447,MP5=5.053,PARRY=0.134,SCRIT=1.72,SPI=1.263,STA=0.22},
 {AGI=0.04,ARMOR=0.00675,BLOCK=0.054,DEF=0.024,DODGE=0.181,DPS=0.1,HASTE=1.498,HEAL=1,INT=3.152,MP5=3.949,PARRY=0.181,SCRIT=1.809,SPI=0.987,STA=0.22},
@@ -602,6 +616,7 @@ ref={
 MAGE={
 {key="frost",name="Frost",role="dps",unit="SP",
 why="Frost: Frost- und Zauberschaden voll, Intelligenz für Mana und Krit; der Zauberstab zählt beim Leveln.",
+model="caster",p={cast=2.5,eff=2,f=1,model="caster",scarce=0.5,school={SP_FROST=1},wand=true},
 Speedrun={
 {AGI=0.014,ARMOR=0.00272,DEF=0.00364,DODGE=0.045,DPS=0.1,HASTE=0.818,INT=1.521,MP5=2.564,RDPS=2.827,SCRIT=0.795,SHIT=1.739,SP=1,SPI=0.801,SP_FROST=1,STA=0.12},
 {AGI=0.017,ARMOR=0.00316,DEF=0.00556,DODGE=0.07,DPS=0.1,HASTE=0.933,INT=1.2,MP5=2.171,RDPS=2.069,SCRIT=0.907,SHIT=1.984,SP=1,SPI=0.679,SP_FROST=1,STA=0.12},
@@ -646,6 +661,7 @@ ref={
 },},
 {key="fire",name="Feuer",role="dps",unit="SP",
 why="Feuer: Feuer- und Zauberschaden voll, Krit zählt mehr als bei Frost.",
+model="caster",p={cast=3.5,eff=1.9,f=1.25,model="caster",scarce=0.5,school={SP_FIRE=1},wand=true},
 Speedrun={
 {AGI=0.014,ARMOR=0.00272,DEF=0.00364,DODGE=0.045,DPS=0.1,HASTE=0.576,INT=1.091,MP5=2.572,RDPS=2.829,SCRIT=0.56,SHIT=1.224,SP=1,SPI=0.803,SP_FIRE=1,STA=0.12},
 {AGI=0.017,ARMOR=0.00316,DEF=0.00556,DODGE=0.07,DPS=0.1,HASTE=0.779,INT=1.002,MP5=2.193,RDPS=2.069,SCRIT=0.758,SHIT=1.658,SP=1,SPI=0.685,SP_FIRE=1,STA=0.12},
@@ -690,6 +706,7 @@ ref={
 },},
 {key="arcane",name="Arkan",role="dps",unit="SP",
 why="Arkan: Arkan- und Zauberschaden voll, Mana ist knapp, Intelligenz zählt mehr.",
+model="caster",p={cast=3.5,eff=1.6,f=1,model="caster",scarce=0.6,school={SP_ARCANE=1},wand=true},
 Speedrun={
 {AGI=0.014,ARMOR=0.00272,DEF=0.00364,DODGE=0.045,DPS=0.1,HASTE=0.383,INT=1.077,MP5=2.703,RDPS=2.829,SCRIT=0.466,SHIT=1.018,SP=1,SPI=0.845,SP_ARCANE=1,STA=0.12},
 {AGI=0.017,ARMOR=0.00316,DEF=0.00556,DODGE=0.07,DPS=0.1,HASTE=0.533,INT=1.018,MP5=2.37,RDPS=2.069,SCRIT=0.648,SHIT=1.418,SP=1,SPI=0.74,SP_ARCANE=1,STA=0.12},
@@ -736,6 +753,7 @@ ref={
 WARLOCK={
 {key="affli",name="Gebrechen",role="dps",unit="SP",
 why="Gebrechen: Schattenschaden und Zauberschaden voll; Lebensentzug spart Mana, Ausdauer zählt.",
+model="caster",p={cast=3.5,eff=2.4,f=1,model="caster",scarce=0.3,school={SP_SHADOW=1},wand=true},
 Speedrun={
 {AGI=0.017,ARMOR=0.00307,DEF=0.00411,DODGE=0.051,DPS=0.1,HASTE=0.67,INT=0.586,MP5=2.027,RDPS=2.813,SCRIT=0.464,SHIT=1.018,SP=1,SPI=0.507,SP_SHADOW=1,STA=0.12},
 {AGI=0.019,ARMOR=0.00364,DEF=0.00647,DODGE=0.081,DPS=0.1,HASTE=0.938,INT=0.557,MP5=1.787,RDPS=2.058,SCRIT=0.648,SHIT=1.425,SP=1,SPI=0.447,SP_SHADOW=1,STA=0.12},
@@ -780,6 +798,7 @@ ref={
 },},
 {key="destro",name="Zerstörung",role="dps",unit="SP",
 why="Zerstörung: Schatten- und Zauberschaden voll, Feuer zu 40 %, Krit für Schattenblitze.",
+model="caster",p={cast=2.5,eff=2,f=1.05,model="caster",scarce=0.4,school={SP_FIRE=0.4,SP_SHADOW=1},wand=true},
 Speedrun={
 {AGI=0.017,ARMOR=0.00307,DEF=0.00411,DODGE=0.051,DPS=0.1,HASTE=1.024,INT=1.332,MP5=2.04,RDPS=2.811,SCRIT=0.825,SHIT=1.816,SP=1,SPI=0.51,SP_FIRE=0.4,SP_SHADOW=1,STA=0.12},
 {AGI=0.019,ARMOR=0.00364,DEF=0.00647,DODGE=0.081,DPS=0.1,HASTE=1.166,INT=1.053,MP5=1.724,RDPS=2.058,SCRIT=0.94,SHIT=2.067,SP=1,SPI=0.431,SP_FIRE=0.4,SP_SHADOW=1,STA=0.12},
@@ -826,6 +845,7 @@ ref={
 DRUID={
 {key="balance",name="Gleichgewicht",role="dps",unit="SP",
 why="Gleichgewicht: Natur- und Zauberschaden voll, Arkan zu 70 %; Intelligenz für Mana und Krit.",
+model="caster",p={cast=2,eff=1.9,f=0.85,model="caster",scarce=0.5,school={SP_ARCANE=0.7,SP_NATURE=1}},
 Speedrun={
 {AGI=0.018,ARMOR=0.00307,DEF=0.00475,DODGE=0.059,DPS=0.1,HASTE=0.703,INT=1.457,MP5=2.463,SCRIT=0.681,SHIT=1.495,SP=1,SPI=0.616,SP_ARCANE=0.7,SP_NATURE=1,STA=0.12},
 {AGI=0.02,ARMOR=0.00358,DEF=0.00719,DODGE=0.09,DPS=0.1,HASTE=0.874,INT=1.213,MP5=2.068,SCRIT=0.846,SHIT=1.86,SP=1,SPI=0.517,SP_ARCANE=0.7,SP_NATURE=1,STA=0.12},
@@ -870,6 +890,7 @@ ref={
 },},
 {key="feral",name="Wilder Kampf",role="dps",unit="AP",
 why="Wilder Kampf: Stärke gibt 2, Beweglichkeit 1 Angriffskraft und Krit; Waffenschaden zählt in Gestalt nicht.",
+model="phys",p={ap_agi=1,ap_str=2,form=true,mana100=0.5,model="phys",plan="2H",r_spec=0},
 Speedrun={
 {AGI=1.515,AP=1,ARMOR=0.00433,CRIT=2.384,DEF=0.00701,DODGE=0.087,EXP=3.069,HASTE=2.652,HIT=3.069,INT=0.075,MP5=0.06,OHDPS=0.39,RDPS=1,SPI=0.009,STA=0.2,STR=2},
 {AGI=1.519,AP=1,ARMOR=0.00494,CRIT=3.346,DEF=0.01,DODGE=0.131,EXP=4.281,HASTE=3.698,HIT=4.281,INT=0.075,MP5=0.06,OHDPS=0.39,RDPS=1,SPI=0.009,STA=0.2,STR=2},
@@ -914,6 +935,7 @@ ref={
 },},
 {key="bear",name="Bär",role="tank",unit="STA",
 why="Bär: Rüstung zählt in Gestalt 2,8-fach, Beweglichkeit gibt Ausweichen und Rüstung; Bedrohung zu 15 %.",
+model="tank",p={armor_mult=2.8,block=false,form=true,model="tank",parry=false,threat={ap_agi=1,ap_str=2,form=true,noagi=false,plan="SHIELD",r_spec=0}},
 Speedrun={
 {AGI=0.288,AP=0.075,ARMOR=0.067,CRIT=0.161,DEF=0.052,DODGE=0.65,EXP=0.208,HIT=0.208,HP5=0.5,STA=1,STR=0.15},
 {AGI=0.326,AP=0.075,ARMOR=0.085,CRIT=0.221,DEF=0.086,DODGE=1.08,EXP=0.281,HIT=0.281,HP5=0.5,STA=1,STR=0.15},
@@ -958,6 +980,7 @@ ref={
 },},
 {key="resto",name="Wiederherstellung",role="heal",unit="HEAL",
 why="Wiederherstellung: Heilung zuerst, Willenskraft und Intelligenz halten das Mana.",
+model="heal",p={cast=3,eff=2.2,f=1,model="heal",scarce=0.6},
 Speedrun={
 {AGI=0.036,ARMOR=0.00607,DEF=0.00941,DODGE=0.118,DPS=0.1,HASTE=1.538,HEAL=1,INT=4.682,MP5=4.696,SCRIT=1.861,SPI=1.174,STA=0.22},
 {AGI=0.035,ARMOR=0.00619,DEF=0.012,DODGE=0.154,DPS=0.1,HASTE=1.644,HEAL=1,INT=3.362,MP5=3.73,SCRIT=1.988,SPI=0.932,STA=0.22},

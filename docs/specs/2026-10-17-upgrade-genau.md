@@ -1,6 +1,6 @@
 # Spec: Genaues Upgrade für deine Spezialisierung
 
-Stand: 2026-10-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-17 · Status: freigegeben ·
 Feature: F-115
 
 ## Ziel
@@ -104,8 +104,9 @@ Zahl fälschen will, kann das heute schon; die Lootleitung entscheidet weiter se
 - Kein neuer `AmisiaDB`-Schlüssel nötig: der Stand des Charakterbogens lebt nur im Speicher und wird
   nach dem Login neu gelesen. (Soll er `/reload` überstehen, wäre das ein Schlüssel unter
   `AmisiaDB.bis.chars[...]`; Vorschlag: nicht nötig.)
-- Einstellung "Upgrade erst ab (Prozent mehr Wertung)" (`bis.minGain`) zählt künftig in Prozent der
-  Gesamtleistung; die Voreinstellung sinkt von 2 % auf 0,3 % (siehe Frage 3).
+- Einstellung "Upgrade erst ab (Prozent mehr Leistung)" (`bis.minTotal`, neu, ersetzt `bis.minGain`, damit
+  ein alter Wert nicht als Gesamt-Prozent gilt) zählt in Prozent der Gesamtleistung; Voreinstellung 0,3 %
+  (siehe Frage 3).
 - Neue Einstellung `bis.otherSpecs` (Schalter, an): die Zeile der anderen Spezialisierungen mit Shift.
 - `GearWeights.lua` bekommt die Modell-Parameter je Spezialisierung (die `SPECS` aus `build_bis.py`)
   und die Umrechnungen je Stufe, damit Lua dasselbe Modell rechnet. `tools/tests/test_score_parity.py`
@@ -131,4 +132,7 @@ Zahl fälschen will, kann das heute schon; die Lootleitung entscheidet weiter se
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-17: Fragen 1-5: "passt, alle Vorschläge übernehmen und bauen" -> Gesamt-Prozent vorn, Slot-Prozent
+  mit Shift; andere Spezialisierungen mit Shift (Schalter `bis.otherSpecs`, an); Schwelle 0,3 %; "Wer
+  braucht das?" und Würfel-Fenster mit Gesamt-Prozent, Antworten älterer Versionen mit "(alt)"; Items ohne
+  Verzauberung vergleichen, Shift nennt die Verzauberung am alten Item.

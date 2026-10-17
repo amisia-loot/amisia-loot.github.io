@@ -273,11 +273,15 @@ assert(gain == 60 and slotKey == "FINGER1", "a ring by link against the weaker r
 STUB.worn[1] = gear(125, "Helm 39", "HEAD", str(39))
 STUB.fire("PLAYER_EQUIPMENT_CHANGED", 1)
 gain, _, mine = NS.BisGain(101)
-assert(gain == 2 and mine == 78 and NS.BisIsUpgrade(gain, mine), "2 more is an upgrade at 2 %")
-assert(NS.Set("bis.minGain", 5))
-assert(not NS.BisIsUpgrade(gain, mine), "but not at 5 %")
-assert(not NS.BisTargets().HEAD[2].upgrade, "the targets follow the setting")
-NS.Reset("bis.minGain")
+-- the threshold is a percent of the whole output (D-54): two points are under 0.3 % of a level 60
+-- warrior's attack power units, over 0.05 %
+assert(gain == 2 and mine == 78, "2 more")
+assert(not NS.BisIsUpgrade(gain, mine), "no upgrade at 0.3 % of the whole output")
+assert(not NS.BisTargets().HEAD[2].upgrade, "nor in the targets")
+assert(NS.Set("bis.minTotal", 0))
+assert(NS.BisIsUpgrade(gain, mine), "but at 0 %")
+assert(NS.BisTargets().HEAD[2].upgrade, "the targets follow the setting")
+NS.Reset("bis.minTotal")
 STUB.class = "PRIEST"
 local pg, pwhy, pcode = NS.BisGain(101)
 assert(pg == nil and pcode == "class" and pwhy == "Das kann dein Charakter nicht tragen.", "plate for a priest")
@@ -361,13 +365,13 @@ assert(NS.BisTargets().HEAD[1].id == 105)
 -- settings and commands
 ---------------------------------------------------------------------------
 for path, want in pairs({ ["bis.tooltip"] = { "toggle", true }, ["bis.tooltipNone"] = { "toggle", false },
-                          ["bis.minGain"] = { "slider", 2 }, ["bis.toast"] = { "toggle", true },
+                          ["bis.minTotal"] = { "slider", 0.3 }, ["bis.toast"] = { "toggle", true },
                           ["bis.toastUpgrade"] = { "toggle", true }, ["bis.toastSound"] = { "toggle", true },
                           ["bis.wishAutoRemove"] = { "toggle", true }, ["bis.prof"] = { "choice", "all" } }) do
     local it = NS.SettingItem(path)
     assert(it and it.type == want[1] and it.default == want[2] and it.section.key == "bis", path)
 end
-assert(NS.SettingItem("bis.minGain").expert, "minimum gain for experts")
+assert(NS.SettingItem("bis.minTotal").expert, "minimum gain for experts")
 assert(NS.SettingItem("bis.phase") == nil, "no phase setting any more")
 NS.Dispatch("bis aus " .. LINKS[101])
 assert(me.ex.item[101], "/amisia bis aus")

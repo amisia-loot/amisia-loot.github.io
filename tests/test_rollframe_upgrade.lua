@@ -46,7 +46,7 @@ assert(#asked == 1 and asked[1] == 301, "the window asks when the round starts")
 NS.OnRollChanged()
 assert(#asked == 1, "once per round")
 
-answers[301] = { up = { { name = "Anna", gain = 30, pct = 25, slot = "HEAD" }, { name = "Fraktur", gain = 10, pct = 999, slot = "HEAD" } },
+answers[301] = { up = { { name = "Anna", gain = 30, pct = 25, alt = true, slot = "HEAD" }, { name = "Fraktur", gain = 10, pct = 999, alt = true, slot = "HEAD" } },
     wish = { { name = "Bob", prio = 2 } }, none = 1, asked = 4, missing = 0, without = {} }
 NS.Fire("NEED", { 301 })
 STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Anna", 90, 1, 100))
@@ -57,14 +57,15 @@ STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Kim", 50, 1, 100))
 local col = {}
 for i = 1, 5 do col[F.rows[i].who] = F.rows[i].up:GetText() end
 local own = NS.UpgradeOf(helm)
-assert(has(col.Anna, "+25%"), "Anna's answer: " .. tostring(col.Anna))
+-- answers without the whole output's percent come from an older Amisia: slot percent, marked
+assert(has(col.Anna, "+25 % (alt)"), "Anna's answer: " .. tostring(col.Anna))
 assert(has(col.Fraktur, "neu"), "an empty slot: " .. tostring(col.Fraktur))
 assert(has(col.Bob, "W"), "a wish: " .. tostring(col.Bob))
-assert(has(col.Vuloo, ("+%d%%"):format(own.pct)), "the own row from the own scoring: " .. tostring(col.Vuloo))
+assert(has(col.Vuloo, NS.UpgradePct(own.total)), "the own row from the own model: " .. tostring(col.Vuloo))
 assert(has(col.Kim, "W"), "a guild wish counts as a wish: " .. tostring(col.Kim))
 
 local line = F.upLine:GetText()
-assert(has(line, "Upgrade für: Fraktur neu") and has(line, "Anna +25 %") and has(line, ("du +%d %%"):format(own.pct)), "the line: " .. line)
+assert(has(line, "Upgrade für: Fraktur neu") and has(line, "Anna +25 % (alt)") and has(line, "du " .. NS.UpgradePct(own.total)), "the line: " .. line)
 assert(has(line, "Wunsch: Bob") and has(line, "Kim"), "wishes in the line: " .. line)
 
 -- the appearance: a blue bind-on-pickup item in a dungeon

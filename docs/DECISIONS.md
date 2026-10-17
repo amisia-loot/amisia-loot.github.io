@@ -1159,3 +1159,29 @@ anderen; das soll hier nicht gehen.
 selbst zu importieren. Das Import-Fenster liegt jetzt in `UI/SoftResImport.lua`.
 **Durchgesetzt durch:** `tests/test_softres_share.lua`, `tests/test_softres_preview.lua`,
 `tests/test_softres_class.lua`.
+
+## D-54 Upgrade in Prozent der ganzen Leistung, gerechnet mit dem Charakterbogen
+
+**Datum:** 2026-10-17
+**Entscheidung:** Spec `docs/specs/2026-10-17-upgrade-genau.md` (F-115). "Upgrade für dich" ist die
+Änderung der ganzen Leistung der Spezialisierung (Schaden, Heilung, beim Tank Überleben mit Bedrohung zu
+15 %) in Prozent, nicht mehr der Zuwachs der Wertung eines Slots. Gerechnet wird mit den vier Modellen,
+aus denen `tools/build_bis.py` die Gewichte herleitet (Gewichte = ihre Steigung am Referenz-Charakter),
+jetzt mit den eigenen Werten: der Charakterbogen, gelesen außerhalb des Kampfs nach Ausrüstungs-, Stufen-
+und Talentwechsel (nicht nach Buffs), im Kampf der letzte Stand; ohne Bogen Grundwerte plus Ausrüstung,
+"(ungefähr)". Vorher/Nachher statt Gewicht mal Wert: Trefferobergrenze, Krit mal Angriffskraft und Mana
+gegen Zauberschaden ergeben sich aus den Formeln. Prozent-Talente auf Attribute zählen als Verhältnis
+Bogen zu Basis plus Ausrüstung (1 bis 1,2). Setboni, die ein Tausch bricht oder schließt, zählen mit;
+Verzauberungen nicht (beide Items ohne). Die Zeile nennt die Spezialisierung; Shift zeigt die Teile,
+die Slot-Prozent, die anderen Spezialisierungen (`bis.otherSpecs`) und die Werte, die sich bewegen. Die
+Schwelle `bis.minTotal` (0,3 %) ersetzt `bis.minGain` und gilt über die Größe der Leistung auch für
+Tabelle, Ziele und Dungeons. "Wer braucht das?" schickt die Gesamt-Prozent in Zehnteln am Slot
+(`HEAD-17`); Antworten älterer Versionen zeigen ihre Slot-Prozent mit "(alt)" und stehen hinten.
+Ausrüstungstabelle, Simulation und Planung behalten die Referenzgewichte.
+**Grund:** Nutzer 2026-10-17 nach "+141 %" für einen Umhang in einem anderen Addon: "ich will auch das es
+für den spek angezeigt und ich will die bestmögliche und genau berechnung"; Spec-Fragen 1-5: "passt, alle
+Vorschläge übernehmen und bauen".
+**Folge:** Die Zahlen im Tooltip sind klein (ein Umhang selten über 3 %), aber zwischen Slots und Spielern
+vergleichbar. Python (`m_*` in `build_bis.py`) und Lua (`Gear/Model.lua`) rechnen dieselben Formeln.
+**Durchgesetzt durch:** `tools/tests/test_upgrade_model.py` (Lua gleich Python, Steigung gleich Gewicht),
+`tests/test_upgrade_model.lua`, `tests/test_need.lua`.

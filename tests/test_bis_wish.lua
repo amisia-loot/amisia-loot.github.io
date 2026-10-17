@@ -182,7 +182,8 @@ clear()
 sounds = #STUB.sounds
 STUB.fire("CHAT_MSG_RAID", "1. " .. LINKS[204] .. " frei", "Vulo")
 assert(#toasts == 1 and toasts[1].why == "upgrade" and #STUB.sounds == sounds, "an upgrade, silent")
-assert(f.title:GetText() == "Upgrade für dich" and has(f.item:GetText(), "+90 (Beine)"), tostring(f.item:GetText()))
+assert(f.title:GetText() == "Upgrade für dich" and has(f.item:GetText(), " % (Beine)") and has(f.item:GetText(), "|r +"),
+    tostring(f.item:GetText()))
 clear()
 assert(NS.Set("bis.toastUpgrade", false))
 STUB.fire("CHAT_MSG_RAID", "1. " .. LINKS[204] .. " frei", "Vulo")
