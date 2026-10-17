@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.42.0 (2026-10-17)
+
+- Spec genaues Upgrade für die Spezialisierung: Werte vom Charakterbogen, Vorher/Nachher-Modell, Gesamt-Prozent, Spezialisierung im Tooltip (F-115, Entwurf)
+- Duelle: Klassensymbol und Spezialisierung (Betrachten), Karte bei Duell-Anfragen, Bilanz im Spieler-Tooltip, Serien/Erzfeind/Lieblingsgegner, Zeitraum, Klassen nach Spezialisierung (F-114, F-116..F-120)
+
 ## 2.41.0 (2026-10-17)
 
 - Seitenliste ohne blaues Hover-Leuchten; Suche findet Einstellungsabschnitte (auch nach Reiter, z. B. Allgemein), Rezepte und Dungeons
