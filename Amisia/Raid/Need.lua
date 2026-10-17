@@ -193,7 +193,7 @@ end
 local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
 -- One item as "id:art:gain:pct:slot": U upgrade, W wish (prio in the gain field), - nothing. Since
--- 2.42 (D-54) an upgrade's slot carries the change of the whole output in tenths of a percent,
+-- 2.43 (D-54) an upgrade's slot carries the change of the whole output in tenths of a percent,
 -- "BACK-16" for +1.6 %; older versions read the slot as unknown and keep the slot percent in pct.
 local function answerFor(id)
     local nothing = id .. ":-:0:0:-"

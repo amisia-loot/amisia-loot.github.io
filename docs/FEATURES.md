@@ -743,7 +743,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-041 Upgrade-Prozent im Tooltip
 - Version: 2.4.0
 - Status: gebaut
-- Prüfung: Wenn du mit der Maus über ein Item fährst, das für dich besser ist, dann steht im Tooltip "Upgrade für dich (Spezialisierung): +x,x % Schaden (Slot)" (seit 2.42 Prozent der ganzen Leistung, F-115).
+- Prüfung: Wenn du mit der Maus über ein Item fährst, das für dich besser ist, dann steht im Tooltip "Upgrade für dich (Spezialisierung): +x,x % Schaden (Slot)" (seit 2.43 Prozent der ganzen Leistung, F-115).
 - Prüfung: Wenn unter Einstellungen, Ausrüstung und Wünsche "Auch \"Kein Upgrade\" im Tooltip zeigen" an ist, dann steht bei schlechteren Items "Kein Upgrade für dich (Spezialisierung): -x,x % ...".
 - Prüfung: Wenn eine Questbelohnung ein Upgrade ist, dann ist sie im Questfenster markiert.
 

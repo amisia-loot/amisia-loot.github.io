@@ -559,7 +559,7 @@ L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner
 -- the settings sections of 2.32.0
 L["Gildenwünsche"] = "Guild wishes"
 
--- the exact upgrade for the spec (2.42, F-115)
+-- the exact upgrade for the spec (2.43, F-115)
 L["%s, geraten"] = "%s, guessed"
 L["Andere Spezialisierungen im Tooltip (Shift)"] = "Other specs in the tooltip (Shift)"
 L["Andere Spezialisierungen: %s"] = "Other specs: %s"

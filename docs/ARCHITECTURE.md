@@ -246,7 +246,7 @@ sender is always the server's sender name, never a field.
 | `NO` | keeper -> wisher WHISPER | only the keeper the wish went to | none | raid key, op id, reason `CONFLICT`/`GONE`/`DENIED`/`NORAID`/`BAD`, rev | Sync.lua |
 | `NW` | follower or asked officer -> keeper WHISPER (newer state / nothing newer) | member, in group | 10 s | raid key, rev, hash, term | Sync.lua |
 | `UQ` | loot lead -> RAID | officer, in group, the elected loot lead | 5 s | 4 hex question id, item ids (max 8, comma) | Need.lua |
-| `UA` | raider -> asker WHISPER | member, in group; only for an open question | none | question id, `id:U/W/-:gain:pct:slot` (max 8); since 2.42 an upgrade's slot ends in `-<tenths>`, the whole output's change in tenths of a percent (`HEAD-17` = +1.7 %, D-54); without it the answer is from an older Amisia (slot percent, shown "(alt)") | Need.lua |
+| `UA` | raider -> asker WHISPER | member, in group; only for an open question | none | question id, `id:U/W/-:gain:pct:slot` (max 8); since 2.43 an upgrade's slot ends in `-<tenths>`, the whole output's change in tenths of a percent (`HEAD-17` = +1.7 %, D-54); without it the answer is from an older Amisia (slot percent, shown "(alt)") | Need.lua |
 | `DV` | everyone -> GUILD (60-180 s after login, then max every 30 min) | member | 60 s | drop proto (2), records, newest day, weeks `w:hhhh:n` (max 4) | DropSync.lua; `DROP_PROTO` 2 |
 | `DQ` | asker -> sender WHISPER | member | keyed 60 s per week | week 0-3 | DropSync.lua |
 | `DI` | sender -> asker WHISPER | only the sender being pulled | none | week, part, parts (max 20), buckets `day:inst:hhhh:n` or `-` | DropSync.lua |
