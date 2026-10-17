@@ -62,9 +62,9 @@ end
 -- the list names outside the raid.
 local function context()
     local sr = AmisiaDB and AmisiaDB.softres
-    local roster, label = ns.SoftResRoster()
+    local roster, label, rosterClasses = ns.SoftResRoster()
     local ctx = { sr = sr, roster = roster, label = label, classes = {}, absent = {} }
-    ctx.check = sr and ns.SoftResCheck(sr, roster) or nil
+    ctx.check = sr and ns.SoftResCheck(sr, roster, rosterClasses) or nil
     if ctx.check then ctx.absent = set(ctx.check.absent) end
     if IsInRaid() then
         for i = 1, GetNumGroupMembers() or 0 do
@@ -130,6 +130,7 @@ local function checkLine(ctx)
     if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
     if #c.unclear > 0 then parts[#parts + 1] = L["%d unklar"]:format(#c.unclear) end
     if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
+    if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
     return table.concat(parts, " · ")
 end
 
@@ -186,6 +187,10 @@ local function checkRows(ctx)
     for _, o in ipairs(c.over) do
         out[#out + 1] = { kind = "over", name = o.name, label = RED .. L["Zu viel:|r %s"]:format(o.name),
                           text = L["%d Reservierungen, erlaubt %d"]:format(o.n, limit) }
+    end
+    for _, f in ipairs(c.class) do
+        out[#out + 1] = { kind = "class", name = f.name, label = ORANGE .. L["Klasse:|r %s"]:format(f.name),
+                          text = ns.SoftResClassText(f) .. (f.raider ~= f.name and (" (" .. f.raider .. ")") or "") }
     end
     local reminded = sr and sr.reminded or {}
     for _, name in ipairs(c.missing) do
@@ -453,8 +458,8 @@ ns.RegisterCard{ key = "softres", order = 20, fill = function(c)
         return
     end
     c.line1:SetText(L["%d Reservierungen, vom %s"]:format(sr.count or 0, sr.date))
-    local roster, label = ns.SoftResRoster()
-    local chk = ns.SoftResCheck(sr, roster)
+    local roster, label, classes = ns.SoftResRoster()
+    local chk = ns.SoftResCheck(sr, roster, classes)
     local unclear = chk and #chk.unclear or 0
     local tail = unclear > 0 and L[" · %d %s unklar"]:format(unclear, plural(unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) or ""
     if not label or not chk then

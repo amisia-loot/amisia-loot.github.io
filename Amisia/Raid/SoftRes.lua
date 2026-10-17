@@ -145,6 +145,33 @@ local function codeItem(v)
     return v
 end
 
+-- A class as a list writes it ("Priest", "Death Knight", "PRIEST") as the client's token, or nil.
+local CLASS_TOKENS = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, PRIEST = true, SHAMAN = true,
+                       MAGE = true, WARLOCK = true, DRUID = true, DEATHKNIGHT = true, MONK = true, DEMONHUNTER = true,
+                       EVOKER = true }
+function ns.SoftResClassToken(s)
+    if type(s) ~= "string" then return nil end
+    local t = s:gsub("[^%a]", ""):upper()
+    return CLASS_TOKENS[t] and t or nil
+end
+
+-- A class token as the client names it ("Priester"), else the token.
+function ns.SoftResClassName(token)
+    local names = _G.LOCALIZED_CLASS_NAMES_MALE
+    return type(names) == "table" and names[token] or token
+end
+
+-- "Klasse passt nicht: softres Magier, im Raid Priester" for a finding of check.class.
+function ns.SoftResClassText(f)
+    return L["Klasse passt nicht: softres %s, im Raid %s"]:format(ns.SoftResClassName(f.want), ns.SoftResClassName(f.have))
+end
+
+-- A list's class as written, kept only when it names a class ("Priest", "Death Knight").
+local function listClass(s)
+    s = cleanText(s, 20)
+    return s and ns.SoftResClassToken(s) and s or nil
+end
+
 -- The pasted text as a code, or nil: one word of Base64 characters (line breaks around and inside it
 -- dropped), at least 24 long. "Anna 18814" or a CSV never is one.
 function ns.SoftResCode(text)
@@ -199,8 +226,7 @@ local function readCode(code, add, extra, count)
                 if id then add(id, name) end
             end
             extra.notes[key] = cleanText(sr.note, MAX_NOTE)
-            local class = cleanText(sr.class, 20)
-            extra.classes[key] = class and class:match("^%a+$") and class or nil
+            extra.classes[key] = listClass(sr.class)
             local plus = tonumber(sr.plusOnes)
             extra.plus[key] = (plus and plus >= 1 and plus % 1 == 0 and plus <= 99) and plus or nil
         end
@@ -267,11 +293,18 @@ function ns.ParseSoftRes(text)
         -- exports and other tools used "Name" or "Character"
         local cName = cols["raidername"] or cols["name"] or cols["character"] or cols["charactername"]
             or cols["player"] or cols["playername"]
+        local cClass = cols["raiderclass"] or cols["class"]
+        extra.classes = {}
         for i = 2, #all do
             local f = splitCsv(all[i], delim)
             local item = cItem and tonumber((f[cItem] or ""):match("(%d+)"))
             local name = cName and shortName(f[cName])
-            if not add(item, name) then bad[#bad + 1] = all[i] end
+            if add(item, name) then
+                local class = cClass and listClass(f[cClass])
+                if class then extra.classes[aliased(name)] = class end
+            else
+                bad[#bad + 1] = all[i]
+            end
         end
     else
         for _, line in ipairs(all) do
@@ -381,15 +414,21 @@ local function sortedKeys(set)
 end
 
 -- Who to check against: the raid, else the running recording or the newest raid. Returns the
--- names and a label ("Raid (25)", "letzter Raid, 02.10."), or {} and nil.
+-- names, a label ("Raid (25)", "letzter Raid, 02.10.") and their classes ({ [lower name] = token },
+-- as far as known), or {}, nil and {}.
 function ns.SoftResRoster()
     if IsInRaid() then
-        local set, n = {}, GetNumGroupMembers() or 0
+        local set, classes, n = {}, {}, GetNumGroupMembers() or 0
         for i = 1, n do
-            local name = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-            if name then set[name] = true end
+            local raw, _, _, _, _, class = GetRaidRosterInfo(i)
+            local name = ns.FullName(ns.Plain(raw))
+            if name then
+                set[name] = true
+                class = ns.Plain(class)
+                if type(class) == "string" and class ~= "" then classes[name:lower()] = class end
+            end
         end
-        return sortedKeys(set), ("Raid (%d)"):format(n)
+        return sortedKeys(set), ("Raid (%d)"):format(n), classes
     end
     local s = ns.Active and ns.Active()
     if not s then
@@ -397,8 +436,12 @@ function ns.SoftResRoster()
             if not s or (o.start or 0) > (s.start or 0) then s = o end
         end
     end
-    if not s then return {}, nil end
-    return sortedKeys(s.members or {}), L["letzter Raid, %s"]:format(ns.FmtDay(s.start or time()))
+    if not s then return {}, nil, {} end
+    local classes = {}
+    for name, m in pairs(s.members or {}) do
+        if type(m) == "table" and type(m.class) == "string" and m.class ~= "" then classes[name:lower()] = m.class end
+    end
+    return sortedKeys(s.members or {}), L["letzter Raid, %s"]:format(ns.FmtDay(s.start or time())), classes
 end
 
 -- Edit distance of two strings (bytes).
@@ -421,13 +464,22 @@ end
 
 local function firstName(name) return (name:match("^(%S+)") or name):lower() end
 
--- The loaded list (or sr, e.g. a preview from ns.ParseSoftRes) against roster (default
--- ns.SoftResRoster()). Pure: no frames, no chat. nil without a list.
-function ns.SoftResCheck(sr, roster)
+-- The loaded list (or sr, e.g. a preview from ns.ParseSoftRes) against roster and its classes
+-- (both default ns.SoftResRoster()). Pure: no frames, no chat. nil without a list.
+-- match: list name -> the raider it was matched to (exact or one by ns.SameName); class: { name,
+-- raider, want, have } for a match whose class on the list is another than in the raid (tokens).
+function ns.SoftResCheck(sr, roster, classes)
     sr = sr or (AmisiaDB and AmisiaDB.softres)
     if type(sr) ~= "table" then return nil end
-    roster = roster or ns.SoftResRoster()
-    local out = { roster = #roster, reservers = 0, ok = {}, missing = {}, absent = {}, unclear = {}, over = {}, multi = {} }
+    if not roster then
+        local _
+        roster, _, classes = ns.SoftResRoster()
+    end
+    classes = classes or {}
+    local listClasses = type(sr.classes) == "table" and sr.classes or {}
+    local function wants(name) return ns.SoftResClassToken(listClasses[name]) end
+    local out = { roster = #roster, reservers = 0, ok = {}, missing = {}, absent = {}, unclear = {}, over = {}, multi = {},
+                  match = {}, class = {} }
     -- every list name with its sum of reservations
     local sums, multi = {}, {}
     for item, names in pairs(sr.byItem or {}) do
@@ -446,6 +498,7 @@ function ns.SoftResCheck(sr, roster)
         local hit = exact[name:lower()]
         if hit then
             found[hit] = true
+            out.match[name] = hit
         else
             local cands = {}
             for _, r in ipairs(roster) do
@@ -454,6 +507,7 @@ function ns.SoftResCheck(sr, roster)
             table.sort(cands)
             if #cands == 1 then
                 found[cands[1]] = true
+                out.match[name] = cands[1]
                 if not name:find(" ", 1, true) and cands[1]:find(" ", 1, true) then
                     out.unclear[#out.unclear + 1] = { name = name, kind = "surname", suggest = cands }
                 end
@@ -470,21 +524,35 @@ function ns.SoftResCheck(sr, roster)
         if found[r] then out.ok[#out.ok + 1] = r else out.missing[#out.missing + 1] = r end
     end
     table.sort(out.ok); table.sort(out.missing)
-    -- names not in the raid: suggestions among the raiders without a reservation
+    -- a matched name whose class on the list is another than the raider's
+    for _, name in ipairs(listNames) do
+        local r = out.match[name]
+        local want, have = wants(name), r and classes[r:lower()]
+        if want and have and want ~= have then
+            out.class[#out.class + 1] = { name = name, raider = r, want = want, have = have }
+        end
+    end
+    -- names not in the raid: suggestions among the raiders without a reservation; the same class
+    -- allows one letter more and comes first
     local done = {}
     for _, u in ipairs(out.unclear) do done[u.name] = true end
     for _, name in ipairs(lost) do
         out.absent[#out.absent + 1] = name
         if not done[name] then
-            local low, sug = name:lower(), {}
+            local low, sug, want = name:lower(), {}, wants(name)
             for _, r in ipairs(out.missing) do
                 local d = (#name >= 4 and #r >= 4) and distance(low, r:lower()) or 99
-                if d <= 2 or firstName(name) == firstName(r) then
-                    sug[#sug + 1] = { r = r, d = d }
+                local same = want ~= nil and classes[r:lower()] == want
+                if d <= (same and 3 or 2) or firstName(name) == firstName(r) then
+                    sug[#sug + 1] = { r = r, d = d, s = same and 0 or 1 }
                 end
             end
             if #sug > 0 then
-                table.sort(sug, function(a, b) if a.d ~= b.d then return a.d < b.d end return a.r < b.r end)
+                table.sort(sug, function(a, b)
+                    if a.s ~= b.s then return a.s < b.s end
+                    if a.d ~= b.d then return a.d < b.d end
+                    return a.r < b.r
+                end)
                 local list = {}
                 for i = 1, math.min(3, #sug) do list[i] = sug[i].r end
                 out.unclear[#out.unclear + 1] = { name = name, kind = "typo", suggest = list }
@@ -904,18 +972,19 @@ end
 function ns.SoftResCheckLines()
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr then return { L["Keine Soft-Reserves geladen."] } end
-    local roster, label = ns.SoftResRoster()
+    local roster, label, classes = ns.SoftResRoster()
     if not label then return { L["Kein Raid zum Abgleichen."] } end
-    local c = ns.SoftResCheck(sr, roster)
+    local c = ns.SoftResCheck(sr, roster, classes)
     local out = { L["Abgleich mit %s: %d reserviert, %d ohne Reserve, %d nicht im Raid, %d unklar%s."]:format(
         (label:gsub("^letzter ", "letztem ")), #c.ok, #c.missing, #c.absent, #c.unclear,   -- l10n-ok: German case of the label (English has no match)
-        #c.over > 0 and L[", %d zu viel"]:format(#c.over) or "") }
+        (#c.over > 0 and L[", %d zu viel"]:format(#c.over) or "") .. (#c.class > 0 and L[", %d Klasse falsch"]:format(#c.class) or "")) }
     if #c.missing > 0 then out[#out + 1] = L["Ohne Reserve: %s"]:format(table.concat(c.missing, ", ")) end
     if #c.absent > 0 then out[#out + 1] = L["Nicht im Raid: %s"]:format(table.concat(c.absent, ", ")) end
     for _, u in ipairs(c.unclear) do
         out[#out + 1] = L["Unklar: %s (%s?)"]:format(u.name, table.concat(u.suggest, ", "))
     end
     for _, o in ipairs(c.over) do out[#out + 1] = L["Zu viele: %s (%d)"]:format(o.name, o.n) end
+    for _, f in ipairs(c.class) do out[#out + 1] = ("%s: %s"):format(f.name, ns.SoftResClassText(f)) end
     for _, m in ipairs(c.multi) do out[#out + 1] = L["Mehrfach: %s, %s x%d"]:format(m.name, ns.ItemName(m.item), m.n) end
     return out
 end
@@ -1016,8 +1085,8 @@ function ns.SoftResPreviewText(text)
     if not (text or ""):find("%S") then return "" end
     local byItem, _, bad, times, total, _, extra = ns.ParseSoftRes(text)
     if extra.err then return ns.SoftResCodeError(extra.err) end
-    local roster, label = ns.SoftResRoster()
-    local c = ns.SoftResCheck({ byItem = byItem, times = times }, roster)
+    local roster, label, classes = ns.SoftResRoster()
+    local c = ns.SoftResCheck({ byItem = byItem, times = times, classes = extra.classes }, roster, classes)
     local head = L["%d Raider, %d %s"]:format(c.reservers, total, plural(total, L["Reservierung"], L["Reservierungen"]))
     local parts = {}
     if extra.src == "code" then
@@ -1031,6 +1100,7 @@ function ns.SoftResPreviewText(text)
             if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
             if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
             if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
+            if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
             if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
         else
             parts[#parts + 1] = L["kein Raid zum Abgleichen"]
@@ -1040,6 +1110,7 @@ function ns.SoftResPreviewText(text)
         if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
         if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
         if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
+        if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
         if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
     elseif extra.src ~= "code" then
         head = L["Vorschau: %s"]:format(head)

@@ -1265,3 +1265,9 @@ L["Übernimmt die Vergaben, die die Lootleitung im Raid einträgt, in deine eige
 -- the settings sections of 2.32.0
 L["Wer braucht das?"] = "Who needs this?"
 L["Roll-Runden"] = "Roll rounds"
+
+-- Soft-reserves: the class check (F-109)
+L["Klasse passt nicht: softres %s, im Raid %s"] = "Class mismatch: softres %s, in the raid %s"
+L[", %d Klasse falsch"] = ", %d wrong class"
+L["%d Klasse falsch"] = "%d wrong class"
+L["Klasse:|r %s"] = "Class:|r %s"
