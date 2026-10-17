@@ -1,6 +1,6 @@
 # Spec: Fenster "Ausrüstungsziele" (Puppe, Wertung, Slot-Leiste, Fortschritt)
 
-Stand: 2026-10-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-17 · Status: freigegeben (2026-10-17) ·
 Feature: F-110 (A, Fenster mit Puppe), F-111 (B, Wertungs-Kopf), F-112 (C, Slot-Leiste und eigene Wahl),
 F-113 (D, Fortschritt und Filter)
 
@@ -208,4 +208,12 @@ Slot und Spezialisierung (17 × 3 Zahlen je Charakter), also kein Wachstum der S
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-17: Nutzer: "passt, alle sechs Vorschläge so übernehmen" ->
+  1. eigenes Fenster wie der Talentrechner, die Seite Ziele bleibt;
+  2. Name "Ausrüstungsziele" (en "Gear Goals");
+  3. die eigene Wahl gilt überall, wo Amisia ein Ziel nutzt; "Upgrade für dich" rechnet weiter nach der
+     Wertung gegen das Angelegte;
+  4. überholte Wahl: nur der Hinweis "Überholt ... Übernehmen", nie automatisch;
+  5. Modus "Ziele": erst ausziehen, dann Ziele und für Slots ohne Ziel das Angelegte anprobieren;
+  6. Items außerhalb der Daten im Feld erlaubt, wenn sie passen (Werte des Clients, Quelle "unbekannt",
+     kein Pin).
