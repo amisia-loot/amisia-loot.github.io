@@ -277,9 +277,10 @@ local function sizeTab(tab)
 end
 
 -- A tab under the window: the client's panel tab (PanelTabButtonTemplate, as under the character
--- window); without the template a flat tab of the same size.
+-- window); without the template a flat tab of the same size. Named: the classic PanelTemplates_SelectTab
+-- looks the highlight up by the tab's name and breaks on a nameless tab.
 local function bottomTab(g)
-    local ok, tab = pcall(CreateFrame, "Button", nil, F, "PanelTabButtonTemplate")
+    local ok, tab = pcall(CreateFrame, "Button", "AmisiaMainTab_" .. g.key, F, "PanelTabButtonTemplate")
     if not ok or not tab or not tab.Text or not tab.Left or not tab.LeftActive then
         if ok and tab then tab:Hide() end
         tab = CreateFrame("Button", nil, F)
