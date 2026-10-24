@@ -61,6 +61,7 @@ Collect\DropSync.lua
 Collect\Collector.lua
 Collect\CollectSync.lua
 Collect\QuestXP.lua
+Collect\QuestTags.lua
 Data\GearData.lua [AllowLoadGameType camelot]
 Data\GearWeights.lua [AllowLoadGameType camelot]
 Data\BisData.lua [AllowLoadGameType camelot]
@@ -75,6 +76,7 @@ Data\DungeonArt.lua [AllowLoadGameType camelot]
 Data\ScanDone.lua [AllowLoadGameType camelot]
 Data\RaidCheckData.lua [AllowLoadGameType camelot]
 Gear\Gear.lua
+Gear\PlayStyle.lua
 Gear\Model.lua
 Gear\GearFrame.lua
 Gear\Bis.lua
@@ -124,6 +126,7 @@ UI\Pages\Gear.lua
 UI\Pages\Dungeons.lua
 UI\Pages\RaidJournal.lua
 UI\GoalsWindow.lua
+UI\SlotCard.lua
 UI\Pages\Map.lua
 UI\Pages\Professions.lua
 UI\Pages\Quests.lua

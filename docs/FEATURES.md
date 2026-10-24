@@ -805,6 +805,18 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du "Zu holen" wählst, dann zeigt die Liste nur Slots mit Ziel, das du nicht hast, der Chip sagt die Zahl; "Ohne Verzauberung" zeigt die angelegten Items in verzauberbaren Slots ohne Verzauberung.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil D.
 
+### F-124 Spielstil-Filter für die Ziele
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Spielstil" und dann "Keine Dungeons" anhakst, dann steht keine Quelle "Dungeon", "Raid" oder eine Quest aus einem Dungeon mehr da, und der Knopf heißt "Spielstil (1)".
+- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (freigegeben 2026-10-24).
+
+### F-125 Rechtsklick auf den Charakter-Slot
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Charakterfenster mit rechts auf einen Slot klickst, dann öffnet sich die Karte "Upgrades: <Slot>" mit bis zu fünf Items.
+- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (freigegeben 2026-10-24).
+
 ### F-045 Karte: Ziel, Pfeil und Pins
 - Version: 1.9.0
 - Status: gebaut

@@ -390,6 +390,12 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go
   into `GearData.lua` (`ST`), so the window needs no loading, and newly revealed items join.
 - Items without scanned stats are read from the client when the window opens.
+- The reputation an item asks for (`RP`, the play style "Jetzt holbar" and the catalog group "Ruf",
+  F-124): `MinFactionID` and `MinReputation` of the client's `ItemSparse` in `--wago` (the user's
+  `export_db2.ps1`); none without the table.
+- Quest types (`QT`, "Solo machbar"): `AmisiaDB.questtags` of the SavedVariables (the addon reads them
+  from the own quest log) join `tools/quest_tag_archive.json` (committed; a later file wins, nothing is
+  dropped); the data keeps the types of its own quests.
 - The collector notes drops with NPC id and dungeon (`Drop: <mob> [<npcID>] @<place> #party:<instanceID>`)
   and quest rewards with quest id and the player's level, so the new Forever dungeons and quests fill
   in as the guild plays. Pass every officer's SavedVariables with `--sv` to merge them.

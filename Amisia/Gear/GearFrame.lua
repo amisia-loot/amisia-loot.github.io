@@ -315,6 +315,8 @@ local function fillOverview()
     for c, h in ipairs(colHeads) do
         if c == myCol and g.class == myClass then h.mark:Show() else h.mark:Hide() end
     end
+    -- the own play style (F-124) keeps the upgrade dot off items it leaves out
+    local own = g.class == myClass and ns.PlayStyle and ns.PlayStyle.Count() > 0 and ns.BisOpts() or nil
     for r, slot in ipairs(Gear.SLOTS) do
         for c, b in ipairs(cells[r]) do
             local res = results[c]
@@ -337,6 +339,7 @@ local function fillOverview()
                 -- only upgrades over what the player wears, in the player's own range
                 local mine, link = nil, nil
                 if c == myCol then mine, link = equippedScore(slot, c) end
+                if mine and own and ns.PlayStyle.Blocks(e[1], own) then mine = nil end
                 if ns.Get("bis.upgradeDot") and mine and ns.BisIsUpgrade(e[2] - mine, mine) and link and ns.ItemID(link) ~= e[1] then b.up:Show() else b.up:Hide() end   -- l10n-ok: setting key
                 if g.class == myClass and ns.BisOwned and ns.BisOwned(e[1]) then b.own:Show() else b.own:Hide() end
             else

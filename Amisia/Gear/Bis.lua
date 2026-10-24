@@ -362,6 +362,8 @@ function ns.BisOpts()
     scoringOpts(o)
     o.cap = ns.BisHitCaps and ns.BisHitCaps(o) or nil
     o.own, o.ownUnused = ownPicks(c, o)
+    -- the play style (F-124): only the own options carry it
+    o.style = ns.PlayStyle and ns.PlayStyle.Context(o) or nil
     return o
 end
 
@@ -409,7 +411,8 @@ local function optsKey(o, st, noOwn)
     return table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), st or stamp, tostring(o.class), tostring(o.spec), tostring(o.level),
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
-        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), noOwn and "" or sortedKeys(o.own) }, "|")
+        tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), noOwn and "" or sortedKeys(o.own),
+        ns.PlayStyle and ns.PlayStyle.Key(o.style) or "" }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -1358,6 +1361,12 @@ local function ownEntry(slotKey, id, o, list)
     return e
 end
 
+-- An own pick stays its row's target when the play style leaves it out (F-124), marked outside.
+local function markOwn(e, o)
+    if o.style and e[1] and ns.PlayStyle.Blocks(e[1], o) then e.outside = true end
+    return e
+end
+
 local function without(list, a, b)
     local out = {}
     for _, e in ipairs(list or {}) do
@@ -1399,7 +1408,7 @@ local function applyOwn(best, o)
     if not own then return out end
     for k, id in pairs(own) do
         if k ~= "FINGER1" and k ~= "FINGER2" and k ~= "TRINKET1" and k ~= "TRINKET2" then
-            out[k] = front(ownEntry(k, id, o, out.rank[k]), out[k])
+            out[k] = front(markOwn(ownEntry(k, id, o, out.rank[k]), o), out[k])
         end
     end
     -- the same weapon in both hands only when it is the pick of both
@@ -1410,10 +1419,10 @@ local function applyOwn(best, o)
         local pa, pb = own[a], own[b]
         if pa or pb then
             local full = best[a] or {}
-            local rowA = pa and front(ownEntry(a, pa, o, full), without(full, pb)) or without(best[a], pb)
+            local rowA = pa and front(markOwn(ownEntry(a, pa, o, full), o), without(full, pb)) or without(best[a], pb)
             -- from the whole list: the top item a pick displaced from the first row stays a target
             local rowB = without(full, rowA[1] and rowA[1][1], pa)
-            if pb then rowB = front(ownEntry(b, pb, o, full), rowB) end
+            if pb then rowB = front(markOwn(ownEntry(b, pb, o, full), o), rowB) end
             out[a], out[b] = rowA, rowB
         end
     end
@@ -1469,7 +1478,8 @@ function ns.BisTargets(opts)
                 wished = wishOf(c, id), switch = switch or nil,
                 upgrade = (not switch and owned ~= "worn" and (src.pick ~= nil or src.own or ns.BisIsUpgrade(gain, mine))) or false,
                 sc = src.sc, suffix = src.suffix, easier = src.easier, set = src.set, setb = src.setb,
-                effort = src.effort, pick = src.pick, own = src.own or nil, unknown = src.unknown, loading = src.loading }
+                effort = src.effort, pick = src.pick, own = src.own or nil, unknown = src.unknown, loading = src.loading,
+                outside = src.outside }
         end
         -- a BiS pick or own pick worn in the row: it is the target, nothing else is an upgrade there
         if out[1] and (out[1].pick or out[1].own) and out[1].worn then
@@ -1491,6 +1501,40 @@ function ns.BisTargets(opts)
     targetKey, targetRes = key, r
     targetOwnStamp = (not opts) and stamp or nil
     return r
+end
+
+local hiddenKey, hiddenRes
+-- What the play style keeps out of the own targets (F-124): { n, list = { { id, slot, why } } }, the
+-- items among the first three options of each row without the play style that it leaves out (why:
+-- the keys of the switches, ns.PlayStyle.WhyText). Kept until the options or the scores change.
+function ns.BisStyleHidden(o)
+    o = o or ns.BisOpts()
+    local none = { n = 0, list = {} }
+    if not o.style or not o.class or not Gear.Available() then return none end
+    local plain = {}
+    for k, v in pairs(o) do plain[k] = v end
+    plain.style = nil
+    local key = optsKey(plain, scoreStamp, true) .. "|" .. ns.PlayStyle.Key(o.style)
+    if key == hiddenKey then return hiddenRes end
+    local w0 = Gear.StatsWaits()
+    local best = Gear.Best(plain)
+    local out, seen = { n = 0, list = {} }, {}
+    for _, sl in ipairs(Gear.SLOTS) do
+        local list = best[sl.key] or {}
+        for i = 1, math.min(3, #list) do
+            local id = list[i][1]
+            if not seen[id] then
+                seen[id] = true
+                local ok, why = ns.PlayStyle.ItemPasses(id, o)
+                if not ok then
+                    out.n = out.n + 1
+                    out.list[#out.list + 1] = { id = id, slot = sl.key, why = why }
+                end
+            end
+        end
+    end
+    if Gear.StatsWaits() == w0 then hiddenKey, hiddenRes = key, out end
+    return out
 end
 
 -- The targets of the own character when they are at hand for the current state, else nil; never
@@ -1823,6 +1867,13 @@ function ns.BisHere(placeKey, opts)
     if not place or not Gear.Available() then return place, {} end
     local o = opts or ns.BisOpts()
     if not o.class then return place, {} end
+    -- a place picked by hand needs no zone switch (F-124): it would leave nothing there
+    if placeKey and o.style and o.style.on.zone then
+        local copy = {}
+        for k, v in pairs(o) do copy[k] = v end
+        copy.style = ns.PlayStyle.Without(o.style, "zone")
+        o = copy
+    end
     local key = optsKey(o) .. "|" .. place.key
     if key == hereKey then return herePlace, hereList end
     local d = ns.Data("GEAR")
@@ -1842,6 +1893,8 @@ function ns.BisHere(placeKey, opts)
                 local rec = at[row[i]]
                 if rec and Gear.SourceOk(rec, o, row) then hit = rec break end
             end
+            -- the reputation of "Jetzt holbar" (F-124)
+            if hit and o.style and not ns.PlayStyle.ItemOk(id, o.style) then hit = nil end
             if hit and not exItem[id] then
                 if (row[4] or 0) <= o.level then
                     local ev = evaluate(id, o)
@@ -1902,7 +1955,8 @@ ns.Listen("SETTING", function(path)
 end)
 ns.Listen("BIS_CHANGED", function(kind)
     guess = nil
-    if kind == "pick" then bump() else bumpAll() end
+    -- an own pick or the play style changes no score, only which items count
+    if kind == "pick" or kind == "style" then bump() else bumpAll() end
 end)
 Gear.OnData(bumpAll)
 -- a suffix the collector adds changes Gear.Best's lists (the targets pick it up with the next stamp)
@@ -2708,6 +2762,8 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
       tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] },
     { key = "bis.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,   -- l10n-ok: setting key
       tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
+    { key = "bis.slotClick", type = "toggle", label = L["Rechtsklick auf Slots im Charakterfenster"], default = true,   -- l10n-ok: setting key
+      tip = L["Ein Rechtsklick auf einen Slot im Charakterfenster zeigt die besten Items für diesen Slot (bei Items mit Benutzen-Effekt Alt+Rechtsklick)."] },
 }}
 
 -- The item at the start of a command (a link, else an item id) and the rest.

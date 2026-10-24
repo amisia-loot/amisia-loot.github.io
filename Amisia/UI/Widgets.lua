@@ -1079,6 +1079,14 @@ function W.Menu(owner, entries)
             menu:Hide()
             e[2]()
         end)
+        -- e.tip: a line of explanation on hover
+        b:SetScript("OnEnter", e.tip and function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(e.tipTitle or e[1])
+            GameTooltip:AddLine(e.tip, 1, 1, 1, true)
+            GameTooltip:Show()
+        end or nil)
+        b:SetScript("OnLeave", e.tip and function() GameTooltip:Hide() end or nil)
         b:Show()
     end
     for i = #entries + 1, #menu.buttons do menu.buttons[i]:Hide() end

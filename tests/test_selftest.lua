@@ -30,6 +30,13 @@ fill("C_Spell.GetSpellDescription", function() return "Errichtet ein Schleifrad.
 fill("C_CurrencyInfo.GetCurrencyInfo", function() return { name = "Händlergunst", quantity = 0 } end)
 for _, path in ipairs(ST.PROF_FUNCTIONS) do fill(path, function() end) end
 Enum.ItemClass = { Tradegoods = 7, Reagent = 5, Recipe = 9 }
+-- the game's character window with its 17 slot buttons (the right-click card, F-125)
+for inv, name in pairs({ [1] = "Head", [2] = "Neck", [3] = "Shoulder", [15] = "Back", [5] = "Chest", [9] = "Wrist",
+        [10] = "Hands", [6] = "Waist", [7] = "Legs", [8] = "Feet", [11] = "Finger0", [12] = "Finger1", [13] = "Trinket0",
+        [14] = "Trinket1", [16] = "MainHand", [17] = "SecondaryHand", [18] = "Ranged" }) do
+    local b = CreateFrame("Button", "Character" .. name .. "Slot", UIParent)
+    b.GetID = function() return inv end
+end
 
 -- a world to look at: a raid, a guild with ranks, a map, a worn item, a weekly reset
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur Eisherz", class = "SHAMAN", rank = 1 } }
@@ -144,6 +151,7 @@ assert(has(text, "WERT   Chat-Link-Alias: ChatEdit_InsertLink fehlt, ChatFrameUt
 assert(has(text, "WERT   Ereignisse: nicht prüfbar"), "no event check without C_EventUtils")
 assert(text:find("OK     Funktionen: alle %d+ vorhanden"), "every client function")
 assert(text:find("OK     Objekte: alle %d+ vorhanden"), "every client object")
+assert(has(text, "OK     Charakterfenster-Slots: 17 Slot-Knöpfe, Rechtsklick an"), "slot buttons")
 assert(not text:find("\nFEHLT ") and not text:find("\nFEHLER "), "a complete client has no problem:\n" .. text)
 -- item constants and the stat keys of a worn item
 assert(has(text, "OK     Enum.ItemClass: Tradegoods 7, Reagent 5"), "item classes")

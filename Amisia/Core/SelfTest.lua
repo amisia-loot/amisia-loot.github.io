@@ -710,6 +710,13 @@ local function sectionArt(R)
         if #lacks > 0 then return FEHLT, L["DressUpModel ohne %s (keine Puppe im Zielefenster)"]:format(table.concat(lacks, ", ")) end
         return "OK", L["DressUpModel, SetUnit, Undress, TryOn vorhanden"]
     end)
+    -- the slot buttons of the game's character window the right-click card hooks (F-125)
+    check(R, L["Charakterfenster-Slots"], function()
+        local n = ns.SlotCardHook and ns.SlotCardHook() or 0
+        if n == 0 then return FEHLT, L["keine Slot-Knöpfe gefunden (kein Rechtsklick auf Slots)"] end
+        if n < 17 then return "WERT", L["%d von 17 Slot-Knöpfen gefunden"]:format(n) end
+        return "OK", L["17 Slot-Knöpfe, Rechtsklick an"]
+    end)
 end
 
 -- kind, template, the parts Amisia needs from it (as the widgets probe them)

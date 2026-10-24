@@ -623,6 +623,8 @@ local function compute(entry, e, x, seen, o, gains, limit)
     local po = {}
     for k, v in pairs(o) do po[k] = v end
     po.sources = ALL_SOURCES
+    -- the dungeon pages plan without the play style (F-124)
+    po.style = nil
     -- the own picks (D-55) are targets: they count as upgrades until worn
     local ownSet = ns.BisOwnPickSet and ns.BisOwnPickSet(o) or {}
 
@@ -1249,6 +1251,7 @@ function ns.DungeonQuests(dkey, opts)
     for k, v in pairs(o) do po[k] = v end
     po.sources = ALL_SOURCES
     po.exclude = nil
+    po.style = nil
     for _, q in ipairs(x and x.quests or {}) do
         local rec = q.rec
         local qid = type(rec[7]) == "number" and rec[7] > 0 and rec[7] or nil

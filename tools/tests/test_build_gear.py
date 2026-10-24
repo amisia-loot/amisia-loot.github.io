@@ -558,3 +558,37 @@ def test_oneforall_joins_as_dungeon_quest_and_craft_sources(tmp_path):
     assert recs[274084] == [('Q', 'A Vengeful Fate', 29, 24, 'H', None, 900001, 1, 'Razorfen Kraul')]
     assert recs[250001] == [('C', 'tailoring', 50)]
     assert 280001 not in keep   # a raid's loot stays out of the levelling planner
+
+
+def test_reputation_and_quest_types_reach_the_data(tmp_path):
+    """The reputation an item asks for comes from the client's ItemSparse (RP, F-124); the quest types
+    the addon learned join tools/quest_tag_archive.json and reach the gear data (QT) for its quests."""
+    wago = tmp_path / 'wago'
+    wago.mkdir()
+    (wago / 'ItemSparse.1.60.1.70532.csv').write_text(
+        'ID,MinFactionID,MinReputation\n10,72,5\n11,0,0\n12,509,9\n', encoding='utf-8')
+    assert build_gear.client_reputation(str(wago)) == {10: (72, 5)}, 'a standing beyond exalted is dropped'
+    assert build_gear.client_reputation(str(tmp_path / 'none')) == {}
+
+    arch = tmp_path / 'quest_tag_archive.json'
+    db1 = {'questtags': {'v': 1, 'list': {5: 'G', 6: 'X', 7: 'D'}}}
+    db2 = {'questtags': {'v': 1, 'list': {5: 'D'}}}
+    tags = build_gear.update_quest_tags([db1, db2], path=str(arch), today='2026-10-24')
+    assert tags == {5: 'D', 7: 'D'}, 'a later file wins, an unknown code is dropped'
+    saved = json.loads(arch.read_text(encoding='utf-8'))
+    assert saved == {'updated': '2026-10-24', 'tags': {'5': 'D', '7': 'D'}}
+    assert build_gear.update_quest_tags([{}], path=str(arch), today='2026-10-25') == tags, 'nothing is forgotten'
+    assert json.loads(arch.read_text(encoding='utf-8'))['updated'] == '2026-10-24', 'unchanged: not written again'
+
+    src = build_gear.Sources()
+    q = src.add('Q', 'Q', 0, 30, None, 1436, 5)
+    v = src.add('V', 'Smith', 1436)
+    keep = {10: (scan_item('Helm'), [v], 20, 0, 0.0, 0), 11: (scan_item('Hat'), [q], 20, 0, 0.0, 0)}
+    out = tmp_path / 'GearData.lua'
+    build_gear.write_lua(str(out), src, keep, {}, {'built': '2026-10-24', 'rep': {10: (72, 5), 99: (1, 1)},
+                                                   'qtags': {5: 'D', 8: 'G'}})
+    text = lua_data.expand(out.read_text(encoding='utf-8')) if hasattr(lua_data, 'expand') else out.read_text(encoding='utf-8')
+    assert '[10]=725' in text.replace(' ', ''), 'Stormwind honored for the helm'
+    assert '[99]' not in text.split('RP')[1].split('M')[0], 'only items of the data'
+    assert '[5]="D"' in text.replace(' ', ''), 'the quest of the data has its type'
+    assert '[8]=' not in text.split('QT')[1].split('M')[0].replace(' ', ''), 'a quest the data lacks is left out'

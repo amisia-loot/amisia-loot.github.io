@@ -1,6 +1,6 @@
 # Spec: Spielstil-Filter und Rechtsklick auf den Charakter-Slot
 
-Stand: 2026-10-24 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-24 · Status: freigegeben ·
 Feature: F-124 (Spielstil), F-125 (Slot-Rechtsklick)
 
 ## Ziel
@@ -70,7 +70,8 @@ diesem Slot. Escape oder ein zweiter Rechtsklick schließt die Karte. Im Tooltip
 - Wenn du "Kaufbar" anhakst, dann bleiben nur Händlerware und Items, die beim Anlegen binden; bei einem
   Weltdrop steht als Quelle "Auktionshaus (bindet beim Anlegen)".
 - Wenn du "Jetzt holbar" anhakst und dein Ruf bei der Fraktion eines Ruf-Items zu niedrig ist, dann fehlt
-  das Item; mit der Maus über "Spielstil blendet N Ziele aus" steht es dort mit "Ruf: <Fraktion>, <Stufe>".
+  das Item; mit der Maus über dem Knopf "Spielstil (1)" steht es unter "Spielstil blendet N Ziele aus:" mit
+  "Ruf: <Fraktion>, <Stufe> (du: <Stufe>)".
 - Wenn "Fokus-Zone" an ist und du die Zone wechselst, dann zeigt die Liste nach einigen Sekunden nur
   Quellen der neuen Zone; die Karten-Pins folgen.
 - Wenn du im Charakterfenster mit rechts auf einen Slot klickst, dann öffnet sich die Karte "Upgrades:
@@ -116,12 +117,13 @@ Spielstil (sonst würde ein Filter die Lootvergabe färben).
   `RP = {[itemID] = factionID * 10 + standing}` (keine neue Spalte in `I`, damit `Gear.FIRST_SOURCE`
   bleibt). Der Stand des Spielers über `C_Reputation.GetFactionDataByID` bzw. `GetFactionInfoByID`.
   Damit fällt auch die Lücke "Ruf" aus F-123 weg (die Katalog-Kategorie Ruf wäre ein kleiner Nachtrag).
-- **Gruppenquests**: weder QuestData noch AllTheThings haben ein Merkmal dafür. Vorschlag (Frage 4): der
-  Quellen-Sammler (`collect`) merkt sich für Quests im Log den Typ des Spiels (`C_QuestLog.GetQuestTagInfo`:
-  Gruppe, Dungeon, Raid, Elite) und schickt ihn über die SavedVariables ins Archiv; `build_quests.py`
-  schreibt ihn als Flag `G` in QuestData. Bis dahin filtert "Solo machbar" nur Dungeonquests.
-- **Neue Dateien**: `Gear/PlayStyle.lua` (Filterregeln, Befehl) und `UI/SlotCard.lua` (Karte, Hook auf die
-  Slot-Knöpfe). Beides in TOC und Modulkarte; nach dem Release WoW ganz neu starten.
+- **Gruppenquests**: weder QuestData noch AllTheThings haben ein Merkmal dafür. Amisia liest für Quests im
+  Log den Typ des Spiels (`C_QuestLog.GetQuestTagInfo`, sonst die empfohlene Gruppengröße: G Gruppe, D
+  Dungeon, R Raid, P PvP) in den neuen Schlüssel `AmisiaDB.questtags` (nie gesendet); `tools/build_gear.py`
+  sammelt ihn in `tools/quest_tag_archive.json` und schreibt die Typen der eigenen Quests als `QT` in die
+  GEAR-Daten. Bis dahin filtert "Solo machbar" nur Dungeonquests und was dieser Client schon gelernt hat.
+- **Neue Dateien**: `Gear/PlayStyle.lua` (Filterregeln, Befehl), `Collect/QuestTags.lua` (Questtypen aus dem
+  Log) und `UI/SlotCard.lua` (Karte, Hook auf die Slot-Knöpfe). Beides in TOC und Modulkarte; nach dem Release WoW ganz neu starten.
 - Keine Nachrichten, Blob-Arten, Exportzeilen, Einfügeblöcke. Eine Regel in DECISIONS (D-56: Spielstil
   filtert Quellen, nie Wertung, nie gesendet; Rechtsklick nur nach dem Spiel).
 
@@ -142,4 +144,17 @@ Spielstil (sonst würde ein Filter die Lootvergabe färben).
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-10-24: "Passt, alle sechs Vorschläge so übernehmen und bauen." -> mehrere Spielstile, alle müssen
+  passen; gilt für Pins und Upgrade-Punkt, nicht für den Tooltip; Rechtsklick auf Items mit Benutzen-Effekt
+  benutzt nur, Alt+Rechtsklick öffnet die Karte auf jedem Slot; Gruppenquests lernt der Sammler aus dem
+  Questlog; Katalog-Kategorie Ruf im selben Release; Spielstil je Account.
+- 2026-10-24 beim Bauen: Questtypen kommen als `QT` in die GEAR-Daten (nicht als Flag in QuestData), mit eigenem
+  Schlüssel `AmisiaDB.questtags` statt im Sammler-Datensatz (der wird mit der Gilde getauscht). "Kaufbar" zusammen
+  mit "Fokus-Zone" lässt nur Händler der Zone (das Auktionshaus hat keine Zone). Ein Item ohne lesbaren Beruf zählt
+  bei "Jetzt holbar" nur, wenn der Client gar keine Berufe nennt. Die Ruf-Zeile steht bei jedem Ruf-Item, nicht nur mit
+  "Jetzt holbar"; die Liste der ausgeblendeten Ziele steht im Tooltip des Knopfs "Spielstil". Die Ruf-Gruppe des
+  Katalogs zeigt sich ab ihrem niedrigsten Item.
+- 2026-10-24 Review: Trash-Drops zählen als Dungeon; BiS-Empfehlungen folgen dem Spielstil (eine ohne bekannte
+  Quelle fällt weg); "außerhalb deines Spielstils" nur, wenn die Schalter das Item ausschließen; "Hier" prüft den Ruf und
+  ein dort gewählter Ort braucht keine Fokus-Zone; Shift- und Strg-Rechtsklick bleiben dem Spiel; die Tooltip-Zeile
+  bleibt auch beim Drücken von Alt.

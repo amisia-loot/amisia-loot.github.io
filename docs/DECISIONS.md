@@ -1209,3 +1209,29 @@ Schlüssel der Ergebnisse auch; `ns.BisMigrate` prüft Spezialisierung, Slot und
 Spezialisierung, keine neue Migration nach D-48 nötig). Ein Teilen von Listen (Teil F) braucht einen
 eigenen Nachtrag zur Spec.
 **Durchgesetzt durch:** `tests/test_goals_picks.lua`.
+
+## D-56 Spielstil filtert Quellen der eigenen Ziele, nie die Wertung; Rechtsklick auf Slots nur nach dem Spiel
+
+**Datum:** 2026-10-24
+**Entscheidung:** Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (F-124, F-125). Fünf Schalter über den
+Quellen-Chips (Keine Dungeons, Solo machbar, Kaufbar, Jetzt holbar, Fokus-Zone), beliebig viele zugleich: eine
+Quelle muss alle erfüllen. Sie gelten nur für die eigenen Optionen (`ns.BisOpts`: Seite Ziele, Fenster
+Ausrüstungsziele, Karten-Pins, "Hier", der Upgrade-Punkt der eigenen Spalte der Tabelle, die Slot-Karte, die
+BiS-Empfehlungen: eine ohne bekannte Quelle fällt bei jedem Schalter weg), nicht für
+den Tooltip "Upgrade für dich", die anderen Spalten der Tabelle, die Simulation, die Seiten Dungeons und Raids und
+"Wer braucht das?" (nichts davon wird gesendet). Sie ändern keine Wertung. "Kaufbar" lässt jedes Item herein, das nicht
+beim Aufheben bindet (Quelle "Auktionshaus (bindet beim Anlegen)"), auch wenn sein Chip aus ist; das Auktionshaus hat
+keine Zone. "Jetzt holbar": Ruf aus der Client-Tabelle ItemSparse; ein Ruf, den der Client nicht nennt, zählt als
+erreicht; nennt der Client gar keine Berufe, zählt Hergestelltes. Gruppenquests lernt Amisia aus dem eigenen Questlog
+(`AmisiaDB.questtags`, nie gesendet, Archiv `tools/quest_tag_archive.json`). Die eigene Wahl (D-55) bleibt Option 1
+ihres Slots, mit "außerhalb deines Spielstils" (nur wenn die Schalter, nicht die Chips, sie ausschließen). Trash-Drops
+eines Dungeons ("Trash (...)") zählen als Dungeon. Die Schalter sind Fensterzustand (`settings.bis.style`, je Account),
+keine Einstellung (D-49). Der Rechtsklick auf einen Slot des Charakterfensters hängt sich nur nach dem Klick des
+Spiels an (`HookScript`); auf einem Item mit Benutzen-Effekt benutzt das Spiel es und nur Alt+Rechtsklick öffnet die
+Karte; Amisia legt nie etwas an.
+**Grund:** Nutzer 2026-10-24 nach dem Vergleich mit einem anderen Leveling-Addon: "Schreib eine Spec für die
+Spielstil-Filter ... plus Rechtsklick auf den Slot im Charakterfenster"; zur Spec: "Passt, alle sechs Vorschläge so
+übernehmen und bauen."
+**Folge:** Der Schlüssel der Optionen trägt Schalter, Ort und einen Zähler (Ruf, Zone, gelernte Questtypen), sonst
+stimmt kein Cache. Elitequests ohne Questlog-Eintrag erkennt "Solo machbar" erst nach dem nächsten Daten-Build.
+**Durchgesetzt durch:** `tests/test_play_style.lua`, `tools/tests/test_build_gear.py`.

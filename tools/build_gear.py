@@ -72,6 +72,9 @@ FOREVER_JS = os.path.join(ROOT, 'Amisia-Website', 'data', 'forever.js')
 FOREVER_ZONES = os.path.join(HERE, 'forever_zones.json')
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 ITEMSPARSE_JSON = os.path.join(HERE, 'gear_itemsparse.json')
+# the quest types the addon learned from the quest log (AmisiaDB.questtags), kept for good
+QUEST_TAGS = os.path.join(HERE, 'quest_tag_archive.json')
+QUEST_TAG_CODES = ('G', 'D', 'R', 'P')
 WAGO = os.path.expanduser('~/addons/_wago')
 # ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
@@ -422,6 +425,24 @@ def client_item_ids(wago_dir):
         return {int(r['ID']) for r in csv.DictReader(fh) if (r.get('ID') or '').isdigit()}
 
 
+def client_reputation(wago_dir):
+    """{item id: (faction id, standing)} of the client's ItemSparse table: the reputation an item
+    asks for (MinFactionID, MinReputation 0 hated .. 7 exalted); {} without the table."""
+    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir and os.path.isdir(wago_dir) else None
+    if not path:
+        return {}
+    out = {}
+    with open(path, encoding='utf-8', newline='') as fh:
+        for r in csv.DictReader(fh):
+            try:
+                iid, fac, rep = int(r['ID']), int(r.get('MinFactionID') or 0), int(r.get('MinReputation') or 0)
+            except ValueError:
+                continue
+            if fac > 0 and 0 <= rep <= 7:
+                out[iid] = (fac, rep)
+    return out
+
+
 def client_known(ids, wago_dir):
     """The ids of ids the client's own ItemSparse table has (an id it lacks does not exist in Forever:
     /amisia scan gear would ask for it in vain). Without the table, all of them."""
@@ -473,6 +494,44 @@ def refresh_itemsparse(csv_path, scan_items, path=ITEMSPARSE_JSON):
                   indent=0, sort_keys=True)
     log(f'itemsparse: {len(classes)} class-limited items, {len(delay)} weapon speeds, {len(skill)} need a profession '
         f'-> {os.path.relpath(path, ROOT)}')
+
+
+# ---------------------------------------------------------------- learned quest types (AmisiaDB.questtags)
+def quest_tags_from_sv(db):
+    """{quest id: code} of a SavedVariables' AmisiaDB.questtags (G group or elite, D dungeon, R raid,
+    P PvP), checked as the addon checks it."""
+    q = db.get('questtags') if isinstance(db, dict) else None
+    lst = q.get('list') if isinstance(q, dict) else None
+    if not isinstance(lst, dict):
+        return {}
+    return {k: v for k, v in lst.items()
+            if isinstance(k, int) and not isinstance(k, bool) and 0 < k <= 9999999 and v in QUEST_TAG_CODES}
+
+
+def load_quest_tags(path=QUEST_TAGS):
+    if not os.path.exists(path):
+        return {'updated': None, 'tags': {}}
+    with open(path, encoding='utf-8') as fh:
+        arch = json.load(fh)
+    arch.setdefault('tags', {})
+    return arch
+
+
+def update_quest_tags(dbs, path=QUEST_TAGS, today=None):
+    """Joins the SavedVariables' learned quest types into the archive (a later file wins, nothing is
+    dropped) and writes it when it changed; returns {quest id: code}."""
+    arch = load_quest_tags(path)
+    tags = dict(arch['tags'])
+    for db in dbs:
+        for qid, code in quest_tags_from_sv(db).items():
+            tags[str(qid)] = code
+    if tags != arch['tags'] or not os.path.exists(path):
+        arch = {'updated': today or time.strftime('%Y-%m-%d'),
+                'tags': dict(sorted(tags.items(), key=lambda kv: int(kv[0])))}
+        with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write(json.dumps(arch, indent=1) + '\n')
+        log(f'{os.path.relpath(path, ROOT)}: {len(tags)} learned quest types')
+    return {int(k): v for k, v in tags.items() if v in QUEST_TAG_CODES}
 
 
 # ---------------------------------------------------------------- joining
@@ -1150,6 +1209,9 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
         '-- profession needed to wear it (skill line, 0 none), source...}. Level is the required level, or later: the',
         '-- level its quest can be taken (quest-only items) or the profession skill / 5. Class mask 0 means every',
         '-- class (bits as in S.Q); speed 0 for non-weapons.',
+        '-- RP: [itemID] = faction id * 10 + the standing it asks for (0 hated .. 7 exalted), from the client\'s',
+        '-- ItemSparse (MinFactionID, MinReputation). QT: [questID] = the quest type the addon learned from the quest',
+        '-- log (G group or elite, D dungeon, R raid, P PvP; tools/quest_tag_archive.json), for the quests of S.',
         'ns.GEAR = {',
         f'    game = "forever", cap = 60, built = {lua_str(info["built"])},',
         '    S = {',
@@ -1180,6 +1242,21 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
         st = compact_stats(keep[iid][0].get('stats'), keys) or (old_stats or {}).get(iid)
         if st:
             lines.append(f'        [{iid}] = {lua_str(st)},')
+    lines.append('    },')
+    # the reputation an item asks for, from the client's own item table
+    rep = info.get('rep') or {}
+    lines.append('    RP = {')
+    for iid in sorted(keep):
+        if iid in rep:
+            fac, standing = rep[iid]
+            lines.append(f'        [{iid}] = {fac * 10 + standing},')
+    lines.append('    },')
+    qtags = info.get('qtags') or {}
+    lines.append('    QT = {')
+    # a quest record holds its id seventh (a short one, as the collector's, none)
+    quest_ids = {src.rows[n - 1][6] for n in used if src.rows[n - 1][0] == 'Q' and len(src.rows[n - 1]) > 6}
+    for qid in sorted(quest_ids & set(qtags)):
+        lines.append(f'        [{qid}] = {lua_str(qtags[qid])},')
     lines.append('    },')
     lines.append('    M = {')
     for i in range(0, len(missing), 20):
@@ -1303,8 +1380,11 @@ def main(argv=None):
         sources.append('AtlasLootClassic (GPL-2.0)')
     if wowsrc:
         sources.append('wowsrc.com')
-    n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d'), 'sources': sources},
-                      missing, old_stats)
+    rep = client_reputation(args.wago)
+    qtags = update_quest_tags(dbs)
+    n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d'), 'sources': sources,
+                                                      'rep': rep, 'qtags': qtags}, missing, old_stats)
+    log(f'reputation: {sum(1 for i in keep if i in rep)} of {len(keep)} items ask for a standing')
     scanned = sum(1 for k in keep.values() if k[0].get('stats'))
     kept_old = sum(1 for i, k in keep.items() if not k[0].get('stats') and i in old_stats)
     log(f'stats: {scanned} of {len(keep)} items from the scan, {kept_old} kept from the last build; '

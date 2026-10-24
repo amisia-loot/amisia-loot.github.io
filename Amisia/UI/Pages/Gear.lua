@@ -90,11 +90,13 @@ end
 -- pick: the BiS pick of the option (its source text stands in when the data knows none)
 local function sourceText(id, o, pick)
     local c = cached()
-    local t = c.src[id]
+    -- with the options (their play style) and without them, each its own text
+    local key = (o and "o" or "-") .. id
+    local t = c.src[key]
     if t == nil then
         local rec = firstSource(id, o)
         t = rec and Gear.SourceText(rec, true) or ""
-        c.src[id] = t
+        c.src[key] = t
     end
     if t == "" and type(pick) == "table" and type(pick.src) == "string" then return pick.src end
     return t
@@ -109,12 +111,16 @@ end
 -- for its effort.
 local function noteParts(e)
     local out = {}
+    if e.outside then out[#out + 1] = L["außerhalb deines Spielstils"] end
     if e.pick then out[#out + 1] = L["BiS-Empfehlung"] end
     if e.set then out[#out + 1] = L["Set %d/%d, %+d Bonus"]:format(e.set.have, e.set.total, math.floor(e.set.bonus + 0.5)) end
     if e.sc then out[#out + 1] = L["berechnet"] end
     if Gear.EffectText(e.id or e[1]) then out[#out + 1] = L["Effekt nicht gewertet"] end
     if e.suffix then out[#out + 1] = L["bester gesehener Bonus"] end
     if e.easier then out[#out + 1] = L["leichter zu bekommen"] end
+    -- the reputation the item asks for, red while the own standing is too low (F-124)
+    local rep, low = ns.PlayStyle.RepText(e.id or e[1])
+    if rep then out[#out + 1] = low and ("|cffd04040" .. rep .. "|r") or rep end
     return out
 end
 local function noteText(e)
@@ -335,7 +341,84 @@ local function counts(o, res)
     if ex > 0 then parts[#parts + 1] = L["%d ausgeschlossen"]:format(ex) end
     local loading = Gear.Loading()
     if loading > 0 then parts[#parts + 1] = "|cffe0a344" .. L["lädt noch %d Items"]:format(loading) .. "|r" end
+    if o.style then
+        local h = ns.BisStyleHidden(o)
+        if h.n > 0 then parts[#parts + 1] = L["Spielstil blendet %d Ziele aus"]:format(h.n) end
+    end
     return table.concat(parts, " · ")
+end
+
+---------------------------------------------------------------------------
+-- The play style (F-124): a chip with a menu of the five switches, here and in the goals window
+---------------------------------------------------------------------------
+
+local PS = ns.PlayStyle
+local STYLE_HIDDEN_LINES = 10
+
+local function styleEntries(owner)
+    local out = {}
+    for _, k in ipairs(PS.KEYS) do
+        local on = PS.On(k)
+        out[#out + 1] = { (on and (CHECK .. " ") or "     ") .. (on and PS.LABEL[k] or (GREY .. PS.LABEL[k] .. "|r")),
+            function()
+                PS.Toggle(k)
+                -- open again: several switches in a row
+                W.Menu(owner, styleEntries(owner))
+            end, tip = PS.TIP[k], tipTitle = PS.LABEL[k] }
+    end
+    if PS.Count() > 0 then
+        out[#out + 1] = { L["Alle aus"], function() PS.Clear() end }
+    end
+    return out
+end
+
+local function styleTooltip(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["Spielstil"])
+    local names = PS.Names()
+    if not names then
+        GameTooltip:AddLine(L["Aus: alle Quellen der Chips zählen. Klick: wählen, wie du spielst."], 1, 1, 1, true)
+        GameTooltip:Show()
+        return
+    end
+    GameTooltip:AddLine(names, 1, 1, 1, true)
+    local h = ns.BisStyleHidden()
+    if h.n > 0 then
+        GameTooltip:AddLine(L["Spielstil blendet %d Ziele aus:"]:format(h.n), 1, 0.82, 0, true)
+        for i = 1, math.min(STYLE_HIDDEN_LINES, #h.list) do
+            local x = h.list[i]
+            GameTooltip:AddDoubleLine(itemText(x.id), PS.WhyText(x.id, x.why), 1, 1, 1, 0.8, 0.8, 0.8)
+        end
+        if #h.list > STYLE_HIDDEN_LINES then GameTooltip:AddLine(L["und %d weitere"]:format(#h.list - STYLE_HIDDEN_LINES), 0.6, 0.6, 0.6) end
+    else
+        GameTooltip:AddLine(L["Der Spielstil blendet keines deiner Ziele aus."], 0.8, 0.8, 0.8, true)
+    end
+    GameTooltip:AddLine(L["Klick: Spielstil wählen"], 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+-- The text of a row without an option: the shield hand beside a two-hander, the play style, none.
+local function noOptionText(e)
+    if e.key == "OFFHAND" and e.plan == "2H" then return L["Zweihandwaffe geplant"] end
+    if PS.Count() > 0 then return L["Nichts mit diesem Spielstil"] end
+    return L["keine Option"]
+end
+
+local function styleChip(parent)
+    local chip = W.Chip(parent, L["Spielstil"], 72, nil)
+    chip:SetScript("OnClick", function(self) W.Menu(self, styleEntries(self)) end)
+    chip:HookScript("OnEnter", styleTooltip)
+    chip:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    W.FitChip(chip, 72)
+    return chip
+end
+
+local function fillStyle(chip)
+    local n = PS.Count()
+    chip.label:SetText(n > 0 and L["Spielstil (%d)"]:format(n) or L["Spielstil"])
+    W.FitChip(chip, 72)
+    chip:SetOn(n > 0)
+    chip:Show()
 end
 
 local chipsFor, chipsCache
@@ -395,7 +478,8 @@ local function fillHead(f, o, res, v)
     if Gear.Available() then f.open:Show() else f.open:Hide() end
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
-    f:Place(2, { { f.counts, fill = true } }, { f.reset }, { shown = true })
+    fillStyle(f.style)
+    f:Place(2, { { f.counts, fill = true } }, { f.style, f.reset }, { shown = true })
     -- the source chips, in a row
     local shown, row = {}, {}
     for _, def in ipairs(chipSet()) do
@@ -472,7 +556,7 @@ local function fillGoalRow(r, e)
         r.src:SetText(sourceText(e.opt.id, e.o, e.opt.pick))
         r.gain:SetText(gainText(e.opt))
     else
-        r.best:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and L["Zweihandwaffe geplant"] or L["keine Option"]) .. "|r")
+        r.best:SetText(GREY .. noOptionText(e) .. "|r")
         r.src:SetText("")
         r.gain:SetText("")
     end
@@ -820,7 +904,7 @@ local function fillHere(Hh, o)
     if not place or not placeKnown(place) then
         hint = L["Diesen Ort kennen die Daten nicht."]
     elseif #list == 0 then
-        hint = L["Hier gibt es nichts mehr für dich."]
+        hint = PS.Count() > 0 and L["Hier gibt es mit diesem Spielstil nichts für dich."] or L["Hier gibt es nichts mehr für dich."]
     else
         hint = L["Was du an diesem Ort noch holen kannst: Upgrades und Wünsche, Besitz unten."]
     end
@@ -1237,7 +1321,8 @@ function ns.GearPageFrame() return page end
 ns.GearPageKit = {
     state = state, cached = cached, itemText = itemText, marks = marks, gainText = gainText,
     itemTooltip = itemTooltip, hideTip = hideTip, modifiedClick = modifiedClick, menuEntries = menuEntries,
-    say = say, col = col, specPicker = specPicker, fillSpec = fillSpec,
+    say = say, col = col, specPicker = specPicker, fillSpec = fillSpec, styleChip = styleChip, fillStyle = fillStyle,
+    noOptionText = noOptionText,
     -- for the window "Ausrüstungsziele": the source text, the map button, the link, the notes, the
     -- explanation of a slot's option and whether a shown row had no item name yet
     sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, linkText = linkText,
@@ -1282,7 +1367,8 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         f.reset = W.Button(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end,
             { height = T.ROW_BUTTON_H })
         W.FitChip(f.reset, 104)
-        f:Place(2, { { f.counts, fill = true } }, { f.reset })
+        f.style = styleChip(f)
+        f:Place(2, { { f.counts, fill = true } }, { f.style, f.reset })
         -- the weapon plan of the own character, beside the source chips of the targets
         f.plan = W.Picker(f, 132, function(v) say(ns.BisSetPlan(v)) end)
         f.src = {}

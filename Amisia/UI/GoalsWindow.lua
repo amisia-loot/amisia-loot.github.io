@@ -521,11 +521,11 @@ local function fillRow(r, e)
         r.icon:Show()
         r.name:SetText(badge(opt) .. K.itemText(opt.id))
         r.gain:SetText(gainText(opt))
-        r.src:SetText(opt.owned and K.OWNED_TEXT[opt.owned] or (opt.unknown and L["unbekannt"]) or K.sourceText(opt.id, nil, opt.pick))
+        r.src:SetText(opt.owned and K.OWNED_TEXT[opt.owned] or (opt.unknown and L["unbekannt"]) or K.sourceText(opt.id, e.o, opt.pick))
         K.setMapButton(r.map, opt.id, nil, opt.owned or opt.unknown)
     else
         r.icon:Hide()
-        r.name:SetText(GREY .. ((e.key == "OFFHAND" and e.plan == "2H") and L["Zweihandwaffe geplant"] or L["keine Option"]) .. "|r")
+        r.name:SetText(GREY .. K.noOptionText(e) .. "|r")
         r.gain:SetText("")
         r.src:SetText("")
         K.setMapButton(r.map, nil)
@@ -1341,7 +1341,10 @@ local function buildHead(f)
     end)
     f.why:SetScript("OnLeave", K.hideTip)
     W.Row(f, { f.spec, { f.plan, gap = T.LAYOUT.ITEM_GAP * 2, y = -(G.TOP + 4) } }, T.LAYOUT.ITEM_GAP, G.DOLL_X, -G.TOP)
-    W.Row(f, { f.why }, 0, G.DOLL_X, -G.TOP, { right = true })
+    -- the play style (F-124), the same chip as on the gear page
+    f.style = K.styleChip(f)
+    f.headRight = function() W.Row(f, { f.style, f.why }, T.LAYOUT.ITEM_GAP, G.DOLL_X, -G.TOP, { right = true }) end
+    f.headRight()
 end
 
 ---------------------------------------------------------------------------
@@ -1360,6 +1363,8 @@ refresh = function()
     local chosen = chosenSlot(res)
     K.fillSpec(f.spec, o)
     f.plan:SetText(planText(o, res))
+    K.fillStyle(f.style)
+    f.headRight()
     local p = ns.BisProgress(res)
     local d = f.doll
     for key, b in pairs(d.slots) do
@@ -1385,7 +1390,7 @@ refresh = function()
     local counts = { todo = p.todo, bag = p.bag, ench = 0 }
     for _ in pairs(ench) do counts.ench = counts.ench + 1 end
     local items = listItems(res, p, filter(), ench)
-    for _, e in ipairs(items) do e.chosen = chosen end
+    for _, e in ipairs(items) do e.chosen, e.o = chosen, o end
     f.list:SetItems(items)
     f.fillProgress(f, o, res, p, counts)
     if f.side and f.fillSide then f.fillSide(f, o, res, chosen) end

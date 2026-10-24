@@ -22,6 +22,8 @@ C.CATS = {
     { key = "pvp", label = L["PvP-Sets"], icon = "Interface\\Icons\\INV_BannerPVP_02" },
     { key = "craft", label = L["Handwerks-Sets"], icon = "Interface\\Icons\\Trade_BlackSmithing" },
     { key = "world", label = L["Welt-Sets"], icon = "Interface\\Icons\\INV_Misc_Map_01" },
+    -- not sets: the items of one faction's reputation as one group each (id: minus the faction id)
+    { key = "rep", label = L["Ruf"], icon = "Interface\\Icons\\INV_Scroll_03" },
 }
 local CAT_OK, CAT_RANK = {}, {}
 for i, c in ipairs(C.CATS) do CAT_OK[c.key], CAT_RANK[c.key] = true, i end
@@ -60,9 +62,36 @@ local function sets()
                 items = set.items, level = level }
         end
     end
+    -- the reputation items (the client's ItemSparse, F-124): one group per faction
+    local d = ns.HasData("GEAR") and ns.Data("GEAR")
+    local byFac = {}
+    for id in pairs(d and type(d.RP) == "table" and d.RP or {}) do
+        local fac = Gear.ItemRep(id)
+        if fac then
+            local g = byFac[fac]
+            if not g then
+                local _, name = ns.PlayStyle.Standing(fac)
+                g = { id = -fac, name = name or L["Fraktion %d"]:format(fac), cat = "rep", items = {}, level = 0, rep = fac }
+                byFac[fac] = g
+                out[#out + 1] = g
+            end
+            g.items[#g.items + 1] = id
+            -- shown from its first item on (a set from its last)
+            local lv = levelOf(id)
+            if lv > 0 and (g.level == 0 or lv < g.level) then g.level = lv end
+        end
+    end
+    for _, g in pairs(byFac) do
+        table.sort(g.items, function(a, b)
+            local la, lb = levelOf(a), levelOf(b)
+            if la ~= lb then return la < lb end
+            return a < b
+        end)
+    end
     table.sort(out, function(a, b)
         if a.level ~= b.level then return a.level < b.level end
-        return a.name < b.name
+        if a.name ~= b.name then return a.name < b.name end
+        return a.id < b.id
     end)
     all, allKey = out, key
     return out

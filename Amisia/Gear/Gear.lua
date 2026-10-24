@@ -520,6 +520,8 @@ end
 function Gear.SourceOk(rec, opts, row)
     if not rec then return false end
     if not opts.sources[Gear.FilterKey(rec)] then return false end
+    -- the play style of the own options (Gear/PlayStyle.lua, F-124)
+    if opts.style and not ns.PlayStyle.RecOk(rec, row, opts.style) then return false end
     if rec[1] == "C" and row and row[6] == 1 and opts.prof == "mine" and type(opts.skills) == "table" then
         if (opts.skills[rec[2]] or 0) < (rec[3] or 0) then return false end
     end
@@ -555,6 +557,17 @@ function Gear.Sources(id, opts)
     for i = Gear.FIRST_SOURCE, #row do
         local rec = Gear.Source(row[i])
         if not opts or Gear.SourceOk(rec, opts, row) then out[#out + 1] = rec end
+    end
+    -- with the play style "Kaufbar" an item that does not bind on pickup is bought from other players;
+    -- with "Jetzt holbar" an item whose reputation is not reached has no source
+    local st = opts and opts.style
+    if st then
+        if not ns.PlayStyle.ItemOk(id, st) then return {} end
+        if ns.PlayStyle.BuyOk(row, st) then
+            local hasAH = false
+            for _, rec in ipairs(out) do if rec[1] == "A" then hasAH = true end end
+            if not hasAH then out[#out + 1] = ns.PlayStyle.AH_REC end
+        end
     end
     table.sort(out, function(a, b)
         local ka, kb = KIND_ORDER[a[1]] or 9, KIND_ORDER[b[1]] or 9
@@ -1292,6 +1305,12 @@ function Gear.Best(opts)
                     if x and (not effort or x < effort) then effort = x end
                 end
             end
+            -- the play style (F-124): bought from other players, the reputation of the item
+            local st = opts.style
+            if st then
+                if not ok and ns.PlayStyle.BuyOk(row, st) then ok = true end
+                if ok and not ns.PlayStyle.ItemOk(id, st) then ok = false end
+            end
             if ok and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok = false end
             -- engineering goggles and the like only with their switch, or with the profession
             -- itself when the own skill lines are known (opts.skills by skill line id)
@@ -1368,6 +1387,12 @@ function Gear.Best(opts)
 
     -- BiS picks: first in their rows (after the set plan and the effort order, which they override)
     local picks = opts.picks ~= false and Gear.PicksFor(class, opts.spec, level, opts.plan, opts.exclude) or {}
+    -- with a play style a BiS pick counts only when its sources pass it (F-124; one of unknown source never)
+    if opts.style then
+        for k, p in pairs(picks) do
+            if not ns.PlayStyle.Passes(p.item, opts) then picks[k] = nil end
+        end
+    end
     local function front(list, p, place, group)
         for i = #list, 1, -1 do
             if list[i][1] == p.item then table.remove(list, i) end
@@ -1547,6 +1572,7 @@ function Gear.SourceText(rec, short)
         if (rec[3] or 0) > 0 then return L["Weltdrop (Gegner %d-%d)"]:format(rec[3], rec[4] or rec[3]) end
         return L["Weltdrop"]
     elseif k == "A" then
+        if rec[2] == "B" then return L["Auktionshaus (bindet beim Anlegen)"] end
         return L["Im Auktionshaus gesehen"]
     end
     return tostring(k)

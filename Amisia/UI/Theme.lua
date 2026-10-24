@@ -259,6 +259,10 @@ T.SRIMPORT = {
 
 -- an overview card
 T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
+-- the card "Upgrades: <Slot>" beside the character window (UI/SlotCard.lua, F-125): the best ROWS
+-- items of a slot, each an icon with name and source over each other and the gain at the right
+T.SLOTCARD = { W = 300, PAD = 10, TITLE_H = 24, ROWS = 5, ROW_H = 34, ICON = 26, TEXT_X = 34, GAIN_W = 56,
+    BUTTON_W = 180, GAP = 6, CLOSE = 20, OFFSET_X = 4 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6 }
 -- the shared popup menu and the picker's panel
