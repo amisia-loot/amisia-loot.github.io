@@ -307,7 +307,8 @@ def test_a_full_build_names_the_observed_items(tmp_path, monkeypatch):
     sv.write_text(SV_DROPS, encoding='utf-8')
     js = tmp_path / 'forever.js'
     arch = tmp_path / 'drop_obs.json'
-    assert b.main([str(sv), '--out', str(js), '--archive', str(arch), '--no-icons']) == 0
+    # without the real scan archive: what the guild scanned since must not change the test
+    assert b.main([str(sv), '--out', str(js), '--archive', str(arch), '--no-icons', '--scan-archive', '']) == 0
     data = _js(js)
     assert [i['id'] for i in data['items']] == [32235], 'the raid drop of the session'
     assert data['obsBosses'][0]['obs'] == {'219004': 1, '219007': 1}
