@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.46.1 (2026-10-24)
+
+- Reiter unter dem Hauptfenster mit Namen: PanelTemplates_SelectTab brach auf namenlosen Reitern ab
+
 ## 2.46.0 (2026-10-24)
 
 - Spec: Spielstil-Filter und Rechtsklick auf den Charakter-Slot (F-124, F-125, Entwurf)
