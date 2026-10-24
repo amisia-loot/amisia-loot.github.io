@@ -2,6 +2,13 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.46.0 (2026-10-24)
+
+- Spec: Spielstil-Filter und Rechtsklick auf den Charakter-Slot (F-124, F-125, Entwurf)
+- Spielstil-Filter (F-124) und Rechtsklick auf den Charakter-Slot (F-125)
+- Daten aus Client-Build 1.60.1.70532 mit Ruf-Tabelle, neue Scans im Archiv
+- F-124, F-125 gebaut in 2.46.0
+
 ## 2.45.0 (2026-10-17)
 
 - Talentrechner: zwei Pläne je Klasse (Primär/Sekundär, F-121); TOC mit Category VuloUI
