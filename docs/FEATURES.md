@@ -806,16 +806,23 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil D.
 
 ### F-124 Spielstil-Filter für die Ziele
-- Version: -
-- Status: geplant
-- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Spielstil" und dann "Keine Dungeons" anhakst, dann steht keine Quelle "Dungeon", "Raid" oder eine Quest aus einem Dungeon mehr da, und der Knopf heißt "Spielstil (1)".
-- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (freigegeben 2026-10-24).
+- Version: 2.46.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Spielstil" und dann "Keine Dungeons" anhakst, dann steht keine Quelle aus einem Dungeon oder Raid (auch kein "Trash (...)" und keine Quest aus einem Dungeon) mehr da, und der Knopf heißt "Spielstil (1)".
+- Prüfung: Wenn du "Kaufbar" anhakst, dann bleiben nur Händlerware und Items, die beim Anlegen binden; bei einem solchen Drop steht als Quelle "Auktionshaus (bindet beim Anlegen)".
+- Prüfung: Wenn ein Spielstil an ist und du mit der Maus über den Knopf "Spielstil (N)" fährst, dann listet der Tooltip unter "Spielstil blendet N Ziele aus:" die ausgeblendeten Items mit Grund (z. B. "Keine Dungeons" oder "Ruf: <Fraktion>, <Stufe> (du: <Stufe>)").
+- Prüfung: Wenn "Fokus-Zone" an ist und du die Zone wechselst, dann zeigt die Liste nach einigen Sekunden nur Quellen der neuen Zone, Dungeons mit Eingang dort eingeschlossen; die Karten-Pins folgen.
+- Prüfung: Wenn du `/amisia spielstil kaufbar` eingibst, dann meldet der Chat "Spielstil: Kaufbar."; `/amisia spielstil aus` schaltet alles ab.
+- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (freigegeben 2026-10-24); DECISIONS D-56. Ruf aus ItemSparse deckt erst 19 Items der Ausrüstungsdaten ab; Gruppenquests lernt Amisia aus dem eigenen Questlog (`AmisiaDB.questtags`) und übernimmt sie beim nächsten `build.py data`. Im Spiel offen: ob Forever `C_QuestLog.GetQuestTagInfo` und `C_Reputation.GetFactionDataByID` wie dokumentiert beantwortet.
 
 ### F-125 Rechtsklick auf den Charakter-Slot
-- Version: -
-- Status: geplant
-- Prüfung: Wenn du im Charakterfenster mit rechts auf einen Slot klickst, dann öffnet sich die Karte "Upgrades: <Slot>" mit bis zu fünf Items.
-- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md` (freigegeben 2026-10-24).
+- Version: 2.46.0
+- Status: gebaut
+- Prüfung: Wenn du im Charakterfenster mit rechts auf einen Slot (z. B. Hände) klickst, dann öffnet sich daneben die Karte "Upgrades: Hände" mit bis zu fünf Items; ein Klick auf eine Zeile meldet "Ziel ..." und setzt den Pfeil; ein zweiter Rechtsklick auf denselben Slot schließt sie.
+- Prüfung: Wenn du mit rechts auf ein Schmuckstück mit Benutzen-Effekt klickst, dann benutzt das Spiel es wie immer und die Karte öffnet sich nicht; mit Alt+Rechtsklick öffnet sie sich.
+- Prüfung: Wenn du mit der Maus über einen Slot fährst, dann steht unten im Tooltip "Rechtsklick: Upgrades (Amisia)" (bei Benutzen-Effekt "Alt+Rechtsklick: ..."), auch noch nachdem du Alt drückst.
+- Prüfung: Wenn du `/amisia selbsttest` eingibst, dann steht dort "Charakterfenster-Slots: 17 Slot-Knöpfe, Rechtsklick an".
+- Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md`; Einstellung "Rechtsklick auf Slots im Charakterfenster" (Ausrüstung und Wünsche). Shift- und Strg-Rechtsklick bleiben dem Spiel.
 
 ### F-045 Karte: Ziel, Pfeil und Pins
 - Version: 1.9.0
@@ -893,7 +900,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du "Wolfs" in die Suche tippst und "Alle" klickst, dann listet Amisia jedes bekannte Item mit "Wolfs" im Namen, das beste für dich oben.
 - Prüfung: Wenn du "Meine Stufe" klickst, dann steht im Bereich 1 bis deine Stufe und die Liste folgt.
 - Prüfung: Wenn du ein Teil per Rechtsklick "Als meine Wahl" setzt, dann zeigt "Ziele" es in seinem Slot mit Stern.
-- Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons. Ruf fehlt, bis `export_db2.ps1` die Tabelle mitnimmt.
+- Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons.
+- Notiz: 2.46.0: Kategorie "Ruf" (je Fraktion eine Gruppe der Items mit Rufbedingung aus ItemSparse, F-124).
 
 ### F-122 Seite Raids
 - Version: 2.45.0
