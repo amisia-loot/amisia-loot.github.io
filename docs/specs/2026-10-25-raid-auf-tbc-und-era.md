@@ -1,6 +1,6 @@
 # Spec: Raid-Teil auf TBC Anniversary und Classic Era
 
-Stand: 2026-10-25 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-25 · Status: freigegeben ·
 Feature: F-126
 
 ## Ziel
@@ -111,3 +111,5 @@ TBC/Era kann nicht im Forever-Ledger landen (Frage 1).
 ## Entscheidungen
 
 - 2026-10-25: Nutzer wählt "Nur Raid-Teil + sauberes UI" (statt voll unterstützen oder nur UI-Fehler).
+- 2026-10-25: Fragen 1-4: "passt" -> alle Vorschläge: Export und Export-Erinnerung auf TBC/Era aus,
+  Reiter Gilde bleibt, Handel-Helfer auf TBC/Era aus, Raid-Check-Buffs auf TBC/Era aus.
