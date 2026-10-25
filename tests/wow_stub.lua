@@ -68,6 +68,9 @@ _G.IsInGuild = function() return STUB.inGuild ~= false end
 _G.geterrorhandler = function() return function(e) error(e, 0) end end
 -- The client is WoW Forever (1.60.1, interface 16001, game type camelot).
 STUB.toc = 16001
+-- Forever's project (Blizzard_ProjectConstants/Camelot); a "--[[game tbc]]" test runs as TBC (5) or
+-- Classic Era (2), where WOW_PROJECT_CAMELOT does not exist (run.py)
+_G.WOW_PROJECT_CAMELOT, _G.WOW_PROJECT_ID = 18, 18
 _G.GetBuildInfo = function() return "1.60.1", "70205", "Oct 1 2026", STUB.toc end
 -- The client's locale: German unless a test (run.py --locale, a "--[[locale enUS]]" line) sets another.
 STUB.locale = "deDE"
@@ -1015,7 +1018,8 @@ TEMPLATES.PanelTabButtonTemplate = function(f)
     for _, key in ipairs({ "LeftActive", "RightActive", "MiddleActive", "Left", "Right", "Middle" }) do
         local t = part(f, key, "BACKGROUND")
         t.atlas = atl[key]
-        t._w = key:find("Middle") and nil or 20
+        -- the edge pieces: 20 px on Forever, 35 on the classic clients (STUB.classicTabs)
+        t._w = key:find("Middle") and nil or (STUB.classicTabs and 35 or 20)
         f.TabTextures[#f.TabTextures + 1] = t
     end
     f.Text = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -1024,13 +1028,38 @@ TEMPLATES.PanelTabButtonTemplate = function(f)
     f.SetText = function(self, t) setText(self, t); self.Text:SetText(t) end
     f.GetFontString = function(self) return self.Text end
     f.SetDisabledFontObject = function(self, obj) self.disabledFont = STUB.fontName(obj) end
-    tplScript(f, "OnShow", function(self)
-        if _G.PanelTemplates_TabResize then _G.PanelTemplates_TabResize(self, 0) end
-    end)
+    -- PanelTabButtonMixin: sized again on show and on DISPLAY_SIZE_CHANGED by the parent's fields
+    local function resize(self)
+        local p = self:GetParent() or {}
+        if _G.PanelTemplates_TabResize then _G.PanelTemplates_TabResize(self, p.tabPadding, nil, p.minTabWidth, p.maxTabWidth) end
+    end
+    tplScript(f, "OnShow", resize)
+    tplScript(f, "OnEvent", function(self) if self:IsVisible() then resize(self) end end)
+    if f.RegisterEvent then f:RegisterEvent("DISPLAY_SIZE_CHANGED") end
     f.motionScriptsWhileDisabled = true
 end
 -- the client's tab helpers (SharedUIPanelTemplates.lua of Forever 1.60.1), as far as Amisia calls them
+-- The classic clients' PanelTemplates_TabResize (Blizzard_SharedXML/Classic of TBC 2.5.6 and Era 1.15.9):
+-- text + padding (24 without one), at least minWidth, and then both edge pieces on top.
+local function classicTabResize(tab, padding, absoluteSize, minWidth, maxWidth)
+    local sides = 2 * tab.Left:GetWidth()
+    tab.Text:SetWidth(0)
+    local textWidth = tab.Text:GetStringWidth()   -- a width of 0 measures the whole text
+    local width, tabWidth
+    if absoluteSize then
+        width = math.max(1, absoluteSize - sides)
+        tabWidth = math.max(sides, absoluteSize)
+    else
+        width = textWidth + (padding or 24)
+        if maxWidth and width > maxWidth then width = maxWidth + (padding or 24) end
+        if minWidth and width < minWidth then width = minWidth end
+        tabWidth = width + sides
+    end
+    if tab.Middle then tab.Middle:SetWidth(width) end
+    tab:SetWidth(tabWidth)
+end
 _G.PanelTemplates_TabResize = function(tab, padding, absoluteSize, minWidth, maxWidth)
+    if STUB.classicTabs then return classicTabResize(tab, padding, absoluteSize, minWidth, maxWidth) end
     tab.Text:SetWidth(0)
     local width = tab.Text:GetStringWidth() + 20 + (padding or 0)
     local sides = tab.Left:GetWidth() + tab.Right:GetWidth()

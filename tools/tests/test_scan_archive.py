@@ -164,7 +164,7 @@ def test_the_committed_marker_is_current():
 def test_the_marker_is_in_the_toc_after_the_other_data():
     with open(os.path.join(ROOT, 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
         toc = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
-    assert 'Data\\ScanDone.lua [AllowLoadGameType camelot]' in toc and 'Collect\\ScanTrim.lua' in toc
+    assert 'Data\\ScanDone.lua [AllowLoadGameType camelot]' in toc and 'Collect\\ScanTrim.lua [AllowLoadGameType camelot]' in toc
 
 
 # ---------------------------------------------------------------- the round trip with the real files

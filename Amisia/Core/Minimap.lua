@@ -36,7 +36,7 @@ function ns.MinimapMenuEntries()
     if officer then e[#e + 1] = { L["Vergaben"], function() ns.ShowPage("awards") end } end
     e[#e + 1] = { L["Soft-Reserves"], function() ns.ShowPage("softres") end }
     e[#e + 1] = { L["Raid-Log"], function() ns.ShowPage("raidlog") end }
-    if officer then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
+    if officer and ns.ShowExport then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
     e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
     e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }
     return e

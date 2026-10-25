@@ -479,7 +479,7 @@ def test_the_committed_data_is_current():
         toc = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
     assert 'Data\\BisData.lua [AllowLoadGameType camelot]' in toc
     assert toc.index('Data\\GearWeights.lua [AllowLoadGameType camelot]') < toc.index('Data\\BisData.lua [AllowLoadGameType camelot]') \
-        < toc.index('Gear\\Gear.lua')
+        < toc.index('Gear\\Gear.lua [AllowLoadGameType camelot]')
 
 
 def test_attack_power_per_stat_matches_the_game():

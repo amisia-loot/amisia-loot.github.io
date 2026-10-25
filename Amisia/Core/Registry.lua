@@ -10,6 +10,25 @@ local slashWords = {}   -- command word or alias -> definition
 local listeners = {}    -- message name -> handlers
 local SETTINGS_VERSION = 2
 
+-- The client (D-57): WoW Forever (game type camelot) with every part, TBC Anniversary ("tbc") and
+-- Classic Era with SoD and Hardcore ("era") with the raid part only; the Forever files do not load
+-- there ([AllowLoadGameType camelot] in the TOC). WOW_PROJECT_CAMELOT exists on Forever only; without a
+-- project id the interface number of the build decides.
+local function gameOf()
+    local id, camelot = _G.WOW_PROJECT_ID, _G.WOW_PROJECT_CAMELOT
+    if camelot ~= nil and id == camelot then return "forever" end
+    if id == 5 then return "tbc" end      -- WOW_PROJECT_BURNING_CRUSADE_CLASSIC
+    if id == 2 then return "era" end      -- WOW_PROJECT_CLASSIC
+    local ok, _, _, _, toc = pcall(_G.GetBuildInfo)
+    toc = ok and tonumber(toc) or nil
+    if toc and toc >= 20000 and toc < 30000 then return "tbc" end
+    if toc and toc < 16000 then return "era" end
+    return "forever"
+end
+ns.GAME = gameOf()
+ns.FOREVER = ns.GAME == "forever"
+ns.GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary", era = "Classic Era" }
+
 local function byOrder(a, b)
     local oa, ob = a.order or 99, b.order or 99
     if oa ~= ob then return oa < ob end
@@ -108,6 +127,7 @@ end
 -- Whether a page, card, settings section or item is shown right now.
 function ns.Visible(spec)
     if not spec then return false end
+    if spec.forever and not ns.FOREVER then return false end
     if spec.available and not spec.available() then return false end
     if spec.officer and not ns.IsOfficerView() then return false end
     if spec.expert and not ns.Get("ui.expert") then return false end
@@ -416,7 +436,7 @@ end
 function ns.SlashHelpLines(officer)
     local out = {}
     for _, def in ipairs(ns.slash) do
-        if officer or not def.officer then
+        if (officer or not def.officer) and (ns.FOREVER or not def.forever) then
             out[#out + 1] = ("/amisia %s%s - %s"):format(ns.SlashWord(def), def.args and (" " .. def.args) or "", def.desc or "")
         end
     end
@@ -437,6 +457,7 @@ function ns.Dispatch(input)
         return
     end
     local def = slashWords[word:lower()]
+    if def and def.forever and not ns.FOREVER then def = nil end
     if not def then
         ns.msg(L["Unbekannter Befehl \"%s\"."]:format(word))
         ns.ShowHelp()
@@ -459,10 +480,10 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
     { key = "ui.scale", type = "slider", label = L["Fenstergröße (%)"], default = 100, min = 70, max = 130, step = 5,
       onChange = function(v) if ns.ApplyScale then ns.ApplyScale(v) end end, tip = L["Größe des Amisia-Fensters in Prozent."] },
-    { key = "ui.talentScale", type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
+    { key = "ui.talentScale", forever = true, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
-    { key = "ui.goalScale", type = "slider", label = L["Größe des Zielefensters (%)"], default = 100, min = 70, max = 150, step = 5,
+    { key = "ui.goalScale", forever = true, type = "slider", label = L["Größe des Zielefensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das Fenster Ausrüstungsziele. Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyGoalScale then ns.ApplyGoalScale(v) end end },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],

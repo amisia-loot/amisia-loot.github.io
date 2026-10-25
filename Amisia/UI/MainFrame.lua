@@ -266,14 +266,13 @@ local function selectTab(tab, on)
     tab.selected = on and true or false
 end
 
+-- Each tab as wide as its text + 20, at least BTAB_MIN_W, sized by Amisia on every client: Forever's
+-- PanelTemplates_TabResize gives the same, the classic one (TBC, Era) adds both edge pieces on top
+-- (about 140 px a tab, six of them past the window; D-57).
 local function sizeTab(tab)
-    if not tab.flat and PanelTemplates_TabResize then
-        PanelTemplates_TabResize(tab, 0, nil, M.BTAB_MIN_W)
-    else
-        local w = math.max(M.BTAB_MIN_W, (tab.Text:GetStringWidth() or 0) + 20)
-        tab.Text:SetWidth(w - 20)
-        tab:SetWidth(w)
-    end
+    local w = math.max(M.BTAB_MIN_W, (tab.Text:GetStringWidth() or 0) + 20)
+    tab.Text:SetWidth(w - 20)
+    tab:SetWidth(w)
 end
 
 -- A tab under the window: the client's panel tab (PanelTabButtonTemplate, as under the character
@@ -289,6 +288,12 @@ local function bottomTab(g)
         tab.Text = W.Text(tab, "GameFontNormalSmall")
         tab.Text:SetPoint("CENTER", 0, 2)
         tab.flat = true
+    else
+        -- the template sizes itself again on show and on a display change (PanelTabButtonMixin, the
+        -- client's PanelTemplates_TabResize): sizeTab alone decides
+        tab:SetScript("OnShow", nil)
+        tab:SetScript("OnEvent", nil)
+        if tab.UnregisterEvent then tab:UnregisterEvent("DISPLAY_SIZE_CHANGED") end
     end
     tab.group = g.key
     tab:SetText(g.label)
@@ -717,9 +722,6 @@ local function build()
         local tab = sideTab(def)
         if tab then sideTabs[def.key] = tab end
     end
-    -- the client's tab mixin sizes its tabs again on show and on a display change by these fields of
-    -- the parent: the same as Amisia's sizing
-    F.tabPadding, F.minTabWidth = 0, M.BTAB_MIN_W
     for _, g in ipairs(ns.PANEL_GROUPS) do bottomTabs[g.key] = bottomTab(g) end
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.pauseBtn, F.viewBtn, F.settingsBtn = bar, statusText, pauseBtn, viewBtn, settingsBtn

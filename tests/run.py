@@ -30,6 +30,10 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
   BUS.count(filter)    sent messages matching filter (prefix, kind, chan, sender, target, from, to
                        (stub clock), or a function)
 
+Clients: a test file with a line "--[[game tbc]]" or "--[[game era]]" in its first lines runs as that
+client: only the TOC files whose load condition lets it load them, WOW_PROJECT_ID of that client,
+STUB.toc its interface number and STUB.classicTabs the classic tab template (D-57).
+
 Locales: the client is German (deDE) unless "--locale enUS" (or the environment variable
 AMISIA_LOCALE) names another; a test file with a line "--[[locale enUS]]" in its first lines always
 runs in that locale. In a locale other than deDE the German texts the tests assert are not there, so
@@ -70,14 +74,22 @@ def toc_meta():
     return out
 
 
-def toc_files():
+# The client's game type for a TOC load condition (ns.GAME -> AllowLoadGameType).
+GAME_TYPES = {'forever': 'camelot', 'tbc': 'tbc', 'era': 'vanilla'}
+
+
+def toc_files(game=None):
+    """The files the TOC loads in order. game None: every file (the Forever tests); "tbc" or "era":
+    only the files whose "[AllowLoadGameType ...]" lets that client load them (D-57)."""
     out = []
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         for line in fh:
             line = line.strip()
             if line and not line.startswith('#'):
-                # load conditions like "[AllowLoadGameType camelot]" stay out of the file name;
-                # the tests load every file
+                cond = re.search(r'\[AllowLoadGameType ([^\]]*)\]', line)
+                if game and cond and GAME_TYPES[game] not in re.split(r'[\s,]+', cond.group(1).strip()):
+                    continue
+                # load conditions like "[AllowLoadGameType camelot]" stay out of the file name
                 name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep)
                 # XML files (templates) are for the client; a test reads them itself
                 if name.lower().endswith('.xml'):
@@ -118,6 +130,33 @@ def file_locale(source):
 
 
 PRELOAD = re.compile(r'\A--\[\[preload\n(.*?)\n\]\]', re.S)
+# "--[[game tbc]]" (or era) in the first lines: the client is TBC Anniversary or Classic Era, the
+# runtime loads only the files that client loads and WOW_PROJECT_ID says so (D-57)
+GAME_LINE = re.compile(r'^--\[\[game (tbc|era)\]\]\s*$', re.M)
+PROJECT_IDS = {'tbc': 5, 'era': 2}
+
+
+# What the classic clients lack of Forever's (the TBC 2.5.6 source: only Mainline files name these
+# atlases; no loot history, no item tooltip data, no side tab or list header template).
+CLASSIC_CLIENT = r'''
+for name in pairs(STUB.atlases) do
+    if name:find("^common%-dropdown%-a%-button") or name:find("^Profession") or name == "common-insideframe"
+        or name:find("^talent%-background%-") or name == "auctionhouse-nav-button-secondary-highlight" then
+        STUB.missingAtlases[name] = true
+    end
+end
+STUB.missingTemplates = STUB.missingTemplates or {}
+STUB.missingTemplates.LargeSideTabButtonTemplate = true
+STUB.missingTemplates.ListHeaderVisualTemplate = true
+C_LootHistory = nil
+if C_PartyInfo then C_PartyInfo.ConvertToRaid = nil end
+if C_TooltipInfo then C_TooltipInfo.GetBagItem, C_TooltipInfo.GetInventoryItem = nil, nil end
+'''
+
+
+def file_game(source):
+    m = GAME_LINE.search(source[:2000])
+    return m.group(1) if m else None
 CLIENTS = re.compile(r'\A--\[\[clients ([^\]\n]*)\]\]\n?')
 
 
@@ -127,6 +166,12 @@ def fresh(source='', player=None, setup=None, locale=None):
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
         lua.execute(fh.read())
     lua.globals().STUB.locale = locale or file_locale(source)[0]
+    game = file_game(source)
+    if game:
+        # the classic client: no WOW_PROJECT_CAMELOT, its own project id, its interface number
+        lua.execute('WOW_PROJECT_CAMELOT = nil; WOW_PROJECT_ID = %d; STUB.toc = %d; STUB.classicTabs = true'
+                    % (PROJECT_IDS[game], 20506 if game == 'tbc' else 11509))
+        lua.execute(CLASSIC_CLIENT)
     # FontString:GetStringWidth estimates as the layout rules do (textwidth.py)
     lua.globals().STUB.measure = measure
     meta = lua.globals().STUB.tocMeta
@@ -148,7 +193,7 @@ def fresh(source='', player=None, setup=None, locale=None):
     lua.globals().ADDON_DIR = ADDON
     ns = lua.eval('{}')
     loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
-    for name in toc_files():
+    for name in toc_files(game):
         path = os.path.join(ADDON, name)
         if not os.path.exists(path):
             continue

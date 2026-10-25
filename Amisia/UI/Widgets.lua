@@ -380,6 +380,17 @@ local ARROW = {
              open = "common-dropdown-a-button-open-shadowless", disabled = "common-dropdown-a-button-disabled-shadowless" },
 }
 local TURN = { down = 0, right = math.pi / 2, up = math.pi, left = -math.pi / 2 }
+-- Without Forever's dropdown atlases (TBC, Era: D-57) the client's page and scroll arrows, one texture
+-- per direction and state (-Up, -Down, -Disabled), never turned.
+local CLASSIC_ARROW = {
+    left = "Interface\\Buttons\\UI-SpellbookIcon-PrevPage", right = "Interface\\Buttons\\UI-SpellbookIcon-NextPage",
+    up = "Interface\\ChatFrame\\UI-ChatIcon-ScrollUp", down = "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown",
+}
+local function classicArrows(base)
+    return { texture = true, normal = base .. "-Up", hover = base .. "-Up", pressed = base .. "-Down",
+             pressedhover = base .. "-Down", open = base .. "-Down", disabled = base .. "-Disabled" }
+end
+W.CLASSIC_ARROW = CLASSIC_ARROW
 
 -- The atlas for the state of button b: its own flags (over, down) and isOpen() of the owner.
 local function arrowState(b)
@@ -408,6 +419,14 @@ function W.ArrowButton(parent, dir, size, onClick)
     else
         b.arrowSet = ARROW.shadow
     end
+    if not hasAtlas(b.arrowSet.normal) then
+        b.arrowSet = classicArrows(CLASSIC_ARROW[dir or "down"] or CLASSIC_ARROW.down)
+        if b.arrow.SetRotation then b.arrow:SetRotation(0) end
+        b.glow = b:CreateTexture(nil, "HIGHLIGHT")
+        b.glow:SetAllPoints()
+        b.glow:SetTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+        b.glow:SetBlendMode("ADD")
+    end
     -- the shadowed atlas carries its drop shadow below and to the right of the square: the client
     -- draws it at its own size, its right edge one over the box and 3 px down (WowStyle1Dropdown,
     -- a 25 px box). Here the same, scaled to the button; the flat atlases fill the button.
@@ -426,7 +445,11 @@ function W.ArrowButton(parent, dir, size, onClick)
         b.arrowFit = fit
     end
     function b:UpdateArrow()
-        self.arrow:SetAtlas(arrowState(self), false)
+        if self.arrowSet.texture then
+            self.arrow:SetTexture(arrowState(self))
+        else
+            self.arrow:SetAtlas(arrowState(self), false)
+        end
     end
     -- the hover look; W.Tooltip keeps it through this
     function b:SetOver(on)

@@ -289,18 +289,34 @@ def test_the_module_map_has_every_toc_file(arch):
 
 
 # ---------------------------------------------------------------- decision guards
-def test_toc_is_forever_only():
+# the Forever parts (D-57): exactly these files load on Forever only; tests/test_tbc_raid.lua loads the rest alone
+FOREVER_DIRS = ('Data/', 'Collect/', 'Gear/')
+FOREVER_FILES = {'Core/Duels.lua', 'Raid/Handover.lua', 'UI/GoalsWindow.lua', 'UI/SlotCard.lua', 'UI/DuelInfo.lua'} | {
+    f'UI/Pages/{p}.lua' for p in ('Gear', 'Dungeons', 'RaidJournal', 'Map', 'Professions', 'Quests', 'Talents',
+                                  'MageScrolls', 'Duels', 'Tools', 'Export')}
+
+
+def test_the_toc_loads_the_forever_parts_on_forever_only():
     toc = read(os.path.join(ADDON, 'Amisia.toc'))
-    assert re.search(r'^## Interface: 16001\s*$', toc, re.M), 'the TOC targets WoW Forever (16001) and nothing else'
+    assert re.search(r'^## Interface: 16001, 20506, 11509\s*$', toc, re.M), \
+        'the TOC targets WoW Forever, TBC Anniversary and Classic Era (16001, 20506, 11509) and nothing else'
+    assert '## AllowLoadGameType' not in toc, 'no TOC-wide load condition'
     for line in toc.splitlines():
-        if line.startswith('Data\\'):
-            assert line.endswith('[AllowLoadGameType camelot]'), f'generated data loads on Forever only: {line}'
+        if not line.strip() or line.startswith('#'):
+            continue
+        name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/').strip()
+        forever = name.startswith(FOREVER_DIRS) or name in FOREVER_FILES
+        conds = re.findall(r'\[([^\]]*)\]', line)
+        if forever:
+            assert conds == ['AllowLoadGameType camelot'], f'a Forever part loads on Forever only: {line}'
+        else:
+            assert not conds, f'the raid part loads on all three clients: {line}'
 
 
 def test_no_tbc_client_left_in_the_addon():
     for rel, text in addon_files(exts=('.lua', '.toc', '.xml')):
         for word in ('_anniversary_', '_classic_era_', 'BisDataTBC', 'MapDataTBC', 'BisWeightsTBC', 'IsForever'):
-            assert word not in text, f'{rel} still names {word} (Amisia is WoW Forever only)'
+            assert word not in text, f'{rel} still names {word} (no code of the TBC client of 1.9, D-01)'
 
 
 ALLOWED_HOSTS = ('wowhead.com', 'zamimg.com', 'supabase.co', 'jsdelivr.net', 'fonts.googleapis.com',

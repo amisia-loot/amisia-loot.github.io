@@ -24,7 +24,7 @@ local MAX_SIGNUPS = 80      -- sign-ups per night (the absent included)
 local MAX_NIGHTS = 8        -- nights kept, the newest
 local MAX_OPTIONS = 5       -- names offered for an unclear sign-up
 local ALIAS_MAX = 300       -- remembered name fixes (shared with the soft-reserves)
-local OWN_GAME = "forever"
+local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-57)
 local GROUP_SIZE = 5
 local SIZES = { [10] = true, [20] = true, [40] = true }
 local SAME_CLICK = 120      -- Amisia and the calendar within this many seconds: one click, Amisia counts

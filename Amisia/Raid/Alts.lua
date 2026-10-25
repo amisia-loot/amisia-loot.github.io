@@ -12,8 +12,8 @@ local HEAD_FAIL = L["Das ist keine Twink-Liste der Amisia-Seite."]
 local MAX_LINES = 2000      -- lines read, the head included
 local MAX_LINE = 200        -- bytes of one line that are looked at
 local NAME_MAX = 48
-local OWN_GAME = "forever"
-local GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary" }
+local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-57)
+local GAME_NAMES = ns.GAME_NAMES
 
 local function stripCodes(s)
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")

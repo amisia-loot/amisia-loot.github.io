@@ -16,8 +16,8 @@ local ADDON, ns = ...
 local L = ns.L
 
 local HEAD_FAIL = L["Das ist kein Punktestand der Amisia-Seite."]
-local OWN_GAME = "forever"
-local GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary" }
+local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-57)
+local GAME_NAMES = ns.GAME_NAMES
 local SYSTEMS = { roll = true, dkp = true, epgp = true }
 local MAX_LINES, MAX_LINE = 3000, 2000
 local NAME_MAX = 48

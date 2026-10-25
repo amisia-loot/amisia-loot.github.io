@@ -140,7 +140,7 @@ def test_shipped_file_is_in_the_toc_and_compact():
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         toc = fh.read()
     assert re.search(r'^Data\\ProfessionData\.lua \[AllowLoadGameType camelot\]$', toc, re.M)
-    assert toc.index('Data\\ProfessionData.lua') < toc.index('Gear\\Professions.lua\n') < toc.index('UI\\Pages\\Professions.lua')
+    assert toc.index('Data\\ProfessionData.lua') < toc.index('Gear\\Professions.lua [AllowLoadGameType camelot]\n') < toc.index('UI\\Pages\\Professions.lua')
     path = os.path.join(ADDON, 'Data', 'ProfessionData.lua')
     with open(path, encoding='utf-8') as fh:
         text = fh.read()

@@ -34,8 +34,10 @@ local tipBusy = false
 
 local function tipLink(tip)
     if TooltipUtil and TooltipUtil.GetDisplayedItem then
-        local _, link = TooltipUtil.GetDisplayedItem(tip)
-        return link
+        local ok, _, link = pcall(TooltipUtil.GetDisplayedItem, tip)
+        if not ok then link = nil end
+        -- TBC and Era: a tooltip built the old way carries no tooltip data, its GetItem knows the item
+        if link or ns.FOREVER then return link end
     end
     if tip.GetItem then
         local _, link = tip:GetItem()
@@ -86,6 +88,15 @@ end
 if type(TooltipDataProcessor) == "table" and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
     and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, onItemTooltip)
+end
+-- TBC and Era (D-57) still build item tooltips the old way: the tooltip's OnTooltipSetItem, not the
+-- data processor. Both may fire for one item; tipDone keeps every part to one line per item.
+if not ns.FOREVER then
+    for _, tip in ipairs({ _G.GameTooltip, _G.ItemRefTooltip }) do
+        if type(tip) == "table" and tip.HookScript and (not tip.HasScript or tip:HasScript("OnTooltipSetItem")) then
+            pcall(tip.HookScript, tip, "OnTooltipSetItem", onItemTooltip)
+        end
+    end
 end
 
 -- Tracked guild bank materials: [itemID] = fallback name until the client has the item cached;
@@ -322,7 +333,8 @@ local KEEP_MAX = 200
 local function trimSessions()
     local list = DB.sessions
     local keep = ns.Get("record.keepSessions") or 60
-    local guard = ns.IsOfficerView()
+    -- (the site holds Forever raids only: off Forever nothing waits for it, D-57)
+    local guard = ns.FOREVER and ns.IsOfficerView()
     local i = 1
     while #list > keep and i < #list do
         if guard and #list <= KEEP_MAX and ns.ExportState(list[i]) ~= "done" then
@@ -454,7 +466,7 @@ end
 local REMIND_EVERY = 600
 local remindedAt
 local function exportReminder()
-    if not ns.IsOfficerView() or not ns.Get("record.exportWarn") then return end
+    if not ns.FOREVER or not ns.IsOfficerView() or not ns.Get("record.exportWarn") then return end
     if remindedAt and GetTime() - remindedAt < REMIND_EVERY then return end
     remindedAt = GetTime()
     local n = #ns.PendingExport()
@@ -780,7 +792,7 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, group = 
     { key = "record.lateAt", type = "time", allowOff = true, label = L["Raidbeginn (zu spät ab)"], default = 20 * 60,
       tip = L["Wer danach zum ersten Mal im Raid steht, wird als zu spät vermerkt. \"aus\" schaltet es ab."] },
     { key = "record.keepSessions", type = "slider", label = L["Raids aufbewahren"], default = 60, min = 10, max = 200, step = 10, tip = L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] },
-    { key = "record.exportWarn", type = "toggle", label = L["An nicht exportierte Raids erinnern"], default = true, officer = true,
+    { key = "record.exportWarn", type = "toggle", label = L["An nicht exportierte Raids erinnern"], default = true, officer = true, forever = true,
       tip = L["Am Ende einer Aufnahme und wenn mehr Raids bleiben als eingestellt: wie viele Raids die Website noch nicht hat. Aus, wenn ein anderer Offizier exportiert."] },
     { key = "record.resumeHours", type = "slider", label = L["Fortsetzen innerhalb von (Std.)"], default = 2, min = 1, max = 6,
       expert = true, tip = L["Wer denselben Raid innerhalb dieser Zeit wieder betritt, setzt die Aufnahme fort."] },
@@ -1321,6 +1333,6 @@ ns.RegisterSlash("status", { desc = L["Stand der Aufnahme und der Gildenbank"], 
         msg(L["Gildenbank noch nicht gezählt. Öffne sie einmal."])
     end
 end })
-ns.RegisterSlash("export", { officer = true, desc = L["den neuesten Raid exportieren"], run = function()
+ns.RegisterSlash("export", { officer = true, forever = true, desc = L["den neuesten Raid exportieren"], run = function()
     if ns.ShowExport then ns.ShowExport(true) end
 end })

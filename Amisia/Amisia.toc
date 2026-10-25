@@ -1,4 +1,4 @@
-## Interface: 16001
+## Interface: 16001, 20506, 11509
 ## Title: Amisia
 ## Notes: Records raid members, loot and awards per raid, runs rolls and soft reserves, exports everything for the Amisia loot site and shows the best gear per level range.
 ## Notes-deDE: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
@@ -30,7 +30,7 @@ Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
-Core\Duels.lua
+Core\Duels.lua [AllowLoadGameType camelot]
 UI\Theme.lua
 UI\Widgets.lua
 Raid\Awards.lua
@@ -53,15 +53,15 @@ Raid\Stats.lua
 Raid\AwardHistory.lua
 Raid\BankNeeds.lua
 Raid\BankLog.lua
-Collect\Scan.lua
-Collect\Collect.lua
-Collect\ScanTrim.lua
-Collect\Drops.lua
-Collect\DropSync.lua
-Collect\Collector.lua
-Collect\CollectSync.lua
-Collect\QuestXP.lua
-Collect\QuestTags.lua
+Collect\Scan.lua [AllowLoadGameType camelot]
+Collect\Collect.lua [AllowLoadGameType camelot]
+Collect\ScanTrim.lua [AllowLoadGameType camelot]
+Collect\Drops.lua [AllowLoadGameType camelot]
+Collect\DropSync.lua [AllowLoadGameType camelot]
+Collect\Collector.lua [AllowLoadGameType camelot]
+Collect\CollectSync.lua [AllowLoadGameType camelot]
+Collect\QuestXP.lua [AllowLoadGameType camelot]
+Collect\QuestTags.lua [AllowLoadGameType camelot]
 Data\GearData.lua [AllowLoadGameType camelot]
 Data\GearWeights.lua [AllowLoadGameType camelot]
 Data\BisData.lua [AllowLoadGameType camelot]
@@ -75,23 +75,23 @@ Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
 Data\ScanDone.lua [AllowLoadGameType camelot]
 Data\RaidCheckData.lua [AllowLoadGameType camelot]
-Gear\Gear.lua
-Gear\PlayStyle.lua
-Gear\Model.lua
-Gear\GearFrame.lua
-Gear\Bis.lua
-Gear\Dungeons.lua
-Gear\Professions.lua
-Gear\Crafters.lua
-Gear\Quests.lua
-Gear\GuildWishes.lua
-Gear\Compare.lua
-Gear\Catalog.lua
+Gear\Gear.lua [AllowLoadGameType camelot]
+Gear\PlayStyle.lua [AllowLoadGameType camelot]
+Gear\Model.lua [AllowLoadGameType camelot]
+Gear\GearFrame.lua [AllowLoadGameType camelot]
+Gear\Bis.lua [AllowLoadGameType camelot]
+Gear\Dungeons.lua [AllowLoadGameType camelot]
+Gear\Professions.lua [AllowLoadGameType camelot]
+Gear\Crafters.lua [AllowLoadGameType camelot]
+Gear\Quests.lua [AllowLoadGameType camelot]
+Gear\GuildWishes.lua [AllowLoadGameType camelot]
+Gear\Compare.lua [AllowLoadGameType camelot]
+Gear\Catalog.lua [AllowLoadGameType camelot]
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua
 Raid\RollWatch.lua
-Raid\Handover.lua
+Raid\Handover.lua [AllowLoadGameType camelot]
 Raid\Calendar.lua
 Raid\CalendarWrite.lua
 Raid\Lineup.lua
@@ -102,12 +102,12 @@ Raid\RaidCalendar.lua
 Raid\RaidCheckRead.lua
 Raid\RaidCheck.lua
 Raid\RaidIDs.lua
-Gear\Talents.lua
-Gear\MageScrolls.lua
-Gear\Map.lua
-Gear\MapPins.lua
-Gear\MapPlaces.lua
-Gear\MapPin.xml
+Gear\Talents.lua [AllowLoadGameType camelot]
+Gear\MageScrolls.lua [AllowLoadGameType camelot]
+Gear\Map.lua [AllowLoadGameType camelot]
+Gear\MapPins.lua [AllowLoadGameType camelot]
+Gear\MapPlaces.lua [AllowLoadGameType camelot]
+Gear\MapPin.xml [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua
@@ -122,22 +122,22 @@ UI\Pages\Stats.lua
 UI\Pages\Points.lua
 UI\Pages\SoftRes.lua
 UI\SoftResImport.lua
-UI\Pages\Gear.lua
-UI\Pages\Dungeons.lua
-UI\Pages\RaidJournal.lua
-UI\GoalsWindow.lua
-UI\SlotCard.lua
-UI\Pages\Map.lua
-UI\Pages\Professions.lua
-UI\Pages\Quests.lua
-UI\Pages\Talents.lua
-UI\Pages\MageScrolls.lua
-UI\Pages\Export.lua
+UI\Pages\Gear.lua [AllowLoadGameType camelot]
+UI\Pages\Dungeons.lua [AllowLoadGameType camelot]
+UI\Pages\RaidJournal.lua [AllowLoadGameType camelot]
+UI\GoalsWindow.lua [AllowLoadGameType camelot]
+UI\SlotCard.lua [AllowLoadGameType camelot]
+UI\Pages\Map.lua [AllowLoadGameType camelot]
+UI\Pages\Professions.lua [AllowLoadGameType camelot]
+UI\Pages\Quests.lua [AllowLoadGameType camelot]
+UI\Pages\Talents.lua [AllowLoadGameType camelot]
+UI\Pages\MageScrolls.lua [AllowLoadGameType camelot]
+UI\Pages\Export.lua [AllowLoadGameType camelot]
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
-UI\DuelInfo.lua
-UI\Pages\Duels.lua
-UI\Pages\Tools.lua
+UI\DuelInfo.lua [AllowLoadGameType camelot]
+UI\Pages\Duels.lua [AllowLoadGameType camelot]
+UI\Pages\Tools.lua [AllowLoadGameType camelot]
 UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Setup.lua

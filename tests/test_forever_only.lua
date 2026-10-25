@@ -24,9 +24,11 @@ GetGuildBankItemInfo = function(tab, slot)
     return 134, e and e[2] or 0
 end
 ]]
--- Amisia is WoW Forever only (2.0): the TOC, no file or code path of the TBC client, the removed
--- helpers, the move of the saved settings (twice changes nothing), the ignore list and the empty
--- list of guild materials with the mechanism that comes back with a list.
+-- Amisia is WoW Forever with every part, TBC Anniversary and Classic Era with the raid part only
+-- (D-01, D-57): the TOC (the interface list, the Forever parts behind [AllowLoadGameType camelot]), no
+-- file or code path of the old TBC client of 1.9, the removed helpers, the move of the saved settings
+-- (twice changes nothing), the ignore list and the empty list of guild materials with the mechanism
+-- that comes back with a list. tests/test_tbc_raid.lua loads the raid part alone.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function readFile(path)
     local fh = assert(io.open(path, "rb"))
@@ -41,12 +43,31 @@ end
 local toc = readFile(ADDON_DIR .. "/Amisia.toc")
 local interface = {}
 for v in toc:gmatch("## Interface:%s*([^\r\n]+)") do interface[#interface + 1] = v end
-assert(#interface == 1 and interface[1] == "16001", "## Interface: 16001 alone: " .. table.concat(interface, "|"))
+assert(#interface == 1 and interface[1] == "16001, 20506, 11509",
+    "## Interface: Forever, TBC Anniversary, Classic Era: " .. table.concat(interface, "|"))
 assert(not toc:find("TBC", 1, true) and not toc:find("AllowLoadGameType tbc", 1, true), "no TBC line")
-for _, name in ipairs({ "Data/GearData.lua", "Data/GearWeights.lua", "Data/MapData.lua" }) do
-    assert(toc:find("\n" .. name:gsub("/", "\\") .. " [AllowLoadGameType camelot]", 1, true), name .. " keeps its load condition")
-end
 assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load condition")
+-- the Forever parts (D-57): exactly these load on Forever only, every other file on all three clients
+local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GoalsWindow.lua"] = true,
+                        ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
+for _, page in ipairs({ "Gear", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
+                        "Tools", "Export" }) do
+    FOREVER_FILES["UI/Pages/" .. page .. ".lua"] = true
+end
+local function foreverOnly(name)
+    return FOREVER_FILES[name] or name:find("^Data/") ~= nil or name:find("^Collect/") ~= nil or name:find("^Gear/") ~= nil
+end
+local tagged = 0
+for line in toc:gmatch("[^\r\n]+") do
+    if not line:find("^#") and line:find("%S") then
+        local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
+        local camelot = line:find("%[AllowLoadGameType camelot%]") ~= nil
+        assert(camelot == (foreverOnly(name) and true or false),
+            name .. (camelot and " loads on Forever only but belongs to the raid part" or " is a Forever part without its load condition"))
+        if camelot then tagged = tagged + 1 end
+    end
+end
+assert(tagged > 50, "the Forever files: " .. tagged)
 local version = toc:match("## Version:%s*([^\r\n]+)")
 assert(version and version == NS.VERSION, "TOC version and ns.VERSION agree: " .. tostring(version) .. " / " .. tostring(NS.VERSION))
 assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only addon is 2.0.0 or later: " .. tostring(version))
@@ -71,9 +92,10 @@ for _, name in ipairs(files) do
         local src = readFile(ADDON_DIR .. "/" .. name)
         -- a generated data file holds item and spell numbers: the TBC interface number may be part of one
         local generated = src:find("^%-%- GENERATED") ~= nil
+        -- OnTooltipSetItem: only Core.lua's item tooltip hook of TBC and Era (D-57)
         for _, word in ipairs({ "IsForever", "LootButton", "LootFrame_Update", "BANK_CONTAINER", "OnTooltipSetItem", "20506",
                                 "NUM_BANKBAGSLOTS", "LOOTFRAME_NUMBUTTONS", "AmisiaScanTip" }) do
-            if not (generated and word == "20506") then
+            if not (generated and word == "20506") and not (word == "OnTooltipSetItem" and name == "Core/Core.lua") then
                 assert(not src:find(word, 1, true), name .. " still has " .. word)
             end
         end
@@ -87,7 +109,8 @@ end
 ---------------------------------------------------------------------------
 -- the helpers of two clients are gone
 ---------------------------------------------------------------------------
-assert(NS.IsForever == nil and NS.Gear.Game == nil and NS.Gear.PlannerAvailable == nil, "no client switch")
+assert(NS.IsForever == nil and NS.Gear.Game == nil and NS.Gear.PlannerAvailable == nil, "no switch of the 1.9 client")
+assert(NS.GAME == "forever" and NS.FOREVER == true, "the tests run on Forever: " .. tostring(NS.GAME))
 assert(NS.Gear.PhaseOf == nil and NS.Gear.FillRow == nil and NS.Gear.TooltipStats == nil, "no TBC data helpers")
 assert(NS.SettingItem("bis.phase") == nil, "no phase setting")
 assert(NS.Gear.Available(), "the Forever data loads")

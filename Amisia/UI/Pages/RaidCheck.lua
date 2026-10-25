@@ -23,7 +23,9 @@ local ID_COLS = { { "name", 6, 170 }, { "level", 180, 34 }, { "state", 222, 228 
 local ALT_X = 18           -- an alt's name, indented under its main
 
 local page
-local view = "buffs"       -- "buffs", "gear" or "ids"
+-- "buffs", "gear" or "ids"; off Forever there is no buff list (Data/RaidCheckData.lua loads on Forever
+-- only, D-57) and the view Buffs & Verbrauch is gone
+local view = ns.FOREVER and "buffs" or "gear"
 local onlyFree, onlyTop = false, false
 
 function ns.RaidCheckPageFrame() return page end
@@ -51,7 +53,7 @@ local STATE_WORD = { offline = L["offline"], dead = L["tot"], far = L["außer Si
 
 -- Opens the page, in a view when given ("buffs", "gear", "ids").
 function ns.ShowRaidCheck(which)
-    if which == "buffs" or which == "gear" or which == "ids" then view = which end
+    if (which == "buffs" and ns.FOREVER) or which == "gear" or which == "ids" then view = which end
     ns.ShowPage("raidcheck")
 end
 
@@ -319,6 +321,8 @@ local function build(parent)
 end
 
 local function refresh(f)
+    if view == "buffs" and not ns.FOREVER then view = "gear" end
+    if not ns.FOREVER then f.views.buffs:Hide() end
     for k, c in pairs(f.views) do c:SetOn(k == view) end
     local ids = view == "ids"
     show(f.check, not ids)

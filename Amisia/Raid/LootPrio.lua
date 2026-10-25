@@ -32,8 +32,8 @@ local NOTE_MAX = 80
 local MAX_ENTRIES = 10
 local MAX_ID = 9999999
 local MAX_SHARE = 120          -- items in one shared list (the newest)
-local OWN_GAME = "forever"
-local GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary" }
+local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-57)
+local GAME_NAMES = ns.GAME_NAMES
 local LV_EVERY = 240           -- the keeper repeats its state this often
 local LV_GAP = 10              -- and not more often than this after a change
 local ANSWER_AFTER = 2         -- requests within this go out together

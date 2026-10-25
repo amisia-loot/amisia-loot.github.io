@@ -10,19 +10,22 @@ gespeicherte Schlüssel) stehen in [ARCHITECTURE.md](ARCHITECTURE.md).
 "Durchgesetzt durch" (oder "Nicht maschinell geprüft") hat und dass jeder hier genannte Test
 existiert.
 
-## D-01 Nur WoW Forever; TBC lebt nur als Archiv der Seite
+## D-01 WoW Forever mit allem, TBC Anniversary und Classic Era nur mit dem Raid-Teil; TBC lebt auf der Seite nur als Archiv
 
-**Datum:** 2026-10-05
-**Entscheidung:** Das Addon zielt nur auf WoW Forever (TOC `## Interface: 16001`). TBC Anniversary
-und alle anderen Versionen (Era, Hardcore, SoD, MoP) sind entfernt. Die Seite zeigt nur Forever im
-Spielwähler; der TBC-Ledger der Gilde bleibt als schreibgeschütztes Archiv lesbar.
-**Grund:** Die Gilde zieht nach Forever (Start 2026-11-04); zwei Clients verdoppelten Arbeit und
-Review-Funde.
-**Folge:** Nie wieder TBC-/Fremdversions-Code oder -Daten; beim Anfassen geteilten Codes TBC-Zweige
-löschen statt halten. Generierte Daten tragen `[AllowLoadGameType camelot]`. `Amisia-Website/data/tbc.js` und Co.
-sind nur noch Archiv (kein Neubau).
-**Durchgesetzt durch:** `tests/test_forever_only.lua`, `tools/tests/test_data_files.py::test_data_holds_forever_and_the_tbc_archive_only`,
-`tools/tests/test_site_archive.py`, `tools/tests/test_contracts.py::test_toc_is_forever_only`,
+**Datum:** 2026-10-25 (zuerst 2026-10-05)
+**Entscheidung:** Das Addon zielt auf WoW Forever (TOC-Interface 16001) mit allen Teilen. Seit F-126 lädt es
+auch auf TBC Anniversary (20506) und Classic Era mit SoD und Hardcore (11509), dort aber nur mit dem Raid-Teil
+(D-57). Mists, Retail und andere Clients bleiben weg. Die Seite zeigt nur Forever im Spielwähler; der TBC-Ledger
+der Gilde bleibt als schreibgeschütztes Archiv lesbar. Für TBC/Era gibt es keine Seite, keinen Ledger und keine Daten.
+**Grund:** Die Gilde zieht nach Forever (Start 2026-11-04); zwei vollständige Clients verdoppelten Arbeit und
+Review-Funde. Nutzer 2026-10-25 mit einem Screenshot von 2.46.1 auf TBC/Classic: "Nur Raid-Teil + sauberes UI".
+**Folge:** Kein TBC-Code des alten 1.9-Clients und keine Daten oder Seiten für TBC/Era; die Forever-Teile laden nur
+mit `[AllowLoadGameType camelot]` (D-57). Generierte Daten tragen `[AllowLoadGameType camelot]`.
+`Amisia-Website/data/tbc.js` und Co. sind nur noch Archiv (kein Neubau). Bis 2026-10-25 galt: nur Forever
+(`## Interface: 16001` allein), nie wieder TBC- oder Fremdversions-Code.
+**Durchgesetzt durch:** `tests/test_forever_only.lua`, `tests/test_tbc_raid.lua`, `tests/test_era_raid.lua`,
+`tools/tests/test_data_files.py::test_data_holds_forever_and_the_tbc_archive_only`,
+`tools/tests/test_site_archive.py`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`,
 `tools/tests/test_contracts.py::test_no_tbc_client_left_in_the_addon`.
 
 ## D-02 Keine Links auf Fan- und Datenseiten; Wowhead-Itemlinks sind in Ordnung
@@ -1235,3 +1238,28 @@ Spielstil-Filter ... plus Rechtsklick auf den Slot im Charakterfenster"; zur Spe
 **Folge:** Der Schlüssel der Optionen trägt Schalter, Ort und einen Zähler (Ruf, Zone, gelernte Questtypen), sonst
 stimmt kein Cache. Elitequests ohne Questlog-Eintrag erkennt "Solo machbar" erst nach dem nächsten Daten-Build.
 **Durchgesetzt durch:** `tests/test_play_style.lua`, `tools/tests/test_build_gear.py`.
+
+## D-57 Raid-Teil auf TBC und Era: die Forever-Teile laden nur auf Forever, ein Schalter `ns.GAME`
+
+**Datum:** 2026-10-25
+**Entscheidung:** Spec `docs/specs/2026-10-25-raid-auf-tbc-und-era.md` (F-126). Eine `Amisia.toc` mit
+`## Interface: 16001, 20506, 11509`. Nur auf Forever laden (`[AllowLoadGameType camelot]`): `Data/*`, `Collect/*`,
+`Gear/*` (auch `MapPin.xml`), `Core/Duels.lua`, `Raid/Handover.lua` (Handel-Helfer), `UI/GoalsWindow.lua`,
+`UI/SlotCard.lua`, `UI/DuelInfo.lua` und die Seiten Ausrüstung, Dungeons, Raids (Ausrüstung), Karte, Berufe, Quests,
+Talente, Magierrollen, Duelle, Werkzeuge und Export. Alles andere ist der Raid-Teil und lädt auf allen drei Clients;
+er greift auf die Forever-Teile nur zur Laufzeit und nur geprüft zu (`if ns.Gear and ...`). Der Schalter heißt
+`ns.GAME` ("forever", "tbc", "era"; `WOW_PROJECT_ID`, `WOW_PROJECT_CAMELOT` zuerst, sonst die Interface-Nummer des
+Builds) mit `ns.FOREVER`; `ns.Visible` blendet alles mit `forever = true` außerhalb von Forever aus (Talent- und
+Zielfenstergröße, Export-Erinnerung `record.exportWarn`, Befehl `/amisia export`). Außerhalb von Forever fehlen
+außerdem die Ansicht "Buffs & Verbrauch" des Raid-Checks (die Buffliste ist Forever-Datenbestand; Ausrüstung und
+Raid-IDs bleiben) und das Aufheben nicht exportierter Raids über "Raids aufbewahren". Die Einfügeblöcke der Seite
+gelten nur für ihr Spiel (`OWN_GAME = ns.GAME`). Der Reiter Gilde (Bank, Mitglieder) bleibt. Item-Tooltips hängen sich
+auf TBC/Era an `OnTooltipSetItem`, die Reiter unter dem Fenster bekommen ihre Breite auf allen Clients von Amisia, die
+Pfeile der Zahlenfelder ohne Forevers Atlas die Seiten- und Scrollpfeile des Clients.
+**Grund:** Nutzer 2026-10-25: "Nur Raid-Teil + sauberes UI"; zu den vier offenen Fragen der Spec "passt" (Export
+und Export-Erinnerung aus, Gilde bleibt, Handel-Helfer aus, Raid-Check-Buffs aus).
+**Folge:** Eine neue Datei gehört entweder zum Raid-Teil (lädt überall, kein Forever-Global beim Laden) oder trägt den
+camelot-Tag und steht in den Listen der beiden Tests. Ein Export von TBC/Era kann nicht im Forever-Ledger landen.
+SavedVariables von TBC/Era kommen nicht auf den N100 zurück; Spiel-Tests dort macht der Nutzer.
+**Durchgesetzt durch:** `tests/test_forever_only.lua`, `tests/test_tbc_raid.lua`, `tests/test_era_raid.lua`,
+`tests/test_game_switch.lua`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`.

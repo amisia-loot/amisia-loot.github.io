@@ -196,6 +196,11 @@ end
 local function sectionClient(R)
     check(R, "Amisia", function() return "WERT", tostring(ns.VERSION) end)
     check(R, "GetBuildInfo", function() return "WERT", showAll(call("GetBuildInfo")) end)
+    -- D-57: Forever with every part, TBC and Era with the raid part only
+    check(R, "Client", function()
+        local name = ns.GAME_NAMES and ns.GAME_NAMES[ns.GAME] or tostring(ns.GAME)
+        return "WERT", ns.FOREVER and name or L["%s (nur der Raid-Teil)"]:format(name)
+    end)
     check(R, L["Zeit"], function()
         return "WERT", ("%s, Server %s"):format(date("%Y-%m-%d %H:%M:%S"), show(call("GetServerTime")))
     end)
@@ -719,7 +724,8 @@ local function sectionArt(R)
     end)
 end
 
--- kind, template, the parts Amisia needs from it (as the widgets probe them)
+-- kind, template, the parts Amisia needs from it (as the widgets probe them); forever: needed on Forever
+-- only (TBC and Era draw the fallback, D-57)
 local TEMPLATES = {
     { "Frame", "PortraitFrameTemplate", { "TitleContainer", "CloseButton", "SetTitle", "SetPortraitToAsset" } },
     { "Button", "UIPanelCloseButton", {} },
@@ -728,9 +734,9 @@ local TEMPLATES = {
     { "CheckButton", "MinimalCheckboxTemplate", { "SetChecked", "GetChecked" } },
     { "EditBox", "InputBoxTemplate", { "Left" } },
     { "EditBox", "SearchBoxTemplate", { "Left", "Instructions", "clearButton" } },
-    { "Button", "ListHeaderVisualTemplate, ListHeaderCodeTemplate", { "ButtonText", "SetClickHandler", "SetHeaderText" } },
+    { "Button", "ListHeaderVisualTemplate, ListHeaderCodeTemplate", { "ButtonText", "SetClickHandler", "SetHeaderText" }, forever = true },
     { "EventFrame", "MinimalScrollBar", { "SetScrollPercentage", "RegisterCallback" } },
-    { "Frame", "LargeSideTabButtonTemplate", { "SetCustomOnMouseUpHandler", "Icon", "SetChecked" } },
+    { "Frame", "LargeSideTabButtonTemplate", { "SetCustomOnMouseUpHandler", "Icon", "SetChecked" }, forever = true },
     { "Button", "PanelTabButtonTemplate", { "Text", "Left", "LeftActive" } },
     { "Button", "TooltipBackdropTemplate", { "NineSlice" } },
 }
@@ -773,9 +779,11 @@ local function sectionTemplates(R)
     for _, t in ipairs(TEMPLATES) do
         check(R, t[2], function()
             local a = tryTemplate(t)
+            if a[1] ~= "OK" and t.forever and not ns.FOREVER then return "WERT", L["fehlt, Ersatz von Amisia (nicht nötig)"] end
             return a[1], a[2]
         end)
     end
+    if not ns.FOREVER then return end   -- MapPin.xml loads on Forever only
     check(R, "AmisiaMapPinTemplate", function()
         return type(_G.AmisiaMapPinMixin) == "table" and "OK" or FEHLT,
             type(_G.AmisiaMapPinMixin) == "table" and L["Mixin geladen (Vorlage aus MapPin.xml)"] or L["Mixin fehlt"]
@@ -1496,14 +1504,14 @@ function ST.Run(opts)
     runSection(R, L["Woche, Karte, Wegpunkt"], sectionMap, opts)
     runSection(R, "Loot", sectionLoot)
     runSection(R, L["Atlanten"], sectionAtlases)
-    runSection(R, L["Dungeonbilder"], sectionArt)
+    if ns.FOREVER then runSection(R, L["Dungeonbilder"], sectionArt) end   -- the Forever parts (D-57)
     runSection(R, L["Vorlagen"], sectionTemplates)
     runSection(R, L["Client-Funktionen"], sectionFunctions)
     runSection(R, L["Ereignisse"], sectionEvents)
     runSection(R, L["Item-Konstanten"], sectionItems)
     runSection(R, L["Werte"], sectionValues)
-    runSection(R, L["Berufe"], sectionProfessions)
-    runSection(R, L["Talente"], sectionTalents)
+    if ns.FOREVER then runSection(R, L["Berufe"], sectionProfessions) end   -- the Forever parts (D-57)
+    if ns.FOREVER then runSection(R, L["Talente"], sectionTalents) end   -- the Forever parts (D-57)
     runSection(R, L["Gespeicherte Daten"], sectionData)
     return finish(R, L["Amisia-Selbsttest %s | Client %s | %s"])
 end
