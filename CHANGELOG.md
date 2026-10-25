@@ -2,6 +2,14 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.47.0 (2026-10-25)
+
+- Spec F-126: Raid-Teil auf TBC Anniversary und Classic Era (Entwurf)
+- Spec F-126 freigegeben: Export, Handel-Helfer und Raid-Check-Buffs auf TBC/Era aus, Gilde bleibt
+- Einstellungen: das rote X zum Zurücksetzen steht direkt rechts neben seinem Feld
+- Raid-Teil auf TBC Anniversary und Classic Era (F-126, D-57)
+- F-126 gebaut in 2.47.0
+
 ## 2.46.1 (2026-10-24)
 
 - Reiter unter dem Hauptfenster mit Namen: PanelTemplates_SelectTab brach auf namenlosen Reitern ab
