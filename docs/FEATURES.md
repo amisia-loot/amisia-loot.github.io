@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-126 Raid-Teil auf TBC Anniversary und Classic Era
-- Version: -
-- Status: geplant
+- Version: 2.47.0
+- Status: gebaut
 - Prüfung: Wenn du dich auf TBC Anniversary oder Classic Era einloggst, dann lädt Amisia ohne "veraltet", und unten stehen nur Raid, Gilde, Kalender, Amisia, alle innerhalb der Fensterbreite.
 - Prüfung: Wenn du dort Einstellungen, Raid, Aufnahme öffnest, dann stehen "20:00" und das Feld "60" mit sichtbaren Pfeilen bündig untereinander, und das rote X steht direkt rechts neben dem Häkchen.
 - Prüfung: Wenn du auf TBC/Era mit der Maus über ein soft-reserviertes Item fährst, dann steht die SR-Zeile im Tooltip.
