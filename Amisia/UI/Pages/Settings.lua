@@ -7,6 +7,7 @@ local L = ns.L
 local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
 local ROW_H, LABEL_W = 26, 300
+local RESET_GAP = 8   -- the reset button right of its control
 
 local rows = {}   -- path -> row
 local scroll, child, page
@@ -78,7 +79,13 @@ local function makeRow(it)
     if it.type ~= "button" and it.type ~= "desc" then
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
         r.reset = W.ResetButton(r, T.RESET, function() touched = path; ns.Reset(path); ns.Refresh() end)
-        r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
+        -- right beside its control (D-57: a column 160 px on stood far from a checkbox); without one where
+        -- the widest control would end
+        if r.control then
+            r.reset:SetPoint("LEFT", r.control, "RIGHT", RESET_GAP, 0)
+        else
+            r.reset:SetPoint("LEFT", LABEL_W + 20 + 160, 0)
+        end
         W.Tooltip(r.reset, L["Zurücksetzen"], L["Auf den Standard zurück."])
     end
     r:SetScript("OnEnter", function(self)
