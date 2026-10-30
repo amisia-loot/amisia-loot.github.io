@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.47.1 (2026-10-30)
+
+- Eigene TOCs für TBC und Era ohne Forever-Teile: TBC Anniversary lud Gear/* trotz camelot-Tag (D-57)
+
 ## 2.47.0 (2026-10-25)
 
 - Spec F-126: Raid-Teil auf TBC Anniversary und Classic Era (Entwurf)
