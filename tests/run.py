@@ -74,21 +74,18 @@ def toc_meta():
     return out
 
 
-# The client's game type for a TOC load condition (ns.GAME -> AllowLoadGameType).
-GAME_TYPES = {'forever': 'camelot', 'tbc': 'tbc', 'era': 'vanilla'}
+# The TOC each classic client loads instead of Amisia.toc (D-57, written by tools/build.py tocs).
+GAME_TOCS = {'tbc': 'Amisia_TBC.toc', 'era': 'Amisia_Vanilla.toc'}
 
 
 def toc_files(game=None):
-    """The files the TOC loads in order. game None: every file (the Forever tests); "tbc" or "era":
-    only the files whose "[AllowLoadGameType ...]" lets that client load them (D-57)."""
+    """The files the TOC loads in order. game None: every file of Amisia.toc (the Forever tests);
+    "tbc" or "era": the files of that client's own TOC, the raid part (D-57)."""
     out = []
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, GAME_TOCS.get(game, 'Amisia.toc')), encoding='utf-8') as fh:
         for line in fh:
             line = line.strip()
             if line and not line.startswith('#'):
-                cond = re.search(r'\[AllowLoadGameType ([^\]]*)\]', line)
-                if game and cond and GAME_TYPES[game] not in re.split(r'[\s,]+', cond.group(1).strip()):
-                    continue
                 # load conditions like "[AllowLoadGameType camelot]" stay out of the file name
                 name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep)
                 # XML files (templates) are for the client; a test reads them itself

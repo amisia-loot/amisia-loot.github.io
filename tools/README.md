@@ -9,6 +9,7 @@ the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, s
 ```
 python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
 python3 tools/build.py check
+python3 tools/build.py tocs
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
 python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
 python3 tools/build.py testlist [--all] [--out FILE]
@@ -33,6 +34,10 @@ python3 tools/build.py errors [--sv FILE] [--all]
   `docs/ARCHITECTURE.md` (message kinds, blob arts, export lines, paste-in blocks, saved keys,
   settings sections, module map) and `docs/DECISIONS.md` against the code. One line per step; the exit code is 1 when one fails. A missing
   node/luaparse or luacheck is reported as `skip`.
+- `tocs` writes `Amisia/Amisia_TBC.toc` (20506) and `Amisia/Amisia_Vanilla.toc` (11509): `Amisia.toc` without the
+  lines tagged `[AllowLoadGameType camelot]`, because TBC Anniversary loads those anyway (D-57). The classic clients
+  load their suffixed TOC instead of `Amisia.toc`. `check` (TOC against the folder) fails while they differ; edit only
+  `Amisia.toc`, then run `tocs`. `release` writes them with the new version.
 - `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
   version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts

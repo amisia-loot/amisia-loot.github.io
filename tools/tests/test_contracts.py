@@ -296,6 +296,19 @@ FOREVER_FILES = {'Core/Duels.lua', 'Raid/Handover.lua', 'UI/GoalsWindow.lua', 'U
                                   'MageScrolls', 'Duels', 'Tools', 'Export')}
 
 
+def test_the_classic_clients_have_their_own_toc_without_the_forever_parts():
+    # TBC Anniversary loaded the camelot-tagged files anyway; Amisia_TBC.toc and Amisia_Vanilla.toc,
+    # which those clients prefer, are Amisia.toc without them (D-57, build.py tocs)
+    base = read(os.path.join(ADDON, 'Amisia.toc')).splitlines()
+    for name, interface in (('Amisia_TBC.toc', '20506'), ('Amisia_Vanilla.toc', '11509')):
+        lines = read(os.path.join(ADDON, name)).splitlines()
+        assert f'## Interface: {interface}' in lines, f'{name} targets {interface}'
+        assert not any('AllowLoadGameType' in ln for ln in lines), f'{name} lists a Forever part'
+        want = [ln for ln in base if 'AllowLoadGameType camelot' not in ln and not ln.startswith('## Interface:')]
+        have = [ln for ln in lines if not ln.startswith('## Interface:') and not re.match(r'#(?!#)', ln)]
+        assert have == want, f'{name} is not Amisia.toc without the Forever parts (python3 tools/build.py tocs)'
+
+
 def test_the_toc_loads_the_forever_parts_on_forever_only():
     toc = read(os.path.join(ADDON, 'Amisia.toc'))
     assert re.search(r'^## Interface: 16001, 20506, 11509\s*$', toc, re.M), \

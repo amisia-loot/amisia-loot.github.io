@@ -1256,10 +1256,17 @@ Raid-IDs bleiben) und das Aufheben nicht exportierter Raids über "Raids aufbewa
 gelten nur für ihr Spiel (`OWN_GAME = ns.GAME`). Der Reiter Gilde (Bank, Mitglieder) bleibt. Item-Tooltips hängen sich
 auf TBC/Era an `OnTooltipSetItem`, die Reiter unter dem Fenster bekommen ihre Breite auf allen Clients von Amisia, die
 Pfeile der Zahlenfelder ohne Forevers Atlas die Seiten- und Scrollpfeile des Clients.
+**Nachtrag 2026-10-30:** TBC Anniversary hält sich nicht an `[AllowLoadGameType camelot]` (2.47.0 lud dort `Gear/*`,
+Fehler in `Gear.lua` bei jedem Taschen-Tooltip). TBC und Era bekommen deshalb eigene TOCs, die sie vor `Amisia.toc`
+laden: `Amisia_TBC.toc` (20506) und `Amisia_Vanilla.toc` (11509), beide `Amisia.toc` ohne die camelot-Zeilen.
+`Amisia.toc` bleibt die Quelle (Forever); `build.py tocs` schreibt die beiden, `release` mit der neuen Version,
+`check` schlägt fehl, solange sie abweichen. Die Lua-Tests für TBC/Era laden die Dateien dieser TOCs.
 **Grund:** Nutzer 2026-10-25: "Nur Raid-Teil + sauberes UI"; zu den vier offenen Fragen der Spec "passt" (Export
 und Export-Erinnerung aus, Gilde bleibt, Handel-Helfer aus, Raid-Check-Buffs aus).
 **Folge:** Eine neue Datei gehört entweder zum Raid-Teil (lädt überall, kein Forever-Global beim Laden) oder trägt den
 camelot-Tag und steht in den Listen der beiden Tests. Ein Export von TBC/Era kann nicht im Forever-Ledger landen.
 SavedVariables von TBC/Era kommen nicht auf den N100 zurück; Spiel-Tests dort macht der Nutzer.
 **Durchgesetzt durch:** `tests/test_forever_only.lua`, `tests/test_tbc_raid.lua`, `tests/test_era_raid.lua`,
-`tests/test_game_switch.lua`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`.
+`tests/test_game_switch.lua`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`,
+`tools/tests/test_contracts.py::test_the_classic_clients_have_their_own_toc_without_the_forever_parts`, `build.py check`
+(TOC against the folder).

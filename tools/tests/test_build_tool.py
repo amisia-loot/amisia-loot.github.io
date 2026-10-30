@@ -43,6 +43,7 @@ def make_addon(root, version='1.0.0'):
     write(os.path.join(a, 'Data', 'GearData.lua'), '-- GENERATED\n')
     write(os.path.join(a, 'Media', 'Icons', 'x.tga'), b'\x00\x01\xff', 'wb')
     write(os.path.join(a, '.stignore'), '.vscode\n')
+    build.flavor_tocs(root, write=True)
     return a
 
 
@@ -107,6 +108,20 @@ def test_check_toc_finds_missing_and_unlisted_files(tmp_path):
     bad = build.check_toc(str(tmp_path))
     assert 'Data/GearData.lua: in the TOC, but no such file' in bad
     assert 'Raid/New.lua: not in the TOC' in bad
+
+
+def test_flavor_tocs_leave_out_the_forever_parts(tmp_path):
+    a = make_addon(str(tmp_path))
+    with open(os.path.join(a, 'Amisia.toc'), 'a', encoding='utf-8') as fh:
+        fh.write('Gear\\Gear.lua [AllowLoadGameType camelot]\nRaid\\New.lua\n')
+    write(os.path.join(a, 'Gear', 'Gear.lua'), '-- gear\n')
+    write(os.path.join(a, 'Raid', 'New.lua'), '-- new\n')
+    assert 'Amisia_TBC.toc: not current with Amisia.toc (python3 tools/build.py tocs)' in build.check_toc(str(tmp_path))
+    build.flavor_tocs(str(tmp_path), write=True)
+    assert build.check_toc(str(tmp_path)) == []
+    with open(os.path.join(a, 'Amisia_TBC.toc'), encoding='utf-8') as fh:
+        tbc = fh.read()
+    assert '## Interface: 20506\n' in tbc and 'Raid\\New.lua' in tbc and 'Gear' not in tbc
 
 
 def test_check_utf8(tmp_path):
@@ -177,9 +192,10 @@ def test_release(repo):
     assert sh(root, 'git', 'status', '--porcelain') == '', 'everything committed'
     with zipfile.ZipFile(os.path.join(root, 'Amisia-Website', 'Amisia.zip')) as zf:
         names = sorted(zf.namelist())
-        assert names == ['Amisia/Amisia.toc', 'Amisia/Core/Core.lua', 'Amisia/Data/GearData.lua',
-                         'Amisia/Media/Icons/x.tga'], names
+        assert names == ['Amisia/Amisia.toc', 'Amisia/Amisia_TBC.toc', 'Amisia/Amisia_Vanilla.toc',
+                         'Amisia/Core/Core.lua', 'Amisia/Data/GearData.lua', 'Amisia/Media/Icons/x.tga'], names
         assert '## Version: 1.1.0' in zf.read('Amisia/Amisia.toc').decode('utf-8')
+        assert '## Version: 1.1.0' in zf.read('Amisia/Amisia_TBC.toc').decode('utf-8'), 'the classic TOCs follow'
     with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
         log = fh.read()
     assert '## 1.1.0 (2026-10-07)\n\n- Core: x is two\n- Notes for the next steps\n' in log

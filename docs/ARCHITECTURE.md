@@ -15,7 +15,7 @@ Three parts:
 
 | Part | Where | What |
 |---|---|---|
-| Addon | `Amisia/` | WoW Forever addon (TOC `## Interface: 16001, 20506, 11509`): raid recording, awards, rolls, DKP/EPGP, sync between Amisia clients, gear/BiS/map/quests/professions/talents, collectors. On TBC Anniversary (20506) and Classic Era (11509, with SoD and Hardcore) only the raid part loads (D-01, D-57). |
+| Addon | `Amisia/` | WoW Forever addon (TOC `## Interface: 16001, 20506, 11509`): raid recording, awards, rolls, DKP/EPGP, sync between Amisia clients, gear/BiS/map/quests/professions/talents, collectors. On TBC Anniversary (20506) and Classic Era (11509, with SoD and Hardcore) only the raid part loads, from their own `Amisia_TBC.toc` / `Amisia_Vanilla.toc` (Amisia.toc without the Forever parts, written by `build.py tocs`; D-01, D-57). |
 | Site | `Amisia-Website/index.html` (+ `Amisia-Website/data/*.js`) | The guild ledger on GitHub Pages; state in Supabase (`ledgers.main`). Reads the addon's export lines, writes the paste-in blocks for the addon. TBC is a read-only archive. |
 | Tools | `tools/` | Python builders of `Amisia/Data/*.lua` and `Amisia-Website/data/forever.js`, the build/check/release entry point `tools/build.py`, tests in `tools/tests` and `tests/` (the addon's Lua tests). |
 
@@ -153,7 +153,8 @@ landmark icons, F-105; a new texture needs a full client restart), `LICENSES/` (
 
 ### Load order rules
 
-- The TOC lists every `.lua`/`.xml` exactly once (`build.py check`: TOC against the folder).
+- The TOC lists every `.lua`/`.xml` exactly once (`build.py check`: TOC against the folder, which also fails while
+  `Amisia_TBC.toc` or `Amisia_Vanilla.toc` differ from `Amisia.toc` without its camelot lines; `build.py tocs` writes them).
 - `Locales/Locale.lua` and the `enUS_*` parts first, then `Core/Registry.lua` (everyone registers
   while loading), `Core/LazyData.lua`, `Core/Core.lua`, then the rest in dependency order.
 - A file may call into a later file only at run time (events, timers, clicks), and then guarded:
@@ -538,7 +539,8 @@ the gear table, the roll window, the talent window, the goals window and the rai
 | `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
-| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version, check (TOC restored on failure), `Amisia-Website/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
+| `tocs` | writes `Amisia_TBC.toc` and `Amisia_Vanilla.toc` from `Amisia.toc` (D-57) |
+| `release X.Y.Z [-m ...] [--no-push] [--no-copy]` | warning with Amisia's game errors, clean tree, TOC version (and the classic TOCs), check (TOC restored on failure), `Amisia-Website/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
 | `testlist [--all] [--out FILE]` | the German check list of the features with status `gebaut` from `docs/FEATURES.md`, newest version first; `--all` adds those that need a group, guild or raid |
 | `tested F-001 [...] [--raid]` | sets their status in `docs/FEATURES.md` to `im Spiel geprüft (today)` (`im Raid bewährt`) |
 | `errors [--sv FILE] [--all]` | the Lua errors in `~/addons/_SavedVariables/!BugGrabber.lua` that name Amisia (`--all`: every addon's), via `tools/game_errors.py`; `check` adds a non-failing note "Fehler aus dem Spiel: N" |

@@ -2,6 +2,7 @@
 
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att] [--refresh-oneforall]
     python3 tools/build.py check
+    python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
     python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy]
     python3 tools/build.py testlist [--all] [--out FILE]
@@ -17,6 +18,8 @@ check    the syntax check, the addon tests (German, then English), the translati
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
          a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
          anything fails. Ends with a note (never a failure) when the game caught errors of Amisia.
+tocs     writes Amisia_TBC.toc and Amisia_Vanilla.toc: Amisia.toc without the Forever parts (D-57);
+         check fails while they differ, release writes them with the new version.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
@@ -113,6 +116,49 @@ def set_toc_version(root, version):
         raise SystemExit('no "## Version:" line in ' + path)
     with open(path, 'w', encoding='utf-8', newline='') as fh:
         fh.write(new)
+
+
+# The classic clients load a TOC with their suffix instead of Amisia.toc. They do not honour
+# [AllowLoadGameType camelot] (TBC Anniversary loaded the gear part with it), so their TOCs are
+# Amisia.toc without the Forever parts (D-57), written by flavor_tocs and checked by check_toc.
+FLAVOR_TOCS = {'Amisia_TBC.toc': '20506', 'Amisia_Vanilla.toc': '11509'}
+FOREVER_TAG = '[AllowLoadGameType camelot]'
+
+
+def flavor_toc(text, interface):
+    """Amisia.toc's text for a classic client: its interface number, no Forever part."""
+    out, noted = [], False
+    for line in text.splitlines(keepends=True):
+        if line.startswith('## Interface:'):
+            line = f'## Interface: {interface}\n'
+        elif FOREVER_TAG in line:
+            continue
+        elif not noted and not line.startswith('##'):
+            # after the "## Field:" lines
+            out.append('# Written by tools/build.py from Amisia.toc (D-57): the raid part only. Edit Amisia.toc.\n')
+            noted = True
+        out.append(line)
+    return ''.join(out)
+
+
+def flavor_tocs(root=ROOT, write=False):
+    """{path: (wanted text, current text or None)} of the classic TOCs; write=True writes them."""
+    with open(toc_path(root), encoding='utf-8', newline='') as fh:
+        base = fh.read()
+    out = {}
+    for name, interface in FLAVOR_TOCS.items():
+        path = os.path.join(root, ADDON_REL, name)
+        want = flavor_toc(base, interface)
+        have = None
+        if os.path.exists(path):
+            with open(path, encoding='utf-8', newline='') as fh:
+                have = fh.read()
+        if write and have != want:
+            with open(path, 'w', encoding='utf-8', newline='') as fh:
+                fh.write(want)
+            have = want
+        out[path] = (want, have)
+    return out
 
 
 def toc_files(root=ROOT):
@@ -268,6 +314,9 @@ def check_toc(root=ROOT):
     bad += [f'{f}: not in the TOC' for f in have if f not in listed]
     dup = sorted({f for f in listed if listed.count(f) > 1})
     bad += [f'{f}: twice in the TOC' for f in dup]
+    for path, (want, have) in flavor_tocs(root).items():
+        if want != have:
+            bad.append(f'{os.path.basename(path)}: not current with Amisia.toc (python3 tools/build.py tocs)')
     return bad
 
 
@@ -520,12 +569,14 @@ def restart_note(root, since):
     needs a full restart; everything else a /reload. Compares the commit since with HEAD."""
     if not since:
         return 'Im Spiel: WoW ganz neu starten (erste Version, /reload reicht nicht).'
-    toc = ADDON_REL + '/Amisia.toc'
-    old = git(root, 'show', f'{since}:{toc}', check=False)
-    new = git(root, 'show', f'HEAD:{toc}', check=False)
     why = []
-    if toc_lines(old) != toc_lines(new):
-        why.append('neue Dateien in der TOC')
+    for name in ['Amisia.toc', *FLAVOR_TOCS]:
+        toc = ADDON_REL + '/' + name
+        old = git(root, 'show', f'{since}:{toc}', check=False)
+        new = git(root, 'show', f'HEAD:{toc}', check=False)
+        if toc_lines(old) != toc_lines(new):
+            why.append('neue Dateien in der TOC')
+            break
     media = git(root, 'diff', '--name-only', '--diff-filter=AR', since, 'HEAD', '--', ADDON_REL + '/Media').strip()
     if media:
         why.append('neue Bilder')
@@ -556,7 +607,8 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     if push and branch != 'main':
         raise SystemExit(f'releases are pushed from main, this is {branch} (or use --no-push)')
 
-    touched = [ADDON_REL + '/Amisia.toc', 'Amisia-Website/Amisia.zip', 'CHANGELOG.md']
+    touched = [ADDON_REL + '/Amisia.toc', *(ADDON_REL + '/' + n for n in FLAVOR_TOCS),
+               'Amisia-Website/Amisia.zip', 'CHANGELOG.md']
     previous = last_release_commit(root)
     note = game_errors_note(errors_sv)
     if note:
@@ -575,6 +627,7 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
 
     try:
         set_toc_version(root, version)
+        flavor_tocs(root, write=True)
         say(f'TOC: {current} -> {version}; running check')
         if (check or cmd_check)() != 0:
             undo()
@@ -624,6 +677,12 @@ def cmd_snapshots(args):
     return ui_layout.main(argv)
 
 
+def cmd_tocs(args=None):
+    for path in flavor_tocs(write=True):
+        say(os.path.relpath(path, ROOT))
+    return 0
+
+
 def cmd_release(args):
     return release(ROOT, args.version, summary=args.message, push=not args.no_push, copy=not args.no_copy)
 
@@ -640,6 +699,7 @@ def main(argv=None):
     d.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever data first')
     d.add_argument('--refresh-oneforall', action='store_true', help='download the newest OneForAll for the gear build first')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
+    sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
     sn.add_argument('--out', default=SNAPSHOTS, help=f'output folder (default {SNAPSHOTS})')
     sn.add_argument('--compare', default=None, help='an earlier run\'s folder: list the shots whose layout changed')
@@ -669,7 +729,7 @@ def main(argv=None):
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
     return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
-            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors}[args.cmd](args)
+            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'tocs': cmd_tocs}[args.cmd](args)
 
 
 if __name__ == '__main__':
