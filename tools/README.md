@@ -270,7 +270,7 @@ addon saved.
 2. Run the build with every officer's file that holds raid sessions:
 
    ```
-   python tools/build_scan.py "C:/Program Files (x86)/World of Warcraft/_classic_beta_/WTF/Account/<account>/SavedVariables/Amisia.lua"
+   python tools/build_scan.py "C:/Program Files (x86)/World of Warcraft/_forever_/WTF/Account/<account>/SavedVariables/Amisia.lua"
    ```
 
    `--no-icons` skips the icon names and the sprite. `--out` changes the target.
@@ -816,8 +816,9 @@ the WoW install on the PC, instead of downloading them from wago.tools by hand. 
 
 It drives [wow.tools.local](https://github.com/Marlamin/wow.tools.local) (WTL), which reads the local
 CASC storage (TACTSharp), decodes the DB2 files with DBCD and the WoWDBDefs definitions, and serves a
-CSV export on localhost. Forever is the TACT product `wow_classic_beta`; the script reads it from
-`_classic_beta_\.flavor.info` and the installed build from `.build.info`.
+CSV export on localhost. The script reads Forever's TACT product from `_forever_\.flavor.info` (until
+2026-10-31 `_classic_beta_`, product `wow_classic_beta`; the old folder still counts while it exists) and
+the installed build from `.build.info`.
 
 **Install (once):**
 

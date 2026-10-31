@@ -306,7 +306,9 @@ def write_marker(path, arch):
 def default_svs():
     """The SavedVariables Syncthing brings to the N100 and those of an installed Forever client."""
     paths = [DEFAULT_SV]
-    paths += sorted(glob.glob(os.path.join(WOW_ROOT, '_classic_beta_', 'WTF', 'Account', '*', 'SavedVariables', 'Amisia.lua')))
+    # Forever moved from the beta product folder to its own (2026-10-31); both are read.
+    for flavor in ('_forever_', '_classic_beta_'):
+        paths += sorted(glob.glob(os.path.join(WOW_ROOT, flavor, 'WTF', 'Account', '*', 'SavedVariables', 'Amisia.lua')))
     return [p for p in paths if os.path.exists(p)]
 
 

@@ -66,7 +66,11 @@ import build_scan  # noqa: E402  (scan dump parsing is shared)
 import build_scan_archive  # noqa: E402  (the scan archive the builds read under the SavedVariables)
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
-FOREVER_ADDONS = os.path.join(WOW_ROOT, '_classic_beta_', 'Interface', 'AddOns')
+# Forever moved from the beta product folder to its own (2026-10-31); the old one still counts
+# while it exists.
+FOREVER_FLAVORS = ('_forever_', '_classic_beta_')
+FOREVER_ADDONS = next((p for p in (os.path.join(WOW_ROOT, f, 'Interface', 'AddOns') for f in FOREVER_FLAVORS)
+                       if os.path.isdir(p)), os.path.join(WOW_ROOT, FOREVER_FLAVORS[0], 'Interface', 'AddOns'))
 WOWSRC_JSON = os.path.join(HERE, 'gear_wowsrc.json')
 FOREVER_JS = os.path.join(ROOT, 'Amisia-Website', 'data', 'forever.js')
 FOREVER_ZONES = os.path.join(HERE, 'forever_zones.json')
@@ -1274,7 +1278,8 @@ def default_svs():
     an installed Forever client: whichever exist."""
     paths = [os.path.join(ROOT, f) for f in ('Amisia_teil1.lua', 'Amisia_teil2.lua')]
     paths.append(build_scan.DEFAULT_SV)
-    paths += sorted(glob.glob(os.path.join(WOW_ROOT, '_classic_beta_', 'WTF', 'Account', '*', 'SavedVariables', 'Amisia.lua')))
+    for flavor in FOREVER_FLAVORS:
+        paths += sorted(glob.glob(os.path.join(WOW_ROOT, flavor, 'WTF', 'Account', '*', 'SavedVariables', 'Amisia.lua')))
     return [p for p in paths if os.path.exists(p)]
 
 

@@ -7,7 +7,7 @@ the local WoW install, through wow.tools.local.
 Replaces the hand downloads from wago.tools. The script
 
 1. reads the installed Forever build from <WoW>\.build.info (product from
-   <WoW>\_classic_beta_\.flavor.info, normally wow_classic_beta);
+   <WoW>\_forever_\.flavor.info, formerly _classic_beta_ with wow_classic_beta);
 2. stops early when every table of that build already lies in the output folder (idempotent);
 3. starts wow.tools.local (WTL) in the background with the WoW folder and product, waits until it has
    loaded the build, and pins the installed build when WTL picked a different one from the patch server;
@@ -33,7 +33,7 @@ WoW install folder holding .build.info. Default: $env:AMISIA_WOW_ROOT, else
 C:\Program Files (x86)\World of Warcraft.
 
 .PARAMETER Flavor
-Flavour folder of Forever inside WowDir. Default _classic_beta_.
+Flavour folder of Forever inside WowDir. Default _forever_, else _classic_beta_ while that exists.
 
 .PARAMETER Product
 TACT product. Default: second line of <WowDir>\<Flavor>\.flavor.info, else wow_classic_beta.
@@ -74,7 +74,7 @@ powershell -ExecutionPolicy Bypass -File tools\export_db2.ps1 -Tables ItemSparse
 param(
     [string]$WtlDir,
     [string]$WowDir,
-    [string]$Flavor = '_classic_beta_',
+    [string]$Flavor,
     [string]$Product,
     [string]$OutDir,
     [string[]]$Tables,
@@ -130,6 +130,10 @@ function Fail([string]$Message) {
 if (-not $WtlDir) { $WtlDir = if ($env:AMISIA_WTL_DIR) { $env:AMISIA_WTL_DIR } else { Join-Path $env:USERPROFILE 'Tools\wow.tools.local' } }
 if (-not $WowDir) { $WowDir = if ($env:AMISIA_WOW_ROOT) { $env:AMISIA_WOW_ROOT } else { 'C:\Program Files (x86)\World of Warcraft' } }
 if (-not $OutDir) { $OutDir = Join-Path $env:USERPROFILE 'VuloSync\wago' }
+# Forever liegt seit 2026-10-31 in _forever_; der alte Beta-Ordner gilt nur noch, solange es ihn gibt.
+if (-not $Flavor) {
+    $Flavor = if (Test-Path -LiteralPath (Join-Path $WowDir '_forever_')) { '_forever_' } else { '_classic_beta_' }
+}
 
 $BuildInfoPath = Join-Path $WowDir '.build.info'
 if (-not (Test-Path -LiteralPath $BuildInfoPath -PathType Leaf)) {

@@ -555,7 +555,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | Path | Role |
 |---|---|
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
-| `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_classic_beta_\Interface\AddOns\Amisia` (Forever) and, for the raid part (D-57), into `_anniversary_\Interface\AddOns\Amisia` (TBC Anniversary) and `_classic_era_\Interface\AddOns\Amisia` (Classic Era); only Forever's SavedVariables come back |
+| `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_forever_\Interface\AddOns\Amisia` (Forever; until 2026-10-31 `_classic_beta_`) and, for the raid part (D-57), into `_anniversary_\Interface\AddOns\Amisia` (TBC Anniversary) and `_classic_era_\Interface\AddOns\Amisia` (Classic Era); only Forever's SavedVariables come back |
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51) |
