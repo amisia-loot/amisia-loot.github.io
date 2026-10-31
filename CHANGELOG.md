@@ -2,6 +2,14 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.48.0 (2026-10-31)
+
+- Spec: Talent-Builds aus Links der Talentrechner-Seiten übernehmen (F-127, Entwurf)
+- Talentrechner übernimmt Build-Links von talentsforever.com und wowforevertalents.com (F-127)
+- Spec: Verzauberungs-Vorschläge je Slot (F-128, Entwurf)
+- Verzauberungs-Vorschläge je Slot im Fenster Ausrüstungsziele und in der Slot-Karte (F-128)
+- F-127, F-128 gebaut in 2.48.0
+
 ## 2.47.1 (2026-10-30)
 
 - Eigene TOCs für TBC und Era ohne Forever-Teile: TBC Anniversary lud Gear/* trotz camelot-Tag (D-57)
