@@ -923,8 +923,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-17-raids-seite.md` (freigegeben 2026-10-17).
 
 ### F-128 Verzauberungs-Vorschläge je Slot
-- Version: -
-- Status: geplant
+- Version: 2.48.0
+- Status: gebaut
 - Prüfung: Wenn du im Fenster Ausrüstungsziele einen Slot mit einem unverzauberten Item wählst, dann steht rechts "Verzauberung: Keine" in Rot und darunter höchstens fünf passende Verzauberungen, die mit dem größten Gewinn für deine Spezialisierung zuerst.
 - Prüfung: Wenn das getragene Item verzaubert ist, dann steht der Name der Verzauberung oben, und jede Zeile darunter zeigt den Gewinn gegen diese; ist nichts besser, steht dort "Du hast schon die beste".
 - Prüfung: Wenn du mit der Maus über eine Zeile fährst, dann nennt der Tooltip Quelle, Mindeststufe, Reagenzien mit der Zahl in deinen Taschen und die Gildenmitglieder, die das Rezept kennen.
@@ -933,8 +933,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-31-verzauberungen.md`, freigegeben 2026-10-31 ("Passt").
 
 ### F-127 Talentrechner: Builds aus Links der Talentrechner-Seiten
-- Version: -
-- Status: geplant
+- Version: 2.48.0
+- Status: gebaut
 - Prüfung: Wenn du einen Link von talentsforever.com in das Feld "Code" der Seite Talente einfügst und Enter drückst, dann zeigen die Bäume genau den Build der Seite (gleiche Talente, Ränge und Punkte je Baum), der Chat meldet "Code übernommen: <Klasse>, <Punkte> Punkte." und im Feld steht ein `AT1.`-Code.
 - Prüfung: Wenn du dasselbe mit einem Link von wowforevertalents.com machst, dann gilt dasselbe.
 - Prüfung: Wenn du `/amisia talente <Link>` eingibst, dann öffnet sich die Seite Talente mit diesem Build.
