@@ -1,6 +1,6 @@
 # Spec: Talent-Builds aus Links der Talentrechner-Seiten übernehmen
 
-Stand: 2026-10-31 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-31 · Status: freigegeben ·
 Feature: F-127
 
 ## Ziel
@@ -115,4 +115,6 @@ als erkannte Formate stehen (ohne `http`-Link), Export als Link bleibt verboten.
 
 ## Entscheidungen
 
-Nichts.
+- 2026-10-31: alle vier Fragen: "Passt" -> die Vorschläge gelten: (1) der Tooltip nennt beide Seiten
+  ohne `https://`; (2) alte Links werden nur abgelehnt, wenn sie nicht mehr passen; (3) ohne
+  Beispiel-Links nach den bekannten Formaten gebaut, Prüfung im Spiel; (4) das bisherige Code-Feld reicht.

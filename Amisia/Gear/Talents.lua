@@ -337,24 +337,48 @@ function T.Encode(plan)
     return table.concat(parts, ".")
 end
 
--- The plan of a code (also inside a line of chat text), rebuilt with the rules; nil and why.
+-- A build link of the two talent calculator sites (F-127; D-02: read from pasted text, never linked):
+--   talentsforever.com/<class>/<level>/<tree 1>-<tree 2>-<tree 3>[-<order>]-<version>
+--   wowforevertalents.com/<class>/?t=<version letter><tree 1>-<tree 2>-<tree 3>
+-- Their trees are digits in row/column order like the share code; the level, the order and the
+-- version are not used. The class token and the three trees; nil when the text holds no such link.
+local function siteLink(text)
+    local low = text:lower()
+    local cls, digits = low:match("talentsforever%.com/(%a+)/%d+/([%d%-]+)")
+    if not cls then
+        local query
+        cls, query = low:match("wowforevertalents%.com/(%a+)/?%?(%S*)")
+        digits = query and ("&" .. query):match("&t=%a*([%d%-]*)")
+    end
+    if not cls or not digits then return nil end
+    local parts = {}
+    for d in (digits .. "-"):gmatch("(%d*)%-") do parts[#parts + 1] = d end
+    return cls:upper(), { parts[1] or "", parts[2] or "", parts[3] or "" }
+end
+
+-- The plan of a code or a site's build link (also inside a line of chat text), rebuilt with the
+-- rules; nil and why.
 function T.Decode(text)
     text = tostring(text or "")
     if not text:find("%S") then return nil, L["Kein Code eingegeben."] end
-    -- trees at the end without points may be left out ("AT1.MAGE.2"); a sentence's full stop after
-    -- the code is no fourth tree
-    local version, cls, rest, after = text:match("AT(%d+)%.(%u+)([%.%d]*)(.?)")
-    if not version or after:find("%w") or (rest ~= "" and rest:sub(1, 1) ~= ".") then
-        return nil, L["Kein Amisia-Talentcode (AT1.KLASSE.x.y.z)."]
+    local cls, parts = siteLink(text)
+    if not cls then
+        -- trees at the end without points may be left out ("AT1.MAGE.2"); a sentence's full stop after
+        -- the code is no fourth tree
+        local version, rest, after
+        version, cls, rest, after = text:match("AT(%d+)%.(%u+)([%.%d]*)(.?)")
+        if not version or after:find("%w") or (rest ~= "" and rest:sub(1, 1) ~= ".") then
+            return nil, L["Kein Amisia-Talentcode (AT1.KLASSE.x.y.z) und kein Build-Link."]
+        end
+        if tonumber(version) ~= CODE_VERSION then return nil, (L["Kein Code dieser Version (AT%s)."]):format(version) end
+        parts = {}
+        for digits in rest:gmatch("%.(%d*)") do parts[#parts + 1] = digits end
+        for i = 4, #parts do
+            if parts[i] ~= "" then return nil, L["Kein Amisia-Talentcode (mehr als drei Bäume)."] end
+        end
     end
-    if tonumber(version) ~= CODE_VERSION then return nil, (L["Kein Code dieser Version (AT%s)."]):format(version) end
     local c = T.Class(cls)
     if not c then return nil, (L["Unbekannte Klasse %s."]):format(cls) end
-    local parts = {}
-    for digits in rest:gmatch("%.(%d*)") do parts[#parts + 1] = digits end
-    for i = 4, #parts do
-        if parts[i] ~= "" then return nil, L["Kein Amisia-Talentcode (mehr als drei Bäume)."] end
-    end
     local want = {}
     for t = 1, 3 do
         local digits = parts[t] or ""

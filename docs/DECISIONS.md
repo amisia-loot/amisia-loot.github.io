@@ -41,6 +41,9 @@ Hand zur Prüfung sind erlaubt, Übernahme von Daten oder BiS-Listen nicht.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_links_to_fan_sites` (erlaubte Hosts:
 Wowhead/zamimg und die eigenen Dienste der Seite; in `Amisia/LICENSES/` dazu fsf.org und gnu.org, weil
 der GPL-Text unverändert mitgeht), `tools/tests/test_site_wowhead.py`.
+**Nachtrag 2026-10-31 (F-127):** Der Talentrechner liest eingefügte Build-Links von talentsforever.com und
+wowforevertalents.com. Beide Namen dürfen im Code und im Tooltip des Code-Felds stehen, nie als `http`-Link;
+Amisia exportiert keinen Link dorthin und fragt die Seiten nie ab.
 
 ## D-03 Nie per Skript von wago.tools, Wowhead oder foreverchanges laden
 

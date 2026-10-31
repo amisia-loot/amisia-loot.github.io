@@ -137,6 +137,29 @@ for _, bad in ipairs({
     local plan, e = T.Decode(bad[1])
     assert(plan == nil and has(e, bad[2]), ("%q: %s"):format(bad[1], tostring(e)))
 end
+-- build links of the two talent calculator sites (F-127): the same trees, class in lower case;
+-- level, order and version are not used
+for _, link in ipairs({
+    "https://talentsforever.com/mage/60/231-5-2-0",
+    "talentsforever.com/mage/42/231-5-2-1a2b3c-7",
+    "https://www.wowforevertalents.com/mage/?t=b231-5-2",
+    "WowForeverTalents.com/Mage?x=1&t=a231-5-2 ",
+    "Schaut mal: https://wowforevertalents.com/mage/?t=c231-5-2 (Feuer)",
+}) do
+    local plan, e = T.Decode(link)
+    assert(plan and plan.class == "MAGE" and T.Encode(plan) == "AT1.MAGE.231.5.2", link .. ": " .. tostring(e))
+end
+local empty = assert(T.Decode("talentsforever.com/mage/60/-5-2-3"))
+assert(T.Encode(empty) == "AT1.MAGE..5.2", "an empty first tree: " .. T.Encode(empty))
+assert(T.Encode(assert(T.Decode("wowforevertalents.com/mage/?t=a231"))) == "AT1.MAGE.231..", "trees left out")
+for _, bad in ipairs({
+    { "talentsforever.com/pirate/60/1-1-1-0", "Klasse" }, { "wowforevertalents.com/mage/?t=a3", "Rang" },
+    { "talentsforever.com/mage/60/000001-0-0-0", "lang" }, { "wowforevertalents.com/mage/?x=1", "Kein" },
+    { "talentsforever.com/mage/231-5-2", "Kein" },
+}) do
+    local plan, e = T.Decode(bad[1])
+    assert(plan == nil and has(e, bad[2]), ("%q: %s"):format(bad[1], tostring(e)))
+end
 -- more points than the game gives
 local big = { "AT1.WARRIOR.3.5.5" }
 assert(T.Decode(big[1]), "13 points are fine")

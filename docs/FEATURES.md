@@ -922,6 +922,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Raid-ID hast (braucht: Raid), dann steht in der Spalte ID "bis <Tag Uhrzeit>".
 - Notiz: Spec `docs/specs/2026-10-17-raids-seite.md` (freigegeben 2026-10-17).
 
+### F-127 Talentrechner: Builds aus Links der Talentrechner-Seiten
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du einen Link von talentsforever.com in das Feld "Code" der Seite Talente einfügst und Enter drückst, dann zeigen die Bäume genau den Build der Seite (gleiche Talente, Ränge und Punkte je Baum), der Chat meldet "Code übernommen: <Klasse>, <Punkte> Punkte." und im Feld steht ein `AT1.`-Code.
+- Prüfung: Wenn du dasselbe mit einem Link von wowforevertalents.com machst, dann gilt dasselbe.
+- Prüfung: Wenn du `/amisia talente <Link>` eingibst, dann öffnet sich die Seite Talente mit diesem Build.
+- Prüfung: Wenn du im Plan Sekundär einen Link übernimmst, dann bleibt Primär unverändert (auch nach `/reload`).
+- Prüfung: Wenn du einen Link mit einem Fehler einfügst (z. B. eine Ziffer zu viel im ersten Baum), dann steht im Chat, warum es nicht geht, und der Plan bleibt, wie er war.
+- Notiz: Spec `docs/specs/2026-10-31-talent-links.md`, freigegeben 2026-10-31 ("Passt"). Gebaut ohne Beispiel-Links nach den bekannten Formaten; ob die Bäume der Seiten in derselben Reihenfolge stehen wie im Spiel, zeigt erst die Prüfung im Spiel.
+
 ### F-121 Talentrechner: zwei Pläne je Klasse
 - Version: 2.45.0
 - Status: gebaut

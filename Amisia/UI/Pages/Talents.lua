@@ -514,7 +514,7 @@ local function buildView(parent, P, opts)
     f:BottomRow({ f.live, f.resetAll, f.slot, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code einfügen und Enter drücken übernimmt ihn."])
+    W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code oder einen Build-Link von talentsforever.com oder wowforevertalents.com einfügen und Enter drücken übernimmt ihn."])
     return f
 end
 
@@ -702,7 +702,7 @@ end
 -- /amisia talente [Code|gross]: the page, a build, or the window
 local BIG_WORDS = { gross = true, ["gro\195\159"] = true, big = true }   -- l10n-ok: typed words
 ns.RegisterSlash("talente", { en = "talents", aliases = { "talent" }, args = L["[Code|gross]"],
-    desc = L["Talentrechner öffnen (mit Code: Build übernehmen, gross: großes Fenster)"],
+    desc = L["Talentrechner öffnen (mit Code oder Build-Link: Build übernehmen, gross: großes Fenster)"],
     run = function(rest)
         local word = type(rest) == "string" and rest:match("^%s*(%S+)%s*$")
         if word and BIG_WORDS[word:lower()] then
