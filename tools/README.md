@@ -19,7 +19,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
-  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
+  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
   that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. `--wago` is the
   folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
@@ -772,6 +772,21 @@ never; without that table (not exported before 2.29.0: `tools/export_db2.ps1 -Ta
 SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, shield, and a note.
 `build.py data` runs it after the mage scrolls (skipped without the tables). Tests:
 `tools/tests/test_build_raidcheck.py` on hand-made fixture CSVs (`tools/tests/fixtures/wago_raidcheck`).
+
+## build_enchants.py
+
+Builds `Amisia/Data/EnchantData.lua` (`ns.ENCHANT`, lazy) for the enchant suggestions (F-128,
+`Gear/Enchants.lua`) from the client tables only (`--wago`, default `~/addons/_wago`; SpellEffect,
+SpellItemEnchantment, SpellEquippedItems, SkillLineAbility, ItemEffect, ItemXItemEffect, Item,
+ItemSparse). An enchantment is what a spell with effect 53 ("enchant item", permanent; 54, the
+temporary oils and stones, stays out) puts on an item. Its sources: Enchanting (333) and Engineering
+(202) recipes, and items whose use effect is the spell (armour kits, scopes, spikes, scrolls,
+librams; not recipe items, QA/test items or items without a name). What fits: SpellEquippedItems of
+the source's spell; a source without it falls out. Stats: effect 5 (a stat), 4 with school 0 and
+stat 50 (armour), 2 (weapon damage, `WDMG`), 3 (the equip spell's auras through
+`build_bis.aura_stats`, so "$k" values come out as numbers); anything else marks an effect the
+scoring does not count. `build.py data` runs it after the raid check (skipped without the tables).
+Tests: `tools/tests/test_build_enchants.py` on hand-made fixture CSVs (`tools/tests/fixtures/wago_enchants`).
 
 ## make_icons.py
 

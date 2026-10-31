@@ -1,6 +1,6 @@
 # Spec: Verzauberungs-Vorschläge je Slot
 
-Stand: 2026-10-31 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-10-31 · Status: freigegeben ·
 Feature: F-128
 
 ## Ziel
@@ -15,12 +15,14 @@ meisten bringt, wo er es herbekommt und wer in der Gilde es machen kann.
 - **Fenster Ausrüstungsziele, rechte Spalte des gewählten Slots:** ein neuer Abschnitt "Verzauberung".
   - Oben: was auf dem getragenen Item ist ("Keine" in Rot, wenn nichts drauf ist).
   - Darunter die besten passenden Verzauberungen für die eigene Spezialisierung, mit dem Gewinn gegen die
-    jetzige Verzauberung in %, gerechnet wie die Upgrades (F-115, `ns.UpgradeOf`). Bis zu fünf Zeilen,
-    "Alle zeigen" klappt die übrigen auf.
-  - Jede Zeile: Name, Werte (z. B. "+3 Beweglichkeit"), Quelle und Mindeststufe. Quellen: Rezept der
-    Verzauberkunst (mit Fertigkeit und woher das Rezept kommt), ein Item (Rüstungsset, Zielfernrohr,
-    Gewicht usw.: wer es herstellt, Händler, Drop) oder eine Quest.
-  - Tooltip der Zeile: Reagenzien mit "in der Tasche: N" und die Gildenmitglieder, die das Rezept kennen
+    jetzige Verzauberung in %, gerechnet wie die Upgrades (F-115, `ns.BisStatsChange` mit dem Modell der
+    Upgrades). Fünf Zeilen sind zu sehen, das Mausrad zeigt die übrigen (gebaut so statt "Alle zeigen":
+    die Spalte hat keinen Platz für mehr Zeilen; das Fenster wird dafür 76 px höher).
+  - Jede Zeile: Name und Gewinn (oder "ab N" in Grau, wenn das Item eine höhere Stufe braucht).
+    Quellen: Rezept der Verzauberkunst oder Ingenieurskunst (mit Fertigkeit und woher das Rezept kommt)
+    oder ein Item (Rüstungsset, Zielfernrohr, Schriftrolle, Arkanum usw.).
+  - Tooltip der Zeile: Werte (z. B. "+3 Beweglichkeit"), Quelle, Mindeststufe, Reagenzien mit
+    "in der Tasche: N" und die Gildenmitglieder, die das Rezept kennen oder das Item herstellen
     (aus dem Austausch "Wer kann was herstellen", F-035).
   - Klick: Kartenziel auf die Quelle, wenn sie einen Ort hat (Lehrer, Händler); Shift: Chatlink des
     Rezepts bzw. Items.
@@ -111,4 +113,6 @@ Nichts Neues wird gesendet oder empfangen. Die Namen der Hersteller kommen aus d
 
 ## Entscheidungen
 
-Nichts.
+- 2026-10-31: alle fünf Fragen: "Passt" -> die Vorschläge gelten: (1) nur Fenster Ausrüstungsziele und
+  Karte am Charakterfenster; (2) keine zeitweiligen Verzauberungen; (3) nicht Erreichbares grau mit
+  "ab Stufe N" zeigen; (4) nur für das getragene Item; (5) keine eigene Einstellung.

@@ -77,6 +77,14 @@ local function rowClick(self, button)
     if not ok and why then ns.msg(why) end
 end
 
+-- The goals window on the card's slot; the card closes.
+local function openGoals()
+    local st = ns.GoalsFrameState and ns.GoalsFrameState()
+    if st and card.slot then st.slot = card.slot end
+    if ns.ShowGoalsFrame then ns.ShowGoalsFrame() end
+    card:Hide()
+end
+
 local function build()
     card = W.Inset(UIParent)
     _G.AmisiaSlotCard = card
@@ -90,6 +98,13 @@ local function build()
     card.title:SetPoint("TOPLEFT", C.PAD, -C.PAD)
     card.close = W.ResetButton(card, C.CLOSE, function() card:Hide() end)
     card.close:SetPoint("TOPRIGHT", -C.PAD / 2, -C.PAD / 2)
+    -- the enchantment of the worn item (F-128): a click opens the goals window on the slot
+    card.ench = CreateFrame("Button", nil, card)
+    card.ench:SetSize(C.W - 2 * C.PAD, C.ENCH_H)
+    card.ench.text = W.Text(card.ench, T.FONT.hint, C.W - 2 * C.PAD)
+    card.ench.text:SetPoint("LEFT", 0, 0)
+    card.ench:SetScript("OnClick", function() openGoals() end)
+    W.Tooltip(card.ench, L["Verzauberung"], L["Klick: Vorschläge im Fenster Ausrüstungsziele."])
     card.rows = {}
     for i = 1, C.ROWS do
         local r = CreateFrame("Button", nil, card)
@@ -117,12 +132,7 @@ local function build()
     end
     card.empty = W.Text(card, T.FONT.hint, C.W - 2 * C.PAD, true)
     card.empty:SetPoint("TOPLEFT", C.PAD, -(C.PAD + C.TITLE_H))
-    card.open = W.Button(card, L["Im Fenster Ausrüstungsziele"], C.BUTTON_W, function()
-        local st = ns.GoalsFrameState and ns.GoalsFrameState()
-        if st and card.slot then st.slot = card.slot end
-        if ns.ShowGoalsFrame then ns.ShowGoalsFrame() end
-        card:Hide()
-    end)
+    card.open = W.Button(card, L["Im Fenster Ausrüstungsziele"], C.BUTTON_W, function() openGoals() end)
     W.FitChip(card.open, C.BUTTON_W)
     card.open:SetPoint("BOTTOMLEFT", C.PAD, C.PAD)
     card:Hide()
@@ -134,6 +144,23 @@ local function fill()
     for _, s in ipairs(Gear.SLOTS) do if s.key == card.slot then sl = s end end
     card.title:SetText(L["Upgrades: %s"]:format(sl and sl.name or card.slot))
     local o = ns.BisOpts()
+    local line = ns.Enchants and ns.Enchants.CardLine(card.slot)
+    local top = C.PAD + C.TITLE_H
+    if line then
+        card.ench.text:SetText(line)
+        card.ench:ClearAllPoints()
+        card.ench:SetPoint("TOPLEFT", C.PAD, -top)
+        card.ench:Show()
+        top = top + C.ENCH_H
+    else
+        card.ench:Hide()
+    end
+    for i, r in ipairs(card.rows) do
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", C.PAD, -(top + (i - 1) * C.ROW_H))
+    end
+    card.empty:ClearAllPoints()
+    card.empty:SetPoint("TOPLEFT", C.PAD, -top)
     local list = ns.BisRanking(card.slot, C.ROWS)
     local n = 0
     for i = 1, C.ROWS do
@@ -147,7 +174,7 @@ local function fill()
     else
         card.empty:Hide()
     end
-    card:SetHeight(C.PAD + C.TITLE_H + n * C.ROW_H + C.GAP + T.BUTTON_H + C.PAD)
+    card:SetHeight(top + n * C.ROW_H + C.GAP + T.BUTTON_H + C.PAD)
 end
 
 -- Shows the card for a slot (a key of Gear.SLOTS) beside anchor; the same slot again closes it.

@@ -10,7 +10,7 @@
     python3 tools/build.py errors [--sv FILE] [--all]
 
 data     rebuilds every generated file in Amisia/Data in dependency order (dungeons, gear, map,
-         dungeon quests, quests, professions, talents, dungeon art, BiS), stops at the first error
+         dungeon quests, quests, professions, talents, mage scrolls, raid check, enchants, dungeon art, BiS), stops at the first error
          and shows what changed. A step whose client tables are missing in --wago is skipped with a
          note (the tables come only from the user's own tools/export_db2.ps1 run, never downloaded).
 check    the syntax check, the addon tests (German, then English), the translation check
@@ -182,6 +182,9 @@ MAGESCROLL_TABLES = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spe
                      'ItemEffect', 'ItemXItemEffect']
 # the client tables tools/build_raidcheck.py needs (its REQUIRED)
 RAIDCHECK_TABLES = ['Item', 'ItemEffect', 'ItemXItemEffect', 'SpellEffect', 'SpellMisc', 'SpellDuration', 'SpellName']
+# the client tables tools/build_enchants.py needs (its REQUIRED)
+ENCHANT_TABLES = ['SpellEffect', 'SpellItemEnchantment', 'SpellEquippedItems', 'SkillLineAbility', 'ItemEffect',
+                  'ItemXItemEffect', 'Item', 'ItemSparse']
 
 
 def data_steps(sv=None, wago=WAGO, refresh_att=False, refresh_oneforall=False):
@@ -205,6 +208,8 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False, refresh_oneforall=False):
         ('mage scrolls', 'build_magescrolls.py', ['--wago', wago], MAGESCROLL_TABLES, 'skip'),
         # the raid check's flasks, elixirs, food and class buffs (SpellEquippedItems optional)
         ('raid check', 'build_raidcheck.py', ['--wago', wago], RAIDCHECK_TABLES, 'skip'),
+        # the permanent enchantments of the enchant suggestions (F-128)
+        ('enchants', 'build_enchants.py', ['--wago', wago], ENCHANT_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),
         ('bis', 'build_bis.py', ['--wago', wago] + sv_args, None, None),
     ]

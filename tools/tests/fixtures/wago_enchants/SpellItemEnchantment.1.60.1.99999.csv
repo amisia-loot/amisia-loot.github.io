@@ -1,0 +1,7 @@
+ID,Name_lang,Effect_0,Effect_1,Effect_2,EffectPointsMin_0,EffectPointsMin_1,EffectPointsMin_2,EffectArg_0,EffectArg_1,EffectArg_2,ItemLevelMin
+24,Intellect +2,5,0,0,2,0,0,5,0,0,0
+15,Stamina +$k2 and Armor +$k1,3,0,0,0,0,0,300,0,0,0
+30,Unused,5,0,0,9,0,0,4,0,0,0
+32,Scope (+2 Damage),2,0,0,2,0,0,0,0,0,0
+40,Sharpened,2,0,0,4,0,0,0,0,0,0
+77,Crusader,1,0,0,0,0,0,20007,0,0,35

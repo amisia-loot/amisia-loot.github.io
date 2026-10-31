@@ -138,7 +138,7 @@ def test_check_utf8(tmp_path):
 def test_data_steps_order():
     names = [s[0] for s in build.data_steps()]
     assert names == ['scan archive', 'dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'professions', 'talents',
-                     'mage scrolls', 'raid check', 'dungeon art', 'bis']
+                     'mage scrolls', 'raid check', 'enchants', 'dungeon art', 'bis']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert build.data_steps(wago='/w', refresh_oneforall=True)[2][2] == ['--wago', '/w', '--refresh-oneforall']

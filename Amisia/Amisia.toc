@@ -75,6 +75,7 @@ Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
 Data\ScanDone.lua [AllowLoadGameType camelot]
 Data\RaidCheckData.lua [AllowLoadGameType camelot]
+Data\EnchantData.lua [AllowLoadGameType camelot]
 Gear\Gear.lua [AllowLoadGameType camelot]
 Gear\PlayStyle.lua [AllowLoadGameType camelot]
 Gear\Model.lua [AllowLoadGameType camelot]
@@ -87,6 +88,7 @@ Gear\Quests.lua [AllowLoadGameType camelot]
 Gear\GuildWishes.lua [AllowLoadGameType camelot]
 Gear\Compare.lua [AllowLoadGameType camelot]
 Gear\Catalog.lua [AllowLoadGameType camelot]
+Gear\Enchants.lua [AllowLoadGameType camelot]
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua

@@ -775,6 +775,30 @@ local function buildSide(f)
         if ns.ShowGear then ns.ShowGear("dungeons") end
     end, { height = T.ROW_BUTTON_H })
     W.FitChip(S.all, G.ALL_W)
+    -- the enchantment of the worn item (F-128): what is on it, what brings more (the wheel scrolls)
+    S.enchHead = W.Text(S, T.FONT.head, SW)
+    S.enchHead:SetHeight(G.HEAD_H)
+    S.ench = W.List(S, G.ENCH_ROWS, RH, function(r)
+        r.name = W.Text(r, T.FONT.text, SW - G.RANK_GAIN_W - 6)
+        r.name:SetPoint("LEFT", 2, 0)
+        r.gain = W.Text(r, T.FONT.text, G.RANK_GAIN_W)
+        r.gain:SetPoint("RIGHT", 0, 0)
+        r.gain:SetJustifyH("RIGHT")
+        r:SetScript("OnClick", function(self) if self.item then ns.Enchants.Click(self.item) end end)
+        r:SetScript("OnEnter", function(self) if self.item then ns.Enchants.Tooltip(self, self.item) end end)
+        r:SetScript("OnLeave", K.hideTip)
+    end, function(r, e)
+        local dim = e.later or not e.scored
+        r.name:SetText((dim and GREY or "") .. e.name .. (dim and "|r" or ""))
+        if e.later then
+            r.gain:SetText(GREY .. L["ab %d"]:format(e.later) .. "|r")
+        else
+            r.gain:SetText(GREEN .. ns.Enchants.GainText(e) .. "|r")
+        end
+    end)
+    S.ench:SetWidth(SW)
+    S.enchEmpty = W.Text(S, T.FONT.hint, SW, true)
+    S.enchEmpty:SetHeight(G.SIDE_ROW_H)
     -- the field: a link or an item id becomes the own pick (Shift-click on a link puts it in)
     S.fieldHead = W.Text(S, T.FONT.head, SW)
     S.fieldHead:SetHeight(G.HEAD_H)
@@ -890,6 +914,32 @@ local function buildSide(f)
         P.all:ClearAllPoints()
         P.all:SetPoint("TOPRIGHT", 0, y - 2)
         y = y - 2 - T.ROW_BUTTON_H
+        -- the enchantment (no section for an empty slot or an item nothing fits)
+        local okE, ench = pcall(ns.Enchants and ns.Enchants.ForSlot or function() end, chosen)
+        ench = okE and ench or nil
+        if ench then
+            local now = ench.current and ench.current.name or (T.RED .. L["Keine"] .. "|r")
+            P.enchHead:SetText(L["Verzauberung: %s"]:format(now))
+            P.enchHead:ClearAllPoints()
+            P.enchHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
+            y = y - G.SECTION_GAP - G.HEAD_H
+            P.ench:ClearAllPoints()
+            P.ench:SetPoint("TOPLEFT", 0, y)
+            -- nothing better than the one on it: only that (not the unscored effects)
+            local items = (ench.current and not ench.better) and {} or ench.list
+            P.ench:SetItems(items)
+            P.enchEmpty:ClearAllPoints()
+            P.enchEmpty:SetPoint("TOPLEFT", 2, y - 2)
+            P.enchEmpty:SetText(ench.current and L["Du hast schon die beste."] or L["Keine passende Verzauberung bringt dir etwas."])
+            if #items == 0 then P.enchEmpty:Show() else P.enchEmpty:Hide() end
+            P.enchHead:Show()
+            P.ench:Show()
+            y = y - G.ENCH_ROWS * RH
+        else
+            P.enchHead:Hide()
+            P.ench:Hide()
+            P.enchEmpty:Hide()
+        end
         -- the field
         P.fieldHead:ClearAllPoints()
         P.fieldHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)

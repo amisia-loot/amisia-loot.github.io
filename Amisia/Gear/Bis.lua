@@ -1042,6 +1042,23 @@ local function modelChange(ev, o, specKey)
     return ns.Model.Change(o.class, c.p, o.kind, c.st, outItems, inItems, c.w), c
 end
 
+-- What it brings when the stats outS leave a worn item and inS come (an enchantment, F-128): the
+-- model's change in percent of the whole output (nil without the model) and the change of the
+-- weighted score (for the order without the model). place: "2H", "MH", "OH", "RANGED" or nil, where
+-- weapon damage goes.
+function ns.BisStatsChange(outS, inS, place, opts)
+    local o = opts or ns.BisOpts()
+    local w = o.class and Gear.Weights(o.class, o.spec, o.kind, o.level)
+    local score
+    if w then
+        score = Gear.Score(inS, w, o.level, place, o.class) - Gear.Score(outS, w, o.level, place, o.class)
+    end
+    local c = ownOf(o, o.spec)
+    if not c then return nil, score end
+    local mc = ns.Model.Change(o.class, c.p, o.kind, c.st, { { outS, place } }, { { inS, place } }, c.w)
+    return mc and mc.total, score
+end
+
 -- "+1,6 %", "-0,4 %", "+12 %" (whole numbers from 10 on).
 local function pctText(x)
     local a = math.abs(x)

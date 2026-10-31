@@ -922,6 +922,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Raid-ID hast (braucht: Raid), dann steht in der Spalte ID "bis <Tag Uhrzeit>".
 - Notiz: Spec `docs/specs/2026-10-17-raids-seite.md` (freigegeben 2026-10-17).
 
+### F-128 Verzauberungs-Vorschläge je Slot
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Fenster Ausrüstungsziele einen Slot mit einem unverzauberten Item wählst, dann steht rechts "Verzauberung: Keine" in Rot und darunter höchstens fünf passende Verzauberungen, die mit dem größten Gewinn für deine Spezialisierung zuerst.
+- Prüfung: Wenn das getragene Item verzaubert ist, dann steht der Name der Verzauberung oben, und jede Zeile darunter zeigt den Gewinn gegen diese; ist nichts besser, steht dort "Du hast schon die beste".
+- Prüfung: Wenn du mit der Maus über eine Zeile fährst, dann nennt der Tooltip Quelle, Mindeststufe, Reagenzien mit der Zahl in deinen Taschen und die Gildenmitglieder, die das Rezept kennen.
+- Prüfung: Wenn du einen Slot ohne mögliche Verzauberung wählst (Ring, Schmuck, Hals), dann gibt es keinen Abschnitt "Verzauberung".
+- Prüfung: Wenn du mit Alt + Rechtsklick die Karte eines Slots am Charakterfenster öffnest, dann steht oben die Zeile "Verzauberung: ..."; ein Klick darauf öffnet das Fenster Ausrüstungsziele auf diesem Slot.
+- Notiz: Spec `docs/specs/2026-10-31-verzauberungen.md`, freigegeben 2026-10-31 ("Passt").
+
 ### F-127 Talentrechner: Builds aus Links der Talentrechner-Seiten
 - Version: -
 - Status: geplant

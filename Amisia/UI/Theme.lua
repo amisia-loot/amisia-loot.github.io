@@ -262,7 +262,7 @@ T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUT
 -- the card "Upgrades: <Slot>" beside the character window (UI/SlotCard.lua, F-125): the best ROWS
 -- items of a slot, each an icon with name and source over each other and the gain at the right
 T.SLOTCARD = { W = 300, PAD = 10, TITLE_H = 24, ROWS = 5, ROW_H = 34, ICON = 26, TEXT_X = 34, GAIN_W = 56,
-    BUTTON_W = 180, GAP = 6, CLOSE = 20, OFFSET_X = 4 }
+    BUTTON_W = 180, GAP = 6, CLOSE = 20, OFFSET_X = 4, ENCH_H = 18 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6 }
 -- the shared popup menu and the picker's panel
@@ -340,7 +340,7 @@ T.TALENT = {
 -- 18 + 300 + 10 + 380 + 10 + 210 + 18 = 946 wide; the doll's column with the score head sets the
 -- height: 60 + 410 (model, weapons, switch, hint) + 4 + 20 + 4 + 10 + 14 + 4 + 84 (stats) + 12 = 622.
 T.GOALS = {
-    W = 946, H = 624,
+    W = 946, H = 700,
     TOP = 32,             -- the head row below the window's top, under the title bar
     BOTTOM = 12,          -- what the columns leave free at the bottom
     SCALE_STEP = 5,       -- Ctrl + mouse wheel: percent per notch (setting ui.goalScale)
@@ -385,6 +385,7 @@ T.GOALS = {
     -- the slot panel on the right
     SIDE_X = 718, SIDE_W = 210,
     SIDE_ROW_H = 18, RANK_ROWS = 10,   -- the ranking's rows
+    ENCH_ROWS = 5,        -- the enchantments of the worn item (F-128), SIDE_ROW_H high
     DROP_ROWS = 3, DROP_ROW_H = 30,     -- the dungeon drops: item over boss and dungeon
     HEAD_H = 16,          -- a head in the panel (the slot, Deine Wahl, Rangliste, ...)
     SECTION_GAP = 6,      -- before a section's head in the panel
