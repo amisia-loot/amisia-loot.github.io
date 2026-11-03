@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.48.2 (2026-11-03)
+
+- Daten für Client-Build 1.60.1.70755 (automatisch gebaut, Prüfung grün)
+
 ## 2.48.1 (2026-11-03)
 
 - Forever liegt jetzt in _forever_: Werkzeuge lesen den neuen Ordner, _classic_beta_ nur als Rückfall
