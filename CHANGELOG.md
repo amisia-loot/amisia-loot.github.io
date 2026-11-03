@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.48.1 (2026-11-03)
+
+- Forever liegt jetzt in _forever_: Werkzeuge lesen den neuen Ordner, _classic_beta_ nur als Rückfall
+- Daten für Client-Build 1.60.1.70707 (automatisch gebaut, Prüfung grün)
+
 ## 2.48.0 (2026-10-31)
 
 - Spec: Talent-Builds aus Links der Talentrechner-Seiten übernehmen (F-127, Entwurf)
