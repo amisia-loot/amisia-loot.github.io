@@ -841,7 +841,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
-- Version: 2.39.6
+- Version: 2.49.0
 - Status: gebaut
 - Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens und des Kral der Klingenhauer, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht"; in Durotar, im Sumpfland und in der Dunkelküste stehen Zeppelinturm und Anleger auf den Stegen.
 - Prüfung: Wenn du auf den Eingang der Höhlen des Wehklagens klickst, dann öffnet sich Amisia auf der Seite Dungeons mit diesem Dungeon gewählt, die Weltkarte bleibt vorn; mit Shift setzt der Klick das Ziel zum Eingang (Chat "Ziel ...", Pfeil).
