@@ -95,6 +95,21 @@ def call(path, token, body=None, ctype=None, opener=None):
         return json.loads(resp.read().decode('utf-8') or 'null')
 
 
+TOKEN_SHAPE = re.compile(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}', re.I)
+
+
+def http_error(e, token):
+    """An HTTP error of the API as one line. CurseForge repeats a malformed token in its answer, so the
+    token is blanked out; a token that is not one id (pasted twice, say) gets a hint."""
+    detail = e.read().decode('utf-8', 'replace')
+    if token:
+        detail = detail.replace(token, '***')
+    line = f'HTTP {e.code} {detail[:300]}'.rstrip()
+    if token and not TOKEN_SHAPE.fullmatch(token):
+        line += f'; the token in {TOKEN_FILE} should be one id like 01234567-89ab-cdef-0123-456789abcdef'
+    return line
+
+
 def zip_version(path):
     with zipfile.ZipFile(path) as zf:
         return toc_field(zf.read(TOC_REL).decode('utf-8'), 'Version')
@@ -132,8 +147,7 @@ def upload(root=ROOT, dry_run=False, token=None, opener=None, say=print):
             body, ctype = multipart(meta, f'Amisia-{version}.zip', fh.read())
         res = call(f'/projects/{project}/upload-file', token, body, ctype, opener=opener)
     except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', 'replace')[:300]
-        say(f'CurseForge: HTTP {e.code} {detail}'.rstrip())
+        say(f'CurseForge: {http_error(e, token)}')
         return 1
     except (urllib.error.URLError, OSError, ValueError) as e:
         say(f'CurseForge: {e}')
@@ -157,7 +171,14 @@ def main(argv=None):
         return 1
     with open(os.path.join(ROOT, TOC_REL), encoding='utf-8') as fh:
         names = interface_names(fh.read())
-    versions = call('/game/versions', token)
+    try:
+        versions = call('/game/versions', token)
+    except urllib.error.HTTPError as e:
+        print(f'CurseForge: {http_error(e, token)}')
+        return 1
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        print(f'CurseForge: {e}')
+        return 1
     for name in names:
         hits = [v for v in versions if v.get('name') == name]
         print(name, ' '.join(f'id {v["id"]} (type {v.get("gameVersionTypeID")})' for v in hits) or 'unknown')

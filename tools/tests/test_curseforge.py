@@ -37,7 +37,8 @@ class Fake:
     def __call__(self, req, timeout=None):
         self.seen.append(req)
         if self.fail:
-            raise urllib.error.HTTPError(req.full_url, self.fail, 'no', {}, io.BytesIO(b'{"errorMessage":"bad"}'))
+            body = json.dumps({'errorMessage': 'bad. Token provided: ' + req.get_header('X-api-token')})
+            raise urllib.error.HTTPError(req.full_url, self.fail, 'no', {}, io.BytesIO(body.encode('utf-8')))
         out = self.versions if req.full_url.endswith('/game/versions') else {'id': 777}
         resp = io.BytesIO(json.dumps(out).encode('utf-8'))
         resp.__enter__ = lambda *a: resp
@@ -109,3 +110,16 @@ def test_refuses_an_unknown_game_version_an_old_zip_and_reports_http_errors(tmp_
     assert curseforge.upload(old, token='t', opener=Fake(), say=said.append) == 1 and 'release first' in said[-1]
     assert curseforge.upload(addon(tmp_path / 'c'), token='t', opener=Fake(fail=403), say=said.append) == 1
     assert 'HTTP 403' in said[-1]
+
+
+def test_an_error_never_shows_the_token_and_a_malformed_one_gets_a_hint(tmp_path, monkeypatch, capsys):
+    good, said = 'a1b2c3d4-0000-4e35-8f54-0958d6170000', []
+    assert curseforge.upload(addon(tmp_path / 'a'), token=good, opener=Fake(fail=401), say=said.append) == 1
+    assert good not in said[-1] and '***' in said[-1] and 'should be one id' not in said[-1]
+    assert curseforge.upload(addon(tmp_path / 'b'), token=good * 2, opener=Fake(fail=400), say=said.append) == 1
+    assert good not in said[-1] and 'should be one id' in said[-1]
+    monkeypatch.setattr(curseforge, 'read_token', lambda *a, **k: good + 'x')
+    monkeypatch.setattr(curseforge.urllib.request, 'urlopen', Fake(fail=400))
+    assert curseforge.main(['versions']) == 1
+    out = capsys.readouterr().out
+    assert good not in out and 'HTTP 400' in out and 'should be one id' in out

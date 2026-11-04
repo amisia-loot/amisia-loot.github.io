@@ -51,8 +51,9 @@ python3 tools/build.py errors [--sv FILE] [--all]
   (16001 -> 1.60.1), the changelog is the version's section of `CHANGELOG.md`. Without a project id or a
   token it says "skipped"; a game version CurseForge does not know stops the upload. A failed upload leaves
   the release as it is (exit 1); `python3 tools/curseforge.py upload [--dry-run]` tries again,
-  `python3 tools/curseforge.py versions` shows the ids CurseForge has for the TOC's clients. `--no-upload`
-  leaves it out.
+  `python3 tools/curseforge.py versions` shows the ids CurseForge has for the TOC's clients (and checks the
+  token). An error never shows the token (CurseForge repeats a malformed one) and says when the file does
+  not hold exactly one token id. `--no-upload` leaves it out.
 - `release` also prints, before it starts, a warning with Amisia's errors from the game (see `errors`)
   and, at the end, the test list of the new version: the entries of `docs/FEATURES.md` whose
   `Version:` is the new one, with their checks, to pass on to the user. When no entry carries the
