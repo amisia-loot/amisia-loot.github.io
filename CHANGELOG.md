@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.49.1 (2026-11-04)
+
+- F-105 gebaut in 2.49.0: Anleger von Hand und eigene Symbole neu zu prüfen
+- Daten für Client-Build 1.60.1.70790 (automatisch gebaut, Prüfung grün)
+
 ## 2.49.0 (2026-11-04)
 
 - Release lädt die Zip auch zu CurseForge hoch (D-58): tools/curseforge.py, Token nur auf dem N100
