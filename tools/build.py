@@ -1,6 +1,6 @@
 """One entry point for Amisia's builds, checks and releases.
 
-    python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att] [--refresh-oneforall]
+    python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
     python3 tools/build.py check
     python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -189,7 +189,7 @@ ENCHANT_TABLES = ['SpellEffect', 'SpellItemEnchantment', 'SpellEquippedItems', '
                   'ItemXItemEffect', 'Item', 'ItemSparse']
 
 
-def data_steps(sv=None, wago=WAGO, refresh_att=False, refresh_oneforall=False):
+def data_steps(sv=None, wago=WAGO, refresh_att=False):
     """The data builds in dependency order: (name, script, args, client tables it needs or None,
     what happens without them: 'skip' or the args to use instead)."""
     sv_args = ['--sv', sv] if sv else []
@@ -199,8 +199,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False, refresh_oneforall=False):
         ('scan archive', 'build_scan_archive.py', ['update', '--wago', wago] + sv_args, None, None),
         # the dungeon facts first: the gear build places dungeon sources by them
         ('dungeons', 'build_dungeons.py', ['--wago', wago], [('LFGDungeons', 'AreaTable')], []),
-        ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else [])
-         + (['--refresh-oneforall'] if refresh_oneforall else []), None, None),
+        ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else []), None, None),
         ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
         ('dungeon quests', 'build_dungeonquests.py', [], None, None),
         ('quests', 'build_quests.py', [], None, None),
@@ -240,8 +239,7 @@ def cmd_data(args):
     wago = os.path.abspath(os.path.expanduser(args.wago))
     py = sys.executable
     done, skipped = [], []
-    for name, script, sargs, needs, without in data_steps(args.sv, wago, args.refresh_att,
-                                                          getattr(args, 'refresh_oneforall', False)):
+    for name, script, sargs, needs, without in data_steps(args.sv, wago, args.refresh_att):
         if needs:
             miss = missing_tables(needs, wago)
             if miss:
@@ -713,7 +711,6 @@ def main(argv=None):
                                               '(default: what each build finds, e.g. ~/addons/_SavedVariables/Amisia.lua)')
     d.add_argument('--wago', default=WAGO, help=f'folder of the client table CSVs (default {WAGO})')
     d.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever data first')
-    d.add_argument('--refresh-oneforall', action='store_true', help='download the newest OneForAll for the gear build first')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
     sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')

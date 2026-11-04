@@ -370,7 +370,7 @@ every item a levelling character can wear and where it comes from. The stat weig
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
 ```
-python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--oneforall DIR] [--refresh-oneforall]
+python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...]
                            [--no-wowsrc] [--itemsparse CSV|DIR]
 ```
 
@@ -383,19 +383,12 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - Where it comes from (`att_data.py`): quest rewards (minimum level, faction, zone, class limits,
   dungeon), boss drops per dungeon, rares, vendors (PvP rank quartermasters as `P`), zone drops
   (trash inside a dungeon, the named mobs outside), world drops, PvP rank gear, crafted items (the
-  profession; the skill is 0 = unknown unless AtlasLoot or OneForAll name it); and the Amisia item
+  profession; the skill is 0 = unknown unless the client tables name it); and the Amisia item
   collector (drops, merchants, quests, the auction house as players met them; German names).
-- OneForAll 5.x (GPL-3.0-or-later, `Amisia/LICENSES/OneForAll-GPL-3.0.txt`): dungeon bosses and
-  trash, dungeon quests with their rewards (a quest ATT knows keeps ATT's record), the skill to learn
-  a recipe. The N100 reads its download in `~/addons/_cache/oneforall` (`--refresh-oneforall`, or
-  `build.py data --refresh-oneforall`, fetches the newest from GitHub: Lua, TOC and text files only);
-  the PC reads the installed addon; `--oneforall DIR` names another folder; skipped with a note when
-  none is there, or when the folder is older than 5.0 (no `DungeonRegistry.lua`). Its files run in a
-  sandbox (no python bridge, no os/io/load, an instruction budget). Only items with a Forever id
-  (200000 and up) or an id the client knows (`ItemSparse` in `--wago`, the scan) are taken: its tables
-  of the Classic dungeons list Classic loot the Forever client does not have (5.6.0: 827 such gear ids).
-- Optional, PC only, skipped with a note when missing: AtlasLootClassic (Forever dungeon tables,
-  Classic recipes with skill).
+- The client tables in `--wago` (`client_crafts`): the item each recipe makes (`SpellEffect`) and the
+  skill it needs, the higher of `SkillLineAbility.MinSkillLineRank` and the `RequiredSkillRank` of the
+  recipe item that teaches it (`ItemXItemEffect`, `ItemSparse`). Season of Discovery recipes (spells
+  400000-999999) only for items ATT lists as crafted for Forever, as in `build_professions.py`.
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
@@ -438,14 +431,13 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - `GearData.lua` carries `game = "forever"`, `cap = 60`; it and `GearWeights.lua` are loaded through
   the TOC condition `[AllowLoadGameType camelot]`.
 
-Runs on the N100. On the PC it also takes the scan and the PC-only sources. `AMISIA_WOW_ROOT`
+Runs on the N100. On the PC it also takes the installed client's SavedVariables. `AMISIA_WOW_ROOT`
 overrides the WoW install path. Requires `lupa`.
 
 Licences of the data: AllTheThings MIT (`GearData.lua`, `MapData.lua`, `DungeonQuestData.lua`;
-`Amisia/LICENSES/AllTheThings-MIT.txt`), AtlasLootClassic GPL-2.0 when used (to be checked in
-the installed folder), wago.tools
-exports and ATT's item export are Blizzard's game data (`gear_itemsparse.json`). OneForAll is
-GPL-3.0-or-later since 5.x (`Amisia/LICENSES/OneForAll-GPL-3.0.txt`). Still open: wowsrc.com, whose pages state no
+`Amisia/LICENSES/AllTheThings-MIT.txt`), the client table exports and ATT's item export are
+Blizzard's game data (`gear_itemsparse.json`). No copyleft data (OneForAll, AtlasLoot) since
+2026-11-04 (D-04), so Amisia's own licence stays free. Still open: wowsrc.com, whose pages state no
 licence (its robots.txt allows crawling, which is not one); `--no-wowsrc` leaves it out. No QuestieDB
 data: it has no licence.
 
@@ -457,7 +449,7 @@ source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>
 `N:<dungeon name>`).
 
 ```
-python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--oneforall DIR] [--sv FILE...] [--entrances FILE]
+python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...] [--entrances FILE]
 ```
 
 - Places come from ATT's data (`att_data.py`): a quest's coordinates (where its giver or start
@@ -470,22 +462,20 @@ python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--oneforall 
     gear data's `I:`/`N:` keys of a dungeon get the same points. Sources in this order, the first with a
     point wins: the client table `Map` (`Corpse_0/1` on `CorpseMapID`, the ghost's place at the portal,
     turned into a zone's x/y through the `UiMapAssignment` rectangles; of overlapping zones the one
-    AllTheThings or OneForAll names, else the one that holds it deepest), AllTheThings, OneForAll's
-    `DungeonData.lua` (approximate by its own words; zone by name through `AreaTable`), the learned ones.
+    AllTheThings names, else the one that holds it deepest), AllTheThings, the learned ones.
     A later client or AllTheThings point joins on a map the winner has none on (Uldaman's, Blackrock
     Mountain's own outdoor map) or, when that source knows two entrances, 8 % away (Uldaman's back
-    door). Continent points are left out. `E` names the winner per key (`c`, `a`, `o`, `l`).
+    door). Continent points are left out. `E` names the winner per key (`c`, `a`, `l`).
   - Learned entrances: `AmisiaDB.entrances` of the SavedVariables (`--sv`, default as
     `build_scan_archive.py`) join `tools/entrance_archive.json` (committed; a newer sighting replaces
     the older), matched to the facts by instance id or the client's instance name (`Map`).
-  - Flight masters (`F`): OneForAll's `Data/MapLandmarks.lua`, then AllTheThings' `fp()` records it
-    lacks (neither the NPC's name nor a point within 2 %; a path without its flight master is left out).
-  - Docks (`T`): OneForAll's zeppelin towers (Horde) and ship docks, then `tools/forever_transports.json`
-    (by hand, a source per entry; the classic routes are listed there as checked). Destinations carry the
-    client's area id (`AreaTable`), so the addon shows the client's own name ("Beutebucht").
-  - OneForAll runs in `build_gear.run_oneforall`'s sandbox (`--oneforall DIR`, default
-    `~/addons/_cache/oneforall`; `build_gear.py --refresh-oneforall` fetches it); the report lists the
-    winning source per dungeon and the flight masters and docks per source.
+  - Flight masters (`F`): AllTheThings' `fp()` records with their flight master (a path without one is
+    left out), then the `flights` of `tools/forever_transports.json` they lack (neither the NPC's name
+    nor a point within 2 %).
+  - Docks (`T`): the `docks` of `tools/forever_transports.json` (by hand, a source per entry, the known
+    Classic positions to be checked in game). Destinations carry the client's area id (`AreaTable`), so
+    the addon shows the client's own name ("Beutebucht").
+  - The report lists the winning source per dungeon and the flight masters and docks per source.
 - Which keys are needed comes from `GearData.lua`: quests by their quest id (quests started by an
   item have no place), vendors, rare and named mobs by NPC id or by name (an NPC in the source's
   zone wins, names found in several zones are reported), raids and dungeons by instance id (matched
@@ -804,6 +794,14 @@ it shows: window portraits, addon list and compartment, minimap button. The pict
 visible pixel sits inside the round portrait; the windows and the minimap button lay a black disc under
 it (`W.DISC`). `--preview DIR` also writes PNGs to look at (one on the black disc). A changed texture
 needs a full client restart before WoW shows it; `/reload` is not enough. Requires Pillow.
+
+## make_place_icons.py
+
+Draws the map pins of F-105 as genuine 32-bit TGAs, Amisia's own art: `place_flight.tga` (winged
+boot, 64x64), `place_ship_a.tga` / `place_ship_h.tga` (a ship from above, blue or red sails, 64x64)
+and `place_zeppelin.tga` (from above, 128x64). Shapes are drawn eight times larger, scaled down and
+get a dark rim. `--preview DIR` also writes PNGs and an enlarged sheet. Requires Pillow; a changed
+texture needs a full client restart.
 
 ## bossnames.js (frozen)
 

@@ -16,9 +16,9 @@ local L = ns.L
 local TEMPLATE = "AmisiaMapPlaceTemplate"
 local MAX_PLACES = 60
 -- the client's dungeon and raid marks (plain icons where the client lacks them); the flight master,
--- ship and zeppelin art in Media/Icons/place_*.tga (made from client art; GPL-3.0, see
--- LICENSES): the flight master's winged boot, the ship in its faction's colour, the zeppelin seen
--- from above (twice as wide as high)
+-- ship and zeppelin art in Media/Icons/place_*.tga (Amisia's own, tools/make_place_icons.py): the
+-- flight master's winged boot, the ship in its faction's colour, the zeppelin seen from above (twice
+-- as wide as high)
 local MEDIA = "Interface\\AddOns\\Amisia\\Media\\Icons\\"
 local ICON = {
     party = { atlas = "Dungeon", file = "Interface\\Icons\\INV_Misc_Bone_HumanSkull_01", w = 24, h = 24 },
@@ -354,7 +354,6 @@ local function tooltip(owner, e)
             if opens then GameTooltip:AddLine(opens, 1, 0.5, 0.25) end
         end
         GameTooltip:AddLine(where(e), 0.7, 0.7, 0.7)
-        if p.how == "o" then GameTooltip:AddLine(L["Ort ungefähr"], 0.7, 0.7, 0.7) end
         if p.how == "l" then GameTooltip:AddLine(L["Ort beim Betreten gemerkt"], 0.7, 0.7, 0.7) end
         GameTooltip:AddLine(TEXT.entranceHint, 0.6, 0.6, 0.6)
     elseif e.kind == "dock" then

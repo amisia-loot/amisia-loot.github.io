@@ -196,16 +196,16 @@ def test_client_entrance_on_the_zone_another_source_names(tmp_path):
 def test_the_first_source_wins_and_only_real_second_entrances_join():
     merge = build_map.merge_entrances
     assert merge([('client', [(1413, 4769, 3498)]), ('att', [(1413, 4590, 3570), (1414, 5200, 5520)]),
-                  ('oneforall', [(1413, 4600, 3650)])]) == ([(1413, 4769, 3498)], 'client'), \
+                  ('learned', [(1413, 4600, 3650)])]) == ([(1413, 4769, 3498)], 'client'), \
         'the same entrance measured worse and a continent point stay out'
     assert merge([('client', [(1421, 4472, 6777)]), ('att', [(1421, 3660, 6560)])]) == ([(1421, 4472, 6777)], 'client'), \
         'a single point of a later source 8 % away is no second entrance'
     pts, won = merge([('client', [(1418, 3521, 1029)]), ('att', [(16, 3660, 2940), (1418, 6400, 4400)])])
     assert won == 'client' and pts == [(1418, 3521, 1029), (16, 3660, 2940), (1418, 6400, 4400)], \
         "Uldaman: its own outdoor map and the back door join"
-    assert merge([('client', []), ('att', []), ('oneforall', [(1455, 2763, 4783)]), ('learned', [(1455, 2800, 4800)])]) == \
-        ([(1455, 2763, 4783)], 'oneforall'), 'approximate before learned, the learned one does not join'
-    assert merge([('client', []), ('att', []), ('oneforall', []), ('learned', [(1, 2, 3)])]) == ([(1, 2, 3)], 'learned')
+    assert merge([('client', []), ('att', [(1455, 2763, 4783)]), ('learned', [(1455, 2800, 4800)])]) == \
+        ([(1455, 2763, 4783)], 'att'), 'AllTheThings before learned, the learned one does not join'
+    assert merge([('client', []), ('att', []), ('learned', [(1, 2, 3)])]) == ([(1, 2, 3)], 'learned')
     assert merge([('client', []), ('att', [(1414, 1, 1)])]) == ([], None), 'nothing but a continent point'
 
 
@@ -214,18 +214,16 @@ def test_entrances_per_fact_and_their_keys(tmp_path):
     facts = [{'key': 'wc', 'name': 'Wailing Caverns', 'kind': 'party', 'inst': 43},
              {'key': 'thanes', 'name': 'Hall of Thanes', 'kind': 'party', 'inst': 3065},
              {'key': 'drowned', 'name': 'Drowned City', 'kind': 'party'}]
-    ofa = {'dungeons': [{'name': 'Wailing Caverns', 'inst': 43, 'zone': 'The Barrens', 'x': 46.0, 'y': 36.5},
-                        {'name': 'Hall of Thanes', 'inst': None, 'zone': 'The Barrens', 'x': 27.63, 'y': 47.83}]}
     learned = {7777: {'map': 1413, 'x': 100, 'y': 200, 'name': 'The Drowned City', 'kind': 'party', 'seen': 5}}
-    ent = build_map.entrances(facts, att_data.empty_db(), c, ofa, learned)
-    assert ent['I:43'] == ([(1413, 6250, 2500)], 'client'), 'the client table on the zone OneForAll names'
-    assert ent['I:3065'] == ([(1413, 2763, 4783)], 'oneforall')
+    ent = build_map.entrances(facts, att_data.empty_db(), c, learned)
+    assert ent['I:43'][1] == 'client', 'the client table'
+    assert ent['I:3065'] == ([], None), 'a new dungeon no source knows waits to be learned'
     assert ent['N:Drowned City'] == ([(1413, 100, 200)], 'learned'), 'a learned instance found by its name'
     P = {'N:Wailing Caverns': [(1, 1, 1)], 'I:43': [], 'Q:1': [(1, 2, 3)]}
     E = build_map.apply_entrances(P, facts, ent)
-    assert P['N:Wailing Caverns'] == P['I:43'] == [(1413, 6250, 2500)] and P['Q:1'] == [(1, 2, 3)], \
+    assert P['N:Wailing Caverns'] == P['I:43'] == ent['I:43'][0] and P['Q:1'] == [(1, 2, 3)], \
         'the gear data\'s keys of a dungeon get its entrance'
-    assert E == {'I:43': 'c', 'N:Wailing Caverns': 'c', 'I:3065': 'o', 'N:Drowned City': 'l'}
+    assert E == {'I:43': 'c', 'N:Wailing Caverns': 'c', 'N:Drowned City': 'l'}
 
 
 def test_learned_entrances_join_the_archive(tmp_path):
@@ -252,48 +250,34 @@ def test_learned_entrances_join_the_archive(tmp_path):
 
 def test_flight_masters_and_docks(tmp_path):
     c = build_map.Client(client_tables(tmp_path / 'wago'))
-    ofa = {'flights': [(1413, 5150, 3030, 'H', 'Devrak')],
-           'zeppelins': [(1434, 3140, 2990, ['Orgrimmar', 'Undercity'])],
-           'ships': [(1413, 6370, 3860, 'N', 'Booty Bay, Stranglethorn Vale')]}
     att = {'flights': {
         25: {'place': 'Crossroads', 'npc': 3615, 'name': 'Devrak', 'points': [(1413, 5140, 3020)], 'faction': 'H'},
         77: {'place': 'Camp Taurajo', 'npc': 10378, 'name': 'Omusa', 'points': [(1413, 4440, 5900)], 'faction': 'H'},
         80: {'place': 'Ratchet', 'npc': 16227, 'name': None, 'points': [(1413, 6300, 3700)], 'faction': ''},
         85: {'place': 'Tower', 'npc': None, 'name': None, 'points': [(1423, 1, 1)], 'faction': ''}}}
-    F, added = build_map.flights(ofa, att)
-    assert added == 2 and F == [(1413, 4440, 5900, 'H', 'Omusa'), (1413, 5150, 3030, 'H', 'Devrak'),
-                                (1413, 6300, 3700, 'N', 'Ratchet')], F
-    hand = [{'map': 1413, 'x': 63.7, 'y': 38.6, 'kind': 'ship', 'faction': 'AH', 'to': ['Booty Bay'], 'src': 'x'},
-            {'map': 1437, 'x': 5.0, 'y': 63.4, 'kind': 'ship', 'faction': 'A', 'to': ['Theramore Isle'], 'src': 'x'}]
-    T = build_map.transports(ofa, c, hand)
+    by_hand = [{'map': 1413, 'x': 51.5, 'y': 30.3, 'faction': 'H', 'name': 'Devrak', 'src': 'x'},
+               {'map': 1444, 'x': 75.5, 'y': 44.4, 'faction': 'H', 'name': 'Shyn', 'src': 'x'},
+               {'map': 1413, 'x': 44.9, 'y': 59.5, 'faction': 'A', 'name': 'Other side', 'src': 'x'},
+               {'map': 1413, 'x': 63.5, 'y': 37.5, 'faction': 'A', 'name': 'Near the neutral', 'src': 'x'}]
+    F, from_att = build_map.flights(att, by_hand)
+    assert from_att == 3 and F == [(1413, 4440, 5900, 'H', 'Omusa'), (1413, 4490, 5950, 'A', 'Other side'),
+                                   (1413, 5140, 3020, 'H', 'Devrak'), (1413, 6300, 3700, 'N', 'Ratchet'),
+                                   (1444, 7550, 4440, 'H', 'Shyn')], 'the other faction may stand close by, not one at a neutral'
+    hand = [{'map': 1413, 'x': 63.7, 'y': 38.6, 'kind': 'ship', 'faction': 'AH', 'to': ['Booty Bay, Stranglethorn Vale']},
+            {'map': 1413, 'x': 63.8, 'y': 38.7, 'kind': 'ship', 'faction': 'AH', 'to': ['Booty Bay']},
+            {'map': 1434, 'x': 31.4, 'y': 29.9, 'kind': 'zeppelin', 'faction': 'H', 'to': ['Orgrimmar', 'Undercity']},
+            {'map': 1437, 'x': 5.0, 'y': 63.4, 'kind': 'ship', 'faction': 'A', 'to': ['Theramore Isle']}]
+    T = build_map.transports(c, hand)
     assert T == [(1413, 6370, 3860, 'S', 'N', ((35, 'Booty Bay'),)),
                  (1434, 3140, 2990, 'Z', 'H', ((0, 'Orgrimmar'), (0, 'Undercity'))),
-                 (1437, 500, 6340, 'S', 'A', ((0, 'Theramore Isle'),))], T
-    with open(build_map.TRANSPORTS, encoding='utf-8') as fh:
-        kept = json.load(fh)
-    assert kept['checked'] and len(kept['routes']) >= 7, 'the classic routes are checked against OneForAll'
+                 (1437, 500, 6340, 'S', 'A', ((0, 'Theramore Isle'),))], 'one dock per place and kind'
+    kept = build_map.load_transports()
+    assert len(kept['docks']) >= 11 and len(kept['flights']) >= 6, 'the classic docks and the flight masters ATT lacks'
     for d in kept['docks']:
         assert d['src'] and d['kind'] in ('zeppelin', 'ship') and d['to'], d
-
-
-def test_oneforall_places_in_the_sandbox(tmp_path):
-    base = tmp_path / 'ofa'
-    (base / 'Data').mkdir(parents=True)
-    (base / 'OneForAll.toc').write_text('## Version: 9.9.9\nData\\MapLandmarks.lua\nDungeonData.lua\nMapLandmarks.lua\n',
-                                        encoding='utf-8')
-    (base / 'Data' / 'MapLandmarks.lua').write_text(
-        'local _, FLT = ...\nFLT.MAP_LANDMARKS = { flight = { {1413,63.1,37.2,"AH","Bragok"} },\n'
-        ' zeppelin = { {1434,31.4,29.9,"Orgrimmar","Undercity"} }, ship = { {1413,63.7,38.6,"AH","Booty Bay, X"} } }\n',
-        encoding='utf-8')
-    (base / 'DungeonData.lua').write_text(
-        'local _, FLT = ...\nFLT.DUNGEONS = { { name = "Hall of Thanes", mapZone = "Ironforge", mapX = 27.63, mapY = 47.83 } }\n',
-        encoding='utf-8')
-    (base / 'MapLandmarks.lua').write_text('os.exit(1)\n', encoding='utf-8')   # runtime code: never run
-    o = build_map.load_ofa_places(str(base))
-    assert o['version'] == '9.9.9' and o['flights'] == [(1413, 6310, 3720, 'N', 'Bragok')]
-    assert o['zeppelins'] == [(1434, 3140, 2990, ['Orgrimmar', 'Undercity'])] and o['ships'] == [(1413, 6370, 3860, 'N', 'Booty Bay, X')]
-    assert o['dungeons'] == [{'name': 'Hall of Thanes', 'inst': None, 'zone': 'Ironforge', 'x': 27.63, 'y': 47.83}]
-    assert build_map.load_ofa_places(str(tmp_path / 'none')) is None
+    for f in kept['flights']:
+        assert f['src'] and f['name'] and f['faction'] in ('A', 'H', 'AH'), f
+    assert build_map.load_transports(str(tmp_path / 'none')) == {'docks': [], 'flights': []}
 
 
 def test_places_in_the_output(tmp_path):
@@ -318,7 +302,8 @@ def test_the_shipped_map_data_has_its_places():
     m = ns.MAP
     assert m.F is not None and m.T is not None and m.E is not None, 'MapData.lua carries F, T and E'
     head = text.split('local _, ns')[0]
-    assert 'OneForAll' in head and 'GPL-3.0' in head and 'Client tables' in head
+    assert 'Client tables' in head and 'forever_transports.json' in head and 'GPL' not in head
+    assert len(build_map.seq(build_map.py(m.T))) >= 11 and len(build_map.seq(build_map.py(m.F))) >= 60, 'the docks by hand, the flight masters'
 
 
 def test_there_is_no_game_switch():

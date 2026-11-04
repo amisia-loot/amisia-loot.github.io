@@ -128,3 +128,6 @@ Nichts. Nur lokale Anzeige aus mitgelieferten Daten; nichts wird gesendet oder e
   die Suche findet; je Punkt die aktuellste, die Quelle steht im Generator.
 - 2026-10-16: OneForAll nennt für Flugmeister, Anleger und Eingänge QuestieDB Forever und
   foreverchanges als Herkunft: "OneForAll als Quelle passt, release 2.39.0." -> D-04 Ausnahme erweitert.
+- 2026-11-04: OneForAll ist entfernt (D-04): Anleger und die Flugmeister, die AllTheThings fehlen, stehen
+  von Hand in `tools/forever_transports.json`, die Symbole sind eigene (`tools/make_place_icons.py`), die
+  ungefähren Eingänge (`o`) entfallen, neue Dungeons lernt Amisia beim Betreten.

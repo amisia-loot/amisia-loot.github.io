@@ -2,12 +2,12 @@
 world map. Quest givers and starts, vendors, rare and named mobs come from the coordinates the
 data gives them, raids and dungeons from their entrances. Runs without a WoW install (on the N100).
 
-    python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--oneforall DIR] [--sv FILE...]
+    python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...]
 
 F-105 adds the places on the world map: the entrance of every dungeon and raid of the facts (client
-table Map, AllTheThings, OneForAll, the learned ones), flight masters (F) and docks (T) from
-OneForAll 5.x (GPL-3.0-or-later) with AllTheThings and tools/forever_transports.json; see the block
-"places on the map" below and tools/README.md.
+table Map, AllTheThings, the learned ones), flight masters (F) from AllTheThings and docks (T), both
+with the hand list tools/forever_transports.json; see the block "places on the map" below and
+tools/README.md.
 
 Sources (named with their licence in tools/README.md and in the header of the generated file):
   - AllTheThings' hand-kept Forever data (tools/att_data.py; MIT, the licence ships in
@@ -344,59 +344,21 @@ def resolve(att, needed, facts=()):
 # facts, from these sources in this order:
 #   entrances:  the client table Map (Corpse_0/Corpse_1 on CorpseMapID: where a ghost comes back,
 #               at the instance portal; turned into a zone map's x/y through UiMapAssignment),
-#               AllTheThings, OneForAll's DungeonData.lua (approximate by its own words), then the
-#               entrances the addon learned when a player entered (tools/entrance_archive.json).
-#   flights:    OneForAll's Data/MapLandmarks.lua, then AllTheThings' fp() records it lacks.
-#   docks:      OneForAll's Data/MapLandmarks.lua, then tools/forever_transports.json (by hand).
-OFA_PLACES = ('Data.lua', 'DungeonRegistry.lua', 'DungeonData.lua', 'Data/MapLandmarks.lua')
+#               AllTheThings, then the entrances the addon learned when a player entered
+#               (tools/entrance_archive.json).
+#   flights:    AllTheThings' fp() records with their flight master, then the hand list's it lacks.
+#   docks:      the hand list tools/forever_transports.json.
 ENTRANCES = os.path.join(HERE, 'entrance_archive.json')
 TRANSPORTS = os.path.join(HERE, 'forever_transports.json')
 CONTINENTS = (947, 1414, 1415, 1463, 1464)   # world and continent maps: an entrance stands on a zone
 FAR = 800            # a second entrance of a later source counts from 8 % away
-SOURCE_CODES = {'client': 'c', 'att': 'a', 'oneforall': 'o', 'learned': 'l'}
-# OneForAll's destination names that are not the client's area names
+SOURCE_CODES = {'client': 'c', 'att': 'a', 'learned': 'l'}
+# short destination names that are not the client's area names
 AREA_ALIASES = {"Grom'gol": "Grom'gol Base Camp", 'Theramore': 'Theramore Isle'}
 
 
 def hundredths(v):
     return max(0, min(10000, int(round(float(v) * 100))))
-
-
-def load_ofa_places(base):
-    """OneForAll's flight masters, zeppelin towers, ship docks and dungeon entrances, or None when
-    the folder has no Data/MapLandmarks.lua: {'version', 'commit', 'flights': [(map, x, y, faction,
-    name)], 'zeppelins': [(map, x, y, [destination])], 'ships': [(map, x, y, faction, destination)],
-    'dungeons': [{'name', 'inst', 'zone', 'x', 'y'}]}. Its files run in build_gear's sandbox."""
-    if not base or not os.path.exists(os.path.join(base, 'Data', 'MapLandmarks.lua')):
-        return None
-    import build_scan
-    flt, version, errors = build_gear.run_oneforall(
-        base, lambda rel: rel in OFA_PLACES or rel.startswith('Data/Dungeons/'))
-    if errors:
-        log(f'OneForAll: files that failed: {errors}')
-    lm = build_scan.lua_to_py(flt.MAP_LANDMARKS) or {}
-    commit = ''
-    if os.path.exists(os.path.join(base, 'COMMIT')):
-        with open(os.path.join(base, 'COMMIT'), encoding='utf-8') as fh:
-            commit = fh.read().strip()
-
-    def side(v):
-        return {'A': 'A', 'H': 'H'}.get(v, 'N')
-    out = {'version': version, 'commit': commit, 'flights': [], 'zeppelins': [], 'ships': [], 'dungeons': []}
-    for r in lm.get('flight') or []:
-        if isinstance(r, list) and len(r) >= 5 and isinstance(r[0], int):
-            out['flights'].append((r[0], hundredths(r[1]), hundredths(r[2]), side(r[3]), str(r[4])))
-    for r in lm.get('zeppelin') or []:
-        if isinstance(r, list) and len(r) >= 4 and isinstance(r[0], int):
-            out['zeppelins'].append((r[0], hundredths(r[1]), hundredths(r[2]), [str(d) for d in r[3:]]))
-    for r in lm.get('ship') or []:
-        if isinstance(r, list) and len(r) >= 5 and isinstance(r[0], int):
-            out['ships'].append((r[0], hundredths(r[1]), hundredths(r[2]), side(r[3]), str(r[4])))
-    for d in build_scan.lua_to_py(flt.DUNGEONS) or []:
-        if isinstance(d, dict) and d.get('name'):
-            out['dungeons'].append({'name': d['name'], 'inst': d.get('instanceID'), 'zone': d.get('mapZone'),
-                                    'x': d.get('mapX'), 'y': d.get('mapY')})
-    return out
 
 
 class Client:
@@ -441,7 +403,7 @@ class Client:
                                    'corpse': (cm, cx, cy) if cm in (0, 1) and (cx or cy) else None}
 
     def zone(self, name):
-        """The uiMap of a zone by its English name (OneForAll's mapZone), or None."""
+        """The uiMap of a zone by its English name, or None."""
         aid = self.areas.get(name or '')
         return self.zone_of_area.get(aid) if aid is not None else None
 
@@ -593,14 +555,9 @@ def fact_names(f):
     return [f['name']] + list(f.get('aliases') or []) + ([f['part']] if f.get('part') else [])
 
 
-def entrances(facts, att, client, ofa, learned):
+def entrances(facts, att, client, learned):
     """{fact key: (points, winning source)} for every fact; see merge_entrances for the order."""
     atlas = Atlas(att, facts)
-    ofa_by = {}
-    for d in (ofa or {}).get('dungeons', []):
-        ofa_by.setdefault(build_gear.dungeon_key(d['name']), d)
-        if d.get('inst'):
-            ofa_by.setdefault(('inst', d['inst']), d)
     # learned entrances by instance id, and by the client's (English) name of the instance for a
     # dungeon the facts know no id of
     learned_by = {}
@@ -617,16 +574,12 @@ def entrances(facts, att, client, ofa, learned):
         if iid is None:
             iid = next((atlas.by_key[k] for k in keys if k in atlas.by_key), None)
         att_pts = atlas.entrance(iid) if iid is not None else []
-        o = (ofa_by.get(('inst', inst)) if inst else None) or next((ofa_by[k] for k in keys if k in ofa_by), None)
-        ofa_pts = []
-        if o and o.get('x') is not None and o.get('y') is not None and client.zone(o.get('zone')):
-            ofa_pts = [(client.zone(o['zone']), hundredths(o['x']), hundredths(o['y']))]
-        hints = [p[0] for p in att_pts] + [p[0] for p in ofa_pts]
+        hints = [p[0] for p in att_pts]
         cl = client.entrance(inst, hints) if inst else None
         lr = (learned_by.get(('inst', inst)) if inst else None) or next((learned_by[k] for k in keys if k in learned_by), None)
         lr_pts = [(lr['map'], lr['x'], lr['y'])] if lr else []
         out[fact_key(f)] = merge_entrances([('client', [cl] if cl else []), ('att', att_pts),
-                                            ('oneforall', ofa_pts), ('learned', lr_pts)])
+                                            ('learned', lr_pts)])
     return out
 
 
@@ -660,41 +613,45 @@ def apply_entrances(P, facts, ent):
     return E
 
 
-def flights(ofa, att):
-    """[(map, x, y, faction A/H/N, name)]: OneForAll's, then AllTheThings' flight masters it lacks
-    (neither the same NPC name nor a point within 2 %). Returns (list, count from AllTheThings)."""
-    out = list((ofa or {}).get('flights', []))
-    names = {f[4] for f in out}
-    added = 0
+def flights(att, hand=()):
+    """[(map, x, y, faction A/H/N, name)]: AllTheThings' flight masters, then the hand list's it lacks
+    (neither the same NPC name nor a point within 2 % of one for the same faction: Booty Bay and
+    Everlook have one per faction side by side). Returns (list, count from AllTheThings)."""
+    out = []
+
+    def add(p, side, name):
+        side = side or 'N'
+        rivals = [f[:3] for f in out if 'N' in (f[3], side) or f[3] == side]
+        if name in {f[4] for f in out} or _near(p, rivals, MERGE):
+            return False
+        out.append((p[0], p[1], p[2], side, name))
+        return True
+    from_att = 0
     for _, r in sorted((att or {}).get('flights', {}).items()):
         if not r.get('npc') or not r.get('points'):
             continue      # a path without its flight master (the tower flights) is no place to go
-        p = r['points'][0]
-        if r.get('name') in names or _near(p, [f[:3] for f in out], MERGE):
-            continue
-        out.append((p[0], p[1], p[2], r['faction'] or 'N', r.get('name') or r.get('place') or '?'))
-        added += 1
-    return sorted(out), added
+        from_att += add(r['points'][0], r['faction'], r.get('name') or r.get('place') or '?')
+    for f in hand or []:
+        add((int(f['map']), hundredths(f['x']), hundredths(f['y'])), {'A': 'A', 'H': 'H'}.get(f.get('faction')), f['name'])
+    return sorted(out), from_att
 
 
 def load_transports(path=TRANSPORTS):
-    if not os.path.exists(path):
-        return []
-    with open(path, encoding='utf-8') as fh:
-        return json.load(fh).get('docks', [])
+    """The hand list: {'docks': [...], 'flights': [...]} (empty lists without the file)."""
+    data = {}
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as fh:
+            data = json.load(fh)
+    return {'docks': data.get('docks', []), 'flights': data.get('flights', [])}
 
 
-def transports(ofa, client, hand):
-    """[(map, x, y, kind Z/S, faction A/H/N, ((area id or 0, English name), ...))]: OneForAll's
-    zeppelin towers (Horde) and ship docks, then the hand list's docks not there yet."""
+def transports(client, hand):
+    """[(map, x, y, kind Z/S, faction A/H/N, ((area id or 0, English name), ...))]: the hand list's
+    zeppelin towers and ship docks, one per place and kind."""
     out = []
 
     def dests(names):
         return tuple((client.area(n) or 0, n.split(',')[0].strip()) for n in names)
-    for m, x, y, to in (ofa or {}).get('zeppelins', []):
-        out.append((m, x, y, 'Z', 'H', dests(to)))
-    for m, x, y, side, to in (ofa or {}).get('ships', []):
-        out.append((m, x, y, 'S', side, dests([to])))
     for d in hand or []:
         p = (int(d['map']), hundredths(d['x']), hundredths(d['y']))
         kind = 'Z' if d['kind'] == 'zeppelin' else 'S'
@@ -707,7 +664,7 @@ def transports(ofa, client, hand):
 # ---------------------------------------------------------------- output
 def write_lua(out, P, G, commit, built, E=None, F=(), T=(), sources=()):
     """Writes MapData.lua. E, F and T are the places of F-105 (entrance sources, flight masters,
-    docks); sources are further header lines (OneForAll, the client tables) when they gave data."""
+    docks); sources are further header lines (the client tables, the hand list)."""
     lua_str = build_gear.lua_str
     commit = (commit or '')[:10]
     lines = [
@@ -722,8 +679,8 @@ def write_lua(out, P, G, commit, built, E=None, F=(), T=(), sources=()):
         '-- separated by spaces. Keys: Q:<quest id> (where the quest starts), V:, R:, W:<NPC name> (vendor,',
         '-- rare, named mob), U:<NPC id>, I:<instance id> and N:<dungeon name> (entrance).',
         '-- G: [source key] = who stands there (the quest giver), English.',
-        '-- E: [entrance key] = where its points come from: c client table, a AllTheThings, o OneForAll',
-        '-- (approximate), l learned when a player entered.',
+        '-- E: [entrance key] = where its points come from: c client table, a AllTheThings, l learned when a',
+        '-- player entered.',
         '-- F: flight masters { uiMapID, x, y, faction A/H/N (both), name (English) }.',
         '-- T: docks { uiMapID, x, y, kind Z (zeppelin) / S (ship), faction A/H/N, { { area id, English name }, ... } }.',
         'ns.MAP = {',
@@ -774,7 +731,7 @@ def report_places(facts, ent, F, att_flights, T):
     log('entrances per winning source: ' + ', '.join(f'{k} {len(v)}' for k, v in sorted(won.items())))
     for k, v in sorted(won.items()):
         log(f'  {k}: {" ".join(v)}')
-    log(f'flight masters: {len(F)} ({len(F) - att_flights} OneForAll, {att_flights} AllTheThings); '
+    log(f'flight masters: {len(F)} ({att_flights} AllTheThings, {len(F) - att_flights} by hand); '
         f'docks: {len(T)} ({sum(1 for t in T if t[3] == "Z")} zeppelin towers, {sum(1 for t in T if t[3] == "S")} ships)')
 
 
@@ -783,8 +740,6 @@ def main(argv=None):
     ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
     ap.add_argument('--wago', default=build_gear.WAGO, help='folder with the client tables (Map, UiMapAssignment, AreaTable)')
-    ap.add_argument('--oneforall', default=build_gear.OFA_CACHE,
-                    help=f'the OneForAll folder (default {build_gear.OFA_CACHE}; build_gear.py --refresh-oneforall fetches it)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with learned entrances (default: '
                                             '~/addons/_SavedVariables/Amisia.lua and an installed Forever client\'s)')
     ap.add_argument('--entrances', default=ENTRANCES, help='the archive of learned entrances')
@@ -808,20 +763,16 @@ def main(argv=None):
     if not client.instances:
         log(f'no client table Map in {args.wago}: entrances from the other sources only '
             '(export it on the PC: tools/export_db2.ps1 -Tables Map,UiMapAssignment,AreaTable)')
-    ofa = load_ofa_places(args.oneforall)
-    if ofa is None:
-        log(f'no OneForAll with Data/MapLandmarks.lua in {args.oneforall}: run build_gear.py --refresh-oneforall')
-    ent = entrances(facts, att, client, ofa, learned)
+    ent = entrances(facts, att, client, learned)
     E = apply_entrances(P, facts, ent)
-    F, att_flights = flights(ofa, att)
-    T = transports(ofa, client, load_transports())
+    hand = load_transports()
+    F, att_flights = flights(att, hand['flights'])
+    T = transports(client, hand['docks'])
     sources = []
-    if ofa:
-        sources.append(f'OneForAll {ofa["version"]} ({build_gear.OFA_LICENCE}) at {ofa["commit"][:10]}: flight masters, '
-                       'docks, approximate entrances.')
     if client.instances:
         sources.append('Client tables Map, UiMapAssignment, AreaTable (Blizzard game data): entrances, area ids. '
-                       'Learned entrances: tools/entrance_archive.json. Docks by hand: tools/forever_transports.json.')
+                       'Learned entrances: tools/entrance_archive.json.')
+    sources.append('Docks and the flight masters AllTheThings lacks by hand: tools/forever_transports.json.')
     n = write_lua(args.out, P, G, att.get('commit'), time.strftime('%Y-%m-%d'), E, F, T, sources)
     log('places per source kind (with / without): '
         + ', '.join(f'{k} {w}/{wo}' for k, (w, wo) in sorted(report['kinds'].items())))

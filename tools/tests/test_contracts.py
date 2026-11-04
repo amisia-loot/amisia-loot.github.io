@@ -379,7 +379,6 @@ def header(text):
 
 def test_every_generated_file_names_its_generator_and_sources():
     licence = read(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'))
-    ofa_licence = read(os.path.join(ADDON, 'LICENSES', 'OneForAll-GPL-3.0.txt'))
     data = addon_files(skip=('Core/', 'Raid/', 'Gear/', 'Collect/', 'UI/', 'Locales/'))
     data = [(rel, text) for rel, text in data if rel.startswith('Data/')]
     assert len(data) >= 10
@@ -393,12 +392,11 @@ def test_every_generated_file_names_its_generator_and_sources():
         if 'AllTheThings' in head:
             assert 'MIT' in head and 'LICENSES' in head, f'{rel}: AllTheThings data without its MIT credit'
             assert rel in licence, f'{rel} uses AllTheThings data but LICENSES/AllTheThings-MIT.txt does not list it'
-        if 'OneForAll' in head:
-            assert 'GPL-3.0' in head and 'LICENSES' in head, f'{rel}: OneForAll data without its GPL credit'
-            assert rel in ofa_licence, f'{rel} uses OneForAll data but LICENSES/OneForAll-GPL-3.0.txt does not list it'
-    for text in (licence, ofa_licence):
-        for rel in re.findall(r'Data/\w+\.lua', text):
-            assert os.path.exists(os.path.join(ADDON, rel)), f'LICENSES names {rel}, which does not exist'
+        assert not re.search(r'OneForAll|AtlasLoot|GPL', head), f'{rel}: data under a copyleft licence (D-04)'
+    for rel in re.findall(r'Data/\w+\.lua', licence):
+        assert os.path.exists(os.path.join(ADDON, rel)), f'LICENSES names {rel}, which does not exist'
+    assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt'], \
+        'a new licence file: decide it with the user first (D-04)'
 
 
 def test_bis_picks_are_a_bis_recommendation_not_a_guild_one():

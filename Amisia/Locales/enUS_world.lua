@@ -486,7 +486,6 @@ L["Schiff nach %s"] = "Ship to %s"
 L["Zeppelin nach %s"] = "Zeppelin to %s"
 L["Stufe %s"] = "Level %s"
 L["%d Spieler"] = "%d players"
-L["Ort ungefähr"] = "Place approximate"
 L["Ort beim Betreten gemerkt"] = "Place noted on entering"
 L["Im Kampf öffnet Amisia das Fenster nicht. Nach dem Kampf noch einmal klicken."] = "Amisia does not open its window in combat. Click again after the fight."
 

@@ -39,7 +39,7 @@ NS.MAP = { game = "forever", built = "t-places", G = {}, P = {
     ["I:229"] = "1434:4000:5000",
     ["I:249"] = "1413:9000:9000",
     ["N:Hall of Thanes"] = "1413:1000:1000",
-}, E = { ["I:43"] = "c", ["N:Hall of Thanes"] = "o" }, F = {
+}, E = { ["I:43"] = "c", ["N:Hall of Thanes"] = "l" }, F = {
     { 1413, 5150, 3030, "H", "Devrak" },
     { 1413, 6310, 3720, "N", "Bragok" },
     { 1413, 2000, 2000, "A", "Allianzflieger" },
@@ -58,7 +58,7 @@ assert(byKey["I:43"] and byKey["I:43"].facts[1].key == "wc" and not byKey["I:43"
 assert(#byKey["I:229"].facts == 2 and byKey["I:229"].facts[1].key == "lbrs" and byKey["I:229"].facts[2].key == "ubrs",
     "one entrance for both Blackrock Spires")
 assert(byKey["I:249"].raid and byKey["I:249"].facts[1].key == "onyxia", "a raid")
-assert(byKey["N:Hall of Thanes"] and byKey["N:Hall of Thanes"].how == "o", "a dungeon the facts know by name, approximate")
+assert(byKey["N:Hall of Thanes"] and byKey["N:Hall of Thanes"].how == "l", "a dungeon the facts know by name, learned")
 assert(#P.flights == 3 and #P.docks == 3)
 assert(Map.Places() == P, "built once")
 
@@ -174,7 +174,7 @@ assert(has(tip, "Onyxia's Lair") and has(tip, "Raid · ") and has(tip, "40 Spiel
 assert(has(tip, "Brachland 90, 90") and has(tip, "Klick: in Amisia öffnen. Shift-Klick: Ziel setzen."), tip)
 lines = {}
 pinOf("entrance", "N:Hall of Thanes"):OnMouseEnter()
-assert(has(table.concat(lines, "|"), "Ort ungefähr") and has(table.concat(lines, "|"), "5 Spieler"), table.concat(lines, "|"))
+assert(has(table.concat(lines, "|"), "Ort beim Betreten gemerkt") and has(table.concat(lines, "|"), "5 Spieler"), table.concat(lines, "|"))
 lines = {}
 pinOf("flight", "Bragok"):OnMouseEnter()
 assert(lines[1] == "Bragok" and lines[2] == "Flugmeister · beide Fraktionen", table.concat(lines, "|"))

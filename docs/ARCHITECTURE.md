@@ -87,7 +87,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/GearData.lua` | generated (`build_gear.py`), lazy `GEAR` | - | LazyData |
 | `Data/GearWeights.lua` | generated (`build_bis.py`), lazy `GEAR_WEIGHTS` | - | LazyData |
 | `Data/BisData.lua` | generated (`build_bis.py`), `ns.BIS` | - | - |
-| `Data/MapData.lua` | generated (`build_map.py`), lazy `MAP`: `P` points per source key (the entrances under `I:<instance id>`/`N:<name>`, one for every dungeon and raid of the facts that has a place), `G` quest givers, `E` where an entrance's points come from (`c` client table Map, `a` AllTheThings, `o` OneForAll approximate, `l` learned), `F` flight masters `{ uiMap, x, y, A/H/N, name }`, `T` docks `{ uiMap, x, y, Z/S, A/H/N, { { area id, English name } } }` | - | LazyData |
+| `Data/MapData.lua` | generated (`build_map.py`), lazy `MAP`: `P` points per source key (the entrances under `I:<instance id>`/`N:<name>`, one for every dungeon and raid of the facts that has a place), `G` quest givers, `E` where an entrance's points come from (`c` client table Map, `a` AllTheThings, `l` learned), `F` flight masters `{ uiMap, x, y, A/H/N, name }`, `T` docks `{ uiMap, x, y, Z/S, A/H/N, { { area id, English name } } }` | - | LazyData |
 | `Data/DungeonData.lua` | generated (`build_dungeons.py`) | - | - |
 | `Data/DungeonQuestData.lua` | generated (`build_dungeonquests.py`) | - | - |
 | `Data/ProfessionData.lua` | generated (`build_professions.py`), lazy | - | LazyData |
@@ -150,8 +150,8 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Core/SelfTestCalendarWrite.lua` | `/amisia selbsttest kalender schreiben` (en `selftest calendar write`): the write probe of the checks 23 to 25 (part H3). WRITES into the calendar, only after the chat warning and "Ausführen" in `W.Confirm`: on the first guild event with sign-up of the next 14 days the player did not create (never a normal invite: its `RemoveEvent` drops the invitation; none: says it needs such an event another character created) it tries the menu's sign-up (`ContextMenuSelectEvent` + `ContextMenuEventSignUp`, inside the click when not signed up), `RemoveEvent`, `EventSignUp`, `EventTentative` while signed up, `EventDecline`, `EventTentative`, `RemoveEvent` from tentative and `ContextMenuInviteTentative`, with the steps between them; after each it reads the own status (the event opened again: `GetEventInfo().inviteStatus`, and the day event), watches ADDON_ACTION_BLOCKED/FORBIDDEN and CALENDAR_UPDATE_ERROR, and at the end puts the old status back; never in combat or with the client's calendar window open (it stops then; before each call on the opened event `Cal.OpenIsSignup` and the window are checked), at most 24 writes (the tests stop 3 before, those are the restore's), one run at a time; never from a start status an officer set (0, 3, 4, 5); report in the self-test window | - | SelfTest (`ST.Kit`, `ST.ShowText`), Calendar (`Cal.Target`, groups, `Cal.Hold`), Widgets (`W.Confirm`) |
 | `Core/SelfTestGroup.lua` | `/amisia selbsttest gruppe` (en `selftest group`): the group probe of the raid check spec (2026-10-12) and of the lineup checks 10, 11 and 13 (parts C and D), alone: looks up the invite, convert, sort, assistant, ready check, saved instance, aura and gear functions and the system message templates; invites `GT.NAME` ("Niemand Nirgends", a name nobody has) once inside the key press and once from a C_Timer and reports the system message (which template it fits) and ADDON_ACTION_BLOCKED/FORBIDDEN for Amisia (no invite in combat or the lockdown); `RequestRaidInfo` + `UPDATE_INSTANCE_INFO` and the own saved instances; the own buffs (count, secret ones, long ones; `C_Secrets`) and a targeted player's; durability per worn item, `GetAverageItemLevel`, the enchant of each worn item from the item link and the tooltip data line types (15 `ItemEnchantmentPermanent`); free talent points (`ns.Talents.Live`); its own event frame only while it runs; report in the self-test window | - | SelfTest (`ST.Kit`, `ST.ShowText`), RaidCheckRead (the readers it shares with the raid check); never converts, sorts, promotes or starts a ready check |
 
-Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`, except `place_*.tga`: OneForAll's map
-landmark icons, F-105; a new texture needs a full client restart), `LICENSES/` (licence texts shipped with the addon).
+Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`; the map pins `place_*.tga` of F-105 by
+`tools/make_place_icons.py`; a new texture needs a full client restart), `LICENSES/` (licence texts shipped with the addon).
 
 ### Load order rules
 
@@ -186,7 +186,8 @@ ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of A
                                             -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
 AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att -> build_gear/map/quests/...
-OneForAll (GPL-3.0, --refresh-oneforall) -> ~/addons/_cache/oneforall -> build_gear (Forever item ids only), build_map (landmarks)
+client tables SkillLineAbility, SpellEffect, ItemSparse -> build_gear.client_crafts -> Data/GearData.lua (C, recipe skill)
+tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T docks, F the flight masters ATT lacks)
 MapPlaces.lua (entering an instance)    -> AmisiaDB.entrances -> build_map.py -> tools/entrance_archive.json -> Data/MapData.lua
 QuestTags.lua (the own quest log)        -> AmisiaDB.questtags -> build_gear.py -> tools/quest_tag_archive.json -> Data/GearData.lua (QT)
 ItemSparse (client table, export_db2)   -> build_gear.py -> Data/GearData.lua (RP, the reputation an item asks for)
@@ -198,9 +199,8 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 ```
 
 - Build inputs: own data first (scan, collector, drop records of the guild, SavedVariables), the
-  user's client table export, AllTheThings (MIT), and the user-accepted inputs wowsrc.com,
-  OneForAll 5.x (GPL-3.0; a download on the N100, the installed addon on the PC; only items with a
-  Forever id or one the client knows) and AtlasLoot (PC only). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
+  user's client table export, AllTheThings (MIT), the user-accepted input wowsrc.com and the hand
+  list `tools/forever_transports.json`. No copyleft data (D-04). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
   script (see DECISIONS).
 - The scan data (`AmisiaDB.scan`: item lines, collector notes, suffixes) lives for good in
   `tools/scan_archive.json` (committed, about 2.5 MB; git keeps it compressed). `build.py data` joins
@@ -562,11 +562,9 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51) |
 | `~/addons/_auto/amisia-data.txt` | outcome of `tools/auto_data.py` (systemd user timer `amisia-auto-data.timer`, `tools/systemd/install.sh`): a new build's data built and checked on branch `auto/data-<build>` in the worktree `~/addons/.amisia-auto`, never released (D-51) |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
-| `~/addons/_cache/oneforall` | OneForAll download (GPL-3.0; Lua, TOC and text files only, `build_gear.py --refresh-oneforall`), read only in the sandbox of `build_gear.run_oneforall` (`build_gear.load_oneforall`, `build_map.load_ofa_places`) |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |
 
 In-game tests are the user's (PC); `/reload` after a release (a new file or texture needs a full
 client restart). PC-only builder: `tools/build_scan.py` (full; `Amisia-Website/data/bossnames.js`, the TBC
 archive's boss names, is frozen and has no builder);
-optional PC-only build inputs: AtlasLoot and the live SavedVariables (OneForAll: the installed addon
-when the N100's download is missing).
+optional PC-only build input: the live SavedVariables.

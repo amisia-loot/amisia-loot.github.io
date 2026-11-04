@@ -244,17 +244,6 @@ def test_places_learn_instance_ids_from_drop_notes():
     assert p.of_name("Onyxia's Lair") == ("Onyxia's Lair", 249, 2159), 'from the facts'
 
 
-def test_atlas_forever_dungeons_read_instance_and_map(tmp_path):
-    p = tmp_path / 'data.lua'
-    p.write_text('data["Barrow"] = {\n\tname = "Barrow",\n\tMapID = 7001,\n\tInstanceID = 3001,\n\tContentType = FOREVER_DUNGEON_CONTENT,\n'
-                 '\tLevelRange = {20, 24, 28},\n\titems = {\n\t\t{\n\t\t\tname = "Barrow King",\n\t\t\t[NORMAL_DIFF] = {\n'
-                 '\t\t\t\t{ 1, 270001 }, -- Crown of Bones {FOREVER}\n\t\t\t}\n\t\t},\n\t}\n}\n', encoding='utf-8')
-    rows = build_gear.load_atlas_forever_dungeons(str(p))
-    assert rows == [('Barrow', (20, 24, 28), 'Barrow King', 270001, 'Crown of Bones {FOREVER}', 3001, 7001)]
-    src, keep, *_ = build_gear.build({270001: scan_item('Crown of Bones', q=3)}, {}, att(), atlas_dungeons=rows)
-    assert src.rows[keep[270001][1][0] - 1] == ('D', 'Barrow', 'Barrow King', None, 3001, 7001)
-
-
 FOREVER_JS = ('window.__LOOT=window.__LOOT||{};window.__LOOT["forever"]={"zones":['
               '{"key":"ony","name":"Onyxia\'s Lair","short":"Ony","color":["#b9915a","#8a6428"]},'
               '{"key":"field","name":"Seen in the world","short":"World","color":["#7c9a6d","#5d7452"]}],'
@@ -339,8 +328,8 @@ def test_npc_id_rides_last_on_vendors_rares_and_named_mobs():
 def test_crafted_items_keep_a_known_skill():
     a = att(crafted=[(40, 'tailoring'), (41, 'tailoring')])
     scan = {40: dict(scan_item('Robe', loc='INVTYPE_ROBE'), bind=2), 41: dict(scan_item('Cap'), bind=2)}
-    src, keep, *_ = build_gear.build(scan, {}, a, atlas_crafts={40: [('tailoring', 75)]})
-    assert [src.rows[n - 1] for n in keep[40][1]] == [('C', 'tailoring', 75)], 'the skill of a PC source wins'
+    src, keep, *_ = build_gear.build(scan, {}, a, crafts={'tailoring': [(40, 75)]})
+    assert [src.rows[n - 1] for n in keep[40][1]] == [('C', 'tailoring', 75)], 'the skill of the client tables wins'
     assert [src.rows[n - 1] for n in keep[41][1]] == [('C', 'tailoring', 0)], 'else the profession without a skill'
 
 
@@ -455,109 +444,29 @@ def test_scan_gear_asks_only_for_ids_the_client_has(tmp_path):
     assert build_gear.client_known([10, 20], str(tmp_path / 'none')) == [10, 20]
 
 
-# ---------------------------------------------------------------- OneForAll 5.x
-OFA_TOC = """## Interface: 16001
-## Version: 5.6.0
-Data.lua
-ProfessionData.lua
-Data\\Professions\\Tailoring.lua
-DungeonRegistry.lua
-Data\\Dungeons\\Kraul.lua
-Data\\Dungeons\\Spire.lua
-Data\\Dungeons\\Onyxia.lua
-DungeonData.lua
-Core.lua
-"""
-OFA_FILES = {
-    'Data.lua': 'local ADDON, FLT = ...\n_G[ADDON] = FLT\n',
-    'ProfessionData.lua': 'local _, FLT = ...\nFLT.PROFESSION_DATA = { ["Tailoring"] = {\n'
-                          '  ["Cloak"] = { craftedItemID = 250002, requiredSkill = 125 } } }\n',
-    'Data/Professions/Tailoring.lua': 'local _, FLT = ...\nFLT.PROFESSION_RECIPES = FLT.PROFESSION_RECIPES or {}\n'
-                                      'FLT.PROFESSION_RECIPES["Tailoring"] = {\n'
-                                      '  {s=1, i=250001, n="Robe", req=50, y=60},\n  {s=2, i=250002, n="Cloak", y=130},\n'
-                                      '  {s=3, i=4000, n="Old Shirt", req=1}, {s=4, n="An enchant"} }\n',
-    'DungeonRegistry.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY = FLT.DUNGEON_REGISTRY or {}\n',
-    'Data/Dungeons/Kraul.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY["Razorfen Kraul"] = {\n'
-                               '  bosses = { { name = "Roogug", loot = { {274149, "Thornweaver Drape", "Back", 2},'
-                               ' {6690, "Classic Loot", "Back", 2} } } },\n'
-                               '  trashLoot = { {252512, "Brawler\'s Leather Helm", "Head, Leather", 2} },\n'
-                               '  quests = { { id = 900001, name = "A Vengeful Fate", level = 29, requires = 24,'
-                               ' faction = "Horde", class = "WARRIOR", rewardItems = { {274084, "Quilboar Blaster", 2},'
-                               ' {6691, "Classic Reward", 2} } } } }\n',
-    'Data/Dungeons/Spire.lua': 'local _, FLT = ...\nlocal ok = (os == nil and io == nil and require == nil and loadstring == nil)\n'
-                               'if not ok then error("not sealed") end\n'
-                               'FLT.DUNGEON_REGISTRY["Sandbox"] = { bosses = {}, quests = {} }\n',
-    'Data/Dungeons/Onyxia.lua': 'local _, FLT = ...\nFLT.DUNGEON_REGISTRY["Onyxia\'s Lair"] = {\n'
-                                '  bosses = { { name = "Onyxia", loot = { {280001, "Raid Drop", "Head", 4} } } } }\n',
-    'DungeonData.lua': 'error("not read")\n',
-    'Core.lua': 'error("not read")\n',
-}
-
-
-def ofa_folder(tmp_path, files=OFA_FILES, toc=OFA_TOC):
-    base = tmp_path / 'OneForAll'
-    for rel, text in dict(files, **{'OneForAll.toc': toc}).items():
-        p = base / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding='utf-8')
-    return str(base)
-
-
-def test_oneforall_5_reads_the_dungeon_registry_and_recipes(tmp_path):
-    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
-    assert ofa['version'] == '5.6.0' and ofa['errors'] == {}
-    kraul = ofa['dungeons']['Razorfen Kraul']
-    assert kraul['bosses'] == [('Roogug', [(274149, 'Thornweaver Drape'), (6690, 'Classic Loot')])]
-    assert kraul['trash'] == [(252512, "Brawler's Leather Helm")]
-    assert kraul['quests'] == [{'id': 900001, 'name': 'A Vengeful Fate', 'level': 29, 'requires': 24, 'faction': 'H',
-                                'classes': 1, 'rewards': [(274084, 'Quilboar Blaster'), (6691, 'Classic Reward')]}]
-    # the recipe's own skill, else the Merchant's Favor list's; a recipe without an item is no gear
-    assert ofa['crafts'] == {'tailoring': [(250001, 50), (250002, 125), (4000, 1)]}
-    # no os, io or loadstring in the sandbox (Spire.lua errs otherwise); DungeonData.lua and the
-    # addon's code (they err) never run
-
-
-def test_oneforall_runs_in_a_sandbox(tmp_path):
-    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
-    assert 'Sandbox' in ofa['dungeons']
-    files = dict(OFA_FILES)
-    files['Data/Dungeons/Spire.lua'] = 'local f = io.open("/tmp/x", "w")\n'
-    ofa = build_gear.load_oneforall(ofa_folder(tmp_path / 'b', files))
-    assert 'Data/Dungeons/Spire.lua' in ofa['errors'] and 'Razorfen Kraul' in ofa['dungeons']
-    files['Data/Dungeons/Spire.lua'] = 'while true do end\n'
-    ofa = build_gear.load_oneforall(ofa_folder(tmp_path / 'c', files), budget=100000)
-    assert 'budget' in ofa['errors']['Data/Dungeons/Spire.lua']
-
-
-def test_oneforall_before_5_is_left_out(tmp_path):
-    files = {k: v for k, v in OFA_FILES.items() if k != 'DungeonRegistry.lua'}
-    assert build_gear.load_oneforall(ofa_folder(tmp_path, files)) is None
-
-
-def test_oneforall_keeps_forever_ids_and_what_the_client_knows(tmp_path):
-    ofa = build_gear.load_oneforall(ofa_folder(tmp_path))
-    kept, gone = build_gear.oneforall_forever_only(ofa, known={6691})
-    kraul = kept['dungeons']['Razorfen Kraul']
-    assert kraul['bosses'] == [('Roogug', [(274149, 'Thornweaver Drape')])]
-    assert kraul['quests'][0]['rewards'] == [(274084, 'Quilboar Blaster'), (6691, 'Classic Reward')]
-    assert kept['crafts'] == {'tailoring': [(250001, 50), (250002, 125)]}
-    assert gone == {6690, 4000}
-
-
-def test_oneforall_joins_as_dungeon_quest_and_craft_sources(tmp_path):
-    ofa, _ = build_gear.oneforall_forever_only(build_gear.load_oneforall(ofa_folder(tmp_path)), set())
-    scan = {274149: scan_item('Thornweaver Drape', 'INVTYPE_CLOAK', lvl=27),
-            252512: scan_item("Brawler's Leather Helm", lvl=25),
-            274084: scan_item('Quilboar Blaster', 'INVTYPE_RANGEDRIGHT', lvl=24, cls=2),
-            250001: scan_item('Robe', 'INVTYPE_CHEST', lvl=10),
-            280001: scan_item('Raid Drop', q=4, lvl=60)}
-    src, keep, *_ = build_gear.build(scan, {}, att(), ofa=ofa)
-    recs = {iid: [src.rows[n - 1] for n in keep[iid][1]] for iid in keep}
-    assert recs[274149] == [('D', 'Razorfen Kraul', 'Roogug')]
-    assert recs[252512] == [('D', 'Razorfen Kraul', 'Trash')]
-    assert recs[274084] == [('Q', 'A Vengeful Fate', 29, 24, 'H', None, 900001, 1, 'Razorfen Kraul')]
-    assert recs[250001] == [('C', 'tailoring', 50)]
-    assert 280001 not in keep   # a raid's loot stays out of the levelling planner
+# ---------------------------------------------------------------- recipes from the client tables
+def test_recipes_and_their_skill_come_from_the_client_tables(tmp_path):
+    """The item a recipe makes (SpellEffect 24) and its skill: the higher of MinSkillLineRank and the
+    RequiredSkillRank of the recipe item that teaches it (ItemXItemEffect, trigger 6)."""
+    w = tmp_path / 'wago'
+    w.mkdir()
+    b = '1.60.1.70755'
+    (w / f'SkillLineAbility.{b}.csv').write_text(
+        'ID,SkillLine,Spell,MinSkillLineRank,AcquireMethod,TrivialSkillLineRankLow,TrivialSkillLineRankHigh\n'
+        '1,197,100,1,1,60,80\n2,197,101,1,0,140,160\n3,197,102,1,0,0,0\n4,186,103,1,0,0,0\n'
+        '5,164,410001,1,0,0,0\n6,164,410002,50,0,0,0\n', encoding='utf-8')
+    (w / f'SpellEffect.{b}.csv').write_text(
+        'ID,SpellID,Effect,EffectItemType,EffectBasePointsF\n1,100,24,40,1\n2,101,24,41,1\n3,102,53,0,0\n'
+        '4,103,24,42,1\n5,410001,24,43,1\n6,410002,24,44,1\n', encoding='utf-8')
+    (w / f'ItemEffect.{b}.csv').write_text('ID,SpellID,TriggerType\n7,101,6\n', encoding='utf-8')
+    (w / f'ItemXItemEffect.{b}.csv').write_text('ID,ItemID,ItemEffectID\n1,900,7\n', encoding='utf-8')
+    (w / f'ItemSparse.{b}.csv').write_text('ID,Display_lang,RequiredSkillRank\n900,Pattern,125\n40,Robe,0\n',
+                                           encoding='utf-8')
+    crafts = build_gear.client_crafts(str(w), att_crafted=[(44, 'blacksmithing')])
+    # a trainer recipe keeps its rank, one from a pattern the pattern's skill; no item no recipe;
+    # mining is no crafting profession; a Season of Discovery recipe only for an item ATT has for Forever
+    assert crafts == {'blacksmithing': [(44, 50)], 'tailoring': [(40, 1), (41, 125)]}
+    assert build_gear.client_crafts(str(tmp_path / 'none')) == {}
 
 
 def test_reputation_and_quest_types_reach_the_data(tmp_path):

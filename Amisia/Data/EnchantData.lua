@@ -12,7 +12,7 @@ local _, ns = ...
 
 ns.LazyData("ENCHANT", [=[
 return {
-build="1.60.1.70755",built="2026-11-03",
+build="1.60.1.70755",built="2026-11-04",
 E={
 [15]="RESISTANCE0_NAME=8;STAMINA=1|0|0|Stamina +$k2 and Armor +$k1",
 [24]="INTELLECT=2|0|0|Intellect +2",

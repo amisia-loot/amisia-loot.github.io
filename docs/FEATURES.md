@@ -843,12 +843,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 - Version: 2.39.6
 - Status: gebaut
-- Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens und des Kral der Klingenhauer, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht".
+- Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens und des Kral der Klingenhauer, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht"; in Durotar, im Sumpfland und in der Dunkelküste stehen Zeppelinturm und Anleger auf den Stegen.
 - Prüfung: Wenn du auf den Eingang der Höhlen des Wehklagens klickst, dann öffnet sich Amisia auf der Seite Dungeons mit diesem Dungeon gewählt, die Weltkarte bleibt vorn; mit Shift setzt der Klick das Ziel zum Eingang (Chat "Ziel ...", Pfeil).
 - Prüfung: Wenn du in den Einstellungen (Karte und Wegpunkt) "Flugmeister auf der Karte" ausschaltest oder im Rechtsklick eines Pins "Flugmeister ausblenden" wählst, dann verschwinden die Flugmeister-Pins sofort, die Eingänge bleiben.
 - Prüfung: Wenn du als Horde in Durotar und im Schlingendorntal schaust, dann siehst du keine Allianz-Flugmeister; in Beutebucht nur den deiner Fraktion.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann stehen dort Zeilen zu C_TaxiMap und C_EncounterJournal und zu den Symbolen Dungeon/Raid; nach dem Betreten eines Dungeons ohne bekannten Eingang (z. B. Hall of Thanes) hat er nach dem nächsten Daten-Build einen Pin.
-- Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (OneForAll-Orte). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Symbole: Flügelstiefel, Schiff in Fraktionsfarbe, Zeppelin (Media/Icons/place_*.tga), in 2.39.5/2.39.6 neu gezeichnet (glatter Rand, weicher Schatten).
+- Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (seit 2026-11-04 Anleger und fehlende Flugmeister von Hand, eigene Symbole). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Symbole: Flügelstiefel, Schiff in Fraktionsfarbe, Zeppelin (Media/Icons/place_*.tga), in 2.39.5/2.39.6 neu gezeichnet (glatter Rand, weicher Schatten).
 
 ### F-046 Dungeon-Planer: Rangliste, Kette, Quests
 - Version: 2.4.0
@@ -874,7 +874,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Dungeons die Spezialisierung wechselst, dann ist sie auch auf der Seite Ausrüstung gewählt.
 - Prüfung: Wenn du mit einer Lederträger-Spezialisierung um Stufe 25 auf der Seite Dungeons Razorfen Kraul ansiehst, dann zählen "Thornweaver Drape" (Roogug) und die Forever-Lederhelme (z. B. "Brawler's Leather Helm") zur Beute, soweit sie Upgrades für dich sind.
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil A; vorher der Chip "Dungeons" der Seite Ausrüstung (F-046, F-047).
-- Notiz: 2.37.2: Boss-, Trash- und Questbeute der Dungeons zusätzlich aus OneForAll 5.6.0 (nur Items mit Forever-ID oder die der Client kennt; DECISIONS D-04).
+- Notiz: 2.37.2: Boss-, Trash- und Questbeute der Dungeons zusätzlich aus OneForAll 5.6.0 (nur Items mit Forever-ID oder die der Client kennt; DECISIONS D-04); seit 2026-11-04 entfernt, die Beute lernt der Sammler.
 
 ### F-048 Quest-Tracker
 - Version: 2.7.0

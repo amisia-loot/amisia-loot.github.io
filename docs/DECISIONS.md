@@ -62,28 +62,32 @@ wird nicht erweitert. wowsrc.com ist eine vom Nutzer akzeptierte Eingabe (D-04),
 
 ## D-04 Lizenzen der Datenquellen
 
-**Datum:** 2026-10-15 (zuerst 2026-10-06)
+**Datum:** 2026-11-04 (zuerst 2026-10-06, dann 2026-10-15)
 **Entscheidung:** AllTheThings (MIT) ist freigegeben, mit dem Lizenztext in
 `Amisia/LICENSES/AllTheThings-MIT.txt` (in einer Lizenzdatei, nicht in der UI). QuestieDB hat
-keine Lizenz und ist entfernt. wowsrc.com, OneForAll und AtlasLoot bleiben Eingaben der Builds
-("Ja können wir alles nutzen"; die Lizenzen hat der Nutzer entschieden, nicht geprüft).
+keine Lizenz und ist entfernt. wowsrc.com bleibt eine Eingabe der Builds ("Ja können wir alles
+nutzen"; die Lizenz hat der Nutzer entschieden, nicht geprüft). Seit 2026-11-04 keine Daten und keine
+Grafik unter einer Copyleft-Lizenz: OneForAll (GPL-3.0) und AtlasLoot (GPL-2.0) sind aus den Builds
+entfernt, damit Amisia seine eigene Lizenz frei wählen kann. Ersatz: die Berufsstufe der Rezepte aus
+den Client-Tabellen (`build_gear.client_crafts`: das höhere von `SkillLineAbility.MinSkillLineRank`
+und der `RequiredSkillRank` des Rezept-Items; gegen die alten Werte 1535 von 1540 gleich), Anleger und
+die Flugmeister, die AllTheThings fehlen, von Hand in `tools/forever_transports.json` (die bekannten
+Classic-Orte, im Spiel zu prüfen), die Karten-Symbole eigene (`tools/make_place_icons.py`); die
+Dungeon-Beute, Dungeon-Quests und Eingänge, die nur OneForAll kannte (23 Beute-Quellen, 6 Quests,
+3 Eingänge der neuen Forever-Dungeons), lernt Amisia im Spiel (Sammler, D-50).
 Daten, die andere Repos von Wowhead/foreverchanges kopiert haben, sind nicht nutzbar, auch wenn das
-Repo MIT ist. Ausnahme seit 2026-10-15: OneForAll 5.x (GPL-3.0-or-later, Lizenztext in
-`Amisia/LICENSES/OneForAll-GPL-3.0.txt`) ist ausdrücklich freigegeben ("Nutz OneForAll 5.6.0 als
-Quelle"), obwohl seine Quellenliste Wowhead und foreverchanges nennt; genommen werden nur Items mit
-Forever-ID (ab 200000) oder einer ID, die der Client kennt (`ItemSparse`, Scan).
-Seit 2026-10-16 auch die Orte der Karte (F-105): Flugmeister, Zeppeline und Schiffe aus
-`Data/MapLandmarks.lua` und die Eingänge aus `DungeonData.lua`, obwohl OneForAll sie aus QuestieDB
-Forever bzw. foreverchanges hat ("OneForAll als Quelle passt").
-**Grund:** Lizenztreue; OneForAll füllt Boss-, Trash- und Questbeute der Forever-Dungeons, die
-AllTheThings noch nicht hat.
+Repo MIT ist.
+**Grund:** Lizenztreue. Nutzer 2026-11-04 beim CurseForge-Upload: "kommen wir die sachen die unter
+license sind selber neu erstellen", nach der Aufstellung "ok mach das". Bis dahin war OneForAll 5.x
+seit 2026-10-15 freigegeben ("Nutz OneForAll 5.6.0 als Quelle", für die Orte der Karte "OneForAll als
+Quelle passt") und machte Amisia GPL-pflichtig.
 **Folge:** Neue Daten nur aus diesen Quellen; jede generierte Datei nennt im Kopf Generator und
-Quellen, jede mit AllTheThings- oder OneForAll-Daten steht in deren Lizenzdatei. Bis 2026-10-15 las
-`build_gear.py` OneForAll nur auf dem PC und ohne Filter (das Format vor 5.0); die Classic-Beute
-seiner Tabellen bleibt jetzt draußen. Fremde Addons sonst nie nennen (D-05).
+Quellen, jede mit AllTheThings-Daten steht in dessen Lizenzdatei. Eine neue Lizenzdatei unter
+`Amisia/LICENSES/` oder eine Quelle mit Copyleft entscheidet der Nutzer vorher. Fremde Addons sonst
+nie nennen (D-05).
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`,
 `tools/tests/test_contracts.py::test_no_questie_data_left`, `tools/tests/test_build_quests.py::test_the_licence_names_every_file_from_allthethings`,
-`tools/tests/test_build_gear.py::test_oneforall_keeps_forever_ids_and_what_the_client_knows`.
+`tools/tests/test_build_gear.py::test_recipes_and_their_skill_come_from_the_client_tables`.
 
 ## D-05 Keine anderen Addons nennen
 
@@ -1078,7 +1082,7 @@ Shift-Klick setzt das Ziel. Eingänge, die keine Quelle kennt, merkt sich Amisia
 (`AmisiaDB.entrances`): der letzte Ort im Freien, höchstens 20 s vor dem Ladebildschirm in eine Gruppen- oder
 Raid-Instanz, nach der Instanz-ID; nicht nach einer Beschwörung oder einem Teleport der Gruppensuche, höchstens 60. `build.py data` (Schritt map)
 nimmt sie in `tools/entrance_archive.json` auf (eine neuere Sichtung ersetzt die ältere, nichts fällt weg) und
-in `Data/MapData.lua`, als letzte Quelle nach Client-Tabelle Map, AllTheThings und OneForAll. Anders als bei den
+in `Data/MapData.lua`, als letzte Quelle nach Client-Tabelle Map und AllTheThings. Anders als bei den
 Scan-Daten (D-34) räumt das Addon nichts weg: der Schlüssel ist klein. Klassische Anleger stehen von Hand in
 `tools/forever_transports.json`, neue Forever-Routen kommen dazu, wenn der Nutzer sie meldet. Stehen auf der Karte
 des Spiels selbst Pins für Eingänge oder Flugpunkte (`DungeonEntrancePinTemplate`/`FlightPointPinTemplate`), lässt
@@ -1287,6 +1291,7 @@ nochmal mit `python3 tools/curseforge.py upload`); `--no-upload` lässt ihn aus.
 **Grund:** Nutzer 2026-11-04: "können wir Amisia auch bei curseforge hochladen", dann "Ja, vorbereiten". Updates
 kommen so über die CurseForge-App, ohne Zip von der Website.
 **Folge:** Die Projektseite auf CurseForge hat wie das Addon keine Links zu Fan-Seiten und nennt keine anderen
-Addons. Vor dem ersten Upload entscheidet der Nutzer die Lizenz von Amisia und ob die OneForAll-Daten mitgehen.
+Addons. Vor dem ersten Upload entscheidet der Nutzer die Lizenz von Amisia; die OneForAll-Daten gehen nicht mit (D-04,
+2026-11-04).
 **Durchgesetzt durch:** `tools/tests/test_curseforge.py`,
 `tools/tests/test_build_tool.py::test_release_uploads_only_what_was_pushed`.
