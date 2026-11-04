@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.49.0 (2026-11-04)
+
+- Release lädt die Zip auch zu CurseForge hoch (D-58): tools/curseforge.py, Token nur auf dem N100
+- CurseForge-Projekt-ID 1783476 in die TOC (D-58)
+- Keine OneForAll- und AtlasLoot-Daten mehr: Berufsstufen aus den Client-Tabellen, Anleger von Hand, eigene Kartensymbole (D-04)
+
 ## 2.48.2 (2026-11-03)
 
 - Daten für Client-Build 1.60.1.70755 (automatisch gebaut, Prüfung grün)
