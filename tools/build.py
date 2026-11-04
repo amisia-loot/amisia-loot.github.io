@@ -4,7 +4,7 @@
     python3 tools/build.py check
     python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
-    python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy]
+    python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy] [--no-upload]
     python3 tools/build.py testlist [--all] [--out FILE]
     python3 tools/build.py tested F-001 [F-002 ...] [--raid]
     python3 tools/build.py errors [--sv FILE] [--all]
@@ -26,7 +26,9 @@ snapshots  draws every page (raider, officer and expert view) and side window fr
 release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
          fails), builds Amisia-Website/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
          commits "Amisia X.Y.Z: <summary>", pushes origin main and copies the release to the folder
-         Syncthing sends (tools/release_addon.sh). --no-push and --no-copy leave those two out.
+         Syncthing sends (tools/release_addon.sh), then uploads the zip to CurseForge
+         (tools/curseforge.py, D-58; skipped without a project id or token). --no-push, --no-copy and
+         --no-upload leave those out; without the push there is no upload.
          Before: a warning with Amisia's errors from the game, if any. After: the test list of the
          features of this version from docs/FEATURES.md (a warning when no entry carries it).
 testlist the German check list for the user from docs/FEATURES.md: every feature "gebaut" he can check
@@ -595,10 +597,12 @@ def default_summary(subjects, limit=200):
     return text if len(text) <= limit else text[:limit - 1].rstrip() + '…'
 
 
-def release(root, version, summary=None, push=True, copy=True, check=None, day=None, errors_sv=None):
+def release(root, version, summary=None, push=True, copy=True, check=None, day=None, errors_sv=None,
+            upload=None):
     """The release steps; check() returns 0 when everything passes. Returns the exit code. Before it, a
     warning with Amisia's errors from the game (errors_sv, default the synced file); after it, the
-    test list of this version's features."""
+    test list of this version's features. upload(root) sends the pushed zip to CurseForge (cmd_release
+    passes tools/curseforge.py's; None leaves it out)."""
     if not re.fullmatch(r'\d+\.\d+\.\d+', version or ''):
         raise SystemExit('the version is X.Y.Z: ' + str(version))
     current = toc_version(root)
@@ -657,10 +661,13 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         rc, _ = run(['git', 'push', 'origin', 'main'], cwd=root)
         if rc != 0:
             say('push failed: the release commit is local; push it by hand, then run tools/release_addon.sh')
-            rc, copy = 1, False
+            rc, copy, upload = 1, False, None
     if copy:
         rc, _ = run(['bash', os.path.join(root, 'tools', 'release_addon.sh')], cwd=root)
         rc = 1 if rc != 0 else 0
+    if push and upload and upload(root) != 0:
+        say('WARNING: the release is out, CurseForge has not got it: python3 tools/curseforge.py upload')
+        rc = 1
     say()
     say(restart_note(root, previous))
     say()
@@ -689,7 +696,11 @@ def cmd_tocs(args=None):
 
 
 def cmd_release(args):
-    return release(ROOT, args.version, summary=args.message, push=not args.no_push, copy=not args.no_copy)
+    upload = None
+    if not args.no_upload:
+        upload = lambda root: tool_module('curseforge').upload(root)  # noqa: E731
+    return release(ROOT, args.version, summary=args.message, push=not args.no_push, copy=not args.no_copy,
+                   upload=upload)
 
 
 # ---------------------------------------------------------------- main
@@ -717,6 +728,7 @@ def main(argv=None):
                    help='the summary after "Amisia X.Y.Z: " (default: the commit subjects since the last release)')
     r.add_argument('--no-push', action='store_true', help='commit only, do not push')
     r.add_argument('--no-copy', action='store_true', help='do not run tools/release_addon.sh')
+    r.add_argument('--no-upload', action='store_true', help='do not upload the zip to CurseForge (tools/curseforge.py)')
     t = sub.add_parser('testlist', help=f'the German check list of the built features ({FEATURES_REL})')
     t.add_argument('--all', action='store_true', help='also the features that need a group, guild or raid')
     t.add_argument('--out', default=None, help='write it to FILE instead of printing it')

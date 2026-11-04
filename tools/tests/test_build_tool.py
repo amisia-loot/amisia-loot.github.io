@@ -215,6 +215,19 @@ def test_release(repo):
     assert log.count('# Changelog') == 1
 
 
+def test_release_uploads_only_what_was_pushed(repo, capsys):
+    root, sent = repo['root'], []
+    assert build.release(root, '1.1.0', push=True, copy=False, check=lambda: 0,
+                         upload=lambda r: sent.append(build.toc_version(r)) or 0) == 0
+    assert sent == ['1.1.0'], 'after the push, with the new version'
+    sh(root, 'git', 'commit', '-q', '--allow-empty', '-m', 'Nothing')
+    assert build.release(root, '1.1.1', push=False, copy=False, check=lambda: 0, upload=lambda r: sent.append(r) or 0) == 0
+    assert sent == ['1.1.0'], 'no push, no upload'
+    sh(root, 'git', 'commit', '-q', '--allow-empty', '-m', 'Again')
+    assert build.release(root, '1.1.2', push=True, copy=False, check=lambda: 0, upload=lambda r: 1) == 1
+    assert 'CurseForge has not got it: python3 tools/curseforge.py upload' in capsys.readouterr().out
+
+
 def test_restart_note(repo):
     root = repo['root']
     first = build.last_release_commit(root)

@@ -1273,3 +1273,20 @@ SavedVariables von TBC/Era kommen nicht auf den N100 zurück; Spiel-Tests dort m
 `tests/test_game_switch.lua`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`,
 `tools/tests/test_contracts.py::test_the_classic_clients_have_their_own_toc_without_the_forever_parts`, `build.py check`
 (TOC against the folder).
+
+## D-58 Releases auch auf CurseForge: Upload aus dem Release, Token nur auf dem N100
+
+**Datum:** 2026-11-04
+**Entscheidung:** `build.py release` lädt nach dem Push `Amisia-Website/Amisia.zip` über die Upload-API von
+CurseForge hoch (`tools/curseforge.py`). Das Projekt steht in `## X-Curse-Project-ID` von `Amisia.toc`, der Token in
+`~/.config/amisia/curseforge.token` (nie im Repository, nie im Chat). Die Spielversionen sind die Interface-Nummern
+der TOC, wie CurseForge sie nennt (16001 -> 1.60.1, 20506 -> 2.5.6, 11509 -> 1.15.9), der Changelog ist der Abschnitt
+der Version in `CHANGELOG.md`, der Dateityp "release". Ohne Projekt oder Token wird übersprungen; kennt CurseForge
+eine Spielversion nicht, wird nichts hochgeladen. Ein fehlgeschlagener Upload lässt den Release stehen (Exit 1,
+nochmal mit `python3 tools/curseforge.py upload`); `--no-upload` lässt ihn aus. Die Website bleibt mit derselben Zip.
+**Grund:** Nutzer 2026-11-04: "können wir Amisia auch bei curseforge hochladen", dann "Ja, vorbereiten". Updates
+kommen so über die CurseForge-App, ohne Zip von der Website.
+**Folge:** Die Projektseite auf CurseForge hat wie das Addon keine Links zu Fan-Seiten und nennt keine anderen
+Addons. Vor dem ersten Upload entscheidet der Nutzer die Lizenz von Amisia und ob die OneForAll-Daten mitgehen.
+**Durchgesetzt durch:** `tools/tests/test_curseforge.py`,
+`tools/tests/test_build_tool.py::test_release_uploads_only_what_was_pushed`.

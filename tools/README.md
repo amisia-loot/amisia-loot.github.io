@@ -11,7 +11,7 @@ python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
 python3 tools/build.py check
 python3 tools/build.py tocs
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
-python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy]
+python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy] [--no-upload]
 python3 tools/build.py testlist [--all] [--out FILE]
 python3 tools/build.py tested F-001 [F-002 ...] [--raid]
 python3 tools/build.py errors [--sv FILE] [--all]
@@ -45,6 +45,14 @@ python3 tools/build.py errors [--sv FILE] [--all]
   dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
   commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
   `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
+- After a successful push `release` uploads the zip to CurseForge with `tools/curseforge.py` (D-58): the
+  project is `## X-Curse-Project-ID` in `Amisia.toc`, the token `~/.config/amisia/curseforge.token` (or
+  `$CURSEFORGE_TOKEN`), the game versions are the TOC's interface numbers as CurseForge names them
+  (16001 -> 1.60.1), the changelog is the version's section of `CHANGELOG.md`. Without a project id or a
+  token it says "skipped"; a game version CurseForge does not know stops the upload. A failed upload leaves
+  the release as it is (exit 1); `python3 tools/curseforge.py upload [--dry-run]` tries again,
+  `python3 tools/curseforge.py versions` shows the ids CurseForge has for the TOC's clients. `--no-upload`
+  leaves it out.
 - `release` also prints, before it starts, a warning with Amisia's errors from the game (see `errors`)
   and, at the end, the test list of the new version: the entries of `docs/FEATURES.md` whose
   `Version:` is the new one, with their checks, to pass on to the user. When no entry carries the
