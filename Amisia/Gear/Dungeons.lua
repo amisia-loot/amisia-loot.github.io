@@ -1178,71 +1178,136 @@ local function questFits(r, o)
     return true
 end
 
+-- The first quest that excludes a quest of the quest data and is done (its 13th field), or nil.
+local function goneBy(r)
+    if type(r) ~= "table" or type(r[13]) ~= "table" then return nil end
+    for _, a in ipairs(r[13]) do
+        if questDone(a) then return a end
+    end
+    return nil
+end
+
+local function textOr(v) return type(v) == "string" and v ~= "" and v or nil end
+local function numOr(v) return type(v) == "number" and v or 0 end
+
 -- One quest of the quest data as a node: { qid, title, minLevel, level, start, giver, points, done,
--- active, gone (no longer possible: a quest that excludes it is done) }; the item data's map points
--- and giver stand in where the quest data has none.
+-- active, gone (no longer possible: a quest that excludes it is done), goneBy (that quest's id),
+-- faction, classes, races, skill, breadcrumb, items (start items { { item id, NPC name, uiMapID,
+-- dungeon key } }), object (start object), ender, enderPoints (the turn-in NPC and its points),
+-- objective, dungeon }; the item data's map points and giver stand in where the quest data has none.
+-- Fields an older data file lacks stay nil (or 0).
 local function questNode(qid, r, rec)
     local key = "Q:" .. tostring(qid)
     local map = ns.Data("MAP")
     local mapGiver = map and map.G and map.G[key] or nil
     local mapPoints = map and map.P and map.P[key] or nil
     local n = { qid = qid, done = questDone(qid), active = questActive(qid) }
-    n.gone = not n.done and not n.active and questGone(r)
+    n.goneBy = not n.done and not n.active and goneBy(r) or nil
+    n.gone = n.goneBy ~= nil
     if r then
         n.title = titleOf(qid, r[1])
         n.minLevel, n.level, n.start, n.giver, n.points = r[2] or 0, r[3] or 0, r[6] or "", r[7] or mapGiver, r[8] or mapPoints
+        n.faction, n.classes, n.dungeon = textOr(r[4]), numOr(r[5]), textOr(r[11])
+        n.breadcrumb = r[14] == true or nil
+        n.items = type(r[15]) == "table" and #r[15] > 0 and r[15] or nil
+        n.object, n.races, n.skill = textOr(r[16]), numOr(r[17]), numOr(r[18])
+        n.ender, n.enderPoints, n.objective = textOr(r[19]), textOr(r[20]), textOr(r[21])
     else
         n.title = titleOf(qid, rec and rec[2])
         n.minLevel, n.level = rec and rec[4] or 0, rec and rec[3] or 0
         n.giver, n.points = mapGiver, mapPoints
         n.start = mapPoints and "O" or ""
+        n.faction, n.classes, n.races, n.skill = textOr(rec and rec[5]), 0, 0, 0
     end
-    -- what this client saw itself: the giver and where it stood (Collector.lua), where the data has
-    -- none. Only own observations: a giver heard from the guild could come from one member alone (the
-    -- collector does not keep who sent a heard field), and a waypoint or pin must not rest on that.
-    if (not n.giver or not n.points) and ns.CollectQuestOwnStart then
+    -- what this client saw itself goes first (Collector.lua): the giver and where it stood, the NPC
+    -- that took the quest back and where, the objective text of the offer. Only own observations: a
+    -- giver heard from the guild could come from one member alone (the collector does not keep who
+    -- sent a heard field), and a waypoint or pin must not rest on that.
+    if ns.CollectQuestOwnStart then
         local giver, point = ns.CollectQuestOwnStart(qid)
-        n.giver = n.giver or giver
-        if not n.points and point then
+        n.giver = giver or n.giver
+        if point then
             n.points = point
             if n.start == "" then n.start = "O" end
         end
     end
+    if ns.CollectQuestOwnEnd then
+        local ender, point = ns.CollectQuestOwnEnd(qid)
+        if point then n.enderPoints, n.ender = point, ender or nil
+        elseif ender then n.ender = ender end
+    end
+    n.objective = ns.CollectQuestObjective and ns.CollectQuestObjective(qid) or n.objective
     return n
+end
+
+local function isBreadcrumb(r) return type(r) == "table" and r[14] == true end
+
+-- Of a "one of" list the done quest, else the first one still possible, else the first.
+local function pickOne(dq, list)
+    local pick
+    for _, p in ipairs(list) do
+        if questDone(p) then return p end
+        if not pick or (questGone(dq.Q[pick]) and not questGone(dq.Q[p])) then pick = p end
+    end
+    return pick
 end
 
 -- The pre-quests of a quest from the root, each once: all of the "all" list, and of a "one of"
 -- list (any one of them will do) the done one, else the first one still possible (marked one = true
--- when there was a choice). Quests of the other faction or class fall away. A loop in the data ends.
+-- when there was a choice; others = the other ids of the list that fit). A breadcrumb (a quest that
+-- only leads to the next one, the 14th field) is optional (breadcrumb = true, optional = true), and
+-- so is every quest only it needs (optional = true); in a "one of" list with other quests the
+-- breadcrumbs stand beside the pick as optional ones. needs: the nodes a node waits for (its
+-- required pre-quests). Quests of the other faction or class fall away. A loop in the data ends.
 local function chainOf(dq, qid, o)
-    local out, seen = {}, { [qid] = true }
-    local function walk(id, depth)
+    local out, seen, nodes = {}, { [qid] = true }, {}
+    local function walk(id, depth, optional)
         local r = dq.Q[id]
-        if type(r) ~= "table" or depth > MAX_CHAIN then return end
-        local function take(p, one)
-            if seen[p] then return end
+        local needs = {}
+        if type(r) ~= "table" or depth > MAX_CHAIN then return needs end
+        local function take(p, how)
+            if seen[p] then
+                if nodes[p] and not how.breadcrumb and not optional then needs[#needs + 1] = nodes[p] end
+                return
+            end
             seen[p] = true
-            walk(p, depth + 1)
+            local opt = optional or how.breadcrumb or false
+            local own = walk(p, depth + 1, opt)
             local n = questNode(p, dq.Q[p])
-            n.one = one or nil
+            n.one, n.others = how.one or nil, how.others
+            n.breadcrumb = how.breadcrumb or n.breadcrumb
+            n.optional = opt or nil
+            n.needs = own
+            nodes[p] = n
             out[#out + 1] = n
+            if not how.breadcrumb and not optional then needs[#needs + 1] = n end
         end
         for _, p in ipairs(type(r[9]) == "table" and r[9] or {}) do
-            if questFits(dq.Q[p], o) then take(p) end
+            if questFits(dq.Q[p], o) then take(p, { breadcrumb = isBreadcrumb(dq.Q[p]) or nil }) end
         end
         local list = type(r[10]) == "table" and r[10] or {}
-        local pick, fits = nil, 0
+        local real, crumbs = {}, {}
         for _, p in ipairs(list) do
             if questFits(dq.Q[p], o) then
-                fits = fits + 1
-                if questDone(p) then pick = p break end
-                if not pick or (questGone(dq.Q[pick]) and not questGone(dq.Q[p])) then pick = p end
+                if isBreadcrumb(dq.Q[p]) then crumbs[#crumbs + 1] = p else real[#real + 1] = p end
             end
         end
-        if pick then take(pick, fits > 1 or #list > 1) end
+        local group = #real > 0 and real or crumbs
+        local pick = pickOne(dq, group)
+        if pick then
+            local others = {}
+            for _, p in ipairs(group) do
+                if p ~= pick then others[#others + 1] = p end
+            end
+            take(pick, { one = #group > 1 or #list > 1, others = #others > 0 and others or nil, breadcrumb = group == crumbs or nil })
+        end
+        if group == real then
+            for _, p in ipairs(crumbs) do take(p, { breadcrumb = true }) end
+        end
+        return needs
     end
-    walk(qid, 1)
-    return out
+    local needs = walk(qid, 1, false)
+    return out, needs
 end
 
 local questKey, questRes = nil, {}
@@ -1277,7 +1342,7 @@ function ns.DungeonQuests(dkey, opts)
         if Gear.SourceOk(rec, po) and (not q.dq or questFits(q.dq, o)) then
             local n = qid and questNode(qid, q.dq, rec) or { title = rec[2] or "?", minLevel = rec[4] or 0, level = rec[3] or 0,
                 start = "", done = false, active = false }
-            n.chain = (qid and dq and q.dq) and chainOf(dq, qid, o) or {}
+            if qid and dq and q.dq then n.chain, n.needs = chainOf(dq, qid, o) else n.chain = {} end
             n.rewards = {}
             for _, id in ipairs(q.items) do
                 local gain, slotKey, mine = D.Gain(id, o)
@@ -1338,8 +1403,9 @@ function D.QuestState(n)
     if n.active then return questReady(n.qid) and "ready" or "active" end
     local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
     if (n.minLevel or 0) > my then return "locked" end
-    for _, c in ipairs(n.chain or {}) do
-        if not c.done then return "locked" end
+    -- a pre-quest it needs is open (an optional one, a breadcrumb, does not hold it back)
+    for _, c in ipairs(n.needs or n.chain or {}) do
+        if not c.done and not c.optional then return "locked" end
     end
     return "open"
 end
@@ -1358,10 +1424,256 @@ local STATE_ICON = {
 }
 function D.QuestStateIcon(state) return STATE_ICON[state] or "" end
 
+-- The same marks as a texture and its shade (1, or the grey of "not yet" and "under way"): the
+-- quest path's step cards draw them large.
+local STATE_ART = {
+    open = { AVAILABLE, 1 }, locked = { AVAILABLE, 0.43 }, ready = { ACTIVE, 1 }, active = { ACTIVE, 0.43 },
+    done = { "Interface\\RaidFrame\\ReadyCheck-Ready", 1 }, gone = { "Interface\\RaidFrame\\ReadyCheck-NotReady", 1 },
+}
+function D.QuestStateArt(state)
+    local a = STATE_ART[state] or STATE_ART.open
+    return a[1], a[2]
+end
+
+---------------------------------------------------------------------------
+-- The quest path of a dungeon quest (F-135): its steps from the first pre-quest to the quest
+---------------------------------------------------------------------------
+local MAX_STEPS = 15
+
+-- "Westfall 56, 48" of the nearest of points, and that point.
+local function placeText(points)
+    local p = ns.MapNearest(points)
+    return ("%s %s"):format(Gear.ZoneName(p.map) or ("Zone " .. p.map), ns.Map.Coords(p)), p
+end
+
+-- "bei <name>, Westfall 56, 48" (without a name "in Westfall 56, 48"), and the point.
+local function nearestText(name, points)
+    local where, p = placeText(points)
+    return name and L["bei %s, %s"]:format(name, where) or L["in %s"]:format(where), p
+end
+
+-- The dungeon a node starts in: its own dungeon key, else the path's.
+local function nodeDungeon(n, dkey) return n.dungeon or dkey end
+
+local function dungeonName(key)
+    local e = key and factOf(key)
+    return e and D.Name(e) or key
+end
+
+-- How a quest is taken: { kind = "npc" | "item" | "object" | "inside" | "unknown", text, point (the
+-- place a waypoint may go to, or nil), label (the map target's name), items = { { id, name, from } } }.
+-- inside: the giver stands in the dungeon (the waypoint goes to its entrance, else to the giver's own
+-- point inside); item: a start item, where it drops (in a dungeon: its entrance).
+function D.QuestAccept(n, dkey)
+    local Map = ns.Map
+    local points = Map and Map.ParsePoints and Map.ParsePoints(n.points) or {}
+    local out = {}
+    if n.items or n.start == "X" then
+        out.kind, out.items = "item", {}
+        local parts = {}
+        for _, it in ipairs(n.items or {}) do
+            local id, npc, zone, dun = tonumber(it[1]), textOr(it[2]), tonumber(it[3]), textOr(it[4])
+            local name = id and ns.ItemName and ns.ItemName(id) or (id and L["Gegenstand %d"]:format(id)) or "?"
+            local from
+            if dun then from = dungeonName(dun)
+            elseif zone then from = Gear.ZoneName(zone) or ("Zone " .. zone) end
+            local line
+            if npc and from then line = L["Gegenstand %s aufheben oder benutzen, fällt von %s in %s"]:format(name, npc, from)
+            elseif npc then line = L["Gegenstand %s aufheben oder benutzen, fällt von %s"]:format(name, npc)
+            elseif from then line = L["Gegenstand %s aufheben oder benutzen, zu finden in %s"]:format(name, from)
+            else line = L["Gegenstand %s aufheben oder benutzen"]:format(name) end
+            parts[#parts + 1] = line
+            out.items[#out.items + 1] = { id = id, name = name, from = from, npc = npc }
+            if dun and not out.point then
+                local point = ns.DungeonEntrance(dun)
+                if point then out.point, out.label = point, L["%s (Eingang)"]:format(dungeonName(dun)) end
+            end
+        end
+        out.text = #parts > 0 and table.concat(parts, "; ") or L["durch einen Gegenstand"]
+        return out
+    end
+    if n.start == "I" then
+        out.kind = "inside"
+        local key = nodeDungeon(n, dkey)
+        out.text = n.giver and L["im Dungeon, bei %s"]:format(n.giver) or L["im Dungeon"]
+        local point = key and ns.DungeonEntrance(key)
+        if point then
+            out.point, out.label = point, L["%s (Eingang)"]:format(dungeonName(key))
+        elseif #points > 0 then
+            out.point = ns.MapNearest(points)
+            out.label = L["Questgeber %s (im Dungeon)"]:format(n.giver or n.title or "?")
+        end
+        return out
+    end
+    if n.object then
+        out.kind = "object"
+        if #points > 0 then
+            local where
+            where, out.point = placeText(points)
+            out.text = L["an einem Objekt: %s, %s"]:format(n.object, where)
+        else
+            out.text = L["an einem Objekt: %s"]:format(n.object)
+        end
+        out.label = n.object
+        return out
+    end
+    if #points > 0 then
+        out.kind = "npc"
+        out.text, out.point = nearestText(n.giver, points)
+        out.label = L["Questgeber %s"]:format(n.giver or n.title or "?")
+        return out
+    end
+    out.kind = "unknown"
+    out.text = n.giver and L["bei %s; Ort unbekannt, Amisia lernt ihn, sobald du die Quest siehst"]:format(n.giver)
+        or L["Ort unbekannt; Amisia lernt ihn, sobald du die Quest siehst"]
+    return out
+end
+
+-- Where a quest is handed in: { text, point, label, known } ("noch unbekannt" when Amisia knows
+-- neither the NPC nor the place).
+function D.QuestTurnIn(n)
+    local Map = ns.Map
+    local points = Map and Map.ParsePoints and Map.ParsePoints(n.enderPoints) or {}
+    local out = { known = true }
+    if #points > 0 then
+        out.text, out.point = nearestText(n.ender, points)
+        out.label = L["Abgabe %s"]:format(n.ender or n.title or "?")
+    elseif n.ender then
+        out.text = L["bei %s (Ort unbekannt)"]:format(n.ender)
+    else
+        out.text, out.known = L["noch unbekannt"], false
+    end
+    return out
+end
+
+local CLASS_ORDER = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
+
+-- What a quest asks of the player, as one line: "ab Stufe 14 · empfohlen 18 · nur Allianz · nur
+-- Krieger · nur Zwerg · Beruf Alchimie"; nil when nothing.
+function D.QuestNeeds(n)
+    local parts = {}
+    if (n.minLevel or 0) > 0 then parts[#parts + 1] = L["ab Stufe %d"]:format(n.minLevel) end
+    if (n.level or 0) > 0 and n.level ~= n.minLevel then parts[#parts + 1] = L["empfohlen %d"]:format(n.level) end
+    if n.faction == "A" then parts[#parts + 1] = L["nur Allianz"] elseif n.faction == "H" then parts[#parts + 1] = L["nur Horde"] end
+    if (n.classes or 0) > 0 then
+        local names = {}
+        for _, c in ipairs(CLASS_ORDER) do
+            if Gear.HasClassBit(n.classes, c) then names[#names + 1] = Gear.CLASS_NAMES[c] or c end
+        end
+        if #names > 0 then parts[#parts + 1] = L["nur %s"]:format(table.concat(names, "/")) end
+    end
+    local Q = ns.Quests
+    if (n.races or 0) > 0 and Q and Q.RaceText then
+        local races = Q.RaceText(n.races)
+        if races ~= "" then parts[#parts + 1] = L["nur %s"]:format(races) end
+    end
+    if (n.skill or 0) > 0 then
+        local name = Q and Q.SkillName and Q.SkillName(n.skill)
+        parts[#parts + 1] = L["Beruf %s"]:format(name or tostring(n.skill))
+    end
+    return #parts > 0 and table.concat(parts, " · ") or nil
+end
+
+-- The quest path of a dungeon quest q of ns.DungeonQuests (dkey: its dungeon): { quest = q, steps,
+-- done, total, next, cut }. steps from the root to q (15 at most, the last ones; cut: how many earlier
+-- ones were left out), each { node, no (1..), reqNo (its number among the required ones, nil for an
+-- optional one), state, optional, breadcrumb, one (one of several will do: others = their titles,
+-- oneDone = the chosen one is done, so the others are no longer needed), gone (goneBy: the title of
+-- the quest whose completion closed it), accept (D.QuestAccept), turnIn (D.QuestTurnIn), needs
+-- (D.QuestNeeds), objective }. done/total: the required steps done and in all (breadcrumbs and what
+-- only they need do not count; a "one of" group counts once). next: the first required step neither
+-- done nor gone.
+function D.QuestPath(q, dkey)
+    local path = { quest = q, steps = {}, done = 0, total = 0, cut = 0 }
+    if type(q) ~= "table" then return path end
+    local list = {}
+    for _, n in ipairs(q.chain or {}) do list[#list + 1] = n end
+    list[#list + 1] = q
+    if #list > MAX_STEPS then
+        path.cut = #list - MAX_STEPS
+        local keep = {}
+        for i = path.cut + 1, #list do keep[#keep + 1] = list[i] end
+        list = keep
+    end
+    for i, n in ipairs(list) do
+        local s = { node = n, no = i, state = D.QuestState(n), optional = n.optional or nil, breadcrumb = n.breadcrumb or nil }
+        if not s.optional then
+            path.total = path.total + 1
+            s.reqNo = path.total
+            if n.done then path.done = path.done + 1 end
+        end
+        if n.one and n.others then
+            local titles = {}
+            local dq = questData()
+            for _, p in ipairs(n.others) do titles[#titles + 1] = titleOf(p, dq and dq.Q[p] and dq.Q[p][1]) end
+            s.one, s.others, s.oneDone = true, titles, n.done or nil
+        end
+        if n.gone then
+            local dq = questData()
+            s.gone = true
+            s.goneBy = n.goneBy and titleOf(n.goneBy, dq and dq.Q[n.goneBy] and dq.Q[n.goneBy][1]) or nil
+        end
+        s.accept = D.QuestAccept(n, dkey)
+        s.turnIn = D.QuestTurnIn(n)
+        s.needs = D.QuestNeeds(n)
+        s.objective = n.objective
+        path.steps[#path.steps + 1] = s
+        if not path.next and not s.optional and not n.done and not n.gone then path.next = s end
+    end
+    return path
+end
+
+-- Where the next step leads: point, label (the target's name); nil when Amisia knows no place. A
+-- quest not yet taken: where it is taken; in the log and ready: where it is handed in; in the log and
+-- not ready: the dungeon's entrance for the dungeon quest, else where it is handed in.
+function D.QuestStepTarget(s)
+    if type(s) ~= "table" then return nil end
+    local n = s.node
+    if n.active then
+        if not questReady(n.qid) and n.dungeon then
+            local point = ns.DungeonEntrance(n.dungeon)
+            if point then return point, L["%s (Eingang)"]:format(dungeonName(n.dungeon)) end
+        end
+        return s.turnIn.point, s.turnIn.label
+    end
+    if s.accept.point then return s.accept.point, s.accept.label end
+    return nil
+end
+
+-- The next step as one line: "3. <Quest> bei <NPC>, <Zone> 56, 48", "3. <Quest> abgeben bei ...",
+-- "3. <Quest>: im Log, Ziel noch offen"; "Alle Schritte erledigt." without one.
+function D.QuestPathNextText(path)
+    local s = path and path.next
+    if not s then
+        if path and path.quest and path.quest.gone then return L["Nicht mehr möglich."] end
+        return L["Alle Schritte erledigt."]
+    end
+    local n = s.node
+    if n.active then
+        if questReady(n.qid) then return L["%d. %s abgeben %s"]:format(s.no, n.title, s.turnIn.known and s.turnIn.text or L["(Abgabe noch unbekannt)"]) end
+        return L["%d. %s: im Log, Ziel noch offen"]:format(s.no, n.title)
+    end
+    return ("%d. %s %s"):format(s.no, n.title, s.accept.text)
+end
+
+-- "2/4": the required steps done and in all; "" for a quest without pre-quests.
+function D.QuestPathShort(path)
+    if not path or path.total <= 1 then return "" end
+    return ("%d/%d"):format(path.done, path.total)
+end
+
+-- The quest path of the quest qid of a dungeon (ns.DungeonQuests), or nil.
+function ns.DungeonQuestPath(dkey, qid)
+    for _, q in ipairs((ns.DungeonQuests(dkey))) do
+        if q.qid == qid then return D.QuestPath(q, dkey) end
+    end
+    return nil
+end
+
 -- Where a quest leads now: a dungeon quest in the log that is not ready leads to its dungeon's
--- entrance; else where it starts: the quest giver (the nearest of its points), the dungeon's entrance
--- for a giver inside (the giver's own point inside when no entrance is known). point, label, map key;
--- or nil and why.
+-- entrance; else where it starts: the quest giver (the nearest of its points; what this client saw
+-- itself first), the dungeon's entrance for a giver inside (the giver's own point inside when no
+-- entrance is known). point, label, map key; or nil and why.
 local function questGoal(qid)
     local dq = questData()
     local r = dq and qid and dq.Q[qid] or nil
@@ -1372,14 +1684,18 @@ local function questGoal(qid)
             return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), mapKey
         end
     end
-    if r and r[6] == "X" then return nil, ITEM_START end
+    if r and (r[6] == "X" or (type(r[15]) == "table" and #r[15] > 0)) then
+        local a = D.QuestAccept(questNode(qid, r), r[11])
+        if a.point then return a.point, a.label, "Q:" .. qid end
+        return nil, ITEM_START
+    end
     local Map = ns.Map
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
     local seenGiver, seenPoint
-    -- own observations only (see questNode)
+    -- own observations first (see questNode)
     if ns.CollectQuestOwnStart and qid then seenGiver, seenPoint = ns.CollectQuestOwnStart(qid) end
     local map = ns.Data("MAP")
-    local giver = r and r[7] or (map and map.G and qid and map.G["Q:" .. qid]) or seenGiver or (r and r[1]) or "?"
+    local giver = seenGiver or (r and r[7]) or (map and map.G and qid and map.G["Q:" .. qid]) or (r and r[1]) or "?"
     if r and r[6] == "I" then
         local point = ns.DungeonEntrance(r[11])
         if point then
@@ -1387,22 +1703,46 @@ local function questGoal(qid)
             return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), "Q:" .. qid
         end
     end
-    local points = Map.ParsePoints(r and r[8])
+    local points = seenPoint and Map.ParsePoints(seenPoint) or {}
+    if #points == 0 then points = Map.ParsePoints(r and r[8]) end
     if #points == 0 and qid then points = ns.MapPoints("Q:" .. qid) end
-    if #points == 0 and seenPoint then points = Map.ParsePoints(seenPoint) end
     if #points == 0 then return nil, NO_START end
     local label = (r and r[6] == "I") and L["Questgeber %s (im Dungeon)"]:format(giver) or L["Questgeber %s"]:format(giver)
     return ns.MapNearest(points), label, "Q:" .. qid
 end
 
 -- Sets the map target to where a quest leads now (questGoal) and, with open, shows it on the world
--- map. true, or nil and why.
-function ns.DungeonQuestWaypoint(qid, open)
+-- map; what "accept" or "turnin": to where the quest is taken or handed in (as its step of the quest
+-- path shows it; dkey: the path's dungeon, for a giver inside). The client's waypoint and world map
+-- only where Map.ClientSafe allows (D-62; ns.MapSetPoint and ns.MapShowOnWorldMap keep it). true, or
+-- nil and why.
+function ns.DungeonQuestWaypoint(qid, open, what, dkey)
     qid = tonumber(qid)
-    local point, label, key = questGoal(qid)
-    if not point then return nil, label end
+    local point, label, key
+    if what == "accept" or what == "turnin" then
+        local dq = questData()
+        local r = dq and qid and dq.Q[qid] or nil
+        local n = questNode(qid, r)
+        local info = what == "accept" and D.QuestAccept(n, dkey or (r and r[11])) or D.QuestTurnIn(n)
+        point, label, key = info.point, info.label, "Q:" .. tostring(qid)
+        if not point then return nil, what == "accept" and NO_START or L["Für diese Quest kennt Amisia keinen Abgabeort."] end
+    else
+        point, label, key = questGoal(qid)
+        if not point then return nil, label end
+    end
     local ok, why = ns.MapSetPoint(point, label, key)
     if ok and open and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(point) end
+    return ok, why
+end
+
+-- Sets the map target to the next step of a quest path (D.QuestStepTarget) and shows it on the world
+-- map (outside instances and combat, D-62). true, or nil and why.
+function ns.DungeonPathWaypoint(path)
+    if not path or not path.next then return nil, L["Alle Schritte erledigt."] end
+    local point, label = D.QuestStepTarget(path.next)
+    if not point then return nil, L["Für den nächsten Schritt kennt Amisia keinen Ort."] end
+    local ok, why = ns.MapSetPoint(point, label, "Q:" .. tostring(path.next.node.qid))
+    if ok and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(point) end
     return ok, why
 end
 
@@ -1678,16 +2018,17 @@ local function sayQuests(word)
     for _, q in ipairs(list) do
         local mark = q.done and L["[erledigt] "] or q.active and L["[im Log] "] or q.gone and L["[nicht mehr möglich] "] or ""
         local start = D.QuestStartText(q)
-        local line = ("%s%s · Level %s%s"):format(mark, q.title, D.QuestLevelText(q), start ~= "" and L[" · Start: %s"]:format(start) or "")
+        local path = D.QuestPath(q, e.key)
+        local way = D.QuestPathShort(path)
+        local line = ("%s%s · Level %s%s%s"):format(mark, q.title, D.QuestLevelText(q), way ~= "" and L[" · Weg %s"]:format(way) or "",
+            start ~= "" and L[" · Start: %s"]:format(start) or "")
         if q.best then
             line = line .. (" · Upgrade %s (%+d)"):format(ns.ItemName and ns.ItemName(q.best.id) or ("Item " .. q.best.id),
                 math.floor(q.best.gain + 0.5))
         end
         ns.msg(line)
-        for _, n in ipairs(q.chain) do
-            ns.msg(L["  Vorquest: %s%s · Level %s%s"]:format(n.title, n.one and L[" (oder eine andere)"] or "", D.QuestLevelText(n),
-                n.done and L[" (erledigt)"] or ""))
-        end
+        -- the next step of its quest path (F-135), for a quest still to do
+        if path.next and not q.done and not q.gone then ns.msg(L["  Nächster Schritt: %s"]:format(D.QuestPathNextText(path))) end
     end
 end
 

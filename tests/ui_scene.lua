@@ -384,6 +384,22 @@ S.STATES = {
     { page = "stats", name = "stats-fame", open = function() NS.ShowStats("fame") end },
     { page = "softres", name = "softres-raider", open = function() NS.ShowSoftRes("raider") end },
     { page = "softres", name = "softres-check", open = function() NS.ShowSoftRes("check") end },
+    -- the dungeon quests of the Deadmines, then the quest path of "Red Silk Bandanas" (F-135): two
+    -- steps done, the third in the log, the rest open
+    { page = "dungeons", name = "dungeons-quests", open = function()
+        AmisiaDB.settings.bis.dpart = "quests"
+        NS.ShowDungeon("deadmines")
+    end },
+    { page = "dungeons", name = "dungeons-questpath", open = function()
+        STUB.questsDone[65], STUB.questsDone[132], STUB.questsActive[135] = true, true, true
+        -- the zones of the givers, so the steps name their places
+        STUB.maps[1436] = { name = "Westfall", mapType = 3 }
+        STUB.maps[1433] = { name = "Rotkammgebirge", mapType = 3 }
+        STUB.maps[1453] = { name = "Sturmwind", mapType = 3 }
+        NS.Map._reset()
+        STUB.fire("QUEST_ACCEPTED", 135)
+        NS.ShowDungeonQuest("deadmines", 214)
+    end },
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },

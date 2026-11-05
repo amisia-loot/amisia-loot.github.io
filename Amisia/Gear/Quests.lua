@@ -406,6 +406,11 @@ local function classText(mask)
     return table.concat(out, "/")
 end
 
+-- the races of a race mask ("Zwerg/Gnom") and the name of a skill line, for other pages (the quest
+-- path of the page Dungeons, F-135)
+Q.RaceText = raceText
+function Q.SkillName(id) return SKILL_NAMES[id] and L[SKILL_NAMES[id]] or nil end
+
 -- Whether the own character can take a quest at all (faction, race, class).
 local function forMe(r, o)
     if r[FAC] ~= "" and o.faction and r[FAC] ~= o.faction then return false end

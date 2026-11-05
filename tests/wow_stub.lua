@@ -1231,6 +1231,9 @@ function _G.CreateFrame(kind, name, parent, template)
     f.SetNormalFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetJustifyH = function(self, j) self.justifyH = j end
     f.SetScrollChild = function(self, child) self.scrollChild = child; if child then child.scrollParent = self end end
+    -- a frame's alpha (its children fade with it), kept for the tests
+    f.SetAlpha = function(self, a) self.alpha = a end
+    f.GetAlpha = function(self) return self.alpha or 1 end
     f.GetParent = function() return parent end
     f.GetName = function() return name end
     f.SetPoint = setPoint
