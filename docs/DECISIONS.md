@@ -1412,7 +1412,9 @@ Datenlieferanten nacheinander auf und kommt Amisias Lieferant vor einem des Clie
 verunreinigt weiter; im Kampf werden geschützte Aufrufe blockiert. Bewährte Pin-Bibliotheken zeichnen deshalb auf
 eigenen Frames.
 **Folge:** `Gear/MapPin.xml` entfällt (TOC geändert: einmal WoW neu starten). Offen bleibt nur, dass Amisia die Karte
-selbst öffnet (`ns.MapShowOnWorldMap`: `OpenWorldMap`, `SetMapID`), außerhalb von Instanzen und Kampf (D-62).
+selbst öffnet (`ns.MapShowOnWorldMap`: `OpenWorldMap`, `SetMapID`), außerhalb von Instanzen und Kampf (D-62); der Nutzer
+wählte 2026-11-06 "Weiter selbst öffnen" (die Karte springt in die richtige Zone, kleines Restrisiko einer
+Fehlermeldung, wenn ein Kampf beginnt, während diese Karte offen ist).
 **Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
 `tests/test_map_places.lua`.
 
