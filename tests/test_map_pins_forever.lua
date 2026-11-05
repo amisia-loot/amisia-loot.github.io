@@ -1,32 +1,9 @@
---[[preload
--- the Forever pin mixin: right clicks pass through to the map unless a pin says otherwise, and a
--- click goes through the map's global handlers to OnMouseClickAction
-MapCanvasPinMixin.ShouldMouseButtonBePassthrough = function(self, button) return button == "RightButton" end
-MapCanvasPinMixin.CheckMouseButtonPassthrough = function(self, ...)
-    -- the client's frames have SetPassThroughButtons (restricted in combat); the stub's do not, so a
-    -- pin that runs this base version fails the test
-    self:SetPassThroughButtons()
-    self.passthrough = {}
-    for i = 1, select("#", ...) do
-        local b = select(i, ...)
-        if self:ShouldMouseButtonBePassthrough(b) then self.passthrough[b] = true end
-    end
-end
-MapCanvasPinMixin.OnClick = function(self, ...)
-    STUB.globalClickHandlers = (STUB.globalClickHandlers or 0) + 1
-    if self.OnMouseClickAction then self:OnMouseClickAction(...) end
-end
-]]
--- Pins on Forever's world map: the base OnClick stays (the map's own click handlers run first), the
--- click arrives through OnMouseClickAction, right clicks reach the pin for its menu, a click sets
--- the client's waypoint and shift puts the waypoint link into the chat. No GetItemInfo globals.
+-- Pins on Forever's world map: Amisia's own buttons on its own layer, nothing of the map canvas (no
+-- pin mixin, no passthrough buttons, no mouse propagation: the client restricts both in combat).
+-- Right clicks stay on the pin for its menu, a click sets the client's waypoint and shift puts the
+-- waypoint link into the chat. No GetItemInfo globals.
 local Map = NS.Map
-local TEMPLATE = "AmisiaMapPinTemplate"
 assert(NS.MAP and NS.MAP.game == "forever" and GetItemInfo == nil, "the Forever data, no GetItemInfo global")
-local fh = assert(io.open(ADDON_DIR .. "/Gear/MapPin.xml", "rb"))
-local xml = fh:read("*a")
-fh:close()
-STUB.pinTemplates[TEMPLATE] = xml:match('mixin="([^"]+)"')
 
 STUB.class, STUB.level, STUB.faction = "WARRIOR", 60, "Alliance"
 STUB.instance = { type = "none" }
@@ -45,33 +22,36 @@ Map._reset()
 NS.BisChar().wish[100] = { t = 1, prio = 3, note = "" }
 NS.Fire("BIS_CHANGED")
 
-assert(AmisiaMapPinMixin.OnClick == nil, "the mixin keeps the base OnClick until it is filled")
+-- the buttons the addon makes keep the clicks they register for
+local create = CreateFrame
+CreateFrame = function(kind, ...)
+    local f = create(kind, ...)
+    if kind == "Button" then f.RegisterForClicks = function(self, ...) self.clicks = table.concat({ ... }, ",") end end
+    return f
+end
 STUB.fire("PLAYER_LOGIN")
-assert(Map.PinProvider() and WorldMapFrame.dataProviders[Map.PinProvider()], "added")
-assert(AmisiaMapPinMixin.OnClick == MapCanvasPinMixin.OnClick, "the base OnClick with the map's handlers")
-assert(AmisiaMapPinMixin.OnMouseClickAction, "the click arrives here")
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1411)
-local pins = STUB.mapPins(TEMPLATE)
+STUB.tick(0)
+local pins = Map.ShownPins("item")
 assert(#pins == 1, "one pin: " .. #pins)
 local p = pins[1]
 assert(p.icon.texture == 4242, "the icon through C_Item")
-assert(p.passthrough == nil and AmisiaMapPinMixin.CheckMouseButtonPassthrough ~= MapCanvasPinMixin.CheckMouseButtonPassthrough,
-    "no passthrough check: right clicks stay on the pin, the restricted SetPassThroughButtons is never called")
-assert(AmisiaMapPinMixin.ShouldMouseButtonBePassthrough(p, "RightButton") == false)
+assert(p._kind == "Button" and p.SetPassThroughButtons == nil and p.SetPropagateMouseClicks == nil, "a plain button of Amisia's")
+assert(p.scripts.OnClick and p.scripts.OnEnter and p.scripts.OnLeave, "its own scripts")
+assert(p.clicks == "LeftButtonUp,RightButtonUp", "right clicks stay on the pin: " .. tostring(p.clicks))
+CreateFrame = create
 
-local handlers = STUB.globalClickHandlers or 0
-p:OnClick("LeftButton")
-assert(STUB.globalClickHandlers == handlers + 1, "the map's handlers ran")
+p.scripts.OnClick(p, "LeftButton", false)
 local t = NS.MapTarget()
 assert(t and t.ours and STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1411, "the client's waypoint")
 NS.MapClearTarget()
 STUB.shift = true
-p:OnClick("LeftButton")
+p.scripts.OnClick(p, "LeftButton", false)
 STUB.shift = false
 assert(type(STUB.inserted) == "string" and STUB.inserted:find("|Hworldmap:1411:4720:3310|h", 1, true), tostring(STUB.inserted))
 NS.MapClearTarget()
 STUB.tick(0.6)
-p = STUB.mapPins(TEMPLATE)[1]
-p:OnClick("RightButton")
+p = Map.ShownPins("item")[1]
+p.scripts.OnClick(p, "RightButton", false)
 assert(_G.AmisiaMenu and AmisiaMenu:IsShown() and AmisiaMenu.owner == p, "the menu")

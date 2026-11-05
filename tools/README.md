@@ -99,7 +99,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
 ### luacheck
 
 `.luacheckrc` in the repo root: Lua 5.1, the client globals the addon reads (`read_globals`), the
-globals it writes (`AmisiaDB`, `SLASH_AMISIA1`, `AmisiaMapPinMixin`, the compartment callbacks,
+globals it writes (`AmisiaDB`, `SLASH_AMISIA1`, the compartment callbacks,
 `SlashCmdList`, `StaticPopupDialogs`). A new client API in the code needs its name in
 `read_globals`. On the N100 luacheck 1.2.0 runs from the Debian packages unpacked without root into
 `~/.local/luacheck` (`apt-get download lua-check lua5.1 liblua5.1-0 lua-filesystem lua-argparse`,

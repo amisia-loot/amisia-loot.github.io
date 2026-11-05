@@ -1,9 +1,9 @@
 -- Amisia's places on the world map (F-105): the entrances of the dungeons and raids, the flight
 -- masters of the own faction and the neutral ones, the zeppelin towers and ship docks, from the
--- generated MapData.lua (P with the entrance keys, F, T). The pins come from the same data provider
--- as the target pins (MapPins.lua), with their own template (MapPin.xml): only own pins, no hook
--- into any map method. A click on an entrance opens that dungeon on the page Dungeons, shift sets the
--- target; a click on a flight master or a dock sets the target.
+-- generated MapData.lua (P with the entrance keys, F, T). The pins stand on Amisia's own layer of the
+-- world map with the target pins (MapPins.lua): Amisia's own buttons, nothing of the map canvas. A
+-- click on an entrance opens that dungeon on the page Dungeons, shift sets the target; a click on a
+-- flight master or a dock sets the target.
 --
 -- And the entrances Amisia learns (AmisiaDB.entrances): the last place outdoors, at most 20 s
 -- before the loading screen into a dungeon or raid, by the instance's id (GetInstanceInfo); the N100
@@ -13,7 +13,6 @@ local ADDON, ns = ...
 local Map, W = ns.Map, ns.W
 local L = ns.L
 
-local TEMPLATE = "AmisiaMapPlaceTemplate"
 local MAX_PLACES = 60
 -- the client's dungeon and raid marks (plain icons where the client lacks them); the flight master,
 -- ship and zeppelin art in Media/Icons/place_*.tga (Amisia's own, tools/make_place_icons.py): the
@@ -423,19 +422,8 @@ local function click(self, button)
 end
 
 ---------------------------------------------------------------------------
--- The pin (AmisiaMapPlaceMixin, the template in MapPin.xml)
+-- The pin: one of Amisia's own buttons on its layer of the world map (MapPins.lua)
 ---------------------------------------------------------------------------
-
-AmisiaMapPlaceMixin = {}
-local Pin = AmisiaMapPlaceMixin
-local base
-
-function Pin:OnLoad()
-    self:SetSize(20, 20)
-    self.icon = self:CreateTexture(nil, "ARTWORK")
-    self.icon:SetPoint("CENTER")
-    self.edges = W.Border(self, GOLD[1], GOLD[2], GOLD[3], 1)
-end
 
 local function iconOf(e)
     if e.kind == "entrance" then return ICON[e.place.raid and "raid" or "party"] end
@@ -446,80 +434,49 @@ local function iconOf(e)
     return ICON.flight
 end
 
--- entry: one of Map.PlacePins; scale: map.pinScale (and 70 % on a continent).
-function Pin:OnAcquired(entry, scale)
-    self.entry = entry
-    scale = scale or 1
-    self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI")
-    self:SetScalingLimits(1, scale, 1.6 * scale)
-    self:SetPosition(entry.x, entry.y)
-    if self.ApplyCurrentScale then self:ApplyCurrentScale() end
+-- The parts of a place pin, made once.
+local function setupPin(pin)
+    pin.icon = pin:CreateTexture(nil, "ARTWORK")
+    pin.icon:SetPoint("CENTER")
+    pin.edges = W.Border(pin, GOLD[1], GOLD[2], GOLD[3], 1)
+end
+
+-- The art of entry (one of Map.PlacePins) on a pin; returns the pin's size. Pins are used again for
+-- other places: the art is set every time.
+local function showPin(pin, entry)
     local icon = iconOf(entry)
-    self:SetSize(icon.w, icon.h)
-    -- pins are pooled: the art is set every time
     if icon.atlas and W.HasAtlas(icon.atlas) then
-        self.icon:SetAtlas(icon.atlas)
-        self.icon:SetSize(icon.w + 4, icon.h + 4)
-        self.icon:SetTexCoord(0, 1, 0, 1)
-        for _, t in ipairs(self.edges) do t:Hide() end
+        pin.icon:SetAtlas(icon.atlas)
+        pin.icon:SetSize(icon.w + 4, icon.h + 4)
+        pin.icon:SetTexCoord(0, 1, 0, 1)
+        for _, t in ipairs(pin.edges) do t:Hide() end
     elseif icon.atlas then
         -- an icon of the client's icon set in a gold frame
-        self.icon:SetTexture(icon.file)
-        self.icon:SetSize(icon.w - 2, icon.h - 2)
-        self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], 1)
-        for _, t in ipairs(self.edges) do t:Show() end
+        pin.icon:SetTexture(icon.file)
+        pin.icon:SetSize(icon.w - 2, icon.h - 2)
+        pin.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        W.SetBorderColor(pin.edges, GOLD[1], GOLD[2], GOLD[3], 1)
+        for _, t in ipairs(pin.edges) do t:Show() end
     else
         -- the place art brings its own outline
-        self.icon:SetTexture(icon.file)
-        self.icon:SetSize(icon.w, icon.h)
-        self.icon:SetTexCoord(0, 1, 0, 1)
-        for _, t in ipairs(self.edges) do t:Hide() end
+        pin.icon:SetTexture(icon.file)
+        pin.icon:SetSize(icon.w, icon.h)
+        pin.icon:SetTexCoord(0, 1, 0, 1)
+        for _, t in ipairs(pin.edges) do t:Hide() end
     end
+    return icon.w, icon.h
 end
 
-function Pin:OnReleased()
-    self.entry = nil
-    if base and base.OnReleased then base.OnReleased(self) end
-end
-
-function Pin:OnMouseEnter()
-    local e = self.entry
+local function enter(pin)
+    local e = pin.entry
     if not e then return end
-    local ok, err = pcall(tooltip, self, e)
+    local ok, err = pcall(tooltip, pin, e)
     if not ok then report(err) end
 end
 
-function Pin:OnMouseLeave()
-    GameTooltip:Hide()
+if Map.RegisterPinKind then
+    Map.RegisterPinKind("place", { setup = setupPin, show = showPin, click = click, enter = enter, list = Map.PlacePins })
 end
-
--- as the target pins: right clicks stay on the pin, the restricted passthrough call never happens
-function Pin:ShouldMouseButtonBePassthrough()
-    return false
-end
-function Pin:CheckMouseButtonPassthrough() end
-Pin.OnMouseClickAction = click
-
--- Completes the mixin with the client's pin mixin, once (called by MapPins.lua's register).
-function Map.FillPlaceMixin(pinBase)
-    if base then return end
-    base = pinBase
-    if pinBase.CheckMouseButtonPassthrough == nil then Pin.OnClick = click end
-    for k, v in pairs(pinBase) do
-        if Pin[k] == nil then Pin[k] = v end
-    end
-end
-
--- Puts the place pins of the shown map on it (called inside the provider's protected refresh).
-function Map.AcquirePlaces(map, scale)
-    map:RemoveAllPinsByTemplate(TEMPLATE)
-    if not map:IsShown() then return end
-    for _, e in ipairs(Map.PlacePins(ns.Plain(map:GetMapID()))) do
-        map:AcquirePin(TEMPLATE, e, e.continent and scale * 0.7 or scale)
-    end
-end
-Map.PLACE_TEMPLATE = TEMPLATE
 
 ---------------------------------------------------------------------------
 -- Learned entrances (AmisiaDB.entrances)

@@ -1,14 +1,17 @@
 -- Amisia map pins: the places of the own upgrades ("Ziele") and wishes on the world map, on zone and
--- continent maps, through the map canvas's data provider interface (WorldMapFrame:AddDataProvider,
--- AcquirePin with Amisia's own template from MapPin.xml). The provider only acquires and releases
--- its own pins: it writes into none of the map's tables, hooks none of its methods and touches no
--- other frame of the map. Pins are display only; a click sets Amisia's target. The quest givers of a
--- dungeon marked from the dungeon planner (ns.DungeonMarkPlaces) get pins with the client's quest icon.
+-- continent maps. They stand on Amisia's own layer: one frame of Amisia's, a child of the map canvas
+-- (WorldMapFrame.ScrollContainer.Child), with Amisia's own buttons as pins. No data provider of the
+-- map, no pin or pin pool of the canvas, no hook, no call of a map method that changes anything and
+-- no write into any table of the map (each of those ran Amisia's code inside the map's secure
+-- refresh and tainted the client's own pins after it): the layer only reads the shown map and the
+-- canvas's size and scale in its own OnUpdate, which runs only while the map shows. The place pins of
+-- MapPlaces.lua stand on the same layer. Pins are display only; a click sets Amisia's target. The
+-- quest givers of a dungeon marked from the dungeon planner (ns.DungeonMarkPlaces) get pins with the
+-- client's quest icon.
 local ADDON, ns = ...
 local Gear, Map, W = ns.Gear, ns.Map, ns.W
 local L = ns.L
 
-local TEMPLATE = "AmisiaMapPinTemplate"
 local MAX_PINS = 60
 local DOT = "Interface\\AddOns\\Amisia\\Media\\Icons\\dot"
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
@@ -22,9 +25,13 @@ local MAX_MARKS = 40
 -- the texts of the quest giver marks, in one place for the translation
 local TEXT = { setTarget = L["Ziel setzen"], clearMarks = L["Markierung der Questgeber entfernen"],
     hint = L["Klick: Ziel setzen. Rechtsklick: mehr."] }
--- frame level types the world map defines (Blizzard_WorldMap); an unknown type would fall back to
--- the canvas default
-local LEVEL, TARGET_LEVEL = "PIN_FRAME_LEVEL_AREA_POI", "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST"
+-- the layer's frame level above the canvas: above the map's area markers and quest areas, about
+-- where its quest marks stand (the world map reserves some 300 levels for its own pin types); in the
+-- layer the place pins, then the item and quest giver pins, the target on top
+local LAYER_LEVEL = 300
+local LEVEL = { place = 1, item = 2, target = 3 }
+-- the pins grow with the zoom like the map's own did, up to 1.6 times; 70 % on a continent
+local GROW, CONTINENT_SCALE = 0.6, 0.7
 local MAP_TYPE = Enum and Enum.UIMapType
 local ZONE = MAP_TYPE and MAP_TYPE.Zone or 3
 local CONTINENT = MAP_TYPE and MAP_TYPE.Continent or 2
@@ -262,12 +269,8 @@ function Map.PinPlaces(mapID)
 end
 
 ---------------------------------------------------------------------------
--- The pin (AmisiaMapPinMixin, used by the template in MapPin.xml)
+-- The target pins: what they do
 ---------------------------------------------------------------------------
-
-AmisiaMapPinMixin = {}
-local Pin = AmisiaMapPinMixin
-local base   -- the client's MapCanvasPinMixin, once the provider is added
 
 local function setTarget(e)
     local best = e.items[1]
@@ -382,183 +385,255 @@ end
 -- For the map page: a place's target, menu entries and tooltip, as on the pin.
 Map.SetPlaceTarget, Map.PlaceMenu, Map.PlaceTooltip = setTarget, placeMenu, placeTooltip
 
-function Pin:OnLoad()
-    self:SetSize(20, 20)
-    self.ring = self:CreateTexture(nil, "BACKGROUND")
-    self.ring:SetSize(24, 24)
-    self.ring:SetPoint("CENTER")
-    self.ring:SetTexture(DOT)
-    self.ring:SetVertexColor(GOLD[1], GOLD[2], GOLD[3])
-    self.icon = self:CreateTexture(nil, "ARTWORK")
-    self.icon:SetSize(18, 18)
-    self.icon:SetPoint("CENTER")
-    self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    self.edges = W.Border(self, GREEN[1], GREEN[2], GREEN[3], 1)
-    self.count = W.Text(self, "GameFontHighlightSmall")
-    self.count:SetPoint("BOTTOMRIGHT", 4, -3)
+-- The parts of a target pin, made once.
+local function setupPin(pin)
+    pin.ring = pin:CreateTexture(nil, "BACKGROUND")
+    pin.ring:SetSize(24, 24)
+    pin.ring:SetPoint("CENTER")
+    pin.ring:SetTexture(DOT)
+    pin.ring:SetVertexColor(GOLD[1], GOLD[2], GOLD[3])
+    pin.icon = pin:CreateTexture(nil, "ARTWORK")
+    pin.icon:SetSize(18, 18)
+    pin.icon:SetPoint("CENTER")
+    pin.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    pin.edges = W.Border(pin, GREEN[1], GREEN[2], GREEN[3], 1)
+    pin.count = W.Text(pin, "GameFontHighlightSmall")
+    pin.count:SetPoint("BOTTOMRIGHT", 4, -3)
 end
 
--- entry: one of Map.PinPlaces; scale: map.pinScale (and 70 % on a continent).
-function Pin:OnAcquired(entry, scale)
-    self.entry = entry
-    scale = scale or 1
-    self:UseFrameLevelType(entry.target and TARGET_LEVEL or LEVEL)
-    self:SetScalingLimits(1, scale, 1.6 * scale)
-    self:SetPosition(entry.x, entry.y)
-    if self.ApplyCurrentScale then self:ApplyCurrentScale() end
+-- What a target pin shows for entry (one of Map.PinPlaces); returns the pin's size. Pins are used
+-- again for other places: the icon and its coordinates are set every time.
+local function showPin(pin, entry)
     local best = entry.items[1]
-    -- pins are pooled: the icon and its coordinates are set every time
     local key = not best and type(entry.key) == "string" and entry.key:sub(1, 2) or nil
     local quest = entry.mark or key == "Q:"
     local bare = quest
     if quest then
-        self.icon:SetTexture(QUEST_ICON)
-        self.icon:SetTexCoord(0, 1, 0, 1)
-        self.icon:SetSize(22, 22)
+        pin.icon:SetTexture(QUEST_ICON)
+        pin.icon:SetTexCoord(0, 1, 0, 1)
+        pin.icon:SetSize(22, 22)
     elseif (key == "I:" or key == "N:") and W.HasAtlas(DUNGEON_ATLAS) then
-        self.icon:SetAtlas(DUNGEON_ATLAS)
-        self.icon:SetSize(22, 22)
+        pin.icon:SetAtlas(DUNGEON_ATLAS)
+        pin.icon:SetSize(22, 22)
         bare = true
     else
-        self.icon:SetTexture(best and itemIcon(best.id) or QUESTION)
-        self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        self.icon:SetSize(18, 18)
+        pin.icon:SetTexture(best and itemIcon(best.id) or QUESTION)
+        pin.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        pin.icon:SetSize(18, 18)
     end
-    for _, t in ipairs(self.edges) do t:SetShown(not bare) end
+    for _, t in ipairs(pin.edges) do t:SetShown(not bare) end
     local wish = entry.mark or false
     for _, it in ipairs(entry.items) do
         if it.wish then wish = true end
     end
     local c = wish and GOLD or GREEN
-    W.SetBorderColor(self.edges, c[1], c[2], c[3], 1)
-    self.ring:SetShown(entry.target and not bare or false)
+    W.SetBorderColor(pin.edges, c[1], c[2], c[3], 1)
+    pin.ring:SetShown(entry.target and not bare or false)
     local count = entry.mark and #(entry.quests or {}) or #entry.items
     if count > 1 then
-        self.count:SetText(tostring(count))
-        self.count:Show()
+        pin.count:SetText(tostring(count))
+        pin.count:Show()
     else
-        self.count:Hide()
+        pin.count:Hide()
     end
+    return 20, 20
 end
 
-function Pin:OnReleased()
-    self.entry = nil
-    if base and base.OnReleased then base.OnReleased(self) end
-end
-
-function Pin:OnMouseEnter()
-    local ok, err = pcall(tooltip, self)
+local function enter(pin)
+    local ok, err = pcall(tooltip, pin)
     if not ok then report(err) end
 end
 
-function Pin:OnMouseLeave()
+---------------------------------------------------------------------------
+-- Amisia's layer on the world map
+---------------------------------------------------------------------------
+
+-- The kinds of pins on the layer: { setup(pin), show(pin, entry) -> w, h, click(pin, button),
+-- enter(pin), list(mapID) }. MapPlaces.lua adds "place" while loading; it is drawn first.
+local KINDS, ORDER = {}, {}
+function Map.RegisterPinKind(name, kind)
+    if not KINDS[name] then
+        if name == "place" then table.insert(ORDER, 1, name) else ORDER[#ORDER + 1] = name end
+    end
+    KINDS[name] = kind
+end
+Map.RegisterPinKind("item", { setup = setupPin, show = showPin, click = click, enter = enter, list = Map.PinPlaces })
+
+local layer, canvas
+local pools = {}          -- kind -> its buttons, used from the first
+local seen = {}           -- what the last redraw and layout read: map, w, h, scale
+local due                 -- GetTime() after which a change of Amisia's data redraws, or nil
+local now = false         -- redraw on the next frame (the map came up)
+local refreshes = 0
+
+local function onClick(pin, button)
+    local k = KINDS[pin.kind]
+    if k and pin.entry then k.click(pin, button) end
+end
+local function onEnter(pin)
+    local k = KINDS[pin.kind]
+    if k and pin.entry then k.enter(pin) end
+end
+local function onLeave()
     GameTooltip:Hide()
 end
 
--- Forever: right clicks would pass through to the map (zoom out); this pin keeps them for its menu.
--- AcquirePin asks CheckMouseButtonPassthrough, whose base calls SetPassThroughButtons, a function
--- the client restricts in combat; a fresh frame passes nothing through and these pins never ask
--- for it, so the check does nothing here and the restricted call never comes from Amisia's refresh.
-function Pin:ShouldMouseButtonBePassthrough()
-    return false
-end
-function Pin:CheckMouseButtonPassthrough() end
-
--- Forever's base OnClick runs the map's own click handlers and then this.
-Pin.OnMouseClickAction = click
-
--- Completes the mixin with the client's pin mixin, once; the own methods stay. Where the base
--- OnClick is the empty one to override (a pin mixin without the passthrough buttons), the click
--- goes there.
-local function fillMixin(pinBase)
-    if base then return end
-    base = pinBase
-    if pinBase.CheckMouseButtonPassthrough == nil then Pin.OnClick = click end
-    for k, v in pairs(pinBase) do
-        if Pin[k] == nil then Pin[k] = v end
+local function pinOf(kind, i)
+    local pool = pools[kind]
+    if not pool then
+        pool = {}
+        pools[kind] = pool
     end
-end
-
----------------------------------------------------------------------------
--- The data provider
----------------------------------------------------------------------------
-
-local Provider = {}
-local provider
-local refreshes = 0
-
-function Provider:RemoveAllData()
-    local map = self:GetMap()
-    if map then
-        map:RemoveAllPinsByTemplate(TEMPLATE)
-        if Map.PLACE_TEMPLATE then map:RemoveAllPinsByTemplate(Map.PLACE_TEMPLATE) end
+    local pin = pool[i]
+    if not pin then
+        pin = CreateFrame("Button", nil, layer)
+        pin.kind = kind
+        pin:EnableMouse(true)
+        pin:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        pin:SetScript("OnClick", onClick)
+        pin:SetScript("OnEnter", onEnter)
+        pin:SetScript("OnLeave", onLeave)
+        KINDS[kind].setup(pin)
+        pool[i] = pin
     end
+    return pin
 end
 
--- Builds the list first; on an error no pin stays and the error goes to the error handler.
-function Provider:RefreshAllData()
-    refreshes = refreshes + 1
-    local map = self:GetMap()
-    if not map then return end
-    local ok, err = pcall(function()
-        local list = map:IsShown() and Map.PinPlaces(ns.Plain(map:GetMapID())) or {}
-        map:RemoveAllPinsByTemplate(TEMPLATE)
-        local scale = (tonumber(ns.Get("map.pinScale")) or 100) / 100
-        for _, e in ipairs(list) do
-            map:AcquirePin(TEMPLATE, e, e.continent and scale * 0.7 or scale)
+-- Hides the pins of a kind from the index from on.
+local function release(kind, from)
+    local pool = pools[kind] or {}
+    for i = from, #pool do
+        local pin = pool[i]
+        if pin.entry then
+            pin.entry = nil
+            pin:Hide()
         end
-        -- the places (entrances, flight masters, docks) of MapPlaces.lua
-        if Map.AcquirePlaces then Map.AcquirePlaces(map, scale) end
+    end
+end
+
+-- How far the map is zoomed in, 0 to 1 (a read only call; 0 where the client lacks it).
+local function zoomOf()
+    local map = _G.WorldMapFrame
+    local fn = type(map) == "table" and map.GetCanvasZoomPercent
+    if type(fn) ~= "function" then return 0 end
+    local ok, z = pcall(fn, map)
+    z = ok and ns.Plain(z) or nil
+    if type(z) ~= "number" then return 0 end
+    return math.max(0, math.min(1, z))
+end
+
+-- Where the pins stand and how large: normalized x, y times the canvas's size; the canvas's scale is
+-- divided out, so a pin keeps its size on screen and grows only a little as the map zooms in
+-- (map.pinScale, 70 % on a continent).
+local function layout()
+    local w, h, cs = canvas:GetWidth(), canvas:GetHeight(), canvas:GetScale()
+    seen.w, seen.h, seen.scale = w, h, cs
+    if not (type(w) == "number" and type(h) == "number" and type(cs) == "number" and cs > 0) then return end
+    local base = (tonumber(ns.Get("map.pinScale")) or 100) / 100 * (1 + GROW * zoomOf()) / cs
+    for _, name in ipairs(ORDER) do
+        for _, pin in ipairs(pools[name] or {}) do
+            local e = pin.entry
+            if e then
+                local s = base * (e.continent and CONTINENT_SCALE or 1)
+                pin:SetScale(s)
+                pin:ClearAllPoints()
+                pin:SetPoint("CENTER", layer, "TOPLEFT", e.x * w / s, -e.y * h / s)
+            end
+        end
+    end
+end
+
+-- Puts the pins of the shown map on the layer; on an error no pin stays and the error goes to the
+-- error handler.
+local function redraw(mapID)
+    refreshes = refreshes + 1
+    local ok, err = pcall(function()
+        local top = layer:GetFrameLevel()
+        for _, name in ipairs(ORDER) do
+            local kind = KINDS[name]
+            local list = mapID and kind.list(mapID) or {}
+            for i, e in ipairs(list) do
+                local pin = pinOf(name, i)
+                pin.entry = e
+                local w, h = kind.show(pin, e)
+                pin:SetSize(w, h)
+                pin:SetFrameLevel(top + (e.target and LEVEL.target or LEVEL[name] or LEVEL.item))
+                pin:Show()
+            end
+            release(name, #list + 1)
+        end
+        layout()
     end)
     if not ok then
-        pcall(map.RemoveAllPinsByTemplate, map, TEMPLATE)
-        if Map.PLACE_TEMPLATE then pcall(map.RemoveAllPinsByTemplate, map, Map.PLACE_TEMPLATE) end
+        for _, name in ipairs(ORDER) do release(name, 1) end
         report(err)
     end
 end
 
-function Map.PinProvider() return provider end
-function Map.PinRefreshes() return refreshes end
+-- Every frame while the map shows (the layer is hidden with it, and a hidden frame gets no
+-- OnUpdate): reads the shown map and the canvas. A new map, the map coming up or a change of
+-- Amisia's data (at most every half second) redraws; a zoom or a new size of the canvas only moves
+-- the pins.
+local function onUpdate()
+    local id = tonumber(ns.Plain(_G.WorldMapFrame:GetMapID()))
+    if id ~= seen.map or now or (due and GetTime() >= due) then
+        seen.map, now, due = id, false, nil
+        redraw(id)
+    elseif canvas:GetWidth() ~= seen.w or canvas:GetHeight() ~= seen.h or canvas:GetScale() ~= seen.scale then
+        layout()
+    end
+end
 
--- Adds the provider once the world map and the canvas mixins exist; without them there are no pins.
-local function register()
-    if provider then return true end
+local function ownsTooltip()
+    local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
+    return type(owner) == "table" and owner.kind ~= nil and KINDS[owner.kind] ~= nil and owner.entry ~= nil
+end
+
+-- Makes the layer once the world map and its canvas exist; without them there are no pins. Only
+-- frames of Amisia's own are made: the canvas gets a child, nothing of it is changed.
+local function create()
+    if layer then return true end
     local map = _G.WorldMapFrame
-    if type(map) ~= "table" or type(map.AddDataProvider) ~= "function" or type(map.AcquirePin) ~= "function"
-        or type(map.RemoveAllPinsByTemplate) ~= "function" then
+    local scroll = type(map) == "table" and map.ScrollContainer
+    local child = type(scroll) == "table" and scroll.Child
+    if type(child) ~= "table" or type(child.GetScale) ~= "function" or type(map.GetMapID) ~= "function" then
         return false
     end
-    if type(MapCanvasDataProviderMixin) ~= "table" or type(MapCanvasPinMixin) ~= "table" or type(CreateFromMixins) ~= "function" then
-        return false
-    end
-    fillMixin(MapCanvasPinMixin)
-    if Map.FillPlaceMixin then Map.FillPlaceMixin(MapCanvasPinMixin) end
-    local p = CreateFromMixins(MapCanvasDataProviderMixin, Provider)
-    local ok, err = pcall(map.AddDataProvider, map, p)
-    if not ok then
-        report(err)
-        return false
-    end
-    provider = p
+    canvas = child
+    layer = CreateFrame("Frame", nil, canvas)
+    layer:SetAllPoints(canvas)
+    -- the layer takes no mouse: a click beside a pin reaches the map
+    layer:EnableMouse(false)
+    layer:SetFrameLevel(canvas:GetFrameLevel() + LAYER_LEVEL)
+    -- the scripts only mark: the work is done in the layer's own OnUpdate, never inside the map's
+    -- show
+    layer:SetScript("OnShow", function() now = true end)
+    layer:SetScript("OnHide", function() if ownsTooltip() then GameTooltip:Hide() end end)
+    layer:SetScript("OnUpdate", onUpdate)
+    layer:Show()
+    now = true
     return true
 end
-ns.OnEvent("PLAYER_LOGIN", register)
-ns.OnEvent("ADDON_LOADED", function(name)
-    if name == "Blizzard_WorldMap" then register() end
-end)
+-- at login, else (a world map loaded later) on the next loading screen or change of Amisia's data
+ns.OnEvent("PLAYER_LOGIN", create)
+ns.OnEvent("PLAYER_ENTERING_WORLD", create)
 
--- A change refreshes the pins half a second later, only while the world map shows.
-local pending = false
+-- For the tests and the self-test: the layer, the shown pins of a kind ("item", "place"), the
+-- redraws so far.
+function Map.PinLayer() return layer end
+function Map.ShownPins(kind)
+    local out = {}
+    for _, pin in ipairs(pools[kind or "item"] or {}) do
+        if pin.entry then out[#out + 1] = pin end
+    end
+    return out
+end
+function Map.PinRefreshes() return refreshes end
+
+-- A change redraws half a second later, on a frame of the layer: only while the map shows.
 local function schedule()
-    if pending or not provider then return end
-    local map = provider:GetMap()
-    if not (map and map:IsShown()) then return end
-    pending = true
-    C_Timer.After(0.5, function()
-        pending = false
-        local m = provider and provider:GetMap()
-        if m and m:IsShown() then provider:RefreshAllData() end
-    end)
+    if not layer then create() end
+    if not due then due = GetTime() + 0.5 end
 end
 
 ns.Listen("BIS_CHANGED", schedule)

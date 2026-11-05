@@ -783,10 +783,14 @@ local function sectionTemplates(R)
             return a[1], a[2]
         end)
     end
-    if not ns.FOREVER then return end   -- MapPin.xml loads on Forever only
-    check(R, "AmisiaMapPinTemplate", function()
-        return type(_G.AmisiaMapPinMixin) == "table" and "OK" or FEHLT,
-            type(_G.AmisiaMapPinMixin) == "table" and L["Mixin geladen (Vorlage aus MapPin.xml)"] or L["Mixin fehlt"]
+    if not ns.FOREVER then return end   -- the map pins load on Forever only
+    -- Amisia's own layer of pins on the world map's canvas (no data provider, no pins of the canvas)
+    check(R, L["Pin-Ebene der Weltkarte"], function()
+        local layer = ns.Map and ns.Map.PinLayer and ns.Map.PinLayer()
+        if layer then return "OK", L["vorhanden"] end
+        -- before the login the layer is not made yet
+        if not (IsLoggedIn and IsLoggedIn()) then return "WERT", L["noch nicht geladen"] end
+        return FEHLT, L["fehlt (keine Pins auf der Karte)"]
     end)
 end
 
@@ -830,6 +834,9 @@ local OPTIONAL = {
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
     "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
     "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
+    -- whether the client could open the world map on a map without Amisia's code in the map's own
+    -- show (ns.MapShowOnWorldMap calls OpenWorldMap and SetMapID, which run the map's refresh tainted)
+    "C_Map.OpenWorldMap",
     -- the source collector: the quest level from either generation of the quest log, the reputation
     -- line of a merchant's item
     "C_QuestLog.GetLogIndexForQuestID", "C_QuestLog.GetInfo", "GetQuestLogIndexByID", "GetQuestLogTitle",
@@ -870,7 +877,7 @@ ST.OPTIONAL = OPTIONAL
 -- Objects of the client Amisia builds on.
 local OBJECTS = {
     "UIParent", "GameTooltip", "ItemRefTooltip", "DEFAULT_CHAT_FRAME", "Minimap", "WorldMapFrame", "UISpecialFrames",
-    "StaticPopupDialogs", "RAID_CLASS_COLORS", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "ChatFontNormal",
+    "StaticPopupDialogs", "RAID_CLASS_COLORS", "ChatFontNormal",
     "LOCALIZED_CLASS_NAMES_MALE", "GroupLootFrame1", "QuestInfoFrame", "QuestInfoRewardsFrame",
 }
 ST.OBJECTS = OBJECTS
@@ -900,14 +907,12 @@ local function sectionFunctions(R)
         return "WERT", ("ChatEdit_InsertLink %s, ChatFrameUtil.InsertLink %s"):format(fn("ChatEdit_InsertLink") and L["da"] or L["fehlt"],
             fn("ChatFrameUtil.InsertLink") and L["da"] or L["fehlt"])
     end)
-    check(R, "WorldMapFrame:AddDataProvider", function()
+    -- the canvas Amisia's pin layer hangs on (read only)
+    check(R, "WorldMapFrame.ScrollContainer.Child", function()
         local w = _G.WorldMapFrame
-        return (type(w) == "table" and type(w.AddDataProvider) == "function") and "OK" or FEHLT,
-            (type(w) == "table" and type(w.AddDataProvider) == "function") and L["vorhanden"] or L["fehlt (keine Pins auf der Karte)"]
-    end)
-    check(R, "MapCanvasPinMixin.UseFrameLevelType", function()
-        local m = _G.MapCanvasPinMixin
-        return "WERT", (type(m) == "table" and type(m.UseFrameLevelType) == "function") and L["vorhanden"] or L["fehlt"]
+        local sc = type(w) == "table" and w.ScrollContainer
+        local ok = type(sc) == "table" and type(sc.Child) == "table"
+        return ok and "OK" or FEHLT, ok and L["vorhanden"] or L["fehlt (keine Pins auf der Karte)"]
     end)
     local lackObjects = {}
     for _, name in ipairs(OBJECTS) do

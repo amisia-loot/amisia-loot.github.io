@@ -11,11 +11,10 @@ ignore = {
     "542",         -- an empty if branch holding only a comment says "nothing to do here" on purpose
 }
 
--- What the addon writes into the global table: the saved variables, the slash command, the map pin
--- mixin the XML template names, the addon compartment callbacks of the TOC, and the client's
--- registries it adds entries to.
+-- What the addon writes into the global table: the saved variables, the slash command, the addon
+-- compartment callbacks of the TOC, and the client's registries it adds entries to.
 globals = {
-    "AmisiaDB", "SLASH_AMISIA1", "SlashCmdList", "StaticPopupDialogs", "AmisiaMapPinMixin", "AmisiaMapPlaceMixin",
+    "AmisiaDB", "SLASH_AMISIA1", "SlashCmdList", "StaticPopupDialogs",
     "Amisia_OnAddonCompartmentClick", "Amisia_OnAddonCompartmentEnter", "Amisia_OnAddonCompartmentLeave",
 }
 
@@ -39,9 +38,9 @@ read_globals = {
     "GetServerTime", "GetSpellDescription", "GetSpellHitModifier", "GetSpellInfo", "GetTime", "GetTitleText", "GetObjectiveText",
     "GetZoneText", "GiveMasterLoot", "GuildControlGetNumRanks", "GuildControlGetRankName",
     "HandleModifiedItemClick", "hooksecurefunc", "InCombatLockdown", "UpdateAddOnMemoryUsage", "GetAddOnMemoryUsage", "IsAltKeyDown", "IsControlKeyDown",
-    "IsInGroup", "IsInGuild", "IsInInstance", "IsInLFGDungeon", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
-    "ITEM_CLASSES_ALLOWED", "LE_PARTY_CATEGORY_HOME", "LootFrame", "MapCanvasDataProviderMixin",
-    "MapCanvasPinMixin", "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",
+    "IsInGroup", "IsInGuild", "IsInInstance", "IsInLFGDungeon", "IsInRaid", "IsLoggedIn", "IsModifiedClick", "IsShiftKeyDown",
+    "ITEM_CLASSES_ALLOWED", "LE_PARTY_CATEGORY_HOME", "LootFrame",
+    "Minimap", "NORMAL_FONT_COLOR", "OpenWorldMap", "PlaySound", "QueryGuildBankTab",
     "QueryGuildBankLog", "GetNumGuildBankTransactions", "GetGuildBankTransaction", "GetNumGuildBankMoneyTransactions",
     "GetGuildBankMoneyTransaction", "MAX_GUILDBANK_TABS",
     "RAID_CLASS_COLORS", "RandomRoll", "RANDOM_ROLL_RESULT", "ITEM_QUALITY_COLORS", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",

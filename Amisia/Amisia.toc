@@ -111,7 +111,6 @@ Gear\MageScrolls.lua [AllowLoadGameType camelot]
 Gear\Map.lua [AllowLoadGameType camelot]
 Gear\MapPins.lua [AllowLoadGameType camelot]
 Gear\MapPlaces.lua [AllowLoadGameType camelot]
-Gear\MapPin.xml [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua

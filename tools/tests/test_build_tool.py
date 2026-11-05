@@ -84,7 +84,7 @@ def test_the_repo_toc_has_the_version_and_matches_the_folder():
     assert v and len(v.split('.')) == 3
     assert build.check_toc(ROOT) == []
     files = build.toc_files(ROOT)
-    assert 'Core/Core.lua' in files and 'Gear/MapPin.xml' in files and 'UI/Pages/About.lua' in files
+    assert 'Core/Core.lua' in files and 'Gear/MapPins.lua' in files and 'UI/Pages/About.lua' in files
     assert files.index('Locales/Locale.lua') == 0, 'the locale loads first'
     first = [f for f in files if not f.startswith('Locales/')][0]
     assert first == 'Core/Registry.lua', 'the registry loads right after the locale files'

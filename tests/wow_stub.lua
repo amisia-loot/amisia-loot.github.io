@@ -621,6 +621,8 @@ function STUB.tick(seconds)
     end
     STUB.now = STUB.now + (target - STUB.clock)
     STUB.clock = target
+    -- one frame at the end (the world map's OnUpdate scripts)
+    if STUB.onFrame then STUB.onFrame(seconds) end
 end
 
 local NOOP = function() end
@@ -1179,8 +1181,6 @@ TEMPLATES.TooltipBackdropTemplate = function(f)
     f.NineSlice = CreateFrame("Frame", nil, f)
     f.NineSlice:SetAllPoints()
 end
--- The addon's own template (MapPin.xml); the pins come from the map's pin pools.
-TEMPLATES.AmisiaMapPinTemplate = function() end
 
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
     "RegisterForDrag", "SetAllPoints", "SetScrollChild", "SetVerticalScroll", "SetMultiLine", "SetMaxLetters", "SetAutoFocus", "SetFontObject",
@@ -1721,27 +1721,69 @@ _G.C_SuperTrack = {
 }
 -- The player's facing in radians (STUB.facing; nil = unknown).
 _G.GetPlayerFacing = function() return STUB.facing end
--- The world map: shown or not and the map it shows (mapID); OpenWorldMap opens it on a map.
-_G.WorldMapFrame = CreateFrame("Frame", "WorldMapFrame", UIParent)
-WorldMapFrame.EnumeratePinsByTemplate = function(self, template)
+-- The world map: shown or not and the map it shows (mapID); OpenWorldMap opens it on a map. Its
+-- canvas (ScrollContainer.Child, 1000 x 700, scale 1: a test sets another scale for a zoom) is where
+-- Amisia's own layer of pins hangs. Showing or hiding the map runs OnShow/OnHide of every shown frame
+-- below it, and STUB.tick ends with one frame: OnUpdate of every shown frame below the shown map.
+--
+-- Amisia never writes into the map, its scroll container or canvas, never adds a data provider and
+-- never takes a pin of the canvas: the three are guarded tables whose writes from an addon
+-- file raise ("@<file>" chunks; the stub's own code and the tests write freely, hooksecurefunc
+-- writes from here as in the client), and AddDataProvider, RemoveDataProvider, AcquirePin,
+-- RemoveAllPinsByTemplate and RefreshAllDataProviders raise when an addon file calls them.
+-- STUB.mapWrites lists the writes refused.
+function STUB.isAddonCode(level)
+    local info = debug.getinfo(level + 1, "S")
+    local src = info and info.source or ""
+    return src:sub(1, 1) == "@" and not src:find("tests", 1, true)
+end
+STUB.mapWrites = {}
+local function guarded(real, what)
+    return setmetatable({}, {
+        __index = real,
+        __newindex = function(_, k, v)
+            if STUB.isAddonCode(2) then
+                STUB.mapWrites[#STUB.mapWrites + 1] = what .. "." .. tostring(k)
+                error(("Amisia writes into %s.%s"):format(what, tostring(k)), 2)
+            end
+            real[k] = v
+        end,
+        real = real,
+    })
+end
+local function notFromAddon(name, fn)
+    return function(...)
+        if STUB.isAddonCode(2) then error("Amisia calls WorldMapFrame:" .. name, 2) end
+        return fn(...)
+    end
+end
+
+local mapReal = CreateFrame("Frame", "WorldMapFrame", UIParent)
+local scrollReal = CreateFrame("ScrollFrame", nil, mapReal)
+local canvasReal = CreateFrame("Frame", nil, scrollReal)
+scrollReal.shown, canvasReal.shown = true, true
+canvasReal._w, canvasReal._h = 1000, 700
+canvasReal._level = 3
+STUB.mapCanvas = guarded(canvasReal, "WorldMapFrame.ScrollContainer.Child")
+scrollReal.Child = STUB.mapCanvas
+mapReal.ScrollContainer = guarded(scrollReal, "WorldMapFrame.ScrollContainer")
+mapReal.EnumeratePinsByTemplate = function(self, template)
     local pool = self.pinPools[template]
     return ipairs(pool and pool.active or {})
 end
-WorldMapFrame.SetMapID = function(self, id) self.mapID = id end
-WorldMapFrame.GetMapID = function(self) return self.mapID end
+mapReal.GetMapID = function(self) return self.mapID end
+-- the canvas's zoom, 0 to 1 (a test sets STUB.mapZoom)
+mapReal.GetCanvasZoomPercent = function() return STUB.mapZoom or 0 end
+_G.WorldMapFrame = guarded(mapReal, "WorldMapFrame")
 _G.OpenWorldMap = function(id)
     WorldMapFrame:Show()
     if id then WorldMapFrame:SetMapID(id) end
 end
 _G.ToggleWorldMap = function() WorldMapFrame:SetShown(not WorldMapFrame:IsShown()) end
 
--- Mixins and the map canvas as both clients' FrameXML has them (Blizzard_MapCanvas): data providers
--- added with AddDataProvider get OnAdded, RefreshAllData on show and OnMapChanged on a new map;
--- AcquirePin makes pins from a named template, applies its mixin (STUB.pinTemplates[template] names
--- the mixin global, as the XML file would; a test reads it from MapPin.xml), runs OnLoad once and
--- OnAcquired every time; RemoveAllPinsByTemplate releases them. STUB.mapPins(template) lists the
--- active pins. A Forever-style pin mixin (passthrough buttons, OnMouseClickAction) comes from a
--- test's preload.
+-- Mixins and the map canvas as both clients' FrameXML has them (Blizzard_MapCanvas): the client's own
+-- data providers sit in WorldMapFrame.dataProviders, its pins in pinPools[template].active (a test
+-- puts the client's pins there).
 _G.Mixin = function(object, ...)
     for i = 1, select("#", ...) do
         for k, v in pairs((select(i, ...))) do object[k] = v end
@@ -1758,68 +1800,73 @@ _G.MapCanvasDataProviderMixin = {
 }
 _G.MapCanvasPinMixin = {
     OnLoad = NOOP, OnAcquired = NOOP, OnReleased = NOOP, OnClick = NOOP, OnMouseEnter = NOOP, OnMouseLeave = NOOP,
-    OnMouseDown = NOOP, OnMouseUp = NOOP, ApplyCurrentScale = NOOP, ApplyFrameLevel = NOOP, OnCanvasScaleChanged = NOOP,
     SetPosition = function(self, x, y) self.normalizedX, self.normalizedY = x, y end,
-    GetPosition = function(self) return self.normalizedX, self.normalizedY end,
-    SetScalingLimits = function(self, f, s, e) self.scaleFactor, self.startScale, self.endScale = f, s, e end,
-    UseFrameLevelType = function(self, t, i) self.pinFrameLevelType, self.pinFrameLevelIndex = t, i end,
     GetMap = function(self) return self.owningMap end,
 }
--- the place pins (MapPlaces.lua) as the TOC loads their template; a test names the target pins itself
-STUB.pinTemplates = { AmisiaMapPlaceTemplate = "AmisiaMapPlaceMixin" }
-WorldMapFrame.dataProviders, WorldMapFrame.pinPools = {}, {}
-WorldMapFrame.AddDataProvider = function(self, p)
+-- what the mixins held when the stub was made: a test compares (nothing may write into them)
+STUB.mixinCopy = {}
+for _, name in ipairs({ "MapCanvasDataProviderMixin", "MapCanvasPinMixin" }) do
+    local copy = {}
+    for k, v in pairs(_G[name]) do copy[k] = v end
+    STUB.mixinCopy[name] = copy
+end
+mapReal.dataProviders, mapReal.pinPools = {}, {}
+mapReal.AddDataProvider = notFromAddon("AddDataProvider", function(self, p)
     self.dataProviders[p] = true
     p:OnAdded(self)
-end
-WorldMapFrame.RemoveDataProvider = function(self, p)
+end)
+mapReal.RemoveDataProvider = notFromAddon("RemoveDataProvider", function(self, p)
     p:RemoveAllData()
     self.dataProviders[p] = nil
     p:OnRemoved(self)
-end
-WorldMapFrame.AcquirePin = function(self, template, ...)
-    local mixin = STUB.pinTemplates[template] and _G[STUB.pinTemplates[template]]
-    assert(mixin, "unknown pin template " .. tostring(template))
-    local pool = self.pinPools[template] or { active = {}, free = {} }
-    self.pinPools[template] = pool
-    local pin = table.remove(pool.free)
-    local new = pin == nil
-    if new then pin = Mixin(CreateFrame("Frame", nil, self), mixin) end
-    pin.pinTemplate, pin.owningMap = template, self
-    if new then pin:OnLoad() end
-    pin:Show()
-    pin:OnAcquired(...)
-    if pin.CheckMouseButtonPassthrough then pin:CheckMouseButtonPassthrough("RightButton") end
-    pool.active[#pool.active + 1] = pin
-    return pin
-end
-WorldMapFrame.RemoveAllPinsByTemplate = function(self, template)
+end)
+mapReal.AcquirePin = notFromAddon("AcquirePin", function() error("the stub's canvas makes no pins") end)
+mapReal.RemoveAllPinsByTemplate = notFromAddon("RemoveAllPinsByTemplate", function(self, template)
     local pool = self.pinPools[template]
-    if not pool then return end
-    for _, pin in ipairs(pool.active) do
-        pin:Hide()
-        pin:OnReleased()
-        pin.pinTemplate, pin.owningMap = nil, nil
-        pool.free[#pool.free + 1] = pin
-    end
-    pool.active = {}
-end
-WorldMapFrame.SetMapID = function(self, id)
+    if pool then pool.active = {} end
+end)
+mapReal.RefreshAllDataProviders = notFromAddon("RefreshAllDataProviders", function(self)
+    for p in pairs(self.dataProviders) do p:RefreshAllData() end
+end)
+mapReal.SetMapID = function(self, id)
     if self.mapID == id then return end
     self.mapID = id
     for p in pairs(self.dataProviders) do p:OnMapChanged() end
 end
-WorldMapFrame:SetScript("OnShow", function(self)
+mapReal.scripts.OnShow = function(self)
     for p in pairs(self.dataProviders) do p:RefreshAllData(true) end
     for p in pairs(self.dataProviders) do p:OnShow() end
-end)
-WorldMapFrame:SetScript("OnHide", function(self)
-    for p in pairs(self.dataProviders) do p:OnHide() end
-end)
-function STUB.mapPins(template)
-    local pool = WorldMapFrame.pinPools[template]
-    return pool and pool.active or {}
 end
+mapReal.scripts.OnHide = function(self)
+    for p in pairs(self.dataProviders) do p:OnHide() end
+end
+
+-- the scripts of the shown frames below a frame (frames only, not their textures)
+local function below(f, script, ...)
+    for _, k in ipairs(f.kids or {}) do
+        if type(k) == "table" and k.scripts and k.shown then
+            if k.scripts[script] then k.scripts[script](k, ...) end
+            below(k, script, ...)
+        end
+    end
+end
+local mapShow, mapHide = mapReal.Show, mapReal.Hide
+mapReal.Show = function(self)
+    local was = mapReal.shown
+    mapShow(self)
+    if not was then below(mapReal, "OnShow") end
+end
+mapReal.Hide = function(self)
+    local was = mapReal.shown
+    mapHide(self)
+    if was then below(mapReal, "OnHide") end
+end
+mapReal.SetShown = function(self, on) if on then self:Show() else self:Hide() end end
+-- one frame of the map: OnUpdate of every shown frame below it while it shows
+function STUB.mapFrame(elapsed)
+    if mapReal.shown then below(mapReal, "OnUpdate", elapsed or 0) end
+end
+STUB.onFrame = STUB.mapFrame
 
 -- A game calendar (C_Calendar) for the raid lineup and sign-up (Raid/Calendar.lua): STUB.calendar(opts)
 -- installs it and returns its state. opts.events: guild events { title, days (from now), hour (or at,
