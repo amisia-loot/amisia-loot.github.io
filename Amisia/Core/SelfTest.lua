@@ -834,6 +834,9 @@ local OPTIONAL = {
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
     "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
     "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
+    -- whether the client could open the world map on a map without Amisia's code in the map's own
+    -- show (ns.MapShowOnWorldMap calls OpenWorldMap and SetMapID, which run the map's refresh tainted)
+    "C_Map.OpenWorldMap",
     -- the source collector: the quest level from either generation of the quest log, the reputation
     -- line of a merchant's item
     "C_QuestLog.GetLogIndexForQuestID", "C_QuestLog.GetInfo", "GetQuestLogIndexByID", "GetQuestLogTitle",
