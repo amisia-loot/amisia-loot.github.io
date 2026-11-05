@@ -90,7 +90,7 @@ end
 local function iconOf(id)
     local f = C_Item and C_Item.GetItemIconByID
     local icon = id and type(f) == "function" and ns.Plain(f(id)) or nil
-    return icon
+    return icon or (id and Gear.ScanIcon(id))
 end
 
 local function qualityOf(id, link)

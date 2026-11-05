@@ -276,8 +276,9 @@ function PS.ItemOk(id, c)
 end
 
 -- Whether an item that failed by its sources still comes in by being bought ("Kaufbar").
-function PS.BuyOk(row, c)
-    return c.on.buy and PS.Buyable(row) and (PS.RecOk(PS.AH_REC, row, c))
+-- sources: the options' source switches (an item without a fixed source is no realistic buy, D-59).
+function PS.BuyOk(row, c, sources)
+    return c.on.buy and PS.Buyable(row) and Gear.BuyRealistic(row, sources) and (PS.RecOk(PS.AH_REC, row, c))
 end
 
 -- Whether an item counts for the options as Gear.Best counts it: a source that passes Gear.SourceOk
@@ -293,7 +294,7 @@ function PS.Passes(id, o)
     end
     local c = o.style
     if c then
-        if not ok and PS.BuyOk(row, c) then ok = true end
+        if not ok and PS.BuyOk(row, c, o.sources) then ok = true end
         if ok and not PS.ItemOk(id, c) then ok = false end
     end
     return ok

@@ -212,9 +212,40 @@ assert(r.LEGS[1] and r.LEGS[1][1] == 6014, "a paladin's world drop by class mask
 r = best({ sources = { Q = true, D = true, V = true, C = true, W = true } })
 assert(r.HEAD[1][1] == 6009 and #r.HEAD == 1, "without raids only the helm with a dungeon source")
 r = best({ faction = "A", sources = { X = true, P = true, A = true } })
-assert(r.LEGS[1][1] == 6008 and r.SHOULDER[1][1] == 6010, "PvP and the auction house switched on")
+assert(r.LEGS[1][1] == 6008 and not r.SHOULDER[1], "PvP on; an item only ever seen at the auction house is no realistic target (D-59)")
 r = best({ faction = "H", sources = { P = true } })
 assert(not r.LEGS[1], "the alliance PvP vendor is no horde one")
+-- realistic sources (D-59): a world drop only with its switch and never an epic one, a named rare
+-- mob without a switch, the auction house only for an item with a fixed source
+local S = NS.GEAR.S
+local green = { "HEAD", 4, 4, 50, 2, 2, 55, 0, 0, 0, 9 }
+local epic = { "HEAD", 4, 4, 50, 4, 2, 55, 0, 0, 0, 9, 10 }
+local craftedBoE = { "HEAD", 4, 4, 50, 3, 2, 55, 0, 0, 0, 8, 10 }
+assert(Gear.SourceOk(S[9], { sources = { W = true } }, green) and not Gear.SourceOk(S[9], { sources = {} }, green))
+assert(not Gear.SourceOk(S[9], { sources = { W = true } }, epic), "an epic world drop never")
+assert(not Gear.SourceOk(S[10], { sources = { A = true, W = true } }, epic), "nor bought: no fixed source")
+assert(Gear.SourceOk(S[10], { sources = { A = true } }, craftedBoE), "a crafted item from the auction house")
+assert(not Gear.SourceOk(S[10], { sources = { A = true } }, green) and Gear.SourceOk(S[10], { sources = { A = true, W = true } }, green),
+    "a green world drop from the auction house only with world drops on")
+assert(Gear.SourceOk({ "R", "Mor'Ladim", 35, 1431, 522 }, { sources = {} }, green), "a named rare mob needs no switch")
+assert(Gear.HasFixedSource(craftedBoE) and not Gear.HasFixedSource(epic))
+-- an item only the server describes (no client info): name and icon from the scan, an own tooltip
+NS.GEAR.I[288841] = { "HEAD", 4, 1, 1, 4, 2, 30, 0, 0, 0, 9, 10 }
+NS.GEAR.ST = NS.GEAR.ST or {}
+NS.GEAR.ST[288841] = "INTELLECT=13;STAMINA=8"
+NS.GEAR.N, NS.GEAR.IC = { [288841] = "Reif der Prophezeiung" }, { [288841] = 133136 }
+assert(Gear.ScanName(288841) == "Reif der Prophezeiung" and Gear.ScanIcon(288841) == 133136)
+STUB.locale = "enUS"
+assert(Gear.ScanName(288841) == nil, "the German name only on a German client")
+STUB.locale = "deDE"
+local tipLines = {}
+local tip = { ClearLines = function() tipLines = {} end, AddLine = function(_, t) tipLines[#tipLines + 1] = t end, Show = function() end }
+assert(Gear.ScanTooltip(tip, 288841), "an own tooltip")
+local tipText = table.concat(tipLines, "|")
+assert(tipText:find("Reif der Prophezeiung", 1, true) and tipText:find("+13 Intelligenz", 1, true)
+    and tipText:find("Gegenstandsstufe 30", 1, true) and tipText:find("Aus Amisias Scan", 1, true), tipText)
+STUB.item(6003, "Kriegerbrust", 3)
+assert(not Gear.ScanTooltip(tip, 6003), "an item the client knows keeps the client's tooltip")
 
 -- exclusions: an item, a boss, a place; an item with another source stays
 r = best({ exclude = { item = { [6002] = true } } })

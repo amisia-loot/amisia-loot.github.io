@@ -84,7 +84,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Collect/CollectSync.lua` | Source exchange CV/CQ/CI/CR/CW/CK | - | Comm, Collector, Drops, Trust |
 | `Collect/QuestXP.lua` | Quest XP seen by this client (own data only, never sent) | `questxp` | - |
 | `Collect/QuestTags.lua` | Quest types from the own quest log (F-124): the tag (`C_QuestLog.GetQuestTagInfo`/`GetQuestTagInfo`: 1 group, 41 PvP, 62/88/89 raid, 81 dungeon) or a suggested group of 2 or more, as G/D/R/P, read 3 s after `QUEST_LOG_UPDATE`/`QUEST_ACCEPTED` while `collect.quests` is on; never sent; `tools/build_gear.py` joins it into `tools/quest_tag_archive.json` and the gear data's `QT` | `questtags` | PlayStyle |
-| `Data/GearData.lua` | generated (`build_gear.py`), lazy `GEAR` | - | LazyData |
+| `Data/GearData.lua` | generated (`build_gear.py`), lazy `GEAR`; `N`/`IC`: name and icon the scan saw of the items the client's item table lacks (`Gear.ScanName`, `Gear.ScanIcon`, `Gear.ScanTooltip`, D-59) | - | LazyData |
 | `Data/GearWeights.lua` | generated (`build_bis.py`), lazy `GEAR_WEIGHTS` | - | LazyData |
 | `Data/BisData.lua` | generated (`build_bis.py`), `ns.BIS` | - | - |
 | `Data/MapData.lua` | generated (`build_map.py`), lazy `MAP`: `P` points per source key (the entrances under `I:<instance id>`/`N:<name>`, one for every dungeon and raid of the facts that has a place), `G` quest givers, `E` where an entrance's points come from (`c` client table Map, `a` AllTheThings, `l` learned), `F` flight masters `{ uiMap, x, y, A/H/N, name }`, `T` docks `{ uiMap, x, y, Z/S, A/H/N, { { area id, English name } } }` | - | LazyData |
@@ -512,7 +512,8 @@ Betrachten lesen"), since F-116/F-117 `duels.request` ("Bilanz bei Duell-Anfrage
 `ns.Duels.Clear`: list, zones and tournaments go, `cls`/`spec` stay; also `/amisia duelle leeren`).
 `bis` holds since F-125 `bis.slotClick` ("Rechtsklick auf Slots im Charakterfenster", on). Beside it the window state
 `settings.bis.style` (the play style F-124, `{nodungeon, solo, buy, now, zone}`, true or missing; `PS.State` drops
-other keys), like `settings.bis.sources`.
+other keys), like `settings.bis.sources`. `settings.bis.srcRule` and `settings.gear.srcRule` (2): random world drops
+were switched off once in the page's and the gear table's source switches for the realistic sources (D-59).
 `map` holds since F-105 `map.entrances` ("Eingänge auf der Karte"), `map.flights` ("Flugmeister auf der Karte") and
 `map.transports` ("Zeppeline und Schiffe auf der Karte"), all on; switched off, the kind's pins go at the next refresh.
 `ui` holds the window sizes: `ui.scale` (the main window, 70-130 %), `ui.talentScale` (the talent

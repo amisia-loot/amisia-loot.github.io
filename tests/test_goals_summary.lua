@@ -57,8 +57,9 @@ assert(near(s.score, want), "with the targets: " .. tostring(s.score) .. " " .. 
 assert(near(s.gain, s.score - s.now), "the gain")
 assert(res.plan == "2H" and #res.OFFHAND == 0, "the two-hander counts once")
 assert(NS.BisSummary(res, o) == s, "kept with the result")
--- the best on the level: every source (the auction house too), no exclusions
-local best = score(702) + score(704) + score(705, "2H")
+-- the best on the level: every realistic source, no exclusions; the helm only ever seen at the
+-- auction house has no fixed source (D-59)
+local best = score(701) + score(704) + score(705, "2H")
 assert(near(s.best, best), "Bestes auf Stufe 60: " .. tostring(s.best) .. " " .. best)
 assert(s.level == 60)
 -- the changes: strength up, stamina down (the old chest), biggest first

@@ -64,7 +64,7 @@ local function gear(id, name, loc, stats, sources, o)
     it.equipLoc, it.classID, it.subclassID = "INVTYPE_" .. loc, o.classID or 4, o.sub or 4
     it.stats, it.bind, it.minLevel = stats, o.bind or 1, 60
     if sources then
-        I[id] = { loc, o.classID or 4, o.sub or 4, 60, 4, o.bind or 1, 70, o.mask or 0, 0, 0 }
+        I[id] = { loc, o.classID or 4, o.sub or 4, 60, o.q or 4, o.bind or 1, 70, o.mask or 0, 0, 0 }
         for _, n in ipairs(sources) do I[id][#I[id] + 1] = n end
     end
     return LINKS[id]
@@ -77,7 +77,7 @@ gear(102, "Helm Nefarian", "HEAD", str(35), { 3 })
 gear(103, "Helm Scholo", "HEAD", str(30), { 6 })
 gear(104, "Helm Lucifron", "HEAD", str(25), { 2, 8 })
 gear(106, "Helm Horde", "HEAD", str(50), { 12 })
-gear(117, "Helm Welt", "HEAD", str(38), { 13 })
+gear(117, "Helm Welt", "HEAD", str(38), { 13 }, { q = 3 })   -- a blue world drop (an epic one never counts)
 gear(118, "Helm Strat", "HEAD", str(22), { 5 })
 -- chest: crafted bind on pickup and bind on equip, a raid drop, a piece for warriors only
 gear(107, "Brust BoP", "CHEST", str(60), { 10 }, { bind = 1 })
@@ -106,9 +106,11 @@ assert(Gear.Available())
 -- options
 local o = NS.BisOpts()
 assert(o.class == "WARRIOR" and o.spec == "dps" and o.level == 60 and o.faction == "A", "class, spec, level, faction")
-assert(o.sources.X and o.sources.Q and o.sources.D and o.sources.V and o.sources.C and o.sources.W, "sources on")
+assert(o.sources.X and o.sources.Q and o.sources.D and o.sources.V and o.sources.C and not o.sources.W, "fixed sources on, random world drops off (D-59)")
 assert(o.sources.H == nil and o.sources.F == nil, "no switches for heroic dungeons or reputation")
 assert(not o.sources.A and not o.sources.P, "auction house and PvP off by default")
+-- the fixture's world drop counts with its switch on
+o.sources.W = true
 assert(o.phase == nil and o.prof == "all" and o.exclude == me.ex, "no phase, all professions, the character's exclusions")
 STUB.level = 63
 assert(NS.BisOpts().level == 60, "capped at the data's level")

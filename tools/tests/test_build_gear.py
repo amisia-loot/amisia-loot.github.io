@@ -501,3 +501,15 @@ def test_reputation_and_quest_types_reach_the_data(tmp_path):
     assert '[99]' not in text.split('RP')[1].split('M')[0], 'only items of the data'
     assert '[5]="D"' in text.replace(' ', ''), 'the quest of the data has its type'
     assert '[8]=' not in text.split('QT')[1].split('M')[0].replace(' ', ''), 'a quest the data lacks is left out'
+
+
+def test_names_and_icons_only_for_items_the_client_lacks():
+    """N and IC (D-59): the scan's name and icon for the items only the server describes; the client's
+    id ranges as the scan archive keeps them, or a set."""
+    ranges = [[1, 10], [20, 30]]
+    assert build_gear.client_has(ranges, 5) and build_gear.client_has(ranges, 30)
+    assert not build_gear.client_has(ranges, 15) and not build_gear.client_has(ranges, 31)
+    assert build_gear.client_has({7}, 7) and not build_gear.client_has({7}, 8)
+    assert build_gear.client_has(None, 99), 'unknown: every id counts as known'
+    assert build_gear.clean_name('|cffa335eeReif der Prophezeiung|r') == 'Reif der Prophezeiung'
+    assert build_gear.clean_name('a|b') == 'ab' and build_gear.clean_name('x' * 65) == ''

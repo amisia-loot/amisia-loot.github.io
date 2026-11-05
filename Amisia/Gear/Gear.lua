@@ -422,6 +422,57 @@ function Gear.Item(id)
     return d and type(B) == "table" and type(B.PI) == "table" and B.PI[id] or nil
 end
 
+-- The name and icon the scan saw for an item only the server describes (GearData N and IC, D-59):
+-- what stands in while the client has nothing. The name is the German client's, so only there.
+function Gear.ScanName(id)
+    if not (GetLocale and GetLocale() == "deDE") then return nil end
+    local d = ns.HasData("GEAR") and ns.Data("GEAR")
+    return d and type(d.N) == "table" and d.N[id] or nil
+end
+
+function Gear.ScanIcon(id)
+    local d = ns.HasData("GEAR") and ns.Data("GEAR")
+    return d and type(d.IC) == "table" and d.IC[id] or nil
+end
+
+local QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
+    { 1, 0.5, 0 } }
+
+-- A tooltip for an item the client cannot describe (no item info): the name in its quality's colour,
+-- slot, item level, required level, the scanned stats, up to three sources and a grey note. Leaves a
+-- tooltip the client filled alone; true when it wrote one.
+function Gear.ScanTooltip(tt, id)
+    if not (tt and id) or (C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)) then return false end
+    local row = Gear.Item(id)
+    if not row then return false end
+    tt:ClearLines()
+    local c = QUALITY_RGB[row[5] or 1] or QUALITY_RGB[1]
+    tt:AddLine(Gear.ScanName(id) or row.name or ("Item " .. id), c[1], c[2], c[3])
+    local slot = _G["INVTYPE_" .. tostring(row[1])]
+    if type(slot) == "string" then tt:AddLine(slot, 1, 1, 1) end
+    if (row[7] or 0) > 0 then tt:AddLine(L["Gegenstandsstufe %d"]:format(row[7]), 1, 0.82, 0) end
+    local stats, lines = Gear.ScannedStats(id) or Gear.ComputedStats(id) or {}, {}
+    for k, v in pairs(stats) do
+        if type(v) == "number" and Gear.STAT_LABELS[k] and k ~= "SPEED" then
+            lines[#lines + 1] = (k == "DPS" and "%.1f %s" or "%+d %s"):format(v, Gear.STAT_LABELS[k])
+        end
+    end
+    table.sort(lines)
+    for _, line in ipairs(lines) do tt:AddLine(line, 1, 1, 1) end
+    if (row[4] or 0) > 1 then tt:AddLine(L["Benötigt Stufe %d"]:format(row[4]), 1, 1, 1) end
+    local n = 0
+    for i = Gear.FIRST_SOURCE, #row do
+        local rec = Gear.Source(row[i])
+        if rec and n < 3 then
+            n = n + 1
+            tt:AddLine(Gear.SourceText(rec), 0.85, 0.85, 0.85, true)
+        end
+    end
+    tt:AddLine(L["Aus Amisias Scan: der Server beschreibt dieses Item nicht (mehr)."], 0.6, 0.6, 0.6, true)
+    tt:Show()
+    return true
+end
+
 -- Whether a class (and spec) can wear the item at a level, by item type alone.
 function Gear.Usable(class, row, level, spec)
     local loc, classID, sub = row[1], row[2], row[3]
@@ -477,6 +528,28 @@ Gear.KIND_ORDER = KIND_ORDER
 -- Filter group per source kind: rare mobs and world drops share one switch (Gear.FilterKey).
 Gear.FILTER_OF = { X = "X", Q = "Q", D = "D", C = "C", V = "V", R = "W", W = "W", A = "A", P = "P" }
 
+-- Realistic sources (D-59): a fixed source can be planned for (a quest, a boss, a recipe, a vendor,
+-- a PvP rank, a named rare mob); a random world drop cannot ("expect random items, never a given
+-- one"). Rare mobs count without the world drop switch, a world drop only with it and never an epic
+-- one; the auction house only for an item with a fixed source, or a non-epic world drop with the
+-- switch on.
+local FIXED = { X = true, Q = true, D = true, C = true, V = true, P = true, R = true }
+function Gear.HasFixedSource(row)
+    if not row then return false end
+    for i = Gear.FIRST_SOURCE, #row do
+        local rec = Gear.Source(row[i])
+        if rec and FIXED[rec[1]] then return true end
+    end
+    return false
+end
+
+-- Whether an item may come from other players (the AH chip, the play style "Kaufbar") with the
+-- source switches: it has a fixed source, or it is a non-epic world drop and world drops are on.
+function Gear.BuyRealistic(row, sources)
+    if Gear.HasFixedSource(row) then return true end
+    return (sources and sources.W) and (row and (row[5] or 0) < 4) or false
+end
+
 -- The filter switch a source belongs to.
 function Gear.FilterKey(rec)
     local k = rec[1]
@@ -519,7 +592,11 @@ end
 -- item that binds on pickup (row given) counts only with that profession and skill.
 function Gear.SourceOk(rec, opts, row)
     if not rec then return false end
-    if not opts.sources[Gear.FilterKey(rec)] then return false end
+    local kind = rec[1]
+    -- a named rare mob is a fixed source: no switch (D-59)
+    if kind ~= "R" and not opts.sources[Gear.FilterKey(rec)] then return false end
+    if kind == "W" and row and (row[5] or 0) >= 4 then return false end
+    if kind == "A" and row and not Gear.BuyRealistic(row, opts.sources) then return false end
     -- the play style of the own options (Gear/PlayStyle.lua, F-124)
     if opts.style and not ns.PlayStyle.RecOk(rec, row, opts.style) then return false end
     if rec[1] == "C" and row and row[6] == 1 and opts.prof == "mine" and type(opts.skills) == "table" then
@@ -563,7 +640,7 @@ function Gear.Sources(id, opts)
     local st = opts and opts.style
     if st then
         if not ns.PlayStyle.ItemOk(id, st) then return {} end
-        if ns.PlayStyle.BuyOk(row, st) then
+        if ns.PlayStyle.BuyOk(row, st, opts.sources) then
             local hasAH = false
             for _, rec in ipairs(out) do if rec[1] == "A" then hasAH = true end end
             if not hasAH then out[#out + 1] = ns.PlayStyle.AH_REC end
@@ -1308,7 +1385,7 @@ function Gear.Best(opts)
             -- the play style (F-124): bought from other players, the reputation of the item
             local st = opts.style
             if st then
-                if not ok and ns.PlayStyle.BuyOk(row, st) then ok = true end
+                if not ok and ns.PlayStyle.BuyOk(row, st, opts.sources) then ok = true end
                 if ok and not ns.PlayStyle.ItemOk(id, st) then ok = false end
             end
             if ok and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok = false end

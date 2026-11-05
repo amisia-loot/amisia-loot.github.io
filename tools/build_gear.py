@@ -934,6 +934,29 @@ def previous_stats(path=OUT):
     return {int(i): v for i, v in re.findall(r'^\s*\[(\d+)\]\s*=\s*"([^"\\]*)",$', m.group(1), re.M)}
 
 
+def client_has(client, iid):
+    """Whether the client's own item table holds an id: client is a set of ids or a list of [from, to]
+    ranges (the scan archive's); None: unknown, so every id counts as known."""
+    if client is None:
+        return True
+    if isinstance(client, (set, frozenset)):
+        return iid in client
+    lo, hi = 0, len(client)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if client[mid][1] < iid:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo < len(client) and client[lo][0] <= iid <= client[lo][1]
+
+
+def clean_name(name):
+    """An item name as the data may hold it: plain text, no codes, at most 64 bytes."""
+    name = re.sub(r'\|c[0-9a-fA-F]{8}|\|r', '', str(name or '')).replace('|', '').strip()
+    return name if 0 < len(name.encode('utf-8')) <= 64 else ''
+
+
 def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
     used = sorted({n for k in keep.values() for n in k[1]})
     renum = {n: i + 1 for i, n in enumerate(used)}
@@ -959,6 +982,8 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
         '-- RP: [itemID] = faction id * 10 + the standing it asks for (0 hated .. 7 exalted), from the client\'s',
         '-- ItemSparse (MinFactionID, MinReputation). QT: [questID] = the quest type the addon learned from the quest',
         '-- log (G group or elite, D dungeon, R raid, P PvP; tools/quest_tag_archive.json), for the quests of S.',
+        '-- N, IC: [itemID] = the name (as the German client showed it) and the icon file id the scan saw, only for',
+        '-- the items the client\'s own item table lacks: the server alone describes those and may no longer do so.',
         'ns.GEAR = {',
         f'    game = "forever", cap = 60, built = {lua_str(info["built"])},',
         '    S = {',
@@ -1004,6 +1029,20 @@ def write_lua(out, src, keep, zone_rows, info, missing=(), old_stats=None):
     quest_ids = {src.rows[n - 1][6] for n in used if src.rows[n - 1][0] == 'Q' and len(src.rows[n - 1]) > 6}
     for qid in sorted(quest_ids & set(qtags)):
         lines.append(f'        [{qid}] = {lua_str(qtags[qid])},')
+    lines.append('    },')
+    # name and icon of the items only the server describes (the addon's own tooltip, D-59)
+    unknown = [iid for iid in sorted(keep) if not client_has(info.get('client'), iid)]
+    lines.append('    N = {')
+    for iid in unknown:
+        name = clean_name(keep[iid][0].get('name'))
+        if name:
+            lines.append(f'        [{iid}] = {lua_str(name)},')
+    lines.append('    },')
+    lines.append('    IC = {')
+    for iid in unknown:
+        icon = str(keep[iid][0].get('icon') or '')
+        if icon.isdigit() and int(icon) > 0:
+            lines.append(f'        [{iid}] = {icon},')
     lines.append('    },')
     lines.append('    M = {')
     for i in range(0, len(missing), 20):
@@ -1115,8 +1154,12 @@ def main(argv=None):
         sources.append('wowsrc.com')
     rep = client_reputation(args.wago)
     qtags = update_quest_tags(dbs)
+    # the ids of the client's item table: the export, else the scan archive's ranges
+    client = client_item_ids(args.wago)
+    if client is None and args.scan_archive and os.path.exists(args.scan_archive):
+        client = (build_scan_archive.load(args.scan_archive).get('client') or {}).get('ids')
     n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d'), 'sources': sources,
-                                                      'rep': rep, 'qtags': qtags}, missing, old_stats)
+                                                      'rep': rep, 'qtags': qtags, 'client': client}, missing, old_stats)
     log(f'reputation: {sum(1 for i in keep if i in rep)} of {len(keep)} items ask for a standing')
     scanned = sum(1 for k in keep.values() if k[0].get('stats'))
     kept_old = sum(1 for i, k in keep.items() if not k[0].get('stats') and i in old_stats)

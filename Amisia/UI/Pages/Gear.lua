@@ -66,7 +66,7 @@ local function itemText(id)
     local row = Gear.Item(id)
     q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
     if not name then nameMissing = true end
-    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or (row and row.name) or ("Item " .. id))
+    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or Gear.ScanName(id) or (row and row.name) or ("Item " .. id))
 end
 
 -- A worn item's name in the colour of its link.
@@ -180,6 +180,8 @@ local function itemTooltip(owner, id)
         GameTooltip:SetHyperlink(link)
     elseif GameTooltip.SetItemByID then
         GameTooltip:SetItemByID(id)
+        -- an item only the server describes and no longer does: what the scan saw (D-59)
+        if Gear.ScanTooltip(GameTooltip, id) then return end
     end
     GameTooltip:Show()
 end

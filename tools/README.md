@@ -397,6 +397,10 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go
   into `GearData.lua` (`ST`), so the window needs no loading, and newly revealed items join.
 - Items without scanned stats are read from the client when the window opens.
+- `N` and `IC` hold the scan's name and icon file id of every item the client's own ItemSparse lacks
+  (from the export, else the scan archive's id ranges): only the server describes those, and once it
+  stops (an event's items), the addon shows them with these and an own tooltip (`Gear.ScanTooltip`,
+  D-59). The names are the German client's, shown only on a German client.
 - The reputation an item asks for (`RP`, the play style "Jetzt holbar" and the catalog group "Ruf",
   F-124): `MinFactionID` and `MinReputation` of the client's `ItemSparse` in `--wago` (the user's
   `export_db2.ps1`); none without the table.

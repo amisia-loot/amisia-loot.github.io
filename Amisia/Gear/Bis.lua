@@ -318,14 +318,18 @@ end
 -- Options
 ---------------------------------------------------------------------------
 
--- The source switches of the page (window state settings.bis.sources): everything but the auction
--- house and PvP vendors.
+-- The source switches of the page (window state settings.bis.sources): everything but random world
+-- drops, the auction house and PvP vendors. settings.bis.srcRule 2: the world drops were switched
+-- off once for the realistic sources (D-59); the player may switch them on again.
 local function sourceState()
     local s = AmisiaDB and AmisiaDB.settings
-    if not s then return { X = true, D = true, V = true, C = true, W = true, Q = true } end
+    if not s then return { X = true, D = true, V = true, C = true, W = false, Q = true } end
     s.bis = type(s.bis) == "table" and s.bis or {}
     if type(s.bis.sources) ~= "table" then
-        s.bis.sources = { X = true, D = true, V = true, C = true, W = true, Q = true, A = false, P = false }
+        s.bis.sources = { X = true, D = true, V = true, C = true, W = false, Q = true, A = false, P = false }
+    end
+    if s.bis.srcRule ~= 2 then
+        s.bis.sources.W, s.bis.srcRule = false, 2
     end
     return s.bis.sources
 end

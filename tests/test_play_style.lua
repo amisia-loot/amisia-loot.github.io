@@ -32,6 +32,8 @@ NS.GEAR = { game = "forever", cap = 60, built = "test-play-style", I = {}, Z = {
 } }
 NS.MAP = { P = { ["I:36"] = "1436:4200:7100" } }
 Gear._reset()
+-- the fixture's world drops count: the switch is off by default (D-59)
+NS.BisOpts().sources.W = true
 local LINKS = {}
 local function gear(id, name, bind, sources, str)
     LINKS[id] = STUB.item(id, name, 2)
@@ -122,6 +124,9 @@ assert(AmisiaDB.questtags.v == 1 and AmisiaDB.questtags.list[5] == "G" and Amisi
 ---------------------------------------------------------------------------
 PS.Clear(); PS.Toggle("buy")
 assert(passes(705) and passes(706) and passes(707), "the bind-on-equip hood and cap, the vendor's helm")
+NS.BisOpts().sources.W = false
+assert(not passes(707), "world drops off: the random world drop's cap is no realistic buy (D-59)")
+NS.BisOpts().sources.W = true
 assert(not passes(701) and not passes(704) and not passes(709), "bound quest, boss and crafted items are out")
 local src = Gear.Sources(705, NS.BisOpts())
 assert(#src == 1 and Gear.SourceText(src[1]) == "Auktionshaus (bindet beim Anlegen)", "the source of a bought item")

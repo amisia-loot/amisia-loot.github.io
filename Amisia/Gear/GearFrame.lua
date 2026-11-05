@@ -37,7 +37,9 @@ local function settings()
     local _, myClass = UnitClass("player")
     g.class = g.class or myClass or "WARRIOR"
     g.view = g.view or "overview"
-    if g.sources == nil then g.sources = { Q = true, D = true, C = true, V = true, W = true, A = true, P = false, B = false } end
+    if g.sources == nil then g.sources = { Q = true, D = true, C = true, V = true, W = false, A = true, P = false, B = false } end
+    -- the realistic sources (D-59): random world drops off once, the player may switch them on again
+    if g.srcRule ~= 2 then g.sources.W, g.srcRule = false, 2 end
     if g.faction == nil then
         local fac = UnitFactionGroup and UnitFactionGroup("player")
         g.faction = fac == "Horde" and "H" or "A"
@@ -84,14 +86,14 @@ end
 local function itemInfo(id)
     local name, link, q, _, _, _, _, _, _, icon = C_Item.GetItemInfo(id)
     if not icon then icon = select(5, C_Item.GetItemInfoInstant(id)) end
-    return name, link, q, icon
+    return name, link, q, icon or Gear.ScanIcon(id)
 end
 
 local function coloredName(id)
     local name, _, q = itemInfo(id)
     local row = Gear.Item(id)
     q = q or (row and row[5]) or 1
-    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or (row and row.name) or ("Item " .. id))
+    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or Gear.ScanName(id) or (row and row.name) or ("Item " .. id))
 end
 
 ---------------------------------------------------------------------------
@@ -120,7 +122,7 @@ end
 local function showItemTooltip(owner, id, score, extra, pick)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local _, link = itemInfo(id)
-    if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(id) end
+    if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(id); Gear.ScanTooltip(GameTooltip, id) end
     GameTooltip:AddLine(" ")
     if pick and ns.BisPickText then
         GameTooltip:AddLine(ns.BisPickText(pick), 0.25, 1, 0.4, true)

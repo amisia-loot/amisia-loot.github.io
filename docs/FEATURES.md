@@ -931,6 +931,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine andere Spezialisierung oder den Spielstil wechselst, dann ändern sich die Stufen-Sets mit; "Set anprobieren" zieht ein Stufen-Set dem Modell an, Rechtsklick auf ein Teil "Als meine Wahl" setzt es als deine Wahl.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("kannst du dich nach items set für gewisse lvl bereiche erstellen und unsere bis liste dafür aktualisieren"); Auswahl: im Katalog, berechnet, 10er-Schritte. Rechnet wie die Simulation (`ns.BisFor`) mit deiner Klasse, Spezialisierung, Fraktion, Quellen, Waffenplan und Ausschlüssen; die BiS-Empfehlungen (bis_picks.json) gehen vor. Neue Items aus `/amisia scan` kommen mit dem nächsten `build.py data` hinein.
 
+### F-132 Realistische Quellen und eigener Tooltip
+- Version: 2.51.0
+- Status: gebaut
+- Prüfung: Wenn du die Ausrüstungstabelle (`/amisia gear`) oder die Ziele öffnest, dann ist der Chip "Weltdrops" aus und von Stufe 1 bis 50 stehen keine epischen Items mehr mit "?" und Stufe 1, sondern Quest-, Dungeon-, Handwerks- und Händler-Items.
+- Prüfung: Wenn du "Weltdrops" einschaltest, dann kommen grüne und blaue Welt-Drops dazu, aber nie epische.
+- Prüfung: Wenn du mit "AH" an ein Item kommst, dann hat es eine feste Quelle (z. B. hergestellt oder Dungeon-Drop, bindet beim Anlegen); ein Item, das nur im Auktionshaus gesehen wurde, kommt nicht.
+- Prüfung: Wenn du im Katalog nach "Prophezeiung" suchst, dann zeigen die Items der Stufe 30 Namen und Symbol, und der Tooltip nennt Slot, Gegenstandsstufe, Werte, Quellen und "Aus Amisias Scan: der Server beschreibt dieses Item nicht (mehr)."
+- Notiz: Wunsch des Nutzers 2026-11-05 ("können wir bei den set nur realistischge sachen rein machen die man würklich bekommt", Bildschirmfoto der Tabelle voller 288xxx-Epics). DECISIONS D-59.
+
 ### F-122 Seite Raids
 - Version: 2.45.0
 - Status: gebaut

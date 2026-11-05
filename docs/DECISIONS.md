@@ -1295,3 +1295,22 @@ Addons. Vor dem ersten Upload entscheidet der Nutzer die Lizenz von Amisia; die 
 2026-11-04).
 **Durchgesetzt durch:** `tools/tests/test_curseforge.py`,
 `tools/tests/test_build_tool.py::test_release_uploads_only_what_was_pushed`.
+
+## D-59 Realistische Quellen: geplant wird nur, was man gezielt bekommt
+
+**Datum:** 2026-11-05
+**Entscheidung:** Ziele, Ausrüstungstabelle, Stufen-Sets und Simulation planen mit festen Quellen: Quests,
+Dungeon- und Raid-Bosse, Handwerk, Händler, PvP-Ränge und benannte seltene Mobs (`R`, ohne Schalter).
+Zufällige Welt-Drops (`W`) zählen nur mit dem Chip "Weltdrops" (seit 2.51 aus, einmal für alle Spieler
+ausgeschaltet: `srcRule` 2) und nie als Epics. Das Auktionshaus (Chip "AH" und Spielstil "Kaufbar") zählt nur
+für ein Item mit fester Quelle oder einen nicht epischen Welt-Drop bei eingeschalteten Welt-Drops
+(`Gear.BuyRealistic`). Items, die nur der Server beschreibt (nicht in der Client-Tabelle), zeigt Amisia mit
+Name (nur deutscher Client) und Symbol aus dem Scan (`N`, `IC` in GearData) und einem eigenen Tooltip.
+**Grund:** Wunsch des Nutzers 2026-11-05 ("nur realistische Sachen rein machen, die man wirklich bekommt"):
+Epics der Stufe 30 ab Stufe 1 (288xxx), die die Gilde nur am 23.10.2026 bei normalen Mobs in Durotar und
+Tirisfal fallen sah und die der Server danach nicht mehr beschrieb, füllten die Tabelle von 1 bis 50.
+Leveling-Listen anderer planen zufällige BoE-Drops nicht ein: man findet zufällige Items, aber nie gezielt
+ein bestimmtes.
+**Folge:** Wer zufällige Welt-Drops will, schaltet "Weltdrops" ein; Epics aus Welt-Drops bleiben draußen.
+**Durchgesetzt durch:** `tests/test_bis_score.lua` (Regeln, eigener Tooltip), `tests/test_bis_targets.lua`,
+`tests/test_play_style.lua`, `tools/tests/test_build_gear.py::test_names_and_icons_only_for_items_the_client_lacks`.
