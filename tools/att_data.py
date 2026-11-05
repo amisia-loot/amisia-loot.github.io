@@ -4,7 +4,7 @@
 Source: the folder .contrib/.db/forever of https://github.com/ATTWoWAddon/AllTheThings, MIT licence
 (Copyright (c) 2026 AllTheThings WoW Addon); the licence text ships in Amisia/LICENSES/.
 refresh() downloads the files the builds read through the GitHub API (the repository is far too
-large to clone) into ~/addons/_cache/att, outside the repo:
+large to clone) into ~/addons/_cache/att (or $AMISIA_ATT_CACHE), outside the repo:
 
   - dungeons & raids/, zones/: the Forever dungeons and zones (quests with giver, coordinates,
     faction, level, pre-quests and rewards; bosses and their loot; rares, vendors, zone drops);
@@ -42,7 +42,9 @@ import sys
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ATT_CACHE = os.path.expanduser('~/addons/_cache/att')
+# the download the builds read; AMISIA_ATT_CACHE points every builder at another one (a fresh download
+# to compare before it replaces the cache; `build.py data --att DIR` sets it)
+ATT_CACHE = os.path.expanduser(os.environ.get('AMISIA_ATT_CACHE') or '~/addons/_cache/att')
 ATT_REPO = 'ATTWoWAddon/AllTheThings'
 ATT_PATH = '.contrib/.db/forever'
 ATT_LICENSE = 'MIT, Copyright (c) 2026 AllTheThings WoW Addon'
@@ -210,7 +212,13 @@ end
 env.header = function(_, id, t) return node("header", id, t) end
 env.ALLIANCE_ONLY, env.HORDE_ONLY = "A", "H"
 env.root = function(r, t) rec[#rec + 1] = { root = NAMED[r] or "?", t = t } end
-env.maproot = function(_, map, t) rec[#rec + 1] = { root = "Zones", t = node("m", map, t) } end
+-- maproot(MAP.KALIMDOR, MAP.TANARIS, {...}); maproot(MAP.ZEPHRAS_ISLE, {...}) names the map only once
+env.maproot = function(parent, map, t)
+    if t == nil and plain(map) then map, t = parent, map end
+    rec[#rec + 1] = { root = "Zones", t = node("m", map, t) }
+end
+-- the dungeon files since November 2026: instanceroot(63, {...}) for root(ROOTS.Instances, inst(63, {...}))
+env.instanceroot = function(id, t) rec[#rec + 1] = { root = "Instances", t = node("inst", id, t) } end
 -- Season of Discovery phases are not Forever's
 env.applyclassicphase = function(phase, t)
     local name = NAMED[phase]
@@ -225,11 +233,15 @@ env.sharedData = function(_, t) return t end
 local MAPS = {}
 local RACE = { HUMAN = 1, ORC = 2, DWARF = 3, NIGHTELF = 4, UNDEAD = 5, SCOURGE = 5, TAUREN = 6, GNOME = 7, TROLL = 8 }
 local ALLIANCE = { [1] = true, [3] = true, [4] = true, [7] = true }
+-- races without a known race id (Forever's Skyborne): their faction only
+local SIDE = { SKYBORNE_ALLIANCE = "A", SKYBORNE_HORDE = "H" }
 local CLASS = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
 -- skill lines by the data's constant names (requireSkill)
 local SKILL = { ALCHEMY = 171, BLACKSMITHING = 164, COOKING = 185, ENCHANTING = 333, ENGINEERING = 202, FIRST_AID = 129,
                 FISHING = 356, HERBALISM = 182, LEATHERWORKING = 165, MINING = 186, SKINNING = 393, TAILORING = 197,
-                JEWELCRAFTING = 755, LOCKPICKING = 633, POISONS = 40 }
+                JEWELCRAFTING = 755, LOCKPICKING = 633, POISONS = 40,
+                -- a specialization counts as its profession (the client checks the specialization itself)
+                ARMORSMITH = 164, WEAPONSMITH = 164, GNOMISH_ENGINEERING = 202, GOBLIN_ENGINEERING = 202 }
 local ALL_ALLIANCE, ALL_HORDE = 1 + 4 + 8 + 64, 2 + 16 + 32 + 128
 
 local S = {}
@@ -295,7 +307,9 @@ local function raceCode(v, inherited)
     local a, h = false, false
     for _, r in ipairs(v) do
         local id = type(r) == "number" and r or RACE[NAMED[r] or ""]
-        if id then if ALLIANCE[id] then a = true else h = true end end
+        local side = SIDE[NAMED[r] or ""]
+        if id then if ALLIANCE[id] then a = true else h = true end
+        elseif side == "A" then a = true elseif side == "H" then h = true end
     end
     if a and not h then return "A" elseif h and not a then return "H" end
     return ""
@@ -308,6 +322,9 @@ local function raceMask(v, inherited)
     local mask, seen = 0, {}
     for _, r in ipairs(v) do
         local id = type(r) == "number" and r or RACE[NAMED[r] or ""]
+        -- a race without an id (Skyborne) cannot be named in the mask: rather any race of the faction
+        -- than one shut out
+        if not id and SIDE[NAMED[r] or ""] then return 0 end
         if id and not seen[id] then seen[id] = true; mask = mask + 2 ^ (id - 1) end
     end
     if mask == ALL_ALLIANCE or mask == ALL_HORDE or mask == ALL_ALLIANCE + ALL_HORDE then return 0 end
@@ -401,7 +418,9 @@ local function walk(v, ctx, depth)
     if kind == "inst" then
         local maps = ids(t.mapID)
         for _, m in ipairs(ids(t.maps)) do maps[#maps + 1] = m end
-        local area = t["zone-text-areaID"]
+        -- zoneTextAreaID since November 2026, "zone-text-areaID" before; the first of a list else
+        local area = t.zoneTextAreaID or t["zone-text-areaID"]
+        if type(area) ~= "number" then area = ids(t.zoneTextAreaIDs)[1] or ids(t["zone-text-areas"])[1] end
         emit("insts", { id = id, file = ctx.file, area = type(area) == "number" and area or nil, maps = maps,
                         pts = points(t) })
         c.inst, c.zone, c.hdr, c.npc, c.npcKind, c.quest = id, maps[1] or ctx.zone, nil, nil, nil, nil
@@ -411,7 +430,9 @@ local function walk(v, ctx, depth)
     elseif kind == "m" then
         c.zone = mapOf(id) or ctx.zone
     elseif kind == "q" and type(id) == "number" then
-        local givers, objs, startItem, sitems = ids(t.qg), {}, t.qs ~= nil or t.qi ~= nil or t.qis ~= nil, {}
+        -- qs: the item that starts the quest ("QS!"); qi/qis are items the quest hands out ("PQI!"), no start
+        local givers, objs, sitems = ids(t.qg), {}, ids(t.qs)
+        local startItem = #sitems > 0
         for _, g in ipairs(ids(t.qgs)) do givers[#givers + 1] = g end
         local provs = plain(t.providers) and t.providers or { t.provider }
         for _, p in ipairs(provs) do
@@ -587,11 +608,13 @@ def hundredths(v):
 
 # Names live in the files' comments: "q(166, {	-- The Defias Brotherhood (7/7)",
 # "qg = 234,	-- Gryan Stoutmantle <The People's Militia>", "n(644, {	-- Rhahk'Zor <The Foreman>".
-_NAMED_NODE = re.compile(r'\b(q|n|inst|e|o|i|fp)\(\s*(\d+)\s*(?:,\s*\{|\)\s*,?)\s*--\s*([^\n]+)')
+_NAMED_NODE = re.compile(r'\b(q|n|inst|instanceroot|e|o|i|fp)\(\s*(\d+)\s*(?:,\s*\{|\)\s*,?)\s*--\s*([^\n]+)')
 _NPC_FIELD = re.compile(r'(?:\b(?:qg|cr|creatureID)|\["(?:qg|cr|creatureID)"\])\s*=\s*(\d+)\s*,\s*--\s*([^\n]+)')
 _NPC_LIST = re.compile(r'(?:\b(?:crs|qgs)|\["(?:crs|qgs)"\])\s*=\s*\{([^}]*)\}')
 _LIST_ENTRY = re.compile(r'(\d+)\s*,\s*--\s*([^\n]+)')
-_NPC_PROVIDER = re.compile(r'\{\s*"n"\s*,\s*(\d+)\s*\}\s*,?\s*--\s*([^\n]+)')
+_PROVIDER = re.compile(r'\{\s*"([noi])"\s*,\s*(\d+)\s*\}\s*,?\s*--\s*([^\n]+)')
+# qs = 247826,	-- Croaky's Head (QS!): the item that starts a quest
+_QS_FIELD = re.compile(r'(?:\bqs|\["qs"\])\s*=\s*(\d+)\s*,\s*--\s*([^\n]+)')
 
 
 def clean_name(text):
@@ -607,7 +630,7 @@ def title_of(text):
 
 
 def comment_names(src):
-    """{('q'|'n'|'inst'|'e'|'o', id): (name, title or None)} from one file's comments."""
+    """{('q'|'n'|'inst'|'e'|'o'|'i'|'fp', id): (name, title or None)} from one file's comments."""
     out = {}
 
     def put(kind, i, text):
@@ -615,11 +638,13 @@ def comment_names(src):
         if name:
             out.setdefault((kind, int(i)), (name, title_of(text)))
     for m in _NAMED_NODE.finditer(src):
-        put(m.group(1), m.group(2), m.group(3))
+        put('inst' if m.group(1) == 'instanceroot' else m.group(1), m.group(2), m.group(3))
     for m in _NPC_FIELD.finditer(src):
         put('n', m.group(1), m.group(2))
-    for m in _NPC_PROVIDER.finditer(src):
-        put('n', m.group(1), m.group(2))
+    for m in _PROVIDER.finditer(src):
+        put(m.group(1), m.group(2), m.group(3))
+    for m in _QS_FIELD.finditer(src):
+        put('i', m.group(1), m.group(2))
     for lst in _NPC_LIST.finditer(src):
         for m in _LIST_ENTRY.finditer(lst.group(1)):
             put('n', m.group(1), m.group(2))
@@ -779,7 +804,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
      'sold': [(item, vendor id, old)], 'world': [item], 'pvp': [(item, faction)],
      'crafted': [(item, profession key)], 'items': {id: item dict (read_itemdb)}, 'uimap_instance': {},
-     'item_names': {id: English name from the comments},
+     'item_names': {id: English name from the comments}, 'npc_names': {id: name}, 'object_names': {id: name}
+     (game objects: a quest from a wanted poster), both from the comments,
      'flights': {flight path id: {'place' (the comment's "Thelsamar, Loch Modan"), 'npc', 'name' (of the
                  flight master), 'points', 'faction' ('A', 'H' or '' for both), 'file', 'old'}}}
 
@@ -792,6 +818,14 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
         S.maps(fh.read())
     raw = S.new()
     names, errors, files = {}, {}, []
+    # the race lists of the class quests (ALLIANCE_PALADINS = { HUMAN, DWARF }, since November 2026):
+    # globals of the data files' environment, set before any data file runs
+    races = os.path.join(base, '.config', 'constants', 'races.lua')
+    if os.path.exists(races):
+        with open(races, encoding='utf-8-sig') as fh:
+            err = S.run(preprocess(fh.read()), '.config/constants/races.lua', raw)
+        if err:
+            errors['.config/constants/races.lua'] = err
     for path in data_files(base, dirs):
         rel = os.path.relpath(path, base).replace(os.sep, '/')
         with open(path, encoding='utf-8-sig') as fh:
@@ -955,7 +989,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
           'instances': instances, 'quests': quests, 'npcs': npcs, 'drops': drops, 'zone_drops': zone_drops,
           'sold': sold, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
           'items': read_itemdb(base, S) if items else {}, 'uimap_instance': uimap_instance,
-          'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights}
+          'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights,
+          'npc_names': {i: v[0] for (k, i), v in names.items() if k == 'n'},
+          'object_names': {i: v[0] for (k, i), v in names.items() if k == 'o'}}
     return db
 
 
@@ -963,4 +999,4 @@ def empty_db():
     """The neutral form without any data (tests, or a build without a download)."""
     return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {},
             'drops': [], 'zone_drops': [], 'sold': [], 'world': [], 'pvp': [], 'crafted': [], 'items': {},
-            'uimap_instance': {}, 'item_names': {}, 'flights': {}}
+            'uimap_instance': {}, 'item_names': {}, 'flights': {}, 'npc_names': {}, 'object_names': {}}

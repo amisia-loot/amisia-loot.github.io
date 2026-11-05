@@ -1,6 +1,6 @@
 """One entry point for Amisia's builds, checks and releases.
 
-    python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
+    python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
     python3 tools/build.py check
     python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -208,7 +208,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('dungeons', 'build_dungeons.py', ['--wago', wago], [('LFGDungeons', 'AreaTable')], []),
         ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else []), None, None),
         ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
-        ('dungeon quests', 'build_dungeonquests.py', [], None, None),
+        ('dungeon quests', 'build_dungeonquests.py', sv_args, None, None),
         ('quests', 'build_quests.py', [], None, None),
         ('professions', 'build_professions.py', ['--wago', wago], ['ItemSparse', 'SkillLineAbility'], 'skip'),
         ('talents', 'build_talents.py', ['--wago', wago], 'talents', 'skip'),
@@ -244,6 +244,13 @@ def cmd_data(args):
     if args.sv and not os.path.exists(args.sv):
         raise SystemExit('no SavedVariables file ' + args.sv)
     wago = os.path.abspath(os.path.expanduser(args.wago))
+    if getattr(args, 'att', None):
+        att = os.path.abspath(os.path.expanduser(args.att))
+        if not os.path.isdir(os.path.join(att, 'dungeons & raids')):
+            raise SystemExit('no AllTheThings download in ' + att)
+        # every builder reads att_data.ATT_CACHE, which honours this
+        os.environ['AMISIA_ATT_CACHE'] = att
+        say(f'AllTheThings download: {att}')
     py = sys.executable
     done, skipped = [], []
     for name, script, sargs, needs, without in data_steps(args.sv, wago, args.refresh_att):
@@ -765,6 +772,8 @@ def main(argv=None):
     d.add_argument('--sv', default=None, help='Amisia SavedVariables for build_gear and build_bis '
                                               '(default: what each build finds, e.g. ~/addons/_SavedVariables/Amisia.lua)')
     d.add_argument('--wago', default=WAGO, help=f'folder of the client table CSVs (default {WAGO})')
+    d.add_argument('--att', default=None, help='AllTheThings download to build from (default $AMISIA_ATT_CACHE or '
+                                               '~/addons/_cache/att); sets AMISIA_ATT_CACHE for every step')
     d.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever data first')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
     sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')

@@ -1,4 +1,13 @@
 {
- "updated": "2026-10-16",
- "entrances": {}
+ "updated": "2026-11-05",
+ "entrances": {
+  "389": {
+   "map": 1454,
+   "x": 5335,
+   "y": 4854,
+   "name": "Ragefireabgrund",
+   "kind": "party",
+   "seen": 1793908133
+  }
+ }
 }

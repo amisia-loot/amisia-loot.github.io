@@ -690,8 +690,11 @@ def test_the_committed_picks_are_valid():
     assert errors == [] and len(ok) == len(picks) >= 1
     with open(os.path.join(ROOT, 'Amisia', 'Data', 'BisData.lua'), encoding='utf-8') as fh:
         b = fh.read()
+    with open(os.path.join(ROOT, 'Amisia', 'Data', 'GearData.lua'), encoding='utf-8') as fh:
+        gear = fh.read()
     for p in ok:
-        assert f'item = {p["item"]}' in b and f'[{p["item"]}] = {{' in b
+        # the pick's item row: in the gear data when a source there has it, else in BisData.PI
+        assert f'item = {p["item"]}' in b and (f'[{p["item"]}] = {{' in b or f'\n[{p["item"]}]={{' in gear)
     enh = [p for p in ok if p['item'] == 280604]
     assert enh and enh[0]['class'] == 'SHAMAN' and enh[0]['spec'] == 'enh' and enh[0]['from'] <= 30 <= enh[0]['to']
     assert 'Gilde' not in json.dumps(picks, ensure_ascii=False)
