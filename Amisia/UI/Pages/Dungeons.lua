@@ -170,8 +170,11 @@ local function questItems(key)
     return out, status
 end
 
-local STATE_TEXT = { done = L["erledigt"], active = L["im Log"], gone = L["nicht mehr möglich"] }
-local function questState(n) return n.done and "done" or n.active and "active" or n.gone and "gone" or nil end
+local STATE_TEXT = { done = L["erledigt"], active = L["im Log"], ready = L["im Log, fertig"], gone = L["nicht mehr möglich"],
+    locked = L["noch nicht annehmbar"] }
+-- the state shown as text in the row (open and locked show only the mark there)
+local ROW_STATE = { done = true, active = true, ready = true, gone = true }
+local function questState(n) return ns.Dungeons.QuestState(n) end
 
 -- The level text of a quest in the quest log's colours (simplified): red when it cannot be taken yet
 -- or is five levels above, orange three above, yellow around the own level, green below, grey far below.
@@ -218,13 +221,14 @@ local function fillDetailRow(r, e)
         -- a quest or one of its pre-quests: state, title, level, where it starts
         local q, pre = e.q, e.kind == "pre"
         local st = questState(q)
-        local title = pre and ("   " .. L["Vorquest: %s"]:format(q.title) .. (q.one and L[" (oder eine andere)"] or "")) or (GOLD_TEXT .. e.text .. "|r")
+        local icon = ns.Dungeons.QuestStateIcon(st) .. " "
+        local title = pre and (L["Vorquest: %s"]:format(q.title) .. (q.one and L[" (oder eine andere)"] or "")) or (GOLD_TEXT .. e.text .. "|r")
         local over = q.done or q.gone
-        r.name:SetText((over and (GREY .. title .. "|r")) or title)
+        r.name:SetText((pre and "   " or "") .. icon .. ((over and (GREY .. title .. "|r")) or title))
         r.slot:SetText(questLevelText(q))
         r.gain:SetText(not pre and q.best and ((over and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
         local where = ns.Dungeons.QuestStartText(q)
-        r.rate:SetText((st and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
+        r.rate:SetText((ROW_STATE[st] and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
         local xp = ns.Dungeons.XPText(ns.Dungeons.QuestXP(q))
         r.xp:SetText(over and xp ~= "" and (GREY .. xp .. "|r") or xp)
     end
@@ -240,7 +244,7 @@ local function questTip(self)
     local lv = ns.Dungeons.QuestLevelText(q)
     if lv ~= "" then GameTooltip:AddLine(L["Level %s"]:format(lv), 0.85, 0.85, 0.85) end
     local st = questState(q)
-    GameTooltip:AddLine(st and STATE_TEXT[st] or L["offen"], 0.85, 0.85, 0.85)
+    GameTooltip:AddLine(ns.Dungeons.QuestStateIcon(st) .. " " .. (STATE_TEXT[st] or L["offen"]), 0.85, 0.85, 0.85)
     local where = ns.Dungeons.QuestStartText(q)
     if where ~= "" then GameTooltip:AddLine(L["Start: %s"]:format(where), 0.85, 0.85, 0.85, true) end
     local value, how, seen = ns.Dungeons.QuestXP(q)
@@ -254,7 +258,11 @@ local function questTip(self)
     for _, n in ipairs(q.chain or {}) do
         GameTooltip:AddLine(L["Vorquest: %s"]:format(n.title) .. (n.done and L[" (erledigt)"] or ""), 0.6, 0.6, 0.6, true)
     end
-    if q.start ~= "X" then GameTooltip:AddLine(L["Klick: Wegpunkt zum Start"], 0.31, 0.82, 0.42) end
+    if st == "active" and e.kind == "quest" then
+        GameTooltip:AddLine(L["Klick: Weltkarte und Wegpunkt zum Eingang"], 0.31, 0.82, 0.42)
+    elseif q.start ~= "X" then
+        GameTooltip:AddLine(L["Klick: Weltkarte und Wegpunkt zum Questgeber"], 0.31, 0.82, 0.42)
+    end
     GameTooltip:Show()
 end
 
@@ -324,7 +332,7 @@ local function buildDetail(B, rows)
             local e = self.item
             if not e then return end
             if (e.kind == "quest" or e.kind == "pre") and e.qid and button ~= "RightButton" then
-                say(ns.DungeonQuestWaypoint(e.qid))
+                say(ns.DungeonQuestWaypoint(e.qid, true))
                 return
             end
             if not e.id then return end
@@ -427,7 +435,7 @@ local function create(parent)
     B.parts = {}
     B.parts.bosses = W.Chip(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
     B.parts.quests = W.Chip(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
-    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest setzt den Wegpunkt zum Questgeber."])
+    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest öffnet die Weltkarte und setzt den Wegpunkt: zum Questgeber, oder zum Eingang, wenn die Quest schon im Log ist."])
     B.way = W.Button(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -519,7 +527,7 @@ local function refresh(B)
         if e and #B.detail.items == 0 and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
         local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
         local parts = {}
-        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: Wegpunkt zum Questgeber. Grün: Upgrade für dich."], DTEXT.itemHint }) do
+        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: Weltkarte und Wegpunkt dorthin, wo du hin musst. Grün: Upgrade für dich."], DTEXT.itemHint }) do
             if t ~= "" then parts[#parts + 1] = t end
         end
         hint = table.concat(parts, " ")

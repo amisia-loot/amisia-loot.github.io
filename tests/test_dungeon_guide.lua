@@ -217,8 +217,13 @@ local qrow
 for _, r in ipairs(B.detail.rows) do if r.item and r.item.kind == "quest" and r.item.qid == 99001 then qrow = r end end
 assert(qrow and plain(qrow.slot:GetText()) == "18 (ab 14)" and has(plain(qrow.rate:GetText()), "Thane Giver, Westfall 56, 48"),
     qrow and plain(qrow.rate:GetText()))
+-- the mark in front (F-134): a pre-quest is open, so the grey "!"
+assert(has(qrow.name:GetText(), "AvailableQuestIcon") and has(qrow.name:GetText(), ":110:110:110|t"), qrow.name:GetText())
+WorldMapFrame:Hide()
 qrow:Click()
 assert(NS.MapTarget() and NS.MapTarget().label == "Questgeber Thane Giver", "a click on a quest: its giver")
+assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1436, "the click opens the world map on the giver's zone")
+WorldMapFrame:Hide()
 NS.MapClearTarget()
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
 Lay.row("head", B.spec, B.sorts.level, B.sorts.value, B.sorts.chain)

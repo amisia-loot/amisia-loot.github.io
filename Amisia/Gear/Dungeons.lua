@@ -160,6 +160,25 @@ local function questActive(qid)
     return ok and ns.Plain(on) == true
 end
 
+-- Whether a quest in the log has all its objectives (ready to hand in): C_QuestLog.IsComplete, else
+-- the quest log's isComplete (1; -1 is failed).
+local function questReady(qid)
+    if not questActive(qid) then return false end
+    local Q = _G.C_QuestLog
+    local f = type(Q) == "table" and Q.IsComplete
+    if type(f) == "function" then
+        local ok, c = pcall(f, qid)
+        if ok then return ns.Plain(c) == true end
+    end
+    local indexOf, titleAt = _G.GetQuestLogIndexByID, _G.GetQuestLogTitle
+    if type(indexOf) ~= "function" or type(titleAt) ~= "function" then return false end
+    local ok, i = pcall(indexOf, qid)
+    i = ok and tonumber(ns.Plain(i)) or nil
+    if not i or i <= 0 then return false end
+    local ok2, _, _, _, _, _, complete = pcall(titleAt, i)
+    return ok2 and tonumber(ns.Plain(complete)) == 1
+end
+
 -- The client's title of a quest (German where it has the quest loaded), else the data's name.
 local function titleOf(qid, name)
     local Q = _G.C_QuestLog
@@ -1309,13 +1328,50 @@ function D.QuestStartText(n)
     return n.giver and L["%s (Ort unbekannt)"]:format(n.giver) or ""
 end
 
--- Sets the map target to where a quest starts: the quest giver (the nearest of its points), the
--- dungeon's entrance for a giver inside (the giver's own point inside when no entrance is known).
--- true, or nil and why.
-function ns.DungeonQuestWaypoint(qid)
-    qid = tonumber(qid)
+-- The state of a quest node for its mark: "done", "gone" (no longer possible), "ready" (in the log,
+-- every objective done), "active" (in the log), "locked" (the own level is below its minimum or a
+-- pre-quest is open) or "open" (can be taken).
+function D.QuestState(n)
+    if type(n) ~= "table" then return "open" end
+    if n.done then return "done" end
+    if n.gone then return "gone" end
+    if n.active then return questReady(n.qid) and "ready" or "active" end
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    if (n.minLevel or 0) > my then return "locked" end
+    for _, c in ipairs(n.chain or {}) do
+        if not c.done then return "locked" end
+    end
+    return "open"
+end
+
+-- The client's marks for a quest state, as text: the yellow "!" of a quest to take (grey: not yet),
+-- the "?" of one in the log (yellow: ready to hand in, grey: under way), the ready check's tick for a
+-- done one and its cross for one no longer possible.
+local AVAILABLE, ACTIVE = "Interface\\GossipFrame\\AvailableQuestIcon", "Interface\\GossipFrame\\ActiveQuestIcon"
+local STATE_ICON = {
+    open = "|T" .. AVAILABLE .. ":14:14|t",
+    locked = "|T" .. AVAILABLE .. ":14:14:0:0:16:16:0:16:0:16:110:110:110|t",
+    ready = "|T" .. ACTIVE .. ":14:14|t",
+    active = "|T" .. ACTIVE .. ":14:14:0:0:16:16:0:16:0:16:110:110:110|t",
+    done = "|TInterface\\RaidFrame\\ReadyCheck-Ready:13:13|t",
+    gone = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:13:13|t",
+}
+function D.QuestStateIcon(state) return STATE_ICON[state] or "" end
+
+-- Where a quest leads now: a dungeon quest in the log that is not ready leads to its dungeon's
+-- entrance; else where it starts: the quest giver (the nearest of its points), the dungeon's entrance
+-- for a giver inside (the giver's own point inside when no entrance is known). point, label, map key;
+-- or nil and why.
+local function questGoal(qid)
     local dq = questData()
     local r = dq and qid and dq.Q[qid] or nil
+    if r and r[11] and questActive(qid) and not questReady(qid) then
+        local point, mapKey = ns.DungeonEntrance(r[11])
+        if point then
+            local e = factOf(r[11])
+            return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), mapKey
+        end
+    end
     if r and r[6] == "X" then return nil, ITEM_START end
     local Map = ns.Map
     if not Map or not Map.ParsePoints then return nil, NO_MAP end
@@ -1328,7 +1384,7 @@ function ns.DungeonQuestWaypoint(qid)
         local point = ns.DungeonEntrance(r[11])
         if point then
             local e = factOf(r[11])
-            return ns.MapSetPoint(point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), "Q:" .. qid)
+            return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), "Q:" .. qid
         end
     end
     local points = Map.ParsePoints(r and r[8])
@@ -1336,7 +1392,18 @@ function ns.DungeonQuestWaypoint(qid)
     if #points == 0 and seenPoint then points = Map.ParsePoints(seenPoint) end
     if #points == 0 then return nil, NO_START end
     local label = (r and r[6] == "I") and L["Questgeber %s (im Dungeon)"]:format(giver) or L["Questgeber %s"]:format(giver)
-    return ns.MapSetPoint(ns.MapNearest(points), label, "Q:" .. qid)
+    return ns.MapNearest(points), label, "Q:" .. qid
+end
+
+-- Sets the map target to where a quest leads now (questGoal) and, with open, shows it on the world
+-- map. true, or nil and why.
+function ns.DungeonQuestWaypoint(qid, open)
+    qid = tonumber(qid)
+    local point, label, key = questGoal(qid)
+    if not point then return nil, label end
+    local ok, why = ns.MapSetPoint(point, label, key)
+    if ok and open and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(point) end
+    return ok, why
 end
 
 ---------------------------------------------------------------------------

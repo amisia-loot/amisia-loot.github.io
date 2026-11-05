@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): mark dungeon quests like the game and open the map where you need to go (F-134)
+
+  The quests of a dungeon show the game's quest marks: a yellow "!" to take, a grey one for later, a
+  "?" while in your log (yellow once complete), a tick when done. A click opens the world map with the
+  waypoint: at the quest giver, or at the dungeon entrance once the quest is in your log.
+
 ## [v2.53.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.53.0) (2026-11-05)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.52.0...v2.53.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

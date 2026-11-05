@@ -14,6 +14,9 @@ local DOT = "Interface\\AddOns\\Amisia\\Media\\Icons\\dot"
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
 -- the quest giver marks: the client's quest icon of its map legend, else the classic gossip icon
 local QUEST_ATLAS, QUEST_ICON = "QuestNormal", "Interface\\GossipFrame\\AvailableQuestIcon"
+-- a target without an item: a quest giver ("Q:") gets the quest mark, a dungeon entrance ("I:", "N:")
+-- the map legend's dungeon mark
+local DUNGEON_ATLAS = "Dungeon"
 local MAX_MARKS = 40
 -- the texts of the quest giver marks, in one place for the translation
 local TEXT = { setTarget = L["Ziel setzen"], clearMarks = L["Markierung der Questgeber entfernen"],
@@ -404,9 +407,13 @@ function Pin:OnAcquired(entry, scale)
     if self.ApplyCurrentScale then self:ApplyCurrentScale() end
     local best = entry.items[1]
     -- pins are pooled: the icon and its coordinates are set every time
-    if entry.mark and W.HasAtlas(QUEST_ATLAS) then
+    local key = not best and type(entry.key) == "string" and entry.key:sub(1, 2) or nil
+    local quest = entry.mark or key == "Q:"
+    if quest and W.HasAtlas(QUEST_ATLAS) then
         self.icon:SetAtlas(QUEST_ATLAS)
-    elseif entry.mark then
+    elseif (key == "I:" or key == "N:") and W.HasAtlas(DUNGEON_ATLAS) then
+        self.icon:SetAtlas(DUNGEON_ATLAS)
+    elseif quest then
         self.icon:SetTexture(QUEST_ICON)
         self.icon:SetTexCoord(0, 1, 0, 1)
     else

@@ -887,6 +887,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia dungeon quests <Dungeon>` eingibst, dann listet der Chat "Quests in <Dungeon>:" mit Vorquests und Start.
 - Prüfung: Wenn du "Wegpunkt zum Eingang" klickst, dann zeigt der Pfeil zum nächsten Eingang.
 
+### F-134 Dungeon-Quests: Status-Symbole und Karte
+- Version: 2.54.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Dungeons "Quests" wählst, dann steht vor jeder Quest und Vorquest das Symbol wie im Spiel: gelbes "!" annehmbar, graues "!" noch zu niedrig oder Vorquest offen, graues "?" im Log, gelbes "?" im Log und fertig, grüner Haken erledigt, rotes Kreuz nicht mehr möglich.
+- Prüfung: Wenn du auf eine Quest klickst, die du noch nicht hast, dann öffnet sich die Weltkarte in der Zone des Questgebers, dort steht ein gelbes "!" mit Ring, Pfeil und Wegpunkt zeigen hin; Amisia bleibt offen.
+- Prüfung: Wenn die Quest schon im Log und noch nicht fertig ist, dann öffnet der Klick die Karte am Dungeon-Eingang (Dungeon-Symbol mit Ring, Chat "Ziel <Dungeon> (Eingang)"); ist sie fertig, wieder beim Questgeber.
+- Prüfung: Wenn du im Kampf auf eine Quest klickst, dann bleibt die Karte zu ("Im Kampf öffnet Amisia die Weltkarte nicht."), der Wegpunkt wird trotzdem gesetzt.
+- Notiz: Wunsch des Nutzers 2026-11-05 ("können wir die quest besser markieren und die map direkt öffen wo man hin muss für die dungoen quest"; Antworten: Klick öffnet die Karte, Status mit Spiel-Symbolen). Vorbild war der Knopf "Karte" je Quest und Questschritt einer anderen Forever-Erweiterung (nur die Idee). Das graue "!" und "?" sind die gelben Symbole abgedunkelt.
+
 ### F-047 Dungeon-Journal: Bilder, Bossmodell, Quest-EP, Anprobe
 - Version: 2.7.0
 - Status: gebaut
