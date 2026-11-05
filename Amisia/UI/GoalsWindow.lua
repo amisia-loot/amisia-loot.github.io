@@ -1123,7 +1123,11 @@ local function setTip(owner, s)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     GameTooltip:AddLine(s.name, 1, 0.82, 0)
     GameTooltip:AddLine(L["%d von %d Teilen hast du"]:format(s.have, s.total), 1, 1, 1)
-    if s.level > 0 then GameTooltip:AddLine(L["Stufe %d"]:format(s.level), 0.85, 0.85, 0.85) end
+    if s.cat == "level" then
+        GameTooltip:AddLine(L["Das Beste je Slot für deine Spezialisierung auf Stufe %d."]:format(s.to), 0.85, 0.85, 0.85, true)
+    elseif s.level > 0 then
+        GameTooltip:AddLine(L["Stufe %d"]:format(s.level), 0.85, 0.85, 0.85)
+    end
     local b = Gear.SetBonusesOf(s.id)
     local thr = {}
     for n in pairs(b) do thr[#thr + 1] = n end

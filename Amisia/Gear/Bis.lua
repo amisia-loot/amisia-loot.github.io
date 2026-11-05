@@ -40,6 +40,8 @@ ns.BisBump = bumpAll
 ns.BisBumpResults = bump
 -- The state counter: a page keeps what it showed until this changes.
 function ns.BisStamp() return stamp end
+-- only what changes scores (data, talents, settings; not what is owned): for results without ownership
+function ns.BisScoreStamp() return scoreStamp end
 
 ---------------------------------------------------------------------------
 -- Saved data and its move
@@ -367,9 +369,10 @@ function ns.BisOpts()
     return o
 end
 
--- The same calculation for any class, spec and level (the simulation and the planner table):
--- no ownership, no exclusions, both factions unless opts.faction, the own source switches unless
--- opts.sources. Returns Gear.Best's result.
+-- The same calculation for any class, spec and level (the simulation, the planner table, the
+-- catalog's level sets): no ownership, no exclusions unless opts.exclude, both factions unless
+-- opts.faction, the own source switches unless opts.sources, no play style unless opts.style (a
+-- ns.PlayStyle.Context). Returns Gear.Best's result.
 function ns.BisFor(class, spec, level, opts)
     opts = opts or {}
     local o = {
@@ -380,6 +383,7 @@ function ns.BisFor(class, spec, level, opts)
     scoringOpts(o)
     if opts.tie ~= nil then o.tie = opts.tie end
     if opts.picks ~= nil then o.picks = opts.picks end
+    o.style = opts.style
     return Gear.Best(o)
 end
 

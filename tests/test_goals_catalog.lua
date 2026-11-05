@@ -57,6 +57,22 @@ assert(n == 3 and hits[1].id == 401 and hits[2].id == 402 and hits[3].id == 406,
 hits, n = Cat.Search("HELM", 20, 60)
 assert(n == 2, "the level range")
 assert(select(2, Cat.Search("  ", 1, 60)) == 0, "no text: nothing")
+-- the level sets: per range of ten levels the best per slot at the range's top, for the own spec
+assert(Cat.ValidCat("level") and Cat.CATS[1].key == "level", "the level sets first")
+assert(Cat.Count("level", 1, 60) == 6 and Cat.Count("level", 1, 7) == 1 and Cat.Count("level", 25, 45) == 3)
+local lv = Cat.Sets("level", 1, 60)
+assert(#lv == 6 and lv[1].name == "Stufe 1 bis 19" and lv[6].name == "Auf Stufe 60" and lv[6].level == 60)
+local function slotOf(set, slot)
+    for i, k in ipairs(set.slots) do if k == slot then return set.items[i] end end
+end
+assert(#lv[1].items == 0 and lv[1].total == 0, "the fixture's plate: a warrior wears it from 40 on")
+assert(slotOf(lv[4], "HEAD") == 406 and not slotOf(lv[4], "CHEST"), "at 49 only what a level 49 can wear")
+assert(slotOf(lv[5], "HEAD") == 402 and slotOf(lv[5], "CHEST") == 403 and slotOf(lv[5], "HANDS") == 404, "at 59")
+assert(slotOf(lv[6], "HEAD") == 401 and slotOf(lv[6], "LEGS") == 405, "at 60")
+assert(lv[6].total == #lv[6].items and lv[6].have == 0)
+assert(Cat.Set(lv[6].id) and Cat.Set(lv[6].id).name == "Auf Stufe 60", "a level set by its id")
+local lp = Cat.Pieces(lv[6].id)
+assert(#lp == #lv[6].items and lp[1].slotKey and lp[1].gain, "the pieces with slot and gain")
 
 ---------------------------------------------------------------------------
 -- the window: the switch, the categories, a set
@@ -158,4 +174,16 @@ d.catalog:Click()
 assert(st.cat == nil and st.lo == nil and C.lo.current == 1, "a bad choice: dungeon sets, 1 to the own level")
 assert(C.list.items[1].set and C.list.items[1].set.name == "Pestset")
 assert(C.hi.current == 60)
+-- the level sets in the window: six ranges, one opened with its pieces and their slots, tried on
+assert(C.cats.level.count:GetText() == "6")
+C.cats.level:Click()
+items = C.list.items
+assert(#items == 6 and items[6].set.name == "Auf Stufe 60" and C.list.rows[6].level:GetText() == "60")
+C.list.rows[6]:Click()
+items = C.list.items
+assert(items[6].open and items[7].piece and items[7].slotKey, "the open level set's pieces")
+assert(plain(C.list.rows[7].slot:GetText()) ~= "", "each piece names its slot")
+C.tryAll:Click()
+assert(has(d.dressed, "+401"), "the level set tried on")
+C.clear:Click()
 print("test_goals_catalog ok")

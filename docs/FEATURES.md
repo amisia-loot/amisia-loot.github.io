@@ -915,6 +915,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons.
 - Notiz: 2.46.0: Kategorie "Ruf" (je Fraktion eine Gruppe der Items mit Rufbedingung aus ItemSparse, F-124).
 
+### F-129 Ausrüstungsziele: Stufen-Sets im Katalog
+- Version: 2.50.0
+- Status: gebaut
+- Prüfung: Wenn du im Fenster Ausrüstungsziele "Katalog" klickst, dann steht links ganz oben "Stufen-Sets"; mit "Alle" (Stufe 1 bis 60) zeigt sie die Zahl 6, mit "Meine Stufe" nur die Bereiche bis zu deiner Stufe.
+- Prüfung: Wenn du "Stufen-Sets" und "Alle" wählst, dann stehen dort "Stufe 1 bis 19", "Stufe 20 bis 29", "Stufe 30 bis 39", "Stufe 40 bis 49", "Stufe 50 bis 59" und "Auf Stufe 60", jedes mit "N/M" Teilen, die du schon hast.
+- Prüfung: Wenn du ein Stufen-Set anklickst, dann stehen darunter je Slot das beste Item für deine Spezialisierung am oberen Ende des Bereichs, mit Slot, Stufe, Zuwachs und Quelle; der Tooltip des Sets sagt "Das Beste je Slot für deine Spezialisierung auf Stufe N."
+- Prüfung: Wenn du eine andere Spezialisierung oder den Spielstil wechselst, dann ändern sich die Stufen-Sets mit; "Set anprobieren" zieht ein Stufen-Set dem Modell an, Rechtsklick auf ein Teil "Als meine Wahl" setzt es als deine Wahl.
+- Notiz: Wunsch des Nutzers 2026-11-05 ("kannst du dich nach items set für gewisse lvl bereiche erstellen und unsere bis liste dafür aktualisieren"); Auswahl: im Katalog, berechnet, 10er-Schritte. Rechnet wie die Simulation (`ns.BisFor`) mit deiner Klasse, Spezialisierung, Fraktion, Quellen, Waffenplan und Ausschlüssen; die BiS-Empfehlungen (bis_picks.json) gehen vor. Neue Items aus `/amisia scan` kommen mit dem nächsten `build.py data` hinein.
+
 ### F-122 Seite Raids
 - Version: 2.45.0
 - Status: gebaut

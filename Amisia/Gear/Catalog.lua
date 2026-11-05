@@ -4,7 +4,8 @@
 -- piece brings; and the search over every item of the gear data by name and required level, the
 -- best for the own character first. Names come from the client: an item without one is asked for
 -- (through Gear.Stats) and found once it arrives. Nothing is saved here; the window keeps its choice
--- in settings.goalWindow.
+-- in settings.goalWindow. The level sets are no item sets: per range of ten levels the best item of
+-- every slot for the own spec at the range's top (the simulation's calculation, ns.BisFor).
 local ADDON, ns = ...
 local L = ns.L
 local Gear = ns.Gear
@@ -17,6 +18,8 @@ local ASK_MAX = 150  -- names asked for per search at most (the loader works the
 
 -- the categories in their order; a set goes to the first one any of its pieces' sources names
 C.CATS = {
+    -- not sets either: the best item per slot for each range of C.BRACKETS (ids minus LEVEL_BASE - i)
+    { key = "level", label = L["Stufen-Sets"], icon = "Interface\\Icons\\INV_Chest_Chain_05" },
     { key = "raid", label = L["Raid-Sets"], icon = "Interface\\Icons\\INV_Misc_Head_Dragon_Black" },
     { key = "dungeon", label = L["Dungeon-Sets"], icon = "Interface\\Icons\\INV_Misc_Key_13" },
     { key = "pvp", label = L["PvP-Sets"], icon = "Interface\\Icons\\INV_BannerPVP_02" },
@@ -30,6 +33,10 @@ for i, c in ipairs(C.CATS) do CAT_OK[c.key], CAT_RANK[c.key] = true, i end
 local CAT_OF_KIND = { X = "raid", D = "dungeon", P = "pvp", C = "craft", Q = "world", V = "world", R = "world", W = "world", A = "world" }
 
 function C.ValidCat(key) return CAT_OK[key] == true end
+
+-- the level ranges of the level sets; a set holds what is best at the range's top level
+C.BRACKETS = { { 1, 19 }, { 20, 29 }, { 30, 39 }, { 40, 49 }, { 50, 59 }, { 60, 60 } }
+local LEVEL_BASE = 1000000
 
 local function setTable()
     local B = ns.BIS
@@ -97,8 +104,52 @@ local function sets()
     return out
 end
 
+-- The level ranges the data reaches that touch lo..hi, as { i, from, to }.
+local function brackets(lo, hi)
+    local out, cap = {}, Gear.Cap()
+    for i, b in ipairs(C.BRACKETS) do
+        local from, to = b[1], math.min(b[2], cap)
+        if from <= cap and from <= hi and to >= lo then out[#out + 1] = { i = i, from = from, to = to } end
+    end
+    return out
+end
+
+-- The level sets of the own options (class, spec, faction, sources, weapon plan, exclusions, play
+-- style): { id, name, cat = "level", items, slots, level, from, to } per range, the slots in the
+-- planner's order (the off hand only with a one-hand plan). Kept until the scores (not what is owned)
+-- or the options change.
+local levelAll, levelKey
+local function levelSets()
+    local o = ns.BisOpts()
+    if not o.class or not Gear.Available() then return {} end
+    local key = table.concat({ tostring(ns.Data("GEAR")), tostring(ns.BIS), ns.BisScoreStamp(), Gear.StatsWaits(), o.class,
+        tostring(o.spec), tostring(o.kind), tostring(o.faction), tostring(o.plan), tostring(o.prof),
+        ns.PlayStyle.Key(o.style) }, "|")
+    if levelAll and levelKey == key then return levelAll end
+    local out = {}
+    for _, b in ipairs(brackets(1, Gear.Cap())) do
+        -- the play style (F-124) as the own options have it, at the range's top level
+        local style = o.style and ns.PlayStyle.Context({ level = b.to, skills = o.skills }) or nil
+        local res = ns.BisFor(o.class, o.spec, b.to, { faction = o.faction, sources = o.sources, plan = o.plan,
+            exclude = o.exclude, style = style })
+        local set = { id = -(LEVEL_BASE + b.i), cat = "level", items = {}, slots = {}, level = b.to, from = b.from, to = b.to,
+            name = b.from == b.to and L["Auf Stufe %d"]:format(b.to) or L["Stufe %d bis %d"]:format(b.from, b.to) }
+        for _, sl in ipairs(Gear.SLOTS) do
+            local first = res[sl.key] and res[sl.key][1]
+            if first then
+                set.items[#set.items + 1] = first[1]
+                set.slots[#set.slots + 1] = sl.key
+            end
+        end
+        out[#out + 1] = set
+    end
+    levelAll, levelKey = out, key
+    return out
+end
+
 -- How many sets a category holds in the level range (lo..hi; a set of unknown level always counts).
 function C.Count(cat, lo, hi)
+    if cat == "level" then return #brackets(lo, hi) end
     local n = 0
     for _, s in ipairs(sets()) do
         if s.cat == cat and (s.level == 0 or (s.level >= lo and s.level <= hi)) then n = n + 1 end
@@ -109,8 +160,15 @@ end
 -- The sets of a category in the level range: { { id, name, cat, items, level, have, total } }.
 function C.Sets(cat, lo, hi)
     local out = {}
-    for _, s in ipairs(sets()) do
-        if s.cat == cat and (s.level == 0 or (s.level >= lo and s.level <= hi)) then
+    local list = cat == "level" and levelSets() or sets()
+    for _, s in ipairs(list) do
+        local shown
+        if cat == "level" then
+            shown = s.from <= hi and s.to >= lo
+        else
+            shown = s.cat == cat and (s.level == 0 or (s.level >= lo and s.level <= hi))
+        end
+        if shown then
             local have = 0
             for _, id in ipairs(s.items) do
                 if ns.BisOwned(id) then have = have + 1 end
@@ -123,7 +181,7 @@ end
 
 -- One set by id, or nil.
 function C.Set(sid)
-    for _, s in ipairs(sets()) do
+    for _, s in ipairs(type(sid) == "number" and sid <= -LEVEL_BASE and levelSets() or sets()) do
         if s.id == sid then return s end
     end
     return nil
@@ -149,7 +207,11 @@ function C.Pieces(sid, o)
     if not s then return {} end
     o = o or ns.BisOpts()
     local out = {}
-    for i, id in ipairs(s.items) do out[i] = entry(id, o) end
+    for i, id in ipairs(s.items) do
+        out[i] = entry(id, o)
+        -- a level set names each piece's slot, also one the own character cannot wear yet
+        if s.slots then out[i].slotKey = out[i].slotKey or s.slots[i] end
+    end
     return out
 end
 
@@ -204,4 +266,4 @@ function C.Search(text, lo, hi, o)
 end
 
 -- Test hook: forget the set list.
-function C._reset() all, allKey = nil, nil end
+function C._reset() all, allKey, levelAll, levelKey = nil, nil, nil, nil end
