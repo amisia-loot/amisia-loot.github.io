@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.53.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.53.0) (2026-11-05)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.52.0...v2.53.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(members): read professions from guild notes (F-133)
 
   The members page shows the professions a public or officer note names, such as "Alchi 300 / Kräuter",
