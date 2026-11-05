@@ -366,6 +366,18 @@ function Map.ClientWaypoints()
 end
 
 local busy = false   -- Amisia is setting or clearing the waypoint itself
+local pendingClear   -- a target whose client waypoint is to go once that is safe again
+
+-- Whether Amisia may touch the client's waypoint, super tracking or world map now (D-62): not in an
+-- instance, in combat or in the lockdown. The objective tracker answers such a call with an update in
+-- the next frame that carries the caller's taint; in an instance its scenario part reads auras,
+-- which are secret there, and the update breaks ("tainted by 'Amisia'").
+function Map.ClientSafe()
+    if InCombatLockdown and ns.Plain(InCombatLockdown()) == true then return false end
+    if ns.ChatLocked and ns.ChatLocked() then return false end
+    if IsInInstance and ns.Plain((IsInInstance())) == true then return false end
+    return true
+end
 
 -- Where the client's waypoint stands on a map: x, y, or nil when there is none or it is elsewhere.
 local function waypointOn(map)
@@ -399,7 +411,7 @@ local function waypointAt(t)
 end
 
 local function setWaypoint(map, x, y)
-    if not Map.ClientWaypoints() then return false end
+    if not Map.ClientWaypoints() or not Map.ClientSafe() then return false end
     if C_Map.CanSetUserWaypointOnMap then
         local ok, can = pcall(C_Map.CanSetUserWaypointOnMap, map)
         if not ok or not can then return false end
@@ -418,10 +430,29 @@ local function clearWaypoint()
     busy = false
 end
 
--- Removes the client's waypoint only when Amisia set it and it still stands there.
+-- Removes the client's waypoint only when Amisia set it and it still stands there; where that is not
+-- safe (Map.ClientSafe) it goes once it is.
 local function clearOwn(t)
-    if t and t.ours and Map.ClientWaypoints() and waypointAt(t) then clearWaypoint() end
+    if not (t and t.ours and Map.ClientWaypoints()) then return end
+    if not Map.ClientSafe() then
+        pendingClear = t
+        return
+    end
+    if waypointAt(t) then clearWaypoint() end
 end
+
+-- The waypoint left standing in an instance, combat or the lockdown goes now, unless a new target
+-- of Amisia's stands there.
+local function clearPending()
+    local t = pendingClear
+    if not t or not Map.ClientSafe() then return end
+    pendingClear = nil
+    local now = ns.MapTarget()
+    if now and now.ours and waypointAt(now) then return end
+    if Map.ClientWaypoints() and waypointAt(t) then clearWaypoint() end
+end
+ns.OnEvent("PLAYER_REGEN_ENABLED", clearPending)
+ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", clearPending)
 
 ---------------------------------------------------------------------------
 -- The target
@@ -526,7 +557,8 @@ ns.OnEvent("USER_WAYPOINT_UPDATED", onWaypointUpdated)
 -- again; a foreign one is left alone (the target then stands on its own).
 local restored = false
 local function restore()
-    if restored then return end
+    clearPending()
+    if restored or not Map.ClientSafe() then return end
     restored = true
     local t = ns.MapTarget()
     if not t or not Map.ClientWaypoints() then
@@ -573,6 +605,10 @@ function ns.MapShowOnWorldMap(point)
     if type(point) ~= "table" or type(point.map) ~= "number" then return false end
     if InCombatLockdown and InCombatLockdown() then
         ns.msg(L["Im Kampf öffnet Amisia die Weltkarte nicht."])
+        return false
+    end
+    if not Map.ClientSafe() then
+        ns.msg(L["In Instanzen öffnet Amisia die Weltkarte nicht."])
         return false
     end
     local frame = _G.WorldMapFrame

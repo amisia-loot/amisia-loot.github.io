@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(map): keep the game's waypoint and world map alone inside instances and in combat (D-62)
+
+  Setting or clearing the game's waypoint or opening the world map from Amisia in a dungeon made the
+  objective tracker fail with "tainted by 'Amisia'". Inside instances, in combat and during boss fights
+  Amisia now only changes its own target and clears the game's waypoint once you are out.
+
 ## [v2.54.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.54.1) (2026-11-05)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.0...v2.54.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -1360,3 +1360,21 @@ Bug und nur mit "Fehler anhängen" mit.
 **Durchgesetzt durch:** `tests/test_feedback.lua`,
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.
+
+## D-62 Wegpunkt, Verfolgung und Weltkarte des Clients nur außerhalb von Instanzen und Kampf
+
+**Datum:** 2026-11-05
+**Entscheidung:** Amisia setzt oder löscht den Wegpunkt des Clients (`C_Map.SetUserWaypoint`, `ClearUserWaypoint`),
+die Verfolgung (`C_SuperTrack`) und öffnet die Weltkarte nur, wenn `Map.ClientSafe()` gilt: nicht in einer Instanz,
+nicht im Kampf, nicht in der Kampfsperre. Sonst ändert sich nur Amisias eigenes Ziel (mit eigenem Pfeil im Modus
+"Automatisch"), die Karte bleibt zu ("In Instanzen öffnet Amisia die Weltkarte nicht."), und ein Wegpunkt, den Amisia
+löschen wollte, geht erst beim Verlassen der Instanz, nach dem Kampf oder nach der Kampfsperre, außer ein neues Ziel
+von Amisia steht dort.
+**Grund:** Fehler aus dem Spiel 2026-11-05 nach 2.54.x: "GetAuraDataByIndex(): Auras cannot be accessed when secret
+while tainted by 'Amisia'" in `ShouldShowMawBuffs` aus dem Szenario-Teil des Objective Trackers. Diese Aufrufe lassen
+den Tracker sich im nächsten Frame mit Amisias Taint neu aufbauen; in einer Instanz liest sein Szenario-Teil Auren,
+die dort geheim sind. F-134 öffnete die Karte per Klick und setzte Ziele an Dungeon-Eingängen, die beim Betreten
+gelöscht wurden.
+**Folge:** In Instanzen kein Spiel-Wegpunkt und keine Karte aus Amisia; neue Aufrufe von Client-Funktionen, die den
+Tracker, die Karte oder die Verfolgung anstoßen, gehen durch `Map.ClientSafe()`.
+**Durchgesetzt durch:** `tests/test_map_client_safe.lua`.
