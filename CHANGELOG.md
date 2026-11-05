@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.55.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.55.0) (2026-11-06)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.2...v2.55.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(map): draw Amisia's world map pins on its own layer (D-64)
 
   The pins no longer hook into the world map's own pin system, which let Amisia taint the map's and the
