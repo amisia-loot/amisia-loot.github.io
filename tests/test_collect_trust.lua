@@ -33,7 +33,7 @@ local POISON = { day = 99999, own = 0, giver = -9999999, gpos = "1", ender = -99
                  gname = "!", title = "!" }
 local function blob(id, rec, key, bucket)
     C(VULO, ("NS.CollectSyncOpenAsk('Fraktur', 'q', { %d })"):format(bucket or 0))
-    local s = C(FRAK, "NS.CollectFormat('q', " .. rec .. ")")
+    local s = C(FRAK, "NS.CollectWire('q', NS.CollectFormat('q', " .. rec .. "))")
     C(FRAK, ("assert(NS.CommSendBlob('CK', %q, { v = NS.COLLECT_BLOB_V or 1, k = 'q', r = { %d, %q } }, 'WHISPER', 'Vulo Sturmwind', {}))")
         :format(key or "0000-00-00:101", id, s))
     BUS.tick(10)
@@ -119,7 +119,7 @@ assert(table.concat(q(65).rewards, ",") == "280604,280605", "heard rewards never
 -- the join: any order, twice the same as once; own beats heard in either order
 ---------------------------------------------------------------------------
 C(VULO, [[local M, F = NS.CollectMergeRecords, NS.CollectFormat
-    local own = F("q", { day = 5, own = 4095, giver = 10, gpos = "1:1:1", ender = 20, epos = "1:2:2", rewards = { 7 }, choices = { 8 },
+    local own = F("q", { day = 5, own = 10239, giver = 10, gpos = "1:1:1", ender = 20, epos = "1:2:2", rewards = { 7 }, choices = { 8 },
         qlevel = 20, minlvl = 18, fac = "H", pre = 3, gname = "G", title = "Own" })
     local h1 = F("q", { day = 6, own = 0, giver = 1, gpos = "", ender = 0, epos = "", rewards = { 1, 2 }, choices = {}, qlevel = 0,
         minlvl = 0, fac = "A", pre = 0, gname = "", title = "A" })

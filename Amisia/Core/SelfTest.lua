@@ -801,7 +801,7 @@ local REQUIRED = {
     "GetCurrentGuildBankTab", "QueryGuildBankTab", "GetNumLootItems", "GetLootSlotInfo", "GetLootSlotLink", "GetLootSourceInfo",
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
-    "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "C_MerchantFrame.GetItemInfo",
+    "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "GetObjectiveText", "C_MerchantFrame.GetItemInfo",
     "GetPlayerFacing", "OpenWorldMap", "ToggleWorldMap", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
     "Mixin", "issecretvalue",
     "C_ChatInfo.SendChatMessage", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.RegisterAddonMessagePrefix",

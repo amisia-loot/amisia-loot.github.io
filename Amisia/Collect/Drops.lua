@@ -158,6 +158,7 @@ local function cleanName(v)
     return v
 end
 ns.DropsCleanName = cleanName
+ns.DropsUtf8Ok = utf8Ok
 
 local function nameOk(v) return type(v) == "string" and cleanName(v) == v end
 

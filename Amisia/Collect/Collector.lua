@@ -5,10 +5,11 @@
 -- non-boss NPCs (gear and recipes of green or better, with the NPC's classification and place).
 -- Boss loot stays with Drops.lua; the item notes (scan.sources) stay with Collect.lua.
 --
--- AmisiaDB.collect = { ver = 2, q = { [questID] = record }, s = { [npcID] = record },
+-- AmisiaDB.collect = { ver = 3, q = { [questID] = record }, s = { [npcID] = record },
 -- w = { [npcID] = record } }. A record is one string, the fields split by ";" and the free text last
--- (a third of the room a table takes in the saved file; the exchange sends the same string):
---   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+-- (a third of the room a table takes in the saved file; the exchange sends the same string, a quest
+-- in the layout of version 2, see below):
+--   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;enderName;objective;title
 --   s: day;own;pos;items;name                 items "id:price:flags:rep,..." (flags L limited, x other
 --                                             currency; rep "<standing 1-8>@<faction>")
 --   w: day;own;class;pos;instance;items;name  items "id:count,..."; class n e r R b or empty
@@ -18,7 +19,14 @@
 -- fields after it (bit 0 the first) that this client saw itself; the others, if they hold anything,
 -- were heard from the guild (0: all heard, as every record of an exchange blob). No player name is
 -- read into a record: names come from the quest/merchant NPC unit or a looted corpse, never from
--- players.
+-- players. enderName is the name of the NPC that took the quest back, objective the quest's objective
+-- text as the offer showed it (QUEST_DETAIL, GetObjectiveText: plain text, no "|" or control
+-- characters, ";" as ",", 300 characters at most).
+--
+-- Version 3 (F-135) put enderName and objective before the title. The guild exchange keeps the
+-- quest layout of version 2 (14 fields, no enderName, no objective; ns.CollectWire,
+-- ns.CollectFromWire): an older client parses what it hears unchanged, and neither text travels
+-- (one member alone could spread false texts or places).
 --
 -- Every record, own, saved or heard, passes the same strict check: it must parse and read back to
 -- exactly the same string (one canonical form, so two clients' checksums agree). Records merge as a
@@ -77,6 +85,34 @@ local function clean(v, sep)
 end
 local function textOk(s, sep) return s == "" or clean(s, sep) == s end
 
+-- A quest's objective text as it may be stored: the client's colour, link, texture and atlas codes
+-- taken out (a link keeps its text), no "|", control characters as spaces, ";" as ",", runs of
+-- spaces as one, well-formed UTF-8, 300 characters at most (cut at a whole character); "" for
+-- anything else.
+local OBJECTIVE_MAX = 300
+local function cleanObjective(v)
+    v = ns.Plain(v)
+    if type(v) ~= "string" or v == "" then return "" end
+    v = v:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h(.-)|h", "%1"):gsub("|T.-|t", ""):gsub("|A.-|a", "")
+    v = v:gsub("|", ""):gsub("%c", " "):gsub(";", ","):gsub("%s+", " "):match("^%s*(.-)%s*$")
+    if not (ns.DropsUtf8Ok and ns.DropsUtf8Ok(v)) then return "" end
+    local chars, i = 0, 1
+    while i <= #v do
+        local c = v:byte(i)
+        if c < 0x80 or c > 0xBF then
+            chars = chars + 1
+            if chars > OBJECTIVE_MAX then
+                v = v:sub(1, i - 1):match("^%s*(.-)%s*$")
+                break
+            end
+        end
+        i = i + 1
+    end
+    return v
+end
+ns.CollectCleanObjective = cleanObjective
+local function objectiveOk(s) return s == "" or cleanObjective(s) == s end
+
 -- "a;b;c" into exactly n fields, the last one taking the rest (separators included).
 local function split(s, n)
     local out, pos = {}, 1
@@ -122,7 +158,7 @@ end
 ---------------------------------------------------------------------------
 -- The fields of each kind after "day;own;", in record order. Bit i-1 of own stands for field i.
 local FIELDS = {
-    q = { "giver", "gpos", "ender", "epos", "rewards", "choices", "qlevel", "minlvl", "fac", "pre", "gname", "title" },
+    q = { "giver", "gpos", "ender", "epos", "rewards", "choices", "qlevel", "minlvl", "fac", "pre", "gname", "ename", "obj", "title" },
     s = { "pos", "items", "name" },
     w = { "class", "pos", "inst", "items", "name" },
 }
@@ -161,21 +197,22 @@ local function head(s, n)
 end
 
 function P.q(s)
-    local f, day, own = head(s, 12)
+    local f, day, own = head(s, 14)
     if not f then return nil end
     local r = { day = day, own = own, giver = num(f[3], -MAX_ID, MAX_ID), gpos = f[4], ender = num(f[5], -MAX_ID, MAX_ID),
                 epos = f[6], rewards = idList(f[7], L.rewards), choices = idList(f[8], L.rewards), qlevel = num(f[9], 0, 99),
-                minlvl = num(f[10], 0, 99), fac = f[11], pre = num(f[12], 0, MAX_ID), gname = f[13], title = f[14] }
+                minlvl = num(f[10], 0, 99), fac = f[11], pre = num(f[12], 0, MAX_ID), gname = f[13], ename = f[14], obj = f[15],
+                title = f[16] }
     if not (r.giver and r.ender and r.rewards and r.choices and r.qlevel and r.minlvl and r.pre) then return nil end
     if not posOk(r.gpos) or not posOk(r.epos) then return nil end
     if r.fac ~= "" and r.fac ~= "A" and r.fac ~= "H" and r.fac ~= "AH" then return nil end
-    if not textOk(r.gname, ";") or not textOk(r.title) then return nil end
+    if not textOk(r.gname, ";") or not textOk(r.ename, ";") or not objectiveOk(r.obj) or not textOk(r.title) then return nil end
     return r
 end
 
 function F.q(r)
     return table.concat({ r.day, r.own or 0, r.giver, r.gpos, r.ender, r.epos, table.concat(r.rewards, ","), table.concat(r.choices, ","),
-        r.qlevel, r.minlvl, r.fac, r.pre, r.gname, r.title }, ";")
+        r.qlevel, r.minlvl, r.fac, r.pre, r.gname, r.ename or "", r.obj or "", r.title }, ";")
 end
 
 local FLAGS = { [""] = true, L = true, x = true, Lx = true }
@@ -255,7 +292,7 @@ function ns.CollectFormat(kind, r) return F[kind](r) end
 -- Whether field f of the parsed record r is the client's own observation.
 function ns.CollectOwn(kind, r, f)
     for i, name in ipairs(FIELDS[kind] or {}) do
-        if name == f then return type(r) == "table" and int(r.own, 0, 2 ^ 12) and hasBit(r.own, i) or false end
+        if name == f then return type(r) == "table" and int(r.own, 0, 2 ^ 14) and hasBit(r.own, i) or false end
     end
     return false
 end
@@ -272,6 +309,75 @@ end
 -- The record string without its day and own mask: what two clients compare (a record seen again on
 -- another day, or held as heard by one and as own by the other, is the same record).
 function ns.CollectBody(s) return type(s) == "string" and s:match("^%d+;%d+;(.*)$") or s end
+
+---------------------------------------------------------------------------
+-- The exchange's layout (version 2 for quests)
+---------------------------------------------------------------------------
+-- A quest record string of version 2 (day;own;...;giverName;title, own over those 12 fields) as one
+-- of version 3: enderName and objective empty, the title's own bit moved along; nil when its day or
+-- own mask cannot be read (the result still goes through CollectParse).
+local function questV2toV3(s)
+    if type(s) ~= "string" then return nil end
+    local f = split(s, 14)
+    if not f then return nil end
+    local own = num(f[2], 0, 2 ^ 12 - 1)
+    if not own or not num(f[1], 0, 99999) then return nil end
+    f[2] = tostring(own % 2 ^ 11 + (hasBit(own, 12) and bitOf(14) or 0))
+    table.insert(f, 14, "")
+    table.insert(f, 14, "")
+    return table.concat(f, ";")
+end
+
+-- The parsed quest r in the layout of version 2, heard (own mask 0): what the exchange sends.
+local function questWire(r)
+    return table.concat({ r.day, 0, r.giver, r.gpos, r.ender, r.epos, table.concat(r.rewards, ","), table.concat(r.choices, ","),
+        r.qlevel, r.minlvl, r.fac, r.pre, r.gname, r.title }, ";")
+end
+
+-- A saved record as the exchange sends it: heard (own mask 0); a quest in the layout of version 2,
+-- without enderName and objective. nil when s is not valid.
+function ns.CollectWire(kind, s)
+    if kind ~= "q" then return ns.CollectMark(kind, s, "heard") end
+    local r = ns.CollectParse("q", s)
+    return r and questWire(r) or nil
+end
+
+-- What two clients compare of a saved record (CollectSync's checksums): its body in the exchange's
+-- layout, so a client of version 3 and one of version 2 that hold the same quest agree.
+function ns.CollectWireBody(kind, s)
+    if kind ~= "q" or type(s) ~= "string" then return ns.CollectBody(s) end
+    local f = split(s, 16)
+    if not f then return ns.CollectBody(s) end
+    return table.concat(f, ";", 3, 13) .. ";" .. f[16]
+end
+
+-- A record heard from the exchange (blob version v: 2 sends quests in the layout of version 2, a
+-- later one in this version's) as a saved record string of this version and its parse; nil when it
+-- is not valid in its canonical form. A quest's enderName and objective are always left empty: they
+-- are never taken from the guild.
+function ns.CollectFromWire(kind, s, v)
+    if kind ~= "q" then
+        local r = ns.CollectParse(kind, s)
+        if not r then return nil end
+        return s, r
+    end
+    if type(s) ~= "string" then return nil end
+    local r
+    if v == 2 then
+        r = ns.CollectParse("q", questV2toV3(s))
+        if not r or questWire(r) ~= s or r.own ~= 0 then return nil end
+    else
+        r = ns.CollectParse("q", s)
+        if not r then return nil end
+        r.ename, r.obj = "", ""
+        local m = 0
+        for i, f in ipairs(FIELDS.q) do
+            if hasBit(r.own, i) and not empty(r[f]) then m = m + bitOf(i) end
+        end
+        r.own = m
+    end
+    return F.q(r), r
+end
 
 ---------------------------------------------------------------------------
 -- Merging: a join (the same result in any order, twice the same as once)
@@ -344,7 +450,7 @@ local function rank(a, b) return CLASS_RANK[a] >= CLASS_RANK[b] and a or b end
 
 local JOIN = {
     q = { giver = pickId, gpos = pickText, ender = pickId, epos = pickText, rewards = rewardList, choices = rewardList, qlevel = math.max,
-          minlvl = pickId, fac = unionFaction, pre = pickId, gname = pickText, title = pickText },
+          minlvl = pickId, fac = unionFaction, pre = pickId, gname = pickText, ename = pickText, obj = pickText, title = pickText },
     s = { pos = pickText, items = vendorItems, name = pickText },
     w = { class = rank, pos = pickText, inst = math.max, items = worldItems, name = pickText },
 }
@@ -376,12 +482,15 @@ local gen = 0   -- raised on every change (the exchange's index keys on it)
 
 local function weight(s) return #s + 16 end
 local function today() return ns.DropsToday and ns.DropsToday() or 0 end
-ns.COLLECT_VER = 2
+ns.COLLECT_VER = 3
 
 -- A saved record of an older table version as one of this version: version 1 had no own mask, so
--- its records count as heard (nothing tells which of them the client saw itself).
-local function upgrade(s, ver)
-    if ver == 1 and type(s) == "string" then return (s:gsub("^(%d+;)", "%10;", 1)) end
+-- its records count as heard (nothing tells which of them the client saw itself); a quest of
+-- version 1 or 2 gets the empty enderName and objective of version 3.
+local function upgrade(kind, s, ver)
+    if type(s) ~= "string" then return s end
+    if ver == 1 then s = s:gsub("^(%d+;)", "%10;", 1) end
+    if kind == "q" and (ver == 1 or ver == 2) then return questV2toV3(s) end
     return s
 end
 
@@ -417,7 +526,7 @@ function ns.CollectMigrate(root)
         local ids = {}
         for id in pairs(t) do ids[#ids + 1] = id end
         for _, id in ipairs(ids) do
-            local s = int(id, 1, MAX_ID) and clampDay(kind, upgrade(t[id], ver)) or nil
+            local s = int(id, 1, MAX_ID) and clampDay(kind, upgrade(kind, t[id], ver)) or nil
             t[id] = s
             if s then
                 counts[kind] = counts[kind] + 1
@@ -640,7 +749,7 @@ end
 
 local function emptyQuest()
     return { day = today(), giver = 0, gpos = "", ender = 0, epos = "", rewards = {}, choices = {}, qlevel = 0, minlvl = 0,
-             fac = "", pre = 0, gname = "", title = "" }
+             fac = "", pre = 0, gname = "", ename = "", obj = "", title = "" }
 end
 
 local function rewardsInto(r)
@@ -661,13 +770,17 @@ local function faction()
     return f == "Alliance" and "A" or f == "Horde" and "H" or ""
 end
 
--- QUEST_DETAIL: the giver and what the quest offers.
+-- QUEST_DETAIL: the giver, the objective text and what the quest offers.
 local function onDetail()
     if not questOn() then return end
     local qid = questId()
     if not qid then return end
     local r = emptyQuest()
     r.title = clean(ns.Plain((call(GetTitleText))))
+    -- the objective text only for the quests of the dungeon quest data (the quest path, F-135): the
+    -- texts are long, and every other quest's would crowd the collector's byte budget
+    local dq = ns.DUNGEON_QUESTS
+    if type(dq) == "table" and type(dq.Q) == "table" and dq.Q[qid] then r.obj = cleanObjective((call(GetObjectiveText))) end
     local npc, name = npcNow()
     if npc then
         r.giver, r.gname, r.gpos = npc, name, here()
@@ -689,9 +802,9 @@ local function onEnder(withRewards)
     local qid = questId()
     if not qid then return end
     local r = emptyQuest()
-    local npc = npcNow()
+    local npc, name = npcNow()
     if npc then
-        r.ender, r.epos = npc, here()
+        r.ender, r.ename, r.epos = npc, name or "", here()
         lastEnder = { qid = qid, npc = npc }
     end
     local title = clean(ns.Plain((call(GetTitleText))))
@@ -936,6 +1049,23 @@ function ns.CollectQuestOwnStart(id)
     local name = ns.CollectOwn("q", r, "gname") and r.gname ~= "" and r.gname or nil
     local point = ns.CollectOwn("q", r, "gpos") and r.gpos:match("^%d+:%d+:%d+$") and r.gpos or nil
     return name, point
+end
+
+-- Where an observed quest is handed in, from this client's own observation only: the NPC's name, the
+-- point "uiMapID:x:y" (either may be nil).
+function ns.CollectQuestOwnEnd(id)
+    local r = get("q", id)
+    if not r then return nil, nil end
+    local name = ns.CollectOwn("q", r, "ename") and r.ename ~= "" and r.ename or nil
+    local point = ns.CollectOwn("q", r, "epos") and r.epos:match("^%d+:%d+:%d+$") and r.epos or nil
+    return name, point
+end
+
+-- The objective text of a quest as this client saw it in the offer, or nil.
+function ns.CollectQuestObjective(id)
+    local r = get("q", id)
+    if not r or not ns.CollectOwn("q", r, "obj") or r.obj == "" then return nil end
+    return r.obj
 end
 
 ---------------------------------------------------------------------------

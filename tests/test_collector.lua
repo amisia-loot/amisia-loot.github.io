@@ -18,13 +18,17 @@ local function parsed(kind, id) return NS.CollectParse(kind, record(kind, id)) e
 ---------------------------------------------------------------------------
 local reward = STUB.item(280604, "Wut des Sturms", 3)
 local choice1, choice2 = STUB.item(5001, "Helm A", 2), STUB.item(5002, "Helm B", 2)
-local quest = { id = 2001, title = "Die Waffen des Sturms" }
+local quest = { id = 2001, title = "Die Waffen des Sturms", objective = "Bringt Thrall 10 |cffffd100Sturmsteine|r;\ndann\tsprecht mit |Hquest:1|hGrisgrind|h." }
 _G.GetQuestID = function() return quest.id end
 _G.GetTitleText = function() return quest.title end
+_G.GetObjectiveText = function() return quest.objective end
 _G.GetNumQuestRewards = function() return #STUB.questItems.reward end
 _G.GetNumQuestChoices = function() return #STUB.questItems.choice end
 STUB.questItems = { reward = { reward }, choice = { choice2, choice1 } }
 STUB.npc, STUB.npcGUID = "Sturmrufer Thrall", "Creature-0-3110-1-47-3344-00002E7CF2"
+-- the objective is kept for the quests of the dungeon quest data only
+local realDQ = NS.DUNGEON_QUESTS
+NS.DUNGEON_QUESTS = { built = "test", D = {}, Q = { [2001] = { "Weapons", 20, 30, "", 0, "O" } } }
 STUB.fire("QUEST_DETAIL")
 local q = parsed("q", 2001)
 assert(q, "the quest is recorded: " .. tostring(record("q", 2001)))
@@ -32,6 +36,8 @@ assert(q.title == "Die Waffen des Sturms" and q.giver == 3344 and q.gname == "St
 assert(q.gpos == "1411:5234:4011", "giver position " .. q.gpos)
 assert(q.rewards[1] == 280604 and q.choices[1] == 5001 and q.choices[2] == 5002, "rewards, choices sorted")
 assert(q.minlvl == 30 and q.fac == "H" and q.day == TODAY and q.ender == 0 and q.pre == 0)
+assert(q.obj == "Bringt Thrall 10 Sturmsteine, dann sprecht mit Grisgrind.", "the objective as plain text: " .. q.obj)
+assert(NS.CollectOwn("q", q, "obj") and q.ename == "", "the objective is own, no turn-in NPC yet")
 assert(AmisiaDB.scan == nil or true)
 -- the turn-in NPC elsewhere, then a follow-up quest of the same NPC
 STUB.map.pos = { x = 0.1, y = 0.2 }
@@ -41,11 +47,21 @@ STUB.fire("QUEST_COMPLETE")
 STUB.fire("QUEST_TURNED_IN", 2001, 100, 0)
 q = parsed("q", 2001)
 assert(q.ender == 4455 and q.epos == "1411:1000:2000" and q.giver == 3344, "the turn-in NPC")
+assert(q.ename == "Grisgrind" and NS.CollectOwn("q", q, "ename"), "the turn-in NPC's name")
+assert(NS.CollectQuestOwnEnd(2001) == "Grisgrind" and select(2, NS.CollectQuestOwnEnd(2001)) == "1411:1000:2000")
+assert(NS.CollectQuestObjective(2001) == q.obj and NS.CollectQuestObjective(2002) == nil)
+-- the objective's cleaning: codes out, bars gone, 300 characters at most (cut at a whole character)
+local clean = NS.CollectCleanObjective
+assert(clean("a|Tx:1|tb|A:y|a c||d") == "ab cd" and clean("  ") == "" and clean(nil) == "" and clean("\255") == "")
+local long = clean(("ä"):rep(299) .. "xyz")
+assert(long == ("ä"):rep(299) .. "x", "300 characters: " .. #long)
 quest = { id = 2002, title = "Weiter zum Sturm" }
 STUB.questItems = { reward = {}, choice = {} }
 STUB.tick(5)
 STUB.fire("QUEST_DETAIL")
 assert(parsed("q", 2002).pre == 2001, "offered by the same NPC right after the turn-in: pre-quest")
+assert(parsed("q", 2002).obj == "", "no objective for a quest the dungeon quest data does not know")
+NS.DUNGEON_QUESTS = realDQ
 -- another NPC, or too late: no pre-quest
 quest = { id = 2003, title = "Andere Sache" }
 STUB.npcGUID = "Creature-0-3110-1-47-9999-00002E7CF3"
@@ -291,16 +307,16 @@ walk(AmisiaDB.collect)
 -- merging: the same in any order, idempotent; strict parsing
 ---------------------------------------------------------------------------
 local M = NS.CollectMergeRecords
-local a = "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A"
-local b = "101;0;12;1411:100:300;20;1411:1:1;6;8;22;16;H;55;Beta;Titel B"
-local c = "99;0;0;;0;;9;;0;0;;54;;"
+local a = "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;;;Titel A"
+local b = "101;0;12;1411:100:300;20;1411:1:1;6;8;22;16;H;55;Beta;Ender B;Ziel B;Titel B"
+local c = "99;0;0;;0;;9;;0;0;;54;;;;"
 for _, s in ipairs({ a, b, c }) do assert(NS.CollectParse("q", s), "valid: " .. s) end
 assert(M("q", a, b) == M("q", b, a), "commutative")
 assert(M("q", M("q", a, b), c) == M("q", a, M("q", b, c)), "associative")
 assert(M("q", a, a) == a, "idempotent")
 local ab = NS.CollectParse("q", M("q", a, b))
 assert(ab.day == 101 and ab.giver == 10 and ab.ender == 20 and ab.qlevel == 22 and ab.minlvl == 16 and ab.fac == "AH" and ab.pre == 55)
-assert(table.concat(ab.rewards, ",") == "5,6,7" and ab.title == "Titel A")
+assert(table.concat(ab.rewards, ",") == "5,6,7" and ab.title == "Titel A" and ab.ename == "Ender B" and ab.obj == "Ziel B")
 local va, vb = "50;0;1411:1:1;10:100::,11:200:L:;", "51;0;;10:90:x:4@Ratschlag,12:5::;Händler"
 assert(M("s", va, vb) == M("s", vb, va))
 local vab = NS.CollectParse("s", M("s", va, vb))
@@ -308,10 +324,13 @@ assert(vab.items[10].price == 90 and vab.items[10].flags == "x" and vab.items[10
 local wa, wb = "5;0;r;1411:1:1;0;1:2,3:1;Wolf", "6;0;;;0;1:5,4:1;"
 assert(M("w", wa, wb) == M("w", wb, wa) and NS.CollectParse("w", M("w", wa, wb)).items[1] == 5)
 -- broken records: refused
-for _, s in ipairs({ "x;0;10;;0;;;;0;0;;0;;T", "1;0;10;1411:100:200:5;0;;;;0;0;;0;;T", "1;0;10;;0;;7,5;;0;0;;0;;T",
-                     "1;0;10;;0;;;;0;0;X;0;;T", "1;0;10;;0;;;;0;0;;0;Na|me;T", "1;0;10;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;T",
-                     "1;0;10;;0;;;;0;0;;0;;Ti\1tel", "-1;0;10;;0;;;;0;0;;0;;T", "1;0;10;;0;;;;0;0;;0;;" .. ("x"):rep(60),
-                     "1;2;10;;0;;;;0;0;;0;;T", "1;4096;10;;0;;;;0;0;;0;;T", "1;01;10;;0;;;;0;0;;0;;T", "1;10;;0;;;;0;0;;0;;T" }) do
+for _, s in ipairs({ "x;0;10;;0;;;;0;0;;0;;;;T", "1;0;10;1411:100:200:5;0;;;;0;0;;0;;;;T", "1;0;10;;0;;7,5;;0;0;;0;;;;T",
+                     "1;0;10;;0;;;;0;0;X;0;;;;T", "1;0;10;;0;;;;0;0;;0;Na|me;;;T", "1;0;10;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;;;T",
+                     "1;0;10;;0;;;;0;0;;0;;;;Ti\1tel", "-1;0;10;;0;;;;0;0;;0;;;;T", "1;0;10;;0;;;;0;0;;0;;;;" .. ("x"):rep(60),
+                     "1;2;10;;0;;;;0;0;;0;;;;T", "1;16384;10;;0;;;;0;0;;0;;;;T", "1;01;10;;0;;;;0;0;;0;;;;T", "1;10;;0;;;;0;0;;0;;;;T",
+                     "1;0;10;;0;;;;0;0;;0;;En|der;;T", "1;0;10;;0;;;;0;0;;0;;; Ziel;T", "1;0;10;;0;;;;0;0;;0;;;Zi|el;T",
+                     "1;0;10;;0;;;;0;0;;0;;;" .. ("z"):rep(301) .. ";T", "1;4096;10;;0;;;;0;0;;0;;;;T",
+                     "1;0;10;;0;;;;0;0;;0;Alpha;Titel A" }) do
     assert(NS.CollectParse("q", s) == nil, "refused: " .. s)
 end
 assert(NS.CollectParse("s", "1;0;;10:100:Q:;N") == nil and NS.CollectParse("s", "1;0;;10:100::9@X;N") == nil)
@@ -327,13 +346,39 @@ AmisiaDB.collect.w[9] = { "nope" }
 AmisiaDB.collect.x = { 1 }
 NS.CollectMigrate(AmisiaDB)
 assert(AmisiaDB.collect.q[3000] == nil and AmisiaDB.collect.q["3001"] == nil and AmisiaDB.collect.s[0] == nil and AmisiaDB.collect.w[9] == nil)
-assert(AmisiaDB.collect.q[2001] and AmisiaDB.collect.ver == 2)
+assert(AmisiaDB.collect.q[2001] and AmisiaDB.collect.ver == 3)
 -- a table of version 1 (no own mask): its records are kept as heard; a day far ahead is pulled back
 AmisiaDB.collect = { ver = 1, q = { [7] = "100;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A",
-    [8] = (TODAY + 30) .. ";10;;0;;;;0;0;;0;;Zukunft" }, s = {}, w = {} }
+    [8] = (TODAY + 30) .. ";10;;0;;;;0;0;;0;;Zukunft" }, s = { [5] = "50;1411:1:1;10:100::;Grimm" }, w = {} }
 NS.CollectMigrate(AmisiaDB)
-assert(AmisiaDB.collect.ver == 2 and AmisiaDB.collect.q[7] == "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A", "version 1 as heard")
+assert(AmisiaDB.collect.ver == 3 and AmisiaDB.collect.q[7] == "100;0;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;;;Titel A", "version 1 as heard")
+assert(AmisiaDB.collect.s[5] == "50;0;1411:1:1;10:100::;Grimm", "a vendor of version 1 as heard")
 assert(NS.CollectQuest(8).day == TODAY + 1, "a day far ahead becomes tomorrow")
+-- a table of version 2: enderName and objective come in empty, the own bits stay with their fields
+-- (giver bit 1, title bit 12 of version 2 = bit 14 of version 3)
+AmisiaDB.collect = { ver = 2, q = { [7] = "100;2049;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;Titel A",
+    [9] = "100;8192;10;;0;;;;0;0;;0;;T" }, s = {}, w = {} }
+NS.CollectMigrate(AmisiaDB)
+assert(AmisiaDB.collect.ver == 3 and AmisiaDB.collect.q[7] == "100;8193;10;1411:100:200;0;;5,7;;20;18;A;0;Alpha;;;Titel A",
+    "version 2 moved on: " .. tostring(AmisiaDB.collect.q[7]))
+assert(NS.CollectOwn("q", NS.CollectQuest(7), "title") and NS.CollectOwn("q", NS.CollectQuest(7), "giver"))
+assert(AmisiaDB.collect.q[9] == nil, "an own mask beyond version 2's fields is broken")
+-- the exchange's layout: version 2, heard, without the turn-in NPC's name and the objective
+local v3 = "100;16383;10;1411:100:200;20;1411:1:1;5,7;8;20;18;A;3;Alpha;Ender;Ziel;Titel A"
+assert(NS.CollectParse("q", v3), "valid with every field own")
+assert(NS.CollectWire("q", v3) == "100;0;10;1411:100:200;20;1411:1:1;5,7;8;20;18;A;3;Alpha;Titel A", NS.CollectWire("q", v3))
+assert(NS.CollectWireBody("q", v3) == "10;1411:100:200;20;1411:1:1;5,7;8;20;18;A;3;Alpha;Titel A")
+assert(NS.CollectWireBody("q", v3) == NS.CollectBody(NS.CollectWire("q", v3)), "the checksum's body is the sent one's")
+assert(NS.CollectWire("s", "50;3;1411:1:1;10:100::;Grimm") == "50;0;1411:1:1;10:100::;Grimm")
+local heard, hr = NS.CollectFromWire("q", NS.CollectWire("q", v3), 2)
+assert(heard == "100;0;10;1411:100:200;20;1411:1:1;5,7;8;20;18;A;3;Alpha;;;Titel A" and hr.own == 0, tostring(heard))
+assert(NS.CollectFromWire("q", v3, 2) == nil, "a version 3 record in a version 2 blob is broken")
+assert(NS.CollectFromWire("q", "100;1;10;;0;;;;0;0;;0;;T", 2) == nil, "an own mask in a heard record")
+heard = NS.CollectFromWire("q", "100;0;10;;0;;;;0;0;;0;;Ender;Ziel;T", 3)
+assert(heard == "100;0;10;;0;;;;0;0;;0;;;;T", "a version 3 blob: the two texts never taken: " .. tostring(heard))
+-- a title with ";" (version 2 allowed it) reads the same
+heard = NS.CollectFromWire("q", "100;0;10;;0;;;;0;0;;0;;Titel; mit Semikolon", 2)
+assert(heard == "100;0;10;;0;;;;0;0;;0;;;;Titel; mit Semikolon" and NS.CollectWire("q", heard) == "100;0;10;;0;;;;0;0;;0;;Titel; mit Semikolon")
 AmisiaDB.collect = "garbage"
 NS.CollectMigrate(AmisiaDB)
 assert(type(AmisiaDB.collect.q) == "table" and next(AmisiaDB.collect.q) == nil, "a broken table starts empty")
@@ -345,7 +390,7 @@ local L = NS.COLLECT_LIMITS
 local old = { q = L.q, s = L.s, w = L.w, bytes = L.bytes }
 L.q = 50
 for i = 1, 60 do
-    assert(NS.CollectPut("q", 10000 + i, ("%d;0;10;1411:100:200;0;;5;;20;18;A;0;Geber;Quest %d"):format(TODAY - 60 + i, i)) == "new")
+    assert(NS.CollectPut("q", 10000 + i, ("%d;0;10;1411:100:200;0;;5;;20;18;A;0;Geber;;;Quest %d"):format(TODAY - 60 + i, i)) == "new")
 end
 local counts = NS.CollectCounts()
 assert(counts.q <= 50 and counts.q >= 45, "the quest cap: " .. counts.q)
@@ -373,7 +418,7 @@ assert(NS.CollectBytes() == recount(), "bytes counted right")
 AmisiaDB.collect = nil
 NS.CollectMigrate(AmisiaDB)
 for i = 1, L.q do
-    NS.CollectPut("q", 30000 + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name;Eine typische Quest %d"):format(
+    NS.CollectPut("q", 30000 + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name;Abgabe Name;;Eine typische Quest %d"):format(
         TODAY, 3000 + i, 1000 + i % 9000, 2000 + i % 7000, 4000 + i, 200000 + i, 200001 + i, 210000 + i, 210001 + i, 210002 + i, 20 + i % 40, 18 + i % 40, i, i), "own")
 end
 for i = 1, L.s do

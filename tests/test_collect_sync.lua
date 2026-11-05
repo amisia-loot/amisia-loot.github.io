@@ -19,11 +19,13 @@ local function setup(name)
         AmisiaDB.drops.me = %q
         STUB.fire("GUILD_ROSTER_UPDATE")]]):format(ME[name]))
 end
--- records: list of { kind, id, record }
+-- records: list of { kind, id, record }, quests written in the exchange's layout (version 2, heard)
+-- and saved as the collector's version 3
 local function put(name, list)
     return C(name, [[local n = 0
         for _, e in ipairs({ ]] .. list .. [[ }) do
-            assert(NS.CollectPut(e[1], e[2], e[3], "own"), "valid " .. e[3])
+            local s = e[1] == "q" and select(2, e[3]:gsub(";", "")) == 13 and NS.CollectFromWire("q", e[3], 2) or e[3]
+            assert(NS.CollectPut(e[1], e[2], s, "own"), "valid " .. e[3])
             n = n + 1
         end
         return n]])
@@ -138,6 +140,37 @@ for _, name in ipairs({ FRAK, KIM }) do
     assert(stat(name, "records") - before[name] == 1, name .. " got only the missing record: " .. (stat(name, "records") - before[name]))
 end
 assert(BUS.count(function(m) return m.kind == "CR" and m.t >= t1 and m.text:find("\t%x%x%x%x") end) >= 1, "requests list the known records")
+
+-- the turn-in NPC's name and the objective (collector version 3) stay with the client that saw them:
+-- the exchange sends a quest in the layout of version 2, its checksum leaves both out
+local tA = C(VULO, "STUB.clock")
+C(VULO, [[local realDQ = NS.DUNGEON_QUESTS
+    NS.DUNGEON_QUESTS = { built = "test", D = {}, Q = { [4243] = { "New", 30, 31, "", 0, "O" } } }
+    STUB.place.map = 1411; STUB.map.pos = { x = 0.3, y = 0.3 }
+    STUB.npc, STUB.npcGUID = "Mok", "Creature-0-1-1-1-777-1"
+    _G.GetQuestID = function() return 4243 end
+    _G.GetTitleText = function() return "Ganz neu" end
+    _G.GetObjectiveText = function() return "Geheimes Ziel" end
+    STUB.fire("QUEST_DETAIL")
+    STUB.map.pos = { x = 0.4, y = 0.4 }
+    STUB.npc, STUB.npcGUID = "Abgeber Ork", "Creature-0-1-1-1-888-1"
+    STUB.fire("QUEST_COMPLETE")
+    NS.DUNGEON_QUESTS = realDQ]])
+BUS.tick(2000)
+for _, name in ipairs({ FRAK, KIM }) do
+    local r = C(name, "NS.CollectQuest(4243)")
+    assert(r and r.giver == 777 and r.ender == 888 and r.title == "Ganz neu", name .. " has the quest")
+    assert(r.ename == "" and r.obj == "", name .. " heard no turn-in name and no objective")
+end
+for _, m in ipairs(BUS.sent) do
+    if m.t >= tA then assert(not m.text:find("Geheimes Ziel", 1, true) and not m.text:find("Abgeber Ork", 1, true), "a text travelled") end
+end
+-- the same quest with and without the two texts: one checksum, nothing more to pull
+local r = C(VULO, "NS.CollectQuest(4243)")
+assert(r.ename == "Abgeber Ork" and r.obj == "Geheimes Ziel", "Vulo keeps his own texts")
+local tB = C(VULO, "STUB.clock")
+BUS.tick(2000)
+assert(BUS.count(function(m) return m.kind == "CR" and m.t >= tB end) == 0, "the two texts start no exchange")
 -- a later day changes no checksum
 local hash = C(KIM, "AmisiaDB.collect.q[3001]")
 C(KIM, ("AmisiaDB.collect.q[3001] = (AmisiaDB.collect.q[3001]:gsub('^%%d+', '%d')); NS.CollectMigrate(AmisiaDB)"):format(D + 1))
@@ -184,6 +217,8 @@ local forged = {
     ([[{ v = 2, k = "q", r = { "64", "x" } }]]),                                        -- a text id
     ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins", 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D, D), -- twice
     ([[{ v = 2, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins", n = 1 } }]]):format(D),  -- extra keys
+    ([[{ v = 3, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" } }]]):format(D),        -- version 2 in a blob of 3
+    ([[{ v = 4, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;;;Eins" } }]]):format(D),      -- an unknown blob version
 }
 for i, tbl in ipairs(forged) do
     local b = forge(tbl)
@@ -194,6 +229,11 @@ end
 assert(forge(GOOD) == 0 and C(FRAK, "AmisiaDB.collect.q[64] ~= nil"), "the asked blob is taken")
 local b2, u2 = forge(GOOD, false)
 assert(b2 == 0 and u2 == 1, "a second answer is unasked")
+-- a blob of version 3 (quests in the collector's version 3) is read; its turn-in name and objective are not
+C(FRAK, "AmisiaDB.collect.q[64] = nil; NS.CollectMigrate(AmisiaDB)")
+assert(forge(([[{ v = 3, k = "q", r = { 64, "%d;0;1;;0;;;;0;1;H;0;;Ender;Ziel;Eins" } }]]):format(D)) == 0, "a version 3 blob")
+local r64 = C(FRAK, "NS.CollectQuest(64)")
+assert(r64 and r64.title == "Eins" and r64.ename == "" and r64.obj == "", "the two texts are never taken from the guild")
 -- malformed control messages: dropped by Comm, nothing breaks
 local bad0 = C(FRAK, "NS.CommStats().bad")
 C(VULO, [[NS.CommSend("CV", { "1", "x", "q:zz:1" }, "GUILD")
@@ -210,7 +250,7 @@ assert(C(FRAK, "AmisiaDB.collect.q[64] == nil"), "nothing from Pug")
 -- a saved record that broke at the sender cannot reach the others: it is left out of the blob
 for _, name in ipairs(CLIENTS) do BUS.reload(name); setup(name); clear(name) end
 put(VULO, ([[{ "q", 64, "%d;0;1;;0;;;;0;1;H;0;;Eins" }]]):format(D))
-C(VULO, ("AmisiaDB.collect.q[128] = %q; NS.CollectPut('q', 192, '%d;0;1;;0;;;;0;1;H;0;;Drei', 'own')"):format("kaputt;;", D))
+C(VULO, ("AmisiaDB.collect.q[128] = %q; NS.CollectPut('q', 192, '%d;0;1;;0;;;;0;1;H;0;;;;Drei', 'own')"):format("kaputt;;", D))
 local fbad = stat(FRAK, "bad")
 login(VULO); login(FRAK)
 BUS.tick(600)

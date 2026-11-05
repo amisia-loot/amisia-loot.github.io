@@ -407,8 +407,8 @@ def test_the_source_collector_fills_what_att_lacks():
     def own(kind, recs):
         return {k: sb.mark_collect_record(kind, v, 'own') for k, v in recs.items()}
     observed = sb.collect_observed([{'collect': {
-        'q': own('q', {500: '280;0;3344;1436:5000:5000;0;;40,41;;0;20;A;0;Gryan;Die Quest',
-                       2001: '280;0;3344;1440:5234:4011;0;;280604;;34;30;H;0;Sturmrufer;The Tempest\'s Weapons'}),
+        'q': own('q', {500: '280;0;3344;1436:5000:5000;0;;40,41;;0;20;A;0;Gryan;;;Die Quest',
+                       2001: '280;0;3344;1440:5234:4011;0;;280604;;34;30;H;0;Sturmrufer;;;The Tempest\'s Weapons'}),
         's': own('s', {900: '280;0;1436:1:1;42:100::,43:200:L:;Schmied', 904: '280;0;1411:2500:7500;44:1520::6@Orgrimmar;Grimm'}),
         'w': own('w', {901: '280;0;r;1420:1:1;0;45:1;Muad', 299: '280;0;n;1411:2500:7500;0;46:2;Wolf', 300: '280;0;R;1411:1:1;0;47:1;Eber',
                        302: '280;0;n;;36;48:1;Defias'})}}])

@@ -36,7 +36,7 @@ read_globals = {
     "GetNumGuildBankTabs", "GetNumGuildMembers", "GetNumLootItems", "GetNumQuestChoices",
     "GetNumQuestRewards", "GetPlayerFacing", "GetProfessionInfo", "GetProfessions", "GetQuestID",
     "GetQuestItemLink", "GetQuestLogIndexByID", "GetQuestLogTitle", "GetRaidRosterInfo", "GetRealZoneText",
-    "GetServerTime", "GetSpellDescription", "GetSpellHitModifier", "GetSpellInfo", "GetTime", "GetTitleText",
+    "GetServerTime", "GetSpellDescription", "GetSpellHitModifier", "GetSpellInfo", "GetTime", "GetTitleText", "GetObjectiveText",
     "GetZoneText", "GiveMasterLoot", "GuildControlGetNumRanks", "GuildControlGetRankName",
     "HandleModifiedItemClick", "hooksecurefunc", "InCombatLockdown", "UpdateAddOnMemoryUsage", "GetAddOnMemoryUsage", "IsAltKeyDown", "IsControlKeyDown",
     "IsInGroup", "IsInGuild", "IsInInstance", "IsInLFGDungeon", "IsInRaid", "IsModifiedClick", "IsShiftKeyDown",
