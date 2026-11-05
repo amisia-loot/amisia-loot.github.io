@@ -898,6 +898,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.54.2: in einer Instanz, im Kampf und in der Kampfsperre öffnet der Klick die Karte nicht und setzt keinen Spiel-Wegpunkt (Fehler "tainted by 'Amisia'" im Objective Tracker, DECISIONS D-62).
 - Notiz: 2.54.1: Questgeber-Pins nur noch als gelbes "!" ohne grünen Rahmen und Ring (Bildschirmfoto des Nutzers: das Karten-Symbol "QuestNormal" ist auf Forever eine Raute).
 
+### F-135 Questweg für Dungeon-Quests
+- Version: -
+- Status: geplant
+- Notiz: Spec `docs/specs/2026-11-05-questweg.md` (freigegeben 2026-11-05).
+
 ### F-047 Dungeon-Journal: Bilder, Bossmodell, Quest-EP, Anprobe
 - Version: 2.7.0
 - Status: gebaut
