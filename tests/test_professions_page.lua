@@ -39,7 +39,8 @@ local values = {}
 for _, v in ipairs(f.prof.values) do values[#values + 1] = tostring(v.value) end
 assert(table.concat(values, ",") == "164,185,171,camp,favor", table.concat(values, ","))
 assert(has(f.rank:GetText(), "Dein Rang: 45 / 150"), f.rank:GetText())
-assert(#f.list.items == 5 and has(f.counts:GetText(), "Berufsfenster öffnen"), f.counts:GetText())
+assert(#f.list.items == 5 and f.counts:GetText() == "5 von 5 Rezepten", f.counts:GetText())
+assert(has(f.hint:GetText(), "Berufsfenster einmal öffnen"), f.hint:GetText())
 
 -- the profession window is read: known recipes are marked, the status line no longer asks
 STUB.fire("TRADE_SKILL_SHOW"); STUB.tick(1)
@@ -54,7 +55,7 @@ assert(rows[4].rank:GetText():find("10"), "the learn rank")
 local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
 assert(table.concat(order, ",") == "2663,9999,1252229,3321,1301421", table.concat(order, ","))
-assert(not has(f.counts:GetText(), "Berufsfenster"), f.counts:GetText())
+assert(not has(f.hint:GetText(), "Berufsfenster"), f.hint:GetText())
 
 -- the detail of the first row is shown; a click chooses another
 assert(f.selected and f.selected.recipe.spell == 2663, "the first row is chosen")
@@ -82,19 +83,24 @@ assert(has(body, "Mit dem Beruf gelernt"), body)
 assert(not d.go:IsEnabled(), "no place to go")
 
 -- filters
-f.known:Click()                      -- Alle -> Bekannt
+-- the two dropdowns name their filter; a pick goes through the picker's onPick
+assert(f.known.arrow and f.known.label:GetText() == "Bekannt: Alle", f.known.label:GetText())
+assert(f.source.arrow and f.source.label:GetText() == "Quelle: Alle", f.source.label:GetText())
+f.known.onPick("known")
 assert(#f.list.items == 2 and AmisiaDB.settings.professions.known == "known", #f.list.items)
-f.known:Click()                      -- Bekannt -> Unbekannt
+assert(f.known.label:GetText() == "Bekannt: Bekannt" and f.counts:GetText() == "2 von 5 Rezepten", f.counts:GetText())
+f.known.onPick("unknown")
 assert(#f.list.items == 3)
-f.known:Click()                      -- back to all
+f.known.onPick("all")
 f.learn:Click()
 assert(#f.list.items == 2 and f.learn.on, "unknown and learnable at 45: the vest and the recipe without data")
 f.learn:Click()
-f.source:Click()                     -- Lehrer
+f.source.onPick("T")
 assert(AmisiaDB.settings.professions.source == "T" and #f.list.items == 3, #f.list.items)
-f.source:Click()                     -- Händler
+f.source.onPick("V")
 assert(#f.list.items == 1 and f.list.items[1].recipe.spell == 3321)
-for _ = 1, 4 do f.source:Click() end -- back to all
+assert(f.source.label:GetText() == "Quelle: Händler", f.source.label:GetText())
+f.source.onPick("all")
 assert(AmisiaDB.settings.professions.source == "all" and #f.list.items == 5)
 f.search:SetText("weste")
 f.search.scripts.OnEnterPressed(f.search)

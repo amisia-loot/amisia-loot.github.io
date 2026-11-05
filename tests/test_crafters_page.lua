@@ -41,12 +41,12 @@ f.list.rows[3]:Click()
 assert(has(d.body.fs:GetText(), "Hergestellt von: niemand aus der Gilde bekannt") and not d.ask:IsEnabled())
 
 -- only what the guild knows
+assert(f.guild.label:GetText() == "Gilde (2)" and f.guild:IsEnabled() and not f.guild.dim, f.guild.label:GetText())
 f.guild:Click()
 assert(AmisiaDB.settings.professions.guild == true and f.guild.on and #f.list.items == 2, #f.list.items)
-f.known:Click()
-f.known:Click()                      -- unknown to me, known in the guild: the vest
+f.known.onPick("unknown")            -- unknown to me, known in the guild: the vest
 assert(#f.list.items == 1 and f.list.items[1].recipe.spell == 3321, #f.list.items)
-f.known:Click()
+f.known.onPick("all")
 f.guild:Click()
 assert(not AmisiaDB.settings.professions.guild and #f.list.items == 5)
 
