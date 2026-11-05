@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.51.0 (2026-11-05)
+
+- Realistische Quellen: keine zufälligen Welt-Drop-Epics, AH nur mit fester Quelle, eigener Tooltip aus dem Scan (F-132, D-59)
+
 ## 2.50.1 (2026-11-05)
 
 - Spec: Feedback-Seite, Bugs und Wünsche im Spiel an den Autor (F-130, Entwurf)
