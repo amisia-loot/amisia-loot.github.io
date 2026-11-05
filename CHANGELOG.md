@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): show the whole quest path of a dungeon quest (F-135, D-63)
+
+  A click on a dungeon quest opens its path: every pre-quest numbered in order, where and how to get it
+  (quest giver with map button, an item and where it drops, an object, or inside the dungeon), where to
+  hand it in once known, requirements and the objective once you have seen it, and the next step with
+  "Nächsten Schritt auf der Karte". Quests that start inside a dungeon show the dungeon mark.
+
 - data(quests): rebuild all data from the current AllTheThings Forever data (F-135)
 
   Dungeon quests grow from 122 in 12 dungeons to 411 in 24, among them Blackrock Depths and Spire,

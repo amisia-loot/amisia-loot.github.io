@@ -1378,3 +1378,21 @@ gelöscht wurden.
 **Folge:** In Instanzen kein Spiel-Wegpunkt und keine Karte aus Amisia; neue Aufrufe von Client-Funktionen, die den
 Tracker, die Karte oder die Verfolgung anstoßen, gehen durch `Map.ClientSafe()`.
 **Durchgesetzt durch:** `tests/test_map_client_safe.lua`.
+
+## D-63 Questweg: Quelle der Questangaben, Zieltext nur selbst gesehen
+
+**Datum:** 2026-11-05
+**Entscheidung:** Der Questweg der Dungeon-Quests (F-135) zeigt nur, was die Daten (AllTheThings, MIT, D-04) oder
+eigene Beobachtungen dieses Clients sagen; eigene Beobachtungen gehen vor (Questgeber und Ort, Abgabe-NPC und Ort,
+Zieltext). Den Zieltext liest der Sammler nur im Annahmefenster und nur für Dungeon-Quests und ihre Vorquests
+(Sammler-Version 3: `...;giverName;enderName;objective;title`); Abgabe-NPC-Name und Zieltext gehen nicht in den
+Quellen-Austausch der Gilde (gesendet wird das Format 2), gehörte werden geleert und nie gezeigt. Über die
+SavedVariables kommen die eigenen Beobachtungen beim nächsten `build.py data` in `tools/quest_obs.json` und in die
+Daten für alle. Keine englischen ATT-Hinweise, keine Texte anderer Quest-Datenbanken (D-03). Brotkrumen-Quests
+sind optional und zählen nicht im Fortschritt; höchstens 15 Schritte werden gezeigt.
+**Grund:** Spec `docs/specs/2026-11-05-questweg.md` ("Passt, bauen"): der Spieler soll genau sehen, wo und wie er
+die Dungeon-Quests bekommt; ein einzelnes Gildenmitglied soll keine falschen Texte oder Orte verbreiten können.
+**Folge:** Fehlt ein Ort oder eine Abgabe, steht "Ort unbekannt" bzw. "noch unbekannt", bis jemand mit Amisia die
+Quest sieht und die Daten neu gebaut werden.
+**Durchgesetzt durch:** `tests/test_quest_path.lua`, `tests/test_collect_sync.lua`,
+`tools/tests/test_collect_records.py`, `tools/tests/test_build_dungeonquests.py`.
