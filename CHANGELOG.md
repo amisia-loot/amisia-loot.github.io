@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.54.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.54.2) (2026-11-05)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.1...v2.54.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(map): keep the game's waypoint and world map alone inside instances and in combat (D-62)
 
   Setting or clearing the game's waypoint or opening the world map from Amisia in a dungeon made the
