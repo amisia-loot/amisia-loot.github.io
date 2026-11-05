@@ -1251,7 +1251,7 @@ stimmt kein Cache. Elitequests ohne Questlog-Eintrag erkennt "Solo machbar" erst
 **Datum:** 2026-10-25
 **Entscheidung:** Spec `docs/specs/2026-10-25-raid-auf-tbc-und-era.md` (F-126). Eine `Amisia.toc` mit
 `## Interface: 16001, 20506, 11509`. Nur auf Forever laden (`[AllowLoadGameType camelot]`): `Data/*`, `Collect/*`,
-`Gear/*` (auch `MapPin.xml`), `Core/Duels.lua`, `Raid/Handover.lua` (Handel-Helfer), `UI/GoalsWindow.lua`,
+`Gear/*`, `Core/Duels.lua`, `Raid/Handover.lua` (Handel-Helfer), `UI/GoalsWindow.lua`,
 `UI/SlotCard.lua`, `UI/DuelInfo.lua` und die Seiten Ausrüstung, Dungeons, Raids (Ausrüstung), Karte, Berufe, Quests,
 Talente, Magierrollen, Duelle, Werkzeuge und Export. Alles andere ist der Raid-Teil und lädt auf allen drei Clients;
 er greift auf die Forever-Teile nur zur Laufzeit und nur geprüft zu (`if ns.Gear and ...`). Der Schalter heißt
@@ -1396,3 +1396,23 @@ die Dungeon-Quests bekommt; ein einzelnes Gildenmitglied soll keine falschen Tex
 Quest sieht und die Daten neu gebaut werden.
 **Durchgesetzt durch:** `tests/test_quest_path.lua`, `tests/test_collect_sync.lua`,
 `tools/tests/test_collect_records.py`, `tools/tests/test_build_dungeonquests.py`.
+
+## D-64 Keine Datenlieferanten der Weltkarte: Amisias Pins auf eigener Ebene
+
+**Datum:** 2026-11-05
+**Entscheidung:** Amisias Weltkarten-Pins (Ziele, Wünsche, Questgeber, Eingänge, Flugmeister, Zeppeline, Schiffe)
+liegen auf einer eigenen Ebene unter der Leinwand der Karte (`WorldMapFrame.ScrollContainer.Child`), als Amisias
+eigene Knöpfe in eigenen Pools. Kein `AddDataProvider`, kein `AcquirePin`, keine Pin-Pools oder Mixins der Leinwand,
+keine Schreibzugriffe auf `WorldMapFrame` und seine Kinder, keine ersetzten Skripte, keine Aufrufe von
+Karten-Aktualisierungen. Die Ebene liest nur, in ihrem eigenen OnUpdate, solange die Karte offen ist; ihr OnShow setzt
+nur eine Marke.
+**Grund:** Fehler aus dem Spiel 2026-11-05: `[ADDON_ACTION_BLOCKED] ... 'Frame:SetPropagateMouseClicks()'` aus dem
+AreaPOI-Datenlieferanten und "tainted by 'Amisia'" im Objective Tracker und Edit Mode. Ruft die Karte alle
+Datenlieferanten nacheinander auf und kommt Amisias Lieferant vor einem des Clients dran, läuft der Rest der Kette
+verunreinigt weiter; im Kampf werden geschützte Aufrufe blockiert. Bewährte Pin-Bibliotheken zeichnen deshalb auf
+eigenen Frames.
+**Folge:** `Gear/MapPin.xml` entfällt (TOC geändert: einmal WoW neu starten). Offen bleibt nur, dass Amisia die Karte
+selbst öffnet (`ns.MapShowOnWorldMap`: `OpenWorldMap`, `SetMapID`), außerhalb von Instanzen und Kampf (D-62).
+**Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
+`tests/test_map_places.lua`.
+

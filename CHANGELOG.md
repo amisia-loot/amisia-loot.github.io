@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(map): draw Amisia's world map pins on its own layer (D-64)
+
+  The pins no longer hook into the world map's own pin system, which let Amisia taint the map's and the
+  objective tracker's updates ("tainted by 'Amisia'", a blocked SetPropagateMouseClicks in combat).
+  Pins, tooltips, clicks and menus work as before. The TOC changed: restart WoW once.
+
 - feat(dungeons): show the whole quest path of a dungeon quest (F-135, D-63)
 
   A click on a dungeon quest opens its path: every pre-quest numbered in order, where and how to get it

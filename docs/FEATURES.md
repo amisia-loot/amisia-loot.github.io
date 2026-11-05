@@ -868,6 +868,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia karte <Item-Link>` eingibst, dann setzt Amisia das Ziel zur Quelle des Items ("Ziel ...") mit Wegpunkt und Pfeil; "Ziel erreicht" kommt am Ort.
 - Prüfung: Wenn du die Weltkarte öffnest, dann stehen Pins mit Item-Symbol für deine Upgrades und Wünsche (abschaltbar unter Einstellungen, Karte und Wegpunkt).
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
+- Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64).
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 - Version: 2.49.0
@@ -878,6 +879,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du als Horde in Durotar und im Schlingendorntal schaust, dann siehst du keine Allianz-Flugmeister; in Beutebucht nur den deiner Fraktion.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann stehen dort Zeilen zu C_TaxiMap und C_EncounterJournal und zu den Symbolen Dungeon/Raid; nach dem Betreten eines Dungeons ohne bekannten Eingang (z. B. Hall of Thanes) hat er nach dem nächsten Daten-Build einen Pin.
 - Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (seit 2026-11-04 Anleger und fehlende Flugmeister von Hand, eigene Symbole). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Symbole: Flügelstiefel, Schiff in Fraktionsfarbe, Zeppelin (Media/Icons/place_*.tga), in 2.39.5/2.39.6 neu gezeichnet (glatter Rand, weicher Schatten).
+- Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64).
 
 ### F-046 Dungeon-Planer: Rangliste, Kette, Quests
 - Version: 2.4.0
