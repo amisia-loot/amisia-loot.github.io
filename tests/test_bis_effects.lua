@@ -132,9 +132,14 @@ check("6 the committed data: Rage of the Storm names its effect and has its dama
     local s = Gear.ComputedStats(PICK_ID)
     -- computed stats: with the damage when the melee kind is proven against the scans (build 70235:
     -- 35.56 DPS at 3.6 s), else the allocations alone (build 70338 changed weapons the old scans still
-    -- show, so the kind failed the check until the items are scanned again)
-    assert(s and s.STA and s.STA > 0, "the pick's computed stats")
-    if s.DPS then assert(s.SPEED and s.SPEED > 0, "a damage comes with its speed") end
+    -- show, so the kind failed the check until the items are scanned again); since the data of
+    -- AllTheThings 2026-11-05 the pick is in the gear data with the stats the scan saw (no SC needed)
+    if s then
+        if s.DPS then assert(s.SPEED and s.SPEED > 0, "a damage comes with its speed") end
+    else
+        s = Gear.ScannedStats(PICK_ID)
+    end
+    assert(s and s.STA and s.STA > 0, "the pick's computed or scanned stats")
     assert(type(NS.BIS.EN) == "table" and next(NS.BIS.EN), "encounters")
 end)
 

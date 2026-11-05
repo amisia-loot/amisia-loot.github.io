@@ -208,3 +208,50 @@ def test_flight_paths_with_their_flight_master(db):
                        'faction': 'A', 'file': 'zones/eastern kingdoms/dun morogh.lua', 'old': False}
     assert f[9002]['npc'] is None and f[9002]['faction'] == '', 'a path without its flight master, both factions'
     assert att_data.empty_db()['flights'] == {}
+
+
+# ---------------------------------------------------------------- the form since November 2026
+# tools/tests/fixtures/att_new (hand-made, no real data): instanceroot(), zoneTextAreaID, plain keys,
+# the race lists of .config/constants/races.lua, maproot() with one map, the zzOLD folders gone
+NEW = os.path.join(HERE, 'fixtures', 'att_new')
+
+
+@pytest.fixture(scope='module')
+def new():
+    return att_data.load(NEW, items=False)
+
+
+def test_instanceroot_and_its_quests(new):
+    assert new['errors'] == {} and new['files'] == ['dungeons & raids/test keep.lua', 'zones/eastern kingdoms/test moor.lua']
+    inst = new['instances'][9201]
+    assert inst['name'] == 'Test Keep' and inst['area'] == 99201 and inst['maps'] == [9201] and not inst['old']
+    assert inst['points'] == [(1427, 6150, 2250)] and inst['stem'] == 'test keep'
+    q = new['quests']
+    assert {i for i, r in q.items() if r['inst'] == 9201} == {73001, 73002, 73004, 73005, 73006}
+    assert q[73002]['giver'] == 'Sir Moorhelm' and q[73002]['pre'] == [73003] and q[73003]['breadcrumb']
+
+
+def test_race_lists_specializations_start_items_and_objects(new):
+    q = new['quests']
+    assert q[73002]['races'] == 1 | 4 and q[73002]['faction'] == 'A', 'ALLIANCE_PALADINS from races.lua: Human and Dwarf'
+    assert q[73002]['skill'] == 164, 'a blacksmith specialization counts as Blacksmithing'
+    assert q[73005]['faction'] == 'H' and q[73005]['races'] == 0, 'a race without an id (Skyborne): no mask, the faction'
+    assert q[73101]['faction'] == 'H' and q[73101]['zone'] == 2521, 'maproot() naming its map once'
+    assert q[73001]['startItem'] and q[73001]['startItems'] == [63001], 'qs: the item that starts the quest'
+    assert not q[73006]['startItem'] and q[73006]['startItems'] == [], 'qi: an item the quest hands out, no start'
+    assert q[73004]['objects'] == [93001] and new['object_names'] == {93001: 'Odd Altar'}
+    assert new['item_names'][63001] == 'Torn Keep Note' and new['npc_names'][83002] == 'Sir Moorhelm'
+    assert (63001, [83001], 9201, 9201, False) in new['zone_drops']
+    assert new['npcs'][83003]['inst'] == 9201 and new['npcs'][83002]['points'] == [(1427, 4050, 6025)]
+    assert att_data.empty_db()['npc_names'] == {} and att_data.empty_db()['object_names'] == {}
+
+
+def test_the_cache_folder_can_be_pointed_elsewhere(tmp_path):
+    import subprocess
+    code = 'import att_data; print(att_data.ATT_CACHE)'
+    out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=os.path.dirname(HERE),
+                         env=dict(os.environ, AMISIA_ATT_CACHE=str(tmp_path)))
+    assert out.stdout.strip() == str(tmp_path)
+    env = {k: v for k, v in os.environ.items() if k != 'AMISIA_ATT_CACHE'}
+    out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=os.path.dirname(HERE), env=env)
+    assert out.stdout.strip() == os.path.expanduser('~/addons/_cache/att')
