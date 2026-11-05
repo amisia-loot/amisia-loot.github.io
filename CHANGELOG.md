@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(quests): rebuild all data from the current AllTheThings Forever data (F-135)
+
+  Dungeon quests grow from 122 in 12 dungeons to 411 in 24, among them Blackrock Depths and Spire,
+  Uldaman, Dire Maul, Scholomance, Stratholme and Zul'Farrak, with longer pre-quest chains, start items
+  and where they drop, and turn-in places you saw yourself. The gear data gains about 260 items and 140
+  sources, the world map about 140 places (more quest givers and rare mobs).
+
 ## [v2.54.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.54.2) (2026-11-05)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.1...v2.54.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
