@@ -35,7 +35,7 @@ assert(NS.CurrentPage() == "overview" and F:IsShown())
 NS.Dispatch("einstellungen")
 -- under "Einstellungen" its tabs and the chosen tab's sections (D-49): the first is Raid, Aufnahme
 assert(NS.CurrentPage() == "settings" and F.tabs.amisia.selected and navShown():match("^settings raid record ")
-    and navShown():find(" gear calendar pvp amisia about$"), navShown())
+    and navShown():find(" gear calendar pvp amisia about feedback$"), navShown())
 assert(AmisiaDB.settings.window.tab == "amisia" and AmisiaDB.settings.window.pages.amisia == "settings")
 NS.Dispatch("kalender")   -- the raid calendar window (not in a guild here: a message), the page stays
 assert(NS.CurrentPage() == "settings")

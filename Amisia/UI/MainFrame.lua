@@ -17,6 +17,7 @@ local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
 local F, nav, content, statusText, pauseBtn, viewBtn, settingsBtn, search, results, noHits
 local built, current = {}, nil
+local previous      -- the page shown before the current one (the feedback's details name it)
 local navButtons = {}
 local sideTabs = {}
 local bottomTabs = {}     -- group key -> the tab under the window
@@ -731,6 +732,7 @@ local function build()
 end
 
 function ns.CurrentPage() return current end
+function ns.PreviousPage() return previous end
 
 -- Shows the page key (a page not shown now: the overview, else the first shown). chosen: the player
 -- (or a command) asked for it, so it is remembered as its tab's page; a redirect is not (the page
@@ -745,6 +747,7 @@ local function showPage(key, chosen)
         end
     end
     if not p then return end
+    if current ~= p.key then previous = current end
     current = p.key
     -- the tab follows the page; both are remembered for the next open, the page only when asked for
     local w = windowState()

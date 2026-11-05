@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(feedback): send bug reports and wishes to the author in game (F-130)
+
+  The new page "Feedback" in the tab Amisia sends a bug or a wish of up to 500 characters to the author,
+  with version, game, class and level; it waits while he is offline and shows "arrived" once he has it.
+
 ## [v2.51.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.51.0) (2026-11-05)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.50.1...v2.51.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

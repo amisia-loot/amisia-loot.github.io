@@ -31,6 +31,7 @@ Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
+Core\Feedback.lua
 Core\Duels.lua [AllowLoadGameType camelot]
 UI\Theme.lua
 UI\Widgets.lua
@@ -143,6 +144,7 @@ UI\Pages\Duels.lua [AllowLoadGameType camelot]
 UI\Pages\Tools.lua [AllowLoadGameType camelot]
 UI\Pages\Settings.lua
 UI\Pages\About.lua
+UI\Pages\Feedback.lua
 UI\Setup.lua
 UI\Signup.lua
 UI\RaidCalendar.lua

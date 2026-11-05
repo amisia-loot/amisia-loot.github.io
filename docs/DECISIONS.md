@@ -1332,3 +1332,31 @@ Commit-Betreffe sind deutsch. Die 76 älteren Abschnitte wurden übersetzt, alle
 **Durchgesetzt durch:** `tools/tests/test_build_tool.py::test_release`,
 `tools/tests/test_build_tool.py::test_release_uploads_only_what_was_pushed`,
 `tools/tests/test_curseforge.py::test_the_changelog_is_the_release_section`.
+
+## D-61 Feedback nur an den Autor: Fremde dürfen senden, der Empfänger deckelt alles
+
+**Datum:** 2026-11-05
+**Entscheidung:** Die Seite "Feedback" (F-130) schickt einen Bug oder Wunsch (höchstens 500 Zeichen) nur an die
+Charaktere des Autors, die fest in `Core/Feedback.lua` stehen (`Fb.AUTHORS`: "Vulo Vultrox", WoW Forever, Horde),
+als unsichtbare Addon-Nachricht `FB` per WHISPER; der Autor-Client antwortet `FA` ("angekommen"). Es ist die
+einzige Nachricht an einen Namen außerhalb von Gruppe und Gilde (`opts.anyone` in `Core/Comm.lua`) und die einzige,
+die Gildenfremde senden dürfen (Ausnahme von D-18). Dafür deckelt der Empfänger: nur ein Autor-Client nimmt `FB`,
+Absender ist der Name des Servers, eine offene Meldung je Absender, alle Teile (höchstens 4) binnen 60 s, 3 Meldungen
+je Absender und Tag, Text höchstens 500 Zeichen, Farbcodes, Links und Striche entfernt, blockierte Absender und alles
+über 300 Meldungen im Eingang (die ältesten erledigten zuerst) still verworfen. `FA` gilt nur vom Autor und nur für
+eine eigene Meldung. Der Absender schickt höchstens 3 am Tag; ist der Autor offline (Systemzeile "nicht online",
+verschluckt, oder 30 s ohne Antwort), wartet die Meldung und geht nach einem Login in 2-5 Minuten, danach höchstens
+alle 30 Minuten wieder, nie im Kampf, in der Kampfsperre, in Schlachtfeld oder Arena (D-19), eine Wiederholung nie in
+einer Instanz; nach 10 Versuchen "nicht zugestellt" mit "Nochmal". Erreichbar ist der Autor nur vom gleichen Client
+(`ns.GAME`) und der gleichen Fraktion; sonst steht auf der Seite "Auf diesem Server kann Amisia den Autor nicht
+erreichen." und "Abschicken" ist aus. Den Server prüft Amisia nicht (der Server des Autors steht nirgends): ein
+Spieler eines anderen Servers wartet bis "nicht zugestellt".
+**Grund:** Wunsch des Nutzers 2026-11-05 (Spec `docs/specs/2026-11-05-feedback.md`, "Passt, bauen"): Rückmeldungen
+ohne Discord, Website oder Forum; Addons können nicht ins Internet. Weil jeder senden darf, schützen nur die Deckel
+beim Empfänger.
+**Folge:** Ein neuer Autor-Charakter ist eine Zeile in `Fb.AUTHORS`. Keine Weitergabe an Offiziere oder die Gilde,
+keine Antwort außer "angekommen", keine Daten anderer Spieler im Anhang; der letzte Amisia-Fehler geht nur bei einem
+Bug und nur mit "Fehler anhängen" mit.
+**Durchgesetzt durch:** `tests/test_feedback.lua`,
+`tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
+`tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.

@@ -36,8 +36,9 @@ local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the gu
 local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
--- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch)
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5 }
+-- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
+-- a feedback answer per report id
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
@@ -325,6 +326,11 @@ local CLASS_TOKEN = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = tru
 
 local NO_REASONS = { CONFLICT = true, GONE = true, DENIED = true, NORAID = true, BAD = true }
 
+-- feedback (Core/Feedback.lua): a report id "<epoch>-<n>", the client "f"/"t"/"e"
+local function feedbackId(v) return type(v) == "string" and #v <= 20 and v:match("^%d+%-%d+$") ~= nil end
+local FEEDBACK_GAME = { f = true, t = true, e = true }
+local function noBar(v, max) return type(v) == "string" and v ~= "" and #v <= max and not v:find("|", 1, true) end
+
 -- the raid check (Raid/RaidCheck.lua): a worn slot 1-19; the consumables "F" (flask), "E<n>" (n
 -- elixirs, 1-9), "W" (well fed) in this order, or "-"
 local function slotEntry(e) return isNum(e, 1, 19) end
@@ -461,6 +467,18 @@ local VALID = {
     -- raid IDs (Raid/RaidIDs.lua): IV <character> <class|-> <level> <ids|-> (6 at most); IQ - (an officer asks)
     IV = function(f) return #f >= 4 and charName(f[1]) and CLASS_TOKEN[f[2]] == true and isNum(f[3], 1, 99) and commaList(f[4], 6, lockEntry, true) end,
     IQ = function(f) return #f >= 1 and f[1] == "-" end,
+    -- feedback (Core/Feedback.lua): FB <id> <part> <parts 2-4>, part 1: <B|W> <version> <f|t|e> <locale>
+    -- <class|-> <level> <page|-> <error|->, the others: <text piece> (escaped); FA <id> ("angekommen")
+    FB = function(f)
+        if #f < 4 or not feedbackId(f[1]) or not isNum(f[2], 1, 4) or not isNum(f[3], 2, 4) or tonumber(f[2]) > tonumber(f[3]) then return false end
+        if f[2] == "1" then
+            return #f >= 11 and (f[4] == "B" or f[4] == "W") and #f[5] <= 12 and f[5]:match("^%d+%.%d+%.%d+") ~= nil
+                and FEEDBACK_GAME[f[6]] == true and f[7]:match("^%a%a%a%a$") ~= nil and CLASS_TOKEN[f[8]] == true and isNum(f[9], 0, 99)
+                and (f[10] == "-" or (#f[10] <= 24 and f[10]:match("^[%w_]+$") ~= nil)) and noBar(f[11], 160)
+        end
+        return noBar(f[4], 220)
+    end,
+    FA = function(f) return #f >= 1 and feedbackId(f[1]) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -505,14 +523,15 @@ local function inGuild()
     return type(_G.IsInGuild) == "function" and IsInGuild() and true or false
 end
 
--- Whether a channel can be used right now; nil and the reason otherwise.
-local function channelOk(chan, target)
+-- Whether a channel can be used right now; nil and the reason otherwise. anyone: a whisper to a name
+-- outside group and guild (only the feedback to and from the author, D-61).
+local function channelOk(chan, target, anyone)
     if not CHANNELS[chan] then return nil, L["Dieser Kanal wird nicht benutzt."] end
     if chan == "RAID" and not homeRaid() then return nil, L["Keine eigene Raidgruppe."] end
     if chan == "GUILD" and not inGuild() then return nil, L["Keine Gilde."] end
     if chan == "WHISPER" then
         if type(target) ~= "string" or target == "" then return nil, L["Kein Empfänger."] end
-        if not knownTarget(target) then return nil, L["Der Empfänger ist weder in der Gruppe noch in der Gilde."] end
+        if not anyone and not knownTarget(target) then return nil, L["Der Empfänger ist weder in der Gruppe noch in der Gilde."] end
     end
     return true
 end
@@ -591,7 +610,7 @@ end
 -- One try: true when the queue may go on, false when it has to stop (pause or hold).
 local function attempt(i)
     local e = queue[i]
-    local ok = channelOk(e.chan, e.target)
+    local ok = channelOk(e.chan, e.target, e.anyone)
     if not ok then
         stats.dropped = stats.dropped + 1
         removeAt(i)
@@ -750,7 +769,7 @@ local function entry(kind, text, chan, target, opts, desc)
     return { prefix = prefixOf(kind), text = text, chan = chan, target = target, key = opts.key, kind = kind,
              expires = t + (tonumber(opts.ttl) or (low and LOW_TTL or DEFAULT_TTL)), ready = t + (jitter > 0 and math.random() * jitter or 0),
              tries = 0, desc = desc, low = low, when = type(opts.when) == "function" and opts.when or nil,
-             sent = type(opts.sent) == "function" and opts.sent or nil }
+             sent = type(opts.sent) == "function" and opts.sent or nil, anyone = opts.anyone and true or nil }
 end
 
 local function envelope(kind, fields)
@@ -771,13 +790,14 @@ end
 -- or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
--- entry waits while it does not return true), opts.sent (a function called once the message went).
+-- entry waits while it does not return true), opts.sent (a function called once the message went),
+-- opts.anyone (a whisper to a name outside group and guild: only Feedback's FB and FA, D-61).
 function ns.CommSend(kind, fields, chan, target, opts)
     if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
     if kind == "BL" then return nil, L["Daten gehen über CommSendBlob."] end
     local text, parts = envelope(kind, fields)
     if not text then return nil, parts end
-    local ok, why = channelOk(chan, target)
+    local ok, why = channelOk(chan, target, opts and opts.anyone)
     if not ok then return nil, why end
     enqueue({ entry(kind, text, chan, target, opts or {}, describe(kind, parts)) }, opts and opts.key)
     return true

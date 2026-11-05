@@ -182,9 +182,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`, Migrationsschritt 2 (D-48).
 
 ### F-130 Feedback-Seite: Bugs und Wünsche an den Autor
-- Version: -
-- Status: geplant
-- Prüfung: Wenn du "Feedback" im Reiter Amisia öffnest, dann stehen dort "Bug"/"Wunsch", ein Textfeld mit Zähler "0/500", "Abschicken" und darunter, was automatisch mitgeht.
+- Version: 2.52.0
+- Status: gebaut
+- Prüfung: Wenn du "Feedback" im Reiter Amisia öffnest, dann stehen dort "Bug"/"Wunsch", ein Textfeld mit Zähler "0/500", "Abschicken" (ausgegraut ohne Text) und darunter, was automatisch mitgeht.
+- Prüfung: Wenn ein anderer Spieler (gleicher Server, gleiche Fraktion) eine Meldung abschickt, während Vulo online ist, dann steht sie innerhalb weniger Sekunden in Vulos "Eingang", und beim Absender steht "angekommen" und im Chat "Deine Meldung ist beim Autor angekommen." (braucht: zweiter Spieler)
+- Prüfung: Wenn Vulo offline ist, dann bleibt sie beim Absender "wartet" und kommt an, sobald beide gleichzeitig online sind (auch nach `/reload` oder neuem Login des Absenders). (braucht: zweiter Spieler)
+- Prüfung: Wenn Vulo eine Meldung "Erledigt" klickt, dann ist sie grau und unter "Offen" nicht mehr da; nach `/reload` bleibt das so.
+- Prüfung: Wenn ein Spieler mehr als 3 Meldungen an einem Tag schicken will, dann sagt Amisia "Höchstens 3 Meldungen am Tag." und schickt nichts.
 - Notiz: Spec `docs/specs/2026-11-05-feedback.md`, freigegeben 2026-11-05 ("Passt, bauen"); Empfänger Vulo Vultrox.
 
 ### F-103 Einstellungen nach Reitern, Knopf "Einstellungen", Zurücksetzen

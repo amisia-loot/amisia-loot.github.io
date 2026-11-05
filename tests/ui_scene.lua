@@ -348,6 +348,29 @@ function S.priestPlan()
     return plan
 end
 
+-- The page Feedback (F-130): own reports in every state on a character that reaches the author;
+-- author: the author's inbox (open and done reports, the first one chosen), shown as him.
+function S.feedback(author)
+    STUB.faction = "Horde"
+    local fb = AmisiaDB.feedback
+    local now = time()
+    fb.out = {
+        { id = now .. "-1", kind = "B", text = "Rangliste zeigt falsche Stufe", meta = { v = "2.52.0" }, at = now - 60, state = "wait", tries = 1, next = now + 1800 },
+        { id = now .. "-2", kind = "W", text = "Eine Suche in der Wunschliste wäre schön", meta = { v = "2.52.0" }, at = now - 3600, state = "done", tries = 1, next = 0 },
+        { id = now .. "-3", kind = "B", text = "Ging nie an", meta = { v = "2.51.0" }, at = now - 90000, state = "lost", tries = 10, next = 0 },
+    }
+    fb.inbox = {
+        { id = "1-1", from = "Kim Eisherz", kind = "B", text = "Rangliste zeigt falsche Stufe\nnach dem Stufenaufstieg", at = now - 120,
+          meta = { v = "2.52.0", g = "f", loc = "deDE", cls = "MAGE", lvl = 23, page = "duels", err = "Amisia/UI/Pages/Duels.lua:12: attempt to index nil" } },
+        { id = "1-2", from = "Pug", kind = "W", text = "Bitte eine Spalte für die Zone", at = now - 7200, meta = { v = "2.51.0", g = "f", loc = "enUS" } },
+        { id = "1-3", from = "Ann Ally", kind = "W", text = "Mehr Farben", at = now - 90000, done = true, meta = { v = "2.50.1", g = "f", loc = "deDE" } },
+    }
+    local player = STUB.player
+    if author then STUB.player = "Vulo Vultrox" end
+    NS.ShowFeedback(author and "inbox" or "write")
+    STUB.player = player
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -449,6 +472,9 @@ S.STATES = {
     { page = "duels", name = "duels-board", open = function() S.duels("board") end },
     { page = "duels", name = "duels-classes", open = function() S.duels("classes") end },
     { page = "duels", name = "duels-priest", open = function() S.duels("classes", "PRIEST") end },
+    -- the page Feedback: a new report with every state of the own reports; the author's inbox
+    { page = "feedback", name = "feedback-write", open = function() S.feedback(false) end },
+    { page = "feedback", name = "feedback-inbox", open = function() S.feedback(true) end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

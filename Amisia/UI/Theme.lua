@@ -533,6 +533,21 @@ T.RAIDCAL = {
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
 }
 
+-- the page Feedback (F-130, UI/Pages/Feedback.lua): "Neue Meldung" (Bug/Wunsch, "Abschicken", the
+-- hint line, the text field EDIT_H high, under it what goes along (META_H, two lines) with the counter
+-- on the right, the row "Fehler anhängen", "Deine Meldungen" with OUT_ROWS rows) and, on the author's
+-- characters, "Eingang" (the filter chips, a split list of IN_ROWS rows beside the detail inset)
+T.FEEDBACK = {
+    VIEW_W = 100, KIND_W = 70, SEND_W = 100, FILTER_W = 70, RETRY_W = 70, ACTION_W = 90,
+    EDIT_H = 112, COUNT_W = 60, META_H = 32, ERR_W = 120, GAP = 4, TITLE_H = 16,
+    OUT_ROWS = 7, ROW_H = 20, IN_ROWS = 19,
+    -- { key, x, width } of "Deine Meldungen": date, kind, the text's start, state, the button "Nochmal"
+    OUT_COLS = { { "at", 6, 76 }, { "kind", 86, 54 }, { "text", 144, 266 }, { "state", 414, 100 } },
+    RETRY_X = 516,
+    -- the inbox (T.LAYOUT.SPLIT_LIST_W wide): kind, sender, date, the text's start
+    IN_COLS = { { "kind", 6, 44 }, { "from", 52, 100 }, { "at", 154, 42 }, { "text", 198, 88 } },
+}
+
 -- the question window (W.Confirm, AmisiaConfirmFrame): the text under the title bar, wrapped, the
 -- two red buttons at the bottom right; its height follows the text.
 T.CONFIRM = {
