@@ -17,9 +17,10 @@ def test_toc_files_skip_xml():
     assert all(f.endswith('.lua') for f in files), files
 
 
-def test_toc_lists_the_pin_template_after_its_mixin():
+def test_toc_loads_the_map_pins_without_a_template():
     with open(os.path.join(ROOT, 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
         # the load condition ([AllowLoadGameType camelot], D-57) stays out of the name
         lines = [re.sub(r'\s*\[[^\]]*\]', '', ln.strip()) for ln in fh if ln.strip() and not ln.startswith('#')]
-    assert 'Gear\\MapPin.xml' in lines
-    assert lines.index('Gear\\GuildWishes.lua') < lines.index('Gear\\MapPins.lua') < lines.index('Gear\\MapPin.xml')
+    # the pins are Amisia's own buttons on its own layer of the world map: no XML template
+    assert not [ln for ln in lines if ln.lower().endswith('.xml')], lines
+    assert lines.index('Gear\\GuildWishes.lua') < lines.index('Gear\\MapPins.lua') < lines.index('Gear\\MapPlaces.lua')

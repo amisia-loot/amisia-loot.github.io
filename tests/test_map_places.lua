@@ -5,21 +5,20 @@
 -- size, "öffnet am"), a click opens the dungeon on the page Dungeons, shift sets the target, the
 -- menu's three off entries, the combat hint; the learned entrances (AmisiaDB.entrances): the last
 -- place outdoors before the loading screen, not after a summon or too old, at most 60, checked.
+-- The pins are Amisia's own buttons on its layer of the world map (MapPins.lua), no pins of the canvas.
 local Map = NS.Map
-local TEMPLATE = "AmisiaMapPlaceTemplate"
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function near(a, b) return math.abs(a - b) < 1e-6 end
-
----------------------------------------------------------------------------
--- the template
----------------------------------------------------------------------------
-local fh = assert(io.open(ADDON_DIR .. "/Gear/MapPin.xml", "rb"))
-local xml = fh:read("*a")
-fh:close()
-local tag = xml:match('<Frame%s[^>]*name="' .. TEMPLATE .. '"[^>]*>')
-assert(tag and tag:find('mixin="AmisiaMapPlaceMixin"', 1, true) and tag:find('virtual="true"', 1, true), "the place template")
-assert(STUB.pinTemplates[TEMPLATE] == "AmisiaMapPlaceMixin" and type(AmisiaMapPlaceMixin) == "table")
-STUB.pinTemplates["AmisiaMapPinTemplate"] = "AmisiaMapPinMixin"
+-- a pin's script, as the client runs it on a click or the mouse coming over it
+local function click(p, button) p.scripts.OnClick(p, button, false) end
+local function enter(p) p.scripts.OnEnter(p) end
+-- where a pin stands on the canvas, normalized: its anchor's offset times its scale over the canvas size
+local function spot(p)
+    local a = p.points.CENTER
+    local s = p:GetScale()
+    return a.x * s / STUB.mapCanvas:GetWidth(), -a.y * s / STUB.mapCanvas:GetHeight(), a
+end
+assert(AmisiaMapPlaceMixin == nil and AmisiaMapPlaceTemplate == nil, "no pin mixin and no template any more")
 
 ---------------------------------------------------------------------------
 -- data: the Barrens with two entrances, Ratchet's ship, flight masters of both factions
@@ -122,13 +121,11 @@ Map._resetPlaces()
 assert(has(kinds(Map.PlacePins(1413)), "flight:"), "function and provider, but no pins of the game: Amisia's own")
 local shows, count, provider, pins = Map.ClientPlaces("flight", 1413)
 assert(not shows and count == 1 and provider and pins == 0)
-STUB.pinTemplates.FlightPointPinTemplate = "AmisiaMapPlaceMixin"
 WorldMapFrame.pinPools.FlightPointPinTemplate = { active = { {}, {} }, free = {} }
 assert(not has(kinds(Map.PlacePins(1413)), "flight:") and has(kinds(Map.PlacePins(1413)), "entrance:"), "no doubled flight points")
 shows, count, provider, pins = Map.ClientPlaces("flight", 1413)
 assert(shows and pins == 2 and select(2, Map.ClientPlaces("entrance", 1413)) == nil)
 WorldMapFrame.pinPools.FlightPointPinTemplate = nil
-STUB.pinTemplates.FlightPointPinTemplate = nil
 assert(has(kinds(Map.PlacePins(1413)), "flight:"), "the game's pins gone: Amisia's back")
 WorldMapFrame.dataProviders[clientProvider] = nil
 _G.C_TaxiMap, _G.FlightPointDataProviderMixin = nil, nil
@@ -140,17 +137,23 @@ Map._resetPlaces()
 STUB.fire("PLAYER_LOGIN")
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1413)
-local pins = STUB.mapPins(TEMPLATE)
+STUB.tick(0)
+local pins = Map.ShownPins("place")
 assert(#pins == 7, "seven place pins: " .. #pins)
 local function pinOf(kind, name)
-    for _, p in ipairs(STUB.mapPins(TEMPLATE)) do
+    for _, p in ipairs(Map.ShownPins("place")) do
         local e = p.entry
         if e and e.kind == kind and (e.kind == "entrance" and e.place.key == name or e.place.name == name
             or e.kind == "dock" and e.place.to[1].name == name) then return p end
     end
 end
 local wc = pinOf("entrance", "I:43")
-assert(wc and near(wc.normalizedX, 0.4769) and wc.icon.atlas == "Dungeon", "the dungeon mark")
+local wx, wy, anchor = spot(wc)
+assert(wc and near(wx, 0.4769) and near(wy, 0.3498) and anchor.rel == Map.PinLayer() and anchor.relPoint == "TOPLEFT", "placed")
+assert(wc.icon.atlas == "Dungeon", "the dungeon mark")
+assert(wc:GetParent() == Map.PinLayer() and wc.kind == "place" and wc:IsShown(), "Amisia's own button on its layer")
+assert(wc:GetFrameLevel() == Map.PinLayer():GetFrameLevel() + 1, "the places below the item pins")
+assert(wc._w == 24 and wc._h == 24 and pinOf("dock", "Booty Bay")._w == 30, "the size of the art")
 assert(pinOf("entrance", "I:249").icon.atlas == "Raid", "the raid mark")
 assert(pinOf("flight", "Devrak").icon.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\place_flight")
 assert(pinOf("dock", "Booty Bay").icon.texture:find("place_ship_h$"), "a neutral ship in red")
@@ -165,39 +168,39 @@ assert(pinOf("flight", "Devrak"))
 local lines = {}
 local addLine = GameTooltip.AddLine
 GameTooltip.AddLine = function(_, text) lines[#lines + 1] = text end
-pinOf("dock", "Booty Bay"):OnMouseEnter()
+enter(pinOf("dock", "Booty Bay"))
 assert(lines[1] == "Schiff nach Beutebucht" and has(table.concat(lines, "|"), "beide Fraktionen"), table.concat(lines, "|"))
 lines = {}
-pinOf("entrance", "I:249"):OnMouseEnter()
+enter(pinOf("entrance", "I:249"))
 local tip = table.concat(lines, "|")
 assert(has(tip, "Onyxia's Lair") and has(tip, "Raid · ") and has(tip, "40 Spieler") and has(tip, "öffnet am 09.12."), tip)
 assert(has(tip, "Brachland 90, 90") and has(tip, "Klick: in Amisia öffnen. Shift-Klick: Ziel setzen."), tip)
 lines = {}
-pinOf("entrance", "N:Hall of Thanes"):OnMouseEnter()
+enter(pinOf("entrance", "N:Hall of Thanes"))
 assert(has(table.concat(lines, "|"), "Ort beim Betreten gemerkt") and has(table.concat(lines, "|"), "5 Spieler"), table.concat(lines, "|"))
 lines = {}
-pinOf("flight", "Bragok"):OnMouseEnter()
+enter(pinOf("flight", "Bragok"))
 assert(lines[1] == "Bragok" and lines[2] == "Flugmeister · beide Fraktionen", table.concat(lines, "|"))
 GameTooltip.AddLine = addLine
 
 -- a click opens the dungeon on the page Dungeons; the world map stays in front
 wc = pinOf("entrance", "I:43")
-wc:OnClick("LeftButton")
+click(wc, "LeftButton")
 assert(AmisiaDB.settings.bis.dungeon == "wc" and AmisiaFrame:IsShown(), "the page Dungeons with Wailing Caverns")
 assert(WorldMapFrame:IsShown(), "the world map stays open")
 assert(AmisiaFrame:GetFrameStrata() ~= "FULLSCREEN", "the window under the map (F-011)")
 -- a raid (below the level cap too): chosen on the page Raids (F-122)
-pinOf("entrance", "I:249"):OnClick("LeftButton")
+click(pinOf("entrance", "I:249"), "LeftButton")
 assert(AmisiaDB.settings.bis.raid == "onyxia" and AmisiaDB.settings.bis.dungeon == "wc" and NS.CurrentPage() == "raidjournal")
 -- shift: the target to this entrance
 STUB.shift = true
-pinOf("entrance", "I:43"):OnClick("LeftButton")
+click(pinOf("entrance", "I:43"), "LeftButton")
 STUB.shift = false
 local t = NS.MapTarget()
 assert(t and t.key == "I:43" and near(t.x, 0.4769) and has(t.label, "(Eingang)"), "shift: the target")
 NS.MapClearTarget()
 -- a flight master: the target
-pinOf("flight", "Devrak"):OnClick("LeftButton")
+click(pinOf("flight", "Devrak"), "LeftButton")
 assert(NS.MapTarget() and NS.MapTarget().label == "Devrak")
 NS.MapClearTarget()
 STUB.tick(0.6)
@@ -214,14 +217,16 @@ NS.ShowDungeon = show
 
 -- the menu: open, target, the three off entries
 WorldMapFrame:SetMapID(1434)
-pinOf("entrance", "I:229"):OnClick("RightButton")
+STUB.tick(0)
+click(pinOf("entrance", "I:229"), "RightButton")
 local labels = {}
 for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then labels[#labels + 1] = b.label:GetText() end end
 assert(table.concat(labels, ",") == "In Amisia öffnen: Lower Blackrock Spire,In Amisia öffnen: Upper Blackrock Spire,Ziel setzen,"
     .. "Eingänge ausblenden,Flugmeister ausblenden,Zeppeline und Schiffe ausblenden", table.concat(labels, ","))
 AmisiaMenu:Hide()
 WorldMapFrame:SetMapID(1413)
-pinOf("dock", "Booty Bay"):OnClick("RightButton")
+STUB.tick(0)
+click(pinOf("dock", "Booty Bay"), "RightButton")
 AmisiaMenu.buttons[4]:Click()
 assert(NS.Get("map.transports") == false, "off from the menu")
 STUB.tick(0.6)

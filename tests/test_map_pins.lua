@@ -1,12 +1,12 @@
--- Pins on the world map (MapPins.lua, MapPin.xml): the template and the TOC, the data provider
--- added once at login, pins only for the shown zone, the continent with its zone rectangles and
--- only with map.pinsContinent, one pin per spot with a count, at most 60 with wishes first, the
--- switches for targets, wishes and all pins, owned items and hidden places left out, the target's
--- own pin where the client's waypoint fails (Durotar takes no waypoint here), the tooltip, a click
--- sets the target, shift inserts the place, the right-click menu, refreshes only on a change while
--- the map shows (throttled), errors to the error handler.
+-- Pins on the world map (MapPins.lua): Amisia's own layer on the map canvas made once at login,
+-- pins only for the shown zone, the continent with its zone rectangles and only with
+-- map.pinsContinent, one pin per spot with a count, at most 60 with wishes first, the switches for
+-- targets, wishes and all pins, owned items and hidden places left out, the target's own pin where
+-- the client's waypoint fails (Durotar takes no waypoint here), position and size on the canvas
+-- (zoom, map.pinScale, 70 % on a continent), frame levels, the tooltip, a click sets the target,
+-- shift inserts the place, the right-click menu, redraws only on a change while the map shows
+-- (throttled), errors to the error handler.
 local Gear, Map = NS.Gear, NS.Map
-local TEMPLATE = "AmisiaMapPinTemplate"
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
 local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function readFile(name)
@@ -15,24 +15,24 @@ local function readFile(name)
     fh:close()
     return src
 end
+-- a pin's script, as the client runs it on a click or the mouse coming over it
+local function click(p, button) p.scripts.OnClick(p, button, false) end
+local function enter(p) p.scripts.OnEnter(p) end
+-- where a pin stands on the canvas, normalized: its anchor's offset times its scale over the canvas size
+local function spot(p)
+    local a = p.points.CENTER
+    local s = p:GetScale()
+    return a.x * s / STUB.mapCanvas:GetWidth(), -a.y * s / STUB.mapCanvas:GetHeight(), a
+end
 
 ---------------------------------------------------------------------------
--- the template and the TOC
+-- the TOC: no template file, no pin mixin
 ---------------------------------------------------------------------------
-local xml = readFile("Gear/MapPin.xml")
-local tag = xml:match("<Frame%s[^>]*>")
-assert(tag, "one frame template")
-assert(tag:find('name="' .. TEMPLATE .. '"', 1, true) and tag:find('virtual="true"', 1, true), tag)
-assert(tag:find('mixin="AmisiaMapPinMixin"', 1, true) and tag:find('enableMouse="true"', 1, true), tag)
-assert(not tag:find("inherits", 1, true), "no inherited template: neither client has a pin template to inherit")
-assert(xml:find('<Size x="20" y="20"/>', 1, true), "20 x 20")
-assert(not xml:find("<Script", 1, true) and not xml:find("<Scripts", 1, true), "no scripts: the canvas sets them")
-for c in xml:gmatch("<!%-%-(.-)%-%->") do assert(not c:find("--", 1, true), "no double hyphen in an XML comment") end
-STUB.pinTemplates[TEMPLATE] = tag:match('mixin="([^"]+)"')
 local toc = readFile("Amisia.toc")
-local iPins, iXml, iWish = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPin.xml", 1, true), toc:find("\nGear\\GuildWishes.lua", 1, true)
-assert(iPins and iXml and iWish and iWish < iPins and iPins < iXml, "MapPins.lua, then MapPin.xml, after GuildWishes.lua")
-assert(type(AmisiaMapPinMixin) == "table" and AmisiaMapPinMixin.OnAcquired, "the mixin is a global for the XML")
+local iPins, iPlaces, iWish = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPlaces.lua", 1, true), toc:find("\nGear\\GuildWishes.lua", 1, true)
+assert(iPins and iPlaces and iWish and iWish < iPins and iPins < iPlaces, "MapPins.lua, then MapPlaces.lua, after GuildWishes.lua")
+assert(not toc:find("MapPin.xml", 1, true) and not io.open(ADDON_DIR .. "/Gear/MapPin.xml", "rb"), "no pin template any more")
+assert(AmisiaMapPinMixin == nil, "no pin mixin")
 
 ---------------------------------------------------------------------------
 -- data: a warrior at 60, vendors in Durotar and Elwynn; Durotar takes no client waypoint
@@ -88,20 +88,24 @@ local r = NS.BisTargets()
 assert(r.HEAD[1] and r.HEAD[1].id == 201 and r.HEAD[1].upgrade, "a head upgrade from Gorn")
 
 ---------------------------------------------------------------------------
--- the provider: added once at login
+-- the layer: made once at login, a child of the canvas that takes no mouse; no data provider
 ---------------------------------------------------------------------------
-local function providers()
-    local n, p = 0, nil
-    for dp in pairs(WorldMapFrame.dataProviders) do n, p = n + 1, dp end
-    return n, p
+local function ours()
+    local n = 0
+    for _, kid in ipairs(STUB.mapCanvas.kids or {}) do if kid.scripts then n = n + 1 end end
+    return n
 end
-assert(providers() == 0, "nothing before login")
+assert(ours() <= 1, "at most one layer before login (a change of the data makes it)")
 STUB.fire("PLAYER_LOGIN")
-STUB.fire("ADDON_LOADED", "Blizzard_WorldMap")
+STUB.fire("PLAYER_ENTERING_WORLD")
 STUB.fire("PLAYER_LOGIN")
-local n, provider = providers()
-assert(n == 1 and provider == Map.PinProvider(), "one provider, added once")
-assert(provider.RefreshAllData and provider.RemoveAllData and provider:GetMap() == WorldMapFrame)
+local layer = Map.PinLayer()
+assert(layer and ours() == 1 and layer:GetParent() == STUB.mapCanvas, "one layer on the canvas, made once")
+assert(layer.mouseEnabled == false, "the layer takes no mouse: clicks beside a pin reach the map")
+assert(layer.points.TOPLEFT.rel == STUB.mapCanvas and layer.points.BOTTOMRIGHT.rel == STUB.mapCanvas, "as large as the canvas")
+assert(layer:GetFrameLevel() == STUB.mapCanvas:GetFrameLevel() + 300, "above the map's area markers")
+assert(layer.scripts.OnUpdate and layer.scripts.OnShow, "it reads the map in its own OnUpdate")
+assert(next(WorldMapFrame.dataProviders) == nil, "no data provider")
 
 ---------------------------------------------------------------------------
 -- the places of a map
@@ -111,7 +115,7 @@ local function byKey(list)
     for _, e in ipairs(list) do out[e.key .. (e.target and "*" or "")] = e end
     return out
 end
-local function pins() return STUB.mapPins(TEMPLATE) end
+local function pins() return Map.ShownPins("item") end
 local function pinOf(key)
     for _, p in ipairs(pins()) do if p.entry and p.entry.key == key then return p end end
 end
@@ -190,36 +194,62 @@ WorldMapFrame:Hide()
 WorldMapFrame.mapID = nil
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1411)
+STUB.tick(0)
 assert(#pins() == 2, "two pins in Durotar: " .. #pins())
 local p = pinOf("V:Gorn One Eye")
-assert(p and near(p.normalizedX, 0.472) and near(p.normalizedY, 0.331), "placed")
+local px, py, anchor = spot(p)
+assert(p and near(px, 0.472) and near(py, 0.331) and anchor.rel == layer and anchor.relPoint == "TOPLEFT", "placed")
+assert(p:GetParent() == layer and p.kind == "item" and p:IsShown() and p._w == 20 and p._h == 20, "Amisia's own button")
 assert(p.icon.texture == 1201 and p.count:GetText() == "2" and p.count:IsShown(), "the best item's icon and the count")
-assert(p.pinFrameLevelType == "PIN_FRAME_LEVEL_AREA_POI" and not p.ring:IsShown(), "a normal pin")
-assert(p.scaleFactor == 1 and near(p.startScale, 1) and near(p.endScale, 1.6), "scaling 1 to 1.6")
+assert(p:GetFrameLevel() == layer:GetFrameLevel() + 2 and not p.ring:IsShown(), "a normal pin, above the places")
+assert(near(p:GetScale(), 1), "scale 1 on an unzoomed canvas")
 local q = pinOf("V:Second Vendor")
 assert(q.icon.texture == 1205 and q.count:IsShown() and q.count:GetText() == "2", "the wish's icon first")
+-- the canvas zooms: the pins keep their place and their size on screen, and grow a little (up to 1.6)
+local before = Map.PinRefreshes()
+STUB.mapCanvas:SetScale(2)
+STUB.tick(0)
+px, py = spot(p)
+assert(near(p:GetScale(), 0.5) and near(px, 0.472) and near(py, 0.331), "the canvas's scale divided out")
+assert(Map.PinRefreshes() == before, "a zoom only moves the pins")
+STUB.mapZoom = 1
+STUB.mapCanvas:SetScale(4)
+STUB.tick(0)
+assert(near(p:GetScale(), 1.6 / 4), "zoomed in fully: 1.6 times")
+STUB.mapZoom = nil
+STUB.mapCanvas:SetScale(1)
+STUB.tick(0)
+assert(near(p:GetScale(), 1))
 NS.Set("map.pinScale", 150)
 STUB.tick(0.6)
 p = pinOf("V:Gorn One Eye")
-assert(near(p.startScale, 1.5) and near(p.endScale, 2.4), "map.pinScale")
+px, py = spot(p)
+assert(near(p:GetScale(), 1.5) and near(px, 0.472), "map.pinScale")
 NS.Set("map.pinScale", 100)
 STUB.tick(0.6)
 WorldMapFrame:SetMapID(1414)
+STUB.tick(0)
 p = pinOf("V:Gorn One Eye")
-assert(p and near(p.startScale, 0.7), "70 % on the continent")
+assert(p and near(p:GetScale(), 0.7), "70 % on the continent")
+px, py = spot(p)
+assert(near(px, 0.5 + 0.472 * 0.2) and near(py, 0.4 + 0.331 * 0.2), "on the continent through the zone's rectangle")
 WorldMapFrame:SetMapID(1429)
+STUB.tick(0)
 assert(pinOf("V:Elwynn Guy") and not pinOf("V:Gorn One Eye"), "a new map, new pins")
 assert(not pinOf("V:Elwynn Guy").count:IsShown(), "no count for a single item")
 WorldMapFrame:SetMapID(1411)
+STUB.tick(0)
 
 -- refreshes: only on a change, only while the map shows, at most every 0.5 s
-local before = Map.PinRefreshes()
+before = Map.PinRefreshes()
 NS.Fire("BIS_CHANGED")
 NS.Fire("BIS_CHANGED")
+STUB.tick(0)
 assert(Map.PinRefreshes() == before, "not at once")
 STUB.tick(0.6)
 assert(Map.PinRefreshes() == before + 1, "once after the throttle")
 STUB.tick(5)
+STUB.tick(0)
 assert(Map.PinRefreshes() == before + 1, "nothing per frame or per second")
 NS.Fire("SETTING", "record.enabled", true)
 STUB.tick(0.6)
@@ -229,7 +259,9 @@ NS.Fire("BIS_CHANGED")
 STUB.tick(0.6)
 assert(Map.PinRefreshes() == before + 1, "not while the map is closed")
 WorldMapFrame:Show()
-assert(Map.PinRefreshes() == before + 2 and #pins() == 2, "opening the map refreshes")
+assert(Map.PinRefreshes() == before + 1, "nothing inside the map's show: the layer only marks")
+STUB.tick(0)
+assert(Map.PinRefreshes() == before + 2 and #pins() == 2, "opening the map refreshes, on the layer's next frame")
 
 -- all pins off; the target keeps its own pin
 NS.Set("map.pins", false)
@@ -249,14 +281,14 @@ STUB.tick(0.6)
 assert(#pins() == 2, "the target's place is the same pin")
 p = pinOf("V:Gorn One Eye")
 assert(p.entry.target and p.ring:IsShown() and p.ring.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\dot", "highlighted")
-assert(p.pinFrameLevelType == "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST", "above the others")
+assert(p:GetFrameLevel() == layer:GetFrameLevel() + 3, "above the others")
 -- a target that is no pin of its own (another item's place) gets an extra pin
 assert(NS.MapSetPoint({ map = 1411, x = 0.3, y = 0.8 }, "Irgendwo", nil, 204))
 STUB.tick(0.6)
 assert(#pins() == 3, "an extra pin for the target")
 local tp
 for _, x in ipairs(pins()) do if x.entry.target then tp = x end end
-assert(tp and near(tp.normalizedX, 0.3) and near(tp.normalizedY, 0.8) and tp.icon.texture == 1204 and tp.ring:IsShown())
+assert(tp and near(spot(tp), 0.3) and near(select(2, spot(tp)), 0.8) and tp.icon.texture == 1204 and tp.ring:IsShown())
 NS.Set("map.pins", false)
 STUB.tick(0.6)
 assert(#pins() == 1 and pins()[1].entry.target, "map.pins off leaves the target's pin")
@@ -287,7 +319,7 @@ local addLine, addDouble = GameTooltip.AddLine, GameTooltip.AddDoubleLine
 GameTooltip.AddLine = function(_, text) lines[#lines + 1] = text end
 GameTooltip.AddDoubleLine = function(_, a, b) lines[#lines + 1] = a .. " = " .. b end
 p = pinOf("V:Gorn One Eye")
-p:OnMouseEnter()
+enter(p)
 GameTooltip.AddLine, GameTooltip.AddDoubleLine = addLine, addDouble
 local tip = table.concat(lines, "|")
 assert(lines[1] == "Händler: Gorn One Eye", tostring(lines[1]))
@@ -296,20 +328,20 @@ assert(has(lines[#lines], "Klick: Ziel setzen. Rechtsklick: mehr."), tostring(li
 lines = {}
 GameTooltip.AddLine = function(_, text) lines[#lines + 1] = text end
 GameTooltip.AddDoubleLine = function(_, a, b) lines[#lines + 1] = a .. " = " .. b end
-pinOf("V:Second Vendor"):OnMouseEnter()
+enter(pinOf("V:Second Vendor"))
 GameTooltip.AddLine, GameTooltip.AddDoubleLine = addLine, addDouble
 assert(has(table.concat(lines, "|"), "Handschuhe Wunsch|r = Wunsch (hoch)"), table.concat(lines, "|"))
-p:OnMouseLeave()
+p.scripts.OnLeave(p)
 
 -- a click sets the target on this spot
-p:OnClick("LeftButton")
+click(p, "LeftButton")
 local t = NS.MapTarget()
 assert(t and t.key == "V:Gorn One Eye" and near(t.x, 0.472) and t.item == 201 and t.label == "Gorn One Eye", "click: target")
 NS.MapClearTarget()
 STUB.tick(0.6)
 -- shift: the place as text into the chat input
 STUB.shift = true
-pinOf("V:Gorn One Eye"):OnClick("LeftButton")
+click(pinOf("V:Gorn One Eye"), "LeftButton")
 STUB.shift = false
 assert(STUB.inserted == "Gorn One Eye Durotar 47, 33", tostring(STUB.inserted))
 NS.MapClearTarget()
@@ -317,7 +349,7 @@ STUB.tick(0.6)
 
 -- the menu
 p = pinOf("V:Gorn One Eye")
-p:OnClick("RightButton")
+click(p, "RightButton")
 local menu = _G.AmisiaMenu
 assert(menu and menu:IsShown() and menu.owner == p, "right click: the menu")
 local labels = {}
@@ -327,13 +359,13 @@ menu.buttons[1]:Click()
 assert(NS.MapTarget() and NS.MapTarget().key == "V:Gorn One Eye", "menu: target")
 NS.MapClearTarget()
 STUB.tick(0.6)
-pinOf("V:Gorn One Eye"):OnClick("RightButton")
+click(pinOf("V:Gorn One Eye"), "RightButton")
 menu.buttons[2]:Click()
 assert(AmisiaDB.settings.bis.view == "goals" and AmisiaDB.settings.bis.slot == "HEAD", "the item on the gear page")
-pinOf("V:Second Vendor"):OnClick("RightButton")
+click(pinOf("V:Second Vendor"), "RightButton")
 menu.buttons[2]:Click()
 assert(AmisiaDB.settings.bis.view == "wish", "a wish opens the wishlist")
-pinOf("V:Gorn One Eye"):OnClick("RightButton")
+click(pinOf("V:Gorn One Eye"), "RightButton")
 menu.buttons[3]:Click()
 assert(AmisiaDB.map.hidden["V:Gorn One Eye"] == true, "hidden")
 STUB.tick(0.6)
@@ -341,7 +373,7 @@ assert(not pinOf("V:Gorn One Eye") and #pins() == 1, "gone from the map")
 NS.SettingItem("map.resetHidden").run()
 STUB.tick(0.6)
 assert(pinOf("V:Gorn One Eye"), "shown again")
-pinOf("V:Gorn One Eye"):OnClick("RightButton")
+click(pinOf("V:Gorn One Eye"), "RightButton")
 menu.buttons[4]:Click()
 assert(NS.Get("map.pins") == false)
 STUB.tick(0.6)
@@ -367,9 +399,13 @@ NS.Fire("BIS_CHANGED")
 STUB.tick(0.6)
 assert(#pins() == 2, "back after the fix")
 
--- nothing outside the own pins: the provider writes no field into the map
-for key in pairs(WorldMapFrame) do
+-- nothing outside the own frames: no write into the map, its canvas or the canvas mixins
+assert(#STUB.mapWrites == 0, table.concat(STUB.mapWrites, ", "))
+for key in pairs(getmetatable(WorldMapFrame).real) do
     assert(not tostring(key):find("Amisia", 1, true), "no Amisia field on the world map: " .. tostring(key))
+end
+for name, copy in pairs(STUB.mixinCopy) do
+    for k, v in pairs(_G[name]) do assert(copy[k] == v, name .. "." .. tostring(k) .. " changed") end
 end
 
 -- Latin-1 only

@@ -1,8 +1,5 @@
---[[preload
-MapCanvasDataProviderMixin = nil
-]]
--- A client without the map canvas's data provider mixin: no pins and no error; the places of a map
--- (for the page) still work.
+-- A world map without the canvas Amisia's layer hangs on (no ScrollContainer.Child): no pins and no
+-- error; the places of a map (for the page) still work.
 local Map = NS.Map
 STUB.class, STUB.level = "WARRIOR", 60
 STUB.item(100, "Lederhose der Wildnis", 2)
@@ -12,16 +9,20 @@ NS.MAP = { game = "forever", built = "2026-10-05", G = {}, P = { ["V:Gorn One Ey
 STUB.maps[1411] = { name = "Durotar", mapType = 3 }
 Map._reset()
 NS.BisChar().wish[100] = { t = 1, prio = 2, note = "" }
+local scroll = WorldMapFrame.ScrollContainer
+WorldMapFrame.ScrollContainer = nil
 STUB.fire("PLAYER_LOGIN")
-assert(Map.PinProvider() == nil and next(WorldMapFrame.dataProviders) == nil, "no provider")
+assert(Map.PinLayer() == nil, "no layer")
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1411)
 NS.Fire("BIS_CHANGED")
 STUB.tick(1)
-assert(#STUB.mapPins("AmisiaMapPinTemplate") == 0, "no pins")
+assert(#Map.ShownPins("item") == 0 and #Map.ShownPins("place") == 0, "no pins")
 assert(#Map.PinPlaces(1411) == 1, "the places still known")
--- a world map without AddDataProvider: the same
-WorldMapFrame.AddDataProvider = nil
-_G.MapCanvasDataProviderMixin = {}
-STUB.fire("ADDON_LOADED", "Blizzard_WorldMap")
-assert(Map.PinProvider() == nil)
+-- the map comes later (load on demand): the layer then
+WorldMapFrame.ScrollContainer = scroll
+STUB.fire("PLAYER_ENTERING_WORLD")
+assert(Map.PinLayer() and Map.PinLayer():GetParent() == STUB.mapCanvas, "made once the canvas is there")
+STUB.tick(0)
+assert(#Map.ShownPins("item") == 1, "then the pin")
+WorldMapFrame:Hide()

@@ -124,5 +124,5 @@ assert(R.text:find("TBC Anniversary (nur der Raid-Teil)", 1, true), "the client 
 for line in R.text:gmatch("[^\n]+") do
     if line:find("Template", 1, true) then assert(not line:find("FEHLT", 1, true), line) end
 end
-assert(not R.text:find("AmisiaMapPinTemplate", 1, true), "no map pin check off Forever")
+assert(not R.text:find("Pin-Ebene der Weltkarte", 1, true), "no map pin check off Forever")
 print("tbc raid ok")

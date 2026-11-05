@@ -191,7 +191,6 @@ NS.BisBump()
 ---------------------------------------------------------------------------
 -- all quest givers on the map
 ---------------------------------------------------------------------------
-STUB.pinTemplates.AmisiaMapPinTemplate = "AmisiaMapPinMixin"
 STUB.place.map = 1436
 STUB.fire("PLAYER_LOGIN")
 local n = NS.DungeonMarkQuests("thanes")
@@ -209,9 +208,9 @@ for _, p in ipairs(pinList) do if p.mark then marks[#marks + 1] = p end end
 assert(#marks == 3, "a pin per giver: " .. #marks)
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1436)
-Map.PinProvider():RefreshAllData()
+STUB.tick(0)
 local markPin
-for _, p in ipairs(STUB.mapPins("AmisiaMapPinTemplate")) do
+for _, p in ipairs(Map.ShownPins("item")) do
     if p.entry and p.entry.mark and p.entry.giver == "Root Giver" then markPin = p end
 end
 assert(markPin and markPin.icon.texture == "Interface\\GossipFrame\\AvailableQuestIcon" and markPin.icon.atlas == nil,
@@ -221,12 +220,12 @@ local tipLines = {}
 local addLine, addDouble = GameTooltip.AddLine, GameTooltip.AddDoubleLine
 GameTooltip.AddLine = function(self, t) tipLines[#tipLines + 1] = plain(t) end
 GameTooltip.AddDoubleLine = function(self, a, b) tipLines[#tipLines + 1] = plain(a) .. " | " .. plain(b) end
-markPin:OnMouseEnter()
+markPin.scripts.OnEnter(markPin)
 GameTooltip.AddLine, GameTooltip.AddDoubleLine = addLine, addDouble
 local tip = table.concat(tipLines, "\n")
 assert(tipLines[1] == "Questgeber Root Giver" and has(tip, "Westfall 10, 10") and has(tip, "Root Quest") and has(tip, "Grudge of the Thanes"),
     tip)
-markPin:OnMouseLeave()
+markPin.scripts.OnLeave(markPin)
 -- the menu: set the target, remove the marks
 local entries = Map.PlaceMenu(markPin.entry)
 assert(entries[1][1] == "Ziel setzen" and entries[#entries][1] == "Markierung der Questgeber entfernen", entries[#entries][1])
