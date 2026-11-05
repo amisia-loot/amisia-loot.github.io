@@ -13,12 +13,12 @@ NS.DUNGEON_QUESTS = {
     built = "test", source = "test",
     D = { deadmines = { 500 } },
     Q = {
-        [500] = { "Final Quest", 14, 18, "A", 0, "O", "Gryan", "1436:5630:4760", { 501 }, { 502, 503, 504 }, "deadmines", nil, nil,
+        [500] = { "Final Quest", 14, 18, "A", 0, "O", "Gryan", "1436:5630:4760", { 501 }, { 502, 503 }, "deadmines", nil, nil,
                   nil, nil, nil, 0, 0, nil, nil, "Kill Van Cleef." },
         [501] = { "Root", 10, 12, "A", 0, "O", "Root Giver", "1436:1000:1000", nil, nil, nil },
         [502] = { "Choice A", 12, 14, "A", 0, "O", "Choice Giver", "1436:2000:3000", nil, nil, nil },
         [503] = { "Choice B", 12, 14, "A", 0, "O", "Other Giver", nil, nil, nil, nil },
-        [504] = { "A Hint", 10, 10, "", 0, "O", "Herald", "1436:6000:6000", nil, nil, nil, nil, nil, true },
+        [504] = { "A Hint", 10, 10, "", 0, "O", "Herald", "1436:6000:6000", nil, nil, nil, nil, { 500 }, true },
     },
 }
 NS.GEAR = { built = "test-path-en", Z = {}, I = {}, S = {} }

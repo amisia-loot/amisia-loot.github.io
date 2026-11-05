@@ -1242,6 +1242,29 @@ end
 
 local function isBreadcrumb(r) return type(r) == "table" and r[14] == true end
 
+-- The breadcrumbs that lead to each quest: a breadcrumb row (14th field true) names in its 13th field
+-- the quests it leads to (once one of them is done it is gone). Built once per quest data table.
+local crumbData, crumbIndex
+local function crumbsOf(dq, qid)
+    if crumbData ~= dq then
+        crumbData, crumbIndex = dq, {}
+        for id, r in pairs(dq.Q) do
+            if isBreadcrumb(r) and type(r[13]) == "table" then
+                for _, to in ipairs(r[13]) do
+                    local list = crumbIndex[to]
+                    if not list then
+                        list = {}
+                        crumbIndex[to] = list
+                    end
+                    list[#list + 1] = id
+                end
+            end
+        end
+        for _, list in pairs(crumbIndex) do table.sort(list) end
+    end
+    return crumbIndex[qid]
+end
+
 -- Of a "one of" list the done quest, else the first one still possible, else the first.
 local function pickOne(dq, list)
     local pick
@@ -1257,8 +1280,10 @@ end
 -- when there was a choice; others = the other ids of the list that fit). A breadcrumb (a quest that
 -- only leads to the next one, the 14th field) is optional (breadcrumb = true, optional = true), and
 -- so is every quest only it needs (optional = true); in a "one of" list with other quests the
--- breadcrumbs stand beside the pick as optional ones. needs: the nodes a node waits for (its
--- required pre-quests). Quests of the other faction or class fall away. A loop in the data ends.
+-- breadcrumbs stand beside the pick as optional ones. The breadcrumbs that lead to a quest (crumbsOf)
+-- stand right before it, as optional steps, while they are still possible. needs: the nodes a node
+-- waits for (its required pre-quests). Quests of the other faction or class fall away. A loop in the
+-- data ends.
 local function chainOf(dq, qid, o)
     local out, seen, nodes = {}, { [qid] = true }, {}
     local function walk(id, depth, optional)
@@ -1303,6 +1328,11 @@ local function chainOf(dq, qid, o)
         end
         if group == real then
             for _, p in ipairs(crumbs) do take(p, { breadcrumb = true }) end
+        end
+        -- the breadcrumbs that lead to this quest, while they still lead somewhere (not once it is in the log)
+        for _, p in ipairs(crumbsOf(dq, id) or {}) do
+            local cr = dq.Q[p]
+            if questFits(cr, o) and (questDone(p) or not (questGone(cr) or questActive(id))) then take(p, { breadcrumb = true }) end
         end
         return needs
     end

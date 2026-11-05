@@ -400,6 +400,20 @@ S.STATES = {
         STUB.fire("QUEST_ACCEPTED", 135)
         NS.ShowDungeonQuest("deadmines", 214)
     end },
+    -- the longest quest path of the data for the character (it scrolls)
+    { page = "dungeons", name = "dungeons-questpath-long", open = function()
+        local best, bestKey, bestN = nil, nil, 0
+        local keys = {}
+        for key in pairs(NS.DUNGEON_QUESTS.D) do keys[#keys + 1] = key end
+        table.sort(keys)
+        for _, key in ipairs(keys) do
+            for _, q in ipairs((NS.DungeonQuests(key))) do
+                local n = #NS.Dungeons.QuestPath(q, key).steps
+                if q.qid and n > bestN then best, bestKey, bestN = q.qid, key, n end
+            end
+        end
+        if best then NS.ShowDungeonQuest(bestKey, best) end
+    end },
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },

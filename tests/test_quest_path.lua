@@ -23,14 +23,14 @@ NS.DUNGEON_QUESTS = {
     built = "test", source = "test",
     D = { deadmines = { 500, 520, 530 }, thanes = { 600, 700 } },
     Q = {
-        -- the Deadmines quest 500 needs 501 (all of), one of 502/503, and has the breadcrumb 504
-        [500] = { "Final Quest", 14, 18, "A", 0, "O", "Gryan", "1436:5630:4760", { 501 }, { 502, 503, 504 }, "deadmines", nil, nil,
+        -- the Deadmines quest 500 needs 501 (all of) and one of 502/503; the breadcrumb 504 leads to it (its 13th field)
+        [500] = { "Final Quest", 14, 18, "A", 0, "O", "Gryan", "1436:5630:4760", { 501 }, { 502, 503 }, "deadmines", nil, nil,
                   nil, nil, nil, 0, 0, "Gryan", "1436:5630:4760", "Kill Van Cleef." },
         [501] = { "Root", 10, 12, "A", 0, "O", "Root Giver", "1436:1000:1000", nil, nil, nil, nil, nil,
                   nil, nil, nil, 0, 0, nil, nil, nil },
         [502] = { "Choice A", 12, 14, "A", 1, "O", "Choice Giver", "1453:2000:3000", { 501 }, nil, nil, nil, nil },
         [503] = { "Choice B", 12, 14, "A", 0, "O", "Other Giver", "1453:4000:5000", nil, nil, nil, nil, { 505 } },
-        [504] = { "A Hint", 10, 10, "", 0, "O", "Herald", "1453:6000:6000", nil, nil, nil, nil, nil, true },
+        [504] = { "A Hint", 10, 10, "", 0, "O", "Herald", "1453:6000:6000", nil, nil, nil, nil, { 500 }, true },
         [505] = { "Rival", 12, 14, "A", 0, "O", "Rival Giver", "1453:1000:1000", nil, nil, nil, nil, nil },
         -- started by an item that drops in the Deadmines; a profession and a race
         [520] = { "Strange Letter", 15, 19, "", 0, "X", nil, nil, nil, nil, "deadmines", nil, nil,
@@ -101,12 +101,12 @@ assert(p.steps[4].state == "open", "the breadcrumb does not hold the quest back"
 STUB.questsActive[500] = true
 STUB.fire("QUEST_ACCEPTED", 500)
 p = path("deadmines", 500)
-assert(Dn.QuestPathNextText(p) == "4. Final Quest: im Log, Ziel noch offen", Dn.QuestPathNextText(p))
+assert(Dn.QuestPathNextText(p) == "3. Final Quest: im Log, Ziel noch offen", Dn.QuestPathNextText(p))
 STUB.questsReady = { [500] = true }
 C_QuestLog.IsComplete = function(id) return STUB.questsReady[id] == true end
 STUB.fire("QUEST_ACCEPTED", 500)
 p = path("deadmines", 500)
-assert(Dn.QuestPathNextText(p) == "4. Final Quest abgeben bei Gryan, Westfall 56, 48", Dn.QuestPathNextText(p))
+assert(Dn.QuestPathNextText(p) == "3. Final Quest abgeben bei Gryan, Westfall 56, 48", Dn.QuestPathNextText(p))
 local tp, tl = Dn.QuestStepTarget(p.next)
 assert(tp and near(tp.x, 0.563) and tl == "Abgabe Gryan", tostring(tl))
 STUB.questsDone[500], STUB.questsActive[500] = true, nil
@@ -129,7 +129,7 @@ NS.BisBump()
 p = path("deadmines", 500)
 assert(p.steps[2].node.qid == 503 and p.steps[2].gone and p.steps[2].goneBy == "Rival" and p.steps[2].state == "gone", "gone, because Rival is done")
 assert(p.next == p.steps[1], "the root is still the next step")
-NS.DUNGEON_QUESTS.Q[500][10] = { 502, 503, 504 }
+NS.DUNGEON_QUESTS.Q[500][10] = { 502, 503 }
 STUB.questsDone[505] = nil
 STUB.fire("QUEST_TURNED_IN", 505)
 
@@ -199,6 +199,51 @@ STUB.inInstance = nil
 NS.MapClearTarget()
 
 ---------------------------------------------------------------------------
+-- rows as the generated data writes them (trailing nils dropped, [17] and [18] always numbers)
+---------------------------------------------------------------------------
+STUB.maps[1457] = { name = "Darnassus", mapType = 3 }
+STUB.maps[1456] = { name = "Donnerfels", mapType = 3 }
+NS.Map._reset()
+NS.DUNGEON_QUESTS = {
+    built = "real", source = "real",
+    D = { gnomer = { 2945, 2947 }, wc = { 1490 }, bfd = { 1200 } },
+    Q = {
+        [968] = { "The Powers Below", 10, 0, "A", 0, "X", nil, nil, nil, nil, nil, nil, nil, nil, { { 5352, "Twilight Thug", 1439, nil } }, nil, 0, 0 },
+        [2945] = { "Grime-Encrusted Ring", 24, 0, "", 0, "X", nil, nil, nil, nil, "gnomer", { 9362 }, nil, nil, { { 9326, "Dark Iron Agent", 226, "gnomer" } }, nil, 0, 0 },
+        [1198] = { "In Search of Thaelrid", 18, 0, "", 0, "O", "Dawnwatcher Shaedlass", "1457:5540:2500", nil, nil, "bfd", nil, { 1200 }, true, nil, nil, 0, 0 },
+        [1200] = { "Blackfathom Villainy", 18, 0, "", 0, "I", "Argent Guard Thaelrid", nil, nil, nil, "bfd", nil, nil, nil, nil, nil, 0, 0 },
+        [1489] = { "Hamuul Runetotem", 10, 0, "H", 0, "O", "Naralex", "1456:5000:5000", nil, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
+        [1490] = { "Nara Wildmane", 10, 16, "H", 0, "O", "Erzdruide Hamuul Runetotem", "1456:7836:2856 1456:7470:3020", { 1489 }, nil, "wc", nil, nil, nil, nil, nil, 0, 0, "Nara Wildmane", "1456:7589:3116" },
+        [2947] = { "Return of the Ring", 28, 0, "A", 0, "", nil, nil, { 2945 }, nil, "gnomer", { 9362 }, nil, nil, nil, "The Sparklematic 5200", 0, 0 },
+    },
+}
+STUB.item(9326, "Schmieriger Ring", 1)
+NS.BisBump()
+p = path("gnomer", 2947)
+assert(titles(p) == "2945,2947", titles(p))
+assert(p.steps[1].accept.kind == "item" and has(p.steps[1].accept.text, "Schmieriger Ring") and has(p.steps[1].accept.text, "fällt von Dark Iron Agent in "),
+    p.steps[1].accept.text)
+assert(p.steps[2].accept.kind == "object" and p.steps[2].accept.text == "an einem Objekt: The Sparklematic 5200", p.steps[2].accept.text)
+-- the breadcrumb 1198 leads to 1200 (its 13th field): an optional step before it, not counted
+p = path("bfd", 1200)
+assert(titles(p) == "1198,1200" and p.total == 1 and p.steps[1].breadcrumb and p.steps[1].reqNo == nil, titles(p))
+assert(Dn.QuestPathShort(p) == "", "only a breadcrumb before it: no progress")
+assert(p.steps[2].accept.kind == "inside")
+-- once 1200 is done the breadcrumb is gone and falls out of the path
+STUB.questsDone[1200] = true
+STUB.fire("QUEST_TURNED_IN", 1200)
+assert(titles(path("bfd", 1200)) == "1200", "a breadcrumb that leads nowhere any more")
+STUB.questsDone[1200] = nil
+STUB.fire("QUEST_TURNED_IN", 1200)
+-- a Horde quest with its turn-in from the data, for a Horde character
+STUB.faction = "Horde"
+NS.BisBump()
+p = path("wc", 1490)
+assert(titles(p) == "1489,1490" and p.steps[2].turnIn.text == "bei Nara Wildmane, Donnerfels 76, 31", p.steps[2].turnIn.text)
+STUB.faction = "Alliance"
+NS.BisBump()
+
+---------------------------------------------------------------------------
 -- an old data file: thirteen fields, nothing of the new ones
 ---------------------------------------------------------------------------
 NS.DUNGEON_QUESTS = {
@@ -218,4 +263,17 @@ assert(p.steps[2].needs == "ab Stufe 14 · empfohlen 18 · nur Allianz")
 
 NS.DUNGEON_QUESTS = realQuests
 NS.BisBump()
+
+-- the generated data: every dungeon's quests with their paths, fast enough for a page refresh
+local t0, nq, longest = os.clock(), 0, 0
+for key in pairs(realQuests.D) do
+    for _, q in ipairs((NS.DungeonQuests(key))) do
+        local qp = Dn.QuestPath(q, key)
+        nq, longest = nq + 1, math.max(longest, #qp.steps)
+        assert(#qp.steps <= 15 and qp.done <= qp.total)
+    end
+end
+local spent = os.clock() - t0
+print(("quest path: %d quests of the generated data, the longest path %d steps, %.3f s"):format(nq, longest, spent))
+assert(spent < 2, "all paths in under two seconds: " .. spent)
 print("quest path: steps, one-of groups, breadcrumbs, own observations, waypoints")
