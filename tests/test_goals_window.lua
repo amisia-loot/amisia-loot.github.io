@@ -111,6 +111,17 @@ assert(NS.GoalsFrameState().mode == "worn" and d.worn.on and not d.goals.on, "th
 assert(d.slots.HEAD.item.link == LINKS[410] and not m.undressed and #m.tried == 0, "what is worn")
 d.goals:Click()
 assert(m.undressed and d.slots.HEAD.item.id == 401, "back to the targets")
+-- item answers (the scan, the collector, other addons) leave the model alone: dressing it anew for each
+-- made it flicker
+local units, setUnit = 0, m.SetUnit
+m.SetUnit = function(self, ...) units = units + 1; return setUnit(self, ...) end
+STUB.fire("GET_ITEM_INFO_RECEIVED", 999, true); STUB.tick(1)
+STUB.fire("GET_ITEM_INFO_RECEIVED", 998, false); STUB.tick(1)
+assert(units == 0, "no new dressing for item answers: " .. units)
+m.SetUnit = setUnit
+-- a gain over starter items is thousands of percent: shown short so the column does not cut it
+local pct = NS.GearPageKit.pctText
+assert(pct(500, 5) == ">999 %" and pct(10, 100) == "+10 %" and pct(-30, 100) == "-30 %", "the percent text")
 -- the model: drag turns, the wheel zooms, a right click resets
 STUB.cursorX = 100
 _G.GetCursorPosition = function() return STUB.cursorX, 0 end

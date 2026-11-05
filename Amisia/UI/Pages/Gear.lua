@@ -83,6 +83,14 @@ local function linkOf(id)
     return link or ("item:" .. id)
 end
 
+-- A gain as percent of what is worn; a tiny worn score (starter items) gives thousands, shown as ">999 %"
+-- so the column does not cut it.
+local function pctText(gain, mine)
+    local pct = math.floor(gain / mine * 100 + 0.5)
+    if pct > 999 then return ">999 %" end
+    return ("%+d %%"):format(pct)
+end
+
 local function firstSource(id, o)
     return Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
 end
@@ -1325,7 +1333,7 @@ ns.GearPageKit = {
     noOptionText = noOptionText,
     -- for the window "Ausrüstungsziele": the source text, the map button, the link, the notes, the
     -- explanation of a slot's option and whether a shown row had no item name yet
-    sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, linkText = linkText,
+    sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, linkText = linkText, pctText = pctText,
     noteParts = noteParts, insertLink = insertLink, explainText = explainText, OWNED_TEXT = OWNED_TEXT,
     nameMissing = function() return nameMissing end,
     -- a refresh starts with no missing item name; GET_ITEM_INFO_RECEIVED fills its rows again

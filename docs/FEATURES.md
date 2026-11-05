@@ -788,12 +788,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Item einen Anlegen-Effekt hat, den die Wertung nicht zählt, dann steht "Effekt nicht gewertet" dabei.
 
 ### F-110 Fenster "Ausrüstungsziele" mit Puppe
-- Version: 2.44.0
+- Version: 2.49.2
 - Status: gebaut
 - Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Großes Fenster" klickst (oder `/amisia bis gross` eingibst), dann öffnet sich das Fenster "Ausrüstungsziele" mit deinem Charaktermodell, den 17 Slots links, rechts und darunter, der Liste in der Mitte und rechts der Leiste des ersten Slots mit Upgrade.
 - Prüfung: Wenn du "Angelegt" wählst, dann tragen Modell und Slots deine jetzige Ausrüstung; mit "Ziele" die Ziele. Ziehen dreht, Mausrad zoomt, Rechtsklick setzt zurück.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann steht dort eine Zeile "Charaktermodell" (DressUpModel, SetUnit, Undress, TryOn: vorhanden oder was fehlt).
+- Prüfung: Wenn das Fenster offen ist und Items nachgeladen werden (Namen erscheinen nach und nach, ein Scan läuft oder du fährst über Items in den Taschen), dann bleibt das Charaktermodell ruhig stehen und flackert nicht; nur wenn ein Item der Puppe seinen Namen bekommt, zieht es sich einmal neu an.
+- Prüfung: Wenn deine angelegten Items fast nichts wert sind (niedrige Stufe, Startausrüstung), dann steht bei einem viel besseren Ziel ">999 %" statt einer abgeschnittenen Zahl wie "+9070...".
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil A. Offen im Spiel: ob Forevers DressUpModel SetUnit/Undress/TryOn hat (Selbsttest-Zeile "Charaktermodell"), ob TryOn die Hand (MAINHANDSLOT/SECONDARYHANDSLOT/RANGEDSLOT) annimmt, die leeren Slot-Bilder und der Stern-Atlas.
+- Notiz: 2.49.2: Bildschirmfoto des Nutzers 2026-11-05 ("warum flakert der Charmodel"): jede Item-Antwort (GET_ITEM_INFO_RECEIVED) zog das Modell neu an (SetUnit, Undress, TryOn), und eine fehlgeschlagene Antwort fragte beim nächsten Refresh wieder; jetzt nur neu, wenn sich ein Link der Puppe ändert. Prozent über 999 gekürzt.
 
 ### F-111 Ausrüstungsziele: Wertungs-Kopf
 - Version: 2.44.0

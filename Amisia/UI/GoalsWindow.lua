@@ -487,8 +487,7 @@ local function gainText(e)
     if e.switch then return L["Wechsel"] end
     if type(e.gain) ~= "number" then return "" end
     if type(e.mine) == "number" and e.mine > 0 then
-        local pct = math.floor(e.gain / e.mine * 100 + 0.5)
-        return (e.upgrade and GREEN or GREY) .. ("%+d %%"):format(pct) .. "|r"
+        return (e.upgrade and GREEN or GREY) .. K.pctText(e.gain, e.mine) .. "|r"
     end
     return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
 end
@@ -618,7 +617,7 @@ ns.GoalsDrops = dropsFor
 local function pctText(gain, mine, up)
     if type(gain) ~= "number" then return "" end
     local color = up and GREEN or GREY
-    if type(mine) == "number" and mine > 0 then return color .. ("%+d %%"):format(math.floor(gain / mine * 100 + 0.5)) .. "|r" end
+    if type(mine) == "number" and mine > 0 then return color .. K.pctText(gain, mine) .. "|r" end
     return color .. ("%+d"):format(math.floor(gain + 0.5)) .. "|r"
 end
 
@@ -1551,15 +1550,15 @@ ns.Listen("SETTING", function(path)
     changed()
 end)
 ns.BisOnOwned(changed)
+-- The doll is dressed again only when one of its links changes (dress compares them): every item answer
+-- (the scan, the collector, other addons) dressing it anew made the model flicker, and an answer that
+-- failed asked again with the next refresh.
 local namesDue = false
-ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
-    if not built or not win:IsShown() or namesDue then return end
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function(_, success)
+    if success == false or not built or not win:IsShown() or namesDue then return end
     namesDue = true
     C_Timer.After(0.3, function()
         namesDue = false
-        if win and win:IsShown() then
-            win.doll.dressed = nil
-            refresh()
-        end
+        if win and win:IsShown() then refresh() end
     end)
 end)
