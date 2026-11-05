@@ -428,4 +428,17 @@ assert(has(f.data:GetText(), "Siege in Folge"), f.data:GetText())
 NS.ShowPage("overview")
 SlashCmdList.AMISIA("duelle")
 assert(NS.CurrentPage() == "duels", "/amisia duelle")
+-- clearing: /amisia duelle leeren asks first; "Löschen" empties history and leaderboard, classes stay
+local before, classes = D.Count(), 0
+for _ in pairs(AmisiaDB.duels.cls) do classes = classes + 1 end
+assert(before > 0 and classes > 0)
+SlashCmdList.AMISIA("duelle leeren")
+local ask = _G.AmisiaConfirmFrame
+assert(ask and ask:IsShown() and D.Count() == before, "a question first, nothing gone yet")
+STUB.messages = {}
+ask.ok:Click()
+assert(D.Count() == 0 and #D.All() == 0 and #AmisiaDB.duels.zones == 0 and AmisiaDB.duels.tour.n == 0, "every duel gone")
+assert(next(AmisiaDB.duels.cls) ~= nil, "the known classes stay")
+local said = table.concat(STUB.messages, "\n")
+assert(said:find(before .. " Duelle gelöscht.", 1, true), said)
 print("duels ok")

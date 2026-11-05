@@ -687,6 +687,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Ansicht Klassen öffnest, dann siehst du je Klasse Spiele, Spieler, S-N und Siegrate und unten, wie viel Prozent der Klassen bekannt sind; ein Klick auf eine Klasse zeigt sie gegen jede andere.
 - Notiz: Spec `docs/specs/2026-10-16-duelle.md`; DECISIONS D-52. Nichts wird gesendet; Duelle der Gilde teilen wäre ein eigenes Feature.
 
+### F-131 Duelle löschen
+- Version: 2.50.1
+- Status: gebaut
+- Prüfung: Wenn du `/amisia duelle leeren` eingibst (oder in den Einstellungen, Duelle "Alle Duelle löschen" klickst), dann fragt Amisia nach; nach "Löschen" meldet der Chat "N Duelle gelöscht.", Verlauf und Rangliste sind leer, und neue Duelle zählen wieder von vorn.
+- Prüfung: Wenn du danach die Ansicht Klassen öffnest oder einem früheren Gegner neu begegnest, dann kennt Amisia seine Klasse noch (die bekannten Klassen bleiben).
+- Notiz: Wunsch des Nutzers 2026-11-05 ("können wir die liste resetten", Bildschirmfoto der Rangliste mit 396 Spielern); Knopf in den Einstellungen, Duelle, und `/amisia duelle leeren`.
+
 ### F-114 Duelle: Klassensymbol und Spezialisierung
 - Version: 2.42.0
 - Status: gebaut

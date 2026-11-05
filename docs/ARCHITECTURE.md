@@ -508,7 +508,8 @@ expert items carry `officer`/`expert` (section reset and the changed mark count 
 `duels` holds since F-106 `duels.record` ("Duelle mitschreiben"), `duels.nearby` ("Auch fremde Duelle in der Nähe")
 and `duels.plates` ("Klassen von Namensplaketten lesen"), since F-114 `duels.inspect` ("Spezialisierung durch
 Betrachten lesen"), since F-116/F-117 `duels.request` ("Bilanz bei Duell-Anfragen zeigen") and `duels.tooltip`
-("Duell-Bilanz im Spieler-Tooltip"), all on.
+("Duell-Bilanz im Spieler-Tooltip"), all on; since F-131 the button `duels.clear` ("Alle Duelle löschen", asks first,
+`ns.Duels.Clear`: list, zones and tournaments go, `cls`/`spec` stay; also `/amisia duelle leeren`).
 `bis` holds since F-125 `bis.slotClick` ("Rechtsklick auf Slots im Charakterfenster", on). Beside it the window state
 `settings.bis.style` (the play style F-124, `{nodungeon, solo, buy, now, zone}`, true or missing; `PS.State` drops
 other keys), like `settings.bis.sources`.

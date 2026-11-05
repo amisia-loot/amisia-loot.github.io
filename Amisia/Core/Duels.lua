@@ -163,6 +163,24 @@ function D.Changed(classOnly)
     ns.Fire("DUELS")
 end
 
+-- Forgets every duel, the zones and the tournaments (the button in the settings, /amisia duelle leeren);
+-- the known classes and talent trees stay. Returns how many duels went.
+function D.Clear()
+    local d = db()
+    if not d then return 0 end
+    local n = #d.list
+    d.list, d.zones, d.tour = {}, {}, { n = 0 }
+    D.Changed()
+    return n
+end
+
+local function confirmClear()
+    ns.W.Confirm(L["Alle Duelle löschen"], L["Alle aufgezeichneten Duelle löschen? Verlauf, Rangliste und Turniere fangen von vorn an; die bekannten Klassen bleiben."],
+        L["Löschen"], function()
+            ns.msg(L["%d Duelle gelöscht."]:format(D.Clear()))
+        end)
+end
+
 -- Every duel, newest first: { t, w, l, z = zone text or nil, k = "K"/"F", n = tournament or nil, wc, lc,
 -- ws, ls = the talent tree (1-3) or nil }.
 function D.All()
@@ -1009,8 +1027,15 @@ ns.RegisterSettings{ key = "duels", label = L["Duelle"], order = 70, group = "pv
       tip = L["Im Tooltip eines Spielers, gegen den Duelle aufgezeichnet sind, steht seine Bilanz und wie es gegen dich steht."] },
     { key = "duels.inspect", type = "toggle", label = L["Spezialisierung durch Betrachten lesen"], default = true,
       tip = L["Steht ein Duellant in deiner Nähe (Ziel, Maus, Namensplakette), betrachtet Amisia ihn einmal kurz ohne Fenster und merkt sich seine Spezialisierung: den Talentbaum mit den meisten Punkten. Nie im Kampf und nie, während dein Betrachten-Fenster offen ist."] },
+    { key = "duels.clear", type = "button", label = L["Alle Duelle löschen"], run = confirmClear,
+      tip = L["Löscht nach einer Rückfrage alle aufgezeichneten Duelle: Verlauf, Rangliste und Turniere fangen von vorn an. Die bekannten Klassen bleiben. Auch: /amisia duelle leeren"] },
 } }
 
-ns.RegisterSlash("duelle", { en = "duels", desc = L["Duelle: Verlauf, Rangliste, Klassen"], run = function()
+ns.RegisterSlash("duelle", { en = "duels", args = L["[leeren]"], desc = L["Duelle: Verlauf, Rangliste, Klassen"], run = function(rest)
+    local word = (rest or ""):match("^%s*(%S*)"):lower()
+    if word == "leeren" or word == "clear" then   -- l10n-ok: typed sub-words
+        confirmClear()
+        return
+    end
     if ns.ShowDuels then ns.ShowDuels() end
 end })
