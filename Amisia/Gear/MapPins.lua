@@ -12,10 +12,11 @@ local TEMPLATE = "AmisiaMapPinTemplate"
 local MAX_PINS = 60
 local DOT = "Interface\\AddOns\\Amisia\\Media\\Icons\\dot"
 local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
--- the quest giver marks: the client's quest icon of its map legend, else the classic gossip icon
-local QUEST_ATLAS, QUEST_ICON = "QuestNormal", "Interface\\GossipFrame\\AvailableQuestIcon"
--- a target without an item: a quest giver ("Q:") gets the quest mark, a dungeon entrance ("I:", "N:")
--- the map legend's dungeon mark
+-- the quest giver marks: the plain yellow "!" of the gossip window, without a frame (the map legend's
+-- quest atlas is a diamond on Forever)
+local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon"
+-- a target without an item: a quest giver ("Q:") gets the "!", a dungeon entrance ("I:", "N:") the map
+-- legend's dungeon mark; neither gets the frame or the ring
 local DUNGEON_ATLAS = "Dungeon"
 local MAX_MARKS = 40
 -- the texts of the quest giver marks, in one place for the translation
@@ -409,24 +410,28 @@ function Pin:OnAcquired(entry, scale)
     -- pins are pooled: the icon and its coordinates are set every time
     local key = not best and type(entry.key) == "string" and entry.key:sub(1, 2) or nil
     local quest = entry.mark or key == "Q:"
-    if quest and W.HasAtlas(QUEST_ATLAS) then
-        self.icon:SetAtlas(QUEST_ATLAS)
-    elseif (key == "I:" or key == "N:") and W.HasAtlas(DUNGEON_ATLAS) then
-        self.icon:SetAtlas(DUNGEON_ATLAS)
-    elseif quest then
+    local bare = quest
+    if quest then
         self.icon:SetTexture(QUEST_ICON)
         self.icon:SetTexCoord(0, 1, 0, 1)
+        self.icon:SetSize(22, 22)
+    elseif (key == "I:" or key == "N:") and W.HasAtlas(DUNGEON_ATLAS) then
+        self.icon:SetAtlas(DUNGEON_ATLAS)
+        self.icon:SetSize(22, 22)
+        bare = true
     else
         self.icon:SetTexture(best and itemIcon(best.id) or QUESTION)
         self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        self.icon:SetSize(18, 18)
     end
+    for _, t in ipairs(self.edges) do t:SetShown(not bare) end
     local wish = entry.mark or false
     for _, it in ipairs(entry.items) do
         if it.wish then wish = true end
     end
     local c = wish and GOLD or GREEN
     W.SetBorderColor(self.edges, c[1], c[2], c[3], 1)
-    self.ring:SetShown(entry.target and true or false)
+    self.ring:SetShown(entry.target and not bare or false)
     local count = entry.mark and #(entry.quests or {}) or #entry.items
     if count > 1 then
         self.count:SetText(tostring(count))

@@ -214,7 +214,9 @@ local markPin
 for _, p in ipairs(STUB.mapPins("AmisiaMapPinTemplate")) do
     if p.entry and p.entry.mark and p.entry.giver == "Root Giver" then markPin = p end
 end
-assert(markPin and markPin.icon.atlas == "QuestNormal", "the client's quest icon")
+assert(markPin and markPin.icon.texture == "Interface\\GossipFrame\\AvailableQuestIcon" and markPin.icon.atlas == nil,
+    "the plain yellow \"!\" (F-134)")
+for _, e in ipairs(markPin.edges) do assert(not e:IsShown(), "no frame around the \"!\"") end
 local tipLines = {}
 local addLine, addDouble = GameTooltip.AddLine, GameTooltip.AddDoubleLine
 GameTooltip.AddLine = function(self, t) tipLines[#tipLines + 1] = plain(t) end

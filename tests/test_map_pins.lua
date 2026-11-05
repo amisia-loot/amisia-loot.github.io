@@ -263,13 +263,17 @@ assert(#pins() == 1 and pins()[1].entry.target, "map.pins off leaves the target'
 -- a target without an item (F-134): a quest giver gets the quest mark, a dungeon entrance the dungeon mark
 assert(NS.MapSetPoint({ map = 1411, x = 0.3, y = 0.8 }, "Questgeber X", "Q:99001"))
 STUB.tick(0.6)
-assert(pins()[1].entry.target and pins()[1].icon.atlas == "QuestNormal", tostring(pins()[1].icon.atlas))
+local qp = pins()[1]
+assert(qp.entry.target and qp.icon.texture == "Interface\\GossipFrame\\AvailableQuestIcon", tostring(qp.icon.texture))
+assert(not qp.ring:IsShown(), "no ring behind the \"!\"")
+for _, e in ipairs(qp.edges) do assert(not e:IsShown(), "no frame") end
 assert(NS.MapSetPoint({ map = 1411, x = 0.3, y = 0.8 }, "Mine (Eingang)", "I:36"))
 STUB.tick(0.6)
 assert(pins()[1].icon.atlas == "Dungeon", tostring(pins()[1].icon.atlas))
 assert(NS.MapSetPoint({ map = 1411, x = 0.3, y = 0.8 }, "Irgendwo", "Q:99001", 204))
 STUB.tick(0.6)
 assert(pins()[1].icon.texture == 1204, "with an item: the item's icon")
+assert(pins()[1].ring:IsShown() and pins()[1].edges[1]:IsShown(), "an item pin keeps frame and ring")
 NS.Set("map.pins", true)
 NS.MapClearTarget()
 STUB.tick(0.6)
