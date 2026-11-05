@@ -90,7 +90,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Data/BisData.lua` | generated (`build_bis.py`), `ns.BIS` | - | - |
 | `Data/MapData.lua` | generated (`build_map.py`), lazy `MAP`: `P` points per source key (the entrances under `I:<instance id>`/`N:<name>`, one for every dungeon and raid of the facts that has a place), `G` quest givers, `E` where an entrance's points come from (`c` client table Map, `a` AllTheThings, `l` learned), `F` flight masters `{ uiMap, x, y, A/H/N, name }`, `T` docks `{ uiMap, x, y, Z/S, A/H/N, { { area id, English name } } }` | - | LazyData |
 | `Data/DungeonData.lua` | generated (`build_dungeons.py`) | - | - |
-| `Data/DungeonQuestData.lua` | generated (`build_dungeonquests.py`) | - | - |
+| `Data/DungeonQuestData.lua` | generated (`build_dungeonquests.py`), `ns.DUNGEON_QUESTS = { built, source, D = { [dungeon key] = { quest ids } }, Q = { [questID] = row } }`; a row: [1] name (English), [2] required level, [3] quest level (0 unknown), [4] faction `"A"`/`"H"`/`""`, [5] class mask (0 all), [6] start `"O"` outside, `"I"` inside the dungeon, `"X"` by an item, `""` unknown, [7] giver name, [8] up to four `"uiMapID:x:y"` (hundredths of a percent) split by spaces, [9] pre-quests all of, [10] pre-quests one of, [11] dungeon key (nil: a pre-quest only), [12] gear rewards, [13] quests that exclude this one (for a breadcrumb: the quests it leads to), [14] breadcrumb `true` or nil (never in a [9] list), [15] start items `{ { itemID, NPC name or nil, uiMapID or nil, dungeon key or nil }, ... }` (where it drops) or nil, [16] start object name or nil, [17] race mask (bit race id - 1, 0 any of the faction), [18] required profession skill line (0 none), [19] turn-in NPC name or nil, [20] turn-in points (as [8]) or nil, [21] objective text (at most 300 characters, no `|`) or nil; trailing nils left out. Names, places, quest level, turn-in and objective the collector saw itself (own mask, `tools/quest_obs.json`) go before AllTheThings | - | - |
 | `Data/ProfessionData.lua` | generated (`build_professions.py`), lazy | - | LazyData |
 | `Data/QuestData.lua` | generated (`build_quests.py`), lazy | - | LazyData |
 | `Data/TalentData.lua` | generated (`build_talents.py`), lazy | - | LazyData |
@@ -187,11 +187,12 @@ Scan/Collect/Collector/Drops/QuestXP ->  AmisiaDB (SavedVariables)
 ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of AmisiaDB.scan
                                             -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
-AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att -> build_gear/map/quests/...
+AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att ($AMISIA_ATT_CACHE, build.py data --att) -> build_gear/map/quests/...
 client tables SkillLineAbility, SpellEffect, ItemSparse -> build_gear.client_crafts -> Data/GearData.lua (C, recipe skill)
 tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T docks, F the flight masters ATT lacks)
 MapPlaces.lua (entering an instance)    -> AmisiaDB.entrances -> build_map.py -> tools/entrance_archive.json -> Data/MapData.lua
 QuestTags.lua (the own quest log)        -> AmisiaDB.questtags -> build_gear.py -> tools/quest_tag_archive.json -> Data/GearData.lua (QT)
+Collector.lua (quests: own fields only)  -> AmisiaDB.collect.q -> build_dungeonquests.py -> tools/quest_obs.json -> Data/DungeonQuestData.lua
 ItemSparse (client table, export_db2)   -> build_gear.py -> Data/GearData.lua (RP, the reputation an item asks for)
 raid recording, awards, bank, points  -> "#AMISIA 2" export text --- paste --> Import tab (amParse...)
                                       <-- paste "#AMISIA-WL/ALTS/LC/PTS" --- "Copy for the addon"

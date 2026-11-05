@@ -142,6 +142,7 @@ def test_data_steps_order():
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
+    assert steps['dungeon quests'][2] == ['--sv', '/x/Amisia.lua'], "the collector's own quest observations"
     assert steps['scan archive'][2] == ['update', '--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['talents'][4] == 'skip' and steps['professions'][4] == 'skip'
     assert steps['mage scrolls'][2] == ['--wago', '/w'] and steps['mage scrolls'][4] == 'skip'

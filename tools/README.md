@@ -7,7 +7,7 @@ the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, s
 `python3 tools/build.py ...` is enough.
 
 ```
-python3 tools/build.py data [--sv FILE] [--wago DIR] [--refresh-att]
+python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
 python3 tools/build.py check
 python3 tools/build.py tocs
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -24,8 +24,11 @@ python3 tools/build.py errors [--sv FILE] [--all]
   folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
-  `build_map.py` (learned entrances), `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
-  `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
+  `build_map.py` (learned entrances), `build_dungeonquests.py` (the collector's own quest observations),
+  `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
+  `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
+  `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
+  cache); `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
 - `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
@@ -342,10 +345,21 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
 - `--refresh-att` (on each of the three builds) downloads through the GitHub API (the token of `gh`)
   into `~/addons/_cache/att`, outside the repo, with the commit in `COMMIT`: the Forever dungeons
   and zones, the Classic folders not yet moved (`zzOLD/01 - Dungeons Raids`, `zzOLD/02 - Outdoor
-  Zones`), world drops, PvP gear, crafted items, the map constants, the item export
+  Zones`; gone since ATT's commit of 2026-11-05, which moved them into the Forever folders), world drops,
+  PvP gear, crafted items, the map and race constants, the item export
   `.config/exports/ItemDB.lua`, the client tables `UiMapAssignment`, `AreaTable`, `ContentTuning` and
   `SkillLineAbility` ATT ships, and for `build_professions.py` the recipe lists
   `.config/structures/` and `profession db/` (that build reads them itself, `load()` does not).
+- `ATT_CACHE` (every builder's default download) is `$AMISIA_ATT_CACHE` when set, else `~/addons/_cache/att`;
+  `build.py data --att DIR` sets the variable for all its steps.
+- Two forms of the files are read (tests on both): the older one (`root(ROOTS.Instances, inst(63, {...}))`,
+  `["zone-text-areaID"]`, bracketed keys) and the one since 2026-11-05 (`instanceroot(63, {...})`,
+  `zoneTextAreaID`, plain keys, `maproot(MAP.X, {...})` naming one map, the race lists of class quests
+  such as `ALLIANCE_PALADINS` from `.config/constants/races.lua`, run before the data files). A race
+  without a race id (Skyborne) gives its faction and no race mask; a blacksmith or engineer
+  specialization (`ARMORSMITH`, `GNOMISH_ENGINEERING`, ...) counts as its profession. `qs` is the item
+  that starts a quest; `qi`/`qis` are items it hands out (no start). Raids ATT keeps commented out
+  (Molten Core, Blackwing Lair, Zul'Gurub, Ahn'Qiraj, Naxxramas in the 2026-11-05 data) are not read.
 - Client tables (wago.tools CSV downloads) are read as `<Table>.csv` or `<Table>.<build>.csv`, the name
   wago.tools gives them (`UiMapAssignment.1.60.1.70235.csv`); of several builds in one folder the newest
   counts (`wago_csv()`). The user's folder `~/addons/_wago` comes first, ATT's copies second.
@@ -359,8 +373,9 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   zone, faction, kind: boss, rare, vendor, giver, mob), boss and rare drops, zone drops with their
   mobs, vendor stock, world drops, PvP gear per faction, crafted items per profession, the items of
   the export, instances (name, area id, uiMaps, entrance, instance map id), flight paths (`fp()`: the
-  place from the comment, the flight master's NPC id and name, points, faction). A record of a Forever
-  folder wins over the same quest or NPC in a zzOLD folder.
+  place from the comment, the flight master's NPC id and name, points, faction), the names of NPCs,
+  game objects and items from the comments (`npc_names`, `object_names`, `item_names`). A record of a
+  Forever folder wins over the same quest or NPC in a zzOLD folder.
 - What ATT does not give: a quest's own level (the minimum level stands in), NPC levels, recipe
   skill levels, spawn points of mobs it only names, measured entrances of some dungeons (the new
   ones carry the middle of their zone, which `build_map.py` does not take), and instance map ids
@@ -370,7 +385,8 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   as Gnomeregan's in Dun Morogh, so those are found by the client's name of the instance). With ATT's
   `AreaTable` of 1.60.1.70170 every ATT instance but Onyxia's Lair (249 from the facts) has its id.
 
-Tests: `tools/tests/test_att_data.py` on the hand-made fixture `tools/tests/fixtures/att`.
+Tests: `tools/tests/test_att_data.py` on the hand-made fixtures `tools/tests/fixtures/att` (the older
+form) and `tools/tests/fixtures/att_new` (the form since 2026-11-05).
 
 ## build_gear.py
 
@@ -656,13 +672,16 @@ worn; while it is worn nothing else is an upgrade for that row). The setting `bi
 ## build_dungeonquests.py
 
 Builds `Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
-`[AllowLoadGameType camelot]`) for the quest list of the dungeon planner: per dungeon of
-`tools/forever_dungeons.json` its quests, and per quest the level, faction, where it starts (quest
-giver with up to four map points, inside the dungeon, or by an item), its pre-quests (each with its
-own record) and its gear rewards.
+`[AllowLoadGameType camelot]`) for the quest list and the quest path (F-135) of the dungeon planner:
+per dungeon of `tools/forever_dungeons.json` its quests, and per quest the level, faction, races,
+profession, where it starts (quest giver with up to four map points, inside the dungeon, by an item
+with where that item drops, at a game object), where it is turned in, its pre-quests and breadcrumbs
+(each with its own record), its gear rewards and objective text. The fields stand in the head of the
+generated file and in `docs/ARCHITECTURE.md` (module map, `Data/DungeonQuestData.lua`).
 
 ```
 python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] [--json FILE] [--empty]
+                                    [--sv FILE...] [--obs-archive tools/quest_obs.json]
 ```
 
 - Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
@@ -672,15 +691,29 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
   `att_data.py`, the shared reader, which runs the files in its sandbox).
 - Only the Forever folders count here (not the Classic zzOLD ones). A dungeon file is matched to the
   facts by its file name or the instance's area id; instances without facts are reported.
-  Pre-quests are looked up in the zone files; one the download does not hold falls away.
+  Pre-quests are looked up in the zone files; one the download does not hold falls away. A quest
+  without a place of its own takes its giver's NPC points; a giver the data lists inside the quest's
+  dungeon makes it "I". A breadcrumb never stands in an "all of" list: it goes in with field 14 set
+  and names the quests it leads to in field 13 (done, the breadcrumb is gone).
+- Own observations first: the source collector's quest records (`AmisiaDB.collect.q` of `--sv`,
+  default `~/addons/_SavedVariables/Amisia.lua` and an installed client's; collector versions 2 and 3,
+  by `collect.ver`, else by the fields) give, from the fields their own mask marks only (never what
+  was heard from the guild): the giver's name (German) and point (first, data points near it fall
+  away; a negative giver is a game object: the start object's name), the turn-in NPC (the observed
+  name, else the data's name for that id) with the observed point or the data's points of that NPC,
+  the quest level where the data has none, the objective text (version 3; colour codes, links and
+  `|` removed, 300 characters at most). They are joined into `tools/quest_obs.json` (committed;
+  per quest the newer day wins a field, the others stay), so what the addon prunes from its table
+  (2500 quests, 480 KB) still builds the same data; `--obs-archive ""` for none.
 - The input is pluggable: every reader produces one neutral form (see `NEUTRAL` in the script),
   `--json` reads that form directly, `--empty` writes the file without data (the addon then says
   "Questdaten fehlen noch.").
 - No data of other quest databases goes in. The date alone does not rewrite the file.
 
 Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the source has new
-dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on a
-hand-made fixture in the builder language (`tools/tests/fixtures/att`, no real data).
+dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on
+hand-made fixtures in the builder language (`tools/tests/fixtures/att`, `tools/tests/fixtures/att_new`,
+no real data) and hand-made collector records.
 
 ## build_professions.py
 

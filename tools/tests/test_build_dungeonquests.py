@@ -3,6 +3,7 @@ reader of the hand-kept Forever data (its builder language run under lupa with s
 hand-made fixture in tools/tests/fixtures/att, no real data), the neutral form, the JSON input,
 the empty file, the generated DungeonQuestData.lua (deterministic, valid Lua, in the TOC) and the
 licence file that ships with it."""
+import copy
 import json
 import os
 import re
@@ -79,7 +80,10 @@ def test_render_keeps_dungeon_quests_and_their_pre_quests(att):
     assert q[9][1] == 70010 and q[9][2] is None, 'a pre-quest without a record falls away'
     assert q[10] is None and q[13][1] == 70011 and q[13][2] == 70012, 'alt in its own field, no "one of" list'
     assert dq.Q[70004][10][1] == 70010 and dq.Q[70004][10][2] == 70012 and dq.Q[70004][9] is None
-    assert dq.Q[70002][9] is None and dq.Q[70013] is None, 'a breadcrumb is no pre-quest'
+    assert dq.Q[70002][9] is None, 'a breadcrumb is no pre-quest'
+    assert dq.Q[70013][14] is True and dq.Q[70013][13][1] == 70002 and dq.Q[70013][11] is None, \
+        'it goes in as a breadcrumb that leads to the quest (field 13: done, the breadcrumb is gone)'
+    assert dq.Q[70001][14] is None and dq.Q[70001][17] == 0 and dq.Q[70001][18] == 0 and dq.Q[70001][19] is None
     assert dq.Q[70010] is not None and dq.Q[70010][11] is None, 'a pre-quest has its own record'
     assert dq.Q[70500] is None and dq.Q[70100] is None, 'quests of no dungeon and no chain stay out'
     assert dq.Q[70003][7] is None and dq.Q[70003][8] is None
@@ -139,3 +143,106 @@ def test_the_downloaded_lua_runs_without_io_os_or_python(tmp_path):
                 pass
             assert not target.exists(), code
     assert lua.eval('io') is None and lua.eval('os') is None and lua.eval('python') is None
+
+
+# ---------------------------------------------------------------- the form since November 2026 (F-135)
+# tools/tests/fixtures/att_new: instanceroot(), the race lists, start items with their drop, objects
+NEW = os.path.join(HERE, 'fixtures', 'att_new')
+NEW_FACTS = [{'key': 'keep', 'name': 'Test Keep', 'kind': 'party', 'area': 99201}]
+
+
+@pytest.fixture(scope='module')
+def att_new():
+    return bdq.read_att(NEW, NEW_FACTS, 'fedcba9876543210')
+
+
+def test_new_form_dungeon_quests_and_their_starts(att_new):
+    data, report = att_new
+    assert data['dungeons'] == {'keep': [73001, 73002, 73004, 73005, 73006]} and report['instances without facts'] == []
+    Q = data['quests']
+    assert Q[73001]['start'] == 'X' and Q[73001]['startItems'] == [(63001, 'Keep Thug', 9201, 'keep')], \
+        'the start item with the mob that drops it, its map and dungeon'
+    assert Q[73002]['start'] == 'O' and Q[73002]['points'] == [(1427, 4050, 6025)], 'no place of its own: its giver\'s'
+    assert Q[73002]['races'] == 5 and Q[73002]['skill'] == 164 and Q[73002]['classes'] == 2
+    assert Q[73004]['start'] == '' and Q[73004]['startObject'] == 'Odd Altar' and Q[73004]['giver'] is None
+    assert Q[73005]['start'] == 'I' and Q[73005]['points'] == [], 'a giver the data lists inside the dungeon'
+    assert Q[73006]['start'] == '' and Q[73006]['startItems'] == [], 'an item the quest hands out starts nothing'
+    assert Q[73003]['breadcrumb'] and Q[73003]['dungeon'] is None
+    assert data['context']['inside_maps'] == [9201] and data['context']['npc_names'][83003] == 'Keep Prisoner'
+
+
+def test_new_fields_render_as_the_contract_says(att_new):
+    dq = lua_load(bdq.render(att_new[0], '2026-11-05'))
+    q = dq.Q[73001]
+    assert q[6] == 'X' and q[15][1][1] == 63001 and q[15][1][2] == 'Keep Thug' and q[15][1][3] == 9201 and q[15][1][4] == 'keep'
+    assert q[16] is None and q[17] == 0 and q[18] == 0 and q[19] is None and q[20] is None and q[21] is None
+    p = dq.Q[73002]
+    assert p[8] == '1427:4050:6025' and p[9] is None and p[17] == 5 and p[18] == 164
+    b = dq.Q[73003]
+    assert b[14] is True and b[13][1] == 73002 and b[11] is None, 'the breadcrumb in, pointing at its quest'
+    assert dq.Q[73004][16] == 'Odd Altar' and dq.Q[73004][15] is None
+
+
+# ---------------------------------------------------------------- own observations (collector records)
+# version 2: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+# own bits: 0 giver, 1 giverPos, 2 ender, 3 enderPos, 6 questLevel, 10 giverName (version 3: 11 enderName, 12 objective)
+V2 = '308;1095;83002;1427:4060:6030;83003;9201:5000:5000;;;41;40;A;0;Sir Moorkopf;Pflicht; mit Semikolon'
+V3 = ('309;7177;-93001;;0;1427:1000:2000;;;0;0;;0;Seltsamer Altar;Wache;'
+      'Bringt 5 |cffffffffRote Tücher|r zum Altar, schnell;Seltsamer Altar')
+HEARD = '309;0;83003;9201:100:100;0;;;;40;40;H;0;Gefangener;Flehen'
+
+
+def test_collector_records_both_layouts_own_fields_only():
+    r = bdq.parse_quest_record(V2, 2)
+    assert r == {'day': 308, 'giver': 83002, 'gpos': (1427, 4060, 6030), 'ender': 83003, 'qlevel': 41, 'gname': 'Sir Moorkopf'}, \
+        'the heard turn-in place stays out; the free title may hold ";"'
+    v3 = bdq.parse_quest_record(V3, 3)
+    assert v3 == {'day': 309, 'giver': -93001, 'epos': (1427, 1000, 2000), 'gname': 'Seltsamer Altar', 'ename': 'Wache',
+                  'objective': 'Bringt 5 Rote Tücher zum Altar, schnell'}, 'colour codes out of the objective'
+    assert bdq.parse_quest_record(V3, 2) == v3, 'a version 3 record in a table that says 2: by its fields'
+    assert bdq.parse_quest_record(V2, 3) == r, 'and the other way round'
+    assert bdq.parse_quest_record(HEARD, 2) == {'day': 309}, 'nothing heard counts'
+    assert bdq.parse_quest_record('309;1;x;;0;;;;0;0;;0;;T', 2) is None and bdq.parse_quest_record(None) is None
+    long = bdq.clean_text('Wort ' * 100)
+    assert len(long) <= bdq.MAX_OBJECTIVE and long.endswith('Wort') and '|' not in bdq.clean_text('a|b\x01c')
+
+
+def write_sv(path, ver, records):
+    body = ', '.join(f'[{k}] = {json.dumps(v, ensure_ascii=False)}' for k, v in records.items())
+    path.write_text(f'AmisiaDB = {{ ["collect"] = {{ ["ver"] = {ver}, ["q"] = {{ {body} }} }} }}\n', encoding='utf-8')
+    return str(path)
+
+
+def test_observations_go_first_and_survive_in_the_archive(tmp_path, att_new, monkeypatch):
+    import build_scan
+    sv2 = write_sv(tmp_path / 'a.lua', 2, {73002: V2, 73005: HEARD})
+    sv3 = write_sv(tmp_path / 'b.lua', 3, {73004: V3})
+    obs = bdq.read_observed([build_scan.load_sv(sv2), build_scan.load_sv(sv3)])
+    assert set(obs) == {73002, 73004}, 'a record with nothing own is no observation'
+    data = copy.deepcopy(att_new[0])   # the module fixture stays as it was
+    assert bdq.apply_observed(data, obs) == 2
+    q = data['quests'][73002]
+    assert q['giver'] == 'Sir Moorkopf' and q['points'] == [(1427, 4060, 6030)], 'the own point; the data point near it goes'
+    assert q['ender'] == 'Keep Prisoner' and q['enderPoints'] == [] and q['level'] == 41, 'the data\'s name for the turn-in NPC'
+    o = data['quests'][73004]
+    assert o['startObject'] == 'Seltsamer Altar' and o['giver'] is None, 'a negative giver is a game object'
+    assert o['ender'] == 'Wache' and o['enderPoints'] == [(1427, 1000, 2000)] and o['objective'].startswith('Bringt 5 Rote')
+    dq = lua_load(bdq.render(data, '2026-11-05'))
+    assert dq.Q[73002][7] == 'Sir Moorkopf' and dq.Q[73002][3] == 41 and dq.Q[73002][19] == 'Keep Prisoner'
+    assert dq.Q[73002][20] is None and dq.Q[73004][20] == '1427:1000:2000'
+    assert dq.Q[73004][21] == 'Bringt 5 Rote Tücher zum Altar, schnell' and dq.Q[73005][7] == 'Keep Prisoner'
+    # the whole build: the archive keeps what a later, pruned SavedVariables file no longer holds
+    monkeypatch.setattr(bdq, 'load_facts', lambda path=None: NEW_FACTS)
+    arch, out = str(tmp_path / 'obs.json'), str(tmp_path / 'DQ.lua')
+    bdq.main(['--att', NEW, '--sv', sv2, sv3, '--obs-archive', arch, '--out', out])
+    first = open(out, encoding='utf-8').read()
+    assert 'own observations of the Amisia collector' in first.split('\n')[1]
+    saved = json.load(open(arch, encoding='utf-8'))
+    assert saved['v'] == 1 and set(saved['q']) == {'73002', '73004'} and saved['q']['73002']['gpos'] == '1427:4060:6030'
+    pruned = write_sv(tmp_path / 'c.lua', 3, {})
+    bdq.main(['--att', NEW, '--sv', pruned, '--obs-archive', arch, '--out', out])
+    assert open(out, encoding='utf-8').read() == first, 'the same data from the archive alone'
+    newer = write_sv(tmp_path / 'd.lua', 3, {73002: '320;1;83099;;0;;;;0;0;;0;;Pflicht'})
+    bdq.main(['--att', NEW, '--sv', newer, '--obs-archive', arch, '--out', out])
+    rec = json.load(open(arch, encoding='utf-8'))['q']['73002']
+    assert rec['giver'] == 83099 and rec['gname'] == 'Sir Moorkopf' and rec['day'] == 320, 'a newer field wins, the others stay'
