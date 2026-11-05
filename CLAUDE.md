@@ -13,6 +13,8 @@
   `tests/` the addon's Lua tests; `tools/` builders and tool tests; `docs/` the documents.
 - One entry point: `python3 tools/build.py check` (must stay green), `data [--sv FILE] [--wago DIR]`,
   `snapshots [--out DIR] [--compare DIR]`, `release X.Y.Z -m "summary"`. Details in `tools/README.md`.
+- Every user-visible change adds an English note under `## Unreleased` in `CHANGELOG.md`
+  (`- type(scope): summary (F-xxx)`, a blank line, an indented paragraph); the release stops without one (D-60).
   Tests one by one: `~/.venvs/amisia/bin/python -m pytest tools/tests -q`,
   `~/.venvs/amisia/bin/python tests/run.py [name]`,
   `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node tests/syntax.cjs` (Node in `~/.local/node/bin`).

@@ -72,7 +72,8 @@ def pick_versions(versions, names):
 
 
 def changelog_section(text, version):
-    m = re.search(r'^## ' + re.escape(version) + r' [^\n]*\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    """The section of version without its heading ("## [v2.51.0](...) (day)" or the old "## 2.48.2 (day)")."""
+    m = re.search(r'^## \[?v?' + re.escape(version) + r'[\] ][^\n]*\n(.*?)(?=^## |\Z)', text, re.M | re.S)
     return m.group(1).strip() if m else ''
 
 

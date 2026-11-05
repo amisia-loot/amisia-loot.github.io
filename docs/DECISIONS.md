@@ -1314,3 +1314,21 @@ ein bestimmtes.
 **Folge:** Wer zufällige Welt-Drops will, schaltet "Weltdrops" ein; Epics aus Welt-Drops bleiben draußen.
 **Durchgesetzt durch:** `tests/test_bis_score.lua` (Regeln, eigener Tooltip), `tests/test_bis_targets.lua`,
 `tests/test_play_style.lua`, `tools/tests/test_build_gear.py::test_names_and_icons_only_for_items_the_client_lacks`.
+
+## D-60 Changelog auf Englisch, mit Links, aus eigenen Notizen
+
+**Datum:** 2026-11-05
+**Entscheidung:** `CHANGELOG.md` ist englisch. Jede Änderung, die ein Spieler merkt, schreibt im selben Commit eine
+Notiz unter `## Unreleased`: `- type(scope): summary (F-xxx)` (feat, fix, perf, data, docs, chore), eine Leerzeile, ein
+eingerückter kurzer Absatz. `build.py release` macht daraus den Abschnitt der Version mit der Überschrift
+`## [vX.Y.Z](<repo>/releases/tag/vX.Y.Z) (Datum)` und der Zeile `[Full Changelog]` (Vergleich mit der Version davor)
+`[Previous Releases]`, setzt den Tag `vX.Y.Z`, schiebt ihn mit und macht daraus ein GitHub-Release; CurseForge bekommt
+denselben Abschnitt. Ohne Notiz bricht der Release ab, bevor sich etwas ändert. Andere Addons und Fan-Seiten werden
+auch hier nicht genannt (D-02, D-05).
+**Grund:** Wunsch des Nutzers 2026-11-05 ("changelog sollen so aussehen und auf englisch sein", Bildschirmfoto eines
+Changelogs mit Versions-Link, Full Changelog, Previous Releases und Einträgen `fix(scope): ...` mit Absatz); die
+Commit-Betreffe sind deutsch. Die 76 älteren Abschnitte wurden übersetzt, alle Release-Commits bekamen ihren Tag.
+**Folge:** Die Notiz gehört zur Änderung, nicht zum Release; Daten-Releases bekommen eine `data(...)`-Notiz.
+**Durchgesetzt durch:** `tools/tests/test_build_tool.py::test_release`,
+`tools/tests/test_build_tool.py::test_release_uploads_only_what_was_pushed`,
+`tools/tests/test_curseforge.py::test_the_changelog_is_the_release_section`.

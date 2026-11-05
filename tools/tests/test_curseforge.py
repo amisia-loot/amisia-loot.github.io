@@ -61,6 +61,10 @@ def test_the_changelog_is_the_release_section():
     assert curseforge.changelog_section(text, '2.49.0') == '- a\n- b'
     assert curseforge.changelog_section(text, '2.48.2') == '- c'
     assert curseforge.changelog_section(text, '1.0.0') == ''
+    linked = ('## [v2.51.0](https://x/releases/tag/v2.51.0) (2026-11-05)\n\n[Full Changelog](https://x) '
+              '[Previous Releases](https://y)\n\n- feat(gear): plan realistic sources (F-132)\n  Why.\n\n## 2.48.2 (d)\n\n- c\n')
+    assert curseforge.changelog_section(linked, '2.51.0').startswith('[Full Changelog](https://x)')
+    assert curseforge.changelog_section(linked, '2.51.0').endswith('  Why.'), 'the D-60 heading with its links'
 
 
 def test_the_token_comes_from_the_environment_or_the_file(tmp_path):

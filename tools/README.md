@@ -42,9 +42,17 @@ python3 tools/build.py errors [--sv FILE] [--all]
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
   version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts
   everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, no
-  dotfiles), adds the commit subjects since the last `Amisia X.Y.Z:` commit to `CHANGELOG.md`,
-  commits `Amisia X.Y.Z: <summary>` (default summary: those subjects), pushes `origin main` and runs
-  `tools/release_addon.sh`. `--no-push` and `--no-copy` leave out the push and the copy.
+  dotfiles), turns the English notes under `## Unreleased` in `CHANGELOG.md` into the version's
+  section (D-60): heading `## [vX.Y.Z](<repo>/releases/tag/vX.Y.Z) (date)`, a line `[Full Changelog]`
+  (compare with the last version) `[Previous Releases]`, then the notes; it stops before anything
+  changes when there are none (the commit subjects are German). Then it commits `Amisia X.Y.Z:
+  <summary>` (default summary: the commit subjects since the last `Amisia X.Y.Z:` commit), tags it
+  `vX.Y.Z`, pushes `origin main` with the tag, makes the tag a GitHub release with the section (`gh`;
+  `build.py github-release X.Y.Z` retries) and runs `tools/release_addon.sh`. `--no-push` and
+  `--no-copy` leave out the push (and tag push, GitHub release, upload) and the copy.
+- A note in `## Unreleased`, written with the change itself, in English: `- type(scope): summary (F-xxx)`
+  (types feat, fix, perf, data, docs, chore), a blank line, then two spaces and a short paragraph of what
+  a player notices. CurseForge and GitHub show the version's section as it is.
 - After a successful push `release` uploads the zip to CurseForge with `tools/curseforge.py` (D-58): the
   project is `## X-Curse-Project-ID` in `Amisia.toc`, the token `~/.config/amisia/curseforge.token` (or
   `$CURSEFORGE_TOKEN`), the game versions are the TOC's interface numbers as CurseForge names them

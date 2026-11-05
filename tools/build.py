@@ -24,8 +24,10 @@ snapshots  draws every page (raider, officer and expert view) and side window fr
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
 release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
-         fails), builds Amisia-Website/Amisia.zip, adds the commits since the last release to CHANGELOG.md,
-         commits "Amisia X.Y.Z: <summary>", pushes origin main and copies the release to the folder
+         fails), builds Amisia-Website/Amisia.zip, turns the English notes under "## Unreleased" in
+         CHANGELOG.md into the version's section (D-60; stops without notes), commits "Amisia X.Y.Z:
+         <summary>", tags it vX.Y.Z, pushes origin main with the tag, makes the tag a GitHub release
+         (gh; github-release X.Y.Z retries) and copies the release to the folder
          Syncthing sends (tools/release_addon.sh), then uploads the zip to CurseForge
          (tools/curseforge.py, D-58; skipped without a project id or token). --no-push, --no-copy and
          --no-upload leave those out; without the push there is no upload.
@@ -58,6 +60,11 @@ NODE_DIRS = (os.path.expanduser('~/.local/node/bin'),)
 LUAPARSE_DIRS = (os.path.join(ROOT, 'node_modules'), os.path.expanduser('~/addons/VuloForeverUI/tools/node_modules'))
 TRAILER = 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>'
 RELEASE_SUBJECT = re.compile(r'^Amisia (\d+\.\d+\.\d+): ')
+REPO_URL = 'https://github.com/amisia-loot/amisia-loot.github.io'
+CHANGELOG_HEAD = ('# Changelog\n\nWhat changed in each release of Amisia, in English (D-60). New notes go under the\n'
+                  'heading "Unreleased" with the change itself; `build.py release` turns them into the version\'s section.\n')
+UNRELEASED = '## Unreleased'
+
 VERSION_LINE = re.compile(r'^(## Version:[ \t]*)(\S+)[ \t]*$', re.M)
 TEXT_EXT = ('.lua', '.toc', '.xml', '.txt', '.md')
 FEATURES_REL = 'docs/FEATURES.md'
@@ -538,20 +545,58 @@ def commits_since_release(root):
     return list(reversed(out))
 
 
-def update_changelog(root, version, subjects, day):
+def changelog_parts(text):
+    """(the notes under "## Unreleased", the released sections after them) of a CHANGELOG.md text."""
+    body = text[text.index('\n## '):] if '\n## ' in text else ''
+    m = re.search(r'^## Unreleased[ \t]*\n(.*?)(?=^## |\Z)', body, re.M | re.S)
+    if not m:
+        return '', body.strip('\n')
+    return m.group(1).strip('\n'), (body[:m.start()] + body[m.end():]).strip('\n')
+
+
+def release_heading(version, previous, day):
+    """The heading and link line of a version's section (D-60)."""
+    links = f'[Full Changelog]({REPO_URL}/compare/v{previous}...v{version}) ' if previous else ''
+    return (f'## [v{version}]({REPO_URL}/releases/tag/v{version}) ({day})\n\n'
+            f'{links}[Previous Releases]({REPO_URL}/releases)\n')
+
+
+def update_changelog(root, version, previous, day):
+    """Turns the English notes under "## Unreleased" into the section of version (D-60) and leaves an
+    empty "## Unreleased" above it. Stops without notes: the commit subjects are German."""
     path = os.path.join(root, 'CHANGELOG.md')
-    head = '# Changelog\n\nWhat changed in each release of the Amisia addon, from the commit subjects.\n'
     old = ''
     if os.path.exists(path):
         with open(path, encoding='utf-8') as fh:
             old = fh.read()
-    body = old[len(head):].lstrip('\n') if old.startswith(head) else old.lstrip('\n')
-    if re.search(r'^## ' + re.escape(version) + r' ', body, re.M):
+    notes, rest = changelog_parts(old)
+    if re.search(r'^## \[?v?' + re.escape(version) + r'[\] ]', rest, re.M):
         raise SystemExit(f'CHANGELOG.md already has {version}')
-    section = f'## {version} ({day})\n\n' + ''.join(f'- {s}\n' for s in (subjects or ['(no changes recorded)']))
+    if not notes.strip():
+        raise SystemExit('CHANGELOG.md: write the English notes of this release under "## Unreleased" first '
+                         '(- type(scope): summary (F-xxx), then a short paragraph; D-60)')
+    section = release_heading(version, previous, day) + '\n' + notes + '\n'
     with open(path, 'w', encoding='utf-8', newline='\n') as fh:
-        fh.write(head + '\n' + section + ('\n' + body if body else ''))
+        fh.write(CHANGELOG_HEAD + '\n' + UNRELEASED + '\n\n' + section + ('\n' + rest + '\n' if rest else ''))
     return path
+
+
+def changelog_section(root, version):
+    """The released section of version without its heading line (what CurseForge and GitHub show)."""
+    with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
+        text = fh.read()
+    m = re.search(r'^## \[?v?' + re.escape(version) + r'[\] ][^\n]*\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    return m.group(1).strip() if m else ''
+
+
+def github_release(root, version):
+    """The tag v<version> as a GitHub release with the changelog section (gh); 0 when it is there."""
+    notes = changelog_section(root, version)
+    p = subprocess.run(['gh', 'release', 'create', f'v{version}', '--title', f'Amisia {version}', '--notes-file', '-',
+                        '--verify-tag'], cwd=root, input=notes, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if p.returncode != 0:
+        say('gh release: ' + (p.stderr or p.stdout).strip())
+    return p.returncode
 
 
 def last_release_commit(root):
@@ -596,11 +641,13 @@ def default_summary(subjects, limit=200):
 
 
 def release(root, version, summary=None, push=True, copy=True, check=None, day=None, errors_sv=None,
-            upload=None):
+            upload=None, publish=None):
     """The release steps; check() returns 0 when everything passes. Returns the exit code. Before it, a
     warning with Amisia's errors from the game (errors_sv, default the synced file); after it, the
     test list of this version's features. upload(root) sends the pushed zip to CurseForge (cmd_release
-    passes tools/curseforge.py's; None leaves it out)."""
+    passes tools/curseforge.py's; None leaves it out). After the push the commit gets the tag v<version>
+    (pushed too) and publish(root, version) makes it a GitHub release (cmd_release passes
+    github_release; None leaves it out)."""
     if not re.fullmatch(r'\d+\.\d+\.\d+', version or ''):
         raise SystemExit('the version is X.Y.Z: ' + str(version))
     current = toc_version(root)
@@ -643,7 +690,7 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         zpath, n = build_zip(root)
         say(f'{os.path.relpath(zpath, root)}: {n} files')
         subjects = commits_since_release(root)
-        update_changelog(root, version, subjects, day or time.strftime('%Y-%m-%d'))
+        update_changelog(root, version, current, day or time.strftime('%Y-%m-%d'))
         message = f'Amisia {version}: {summary or default_summary(subjects)}\n\n{TRAILER}\n'
         git(root, 'add', '--', *touched)
         p = subprocess.run(['git', 'commit', '-q', '-F', '-'], cwd=root, input=message, text=True,
@@ -654,12 +701,16 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
         undo()
         raise
     say('committed ' + git(root, 'log', '-1', '--format=%h %s').strip())
+    git(root, 'tag', f'v{version}')
     rc = 0
     if push:
-        rc, _ = run(['git', 'push', 'origin', 'main'], cwd=root)
+        rc, _ = run(['git', 'push', 'origin', 'main', f'refs/tags/v{version}'], cwd=root)
         if rc != 0:
             say('push failed: the release commit is local; push it by hand, then run tools/release_addon.sh')
-            rc, copy, upload = 1, False, None
+            rc, copy, upload, publish = 1, False, None, None
+    if push and publish and publish(root, version) != 0:
+        say(f'WARNING: no GitHub release for v{version}: python3 tools/build.py github-release {version}')
+        rc = 1
     if copy:
         rc, _ = run(['bash', os.path.join(root, 'tools', 'release_addon.sh')], cwd=root)
         rc = 1 if rc != 0 else 0
@@ -698,7 +749,11 @@ def cmd_release(args):
     if not args.no_upload:
         upload = lambda root: tool_module('curseforge').upload(root)  # noqa: E731
     return release(ROOT, args.version, summary=args.message, push=not args.no_push, copy=not args.no_copy,
-                   upload=upload)
+                   upload=upload, publish=None if args.no_push else github_release)
+
+
+def cmd_github_release(args):
+    return github_release(ROOT, args.version)
 
 
 # ---------------------------------------------------------------- main
@@ -726,6 +781,8 @@ def main(argv=None):
     r.add_argument('--no-push', action='store_true', help='commit only, do not push')
     r.add_argument('--no-copy', action='store_true', help='do not run tools/release_addon.sh')
     r.add_argument('--no-upload', action='store_true', help='do not upload the zip to CurseForge (tools/curseforge.py)')
+    gr = sub.add_parser('github-release', help='make the pushed tag vX.Y.Z a GitHub release with its changelog section')
+    gr.add_argument('version', help='X.Y.Z')
     t = sub.add_parser('testlist', help=f'the German check list of the built features ({FEATURES_REL})')
     t.add_argument('--all', action='store_true', help='also the features that need a group, guild or raid')
     t.add_argument('--out', default=None, help='write it to FILE instead of printing it')
@@ -743,6 +800,7 @@ def main(argv=None):
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
     return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+            'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'tocs': cmd_tocs}[args.cmd](args)
 
 

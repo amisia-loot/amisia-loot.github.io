@@ -181,12 +181,22 @@ def test_data_stops_at_the_first_error_and_skips_without_tables(tmp_path, monkey
 
 
 # ---------------------------------------------------------------- release
+def notes(root, text, message='Notes'):
+    """English notes under "## Unreleased" (D-60), committed."""
+    path = os.path.join(root, 'CHANGELOG.md')
+    old = open(path, encoding='utf-8').read() if os.path.exists(path) else build.CHANGELOG_HEAD + '\n## Unreleased\n'
+    write(path, old.replace('## Unreleased\n', '## Unreleased\n\n' + text + '\n', 1))
+    sh(root, 'git', 'add', 'CHANGELOG.md')
+    sh(root, 'git', 'commit', '-q', '-m', message)
+
+
 def test_release(repo):
     root = repo['root']
+    notes(root, '- feat(core): x is two (F-1)\n  Core now says two.', 'Changelog notes')
     assert build.release(root, '1.1.0', push=True, copy=True, check=lambda: 0, day='2026-10-07') == 0
     assert build.toc_version(root) == '1.1.0'
     subject = head(root)
-    assert subject == 'Amisia 1.1.0: Core: x is two; Notes for the next steps'
+    assert subject == 'Amisia 1.1.0: Core: x is two; Notes for the next steps; Changelog notes'
     assert head(root, '%B').rstrip().endswith(build.TRAILER)
     assert sh(root, 'git', 'status', '--porcelain') == '', 'everything committed'
     with zipfile.ZipFile(os.path.join(root, 'Amisia-Website', 'Amisia.zip')) as zf:
@@ -197,34 +207,51 @@ def test_release(repo):
         assert '## Version: 1.1.0' in zf.read('Amisia/Amisia_TBC.toc').decode('utf-8'), 'the classic TOCs follow'
     with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
         log = fh.read()
-    assert '## 1.1.0 (2026-10-07)\n\n- Core: x is two\n- Notes for the next steps\n' in log
-    assert 'Amisia 1.0.0' not in log
+    url = build.REPO_URL
+    assert (f'## [v1.1.0]({url}/releases/tag/v1.1.0) (2026-10-07)\n\n'
+            f'[Full Changelog]({url}/compare/v1.0.0...v1.1.0) [Previous Releases]({url}/releases)\n\n'
+            '- feat(core): x is two (F-1)\n  Core now says two.\n') in log
+    assert '## Unreleased\n\n## [v1.1.0]' in log, 'an empty Unreleased above the new section'
+    assert build.changelog_section(root, '1.1.0').endswith('Core now says two.')
+    assert sh(repo['bare'], 'git', 'tag').split() == ['v1.1.0'], 'the tag is pushed'
     assert sh(repo['bare'], 'git', 'log', '-1', '--format=%s', 'main').strip() == subject, 'pushed to origin'
     assert os.path.exists(repo['marker']), 'tools/release_addon.sh ran'
 
     # the next release lists only what came after this one, above the old section
     write(os.path.join(root, 'notes.txt'), 'more\n')
     sh(root, 'git', 'commit', '-q', '-am', 'More notes')
+    # no English notes: the release stops before anything changes
+    with pytest.raises(SystemExit, match='Unreleased'):
+        build.release(root, '1.1.1', push=False, copy=False, check=lambda: 0)
+    assert build.toc_version(root) == '1.1.0' and sh(root, 'git', 'status', '--porcelain') == ''
+    notes(root, '- fix(notes): more notes')
     assert build.release(root, '1.1.1', summary='small fixes', push=False, copy=False, check=lambda: 0,
                          day='2026-10-08') == 0
     assert head(root) == 'Amisia 1.1.1: small fixes'
     with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
         log = fh.read()
-    assert log.index('## 1.1.1 (2026-10-08)\n\n- More notes\n') < log.index('## 1.1.0')
-    assert log.count('# Changelog') == 1
+    assert log.index('## [v1.1.1]') < log.index('- fix(notes): more notes') < log.index('## [v1.1.0]')
+    assert 'compare/v1.1.0...v1.1.1' in log and log.count('# Changelog') == 1 and log.count('## Unreleased') == 1
+    assert 'v1.1.1' in sh(root, 'git', 'tag').split(), 'tagged locally without a push'
 
 
 def test_release_uploads_only_what_was_pushed(repo, capsys):
-    root, sent = repo['root'], []
+    root, sent, published = repo['root'], [], []
+    notes(root, '- feat: one')
     assert build.release(root, '1.1.0', push=True, copy=False, check=lambda: 0,
-                         upload=lambda r: sent.append(build.toc_version(r)) or 0) == 0
-    assert sent == ['1.1.0'], 'after the push, with the new version'
-    sh(root, 'git', 'commit', '-q', '--allow-empty', '-m', 'Nothing')
-    assert build.release(root, '1.1.1', push=False, copy=False, check=lambda: 0, upload=lambda r: sent.append(r) or 0) == 0
-    assert sent == ['1.1.0'], 'no push, no upload'
-    sh(root, 'git', 'commit', '-q', '--allow-empty', '-m', 'Again')
-    assert build.release(root, '1.1.2', push=True, copy=False, check=lambda: 0, upload=lambda r: 1) == 1
-    assert 'CurseForge has not got it: python3 tools/curseforge.py upload' in capsys.readouterr().out
+                         upload=lambda r: sent.append(build.toc_version(r)) or 0,
+                         publish=lambda r, v: published.append(v) or 0) == 0
+    assert sent == ['1.1.0'] and published == ['1.1.0'], 'after the push, with the new version'
+    notes(root, '- feat: two', 'Nothing')
+    assert build.release(root, '1.1.1', push=False, copy=False, check=lambda: 0, upload=lambda r: sent.append(r) or 0,
+                         publish=lambda r, v: published.append(v) or 0) == 0
+    assert sent == ['1.1.0'] and published == ['1.1.0'], 'no push, no upload, no GitHub release'
+    notes(root, '- feat: three', 'Again')
+    assert build.release(root, '1.1.2', push=True, copy=False, check=lambda: 0, upload=lambda r: 1,
+                         publish=lambda r, v: 1) == 1
+    out = capsys.readouterr().out
+    assert 'CurseForge has not got it: python3 tools/curseforge.py upload' in out
+    assert 'no GitHub release for v1.1.2: python3 tools/build.py github-release 1.1.2' in out
 
 
 def test_restart_note(repo):
