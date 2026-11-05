@@ -699,7 +699,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-131 Duelle löschen
 - Version: 2.50.1
-- Status: gebaut
+- Status: im Spiel geprüft (2026-11-05)
 - Prüfung: Wenn du `/amisia duelle leeren` eingibst (oder in den Einstellungen, Duelle "Alle Duelle löschen" klickst), dann fragt Amisia nach; nach "Löschen" meldet der Chat "N Duelle gelöscht.", Verlauf und Rangliste sind leer, und neue Duelle zählen wieder von vorn.
 - Prüfung: Wenn du danach die Ansicht Klassen öffnest oder einem früheren Gegner neu begegnest, dann kennt Amisia seine Klasse noch (die bekannten Klassen bleiben).
 - Notiz: Wunsch des Nutzers 2026-11-05 ("können wir die liste resetten", Bildschirmfoto der Rangliste mit 396 Spielern); Knopf in den Einstellungen, Duelle, und `/amisia duelle leeren`.
