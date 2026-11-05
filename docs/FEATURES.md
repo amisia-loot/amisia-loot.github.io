@@ -901,8 +901,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.54.1: Questgeber-Pins nur noch als gelbes "!" ohne grünen Rahmen und Ring (Bildschirmfoto des Nutzers: das Karten-Symbol "QuestNormal" ist auf Forever eine Raute).
 
 ### F-135 Questweg für Dungeon-Quests
-- Version: -
-- Status: geplant
+- Version: 2.55.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Dungeons bei "Quests" eine Quest mit Vorquests anklickst, dann zeigt Amisia ihre Schritte nummeriert von der ersten Vorquest bis zur Dungeon-Quest, jede mit Annehmen (wer, wo, Knopf "Karte"), Abgeben (oder "noch unbekannt") und Voraussetzung, und oben "Nächster Schritt: ...".
 - Prüfung: Wenn du "Nächsten Schritt auf der Karte" klickst (draußen, nicht im Kampf), dann öffnet sich die Weltkarte beim Questgeber des nächsten offenen Schritts mit gelbem "!" und Wegpunkt.
 - Prüfung: Wenn eine Quest oder ein Schritt im Dungeon startet, dann steht davor das Dungeon-Symbol und "im Dungeon".
