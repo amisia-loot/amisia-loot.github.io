@@ -2,6 +2,12 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.50.1 (2026-11-05)
+
+- Spec: Feedback-Seite, Bugs und Wünsche im Spiel an den Autor (F-130, Entwurf)
+- Duelle: Alle Duelle löschen mit Rückfrage, auch /amisia duelle leeren (F-131)
+- Daten neu gebaut (build.py data): Scan-Archiv mit den SavedVariables vom 2026-11-05 (53 neue Items)
+
 ## 2.50.0 (2026-11-05)
 
 - Ausrüstungsziele: Stufen-Sets im Katalog, das Beste je Slot für 1-19 bis 60 (F-129)
