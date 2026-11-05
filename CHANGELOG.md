@@ -2,6 +2,10 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.50.0 (2026-11-05)
+
+- Ausrüstungsziele: Stufen-Sets im Katalog, das Beste je Slot für 1-19 bis 60 (F-129)
+
 ## 2.49.2 (2026-11-05)
 
 - CurseForge: Fehler zeigen den Token nie, Hinweis bei doppelt eingefügtem Token (D-58)
