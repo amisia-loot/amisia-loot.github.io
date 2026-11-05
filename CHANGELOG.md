@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.54.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.54.1) (2026-11-05)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.0...v2.54.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(map): show quest givers as a plain yellow "!" (F-134)
 
   Quest giver pins and a quest target on the world map are now just the yellow "!" without the diamond,
