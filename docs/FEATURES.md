@@ -687,6 +687,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Zeile anklickst und "Flüstern" wählst, dann steht "/w Name " in der Chatzeile.
 - Notiz: Spec `docs/specs/2026-10-16-gilde-mitglieder.md`.
 
+### F-133 Berufe aus Gildennotizen
+- Version: 2.53.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn ein Gildenmitglied ohne Amisia "Alchi 300 / Kräuter" in der Gildennotiz (oder der Offiziersnotiz) stehen hat, dann zeigt seine Zeile unter Gilde, Mitglieder die Kästchen Alchimie mit 300 und Kräuterkunde ohne Zahl.
+- Prüfung: Wenn du mit der Maus auf so ein Kästchen gehst, dann steht dort "Alchimie 300, laut Gildennotiz" und "Aus der Gildennotiz; Amisia weiß nur, was dort steht."
+- Prüfung: Wenn du im Dropdown Beruf "Alchimie" wählst, dann bleibt dieses Mitglied stehen; die Zahl "mit Amisia" unten zählt es nicht mit.
+- Notiz: Wunsch des Nutzers 2026-11-05 ("Ja, Notizen lesen"), nachdem `/amisia hersteller` "0 aus der Gilde" meldete: niemand sonst in der Gilde hat Amisia. Liest deutsche und englische Namen und Kürzel (BS, VZ, LW, Ingi, EH, BB ...); der Rezept-Austausch geht vor, die Notiz ergänzt nur fehlende Berufe; keine Rezepte, keine neue Nachricht, kein neuer Schlüssel.
+
 ### F-106 Duelle: Verlauf, Rangliste, Klassen
 - Version: 2.40.0
 - Status: gebaut

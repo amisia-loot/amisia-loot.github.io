@@ -440,6 +440,8 @@ L["%d Raids über \"Raids aufbewahren\" (%d) bleiben, weil die Website sie noch 
 L["1 Rezept"] = "1 recipe"
 L["Alle Berufe"] = "All professions"
 L["Aus dem Rezept-Austausch der Gilde; Einträge bleiben 45 Tage."] = "From the guild's recipe exchange; entries stay for 45 days."
+L["Aus der Gildennotiz; Amisia weiß nur, was dort steht."] = "From the guild note; Amisia only knows what it says."
+L["%s, laut Gildennotiz"] = "%s, according to the guild note"
 L["Das Spiel schickt die Gildenliste gleich; dann stehen hier die Mitglieder."] = "The game sends the guild roster in a moment; then the members are listed here."
 L["%d Jahr##vor"] = "%d year"
 L["%d Jahren##vor"] = "%d years"

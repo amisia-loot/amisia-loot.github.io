@@ -2,7 +2,8 @@
 -- member from the guild roster (Core/Trust.lua, ns.GuildRoster: rebuilt at most every 10 s, never in
 -- the lockdown): the round class icon, the name in class colour over level, class and rank, the zone
 -- over "online" or the time since the member was last online, the professions with their skill from
--- the recipe exchange (Gear/Crafters.lua, Cr.Professions: members with Amisia and the own characters).
+-- the recipe exchange (Gear/Crafters.lua, Cr.Professions: members with Amisia and the own characters)
+-- and, for the rest, what the public or officer note names (Prof.FromNote: "Alchi 300 / Kräuter").
 -- Dropdowns Klasse and Beruf, "nur online", a name search; a click on a column head sorts. The row's
 -- tooltip: rank, notes (the officer note only when the client shows it), main and alts (the alt list);
 -- a profession's tooltip: skill, recipes, how old. A click on a row: Flüstern, Einladen. Everyone sees
@@ -153,8 +154,12 @@ local function ageText(p)
     return L["Stand vor %d Tagen"]:format(p.age)
 end
 
--- "Alchimie 225/300, 84 Rezepte, Stand vor 3 Tagen"
+-- "Alchimie 225/300, 84 Rezepte, Stand vor 3 Tagen"; from a guild note "Alchimie 300, laut Gildennotiz"
 function ns.MembersProfText(p)
+    if p.note then
+        local name = p.rank > 0 and (profName(p.skill) .. " " .. p.rank) or profName(p.skill)
+        return L["%s, laut Gildennotiz"]:format(name)
+    end
     local skill = p.max and p.max > 0 and ("%d/%d"):format(p.rank, p.max) or tostring(p.rank)
     local recipes = p.known == 1 and L["1 Rezept"] or L["%d Rezepte"]:format(p.known or 0)
     return table.concat({ profName(p.skill) .. " " .. skill, recipes, ageText(p) }, ", ")
@@ -174,6 +179,24 @@ end
 ---------------------------------------------------------------------------
 local function inGuild() return type(_G.IsInGuild) == "function" and ns.Plain(IsInGuild()) == true end
 
+-- The professions of a member: the recipe exchange's, and those its notes name that the exchange has
+-- not (note = true, rank 0 when the note gives no number; Prof.FromNote).
+local function withNotes(list, m)
+    if not (Pr() and Pr().FromNote) then return list end
+    local have, out = {}, nil
+    for _, p in ipairs(list or {}) do have[p.skill] = true end
+    for _, text in ipairs({ m.note or "", m.officerNote or "" }) do
+        for _, n in ipairs(Pr().FromNote(text)) do
+            if not have[n.skill] then
+                have[n.skill] = true
+                out = out or { unpack(list or {}) }
+                out[#out + 1] = { skill = n.skill, rank = n.rank or 0, max = 0, note = true }
+            end
+        end
+    end
+    return out or list
+end
+
 -- Every member as a row: the roster's fields, the professions, whether Amisia is known to run there.
 -- nil when the roster cannot be read yet.
 local function build()
@@ -189,7 +212,7 @@ local function build()
         local own = m.self or (me ~= nil and low == me:lower())
         local e = { name = m.name, class = m.class or "", className = m.className, level = m.level, rank = m.rank,
                     rankName = m.rankName, zone = m.zone, online = m.online and true or false, note = m.note,
-                    officerNote = m.officerNote, last = m.last, own = own, profs = profs[low],
+                    officerNote = m.officerNote, last = m.last, own = own, profs = withNotes(profs[low], m),
                     version = type(amisia[low]) == "string" and amisia[low] or nil }
         e.amisia = own or profs[low] ~= nil or amisia[low] ~= nil
         e.away = hoursAway(e)
@@ -278,7 +301,9 @@ local function boxTooltip(self)
     if not p then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(ns.MembersProfText(p), 1, 0.82, 0)
-    if not p.own then
+    if p.note then
+        GameTooltip:AddLine(L["Aus der Gildennotiz; Amisia weiß nur, was dort steht."], 0.6, 0.6, 0.6, true)
+    elseif not p.own then
         GameTooltip:AddLine(L["Aus dem Rezept-Austausch der Gilde; Einträge bleiben 45 Tage."], 0.6, 0.6, 0.6, true)
     end
     GameTooltip:Show()
@@ -366,7 +391,7 @@ end
 local function fillBox(b, p)
     b.prof = p
     b.icon:SetTexture(profIcon(p.skill))
-    b.num:SetText(tostring(p.rank))
+    b.num:SetText(p.rank > 0 and tostring(p.rank) or "")
     b.label:SetText(profName(p.skill))
     local frac = (p.max and p.max > 0) and math.min(1, p.rank / p.max) or 0
     if frac > 0 then

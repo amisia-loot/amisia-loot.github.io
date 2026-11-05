@@ -84,6 +84,84 @@ function Pr.Skills()
     return out
 end
 
+---------------------------------------------------------------------------
+-- Professions written in a guild note ("Alchi 300 / Kräuter", "BS 225, Mining")
+---------------------------------------------------------------------------
+-- The client's skill lines (the same in every Classic client and in the data).
+local NOTE_SKILL = { alchemy = 171, blacksmithing = 164, enchanting = 333, engineering = 202, leatherworking = 165,
+    tailoring = 197, cooking = 185, firstaid = 129, fishing = 356, herbalism = 182, mining = 186, skinning = 393,
+    poisons = 40 }
+-- A word that starts with one of these stems names the profession (German and English, common short forms).
+local NOTE_STEMS = {
+    { "alch", "alchemy" }, { "schmied", "blacksmithing" }, { "blacksmith", "blacksmithing" },
+    { "verzaub", "enchanting" }, { "enchant", "enchanting" }, { "ingenieur", "engineering" }, { "ingi", "engineering" },
+    { "engineer", "engineering" }, { "leder", "leatherworking" }, { "leather", "leatherworking" },
+    { "schneider", "tailoring" }, { "tailor", "tailoring" }, { "koch", "cooking" }, { "cook", "cooking" },
+    { "erstehilfe", "firstaid" }, { "firstaid", "firstaid" }, { "angel", "fishing" }, { "fish", "fishing" },
+    { "kräuter", "herbalism" }, { "kraeuter", "herbalism" }, { "krauter", "herbalism" }, { "kraut", "herbalism" }, -- l10n-ok: words read from notes
+    { "herb", "herbalism" }, { "bergbau", "mining" }, { "mining", "mining" }, { "miner", "mining" },
+    { "kürsch", "skinning" }, { "kuersch", "skinning" }, { "kursch", "skinning" }, { "skinn", "skinning" }, -- l10n-ok: words read from notes
+    { "gift", "poisons" }, { "poison", "poisons" },
+}
+-- Short forms that only count as the whole word.
+local NOTE_WORDS = { bs = "blacksmithing", vz = "enchanting", vzk = "enchanting", ench = "enchanting",
+    eng = "engineering", ing = "engineering", inge = "engineering", lw = "leatherworking", lv = "leatherworking",
+    schnei = "tailoring", eh = "firstaid", bb = "mining", skin = "skinning" }
+-- Armour and weapon smiths name blacksmithing in the middle of the word.
+local NOTE_INSIDE = { { "schmied", "blacksmithing" } }
+local UPPER = { ["\195\132"] = "\195\164", ["\195\150"] = "\195\182", ["\195\156"] = "\195\188" } -- Ä Ö Ü
+
+local function noteKey(word)
+    local k = NOTE_WORDS[word]
+    if k then return k end
+    for _, s in ipairs(NOTE_STEMS) do
+        if word:sub(1, #s[1]) == s[1] then return s[2] end
+    end
+    for _, s in ipairs(NOTE_INSIDE) do
+        if word:find(s[1], 1, true) then return s[2] end
+    end
+    return nil
+end
+
+-- The professions a note names, in the note's order: { { skill = skill line, rank = the number right
+-- after it (1..450) or nil } }; each skill once; {} when there is none. Words are runs of letters
+-- (bytes over 127 count as letters, so umlauts stay inside a word); "Erste Hilfe" and "First Aid"
+-- are read as one word.
+function Pr.FromNote(text)
+    local out, seen = {}, {}
+    if type(text) ~= "string" or text == "" then return out end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("\195[\132\150\156]", UPPER):lower()
+    local tokens = {}
+    for word, digits in text:gmatch("([%a\128-\255]*)(%d*)") do
+        if word ~= "" then tokens[#tokens + 1] = word end
+        if digits ~= "" then tokens[#tokens + 1] = tonumber(digits) end
+    end
+    local i = 1
+    while i <= #tokens do
+        local t, k = tokens[i], nil
+        if type(t) == "string" then
+            local nxt = tokens[i + 1]
+            if (t == "erste" and nxt == "hilfe") or (t == "first" and nxt == "aid") then -- l10n-ok: words read from notes
+                k, i = "firstaid", i + 1
+            else
+                k = noteKey(t)
+            end
+        end
+        if k then
+            local n = tokens[i + 1]
+            local rank = type(n) == "number" and n >= 1 and n <= 450 and n or nil
+            local skill = NOTE_SKILL[k]
+            if not seen[skill] then
+                seen[skill] = true
+                out[#out + 1] = { skill = skill, rank = rank }
+            end
+            if rank then i = i + 1 end
+        end
+        i = i + 1
+    end
+    return out
+end
+
 local function parse(line, skill)
     local spell, item, count, learn, yellow, grey, src = line:match("^(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(.*)$")
     if not spell then return nil end
