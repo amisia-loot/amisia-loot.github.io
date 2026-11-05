@@ -2,6 +2,11 @@
 
 What changed in each release of the Amisia addon, from the commit subjects.
 
+## 2.49.2 (2026-11-05)
+
+- CurseForge: Fehler zeigen den Token nie, Hinweis bei doppelt eingefügtem Token (D-58)
+- Ausrüstungsziele: Modell flackert nicht mehr bei Item-Antworten, Prozent über 999 gekürzt (F-110)
+
 ## 2.49.1 (2026-11-04)
 
 - F-105 gebaut in 2.49.0: Anleger von Hand und eigene Symbole neu zu prüfen
