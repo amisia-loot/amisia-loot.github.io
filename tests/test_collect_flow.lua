@@ -20,7 +20,7 @@ end
 local function fill(name, base, count)
     C(name, "local N, BASE = " .. (count or 1200) .. ", " .. (base or 30000) .. [[ local D = NS.DropsToday()
     for i = 1, N do
-      assert(NS.CollectPut("q", BASE + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name %d;Eine typische Quest mit Titel %d"):format(
+      assert(NS.CollectPut("q", BASE + i, ("%d;0;%d;1440:%d:%d;%d;1440:4512:3321;%d,%d;%d,%d,%d;%d;%d;H;%d;Questgeber Name %d;;;Eine typische Quest mit Titel %d"):format(
             D, 3000 + i, 1000 + i % 9000, 2000 + i % 7000, 4000 + i, 200000 + i, 200001 + i, 210000 + i, 210001 + i, 210002 + i, 20 + i % 40, 18 + i % 40, i, i, i), "own"))
     end]])
 end

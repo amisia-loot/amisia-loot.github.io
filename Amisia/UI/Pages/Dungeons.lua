@@ -1,10 +1,14 @@
 -- Dungeons page (tab Ausrüstung, right after the gear page): the dungeon planner. The spec of the
 -- gear page in the head row with the order of the list (by level, the ranking, the chain); the next
 -- dungeon with its reason; every dungeon's value; the chosen one's image with its boss model, its
--- bosses and upgrades or its quests with pre-quests, start, XP and rewards; the waypoints to its
--- entrance and quest givers and "Alle Questgeber auf der Karte". The values come from Gear/Dungeons.lua;
--- item texts, marks, tooltips, clicks, menus and the cache are the gear page's (ns.GearPageKit).
--- The state stays in settings.bis (dungeon, dsort, dpart).
+-- bosses and upgrades or its quests (one row each: state, level, the quest path's progress "Weg 2/4",
+-- start, XP); the waypoints to its entrance and quest givers and "Alle Questgeber auf der Karte". A
+-- click on a quest opens its quest path (F-135) in place of the list, image and quests: the steps from
+-- the first pre-quest to the quest, each with where it is taken and handed in ("Karte"), what it needs
+-- and its objective, the next step highlighted ("Nächsten Schritt auf der Karte"). The values come
+-- from Gear/Dungeons.lua; item texts, marks, tooltips, clicks, menus and the cache are the gear page's
+-- (ns.GearPageKit). The state stays in settings.bis (dungeon, dsort, dpart); the open quest path only
+-- in memory (after /reload the list shows).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -147,8 +151,8 @@ local function detailItems(e)
     return out
 end
 
--- The quest rows of a dungeon: per quest a row, its pre-quests and its gear rewards below it.
--- list, status as ns.DungeonQuests gives them.
+-- The quest rows of a dungeon: one row per quest with its quest path (the pre-quests and rewards
+-- show in the quest path). list, status as ns.DungeonQuests gives them.
 local function questItems(key)
     local c = cached()
     c.qdetail = c.qdetail or {}
@@ -158,16 +162,19 @@ local function questItems(key)
     local out = {}
     for _, q in ipairs(list) do
         out[#out + 1] = { kind = "quest", text = q.title .. (q.done and L[" (erledigt)"] or q.gone and L[" (nicht mehr möglich)"] or ""),
-            q = q, qid = q.qid }
-        for _, n in ipairs(q.chain) do
-            out[#out + 1] = { kind = "pre", q = n, qid = n.qid }
-        end
-        for _, r in ipairs(q.rewards) do
-            out[#out + 1] = { kind = "reward", id = r.id, it = r, owned = r.owned }
-        end
+            q = q, qid = q.qid, path = ns.Dungeons.QuestPath(q, key) }
     end
     c.qdetail[key] = { list = list, out = out }
     return out, status
+end
+
+-- The dungeon mark of the world map in front of a start inside the dungeon (the user's wish: a quest
+-- that starts in the dungeon shows the dungeon symbol)
+local DUNGEON_MARK = "|A:Dungeon:14:14|a "
+local function startText(q)
+    local where = ns.Dungeons.QuestStartText(q)
+    if q.start == "I" and where ~= "" then return DUNGEON_MARK .. where end
+    return where
 end
 
 local STATE_TEXT = { done = L["erledigt"], active = L["im Log"], ready = L["im Log, fertig"], gone = L["nicht mehr möglich"],
@@ -192,8 +199,26 @@ local function questLevelText(q)
     return c .. text .. "|r"
 end
 
+-- The cells of a detail row: a quest row makes room for the quest path's progress ("Weg 2/4").
+local CELLS = {
+    quest = { name = { 4, 178 }, slot = { 186, 48 }, way = { 236, 58 }, gain = { 298, 34 }, xp = { 336, 56 }, rate = { 398, 188 } },
+    other = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 398, 188 } },
+}
+local function placeCells(r, kind)
+    kind = kind == "quest" and "quest" or "other"
+    if r.cellKind == kind then return end
+    r.cellKind = kind
+    for key, c in pairs(CELLS[kind]) do
+        r[key]:ClearAllPoints()
+        r[key]:SetPoint("LEFT", c[1], 0)
+        r[key]:SetWidth(c[2])
+    end
+end
+
 local function fillDetailRow(r, e)
+    placeCells(r, e.kind)
     r.xp:SetText("")
+    r.way:SetText("")
     if e.kind == "boss" then
         r.name:SetText(GOLD_TEXT .. e.text .. "|r")
         r.slot:SetText("")
@@ -218,16 +243,18 @@ local function fillDetailRow(r, e)
         r.gain:SetText(gainText(it))
         r.rate:SetText(it.upgrade and (GREEN .. "Upgrade|r") or "")
     else
-        -- a quest or one of its pre-quests: state, title, level, where it starts
-        local q, pre = e.q, e.kind == "pre"
+        -- a quest: state, title, level, the quest path's progress, where it starts
+        local q = e.q
         local st = questState(q)
         local icon = ns.Dungeons.QuestStateIcon(st) .. " "
-        local title = pre and (L["Vorquest: %s"]:format(q.title) .. (q.one and L[" (oder eine andere)"] or "")) or (GOLD_TEXT .. e.text .. "|r")
+        local title = GOLD_TEXT .. e.text .. "|r"
         local over = q.done or q.gone
-        r.name:SetText((pre and "   " or "") .. icon .. ((over and (GREY .. title .. "|r")) or title))
+        r.name:SetText(icon .. ((over and (GREY .. e.text .. "|r")) or title))
         r.slot:SetText(questLevelText(q))
-        r.gain:SetText(not pre and q.best and ((over and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
-        local where = ns.Dungeons.QuestStartText(q)
+        local way = ns.Dungeons.QuestPathShort(e.path)
+        r.way:SetText(way ~= "" and L["Weg %s"]:format(way) or "")
+        r.gain:SetText(q.best and ((over and GREY or GREEN) .. signed(q.best.gain) .. "|r") or "")
+        local where = startText(q)
         r.rate:SetText((ROW_STATE[st] and (GREY .. STATE_TEXT[st] .. "|r" .. (where ~= "" and " · " or "")) or "") .. where)
         local xp = ns.Dungeons.XPText(ns.Dungeons.QuestXP(q))
         r.xp:SetText(over and xp ~= "" and (GREY .. xp .. "|r") or xp)
@@ -255,14 +282,22 @@ local function questTip(self)
     else
         GameTooltip:AddLine(DTEXT.xpNone, 0.6, 0.6, 0.6)
     end
-    for _, n in ipairs(q.chain or {}) do
-        GameTooltip:AddLine(L["Vorquest: %s"]:format(n.title) .. (n.done and L[" (erledigt)"] or ""), 0.6, 0.6, 0.6, true)
+    local path = e.path
+    if path and path.total > 1 then
+        GameTooltip:AddLine(L["Weg: %d von %d Schritten erledigt"]:format(path.done, path.total), 0.85, 0.85, 0.85)
     end
-    if st == "active" and e.kind == "quest" then
-        GameTooltip:AddLine(L["Klick: Weltkarte und Wegpunkt zum Eingang"], 0.31, 0.82, 0.42)
-    elseif q.start ~= "X" then
-        GameTooltip:AddLine(L["Klick: Weltkarte und Wegpunkt zum Questgeber"], 0.31, 0.82, 0.42)
+    if path and path.next and not q.done and not q.gone then
+        GameTooltip:AddLine(L["Nächster Schritt: %s"]:format(ns.Dungeons.QuestPathNextText(path)), 0.85, 0.85, 0.85, true)
     end
+    if #(q.rewards or {}) > 0 then
+        local names = {}
+        for i, it in ipairs(q.rewards) do
+            if i > 4 then break end
+            names[#names + 1] = itemText(it.id) .. (it.upgrade and (" " .. GREEN .. signed(it.gain) .. "|r") or "")
+        end
+        GameTooltip:AddLine(L["Belohnung: %s"]:format(table.concat(names, ", ")), 0.85, 0.85, 0.85, true)
+    end
+    GameTooltip:AddLine(L["Klick: der Questweg mit allen Schritten"], 0.31, 0.82, 0.42)
     GameTooltip:Show()
 end
 
@@ -327,12 +362,15 @@ local function buildDetail(B, rows)
         r.xp = col(r, 336, 56, nil, T.FONT.text)
         r.xp:SetJustifyH("RIGHT")
         r.rate = col(r, 398, 188, nil, T.FONT.text)
+        r.way = col(r, 236, 58, nil, T.FONT.text)
+        r.way:SetJustifyH("RIGHT")
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
             if not e then return end
-            if (e.kind == "quest" or e.kind == "pre") and e.qid and button ~= "RightButton" then
-                say(ns.DungeonQuestWaypoint(e.qid, true))
+            if e.kind == "quest" and button ~= "RightButton" then
+                -- the quest path in place of the list (F-135)
+                if B.OpenPath then B:OpenPath(e) end
                 return
             end
             if not e.id then return end
@@ -361,6 +399,311 @@ local function buildDetail(B, rows)
             if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
         end)
     end, fillDetailRow)
+end
+
+---------------------------------------------------------------------------
+-- The quest path (F-135): a dungeon quest's steps from the first pre-quest to the quest
+---------------------------------------------------------------------------
+
+local LABEL = T.LABEL
+local PTEXT = {
+    back = L["< Zurück zu den Quests"],
+    map = L["Nächsten Schritt auf der Karte"],
+    mapTip = L["Öffnet die Weltkarte beim Ort des nächsten offenen Schritts und setzt den Wegpunkt. In Instanzen und im Kampf setzt Amisia nur ihr eigenes Ziel."],
+    card = L["Karte"],
+    cardTip = L["Öffnet die Weltkarte dort und setzt den Wegpunkt (nicht in Instanzen und im Kampf)."],
+    accept = L["Annehmen:"],
+    turnIn = L["Abgeben:"],
+    needs = L["Voraussetzung:"],
+    goal = L["Ziel:"],
+    after = L["danach"],
+    stepOf = L["Schritt %d von %d"],
+    optional = L["optional"],
+    crumb = L["optional: nur Hinweis auf die nächste Quest"],
+    alsoOk = L["eine davon reicht · auch möglich: %s"],
+    noLonger = L["eine davon reicht · nicht mehr nötig: %s"],
+    goneBy = L["nicht mehr möglich, weil %s erledigt ist"],
+    gone = L["nicht mehr möglich"],
+    info = L["Dungeon-Quest · %s · Stufe %s"],
+    progress = L["Weg: %d von %d Schritten erledigt"],
+    nextStep = L["Nächster Schritt:"],
+    rewards = L["Belohnung:"],
+    cut = L["(%d frühere Schritte nicht gezeigt)"],
+    hint = L["Karte: Weltkarte und Wegpunkt zu diesem Schritt (nicht in Instanzen und im Kampf). Grau: erledigt; hervorgehoben: der nächste Schritt."],
+}
+local P = {
+    PAD = 8, ICON = 16, TEXT_X = 30, LABEL_W = 88, LINE = 12, LINE_GAP = 3, HEAD_H = 26, AFTER_H = 22, BUTTON_H = T.ROW_BUTTON_H,
+}
+
+-- How many lines a wrapped font string takes at width w (the client's height where it knows it).
+local function textHeight(fs, w)
+    local full = fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth() or 0
+    local lines = math.max(1, math.ceil(full / math.max(1, w)))
+    return math.max(fs:GetStringHeight() or 0, lines * P.LINE)
+end
+
+-- One line of a step card: a gold label, the text (wrapped) and a red button "Karte".
+local function cardLine(c, onMap)
+    local ln = {}
+    ln.label = W.Text(c, T.FONT.text, P.LABEL_W)
+    ln.label:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
+    ln.value = W.Text(c, T.FONT.text, 100, true)
+    ln.value:SetJustifyV("TOP")
+    ln.btn = W.Button(c, PTEXT.card, nil, function(self) onMap(self.what, self.qid) end, { height = P.BUTTON_H })
+    ln.btn:SetHeight(P.BUTTON_H)
+    W.FitChip(ln.btn)
+    W.Tooltip(ln.btn, PTEXT.card, PTEXT.cardTip)
+    return ln
+end
+
+local function newCard(parent, onMap)
+    local c = W.Inset(parent)
+    c.ground = c.fill(0, 0, 0, 0.25)
+    -- the next step: the glow of a chosen recipe
+    c.glow = c:CreateTexture(nil, "ARTWORK")
+    c.glow:SetAllPoints()
+    if W.HasAtlas("Professions_Recipe_Active") then c.glow:SetAtlas("Professions_Recipe_Active") else c.glow:SetColorTexture(W.GOLD[1], W.GOLD[2], W.GOLD[3], 0.15) end
+    c.glow:Hide()
+    c.icon = c:CreateTexture(nil, "OVERLAY")
+    c.icon:SetSize(P.ICON, P.ICON)
+    c.icon:SetPoint("TOPLEFT", P.PAD, -6)
+    c.title = W.Text(c, T.FONT.title, 300)
+    c.title:SetPoint("TOPLEFT", P.TEXT_X, -8)
+    c.step = W.Text(c, T.FONT.hint)
+    c.step:SetJustifyH("RIGHT")
+    c.step:SetPoint("TOPRIGHT", -P.PAD, -9)
+    c.lines = {}
+    for i = 1, 5 do c.lines[i] = cardLine(c, onMap) end
+    -- "danach" under the card: a line down to the next card, the arrow head, the word
+    c.link = c:CreateTexture(nil, "BACKGROUND")
+    c.link:SetColorTexture(0.55, 0.5, 0.42, 0.8)
+    c.link:SetWidth(2)
+    c.arrow = c:CreateTexture(nil, "ARTWORK")
+    c.arrow:SetSize(12, 12)
+    c.after = W.Text(c, T.FONT.hint)
+    c.after:SetText(PTEXT.after)
+    return c
+end
+
+-- Fills line ln of card c at y: label, text, the map button for (what, qid) when a place is known.
+-- Returns the y under the line.
+local function fillLine(c, ln, y, label, value, what, qid, width)
+    ln.label:ClearAllPoints()
+    ln.value:ClearAllPoints()
+    ln.btn:ClearAllPoints()
+    ln.label:SetText(label or "")
+    ln.label:SetShown(label ~= nil)
+    local x = label and (P.TEXT_X + P.LABEL_W + 4) or P.TEXT_X
+    local right = P.PAD + (what and (ln.btn:GetWidth() + 6) or 0)
+    local w = width - x - right
+    ln.value:SetWidth(w)
+    ln.value:SetText(value)
+    ln.label:SetPoint("TOPLEFT", P.TEXT_X, y - 1)
+    ln.value:SetPoint("TOPLEFT", x, y - 1)
+    ln.value:Show()
+    local h = textHeight(ln.value, w)
+    if what then
+        ln.btn.what, ln.btn.qid = what, qid
+        ln.btn:SetPoint("TOPRIGHT", -P.PAD, y + 4)
+        ln.btn:Show()
+        h = math.max(h, P.BUTTON_H - 6)
+    else
+        ln.btn:Hide()
+    end
+    return y - h - P.LINE_GAP
+end
+
+local STEP_TEXT = { done = GREY, gone = GREY }
+
+-- Fills card c with step s of path; width: the card's width. Returns the card's height.
+local function fillCard(c, s, path, width, isNext)
+    local Dn = ns.Dungeons
+    local n = s.node
+    local st = s.state
+    local tex, shade = Dn.QuestStateArt(st)
+    c.icon:SetTexture(tex)
+    c.icon:SetVertexColor(shade, shade, shade)
+    local over = st == "done" or st == "gone"
+    c.step:SetText(s.reqNo and PTEXT.stepOf:format(s.reqNo, path.total) or PTEXT.optional)
+    c.title:SetWidth(math.max(60, width - P.TEXT_X - P.PAD - c.step:GetStringWidth() - 10))
+    c.title:SetText((STEP_TEXT[st] or "") .. s.no .. ". " .. n.title .. (STEP_TEXT[st] and "|r" or ""))
+    c.glow:SetShown(isNext and true or false)
+    c:SetAlpha(over and 0.65 or 1)
+    local y = -P.HEAD_H
+    local used = 0
+    local function line(label, value, what)
+        used = used + 1
+        y = fillLine(c, c.lines[used], y, label, value, what, n.qid, width)
+    end
+    local a = s.accept
+    local acceptText = a.kind == "inside" and (DUNGEON_MARK .. a.text) or a.text
+    -- a done or closed step needs no way there: no "Karte"
+    line(PTEXT.accept, acceptText, not over and a.point and "accept" or nil)
+    line(PTEXT.turnIn, s.turnIn.text, not over and s.turnIn.point and "turnin" or nil)
+    if s.needs then line(PTEXT.needs, s.needs) end
+    if s.objective then line(PTEXT.goal, s.objective) end
+    -- the marks: one of several, a breadcrumb, no longer possible
+    local flags = {}
+    if s.gone then flags[#flags + 1] = s.goneBy and PTEXT.goneBy:format(s.goneBy) or PTEXT.gone end
+    if s.one then flags[#flags + 1] = (s.oneDone and PTEXT.noLonger or PTEXT.alsoOk):format(table.concat(s.others, ", ")) end
+    if s.breadcrumb then flags[#flags + 1] = PTEXT.crumb elseif s.optional then flags[#flags + 1] = PTEXT.optional end
+    if #flags > 0 then line(nil, T.ORANGE .. table.concat(flags, " · ") .. "|r") end
+    for i = used + 1, #c.lines do
+        local ln = c.lines[i]
+        ln.label:Hide(); ln.value:Hide(); ln.btn:Hide()
+    end
+    local h = -y + P.PAD - P.LINE_GAP
+    c:SetHeight(h)
+    return h
+end
+
+-- The view: "< Zurück zu den Quests" and "Nächsten Schritt auf der Karte" in its head row, the quest's
+-- title, its dungeon and level with the progress, the rewards, the next step; the step cards scroll.
+local function buildPath(B)
+    local V = W.Page(B, { view = true, top = B.top })
+    V:Bands({ "row" })
+    V.back = W.Button(V, PTEXT.back, nil, function() B:OpenPath(nil) end)
+    W.FitChip(V.back)
+    V.map = W.Button(V, PTEXT.map, nil, function()
+        if V.path then say(ns.DungeonPathWaypoint(V.path)) end
+    end)
+    W.FitChip(V.map)
+    W.Tooltip(V.map, PTEXT.map, PTEXT.mapTip)
+    V:Place(1, { V.back }, { V.map })
+    local G = T.LAYOUT
+    local textW = T.PAGE_W - 2 * G.TEXT_X
+    V.title = W.Text(V, T.FONT.title, textW)
+    V.info = W.Text(V, T.FONT.text, textW)
+    V.rewardLabel = W.Text(V, T.FONT.text)
+    V.rewardLabel:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
+    V.rewardLabel:SetText(PTEXT.rewards)
+    V.rewards = {}
+    V.nextLine = W.Text(V, T.FONT.text, textW, true)
+    V.nextLine:SetJustifyV("TOP")
+    V.scroll = CreateFrame("ScrollFrame", nil, V)
+    V.child = CreateFrame("Frame", nil, V.scroll)
+    V.child:SetSize(T.PAGE_W - T.SCROLL_ROOM, 10)
+    V.scroll:SetScrollChild(V.child)
+    W.Scroll(V.scroll, V)
+    V.cards = {}
+    V.onMap = function(what, qid)
+        if qid then say(ns.DungeonQuestWaypoint(qid, true, what, B.pathDungeon)) end
+    end
+    V:Hide()
+    return V
+end
+
+-- A reward of the quest in the head: its item text with the marks and the gain; tooltip, Ctrl- and
+-- Shift-click as everywhere.
+local function rewardButton(V, i)
+    local b = V.rewards[i]
+    if b then return b end
+    b = CreateFrame("Button", nil, V)
+    b:SetHeight(14)
+    b.text = W.Text(b, T.FONT.text)
+    b.text:SetPoint("LEFT", 0, 0)
+    b:SetScript("OnEnter", function(self)
+        if not self.id then return end
+        itemTooltip(self, self.id)
+        GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", hideTip)
+    b:SetScript("OnClick", function(self) if self.id then modifiedClick(self.id) end end)
+    V.rewards[i] = b
+    return b
+end
+
+local function fillRewards(V, q, y)
+    local G = T.LAYOUT
+    local list = q.rewards or {}
+    for _, b in ipairs(V.rewards) do b:Hide() end
+    if #list == 0 then
+        V.rewardLabel:Hide()
+        return y
+    end
+    V.rewardLabel:ClearAllPoints()
+    V.rewardLabel:SetPoint("TOPLEFT", G.TEXT_X, y)
+    V.rewardLabel:Show()
+    local x = G.TEXT_X + V.rewardLabel:GetStringWidth() + 6
+    local limit = T.PAGE_W - G.TEXT_X
+    for i, it in ipairs(list) do
+        local b = rewardButton(V, i)
+        b.id = it.id
+        b.text:SetText(marks(it) .. itemText(it.id) .. (it.upgrade and (" " .. GREEN .. signed(it.gain) .. "|r") or ""))
+        local w = b.text:GetStringWidth() + 2
+        if x + w > limit then break end
+        b:SetWidth(w)
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", x, y + 1)
+        b:Show()
+        x = x + w + 12
+    end
+    return y - 14 - 4
+end
+
+local function fillPath(B, path)
+    local V = B.pathView
+    local Dn = ns.Dungeons
+    local G = T.LAYOUT
+    local q = path.quest
+    V.path = path
+    local y = V.top - 2
+    V.title:ClearAllPoints()
+    V.title:SetPoint("TOPLEFT", G.TEXT_X, y)
+    V.title:SetText(q.title)
+    y = y - 16
+    local lv = Dn.QuestLevelText(q)
+    local info = PTEXT.info:format(B.entry and B.entry.name or "?", lv ~= "" and lv or "?")
+    if path.total > 1 then info = info .. " · " .. PTEXT.progress:format(path.done, path.total) end
+    V.info:ClearAllPoints()
+    V.info:SetPoint("TOPLEFT", G.TEXT_X, y)
+    V.info:SetText(info)
+    y = y - 14 - 4
+    y = fillRewards(V, q, y)
+    V.nextLine:ClearAllPoints()
+    V.nextLine:SetPoint("TOPLEFT", G.TEXT_X, y)
+    V.nextLine:SetText(LABEL .. PTEXT.nextStep .. "|r " .. Dn.QuestPathNextText(path) ..
+        (path.cut > 0 and (" " .. GREY .. PTEXT.cut:format(path.cut) .. "|r") or ""))
+    y = y - textHeight(V.nextLine, T.PAGE_W - 2 * G.TEXT_X) - G.GAP - 2
+    V.map:SetEnabled(path.next ~= nil and Dn.QuestStepTarget(path.next) ~= nil)
+    V.scroll:ClearAllPoints()
+    V.scroll:SetPoint("TOPLEFT", 0, y)
+    V.scroll:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, B:Bottom())
+    -- the cards, top to bottom, "danach" between them
+    local width = T.PAGE_W - T.SCROLL_ROOM
+    local cy = 0
+    for i, s in ipairs(path.steps) do
+        local c = V.cards[i]
+        if not c then
+            c = newCard(V.child, V.onMap)
+            V.cards[i] = c
+        end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", 0, -cy)
+        c:SetWidth(width)
+        local h = fillCard(c, s, path, width, s == path.next)
+        c:Show()
+        cy = cy + h
+        local last = i == #path.steps
+        c.link:SetShown(not last)
+        c.arrow:SetShown(not last)
+        c.after:SetShown(not last)
+        if not last then
+            c.link:ClearAllPoints()
+            c.link:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, 0)
+            c.link:SetHeight(P.AFTER_H - 8)
+            c.arrow:ClearAllPoints()
+            c.arrow:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, -(P.AFTER_H - 12))
+            if W.HasAtlas("talents-arrow-head-gray") then c.arrow:SetAtlas("talents-arrow-head-gray") else c.arrow:Hide() end
+            c.after:ClearAllPoints()
+            c.after:SetPoint("LEFT", c, "BOTTOMLEFT", P.TEXT_X, -P.AFTER_H / 2)
+            cy = cy + P.AFTER_H
+        end
+    end
+    for i = #path.steps + 1, #V.cards do V.cards[i]:Hide() end
+    V.child:SetHeight(math.max(10, cy))
+    if V.scroll.UpdateScrollChildRect then V.scroll:UpdateScrollChildRect() end
 end
 
 local function create(parent)
@@ -435,7 +778,7 @@ local function create(parent)
     B.parts = {}
     B.parts.bosses = W.Chip(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
     B.parts.quests = W.Chip(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
-    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Vorquests, Start und Belohnungen. Klick auf eine Quest öffnet die Weltkarte und setzt den Wegpunkt: zum Questgeber, oder zum Eingang, wenn die Quest schon im Log ist."])
+    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Stufe, Weg (erledigte Schritte der Vorquests) und Start. Klick auf eine Quest zeigt ihren Questweg: jeden Schritt mit Annehmen, Abgeben, Voraussetzung und Karte."])
     B.way = W.Button(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -445,6 +788,19 @@ local function create(parent)
     B.detail = buildDetail(B, DETAIL_ROWS)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    -- the quest path in place of the list, the image and the quests (F-135); only in memory
+    B.pathView = buildPath(B)
+    function B:OpenPath(e)
+        if e and e.q then
+            self.pathFor = { dungeon = state().dungeon, key = e.qid or e.q.title }
+        else
+            self.pathFor = nil
+        end
+        self.detailKey = nil
+        ns.Refresh()
+    end
+    -- the parts of the planner the quest path covers
+    B.planParts = { B.headFrame, B.list, B.art, B.header, B.parts.bosses, B.parts.quests, B.way, B.detail }
     return B
 end
 
@@ -506,6 +862,30 @@ local function refresh(B)
     if detailKey ~= B.detailKey then B.detail.offset = 0 end
     B.detailKey = detailKey
     local status
+    -- the quest path of a quest of this dungeon, while it is open (F-135)
+    local path
+    local pf = B.pathFor
+    if pf and (part ~= "quests" or not e or pf.dungeon ~= e.key) then
+        B.pathFor, pf = nil, nil
+    end
+    if pf then
+        for _, row in ipairs((questItems(e.key))) do
+            if (row.qid or row.q.title) == pf.key then path = row.path end
+        end
+        if not path then B.pathFor = nil end
+    end
+    -- (the image shows by fillArt above, only for a dungeon)
+    for _, f in ipairs(B.planParts) do
+        if path then f:Hide() elseif f ~= B.art then f:Show() end
+    end
+    if path then
+        B.pathDungeon = e.key
+        B.pathView:Show()
+        fillPath(B, path)
+        B.hint:SetText(PTEXT.hint)
+        return
+    end
+    B.pathView:Hide()
     if e and part == "quests" then
         local rows
         rows, status = questItems(e.key)
@@ -527,7 +907,7 @@ local function refresh(B)
         if e and #B.detail.items == 0 and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
         local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
         local parts = {}
-        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: Weltkarte und Wegpunkt dorthin, wo du hin musst. Grün: Upgrade für dich."], DTEXT.itemHint }) do
+        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: ihr Questweg mit allen Schritten. Weg: erledigte Schritte von allen. Grün: Upgrade für dich."] }) do
             if t ~= "" then parts[#parts + 1] = t end
         end
         hint = table.concat(parts, " ")
@@ -560,6 +940,23 @@ function ns.ShowDungeon(key)
         ns.MapLowerMain(map, main)
         if map.Raise then map:Raise() end
     end
+    return main ~= nil and main:IsShown() and true or false
+end
+
+-- Opens the page Dungeons with the quest path of quest qid of dungeon key (F-135). Returns true when
+-- the window shows.
+function ns.ShowDungeonQuest(key, qid)
+    if type(key) ~= "string" then return false end
+    state().dungeon = key
+    state().dpart = "quests"
+    asked = key
+    if ns.ShowPage then ns.ShowPage("dungeons") end
+    if page then
+        page.pathFor = { dungeon = key, key = qid }
+        page.detailKey = nil
+        ns.Refresh()
+    end
+    local main = _G.AmisiaFrame
     return main ~= nil and main:IsShown() and true or false
 end
 

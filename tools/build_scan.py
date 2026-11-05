@@ -244,20 +244,21 @@ def collect(dbs):
 
 
 # ---------------------------------------------------------------- the source collector
-# AmisiaDB.collect (Collector.lua, table version 2): one string per record, fields split by ";", the
+# AmisiaDB.collect (Collector.lua, table version 3): one string per record, fields split by ";", the
 # free text last. own is a bit mask of the fields after it that the client saw itself (bit 0 the
-# first field); the others, if they hold anything, were heard from the guild.
-#   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;title
+# first field); the others, if they hold anything, were heard from the guild. Tables of version 1 and
+# 2 are read as the addon migrates them (version 2 quests had no enderName and objective).
+#   q: day;own;giver;giverPos;ender;enderPos;rewards;choices;questLevel;minPlayerLevel;faction;pre;giverName;enderName;objective;title
 #   s: day;own;pos;items(id:price:flags:rep,...);name
 #   w: day;own;class;pos;instance;items(id:count,...);name
 # The check and the merge are the addon's (tools/tests/test_collect_records.py holds them side by
 # side): one canonical form, so a record reads back to exactly the same string.
 COLLECT_FIELDS = {
-    'q': ('giver', 'gpos', 'ender', 'epos', 'rewards', 'choices', 'qlevel', 'minlvl', 'fac', 'pre', 'gname', 'title'),
+    'q': ('giver', 'gpos', 'ender', 'epos', 'rewards', 'choices', 'qlevel', 'minlvl', 'fac', 'pre', 'gname', 'ename', 'obj', 'title'),
     's': ('pos', 'items', 'name'),
     'w': ('class', 'pos', 'inst', 'items', 'name'),
 }
-COLLECT_LIMITS = {'rewards': 8, 'vItems': 48, 'wItems': 16, 'wCount': 99, 'maxLen': 2000, 'name': 48}
+COLLECT_LIMITS = {'rewards': 8, 'vItems': 48, 'wItems': 16, 'wCount': 99, 'maxLen': 2000, 'name': 48, 'objective': 300}
 _MAX_ID = 9999999
 _NUM = re.compile(r'-?[0-9]+')
 _LUA_SPACE = re.compile(r'[ \t\n\v\f\r]+')
@@ -305,6 +306,48 @@ def _text_ok(s, sep=None):
     return isinstance(s, str) and (s == '' or _clean(s, sep) == s)
 
 
+_OBJ_CODES = (re.compile(r'\|c[0-9a-fA-F]{8}'), re.compile(r'\|r'))
+_OBJ_LINK = re.compile(r'\|H.*?\|h(.*?)\|h', re.S)
+_OBJ_ART = (re.compile(r'\|T.*?\|t', re.S), re.compile(r'\|A.*?\|a', re.S))
+
+
+def clean_objective(v):
+    """Collector.lua's cleanObjective: colour, link (its text stays), texture and atlas codes out, no
+    "|", control characters as spaces, ";" as ",", runs of spaces as one, 300 characters at most."""
+    if not isinstance(v, str) or v == '':
+        return ''
+    for p in _OBJ_CODES:
+        v = p.sub('', v)
+    v = _OBJ_LINK.sub(lambda m: m.group(1), v)
+    for p in _OBJ_ART:
+        v = p.sub('', v)
+    v = re.sub(r'[\x00-\x1f\x7f]', ' ', v.replace('|', '')).replace(';', ',')
+    v = _LUA_SPACE.sub(' ', v).strip(' \t\n\v\f\r')
+    if len(v) > COLLECT_LIMITS['objective']:
+        v = v[:COLLECT_LIMITS['objective']].strip(' \t\n\v\f\r')
+    return v
+
+
+def _objective_ok(s):
+    return isinstance(s, str) and (s == '' or clean_objective(s) == s)
+
+
+def quest_v2_to_v3(text):
+    """A quest record of the collector's version 2 (12 fields after day and own) as one of version 3:
+    enderName and objective empty, the title's own bit moved along (as the addon's questV2toV3);
+    None when its day or own mask cannot be read."""
+    if not isinstance(text, str):
+        return None
+    f = text.split(';', 13)
+    if len(f) != 14:
+        return None
+    own = _num(f[1], 0, (1 << 12) - 1)
+    if own is None or _num(f[0], 0, 99999) is None:
+        return None
+    f[1] = str((own & ((1 << 11) - 1)) | ((own >> 11 & 1) << 13))
+    return ';'.join(f[:13] + ['', ''] + f[13:])
+
+
 def _id_list(s, limit):
     out = []
     if s == '':
@@ -336,12 +379,13 @@ def _parse_raw(kind, text):
     if kind == 'q':
         r.update(giver=_num(f[0], -_MAX_ID, _MAX_ID), gpos=f[1], ender=_num(f[2], -_MAX_ID, _MAX_ID), epos=f[3],
                  rewards=_id_list(f[4], COLLECT_LIMITS['rewards']), choices=_id_list(f[5], COLLECT_LIMITS['rewards']),
-                 qlevel=_num(f[6], 0, 99), minlvl=_num(f[7], 0, 99), fac=f[8], pre=_num(f[9], 0, _MAX_ID), gname=f[10], title=f[11])
+                 qlevel=_num(f[6], 0, 99), minlvl=_num(f[7], 0, 99), fac=f[8], pre=_num(f[9], 0, _MAX_ID), gname=f[10],
+                 ename=f[11], obj=f[12], title=f[13])
         if any(r[k] is None for k in ('giver', 'ender', 'rewards', 'choices', 'qlevel', 'minlvl', 'pre')):
             return None
         if not _pos_ok(r['gpos']) or not _pos_ok(r['epos']) or r['fac'] not in ('', 'A', 'H', 'AH'):
             return None
-        if not _text_ok(r['gname'], ';') or not _text_ok(r['title']):
+        if not _text_ok(r['gname'], ';') or not _text_ok(r['ename'], ';') or not _objective_ok(r['obj']) or not _text_ok(r['title']):
             return None
     elif kind == 's':
         r.update(pos=f[0], items={}, name=f[2])
@@ -393,7 +437,8 @@ def format_collect_record(kind, r):
     own = r.get('own', 0)
     if kind == 'q':
         parts = [r['day'], own, r['giver'], r['gpos'], r['ender'], r['epos'], ','.join(map(str, r['rewards'])),
-                 ','.join(map(str, r['choices'])), r['qlevel'], r['minlvl'], r['fac'], r['pre'], r['gname'], r['title']]
+                 ','.join(map(str, r['choices'])), r['qlevel'], r['minlvl'], r['fac'], r['pre'], r['gname'], r.get('ename', ''),
+                 r.get('obj', ''), r['title']]
     elif kind == 's':
         items = ','.join(f"{i}:{x['price']}:{x['flags']}:{x['rep']}" for i, x in sorted(r['items'].items()))
         parts = [r['day'], own, r['pos'], items, r['name']]
@@ -503,7 +548,7 @@ def _list(a, b):
 _JOIN = {
     'q': {'giver': _pick_id, 'gpos': _pick_text, 'ender': _pick_id, 'epos': _pick_text, 'rewards': _list, 'choices': _list,
           'qlevel': max, 'minlvl': _pick_id, 'fac': lambda a, b: ('A' if 'A' in a + b else '') + ('H' if 'H' in a + b else ''),
-          'pre': _pick_id, 'gname': _pick_text, 'title': _pick_text},
+          'pre': _pick_id, 'gname': _pick_text, 'ename': _pick_text, 'obj': _pick_text, 'title': _pick_text},
     's': {'pos': _pick_text, 'items': _vendor_items, 'name': _pick_text},
     'w': {'class': lambda a, b: a if _CLASS_RANK[a] >= _CLASS_RANK[b] else b, 'pos': _pick_text, 'inst': max,
           'items': _world_items, 'name': _pick_text},
@@ -635,6 +680,8 @@ def collect_observed(dbs, item_ok=None):
                     continue
                 if c.get('ver') == 1:
                     v = re.sub(r'^([0-9]+;)', r'\g<1>0;', v, count=1)
+                if kind == 'q' and c.get('ver') in (1, 2):
+                    v = quest_v2_to_v3(v)
                 r = _parse_canonical(kind, v)
                 if r is not None:
                     per[kind].setdefault(k, []).append((src, r))

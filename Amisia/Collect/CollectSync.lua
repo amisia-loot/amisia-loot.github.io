@@ -17,7 +17,11 @@
 --
 -- Collect protocol 2 (1 had no own mask in its records). A client pulls only from announcements of its own collect protocol; clients
 -- before the exchange do not know CV and drop it as an unknown message (they never get the
--- whispered kinds).
+-- whispered kinds). Since the collector's table version 3 (F-135) a quest goes out in the layout of
+-- version 2 (Collector.lua: ns.CollectWire), so older clients read it unchanged and the quest's
+-- turn-in NPC name and objective text never leave the client; the checksums are taken over that
+-- layout (ns.CollectWireBody), so old and new clients holding the same records agree. A blob of
+-- version 3 (quests in the collector's version 3 layout) is read too, its two texts left out.
 local ADDON, ns = ...
 
 ns.COLLECT_PROTO = 2
@@ -159,13 +163,15 @@ end
 ---------------------------------------------------------------------------
 -- The index: per kind 64 buckets with their checksums
 ---------------------------------------------------------------------------
-local digests, nDigests = {}, 0   -- record string -> 4 hex of the record without its day and own mask
-local function digest(s)
-    local d = digests[s]
+-- record string -> 4 hex of the record without its day and own mask, in the exchange's layout
+local digests, nDigests = {}, 0
+local function digest(kind, s)
+    local key = kind .. s
+    local d = digests[key]
     if d then return d end
     if nDigests > 20000 then digests, nDigests = {}, 0 end
-    d = hex4(ns.CollectBody(s))
-    digests[s] = d
+    d = hex4(ns.CollectWireBody(kind, s))
+    digests[key] = d
     nDigests = nDigests + 1
     return d
 end
@@ -188,7 +194,7 @@ local function indexNow()
                 buckets[b] = bk
             end
             bk.ids[#bk.ids + 1] = id
-            bk.dig[id] = digest(s)
+            bk.dig[id] = digest(kind, s)
             n = n + 1
         end
         local parts = {}
@@ -523,11 +529,13 @@ ns.CommOn("CW", function(sender, f, chan)
 end)
 
 -- A blob checked whole: { v = 2, k = kind, r = { id, record, id, record, ... } }, every record valid
--- in its canonical form, heard (own mask 0), of no day after tomorrow and of an asked bucket, 60 at
--- most. Returns the list { { kind, id, record } } or nil.
+-- in its canonical form (a quest in the layout of version 2; of a blob v = 3 in the collector's
+-- version 3), heard (own mask 0), of no day after tomorrow and of an asked bucket, 60 at most.
+-- Returns the list { { kind, id, record } } (records as the collector saves them, a quest's turn-in
+-- NPC name and objective empty) or nil.
 local BLOB_KEYS = { v = true, k = true, r = true, m = true }
 local function checkBlob(tbl, ask)
-    if type(tbl) ~= "table" or tbl.v ~= ns.COLLECT_BLOB_V or tbl.k ~= ask.kind then return nil end
+    if type(tbl) ~= "table" or (tbl.v ~= ns.COLLECT_BLOB_V and tbl.v ~= 3) or tbl.k ~= ask.kind then return nil end
     if tbl.m ~= nil and tbl.m ~= true then return nil end
     for key in pairs(tbl) do
         if not BLOB_KEYS[key] then return nil end
@@ -545,10 +553,10 @@ local function checkBlob(tbl, ask)
     for i = 1, n, 2 do
         local id, s = r[i], r[i + 1]
         if type(id) ~= "number" or id ~= math.floor(id) or id < 1 or id > 9999999 or not ask.bs[id % L.buckets] or seen[id] then return nil end
-        local rec = ns.CollectParse(ask.kind, s)
-        if not rec or rec.own ~= 0 or rec.day > latest then return nil end
+        local saved, rec = ns.CollectFromWire(ask.kind, s, tbl.v)
+        if not saved or rec.own ~= 0 or rec.day > latest then return nil end
         seen[id] = true
-        out[#out + 1] = { ask.kind, id, s }
+        out[#out + 1] = { ask.kind, id, saved }
     end
     return out
 end
@@ -710,11 +718,12 @@ ns.CommOn("CR", function(sender, f, chan)
 end)
 
 -- The records of ids as a blob; each goes as heard (own mask 0): the asker did not see it itself.
+-- A quest goes in the layout of version 2, without its turn-in NPC name and objective.
 local function wire(kind, ids)
     local c = ns.CollectDB()
     local t = { v = ns.COLLECT_BLOB_V, k = kind, r = {} }
     for _, id in ipairs(ids) do
-        local s = c and c[kind][id] and ns.CollectMark(kind, c[kind][id], "heard")
+        local s = c and c[kind][id] and ns.CollectWire(kind, c[kind][id])
         if s then
             t.r[#t.r + 1] = id
             t.r[#t.r + 1] = s

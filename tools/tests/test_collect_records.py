@@ -33,19 +33,25 @@ def lua_merge(kind, x, y):
     return lua().eval('function(k, a, b) return NS.CollectMergeRecords(k, a, b) end')(kind, x, y)
 
 
-Q = '280;0;3344;1440:5234:4011;4455;1440:1:1;280604;5001,5002;34;30;AH;2000;Sturmrufer;Titel; mit Semikolon'
+Q = '280;0;3344;1440:5234:4011;4455;1440:1:1;280604;5001,5002;34;30;AH;2000;Sturmrufer;Grisgrind;Bringt 10 Steine.;Titel; mit Semikolon'
 
 
 def test_parse_is_as_strict_as_the_addon():
     cases = [
-        ('q', Q), ('q', Q + '\n'), ('q', '280;0;00;;0;;;;0;0;;0;;T'), ('q', '280;0;-0;;0;;;;0;0;;0;;T'),
-        ('q', '280;0;١;;0;;;;0;0;;0;;T'), ('q', '280;0;1;;0;;;;0;0;;0;Zwei  Leer;T'), ('q', '280;0;1;;0;;;;0;0;;0; Vorn;T'),
-        ('q', '280;0;1;;0;;;;0;0;;0;;' + 'x' * 49), ('q', '280;0;1;;0;;;;0;0;;0;;' + 'x' * 48),
-        ('q', '280;1;1;;0;;;;0;0;;0;;T'), ('q', '280;2;1;;0;;;;0;0;;0;;T'), ('q', '280;4095;1;;0;;;;0;0;;0;;T'),
-        ('q', '280;2049;1;;0;;;;0;0;;0;;T'), ('q', '280;0;1;1440:1:1\n;0;;;;0;0;;0;;T'), ('q', '280;0;1;1440:10001:1;0;;;;0;0;;0;;T'),
-        ('q', '280;0;1;;0;;5,5;;0;0;;0;;T'), ('q', '280;0;1;;0;;7,5;;0;0;;0;;T'), ('q', '280;0;1;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;T'),
-        ('q', '280;0;1;;0;;;;0;0;X;0;;T'), ('q', '280;0;1;;0;;;;0;0;;0;;Ti|tel'), ('q', '280;0;1;;0;;;;0;0;;0;;Ti\x7ftel'),
-        ('q', '280;0;1;;0;;;;0;0;;0;;Titél'), ('q', '100000;0;1;;0;;;;0;0;;0;;T'), ('q', '280;0;1;;0;;;;100;0;;0;;T'),
+        ('q', Q), ('q', Q + '\n'), ('q', '280;0;00;;0;;;;0;0;;0;;;;T'), ('q', '280;0;-0;;0;;;;0;0;;0;;;;T'),
+        ('q', '280;0;١;;0;;;;0;0;;0;;;;T'), ('q', '280;0;1;;0;;;;0;0;;0;Zwei  Leer;;;T'), ('q', '280;0;1;;0;;;;0;0;;0; Vorn;;;T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;;;' + 'x' * 49), ('q', '280;0;1;;0;;;;0;0;;0;;;;' + 'x' * 48),
+        ('q', '280;1;1;;0;;;;0;0;;0;;;;T'), ('q', '280;2;1;;0;;;;0;0;;0;;;;T'), ('q', '280;8193;1;;0;;;;0;0;;0;;;;T'),
+        ('q', '280;16383;1;;0;;;;0;0;;0;;;;T'), ('q', '280;16383;1;1:1:1;1;1:1:1;1;1;1;1;A;1;G;E;O;T'),
+        ('q', '280;2049;1;;0;;;;0;0;;0;;;;T'), ('q', '280;0;1;1440:1:1\n;0;;;;0;0;;0;;;;T'), ('q', '280;0;1;1440:10001:1;0;;;;0;0;;0;;;;T'),
+        ('q', '280;0;1;;0;;5,5;;0;0;;0;;;;T'), ('q', '280;0;1;;0;;7,5;;0;0;;0;;;;T'), ('q', '280;0;1;;0;;1,2,3,4,5,6,7,8,9;;0;0;;0;;;;T'),
+        ('q', '280;0;1;;0;;;;0;0;X;0;;;;T'), ('q', '280;0;1;;0;;;;0;0;;0;;;;Ti|tel'), ('q', '280;0;1;;0;;;;0;0;;0;;;;Ti\x7ftel'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;;;Titél'), ('q', '100000;0;1;;0;;;;0;0;;0;;;;T'), ('q', '280;0;1;;0;;;;100;0;;0;;;;T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;En|der;;T'), ('q', '280;0;1;;0;;;;0;0;;0;;;Ziel  zwei;T'), ('q', '280;0;1;;0;;;;0;0;;0;;; Ziel;T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;;Zi|el;T'), ('q', '280;0;1;;0;;;;0;0;;0;;;' + 'ä' * 300 + ';T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;;' + 'ä' * 301 + ';T'), ('q', '280;0;1;;0;;;;0;0;;0;;;Zi\tel;T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;' + 'e' * 49 + ';;T'),
+        ('q', '280;0;1;;0;;;;0;0;;0;;T'),   # version 2
         ('s', '280;0;;6001:1520:L:6@Orgrimmar;Grimm'), ('s', '280;0;;6001:1520:Q:;Grimm'), ('s', '280;0;;6001:1520::9@X;N'),
         ('s', '280;0;;6001:1520::6@Org;rimmar;N'), ('s', '280;0;;6001:1520::6@Org:x;N'), ('s', '280;3;1:1:1;6001:01::;N'),
         ('s', '280;7;1:1:1;6001:1::;N'), ('s', '280;0;;6002:1::,6001:1::;N'),
@@ -65,7 +71,8 @@ def records(rnd, kind):
                  'ender': rnd.choice([0, 6, 8]), 'epos': rnd.choice(['', '1440:3:3']),
                  'rewards': sorted(rnd.sample(range(1, 14), rnd.randint(0, 6))), 'choices': sorted(rnd.sample(range(20, 24), rnd.randint(0, 2))),
                  'qlevel': rnd.choice([0, 20, 30]), 'minlvl': rnd.choice([0, 18, 12]), 'fac': rnd.choice(['', 'A', 'H', 'AH']),
-                 'pre': rnd.choice([0, 3, 4]), 'gname': rnd.choice(['', 'Geber', 'Anders']), 'title': rnd.choice(['', 'Titel', 'Ärger'])}
+                 'pre': rnd.choice([0, 3, 4]), 'gname': rnd.choice(['', 'Geber', 'Anders']), 'ename': rnd.choice(['', 'Ender', 'Zweiter']),
+                 'obj': rnd.choice(['', 'Bringt 10 Steine.', 'Tötet Ärger, dann zurück.']), 'title': rnd.choice(['', 'Titel', 'Ärger'])}
         elif kind == 's':
             items = {i: {'price': rnd.choice([10, 20]), 'flags': rnd.choice(['', 'L', 'x', 'Lx']), 'rep': rnd.choice(['', '5@Orgrimmar', '6@Bucht'])}
                      for i in rnd.sample(range(1, 60), rnd.randint(0, 30))}
@@ -89,12 +96,33 @@ def test_merge_is_the_addons_merge():
             assert b.merge_collect(kind, x, y) == lua_merge(kind, x, y), (kind, x, y)
 
 
-def sv(me, q):
-    return {'drops': {'me': me}, 'collect': {'ver': 2, 'q': q}}
+def sv(me, q, ver=2):
+    return {'drops': {'me': me}, 'collect': {'ver': ver, 'q': q}}
+
+
+def test_the_objective_is_cleaned_as_in_the_addon():
+    clean = lua().eval('function(s) return NS.CollectCleanObjective(s) end')
+    for s in ['', '  ', 'Bringt 10 |cffffd100Sturmsteine|r;\ndann\tzu |Hquest:1|hGrisgrind|h.', 'a|Tx:1|tb|A:y|a c||d',
+              'ä' * 299 + 'xyz', '  vorn und hinten  ', 'Zeile\r\nZwei', 'x\x7fy', ';;;', 'ü' * 301]:
+        assert b.clean_objective(s) == clean(s), repr(s)
+
+
+def test_old_tables_are_read_as_version_3():
+    v2 = '280;2049;5;;0;;;;0;0;;0;Geber;Titel'
+    assert b.quest_v2_to_v3(v2) == '280;8193;5;;0;;;;0;0;;0;Geber;;;Titel'
+    assert b.quest_v2_to_v3('280;4096;5;;0;;;;0;0;;0;Geber;Titel') is None
+    q = b.collect_observed([sv('a0000001', {7: v2})])['q'][7]
+    assert q['giver'] == 5 and q['title'] == 'Titel' and q['ename'] == '' and q['obj'] == ''
+    v1 = '280;5;;0;;;;0;0;;0;Geber;Titel'
+    one = b.collect_observed([sv('a0000001', {7: v1}, 1), sv('b0000002', {7: v1}, 1)])['q'][7]
+    assert one['giver'] == 5, 'version 1: heard, two accounts agree'
+    v3 = '280;6144;0;;0;;;;0;0;;0;;Ender;Bringt 10 Steine.;'
+    q3 = b.collect_observed([sv('a0000001', {7: v3}, 3)])['q'][7]
+    assert q3['ename'] == 'Ender' and q3['obj'] == 'Bringt 10 Steine.'
 
 
 def test_the_build_trusts_own_values_and_heard_ones_two_accounts_agree_on():
-    own = '280;' + str(1 << 11) + ';0;;0;;;;0;0;;0;;Echt'                 # the title, own
+    own = '280;' + str(1 << 11) + ';0;;0;;;;0;0;;0;;Echt'                 # the title, own (version 2 tables)
     heard_a = '280;0;5;;6;;40;;0;0;;0;;Gift'                               # giver 5, ender 6, reward 40, title
     heard_b = '279;0;5;;7;;40,41;;0;0;;0;;Anders'                          # giver 5 again, another ender
     files = [sv('a0000001', {7: own}), sv('b0000002', {7: heard_a}), sv('c0000003', {7: heard_b}),
@@ -118,8 +146,8 @@ def test_the_build_drops_items_the_client_lacks(tmp_path):
     (tmp_path / 'Item.1.60.1.70235.csv').write_text('ID,ClassID,SubclassID,InventoryType\n40,4,1,5\n41,7,0,0\n42,9,2,0\n', encoding='utf-8')
     ok = b.observed_item_filter(str(tmp_path))
     assert [i for i in (40, 41, 42, 99) if ok(i)] == [40, 42], 'wearable or a recipe, and in the client'
-    own = '280;' + str(16 + 2048) + ';0;;0;;40,41,42,99;;0;0;;0;;Echt'
-    q = b.collect_observed([sv('a0000001', {7: own})], item_ok=ok)['q'][7]
+    own = '280;' + str(16 + 8192) + ';0;;0;;40,41,42,99;;0;0;;0;;;;Echt'
+    q = b.collect_observed([sv('a0000001', {7: own}, 3)], item_ok=ok)['q'][7]
     assert q['rewards'] == [40, 42]
     assert b.observed_item_filter(str(tmp_path / 'none')) is None, 'without the tables no filter'
 

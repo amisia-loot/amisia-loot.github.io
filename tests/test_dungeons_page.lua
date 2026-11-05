@@ -90,7 +90,14 @@ assert(D.header.ButtonText:GetText() == "Hall of Thanes · Quests" and D.parts.q
 local qall = {}
 for _, e in ipairs(D.detail.items) do qall[#qall + 1] = e.kind .. ":" .. (e.text or e.id or "") end
 qall = table.concat(qall, ",")
-assert(has(qall, "quest:An Ancient Grudge") and has(qall, "quest:Done Already (erledigt)") and has(qall, "reward:505"), qall)
+assert(has(qall, "quest:An Ancient Grudge") and has(qall, "quest:Done Already (erledigt)"), qall)
+-- one row per quest (F-135): the rewards show in the quest path's head and the tooltip
+assert(not has(qall, "reward:") and not has(qall, "pre:"), qall)
+local grudgeRow
+for _, e in ipairs(D.detail.items) do if e.text == "An Ancient Grudge" then grudgeRow = e end end
+local hasHelm = false
+for _, it in ipairs(grudgeRow.q.rewards) do if it.id == 505 then hasHelm = true end end
+assert(hasHelm and grudgeRow.path, "the reward stays with the quest")
 assert(not has(D.hint:GetText(), "fehlen"), "the quest data knows the thanes: " .. D.hint:GetText())
 D.parts.bosses:Click()
 -- the wished legs carry the star
