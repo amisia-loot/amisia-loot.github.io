@@ -181,6 +181,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter "Sync und Version" nachsiehst, dann stehen dort nur noch Sync- und Versionsschalter; "Roll-Runden" hat die beiden Plus-Eins-Einstellungen.
 - Notiz: Spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`, Migrationsschritt 2 (D-48).
 
+### F-130 Feedback-Seite: Bugs und Wünsche an den Autor
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du "Feedback" im Reiter Amisia öffnest, dann stehen dort "Bug"/"Wunsch", ein Textfeld mit Zähler "0/500", "Abschicken" und darunter, was automatisch mitgeht.
+- Notiz: Spec `docs/specs/2026-11-05-feedback.md`, freigegeben 2026-11-05 ("Passt, bauen"); Empfänger Vulo Vultrox.
+
 ### F-103 Einstellungen nach Reitern, Knopf "Einstellungen", Zurücksetzen
 - Version: 2.37.0
 - Status: gebaut
