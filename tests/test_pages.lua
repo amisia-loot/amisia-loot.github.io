@@ -311,8 +311,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     NS.Refresh()
     assert(NS.CurrentPage() == "map", "the map page for " .. view)
     local quick = {}
-    for _, e in ipairs(NS.MinimapMenuEntries()) do quick[#quick + 1] = e[1] end
-    assert(table.concat(quick, "|"):find("Ausrüstung|Ausrüstungstabelle|Karte|", 1, true), "the quick menu for " .. view)
+    for _, e in ipairs(STUB.quickMenu()) do quick[#quick + 1] = e[1] end
+    local flat = table.concat(quick, "|")
+    assert(flat:find("Ausrüstung|Ausrüstungstabelle|", 1, true) and flat:find("|Karte|", 1, true), "the quick menu for " .. view)
     local mf = NS.MapPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(mf, 602, 478)
     L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.quests, mf.open)

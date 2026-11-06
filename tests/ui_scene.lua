@@ -534,6 +534,20 @@ S.STATES = {
         box:SetText("cursed")
         box.scripts.OnTextChanged(box, true)
     end },
+    -- one character: the page list with "Noch 1 Zeichen für die Suche" under it; a keyword ("dkp")
+    -- finds the page Punkte and its settings, a command too
+    { page = "overview", name = "search-one", open = function()
+        NS.ShowPage("overview")
+        local box = AmisiaFrame.search
+        box:SetText("e")
+        box.scripts.OnTextChanged(box, true)
+    end },
+    { page = "overview", name = "search-dkp", open = function()
+        NS.ShowPage("overview")
+        local box = AmisiaFrame.search
+        box:SetText("dkp")
+        box.scripts.OnTextChanged(box, true)
+    end },
     -- the members page with the lineup's guild: zones, offline members with their last time online,
     -- a note, professions from the recipe exchange (main and secondary) and the own ones
     { page = "members", name = "members-guild", open = function() S.members(); NS.ShowMembers() end },

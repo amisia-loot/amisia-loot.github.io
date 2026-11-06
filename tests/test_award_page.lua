@@ -33,12 +33,12 @@ local a5 = NS.AddAwardTo(s, { name = "Fraktur", item = 32837, kind = "MS", src =
 local panel = NS.Panel("awards")
 assert(panel and panel.label == "Vergaben" and panel.order == 22 and not panel.officer, "the page is registered for everyone")
 local entries = ""
-for _, e in ipairs(NS.MinimapMenuEntries()) do entries = entries .. e[1] .. "|" end
+for _, e in ipairs(STUB.quickMenu()) do entries = entries .. e[1] .. "|" end
 assert(entries:find("Vergaben", 1, true), entries)
 NS.Set("ui.view", "raider")
 entries = ""
-for _, e in ipairs(NS.MinimapMenuEntries()) do entries = entries .. e[1] .. "|" end
-assert(not entries:find("Vergaben", 1, true), "raiders have no quick menu entry")
+for _, e in ipairs(STUB.quickMenu()) do entries = entries .. e[1] .. "|" end
+assert(entries:find("Vergaben", 1, true), "the page is everyone's, so raiders find it in the quick menu too: " .. entries)
 NS.Reset("ui.view")
 
 NS.Dispatch("vergaben")

@@ -484,7 +484,7 @@ ns.RegisterCard{ key = "softres", order = 20, fill = function(c)
     if ns.IsOfficerView() and unclear > 0 then
         c:SetAction(L["Prüfen"], function() ns.ShowSoftRes("check") end)
     else
-        c:SetAction(L["Ansehen"], function() ns.ShowPage("softres") end)
+        c:SetAction(L["Öffnen"], function() ns.ShowPage("softres") end)
 
     end
 end }

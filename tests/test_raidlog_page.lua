@@ -67,14 +67,14 @@ assert(panel and panel.label == "Raid-Log" and panel.order == 24 and not panel.o
     and panel.icon == "Interface\\Icons\\INV_Misc_Note_01", "the page is registered for everyone")
 local function menu()
     local out = {}
-    for _, e in ipairs(NS.MinimapMenuEntries()) do out[#out + 1] = e[1] end
+    for _, e in ipairs(STUB.quickMenu()) do out[#out + 1] = e[1] end
     return table.concat(out, "|")
 end
-assert(has(menu(), "Soft-Reserves|Raid-Log"), "after Soft-Reserves: " .. menu())
+assert(has(menu(), "|Raid-Log|") and has(menu(), "|Soft-Reserves|"), "in the tab Raid: " .. menu())
 NS.Set("ui.view", "raider")
-assert(has(menu(), "Soft-Reserves|Raid-Log"), "for raiders too: " .. menu())
+assert(has(menu(), "|Raid-Log|"), "for raiders too: " .. menu())
 NS.Reset("ui.view")
-for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Raid-Log" then e[2]() end end
+for _, e in ipairs(STUB.quickMenu()) do if e[1] == "Raid-Log" then e[2]() end end
 assert(NS.CurrentPage() == "raidlog", "the entry opens the page")
 
 ---------------------------------------------------------------------------

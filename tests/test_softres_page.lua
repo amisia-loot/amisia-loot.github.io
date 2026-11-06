@@ -190,11 +190,11 @@ fake.fn()
 assert(NS.CurrentPage() == "softres" and f.views.check.on, "the card opens the check view")
 NS.Set("ui.view", "raider")
 card.fill(fake)
-assert(fake.label == "Ansehen", "raiders look")
+assert(fake.label == "Öffnen", "raiders look")
 NS.Reset("ui.view")
 NS.SetSoftRes("Vuloo 32235\nFraktur 32837\nChorf 32837\n")
 card.fill(fake)
-assert(fake.line2:GetText() == "3 von 3 im Raid reserviert" and fake.label == "Ansehen", fake.line2:GetText())
+assert(fake.line2:GetText() == "3 von 3 im Raid reserviert" and fake.label == "Öffnen", fake.line2:GetText())
 -- without a raid: the last raid, or nothing to check against
 STUB.roster = {}
 NS.Refresh()

@@ -480,14 +480,14 @@ STUB.shift = false
 ---------------------------------------------------------------------------
 local function quick()
     local out = {}
-    for _, e in ipairs(NS.MinimapMenuEntries()) do out[#out + 1] = e[1] end
+    for _, e in ipairs(STUB.quickMenu()) do out[#out + 1] = e[1] end
     return table.concat(out, "|")
 end
-assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|Karte|"), quick())
-for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Karte" then e[2]() end end
+assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|") and has(quick(), "|Karte|"), quick())
+for _, e in ipairs(STUB.quickMenu()) do if e[1] == "Karte" then e[2]() end end
 assert(NS.CurrentPage() == "map", "the quick menu opens the page")
 NS.Set("ui.view", "raider")
-assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|Karte|"), "raiders too: " .. quick())
+assert(has(quick(), "Ausrüstung|Ausrüstungstabelle|") and has(quick(), "|Karte|"), "raiders too: " .. quick())
 NS.Reset("ui.view")
 NS.MAP = nil
 assert(not has(quick(), "Karte"), "no map data, no entry")

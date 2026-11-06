@@ -1,7 +1,8 @@
 -- The main window's search (D-45): what the search box over the page list finds, grouped "Seiten",
 -- "Einstellungen" (a section by its name or its tab's, e.g. "Allgemein", then the single settings),
 -- "Rezepte" (every recipe of the profession data by the client's spell name), "Dungeons", "Items",
--- "Spieler". UI/MainFrame.lua shows the hits in place of the page list and
+-- "Spieler", "Befehle"; pages and settings sections also by their keywords (PAGE_WORDS,
+-- SECTION_WORDS: "dkp" finds the page Punkte). UI/MainFrame.lua shows the hits in place of the page list and
 -- runs a hit's action on a click. Kept fast: nothing at all under T.MAIN.SEARCH_MIN characters,
 -- items only once the gear data is built or from 3 characters on (only then may the gear data be
 -- built), the indexes of items and players built once and kept for a while, at most RES_MAX hits per
@@ -233,21 +234,93 @@ local function dungeonHits(q)
 end
 
 ---------------------------------------------------------------------------
+-- Keywords
+---------------------------------------------------------------------------
+-- Search words of a page (by its key) and of a settings section (by its key), German and English,
+-- lower case: never shown, only matched at a word's start, so "dkp" finds the page Punkte and
+-- "waypoint" the map. A word the name already holds needs no entry.
+Search.PAGE_WORDS = {
+    overview = "start home übersicht overview",   -- l10n-ok: search words
+    raids = "sessions aufzeichnungen recorded",   -- l10n-ok: search words
+    lineup = "aufstellung lineup gruppen groups einladen invite",   -- l10n-ok: search words
+    raidcheck = "buffs flask fläschchen verbrauch consumables reparatur durability",   -- l10n-ok: search words
+    raidlog = "log protokoll verlauf history",   -- l10n-ok: search words
+    rolls = "loot vergabe würfeln roll dice",   -- l10n-ok: search words
+    awards = "loot vergabe würfeln roll awards verteilen",   -- l10n-ok: search words
+    stats = "statistik stats teilnahme attendance",   -- l10n-ok: search words
+    points = "dkp epgp punkte points gebote bids",   -- l10n-ok: search words
+    softres = "reserve reservierung sr softres",   -- l10n-ok: search words
+    gear = "bis ausrüstung gear upgrade ziele goals wunschliste wishlist",   -- l10n-ok: search words
+    dungeons = "instanz instance planer",   -- l10n-ok: search words
+    raidjournal = "journal bosse bosses instanz instance",   -- l10n-ok: search words
+    map = "wegpunkt waypoint pfeil arrow karte map",   -- l10n-ok: search words
+    quests = "questweg questlog",   -- l10n-ok: search words
+    professions = "berufe rezepte recipes crafting professions handwerk",   -- l10n-ok: search words
+    scrolls = "magier mage schriftrollen scrolls",   -- l10n-ok: search words
+    talents = "skillung talents build talentbaum",   -- l10n-ok: search words
+    export = "website csv",   -- l10n-ok: search words
+    members = "gilde mitglieder roster guild members",   -- l10n-ok: search words
+    bank = "gildenbank guild bank",   -- l10n-ok: search words
+    calendar = "termin raidkalender event calendar",   -- l10n-ok: search words
+    duels = "duell duel",   -- l10n-ok: search words
+    settings = "optionen options config einstellungen settings",   -- l10n-ok: search words
+    about = "hilfe help befehle commands version",   -- l10n-ok: search words
+    feedback = "bug fehler wunsch melden report",   -- l10n-ok: search words
+}
+Search.SECTION_WORDS = {
+    points = "dkp epgp punkte points",   -- l10n-ok: search words
+    rolls = "loot würfeln roll",   -- l10n-ok: search words
+    rollwin = "würfeln roll dice fenster window",   -- l10n-ok: search words
+    awards = "loot vergabe awards",   -- l10n-ok: search words
+    map = "wegpunkt waypoint pfeil arrow karte map",   -- l10n-ok: search words
+    softres = "reserve sr softres",   -- l10n-ok: search words
+    signup = "anmeldung signup termin calendar",   -- l10n-ok: search words
+    lineup = "aufstellung lineup einladen invite",   -- l10n-ok: search words
+    bis = "bis ausrüstung gear upgrade",   -- l10n-ok: search words
+    ui = "minimap größe scale ansicht view",   -- l10n-ok: search words
+    record = "aufnahme recording",   -- l10n-ok: search words
+}
+
+local folded = {}   -- keyword text -> its folded words
+local function wordHit(text, q)
+    if type(text) ~= "string" then return false end
+    local words = folded[text]
+    if not words then
+        words = {}
+        for w in ns.Fold(text):gmatch("%S+") do words[#words + 1] = w end
+        folded[text] = words
+    end
+    for _, w in ipairs(words) do
+        if w:sub(1, #q) == q then return true end
+    end
+    return false
+end
+
+---------------------------------------------------------------------------
 -- Pages and settings
 ---------------------------------------------------------------------------
+-- The pages by name first, then those a keyword names.
 local function pageHits(q)
-    local out = {}
+    local out, named = {}, {}
+    local function add(p)
+        -- the tab in the tooltip: two pages may share a name (Raids in Raid and in Ausrüstung)
+        local tab = ns.PanelGroup(p)
+        for _, g in ipairs(ns.PANEL_GROUPS) do
+            if g.key == tab then tab = g.label end
+        end
+        out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite im Reiter %s."]:format(tab),
+            run = function() ns.ShowPage(p.key) end }
+    end
+    for _, p in ipairs(ns.panels) do
+        if #out >= M.RES_MAX then return out end
+        if ns.Visible(p) and hit(p.label, q) then
+            named[p.key] = true
+            add(p)
+        end
+    end
     for _, p in ipairs(ns.panels) do
         if #out >= M.RES_MAX then break end
-        if ns.Visible(p) and hit(p.label, q) then
-            -- the tab in the tooltip: two pages may share a name (Raids in Raid and in Ausrüstung)
-            local tab = ns.PanelGroup(p)
-            for _, g in ipairs(ns.PANEL_GROUPS) do
-                if g.key == tab then tab = g.label end
-            end
-            out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite im Reiter %s."]:format(tab),
-                run = function() ns.ShowPage(p.key) end }
-        end
+        if not named[p.key] and ns.Visible(p) and wordHit(Search.PAGE_WORDS[p.key], q) then add(p) end
     end
     return out
 end
@@ -259,7 +332,7 @@ local function settingHits(q)
         local tabHit = hit(g.label, q)
         for _, section in ipairs(g.sections or {}) do
             if #out >= M.RES_MAX then return out end
-            if tabHit or hit(section.label, q) then
+            if tabHit or hit(section.label, q) or wordHit(Search.SECTION_WORDS[section.key], q) then
                 out[#out + 1] = { text = section.label, icon = SETTINGS_ICON,
                     tip = L["Einstellungen, Reiter %s. Öffnet den Abschnitt."]:format(g.label),
                     run = function() if ns.ShowSettingsSection then ns.ShowSettingsSection(section.key) end end }
@@ -280,6 +353,44 @@ local function settingHits(q)
     return out
 end
 
+---------------------------------------------------------------------------
+-- Commands
+---------------------------------------------------------------------------
+-- "/amisia <word> " into the chat line (the open one, else the chat opens with it): the player adds
+-- what the command wants and sends it with Enter; nothing runs by the click itself.
+local function commandToChat(text)
+    local CU = _G.ChatFrameUtil
+    if CU and CU.OpenChat then
+        CU.OpenChat(text)
+    elseif ChatFrame_OpenChat then
+        ChatFrame_OpenChat(text)
+    end
+end
+
+-- The commands of the help (ns.SlashHelpLines' rules: officers' only in the officer view, Forever's
+-- only on Forever) by their words and their description, from Search.ITEM_MIN characters.
+local function commandHits(q)
+    if #q < Search.ITEM_MIN then return {} end
+    local officer = ns.IsOfficerView()
+    local out = {}
+    for _, def in ipairs(ns.slash or {}) do
+        if #out >= M.RES_MAX then break end
+        if (officer or not def.officer) and (ns.FOREVER or not def.forever) then
+            local found = wordHit(def.word, q) or wordHit(def.en, q) or hit(def.desc, q)
+            for _, a in ipairs(def.aliases or {}) do found = found or wordHit(a, q) end
+            if found then
+                local word = ns.SlashWord(def)
+                -- the bar shows the command alone (the arguments would not fit), the tooltip the rest
+                out[#out + 1] = { text = "/amisia " .. word,
+                    tip = (def.args and ("/amisia " .. word .. " " .. def.args .. "\n") or "")
+                        .. (def.desc and (def.desc .. "\n") or "") .. L["Ein Klick schreibt den Befehl in die Chatzeile."],
+                    run = function() commandToChat("/amisia " .. word .. " ") end }
+            end
+        end
+    end
+    return out
+end
+
 -- The hits of text: { { key, label, hits = { { text, label, icon or atlas, tip, item, run } } } },
 -- the groups without a hit left out; nothing under SEARCH_MIN characters.
 function ns.Search(text)
@@ -292,6 +403,7 @@ function ns.Search(text)
         { key = "dungeons", label = "Dungeons", find = dungeonHits },
         { key = "items", label = "Items", find = itemHits },
         { key = "players", label = L["Spieler##Suche"], find = playerHits },
+        { key = "commands", label = L["Befehle"], find = commandHits },
     }
     local out = {}
     for _, g in ipairs(groups) do

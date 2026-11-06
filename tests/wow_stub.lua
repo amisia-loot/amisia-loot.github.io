@@ -1010,6 +1010,21 @@ TEMPLATES.LargeSideTabButtonTemplate = function(f)
     end)
 end
 function STUB.clickTab(tab) tab.scripts.OnMouseUp(tab, "LeftButton", true) end
+-- The minimap's quick menu flat: each tab's entry replaced by its pages (without "Zurück"), then
+-- the rest; { { label, fn } } in the order a player meets them.
+function STUB.quickMenu()
+    local ns = NS
+    local out = {}
+    for _, e in ipairs(ns.MinimapMenuEntries()) do
+        if e.sub then
+            local sub = ns.MinimapMenuEntries(e.sub)
+            for i = 1, #sub - 1 do out[#out + 1] = sub[i] end
+        else
+            out[#out + 1] = e
+        end
+    end
+    return out
+end
 -- The bottom tab of a panel (PanelTabButtonTemplate, Blizzard_SharedXML): the six slices of its
 -- art (atlases the template sets, so they are not counted as the addon's), the label in Text (its
 -- normal font GameFontNormalSmall); the client's PanelTemplates_* functions below size and select it.

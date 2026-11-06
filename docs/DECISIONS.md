@@ -933,7 +933,13 @@ Export. Die Offiziersseite "Raids" (aufgezeichnete Raids, Schlüssel `raids`) he
 "Raids" nur noch die Seite in Ausrüstung ist (Spec 2026-10-17). Export zieht vom Reiter Gilde in den Reiter Raid
 neben das Raid-Archiv: er exportiert vor allem Raids (neue, geänderte, angekreuzte); Gildenbank, Bedarf und
 Loot-Prio gehen im selben Text mit. Beide bleiben Offiziersseiten.
-**Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`,
+**Nachtrag 2026-11-06:** Zurechtfinden: Seiten und Einstellungsabschnitte haben Stichwörter (deutsch und
+englisch, nie angezeigt: "dkp" findet die Punkte, "waypoint" die Karte), die Gruppe "Befehle" (ab 3 Zeichen,
+ein Klick schreibt den Befehl nur in die Chatzeile), das Suchfeld sagt im Tooltip, was es ab wie vielen Zeichen
+findet, und unter 2 Zeichen "Noch 1 Zeichen für die Suche"; ein Auffrischen lässt die Treffer an ihrer
+Scrollstelle. Das Porträt öffnet die Übersicht. Das Schnellmenü der Minimap folgt den Reitern: je Reiter ein
+Eintrag, der dessen sichtbare Seiten im selben Menü zeigt (kein Untermenü-Fenster, kein fremdes Menü, D-06).
+**Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`, `tests/test_nav_find.lua`,
 `tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, `tests/test_search_more.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).
 

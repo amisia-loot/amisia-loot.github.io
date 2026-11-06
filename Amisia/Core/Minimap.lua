@@ -1,5 +1,6 @@
 -- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
--- a quick menu with the pages and the recording switch. Drag the button around the minimap;
+-- a quick menu with the window's tabs (each opens its pages in the same menu), the settings and the
+-- recording switch. Drag the button around the minimap;
 -- /amisia minimap hides or shows it.
 local ADDON, ns = ...
 local L = ns.L
@@ -15,28 +16,47 @@ local function settings()
     return m
 end
 
-local function gearAvailable()
-    return ns.Gear and ns.Gear.Available() and ns.ShowGear
+-- The side windows a tab's menu names right after the page they go with (actions that are no page):
+-- page key -> entry, or nil.
+local function windowAfter(key)
+    if key == "gear" and ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame then
+        return { L["Ausrüstungstabelle"], function() ns.ToggleGearFrame() end }
+    end
+    return nil
 end
 
-function ns.MinimapMenuEntries()
-    local officer = ns.IsOfficerView()
+local menuOwner   -- what the menu hangs on: the button, else the cursor (UIParent)
+local function openMenu(group)
+    -- the menu just closed for the click that runs this: open it again with the other entries
+    ns.W.Menu(menuOwner or UIParent, ns.MinimapMenuEntries(group))
+end
+
+-- The quick menu, built from the registry as the window's tabs are (ns.PANEL_GROUPS, ns.Visible:
+-- the view, expert mode, data there): without group one entry per tab with a visible page (a click
+-- shows that tab's pages in the same menu), then the settings and the recording switch; with group
+-- the tab's visible pages in their order (a side window after its page), "Zurück".
+function ns.MinimapMenuEntries(group)
     local e = {}
-    if gearAvailable() then
-        e[#e + 1] = { L["Ausrüstung"], function() ns.ShowGear("goals") end }
-        if ns.ToggleGearFrame then
-            e[#e + 1] = { L["Ausrüstungstabelle"], function() ns.ToggleGearFrame() end }
+    if group then
+        for _, p in ipairs(ns.panels) do
+            if ns.PanelGroup(p) == group and ns.Visible(p) then
+                e[#e + 1] = { p.label, function() ns.ShowPage(p.key) end }
+                e[#e + 1] = windowAfter(p.key)
+            end
         end
-        -- the map page goes with the gear page
-        if ns.ShowMap and ns.Visible(ns.Panel("map")) then
-            e[#e + 1] = { L["Karte"], function() ns.ShowMap() end }
+        e[#e + 1] = { L["Zurück"], function() openMenu(nil) end }
+        return e
+    end
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local names = {}
+        for _, p in ipairs(ns.panels) do
+            if ns.PanelGroup(p) == g.key and ns.Visible(p) then names[#names + 1] = p.label end
+        end
+        if #names > 0 then
+            e[#e + 1] = { g.label .. " ...", function() openMenu(g.key) end, sub = g.key,
+                tipTitle = g.label, tip = table.concat(names, ", ") }
         end
     end
-    if officer then e[#e + 1] = { "Rolls", function() ns.ShowPage("rolls") end } end
-    if officer then e[#e + 1] = { L["Vergaben"], function() ns.ShowPage("awards") end } end
-    e[#e + 1] = { L["Soft-Reserves"], function() ns.ShowPage("softres") end }
-    e[#e + 1] = { L["Raid-Log"], function() ns.ShowPage("raidlog") end }
-    if officer and ns.ShowExport then e[#e + 1] = { "Export", function() ns.ShowPage("export") end } end
     e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
     e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }
     return e
@@ -45,7 +65,8 @@ end
 -- What both the button and the compartment entry do on a click.
 local function click(mouse)
     if mouse == "RightButton" then
-        ns.W.Menu((button and button:IsShown()) and button or UIParent, ns.MinimapMenuEntries())
+        menuOwner = (button and button:IsShown()) and button or UIParent
+        ns.W.Menu(menuOwner, ns.MinimapMenuEntries())
     else
         ns.ToggleMain()
     end

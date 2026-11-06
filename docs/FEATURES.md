@@ -817,7 +817,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-110 Fenster "Ausrüstungsziele" mit Puppe
 - Version: 2.49.2
 - Status: gebaut
-- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Großes Fenster" klickst (oder `/amisia bis gross` eingibst), dann öffnet sich das Fenster "Ausrüstungsziele" mit deinem Charaktermodell, den 17 Slots links, rechts und darunter, der Liste in der Mitte und rechts der Leiste des ersten Slots mit Upgrade.
+- Prüfung: Wenn du auf der Seite Ausrüstung, Ziele "Ausrüstungsziele" klickst (oder `/amisia bis gross` eingibst), dann öffnet sich das Fenster "Ausrüstungsziele" mit deinem Charaktermodell, den 17 Slots links, rechts und darunter, der Liste in der Mitte und rechts der Leiste des ersten Slots mit Upgrade.
 - Prüfung: Wenn du "Angelegt" wählst, dann tragen Modell und Slots deine jetzige Ausrüstung; mit "Ziele" die Ziele. Ziehen dreht, Mausrad zoomt, Rechtsklick setzt zurück.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann steht dort eine Zeile "Charaktermodell" (DressUpModel, SetUnit, Undress, TryOn: vorhanden oder was fehlt).
 - Prüfung: Wenn das Fenster offen ist und Items nachgeladen werden (Namen erscheinen nach und nach, ein Scan läuft oder du fährst über Items in den Taschen), dann bleibt das Charaktermodell ruhig stehen und flackert nicht; nur wenn ein Item der Puppe seinen Namen bekommt, zieht es sich einmal neu an.
@@ -1032,7 +1032,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-081 Großes Talentfenster
 - Version: 2.20.0
 - Status: gebaut
-- Prüfung: Wenn du auf der Seite Talente unten rechts "Großes Fenster" klickst (oder `/amisia talente gross` eingibst, oder den Reiter mit dem Bogenschützen-Symbol rechts am Amisia-Fenster), dann öffnet sich das Fenster "Talentrechner" mit denselben drei Bäumen, größer (44-px-Symbole), mit Klasse, Stufe, Talentiert, Punkten, "Eigene laden", "Alles zurücksetzen", Code und dem Hinweis "Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"; kein Knopf und kein Rangschild berührt den Rand seines Baums.
+- Prüfung: Wenn du auf der Seite Talente unten rechts "Talentrechner" klickst (oder `/amisia talente gross` eingibst, oder den Reiter mit dem Bogenschützen-Symbol rechts am Amisia-Fenster), dann öffnet sich das Fenster "Talentrechner" mit denselben drei Bäumen, größer (44-px-Symbole), mit Klasse, Stufe, Talentiert, Punkten, "Eigene laden", "Alles zurücksetzen", Code und dem Hinweis "Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"; kein Knopf und kein Rangschild berührt den Rand seines Baums.
 - Prüfung: Wenn du im Fenster ein Talent anklickst, dann zeigt die Seite Talente denselben Rang und dieselben Punkte (und umgekehrt); der Reiter am Amisia-Fenster ist markiert, solange das Fenster offen ist.
 - Prüfung: Wenn du Strg gedrückt hältst und über dem Fenster das Mausrad drehst, dann wird es in 5-%-Schritten größer oder kleiner (zwischen 70 und 150 %), und unter Einstellungen, Oberfläche steht derselbe Wert bei "Größe des Talentfensters (%)"; der Schieber dort ändert die Größe sofort.
 - Prüfung: Wenn du das Fenster verschiebst und `/reload` machst, dann öffnet es sich an derselben Stelle; "Fensterposition zurücksetzen" (Einstellungen, Oberfläche) setzt es in die Bildschirmmitte, Escape schließt es.

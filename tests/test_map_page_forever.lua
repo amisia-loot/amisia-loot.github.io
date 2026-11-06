@@ -58,11 +58,11 @@ quest.scripts.OnClick(quest, "LeftButton")
 assert(NS.MapTarget() and NS.MapTarget().ours and math.abs(STUB.waypoint.point.position.x - 0.423) < 1e-6, "replaced")
 NS.MapClearTarget()
 
--- the quick menu: the page and the table stay together, the map after them
+-- the quick menu: the page and the table stay together, the map in the same tab
 local labels = {}
-for _, e in ipairs(NS.MinimapMenuEntries()) do labels[#labels + 1] = e[1] end
+for _, e in ipairs(STUB.quickMenu()) do labels[#labels + 1] = e[1] end
 labels = table.concat(labels, "|")
-assert(has(labels, "Ausrüstung|Ausrüstungstabelle|Karte|"), labels)
+assert(has(labels, "Ausrüstung|Ausrüstungstabelle|") and has(labels, "|Karte|"), labels)
 
 -- the Fundort line with the giver
 STUB.shift = true

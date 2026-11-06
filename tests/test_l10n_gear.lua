@@ -130,7 +130,7 @@ card.SetAction = function(self, label) self.action = label end
 for _, c in ipairs(NS.cards) do
     if c.key == "gear" then c.fill(card) end
 end
-assert(card.title.text == "Your gear" and card.action == "View", tostring(card.title.text))
+assert(card.title.text == "Your gear" and card.action == "Open", tostring(card.title.text))
 assert(has(card.line1.text, "1 wish"), tostring(card.line1.text))
 
 ---------------------------------------------------------------------------
