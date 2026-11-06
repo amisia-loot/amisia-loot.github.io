@@ -163,6 +163,27 @@ function D.Changed(classOnly)
     ns.Fire("DUELS")
 end
 
+-- A name as recorded learned its class or tree (d.cls, d.spec): the rows and the numbers in memory
+-- take it over instead of being built again (that reads every duel line, and a mouseover learns a
+-- class right before its tooltip asks for the numbers). The same as D.Changed(true) then a build:
+-- a row's wc/lc and ws/ls are d.cls/d.spec of its names; a player's c and s those of his newest
+-- row, whose spelling is the entry's name.
+local function patchLearned(rec)
+    local d = db()
+    if not d or not rowsCache then
+        rowsCache, statsCache = nil, nil
+    else
+        local c, t = d.cls[rec], d.spec[rec]
+        for _, r in ipairs(rowsCache) do
+            if r.w == rec then r.wc, r.ws = c, t end
+            if r.l == rec then r.lc, r.ls = c, t end
+        end
+        local e = statsCache and statsCache[rec:lower()]
+        if e and e.name == rec then e.c, e.s = c, t end
+    end
+    ns.Fire("DUELS")
+end
+
 -- Forgets every duel, the zones and the tournaments (the button in the settings, /amisia duelle leeren);
 -- the known classes and talent trees stay. Returns how many duels went.
 function D.Clear()
@@ -256,7 +277,7 @@ function D.Learn(name, token)
     d.cls[players[low]] = token
     unknown[low] = nil
     nUnknown = nUnknown - 1
-    D.Changed(true)
+    patchLearned(players[low])
     return true
 end
 
@@ -361,7 +382,7 @@ function D.LearnSpec(name, tree)
     local rec = players[low]
     if not d.cls[rec] or d.spec[rec] == tree then return false end
     d.spec[rec] = tree
-    D.Changed(true)
+    patchLearned(rec)
     return true
 end
 
@@ -624,6 +645,27 @@ local function whoListShown()
     return false
 end
 
+-- What the player does with the who list while Amisia's question waits: his own /who (or the list's
+-- refresh) and the list opened by him. The answer to such a question is his, the list stays open.
+local ownWho                -- Amisia's own SendWho runs
+local whoHook               -- the SendWho Amisia hooked (the client's, wrapped)
+local whoOpenedAt           -- GetTime() the who list was last shown (nil: hidden since)
+local whoHooked = {}        -- the frames whose OnShow and OnHide Amisia follows
+
+local function followWho(f)
+    if type(hooksecurefunc) == "function" and type(f.SendWho) == "function" and f.SendWho ~= whoHook then
+        hooksecurefunc(f, "SendWho", function() if not ownWho and pending then pending.foreign = true end end)
+        whoHook = f.SendWho
+    end
+    -- the window Amisia closes again (its who tab may be left for another one while it stays open)
+    local fr = _G.LFGParentFrame
+    if type(fr) == "table" and not whoHooked[fr] and type(fr.HookScript) == "function" then
+        whoHooked[fr] = true
+        fr:HookScript("OnShow", function() whoOpenedAt = GetTime() end)
+        fr:HookScript("OnHide", function() whoOpenedAt = nil end)
+    end
+end
+
 local function restoreWhoUi()
     if whoUiSet and fl() and type(fl().SetWhoToUi) == "function" and not whoListShown() then
         pcall(fl().SetWhoToUi, false)
@@ -675,10 +717,13 @@ function D.WhoAsk()
     if D.WhoWait() > 0 then return nil, L["Bitte warten (%d s)."]:format(D.WhoWait()) end
     local q, key = nextQuery()
     if not q then return nil, L["Alle unbekannten Namen sind gefragt; die übrigen sind offline oder anderswo. In 10 Minuten wieder."] end
+    followWho(f)
     if type(f.SetWhoToUi) == "function" and not whoListShown() then
         whoUiSet = pcall(f.SetWhoToUi, true) or nil
     end
+    ownWho = true
     local ok = pcall(f.SendWho, q)
+    ownWho = nil
     if not ok then
         restoreWhoUi()
         return nil, L["Die /who-Abfrage ging nicht."]
@@ -712,14 +757,23 @@ ns.OnEvent("WHO_LIST_UPDATE", function()
     end
     if pending then
         local got = pending.before - nUnknown
-        local q, shown = pending.q, pending.shown
+        local q, shown, askedAt, foreign = pending.q, pending.shown, pending.at, pending.foreign
+        local answerAt = GetTime()
         pending = nil
+        -- the player sent his own /who meanwhile: the answer is his, the list stays as it is
+        if foreign then
+            restoreWhoUi()
+            ns.Fire("DUELS")
+            return
+        end
         -- the client's who list opens itself on every answer: closed before the question, it is
-        -- closed again (after its own handler ran), then SetWhoToUi back
+        -- closed again (after its own handler ran), then SetWhoToUi back; not when the player
+        -- opened it himself before the answer came (the answer's own opening has its time)
         if not shown then
             C_Timer.After(0, function()
                 local fr = _G.LFGParentFrame
-                if type(fr) == "table" and fr.IsShown and fr:IsShown() and type(HideUIPanel) == "function" then
+                local his = whoOpenedAt and whoOpenedAt >= askedAt and whoOpenedAt < answerAt
+                if not his and type(fr) == "table" and fr.IsShown and fr:IsShown() and type(HideUIPanel) == "function" then
                     pcall(HideUIPanel, fr)
                 end
                 restoreWhoUi()
