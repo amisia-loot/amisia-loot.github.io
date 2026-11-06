@@ -438,11 +438,40 @@ end
 local QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
     { 1, 0.5, 0 } }
 
--- A tooltip for an item the client cannot describe (no item info): the name in its quality's colour,
--- slot, item level, required level, the scanned stats, up to three sources and a grey note. Leaves a
--- tooltip the client filled alone; true when it wrote one.
-function Gear.ScanTooltip(tt, id)
-    if not (tt and id) or (C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)) then return false end
+-- Whether the client's item table lacks the item (only the server describes it, D-59). A plain cache
+-- miss (GetItemInfo nil until the server answers) is no such item: GetItemInfoInstant reads the
+-- client's own table and knows it at once.
+local function clientLacks(id)
+    if not C_Item then return true end
+    if C_Item.GetItemInfoInstant then return C_Item.GetItemInfoInstant(id) == nil end
+    return not (C_Item.GetItemInfo and C_Item.GetItemInfo(id))
+end
+
+-- The tooltip waiting for its item's info: shown again once it arrived, while its owner still holds it
+-- (the client rebuilds a tooltip for a loaded item and drops the lines added to it).
+local waiting
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function(itemID, success)
+    local w = waiting
+    if not w or tonumber(itemID) ~= w.id then return end
+    waiting = nil
+    if success == false then return end
+    C_Timer.After(0, function()
+        if w.tt:IsShown() and (not w.tt.IsOwned or w.tt:IsOwned(w.owner)) then w.again() end
+    end)
+end)
+
+-- A tooltip for an item the client cannot describe (not in its item table): the name in its quality's
+-- colour, slot, item level, required level, the scanned stats, up to three sources and a grey note.
+-- Leaves a tooltip the client filled alone; true when it wrote one. For an item the client knows but
+-- has not loaded yet, owner and again (optional) show the tooltip anew once the item info arrives.
+function Gear.ScanTooltip(tt, id, owner, again)
+    if not (tt and id) then return false end
+    if not clientLacks(id) then
+        if again and owner and not (C_Item.GetItemInfo and C_Item.GetItemInfo(id)) then
+            waiting = { tt = tt, id = id, owner = owner, again = again }
+        end
+        return false
+    end
     local row = Gear.Item(id)
     if not row then return false end
     tt:ClearLines()

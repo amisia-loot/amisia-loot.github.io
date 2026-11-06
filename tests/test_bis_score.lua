@@ -239,7 +239,24 @@ STUB.locale = "enUS"
 assert(Gear.ScanName(288841) == nil, "the German name only on a German client")
 STUB.locale = "deDE"
 local tipLines = {}
-local tip = { ClearLines = function() tipLines = {} end, AddLine = function(_, t) tipLines[#tipLines + 1] = t end, Show = function() end }
+local tipOwner
+local tip = { ClearLines = function() tipLines = {} end, AddLine = function(_, t) tipLines[#tipLines + 1] = t end, Show = function() end,
+    IsShown = function() return true end, IsOwned = function(_, o) return o == tipOwner end }
+-- a plain cache miss (the client's item table knows it, its info is still on the way) keeps the
+-- client's tooltip and shows it anew once the info arrived, while the owner still holds it
+local again = 0
+tipOwner = "row"
+assert(not Gear.ScanTooltip(tip, 288841, "row", function() again = again + 1 end) and #tipLines == 0,
+    "a cache miss is no item the server alone describes")
+STUB.fire("GET_ITEM_INFO_RECEIVED", 288841, true)
+STUB.tick(0)
+assert(again == 1, "shown anew with the item info")
+assert(not Gear.ScanTooltip(tip, 288841, "row", function() again = again + 1 end))
+tipOwner = "other"
+STUB.fire("GET_ITEM_INFO_RECEIVED", 288841, true)
+STUB.tick(0)
+assert(again == 1, "not when the tooltip went to another frame")
+STUB.serverOnly = { [288841] = true }
 assert(Gear.ScanTooltip(tip, 288841), "an own tooltip")
 local tipText = table.concat(tipLines, "|")
 assert(tipText:find("Reif der Prophezeiung", 1, true) and tipText:find("+13 Intelligenz", 1, true)

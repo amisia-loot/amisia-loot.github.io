@@ -122,7 +122,12 @@ end
 local function showItemTooltip(owner, id, score, extra, pick)
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local _, link = itemInfo(id)
-    if link then GameTooltip:SetHyperlink(link) else GameTooltip:SetItemByID(id); Gear.ScanTooltip(GameTooltip, id) end
+    if link then
+        GameTooltip:SetHyperlink(link)
+    else
+        GameTooltip:SetItemByID(id)
+        Gear.ScanTooltip(GameTooltip, id, owner, function() showItemTooltip(owner, id, score, extra, pick) end)
+    end
     GameTooltip:AddLine(" ")
     if pick and ns.BisPickText then
         GameTooltip:AddLine(ns.BisPickText(pick), 0.25, 1, 0.4, true)

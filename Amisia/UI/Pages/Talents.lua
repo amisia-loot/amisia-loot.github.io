@@ -500,7 +500,7 @@ local function buildView(parent, P, opts)
     local right
     if opts.bigButton then
         -- the window with the bigger trees (the side tab and /amisia talente gross open it too)
-        f.bigBtn = W.Button(f, L["Großes Fenster"], 110, function() ns.ToggleTalentFrame() end)
+        f.bigBtn = W.Button(f, L["Talentrechner"], 110, function() ns.ToggleTalentFrame() end)
         W.FitChip(f.bigBtn, 110)
         W.Tooltip(f.bigBtn, L["Talentrechner"],
             L["Öffnet die Talente in einem eigenen, größeren Fenster (auch /amisia talente gross). Strg + Mausrad über dem Fenster ändert seine Größe."])

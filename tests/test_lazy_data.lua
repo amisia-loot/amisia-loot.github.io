@@ -3,7 +3,8 @@
 -- fixture or nil assigned to a waiting key replaces it; ns.DropData lets go; a broken text is
 -- reported and gives nil.
 local KEYS = { GEAR = "GearData", MAP = "MapData", QUEST_DATA = "QuestData", PROFESSIONS = "ProfessionData",
-               TALENTS = "TalentData", GEAR_WEIGHTS = "GearWeights" }
+               TALENTS = "TalentData", GEAR_WEIGHTS = "GearWeights", ENCHANT = "EnchantData",
+               RAIDCHECK = "RaidCheckData", MAGESCROLLS = "MageScrollData", SCAN_DONE = "ScanDone" }
 
 local function built(k) return NS.DataBuilt()[k] ~= nil end
 
@@ -17,7 +18,15 @@ for k, file in pairs(KEYS) do
 end
 
 STUB.roster = { { name = "Vuloo", class = "PRIEST" } }
+-- an alt's first login with a planned spec for its class (settings.gear.specs): its new entry takes
+-- the plan without the weights (ns.BisSpec checks it once the gear pages ask)
+local _, myClass = UnitClass("player")
+AmisiaDB.settings = AmisiaDB.settings or {}
+AmisiaDB.settings.gear = AmisiaDB.settings.gear or {}
+AmisiaDB.settings.gear.specs = { [myClass] = "holy" }
 STUB.fire("PLAYER_LOGIN"); STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(10)
+local me = NS.BisChar()
+assert(me and me.spec == "holy" and not built("GEAR_WEIGHTS"), "a new character's planned spec builds no weights")
 for k in pairs(KEYS) do
     assert(NS.HasData(k), k .. " is there")
     assert(rawget(NS, k) == nil and not built(k), k .. " is not built at login")

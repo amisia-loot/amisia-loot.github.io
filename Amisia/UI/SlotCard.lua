@@ -254,5 +254,15 @@ function ns.SlotCardHook()
 end
 
 ns.OnEvent("PLAYER_LOGIN", function() ns.SlotCardHook() end)
-ns.Listen("BIS_CHANGED", function() fill() end)
-ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", function() fill() end)
+-- once per frame: a gear set swap changes up to 19 slots in one frame
+local fillDue = false
+local function fillSoon()
+    if fillDue then return end
+    fillDue = true
+    C_Timer.After(0, function()
+        fillDue = false
+        fill()
+    end)
+end
+ns.Listen("BIS_CHANGED", fillSoon)
+ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", fillSoon)
