@@ -281,12 +281,12 @@ for _, view in ipairs({ "officer", "raider" }) do
     assert(table.concat(quick, "|"):find("Ausrüstung|Ausrüstungstabelle|Karte|", 1, true), "the quick menu for " .. view)
     local mf = NS.MapPageFrame()
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(mf, 602, 478)
-    L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.open)
-    L.row(view .. " map target", mf.target, mf.clear)
+    L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.quests, mf.open)
+    if mf.clear:IsShown() then L.row(view .. " map target", mf.card, mf.clear) else L.row(view .. " map target", mf.card) end
     L.row(view .. " map columns", mf.head.kind, mf.head.src, mf.head.where, mf.head.items, mf.head.go)
     L.row(view .. " map list", mf.list, mf.list.bar)
     L.inside(view .. " map list bar", mf.list.bar)
-    L.column(view .. " map page", mf.zone, mf.counts, mf.target, mf.head.kind, mf.list, mf.showHidden, mf.hint, mf.data)
+    L.column(view .. " map page", mf.zone, mf.counts, mf.card, mf.head.kind, mf.list, mf.showHidden, mf.hint, mf.data)
     L.fits(mf.hint); L.fits(mf.data); L.fits(mf.counts); L.fits(mf.target)
 end
 NS.Reset("ui.view")

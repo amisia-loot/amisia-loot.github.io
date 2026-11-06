@@ -1,5 +1,5 @@
--- The map page on WoW Forever: without the GetItemInfo globals; a quest with its giver; "Weg" sets
--- the client's waypoint; a waypoint the player set himself is named in the target line; the quick
+-- The map page on WoW Forever: without the GetItemInfo globals; a quest with its giver; a click sets
+-- the client's waypoint; a waypoint the player set himself is named in the target card; the quick
 -- menu keeps the page and the table together; the layout at 602 x 478 for officers and raiders.
 local Gear, Map = NS.Gear, NS.Map
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
@@ -31,7 +31,7 @@ NS.MAP = { game = "forever", built = "2026-10-05", G = { ["Q:183"] = "Marshal Mc
 Map._reset()
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 
-NS.ShowMap()
+NS.ShowMap("hier")
 assert(NS.CurrentPage() == "map")
 local f = NS.MapPageFrame()
 local rows = f.list.rows
@@ -42,19 +42,19 @@ assert(quest and quest.kind:GetText() == "Quest", "the quest row")
 assert(has(quest.src:GetText(), "Die Eberjagd") and has(quest.src:GetText(), "(Marshal McBride)"), quest.src:GetText())
 assert(has(quest.items:GetText(), "Eberhelm"), quest.items:GetText())
 
--- Weg: the client's waypoint
-quest.go:Click()
+-- a click: the client's waypoint
+quest.scripts.OnClick(quest, "LeftButton")
 local t = NS.MapTarget()
 assert(t and t.ours and STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1429, "the client's waypoint")
-assert(has(f.target:GetText(), "Ziel: Marshal McBride, Wald von Elwynn 42, 65"), f.target:GetText())
+assert(f.target:GetText() == "Ziel: Marshal McBride" and has(f.targetSub:GetText(), "Wald von Elwynn 42, 65"), f.targetSub:GetText())
 f.clear:Click()
 assert(NS.MapTarget() == nil and STUB.waypoint.point == nil, "cleared, and the own waypoint with it")
 
--- a waypoint of the player's own: named, and "Weg" replaces it
+-- a waypoint of the player's own: named, and a new target replaces it
 C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1429, 0.2, 0.2))
 NS.Refresh()
-assert(has(f.target:GetText(), "Dein eigener Wegpunkt ist gesetzt; Weg ersetzt ihn."), f.target:GetText())
-quest.go:Click()
+assert(has(f.target:GetText(), "Dein eigener Wegpunkt ist gesetzt; ein neues Ziel ersetzt ihn."), f.target:GetText())
+quest.scripts.OnClick(quest, "LeftButton")
 assert(NS.MapTarget() and NS.MapTarget().ours and math.abs(STUB.waypoint.point.position.x - 0.423) < 1e-6, "replaced")
 NS.MapClearTarget()
 
@@ -79,14 +79,14 @@ for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowMap()
     NS.Refresh()
-    L.row(view .. " head", f.zone, f.targets, f.wishes, f.open)
-    L.row(view .. " target", f.target, f.clear)
+    L.row(view .. " head", f.zone, f.targets, f.wishes, f.quests, f.open)
+    L.row(view .. " target", f.card, f.clear)
     L.row(view .. " columns", f.head.kind, f.head.src, f.head.where, f.head.items, f.head.go)
     L.row(view .. " row", rows[1].kind, rows[1].src, rows[1].where, rows[1].items, rows[1].go, f.list.bar)
     L.row(view .. " list", f.list, f.list.bar)
     L.inside(view .. " list bar", f.list.bar)
-    L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.showHidden, f.hint, f.data)
-    for _, fs in ipairs({ f.target, f.counts, f.hint, f.data, rows[1].where }) do L.fits(fs) end
+    L.column(view .. " page", f.zone, f.counts, f.card, f.head.kind, f.list, f.showHidden, f.hint, f.data)
+    for _, fs in ipairs({ f.target, f.targetSub, f.counts, f.hint, f.data, rows[1].where }) do L.fits(fs) end
     local gp = NS.GearPageFrame and NS.GearPageFrame()
     NS.ShowGear("goals", "HEAD")
     gp = NS.GearPageFrame()
