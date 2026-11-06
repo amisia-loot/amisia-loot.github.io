@@ -457,6 +457,17 @@ S.STATES = {
         p.known, p.source, p.guild = "known", "F", true
         NS.ShowProfessions("schneiderei")
     end },
+    -- the route (F-137): the steps of tailoring, then the shopping list with vendor recipes
+    { page = "professions", name = "professions-route", open = function()
+        local p = AmisiaDB.settings.professions
+        p.known, p.source, p.guild, p.mode, p.routeTab, p.routeVendor = nil, nil, nil, "route", "steps", nil
+        NS.ShowProfessions("schneiderei")
+    end },
+    { page = "professions", name = "professions-shop", open = function()
+        local p = AmisiaDB.settings.professions
+        p.mode, p.routeTab, p.routeVendor = "route", "shop", true
+        NS.ShowProfessions("schneiderei")
+    end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },

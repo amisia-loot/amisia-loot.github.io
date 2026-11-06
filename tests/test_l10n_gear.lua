@@ -173,7 +173,7 @@ NS.Dispatch("bis what")
 assert(has(msgs(), "Usage: /amisia bis [here | item <link> | exclude <link> | reset"), msgs())
 local help = table.concat(NS.SlashHelpLines(true), "\n")
 assert(has(help, "/amisia wish [<link> [high|medium|low] [note] | remove <link>] - Wishlist: add, change or remove an item"), help)
-assert(has(help, "/amisia professions [profession|camp|favor]") and has(help, "/amisia map ") and has(help, "/amisia talents"), help)
+assert(has(help, "/amisia professions [profession|camp|favor|route]") and has(help, "/amisia map ") and has(help, "/amisia talents"), help)
 assert(not german(help), help)
 
 ---------------------------------------------------------------------------

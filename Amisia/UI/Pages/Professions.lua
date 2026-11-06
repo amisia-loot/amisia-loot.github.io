@@ -6,10 +6,13 @@
 -- picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst"). The filters: two
 -- dropdowns that name themselves ("Bekannt: Alle", "Quelle: Händler"), the chips Lernbar and
 -- Gilde (with the guild's count), "N von M Rezepten"; an empty result names what each filter holds
--- back and offers "Filter zurücksetzen".
+-- back and offers "Filter zurücksetzen". Beside the profession the switch "Rezepte | Route" (F-137):
+-- the route of Gear/ProfRoute.lua as step cards (the current one marked, done ones ticked and
+-- short) or its shopping list ("Schritte | Einkauf"), recipes "nur Lehrer | auch Händler".
 local ADDON, ns = ...
 local L = ns.L
-local W, Pr, T, Cr = ns.W, ns.Prof, ns.Theme, ns.Crafters
+local W, Pr, T, Cr, Route = ns.W, ns.Prof, ns.Theme, ns.Crafters, ns.ProfRoute
+local P = T.PROFPAGE
 local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
@@ -24,6 +27,7 @@ local KNOWN = { { value = "all", text = L["Alle"] }, { value = "known", text = L
     { value = "unknown", text = L["Unbekannt"] } }
 local SHORT = { all = L["Alle"] }
 local CAMP, FAVOR = "camp", "favor"
+local RECIPES, ROUTE = "recipes", "route"   -- settings.professions.mode
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
 local page
@@ -345,6 +349,232 @@ local function showDetail(f, e)
 end
 
 ---------------------------------------------------------------------------
+-- The route (F-137): steps and shopping list
+---------------------------------------------------------------------------
+local COLOR_WORDS = { orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"],
+    red = L["noch nicht lernbar"] }
+
+local function mode() return state().mode == ROUTE and ROUTE or RECIPES end
+local function routeShown(v) return mode() == ROUTE and type(v) == "number" and Route.Has(v) end
+local function money(c) return Pr.Money(math.floor((c or 0) + 0.5)) end
+local function times(n) return math.max(0, math.ceil((n or 0) - 1e-6)) end
+local function colorWord(c) return color(Pr.COLORS[c] or Pr.COLORS.none, COLOR_WORDS[c] or "?") end
+
+local function itemName(id)
+    local name = Pr.ItemInfo(id)
+    if not name then nameMissing = true end
+    return name or ("Item " .. tostring(id))
+end
+
+-- The vendor of a list nearest to the player with a known place (and that place), else the first.
+local function nearestVendor(vendors)
+    local points, owner = {}, {}
+    for _, npc in ipairs(vendors or {}) do
+        if npc.point then
+            points[#points + 1] = npc.point
+            owner[npc.point] = npc
+        end
+    end
+    local point = ns.MapNearest and ns.MapNearest(points) or points[1]
+    return point and owner[point] or (vendors and vendors[1]), point
+end
+
+-- The waypoint to the nearest vendor (Map: the client's waypoint only where D-62 allows it).
+local function goToVendor(vendors, what)
+    local npc, point = nearestVendor(vendors)
+    if not point then
+        ns.msg(L["Kein Händler mit bekanntem Ort für %s."]:format(what))
+        return
+    end
+    if ns.MapSetPoint then
+        local ok, why = ns.MapSetPoint(point, npc and npc.name or what)
+        if not ok and why then ns.msg(why) end
+    end
+end
+
+-- The reagents of one craft as "2 Leinenstoff, 1 Grobes Garn".
+local function perPiece(r)
+    local parts = {}
+    for _, g in ipairs(Pr.Reagents(r.spell) or {}) do parts[#parts + 1] = ("%d %s"):format(g[2], itemName(g[1])) end
+    return table.concat(parts, ", ")
+end
+
+local function stepCost(s)
+    if s.kind == "trainer" then return s.cost and money(s.cost) or "" end
+    if s.kind == "buy" then return money(s.price) end
+    if s.kind ~= "recipe" then return "" end
+    if s.unpriced > 0 then return s.cost >= 1 and (money(s.cost) .. " + ?") or "?" end
+    return money(s.cost)
+end
+
+-- A step's two lines: what to do, and the expected crafts with the reagents (the third value: the
+-- second line without the reagents, when they do not fit).
+local function stepLines(s)
+    if s.kind == "trainer" then
+        return L["Bei %d: zum Lehrer, %s lernen (bis %d)"]:format(s.at, s.name or L["nächste Stufe"], s.cap), ""
+    elseif s.kind == "buy" then
+        local npc = nearestVendor(s.vendors)
+        local text = L["Rezept kaufen: %s"]:format(itemName(s.item))
+        if npc and npc.name then text = text .. L[" bei %s"]:format(npc.name) end
+        return text, (npc and npc.point) and L["Klick: Wegpunkt zum Händler"] or L["Ort des Händlers unbekannt"]
+    elseif s.kind == "gap" then
+        return ("%d-%d: %s"):format(s.from, s.to, s.why == "noreagents" and L["kein Rezept mit bekannten Reagenzien"]
+            or L["kein Rezept, das noch Punkte gibt"]), ""
+    end
+    local line1 = L["%d-%d: %dx %s"]:format(s.from, s.to, s.points, Pr.RecipeName(s.recipe))
+    if not s.done then line1 = line1 .. " (" .. colorWord(s.colorFrom) .. L[" bis "] .. colorWord(s.colorTo) .. ")" end
+    local head = { L["etwa %dx"]:format(times(s.crafts)) }
+    if s.pre then head[#head + 1] = L["davor %dx %s"]:format(times(s.preCrafts), Pr.RecipeName(s.pre)) end
+    if not s.known then head[#head + 1] = s.learnCost > 0 and L["lernen: %s"]:format(money(s.learnCost)) or L["noch lernen"] end
+    local short = table.concat(head, " · ")
+    return line1, short .. " · " .. L["je Stück: %s"]:format(perPiece(s.recipe)), short
+end
+
+local function fillStep(r, s, i)
+    r.sel:SetShown(page ~= nil and page.routeCur == i)
+    r.tick:SetShown(s.done == true)
+    local line1, line2, short = stepLines(s)
+    if s.done then
+        r.line1:SetText(GREY .. line1 .. "|r")
+        r.line2:SetText("")
+        r.cost:SetText("")
+        return
+    end
+    r.line1:SetText(line1)
+    r.line2:SetText(line2)
+    if short and (r.line2:GetStringWidth() or 0) > (r.line2:GetWidth() or 0) then r.line2:SetText(short) end
+    r.cost:SetText(stepCost(s))
+end
+
+local function stepTooltip(owner, s)
+    if not s or not GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if s.kind == "recipe" then
+        local rc = s.recipe
+        GameTooltip:SetText(Pr.RecipeName(rc))
+        GameTooltip:AddLine(L["orange bis %d, gelb bis %d, grün bis %d, danach grau"]:format(rc.yellow, rc.green, rc.grey), 1, 1, 1, true)
+        GameTooltip:AddLine(s.unpriced > 0 and L["Gewählt: die wenigsten Materialien ohne Händlerpreis je Punkt bei Rang %d."]:format(s.chosenAt)
+            or L["Gewählt: der billigste Punkt bei Rang %d."]:format(s.chosenAt), 1, 1, 1, true)
+        GameTooltip:AddLine(L["Je Stück: %s"]:format(perPiece(rc)), 1, 1, 1, true)
+        if rc.count > 1 then GameTooltip:AddLine(L["Stellt %d Stück her."]:format(rc.count), 1, 1, 1) end
+        if s.pre then
+            GameTooltip:AddLine(L["Davor etwa %dx %s (je Stück: %s), zählt mit, solange es Punkte gibt."]:format(times(s.preCrafts),
+                Pr.RecipeName(s.pre), perPiece(s.pre)), 1, 1, 1, true)
+        end
+        if s.known then
+            GameTooltip:AddLine(L["Bekannt"], 0.25, 0.75, 0.25)
+        elseif s.learnCost > 0 then
+            GameTooltip:AddLine(L["Beim Lehrer lernen: %s"]:format(money(s.learnCost)), 1, 1, 1)
+        else
+            GameTooltip:AddLine(L["Noch nicht bekannt: beim Lehrer oder Händler lernen."], 1, 1, 1, true)
+        end
+        if s.unpriced > 0 then GameTooltip:AddLine(L["Materialien ohne Händlerpreis zählen nicht zu den Kosten."], 0.6, 0.6, 0.6, true) end
+        GameTooltip:AddLine(L["Klick: die Rezept-Details."], 0.6, 0.6, 0.6)
+    elseif s.kind == "trainer" then
+        GameTooltip:SetText(L["Zum Lehrer"])
+        GameTooltip:AddLine(s.cost and L["Lernkosten: %s"]:format(money(s.cost)) or L["Lernkosten: unbekannt"], 1, 1, 1)
+    elseif s.kind == "buy" then
+        GameTooltip:SetText(L["Rezept kaufen: %s"]:format(itemName(s.item)))
+        GameTooltip:AddLine(L["Preis: %s"]:format(money(s.price)), 1, 1, 1)
+        for _, npc in ipairs(s.vendors or {}) do
+            local where = npc.point and ("%s %d, %d"):format(Pr.ZoneName(npc.point.map) or "?", math.floor(npc.point.x * 100 + 0.5),
+                math.floor(npc.point.y * 100 + 0.5)) or (npc.zone and Pr.ZoneName(npc.zone)) or L["unbekannt"]
+            GameTooltip:AddLine(("%s: %s"):format(npc.name or ("NPC " .. tostring(npc.id)), where), 1, 1, 1)
+        end
+    else
+        GameTooltip:SetText(L["Keine Punkte"])
+        GameTooltip:AddLine(s.why == "noreagents" and L["Die Rezepte für diese Ränge haben keine bekannten Reagenzien."]
+            or L["Kein erlaubtes Rezept gibt hier noch Punkte. Mit \"auch Händler\" kommen Händlerrezepte dazu."], 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+end
+
+local function clickStep(s)
+    if not s or s.done then return end
+    if s.kind == "recipe" then
+        state().mode = RECIPES
+        if ns.ShowRecipe then ns.ShowRecipe(s.recipe.skill, s.recipe.spell) end
+    elseif s.kind == "buy" then
+        goToVendor(s.vendors, itemName(s.item))
+    end
+end
+
+local SOURCE_TEXT = { vendor = L["Händler"], smelt = L["Bergbau: verhütten"], mine = L["sammeln: Bergbau"],
+    disenchant = L["entzaubern"], farm = L["farmen oder Auktionshaus"] }
+local function sourceText(e)
+    if e.kind == "craft" then return L["herstellen: %s"]:format(Pr.Name(e.from)) end
+    return SOURCE_TEXT[e.kind] or SOURCE_TEXT.farm
+end
+
+local function fillShop(r, e)
+    local c, e2 = "", ""
+    if e.enough then c, e2 = GREEN, "|r" end
+    r.name:SetText(c .. itemName(e.item) .. e2)
+    r.need:SetText(c .. e.need .. e2)
+    r.have:SetText(c .. e.have .. e2)
+    r.twinks:SetText(e.twinks > 0 and tostring(e.twinks) or (GREY .. "0|r"))
+    r.miss:SetText(e.missing > 0 and (T.RED .. e.missing .. "|r") or (GREY .. "0|r"))
+    r.price:SetText(e.price and money(e.price) or (GREY .. "-|r"))
+    r.src:SetText(sourceText(e))
+end
+
+local function shopTooltip(owner, e)
+    if not e or not GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    if GameTooltip.SetItemByID then GameTooltip:SetItemByID(e.item) else GameTooltip:SetText(itemName(e.item)) end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(L["Bedarf %d, hast %d, bei Twinks %d, fehlt %d"]:format(e.need, e.have, e.twinks, e.missing), 1, 1, 1)
+    GameTooltip:AddLine(sourceText(e), 1, 1, 1)
+    if e.kind == "vendor" then GameTooltip:AddLine(L["Klick: Wegpunkt zum nächsten Händler."], 0.6, 0.6, 0.6) end
+    GameTooltip:Show()
+end
+
+-- The head, the note under it and the lists of the route view.
+local function refreshRoute(f, v)
+    local s = state()
+    local vendor = s.routeVendor and true or false
+    f.vendorT:SetOn(not vendor)
+    f.vendorV:SetOn(vendor)
+    local tab = s.routeTab == "shop" and "shop" or "steps"
+    f.tabSteps:SetOn(tab == "steps")
+    f.tabShop:SetOn(tab == "shop")
+    nameMissing = false
+    local route, stale = Route.Get(v, vendor)
+    f.route = route
+    local notes = {}
+    if stale then notes[#notes + 1] = L["Im Kampf und in der Sperre rechnet Amisia die Route erst danach neu."] end
+    if not route then
+        f.routeHead:SetText(L["Route: noch nicht berechnet."])
+        f.steps:SetItems({})
+        f.shop:SetItems({})
+    else
+        local open = 0
+        for _, st in ipairs(route.steps) do if not st.done then open = open + 1 end end
+        -- without a single price (no vendor sells the materials) the cost is unknown, not 0
+        local cost = route.total > 0 and L["etwa %s"]:format(money(route.total)) or L["Kosten unbekannt"]
+        if route.learned then
+            f.routeHead:SetText(L["Rang %d bis %d · %s · %d Schritte"]:format(route.start, route.top, cost, open))
+        else
+            f.routeHead:SetText(L["Nicht erlernt, Vorschau ab Rang 1 bis %d · %s · %d Schritte"]:format(route.top, cost, open))
+        end
+        if route.learned and not route.maxKnown then
+            notes[#notes + 1] = L["Lehrer-Limit unbekannt, Berufsfenster öffnen."]
+        elseif route.learned and not Pr.HasSnapshot(v) then
+            notes[#notes + 1] = L["Berufsfenster einmal öffnen, dann stimmt der Rang."]
+        end
+        if route.unknown then notes[#notes + 1] = L["Gewählt nach Menge: Materialien ohne Händlerpreis zählen nicht zu den Kosten."] end
+        local cur = Route.Current(route)
+        if cur ~= f.routeCur or f.routeSkill ~= v then f.steps.offset = math.max(0, (cur or 1) - 2) end
+        f.routeCur, f.routeSkill = cur, v
+        f.steps:SetItems(route.steps)
+        f.shop:SetItems(tab == "shop" and Route.Shopping(route) or {})
+    end
+    f.routeNote:SetText(table.concat(notes, " "))
+    f.stepsView:SetShown(tab == "steps")
+    f.shopView:SetShown(tab == "shop")
+end
+
+---------------------------------------------------------------------------
 -- Head texts
 ---------------------------------------------------------------------------
 local function pickerValues()
@@ -402,6 +632,27 @@ local function refresh(f)
     local v = view()
     f.prof:SetValues(pickerValues())
     f.prof:SetValue(v)
+    -- the switch "Rezepte | Route": the route only for the professions that have one
+    local onRoute = routeShown(v)
+    local canRoute = type(v) == "number" and Route.Has(v)
+    f.modeRecipes:SetOn(not onRoute)
+    f.modeRoute:SetOn(onRoute)
+    if canRoute or onRoute then f.modeRoute:Enable() else f.modeRoute:Disable() end
+    f.routeView:SetShown(onRoute)
+    for _, w in ipairs({ f.list, f.detail }) do w:SetShown(not onRoute) end
+    if onRoute then
+        for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search, f.counts, f.empty, f.reset }) do w:Hide() end
+        f:Place(1, { f.prof, f.modeRecipes, f.modeRoute }, { f.rank })
+        local rank, max = Pr.Rank(v)
+        f.rank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (GREY .. L["Beruf nicht erlernt"] .. "|r"))
+        f.shownView = v
+        refreshRoute(f, v)
+        f.hint:SetText(L["Klick auf einen Schritt: die Rezept-Details oder der Wegpunkt zum Händler. Kosten nur aus Händlerpreisen."])
+        local d = ns.Data("PROFESSIONS")
+        f.data:SetText(L["Berufsdaten vom %s (Client %s) · Namen aus dem Client."]:format(d and d.built or "?", d and d.client or "?"))
+        return
+    end
+    f.counts:Show()
     local isRecipes = type(v) == "number"
     f.known:SetValue(s.known or "all")
     f.source:SetValue(s.source or "all")
@@ -420,6 +671,7 @@ local function refresh(f)
         if isRecipes then w:Show() else w:Hide() end
     end
     -- without the filters (camp, favor) the counts take the whole band
+    f:Place(1, f.headRow, { f.rank })
     f:Place(2, f.filterRow, nil, { shown = true })
     local rank, max = nil, nil
     if isRecipes then rank, max = Pr.Rank(v) end
@@ -533,17 +785,31 @@ local function create(parent)
     page = f
     -- the head row: the profession and the search, the own rank at the right; under it the filters
     local top = f:Bands({ "row", "row" })
-    f.prof = W.Picker(f, 200, function(v)
+    f.prof = W.Picker(f, P.PICKER_W, function(v)
         state().view = (v == CAMP or v == FAVOR) and v or tonumber(v)
         ns.Refresh()
     end)
-    f.search = W.SearchBox(f, 170, function(text)
+    -- the switch "Rezepte | Route" (F-137)
+    f.modeRecipes = W.Chip(f, L["Rezepte"], P.MODE_W, function()
+        state().mode = RECIPES
+        ns.Refresh()
+    end)
+    W.FitChip(f.modeRecipes, P.MODE_W)
+    W.Tooltip(f.modeRecipes, L["Rezepte"], L["Die Rezepte des Berufs mit Filtern und Details."])
+    f.modeRoute = W.Chip(f, L["Route"], P.MODE_W, function()
+        state().mode = ROUTE
+        ns.Refresh()
+    end)
+    W.FitChip(f.modeRoute, P.MODE_W)
+    W.Tooltip(f.modeRoute, L["Route"], L["Der günstigste Weg von deinem Rang bis zum Höchstrang: Schritte, Lehrer und Einkaufsliste. Nicht für Sammelberufe, Angeln, Lager und Händlergunst."])
+    f.search = W.SearchBox(f, P.SEARCH_W, function(text)
         state().search = text ~= "" and text or nil
         ns.Refresh()
     end, L["Rezept suchen"])
-    f.rank = W.Text(f, T.FONT.head, 210)
+    f.rank = W.Text(f, T.FONT.head, P.RANK_W)
     f.rank:SetJustifyH("RIGHT")
-    f:Place(1, { f.prof, f.search }, { f.rank })
+    f.headRow = { f.prof, f.modeRecipes, f.modeRoute, f.search }
+    f:Place(1, f.headRow, { f.rank })
 
     -- the two dropdowns name their filter in the field, so they don't read as on/off chips
     f.known = filterPicker(f, L["Bekannt: %s"], KNOWN, function(v)
@@ -632,6 +898,81 @@ local function create(parent)
     W.FitChip(d.ask, 70)
     d:Buttons({ d.ask, d.go })
     W.Tooltip(d.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
+
+    -- the route view under the head row: the switches, the head, a note; the steps or the shopping list
+    local rv = W.Page(f, { view = true, top = -(T.LAYOUT.ROW_H + T.LAYOUT.GAP) })
+    f.routeView = rv
+    rv:Bands({ "row", "row", "line" })
+    rv.vendorLabel = W.Text(rv, T.FONT.text)
+    rv.vendorLabel:SetText(L["Rezepte:"])
+    local function setVendor(on)
+        state().routeVendor = on or nil
+        ns.Refresh()
+    end
+    f.vendorT = W.Chip(rv, L["nur Lehrer"], P.VENDOR_W, function() setVendor(false) end)
+    W.FitChip(f.vendorT, P.VENDOR_W)
+    W.Tooltip(f.vendorT, L["nur Lehrer"], L["Die Route nimmt bekannte Rezepte und was der Lehrer bis zum nächsten Limit lehrt."])
+    f.vendorV = W.Chip(rv, L["auch Händler"], P.VENDOR_W, function() setVendor(true) end)
+    W.FitChip(f.vendorV, P.VENDOR_W)
+    W.Tooltip(f.vendorV, L["auch Händler"], L["Dazu Rezepte, die ein Händler deiner Fraktion verkauft, mit dem Kaufpreis in den Kosten und einem Schritt \"Rezept kaufen\". Drop-Rezepte nie."])
+    local function setTab(tab)
+        state().routeTab = tab
+        ns.Refresh()
+    end
+    f.tabSteps = W.Chip(rv, L["Schritte"], P.TAB_W, function() setTab("steps") end)
+    W.FitChip(f.tabSteps, P.TAB_W)
+    W.Tooltip(f.tabSteps, L["Schritte"], L["Die Route Schritt für Schritt; der aktuelle Schritt ist markiert, erledigte sind abgehakt."])
+    f.tabShop = W.Chip(rv, L["Einkauf"], P.TAB_W, function() setTab("shop") end)
+    W.FitChip(f.tabShop, P.TAB_W)
+    W.Tooltip(f.tabShop, L["Einkauf"], L["Die Materialien der offenen Schritte: Bedarf, was du hast (Taschen und Bank), was deine Twinks haben, was fehlt."])
+    rv:Place(1, { rv.vendorLabel, f.vendorT, f.vendorV }, { f.tabSteps, f.tabShop })
+    f.routeHead = W.Text(rv, T.FONT.body)
+    rv:Place(2, { { f.routeHead, fill = true } })
+    f.routeNote = rv:Line(3)
+
+    -- the steps: two lines per card, the cost at the right, a tick on the done ones
+    f.stepsView = W.Page(rv, { view = true, top = rv.top })
+    f.steps = f.stepsView:List(P.STEP_ROWS, P.STEP_H, function(r)
+        r.sel = W.SelectBar(r)
+        r.tick = r:CreateTexture(nil, "ARTWORK")
+        r.tick:SetSize(P.TICK, P.TICK)
+        r.tick:SetPoint("TOPLEFT", P.MARK_X, P.LINE1_Y)
+        r.tick:SetTexture(P.TICK_TEX)
+        local w = T.PAGE_W - T.SCROLL_ROOM - P.TEXT_X - T.LAYOUT.TEXT_X
+        r.line1 = W.Text(r, T.FONT.text, w - P.COST_W)
+        r.line1:SetPoint("TOPLEFT", P.TEXT_X, P.LINE1_Y)
+        r.cost = W.Text(r, T.FONT.text, P.COST_W)
+        r.cost:SetJustifyH("RIGHT")
+        r.cost:SetPoint("TOPRIGHT", -T.LAYOUT.TEXT_X, P.LINE1_Y)
+        r.line2 = W.Text(r, T.FONT.hint, w)
+        r.line2:SetPoint("TOPLEFT", P.TEXT_X, P.LINE2_Y)
+        r:RegisterForClicks("LeftButtonUp")
+        r:SetScript("OnClick", function(self) clickStep(self.item) end)
+        r:SetScript("OnEnter", function(self) stepTooltip(self, self.item) end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end, fillStep)
+
+    -- the shopping list
+    f.shopView = W.Page(rv, { view = true, top = rv.top })
+    local _, sh = f.shopView:Columns(P.SHOP_COLS)
+    sh.name:SetText(L["Material"])
+    sh.need:SetText(L["Bedarf"])
+    sh.have:SetText(L["hast"])
+    sh.twinks:SetText(L["Twinks##Einkauf"])
+    sh.miss:SetText(L["fehlt"])
+    sh.price:SetText(L["Preis"])
+    sh.src:SetText(L["Quelle"])
+    f.shop = f.shopView:List(P.SHOP_ROWS, P.SHOP_H, function(r)
+        W.Cells(r, P.SHOP_COLS)
+        r:RegisterForClicks("LeftButtonUp")
+        r:SetScript("OnClick", function(self)
+            local e = self.item
+            if e and e.kind == "vendor" then goToVendor(e.vendors, itemName(e.item)) end
+        end)
+        r:SetScript("OnEnter", function(self) shopTooltip(self, self.item) end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end, fillShop)
+    rv:Hide()
     return f
 end
 
@@ -644,7 +985,9 @@ function ns.ProfessionsPageFrame() return page end
 function ns.ShowProfessions(what)
     if AmisiaDB and AmisiaDB.settings and type(what) == "string" and what ~= "" then
         local w = ns.Fold(what)
-        if w:find("^lager") or w:find("^camp") then
+        if w == "route" then
+            state().mode = ROUTE
+        elseif w:find("^lager") or w:find("^camp") then
             state().view = CAMP
         elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then   -- l10n-ok: German command words
             state().view = FAVOR
@@ -668,13 +1011,13 @@ function ns.ShowRecipe(skill, spell, name)
         local s = state()
         s.view = skill
         s.search = type(name) == "string" and name ~= "" and name or nil
-        s.known, s.learnable, s.source, s.guild = nil, nil, nil, nil
+        s.known, s.learnable, s.source, s.guild, s.mode = nil, nil, nil, nil, nil
         if type(spell) == "number" then s.sel[tostring(skill)] = spell end
     end
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
-ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst]"],
+ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route]"],
     desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 
 ---------------------------------------------------------------------------
@@ -698,6 +1041,9 @@ ns.Listen("PROF_SPELL_LOADED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("CRAFTERS_CHANGED", schedule)
 ns.OnEvent("BAG_UPDATE_DELAYED", schedule)
+-- the route waits in combat and the lockdown (ProfRoute.lua): computed again after them
+ns.OnEvent("PLAYER_REGEN_ENABLED", schedule)
+ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", schedule)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     if nameMissing then schedule() end
 end)

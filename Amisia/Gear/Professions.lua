@@ -609,6 +609,8 @@ local function money(copper)
     if s > 0 then return ("%ds %dc"):format(s, c) end
     return ("%dc"):format(c)
 end
+-- the short money text of the page ("14g 30s", "30s 5c", "5c"); the route's costs too
+Pr.Money = money
 
 local function where(npc)
     if not npc then return nil end

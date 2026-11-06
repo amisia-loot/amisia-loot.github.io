@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): a route to the top rank with a shopping list (F-137)
+
+  The professions page has a switch "Rezepte | Route". The route shows the cheapest way from your rank to
+  the top of a crafting profession, cooking, first aid or poisons: which recipe to craft how often, when to
+  visit the trainer, what it costs at vendor prices and, with "auch Händler", which recipes to buy. The
+  shopping list counts what you have in bags and bank and what your alts hold, and sets the waypoint to a
+  vendor. The current step moves on as you skill up; nothing is sent.
+
 ## [v2.57.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.57.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.56.0...v2.57.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

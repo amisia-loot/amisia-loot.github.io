@@ -233,6 +233,21 @@ T.MAPPAGE = {
     NP_COLS = { { "name", 4, 220 }, { "why", 230, 350 } },
 }
 
+-- the page Berufe (F-051) and its route (F-137): the head row's profession picker, the chips
+-- "Rezepte | Route", the search and the rank; the route's steps (two lines per card: what, then the
+-- expected crafts and reagents; the cost at the right, a tick on done steps) and its shopping list
+T.PROFPAGE = {
+    PICKER_W = 170, MODE_W = 56, SEARCH_W = 150, RANK_W = 120,
+    VENDOR_W = 70, TAB_W = 64,
+    STEP_ROWS = 9, STEP_H = 36, TICK = 14, MARK_X = 4, TEXT_X = 22, LINE1_Y = -4, LINE2_Y = -19, COST_W = 80,
+    TICK_TEX = "Interface\\RaidFrame\\ReadyCheck-Ready",
+    SHOP_ROWS = 14, SHOP_H = 22,
+    -- material, need, have, the other own characters, missing, price of one, source
+    SHOP_COLS = { { "name", 4, 170 }, { "need", 178, 40, justify = "RIGHT" }, { "have", 222, 40, justify = "RIGHT" },
+                  { "twinks", 266, 44, justify = "RIGHT" }, { "miss", 314, 40, justify = "RIGHT" },
+                  { "price", 358, 64, justify = "RIGHT" }, { "src", 430, 148 } },
+}
+
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row
 -- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
 T.DUELS = {
