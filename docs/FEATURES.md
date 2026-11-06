@@ -911,8 +911,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-05-questweg.md` (freigegeben 2026-11-05).
 
 ### F-136 Questweg: Fundorte von Start-Gegenständen im Dungeon
-- Version: -
-- Status: geplant
+- Version: 2.56.0
+- Status: gebaut
 - Prüfung: Wenn du als Horde auf der Seite Dungeons bei Ruins of Lordaeron unter "Quests" auf "Wappen von Lordaeron" klickst, dann steht unter "Annehmen: Gegenstand Wappen von Lordaeron aufheben oder benutzen, zu finden in Ruins of Lordaeron" die Zeile "Fundorte:" mit dem Aussehen des Wappens und fünf Stellen (Gruft nahe The Baron, zwei bei Bjork, zwei Türme) und darunter grau "nach Berichten von Spielern, von Amisia nicht selbst gesehen".
 - Prüfung: Wenn du dort bei "Annehmen" auf "Karte" klickst (draußen, nicht im Kampf), dann öffnet sich die Weltkarte am Eingang von Ruins of Lordaeron.
 - Prüfung: Wenn du dort auf die Zeile "Abgeben" schaust, dann steht "bei Oran Snakewrithe, Unterstadt 73, 32" mit Knopf "Karte".
