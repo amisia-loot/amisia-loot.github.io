@@ -681,7 +681,7 @@ generated file and in `docs/ARCHITECTURE.md` (module map, `Data/DungeonQuestData
 
 ```
 python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] [--json FILE] [--empty]
-                                    [--sv FILE...] [--obs-archive tools/quest_obs.json]
+                                    [--sv FILE...] [--obs-archive tools/quest_obs.json] [--hints tools/quest_hints.json]
 ```
 
 - Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
@@ -705,10 +705,17 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
   `|` removed, 300 characters at most). They are joined into `tools/quest_obs.json` (committed;
   per quest the newer day wins a field, the others stay), so what the addon prunes from its table
   (2500 quests, 480 KB) still builds the same data; `--obs-archive ""` for none.
+- Hand-kept hints (DECISIONS D-65): `tools/quest_hints.json` (`--hints ""` for none) fills gaps of
+  quests whose start or turn-in no source knows, in own words: `startItemDungeon` (the dungeon key of
+  a start item; the step's map button goes to its entrance), `ender` (a turn-in NPC id of the data:
+  its name and places) or `enderName`, and `spots` (a key of its `spots` table: German and English
+  lines on where in the dungeon the start item can lie, field 22, 8 lines of 300 characters at most).
+  A value of the data stays; own observations still go first. A quest the data lacks takes nothing.
 - The input is pluggable: every reader produces one neutral form (see `NEUTRAL` in the script),
   `--json` reads that form directly, `--empty` writes the file without data (the addon then says
   "Questdaten fehlen noch.").
-- No data of other quest databases goes in. The date alone does not rewrite the file.
+- No data of other quest databases goes in (the hints are own words, D-65). The date alone does not
+  rewrite the file.
 
 Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the source has new
 dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on

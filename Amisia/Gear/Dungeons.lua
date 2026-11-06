@@ -1196,6 +1196,17 @@ local function numOr(v) return type(v) == "number" and v or 0 end
 -- dungeon key } }), object (start object), ender, enderPoints (the turn-in NPC and its points),
 -- objective, dungeon }; the item data's map points and giver stand in where the quest data has none.
 -- Fields an older data file lacks stay nil (or 0).
+-- The spots of field 22 (hand-kept hints, D-65) in the client's language: { text, ... } or nil.
+local function spotsOf(v)
+    if type(v) ~= "table" then return nil end
+    local out = {}
+    for _, pair in ipairs(v) do
+        local t = type(pair) == "table" and textOr(pair[ns.GERMAN and 1 or 2]) or nil
+        if t then out[#out + 1] = t end
+    end
+    return #out > 0 and out or nil
+end
+
 local function questNode(qid, r, rec)
     local key = "Q:" .. tostring(qid)
     local map = ns.Data("MAP")
@@ -1212,6 +1223,7 @@ local function questNode(qid, r, rec)
         n.items = type(r[15]) == "table" and #r[15] > 0 and r[15] or nil
         n.object, n.races, n.skill = textOr(r[16]), numOr(r[17]), numOr(r[18])
         n.ender, n.enderPoints, n.objective = textOr(r[19]), textOr(r[20]), textOr(r[21])
+        n.spots = spotsOf(r[22])
     else
         n.title = titleOf(qid, rec and rec[2])
         n.minLevel, n.level = rec and rec[4] or 0, rec and rec[3] or 0
@@ -1610,7 +1622,7 @@ end
 -- optional one), state, optional, breadcrumb, one (one of several will do: others = their titles,
 -- oneDone = the chosen one is done, so the others are no longer needed), gone (goneBy: the title of
 -- the quest whose completion closed it), accept (D.QuestAccept), turnIn (D.QuestTurnIn), needs
--- (D.QuestNeeds), objective }. done/total: the required steps done and in all (breadcrumbs and what
+-- (D.QuestNeeds), objective, spots (where in the dungeon the start item can lie, hand-kept hints, D-65) }. done/total: the required steps done and in all (breadcrumbs and what
 -- only they need do not count; a "one of" group counts once). next: the first required step neither
 -- done nor gone.
 function D.QuestPath(q, dkey)
@@ -1647,6 +1659,7 @@ function D.QuestPath(q, dkey)
         s.turnIn = D.QuestTurnIn(n)
         s.needs = D.QuestNeeds(n)
         s.objective = n.objective
+        s.spots = n.spots
         path.steps[#path.steps + 1] = s
         if not path.next and not s.optional and not n.done and not n.gone then path.next = s end
     end

@@ -416,6 +416,8 @@ local PTEXT = {
     turnIn = L["Abgeben:"],
     needs = L["Voraussetzung:"],
     goal = L["Ziel:"],
+    spots = L["Fundorte:"],
+    spotsSource = L["nach Berichten von Spielern, von Amisia nicht selbst gesehen"],
     after = L["danach"],
     stepOf = L["Schritt %d von %d"],
     optional = L["optional"],
@@ -473,7 +475,7 @@ local function newCard(parent, onMap)
     c.step:SetJustifyH("RIGHT")
     c.step:SetPoint("TOPRIGHT", -P.PAD, -9)
     c.lines = {}
-    for i = 1, 5 do c.lines[i] = cardLine(c, onMap) end
+    for i = 1, 6 do c.lines[i] = cardLine(c, onMap) end
     -- "danach" under the card: a line down to the next card, the arrow head, the word
     c.link = c:CreateTexture(nil, "BACKGROUND")
     c.link:SetColorTexture(0.55, 0.5, 0.42, 0.8)
@@ -539,6 +541,13 @@ local function fillCard(c, s, path, width, isNext)
     local acceptText = a.kind == "inside" and (DUNGEON_MARK .. a.text) or a.text
     -- a done or closed step needs no way there: no "Karte"
     line(PTEXT.accept, acceptText, not over and a.point and "accept" or nil)
+    -- where in the dungeon the start item can lie (hand-kept hints, D-65); not once the step is over
+    if s.spots and not over then
+        local rows = {}
+        for i, t in ipairs(s.spots) do rows[i] = "· " .. t end
+        rows[#rows + 1] = GREY .. PTEXT.spotsSource .. "|r"
+        line(PTEXT.spots, table.concat(rows, "\n"))
+    end
     line(PTEXT.turnIn, s.turnIn.text, not over and s.turnIn.point and "turnin" or nil)
     if s.needs then line(PTEXT.needs, s.needs) end
     if s.objective then line(PTEXT.goal, s.objective) end

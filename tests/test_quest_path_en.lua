@@ -14,7 +14,7 @@ NS.DUNGEON_QUESTS = {
     D = { deadmines = { 500 } },
     Q = {
         [500] = { "Final Quest", 14, 18, "A", 0, "O", "Gryan", "1436:5630:4760", { 501 }, { 502, 503 }, "deadmines", nil, nil,
-                  nil, nil, nil, 0, 0, nil, nil, "Kill Van Cleef." },
+                  nil, nil, nil, 0, 0, nil, nil, "Kill Van Cleef.", { { "Hinter dem Schiff", "Behind the ship" } } },
         [501] = { "Root", 10, 12, "A", 0, "O", "Root Giver", "1436:1000:1000", nil, nil, nil },
         [502] = { "Choice A", 12, 14, "A", 0, "O", "Choice Giver", "1436:2000:3000", nil, nil, nil },
         [503] = { "Choice B", 12, 14, "A", 0, "O", "Other Giver", nil, nil, nil, nil },
@@ -38,6 +38,9 @@ assert(V.back:GetText() == "< Back to the quests" and V.map:GetText() == "Next s
 assert(has(V.info:GetText(), "Dungeon quest · The Deadmines · level ") and has(V.info:GetText(), " · Path: 1 of 3 steps done"), V.info:GetText())
 assert(plain(V.nextLine:GetText()) == "Next step: 2. Choice A at Choice Giver, Westfall 20, 30", plain(V.nextLine:GetText()))
 local c2, c3, c4 = V.cards[2], V.cards[3], V.cards[4]
+-- the spots (hand-kept hints, D-65) in English, under "Accept"
+assert(c4.lines[2].label:GetText() == "Where to find:", tostring(c4.lines[2].label:GetText()))
+assert(has(plain(c4.lines[2].value:GetText()), "· Behind the ship") and has(plain(c4.lines[2].value:GetText()), "from player reports, not seen by Amisia itself"), c4.lines[2].value:GetText())
 assert(c2.lines[1].label:GetText() == "Accept:" and c2.lines[2].label:GetText() == "Hand in:" and c2.lines[2].value:GetText() == "not known yet")
 assert(c2.lines[3].label:GetText() == "Requires:" and c2.step:GetText() == "Step 2 of 3", c2.step:GetText())
 assert(has(plain(c2.lines[4].value:GetText()), "one of them is enough · also possible: Choice B"), c2.lines[4].value:GetText())

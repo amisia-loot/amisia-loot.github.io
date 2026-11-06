@@ -21,6 +21,10 @@ and render() writes the Lua file from that form only.
   the giver's name (German) and place, the turn-in NPC and place, the quest level, the objective
   text. They are joined into tools/quest_obs.json, which keeps them after the addon prunes its table
   (--obs-archive "" for none).
+- --hints FILE (default tools/quest_hints.json, "" for none): hand-kept hints for quests whose start or
+  turn-in no source knows (DECISIONS D-65), in own words: the dungeon where a start item lies, the
+  turn-in NPC (an id of the data, or a name), the spots in the dungeon where the start item can lie
+  (German and English). They fill gaps only: the data's own values stay, own observations go first.
 - --json FILE: the neutral form as JSON (hand-made data, tests).
 - Without any input the file is written empty: the addon then says the quest data is missing.
 
@@ -44,6 +48,7 @@ import build_scan  # noqa: E402  (the SavedVariables sandbox, the collector's fi
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonQuestData.lua')
 OBS_ARCHIVE = os.path.join(HERE, 'quest_obs.json')
+HINTS = os.path.join(HERE, 'quest_hints.json')
 ATT_CACHE = att_data.ATT_CACHE
 ATT_SOURCE = att_data.ATT_SOURCE
 
@@ -59,7 +64,9 @@ ATT_SOURCE = att_data.ATT_SOURCE
 #                                 or None, fact key or None): where the item that starts it drops],
 #                                 'startObject' (name or None), 'races' (mask, bit race id - 1, 0 any),
 #                                 'skill' (skill line or 0), 'ender' (turn-in NPC name or None),
-#                                 'enderPoints' [(uiMapID, x, y)], 'objective' (text or None)}}}
+#                                 'enderPoints' [(uiMapID, x, y)], 'objective' (text or None),
+#                                 'spots' ([(German, English)]: where in the dungeon the start item can lie,
+#                                 from the hand-kept hints, D-65)}}}
 MAX_POINTS = 4
 MAX_OBJECTIVE = 300
 NEAR = 150   # an observed point replaces a data point within 1.5 % of it
@@ -424,6 +431,69 @@ def apply_observed(data, obs):
     return n
 
 
+# ---------------------------------------------------------------- hand-kept hints (D-65)
+MAX_SPOTS = 8
+MAX_SPOT = 300
+
+
+def load_hints(path=HINTS):
+    """tools/quest_hints.json: {quest id: hint}, each hint's 'spots' resolved to [(German, English)]."""
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        raw = json.load(fh)
+    spots = raw.get('spots') or {}
+    out = {}
+    for k, h in (raw.get('q') or {}).items():
+        h = dict(h)
+        if h.get('spots'):
+            s = spots.get(h['spots'])
+            if not s:
+                raise SystemExit(f'{os.path.basename(path)}: quest {k} names unknown spots {h["spots"]!r}')
+            de, en = s.get('deDE') or [], s.get('enUS') or []
+            if len(de) != len(en) or not de:
+                raise SystemExit(f'{os.path.basename(path)}: spots {h["spots"]!r} need as many German as English lines')
+            h['spots'] = [(clean_text(a, MAX_SPOT), clean_text(b, MAX_SPOT)) for a, b in zip(de, en)][:MAX_SPOTS]
+        out[int(k)] = h
+    return out
+
+
+def apply_hints(data, hints):
+    """Fills the data's gaps from the hand-kept hints, in place (before the own observations): the
+    dungeon of a start item, the turn-in NPC (name and places of an NPC id of the data, or a name), the
+    spots. Returns how many quests took something."""
+    ctx = data.get('context') or {}
+    npc_names, npc_points = ctx.get('npc_names') or {}, ctx.get('npc_points') or {}
+    n = 0
+    for qid, h in hints.items():
+        q = data['quests'].get(qid)
+        if q is None:
+            continue
+        before = copy.deepcopy(q)
+        dun = h.get('startItemDungeon')
+        if dun and q.get('startItems'):
+            q['startItems'] = [tuple(e[:3]) + ((e[3] if len(e) > 3 and e[3] else dun),) for e in q['startItems']]
+        ender = h.get('ender')
+        if ender and not q.get('ender'):
+            q['ender'] = npc_names.get(ender) or h.get('enderName')
+            if not q.get('enderPoints') and npc_points.get(ender):
+                q['enderPoints'] = [tuple(x) for x in npc_points[ender][:MAX_POINTS]]
+        elif h.get('enderName') and not q.get('ender'):
+            q['ender'] = h['enderName']
+        if h.get('spots'):
+            q['spots'] = list(h['spots'])
+        if q != before:
+            n += 1
+    return n
+
+
+def _spots(v):
+    lua_str = build_gear.lua_str
+    if not v:
+        return 'nil'
+    return '{ ' + ', '.join('{ ' + lua_str(a) + ', ' + lua_str(b) + ' }' for a, b in v[:MAX_SPOTS]) + ' }'
+
+
 # ---------------------------------------------------------------- output
 def complete(data):
     """Drops pre-quests the data has no record of and the quest itself, sorts the lists (the addon
@@ -508,7 +578,8 @@ HEADER = [
     '-- [14] breadcrumb (true: only points to the next quest, never a must), [15] start items',
     '-- ({ { itemID, NPC name that drops it, uiMapID, dungeon key }, ... }, unknown parts nil), [16] start object',
     '-- name, [17] race mask (bit race id - 1, 0 any of the faction), [18] required profession skill line (0 none),',
-    '-- [19] turn-in NPC name, [20] turn-in points (as [8]), [21] objective text (as the client showed it) }.',
+    '-- [19] turn-in NPC name, [20] turn-in points (as [8]), [21] objective text (as the client showed it), [22] spots',
+    '-- in the dungeon where the start item can lie ({ { German, English }, ... }, hand-kept hints, D-65) }.',
     '-- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.',
 ]
 
@@ -521,6 +592,7 @@ def render(data, built):
     lines = [
         '-- GENERATED by tools/build_dungeonquests.py. Do not edit; rebuild instead.',
         f'-- Source: {data["source"]}' + (f' at {commit}' if commit else '')
+        + ('; hand-kept hints (tools/quest_hints.json, D-65)' if data.get('hinted') else '')
         + ('; own observations of the Amisia collector.' if data.get('observed') else '.'),
         'local _, ns = ...',
         '',
@@ -544,7 +616,7 @@ def render(data, built):
                  _lua_list(q.get('preOne')), lua_val(q.get('dungeon')), _lua_list(q.get('rewards')), _lua_list(q.get('alt')),
                  'true' if q.get('breadcrumb') else 'nil', _start_items(q.get('startItems')), lua_val(q.get('startObject')),
                  str(int(q.get('races') or 0)), str(int(q.get('skill') or 0)), lua_val(q.get('ender')),
-                 lua_val(_points(q.get('enderPoints'))), lua_val(objective)]
+                 lua_val(_points(q.get('enderPoints'))), lua_val(objective), _spots(q.get('spots'))]
         while parts[-1] == 'nil':
             parts.pop()
         lines.append(f'        [{qid}] = {{ {", ".join(parts)} }},')
@@ -568,6 +640,7 @@ def main(argv=None):
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with collector records (default: '
                                             '~/addons/_SavedVariables/Amisia.lua and an installed Forever client\'s)')
+    ap.add_argument('--hints', default=HINTS, help='the hand-kept quest hints ("" for none)')
     ap.add_argument('--obs-archive', default=OBS_ARCHIVE, help='the archive of own quest observations ("" for none)')
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
@@ -589,6 +662,10 @@ def main(argv=None):
             raise SystemExit(f'no AllTheThings download in {base}: run with --refresh-att (or --empty)')
         data, report = read_att(base, facts, commit)
     if not args.empty:
+        hinted = apply_hints(data, load_hints(args.hints))
+        data['hinted'] = hinted > 0
+        if hinted:
+            log(f'hints: {hinted} quests from {os.path.relpath(args.hints, ROOT)}')
         svs = args.sv if args.sv is not None else default_svs()
         obs = read_observed([build_scan.load_sv(p) for p in svs], load_obs_archive(args.obs_archive))
         if save_obs_archive(obs, args.obs_archive):

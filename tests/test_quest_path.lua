@@ -17,8 +17,8 @@ STUB.maps[1436] = { name = "Westfall", mapType = 3 }
 STUB.maps[1453] = { name = "Sturmwind", mapType = 3 }
 NS.Map._reset()
 
--- the quest data: fields 1-13 as before, 14-21 new (breadcrumb, start items, start object, races,
--- profession, turn-in NPC, turn-in points, objective)
+-- the quest data: fields 1-13 as before, 14-22 new (breadcrumb, start items, start object, races,
+-- profession, turn-in NPC, turn-in points, objective, spots)
 NS.DUNGEON_QUESTS = {
     built = "test", source = "test",
     D = { deadmines = { 500, 520, 530 }, thanes = { 600, 700 } },
@@ -34,7 +34,9 @@ NS.DUNGEON_QUESTS = {
         [505] = { "Rival", 12, 14, "A", 0, "O", "Rival Giver", "1453:1000:1000", nil, nil, nil, nil, nil },
         -- started by an item that drops in the Deadmines; a profession and a race
         [520] = { "Strange Letter", 15, 19, "", 0, "X", nil, nil, nil, nil, "deadmines", nil, nil,
-                  nil, { { 9901, "Cookie", nil, "deadmines" } }, nil, 8, 171, nil, nil, nil },
+                  nil, { { 9901, "Cookie", nil, "deadmines" } }, nil, 8, 171, nil, nil, nil,
+                  -- where in the dungeon the item can lie (hand-kept hints, D-65): German, English; a broken pair drops
+                  { { "Hinter dem Schiff", "Behind the ship" }, { "", "" }, "x", { "Im Keller", "In the cellar" } } },
         -- starts inside the dungeon, at an object outside before it
         [530] = { "Inside Job", 15, 18, "", 0, "I", "Inside Giver", nil, { 531 }, nil, "deadmines" },
         [531] = { "Wanted Poster", 14, 16, "", 0, "O", nil, "1436:5000:5000", nil, nil, nil, nil, nil,
@@ -141,6 +143,9 @@ local a = p.steps[1].accept
 assert(#p.steps == 1 and Dn.QuestPathShort(p) == "", "no pre-quests: no progress shown")
 assert(a.kind == "item" and a.text == "Gegenstand Seltsamer Brief aufheben oder benutzen, fällt von Cookie in The Deadmines", a.text)
 assert(p.steps[1].needs == "ab Stufe 15 · empfohlen 19 · nur Nachtelf · Beruf Alchimie", tostring(p.steps[1].needs))
+local sp = p.steps[1].spots
+assert(sp and #sp == 2 and sp[1] == "Hinter dem Schiff" and sp[2] == "Im Keller", "the spots in German, broken ones out")
+assert(path("deadmines", 500).steps[4].spots == nil, "no spots without hints")
 p = path("deadmines", 530)
 assert(titles(p) == "531,530")
 assert(p.steps[1].accept.kind == "object" and p.steps[1].accept.text == "an einem Objekt: Wanted: Defias, Westfall 50, 50", p.steps[1].accept.text)

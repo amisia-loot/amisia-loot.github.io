@@ -246,3 +246,40 @@ def test_observations_go_first_and_survive_in_the_archive(tmp_path, att_new, mon
     bdq.main(['--att', NEW, '--sv', newer, '--obs-archive', arch, '--out', out])
     rec = json.load(open(arch, encoding='utf-8'))['q']['73002']
     assert rec['giver'] == 83099 and rec['gname'] == 'Sir Moorkopf' and rec['day'] == 320, 'a newer field wins, the others stay'
+
+
+# ---------------------------------------------------------------- hand-kept hints (D-65)
+def test_hints_fill_gaps_only_and_render_as_field_22(tmp_path, att_new):
+    hints_file = tmp_path / 'hints.json'
+    hints_file.write_text(json.dumps({'v': 1, 'spots': {
+        'crest': {'deDE': ['Hinter dem Altar', 'Oben |cffff0000im|r Turm'], 'enUS': ['Behind the altar', 'Up in the tower']}},
+        'q': {'73001': {'startItemDungeon': 'other', 'enderName': 'Wache', 'spots': 'crest'},
+              '73002': {'ender': 83003, 'enderName': 'Ignored'},
+              '99999': {'enderName': 'Nobody'}}}), encoding='utf-8')
+    hints = bdq.load_hints(str(hints_file))
+    assert hints[73001]['spots'] == [('Hinter dem Altar', 'Behind the altar'), ('Oben im Turm', 'Up in the tower')], \
+        'German and English in pairs, colour codes out'
+    data = copy.deepcopy(att_new[0])
+    assert bdq.apply_hints(data, hints) == 2, 'a quest the data lacks takes nothing'
+    q = data['quests'][73001]
+    assert q['startItems'][0][3] == 'keep', 'the data\'s own dungeon of the start item stays'
+    assert q['ender'] == 'Wache' and q['enderPoints'] == []
+    assert data['quests'][73002]['ender'] == 'Keep Prisoner', 'an NPC id takes the data\'s name'
+    dq = lua_load(bdq.render(data, '2026-11-06'))
+    assert dq.Q[73001][19] == 'Wache' and dq.Q[73001][22][1][1] == 'Hinter dem Altar' and dq.Q[73001][22][2][2] == 'Up in the tower'
+    assert dq.Q[73002][22] is None
+    bad = tmp_path / 'bad.json'
+    bad.write_text(json.dumps({'spots': {'x': {'deDE': ['a'], 'enUS': []}}, 'q': {'1': {'spots': 'x'}}}), encoding='utf-8')
+    with pytest.raises(SystemExit):
+        bdq.load_hints(str(bad))
+    assert bdq.load_hints('') == {}
+
+
+def test_the_shipped_hints_name_quests_of_the_data():
+    hints = bdq.load_hints()
+    assert hints, 'tools/quest_hints.json is there'
+    text = open(bdq.OUT, encoding='utf-8').read()
+    for qid, h in hints.items():
+        assert f'[{qid}] = ' in text, f'hint for quest {qid} that the data does not have'
+        if h.get('spots'):
+            assert h['spots'][0][0] in text, f'the spots of quest {qid} are built in (run build.py data)'

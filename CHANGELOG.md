@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): show where a quest's start item lies inside the dungeon (F-136, D-65)
+
+  Steps that start with an item lying somewhere in a dungeon now list the spots where it can be found,
+  what it looks like and a map button to the dungeon's entrance. The first is Crest of Lordaeron in Ruins
+  of Lordaeron, which now also names who takes it back (Oran Snakewrithe in Undercity for the Horde, Lady Dena
+  Kennedy for the Alliance).
+
 ## [v2.55.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.55.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.54.2...v2.55.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

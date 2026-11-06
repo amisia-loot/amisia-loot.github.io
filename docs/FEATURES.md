@@ -910,6 +910,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Quest annimmst, dann steht ihr Zieltext beim nächsten Öffnen des Questwegs unter dem Schritt, und nach dem Abgeben steht dort "Abgeben: bei <NPC>, <Zone> x, y".
 - Notiz: Spec `docs/specs/2026-11-05-questweg.md` (freigegeben 2026-11-05).
 
+### F-136 Questweg: Fundorte von Start-Gegenständen im Dungeon
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du als Horde auf der Seite Dungeons bei Ruins of Lordaeron unter "Quests" auf "Wappen von Lordaeron" klickst, dann steht unter "Annehmen: Gegenstand Wappen von Lordaeron aufheben oder benutzen, zu finden in Ruins of Lordaeron" die Zeile "Fundorte:" mit dem Aussehen des Wappens und fünf Stellen (Gruft nahe The Baron, zwei bei Bjork, zwei Türme) und darunter grau "nach Berichten von Spielern, von Amisia nicht selbst gesehen".
+- Prüfung: Wenn du dort bei "Annehmen" auf "Karte" klickst (draußen, nicht im Kampf), dann öffnet sich die Weltkarte am Eingang von Ruins of Lordaeron.
+- Prüfung: Wenn du dort auf die Zeile "Abgeben" schaust, dann steht "bei Oran Snakewrithe, Unterstadt 73, 32" mit Knopf "Karte".
+- Notiz: Wunsch des Nutzers 2026-11-06 nach einer Websuche zu dieser Quest; Hinweise von Hand in `tools/quest_hints.json` (DECISIONS D-65).
+
 ### F-047 Dungeon-Journal: Bilder, Bossmodell, Quest-EP, Anprobe
 - Version: 2.7.0
 - Status: gebaut

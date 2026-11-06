@@ -1,0 +1,28 @@
+{
+  "v": 1,
+  "about": "Hand-kept hints for dungeon quests whose start or turn-in no data source knows (DECISIONS D-65). Own words, written after looking up single quests by hand and to be checked in the game; never copied text or whole collections. Read by tools/build_dungeonquests.py: 'startItemDungeon' (where the start item lies, its dungeon key: the waypoint goes to the entrance), 'ender' (turn-in NPC id: name and place from the data), 'enderName' (turn-in NPC name when the data has no such NPC), 'spots' (a key of 'spots' below: where in the dungeon the start item can lie). Own observations of the collector still go first.",
+  "spots": {
+    "lordaeron_crest": {
+      "deDE": [
+        "Liegt bei jedem Lauf an einer anderen der Stellen unten und ist nicht auf der Karte markiert: ein matt golden schimmernder Schild mit zwei gekreuzten Schwertern. Anklicken, dann den Gegenstand in der Tasche benutzen.",
+        "Gruft nahe The Baron: vom Eingang nach Süden bis zum Brunnen, dann rechts zur geschlossenen Tür. Beim Öffnen kommt eine Banshee heraus; das Wappen hängt an der Wand hinter ihr.",
+        "Turm rechts von Bjorks Weg: unten auf dem Boden unter der Treppe.",
+        "Hinter Bjorks Weg: an der Wand des kleinen Tempels.",
+        "Turm links von den Spinnen (vom Eingang nach Süden): ganz oben an der Außenwand.",
+        "Turm gleich nach The Abandoned: hinauf, oben an der Außenwand."
+      ],
+      "enUS": [
+        "Lies at a different one of the spots below on every run and is not marked on the map: a dull gold glowing shield with two crossed swords. Click it, then use the item in your bags.",
+        "Crypt near The Baron: from the entrance go south to the fountain, then right to the closed door. Opening it lets out a banshee; the crest hangs on the wall behind her.",
+        "Tower to the right of Bjork's path: down on the floor below the stairs.",
+        "Behind Bjork's path: on the wall of the small temple.",
+        "Tower left of the spiders (south from the entrance): at the very top on the outer wall.",
+        "Tower right after The Abandoned: go up, on the outer wall at the top."
+      ]
+    }
+  },
+  "q": {
+    "95189": {"name": "Crest of Lordaeron (A)", "startItemDungeon": "lordaeron", "enderName": "Lady Dena Kennedy", "spots": "lordaeron_crest"},
+    "95204": {"name": "Crest of Lordaeron (H)", "startItemDungeon": "lordaeron", "ender": 7825, "spots": "lordaeron_crest"}
+  }
+}

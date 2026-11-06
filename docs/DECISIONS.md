@@ -1418,3 +1418,25 @@ Fehlermeldung, wenn ein Kampf beginnt, während diese Karte offen ist).
 **Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
 `tests/test_map_places.lua`.
 
+
+## D-65 Eigene Fundort-Hinweise für Dungeon-Quests, die keine Quelle kennt
+
+**Datum:** 2026-11-06
+**Entscheidung:** Für Dungeon-Quests, deren Start oder Abgabe weder AllTheThings noch der Sammler kennt, gibt es
+von Hand gepflegte Hinweise in `tools/quest_hints.json`: der Dungeon, in dem ein Start-Gegenstand liegt (der Knopf
+"Karte" führt zum Eingang), der Abgabe-NPC (eine NPC-Kennung der Daten mit deren Name und Ort, oder nur ein Name)
+und die Fundorte im Dungeon als eigene Sätze auf Deutsch und Englisch (Feld 22 der Questdaten). Sie füllen nur
+Lücken: Werte der Daten bleiben, eigene Beobachtungen des Sammlers gehen weiter vor (D-63). Die Schrittkarte des
+Questwegs zeigt die Fundorte unter "Annehmen" mit dem grauen Satz "nach Berichten von Spielern, von Amisia nicht
+selbst gesehen". Erste Quest: "Wappen von Lordaeron" (95204 Horde, 95189 Allianz) in Ruins of Lordaeron.
+**Grund:** Wunsch des Nutzers 2026-11-06 nach einer Websuche zu dieser Quest ("bau es ins addon damit man es genau
+sieht und leicht versteht wo man es bekommt findet"). AllTheThings vermerkt das Objekt als fehlend, der Sammler
+lernt Fundorte im Dungeon nicht. Ausnahme von D-02/D-63 nur für solche Lücken: Einzelne Quests werden von Hand
+nachgeschlagen und in eigenen Worten beschrieben; keine kopierten Texte, keine Sammlungen, keine Quelle wird
+genannt oder verlinkt, nichts wird per Skript geladen (D-03).
+**Folge:** Ein neuer Hinweis ist ein Eintrag in `tools/quest_hints.json` und ein `build.py data`. Orte ohne
+bestätigte Koordinaten bekommen keinen Wegpunkt (D-13); Lady Dena Kennedy (95189) steht ohne Ort, bis der Sammler
+die Abgabe sieht.
+**Durchgesetzt durch:** `tools/tests/test_build_dungeonquests.py::test_hints_fill_gaps_only_and_render_as_field_22`,
+`tools/tests/test_build_dungeonquests.py::test_the_shipped_hints_name_quests_of_the_data`, `tests/test_quest_path.lua`,
+`tests/test_quest_path_en.lua`.
