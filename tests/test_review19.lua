@@ -74,7 +74,7 @@ assert(AmisiaFrame:IsShown())
 f.open:Click()
 assert(WorldMapFrame:IsShown() and AmisiaFrame:IsShown(), "the button on the page too")
 WorldMapFrame:Hide()
-NS.ShowMap()
+NS.ShowMap("hier")   -- the own zone (the page opens on every zone by default)
 
 ---------------------------------------------------------------------------
 -- 3. Hier rows: tooltip, click and menu name the row's own place

@@ -1,7 +1,9 @@
 -- The map page (Pages/Map.lua) on small Forever data: the panel and /amisia karte; the zone picker with
--- "Hier" (sub zones, instances) and the zones with a count; the list sorted by distance, the hidden
--- places grey at the bottom; "Weg", a click, shift-click and the menu; the target line with "Ziel
--- löschen" and its tick; the empty states; the switches shared with the pins; a refresh rebuilds
+-- "Alle Zonen" (the default: every zone under its head row, the own zone first, then by distance,
+-- else by name), "Hier" (sub zones, instances) and the zones with a count; the list sorted by
+-- distance, the hidden places grey at the bottom; a click, "Karte", shift-click and the menu; the
+-- target card with "Ziel löschen" and its tick; the empty states; the switches shared with the pins
+-- (Ziele, Wünsche, Quests); the view "Ohne Ort" and its way back; a refresh rebuilds
 -- nothing while nothing changed and changes rebuild at most once a second. The gear page's map
 -- buttons and menu entries (Ziele, Hier, Wunschliste) only with a place; the "Fundort" line on
 -- Shift with map.tooltip and its cheap hover; the quick menu; the layout at 602 x 478 for officers
@@ -90,13 +92,42 @@ local function values()
     for _, v in ipairs(f.zone.values) do out[#out + 1] = tostring(v.value) .. "=" .. v.text end
     return table.concat(out, "|")
 end
-assert(values() == "here=Hier: Durotar|1428=Brennende Steppe (1)|1411=Durotar (2)|1429=Wald von Elwynn (2)", values())
-assert(f.zone.label:GetText() == "Hier: Durotar", f.zone.label:GetText())
+assert(values() == "all=Alle Zonen (5)|here=Hier: Durotar|1428=Brennende Steppe (1)|1411=Durotar (2)|1429=Wald von Elwynn (2)", values())
+assert(f.zone.label:GetText() == "Alle Zonen (5)" and AmisiaDB.settings.map.zone == nil, f.zone.label:GetText())
+
+---------------------------------------------------------------------------
+-- Alle Zonen: the own zone first, then the zones of the other continent by name; head rows
+---------------------------------------------------------------------------
+local function shape()
+    local out = {}
+    for _, e in ipairs(f.list.items) do out[#out + 1] = e.header and ("[" .. e.name .. " " .. e.count .. "]") or e.key end
+    return table.concat(out, ",")
+end
+assert(shape() == "[Durotar 2],V:Gorn One Eye,V:Second Vendor,[Brennende Steppe 1],I:409,[Wald von Elwynn 2],V:Second Vendor,V:Elwynn Guy",
+    shape())
+local rows = f.list.rows
+assert(rows[1].head:IsShown() and rows[1].head:GetText() == "Durotar (2)" and not rows[1].go:IsShown(), "the zone's head row")
+assert(not rows[2].head:IsShown() and rows[2].go:IsShown() and rows[2].go:GetText() == "Karte", "a place row")
+assert(rows[2].where:GetText() == "47, 33 · 438 m" and rows[4].head:GetText() == "Brennende Steppe (1)", rows[4].head:GetText())
+-- a head row does nothing on a click
+rows[1].scripts.OnClick(rows[1], "LeftButton")
+assert(NS.MapTarget() == nil, "no target from a head row")
+-- in Eschental (same continent as Durotar) the nearer zone comes first, then by name
+STUB.place.map = 1440
+STUB.map.pos = { x = 0.5, y = 0.5 }
+NS.Refresh()
+assert(shape():find("^%[Durotar 2%]") and f.zone.values[2].text == "Hier: Eschental", "Durotar by distance: " .. shape())
+assert(rows[1].head:GetText():find("^Durotar %(2%) · %d+ m$"), "the head names the distance: " .. rows[1].head:GetText())
+STUB.place.map = 1411
+STUB.map.pos = { x = 0.1, y = 0.1 }
+
+-- now the own zone alone
+f.zone:SetValue("here"); f.zone.onPick("here")
+assert(AmisiaDB.settings.map.zone == "here" and f.zone.label:GetText() == "Hier: Durotar", f.zone.label:GetText())
 
 ---------------------------------------------------------------------------
 -- the list: Durotar, sorted by distance from the player (0.1, 0.1)
 ---------------------------------------------------------------------------
-local rows = f.list.rows
 assert(#f.list.items == 2, "two places in Durotar: " .. #f.list.items)
 assert(rows[1].item.key == "V:Gorn One Eye" and rows[2].item.key == "V:Second Vendor", "the nearer first")
 assert(rows[1].kind:GetText() == "Händler" and rows[1].src:GetText() == "Gorn One Eye", rows[1].src:GetText())
@@ -104,12 +135,13 @@ assert(rows[1].where:GetText() == "47, 33 · 438 m", rows[1].where:GetText())
 assert(has(rows[1].items:GetText(), "Helm Gorn") and has(rows[1].items:GetText(), "+1"), rows[1].items:GetText())
 assert(has(rows[2].items:GetText(), "Handschuhe Wunsch") and has(rows[2].items:GetText(), "UI-RaidTargetingIcon_1"),
     "the wish first, with its star: " .. rows[2].items:GetText())
-assert(rows[1].go:GetText() == "Weg")
+assert(rows[1].go:GetText() == "Karte")
 local counts = f.counts:GetText()
-assert(has(counts, "2 Orte · 4 Items") and has(counts, "2 Items ohne Ort") and has(counts, "Berufe"), counts)
-assert(f.target:GetText() == "Kein Ziel gesetzt." and not f.clear:IsShown(), f.target:GetText())
-assert(has(f.hint:GetText(), "Klick auf eine Zeile: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."), f.hint:GetText())
-assert(has(f.data:GetText(), "Kartendaten vom 05.10.2026") and has(f.data:GetText(), "englisch"), f.data:GetText())
+assert(counts == "2 Orte · 4 Items" and f.noPlace:IsShown(), counts)
+assert(f.noPlace.label:GetText() == "· 2 Items ohne Ort (Berufe, keine Ortsdaten)", f.noPlace.label:GetText())
+assert(f.target:GetText() == "Kein Ziel gesetzt." and f.targetSub:GetText() == "" and not f.clear:IsShown(), f.target:GetText())
+assert(f.hint:GetText() == "Klick auf eine Zeile: Ziel setzen. Karte oder Shift-Klick: auf der Weltkarte zeigen.", f.hint:GetText())
+assert(f.data:GetText() == "Kartendaten vom 05.10.2026 · Orte aus öffentlichen Questdaten, Namen teils englisch.", f.data:GetText())
 assert(not f.showHidden:IsShown(), "nothing hidden")
 
 -- a sub zone counts as its zone
@@ -130,22 +162,35 @@ NS.Refresh(); NS.Refresh(); NS.Refresh()
 assert(Map.PageBuilds() == builds and placesCalls == 0, ("no rebuild: %d builds, %d place lookups"):format(Map.PageBuilds() - builds, placesCalls))
 
 ---------------------------------------------------------------------------
--- Weg, a click, the target line, Ziel löschen
+-- a click, the target card, Ziel löschen; "Karte" shows the place on the world map
 ---------------------------------------------------------------------------
-rows[2].go:Click()
+rows[2].scripts.OnClick(rows[2], "LeftButton")
 local t = NS.MapTarget()
-assert(t and t.key == "V:Second Vendor" and near(t.x, 0.6) and near(t.y, 0.7) and t.item == 205, "Weg: the target")
-assert(f.target:GetText() == "Ziel: Second Vendor, Durotar 60, 70 · 781 m", f.target:GetText())
+assert(t and t.key == "V:Second Vendor" and near(t.x, 0.6) and near(t.y, 0.7) and t.item == 205, "a click: the target")
+assert(f.target:GetText() == "Ziel: Second Vendor", f.target:GetText())
+assert(f.targetSub:GetText():find("^Durotar 60, 70 · 781 m · S\195\188dost$"), f.targetSub:GetText())
 assert(f.clear:IsShown(), "the clear button with a target")
 assert(rows[2].item.target and not rows[1].item.target, "the target's row")
 assert(Map.PageBuilds() == builds, "a new target rebuilds no index")
 -- the tick: the distance follows the player, only every half second
 STUB.map.pos = { x = 0.6, y = 0.6 }
 f.scripts.OnUpdate(f, 0.2)
-assert(has(f.target:GetText(), "781 m"), "not yet")
+assert(has(f.targetSub:GetText(), "781 m"), "not yet")
 f.scripts.OnUpdate(f, 0.4)
-assert(f.target:GetText() == "Ziel: Second Vendor, Durotar 60, 70 · 100 m", f.target:GetText())
+assert(f.targetSub:GetText() == "Durotar 60, 70 · 100 m · S\195\188d", f.targetSub:GetText())
+-- the arrow turns with the player's facing, where the client tells it
+assert(not f.arrow:IsShown(), "no facing, no arrow")
+_G.GetPlayerFacing = function() return 0 end
+f.scripts.OnUpdate(f, 0.6)
+assert(f.arrow:IsShown(), "the arrow with a facing")
+_G.GetPlayerFacing = nil
 STUB.map.pos = { x = 0.1, y = 0.1 }
+-- Karte: the world map on the place, the target stays
+WorldMapFrame:Hide()
+rows[1].go:Click()
+assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1411 and NS.MapTarget().key == "V:Second Vendor", "Karte: the world map")
+WorldMapFrame:Hide()
+NS.ShowMap()
 f.clear:Click()
 assert(NS.MapTarget() == nil and f.target:GetText() == "Kein Ziel gesetzt." and not f.clear:IsShown(), "cleared")
 -- a click on the row sets the target too
@@ -224,23 +269,28 @@ f.open:Click()
 assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1429, "Weltkarte öffnen: the chosen zone")
 WorldMapFrame:Hide()
 NS.ShowMap("hier")
-assert(AmisiaDB.settings.map.zone == nil and f.zone.label:GetText() == "Hier: Durotar", "ShowMap(\"hier\") picks the own zone again")
+assert(AmisiaDB.settings.map.zone == "here" and f.zone.label:GetText() == "Hier: Durotar", "ShowMap(\"hier\") picks the own zone again")
+NS.ShowMap("alle")
+assert(AmisiaDB.settings.map.zone == nil and f.zone.label:GetText() == "Alle Zonen (5)", "ShowMap(\"alle\"): every zone")
 NS.ShowMap(1429)
 assert(AmisiaDB.settings.map.zone == 1429 and #f.list.items == 2, "ShowMap(zone)")
 f.zone:SetValue("here"); f.zone.onPick("here")
-assert(AmisiaDB.settings.map.zone == nil)
+assert(AmisiaDB.settings.map.zone == "here")
 
 ---------------------------------------------------------------------------
 -- the switches shared with the pins
 ---------------------------------------------------------------------------
-assert(f.targets.on and f.wishes.on and f.targets.label:GetText() == "Ziele" and f.wishes.label:GetText() == "Wünsche")
+assert(f.targets.on and f.wishes.on and f.quests.on and f.targets.label:GetText() == "Ziele" and f.wishes.label:GetText() == "Wünsche"
+    and f.quests.label:GetText() == "Quests")
 f.targets:Click()
 assert(NS.Get("map.pinsTargets") == false and not f.targets.on, "the chip writes map.pinsTargets")
 assert(#f.list.items == 1 and rows[1].item.key == "V:Second Vendor" and #rows[1].item.items == 1, "only the wish")
 f.wishes:Click()
 assert(NS.Get("map.pinsWishes") == false and #f.list.items == 0)
-assert(f.empty:IsShown() and f.empty:GetText() == "Ziele und Wünsche sind ausgeblendet. Oben einschalten.", f.empty:GetText())
-f.targets:Click(); f.wishes:Click()
+f.quests:Click()
+assert(NS.Get("map.pinsQuests") == false and not f.quests.on, "the chip writes map.pinsQuests")
+assert(f.empty:IsShown() and f.empty:GetText() == "Ziele, Wünsche und Quests sind ausgeblendet. Oben einschalten.", f.empty:GetText())
+f.targets:Click(); f.wishes:Click(); f.quests:Click()
 assert(NS.Get("map.pinsTargets") and NS.Get("map.pinsWishes") and #f.list.items == 2 and not f.empty:IsShown())
 
 ---------------------------------------------------------------------------
@@ -455,8 +505,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     NS.ShowMap()
     NS.Refresh()
     assert(f.clear:IsShown() and f.showHidden:IsShown(), "every part shows")
-    L.row(view .. " head", f.zone, f.targets, f.wishes, f.open)
-    L.row(view .. " target", f.target, f.clear)
+    L.row(view .. " head", f.zone, f.targets, f.wishes, f.quests, f.open)
+    L.row(view .. " counts", f.counts, f.noPlace)
+    L.row(view .. " target", f.card, f.clear)
     L.row(view .. " columns", f.head.kind, f.head.src, f.head.where, f.head.items, f.head.go)
     L.row(view .. " row", rows[1].kind, rows[1].src, rows[1].where, rows[1].items, rows[1].go)
     -- the list ends 12 px before the edge; the button and the "Weg" head end before its bar
@@ -466,9 +517,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     local _, gor = L.span(rows[1].go)
     local _, ghr = L.span(f.head.go)
     assert(lr == 590 and gor <= 590 and ghr <= 590, ("the list 590, the button %d, the head %d"):format(gor, ghr))
-    L.column(view .. " page", f.zone, f.counts, f.target, f.head.kind, f.list, f.showHidden, f.hint, f.data)
+    L.column(view .. " page", f.zone, f.counts, f.card, f.head.kind, f.list, f.showHidden, f.hint, f.data)
     L.column(view .. " target", f.counts, f.clear, f.head.kind)
-    for _, fs in ipairs({ f.target, f.counts, f.hint, f.data, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
+    for _, fs in ipairs({ f.target, f.targetSub, f.counts, f.hint, f.data, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
     assert(f.showHidden._w == 170 and f.open._w == 130 and f.clear._w == 110 and f.zone._w == 240, "the widths of the design")
     -- the gear page with the map buttons
     NS.ShowGear("goals", "HEAD")

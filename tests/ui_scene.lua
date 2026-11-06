@@ -350,6 +350,40 @@ end
 
 -- The page Feedback (F-130): own reports in every state on a character that reaches the author;
 -- author: the author's inbox (open and done reports, the first one chosen), shown as him.
+-- The priest outside the raid, in Westfall, the zones of the Eastern Kingdoms and Kalimdor known to the
+-- client (those of Stormwind's neighbourhood with their place in the world), a target at Sentinel Hill
+-- and the player facing north-west.
+local mapWorldDone = false
+function S.mapWorld()
+    STUB.instance = { type = "none" }
+    STUB.place.map = 1436
+    STUB.map.pos = { x = 0.42, y = 0.3 }
+    _G.GetPlayerFacing = function() return 0.8 end
+    if mapWorldDone then return end
+    mapWorldDone = true
+    STUB.maps[1415] = { name = "Östliche Königreiche", parent = 947, mapType = 2 }
+    STUB.maps[1414] = { name = "Kalimdor", parent = 947, mapType = 2 }
+    local zones = {
+        [1436] = { "Westfall", 1415, { 0, 0, 1000, 1000, 1000 } }, [1429] = { "Wald von Elwynn", 1415, { 0, 1000, 0, 1200, 900 } },
+        [1453] = { "Sturmwind", 1415, { 0, 600, -200, 600, 500 } }, [1433] = { "Rotkammgebirge", 1415, { 0, 2200, 200, 800, 700 } },
+        [1431] = { "Dämmerwald", 1415, { 0, 1100, 1000, 1000, 800 } }, [1426] = { "Dun Morogh", 1415, { 0, 1500, -2600, 1600, 1200 } },
+        [1455] = { "Eisenschmiede" }, [1432] = { "Loch Modan" }, [1437] = { "Sumpfland" }, [1424] = { "Vorgebirge des Hügellands" },
+        [1421] = { "Silberwald" }, [1434] = { "Schlingendorntal" }, [1435] = { "Sümpfe des Elends" }, [1418] = { "Ödland" },
+        [1438] = { "Teldrassil", 1414 }, [1439] = { "Dunkelküste", 1414 }, [1440] = { "Eschental", 1414 },
+        [1413] = { "Brachland", 1414 }, [1442] = { "Steinkrallengebirge", 1414 }, [1457] = { "Darnassus", 1414 },
+        [1411] = { "Durotar", 1414 }, [1412] = { "Mulgore", 1414 }, [1456] = { "Donnerfels", 1414 }, [1454] = { "Orgrimmar", 1414 },
+        [1443] = { "Desolace", 1414 }, [1441] = { "Tausend Nadeln", 1414 }, [1445] = { "Düstermarschen", 1414 },
+    }
+    for id, z in pairs(zones) do
+        local w = z[3]
+        STUB.maps[id] = { name = z[1], parent = z[2] or 1415, mapType = 3,
+            world = w and { w[1], w[2], w[3], w[4], w[5] } or nil }
+    end
+    NS.Map._reset()
+    NS.BisBump()
+    NS.MapSetPoint({ map = 1436, x = 0.565, y = 0.476 }, "Questgeber Gryan Stoutmantle", "Q:65")
+end
+
 function S.feedback(author)
     STUB.faction = "Horde"
     local fb = AmisiaDB.feedback
@@ -508,6 +542,16 @@ S.STATES = {
     { page = "duels", name = "duels-board", open = function() S.duels("board") end },
     { page = "duels", name = "duels-classes", open = function() S.duels("classes") end },
     { page = "duels", name = "duels-priest", open = function() S.duels("classes", "PRIEST") end },
+    -- the map page outside the raid, in Westfall: every zone with the quest steps and a target (the
+    -- card with distance and direction), the own zone alone, the items without a place
+    { page = "map", name = "map-all", open = function() S.mapWorld(); NS.ShowMap("alle") end },
+    { page = "map", name = "map-here", open = function() S.mapWorld(); NS.ShowMap("hier") end },
+    { page = "map", name = "map-noplace", open = function()
+        S.mapWorld()
+        NS.ShowMap("alle")
+        local f = NS.MapPageFrame()
+        if f and f.noPlace:IsShown() then f.noPlace:Click() end
+    end },
     -- the page Feedback: a new report with every state of the own reports; the author's inbox
     { page = "feedback", name = "feedback-write", open = function() S.feedback(false) end },
     { page = "feedback", name = "feedback-inbox", open = function() S.feedback(true) end },

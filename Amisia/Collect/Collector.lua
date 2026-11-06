@@ -1061,6 +1061,18 @@ function ns.CollectQuestOwnEnd(id)
     return name, point
 end
 
+-- The name of an NPC as this client saw it itself (a vendor's record first, then a looted NPC's; a
+-- name only heard from the guild does not count), in the client's language; nil when none.
+function ns.CollectOwnName(npc)
+    npc = tonumber(npc)
+    if not npc or npc == 0 then return nil end
+    for _, kind in ipairs({ "s", "w" }) do
+        local r = get(kind, npc)
+        if r and r.name ~= "" and ns.CollectOwn(kind, r, "name") then return r.name end
+    end
+    return nil
+end
+
 -- The objective text of a quest as this client saw it in the offer, or nil.
 function ns.CollectQuestObjective(id)
     local r = get("q", id)

@@ -216,6 +216,23 @@ T.MEMBERS = {
     COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 78 }, { "prof", 320, 120 } },
 }
 
+-- the page Karte (tab Ausrüstung, F-045): the head row (zone picker, the chips Ziele, Wünsche,
+-- Quests), the counts line with the link "N Items ohne Ort", the target card of two lines (the arrow
+-- towards the target from ARROW_X, the name over zone, coordinates, distance and direction from
+-- TEXT_X), then the list: 13 rows of 24 from the column heads (100) to the bottom row (420)
+T.MAPPAGE = {
+    ROWS = 13, ROW_H = 24,
+    PICKER_W = 240, TARGETS_W = 60, WISHES_W = 70, QUESTS_W = 60, OPEN_W = 130, BACK_W = 130, CLEAR_W = 110, HIDDEN_W = 170,
+    CARD_LINES = 2, ARROW = 16, ARROW_X = 6, TEXT_X = 28, TEXT_Y = 2,
+    CARD_SHADE = 0.045,
+    ARROW_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow",
+    -- the place list: kind, source, place, items, the button "Karte"; the zone head over the whole row
+    COLS = { { "kind", 4, 66 }, { "src", 74, 186 }, { "where", 264, 100 }, { "items", 368, 164 }, { "go", 540, 46, cell = false } },
+    GO_X = 536, GO_W = 54, HEAD_X = 4, HEAD_W = 528,
+    -- the view "Ohne Ort": the item, the reason
+    NP_COLS = { { "name", 4, 220 }, { "why", 230, 350 } },
+}
+
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row
 -- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
 T.DUELS = {

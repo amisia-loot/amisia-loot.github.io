@@ -1790,6 +1790,106 @@ function ns.DungeonPathWaypoint(path)
 end
 
 ---------------------------------------------------------------------------
+-- The next quest steps with a place, for the map page and the world map (map.pinsQuests)
+---------------------------------------------------------------------------
+
+local stepsKey, stepsRes, stepsWatch, stepsGen = nil, nil, nil, 0
+
+local function pointKey(p)
+    return ("%d:%d:%d"):format(p.map, math.floor(p.x * 1000 + 0.5), math.floor(p.y * 1000 + 0.5))
+end
+
+-- The places of the steps: per open dungeon quest of the dungeons that fit the own level (fit or
+-- soon, as the dungeon page marks them) its next step, when that step can be taken now (its giver)
+-- or is in the log and complete (where it is handed in); a step in the log and not complete, or not
+-- yet open to the own level, has none. One place per step and point: { key = "Q:<step quest>", step =
+-- true, qid, title (the step's quest), fors = { dungeon quest titles }, quests = { { dkey, qid } },
+-- turnIn, label, giver, point, points, items (the dungeon quests' upgrade rewards: { id, gain, slot
+-- }), dataName (the name shown comes from the data, not from this client) }. Watch: the steps in the
+-- log whose completion changes the list.
+local function buildSteps()
+    local out, byKey, watch = {}, {}, {}
+    for _, e in ipairs(ns.DungeonList()) do
+        if FIT_ORDER[e.fit] then
+            for _, q in ipairs((ns.DungeonQuests(e.key))) do
+                if q.qid and not q.done and not q.gone then
+                    local path = D.QuestPath(q, e.key)
+                    local s = path.next
+                    local n = s and s.node
+                    local state = n and D.QuestState(n)
+                    if n and n.active then watch[n.qid] = state == "ready" end
+                    local point, label, turnIn
+                    if state == "open" then
+                        point, label = s.accept.point, s.accept.label
+                    elseif state == "ready" then
+                        point, label, turnIn = s.turnIn.point, s.turnIn.label, true
+                    end
+                    if point then
+                        local k = n.qid .. "@" .. pointKey(point)
+                        local place = byKey[k]
+                        if not place then
+                            local giver, dataName
+                            if turnIn then
+                                giver = n.ender
+                                dataName = giver ~= nil and not (ns.CollectQuestOwnEnd and ns.CollectQuestOwnEnd(n.qid))
+                            elseif s.accept.kind == "npc" or s.accept.kind == "object" then
+                                giver = s.accept.kind == "object" and n.object or n.giver
+                                dataName = giver ~= nil and not (ns.CollectQuestOwnStart and ns.CollectQuestOwnStart(n.qid))
+                            end
+                            place = { key = "Q:" .. n.qid, step = true, qid = n.qid, title = n.title or "?", fors = {}, quests = {},
+                                turnIn = turnIn or nil, label = label or n.title or "?", giver = giver, point = point, points = { point },
+                                items = {}, has = {}, forHas = {}, dataName = dataName or false }
+                            byKey[k] = place
+                            out[#out + 1] = place
+                        end
+                        if q.qid ~= n.qid and not place.forHas[q.title] then
+                            place.forHas[q.title] = true
+                            place.fors[#place.fors + 1] = q.title
+                        end
+                        place.quests[#place.quests + 1] = { dkey = e.key, qid = q.qid }
+                        for _, r in ipairs(q.rewards or {}) do
+                            if r.upgrade and not place.has[r.id] then
+                                place.has[r.id] = true
+                                place.items[#place.items + 1] = { id = r.id, gain = r.gain, slot = r.slotKey }
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return out, watch
+end
+
+-- The quest steps with a place (see buildSteps), kept until the dungeon list (level, quests, data,
+-- targets) changes or a watched step in the log becomes complete or stops being so.
+function ns.DungeonQuestSteps()
+    if not D.Facts() or not questData() or not Gear.Available() then return {} end
+    local list = ns.DungeonList()
+    local fresh = stepsRes ~= nil and stepsKey == list
+    if fresh then
+        for qid, ready in pairs(stepsWatch) do
+            if questReady(qid) ~= ready then
+                fresh = false
+                break
+            end
+        end
+    end
+    if not fresh then
+        stepsRes, stepsWatch = buildSteps()
+        stepsKey = list
+        stepsGen = stepsGen + 1
+    end
+    return stepsRes
+end
+
+-- A number that changes with the steps' list, for the caches of the map page and the pins.
+function ns.DungeonQuestStepsStamp()
+    ns.DungeonQuestSteps()
+    return stepsGen
+end
+
+---------------------------------------------------------------------------
 -- The journal parts: the header image, the boss model, quest XP, the quest givers on the map
 ---------------------------------------------------------------------------
 

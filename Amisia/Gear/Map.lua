@@ -221,6 +221,9 @@ local function worldOf(map, x, y)
     return cont, wx, wy
 end
 
+-- For the map page: the world position of a map point (continent, x, y in yards), or nil.
+Map.WorldOf = worldOf
+
 -- The player's place: uiMapID, x, y (0-1) and the world position (continent, x, y in yards); nil
 -- inside an instance or when the client tells nothing (secret values count as unknown).
 function Map.PlayerPosition()
@@ -315,14 +318,44 @@ Map.PlayerCell = playerCell
 
 local function isEntrance(key) return type(key) == "string" and (key:sub(1, 2) == "I:" or key:sub(1, 2) == "N:") end
 
--- The name a place shows: the quest giver or quest, the vendor or mob, the raid or dungeon (client
--- name by area id).
+-- The name this client saw itself for the NPC of a key (the collector's own records, in the client's
+-- language): a quest's giver for "Q:<quest id>", the vendor or looted NPC for "U:<NPC id>"; nil
+-- without one. Kept per key until the collector's records change.
+local ownNames, ownGen = {}, nil
+function Map.OwnName(key)
+    if type(key) ~= "string" then return nil end
+    local gen = ns.CollectGen and ns.CollectGen() or 0
+    if gen ~= ownGen then ownNames, ownGen = {}, gen end
+    local hit = ownNames[key]
+    if hit ~= nil then return hit or nil end
+    local kind, id = key:match("^(%a):(%-?%d+)$")
+    local name
+    if kind == "Q" and ns.CollectQuestOwnStart then
+        name = ns.CollectQuestOwnStart(tonumber(id))
+    elseif kind == "U" and ns.CollectOwnName then
+        name = ns.CollectOwnName(tonumber(id))
+    end
+    ownNames[key] = name or false
+    return name
+end
+
+-- Whether a place shows a name of the data (English) rather than the client's or one seen itself:
+-- not for an entrance (the client's area name) nor a place with an own name.
+function Map.DataNamed(place)
+    if isEntrance(place.key) then return false end
+    return Map.OwnName(place.key) == nil
+end
+
+-- The name a place shows: the quest giver or quest, the vendor or mob (the name seen by this client
+-- first), the raid or dungeon (client name by area id).
 local function placeName(place)
     local rec, key = place.rec, place.key
     if isEntrance(key) then
         if rec and (rec[1] == "X" or rec[1] == "D") then return Gear.PlaceName(rec) or key:sub(3) end
         return key:sub(3)
     end
+    local own = Map.OwnName(key)
+    if own then return own end
     if place.giver then return place.giver end
     if rec and type(rec[2]) == "string" then return rec[2] end
     return key
@@ -904,6 +937,7 @@ ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, g
       tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol."] },
     { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Upgrades zu holen sind (Seite Ausrüstung, Ziele)."] },
     { key = "map.pinsWishes", type = "toggle", label = L["Pins für Wünsche"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Wünsche zu holen sind."] },
+    { key = "map.pinsQuests", type = "toggle", label = L["Pins für Quest-Schritte"], default = true, tip = L["Die Weltkarte und die Seite Karte zeigen den nächsten Schritt jeder offenen Dungeon-Quest deiner Stufe (gelbes Ausrufezeichen)."] },
     { key = "map.pinsContinent", type = "toggle", label = L["Pins auch auf der Kontinentkarte"], default = true, tip = L["Die Pins stehen auch auf der Karte des Kontinents, nicht nur auf der Zonenkarte."] },
     { key = "map.entrances", type = "toggle", label = L["Eingänge auf der Karte"], default = true,
       tip = L["Die Weltkarte zeigt die Eingänge der Dungeons und Raids. Klick öffnet den Dungeon in Amisia, Shift-Klick setzt das Ziel."] },

@@ -7,7 +7,8 @@
 -- canvas's size and scale in its own OnUpdate, which runs only while the map shows. The place pins of
 -- MapPlaces.lua stand on the same layer. Pins are display only; a click sets Amisia's target. The
 -- quest givers of a dungeon marked from the dungeon planner (ns.DungeonMarkPlaces) get pins with the
--- client's quest icon.
+-- client's quest icon, and so do the next steps of the open dungeon quests (ns.DungeonQuestSteps,
+-- map.pinsQuests).
 local ADDON, ns = ...
 local Gear, Map, W = ns.Gear, ns.Map, ns.W
 local L = ns.L
@@ -24,7 +25,8 @@ local DUNGEON_ATLAS = "Dungeon"
 local MAX_MARKS = 40
 -- the texts of the quest giver marks, in one place for the translation
 local TEXT = { setTarget = L["Ziel setzen"], clearMarks = L["Markierung der Questgeber entfernen"],
-    hint = L["Klick: Ziel setzen. Rechtsklick: mehr."] }
+    hint = L["Klick: Ziel setzen. Rechtsklick: mehr."], stepFor = L["%s (für %s)"], showPath = L["Questweg zeigen"],
+    stepsOff = L["Quest-Schritte ausblenden"], turnIn = L["abgeben"] }
 -- the layer's frame level above the canvas: above the map's area markers and quest areas, about
 -- where its quest marks stand (the world map reserves some 300 levels for its own pin types); in the
 -- layer the place pins, then the item and quest giver pins, the target on top
@@ -177,6 +179,27 @@ local function markSpots(mapID, kind, continent)
     return out
 end
 
+-- Whether the quest steps show (map.pins and map.pinsQuests).
+local function stepsOn() return ns.Get("map.pins") and ns.Get("map.pinsQuests") and ns.DungeonQuestSteps ~= nil end
+
+-- The next quest steps on the shown map: spots { key, step, label, point, x, y, items, ... } (the
+-- step's own fields), not the hidden ones, at most MAX_MARKS.
+local function stepSpots(mapID, kind, continent, hidden)
+    local out = {}
+    if not stepsOn() then return out end
+    for _, place in ipairs(ns.DungeonQuestSteps()) do
+        if not hidden[place.key] then
+            local x, y = project(place.point, mapID, kind)
+            if x and #out < MAX_MARKS then
+                local spot = { x = x, y = y, continent = continent }
+                for k, v in pairs(place) do spot[k] = v end
+                out[#out + 1] = spot
+            end
+        end
+    end
+    return out
+end
+
 local function build(mapID)
     local kind = mapKind(mapID)
     if kind ~= ZONE and kind ~= CONTINENT then return {} end
@@ -213,6 +236,7 @@ local function build(mapID)
         end
     end
     local marks = markSpots(mapID, kind, continent)
+    for _, s in ipairs(stepSpots(mapID, kind, continent, hidden)) do marks[#marks + 1] = s end
     -- the target: its spot is highlighted (kept even past the limit), else a pin of its own
     local t = ns.MapTarget()
     local late, extra       -- the target's spot past the limit, or a pin of its own
@@ -257,6 +281,7 @@ function Map.PinPlaces(mapID)
     mapID = tonumber(mapID)
     if not mapID or not ns.HasData("MAP") then return {} end
     local stamp = ns.BisStamp() .. ":" .. version .. ":" .. (ns.DungeonMarkStamp and ns.DungeonMarkStamp() or "")
+        .. ":" .. (stepsOn() and ns.DungeonQuestStepsStamp() or "")
     if stamp ~= cacheStamp then
         cache, cacheStamp = {}, stamp
     end
@@ -273,6 +298,8 @@ end
 ---------------------------------------------------------------------------
 
 local function setTarget(e)
+    -- a quest step: its giver or turn-in, without an item (the rewards are the dungeon quest's)
+    if e.step then return ns.MapSetPoint(e.point, e.label, e.key) end
     local best = e.items[1]
     return ns.MapSetPoint(e.point, e.label or Map.LabelOf(e), e.key, best and best.id)
 end
@@ -299,6 +326,21 @@ local function placeMenu(e)
     if e.mark then
         return { { TEXT.setTarget, function() setTarget(e) end },
             { TEXT.clearMarks, function() if ns.DungeonClearMarks then ns.DungeonClearMarks() end end } }
+    end
+    if e.step then
+        local m = AmisiaDB and AmisiaDB.map
+        local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
+        local q = e.quests and e.quests[1]
+        return { { TEXT.setTarget, function() setTarget(e) end },
+            { TEXT.showPath, function() if q and ns.ShowDungeonQuest then ns.ShowDungeonQuest(q.dkey, q.qid) end end },
+            { hidden and L["Wieder einblenden"] or L["Diesen Ort ausblenden"], function()
+                local mm = AmisiaDB and AmisiaDB.map
+                if mm and type(mm.hidden) == "table" then
+                    mm.hidden[e.key] = (not hidden) or nil
+                    ns.Fire("MAP_TARGET")
+                end
+            end },
+            { TEXT.stepsOff, function() ns.Set("map.pinsQuests", false) end } }
     end
     local entries = {
         { TEXT.setTarget, function() setTarget(e) end },
@@ -353,6 +395,20 @@ local function placeTooltip(owner, e, hint)
         GameTooltip:Show()
         return
     end
+    if e.step then
+        -- a quest step: who and where, the step's quest (and what it is for), the dungeon quests' upgrades
+        GameTooltip:AddLine(e.label or "?", 1, 0.82, 0)
+        if e.target then GameTooltip:AddLine(L["Aktuelles Ziel"], GOLD[1], GOLD[2], GOLD[3]) end
+        GameTooltip:AddLine(("%s %s"):format(Map.ZoneName(e.point.map), Map.Coords(e.point)), 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(Map.StepText(e), 1, 1, 1, true)
+        for _, it in ipairs(e.items) do
+            GameTooltip:AddDoubleLine(itemText(it.id), ("%+d (%s)"):format(math.floor((it.gain or 0) + 0.5),
+                (ns.BIS_SLOT_NAME or {})[it.slot] or "?"), 1, 1, 1, GREEN[1], GREEN[2], GREEN[3])
+        end
+        GameTooltip:AddLine(hint or TEXT.hint, 0.6, 0.6, 0.6)
+        GameTooltip:Show()
+        return
+    end
     local title
     if e.rec then
         title = Gear.SourceText(e.rec, true)
@@ -382,6 +438,13 @@ local function tooltip(self)
     placeTooltip(self, e)
 end
 
+-- A quest step as text: "<step quest> (für <dungeon quest>, ...)", "abgeben" for a turn-in.
+function Map.StepText(e)
+    local title = e.turnIn and (e.title .. " " .. TEXT.turnIn) or e.title
+    if e.fors and #e.fors > 0 then return TEXT.stepFor:format(title, table.concat(e.fors, ", ")) end
+    return title
+end
+
 -- For the map page: a place's target, menu entries and tooltip, as on the pin.
 Map.SetPlaceTarget, Map.PlaceMenu, Map.PlaceTooltip = setTarget, placeMenu, placeTooltip
 
@@ -406,7 +469,7 @@ end
 local function showPin(pin, entry)
     local best = entry.items[1]
     local key = not best and type(entry.key) == "string" and entry.key:sub(1, 2) or nil
-    local quest = entry.mark or key == "Q:"
+    local quest = entry.mark or entry.step or key == "Q:"
     local bare = quest
     if quest then
         pin.icon:SetTexture(QUEST_ICON)
@@ -422,14 +485,14 @@ local function showPin(pin, entry)
         pin.icon:SetSize(18, 18)
     end
     for _, t in ipairs(pin.edges) do t:SetShown(not bare) end
-    local wish = entry.mark or false
+    local wish = entry.mark or entry.step or false
     for _, it in ipairs(entry.items) do
         if it.wish then wish = true end
     end
     local c = wish and GOLD or GREEN
     W.SetBorderColor(pin.edges, c[1], c[2], c[3], 1)
     pin.ring:SetShown(entry.target and not bare or false)
-    local count = entry.mark and #(entry.quests or {}) or #entry.items
+    local count = entry.mark and #(entry.quests or {}) or (not entry.step and #entry.items) or 0
     if count > 1 then
         pin.count:SetText(tostring(count))
         pin.count:Show()
@@ -652,3 +715,5 @@ ns.Listen("SETTING", function(path)
     end
 end)
 ns.BisOnOwned(schedule)
+-- a quest taken, handed in or dropped moves the quest steps
+for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED" }) do ns.OnEvent(event, schedule) end
