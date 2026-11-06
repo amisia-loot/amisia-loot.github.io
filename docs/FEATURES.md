@@ -40,12 +40,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-126 Raid-Teil auf TBC Anniversary und Classic Era
-- Version: 2.47.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du dich auf TBC Anniversary oder Classic Era einloggst, dann lädt Amisia ohne "veraltet", und unten stehen nur Raid, Gilde, Kalender, Amisia, alle innerhalb der Fensterbreite.
 - Prüfung: Wenn du dort Einstellungen, Raid, Aufnahme öffnest, dann stehen "20:00" und das Feld "60" mit sichtbaren Pfeilen bündig untereinander, und das rote X steht direkt rechts neben dem Häkchen.
 - Prüfung: Wenn du auf TBC/Era mit der Maus über ein soft-reserviertes Item fährst, dann steht die SR-Zeile im Tooltip.
 - Prüfung: Wenn du auf Forever das Fenster öffnest, dann sieht alles aus wie vorher, nur das rote X steht neben seinem Feld.
+- Prüfung: Wenn du auf TBC Anniversary oder Classic Era als Lootleitung eine Würfelrunde ansagst, dann steht die Ansage im Raidchat.
 - Notiz: Spec `docs/specs/2026-10-25-raid-auf-tbc-und-era.md` (freigegeben 2026-10-25). Auf TBC/Era aus: Export, Handel-Helfer, Raid-Check-Buffs.
 
 ### F-001 Hauptfenster im Forever-Stil
@@ -60,23 +61,25 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.29.0: die Seitenliste sieht aus wie die Kategorienliste des Auktionshauses (D-06): dunkle Balken mit Bronzerand, goldene Namen, die gewählte Seite mit hellem Goldrand, keine Symbole. Prüfung: Wenn du `/amisia` öffnest, dann ist jede Seite links ein solcher Balken; unter der Maus leuchtet er und der Name wird weiß; in der Offiziersansicht mit Expertenmodus passen alle Seiten von "Raid" ohne kleinere Zeilen.
 
 ### F-094 Reiter unten am Hauptfenster
-- Version: 2.27.0
+- Version: 2.57.0
 - Status: gebaut
-- Prüfung: Wenn du `/amisia` öffnest, dann hängen unten am Fenster die Reiter "Raid", "Ausrüstung", "Gilde", "Kalender" und "Amisia" im Stil der Reiter unter dem Charakterfenster; der gewählte ist hell, und links stehen nur seine Seiten (bei "Raid" Übersicht, Raid-Log, Vergaben, Statistik, Soft-Reserves; in der Offiziersansicht auch Raids, Rolls, Punkte).
+- Prüfung: Wenn du `/amisia` öffnest, dann hängen unten am Fenster die Reiter "Raid", "Ausrüstung", "Gilde", "Kalender" und "Amisia" im Stil der Reiter unter dem Charakterfenster; der gewählte ist hell, und links stehen nur seine Seiten (bei "Raid" Übersicht, Raid-Log, Vergaben, Statistik, Soft-Reserves; in der Offiziersansicht auch Rolls, Punkte, Raid-Archiv und Export).
 - Prüfung: Wenn du auf "Ausrüstung" klickst, dort "Karte" wählst, auf "Raid" und wieder auf "Ausrüstung" klickst, dann öffnet sich wieder "Karte"; nach `/reload` öffnet `/amisia` den Reiter "Ausrüstung" mit "Karte". Fällt eine Seite durch einen Wechsel der Ansicht auf die Übersicht zurück, bleibt die gemerkte Seite des Reiters.
 - Prüfung: Wenn du `/amisia einstellungen` eingibst, dann ist der Reiter "Amisia" gewählt und links stehen Einstellungen und "Über und Befehle"; `/amisia statistik` wählt "Raid".
-- Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlt unter "Gilde" die Seite Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
+- Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlen unter "Raid" die Seiten Raid-Archiv und Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
+- Prüfung: Wenn du als Offizier den Reiter Raid öffnest, dann stehen die Seiten in der Reihenfolge eines Raidabends: Übersicht, Aufstellung, Soft-Reserves, Raid-Check, Rolls, Vergaben, Raid-Log, Punkte, Statistik, Raid-Archiv, Export.
 - Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Die Reiter sind die Vorlage des Spiels (`PanelTabButtonTemplate`); ein Reiter ohne sichtbare Seite fehlt. Gemerkt in `settings.window.tab` und `pages`.
 - Notiz: 2.29.0: die Seiten links unter den Reitern stehen als Balken der Kategorienliste des Auktionshauses (21 px, ohne Symbole); in der Suche ist eine Gruppe ein Balken, ihre Treffer eingerückte Unterbalken (D-06, Nachtrag D-45).
 - Notiz: 2.57.0: Reiter Raid in der Reihenfolge einer Raidnacht (davor, währenddessen, danach); die Offiziersseite "Raids" heißt "Raid-Archiv", Export steht daneben im Reiter Raid (Nachtrag D-45).
 
 ### F-095 Suchfeld oben links im Hauptfenster
-- Version: 2.27.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du oben links ins Suchfeld "experten" tippst, dann wird die Seitenliste zur Ergebnisliste mit der Leiste "Einstellungen 1" und dem Eintrag "Expertenmodus"; ein Klick öffnet die Einstellungen mit "Expertenmodus" im Suchfeld der Seite, und das Suchfeld oben links ist wieder leer.
 - Prüfung: Wenn du "ra" tippst, dann stehen unter "Seiten" die passenden Seiten (in der Offiziersansicht "Raid-Archiv" und "Raid-Log"), unter "Einstellungen" höchstens 8 Einträge und in der Offiziersansicht unter "Spieler" Namen aus deinen Raids; ein Klick auf einen Spieler öffnet die Statistik mit ihm unter der Liste.
 - Prüfung: Wenn du den Namen eines Items tippst, das in deinen Raids fiel (mindestens drei Buchstaben), dann steht es unter "Items"; die Maus darauf zeigt seinen Tooltip, ein Klick setzt den Link in die Chatzeile.
 - Prüfung: Wenn du nur einen Buchstaben tippst, dann bleibt die Seitenliste; bei "qqqxx" steht "Nichts gefunden."; Escape oder das X im Feld leeren es und die Seitenliste kommt zurück. Ein Klick auf einen Reiter (auch den gewählten) leert es ebenso und zeigt die Seiten dieses Reiters.
+- Prüfung: Wenn du im Suchfeld "dkp" tippst, dann findet die Suche die Seite Punkte; bei "version" steht auch die Gruppe "Befehle", und ein Klick schreibt den Befehl in die Chatzeile.
 - Notiz: DECISIONS D-45. Items nur mit Namen, die der Client schon kennt (keine Frage an den Server); die Spielersuche gibt es nur in der Offiziersansicht (D-36).
 - Notiz: 2.57.0: Stichwörter auf Deutsch und Englisch ("dkp" findet Punkte, "wegpunkt" die Karte), Gruppe "Befehle" (ab 3 Zeichen, ein Klick schreibt den Befehl in die Chatzeile), Tooltip am Suchfeld, Treffer behalten beim Auffrischen ihre Scrollstelle.
 
@@ -88,16 +91,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Seit 2.27.0 stehen die Seiten unter ihren Reitern (F-094); "jede Seite der Seitenliste" heißt: jeden Reiter durchklicken. Die Kalender-Seite (F-096) ist mit demselben Gerüst gebaut.
 
 ### F-003 Übersicht mit Karten
-- Version: 1.4.0
+- Version: 2.57.0
 - Status: gebaut
-- Prüfung: Wenn du die Seite Übersicht öffnest, dann stehen dort Karten (Raid, Soft-Reserves, Ausrüstung, Vergaben) mit dem Knopf "Ansehen", oder "Noch nichts zu zeigen", solange es nichts gibt.
-- Prüfung: Wenn du bei der Karte Ausrüstung auf "Ansehen" klickst, dann öffnet sich die Seite Ausrüstung bei Ziele.
+- Prüfung: Wenn du die Seite Übersicht öffnest, dann stehen dort Karten (Raid, Soft-Reserves, Ausrüstung, Vergaben) mit dem Knopf "Öffnen", oder "Noch nichts zu zeigen", solange es nichts gibt.
+- Prüfung: Wenn du bei der Karte Ausrüstung auf "Öffnen" klickst, dann öffnet sich die Seite Ausrüstung bei Ziele.
+- Prüfung: Wenn du im Hauptfenster oben links auf das Porträt klickst, dann öffnet sich die Übersicht.
 
 ### F-004 Minimap-Button und Schnellmenü
-- Version: 1.4.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du mit der Maus über den runden Amisia-Button an der Minimap fährst, dann zeigt der Tooltip "Linksklick: Amisia-Fenster" und "Rechtsklick: Schnellmenü".
-- Prüfung: Wenn du ihn rechts anklickst, dann öffnet sich das Schnellmenü (Ausrüstung, Karte, Soft-Reserves, Raid-Log, Einstellungen), und jeder Eintrag öffnet seine Seite.
+- Prüfung: Wenn du ihn rechts anklickst, dann öffnet sich das Schnellmenü mit den Reitern des Hauptfensters ("Raid ...", "Ausrüstung ..." usw.), "Einstellungen" und dem Schalter für die Aufnahme; ein Klick auf einen Reiter zeigt seine Seiten im selben Menü, mit "Zurück", und jede Seite öffnet sich.
 - Prüfung: Wenn du `/amisia minimap` eingibst, dann verschwindet der Button; noch einmal holt ihn zurück.
 - Notiz: 2.57.0: das Schnellmenü folgt den Reitern des Fensters; ein Reiter zeigt seine Seiten im selben Menü, mit "Zurück".
 
@@ -195,24 +199,25 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-05-feedback.md`, freigegeben 2026-11-05 ("Passt, bauen"); Empfänger Vulo Vultrox.
 
 ### F-103 Einstellungen nach Reitern, Knopf "Einstellungen", Zurücksetzen
-- Version: 2.37.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du die Einstellungen öffnest, dann stehen in der Seitenliste links unter "Einstellungen" die Gruppen Raid, Ausrüstung, Gilde, Kalender und Allgemein, unter der gewählten ihre Abschnitte; ein Klick auf einen Abschnitt zeigt rechts nur dessen Zeilen; ein Klick auf die offene Gruppe (z. B. "Raid") klappt sie zu und wieder auf, ein Klick auf "Einstellungen" alle Gruppen, der Abschnitt rechts bleibt.
 - Prüfung: Wenn du auf der Seite Karte oben links neben der Ansicht "Einstellungen" klickst, dann zeigen die Einstellungen nur "Karte und Wegpunkt", oben "Zurück zu Karte"; der Knopf bringt dich zur Karte zurück.
 - Prüfung: Wenn du in einem Abschnitt etwas änderst und oben "Zurücksetzen" klickst, dann fragt Amisia nach und setzt nur diesen Abschnitt auf den Standard; der Abschnitt trägt vorher in der Liste den goldenen Punkt.
 - Prüfung: Wenn du unter Allgemein, Oberfläche "Alle Einstellungen zurücksetzen" klickst und bestätigst, dann meldet der Chat "N Einstellungen auf den Standard gesetzt.", und deine Raids und Listen sind noch da.
-- Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Talente) fehlt der Knopf.
+- Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Talente) fehlt der Knopf; die Einstellungen der Seite Rolls zeigen auch Raidern "Wer braucht das?" und "Loot-Prio".
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
 
 ## Addon: Raid und Loot
 
 ### F-013 Raid-Aufnahme (Anwesenheit, Bosse, Loot)
-- Version: 1.1.0
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du mit einer Raidgruppe eine Raidinstanz betrittst, dann meldet der Chat "Aufnahme gestartet: <Zone>. /amisia zeigt die Liste.", und `/amisia status` nennt Zone und Zahl der Raider.
 - Prüfung: Wenn du `/amisia pause` eingibst, dann meldet der Chat "Aufnahme pausiert."; noch einmal: "Aufnahme aktiv.".
 - Prüfung: Wenn der Raid vorbei ist, dann steht er auf der Seite Raid-Archiv mit Datum, Raidern, Bossen und dem blauen und epischen Loot.
+- Prüfung: Wenn du als Offizier auf der Seite Raid-Archiv nichts angekreuzt hast, dann ist "Löschen (0)" ausgegraut; "Alle wählen" kreuzt alle Raids an und heißt danach "Keine wählen".
 
 ### F-014 Zu-spät-Markierung
 - Version: 1.2.3
@@ -238,13 +243,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn unter Einstellungen, Vergaben "Plus-Eins in der Roll-Reihenfolge" an ist, dann steht im Roll-Fenster der MS-Wurf mit weniger Plus-Eins vor dem höheren.
 
 ### F-017 Export für die Website
-- Version: 2.34.0
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du als Offizier nach dem Raid die Seite Export öffnest, dann steht dort "1 Raid(s) neu oder geändert" und ein Text, der mit `#AMISIA 2` beginnt.
 - Prüfung: Wenn du den Text (Strg+A, Strg+C) auf der Website im Reiter Import einfügst, dann zeigt die Vorschau Raider, Bosse und Vergaben des Abends.
 - Prüfung: Wenn du danach noch einmal exportierst, dann steht "Nichts Neues seit dem letzten Export ...".
 - Prüfung: Wenn als Offizier eine Aufnahme endet und ein Raid noch nicht exportiert ist, dann meldet der Chat "1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export." (abschaltbar unter Aufnahme, "An nicht exportierte Raids erinnern").
+- Prüfung: Wenn du die Seite Export (Reiter Raid, neben Raid-Archiv) öffnest, bevor du exportiert hast, dann steht im Feld "Noch kein Exporttext" mit einer Erklärung, und der Knopf zeigt "Angekreuzte (N)" mit der Zahl der im Raid-Archiv angekreuzten Raids.
 
 ### F-018 Loot-Ansage durch die Lootleitung
 - Version: 1.6.0
@@ -255,12 +261,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia ansage` eingibst, dann wird das offene Lootfenster noch einmal angesagt.
 
 ### F-019 Soft-Reserves
-- Version: 1.6.0
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du auf der Seite Soft-Reserves eine softres.it-CSV einfügst und "Importieren" klickst, dann steht dort "N Reservierungen, vom <Datum>", und "Prüfen" zeigt, wer nicht im Raid oder ohne Reserve ist.
 - Prüfung: Wenn ein Raider `!sr` flüstert, dann antwortet die Lootleitung per Flüstern mit seinen Reservierungen.
 - Prüfung: Wenn du "Erinnern" klickst, dann bekommt jeder im Raid ohne Reservierung nach einer Rückfrage einmal ein Flüstern.
+- Prüfung: Wenn ein Raider von einem verbundenen Realm `!sr <Item>` flüstert, dann steht seine Reservierung auf der Seite Soft-Reserves (vorher verworfen, wenn das Spiel den Namen mit "-Realm" schrieb).
 - Notiz: 2.25.2 (2026-10-11): die heutige softres.it-CSV hat den Namen in "Raider Name"; vorher kamen 0 Reservierungen an.
 - Notiz: Den Code von softres.it (Knopf "Gargul") liest F-091 (2.26.0).
 
@@ -290,11 +297,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia log ereignisse` eingibst, dann zeigt der Chat die letzten Kampfereignisse.
 
 ### F-023 Ersatzbank und !bench
-- Version: 1.7.0
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn ein Gildenmitglied der Lootleitung `!bench` flüstert, dann antwortet sie "Amisia: Du stehst auf der Ersatzbank (...)", und es steht auf dem Raid-Log unter Ersatzbank.
 - Prüfung: Wenn du als Offizier `/amisia ersatz <Name>` eingibst, dann steht der Spieler auf der Ersatzbank; `/amisia ersatz weg <Name>` trägt ihn aus.
+- Prüfung: Wenn ein Raider von einem verbundenen Realm `!bench` flüstert, dann steht er auf der Ersatzbank.
 
 ### F-024 Discord-Text des Raids
 - Version: 1.7.0
@@ -355,11 +363,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du im Raid-Log die Würfe öffnest und "Dungeons" wählst, dann stehen dort die Würfe der Dungeon-Läufe.
 
 ### F-032 DKP und EPGP
-- Version: 2.27.4
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn die Website (Reiter Points) DKP oder EPGP einstellt und du "Copy for the addon" auf der Seite Punkte bei "Einfügen" einfügst, dann zeigt die Seite Punkte den Stand jedes Spielers und "Website vom <Datum>".
-- Prüfung: Wenn du `/amisia punkte` eingibst, dann nennt der Chat deinen Punktestand.
+- Prüfung: Wenn du `/amisia punkte` eingibst, dann nennt der Chat deinen Punktestand; flüstert dir ein Raider von einem verbundenen Realm `!dkp`, dann antwortet Amisia ihm mit seinen Punkten.
 - Prüfung: Wenn du als Offizier auf der Seite Punkte bei "Einfügen" den roten Knopf "Punkte entfernen" klickst, dann fragt ein Fenster "Punktestand entfernen?" (mit der Zahl der Korrekturen, die noch nicht auf der Website sind); "Abbrechen" ändert nichts, "Entfernen" löscht den Stand und der Chat sagt "Punktestand entfernt. Einfügen holt ihn von der Website zurück."; `/amisia punkte löschen` fragt genauso, als Raider gibt es den Knopf nicht.
 - Prüfung: Wenn du als Offizier `/amisia korrektur <Name> +10 <Grund>` eingibst, dann steht die Korrektur auf der Seite Punkte und geht mit dem nächsten Export an die Website.
 - Prüfung: Wenn ein Raid mit Punkten läuft und ein Item verteilt wird, dann bieten die Raider (offen oder verdeckt) bzw. würfeln nach PR, und ein laufender Raid behält sein System, auch wenn die Website umstellt.
@@ -565,13 +573,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-11-softres-gargul.md, Teil A2; DECISIONS D-44 und die Ausnahme von D-05. Entpackt mit `C_EncodingUtil` des Spiels (im Spiel geprüft: `DeserializeJSON` da, Zlib = 1). Bonus-Würfe werden nicht übernommen ("N Bonus-Würfe nicht übernommen"); das softres +1 ist nur ein Hinweis (D-22). Hard-Reserves stehen als "HR: <für>" im Tooltip und als "HR" im Lootfenster, Lootregeln fassen sie nicht an. `/amisia sr <Code>` geht auch, aber eine Chatzeile fasst nur 255 Zeichen: echte Codes gehören ins Fenster.
 
 ### F-092 Gargul-Runden: Würfel-Fenster und stilles Mitschreiben
-- Version: 2.26.0
+- Version: 2.57.0
 - Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn ein Gildenmitglied mit Offiziersrang als Plündermeister (ohne Master Loot: als Leiter) mit Gargul eine Runde startet ("You have 20 seconds to roll on [Item]" oder "Du hast 20 Sekunden um auf [Item] zu würfeln"), dann öffnet sich bei dir das Würfel-Fenster mit dem Item und oben "Runde von <Name> (Gargul)"; "Mainspec" würfelt 1-100, "Offspec" 1-99, "Passen" schließt nur.
 - Prüfung: Wenn du selbst als Plündermeister in der Offiziersansicht mit Gargul eine Runde startest, dann öffnet sich Amisias Roll-Fenster mit dem Hinweis "Gargul-Runde: Gargul sagt den Gewinner an.", zeigt die Würfe der anderen, und Amisia schreibt nichts in den Chat; bei Gargul's "Stop your rolls!" endet die Runde, und "Ergebnis ansagen" bleibt aus.
 - Prüfung: Wenn ein Raider ohne Leiter- oder Plündermeister-Rolle (oder ohne Offiziersrang) eine Gargul-Runde startet, dann öffnet sich bei dir kein Fenster.
 - Prüfung: Wenn eine Amisia-Runde läuft und die Lootleitung dazu mit Gargul ein anderes Item startet, dann bleibt die Amisia-Runde, und der Chat der Lootleitung sagt "Gargul-Runde von <Name> auf [Item] erkannt, während eine Amisia-Runde läuft."
+- Prüfung: Wenn in einer 5er-Gruppe (nicht im Raid) der Gruppenleiter mit einem anderen Loot-Addon eine Würfelrunde startet, dann öffnet sich das Würfel-Fenster.
 - Notiz: Spec Teil B1 ("wer startet, entscheidet"); DECISIONS D-44. Du hast Gargul selbst installiert: in einer Gruppe mit einem Gildenmitglied, das Amisia hat, kannst du mit Gargul starten und beide Seiten prüfen. Einstellungen: Rolls und Vergabe, "Runden anderer Loot-Addons erkennen" (an); Würfel-Fenster, "Fenster auch bei Runden anderer Loot-Addons" (an). Amisia liest nur Gargul's Chatzeilen (Englisch und Deutsch) und sendet nichts an Gargul; im Bosskampf sind die Zeilen geheim, dann gibt es kein Fenster.
 
 ### F-093 Rundenansage auch auf Englisch
@@ -701,12 +710,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("Ja, Notizen lesen"), nachdem `/amisia hersteller` "0 aus der Gilde" meldete: niemand sonst in der Gilde hat Amisia. Liest deutsche und englische Namen und Kürzel (BS, VZ, LW, Ingi, EH, BB ...); der Rezept-Austausch geht vor, die Notiz ergänzt nur fehlende Berufe; keine Rezepte, keine neue Nachricht, kein neuer Schlüssel.
 
 ### F-106 Duelle: Verlauf, Rangliste, Klassen
-- Version: 2.40.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du ein Duell gewinnst oder verlierst, dann steht es im Reiter PvP auf der Seite Duelle im Verlauf mit Zeit, beiden Namen in Klassenfarbe mit Klasse, "Sieg" und dem Ort.
 - Prüfung: Wenn zwei andere in deiner Nähe ein Duell beenden, dann steht auch ihr Duell im Verlauf.
 - Prüfung: Wenn jemand aus einem Duell flieht (Abstand), dann steht es als "Flucht" mit ihm als Verlierer.
-- Prüfung: Wenn ein Spieler "unbekannt" ist und du "Klassen suchen" klickst, dann geht kein Fenster auf, der Chat sagt "Duelle: /who ... brachte N Klassen", seine Klasse steht danach in allen seinen Duellen (sofern /who ihn findet) und die Zahl auf dem Knopf sinkt.
+- Prüfung: Wenn ein Spieler "unbekannt" ist und du "Klassen suchen" klickst, dann geht kein Fenster auf, der Chat sagt "Duelle: /who ... brachte N Klassen", seine Klasse steht danach in allen seinen Duellen (sofern /who ihn findet) und die Zahl auf dem Knopf sinkt; eine /who-Liste, die du selbst offen hattest, bleibt dabei offen.
 - Prüfung: Wenn du die Ansicht Klassen öffnest, dann siehst du je Klasse Spiele, Spieler, S-N und Siegrate und unten, wie viel Prozent der Klassen bekannt sind; ein Klick auf eine Klasse zeigt sie gegen jede andere.
 - Notiz: Spec `docs/specs/2026-10-16-duelle.md`; DECISIONS D-52. Nichts wird gesendet; Duelle der Gilde teilen wäre ein eigenes Feature.
 
@@ -766,12 +775,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du deine eigene Spalte ansiehst, dann plant sie für deine Stufe, nicht für das obere Ende des Levelbereichs.
 
 ### F-039 Ziele: beste Ausrüstung mit eigener Wertung
-- Version: 2.5.0
+- Version: 2.57.0
 - Status: gebaut
 - Prüfung: Wenn du `/amisia bis` eingibst, dann öffnet sich die Seite Ausrüstung bei Ziele mit dem besten Item je Slot für deine Spezialisierung und Stufe, mit Quelle und Zuwachs gegen das Angelegte.
 - Prüfung: Wenn du "Warum?" bei einem Item klickst, dann erklärt Amisia die Wertung; "Warum diese Gewichte" zeigt die Gewichte deiner Spezialisierung.
 - Prüfung: Wenn du bei einem Item "Ausschließen" klickst, dann rückt die nächste Option auf; "zurücksetzen" hebt alle Ausschlüsse auf.
 - Prüfung: Wenn du `/amisia bis plan 2h` (oder `dw`, `schild`) eingibst, dann plant die Seite die Waffen entsprechend.
+- Prüfung: Wenn du über ein Item fährst, das der Client noch nicht geladen hat, dann steht im Tooltip nicht "der Server beschreibt dieses Item nicht", sondern nach kurzem Laden der normale Text.
 
 ### F-040 Hier: was es an diesem Ort für dich gibt
 - Version: 2.5.0
