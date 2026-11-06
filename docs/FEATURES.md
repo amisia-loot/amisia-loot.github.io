@@ -1061,6 +1061,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: seit 2026-10-11 ist die Rezeptliste nach der Lernstufe sortiert (dann nach Gelb, dann Name); vorher die Reihenfolge der Daten.
 - Notiz: 2.57.0: Filter "Bekannt: …" und "Quelle: …" als Auswahllisten, "N von M Rezepten", leere Liste nennt, welcher Filter Rezepte zurückbringt, mit "Filter zurücksetzen" (Bildschirmfoto des Nutzers mit 0 Rezepten bei Bekannt + Händlergunst + Gilde).
 
+### F-137 Berufsroute mit Einkaufsliste
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Seite Berufe Schneiderei wählst und auf "Route" schaltest, dann zeigt die Route Schritte von deinem Rang bis zum Höchstrang mit Lehrerschritten an den Limits, ohne Lücke im Rang.
+- Prüfung: Wenn du einen Schritt herstellst und dabei einen Punkt bekommst, dann steht die Route danach auf dem neuen Rang, ohne `/reload`.
+- Prüfung: Wenn du ein Material der Einkaufsliste in die Tasche legst, dann steigt "hast" und "fehlt" sinkt; bei genug wird die Zeile grün.
+- Notiz: Spec `docs/specs/2026-11-06-berufsroute.md`, freigegeben 2026-11-06.
+
 ### F-052 Magier-Schriftrollen
 - Version: 2.10.0
 - Status: gebaut

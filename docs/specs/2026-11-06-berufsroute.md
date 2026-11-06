@@ -1,6 +1,6 @@
 # Spec: Berufsroute mit Einkaufsliste
 
-Stand: 2026-11-06 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-06 · Status: freigegeben ·
 Feature: F-137
 
 ## Ziel
@@ -131,4 +131,9 @@ die eigenen Daten und die generierten Tabellen.
 
 ## Entscheidungen
 
-Nichts.
+- 2026-11-06: alle fünf Fragen: "Passt, bauen" -> wie vorgeschlagen:
+  1. bis zum Höchstrang, Lehrerschritte an den Limits;
+  2. Schalter "nur Lehrer | auch Händler", Standard nur Lehrer, Drop-Rezepte nie;
+  3. Twinks mitzählen: `AmisiaDB.prof.bags`, nur eigene Charaktere, Spalte "Twinks";
+  4. keine Auktionshauspreise (kein `AmisiaDB.prices`);
+  5. Umschalter "Rezepte | Route" auf der Seite Berufe.
