@@ -69,7 +69,6 @@ L["Talente"] = "Talents"
 L["[Code|gross]"] = "[code|big]"
 L["Talentrechner öffnen (mit Code oder Build-Link: Build übernehmen, gross: großes Fenster)"] = "Open the talent calculator (with a code or build link: load the build; big: the big window)"
 L["Talentrechner"] = "Talent calculator"
-L["Großes Fenster"] = "Big window"
 L["Öffnet die Talente in einem eigenen, größeren Fenster (auch /amisia talente gross). Strg + Mausrad über dem Fenster ändert seine Größe."] = "Opens the talents in a window of their own with bigger trees (also /amisia talents big). Ctrl + mouse wheel over the window changes its size."
 L["Der Talentrechner ist nicht verfügbar."] = "The talent calculator is not available."
 

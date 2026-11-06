@@ -120,6 +120,8 @@ _G.C_Item = {
     end,
     GetItemInfoInstant = function(x)
         local id = itemId(x)
+        -- an item only the server describes (STUB.serverOnly[id]): not in the client's item table
+        if STUB.serverOnly and STUB.serverOnly[id] then return nil end
         local it = STUB.items[id]
         return id, "Armor", "Cloth", it and it.equipLoc or "INVTYPE_HEAD", it and it.icon or 134, it and it.classID or 4, it and it.subclassID or 1
     end,

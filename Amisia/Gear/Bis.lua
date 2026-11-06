@@ -181,7 +181,8 @@ local function hasSpec(class, key)
 end
 
 -- The entry of the logged-in character, made on first use; its spec starts as the Forever planner's
--- choice for the class, when there is one.
+-- choice for the class, when there is one. Unchecked: the check would build the weights at every alt's
+-- first login (D-28); ns.BisSpec passes over a spec the weights do not have.
 function ns.BisChar()
     local b = db()
     if not b then return nil end
@@ -192,7 +193,7 @@ function ns.BisChar()
         c = { class = class, wish = {}, ex = { item = {}, boss = {}, place = {} }, bag = {}, bank = {} }
         local g = AmisiaDB.settings and AmisiaDB.settings.gear
         local planned = class and type(g) == "table" and type(g.specs) == "table" and g.specs[class] or nil
-        if type(planned) == "string" and (not Gear.Available() or hasSpec(class, planned)) then c.spec = planned end
+        if type(planned) == "string" then c.spec = planned end
         b.chars[key] = c
     end
     return c
@@ -573,9 +574,18 @@ ns.OnEvent("BAG_UPDATE_DELAYED", function()
     -- Forever's bank tabs are bags: their changes come as bag updates
     if bankOpen then scheduleBank() end
 end)
+-- The worn items are read anew at once; the listeners run once at the next frame (a gear set swap
+-- fires one event per slot in the same frame).
+local equipDue = false
 ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", function()
     wornCache = nil
-    ownedChanged()
+    bump()
+    if equipDue then return end
+    equipDue = true
+    C_Timer.After(0, function()
+        equipDue = false
+        ownedChanged()
+    end)
 end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function()
     wornCache, bankOpen = nil, false

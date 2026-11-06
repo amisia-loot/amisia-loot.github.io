@@ -1,5 +1,5 @@
 -- The window "Ausrüstungsziele" (UI/GoalsWindow.lua, F-110): the self-test line "Charaktermodell";
--- nothing built before it opens; the button "Großes Fenster" on the gear page's view Ziele, the
+-- nothing built before it opens; the button "Ausrüstungsziele" on the gear page's view Ziele, the
 -- side tab, /amisia bis gross; the doll (17 slots as on the character frame, the model dressed in
 -- the targets or what is worn, drag, wheel, right click), the list by section with the gear page's
 -- texts and clicks; the scale (ui.goalScale, Ctrl + mouse wheel), the place (saved, reset), the
@@ -57,7 +57,7 @@ assert(_G.AmisiaGoalsFrame == nil, "nothing built before it is opened")
 NS.ShowGear("goals")
 local page = NS.GearPageFrame()
 local big = page.goals.big
-assert(big and big.vis ~= false and big:GetText() == "Großes Fenster", "the button on the view Ziele")
+assert(big and big.vis ~= false and big:GetText() == "Ausrüstungsziele", "the button on the view Ziele, named after its window")
 assert(big.points.TOPRIGHT, "it stands from the right edge")
 assert(page.goals.title:GetWidth() < 440, "the title leaves room for it")
 big:Click()
@@ -157,6 +157,23 @@ for _, r in ipairs(win.list.rows) do if r.item and r.item.key == "CHEST" then ch
 assert(chestRow.sel:IsShown() and not headRow.sel:IsShown(), "the chosen row lights up")
 headRow:Click()
 assert(NS.GoalsFrameState().slot == "HEAD", "a row click chooses its slot")
+
+---------------------------------------------------------------------------
+-- a gear set swap: one event per slot in the same frame, one refresh of the page and of the window
+---------------------------------------------------------------------------
+assert(win:IsShown() and AmisiaFrame:IsShown() and NS.CurrentPage() == "gear", "both open")
+local pageRefreshes, winRefreshes = 0, 0
+local realRefresh, realProgress = NS.Refresh, NS.BisProgress
+NS.Refresh = function(...) pageRefreshes = pageRefreshes + 1; return realRefresh(...) end
+NS.BisProgress = function(...) winRefreshes = winRefreshes + 1; return realProgress(...) end
+local swapStart = os.clock()
+for inv = 1, 15 do STUB.fire("PLAYER_EQUIPMENT_CHANGED", inv, false) end
+assert(pageRefreshes == 0 and winRefreshes == 0, "nothing inside the events")
+STUB.tick(0)
+local swapMs = (os.clock() - swapStart) * 1000
+NS.Refresh, NS.BisProgress = realRefresh, realProgress
+assert(pageRefreshes == 1 and winRefreshes == 1, ("one refresh each: page %d, window %d"):format(pageRefreshes, winRefreshes))
+print(("gear set swap: 15 slot events, one refresh of page and window (%.1f ms)"):format(swapMs))
 
 ---------------------------------------------------------------------------
 -- scale and place

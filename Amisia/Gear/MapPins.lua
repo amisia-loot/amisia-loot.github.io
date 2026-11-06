@@ -693,11 +693,15 @@ function Map.ShownPins(kind)
 end
 function Map.PinRefreshes() return refreshes end
 
--- A change redraws half a second later, on a frame of the layer: only while the map shows.
-local function schedule()
+-- A change redraws half a second later, on a frame of the layer: only while the map shows. A change
+-- of the own items alone (looting, sorting the bags) waits two seconds: each redraw costs ~20 ms.
+local function scheduleIn(delay)
     if not layer then create() end
-    if not due then due = GetTime() + 0.5 end
+    local at = GetTime() + delay
+    if not due or at < due then due = at end
 end
+local function schedule() scheduleIn(0.5) end
+local function scheduleOwned() scheduleIn(2) end
 
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("MAP_MARKS", function()
@@ -714,6 +718,6 @@ ns.Listen("SETTING", function(path)
         schedule()
     end
 end)
-ns.BisOnOwned(schedule)
+ns.BisOnOwned(scheduleOwned)
 -- a quest taken, handed in or dropped moves the quest steps
 for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED" }) do ns.OnEvent(event, schedule) end

@@ -58,7 +58,7 @@ assert(TT.BIG.ICON >= 44 and TT.BIG.TREE_W >= 270 and TT.BIG.ICON > TT.PAGE.ICON
 NS.ShowTalents()
 local page = NS.TalentsPageFrame()
 assert(page and page:IsShown() and page.bigBtn and page.bigBtn.vis ~= false, "the button on the page")
-assert(page.bigBtn:GetText() == "Großes Fenster", tostring(page.bigBtn:GetText()))
+assert(page.bigBtn:GetText() == "Talentrechner", tostring(page.bigBtn:GetText()))
 assert(page.bigBtn.layoutBand == page.bottomRow, "in the bottom row")
 assert(page.bigBtn.points.RIGHT and page.bigBtn.points.RIGHT.x == 0, "at its right end")
 assert(_G.AmisiaTalentFrame == nil, "nothing built before it is opened")

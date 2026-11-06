@@ -181,7 +181,7 @@ local function itemTooltip(owner, id)
     elseif GameTooltip.SetItemByID then
         GameTooltip:SetItemByID(id)
         -- an item only the server describes and no longer does: what the scan saw (D-59)
-        if Gear.ScanTooltip(GameTooltip, id) then return end
+        if Gear.ScanTooltip(GameTooltip, id, owner, function() itemTooltip(owner, id) end) then return end
     end
     GameTooltip:Show()
 end
@@ -485,7 +485,10 @@ local function fillHead(f, o, res, v)
     for k, chip in pairs(f.views) do chip:SetOn(k == v) end
     if guildVisible() then f.views.guild:Show() else f.views.guild:Hide() end
     f.views.wish.label:SetText(L["Wunschliste (%d)"]:format(wishCount()))
+    -- the new label (a large count, the English text) widens the chip and moves the guild chip
+    W.FitChip(f.views.wish, 104)
     if Gear.Available() then f.open:Show() else f.open:Hide() end
+    f:Place(1, f.headRow, { f.open })
     f.counts:SetText(counts(o, res))
     if ns.BisExcludeCount() > 0 then f.reset:Show() else f.reset:Hide() end
     fillStyle(f.style)
@@ -601,7 +604,7 @@ local function buildGoals(f)
     -- the window "Ausrüstungsziele" (UI/GoalsWindow.lua), why the weights are as they are
     -- (tooltip), and the simulation of another class or level: 20 high, between the list (it ends
     -- at -282) and the first option (-302), from the right edge; the title takes the rest
-    G.big = W.Button(G, L["Großes Fenster"], 110, function() if ns.ToggleGoalsFrame then ns.ToggleGoalsFrame() end end,
+    G.big = W.Button(G, L["Ausrüstungsziele"], 110, function() if ns.ToggleGoalsFrame then ns.ToggleGoalsFrame() end end,
         { height = T.ROW_BUTTON_H })
     W.FitChip(G.big, 110)
     W.Tooltip(G.big, L["Ausrüstungsziele"], L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."])
@@ -1367,6 +1370,10 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         f.views.here = W.Chip(f, L["Hier"], 46, function() state().place = nil; setView("here") end)
         f.views.wish = W.Chip(f, L["Wunschliste"], 104, function() setView("wish") end)
         f.views.guild = W.Chip(f, L["Gilde"], 56, function() setView("guild") end)
+        W.Tooltip(f.views.goals, L["Ziele"], L["Das beste erreichbare Item je Slot mit deinen Quellen."])
+        W.Tooltip(f.views.here, L["Hier"], L["Items aus der Zone oder dem Dungeon, in dem du gerade bist."])
+        W.Tooltip(f.views.wish, L["Wunschliste"], L["Die Items, die du dir gemerkt hast."])
+        W.Tooltip(f.views.guild, L["Gilde"], L["Die Wunschlisten deiner Gilde von der Website."])
         -- 64 wide: the tooltip says what the table is
         f.open = W.Button(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
         W.Tooltip(f.open, L["Ausrüstungstabelle"], L["Die besten Items aller Levelbereiche für jede Spezialisierung."])
@@ -1428,11 +1435,14 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         end
     end }
 
--- A wish, an exclusion, the spec, the own items or the guild list changed: show it at once.
-local function refreshShown()
+-- A wish, an exclusion, the spec or the guild list changed: show it at once (a click's answer).
+local function onGearPage()
     local cur = ns.CurrentPage and ns.CurrentPage()
-    if cur == "gear" or cur == "dungeons" or cur == "overview" then ns.Refresh() end
+    return cur == "gear" or cur == "dungeons" or cur == "overview"
 end
+local function refreshShown() if onGearPage() then ns.Refresh() end end
+-- the own items changed: with the next frame (a bag sort or a gear set swap changes many in one frame)
+local function refreshOwned() if onGearPage() then ns.RefreshSoon() end end
 ns.Listen("BIS_CHANGED", refreshShown)
 -- a new or cleared list: what the last import said is over (an import sets its result afterwards)
 ns.Listen("GUILD_WISHES", function()
@@ -1440,7 +1450,7 @@ ns.Listen("GUILD_WISHES", function()
     refreshShown()
 end)
 ns.Listen("ALTS", refreshShown)
-ns.BisOnOwned(refreshShown)
+ns.BisOnOwned(refreshOwned)
 
 -- Item names the client did not have at the last refresh: once item data arrives the shown rows
 -- are filled again, once for a burst of answers, and the wishlist (sorted by name) and the guild

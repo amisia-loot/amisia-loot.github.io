@@ -1545,15 +1545,25 @@ ns.GoalsRefresh = function() refresh() end
 ns.GOALS_SECTIONS = SECTIONS
 
 -- What changes the targets, the own items or an item's name: show it while the window is open
--- (once for a burst of item answers).
+-- (once for a burst of item answers). The own items with the next frame: a bag sort or a gear set
+-- swap changes many in one frame.
 local function changed() if built then refresh() end end
+local ownedDue = false
+local function ownedChanged()
+    if not built or ownedDue then return end
+    ownedDue = true
+    C_Timer.After(0, function()
+        ownedDue = false
+        if built then refresh() end
+    end)
+end
 ns.Listen("BIS_CHANGED", changed)
 -- a setting under ui.* (the scale: ApplyGoalScale rescales) changes nothing the window shows
 ns.Listen("SETTING", function(path)
     if type(path) == "string" and path:find("^ui%.") then return end
     changed()
 end)
-ns.BisOnOwned(changed)
+ns.BisOnOwned(ownedChanged)
 -- The doll is dressed again only when one of its links changes (dress compares them): every item answer
 -- (the scan, the collector, other addons) dressing it anew made the model flicker, and an answer that
 -- failed asked again with the next refresh.
