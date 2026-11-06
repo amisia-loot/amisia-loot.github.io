@@ -115,9 +115,11 @@ end
 local function send(e)
     local chan = resolveChannel(e.chan)
     if not chan then return false end
-    -- C_ChatInfo.SendChatMessage (the global is only a deprecated alias the client may lack)
+    -- C_ChatInfo.SendChatMessage (the global is only a deprecated alias the client may lack); TBC
+    -- Anniversary and Classic Era (D-57) know only the global, read with rawget
     local info = _G.C_ChatInfo
     local fn = type(info) == "table" and info.SendChatMessage
+    if type(fn) ~= "function" then fn = rawget(_G, "SendChatMessage") end
     if type(fn) ~= "function" then return false end
     local ok = pcall(fn, e.text, chan, nil, chan == "WHISPER" and e.target or nil)
     if not ok then
@@ -251,10 +253,11 @@ end
 ---------------------------------------------------------------------------
 -- Incoming "!word" commands
 ---------------------------------------------------------------------------
-local commands = {}   -- lower-case word -> fn(sender, rest, chan)
+local commands = {}   -- lower-case word -> fn(sender, rest, chan, who)
 
 -- fn gets the sender as the client gives it (answer to that, not to a rebuilt name), the rest of
--- the line and "WHISPER", "RAID", "PARTY" or "GUILD".
+-- the line, "WHISPER", "RAID", "PARTY" or "GUILD", and who: the sender's name in the group or the
+-- guild, else without the own realm's ending (match and store under that).
 function ns.RegisterChatCommand(word, fn)
     commands[word:lower()] = fn
 end
@@ -267,8 +270,11 @@ local function onCommand(chan, text, sender)
     if not word then return end
     local fn = commands[word:lower()]
     if not fn then return end
-    if ns.SameName(sender, ns.UnitFullName("player")) then return end
-    local ok, err = pcall(fn, sender, rest, chan)
+    -- "Name-Realm" on clients that add the realm; Trust.lua loads after this file, hence the guards
+    local who = (ns.TrustName and ns.TrustName(sender)) or (ns.StripOwnRealm and ns.StripOwnRealm(sender))
+        or ns.FullName(sender)
+    if not who or ns.SameName(who, ns.UnitFullName("player")) then return end
+    local ok, err = pcall(fn, sender, rest, chan, who)
     if not ok then
         local handler = geterrorhandler and geterrorhandler()
         if handler then handler(err) end

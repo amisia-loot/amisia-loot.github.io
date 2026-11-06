@@ -925,11 +925,12 @@ local function inGroup(name)
     return false
 end
 
-local function onAsk(sender)
+-- who: the sender's name in the group (Chat.lua); the answer goes to the raw sender.
+local function onAsk(sender, _, _, who)
     local cfg = ns.PointsConfig()
     if cfg.sys == "roll" or ns.Get("points.chat") == false or not ns.IsOfficerView() then return end
     if not (ns.IsLootLead and ns.IsLootLead()) then return end
-    local name = ns.FullName(sender)
+    local name = ns.FullName(who or sender)
     if not name or not inGroup(name) then return end
     if not ns.ReplyGate("dkp", name:lower()) then return end
     ns.Say("Amisia: " .. standingText(ns.PointsOf(name), cfg), "WHISPER", sender, { ttl = 120 })

@@ -78,12 +78,25 @@ local function masterLooter()
     return type(name) == "string" and ns.FullName(name) or nil
 end
 
+-- Whether name leads the group: the raid units in a raid, else the party units ("raidN" does not
+-- exist in a five-man group).
 local function isLeader(name)
     local roster = ns.GroupRoster()
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.Plain((GetRaidRosterInfo(i)))
-        if type(n) == "string" and ns.SameNameIn(n, name, roster) then
-            return ns.Plain(UnitIsGroupLeader("raid" .. i)) == true
+    if IsInRaid() then
+        for i = 1, GetNumGroupMembers() or 0 do
+            local n = ns.Plain((GetRaidRosterInfo(i)))
+            if type(n) == "string" and ns.SameNameIn(n, name, roster) then
+                return ns.Plain(UnitIsGroupLeader("raid" .. i)) == true
+            end
+        end
+        return false
+    end
+    for i = 0, 4 do
+        local unit = i == 0 and "player" or ("party" .. i)
+        local raw, second = UnitName(unit)
+        local n = ns.FullName(ns.Plain(raw), ns.Plain(second))
+        if n and ns.SameNameIn(n, name, roster) then
+            return ns.Plain(UnitIsGroupLeader(unit)) == true
         end
     end
     return false
@@ -518,7 +531,7 @@ end)
 ---------------------------------------------------------------------------
 -- /amisia wer <Item-Link>
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "need", label = L["Wer braucht das?"], order = 22, group = "raid", pages = { "rolls" }, items = {
+ns.RegisterSettings{ key = "need", label = L["Wer braucht das?"], order = 22, group = "raid", pages = { "rolls", "awards" }, items = {
     { key = "need.share", type = "toggle", label = L["Der Lootleitung meine Upgrades nennen"], default = true,
       tip = L["Fragt die Lootleitung \"Wer braucht das?\", antwortet Amisia, ob das Item ein Upgrade für dich ist."] },
     { key = "need.ask", type = "toggle", label = L["Beim Ansagen fragen, für wen ein Item ein Upgrade ist"], default = true, officer = true,

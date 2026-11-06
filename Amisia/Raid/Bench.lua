@@ -395,10 +395,11 @@ local function inBattleground()
     return kind == "pvp" or kind == "arena"
 end
 
--- sender is the raw (plain) text the client gave; the answer goes back to it by whisper.
-local function onBench(sender, rest)
+-- sender is the raw (plain) text the client gave; the answer goes back to it by whisper. who is its
+-- name in the group or the guild (Chat.lua), the name the bench entry is for.
+local function onBench(sender, rest, _, who)
     if not ns.Get("bench.chat") or not ns.IsLootLead() or inBattleground() then return end
-    local name = ns.FullName(sender)
+    local name = ns.FullName(who or sender)
     if not name then return end
     if not ns.ReplyGate("bench", name:lower()) then return end
     local function reply(text) ns.Say(text, "WHISPER", sender, { ttl = 120 }) end
