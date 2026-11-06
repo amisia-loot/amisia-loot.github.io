@@ -30,6 +30,8 @@ local function calendar(opts)
 end
 calendar()
 local F = NS.ShowSignup()
+-- the button beside the date picker names the window it opens
+assert(F.calOpen:GetText() == "Raid-Kalender", F.calOpen:GetText())
 local function pickDate(title)
     for _, t in ipairs(NS.SignupTerms()) do
         if t.title == title then NS.ShowSignup(t.night) return t end

@@ -236,7 +236,7 @@ local q = assert(NS.QuestPageFrame())
 assert(q.show.open.label:GetText() == "Available" and q.show.active.label:GetText() == "In log" and q.mine.label:GetText() == "Only mine")
 assert(plain(q.counts:GetText()) == "0 in log · 1 available · 2 locked · 0 done", plain(q.counts:GetText()))
 assert(has(q.data:GetText(), "Quest data of Oct 6, 2026 · 3 quests"), q.data:GetText())
-assert(q.head.reward:GetText() == "Reward" and q.head.go:GetText() == "Go")
+assert(q.head.reward:GetText() == "Reward" and q.head.go:GetText() == "Waypoint")
 assert(not german(shown(q)), shown(q))
 
 -- nothing the area asked for lacks its English

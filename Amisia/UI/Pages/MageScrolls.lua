@@ -362,7 +362,7 @@ local function create(parent)
     -- the chosen entry in the inset beside the list, as high as the list
     local d = f:Detail({ top = top, height = ROWS * ROW_H })
     f.detail = d
-    d.go = W.Button(d, L["Weg"], 70, function()
+    d.go = W.Button(d, L["Wegpunkt"], 70, function()
         if d.point and ns.MapSetPoint then
             local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
             if not ok and why then ns.msg(why) end
@@ -370,7 +370,7 @@ local function create(parent)
     end, { height = T.ROW_BUTTON_H })
     W.FitChip(d.go, 70)
     d:Buttons({ d.go })
-    W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf den Ort des Eintrags."])
+    W.Tooltip(d.go, L["Wegpunkt"], L["Setzt den Wegpunkt auf den Ort des Eintrags."])
 
     f.hint:SetText(L["Magier entziffern Schriftrollen mit Arkanem Verständnis; höhere Stufen brauchen einen höheren Rang. Farben wie im Berufsfenster."])
     return f

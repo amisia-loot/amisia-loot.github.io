@@ -108,8 +108,24 @@ assert(#t == 3 and has(t[2], "Investigate") and has(t[3], "Skirmish"), table.con
 assert(f.search:GetText() == "echo")
 NS.Dispatch("quests nichtsdergleichen")
 assert(#texts() == 0 and f.empty:IsShown() and has(f.empty:GetText(), "Keine Quests"))
+-- the filters are chips: the help says "Status einschalten", and "Filter zurücksetzen" brings
+-- every zone and status back, clears the search and keeps "Nur für mich"
+assert(has(f.empty:GetText(), "weitere Status einschalten") and not has(f.empty:GetText(), "Häkchen"), f.empty:GetText())
+assert(f.reset:IsShown() and f.reset:GetText() == "Filter zurücksetzen")
+f.chains:Click()
+f.reset:Click()
+local qs = AmisiaDB.settings.questsPage
+assert(qs.search == "" and qs.zone == "all" and not qs.chains and qs.mine and qs.show.open and qs.show.locked and qs.show.done, "reset")
+assert(f.search:GetText() == "" and #texts() > 0 and not f.empty:IsShown() and not f.reset:IsShown())
+qs.show = { open = true, active = true, locked = false, done = false }
 NS.Dispatch("quests")
 assert(#texts() > 0 and not f.empty:IsShown())
+-- a status chip starts the list at the top again, as the other filters do
+-- (the list key: a new key sets the offset to 0; the few rows here clamp it anyway)
+local key0 = f.listKey
+f.show.locked:Click()
+assert(f.listKey ~= key0 and f.list.offset == 0, "a status chip resets the scroll offset")
+f.show.locked:Click()
 
 -- the layout
 local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)

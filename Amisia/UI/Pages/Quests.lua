@@ -16,7 +16,7 @@ local ICON = "Interface\\Icons\\INV_Misc_Book_08"
 local ROWS, ROW_H = 14, 24
 local GAP = 1            -- seconds between two rebuilds after changes
 local STATUS_COLOR = { active = YELLOW, open = GREEN, locked = RED, done = GREY }
-local HINT = L["Klick auf eine Quest: Reihe und Belohnungen. Weg: Wegpunkt zum Questgeber."]
+local HINT = L["Klick auf eine Quest: Reihe und Belohnungen. Wegpunkt: setzt ihn auf den Questgeber."]
 
 local page
 local nameMissing = false
@@ -226,6 +226,24 @@ local function zoneValues(counts, s)
     return values
 end
 
+-- The state "Filter zurücksetzen" leaves: every zone and status, no chain or upgrade filter, no
+-- search. "Nur für mich" stays (it hides quests the character can never take).
+local function isReset(s)
+    return s.zone == "all" and s.search == "" and not s.chains and not s.upgrades
+        and s.show.open and s.show.active and s.show.locked and s.show.done
+end
+
+local function resetFilters()
+    local s = state()
+    s.zone, s.search, s.chains, s.upgrades = "all", "", nil, nil
+    s.show = { open = true, active = true, locked = true, done = true }
+    if page and page.search then
+        page.search:SetText("")
+        page.search:ClearFocus()
+    end
+    ns.Refresh()
+end
+
 local function countsText(counts)
     return L["%d im Log · %d annehmbar · %d gesperrt · %d erledigt"]:format(counts.active, counts.open, counts.locked, counts.done)
 end
@@ -241,17 +259,22 @@ local function refresh(f)
     f.upgrades:SetOn(s.upgrades and true or false)
     f.mine:SetOn(s.mine and true or false)
     f.counts:SetText(countsText(counts))
-    local key = table.concat({ tostring(s.zone), s.search, tostring(s.chains), tostring(s.upgrades), tostring(s.mine) }, "|")
+    -- every filter, the status chips too: a change starts the list at the top
+    local key = table.concat({ tostring(s.zone), s.search, tostring(s.chains), tostring(s.upgrades), tostring(s.mine),
+        tostring(s.show.open), tostring(s.show.active), tostring(s.show.locked), tostring(s.show.done) }, "|")
     if key ~= f.listKey then f.list.offset = 0 end
     f.listKey = key
     nameMissing = false
     f.list:SetItems(rows)
+    local whyText = Q.WhyText(why)
     if #rows > 0 then
         f.empty:Hide()
     else
-        f.empty:Set(L["Nichts gefunden"], Q.WhyText(why) or L["Keine Quests für diese Auswahl. Oben weitere Häkchen setzen oder die Suche leeren."])
+        f.empty:Set(L["Nichts gefunden"], whyText or L["Keine Quests für diese Auswahl. Oben weitere Status einschalten, Filter ausschalten oder die Suche leeren."])
         f.empty:Show()
     end
+    -- with data and an empty list: the filters back to everything (only when that changes something)
+    f.reset:SetShown(#rows == 0 and not whyText and not isReset(s))
     local d = ns.Data("QUEST_DATA")
     if type(d) == "table" then
         f.data:SetText(L["Questdaten vom %s · %d Quests · Namen englisch, bis der Client die Quest kennt."]:format(longDate(d.built), d.count or 0))
@@ -262,7 +285,7 @@ end
 
 -- the columns of the list (590 wide, 12 px for its scroll bar); the waypoint button has no text cell
 local COLS = { { "title", 4, 232, "Quest" }, { "level", 240, 40, "Level" }, { "status", 284, 150, "Status" },
-    { "reward", 438, 92, L["Belohnung"] }, { "go", 540, 46, L["Weg"], cell = false } }
+    { "reward", 438, 72, L["Belohnung"] }, { "go", 516, 70, L["Wegpunkt"], cell = false } }
 
 local function create(parent)
     local f = W.Page(parent)
@@ -321,17 +344,25 @@ local function create(parent)
     f.headFrame, f.head = f:Columns(COLS)
     f.list = f:List(ROWS, ROW_H, function(r)
         W.Cells(r, COLS)
-        r.go = W.Button(r, L["Weg"], 54, function(self)
+        r.go = W.Button(r, L["Wegpunkt"], 70, function(self)
             local e = self:GetParent().item
             if e and e.qid then say(ns.QuestWaypoint(e.qid)) end
         end, { height = T.ROW_BUTTON_H })
-        r.go:SetPoint("LEFT", 536, 0)
+        -- as wide as its word, at most to the list's edge (590)
+        W.FitChip(r.go, 54, 74)
+        r.go:SetPoint("LEFT", 516, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", onRowClick)
         r:SetScript("OnEnter", questTip)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, fillRow)
     f.empty = f:Empty()
+    -- under the empty state's help; a child of the list it stands over (the list holds it)
+    f.reset = W.Button(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    W.FitChip(f.reset)
+    f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
+    f.reset:Hide()
+    W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Zeigt alle Zonen und alle vier Status, schaltet Reihen und Upgrades aus und leert die Suche. \"Nur für mich\" bleibt."])
     return f
 end
 

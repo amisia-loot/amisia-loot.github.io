@@ -7,6 +7,14 @@ local GOLD = W.GOLD
 local ROWS, ROW_H = 12, 22
 local GREY = T.GREY
 local KINDS = { "MS", "OS", "SR", "-" }
+-- the chips of the edit bar: a word for "-", and what each kind means (D-22)
+local KIND_LABEL = { ["-"] = L["ohne##Art"] }
+local KIND_TIP = {
+    MS = { L["Mainspec"], L["Gewinn für die Hauptspezialisierung. Zählt als Plus-Eins (nur an Spieler, Twinks für ihren Main)."] },
+    OS = { L["Offspec"], L["Gewinn für eine Zweitspezialisierung. Zählt nicht als Plus-Eins."] },
+    SR = { "Soft-Reserve", L["Gewinn über eine Soft-Reserve. Zählt nicht als Plus-Eins."] },
+    ["-"] = { L["Ohne Art"], L["Keine Art angegeben. Zählt nicht als Plus-Eins und bei keiner Art der Statistik."] },
+}
 local MAX_SUGGEST = 3
 local TO_TEXT = { bank = "Bank", de = L["Entzaubern"] }
 
@@ -341,17 +349,21 @@ local function buildOfficer(parent)
     artLab:SetText(L["Art"])
     E.kinds = {}
     local prev = artLab
+    -- the kind "-" (none given) shows a word; the chips as wide as their text, the note takes the rest
+    local kindW = 0
     for i, k in ipairs(KINDS) do
-        local chip = W.Chip(E, k, 32, function() edit({ kind = k }) end)
+        local chip = W.Chip(E, KIND_LABEL[k] or k, 32, function() edit({ kind = k }) end)
+        kindW = kindW + W.FitChip(chip, 32) + (i == 1 and 4 or 3)
         chip:SetPoint("LEFT", prev, "RIGHT", i == 1 and 4 or 3, 0)
+        W.Tooltip(chip, KIND_TIP[k][1], KIND_TIP[k][2])
         E.kinds[k] = chip
         prev = chip
     end
     local noteLab = W.Text(E, T.FONT.text, 32)
     noteLab:SetPoint("LEFT", prev, "RIGHT", 12, 0)
     noteLab:SetText(L["Notiz"])
-    -- up to 6 px before the panel's right edge (602 px of content)
-    E.note = W.LineEdit(E, 150, function(text) edit({ note = text }) end)
+    -- up to 6 px before the panel's right edge (602 px of content); 137 px of chips at 32 px each
+    E.note = W.LineEdit(E, 150 - math.max(0, kindW - 137), function(text) edit({ note = text }) end)
     E.note:SetPoint("LEFT", noteLab, "RIGHT", 4, 0)
 
     E.bank = W.Button(E, "Bank", 90, function()
@@ -1023,7 +1035,7 @@ function ns.ShowAwards(sessionId)
     ns.ShowPage("awards")
 end
 
-ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 35, group = "raid",
+ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 22, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         page = f

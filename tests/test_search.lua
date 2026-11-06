@@ -48,17 +48,20 @@ g = NS.Search("experten")
 assert(texts(group(g, "settings")) == "Expertenmodus", texts(group(g, "settings")))
 g = NS.Search("automatisch")
 assert(has(texts(group(g, "settings")), "Ansicht"), "by a choice's name: " .. texts(group(g, "settings")))
--- hidden pages are not found: the raider view has no officers' Raids page (only the one in
--- Ausrüstung, F-122) and no players
+-- hidden pages are not found: the raider view has no officers' Raid-Archiv (the journal "Raids"
+-- in Ausrüstung, F-122, is for everyone) and no players
 local tips = {}
 for _, h in ipairs(group(NS.Search("raids"), "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
-table.sort(tips)
-assert(table.concat(tips, "|") == "Seite im Reiter Ausrüstung.|Seite im Reiter Raid.", table.concat(tips, "|"))
+assert(table.concat(tips, "|") == "Seite im Reiter Ausrüstung.", table.concat(tips, "|"))
+local archive = {}
+for _, h in ipairs(group(NS.Search("archiv"), "pages").hits) do if h.text == "Raid-Archiv" then archive[#archive + 1] = h.tip end end
+assert(table.concat(archive, "|") == "Seite im Reiter Raid.", table.concat(archive, "|"))
 NS.Set("ui.view", "raider")
 g = NS.Search("raids")
 tips = {}
 for _, h in ipairs(group(g, "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
 assert(table.concat(tips, "|") == "Seite im Reiter Ausrüstung.", table.concat(tips, "|"))
+assert(group(NS.Search("archiv"), "pages") == nil, "the raider view finds no Raid-Archiv")
 assert(group(NS.Search("frak"), "players") == nil, "players only in the officer view")
 NS.Set("ui.view", "officer")
 -- players from members and awards (not the bank), sorted, class kept for the icon

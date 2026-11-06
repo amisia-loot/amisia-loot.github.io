@@ -80,6 +80,40 @@ NS.ShowExport(false)
 assert(lastMsg():find("Nichts Neues", 1, true) == nil, "a selected session exports again")
 NS.RaidSelection[s.id] = nil
 
+-- Raid-Archiv: the name (not the gear tab's "Raids"), the order of a raid night, Export beside it;
+-- "Löschen (n)" and "Angekreuzte (n)" follow the ticks, "Alle wählen" turns into "Keine wählen"
+assert(NS.Panel("raids").label == "Raid-Archiv" and NS.Panel("raids").officer and NS.Panel("raidjournal").label == "Raids")
+assert(NS.Panel("export").group == "raid" and NS.Panel("export").officer and NS.Panel("export").order > NS.Panel("raids").order)
+local night = { "overview", "lineup", "softres", "raidcheck", "rolls", "awards", "raidlog", "points", "stats", "raids", "export" }
+for i = 2, #night do
+    assert(NS.Panel(night[i]).group == "raid" and NS.Panel(night[i]).order > NS.Panel(night[i - 1]).order, night[i])
+end
+NS.ShowPage("raids")
+assert(rp.del:GetText() == "Löschen (0)" and not rp.del:IsEnabled(), rp.del:GetText())
+assert(rp.all:GetText() == "Alle wählen" and rp.hint:GetText():find("Orange +N", 1, true), rp.hint:GetText())
+rp.list.rows[1].box:Click()
+assert(NS.RaidSelection[s.id] and rp.del:GetText() == "Löschen (1)" and rp.del:IsEnabled(), rp.del:GetText())
+local nRaids = #NS.Sessions()
+assert(rp.all:GetText() == (nRaids == 1 and "Keine wählen" or "Alle wählen"), rp.all:GetText())
+if nRaids > 1 then rp.all:Click() end
+assert(rp.all:GetText() == "Keine wählen" and rp.del:GetText() == ("Löschen (%d)"):format(nRaids), rp.all:GetText())
+NS.ShowPage("export")
+local ep = NS.ExportPageFrame()
+assert(ep.selBtn:GetText() == ("Angekreuzte (%d)"):format(nRaids) and ep.selBtn:IsEnabled(), ep.selBtn:GetText())
+NS.ShowPage("raids")
+rp.all:Click()
+assert(rp.all:GetText() == "Alle wählen" and not next(NS.RaidSelection) and not rp.del:IsEnabled())
+NS.ShowPage("export")
+assert(ep.selBtn:GetText() == "Angekreuzte (0)" and not ep.selBtn:IsEnabled(), "nothing ticked: disabled")
+local tipLines = {}
+local keepAdd = GameTooltip.AddLine
+GameTooltip.AddLine = function(_, t) tipLines[#tipLines + 1] = t end
+ep.selBtn.scripts.OnEnter(ep.selBtn)
+GameTooltip.AddLine = keepAdd
+assert(table.concat(tipLines, " "):find("Raid-Archiv (Reiter Raid)", 1, true), table.concat(tipLines, " "))
+-- the box shows the last export; empty, it says what the buttons fill in
+assert(not ep.empty:IsShown(), "the box holds the export of before")
+
 -- settings page: toggling a row writes the setting
 NS.ShowSettingsSection("record")
 local rows = NS.SettingsRows()

@@ -13,6 +13,15 @@ local function setExport(txt)
     if not area then return end
     area.box:SetText(exportText)
     area.box:SetCursorPosition(0)
+    -- an empty box says what the buttons fill in
+    if page and page.empty then page.empty:SetShown(exportText == "") end
+end
+
+-- The number of ticked raids on the page Raid-Archiv.
+local function selectedCount()
+    local n = 0
+    for _ in pairs(ns.RaidSelection or {}) do n = n + 1 end
+    return n
 end
 
 -- Fills the export box. latestOnly: the newest session. Otherwise the selected sessions, or without
@@ -42,7 +51,7 @@ function ns.ShowExport(latestOnly)
             if #src == 0 and not ns.Bank() then
                 ns.msg(L["Noch keine Raids und keine Gildenbank-Zählung zum Exportieren."])
             else
-                ns.msg(L["Nichts Neues seit dem letzten Export. Raids auf der Seite Raids ankreuzen, um sie noch einmal zu exportieren."])
+                ns.msg(L["Nichts Neues seit dem letzten Export. Raids auf der Seite Raid-Archiv ankreuzen, um sie noch einmal zu exportieren."])
             end
             return
         end
@@ -59,7 +68,8 @@ function ns.ShowExport(latestOnly)
     ns.Refresh()
 end
 
-ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 60, group = "guild", officer = true,
+-- In the tab Raid after the Raid-Archiv it exports from (the bank and the loot prio come along).
+ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 36, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: what to export, and how much is new; under it what the text is for
@@ -69,14 +79,17 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
             ns.ShowExport(false)
         end)
         W.FitChip(newBtn, 150)
-        local selBtn = W.Button(f, L["Angekreuzte"], 120, function()
+        local selBtn = W.Button(f, L["Angekreuzte (%d)"]:format(0), 120, function()
             if not next(ns.RaidSelection) then
-                ns.msg(L["Zuerst Raids auf der Seite Raids ankreuzen."])
+                ns.msg(L["Zuerst Raids auf der Seite Raid-Archiv ankreuzen."])
                 return
             end
             ns.ShowExport(false)
         end)
         W.FitChip(selBtn, 120)
+        -- disabled without ticked raids; the tooltip says where to tick them
+        if selBtn.SetMotionScriptsWhileDisabled then selBtn:SetMotionScriptsWhileDisabled(true) end
+        W.Tooltip(selBtn, L["Angekreuzte"], L["Exportiert die Raids, die auf der Seite Raid-Archiv (Reiter Raid) angekreuzt sind, auch schon exportierte."])
         f.state = W.Text(f, T.FONT.hint)
         f:Place(1, { newBtn, selBtn, { f.state, fill = true } })
         local intro = f:Line(2)
@@ -93,6 +106,11 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
                 self:HighlightText()
             end
         end)
+        -- over the empty box (in front of it), clicks go through to the box
+        f.empty = f:Empty(nil, area)
+        f.empty:SetFrameLevel((area:GetFrameLevel() or 0) + 5)
+        f.empty:Set(L["Noch kein Exporttext"], L["\"Neue und geänderte\" füllt das Feld mit allem, was seit dem letzten Export neu ist (Raids, Gildenbank, Loot-Prio); \"Angekreuzte\" mit den Raids, die im Raid-Archiv angekreuzt sind."])
+        f.empty:SetShown(exportText == "")
         -- the parts the layout tests read
         f.intro, f.newBtn, f.selBtn, f.area, f.hint = intro, newBtn, selBtn, area, hint
         page = f
@@ -101,6 +119,11 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
     refresh = function(f)
         local pending = #ns.PendingExport()
         f.state:SetText(pending > 0 and L["%d Raid(s) neu oder geändert"]:format(pending) or L["alles exportiert"])
+        local n = selectedCount()
+        f.selBtn:SetText(L["Angekreuzte (%d)"]:format(n))
+        W.FitChip(f.selBtn, 120)
+        f.selBtn:SetEnabled(n > 0)
+        f.empty:SetShown(exportText == "")
     end }
 
 ns.RegisterCard{ key = "export", order = 60, officer = true, fill = function(c)

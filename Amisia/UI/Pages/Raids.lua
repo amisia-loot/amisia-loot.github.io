@@ -1,4 +1,5 @@
--- Raids: the recorded sessions, a selection for the export, and the details of one session.
+-- Raid-Archiv (key "raids"): the recorded sessions, a selection for the export, and the details of
+-- one session. Not the gear tab's raid journal "Raids" (key "raidjournal").
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -72,6 +73,22 @@ local function detailText(s)
 end
 ns.RaidDetailText = detailText
 
+-- The head row's buttons follow the selection: "Löschen (n)" only with ticked raids, "Alle wählen"
+-- turns into "Keine wählen" once every raid is ticked.
+local function updateHead(f)
+    local n, all = 0, ordered()
+    local allOn = #all > 0
+    for _, s in ipairs(all) do
+        if ns.RaidSelection[s.id] then n = n + 1 else allOn = false end
+    end
+    f.del:SetText(L["Löschen (%d)"]:format(n))
+    W.FitChip(f.del, 100)
+    f.del:SetEnabled(n > 0)
+    f.all:SetText(allOn and L["Keine wählen"] or L["Alle wählen"])
+    W.FitChip(f.all, 100)
+    f.all:SetEnabled(#all > 0)
+end
+
 local function col(parent, x, w, label, template)
     local fs = W.Text(parent, template or T.FONT.head, w)
     fs:SetPoint("LEFT", x, 0)
@@ -99,14 +116,14 @@ local COLS = { { "date", 30, 80, L["Datum"] }, { "zone", 112, 200, "Raid" }, { "
     { "mat1", MAT_X, MAT_W }, { "mat2", MAT_X + MAT_STEP, MAT_W }, { "mat3", MAT_X + 2 * MAT_STEP, MAT_W },
     { "gems", MAT_X + 2 * MAT_STEP, 90 } }
 
-ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 20, group = "raid", officer = true,
+ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 34, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
         page = f
         -- the head row: how many raids, select all and delete at the right
         f:Bands({ "row" })
         f.pageText = W.Text(f, T.FONT.hint)
-        f.del = W.Button(f, L["Löschen##Knopf"], 100, function()
+        f.del = W.Button(f, L["Löschen (%d)"]:format(0), 100, function()
             if not next(ns.RaidSelection) then
                 ns.msg(L["Zuerst Raids in der Liste ankreuzen."])
                 return
@@ -124,6 +141,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         end)
         W.FitChip(f.del, 100)
         W.FitChip(f.all, 100)
+        -- the tooltip also on the disabled button: it says why it is grey
+        if f.del.SetMotionScriptsWhileDisabled then f.del:SetMotionScriptsWhileDisabled(true) end
+        W.Tooltip(f.del, L["Löschen##Knopf"], L["Löscht die angekreuzten Raids aus Amisia, nach einer Rückfrage. Zuerst Raids in der Liste ankreuzen."])
         f:Place(1, { { f.pageText, fill = true } }, { f.all, f.del })
         local _, heads = f:Columns(COLS)
         f.matHead = { heads.mat1, heads.mat2, heads.mat3 }
@@ -131,6 +151,8 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         f.list = f:List(ROWS, ROW_H, function(r)
             r.box = W.Toggle(r, function(on)
                 if r.item then ns.RaidSelection[r.item.id] = on or nil end
+                -- the counts on Löschen and on the export's "Angekreuzte"
+                ns.Refresh()
             end)
             r.box:SetPoint("LEFT", 6, 0)
             r.sel = W.SelectBar(r)
@@ -170,6 +192,9 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         end)
         f.empty = f:Empty()
         f.empty:Set(L["Noch kein Raid aufgezeichnet"], L["Die Aufnahme startet in einer Raidinstanz mit Raidgruppe."])
+        -- what the colours of the list mean
+        f:Footer({ "hint" })
+        f.hint:SetText(L["Graues Datum: exportiert und seitdem unverändert. Orange +N: so viele Raider kamen zu spät."])
         -- the chosen raid under the list; the text ends with the list, its bar lies under the list's
         f.detail = W.ScrollText(f)
         f.detail:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -T.LAYOUT.GAP * 2)
@@ -191,6 +216,7 @@ ns.RegisterPanel{ key = "raids", label = "Raids", icon = "Interface\\Icons\\Abil
         if hasGems then f.gemHead:SetText(L["Edelsteine"]); f.gemHead:Show() else f.gemHead:Hide() end
         f.list:SetItems(all)
         f.pageText:SetText(#all == 1 and L["1 Raid"] or L["%d Raids"]:format(#all))
+        updateHead(f)
         f.empty:SetShown(#all == 0)
         local s = exists[detailId] or all[1]
         detailId = s and s.id or nil
@@ -233,5 +259,5 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     local mats = ns.MatLine(m)
     if mats ~= "" then parts[#parts + 1] = mats end
     c.line2:SetText(table.concat(parts, " · "))
-    if ns.IsOfficerView() then c:SetAction("Raids", function() ns.ShowPage("raids") end) end
+    if ns.IsOfficerView() then c:SetAction(L["Öffnen"], function() ns.ShowPage("raids") end) end
 end }

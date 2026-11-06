@@ -927,6 +927,12 @@ Kategorienliste des Auktionshauses, ohne Symbole (D-06).
 weglassen"); der Name wird weiß. Die Suche findet auch Einstellungsabschnitte nach ihrem Namen oder dem
 ihres Reiters ("Allgemein"), Rezepte (ab 3 Zeichen, Namen aus dem Client) und Dungeons (Nutzer: "die
 Suche für allgemein und z. B. Rezepte checken, dass alles gefunden werden kann").
+**Nachtrag 2026-11-06:** Der Reiter Raid ordnet seine Seiten wie eine Raidnacht: davor Übersicht, Aufstellung,
+Soft-Reserves, Raid-Check; währenddessen Rolls, Vergaben, Raid-Log; danach Punkte, Statistik, Raid-Archiv,
+Export. Die Offiziersseite "Raids" (aufgezeichnete Raids, Schlüssel `raids`) heißt jetzt "Raid-Archiv", damit
+"Raids" nur noch die Seite in Ausrüstung ist (Spec 2026-10-17). Export zieht vom Reiter Gilde in den Reiter Raid
+neben das Raid-Archiv: er exportiert vor allem Raids (neue, geänderte, angekreuzte); Gildenbank, Bedarf und
+Loot-Prio gehen im selben Text mit. Beide bleiben Offiziersseiten.
 **Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`,
 `tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, `tests/test_search_more.lua`, die Layoutregeln (`tools/ui_layout.py`,
 Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).
