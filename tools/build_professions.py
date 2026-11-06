@@ -3,7 +3,7 @@ addon's professions page - what it makes, its difficulty, how it is learned (tra
 profession, a recipe item and where that item comes from), the reagents when the client table is
 there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (on the N100).
 
-    python tools/build_professions.py [--wago DIR] [--att DIR] [--out FILE] [--empty]
+    python tools/build_professions.py [--wago DIR] [--att DIR] [--scan-archive FILE] [--out FILE] [--empty]
 
 Inputs:
 
@@ -17,7 +17,11 @@ Inputs:
 - AllTheThings' Forever data (MIT, see tools/att_data.py and Amisia/LICENSES/):
   .config/structures/*.lua (trainer recipes per tier, Merchant's Favor recipes with price and
   standing per faction), profession db/*.lua (recipe item -> recipe), and the zone and dungeon files
-  through att_data.load() (vendors, drops, quests of the recipe items; the favor vendors).
+  through att_data.load() (vendors, drops, quests of the recipe items; the favor vendors; the vendors
+  of reagents and recipe items for the price list V).
+- The scan archive (tools/scan_archive.json, the item collector's notes): the merchants the players
+  saw selling a reagent or recipe item ("Haendler: Name [npc]"), for V beside AllTheThings, which
+  lists only collectible vendor goods (no thread, dyes or vials).
 
 Names are not written for recipes and items: the addon asks the client (German). Only NPC and quest
 names (English, from AllTheThings' comments) go in, for sources the client cannot name.
@@ -34,6 +38,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402
+import build_scan  # noqa: E402  (parse_note: the collector's merchant notes)
+import build_scan_archive  # noqa: E402  (the scan archive: those notes for good)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'ProfessionData.lua')
@@ -61,6 +67,7 @@ WRIT = re.compile(r"^Craftsman's Writ: (.+)$")
 CERT = re.compile(r'^(.+) Certification$')
 MAX_SOURCES = 6     # sources per recipe item
 SOURCE_ORDER = {'F': 0, 'V': 1, 'Q': 2, 'D': 3, 'Z': 4, 'W': 5}
+MAX_VENDORS = 6     # vendors per item of the price list V
 
 
 def log(*a):
@@ -122,7 +129,9 @@ def read_client(*dirs, att=None):
     for r in _rows('ItemSparse', dirs):
         out['items'].setdefault(_int(r.get('ID')), {'name': r.get('Display_lang') or '', 'skill': _int(r.get('RequiredSkill')),
                                            'rank': _int(r.get('RequiredSkillRank')), 'faction': _int(r.get('MinFactionID')),
-                                           'standing': _int(r.get('MinReputation'))})
+                                           'standing': _int(r.get('MinReputation')),
+                                           # BuyPrice is what VendorStackCount of it cost at a vendor
+                                           'buy': _int(r.get('BuyPrice')), 'stack': _int(r.get('VendorStackCount'), 1)})
     for r in _rows('SpellName', dirs):
         out['names'].setdefault(_int(r.get('ID')), r.get('Name_lang') or '')
     for r in _rows('Spell', dirs):
@@ -244,8 +253,13 @@ def read_att(base, db=None):
         lst = sources.setdefault(item, [])
         if token not in lst:
             lst.append(token)
+    other_cost = db.get('sold_cost') or {}
+    sold = {}
     for item, vendor, _old in db['sold']:
         add(item, f'V{vendor}')
+        # the price list: only what the vendor sells for gold (not for another currency or items)
+        if other_cost.get((item, vendor)) != 'x' and vendor not in sold.setdefault(item, []):
+            sold[item].append(vendor)
     for qid, q in sorted(db['quests'].items()):
         for item in q['rewards']:
             add(item, f'Q{qid}')
@@ -266,12 +280,24 @@ def read_att(base, db=None):
                      n['faction'] or '')
     quests = {qid: q['name'] or '' for qid, q in db['quests'].items()}
     return {'commit': db.get('commit'), 'trainer': trainer, 'favor': favor, 'profdb': read_profession_db(base),
-            'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests}
+            'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold}
 
 
 def empty_att():
     return {'commit': None, 'trainer': {}, 'favor': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
-            'npcs': {}, 'quests': {}}
+            'npcs': {}, 'quests': {}, 'sold': {}}
+
+
+def read_seen_vendors(path):
+    """{item: [npc]}: the merchants the item collector saw selling the item (the scan archive's
+    "Haendler: Name [npc] @place" notes; a note without an NPC id is left out)."""
+    out = {}
+    for item, notes in build_scan_archive.load(path).get('sources', {}).items():
+        for text in notes:
+            n = build_scan.parse_note(text)
+            if n and n['kind'] == 'vendor' and n['id'] and n['id'] not in out.setdefault(item, []):
+                out[item].append(n['id'])
+    return {k: v for k, v in out.items() if v}
 
 
 # ---------------------------------------------------------------- combining
@@ -279,8 +305,53 @@ def _source_key(t):
     return (SOURCE_ORDER.get(t[0], 9), t)
 
 
-def combine(client, att):
-    """The neutral form render() writes: P, R, I, G, N, Q, CAMP, FAVOR, client, source, report."""
+def unit_price(buy, stack):
+    """The copper one item costs at a vendor: BuyPrice is for VendorStackCount of it; rounded up, at
+    least 1. 0 when the client names no price (sold for something else)."""
+    if buy <= 0:
+        return 0
+    return max(1, -(-buy // max(1, stack)))
+
+
+def pick_vendors(ids, npcs, limit=MAX_VENDORS):
+    """At most limit of the vendor ids that have a record in npcs ({npc: (name, where, faction)}):
+    the ones with a known position first, taken in turn from both factions and the neutral ones so
+    that each side keeps its vendors; in that order (position first, then the id)."""
+    def key(n):
+        return (0 if ':' in npcs[n][1] else 1, n)
+    known = sorted({n for n in ids if n in npcs}, key=key)
+    out = []
+    for placed in (True, False):
+        groups = [[n for n in known if (':' in npcs[n][1]) == placed and (npcs[n][2] or '') == f] for f in ('', 'A', 'H')]
+        while len(out) < limit and any(groups):
+            for g in groups:
+                if g and len(out) < limit:
+                    out.append(g.pop(0))
+    return sorted(out, key=key)
+
+
+def vendor_prices(client, att, seen, items):
+    """V: {item: "copper:npc,..."} of the items (reagents and recipe items) a vendor sells for gold
+    (AllTheThings' vendors, the collector's merchants; the Merchant's Favor vendors never) with a
+    client price. The npcs are those pick_vendors keeps (they go into N); an item whose vendors no
+    record names keeps its price with an empty list."""
+    favor = set(att['vendors'].get('A', [])) | set(att['vendors'].get('H', []))
+    V = {}
+    for item in sorted(items):
+        ids = [n for n in list(att['sold'].get(item, [])) + list(seen.get(item, [])) if n not in favor]
+        if not ids:
+            continue
+        it = client['items'].get(item, {})
+        price = unit_price(it.get('buy', 0), it.get('stack', 1))
+        if not price:
+            continue
+        V[item] = (price, pick_vendors(ids, att['npcs']))
+    return V
+
+
+def combine(client, att, seen=None):
+    """The neutral form render() writes: P, R, I, G, V, N, Q, CAMP, FAVOR, client, source, report.
+    seen: read_seen_vendors()'s merchants (none when not given)."""
     teach = dict(att['profdb'])
     teach.update(client['teach'])          # the client's own link wins
     att_spells = set(att['trainer']) | set(att['profdb'].values())
@@ -346,11 +417,6 @@ def combine(client, att):
         I[item] = f'{sp}:{it.get("rank", 0)}:{it.get("faction", 0)}:{it.get("standing", 0)}:{",".join(toks)}'
     for fac in ('A', 'H'):
         npcs_used.update(att['vendors'].get(fac, []))
-    N = {}
-    for nid in sorted(npcs_used):
-        name, where, fac = att['npcs'].get(nid, ('', '', ''))
-        N[nid] = f'{name}|{where}|{fac}'
-    Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
     G = {}
     if client['reagentTable']:
@@ -359,7 +425,21 @@ def combine(client, att):
             if sp in client['reagents']:
                 G[sp] = ','.join(f'{i}:{n}' for i, n in client['reagents'][sp])
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'N': N, 'Q': Q, 'CAMP': camp_objects(client),
+    # the price list: the reagents and the recipe items vendors sell
+    reagents = {i for sp in G for i, _ in client['reagents'][sp]}
+    prices = vendor_prices(client, att, seen or {}, reagents | set(I))
+    V = {}
+    for item, (price, npcs) in prices.items():
+        npcs_used.update(npcs)
+        V[item] = f'{price}:{",".join(str(n) for n in npcs)}'
+    report['prices'] = {'items': len(V), 'recipe items': len(set(V) & set(I)), 'reagents': len(set(V) & reagents)}
+    N = {}
+    for nid in sorted(npcs_used):
+        name, where, fac = att['npcs'].get(nid, ('', '', ''))
+        N[nid] = f'{name}|{where}|{fac}'
+    Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
+
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'N': N, 'Q': Q, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'client': client['client'], 'source': (att.get('commit') or '')[:10],
             'report': report}
 
@@ -426,7 +506,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'N': {}, 'Q': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'N': {}, 'Q': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'client': '', 'source': '', 'report': {}}
 
@@ -477,7 +557,10 @@ def render(data, built):
            '-- the profession, T1-T4 trainer tier, T0 trainer without tier, I<item> recipe item, empty unknown).',
            '-- I: [recipe item] = "spell:rank:faction:standing:sources" (F<price>@<standing><A|H> Merchant\'s Favor,',
            '-- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =',
-           '-- "item:n,..." reagents (only with the SpellReagents table). N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
+           '-- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or',
+           '-- recipe item a vendor sells for gold: the price of one (BuyPrice / VendorStackCount, rounded up) and up',
+           '-- to 6 vendors (known position first, both factions), each in N; an item without a vendor is not in V.',
+           '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
            '-- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
            'ns.PROFESSIONS = {',
            f'    built = {lua_str(built)}, client = {lua_str(data.get("client") or "")}, source = {lua_str(data.get("source") or "")},',
@@ -488,6 +571,7 @@ def render(data, built):
     out.append('    },')
     out.append('    I = ' + _str_map(data['I']) + ',')
     out.append('    G = ' + _str_map(data['G']) + ',')
+    out.append('    V = ' + _str_map(data['V']) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')
     out.append('    Q = ' + _str_map(data['Q'], 3) + ',')
     out.append('    CAMP = ' + _str_list(data['CAMP'], 4) + ',')
@@ -506,6 +590,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--wago', default=WAGO, help=f'client tables (default {WAGO})')
     ap.add_argument('--att', default=ATT_CACHE, help=f'AllTheThings download (default {ATT_CACHE})')
+    ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
+                    help='the scan archive whose merchant notes add vendors to V (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     args = ap.parse_args(argv)
@@ -518,7 +604,8 @@ def main(argv=None):
         client = read_client(args.wago, att=args.att)
         if not client['sla']:
             raise SystemExit('no SkillLineAbility table: export it (export_db2.ps1 -Tables SkillLineAbility)')
-        data = combine(client, att)
+        seen = read_seen_vendors(args.scan_archive) if args.scan_archive else {}
+        data = combine(client, att, seen)
     text = render(data, time.strftime('%Y-%m-%d'))
     old = None
     if os.path.exists(args.out):
@@ -535,6 +622,9 @@ def main(argv=None):
         log(f'  {key}: {len(data["R"][sl])} recipes')
     log(f'  recipe items: {len(data["I"])}, camp objects: {len(data["CAMP"])}, writs: {len(data["FAVOR"]["writ"])}, '
         f'SoD dropped: {rep.get("sod dropped", 0)}, reagents: {rep.get("reagents", "-")}')
+    pr = rep.get('prices') or {}
+    log(f'  vendor prices: {pr.get("items", 0)} items ({pr.get("reagents", 0)} reagents, {pr.get("recipe items", 0)} recipe items), '
+        f'NPCs: {len(data["N"])}')
 
 
 if __name__ == '__main__':

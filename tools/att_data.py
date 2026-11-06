@@ -295,6 +295,20 @@ local function ids(v)
     elseif plain(v) then for _, x in ipairs(v) do if type(x) == "number" then out[#out + 1] = x end end end
     return out
 end
+-- what a thing costs at a vendor: its copper (a number, or { { "g", copper } }), "x" when it costs
+-- another currency or items, nil when the data names no cost
+local function costOf(v)
+    if type(v) == "number" then return v end
+    if not plain(v) then return nil end
+    local copper
+    for _, c in ipairs(v) do
+        if plain(c) then
+            if c[1] == "i" or c[1] == "c" then return "x" end
+            if c[1] == "g" and type(c[2]) == "number" then copper = (copper or 0) + c[2] end
+        end
+    end
+    return copper
+end
 -- uiMapIDs of a list of map constants or numbers ({ THE_BARRENS, 1426 })
 local function mapList(v)
     local out = {}
@@ -489,7 +503,7 @@ local function walk(v, ctx, depth)
         for _, x in ipairs(ids(t.cr)) do crs[#crs + 1] = x end
         emit("items", { id = id, file = ctx.file, root = ctx.root, zone = ctx.zone, inst = ctx.inst, hdr = ctx.hdr,
                         quest = ctx.quest, npc = ctx.npc, npcKind = ctx.npcKind, enc = ctx.enc, obj = ctx.obj, prof = ctx.prof,
-                        races = c.races, crs = crs, pts = points(t) })
+                        races = c.races, crs = crs, pts = points(t), cost = costOf(t.cost) })
     end
     walk(t.groups, c, depth + 1)
     for _, x in ipairs(t) do walk(x, c, depth + 1) end
@@ -802,7 +816,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
-     'sold': [(item, vendor id, old)], 'world': [item], 'pvp': [(item, faction)],
+     'sold': [(item, vendor id, old)], 'sold_cost': {(item, vendor id): copper or 'x' (another currency or
+     items), only where the data names a cost}, 'world': [item], 'pvp': [(item, faction)],
      'crafted': [(item, profession key)], 'items': {id: item dict (read_itemdb)}, 'uimap_instance': {},
      'item_names': {id: English name from the comments}, 'npc_names': {id: name}, 'object_names': {id: name}
      (game objects: a quest from a wanted poster), both from the comments,
@@ -931,6 +946,7 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
             rec['name'] = (names.get(('n', nid)) or (None,))[0]
 
     drops, zone_drops, sold, world, pvp, crafted = [], [], [], [], [], []
+    sold_cost = {}      # (item, vendor) -> copper or 'x' (another currency or items), where the data names it
     drop_points = {}   # item -> where the data says it drops
     for r in raw['items'] or []:
         item = int(r['id'])
@@ -955,6 +971,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
             continue
         if npc is not None and kind == 'vendor':
             sold.append((item, npc, o))
+            cost = r.get('cost')
+            if cost is not None:
+                sold_cost.setdefault((item, npc), 'x' if cost == 'x' else _int(cost))
         elif npc is not None or kind == 'boss':
             enc = _int(r.get('enc'))
             boss = (names.get(('e', enc)) or (None,))[0] if enc is not None else None
@@ -987,7 +1006,7 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                         'old': old(r['file'])}
     db = {'commit': commit_of(base), 'files': files, 'errors': errors, 'maps': _py(S.mapNames()),
           'instances': instances, 'quests': quests, 'npcs': npcs, 'drops': drops, 'zone_drops': zone_drops,
-          'sold': sold, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
+          'sold': sold, 'sold_cost': sold_cost, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
           'items': read_itemdb(base, S) if items else {}, 'uimap_instance': uimap_instance,
           'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights,
           'npc_names': {i: v[0] for (k, i), v in names.items() if k == 'n'},
@@ -998,5 +1017,5 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
 def empty_db():
     """The neutral form without any data (tests, or a build without a download)."""
     return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {},
-            'drops': [], 'zone_drops': [], 'sold': [], 'world': [], 'pvp': [], 'crafted': [], 'items': {},
+            'drops': [], 'zone_drops': [], 'sold': [], 'sold_cost': {}, 'world': [], 'pvp': [], 'crafted': [], 'items': {},
             'uimap_instance': {}, 'item_names': {}, 'flights': {}, 'npc_names': {}, 'object_names': {}}
