@@ -554,7 +554,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2026-10-11 im Spiel (Vulo Pala auf Vulo Hunts Ereignis): alle Schreibwege gehen aus einem Timer, EventTentative aus "angemeldet" und EventDecline ohne Wirkung, alter Stand wiederhergestellt.
 
 ### F-090 Raid-Anmeldung trägt auch im Spielkalender ein
-- Version: 2.57.1
+- Version: 2.58.0
 - Status: gebaut
 - Prüfung: Wenn du als Vulo Pala (Kalenderfenster zu, nicht im Kampf) im Fenster "Raid-Anmeldung" bei Vulo Hunts Ereignis mit Anmeldung "Anmelden" klickst, dann sagt der Chat "Raid-Anmeldung: ... angemeldet als ... Gesendet." und wenige Sekunden später "Spielkalender: angemeldet.", und im Kalenderfenster des Spiels steht Vulo Pala bei diesem Ereignis "Angemeldet"; im Fenster steht kein Hinweis "Bitte auch im Kalender eintragen.".
 - Prüfung: Wenn du danach "Vorläufig" klickst, dann sagt der Chat "Spielkalender: vorläufig." und das Kalenderfenster zeigt "Vorläufig"; nach "Abmelden" sagt er "Spielkalender: entfernt." und Vulo Pala steht im Kalender nicht mehr angemeldet.
@@ -710,7 +710,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("Ja, Notizen lesen"), nachdem `/amisia hersteller` "0 aus der Gilde" meldete: niemand sonst in der Gilde hat Amisia. Liest deutsche und englische Namen und Kürzel (BS, VZ, LW, Ingi, EH, BB ...); der Rezept-Austausch geht vor, die Notiz ergänzt nur fehlende Berufe; keine Rezepte, keine neue Nachricht, kein neuer Schlüssel.
 
 ### F-106 Duelle: Verlauf, Rangliste, Klassen
-- Version: 2.57.1
+- Version: 2.58.0
 - Status: gebaut
 - Prüfung: Wenn du ein Duell gewinnst oder verlierst, dann steht es im Reiter PvP auf der Seite Duelle im Verlauf mit Zeit, beiden Namen in Klassenfarbe mit Klasse, "Sieg" und dem Ort.
 - Prüfung: Wenn zwei andere in deiner Nähe ein Duell beenden, dann steht auch ihr Duell im Verlauf.
@@ -877,7 +877,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md`; Einstellung "Rechtsklick auf Slots im Charakterfenster" (Ausrüstung und Wünsche). Shift- und Strg-Rechtsklick bleiben dem Spiel.
 
 ### F-045 Karte: Ziel, Pfeil und Pins
-- Version: 2.57.1
+- Version: 2.58.0
 - Status: gebaut
 - Prüfung: Wenn du `/amisia karte <Item-Link>` eingibst, dann setzt Amisia das Ziel zur Quelle des Items ("Ziel ...") mit Wegpunkt und Pfeil; "Ziel erreicht" kommt am Ort.
 - Prüfung: Wenn du die Weltkarte öffnest, dann stehen Pins mit Item-Symbol für deine Upgrades und Wünsche (abschaltbar unter Einstellungen, Karte und Wegpunkt).
@@ -1063,9 +1063,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Filter "Bekannt: …" und "Quelle: …" als Auswahllisten, "N von M Rezepten", leere Liste nennt, welcher Filter Rezepte zurückbringt, mit "Filter zurücksetzen" (Bildschirmfoto des Nutzers mit 0 Rezepten bei Bekannt + Händlergunst + Gilde).
 
 ### F-137 Berufsroute mit Einkaufsliste
-- Version: -
-- Status: geplant
-- Prüfung: Wenn du auf der Seite Berufe Schneiderei wählst und auf "Route" schaltest, dann zeigt die Route Schritte von deinem Rang bis zum Höchstrang mit Lehrerschritten an den Limits, ohne Lücke im Rang; bei Alchimie kommt keine Transmutation in die Route.
+- Version: 2.58.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Berufe Schneiderei wählst und auf "Route" schaltest, dann zeigt die Route Schritte von deinem Rang bis zum Höchstrang mit Lehrerschritten an den Limits, jeder Rang in genau einem Schritt (wo kein Rezept mehr Punkte gibt, sagt der Schritt das); bei Alchimie kommt keine Transmutation in die Route.
 - Prüfung: Wenn du einen Schritt herstellst und dabei einen Punkt bekommst, dann steht die Route danach auf dem neuen Rang, ohne `/reload`.
 - Prüfung: Wenn du ein Material der Einkaufsliste in die Tasche legst, dann steigt "hast" und "fehlt" sinkt; bei genug wird die Zeile grün.
 - Prüfung: Wenn du "auch Händler" wählst, dann kann ein Schritt "Rezept kaufen: ... bei <Händler>" in die Route kommen; ein Klick setzt den Wegpunkt zum Händler.
