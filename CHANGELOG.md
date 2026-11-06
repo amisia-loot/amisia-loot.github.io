@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.61.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.61.0) (2026-11-06)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.60.0...v2.61.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(ui): a tidier interface with one red button per view (F-140)
 
   The window head has no red buttons any more: the raid status sits in the middle with a small arrow that
