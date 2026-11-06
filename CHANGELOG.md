@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): a route to the top rank with a shopping list (F-137)
+
+  The professions page has a switch "Rezepte | Route". The route shows the cheapest way from your rank to
+  the top of a crafting profession, cooking, first aid or poisons: which recipe to craft how often, when to
+  visit the trainer, what it costs at vendor prices and, with "auch Händler", which recipes to buy. The
+  shopping list counts what you have in bags and bank and what your alts hold, and sets the waypoint to a
+  vendor. The current step moves on as you skill up; nothing is sent.
 - fix(map): no more "blocked action" error after closing a world map that Amisia opened (F-045)
 
   The "Karte" buttons now let the game open the world map itself, on the right zone. Before, closing such a
