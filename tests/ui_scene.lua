@@ -755,7 +755,7 @@ S.WINDOWS = {
         return NS.ShowSignup()
     end },
     -- the sign-up window after a click whose calendar entry did not work (part H3: the scene's
-    -- calendar cannot write): the hint with "Kalender öffnen"
+    -- calendar cannot write): the hint with "Warum?"
     { key = "signup-calendar-hint", view = "raider", open = function()
         S.calendar()
         local t = NS.SignupTerms()[1]

@@ -645,31 +645,36 @@ local function whoListShown()
     return false
 end
 
--- What the player does with the who list while Amisia's question waits: his own /who (or the list's
--- refresh) and the list opened by him. The answer to such a question is his, the list stays open.
+-- What the player does while Amisia's question waits: his own /who (or the list's refresh). The answer
+-- to such a question is his. Amisia never closes the client's who list: HideUIPanel from an addon runs
+-- the client's panel manager tainted, and every window opened or closed later in the session was
+-- blocked (D-64). The list the answer opens stays open; once it closes, SetWhoToUi goes back.
 local ownWho                -- Amisia's own SendWho runs
 local whoHook               -- the SendWho Amisia hooked (the client's, wrapped)
-local whoOpenedAt           -- GetTime() the who list was last shown (nil: hidden since)
-local whoHooked = {}        -- the frames whose OnShow and OnHide Amisia follows
+local whoHooked = {}        -- the frames whose OnHide Amisia follows
+local restoreWhoUi
 
 local function followWho(f)
     if type(hooksecurefunc) == "function" and type(f.SendWho) == "function" and f.SendWho ~= whoHook then
         hooksecurefunc(f, "SendWho", function() if not ownWho and pending then pending.foreign = true end end)
         whoHook = f.SendWho
     end
-    -- the window Amisia closes again (its who tab may be left for another one while it stays open)
-    local fr = _G.LFGParentFrame
-    if type(fr) == "table" and not whoHooked[fr] and type(fr.HookScript) == "function" then
-        whoHooked[fr] = true
-        fr:HookScript("OnShow", function() whoOpenedAt = GetTime() end)
-        fr:HookScript("OnHide", function() whoOpenedAt = nil end)
+    -- the list the answer opened: once the player closes it, SetWhoToUi goes back (a C function, no
+    -- Lua state of the client is written)
+    for _, name in ipairs({ "LFGParentFrame", "WhoFrame" }) do
+        local fr = _G[name]
+        if type(fr) == "table" and not whoHooked[fr] and type(fr.HookScript) == "function" then
+            whoHooked[fr] = true
+            fr:HookScript("OnHide", function() if not pending then restoreWhoUi() end end)
+        end
     end
 end
 
-local function restoreWhoUi()
-    if whoUiSet and fl() and type(fl().SetWhoToUi) == "function" and not whoListShown() then
-        pcall(fl().SetWhoToUi, false)
-    end
+-- SetWhoToUi back once no who list shows (with the list open the client still writes into it).
+function restoreWhoUi()
+    if not whoUiSet then return end
+    if whoListShown() then return end
+    if fl() and type(fl().SetWhoToUi) == "function" then pcall(fl().SetWhoToUi, false) end
     whoUiSet = nil
 end
 
@@ -715,6 +720,7 @@ function D.WhoAsk()
     if nUnknown == 0 then return nil, L["Alle Klassen sind bekannt."] end
     if ns.ChatLocked and ns.ChatLocked() then return nil, L["Nicht in der Kampfsperre."] end
     if D.WhoWait() > 0 then return nil, L["Bitte warten (%d s)."]:format(D.WhoWait()) end
+    restoreWhoUi()
     local q, key = nextQuery()
     if not q then return nil, L["Alle unbekannten Namen sind gefragt; die übrigen sind offline oder anderswo. In 10 Minuten wieder."] end
     followWho(f)
@@ -730,7 +736,7 @@ function D.WhoAsk()
     end
     asked[key] = GetTime()
     whoAt = GetTime()
-    pending = { at = whoAt, q = q, before = nUnknown, shown = whoListShown() }
+    pending = { at = whoAt, q = q, before = nUnknown }
     C_Timer.After(WHO_WAIT, function()
         if pending and GetTime() - pending.at >= WHO_WAIT - 0.01 then
             pending = nil
@@ -757,29 +763,14 @@ ns.OnEvent("WHO_LIST_UPDATE", function()
     end
     if pending then
         local got = pending.before - nUnknown
-        local q, shown, askedAt, foreign = pending.q, pending.shown, pending.at, pending.foreign
-        local answerAt = GetTime()
+        local q, foreign = pending.q, pending.foreign
         pending = nil
-        -- the player sent his own /who meanwhile: the answer is his, the list stays as it is
+        -- the client's who list may open itself on the answer: it stays (see above)
+        restoreWhoUi()
+        -- the player sent his own /who meanwhile: the answer is his, no message of Amisia
         if foreign then
-            restoreWhoUi()
             ns.Fire("DUELS")
             return
-        end
-        -- the client's who list opens itself on every answer: closed before the question, it is
-        -- closed again (after its own handler ran), then SetWhoToUi back; not when the player
-        -- opened it himself before the answer came (the answer's own opening has its time)
-        if not shown then
-            C_Timer.After(0, function()
-                local fr = _G.LFGParentFrame
-                local his = whoOpenedAt and whoOpenedAt >= askedAt and whoOpenedAt < answerAt
-                if not his and type(fr) == "table" and fr.IsShown and fr:IsShown() and type(HideUIPanel) == "function" then
-                    pcall(HideUIPanel, fr)
-                end
-                restoreWhoUi()
-            end)
-        else
-            restoreWhoUi()
         end
         ns.msg(L["Duelle: /who %s brachte %d Klassen, %d noch unbekannt."]:format(q, math.max(0, got), nUnknown))
         ns.Fire("DUELS")

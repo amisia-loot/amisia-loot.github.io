@@ -55,6 +55,12 @@ local FORBIDDEN = {
     { "[^%.]OpenWorldMap%s*%(", "opens the map with the client's Lua function (only C_Map.OpenWorldMap, D-64)" },
     { "ToggleWorldMap%s*%(", "toggles the map with the client's Lua function (D-64)" },
     { ":SetMapID%s*%(", "sets the map's map (D-64)" },
+    -- the client's panel manager: a call from an addon writes its state tainted for the session (D-64)
+    { "ShowUIPanel%s*%(", "shows a client panel (D-64)" },
+    { "HideUIPanel%s*%(", "hides a client panel (D-64)" },
+    { "pcall%(%s*[SH][hi][od]e?UIPanel", "shows or hides a client panel (D-64)" },
+    { "ToggleUIPanel%s*%(", "toggles a client panel (D-64)" },
+    { "ToggleCalendar%s*%(", "opens the client's calendar (D-64)" },
 }
 for _, name in ipairs(files) do
     if name:find("%.lua$") and not name:find("^Data/") then

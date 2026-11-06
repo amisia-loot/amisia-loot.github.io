@@ -104,7 +104,7 @@ NS.SignupResend()
 STUB.tick(30)
 assert(#cal.log == n, "the re-send writes nothing")
 
--- blocked: the reason once, the hint with "Kalender öffnen"
+-- blocked: the reason once, the hint with "Warum?" (Amisia opens no client calendar, D-64)
 calendar({ block = { EventTentative = true }, events = { { title = "test123", days = 1, id = 12, modStatus = "", inviteStatus = 7, inviteType = 1 } } })
 T1 = pickDate("test123")
 STUB.tick(12)

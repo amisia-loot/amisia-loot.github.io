@@ -554,12 +554,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2026-10-11 im Spiel (Vulo Pala auf Vulo Hunts Ereignis): alle Schreibwege gehen aus einem Timer, EventTentative aus "angemeldet" und EventDecline ohne Wirkung, alter Stand wiederhergestellt.
 
 ### F-090 Raid-Anmeldung trägt auch im Spielkalender ein
-- Version: 2.25.0
+- Version: 2.57.1
 - Status: gebaut
 - Prüfung: Wenn du als Vulo Pala (Kalenderfenster zu, nicht im Kampf) im Fenster "Raid-Anmeldung" bei Vulo Hunts Ereignis mit Anmeldung "Anmelden" klickst, dann sagt der Chat "Raid-Anmeldung: ... angemeldet als ... Gesendet." und wenige Sekunden später "Spielkalender: angemeldet.", und im Kalenderfenster des Spiels steht Vulo Pala bei diesem Ereignis "Angemeldet"; im Fenster steht kein Hinweis "Bitte auch im Kalender eintragen.".
 - Prüfung: Wenn du danach "Vorläufig" klickst, dann sagt der Chat "Spielkalender: vorläufig." und das Kalenderfenster zeigt "Vorläufig"; nach "Abmelden" sagt er "Spielkalender: entfernt." und Vulo Pala steht im Kalender nicht mehr angemeldet.
 - Prüfung: Wenn du `/amisia anmelden h` eingibst, dann trägt derselbe Befehl dich auch im Kalender ein ("Spielkalender: angemeldet."); bei Vulo Hunts eigenem Ereignis sagt der Chat stattdessen "Spielkalender: du hast das Ereignis angelegt, dort bleibt dein Stand.".
-- Prüfung: Wenn das Kalenderfenster des Spiels offen ist (oder du im Kampf bist) und du "Anmelden" klickst, dann sagt der Chat "Spielkalender: nicht eingetragen (Das Kalenderfenster des Spiels ist offen.) Bitte auch im Kalender eintragen.", und das Fenster zeigt "Bitte auch im Kalender eintragen." mit "Kalender öffnen" (Tooltip: der Grund). Ebenso ohne Kalender-Eintrag, aber mit dem Hinweis: mit "Auch im Spielkalender eintragen" (Einstellungen, "Raid-Anmeldung") aus.
+- Prüfung: Wenn das Kalenderfenster des Spiels offen ist (oder du im Kampf bist) und du "Anmelden" klickst, dann sagt der Chat "Spielkalender: nicht eingetragen (Das Kalenderfenster des Spiels ist offen.) Bitte auch im Kalender eintragen.", und das Fenster zeigt "Bitte auch im Kalender eintragen." mit "Warum?" (Tooltip und Klick: der Grund und der Kalenderknopf an der Minimap). Ebenso ohne Kalender-Eintrag, aber mit dem Hinweis: mit "Auch im Spielkalender eintragen" (Einstellungen, "Raid-Anmeldung") aus.
 - Prüfung: Wenn Vulo Hunt Vulo Pala im Kalender auf "Bestätigt" (oder "Ersatz", "Raus") gesetzt hat und Vulo Pala in Amisia "Anmelden" oder "Vorläufig" klickt, dann ändert sich im Kalender nichts und der Chat sagt einmal "Spielkalender: ein Offizier hat deinen Stand gesetzt (bestätigt), dort bleibt er." ("Abmelden" entfernt ihn dort wie "Entfernen"); nach Mitternacht (vor 06:00) beim Raid von gestern Abend sagt er stattdessen "Spielkalender: der Termin liegt an einem vergangenen Tag, dort ändert sich nichts mehr.".
 - Notiz: Spec docs/specs/2026-10-10-raid-aufstellung.md, Teil H3; DECISIONS D-42. Erst `/amisia selbsttest kalender schreiben` (F-089) laufen lassen: zeigt der Bericht, dass ein Aufruf nicht geht, passen wir `CW.PLAN` in Raid/CalendarWrite.lua an. Die Wiederholung nach dem Login und die Antwort auf `AQ` schreiben nie in den Kalender.
 
@@ -710,12 +710,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("Ja, Notizen lesen"), nachdem `/amisia hersteller` "0 aus der Gilde" meldete: niemand sonst in der Gilde hat Amisia. Liest deutsche und englische Namen und Kürzel (BS, VZ, LW, Ingi, EH, BB ...); der Rezept-Austausch geht vor, die Notiz ergänzt nur fehlende Berufe; keine Rezepte, keine neue Nachricht, kein neuer Schlüssel.
 
 ### F-106 Duelle: Verlauf, Rangliste, Klassen
-- Version: 2.57.0
+- Version: 2.57.1
 - Status: gebaut
 - Prüfung: Wenn du ein Duell gewinnst oder verlierst, dann steht es im Reiter PvP auf der Seite Duelle im Verlauf mit Zeit, beiden Namen in Klassenfarbe mit Klasse, "Sieg" und dem Ort.
 - Prüfung: Wenn zwei andere in deiner Nähe ein Duell beenden, dann steht auch ihr Duell im Verlauf.
 - Prüfung: Wenn jemand aus einem Duell flieht (Abstand), dann steht es als "Flucht" mit ihm als Verlierer.
-- Prüfung: Wenn ein Spieler "unbekannt" ist und du "Klassen suchen" klickst, dann geht kein Fenster auf, der Chat sagt "Duelle: /who ... brachte N Klassen", seine Klasse steht danach in allen seinen Duellen (sofern /who ihn findet) und die Zahl auf dem Knopf sinkt; eine /who-Liste, die du selbst offen hattest, bleibt dabei offen.
+- Prüfung: Wenn ein Spieler "unbekannt" ist und du "Klassen suchen" klickst, dann sagt der Chat "Duelle: /who ... brachte N Klassen", seine Klasse steht danach in allen seinen Duellen (sofern /who ihn findet) und die Zahl auf dem Knopf sinkt. Öffnet das Spiel mit der Antwort seine /who-Liste, bleibt sie offen (Amisia schließt keine Fenster des Spiels), und auch danach kommt im Kampf kein "BLOCKIERT: Amisia".
 - Prüfung: Wenn du die Ansicht Klassen öffnest, dann siehst du je Klasse Spiele, Spieler, S-N und Siegrate und unten, wie viel Prozent der Klassen bekannt sind; ein Klick auf eine Klasse zeigt sie gegen jede andere.
 - Notiz: Spec `docs/specs/2026-10-16-duelle.md`; DECISIONS D-52. Nichts wird gesendet; Duelle der Gilde teilen wäre ein eigenes Feature.
 

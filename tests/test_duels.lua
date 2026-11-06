@@ -124,7 +124,7 @@ _G.C_FriendList.SetWhoToUi = function(on) toUi[#toUi + 1] = on end
 _G.C_FriendList.GetNumWhoResults = function() return #STUB.who, #STUB.who end
 _G.C_FriendList.GetWhoInfo = function(i) return STUB.who[i] end
 assert(D.UnknownCount() == 1, D.UnknownCount())   -- Bob
--- the client's who list opens itself on an answer (Forever: LFGParentFrame); closed before, it is closed again
+-- the client's who list opens itself on an answer (Forever: LFGParentFrame); Amisia leaves it open (D-64)
 local hidden = 0
 _G.LFGParentFrame = { shown = false, IsShown = function(self) return self.shown end }
 _G.HideUIPanel = function(fr) fr.shown = false hidden = hidden + 1 end
@@ -138,9 +138,10 @@ STUB.messages = {}
 LFGParentFrame.shown = true      -- the client's handler opened it
 STUB.fire("WHO_LIST_UPDATE")
 STUB.tick(0.1)
-assert(hidden == 1 and not LFGParentFrame.shown, "the who list Amisia's question opened is closed again")
+assert(hidden == 0 and LFGParentFrame.shown, "the who list stays open: Amisia closes no client window")
+LFGParentFrame.shown = false
 assert(D.ClassOf("Bob Eisherz") == "PALADIN" and D.UnknownCount() == 0, "the answer teaches the class")
-assert(toUi[2] == false, "SetWhoToUi back")
+assert(toUi[2] == nil, "SetWhoToUi stays on while the list shows")
 assert(has(STUB.messages[#STUB.messages], "brachte 1 Klassen"), tostring(STUB.messages[#STUB.messages]))
 local ok3, why3 = D.WhoAsk()
 assert(not ok3 and has(why3, "bekannt"), "nothing to ask")

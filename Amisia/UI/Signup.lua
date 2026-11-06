@@ -147,22 +147,25 @@ local function build()
     F.alts:SetJustifyV("TOP")
     F.calHint = W.Text(F, T.FONT.text, CW - S.CAL_W - T.LAYOUT.ITEM_GAP, true)
     F.calHint:SetText(L["Bitte auch im Kalender eintragen."])
-    F.calBtn = W.Button(F, L["Kalender öffnen"], S.CAL_W, function()
-        if InCombatLockdown() then
-            ns.msg(L["Im Kampf öffnet Amisia den Kalender nicht. Nach dem Kampf noch einmal."])
-        elseif type(ToggleCalendar) == "function" then
-            ToggleCalendar()
-        end
+    -- Amisia does not open the client's calendar: ToggleCalendar from an addon runs the client's
+    -- panel manager tainted, and windows opened or closed later in the session were blocked (D-64).
+    -- The button says why and where the player opens it.
+    local function why()
+        local _, reason = ns.SignupCalendarState(cur)
+        return reason or L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."]
+    end
+    F.calBtn = W.Button(F, L["Warum?"], S.CAL_W, function()
+        ns.msg(why() .. " " .. L["Den Spielkalender öffnest du mit dem Kalenderknopf an der Minimap."])
     end)
     W.FitChip(F.calBtn, S.CAL_W)
     F.calHint:SetHeight(T.BUTTON_H)
     F.calHint:SetJustifyV("MIDDLE")
     -- the tooltip names why the calendar entry of the last click did not work
     F.calBtn:HookScript("OnEnter", function(self)
-        local _, why = ns.SignupCalendarState(cur)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(L["Kalender öffnen"], 1, 0.82, 0)
-        GameTooltip:AddLine(why or L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."], 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(L["Warum?"], 1, 0.82, 0)
+        GameTooltip:AddLine(why(), 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(L["Den Spielkalender öffnest du mit dem Kalenderknopf an der Minimap."], 0.6, 0.6, 0.6, true)
         GameTooltip:Show()
     end)
     F.calBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -227,7 +230,7 @@ refresh = function()
     local calendar = rec ~= nil and rec.k ~= "ok" and not pending
     F.calHint:SetText(pending and (T.GREY .. L["Wird im Spielkalender eingetragen ..."] .. "|r") or L["Bitte auch im Kalender eintragen."])
     F.calHint:SetShown(calendar or pending)
-    F.calBtn:SetShown(calendar and type(ToggleCalendar) == "function")
+    F.calBtn:SetShown(calendar)
     for _, b in ipairs({ F.yes, F.maybe, F.no }) do b:SetEnabled(t ~= nil) end
     layout()
 end

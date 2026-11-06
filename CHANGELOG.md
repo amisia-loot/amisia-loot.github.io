@@ -12,11 +12,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
   visit the trainer, what it costs at vendor prices and, with "auch Händler", which recipes to buy. The
   shopping list counts what you have in bags and bank and what your alts hold, and sets the waypoint to a
   vendor. The current step moves on as you skill up; nothing is sent.
-- fix(map): no more "blocked action" error after closing a world map that Amisia opened (F-045)
+- fix(map): no more "blocked action" errors after Amisia opened a game window (F-045, F-106, F-090)
 
-  The "Karte" buttons now let the game open the world map itself, on the right zone. Before, closing such a
-  map could raise a blocked-action error (SetPassThroughButtons, SetPropagateMouseClicks) for the rest of the
-  session.
+  The "Karte" buttons now let the game open the world map itself, on the right zone. Amisia no longer
+  closes the who list after "Klassen suchen" and no longer opens the game calendar from the sign-up window
+  ("Warum?" names the reason and the calendar button at the minimap). Each of these could leave the game's
+  window manager tainted until /reload, and opening or closing windows later, even in combat, raised
+  "blocked action" errors (SetPassThroughButtons, SetPropagateMouseClicks).
 
 ## [v2.57.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.57.0) (2026-11-06)
 

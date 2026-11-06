@@ -776,8 +776,8 @@ bleiben dafür frei).
 mit den Aufrufen des Spiels selbst (Anmelden: Kontextmenü-Anmeldung im Klick, aus "vorläufig" erst
 Entfernen; Vorläufig: `EventTentative`, aus "angemeldet" erst `RemoveEvent`; Abmelden: `RemoveEvent`),
 Einstellung `signup.calendar` (an). Danach liest Amisia den eigenen Status neu; blockiert,
-Kalenderfehler oder kein neuer Stand: "Bitte auch im Kalender eintragen." mit "Kalender öffnen" und
-einmal der Grund im Chat. Nie für andere, nie im Kampf, nie bei offenem Kalenderfenster, nie beim
+Kalenderfehler oder kein neuer Stand: "Bitte auch im Kalender eintragen." mit "Kalender öffnen" (seit 2.57.1
+"Warum?": Amisia öffnet den Spielkalender nicht selbst, D-64) und einmal der Grund im Chat. Nie für andere, nie im Kampf, nie bei offenem Kalenderfenster, nie beim
 eigenen Ereignis (Ersteller), nie aus einer Wiederholung (`AN` nach dem Login, Antwort auf `AQ`), nie
 erneut aus einem Timer. Nachtrag 2026-10-11 (Prüfung nach dem Bau): nie, solange eine Kalender-Prüfung läuft;
 nie, wenn der Kalender nicht sagt, wer das Ereignis angelegt hat, oder den eigenen Stand nicht nennt; das
@@ -1432,7 +1432,15 @@ Taint blieb, bis der Spieler die Karte schloss, und dann wurde `SetPassThroughBu
 (Fehler aus dem Spiel 2026-11-06, mit 2.57.0, Stack: Schließen-Knopf, `HideUIPanel`, `QuestDataProvider:AddQuest`).
 Ohne `C_Map.OpenWorldMap` öffnet Amisia nichts und sagt "Öffne die Weltkarte mit M.". Kein Addon-Code ruft
 `OpenWorldMap(`, `ToggleWorldMap(` oder `:SetMapID(`.
-**Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
+Nachtrag 2026-11-06 (Spiel, Dungeon): Der Taint sitzt im Panel-Manager des Clients (`FramePositionDelegate`): ruft ein
+Addon `ShowUIPanel`/`HideUIPanel` (auch über `OpenWorldMap`, `ToggleCalendar`) für ein Fenster mit Bereich, schreibt
+dessen Lauf die Felder des Managers verunreinigt, und jeder spätere Wechsel eines Fensters liest sie, bis `/reload`
+("BLOCKIERT: Amisia -> Frame/Button:SetPassThroughButtons" mitten im Kampf). Darum ruft Amisia keine dieser
+Funktionen: "Klassen suchen" (Duelle) lässt die /who-Liste offen, die die Antwort öffnet (SetWhoToUi zurück, sobald
+sie schließt), und das Anmeldefenster zeigt statt "Kalender öffnen" den Knopf "Warum?" mit dem Kalenderknopf an der
+Minimap. Offen bleibt der Klick mit Strg/Shift auf ein Item (`HandleModifiedItemClick`, Anprobe), wie in jedem Addon.
+**Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche, auch `ShowUIPanel(`, `HideUIPanel(`,
+`ToggleUIPanel(`, `ToggleCalendar(`, und Schutz im Stub), `tests/test_duels_who.lua`, `tests/test_map_pins.lua`,
 `tests/test_map_places.lua`.
 
 
