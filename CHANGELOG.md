@@ -5,6 +5,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): a run planner in the dungeon journal (F-139)
+
+  The journal now answers the questions before a run. The dungeon's image shows what the run brings: the
+  open quests' XP on your XP bar (the tooltip names your level after the run) and the upgrades. "Your run",
+  the first card of the list (or "Plan the run" in the planner), lists the stops before the run by zone with
+  a route button that walks them, the bosses in the game's order with the quests whose objective or start
+  item hangs on them, and where to hand in afterwards. Every quest gets a worth ("Must", "Worth it",
+  "Skip", "Later") with a bar, the quest view shows a level window up to the level the quest turns grey,
+  reward tiles name the item they replace and the best choice, and the done steps at the start of a quest
+  path fold to one line.
+
 ## [v2.59.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.59.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.58.0...v2.59.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

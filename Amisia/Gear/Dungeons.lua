@@ -2011,6 +2011,325 @@ function D.XPSumText(s)
     return TEXT.xpSumMany:format(num(s.total), num(s.outside), num(s.inside), s.missing)
 end
 
+---------------------------------------------------------------------------
+-- The run planner (F-139): the level window, a quest's worth, the bosses in the game's order and
+-- the plan of a run (what to fetch before, what happens at which boss, where to hand in after)
+---------------------------------------------------------------------------
+
+-- The levels a quest stays coloured below the own level (D-66): the client's GetQuestGreenRange for
+-- the own level where it answers, else the classic grey level of creatures, which the quest log
+-- shares (GetRelativeDifficultyColor): grey once the own level is at least 5 + floor(level / 10)
+-- above it (6-39), 1 + floor(level / 5) (40-59), 9 (60 and above); never up to level 5.
+local function greenRange(level, my)
+    if level == my and type(_G.GetQuestGreenRange) == "function" then
+        local r = tonumber(ns.Plain(_G.GetQuestGreenRange()))
+        if r then return r end
+    end
+    if level <= 5 then return level end
+    if level <= 39 then return 4 + math.floor(level / 10) end
+    if level <= 59 then return math.floor(level / 5) end
+    return 8
+end
+
+-- The first own level at which a quest of level qlevel is grey (more than its green range above it);
+-- nil for an unknown level.
+function D.GreyAt(qlevel)
+    if type(qlevel) ~= "number" or qlevel <= 0 then return nil end
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    for lv = qlevel + 1, qlevel + 40 do
+        if lv - qlevel > greenRange(lv, my) then return lv end
+    end
+    return nil
+end
+
+-- The level window of a quest: { min (it can be taken from), level (its level, nil unknown), grey
+-- (the own level it turns grey at, nil unknown), my (the own level) }.
+function D.LevelWindow(q)
+    local level = type(q) == "table" and questLevelOf(q) or nil
+    return { min = type(q) == "table" and q.minLevel or 0, level = level, grey = D.GreyAt(level),
+        my = tonumber(ns.Plain(UnitLevel("player"))) or 1 }
+end
+
+-- The own XP: current, needed for the next level, level, at the cap (no XP any more).
+local function ownXP()
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    local cur = tonumber(ns.Plain(UnitXP and UnitXP("player"))) or 0
+    local max = tonumber(ns.Plain(UnitXPMax and UnitXPMax("player"))) or 0
+    local cap = Gear.Cap and Gear.Cap() or 60
+    return cur, max, my, my >= cap or max <= 0
+end
+D.OwnXP = ownXP
+
+-- The worth of a quest (D-66): what it brings (the XP of its open required steps in percent of a
+-- level, 25 for an upgrade) over what it costs (1, plus 0.5 per zone outside the dungeon its open
+-- steps lead to; the steps themselves bring their own XP). { score, pct (nil: no XP known or at the
+-- cap), xp (the known XP of the open steps), gain (the best upgrade's), steps (open required ones),
+-- zones, verdict = "must" | "worth" | "skip" | "later" (the own level is below its minimum) |
+-- "unknown" (no XP known and no upgrade) }; nil for a done quest or one no longer possible.
+local WORTH = { UPGRADE = 25, ZONE = 0.5, MUST = 20, WORTH = 8 }
+D.WORTH = WORTH
+function D.QuestWorth(q, path)
+    if type(q) ~= "table" or q.done or q.gone then return nil end
+    local w = { steps = 0, zones = 0 }
+    local _, max, my, capped = ownXP()
+    local zones, xp, known = {}, 0, false
+    local steps = path and path.steps or {}
+    if #steps == 0 then steps = { { node = q } } end
+    for _, s in ipairs(steps) do
+        local n = s.node
+        if not s.optional and not n.done and not n.gone then
+            w.steps = w.steps + 1
+            local v = D.QuestXP(n)
+            if v then xp, known = xp + v, true end
+            local points = {}
+            if not n.active and s.accept and s.accept.kind ~= "inside" then points[#points + 1] = s.accept.point end
+            if s.turnIn then points[#points + 1] = s.turnIn.point end
+            for _, p in ipairs(points) do
+                if type(p) == "table" and p.map then zones[p.map] = true end
+            end
+        end
+    end
+    for _ in pairs(zones) do w.zones = w.zones + 1 end
+    if known then w.xp = xp end
+    if known and not capped then w.pct = xp / max * 100 end
+    w.gain = q.best and q.best.gain or nil
+    local value = (w.pct or 0) + (q.best and WORTH.UPGRADE or 0)
+    w.score = value / (1 + WORTH.ZONE * w.zones)
+    if (q.minLevel or 0) > my then
+        w.verdict = "later"
+    elseif not w.pct and not q.best and not capped then
+        w.verdict = "unknown"
+    elseif w.score >= WORTH.MUST then
+        w.verdict = "must"
+    elseif w.score >= WORTH.WORTH then
+        w.verdict = "worth"
+    else
+        w.verdict = "skip"
+    end
+    return w
+end
+
+-- A name for matching: lower case without spaces, dots, dashes and apostrophes ("Edwin van Cleef" =
+-- "Edwin VanCleef").
+local function nameKey(s)
+    if type(s) ~= "string" then return nil end
+    local k = s:lower():gsub("[%s%.%-'`]", "")
+    return k ~= "" and k or nil
+end
+D.NameKey = nameKey
+
+-- The bosses' names in the game's order (DungeonData.lua, from the client's DungeonEncounter); nil
+-- without one.
+function D.BossOrder(dkey)
+    local F = ns.DUNGEON_FACTS
+    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
+        if e.key == dkey then return type(e.order) == "table" and #e.order > 0 and e.order or nil end
+    end
+    return nil
+end
+
+-- The bosses of a dungeon entry (ns.DungeonInfo) in the game's order: { { name, npc, ups (upgrades
+-- for the own character), b (the entry's boss) } }. The entry's bosses (not tentative ones, seen too
+-- rarely to count, nor the "Trash" of the item data) sorted by the order (DungeonData.lua), the ones
+-- it lacks after them in their own order; without any the order's names alone. byKey: by nameKey.
+function D.BossTrack(dkey, entry)
+    local rank = {}
+    for i, name in ipairs(D.BossOrder(dkey) or {}) do
+        local k = nameKey(name)
+        if k and not rank[k] then rank[k] = i end
+    end
+    local out, byKey = {}, {}
+    for i, b in ipairs(entry and entry.bosses or {}) do
+        local k = nameKey(b.name)
+        if k and not b.tentative and b.name ~= "Trash" and not byKey[k] then
+            local t = { name = b.name, npc = b.npc, b = b, ups = 0, at = i }
+            for _, it in ipairs(b.items or {}) do
+                if it.upgrade then t.ups = t.ups + 1 end
+            end
+            byKey[k] = t
+            out[#out + 1] = t
+        end
+    end
+    if #out == 0 then
+        for _, name in ipairs(D.BossOrder(dkey) or {}) do
+            local k = nameKey(name)
+            if k and not byKey[k] then
+                local t = { name = name, ups = 0, at = #out + 1 }
+                byKey[k] = t
+                out[#out + 1] = t
+            end
+        end
+    end
+    local big = #out + 1000
+    table.sort(out, function(x, y)
+        local rx, ry = rank[nameKey(x.name)] or big + x.at, rank[nameKey(y.name)] or big + y.at
+        if rx ~= ry then return rx < ry end
+        return x.at < y.at
+    end)
+    return out, byKey
+end
+
+-- Whether objective text names a boss: its name as whole words (case and punctuation aside), or a long
+-- name (8 letters and more) without spaces ("Edwin van Cleef" = "Edwin VanCleef"); short names inside
+-- other words ("Plunder" in "plundered") do not count.
+local function words(s) return " " .. s:lower():gsub("[%p]", ""):gsub("%s+", " ") .. " " end
+local function namesBoss(objective, name)
+    if type(objective) ~= "string" or type(name) ~= "string" then return false end
+    local w = words(name):sub(2, -2)
+    if w ~= "" and words(objective):find(" " .. w .. " ", 1, true) then return true end
+    local k = nameKey(name)
+    return k ~= nil and #k >= 8 and (nameKey(objective) or ""):find(k, 1, true) ~= nil
+end
+D.NamesBoss = namesBoss
+
+-- The zone groups of stops, the own zone first, then the zones with the most stops, then by name;
+-- the stops numbered through (no) and listed in that order in route.
+local function groupStops(stops)
+    local own = C_Map and C_Map.GetBestMapForUnit and tonumber(ns.Plain(C_Map.GetBestMapForUnit("player"))) or nil
+    local groups, byMap = {}, {}
+    for _, st in ipairs(stops) do
+        local g = byMap[st.point.map]
+        if not g then
+            g = { map = st.point.map, zone = Gear.ZoneName(st.point.map) or ("Zone " .. st.point.map), stops = {} }
+            byMap[st.point.map] = g
+            groups[#groups + 1] = g
+        end
+        g.stops[#g.stops + 1] = st
+    end
+    table.sort(groups, function(a, b)
+        if (a.map == own) ~= (b.map == own) then return a.map == own end
+        if #a.stops ~= #b.stops then return #a.stops > #b.stops end
+        if a.zone ~= b.zone then return a.zone < b.zone end
+        return a.map < b.map
+    end)
+    local route = {}
+    for _, g in ipairs(groups) do
+        for _, st in ipairs(g.stops) do
+            route[#route + 1] = st
+            st.no = #route
+        end
+    end
+    return groups, route
+end
+
+-- Whether a quest node starts by an item that drops in dungeon dkey (fetched during the run).
+local function dropsHere(n, dkey)
+    for _, it in ipairs(n.items or {}) do
+        if it[4] == dkey then return true end
+    end
+    return false
+end
+
+-- Adds a title to a list once.
+local function addOnce(list, title)
+    for _, t in ipairs(list) do
+        if t == title then return end
+    end
+    list[#list + 1] = title
+end
+
+-- The plan of a run through dungeon dkey for its quest rows ({ q, path } as the page lists them) and
+-- its entry (ns.DungeonInfo): { open (open quests), xp (D.XPSum of the quests the own level reaches),
+-- ups (upgrades: those quests' and the bosses'), before = zone groups of the stops outside before the
+-- run ({ map, zone, stops = { { no, qid, what ("accept" | "turnin"), title, text, point, label } } };
+-- a step several quests share is one stop), route (the stops in order), later = { { title, level } }
+-- (the own level is too low), pending = { title } (a step in the log, its objective open, outside the
+-- dungeon), unknown = { title } (no place known), bosses (D.BossTrack, each with goals and starts:
+-- quest titles), other = { title } (an objective in the dungeon no boss names), after = zone groups
+-- of the turn-ins after the run }.
+function D.RunPlan(dkey, rows, entry)
+    local plan = { open = 0, ups = 0, later = {}, pending = {}, unknown = {}, other = {} }
+    local list, stops, afterStops, seen = {}, {}, {}, {}
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    local bosses, byKey = D.BossTrack(dkey, entry)
+    for _, t in ipairs(bosses) do
+        t.goals, t.starts = {}, {}
+        plan.ups = plan.ups + t.ups
+    end
+    plan.bosses = bosses
+    local function bossOf(name)
+        local k = nameKey(name)
+        return k and byKey[k] or nil
+    end
+    local function stop(into, n, what, info)
+        local key = what .. ":" .. tostring(n.qid or n.title)
+        if seen[key] then return end
+        seen[key] = true
+        into[#into + 1] = { qid = n.qid, what = what, title = n.title, text = info.text, point = info.point, label = info.label }
+    end
+    for _, row in ipairs(rows or {}) do
+        local q, path = row.q, row.path
+        if q and not q.done and not q.gone then
+            plan.open = plan.open + 1
+            local s = path and path.next
+            local n = s and s.node
+            local later = s and s.state == "locked" and (n.minLevel or 0) > my
+            if not later then
+                list[#list + 1] = q
+                if q.best then plan.ups = plan.ups + 1 end
+            end
+            if later then
+                plan.later[#plan.later + 1] = { title = q.title, level = n.minLevel, step = n ~= q and n.title or nil }
+            elseif s and n.active and questReady(n.qid) then
+                if s.turnIn.point then stop(stops, n, "turnin", s.turnIn) else addOnce(plan.unknown, n.title) end
+            elseif s and n.active and n ~= q then
+                addOnce(plan.pending, n.title)
+            elseif s and not n.active and s.accept.kind ~= "inside" and not dropsHere(n, dkey) then
+                if s.accept.point then stop(stops, n, "accept", s.accept) else addOnce(plan.unknown, n.title) end
+            end
+            -- in the dungeon: the bosses whose loot starts a quest of the path, the boss its objective names
+            -- (not for a quest the own level cannot reach yet, nor for one ready to hand in)
+            local inside = not later and not (q.active and questReady(q.qid))
+            if inside then
+                local placed = false
+                for _, node in ipairs(q.chain or {}) do
+                    if not node.done and not node.active and not node.gone then
+                        for _, it in ipairs(node.items or {}) do
+                            local t = (it[4] == nil or it[4] == dkey) and bossOf(it[2]) or nil
+                            if t then addOnce(t.starts, node.title) end
+                        end
+                    end
+                end
+                if not q.active then
+                    for _, it in ipairs(q.items or {}) do
+                        local t = (it[4] == nil or it[4] == dkey) and bossOf(it[2]) or nil
+                        if t then
+                            addOnce(t.starts, q.title)
+                            placed = true
+                        end
+                    end
+                end
+                if q.objective then
+                    for _, t in ipairs(bosses) do
+                        if namesBoss(q.objective, t.name) then
+                            addOnce(t.goals, q.title)
+                            placed = true
+                        end
+                    end
+                end
+                if not placed then addOnce(plan.other, q.title) end
+                -- after the run: where the dungeon quest is handed in
+                local ti = D.QuestTurnIn(q)
+                if ti.point then stop(afterStops, q, "after", ti) end
+            end
+        end
+    end
+    for _, st in ipairs(afterStops) do st.what = "turnin" end
+    plan.xp = D.XPSum(list)
+    plan.before, plan.route = groupStops(stops)
+    plan.after = groupStops(afterStops)
+    return plan
+end
+
+-- Sets the map target to a stop of a run plan and shows it on the world map (outside instances and
+-- combat, D-62). true, or nil and why.
+function ns.DungeonRouteWaypoint(stop)
+    if type(stop) ~= "table" or not stop.point then return nil, L["Für diesen Halt kennt Amisia keinen Ort."] end
+    local ok, why = ns.MapSetPoint(stop.point, stop.label or stop.title, "Q:" .. tostring(stop.qid))
+    if ok and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(stop.point) end
+    return ok, why
+end
+
 -- All quest givers of a dungeon on the world map (MapPins.lua draws them). The marked dungeon is
 -- kept in AmisiaDB.map.quests.
 local function mapDB()

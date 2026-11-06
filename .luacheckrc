@@ -46,7 +46,7 @@ read_globals = {
     "RAID_CLASS_COLORS", "RandomRoll", "RANDOM_ROLL_RESULT", "ITEM_QUALITY_COLORS", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",
     "time", "tinsert", "ToggleWorldMap", "TooltipDataProcessor", "TooltipUtil", "UiMapPoint", "UIParent",
     "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitIsPlayer", "GetSubZoneText", "HideUIPanel", "UnitFactionGroup", "UnitFullName", "GetRealmName",
-    "UnitGUID", "UnitIsDead", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsUnit", "UnitLevel",
+    "UnitGUID", "UnitIsDead", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsUnit", "UnitLevel", "UnitXP", "UnitXPMax",
     "UnitName", "UnitPosition", "UnitRace", "wipe",
     -- the trade helper (Handover.lua)
     "ClickTradeButton", "ClearCursor", "CursorHasItem", "GetGameMessageInfo", "GetTradePlayerItemLink",

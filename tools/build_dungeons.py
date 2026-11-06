@@ -11,9 +11,11 @@ Nothing is fetched. Run it after changing the JSON:
 --wago reads the client tables (wago.tools CSV downloads, <Table>.csv or <Table>.<build>.csv, in
 ~/addons/_wago, then the copies ATT ships in ~/addons/_cache/att/.config/.wago) and rewrites
 tools/forever_dungeons_client.json: per dungeon of the facts the level the client tunes it to
-(LFGDungeons -> ContentTuning; one level, the minimum of the range where the public facts give one)
-and its instance id (AreaTable). Without --wago that file is read as it is. The hand facts win: the
-client's values only fill what the JSON leaves open (lvl always; inst where the facts have none).
+(LFGDungeons -> ContentTuning; one level, the minimum of the range where the public facts give one),
+its instance id (AreaTable) and its bosses in the game's order (DungeonEncounter: the rows of the
+instance, by OrderIndex; F-139). Without --wago that file is read as it is. The hand facts win: the
+client's values only fill what the JSON leaves open (lvl always; inst where the facts have none;
+order always: the planner sorts the bosses it knows by it).
 
 The generated table is ns.DUNGEON_FACTS. Once tools/build_bis.py writes ns.BIS.DG (task 2 of the
 2.3 design: the same facts plus the level ranges of the client's LFGDungeons table and the bosses'
@@ -41,7 +43,8 @@ LFG_SKIP_TYPES = ('4', '5')
 # Field order in the Lua table; anything else in the JSON (src and the <field>_src labels) is not
 # written. part: the client's name of an instance that hosts several dungeons (Blackrock Spire).
 # lvl: the level the client tunes the dungeon to (forever_dungeons_client.json).
-FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'aliases', 'part')
+# order: the bosses' English names in the game's order (DungeonEncounter, forever_dungeons_client.json).
+FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'aliases', 'part')
 
 
 def lua_str(s):
@@ -90,14 +93,16 @@ def tuning_levels(rows):
 
 
 def client_facts(facts, dirs=WAGO_DIRS):
-    """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg'}}, 'unmatched': [names]}
+    """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg', 'order'}}, 'unmatched': [names]}
     from the client tables in dirs (the first folder holding a table wins, its newest build).
 
     lvl: LFGDungeons' ContentTuningID -> ContentTuning's MinLevelSquish (or MinLevel in tables of
     other builds); a dungeon split into wings ("Dire Maul - East") counts for the facts' dungeon.
-    inst: the AreaTable row of the dungeon's name (an area at the top whose map is no continent)."""
+    inst: the AreaTable row of the dungeon's name (an area at the top whose map is no continent).
+    order: the DungeonEncounter rows of its instance (the facts' inst, else the client's) of the normal
+    difficulty (0 and 1) by OrderIndex, each name once (only the first folder holding the table counts)."""
     tables = {}
-    for t in ('LFGDungeons', 'ContentTuning', 'AreaTable'):
+    for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter'):
         for d in dirs:
             path = att_data.wago_csv(d, t)
             if path:
@@ -132,6 +137,28 @@ def client_facts(facts, dirs=WAGO_DIRS):
         inst = next((by_name[att_data.name_key(n)] for n in names if att_data.name_key(n) in by_name), None)
         if inst:
             out.setdefault(e['key'], {})['inst'] = inst
+    if tables.get('DungeonEncounter'):
+        folder = next(d for d in dirs if att_data.wago_csv(d, 'DungeonEncounter'))
+        # per map and difficulty; the normal dungeon is difficulty 0 and 1 together (the client splits a
+        # dungeon's bosses over both), other difficulties (198, 201: other versions of the dungeon) only
+        # where a map has no normal one: then the difficulty with the most bosses
+        groups = {}
+        for row in att_data.wago_rows('DungeonEncounter', folder):
+            mid, name = _int(row.get('MapID')), (row.get('Name_lang') or '').strip()
+            if mid is not None and name:
+                diff = _int(row.get('DifficultyID')) or 0
+                diff = 0 if diff in (0, 1) else diff
+                groups.setdefault(mid, {}).setdefault(diff, []).append(
+                    (_int(row.get('OrderIndex')) or 0, _int(row.get('ID')) or 0, name))
+        by_map = {mid: g[0] if 0 in g else max(g.values(), key=len) for mid, g in groups.items()}
+        for e in facts['dungeons']:
+            inst = e.get('inst') or (out.get(e['key']) or {}).get('inst')
+            names = []
+            for _, _, name in sorted(by_map.get(inst, [])):
+                if name not in names:
+                    names.append(name)
+            if names:
+                out.setdefault(e['key'], {})['order'] = names
     return {'tables': tables, 'dungeons': {k: out[k] for k in sorted(out)}, 'unmatched': sorted(set(unmatched))}
 
 
@@ -154,6 +181,8 @@ def merge(facts, client):
             m['lvl'] = c['lvl']
         if c.get('inst') and m.get('inst') is None:
             m['inst'] = c['inst']
+        if c.get('order') and m.get('order') is None:
+            m['order'] = c['order']
         out.append(m)
     return out
 
@@ -205,8 +234,8 @@ def render(facts, client=None):
 def write_client(client, path=CLIENT):
     doc = {'_comment': 'GENERATED by tools/build_dungeons.py --wago from the WoW Forever client tables (wago.tools '
                        'CSV downloads, or the copies AllTheThings ships): per dungeon of tools/forever_dungeons.json '
-                       'the level the client tunes it to (LFGDungeons, ContentTuning) and its instance id '
-                       '(AreaTable). Game data, no loot. Do not edit; rebuild instead.',
+                       'the level the client tunes it to (LFGDungeons, ContentTuning), its instance id '
+                       '(AreaTable) and its bosses in the game\'s order (DungeonEncounter). Game data, no loot. Do not edit; rebuild instead.',
            **client}
     text = json.dumps(doc, indent=1, sort_keys=False, ensure_ascii=False) + '\n'
     old = None

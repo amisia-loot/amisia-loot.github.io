@@ -77,7 +77,7 @@ assert(V.back:GetText() == "< Zurück zu den Dungeons" and V.map:GetText() == "N
 -- the journal (F-138): the dungeon's image, its quests on the left with the chosen one marked
 assert(V.art:IsShown() and V.art.title:GetText() == "The Deadmines" and has(V.art.info:GetText(), "Quests: 2, offen: 2"), V.art.info:GetText())
 local jrows = {}
-for _, r in ipairs(V.list.rows) do if r:IsShown() and r.item then jrows[r.item.qid] = r end end
+for _, r in ipairs(V.list.rows) do if r:IsShown() and r.item and r.item.qid then jrows[r.item.qid] = r end end
 assert(jrows[500] and jrows[530], "both quests in the journal's list")
 assert(jrows[500].sel:IsShown() and not jrows[530].sel:IsShown(), "the chosen quest is marked")
 assert(jrows[500].title:GetText() == "Final Quest" and has(plain(jrows[500].sub:GetText()), "Weg 1/3"), plain(jrows[500].sub:GetText()))

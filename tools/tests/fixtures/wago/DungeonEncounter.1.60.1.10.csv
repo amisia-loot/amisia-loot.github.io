@@ -1,0 +1,10 @@
+Name_lang,ID,MapID,DifficultyID,OrderIndex
+Third Boss,12,4777,0,2000
+First Boss,10,4777,0,0
+Second Boss,11,4777,1,1000
+First Boss,13,4777,1,0
+Other Version Boss,14,4777,198,500
+Raid Boss,20,999,0,0
+Wing Boss,30,4020,201,0
+Wing Boss B,31,4020,201,1000
+Lone Boss,32,4020,198,0

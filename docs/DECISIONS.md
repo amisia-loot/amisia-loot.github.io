@@ -1468,3 +1468,28 @@ die Abgabe sieht.
 **Durchgesetzt durch:** `tools/tests/test_build_dungeonquests.py::test_hints_fill_gaps_only_and_render_as_field_22`,
 `tools/tests/test_build_dungeonquests.py::test_the_shipped_hints_name_quests_of_the_data`, `tests/test_quest_path.lua`,
 `tests/test_quest_path_en.lua`.
+
+## D-66 Lauf-Planer: Lohn einer Quest und Graustufe nach eigenen, offenen Regeln
+
+**Datum:** 2026-11-06
+**Entscheidung:** Spec `docs/specs/2026-11-06-dungeon-run-planner.md` (F-139). Der Lohn einer Dungeon-Quest ist
+(EP der offenen Pflichtschritte in Prozent einer Stufe + 25 für ein Upgrade) / (1 + 0,5 je Zone draußen, in die
+ihre offenen Schritte führen); "Muss" ab 20, "Lohnt" ab 8, sonst "Kann weg"; "Später", wenn die eigene Stufe unter
+der Mindeststufe liegt; "?", wenn weder EP noch ein Upgrade bekannt sind (auf der Höchststufe zählen nur Upgrades).
+Schritte selbst kosten nichts, weil jeder Schritt eigene EP bringt. Nur selbst gesehene EP zählen (QuestXP, keine
+geschätzten Werte fremder Quellen); Quests, die die eigene Stufe noch nicht erreicht, zählen nicht in der Laufbilanz.
+Die Graustufe: grau, sobald die eigene Stufe um mehr als die "green range" über der Queststufe liegt; für die eigene
+Stufe die Antwort des Clients (`GetQuestGreenRange`), für spätere Stufen die Graustufe der Kreaturen, die das
+Questlog teilt (`GetRelativeDifficultyColor`): 4 + floor(Stufe / 10) bis 39, floor(Stufe / 5) bis 59, 8 darüber, bis
+Stufe 5 nie grau. Die Bosse stehen in der Reihenfolge der Client-Tabelle `DungeonEncounter` (`OrderIndex`, nur die
+Schwierigkeit 0 und 1 des normalen Dungeons); gezeigt werden die Bosse der Item-Daten (ohne "Trash"), nach dieser
+Reihenfolge sortiert. Ein Boss gilt als Ziel einer Quest, wenn ihr Zieltext seinen Namen als ganze Wörter enthält
+oder einen langen Namen (ab 8 Buchstaben) ohne Leerzeichen; ein Halt, den mehrere Quests teilen, steht einmal da.
+**Grund:** Wunsch des Nutzers 2026-11-06 ("du musst deutlich kreativer werden", dann "Ja, alles bauen"). Die
+erste Fassung bestrafte jeden Schritt einer Questreihe und nannte große Upgrades am Ende langer Reihen "Kann weg";
+das Review fand die Tabelle der Erfahrung ("zero difference") statt der Graustufe (Quests wurden Stufen zu spät
+grau), gemischte Schwierigkeiten in der Bossreihenfolge und doppelte Halte. Ob der Client auf Forever genau diese
+Graustufe nutzt, prüft `/dump GetQuestGreenRange()` im Spiel (Stufe 30: 7).
+**Folge:** Die Werte stehen in `D.WORTH` (Gear/Dungeons.lua); der Tooltip jeder Quest zeigt die Teile. Keine
+Gruppen-Abstimmung und keine Twinks (keine Daten); beides bräuchte eine eigene Spec.
+**Durchgesetzt durch:** `tests/test_dungeon_run_plan.lua`, `tools/tests/test_build_dungeons.py::test_reading_the_client_tables`.

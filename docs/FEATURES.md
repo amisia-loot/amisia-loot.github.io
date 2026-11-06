@@ -926,6 +926,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Quest annimmst, dann steht ihr Zieltext beim nächsten Öffnen des Questwegs unter dem Schritt, und nach dem Abgeben steht dort "Abgeben: bei <NPC>, <Zone> x, y".
 - Notiz: Spec `docs/specs/2026-11-05-questweg.md` (freigegeben 2026-11-05).
 
+### F-139 Lauf-Planer im Dungeon-Journal
+- Version: 2.60.0
+- Status: gebaut
+- Prüfung: Wenn du das Journal eines Dungeons mit offenen Quests öffnest, dann steht im Bild "Lauf: +... EP" mit einem Balken, und sein Tooltip nennt deine Stufe nach dem Lauf.
+- Prüfung: Wenn du links "Dein Lauf" (oder im Planer "Lauf planen") anklickst, dann stehen rechts die Halte vor dem Lauf nach Zonen, die Bosse in ihrer Reihenfolge mit den Quests daran und die Abgaben nach dem Lauf.
+- Prüfung: Wenn du "Route: Halt 1/n auf der Karte" mehrmals klickst, dann springt der Wegpunkt von Halt zu Halt.
+- Prüfung: Wenn du die Questliste ansiehst, dann steht bei jeder offenen Quest "Muss", "Lohnt", "Kann weg", "Später" oder "?" mit einem Balken, und der Tooltip erklärt den Wert.
+- Prüfung: Wenn eine Belohnung ein Upgrade ist, dann steht in ihrer Kachel "statt <dein Item>" (oder "Platz leer"), und bei mehreren Belohnungen trägt die beste "beste Wahl".
+- Notiz: Spec `docs/specs/2026-11-06-dungeon-run-planner.md` (Wunsch des Nutzers 2026-11-06: "du musst deutlich kreativer werden", dann "Ja, alles bauen"); Lohn und Graustufe D-66. Ohne Twinks (Amisia kennt ihre Ausrüstung nicht) und ohne Gruppen-Abstimmung (eigene Spec nötig).
+
 ### F-138 Quest-Journal eines Dungeons
 - Version: 2.59.0
 - Status: gebaut

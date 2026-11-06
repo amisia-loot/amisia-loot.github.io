@@ -117,7 +117,8 @@ def test_blackrock_spire_hosts_two_dungeons():
     assert [e['key'] for e in entries() if e.get('part')] == ['lbrs', 'ubrs']
     text = build_dungeons.render(facts())
     assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire" }' in text
-    assert '{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, part = "Blackrock Spire" },' in text
+    assert re.search(r'\{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, (order = \{[^}]*\}, )?'
+                     r'part = "Blackrock Spire" \},', text)
     assert '_src' not in text, 'the labels stay in the JSON'
 
 
@@ -209,16 +210,18 @@ def client():
 def test_the_client_levels_and_instance_ids():
     c = client()
     keys = {e['key'] for e in entries()}
-    assert set(c['tables']) == {'LFGDungeons', 'ContentTuning', 'AreaTable'}
+    assert set(c['tables']) == {'LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter'}
     assert set(c['dungeons']) <= keys
     for k, v in c['dungeons'].items():
-        assert set(v) <= {'lvl', 'inst', 'lfg'}, v
+        assert set(v) <= {'lvl', 'inst', 'lfg', 'order'}, v
         assert v.get('lvl') is None or 1 <= v['lvl'] <= 60, (k, v)
     by = {e['key']: e for e in entries()}
     # the client's level is the low end of the public range wherever both are known
     both = [k for k, v in c['dungeons'].items() if v.get('lvl') and by[k].get('min') is not None and by[k]['kind'] == 'party']
     assert len(both) >= 4 and all(c['dungeons'][k]['lvl'] == by[k]['min'] for k in both), both
-    assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36}
+    assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
+        "Rhahk'Zor", 'Sneed', 'Miner Johnson', 'Gilnid', 'Captain Greenskin', 'Mr. Smite', 'Cookie', 'Edwin VanCleef']}, \
+        "the bosses in the game's order (F-139)"
     assert c['dungeons']['dire']['lfg'] == ['Dire Maul - East', 'Dire Maul - West', 'Dire Maul - North']
     assert c['dungeons']['lbrs']['inst'] == c['dungeons']['ubrs']['inst'] == 229, 'one instance, two dungeons'
     assert build_dungeons.conflicts(facts(), c) == []
@@ -234,19 +237,23 @@ def test_reading_the_client_tables():
     ]}
     c = build_dungeons.client_facts(facts_, [WAGO])
     assert c['tables'] == {'LFGDungeons': 'LFGDungeons.1.60.1.10.csv', 'ContentTuning': 'ContentTuning.1.60.1.10.csv',
-                           'AreaTable': 'AreaTable.1.60.1.10.csv'}
+                           'AreaTable': 'AreaTable.1.60.1.10.csv', 'DungeonEncounter': 'DungeonEncounter.1.60.1.10.csv'}
     d = c['dungeons']
-    assert d['halls'] == {'lvl': 13, 'lfg': ['Test Halls'], 'inst': 4777}
-    assert d['wing'] == {'lvl': 40, 'lfg': ['Test Wing - East', 'Test Wing - West'], 'inst': 4020}, 'the wings count for the dungeon'
+    assert d['halls'] == {'lvl': 13, 'lfg': ['Test Halls'], 'inst': 4777, 'order': ['First Boss', 'Second Boss', 'Third Boss']}, \
+        'by OrderIndex, difficulties 0 and 1 together, each name once, never another difficulty (F-139)'
+    assert d['wing'] == {'lvl': 40, 'lfg': ['Test Wing - East', 'Test Wing - West'], 'inst': 4020, 'order': ['Wing Boss', 'Wing Boss B']}, \
+        'the wings count for the dungeon; without a normal difficulty the one with the most bosses'
     assert d['stock'] == {'lvl': 23, 'lfg': ['Stormwind Stockades']}, "the client's own spelling"
-    assert d['raid'] == {'inst': 4003} and d['upper'] == {'inst': 4003}, 'the instance of its part'
+    assert d['raid'] == {'inst': 4003, 'order': ['Raid Boss']} and d['upper'] == {'inst': 4003}, \
+        "the instance of its part; the order by the facts' own instance"
     assert c['unmatched'] == ['Unknown Place'], 'zones and battlegrounds are no dungeons'
     merged = {e['key']: e for e in build_dungeons.merge(facts_, c)}
+    assert merged['halls']['order'] == ['First Boss', 'Second Boss', 'Third Boss']
     assert merged['halls']['lvl'] == 13 and merged['halls']['min'] == 13 and merged['raid']['inst'] == 999, 'the facts win'
     assert merged['wing']['inst'] == 4020 and 'lvl' not in facts_['dungeons'][1], 'the facts stay as they are'
     assert build_dungeons.conflicts(facts_, c) == ['Test Raid: instance 4003 in the client, 999 in the facts']
     text = build_dungeons.render({'checked': 'x', 'dungeons': facts_['dungeons']}, c)
-    assert '{ key = "wing", name = "Test Wing", kind = "party", lvl = 40, inst = 4020 },' in text
+    assert '{ key = "wing", name = "Test Wing", kind = "party", lvl = 40, inst = 4020, order = { "Wing Boss", "Wing Boss B" } },' in text
     assert build_dungeons.render({'checked': 'x', 'dungeons': facts_['dungeons'][:1]}, {'dungeons': {}}).count('lvl') == 1, \
         'without the client file no level (only the header names it)'
 

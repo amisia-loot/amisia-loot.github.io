@@ -434,6 +434,16 @@ S.STATES = {
         STUB.fire("QUEST_ACCEPTED", 135)
         NS.ShowDungeonQuest("deadmines", 214)
     end },
+    -- the run planner of the Deadmines (F-139): the stops by zone, the bosses in order, the run's XP
+    { page = "dungeons", name = "dungeons-run", open = function()
+        STUB.xp = { 3000, 21300 }
+        STUB.maps[1436] = { name = "Westfall", mapType = 3 }
+        STUB.maps[1453] = { name = "Sturmwind", mapType = 3 }
+        NS.Map._reset()
+        AmisiaDB.questxp = AmisiaDB.questxp or {}
+        AmisiaDB.questxp[214] = { 1750, 24 }
+        NS.ShowDungeonQuest("deadmines", "run")
+    end },
     -- the longest quest path of the data for the character (it scrolls)
     { page = "dungeons", name = "dungeons-questpath-long", open = function()
         local best, bestKey, bestN = nil, nil, 0

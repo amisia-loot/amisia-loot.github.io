@@ -254,6 +254,15 @@ T.DJOURNAL = {
     LABEL_H = 16,              -- a gold label line ("Belohnung:", "Questweg:")
     BOX_PAD = 6,               -- the next step's text inside its box
     TILE_H = 34, TILE_ICON = 28, TILE_GAP = 4, TILE_TEXT_X = 34,
+    -- the run planner (F-139): the run's sum in the image (text and XP bar left of the boss model),
+    -- the worth bar under a list card, the level window, the stops and the boss track
+    RUN_W = 200, RUN_X = 6, RUN_Y = -8, BAR_H = 6, BAR_Y = 10,
+    XP_COLOR = { 0.58, 0.0, 0.55 }, GAIN_COLOR = { 0.0, 0.39, 0.88 }, BAR_BG = { 0, 0, 0, 0.6 },
+    WORTH_H = 2, WORTH_Y = 3,
+    LVL_W = 110, LVL_H = 6, LVL_ROW = 16, LVL_GAP = 8,
+    LVL_LOW = { 0.75, 0.3, 0.2, 0.9 }, LVL_OK = { 0.31, 0.82, 0.42, 0.9 }, LVL_GREY = { 0.5, 0.5, 0.5, 0.9 },
+    STOP_X = 10, NODE = 14, NODE_TEXT_X = 20, LINK_W = 2, DONE_H = 20,
+    PLAN_W = 96,               -- "Lauf planen" in the planner's image, left of "Alle auf Karte"
 }
 
 T.PROFPAGE = {

@@ -47,6 +47,54 @@ local DTEXT = {
     xpNone = L["EP: noch nicht gesehen"],
 }
 local ART_W, ART_H = 590, 48
+-- the run planner (F-139)
+local RTEXT = {
+    row = L["Dein Lauf"],
+    rowSub = L["%d offen · %d Halte"],
+    info = L["%d offene Quests · %d Halte vor dem Lauf"],
+    sum = L["Lauf: %s EP · %d Upgrades"],
+    sumNoXP = L["Lauf: %d Upgrades"],
+    atLeast = L["mind. %s"],
+    tipTitle = L["Dieser Lauf"],
+    tipNow = L["Jetzt: Stufe %d, %d %%"],
+    tipAfter = L["Nach dem Lauf: Stufe %d, %d %%"],
+    tipAfterAbout = L["Nach dem Lauf: etwa Stufe %d, %d %%"],
+    tipMissing = L["Quests ohne bekannte EP zählen nicht: %d"],
+    tipUps = L["Upgrades: %d (Quest-Belohnungen und Bosse)"],
+    tipCap = L["Höchststufe: es zählen nur Upgrades."],
+    tipAfterCap = L["Nach dem Lauf: Höchststufe %d"],
+    noQuests = L["Keine offenen Quests in diesem Dungeon."],
+    pending = L["im Log, Ziel noch offen: %s"],
+    before = L["Vor dem Lauf"],
+    inside = L["Im Dungeon"],
+    after = L["Nach dem Lauf abgeben"],
+    accept = L["%d. %s: annehmen %s"],
+    turnIn = L["%d. %s: abgeben %s"],
+    later = L["ab Stufe %d: %s"],
+    unknown = L["Ort unbekannt: %s"],
+    nothingBefore = L["Nichts abzuholen: alles Nötige ist im Log."],
+    nothingAfter = L["Keine Abgabe mit bekanntem Ort."],
+    goals = L["Ziel: %s"],
+    starts = L["startet: %s"],
+    ups = L["Upgrades für dich: %d"],
+    other = L["Sonst im Dungeon: %s"],
+    noBosses = L["Für diesen Dungeon kennt Amisia keine Bosse."],
+    route = L["Route: Halt %d/%d auf der Karte"],
+    noRoute = L["Route: kein Halt"],
+    routeTip = L["Setzt den Wegpunkt auf einen Halt vor dem Lauf und öffnet die Weltkarte dort (nicht in Instanzen und im Kampf). Jeder Klick: der nächste Halt."],
+    hint = L["Vor dem Lauf: die Halte nach Zonen, deine Zone zuerst. Im Dungeon: die Bosse in der Reihenfolge des Spiels mit den Quests dort. Karte: Weltkarte und Wegpunkt (nicht in Instanzen und im Kampf)."],
+    plan = L["Lauf planen"],
+    planTip = L["Was dieser Dungeon dir bringt, was du vorher abholst, was bei welchem Boss passiert und wo du danach abgibst."],
+    worthTip = L["Lohn: %s"],
+    worthPct = L["%d %% einer Stufe"],
+    worthUp = L["ein Upgrade"],
+    worthNoXP = L["EP unbekannt"],
+    worthCost = L["Aufwand: %d offene Schritte, %d Zonen draußen"],
+}
+local VERDICT = { must = GREEN .. L["Muss"] .. "|r", worth = "|cffa6e28f" .. L["Lohnt"] .. "|r", skip = GREY .. L["Kann weg"] .. "|r",
+    later = T.ORANGE .. L["Später"] .. "|r", unknown = GREY .. "?|r" }
+local VERDICT_BAR = { must = { 0.31, 0.82, 0.42 }, worth = { 0.65, 0.89, 0.56 }, skip = { 0.5, 0.5, 0.5 }, later = { 0.88, 0.64, 0.27 },
+    unknown = { 0.5, 0.5, 0.5 } }
 
 local function signed(x) return ("%+d"):format(math.floor(x + 0.5)) end
 
@@ -297,6 +345,16 @@ local function questTip(self)
         end
         GameTooltip:AddLine(L["Belohnung: %s"]:format(table.concat(names, ", ")), 0.85, 0.85, 0.85, true)
     end
+    -- the worth (F-139): what it brings, what it costs
+    local w = self.journal and e.worth or nil
+    if w then
+        local gains = {}
+        if w.pct then gains[#gains + 1] = RTEXT.worthPct:format(math.floor(w.pct + 0.5))
+        elseif not q.best then gains[#gains + 1] = RTEXT.worthNoXP end
+        if q.best then gains[#gains + 1] = RTEXT.worthUp end
+        GameTooltip:AddDoubleLine(RTEXT.worthTip:format(table.concat(gains, " + ")), VERDICT[w.verdict] or "", 0.85, 0.85, 0.85, 1, 1, 1)
+        GameTooltip:AddLine(RTEXT.worthCost:format(w.steps, w.zones), 0.6, 0.6, 0.6)
+    end
     if not self.journal then GameTooltip:AddLine(L["Klick: der Questweg mit allen Schritten"], 0.31, 0.82, 0.42) end
     GameTooltip:Show()
 end
@@ -434,6 +492,14 @@ local PTEXT = {
     count = L["Quests: %d, offen: %d"],
     cut = L["(%d frühere Schritte nicht gezeigt)"],
     hint = L["Links die Quests des Dungeons, rechts die gewählte. Karte: Weltkarte und Wegpunkt zu diesem Schritt (nicht in Instanzen und im Kampf). Strg-Klick auf eine Belohnung: Anprobe."],
+    best = L["beste Wahl"],
+    instead = L["statt %s"],
+    empty = L["Platz leer"],
+    doneFold = L["Schritte %d-%d erledigt · Klick: zeigen"],
+    doneOpen = L["Schritte %d-%d erledigt · Klick: einklappen"],
+    lvlRange = L["ab %d · grau ab %d (noch %d)"],
+    lvlLow = L["ab Stufe %d, du bist %d"],
+    lvlGrey = L["schon grau: wenig EP"],
 }
 local P = {
     PAD = 8, ICON = 16, TEXT_X = 30, LINE = 12, LINE_GAP = 3, HEAD_H = 26, AFTER_H = 22, BUTTON_H = T.ROW_BUTTON_H,
@@ -607,6 +673,10 @@ local function buildQuestCard(V)
         r.gain = W.Text(r, T.FONT.text)
         r.gain:SetJustifyH("RIGHT")
         r.gain:SetPoint("TOPRIGHT", -J.RIGHT_PAD, J.LINE2_Y)
+        -- the worth against the dungeon's best quest (F-139)
+        r.worth = r:CreateTexture(nil, "ARTWORK")
+        r.worth:SetHeight(J.WORTH_H)
+        r.worth:SetPoint("BOTTOMLEFT", J.TEXT_X, J.WORTH_Y)
         r:SetScript("OnClick", function(self)
             if self.item and V.owner then V.owner:OpenPath(self.item) end
         end)
@@ -616,11 +686,29 @@ local function buildQuestCard(V)
     end
 end
 
+-- The first card of the list: the run planner (F-139).
+local function fillRunCard(r, e)
+    if W.HasAtlas("Dungeon") then r.mark:SetAtlas("Dungeon") else r.mark:SetTexture(ICON) end
+    r.mark:SetVertexColor(1, 1, 1)
+    r.state:SetText("")
+    local room = J.LIST_W - J.TEXT_X - J.RIGHT_PAD
+    r.title:SetWidth(room)
+    r.title:SetText(GOLD_TEXT .. RTEXT.row .. "|r")
+    r.sub:SetWidth(room)
+    r.sub:SetText(RTEXT.rowSub:format(e.plan.open, #e.plan.route))
+    r.gain:SetText("")
+    r.worth:Hide()
+    local chosen = r.owner and r.owner.chosenQuest
+    r.sel:SetShown(chosen == "run")
+end
+
 local function fillQuestCard(r, e)
+    if e.kind == "run" then return fillRunCard(r, e) end
     local q = e.q
     local st = questState(q)
     local tex, shade = ns.Dungeons.QuestStateArt(st)
     r.mark:SetTexture(tex)
+    r.mark:SetTexCoord(0, 1, 0, 1)
     r.mark:SetVertexColor(shade, shade, shade)
     local over = q.done or q.gone
     local word = STATE_COLOR[st] and (STATE_COLOR[st] .. STATE_TEXT[st] .. "|r") or ""
@@ -633,11 +721,22 @@ local function fillQuestCard(r, e)
     if lv ~= "" then parts[#parts + 1] = PTEXT.level:format(lv) end
     local way = ns.Dungeons.QuestPathShort(e.path)
     if way ~= "" then parts[#parts + 1] = L["Weg %s"]:format(way) end
+    if q.best and not over then parts[#parts + 1] = GREEN .. signed(q.best.gain) .. "|r" end
     local sub = table.concat(parts, " · ")
     if q.start == "I" then sub = sub .. (sub ~= "" and " " or "") .. "|A:Dungeon:14:14|a" end
     r.sub:SetText(over and (GREY .. sub .. "|r") or sub)
-    r.gain:SetText(q.best and not over and (GREEN .. signed(q.best.gain) .. "|r") or "")
+    -- the worth: its word at the right, a thin bar against the dungeon's best quest (F-139)
+    local w = e.worth
+    r.gain:SetText(w and VERDICT[w.verdict] or "")
     r.sub:SetWidth(room - (r.gain:GetText() ~= "" and (r.gain:GetStringWidth() + 6) or 0))
+    if w and (e.worthMax or 0) > 0 and w.score > 0 then
+        local c = VERDICT_BAR[w.verdict] or VERDICT_BAR.skip
+        r.worth:SetColorTexture(c[1], c[2], c[3], 0.8)
+        r.worth:SetWidth(math.max(2, room * math.min(1, w.score / e.worthMax)))
+        r.worth:Show()
+    else
+        r.worth:Hide()
+    end
     local chosen = r.owner and r.owner.chosenQuest
     r.sel:SetShown(chosen ~= nil and (e.qid or q.title) == chosen)
 end
@@ -651,12 +750,58 @@ local function buildPath(B)
     V.back = W.Button(V, PTEXT.back, nil, function() B:OpenPath(nil) end)
     W.FitChip(V.back)
     V.map = W.Button(V, PTEXT.map, nil, function()
-        if V.path then say(ns.DungeonPathWaypoint(V.path)) end
+        if V.plan then
+            -- the run planner: the route's stops one after the other (F-139)
+            local route = V.plan.route
+            if #route == 0 then return end
+            local at = math.min(V.routeAt or 1, #route)
+            say(ns.DungeonRouteWaypoint(route[at]))
+            V.routeAt = at % #route + 1
+            V.map:SetText(RTEXT.route:format(V.routeAt, #route))
+            W.FitChip(V.map)
+        elseif V.path then
+            say(ns.DungeonPathWaypoint(V.path))
+        end
     end)
     W.FitChip(V.map)
-    W.Tooltip(V.map, PTEXT.map, PTEXT.mapTip)
+    local hook = (V.map.styled or V.map.arrow) and V.map.HookScript or V.map.SetScript
+    hook(V.map, "OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        local title = PTEXT.map
+        if V.plan then title = #V.plan.route > 0 and RTEXT.route:format(V.routeAt or 1, #V.plan.route) or RTEXT.noRoute end
+        GameTooltip:AddLine(title, 1, 0.82, 0)
+        GameTooltip:AddLine(V.plan and RTEXT.routeTip or PTEXT.mapTip, 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    hook(V.map, "OnLeave", hideTip)
     V:Place(1, { V.back }, { V.map })
     V.art = buildArt(V, -J.ART_Y)
+    V.art.title:SetWidth(320)
+    V.art.info:SetWidth(320)
+    -- the run's sum in the image (F-139): the text and the XP bar left of the boss model
+    local a, runX = V.art, -(ART_H + J.RUN_X)
+    a.run = W.Text(a, T.FONT.text, J.RUN_W)
+    a.run:SetJustifyH("RIGHT")
+    a.run:SetPoint("TOPRIGHT", runX, J.RUN_Y)
+    a.bar = CreateFrame("Frame", nil, a)
+    a.bar:SetSize(J.RUN_W, J.BAR_H)
+    a.bar:SetPoint("BOTTOMRIGHT", runX, J.BAR_Y)
+    a.bar.bg = W.Flat(a.bar, J.BAR_BG[1], J.BAR_BG[2], J.BAR_BG[3], J.BAR_BG[4])
+    a.bar.cur = a.bar:CreateTexture(nil, "ARTWORK")
+    a.bar.cur:SetColorTexture(J.XP_COLOR[1], J.XP_COLOR[2], J.XP_COLOR[3], 1)
+    a.bar.cur:SetPoint("TOPLEFT")
+    a.bar.cur:SetPoint("BOTTOMLEFT")
+    a.bar.gain = a.bar:CreateTexture(nil, "ARTWORK")
+    a.bar.gain:SetColorTexture(J.GAIN_COLOR[1], J.GAIN_COLOR[2], J.GAIN_COLOR[3], 1)
+    a.bar.gain:SetPoint("TOPLEFT", a.bar.cur, "TOPRIGHT")
+    a.bar.gain:SetPoint("BOTTOMLEFT", a.bar.cur, "BOTTOMRIGHT")
+    a.bar.edges = W.Border(a.bar, W.GOLD[1], W.GOLD[2], W.GOLD[3], 0.5)
+    a.hot = CreateFrame("Frame", nil, a)
+    a.hot:SetPoint("TOPRIGHT", runX, 0)
+    a.hot:SetSize(J.RUN_W, ART_H)
+    a.hot:EnableMouse(true)
+    a.hot:SetScript("OnEnter", function(self) if V.runTip then V.runTip(self) end end)
+    a.hot:SetScript("OnLeave", hideTip)
     V.list = V:List(J.ROWS, J.ROW_H, buildQuestCard(V), fillQuestCard, { top = -J.CONTENT_Y, width = J.LIST_W })
     for _, r in ipairs(V.list.rows) do r.owner = V end
     -- the chosen quest
@@ -690,6 +835,40 @@ local function buildPath(B)
     V.nextLine = W.Text(V.nextBox, T.FONT.text, V.bodyW - 2 * J.BOX_PAD, true)
     V.nextLine:SetJustifyV("TOP")
     V.nextLine:SetPoint("TOPLEFT", J.BOX_PAD, -J.BOX_PAD)
+    -- the level window (F-139): a bar from the minimum to the level it turns grey at, the own level marked
+    V.lvl = CreateFrame("Frame", nil, V.child)
+    V.lvl:SetSize(V.bodyW, J.LVL_ROW)
+    V.lvl.segs = {}
+    for i, c in ipairs({ J.LVL_LOW, J.LVL_OK, J.LVL_GREY }) do
+        local t = V.lvl:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(c[1], c[2], c[3], c[4])
+        t:SetHeight(J.LVL_H)
+        V.lvl.segs[i] = t
+    end
+    V.lvl.me = V.lvl:CreateTexture(nil, "OVERLAY")
+    V.lvl.me:SetColorTexture(1, 1, 1, 1)
+    V.lvl.me:SetSize(2, J.LVL_H + 6)
+    V.lvl.text = W.Text(V.lvl, T.FONT.text, V.bodyW - J.LVL_W - J.LVL_GAP)
+    V.lvl.text:SetPoint("LEFT", J.LVL_W + J.LVL_GAP, 0)
+    -- the done steps at the path's start as one line (F-139): a click shows or folds them
+    V.showDone = {}
+    V.doneLine = CreateFrame("Button", nil, V.child)
+    V.doneLine:SetSize(V.bodyW, J.DONE_H)
+    V.doneLine.ground = W.Flat(V.doneLine, 0, 0, 0, 0.25)
+    V.doneLine.icon = V.doneLine:CreateTexture(nil, "ARTWORK")
+    V.doneLine.icon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
+    V.doneLine.icon:SetSize(P.ICON - 2, P.ICON - 2)
+    V.doneLine.icon:SetPoint("LEFT", P.PAD, 0)
+    V.doneLine.text = W.Text(V.doneLine, T.FONT.text, V.bodyW - P.TEXT_X - P.PAD)
+    V.doneLine.text:SetPoint("LEFT", P.TEXT_X, 0)
+    V.doneLine:SetScript("OnClick", function()
+        local k = V.shownQuest
+        if k ~= nil then V.showDone[k] = not V.showDone[k] or nil end
+        ns.Refresh()
+    end)
+    V.doneLine:Hide()
+    -- the run planner's parts in the body (pools, F-139)
+    V.runLabels, V.runLines, V.runNodes = {}, {}, {}
     V.rewardLabel = W.Text(V.child, T.FONT.text)
     V.rewardLabel:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
     V.rewardLabel:SetText(PTEXT.rewards)
@@ -751,7 +930,21 @@ local function rewardButton(V, i)
     return b
 end
 
+-- The item worn in a slot row, as text; false for an empty slot, nil when unknown (F-139).
+local INV_OF
+local function wornText(slotKey)
+    if not INV_OF then
+        INV_OF = {}
+        for _, sl in ipairs(ns.Gear.SLOTS or {}) do INV_OF[sl.key] = sl.inv end
+    end
+    local inv = INV_OF[slotKey]
+    if not inv or not GetInventoryItemLink then return nil end
+    local id = ns.ItemID(ns.Plain(GetInventoryItemLink("player", inv)))
+    return id and itemText(id) or false
+end
+
 -- The rewards as tiles, two per row (one when a name is too long), from y; returns the y under them.
+-- Under the name: "beste Wahl" (the best upgrade of several), the slot, the gain and what it replaces.
 local function fillRewards(V, q, y)
     local list = q.rewards or {}
     for _, b in ipairs(V.rewards) do b:Hide() end
@@ -773,9 +966,15 @@ local function fillRewards(V, q, y)
         local c = quality[itemQuality(it.id) or 1] or quality[1]
         W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
         b.text:SetText(marks(it) .. itemText(it.id))
+        local parts = {}
+        if #list > 1 and it == q.best then parts[#parts + 1] = GREEN .. PTEXT.best .. "|r" end
         local slot = ns.BIS_SLOT_NAME[it.slotKey] or ""
-        local gain = it.upgrade and (GREEN .. signed(it.gain) .. "|r") or (GREY .. signed(it.gain) .. "|r")
-        b.sub:SetText(slot ~= "" and (GREY .. slot .. "|r · " .. gain) or gain)
+        if slot ~= "" then parts[#parts + 1] = GREY .. slot .. "|r" end
+        parts[#parts + 1] = it.upgrade and (GREEN .. signed(it.gain) .. "|r") or (GREY .. signed(it.gain) .. "|r")
+        local worn = it.upgrade and wornText(it.slotKey)
+        if worn then parts[#parts + 1] = GREY .. PTEXT.instead:format("|r" .. worn .. GREY) .. "|r"
+        elseif worn == false then parts[#parts + 1] = GREY .. PTEXT.empty .. "|r" end
+        b.sub:SetText(table.concat(parts, " · "))
         local fs = b.text
         widest = math.max(widest, fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth() or fs:GetStringWidth() or 0,
             b.sub.GetUnboundedStringWidth and b.sub:GetUnboundedStringWidth() or b.sub:GetStringWidth() or 0)
@@ -797,8 +996,101 @@ local function fillRewards(V, q, y)
     return y - rows * (J.TILE_H + J.TILE_GAP) - J.SECTION_GAP + J.TILE_GAP
 end
 
--- The dungeon's image in the journal: name, level and fit, how many quests and how many are open.
-local function fillJournalArt(V, e, rows)
+-- The level window of quest q at y (F-139): the bar (too low, can be taken, grey) with the own level
+-- marked and the text beside it; nothing for an unknown level or a quest that is over. Returns the y
+-- under it.
+local function fillLevel(V, q, y)
+    local lw = ns.Dungeons.LevelWindow(q)
+    if q.done or q.gone or not lw.level or not lw.grey then
+        V.lvl:Hide()
+        return y
+    end
+    local from = (lw.min or 0) > 0 and lw.min or lw.level
+    local lo = math.min(from, lw.my) - 1
+    local hi = math.max(lw.grey, lw.my) + 1
+    local function x(lv) return (lv - lo) / (hi - lo) * J.LVL_W end
+    local bounds = { { lo, from }, { from, lw.grey }, { lw.grey, hi } }
+    for i, t in ipairs(V.lvl.segs) do
+        local a, b = bounds[i][1], bounds[i][2]
+        t:ClearAllPoints()
+        if b > a then
+            t:SetPoint("LEFT", V.lvl, "LEFT", x(a), 0)
+            t:SetWidth(math.max(1, x(b) - x(a)))
+            t:Show()
+        else
+            t:Hide()
+        end
+    end
+    V.lvl.me:ClearAllPoints()
+    V.lvl.me:SetPoint("CENTER", V.lvl, "LEFT", x(math.min(hi, math.max(lo, lw.my))), 0)
+    if lw.my < from then
+        V.lvl.text:SetText(T.ORANGE .. PTEXT.lvlLow:format(from, lw.my) .. "|r")
+    elseif lw.my >= lw.grey then
+        V.lvl.text:SetText(GREY .. PTEXT.lvlGrey .. "|r")
+    else
+        V.lvl.text:SetText(PTEXT.lvlRange:format(from, lw.grey, lw.grey - lw.my))
+    end
+    V.lvl:ClearAllPoints()
+    V.lvl:SetPoint("TOPLEFT", 0, y)
+    V.lvl:Show()
+    return y - J.LVL_ROW - J.SECTION_GAP
+end
+
+-- "8950" with a grouping for big numbers as the client writes them.
+local function bigNumber(v)
+    local f = _G.BreakUpLargeNumbers
+    return type(f) == "function" and ns.Plain(f(v)) or tostring(v)
+end
+
+-- The run's sum in the image (F-139): "Lauf: +8950 EP · 3 Upgrades" and the XP bar (own XP, then the
+-- open quests' XP); its tooltip names the level now and after the run. At the cap only the upgrades.
+local function fillRunSum(V, plan)
+    local a = V.art
+    local Dn = ns.Dungeons
+    local cur, max, my, capped = Dn.OwnXP()
+    local xp = plan.xp
+    if capped or xp.total == 0 then
+        a.run:SetText(plan.ups > 0 and RTEXT.sumNoXP:format(plan.ups) or "")
+        a.bar:Hide()
+    else
+        local num = "+" .. bigNumber(xp.total)
+        if xp.missing > 0 then num = RTEXT.atLeast:format(num) end
+        a.run:SetText(RTEXT.sum:format(num, plan.ups))
+        local w = J.RUN_W
+        local f0 = math.min(1, cur / max)
+        local f1 = math.min(1, (cur + xp.total) / max)
+        a.bar.cur:SetWidth(math.max(0.1, w * f0))
+        a.bar.gain:SetWidth(math.max(0.1, w * (f1 - f0)))
+        a.bar:Show()
+    end
+    V.runTip = function(owner)
+        GameTooltip:SetOwner(owner, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(RTEXT.tipTitle, 1, 0.82, 0)
+        if capped then
+            GameTooltip:AddLine(RTEXT.tipCap, 0.85, 0.85, 0.85, true)
+        else
+            GameTooltip:AddLine(RTEXT.tipNow:format(my, math.floor(cur / max * 100)), 0.85, 0.85, 0.85)
+            local after = cur + xp.total
+            local lv, rest = my + math.floor(after / max), after % max
+            local cap = ns.Gear.Cap and ns.Gear.Cap() or 60
+            local r, g = J.GAIN_COLOR[1] + 0.3, J.GAIN_COLOR[2] + 0.3
+            if lv >= cap then
+                GameTooltip:AddLine(RTEXT.tipAfterCap:format(cap), r, g, 1)
+            else
+                -- past the next level the need of this level stands in for the next one's: about
+                local fmt = lv > my and RTEXT.tipAfterAbout or RTEXT.tipAfter
+                GameTooltip:AddLine(fmt:format(lv, math.floor(rest / max * 100)), r, g, 1)
+            end
+            if xp.missing > 0 then GameTooltip:AddLine(RTEXT.tipMissing:format(xp.missing), 0.6, 0.6, 0.6) end
+        end
+        GameTooltip:AddLine(RTEXT.tipUps:format(plan.ups), 0.85, 0.85, 0.85)
+        GameTooltip:Show()
+    end
+end
+
+-- The dungeon's image in the journal: name, level and fit, how many quests and how many are open,
+-- the run's sum.
+local function fillJournalArt(V, e, rows, plan)
     local a = V.art
     if not e then a:Hide() return end
     a:Show()
@@ -812,32 +1104,69 @@ local function fillJournalArt(V, e, rows)
         a.tex:Hide()
     end
     a.title:SetText(e.name)
-    local open = 0
-    for _, row in ipairs(rows) do if not row.q.done and not row.q.gone then open = open + 1 end end
+    local all, open = 0, 0
+    for _, row in ipairs(rows) do
+        if row.q then
+            all = all + 1
+            if not row.q.done and not row.q.gone then open = open + 1 end
+        end
+    end
     local range = Dn.RangeText(e)
-    local parts = { range ~= "" and DTEXT.level:format(range, Dn.FitText(e)) or Dn.FitText(e), PTEXT.count:format(#rows, open) }
+    local parts = { range ~= "" and DTEXT.level:format(range, Dn.FitText(e)) or Dn.FitText(e), PTEXT.count:format(all, open) }
     a.info:SetText(table.concat(parts, " · "))
     a:SetModelNpc(Dn.ModelNpc(e))
+    fillRunSum(V, plan)
 end
 
--- Fills the journal: the list (the chosen quest in view and marked), the chosen quest's inset.
-local function fillPath(B, path, rows)
+-- The head of the journal: the image and the list (the chosen row marked and in view).
+local function fillJournal(B, rows, plan, chosen)
+    local V = B.pathView
+    V.plan = nil
+    fillJournalArt(V, B.entry, rows, plan)
+    V.chosenQuest = chosen
+    local at
+    for i, row in ipairs(rows) do
+        if (row.kind == "run" and chosen == "run") or (row.q and (row.qid or row.q.title) == chosen) then at = i end
+    end
+    if at and (at <= V.list.offset or at > V.list.offset + J.ROWS) then V.list.offset = at - 1 end
+    V.list:SetItems(rows)
+    -- another quest or the run starts at the top
+    if V.shownQuest ~= chosen then
+        V.shownQuest = chosen
+        if V.scroll.SetVerticalScroll then V.scroll:SetVerticalScroll(0) end
+    end
+end
+
+-- Shows the quest parts of the body (shown) or hides them for the run planner.
+local function showQuestParts(V, shown)
+    for _, f in ipairs({ V.nextBox, V.xp, V.pathLabel }) do f:SetShown(shown) end
+    if not shown then
+        V.rewardLabel:Hide()
+        V.lvl:Hide()
+        V.doneLine:Hide()
+        for _, b in ipairs(V.rewards) do b:Hide() end
+        for _, c in ipairs(V.cards) do c:Hide() end
+    else
+        for _, fs in ipairs(V.runLabels) do fs:Hide() end
+        for _, ln in ipairs(V.runLines) do ln.fs:Hide(); ln.btn:Hide() end
+        for _, nd in ipairs(V.runNodes) do nd.icon:Hide(); nd.link:Hide() end
+    end
+end
+
+-- Fills the chosen quest's inset.
+local function fillPath(B, path)
     local V = B.pathView
     local Dn = ns.Dungeons
     local q = path.quest
     V.path = path
-    fillJournalArt(V, B.entry, rows)
-    -- the list: the chosen row marked and in view
-    local chosen = B.pathFor and B.pathFor.key
-    V.chosenQuest = chosen
-    local at
-    for i, row in ipairs(rows) do if (row.qid or row.q.title) == chosen then at = i end end
-    if at and (at <= V.list.offset or at > V.list.offset + J.ROWS) then V.list.offset = at - 1 end
-    V.list:SetItems(rows)
+    showQuestParts(V, true)
+    V.map:SetText(PTEXT.map)
+    W.FitChip(V.map)
     -- the head of the inset
     local st = questState(q)
     local tex, shade = Dn.QuestStateArt(st)
     V.mark:SetTexture(tex)
+    V.mark:SetTexCoord(0, 1, 0, 1)
     V.mark:SetVertexColor(shade, shade, shade)
     V.title:SetText(q.title)
     local info = {}
@@ -847,8 +1176,8 @@ local function fillPath(B, path, rows)
     local way = Dn.QuestPathShort(path)
     if way ~= "" then info[#info + 1] = L["Weg %s"]:format(way) end
     V.info:SetText(table.concat(info, " · "))
-    -- the body: the next step, the rewards, the XP, the quest path
-    local y = 0
+    -- the body: the level window, the next step, the rewards, the XP, the quest path
+    local y = fillLevel(V, q, 0)
     V.nextLine:SetText(LABEL .. PTEXT.nextStep .. "|r " .. Dn.QuestPathNextText(path) ..
         (path.cut > 0 and (" " .. GREY .. PTEXT.cut:format(path.cut) .. "|r") or ""))
     local boxH = textHeight(V.nextLine, V.bodyW - 2 * J.BOX_PAD) + 2 * J.BOX_PAD
@@ -873,44 +1202,195 @@ local function fillPath(B, path, rows)
     V.pathLabel:SetPoint("TOPLEFT", 0, y)
     y = y - J.LABEL_H
     V.map:SetEnabled(path.next ~= nil and Dn.QuestStepTarget(path.next) ~= nil)
-    -- the step cards, top to bottom, "danach" between them
+    -- the done steps at the start (two or more, not the quest itself) as one line until clicked (F-139)
+    local lead = 0
+    for i, s in ipairs(path.steps) do
+        if s.state ~= "done" or i == #path.steps then break end
+        lead = i
+    end
+    if lead < 2 then lead = 0 end
     local width = V.bodyW
     local cy = -y
+    if lead > 0 then
+        local first, last = path.steps[1].no, path.steps[lead].no
+        V.doneLine.text:SetText(GREY .. (V.showDone[V.shownQuest] and PTEXT.doneOpen or PTEXT.doneFold):format(first, last) .. "|r")
+        V.doneLine:ClearAllPoints()
+        V.doneLine:SetPoint("TOPLEFT", 0, -cy)
+        V.doneLine:Show()
+        cy = cy + J.DONE_H + P.LINE_GAP
+        if V.showDone[V.shownQuest] then lead = 0 end
+    else
+        V.doneLine:Hide()
+    end
+    -- the step cards, top to bottom, "danach" between them
     for i, s in ipairs(path.steps) do
         local c = V.cards[i]
         if not c then
             c = newCard(V.child, V.onMap)
             V.cards[i] = c
         end
-        c:ClearAllPoints()
-        c:SetPoint("TOPLEFT", 0, -cy)
-        c:SetWidth(width)
-        local h = fillCard(c, s, path, width, s == path.next)
-        c:Show()
-        cy = cy + h
-        local last = i == #path.steps
-        c.link:SetShown(not last)
-        c.arrow:SetShown(not last)
-        c.after:SetShown(not last)
-        if not last then
-            c.link:ClearAllPoints()
-            c.link:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, 0)
-            c.link:SetHeight(P.AFTER_H - 8)
-            c.arrow:ClearAllPoints()
-            c.arrow:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, -(P.AFTER_H - 12))
-            if W.HasAtlas("talents-arrow-head-gray") then c.arrow:SetAtlas("talents-arrow-head-gray") else c.arrow:Hide() end
-            c.after:ClearAllPoints()
-            c.after:SetPoint("LEFT", c, "BOTTOMLEFT", P.TEXT_X, -P.AFTER_H / 2)
-            cy = cy + P.AFTER_H
+        if i <= lead then
+            c:Hide()
+        else
+            c:ClearAllPoints()
+            c:SetPoint("TOPLEFT", 0, -cy)
+            c:SetWidth(width)
+            local h = fillCard(c, s, path, width, s == path.next)
+            c:Show()
+            cy = cy + h
+            local last = i == #path.steps
+            c.link:SetShown(not last)
+            c.arrow:SetShown(not last)
+            c.after:SetShown(not last)
+            if not last then
+                c.link:ClearAllPoints()
+                c.link:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, 0)
+                c.link:SetHeight(P.AFTER_H - 8)
+                c.arrow:ClearAllPoints()
+                c.arrow:SetPoint("TOP", c, "BOTTOMLEFT", P.PAD + P.ICON / 2, -(P.AFTER_H - 12))
+                if W.HasAtlas("talents-arrow-head-gray") then c.arrow:SetAtlas("talents-arrow-head-gray") else c.arrow:Hide() end
+                c.after:ClearAllPoints()
+                c.after:SetPoint("LEFT", c, "BOTTOMLEFT", P.TEXT_X, -P.AFTER_H / 2)
+                cy = cy + P.AFTER_H
+            end
         end
     end
     for i = #path.steps + 1, #V.cards do V.cards[i]:Hide() end
-    -- another quest starts at the top
-    if V.shownQuest ~= chosen then
-        V.shownQuest = chosen
-        if V.scroll.SetVerticalScroll then V.scroll:SetVerticalScroll(0) end
-    end
     V.child:SetHeight(math.max(10, cy))
+    if V.scroll.UpdateScrollChildRect then V.scroll:UpdateScrollChildRect() end
+end
+
+-- The run planner in the inset (F-139): before the run (the stops by zone, what cannot be done yet),
+-- in the dungeon (the bosses in the game's order with the quests there), after the run (the turn-ins).
+local SKULL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull"
+local START_COLOR = "|cff6fb5ff"
+local function fillRun(B, plan)
+    local V = B.pathView
+    V.path, V.plan = nil, plan
+    showQuestParts(V, false)
+    if W.HasAtlas("Dungeon") then V.mark:SetAtlas("Dungeon") else V.mark:SetTexture(ICON) end
+    V.mark:SetVertexColor(1, 1, 1)
+    V.title:SetText(RTEXT.row)
+    V.info:SetText(RTEXT.info:format(plan.open, #plan.route))
+    -- the route button: the next stop
+    if B.routeFor ~= B.pathDungeon then
+        B.routeFor = B.pathDungeon
+        V.routeAt = 1
+    end
+    local n = #plan.route
+    V.routeAt = math.min(V.routeAt or 1, math.max(1, n))
+    V.map:SetText(n > 0 and RTEXT.route:format(V.routeAt, n) or RTEXT.noRoute)
+    W.FitChip(V.map)
+    V.map:SetEnabled(n > 0)
+    local y, nLabel, nLine, nNode = 0, 0, 0, 0
+    local function label(text)
+        nLabel = nLabel + 1
+        local fs = V.runLabels[nLabel]
+        if not fs then
+            fs = W.Text(V.child, T.FONT.text, V.bodyW)
+            V.runLabels[nLabel] = fs
+        end
+        fs:ClearAllPoints()
+        fs:SetPoint("TOPLEFT", 0, y)
+        fs:SetText(LABEL .. text .. "|r")
+        fs:Show()
+        y = y - J.LABEL_H
+    end
+    local function line(text, x, stop)
+        nLine = nLine + 1
+        local ln = V.runLines[nLine]
+        if not ln then
+            ln = { fs = W.Text(V.child, T.FONT.text, 100, true) }
+            ln.fs:SetJustifyV("TOP")
+            ln.btn = W.Button(V.child, PTEXT.card, nil, function(self) say(ns.DungeonRouteWaypoint(self.stop)) end, { height = P.BUTTON_H })
+            ln.btn:SetHeight(P.BUTTON_H)
+            W.FitChip(ln.btn)
+            W.Tooltip(ln.btn, PTEXT.card, PTEXT.cardTip)
+            V.runLines[nLine] = ln
+        end
+        local w = V.bodyW - x - (stop and (ln.btn:GetWidth() + 6) or 0)
+        ln.fs:SetWidth(w)
+        ln.fs:SetText(text)
+        ln.fs:ClearAllPoints()
+        ln.fs:SetPoint("TOPLEFT", x, y - 1)
+        ln.fs:Show()
+        local h = textHeight(ln.fs, w)
+        if stop then
+            ln.btn.stop = stop
+            ln.btn:ClearAllPoints()
+            ln.btn:SetPoint("TOPRIGHT", 0, y + 3)
+            ln.btn:Show()
+            h = math.max(h, P.BUTTON_H - 4)
+        else
+            ln.btn:Hide()
+        end
+        y = y - h - P.LINE_GAP
+    end
+    local function groups(list)
+        for _, g in ipairs(list) do
+            line("|cffffffff" .. g.zone .. "|r", 0)
+            for _, st in ipairs(g.stops) do
+                local fmt = st.what == "accept" and RTEXT.accept or RTEXT.turnIn
+                line(fmt:format(st.no, st.title, st.text), J.STOP_X, st)
+            end
+        end
+    end
+    -- before the run
+    label(RTEXT.before)
+    groups(plan.before)
+    for _, l in ipairs(plan.later) do line(T.ORANGE .. RTEXT.later:format(l.level, l.title) .. "|r", J.STOP_X) end
+    for _, t in ipairs(plan.pending) do line(RTEXT.pending:format(t), J.STOP_X) end
+    for _, t in ipairs(plan.unknown) do line(GREY .. RTEXT.unknown:format(t) .. "|r", J.STOP_X) end
+    if plan.open == 0 then
+        line(GREY .. RTEXT.noQuests .. "|r", 0)
+    elseif n == 0 and #plan.later == 0 and #plan.unknown == 0 and #plan.pending == 0 then
+        line(GREY .. RTEXT.nothingBefore .. "|r", 0)
+    end
+    y = y - J.SECTION_GAP
+    -- in the dungeon: the bosses as a track
+    label(RTEXT.inside)
+    if #plan.bosses == 0 then line(GREY .. RTEXT.noBosses .. "|r", 0) end
+    local prev
+    for _, t in ipairs(plan.bosses) do
+        nNode = nNode + 1
+        local nd = V.runNodes[nNode]
+        if not nd then
+            nd = { icon = V.child:CreateTexture(nil, "ARTWORK"), link = V.child:CreateTexture(nil, "BACKGROUND") }
+            nd.icon:SetTexture(SKULL)
+            nd.icon:SetSize(J.NODE, J.NODE)
+            nd.link:SetColorTexture(0.55, 0.5, 0.42, 0.8)
+            nd.link:SetWidth(J.LINK_W)
+            V.runNodes[nNode] = nd
+        end
+        local busy = #t.goals + #t.starts + t.ups > 0
+        nd.icon:ClearAllPoints()
+        nd.icon:SetPoint("TOPLEFT", 0, y)
+        nd.icon:SetAlpha(busy and 1 or 0.45)
+        nd.icon:Show()
+        nd.link:ClearAllPoints()
+        if prev then
+            nd.link:SetPoint("TOP", prev.icon, "BOTTOM", 0, -1)
+            nd.link:SetPoint("BOTTOM", nd.icon, "TOP", 0, 1)
+            nd.link:Show()
+        else
+            nd.link:Hide()
+        end
+        prev = nd
+        line((busy and GOLD_TEXT or GREY) .. t.name .. "|r", J.NODE_TEXT_X)
+        if #t.goals > 0 then line(RTEXT.goals:format(table.concat(t.goals, ", ")), J.NODE_TEXT_X) end
+        if #t.starts > 0 then line(START_COLOR .. RTEXT.starts:format(table.concat(t.starts, ", ")) .. "|r", J.NODE_TEXT_X) end
+        if t.ups > 0 then line(GREEN .. RTEXT.ups:format(t.ups) .. "|r", J.NODE_TEXT_X) end
+    end
+    if #plan.other > 0 then line(RTEXT.other:format(table.concat(plan.other, ", ")), 0) end
+    y = y - J.SECTION_GAP
+    -- after the run
+    label(RTEXT.after)
+    groups(plan.after)
+    if #plan.after == 0 then line(GREY .. RTEXT.nothingAfter .. "|r", 0) end
+    for i = nLabel + 1, #V.runLabels do V.runLabels[i]:Hide() end
+    for i = nLine + 1, #V.runLines do V.runLines[i].fs:Hide(); V.runLines[i].btn:Hide() end
+    for i = nNode + 1, #V.runNodes do V.runNodes[i].icon:Hide(); V.runNodes[i].link:Hide() end
+    V.child:SetHeight(math.max(10, -y))
     if V.scroll.UpdateScrollChildRect then V.scroll:UpdateScrollChildRect() end
 end
 
@@ -978,6 +1458,17 @@ local function create(parent)
     end)
     B.mark:SetPoint("RIGHT", -(ART_H + 4), 0)
     W.Tooltip(B.mark, DTEXT.markTitle, DTEXT.markTip)
+    -- the run planner of the chosen dungeon (F-139)
+    B.plan = W.Button(B.art, RTEXT.plan, J.PLAN_W, function()
+        if not B.chosen then return end
+        B.pathFor = { dungeon = B.chosen, key = "run", part = state().dpart == "quests" and "quests" or "bosses" }
+        B.detailKey = nil
+        ns.Refresh()
+    end)
+    B.plan:SetPoint("RIGHT", B.mark, "LEFT", -4, 0)
+    W.Tooltip(B.plan, RTEXT.plan, RTEXT.planTip)
+    B.art.title:SetWidth(300)
+    B.art.info:SetWidth(300)
 
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
@@ -998,9 +1489,13 @@ local function create(parent)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     -- the quest path in place of the list, the image and the quests (F-135); only in memory
     B.pathView = buildPath(B)
+    -- the journal remembers the part it was opened from (the planner's quests or bosses)
+    local function partNow() return state().dpart == "quests" and "quests" or "bosses" end
     function B:OpenPath(e)
-        if e and e.q then
-            self.pathFor = { dungeon = state().dungeon, key = e.qid or e.q.title }
+        if e and e.kind == "run" then
+            self.pathFor = { dungeon = state().dungeon, key = "run", part = partNow() }
+        elseif e and e.q then
+            self.pathFor = { dungeon = state().dungeon, key = e.qid or e.q.title, part = partNow() }
         else
             self.pathFor = nil
         end
@@ -1073,31 +1568,53 @@ local function refresh(B)
     -- the quest path of a quest of this dungeon, while it is open (F-135)
     local path
     local pf = B.pathFor
-    if pf and (part ~= "quests" or not e or pf.dungeon ~= e.key) then
+    if pf and (not e or pf.dungeon ~= e.key or (pf.part or "quests") ~= part) then
         B.pathFor, pf = nil, nil
     end
-    -- the quest journal: the chosen quest, else the first (one gone from the data or the faction)
-    local journalRows
+    -- the quest journal: the run planner (F-139) or the chosen quest, else the first (one gone from
+    -- the data or the faction)
+    local journalRows, plan, run
     if pf then
-        journalRows = (questItems(e.key))
-        for _, row in ipairs(journalRows) do
-            if (row.qid or row.q.title) == pf.key then path = row.path end
+        local qrows = (questItems(e.key))
+        -- each quest's worth and the best one's score for the bars (F-139)
+        local best = 0
+        for _, row in ipairs(qrows) do
+            row.worth = Dn.QuestWorth(row.q, row.path)
+            if row.worth and row.worth.score > best then best = row.worth.score end
         end
-        if not path and journalRows[1] then
-            pf.key = journalRows[1].qid or journalRows[1].q.title
-            path = journalRows[1].path
+        for _, row in ipairs(qrows) do row.worthMax = best end
+        plan = Dn.RunPlan(e.key, qrows, e)
+        journalRows = { { kind = "run", plan = plan } }
+        for _, row in ipairs(qrows) do journalRows[#journalRows + 1] = row end
+        if pf.key == "run" then
+            run = true
+        else
+            for _, row in ipairs(qrows) do
+                if (row.qid or row.q.title) == pf.key then path = row.path end
+            end
+            if not path and qrows[1] then
+                pf.key = qrows[1].qid or qrows[1].q.title
+                path = qrows[1].path
+            end
+            if not path then B.pathFor = nil end
         end
-        if not path then B.pathFor = nil end
     end
     -- (the image shows by fillArt above, only for a dungeon)
+    local journal = path or run
     for _, f in ipairs(B.planParts) do
-        if path then f:Hide() elseif f ~= B.art then f:Show() end
+        if journal then f:Hide() elseif f ~= B.art then f:Show() end
     end
-    if path then
+    if journal then
         B.pathDungeon = e.key
         B.pathView:Show()
-        fillPath(B, path, journalRows)
-        B.hint:SetText(PTEXT.hint)
+        fillJournal(B, journalRows, plan, pf.key)
+        if run then
+            fillRun(B, plan)
+            B.hint:SetText(RTEXT.hint)
+        else
+            fillPath(B, path)
+            B.hint:SetText(PTEXT.hint)
+        end
         return
     end
     B.pathView:Hide()
@@ -1167,7 +1684,7 @@ function ns.ShowDungeonQuest(key, qid)
     asked = key
     if ns.ShowPage then ns.ShowPage("dungeons") end
     if page then
-        page.pathFor = { dungeon = key, key = qid }
+        page.pathFor = { dungeon = key, key = qid, part = "quests" }
         page.detailKey = nil
         ns.Refresh()
     end

@@ -1527,6 +1527,9 @@ local CLASS_LOCAL = { WARRIOR = "Krieger", PALADIN = "Paladin", HUNTER = "Jäger
     SHAMAN = "Schamane", MAGE = "Magier", WARLOCK = "Hexenmeister", DRUID = "Druide" }
 _G.UnitClass = function() return CLASS_LOCAL[STUB.class] or STUB.class, STUB.class end
 _G.UnitLevel = function() return STUB.level end
+-- the own XP (STUB.xp = { current, needed }; nil: a client that answers none)
+_G.UnitXP = function() return STUB.xp and STUB.xp[1] end
+_G.UnitXPMax = function() return STUB.xp and STUB.xp[2] end
 _G.UnitFactionGroup = function() return STUB.faction end
 _G.GetInventoryItemLink = function(_, slot) return STUB.worn[slot] end
 _G.NUM_BAG_SLOTS = 4
