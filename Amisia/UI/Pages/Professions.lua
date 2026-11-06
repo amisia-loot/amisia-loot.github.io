@@ -237,7 +237,8 @@ local function recipeDetail(r)
     if known == true then
         lines[#lines + 1] = GREEN .. L["Bekannt"] .. "|r"
     elseif known == false then
-        lines[#lines + 1] = L["Nicht bekannt"] .. (r.learn > 1 and L[" (lernbar ab %d)"]:format(r.learn) or "")
+        local from = Pr.LearnRank(r)
+        lines[#lines + 1] = L["Nicht bekannt"] .. (from > 1 and L[" (lernbar ab %d)"]:format(from) or "")
     elseif rank then
         lines[#lines + 1] = GREY .. L["Ob bekannt: Berufsfenster einmal öffnen."] .. "|r"
     end
@@ -419,12 +420,16 @@ local function stepLines(s)
         return text, (npc and npc.point) and L["Klick: Wegpunkt zum Händler"] or L["Ort des Händlers unbekannt"]
     elseif s.kind == "gap" then
         return ("%d-%d: %s"):format(s.from, s.to, s.why == "noreagents" and L["kein Rezept mit bekannten Reagenzien"]
-            or L["kein Rezept, das noch Punkte gibt"]), ""
+            or s.why == "low" and L["nur Rezepte, die kaum noch Punkte geben"] or L["kein Rezept, das noch Punkte gibt"]), ""
     end
     local line1 = L["%d-%d: %dx %s"]:format(s.from, s.to, s.points, Pr.RecipeName(s.recipe))
     if not s.done then line1 = line1 .. " (" .. colorWord(s.colorFrom) .. L[" bis "] .. colorWord(s.colorTo) .. ")" end
     local head = { L["etwa %dx"]:format(times(s.crafts)) }
-    if s.pre then head[#head + 1] = L["davor %dx %s"]:format(times(s.preCrafts), Pr.RecipeName(s.pre)) end
+    if s.pre then
+        local pre = L["davor %dx %s"]:format(times(s.preCrafts), Pr.RecipeName(s.pre))
+        if not s.preKnown then pre = pre .. " (" .. L["noch lernen"] .. ")" end
+        head[#head + 1] = pre
+    end
     if not s.known then head[#head + 1] = s.learnCost > 0 and L["lernen: %s"]:format(money(s.learnCost)) or L["noch lernen"] end
     local short = table.concat(head, " · ")
     return line1, short .. " · " .. L["je Stück: %s"]:format(perPiece(s.recipe)), short
@@ -453,13 +458,14 @@ local function stepTooltip(owner, s)
         local rc = s.recipe
         GameTooltip:SetText(Pr.RecipeName(rc))
         GameTooltip:AddLine(L["orange bis %d, gelb bis %d, grün bis %d, danach grau"]:format(rc.yellow, rc.green, rc.grey), 1, 1, 1, true)
-        GameTooltip:AddLine(s.unpriced > 0 and L["Gewählt: die wenigsten Materialien ohne Händlerpreis je Punkt bei Rang %d."]:format(s.chosenAt)
+        GameTooltip:AddLine(s.unpriced > 0 and L["Gewählt: die geringsten Kosten je Punkt bei Rang %d, Materialien ohne Händlerpreis geschätzt."]:format(s.chosenAt)
             or L["Gewählt: der billigste Punkt bei Rang %d."]:format(s.chosenAt), 1, 1, 1, true)
         GameTooltip:AddLine(L["Je Stück: %s"]:format(perPiece(rc)), 1, 1, 1, true)
         if rc.count > 1 then GameTooltip:AddLine(L["Stellt %d Stück her."]:format(rc.count), 1, 1, 1) end
         if s.pre then
             GameTooltip:AddLine(L["Davor etwa %dx %s (je Stück: %s), zählt mit, solange es Punkte gibt."]:format(times(s.preCrafts),
                 Pr.RecipeName(s.pre), perPiece(s.pre)), 1, 1, 1, true)
+            if not s.preKnown then GameTooltip:AddLine(L["%s noch lernen."]:format(Pr.RecipeName(s.pre)), 1, 1, 1, true) end
         end
         if s.known then
             GameTooltip:AddLine(L["Bekannt"], 0.25, 0.75, 0.25)
@@ -484,6 +490,7 @@ local function stepTooltip(owner, s)
     else
         GameTooltip:SetText(L["Keine Punkte"])
         GameTooltip:AddLine(s.why == "noreagents" and L["Die Rezepte für diese Ränge haben keine bekannten Reagenzien."]
+            or s.why == "low" and L["Die erlaubten Rezepte sind hier fast grau: seltener als jedes vierte Mal ein Punkt. Mit \"auch Händler\" kommen Händlerrezepte dazu."]
             or L["Kein erlaubtes Rezept gibt hier noch Punkte. Mit \"auch Händler\" kommen Händlerrezepte dazu."], 1, 1, 1, true)
     end
     GameTooltip:Show()
@@ -499,7 +506,8 @@ local function clickStep(s)
     end
 end
 
-local SOURCE_TEXT = { vendor = L["Händler"], smelt = L["Bergbau: verhütten"], mine = L["sammeln: Bergbau"],
+local SOURCE_TEXT = { vendor = L["Händler"], vendorx = L["Händler (Ort unbekannt)"], smelt = L["Bergbau: verhütten"],
+    mine = L["sammeln: Bergbau"],
     disenchant = L["entzaubern"], farm = L["farmen oder Auktionshaus"] }
 local function sourceText(e)
     if e.kind == "craft" then return L["herstellen: %s"]:format(Pr.Name(e.from)) end
@@ -557,12 +565,22 @@ local function refreshRoute(f, v)
         else
             f.routeHead:SetText(L["Nicht erlernt, Vorschau ab Rang 1 bis %d · %s · %d Schritte"]:format(route.top, cost, open))
         end
+        if route.overTop then
+            notes[#notes + 1] = L["Rang %d liegt über dem bekannten Höchstrang: Berufsfenster öffnen, dann rechnet die Route weiter."]
+                :format(route.start)
+        elseif route.levelCap then
+            notes[#notes + 1] = L["Höchstwert für deine Stufe: %d."]:format(route.levelCap)
+        elseif route.learned and route.start >= route.top then
+            notes[#notes + 1] = L["Höchstrang erreicht."]
+        end
         if route.learned and not route.maxKnown then
             notes[#notes + 1] = L["Lehrer-Limit unbekannt, Berufsfenster öffnen."]
         elseif route.learned and not Pr.HasSnapshot(v) then
             notes[#notes + 1] = L["Berufsfenster einmal öffnen, dann stimmt der Rang."]
         end
-        if route.unknown then notes[#notes + 1] = L["Gewählt nach Menge: Materialien ohne Händlerpreis zählen nicht zu den Kosten."] end
+        if route.unknown then
+            notes[#notes + 1] = L["Materialien ohne Händlerpreis wählt die Route nach einem Schätzwert, zu den Kosten zählen sie nicht."]
+        end
         local cur = Route.Current(route)
         if cur ~= f.routeCur or f.routeSkill ~= v then f.steps.offset = math.max(0, (cur or 1) - 2) end
         f.routeCur, f.routeSkill = cur, v

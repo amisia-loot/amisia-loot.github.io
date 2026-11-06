@@ -740,7 +740,7 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
 ```
 
 - Client tables (`~/addons/_wago`): `SkillLineAbility`, `SpellEffect`, `ItemSparse`,
-  `ItemXItemEffect`, `ItemEffect`, `SpellName`, `Spell`, optional `SpellReagents`. Without a
+  `ItemXItemEffect`, `ItemEffect`, `SpellName`, `Spell`, optional `SpellReagents` and `SpellCooldowns`. Without a
   `SkillLineAbility` of its own the build takes the copy AllTheThings ships
   (`.config/.wago/SkillLineAbility.1.60.1.70170.csv`). Without `SpellReagents` the file has no
   reagents and the addon asks the client (`C_TradeSkillUI.GetRecipeSchematic`). Export the missing
@@ -763,12 +763,29 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
   record names keeps its price with an empty list. An item no vendor sells is not in `V` (the
   addon says "farmen oder Auktionshaus"). Trainer costs and the rank limits are not in the data:
   AllTheThings names no trainer costs, and the limits per tier need the client table `SkillTiers`
-  (`SkillRaceClassInfo.SkillTierID` 41 for the crafting professions, 61 cooking), which is not
-  exported.
+  (`SkillRaceClassInfo.SkillTierID` 41 for the crafting professions, 61 cooking), which
+  `export_db2.ps1` lists since 2026-11-06 but the generator does not read yet.
+- `S = { [item] = copper }`: every reagent of `G` that is not in `V` and has a `SellPrice` in
+  `ItemSparse` above 0: what a vendor pays for one. The route weighs such a material by it (times
+  4, at least 20 copper; `Gear/ProfRoute.lua`), it is never shown as a cost.
+- `CD = { [spell] = 1 }`: the listed recipes with a cooldown (a transmute, Mooncloth): the route never
+  makes them a step. From the client table `SpellCooldowns` (`RecoveryTime` or
+  `CategoryRecoveryTime` of 10 minutes and more) when it is exported, else from the hand-kept
+  `tools/prof_cooldowns.json` (`spells`, with a comment why; the file is only that fallback).
+  `export_db2.ps1` lists `SpellCooldowns`, `SpellCategories` and `SkillTiers` for this.
+- The recipe source `S`: a specialisation's list of the structures files (Weaponsmithing,
+  Armorsmithing, Gnomish and Goblin Engineering, Dragonscale, Elemental and Tribal Leatherworking):
+  only its trainer teaches it, to characters who chose it; before 2026-11-06 these were `T0`. Other
+  lists without a tier stay `T0` (First Aid's apprentice and journeyman list, the master trainers'
+  Shadoweave, the Discolored Healing Potions). A recipe ATT names only inside a quest or an NPC
+  (`r(...)` in the zone files: Restorative Potion, Dimensional Ripper - Everlook), one it comments
+  out (Gordok Ogre Suit) or one new to Forever it does not list (the Glacial and Frosty sets) has no
+  source; the addon counts such a recipe as a trainer's only in a skill line without a trainer list
+  (cooking, poisons, smelting).
 - No names of recipes or items go in: the addon asks the client (German). NPC and quest names are
   AllTheThings' English ones. Spells 400000-999999 (Season of Discovery) that AllTheThings does not
   list for Forever are left out (134 in 1.60.1.70235).
-- Size: about 260 KB for 2,400 recipes, 1,950 recipe items and 380 vendor prices (the test allows
+- Size: about 265 KB for 2,400 recipes, 1,950 recipe items, 380 vendor prices and 450 sell prices (the test allows
   300 KB). The date alone does not rewrite the
   file.
 

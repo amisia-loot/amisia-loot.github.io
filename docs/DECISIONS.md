@@ -392,8 +392,11 @@ einmal pro Leiche; Chat nur über `ns.Say`, in der Sperre wird gewartet.
 werden beim ersten `ns.Data(...)` gebaut; Verfügbarkeitsprüfungen nur über `ns.HasData`/`ns.DataSize`.
 **Grund:** Kurzer Login, wenig Speicher für Spieler, die die Seiten nie öffnen.
 **Folge:** Neue große Daten über `tools/lua_data.py` `lazy()`; seit 2026-10-08 ohne überflüssige
-Leerzeichen (`lua_data.compact`, Zeilen bleiben) und auch die Gewichte (`GEAR_WEIGHTS`).
-**Durchgesetzt durch:** `tests/test_lazy_data.lua`, `tools/tests/test_lua_data.py`.
+Leerzeichen (`lua_data.compact`, Zeilen bleiben) und auch die Gewichte (`GEAR_WEIGHTS`). Ereignisse
+(Login, Taschen, Bank, Logout) bauen keine Tabelle; was sie aus einer brauchen, merken sie sich, wenn
+eine Seite sie ohnehin gebaut hat (`ns.DataLoaded`; seit 2026-11-06 die Liste der Berufsreagenzien in
+`prof.bags`, F-137).
+**Durchgesetzt durch:** `tests/test_lazy_data.lua`, `tests/test_prof_route_lazy.lua`, `tools/tests/test_lua_data.py`.
 
 ## D-29 Wertung der Ersatzbank und Discord-Text
 

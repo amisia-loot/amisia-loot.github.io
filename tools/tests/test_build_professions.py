@@ -56,7 +56,7 @@ def test_recipe_lines(data):
     assert bs[3321] == '3321:3471:1:10:35:75:I3609', 'taught by a recipe item: learn rank from the item'
     assert bs[1252229] == '1252229:251001:1:1:50:80:T1', 'an apprentice trainer recipe'
     assert bs[3491] == '3491:3848:1:105:130:170:T3', 'expert trainer, learn rank from MinSkillLineRank'
-    assert bs[10011] == '10011:7723:1:1:240:260:T0', 'a trainer list without a tier'
+    assert bs[10011] == '10011:7723:1:1:240:260:S', "a specialisation's recipe: S, no plain trainer recipe"
     assert bs[1301421] == '1301421:276992:1:60:60:100:I276928'
     assert lines(data, 333)[7418] == '7418:0:0:1:40:70:', 'an enchant makes no item; no source known'
     assert lines(data, 171)[2330] == '2330:118:3:1:25:55:A', 'three potions per craft'
@@ -94,8 +94,32 @@ def test_names_of_sources(data):
 def test_trainer_lists_skip_removed_and_rank_spells(data):
     att = bp.read_att(ATT)
     assert 5555 not in att['trainer'], 'removed before Forever'
-    assert att['trainer'][1252229] == 1 and att['trainer'][3491] == 3 and att['trainer'][10011] == 0
+    assert att['trainer'][1252229] == 1 and att['trainer'][3491] == 3
+    assert 10011 not in att['trainer'] and 10011 in att['spec'], 'Weaponsmithing: a specialisation, not the trainer'
     assert 2018 not in att['trainer'] and 3538 not in att['trainer'], 'rank spells are no recipes'
+
+
+def test_sell_prices_for_the_route_estimate(data, plain):
+    assert data['S'] == {2840: 15}, ('Copper Bar: no vendor sells it, so what a vendor pays for one; '
+                                     'Weak Flux and Empty Vial have a vendor price (V) instead')
+    assert plain['S'] == {}, 'without reagents no estimate'
+
+
+def test_cooldown_recipes(data, plain):
+    assert data['CD'] == [3321], 'SpellCooldowns: a day on Copper Chain Vest; 1.5 s on Copper Bracers is no cooldown'
+    assert data['report']['cooldowns'] == {'from': 'table', 'recipes': 1}
+    assert plain['CD'] == [], 'without the table and without a hand-kept list: none'
+    fallback = bp.combine(bp.read_client(WAGO), bp.read_att(ATT), cooldowns={2663, 999999})
+    assert fallback['CD'] == [2663], 'the hand-kept list serves without the table, only for listed recipes'
+    assert fallback['report']['cooldowns']['from'] == 'file'
+    table = bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT), cooldowns={2663})
+    assert table['CD'] == [3321], 'with the table the hand-kept list is not used'
+
+
+def test_the_shipped_cooldown_list():
+    spells = bp.read_cooldown_file()
+    assert {11479, 17187, 17562, 18560} <= spells, 'Iron to Gold, Arcanite, Water to Air, Mooncloth'
+    assert bp.read_cooldown_file(os.path.join(HERE, 'no such file.json')) == set()
 
 
 def test_favor(data):
@@ -132,6 +156,8 @@ def test_render_is_valid_deterministic_lua(data):
     assert P.CAMP[3] == '279988:164:140:1307175:1263041:0:279944'
     assert P.G[3321] == '2840:4,2880:1,3371:1'
     assert P.V[2880] == '100:80100' and P.V[3371] == '4:80600'
+    assert P.S[2840] == 15 and P.S[2880] is None, 'S: the sell price of a reagent without a vendor price'
+    assert P.CD[3321] == 1 and P.CD[2663] is None, 'CD: the cooldown recipes as a set'
 
 
 def test_vendor_prices(data, plain):
@@ -205,3 +231,18 @@ def test_shipped_vendor_prices():
     assert V[2840] is None, 'Copper Bar: no vendor sells it, so no price'
     recipe = [i for i, l in V.items() if I[i] is not None and l.split(':')[1]]
     assert recipe, 'recipe items a vendor sells are in V'
+
+
+def test_shipped_estimates_and_cooldowns():
+    path = os.path.join(ADDON, 'Data', 'ProfessionData.lua')
+    with open(path, encoding='utf-8') as fh:
+        P = lua_load(fh.read())
+    reagents = {int(x.split(':')[0]) for _, g in P.G.items() for x in g.split(',')}
+    n = 0
+    for item, sell in P.S.items():
+        assert item in reagents and P.V[item] is None and sell >= 1, f'S[{item}] = {sell}'
+        n += 1
+    assert n > 200, 'most reagents without a vendor price have a sell price'
+    assert P.S[14047] and P.S[2840], 'Runecloth and Copper Bar: estimated'
+    assert P.CD[11479] == 1 and P.CD[18560] == 1, 'Transmute: Iron to Gold and Mooncloth have a cooldown'
+    assert P.CD[2963] is None, 'Bolt of Linen Cloth has none'

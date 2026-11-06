@@ -18,9 +18,9 @@ NS.PROFESSIONS = {
     R = {
         [197] = {
             "2963:2996:1:1:25:40:A",            -- bolt of linen: 2 linen (the intermediate)
-            "2393:2576:1:1:30:50:A",            -- linen shirt: 1 bolt + 1 thread
-            "3914:4343:1:1:60:90:T1",           -- 1 linen, learned from 45 (costs 1s to learn)
-            "3915:4344:1:1:60:90:T1",           -- the same as 3914
+            "2393:2576:1:1:30:50:A",            -- linen shirt: 1 bolt + 1 thread (learned with the profession)
+            "3914:4343:1:45:60:90:T1",          -- 1 linen, learned from 45 (costs 1s to learn)
+            "3915:4344:1:45:60:90:T1",          -- the same as 3914
             "3916:4345:1:1:100:160:T2",         -- 2 thread (20c)
             "3917:4346:1:1:100:160:T2",         -- 1 thread + 1 dye (20c, two reagents)
             "3918:4347:1:1:100:160:T2",         -- 2 dye (20c)
@@ -44,6 +44,7 @@ NS.PROFESSIONS = {
           [80300] = "Skyforged Golem|1429:7000:7000|", [80200] = "Gor'mak|1429:4980:2960|H" },
     Q = {},
     V = { [2320] = "10:80101,80100", [2324] = "10:80100", [9001] = "5000:80100", [9003] = "100:80200" },
+    S = { [2589] = 10 },             -- linen: no vendor, sells for 10 copper (the estimate: 40)
     L = { [3914] = 100, [3915] = 100 },
     T = { [197] = { "1:75:10", "2:150:500", "3:225:5000", "4:300:50000" } },
 }

@@ -2,8 +2,9 @@
 -- their table to ns.LazyData as Lua source in one long string: at login only the string is kept,
 -- the table is built the first time something asks for it (ns.Data). That keeps the login short and
 -- the memory low for players who never open the gear, map, quest, profession or talent pages.
--- ns.HasData tells whether the data is there without building it, ns.DataSize how many entries the
--- generator counted (availability checks: a file built without data has 0).
+-- ns.HasData tells whether the data is there without building it, ns.DataLoaded whether it is built
+-- already, ns.DataSize how many entries the generator counted (availability checks: a file built
+-- without data has 0).
 -- Assigning ns[key] (a test's fixture, or nil to take the data away) replaces what waits.
 local ADDON, ns = ...
 
@@ -49,6 +50,12 @@ end
 -- Whether key has data (built or waiting), without building it.
 function ns.HasData(key)
     return rawget(ns, key) ~= nil or pending[key] ~= nil
+end
+
+-- Whether key's table is built already (or a table was put in its place), without building it: for
+-- work an event may do only when a page has paid for the build anyway (D-28).
+function ns.DataLoaded(key)
+    return rawget(ns, key) ~= nil
 end
 
 -- The number of entries of key's data as the generator counted them, while that data waits or is

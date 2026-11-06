@@ -511,9 +511,27 @@ end)
 ---------------------------------------------------------------------------
 -- The colour of a recipe at a rank, as the client's list shows it: "orange", "yellow", "green",
 -- "grey"; "red" when it is not known and needs a higher rank to learn; "none" without data.
+-- The rank from which a recipe can be learned: the data's when above 1 (a recipe item's requirement,
+-- the client's minimum); 1 for a recipe learned with the profession; else (the client tables say 1
+-- for the trainer recipes) the yellow rank, never earlier than the game allows: the recipe items of
+-- the data are learnable at or before yellow, often 15-40 ranks before, so the trainer's real rank
+-- is not known and later is the safe side (F-137 review). Not below what the tier's trainer asks
+-- (Journeyman 50, Expert 125, Artisan 200).
+local TIER_FLOOR = { [2] = 50, [3] = 125, [4] = 200 }
+function Pr.LearnRank(r)
+    if r.learn > 1 then return r.learn end
+    local tier
+    for _, tok in ipairs(r.src) do
+        if tok == "A" then return 1 end
+        local t = tonumber(tok:match("^T(%d)$"))
+        if t then tier = tier and math.min(tier, t) or t end
+    end
+    return math.max(1, r.yellow, tier and TIER_FLOOR[tier] or 0)
+end
+
 function Pr.Difficulty(r, rank, known)
     if not rank then return "none" end
-    if not known and r.learn > 1 and rank < r.learn then return "red" end
+    if not known and rank < Pr.LearnRank(r) then return "red" end
     if r.grey <= 0 then return "none" end
     if rank < r.yellow then return "orange" end
     if rank < r.green then return "yellow" end
@@ -522,7 +540,7 @@ function Pr.Difficulty(r, rank, known)
 end
 
 -- Whether the own rank allows learning it.
-function Pr.Learnable(r, rank) return rank ~= nil and rank >= r.learn end
+function Pr.Learnable(r, rank) return rank ~= nil and rank >= Pr.LearnRank(r) end
 
 ---------------------------------------------------------------------------
 -- Reagents
@@ -643,6 +661,7 @@ function Pr.Sources(r)
     end
     for _, tok in ipairs(r.src) do
         if tok == "A" then add("A", L["Mit dem Beruf gelernt"])
+        elseif tok == "S" then add("T", L["Lehrer der Spezialisierung (nur mit ihr)"])
         else
             local tier = tok:match("^T(%d)$")
             if tier then add("T", Pr.TIERS[num(tier)] or Pr.TIERS[0]) end
@@ -702,8 +721,35 @@ function Pr.Sources(r)
         end
         if ri and ri.faction > 0 then out.rep = { faction = ri.faction, standing = ri.standing } end
     end
-    if #out == 0 then add("?", L["Quelle unbekannt (vermutlich Lehrer)"]) end
+    if #out == 0 then
+        add("?", Pr.PresumedTrainer(r) and L["Quelle unbekannt (vermutlich Lehrer)"]
+            or L["Quelle unbekannt (Quest, Ruf, Instanz oder neu)"])
+    end
     return out
+end
+
+-- Whether a recipe without any source is a trainer recipe all the same: only in a skill line whose
+-- data has no trainer list at all (cooking, poisons, the smelting of mining; their trainers teach
+-- every recipe that is neither learned with the profession nor taught by a recipe item). Where the
+-- data lists the trainer's recipes (T, S), a recipe outside the list comes from a quest, a
+-- reputation, an instance or is new to Forever (F-137 review).
+local trainerLists
+function Pr.PresumedTrainer(r)
+    if #r.src > 0 or #r.items > 0 then return false end
+    fresh()
+    if not trainerLists or trainerLists.data ~= data() then trainerLists = { data = data() } end
+    local has = trainerLists[r.skill]
+    if has == nil then
+        has = false
+        for _, x in ipairs(Pr.Recipes(r.skill)) do
+            for _, tok in ipairs(x.src) do
+                if tok == "S" or tok:match("^T%d$") then has = true end
+            end
+            if has then break end
+        end
+        trainerLists[r.skill] = has
+    end
+    return not has
 end
 
 -- The source kinds of a recipe for the filter: set of "T" (trainer, with the profession too), "V",
@@ -711,7 +757,7 @@ end
 function Pr.SourceKinds(r)
     local set = {}
     for _, tok in ipairs(r.src) do
-        if tok == "A" or tok:match("^T") then set.T = true end
+        if tok == "A" or tok == "S" or tok:match("^T") then set.T = true end
     end
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
@@ -724,7 +770,7 @@ function Pr.SourceKinds(r)
         if obs and #obs.vendors > 0 then set.V = true end
         if obs and #obs.drops > 0 then set.D = true end
     end
-    if #r.src == 0 and #r.items == 0 then set.T = true end
+    if Pr.PresumedTrainer(r) then set.T = true end
     return set
 end
 

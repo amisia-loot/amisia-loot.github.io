@@ -1065,11 +1065,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-137 Berufsroute mit Einkaufsliste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du auf der Seite Berufe Schneiderei wählst und auf "Route" schaltest, dann zeigt die Route Schritte von deinem Rang bis zum Höchstrang mit Lehrerschritten an den Limits, ohne Lücke im Rang.
+- Prüfung: Wenn du auf der Seite Berufe Schneiderei wählst und auf "Route" schaltest, dann zeigt die Route Schritte von deinem Rang bis zum Höchstrang mit Lehrerschritten an den Limits, ohne Lücke im Rang; bei Alchimie kommt keine Transmutation in die Route.
 - Prüfung: Wenn du einen Schritt herstellst und dabei einen Punkt bekommst, dann steht die Route danach auf dem neuen Rang, ohne `/reload`.
 - Prüfung: Wenn du ein Material der Einkaufsliste in die Tasche legst, dann steigt "hast" und "fehlt" sinkt; bei genug wird die Zeile grün.
 - Prüfung: Wenn du "auch Händler" wählst, dann kann ein Schritt "Rezept kaufen: ... bei <Händler>" in die Route kommen; ein Klick setzt den Wegpunkt zum Händler.
-- Prüfung: Wenn ein Twink auf demselben Realm Stoff in Taschen oder Bank hat und du dich danach mit diesem Charakter einloggst, dann steht die Menge in der Einkaufsliste unter "Twinks".
+- Prüfung: Wenn ein Twink auf demselben Realm und derselben Fraktion Stoff in Taschen oder Bank hat und du dich mit ihm einloggst und einmal die Seite Berufe öffnest, dann steht die Menge danach bei deinem Hauptcharakter in der Einkaufsliste unter "Twinks"; ein Twink der anderen Fraktion zählt nicht.
 - Notiz: Spec `docs/specs/2026-11-06-berufsroute.md`, freigegeben 2026-11-06.
 
 ### F-052 Magier-Schriftrollen
