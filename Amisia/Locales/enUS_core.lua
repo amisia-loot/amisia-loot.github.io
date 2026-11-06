@@ -186,6 +186,14 @@ L["Suchen"] = "Search"
 
 -- UI/MainFrame.lua
 L["Soft-Reserve-Import"] = "Soft reserve import"
+-- the side tabs' second tooltip line
+L["Das beste Item je Platz für jede Stufe, mit Quelle und Alternativen."] = "The best item per slot for every level, with source and alternatives."
+L["Talente planen, im großen Fenster."] = "Plan talents in the large window."
+L["Deine Ziele an deinem Charakter anprobieren, Platz für Platz mit Rangliste und Katalog."] = "Try your targets on your character, slot by slot with ranking and catalogue."
+L["Die laufende Würfelrunde: Würfe in Reihenfolge, Vergeben, Stechen."] = "The running roll round: rolls in order, hand out, tie-break."
+L["Eine Soft-Reserve-Liste einfügen, prüfen und übernehmen."] = "Paste, check and take over a soft reserve list."
+-- the portrait as the window's "home"
+L["Ein Klick auf das Bild öffnet die Übersicht, von jedem Reiter aus."] = "A click on the picture opens the overview, from any tab."
 L["Fensterposition zurückgesetzt."] = "Window position reset."
 L["Diese Seite konnte nicht geladen werden."] = "This page could not be loaded."
 L["%d Raider"] = "%d raiders"
@@ -193,6 +201,9 @@ L["%d zu spät"] = "%d late"
 L["Keine Aufnahme, startet im Raid"] = "Not recording, starts in a raid"
 L["Pausieren"] = "Pause"
 L["Fortsetzen"] = "Resume"
+L["Raid-Aufnahme"] = "Raid recording"
+L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du hier auf \"Fortsetzen\" klickst (oder im Schnellmenü der Minimap, /amisia pause)."] = "Pauses the raid recording: members, bosses and loot are no longer noted down. The pause stays through a /reload until you click \"Resume\" here (or in the minimap's quick menu, /amisia pause)."
+L["Die Raid-Aufnahme ist pausiert. \"Fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] = "The raid recording is paused. \"Resume\" turns it back on; it then starts by itself in a raid instance with a raid group."
 L["create gab keinen Frame zurück"] = "create returned no frame"
 L["Einstellungen öffnen"] = "open the settings"
 L["[Abschnitt oder Suchwort]"] = "[section or search word]"
@@ -482,6 +493,12 @@ L["Dungeon. Öffnet ihn auf der Seite Dungeons."] = "Dungeon. Opens it on the pa
 L["Raid. Öffnet ihn auf der Seite Raids."] = "Raid. Opens it on the page Raids."
 L["Seite im Reiter %s."] = "Page in the tab %s."
 L["Einstellungen, Reiter %s. Öffnet den Abschnitt."] = "Settings, tab %s. Opens the section."
+-- UI/Search.lua, UI/MainFrame.lua: commands, the box's tooltip, the line under two characters
+L["Ein Klick schreibt den Befehl in die Chatzeile."] = "A click writes the command into the chat line."
+L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons und in der Offiziersansicht Spieler. Ab %d Zeichen auch Items, Rezepte und Befehle. Stichwörter finden die passende Seite, z. B. \"dkp\" die Punkte. Escape leert das Feld."] = "From %d characters: pages, settings, dungeons and, in the officer view, players. From %d characters also items, recipes and commands. Keywords find the matching page, e.g. \"dkp\" the points. Escape clears the box."
+L["Noch 1 Zeichen für die Suche"] = "1 more character to search"
+L["Noch %d Zeichen für die Suche"] = "%d more characters to search"
+L["Nichts gefunden. Items, Rezepte und Befehle ab %d Zeichen."] = "Nothing found. Items, recipes and commands from %d characters."
 
 -- Core/Feedback.lua, UI/Pages/Feedback.lua (F-130)
 L["%d neue Meldungen (%d Bug, %d Wunsch). /amisia feedback"] = "%d new reports (%d bug, %d wish). /amisia feedback"

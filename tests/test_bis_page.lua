@@ -435,11 +435,11 @@ assert(NS.CurrentPage() == "gear" and f.views.goals.on, "Ansehen opens the targe
 NS.ShowGear("ziele", "CHEST")
 assert(f.views.goals.on and G.title:GetText():find("^Brust"), "German view names, a slot from the toast")
 local entries = {}
-for _, e in ipairs(NS.MinimapMenuEntries()) do entries[#entries + 1] = e[1] end
+for _, e in ipairs(STUB.quickMenu()) do entries[#entries + 1] = e[1] end
 entries = table.concat(entries, "|")
 assert(has(entries, "Ausrüstung|Ausrüstungstabelle"), "the page, then the table: " .. entries)
 NS.ShowPage("overview")
-for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Ausrüstung" then e[2]() end end
+for _, e in ipairs(STUB.quickMenu()) do if e[1] == "Ausrüstung" then e[2]() end end
 assert(NS.CurrentPage() == "gear", "the quick menu opens the page")
 -- the planner's upgrades come from the targets
 local list = NS.GearMyUpgrades()

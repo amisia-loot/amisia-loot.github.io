@@ -1496,5 +1496,5 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
         c.line2:SetMaxLines(2)
         c.line2:SetText(text)
     end
-    c:SetAction(L["Ansehen"], function() ns.ShowGear("goals") end)
+    c:SetAction(L["Öffnen"], function() ns.ShowGear("goals") end)
 end }

@@ -89,10 +89,10 @@ card.fill(c)
 assert(has(c.line1:GetText(), "Level 60 · 2 Upgrades · 0 Wünsche"), c.line1:GetText())
 assert(has(c.line2:GetText(), "Bestes: ") and has(c.line2:GetText(), "Baronshelm") and has(c.line2:GetText(), "(+60)"), c.line2:GetText())
 local labels = {}
-for _, e in ipairs(NS.MinimapMenuEntries()) do labels[#labels + 1] = e[1] end
+for _, e in ipairs(STUB.quickMenu()) do labels[#labels + 1] = e[1] end
 labels = table.concat(labels, "|")
 assert(has(labels, "Ausrüstung|Ausrüstungstabelle|"), "page first, then the table: " .. labels)
-for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Ausrüstungstabelle" then e[2]() end end
+for _, e in ipairs(STUB.quickMenu()) do if e[1] == "Ausrüstungstabelle" then e[2]() end end
 assert(AmisiaGearFrame:IsShown(), "the table from the quick menu")
 AmisiaGearFrame:Hide()
 

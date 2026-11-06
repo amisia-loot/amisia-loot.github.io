@@ -15,7 +15,7 @@ local ROW_H, INDENT = M.NAV_ROW_H, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
-local F, nav, content, statusText, pauseBtn, viewBtn, settingsBtn, search, results, noHits
+local F, nav, content, statusText, pauseBtn, viewBtn, settingsBtn, search, results, noHits, searchHint, homeBtn
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
 local navButtons = {}
@@ -23,21 +23,27 @@ local sideTabs = {}
 local bottomTabs = {}     -- group key -> the tab under the window
 local query = ""          -- the search text, trimmed and lower case
 
--- The side windows the tabs on the right edge open and close, top to bottom.
+-- The side windows the tabs on the right edge open and close, top to bottom; tip: what the window is
+-- for (the tab's tooltip under its name).
 local SIDE_TABS = {
     { key = "gear", label = L["Ausrüstungstabelle"], icon = "Interface\\Icons\\INV_Chest_Chain_05", frame = "AmisiaGearFrame",
+      tip = L["Das beste Item je Platz für jede Stufe, mit Quelle und Alternativen."],
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
     { key = "talents", label = L["Talentrechner"], icon = "Interface\\Icons\\Ability_Marksmanship", frame = "AmisiaTalentFrame",
+      tip = L["Talente planen, im großen Fenster."],
       visible = function() return ns.Talents ~= nil and ns.Talents.Available() and ns.ToggleTalentFrame ~= nil end,
       toggle = function() ns.ToggleTalentFrame() end },
     { key = "goals", label = L["Ausrüstungsziele"], icon = "Interface\\Icons\\INV_Helmet_03", frame = "AmisiaGoalsFrame",
+      tip = L["Deine Ziele an deinem Charakter anprobieren, Platz für Platz mit Rangliste und Katalog."],
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGoalsFrame ~= nil end,
       toggle = function() ns.ToggleGoalsFrame() end },
     { key = "rolls", label = "Rolls", icon = "Interface\\Icons\\INV_Misc_Dice_01", frame = "AmisiaRollFrame",
+      tip = L["Die laufende Würfelrunde: Würfe in Reihenfolge, Vergeben, Stechen."],
       visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
       toggle = function() ns.ToggleRollFrame() end },
     { key = "softres", label = L["Soft-Reserve-Import"], icon = "Interface\\Icons\\INV_Scroll_03", frame = "AmisiaSoftResFrame",
+      tip = L["Eine Soft-Reserve-Liste einfügen, prüfen und übernehmen."],
       visible = function() return ns.IsOfficerView() and ns.ToggleSoftResFrame ~= nil end,
       toggle = function() ns.ToggleSoftResFrame() end },
 }
@@ -359,10 +365,28 @@ end
 ---------------------------------------------------------------------------
 -- The search over the page list (UI/Search.lua finds, this shows)
 ---------------------------------------------------------------------------
+-- The line under the page list while the box holds fewer than SEARCH_MIN characters ("Noch 1
+-- Zeichen für die Suche"), under the last bar; left out when the list leaves no room for it.
+local function updateSearchHint()
+    local left = M.SEARCH_MIN - #query
+    if #query == 0 or left <= 0 then
+        searchHint:Hide()
+        return
+    end
+    local below = #(F.navOrder or {}) * (F.navRowH or ROW_H) + M.SEARCH_GAP
+    searchHint:ClearAllPoints()
+    searchHint:SetPoint("TOPLEFT", nav, "TOPLEFT", M.NAV_LABEL_X, -below)
+    searchHint:SetText(left == 1 and L["Noch 1 Zeichen für die Suche"] or L["Noch %d Zeichen für die Suche"]:format(left))
+    searchHint:SetShown(below + ROW_H <= M.NAV_LIST_H)
+end
+
+-- The hits of the search text in place of the page list. A refresh (data, a setting) keeps the
+-- scroll place (SetItems clamps it); only a new text starts at the top (setQuery).
 local function showResults()
     local searching = #query >= M.SEARCH_MIN
     nav:SetShown(not searching)
     results:SetShown(searching)
+    if F then updateSearchHint() end
     if not searching then
         noHits:Hide()
         return
@@ -372,8 +396,11 @@ local function showResults()
         rows[#rows + 1] = { head = grp.label, count = #grp.hits }
         for _, hit in ipairs(grp.hits) do rows[#rows + 1] = hit end
     end
-    results.offset = 0
     results:SetItems(rows)
+    -- under ITEM_MIN characters items, recipes and commands are not searched yet: the hint says so
+    local itemMin = ns.SearchIndex.ITEM_MIN
+    noHits:SetText(#query < itemMin and L["Nichts gefunden. Items, Rezepte und Befehle ab %d Zeichen."]:format(itemMin)
+        or L["Nichts gefunden."])
     noHits:SetShown(#rows == 0)
 end
 
@@ -381,6 +408,7 @@ local function setQuery(text)
     text = (tostring(text or ""):match("^%s*(.-)%s*$") or ""):lower()
     if text == query then return end
     query = text
+    results.offset = 0
     showResults()
     if F and F:IsShown() then updateTabs() end
 end
@@ -630,6 +658,16 @@ local function sideTab(def)
     tab.fillToInterior = true
     tab.tooltipText = def.label
     tab.Icon:SetTexture(def.icon)
+    -- the icon alone does not say what the window is for: its name, then one line (after the
+    -- template's own tooltip, which shows the name alone)
+    local function enter(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(def.label, 1, 0.82, 0)
+        GameTooltip:AddLine(def.tip, 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end
+    tab:HookScript("OnEnter", enter)
+    tab:HookScript("OnLeave", function() GameTooltip:Hide() end)
     tab:SetCustomOnMouseUpHandler(function(self, button, upInside)
         if button ~= "LeftButton" or not upInside then return end
         def.toggle()
@@ -667,6 +705,29 @@ local function build()
         ns.Refresh()
     end)
     pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
+    W.Tooltip(pauseBtn, L["Raid-Aufnahme"], function()
+        return ns.IsEnabled()
+            and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du hier auf \"Fortsetzen\" klickst (oder im Schnellmenü der Minimap, /amisia pause)."]
+            or L["Die Raid-Aufnahme ist pausiert. \"Fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."]
+    end)
+    -- the portrait: a click opens the overview from every tab (the window's "home")
+    local portrait = F.PortraitContainer and F.PortraitContainer.portrait or F.portrait
+    if portrait then
+        homeBtn = CreateFrame("Button", nil, F.PortraitContainer or F)
+        homeBtn:SetAllPoints(portrait)
+        -- dragging the portrait still moves the window
+        homeBtn:RegisterForDrag("LeftButton")
+        homeBtn:SetScript("OnDragStart", function() F:StartMoving() end)
+        homeBtn:SetScript("OnDragStop", function()
+            F:StopMovingOrSizing()
+            savePosition()
+        end)
+        homeBtn:SetScript("OnClick", function()
+            ns.ClearSearch()
+            ns.ShowPage("overview")
+        end)
+        W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Bild öffnet die Übersicht, von jedem Reiter aus."])
+    end
     viewBtn = W.Button(F, L["Raider-Ansicht"], M.VIEW_W, function() ns.ToggleView() end)
     viewBtn:SetPoint("TOPRIGHT", pauseBtn, "TOPLEFT", -M.VIEW_GAP, 0)
     W.Tooltip(viewBtn, L["Ansicht"], L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Raids, Rolls, Punkte und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."])
@@ -699,6 +760,15 @@ local function build()
     search:HookScript("OnTextChanged", function(self) setQuery(self:GetText()) end)
     search:SetScript("OnEscapePressed", function() ns.ClearSearch() end)
     if search.clearButton then search.clearButton:HookScript("OnClick", function() ns.ClearSearch() end) end
+    -- what the box finds and from how many characters; above the window, so it never covers the hits
+    search:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Suchen"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons und in der Offiziersansicht Spieler. Ab %d Zeichen auch Items, Rezepte und Befehle. Stichwörter finden die passende Seite, z. B. \"dkp\" die Punkte. Escape leert das Feld."]
+            :format(M.SEARCH_MIN, ns.SearchIndex.ITEM_MIN), 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    search:HookScript("OnLeave", function() GameTooltip:Hide() end)
     local listTop = M.INNER + T.FIELD_H + M.SEARCH_GAP
     nav = CreateFrame("Frame", nil, listInset)
     nav:SetPoint("TOPLEFT", M.INNER, -listTop)
@@ -713,6 +783,9 @@ local function build()
     noHits:SetJustifyH("CENTER")
     noHits:SetText(L["Nichts gefunden."])
     noHits:Hide()
+    -- under SEARCH_MIN characters: how many more (updateSearchHint places it under the last bar)
+    searchHint = W.Text(listInset, T.FONT.hint, NAV_W - 2 * M.NAV_LABEL_X)
+    searchHint:Hide()
 
     -- 602 x 478, as before: the pages keep their layout
     content = CreateFrame("Frame", nil, contentInset)
@@ -728,7 +801,7 @@ local function build()
     F.statusBar, F.statusText, F.pauseBtn, F.viewBtn, F.settingsBtn = bar, statusText, pauseBtn, viewBtn, settingsBtn
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
     F.sideTabs, F.navOrder, F.tabs, F.tabOrder = sideTabs, {}, bottomTabs, {}
-    F.search, F.results, F.noHits = search, results, noHits
+    F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
 end
 
 function ns.CurrentPage() return current end
@@ -784,7 +857,8 @@ function ns.Refresh()
     local byGroup = pagesByGroup()
     updateNav(byGroup)
     updateTabs(byGroup)
-    if #query >= M.SEARCH_MIN then showResults() end
+    -- the hits again for the new data, at the same scroll place
+    if #query >= M.SEARCH_MIN then showResults() else updateSearchHint() end
     ns.UpdateSideTabs()
     local frame = built[current]
     if p.refresh and frame then

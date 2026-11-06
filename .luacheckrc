@@ -24,7 +24,7 @@ read_globals = {
     "BaseScrollBoxEvents", "bit", "C_AddOns", "C_AuctionHouse", "C_Calendar", "ToggleCalendar", "C_ChatInfo", "C_ClassColor", "C_Club",
     "C_Container", "C_CurrencyInfo", "C_DateAndTime", "C_EncodingUtil", "C_GuildInfo", "C_Item", "C_Map", "C_MerchantFrame",
     "C_PartyInfo", "C_QuestLog", "C_RestrictedActions", "C_Spell", "C_SuperTrack", "C_Texture", "C_Timer",
-    "C_TooltipInfo", "C_TradeSkillUI", "ChatEdit_InsertLink", "ChatFontNormal", "ChatFrameUtil",
+    "C_TooltipInfo", "C_TradeSkillUI", "ChatEdit_InsertLink", "ChatFontNormal", "ChatFrameUtil", "ChatFrame_OpenChat",
     "CreateColor", "CreateFrame", "CreateFromMixins", "CreateVector2D", "date", "debugprofilestop",
     "DEFAULT_CHAT_FRAME", "DressUpLink", "Enum", "GameFontNormal", "GameTooltip", "GetAddOnMetadata",
     "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition",

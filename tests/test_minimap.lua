@@ -20,12 +20,12 @@ Amisia_OnAddonCompartmentClick("Amisia", "LeftButton"); assert(opened == "main",
 NS.ToggleMain = origMain
 b.scripts.OnClick(b, "RightButton"); assert(AmisiaMenu and AmisiaMenu:IsShown(), "right click opens the menu")
 local labels = {}
-for _, e in ipairs(NS.MinimapMenuEntries()) do labels[#labels + 1] = e[1] end
+for _, e in ipairs(STUB.quickMenu()) do labels[#labels + 1] = e[1] end
 local all = table.concat(labels, "|")
 assert(all:find("Einstellungen", 1, true) and all:find("Soft-Reserves", 1, true) and all:find("Export", 1, true), all)
 NS.Set("ui.view", "raider")
 all = ""
-for _, e in ipairs(NS.MinimapMenuEntries()) do all = all .. e[1] .. "|" end
+for _, e in ipairs(STUB.quickMenu()) do all = all .. e[1] .. "|" end
 assert(not all:find("Export", 1, true), "raiders see no officer entries")
 NS.Reset("ui.view")
 Amisia_OnAddonCompartmentEnter("Amisia", b)
