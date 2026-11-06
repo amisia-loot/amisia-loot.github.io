@@ -517,10 +517,11 @@ for _, view in ipairs({ "officer", "raider" }) do
     local _, gor = L.span(rows[1].go)
     local _, ghr = L.span(f.head.go)
     assert(lr == 590 and gor <= 590 and ghr <= 590, ("the list 590, the button %d, the head %d"):format(gor, ghr))
-    L.column(view .. " page", f.zone, f.counts, f.card, f.head.kind, f.list, f.showHidden, f.hint, f.data)
+    L.column(view .. " page", f.zone, f.counts, f.card, f.head.kind, f.list, f.showHidden)
+    assert(f.hint.isHelp and f.data.isHelp)
     L.column(view .. " target", f.counts, f.clear, f.head.kind)
-    for _, fs in ipairs({ f.target, f.targetSub, f.counts, f.hint, f.data, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
-    assert(f.showHidden._w == 170 and f.open._w == 130 and f.clear._w == 110 and f.zone._w == 240, "the widths of the design")
+    for _, fs in ipairs({ f.target, f.targetSub, f.counts, rows[1].where, rows[1].kind, f.head.go }) do L.fits(fs) end
+    assert(f.showHidden.isLink and f.clear.isLink and f.open._w == 130 and f.zone._w == 240, "the widths of the design; the links as wide as their words (D-67)")
     -- the gear page with the map buttons
     NS.ShowGear("goals", "HEAD")
     local G2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(gp, 602, 478)

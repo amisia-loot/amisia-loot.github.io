@@ -32,7 +32,7 @@ STUB.officer = true
 NS.ShowPage("overview")
 local F = AmisiaFrame
 assert(F and F:IsShown(), "the window opens")
-assert(F.pauseBtn:GetText() == "Pause", F.pauseBtn:GetText())
+assert(F.headMenu()[1][1] == "Pause recording" and F.headMenu()[2][1] == "Switch to the raider view", F.headMenu()[2][1])
 assert(F.statusText:GetText():find("Not recording, starts in a raid", 1, true), F.statusText:GetText())
 -- the page list shows the open tab's pages; the tabs under the window carry the English group names
 local function navText()
@@ -52,7 +52,7 @@ NS.ShowTab("amisia")
 assert(has(navText(), "Settings") and has(navText(), "About and commands"), navText())
 NS.ShowPage("overview")
 NS.SetEnabled(false); STUB.tick(0)
-assert(F.pauseBtn:GetText() == "Resume" and has(F.statusText:GetText(), "Recording paused"), F.statusText:GetText())
+assert(F.headMenu()[1][1] == "Resume recording" and has(F.statusText:GetText(), "Recording paused"), F.statusText:GetText())
 NS.SetEnabled(true)
 NS.ResetPositions()
 assert(lastMsg():find("Window position reset.", 1, true), lastMsg())

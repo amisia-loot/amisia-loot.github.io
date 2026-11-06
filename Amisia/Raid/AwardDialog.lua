@@ -335,12 +335,12 @@ local function build()
     D.kinds = {}
     local prev = artLab
     for _, k in ipairs(KINDS) do
-        local chip = W.Chip(D, k, 28, function()
+        local chip = W.Tab(D, k, nil, function()
             st.kind = k
             refresh()
         end)
         W.FitChip(chip, 28)
-        chip:SetPoint("LEFT", prev, "RIGHT", 2, 0)
+        chip:SetPoint("LEFT", prev, "RIGHT", prev == artLab and 2 or T.TAB_GAP, 0)
         D.kinds[k] = chip
         prev = chip
     end
@@ -390,7 +390,7 @@ local function build()
         GameTooltip:Show()
     end)
     D.needHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    D.ask = W.Button(D, L["Fragen"], ASK_W, function()
+    D.ask = W.Link(D, L["Fragen"], nil, function()
         if not st.item or not ns.NeedAsk then return end
         local qid, why = ns.NeedAsk({ st.item })
         if not qid and why then ns.msg(why) end
@@ -405,11 +405,11 @@ local function build()
     -- 90 + 60 + 90 + 86 and the gaps fit the 356 px between the margins
     D.give = W.Button(D, L["Vergeben"], 90, give)
     D.give:SetPoint("BOTTOMLEFT", 12, 12)
-    D.bank = W.Button(D, "Bank", 60, function() giveTo("bank") end)
-    D.bank:SetPoint("LEFT", D.give, "RIGHT", 6, 0)
-    D.de = W.Button(D, L["Entzaubern"], 90, function() giveTo("de") end)
-    D.de:SetPoint("LEFT", D.bank, "RIGHT", 6, 0)
-    D.cancel = W.Button(D, L["Abbrechen"], 86, function() D:Hide() end)
+    D.bank = W.Link(D, "Bank", nil, function() giveTo("bank") end)
+    D.bank:SetPoint("LEFT", D.give, "RIGHT", T.TAB_GAP, 0)
+    D.de = W.Link(D, L["Entzaubern"], nil, function() giveTo("de") end)
+    D.de:SetPoint("LEFT", D.bank, "RIGHT", T.TAB_GAP, 0)
+    D.cancel = W.Link(D, L["Abbrechen"], nil, function() D:Hide() end)
     D.cancel:SetPoint("BOTTOMRIGHT", -12, 12)
 end
 

@@ -112,14 +112,14 @@ for _, view in ipairs({ "officer", "raider" }) do
     assert(gr <= 590, "the gain ends in the row: " .. gr)
     assert(f.views.guild:IsShown() == (view == "officer"), "the guild view for officers only, without a list")
 end
--- a long wishlist: the chip grows with its count and the guild chip moves along
+-- a long wishlist: the tab grows with its count and the guild tab moves along
 local wishes = NS.BisChar().wish
 for id = 900001, 900120 do wishes[id] = 1 end
 NS.Set("ui.view", "officer")
 NS.ShowGear("goals")
 local wishChip = f.views.wish
-assert(wishChip.label:GetText() == "Wunschliste (120)" and wishChip:GetWidth() >= 104
-    and wishChip:GetWidth() >= wishChip.label:GetStringWidth() + 2 * NS.Theme.CHIP_PAD, "as wide as its label needs")
+assert(wishChip.isTab and wishChip.label:GetText() == "Wunschliste (120)"
+    and wishChip:GetWidth() >= wishChip.label:GetStringWidth() + 2 * NS.Theme.TAB_PAD, "as wide as its label needs")
 row("long wishlist head", f.spec, f.views.goals, f.views.here, f.views.wish, f.views.guild, f.open)
 for id = 900001, 900120 do wishes[id] = nil end
 NS.Refresh()

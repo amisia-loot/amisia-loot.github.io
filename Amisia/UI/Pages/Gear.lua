@@ -415,7 +415,7 @@ local function noOptionText(e)
 end
 
 local function styleChip(parent)
-    local chip = W.Chip(parent, L["Spielstil"], 72, nil)
+    local chip = W.Tab(parent, L["Spielstil"], 72, nil)
     chip:SetScript("OnClick", function(self) W.Menu(self, styleEntries(self)) end)
     chip:HookScript("OnEnter", styleTooltip)
     chip:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -608,15 +608,15 @@ local function buildGoals(f)
         { height = T.ROW_BUTTON_H })
     W.FitChip(G.big, 110)
     W.Tooltip(G.big, L["Ausrüstungsziele"], L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."])
-    G.why = W.Button(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
-    G.why:SetScript("OnEnter", function(self)
+    G.why = W.Link(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
+    G.why:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Warum diese Gewichte"])
         for _, line in ipairs(ns.BisWhy()) do GameTooltip:AddLine(line, 1, 1, 1, true) end
         GameTooltip:Show()
     end)
-    G.why:SetScript("OnLeave", hideTip)
-    G.sim = W.Button(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
+    G.why:HookScript("OnLeave", hideTip)
+    G.sim = W.Link(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
     W.Tooltip(G.sim, L["Simulation"], L["Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz."])
     local reach = W.Row(G, { G.big, G.why, G.sim }, T.CHIP_GAP, 0, -282, { right = true })
     G.title = W.Text(G, T.FONT.title, T.PAGE_W - reach - T.LAYOUT.ITEM_GAP - T.LAYOUT.TEXT_X)
@@ -654,6 +654,9 @@ local function buildGoals(f)
         end)
         W.FitChip(b.ex, 36)
         W.Row(b, { b.wish, b.ex }, T.CHIP_GAP, 0, 0, { right = true, point = "RIGHT" })
+        -- shown while the mouse is on the option (D-67)
+        W.RowAction(b, b.wish)
+        W.RowAction(b, b.ex)
         W.Tooltip(b.ex, L["Ausschließen"], L["Das Item nicht mehr vorschlagen; die nächste Option rückt auf. Rechtsklick auf die Zeile: Boss oder Ort ausschließen."])
         b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         b:SetScript("OnClick", function(self, button)
@@ -876,6 +879,7 @@ local function buildHere(f)
             if e then toggleWish(e.id, e.wished) end
         end, { height = T.ROW_BUTTON_H })
         r.wishBtn:SetPoint("LEFT", 508, 0)
+        W.RowAction(r, r.wishBtn)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -1019,7 +1023,7 @@ local function buildWish(f)
         end
         ns.Refresh()
     end)
-    V.clean = W.Button(V, L["Erhaltene entfernen"], 140, function()
+    V.clean = W.Link(V, L["Erhaltene entfernen"], 140, function()
         for _, e in ipairs(ns.Wishes()) do
             if e.owned then ns.WishRemove(e.id) end
         end
@@ -1134,7 +1138,7 @@ local function buildGuild(f)
     local U = W.Page(f, { view = true })
     U:Bands({ "row" })
     U.info = W.Text(U, T.FONT.text)
-    U.group = W.Chip(U, L["Nur Gruppe"], 100, function()
+    U.group = W.TabCheck(U, L["Nur Gruppe"], 100, function()
         groupOnly = not onlyGroup()
         ns.Refresh()
     end)
@@ -1161,7 +1165,7 @@ local function buildGuild(f)
         guildResult = text
         ns.Refresh()
     end)
-    U.clearBtn = W.Button(U, L["Löschen##Gildenwünsche"], 80, function()
+    U.clearBtn = W.Link(U, L["Löschen##Gildenwünsche"], 80, function()
         lift(StaticPopup_Show("AMISIA_GUILDWISH_CLEAR"))
     end)
     W.FitChip(U.importBtn, 100)
@@ -1267,7 +1271,7 @@ local function buildSim(f)
         simState().plan = v
         simChanged()
     end)
-    S.back = W.Button(S, L["Zurück"], 84, function() setView("goals") end)
+    S.back = W.Link(S, L["Zurück"], 84, function() setView("goals") end)
     W.FitChip(S.back, 84)
     S:Place(1, { S.class, S.spec, S.level, S.plan }, { S.back })
     S:Footer({ { "info", lines = 3 } })
@@ -1366,22 +1370,22 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         f:Bands({ "row", "line", "row" })
         f.spec = specPicker(f)
         f.views = {}
-        f.views.goals = W.Chip(f, L["Ziele"], 52, function() setView("goals") end)
-        f.views.here = W.Chip(f, L["Hier"], 46, function() state().place = nil; setView("here") end)
-        f.views.wish = W.Chip(f, L["Wunschliste"], 104, function() setView("wish") end)
-        f.views.guild = W.Chip(f, L["Gilde"], 56, function() setView("guild") end)
+        f.views.goals = W.Tab(f, L["Ziele"], 52, function() setView("goals") end)
+        f.views.here = W.Tab(f, L["Hier"], 46, function() state().place = nil; setView("here") end)
+        f.views.wish = W.Tab(f, L["Wunschliste"], 104, function() setView("wish") end)
+        f.views.guild = W.Tab(f, L["Gilde"], 56, function() setView("guild") end)
         W.Tooltip(f.views.goals, L["Ziele"], L["Das beste erreichbare Item je Slot mit deinen Quellen."])
         W.Tooltip(f.views.here, L["Hier"], L["Items aus der Zone oder dem Dungeon, in dem du gerade bist."])
         W.Tooltip(f.views.wish, L["Wunschliste"], L["Die Items, die du dir gemerkt hast."])
         W.Tooltip(f.views.guild, L["Gilde"], L["Die Wunschlisten deiner Gilde von der Website."])
         -- 64 wide: the tooltip says what the table is
-        f.open = W.Button(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
+        f.open = W.Link(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
         W.Tooltip(f.open, L["Ausrüstungstabelle"], L["Die besten Items aller Levelbereiche für jede Spezialisierung."])
         f.headRow = { f.spec, f.views.goals, f.views.here, f.views.wish, f.views.guild }
         f:Place(1, f.headRow, { f.open })
         f.counts = W.Text(f, T.FONT.hint)
         -- a row button (20 high): it stands in the counts' line, between the bands around it
-        f.reset = W.Button(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end,
+        f.reset = W.Link(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end,
             { height = T.ROW_BUTTON_H })
         W.FitChip(f.reset, 104)
         f.style = styleChip(f)
@@ -1391,7 +1395,7 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], icon = "Interface\\Ico
         f.src = {}
         for _, def in ipairs(CHIPS) do
             local key = def[1]
-            f.src[key] = W.Chip(f, def[2], def[3], function()
+            f.src[key] = W.TabCheck(f, def[2], def[3], function()
                 if key == "C" then
                     profClick()
                 else

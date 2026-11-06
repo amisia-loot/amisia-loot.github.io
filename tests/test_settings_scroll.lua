@@ -21,10 +21,10 @@ local screen = before - scroll:GetVerticalScroll()
 assert(screen > 0 and screen < scroll:GetHeight(), "the row is in view: " .. screen)
 
 -- the player picks the officer view in that row: sections come in above it
--- the choice goes auto -> officer -> raider: set it to auto, a click picks officer
+-- the choice goes auto -> officer -> raider: set it to auto, the next value is officer
 local choice = view.control
 choice:SetValue("auto")
-choice:GetScript("OnClick")(choice)
+choice:Cycle()
 assert(NS.Get("ui.view") == "officer", tostring(NS.Get("ui.view")))
 NS.Refresh()
 STUB.tick(0.1)
@@ -36,9 +36,9 @@ assert(math.abs((after - scroll:GetVerticalScroll()) - screen) < 0.5,
 -- the client's scroll bar keeps the old share of the range when the range grows: the hook on the
 -- range change puts the row back (it ran last in the game, where sections came in)
 local kept = scroll:GetVerticalScroll()
-choice:GetScript("OnClick")(choice)   -- raider: sections go
+choice:Cycle()   -- raider: sections go
 NS.Refresh()
-choice:GetScript("OnClick")(choice)   -- auto (no officer here): no change
+choice:Cycle()   -- auto (no officer here): no change
 NS.Refresh()
 NS.Set("ui.view", "officer")          -- the click on "Automatisch" goes to officer: sections come
 NS.Refresh()
@@ -61,7 +61,7 @@ assert(scroll:GetVerticalScroll() == at, "nothing moves without a change")
 
 -- back to the raider view: the row is still where it was on screen
 screen = topOf(view) - scroll:GetVerticalScroll()
-choice:GetScript("OnClick")(choice)
+choice:Cycle()
 assert(NS.Get("ui.view") == "raider", tostring(NS.Get("ui.view")))
 NS.Refresh(); STUB.tick(0.1)
 assert(math.abs((topOf(view) - scroll:GetVerticalScroll()) - screen) < 0.5, "and back")

@@ -220,9 +220,9 @@ local function build(parent)
     page = f
     local top = f:Bands({ "row", "line" })
     f.views = {
-        buffs = W.Chip(f, L["Buffs & Verbrauch"], 120, function() view = "buffs" ns.Refresh() end),
-        gear = W.Chip(f, L["Ausrüstung"], 90, function() view = "gear" ns.Refresh() end),
-        ids = W.Chip(f, L["Raid-IDs"], 80, function() view = "ids" ns.Refresh() end),
+        buffs = W.Tab(f, L["Buffs & Verbrauch"], 120, function() view = "buffs" ns.Refresh() end),
+        gear = W.Tab(f, L["Ausrüstung"], 90, function() view = "gear" ns.Refresh() end),
+        ids = W.Tab(f, L["Raid-IDs"], 80, function() view = "ids" ns.Refresh() end),
     }
     W.FitChip(f.views.buffs, 120)
     W.FitChip(f.views.gear, 90)
@@ -234,7 +234,7 @@ local function build(parent)
     end)
     W.FitChip(f.check, 80)
     W.Tooltip(f.check, L["Prüfen"], L["Liest die Buffs aller Raider in Sichtweite neu und fragt die Amisia-Clients des Raids nach Haltbarkeit, Itemstufe, Verzauberungen und freien Talentpunkten. Nicht im Kampf."])
-    f.say = W.Button(f, L["Im Raid-Chat sagen"], 140, function()
+    f.say = W.Link(f, L["Im Raid-Chat sagen"], 140, function()
         local n, why = ns.RaidCheck.Say()
         if not n and why then ns.msg(why) end
         ns.Refresh()
@@ -250,7 +250,7 @@ local function build(parent)
     W.Tooltip(f.ask, L["Raid-IDs abfragen"], L["Fragt die Amisia-Clients der Gilde nach den Raid-IDs ihrer Charaktere (höchstens alle 5 Minuten). Wer online ist, antwortet per Flüstern."])
     f:Place(1, { f.views.buffs, f.views.gear, f.views.ids }, { f.say, f.check, f.ask }, { shown = true })
     f.line = f:Line(2)
-    f:Footer({ { "hint", lines = 2 } })
+    f:Footer({ { "hint", lines = 2, help = true } })
     -- buffs
     f.buffView = W.Page(f, { view = true, top = top })
     local _, bh = f.buffView:Columns(BUFF_COLS)
@@ -264,7 +264,7 @@ local function build(parent)
     f.buffList = f.buffView:List(ROWS, ROW_H, function(row)
         W.Cells(row, BUFF_COLS)
         wireRow(row, buffTooltip)
-    end, fillBuff)
+    end, fillBuff, { fill = true })
     -- gear
     f.gearView = W.Page(f, { view = true, top = top })
     local _, gh = f.gearView:Columns(GEAR_COLS)
@@ -279,7 +279,7 @@ local function build(parent)
     f.gearList = f.gearView:List(ROWS, ROW_H, function(row)
         W.Cells(row, GEAR_COLS)
         wireRow(row, gearTooltip)
-    end, fillGear)
+    end, fillGear, { fill = true })
     -- raid IDs: the instance and the filters in a band of their own
     f.idView = W.Page(f, { view = true, top = top })
     local idTop = f.idView:Bands({ "row" })
@@ -287,11 +287,11 @@ local function build(parent)
         ns.RaidIDsChoose(v)
         ns.Refresh()
     end)
-    f.onlyFree = W.Chip(f.idView, L["nur frei"], 70, function()
+    f.onlyFree = W.TabCheck(f.idView, L["nur frei"], 70, function()
         onlyFree = not onlyFree
         ns.Refresh()
     end)
-    f.onlyTop = W.Chip(f.idView, L["nur Stufe 60"], 90, function()
+    f.onlyTop = W.TabCheck(f.idView, L["nur Stufe 60"], 90, function()
         onlyTop = not onlyTop
         ns.Refresh()
     end)
@@ -308,7 +308,7 @@ local function build(parent)
         W.Cells(row, ID_COLS)
         row.level:SetJustifyH("RIGHT")
         wireRow(row, idTooltip)
-    end, fillId)
+    end, fillId, { fill = true })
     f.empty = f:Empty()
     -- the buffs are read again now and then while the page is open (never in combat)
     C_Timer.NewTicker(POLL, function()

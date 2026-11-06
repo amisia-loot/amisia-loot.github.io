@@ -100,7 +100,7 @@ end
 -- Widgets (Widgets.lua loads before this file)
 ---------------------------------------------------------------------------
 
-local text, flat, border, setBorderColor, chip = W.Text, W.Flat, W.Border, W.SetBorderColor, W.Chip
+local text, flat, border, setBorderColor = W.Text, W.Flat, W.Border, W.SetBorderColor
 
 local function quality(id)
     local _, _, q = itemInfo(id)
@@ -672,7 +672,7 @@ local function build()
     end
     -- spec chips (placed in updateControls)
     for i = 1, 4 do
-        local b = chip(F, "", 80, nil)
+        local b = W.Tab(F, "", nil, nil)   -- the specs as text tabs (D-67)
         b:SetScript("OnClick", function(self)
             settings().specs[settings().class] = self.key
             ns.GearRefresh(true)
@@ -681,7 +681,8 @@ local function build()
     end
 
     -- second row: weighting, faction, sources
-    kindButton = chip(F, "", 140, function()
+    -- weighting and faction switch on a click: quiet links naming the value (D-67)
+    kindButton = W.Link(F, "", nil, function()
         ns.Set("bis.kind", ns.Get("bis.kind") == "Speedrun" and "Hardcore" or "Speedrun")   -- l10n-ok: setting key
         ns.GearRefresh(true)
     end)
@@ -698,37 +699,37 @@ local function build()
         self:SetOver(false)
         GameTooltip:Hide()
     end)
-    factionButton = chip(F, "", 70, function()
+    factionButton = W.Link(F, "", nil, function()
         local g = settings()
         g.faction = g.faction == "A" and "H" or g.faction == "H" and "both" or "A"
         ns.GearRefresh(true)
     end)
-    factionButton:SetPoint("LEFT", kindButton, "RIGHT", 6, 0)
+    factionButton:SetPoint("LEFT", kindButton, "RIGHT", T.TAB_GAP, 0)
     local prev = factionButton
     for i, fdef in ipairs(FILTERS) do
-        local b = chip(F, fdef.label, 62, function(self)
+        local b = W.TabCheck(F, fdef.label, nil, function(self)
             local g = settings()
             g.sources[self.key] = not g.sources[self.key]
             ns.GearRefresh(true)
         end)
         b.key = fdef.key
         W.FitChip(b, 62)
-        b:SetPoint("LEFT", prev, "RIGHT", i == 1 and 14 or 4, 0)
+        b:SetPoint("LEFT", prev, "RIGHT", i == 1 and 2 * T.TAB_GAP or T.TAB_GAP, 0)
         prev = b
         filterButtons[i] = b
     end
 
     -- third row: view, range, status
-    viewButtons.overview = chip(F, L["Übersicht"], 80, function()
+    viewButtons.overview = W.Tab(F, L["Übersicht"], nil, function()
         settings().view = "overview"
         ns.GearRefresh(true)
     end)
     viewButtons.overview:SetPoint("TOPLEFT", 14, -108)
-    viewButtons.list = chip(F, L["Liste"], 60, function()
+    viewButtons.list = W.Tab(F, L["Liste"], nil, function()
         settings().view = "list"
         ns.GearRefresh(true)
     end)
-    viewButtons.list:SetPoint("LEFT", viewButtons.overview, "RIGHT", 4, 0)
+    viewButtons.list:SetPoint("LEFT", viewButtons.overview, "RIGHT", T.TAB_GAP, 0)
     -- the column steps: the client's dropdown button turned left and right
     F.prevCol = ns.W.ArrowButton(F, "left", 22, function()
         local g = settings()
@@ -745,7 +746,7 @@ local function build()
         ns.GearRefresh(true)
     end)
     F.nextCol:SetPoint("LEFT", colLabel, "RIGHT", 6, 0)
-    local mine = chip(F, L["Mein Charakter"], 110, function()
+    local mine = W.Link(F, L["Mein Charakter"], nil, function()
         local g = settings()
         local _, myClass = UnitClass("player")
         g.class = myClass or g.class

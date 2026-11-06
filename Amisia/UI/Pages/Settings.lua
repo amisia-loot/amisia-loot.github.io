@@ -69,13 +69,18 @@ local function makeRow(it)
             ns.Refresh()
         end)
     elseif it.type == "choice" then
-        r.control = W.Choice(r, 150, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
+        r.control = W.Choice(r, 180, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
         r.control:SetValues(it.values)
     elseif it.type == "button" then
-        r.control = W.Button(r, it.label, 230, function() touched = path; it.run() end)
+        r.control = W.Link(r, it.label, 230, function() touched = path; it.run() end)
         r.label:SetText("")
     end
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
+    -- an action ("Position zurücksetzen") is a link where the label stands (D-67)
+    if it.type == "button" then
+        r.control:ClearAllPoints()
+        r.control:SetPoint("LEFT", r.label, "LEFT", -T.TAB_PAD, 0)
+    end
     if it.type ~= "button" and it.type ~= "desc" then
         -- the client's reset button (a chip's atlas carries a dropdown arrow, at 20 px it read "x >")
         r.reset = W.ResetButton(r, T.RESET, function() touched = path; ns.Reset(path); ns.Refresh() end)
@@ -276,12 +281,12 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
             ns.Refresh()
         end)
         f.found = W.Text(f, T.FONT.hint)
-        f.back = W.Button(f, L["Zurück"], nil, function()
+        f.back = W.Link(f, L["Zurück"], nil, function()
             local to = forPage
             forPage = nil
             if to and ns.ShowPage then ns.ShowPage(to) end
         end, { height = T.ROW_BUTTON_H })
-        f.reset = W.Button(f, L["Zurücksetzen"], nil, function()
+        f.reset = W.Link(f, L["Zurücksetzen"], nil, function()
             local list = shownSections()
             W.Confirm(L["Zurücksetzen"], L["Alle Einstellungen in %s auf den Standard setzen?"]:format(sectionNames(list)),
                 L["Zurücksetzen"], function()
@@ -290,13 +295,13 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interfac
                 end)
         end, { height = T.ROW_BUTTON_H })
         W.FitChip(f.reset, 90)
-        f.reset:SetScript("OnEnter", function(self)
+        f.reset:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L["Zurücksetzen"], 1, 0.82, 0)
             GameTooltip:AddLine(L["Setzt alle Einstellungen in %s auf den Standard."]:format(sectionNames(shownSections())), 0.85, 0.85, 0.85, true)
             GameTooltip:Show()
         end)
-        f.reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.reset:HookScript("OnLeave", function() GameTooltip:Hide() end)
         f:Place(1, { f.search, { f.found, fill = true } }, { f.back, f.reset })
         -- leaving the page ends the sections of a page: the next open shows the chosen section
         f:HookScript("OnHide", function() forPage = nil end)

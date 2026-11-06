@@ -411,7 +411,10 @@ end
 
 -- The list of the chosen dungeon's or raid's rows on page B (rows high): bosses with their items, or
 -- quests; clicks, menus, tooltips, the hovered boss in B.art.
-local function buildDetail(B, rows)
+-- top: where the list starts on B (a SetPoint offset); the list takes the rows that fit down to B's
+-- lower end, at least rows (the footer's room went to it when the hint moved behind the "i", D-67).
+local function buildDetail(B, rows, top)
+    if top then rows = math.max(rows, math.floor((T.PAGE_H + (B.offsetY or 0) + top - B:Bottom()) / ROW_H)) end
     return W.List(B, rows, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
         r.slot = col(r, 228, 62, nil, T.FONT.text)
@@ -514,7 +517,7 @@ local function textHeight(fs, w)
 end
 
 -- One field of a step card: a gold label over its text (wrapped) and a red button "Karte" at the
--- label's right.
+-- label's right, shown while the mouse is on the card (D-67) and always on the next step's card.
 local function cardLine(c, onMap)
     local ln = {}
     ln.label = W.Text(c, T.FONT.text, 100)
@@ -525,6 +528,7 @@ local function cardLine(c, onMap)
     ln.btn:SetHeight(P.BUTTON_H)
     W.FitChip(ln.btn)
     W.Tooltip(ln.btn, PTEXT.card, PTEXT.cardTip)
+    W.RowAction(c, ln.btn)
     return ln
 end
 
@@ -609,6 +613,7 @@ local function fillCard(c, s, path, width, isNext)
     c.title:SetWidth(math.max(60, width - P.TEXT_X - P.PAD - c.step:GetStringWidth() - 10))
     c.title:SetText((STEP_TEXT[st] or "") .. s.no .. ". " .. n.title .. (STEP_TEXT[st] and "|r" or ""))
     c.glow:SetShown(isNext and true or false)
+    W.PinRowActions(c, isNext)
     c:SetAlpha(over and 0.65 or 1)
     local y = -P.HEAD_H
     local used = 0
@@ -747,7 +752,7 @@ local function buildPath(B)
     local V = W.Page(B, { view = true, top = -(T.LAYOUT.ROW_H + T.LAYOUT.GAP) })
     V.owner = B
     V:Bands({ "row" })
-    V.back = W.Button(V, PTEXT.back, nil, function() B:OpenPath(nil) end)
+    V.back = W.Link(V, PTEXT.back, nil, function() B:OpenPath(nil) end)
     W.FitChip(V.back)
     V.map = W.Button(V, PTEXT.map, nil, function()
         if V.plan then
@@ -1302,10 +1307,13 @@ local function fillRun(B, plan)
         if not ln then
             ln = { fs = W.Text(V.child, T.FONT.text, 100, true) }
             ln.fs:SetJustifyV("TOP")
+            -- the line's area: its "Karte" shows while the mouse is on it (D-67)
+            ln.hit = CreateFrame("Frame", nil, V.child)
             ln.btn = W.Button(V.child, PTEXT.card, nil, function(self) say(ns.DungeonRouteWaypoint(self.stop)) end, { height = P.BUTTON_H })
             ln.btn:SetHeight(P.BUTTON_H)
             W.FitChip(ln.btn)
             W.Tooltip(ln.btn, PTEXT.card, PTEXT.cardTip)
+            W.RowAction(ln.hit, ln.btn)
             V.runLines[nLine] = ln
         end
         local w = V.bodyW - x - (stop and (ln.btn:GetWidth() + 6) or 0)
@@ -1324,6 +1332,12 @@ local function fillRun(B, plan)
         else
             ln.btn:Hide()
         end
+        -- the button reaches 3 px above its line: the line's area too, so the mouse is on the line
+        -- whenever it is on the button (it may overlap the line above by those 3 px)
+        ln.hit:ClearAllPoints()
+        ln.hit:SetPoint("TOPLEFT", 0, y + 3)
+        ln.hit:SetSize(V.bodyW, h + P.LINE_GAP + 3)
+        ln.hit:Show()
         y = y - h - P.LINE_GAP
     end
     local function groups(list)
@@ -1388,7 +1402,7 @@ local function fillRun(B, plan)
     groups(plan.after)
     if #plan.after == 0 then line(GREY .. RTEXT.nothingAfter .. "|r", 0) end
     for i = nLabel + 1, #V.runLabels do V.runLabels[i]:Hide() end
-    for i = nLine + 1, #V.runLines do V.runLines[i].fs:Hide(); V.runLines[i].btn:Hide() end
+    for i = nLine + 1, #V.runLines do V.runLines[i].fs:Hide(); V.runLines[i].btn:Hide(); V.runLines[i].hit:Hide() end
     for i = nNode + 1, #V.runNodes do V.runNodes[i].icon:Hide(); V.runNodes[i].link:Hide() end
     V.child:SetHeight(math.max(10, -y))
     if V.scroll.UpdateScrollChildRect then V.scroll:UpdateScrollChildRect() end
@@ -1410,7 +1424,7 @@ local function create(parent)
         { "chain", L["Kette"], 50, L["Kette"], L["Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf."] } }
     local sortRow = {}
     for i, d in ipairs(sortDefs) do
-        local chip = W.Chip(B, d[2], d[3], function()
+        local chip = W.Tab(B, d[2], d[3], function()
             state().dsort = d[1]
             ns.Refresh()
         end)
@@ -1422,7 +1436,7 @@ local function create(parent)
     -- under them, as wide as the page
     B:Place(1, { B.spec }, sortRow)
     B:Place(2, { { B.next, fill = true } })
-    B:Footer({ { "hint", lines = 2 } })
+    B:Footer({ { "hint", lines = 2, help = true } })
     -- the list is 590 wide (12 px for its scroll bar)
     local cols = { { "name", 4, 170, "Dungeon" }, { "level", 178, 46, "Level" }, { "fit", 228, 56, L["Passung"] },
         { "upgrades", 288, 56, "Upgrades", justify = "RIGHT" }, { "run", 348, 66, L["Je Lauf"], justify = "RIGHT" },
@@ -1445,7 +1459,7 @@ local function create(parent)
     local artTop = B.listTop - DUNGEON_ROWS * ROW_H - G.GAP
     B.art = buildArt(B, artTop)
     local headerTop = artTop - ART_H - G.GAP
-    B.mark = W.Button(B.art, DTEXT.mark, 110, function()
+    B.mark = W.Link(B.art, DTEXT.mark, 110, function()
         if not B.chosen then return end
         if ns.DungeonMarked() == B.chosen then
             ns.DungeonClearMarks()
@@ -1475,16 +1489,16 @@ local function create(parent)
     B.header:SetPoint("TOPRIGHT", -244, headerTop)
     -- the lower part: the bosses or the quests of the chosen dungeon
     B.parts = {}
-    B.parts.bosses = W.Chip(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
-    B.parts.quests = W.Chip(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
+    B.parts.bosses = W.Tab(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
+    B.parts.quests = W.Tab(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
     W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Stufe, Weg (erledigte Schritte der Vorquests) und Start. Klick auf eine Quest zeigt ihren Questweg: jeden Schritt mit Annehmen, Abgeben, Voraussetzung und Karte."])
-    B.way = W.Button(B, L["Wegpunkt"], 120, function()
+    B.way = W.Link(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     -- the two chips and the waypoint button at the right end of the header's line
     W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = G.ITEM_GAP } }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
-    B.detail = buildDetail(B, DETAIL_ROWS)
+    B.detail = buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     -- the quest path in place of the list, the image and the quests (F-135); only in memory

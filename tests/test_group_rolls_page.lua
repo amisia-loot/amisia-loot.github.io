@@ -85,14 +85,14 @@ STUB.rolls[3] = blue
 STUB.fire("START_LOOT_ROLL", 3, 60000)
 loot("Fraktur has selected Greed for: " .. blue)
 NS.ShowRaidLog("würfe")
-f.rolls.source:Click()
+f.rolls.source:Cycle()
 assert(f.rolls.source.current == "runs", "source Dungeons")
 shown = rows()
 assert(#shown == 2 and has(shown[1].what:GetText(), "Die Todesminen") and has(shown[2].what:GetText(), "Blaues Ding"),
     "a header and its roll: " .. (shown[1] and shown[1].what:GetText() or "-"))
 shown[2]:Click()
 assert(has(f.rolls.detail.fs:GetText(), "Gier"), f.rolls.detail.fs:GetText())
-f.rolls.source:Click()
+f.rolls.source:Cycle()
 assert(f.rolls.source.current == "raid", "back to the raid")
 
 -- the slash word, German and English

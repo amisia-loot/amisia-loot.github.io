@@ -310,7 +310,7 @@ local function create(parent)
         { "done", L["Erledigt"], 64, L["Abgegebene Quests."] } }
     local row = {}
     for _, d in ipairs(defs) do
-        local chip = W.Chip(f, d[2], d[3], function()
+        local chip = W.TabCheck(f, d[2], d[3], function()
             local s = state()
             s.show[d[1]] = not s.show[d[1]]
             ns.Refresh()
@@ -326,11 +326,11 @@ local function create(parent)
             ns.Refresh()
         end
     end
-    f.chains = W.Chip(f, L["Reihen"], 58, toggle("chains"))
+    f.chains = W.TabCheck(f, L["Reihen"], 58, toggle("chains"))
     W.Tooltip(f.chains, L["Nur Reihen"], L["Nur Quests mit Vorquest oder Folgequest."])
-    f.upgrades = W.Chip(f, "Upgrades", 72, toggle("upgrades"))
+    f.upgrades = W.TabCheck(f, "Upgrades", 72, toggle("upgrades"))
     W.Tooltip(f.upgrades, L["Nur Upgrades"], L["Nur Quests, deren Belohnung ein Upgrade für dich ist."])
-    f.mine = W.Chip(f, L["Nur für mich"], 92, toggle("mine"))
+    f.mine = W.TabCheck(f, L["Nur für mich"], 92, toggle("mine"))
     W.Tooltip(f.mine, L["Nur für mich"], L["Quests anderer Fraktionen, Völker und Klassen ausblenden."])
     -- the status chips, then the filters after a wider gap
     row[#row + 1] = { f.chains, gap = 16 }
@@ -338,7 +338,7 @@ local function create(parent)
     row[#row + 1] = f.mine
     f:Place(2, row)
     f.counts = f:Line(3)
-    f:Footer({ "hint", "data" })
+    f:Footer({ { "hint", help = true }, { "data", help = true } })
     f.hint:SetText(HINT)
 
     f.headFrame, f.head = f:Columns(COLS)
@@ -350,15 +350,16 @@ local function create(parent)
         end, { height = T.ROW_BUTTON_H })
         -- as wide as its word, at most to the list's edge (590)
         W.FitChip(r.go, 54, 74)
+        W.RowAction(r, r.go)   -- shown while the mouse is on the row (D-67)
         r.go:SetPoint("LEFT", 516, 0)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", onRowClick)
         r:SetScript("OnEnter", questTip)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end, fillRow)
+    end, fillRow, { fill = true })
     f.empty = f:Empty()
     -- under the empty state's help; a child of the list it stands over (the list holds it)
-    f.reset = W.Button(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    f.reset = W.Link(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
     W.FitChip(f.reset)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()

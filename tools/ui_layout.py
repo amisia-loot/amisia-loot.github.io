@@ -2,6 +2,7 @@
 
     python3 tools/ui_layout.py rules [--locale deDE|enUS]
     python3 tools/ui_layout.py snapshots [--out DIR] [--compare DIR] [--scale N] [--locale enUS]
+    python3 tools/ui_layout.py red [--write]
 
 Every registered page is opened in the raider, officer and expert view of the scene
 (tests/ui_scene.lua), and the side windows (roll window, award dialog, soft-reserve window,
@@ -27,6 +28,9 @@ Rules (RULES below), each over every shot:
              lines in the hint font, TEXT_X from the edge; column heads COLHEAD_H high in the head
              font; the footer at the page's bottom with nothing of the content in it; every empty
              state placed by the scaffold
+  red        a page (a side window) shows no more red buttons and chips than its budget (tools/ui_red_budget.json,
+             D-67): the budget only goes down (ui_layout.py red --write lowers it, a higher count
+             fails); the target is one per view. Row actions at alpha 0 (W.RowAction) do not count.
 The locales the rules run in: LOCALES (German and English).
 """
 import argparse
@@ -171,7 +175,7 @@ def capture_all(locale='deDE'):
 # ---------------------------------------------------------------- geometry
 HCLASS = {'LEFT': 'L', 'TOPLEFT': 'L', 'BOTTOMLEFT': 'L', 'RIGHT': 'R', 'TOPRIGHT': 'R', 'BOTTOMRIGHT': 'R'}
 VCLASS = {'TOP': 'T', 'TOPLEFT': 'T', 'TOPRIGHT': 'T', 'BOTTOM': 'B', 'BOTTOMLEFT': 'B', 'BOTTOMRIGHT': 'B'}
-INTERACTIVE = {'button', 'chip', 'edit', 'check', 'picker', 'list', 'arrow', 'scroll', 'plain'}
+INTERACTIVE = {'button', 'chip', 'texttab', 'edit', 'check', 'picker', 'list', 'arrow', 'scroll', 'plain'}
 
 
 class Tree:
@@ -328,6 +332,14 @@ class Tree:
             i = n.get('parent')
         return True
 
+    def faded(self, i):
+        """Node i or one of its ancestors is at alpha 0 (a row action waiting for the mouse)."""
+        for k in [i] + self.ancestors(i):
+            n = self.nodes.get(k)
+            if n is not None and n.get('alpha', 1) == 0:
+                return True
+        return False
+
     def ancestors(self, i):
         out = []
         n = self.nodes.get(i)
@@ -447,7 +459,7 @@ def rule_overlap(tree, shot):
 def _widget_of(tree, i):
     """The button or chip a font string labels (its parent), or None."""
     p = tree.nodes.get(tree.nodes[i].get('parent'))
-    if p and p.get('role') in ('button', 'chip', 'check', 'tab'):
+    if p and p.get('role') in ('button', 'chip', 'texttab', 'check', 'tab'):
         return p
     return None
 
@@ -626,8 +638,83 @@ def rule_grid(tree, shot):
     return out
 
 
+RED_BUDGET = os.path.join(ROOT, 'tools', 'ui_red_budget.json')
+RED_TARGET = 1
+
+
+def red_count(tree):
+    """The red buttons and chips a page shows (a side window: the window), visible, not faded, not a
+    template's part."""
+    page = tree.marks.get('page')
+    if page is None:
+        page = tree.marks.get('window')
+    if page is None:
+        return None
+    return sum(1 for i, n in tree.nodes.items()
+               if n.get('role') in ('button', 'chip') and tree.visible(i) and tree.under(i, page)
+               and not tree.faded(i) and not tree.tpl_part(i))
+
+
+def red_budget():
+    try:
+        with open(RED_BUDGET, encoding='utf-8') as fh:
+            return json.load(fh).get('shots', {})
+    except FileNotFoundError:
+        return {}
+
+
+def rule_red(tree, shot):
+    """No page shows more red buttons and chips than its budget (D-67)."""
+    n = red_count(tree)
+    if n is None or n <= RED_TARGET:
+        return []
+    key = f'{shot.get("view")}/{shot.get("name")}'
+    budget = red_budget().get(key)
+    if budget is None:
+        return [f'{n} red buttons and chips, no budget (target {RED_TARGET}; ui_layout.py red --write adds it)']
+    if n > budget:
+        return [f'{n} red buttons and chips, the budget is {budget} (target {RED_TARGET}): make one quieter '
+                f'(a picker, a text tab, an icon, W.RowAction)']
+    return []
+
+
+def red_report(write=False):
+    """Every page's count against its budget; write lowers the budget to the counts (never raises it)
+    and adds missing pages. Returns the lines and whether a count is over its budget."""
+    shots, _, _ = capture_all('deDE')
+    budget = red_budget()
+    counts = {}
+    for s in shots:
+        if not s['nodes']:
+            continue
+        n = red_count(Tree(s['nodes'], s['marks']))
+        if n is not None:
+            counts[f'{s["view"]}/{s["name"]}'] = n
+    lines, over = [], False
+    for key, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        b = budget.get(key)
+        mark = '' if b is None or n == b else (' OVER' if n > b else f' (budget {b})')
+        over = over or (b is not None and n > b)
+        lines.append(f'{n:3d}  {key}{mark}')
+    if write:
+        new = {}
+        for key, n in counts.items():
+            if n <= RED_TARGET:
+                continue
+            b = budget.get(key)
+            new[key] = n if b is None else min(b, n)
+        with open(RED_BUDGET, 'w', encoding='utf-8') as fh:
+            json.dump({'about': 'Red buttons and chips per page shot (tools/ui_layout.py red, D-67). A count may '
+                                'only go down: red --write lowers these numbers, raising one is a decision.',
+                       'target': RED_TARGET, 'shots': dict(sorted(new.items()))}, fh, indent=1, ensure_ascii=False)
+            fh.write('\n')
+    total = sum(counts.values())
+    lines.append(f'{total} red buttons and chips on {len(counts)} page shots; {sum(1 for n in counts.values() if n > RED_TARGET)} over the target {RED_TARGET}')
+    return lines, over
+
+
 RULES = {'bounds': rule_bounds, 'overlap': rule_overlap, 'text': rule_text, 'minwidth': rule_minwidth,
-         'nav': rule_nav, 'grid': rule_grid}
+         'nav': rule_nav, 'grid': rule_grid, 'red': rule_red}
 
 
 def check_shot(shot, factor=1.0):
@@ -670,7 +757,7 @@ ROLE_STYLE = {
     'edit': ((18, 28, 48), (120, 150, 200)), 'picker': ((40, 25, 60), (170, 130, 220)),
     'check': ((60, 60, 10), (240, 220, 60)), 'arrow': ((90, 60, 0), (255, 160, 40)),
     'list': (None, (80, 200, 120)), 'scroll': (None, (80, 200, 220)), 'tab': ((70, 70, 80), (180, 180, 200)),
-    'plain': (None, (120, 120, 150)),
+    'plain': (None, (120, 120, 150)), 'texttab': (None, (120, 100, 60)),
 }
 # the built-in face of Pillow has no Latin-1 letters: umlauts are drawn as the letter with two dots
 UMLAUT = {'ä': 'a', 'ö': 'o', 'ü': 'u', 'Ä': 'A', 'Ö': 'O', 'Ü': 'U'}
@@ -797,7 +884,7 @@ def render(shot, path, scale=1, mono=False):
 
     def draw(i):
         n = tree.nodes[i]
-        if not n.get('shown'):
+        if not n.get('shown') or n.get('alpha', 1) == 0:
             return
         r = tree.rect(i)
         clip = tree.clip(i)
@@ -992,7 +1079,14 @@ def main(argv=None):
     s.add_argument('--scale', type=int, default=1, help='pixels per UI pixel (default 1)')
     s.add_argument('--locale', default='deDE')
     s.add_argument('--mono', action='store_true', help='draw text in a fixed 0.6 em grid instead of the estimated advances')
+    rd = sub.add_parser('red', help='red buttons and chips per page against tools/ui_red_budget.json (D-67)')
+    rd.add_argument('--write', action='store_true', help='lower the budget to the counts (never raises it)')
     args = ap.parse_args(argv)
+    if args.cmd == 'red':
+        lines, over = red_report(args.write)
+        for line in lines:
+            print(line)
+        return 1 if over else 0
     if args.cmd == 'rules':
         found = run_rules(args.locale)
         for line in found:

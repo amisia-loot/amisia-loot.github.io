@@ -136,8 +136,9 @@ L.row("columns", f.head.title, f.head.level, f.head.status, f.head.reward, f.hea
 L.row("row", r1.title, r1.level, r1.status, r1.reward, r1.go)
 L.row("list", f.list, f.list.bar)
 L.inside("list bar", f.list.bar)
-L.column("page", f.zone, f.show.open, f.counts, f.head.title, f.list, f.hint, f.data)
-for _, fs in ipairs({ f.counts, f.hint, f.data, f.head.reward, f.head.go }) do L.fits(fs) end
+L.column("page", f.zone, f.show.open, f.counts, f.head.title, f.list)
+assert(f.hint.isHelp and f.data.isHelp)
+for _, fs in ipairs({ f.counts, f.head.reward, f.head.go }) do L.fits(fs) end
 
 -- the switch takes the page away
 NS.Set("quests.enabled", false); STUB.tick(0)

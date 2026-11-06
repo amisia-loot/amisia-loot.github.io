@@ -30,9 +30,10 @@ local tip, addLine = {}, GameTooltip.AddLine
 GameTooltip.AddLine = function(self, t) tip[#tip + 1] = t end
 F.settingsBtn:GetScript("OnEnter")(F.settingsBtn)
 GameTooltip.AddLine = addLine
-assert(tip[1] == "Einstellungen: Karte und Wegpunkt", tostring(tip[1]))
+assert(tip[1] == "Einstellungen" and tip[2] == "Karte und Wegpunkt", tostring(tip[1]) .. "/" .. tostring(tip[2]))
 NS.ShowPage("talents")
 assert(not F.settingsBtn:IsShown(), "the talents page has none")
+assert(F.helpBtn.points.TOPRIGHT and F.helpBtn.points.TOPRIGHT.x == -12, "without the gear the ? moves to the edge")
 NS.ShowPage("rolls")
 F.settingsBtn:Click()
 assert(NS.CurrentPage() == "settings" and not F.settingsBtn:IsShown())

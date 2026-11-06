@@ -78,8 +78,8 @@ local function build_page(parent)
     -- the head row: the two views; under it the system and the site's state
     local top = f:Bands({ "row", "line" })
     f.view = {
-        list = W.Chip(f, L["Stand##Punkte"], nil, function() view = "list" ns.Refresh() end),
-        paste = W.Chip(f, L["Einfügen"], nil, function() view = "paste" ns.Refresh() end),
+        list = W.Tab(f, L["Stand##Punkte"], nil, function() view = "list" ns.Refresh() end),
+        paste = W.Tab(f, L["Einfügen"], nil, function() view = "paste" ns.Refresh() end),
     }
     W.FitChip(f.view.list, 70)
     W.FitChip(f.view.paste, 70)
@@ -119,7 +119,7 @@ local function build_page(parent)
     f.who = W.Picker(f, 140, function(v) chosen = v and v:lower() or chosen ns.Refresh() end)
     f.amount = W.LineEdit(f, 56, function() end)
     f.amount:SetMaxLetters(8)
-    f.pool = W.Choice(f, 44, function(v) pool = v end)
+    f.pool = W.Choice(f, 64, function(v) pool = v end)
     f.pool:SetValues({ { "E", "EP" }, { "G", "GP" } })
     f.reason = W.LineEdit(f, 170, function() end)
     f.reason:SetMaxLetters(80)
@@ -140,7 +140,7 @@ local function build_page(parent)
     end)
     W.FitChip(f.import, 100)
     -- officers: the stored standing removed, after the question (ns.AskClearPoints)
-    f.clear = W.Button(f, L["Punkte entfernen"], 100, function() ns.AskClearPoints() end)
+    f.clear = W.Link(f, L["Punkte entfernen"], 100, function() ns.AskClearPoints() end)
     W.FitChip(f.clear, 100)
     W.Tooltip(f.clear, L["Punkte entfernen"], L["Löscht den eingefügten Stand der Website und die Korrekturen aus dem Spiel, nach einer Frage. Die Website behält ihren Stand."])
     f.result = W.Text(f, T.FONT.hint)

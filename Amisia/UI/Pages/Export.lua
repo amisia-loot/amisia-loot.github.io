@@ -79,7 +79,7 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
             ns.ShowExport(false)
         end)
         W.FitChip(newBtn, 150)
-        local selBtn = W.Button(f, L["Angekreuzte (%d)"]:format(0), 120, function()
+        local selBtn = W.Link(f, L["Angekreuzte (%d)"]:format(0), 120, function()
             if not next(ns.RaidSelection) then
                 ns.msg(L["Zuerst Raids auf der Seite Raid-Archiv ankreuzen."])
                 return

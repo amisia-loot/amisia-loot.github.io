@@ -163,7 +163,8 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " body", f.list, f.list.bar, f.detail)
     L.row(view .. " row", rows[1].name, rows[1].mark, rows[1].rank)
     L.inside(view .. " detail", f.detail)
-    L.column(view .. " page", f.prof, f.known, f.list, f.hint, f.data)
-    for _, fs in ipairs({ f.counts, f.hint, f.data, f.rank }) do L.fits(fs) end
+    L.column(view .. " page", f.prof, f.known, f.list)
+    assert(f.hint.isHelp and f.data.isHelp)
+    for _, fs in ipairs({ f.counts, f.rank }) do L.fits(fs) end
 end
 NS.Reset("ui.view")

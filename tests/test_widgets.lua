@@ -49,10 +49,26 @@ chip:Enable(); chip:SetOn(true); assert(select(1, shade(chip)) == 1)
 -- a tooltip is hooked: the template's hover stays
 W.Tooltip(chip, "Titel")
 chip:GetScript("OnEnter")(chip); chip:GetScript("OnLeave")(chip)
--- a choice is the same button, its label the value
-local choice = W.Choice(root, 120)
+-- a choice is the client's dropdown field (D-67), its label the value; Cycle picks the next one
+local picked
+local choice = W.Choice(root, 120, function(v) picked = v end)
 choice:SetValues({ { "a", "Alpha" }, { "b", "Beta" } }); choice:SetValue("a")
-assert(choice.styled and choice.label:GetText() == "Alpha")
+assert(choice.isChoice and choice.arrow and choice.label:GetText() == "Alpha" and not choice.styled)
+choice:Cycle(); assert(picked == "b" and choice.current == "b" and choice.label:GetText() == "Beta")
+choice:Cycle(); assert(picked == "a", "around to the first")
+-- a text tab (D-67): the chip's interface, gold word, the chosen one white over a gold line
+local tab = W.Tab(root, "Ziele", 200, function() end)
+assert(tab.isTab and tab.template == nil and tab:GetWidth() < 200, "as wide as its word, not a red button")
+tab:SetOn(true); assert(tab.line:IsShown() and tab.label.textColor[1] == 1, "chosen: white over the line")
+tab:SetOn(false); assert(not tab.line:IsShown() and tab.label.textColor[3] < 0.5, "not chosen: gold")
+tab.dim = true; tab:UpdateChip(); assert(tab.label.textColor[1] == 0.45, "dim: grey"); tab.dim = nil
+W.FitChip(tab, 300); assert(tab:GetWidth() < 300, "no minimum for a tab")
+local filter = W.TabCheck(root, "Nur Gruppe", nil, function() end)
+filter:SetOn(true); assert(filter.box:GetChecked() and not filter.line:IsShown(), "a filter ticks its box")
+filter:SetOn(false); assert(not filter.box:GetChecked())
+local t2 = W.Tab(root, "Hier")
+W.Row(root, { tab, t2 }, 4, 0, 0)
+assert(t2.points.TOPLEFT.x == tab:GetWidth() + NS.Theme.TAB_GAP, "tabs keep their own gap")
 -- the reset button: the client's red x
 local rb = W.ResetButton(root, 18, function() end)
 assert(rb._w == 18 and rb._h == 18 and rb.icon.atlas == "auctionhouse-ui-filter-redx")
@@ -60,8 +76,8 @@ assert(rb._w == 18 and rb._h == 18 and rb.icon.atlas == "auctionhouse-ui-filter-
 local c = W.Choice(root, 120, function(v) seen = v end)
 c:SetValues({ { "a", "Eins" }, { "b", "Zwei" } })
 c:SetValue("a"); assert(c.label:GetText() == "Eins")
-c:Click(); assert(seen == "b" and c.label:GetText() == "Zwei")
-c:Click(); assert(seen == "a", "cycles")
+c:Cycle(); assert(seen == "b" and c.label:GetText() == "Zwei")
+c:Cycle(); assert(seen == "a", "cycles")
 
 local committed
 local tb = W.TimeBox(root, 60, function(text) committed = text end)
@@ -201,7 +217,17 @@ card:SetAction("Los", function() clicked = true end)
 card.button:Click(); assert(clicked)
 card:SetAction(nil); assert(not card.button:IsShown())
 assert(card.border.atlas == "common-insideframe" and card.edges == nil, "the card is an inset")
-assert(card.button.inherits.SharedButtonSmallTemplate, "a red button")
+assert(card.button.isLink and card.button.inherits == nil, "a quiet link, no red button (D-67)")
+clicked = nil
+card:SetAction("Los", function() clicked = true end)
+card.scripts.OnEnter(card); assert(card.glow:IsShown(), "the card lights up")
+card.scripts.OnLeave(card); assert(not card.glow:IsShown())
+card.IsMouseOver = function() return true end
+card.scripts.OnMouseUp(card, "LeftButton"); assert(clicked, "a click on the card runs its action")
+clicked = nil
+card.scripts.OnMouseUp(card, "RightButton"); assert(not clicked, "only the left button")
+card.IsMouseOver = function() return false end
+card.scripts.OnMouseUp(card, "LeftButton"); assert(not clicked, "a press dragged off the card runs nothing")
 
 local area = W.EditArea(root); area.box:SetText("abc"); assert(area.box:GetText() == "abc")
 assert(area.border.atlas == "common-insideframe" and area.ground.color[4] == 0.35, "an inset with a dark ground")
@@ -226,3 +252,92 @@ assert(AmisiaMenu.bg.atlas == "common-dropdown-bg" and AmisiaMenu.bg.alpha == 0.
 assert(AmisiaMenu.bg.points.TOPLEFT.x == -10 and AmisiaMenu.bg.points.TOPLEFT.y == 3)
 assert(AmisiaMenu.buttons[1].hl.texture == "Interface\\QuestFrame\\UI-QuestTitleHighlight", "the menu's hover")
 AmisiaMenu.buttons[2]:Click(); assert(hit == 2 and not AmisiaMenu:IsShown(), "a click runs the entry and closes")
+
+-- the quiet line (D-67): icon buttons without a red ground, row actions on hover, help lines
+local gear = W.IconButton(root, 22, { atlas = "questlog-icon-setting" }, nil, "E")
+assert(gear.icon.atlas == "questlog-icon-setting" and gear.label == nil and gear.template == nil, "the client's gear, no red button")
+STUB.missingAtlases["questlog-icon-setting"] = true
+local bare = W.IconButton(root, 22, { atlas = "questlog-icon-setting" }, nil, "E")
+STUB.missingAtlases["questlog-icon-setting"] = nil
+assert(not bare.icon:IsShown() and bare.label:GetText() == "E", "without the atlas the fallback letter")
+local helpI = W.IconButton(root, 22, { file = "Interface\\common\\help-i" })
+assert(helpI.icon.texture == "Interface\\common\\help-i")
+
+local row = CreateFrame("Button", nil, root)
+row:Show()
+local act = W.Button(row, "Karte", 60)
+act:Show()
+W.RowAction(row, act)
+assert(act:IsShown() and act:GetAlpha() == 0, "shown, but invisible until the mouse comes")
+row.IsMouseOver = function() return true end
+W.SyncRowActions()
+assert(act:GetAlpha() == 1, "the mouse on the row shows it")
+row.IsMouseOver = function() return false end
+W.SyncRowActions()
+assert(act:GetAlpha() == 0, "and leaving hides it again")
+W.PinRowActions(row, true)
+assert(act:GetAlpha() == 1, "a pinned row keeps it")
+W.SyncRowActions()
+assert(act:GetAlpha() == 1)
+W.PinRowActions(row, false)
+assert(act:GetAlpha() == 0)
+
+local host = CreateFrame("Frame", nil, root)
+host:Show()
+local page = W.Page(host)
+page:Show()
+page:Footer({ { "hint", help = true }, "data" })
+page.hint:SetText("Klick: Details.")
+page.data:SetText("Stand heute")
+assert(page.hint.isHelp and not page.hint:IsShown() and page.data:IsShown(), "the hint goes behind the ?, the data line stays")
+assert(page.footH == NS.Theme.LAYOUT.LINE_H, "the footer keeps room for the data line only")
+local lines = W.HelpLines(host)
+assert(#lines == 1 and lines[1] == "Klick: Details.", table.concat(lines, "|"))
+page.hint:SetText("")
+assert(#W.HelpLines(host) == 0, "an empty hint is no help")
+page.hint:SetText("Klick: Details.")
+assert(#W.HelpLines(CreateFrame("Frame", nil, UIParent)) == 0, "only the lines under the root")
+page.hint:SetShown(false)
+assert(#W.HelpLines(host) == 0 and not page.hint:IsShown(), "a line the page hides leaves the i")
+page.hint:SetShown(true)
+assert(#W.HelpLines(host) == 1 and not page.hint:IsShown() and not next(page.hint.points or {}), "and comes back there, never drawn")
+page:Hide()
+assert(#W.HelpLines(host) == 0, "a hidden page explains nothing")
+local wide = W.Page(host, { width = 700 })
+wide:Show()
+wide:Footer({ { "hint", help = true } })
+assert(not wide.hint.isHelp, "a page of its own width (a side window) keeps its hint")
+
+-- a list that fills the page (D-67): as many rows as fit down to the content's lower end
+local fp = W.Page(CreateFrame("Frame", nil, UIParent))
+fp:Bands({ "row" })
+fp:Footer({ "data" })
+local L1 = NS.Theme.LAYOUT
+local room = NS.Theme.PAGE_H + fp.top - fp:Bottom()
+local fl = fp:List(3, 22, function() end, function() end, { fill = true })
+assert(fl.rowCount == math.floor(room / 22) and fl.rowCount > 3, "fills: " .. fl.rowCount)
+local sl = fp:List(3, 22, function() end, function() end)
+assert(sl.rowCount == 3, "without fill the rows asked for")
+local view = W.Page(fp, { view = true, top = -100 })
+assert(view.offsetY == -100, "a view knows how far down it starts")
+local vl = view:List(1, 22, function() end, function() end, { fill = true, top = 0 })
+assert(vl.rowCount == math.floor((NS.Theme.PAGE_H - 100 - view:Bottom()) / 22), "a view fills from its own top")
+assert(L1.GAP ~= nil)
+
+-- a tab whose word changes (a count) widens and its row moves along (D-67)
+local ra, rb = W.Tab(root, "Würfe"), W.Tab(root, "Discord")
+W.Row(root, { ra, rb }, 4, 0, 0)
+local x0 = rb.points.TOPLEFT.x
+ra.label:SetText("Würfe (12)")
+assert(ra:GetWidth() >= ra.label:GetStringWidth() and rb.points.TOPLEFT.x == ra:GetWidth() + NS.Theme.TAB_GAP and rb.points.TOPLEFT.x > x0,
+    "the next tab moved: " .. tostring(rb.points.TOPLEFT.x))
+local wide = W.Tab(root, "Ohne Verzauberung 0", 40)
+assert(wide:GetWidth() >= wide.label:GetStringWidth(), "a chip's old width is no cap for a tab")
+
+-- a page's own hover scripts keep the tab's white word (D-67)
+local own = W.Link(root, "Warum?")
+local tipped
+own:SetScript("OnEnter", function() tipped = true end)
+own:SetScript("OnLeave", function() tipped = false end)
+own.scripts.OnEnter(own); assert(tipped and own.label.textColor[1] == 1, "white under the mouse, the page's script ran")
+own.scripts.OnLeave(own); assert(tipped == false and own.label.textColor[3] < 0.5, "gold again")

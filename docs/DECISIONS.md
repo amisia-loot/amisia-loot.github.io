@@ -139,6 +139,8 @@ Gruppe ein solcher Balken, ein Treffer der eingerückte Unterbalken (`auctionhou
 ebenfalls ohne Symbol. Die Vorlage `AuctionCategoryButtonTemplate` selbst wird nicht geerbt (sie liegt
 im Auktionshaus-Addon, das erst am Auktionshaus lädt); `W.NavBar` baut ihre Atlanten und Maße nach
 (`ns.Theme.NAVBAR`). Fehlt ein Atlas, bleibt das Aussehen von vorher (Leuchten der Rezeptliste).
+Seit 2026-11-06 (D-67) sind Ansichten und Filter keine roten Chips mehr, sondern Textreiter (`W.Tab`, `W.TabCheck`);
+rot bleiben die eine Hauptaktion je Ansicht und Knöpfe in Zeilen.
 **Grund:** Bildschirmfotos und Wünsche des Nutzers 2026-10-05/06/07; für die Talente das Foto des
 klassischen Talentfensters 2026-10-10 ("können wir talente auch so machen") und das Foto von 2.19.0
 ("können wir das fenster wo die talente sind größer machen oder besser skalieren").
@@ -1078,7 +1080,8 @@ Abschnitte. "Zurücksetzen" setzt die gezeigten Abschnitte nach einer Rückfrage
 Einstellungen zurücksetzen" (Oberfläche) alle; Daten und Fensterplätze bleiben. Einstellungen stehen nie in
 den Seiten selbst. Statt eines Zahnrads auf jeder Seite ein Knopf in der Kopfzeile (Auftrag "mach deine
 reihenfolge"): eine Stelle für alle Seiten. Die Abschnittsliste steht in der Seitenliste statt in der Seite,
-damit Zeilen und der Editor der Lootregeln ihre volle Breite behalten.
+damit Zeilen und der Editor der Lootregeln ihre volle Breite behalten. Seit 2026-11-06 (D-67) ist der Knopf das
+Zahnrad des Questlogs rechts im Fensterkopf statt eines roten Knopfs "Einstellungen"; die Stelle bleibt eine für alle Seiten.
 **Grund:** Auswahl des Nutzers 2026-10-13 ("Zahnrad + nach Reitern"), Ziel "alles besser und einfach finden /
 einstellen".
 **Folge:** Ein neuer Abschnitt braucht `group` und, wenn er zu einer Seite gehört, `pages`.
@@ -1493,3 +1496,46 @@ Graustufe nutzt, prüft `/dump GetQuestGreenRange()` im Spiel (Stufe 30: 7).
 **Folge:** Die Werte stehen in `D.WORTH` (Gear/Dungeons.lua); der Tooltip jeder Quest zeigt die Teile. Keine
 Gruppen-Abstimmung und keine Twinks (keine Daten); beides bräuchte eine eigene Spec.
 **Durchgesetzt durch:** `tests/test_dungeon_run_plan.lua`, `tools/tests/test_build_dungeons.py::test_reading_the_client_tables`.
+
+## D-67 Klare Linie: höchstens ein roter Knopf je Ansicht, Erklärungen hinter dem "i", Zeilenknöpfe erst unter der Maus
+
+**Datum:** 2026-11-06
+**Entscheidung:** Die Oberfläche wird in drei Schritten ruhiger (F-140). Regeln: (1) Der Fensterkopf hat keine roten
+Knöpfe: der Raid-Status steht mittig mit einem Pfeil (`W.ArrowButton`), der ein Menü öffnet ("Aufnahme
+pausieren/fortsetzen", "Zur Offiziersansicht/Raider-Ansicht"); rechts das Zahnrad des Questlogs (`questlog-icon-setting`,
+`W.IconButton`) für die Einstellungen der Seite (D-49) und das "i" der Hilfe des Spiels (`Interface\common\help-i`).
+(2) Erklärungen ("Klick auf ...", Legenden, Datenstand) stehen nicht mehr unten auf der Seite: eine Fußzeile
+`{ "hint", help = true }` wird nicht gezeichnet, das "i" zeigt ihren Text (`W.HelpLines`); ohne Erklärung fehlt das "i".
+Zustände (Zähler, "Noch keine Wünsche", Zeichenzahl des Discord-Texts) bleiben sichtbar. Seiten mit eigener Breite
+(Seitenfenster) behalten ihre Fußzeile. (3) Knöpfe einer Listenzeile ("Karte", "Wegpunkt", "Wunsch", "Aus",
+"Entfernen") erscheinen erst, wenn die Maus auf der Zeile steht (`W.RowAction`: nur die Deckkraft folgt der Maus,
+gezeigt und versteckt wird wie vorher; `W.PinRowActions` hält sie sichtbar, wie auf der Karte des nächsten
+Questschritts). (4) Ziel je Ansicht: höchstens ein roter Knopf; die Zahl je Seite steht in
+`tools/ui_red_budget.json` und darf nur sinken. (5, Schritt 2) Ansichten und Auswahlen sind Textreiter (`W.Tab`: goldenes
+Wort, das gewählte weiß über einer dünnen goldenen Linie), An/Aus-Filter Textreiter mit dem kleinen Häkchenfeld des
+Spiels (`W.TabCheck`), Werte zum Wählen das Dropdown-Feld des Spiels (`W.Choice` auf `W.Picker`, statt bei jedem Klick
+zum nächsten Wert zu springen); jede Aktion außer der einen wichtigsten einer Ansicht ist ein ruhiger Link (`W.Link`:
+"Warum?", "Alle auf Karte", "Zurück", "Filter zurücksetzen"); die Karten der Übersicht haben Links statt roter Knöpfe,
+ein Klick auf die Karte öffnet. Rot blieben bis Schritt 3: die eine Hauptaktion je Ansicht, Knöpfe in Zeilen (unter der Maus), das
+Würfel-Fenster, der Vergabe-Dialog, die Einrichtung. Listen nehmen den Platz der weggefallenen Fußzeilen (`fill`).
+(6, Schritt 3) Die übrigen Seiten und die Seitenfenster folgen derselben Regel: Ausrüstungstabelle (Specs und Ansichten
+als Textreiter, Quellen mit Häkchen, Gewichtung und Fraktion als Links), Ziele-Fenster, Anmeldung, Raid-Kalender,
+Soft-Reserve-Import, Einrichtung, Selbsttest, Offiziers-Würfelfenster (MS/OS als Textreiter, "Vergeben" beim Gewinner
+und bei einem Gleichstand immer, sonst unter der Maus) und Vergabe-Dialog ("Vergeben" rot, Bank/Entzaubern/Abbrechen Links); "Hoch" und das
+rote x der Lootregeln und "Nochmal" im Feedback-Ausgang unter der Maus (eine verlorene Meldung zeigt es immer),
+"Bestätigen" im Abgleich als Link. Mit
+Absicht mehr als ein roter Knopf: das Würfel-Fenster der Raider (Mainspec, Offspec, Passen: eine schnelle Antwort im
+Kampf), der Bestätigen-Dialog, die Einrichtung, wo zwei Gruppen je ihre Aktion haben (Gildenbank-Bedarf: Setzen und
+Spenden zusagen), der Lootregel-Editor (Hinzufügen und Übernehmen eines Vorschlags) und die Karte des nächsten
+Questschritts. Die Regel "red" zählt seit Schritt 3 auch die Seitenfenster.
+**Grund:** Nutzer 2026-11-06: "finde das ganze ui zu unübersichtlich keine klare linie und so ist so voll nicht
+aufgeräumt"; nach einem Entwurf mit acht Regeln "Ja, Schritt 1". Die Schnappschüsse zeigten bis zu 19 rote Knöpfe und
+Chips auf einer Seite (1471 auf 240 Seitenbildern), drei rote Knöpfe im Kopf jeder Seite und auf 13 Seiten graue
+Erklärzeilen unten.
+**Folge:** Seit D-06 (2.4.5) war jeder Chip ein roter Knopf; seit Schritt 2 sind Ansichten und Filter Textreiter (D-06
+geändert). Die Zahl roter Knöpfe und Chips auf den Seitenbildern fiel von 1471 auf 1354 (Schritt 1), 280 (Schritt 2)
+und 147 (Schritt 3); mit den Seitenfenstern sind es 200 auf 273 Bildern.
+Die Knöpfe "Pausieren", "Raider-Ansicht"/"Offiziersansicht" und "Einstellungen" im Kopf entfallen (Menü und Zahnrad
+statt dessen); `/amisia pause` und `/amisia ansicht` bleiben.
+**Durchgesetzt durch:** `tools/tests/test_ui_layout.py::test_rule_red_budget` (Regel "red" in `build.py check`),
+`tests/test_widgets.lua`, `tests/test_style.lua`, `tests/test_nav_find.lua`.

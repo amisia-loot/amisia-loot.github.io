@@ -176,7 +176,7 @@ do
     assert(ef.area.bar and ef.area.bar.inherits.MinimalScrollBar, "the export text scrolls with the thin bar")
     L.inside("export bar", ef.area.bar)
     assert(ef.area.border.atlas == "common-insideframe", "the export text lies in an inset")
-    assert(ef.newBtn.inherits.SharedButtonSmallTemplate and ef.selBtn.inherits.SharedButtonSmallTemplate)
+    assert(ef.newBtn.inherits.SharedButtonSmallTemplate and ef.selBtn.isLink, "one red button, the other a link (D-67)")
 end
 -- guild bank: the list ends 12 px before the edge, the count and the button move with it
 NS.ShowPage("bank")
@@ -204,7 +204,8 @@ do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
     L.row("tools buttons", unpack(tf.buttons))
     L.column("tools page", tf.buttons[1], tf.state, tf.hint)
-    for _, b in ipairs(tf.buttons) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+    assert(tf.buttons[1].inherits.SharedButtonSmallTemplate and tf.buttons[1]._h == 22, "the scan: the one red button")
+    for k = 2, #tf.buttons do assert(tf.buttons[k].isLink, "the others quiet links (D-67)") end
 end
 NS.Reset("ui.expert")
 -- settings: a plain scroll frame with the thin bar, the sections under the client's list header (a
@@ -321,8 +322,8 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.row(view .. " map columns", mf.head.kind, mf.head.src, mf.head.where, mf.head.items, mf.head.go)
     L.row(view .. " map list", mf.list, mf.list.bar)
     L.inside(view .. " map list bar", mf.list.bar)
-    L.column(view .. " map page", mf.zone, mf.counts, mf.card, mf.head.kind, mf.list, mf.showHidden, mf.hint, mf.data)
-    L.fits(mf.hint); L.fits(mf.data); L.fits(mf.counts); L.fits(mf.target)
+    L.column(view .. " map page", mf.zone, mf.counts, mf.card, mf.head.kind, mf.list, mf.showHidden)
+    assert(mf.hint.isHelp and mf.data.isHelp); L.fits(mf.counts); L.fits(mf.target)
 end
 NS.Reset("ui.view")
 local gp = NS.GearPageFrame()

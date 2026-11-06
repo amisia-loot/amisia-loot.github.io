@@ -404,24 +404,28 @@ local mtitle = MF:GetTitleText():GetText()
 assert(mtitle:sub(1, 7) == "Amisia " and mtitle:find(NS.VERSION, 1, true), mtitle)
 assert(MF.Bg.atlas == "Profession-Background-Overview" and not MF.TopTileStreaks:IsShown())
 local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 560)
--- the head: the status bar right of the portrait, below the title bar, the button beside it
-local status, pause = MF.statusBar, MF.pauseBtn
--- the state as plain text from the portrait to 12 px before the button, level with it, no bar
-assert(status._w == 806 - 66 - 10 - 110 - 6 - 120 - 6 - 100 - 12 and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
+-- the head (D-67): the state as plain text from the portrait to the icons, level with them, no bar;
+-- its arrow opens the menu; "?" and the gear at the right end, no red buttons
+local status = MF.statusBar
+assert(status._w == 806 - 66 - 12 - 2 * (22 + 6) and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
 assert(status.bgParts == nil and status.frameParts == nil and status.bg == nil, "no bar textures")
-ML.row("head", status, pause)
+assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons in the head")
 local sl = ML.span(status)
 local st = ML.vspan(status)
 assert(sl >= 58 and st <= -W.TITLE_H, "right of the portrait and below the title bar")
-assert(pause._w == 110 and pause._h == 22 and pause.points.TOPRIGHT.x == -10 and pause.points.TOPRIGHT.y == -26)
-assert(pause.inherits.SharedButtonSmallTemplate and pause:GetText() == "Pausieren")
--- the view switch left of it, 6 px apart, as wide as its longest text
-local vb = MF.viewBtn
-assert(vb._w == 120 and vb.points.TOPRIGHT and vb.points.TOPRIGHT.rel == pause and vb.points.TOPRIGHT.x == -6)
-ML.row("head view", status, vb, pause)
-assert(MF.statusText._w == status._w - 20 and MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
-NS.SetEnabled(false); STUB.tick(0); assert(pause:GetText() == "Fortsetzen" and MF.statusText:GetText():find("pausiert", 1, true))
-pause:Click(); assert(NS.IsEnabled() and pause:GetText() == "Pausieren")
+assert(MF.menuBtn.points.LEFT.rel == MF.statusText and MF.menuBtn._w == 20, "the arrow right of the state")
+assert(MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
+NS.ShowPage("map")
+local gear, help = MF.settingsBtn, MF.helpBtn
+assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.x == -12 and gear.points.TOPRIGHT.y == -26)
+assert(gear.icon.atlas == "questlog-icon-setting", "the quest log's gear")
+assert(help:IsShown() and help.points.RIGHT.rel == gear and help.icon.texture == "Interface\\common\\help-i", "the ? left of the gear")
+ML.row("head", status, help, gear)
+NS.ShowPage("gear")   -- the gear tab remembers its first page again (the tab checks below)
+NS.ShowPage("overview")
+assert(not help:IsShown(), "the overview explains nothing: no ?")
+NS.SetEnabled(false); STUB.tick(0); assert(MF.statusText:GetText():find("pausiert", 1, true) and MF.headMenu()[1][1] == "Aufnahme fortsetzen")
+MF.headMenu()[1][2](); assert(NS.IsEnabled())
 -- the page list and the content field side by side, the page area exactly 602 x 478 at (191, -69)
 local listIn, contentIn = MF.listInset, MF.contentInset
 assert(listIn.border.atlas == "common-insideframe" and listIn.ground.atlas == "Professions-background-summarylist")
@@ -749,7 +753,9 @@ NS.GearRefresh(true)
 local row2 = { GF.kindButton, GF.factionButton }
 for _, b in ipairs(GF.filterButtons) do row2[#row2 + 1] = b end
 GL.row("gear second row", unpack(row2))
-for _, b in ipairs(row2) do assert(b.styled and b.inherits.SharedButtonSmallTemplate, "the shared chips: red buttons") end
+for _, b in ipairs(row2) do assert(b.isTab and b.inherits == nil, "quiet text tabs and links, no red chips (D-67)") end
+local _, r2 = GL.span(row2[#row2])
+assert(r2 <= 806, "the second row ends inside the frame: " .. r2)
 AmisiaDB.settings.gear.view = "list"
 NS.GearRefresh(true)
 GL.row("gear third row", GF.viewButtons.overview, GF.viewButtons.list, GF.prevCol, GF.colLabel, GF.nextCol, GF.mine)
@@ -791,7 +797,7 @@ assert(rr1.award.inherits.SharedButtonSmallTemplate and rr1.award._w >= 64 and r
 RL.row("roll row", rr1.name, rr1.kind, rr1.value, rr1.up, rr1.prio, rr1.hand, rr1.why, rr1.award)
 assert(RF.addBtn.inherits.SharedButtonSmallTemplate and RF.addBtn._h == 20 and RF.addBtn:GetText() == "Eintragen")
 RL.row("roll entry", RF.namePick, RF.valueEdit, RF.msChip, RF.osChip, RF.addBtn)
-for _, b in ipairs({ RF.stopBtn, RF.againBtn, RF.resultBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+assert(RF.stopBtn.inherits.SharedButtonSmallTemplate and RF.stopBtn._h == 22 and RF.againBtn.isLink and RF.resultBtn.isLink, "Stopp red, the rest links (D-67)")
 RL.row("roll buttons", RF.stopBtn, RF.againBtn, RF.resultBtn)
 RL.column("roll window", RF.header, rr1, RF.addBtn, RF.note, RF.stopBtn)
 assert(MF.sideTabs.rolls.checked == true, "the rolls tab is marked while the window shows")
@@ -829,7 +835,7 @@ local bl, bt = SF.box.points.TOPLEFT.x, SF.box.points.TOPLEFT.y
 assert(bl == NS.Theme.WINDOW_PAD and bt == SR.BOX_Y and SF.box._w == SR.W - 2 * NS.Theme.WINDOW_PAD, "under the date line, the window's pad")
 SL.inside("soft-reserve box", SF.box)
 SL.inside("soft-reserve bar", SF.box.bar)
-for _, b in ipairs({ SF.applyBtn, SF.clearBtn }) do assert(b.inherits.SharedButtonSmallTemplate and b._h == 22) end
+assert(SF.applyBtn.inherits.SharedButtonSmallTemplate and SF.applyBtn._h == 22 and SF.clearBtn.isLink, "apply red, clear a quiet link (D-67)")
 SL.row("soft-reserve buttons", SF.applyBtn, SF.clearBtn)
 SL.column("soft-reserve import", SF.dateText, SF.box, SF.previewText, SF.resultText, SF.applyBtn)
 -- typing still schedules the preview
@@ -896,6 +902,8 @@ end
 ALLOWED["common-dropdown-a-button-shadowless"] = true
 -- the client's reset button (UIResetButtonTemplate)
 ALLOWED["auctionhouse-ui-filter-redx"] = true
+-- the head's gear (UIPanelIconDropdownButtonTemplate, D-67)
+ALLOWED["questlog-icon-setting"] = true
 -- the auction house's category bars (W.NavBar: the page list, the search results)
 for _, part in ipairs({ "", "-select", "-highlight", "-secondary", "-secondary-select", "-secondary-highlight" }) do
     ALLOWED["auctionhouse-nav-button" .. part] = true

@@ -190,6 +190,35 @@ def test_rule_grid_needs_the_scaffold(monkeypatch):
     assert 'grid' not in U.check_shot(w), 'a side window (no grid in extra) is not a page'
 
 
+def test_rule_red_budget(monkeypatch):
+    """D-67: a page shows no more red buttons and chips than its budget; faded row actions and the
+    window's head (outside the page) do not count; one is always fine."""
+    def nodes(n_red, faded=0):
+        out = [node(1, None, w=800, h=500),
+               node(2, 1, points=[('TOPLEFT', None, 'TOPLEFT', 0, 0)], w=600, h=400),
+               node(3, 1, 'Button', role='button', w=80, h=22, points=[('TOPRIGHT', None, 'TOPRIGHT', 0, 0)])]
+        for k in range(n_red):
+            out.append(node(10 + k, 2, 'Button', role='chip', w=60, h=22, points=[('TOPLEFT', None, 'TOPLEFT', 70 * k, 0)]))
+        for k in range(faded):
+            row = 50 + 2 * k
+            out.append(node(row, 2, 'Button', role='plain', w=500, h=20, alpha=0 if k % 2 else 1,
+                            points=[('TOPLEFT', None, 'TOPLEFT', 0, -40 - 22 * k)]))
+            out.append(node(row + 1, row, 'Button', role='button', w=60, h=20, alpha=0 if k % 2 == 0 else 1,
+                            points=[('RIGHT', None, 'RIGHT', 0, 0)]))
+        return out
+    monkeypatch.setattr(U, 'red_budget', lambda: {'officer/t': 3})
+    marks = {'window': 1, 'page': 2}
+    assert U.rule_red(U.Tree(nodes(3), marks), shot(nodes(3), marks)) == [], 'at the budget'
+    found = U.rule_red(U.Tree(nodes(4), marks), shot(nodes(4), marks))
+    assert found and 'the budget is 3' in found[0], found
+    t = U.Tree(nodes(3, faded=4), marks)
+    assert U.red_count(t) == 3, 'faded row actions (their own alpha or their row\'s) do not count; the head is outside'
+    monkeypatch.setattr(U, 'red_budget', lambda: {})
+    assert U.rule_red(U.Tree(nodes(1), marks), shot(nodes(1), marks)) == [], 'one red button is the target'
+    found = U.rule_red(U.Tree(nodes(2), marks), shot(nodes(2), marks))
+    assert found and 'no budget' in found[0], found
+
+
 def test_atlas_allow_list():
     assert U.check_atlases(['a', 'b'], ['a']) == ['atlas b is not in the style allow-list (ns.Theme.ATLASES)']
     assert U.check_atlases(['a'], []) and 'missing' in U.check_atlases(['a'], [])[0]

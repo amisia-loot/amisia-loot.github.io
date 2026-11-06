@@ -164,15 +164,15 @@ local function build_page(parent)
     -- the head row: view chips left, range chips right; under it class and role (officers) and the counts
     f:Bands({ "row", "row" })
     f.view = {
-        players = W.Chip(f, L["Spieler"], nil, function() view = "players" ns.Refresh() end),
-        fame = W.Chip(f, L["Ruhmeshalle"], nil, function() view = "fame" ns.Refresh() end),
+        players = W.Tab(f, L["Spieler"], nil, function() view = "players" ns.Refresh() end),
+        fame = W.Tab(f, L["Ruhmeshalle"], nil, function() view = "fame" ns.Refresh() end),
     }
     W.FitChip(f.view.players, 70)
     W.FitChip(f.view.fame, 70)
     f.range = {
-        w4 = W.Chip(f, L["4 Wochen"], nil, function() range = "4w" ns.Refresh() end),
-        phase = W.Chip(f, L["Phase"], nil, function() range = "phase" ns.Refresh() end),
-        all = W.Chip(f, L["Alle Raids"], nil, function() range = "all" ns.Refresh() end),
+        w4 = W.Tab(f, L["4 Wochen"], nil, function() range = "4w" ns.Refresh() end),
+        phase = W.Tab(f, L["Phase"], nil, function() range = "phase" ns.Refresh() end),
+        all = W.Tab(f, L["Alle Raids"], nil, function() range = "all" ns.Refresh() end),
     }
     for _, c in pairs(f.range) do W.FitChip(c, 60) end
     f:Place(1, { f.view.players, f.view.fame }, { f.range.w4, f.range.phase, f.range.all })
@@ -184,7 +184,7 @@ local function build_page(parent)
                        { value = "unknown", text = ROLE_TEXT.unknown } })
     f.info = W.Text(f, T.FONT.hint)
     f:Place(2, { f.class, f.role, { f.info, fill = true } })
-    f:Footer({ "hint" })
+    f:Footer({ { "hint", help = true } })
 
     -- column heads: a click sorts, a second click turns the order round
     f.headFrame, f.heads = f:Columns(COLS, { sort = function(key)

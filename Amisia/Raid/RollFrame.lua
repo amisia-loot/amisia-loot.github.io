@@ -401,6 +401,10 @@ refresh = function()
         row.reason:SetText("")
         row.award:SetEnabled(r.done and true or false)
         row.award:Show()
+        -- the winner's "Vergeben" (and those of a tie) always shows, the others' under the mouse (D-67)
+        local tied = false
+        for _, n in ipairs(r.tie or {}) do tied = tied or n == e.name end
+        W.PinRowActions(row, r.winner == e.name or tied)
         row:Show()
     end
     for _, e in ipairs(r.ignored) do
@@ -502,6 +506,7 @@ local function build()
         row.award = W.Button(row, L["Vergeben"], 64, function() if row.who then confirmGive(row.who) end end, { height = ROW_H })
         W.FitChip(row.award, 64)
         row.award:SetPoint("RIGHT", -2, 0)
+        W.RowAction(row, row.award)
         -- the roller's award history in the row's tooltip (officers, as on the page Statistik)
         row:EnableMouse(true)
         row:SetScript("OnEnter", rowTooltip)
@@ -521,8 +526,8 @@ local function build()
         self:ClearFocus()
         addEntry()
     end)
-    F.msChip = W.Chip(F, "MS", 30, function() setKind("MS") end)
-    F.osChip = W.Chip(F, "OS", 30, function() setKind("OS") end)
+    F.msChip = W.Tab(F, "MS", nil, function() setKind("MS") end)
+    F.osChip = W.Tab(F, "OS", nil, function() setKind("OS") end)
     W.FitChip(F.msChip, 30)
     W.FitChip(F.osChip, 30)
     F.addBtn = W.Button(F, L["Eintragen"], 76, addEntry, { height = 20 })
@@ -538,10 +543,10 @@ local function build()
     stopBtn = W.Button(F, L["Stopp"], 80, function() ns.StopRoll() end)
     stopBtn:SetPoint("BOTTOMLEFT", 12, 10)
 
-    againBtn = W.Button(F, L["Nochmal"], 80, function() ns.RerollTie() end)
+    againBtn = W.Link(F, L["Nochmal"], nil, function() ns.RerollTie() end)
     againBtn:SetPoint("LEFT", stopBtn, "RIGHT", 6, 0)
 
-    F.resultBtn = W.Button(F, L["Ergebnis ansagen"], 120, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
+    F.resultBtn = W.Link(F, L["Ergebnis ansagen"], nil, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.resultBtn:SetPoint("BOTTOMRIGHT", -12, 10)
     F.rows = rows
     -- the parts the layout tests read

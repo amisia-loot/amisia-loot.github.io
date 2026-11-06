@@ -808,13 +808,13 @@ local function create(parent)
         ns.Refresh()
     end)
     -- the switch "Rezepte | Route" (F-137)
-    f.modeRecipes = W.Chip(f, L["Rezepte"], P.MODE_W, function()
+    f.modeRecipes = W.Tab(f, L["Rezepte"], P.MODE_W, function()
         state().mode = RECIPES
         ns.Refresh()
     end)
     W.FitChip(f.modeRecipes, P.MODE_W)
     W.Tooltip(f.modeRecipes, L["Rezepte"], L["Die Rezepte des Berufs mit Filtern und Details."])
-    f.modeRoute = W.Chip(f, L["Route"], P.MODE_W, function()
+    f.modeRoute = W.Tab(f, L["Route"], P.MODE_W, function()
         state().mode = ROUTE
         ns.Refresh()
     end)
@@ -840,13 +840,13 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.source, L["Quelle"], L["Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest."])
-    f.learn = W.Chip(f, L["Lernbar"], 80, function()
+    f.learn = W.TabCheck(f, L["Lernbar"], 80, function()
         local s = state()
         s.learnable = not s.learnable or nil
         ns.Refresh()
     end)
     W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
-    f.guild = W.Chip(f, L["Gilde (%d)"]:format(0), GUILD_W, function()
+    f.guild = W.TabCheck(f, L["Gilde (%d)"]:format(0), GUILD_W, function()
         local s = state()
         s.guild = not s.guild or nil
         ns.Refresh()
@@ -863,7 +863,7 @@ local function create(parent)
     f.filterRow = { f.known, f.source, f.learn, f.guild, { f.counts, fill = true } }
     f:Place(2, f.filterRow)
     -- the hint takes two lines when it needs them (the favor vendors), the data line under it
-    f:Footer({ { "hint", lines = 2 }, "data" })
+    f:Footer({ { "hint", lines = 2, help = true }, { "data", help = true } })
 
     f.list = f:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -883,17 +883,17 @@ local function create(parent)
         end)
         r:SetScript("OnEnter", function(self) entryTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillRow, { top = top, width = T.LAYOUT.SPLIT_LIST_W })
+    end, fillRow, { fill = true, top = top, width = T.LAYOUT.SPLIT_LIST_W })
     f.empty = f:Empty(T.LAYOUT.SPLIT_LIST_W - 10)
     -- under the empty state's help; a child of the list it stands over (the list holds it)
-    f.reset = W.Button(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    f.reset = W.Link(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
     W.FitChip(f.reset)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()
     W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."])
 
     -- the chosen recipe in the inset beside the list, as high as the list
-    local d = f:Detail({ top = top, height = ROWS * ROW_H, sub = true })
+    local d = f:Detail({ top = top, height = f.list.rowCount * ROW_H, sub = true })
     f.detail = d
     d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
     d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -904,7 +904,7 @@ local function create(parent)
         end
     end, { height = T.ROW_BUTTON_H })
     W.Tooltip(d.go, L["Wegpunkt"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
-    d.ask = W.Button(d, L["Fragen"], 70, function()
+    d.ask = W.Link(d, L["Fragen"], 70, function()
         local e, who = d.entry, d.askWho
         if not e or not who or e.camp then return end
         local r = e.recipe
@@ -927,20 +927,20 @@ local function create(parent)
         state().routeVendor = on or nil
         ns.Refresh()
     end
-    f.vendorT = W.Chip(rv, L["nur Lehrer"], P.VENDOR_W, function() setVendor(false) end)
+    f.vendorT = W.Tab(rv, L["nur Lehrer"], P.VENDOR_W, function() setVendor(false) end)
     W.FitChip(f.vendorT, P.VENDOR_W)
     W.Tooltip(f.vendorT, L["nur Lehrer"], L["Die Route nimmt bekannte Rezepte und was der Lehrer bis zum nächsten Limit lehrt."])
-    f.vendorV = W.Chip(rv, L["auch Händler"], P.VENDOR_W, function() setVendor(true) end)
+    f.vendorV = W.Tab(rv, L["auch Händler"], P.VENDOR_W, function() setVendor(true) end)
     W.FitChip(f.vendorV, P.VENDOR_W)
     W.Tooltip(f.vendorV, L["auch Händler"], L["Dazu Rezepte, die ein Händler deiner Fraktion verkauft, mit dem Kaufpreis in den Kosten und einem Schritt \"Rezept kaufen\". Drop-Rezepte nie."])
     local function setTab(tab)
         state().routeTab = tab
         ns.Refresh()
     end
-    f.tabSteps = W.Chip(rv, L["Schritte"], P.TAB_W, function() setTab("steps") end)
+    f.tabSteps = W.Tab(rv, L["Schritte"], P.TAB_W, function() setTab("steps") end)
     W.FitChip(f.tabSteps, P.TAB_W)
     W.Tooltip(f.tabSteps, L["Schritte"], L["Die Route Schritt für Schritt; der aktuelle Schritt ist markiert, erledigte sind abgehakt."])
-    f.tabShop = W.Chip(rv, L["Einkauf"], P.TAB_W, function() setTab("shop") end)
+    f.tabShop = W.Tab(rv, L["Einkauf"], P.TAB_W, function() setTab("shop") end)
     W.FitChip(f.tabShop, P.TAB_W)
     W.Tooltip(f.tabShop, L["Einkauf"], L["Die Materialien der offenen Schritte: Bedarf, was du hast (Taschen und Bank), was deine Twinks haben, was fehlt."])
     rv:Place(1, { rv.vendorLabel, f.vendorT, f.vendorV }, { f.tabSteps, f.tabShop })
@@ -968,7 +968,7 @@ local function create(parent)
         r:SetScript("OnClick", function(self) clickStep(self.item) end)
         r:SetScript("OnEnter", function(self) stepTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillStep)
+    end, fillStep, { fill = true })
 
     -- the shopping list
     f.shopView = W.Page(rv, { view = true, top = rv.top })
@@ -989,7 +989,7 @@ local function create(parent)
         end)
         r:SetScript("OnEnter", function(self) shopTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillShop)
+    end, fillShop, { fill = true })
     rv:Hide()
     return f
 end

@@ -263,16 +263,16 @@ local function buildLog(f)
         addAt = (not free) and A.times and A.times[v] or nil
     end)
     A.pick:SetPoint("LEFT", 0, 0)
-    A.kill = W.Chip(A, "Kill", 50, function()
+    A.kill = W.Tab(A, "Kill", 50, function()
         addOk = true
         ns.Refresh()
     end)
     A.kill:SetPoint("LEFT", A.pick, "RIGHT", 6, 0)
-    A.wipe = W.Chip(A, "Wipe", 50, function()
+    A.wipe = W.Tab(A, "Wipe", 50, function()
         addOk = false
         ns.Refresh()
     end)
-    A.wipe:SetPoint("LEFT", A.kill, "RIGHT", 4, 0)
+    A.wipe:SetPoint("LEFT", A.kill, "RIGHT", T.TAB_GAP, 0)
     A.ok = W.Button(A, L["Eintragen"], 90, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
@@ -302,7 +302,7 @@ local function buildLog(f)
         ns.Refresh()
     end)
     A.ok:SetPoint("LEFT", A.wipe, "RIGHT", 10, 0)
-    A.cancel = W.Button(A, L["Abbrechen"], 90, function()
+    A.cancel = W.Link(A, L["Abbrechen"], 90, function()
         adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         ns.Refresh()
@@ -530,7 +530,7 @@ local function buildBench(f)
         self:ClearFocus()
         addBench()
     end)
-    B:Footer({ "hint" })
+    B:Footer({ { "hint", help = true } })
     B.hint:SetText(L["Raider tragen sich mit !bench im Flüster-, Raid- oder Gildenchat selbst ein. Es antwortet die Lootleitung."])
 
     local headFrame, head = B:Columns(BENCH_COLS)
@@ -563,7 +563,7 @@ local function buildBench(f)
     -- the group outside the instance, with a button that enters them all, under the list
     B.outside = W.Text(B, T.FONT.text, 478)
     B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -10)
-    B.all = W.Button(B, L["Alle eintragen"], 100, function()
+    B.all = W.Link(B, L["Alle eintragen"], 100, function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
         local n = 0
@@ -620,7 +620,7 @@ local function buildDiscord(f)
     local top = D:Bands({ "row" })
     D.chips = {}
     for i = 1, MAX_PARTS do
-        local c = W.Chip(D, L["Teil %d"]:format(i), 60, function()
+        local c = W.Tab(D, L["Teil %d"]:format(i), 60, function()
             part = i
             discordText = nil
             ns.Refresh()
@@ -722,7 +722,7 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
             discordText = nil
             ns.Refresh()
         end)
-        f.addBoss = W.Button(f, L["Boss eintragen"], 110, function()
+        f.addBoss = W.Link(f, L["Boss eintragen"], 110, function()
             if not officer() then return end
             local s = chosen()
             if type(s) ~= "table" then
@@ -738,10 +738,10 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
         f:Place(1, { f.raid }, { f.addBoss })
         f.counts = f:Line(2)
         f.views = {}
-        f.views.verlauf = W.Chip(f, L["Verlauf"], 70, function() setView("verlauf") end)
-        f.views.bench = W.Chip(f, L["Ersatzbank"], 110, function() setView("bench") end)
-        f.views.rolls = W.Chip(f, L["Würfe"], 90, function() setView("rolls") end)
-        f.views.discord = W.Chip(f, "Discord", 70, function() setView("discord") end)
+        f.views.verlauf = W.Tab(f, L["Verlauf"], 70, function() setView("verlauf") end)
+        f.views.bench = W.Tab(f, L["Ersatzbank"], 110, function() setView("bench") end)
+        f.views.rolls = W.Tab(f, L["Würfe"], 90, function() setView("rolls") end)
+        f.views.discord = W.Tab(f, "Discord", 70, function() setView("discord") end)
         W.Tooltip(f.views.verlauf, L["Verlauf"], L["Der Ablauf des Raids mit Zeit: Bosse, Kills, Wipes und ihre Dauer."])
         W.Tooltip(f.views.bench, L["Ersatzbank"], L["Wer auf der Ersatzbank steht, seit wann und wie; die Zahl sind die Spieler."])
         W.Tooltip(f.views.rolls, L["Würfe"], L["Die Würfe im Beutefenster des Spiels je Item, mit allen Entscheidungen; die Zahl sind die Items."])

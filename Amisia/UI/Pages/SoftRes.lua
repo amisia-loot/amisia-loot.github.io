@@ -341,7 +341,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         -- remind and post (officers) on the right
         f:Bands({ "row", "line", "row" })
         f.state = W.Text(f, T.FONT.body)
-        f.clear = W.Button(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
+        f.clear = W.Link(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
         f.import = W.Button(f, L["Importieren"], 110, function() ns.ToggleSoftResFrame() end)
         f.take = W.Button(f, L["Liste übernehmen"], 130, function() ns.TakeSoftResOffer() end)
         W.Tooltip(f.take, L["Liste übernehmen"], L["Ersetzt deine Liste durch die neuere, die ein anderer Offizier mit dem Raid geteilt hat."])
@@ -351,15 +351,15 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface
         f:Place(1, { { f.state, fill = true } }, { f.take, f.import, f.clear }, { shown = true })
         f.check = f:Line(2)
         f.views = {}
-        f.views.items = W.Chip(f, "Items", 60, function() chooseView("items") end)
-        f.views.raider = W.Chip(f, L["Raider##Spalte"], 60, function() chooseView("raider") end)
-        f.views.check = W.Chip(f, L["Abgleich"], 70, function() chooseView("check") end)
+        f.views.items = W.Tab(f, "Items", 60, function() chooseView("items") end)
+        f.views.raider = W.Tab(f, L["Raider##Spalte"], 60, function() chooseView("raider") end)
+        f.views.check = W.Tab(f, L["Abgleich"], 70, function() chooseView("check") end)
         for _, c in pairs(f.views) do W.FitChip(c, 60) end
-        f.post = W.Button(f, L["Im Raid posten"], 120, function()
+        f.post = W.Link(f, L["Im Raid posten"], 120, function()
             local n, why = ns.PostSoftResSummary()
             if not n and why then ns.msg(why) end
         end)
-        f.remind = W.Button(f, L["Erinnern"], 110, function() ns.ConfirmSoftResReminders() end)
+        f.remind = W.Link(f, L["Erinnern"], 110, function() ns.ConfirmSoftResReminders() end)
         W.FitChip(f.post, 120)
         W.Tooltip(f.remind, L["Erinnern"], L["Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage."])
         W.Tooltip(f.post, L["Im Raid posten"], L["Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat."])

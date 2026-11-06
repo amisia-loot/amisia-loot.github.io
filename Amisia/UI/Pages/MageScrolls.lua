@@ -345,7 +345,7 @@ local function create(parent)
     f.rank:SetJustifyH("RIGHT")
     f:Place(1, { f.view, { f.counts, fill = true } }, { f.rank })
     -- the hint takes two lines when it needs them, the data line under it
-    f:Footer({ { "hint", lines = 2 }, "data" })
+    f:Footer({ { "hint", lines = 2, help = true }, { "data", help = true } })
 
     f.list = f:List(ROWS, ROW_H, function(r)
         r.sel = W.SelectBar(r)
@@ -357,10 +357,10 @@ local function create(parent)
         r:SetScript("OnClick", function(self) choose(self.item) end)
         r:SetScript("OnEnter", function(self) entryTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    end, fillRow, { top = top, width = T.LAYOUT.SPLIT_LIST_W })
+    end, fillRow, { fill = true, top = top, width = T.LAYOUT.SPLIT_LIST_W })
 
     -- the chosen entry in the inset beside the list, as high as the list
-    local d = f:Detail({ top = top, height = ROWS * ROW_H })
+    local d = f:Detail({ top = top, height = f.list.rowCount * ROW_H })
     f.detail = d
     d.go = W.Button(d, L["Wegpunkt"], 70, function()
         if d.point and ns.MapSetPoint then

@@ -48,6 +48,15 @@ T.CHIP_W = 60         -- W.Chip without a width
 T.CHIP_H = 20
 T.CHIP_PAD = 8        -- a chip's or button's text keeps this much room on each side (W.FitChip)
 T.CHIP_GAP = 4        -- between chips of a row
+-- the quiet text tab (W.Tab, D-67): views and filters as gold words, the chosen one white over a thin gold
+-- line; a filter (opts.check) with the client's small check box before its word
+T.TAB_PAD = 4         -- room left and right of a tab's word
+T.TAB_GAP = 12        -- between two tabs of a row
+T.TAB_LINE = 2        -- the chosen tab's line under its word
+T.TAB_CHECK = 14      -- a filter tab's check box
+T.TAB_CHECK_GAP = 3   -- between the check box and the word
+T.TAB_OFF = { 0.89, 0.72, 0.34 }   -- a tab's word when not chosen (gold, as the client's GameFontNormal)
+T.TAB_ON = { 1, 1, 1 }             -- the chosen tab's word
 T.CHOICE_W = 120      -- W.Choice without a width
 T.FIELD_H = 20        -- edit boxes, search boxes, pickers, steppers
 T.FIELD_CAP = 8       -- the input border's end caps
@@ -65,11 +74,13 @@ T.SCROLLBAR_GAP = 4   -- between a list and its bar
 T.SCROLL_ROOM = 12    -- what a list leaves free at its right for the bar (gap + the client's minimal scroll bar, 8)
 T.HOVER_ALPHA = 0.5   -- the recipe list's hover glow on rows
 T.ROW_SHADE = { 0.025, 0.045 }   -- the faint shade of odd and even list rows
+T.ROW_ACTION_TICK = 0.05   -- how often the row actions (W.RowAction) follow the mouse, seconds
 T.EDIT_W = 60         -- W.TimeBox without a width
 T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 
 -- the width of the page area of the main window (the content inset less its 7 px margin; 478 high)
 T.PAGE_W = 602
+T.PAGE_H = 478   -- the page area under the window's head (MainFrame: content), for lists that fill it
 
 -- The page scaffold (W.Page): every page is built of the same parts, top to bottom: bands (the head
 -- row first, then rows of controls or lines of text), the content (column heads, a list, a detail
@@ -114,10 +125,11 @@ T.MAIN = {
     CONTENT_X = 184,      -- the content inset's left edge
     INNER = 6,            -- the page list inside its inset
     PAGE_PAD = 7,         -- the page inside the content inset
-    HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the button
-    PAUSE_W = 110,
-    VIEW_W = 120, VIEW_GAP = 6,  -- the view switch left of the pause button
-    SETTINGS_W = 100,     -- "Einstellungen" left of the view switch, when the open page has settings (D-49)
+    HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the icons
+    -- the head's right end (D-67): the page's help ("?", the client's help-i) and its settings (the
+    -- quest log's gear, D-49) as small icons, ICON_SIZE square, ICON_GAP apart, ICON_RIGHT from the
+    -- edge; recording and view sit in a menu behind the status line (its arrow MENU_SIZE)
+    ICON_SIZE = 22, ICON_GAP = 6, ICON_RIGHT = 12, MENU_SIZE = 20,
     TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
     TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
     -- the bottom tabs (PanelTabButtonTemplate, as under the character window): the first BTAB_X from
@@ -319,7 +331,8 @@ T.SRIMPORT = {
 }
 
 -- an overview card
-T.CARD ={ PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8 }
+T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8,
+    HOVER_ALPHA = 0.05 }   -- the card under the mouse lights up faintly (a click runs its first action, D-67)
 -- the card "Upgrades: <Slot>" beside the character window (UI/SlotCard.lua, F-125): the best ROWS
 -- items of a slot, each an icon with name and source over each other and the gain at the right
 T.SLOTCARD = { W = 300, PAD = 10, TITLE_H = 24, ROWS = 5, ROW_H = 34, ICON = 26, TEXT_X = 34, GAIN_W = 56,
@@ -637,6 +650,8 @@ T.ATLASES = {
     -- fields, menus, buttons
     "common-search-border-left", "common-search-border-middle", "common-search-border-right",
     "common-dropdown-bg", "auctionhouse-ui-filter-redx",
+    -- the head's settings icon (UIPanelIconDropdownButtonTemplate, Blizzard_SharedXML/Mainline, loaded on Forever)
+    "questlog-icon-setting",
     "common-dropdown-a-button", "common-dropdown-a-button-hover", "common-dropdown-a-button-pressed",
     "common-dropdown-a-button-pressedhover", "common-dropdown-a-button-open", "common-dropdown-a-button-disabled",
     "common-dropdown-a-button-shadowless", "common-dropdown-a-button-hover-shadowless",

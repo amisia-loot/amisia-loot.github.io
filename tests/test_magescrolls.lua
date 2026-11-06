@@ -147,7 +147,7 @@ assert(has(body, "Im Inventar: 2") and has(body, "Weltdrop"), body)
 assert(has(f.detail.title:GetText(), "Schriftrolle: AAA"), f.detail.title:GetText())
 
 -- results view
-f.view:Click()
+f.view:Cycle()
 assert(f.view.current == "results", "view Ergebnisse")
 shown = rows()
 assert(#shown == 2 and has(shown[2].name:GetText(), "Schriftrolle der Testverzauberung"), "the results")
@@ -157,7 +157,7 @@ body = f.detail.body.fs:GetText()
 assert(has(body, "Stufe 16") and has(body, "Im Inventar: 1"), body)
 
 -- library view: helpers, books (done marked), the friend quest, the librarian's waypoint
-f.view:Click()
+f.view:Cycle()
 assert(f.view.current == "library", "view Bibliothek")
 shown = rows()
 local texts2 = {}
@@ -184,7 +184,8 @@ assert(has(body, "Im Inventar: 0") and has(body, "bekannt"), body)
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
 Lay.row("head", f.view, f.counts, f.rank)
 Lay.row("body", f.list, f.detail)
-Lay.column("parts", f.view, f.list, f.hint, f.data)
+Lay.column("parts", f.view, f.list)
+assert(f.hint.isHelp and f.data.isHelp, "hint and data are behind the window's ?")
 Lay.inside("way", f.detail.go)
 Lay.fits(f.rank)
 

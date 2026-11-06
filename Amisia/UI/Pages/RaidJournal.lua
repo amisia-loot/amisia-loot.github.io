@@ -79,7 +79,7 @@ local function create(parent)
     B.why = B:Line(3)
     B:Place(1, { B.spec })
     B:Place(2, { { B.next, fill = true } })
-    B:Footer({ { "hint", lines = 2 } })
+    B:Footer({ { "hint", lines = 2, help = true } })
     -- the list is 590 wide (12 px for its scroll bar)
     local cols = { { "name", 4, 150, "Raid" }, { "size", 158, 44, L["Größe"], justify = "RIGHT" }, { "fit", 210, 78, L["Passung"] },
         { "upgrades", 290, 56, "Upgrades", justify = "RIGHT" }, { "run", 350, 60, L["Je Lauf"], justify = "RIGHT" },
@@ -105,12 +105,12 @@ local function create(parent)
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -132, headerTop)
-    B.way = W.Button(B, L["Wegpunkt"], 120, function()
+    B.way = W.Link(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     W.Row(B, { B.way }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Raids."])
-    B.detail = J.buildDetail(B, DETAIL_ROWS)
+    B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     return B

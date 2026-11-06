@@ -132,7 +132,7 @@ ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], icon = "Interface\\Ic
             local d = StaticPopup_Show("AMISIA_DELETE")
             if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
         end)
-        f.all = W.Button(f, L["Alle wählen"], 100, function()
+        f.all = W.Link(f, L["Alle wählen"], 100, function()
             local all, allOn = ordered(), true
             for _, s in ipairs(all) do if not ns.RaidSelection[s.id] then allOn = false end end
             wipe(ns.RaidSelection)
@@ -193,7 +193,7 @@ ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], icon = "Interface\\Ic
         f.empty = f:Empty()
         f.empty:Set(L["Noch kein Raid aufgezeichnet"], L["Die Aufnahme startet in einer Raidinstanz mit Raidgruppe."])
         -- what the colours of the list mean
-        f:Footer({ "hint" })
+        f:Footer({ { "hint", help = true } })
         f.hint:SetText(L["Graues Datum: exportiert und seitdem unverändert. Orange +N: so viele Raider kamen zu spät."])
         -- the chosen raid under the list; the text ends with the list, its bar lies under the list's
         f.detail = W.ScrollText(f)

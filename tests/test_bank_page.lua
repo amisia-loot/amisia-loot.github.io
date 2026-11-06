@@ -95,19 +95,19 @@ assert(#G.list.items == 4 and has(G.list.rows[1].text:GetText(), "Fraktur legt e
 assert(G.list.rows[1].tab:GetText() == "Mats" and G.list.rows[4].tab:GetText() == "Gold")
 assert(has(G.list.rows[2].text:GetText(), NS.Theme.ORANGE), "a withdrawal stands out")
 assert(has(G.state:GetText(), "4 von 4"), G.state:GetText())
-G.tab:Click()   -- all -> Mats
+G.tab:Cycle()   -- all -> Mats
 assert(#G.list.items == 2, "tab Mats: " .. #G.list.items)
-G.tab:Click(); G.tab:Click()   -- -> Rüstung -> Gold
+G.tab:Cycle(); G.tab:Cycle()   -- -> Rüstung -> Gold
 assert(#G.list.items == 1 and G.list.items[1].y == "repair", "the money log")
-G.tab:Click()   -- back to all
+G.tab:Cycle()   -- back to all
 assert(#G.list.items == 4)
-G.kind:Click()  -- deposits
+G.kind:Cycle()  -- deposits
 assert(#G.list.items == 2, "deposits")
-G.kind:Click()  -- withdrawals
+G.kind:Cycle()  -- withdrawals
 assert(#G.list.items == 1 and G.list.items[1].n == "Vuloo", "withdrawals")
-G.kind:Click(); G.kind:Click()   -- moves, money
+G.kind:Cycle(); G.kind:Cycle()   -- moves, money
 assert(#G.list.items == 1 and G.list.items[1].k == 0, "money")
-G.kind:Click()  -- back to all
+G.kind:Cycle()  -- back to all
 assert(#G.list.items == 4)
 G.search:SetText("anna"); G.search:GetScript("OnEnterPressed")(G.search)
 assert(#G.list.items == 1 and G.list.items[1].n == "Anna Bergmann", "search by name: " .. #G.list.items)

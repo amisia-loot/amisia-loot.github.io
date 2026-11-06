@@ -32,6 +32,7 @@ local function K(f) return f._kind or (type(f.kind) == "string" and f.kind) or n
 -- check box, a scroll frame; nil for plain frames and regions
 local function role(f)
     if K(f) == "FontString" or K(f) == "Texture" then return nil end
+    if f.isTab then return "texttab" end
     if f.SetOn and f.UpdateChip then return "chip" end
     if f.rows and f.Redraw and f.SetItems then return "list" end
     if f.SetValues and f.arrow and f.Open then return "picker" end

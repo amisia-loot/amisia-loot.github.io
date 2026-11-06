@@ -480,7 +480,7 @@ local function buildView(parent, P, opts)
         refreshAll()
     end)
     W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
-    f.resetAll = W.Button(f, L["Alles zurücksetzen"], 128, function()
+    f.resetAll = W.Link(f, L["Alles zurücksetzen"], 128, function()
         if not S.plan then return end
         T.Reset(S.plan)
         save()
@@ -489,29 +489,31 @@ local function buildView(parent, P, opts)
     end)
     W.FitChip(f.live, 104)
     W.FitChip(f.resetAll, 128)
-    -- the plan slot: Primär or Sekundär, a click switches
-    f.slot = W.Choice(f, 84, function(v) chooseSlot(v) end)
-    f.slot:SetValues(SLOTS)
-    W.Tooltip(f.slot, L["Zwei Pläne je Klasse"],
-        L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
+    -- the plan slot: Primär | Sekundär as two text tabs (D-67), a click switches
+    f.slots = {}
+    for i, s in ipairs(SLOTS) do
+        f.slots[i] = W.Tab(f, s[2], nil, function() chooseSlot(s[1]) end)
+        W.Tooltip(f.slots[i], L["Zwei Pläne je Klasse"],
+            L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
+    end
     f.codeLabel = W.Text(f, Theme.FONT.text, 34)
     f.codeLabel:SetText("Code")
     f.code = W.LineEdit(f, 200, function(text) onCode(f, text) end)
     local right
     if opts.bigButton then
         -- the window with the bigger trees (the side tab and /amisia talente gross open it too)
-        f.bigBtn = W.Button(f, L["Talentrechner"], 110, function() ns.ToggleTalentFrame() end)
+        f.bigBtn = W.Link(f, L["Talentrechner"], 110, function() ns.ToggleTalentFrame() end)
         W.FitChip(f.bigBtn, 110)
         W.Tooltip(f.bigBtn, L["Talentrechner"],
             L["Öffnet die Talente in einem eigenen, größeren Fenster (auch /amisia talente gross). Strg + Mausrad über dem Fenster ändert seine Größe."])
         right = { f.bigBtn }
     end
     if opts.hint then
-        f:Footer({ "hint" })
+        f:Footer({ { "hint", help = true } })
         f.hint:SetText(HINT)
     end
     -- the bottom row: load, reset, the share code taking the rest (and the window's button)
-    f:BottomRow({ f.live, f.resetAll, f.slot, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
+    f:BottomRow({ f.live, f.resetAll, f.slots[1], f.slots[2], { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
     W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code oder einen Build-Link von talentsforever.com oder wowforevertalents.com einfügen und Enter drücken übernimmt ihn."])
@@ -534,7 +536,7 @@ refreshView = function(f)
     f.class:SetValue(cls)
     f.level:SetValue(s.level or 60)
     f.talented:SetValue(s.talented or 0)
-    f.slot:SetValue(T.Slot())
+    for i, tab in ipairs(f.slots) do tab:SetOn(SLOTS[i][1] == T.Slot()) end
 
     local plan, pts = S.plan, points()
     local spent = T.Spent(plan)

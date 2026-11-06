@@ -82,7 +82,7 @@ assert(rows[1].name:GetText() == "Vuloo" and rows[1].pr:GetText() == NS.PointsPR
 assert(rows[3].name:GetText() == "Chorf" and has(rows[3].pr:GetText(), NS.PointsPRText(0.4)), "below the minimum: last, red")
 assert(f.pool:IsShown() and has(f.info:GetText(), "Mindest-EP 50"), f.info:GetText())
 f.who:SetValue("Chorf")
-f.pool:Click()
+f.pool:Cycle()
 assert(f.pool.current == "G")
 f.amount:SetText("25")
 f.reason:SetText("Nachtrag GP")

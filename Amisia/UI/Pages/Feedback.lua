@@ -77,6 +77,7 @@ local function buildOut(r)
     end, { height = T.ROW_BUTTON_H })
     W.FitChip(r.retry, S.RETRY_W)
     r.retry:SetPoint("LEFT", S.RETRY_X, 0)
+    W.RowAction(r, r.retry)   -- shown while the mouse is on the row (D-67)
     W.Tooltip(r.retry, L["Nochmal"], L["Versucht die Meldung noch einmal zuzustellen, sobald der Autor online ist."])
 end
 
@@ -87,13 +88,15 @@ local function fillOut(r, e)
     r.state:SetText(STATE_TEXT[e.state] and STATE_TEXT[e.state]() or "")
     r.retry.id = e.id
     show(r.retry, e.state == "lost")
+    -- a lost report's "Nochmal" stays in view: it is the only way to send it again
+    W.PinRowActions(r, e.state == "lost")
 end
 
 local function buildWrite(c)
     c:Bands({ "row", "line" })
     c.kinds = {}
     for _, k in ipairs({ "B", "W" }) do
-        c.kinds[k] = W.Chip(c, KIND_NAMES[k], S.KIND_W, function()
+        c.kinds[k] = W.Tab(c, KIND_NAMES[k], S.KIND_W, function()
             kind = k
             ns.Refresh()
         end)
@@ -243,7 +246,7 @@ local function buildInbox(v)
     v:Bands({ "row" })
     v.filters = {}
     for _, k in ipairs(FILTERS) do
-        v.filters[k] = W.Chip(v, FILTER_NAMES[k], S.FILTER_W, function()
+        v.filters[k] = W.Tab(v, FILTER_NAMES[k], S.FILTER_W, function()
             filter = k
             ns.Refresh()
         end)
@@ -262,7 +265,7 @@ local function buildInbox(v)
     v.detail.icon:SetTexture("Interface\\Icons\\INV_Letter_15")
     v.done = W.Button(v.detail, L["Erledigt"], S.ACTION_W, function() if chosen then toggleDone(chosen) end end)
     W.FitChip(v.done, S.ACTION_W)
-    v.delete = W.Button(v.detail, L["Löschen"], S.ACTION_W, function() if chosen then askDelete(chosen) end end)
+    v.delete = W.Link(v.detail, L["Löschen"], S.ACTION_W, function() if chosen then askDelete(chosen) end end)
     W.FitChip(v.delete, S.ACTION_W)
     v.detail:Buttons({ v.done, v.delete })
     v.empty = v:Empty(LAY.SPLIT_LIST_W, v.list)
@@ -329,8 +332,8 @@ local function build(parent)
     page = f
     f:Bands({ "row" })
     f.views = {
-        inbox = W.Chip(f, L["Eingang"], S.VIEW_W, function() view = "inbox" ns.Refresh() end),
-        write = W.Chip(f, L["Neue Meldung"], S.VIEW_W, function() view = "write" ns.Refresh() end),
+        inbox = W.Tab(f, L["Eingang"], S.VIEW_W, function() view = "inbox" ns.Refresh() end),
+        write = W.Tab(f, L["Neue Meldung"], S.VIEW_W, function() view = "write" ns.Refresh() end),
     }
     W.FitChip(f.views.inbox, S.VIEW_W)
     W.FitChip(f.views.write, S.VIEW_W)

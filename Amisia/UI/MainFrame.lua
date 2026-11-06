@@ -15,7 +15,7 @@ local ROW_H, INDENT = M.NAV_ROW_H, M.NAV_INDENT
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 
-local F, nav, content, statusText, pauseBtn, viewBtn, settingsBtn, search, results, noHits, searchHint, homeBtn
+local F, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
 local navButtons = {}
@@ -115,9 +115,35 @@ local function updateHeader()
     else
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
-    pauseBtn:SetText(ns.IsEnabled() and L["Pausieren"] or L["Fortsetzen"])
-    viewBtn:SetText(ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"])
     settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
+    -- the "?" sits left of the gear, or at the edge when the page has no settings
+    helpBtn:ClearAllPoints()
+    if settingsBtn:IsShown() then
+        helpBtn:SetPoint("RIGHT", settingsBtn, "LEFT", -M.ICON_GAP, 0)
+    else
+        helpBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
+    end
+end
+
+-- The "?" shows only when the open page has explanations (footer lines with help = true, D-67);
+-- after the page's refresh, which writes them.
+local function updateHelp()
+    helpBtn:SetShown(#W.HelpLines(content) > 0)
+end
+
+-- The menu behind the status line (D-67): the recording and the view, which were two red buttons in
+-- the head. Each entry says what a click does; its tip says more.
+local function headMenu()
+    return {
+        { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
+            ns.SetEnabled(not ns.IsEnabled())
+            ns.Refresh()
+        end, tip = ns.IsEnabled()
+            and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du sie hier fortsetzt (oder im Schnellmenü der Minimap, /amisia pause)."]
+            or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] },
+        { ns.IsOfficerView() and L["Zur Raider-Ansicht"] or L["Zur Offiziersansicht"], function() ns.ToggleView() end,
+          tip = L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] },
+    }
 end
 
 -- The view switch in the head: a click shows the other view (and sets it, as the setting
@@ -690,26 +716,42 @@ local function build()
     restorePosition()
     ns.ApplyScale()
 
-    -- the head: the recording state as plain text between the portrait and the button, on the
-    -- frame's own ground (a dark bar there did not fit the window's look)
-    local BAR_W = WIDTH - M.HEAD_X - 10 - M.PAUSE_W - M.VIEW_GAP - M.VIEW_W - M.VIEW_GAP - M.SETTINGS_W - 12
-    local bar = CreateFrame("Frame", nil, F)
+    -- the head (D-67): the recording state as plain text, centred between the portrait and the icons,
+    -- on the frame's own ground (a dark bar there did not fit the window's look); a click on it or on
+    -- its arrow opens the menu with the recording and the view. Right: "?" and the gear, no red buttons.
+    local BAR_W = WIDTH - M.HEAD_X - M.ICON_RIGHT - 2 * (M.ICON_SIZE + M.ICON_GAP)
+    local bar = CreateFrame("Button", nil, F)
     bar:SetSize(BAR_W, M.HEAD_H)
     bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
-    statusText = W.Text(bar, T.FONT.body, BAR_W - 20)
-    statusText:SetPoint("CENTER", bar, "CENTER", 0, 0)
+    statusBar = bar
+    statusText = W.Text(bar, T.FONT.body)
+    statusText:SetPoint("CENTER", bar, "CENTER", -(M.MENU_SIZE + M.ICON_GAP) / 2, 0)
     statusText:SetJustifyH("CENTER")
     if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
-    pauseBtn = W.Button(F, L["Pausieren"], M.PAUSE_W, function()
-        ns.SetEnabled(not ns.IsEnabled())
-        ns.Refresh()
+    local function openMenu() W.Menu(menuBtn, headMenu()) end
+    menuBtn = W.ArrowButton(bar, "down", M.MENU_SIZE, openMenu)
+    menuBtn:SetPoint("LEFT", statusText, "RIGHT", M.ICON_GAP, 0)
+    bar:SetScript("OnClick", openMenu)
+    -- the status line still moves the window, as the head did before it took the mouse
+    bar:RegisterForDrag("LeftButton")
+    bar:SetScript("OnDragStart", function() F:StartMoving() end)
+    bar:SetScript("OnDragStop", function()
+        F:StopMovingOrSizing()
+        savePosition()
     end)
-    pauseBtn:SetPoint("TOPRIGHT", -10, -M.HEAD_Y)
-    W.Tooltip(pauseBtn, L["Raid-Aufnahme"], function()
-        return ns.IsEnabled()
-            and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du hier auf \"Fortsetzen\" klickst (oder im Schnellmenü der Minimap, /amisia pause)."]
-            or L["Die Raid-Aufnahme ist pausiert. \"Fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."]
-    end)
+    local function statusTip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
+        GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
+            or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(ns.IsOfficerView() and L["Ansicht: Offiziere"] or L["Ansicht: Raider"], 0.85, 0.85, 0.85)
+        GameTooltip:AddLine(L["Klick: pausieren, fortsetzen oder die Ansicht wechseln."], 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end
+    bar:SetScript("OnEnter", statusTip)
+    bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    menuBtn:HookScript("OnEnter", statusTip)
+    menuBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     -- the portrait: a click opens the overview from every tab (the window's "home")
     local portrait = F.PortraitContainer and F.PortraitContainer.portrait or F.portrait
     if portrait then
@@ -728,21 +770,32 @@ local function build()
         end)
         W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Bild öffnet die Übersicht, von jedem Reiter aus."])
     end
-    viewBtn = W.Button(F, L["Raider-Ansicht"], M.VIEW_W, function() ns.ToggleView() end)
-    viewBtn:SetPoint("TOPRIGHT", pauseBtn, "TOPLEFT", -M.VIEW_GAP, 0)
-    W.Tooltip(viewBtn, L["Ansicht"], L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."])
-    -- the settings of the open page (D-49): shown only when it has some
-    settingsBtn = W.Button(F, L["Einstellungen"], M.SETTINGS_W, function() ns.ShowSettingsFor(current) end)
-    settingsBtn:SetPoint("TOPRIGHT", viewBtn, "TOPLEFT", -M.VIEW_GAP, 0)
+    -- the settings of the open page (D-49): the quest log's gear, shown only when it has some
+    settingsBtn = W.IconButton(F, M.ICON_SIZE, { atlas = "questlog-icon-setting" }, function() ns.ShowSettingsFor(current) end,
+        L["E##Einstellungen"])
+    settingsBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
     settingsBtn:SetScript("OnEnter", function(self)
         local names = {}
         for _, sec in ipairs(ns.SettingsSectionsOf(current)) do names[#names + 1] = sec.label end
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(L["Einstellungen: %s"]:format(table.concat(names, ", ")), 1, 0.82, 0, true)
+        GameTooltip:AddLine(L["Einstellungen"], 1, 0.82, 0)
+        GameTooltip:AddLine(table.concat(names, ", "), 0.85, 0.85, 0.85, true)
         GameTooltip:Show()
     end)
     settingsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     settingsBtn:Hide()
+    -- the open page's explanations (D-67): the client's help sign, as on its own windows
+    helpBtn = W.IconButton(F, M.ICON_SIZE, { file = "Interface\\common\\help-i" }, nil, "?")
+    helpBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
+    helpBtn:SetScript("OnEnter", function(self)
+        local p = ns.Panel(current)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(p and p.label or L["Hilfe"], 1, 0.82, 0)
+        for _, line in ipairs(W.HelpLines(content)) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    helpBtn:Hide()
 
     -- the page list in an inset with the recipe list's ground, the page in an inset beside it
     local listInset = W.Inset(F)
@@ -798,7 +851,7 @@ local function build()
     end
     for _, g in ipairs(ns.PANEL_GROUPS) do bottomTabs[g.key] = bottomTab(g) end
     -- test hooks and the parts the layout tests read
-    F.statusBar, F.statusText, F.pauseBtn, F.viewBtn, F.settingsBtn = bar, statusText, pauseBtn, viewBtn, settingsBtn
+    F.statusBar, F.statusText, F.menuBtn, F.helpBtn, F.settingsBtn, F.headMenu = statusBar, statusText, menuBtn, helpBtn, settingsBtn, headMenu
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
     F.sideTabs, F.navOrder, F.tabs, F.tabOrder = sideTabs, {}, bottomTabs, {}
     F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
@@ -865,6 +918,7 @@ function ns.Refresh()
         local ok, err = pcall(p.refresh, frame)
         if not ok then reportError(err) end
     end
+    updateHelp()
 end
 
 -- A refresh at the next frame for data changes (a loot line, an award, a sync, a roster snapshot, a

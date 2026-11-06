@@ -105,14 +105,18 @@ assert(F.noHits:IsShown() and has(F.noHits:GetText(), "ab 3 Zeichen"), F.noHits:
 type_("")
 
 ---------------------------------------------------------------------------
--- the pause button's tooltip
+-- the status line's tooltip and its menu (recording and view, D-67)
 ---------------------------------------------------------------------------
-F.pauseBtn.scripts.OnEnter(F.pauseBtn)
-assert(has(tipText(), "Raid-Aufnahme") and has(tipText(), "Fortsetzen"), tipText())
-NS.SetEnabled(false); NS.Refresh()
-F.pauseBtn.scripts.OnEnter(F.pauseBtn)
+F.statusBar.scripts.OnEnter(F.statusBar)
+assert(has(tipText(), "Raid-Aufnahme") and has(tipText(), "Aufnahme an") and has(tipText(), "Klick: pausieren"), tipText())
+local menu = F.headMenu()
+assert(menu[1][1] == "Aufnahme pausieren" and has(menu[1].tip, "fortsetzt"), menu[1][1])
+menu[1][2]()
+assert(not NS.IsEnabled() and F.headMenu()[1][1] == "Aufnahme fortsetzen", "paused from the menu")
+F.statusBar.scripts.OnEnter(F.statusBar)
 assert(has(tipText(), "pausiert"), tipText())
-NS.SetEnabled(true); NS.Refresh()
+F.headMenu()[1][2]()
+assert(NS.IsEnabled(), "resumed from the menu")
 
 ---------------------------------------------------------------------------
 -- the portrait opens the overview from any tab

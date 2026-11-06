@@ -5,6 +5,19 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): a tidier interface with one red button per view (F-140)
+
+  The window head has no red buttons any more: the raid status sits in the middle with a small arrow that
+  opens a menu to pause or resume the recording and to switch the view, and the right end holds a gear for
+  the page's settings and the game's "i" for the page's help. The grey explanations at the bottom of many
+  pages moved into that "i", and their lists now reach the bottom. Views and choices are quiet gold words
+  (the chosen one white and underlined), on/off filters have a small check box, values to pick in the
+  settings are dropdowns, and every action but a view's main one is a quiet link. Overview cards open with a
+  click anywhere on them. Row buttons such as "Map", "Waypoint", "Wish" and "Invite" show only while the
+  mouse is on their row. The side windows follow the same line: the gear table, the goals window, sign-up,
+  raid calendar, soft-reserve import, setup, the officers' roll window ("Award" always shows on the winner)
+  and the award dialog.
+
 ## [v2.60.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.60.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.59.0...v2.60.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-140 Aufgeräumte Oberfläche: Fensterkopf, Hilfe, Textreiter, ein roter Knopf je Ansicht
+- Version: 2.61.0
+- Status: gebaut
+- Prüfung: Wenn du das Fenster öffnest, dann stehen oben keine roten Knöpfe mehr: in der Mitte der Raid-Status mit einem kleinen Pfeil (ein Klick: Menü mit "Aufnahme pausieren" und "Zur Offiziersansicht"), rechts das Zahnrad (nur auf Seiten mit Einstellungen) und das "i" der Hilfe.
+- Prüfung: Wenn du auf Karte, Quests, Berufe oder Dungeons mit der Maus über das "i" oben rechts fährst, dann stehen dort die Erklärungen, die vorher grau unten standen, und die Liste reicht bis an den unteren Rand.
+- Prüfung: Wenn du auf Ausrüstung, Dungeons, Berufe oder Aufstellung die Ansichten wechselst (Ziele/Hier/Wunschliste, Bosse/Quests, Rezepte/Route, Abgleich/Planer/Einladen), dann sind das goldene Wörter, das gewählte weiß und unterstrichen, und Filter wie "Quests" oder "Lernbar" haben ein kleines Häkchenfeld.
+- Prüfung: Wenn du über eine Zeile auf Karte, Quests, Ausrüstung (Hier), im Lauf-Planer oder in "Einladen" fährst, dann erscheint ihr Knopf ("Karte", "Wegpunkt", "Wunsch", "Einladen"); ohne Maus ist die Liste reiner Text.
+- Prüfung: Wenn du die Übersicht ansiehst, dann hat keine Karte einen roten Knopf; ein Klick irgendwo auf eine Karte öffnet ihre Seite, und unter Einstellungen sind Auswahlen wie "Ansagekanal" Dropdowns.
+- Notiz: Schritt 3 räumte auch die Seitenfenster auf (Ausrüstungstabelle, Ziele, Anmeldung, Raid-Kalender, Soft-Reserve-Import, Einrichtung, Offiziers-Würfelfenster, Vergabe-Dialog); prüfen beim nächsten Raid: "Vergeben" steht beim Gewinner immer, bei den anderen unter der Maus.
+- Notiz: Wunsch des Nutzers 2026-11-06 ("finde das ganze ui zu unübersichtlich keine klare linie und so ist so voll nicht aufgeräumt", dann "Ja, Schritt 1", dann "Erst Schritt 2"); D-67. Schritt 3 auf "Erst Schritt 3". Rote Knöpfe und Chips auf den Seitenbildern: 1471 vorher, 280 nach Schritt 2, 147 nach Schritt 3 (`ui_layout.py red`, seit Schritt 3 mit den Seitenfenstern: 200 auf 273 Bildern).
+
 ### F-126 Raid-Teil auf TBC Anniversary und Classic Era
 - Version: 2.57.0
 - Status: gebaut

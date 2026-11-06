@@ -39,12 +39,12 @@ assert(shownRows() == all and page.found:GetText() == "", "cleared: the chosen s
 
 -- the view switch in the head
 local F = NS.MainFrame and NS.MainFrame() or AmisiaFrame
-local btn = F.viewBtn
-assert(btn and btn:GetText() == "Raider-Ansicht", tostring(btn and btn:GetText()))
-btn:Click()
-assert(NS.Get("ui.view") == "officer" and NS.IsOfficerView() and btn:GetText() == "Offiziersansicht", btn:GetText())
-btn:Click()
-assert(NS.Get("ui.view") == "raider" and btn:GetText() == "Raider-Ansicht")
+local entry = F.headMenu()[2]
+assert(entry[1] == "Zur Offiziersansicht", entry[1])
+entry[2]()
+assert(NS.Get("ui.view") == "officer" and NS.IsOfficerView() and F.headMenu()[2][1] == "Zur Raider-Ansicht", F.headMenu()[2][1])
+F.headMenu()[2][2]()
+assert(NS.Get("ui.view") == "raider" and F.headMenu()[2][1] == "Zur Offiziersansicht")
 
 -- /amisia ansicht
 STUB.messages = {}

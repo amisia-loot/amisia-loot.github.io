@@ -417,7 +417,8 @@ local function buildMatch(row)
     row.level:SetJustifyH("RIGHT")
     row.chips = {}
     for c = 1, MAX_CHIPS do
-        local chip = W.Chip(row, "", 60, function(self)
+        -- a decision of the row as a quiet link (D-67): "Bestätigen" or the right name
+        local chip = W.Link(row, "", 60, function(self)
             local it = self:GetParent().item
             if it and self.pick then
                 say(ns.LineupConfirm(curNight(), it.i, self.pick ~= true and self.pick or nil))
@@ -445,7 +446,7 @@ local function placeChips(row, from)
         if chip:IsShown() then
             chip:ClearAllPoints()
             chip:SetPoint("LEFT", x, 0)
-            x = x + chip:GetWidth() + T.CHIP_GAP
+            x = x + chip:GetWidth() + T.TAB_GAP
         end
     end
 end
@@ -525,6 +526,7 @@ local function buildInv(row)
         say(ok, why)
         ns.Refresh()
     end)
+    W.RowAction(row, row.chip)   -- shown while the mouse is on the row (D-67)
     row.chip:SetPoint("LEFT", INV_ACT_X, 0)
     row.chip:SetOn(false)
     W.FitChip(row.chip, 70, INV_CHIP_MAX)
@@ -695,12 +697,12 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             night, selected = v, nil
             ns.Refresh()
         end)
-        f.pasteBtn = W.Button(f, L["Einfügen"], 90, function()
+        f.pasteBtn = W.Link(f, L["Einfügen"], 90, function()
             view = view == "paste" and "match" or "paste"
             ns.Refresh()
             if view == "paste" then f.paste.box:SetFocus() else f.paste.box:ClearFocus() end
         end)
-        f.calBtn = W.Button(f, L["Aus Kalender"], 80, function()
+        f.calBtn = W.Link(f, L["Aus Kalender"], 80, function()
             if view == "calendar" then
                 view = "match"
                 ns.Refresh()
@@ -710,7 +712,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         end)
         W.FitChip(f.calBtn, 80)
         W.Tooltip(f.calBtn, L["Aus Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
-        f.auto = W.Button(f, L["Automatisch einteilen"], 160, function()
+        f.auto = W.Link(f, L["Automatisch einteilen"], 160, function()
             local placed, over = ns.LineupAutoAssign(curNight())
             selected, view = nil, "planner"
             local n = ns.LineupNight(curNight(), false)
@@ -724,9 +726,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.counts = f:Line(2)
         f.calLine = f:Line(3)
         f.views = {
-            match = W.Chip(f, L["Abgleich"], 70, function() view, selected = "match", nil ns.Refresh() end),
-            planner = W.Chip(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
-            invite = W.Chip(f, L["Einladen"], 70, function() view, selected = "invite", nil ns.Refresh() end),
+            match = W.Tab(f, L["Abgleich"], 70, function() view, selected = "match", nil ns.Refresh() end),
+            planner = W.Tab(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
+            invite = W.Tab(f, L["Einladen"], 70, function() view, selected = "invite", nil ns.Refresh() end),
         }
         for _, c in pairs(f.views) do W.FitChip(c, 70) end
         -- the instance of the "ID" marks (raid IDs, F-099); shown when any ID is known
@@ -736,11 +738,11 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             ns.Refresh()
         end)
         W.Tooltip(f.raidIdPick, L["Raid-ID"], L["Für diese Instanz trägt jeder Name ein \"ID\": grün frei, rot gesperrt, grau unbekannt. Der Tooltip nennt Bosse, Reset und die freien Twinks."])
-        f.rematch = W.Button(f, L["Neu abgleichen"], 120, function()
+        f.rematch = W.Link(f, L["Neu abgleichen"], 120, function()
             local line = ns.LineupRematch(curNight())
             if line then ns.msg(line) end
         end)
-        f.bench = W.Button(f, L["Ersatz auf die Ersatzbank"], 180, function()
+        f.bench = W.Link(f, L["Ersatz auf die Ersatzbank"], 180, function()
             ns.msg(ns.LineupBenchMessage(ns.LineupBench(curNight())))
         end)
         W.Tooltip(f.bench, L["Ersatz auf die Ersatzbank"], L["Trägt \"Ersatz\" und Überzählige, die online sind, mit der Notiz \"Aufstellung\" auf die Ersatzbank des Abends ein (wie /amisia ersatz)."])
@@ -751,7 +753,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             ns.msg(count and L["%d Namen von %s übernommen."]:format(count, nightLabel(from):match("^(.-) %(") or from) or why)
         end)
         f.take = W.Button(f, L["Übernehmen"], 110, function() apply(f) end)
-        f.cancel = W.Button(f, L["Abbrechen"], 100, function()
+        f.cancel = W.Link(f, L["Abbrechen"], 100, function()
             view = "match"
             f.paste.box:ClearFocus()
             ns.Refresh()
@@ -763,13 +765,13 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             ns.Refresh()
         end)
         W.Tooltip(f.inviteAll, L["Alle einladen"], L["Lädt alle eingeteilten Spieler ein, die online und noch nicht in der Gruppe sind (Gäste nur mit der Einstellung). Allein oder in einer Gruppe erst vier, nach dem ersten Beitritt wird es ein Raid. Nur außerhalb des Kampfes, als Leiter oder Assistent."])
-        f.again = W.Button(f, L["Nochmal einladen"], 140, function()
+        f.again = W.Link(f, L["Nochmal einladen"], 140, function()
             local count, why = ns.LineupInvite(curNight(), "again")
             if count then ns.msg(L["Nochmal eingeladen: %d Spieler."]:format(count)) else say(nil, why) end
             ns.Refresh()
         end)
         W.Tooltip(f.again, L["Nochmal einladen"], L["Lädt alle mit \"abgelehnt\", \"keine Antwort\" oder \"schon in Gruppe\" noch einmal ein, einmal pro Klick; höchstens 3 Einladungen pro Name und Abend."])
-        f.sortBtn = W.Button(f, L["Gruppen sortieren"], 130, function()
+        f.sortBtn = W.Link(f, L["Gruppen sortieren"], 130, function()
             local ok, why = ns.LineupSort(curNight())
             if not ok then say(nil, why) end
             ns.Refresh()
@@ -778,7 +780,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.calTake = W.Button(f, L["Übernehmen"], 110, takeCalendar)
         W.Tooltip(f.calTake, L["Übernehmen"], L["Liest die Teilnehmerliste des gewählten Ereignisses in die Aufstellung seiner Nacht. Bleibt die Seite offen, liest Amisia sie bei Änderungen neu."])
         for _, b in ipairs({ f.rematch, f.bench, f.take, f.cancel, f.calTake, f.inviteAll, f.again, f.sortBtn }) do W.FitChip(b, 100) end
-        f:Footer({ { "hint", lines = 2 } })
+        f:Footer({ { "hint", lines = 2, help = true } })
         -- the paste field
         f.paste = W.EditArea(f)
         f.paste:SetPoint("TOPLEFT", 0, top)

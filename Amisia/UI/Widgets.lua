@@ -66,12 +66,19 @@ function W.Row(parent, items, gap, x, y, opts)
     local at, placed = x or 0, false
     local first, last, step = 1, #items, 1
     if right then first, last, step = #items, 1, -1 end
-    local pendingGap
+    local pendingGap, prev
     for i = first, last, step do
         local f, own, ownY = rowEntry(items[i])
         if f and not (onlyShown and not f:IsShown()) then
-            -- the gap that belongs between two items stands before the right one of them
-            if placed then at = at + ((right and pendingGap or own) or gap or 0) end
+            -- the gap that belongs between two items stands before the right one of them; two text
+            -- tabs keep at least their own gap (D-67), whatever a chip row asked for
+            if placed then
+                local g = (right and pendingGap or own) or gap or 0
+                if f.isTab and prev and prev.isTab and g < T.TAB_GAP then g = T.TAB_GAP end
+                at = at + g
+            end
+            prev = f
+            if f.isTab then f.replace = function() W.Row(parent, items, gap, x, y, opts) end end
             f:ClearAllPoints()
             f:SetPoint(point, parent, point, right and -at or at, ownY or y or 0)
             at = at + (f:GetWidth() or 0)
@@ -121,6 +128,11 @@ end
 -- Sizes a chip or a red button to its text and the padding on both sides (pad, else the theme's),
 -- at least minW wide and at most maxW (both optional). Returns the width.
 function W.FitChip(b, minW, maxW, pad)
+    -- a text tab is as wide as its word (D-67): no minimum, its own cap unless one is given
+    if b.isTab then
+        if maxW then b.maxW = maxW end
+        return b:Fit()
+    end
     local fs = b.label or b.Text or (b.GetFontString and b:GetFontString())
     local text = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
     local w = text + 2 * (pad or T.CHIP_PAD)
@@ -223,6 +235,205 @@ function W.ResetButton(parent, size, onClick)
     return b
 end
 
+-- A quiet text tab (D-67) with the chip's interface (SetOn, on, label, dim, SetOver, UpdateChip), so a
+-- page swaps W.Chip for W.Tab and keeps its logic: views and filters as gold words, the chosen one white
+-- over a thin gold line (as the client's settings tabs). opts.check: an on/off filter with the client's
+-- small check box (MinimalCheckboxTemplate, not clickable itself) before its word instead of the line.
+-- Its width follows its word (W.FitChip ignores a minimum for tabs); width only caps it.
+function W.Tab(parent, label, width, onClick, opts)
+    local b = CreateFrame("Button", nil, parent)
+    b.isTab = true
+    -- the width a chip was given is no limit for a word: a tab is as wide as its word (a cap only
+    -- through W.FitChip's maxW)
+    b:SetHeight(T.CHIP_H)
+    local x = T.TAB_PAD
+    if opts and opts.check then
+        b.box = W.Toggle(b, nil)
+        b.box:SetSize(T.TAB_CHECK, T.TAB_CHECK)
+        b.box:SetPoint("LEFT", T.TAB_PAD, 0)
+        if b.box.EnableMouse then b.box:EnableMouse(false) end
+        x = T.TAB_PAD + T.TAB_CHECK + T.TAB_CHECK_GAP
+    end
+    b.textX = x
+    b.label = W.Text(b, T.FONT.text)
+    b.label:SetPoint("LEFT", x, 0)
+    b.label:SetJustifyH("LEFT")
+    -- a page that writes the word straight into the label (a count) still gets a tab that fits it
+    local setLabel = b.label.SetText
+    b.label.SetText = function(fs, t)
+        setLabel(fs, t)
+        if b.Fit then b:Fit() end
+    end
+    b.line = b:CreateTexture(nil, "ARTWORK")
+    b.line:SetHeight(T.TAB_LINE)
+    b.line:SetPoint("BOTTOMLEFT", b.label, "BOTTOMLEFT", 0, -3)
+    b.line:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 1)
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetPoint("TOPLEFT", 0, 0)
+    hl:SetPoint("BOTTOMRIGHT", 0, 0)
+    hl:SetColorTexture(1, 1, 1, 0.06)
+    function b:Fit()
+        local w = self.textX + (self.label:GetStringWidth() or 0) + T.TAB_PAD
+        if self.maxW and w > self.maxW then w = self.maxW end
+        local before = self:GetWidth()
+        self:SetWidth(w)
+        self.line:SetWidth(math.max(1, math.min(self.label:GetStringWidth() or 0, w - self.textX - T.TAB_PAD)))
+        -- a new word (a count) changes the width: the row it sits in places its items again
+        if self.replace and before and math.abs(before - w) > 0.5 then self.replace() end
+        return w
+    end
+    function b:SetText(t)
+        self.label:SetText(t or "")
+    end
+    function b:GetText() return self.label:GetText() end
+    function b:UpdateChip()
+        local on, over = self.on, self.chipOver
+        if self.box then
+            self.box:SetChecked(on)
+            -- a filter that cannot be used now: its box greyed with its word
+            self.box:SetAlpha(((self.IsEnabled and not self:IsEnabled()) or self.dim) and 0.5 or 1)
+            self.line:Hide()
+        else
+            self.line:SetShown(on and true or false)
+        end
+        local c
+        if (self.IsEnabled and not self:IsEnabled()) or self.dim then
+            c = T.TEXT_DISABLED
+        elseif on or over then
+            c = T.TAB_ON
+        else
+            c = T.TAB_OFF
+        end
+        self.label:SetTextColor(c[1], c[2], c[3])
+    end
+    function b:SetOn(on)
+        self.on = on
+        self:UpdateChip()
+    end
+    function b:SetOver(on)
+        self.chipOver = on
+        self:UpdateChip()
+    end
+    b:HookScript("OnEnter", function(self) self:SetOver(true) end)
+    b:HookScript("OnLeave", function(self) self:SetOver(false) end)
+    -- a page that sets its own hover scripts (a tooltip) keeps the white word under the mouse
+    local setScript = b.SetScript
+    b.SetScript = function(self, kind, fn)
+        if fn and (kind == "OnEnter" or kind == "OnLeave") then
+            local on = kind == "OnEnter"
+            local own = fn
+            fn = function(f, ...)
+                f:SetOver(on)
+                return own(f, ...)
+            end
+        end
+        return setScript(self, kind, fn)
+    end
+    b:HookScript("OnEnable", function(self) self:UpdateChip() end)
+    b:HookScript("OnDisable", function(self) self:UpdateChip() end)
+    b:SetText(label)
+    b:SetOn(true)
+    if onClick then b:SetScript("OnClick", onClick) end
+    return b
+end
+
+-- A quiet action (D-67): a gold word that lights up under the mouse, for every action of a view but
+-- its one red button ("Warum?", "Alle auf Karte", "Öffnen" on a card). The text tab's look without a
+-- chosen state; label, SetText, Click, Enable/Disable as a button.
+function W.Link(parent, label, width, onClick)
+    -- as wide as its word: a width meant for a red button would cut it
+    local b = W.Tab(parent, label, nil, onClick)
+    b.isLink = true
+    b:SetOn(false)
+    b.SetOn = function(self) self.on = false; self:UpdateChip() end
+    return b
+end
+
+-- An on/off filter as a text tab with the client's small check box before its word (D-67).
+function W.TabCheck(parent, label, width, onClick)
+    return W.Tab(parent, label, width, onClick, { check = true })
+end
+
+-- A small icon button of the client, without a red ground (D-67): art.atlas (with the client's
+-- additive highlight, as UIPanelIconDropdownButtonTemplate) or art.file (a texture). Without either
+-- the fallback text in gold, so the button stays usable after a patch renamed the art.
+function W.IconButton(parent, size, art, onClick, fallback)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size, size)
+    local function paint(tex)
+        if art.atlas and hasAtlas(art.atlas) then
+            tex:SetAtlas(art.atlas)
+            return true
+        elseif art.file then
+            tex:SetTexture(art.file)
+            if art.coords then tex:SetTexCoord(unpack(art.coords)) end
+            return true
+        end
+        return false
+    end
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetAllPoints()
+    if paint(b.icon) then
+        local hl = b:CreateTexture(nil, "HIGHLIGHT")
+        hl:SetAllPoints()
+        paint(hl)
+        hl:SetBlendMode("ADD")
+        hl:SetAlpha(0.4)
+    else
+        b.icon:Hide()
+        b.label = W.Text(b, T.FONT.title)
+        b.label:SetPoint("CENTER")
+        b.label:SetText(fallback or "?")
+    end
+    if onClick then b:SetScript("OnClick", onClick) end
+    return b
+end
+
+-- Row actions (D-67): a button of a list row ("Karte", "Wunsch", "Entfernen") shows only while the
+-- mouse is on its row, so a list reads as text and the action is there where you point. Only the
+-- alpha follows the mouse: the fill code shows and hides the button as before, and a button at
+-- alpha 0 is never clicked by chance, because the mouse is on its row as soon as it is on the button.
+-- row.actionsPinned (W.PinRowActions) keeps them visible, as for the chosen row. One driver checks
+-- the shown rows a few times a second; rows need no mouse scripts of their own.
+local actionRows = setmetatable({}, { __mode = "k" })
+local actionDriver
+local function syncActions(row)
+    local on = row.actionsPinned or (row.IsMouseOver ~= nil and row:IsMouseOver()) or false
+    if row.actionsOn == on then return end
+    row.actionsOn = on
+    for _, b in ipairs(row.rowActions) do b:SetAlpha(on and 1 or 0) end
+end
+function W.RowAction(row, btn)
+    if not row.rowActions then
+        row.rowActions = {}
+        actionRows[row] = true
+    end
+    row.rowActions[#row.rowActions + 1] = btn
+    btn:SetAlpha(row.actionsPinned and 1 or 0)
+    row.actionsOn = row.actionsPinned and true or false
+    if not actionDriver then
+        actionDriver = CreateFrame("Frame")
+        local wait = 0
+        actionDriver:SetScript("OnUpdate", function(_, elapsed)
+            wait = wait - (elapsed or 0)
+            if wait > 0 then return end
+            wait = T.ROW_ACTION_TICK
+            W.SyncRowActions()
+        end)
+    end
+    return btn
+end
+-- One pass of the driver: every visible row with actions follows the mouse (tests call it directly).
+function W.SyncRowActions()
+    for r in pairs(actionRows) do
+        if r:IsVisible() then syncActions(r) end
+    end
+end
+function W.PinRowActions(row, on)
+    row.actionsPinned = on and true or nil
+    if row.rowActions then syncActions(row) end
+end
+
 -- A toggle chip in the classic look of the window: the client's small red button
 -- (SharedButtonSmallTemplate, as "Pausieren" and the profession window's "Erstellen"). On: the
 -- button as it is, gold text. Off: the same button darkened, grey text. Press, hover and disabled
@@ -279,27 +490,33 @@ function W.Chip(parent, label, width, onClick)
     return b
 end
 
--- A chip that cycles through its values on click.
+-- A value field to choose from (the client's dropdown, D-67).
 function W.Choice(parent, width, onChange)
-    local c = W.Chip(parent, "", width or T.CHOICE_W)
-    function c:SetValues(values) self.values = values end
-    function c:SetValue(v)
-        self.current = v
-        for _, x in ipairs(self.values or {}) do
-            if x[1] == v then self.label:SetText(x[2]) end
-        end
+    -- a value to choose (D-67): the client's dropdown field (W.Picker) instead of a red button that
+    -- went to the next value on each click. values = { { value, text }, ... } as before; c.current
+    -- holds the chosen value; c:Cycle() picks the next one (as a click did, for tests and keys).
+    local c
+    c = W.Picker(parent, width or T.CHOICE_W, function(v)
+        c:SetValue(v)
+        if onChange then onChange(v) end
+    end)
+    c.isChoice = true
+    local setValues = c.SetValues
+    function c:SetValues(values)
+        self.choices = values or {}
+        local list = {}
+        for _, x in ipairs(self.choices) do list[#list + 1] = { value = x[1], text = x[2] } end
+        setValues(self, list)
+        if self.current ~= nil then self:SetValue(self.current) end
     end
-    c:SetScript("OnClick", function(self)
-        local vals, idx = self.values or {}, 0
-        for i, x in ipairs(vals) do
-            if x[1] == self.current then idx = i end
+    function c:Cycle()
+        local vals, idx = self.choices or {}, 0
+        for k, x in ipairs(vals) do
+            if x[1] == self.current then idx = k end
         end
         local nextValue = vals[idx % math.max(1, #vals) + 1]
-        if nextValue then
-            self:SetValue(nextValue[1])
-            if onChange then onChange(nextValue[1]) end
-        end
-    end)
+        if nextValue then self.onPick(nextValue[1]) end
+    end
     return c
 end
 
@@ -993,8 +1210,9 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
     return f
 end
 
--- An overview card: an inset with a gold title, two lines and at most two red buttons (the second
--- right of the first, c:SetAction2; c:SetAction(nil) hides both).
+-- An overview card: an inset with a gold title, two lines and at most two actions as quiet links (the
+-- second right of the first, c:SetAction2; c:SetAction(nil) hides both); a click on the card runs the
+-- first (D-67).
 function W.Card(parent, width, height)
     local C = T.CARD
     local c = W.Inset(parent)
@@ -1006,11 +1224,28 @@ function W.Card(parent, width, height)
     c.line1:SetPoint("TOPLEFT", C.PAD, -C.LINE1_Y)
     c.line2 = W.Text(c, T.FONT.hint, width - 2 * C.PAD, true)
     c.line2:SetPoint("TOPLEFT", C.PAD, -C.LINE2_Y)
-    c.button = W.Button(c, "", C.BUTTON_W)
-    c.button:SetPoint("BOTTOMLEFT", C.PAD, C.BUTTON_Y)
-    c.button2 = W.Button(c, "", C.BUTTON2_W)
-    c.button2:SetPoint("LEFT", c.button, "RIGHT", T.LAYOUT.ITEM_GAP, 0)
+    -- the actions as quiet links (D-67); a click anywhere on the card runs the first one
+    c.button = W.Link(c, "", C.BUTTON_W)
+    c.button:SetPoint("BOTTOMLEFT", C.PAD - T.TAB_PAD, C.BUTTON_Y)
+    c.button2 = W.Link(c, "", C.BUTTON2_W)
+    c.button2:SetPoint("LEFT", c.button, "RIGHT", T.TAB_GAP, 0)
     c.button2:Hide()
+    c.glow = c:CreateTexture(nil, "ARTWORK")
+    c.glow:SetPoint("TOPLEFT", 3, -3)
+    c.glow:SetPoint("BOTTOMRIGHT", -3, 3)
+    c.glow:SetColorTexture(1, 1, 1, C.HOVER_ALPHA)
+    c.glow:Hide()
+    if c.EnableMouse then c:EnableMouse(true) end
+    c:SetScript("OnEnter", function(self) if self.button:IsShown() then self.glow:Show() end end)
+    -- the glow stays while the mouse moves onto the card's own links
+    c:SetScript("OnLeave", function(self) if not self:IsMouseOver() then self.glow:Hide() end end)
+    for _, link in ipairs({ c.button, c.button2 }) do
+        link:HookScript("OnLeave", function() if not c:IsMouseOver() then c.glow:Hide() end end)
+    end
+    -- a press that leaves the card before the release runs nothing
+    c:SetScript("OnMouseUp", function(self, mouse)
+        if mouse == "LeftButton" and self.button:IsShown() and self:IsMouseOver() then self.button:Click() end
+    end)
     function c:SetAction(label, fn)
         if label then
             self.button:SetText(label)
@@ -1019,12 +1254,12 @@ function W.Card(parent, width, height)
         else
             self.button:Hide()
             self.button2:Hide()
+            self.glow:Hide()
         end
     end
     function c:SetAction2(label, fn)
         if label then
             self.button2:SetText(label)
-            W.FitChip(self.button2, C.BUTTON2_W)
             self.button2:SetScript("OnClick", fn)
             self.button2:Show()
         else
@@ -1497,7 +1732,9 @@ end
 --                            body; d:Buttons(list) puts red buttons at its bottom right.
 --   p:Empty(width, anchor)   the empty state, centred over anchor (the last list, else the content).
 --   p:Footer(spec)           the lines at the bottom, listed top to bottom: { "hint", "data" } makes
---                            p.hint over p.data; { "hint", lines = 2 } a hint of two lines.
+--                            p.hint over p.data; { "hint", lines = 2 } a hint of two lines;
+--                            { "hint", help = true } an explanation the window's "?" shows instead
+--                            (D-67; not on a page of its own width, a side window has no "?").
 --   p:BottomRow(left, right) a row of controls right above the footer (at the bottom without one).
 --   p:Bottom()               the content's lower end, as a BOTTOM offset (above the bottom row and
 --                            the footer, GAP apart).
@@ -1532,6 +1769,7 @@ end
 
 local function gapOf(a, b)
     if b.gap then return b.gap end
+    if a.f.isTab and b.f.isTab then return T.TAB_GAP end
     if isChip(a.f) and isChip(b.f) then return T.CHIP_GAP end
     return LAY.ITEM_GAP
 end
@@ -1571,6 +1809,10 @@ local function placeIn(band, width, left, right, opts, role)
     end
     for _, it in ipairs(R) do it.f.layoutRole, it.f.layoutBand = role, band end
     for _, it in ipairs(Lf) do it.f.layoutRole, it.f.layoutBand = role, band end
+    -- a text tab that changes its width later (W.Tab:Fit) places this band again
+    local function again() placeIn(band, width, left, right, opts, role) end
+    for _, it in ipairs(R) do if it.f.isTab then it.f.replace = again end end
+    for _, it in ipairs(Lf) do if it.f.isTab then it.f.replace = again end end
 end
 
 function Scaffold:Bands(spec)
@@ -1671,6 +1913,12 @@ end
 function Scaffold:List(rows, rowH, build, fill, opts)
     opts = opts or {}
     local top = opts.top or self.listTop or self.top or 0
+    -- opts.fill: as many rows as fit down to the content's lower end (p:Bottom()), at least rows; the
+    -- room the footer's explanations left when they moved behind the "i" (D-67) goes to the list
+    if opts.fill and not self.pageW then
+        local room = T.PAGE_H + (self.offsetY or 0) + top - self:Bottom() - (opts.below or 0)
+        rows = math.max(rows, math.floor(room / rowH))
+    end
     local list = W.List(self, rows, rowH, build, fill, opts)
     list:SetPoint("TOPLEFT", opts.x or 0, top)
     if opts.width then list:SetWidth(opts.width) else list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top) end
@@ -1691,6 +1939,30 @@ function Scaffold:Empty(width, anchor)
     return e
 end
 
+-- The scaffolds with help lines, in the order they were built (W.HelpLines walks them).
+local helpOwners, helpOrder = setmetatable({}, { __mode = "k" }), {}
+
+-- The texts of the help lines of the visible scaffolds under root, in build order (the window's "?").
+function W.HelpLines(root)
+    local out = {}
+    for _, p in ipairs(helpOrder) do
+        if p:IsVisible() then
+            local up, inside = p, false
+            while up do
+                if up == root then inside = true break end
+                up = up:GetParent()
+            end
+            if inside then
+                for _, fs in ipairs(p.helpLines) do
+                    local t = not fs.helpOff and fs:GetText()
+                    if t and t ~= "" then out[#out + 1] = t end
+                end
+            end
+        end
+    end
+    return out
+end
+
 function Scaffold:Footer(spec)
     local foot = self.footFrame or CreateFrame("Frame", nil, self)
     foot:ClearAllPoints()
@@ -1698,19 +1970,45 @@ function Scaffold:Footer(spec)
     local y = 0
     for k = #spec, 1, -1 do
         local s = spec[k]
-        local name, lines = s, 1
-        if type(s) == "table" then name, lines = s[1], s.lines or 1 end
+        local name, lines, help = s, 1, false
+        if type(s) == "table" then name, lines, help = s[1], s.lines or 1, s.help and not self.pageW end
         local h = LAY.LINE_H * lines
         local fs = self[name] or W.Text(foot, T.FONT.hint, nil, lines > 1)
-        fs:ClearAllPoints()
-        fs:SetPoint("BOTTOMLEFT", foot, "BOTTOMLEFT", LAY.TEXT_X, y)
-        fs:SetPoint("TOPRIGHT", foot, "BOTTOMRIGHT", -LAY.TEXT_X, y + h)
-        if lines > 1 then fs:SetMaxLines(lines) end
-        -- the width the anchors give, also set (a refresh may measure the text against it)
-        fs:SetWidth((self.pageW or T.PAGE_W) - 2 * LAY.TEXT_X)
-        fs.layoutRole = "foot"
-        self[name] = fs
-        y = y + h
+        if help then
+            -- an explanation (D-67): not drawn; the window's "?" shows it (W.HelpLines). The page
+            -- keeps writing it as before.
+            fs:ClearAllPoints()
+            fs:Hide()
+            if not fs.isHelp then
+                -- a page that shows or hides the line (a view without it) now switches it in the "i"
+                -- only: the line itself stays hidden and unanchored
+                fs.isHelp = true
+                fs.Show = function(line) line.helpOff = nil end
+                fs.Hide = function(line) line.helpOff = true end
+                fs.SetShown = function(line, on) line.helpOff = not on or nil end
+            end
+            self.helpLines = self.helpLines or {}
+            local known = false
+            for _, f in ipairs(self.helpLines) do known = known or f == fs end
+            if not known then self.helpLines[#self.helpLines + 1] = fs end
+            if not helpOwners[self] then
+                helpOwners[self] = true
+                helpOrder[#helpOrder + 1] = self
+            end
+            self[name] = fs
+            h = nil
+        end
+        if h then
+            fs:ClearAllPoints()
+            fs:SetPoint("BOTTOMLEFT", foot, "BOTTOMLEFT", LAY.TEXT_X, y)
+            fs:SetPoint("TOPRIGHT", foot, "BOTTOMRIGHT", -LAY.TEXT_X, y + h)
+            if lines > 1 then fs:SetMaxLines(lines) end
+            -- the width the anchors give, also set (a refresh may measure the text against it)
+            fs:SetWidth((self.pageW or T.PAGE_W) - 2 * LAY.TEXT_X)
+            fs.layoutRole = "foot"
+            self[name] = fs
+            y = y + h
+        end
     end
     foot:SetPoint("BOTTOMLEFT", 0, 0)
     foot:SetPoint("BOTTOMRIGHT", 0, 0)
@@ -1782,6 +2080,7 @@ function W.Page(parent, opts)
     if view then
         -- opts.head: a view that fills the page (one per mode) and has the head row itself
         p.isView = not opts.head
+        p.offsetY = (parent.offsetY or 0) + (opts.top or parent.top or 0)
         p:SetPoint("TOPLEFT", 0, opts.top or parent.top or 0)
         p:SetPoint("BOTTOMRIGHT", 0, 0)
         p.layoutRole = "view"

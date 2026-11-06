@@ -278,9 +278,9 @@ local function build(parent)
     page = f
     local top = f:Bands({ "row", "row" })
     f.views = {
-        hist = W.Chip(f, L["Verlauf"], 70, function() state().view = "hist" ns.Refresh() end),
-        board = W.Chip(f, L["Rangliste"], 70, function() state().view = "board" ns.Refresh() end),
-        classes = W.Chip(f, L["Klassen"], 70, function() state().view = "classes" ns.Refresh() end),
+        hist = W.Tab(f, L["Verlauf"], 70, function() state().view = "hist" ns.Refresh() end),
+        board = W.Tab(f, L["Rangliste"], 70, function() state().view = "board" ns.Refresh() end),
+        classes = W.Tab(f, L["Klassen"], 70, function() state().view = "classes" ns.Refresh() end),
     }
     for _, c in pairs(f.views) do W.FitChip(c, 70) end
     f.tourButton = W.Button(f, L["Turnier starten"], 110, function()
@@ -292,13 +292,13 @@ local function build(parent)
     end)
     W.FitChip(f.tourButton, 110)
     W.Tooltip(f.tourButton, L["Turnier"], L["Die Duelle zwischen \"Turnier starten\" und \"Turnier beenden\" gehören zum Turnier; \"Nur Turnier\" zeigt nur sie (das laufende oder das letzte)."])
-    f.tourChip = W.Chip(f, L["Nur Turnier"], 80, function()
+    f.tourChip = W.TabCheck(f, L["Nur Turnier"], 80, function()
         state().tour = (not state().tour) or nil
         ns.Refresh()
     end)
     W.FitChip(f.tourChip, 80)
     W.Tooltip(f.tourChip, L["Nur Turnier"], L["Zeigt Verlauf, Rangliste und Klassen nur für das laufende oder letzte Turnier."])
-    f.specChip = W.Chip(f, L["Nach Spezialisierung"], S.SPEC_CHIP_W, function()
+    f.specChip = W.TabCheck(f, L["Nach Spezialisierung"], S.SPEC_CHIP_W, function()
         state().spec = (not state().spec) or nil
         ns.Refresh()
     end)
@@ -319,7 +319,7 @@ local function build(parent)
         if query ~= player then player = nil end
         ns.Refresh()
     end, L["Spieler suchen"])
-    f.who = W.Button(f, L["Klassen suchen (%d)"]:format(0), 130, function()
+    f.who = W.Link(f, L["Klassen suchen (%d)"]:format(0), 130, function()
         local ok, why = ns.Duels.WhoAsk()
         if not ok and why then ns.msg(why) end
         ns.Refresh()

@@ -504,13 +504,13 @@ local function build()
     F.signup = W.Button(F, L["Anmelden ..."], R.BUTTON_W, function()
         if cur then ns.ShowSignup(cur) end
     end)
-    F.lineup = W.Button(F, L["Zur Aufstellung"], R.BUTTON_W, function()
+    F.lineup = W.Link(F, L["Zur Aufstellung"], R.BUTTON_W, function()
         if cur and ns.ShowLineup then ns.ShowLineup("match", cur) end
     end)
     W.FitChip(F.lineup, R.BUTTON_W)
     W.Tooltip(F.lineup, L["Zur Aufstellung"], L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."])
     -- the main window's calendar page at this date; this window closes (the page shows the same)
-    F.page = W.Button(F, L["Im Kalender zeigen"], R.BUTTON_W, function()
+    F.page = W.Link(F, L["Im Kalender zeigen"], R.BUTTON_W, function()
         local night = cur
         if not night or not ns.ShowCalendar then return end
         F:Hide()

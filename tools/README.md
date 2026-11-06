@@ -118,6 +118,7 @@ the anchors, checks the rules and draws.
 ```
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
 python3 tools/ui_layout.py rules [--locale deDE]
+python3 tools/ui_layout.py red [--write]
 ```
 
 - Shots: every registered page in the raider, officer and expert view (with the gear page's views,
@@ -152,6 +153,11 @@ python3 tools/ui_layout.py rules [--locale deDE]
     footer ends at the page's bottom and nothing of the content reaches into it; every empty state
     (`W.EmptyState`) is placed by the scaffold (`p:Empty`). The scaffold tags its parts
     (`layoutRole`, `layoutBand`), `tests/uidump.lua` hands the tags over.
+  - **red** (D-67): a page shows no more red buttons and chips than its budget in
+    `tools/ui_red_budget.json` (the target is one per view). A row action waiting for the mouse
+    (`W.RowAction`, alpha 0) does not count, nor does the window's head. `ui_layout.py red` lists
+    every page's count against its budget; `red --write` lowers the budget to the counts and adds new
+    pages, never raises one (a higher count is a decision: edit the file by hand and say why).
 - Text widths are estimated (`tests/textwidth.py`, shared with the stub's `GetStringWidth`):
   per-character advances close to Friz Quadrata, on the safe side, times the font object's size
   (Arial Narrow faces narrower), times the locale's factor. `LOCALES` in `ui_layout.py` holds the

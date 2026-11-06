@@ -45,9 +45,9 @@ ns.RegisterPanel{ key = "rolls", label = "Rolls", icon = "Interface\\Icons\\INV_
         f.open = W.Button(f, L["Roll-Fenster"], 120, function() ns.ShowRollFrame() end)
         W.FitChip(f.open, 120)
         f:Place(1, { { f.current, fill = true } }, { f.open })
-        f:Footer({ { "hint", lines = 2 } })
+        f:Footer({ { "hint", lines = 2, help = true } })
         f.headFrame, f.heads = f:Columns(COLS)
-        f.list = f:List(ROWS, ROW_H, function(r) W.Cells(r, COLS) end, function(r, round) r.text:SetText(roundLine(round)) end)
+        f.list = f:List(ROWS, ROW_H, function(r) W.Cells(r, COLS) end, function(r, round) r.text:SetText(roundLine(round)) end, { fill = true })
         f.empty = f:Empty()
         page = f
         return f

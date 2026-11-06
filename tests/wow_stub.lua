@@ -764,6 +764,7 @@ STUB.atlases = {
     ["Professions_Recipe_Active"] = { 270, 20 },
     ["Professions_Recipe_Hover"] = { 270, 20 },
     ["common-insideframe"] = { 420, 420 },
+    ["questlog-icon-setting"] = { 15, 16 },   -- UIPanelIconDropdownButtonTemplate (SharedXML/Mainline)
     ["Professions-skillbar-bg"] = { 453, 18 },
     ["Professions-skillbar-frame"] = { 451, 29 },
     ["common-dropdown-bg"] = { 128, 128 },
