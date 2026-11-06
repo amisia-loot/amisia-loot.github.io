@@ -1,7 +1,8 @@
 -- The quest path on the page Dungeons (F-135, UI/Pages/Dungeons.lua): one row per dungeon quest with
 -- "Weg 1/3" and the dungeon mark for a start inside; a click opens the quest path in place of the
--- list ("< Zurück zu den Quests"): the head (title, dungeon and level, progress, rewards, the next
--- step and "Nächsten Schritt auf der Karte"), a card per step (state, "Schritt 2 von 3", Annehmen
+-- list in the quest journal (F-138, "< Zurück zu den Dungeons"): the dungeon's quests on the left, the
+-- chosen one on the right (title, level, state, progress, reward tiles, the next step and "Nächsten
+-- Schritt auf der Karte"), a card per step (state, "Schritt 2 von 3", Annehmen
 -- and Abgeben with "Karte" where a place is known, Voraussetzung, Ziel, the marks), the next step
 -- highlighted, done steps faded; the row's tooltip names the progress and the next step; another
 -- dungeon or a /reload shows the list again (nothing saved).
@@ -70,16 +71,28 @@ NS.MapClearTarget()
 rows[500]:Click()
 local V = B.pathView
 assert(V:IsShown() and not B.list:IsShown() and not B.art:IsShown() and not B.detail:IsShown() and not B.parts.quests:IsShown())
+assert(not B.next:IsShown() and not B.why:IsShown(), "the journal covers all under the head row")
 assert(NS.MapTarget() == nil, "opening the path sets no target")
-assert(V.back:GetText() == "< Zurück zu den Quests" and V.map:GetText() == "Nächsten Schritt auf der Karte")
+assert(V.back:GetText() == "< Zurück zu den Dungeons" and V.map:GetText() == "Nächsten Schritt auf der Karte")
+-- the journal (F-138): the dungeon's image, its quests on the left with the chosen one marked
+assert(V.art:IsShown() and V.art.title:GetText() == "The Deadmines" and has(V.art.info:GetText(), "Quests: 2, offen: 2"), V.art.info:GetText())
+local jrows = {}
+for _, r in ipairs(V.list.rows) do if r:IsShown() and r.item then jrows[r.item.qid] = r end end
+assert(jrows[500] and jrows[530], "both quests in the journal's list")
+assert(jrows[500].sel:IsShown() and not jrows[530].sel:IsShown(), "the chosen quest is marked")
+assert(jrows[500].title:GetText() == "Final Quest" and has(plain(jrows[500].sub:GetText()), "Weg 1/3"), plain(jrows[500].sub:GetText()))
+assert(has(jrows[530].sub:GetText(), "|A:Dungeon:"), "a start inside: the dungeon mark")
 assert(V.title:GetText() == "Final Quest", V.title:GetText())
-assert(V.info:GetText() == "Dungeon-Quest · The Deadmines · Stufe 18 (ab 14) · Weg: 1 von 3 Schritten erledigt", V.info:GetText())
-assert(V.rewardLabel:IsShown() and V.rewards[1]:IsShown() and has(V.rewards[1].text:GetText(), "Defiashelm"), "the reward in the head")
+assert(V.info:GetText() == "Stufe 18 (ab 14) · noch nicht annehmbar · Weg 1/3", V.info:GetText())
+assert(V.rewardLabel:IsShown() and V.rewards[1]:IsShown() and has(V.rewards[1].text:GetText(), "Defiashelm"), "the reward tile")
+assert(V.rewards[1].icon.texture ~= nil, "the reward's icon")
+assert(has(V.pathLabel:GetText(), "Weg: 1 von 3 Schritten erledigt"), V.pathLabel:GetText())
 assert(plain(V.nextLine:GetText()) == "Nächster Schritt: 2. Choice A bei Choice Giver, Westfall 20, 30", plain(V.nextLine:GetText()))
 -- the cards: 501 (done), 502 (next, one of two), 504 (a breadcrumb), 500
 local c1, c2, c3, c4 = V.cards[1], V.cards[2], V.cards[3], V.cards[4]
 assert(c1:IsShown() and c4:IsShown() and not (V.cards[5] and V.cards[5]:IsShown()), "four cards")
 assert(plain(c1.title:GetText()) == "1. Root" and c1.step:GetText() == "Schritt 1 von 3" and c1:GetAlpha() < 1, "done: faded")
+assert(not c1.lines[1].value:IsShown() and c1:GetHeight() < c2:GetHeight(), "done: folded to its head")
 assert(has(c1.icon.texture or "", "ReadyCheck-Ready"), tostring(c1.icon.texture))
 assert(c2.glow:IsShown() and not c1.glow:IsShown() and not c4.glow:IsShown(), "the next step is highlighted")
 assert(c2.lines[1].label:GetText() == "Annehmen:" and c2.lines[1].value:GetText() == "bei Choice Giver, Westfall 20, 30" and c2.lines[1].btn:IsShown())
@@ -104,8 +117,14 @@ assert(has(B.hint:GetText(), "Karte: Weltkarte und Wegpunkt"), B.hint:GetText())
 -- the path is not saved: nothing in the settings names it
 for k, v in pairs(AmisiaDB.settings.bis) do assert(not has(tostring(k), "path") and v ~= 500, "saved: " .. tostring(k)) end
 
--- a quest inside: the dungeon mark and "im Dungeon"; "Karte" leads to the entrance
-B:OpenPath({ qid = 530, q = { title = "Inside Job" } })
+-- a quest inside: the dungeon mark and "im Dungeon"; "Karte" leads to the entrance. A click in the
+-- journal's list shows it on the right, the list stays.
+jrows[530]:Click()
+assert(V:IsShown() and V.title:GetText() == "Inside Job", V.title:GetText())
+for _, r in ipairs(V.list.rows) do
+    if r.item and r.item.qid == 530 then assert(r.sel:IsShown(), "the clicked quest is marked") end
+    if r.item and r.item.qid == 500 then assert(not r.sel:IsShown(), "the other one no longer") end
+end
 assert(V:IsShown() and V.cards[1]:IsShown() and not V.cards[2]:IsShown())
 assert(has(V.cards[1].lines[1].value:GetText(), "|A:Dungeon:") and plain(V.cards[1].lines[1].value:GetText()) == " im Dungeon, bei Inside Giver", V.cards[1].lines[1].value:GetText())
 assert(V.cards[1].lines[1].btn:IsShown(), "inside: the map button goes to the entrance")

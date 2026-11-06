@@ -236,6 +236,26 @@ T.MAPPAGE = {
 -- the page Berufe (F-051) and its route (F-137): the head row's profession picker, the chips
 -- "Rezepte | Route", the search and the rank; the route's steps (two lines per card: what, then the
 -- expected crafts and reagents; the cost at the right, a tick on done steps) and its shopping list
+-- the quest journal of a dungeon (UI/Pages/Dungeons.lua, F-138): a view under the page's head row:
+-- its own row ("< Zurück", "Nächsten Schritt auf der Karte"), the dungeon's image (ART_Y), then from
+-- CONTENT_Y the quests as cards of two lines on the left (LIST_W, ROWS of ROW_H) and the chosen
+-- quest in an inset on the right (DETAIL_X to the page's edge, as high as the list): its mark and
+-- title, the info line, then scrolling the next step's box, the reward tiles (two per row), the XP
+-- and the quest path's step cards (their fields over their text; done steps folded to the head)
+T.DJOURNAL = {
+    ART_Y = 26, CONTENT_Y = 78,
+    ROWS = 9, ROW_H = 37, LIST_W = 232, DETAIL_X = 248,
+    -- a card of the list: the state mark, title (gold) and the state word right of it; level, path,
+    -- start mark under it, the upgrade's gain at the right
+    MARK = 16, MARK_X = 6, MARK_Y = -4, TEXT_X = 26, LINE1_Y = -5, LINE2_Y = -21, RIGHT_PAD = 6,
+    -- the inset: its mark, title and info line; the scrolling body below BODY_Y
+    PAD = 8, ICON = 20, TITLE_X = 34, TITLE_Y = -8, INFO_Y = -28, BODY_Y = 46,
+    SECTION_GAP = 8,           -- between the parts of the body
+    LABEL_H = 16,              -- a gold label line ("Belohnung:", "Questweg:")
+    BOX_PAD = 6,               -- the next step's text inside its box
+    TILE_H = 34, TILE_ICON = 28, TILE_GAP = 4, TILE_TEXT_X = 34,
+}
+
 T.PROFPAGE = {
     PICKER_W = 170, MODE_W = 56, SEARCH_W = 150, RANK_W = 120,
     VENDOR_W = 70, TAB_W = 64,

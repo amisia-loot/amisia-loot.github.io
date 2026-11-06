@@ -926,6 +926,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du eine Quest annimmst, dann steht ihr Zieltext beim nächsten Öffnen des Questwegs unter dem Schritt, und nach dem Abgeben steht dort "Abgeben: bei <NPC>, <Zone> x, y".
 - Notiz: Spec `docs/specs/2026-11-05-questweg.md` (freigegeben 2026-11-05).
 
+### F-138 Quest-Journal eines Dungeons
+- Version: 2.59.0
+- Status: gebaut
+- Prüfung: Wenn du auf der Seite Dungeons bei "Quests" eine Quest anklickst, dann stehen links alle Quests des Dungeons (die angeklickte hervorgehoben) und rechts ihr Titel, "Nächster Schritt", die Belohnungen als Kacheln mit Symbol, die EP und ihr Questweg.
+- Prüfung: Wenn du links eine andere Quest anklickst, dann wechselt nur die rechte Seite.
+- Prüfung: Wenn eine Belohnung ein Upgrade ist, dann steht in ihrer Kachel und in der Zeile der Quest links der Zuwachs in Grün.
+- Prüfung: Wenn ein Schritt des Questwegs erledigt ist, dann zeigt seine Karte nur noch die Kopfzeile mit Haken.
+- Prüfung: Wenn du "< Zurück zu den Dungeons" klickst, dann siehst du wieder die Dungeon-Liste mit den Quests.
+- Notiz: Spec `docs/specs/2026-11-06-dungeon-quest-journal.md` (Wunsch des Nutzers 2026-11-06 mit Bild eines anderen Dungeon-Journals). Ersetzt die Ansicht des Questwegs von F-135 (dessen Schrittkarten stehen jetzt rechts im Journal).
+
 ### F-136 Questweg: Fundorte von Start-Gegenständen im Dungeon
 - Version: 2.56.0
 - Status: gebaut

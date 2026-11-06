@@ -34,8 +34,9 @@ for _, r in ipairs(B.detail.rows) do if r.item and r.item.qid == 500 then row = 
 assert(plain(row.way:GetText()) == "Path 1/3", plain(row.way:GetText()))
 row:Click()
 local V = B.pathView
-assert(V.back:GetText() == "< Back to the quests" and V.map:GetText() == "Next step on the map", V.back:GetText())
-assert(has(V.info:GetText(), "Dungeon quest · The Deadmines · level ") and has(V.info:GetText(), " · Path: 1 of 3 steps done"), V.info:GetText())
+assert(V.back:GetText() == "< Back to the dungeons" and V.map:GetText() == "Next step on the map", V.back:GetText())
+assert(has(V.info:GetText(), "Level ") and has(V.info:GetText(), " · Path 1/3") and has(V.pathLabel:GetText(), "Path: 1 of 3 steps done"), V.info:GetText())
+assert(has(V.art.info:GetText(), "Quests: 1, open: 1") and has(V.pathLabel:GetText(), "Quest path:"), V.art.info:GetText())
 assert(plain(V.nextLine:GetText()) == "Next step: 2. Choice A at Choice Giver, Westfall 20, 30", plain(V.nextLine:GetText()))
 local c2, c3, c4 = V.cards[2], V.cards[3], V.cards[4]
 -- the spots (hand-kept hints, D-65) in English, under "Accept"

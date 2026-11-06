@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): a quest journal for each dungeon (F-138)
+
+  A click on a dungeon quest now opens the dungeon's quest journal: all its quests on the left as cards
+  with the game's quest mark, level, path progress and the upgrade gain, the chosen quest on the right
+  with its next step, the rewards as tiles with icon and gain, the XP and the quest path. Click another
+  quest on the left to switch without going back; done steps of the path fold to one line.
+
 ## [v2.58.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.58.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.57.0...v2.58.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
