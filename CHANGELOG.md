@@ -16,6 +16,68 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
   step of each dungeon quest path, also as a "!" on the world map. "Items ohne Ort" opens a list with the
   reason and who can craft them; the target is a card with distance, direction and a turning arrow; rows
   have a "Karte" button; names Amisia saw in the game are shown in German.
+- fix(chat): chat commands and guild names with the realm ending (F-019, F-023, F-032)
+
+  Chat commands like !sr, !bench, !dkp, !bid, !need, !greed and !pass now find the player when the client
+  writes the sender as "Name-Realm": the own realm's ending is dropped, the answer still goes to the sender.
+  Your own echoed line is no longer taken for a command, and the classic guild roster stores names without
+  the own realm, so those members are recognised in the group.
+- fix(chat): announcements and whispers on TBC Anniversary and Classic Era (F-126)
+
+  Where only the old chat function exists, Amisia now sends its raid announcements, roll countdowns and
+  whispers instead of dropping them silently.
+- fix(rolls): roll window for rounds of other loot addons in a five-man group (F-092)
+
+  In a five-man group the group leader is now recognised as the loot lead, so roll rounds announced in
+  party chat open the roll window again.
+- fix(settings): raiders reach "Wer braucht das?" and "Loot-Prio" (F-103)
+
+  The head button "Einstellungen" now offers both sections on the Vergaben page, and "Loot-Prio" on the gear
+  page, so raiders, who don't see the officers' Rolls page, can reach them.
+- fix(gear): item tooltips no longer replaced while the item is still loading (F-039)
+
+  An item the client knows but had not loaded yet showed Amisia's scan tooltip ("der Server beschreibt
+  dieses Item nicht") and lost Amisia's own lines. Now only items missing from the client's item table get
+  the scan tooltip; a loading item keeps the normal tooltip and is shown again once its data arrives.
+- fix(duels): "Klassen suchen" no longer closes a who list the player opened (F-106)
+
+  If the player opened the who list or sent an own /who while Amisia's question waited for its answer,
+  Amisia closed the list when the answer came. Now it only closes the list its own answer opened.
+- perf: smoother gear swaps, members page and duels
+
+  Swapping a gear set refreshes the gear page, the Gear Goals window and the slot card once instead of once
+  per slot (about 15 ms instead of 170 ms in the test client). A new character's first login no longer
+  builds the stat weights (about 1 MB). World map pins wait two seconds after a bag change before redrawing.
+  The members page reuses its rows for search, filters and sorting (about 2 ms instead of 26 ms with 800
+  members), and learning a duellist's class or tree no longer re-reads every duel (0.4 ms instead of 26 ms).
+- feat(ui): Raid tab in the order of a raid night, "Raids" becomes "Raid-Archiv" (F-094, F-013, F-017)
+
+  The Raid tab lists its pages as a raid night runs: Übersicht, Aufstellung, Soft-Reserves and Raid-Check
+  before, Rolls, Vergaben and Raid-Log during, Punkte, Statistik, Raid-Archiv and Export after. The officers'
+  page of recorded raids is now called "Raid-Archiv", so "Raids" is only the raid journal in Ausrüstung, and
+  Export moved next to it. "Löschen (n)" and "Angekreuzte (n)" show how many raids are ticked and are grey
+  without any, "Alle wählen" turns into "Keine wählen", a footer explains the grey date and the orange +N,
+  and an empty export box says what each button fills in.
+- feat(ui): search finds pages by keywords and lists commands (F-095)
+
+  Pages and settings sections are found by German and English keywords ("dkp" finds Punkte, "wegpunkt"
+  the map, "bis" the gear page). A new group "Befehle" lists the /amisia commands from three characters; a
+  click writes the command into the chat line. The search box's tooltip says what it finds from how many
+  characters, one typed character shows "Noch 1 Zeichen", and results keep their scroll place while data
+  changes during a raid.
+- feat(ui): quick menu follows the tabs, portrait opens the overview (F-004, F-003)
+
+  The minimap's right-click menu lists the window's tabs; a click shows that tab's pages (Kalender,
+  Aufstellung, Berufe, Quests, Talente, Dungeons and the rest) in the same menu, with "Zurück". A click on
+  the Amisia portrait opens Übersicht from any tab, and overview cards all say "Öffnen"; the raiders' last
+  raid card opens the Raid-Log.
+- feat(ui): clearer buttons and tooltips across the pages (F-022, F-015, F-048, F-039, F-049)
+
+  Every set-a-waypoint button says "Wegpunkt", the guild bank's remove button "Entfernen", and buttons that
+  open a window carry its name ("Ausrüstungsziele", "Talentrechner", "Raid-Kalender", "Aus Kalender"). The
+  Raid-Log drops its duplicate "Discord-Text" button and explains its views; Vergaben explains MS, OS, SR and
+  "ohne" (was "-"); the gear page's view chips, "Pausieren" and the side tabs have tooltips; an empty quest
+  list no longer mentions checkboxes and offers "Filter zurücksetzen".
 
 ## [v2.56.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.56.0) (2026-11-06)
 

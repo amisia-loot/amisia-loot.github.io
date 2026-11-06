@@ -68,15 +68,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Ansicht auf "Raider" stellst, dann fehlt unter "Gilde" die Seite Export; die Reiter passen auch auf einem englischen Client nebeneinander ("Raid", "Gear", "Guild", "Calendar", "Amisia").
 - Notiz: Spec docs/specs/2026-10-11-fenster-reiter-kalender.md; DECISIONS D-45. Die Reiter sind die Vorlage des Spiels (`PanelTabButtonTemplate`); ein Reiter ohne sichtbare Seite fehlt. Gemerkt in `settings.window.tab` und `pages`.
 - Notiz: 2.29.0: die Seiten links unter den Reitern stehen als Balken der Kategorienliste des Auktionshauses (21 px, ohne Symbole); in der Suche ist eine Gruppe ein Balken, ihre Treffer eingerückte Unterbalken (D-06, Nachtrag D-45).
+- Notiz: 2.57.0: Reiter Raid in der Reihenfolge einer Raidnacht (davor, währenddessen, danach); die Offiziersseite "Raids" heißt "Raid-Archiv", Export steht daneben im Reiter Raid (Nachtrag D-45).
 
 ### F-095 Suchfeld oben links im Hauptfenster
 - Version: 2.27.0
 - Status: gebaut
 - Prüfung: Wenn du oben links ins Suchfeld "experten" tippst, dann wird die Seitenliste zur Ergebnisliste mit der Leiste "Einstellungen 1" und dem Eintrag "Expertenmodus"; ein Klick öffnet die Einstellungen mit "Expertenmodus" im Suchfeld der Seite, und das Suchfeld oben links ist wieder leer.
-- Prüfung: Wenn du "ra" tippst, dann stehen unter "Seiten" die passenden Seiten (in der Offiziersansicht "Raids" und "Raid-Log"), unter "Einstellungen" höchstens 8 Einträge und in der Offiziersansicht unter "Spieler" Namen aus deinen Raids; ein Klick auf einen Spieler öffnet die Statistik mit ihm unter der Liste.
+- Prüfung: Wenn du "ra" tippst, dann stehen unter "Seiten" die passenden Seiten (in der Offiziersansicht "Raid-Archiv" und "Raid-Log"), unter "Einstellungen" höchstens 8 Einträge und in der Offiziersansicht unter "Spieler" Namen aus deinen Raids; ein Klick auf einen Spieler öffnet die Statistik mit ihm unter der Liste.
 - Prüfung: Wenn du den Namen eines Items tippst, das in deinen Raids fiel (mindestens drei Buchstaben), dann steht es unter "Items"; die Maus darauf zeigt seinen Tooltip, ein Klick setzt den Link in die Chatzeile.
 - Prüfung: Wenn du nur einen Buchstaben tippst, dann bleibt die Seitenliste; bei "qqqxx" steht "Nichts gefunden."; Escape oder das X im Feld leeren es und die Seitenliste kommt zurück. Ein Klick auf einen Reiter (auch den gewählten) leert es ebenso und zeigt die Seiten dieses Reiters.
 - Notiz: DECISIONS D-45. Items nur mit Namen, die der Client schon kennt (keine Frage an den Server); die Spielersuche gibt es nur in der Offiziersansicht (D-36).
+- Notiz: 2.57.0: Stichwörter auf Deutsch und Englisch ("dkp" findet Punkte, "wegpunkt" die Karte), Gruppe "Befehle" (ab 3 Zeichen, ein Klick schreibt den Befehl in die Chatzeile), Tooltip am Suchfeld, Treffer behalten beim Auffrischen ihre Scrollstelle.
 
 ### F-002 Einheitliches Seitengerüst
 - Version: 2.12.0
@@ -97,6 +99,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit der Maus über den runden Amisia-Button an der Minimap fährst, dann zeigt der Tooltip "Linksklick: Amisia-Fenster" und "Rechtsklick: Schnellmenü".
 - Prüfung: Wenn du ihn rechts anklickst, dann öffnet sich das Schnellmenü (Ausrüstung, Karte, Soft-Reserves, Raid-Log, Einstellungen), und jeder Eintrag öffnet seine Seite.
 - Prüfung: Wenn du `/amisia minimap` eingibst, dann verschwindet der Button; noch einmal holt ihn zurück.
+- Notiz: 2.57.0: das Schnellmenü folgt den Reitern des Fensters; ein Reiter zeigt seine Seiten im selben Menü, mit "Zurück".
 
 ### F-005 Einstellungen und Ansichten
 - Version: 2.13.3
@@ -209,14 +212,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Braucht: Raid
 - Prüfung: Wenn du mit einer Raidgruppe eine Raidinstanz betrittst, dann meldet der Chat "Aufnahme gestartet: <Zone>. /amisia zeigt die Liste.", und `/amisia status` nennt Zone und Zahl der Raider.
 - Prüfung: Wenn du `/amisia pause` eingibst, dann meldet der Chat "Aufnahme pausiert."; noch einmal: "Aufnahme aktiv.".
-- Prüfung: Wenn der Raid vorbei ist, dann steht er auf der Seite Raids mit Datum, Raidern, Bossen und dem blauen und epischen Loot.
+- Prüfung: Wenn der Raid vorbei ist, dann steht er auf der Seite Raid-Archiv mit Datum, Raidern, Bossen und dem blauen und epischen Loot.
 
 ### F-014 Zu-spät-Markierung
 - Version: 1.2.3
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du `/amisia spaet 20:00` eingibst, dann meldet der Chat "Raidbeginn 20:00 ...", und unter Einstellungen, Aufnahme steht "Raidbeginn (zu spät ab)" auf 20:00.
-- Prüfung: Wenn jemand nach 20:00 zum ersten Mal in den Raid kommt, dann zeigt die Seite Raids "1 zu spät"; wer von der Ersatzbank kommt, ist nie zu spät.
+- Prüfung: Wenn jemand nach 20:00 zum ersten Mal in den Raid kommt, dann zeigt die Seite Raid-Archiv "1 zu spät"; wer von der Ersatzbank kommt, ist nie zu spät.
 - Prüfung: Wenn an einem Abend zwei Raids laufen, dann zählt die Verspätung nur im ersten.
 
 ### F-015 Vergaben, Vergabe-Dialog und Rückgängig
@@ -327,7 +330,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Prüfung: Wenn du auf der Website im Reiter Roster "Copy for the addon" kopierst und es im Addon auf der Seite Ausrüstung, Gilde bei "Importieren" einfügst, dann meldet der Chat "N Twinks übernommen".
 - Prüfung: Wenn du danach `/amisia twinks <Twinkname>` eingibst, dann nennt der Chat seinen Main.
-- Prüfung: Wenn ein Twink im Raid ist, dann steht er auf der Seite Raids als "(Twink von <Main>)", und Plus-Eins und Statistik zählen für den Main.
+- Prüfung: Wenn ein Twink im Raid ist, dann steht er auf der Seite Raid-Archiv als "(Twink von <Main>)", und Plus-Eins und Statistik zählen für den Main.
 
 ### F-029 Loot-Rat und Loot-Prio
 - Version: 2.27.4

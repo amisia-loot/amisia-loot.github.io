@@ -489,7 +489,7 @@ ns.RegisterCard{ key = "bank", order = 50, officer = true, available = ns.HasMat
     local b = bank.counts
     c.line1:SetText(L["Gezählt am %s"]:format(ns.FmtDayTime(bank.at)))
     c.line2:SetText(ns.MatLine(b))
-    c:SetAction(L["Ansehen"], function() ns.ShowPage("bank") end)
+    c:SetAction(L["Öffnen"], function() ns.ShowPage("bank") end)
 end }
 
 -- /amisia bank [bedarf|protokoll|text]: the page in a view.

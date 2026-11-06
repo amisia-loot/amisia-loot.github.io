@@ -259,5 +259,7 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     local mats = ns.MatLine(m)
     if mats ~= "" then parts[#parts + 1] = mats end
     c.line2:SetText(table.concat(parts, " · "))
-    if ns.IsOfficerView() then c:SetAction(L["Öffnen"], function() ns.ShowPage("raids") end) end
+    -- officers open the archive, raiders the raid log of the night
+    if ns.IsOfficerView() then c:SetAction(L["Öffnen"], function() ns.ShowPage("raids") end)
+    else c:SetAction(L["Öffnen"], function() ns.ShowPage("raidlog") end) end
 end }

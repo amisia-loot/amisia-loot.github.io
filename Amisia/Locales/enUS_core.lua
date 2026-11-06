@@ -281,7 +281,6 @@ L["Gezählt am %s von %s · %d von %d sichtbaren Tabs mit Gegenständen%s"] = "C
 L["%d Tabs nicht sichtbar"] = "%d tabs not visible"
 L["Noch nicht gezählt"] = "Not counted yet"
 L["Gezählt am %s"] = "Counted %s"
-L["Ansehen"] = "View"
 
 -- UI/Pages/Tools.lua
 L["Drop-Daten mit der Gilde teilen"] = "Share drop data with the guild"
