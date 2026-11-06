@@ -83,9 +83,9 @@ f.known.onPick("known")
 f.source.onPick("F")
 assert(#f.list.items == 0 and f.empty:IsShown(), "three filters leave nothing")
 local help = f.empty:GetText()
-assert(has(help, X.withoutGuild), help)            -- known + Händlergunst: none of the five
-assert(has(help, X.withoutSource), help)           -- known + guild: nobody shares
-assert(has(help, X.withoutKnown), help)
+-- no single filter brings anything back: no "0" lines, only what all filters off would show
+assert(not has(help, X.withoutGuild) and not has(help, X.withoutSource) and not has(help, X.withoutKnown), help)
+assert(has(help, X.allOff), help)
 assert(f.reset:IsShown(), "the reset button")
 assert(f.counts:GetText() == X.count0of5, f.counts:GetText())
 -- with a shared recipe the counts differ per filter
@@ -93,11 +93,11 @@ shared[2663] = true
 NS.Refresh()
 help = f.empty:GetText()
 assert(has(help, X.withoutSource1), help)
-assert(has(help, X.withoutGuild0), help)
+assert(not has(help, X.withoutGuild0) and not has(help, X.allOff), "only the filters that give something back: " .. help)
 -- a search counts as a filter too
 f.search:SetText("kupfer")
 f.search.scripts.OnEnterPressed(f.search)
-assert(has(f.empty:GetText(), X.withoutSearch), f.empty:GetText())
+assert(not has(f.empty:GetText(), X.withoutSearch) and has(f.empty:GetText(), X.withoutSource1), f.empty:GetText())
 -- the button resets known, source, learnable, guild and the search, the list comes back
 f.learn:Click()
 f.reset:Click()

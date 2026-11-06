@@ -120,8 +120,9 @@ local function recipesText(n)
     return n == 1 and L["1 Rezept"] or L["%d Rezepte"]:format(n)
 end
 
--- The help of an empty recipe list: for each filter that is on, how many recipes the list would
--- show without it. The second value: a filter is on (the reset button shows).
+-- The help of an empty recipe list: for each filter that is on and whose removal alone brings
+-- recipes back, how many; when no single filter does, how many the list shows without all of them.
+-- The second value: a filter is on (the reset button shows).
 local function emptyHelp(v)
     local filters = activeFilters()
     if #filters == 0 then return L["Keine Rezepte zu diesen Filtern."], false end
@@ -132,7 +133,14 @@ local function emptyHelp(v)
         s[flt.key] = nil
         local n = #listOf(v)
         s[flt.key] = keep
-        parts[#parts + 1] = L["Ohne \"%s\": %s"]:format(flt.name, recipesText(n))
+        if n > 0 then parts[#parts + 1] = L["Ohne \"%s\": %s"]:format(flt.name, recipesText(n)) end
+    end
+    if #parts == 0 then
+        local keep = {}
+        for _, flt in ipairs(filters) do keep[flt.key], s[flt.key] = s[flt.key], nil end
+        local n = #listOf(v)
+        for k, val in pairs(keep) do s[k] = val end
+        parts[1] = L["Erst ohne alle Filter: %s"]:format(recipesText(n))
     end
     return L["Keine Rezepte zu diesen Filtern."] .. "\n" .. table.concat(parts, "\n"), true
 end

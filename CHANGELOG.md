@@ -5,6 +5,18 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): clearer recipe filters that explain an empty list (F-051, F-035)
+
+  "Bekannt" and "Quelle" are real dropdowns now ("Bekannt: Alle", "Quelle: Händlergunst"), "Gilde (N)"
+  shows how many recipes the guild shares and is greyed while nobody does, and the count reads "N von M
+  Rezepten". An empty list says which filter would bring recipes back and offers "Filter zurücksetzen".
+- feat(map): all zones, dungeon quest steps and items without a place on the map page (F-045, F-135)
+
+  The page opens on "Alle Zonen", grouped by zone, nearest first. The new chip "Quests" lists the next
+  step of each dungeon quest path, also as a "!" on the world map. "Items ohne Ort" opens a list with the
+  reason and who can craft them; the target is a card with distance, direction and a turning arrow; rows
+  have a "Karte" button; names Amisia saw in the game are shown in German.
+
 ## [v2.56.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.56.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.55.0...v2.56.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -398,6 +398,7 @@ L["Für \"Bekannt\" das Berufsfenster einmal öffnen."] = "For \"Known\" open th
 L["Bekannt: %s"] = "Known: %s"
 L["Suche: %s"] = "Search: %s"
 L["Ohne \"%s\": %s"] = "Without \"%s\": %s"
+L["Erst ohne alle Filter: %s"] = "Only without all filters: %s"
 L["Gilde (%d)"] = "Guild (%d)"
 L["Noch teilt niemand aus der Gilde Rezepte. Die Liste füllt sich, sobald Gildenmitglieder mit Amisia ihr Berufsfenster öffnen."] = "Nobody in the guild shares recipes yet. The list fills once guild members with Amisia open their profession window."
 L["Filter zurücksetzen"] = "Reset filters"

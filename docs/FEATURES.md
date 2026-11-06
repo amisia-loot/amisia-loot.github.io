@@ -660,6 +660,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn Gildenmitglieder mit Amisia ihr Berufsfenster einmal geöffnet haben, dann zeigt die Seite Berufe bei einem Rezept "Hergestellt von: <Namen>", und der Filter Gilde zeigt nur Rezepte, die jemand aus der Gilde kennt.
 - Prüfung: Wenn du bei einem Rezept "Fragen" klickst, dann öffnet sich ein Flüstern an jemanden, der es kennt (wer online ist, zuerst).
 - Prüfung: Wenn du `/amisia hersteller` eingibst, dann meldet der Chat den Stand des Rezept-Austauschs.
+- Notiz: 2.57.0: Chip "Gilde (N)" mit Anzahl, ausgegraut und erklärt, solange niemand aus der Gilde teilt.
 
 ### F-036 Drop-Daten der Gilde
 - Version: 2.3.0
@@ -869,6 +870,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Weltkarte öffnest, dann stehen Pins mit Item-Symbol für deine Upgrades und Wünsche (abschaltbar unter Einstellungen, Karte und Wegpunkt).
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
 - Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64).
+- Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 - Version: 2.49.0
@@ -1044,6 +1046,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia berufe lager` eingibst, dann siehst du die Lagerobjekte (Camping) mit Beschreibung ("Beschreibung lädt ..." nur kurz).
 - Prüfung: Wenn du `/amisia berufe gunst` eingibst, dann zeigt die Seite die Händlergunst und welche Items einen Handwerksauftrag haben.
 - Notiz: seit 2026-10-11 ist die Rezeptliste nach der Lernstufe sortiert (dann nach Gelb, dann Name); vorher die Reihenfolge der Daten.
+- Notiz: 2.57.0: Filter "Bekannt: …" und "Quelle: …" als Auswahllisten, "N von M Rezepten", leere Liste nennt, welcher Filter Rezepte zurückbringt, mit "Filter zurücksetzen" (Bildschirmfoto des Nutzers mit 0 Rezepten bei Bekannt + Händlergunst + Gilde).
 
 ### F-052 Magier-Schriftrollen
 - Version: 2.10.0
