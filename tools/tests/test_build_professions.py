@@ -2,7 +2,8 @@
 Client tables as hand-made CSVs (tools/tests/fixtures/wago_prof, no real data), AllTheThings'
 builder language as a hand-made fixture (tools/tests/fixtures/att_prof): recipes and their
 difficulty, recipe items and their sources, the Season of Discovery filter, trainers, Merchant's
-Favor, camp objects, writs, reagents with and without SpellReagents, and the generated Lua file
+Favor, camp objects, writs, reagents with and without SpellReagents, the vendor price list V (with
+hand-made collector notes, tools/tests/fixtures/scan_archive_prof.json), and the generated Lua file
 (valid, deterministic, compact, in the TOC)."""
 import os
 import re
@@ -17,6 +18,7 @@ ADDON = os.path.join(ROOT, 'Amisia')
 WAGO = os.path.join(HERE, 'fixtures', 'wago_prof')
 REAGENTS = os.path.join(WAGO, 'reagents')
 ATT = os.path.join(HERE, 'fixtures', 'att_prof')
+SCAN = os.path.join(HERE, 'fixtures', 'scan_archive_prof.json')
 sys.path.insert(0, TOOLS)
 import build_professions as bp  # noqa: E402
 import lua_data  # noqa: E402
@@ -24,7 +26,7 @@ import lua_data  # noqa: E402
 
 @pytest.fixture(scope='module')
 def data():
-    return bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT))
+    return bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT), bp.read_seen_vendors(SCAN))
 
 
 @pytest.fixture(scope='module')
@@ -113,7 +115,7 @@ def test_camp(data):
 
 
 def test_reagents_only_with_the_table(data, plain):
-    assert data['G'] == {2663: '2840:2', 3321: '2840:4,2880:1'}
+    assert data['G'] == {2663: '2840:2', 3321: '2840:4,2880:1,3371:1'}
     assert plain['G'] == {}, 'without SpellReagents the addon asks the client'
     assert plain['report']['reagents'] == 'client'
 
@@ -128,7 +130,40 @@ def test_render_is_valid_deterministic_lua(data):
     assert P.P[2][1] == 164 and P.P[2][2] == 'blacksmithing'
     assert P.FAVOR.vendor.A[1] == 80201 and P.FAVOR.writ[3471] == 264020
     assert P.CAMP[3] == '279988:164:140:1307175:1263041:0:279944'
-    assert P.G[3321] == '2840:4,2880:1'
+    assert P.G[3321] == '2840:4,2880:1,3371:1'
+    assert P.V[2880] == '100:80100' and P.V[3371] == '4:80600'
+
+
+def test_vendor_prices(data, plain):
+    V = data['V']
+    assert V[2880] == '100:80100', ('a reagent AllTheThings lists at a vendor; the barterer wants copper bars and '
+                                    'the stranger no record names: both left out')
+    assert V[3371] == '4:80600', 'only the collector saw it: 20 copper for a stack of 5 is 4 each'
+    assert V[3609] == '500:80100', 'a recipe item a vendor sells'
+    assert 2840 not in V, 'a reagent no vendor sells (a drop note is no vendor)'
+    assert 251358 not in V, "a Merchant's Favor recipe costs the currency, not gold"
+    assert data['N'][80600] == 'Tamar|1455:6000:4000|H', 'the vendor goes into N with place and faction'
+    assert 80700 not in data['N'] and 80999 not in data['N']
+    assert data['report']['prices'] == {'items': 3, 'recipe items': 1, 'reagents': 2}
+    assert plain['V'] == {3609: '500:80100'}, 'without reagents and collector notes only the recipe items'
+
+
+def test_unit_price():
+    assert bp.unit_price(10, 1) == 10, 'Coarse Thread: 10 copper each'
+    assert bp.unit_price(20, 5) == 4 and bp.unit_price(25, 5) == 5
+    assert bp.unit_price(10, 3) == 4, 'rounded up'
+    assert bp.unit_price(1, 5) == 1, 'at least one copper'
+    assert bp.unit_price(0, 1) == 0, 'no client price: not in the list'
+
+
+def test_pick_vendors_keeps_both_factions_and_places_first():
+    npcs = {1: ('A1', '1453:1:1', 'A'), 2: ('A2', '1453:2:2', 'A'), 3: ('A3', '1453:3:3', 'A'),
+            4: ('A4', '1453:4:4', 'A'), 5: ('A5', '1453:5:5', 'A'), 6: ('A6', '1453:6:6', 'A'),
+            7: ('A7', '1453:7:7', 'A'), 8: ('H1', '1411', 'H'), 9: ('H2', '1454:9:9', 'H'), 10: ('N1', '', '')}
+    got = bp.pick_vendors(list(range(1, 12)), npcs)
+    assert got == [1, 2, 3, 4, 5, 9], 'at most six with a known place, the Horde one kept; no record, no vendor'
+    assert bp.pick_vendors([8, 10, 1], npcs) == [1, 8, 10], 'known place first, then without one by id'
+    assert bp.pick_vendors([], npcs) == []
 
 
 def test_empty_file_is_valid():
@@ -148,3 +183,25 @@ def test_shipped_file_is_in_the_toc_and_compact():
     assert os.path.getsize(path) < 300 * 1024, 'compact: numbers only, names come from the client'
     P = lua_load(text)
     assert P.P[1] is not None
+
+
+def test_shipped_vendor_prices():
+    path = os.path.join(ADDON, 'Data', 'ProfessionData.lua')
+    with open(path, encoding='utf-8') as fh:
+        P = lua_load(fh.read())
+    V, N, I = P.V, P.N, P.I
+    reagents = {int(x.split(':')[0]) for _, g in P.G.items() for x in g.split(',')}
+    seen = 0
+    for item, line in V.items():
+        m = re.fullmatch(r'(\d+):((?:\d+(?:,\d+){0,5})?)', line)
+        assert m and int(m.group(1)) >= 1, f'V[{item}] = {line}'
+        assert item in reagents or I[item] is not None, f'{item}: neither a reagent nor a recipe item'
+        for npc in filter(None, m.group(2).split(',')):
+            assert N[int(npc)] is not None, f'vendor {npc} of {item} has no N entry'
+        seen += 1
+    assert seen > 100
+    price, npcs = V[2320].split(':')
+    assert price == '10' and npcs, 'Coarse Thread: 10 copper at a vendor with a record'
+    assert V[2840] is None, 'Copper Bar: no vendor sells it, so no price'
+    recipe = [i for i, l in V.items() if I[i] is not None and l.split(':')[1]]
+    assert recipe, 'recipe items a vendor sells are in V'

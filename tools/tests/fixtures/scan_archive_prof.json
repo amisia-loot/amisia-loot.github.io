@@ -1,0 +1,14 @@
+{
+"v": 1,
+"about": "hand-made test fixture, not real data: collector notes of merchants",
+"updated": "2026-11-06",
+"client": null,
+"items": {},
+"sources": {
+"2840": ["Drop: Vale Ooze [80400] @Test Vale"],
+"2880": ["Haendler: Stranger [80999] @Test Vale"],
+"3371": ["Auktionshaus", "Haendler: Tamar [80600] @Test Vale", "Haendler: Nameless"],
+"251358": ["Haendler: Gor'mak [80200] @Test Vale"]
+},
+"suffix": {}
+}

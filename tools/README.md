@@ -731,11 +731,12 @@ profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
 tier, recipe item) and where a recipe item comes from (vendor, Merchant's Favor with price and
 standing per faction, drop, zone or world drop, quest); the camp objects (campfires with their
 places, the objects per profession and rank, which one replaces which); Merchant's Favor (vendors,
-certifications, the items a crafting order exists for). Spec:
-`docs/superpowers/specs/2026-10-06-amisia-professions-design.md`.
+certifications, the items a crafting order exists for); the vendor price list `V` for the profession
+route (F-137). Specs: `docs/superpowers/specs/2026-10-06-amisia-professions-design.md`,
+`docs/specs/2026-11-06-berufsroute.md`.
 
 ```
-python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--out FILE] [--empty]
+python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--scan-archive FILE] [--out FILE] [--empty]
 ```
 
 - Client tables (`~/addons/_wago`): `SkillLineAbility`, `SpellEffect`, `ItemSparse`,
@@ -748,15 +749,32 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
   Merchant's Favor lists per faction and standing; read as text after the preprocessor),
   `profession db/*.lua` (recipe item -> recipe), and the zone and dungeon files through
   `att_data.load()` (vendors, drops, quests of the recipe items; the favor vendors by the list
-  their goods name).
+  their goods name; the vendors of reagents and recipe items, without those that want another
+  currency or items, `sold_cost`).
+- `V = { [item] = "copper:npc,..." }`: every reagent of `G` and every recipe item of `I` a vendor
+  sells for gold. The price of one: `BuyPrice` of `ItemSparse` is for `VendorStackCount` of it
+  (Empty Vial 20 copper for 5), divided and rounded up, at least 1; an item with `BuyPrice` 0 is
+  left out. The vendors: AllTheThings' (it lists only collectible goods: recipes, limited items)
+  and the merchants the item collector saw selling the item (the scan archive
+  `tools/scan_archive.json`, notes "Haendler: Name [npc]"; `--scan-archive ""` for none; thread,
+  dyes, vials and spices come only from there, so only the merchants a player visited count);
+  never the Merchant's Favor vendors. At most 6 per item, those with a record (they go into `N`,
+  English name, place, faction), known place first, both factions in turn; an item whose vendors no
+  record names keeps its price with an empty list. An item no vendor sells is not in `V` (the
+  addon says "farmen oder Auktionshaus"). Trainer costs and the rank limits are not in the data:
+  AllTheThings names no trainer costs, and the limits per tier need the client table `SkillTiers`
+  (`SkillRaceClassInfo.SkillTierID` 41 for the crafting professions, 61 cooking), which is not
+  exported.
 - No names of recipes or items go in: the addon asks the client (German). NPC and quest names are
   AllTheThings' English ones. Spells 400000-999999 (Season of Discovery) that AllTheThings does not
   list for Forever are left out (134 in 1.60.1.70235).
-- Size: about 180 KB for 2,400 recipes and 1,950 recipe items. The date alone does not rewrite the
+- Size: about 260 KB for 2,400 recipes, 1,950 recipe items and 380 vendor prices (the test allows
+  300 KB). The date alone does not rewrite the
   file.
 
-Tests: `tools/tests/test_build_professions.py` on hand-made CSVs (`tools/tests/fixtures/wago_prof`)
-and a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`).
+Tests: `tools/tests/test_build_professions.py` on hand-made CSVs (`tools/tests/fixtures/wago_prof`),
+a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`) and hand-made collector notes
+(`tools/tests/fixtures/scan_archive_prof.json`).
 
 ## build_talents.py
 

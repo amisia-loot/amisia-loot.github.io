@@ -16,6 +16,22 @@ root(ROOTS.Zones, m(MAP.TEST_VALE, {
 			groups = {
 				i(3609),	-- Plans: Copper Chain Vest
 				i(2901),	-- Mining Pick (no recipe)
+				i(2880),	-- Weak Flux (a reagent)
+			},
+		}),
+		n(80600, {	-- Tamar <Trade Supplies>
+			coord = { 60.0, 40.0, MAP.TEST_VALE },
+			races = { ORC, TROLL },
+			groups = {
+				i(2901),	-- Mining Pick (its other goods only the collector saw)
+			},
+		}),
+		n(80700, {	-- Barterer <Quartermaster>
+			coord = { 61.0, 41.0, MAP.TEST_VALE },
+			groups = {
+				i(2880, {	-- Weak Flux, for copper bars: no gold price
+					cost = { { "i", 2840, 2 } },
+				}),
 			},
 		}),
 		n(80200, {	-- Gor'mak <Blacksmith>
