@@ -110,7 +110,7 @@ c.line1 = { SetText = function(_, t) c.text.line1 = t end }
 c.line2 = { SetText = function(_, t) c.text.line2 = t end }
 c.SetAction = function(_, label) c.text.action = label end
 card.fill(c)
-assert(c.text.title == "Guild bank" and c.text.line1 == "Counted Oct 7 20:15" and c.text.action == "View", tostring(c.text.line1))
+assert(c.text.title == "Guild bank" and c.text.line1 == "Counted Oct 7 20:15" and c.text.action == "Open", tostring(c.text.line1))
 AmisiaDB.bank = nil
 NS.MATS[12345], NS.MAT_ORDER[1] = nil, nil
 
