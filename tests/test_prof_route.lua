@@ -103,8 +103,9 @@ assert(r6.top == 300 and #tr6 == 4 and tr6[2].cap == 150 and tr6[2].cost == nil,
 assert(recipeAt(r6, 50).learnCost == 0, "no learning cost without L")
 assert(not R.Compute(197, { rank = 40, known = none }).maxKnown and R.Compute(197, { rank = 40, max = 75, known = none }).maxKnown)
 NS.PROFESSIONS.T, NS.PROFESSIONS.L = keepT, keepL
--- no recipe gives points: an honest gap
-assert(steps(r5, "gap")[1] and steps(r5, "gap")[1].why == "none" and steps(r5, "gap")[1].to == 350 or recipeAt(r5, 345),
+-- no recipe gives points: an honest gap (or one of recipes that hardly give points) up to the top
+local g5 = steps(r5, "gap")
+assert(#g5 > 0 and g5[#g5].to == 350 and (g5[#g5].why == "none" or g5[#g5].why == "low") or recipeAt(r5, 345),
     "a gap or a recipe")
 
 -- the page's route: the own rank from the book, the steps done kept, the current one moving
@@ -129,21 +130,32 @@ STUB.combat = false
 local g4, stale2 = R.Get(197, false)
 assert(g4 ~= g2 and not stale2 and g4.start == 47)
 
--- the bags: own counts, the bank part kept while the bank is closed, the alts of the realm
+-- the bags: own counts, the bank part kept while the bank is closed, realm, faction and the list of
+-- reagents kept; the alts of the same realm and faction
 local me = NS.UnitFullName("player")
-local realm = me:match("%-(.+)$") or ""
+local realm = "Forever"
+GetRealmName = function() return realm end   -- the realm the client names (Forever's names carry none)
 STUB.bags[0] = { 2589, 2589, 2589, 2320 }
 STUB.bank[2589] = 5
 assert(R.SaveBags(), "saved")
 local mine = AmisiaDB.prof.bags[me]
 assert(mine.items[2589] == 8 and mine.bank[2589] == 5 and mine.items[2320] == 1, "bags and bank")
+assert(mine.realm == realm and mine.faction == "A", "realm and faction of the entry")
+local listed = {}
+for _, item in ipairs(mine.track) do listed[item] = true end
+assert(listed[2589] and listed[2320] and listed[2324] and not listed[2447], "the tailoring reagents, not alchemy's")
 STUB.bank[2589] = nil   -- the client forgot the bank: the last bank count stays
 R.SaveBags()
 assert(AmisiaDB.prof.bags[me].items[2589] == 8, "the bank part kept")
-AmisiaDB.prof.bags["Twink-" .. realm] = { day = 1, items = { [2589] = 30, [2320] = 2 } }
-AmisiaDB.prof.bags["Fremd-Anderswo"] = { day = 1, items = { [2589] = 99 } }
-assert(R.Twinks(2589) == 30 and R.Twinks(2320) == 2, "only the realm's other characters")
+-- Forever's names carry no realm, surnames may have a dash: realm and faction come from the entry
+AmisiaDB.prof.bags["Twink Grau-Bart"] = { day = 1, realm = realm, faction = "A", items = { [2589] = 30, [2320] = 2 } }
+AmisiaDB.prof.bags["Fremd Anderswo"] = { day = 1, realm = "Anderswo", faction = "A", items = { [2589] = 99 } }
+AmisiaDB.prof.bags["Horde Twink"] = { day = 1, realm = realm, faction = "H", items = { [2589] = 77 } }
+AmisiaDB.prof.bags["Alt Ohnerealm"] = { day = 1, items = { [2589] = 55 } }
+assert(R.Twinks(2589) == 30 and R.Twinks(2320) == 2,
+    "only the other characters of the same realm and faction; an old entry without realm waits for its next login")
 assert(R.Have(2589) == 8, "the bags and the last bank count")
+AmisiaDB.prof.bags["Horde Twink"], AmisiaDB.prof.bags["Alt Ohnerealm"], AmisiaDB.prof.bags["Fremd Anderswo"] = nil, nil, nil
 
 -- the shopping list of the open steps
 local shop = R.Shopping(g4)
@@ -161,19 +173,25 @@ local again = {}
 for _, e in ipairs(R.Shopping(g4)) do again[e.item] = e end
 assert(again[2320].enough and again[2320].missing == 0, "enough")
 assert(R.Source(2770, 197) == "mine" and R.Source(2840, 197) == "smelt", "ore and bars from mining")
+assert(R.Source(2996, 197) == "craft" and select(2, R.Source(2996, 197)) == 197, "the bolt: made by the own profession")
 
 -- checked on load: bad entries dropped
 AmisiaDB.prof.bags["Bad|cff"] = { day = 1, items = {} }
-AmisiaDB.prof.bags["Neg-" .. realm] = { day = -3, items = { [2589] = -1, [0] = 2, [2320] = 1.5, [2324] = 4 }, junk = 1 }
+AmisiaDB.prof.bags["Neg Twink"] = { day = -3, realm = "Bad|realm", faction = "X", track = { 2589, 2589, -1, "x", 2320 },
+    items = { [2589] = -1, [0] = 2, [2320] = 1.5, [2324] = 4 }, junk = 1 }
 AmisiaDB.prof.bags[5] = { items = {} }
 NS.ProfBagsLoaded(AmisiaDB)
 local b = AmisiaDB.prof.bags
-assert(b["Bad|cff"] == nil and b[5] == nil and b["Neg-" .. realm].day == 0 and b["Neg-" .. realm].junk == nil)
-assert(b["Neg-" .. realm].items[2324] == 4 and b["Neg-" .. realm].items[2589] == nil and b["Neg-" .. realm].items[2320] == nil)
+local neg = b["Neg Twink"]
+assert(b["Bad|cff"] == nil and b[5] == nil and neg.day == 0 and neg.junk == nil)
+assert(neg.items[2324] == 4 and neg.items[2589] == nil and neg.items[2320] == nil)
+assert(neg.realm == nil and neg.faction == nil and #neg.track == 2 and neg.track[1] == 2589 and neg.track[2] == 2320,
+    "realm with a code and a wrong faction dropped; the list without doubles and junk")
+assert(b["Twink Grau-Bart"].realm == realm and b["Twink Grau-Bart"].faction == "A", "a good entry keeps realm and faction")
 AmisiaDB.prof.bags = "x"
 NS.ProfBagsLoaded(AmisiaDB)
 assert(AmisiaDB.prof.bags == nil, "no table: dropped")
-AmisiaDB.prof.bags = { ["Twink-" .. realm] = { day = 1, items = { [2589] = 30 } } }
+AmisiaDB.prof.bags = { ["Twink Grau-Bart"] = { day = 1, realm = realm, faction = "A", items = { [2589] = 30 } } }
 
 -- the page: the switch, the route view, the current step marked, a click on a step opens the recipe
 NS.ShowProfessions("schneiderei")
@@ -182,7 +200,7 @@ assert(f and not f.routeView:IsShown() and f.list:IsShown(), "recipes first")
 f.modeRoute:Click()
 assert(AmisiaDB.settings.professions.mode == "route" and f.routeView:IsShown() and not f.list:IsShown(), "the route view")
 assert(has(f.routeHead:GetText(), "Rang 47 bis 300") and has(f.routeHead:GetText(), "Schritte"), f.routeHead:GetText())
-assert(has(f.routeNote:GetText(), "Berufsfenster einmal öffnen") and has(f.routeNote:GetText(), "Gewählt nach Menge"), f.routeNote:GetText())
+assert(has(f.routeNote:GetText(), "Berufsfenster einmal öffnen") and has(f.routeNote:GetText(), "nach einem Schätzwert"), f.routeNote:GetText())
 local rows = f.steps.rows
 local curRow
 for _, r in ipairs(rows) do if r:IsShown() and r.sel:IsShown() then curRow = r end end

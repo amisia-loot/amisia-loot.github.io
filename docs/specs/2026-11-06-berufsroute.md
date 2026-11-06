@@ -55,10 +55,18 @@ kann, ohne nebenher eine Webseite offen zu haben.
 2. Amisia nimmt den gespeicherten Rang aus `AmisiaDB.prof` (zuletzt im Berufsfenster gesehen). Ist der
    Beruf nicht erlernt, startet die Vorschau bei 1 und sagt das im Kopf.
 3. Die Route rechnet Punkt für Punkt: Für jeden Rang nimmt sie das Rezept mit den kleinsten erwarteten
-   Kosten je Punkt. Das sind die Reagenzkosten geteilt durch die Chance auf einen Punkt: orange 1, gelb
-   und grün `(grau − Rang) / (grau − gelb)`, grau 0. Gleiche Rezepte hintereinander werden zu einem
-   Schritt zusammengefasst. Bei gleichen Kosten gewinnt ein schon bekanntes Rezept, dann das mit weniger
-   verschiedenen Reagenzien.
+   Kosten je Punkt. Die Kosten einer Herstellung sind ein Maß in Kupfer: je Reagenz der Händlerpreis;
+   ohne Händlerpreis ein Schätzwert (was der eigene Beruf oder das Verhütten daraus macht, oder der
+   Verkaufspreis beim Händler mal 4, mindestens 20 Kupfer, das Billigere; ohne jeden Preis 20 Silber);
+   dazu ein kleiner Aufschlag je Herstellung (30 Kupfer, auch für Zwischenprodukte), damit ein langer
+   grüner Rest gegen ein oranges oder gelbes Rezept verliert, und die einmaligen Kosten (Lernen,
+   Rezeptkauf) verteilt auf die Ränge mit sicheren Punkten. Das geteilt durch die Chance auf einen
+   Punkt: orange 1, gelb und grün `(grau − Rang) / (grau − gelb)`, grau 0; unter einer Chance von 1/4
+   ist ein Rezept kein Schritt. Gleiche Rezepte hintereinander werden zu einem Schritt zusammengefasst.
+   Bei gleichen Kosten gewinnt ein schon bekanntes Rezept, dann das mit weniger verschiedenen
+   Reagenzien. Angezeigt werden nur echte Händlerkosten ("etwa X" oder "Kosten unbekannt"); dass
+   Materialien ohne Händlerpreis nach einem Schätzwert gewählt, aber nicht mitgezählt werden, sagt der
+   Hinweis.
 4. Erlaubt sind Rezepte, die der Spieler kennt oder die sein Lehrer bis zum nächsten Limit lehrt.
    Mit "auch Händler" kommen Rezepte von Händlern dazu, mit dem Kaufpreis des Rezepts in den Kosten.
 5. Der Spieler kauft nach der Einkaufsliste ein, öffnet das Berufsfenster und stellt her. Mit jedem
@@ -88,11 +96,26 @@ kann, ohne nebenher eine Webseite offen zu haben.
 - Rezepte mit mehreren Stück je Herstellung (`count` > 1) und Rezepte nur für eine Fraktion (nur die
   eigene zählt).
 - Verzauberkunst: Die Materialien kommen aus dem Entzaubern, haben also meist keinen Händlerpreis.
-  Die Route wählt dann nach Menge statt nach Gold und sagt das im Kopf.
+  Die Route wählt dann nach dem Schätzwert (Entzauberungsmaterialien verkaufen sich für 1 Kupfer, also
+  gilt der Mindestwert: praktisch nach Menge) und sagt das im Hinweis.
 - Bosskampf und Sperre: Die Route ist rein lokal und braucht keine geschützten Werte. Neu gerechnet
   wird erst nach dem Kampf (`ns.RefreshSoon`), nie mitten im Kampf.
 - Twinks: Jeder Charakter hat seine eigene Route aus seinem Rang. Die Taschen der Twinks siehe Frage 3.
 - Viele Rezepte: Gerechnet wird höchstens einmal je Rangänderung und nur bei offener Seite.
+- Rezepte mit Abklingzeit (Transmutationen, Mondstoff): nie ein Schritt, auch wenn bekannt, weil man
+  sie nicht für Punkte wiederholen kann (`CD`).
+- Lernrang: wo die Daten keinen haben (Lehrerrezepte), nie früher als das Spiel erlaubt: ab gelb,
+  nicht unter dem, was der Lehrer der Stufe verlangt.
+- Rezepte ohne Quelle kommen nur in die Route, wenn sie bekannt sind oder der Beruf keine Lehrerliste
+  in den Daten hat (Kochen, Gifte); Rezepte einer Spezialisierung nur, wenn bekannt.
+- Höchstwert unter einem Lehrer-Limit (z. B. Rang 90, Höchstwert 100): Der Höchstwert kommt von der
+  Stufe, die Route endet dort mit dem Hinweis "Höchstwert für deine Stufe: 100", ohne Lehrerschritt.
+- Gifte haben keine Lehrerstufen (der Höchstwert hängt an der Stufe): keine Lehrerschritte.
+- Rang über dem bekannten Höchstrang (Höchstwert unbekannt): Der Rang ist das Ende, ein Hinweis sagt,
+  das Berufsfenster zu öffnen.
+- Ein Material, dessen bekannte Händler alle zur anderen Fraktion gehören (Handwerkswaren gibt es auf
+  beiden Seiten): Preis ja, kein Wegpunkt, Quelle "Händler (Ort unbekannt)". Rezepte der anderen
+  Fraktion bleiben draußen.
 
 ## Missbrauch/Vertrauen
 
@@ -101,14 +124,20 @@ die eigenen Daten und die generierten Tabellen.
 
 ## Daten
 
-- **Generiert:** In `PROFESSIONS` kommt der Abschnitt `V = { [item] = Kaufpreis in Kupfer }`. Er
-  enthält nur Reagenzien, die ein Händler verkauft (Händler laut ATT oder vom Sammler gesehen). Der
-  Preis kommt aus der Spalte `BuyPrice` von `ItemSparse`. Lehrer-Lernkosten nur, wenn ATT sie hat.
-  Keine neue Datenquelle.
-- **Einstellungen:** in `settings.professions` (wo die Filter der Seite schon liegen) die Felder `view` ("recipes"/"route") und
-  `routeVendor` (true/false). Kein neuer Abschnitt.
-- **AmisiaDB:** keiner, außer bei Ja zu Frage 3 (`AmisiaDB.prof.bags`) oder Frage 4
-  (`AmisiaDB.prices`).
+- **Generiert:** In `PROFESSIONS` kommt der Abschnitt `V = { [item] = "Kaufpreis in Kupfer:NPC,..." }`.
+  Er enthält Reagenzien und Rezept-Items, die ein Händler für Gold verkauft (Händler laut ATT oder vom
+  Sammler gesehen). Der Preis kommt aus der Spalte `BuyPrice` von `ItemSparse` (geteilt durch
+  `VendorStackCount`). Dazu `S = { [item] = Verkaufspreis in Kupfer }` für jedes Reagenz ohne
+  Händlerpreis (`SellPrice` von `ItemSparse`, Grundlage des Schätzwerts) und `CD = { [Zauber] = 1 }`
+  für die Rezepte mit Abklingzeit (Client-Tabelle `SpellCooldowns`, bis sie exportiert ist die
+  handgepflegte Liste `tools/prof_cooldowns.json`); Rezepte einer Spezialisierung tragen die Quelle `S`.
+  Lehrer-Lernkosten nur, wenn ATT sie hat. Keine neue Datenquelle außer den Client-Tabellen.
+- **Einstellungen:** in `settings.professions` (wo die Filter der Seite schon liegen) die Felder `mode`
+  ("recipes"/"route"; `view` hält schon den gewählten Beruf), `routeTab` ("steps"/"shop") und
+  `routeVendor` (true/nil). Kein neuer Abschnitt.
+- **AmisiaDB:** `AmisiaDB.prof.bags` (Frage 3): je eigenem Charakter Tag, Realm, Fraktion, die Mengen,
+  der Bankanteil und die Liste der Reagenzien, die sich zu zählen lohnen (aus den Daten, wenn sie ohnehin
+  gebaut sind; Ereignisse bauen sie nie, D-28). Kein `AmisiaDB.prices` (Frage 4).
 - Keine Nachrichten, Exportzeilen oder Website-Teile. Neue Dateien `Gear/ProfRoute.lua` (Rechnung) und
   der Teil in `UI/Pages/Professions.lua`, beide in ARCHITECTURE.
 
@@ -137,3 +166,9 @@ die eigenen Daten und die generierten Tabellen.
   3. Twinks mitzählen: `AmisiaDB.prof.bags`, nur eigene Charaktere, Spalte "Twinks";
   4. keine Auktionshauspreise (kein `AmisiaDB.prices`);
   5. Umschalter "Rezepte | Route" auf der Seite Berufe.
+- 2026-11-06: Review: Kostenmaß mit Schätzwert, keine Abklingzeit-Rezepte, Stufen-Höchstwert. Statt
+  "erst Stücke ohne Preis, dann Gold" ein Maß in Kupfer je Punkt (Schätzwert aus dem Verkaufspreis,
+  Aufschlag je Herstellung, fast graue Rezepte kein Schritt); Rezepte mit Abklingzeit nie; Lernrang
+  ohne Daten ab gelb; Rezepte ohne Quelle nur ohne Lehrerliste; ein Höchstwert unter dem Lehrer-Limit
+  beendet die Route; Gifte ohne Lehrerstufen; Twinks nur gleicher Realm und gleiche Fraktion; die
+  Ereignisse bauen die Berufsdaten nicht (D-28). Die fünf Entscheidungen oben bleiben.

@@ -12,11 +12,12 @@ Inputs:
   difficulty), SpellEffect (the item a recipe makes, enchants, camp placement), ItemSparse,
   ItemXItemEffect and ItemEffect (recipe item -> recipe, required rank and reputation, camp objects,
   certifications, writs), SpellName and Spell (only to recognise camp objects and writs; no text
-  goes into the file), SpellReagents (optional: reagents; without it the addon asks the client).
+  goes into the file), SpellReagents (optional: reagents; without it the addon asks the client),
+  SpellCooldowns (optional: the recipes with a cooldown, CD; without it tools/prof_cooldowns.json).
   SkillLineAbility falls back to the copy AllTheThings ships (.config/.wago).
 - AllTheThings' Forever data (MIT, see tools/att_data.py and Amisia/LICENSES/):
-  .config/structures/*.lua (trainer recipes per tier, Merchant's Favor recipes with price and
-  standing per faction), profession db/*.lua (recipe item -> recipe), and the zone and dungeon files
+  .config/structures/*.lua (trainer recipes per tier, the specialisations' recipes, Merchant's Favor
+  recipes with price and standing per faction), profession db/*.lua (recipe item -> recipe), and the zone and dungeon files
   through att_data.load() (vendors, drops, quests of the recipe items; the favor vendors; the vendors
   of reagents and recipe items for the price list V).
 - The scan archive (tools/scan_archive.json, the item collector's notes): the merchants the players
@@ -29,6 +30,7 @@ Recipes in the Season of Discovery number range (spells 400000-999999) that AllT
 list for Forever are left out.
 """
 import argparse
+import json
 import os
 import re
 import sys
@@ -56,6 +58,14 @@ ATT_PROF = {'ALCHEMY': 171, 'BLACKSMITHING': 164, 'ENCHANTING': 333, 'ENGINEERIN
             'LEATHERWORKING': 165, 'TAILORING': 197, 'COOKING': 185, 'FIRST_AID': 129, 'FISHING': 356,
             'HERBALISM': 182, 'MINING': 186, 'SKINNING': 393, 'POISONS': 40}
 TIERS = {'APPRENTICE': 1, 'JOURNEYMAN': 2, 'EXPERT': 3, 'ARTISAN': 4}
+# the structures blocks of a specialisation: only its trainer teaches them, and only to a character
+# who chose it (token S, never a plain trainer recipe of the route)
+SPEC_BLOCKS = {'WEAPONSMITHING', 'ARMORSMITHING', 'GNOMISH_ENGINEERING', 'GOBLIN_ENGINEERING', 'DRAGONSCALE',
+               'ELEMENTAL', 'TRIBAL'}
+# a spell cooldown from this long on (SpellCooldowns, milliseconds) marks a recipe that cannot be
+# repeated for skill points (transmutes, Mooncloth): CD
+COOLDOWN_MIN_MS = 10 * 60 * 1000
+COOLDOWNS = os.path.join(HERE, 'prof_cooldowns.json')
 STANDING = {'Hated': 1, 'Hostile': 2, 'Unfriendly': 3, 'Neutral': 4, 'Friendly': 5, 'Honored': 6,
             'Revered': 7, 'Exalted': 8}
 FAVOR_CURRENCY = 3402
@@ -102,7 +112,8 @@ def read_client(*dirs, att=None):
     dirs = [d for d in dirs if d]
     sla_dirs = dirs + ([os.path.join(att, '.config', '.wago')] if att else [])
     out = {'client': _build_of(dirs), 'sla': {}, 'create': {}, 'enchant': set(), 'teach': {}, 'use': {},
-           'items': {}, 'names': {}, 'desc': {}, 'reagents': {}, 'spellEffects': {}, 'reagentTable': False}
+           'items': {}, 'names': {}, 'desc': {}, 'reagents': {}, 'spellEffects': {}, 'reagentTable': False,
+           'cooldowns': set(), 'cooldownTable': False}
     for r in _rows('SkillLineAbility', sla_dirs):
         sl, sp = _int(r.get('SkillLine')), _int(r.get('Spell'))
         if sl and sp and (sl, sp) not in out['sla']:
@@ -131,7 +142,9 @@ def read_client(*dirs, att=None):
                                            'rank': _int(r.get('RequiredSkillRank')), 'faction': _int(r.get('MinFactionID')),
                                            'standing': _int(r.get('MinReputation')),
                                            # BuyPrice is what VendorStackCount of it cost at a vendor
-                                           'buy': _int(r.get('BuyPrice')), 'stack': _int(r.get('VendorStackCount'), 1)})
+                                           'buy': _int(r.get('BuyPrice')), 'stack': _int(r.get('VendorStackCount'), 1),
+                                           # what a vendor pays for one (the route's estimate, S)
+                                           'sell': _int(r.get('SellPrice'))})
     for r in _rows('SpellName', dirs):
         out['names'].setdefault(_int(r.get('ID')), r.get('Name_lang') or '')
     for r in _rows('Spell', dirs):
@@ -145,7 +158,20 @@ def read_client(*dirs, att=None):
                 got.append((item, n))
         if sp and got and sp not in out['reagents']:
             out['reagents'][sp] = got
+    for r in _rows('SpellCooldowns', dirs):
+        out['cooldownTable'] = True
+        if max(_int(r.get('RecoveryTime')), _int(r.get('CategoryRecoveryTime'))) >= COOLDOWN_MIN_MS:
+            out['cooldowns'].add(_int(r.get('SpellID')))
     return out
+
+
+def read_cooldown_file(path=COOLDOWNS):
+    """The hand-kept recipe spells with a cooldown (tools/prof_cooldowns.json, "spells"): the fallback
+    while the client table SpellCooldowns is not exported."""
+    if not path or not os.path.exists(path):
+        return set()
+    with open(path, encoding='utf-8') as fh:
+        return {int(x) for x in json.load(fh).get('spells', [])}
 
 
 # ---------------------------------------------------------------- AllTheThings
@@ -164,14 +190,15 @@ def _read(path):
 
 
 def read_structures(base):
-    """(trainer {spell: tier 0-4}, favor {item: [(price, standing, 'A'|'H')]}, rank spells) from the
-    structures files: the trainer lists by tier (other lists, as a specialisation's, tier 0), the
-    Merchant's Favor lists by faction and standing. A recipe removed before Forever and the
+    """(trainer {spell: tier 0-4}, favor {item: [(price, standing, 'A'|'H')]}, spec {spell}) from the
+    structures files: the trainer lists by tier (other lists, as the master trainers' Shadoweave or
+    First Aid's apprentice-journeyman list, tier 0), a specialisation's list (SPEC_BLOCKS) as spec,
+    the Merchant's Favor lists by faction and standing. A recipe removed before Forever and the
     profession rank spells (with a "rank" field) are left out."""
-    trainer, favor = {}, {}
+    trainer, favor, spec = {}, {}, set()
     folder = os.path.join(base, '.config', 'structures')
     if not os.path.isdir(folder):
-        return trainer, favor
+        return trainer, favor, spec
     for name in sorted(os.listdir(folder)):
         if not name.endswith('.lua'):
             continue
@@ -206,11 +233,15 @@ def read_structures(base):
                 # profession's rank spell)
                 code = line.split('--', 1)[0]
                 rank_open = spell if '{' in code and '}' not in code else None
-                trainer.setdefault(spell, TIERS.get(block, 0))
+                if block in SPEC_BLOCKS:
+                    spec.add(spell)
+                else:
+                    trainer.setdefault(spell, TIERS.get(block, 0))
             elif rank_open and '["rank"]' in line:
                 trainer.pop(rank_open, None)
+                spec.discard(rank_open)
                 rank_open = None
-    return trainer, favor
+    return trainer, favor, spec
 
 
 def read_profession_db(base):
@@ -246,7 +277,7 @@ def read_att(base, db=None):
         return empty_att()
     if db is None:
         db = att_data.load(base, items=False)
-    trainer, favor = read_structures(base)
+    trainer, favor, spec = read_structures(base)
     sources = {}
 
     def add(item, token):
@@ -279,12 +310,13 @@ def read_att(base, db=None):
         npcs[nid] = (n['name'] or '', f'{pt[0]}:{pt[1]}:{pt[2]}' if pt else (str(n['zone']) if n.get('zone') else ''),
                      n['faction'] or '')
     quests = {qid: q['name'] or '' for qid, q in db['quests'].items()}
-    return {'commit': db.get('commit'), 'trainer': trainer, 'favor': favor, 'profdb': read_profession_db(base),
+    return {'commit': db.get('commit'), 'trainer': trainer, 'spec': spec, 'favor': favor,
+            'profdb': read_profession_db(base),
             'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold}
 
 
 def empty_att():
-    return {'commit': None, 'trainer': {}, 'favor': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
+    return {'commit': None, 'trainer': {}, 'spec': set(), 'favor': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
             'npcs': {}, 'quests': {}, 'sold': {}}
 
 
@@ -349,12 +381,14 @@ def vendor_prices(client, att, seen, items):
     return V
 
 
-def combine(client, att, seen=None):
-    """The neutral form render() writes: P, R, I, G, V, N, Q, CAMP, FAVOR, client, source, report.
-    seen: read_seen_vendors()'s merchants (none when not given)."""
+def combine(client, att, seen=None, cooldowns=None):
+    """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, CAMP, FAVOR, client, source,
+    report. seen: read_seen_vendors()'s merchants (none when not given); cooldowns: the hand-kept
+    cooldown recipes (read_cooldown_file()), used only without the client table SpellCooldowns."""
     teach = dict(att['profdb'])
     teach.update(client['teach'])          # the client's own link wins
-    att_spells = set(att['trainer']) | set(att['profdb'].values())
+    spec = att.get('spec') or set()
+    att_spells = set(att['trainer']) | spec | set(att['profdb'].values())
     for item in att['favor']:
         if item in teach:
             att_spells.add(teach[item])
@@ -380,6 +414,8 @@ def combine(client, att, seen=None):
             src.append('A')
         elif sp in att['trainer']:
             src.append(f'T{att["trainer"][sp]}')
+        elif sp in spec:
+            src.append('S')
         ranks = []
         for item in taught:
             src.append(f'I{item}')
@@ -433,13 +469,24 @@ def combine(client, att, seen=None):
         npcs_used.update(npcs)
         V[item] = f'{price}:{",".join(str(n) for n in npcs)}'
     report['prices'] = {'items': len(V), 'recipe items': len(set(V) & set(I)), 'reagents': len(set(V) & reagents)}
+    # the route's estimate for a reagent no vendor sells: what a vendor pays for one
+    S = {}
+    for item in sorted(reagents - set(V)):
+        sell = client['items'].get(item, {}).get('sell', 0)
+        if sell > 0:
+            S[item] = sell
+    # the recipes with a cooldown: the client's table, else the hand-kept list
+    listed = {int(l.split(':')[0]) for lst in R.values() for l in lst}
+    cd_all = client['cooldowns'] if client['cooldownTable'] else set(cooldowns or ())
+    CD = sorted(cd_all & listed)
+    report['cooldowns'] = {'from': 'table' if client['cooldownTable'] else 'file', 'recipes': len(CD)}
     N = {}
     for nid in sorted(npcs_used):
         name, where, fac = att['npcs'].get(nid, ('', '', ''))
         N[nid] = f'{name}|{where}|{fac}'
     Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'N': N, 'Q': Q, 'CAMP': camp_objects(client),
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'client': client['client'], 'source': (att.get('commit') or '')[:10],
             'report': report}
 
@@ -506,7 +553,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'N': {}, 'Q': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'client': '', 'source': '', 'report': {}}
 
@@ -554,12 +601,15 @@ def render(data, built):
            '',
            '-- P: { skill line, key } in display order. R: [skill line] = recipes',
            '-- "spell:item:count:learn:yellow:grey:src" (item 0: an enchant or other spell; src: A learned with',
-           '-- the profession, T1-T4 trainer tier, T0 trainer without tier, I<item> recipe item, empty unknown).',
+           '-- the profession, T1-T4 trainer tier, T0 trainer without tier, S a specialisation\'s trainer, I<item>',
+           '-- recipe item, empty unknown).',
            '-- I: [recipe item] = "spell:rank:faction:standing:sources" (F<price>@<standing><A|H> Merchant\'s Favor,',
            '-- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =',
            '-- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or',
            '-- recipe item a vendor sells for gold: the price of one (BuyPrice / VendorStackCount, rounded up) and up',
            '-- to 6 vendors (known position first, both factions), each in N; an item without a vendor is not in V.',
+           '-- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route\'s estimate).',
+           '-- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
            '-- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
            'ns.PROFESSIONS = {',
@@ -572,6 +622,8 @@ def render(data, built):
     out.append('    I = ' + _str_map(data['I']) + ',')
     out.append('    G = ' + _str_map(data['G']) + ',')
     out.append('    V = ' + _str_map(data['V']) + ',')
+    out.append('    S = ' + _num_map(data['S'], per_line=10) + ',')
+    out.append('    CD = ' + _num_map({sp: 1 for sp in data['CD']}, per_line=10) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')
     out.append('    Q = ' + _str_map(data['Q'], 3) + ',')
     out.append('    CAMP = ' + _str_list(data['CAMP'], 4) + ',')
@@ -605,7 +657,7 @@ def main(argv=None):
         if not client['sla']:
             raise SystemExit('no SkillLineAbility table: export it (export_db2.ps1 -Tables SkillLineAbility)')
         seen = read_seen_vendors(args.scan_archive) if args.scan_archive else {}
-        data = combine(client, att, seen)
+        data = combine(client, att, seen, read_cooldown_file())
     text = render(data, time.strftime('%Y-%m-%d'))
     old = None
     if os.path.exists(args.out):
@@ -625,6 +677,9 @@ def main(argv=None):
     pr = rep.get('prices') or {}
     log(f'  vendor prices: {pr.get("items", 0)} items ({pr.get("reagents", 0)} reagents, {pr.get("recipe items", 0)} recipe items), '
         f'NPCs: {len(data["N"])}')
+    cd = rep.get('cooldowns') or {}
+    log(f'  sell prices (estimate): {len(data["S"])} reagents; cooldown recipes: {cd.get("recipes", 0)} '
+        f'(from the {cd.get("from", "-")})')
 
 
 if __name__ == '__main__':

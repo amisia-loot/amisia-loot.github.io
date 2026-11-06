@@ -104,6 +104,9 @@ $OptionalTables = @(
     'ItemRandomProperties', 'ItemRandomSuffix',
     # tools/build_professions.py: recipe -> profession, reagents, profession names
     'SkillLineAbility', 'SpellReagents', 'SkillLine',
+    # tools/build_professions.py: the recipes with a cooldown (transmutes, Mooncloth; never a route
+    # step, F-137), their categories, and the rank limits per trainer tier
+    'SpellCooldowns', 'SpellCategories', 'SkillTiers',
     # tools/build_dungeonart.py: the loading screen of a dungeon
     'LoadingScreens',
     # tools/build_raidcheck.py: the slots the enchanting recipes target (with SkillLineAbility above);

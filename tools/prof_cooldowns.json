@@ -1,0 +1,7 @@
+{
+  "_comment": "Recipe spells with a cooldown (F-137): the profession route never makes them a step, because a cooldown recipe cannot be repeated for skill points. Hand-kept fallback for tools/build_professions.py while the client table SpellCooldowns is not exported (tools/export_db2.ps1 lists it; once it is in ~/addons/_wago the generator takes the table and ignores this file). Picked by name and description from the client's SpellName and Spell tables and the recipe lists: every alchemy 'Transmute:' recipe (they share a daily cooldown) and Mooncloth (moonwell, days). Add a spell id here only when the game shows a cooldown on the recipe.",
+  "spells": [
+    11479, 11480, 17187, 17559, 17560, 17561, 17562, 17563, 17564, 17565, 17566, 25146, 1317279,
+    18560
+  ]
+}

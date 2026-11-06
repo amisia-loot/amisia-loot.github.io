@@ -1,27 +1,27 @@
-ID,Description_lang,Display_lang,MinFactionID,MinReputation,RequiredSkillRank,RequiredSkill,ItemLevel,BuyPrice,VendorStackCount
-118,,Minor Healing Potion,0,0,0,0,5,0,1
-2853,,Copper Bracers,0,0,0,0,7,0,1
-3471,,Copper Chain Vest,0,0,0,0,10,0,1
-3609,,Plans: Copper Chain Vest,0,0,10,164,10,500,1
-251001,,Gemmed Copper Boots,0,0,0,0,12,0,1
-276992,,Cloudy Skyforged Chainmail,0,0,0,0,30,0,1
-276928,Teaches you how to craft Cloudy Skyforged Chainmail.,Plans: Cloudy Skyforged Chainmail,2758,5,60,164,30,0,1
-7000,,Golden Scale Gauntlets,0,0,0,0,40,0,1
-7001,,Golden Scale Boots,0,0,0,0,40,0,1
-888001,,Plans: Golden Scale Gauntlets,0,0,170,164,40,0,1
-888002,,Plans: Golden Scale Boots,0,0,170,164,40,0,1
-3848,,Big Bronze Knife,0,0,0,0,25,0,1
-7723,,Blight,0,0,0,0,50,0,1
-250001,,Elixir of Lesser Intellect,0,0,0,0,20,0,1
-250388,,Recipe: Elixir of Lesser Intellect,0,0,50,171,20,0,1
-279988,,Anvil,0,0,140,164,28,0,1
-273086,Teaches you how to place an Anvil at a campsite.,Blueprint: Anvil,0,0,140,164,28,0,1
-279944,,Sharpening Wheel,0,0,20,164,4,0,1
-279981,,Basic Campfire,0,0,1,185,1,0,1
-264020,A pending crafting order.,Craftsman's Writ: Copper Chain Vest,0,0,0,0,1,0,1
-271622,,Blacksmithing Certification,0,0,300,164,1,0,1
-251358,,Plans: Acolyte's Boots,0,0,1,164,1,1000,1
-251400,,Acolyte's Boots,0,0,0,0,10,0,1
-2840,,Copper Bar,0,0,0,0,10,60,1
-2880,,Weak Flux,0,0,0,0,10,100,1
-3371,,Empty Vial,0,0,0,0,1,20,5
+ID,Description_lang,Display_lang,MinFactionID,MinReputation,RequiredSkillRank,RequiredSkill,ItemLevel,BuyPrice,VendorStackCount,SellPrice
+118,,Minor Healing Potion,0,0,0,0,5,0,1,0
+2853,,Copper Bracers,0,0,0,0,7,0,1,0
+3471,,Copper Chain Vest,0,0,0,0,10,0,1,0
+3609,,Plans: Copper Chain Vest,0,0,10,164,10,500,1,0
+251001,,Gemmed Copper Boots,0,0,0,0,12,0,1,0
+276992,,Cloudy Skyforged Chainmail,0,0,0,0,30,0,1,0
+276928,Teaches you how to craft Cloudy Skyforged Chainmail.,Plans: Cloudy Skyforged Chainmail,2758,5,60,164,30,0,1,0
+7000,,Golden Scale Gauntlets,0,0,0,0,40,0,1,0
+7001,,Golden Scale Boots,0,0,0,0,40,0,1,0
+888001,,Plans: Golden Scale Gauntlets,0,0,170,164,40,0,1,0
+888002,,Plans: Golden Scale Boots,0,0,170,164,40,0,1,0
+3848,,Big Bronze Knife,0,0,0,0,25,0,1,0
+7723,,Blight,0,0,0,0,50,0,1,0
+250001,,Elixir of Lesser Intellect,0,0,0,0,20,0,1,0
+250388,,Recipe: Elixir of Lesser Intellect,0,0,50,171,20,0,1,0
+279988,,Anvil,0,0,140,164,28,0,1,0
+273086,Teaches you how to place an Anvil at a campsite.,Blueprint: Anvil,0,0,140,164,28,0,1,0
+279944,,Sharpening Wheel,0,0,20,164,4,0,1,0
+279981,,Basic Campfire,0,0,1,185,1,0,1,0
+264020,A pending crafting order.,Craftsman's Writ: Copper Chain Vest,0,0,0,0,1,0,1,0
+271622,,Blacksmithing Certification,0,0,300,164,1,0,1,0
+251358,,Plans: Acolyte's Boots,0,0,1,164,1,1000,1,0
+251400,,Acolyte's Boots,0,0,0,0,10,0,1,0
+2840,,Copper Bar,0,0,0,0,10,60,1,15
+2880,,Weak Flux,0,0,0,0,10,100,1,25
+3371,,Empty Vial,0,0,0,0,1,20,5,1

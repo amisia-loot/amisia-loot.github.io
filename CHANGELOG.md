@@ -9,9 +9,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
   The professions page has a switch "Rezepte | Route". The route shows the cheapest way from your rank to
   the top of a crafting profession, cooking, first aid or poisons: which recipe to craft how often, when to
-  visit the trainer, what it costs at vendor prices and, with "auch Händler", which recipes to buy. The
-  shopping list counts what you have in bags and bank and what your alts hold, and sets the waypoint to a
-  vendor. The current step moves on as you skill up; nothing is sent.
+  visit the trainer, what it costs at vendor prices and, with "auch Händler", which recipes to buy. Materials
+  no vendor sells are weighed by an estimate from their sell price, so the route prefers orange and yellow
+  recipes and never asks for hundreds of crafts that hardly give a point; recipes with a cooldown, of a
+  specialisation or from a quest stay out, and a recipe is never planned before you can learn it. The
+  shopping list counts what you have in bags and bank and what your alts on the same realm and faction
+  hold, and sets the waypoint to a vendor. The current step moves on as you skill up; nothing is sent.
 - fix(map): no more "blocked action" errors after Amisia opened a game window (F-045, F-106, F-090)
 
   The "Karte" buttons now let the game open the world map itself, on the right zone. Amisia no longer

@@ -45,7 +45,7 @@ read_globals = {
     "GetGuildBankMoneyTransaction", "MAX_GUILDBANK_TABS",
     "RAID_CLASS_COLORS", "RandomRoll", "RANDOM_ROLL_RESULT", "ITEM_QUALITY_COLORS", "ScrollUtil", "SEARCH", "SOUNDKIT", "StaticPopup_Show",
     "time", "tinsert", "ToggleWorldMap", "TooltipDataProcessor", "TooltipUtil", "UiMapPoint", "UIParent",
-    "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitIsPlayer", "GetSubZoneText", "HideUIPanel", "UnitFactionGroup", "UnitFullName",
+    "UISpecialFrames", "UnitClass", "UnitClassification", "UnitExists", "UnitIsPlayer", "GetSubZoneText", "HideUIPanel", "UnitFactionGroup", "UnitFullName", "GetRealmName",
     "UnitGUID", "UnitIsDead", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsUnit", "UnitLevel",
     "UnitName", "UnitPosition", "UnitRace", "wipe",
     -- the trade helper (Handover.lua)

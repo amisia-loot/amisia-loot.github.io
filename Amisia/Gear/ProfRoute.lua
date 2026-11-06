@@ -4,19 +4,30 @@
 -- the bags and banks of the own characters for its column "Twinks".
 --
 -- The route goes rank by rank: at each rank the allowed recipe with the smallest expected cost per
--- skill point (reagent cost / chance; chance orange 1, yellow and green (grey - rank) / (grey -
--- yellow), grey 0), equal recipes in a row merged into one step; ties: a known recipe first, then
--- fewer distinct reagents. Reagents without a vendor price (PROFESSIONS.V) have no cost: the route
--- compares the number of such pieces per point first, then the gold. Allowed: known recipes, the
--- recipes learned with the profession, trainer recipes up to the current trainer limit and, with
--- the switch, recipes whose recipe item a vendor of the own faction sells (no reputation). An
+-- skill point, equal recipes in a row merged into one step; ties: a known recipe first, then fewer
+-- distinct reagents. The cost of one craft is one measure in copper: the vendor price of each
+-- reagent (PROFESSIONS.V); for a reagent no vendor sells an estimate (what the profession itself or
+-- smelting makes it from, else its sell price PROFESSIONS.S times EST_FACTOR, at least EST_MIN, and
+-- EST_NONE without any price); plus CRAFT_PENALTY per craft, so a long green tail loses against an
+-- orange or yellow recipe; plus a one-time cost (learning, the recipe item) spread over the ranks the
+-- recipe still gives sure points. That sum is divided by the expected points (chance orange 1,
+-- yellow and green (grey - rank) / (grey - yellow), grey 0; an intermediate's points count too).
+-- The costs the route shows are the real vendor costs only; estimated materials are named, not
+-- counted. Allowed: known recipes, the recipes learned with the profession, trainer recipes up to
+-- the current trainer limit (from the rank Prof.LearnRank names), recipes without any source only
+-- in a skill line without a trainer list (Prof.PresumedTrainer: cooking, poisons) and, with the
+-- switch, recipes whose recipe item a vendor of the own faction sells (no reputation). Never a
+-- recipe with a cooldown (PROFESSIONS.CD: transmutes, Mooncloth), not even a known one. An
 -- intermediate made by the same profession (a bolt of cloth) is crafted in the step too and its
--- points count. Pure local: nothing is sent; computed at most once per rank change, never in
--- combat or the lockdown (the page asks only while it shows the route).
+-- points count. Pure local: nothing is sent; computed at most once per rank change, never in combat
+-- or the lockdown (the page asks only while it shows the route).
 --
--- AmisiaDB.prof.bags = { [character] = { day, items = { [item] = bags + bank }, bank = { [item] =
--- the bank part, last seen } } }: the own characters' profession reagents, saved on logout, at the
--- bank and throttled on BAG_UPDATE_DELAYED. Nothing is sent.
+-- AmisiaDB.prof.bags = { [character] = { day, realm, faction ("A"/"H"), items = { [item] = bags +
+-- bank }, bank = { [item] = the bank part, last seen }, track = { item, ... } } }: the own
+-- characters' profession reagents, saved on logout, at the bank and throttled on
+-- BAG_UPDATE_DELAYED. track is the list of reagents worth counting, refreshed whenever the profession
+-- data is built anyway (the page, the route): the events count only that list and never build the
+-- data (D-28). Nothing is sent.
 local ADDON, ns = ...
 local L = ns.L
 local Pr = ns.Prof
@@ -27,9 +38,25 @@ ns.ProfRoute = R
 -- the professions with a route (skill lines): the crafting ones, cooking, first aid and poisons
 R.SKILLS = { [171] = true, [164] = true, [333] = true, [202] = true, [165] = true, [197] = true, [185] = true,
     [129] = true, [40] = true }
+-- skill lines without trainer tiers: the character's level sets the maximum (poisons)
+R.NO_TIERS = { [40] = true }
 -- the trainer limits when the data has none (T); a higher own maximum adds a step
 R.DEFAULT_CAPS = { 75, 150, 225, 300 }
 R.TIER_NAMES = { L["Lehrling"], L["Geselle"], L["Experte"], L["Fachmann"] }
+
+-- The cost measure (copper), tuned on the real data of 1.60.1.70790 (both factions, start 1, 100,
+-- 200, trainer only and vendors too) so that the routes read like a levelling guide: mostly orange
+-- and yellow recipes, green only for a few ranks, no hundreds of rare materials.
+-- EST_FACTOR: a material no vendor sells is worth its sell price times this (what it roughly costs
+--   at the auction house or in farming time);
+-- EST_MIN: but at least this much per piece (cloth and herbs sell for a few copper, yet are not free);
+-- EST_NONE: a material with neither a vendor nor a sell price (rare drops, quest items);
+-- CRAFT_PENALTY: added per craft (the main recipe and each intermediate craft): the time a craft
+--   takes, so that ten green crafts for five points lose against five orange ones;
+-- MIN_CHANCE: a recipe whose chance of a point is below this (green close to grey) is no step: the
+--   ranks no other recipe covers are a gap "only recipes that hardly give points".
+R.EST_FACTOR, R.EST_MIN, R.EST_NONE, R.CRAFT_PENALTY, R.MIN_CHANCE = 4, 20, 2000, 30, 0.25
+
 local ENCHANTING, MINING = 333, 186
 local BAGS_CHARS, BAGS_ITEMS = 40, 1500     -- characters and items kept in AmisiaDB.prof.bags at most
 local EPS = 1e-9
@@ -48,48 +75,61 @@ local function myFaction()
     return f == "Alliance" and "A" or f == "Horde" and "H" or nil
 end
 
+local function myRealm()
+    local r = GetRealmName and plainCall(GetRealmName) or nil
+    return type(r) == "string" and r ~= "" and r or nil
+end
+
 function R.Has(skill) return R.SKILLS[tonumber(skill) or 0] == true and Pr.Key(skill) ~= nil end
 
 ---------------------------------------------------------------------------
--- Vendor prices, learning costs, trainer limits
+-- Vendor prices, estimates, learning costs, trainer limits
 ---------------------------------------------------------------------------
-local priceCache = { data = nil, items = {} }
+local priceCache = { data = nil, items = {}, recipes = {} }
 local function freshPrices()
-    if priceCache.data ~= data() then priceCache = { data = data(), items = {} } end
+    if priceCache.data ~= data() then priceCache = { data = data(), items = {}, recipes = {} } end
 end
 
--- The vendor price of one item in copper and its vendors of the own faction (or neutral) as NPCs of
--- the data ({ id, name, point, zone, faction }); nil when no vendor sells it (or only the other
--- faction's).
-function R.Price(item)
+-- V[item] read: the price and the vendors as NPCs ({ id, name, point, zone, faction }) of the own
+-- faction or neutral; strict: a list of the other faction's vendors only gives no price.
+local function vendorLine(item, strict)
+    local d = data()
+    local s = d and d.V and d.V[item]
+    if type(s) ~= "string" then return false end
+    local price, list = s:match("^(%d+):?(.*)$")
+    if not price then return false end
+    local fac, vendors, any = myFaction(), {}, false
+    for id in list:gmatch("%d+") do
+        any = true
+        local npc = Pr.Npc(id)
+        if npc and (npc.faction == "" or npc.faction == nil or not fac or npc.faction == fac) then vendors[#vendors + 1] = npc end
+    end
+    if strict and any and #vendors == 0 then return false end
+    return { price = num(price), vendors = vendors }
+end
+
+local function cached(store, item, strict)
     item = tonumber(item)
     if not item then return nil end
     freshPrices()
-    local hit = priceCache.items[item]
-    if hit ~= nil then
-        if not hit then return nil end
-        return hit.price, hit.vendors
+    local hit = priceCache[store][item]
+    if hit == nil then
+        hit = vendorLine(item, strict)
+        priceCache[store][item] = hit
     end
-    local d = data()
-    local s = d and d.V and d.V[item]
-    local out = false
-    if type(s) == "string" then
-        local price, list = s:match("^(%d+):?(.*)$")
-        if price then
-            local fac, vendors, any = myFaction(), {}, false
-            for id in list:gmatch("%d+") do
-                any = true
-                local npc = Pr.Npc(id)
-                if npc and (npc.faction == "" or npc.faction == nil or not fac or npc.faction == fac) then vendors[#vendors + 1] = npc end
-            end
-            -- a price without a vendor list counts; a list of the other faction's vendors only does not
-            if not any or #vendors > 0 then out = { price = num(price), vendors = vendors } end
-        end
-    end
-    priceCache.items[item] = out
-    if not out then return nil end
-    return out.price, out.vendors
+    if not hit then return nil end
+    return hit.price, hit.vendors
 end
+
+-- The vendor price of one reagent in copper and its vendors of the own faction (or neutral); nil
+-- when no vendor sells it. Trade goods are sold to both sides and the data knows the vendors of one
+-- side only for many of them: a price whose vendors are all of the other faction (or with an empty
+-- list) still counts, with no vendor to go to (the shopping list: "Händler (Ort unbekannt)").
+function R.Price(item) return cached("items", item, false) end
+
+-- The same for a recipe item, strictly: recipe vendors are bound to their faction, so a list of the
+-- other faction's vendors only gives no price (an empty list counts, with no place).
+function R.RecipePrice(item) return cached("recipes", item, true) end
 
 -- What the trainer asks for a recipe (copper), or nil when the data does not say.
 function R.LearnCost(spell)
@@ -98,12 +138,81 @@ function R.LearnCost(spell)
     return tonumber(c)
 end
 
+-- Whether a recipe has a cooldown (PROFESSIONS.CD): never a route step.
+function R.Cooldown(spell)
+    local d = data()
+    return d and d.CD and d.CD[tonumber(spell)] ~= nil or false
+end
+
+-- The recipes of a skill line and of smelting that make an item (no cooldown recipes): item ->
+-- { recipe, ... }, per skill line, rebuilt with the data.
+local makerIndex = { data = nil }
+local function makersOf(skill)
+    if makerIndex.data ~= data() then makerIndex = { data = data() } end
+    local m = makerIndex[skill]
+    if m then return m end
+    m = {}
+    for _, r in ipairs(Pr.Recipes(skill)) do
+        if r.item > 0 and not R.Cooldown(r.spell) then
+            m[r.item] = m[r.item] or {}
+            table.insert(m[r.item], r)
+        end
+    end
+    makerIndex[skill] = m
+    return m
+end
+
+-- The sell-price estimate of one piece (nil without a sell price in S).
+local function sellEstimate(item)
+    local d = data()
+    local sell = d and d.S and tonumber(d.S[item])
+    return sell and math.max(R.EST_MIN, sell * R.EST_FACTOR) or nil
+end
+
+-- The worth of one piece of a material for the route's cost measure (copper) and whether it is a
+-- vendor price: the vendor price; else the cheaper of what the route's own profession or smelting
+-- makes it from (its reagents' worth per piece made) and its sell price times EST_FACTOR (at least
+-- EST_MIN): a leather skinners bring costs less than the leather it could be cured from; else
+-- EST_NONE.
+local worthCache = { data = nil }
+function R.Worth(item, skill, depth, seen)
+    item = tonumber(item)
+    local price = R.Price(item)
+    if price then return price, true end
+    if worthCache.data ~= data() then worthCache = { data = data() } end
+    local key = tostring(skill) .. ":" .. tostring(item)
+    if worthCache[key] then return worthCache[key], false end
+    depth, seen = depth or 0, seen or {}
+    local out = sellEstimate(item)
+    if depth < 4 and not seen[item] then
+        seen[item] = true
+        for _, sk in ipairs({ skill, MINING }) do
+            for _, r in ipairs(sk and makersOf(sk)[item] or {}) do
+                local reagents = Pr.Reagents(r.spell)
+                if reagents and #reagents > 0 then
+                    local sum = 0
+                    for _, g in ipairs(reagents) do sum = sum + g[2] * (R.Worth(g[1], skill, depth + 1, seen)) end
+                    local each = sum / math.max(1, r.count)
+                    if not out or each < out then out = each end
+                end
+            end
+        end
+        seen[item] = nil
+    end
+    out = out or R.EST_NONE
+    if depth == 0 then worthCache[key] = out end
+    return out, false
+end
+
 -- The trainer limits of a skill line: { { cap, cost } } ascending (cost nil: unknown) and the top
 -- rank. From the data (T) when it has them, else 75/150/225/300 up to the highest trainer tier of
--- the recipes; the own maximum (the profession window's or the spell book's) is the current limit
--- and, above the last one, one more (Forever's ranks go past 300 for some professions). Trainer
--- costs only from T (cost nil: unknown).
+-- the recipes; the own maximum (the profession window's or the spell book's) above the last one
+-- adds one more (Forever's ranks go past 300 for some professions). Trainer costs only from T
+-- (cost nil: unknown). A skill line without tiers (R.NO_TIERS) has none: the top is the own
+-- maximum, else 300.
 function R.Caps(skill, max)
+    max = tonumber(max) or 0
+    if R.NO_TIERS[skill] then return {}, max > 0 and max or R.DEFAULT_CAPS[#R.DEFAULT_CAPS] end
     local d = data()
     local caps = {}
     for _, s in ipairs(d and d.T and d.T[skill] or {}) do
@@ -124,7 +233,6 @@ function R.Caps(skill, max)
         if n == 0 then n = #R.DEFAULT_CAPS end
         for i = 1, math.min(n, #R.DEFAULT_CAPS) do caps[i] = { tier = i, cap = R.DEFAULT_CAPS[i] } end
     end
-    max = tonumber(max) or 0
     if max > caps[#caps].cap then caps[#caps + 1] = { tier = #caps + 1, cap = max } end
     return caps, caps[#caps].cap
 end
@@ -143,7 +251,8 @@ function R.Chance(r, rank)
 end
 
 -- The trainer tier a recipe needs (0: learned with the profession or no tier), or nil when no
--- trainer teaches it.
+-- trainer teaches it. A specialisation's recipe (S) is no trainer recipe; one without any source
+-- only where the skill line has no trainer list (Pr.PresumedTrainer).
 local function trainerTier(r)
     local tier
     for _, tok in ipairs(r.src) do
@@ -154,8 +263,7 @@ local function trainerTier(r)
             tier = tier and math.min(tier, t) or t
         end
     end
-    -- no source at all: a trainer recipe, as the page counts it (Pr.SourceKinds, "vermutlich Lehrer")
-    if not tier and #r.src == 0 and #r.items == 0 then return 0 end
+    if not tier and Pr.PresumedTrainer(r) then return 0 end
     return tier
 end
 
@@ -164,24 +272,13 @@ local function isAuto(r)
     return false
 end
 
--- The rank from which a trainer recipe can be learned. The client tables say 1 for most of them;
--- then the orange band before yellow (half the yellow-to-grey width, 5 at least), not below what
--- the tier's trainer asks (the limit before it less 25).
-local function learnRank(r, tier, caps)
-    if r.learn > 1 then return r.learn end
-    if isAuto(r) then return 1 end
-    local est = r.yellow - math.max(5, math.floor((r.grey - r.yellow) / 2 + 0.5))
-    if tier and tier >= 2 and caps[tier - 1] then est = math.max(est, caps[tier - 1].cap - 25) end
-    return math.max(1, est)
-end
-
 -- A recipe a vendor of the own faction sells as a recipe item without a reputation: { item, price,
 -- vendors, rank }, or nil.
 local function vendorRecipe(r)
     for _, id in ipairs(r.items) do
         local ri = Pr.RecipeItem(id)
         if ri and (ri.faction or 0) == 0 then
-            local price, vendors = R.Price(id)
+            local price, vendors = R.RecipePrice(id)
             if price then return { item = id, price = price, vendors = vendors or {}, rank = ri.rank or 0 } end
         end
     end
@@ -189,28 +286,36 @@ local function vendorRecipe(r)
 end
 
 -- Prepares the recipes of a skill line for the route: each with its reagents (parts: item, n, price
--- or nil), whether it is known, the tier it needs, the rank it can be learned from, what learning
--- or buying costs once. Recipes nobody can plan (drops, favor, reputation, the other faction) and
--- recipes without reagent data are left out (the second value counts the latter by rank).
-local function prepare(skill, o, caps)
+-- or nil, worth), whether it is known, the tier it needs, the rank it can be learned from, what
+-- learning or buying costs once. Recipes nobody can plan (drops, favor, reputation, the other
+-- faction, a specialisation, no source where the trainer's list is known), cooldown recipes and
+-- recipes without reagent data are left out (the second value holds the latter).
+local function prepare(skill, o)
     local list, noReagents = {}, {}
     for _, r in ipairs(Pr.Recipes(skill)) do
-        local known = o.known(r) or isAuto(r)
-        local tier = trainerTier(r)
-        local buy = (not known and tier == nil and o.vendor) and vendorRecipe(r) or nil
-        if known or tier or buy then
-            local reagents = Pr.Reagents(r.spell)
-            if not reagents or #reagents == 0 then
-                noReagents[#noReagents + 1] = r
-            else
-                local e = { r = r, known = known, tier = (not known) and tier or nil, buy = buy, parts = {},
-                    learn = known and 1 or math.max(learnRank(r, tier, caps), buy and buy.rank or 0),
-                    learnCost = (not known and tier and R.LearnCost(r.spell)) or 0 }
-                e.oneTime = e.learnCost + (buy and buy.price or 0)
-                for _, g in ipairs(reagents) do
-                    e.parts[#e.parts + 1] = { item = g[1], n = g[2], price = (R.Price(g[1])) }
+        if not R.Cooldown(r.spell) then
+            local known = o.known(r) or isAuto(r)
+            local tier = trainerTier(r)
+            local buy = (not known and tier == nil and o.vendor) and vendorRecipe(r) or nil
+            if known or tier or buy then
+                local reagents = Pr.Reagents(r.spell)
+                if not reagents or #reagents == 0 then
+                    noReagents[#noReagents + 1] = r
+                else
+                    local e = { r = r, known = known, tier = (not known) and tier or nil, buy = buy, parts = {},
+                        learn = known and 1 or math.max(Pr.LearnRank(r), buy and buy.rank or 0),
+                        learnCost = (not known and tier and R.LearnCost(r.spell)) or 0 }
+                    e.oneTime = e.learnCost + (buy and buy.price or 0)
+                    local sum = 0
+                    for _, g in ipairs(reagents) do
+                        local price = R.Price(g[1])
+                        local p = { item = g[1], n = g[2], price = price, worth = price or (R.Worth(g[1], skill)) }
+                        e.parts[#e.parts + 1] = p
+                        sum = sum + p.n * p.worth
+                    end
+                    e.unit = sum / math.max(1, r.count)   -- the worth of the reagents per piece made
+                    list[#list + 1] = e
                 end
-                list[#list + 1] = e
             end
         end
     end
@@ -239,24 +344,28 @@ end
 ---------------------------------------------------------------------------
 -- The route
 ---------------------------------------------------------------------------
--- The cost of one craft of e at a rank: points expected, pieces without a price, copper, the
--- intermediate used ({ e, k = crafts per main craft }) and the base reagents per craft.
 local function usable(e, rank, tier)
     return rank >= e.learn and (not e.tier or e.tier <= tier)
 end
 
+-- One craft of e at a rank: the expected points, the cost measure per point (pp), the real vendor
+-- copper, the pieces without a vendor price, the intermediate used ({ e, k = crafts per main
+-- craft, part }).
 local function evaluate(e, rank, tier, paid)
     local r = e.r
     local ch = R.Chance(r, rank)
     if ch <= 0 or not usable(e, rank, tier) then return nil end
-    local pts, unpriced, priced, pre = ch, 0, 0, nil
+    -- green near grey: below MIN_CHANCE no route step (a gap says so)
+    if ch < R.MIN_CHANCE then return nil, "low" end
+    local pts, crafts, unpriced, priced, worth, pre = ch, 1, 0, 0, 0, nil
     local once = paid[e] and 0 or e.oneTime
     for _, p in ipairs(e.parts) do
         local maker
-        -- one intermediate per recipe: the first reagent without a price the profession makes here
+        -- one intermediate per recipe: the first reagent without a price the profession makes here,
+        -- when making it costs no more than getting it otherwise (bolts yes, leather from leather no)
         if not pre and not p.price then
             for _, m in ipairs(p.makers or {}) do
-                if usable(m, rank, tier) then
+                if usable(m, rank, tier) and m.unit <= p.worth * 1.05 + 1 then
                     maker = m
                     break
                 end
@@ -265,26 +374,26 @@ local function evaluate(e, rank, tier, paid)
         if maker then
             local k = p.n / math.max(1, maker.r.count)
             pts = pts + k * R.Chance(maker.r, rank)
+            crafts = crafts + k
             for _, q in ipairs(maker.parts) do
+                worth = worth + k * q.n * q.worth
                 if q.price then priced = priced + k * q.n * q.price else unpriced = unpriced + k * q.n end
             end
             if not paid[maker] then once = once + maker.oneTime end
             pre = { e = maker, k = k, part = p }
-        elseif p.price then
-            priced = priced + p.n * p.price
         else
-            unpriced = unpriced + p.n
+            worth = worth + p.n * p.worth
+            if p.price then priced = priced + p.n * p.price else unpriced = unpriced + p.n end
         end
     end
     -- a one-time cost (learning, buying) spread over the ranks the recipe still gives sure points
     local span = math.max(1, r.green - rank)
-    return { e = e, pts = pts, up = unpriced / pts, pp = (priced + once / span) / pts, unpriced = unpriced,
-        priced = priced, pre = pre, known = e.known, distinct = #e.parts, spell = r.spell }
+    return { e = e, pts = pts, pp = (worth + R.CRAFT_PENALTY * crafts + once / span) / pts, unpriced = unpriced,
+        priced = priced, worth = worth, pre = pre, known = e.known, distinct = #e.parts, spell = r.spell }
 end
 
 local function better(a, b, prev)
-    if math.abs(a.up - b.up) > EPS then return a.up < b.up end
-    if math.abs(a.pp - b.pp) > 1e-6 then return a.pp < b.pp end
+    if math.abs(a.pp - b.pp) > 1e-6 * math.max(1, a.pp, b.pp) then return a.pp < b.pp end
     if a.known ~= b.known then return a.known end
     if a.distinct ~= b.distinct then return a.distinct < b.distinct end
     if prev and (a.e == prev) ~= (b.e == prev) then return a.e == prev end
@@ -307,27 +416,49 @@ end
 -- The route of a skill line. o: rank (nil: not learned, a preview from 1), max (the own limit, nil
 -- unknown), vendor (also vendor recipes), known (function(recipe) -> true when the character knows
 -- it; default Pr.Known). Returns { skill, start, top, learned, steps = { ... }, total (copper of the
--- priced part), unknown (a step uses materials without a price), recipes (steps of kind recipe),
--- maxKnown (the own limit was given; else the classic limit over the rank is assumed) }.
+-- vendor part), unknown (a step uses materials without a vendor price), recipes (steps of kind
+-- recipe), maxKnown (the own limit was given; else the classic limit over the rank is assumed),
+-- levelCap (the own limit is no trainer limit: the character's level holds it, the route ends
+-- there), overTop (the rank is above every known limit: top = rank) }.
 -- Steps: { kind = "trainer", at, tier, name, cap, cost } | { kind = "buy", at, recipe, item, price,
--- vendors } | { kind = "recipe", from, to, recipe, entry, pre (recipe), crafts, preCrafts, points,
--- cost, unpriced, reagents = { [item] = n }, colorFrom, colorTo, learnCost, chosenAt } | { kind =
--- "gap", from, to, why = "none"/"noreagents" }. Every rank from start to top - 1 lies in exactly one
--- recipe or gap step (from <= rank < to).
+-- vendors } | { kind = "recipe", from, to, recipe, entry, pre (recipe), preKnown, crafts, preCrafts,
+-- points, cost (vendor copper), unpriced (pieces without a vendor price), worth (the estimate
+-- included), reagents = { [item] = n }, colorFrom, colorTo, learnCost, chosenAt } | { kind = "gap",
+-- from, to, why = "none"/"noreagents"/"low" (only recipes below MIN_CHANCE) }. Every rank from start
+-- to top - 1 lies in exactly one recipe or gap step (from <= rank < to).
 function R.Compute(skill, o)
     o = o or {}
     local knownFn = o.known or function(r) return Pr.Known(r.spell, skill) == true end
     local learned = o.rank ~= nil
     local start = math.max(1, tonumber(o.rank) or 1)
-    local caps, top = R.Caps(skill, o.max)
-    local list, noReagents = prepare(skill, { known = knownFn, vendor = o.vendor }, caps)
+    local m = tonumber(o.max) or 0
+    local noTiers = R.NO_TIERS[skill] == true
+    local caps, top = R.Caps(skill, m)
+    local list, noReagents = prepare(skill, { known = knownFn, vendor = o.vendor })
     local out = { skill = skill, start = start, top = top, learned = learned, steps = {}, total = 0, unknown = false,
-        recipes = 0, maxKnown = (tonumber(o.max) or 0) > 0 }
+        recipes = 0, maxKnown = m > 0 }
     local steps = out.steps
 
+    -- an own limit that is no trainer limit: the level holds it (Forever), the route ends there
+    if learned and m > 0 then
+        local isCap = noTiers and m >= top and m >= R.DEFAULT_CAPS[#R.DEFAULT_CAPS]
+        for _, c in ipairs(caps) do if c.cap == m then isCap = true end end
+        if not isCap then
+            out.levelCap = m
+            top = m
+        end
+    end
+    if start > top then
+        -- above every known limit (the limit unknown): the rank is the top, nothing to plan
+        top = start
+        out.overTop = true
+    end
+    out.top = top
+
     local tier, cap, cur = 0, start, nil
-    if learned then
-        local m = tonumber(o.max) or 0
+    if noTiers then
+        tier, cap = math.huge, top
+    elseif learned then
         tier = #caps
         for i, c in ipairs(caps) do
             if (m > 0 and c.cap >= m) or (m <= 0 and c.cap >= start) then
@@ -338,6 +469,7 @@ function R.Compute(skill, o)
         cap = m > 0 and m or caps[tier].cap
     end
     local function trainer(at)
+        if noTiers or out.levelCap then return false end
         local nextTier
         for i, c in ipairs(caps) do
             if c.cap > cap then
@@ -353,7 +485,7 @@ function R.Compute(skill, o)
         cur = nil   -- the trainer visit ends the step before it
         return true
     end
-    if not learned then
+    if not learned and not noTiers then
         cap = 0
         trainer(1)
     end
@@ -361,24 +493,32 @@ function R.Compute(skill, o)
     -- the ranks recipes without reagent data would cover (for the gap's reason)
     local function hasNoReagents(rank)
         for _, r in ipairs(noReagents) do
-            if R.Chance(r, rank) > 0 and rank >= (r.learn > 1 and r.learn or 1) then return true end
+            if R.Chance(r, rank) > 0 and rank >= Pr.LearnRank(r) then return true end
         end
         return false
     end
 
     local paid = {}
+    local function buyStep(e, rank)
+        if e.buy and not paid[e] then
+            steps[#steps + 1] = { kind = "buy", at = rank, recipe = e.r, item = e.buy.item, price = e.buy.price,
+                vendors = e.buy.vendors }
+            out.total = out.total + e.buy.price
+        end
+    end
     local rank = start
     while rank < top do
         if rank >= cap and not trainer(rank) then break end
-        local best
+        local best, low
         for _, e in ipairs(list) do
             if rank < e.r.grey then
-                local v = evaluate(e, rank, tier, paid)
+                local v, why = evaluate(e, rank, tier, paid)
                 if v and (not best or better(v, best, cur and cur.entry)) then best = v end
+                if why == "low" then low = true end
             end
         end
         if not best then
-            local why = hasNoReagents(rank) and "noreagents" or "none"
+            local why = low and "low" or hasNoReagents(rank) and "noreagents" or "none"
             if cur and cur.kind == "gap" and cur.why == why then
                 cur.to = rank + 1
             else
@@ -389,14 +529,12 @@ function R.Compute(skill, o)
             local e = best.e
             local preE = best.pre and best.pre.e or nil
             if not (cur and cur.kind == "recipe" and cur.entry == e and cur.preEntry == preE) then
-                if e.buy and not paid[e] then
-                    steps[#steps + 1] = { kind = "buy", at = rank, recipe = e.r, item = e.buy.item, price = e.buy.price,
-                        vendors = e.buy.vendors }
-                    out.total = out.total + e.buy.price
-                end
+                -- the recipes to buy first: the intermediate's, then the main one's
+                if preE then buyStep(preE, rank) end
+                buyStep(e, rank)
                 cur = { kind = "recipe", from = rank, to = rank, recipe = e.r, entry = e, pre = preE and preE.r or nil,
-                    preEntry = preE, crafts = 0, preCrafts = 0, cost = 0, unpriced = 0, reagents = {}, learnCost = 0,
-                    chosenAt = rank, known = e.known }
+                    preEntry = preE, preKnown = preE and preE.known or nil, crafts = 0, preCrafts = 0, cost = 0,
+                    unpriced = 0, worth = 0, reagents = {}, learnCost = 0, chosenAt = rank, known = e.known }
                 if not paid[e] and e.learnCost > 0 then
                     cur.learnCost = e.learnCost
                     cur.cost = cur.cost + e.learnCost
@@ -416,6 +554,7 @@ function R.Compute(skill, o)
             cur.preCrafts = cur.preCrafts + (best.pre and best.pre.k * units or 0)
             cur.cost = cur.cost + best.priced * units
             cur.unpriced = cur.unpriced + best.unpriced * units
+            cur.worth = cur.worth + best.worth * units
             for item, n in pairs(baseReagents(best)) do cur.reagents[item] = (cur.reagents[item] or 0) + n * units end
         end
         rank = rank + 1
@@ -475,7 +614,8 @@ end
 
 -- The route the page shows for a skill line: the own rank and limit, the switch "auch Händler".
 -- Computed again only when one of them, the known recipes or the data changed; never in combat or
--- the lockdown (then the last route, and true as the second value). nil without a route.
+-- the lockdown (then the last route, and true as the second value). nil without a route. The steps
+-- behind the rank stay ticked, also across the switch: they lie before the rank either way.
 function R.Get(skill, vendor)
     if not R.Has(skill) then return nil end
     local rank, max = Pr.Rank(skill)
@@ -486,14 +626,16 @@ function R.Get(skill, vendor)
     if blocked() then return st and st.route or nil, true end
     local route = R.Compute(skill, { rank = rank, max = max, vendor = vendor })
     local cap = (rank and max) or 0
-    local done = (st and st.route and st.vendor == (vendor and true or false)) and carryDone(st.route, route.start, cap) or {}
+    local done = (st and st.route) and carryDone(st.route, route.start, cap) or {}
     if #done > 0 then
         local all = {}
         for _, s in ipairs(done) do all[#all + 1] = s end
         for _, s in ipairs(route.steps) do all[#all + 1] = s end
         route.steps = all
     end
-    routes[skill] = { key = key, route = route, vendor = vendor and true or false }
+    routes[skill] = { key = key, route = route }
+    -- the data is built now: the bag counts take the list of reagents worth counting from it
+    R.SaveBags()
     return route, false
 end
 
@@ -510,14 +652,18 @@ end
 ---------------------------------------------------------------------------
 -- Where a material comes from
 ---------------------------------------------------------------------------
-local srcIndex   -- { data, made = { [item] = skill }, used = { [item] = { [skill] = true } } }
+local srcIndex   -- { data, made = { [item] = { [skill] = true } }, first = { [item] = skill }, used = ... }
 local function sources()
     if srcIndex and srcIndex.data == data() then return srcIndex end
-    srcIndex = { data = data(), made = {}, used = {} }
+    srcIndex = { data = data(), made = {}, first = {}, used = {} }
     local d = data()
     for _, skill in ipairs(Pr.Skills()) do
         for _, r in ipairs(Pr.Recipes(skill)) do
-            if r.item > 0 and not srcIndex.made[r.item] then srcIndex.made[r.item] = skill end
+            if r.item > 0 then
+                srcIndex.made[r.item] = srcIndex.made[r.item] or {}
+                srcIndex.made[r.item][skill] = true
+                srcIndex.first[r.item] = srcIndex.first[r.item] or skill
+            end
             local g = d and d.G and d.G[r.spell]
             if type(g) == "string" then
                 for item in g:gmatch("(%d+):%d+") do
@@ -532,14 +678,22 @@ local function sources()
     return srcIndex
 end
 
--- The source of a material for the shopping list: kind ("vendor", "smelt", "mine", "craft",
--- "disenchant", "farm") and, for "craft", the skill line that makes it.
+-- The source of a material for the shopping list: kind ("vendor" with a vendor of a known place,
+-- "vendorx" a vendor price without such a vendor, "smelt", "mine", "craft", "disenchant", "farm")
+-- and, for "craft", the skill line that makes it (the route's own first).
 function R.Source(item, skill)
-    if R.Price(item) then return "vendor" end
+    local price, vendors = R.Price(item)
+    if price then
+        for _, npc in ipairs(vendors or {}) do
+            if npc.point then return "vendor" end
+        end
+        return "vendorx"
+    end
     local s = sources()
-    local maker = s.made[item]
-    if maker == MINING then return "smelt" end
-    if maker and maker ~= skill then return "craft", maker end
+    local made = s.made[item]
+    if made and made[skill] then return "craft", skill end
+    if made and made[MINING] then return "smelt" end
+    if made then return "craft", s.first[item] end
     local used = s.used[item] or {}
     if used[MINING] then return "mine" end
     if skill == ENCHANTING then
@@ -554,7 +708,6 @@ end
 -- The bags of the own characters (AmisiaDB.prof.bags)
 ---------------------------------------------------------------------------
 local function charKey() return ns.UnitFullName and ns.UnitFullName("player") or "?" end
-local function realmOf(name) return tostring(name):match("%-(.+)$") or "" end
 
 local function bagsRoot(create)
     if not AmisiaDB then return nil end
@@ -585,8 +738,25 @@ local function cleanCounts(t)
     return out
 end
 
--- Called on ADDON_LOADED: AmisiaDB.prof.bags checked (names without codes, day, counts positive
--- whole numbers; the newest BAGS_CHARS characters), other fields dropped.
+local function cleanList(t)
+    local out, seen = {}, {}
+    if type(t) ~= "table" then return nil end
+    for _, item in ipairs(t) do
+        if posInt(item) and not seen[item] and #out < BAGS_ITEMS then
+            seen[item] = true
+            out[#out + 1] = item
+        end
+    end
+    return #out > 0 and out or nil
+end
+
+local function cleanText(v, max)
+    return type(v) == "string" and v ~= "" and #v <= max and not v:find("|", 1, true) and v or nil
+end
+
+-- Called on ADDON_LOADED: AmisiaDB.prof.bags checked (names without codes, day, realm, faction A/H,
+-- counts positive whole numbers, the list of reagents; the newest BAGS_CHARS characters), other
+-- fields dropped.
 function ns.ProfBagsLoaded(root)
     local p = type(root) == "table" and root.prof
     if type(p) ~= "table" or p.bags == nil then return end
@@ -598,7 +768,8 @@ function ns.ProfBagsLoaded(root)
     for name, e in pairs(p.bags) do
         if type(name) == "string" and name ~= "" and #name <= 80 and not name:find("|", 1, true) and type(e) == "table" then
             list[#list + 1] = { name = name, e = { day = type(e.day) == "number" and e.day >= 0 and math.floor(e.day) or 0,
-                items = cleanCounts(e.items), bank = cleanCounts(e.bank) } }
+                realm = cleanText(e.realm, 64), faction = (e.faction == "A" or e.faction == "H") and e.faction or nil,
+                items = cleanCounts(e.items), bank = cleanCounts(e.bank), track = cleanList(e.track) } }
         end
     end
     table.sort(list, function(a, b)
@@ -614,45 +785,59 @@ ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then ns.ProfBagsLoaded(AmisiaDB) end
 end)
 
--- The reagents worth counting: those of the own professions with a route (data reagents).
+-- The reagents worth counting: those of the own professions with a route (data reagents), as a
+-- sorted list. Only while the profession data is built (ns.DataLoaded): nil otherwise, so that no
+-- event builds it (D-28).
 local trackCache
-local function tracked()
+local function trackedFromData()
+    if not ns.DataLoaded("PROFESSIONS") then return nil end
     local skills = {}
     for _, p in ipairs(Pr.Own()) do
         if R.SKILLS[p.skill] then skills[#skills + 1] = p.skill end
     end
     table.sort(skills)
-    local sig = table.concat(skills, ",") .. "|" .. tostring(data())
-    if trackCache and trackCache.sig == sig then return trackCache.items end
-    local items, d = {}, data()
+    local d = data()
+    local sig = table.concat(skills, ",") .. "|" .. tostring(d)
+    if trackCache and trackCache.sig == sig then return trackCache.list end
+    local set, list = {}, {}
     for _, skill in ipairs(skills) do
         for _, r in ipairs(Pr.Recipes(skill)) do
             local g = d and d.G and d.G[r.spell]
             if type(g) == "string" then
-                for item in g:gmatch("(%d+):%d+") do items[num(item)] = true end
+                for item in g:gmatch("(%d+):%d+") do
+                    item = num(item)
+                    if not set[item] then
+                        set[item] = true
+                        list[#list + 1] = item
+                    end
+                end
             end
         end
     end
-    trackCache = { sig = sig, items = items }
-    return items
+    table.sort(list)
+    while #list > BAGS_ITEMS do table.remove(list) end
+    trackCache = { sig = sig, list = list }
+    return list
 end
 
 local bankOpen = false
 
 -- Counts this character's profession reagents into AmisiaDB.prof.bags: the bags always, the bank
--- part while the bank is open or the client tells it (else the last one seen stays).
+-- part while the bank is open or the client tells it (else the last one seen stays). The items:
+-- from the data while it is built, else the list saved the last time (never builds the data).
 function R.SaveBags()
-    if not AmisiaDB or not Pr.Available() then return false end
-    local items = tracked()
-    if next(items) == nil then return false end
+    if not AmisiaDB then return false end
     local f = C_Item and C_Item.GetItemCount
     if type(f) ~= "function" then return false end
-    local root = bagsRoot(true)
     local key = charKey()
-    local old = type(root[key]) == "table" and root[key] or {}
+    local root = bagsRoot(false)
+    local old = root and type(root[key]) == "table" and root[key] or {}
+    local list = trackedFromData() or old.track
+    if type(list) ~= "table" or #list == 0 then return false end
+    root = bagsRoot(true)
     local bank = type(old.bank) == "table" and old.bank or {}
     local counts, n = {}, 0
-    for item in pairs(items) do
+    for _, item in ipairs(list) do
         local bags = tonumber((plainCall(f, item, false))) or 0
         local all = tonumber((plainCall(f, item, true))) or bags
         local part = math.max(0, all - bags)
@@ -663,19 +848,22 @@ function R.SaveBags()
             n = n + 1
         end
     end
-    root[key] = { day = ns.DropsToday and ns.DropsToday() or 0, items = counts, bank = bank }
+    root[key] = { day = ns.DropsToday and ns.DropsToday() or 0, realm = myRealm(), faction = myFaction(), items = counts,
+        bank = bank, track = list }
     return true
 end
 
--- How many of an item the other own characters of the realm hold (bags and bank, as last seen).
+-- How many of an item the other own characters hold (bags and bank, as last seen): only those of
+-- the same realm and faction (an alt of the other faction cannot mail it); an entry saved before
+-- realm and faction were kept counts again once that character logged in.
 function R.Twinks(item)
     local root = bagsRoot(false)
     if not root then return 0 end
-    local me = charKey()
-    local realm = realmOf(me)
+    local me, realm, fac = charKey(), myRealm(), myFaction()
+    if not realm or not fac then return 0 end
     local n = 0
     for name, e in pairs(root) do
-        if name ~= me and realmOf(name) == realm and type(e) == "table" and type(e.items) == "table" then
+        if name ~= me and type(e) == "table" and e.realm == realm and e.faction == fac and type(e.items) == "table" then
             n = n + (tonumber(e.items[item]) or 0)
         end
     end
@@ -739,7 +927,7 @@ end)
 -- The shopping list
 ---------------------------------------------------------------------------
 -- The materials of the steps not done: { { item, need, have, twinks, missing, price, kind, from
--- (skill line of "craft"), vendors, enough } } by need, the vendor ones first among equals.
+-- (skill line of "craft"), vendors, enough } } by need.
 function R.Shopping(route)
     local need = {}
     for _, s in ipairs(route and route.steps or {}) do
