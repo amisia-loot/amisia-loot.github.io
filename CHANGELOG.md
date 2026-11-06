@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.60.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.60.0) (2026-11-06)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.59.0...v2.60.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(dungeons): a run planner in the dungeon journal (F-139)
 
   The journal now answers the questions before a run. The dungeon's image shows what the run brings: the
