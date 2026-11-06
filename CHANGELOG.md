@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.58.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.58.0) (2026-11-06)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.57.0...v2.58.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): a route to the top rank with a shopping list (F-137)
 
   The professions page has a switch "Rezepte | Route". The route shows the cheapest way from your rank to
