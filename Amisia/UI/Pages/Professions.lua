@@ -3,7 +3,10 @@
 -- the detail field (what it makes with the upgrade mark, the four difficulty steps, reagents with
 -- the own count, where it comes from, Merchant's Favor and crafting orders, who of the guild makes it
 -- (Crafters.lua) with a button that asks one of them by whisper). Two more views in the profession
--- picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst").
+-- picker: the camp objects ("Lager") and the Merchant's Favor ("Händlergunst"). The filters: two
+-- dropdowns that name themselves ("Bekannt: Alle", "Quelle: Händler"), the chips Lernbar and
+-- Gilde (with the guild's count), "N von M Rezepten"; an empty result names what each filter holds
+-- back and offers "Filter zurücksetzen".
 local ADDON, ns = ...
 local L = ns.L
 local W, Pr, T, Cr = ns.W, ns.Prof, ns.Theme, ns.Crafters
@@ -11,10 +14,15 @@ local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
 local ROWS, ROW_H = 17, 22
+local GUILD_W = T.CHIP_W   -- the chip Gilde at least (it carries its count)
 local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
-local SOURCES = { { "all", L["Alle Quellen"] }, { "T", L["Lehrer"] }, { "V", L["Händler"] }, { "F", L["Händlergunst"] },
-    { "D", "Drop" }, { "Q", "Quest" } }
-local KNOWN = { { "all", L["Alle"] }, { "known", L["Bekannt"] }, { "unknown", L["Unbekannt"] } }
+-- the dropdowns' entries (W.Picker); the field shows "<filter>: <entry>", SHORT where it differs
+local SOURCES = { { value = "all", text = L["Alle Quellen"] }, { value = "T", text = L["Lehrer"] },
+    { value = "V", text = L["Händler"] }, { value = "F", text = L["Händlergunst"] }, { value = "D", text = "Drop" },
+    { value = "Q", text = "Quest" } }
+local KNOWN = { { value = "all", text = L["Alle"] }, { value = "known", text = L["Bekannt"] },
+    { value = "unknown", text = L["Unbekannt"] } }
+local SHORT = { all = L["Alle"] }
 local CAMP, FAVOR = "camp", "favor"
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
@@ -88,6 +96,66 @@ local function listOf(v)
     end
     return Pr.List(v, { search = s.search, known = s.known ~= "all" and s.known or nil, learnable = s.learnable,
         source = s.source ~= "all" and s.source or nil, guild = s.guild })
+end
+
+-- The filters that are on, each with its name as the head row shows it and the field it clears.
+local function entryText(values, v)
+    for _, e in ipairs(values) do if e.value == v then return e.text end end
+    return tostring(v)
+end
+
+local function activeFilters()
+    local s, out = state(), {}
+    if s.search and s.search ~= "" then out[#out + 1] = { key = "search", name = L["Suche: %s"]:format(s.search) } end
+    if s.known and s.known ~= "all" then out[#out + 1] = { key = "known", name = entryText(KNOWN, s.known) } end
+    if s.source and s.source ~= "all" then
+        out[#out + 1] = { key = "source", name = L["Quelle: %s"]:format(entryText(SOURCES, s.source)) }
+    end
+    if s.learnable then out[#out + 1] = { key = "learnable", name = L["Lernbar"] } end
+    if s.guild then out[#out + 1] = { key = "guild", name = L["Gilde"] } end
+    return out
+end
+
+local function recipesText(n)
+    return n == 1 and L["1 Rezept"] or L["%d Rezepte"]:format(n)
+end
+
+-- The help of an empty recipe list: for each filter that is on, how many recipes the list would
+-- show without it. The second value: a filter is on (the reset button shows).
+local function emptyHelp(v)
+    local filters = activeFilters()
+    if #filters == 0 then return L["Keine Rezepte zu diesen Filtern."], false end
+    local s = state()
+    local parts = {}
+    for _, flt in ipairs(filters) do
+        local keep = s[flt.key]
+        s[flt.key] = nil
+        local n = #listOf(v)
+        s[flt.key] = keep
+        parts[#parts + 1] = L["Ohne \"%s\": %s"]:format(flt.name, recipesText(n))
+    end
+    return L["Keine Rezepte zu diesen Filtern."] .. "\n" .. table.concat(parts, "\n"), true
+end
+
+-- How many recipes of the profession someone of the guild shares (what the chip Gilde alone shows).
+local function guildCount(v)
+    local has = ns.Crafters and ns.Crafters.Has
+    if not has then return 0 end
+    local n = 0
+    for _, r in ipairs(Pr.Recipes(v)) do
+        if has(r.spell) then n = n + 1 end
+    end
+    return n
+end
+
+local function resetFilters()
+    local s = state()
+    s.known, s.source, s.learnable, s.guild, s.search = nil, nil, nil, nil, nil
+    if page and page.search then
+        page.search:SetText("")
+        page.search:ClearFocus()
+    end
+    ns.Refresh()
 end
 
 local function campName(c)
@@ -295,9 +363,7 @@ local function statusText(v, n)
         if certs > 0 then parts[#parts + 1] = L["%d Zertifizierungen (1000 Gunst, Rang 300)"]:format(certs) end
         return table.concat(parts, " · ")
     end
-    local text = L["%d Rezepte"]:format(n)
-    if Pr.Rank(v) and not Pr.HasSnapshot(v) then text = text .. L[" · Berufsfenster öffnen für Bekannt"] end
-    return text
+    return L["%d von %d Rezepten"]:format(n, #Pr.Recipes(v))
 end
 
 local function hintText(v)
@@ -315,6 +381,8 @@ local function hintText(v)
     elseif v == CAMP then
         return L["Lagerobjekte brauchen ein Lagerfeuer in der Nähe und teilen eine Abklingzeit. Wirkung nach Sitzen am Feuer."]
     end
+    -- what the own character knows comes from its profession window
+    if Pr.Rank(v) and not Pr.HasSnapshot(v) then return L["Für \"Bekannt\" das Berufsfenster einmal öffnen."] .. " " .. ROW_HINT end
     return ROW_HINT
 end
 
@@ -330,6 +398,13 @@ local function refresh(f)
     f.known:SetValue(s.known or "all")
     f.source:SetValue(s.source or "all")
     f.learn:SetOn(s.learnable and true or false)
+    -- Gilde with its count; greyed at 0, then it can only be turned off
+    local guildN = isRecipes and guildCount(v) or 0
+    f.guildCount = guildN
+    f.guild.label:SetText(L["Gilde (%d)"]:format(guildN))
+    W.FitChip(f.guild, GUILD_W)
+    f.guild.dim = guildN == 0
+    if guildN > 0 or s.guild then f.guild:Enable() else f.guild:Disable() end
     f.guild:SetOn(s.guild and true or false)
     local text = s.search or ""
     if not f.search:HasFocus() and f.search:GetText() ~= text then f.search:SetText(text) end
@@ -354,12 +429,16 @@ local function refresh(f)
     end
     f.selected = f.selected or list[1]
     f.list:SetItems(list)
+    local canReset = false
     if #list == 0 then
-        f.empty:Set(L["Keine Rezepte"], Pr.Available() and L["Keine Rezepte zu diesen Filtern."] or L["Für diesen Client gibt es keine Berufsdaten."])
+        local help = L["Für diesen Client gibt es keine Berufsdaten."]
+        if Pr.Available() then help, canReset = emptyHelp(v) end
+        f.empty:Set(L["Keine Rezepte"], help)
         f.empty:Show()
     else
         f.empty:Hide()
     end
+    f.reset:SetShown(canReset and isRecipes)
     showDetail(f, f.selected)
     f.counts:SetText(statusText(v, #list))
     f.hint:SetText(hintText(v))
@@ -421,6 +500,26 @@ local function col(parent, x, w, template)
     return fs
 end
 
+-- A filter as a dropdown (W.Picker) whose field reads "<filter>: <entry>", as wide as its widest
+-- entry needs.
+local function filterPicker(parent, fmt, values, onPick)
+    local p = W.Picker(parent, nil, onPick)
+    p:SetValues(values)
+    local set = p.SetValue
+    function p:SetValue(v)
+        set(self, v)
+        self.label:SetText(fmt:format(SHORT[v] or entryText(values, v)))
+    end
+    local widest = 0
+    for _, e in ipairs(values) do
+        p.label:SetText(fmt:format(SHORT[e.value] or e.text))
+        widest = math.max(widest, p.label:GetStringWidth() or 0)
+    end
+    p:SetWidth(math.ceil(widest) + T.TEXT_INSET + T.PICKER.ARROW_ROOM)
+    p:SetValue(values[1].value)
+    return p
+end
+
 local function create(parent)
     local f = W.Page(parent)
     page = f
@@ -438,17 +537,16 @@ local function create(parent)
     f.rank:SetJustifyH("RIGHT")
     f:Place(1, { f.prof, f.search }, { f.rank })
 
-    f.known = W.Choice(f, 100, function(v)
+    -- the two dropdowns name their filter in the field, so they don't read as on/off chips
+    f.known = filterPicker(f, L["Bekannt: %s"], KNOWN, function(v)
         state().known = v
         ns.Refresh()
     end)
-    f.known:SetValues(KNOWN)
     W.Tooltip(f.known, L["Bekannt"], L["Alle, nur bekannte oder nur unbekannte Rezepte. Was du kennst, liest Amisia aus dem offenen Berufsfenster."])
-    f.source = W.Choice(f, 120, function(v)
+    f.source = filterPicker(f, L["Quelle: %s"], SOURCES, function(v)
         state().source = v
         ns.Refresh()
     end)
-    f.source:SetValues(SOURCES)
     W.Tooltip(f.source, L["Quelle"], L["Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest."])
     f.learn = W.Chip(f, L["Lernbar"], 80, function()
         local s = state()
@@ -456,12 +554,18 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
-    f.guild = W.Chip(f, L["Gilde"], 60, function()
+    f.guild = W.Chip(f, L["Gilde (%d)"]:format(0), GUILD_W, function()
         local s = state()
         s.guild = not s.guild or nil
         ns.Refresh()
     end)
-    W.Tooltip(f.guild, L["Gilde"], L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."])
+    W.FitChip(f.guild, GUILD_W)
+    W.Tooltip(f.guild, L["Gilde"], function()
+        if (f.guildCount or 0) == 0 then
+            return L["Noch teilt niemand aus der Gilde Rezepte. Die Liste füllt sich, sobald Gildenmitglieder mit Amisia ihr Berufsfenster öffnen."]
+        end
+        return L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."]
+    end)
     f.counts = W.Text(f, T.FONT.hint)
     -- the filters, then the counts beside them (the whole band in the camp and favor views)
     f.filterRow = { f.known, f.source, f.learn, f.guild, { f.counts, fill = true } }
@@ -489,6 +593,12 @@ local function create(parent)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, fillRow, { top = top, width = T.LAYOUT.SPLIT_LIST_W })
     f.empty = f:Empty(T.LAYOUT.SPLIT_LIST_W - 10)
+    -- under the empty state's help; a child of the list it stands over (the list holds it)
+    f.reset = W.Button(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    W.FitChip(f.reset)
+    f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
+    f.reset:Hide()
+    W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."])
 
     -- the chosen recipe in the inset beside the list, as high as the list
     local d = f:Detail({ top = top, height = ROWS * ROW_H, sub = true })

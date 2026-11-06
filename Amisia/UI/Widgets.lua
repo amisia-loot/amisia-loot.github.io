@@ -256,7 +256,8 @@ function W.Chip(parent, label, width, onClick)
             self.bg:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], on and 0.28 or 0.04)
             W.SetBorderColor(self.edges, GOLD[1], GOLD[2], GOLD[3], on and 0.8 or 0.25)
         end
-        local c = (self.IsEnabled and not self:IsEnabled()) and T.TEXT_DISABLED or (on and GOLD or T.TEXT_OFF)
+        -- dim: greyed text while it filters nothing, the chip still works (a count of 0)
+        local c = ((self.IsEnabled and not self:IsEnabled()) or self.dim) and T.TEXT_DISABLED or (on and GOLD or T.TEXT_OFF)
         self.label:SetTextColor(c[1], c[2], c[3])
     end
     function b:SetOn(on)
@@ -481,13 +482,17 @@ function W.SetClassIcon(tex, class)
     end
 end
 
+-- text may be a function(frame) that returns the text when the tooltip shows. A chip of the
+-- template and a picker keep their own hover scripts (hooked, never replaced).
 function W.Tooltip(frame, title, text)
-    local set = frame.styled and frame.HookScript and frame.HookScript or frame.SetScript
+    local set = (frame.styled or frame.arrow) and frame.HookScript and frame.HookScript or frame.SetScript
     set(frame, "OnEnter", function(self)
         if self.SetOver then self:SetOver(true) end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(title, 1, 0.82, 0)
-        if text and text ~= "" then GameTooltip:AddLine(text, 0.85, 0.85, 0.85, true) end
+        local tip = text
+        if type(tip) == "function" then tip = tip(self) end
+        if tip and tip ~= "" then GameTooltip:AddLine(tip, 0.85, 0.85, 0.85, true) end
         GameTooltip:Show()
     end)
     set(frame, "OnLeave", function(self)

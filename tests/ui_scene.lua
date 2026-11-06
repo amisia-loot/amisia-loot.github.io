@@ -417,6 +417,12 @@ S.STATES = {
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },
+    -- three filters at once leave no recipe: the empty state names what each removal gives back
+    { page = "professions", name = "professions-empty", open = function()
+        local p = AmisiaDB.settings.professions
+        p.known, p.source, p.guild = "known", "F", true
+        NS.ShowProfessions("schneiderei")
+    end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
