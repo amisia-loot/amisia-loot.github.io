@@ -174,7 +174,7 @@ assert(NS.CurrentPage() == "awards", "the German word still works")
 ---------------------------------------------------------------------------
 NS.ShowPage("raids")
 local rs = NS.RaidsPageFrame()
-assert(rs.del:GetText() == "Delete" and rs.all:GetText() == "Select all", rs.del:GetText())
+assert(rs.del:GetText() == "Delete (0)" and not rs.del:IsEnabled() and rs.all:GetText() == "Select all", rs.del:GetText())
 assert(rs.pageText:GetText() == "1 raid", rs.pageText:GetText())
 local det = NS.RaidDetailText(s)
 assert(has(det, "Raiders (3):") and has(det, "Bosses:|r none") and has(det, "Warglaive of Azzinoth to Chorf (MS)"), det)
@@ -187,7 +187,7 @@ NS.Dispatch("log")
 local rl = NS.RaidLogPageFrame()
 assert(rl.views.verlauf.label:GetText() == "Timeline" and rl.views.bench.label:GetText() == "Bench (1)",
     rl.views.bench.label:GetText())
-assert(rl.addBoss:GetText() == "Add boss" and rl.discordBtn:GetText() == "Discord text")
+assert(rl.addBoss:GetText() == "Add boss" and rl.discordBtn == nil)
 local first = rl.log.list.rows[1]
 assert(first.event:GetText() == "Recording started", first.event:GetText())
 assert(has(rl.counts:GetText(), "3 raiders") and has(rl.counts:GetText(), "1 bench"), rl.counts:GetText())

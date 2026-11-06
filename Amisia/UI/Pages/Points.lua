@@ -243,7 +243,7 @@ function ns.ShowPoints(which)
     ns.ShowPage("points")
 end
 
-ns.RegisterPanel{ key = "points", label = L["Punkte"], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 37, group = "raid",
+ns.RegisterPanel{ key = "points", label = L["Punkte"], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 30, group = "raid",
     available = function() return ns.IsOfficerView() or ns.PointsSystem() ~= "roll" end,
     create = function(parent) return build_page(parent) end,
     refresh = function(f) refresh(f) end }

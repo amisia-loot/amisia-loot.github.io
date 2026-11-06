@@ -31,7 +31,7 @@ local a5 = NS.AddAwardTo(s, { name = "Fraktur", item = 32837, kind = "MS", src =
 -- registration: page for everyone, command, quick menu entry
 ---------------------------------------------------------------------------
 local panel = NS.Panel("awards")
-assert(panel and panel.label == "Vergaben" and panel.order == 35 and not panel.officer, "the page is registered for everyone")
+assert(panel and panel.label == "Vergaben" and panel.order == 22 and not panel.officer, "the page is registered for everyone")
 local entries = ""
 for _, e in ipairs(NS.MinimapMenuEntries()) do entries = entries .. e[1] .. "|" end
 assert(entries:find("Vergaben", 1, true), entries)
@@ -121,6 +121,17 @@ assert(not O.edit.hint:IsShown(), "a member needs no name hint")
 assert(rows[2].sel:IsShown() and not rows[1].sel:IsShown(), "the chosen row is marked")
 O.edit.kinds.MS:Click()
 assert(a2.kind == "MS" and O.edit.kinds.MS.on and not O.edit.kinds.OS.on and rows[2].kind:GetText() == "MS", "the kind changes at once")
+-- the kind chips: a word for "-", each with a tooltip that says whether it counts as plus-one (D-22)
+assert(O.edit.kinds["-"].label:GetText() == "ohne" and O.edit.kinds.MS.label:GetText() == "MS")
+do
+    local lines, keep = {}, GameTooltip.AddLine
+    GameTooltip.AddLine = function(_, t) lines[#lines + 1] = t end
+    for _, k in ipairs({ "MS", "OS", "SR", "-" }) do O.edit.kinds[k].scripts.OnEnter(O.edit.kinds[k]) end
+    GameTooltip.AddLine = keep
+    local all = table.concat(lines, "|")
+    assert(all:find("Mainspec|Gewinn für die Hauptspezialisierung. Zählt als Plus-Eins", 1, true)
+        and all:find("Ohne Art|Keine Art angegeben", 1, true), all)
+end
 O.edit.note:SetFocus(); O.edit.note:SetText("Neu"); O.edit.note.scripts.OnEnterPressed(O.edit.note)
 assert(a2.note == "Neu" and O.edit.note:GetText() == "Neu")
 assert(O.edit.status:GetText():find("geändert " .. date("%H:%M", a2.edited), 1, true), O.edit.status:GetText())

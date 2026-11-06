@@ -613,13 +613,13 @@ local function create(parent)
     f.detail = d
     d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
     d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    d.go = W.Button(d, L["Weg"], 70, function()
+    d.go = W.Button(d, L["Wegpunkt"], 70, function()
         if d.point and ns.MapSetPoint then
             local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
             if not ok and why then ns.msg(why) end
         end
     end, { height = T.ROW_BUTTON_H })
-    W.Tooltip(d.go, L["Weg"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
+    W.Tooltip(d.go, L["Wegpunkt"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
     d.ask = W.Button(d, L["Fragen"], 70, function()
         local e, who = d.entry, d.askWho
         if not e or not who or e.camp then return end

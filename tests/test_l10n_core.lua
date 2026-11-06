@@ -86,7 +86,7 @@ assert(not german(setText), "no German on the settings page:\n" .. setText)
 NS.ShowExport(false)
 assert(lastMsg() == "|cffe2b857Amisia:|r No raids and no guild bank count to export yet." , lastMsg())
 local ex = NS.ExportPageFrame()
-assert(ex.newBtn:GetText() == "New and changed" and ex.selBtn:GetText() == "Ticked", ex.newBtn:GetText())
+assert(ex.newBtn:GetText() == "New and changed" and ex.selBtn:GetText() == "Ticked (0)", ex.newBtn:GetText())
 assert(ex.hint:GetText() == "Ctrl+A, Ctrl+C, paste in the Import tab.", ex.hint:GetText())
 assert(not german(shown(ex)), shown(ex))
 

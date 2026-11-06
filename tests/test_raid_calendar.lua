@@ -202,7 +202,7 @@ F:Hide()
 NS.ShowPage("overview")
 for _, c in ipairs(NS.OverviewPageFrame().cards) do
     if c:IsShown() and c.title:GetText() == NS.L["Raid-Anmeldung"] then
-        assert(c.button2:IsShown() and c.button2:GetText() == "Kalender")
+        assert(c.button2:IsShown() and c.button2:GetText() == "Raid-Kalender")
         c.button2:Click()
     end
 end

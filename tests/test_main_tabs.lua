@@ -47,7 +47,12 @@ assert(NS.CurrentPage() == "gear" and F.tabs.gear.selected)
 -- the view decides the tabs: the officer view adds the officer pages, never a tab without a page
 NS.Set("ui.view", "officer")
 NS.ShowTab("guild")
-assert(navShown() == "export members bank", navShown())
+assert(navShown() == "members bank", navShown())
+-- the raid tab in the order of a raid night: before, during, after (Export next to the archive)
+NS.ShowTab("raid")
+-- (Aufstellung and Raid-Check after Übersicht need the guild rights the test lacks)
+assert(navShown() == "overview softres rolls awards raidlog points stats raids export", navShown())
+NS.ShowTab("guild")
 local bank, exp, members = NS.Panel("bank"), NS.Panel("export"), NS.Panel("members")
 local keepBank, keepMembers = bank.available, members.available
 bank.available, members.available = function() return false end, function() return false end

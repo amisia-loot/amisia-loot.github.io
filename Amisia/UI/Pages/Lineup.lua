@@ -681,7 +681,7 @@ local function previousNight()
     return nil
 end
 
-ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 22, group = "raid",
+ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 12, group = "raid",
     officer = true, available = function() return ns.LineupAllowed() end,
     create = function(parent)
         local f = W.Page(parent)
@@ -700,7 +700,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             ns.Refresh()
             if view == "paste" then f.paste.box:SetFocus() else f.paste.box:ClearFocus() end
         end)
-        f.calBtn = W.Button(f, L["Kalender"], 80, function()
+        f.calBtn = W.Button(f, L["Aus Kalender"], 80, function()
             if view == "calendar" then
                 view = "match"
                 ns.Refresh()
@@ -709,7 +709,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
             end
         end)
         W.FitChip(f.calBtn, 80)
-        W.Tooltip(f.calBtn, L["Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
+        W.Tooltip(f.calBtn, L["Aus Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
         f.auto = W.Button(f, L["Automatisch einteilen"], 160, function()
             local placed, over = ns.LineupAutoAssign(curNight())
             selected, view = nil, "planner"
@@ -862,7 +862,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\I
         f.views.invite:SetOn(shown == "invite")
         f.pasteBtn:SetText(paste and L["Zurück"] or L["Einfügen"])
         W.FitChip(f.pasteBtn, 90)
-        f.calBtn:SetText(calendar and L["Zurück"] or L["Kalender"])
+        f.calBtn:SetText(calendar and L["Zurück"] or L["Aus Kalender"])
         W.FitChip(f.calBtn, 80)
         f.calBtn:SetEnabled(calendar or ns.Cal.CanReadInvites())
         f.auto:SetEnabled(has and not other)

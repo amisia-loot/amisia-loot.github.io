@@ -69,7 +69,7 @@ ns.RegisterCard{ key = "signup", order = 15, available = function() return ns.Ge
     local first = terms[1].night
     c:SetAction(ns.SignupOf()[first] and L["Ändern##Anmeldung"] or L["Anmelden"], function() ns.ShowSignup(first) end)
     -- part I: who comes, for everyone in the guild
-    c:SetAction2(L["Kalender"], function() ns.ShowRaidCalendar(first) end)
+    c:SetAction2(L["Raid-Kalender"], function() ns.ShowRaidCalendar(first) end)
 end }
 
 ---------------------------------------------------------------------------
@@ -99,8 +99,8 @@ local function build()
     F = W.Window("AmisiaSignupFrame", S.W, S.H, { title = L["Raid-Anmeldung"], strata = "FULLSCREEN",
         onShow = function(self) if self.Raise then self:Raise() end refresh() end })
     F:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
-    -- "Kalender" beside the date picker: the raid calendar window (part I) at the chosen date
-    F.calOpen = W.Button(F, L["Kalender"], S.CAL_OPEN_W, function() ns.ShowRaidCalendar(cur) end)
+    -- "Raid-Kalender" beside the date picker: the raid calendar window (part I) at the chosen date
+    F.calOpen = W.Button(F, L["Raid-Kalender"], S.CAL_OPEN_W, function() ns.ShowRaidCalendar(cur) end)
     local calW = W.FitChip(F.calOpen, S.CAL_OPEN_W)
     F.calOpen:SetPoint("TOPRIGHT", -PAD, -(S.PICK_Y - (T.BUTTON_H - T.FIELD_H) / 2))
     W.Tooltip(F.calOpen, L["Raid-Kalender"], L["Wer zu den Terminen kommt: angemeldet, vorläufig, abgemeldet, mit Rolle und Notiz."])

@@ -709,12 +709,12 @@ function ns.ShowRaidLog(v, sessionId)
     ns.ShowPage("raidlog")
 end
 
-ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 25, group = "raid",
+ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 24, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         page = f
-        -- the head row: the raid, entering a boss and the Discord text (officers); then the counts
-        -- and the views
+        -- the head row: the raid and entering a boss (officers); then the counts and the views
+        -- (the Discord text is the view "Discord")
         f:Bands({ "row", "line", "row" })
         f.raid = W.Picker(f, 220, function(v)
             chosenRaid = v
@@ -722,7 +722,6 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
             discordText = nil
             ns.Refresh()
         end)
-        f.discordBtn = W.Button(f, L["Discord-Text"], 110, function() setView("discord") end)
         f.addBoss = W.Button(f, L["Boss eintragen"], 110, function()
             if not officer() then return end
             local s = chosen()
@@ -736,14 +735,17 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
             ns.Refresh()
         end)
         W.FitChip(f.addBoss, 110)
-        W.FitChip(f.discordBtn, 110)
-        f:Place(1, { f.raid }, { f.addBoss, f.discordBtn })
+        f:Place(1, { f.raid }, { f.addBoss })
         f.counts = f:Line(2)
         f.views = {}
         f.views.verlauf = W.Chip(f, L["Verlauf"], 70, function() setView("verlauf") end)
         f.views.bench = W.Chip(f, L["Ersatzbank"], 110, function() setView("bench") end)
         f.views.rolls = W.Chip(f, L["Würfe"], 90, function() setView("rolls") end)
         f.views.discord = W.Chip(f, "Discord", 70, function() setView("discord") end)
+        W.Tooltip(f.views.verlauf, L["Verlauf"], L["Der Ablauf des Raids mit Zeit: Bosse, Kills, Wipes und ihre Dauer."])
+        W.Tooltip(f.views.bench, L["Ersatzbank"], L["Wer auf der Ersatzbank steht, seit wann und wie; die Zahl sind die Spieler."])
+        W.Tooltip(f.views.rolls, L["Würfe"], L["Die Würfe im Beutefenster des Spiels je Item, mit allen Entscheidungen; die Zahl sind die Items."])
+        W.Tooltip(f.views.discord, "Discord", L["Die Zusammenfassung des Raids als Text zum Kopieren nach Discord (Offiziere)."])
         f.viewRow = { f.views.verlauf, f.views.bench, f.views.rolls, f.views.discord }
         f:Place(3, f.viewRow)
         f.log = buildLog(f)
@@ -770,8 +772,8 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Ico
         end
         f.raid:SetValues(values)
         f.raid:SetValue(s == "next" and "next" or s.id)
-        if off then f.addBoss:Show(); f.discordBtn:Show(); f.views.discord:Show()
-        else f.addBoss:Hide(); f.discordBtn:Hide(); f.views.discord:Hide() end
+        if off then f.addBoss:Show(); f.views.discord:Show()
+        else f.addBoss:Hide(); f.views.discord:Hide() end
         f.counts:SetText(countsText(s))
         local target = benchOf(s)
         f.views.bench.label:SetText(L["Ersatzbank (%d)"]:format(target and #ns.BenchList(target) or 0))

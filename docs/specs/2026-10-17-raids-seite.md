@@ -91,3 +91,5 @@ bestehenden Abgleich mit seinen Prüfungen.
 - 2026-10-17 beim Bauen: die Offiziersseite "Raids" (aufgezeichnete Raids, Reiter Raid) hat schon den
   Schlüssel `raids`; die neue Seite heißt intern `raidjournal` (Datei `UI/Pages/RaidJournal.lua`),
   sichtbar "Raids". Die Einstellungen "Drop-Daten" gelten auch für sie.
+- 2026-11-06: die Offiziersseite heißt jetzt "Raid-Archiv" (EN "Raid history"), damit nur noch die Seite
+  in Ausrüstung "Raids" heißt; Schlüssel `raids` bleibt (D-45, Nachtrag 2026-11-06).

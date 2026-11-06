@@ -25,14 +25,14 @@ F.tabs.gear:Click()
 assert(F.search:GetText() == "" and F.nav:IsShown() and not F.results:IsShown() and NS.CurrentPage() == "gear")
 assert(not F.tabs.gear:IsEnabled(), "not searching: the open tab is not clickable again")
 
--- (2) the officer opens Export (guild tab), then switches to the raider view: the page falls back
+-- (2) the officer opens Export (tab Raid since the raid-night order), then switches to the raider
+-- view: the page falls back
 NS.ShowPage("awards")
 NS.ShowPage("export")
-assert(W.pages.guild == "export" and W.pages.raid == "awards")
+assert(W.pages.raid == "export" and F.tabs.raid.selected)
 NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(NS.CurrentPage() == "overview" and F.tabs.raid.selected, "the page fell back to the overview")
-assert(W.pages.raid == "awards", "the raid tab keeps the page the player chose: " .. tostring(W.pages.raid))
-assert(W.pages.guild == "export")
+assert(W.pages.raid == "export", "the raid tab keeps the page the player chose: " .. tostring(W.pages.raid))
 -- a command for a page the raider does not see: the overview, nothing remembered
 NS.ShowPage("stats")
 assert(W.pages.raid == "stats")

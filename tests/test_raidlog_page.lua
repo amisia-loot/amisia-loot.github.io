@@ -63,7 +63,7 @@ local pullAt = STUB.now
 -- registration: page for everyone, the quick menu
 ---------------------------------------------------------------------------
 local panel = NS.Panel("raidlog")
-assert(panel and panel.label == "Raid-Log" and panel.order == 25 and not panel.officer
+assert(panel and panel.label == "Raid-Log" and panel.order == 24 and not panel.officer
     and panel.icon == "Interface\\Icons\\INV_Misc_Note_01", "the page is registered for everyone")
 local function menu()
     local out = {}
@@ -88,7 +88,7 @@ assert(f and f.log and f.bench and f.discord, "the page frame is reachable, not 
 assert(f.views.verlauf.on and not f.views.bench.on and not f.views.discord.on, "view Verlauf")
 assert(f.log:IsShown() and not f.bench:IsShown() and not f.discord:IsShown())
 assert(f.raid:GetValue() == s.id and f.raid.values[1].value == s.id, "the recording first and chosen")
-assert(f.addBoss:IsShown() and f.discordBtn:IsShown() and f.views.discord:IsShown(), "officer parts")
+assert(f.addBoss:IsShown() and f.discordBtn == nil and f.views.discord:IsShown(), "officer parts; the view chip is the only way to the Discord text")
 local counts = f.counts:GetText()
 assert(has(counts, "1 Boss") and has(counts, "1 Wipe") and has(counts, "4 Raider") and has(counts, "1 zu spät")
     and has(counts, "1 Ersatzbank") and has(counts, hm(s.firstScan)), counts)
@@ -255,8 +255,8 @@ NS.Refresh()
 ---------------------------------------------------------------------------
 -- the Discord view
 ---------------------------------------------------------------------------
-f.discordBtn:Click()
-assert(f.views.discord.on and f.discord:IsShown() and not f.bench:IsShown(), "the button opens the view")
+f.views.discord:Click()
+assert(f.views.discord.on and f.discord:IsShown() and not f.bench:IsShown(), "the chip opens the view")
 local D = f.discord
 local parts = NS.RaidSummary(s)
 assert(#parts == 1 and D.area.box:GetText() == parts[1], D.area.box:GetText())
@@ -294,7 +294,7 @@ NS.Set("ui.view", "raider")
 NS.Refresh()
 assert(NS.CurrentPage() == "raidlog", "the page stays for raiders")
 assert(f.views.verlauf.on and f.log:IsShown() and not f.discord:IsShown(), "no Discord for raiders")
-assert(not f.views.discord:IsShown() and not f.addBoss:IsShown() and not f.discordBtn:IsShown(), "no officer parts")
+assert(not f.views.discord:IsShown() and not f.addBoss:IsShown(), "no officer parts")
 NS.ShowRaidLog("discord")
 assert(f.views.verlauf.on, "Discord falls back to Verlauf")
 rowWith("Hochkriegsfürst Naj'entus"):Click()
@@ -342,7 +342,18 @@ local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
 local span, vspan, row, column, fits = Lay.span, Lay.vspan, Lay.row, Lay.column, Lay.fits
 
 f.views.verlauf:Click()
-row("head", f.raid, f.addBoss, f.discordBtn)
+row("head", f.raid, f.addBoss)
+-- each view chip says what it shows
+do
+    local lines, keep = {}, GameTooltip.AddLine
+    GameTooltip.AddLine = function(_, t) lines[#lines + 1] = t end
+    for _, k in ipairs({ "verlauf", "bench", "rolls", "discord" }) do
+        local n = #lines
+        f.views[k].scripts.OnEnter(f.views[k])
+        assert(#lines == n + 2, "a tooltip on the chip " .. k)
+    end
+    GameTooltip.AddLine = keep
+end
 row("views", f.views.verlauf, f.views.bench, f.views.discord)
 local LH = f.log.head
 row("columns", LH.time, LH.event, LH.result, LH.dur, LH.who, LH.src)
