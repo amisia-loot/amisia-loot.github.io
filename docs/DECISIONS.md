@@ -1426,7 +1426,11 @@ eigenen Frames.
 **Folge:** `Gear/MapPin.xml` entfällt (TOC geändert: einmal WoW neu starten). Offen bleibt nur, dass Amisia die Karte
 selbst öffnet (`ns.MapShowOnWorldMap`: `OpenWorldMap`, `SetMapID`), außerhalb von Instanzen und Kampf (D-62); der Nutzer
 wählte 2026-11-06 "Weiter selbst öffnen" (die Karte springt in die richtige Zone, kleines Restrisiko einer
-Fehlermeldung, wenn ein Kampf beginnt, während diese Karte offen ist).
+Fehlermeldung, wenn ein Kampf beginnt, während diese Karte offen ist). Nachtrag 2026-11-06 (Prüfung des ganzen
+Addons, 2.57.0): Das Restrisiko ist größer, denn nach Amisias `SetMapID` kann der Taint die ganze Sitzung bleiben,
+nicht nur solange die Karte offen ist; die drei Fehler vom 2026-11-05 abends passen dazu. Der Nutzer bestätigte trotzdem
+"Weiter selbst öffnen". Ausweg, falls die Fehler wiederkommen: nur das Ziel setzen und den Spieler die Karte mit M
+öffnen lassen.
 **Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
 `tests/test_map_places.lua`.
 
