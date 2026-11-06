@@ -1175,10 +1175,11 @@ local function inGroup(name)
 end
 
 -- sender is the raw text the client gave (already plain); the answer goes back to it by whisper.
-local function onSoftResCommand(sender, rest)
+-- who is its name in the group (Chat.lua), the name matched against the soft-reserves.
+local function onSoftResCommand(sender, rest, _, who)
     local sr = AmisiaDB and AmisiaDB.softres
     if not sr or not ns.Get("softres.chat") or not ns.IsLootLead() then return end
-    local name = ns.FullName(sender)
+    local name = ns.FullName(who or sender)
     if not name or not inGroup(name) then return end
     -- one answer per sender every 15 s, 20 a minute (Chat.lua)
     if not ns.ReplyGate("sr", name:lower()) then return end

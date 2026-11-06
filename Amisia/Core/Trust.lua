@@ -116,7 +116,10 @@ local function rosterMembers()
     for i = 1, n do
         local okRow, name, rankName, rankIndex, level, className, zone, note, officerNote, online, _, class = pcall(GetGuildRosterInfo, i)
         if okRow then
-            name, rankIndex, online, class = ns.FullName(ns.Plain(name)), tonumber(ns.Plain(rankIndex)), ns.Plain(online), ns.Plain(class)
+            -- the classic roster writes "Name-Realm": the own realm's ending away (ns.StripOwnRealm)
+            name = ns.Plain(name)
+            name = ns.FullName(ns.StripOwnRealm(name) or name)
+            rankIndex, online, class = tonumber(ns.Plain(rankIndex)), ns.Plain(online), ns.Plain(class)
             if name and rankIndex then
                 local e = { name = name, rank = rankIndex + 1, online = online and true or false,
                             class = type(class) == "string" and class or "", level = tonumber(ns.Plain(level)),
