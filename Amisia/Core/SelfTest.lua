@@ -806,7 +806,7 @@ local REQUIRED = {
     "GetMasterLootCandidate", "GiveMasterLoot", "GetLootRollItemLink", "HandleModifiedItemClick", "GetInventoryItemLink",
     "GetMerchantNumItems", "GetMerchantItemLink", "GetQuestID", "GetNumQuestRewards", "GetNumQuestChoices", "GetQuestItemLink",
     "GetQuestLogItemLink", "QuestInfo_Display", "GetTitleText", "GetObjectiveText", "C_MerchantFrame.GetItemInfo",
-    "GetPlayerFacing", "OpenWorldMap", "ToggleWorldMap", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
+    "GetPlayerFacing", "StaticPopup_Show", "hooksecurefunc", "CreateVector2D", "CreateFromMixins",
     "Mixin", "issecretvalue",
     "C_ChatInfo.SendChatMessage", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.RegisterAddonMessagePrefix",
     "C_ChatInfo.InChatMessagingLockdown", "C_RestrictedActions.IsAddOnRestrictionActive", "C_InstanceEncounter.IsEncounterInProgress",
@@ -834,8 +834,8 @@ local OPTIONAL = {
     "GetCritChanceFromAgility", "GetSpellCritChanceFromIntellect", "GetAttackPowerForStat", "GetCombatRatingBonus",
     "C_PartyInfo.GetAvailableLootMethods", "C_ChatInfo.IsAddonMessagePrefixRegistered",
     "C_EventUtils.IsEventValid", "C_Map.HasUserWaypoint", "C_SuperTrack.IsSuperTrackingUserWaypoint", "C_QuestLog.IsOnQuest",
-    -- whether the client could open the world map on a map without Amisia's code in the map's own
-    -- show (ns.MapShowOnWorldMap calls OpenWorldMap and SetMapID, which run the map's refresh tainted)
+    -- how ns.MapShowOnWorldMap opens the world map: the client's own handler of WORLD_MAP_OPEN opens
+    -- it untainted (D-64); without it Amisia asks for M
     "C_Map.OpenWorldMap",
     -- the source collector: the quest level from either generation of the quest log, the reputation
     -- line of a merchant's item

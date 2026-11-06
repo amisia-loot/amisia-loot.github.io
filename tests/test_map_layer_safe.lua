@@ -16,6 +16,14 @@ assert(not pcall(asAddon("WorldMapFrame:RefreshAllDataProviders()")), "the map's
 assert(#STUB.mapWrites == 2, "the two writes refused: " .. table.concat(STUB.mapWrites, ", "))
 STUB.mapWrites = {}
 assert(pcall(asAddon("hooksecurefunc(WorldMapFrame, 'GetMapID', function() end)")), "a secure hook is allowed")
+assert(not pcall(asAddon("OpenWorldMap(1411)")), "the client's Lua function that opens the map (D-64)")
+assert(not pcall(asAddon("ToggleWorldMap()")), "the one that toggles it")
+assert(not pcall(asAddon("WorldMapFrame:SetMapID(1411)")), "the map's SetMapID")
+WorldMapFrame:Hide()
+local opens = STUB.mapOpens
+assert(pcall(asAddon("C_Map.OpenWorldMap(1411)")) and STUB.mapOpens == opens + 1, "C_Map.OpenWorldMap is allowed")
+assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1411, "the client's handler opens the map on it")
+WorldMapFrame:Hide()
 WorldMapFrame.testField = true
 assert(getmetatable(WorldMapFrame).real.testField == true, "a test writes freely")
 WorldMapFrame.testField = nil
@@ -44,6 +52,9 @@ local FORBIDDEN = {
     { "WorldMapFrame:SetScript", "replaces a script of the map" },
     { "%f[%w_][A-Z][%w_]*Mixin%.[%w_]+%s*=[^=]", "writes into a client mixin" },
     { "CreateFromMixins%(MapCanvas", "builds on the canvas's mixins" },
+    { "[^%.]OpenWorldMap%s*%(", "opens the map with the client's Lua function (only C_Map.OpenWorldMap, D-64)" },
+    { "ToggleWorldMap%s*%(", "toggles the map with the client's Lua function (D-64)" },
+    { ":SetMapID%s*%(", "sets the map's map (D-64)" },
 }
 for _, name in ipairs(files) do
     if name:find("%.lua$") and not name:find("^Data/") then

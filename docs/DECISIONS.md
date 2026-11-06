@@ -1423,14 +1423,15 @@ AreaPOI-Datenlieferanten und "tainted by 'Amisia'" im Objective Tracker und Edit
 Datenlieferanten nacheinander auf und kommt Amisias Lieferant vor einem des Clients dran, läuft der Rest der Kette
 verunreinigt weiter; im Kampf werden geschützte Aufrufe blockiert. Bewährte Pin-Bibliotheken zeichnen deshalb auf
 eigenen Frames.
-**Folge:** `Gear/MapPin.xml` entfällt (TOC geändert: einmal WoW neu starten). Offen bleibt nur, dass Amisia die Karte
-selbst öffnet (`ns.MapShowOnWorldMap`: `OpenWorldMap`, `SetMapID`), außerhalb von Instanzen und Kampf (D-62); der Nutzer
-wählte 2026-11-06 "Weiter selbst öffnen" (die Karte springt in die richtige Zone, kleines Restrisiko einer
-Fehlermeldung, wenn ein Kampf beginnt, während diese Karte offen ist). Nachtrag 2026-11-06 (Prüfung des ganzen
-Addons, 2.57.0): Das Restrisiko ist größer, denn nach Amisias `SetMapID` kann der Taint die ganze Sitzung bleiben,
-nicht nur solange die Karte offen ist; die drei Fehler vom 2026-11-05 abends passen dazu. Der Nutzer bestätigte trotzdem
-"Weiter selbst öffnen". Ausweg, falls die Fehler wiederkommen: nur das Ziel setzen und den Spieler die Karte mit M
-öffnen lassen.
+**Folge:** `Gear/MapPin.xml` entfällt (TOC geändert: einmal WoW neu starten). Amisia öffnet die Karte weiter selbst
+(`ns.MapShowOnWorldMap`, außerhalb von Instanzen und Kampf, D-62; der Nutzer wählte 2026-11-06 "Weiter selbst
+öffnen"), aber seit 2.57.1 nur über `C_Map.OpenWorldMap(mapID)`: der Client feuert `WORLD_MAP_OPEN`, und der eigene
+Ereignis-Handler der Karte öffnet sie auf dieser Karte, ohne Taint. Amisias eigener Aufruf von `OpenWorldMap`
+(Lua des Clients) und `WorldMapFrame:SetMapID` lief verunreinigt durch den Panel-Manager und die Datenlieferanten; der
+Taint blieb, bis der Spieler die Karte schloss, und dann wurde `SetPassThroughButtons` im Questlieferanten blockiert
+(Fehler aus dem Spiel 2026-11-06, mit 2.57.0, Stack: Schließen-Knopf, `HideUIPanel`, `QuestDataProvider:AddQuest`).
+Ohne `C_Map.OpenWorldMap` öffnet Amisia nichts und sagt "Öffne die Weltkarte mit M.". Kein Addon-Code ruft
+`OpenWorldMap(`, `ToggleWorldMap(` oder `:SetMapID(`.
 **Durchgesetzt durch:** `tests/test_map_layer_safe.lua` (statische Suche und Schutz im Stub), `tests/test_map_pins.lua`,
 `tests/test_map_places.lua`.
 

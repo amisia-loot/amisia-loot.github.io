@@ -166,6 +166,18 @@ STUB.combat = true
 assert(not NS.MapShowOnWorldMap({ map = 1429, x = 0.4, y = 0.4 }))
 assert(not WorldMapFrame:IsShown() and has(lastMsg(), "Im Kampf öffnet Amisia die Weltkarte nicht."))
 STUB.combat = false
+-- through C_Map.OpenWorldMap only (D-64): an open map changes to the target's map; without the
+-- function nothing opens and the chat asks for M
+local opens = STUB.mapOpens
+WorldMapFrame:Show()
+WorldMapFrame:SetMapID(1411)
+assert(NS.MapShowOnWorldMap({ map = 1429, x = 0.4, y = 0.4 }))
+assert(STUB.mapOpens == opens + 1 and WorldMapFrame:GetMapID() == 1429, "the shown map moves to the target's map")
+WorldMapFrame:Hide()
+STUB.noOpenWorldMap = true
+assert(not NS.MapShowOnWorldMap({ map = 1429, x = 0.4, y = 0.4 }))
+assert(not WorldMapFrame:IsShown() and has(lastMsg(), "Öffne die Weltkarte mit M."), "no function, no map")
+STUB.noOpenWorldMap = nil
 
 -- commands
 NS.Dispatch("karte " .. link)

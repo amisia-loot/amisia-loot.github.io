@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(map): no more "blocked action" error after closing a world map that Amisia opened (F-045)
+
+  The "Karte" buttons now let the game open the world map itself, on the right zone. Before, closing such a
+  map could raise a blocked-action error (SetPassThroughButtons, SetPropagateMouseClicks) for the rest of the
+  session.
+
 ## [v2.57.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.57.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.56.0...v2.57.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

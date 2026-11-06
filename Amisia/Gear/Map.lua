@@ -646,23 +646,31 @@ function ns.MapShowOnWorldMap(point)
     end
     local frame = _G.WorldMapFrame
     if not frame then return false end
+    -- The client opens the map itself (D-64): C_Map.OpenWorldMap fires WORLD_MAP_OPEN, and the map's
+    -- own event handler opens it on that map, untainted. Amisia's own call of the client's Lua
+    -- function or of the map's SetMapID ran the panel manager and the map's providers tainted, and
+    -- closing that map later was blocked (SetPassThroughButtons, SetPropagateMouseClicks). Without
+    -- the function Amisia opens nothing.
+    local open = C_Map and C_Map.OpenWorldMap
+    if type(open) ~= "function" then
+        ns.msg(L["Öffne die Weltkarte mit M."])
+        return false
+    end
     -- the main window stays open: while the map is shown it steps one strata below it (the map
     -- would otherwise open underneath the fullscreen window) and comes back up when the map closes
     local main = _G.AmisiaFrame
     local keep = main and main.IsShown and main:IsShown()
     if keep then ns.MapLowerMain(frame, main) end
-    if not frame:IsShown() then
-        if OpenWorldMap then
-            OpenWorldMap(point.map)
-        elseif ToggleWorldMap then
-            ToggleWorldMap()
-        end
+    local ok = pcall(open, point.map)
+    if not ok then return false end
+    -- the client's panel manager may close the special frames as the map opens: show it again,
+    -- also when the event comes a frame later
+    local function after()
+        if keep and frame:IsShown() and not main:IsShown() then main:Show() end
     end
-    if frame.SetMapID then frame:SetMapID(point.map) end
-    -- the client's panel manager may close the special frames as the map opens: show it again
-    if keep and not main:IsShown() then main:Show() end
-    if frame.Raise then frame:Raise() end
-    return frame:IsShown() and true or false
+    after()
+    if not frame:IsShown() and C_Timer and C_Timer.After then C_Timer.After(0, after) end
+    return true
 end
 
 ---------------------------------------------------------------------------

@@ -877,12 +877,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-24-spielstil-slotklick.md`; Einstellung "Rechtsklick auf Slots im Charakterfenster" (Ausrüstung und Wünsche). Shift- und Strg-Rechtsklick bleiben dem Spiel.
 
 ### F-045 Karte: Ziel, Pfeil und Pins
-- Version: 1.9.0
+- Version: 2.57.1
 - Status: gebaut
 - Prüfung: Wenn du `/amisia karte <Item-Link>` eingibst, dann setzt Amisia das Ziel zur Quelle des Items ("Ziel ...") mit Wegpunkt und Pfeil; "Ziel erreicht" kommt am Ort.
 - Prüfung: Wenn du die Weltkarte öffnest, dann stehen Pins mit Item-Symbol für deine Upgrades und Wünsche (abschaltbar unter Einstellungen, Karte und Wegpunkt).
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann wird sie das Ziel; Shift-Klick zeigt sie auf der Weltkarte.
-- Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64).
+- Prüfung: Wenn du auf der Seite Karte bei einer Zeile "Karte" klickst und die Weltkarte danach mit dem X schließt, dann öffnet sie sich in der Zone des Ziels, und beim Schließen kommt keine Fehlermeldung "hat versucht die geschützte Funktion ... aufzurufen" (auch nicht später in der Sitzung).
+- Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64); seit 2.57.1 öffnet der Client die Karte selbst (`C_Map.OpenWorldMap`).
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)

@@ -1792,11 +1792,22 @@ mapReal.GetMapID = function(self) return self.mapID end
 -- the canvas's zoom, 0 to 1 (a test sets STUB.mapZoom)
 mapReal.GetCanvasZoomPercent = function() return STUB.mapZoom or 0 end
 _G.WorldMapFrame = guarded(mapReal, "WorldMapFrame")
-_G.OpenWorldMap = function(id)
+-- The client's Lua functions that open the map raise when an addon file calls them (their run is
+-- tainted, D-64); C_Map.OpenWorldMap fires WORLD_MAP_OPEN, whose handler in the map's own code opens
+-- it (STUB.mapOpens counts; STUB.noOpenWorldMap = true: a client without the function).
+_G.OpenWorldMap = notFromAddon("OpenWorldMap", function(id)
     WorldMapFrame:Show()
     if id then WorldMapFrame:SetMapID(id) end
+end)
+_G.ToggleWorldMap = notFromAddon("ToggleWorldMap", function() WorldMapFrame:SetShown(not WorldMapFrame:IsShown()) end)
+STUB.mapOpens = 0
+local function cOpenWorldMap(id)
+    STUB.mapOpens = STUB.mapOpens + 1
+    OpenWorldMap(id)
 end
-_G.ToggleWorldMap = function() WorldMapFrame:SetShown(not WorldMapFrame:IsShown()) end
+setmetatable(C_Map, { __index = function(_, k)
+    if k == "OpenWorldMap" and not STUB.noOpenWorldMap then return cOpenWorldMap end
+end })
 
 -- Mixins and the map canvas as both clients' FrameXML has them (Blizzard_MapCanvas): the client's own
 -- data providers sit in WorldMapFrame.dataProviders, its pins in pinPools[template].active (a test
@@ -1845,11 +1856,11 @@ end)
 mapReal.RefreshAllDataProviders = notFromAddon("RefreshAllDataProviders", function(self)
     for p in pairs(self.dataProviders) do p:RefreshAllData() end
 end)
-mapReal.SetMapID = function(self, id)
+mapReal.SetMapID = notFromAddon("SetMapID", function(self, id)
     if self.mapID == id then return end
     self.mapID = id
     for p in pairs(self.dataProviders) do p:OnMapChanged() end
-end
+end)
 mapReal.scripts.OnShow = function(self)
     for p in pairs(self.dataProviders) do p:RefreshAllData(true) end
     for p in pairs(self.dataProviders) do p:OnShow() end
