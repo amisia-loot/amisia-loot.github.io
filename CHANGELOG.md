@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.56.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.56.0) (2026-11-06)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.55.0...v2.56.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(dungeons): show where a quest's start item lies inside the dungeon (F-136, D-65)
 
   Steps that start with an item lying somewhere in a dungeon now list the spots where it can be found,
