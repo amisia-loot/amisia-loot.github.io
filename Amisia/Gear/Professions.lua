@@ -126,10 +126,20 @@ end
 -- The professions a note names, in the note's order: { { skill = skill line, rank = the number right
 -- after it (1..450) or nil } }; each skill once; {} when there is none. Words are runs of letters
 -- (bytes over 127 count as letters, so umlauts stay inside a word); "Erste Hilfe" and "First Aid"
--- are read as one word.
+-- are read as one word. The answer is kept per note text (the members page reads every note on each
+-- refresh): callers only read it, never change it.
+local noteMemo, noteMemoN = {}, 0
+local NOTE_MEMO_MAX = 2000
+
 function Pr.FromNote(text)
+    if type(text) ~= "string" or text == "" then return {} end
+    local memo = noteMemo[text]
+    if memo then return memo end
     local out, seen = {}, {}
-    if type(text) ~= "string" or text == "" then return out end
+    if noteMemoN >= NOTE_MEMO_MAX then
+        noteMemo, noteMemoN = {}, 0
+    end
+    noteMemo[text], noteMemoN = out, noteMemoN + 1
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("\195[\132\150\156]", UPPER):lower()
     local tokens = {}
     for word, digits in text:gmatch("([%a\128-\255]*)(%d*)") do

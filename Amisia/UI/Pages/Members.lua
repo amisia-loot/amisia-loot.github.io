@@ -197,15 +197,29 @@ local function withNotes(list, m)
     return out or list
 end
 
+-- The rows of the last build and what they were built from: the same roster (rebuilt at most every
+-- 10 s), crafters, seen versions, alt list and data give the same rows, so a search, a filter or a
+-- sort only filters them again (a build reads every note: 800 members took 23 ms).
+local built = {}
+local gen = 0                   -- counts CRAFTERS_CHANGED and ALTS
+local function bump() gen = gen + 1 end
+
 -- Every member as a row: the roster's fields, the professions, whether Amisia is known to run there.
 -- nil when the roster cannot be read yet.
 local function build()
     local roster = ns.GuildRoster and ns.GuildRoster()
     if not roster then return nil end
     local profs = ns.Crafters and ns.Crafters.Professions() or {}
+    local rev = ns.VersionSeenRev and ns.VersionSeenRev()
+    local me = ns.UnitFullName("player")
+    local data = ns.HasData and ns.HasData("PROFESSIONS") or false
+    local b = built
+    if b.rows and rev ~= nil and b.roster == roster and b.profs == profs and b.rev == rev and b.gen == gen
+        and b.me == me and b.data == data and b.db == AmisiaDB then
+        return b.rows
+    end
     local amisia = {}
     for _, v in ipairs(ns.VersionSeen and ns.VersionSeen() or {}) do amisia[v.name:lower()] = v.v or true end
-    local me = ns.UnitFullName("player")
     local out = {}
     for _, m in ipairs(roster) do
         local low = m.name:lower()
@@ -219,6 +233,7 @@ local function build()
         e.fold = ns.Fold(m.name)
         out[#out + 1] = e
     end
+    built = { rows = out, roster = roster, profs = profs, rev = rev, gen = gen, me = me, data = data, db = AmisiaDB }
     return out
 end
 
@@ -560,8 +575,16 @@ local function refresh(f)
         last = nil
     end
 
-    -- a saved choice the guild no longer has (a class, a profession) goes back to "all"
-    local classes, profs = classValues(rows), profValues(rows)
+    -- a saved choice the guild no longer has (a class, a profession) goes back to "all"; the lists
+    -- are kept with the rows they come from
+    local classes, profs
+    if rows and built.rows == rows then
+        built.classes = built.classes or classValues(rows)
+        built.profValues = built.profValues or profValues(rows)
+        classes, profs = built.classes, built.profValues
+    else
+        classes, profs = classValues(rows), profValues(rows)
+    end
     if rows and #rows > 0 then
         if not hasValue(classes, st.class) then st.class = "all" end
         if not hasValue(profs, st.prof) then st.prof = "all" end
@@ -629,5 +652,5 @@ for _, event in ipairs({ "GUILD_ROSTER_UPDATE", "PLAYER_GUILD_UPDATE", "CLUB_MEM
                          "CLUB_MEMBER_UPDATED", "CLUB_MEMBERS_UPDATED", "ADDON_RESTRICTION_STATE_CHANGED" }) do
     ns.OnEvent(event, onRoster)
 end
-ns.Listen("CRAFTERS_CHANGED", function() if shown() then ns.RefreshSoon() end end)
-ns.Listen("ALTS", function() if shown() then ns.RefreshSoon() end end)
+ns.Listen("CRAFTERS_CHANGED", function() bump() if shown() then ns.RefreshSoon() end end)
+ns.Listen("ALTS", function() bump() if shown() then ns.RefreshSoon() end end)
