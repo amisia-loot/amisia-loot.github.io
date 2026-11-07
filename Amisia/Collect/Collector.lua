@@ -50,11 +50,8 @@ local KINDS = { "q", "s", "w" }
 local KIND_ORDER = { w = 1, s = 2, q = 3 }   -- among records of the same day, world drops go first
 local MAX_ID = 9999999
 
-local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local int = ns.Int
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- Fields
@@ -126,12 +123,7 @@ local function split(s, n)
     return out
 end
 
-local function sortedKeys(t)
-    local out = {}
-    for k in pairs(t) do out[#out + 1] = k end
-    table.sort(out)
-    return out
-end
+local sortedKeys = ns.SortedKeys
 
 -- "5,7" as { 5, 7 }; ascending, unique, max entries.
 local function idList(s, max)

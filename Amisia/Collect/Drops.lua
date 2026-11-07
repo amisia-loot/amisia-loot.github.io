@@ -44,7 +44,7 @@ local function now() return (GetServerTime and GetServerTime()) or time() end
 
 local function hex8(s) return ns.Checksum(s):sub(9, 16) end
 local function isHex8(v) return type(v) == "string" and #v == 8 and v:match("^%x+$") ~= nil end
-local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
+local int = ns.Int
 
 ---------------------------------------------------------------------------
 -- Days and dates (UTC, without the client's time zone)
@@ -182,11 +182,7 @@ local function newId()
     return hex8(("%s:%s:%s:%s"):format(tostring({}), tostring(now()), tostring(GetTime()), tostring(profile)))
 end
 
-local function count(t)
-    local n = 0
-    for _ in pairs(t) do n = n + 1 end
-    return n
-end
+local count = ns.Count
 
 -- A record as it may be stored or merged: day within the kept days and not after today (UTC server
 -- days, the same on every client) unless anyDay (the saved table: a day ahead is tolerated there).
@@ -1079,12 +1075,7 @@ function ns.DropsStatus()
     return out
 end
 
-local function sortedKeys(t)
-    local out = {}
-    for k in pairs(t) do out[#out + 1] = k end
-    table.sort(out)
-    return out
-end
+local sortedKeys = ns.SortedKeys
 
 -- Every kept record as text for the website: "#AMISIA 2 <who exports>", DZ (instances), DN (boss
 -- names), DK (one line per kill, sorted by day, then id), "#END". No player name in the lines. Not

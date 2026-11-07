@@ -12,7 +12,7 @@ local GREY, GREEN, LABEL = T.GREY, T.GREEN, T.LABEL
 local ICON = "Interface\\Icons\\INV_Scroll_03"
 -- rows of 22 from the head row to the footer (two hint lines and the data line): 26 + 18 x 22 = 422 of 426
 local ROWS, ROW_H = 18, 22
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local COLORS = { orange = "ffff8040", yellow = "ffffff00", green = "ff40bf40", grey = "ff808080", red = "ffff2020", none = "ffffffff" }
 local COLOR_WORD = { orange = ns.N_("orange"), yellow = ns.N_("gelb"), green = ns.N_("grün"), grey = ns.N_("grau"),
     red = ns.N_("noch nicht entzifferbar") }
@@ -28,10 +28,7 @@ function ns.MageScrollsPageFrame() return page end
 local function color(c, text) return ("|c%s%s|r"):format(c, text) end
 
 -- "08.10.2026" (English "Oct 8, 2026") from the data's "2026-10-08".
-local function longDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
-end
+local longDate = ns.LongDate
 
 local function itemText(id, fallback)
     local name, q, known = MS.ItemName(id, fallback)

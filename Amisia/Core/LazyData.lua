@@ -29,8 +29,7 @@ local function build(key)
     local ok, value = false, err
     if fn then ok, value = pcall(fn) end
     if not ok or type(value) ~= "table" then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler("Amisia: data " .. key .. " did not load: " .. tostring(value)) end
+        ns.ReportError("Amisia: data " .. key .. " did not load: " .. tostring(value))
         return nil
     end
     rawset(ns, key, value)
@@ -88,11 +87,7 @@ end
 
 local function mb(kb) return ("%.1f MB"):format(kb / 1024) end
 
-local function countKeys(t)
-    local n = 0
-    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
-    return n
-end
+local countKeys = ns.Count
 
 function ns.MemoryReport()
     local L = ns.L

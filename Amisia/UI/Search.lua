@@ -144,8 +144,7 @@ local function playerHits(q)
     local out = {}
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
-        local c = e.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class]
-        out[i] = { text = e.name, label = c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, e.name) or e.name,
+        out[i] = { text = e.name, label = ns.ClassColored(e.name, e.class),
             atlas = e.class and ("groupfinder-icon-class-" .. e.class:lower()) or nil,
             icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", tip = L["Öffnet die Statistik dieses Spielers."],
             run = function() if ns.ShowStats then ns.ShowStats("players", e.name) end end }
@@ -410,8 +409,7 @@ function ns.Search(text)
         -- a broken group must not stop the typing: its error goes to the client's handler
         local ok, hits = pcall(g.find, q)
         if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(hits) end
+            ns.ReportError(hits)
         elseif #hits > 0 then
             out[#out + 1] = { key = g.key, label = g.label, hits = hits }
         end

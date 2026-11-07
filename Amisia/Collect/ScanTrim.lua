@@ -39,11 +39,7 @@ local function sortedIDs(t)
     return ids
 end
 
-local function count(t)
-    local n = 0
-    for _ in pairs(type(t) == "table" and t or {}) do n = n + 1 end
-    return n
-end
+local count = ns.Count
 
 -- The work, as a function that calls pause() whenever its budget for one step is used up. Returns
 -- the counts: items, sources (items whose notes all went), notes, retry, bytes.
@@ -226,8 +222,7 @@ function ns.ScanTrimNow()
     local ok, res = pcall(trim, m, s, function() end)
     if not ok then
         running = false
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(res) end
+        ns.ReportError(res)
         return nil
     end
     finish(res, m, true)
@@ -246,8 +241,7 @@ function ns.ScanTrimStart(done)
         local ok, res = coroutine.resume(co)
         if not ok then
             running = false
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(res) end
+            ns.ReportError(res)
             return
         end
         if coroutine.status(co) == "dead" then

@@ -667,8 +667,7 @@ function Pr.Sources(r)
             if tier then add("T", Pr.TIERS[num(tier)] or Pr.TIERS[0]) end
         end
     end
-    local myFaction = UnitFactionGroup and ns.Plain((UnitFactionGroup("player"))) or nil
-    myFaction = myFaction == "Alliance" and "A" or myFaction == "Horde" and "H" or nil
+    local myFaction = ns.OwnFaction()
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
         local listed = {}
@@ -863,8 +862,7 @@ function Pr.Favor()
     local d = data()
     local F = d and d.FAVOR
     if type(F) ~= "table" then return nil end
-    local fac = UnitFactionGroup and ns.Plain((UnitFactionGroup("player"))) or nil
-    fac = fac == "Alliance" and "A" or fac == "Horde" and "H" or nil
+    local fac = ns.OwnFaction()
     local out = { currency = F.currency, cert = F.cert or {}, writs = {}, recipes = {}, vendors = {} }
     for _, k in ipairs(fac and { fac } or { "A", "H" }) do
         for _, npc in ipairs(F.vendor and F.vendor[k] or {}) do out.vendors[#out.vendors + 1] = npc end

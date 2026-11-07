@@ -23,6 +23,11 @@ T.GREEN = "|cff4fbf7a"
 T.RED = "|cffe0574a"                        -- a shortfall below the minimum
 T.LABEL = "|cffe2b857"
 T.GOLD_TEXT = "|cffe3b857"
+-- the client's item quality colours (0 poor to 6 artifact): colour codes ("|c" .. T.QUALITY_HEX[q]) and
+-- r, g, b (T.QUALITY_RGB, the slot frames of T.GOALS.QUALITY too)
+T.QUALITY_HEX = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+T.QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
+    { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } }
 
 ---------------------------------------------------------------------------
 -- Fonts (the client's font objects)
@@ -507,8 +512,7 @@ T.GOALS = {
     MARK_W = 2,           -- the line in the bar for "jetzt"
     DOWN_COLOR = { 0.88, 0.34, 0.29 },   -- a stat that falls (T.RED as a colour)
     -- an item's quality colour on its slot's frame (the client's item quality colours)
-    QUALITY = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
-        { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } },
+    QUALITY = T.QUALITY_RGB,
     -- the state colours: worn green, in bag or bank yellow, still to get grey, no target dark
     STATE_COLOR = { done = { 0.31, 0.82, 0.42 }, bag = { 1, 0.82, 0.2 }, todo = { 0.5, 0.48, 0.55 }, none = { 0.16, 0.14, 0.18 } },
     -- the empty slot art of the character frame, when the client's GetInventorySlotInfo does not say

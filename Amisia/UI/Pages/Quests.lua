@@ -10,7 +10,7 @@ local GREY = T.GREY
 local GREEN = "|cff4fd16b"
 local RED = "|cffff6040"
 local YELLOW = "|cffffd100"
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local ICON = "Interface\\Icons\\INV_Misc_Book_08"
 -- rows of 24 from the column heads (90) to the footer (442): 14
 local ROWS, ROW_H = 14, 24
@@ -34,10 +34,7 @@ local function state()
     return q
 end
 
-local function longDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
-end
+local longDate = ns.LongDate
 
 local function itemText(id)
     local f = C_Item and C_Item.GetItemInfo

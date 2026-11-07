@@ -15,11 +15,7 @@ local refreshAt, refreshPending
 
 local function colored(color, text) return color .. text .. "|r" end
 
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    if c and c.colorStr then return "|c" .. c.colorStr .. name .. "|r" end
-    return name
-end
+local classColored = ns.ClassColored
 
 local function lastText(at)
     if type(at) ~= "number" then return "-" end

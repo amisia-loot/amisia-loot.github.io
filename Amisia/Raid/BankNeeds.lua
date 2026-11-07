@@ -383,10 +383,7 @@ end
 
 -- A delay of 0 to n seconds that differs per character (from its name), so the clients of a guild
 -- do not all ask or answer at once; no random numbers (the other parts' jitter keeps its sequence).
-local function spread(n)
-    local h = ns.Checksum and tonumber(ns.Checksum(me()):sub(1, 6), 16) or 0
-    return (h % (n * 10)) / 10
-end
+local function spread(n) return ns.Spread(n, me()) end
 
 ns.CommOn("GQ", function(sender, f)
     if not DB then return end

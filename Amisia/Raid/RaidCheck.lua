@@ -50,15 +50,7 @@ local lastRows              -- the rows of the last read (shown in combat): { at
 local function me() return ns.UnitFullName("player") end
 -- RAIDCHECK once for a burst of answers (40 raiders answer within 3 s): the page reads the auras of
 -- the raid once, not once per answer
-local firePending = false
-local function fireSoon()
-    if firePending then return end
-    firePending = true
-    C_Timer.After(0.5, function()
-        firePending = false
-        ns.Fire("RAIDCHECK")
-    end)
-end
+local function fireSoon() ns.FireSoon("RAIDCHECK") end
 
 -- Who may see and ask: the officer view with the officer rank (D-41, as the lineup).
 function ns.RaidCheckAllowed()
@@ -77,10 +69,7 @@ function RC.Locked()
     return nil
 end
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
+local homeRaid = ns.HomeRaid
 
 ---------------------------------------------------------------------------
 -- The lists (Data/RaidCheckData.lua)

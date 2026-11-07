@@ -241,7 +241,7 @@ function ns.LootRuleItems(text)
     local out = {}
     if type(text) ~= "string" then return out end
     -- a link stands for its item id; colour codes and the link's name are left out
-    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|Hitem:(%d+)[^|]*|h.-|h", " %1 ")
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[%w_]+:", ""):gsub("|r", ""):gsub("|Hitem:(%d+)[^|]*|h.-|h", " %1 ")
     for id in text:gmatch("(%d+)") do out[#out + 1] = id end
     return cleanItems(out, MAX_ITEMS + 1)
 end
@@ -311,11 +311,7 @@ end
 ---------------------------------------------------------------------------
 -- master loot, and whether this client is the master looter
 local function masterLoot()
-    local info = _G.C_PartyInfo
-    if type(info) ~= "table" or type(info.GetLootMethod) ~= "function" then return false, false end
-    local ok, method, partyID, raidID = pcall(info.GetLootMethod)
-    if not ok then return false, false end
-    method, partyID, raidID = ns.Plain(method), ns.Plain(partyID), ns.Plain(raidID)
+    local _, method, partyID, raidID = ns.LootMethod()
     if method ~= MASTER then return false, false end
     if raidID then return true, UnitIsUnit("raid" .. raidID, "player") and true or false end
     return true, partyID == 0
@@ -1074,10 +1070,7 @@ function ns.AskLootRules()
     return ns.CommSend("MQ", { tostring(knownRev()) }, "GUILD", nil, { key = "MQ", ttl = 120, low = true }) and true or false
 end
 
-local function spread(n)
-    local h = tonumber(ns.Checksum(me()):sub(1, 6), 16) or 0
-    return (h % (n * 10)) / 10
-end
+local function spread(n) return ns.Spread(n, me()) end
 
 ns.CommOn("MQ", function(sender, f)
     if not DB then return end

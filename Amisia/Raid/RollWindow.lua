@@ -61,21 +61,14 @@ local nextAnswerAt = {}   -- round id -> GetTime() the next answer may go
 local function now() return GetTime() end
 local function me() return ns.UnitFullName("player") end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 -- The chat lockdown of a boss fight: rolls cannot be read, answers would wait.
 local function locked()
     return (ns.CommHeld and ns.CommHeld()) or (ns.ChatLocked and ns.ChatLocked()) or false
 end
 
-local function inPvP()
-    local _, kind = GetInstanceInfo()
-    kind = ns.Plain(kind)
-    return kind == "pvp" or kind == "arena"
-end
+local inPvP = ns.InPvPInstance
 
 -- A name a field may carry: no digits, commas, colons or bars (Comm.lua checks the same).
 local function okName(n)

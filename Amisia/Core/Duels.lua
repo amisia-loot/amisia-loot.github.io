@@ -39,9 +39,7 @@ D.CLASSES = CLASSES
 ---------------------------------------------------------------------------
 -- Saved data
 ---------------------------------------------------------------------------
-local function int(v, lo, hi)
-    return type(v) == "number" and v == math.floor(v) and v >= (lo or -math.huge) and v <= (hi or math.huge)
-end
+local int = ns.Int
 
 -- A name or zone as plain text (no codes, no tab, no bar), nil when empty or too long.
 local function clean(s, max)

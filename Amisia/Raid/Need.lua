@@ -32,10 +32,7 @@ local answerTimes = {}
 
 local function now() return GetTime() end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 -- Drops questions, answers and remembered lists older than 30 minutes.
 local function sweep()
@@ -54,10 +51,7 @@ local function sweep()
     end
 end
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
+local homeRaid = ns.HomeRaid
 
 -- A name from the net for display: no bars, no control characters.
 local function clean(name)
@@ -68,11 +62,7 @@ end
 -- Who leads the loot, as this client sees it
 ---------------------------------------------------------------------------
 local function masterLooter()
-    local info = _G.C_PartyInfo
-    if type(info) ~= "table" or type(info.GetLootMethod) ~= "function" then return nil end
-    local ok, method, _, raidID = pcall(info.GetLootMethod)
-    if not ok then return nil end
-    method, raidID = ns.Plain(method), ns.Plain(raidID)
+    local _, method, _, raidID = ns.LootMethod()
     if method ~= MASTER or not raidID then return nil end
     local name = ns.Plain((GetRaidRosterInfo(raidID)))
     return type(name) == "string" and ns.FullName(name) or nil

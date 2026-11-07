@@ -439,10 +439,7 @@ local function settle()
     if #waiting == 0 and waitTicker then waitTicker:Cancel(); waitTicker = nil end
     for _, d in ipairs(done) do
         local ok, err = pcall(d[1], d[2])
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
 end
 

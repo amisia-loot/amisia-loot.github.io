@@ -67,14 +67,11 @@ local KEY_GAP = 61
 
 local function now() return GetTime() end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function hex4(s) return ns.Checksum(s):sub(13, 16) end
 local function isHex8(v) return type(v) == "string" and #v == 8 and v:match("^%x+$") ~= nil end
-local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
+local int = ns.Int
 local function nameOk(v) return type(v) == "string" and ns.DropsCleanName(v) == v end
 
 local function debugLine(text)
@@ -89,12 +86,7 @@ local function raidSynced()
     return s ~= nil and ns.CommReady() and true or false
 end
 
-local function battlefield()
-    local pvp = _G.C_PvP
-    if type(pvp) ~= "table" or type(pvp.IsActiveBattlefield) ~= "function" then return false end
-    local ok, on = pcall(pvp.IsActiveBattlefield)
-    return ok and ns.Plain(on) == true
-end
+local battlefield = ns.InBattlefield
 
 -- Sharing on, the message layer there, in a guild, outside instances and battlegrounds, out of
 -- combat, no lockdown, no raid recording with sync.
@@ -737,12 +729,7 @@ ns.CommOn("DR", function(sender, f, chan)
     end)
 end)
 
-local function sortedKeys(t)
-    local out = {}
-    for k in pairs(t) do out[#out + 1] = k end
-    table.sort(out)
-    return out
-end
+local sortedKeys = ns.SortedKeys
 
 -- The blob of records ids: the records, and the names of their bosses and instances; m = 1 when a
 -- second half follows.

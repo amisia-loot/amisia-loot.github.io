@@ -41,10 +41,7 @@ local MAP_TYPE = Enum and Enum.UIMapType
 local ZONE = MAP_TYPE and MAP_TYPE.Zone or 3
 local CONTINENT = MAP_TYPE and MAP_TYPE.Continent or 2
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- The places of the data
@@ -127,10 +124,7 @@ function Map.Places()
 end
 
 -- The own faction as the data writes it (A, H), nil when the client tells none.
-local function ownSide()
-    local f = UnitFactionGroup and ns.Plain((UnitFactionGroup("player")))
-    return f == "Alliance" and "A" or f == "Horde" and "H" or nil
-end
+local ownSide = ns.OwnFaction
 Map.OwnSide = ownSide
 
 -- A place of side ("A", "H", "N" both) for a player of mine: neutral always, the own faction's,

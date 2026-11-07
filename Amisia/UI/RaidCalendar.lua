@@ -59,10 +59,7 @@ local TYPE_TEXTURE = { [0] = "Interface\\LFGFrame\\LFGIcon-Raid", [1] = "Interfa
                        [2] = "Interface\\Calendar\\UI-Calendar-Event-PVP", [3] = "Interface\\Calendar\\MeetingIcon",
                        [4] = "Interface\\Calendar\\UI-Calendar-Event-Other" }
 
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 local function sourceText(e)
     local out = {}

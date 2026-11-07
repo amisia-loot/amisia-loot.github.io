@@ -18,7 +18,7 @@ local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
 local ROWS, ROW_H = 17, 22
 local GUILD_W = T.CHIP_W   -- the chip Gilde at least (it carries its count)
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 -- the dropdowns' entries (W.Picker); the field shows "<filter>: <entry>", SHORT where it differs
 local SOURCES = { { value = "all", text = L["Alle Quellen"] }, { value = "T", text = L["Lehrer"] },
     { value = "V", text = L["Händler"] }, { value = "F", text = L["Händlergunst"] }, { value = "D", text = "Drop" },

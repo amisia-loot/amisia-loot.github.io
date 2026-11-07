@@ -46,11 +46,7 @@ local function byId(id)
 end
 
 -- "02.10." (English "Oct 2") from a raid's "2026-10-02".
-local function shortDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    if not d then return tostring(iso or "?") end
-    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
-end
+local shortDate = ns.SoftResShortDate
 
 local function raidText(s)
     return ("%s%s, %s"):format(s == ns.Active() and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "",
@@ -78,9 +74,9 @@ local function quality(id)
     return q or 0
 end
 
-local QCOLOR = { [0] = "9d9d9d", "ffffff", "1eff00", "0070dd", "a335ee", "ff8000", "e6cc80" }
+local QCOLOR = T.QUALITY_HEX
 local function itemText(id)
-    return ("|cff%s%s|r"):format(QCOLOR[quality(id)] or "ffffff", ns.ItemName(id))
+    return ("|c%s%s|r"):format(QCOLOR[quality(id)] or "ffffffff", ns.ItemName(id))
 end
 
 local function itemLink(id)

@@ -21,7 +21,7 @@ local view = "items"   -- the chosen view, kept until logout
 ---------------------------------------------------------------------------
 local function plural(n, one, many) return n == 1 and one or many end
 
-local QCOLOR = { [0] = "9d9d9d", "ffffff", "1eff00", "0070dd", "a335ee", "ff8000", "e6cc80" }
+local QCOLOR = T.QUALITY_HEX
 local function quality(id)
     local known = AmisiaDB and AmisiaDB.itemNames and AmisiaDB.itemNames[id]
     local q = known and known.q
@@ -33,7 +33,7 @@ local function quality(id)
 end
 
 local function itemText(id)
-    return ("|cff%s%s|r"):format(QCOLOR[quality(id)] or "ffffff", ns.ItemName(id))
+    return ("|c%s%s|r"):format(QCOLOR[quality(id)] or "ffffffff", ns.ItemName(id))
 end
 
 local function itemLink(id)
@@ -88,9 +88,7 @@ end
 
 local function coloured(ctx, name)
     if ctx.absent[name] then return GREY .. name .. L[" (nicht im Raid)|r"] end
-    local class = classOf(ctx, name)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and ("|c%s%s|r"):format(c.colorStr, name) or name
+    return ns.ClassColored(name, classOf(ctx, name))
 end
 
 -- Every list name with its items { item, n } and the sum of its reservations.

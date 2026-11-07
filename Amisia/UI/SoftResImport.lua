@@ -18,13 +18,9 @@ local previewGen = 0   -- the newest pending preview; older timers do nothing
 local model            -- the shown preview (ns.SoftResPreview)
 
 local TONE = { unclear = ORANGE, class = ORANGE, over = RED, renamed = GOLD, absent = GREY }
-local QCOLOR = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
-                 { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } }
+local QCOLOR = T.QUALITY_RGB
 
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 local function quality(id)
     local known = AmisiaDB and AmisiaDB.itemNames and AmisiaDB.itemNames[id]
@@ -238,10 +234,7 @@ local function updatePreview()
     local ok, m = pcall(ns.SoftResPreview, (text or ""):find("%S") and text or nil)
     model = ok and m or nil
     showModel()
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(m) end
-    end
+    if not ok then ns.ReportError(m) end
 end
 ns.SoftResImportPreview = updatePreview
 

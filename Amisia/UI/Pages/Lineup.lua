@@ -88,8 +88,7 @@ local STATE_COLOR = { a = ORANGE, u = RED, g = GREY }
 local function classColored(name, class, dim, x)
     if STATE_COLOR[x] then return STATE_COLOR[x] .. name .. "|r" end
     if dim then return GREY .. name .. "|r" end
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, name) or name
+    return ns.ClassColored(name, class)
 end
 
 local STATE = {

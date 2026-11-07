@@ -50,11 +50,7 @@ local SLOT_WEIGHT = {
 local SYS_NAME = { roll = L["Würfeln##System"], dkp = "DKP", epgp = "EPGP" }
 function ns.PointsSystemName(sys) return SYS_NAME[sys or ns.PointsSystem()] or "?" end
 
-local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", "")
-    return s
-end
+local stripCodes = ns.StripCodes
 
 local function cleanName(raw)
     if type(raw) ~= "string" then return nil end
@@ -918,12 +914,7 @@ local function standingText(e, cfg)
 end
 ns.PointsStandingText = standingText
 
-local function inGroup(name)
-    for _, n in ipairs(ns.GroupRoster()) do
-        if ns.SameName(n, name) then return true end
-    end
-    return false
-end
+local inGroup = ns.InGroup
 
 -- who: the sender's name in the group (Chat.lua); the answer goes to the raw sender.
 local function onAsk(sender, _, _, who)

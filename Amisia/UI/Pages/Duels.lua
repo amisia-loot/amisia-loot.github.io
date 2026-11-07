@@ -53,10 +53,7 @@ end
 
 local function classLine(c, tree) return ns.DuelInfo.ClassLine(c, tree) end
 
-local function colored(text, c)
-    local col = c and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c]
-    return col and col.colorStr and ("|c%s%s|r"):format(col.colorStr, text) or text
-end
+local colored = ns.ClassColored
 
 local function pct(r, g)
     if not g or g == 0 then return GREY .. "-|r" end

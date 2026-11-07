@@ -47,15 +47,7 @@ local chosen                 -- the instance chosen on the page (and the lineup'
 
 local function me() return ns.UnitFullName("player") end
 -- RAIDIDS once for a burst of reports (an IQ brings up to 12 per guild member): the pages redraw once
-local firePending = false
-local function fireSoon()
-    if firePending then return end
-    firePending = true
-    C_Timer.After(0.5, function()
-        firePending = false
-        ns.Fire("RAIDIDS")
-    end)
-end
+local function fireSoon() ns.FireSoon("RAIDIDS") end
 local function now() return math.floor(ns.ServerTime and ns.ServerTime() or time()) end
 
 local function posNum(v, max)
@@ -299,10 +291,7 @@ ns.OnEvent("ENCOUNTER_END", function(_, _, _, _, success)
 end)
 
 -- A delay of 0 to n seconds that differs per character (from its name).
-local function spread(n)
-    local h = ns.Checksum and tonumber(ns.Checksum(me() or "?"):sub(1, 6), 16) or 0
-    return (h % (n * 10)) / 10
-end
+local function spread(n) return ns.Spread(n, me()) end
 
 local loginSeen = false
 ns.OnEvent("PLAYER_LOGIN", function()

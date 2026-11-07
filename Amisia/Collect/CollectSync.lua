@@ -94,10 +94,7 @@ local learned = 0
 local settled, nSettled = {}, 0
 
 local function now() return GetTime() end
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 local function hex4(s) return ns.Checksum(s):sub(13, 16) end
 local function debugLine(text)
     if ns.Get("sync.debug") then DEFAULT_CHAT_FRAME:AddMessage("|cff999999" .. ns.L["Amisia Quellen: %s"]:format(text) .. "|r") end
@@ -106,12 +103,7 @@ end
 ---------------------------------------------------------------------------
 -- When the exchange may talk
 ---------------------------------------------------------------------------
-local function battlefield()
-    local pvp = _G.C_PvP
-    if type(pvp) ~= "table" or type(pvp.IsActiveBattlefield) ~= "function" then return false end
-    local ok, on = pcall(pvp.IsActiveBattlefield)
-    return ok and ns.Plain(on) == true
-end
+local battlefield = ns.InBattlefield
 
 function ns.CollectSyncCanTalk()
     if not AmisiaDB or not ns.Get("collect.share") then return false end

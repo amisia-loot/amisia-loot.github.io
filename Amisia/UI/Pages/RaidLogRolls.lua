@@ -8,7 +8,7 @@ local W, T = ns.W, ns.Theme
 local GR = ns.GroupRolls
 local ROWS, ROW_H = 10, 22
 local GREY, GREEN, LABEL = T.GREY, T.GREEN, T.LABEL
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local ORDER = { N = 1, O = 2, T = 3, G = 4, D = 5, P = 6 }
 
 local V
@@ -33,10 +33,7 @@ local function itemText(id)
     return ("|c%s%s|r"):format(QUALITY[tonumber(q) or 1] or QUALITY[1], name or ("Item " .. tostring(id)))
 end
 
-local function classColored(name, cls)
-    local c = cls and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cls]
-    return (c and c.colorStr) and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 local function choiceText(p)
     local text = GR.ChoiceText(p.c)

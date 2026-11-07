@@ -52,10 +52,7 @@ local FIT_ORDER = { fit = 1, soon = 2 }
 
 local function lower(s) return type(s) == "string" and s:lower() or nil end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- Inputs (the switch points for the build's data)

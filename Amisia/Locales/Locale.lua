@@ -82,6 +82,12 @@ function ns.FmtDate(t)
     return ("%s %d, %d"):format(MONTHS[d.month], d.day, d.year)
 end
 
+-- ns.FmtDate of a "2026-10-07"; "?" for anything else.
+function ns.LongDate(iso)
+    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
+end
+
 -- Day and time: "07.10. 20:15" in German, "Oct 7 20:15" in English.
 function ns.FmtDayTime(t)
     t = t or time()

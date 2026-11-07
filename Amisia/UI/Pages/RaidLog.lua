@@ -35,11 +35,7 @@ local focusDiscord = false
 local function hm(t) return date("%H:%M", t or 0) end
 
 -- "05.10." (English "Oct 5") from "2026-10-05".
-local function shortDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    if not d then return tostring(iso or "?") end
-    return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
-end
+local shortDate = ns.SoftResShortDate
 
 local function byId(id)
     for _, s in ipairs(ns.Sessions()) do
@@ -98,10 +94,7 @@ local function chosen()
     return list[#list] or "next"
 end
 
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return (c and c.colorStr) and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 local function memberColored(s, name)
     local m = s.members and s.members[name]

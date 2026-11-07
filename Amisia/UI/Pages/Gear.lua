@@ -13,7 +13,7 @@ local Gear = ns.Gear
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
 local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
@@ -334,10 +334,7 @@ local function setView(v)
     ns.Refresh()
 end
 
-local function longDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    return y and ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })) or "?"
-end
+local longDate = ns.LongDate
 
 ---------------------------------------------------------------------------
 -- Head: spec, views, counts, source chips
@@ -1079,10 +1076,7 @@ local function onlyGroup()
     return IsInRaid() and true or false
 end
 
-local function classColored(text, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return (c and c.colorStr) and ("|c%s%s|r"):format(c.colorStr, text) or text
-end
+local classColored = ns.ClassColored
 
 local guildKey, guildList
 local function guildItems(only)

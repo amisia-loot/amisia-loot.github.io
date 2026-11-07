@@ -28,11 +28,7 @@ local BLUE = { 0.55, 0.75, 1 }
 ---------------------------------------------------------------------------
 
 -- Pasted text without escape codes (colours, links, textures, atlases) and without any bar left.
-local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", "")
-    return s
-end
+local stripCodes = ns.StripCodes
 
 local function gameName(key)
     return GAME_NAMES[key] or stripCodes(tostring(key)):sub(1, 24)
@@ -240,10 +236,7 @@ local lootMarks = setmetatable({}, { __mode = "k" })   -- loot button -> font st
 local rollMarks = setmetatable({}, { __mode = "k" })   -- roll frame -> font string
 local hooked = setmetatable({}, { __mode = "k" })
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function wishedInGroup(link)
     local id = ns.ItemID(ns.Plain(link))

@@ -269,18 +269,12 @@ ns.OnEvent("LOOT_OPENED", function()
     -- the boss kill records (Drops.lua) first; an error there loses only that window, not the notes
     if ns.DropsFromLoot then
         local ok, err = pcall(ns.DropsFromLoot)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
     -- then the drops of the other corpses (Collector.lua), outside the boss records
     if ns.CollectorFromLoot then
         local ok, err = pcall(ns.CollectorFromLoot)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
     if not enabled() or not GetNumLootItems or not GetLootSlotLink then return end
     local place = placeTag()

@@ -130,11 +130,7 @@ local MASTER = (Enum and Enum.LootMethod and Enum.LootMethod.Masterlooter) or 2
 
 -- The master looter as this client sees him, or nil.
 local function masterLooter()
-    local info = _G.C_PartyInfo
-    if type(info) ~= "table" or type(info.GetLootMethod) ~= "function" then return nil end
-    local ok, method, partyID, raidID = pcall(info.GetLootMethod)
-    if not ok then return nil end
-    method, partyID, raidID = ns.Plain(method), ns.Plain(partyID), ns.Plain(raidID)
+    local _, method, partyID, raidID = ns.LootMethod()
     if method ~= MASTER then return nil end
     if raidID then
         local name = ns.Plain((GetRaidRosterInfo(raidID)))
@@ -1021,10 +1017,7 @@ local function copy(t)
     return c
 end
 
-local function serverTime()
-    local t = type(GetServerTime) == "function" and tonumber(ns.Plain(GetServerTime())) or nil
-    return t or time()
-end
+local serverTime = ns.ServerTime
 
 -- A wish id: the time and a running number (no draw from math.random, whose sequence the award
 -- ids use). Unique per client; the keeper keeps answers per sender and id.
@@ -1325,10 +1318,7 @@ relayer = function(s)
         for _, p in ipairs(list) do
             if type(p.op) == "table" then
                 local ok, err = pcall(localApply, s, p.op)
-                if not ok then
-                    local handler = geterrorhandler and geterrorhandler()
-                    if handler then handler(err) end
-                end
+                if not ok then ns.ReportError(err) end
             end
         end
     end)
@@ -1603,8 +1593,7 @@ onOP = function(name, sender, w, key)
     end
     local ok, verdict, rev = pcall(take, s, name, w)
     if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(verdict) end
+        ns.ReportError(verdict)
         verdict, rev = "BAD", 0
     end
     rev = tostring(math.max(0, math.min(999999, math.floor(num(rev)))))
@@ -1659,8 +1648,7 @@ replayOwn = function(s, key, e, by)
     if not wellFormed(p) then return end
     local ok, verdict, rev = pcall(function() return take(s, me(), wire(key, p)) end)
     if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(verdict) end
+        ns.ReportError(verdict)
         return
     end
     if verdict == "CONFLICT" or verdict == "GONE" then addConflict(s, p, by or me(), verdict, tonumber(rev) or 0) end

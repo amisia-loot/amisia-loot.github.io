@@ -37,7 +37,7 @@ local GROW, CONTINENT_SCALE = 0.6, 0.7
 local MAP_TYPE = Enum and Enum.UIMapType
 local ZONE = MAP_TYPE and MAP_TYPE.Zone or 3
 local CONTINENT = MAP_TYPE and MAP_TYPE.Continent or 2
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = ns.Theme.QUALITY_HEX
 local GOLD = W.GOLD
 local GREEN = { 0.3, 0.85, 0.3 }
 
@@ -59,10 +59,7 @@ local function itemText(id)
     return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or ("Item " .. tostring(id)))
 end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- Which places: targets and wishes with a place on the shown map

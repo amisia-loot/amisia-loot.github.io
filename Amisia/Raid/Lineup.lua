@@ -92,11 +92,7 @@ for w in ("datum date zeit time uhrzeit uhr leader leitung raidleiter raidleader
     .. "anmeldung signups signup sign teilnehmer info notiz note start beginn treffpunkt ort instanz event termin tag day "
     .. "erstellt created und and"):gmatch("%S+") do STOP[norm(w)] = true end -- l10n-ok: list words the parser reads
 
-local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", " ")
-    return s
-end
+local function stripCodes(s) return ns.StripCodes(s, " ") end
 
 -- A name of the block: "_" is the space; no digits, no control characters, not too long.
 local function cleanName(raw)

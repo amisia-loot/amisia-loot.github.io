@@ -279,10 +279,7 @@ local function onCommand(chan, text, sender)
     local me = ns.UnitFullName("player")
     if me and who:lower() == me:lower() then return end
     local ok, err = pcall(fn, sender, rest, chan, who)
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(err) end
-    end
+    if not ok then ns.ReportError(err) end
 end
 
 for event, chan in pairs({ CHAT_MSG_WHISPER = "WHISPER", CHAT_MSG_RAID = "RAID", CHAT_MSG_RAID_LEADER = "RAID",

@@ -171,10 +171,7 @@ local refresh
 -- Upgrades and the appearance hint
 ---------------------------------------------------------------------------
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function compareOn()
     return (ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false) and true or false  -- l10n-ok: setting key

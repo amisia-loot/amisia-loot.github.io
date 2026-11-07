@@ -40,10 +40,7 @@ local function now() return GetTime() end
 local function me() return ns.UnitFullName("player") end
 local function enabled() return ns.Get("trade.enabled") ~= false end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- The time left: the tooltip line TradeTimeRemaining

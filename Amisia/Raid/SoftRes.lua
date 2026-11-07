@@ -743,15 +743,7 @@ end
 -- Tooltip
 ---------------------------------------------------------------------------
 -- The group as plain names (secret ones left out), or nil when alone.
-local function groupNames()
-    if not IsInGroup() then return nil end
-    local out = {}
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then out[#out + 1] = n end
-    end
-    return out
-end
+local function groupNames() return IsInGroup() and ns.GroupRoster() or nil end
 
 -- "Reserviert: Fraktur, du x2 (+1 außerhalb)": in a group (softres.tooltipGroup) only reservers
 -- from it, the others counted.
@@ -874,10 +866,7 @@ local scrollHooked
 local function onLootElement(_, frame)
     if type(frame) ~= "table" or type(frame.GetSlotIndex) ~= "function" then return end
     local ok, err = pcall(function() markButton(frame, frame:GetSlotIndex()) end)
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(err) end
-    end
+    if not ok then ns.ReportError(err) end
 end
 local function hookLootScroll()
     if scrollHooked then return end
@@ -897,10 +886,7 @@ local function hookLootButtons()
     classicHooked = true
     hooksecurefunc("LootFrame_UpdateButton", function(index)
         local ok, err = pcall(markClassic, index)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end)
 end
 hookLootButtons()
@@ -1201,13 +1187,7 @@ function ns.AnnounceSoftRes()
     return true
 end
 
-local function inGroup(name)
-    for i = 1, GetNumGroupMembers() or 0 do
-        local member = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if member and ns.SameName(member, name) then return true end
-    end
-    return false
-end
+local inGroup = ns.InGroup
 
 -- sender is the raw text the client gave (already plain); the answer goes back to it by whisper.
 -- who is its name in the group (Chat.lua), the name matched against the soft-reserves.

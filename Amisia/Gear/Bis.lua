@@ -356,10 +356,9 @@ function ns.BisOpts()
     local c = ns.BisChar()
     local _, class = UnitClass("player")
     local spec, guessed = ns.BisSpec()
-    local fac = UnitFactionGroup and UnitFactionGroup("player")
     local o = {
         class = class, spec = spec, guessed = guessed, kind = ns.Get("bis.kind") or "Speedrun",   -- l10n-ok: setting key
-        faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil,
+        faction = ns.OwnFaction(),
         level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())),
         sources = sourceState(),
         prof = ns.Get("bis.prof") or "all", skills = ns.BisSkills(),   -- l10n-ok: setting key
@@ -453,10 +452,7 @@ local function ownedChanged()
     bump()
     for _, fn in ipairs(ownListeners) do
         local ok, err = pcall(fn)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
 end
 
@@ -2030,10 +2026,7 @@ local function warmTargets()
         warmAt = GetTime and GetTime() or 0
         if ns.BisTargetsCached() then return end
         local ok, err = pcall(ns.BisTargets)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end)
 end
 
@@ -2204,8 +2197,7 @@ local function placeLine(id, shift)
     if not shift or not ns.MapTooltipLine then return nil end
     local ok, line = pcall(ns.MapTooltipLine, id)
     if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(line) end
+        ns.ReportError(line)
         return nil
     end
     return line
@@ -2443,7 +2435,7 @@ end)
 
 local TOAST_SECONDS, TOAST_MAX, TOAST_AGAIN = 8, 3, 120
 local TOAST_Y = -60
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = ns.Theme.QUALITY_HEX
 local GOLD = { 0.89, 0.72, 0.34 }
 local toastFrame, current
 local waiting = {}        -- toasts after the shown one, oldest first
@@ -2662,10 +2654,7 @@ local function guarded(fn)
     return function(...)
         if not ns.Get("bis.toast") or inPvP() then return end   -- l10n-ok: setting key
         local ok, err = pcall(fn, ...)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
 end
 

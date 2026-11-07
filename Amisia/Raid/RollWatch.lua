@@ -28,11 +28,7 @@ local STOP = { "stop your rolls", "stopp deine würfe" }   -- l10n-ok: Gargul's 
 
 local lastStart = {}           -- lower name -> GetTime() of its last start
 
-local function inPvP()
-    local _, kind = GetInstanceInfo()
-    kind = ns.Plain(kind)
-    return kind == "pvp" or kind == "arena"
-end
+local inPvP = ns.InPvPInstance
 
 -- A note: no codes or bars, at most 60 characters (UTF-8 kept whole); nil when empty.
 local function cleanNote(s)
@@ -60,7 +56,8 @@ function ns.ParseForeignRollStart(text)
         end
     end
     if not secs then return nil end
-    local link = rest:match("^(|c%x+|Hitem:[^|]+|h.-|h|r)") or rest:match("^(|Hitem:[^|]+|h.-|h)")
+    local link = rest:match("^(|c%x+|Hitem:[^|]+|h.-|h|r)") or rest:match("^(|cn[%w_]+:|Hitem:[^|]+|h.-|h|r)")
+        or rest:match("^(|Hitem:[^|]+|h.-|h)")
     local item = link and ns.ItemID(link)
     if not item then return nil end
     local after = rest:sub(#link + 1):gsub("^%s*zu würfeln", "")   -- l10n-ok: the end of Gargul's German line
@@ -130,9 +127,6 @@ for _, event in ipairs({ "CHAT_MSG_RAID_WARNING", "CHAT_MSG_RAID", "CHAT_MSG_RAI
                          "CHAT_MSG_PARTY_LEADER" }) do
     ns.OnEvent(event, function(text, sender)
         local ok, err = pcall(onChat, text, sender)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end)
 end

@@ -67,8 +67,7 @@ function ns.Migrate(db)
     for v = from + 1, #ns.MIGRATIONS do
         local ok, err = pcall(ns.MIGRATIONS[v], db)
         if not ok then
-            local report = geterrorhandler and geterrorhandler()
-            if report then report(err) end
+            ns.ReportError(err)
             return db.schema or 0
         end
         db.schema = v

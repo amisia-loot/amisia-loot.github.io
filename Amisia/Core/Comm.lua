@@ -52,10 +52,7 @@ local newerProto
 
 local function now() return GetTime() end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 ---------------------------------------------------------------------------
 -- Debug lines (sync.debug): grey, at most 20 a minute
@@ -514,14 +511,7 @@ local function knownTarget(target)
     return false
 end
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
-
-local function inGuild()
-    return type(_G.IsInGuild) == "function" and IsInGuild() and true or false
-end
+local homeRaid, inGuild = ns.HomeRaid, ns.InGuild
 
 -- Whether a channel can be used right now; nil and the reason otherwise. anyone: a whisper to a name
 -- outside group and guild (only the feedback to and from the author, D-61).

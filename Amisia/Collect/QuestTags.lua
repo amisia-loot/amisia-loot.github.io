@@ -18,11 +18,8 @@ local CODES = { G = true, D = true, R = true, P = true }
 local TAG_CODE = { [1] = "G", [41] = "P", [62] = "R", [81] = "D", [88] = "R", [89] = "R" }
 QT.TAG_CODE = TAG_CODE
 
-local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local int = ns.Int
+local report = ns.ReportError
 
 -- Called on ADDON_LOADED: AmisiaDB.questtags with valid entries only, the newest MAX_TAGS ids kept
 -- (the highest: newer quests have higher ids).

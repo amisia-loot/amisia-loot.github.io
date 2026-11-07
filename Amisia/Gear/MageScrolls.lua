@@ -158,10 +158,7 @@ end
 ---------------------------------------------------------------------------
 -- The library: books, the Friend quests, the librarian
 ---------------------------------------------------------------------------
-local function myFaction()
-    local f = UnitFactionGroup and ns.Plain((UnitFactionGroup("player"))) or nil
-    return f == "Alliance" and "A" or f == "Horde" and "H" or nil
-end
+local myFaction = ns.OwnFaction
 
 local doneMemo = {}
 function MS._resetQuests() doneMemo = {} end

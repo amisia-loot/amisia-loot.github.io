@@ -47,10 +47,7 @@ local CLASSES = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, P
                   MAGE = true, WARLOCK = true, DRUID = true }
 local STATES = { wait = true, sent = true, done = true, lost = true }
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 -- the clock in whole seconds (stored times are whole numbers)
 local function epoch() return math.floor(time()) end
@@ -205,9 +202,7 @@ end
 ---------------------------------------------------------------------------
 -- Saved data
 ---------------------------------------------------------------------------
-local function int(v, lo, hi)
-    return type(v) == "number" and v == math.floor(v) and v >= (lo or -math.huge) and v <= (hi or math.huge)
-end
+local int = ns.Int
 
 local function isId(v) return type(v) == "string" and #v <= 20 and v:match("^%d+%-%d+$") ~= nil end
 

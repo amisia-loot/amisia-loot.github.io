@@ -18,11 +18,8 @@ ns.QuestXP = QX
 
 local MAX_ID = 9999999
 
-local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local int = ns.Int
+local report = ns.ReportError
 
 -- The share of a quest's full XP a player of level p gets for a quest of level q (0.1 - 1).
 function QX.Factor(p, q)

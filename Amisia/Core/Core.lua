@@ -45,10 +45,7 @@ local function tipLink(tip)
     end
 end
 
-local function tipReport(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local tipReport = ns.ReportError
 
 local function onItemTooltip(tip)
     -- a part that builds another item tooltip comes back here: nothing then
@@ -1003,6 +1000,13 @@ local function checksum(str)
 end
 ns.Checksum = checksum
 
+-- A delay from 0 to n seconds (in tenths) that is the same for name on every call, so that many
+-- clients answering one question do not all answer at once.
+function ns.Spread(n, name)
+    local h = tonumber(checksum(name or "?"):sub(1, 6), 16) or 0
+    return (h % (n * 10)) / 10
+end
+
 -- Fingerprint of what a session would export; it changes whenever the export of it would.
 -- legacy: the fingerprint 1.4 stored, used once to move its export marks.
 function ns.SessionHash(s, legacy)
@@ -1286,10 +1290,7 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             end
         end
         if failed then
-            local report = geterrorhandler and geterrorhandler()
-            for _, err in ipairs(failed) do
-                if report then report(err) end
-            end
+            for _, err in ipairs(failed) do ns.ReportError(err) end
         end
     end
 end)

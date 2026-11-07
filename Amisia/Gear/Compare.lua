@@ -15,10 +15,7 @@ local GREY = { 0.6, 0.58, 0.66 }
 local marks = setmetatable({}, { __mode = "k" })     -- owner (roll frame, reward button) -> font string
 local hooked = setmetatable({}, { __mode = "k" })
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function on()
     return ns.Gear and ns.Gear.Available() and ns.Get("bis.compare") ~= false -- l10n-ok: setting key

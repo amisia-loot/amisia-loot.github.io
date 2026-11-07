@@ -41,10 +41,7 @@ end
 ---------------------------------------------------------------------------
 -- What a row shows
 ---------------------------------------------------------------------------
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 -- The class's name (Amisia's for the classes it knows, else the client's), nil when unknown.
 local function className(e)

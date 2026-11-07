@@ -51,10 +51,7 @@ local CLASS_EN = { WARRIOR = "warrior", PALADIN = "paladin", HUNTER = "hunter", 
     SHAMAN = "shaman", MAGE = "mage", WARLOCK = "warlock", DRUID = "druid", DEATHKNIGHT = "death knight", MONK = "monk" }   -- l10n-ok: words read in the free text
 local OPEN_WORDS = { offen = true, open = true, frei = true, free = true }   -- l10n-ok: words read in the free text
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function now() return GetTime() end
 
@@ -62,11 +59,7 @@ local function now() return GetTime() end
 -- The prio token: "p:Anna:Tank,c:WARRIOR:Furor,o" ("_" is the space, "-" an empty list)
 ---------------------------------------------------------------------------
 
-local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", "")
-    return s
-end
+local stripCodes = ns.StripCodes
 
 local function cleanName(raw)
     local name = ns.FullName((tostring(raw):gsub("_", " ")))

@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(raid): loot rules and other loot addons' roll lines read item links with the named colour form (F-074, F-092)
+
+  Item links that carry their quality as a named colour (such as "|cnIQ4:") are now read correctly: a loot
+  rule no longer picks up the colour's number as a second item, and roll rounds started by another loot
+  addon are recognised again.
+
 - fix(raid): raid sync, loot rules, lineup and soft-reserve fixes from a code audit (F-025, F-019, F-074, F-078, F-083, F-084, F-098, F-015, F-030)
 
   An officer whose view was set to raider no longer loses award notes, first winners and "by hand" marks:

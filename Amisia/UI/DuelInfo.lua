@@ -16,10 +16,7 @@ local function className(c)
     return c and names and names[c] or c
 end
 
-local function colored(text, c)
-    local col = c and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c]
-    return col and col.colorStr and ("|c%s%s|r"):format(col.colorStr, text) or text
-end
+local colored = ns.ClassColored
 
 local function pct(w, g) return g > 0 and (ns.Num(w / g * 100, 1) .. " %") or "-" end
 

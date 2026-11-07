@@ -70,10 +70,7 @@ local function plainCall(fn, ...)
     return ns.Plain(a), ns.Plain(b)
 end
 
-local function myFaction()
-    local f = UnitFactionGroup and ns.Plain((UnitFactionGroup("player"))) or nil
-    return f == "Alliance" and "A" or f == "Horde" and "H" or nil
-end
+local myFaction = ns.OwnFaction
 
 local function myRealm()
     local r = GetRealmName and plainCall(GetRealmName) or nil

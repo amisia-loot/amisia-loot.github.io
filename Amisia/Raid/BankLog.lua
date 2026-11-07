@@ -215,8 +215,7 @@ local function readCurrent()
     if ok then
         r.added = r.added + ns.MergeBankLog(rows, now())
     else
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(rows) end
+        ns.ReportError(rows)
     end
     r.cur = nil
     nextTab()

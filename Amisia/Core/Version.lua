@@ -21,14 +21,7 @@ local warnedOld = {}         -- name -> true: "too old for the keeper" said once
 
 local function now() return GetTime() end
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
-
-local function inGuild()
-    return type(_G.IsInGuild) == "function" and IsInGuild() and true or false
-end
+local homeRaid, inGuild = ns.HomeRaid, ns.InGuild
 
 -- AmisiaDB.sync, made when missing.
 local function db()

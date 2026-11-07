@@ -179,6 +179,47 @@ function ns.Plain(v)
     return v
 end
 
+-- The group's loot method as C_PartyInfo.GetLootMethod tells it: true, method, partyID, raidID (a
+-- secret value counts as unknown: nil); false when the client cannot tell.
+function ns.LootMethod()
+    local info = _G.C_PartyInfo
+    if type(info) ~= "table" or type(info.GetLootMethod) ~= "function" then return false end
+    local ok, method, partyID, raidID = pcall(info.GetLootMethod)
+    if not ok then return false end
+    return true, ns.Plain(method), ns.Plain(partyID), ns.Plain(raidID)
+end
+
+-- Whether this client is in a raid of its own (not an instance group).
+function ns.HomeRaid()
+    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
+    return IsInRaid() and true or false
+end
+
+function ns.InGuild()
+    return type(_G.IsInGuild) == "function" and IsInGuild() and true or false
+end
+
+-- Whether this client is in a battleground or an arena instance.
+function ns.InPvPInstance()
+    local _, kind = GetInstanceInfo()
+    kind = ns.Plain(kind)
+    return kind == "pvp" or kind == "arena"
+end
+
+-- Whether the client says a battlefield is active (C_PvP.IsActiveBattlefield).
+function ns.InBattlefield()
+    local pvp = _G.C_PvP
+    if type(pvp) ~= "table" or type(pvp.IsActiveBattlefield) ~= "function" then return false end
+    local ok, on = pcall(pvp.IsActiveBattlefield)
+    return ok and ns.Plain(on) == true
+end
+
+-- The own faction as the data writes it ("A", "H"), nil when the client tells none.
+function ns.OwnFaction()
+    local f = UnitFactionGroup and ns.Plain((UnitFactionGroup("player"))) or nil
+    return f == "Alliance" and "A" or f == "Horde" and "H" or nil
+end
+
 -- The realm's clock in epoch seconds (the same on every client of the raid), else the own clock:
 -- times that other clients or the site compare (costs, corrections, prio edits).
 function ns.ServerTime()
@@ -196,6 +237,12 @@ end
 
 function ns.ExportName(name)
     return (tostring(name or "?"):gsub(" ", "_"))
+end
+
+-- text in the colour of class (a class token); text as it is for an unknown class or none.
+function ns.ClassColored(text, class)
+    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, text) or text
 end
 
 -- /amisia namen: how Amisia reads names on this client, to check Forever's surnames.

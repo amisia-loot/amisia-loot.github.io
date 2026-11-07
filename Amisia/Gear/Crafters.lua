@@ -75,10 +75,7 @@ local nonceSeq
 
 local function now() return GetTime() end
 local function today() return ns.DropsToday and ns.DropsToday() or 0 end
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 local function hex8(s) return ns.Checksum(s):sub(9, 16) end
 local function isHex8(v) return type(v) == "string" and #v == 8 and v:match("^%x+$") ~= nil end
 local function int(v, lo, hi) return type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi end

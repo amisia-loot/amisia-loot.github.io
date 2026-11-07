@@ -131,10 +131,7 @@ function ns.ResetPositions()
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 
-local function reportError(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local reportError = ns.ReportError
 
 local function errorPage(parent, err)
     local f = CreateFrame("Frame", nil, parent)

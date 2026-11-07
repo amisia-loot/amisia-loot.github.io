@@ -57,8 +57,7 @@ end
 -- A note as it is kept and sent: codes, links, bars, tabs and control characters away, 40 bytes.
 function ns.SignupCleanNote(text)
     if type(text) ~= "string" then return nil end
-    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    text = text:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("[%c|]", " "):gsub("%s+", " ")
+    text = ns.StripCodes(text, " "):gsub("%c", " "):gsub("%s+", " ")
     return ns.CleanNote(text, NOTE_MAX)
 end
 local cleanNote = ns.SignupCleanNote
@@ -363,10 +362,7 @@ ns.CommOn("AN", function(sender, f)
 end)
 
 -- A delay of 0 to n seconds that differs per character (from its name).
-local function spread(n)
-    local h = ns.Checksum and tonumber(ns.Checksum(me() or "?"):sub(1, 6), 16) or 0
-    return (h % (n * 10)) / 10
-end
+local function spread(n) return ns.Spread(n, me()) end
 
 -- A raider answers a verified officer's question with the own coming sign-ups (WHISPER).
 ns.CommOn("AQ", function(sender, f)

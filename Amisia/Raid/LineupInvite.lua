@@ -76,10 +76,7 @@ local function restrictionOn(kind)
     return ok and ns.Plain(on) == true
 end
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
+local homeRaid = ns.HomeRaid
 IV.HomeRaid = homeRaid
 
 local function battleground()

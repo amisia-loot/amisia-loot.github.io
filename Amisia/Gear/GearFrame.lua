@@ -12,7 +12,7 @@ local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 local CLASS_X, SPEC_X = 64, 408
 local ROW_H = 26
 local SLOT_W = 92
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local FILTERS = {
     { key = "Q", label = "Quests" }, { key = "D", label = "Dungeons" }, { key = "C", label = L["Berufe"] },
     { key = "V", label = L["Händler"] }, { key = "W", label = L["Weltdrops"] }, { key = "A", label = "AH" },
@@ -41,8 +41,7 @@ local function settings()
     -- the realistic sources (D-59): random world drops off once, the player may switch them on again
     if g.srcRule ~= 2 then g.sources.W, g.srcRule = false, 2 end
     if g.faction == nil then
-        local fac = UnitFactionGroup and UnitFactionGroup("player")
-        g.faction = fac == "Horde" and "H" or "A"
+        g.faction = ns.OwnFaction() == "H" and "H" or "A"
     end
     -- a saved column outside the table (an edited file, an older table) would index nothing
     local col = tonumber(g.col)

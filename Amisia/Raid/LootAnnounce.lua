@@ -17,18 +17,11 @@ local PERSONAL = LM.Personal or 5
 -- a flag for a method that hands out items over group loot rolls (group loot, need before greed,
 -- round robin: not master loot, free-for-all or personal loot), from C_PartyInfo.GetLootMethod.
 local function lootMethod()
-    local info = _G.C_PartyInfo
-    if type(info) == "table" and type(info.GetLootMethod) == "function" then
-        local ok, method, partyID, raidID = pcall(info.GetLootMethod)
-        if ok then
-            -- as Need.lua and Sync.lua read it: a secret value counts as unknown
-            method, partyID, raidID = ns.Plain(method), ns.Plain(partyID), ns.Plain(raidID)
-            local rolls = type(method) == "number" and method ~= MASTER and method ~= FREE and method ~= PERSONAL
-            return method == MASTER, partyID, raidID, rolls
-        end
-        return nil
-    end
-    return nil
+    local ok, method, partyID, raidID = ns.LootMethod()
+    if not ok then return nil end
+    -- as Need.lua and Sync.lua read it: a secret value counts as unknown
+    local rolls = type(method) == "number" and method ~= MASTER and method ~= FREE and method ~= PERSONAL
+    return method == MASTER, partyID, raidID, rolls
 end
 
 function ns.IsLootLead()
@@ -358,10 +351,7 @@ end
 
 local function onRollFrameShow(frame)
     local ok, err = pcall(markRoll, frame)
-    if not ok then
-        local handler = geterrorhandler and geterrorhandler()
-        if handler then handler(err) end
-    end
+    if not ok then ns.ReportError(err) end
 end
 
 local function hookRollFrames()

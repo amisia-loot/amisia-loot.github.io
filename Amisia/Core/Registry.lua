@@ -44,6 +44,41 @@ local function upsert(list, spec, field)
     table.sort(list, byOrder)
 end
 
+-- Hands err to the client's error handler (it shows up like any other Lua error); a no-op without one.
+function ns.ReportError(err)
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(err) end
+end
+
+-- s without the client's codes: colours (|cffxxxxxx and the named |cnNAME: form), |r, links
+-- (|H...|h and the closing |h), textures (|T...|t) and atlases (|A...|a); a "|" left over becomes rep
+-- (default: nothing).
+function ns.StripCodes(s, rep)
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[%w_]+:", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
+    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", rep or "")
+    return s
+end
+
+-- Whether v is a whole number from lo to hi (either bound may be left out).
+function ns.Int(v, lo, hi)
+    return type(v) == "number" and v == math.floor(v) and v >= (lo or -math.huge) and v <= (hi or math.huge)
+end
+
+-- The keys of t in sorted order.
+function ns.SortedKeys(t)
+    local out = {}
+    for k in pairs(t) do out[#out + 1] = k end
+    table.sort(out)
+    return out
+end
+
+-- How many keys t holds (0 for no table).
+function ns.Count(t)
+    local n = 0
+    if type(t) == "table" then for _ in pairs(t) do n = n + 1 end end
+    return n
+end
+
 ---------------------------------------------------------------------------
 -- Internal messages
 ---------------------------------------------------------------------------
@@ -57,11 +92,19 @@ end
 function ns.Fire(name, ...)
     for _, fn in ipairs(listeners[name] or {}) do
         local ok, err = pcall(fn, ...)
-        if not ok then
-            local handler = geterrorhandler and geterrorhandler()
-            if handler then handler(err) end
-        end
+        if not ok then ns.ReportError(err) end
     end
+end
+
+-- Fires name half a second from now; more calls until then fire it once.
+local firePending = {}
+function ns.FireSoon(name)
+    if firePending[name] then return end
+    firePending[name] = true
+    C_Timer.After(0.5, function()
+        firePending[name] = nil
+        ns.Fire(name)
+    end)
 end
 
 ---------------------------------------------------------------------------

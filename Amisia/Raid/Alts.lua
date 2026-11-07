@@ -15,11 +15,7 @@ local NAME_MAX = 48
 local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-57)
 local GAME_NAMES = ns.GAME_NAMES
 
-local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
-    s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", "")
-    return s
-end
+local stripCodes = ns.StripCodes
 
 -- A name of the text: "_" is the space; no digits, no control characters, not too long.
 local function cleanName(raw)

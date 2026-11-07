@@ -50,10 +50,7 @@ local STATUS_RANK = { active = 1, open = 2, locked = 3, done = 4 }
 local STATUS_OF = { a = "active", o = "open", l = "locked", d = "done" }
 Q.STATUS_TEXT = { active = L["im Log"], open = L["annehmbar"], locked = L["gesperrt"], done = L["erledigt"] }
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function plain(v) return ns.Plain and ns.Plain(v) or v end
 
@@ -238,8 +235,7 @@ function ns.QuestOpts()
     if optsCache and optsGen == gen then return optsCache end
     local o = {}
     o.level = math.max(1, tonumber(plain(UnitLevel and UnitLevel("player"))) or 1)
-    local fac = UnitFactionGroup and plain(UnitFactionGroup("player"))
-    o.faction = fac == "Horde" and "H" or fac == "Alliance" and "A" or nil
+    o.faction = ns.OwnFaction()
     if UnitClass then o.class = plain(select(2, UnitClass("player"))) end
     if UnitRace then
         local _, file, id = UnitRace("player")

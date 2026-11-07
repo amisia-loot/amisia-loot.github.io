@@ -33,10 +33,7 @@ function ns.RaidCheckPageFrame() return page end
 local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 local function color(c, text) return c .. text .. "|r" end
 
-local function classColored(name, class)
-    local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    return c and c.colorStr and ("|c%s%s|r"):format(c.colorStr, name) or name
-end
+local classColored = ns.ClassColored
 
 local function ago(at)
     local s = math.max(0, time() - (at or time()))

@@ -30,15 +30,9 @@ local stats = { sent = 0, taken = 0, offered = 0, refused = 0, cleared = 0 }
 local function now() return GetTime() end
 local function shareOn() return ns.Get("softres.share") and true or false end
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
-local function homeRaid()
-    if _G.LE_PARTY_CATEGORY_HOME then return IsInRaid(LE_PARTY_CATEGORY_HOME) and true or false end
-    return IsInRaid() and true or false
-end
+local homeRaid = ns.HomeRaid
 
 -- The list this client may announce: its own (not one received), in the officer view.
 local function ownList()

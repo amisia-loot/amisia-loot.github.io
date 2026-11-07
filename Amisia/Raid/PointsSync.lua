@@ -29,10 +29,7 @@ local asks, askTimer = {}, false
 local wanted = {}              -- raid key -> the announced state this client asked for
 local stats = { sent = 0, taken = 0, refused = 0, costs = 0 }
 
-local function report(err)
-    local handler = geterrorhandler and geterrorhandler()
-    if handler then handler(err) end
-end
+local report = ns.ReportError
 
 local function now() return GetTime() end
 

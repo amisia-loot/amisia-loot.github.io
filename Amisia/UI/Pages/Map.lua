@@ -14,7 +14,7 @@ local GOLD = W.GOLD
 local GREY = T.GREY
 local P = T.MAPPAGE
 local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
-local QUALITY = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
+local QUALITY = T.QUALITY_HEX
 local ICON = "Interface\\Icons\\INV_Misc_Map_01"
 local GAP = 1            -- seconds between two rebuilds after changes
 local TICK = 0.5         -- seconds between two updates of the target card's distance and direction
@@ -78,11 +78,7 @@ local function hiddenSet()
     return m and type(m.hidden) == "table" and m.hidden or {}
 end
 
-local function longDate(iso)
-    local y, m, d = tostring(iso or ""):match("^(%d+)%-(%d+)%-(%d+)$")
-    if not y then return "?" end
-    return ns.FmtDate(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
-end
+local longDate = ns.LongDate
 
 local function plural(n, one, many) return ("%d %s"):format(n, n == 1 and one or many) end
 local function questsOn() return ns.Get("map.pinsQuests") and ns.DungeonQuestSteps ~= nil end
