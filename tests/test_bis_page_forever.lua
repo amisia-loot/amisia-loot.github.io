@@ -37,7 +37,7 @@ gear(403, "Händlerbrust", "CHEST", { ITEM_MOD_STRENGTH_SHORT = 12 }, { 3 })
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 
 NS.ShowPage("gear")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(NS.CurrentPage() == "gear" and f:IsShown())
 assert(f.open:IsShown(), "the table button on Forever")
 for _, k in ipairs({ "Q", "D", "C", "V", "W", "A", "P" }) do assert(f.src[k]:IsShown(), "Forever chip " .. k) end
@@ -56,9 +56,7 @@ assert(not has(G.explain:GetText(), "Obergrenze"), "no hit note on Forever")
 f.open:Click()
 assert(AmisiaGearFrame and AmisiaGearFrame:IsShown(), "Tabelle öffnen")
 
--- the planner: the upgrades from the targets, owned items with a check in the cells
-local list = NS.GearMyUpgrades()
-assert(#list == 2 and list[1].id == 402 and list[1].slot.key == "HEAD" and math.floor(list[1].gain + 0.5) == 60, "best first")
+-- the planner: owned items with a check in the cells
 STUB.bags[0] = { 402 }
 NS.BisScanBags()
 NS.GearRefresh(true)

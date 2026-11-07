@@ -496,11 +496,6 @@ function ns.DropsMergeAll(list)
     return out, n
 end
 
--- Raised whenever a name is added (learned from another client or recorded), so a view keyed on
--- names knows it is stale; DROPS_CHANGED fires with it.
-local namesGen = 0
-function ns.DropsNamesGen() return namesGen end
-
 -- A name heard from another client: taken only where none is known. Fires DROPS_CHANGED once when
 -- at least one name was added. Returns the number of names added.
 function ns.DropsLearnNames(npcNames, zones, encNames)
@@ -521,7 +516,6 @@ function ns.DropsLearnNames(npcNames, zones, encNames)
     end
     if n > 0 then
         if count(d.npc) > MAX_NAMES or count(d.enc) > MAX_ENCS or count(d.inst) > MAX_INSTS then prune(d) end
-        namesGen = namesGen + 1
         bump()
     end
     return n
@@ -597,7 +591,6 @@ local function setName(d, npc, name)
     if not name or npc < 1 then return end
     if d.npc[npc] == nil then
         d.npc[npc] = name
-        namesGen = namesGen + 1
         if count(d.npc) > MAX_NAMES then prune(d) end
     end
     nameless[npc] = nil

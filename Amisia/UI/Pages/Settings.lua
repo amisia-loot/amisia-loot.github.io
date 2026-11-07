@@ -18,7 +18,6 @@ local fromTop     -- the next layout starts at the top (a new search)
 local forPage     -- the page whose sections show (its head button); nil: the chosen section
 
 function ns.SettingsRows() return rows end
-function ns.SettingsPageFrame() return page end
 
 local function valueText(it, v)
     if it.type == "time" then return ns.FormatTime(v) end
@@ -72,7 +71,7 @@ local function makeRow(it)
         r.control = W.Choice(r, 180, function(v) touched = path; ns.Set(path, v); ns.Refresh() end)
         r.control:SetValues(it.values)
     elseif it.type == "button" then
-        r.control = W.Link(r, it.label, 230, function() touched = path; it.run() end)
+        r.control = W.Link(r, it.label, function() touched = path; it.run() end)
         r.label:SetText("")
     end
     if r.control then r.control:SetPoint("LEFT", LABEL_W + 20, 0) end
@@ -281,20 +280,20 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], sub = L["Alles, 
             ns.Refresh()
         end)
         f.found = W.Text(f, T.FONT.hint)
-        f.back = W.Link(f, L["Zurück"], nil, function()
+        f.back = W.Link(f, L["Zurück"], function()
             local to = forPage
             forPage = nil
             if to and ns.ShowPage then ns.ShowPage(to) end
-        end, { height = T.ROW_BUTTON_H })
-        f.reset = W.Link(f, L["Zurücksetzen"], nil, function()
+        end)
+        f.reset = W.Link(f, L["Zurücksetzen"], function()
             local list = shownSections()
             W.Confirm(L["Zurücksetzen"], L["Alle Einstellungen in %s auf den Standard setzen?"]:format(sectionNames(list)),
                 L["Zurücksetzen"], function()
                     local n = ns.ResetSections(list)
                     ns.msg(L["%d Einstellungen auf den Standard gesetzt."]:format(n))
                 end)
-        end, { height = T.ROW_BUTTON_H })
-        W.FitChip(f.reset, 90)
+        end)
+        W.FitChip(f.reset)
         f.reset:HookScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(L["Zurücksetzen"], 1, 0.82, 0)

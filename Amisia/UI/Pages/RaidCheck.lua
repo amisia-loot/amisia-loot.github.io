@@ -28,9 +28,6 @@ local page
 local view = ns.FOREVER and "buffs" or "gear"
 local onlyFree, onlyTop = false, false
 
-function ns.RaidCheckPageFrame() return page end
-
-local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 local function color(c, text) return c .. text .. "|r" end
 
 local classColored = ns.ClassColored
@@ -217,9 +214,9 @@ local function build(parent)
     page = f
     local top = f:Bands({ "row", "line" })
     f.views = {
-        buffs = W.Tab(f, L["Buffs & Verbrauch"], 120, function() view = "buffs" ns.Refresh() end),
-        gear = W.Tab(f, L["Ausrüstung"], 90, function() view = "gear" ns.Refresh() end),
-        ids = W.Tab(f, L["Raid-IDs"], 80, function() view = "ids" ns.Refresh() end),
+        buffs = W.Tab(f, L["Buffs & Verbrauch"], function() view = "buffs" ns.Refresh() end),
+        gear = W.Tab(f, L["Ausrüstung"], function() view = "gear" ns.Refresh() end),
+        ids = W.Tab(f, L["Raid-IDs"], function() view = "ids" ns.Refresh() end),
     }
     W.FitChip(f.views.buffs, 120)
     W.FitChip(f.views.gear, 90)
@@ -231,12 +228,12 @@ local function build(parent)
     end)
     W.FitChip(f.check, 80)
     W.Tooltip(f.check, L["Prüfen"], L["Liest die Buffs aller Raider in Sichtweite neu und fragt die Amisia-Clients des Raids nach Haltbarkeit, Itemstufe, Verzauberungen und freien Talentpunkten. Nicht im Kampf."])
-    f.say = W.Link(f, L["Im Raid-Chat sagen"], 140, function()
+    f.say = W.Link(f, L["Im Raid-Chat sagen"], function()
         local n, why = ns.RaidCheck.Say()
         if not n and why then ns.msg(why) end
         ns.Refresh()
     end)
-    W.FitChip(f.say, 140)
+    W.FitChip(f.say)
     W.Tooltip(f.say, L["Im Raid-Chat sagen"], L["Schreibt in den Raid-Chat, wem Fläschchen, Essen oder Haltbarkeit fehlt (höchstens zwei Zeilen, nur Namen aus der Raidliste). Nie im Bosskampf."])
     f.ask = W.Button(f, L["Raid-IDs abfragen"], 140, function()
         local ok, why = ns.RaidIDsAsk()
@@ -284,16 +281,16 @@ local function build(parent)
         ns.RaidIDsChoose(v)
         ns.Refresh()
     end)
-    f.onlyFree = W.TabCheck(f.idView, L["nur frei"], 70, function()
+    f.onlyFree = W.TabCheck(f.idView, L["nur frei"], function()
         onlyFree = not onlyFree
         ns.Refresh()
     end)
-    f.onlyTop = W.TabCheck(f.idView, L["nur Stufe 60"], 90, function()
+    f.onlyTop = W.TabCheck(f.idView, L["nur Stufe 60"], function()
         onlyTop = not onlyTop
         ns.Refresh()
     end)
-    W.FitChip(f.onlyFree, 70)
-    W.FitChip(f.onlyTop, 90)
+    W.FitChip(f.onlyFree)
+    W.FitChip(f.onlyTop)
     f.idView:Place(1, { f.inst, f.onlyFree, f.onlyTop })
     local _, ih = f.idView:Columns(ID_COLS, { top = idTop })
     ih.name:SetText(L["Name##Spalte"])
@@ -322,14 +319,14 @@ local function refresh(f)
     if not ns.FOREVER then f.views.buffs:Hide() end
     for k, c in pairs(f.views) do c:SetOn(k == view) end
     local ids = view == "ids"
-    show(f.check, not ids)
-    show(f.say, not ids and ns.Get("raidcheck.chat") == true)
-    show(f.ask, ids)
+    f.check:SetShown(not ids)
+    f.say:SetShown(not ids and ns.Get("raidcheck.chat") == true)
+    f.ask:SetShown(ids)
     f.say:SetEnabled(ns.RaidCheck.CanSay())
     f:Place(1, { f.views.buffs, f.views.gear, f.views.ids }, { f.say, f.check, f.ask }, { shown = true })
-    show(f.buffView, view == "buffs")
-    show(f.gearView, view == "gear")
-    show(f.idView, ids)
+    f.buffView:SetShown(view == "buffs")
+    f.gearView:SetShown(view == "gear")
+    f.idView:SetShown(ids)
     f.empty:Hide()
     if ids then
         local wait = ns.RaidIDsAskWait()
@@ -343,7 +340,7 @@ local function refresh(f)
         f.onlyFree:SetOn(onlyFree)
         f.onlyTop:SetOn(onlyTop)
         f.onlyTop.label:SetText(L["nur Stufe %d"]:format(type(GetMaxPlayerLevel) == "function" and tonumber(GetMaxPlayerLevel()) or 60))
-        W.FitChip(f.onlyTop, 90)
+        W.FitChip(f.onlyTop)
         f.idView:Place(1, { f.inst, f.onlyFree, f.onlyTop })
         if not m then
             f.line:SetText("")

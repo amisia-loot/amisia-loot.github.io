@@ -6,8 +6,6 @@ local W, T = ns.W, ns.Theme
 local area, page
 local exportText = ""
 
-function ns.ExportPageFrame() return page end
-
 local function setExport(txt)
     exportText = txt or ""
     if not area then return end
@@ -79,14 +77,14 @@ ns.RegisterPanel{ key = "export", label = "Export", sub = L["Raids und Gildendat
             ns.ShowExport(false)
         end)
         W.FitChip(newBtn, 150)
-        local selBtn = W.Link(f, L["Angekreuzte (%d)"]:format(0), 120, function()
+        local selBtn = W.Link(f, L["Angekreuzte (%d)"]:format(0), function()
             if not next(ns.RaidSelection) then
                 ns.msg(L["Zuerst Raids auf der Seite Raid-Archiv ankreuzen."])
                 return
             end
             ns.ShowExport(false)
         end)
-        W.FitChip(selBtn, 120)
+        W.FitChip(selBtn)
         -- disabled without ticked raids; the tooltip says where to tick them
         if selBtn.SetMotionScriptsWhileDisabled then selBtn:SetMotionScriptsWhileDisabled(true) end
         W.Tooltip(selBtn, L["Angekreuzte"], L["Exportiert die Raids, die auf der Seite Raid-Archiv (Gruppe Raid) angekreuzt sind, auch schon exportierte."])
@@ -97,15 +95,9 @@ ns.RegisterPanel{ key = "export", label = "Export", sub = L["Raids und Gildendat
         f:Footer({ "hint" })
         local hint = f.hint
         hint:SetText(L["Strg+A, Strg+C, im Import-Tab einfügen."])
-        area = W.EditArea(f)
+        area = W.ReadOnlyArea(f, function() return exportText end)
         area:SetPoint("TOPLEFT", 0, top)
         area:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
-        area.box:SetScript("OnTextChanged", function(self, userInput)
-            if userInput then
-                self:SetText(exportText)
-                self:HighlightText()
-            end
-        end)
         -- over the empty box (in front of it), clicks go through to the box
         f.empty = f:Empty(nil, area)
         f.empty:SetFrameLevel((area:GetFrameLevel() or 0) + 5)

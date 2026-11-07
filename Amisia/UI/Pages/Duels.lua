@@ -20,8 +20,6 @@ local page
 local query = ""        -- the name search (not kept)
 local player            -- the player a click chose (exactly that name; the search shows it)
 
-function ns.DuelsPageFrame() return page end
-
 local VIEWS = { hist = true, board = true, classes = true }
 local SORTS = { name = true, games = true, wins = true, rate = true }
 local RANGES = { all = true, day = true, week = true, month = true }
@@ -43,8 +41,6 @@ local function state()
     if not RANGES[d.range] then d.range = "all" end
     return d
 end
-
-local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 
 local function className(c)
     local names = ns.Gear and ns.Gear.CLASS_NAMES
@@ -275,11 +271,11 @@ local function build(parent)
     page = f
     local top = f:Bands({ "row", "row" })
     f.views = {
-        hist = W.Tab(f, L["Verlauf"], 70, function() state().view = "hist" ns.Refresh() end),
-        board = W.Tab(f, L["Rangliste"], 70, function() state().view = "board" ns.Refresh() end),
-        classes = W.Tab(f, L["Klassen"], 70, function() state().view = "classes" ns.Refresh() end),
+        hist = W.Tab(f, L["Verlauf"], function() state().view = "hist" ns.Refresh() end),
+        board = W.Tab(f, L["Rangliste"], function() state().view = "board" ns.Refresh() end),
+        classes = W.Tab(f, L["Klassen"], function() state().view = "classes" ns.Refresh() end),
     }
-    for _, c in pairs(f.views) do W.FitChip(c, 70) end
+    for _, c in pairs(f.views) do W.FitChip(c) end
     f.tourButton = W.Button(f, L["Turnier starten"], 110, function()
         if ns.Duels.Tour().on then ns.Duels.TourStop() else
             ns.Duels.TourStart()
@@ -289,17 +285,17 @@ local function build(parent)
     end)
     W.FitChip(f.tourButton, 110)
     W.Tooltip(f.tourButton, L["Turnier"], L["Die Duelle zwischen \"Turnier starten\" und \"Turnier beenden\" gehören zum Turnier; \"Nur Turnier\" zeigt nur sie (das laufende oder das letzte)."])
-    f.tourChip = W.TabCheck(f, L["Nur Turnier"], 80, function()
+    f.tourChip = W.TabCheck(f, L["Nur Turnier"], function()
         state().tour = (not state().tour) or nil
         ns.Refresh()
     end)
-    W.FitChip(f.tourChip, 80)
+    W.FitChip(f.tourChip)
     W.Tooltip(f.tourChip, L["Nur Turnier"], L["Zeigt Verlauf, Rangliste und Klassen nur für das laufende oder letzte Turnier."])
-    f.specChip = W.TabCheck(f, L["Nach Spezialisierung"], S.SPEC_CHIP_W, function()
+    f.specChip = W.TabCheck(f, L["Nach Spezialisierung"], function()
         state().spec = (not state().spec) or nil
         ns.Refresh()
     end)
-    W.FitChip(f.specChip, S.SPEC_CHIP_W)
+    W.FitChip(f.specChip)
     W.Tooltip(f.specChip, L["Nach Spezialisierung"], L["Zählt jede Klasse je Spezialisierung getrennt (z. B. Jäger · Treffsicherheit). Nur Duellanten mit bekannter Spezialisierung zählen."])
     f:Place(1, { f.views.hist, f.views.board, f.views.classes }, { f.tourChip, f.tourButton })
     f.class = W.Picker(f, S.CLASS_W, function(v)
@@ -316,7 +312,7 @@ local function build(parent)
         if query ~= player then player = nil end
         ns.Refresh()
     end, L["Spieler suchen"])
-    f.who = W.Link(f, L["Klassen suchen (%d)"]:format(0), 130, function()
+    f.who = W.Link(f, L["Klassen suchen (%d)"]:format(0), function()
         local ok, why = ns.Duels.WhoAsk()
         if not ok and why then ns.msg(why) end
         ns.Refresh()
@@ -376,7 +372,7 @@ local function refresh(f)
     f.tourChip:SetOn(st.tour == true)
     f.tourChip:SetEnabled(tour.n > 0)
     f.specChip:SetOn(st.spec == true)
-    show(f.specChip, st.view == "classes")
+    f.specChip:SetShown(st.view == "classes")
     f:Place(1, { f.views.hist, f.views.board, f.views.classes, st.view == "classes" and f.specChip or nil },
         { f.tourChip, f.tourButton })
     f.class:SetValues(classValues())
@@ -384,7 +380,7 @@ local function refresh(f)
     f.range:SetValue(st.range)
     local n, wait = D.UnknownCount(), D.WhoWait()
     f.who:SetText(wait > 0 and L["Bitte warten"] or L["Klassen suchen (%d)"]:format(n))
-    W.FitChip(f.who, 130)
+    W.FitChip(f.who)
     f.who:SetEnabled(n > 0 and wait == 0)
     f:Place(2, { f.class, f.range, f.search }, { f.who })
     if wait > 0 then
@@ -393,9 +389,9 @@ local function refresh(f)
         end)
     end
 
-    show(f.histView, st.view == "hist")
-    show(f.boardView, st.view == "board")
-    show(f.classView, st.view == "classes")
+    f.histView:SetShown(st.view == "hist")
+    f.boardView:SetShown(st.view == "board")
+    f.classView:SetShown(st.view == "classes")
     f.empty:Hide()
     local since = D.Since(st.range)
     local opts = { query = query, player = player, class = st.class, tour = st.tour, since = since }
@@ -434,10 +430,7 @@ local function refresh(f)
         local rows = D.Filter({ tour = st.tour, since = since })
         local list = D.Board(rows, { query = query, player = player, class = st.class, sort = st.sort, desc = st.desc })
         f.boardList:SetItems(list)
-        for key, b in pairs(f.boardHeads) do
-            local on = key == (st.sort or "rate")
-            if b.label then b.label:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3]) end
-        end
+        W.MarkSortHead(f.boardHeads, st.sort or "rate")
         f.data:SetText(L["%d Spieler · nach Siegrate ab %d Duellen"]:format(#list, D.MIN_GAMES) .. tourText)
         if #list == 0 then
             f.empty:Set(L["Nichts gefunden"], L["Kein Spieler passt zu den Filtern."])

@@ -15,8 +15,6 @@ local GREY = { 0.56, 0.53, 0.64 }
 local WHITE = { 1, 1, 1 }
 local INDENT = { boss = "   ", item = "      " }
 
-function ns.ToolsPageFrame() return page end
-
 local function setExport(D, text)
     exportText = text or ""
     D.area.box:SetText(exportText)
@@ -84,16 +82,9 @@ local function buildDrops(f)
         r.rate:SetText(e.rate)
         r.rate:SetTextColor(rateColor[1], rateColor[2], rateColor[3])
     end)
-    D.area = W.EditArea(D)
+    D.area = W.ReadOnlyArea(D, function() return exportText end)
     D.area:SetPoint("TOPLEFT", 0, top)
     D.area:SetPoint("BOTTOMRIGHT", 0, D:Bottom())
-    -- read-only like the export box: typing puts the text back and marks it
-    D.area.box:SetScript("OnTextChanged", function(self, userInput)
-        if userInput then
-            self:SetText(exportText)
-            self:HighlightText()
-        end
-    end)
     D.area:Hide()
     D.areaHint:SetText(L["Strg+A, Strg+C, auf der Website im Reiter Import einfügen."])
     D.areaHint:Hide()
@@ -137,13 +128,13 @@ ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], sub = L["Daten teilen, 
         -- the head row: the scan's buttons; under it its state and what to do with it (two lines each)
         f:Bands({ "row", { "line", lines = 2 }, { "line", lines = 2 } })
         local gear = W.Button(f, L["Ausrüstungs-Scan"], 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
-        local resume = W.Link(f, L["Scan fortsetzen"], 130, function() ns.ScanCommand(""); ns.Refresh() end)
-        local retry = W.Link(f, L["Offene wiederholen"], 140, function() ns.ScanCommand("retry"); ns.Refresh() end)
-        local stop = W.Link(f, L["Anhalten"], 90, function() ns.ScanStop(); ns.Refresh() end)
+        local resume = W.Link(f, L["Scan fortsetzen"], function() ns.ScanCommand(""); ns.Refresh() end)
+        local retry = W.Link(f, L["Offene wiederholen"], function() ns.ScanCommand("retry"); ns.Refresh() end)
+        local stop = W.Link(f, L["Anhalten"], function() ns.ScanStop(); ns.Refresh() end)
         W.FitChip(gear, 140)
-        W.FitChip(resume, 130)
-        W.FitChip(retry, 140)
-        W.FitChip(stop, 90)
+        W.FitChip(resume)
+        W.FitChip(retry)
+        W.FitChip(stop)
         f:Place(1, { gear, resume, retry, stop })
         f.state = f:Line(2)
         local hint = f:Line(3)

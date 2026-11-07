@@ -13,7 +13,6 @@ local ORANGE = { 1, 0.6, 0.2 }
 local GREY = { 0.6, 0.58, 0.66 }
 
 local marks = setmetatable({}, { __mode = "k" })     -- owner (roll frame, reward button) -> font string
-local hooked = setmetatable({}, { __mode = "k" })
 
 local report = ns.ReportError
 
@@ -88,17 +87,7 @@ local function onRollFrameShow(frame)
     end)
 end
 
-local function hookRollFrames()
-    for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
-        local f = _G["GroupLootFrame" .. i]
-        if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
-            hooked[f] = true
-            f:HookScript("OnShow", onRollFrameShow)
-        end
-    end
-end
-hookRollFrames()
-ns.OnEvent("PLAYER_ENTERING_WORLD", hookRollFrames)
+ns.Gear.HookRollFrames(onRollFrameShow)
 
 ---------------------------------------------------------------------------
 -- Quest rewards

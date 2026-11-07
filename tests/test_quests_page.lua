@@ -35,7 +35,7 @@ assert(link)
 
 NS.Dispatch("quests")
 assert(NS.CurrentPage() == "quests")
-local f = assert(NS.QuestPageFrame())
+local f = assert(NS.PageFrame("quests"))
 local function texts()
     local out = {}
     for _, r in ipairs(f.list.rows) do

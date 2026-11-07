@@ -195,7 +195,7 @@ AmisiaDB.prof.bags = { ["Twink Grau-Bart"] = { day = 1, realm = realm, faction =
 
 -- the page: the switch, the route view, the current step marked, a click on a step opens the recipe
 NS.ShowProfessions("schneiderei")
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 assert(f and not f.routeView:IsShown() and f.list:IsShown(), "recipes first")
 f.modeRoute:Click()
 assert(AmisiaDB.settings.professions.mode == "route" and f.routeView:IsShown() and not f.list:IsShown(), "the route view")

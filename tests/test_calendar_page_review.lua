@@ -35,7 +35,7 @@ end
 -- the page: the raid of the night chosen and read
 NS.ShowPage("calendar")
 STUB.tick(1)
-local P = NS.CalendarPageFrame()
+local P = NS.PageFrame("calendar")
 assert(P.terms[2].sel:IsShown(), "the raid chosen")
 assert(names(P.list) == "Anna Bergmann,Vulo Hunt,Bob Eisherz", names(P.list))
 

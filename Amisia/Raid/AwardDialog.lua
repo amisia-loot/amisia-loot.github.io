@@ -38,13 +38,6 @@ local function shortDate(iso)
     return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
-local function newest()
-    local act = ns.Active()
-    if act then return act end
-    local all = ns.Sessions()
-    return all[#all]
-end
-
 -- The loot slot of the item in the open loot window, when master loot has candidates for it. Only
 -- for the running recording: the confirmed hand-out is written there, so for another raid (or with
 -- the recording stopped) the dialog enters the award directly instead.
@@ -341,7 +334,7 @@ local function build()
     D.kinds = {}
     local prev = artLab
     for _, k in ipairs(KINDS) do
-        local chip = W.Tab(D, k, nil, function()
+        local chip = W.Tab(D, k, function()
             st.kind = k
             refresh()
         end)
@@ -396,7 +389,7 @@ local function build()
         GameTooltip:Show()
     end)
     D.needHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    D.ask = W.Link(D, L["Fragen"], nil, function()
+    D.ask = W.Link(D, L["Fragen"], function()
         if not st.item or not ns.NeedAsk then return end
         local qid, why = ns.NeedAsk({ st.item })
         if not qid and why then ns.msg(why) end
@@ -411,11 +404,11 @@ local function build()
     -- 90 + 60 + 90 + 86 and the gaps fit the 356 px between the margins
     D.give = W.Button(D, L["Vergeben"], 90, give)
     D.give:SetPoint("BOTTOMLEFT", 12, 12)
-    D.bank = W.Link(D, "Bank", nil, function() giveTo("bank") end)
+    D.bank = W.Link(D, "Bank", function() giveTo("bank") end)
     D.bank:SetPoint("LEFT", D.give, "RIGHT", T.TAB_GAP, 0)
-    D.de = W.Link(D, L["Entzaubern"], nil, function() giveTo("de") end)
+    D.de = W.Link(D, L["Entzaubern"], function() giveTo("de") end)
     D.de:SetPoint("LEFT", D.bank, "RIGHT", T.TAB_GAP, 0)
-    D.cancel = W.Link(D, L["Abbrechen"], nil, function() D:Hide() end)
+    D.cancel = W.Link(D, L["Abbrechen"], function() D:Hide() end)
     D.cancel:SetPoint("BOTTOMRIGHT", -12, 12)
 end
 
@@ -521,7 +514,7 @@ end
 -- Opens the dialog for an item link or id (nil: the item is entered in the dialog) in raid s
 -- (nil: the running recording, else the newest raid).
 function ns.ShowAwardDialog(item, s)
-    s = s or newest()
+    s = s or ns.NewestRaid()
     if not s then
         ns.msg(L["Noch kein Raid aufgezeichnet: Vergaben brauchen einen Raid."])
         return nil

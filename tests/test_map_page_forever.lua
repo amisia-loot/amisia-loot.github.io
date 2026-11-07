@@ -33,7 +33,7 @@ STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 
 NS.ShowMap("hier")
 assert(NS.CurrentPage() == "map")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 local rows = f.list.rows
 assert(f.zone.label:GetText() == "Hier: Wald von Elwynn" and #f.list.items == 2, f.zone.label:GetText())
 local quest
@@ -88,9 +88,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     L.column(view .. " page", f.zone, f.counts, f.card, f.head.kind, f.list, f.showHidden)
     assert(f.hint.isHelp and f.data.isHelp)
     for _, fs in ipairs({ f.target, f.targetSub, f.counts, rows[1].where }) do L.fits(fs) end
-    local gp = NS.GearPageFrame and NS.GearPageFrame()
+    local gp = NS.PageFrame("gear")
     NS.ShowGear("goals", "HEAD")
-    gp = NS.GearPageFrame()
+    gp = NS.PageFrame("gear")
     local G2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(gp, 602, 478)
     local O = gp.goals.opts
     assert(O[1].map:IsShown(), "the map button on Forever")

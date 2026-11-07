@@ -14,7 +14,7 @@ local terms = NS.SignupTerms()
 assert(terms and #terms == 2)
 
 local function card()
-    for _, c in ipairs(NS.OverviewPageFrame().cards) do
+    for _, c in ipairs(NS.PageFrame("overview").cards) do
         if c:IsShown() and c.title:GetText() == NS.L["Raid-Anmeldung"] then return c end
     end
 end

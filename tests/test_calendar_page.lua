@@ -58,7 +58,7 @@ assert(#terms == 3)
 local N1 = terms[1].night
 NS.ShowPage("calendar")
 STUB.tick(1)
-local P = NS.CalendarPageFrame()
+local P = NS.PageFrame("calendar")
 local F = AmisiaFrame
 assert(P and P:IsShown() and navRow("cat", "guild").entry.open and navRow("page", "calendar").entry.on, "the page in its group")
 local now = os.date("*t", time())

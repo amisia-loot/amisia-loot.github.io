@@ -68,19 +68,7 @@ end
 -- the client functions a plan may call (and the reads it needs)
 CW.FUNCS = { "GetDayEvent", "ContextMenuSelectEvent", "ContextMenuEventSignUp", "EventSignUp", "EventTentative", "RemoveEvent" }
 
-local function api(name)
-    local C = _G.C_Calendar
-    local f = type(C) == "table" and C[name]
-    return type(f) == "function" and f or nil
-end
-
-local function call(name, ...)
-    local f = api(name)
-    if not f then return nil end
-    local ok, a = pcall(f, ...)
-    if not ok then return nil end
-    return a
-end
+local api, call = ns.Cal.api, ns.Cal.call
 
 function CW.Group(status)
     if CW.IN[status] then return "IN" end

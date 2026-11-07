@@ -143,11 +143,11 @@ assert(okA == nil and okB == nil, "broken bytes are no name")
 assert(okC and #okC <= 48 and #okC % 2 == 0 and NS.DropsCleanName(okC) == okC, "cut at a whole character")
 
 ---------------------------------------------------------------------------
--- learned names fire DROPS_CHANGED and raise the names generation
+-- learned names fire DROPS_CHANGED
 ---------------------------------------------------------------------------
-local gen, before = NS.DropsNamesGen(), fired
+local before = fired
 assert(NS.DropsLearnNames({ [777001] = "Neuer Boss" }, nil, nil) == 1)
-assert(fired == before + 1 and NS.DropsNamesGen() == gen + 1, "a new name fires once")
+assert(fired == before + 1, "a new name fires once")
 assert(NS.DropsLearnNames({ [777001] = "Anderer Name" }, nil, nil) == 0)
-assert(fired == before + 1 and NS.DropsNamesGen() == gen + 1, "a known name changes nothing")
+assert(fired == before + 1, "a known name changes nothing")
 assert(NS.DropsLearnNames(nil, { [2834] = { "party", "Halle der Thane" } }, { [3012] = "Faldrim" }) == 2 and fired == before + 2)

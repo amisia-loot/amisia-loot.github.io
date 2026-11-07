@@ -39,7 +39,7 @@ hit.run()
 local st = AmisiaDB.settings.professions
 assert(NS.CurrentPage() == "professions" and st.view == 164 and st.search == "Kupferkettenweste" and st.known == nil
     and st.learnable == nil and st.sel["164"] == 3321, "the recipe on the page Berufe")
-local pf = NS.ProfessionsPageFrame()
+local pf = NS.PageFrame("professions")
 assert(pf.selected and pf.selected.recipe and pf.selected.recipe.spell == 3321, "the recipe chosen")
 -- "heiltrank" finds the alchemy recipe
 assert(find(group(NS.Search("heiltrank"), "recipes"), "Schwacher Heiltrank"), "an alchemy recipe")

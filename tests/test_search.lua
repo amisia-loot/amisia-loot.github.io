@@ -64,12 +64,12 @@ assert(table.concat(tips, "|") == "Seite in der Gruppe Welt.", table.concat(tips
 assert(group(NS.Search("archiv"), "pages") == nil, "the raider view finds no Raid-Archiv")
 assert(group(NS.Search("frak"), "players") == nil, "players only in the officer view")
 NS.Set("ui.view", "officer")
--- players from members and awards (not the bank), sorted, class kept for the icon
+-- players from members and awards (not the bank), sorted, class kept for the colour
 g = NS.Search("bo")
 assert(texts(group(g, "players")) == "Bobbington", texts(group(g, "players")))
 g = NS.Search("an")
 local pl = group(g, "players")
-assert(has(texts(pl), "Anna Bergmann") and pl.hits[1].atlas == "groupfinder-icon-class-priest", texts(pl))
+assert(has(texts(pl), "Anna Bergmann"), texts(pl))
 assert(group(NS.Search("bank"), "players") == nil, "the bank of an award is no player")
 -- items: from three characters (the gear data may be built then), never the placeholder
 g = NS.Search("cursed")
@@ -117,7 +117,7 @@ assert(F.results.rowCount == 23 and F.results._h == 23 * 21 and hitRow._h == 20,
 F.results.rows[2]:Click()
 assert(NS.CurrentPage() == "settings" and box:GetText() == "" and F.nav:IsShown() and not F.results:IsShown(),
     "a click opens the settings and empties the box")
-assert(NS.SettingsPageFrame().search:GetText() == "Expertenmodus", "the settings search holds the setting")
+assert(NS.PageFrame("settings").search:GetText() == "Expertenmodus", "the settings search holds the setting")
 -- nothing found: the hint
 type_("qqqxx")
 assert(F.results:IsShown() and #F.results.items == 0 and F.noHits:IsShown() and F.noHits:GetText() == "Nichts gefunden.")
@@ -141,7 +141,7 @@ for i, it in ipairs(F.results.items) do
     if it.text == "Kimtaro" then F.results.rows[i]:Click() break end
 end
 assert(NS.CurrentPage() == "stats", NS.CurrentPage())
-local sp = NS.StatsPageFrame()
+local sp = NS.PageFrame("stats")
 local first = sp.detail.fs:GetText():match("^[^\n]*")
 assert(has(first, "Kimtaro"), "Statistik with Kimtaro chosen: " .. tostring(first))
 -- an item hit puts its link into the chat line

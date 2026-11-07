@@ -9,7 +9,7 @@ end
 NS.Set("ui.view", "raider")
 NS.ShowPage("settings")
 NS.Refresh()
-local page = NS.SettingsPageFrame()
+local page = NS.PageFrame("settings")
 local all = shownRows()
 assert(all > 0 and page.found:GetText() == "", "the chosen section without a search (D-49): " .. all)
 

@@ -33,7 +33,7 @@ STUB.bags[0] = { STUB.items[2840].link }
 -- the command opens the page on the profession
 NS.Dispatch("berufe schmied")
 assert(NS.CurrentPage() == "professions", tostring(NS.CurrentPage()))
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 assert(f.prof.label:GetText() == "Schmiedekunst (45/150)", f.prof.label:GetText())
 local values = {}
 for _, v in ipairs(f.prof.values) do values[#values + 1] = tostring(v.value) end

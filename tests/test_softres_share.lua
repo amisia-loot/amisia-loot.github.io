@@ -40,8 +40,8 @@ assert(BUS.count({ kind = "SV", sender = KIM }) == 0 and BUS.count({ kind = "SV"
 assert(C(FRAK, "AmisiaDB.softres.from == nil and NS.ReservedBy(32235)[1] == 'Fraktur'"), "own list kept")
 assert(C(FRAK, "NS.SoftResOffer() and NS.SoftResOffer().from") == VULO, "offered")
 -- the raider's page names the officer
-assert(C(KIM, [[NS.ShowPage("softres"); return NS.SoftResPageFrame().state:GetText()]]):find("von Vulo Sturmwind", 1, true))
-assert(C(FRAK, [[NS.ShowPage("softres"); local f = NS.SoftResPageFrame()
+assert(C(KIM, [[NS.ShowPage("softres"); return NS.PageFrame("softres").state:GetText()]]):find("von Vulo Sturmwind", 1, true))
+assert(C(FRAK, [[NS.ShowPage("softres"); local f = NS.PageFrame("softres")
     return f.take:IsShown() and f.check:GetText():find("Neuere Liste von Vulo Sturmwind", 1, true) ~= nil]]), "the offer on the page")
 assert(C(FRAK, "NS.TakeSoftResOffer()") == true)
 assert(C(FRAK, "AmisiaDB.softres.from") == VULO and C(FRAK, "NS.SoftResOffer() == nil"))

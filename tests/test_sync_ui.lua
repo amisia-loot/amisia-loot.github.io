@@ -15,7 +15,7 @@ end
 -- the officer page of a client, refreshed
 local function officer(name, code)
     return C(name, [[NS.ShowPage("awards"); NS.Refresh()
-        local f = NS.AwardsPageFrame(); local O = f.officer; local s = NS.Active()
+        local f = NS.PageFrame("awards"); local O = f.officer; local s = NS.Active()
         ]] .. code)
 end
 local function syncLine(name) return officer(name, "return O.sync:GetText()") end
@@ -103,7 +103,7 @@ C(VULO, "NS.Reset('sync.enabled')")
 BUS.tick(20)
 settle()
 -- a client without the pack functions
-local saved = C(FRAK, "local keep = C_EncodingUtil; C_EncodingUtil = nil; NS.Refresh(); local t = NS.AwardsPageFrame().officer.sync:GetText(); C_EncodingUtil = keep; return t")
+local saved = C(FRAK, "local keep = C_EncodingUtil; C_EncodingUtil = nil; NS.Refresh(); local t = NS.PageFrame('awards').officer.sync:GetText(); C_EncodingUtil = keep; return t")
 assert(saved:find("Sync: dieser Client kann nicht packen", 1, true), saved)
 -- an older raid
 line = officer(FRAK, [[table.insert(AmisiaDB.sessions, 1, { id = "alt", date = "2026-09-01", instanceID = 409, zone = "Alt", start = 1700000000,
@@ -191,7 +191,7 @@ assert(back.gone == false and back.kind == "SR", "restored and changed")
 ---------------------------------------------------------------------------
 local function raider(code)
     return C(KIM, [[NS.ShowPage("awards"); NS.Refresh()
-        local f = NS.AwardsPageFrame(); local R = f.raider; local A = R.all; local s = NS.Active()
+        local f = NS.PageFrame("awards"); local R = f.raider; local A = R.all; local s = NS.Active()
         ]] .. code)
 end
 local r = raider([[return { raider = R:IsShown(), officer = f.officer:IsShown(), mine = R.mineChip:IsShown(), all = R.allChip:IsShown(),

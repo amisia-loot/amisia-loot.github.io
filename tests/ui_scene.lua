@@ -427,7 +427,7 @@ S.STATES = {
     { page = "dungeons", name = "dungeons-bosses-folded", open = function()
         AmisiaDB.settings.bis.dpart = "bosses"
         NS.ShowDungeon("deadmines")
-        local D = NS.DungeonsPageFrame()
+        local D = NS.PageFrame("dungeons")
         -- open all first (if not all are), then fold all
         if D.foldAll:GetText() ~= NS.L["Alle zuklappen"] then D.foldAll:Click() end
         D.foldAll:Click()
@@ -589,7 +589,7 @@ S.STATES = {
     end },
     -- the members page with the lineup's guild: zones, offline members with their last time online,
     -- a note, professions from the recipe exchange (main and secondary) and the own ones
-    { page = "members", name = "members-guild", open = function() S.members(); NS.ShowMembers() end },
+    { page = "members", name = "members-guild", open = function() S.members(); NS.ShowPage("members") end },
     -- the duels page: the history, the leaderboard, the classes and one class against the others
     { page = "duels", name = "duels-hist", open = function() S.duels("hist") end },
     { page = "duels", name = "duels-board", open = function() S.duels("board") end },
@@ -602,7 +602,7 @@ S.STATES = {
     { page = "map", name = "map-noplace", open = function()
         S.mapWorld()
         NS.ShowMap("alle")
-        local f = NS.MapPageFrame()
+        local f = NS.PageFrame("map")
         if f and f.noPlace:IsShown() then f.noPlace:Click() end
     end },
     -- the page Feedback: a new report with every state of the own reports; the author's inbox

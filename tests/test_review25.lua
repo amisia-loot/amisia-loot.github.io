@@ -133,7 +133,7 @@ check("3 compare with the chosen suffix", function()
     -- the page's hover says the same
     STUB.instance = { name = "Elwynn", type = "none", id = 0 }
     NS.ShowGear("goals", "FEET")
-    local f = NS.GearPageFrame()
+    local f = NS.PageFrame("gear")
     local joined = plain(table.concat(f.goals.explainHit.lines or {}, "\n"))
     assert(has(joined, "Option 1 liegt 8 vorn"), joined)
 end)

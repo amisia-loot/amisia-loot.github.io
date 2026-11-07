@@ -99,7 +99,7 @@ NS.Reset("loot.lead")
 -- soft-reserve page, import window and card
 ---------------------------------------------------------------------------
 NS.ShowPage("softres")
-local sp = NS.SoftResPageFrame()
+local sp = NS.PageFrame("softres")
 assert(has(sp.state:GetText(), "List of " .. NS.FmtDay(time()) .. ":|r 4 reserves from 3 raiders"), sp.state:GetText())
 assert(sp.import:GetText() == "Import" and sp.clear:GetText() == "Delete", sp.import:GetText())
 assert(sp.views.raider.label:GetText() == "Raiders" and sp.views.check.label:GetText() == "Check")
@@ -137,7 +137,7 @@ local rf = shown(RF)
 assert(has(rf, "Stop") and has(rf, "Add"), rf)
 assert(not german(rf), rf)
 NS.ShowPage("rolls")
-local rp = NS.RollsPageFrame()
+local rp = NS.PageFrame("rolls")
 assert(has(rp.current:GetText(), "Running round: ") and has(rp.current:GetText(), "running, "), rp.current:GetText())
 assert(has(shown(rp), "Roll window") and has(shown(rp), "Last rounds"), shown(rp))
 assert(not german(shown(rp)), shown(rp))
@@ -161,7 +161,7 @@ NS.AddAwardTo(s, { name = "Chorf", item = 32837, kind = "MS", src = "Illidan Sto
 NS.AddAwardTo(s, { name = "bank", to = "bank", item = 32235, kind = "-", src = "Illidan Stormrage" })
 NS.Dispatch("awards")
 assert(NS.CurrentPage() == "awards", "/amisia awards opens the page")
-local ap = NS.AwardsPageFrame().officer
+local ap = NS.PageFrame("awards").officer
 assert(ap.undo:GetText() == "Undo" and ap.add:GetText() == "Add", ap.add:GetText())
 assert(has(ap.head:GetText(), "2 awards") and has(ap.head:GetText(), "1 bank") and has(ap.head:GetText(), "Raid not exported"),
     ap.head:GetText())
@@ -173,7 +173,7 @@ assert(NS.CurrentPage() == "awards", "the German word still works")
 -- raids page and raid log page
 ---------------------------------------------------------------------------
 NS.ShowPage("raids")
-local rs = NS.RaidsPageFrame()
+local rs = NS.PageFrame("raids")
 assert(rs.del:GetText() == "Delete (0)" and not rs.del:IsEnabled() and rs.all:GetText() == "Select all", rs.del:GetText())
 assert(rs.pageText:GetText() == "1 raid", rs.pageText:GetText())
 local det = NS.RaidDetailText(s)
@@ -184,7 +184,7 @@ assert(StaticPopupDialogs.AMISIA_DELETE.text == "Delete the ticked raids from Am
 NS.Dispatch("bench Bob Twink")
 assert(has(lastMsg(), "Bob is on the bench (") and has(lastMsg(), ", note: Twink"), lastMsg())
 NS.Dispatch("log")
-local rl = NS.RaidLogPageFrame()
+local rl = NS.PageFrame("raidlog")
 assert(rl.views.verlauf.label:GetText() == "Timeline" and rl.views.bench.label:GetText() == "Bench (1)",
     rl.views.bench.label:GetText())
 assert(rl.addBoss:GetText() == "Add boss" and rl.discordBtn == nil)

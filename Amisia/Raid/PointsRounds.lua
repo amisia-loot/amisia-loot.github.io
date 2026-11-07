@@ -51,12 +51,7 @@ local function cfgOf(r) return { sys = r.sys, base = r.base, minep = r.minep } e
 -- The standing of a name as the round froze it: { name, a, b, pr, low }.
 local function standing(r, name)
     local main = ns.MainOf(name) or name
-    local e = r.st[main:lower()]
-    if not e then
-        for _, x in pairs(r.st) do
-            if ns.SameName(x.name, main) then e = x break end
-        end
-    end
+    local e = ns.PointsEntryOf(r.st, main)
     if not e then
         e = ns.PointsOf(main, cfgOf(r)) or { name = main, a = 0, b = 0 }
         r.st[main:lower()] = e

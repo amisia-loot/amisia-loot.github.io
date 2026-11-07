@@ -85,7 +85,7 @@ local F = NS.RollFrame
 local first = F.rows[1]
 assert(first.who == "Kimtwink" and first.value:GetText() == "60" and has(first.kind:GetText(), "Gebot"), first.kind:GetText())
 assert(has(first.up:GetText(), "60"), "the standing beside the bid")
-assert(has(F.note:GetText(), "!bid"), F.note:GetText())
+assert(has(F.lockHint:GetText(), "!bid"), F.lockHint:GetText())
 STUB.tick(20)
 assert(r.done and r.winner == "Kimtwink", tostring(r.winner))
 assert(has(lastChat(), "Gewinner: Kimtwink (60 DKP)"), lastChat())

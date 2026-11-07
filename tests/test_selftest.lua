@@ -254,7 +254,7 @@ assert(made == 0, "template frames are made once: " .. made)
 -- the About page has the button; the help lists the command
 D:Hide()
 NS.ShowPage("about")
-local about = NS.AboutPageFrame()
+local about = NS.PageFrame("about")
 assert(about.selfTest, "button on the About page")
 about.selfTest:Click()
 assert(ST.Frame():IsShown(), "the button opens the report")

@@ -98,6 +98,16 @@ local function savePosition()
     w.point, w.rel, w.x, w.y = point, rel, x, y
 end
 
+-- Dragging b moves the window (and keeps its place).
+local function dragMoves(b)
+    b:RegisterForDrag("LeftButton")
+    b:SetScript("OnDragStart", function() F:StartMoving() end)
+    b:SetScript("OnDragStop", function()
+        F:StopMovingOrSizing()
+        savePosition()
+    end)
+end
+
 local function restorePosition()
     local w = windowState()
     F:ClearAllPoints()
@@ -162,15 +172,11 @@ local function updateHeader()
     end
 end
 
--- The page head (D-69): the open page's name and its one line (sub: a text, or a function of the
--- page's frame giving one; none: the name alone, a little lower).
-local function updatePageHead(p, frame)
+-- The page head (D-69): the open page's name and its one line (sub: a text; none: the name alone, a
+-- little lower).
+local function updatePageHead(p)
     pageTitle:SetText(p and p.label or "")
     local sub = p and p.sub
-    if type(sub) == "function" then
-        local ok, text = pcall(sub, frame)
-        sub = ok and text or nil
-    end
     pageSub:SetText(type(sub) == "string" and sub or "")
     pageSub:SetShown(type(sub) == "string" and sub ~= "")
 end
@@ -206,15 +212,6 @@ end
 local function groupOf(key)
     local p = ns.Panel(key)
     return p and ns.PanelGroup(p) or nil
-end
-
--- The visible pages of a group, in their order.
-local function pagesOf(group)
-    local out = {}
-    for _, p in ipairs(ns.panels) do
-        if ns.PanelGroup(p) == group and ns.Visible(p) then out[#out + 1] = p end
-    end
-    return out
 end
 
 -- The visible pages of every group at once (group -> pages, in their order): one pass for a refresh.
@@ -269,8 +266,9 @@ end
 local function navEntries(byGroup)
     local out = {}
     local mine = groupOf(current)
+    byGroup = byGroup or pagesByGroup()
     for _, g in ipairs(ns.PANEL_GROUPS) do
-        local pages, wins = byGroup and byGroup[g.key] or pagesOf(g.key), windowsOf(g.key)
+        local pages, wins = byGroup[g.key], windowsOf(g.key)
         if #pages + #wins > 0 then
             local unfolded = openGroup == g.key
             -- a folded group holding the open page keeps its glow: the page is still there
@@ -351,7 +349,7 @@ end
 ---------------------------------------------------------------------------
 -- The page a group opens: the one last open there when it is still shown, else its first.
 local function tabPage(group)
-    local pages = pagesOf(group)
+    local pages = pagesByGroup()[group] or {}
     local last = windowState().pages[group]
     for _, p in ipairs(pages) do
         if p.key == last then return p.key end
@@ -757,12 +755,7 @@ local function build()
     menuBtn:SetPoint("LEFT", statusText, "RIGHT", M.ICON_GAP, 0)
     bar:SetScript("OnClick", openMenu)
     -- the status line still moves the window, as the head did before it took the mouse
-    bar:RegisterForDrag("LeftButton")
-    bar:SetScript("OnDragStart", function() F:StartMoving() end)
-    bar:SetScript("OnDragStop", function()
-        F:StopMovingOrSizing()
-        savePosition()
-    end)
+    dragMoves(bar)
     local function statusTip(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
@@ -782,12 +775,7 @@ local function build()
         homeBtn = CreateFrame("Button", nil, F.PortraitContainer or F)
         homeBtn:SetAllPoints(portrait)
         -- dragging the portrait still moves the window
-        homeBtn:RegisterForDrag("LeftButton")
-        homeBtn:SetScript("OnDragStart", function() F:StartMoving() end)
-        homeBtn:SetScript("OnDragStop", function()
-            F:StopMovingOrSizing()
-            savePosition()
-        end)
+        dragMoves(homeBtn)
         homeBtn:SetScript("OnClick", function()
             ns.ClearSearch()
             ns.ShowPage("overview")
@@ -948,7 +936,7 @@ function ns.Refresh()
         return
     end
     updateHeader()
-    updatePageHead(p, built[current])
+    updatePageHead(p)
     local byGroup = pagesByGroup()
     updateNav(byGroup)
     -- the hits again for the new data, at the same scroll place

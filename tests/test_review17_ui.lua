@@ -30,7 +30,7 @@ check("9 discord focus", function()
     STUB.fire("ENCOUNTER_START", 601, "Boss", 4, 25); STUB.tick(100)
     STUB.fire("ENCOUNTER_END", 601, "Boss", 4, 25, 1); STUB.tick(1)
     NS.ShowRaidLog("discord")
-    local f = NS.RaidLogPageFrame()
+    local f = NS.PageFrame("raidlog")
     local box = f.discord.area.box
     local sets, orig = 0, box.SetText
     box.SetText = function(self, t) sets = sets + 1; return orig(self, t) end
@@ -62,7 +62,7 @@ if NS.Active() then leave() end
 check("7 hand kill", function()
     assert(not NS.Active())
     NS.ShowRaidLog("verlauf", live.id)
-    local f = NS.RaidLogPageFrame()
+    local f = NS.PageFrame("raidlog")
     f.addBoss:Click()
     local A = f.log.add
     A.pick:SetValue("Gruul"); A.pick.onPick("Gruul", true)
@@ -85,7 +85,7 @@ check("8 add line", function()
     live.drops["Creature-0-1-1-1-1-1"] = { src = "Gruul", t = live.last, items = {} }
     STUB.tick(86400 * 7)
     NS.ShowRaidLog("verlauf")
-    local f = NS.RaidLogPageFrame()
+    local f = NS.PageFrame("raidlog")
     f.addBoss:Click()
     local A = f.log.add
     A.pick:SetValue("Gruul"); A.pick.onPick("Gruul", false)
@@ -112,7 +112,7 @@ if NS.Active() then leave() end
 check("11 tonight", function()
     assert(not NS.Active() and #NS.Sessions() > 0)
     NS.ShowRaidLog("discord")
-    local f = NS.RaidLogPageFrame()
+    local f = NS.PageFrame("raidlog")
     f.raid.onPick("next")
     assert(f.discord.hint:GetText() == "Für heute vor dem Raid gibt es noch keinen Raid-Log.", f.discord.hint:GetText())
     f.addBoss:Click()
@@ -120,7 +120,7 @@ check("11 tonight", function()
 end)
 check("11 enter in the note", function()
     NS.ShowRaidLog("bench")
-    local f = NS.RaidLogPageFrame()
+    local f = NS.PageFrame("raidlog")
     f.raid.onPick("next")
     local B = f.bench
     B.pick:SetValue("Neuling"); B.pick.onPick("Neuling", true)

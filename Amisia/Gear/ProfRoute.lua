@@ -578,7 +578,6 @@ local function blocked()
     if InCombatLockdown and ns.Plain(InCombatLockdown()) == true then return true end
     return ns.ChatLocked and ns.ChatLocked() and true or false
 end
-R._blocked = blocked
 
 local function knownSig(skill)
     local c = AmisiaDB and AmisiaDB.prof and AmisiaDB.prof.chars

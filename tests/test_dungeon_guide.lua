@@ -100,7 +100,7 @@ local equipped = {}
 for _, id in ipairs(chain[1].items) do equipped[id] = true end
 assert(equipped[501] and equipped[521] and equipped[530] and equipped[532] and not equipped[531], "helm, ring (one per boss), both quest rewards")
 -- the ring: against the weaker of the two; a wrong slot would leave the baron's ring an upgrade
-assert(NS.DungeonChain(nil, 1)[2] == nil, "steps limit the chain")
+assert(NS.DungeonChain(1)[2] == nil, "steps limit the chain")
 assert(NS.DungeonChain() == chain, "kept while nothing changes")
 
 -- the virtual gear in detail
@@ -199,7 +199,7 @@ NS.MapClearTarget()
 ---------------------------------------------------------------------------
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 NS.ShowPage("dungeons")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 -- the start view's cards in their order (F-143)
 local function card(i) return B.grid:Cards()[i] end
 B.sorts.value:Click()

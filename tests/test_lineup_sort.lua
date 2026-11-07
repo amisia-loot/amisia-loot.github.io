@@ -111,7 +111,9 @@ raid({ { "Vuloo", 1, 2 }, { "Anna Eins", 1 }, { "Bert Zwei", 1 }, { "Cora Drei",
        { "Dino Vier", 2 }, { "Eva Fuenf", 2 }, { "Finn Sechs", 2 }, { "Zeno Sieben", 2 }, { "Gisela Fremd", 2 } })
 local rows, unlisted = NS.LineupSortPlan(night)
 assert(#unlisted == 2, "two raiders not on the list")
-assert(NS.LineupSortWrong(night) == 5, NS.LineupSortWrong(night))
+local wrong = 0
+for _, r in ipairs(rows) do if r.target and r.target ~= r.sub then wrong = wrong + 1 end end
+assert(wrong == 5, wrong)
 STUB.messages = {}
 assert(NS.LineupSort(night) == true)
 STUB.tick(20)
@@ -150,7 +152,7 @@ assert(NS.LineupSortPaused(night))
 STUB.tick(10)
 assert(#SET == 1, "nothing in combat")
 NS.ShowLineup("planner", night)
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 assert(not f.sortBtn:IsEnabled(), "the button waits for the end of the fight")
 STUB.combat = false
 STUB.fire("PLAYER_REGEN_ENABLED")

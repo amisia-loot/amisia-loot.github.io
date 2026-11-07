@@ -2,8 +2,7 @@
 -- and pre-quest; vendors with their gear, recipes and limited goods; world drops of non-boss NPCs.
 -- Secret values are skipped, the switches hold, records merge the same in any order, broken saved
 -- records go on load, and the caps and the byte budget hold.
-local C = NS.Collect
-assert(C, "the collector loads")
+assert(NS.CollectParse, "the collector loads")
 STUB.instance = { name = "Durotar", type = "none", id = 0 }
 STUB.place.map = 1411
 STUB.map.pos = { x = 0.5234, y = 0.4011 }

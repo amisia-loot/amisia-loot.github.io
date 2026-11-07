@@ -11,13 +11,9 @@ local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 8, 20
 local HISTORY_MAX = 60
 
-local page
 local view = "list"            -- "list" or "paste"
 local chosen                   -- lower name of the main in the detail
 local pool = "E"               -- EPGP: a correction of EP or GP
-
--- Test hook: the page frame (tests).
-function ns.PointsPageFrame() return page end
 
 -- The columns: key, x, width. They end at 576 of the 590 the list has.
 local COLS = {
@@ -73,13 +69,12 @@ end
 
 local function build_page(parent)
     local f = W.Page(parent)
-    page = f
 
     -- the head row: the two views; under it the system and the site's state
     local top = f:Bands({ "row", "line" })
     f.view = {
-        list = W.Tab(f, L["Stand##Punkte"], nil, function() view = "list" ns.Refresh() end),
-        paste = W.Tab(f, L["Einfügen"], nil, function() view = "paste" ns.Refresh() end),
+        list = W.Tab(f, L["Stand##Punkte"], function() view = "list" ns.Refresh() end),
+        paste = W.Tab(f, L["Einfügen"], function() view = "paste" ns.Refresh() end),
     }
     W.FitChip(f.view.list, 70)
     W.FitChip(f.view.paste, 70)
@@ -140,8 +135,8 @@ local function build_page(parent)
     end)
     W.FitChip(f.import, 100)
     -- officers: the stored standing removed, after the question (ns.AskClearPoints)
-    f.clear = W.Link(f, L["Punkte entfernen"], 100, function() ns.AskClearPoints() end)
-    W.FitChip(f.clear, 100)
+    f.clear = W.Link(f, L["Punkte entfernen"], function() ns.AskClearPoints() end)
+    W.FitChip(f.clear)
     W.Tooltip(f.clear, L["Punkte entfernen"], L["Löscht den eingefügten Stand der Website und die Korrekturen aus dem Spiel, nach einer Frage. Die Website behält ihren Stand."])
     f.result = W.Text(f, T.FONT.hint)
     f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, f.clear, { f.result, fill = true } }

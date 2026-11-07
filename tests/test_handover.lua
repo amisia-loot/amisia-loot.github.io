@@ -101,12 +101,12 @@ assert(NS.HandoverLeftText(l[1]) == "noch 1:12 h", NS.HandoverLeftText(l[1]))
 assert(#STUB.messages == 0, "no warning with 72 minutes left")
 NS.Dispatch("uebergabe")
 assert(said("Noch zu übergeben: 1") and said("an Anna Bergmann, noch 1:12 h"), "the command lists it")
-assert(NS.CurrentPage() == "awards" and NS.AwardsPageFrame().handover:IsShown(), "and opens the list on the page")
-local H = NS.AwardsPageFrame().handover
+assert(NS.CurrentPage() == "awards" and NS.PageFrame("awards").handover:IsShown(), "and opens the list on the page")
+local H = NS.PageFrame("awards").handover
 assert(H.list.rows[1]:IsShown() and has(H.list.rows[1].to:GetText(), "Anna Bergmann") and has(H.list.rows[1].left:GetText(), "1:12 h"))
 H.back:Click()
-assert(not NS.AwardsPageFrame().handover:IsShown() and NS.AwardsPageFrame().officer:IsShown(), "put away")
-assert(has(NS.AwardsPageFrame().officer.head:GetText(), "1 zu übergeben"), NS.AwardsPageFrame().officer.head:GetText())
+assert(not NS.PageFrame("awards").handover:IsShown() and NS.PageFrame("awards").officer:IsShown(), "put away")
+assert(has(NS.PageFrame("awards").officer.head:GetText(), "1 zu übergeben"), NS.PageFrame("awards").officer.head:GetText())
 
 -- master loot straight to the receiver (a loot line): that copy never was in these bags
 local a2 = NS.AddAwardTo(s, { name = "Fraktur", item = 30000, kind = "MS", src = "Illidan Stormrage" })
@@ -208,9 +208,9 @@ assert(AmisiaDB.handover[key] and AmisiaDB.handover[key].to == "Anna" and Amisia
 assert(#list() == 1 and list()[1].a == a3, "Anna's entry left the list")
 -- the awards page marks it
 NS.ShowPage("awards")
-assert(NS.AwardsPageFrame().handover:IsShown(), "a new entry (Chorf's) brings the list back")
-NS.AwardsPageFrame().handover.back:Click()
-local O = NS.AwardsPageFrame().officer
+assert(NS.PageFrame("awards").handover:IsShown(), "a new entry (Chorf's) brings the list back")
+NS.PageFrame("awards").handover.back:Click()
+local O = NS.PageFrame("awards").officer
 assert(O:IsShown())
 local marked = false
 for _, r in ipairs(O.list.rows) do

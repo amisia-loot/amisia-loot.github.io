@@ -17,7 +17,6 @@ local GREY = T.GREY
 local GREEN = "|cff40bf40"
 local ICON = "Interface\\Icons\\Trade_BlackSmithing"
 local ROWS, ROW_H = 17, 22
-local GUILD_W = T.CHIP_W   -- the chip Gilde at least (it carries its count)
 local QUALITY = T.QUALITY_HEX
 -- the dropdowns' entries (W.Picker); the field shows "<filter>: <entry>", SHORT where it differs
 local SOURCES = { { value = "all", text = L["Alle Quellen"] }, { value = "T", text = L["Lehrer"] },
@@ -224,6 +223,10 @@ local function reagentLines(r)
     return out
 end
 
+-- the colour of a recipe for a rank (Pr.Difficulty) in words
+local COLOR_WORDS = { orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"],
+    red = L["noch nicht lernbar"] }
+
 local function recipeDetail(r)
     local lines = {}
     local rank = Pr.Rank(r.skill)
@@ -231,7 +234,7 @@ local function recipeDetail(r)
     lines[#lines + 1] = L["%s · Fertigkeit %s"]:format(Pr.Name(r.skill), steps(r))
     if rank then
         local d = Pr.Difficulty(r, rank, known)
-        local word = ({ orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"], red = L["noch nicht lernbar"] })[d]
+        local word = COLOR_WORDS[d]
         lines[#lines + 1] = L["Dein Rang %d%s"]:format(rank, word and (": " .. color(Pr.COLORS[d], word)) or "")
     end
     if known == true then
@@ -352,9 +355,6 @@ end
 ---------------------------------------------------------------------------
 -- The route (F-137): steps and shopping list
 ---------------------------------------------------------------------------
-local COLOR_WORDS = { orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"],
-    red = L["noch nicht lernbar"] }
-
 local function mode() return state().mode == ROUTE and ROUTE or RECIPES end
 local function routeShown(v) return mode() == ROUTE and type(v) == "number" and Route.Has(v) end
 local function money(c) return Pr.Money(math.floor((c or 0) + 0.5)) end
@@ -645,6 +645,12 @@ end
 ---------------------------------------------------------------------------
 -- Refresh and build
 ---------------------------------------------------------------------------
+-- The line under the page: the profession data's date and client.
+local function dataLine(f)
+    local d = ns.Data("PROFESSIONS")
+    f.data:SetText(L["Berufsdaten vom %s (Client %s) · Namen aus dem Client."]:format(d and d.built or "?", d and d.client or "?"))
+end
+
 local function refresh(f)
     local s = state()
     local v = view()
@@ -666,8 +672,7 @@ local function refresh(f)
         f.shownView = v
         refreshRoute(f, v)
         f.hint:SetText(L["Klick auf einen Schritt: die Rezept-Details oder der Wegpunkt zum Händler. Kosten nur aus Händlerpreisen."])
-        local d = ns.Data("PROFESSIONS")
-        f.data:SetText(L["Berufsdaten vom %s (Client %s) · Namen aus dem Client."]:format(d and d.built or "?", d and d.client or "?"))
+        dataLine(f)
         return
     end
     f.counts:Show()
@@ -679,7 +684,7 @@ local function refresh(f)
     local guildN = isRecipes and guildCount(v) or 0
     f.guildCount = guildN
     f.guild.label:SetText(L["Gilde (%d)"]:format(guildN))
-    W.FitChip(f.guild, GUILD_W)
+    W.FitChip(f.guild)
     f.guild.dim = guildN == 0
     if guildN > 0 or s.guild then f.guild:Enable() else f.guild:Disable() end
     f.guild:SetOn(s.guild and true or false)
@@ -720,8 +725,7 @@ local function refresh(f)
     showDetail(f, f.selected)
     f.counts:SetText(statusText(v, #list))
     f.hint:SetText(hintText(v))
-    local d = ns.Data("PROFESSIONS")
-    f.data:SetText(L["Berufsdaten vom %s (Client %s) · Namen aus dem Client."]:format(d and d.built or "?", d and d.client or "?"))
+    dataLine(f)
 end
 
 local function choose(e)
@@ -808,17 +812,17 @@ local function create(parent)
         ns.Refresh()
     end)
     -- the switch "Rezepte | Route" (F-137)
-    f.modeRecipes = W.Tab(f, L["Rezepte"], P.MODE_W, function()
+    f.modeRecipes = W.Tab(f, L["Rezepte"], function()
         state().mode = RECIPES
         ns.Refresh()
     end)
-    W.FitChip(f.modeRecipes, P.MODE_W)
+    W.FitChip(f.modeRecipes)
     W.Tooltip(f.modeRecipes, L["Rezepte"], L["Die Rezepte des Berufs mit Filtern und Details."])
-    f.modeRoute = W.Tab(f, L["Route"], P.MODE_W, function()
+    f.modeRoute = W.Tab(f, L["Route"], function()
         state().mode = ROUTE
         ns.Refresh()
     end)
-    W.FitChip(f.modeRoute, P.MODE_W)
+    W.FitChip(f.modeRoute)
     W.Tooltip(f.modeRoute, L["Route"], L["Der günstigste Weg von deinem Rang bis zum Höchstrang: Schritte, Lehrer und Einkaufsliste. Nicht für Sammelberufe, Angeln, Lager und Händlergunst."])
     f.search = W.SearchBox(f, P.SEARCH_W, function(text)
         state().search = text ~= "" and text or nil
@@ -840,18 +844,18 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.source, L["Quelle"], L["Woher das Rezept kommt: Lehrer, Händler, Händlergunst, Drop oder Quest."])
-    f.learn = W.TabCheck(f, L["Lernbar"], 80, function()
+    f.learn = W.TabCheck(f, L["Lernbar"], function()
         local s = state()
         s.learnable = not s.learnable or nil
         ns.Refresh()
     end)
     W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
-    f.guild = W.TabCheck(f, L["Gilde (%d)"]:format(0), GUILD_W, function()
+    f.guild = W.TabCheck(f, L["Gilde (%d)"]:format(0), function()
         local s = state()
         s.guild = not s.guild or nil
         ns.Refresh()
     end)
-    W.FitChip(f.guild, GUILD_W)
+    W.FitChip(f.guild)
     W.Tooltip(f.guild, L["Gilde"], function()
         if (f.guildCount or 0) == 0 then
             return L["Noch teilt niemand aus der Gilde Rezepte. Die Liste füllt sich, sobald Gildenmitglieder mit Amisia ihr Berufsfenster öffnen."]
@@ -886,7 +890,7 @@ local function create(parent)
     end, fillRow, { fill = true, top = top, width = T.LAYOUT.SPLIT_LIST_W })
     f.empty = f:Empty(T.LAYOUT.SPLIT_LIST_W - 10)
     -- under the empty state's help; a child of the list it stands over (the list holds it)
-    f.reset = W.Link(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    f.reset = W.Link(f.list, L["Filter zurücksetzen"], resetFilters)
     W.FitChip(f.reset)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()
@@ -904,16 +908,16 @@ local function create(parent)
         end
     end, { height = T.ROW_BUTTON_H })
     W.Tooltip(d.go, L["Wegpunkt"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
-    d.ask = W.Link(d, L["Fragen"], 70, function()
+    d.ask = W.Link(d, L["Fragen"], function()
         local e, who = d.entry, d.askWho
         if not e or not who or e.camp then return end
         local r = e.recipe
         local link
         if r.item > 0 then link = select(3, Pr.ItemInfo(r.item)) end
         Cr.Whisper(who.name, link or e.name)
-    end, { height = T.ROW_BUTTON_H })
+    end)
     W.FitChip(d.go, 70)
-    W.FitChip(d.ask, 70)
+    W.FitChip(d.ask)
     d:Buttons({ d.ask, d.go })
     W.Tooltip(d.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
 
@@ -927,21 +931,21 @@ local function create(parent)
         state().routeVendor = on or nil
         ns.Refresh()
     end
-    f.vendorT = W.Tab(rv, L["nur Lehrer"], P.VENDOR_W, function() setVendor(false) end)
-    W.FitChip(f.vendorT, P.VENDOR_W)
+    f.vendorT = W.Tab(rv, L["nur Lehrer"], function() setVendor(false) end)
+    W.FitChip(f.vendorT)
     W.Tooltip(f.vendorT, L["nur Lehrer"], L["Die Route nimmt bekannte Rezepte und was der Lehrer bis zum nächsten Limit lehrt."])
-    f.vendorV = W.Tab(rv, L["auch Händler"], P.VENDOR_W, function() setVendor(true) end)
-    W.FitChip(f.vendorV, P.VENDOR_W)
+    f.vendorV = W.Tab(rv, L["auch Händler"], function() setVendor(true) end)
+    W.FitChip(f.vendorV)
     W.Tooltip(f.vendorV, L["auch Händler"], L["Dazu Rezepte, die ein Händler deiner Fraktion verkauft, mit dem Kaufpreis in den Kosten und einem Schritt \"Rezept kaufen\". Drop-Rezepte nie."])
     local function setTab(tab)
         state().routeTab = tab
         ns.Refresh()
     end
-    f.tabSteps = W.Tab(rv, L["Schritte"], P.TAB_W, function() setTab("steps") end)
-    W.FitChip(f.tabSteps, P.TAB_W)
+    f.tabSteps = W.Tab(rv, L["Schritte"], function() setTab("steps") end)
+    W.FitChip(f.tabSteps)
     W.Tooltip(f.tabSteps, L["Schritte"], L["Die Route Schritt für Schritt; der aktuelle Schritt ist markiert, erledigte sind abgehakt."])
-    f.tabShop = W.Tab(rv, L["Einkauf"], P.TAB_W, function() setTab("shop") end)
-    W.FitChip(f.tabShop, P.TAB_W)
+    f.tabShop = W.Tab(rv, L["Einkauf"], function() setTab("shop") end)
+    W.FitChip(f.tabShop)
     W.Tooltip(f.tabShop, L["Einkauf"], L["Die Materialien der offenen Schritte: Bedarf, was du hast (Taschen und Bank), was deine Twinks haben, was fehlt."])
     rv:Place(1, { rv.vendorLabel, f.vendorT, f.vendorV }, { f.tabSteps, f.tabShop })
     f.routeHead = W.Text(rv, T.FONT.body)
@@ -996,8 +1000,6 @@ end
 
 ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "char",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
-
-function ns.ProfessionsPageFrame() return page end
 
 -- Opens the page; what: a profession (German name or key, a prefix is enough), "lager" or "gunst".
 function ns.ShowProfessions(what)

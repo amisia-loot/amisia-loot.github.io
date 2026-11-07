@@ -11,14 +11,11 @@ local L = ns.L
 local W, T = ns.W, ns.Theme
 
 local box   -- the link box of the editor, for the shift-click hook below
-local page
 local BANK_ROWS = 17      -- 26 (chips) + 62 (state, editor) + 17 * 22 = 462 of 478 px
 -- the log: 18 rows of 22 under the filters and the column heads (44 + 396 of the view's 452)
 local NEED_ROWS, PLEDGE_ROWS, LOG_ROWS = 8, 7, 18
 local VIEWS = { bestand = true, bedarf = true, log = true, text = true }
 local view                -- the chosen view; nil: by the officer view
-
-function ns.BankPageFrame() return page end
 
 local function shownView()
     if view then return view end
@@ -194,12 +191,12 @@ local function buildNeeds(f)
     end, { height = T.ROW_BUTTON_H })
     W.FitChip(N.pledge, 100)
     W.Tooltip(N.pledge, L["Spenden zusagen"], L["Sagt den Offizieren zu, so viel in die Gildenbank zu legen. Die Zusage gilt einige Tage."])
-    N.withdraw = W.Link(N, L["Zurückziehen"], nil, function()
+    N.withdraw = W.Link(N, L["Zurückziehen"], function()
         local id = N.pPick:GetValue()
         if id then ns.PledgeBankNeed(id, 0) end
         ns.Refresh()
-    end, { height = T.ROW_BUTTON_H })
-    W.FitChip(N.withdraw, 80)
+    end)
+    W.FitChip(N.withdraw)
     N:Place(3, { N.pPick, { N.pCount, gap = 8 }, { N.pledge, gap = 8 }, { N.withdraw, gap = 8 } })
     -- column heads: the numbers right-aligned on their right edges
     local cols = { { "name", COL.name, 180, L["Material"] } }
@@ -407,16 +404,9 @@ local function buildText(f)
     -- the text down to the footer with its hint
     local X = W.Page(f, { view = true })
     X:Footer({ "hint" })
-    X.area = W.EditArea(X)
+    X.area = W.ReadOnlyArea(X, function() return copyText end)
     X.area:SetPoint("TOPLEFT", 0, 0)
     X.area:SetPoint("BOTTOMRIGHT", 0, X:Bottom())
-    -- read-only like the export box: typing puts the text back and marks it
-    X.area.box:SetScript("OnTextChanged", function(self, userInput)
-        if userInput then
-            self:SetText(copyText)
-            self:HighlightText()
-        end
-    end)
     X.hint:SetText(L["Strg+A, Strg+C, dann in den Gildenchat oder in Discord einfügen."])
     f.text = X
 end
@@ -440,15 +430,14 @@ ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], sub = L["Bestand, Bedar
         -- the head row: the four views; each view below is a view of the scaffold
         f:Bands({ "row" })
         f.views = {}
-        f.views.bestand = W.Tab(f, L["Bestand"], nil, function() setView("bestand") end)
-        f.views.bedarf = W.Tab(f, L["Bedarf##Bank"], nil, function() setView("bedarf") end)
-        f.views.log = W.Tab(f, L["Protokoll"], nil, function() setView("log") end)
-        f.views.text = W.Tab(f, L["Text für Chat##Bank"], nil, function() setView("text") end)
+        f.views.bestand = W.Tab(f, L["Bestand"], function() setView("bestand") end)
+        f.views.bedarf = W.Tab(f, L["Bedarf##Bank"], function() setView("bedarf") end)
+        f.views.log = W.Tab(f, L["Protokoll"], function() setView("log") end)
+        f.views.text = W.Tab(f, L["Text für Chat##Bank"], function() setView("text") end)
         buildStock(f)
         buildNeeds(f)
         buildLog(f)
         buildText(f)
-        page = f
         return f
     end,
     refresh = function(f)
@@ -458,7 +447,7 @@ ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], sub = L["Bestand, Bedar
         for _, r in ipairs(rows) do if r.level == "low" then low = low + 1 end end
         f.views.bedarf.label:SetText(low > 0 and L["Bedarf (%d)"]:format(low) or L["Bedarf##Bank"])
         for key, c in pairs(f.views) do
-            W.FitChip(c, 60)
+            W.FitChip(c)
             c:SetOn(key == v)
         end
         f:Place(1, { f.views.bestand, f.views.bedarf, f.views.log, f.views.text })

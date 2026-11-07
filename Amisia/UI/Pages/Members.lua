@@ -18,8 +18,6 @@ local query = ""                -- the name search (not kept)
 local last                      -- the rows of the last build (shown again in the lockdown)
 local askedAt                   -- when the page last asked the client for the roster
 
-function ns.MembersPageFrame() return page end
-
 local SORTS = { name = true, level = true, zone = true, last = true, prof = true }
 
 -- settings.window.members: { class = class token or "all", prof = skill line or "all", online = bool,
@@ -591,10 +589,7 @@ local function refresh(f)
     f.prof:SetValues(profs)
     f.prof:SetValue(st.prof)
     f.online:SetChecked(st.online == true)
-    for key, b in pairs(f.heads) do
-        local on = key == st.sort
-        b.label:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3])
-    end
+    W.MarkSortHead(f.heads, st.sort)
 
     if not rows then
         f.list:SetItems({})
@@ -623,9 +618,6 @@ end
 
 ns.RegisterPanel{ key = "members", label = L["Mitglieder"], sub = L["Die Gilde: wer online ist, wo und mit welchen Berufen."], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 65,
     group = "guild", create = buildPage, refresh = refresh }
-
--- Opens the page.
-function ns.ShowMembers() ns.ShowPage("members") end
 
 ---------------------------------------------------------------------------
 -- Following the roster and the crafters, only while the page is shown

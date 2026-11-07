@@ -122,7 +122,7 @@ assert(not NS.Visible(panel), "a warrior does not")
 NS.Dispatch("schriftrollen")
 assert(NS.CurrentPage() == "scrolls" and NS.Visible(panel), "/amisia schriftrollen opens it for anyone")
 STUB.class = "MAGE"
-local f = NS.MageScrollsPageFrame()
+local f = NS.PageFrame("scrolls")
 assert(f and f.list and f.detail, "the page frame")
 assert(has(f.rank:GetText(), "20") and has(f.rank:GetText(), "75"), f.rank:GetText())
 

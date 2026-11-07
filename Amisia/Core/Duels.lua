@@ -128,6 +128,18 @@ local function addFirst(low)
     if firsts[first] == nil then firsts[first] = low elseif firsts[first] ~= low then firsts[first] = false end
 end
 
+-- A name seen in a duel line of d: indexed once, in the spelling it first came with.
+local function addPlayer(d, name)
+    local low = name:lower()
+    if players[low] then return end
+    players[low] = name
+    addFirst(low)
+    if not d.cls[name] then
+        unknown[low] = true
+        nUnknown = nUnknown + 1
+    end
+end
+
 local function index()
     if players then return end
     players, unknown, nUnknown, zoneNr, firsts = {}, {}, 0, {}, {}
@@ -136,19 +148,8 @@ local function index()
     for i, z in ipairs(d.zones) do zoneNr[z] = i end
     for _, s in ipairs(d.list) do
         local _, w, l = s:match(LINE)
-        for _, name in ipairs({ w, l }) do
-            if name then
-                local low = name:lower()
-                if not players[low] then
-                    players[low] = name
-                    addFirst(low)
-                    if not d.cls[name] then
-                        unknown[low] = true
-                        nUnknown = nUnknown + 1
-                    end
-                end
-            end
-        end
+        if w then addPlayer(d, w) end
+        if l then addPlayer(d, l) end
     end
 end
 
@@ -297,7 +298,6 @@ local function learnUnit(unit)
     if inspect and consider then consider(unit, name) end
     return learned
 end
-D.LearnUnit = learnUnit
 
 -- The client's class name (either gender) -> class token.
 local byLocal
@@ -595,17 +595,8 @@ function D.Record(w, l, k)
         ns.DuelsLoaded(AmisiaDB)
         D.Changed()
     else
-        for _, name in ipairs({ w, l }) do
-            local low = name:lower()
-            if not players[low] then
-                players[low] = name
-                addFirst(low)
-                if not d.cls[name] then
-                    unknown[low] = true
-                    nUnknown = nUnknown + 1
-                end
-            end
-        end
+        addPlayer(d, w)
+        addPlayer(d, l)
         D.Changed(true)
     end
     index()

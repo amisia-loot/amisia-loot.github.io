@@ -64,7 +64,7 @@ NS.ResetPositions()
 assert(lastMsg():find("Window position reset.", 1, true), lastMsg())
 
 -- overview: the empty text and the cards
-local ov = NS.OverviewPageFrame()
+local ov = NS.PageFrame("overview")
 assert(ov, "overview built")
 
 -- settings: labels, a reset tooltip, the default line, the value words
@@ -84,14 +84,14 @@ tip = {}
 mm.reset:GetScript("OnEnter")(mm.reset)
 assert(has(tipText(), "Reset") and has(tipText(), "Back to the default."), tipText())
 NS.Reset("ui.minimap")
-local setText = shown(NS.SettingsPageFrame())
+local setText = shown(NS.PageFrame("settings"))
 assert(has(setText, "Interface") and has(setText, "Recording"), setText)
 assert(not german(setText), "no German on the settings page:\n" .. setText)
 
 -- export: the messages and the page
 NS.ShowExport(false)
 assert(lastMsg() == "|cffe2b857Amisia:|r No raids and no guild bank count to export yet." , lastMsg())
-local ex = NS.ExportPageFrame()
+local ex = NS.PageFrame("export")
 assert(ex.newBtn:GetText() == "New and changed" and ex.selBtn:GetText() == "Ticked (0)", ex.newBtn:GetText())
 assert(ex.hint:GetText() == "Ctrl+A, Ctrl+C, paste in the Import tab.", ex.hint:GetText())
 assert(not german(shown(ex)), shown(ex))
@@ -99,7 +99,7 @@ assert(not german(shown(ex)), shown(ex))
 -- guild bank: the page and its card, the date the English way
 NS.MATS[12345], NS.MAT_ORDER[1] = "Testerz", 12345
 NS.ShowPage("bank")
-local bank = NS.BankPageFrame()
+local bank = NS.PageFrame("bank")
 assert(bank.add.button:GetText() == "Add", bank.add.button:GetText())
 assert(has(bank.state:GetText(), "Not counted yet.") and has(bank.state:GetText(), "1 of"), bank.state:GetText())
 AmisiaDB.bank = { at = time({ year = 2026, month = 10, day = 7, hour = 20, min = 15 }), counts = { [12345] = 7 },
@@ -122,7 +122,7 @@ NS.MATS[12345], NS.MAT_ORDER[1] = nil, nil
 
 -- about: the head, the buttons and the commands with their English words
 NS.ShowPage("about")
-local ab = NS.AboutPageFrame()
+local ab = NS.PageFrame("about")
 assert(has(ab.head:GetText(), "sync protocol"), ab.head:GetText())
 assert(ab.askGuild:GetText() == "Ask guild" and ab.askRaid:GetText() == "Ask raid" and ab.selfTest:GetText() == "Self-test")
 assert(ab.cmdTitle:GetText() == "Commands")
@@ -137,7 +137,7 @@ assert(not german(help), help)
 -- tools (expert mode)
 NS.Set("ui.expert", true)
 NS.ShowPage("tools")
-local tl = NS.ToolsPageFrame()
+local tl = NS.PageFrame("tools")
 assert(tl and has(tl.hint:GetText(), "The scan runs only outside instances."), tl and tl.hint:GetText())
 assert(tl.drops.web:GetText() == "Drops for the website", tl.drops.web:GetText())
 assert(has(tl.drops.state:GetText(), "No kills yet."), tl.drops.state:GetText())

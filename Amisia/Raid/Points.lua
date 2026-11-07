@@ -667,17 +667,23 @@ end
 ---------------------------------------------------------------------------
 -- Standings
 ---------------------------------------------------------------------------
--- The entry of a name in map (lower main -> { name, a, b }): the same main, else a spelling ns.SameName takes.
-local function slot(map, name, make)
-    local key = name:lower()
-    local e = map[key]
+-- The entry of a name in map (lower main -> { name, ... }): the same main, else a spelling ns.SameName
+-- takes; nil for none.
+function ns.PointsEntryOf(map, name)
+    local e = map[name:lower()]
     if e then return e end
     for _, x in pairs(map) do
         if ns.SameName(x.name, name) then return x end
     end
-    if not make then return nil end
+    return nil
+end
+
+-- The entry of a name in map (lower main -> { name, a, b }), made when make is set.
+local function slot(map, name, make)
+    local e = ns.PointsEntryOf(map, name)
+    if e or not make then return e end
     e = { name = name, a = 0, b = 0 }
-    map[key] = e
+    map[name:lower()] = e
     return e
 end
 

@@ -52,7 +52,7 @@ end
 assert(NS.Panel("talents") and NS.Panel("talents").group == "char", "registered in the group Charakter")
 NS.ShowTalents()
 assert(NS.CurrentPage() == "talents")
-local f = NS.TalentsPageFrame()
+local f = NS.PageFrame("talents")
 assert(f and f:IsShown())
 assert(f.class:GetValue() == "MAGE" and f.class.values[1].value == "MAGE" and f.class.values[2].value == "WARRIOR",
     "own class first")
@@ -310,7 +310,7 @@ NS.Refresh()
 -- the button: a 36 px icon in a thin square frame (no rounded mask, no node atlas)
 do
     local any
-    for _, bt in pairs(NS.TalentsPageFrame().buttons) do any = bt break end
+    for _, bt in pairs(NS.PageFrame("talents").buttons) do any = bt break end
     assert(any and any._w == 36 and any._h == 36, "34 px icon + 1 px frame")
     assert(any.icon.points.TOPLEFT.x == 1 and any.icon.points.BOTTOMRIGHT.x == -1, "the icon inside the frame")
     assert(any.mask == nil and any.border == nil, "square: no mask, no node atlas")

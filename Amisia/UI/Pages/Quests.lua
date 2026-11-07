@@ -208,8 +208,6 @@ end
 -- The page
 ---------------------------------------------------------------------------
 
-function ns.QuestPageFrame() return page end
-
 local function zoneValues(counts, s)
     local here = Q.HereZone()
     local values = { { value = "all", text = L["Alle Zonen"] },
@@ -301,18 +299,18 @@ local function create(parent)
 
     -- the status chips, then the filters
     f.show = {}
-    local defs = { { "open", L["Annehmbar"], 76, L["Quests, die du jetzt annehmen kannst."] },
-        { "active", L["Im Log"], 58, L["Quests in deinem Questlog."] },
-        { "locked", L["Gesperrt"], 68, L["Quests, die dir noch fehlen: Vorquest, Level, Beruf. Der Grund steht in der Zeile."] },
-        { "done", L["Erledigt"], 64, L["Abgegebene Quests."] } }
+    local defs = { { "open", L["Annehmbar"], L["Quests, die du jetzt annehmen kannst."] },
+        { "active", L["Im Log"], L["Quests in deinem Questlog."] },
+        { "locked", L["Gesperrt"], L["Quests, die dir noch fehlen: Vorquest, Level, Beruf. Der Grund steht in der Zeile."] },
+        { "done", L["Erledigt"], L["Abgegebene Quests."] } }
     local row = {}
     for _, d in ipairs(defs) do
-        local chip = W.TabCheck(f, d[2], d[3], function()
+        local chip = W.TabCheck(f, d[2], function()
             local s = state()
             s.show[d[1]] = not s.show[d[1]]
             ns.Refresh()
         end)
-        W.Tooltip(chip, d[2], d[4])
+        W.Tooltip(chip, d[2], d[3])
         f.show[d[1]] = chip
         row[#row + 1] = chip
     end
@@ -323,11 +321,11 @@ local function create(parent)
             ns.Refresh()
         end
     end
-    f.chains = W.TabCheck(f, L["Reihen"], 58, toggle("chains"))
+    f.chains = W.TabCheck(f, L["Reihen"], toggle("chains"))
     W.Tooltip(f.chains, L["Nur Reihen"], L["Nur Quests mit Vorquest oder Folgequest."])
-    f.upgrades = W.TabCheck(f, "Upgrades", 72, toggle("upgrades"))
+    f.upgrades = W.TabCheck(f, "Upgrades", toggle("upgrades"))
     W.Tooltip(f.upgrades, L["Nur Upgrades"], L["Nur Quests, deren Belohnung ein Upgrade für dich ist."])
-    f.mine = W.TabCheck(f, L["Nur für mich"], 92, toggle("mine"))
+    f.mine = W.TabCheck(f, L["Nur für mich"], toggle("mine"))
     W.Tooltip(f.mine, L["Nur für mich"], L["Quests anderer Fraktionen, Völker und Klassen ausblenden."])
     -- the status chips, then the filters after a wider gap
     row[#row + 1] = { f.chains, gap = 16 }
@@ -356,7 +354,7 @@ local function create(parent)
     end, fillRow, { fill = true })
     f.empty = f:Empty()
     -- under the empty state's help; a child of the list it stands over (the list holds it)
-    f.reset = W.Link(f.list, L["Filter zurücksetzen"], nil, resetFilters, { height = T.ROW_BUTTON_H })
+    f.reset = W.Link(f.list, L["Filter zurücksetzen"], resetFilters)
     W.FitChip(f.reset)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()
@@ -376,19 +374,7 @@ local function shown()
     return page ~= nil and page:IsShown() and ns.CurrentPage and ns.CurrentPage() == "quests"
 end
 
-local due, lastAt = false, nil
-local function schedule()
-    if due or not shown() then return end
-    due = true
-    local now = GetTime and GetTime() or 0
-    local wait = lastAt and math.max(0, GAP - (now - lastAt)) or 0
-    C_Timer.After(wait, function()
-        due = false
-        if not shown() then return end
-        lastAt = GetTime and GetTime() or 0
-        ns.Refresh()
-    end)
-end
+local schedule = W.RefreshWhileShown(shown, GAP)
 
 ns.Listen("QUESTS_CHANGED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
@@ -400,13 +386,4 @@ ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
 end)
 
 -- Item names the client did not have at the last fill: the rows again once the answers are in.
-local namesDue = false
-ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
-    if not nameMissing or namesDue or not shown() then return end
-    namesDue = true
-    C_Timer.After(0.3, function()
-        namesDue = false
-        if not nameMissing or not shown() then return end
-        ns.Refresh()
-    end)
-end)
+W.RefreshOnItemNames(function() return nameMissing end, shown)

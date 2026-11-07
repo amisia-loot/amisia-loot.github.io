@@ -64,7 +64,7 @@ assert(NS.Visible(panel), "raiders see it")
 NS.Set("ui.view", "officer")
 
 NS.ShowPage("members")
-local f = assert(NS.MembersPageFrame())
+local f = assert(NS.PageFrame("members"))
 local items = f.list.items
 assert(#items == 12, #items)
 -- online first, then by name

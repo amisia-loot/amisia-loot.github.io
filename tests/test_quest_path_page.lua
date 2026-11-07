@@ -39,7 +39,7 @@ NS.BisBump()
 AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "quests"
 NS.ShowDungeon("deadmines")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 assert(B.parts.quests.on and B.header.ButtonText:GetText() == "The Deadmines · Quests", B.header.ButtonText:GetText())
 
 ---------------------------------------------------------------------------

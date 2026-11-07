@@ -50,7 +50,7 @@ assert(NS.CurrentPage() == "awards", "the alias too")
 ---------------------------------------------------------------------------
 -- officer view: the running recording is chosen, the list and the head line
 ---------------------------------------------------------------------------
-local f = NS.AwardsPageFrame()
+local f = NS.PageFrame("awards")
 assert(f and f.officer:IsShown() and not f.raider:IsShown(), "officer view")
 local O = f.officer
 assert(O.raid:GetValue() == s.id, "the running recording is chosen first")

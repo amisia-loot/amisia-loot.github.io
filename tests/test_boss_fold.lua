@@ -46,7 +46,7 @@ for i = 0, 7 do assert(NS.WishAdd(520 + i)) end
 assert(NS.WishAdd(512))
 
 NS.ShowDungeon("thanes")
-local D = NS.DungeonsPageFrame()
+local D = NS.PageFrame("dungeons")
 assert(D.detail:IsShown() and D.chosen == "thanes", "the thanes' detail")
 D.detail:Fit(30)
 
@@ -216,7 +216,8 @@ assert(not heads(D)["Plunder"].open, "a refresh keeps it")
 local F = AmisiaFrame
 NS.W.FitLists()
 local rowsBefore = D.detail.rowCount
-F.applyHeight(F:GetHeight() + 3 * NS.DungeonJournalKit.ROW_H)
+local BOSS_ROW_H = 24 -- a row of the boss list (ROW_H in UI/Pages/Dungeons.lua)
+F.applyHeight(F:GetHeight() + 3 * BOSS_ROW_H)
 F.heightDone()
 assert(D.detail.rowCount > rowsBefore, "the list grew with the window")
 assert(not heads(D)["Plunder"].open and heads(D)["Magmatus"].open and itemRows(D) == 9, "the fold kept across the height")
@@ -270,7 +271,7 @@ STUB.fire("PLAYER_LEVEL_UP")
 NS.DropsLearnNames({ [10184] = "Onyxia" }, { [249] = { "raid", "Onyxias Hort" } })
 assert(NS.DropsMerge({ h = "0e000001", npc = 10184, inst = 249, diff = 9, day = NS.DropsToday(), o = "aaaaaaaa", src = "G", it = { [530] = 1 } }) == "new")
 NS.ShowRaid("onyxia")
-local P = NS.RaidJournalPageFrame()
+local P = NS.PageFrame("raidjournal")
 assert(P.detail:IsShown() and P.chosen == "onyxia")
 local oh = heads(P)["Onyxia"]
 assert(oh and oh.open and itemRows(P) == 1, "Onyxia's upgrade: unfolded")

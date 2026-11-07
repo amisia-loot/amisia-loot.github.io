@@ -19,7 +19,7 @@ end
 -- the empty page first
 NS.ShowPage("stats")
 assert(NS.CurrentPage() == "stats", "the page opens")
-local f = NS.StatsPageFrame()
+local f = NS.PageFrame("stats")
 assert(f and f.list, "the page builds")
 assert(f.empty:IsShown() and has(f.empty:GetText(), "Noch keine Raids"), "an empty page says so")
 

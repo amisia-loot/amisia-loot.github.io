@@ -3,6 +3,13 @@
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 local s = NS.Active()
+local function dropCount(s)
+    local n = 0
+    for _, d in pairs(s.drops or {}) do
+        for _, c in pairs(d.items or {}) do n = n + c end
+    end
+    return n
+end
 assert(s, "a recording runs")
 
 local function anySecret(t)
@@ -24,7 +31,7 @@ assert(not anySecret(s.drops), "no secret GUID as a key of the drops")
 for _, d in pairs(s.drops) do
     assert(not STUB.secret[d.src], "no secret name as a drop's source")
 end
-assert(NS.DropCount(s) == 1, "the item still counts, under an unknown source")
+assert(dropCount(s) == 1, "the item still counts, under an unknown source")
 STUB.fire("LOOT_CLOSED")
 
 -- 2. the source name of a loot slot: a secret slot GUID or target name is never returned

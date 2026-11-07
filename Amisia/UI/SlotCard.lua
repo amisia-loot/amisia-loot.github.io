@@ -132,8 +132,8 @@ local function build()
     end
     card.empty = W.Text(card, T.FONT.hint, C.W - 2 * C.PAD, true)
     card.empty:SetPoint("TOPLEFT", C.PAD, -(C.PAD + C.TITLE_H))
-    card.open = W.Link(card, L["Im Fenster Ausrüstungsziele"], C.BUTTON_W, function() openGoals() end)
-    W.FitChip(card.open, C.BUTTON_W)
+    card.open = W.Link(card, L["Im Fenster Ausrüstungsziele"], function() openGoals() end)
+    W.FitChip(card.open)
     card.open:SetPoint("BOTTOMLEFT", C.PAD, C.PAD)
     card:Hide()
 end

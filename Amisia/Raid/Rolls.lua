@@ -251,12 +251,9 @@ function ns.StartRoll(link, seconds, onlyNames, opts)
     }
     for _, n in ipairs(reserved) do current.reservedSet[n] = true end
     -- the plus-one of everyone in the group as of now; whoever is missing here is counted on the roll
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then
-            plusOf(current, n)
-            current.roster[#current.roster + 1] = n
-        end
+    for _, n in ipairs(ns.GroupRoster()) do
+        plusOf(current, n)
+        current.roster[#current.roster + 1] = n
     end
     if onlyNames then
         current.only, current.onlyList = {}, {}
@@ -450,10 +447,8 @@ local function knownName(name)
             cands[#cands + 1] = { n, class }
         end
     end
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n, _, _, _, _, class = GetRaidRosterInfo(i)
-        add(ns.FullName(ns.Plain(n)), ns.Plain(class))
-    end
+    local group = ns.GroupIndex()
+    for k, n in ipairs(group.list) do add(n, group.class[k]) end
     local s = ns.Active and ns.Active()
     for n, m in pairs(s and s.members or {}) do
         add(ns.FullName(ns.Plain(n)), (m.class ~= "" and m.class) or nil)

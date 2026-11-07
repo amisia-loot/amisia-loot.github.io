@@ -435,13 +435,9 @@ local function wornItems()
         local s = link and Gear.ReadStats(link)
         if link and not s then partial = true end
         if s then
-            local place
             local loc = select(4, C_Item.GetItemInfoInstant(link))
             local group = loc and Gear.GROUP[(loc:gsub("^INVTYPE_", ""))]
-            if sl.key == "MAINHAND" then place = group == "2H" and "2H" or "MH"
-            elseif sl.key == "OFFHAND" then place = (group == "1H" or group == "OHW") and "OH" or nil
-            elseif sl.key == "RANGED" then place = "RANGED" end
-            out[sl.inv] = { s, place, link }
+            out[sl.inv] = { s, Gear.WeaponPlace(sl.key, group), link }
         end
     end
     return out, partial

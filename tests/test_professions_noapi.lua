@@ -17,7 +17,7 @@ assert(AmisiaDB.prof == nil and Pr.Known(3321, 164) == nil, "nothing read, nothi
 assert(#Pr.Own() == 0 and Pr.Rank(164) == nil and Pr.Reagents(3321) == nil)
 
 NS.ShowProfessions()
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 assert(f.prof.label:GetText() == "Alchimie", "the data's first profession: " .. f.prof.label:GetText())
 NS.ShowProfessions("schmied")
 assert(#f.list.items == 5 and has(f.list.rows[1].name:GetText(), "Rezept 2663"), f.list.rows[1].name:GetText())

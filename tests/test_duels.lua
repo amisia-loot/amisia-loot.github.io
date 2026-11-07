@@ -298,7 +298,7 @@ assert(panel.group == "guild" and not panel.officer and not panel.expert, "group
 NS.Set("ui.view", "raider")
 assert(NS.Visible(panel), "raiders see it")
 NS.ShowPage("duels")
-local f = assert(NS.DuelsPageFrame())
+local f = assert(NS.PageFrame("duels"))
 assert(f.histView:IsShown() and not f.boardView:IsShown(), "the history first")
 local items = f.histList.items
 assert(#items == D.Count() and items[1].w == "Tuoppi Foreverpvp", "newest first")

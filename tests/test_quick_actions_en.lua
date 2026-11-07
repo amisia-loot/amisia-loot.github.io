@@ -12,7 +12,7 @@ NS.Set("ui.view", "officer")
 assert(NS.SetPointsSite(SITE))
 assert(NS.PointsAdjust("Vuloo", 5, "bonus"))
 NS.ShowPoints("paste")
-local f = NS.PointsPageFrame()
+local f = NS.PageFrame("points")
 assert(f.clear:IsShown() and f.clear:GetText() == "Remove points", f.clear:GetText())
 f.clear:Click()
 local Q = AmisiaConfirmFrame

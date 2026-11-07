@@ -39,7 +39,7 @@ NS.Gear._reset()
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 
 NS.ShowPage("dungeons")
-local D = NS.DungeonsPageFrame()
+local D = NS.PageFrame("dungeons")
 assert(NS.DungeonNext().key == "thanes" and D.chosen == "thanes")
 -- since the detail view starts right under the head row (F-143) the list shows 15 rows on the
 -- smallest window: five here, so the thanes scroll as before

@@ -8,7 +8,7 @@
 -- The inputs sit behind small functions on ns.Dungeons, so the build's data can take over without
 -- touching the rest: Facts (ns.BIS.DG once tools/build_bis.py writes it, else the hand facts of
 -- DungeonData.lua), Opts (the own character), Gain (ns.BisGain), Rate (ns.DropRate with the
--- source's chance), BossNpc (the NPC id of a dungeon source, once the item data carries one).
+-- source's chance).
 --
 -- On top of the values: the ranking by value, the chain (the best dungeon's upgrades equipped
 -- virtually, then ranked again) and the quest list of a dungeon from DungeonQuestData.lua (built by
@@ -73,9 +73,6 @@ function D.Opts() return ns.BisOpts() end
 
 -- gain, slotKey, mine of an item for the options; nil when it is no gear for them.
 function D.Gain(id, o) return ns.BisGain(id, o) end
-
--- The NPC id of a dungeon source record; the item data has none yet.
-function D.BossNpc(rec) return nil end
 
 -- p, text, n, K for an item of a boss: with an NPC the guild's kills (base stock and records) with
 -- p0 as the expected chance, else p0 alone. A raid's chance comes from observations only. est: p0 is
@@ -300,7 +297,7 @@ local function buildIndex(facts)
             local inst = place and tonumber(place:match("^I:(%d+)$"))
             -- the instance decides only where it hosts one dungeon; else the source's own name
             if inst and instKeys[inst] and #instKeys[inst] == 1 then key = instKeys[inst][1] end
-            if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3], D.BossNpc(rec)), rec = rec } end
+            if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3]), rec = rec } end
         elseif rec[1] == "Q" then
             local qid = type(rec[7]) == "number" and rec[7] > 0 and rec[7] or nil
             if qid then srcQid[n] = qid end
@@ -636,8 +633,7 @@ local function compute(entry, e, x, seen, o, gains, limit)
     local ex = o.exclude or {}
     local exItem, exBoss, exPlace = ex.item or {}, ex.boss or {}, ex.place or {}
     local placeOff = exPlace["N:" .. tostring(e.name)] or (e.inst and exPlace["I:" .. e.inst]) or false
-    local po = {}
-    for k, v in pairs(o) do po[k] = v end
+    local po = Gear.Copy(o)
     po.sources = ALL_SOURCES
     -- the dungeon pages plan without the play style (F-124)
     po.style = nil
@@ -791,11 +787,11 @@ local function baseEntry(e, x, o, anyRange)
     return entry
 end
 
-local function stateKey(o, facts, opts)
+local function stateKey(o, facts)
     checkNames()
     return table.concat({ tostring(ns.Data("GEAR")), tostring(facts), tostring(ns.DUNGEON_QUESTS), ns.BisStamp(), dropsGen, questGen, namesGen,
         tostring(o.class), tostring(o.spec),
-        tostring(o.kind), tostring(o.level), tostring(o.faction), opts and tostring(opts) or "" }, "|")
+        tostring(o.kind), tostring(o.level), tostring(o.faction) }, "|")
 end
 
 local listKey, listRes, nextKey, nextRes, nextWhy
@@ -807,12 +803,12 @@ local infoKey, infoRes = nil, {}
 --   upgrade, rec } } } }, quests = { { qid, title, level, best = { id, gain, slotKey }, done } },
 --   computed }. Dungeons further than two levels away keep their values nil (ns.DungeonInfo gives
 -- them). Kept until anything it depends on changes; callers must not change it.
-function ns.DungeonList(opts)
+function ns.DungeonList()
     local facts = D.Facts()
     if not facts or not Gear.Available() then return {} end
-    local o = opts or D.Opts()
+    local o = D.Opts()
     if not o or not o.class then return {} end
-    local key = stateKey(o, facts, opts)
+    local key = stateKey(o, facts)
     if key == listKey then return listRes end
     local idx = getIndex(facts)
     local seen = observations(facts, idx)
@@ -857,9 +853,9 @@ end
 -- The next dungeon: the highest value among the fitting ones and those two levels ahead; entry and
 -- reason ("Hall of Thanes: 4 Upgrades, 2 Quests mit Upgrades, Schwerpunkt <boss>"), or nil and
 -- why not. The entry carries the reason without its name as entry.why.
-function ns.DungeonNext(opts)
+function ns.DungeonNext()
     if not D.Facts() then return nil, NO_DATA end
-    local list = ns.DungeonList(opts)
+    local list = ns.DungeonList()
     if list == nextKey then return nextRes, nextWhy end
     local best
     for _, e in ipairs(list) do
@@ -879,15 +875,15 @@ end
 
 -- One dungeon or raid by key, with its values even out of reach (items up to its upper end); one
 -- without a level range has min and max nil and the fit "unknown". nil for an unknown key.
-function ns.DungeonInfo(dkey, opts)
+function ns.DungeonInfo(dkey)
     local facts = D.Facts()
     if not facts or not Gear.Available() then return nil end
-    for _, e in ipairs(ns.DungeonList(opts)) do
+    for _, e in ipairs(ns.DungeonList()) do
         if e.key == dkey and e.computed then return e end
     end
-    local o = opts or D.Opts()
+    local o = D.Opts()
     if not o or not o.class then return nil end
-    local key = stateKey(o, facts, opts)
+    local key = stateKey(o, facts)
     if key ~= infoKey then infoKey, infoRes = key, {} end
     if infoRes[dkey] ~= nil then return infoRes[dkey] or nil end
     local idx = getIndex(facts)
@@ -914,11 +910,11 @@ end
 
 -- Every raid at any level, in the facts' order, each with its values (ns.DungeonInfo): below the
 -- level cap its fit is "soon" or "high", before its opening day "later".
-function ns.RaidList(opts)
+function ns.RaidList()
     local out = {}
     for _, e in ipairs(D.Facts() or {}) do
         if type(e) == "table" and e.kind == "raid" and type(e.key) == "string" then
-            local info = ns.DungeonInfo(e.key, opts)
+            local info = ns.DungeonInfo(e.key)
             if info then out[#out + 1] = info end
         end
     end
@@ -927,9 +923,9 @@ end
 
 -- The raid worth running now: open, at the level cap, with upgrades, the highest value. entry and
 -- reason ("Onyxia's Lair: 3 Upgrades, Schwerpunkt Onyxia"), or nil and why not.
-function ns.RaidNext(opts)
+function ns.RaidNext()
     if not D.Facts() then return nil, NO_DATA end
-    local list = ns.RaidList(opts)
+    local list = ns.RaidList()
     if #list == 0 then return nil, L["Keine Raid-Daten."] end
     local best, later, low
     for _, e in ipairs(list) do
@@ -956,9 +952,9 @@ end
 
 -- The dungeons worth running now (fitting or two levels ahead, computed, with a value), best
 -- first; on equal value the lower one. Its first is ns.DungeonNext's entry.
-function ns.DungeonRanking(opts)
+function ns.DungeonRanking()
     local out = {}
-    for _, e in ipairs(ns.DungeonList(opts)) do
+    for _, e in ipairs(ns.DungeonList()) do
         if FIT_ORDER[e.fit] and e.computed and e.value > 0 and (e.upgrades > 0 or e.questUps > 0) then out[#out + 1] = e end
     end
     table.sort(out, function(a, b)
@@ -1068,14 +1064,14 @@ local chainList, chainRes = nil, {}
 -- that, up to steps (5) dungeons: { { entry, value, upgrades, items = { ids equipped } } }, and the
 -- reason it ends (nil when it reached steps). Step one is ns.DungeonNext's entry. Kept while the
 -- list is; callers must not change it.
-function ns.DungeonChain(opts, steps)
+function ns.DungeonChain(steps)
     steps = steps or CHAIN_STEPS
     if not D.Facts() then return {}, NO_DATA end
-    local list = ns.DungeonList(opts)
+    local list = ns.DungeonList()
     if list ~= chainList then chainList, chainRes = list, {} end
     local kept = chainRes[steps]
     if kept then return kept[1], kept[2] end
-    local o = opts or D.Opts()
+    local o = D.Opts()
     local out = {}
     if o and o.class then
         local v = D.Virtual(o)
@@ -1357,21 +1353,20 @@ local questKey, questRes = nil, {}
 -- level, start ("I", "O", "X", ""), giver, points, done, active, gone (no longer possible), chain =
 -- { pre-quest nodes, root first }, rewards = { { id, gain, slotKey, upgrade, owned } } (upgrades
 -- first), best }. Open ones first, by level; done and no longer possible ones last. Kept until anything it depends on changes; callers must not change it.
-function ns.DungeonQuests(dkey, opts)
+function ns.DungeonQuests(dkey)
     local facts = D.Facts()
     local dq = questData()
     local status = not dq and "nodata" or (type(dq.D[dkey]) == "table" and "ok" or "missing")
     if not facts or not Gear.Available() then return {}, status end
-    local o = opts or D.Opts()
+    local o = D.Opts()
     if not o or not o.class then return {}, status end
-    local key = stateKey(o, facts, opts)
+    local key = stateKey(o, facts)
     if key ~= questKey then questKey, questRes = key, {} end
     local kept = questRes[dkey]
     if kept then return kept, status end
     local x = getIndex(facts).byKey[dkey]
     local out = {}
-    local po = {}
-    for k, v in pairs(o) do po[k] = v end
+    local po = Gear.Copy(o)
     po.sources = ALL_SOURCES
     po.exclude = nil
     po.style = nil
@@ -2113,7 +2108,6 @@ local function nameKey(s)
     local k = s:lower():gsub("[%s%.%-'`]", "")
     return k ~= "" and k or nil
 end
-D.NameKey = nameKey
 
 -- The bosses' names in the game's order (DungeonData.lua, from the client's DungeonEncounter); nil
 -- without one.

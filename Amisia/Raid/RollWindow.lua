@@ -802,9 +802,8 @@ function ns.RollWindowTally(r)
     for name in pairs(r.passed or {}) do
         if not inSet(r.rolls, name) then passed = passed + 1 end
     end
-    local since = ns.CompareVersion and ns.CompareVersion(ns.VERSION or SINCE, SINCE) < 0 and ns.VERSION or SINCE
     local missing = 0
-    for _, name in ipairs(ns.AmisiaInGroup and ns.AmisiaInGroup(since) or {}) do
+    for _, name in ipairs(ns.AmisiaInGroup and ns.AmisiaInGroup(SINCE) or {}) do
         if tiedIn(r, name) and not inSet(r.rolls, name) and not inSet(r.passed, name) then missing = missing + 1 end
     end
     return L["passt: %d · ohne Antwort: %d"]:format(passed, missing)

@@ -77,15 +77,6 @@ end
 ---------------------------------------------------------------------------
 -- The announcement
 ---------------------------------------------------------------------------
-local function raidNames()
-    local out = {}
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then out[#out + 1] = n end
-    end
-    return out
-end
-
 -- "SR: Fraktur, Vulo Sturmwind x2 (+1 nicht im Raid)" or "frei"; second value: someone in the
 -- raid reserved it.
 local function reserversText(id, raid)
@@ -113,7 +104,7 @@ local function items(n) return n == 1 and L["1 Item"] or L["%d Items"]:format(n)
 -- head ("Amisia Loot (Illidan Sturmgrimm)"), then one line per item, at most 8, into the raid chat;
 -- with loot.warning a raid warning as well, when this client may give one.
 local function announce(head, links)
-    local raid = raidNames()
+    local raid = ns.GroupRoster()
     local lines, reserved = { ("%s: %s"):format(head, items(#links)) }, 0
     for i, e in ipairs(links) do
         local text, here = reserversText(e.id, raid)
@@ -310,67 +301,71 @@ end
 ns.OnEvent("START_LOOT_ROLL", onStartRoll)
 
 ---------------------------------------------------------------------------
--- SR mark on the group loot roll frames (softres.lootMark, every client)
+-- Marks on the group loot roll frames
 -- Both clients have GroupLootFrame1-4 with .rollID and .IconFrame; the mark follows each OnShow,
--- so a frame used again for another roll shows the mark of that roll.
+-- so a frame used again for another roll shows the mark of that roll. textOf(frame) gives the text
+-- or nil (no mark); the mark sits at point of the icon, y pixels in. Returns the function that tells
+-- the mark a roll frame shows, or nil (for tests and the window).
 ---------------------------------------------------------------------------
-local GOLD = { 0.89, 0.72, 0.34 }
-local marks = setmetatable({}, { __mode = "k" })    -- roll frame -> font string
-local hooked = setmetatable({}, { __mode = "k" })
+function ns.RollFrameMark(textOf, point, y, color)
+    local marks = setmetatable({}, { __mode = "k" })    -- roll frame -> font string
+    local hooked = setmetatable({}, { __mode = "k" })
 
-local function markRoll(frame)
-    local mark = marks[frame]
-    local text
-    local fn = _G.GetLootRollItemLink
-    if ns.Get("softres.lootMark") and type(fn) == "function" then
-        local ok, link = pcall(fn, ns.Plain(frame.rollID))
-        local id = ok and ns.ItemID(ns.Plain(link)) or nil
-        local names = id and ns.ReservedBy(id) or {}
-        if #names > 0 then
-            text = "SR"
-            local me, roster = ns.UnitFullName("player"), ns.GroupRoster()
-            for _, n in ipairs(names) do
-                if ns.SameNameIn(n, me, roster) then text = L["SR (du)"] break end
+    local function markRoll(frame)
+        local text = textOf(frame)
+        local mark = marks[frame]
+        if not text then
+            if mark then mark:Hide() end
+            return
+        end
+        if not mark then
+            local parent = type(frame.IconFrame) == "table" and frame.IconFrame or frame
+            mark = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            mark:SetPoint(point, parent, point, 1, y)
+            mark:SetTextColor(color[1], color[2], color[3])
+            marks[frame] = mark
+        end
+        mark:SetText(text)
+        mark:Show()
+    end
+
+    local function onRollFrameShow(frame)
+        local ok, err = pcall(markRoll, frame)
+        if not ok then ns.ReportError(err) end
+    end
+
+    local function hookRollFrames()
+        for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
+            local f = _G["GroupLootFrame" .. i]
+            if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
+                hooked[f] = true
+                f:HookScript("OnShow", onRollFrameShow)
             end
         end
     end
-    if not text then
-        if mark then mark:Hide() end
-        return
-    end
-    if not mark then
-        local parent = type(frame.IconFrame) == "table" and frame.IconFrame or frame
-        mark = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        mark:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, -1)
-        mark:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-        marks[frame] = mark
-    end
-    mark:SetText(text)
-    mark:Show()
-end
+    hookRollFrames()
+    ns.OnEvent("PLAYER_ENTERING_WORLD", hookRollFrames)
 
-local function onRollFrameShow(frame)
-    local ok, err = pcall(markRoll, frame)
-    if not ok then ns.ReportError(err) end
-end
-
-local function hookRollFrames()
-    for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
-        local f = _G["GroupLootFrame" .. i]
-        if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
-            hooked[f] = true
-            f:HookScript("OnShow", onRollFrameShow)
-        end
+    return function(frame)
+        local m = marks[frame]
+        return (m and m:IsShown()) and m:GetText() or nil
     end
 end
-hookRollFrames()
-ns.OnEvent("PLAYER_ENTERING_WORLD", hookRollFrames)
 
--- For tests and the window: the mark a roll frame shows, or nil.
-function ns.RollMarkText(frame)
-    local m = marks[frame]
-    return (m and m:IsShown()) and m:GetText() or nil
-end
+-- The SR mark (softres.lootMark, every client).
+ns.RollMarkText = ns.RollFrameMark(function(frame)
+    local fn = _G.GetLootRollItemLink
+    if not (ns.Get("softres.lootMark") and type(fn) == "function") then return nil end
+    local ok, link = pcall(fn, ns.Plain(frame.rollID))
+    local id = ok and ns.ItemID(ns.Plain(link)) or nil
+    local names = id and ns.ReservedBy(id) or {}
+    if #names == 0 then return nil end
+    local me, roster = ns.UnitFullName("player"), ns.GroupRoster()
+    for _, n in ipairs(names) do
+        if ns.SameNameIn(n, me, roster) then return L["SR (du)"] end
+    end
+    return "SR"
+end, "TOPLEFT", -1, { 0.89, 0.72, 0.34 })
 
 ---------------------------------------------------------------------------
 -- Settings and command

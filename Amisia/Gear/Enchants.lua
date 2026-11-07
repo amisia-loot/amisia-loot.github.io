@@ -101,7 +101,7 @@ function E.Stats(id, speed)
         if k == "WDMG" then
             if speed and speed > 0 then out.DPS = (out.DPS or 0) + v / speed end
         else
-            local key = Gear.STAT["ITEM_MOD_" .. k] or Gear.STAT[k]
+            local key = Gear.StatKey(k)
             if key then out[key] = (out[key] or 0) + v end
         end
     end
@@ -118,7 +118,7 @@ function E.Text(id)
         local label
         if k == "WDMG" then label = L["Waffenschaden"]
         else
-            local key = Gear.STAT["ITEM_MOD_" .. k] or Gear.STAT[k]
+            local key = Gear.StatKey(k)
             label = key and Gear.STAT_LABELS[key]
         end
         if label then parts[#parts + 1] = ("%+d %s"):format(v, label) end

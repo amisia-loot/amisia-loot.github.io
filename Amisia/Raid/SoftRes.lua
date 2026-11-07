@@ -733,12 +733,6 @@ function ns.SoftResAge(sr)
     return t and math.max(0, math.floor((time() - t) / 86400)) or nil
 end
 
-function ns.SoftResInfo()
-    local sr = AmisiaDB and AmisiaDB.softres
-    if not sr then return nil end
-    return sr.date, sr.count or 0
-end
-
 ---------------------------------------------------------------------------
 -- Tooltip
 ---------------------------------------------------------------------------
@@ -1211,6 +1205,15 @@ ns.RegisterChatCommand("softres", onSoftResCommand)
 ---------------------------------------------------------------------------
 local function plural(n, one, many) return n == 1 and one or many end
 
+-- The findings of check c against the raid, added to parts.
+local function checkParts(parts, c)
+    if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
+    if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
+    if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
+    if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
+    if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
+end
+
 -- The preview line for a pasted text: parsed with the remembered fixes and checked against
 -- ns.SoftResRoster(); nothing is stored. "" for an empty text.
 function ns.SoftResPreviewText(text)
@@ -1229,22 +1232,14 @@ function ns.SoftResPreviewText(text)
         if extra.sid and loaded and loaded.sid == extra.sid then parts[#parts + 1] = L["gleicher Raid wie die geladene Liste"] end
         if extra.bonus > 0 then parts[#parts + 1] = L["%d Bonus-Würfe nicht übernommen"]:format(extra.bonus) end
         if label then
-            if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
-            if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
-            if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
-            if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
-            if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
+            checkParts(parts, c)
         else
             parts[#parts + 1] = L["kein Raid zum Abgleichen"]
         end
     elseif label then
         head = L["Vorschau gegen %s: %s"]:format((label:gsub("^letzter ", "letzten ")), head)   -- l10n-ok: German case of the label (English has no match)
-        if #c.missing > 0 then parts[#parts + 1] = L["%d ohne Reserve"]:format(#c.missing) end
-        if #c.absent > 0 then parts[#parts + 1] = L["%d nicht im Raid"]:format(#c.absent) end
-        if #c.unclear > 0 then parts[#parts + 1] = L["%d %s unklar"]:format(#c.unclear, plural(#c.unclear, L["Name##Anzahl"], L["Namen##Anzahl"])) end
-        if #c.class > 0 then parts[#parts + 1] = L["%d Klasse falsch"]:format(#c.class) end
-        if #c.over > 0 then parts[#parts + 1] = L["%d zu viel"]:format(#c.over) end
-    elseif extra.src ~= "code" then
+        checkParts(parts, c)
+    else
         head = L["Vorschau: %s"]:format(head)
         parts[#parts + 1] = L["kein Raid zum Abgleichen"]
     end

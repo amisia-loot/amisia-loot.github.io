@@ -34,12 +34,7 @@ local CHOICE_TEXT = { N = ns.N_("Bedarf"), O = ns.N_("Bedarf (Zweitspec)"), T = 
 
 function GR.ChoiceText(c) return L[CHOICE_TEXT[c] or "?"] end
 
-local function plainNumber(v) return tonumber(ns.Plain(v)) end
-local function plainText(v)
-    v = ns.Plain(v)
-    if type(v) == "string" and v ~= "" then return v end
-    return nil
-end
+local plainNumber, plainText = ns.PlainNumber, ns.PlainText
 
 ---------------------------------------------------------------------------
 -- Where the entries go

@@ -29,7 +29,7 @@ NS.Quests._reset()
 check("the page state moves out of the switch's section", function()
     local s = AmisiaDB.settings
     NS.ShowPage("quests")   -- (the command without a word would clear the search)
-    local f = assert(NS.QuestPageFrame())
+    local f = assert(NS.PageFrame("quests"))
     NS.Refresh()
     local p = s.questsPage
     assert(type(p) == "table" and p.search == "Echo" and p.zone == 1429 and p.mine == false and p.show.locked
@@ -51,7 +51,7 @@ check("8 no global _", function()
     AmisiaDB.settings.questsPage.expanded[21] = true
     NS.Dispatch("quests")
     NS.Refresh()
-    local f = NS.QuestPageFrame()
+    local f = NS.PageFrame("quests")
     local seen = false
     for _, r in ipairs(f.list.rows) do
         if r:IsShown() and has(r.title:GetText(), "Echohelm") then seen = true end
@@ -62,7 +62,7 @@ end)
 
 check("9 talent arrows pooled", function()
     NS.ShowTalents()
-    local f = NS.TalentsPageFrame()
+    local f = NS.PageFrame("talents")
     local n = 0
     for t = 1, 3 do
         local tree = f.trees[t]

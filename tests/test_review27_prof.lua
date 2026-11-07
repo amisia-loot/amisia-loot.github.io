@@ -69,7 +69,7 @@ check("7 the saved search comes back into the box", function()
     GetProfessionInfo = function() return "Schmiedekunst", 136241, 45, 150, 3, 0, 164 end
     AmisiaDB.settings.professions = { search = "kupferarm", view = 164 }   -- what a /reload brings back
     NS.Dispatch("berufe schmied")
-    local f = NS.ProfessionsPageFrame()
+    local f = NS.PageFrame("professions")
     NS.Refresh()
     assert(f.search:GetText() == "kupferarm", "box: [" .. tostring(f.search:GetText()) .. "]")
     assert(#f.list.items == 1, "the list follows the same search: " .. #f.list.items)

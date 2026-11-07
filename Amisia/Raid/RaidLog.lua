@@ -24,12 +24,14 @@ local waiting = {}    -- kills waiting for their names: { s, k, giveUp = GetTime
 local polling = false
 local poll
 
+-- A value as a number, a non-empty string, else nil (secret ones too). GroupRolls uses them.
 local function plainNumber(v) return tonumber(ns.Plain(v)) end
 local function plainText(v)
     v = ns.Plain(v)
     if type(v) == "string" and v ~= "" then return v end
     return nil
 end
+ns.PlainNumber, ns.PlainText = plainNumber, plainText
 
 local function remember(event, text)
     trace[#trace + 1] = { t = time(), event = event, text = text }
@@ -50,12 +52,13 @@ local function recording()
     return s
 end
 
-local function sortKills(s)
-    table.sort(s.kills, function(a, b)
-        if a.t ~= b.t then return a.t < b.t end
-        return (a.start or a.t) < (b.start or b.t)
-    end)
+-- Attempts by end, then by start.
+local function byEnd(a, b)
+    if a.t ~= b.t then return a.t < b.t end
+    return (a.start or a.t) < (b.start or b.t)
 end
+
+local function sortKills(s) table.sort(s.kills, byEnd) end
 
 local function insert(s, k)
     s.kills[#s.kills + 1] = k
@@ -351,10 +354,7 @@ end)
 function ns.Kills(s)
     local out = {}
     for i, k in ipairs((s and s.kills) or {}) do out[i] = k end
-    table.sort(out, function(a, b)
-        if a.t ~= b.t then return a.t < b.t end
-        return (a.start or a.t) < (b.start or b.t)
-    end)
+    table.sort(out, byEnd)
     return out
 end
 

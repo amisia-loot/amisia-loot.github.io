@@ -100,8 +100,8 @@ local function build()
         onShow = function(self) if self.Raise then self:Raise() end refresh() end })
     F:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
     -- "Raid-Kalender" beside the date picker: the raid calendar window (part I) at the chosen date
-    F.calOpen = W.Link(F, L["Raid-Kalender"], S.CAL_OPEN_W, function() ns.ShowRaidCalendar(cur) end)
-    local calW = W.FitChip(F.calOpen, S.CAL_OPEN_W)
+    F.calOpen = W.Link(F, L["Raid-Kalender"], function() ns.ShowRaidCalendar(cur) end)
+    local calW = W.FitChip(F.calOpen)
     F.calOpen:SetPoint("TOPRIGHT", -PAD, -(S.PICK_Y - (T.BUTTON_H - T.FIELD_H) / 2))
     W.Tooltip(F.calOpen, L["Raid-Kalender"], L["Wer zu den Terminen kommt: angemeldet, vorläufig, abgemeldet, mit Rolle und Notiz."])
     F.pick = W.Picker(F, CW - calW - T.LAYOUT.ITEM_GAP, function(v)
@@ -122,7 +122,7 @@ local function build()
     F.roles = {}
     local names = { T = L["Tank"], H = L["Heiler"], M = L["Nahkampf"], R = L["Fernkampf"] }
     for _, r in ipairs(ns.LINEUP_ROLES) do
-        local b = W.Tab(F, ns.SIGNUP_ROLE_SHORT[r], S.ROLE_W, function()
+        local b = W.Tab(F, ns.SIGNUP_ROLE_SHORT[r], function()
             role = r
             refresh()
         end)
@@ -154,10 +154,10 @@ local function build()
         local _, reason = ns.SignupCalendarState(cur)
         return reason or L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."]
     end
-    F.calBtn = W.Link(F, L["Warum?"], S.CAL_W, function()
+    F.calBtn = W.Link(F, L["Warum?"], function()
         ns.msg(why() .. " " .. L["Den Spielkalender öffnest du mit dem Kalenderknopf an der Minimap."])
     end)
-    W.FitChip(F.calBtn, S.CAL_W)
+    W.FitChip(F.calBtn)
     F.calHint:SetHeight(T.BUTTON_H)
     F.calHint:SetJustifyV("MIDDLE")
     -- the tooltip names why the calendar entry of the last click did not work
@@ -170,8 +170,8 @@ local function build()
     end)
     F.calBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     F.yes = W.Button(F, L["Anmelden"], S.BUTTON_W, function() send("A") end)
-    F.maybe = W.Link(F, L["Vorläufig"], S.BUTTON_W, function() send("V") end)
-    F.no = W.Link(F, L["Abmelden"], S.BUTTON_W, function() send("X") end)
+    F.maybe = W.Link(F, L["Vorläufig"], function() send("V") end)
+    F.no = W.Link(F, L["Abmelden"], function() send("X") end)
     for _, b in ipairs({ F.yes, F.maybe, F.no }) do W.FitChip(b, S.BUTTON_W) end
     W.Row(F, { F.yes, F.maybe, F.no }, T.LAYOUT.ITEM_GAP, PAD, S.BOTTOM, { point = "BOTTOMLEFT" })
 end

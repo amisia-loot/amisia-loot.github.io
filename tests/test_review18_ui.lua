@@ -55,7 +55,7 @@ end)
 ---------------------------------------------------------------------------
 check("10 cleared", function()
     NS.ShowGear("guild")
-    local U = NS.GearPageFrame().guild
+    local U = NS.PageFrame("gear").guild
     U.area.box:SetText("#AMISIA-WL 1 forever 2026-10-05\nW 28830 3 Anna nur MS\nW 31000 2 Bob\n#END")
     U.importBtn:Click()
     assert(U.hint:GetText() == "2 Wünsche übernommen, 0 Zeilen nicht erkannt.", tostring(U.hint:GetText()))
@@ -127,7 +127,7 @@ check("12 names", function()
     STUB.item(502, "Beta", 4)
     assert(NS.WishAdd(501, 2) and NS.WishAdd(502, 2))
     NS.ShowGear("wish")
-    local V = NS.GearPageFrame().wish
+    local V = NS.PageFrame("gear").wish
     local function names() local out = {} for i = 1, 2 do out[i] = plain(V.list.rows[i].name:GetText()) end return table.concat(out, ",") end
     assert(names() == "Beta,Item 501", names())
     STUB.item(501, "Alpha", 4)
@@ -138,7 +138,7 @@ check("12 names", function()
     -- the guild rows too
     STUB.items[28830] = nil
     NS.ShowGear("guild")
-    local U = NS.GearPageFrame().guild
+    local U = NS.PageFrame("gear").guild
     assert(plain(U.list.rows[1].name:GetText()) == "Item 28830", plain(U.list.rows[1].name:GetText()))
     STUB.item(28830, "Drachenwirbeltrophäe", 4)
     STUB.fire("GET_ITEM_INFO_RECEIVED", 28830, true)
@@ -156,7 +156,7 @@ check("13 place", function()
     NS.ShowGear("here")
     AmisiaDB.settings.bis.place = "I:999999"
     NS.Refresh()
-    local Hh = NS.GearPageFrame().here
+    local Hh = NS.PageFrame("gear").here
     assert(not has(Hh.pick.label:GetText(), "I:999999"), "no raw key: " .. tostring(Hh.pick.label:GetText()))
     assert(has(Hh.pick.label:GetText(), "Hier: Die Todesminen"), tostring(Hh.pick.label:GetText()))
     assert(AmisiaDB.settings.bis.place == nil, "the stale place is forgotten")

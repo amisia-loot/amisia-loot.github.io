@@ -57,7 +57,7 @@ assert(#c.class == 0)
 STUB.roster = { { name = "Anna", class = "PRIEST" } }
 NS.SetSoftRes(csv)
 NS.ShowSoftRes("check")
-local f = NS.SoftResPageFrame()
+local f = NS.PageFrame("softres")
 local found = false
 for _, e in ipairs(f.list.items or {}) do
     if e.kind == "class" and e.name == "Anna" then found = true end

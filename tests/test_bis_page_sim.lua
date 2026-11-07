@@ -10,7 +10,7 @@ STUB.instance = { name = "Elwynn", type = "none", id = 0 }
 NS.BisSetSpec("dps")
 
 NS.ShowGear("goals")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(f and f:IsShown())
 assert(f.plan:IsShown() and plain(f.plan.label:GetText()) == "Waffen: automatisch", f.plan.label:GetText())
 f.plan.onPick("2H")

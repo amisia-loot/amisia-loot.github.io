@@ -79,7 +79,7 @@ local rev0 = S(VULO, "s.sync.rev")
 assert(rev0 >= 1, "the first snapshot has a revision")
 assert(S(FRAK, "s.sync and s.sync.rev") == rev0 and S(KIM, "s.sync and s.sync.rev") == rev0)
 assert(S(FRAK, "s.sync.keeper") == VULO and S(FRAK, "s.sync.hash") == S(VULO, "s.sync.hash"))
-assert(S(VULO, "s.sync.hash") == S(VULO, "NS.SyncHash(s)"))
+assert(S(VULO, "s.sync.hash") == S(VULO, "NS.SyncBuild(s).h"))
 assert(S(PUG, "s.sync") == nil, "the guest takes nothing")
 
 ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ assert(ka[a1] and ka[a1].name == "Fraktur" and ka[a1].note == nil and ka[a1].v =
 assert(fa[a1].t == S(VULO, "math.floor(s.awards[1].t)"), "the time stays the keeper's (in whole seconds)")
 assert(S(FRAK, "s.sync.rev") == rev0 + 1 and S(KIM, "s.sync.rev") == rev0 + 1)
 assert(S(FRAK, "s.sync.hash") == S(VULO, "s.sync.hash") and S(KIM, "s.sync.hash") == S(VULO, "s.sync.hash"), "one checksum")
-assert(S(FRAK, "NS.SyncHash(s)") == S(VULO, "s.sync.hash"), "Fraktur's own state gives the keeper's checksum")
+assert(S(FRAK, "NS.SyncBuild(s).h") == S(VULO, "s.sync.hash"), "Fraktur's own state gives the keeper's checksum")
 assert(S(FRAK, "s.last") == frakLast and S(KIM, "s.last") == kimLast, "s.last stays")
 local m2 = S(FRAK, "s.members")
 assert(size(m2) == size(frakMembers), "s.members stays")

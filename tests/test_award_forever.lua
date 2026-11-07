@@ -16,7 +16,7 @@ STUB.items[32235].icon = 4242
 NS.AddAwardTo(s, { name = "Fraktur Berg", item = 99999, kind = "MS", src = "X" })
 NS.AddAwardTo(s, { name = "Fraktur Berg", item = 32235, kind = "MS", src = "X" })
 NS.ShowPage("awards")
-local O = NS.AwardsPageFrame().officer
+local O = NS.PageFrame("awards").officer
 local rows = O.list.rows
 assert(rows[1]:IsShown() and rows[2]:IsShown(), "both awards listed")
 assert(rows[2].itemText:GetText():find("a335ee", 1, true), "the quality comes from C_Item: " .. rows[2].itemText:GetText())
@@ -55,7 +55,7 @@ _G.UnitName = function(u) if u == "player" then return "Vuloo", "Stein" end retu
 NS.Set("ui.view", "raider")
 NS.ShowPage("overview")
 NS.ShowPage("awards")
-local R = NS.AwardsPageFrame().raider
+local R = NS.PageFrame("awards").raider
 assert(R:IsShown() and R.list.rows[1]:IsShown(), "own item listed")
 STUB.inserted = nil
 STUB.shift = true

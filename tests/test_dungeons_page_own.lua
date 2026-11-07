@@ -30,7 +30,7 @@ assert(p.available(), "shown with gear data")
 
 -- the gear page has no chip "Dungeons" any more
 NS.ShowGear("goals")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(NS.CurrentPage() == "gear" and f.views.dungeons == nil and f.dungeons == nil and f.bodies.dungeons == nil, "no dungeons view")
 for _, chip in ipairs(f.headRow) do
     assert(plain(chip.label and chip.label:GetText() or "") ~= "Dungeons", "no dungeons chip in the head row")
@@ -42,7 +42,7 @@ assert(NS.CurrentPage() == "dungeons", "/amisia dungeon: " .. tostring(NS.Curren
 NS.ShowGear("goals")
 NS.Dispatch("journal")
 assert(NS.CurrentPage() == "dungeons", "/amisia journal: " .. tostring(NS.CurrentPage()))
-local D = NS.DungeonsPageFrame()
+local D = NS.PageFrame("dungeons")
 assert(D and D:IsShown() and D.grid and D.grid:IsShown() and D.detail and D.art, "the planner on the page, its cards first")
 -- and the old entry point
 NS.ShowGear("goals")

@@ -187,7 +187,7 @@ check("6 explanation, tooltip and page", function()
     NS.BisBump()
     -- the page: badge and source on the option
     NS.ShowGear("goals", "MAINHAND")
-    local f = NS.GearPageFrame()
+    local f = NS.PageFrame("gear")
     local b = f.goals.opts[1]
     assert(has(plain(b.name:GetText()), "BiS-Empfehlung"), "badge: " .. plain(b.name:GetText()))
     assert(has(plain(b.src:GetText()), "Quelle noch unbekannt"), "source: " .. plain(b.src:GetText()))

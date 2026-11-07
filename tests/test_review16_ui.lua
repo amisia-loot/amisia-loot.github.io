@@ -33,7 +33,7 @@ end)
 check("7a tooltip of (Liste: Frak)", function()
     assert(NS.RenameReserve("Frak", "Fraktur", true) == 1)
     NS.ShowSoftRes("raider")
-    local f = NS.SoftResPageFrame()
+    local f = NS.PageFrame("softres")
     local row
     for _, r in ipairs(f.list.rows) do
         if r.item and r.item.name == "Fraktur" then row = r end

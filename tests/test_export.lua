@@ -5,12 +5,12 @@ local function lastMsg() return STUB.messages[#STUB.messages] or "" end
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 local s = NS.Active()
-assert(NS.ExportState(s) == "new" and NS.ExportedAt(s) == nil)
+assert(NS.ExportState(s) == "new" and not (AmisiaDB.exported and AmisiaDB.exported[s.id]))
 assert(#NS.PendingExport() == 1)
 
 NS.ShowExport(false)
 assert(lastMsg():find("Export: 1 neue oder geänderte Raid", 1, true), lastMsg())
-assert(NS.ExportState(s) == "done" and NS.ExportedAt(s))
+assert(NS.ExportState(s) == "done" and AmisiaDB.exported[s.id].at)
 assert(#NS.PendingExport() == 0)
 
 -- roster snapshots alone change nothing the export would carry

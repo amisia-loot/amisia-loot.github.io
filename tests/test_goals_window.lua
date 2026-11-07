@@ -56,7 +56,7 @@ assert(Gear.Available())
 ---------------------------------------------------------------------------
 assert(_G.AmisiaGoalsFrame == nil, "nothing built before it is opened")
 NS.ShowGear("goals")
-local page = NS.GearPageFrame()
+local page = NS.PageFrame("gear")
 local big = page.goals.big
 assert(big and big.vis ~= false and big:GetText() == "Ausrüstungsziele", "the button on the view Ziele, named after its window")
 assert(big.points.TOPRIGHT, "it stands from the right edge")

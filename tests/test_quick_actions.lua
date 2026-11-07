@@ -13,7 +13,7 @@ STUB.now = 1791400000
 local SITE = "#AMISIA-PTS 1 forever 2026-10-08 dkp 1791300000\nCFG raid=0 boss=0 time=0 bench=0 pub=1\nP Vuloo 120\nP Fraktur 80\n#END"
 NS.Set("ui.view", "officer")
 NS.ShowPoints("list")
-local f = NS.PointsPageFrame()
+local f = NS.PageFrame("points")
 assert(not f.clear:IsShown(), "not in the list view")
 NS.ShowPoints("paste")
 assert(f.clear:IsShown() and f.clear:GetText() == "Punkte entfernen", "the officer's button in the paste view")
@@ -149,7 +149,7 @@ end
 F.page:Click()
 assert(not F:IsShown(), "the window closes")
 assert(NS.CurrentPage() == "calendar", "the main window's calendar page: " .. tostring(NS.CurrentPage()))
-local P = NS.CalendarPageFrame()
+local P = NS.PageFrame("calendar")
 local cell
 for _, c in ipairs(P.cells) do if c.info.key == N2 then cell = c end end
 assert(cell and cell.sel:IsShown(), "the date's day is chosen")

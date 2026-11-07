@@ -91,9 +91,9 @@ recv("Amisia", "1HI\t2.1.0\t1\tO\t" .. KEY, "RAID", "Fraktur")
 assert(#got == 1 and got[1].sender == "Fraktur" and got[1].chan == "RAID", #got)
 assert(same(got[1].fields, { "2.1.0", "1", "O", KEY }) and got[1].raw == "1HI\t2.1.0\t1\tO\t" .. KEY)
 local bad0 = NS.CommStats().bad
--- a newer or older protocol is not read; the newer one is remembered
+-- a newer or older protocol is not read
 recv("Amisia", "2HI\t2.2.0\t2\t-\t-", "RAID", "Fraktur")
-assert(#got == 1 and NS.CommNewerProto() == 2, "a newer protocol is not read")
+assert(#got == 1, "a newer protocol is not read")
 recv("Amisia", "0HI\t2.1.0\t1\t-\t-", "RAID", "Fraktur")
 assert(#got == 1, "an older protocol is not read")
 -- the wrong prefix, another addon's prefix, bad fields

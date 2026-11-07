@@ -239,8 +239,8 @@ end
 -- page swaps W.Chip for W.Tab and keeps its logic: views and filters as gold words, the chosen one white
 -- over a thin gold line (as the client's settings tabs). opts.check: an on/off filter with the client's
 -- small check box (MinimalCheckboxTemplate, not clickable itself) before its word instead of the line.
--- Its width follows its word (W.FitChip ignores a minimum for tabs); width only caps it.
-function W.Tab(parent, label, width, onClick, opts)
+-- Its width follows its word (W.FitChip ignores a minimum for tabs and sets a cap).
+function W.Tab(parent, label, onClick, opts)
     local b = CreateFrame("Button", nil, parent)
     b.isTab = true
     -- the width a chip was given is no limit for a word: a tab is as wide as its word (a cap only
@@ -340,9 +340,9 @@ end
 -- A quiet action (D-67): a gold word that lights up under the mouse, for every action of a view but
 -- its one red button ("Warum?", "Alle auf Karte", "Öffnen" on a card). The text tab's look without a
 -- chosen state; label, SetText, Click, Enable/Disable as a button.
-function W.Link(parent, label, width, onClick)
-    -- as wide as its word: a width meant for a red button would cut it
-    local b = W.Tab(parent, label, nil, onClick)
+function W.Link(parent, label, onClick)
+    -- as wide as its word
+    local b = W.Tab(parent, label, onClick)
     b.isLink = true
     b:SetOn(false)
     b.SetOn = function(self) self.on = false; self:UpdateChip() end
@@ -350,8 +350,8 @@ function W.Link(parent, label, width, onClick)
 end
 
 -- An on/off filter as a text tab with the client's small check box before its word (D-67).
-function W.TabCheck(parent, label, width, onClick)
-    return W.Tab(parent, label, width, onClick, { check = true })
+function W.TabCheck(parent, label, onClick)
+    return W.Tab(parent, label, onClick, { check = true })
 end
 
 -- A small icon button of the client, without a red ground (D-67): art.atlas (with the client's
@@ -608,7 +608,6 @@ local function classicArrows(base)
     return { texture = true, normal = base .. "-Up", hover = base .. "-Up", pressed = base .. "-Down",
              pressedhover = base .. "-Down", open = base .. "-Down", disabled = base .. "-Disabled" }
 end
-W.CLASSIC_ARROW = CLASSIC_ARROW
 
 -- The atlas for the state of button b: its own flags (over, down) and isOpen() of the owner.
 local function arrowState(b)
@@ -716,6 +715,82 @@ function W.Tooltip(frame, title, text)
         if self.SetOver then self:SetOver(false) end
         GameTooltip:Hide()
     end)
+end
+
+-- A page's rebuild after changes while it shows (shown()), at most once per gap seconds: the function
+-- the page's listeners call.
+function W.RefreshWhileShown(shown, gap)
+    local due, lastAt = false, nil
+    return function()
+        if due or not shown() then return end
+        due = true
+        local now = GetTime and GetTime() or 0
+        local wait = lastAt and math.max(0, gap - (now - lastAt)) or 0
+        C_Timer.After(wait, function()
+            due = false
+            if not shown() then return end
+            lastAt = GetTime and GetTime() or 0
+            ns.Refresh()
+        end)
+    end
+end
+
+-- Item names the client did not have at a page's last fill (missing()): the shown page again once
+-- the answers are in, once for a burst of them.
+function W.RefreshOnItemNames(missing, shown)
+    local due = false
+    ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
+        if not missing() or due or not shown() then return end
+        due = true
+        C_Timer.After(0.3, function()
+            due = false
+            if not missing() or not shown() then return end
+            ns.Refresh()
+        end)
+    end)
+end
+
+-- The recorded raid of an id (the pages Raid-Log and Vergaben).
+function W.RaidById(id)
+    for _, s in ipairs(ns.Sessions()) do
+        if s.id == id then return s end
+    end
+    return nil
+end
+
+-- The raids newest first, the running recording in front.
+function W.RaidsNewestFirst()
+    local src, out, act = ns.Sessions(), {}, ns.Active()
+    if act then out[1] = act end
+    for i = #src, 1, -1 do
+        if src[i] ~= act then out[#out + 1] = src[i] end
+    end
+    return out
+end
+
+local GetItemInfo = C_Item.GetItemInfo
+-- An item's name in its quality colour (the saved names' quality, else the client's; white without).
+function W.ItemText(id)
+    local known = AmisiaDB and AmisiaDB.itemNames and AmisiaDB.itemNames[id]
+    local q = known and known.q
+    if not q or q == 0 then
+        local _, _, iq = GetItemInfo(id)
+        q = iq or q
+    end
+    return ("|c%s%s|r"):format(T.QUALITY_HEX[q or 0] or "ffffffff", ns.ItemName(id))
+end
+
+-- An item's link, else its plain "item:<id>".
+function W.ItemLink(id)
+    local _, link = GetItemInfo(id)
+    return link or ("item:" .. tostring(id))
+end
+
+-- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
+function W.InsertLink(link)
+    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+        return ChatFrameUtil.InsertLink(link)
+    end
 end
 
 -- The client's minimal check box (MinimalCheckboxTemplate, as the add-on list's force-load box).
@@ -1119,6 +1194,47 @@ function W.EditArea(parent)
     return bg
 end
 
+-- A window f at its saved place st ({ point, x, y } on UIParent), else at the place ... (SetPoint's
+-- arguments).
+function W.PlaceWindow(f, st, ...)
+    f:ClearAllPoints()
+    if st and type(st.point) == "string" and tonumber(st.x) and tonumber(st.y) then
+        f:SetPoint(st.point, UIParent, st.point, tonumber(st.x), tonumber(st.y))
+    else
+        f:SetPoint(...)
+    end
+end
+
+-- Keeps the place of the window f (after a drag) in st, in whole pixels.
+function W.SaveWindowPlace(f, st)
+    if not st then return end
+    local point, _, _, x, y = f:GetPoint(1)
+    if type(point) == "string" and tonumber(x) and tonumber(y) then
+        st.point, st.x, st.y = point, math.floor(x + 0.5), math.floor(y + 0.5)
+    end
+end
+
+-- A StaticPopup d over the main window: the dialog strata is below the main window's, so it is lifted
+-- (not hidden behind).
+function W.LiftDialog(d)
+    if d and d.SetFrameStrata then
+        d:SetFrameStrata("FULLSCREEN_DIALOG")
+        if d.Raise then d:Raise() end
+    end
+end
+
+-- W.EditArea for a text to copy: typing puts text() back and marks it.
+function W.ReadOnlyArea(parent, text)
+    local area = W.EditArea(parent)
+    area.box:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            self:SetText(text())
+            self:HighlightText()
+        end
+    end)
+    return area
+end
+
 -- Wrapped read-only text that scrolls; the thin bar sits 4 px right of the scroll frame.
 function W.ScrollText(parent)
     local sf = CreateFrame("ScrollFrame", nil, parent)
@@ -1247,18 +1363,18 @@ end
 
 -- The lists that fill their page down to its lower end (Scaffold:List with fill, the dungeon page's
 -- detail): owner the page part they sit on (its Bottom() and offsetY), top where the list starts on
--- it, at least min rows of rowH, below the room kept under it. W.FitLists fits them all again after
+-- it, at least min rows of rowH. W.FitLists fits them all again after
 -- the main window's height changed (T.PAGE_H, D-68); weak, a list gone with its page drops out.
 local fillers = setmetatable({}, { __mode = "k" })
 
 local function fitRows(e)
     local o = e.owner
-    local room = T.PAGE_H + (o.offsetY or 0) + e.top - o:Bottom() - e.below
+    local room = T.PAGE_H + (o.offsetY or 0) + e.top - o:Bottom()
     return math.max(e.min, math.floor(room / e.rowH))
 end
 
-function W.FillTo(list, owner, top, minRows, rowH, below)
-    local e = { owner = owner, top = top or 0, min = minRows or 1, rowH = rowH, below = below or 0 }
+function W.FillTo(list, owner, top, minRows, rowH)
+    local e = { owner = owner, top = top or 0, min = minRows or 1, rowH = rowH }
     fillers[list] = e
     list:Fit(fitRows(e))
     return list
@@ -1283,9 +1399,9 @@ function W.Card(parent, width, height)
     c.line2 = W.Text(c, T.FONT.hint, width - 2 * C.PAD, true)
     c.line2:SetPoint("TOPLEFT", C.PAD, -C.LINE2_Y)
     -- the actions as quiet links (D-67); a click anywhere on the card runs the first one
-    c.button = W.Link(c, "", C.BUTTON_W)
+    c.button = W.Link(c, "")
     c.button:SetPoint("BOTTOMLEFT", C.PAD - T.TAB_PAD, C.BUTTON_Y)
-    c.button2 = W.Link(c, "", C.BUTTON2_W)
+    c.button2 = W.Link(c, "")
     c.button2:SetPoint("LEFT", c.button, "RIGHT", T.TAB_GAP, 0)
     c.button2:Hide()
     c.glow = c:CreateTexture(nil, "ARTWORK")
@@ -1922,16 +2038,24 @@ end
 
 -- A list row's cells (font strings, T.FONT.text unless a column says font) at the columns' places;
 -- a column with cell = false gets none. row[key] is the cell.
-function W.Cells(row, cols, font)
+function W.Cells(row, cols)
     for _, c in ipairs(cols) do
         if c.cell ~= false then
-            local fs = W.Text(row, c.font or font or T.FONT.text, c.cw or c[3])
+            local fs = W.Text(row, c.font or T.FONT.text, c.cw or c[3])
             fs:SetPoint("LEFT", c.cx or c[2], 0)
             if c.justify then fs:SetJustifyH(c.justify) end
             row[c[1]] = fs
         end
     end
     return row
+end
+
+-- The sortable heads of Scaffold:Columns (opts.sort): the sorted column's head white, the others gold.
+function W.MarkSortHead(heads, sortKey)
+    for key, b in pairs(heads) do
+        local on = key == sortKey
+        if b.label then b.label:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3]) end
+    end
 end
 
 function Scaffold:Columns(cols, opts)
@@ -1976,7 +2100,7 @@ function Scaffold:List(rows, rowH, build, fill, opts)
     -- it follows the main window's height (W.FillTo, D-68)
     local fillTo = opts.fill and not self.pageW
     local list = W.List(self, rows, rowH, build, fill, opts)
-    if fillTo then W.FillTo(list, self, top, rows, rowH, opts.below) end
+    if fillTo then W.FillTo(list, self, top, rows, rowH) end
     list:SetPoint("TOPLEFT", opts.x or 0, top)
     if opts.width then list:SetWidth(opts.width) else list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top) end
     list.layoutRole = "list"

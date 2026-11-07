@@ -60,6 +60,13 @@ assert(next(AmisiaDB.mats) == nil, "no recording, nothing learned")
 STUB.instance = { name = "Geschmolzener Kern", type = "raid", id = 409 }
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 local s = assert(NS.Active(), "recording in the raid")
+local function dropCount(s)
+    local n = 0
+    for _, d in pairs(s.drops or {}) do
+        for _, c in pairs(d.items or {}) do n = n + c end
+    end
+    return n
+end
 STUB.now = STUB.now + 10
 loot("Fraktur", core)
 local e = AmisiaDB.mats[61001]
@@ -91,7 +98,7 @@ STUB.now = STUB.now + 10
 local ore = tradeGood(61006, "Elementiumerz", 2)
 open("Creature-0-1-1-1-11583-1", { ore })
 assert(AmisiaDB.mats[61006] and NS.MAT_ORDER[3] == 61006, "seen dropping")
-assert(NS.DropCount(s) == 0, "a material is no drop")
+assert(dropCount(s) == 0, "a material is no drop")
 -- a container opened from the bags is no drop
 open("Item-0-1-1-1", { tradeGood(61007, "Truhenstoff", 2) })
 assert(not AmisiaDB.mats[61007], "a bag container teaches nothing")

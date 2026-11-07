@@ -57,13 +57,13 @@ assert(choice.isChoice and choice.arrow and choice.label:GetText() == "Alpha" an
 choice:Cycle(); assert(picked == "b" and choice.current == "b" and choice.label:GetText() == "Beta")
 choice:Cycle(); assert(picked == "a", "around to the first")
 -- a text tab (D-67): the chip's interface, gold word, the chosen one white over a gold line
-local tab = W.Tab(root, "Ziele", 200, function() end)
+local tab = W.Tab(root, "Ziele", function() end)
 assert(tab.isTab and tab.template == nil and tab:GetWidth() < 200, "as wide as its word, not a red button")
 tab:SetOn(true); assert(tab.line:IsShown() and tab.label.textColor[1] == 1, "chosen: white over the line")
 tab:SetOn(false); assert(not tab.line:IsShown() and tab.label.textColor[3] < 0.5, "not chosen: gold")
 tab.dim = true; tab:UpdateChip(); assert(tab.label.textColor[1] == 0.45, "dim: grey"); tab.dim = nil
 W.FitChip(tab, 300); assert(tab:GetWidth() < 300, "no minimum for a tab")
-local filter = W.TabCheck(root, "Nur Gruppe", nil, function() end)
+local filter = W.TabCheck(root, "Nur Gruppe", function() end)
 filter:SetOn(true); assert(filter.box:GetChecked() and not filter.line:IsShown(), "a filter ticks its box")
 filter:SetOn(false); assert(not filter.box:GetChecked())
 local t2 = W.Tab(root, "Hier")
@@ -331,8 +331,6 @@ local x0 = rb.points.TOPLEFT.x
 ra.label:SetText("Würfe (12)")
 assert(ra:GetWidth() >= ra.label:GetStringWidth() and rb.points.TOPLEFT.x == ra:GetWidth() + NS.Theme.TAB_GAP and rb.points.TOPLEFT.x > x0,
     "the next tab moved: " .. tostring(rb.points.TOPLEFT.x))
-local wide = W.Tab(root, "Ohne Verzauberung 0", 40)
-assert(wide:GetWidth() >= wide.label:GetStringWidth(), "a chip's old width is no cap for a tab")
 
 -- a page's own hover scripts keep the tab's white word (D-67)
 local own = W.Link(root, "Warum?")

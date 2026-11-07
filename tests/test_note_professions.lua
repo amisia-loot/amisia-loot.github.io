@@ -57,7 +57,7 @@ AmisiaDB.crafters = { v = 1, src = {}, c = {
 Cr.Changed()
 
 NS.ShowPage("members")
-local f = assert(NS.MembersPageFrame())
+local f = assert(NS.PageFrame("members"))
 local function row(name)
     for _, e in ipairs(f.list.items) do if e.name == name then return e end end
 end

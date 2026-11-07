@@ -88,7 +88,7 @@ local function create(parent)
     local B = W.Page(parent)
     page = B
     B:Bands({ "row", "row", { "line", lines = 2 } })
-    B.back = W.Link(B, L["< Alle Raids"], nil, function()
+    B.back = W.Link(B, L["< Alle Raids"], function()
         view = "start"
         ns.Refresh()
     end)
@@ -113,7 +113,7 @@ local function create(parent)
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -132, headerTop)
-    B.way = W.Link(B, L["Wegpunkt"], 120, function()
+    B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     -- the bosses' fold (F-144) left of the waypoint; the header ends before both
@@ -190,8 +190,6 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-
-function ns.RaidJournalPageFrame() return page end
 
 -- Opens the page Raids with that raid chosen (the search, a click on its entrance on the world
 -- map through ns.ShowDungeon). While the world map shows, the window stays under it (F-011).

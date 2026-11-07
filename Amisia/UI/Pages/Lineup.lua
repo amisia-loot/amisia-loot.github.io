@@ -53,8 +53,6 @@ local selName
 local calList             -- the guild events of the calendar view (ns.Cal.Events()), nil while read
 local calPick             -- the id (else the index) of the event chosen in the calendar view
 
-function ns.LineupPageFrame() return page end
-
 local function curNight() return night or ns.LineupTonight() end
 
 -- The lower-case name of entry i of the shown night, or nil.
@@ -155,8 +153,6 @@ local function nightLabel(key, n)
     if key == ns.LineupTonight() then return L["Heute, %s (%d)"]:format(day, count) end
     return ("%s (%d)"):format(day, count)
 end
-
-local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 
 ---------------------------------------------------------------------------
 -- Clicks: choose, swap, move; the right-click menu
@@ -376,9 +372,9 @@ local function fillGroups(f, n, counts)
     for _, g in ipairs(counts.noHealer) do noHeal[g] = true end
     local sel = selIndex()
     for g, box in ipairs(f.groups) do
-        show(box, g <= G)
+        box:SetShown(g <= G)
         box.count:SetText(("%d/5"):format(#members[g]))
-        for _, edge in ipairs(box.alarm) do show(edge, noHeal[g] == true) end
+        for _, edge in ipairs(box.alarm) do edge:SetShown(noHeal[g] == true) end
         for s, b in ipairs(box.slots) do
             local i = members[g][s]
             local e = i and n.list[i]
@@ -387,13 +383,13 @@ local function fillGroups(f, n, counts)
                 local p = f.people[e.n:lower()]
                 b.role:SetText(roleText(e))
                 b.name:SetText(classColored(e.n, e.c, p ~= nil and not p.online, e.x))
-                show(b.lock, e.k == true)
+                b.lock:SetShown(e.k == true)
             else
                 b.role:SetText("")
                 b.name:SetText(GREY .. L["frei##Platz"] .. "|r")
                 b.lock:Hide()
             end
-            show(b.sel, i ~= nil and i == sel)
+            b.sel:SetShown(i ~= nil and i == sel)
         end
     end
 end
@@ -412,7 +408,7 @@ local function fillSide(row, it)
     row.r:SetText(roleText(e))
     row.name:SetText(classColored(e.n, e.c, p ~= nil and not p.online, e.x) .. (e.k and (GREY .. L[" (fest)"] .. "|r") or ""))
     row.info:SetText(it.info or "")
-    show(row.sel, selName ~= nil and it.i == selIndex())
+    row.sel:SetShown(selName ~= nil and it.i == selIndex())
 end
 
 -- the heads of the two lists take a chosen name: "Nicht eingeteilt" and "Ersatz"
@@ -444,7 +440,7 @@ local function buildMatch(row)
     row.chips = {}
     for c = 1, MAX_CHIPS do
         -- a decision of the row as a quiet link (D-67): "Bestätigen" or the right name
-        local chip = W.Link(row, "", 60, function(self)
+        local chip = W.Link(row, "", function(self)
             local it = self:GetParent().item
             if it and self.pick then
                 say(ns.LineupConfirm(curNight(), it.i, self.pick ~= true and self.pick or nil))
@@ -585,7 +581,7 @@ local function fillInv(row, it)
     row.act:SetText("")
     local can = not page.invBlocked and r.tries < ns.LineupInv.MAX_TRIES and (r.st == "P" or r.st == "D" or r.st == "N"
         or r.st == "G" or (r.st == "U" and not r.unclear)) and (e.x == nil or (e.x == "g" and ns.Get("lineup.guests")))
-    show(row.chip, can)
+    row.chip:SetShown(can)
 end
 
 ---------------------------------------------------------------------------
@@ -659,7 +655,7 @@ local function fillCal(row, ev)
     row.kind:SetText(word and L[word] or "")
     local own = ev.own and STATUS[ev.own]
     row.own:SetText(own and L["du: %s"]:format(own) or "")
-    show(row.sel, (ev.id or ev.index) == calPick)
+    row.sel:SetShown((ev.id or ev.index) == calPick)
 end
 
 -- Reads the shown night's event again while the page is open: after a change in the calendar (at
@@ -723,12 +719,12 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             night, selName = v, nil
             ns.Refresh()
         end)
-        f.pasteBtn = W.Link(f, L["Einfügen"], 90, function()
+        f.pasteBtn = W.Link(f, L["Einfügen"], function()
             view = view == "paste" and "match" or "paste"
             ns.Refresh()
             if view == "paste" then f.paste.box:SetFocus() else f.paste.box:ClearFocus() end
         end)
-        f.calBtn = W.Link(f, L["Aus Kalender"], 80, function()
+        f.calBtn = W.Link(f, L["Aus Kalender"], function()
             if view == "calendar" then
                 view = "match"
                 ns.Refresh()
@@ -736,27 +732,27 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
                 ns.LineupShowCalendar()
             end
         end)
-        W.FitChip(f.calBtn, 80)
+        W.FitChip(f.calBtn)
         W.Tooltip(f.calBtn, L["Aus Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
-        f.auto = W.Link(f, L["Automatisch einteilen"], 160, function()
+        f.auto = W.Link(f, L["Automatisch einteilen"], function()
             local placed, over = ns.LineupAutoAssign(curNight())
             selName, view = nil, "planner"
             local n = ns.LineupNight(curNight(), false)
             ns.msg(L["Eingeteilt: %d in %d Gruppen, %d auf Ersatz (überzählig)."]:format(placed, n and ns.LineupGroups(n) or 0, over))
             ns.Refresh()
         end)
-        W.FitChip(f.pasteBtn, 90)
-        W.FitChip(f.auto, 160)
+        W.FitChip(f.pasteBtn)
+        W.FitChip(f.auto)
         W.Tooltip(f.auto, L["Automatisch einteilen"], L["Tanks ab Gruppe 1, ein Heiler pro Gruppe, Nahkampf zusammen mit einem Schamanen oder Krieger, Fernkampf zusammen. Festgehaltene bleiben stehen."])
         f:Place(1, { f.night }, { f.calBtn, f.pasteBtn, f.auto })
         f.counts = f:Line(2)
         f.calLine = f:Line(3)
         f.views = {
-            match = W.Tab(f, L["Abgleich"], 70, function() view, selName = "match", nil ns.Refresh() end),
-            planner = W.Tab(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
-            invite = W.Tab(f, L["Einladen"], 70, function() view, selName = "invite", nil ns.Refresh() end),
+            match = W.Tab(f, L["Abgleich"], function() view, selName = "match", nil ns.Refresh() end),
+            planner = W.Tab(f, L["Planer"], function() view = "planner" ns.Refresh() end),
+            invite = W.Tab(f, L["Einladen"], function() view, selName = "invite", nil ns.Refresh() end),
         }
-        for _, c in pairs(f.views) do W.FitChip(c, 70) end
+        for _, c in pairs(f.views) do W.FitChip(c) end
         -- the instance of the "ID" marks (raid IDs, F-099); shown when any ID is known
         f.raidIdPick = W.Picker(f, 150, function(v)
             if ns.RaidIDsChoose then ns.RaidIDsChoose(v ~= 0 and v or nil) end
@@ -764,11 +760,11 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             ns.Refresh()
         end)
         W.Tooltip(f.raidIdPick, L["Raid-ID"], L["Für diese Instanz trägt jeder Name ein \"ID\": grün frei, rot gesperrt, grau unbekannt. Der Tooltip nennt Bosse, Reset und die freien Twinks."])
-        f.rematch = W.Link(f, L["Neu abgleichen"], 120, function()
+        f.rematch = W.Link(f, L["Neu abgleichen"], function()
             local line = ns.LineupRematch(curNight())
             if line then ns.msg(line) end
         end)
-        f.bench = W.Link(f, L["Ersatz auf die Ersatzbank"], 180, function()
+        f.bench = W.Link(f, L["Ersatz auf die Ersatzbank"], function()
             ns.msg(ns.LineupBenchMessage(ns.LineupBench(curNight())))
         end)
         W.Tooltip(f.bench, L["Ersatz auf die Ersatzbank"], L["Trägt \"Ersatz\" und Überzählige, die online sind, mit der Notiz \"Aufstellung\" auf die Ersatzbank des Abends ein (wie /amisia ersatz)."])
@@ -779,7 +775,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             ns.msg(count and L["%d Namen von %s übernommen."]:format(count, nightLabel(from):match("^(.-) %(") or from) or why)
         end)
         f.take = W.Button(f, L["Übernehmen"], 110, function() apply(f) end)
-        f.cancel = W.Link(f, L["Abbrechen"], 100, function()
+        f.cancel = W.Link(f, L["Abbrechen"], function()
             view = "match"
             f.paste.box:ClearFocus()
             ns.Refresh()
@@ -791,13 +787,13 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             ns.Refresh()
         end)
         W.Tooltip(f.inviteAll, L["Alle einladen"], L["Lädt alle eingeteilten Spieler ein, die online und noch nicht in der Gruppe sind (Gäste nur mit der Einstellung). Allein oder in einer Gruppe erst vier, nach dem ersten Beitritt wird es ein Raid. Nur außerhalb des Kampfes, als Leiter oder Assistent."])
-        f.again = W.Link(f, L["Nochmal einladen"], 140, function()
+        f.again = W.Link(f, L["Nochmal einladen"], function()
             local count, why = ns.LineupInvite(curNight(), "again")
             if count then ns.msg(L["Nochmal eingeladen: %d Spieler."]:format(count)) else say(nil, why) end
             ns.Refresh()
         end)
         W.Tooltip(f.again, L["Nochmal einladen"], L["Lädt alle mit \"abgelehnt\", \"keine Antwort\" oder \"schon in Gruppe\" noch einmal ein, einmal pro Klick; höchstens 3 Einladungen pro Name und Abend."])
-        f.sortBtn = W.Link(f, L["Gruppen sortieren"], 130, function()
+        f.sortBtn = W.Link(f, L["Gruppen sortieren"], function()
             local ok, why = ns.LineupSort(curNight())
             if not ok then say(nil, why) end
             ns.Refresh()
@@ -889,9 +885,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.views.planner:SetOn(shown == "planner")
         f.views.invite:SetOn(shown == "invite")
         f.pasteBtn:SetText(paste and L["Zurück"] or L["Einfügen"])
-        W.FitChip(f.pasteBtn, 90)
+        W.FitChip(f.pasteBtn)
         f.calBtn:SetText(calendar and L["Zurück"] or L["Aus Kalender"])
-        W.FitChip(f.calBtn, 80)
+        W.FitChip(f.calBtn)
         f.calBtn:SetEnabled(calendar or ns.Cal.CanReadInvites())
         f.auto:SetEnabled(has and not other)
         -- the counts
@@ -945,18 +941,18 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.copy:SetText(L["Von %s übernehmen"]:format(nightLabel(prev):match("^(.-) %(") or prev))
             W.FitChip(f.copy, 120)
         end
-        show(f.copy, prev ~= nil)
-        show(f.rematch, has and shown == "match")
-        show(f.bench, has and shown == "planner")
+        f.copy:SetShown(prev ~= nil)
+        f.rematch:SetShown(has and shown == "match")
+        f.bench:SetShown(has and shown == "planner")
         f.bench:SetEnabled(key == ns.LineupTonight() and (c.bench > 0))
-        show(f.take, paste)
-        show(f.cancel, other)
-        show(f.calTake, calendar)
+        f.take:SetShown(paste)
+        f.cancel:SetShown(other)
+        f.calTake:SetShown(calendar)
         -- invite and sort: the reason on the button when they may not
         local isInv, isPlan = has and shown == "invite", has and shown == "planner"
-        show(f.inviteAll, isInv)
-        show(f.again, isInv)
-        show(f.sortBtn, isPlan)
+        f.inviteAll:SetShown(isInv)
+        f.again:SetShown(isInv)
+        f.sortBtn:SetShown(isPlan)
         if isInv then
             local running = ns.LineupInviteRunning()
             f.inviteAll:SetText(blocked or (running and L["Lädt ein ..."]) or L["Alle einladen (%d)"]:format(ic.todo))
@@ -964,17 +960,17 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.again:SetText(L["Nochmal einladen (%d)"]:format(ic.again))
             f.again:SetEnabled(not blocked and not running and ic.again > 0)
             W.FitChip(f.inviteAll, 100)
-            W.FitChip(f.again, 100)
+            W.FitChip(f.again)
         elseif isPlan then
             local paused = ns.LineupSortPaused(key)
             f.sortBtn:SetText(ns.LineupSorting() and L["Sortiert ..."] or paused and L["Sortieren fortsetzen"] or L["Gruppen sortieren"])
             f.sortBtn:SetEnabled(not sblock and not ns.LineupSorting() and key == ns.LineupTonight())
-            W.FitChip(f.sortBtn, 100)
+            W.FitChip(f.sortBtn)
         end
         f.calTake:SetEnabled(calendar and calChosen() ~= nil)
-        show(f.views.match, not other)
-        show(f.views.planner, not other)
-        show(f.views.invite, not other)
+        f.views.match:SetShown(not other)
+        f.views.planner:SetShown(not other)
+        f.views.invite:SetShown(not other)
         -- the raid ID marks: the instances somebody known holds an ID for
         local insts = ns.RaidIDsInstances and ns.RaidIDsInstances() or {}
         local idValues = { { value = 0, text = L["Raid-ID: aus"] } }
@@ -982,14 +978,14 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.raidIdPick:SetValues(idValues)
         f.raidId = (#insts > 0 and not f.raidIdOff) and ns.RaidIDsChosen() or nil
         f.raidIdPick:SetValue(f.raidId or 0)
-        show(f.raidIdPick, shown == "match" and has and #insts > 0)
+        f.raidIdPick:SetShown(shown == "match" and has and #insts > 0)
         f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick },
             { f.copy, f.rematch, f.sortBtn, f.bench, f.cancel, f.take, f.calTake, f.again, f.inviteAll }, { shown = true })
-        show(f.paste, paste)
-        show(f.match, shown == "match" and has)
-        show(f.plan, shown == "planner" and has)
-        show(f.inv, shown == "invite" and has)
-        show(f.cal, calendar and calList ~= nil and #calList > 0)
+        f.paste:SetShown(paste)
+        f.match:SetShown(shown == "match" and has)
+        f.plan:SetShown(shown == "planner" and has)
+        f.inv:SetShown(shown == "invite" and has)
+        f.cal:SetShown(calendar and calList ~= nil and #calList > 0)
         if calendar then
             if not calList then
                 f.empty:Set(L["Kalender wird gelesen ..."], L["Amisia fragt den Spielkalender nach den Gildenereignissen."])
@@ -1002,7 +998,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.empty:Set(L["Noch keine Anmeldungen"], prev and L["\"Einfügen\" nimmt die Anmeldeliste, oder übernimm die Aufstellung einer früheren Nacht."]
                 or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID."])
         end
-        show(f.empty, (calendar and (not calList or #calList == 0)) or (not has and not other))
+        f.empty:SetShown((calendar and (not calList or #calList == 0)) or (not has and not other))
         if paste then
             f.hint:SetText(L["Discord-Text eines Anmelde-Bots (Überschriften wie \"Tanks\", \"Heiler\", \"Ersatz\", \"Abgemeldet\"), Zeilen wie \"Anna Tank\" oder \"Bob, Nahkampf\", oder der Block #AMISIA-RAID. Dann \"Übernehmen\"."])
         elseif calendar then

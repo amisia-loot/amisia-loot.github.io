@@ -190,7 +190,6 @@ do
         end)
     end
 end
-Fb.NoteError = noteError
 
 -- The last noted Amisia error as plain text, or nil.
 function Fb.LastError()
@@ -448,7 +447,6 @@ local function tick()
     end
     if waiting then scheduleTick() end
 end
-Fb.Tick = tick
 
 scheduleTick = function()
     if tickPending then return end
@@ -566,7 +564,6 @@ local function oursOffline(text)
     local base = name:match("^(.-)%-[^%-]+$")
     return name:lower() == lastSendTo:lower() or (base ~= nil and base:lower() == lastSendTo:lower())
 end
-Fb.OursOffline = oursOffline
 
 ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     if not oursOffline(text) then return end

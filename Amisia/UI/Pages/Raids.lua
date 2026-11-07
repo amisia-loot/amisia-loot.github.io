@@ -7,9 +7,6 @@ local ROWS, ROW_H = 8, 22
 
 ns.RaidSelection = ns.RaidSelection or {}
 local detailId
-local page
--- For tests: the page frame once built.
-function ns.RaidsPageFrame() return page end
 
 local function ordered()
     local src, out = ns.Sessions(), {}
@@ -85,7 +82,7 @@ local function updateHead(f)
     W.FitChip(f.del, 100)
     f.del:SetEnabled(n > 0)
     f.all:SetText(allOn and L["Keine wählen"] or L["Alle wählen"])
-    W.FitChip(f.all, 100)
+    W.FitChip(f.all)
     f.all:SetEnabled(#all > 0)
 end
 
@@ -119,7 +116,6 @@ local COLS = { { "date", 30, 80, L["Datum"] }, { "zone", 112, 200, "Raid" }, { "
 ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], sub = L["Alle aufgezeichneten Raids, zum Ansehen, Ankreuzen und Löschen."], icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 34, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
-        page = f
         -- the head row: how many raids, select all and delete at the right
         f:Bands({ "row" })
         f.pageText = W.Text(f, T.FONT.hint)
@@ -128,11 +124,9 @@ ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], sub = L["Alle aufgeze
                 ns.msg(L["Zuerst Raids in der Liste ankreuzen."])
                 return
             end
-            -- the dialog strata is below the main window's; lift it so it is not hidden behind
-            local d = StaticPopup_Show("AMISIA_DELETE")
-            if d and d.SetFrameStrata then d:SetFrameStrata("FULLSCREEN_DIALOG"); if d.Raise then d:Raise() end end
+            W.LiftDialog(StaticPopup_Show("AMISIA_DELETE"))
         end)
-        f.all = W.Link(f, L["Alle wählen"], 100, function()
+        f.all = W.Link(f, L["Alle wählen"], function()
             local all, allOn = ordered(), true
             for _, s in ipairs(all) do if not ns.RaidSelection[s.id] then allOn = false end end
             wipe(ns.RaidSelection)
@@ -140,7 +134,7 @@ ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], sub = L["Alle aufgeze
             ns.Refresh()
         end)
         W.FitChip(f.del, 100)
-        W.FitChip(f.all, 100)
+        W.FitChip(f.all)
         -- the tooltip also on the disabled button: it says why it is grey
         if f.del.SetMotionScriptsWhileDisabled then f.del:SetMotionScriptsWhileDisabled(true) end
         W.Tooltip(f.del, L["Löschen##Knopf"], L["Löscht die angekreuzten Raids aus Amisia, nach einer Rückfrage. Zuerst Raids in der Liste ankreuzen."])

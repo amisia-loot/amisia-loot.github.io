@@ -28,7 +28,7 @@ NS.BisBump()
 AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "quests"
 NS.ShowDungeon("deadmines")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 local row
 for _, r in ipairs(B.detail.rows) do if r.item and r.item.qid == 500 then row = r end end
 assert(plain(row.way:GetText()) == "Path 1/3", plain(row.way:GetText()))

@@ -61,7 +61,7 @@ end
 -- 2. the world map opens over the main window, which stays open
 ---------------------------------------------------------------------------
 NS.Dispatch("karte")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 assert(AmisiaFrame:IsShown(), "the window shows the map page")
 WorldMapFrame:Hide()
 assert(NS.MapShowOnWorldMap({ map = 1411, x = 0.5, y = 0.5 }))
@@ -87,7 +87,7 @@ do
     NS.ShowGear("here")
     AmisiaDB.settings.bis.place = key
     NS.Refresh()
-    local Hh = NS.GearPageFrame().here
+    local Hh = NS.PageFrame("gear").here
     local row
     for _, r in ipairs(Hh.list.rows) do
         if r:IsShown() and r.item and r.item.id == 209 then row = r end

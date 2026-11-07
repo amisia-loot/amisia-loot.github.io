@@ -37,22 +37,7 @@ local function hm(t) return date("%H:%M", t or 0) end
 -- "05.10." (English "Oct 5") from "2026-10-05".
 local shortDate = ns.SoftResShortDate
 
-local function byId(id)
-    for _, s in ipairs(ns.Sessions()) do
-        if s.id == id then return s end
-    end
-    return nil
-end
-
--- The raids newest first, the running recording in front.
-local function ordered()
-    local src, out, act = ns.Sessions(), {}, ns.Active()
-    if act then out[1] = act end
-    for i = #src, 1, -1 do
-        if src[i] ~= act then out[#out + 1] = src[i] end
-    end
-    return out
-end
+local byId, ordered = W.RaidById, W.RaidsNewestFirst
 
 -- Tonight's bench before the raid, without creating it.
 local function tonightBench()
@@ -107,13 +92,7 @@ local function lengthText(k)
     return nil
 end
 
-local function lift(d)
-    -- the dialog strata is below the main window's; lift it so it is not hidden behind
-    if d and d.SetFrameStrata then
-        d:SetFrameStrata("FULLSCREEN_DIALOG")
-        if d.Raise then d:Raise() end
-    end
-end
+local lift = W.LiftDialog
 
 local function countsText(s)
     if s == "next" then
@@ -256,12 +235,12 @@ local function buildLog(f)
         addAt = (not free) and A.times and A.times[v] or nil
     end)
     A.pick:SetPoint("LEFT", 0, 0)
-    A.kill = W.Tab(A, "Kill", 50, function()
+    A.kill = W.Tab(A, "Kill", function()
         addOk = true
         ns.Refresh()
     end)
     A.kill:SetPoint("LEFT", A.pick, "RIGHT", 6, 0)
-    A.wipe = W.Tab(A, "Wipe", 50, function()
+    A.wipe = W.Tab(A, "Wipe", function()
         addOk = false
         ns.Refresh()
     end)
@@ -295,7 +274,7 @@ local function buildLog(f)
         ns.Refresh()
     end)
     A.ok:SetPoint("LEFT", A.wipe, "RIGHT", 10, 0)
-    A.cancel = W.Link(A, L["Abbrechen"], 90, function()
+    A.cancel = W.Link(A, L["Abbrechen"], function()
         adding, addName, addAt, addFor = false, nil, nil, nil
         A.pick:SetValue(nil)
         ns.Refresh()
@@ -556,7 +535,7 @@ local function buildBench(f)
     -- the group outside the instance, with a button that enters them all, under the list
     B.outside = W.Text(B, T.FONT.text, 478)
     B.outside:SetPoint("TOPLEFT", B.list, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -10)
-    B.all = W.Link(B, L["Alle eintragen"], 100, function()
+    B.all = W.Link(B, L["Alle eintragen"], function()
         local s = chosen()
         if not officer() or type(s) ~= "table" then return end
         local n = 0
@@ -613,27 +592,20 @@ local function buildDiscord(f)
     local top = D:Bands({ "row" })
     D.chips = {}
     for i = 1, MAX_PARTS do
-        local c = W.Tab(D, L["Teil %d"]:format(i), 60, function()
+        local c = W.Tab(D, L["Teil %d"]:format(i), function()
             part = i
             discordText = nil
             ns.Refresh()
         end)
-        W.FitChip(c, 60)
+        W.FitChip(c)
         c:Hide()
         D.chips[i] = c
     end
     D:Place(1, D.chips)
     D:Footer({ "hint" })
-    D.area = W.EditArea(D)
+    D.area = W.ReadOnlyArea(D, function() return discordText or "" end)
     D.area:SetPoint("TOPLEFT", 0, top)
     D.area:SetPoint("BOTTOMRIGHT", 0, D:Bottom())
-    -- read-only like the export box: typing puts the text back and marks it
-    D.area.box:SetScript("OnTextChanged", function(self, userInput)
-        if userInput then
-            self:SetText(discordText or "")
-            self:HighlightText()
-        end
-    end)
     -- the text is kept while the box has the focus (a live raid changes it every minute and would
     -- take the selection away); leaving the box brings it up to date
     D.area.box:SetScript("OnEditFocusLost", function()
@@ -687,8 +659,6 @@ local function setView(v)
     ns.Refresh()
 end
 
-function ns.RaidLogPageFrame() return page end
-
 -- Opens the page with a view ("verlauf", "bench", "rolls", "discord") on a raid (nil: the default).
 function ns.ShowRaidLog(v, sessionId)
     view = VIEWS[tostring(v or ""):lower()] or view
@@ -715,7 +685,7 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], sub = L["Bosse, Beute 
             discordText = nil
             ns.Refresh()
         end)
-        f.addBoss = W.Link(f, L["Boss eintragen"], 110, function()
+        f.addBoss = W.Link(f, L["Boss eintragen"], function()
             if not officer() then return end
             local s = chosen()
             if type(s) ~= "table" then
@@ -727,14 +697,14 @@ ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], sub = L["Bosse, Beute 
             if f.log then f.log.add.pick:SetValue(nil) end
             ns.Refresh()
         end)
-        W.FitChip(f.addBoss, 110)
+        W.FitChip(f.addBoss)
         f:Place(1, { f.raid }, { f.addBoss })
         f.counts = f:Line(2)
         f.views = {}
-        f.views.verlauf = W.Tab(f, L["Verlauf"], 70, function() setView("verlauf") end)
-        f.views.bench = W.Tab(f, L["Ersatzbank"], 110, function() setView("bench") end)
-        f.views.rolls = W.Tab(f, L["Würfe"], 90, function() setView("rolls") end)
-        f.views.discord = W.Tab(f, "Discord", 70, function() setView("discord") end)
+        f.views.verlauf = W.Tab(f, L["Verlauf"], function() setView("verlauf") end)
+        f.views.bench = W.Tab(f, L["Ersatzbank"], function() setView("bench") end)
+        f.views.rolls = W.Tab(f, L["Würfe"], function() setView("rolls") end)
+        f.views.discord = W.Tab(f, "Discord", function() setView("discord") end)
         W.Tooltip(f.views.verlauf, L["Verlauf"], L["Der Ablauf des Raids mit Zeit: Bosse, Kills, Wipes und ihre Dauer."])
         W.Tooltip(f.views.bench, L["Ersatzbank"], L["Wer auf der Ersatzbank steht, seit wann und wie; die Zahl sind die Spieler."])
         W.Tooltip(f.views.rolls, L["Würfe"], L["Die Würfe im Beutefenster des Spiels je Item, mit allen Entscheidungen; die Zahl sind die Items."])

@@ -99,7 +99,7 @@ end
 
 -- the raid check without the buff list: the view Buffs & Verbrauch is gone, Ausrüstung shows
 NS.ShowRaidCheck("buffs")
-local rc = NS.RaidCheckPageFrame()
+local rc = NS.PageFrame("raidcheck")
 if rc then
     assert(not rc.views.buffs:IsShown() and rc.gearView:IsShown() and not rc.buffView:IsShown(), "the gear view instead")
 end

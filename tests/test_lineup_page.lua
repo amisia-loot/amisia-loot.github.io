@@ -29,7 +29,7 @@ assert(NS.CurrentPage() ~= "lineup", "a raider is sent elsewhere")
 NS.Set("ui.view", "officer")
 NS.Dispatch("aufstellung")
 assert(NS.CurrentPage() == "lineup")
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 assert(f and f.empty:IsShown() and has(f.empty.title:GetText() or "", "Noch keine Anmeldungen"), "the empty state")
 assert(not f.auto:IsEnabled(), "nothing to assign yet")
 

@@ -40,8 +40,6 @@ local chosenTerm          -- the chosen date of that day (its index in the day's
 local asked               -- the dates were asked for once (ns.SignupLoadTerms)
 local reader
 
-function ns.CalendarPageFrame() return page end
-
 ---------------------------------------------------------------------------
 -- Dates and months
 ---------------------------------------------------------------------------
@@ -323,12 +321,12 @@ local function build(parent)
     W.Tooltip(f.next, L["Nächster Monat"])
     f.title = W.Text(f, T.FONT.big, C.TITLE_W)
     f.title:SetJustifyH("CENTER")
-    f.today = W.Link(f, L["Heute"], C.TODAY_W, function()
+    f.today = W.Link(f, L["Heute"], function()
         local t = date("*t")
         showMonth(t.year, t.month)
         choose(ns.NightOf and ns.NightOf(time()) or key(time()), nil)
     end)
-    W.FitChip(f.today, C.TODAY_W)
+    W.FitChip(f.today)
     f:Place(1, { f.prev, f.title, f.next }, { f.today })
 
     -- the grid: the weekday bar, then 6 rows of 7 days
@@ -378,11 +376,11 @@ local function build(parent)
         local t = currentTerm()
         if t and ns.ShowSignup then ns.ShowSignup(t.night) end
     end)
-    f.lineup = W.Link(f, L["Zur Aufstellung"], C.BUTTON_W, function()
+    f.lineup = W.Link(f, L["Zur Aufstellung"], function()
         local t = currentTerm()
         if t and ns.ShowLineup then ns.ShowLineup("match", t.night) end
     end)
-    W.FitChip(f.lineup, C.BUTTON_W)
+    W.FitChip(f.lineup)
     W.Tooltip(f.lineup, L["Zur Aufstellung"], L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."])
     f:BottomRow({ { f.status, fill = true } }, { f.lineup, f.signup }, { shown = true })
     f.hint:SetText(L["Klick auf einen Tag: seine Termine und wer kommt. Der Punkt zeigt deinen Stand."])
@@ -429,8 +427,6 @@ local function fillRight(f, terms, raids)
             b:Show()
         elseif r and r.raid then
             b.dot:Hide()
-            local n = 0
-            for _ in pairs(type(r.raid.members) == "table" and r.raid.members or {}) do n = n + 1 end
             fit(b.text, GREY .. L["Aufgezeichnet: %s"]:format(r.raid.zone or "?") .. "|r", C.RIGHT_W - 2 * C.INNER - C.DOT - 8)
             b.sel:Hide()
             b:Show()

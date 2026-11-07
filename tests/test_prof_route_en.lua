@@ -5,7 +5,7 @@ local function has(text, part) return type(text) == "string" and text:find(part,
 dofile(ADDON_DIR .. "/../tests/route_fixture.lua")
 AmisiaDB.settings.professions = { mode = "route", routeVendor = true }
 NS.ShowProfessions("tailoring")
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 assert(f.routeView:IsShown(), "the route view")
 assert(f.modeRecipes.label:GetText() == "Recipes" and f.modeRoute.label:GetText() == "Route")
 assert(f.vendorT.label:GetText() == "trainer only" and f.vendorV.label:GetText() == "vendors too")

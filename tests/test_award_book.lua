@@ -34,7 +34,7 @@ assert(a3 and a3.id and a3.to == "player" and a3.kind == "-" and s.awards[3] == 
 assert(s.members.Fraktur, "a group member is noted as present")
 assert(#NS.FindAward(s, a1.id).id == 12 and select(2, NS.FindAward(s, a1.id)) == 1 and not select(3, NS.FindAward(s, a1.id)))
 assert(NS.FindAward(s, "nope") == nil)
-assert(NS.AwardCount(s) == 3, "tombstones are not counted")
+assert(#s.awards == 3, "tombstones are not counted")
 
 ---------------------------------------------------------------------------
 -- an old raid: no s.last, no invented attendance
@@ -121,7 +121,7 @@ ok, why = NS.DeleteAward(s, a2.id)
 assert(ok == nil and why == "Vergabe nicht mehr vorhanden.", "a tombstone cannot be deleted again")
 ok, why = NS.EditAward(s, a2.id, { kind = "MS" })
 assert(ok == nil and why == "Vergabe nicht mehr vorhanden.", "a tombstone cannot be edited")
-assert(NS.AwardCount(s) == 2)
+assert(#s.awards == 2)
 -- restore puts it back between a1 (same t) and a3 (later)
 local back = NS.RestoreAward(s, a2.id)
 assert(back == a2 and a2.deleted == nil and #s.gone == 1, "back from the tombstones")

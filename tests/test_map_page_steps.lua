@@ -63,7 +63,7 @@ assert(#NS.DungeonQuestSteps() == 1 and NS.DungeonQuestSteps()[1].key == "Q:501"
 -- the boots are a wish (the auction house is no source of the targets)
 assert(NS.WishAdd(803))
 NS.ShowMap("alle")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 local rows = f.list.rows
 local function find(key)
     for i, e in ipairs(f.list.items) do if e.key == key then return e, rows[i] end end

@@ -52,7 +52,7 @@ assert(#sent("AN") == 0 and #sent("AQ") == 0, "nothing signed up yet, a raider d
 -- the card on the overview: the next three, each "noch offen"
 NS.ShowPage("overview")
 local function card()
-    for _, c in ipairs(NS.OverviewPageFrame().cards) do
+    for _, c in ipairs(NS.PageFrame("overview").cards) do
         if c:IsShown() and c.title:GetText() == "Raid-Anmeldung" then return c end
     end
 end
@@ -215,7 +215,7 @@ assert(said("angemeldet als Tank. Gesendet.") or said("angemeldet als Tank. Kein
 assert(has(F.alts:GetText(), "Vulo Pala: ") and has(F.alts:GetText(), "angemeldet (H)"), F.alts:GetText())
 -- the lineup page shows the source, the role and the note mark
 NS.ShowLineup("match", night)
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 local function rowOf(name)
     for _, r in ipairs(f.mlist.rows) do
         if r:IsShown() and r.item and r.item.e.n == name then return r end

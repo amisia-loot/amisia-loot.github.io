@@ -28,7 +28,7 @@ local Cal = NS.Cal
 -- no calendar: the button is grey, the line says why
 _G.C_Calendar = nil
 NS.ShowLineup("match")
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 assert(not f.calBtn:IsEnabled() and has(f.calLine:GetText(), "Kalender nicht verfügbar."), tostring(f.calLine:GetText()))
 
 -- the calendar: a meeting tomorrow, a raid the day after, an announcement, a player's event, one

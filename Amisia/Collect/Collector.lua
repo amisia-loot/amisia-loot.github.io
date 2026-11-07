@@ -34,9 +34,6 @@
 -- member cannot overwrite what a client saw itself.
 local ADDON, ns = ...
 
-local Co = {}
-ns.Collect = Co
-
 -- caps; a table so a test can lower one
 local L = {
     q = 2500, s = 500, w = 2000,     -- records per kind
@@ -703,7 +700,6 @@ local function here()
     end
     return tostring(map)
 end
-Co.Here = here
 
 local function itemOf(link)
     link = ns.Plain(link)
@@ -1031,7 +1027,6 @@ local function get(kind, id)
     return t and ns.CollectParse(kind, t[tonumber(id)]) or nil
 end
 function ns.CollectQuest(id) return get("q", id) end
-function ns.CollectWorld(npc) return get("w", npc) end
 
 -- Where an observed quest starts, from this client's own observation only (fields only heard
 -- from the guild left out): the giver's name, the point "uiMapID:x:y"; for places a waypoint may go to.

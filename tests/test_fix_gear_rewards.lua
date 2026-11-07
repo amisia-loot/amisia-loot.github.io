@@ -37,7 +37,7 @@ NS.BisBump()
 AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "bosses"
 NS.ShowDungeon("deadmines")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 B.plan:Click()
 local V = B.pathView
 local row

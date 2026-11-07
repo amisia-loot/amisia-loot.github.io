@@ -260,7 +260,7 @@ WorldMapFrame:Hide()
 -- the page: the banner, the XP column and line, the mark button, Ctrl-click
 ---------------------------------------------------------------------------
 NS.ShowPage("dungeons")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 assert(B.grid:IsShown() and not B.art:IsShown(), "the cards first, the image in the detail view")
 B.grid:CardOf("thanes"):Click()
 assert(B.chosen == "thanes" and B.art:IsShown() and B.detail:IsShown())

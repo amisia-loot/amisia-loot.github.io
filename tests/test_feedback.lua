@@ -85,7 +85,7 @@ assert(C(KIM, "NS.Feedback.Out()[1].state") == "done", "after the login")
 assert(inbox(3))
 
 -- 5. three a day at most (the page says it in the chat)
-C(KIM, [[NS.ShowFeedback(); local f = NS.FeedbackPageFrame().write
+C(KIM, [[NS.ShowFeedback(); local f = NS.PageFrame("feedback").write
     f.edit.box:SetText("Noch eine"); f.send:GetScript("OnClick")(f.send)]])
 assert(said(KIM, "Höchstens 3 Meldungen am Tag."), "the fourth is refused")
 assert(C(KIM, "#AmisiaDB.feedback.out") == 3 and inbox(3))
@@ -106,15 +106,15 @@ C(KIM, "NS.Feedback.Out()[1].next = 0")
 BUS.tick(20)
 assert(outState(KIM) == "lost", "a lost one is not tried again by itself")
 C(KIM, [[NS.ShowFeedback(); NS.Refresh()]])
-assert(C(KIM, [[local r = NS.FeedbackPageFrame().write.out.rows[1]; return r.retry:IsShown() and r.state:GetText():find("nicht zugestellt", 1, true) ~= nil]]), "Nochmal on the row")
+assert(C(KIM, [[local r = NS.PageFrame("feedback").write.out.rows[1]; return r.retry:IsShown() and r.state:GetText():find("nicht zugestellt", 1, true) ~= nil]]), "Nochmal on the row")
 BUS.drop(nil)
-C(KIM, [[local r = NS.FeedbackPageFrame().write.out.rows[1]; r.retry:GetScript("OnClick")(r.retry)]])
+C(KIM, [[local r = NS.PageFrame("feedback").write.out.rows[1]; r.retry:GetScript("OnClick")(r.retry)]])
 BUS.tick(3)
 assert(outState(KIM) == "done" and inbox(4), "Nochmal delivered it")
 
 -- 7. the other faction: the hint, "Abschicken" off, nothing sent
-C(ANN, [[NS.ShowFeedback(); local f = NS.FeedbackPageFrame().write; f.edit.box:SetText("Hallo")]])
-assert(C(ANN, [[local f = NS.FeedbackPageFrame().write; return f.hint:GetText():find("Auf diesem Server kann Amisia den Autor nicht erreichen.", 1, true) ~= nil
+C(ANN, [[NS.ShowFeedback(); local f = NS.PageFrame("feedback").write; f.edit.box:SetText("Hallo")]])
+assert(C(ANN, [[local f = NS.PageFrame("feedback").write; return f.hint:GetText():find("Auf diesem Server kann Amisia den Autor nicht erreichen.", 1, true) ~= nil
     and not f.send:IsEnabled()]]), "the hint and Abschicken off")
 assert(C(ANN, [[return NS.Feedback.Submit("W", "Hallo")]]) == nil and BUS.count({ sender = ANN }) == 0)
 
@@ -194,36 +194,36 @@ assert(C(VULO, [[return NS.Feedback.Inbox("all")[1].meta.err]]) == "Amisia/Core/
 
 -- 10. the page: Bug/Wunsch, counter, Abschicken off without text, what goes along
 C(KIM, [[NS.ShowPage("members"); NS.ShowFeedback()]])
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; f.edit.box:SetText(""); NS.Refresh()
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; f.edit.box:SetText(""); NS.Refresh()
     return f.kinds.B.label:GetText() == "Bug" and f.kinds.W.label:GetText() == "Wunsch" and f.count:GetText() == "0/500" and not f.send:IsEnabled()]]), "the empty field")
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; return f.meta:GetText()]]):find("Seite: Mitglieder", 1, true), "the page before")
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; return f.meta:GetText()]]):find("WoW Forever · deDE", 1, true))
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; return f.errBox:IsShown() and f.errText:GetText()]]):find("Bad.lua", 1, true))
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; f.edit.box:SetText("Hallöchen"); f.edit.box:GetScript("OnTextChanged")(f.edit.box, true)
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; return f.meta:GetText()]]):find("Seite: Mitglieder", 1, true), "the page before")
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; return f.meta:GetText()]]):find("WoW Forever · deDE", 1, true))
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; return f.errBox:IsShown() and f.errText:GetText()]]):find("Bad.lua", 1, true))
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; f.edit.box:SetText("Hallöchen"); f.edit.box:GetScript("OnTextChanged")(f.edit.box, true)
     return f.count:GetText() == "9/500" and f.send:IsEnabled()]]), "counted in characters")
-C(KIM, [[local f = NS.FeedbackPageFrame().write; f.kinds.W:GetScript("OnClick")(f.kinds.W)]])
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; return f.kinds.W.on and not f.errBox:IsShown()]]), "a wish has no error box")
-assert(C(KIM, [[local f = NS.FeedbackPageFrame().write; return f.out.rows[1]:IsShown() and f.out.rows[1].state:GetText()]]):find("angekommen", 1, true))
+C(KIM, [[local f = NS.PageFrame("feedback").write; f.kinds.W:GetScript("OnClick")(f.kinds.W)]])
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; return f.kinds.W.on and not f.errBox:IsShown()]]), "a wish has no error box")
+assert(C(KIM, [[local f = NS.PageFrame("feedback").write; return f.out.rows[1]:IsShown() and f.out.rows[1].state:GetText()]]):find("angekommen", 1, true))
 
 -- 11. the author's page: the inbox, a click, Erledigt, the filter; kept over a /reload
 C(VULO, [[NS.ShowFeedback()]])
-assert(C(VULO, [[local f = NS.FeedbackPageFrame(); return f.views.inbox.on and f.inbox:IsShown() and not f.write:IsShown()]]))
+assert(C(VULO, [[local f = NS.PageFrame("feedback"); return f.views.inbox.on and f.inbox:IsShown() and not f.write:IsShown()]]))
 assert(C(VULO, [[return NS.Panel("feedback").label]]):find("Feedback (", 1, true), "the open count at the page's name")
 local open = C(VULO, "NS.Feedback.OpenCount()")
-assert(C(VULO, [[local f = NS.FeedbackPageFrame(); local r = f.inbox.list.rows[1]
+assert(C(VULO, [[local f = NS.PageFrame("feedback"); local r = f.inbox.list.rows[1]
     r:GetScript("OnClick")(r, "LeftButton")
     return f.inbox.detail.body.fs:GetText() .. f.inbox.detail.title:GetText()]]):find("Mit Fehler", 1, true), "the whole text in the detail")
 local doneId = C(VULO, [[return NS.Feedback.Inbox("open")[1].id]])
-C(VULO, [[local f = NS.FeedbackPageFrame(); f.inbox.done:GetScript("OnClick")(f.inbox.done)]])
+C(VULO, [[local f = NS.PageFrame("feedback"); f.inbox.done:GetScript("OnClick")(f.inbox.done)]])
 assert(C(VULO, "NS.Feedback.OpenCount()") == open - 1)
 assert(C(VULO, ([[for _, e in ipairs(NS.Feedback.Inbox("open")) do if e.id == %q then return false end end return true]]):format(doneId)), "not under Offen")
-assert(C(VULO, [[local f = NS.FeedbackPageFrame(); for _, r in ipairs(f.inbox.list.rows) do if r:IsShown() and r.item.done then return false end end return true]]))
+assert(C(VULO, [[local f = NS.PageFrame("feedback"); for _, r in ipairs(f.inbox.list.rows) do if r:IsShown() and r.item.done then return false end end return true]]))
 BUS.reload(VULO)
 C(VULO, [[STUB.faction = "Horde"]])
 assert(C(VULO, ([[for _, e in ipairs(NS.Feedback.Inbox("done")) do if e.id == %q then return true end end return false]]):format(doneId)), "Erledigt kept")
 assert(C(VULO, "NS.Feedback.OpenCount()") == open - 1)
 -- the right click: block the sender
-C(VULO, [[NS.ShowFeedback(); local f = NS.FeedbackPageFrame(); local r = f.inbox.list.rows[1]
+C(VULO, [[NS.ShowFeedback(); local f = NS.PageFrame("feedback"); local r = f.inbox.list.rows[1]
     r:GetScript("OnClick")(r, "RightButton"); local b = AmisiaMenu.buttons[3]; b:GetScript("OnClick")(b)]])
 assert(C(VULO, [[return NS.Feedback.IsBlocked(NS.Feedback.Inbox("open")[1].from)]]) == true, "blocked from the menu")
 

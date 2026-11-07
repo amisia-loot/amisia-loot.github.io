@@ -303,7 +303,7 @@ end
 
 -- The quiet link "Alle aufklappen"/"Alle zuklappen" of page B (in the bosses' header line).
 local function foldLink(B)
-    local link = W.Link(B, FOLD_TEXT.open, nil, function() foldAll(B) end)
+    local link = W.Link(B, FOLD_TEXT.open, function() foldAll(B) end)
     W.Tooltip(link, L["Bosse auf- und zuklappen"], L["Zeigt die Beute aller Bosse oder klappt jeden Boss zu einer Zeile mit seinen Beutesymbolen zu."])
     return link
 end
@@ -456,6 +456,12 @@ local function fillDetailRow(r, e)
     end
 end
 
+-- Where a quest's XP comes from (Dungeons.QuestXP's how and seen), for the tooltip and the detail.
+local function xpSource(how, seen)
+    return how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
+        or how == "other" and DTEXT.xpOther:format(seen) or DTEXT.xpSeen:format(seen or 0)
+end
+
 -- The tooltip of a quest row: title, level, state, where it starts, the chain, a hint on the click.
 local function questTip(self)
     local e = self.item
@@ -471,8 +477,7 @@ local function questTip(self)
     if where ~= "" then GameTooltip:AddLine(L["Start: %s"]:format(where), 0.85, 0.85, 0.85, true) end
     local value, how, seen = ns.Dungeons.QuestXP(q)
     if value then
-        local from = how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
-            or how == "other" and DTEXT.xpOther:format(seen) or DTEXT.xpSeen:format(seen or 0)
+        local from = xpSource(how, seen)
         GameTooltip:AddDoubleLine(DTEXT.xpLine:format(ns.Dungeons.XPText(value, how, seen)), from, 0.85, 0.85, 0.85, 0.6, 0.6, 0.6)
     else
         GameTooltip:AddLine(DTEXT.xpNone, 0.6, 0.6, 0.6)
@@ -962,7 +967,7 @@ local function buildPath(B)
     local V = W.Page(B, { view = true, top = -(T.LAYOUT.ROW_H + T.LAYOUT.GAP) })
     V.owner = B
     V:Bands({ "row" })
-    V.back = W.Link(V, PTEXT.back, nil, function() B:OpenPath(nil) end)
+    V.back = W.Link(V, PTEXT.back, function() B:OpenPath(nil) end)
     W.FitChip(V.back)
     V.map = W.Button(V, PTEXT.map, nil, function()
         if V.plan then
@@ -1289,11 +1294,8 @@ local function fillRunSum(V, plan)
     end
 end
 
--- The dungeon's image in the journal: name, level and fit, how many quests and how many are open,
--- the run's sum.
-local function fillJournalArt(V, e, rows, plan)
-    local a = V.art
-    if not e then a:Hide() return end
+-- The image a of the dungeon e shown, with its name (the journal's and the detail's).
+local function showArt(a, e)
     a:Show()
     local Dn = ns.Dungeons
     local fid, kind = Dn.Art(e.key)
@@ -1305,6 +1307,15 @@ local function fillJournalArt(V, e, rows, plan)
         a.tex:Hide()
     end
     a.title:SetText(e.name)
+end
+
+-- The dungeon's image in the journal: name, level and fit, how many quests and how many are open,
+-- the run's sum.
+local function fillJournalArt(V, e, rows, plan)
+    local a = V.art
+    if not e then a:Hide() return end
+    showArt(a, e)
+    local Dn = ns.Dungeons
     local all, open = 0, 0
     for _, row in ipairs(rows) do
         if row.q then
@@ -1389,8 +1400,7 @@ local function fillPath(B, path)
     y = fillRewards(V, q, y)
     local value, how, seen = Dn.QuestXP(q)
     if value then
-        local from = how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
-            or how == "other" and DTEXT.xpOther:format(seen) or DTEXT.xpSeen:format(seen or 0)
+        local from = xpSource(how, seen)
         V.xp:SetText(LABEL .. DTEXT.xpLine:format("|r" .. Dn.XPText(value, how, seen)) .. " " .. GREY .. "· " .. from .. "|r")
     else
         V.xp:SetText(GREY .. DTEXT.xpNone .. "|r")
@@ -1812,7 +1822,7 @@ local function create(parent)
     local B = W.Page(parent)
     page = B
     B:Bands({ "row", "row", { "line", lines = 2 } })
-    B.back = W.Link(B, L["< Alle Dungeons"], nil, function()
+    B.back = W.Link(B, L["< Alle Dungeons"], function()
         view = "start"
         ns.Refresh()
     end)
@@ -1822,16 +1832,16 @@ local function create(parent)
     B.why = B:Line(3)
     -- the order of the list: by level, by value (the ranking), the chain
     B.sorts = {}
-    local sortDefs = { { "level", "Level", 50, L["Nach Level"], L["Die Dungeons nach ihrem Levelbereich."] },
-        { "value", L["Wert"], 46, L["Rangliste"], L["Die lohnendsten Dungeons für dich zuerst: offene Quests plus zwei Läufe."] },
-        { "chain", L["Kette"], 50, L["Kette"], L["Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf."] } }
+    local sortDefs = { { "level", "Level", L["Nach Level"], L["Die Dungeons nach ihrem Levelbereich."] },
+        { "value", L["Wert"], L["Rangliste"], L["Die lohnendsten Dungeons für dich zuerst: offene Quests plus zwei Läufe."] },
+        { "chain", L["Kette"], L["Kette"], L["Der beste Dungeon, seine Upgrades gedanklich angelegt (je Boss das größte, alle Quest-Upgrades), dann der beste danach, bis zu fünf."] } }
     local sortRow = {}
     for i, d in ipairs(sortDefs) do
-        local chip = W.Tab(B, d[2], d[3], function()
+        local chip = W.Tab(B, d[2], function()
             state().dsort = d[1]
             ns.Refresh()
         end)
-        W.Tooltip(chip, d[4], d[5])
+        W.Tooltip(chip, d[3], d[4])
         B.sorts[d[1]] = chip
         sortRow[i] = chip
     end
@@ -1854,7 +1864,7 @@ local function create(parent)
     local artTop = -(G.ROW_H + G.GAP)
     B.art = buildArt(B, artTop)
     local headerTop = artTop - ART_H - G.GAP
-    B.mark = W.Link(B.art, DTEXT.mark, 110, function()
+    B.mark = W.Link(B.art, DTEXT.mark, function()
         if not B.chosen then return end
         if ns.DungeonMarked() == B.chosen then
             ns.DungeonClearMarks()
@@ -1884,10 +1894,10 @@ local function create(parent)
     B.header:SetPoint("TOPRIGHT", -244, headerTop)
     -- the lower part: the bosses or the quests of the chosen dungeon
     B.parts = {}
-    B.parts.bosses = W.Tab(B, L["Bosse"], 54, function() state().dpart = "bosses"; ns.Refresh() end)
-    B.parts.quests = W.Tab(B, "Quests", 54, function() state().dpart = "quests"; ns.Refresh() end)
+    B.parts.bosses = W.Tab(B, L["Bosse"], function() state().dpart = "bosses"; ns.Refresh() end)
+    B.parts.quests = W.Tab(B, "Quests", function() state().dpart = "quests"; ns.Refresh() end)
     W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Stufe, Weg (erledigte Schritte der Vorquests) und Start. Klick auf eine Quest zeigt ihren Questweg: jeden Schritt mit Annehmen, Abgeben, Voraussetzung und Karte."])
-    B.way = W.Link(B, L["Wegpunkt"], 120, function()
+    B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     -- the bosses' fold (F-144): "Alle aufklappen"/"Alle zuklappen", only in the part Bosse
@@ -1935,17 +1945,8 @@ local function fillArt(B, e)
         a:Hide()
         return
     end
-    a:Show()
+    showArt(a, e)
     local Dn = ns.Dungeons
-    local fid, kind = Dn.Art(e.key)
-    if fid then
-        a.tex:SetTexture(fid)
-        a.tex:SetTexCoord(Dn.ArtCoords(kind, ART_W, ART_H))
-        a.tex:Show()
-    else
-        a.tex:Hide()
-    end
-    a.title:SetText(e.name)
     local range = Dn.RangeText(e)
     a.info:SetText(range ~= "" and DTEXT.level:format(range, Dn.FitText(e)) or Dn.FitText(e))
     a:SetModelNpc(Dn.ModelNpc(e))
@@ -2102,8 +2103,6 @@ end
 -- The page
 ---------------------------------------------------------------------------
 
-function ns.DungeonsPageFrame() return page end
-
 -- Opens the page Dungeons with that dungeon or raid chosen (a click on its entrance on the world
 -- map). While the world map shows, the window stays under it (F-011). Returns true when the window
 -- shows.
@@ -2142,8 +2141,8 @@ function ns.ShowDungeonQuest(key, qid)
 end
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
-ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
-    buildGrid = buildGrid, ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
+ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,
+    buildGrid = buildGrid, ART_H = ART_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
     -- the bosses' fold (F-144)
     showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
 

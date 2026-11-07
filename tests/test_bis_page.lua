@@ -52,7 +52,7 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 ---------------------------------------------------------------------------
 NS.ShowPage("gear")
 assert(NS.CurrentPage() == "gear")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(f and f:IsShown(), "the page frame is reachable")
 assert(plain(f.spec.label:GetText()) == "Waffen/Furor (geraten)", f.spec.label:GetText())
 assert(f.open:IsShown(), "the button for the level-range table")
@@ -441,9 +441,6 @@ assert(has(entries, "Ausrüstung|Ausrüstungstabelle"), "the page, then the tabl
 NS.ShowPage("overview")
 for _, e in ipairs(STUB.quickMenu()) do if e[1] == "Ausrüstung" then e[2]() end end
 assert(NS.CurrentPage() == "gear", "the quick menu opens the page")
--- the planner's upgrades come from the targets
-local list = NS.GearMyUpgrades()
-assert(list[1] and list[1].id == 304 and math.floor(list[1].gain + 0.5) == 100 and list[1].slot.key == "CHEST", "the best upgrade first")
 
 ---------------------------------------------------------------------------
 -- Latin-1 only, in the file and in what the page showed

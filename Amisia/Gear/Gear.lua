@@ -8,6 +8,30 @@ local L = ns.L
 local Gear = {}
 ns.Gear = Gear
 
+-- A flat copy of a table (the options, before one field changes).
+function Gear.Copy(t)
+    local out = {}
+    for k, v in pairs(t) do out[k] = v end
+    return out
+end
+
+-- Hooks OnShow of the client's group loot (roll) frames with fn, each frame once, now and again on
+-- PLAYER_ENTERING_WORLD (the frames may come later).
+function Gear.HookRollFrames(fn)
+    local hooked = setmetatable({}, { __mode = "k" })
+    local function hook()
+        for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
+            local f = _G["GroupLootFrame" .. i]
+            if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
+                hooked[f] = true
+                f:HookScript("OnShow", fn)
+            end
+        end
+    end
+    hook()
+    ns.OnEvent("PLAYER_ENTERING_WORLD", hook)
+end
+
 -- Level ranges of the overview. An item counts for a range when its level is at most the upper end,
 -- and it is scored with the weights of the bracket that upper end lies in.
 Gear.COLUMNS = {
@@ -128,6 +152,20 @@ do
 end
 Gear.STAT = STAT
 
+-- The stat key of a stat name of the data (the client's key without ITEM_MOD_ and _SHORT, or the
+-- long spelling), or nil.
+function Gear.StatKey(k) return STAT["ITEM_MOD_" .. k] or STAT[k] end
+
+-- Adds a stat text of the data ("STRENGTH=5;RESISTANCE0_NAME=40") to s and returns s.
+local function parseStats(s, text)
+    for k, v in text:gmatch("([%w_]+)=([^;]+)") do
+        local key = STAT["ITEM_MOD_" .. k] or STAT[k]
+        v = tonumber(v)
+        if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
+    end
+    return s
+end
+
 -- Rating needed for 1 % (1 skill point for defence) at level 60. Forever's ratings come from TBC:
 -- Lionheart Helm's Classic 2 % crit became 28 crit rating. Below 60 a point of rating is worth
 -- more, on TBC's curve (level - 8) / 52; Forever ends at 60, so higher levels count as 60.
@@ -192,12 +230,7 @@ function Gear.ScannedStats(id)
     local d = ns.Data("GEAR")
     local text = d and d.ST and d.ST[id]
     if not text then return nil end
-    local s = {}
-    for k, v in text:gmatch("([%w_]+)=([^;]+)") do
-        local key = STAT["ITEM_MOD_" .. k] or STAT[k]
-        v = tonumber(v)
-        if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
-    end
+    local s = parseStats({}, text)
     local row = Gear.Item(id)
     if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
     return s
@@ -523,6 +556,22 @@ end
 -- Whether a class dual wields at a level (spec is kept for the callers; no Forever spec adds it).
 function Gear.CanDualWield(class, level, spec)
     return DUAL_WIELD[class] ~= nil and level >= DUAL_WIELD[class]
+end
+
+-- The client's skill lines without the headers (C_SkillInfo's tables, SkillLineAttributes), or nil
+-- when the client offers no skill list.
+function Gear.SkillLines()
+    local info = _G.C_SkillInfo
+    if not (type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function") then
+        return nil
+    end
+    local out = {}
+    local ok, n = pcall(info.GetNumSkillLines)
+    for i = 1, (ok and tonumber(ns.Plain(n))) or 0 do
+        local ok2, s = pcall(info.GetSkillLineInfo, i)
+        if ok2 and type(s) == "table" and not s.isHeader then out[#out + 1] = s end
+    end
+    return out
 end
 
 -- Professions by the client's skill names (German and English, lower case; Juwelenschleifen is an
@@ -890,12 +939,7 @@ function Gear.ComputedStats(id)
     if computedFor ~= B then computedCache, computedFor = {}, B end
     local s = computedCache[id]
     if s then return s end
-    s = { SC = true }
-    for k, v in tostring(text):gmatch("([%w_]+)=([^;]+)") do
-        local key = STAT["ITEM_MOD_" .. k] or STAT[k]
-        v = tonumber(v)
-        if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
-    end
+    s = parseStats({ SC = true }, tostring(text))
     local row = s.DPS and Gear.Item(id)
     if row and (row[9] or 0) > 0 then s.SPEED = row[9] end
     computedCache[id] = s
@@ -1031,12 +1075,7 @@ function Gear.SuffixStats(id)
     local out
     local function addText(suffix, text)
         if type(text) ~= "string" then return end
-        local s = {}
-        for k, v in text:gmatch("([%w_]+)=([^;]+)") do
-            local key = STAT["ITEM_MOD_" .. k] or STAT[k]
-            v = tonumber(v)
-            if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
-        end
+        local s = parseStats({}, text)
         if next(s) then
             local row = Gear.Item(id)
             if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
@@ -1105,6 +1144,16 @@ local CAP_ROW = { HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", BACK = "B
     ["2H"] = "MAINHAND", ["1H"] = "MAINHAND", MH = "MAINHAND", OHW = "OFFHAND", SHIELD = "OFFHAND", HELD = "OFFHAND",
     RANGED = "RANGED" }
 Gear.CAP_ROW = CAP_ROW
+-- slot group -> the weapon place of an item of that group by itself (Gear.Score's kind)
+Gear.GROUP_PLACE = { ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" }
+
+-- The weapon place (Gear.Score's kind) of an item of slot group group worn in slotKey, or nil.
+function Gear.WeaponPlace(slotKey, group)
+    if slotKey == "MAINHAND" then return group == "2H" and "2H" or "MH" end
+    if slotKey == "OFFHAND" then return (group == "1H" or group == "OHW") and "OH" or nil end
+    if slotKey == "RANGED" then return "RANGED" end
+    return nil
+end
 
 local function hasHit(s) return s.HIT or s.MHIT or s.SHIT end
 
@@ -1184,12 +1233,7 @@ local function setBonuses(sid, set)
         if thr then
             local s = false
             if type(text) == "string" and text ~= "" then
-                s = {}
-                for k, v in text:gmatch("([%w_]+)=([^;]+)") do
-                    local key = STAT["ITEM_MOD_" .. k] or STAT[k]
-                    v = tonumber(v)
-                    if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
-                end
+                s = parseStats({}, text)
             end
             b[thr] = s
         end
@@ -1613,13 +1657,9 @@ function Gear.ScoreLink(link, slotKey, opts)
     if not s then return nil end
     local w = Gear.Weights(opts.class, opts.spec, opts.kind, opts.level)
     if not w then return nil end
-    local kind
     local loc = select(4, C_Item.GetItemInfoInstant(link))
     local group = loc and GROUP[(loc:gsub("^INVTYPE_", ""))]
-    if slotKey == "MAINHAND" then kind = group == "2H" and "2H" or "MH"
-    elseif slotKey == "OFFHAND" then kind = (group == "1H" or group == "OHW") and "OH" or nil
-    elseif slotKey == "RANGED" then kind = "RANGED" end
-    return Gear.Score(s, w, opts.level, kind, opts.class, opts.cap and opts.cap[slotKey])
+    return Gear.Score(s, w, opts.level, Gear.WeaponPlace(slotKey, group), opts.class, opts.cap and opts.cap[slotKey])
 end
 
 ---------------------------------------------------------------------------

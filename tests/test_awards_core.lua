@@ -14,7 +14,7 @@ assert(txt:find("\nN 32235 4 Cursed Vision of Sargeras\n", 1, true), "awarded it
 assert(NS.RemoveLastAward() == a and #s.awards == 0)
 assert(NS.AddAward("Fraktur", 32235, "MS", "?") and s.awards[1].src == "?")
 assert(NS.AddAward("Fraktur", "32235", "bogus") and s.awards[2].kind == "-" and s.awards[2].item == 32235)
-assert(NS.AwardCount(s) == 2)
+assert(#s.awards == 2)
 -- a name outside the group gets the award but no attendance
 assert(NS.AddAward("Frakturr", 32235, "MS", "?"))
 assert(not s.members.Frakturr, "typo does not invent a raider")

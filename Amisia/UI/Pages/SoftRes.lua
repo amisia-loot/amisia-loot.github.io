@@ -11,8 +11,6 @@ local MAX_CHIPS, CHIP_MAX_W = 3, 100
 local COL_A, COL_A_W, COL_B, COL_B_W, COL_C, COL_C_W = 6, 228, 238, 30, 272, 312
 local COLS = { { "a", COL_A, COL_A_W }, { "b", COL_B, COL_B_W }, { "c", COL_C, COL_C_W } }
 
-local GetItemInfo = C_Item.GetItemInfo
-
 local page
 local view = "items"   -- the chosen view, kept until logout
 
@@ -21,32 +19,7 @@ local view = "items"   -- the chosen view, kept until logout
 ---------------------------------------------------------------------------
 local function plural(n, one, many) return n == 1 and one or many end
 
-local QCOLOR = T.QUALITY_HEX
-local function quality(id)
-    local known = AmisiaDB and AmisiaDB.itemNames and AmisiaDB.itemNames[id]
-    local q = known and known.q
-    if not q or q == 0 then
-        local _, _, iq = GetItemInfo(id)
-        q = iq or q
-    end
-    return q or 0
-end
-
-local function itemText(id)
-    return ("|c%s%s|r"):format(QCOLOR[quality(id)] or "ffffffff", ns.ItemName(id))
-end
-
-local function itemLink(id)
-    local _, link = GetItemInfo(id)
-    return link or ("item:" .. tostring(id))
-end
-
--- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
-local function insertLink(link)
-    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-        return ChatFrameUtil.InsertLink(link)
-    end
-end
+local itemText, itemLink, insertLink = W.ItemText, W.ItemLink, W.InsertLink
 
 local function times(sr, item, name) return ns.SoftResTimes(sr, item, name) end
 
@@ -212,7 +185,6 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-function ns.SoftResPageFrame() return page end
 
 -- Opens the page on one view ("items", "raider", "check").
 function ns.ShowSoftRes(v)
@@ -339,26 +311,26 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], sub = L["Die Rese
         -- remind and post (officers) on the right
         f:Bands({ "row", "line", "row" })
         f.state = W.Text(f, T.FONT.body)
-        f.clear = W.Link(f, L["Löschen##Knopf"], 90, function() ns.ClearSoftRes() end)
+        f.clear = W.Link(f, L["Löschen##Knopf"], function() ns.ClearSoftRes() end)
         f.import = W.Button(f, L["Importieren"], 110, function() ns.ToggleSoftResFrame() end)
         f.take = W.Button(f, L["Liste übernehmen"], 130, function() ns.TakeSoftResOffer() end)
         W.Tooltip(f.take, L["Liste übernehmen"], L["Ersetzt deine Liste durch die neuere, die ein anderer Offizier mit dem Raid geteilt hat."])
-        W.FitChip(f.clear, 90)
+        W.FitChip(f.clear)
         W.FitChip(f.import, 110)
         W.FitChip(f.take, 130)
         f:Place(1, { { f.state, fill = true } }, { f.take, f.import, f.clear }, { shown = true })
         f.check = f:Line(2)
         f.views = {}
-        f.views.items = W.Tab(f, "Items", 60, function() chooseView("items") end)
-        f.views.raider = W.Tab(f, L["Raider##Spalte"], 60, function() chooseView("raider") end)
-        f.views.check = W.Tab(f, L["Abgleich"], 70, function() chooseView("check") end)
-        for _, c in pairs(f.views) do W.FitChip(c, 60) end
-        f.post = W.Link(f, L["Im Raid posten"], 120, function()
+        f.views.items = W.Tab(f, "Items", function() chooseView("items") end)
+        f.views.raider = W.Tab(f, L["Raider##Spalte"], function() chooseView("raider") end)
+        f.views.check = W.Tab(f, L["Abgleich"], function() chooseView("check") end)
+        for _, c in pairs(f.views) do W.FitChip(c) end
+        f.post = W.Link(f, L["Im Raid posten"], function()
             local n, why = ns.PostSoftResSummary()
             if not n and why then ns.msg(why) end
         end)
-        f.remind = W.Link(f, L["Erinnern"], 110, function() ns.ConfirmSoftResReminders() end)
-        W.FitChip(f.post, 120)
+        f.remind = W.Link(f, L["Erinnern"], function() ns.ConfirmSoftResReminders() end)
+        W.FitChip(f.post)
         W.Tooltip(f.remind, L["Erinnern"], L["Flüstert jedem im Raid ohne Reservierung einmal pro Liste, nach einer Rückfrage."])
         W.Tooltip(f.post, L["Im Raid posten"], L["Wie viele reserviert haben und wer noch nicht, in den Schlachtzugschat."])
         f:Place(3, { f.views.items, f.views.raider, f.views.check }, { f.remind, f.post })
@@ -400,7 +372,7 @@ ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], sub = L["Die Rese
             local raid = IsInRaid() and sr ~= nil
             local open = raid and #ns.SoftResReminders(ctx.check) or 0
             f.remind:SetText(L["Erinnern (%d)"]:format(open))
-            W.FitChip(f.remind, 110)
+            W.FitChip(f.remind)
             f.remind:SetEnabled(raid and open > 0)
             f.post:SetEnabled(raid)
             f.remind:Show(); f.post:Show()

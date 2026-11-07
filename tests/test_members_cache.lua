@@ -31,7 +31,7 @@ NS.VersionSeen = function() return seen end
 NS.VersionSeenRev = function() return rev end
 
 NS.ShowPage("members")
-local f = assert(NS.MembersPageFrame())
+local f = assert(NS.PageFrame("members"))
 assert(#f.list.items == 4, #f.list.items)
 local first = f.list.items[1]
 local function row(name)

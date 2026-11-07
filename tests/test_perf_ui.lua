@@ -44,7 +44,7 @@ local build = NS.StatsBuild
 NS.StatsBuild = function(...) builds = builds + 1; return build(...) end
 NS.ShowStats("players")
 STUB.tick(0)
-local f = NS.StatsPageFrame()
+local f = NS.PageFrame("stats")
 local function shown()
     local out = {}
     for _, r in ipairs(f.list.rows) do

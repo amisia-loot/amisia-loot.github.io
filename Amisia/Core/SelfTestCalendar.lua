@@ -65,7 +65,6 @@ local calendarWindow = Cal.WindowShown
 -- The probe: one at a time, its own event frame only while it runs
 ---------------------------------------------------------------------------
 local run
-local watcher
 
 local function onEvent(_, event, ...)
     local P = run
@@ -80,31 +79,16 @@ local function onEvent(_, event, ...)
     if P.waiter then P.waiter(event) end
 end
 
-local function listen(on)
-    if not watcher then
-        watcher = CreateFrame("Frame")
-        watcher:SetScript("OnEvent", onEvent)
-    end
-    for _, list in ipairs({ LIST_EVENTS, OPEN_EVENTS, BLOCK_EVENTS }) do
-        for _, e in ipairs(list) do
-            -- pcall: a client without the event must not stop the probe
-            if on then pcall(watcher.RegisterEvent, watcher, e) else pcall(watcher.UnregisterEvent, watcher, e) end
-        end
-    end
+local LISTEN = {}
+for _, list in ipairs({ LIST_EVENTS, OPEN_EVENTS, BLOCK_EVENTS }) do
+    for _, e in ipairs(list) do LISTEN[#LISTEN + 1] = e end
 end
+local listen = K.listener(onEvent, LISTEN)
 
 local finishProbe
 
 -- f protected: an error ends the probe with a FEHLER line instead of leaving it hanging.
-local function safe(P, f)
-    return function(...)
-        local ok, err = pcall(f, ...)
-        if not ok then
-            add(P.R, "FEHLER", L["Ablauf"], cut(tostring(err)))
-            finishProbe(P)
-        end
-    end
-end
+local safe = K.safeWith(function(P) finishProbe(P) end)
 
 -- Runs action (which returns true when there is something to wait for), then waits for the events
 -- in want ("any": the first of them, else all) for at most CT.WAIT seconds; then nextStep(gotAll,
@@ -445,11 +429,7 @@ function CT.Start()
     for _, path in ipairs(CT.READ) do
         if not fn(path) then lack[#lack + 1] = path end
     end
-    if #lack == 0 then
-        add(R, "OK", L["Lesefunktionen"], L["alle %d vorhanden"]:format(#CT.READ))
-    else
-        add(R, FEHLT, L["Lesefunktionen"], L["%d von %d fehlen: %s"]:format(#lack, #CT.READ, table.concat(lack, ", ")))
-    end
+    K.listLine(R, L["Lesefunktionen"], #CT.READ, lack, L["vorhanden"])
     local have, miss = {}, {}
     for _, name in ipairs(CT.WRITE) do
         if fn("C_Calendar." .. name) then have[#have + 1] = name else miss[#miss + 1] = name end

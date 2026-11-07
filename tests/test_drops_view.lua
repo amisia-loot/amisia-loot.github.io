@@ -165,7 +165,7 @@ NS.DropsPrune()
 NS.Set("ui.expert", true)
 NS.ShowPage("tools")
 assert(NS.CurrentPage() == "tools")
-local tf = NS.ToolsPageFrame()
+local tf = NS.PageFrame("tools")
 local D = tf.drops
 assert(D and D.head and D.state and D.share and D.list and D.web and D.area and D.areaHint, "the parts of the section")
 assert(D.head.inherits.ListHeaderVisualTemplate, "a section header of the client")

@@ -153,7 +153,7 @@ GetProfessions = function() return 1 end
 GetProfessionInfo = function() return "Schneiderei", 136249, book.rank, book.max, 2, 0, 197 end
 AmisiaDB.settings.professions = { mode = "route" }
 NS.ShowProfessions("schneiderei")
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 assert(has(f.routeNote:GetText(), "Höchstwert für deine Stufe: 100"), f.routeNote:GetText())
 book.rank, book.max = 310, 0
 NS.Refresh()

@@ -4,7 +4,7 @@ local function has(text, part) return type(text) == "string" and text:find(part,
 dofile(ADDON_DIR .. "/../tests/map_steps_fixture.lua")
 assert(NS.WishAdd(803))
 NS.ShowMap("alle")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 local realFor = NS.Crafters.ForItem
 NS.Crafters.ForItem = function(id) return id == 2853 and { { name = "Anna", rank = 75 } } or {} end
 local function whyOf(id)

@@ -9,7 +9,7 @@ local lines = {}
 for i = 1, 30 do lines[#lines + 1] = ("Raider%s %d"):format(string.char(96 + (i % 26) + 1) .. string.char(97 + math.floor(i / 26)), 40000 + i) end
 NS.SetSoftRes(table.concat(lines, "\n"))
 NS.ShowPage("softres")
-local f = NS.SoftResPageFrame()
+local f = NS.PageFrame("softres")
 assert(#f.list.items == 30, "30 items: " .. #f.list.items)
 f.list:GetScript("OnMouseWheel")(f.list, -10)
 assert(f.list.offset == 10, "scrolled: " .. f.list.offset)
@@ -34,7 +34,7 @@ for i = 1, 20 do
     NS.AddAwardTo(s, { name = "Vuloo", item = 40000 + i, kind = "OS", src = "Illidan" })
 end
 NS.ShowPage("awards")
-local O = NS.AwardsPageFrame().officer
+local O = NS.PageFrame("awards").officer
 assert(O.raid:GetValue() == s.id and #O.list.items == 20, "the recording's 20 awards")
 O.list:GetScript("OnMouseWheel")(O.list, -6)
 assert(O.list.offset == 6, "scrolled: " .. O.list.offset)
@@ -50,7 +50,7 @@ s.sync = { keeper = "Fraktur", at = time(), rev = 1 }
 old.sync = { keeper = "Fraktur", at = 1700003600, rev = 1 }
 NS.Set("ui.view", "raider")
 NS.Refresh()
-local R = NS.AwardsPageFrame().raider
+local R = NS.PageFrame("awards").raider
 R.allChip:Click()
 local A = R.all
 assert(A:IsShown() and A.raid:GetValue() == s.id and #A.list.items == 20, "the raiders' list of the recording")

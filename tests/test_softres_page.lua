@@ -12,7 +12,7 @@ NS.SetSoftRes(LIST)
 local function has(s, part) return type(s) == "string" and s:find(part, 1, true) ~= nil end
 
 NS.ShowPage("softres")
-local f = NS.SoftResPageFrame()
+local f = NS.PageFrame("softres")
 assert(f, "the page frame is reachable")
 assert(NS.CurrentPage() == "softres")
 

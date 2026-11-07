@@ -13,8 +13,6 @@ local ADDON, ns = ...
 
 local KV_EVERY = 240           -- the keeper repeats its state this often
 local KV_GAP = 10              -- and not more often than this after a change
-local ANSWER_AFTER = 2         -- requests within this go out together
-local ANSWER_RAID = 3          -- this many requesters: one send into the raid
 local MAX_LIST, MAX_COSTS = 60, 200
 local MAX_POINTS, MAX_AMOUNT = 9999999, 999999
 local ZERO = "0000000000000000"
@@ -25,7 +23,7 @@ local CFG = { min = { 0, 100000 }, step = { 1, 10000 }, seal = { 0, 1 }, base = 
 local MODES = { bid = true, fixed = true }
 
 local lastKV                   -- { h, key, at }
-local asks, askTimer = {}, false
+local asks = {}
 local wanted = {}              -- raid key -> the announced state this client asked for
 local stats = { sent = 0, taken = 0, refused = 0, costs = 0 }
 
@@ -126,13 +124,7 @@ local function build(s)
     local seen = {}
     for _, name in ipairs(ns.GroupRoster()) do
         local main = ns.MainOf(name) or name
-        local e = all[main:lower()]
-        if not e then
-            for _, x in pairs(all) do
-                if ns.SameName(x.name, main) then e = x break end
-            end
-        end
-        e = e or { name = main, a = 0, b = 0 }
+        local e = ns.PointsEntryOf(all, main) or { name = main, a = 0, b = 0 }
         if not seen[e.name:lower()] and #out.s < MAX_LIST then
             seen[e.name:lower()] = true
             out.s[#out.s + 1] = { e.name, e.a, e.b }
@@ -223,7 +215,6 @@ local function sendKV()
 end
 
 local function sendList()
-    askTimer = false
     local s, key = running()
     if not key or not (ns.SyncIsKeeper and ns.SyncIsKeeper()) then asks = {} return end
     local t = build(s)
@@ -234,12 +225,10 @@ local function sendList()
     local function send(chan, target, opts)
         if ns.CommSendBlob("KS", key, t, chan, target, opts) then stats.sent = stats.sent + 1 end
     end
-    if #who >= ANSWER_RAID then
-        send("RAID", nil, { ttl = 600, low = true })
-        return
-    end
-    for _, sender in ipairs(who) do send("WHISPER", sender, { ttl = 600, key = "KS:" .. sender, low = true }) end
+    ns.AnswerAskers(who, "KS", send)
 end
+
+local askList = ns.AnswerBatch(sendList)
 
 ns.CommOn("KV", function(sender, f, chan)
     if chan ~= "RAID" or not shareOn() then return end
@@ -267,13 +256,7 @@ ns.CommOn("KQ", function(sender, f, chan)
         local _, key = running()
         if key ~= f[1] or not (ns.SyncIsKeeper and ns.SyncIsKeeper()) then return end
         asks[sender] = true
-        if not askTimer then
-            askTimer = true
-            C_Timer.After(ANSWER_AFTER, function()
-                local okSend, err = pcall(sendList)
-                if not okSend then askTimer = false; report(err) end
-            end)
-        end
+        askList()
     end)
 end)
 

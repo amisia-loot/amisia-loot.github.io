@@ -86,7 +86,7 @@ end)
 check("4 the planner page marks the option", function()
     fixture()
     NS.ShowGear("goals", "MAINHAND")
-    local f = NS.GearPageFrame()
+    local f = NS.PageFrame("gear")
     local found
     for _, b in ipairs(f.goals.opts) do
         local t = b.name and b.name:GetText()

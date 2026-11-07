@@ -270,8 +270,8 @@ local function onCommand(chan, text, sender)
     if not word then return end
     local fn = commands[word:lower()]
     if not fn then return end
-    -- "Name-Realm" on clients that add the realm; Trust.lua loads after this file, hence the guards
-    local who = (ns.TrustName and ns.TrustName(sender)) or (ns.StripOwnRealm and ns.StripOwnRealm(sender))
+    -- "Name-Realm" on clients that add the realm
+    local who = ns.TrustName(sender) or ns.StripOwnRealm(sender)
         or ns.FullName(sender)
     if not who then return end
     -- the own echo: exactly the own full name (as Comm.lua's isSelf), never a first name alone, or a

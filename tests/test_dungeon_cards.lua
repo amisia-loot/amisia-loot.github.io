@@ -35,7 +35,7 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 -- Dungeons: the start view on the first open
 ---------------------------------------------------------------------------
 NS.ShowPage("dungeons")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 local nextE = NS.DungeonNext()
 assert(nextE and nextE.key == "thanes", "the thanes recommended")
 assert(B.grid:IsShown() and B.next:IsShown() and B.sorts.level:IsShown(), "the cards, the recommendation and the order tabs")
@@ -105,8 +105,9 @@ local _, artBottom = Lay.vspan(B.art)
 local headTop = Lay.vspan(B.header)
 assert(headTop == artBottom - G.GAP, "the header right under the image")
 local listTop = Lay.vspan(B.detail)
+local BOSS_ROW_H = 24 -- a row of the boss list (ROW_H in UI/Pages/Dungeons.lua)
 assert(listTop == artTop - NS.DungeonJournalKit.ART_H - G.GAP - T.HEADER_H - G.GAP, "the bosses right under the header: " .. listTop)
-assert(B.detail.rowCount >= math.floor((T.PAGE_H + listTop) / NS.DungeonJournalKit.ROW_H) - 1, "the bosses fill the page: " .. B.detail.rowCount)
+assert(B.detail.rowCount >= math.floor((T.PAGE_H + listTop) / BOSS_ROW_H) - 1, "the bosses fill the page: " .. B.detail.rowCount)
 Lay.column("detail", B.spec, B.art, B.header, B.detail)
 -- leaving the page keeps the view
 NS.ShowPage("overview")
@@ -152,7 +153,7 @@ assert(B.grid.rowCount == before, "back again")
 -- Raids: the same two views with their own cards
 ---------------------------------------------------------------------------
 NS.ShowPage("raidjournal")
-local P = NS.RaidJournalPageFrame()
+local P = NS.PageFrame("raidjournal")
 assert(P.grid:IsShown() and not P.detail:IsShown() and not P.back:IsShown() and not P.art:IsShown(), "the raids' cards first")
 local ony = P.grid:CardOf("onyxia")
 assert(ony and plain(ony.name:GetText()) == "Onyxia's Lair" and plain(ony.line1:GetText()):find("^Raid 40 · "), plain(ony.line1:GetText()))

@@ -237,12 +237,12 @@ assert(has(lastMsg(), "Offiziersansicht"), "officers only: " .. lastMsg())
 assert(not AmisiaGuildWishFrame and NS.ShowGuildWishFrame == nil, "no separate import window")
 assert(NS.CurrentPage() ~= "gear", "no page for raiders either")
 NS.ShowGear("guild")
-local U = NS.GearPageFrame().guild
+local U = NS.PageFrame("gear").guild
 assert(U:IsShown() and not U.area:IsShown() and not U.importBtn:IsShown() and not U.clearBtn:IsShown(),
     "raiders see the list, not the import")
 NS.Reset("ui.view")
 NS.Dispatch("wuensche")
-assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "guild" and NS.GearPageFrame().guild:IsShown(),
+assert(NS.CurrentPage() == "gear" and AmisiaDB.settings.bis.view == "guild" and NS.PageFrame("gear").guild:IsShown(),
     "the command opens the guild view of the gear page")
 assert(U.area:IsShown() and U.importBtn:IsShown() and U.clearBtn:IsShown(), "officers get the import")
 -- a list of the other game is refused with the reason, the stored list stays

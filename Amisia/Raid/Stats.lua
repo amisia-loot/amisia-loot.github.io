@@ -81,7 +81,7 @@ function ns.StatsBuild(opts)
         end
         if not p then
             p = { key = key, name = ns.AltMain(name) or name, chars = {}, items = 0, ms = 0, os = 0, sr = 0, raids = 0, total = 0,
-                  late = 0, bench = 0, bosses = 0, streak = 0, weeks = {}, seen = {}, active = false }
+                  late = 0, bench = 0, bosses = 0, streak = 0, weeks = {}, active = false }
             for i = 1, WEEKS do p.weeks[i] = 0 end
             players[#players + 1] = p
         end
@@ -229,7 +229,7 @@ function ns.StatsBuild(opts)
 
     local shown, everyone = {}, {}
     for _, p in ipairs(players) do
-        p.run, p.seen = nil, nil
+        p.run = nil
         p.rate = p.total > 0 and p.raids / p.total or 0
         p.perRaid = p.raids > 0 and p.items / p.raids or 0
         p.role = ns.StatsRole(p.class)

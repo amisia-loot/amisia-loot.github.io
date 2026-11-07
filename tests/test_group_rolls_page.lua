@@ -23,7 +23,7 @@ local blue = STUB.item(30000, "Blaues Ding", 3)
 -- the view without rolls
 NS.ShowRaidLog("würfe")
 assert(NS.CurrentPage() == "raidlog", "the page opens")
-local f = NS.RaidLogPageFrame()
+local f = NS.PageFrame("raidlog")
 assert(f.views.rolls and f.views.rolls.on and f.rolls and f.rolls:IsShown(), "view Würfe")
 assert(not f.log:IsShown() and not f.bench:IsShown() and not f.discord:IsShown(), "only the rolls")
 assert(f.rolls.empty:IsShown() and has(f.rolls.empty.title:GetText(), "Keine Würfe"), "empty: " .. tostring(f.rolls.empty.title:GetText()))

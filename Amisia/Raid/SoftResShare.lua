@@ -21,7 +21,7 @@ local MAX_RAIDERS, MAX_ITEMS, MAX_HARD = 100, 2000, 200
 local MAX_NAME, MAX_NOTE, MAX_ID = 48, 60, 9999999
 
 local lastSV                   -- { at, h, t }: the last own announcement
-local asks, askTimer = {}, false
+local asks = {}
 local answered = {}            -- asker -> { h, t }: the last blob sent to him
 local wanted = {}              -- officer name -> { at, h }: the list asked for
 local offer                    -- { from, at, h, sr }: a newer list for an officer with his own
@@ -180,8 +180,32 @@ local function sendSV()
     end
 end
 
+-- The batched answers (PointsSync and LootPrio use them too): ns.AnswerBatch(send) gives ask(), which
+-- runs send() ANSWER_AFTER s after the first request, so requests within it go out together.
+function ns.AnswerBatch(send)
+    local waiting = false
+    return function()
+        if waiting then return end
+        waiting = true
+        C_Timer.After(ANSWER_AFTER, function()
+            waiting = false
+            local ok, err = pcall(send)
+            if not ok then ns.ReportError(err) end
+        end)
+    end
+end
+
+-- Answers the askers who with send(chan, target, opts): ANSWER_RAID or more get one send into the
+-- raid, the others a whisper each (queue key "<kind>:<sender>").
+function ns.AnswerAskers(who, kind, send)
+    if #who >= ANSWER_RAID then
+        send("RAID", nil, { ttl = 600, low = true })
+        return
+    end
+    for _, s in ipairs(who) do send("WHISPER", s, { ttl = 600, key = kind .. ":" .. s, low = true }) end
+end
+
 local function sendList()
-    askTimer = false
     local sr = ownList()
     local who = {}
     for s, at in pairs(asks) do
@@ -212,12 +236,10 @@ local function sendList()
             ns.msg(L["Soft-Reserves: Liste zu groß zum Teilen."])
         end
     end
-    if #who >= ANSWER_RAID then
-        send("RAID", nil, { ttl = 600, low = true })
-        return
-    end
-    for _, s in ipairs(who) do send("WHISPER", s, { ttl = 600, key = "SR:" .. s, low = true }) end
+    ns.AnswerAskers(who, "SR", send)
 end
+
+local askList = ns.AnswerBatch(sendList)
 
 -- After an import: announce at once (the window's "Übernehmen", "/amisia sr <code>"). Whether the
 -- list goes to the raid.
@@ -317,13 +339,7 @@ ns.CommOn("SQ", function(sender, f, chan)
         local sr = ownList()
         if not sr or sr.at ~= tonumber(f[1]) then return end
         asks[sender] = sr.at
-        if not askTimer then
-            askTimer = true
-            C_Timer.After(ANSWER_AFTER, function()
-                local okSend, err = pcall(sendList)
-                if not okSend then askTimer = false; report(err) end
-            end)
-        end
+        askList()
     end)
 end)
 

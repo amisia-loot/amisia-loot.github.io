@@ -20,8 +20,6 @@ local withErr = true -- "Fehler anhängen"
 local filter = "open"
 local chosen         -- the inbox entry shown in the detail
 
-function ns.FeedbackPageFrame() return page end
-
 local Fb = function() return ns.Feedback end
 
 local KIND_NAMES = { B = "Bug", W = L["Wunsch"] }
@@ -39,8 +37,6 @@ end
 
 -- The first line of a text, for a list cell.
 local function firstLine(text) return (text:gsub("\n.*$", "")) end
-
-local function show(frame, on) if on then frame:Show() else frame:Hide() end end
 
 ---------------------------------------------------------------------------
 -- "Neue Meldung"
@@ -87,7 +83,7 @@ local function fillOut(r, e)
     r.text:SetText(firstLine(e.text))
     r.state:SetText(STATE_TEXT[e.state] and STATE_TEXT[e.state]() or "")
     r.retry.id = e.id
-    show(r.retry, e.state == "lost")
+    r.retry:SetShown(e.state == "lost")
     -- a lost report's "Nochmal" stays in view: it is the only way to send it again
     W.PinRowActions(r, e.state == "lost")
 end
@@ -96,11 +92,11 @@ local function buildWrite(c)
     c:Bands({ "row", "line" })
     c.kinds = {}
     for _, k in ipairs({ "B", "W" }) do
-        c.kinds[k] = W.Tab(c, KIND_NAMES[k], S.KIND_W, function()
+        c.kinds[k] = W.Tab(c, KIND_NAMES[k], function()
             kind = k
             ns.Refresh()
         end)
-        W.FitChip(c.kinds[k], S.KIND_W)
+        W.FitChip(c.kinds[k])
     end
     W.Tooltip(c.kinds.B, "Bug", L["Etwas funktioniert nicht oder zeigt Falsches."])
     W.Tooltip(c.kinds.W, L["Wunsch"], L["Eine Idee oder Verbesserung für Amisia."])
@@ -168,15 +164,15 @@ local function refreshWrite(c)
     c.meta:SetText(L["Geht mit: %s"]:format(F.MetaText(meta)))
     local err = F.LastError()
     local bug = kind == "B"
-    show(c.errBox, bug)
-    show(c.errLabel, bug)
-    show(c.errText, bug)
+    c.errBox:SetShown(bug)
+    c.errLabel:SetShown(bug)
+    c.errText:SetShown(bug)
     c.errBox:SetChecked(withErr)
     c.errBox:SetEnabled(err ~= nil)
     c.errText:SetText(err and (GREY .. Fb().Clean(err, 80) .. "|r") or L["Kein Amisia-Fehler aufgezeichnet."])
     local list = F.Out()
     c.out:SetItems(list)
-    show(c.none, #list == 0)
+    c.none:SetShown(#list == 0)
     updateCount(c)
 end
 
@@ -246,11 +242,11 @@ local function buildInbox(v)
     v:Bands({ "row" })
     v.filters = {}
     for _, k in ipairs(FILTERS) do
-        v.filters[k] = W.Tab(v, FILTER_NAMES[k], S.FILTER_W, function()
+        v.filters[k] = W.Tab(v, FILTER_NAMES[k], function()
             filter = k
             ns.Refresh()
         end)
-        W.FitChip(v.filters[k], S.FILTER_W)
+        W.FitChip(v.filters[k])
     end
     v.sum = W.Text(v, T.FONT.hint, 200)
     v.sum:SetJustifyH("RIGHT")
@@ -265,8 +261,8 @@ local function buildInbox(v)
     v.detail.icon:SetTexture("Interface\\Icons\\INV_Letter_15")
     v.done = W.Button(v.detail, L["Erledigt"], S.ACTION_W, function() if chosen then toggleDone(chosen) end end)
     W.FitChip(v.done, S.ACTION_W)
-    v.delete = W.Link(v.detail, L["Löschen"], S.ACTION_W, function() if chosen then askDelete(chosen) end end)
-    W.FitChip(v.delete, S.ACTION_W)
+    v.delete = W.Link(v.detail, L["Löschen"], function() if chosen then askDelete(chosen) end end)
+    W.FitChip(v.delete)
     v.detail:Buttons({ v.done, v.delete })
     v.empty = v:Empty(LAY.SPLIT_LIST_W, v.list)
 end
@@ -315,7 +311,7 @@ end
 local function layout(f, author)
     if f.author == author then return end
     f.author = author
-    for _, chip in pairs(f.views) do show(chip, author) end
+    for _, chip in pairs(f.views) do chip:SetShown(author) end
     local c = f.write
     c.isView = author
     c:ClearAllPoints()
@@ -332,11 +328,11 @@ local function build(parent)
     page = f
     f:Bands({ "row" })
     f.views = {
-        inbox = W.Tab(f, L["Eingang"], S.VIEW_W, function() view = "inbox" ns.Refresh() end),
-        write = W.Tab(f, L["Neue Meldung"], S.VIEW_W, function() view = "write" ns.Refresh() end),
+        inbox = W.Tab(f, L["Eingang"], function() view = "inbox" ns.Refresh() end),
+        write = W.Tab(f, L["Neue Meldung"], function() view = "write" ns.Refresh() end),
     }
-    W.FitChip(f.views.inbox, S.VIEW_W)
-    W.FitChip(f.views.write, S.VIEW_W)
+    W.FitChip(f.views.inbox)
+    W.FitChip(f.views.write)
     f:Place(1, { f.views.inbox, f.views.write })
     f.inbox = W.Page(f, { view = true, top = f.top })
     buildInbox(f.inbox)
@@ -351,12 +347,12 @@ local function refresh(f)
     if author then
         local n = Fb().OpenCount()
         f.views.inbox.label:SetText(n > 0 and ("%s (%d)"):format(L["Eingang"], n) or L["Eingang"])
-        W.FitChip(f.views.inbox, S.VIEW_W)
+        W.FitChip(f.views.inbox)
         f:Place(1, { f.views.inbox, f.views.write })
         for k, chip in pairs(f.views) do chip:SetOn(k == view) end
     end
-    show(f.inbox, author and view == "inbox")
-    show(f.write, view == "write")
+    f.inbox:SetShown(author and view == "inbox")
+    f.write:SetShown(view == "write")
     if view == "inbox" then refreshInbox(f.inbox) else refreshWrite(f.write) end
 end
 

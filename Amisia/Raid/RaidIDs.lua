@@ -133,8 +133,6 @@ ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then ns.RaidIDsLoaded(AmisiaDB) end
 end)
 
-function ns.RaidIDsState() return DB and DB.raidcheck or nil end
-
 ---------------------------------------------------------------------------
 -- The own IDs: read from the client, kept per character of the account
 ---------------------------------------------------------------------------
@@ -620,8 +618,3 @@ function ns.RaidIDsOwnLines()
     if #out == 0 then out[1] = L["Raid-IDs: noch keine gelesen (nach dem Login oder einem Boss-Kill)."] end
     return out
 end
-
--- for the tests
-ns._raidids = { reset = function() loginDone, lastNew, newPending, lastAsk, answered, chosen = false, -1e9, false, -1e9, {}, nil end,
-                reportNew = function() reportNew() end,
-                login = function() loginDone = true end, PER_SENDER = PER_SENDER, HEARD_MAX = HEARD_MAX }

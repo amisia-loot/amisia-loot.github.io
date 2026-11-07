@@ -125,7 +125,6 @@ end
 
 -- The own faction as the data writes it (A, H), nil when the client tells none.
 local ownSide = ns.OwnFaction
-Map.OwnSide = ownSide
 
 -- A place of side ("A", "H", "N" both) for a player of mine: neutral always, the own faction's,
 -- every one when the faction is unknown.
@@ -325,7 +324,6 @@ local function labelOf(e)
     if e.kind == "dock" then return Map.DockLines(p)[1] or "?" end
     return p.name
 end
-Map.PlaceLabel = labelOf
 
 local function where(e)
     return ("%s %s"):format(Map.ZoneName(e.point.map), Map.Coords(e.point))
@@ -363,7 +361,6 @@ local function tooltip(owner, e)
     GameTooltip:AddLine(TEXT.more, 0.6, 0.6, 0.6)
     GameTooltip:Show()
 end
-Map.PlaceTooltipOf = tooltip
 
 ---------------------------------------------------------------------------
 -- Clicks
@@ -399,7 +396,6 @@ local function menuOf(e)
     entries[#entries + 1] = { TEXT.offTransports, function() ns.Set("map.transports", false) end }
     return entries
 end
-Map.PlaceMenuOf = menuOf
 
 local function click(self, button)
     local e = self.entry

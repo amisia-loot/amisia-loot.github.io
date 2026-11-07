@@ -39,7 +39,7 @@ assert(NS.CurrentPage() ~= "raidcheck" and said("Raid-Check: Fläschchen ja"), "
 NS.Set("ui.view", "officer")
 NS.Dispatch("raidcheck")
 assert(NS.CurrentPage() == "raidcheck")
-local f = NS.RaidCheckPageFrame()
+local f = NS.PageFrame("raidcheck")
 local function rowOf(list, name)
     for _, r in ipairs(list.rows) do
         if r:IsShown() and r.item and (r.item.name or r.item.n) == name then return r end
@@ -123,7 +123,7 @@ assert(not f.ask:IsEnabled(), "not again within 5 minutes")
 -- the lineup: "ID" per name for the chosen instance
 NS.SetLineupText("Tanks\nVulo Pala\nVulo Hunt\nChorf")
 NS.ShowLineup("match", NS.LineupTonight())
-local lf = NS.LineupPageFrame()
+local lf = NS.PageFrame("lineup")
 assert(lf.raidIdPick:IsShown(), "the instance picker")
 local function lrow(name)
     for _, x in ipairs(lf.mlist.rows) do

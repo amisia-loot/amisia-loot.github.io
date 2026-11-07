@@ -1487,9 +1487,39 @@ local function sectionTalents(R)
     end
 end
 
--- The report helpers for the other probes (SelfTestCalendar.lua).
+-- A probe's listen(on): its own event frame (made on the first call) calling onEvent, events
+-- registered or unregistered (pcall: a client without the event must not stop the probe).
+local function listener(onEvent, events)
+    local watcher
+    return function(on)
+        if not watcher then
+            watcher = CreateFrame("Frame")
+            watcher:SetScript("OnEvent", onEvent)
+        end
+        for _, e in ipairs(events) do
+            if on then pcall(watcher.RegisterEvent, watcher, e) else pcall(watcher.UnregisterEvent, watcher, e) end
+        end
+    end
+end
+
+-- A probe's safe(P, f): f protected, an error adds a FEHLER line and calls stop(P) instead of leaving
+-- the probe hanging.
+local function safeWith(stop)
+    return function(P, f)
+        return function(...)
+            local ok, err = pcall(f, ...)
+            if not ok then
+                add(P.R, "FEHLER", L["Ablauf"], cut(tostring(err)))
+                stop(P)
+            end
+        end
+    end
+end
+
+-- The report helpers for the other probes (SelfTestCalendar.lua, SelfTestCalendarWrite.lua, SelfTestGroup.lua).
 ST.Kit = { newReport = newReport, add = add, section = section, check = check, runSection = runSection, show = show,
-           showAll = showAll, fn = fn, call = call, cut = cut, isSecret = isSecret, FEHLT = FEHLT }
+           showAll = showAll, fn = fn, call = call, cut = cut, isSecret = isSecret, FEHLT = FEHLT, listLine = listLine,
+           listener = listener, safeWith = safeWith }
 
 ---------------------------------------------------------------------------
 -- Running it
@@ -1569,7 +1599,7 @@ local function build()
     D.hint = W.Text(D, "GameFontDisableSmall", 330)
     D.hint:SetPoint("BOTTOMLEFT", 14, 18)
     D.hint:SetText(L["Strg+A, Strg+C und im Chat an uns einfügen."])
-    D.mark = W.Link(D, L["Alles markieren"], 120, function()
+    D.mark = W.Link(D, L["Alles markieren"], function()
         D.area.box:SetFocus()
         D.area.box:HighlightText()
     end)

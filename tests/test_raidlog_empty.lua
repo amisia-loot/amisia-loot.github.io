@@ -4,7 +4,7 @@ local function has(s, part) return type(s) == "string" and s:find(part, 1, true)
 assert(#NS.Sessions() == 0, "no raid saved")
 NS.Dispatch("log")
 assert(NS.CurrentPage() == "raidlog")
-local f = NS.RaidLogPageFrame()
+local f = NS.PageFrame("raidlog")
 assert(f.views.verlauf.on and f.log:IsShown())
 local E = f.log.empty
 assert(E and E:IsShown() and not f.log.head:IsShown(), "the empty state instead of the table head")

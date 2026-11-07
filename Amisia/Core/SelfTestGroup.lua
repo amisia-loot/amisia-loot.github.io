@@ -98,7 +98,6 @@ end
 -- The probe: one at a time, its own event frame only while it runs
 ---------------------------------------------------------------------------
 local run
-local watcher
 
 local function onEvent(_, event, ...)
     local P = run
@@ -131,16 +130,7 @@ local function onEvent(_, event, ...)
     end
 end
 
-local function listen(on)
-    if not watcher then
-        watcher = CreateFrame("Frame")
-        watcher:SetScript("OnEvent", onEvent)
-    end
-    for _, e in ipairs(WATCH) do
-        -- pcall: a client without the event must not stop the probe
-        if on then pcall(watcher.RegisterEvent, watcher, e) else pcall(watcher.UnregisterEvent, watcher, e) end
-    end
-end
+local listen = K.listener(onEvent, WATCH)
 
 local finishProbe
 
@@ -155,11 +145,7 @@ local function sectionFunctions(P)
         for _, path in ipairs(group[2]) do
             if not fn(path) then lack[#lack + 1] = path end
         end
-        if #lack == 0 then
-            add(R, "OK", group[1], L["alle %d vorhanden"]:format(#group[2]))
-        else
-            add(R, FEHLT, group[1], L["%d von %d fehlen: %s"]:format(#lack, #group[2], table.concat(lack, ", ")))
-        end
+        K.listLine(R, group[1], #group[2], lack, L["vorhanden"])
     end
     check(R, L["Gruppe jetzt"], function()
         local function v(path, ...)

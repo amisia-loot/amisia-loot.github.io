@@ -72,7 +72,7 @@ function ns.DropData(key)
     rawset(ns, key, nil)
 end
 
--- What was built so far: { key = { ms, kb } } (the self-test and the tests read it).
+-- What was built so far: { key = { ms, kb } } (the tests and tools/load_cost.py read it).
 function ns.DataBuilt() return built end
 
 -- /amisia speicher: what the client counts for Amisia before and after a full garbage collection

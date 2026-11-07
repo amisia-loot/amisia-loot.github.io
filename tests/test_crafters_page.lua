@@ -22,7 +22,7 @@ AmisiaDB.crafters = { v = 1, src = {}, c = {
 Cr.Changed()
 
 NS.Dispatch("berufe schmied")
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 local d = f.detail
 assert(#f.list.items == 5)
 -- Kupferarmschienen: Anna (offline, 300) after Vulo himself (online, 45)

@@ -8,7 +8,7 @@ NS.Set("ui.view", "raider")
 -- without a search the page shows one section)
 NS.ShowSettings("e")
 NS.Refresh()
-local page = NS.SettingsPageFrame()
+local page = NS.PageFrame("settings")
 local scroll, rows = page.scroll, NS.SettingsRows()
 local view = rows["ui.view"]
 assert(view and view:IsShown(), "the view row is there")

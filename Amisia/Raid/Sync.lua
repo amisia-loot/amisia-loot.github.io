@@ -37,7 +37,7 @@ local KINDS = { MS = true, OS = true, SR = true, ["-"] = true }
 local TARGETS = { player = true, bank = true, de = true }
 local KILL_SRC = { enc = true, kill = true, loot = true, hand = true }
 
-local claims = {}         -- lower name -> { name, key, at, rev }: claims of verified officers
+local claims = {}         -- lower name -> { name, key, at }: claims of verified officers
 local seen = {}           -- key -> { e, r, name }: the highest (term, revision) heard of
 local officers = {}       -- lower name -> name: verified officers that spoke Amisia this session
 local role, roleKey, keeperName   -- "keeper" | "follower" | nil for the raid key roleKey
@@ -55,7 +55,6 @@ local lastSP = {}         -- key -> { r, at }: the last snapshot of the keeper t
 local badRev = {}         -- key -> revision of a refused snapshot (never asked for again)
 local rqBusy = {}         -- key -> true while a request waits for its random delay
 local lostAsked = {}      -- key -> own revision a lost set was asked for
-local answers = {}        -- GetTime() of the answers to requests in the last minute
 local warnedSize = false
 local ticker
 local stats = { applied = 0, refused = 0, wishes = 0, taken = 0, conflicts = 0 }
@@ -423,12 +422,6 @@ function ns.SyncHashOf(sp, so)
     for _, name in ipairs(names) do lines[#lines + 1] = row("B\t" .. name, b[name], 5) end
     for _, r in ipairs(so and so.x or {}) do lines[#lines + 1] = row("X", r, 9) end
     return ns.Checksum(table.concat(lines, "\n"))
-end
-
--- The checksum of raid s as its keeper would send it.
-function ns.SyncHash(s)
-    local sp = ns.SyncBuild(s)
-    return sp.h
 end
 
 ---------------------------------------------------------------------------
@@ -1910,7 +1903,7 @@ ns.CommOn("ST", function(sender, f)
         if not ok or not ns.InMyGroup(name) or not ready() then return end
         local low = name:lower()
         if flags:find("K", 1, true) then
-            claims[low] = { name = name, key = key, at = now(), rev = rev }
+            claims[low] = { name = name, key = key, at = now() }
         else
             claims[low] = nil
         end
@@ -1963,6 +1956,23 @@ ns.CommOn("HI", function(sender, f, chan, raw)
     end)
 end)
 
+-- Whether one more whispered answer fits the window (ANSWERS_MAX per ANSWER_WINDOW s); counts it.
+-- (A do block: the main chunk is at Lua's 200 locals.)
+local rateOk
+do
+    local answers = {}    -- GetTime() of the answers to requests in the last minute
+    function rateOk()
+        local t, recent = now(), {}
+        for _, at in ipairs(answers) do
+            if t - at < ANSWER_WINDOW then recent[#recent + 1] = at end
+        end
+        answers = recent
+        if #answers >= ANSWERS_MAX then return false end
+        answers[#answers + 1] = t
+        return true
+    end
+end
+
 local function answer(name, sender, key, part)
     local s = sessionFor(key)
     if not s or type(s.sync) ~= "table" then return end
@@ -1974,17 +1984,11 @@ local function answer(name, sender, key, part)
     end
     local officer = ns.IsVerifiedOfficer(name) == true
     if officer then officers[name:lower()] = name end
-    local t, recent = now(), {}
-    for _, at in ipairs(answers) do
-        if t - at < ANSWER_WINDOW then recent[#recent + 1] = at end
-    end
-    answers = recent
-    if #answers >= ANSWERS_MAX then
+    if not rateOk() then
         -- more requests than answers: one snapshot into the raid for everyone
         if keeper then schedule(s) end
         return
     end
-    answers[#answers + 1] = t
     local sp, so = ns.SyncBuild(s)
     local low = name:lower()
     if part:find("P", 1, true) then
@@ -2011,13 +2015,7 @@ local function answerGather(name, sender, key, e, r)
             { key = "NWG:" .. key })
         return
     end
-    local t, recent = now(), {}
-    for _, at in ipairs(answers) do
-        if t - at < ANSWER_WINDOW then recent[#recent + 1] = at end
-    end
-    answers = recent
-    if #answers >= ANSWERS_MAX then return end
-    answers[#answers + 1] = t
+    if not rateOk() then return end
     local sp, so = ns.SyncBuild(s)
     local low = name:lower()
     ns.CommSendBlob("SP", key, sp, "WHISPER", sender, { key = "SPG:" .. key .. ":" .. low, ttl = DATA_TTL })

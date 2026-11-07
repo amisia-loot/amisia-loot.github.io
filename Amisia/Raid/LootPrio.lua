@@ -36,8 +36,6 @@ local OWN_GAME = ns.GAME   -- the site's blocks carry the game they are for (D-5
 local GAME_NAMES = ns.GAME_NAMES
 local LV_EVERY = 240           -- the keeper repeats its state this often
 local LV_GAP = 10              -- and not more often than this after a change
-local ANSWER_AFTER = 2         -- requests within this go out together
-local ANSWER_RAID = 3          -- this many requesters: one send into the raid
 local LINE_MAX = 80            -- characters of the prio in a loot announcement line
 local ZERO = "0000000000000000"
 local TOO_BIG = N_("Daten zu groß.")   -- Comm's reason for a blob over its parts: compared as L[TOO_BIG]
@@ -500,59 +498,17 @@ ns.OnItemTooltip("lootprio", function(tip, _, id)
     return true
 end)
 
-local rollMarks = setmetatable({}, { __mode = "k" })
-local hooked = setmetatable({}, { __mode = "k" })
-
-local function markRoll(frame)
-    local text
+ns.LootPrioRollMarkText = ns.RollFrameMark(function(frame)
     local fn = _G.GetLootRollItemLink
-    if ns.Get("prio.lootMark") and type(fn) == "function" then
-        local ok, link = pcall(fn, ns.Plain(frame.rollID))
-        local id = ok and ns.ItemID(ns.Plain(link)) or nil
-        local p = id and ns.LootPrioOf(id)
-        if p and #p.prio > 0 then
-            text = "P"
-            local rank, how = ns.LootPrioRank(id, ns.UnitFullName("player"))
-            if rank and how == "name" then text = "P" .. rank end
-        end
-    end
-    local mark = rollMarks[frame]
-    if not text then
-        if mark then mark:Hide() end
-        return
-    end
-    if not mark then
-        local parent = type(frame.IconFrame) == "table" and frame.IconFrame or frame
-        mark = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        mark:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT", 1, 1)
-        mark:SetTextColor(GOLD[1], 0.7, 0.28)
-        rollMarks[frame] = mark
-    end
-    mark:SetText(text)
-    mark:Show()
-end
-
-local function onRollFrameShow(frame)
-    local ok, err = pcall(markRoll, frame)
-    if not ok then report(err) end
-end
-
-local function hookRollFrames()
-    for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
-        local f = _G["GroupLootFrame" .. i]
-        if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
-            hooked[f] = true
-            f:HookScript("OnShow", onRollFrameShow)
-        end
-    end
-end
-hookRollFrames()
-ns.OnEvent("PLAYER_ENTERING_WORLD", hookRollFrames)
-
-function ns.LootPrioRollMarkText(frame)
-    local m = rollMarks[frame]
-    return (m and m:IsShown()) and m:GetText() or nil
-end
+    if not (ns.Get("prio.lootMark") and type(fn) == "function") then return nil end
+    local ok, link = pcall(fn, ns.Plain(frame.rollID))
+    local id = ok and ns.ItemID(ns.Plain(link)) or nil
+    local p = id and ns.LootPrioOf(id)
+    if not (p and #p.prio > 0) then return nil end
+    local rank, how = ns.LootPrioRank(id, ns.UnitFullName("player"))
+    if rank and how == "name" then return "P" .. rank end
+    return "P"
+end, "BOTTOMLEFT", 1, { GOLD[1], 0.7, 0.28 })
 
 ---------------------------------------------------------------------------
 -- The edit dialog
@@ -611,7 +567,7 @@ local function buildDialog()
     W.FitChip(D.save, 90)
     D.save:SetPoint("BOTTOMLEFT", 12, 12)
     -- one click: the item's prio goes at once (the same empty edit "Leeren" and "Speichern" made)
-    D.clear = W.Link(D, L["Leeren"], 80, function() dialogClear() end)
+    D.clear = W.Link(D, L["Leeren"], function() dialogClear() end)
     W.Tooltip(D.clear, L["Leeren"], L["Löscht die Prio dieses Items sofort (auch die der Website und des Raids)."])
     W.FitChip(D.clear, 80)
     D.clear:SetPoint("LEFT", D.save, "RIGHT", 6, 0)
@@ -652,7 +608,7 @@ end
 -- Sharing in the raid: LV / LQ / LC
 ---------------------------------------------------------------------------
 local lastLV            -- { h, key, at }
-local asks, askTimer = {}, false   -- sender -> true: requests waiting for the answer
+local asks = {}   -- sender -> true: requests waiting for the answer
 local wanted = {}                   -- raid key -> the announced state this client asked for
 local stats = { sent = 0, taken = 0, refused = 0 }
 
@@ -727,7 +683,6 @@ local function sendLV()
 end
 
 local function sendList()
-    askTimer = false
     local _, key = running()
     if not key or not (ns.SyncIsKeeper and ns.SyncIsKeeper()) then asks = {} return end
     local _, n, rows = ownState()
@@ -750,12 +705,10 @@ local function sendList()
         end
     end
     -- at the lowest priority: the parts of the raid sync go first
-    if #who >= ANSWER_RAID then
-        send("RAID", nil, { ttl = 600, low = true })
-        return
-    end
-    for _, s in ipairs(who) do send("WHISPER", s, { ttl = 600, key = "LC:" .. s, low = true }) end
+    ns.AnswerAskers(who, "LC", send)
 end
+
+local askList = ns.AnswerBatch(sendList)
 
 ns.CommOn("LV", function(sender, f, chan)
     if chan ~= "RAID" or not shareOn() then return end
@@ -784,13 +737,7 @@ ns.CommOn("LQ", function(sender, f, chan)
         local _, key = running()
         if key ~= f[1] or not (ns.SyncIsKeeper and ns.SyncIsKeeper()) then return end
         asks[sender] = true
-        if not askTimer then
-            askTimer = true
-            C_Timer.After(ANSWER_AFTER, function()
-                local okSend, err = pcall(sendList)
-                if not okSend then askTimer = false; report(err) end
-            end)
-        end
+        askList()
     end)
 end)
 

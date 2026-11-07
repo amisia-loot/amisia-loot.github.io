@@ -75,8 +75,6 @@ local function ask(where)
     ns.Refresh()
 end
 
-function ns.AboutPageFrame() return page end
-
 ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Version, Befehle und Selbsttest."], icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
@@ -93,10 +91,10 @@ ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Versio
         f.sub = f:Line(2)
         f.newer = f:Line(3)
         f.title = W.Text(f, T.FONT.title, 360)
-        f.askGuild = W.Link(f, L["Gilde fragen"], 110, function() ask("guild") end)
-        f.askRaid = W.Link(f, L["Raid fragen"], 110, function() ask("raid") end)
-        W.FitChip(f.askGuild, 110)
-        W.FitChip(f.askRaid, 110)
+        f.askGuild = W.Link(f, L["Gilde fragen"], function() ask("guild") end)
+        f.askRaid = W.Link(f, L["Raid fragen"], function() ask("raid") end)
+        W.FitChip(f.askGuild)
+        W.FitChip(f.askRaid)
         tipButton(f.askGuild)
         tipButton(f.askRaid)
         f:Place(4, { f.title }, { f.askRaid, f.askGuild })

@@ -37,7 +37,7 @@ local count, badLines = NS.SetSoftRes("Chorf " .. link)
 assert(count == 1 and #badLines == 0)
 assert(NS.ReservedBy(32235)[1] == "Chorf" and #NS.ReservedBy(1) == 0 and #NS.ReservedBy("32235") == 1)
 assert(AmisiaDB.softres.date == date("%Y-%m-%d"))
-local d, c = NS.SoftResInfo(); assert(d == date("%Y-%m-%d") and c == 1)
+assert(AmisiaDB.softres.count == 1)
 
 -- tooltip line
 local lines = {}

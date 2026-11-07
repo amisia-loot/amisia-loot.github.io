@@ -14,7 +14,7 @@ STUB.guild = {
 STUB.fire("PLAYER_ENTERING_WORLD"); STUB.tick(2)
 NS.Set("ui.view", "officer")
 NS.Dispatch("aufstellung")
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 f.pasteBtn:Click()
 f.paste.box:SetText("Tanks\nVulo Hunt\nBob Eisherz\nHeiler\nVulo Pala\nAnna Bergmann\nNahkampf\nKim Sturmwind\nVuloo")
 f.take:Click()

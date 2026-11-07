@@ -77,7 +77,6 @@ end
 -- One run at a time, its own event frame only while it runs
 ---------------------------------------------------------------------------
 local run
-local watcher
 local OPEN_EVENTS = { CALENDAR_OPEN_EVENT = true }
 local CHANGE_EVENTS = { CALENDAR_UPDATE_EVENT_LIST = true, CALENDAR_UPDATE_GUILD_EVENTS = true, CALENDAR_UPDATE_EVENT = true,
                         CALENDAR_UPDATE_INVITE_LIST = true }
@@ -103,31 +102,15 @@ local function onEvent(_, event, ...)
     if P.waiter then P.waiter(event) end
 end
 
-local function listen(on)
-    if not watcher then
-        watcher = CreateFrame("Frame")
-        watcher:SetScript("OnEvent", onEvent)
-    end
-    local all = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
-    for _, t in ipairs({ OPEN_EVENTS, CHANGE_EVENTS, ERROR_EVENTS }) do
-        for e in pairs(t) do all[#all + 1] = e end
-    end
-    for _, e in ipairs(all) do
-        if on then pcall(watcher.RegisterEvent, watcher, e) else pcall(watcher.UnregisterEvent, watcher, e) end
-    end
+local LISTEN = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
+for _, t in ipairs({ OPEN_EVENTS, CHANGE_EVENTS, ERROR_EVENTS }) do
+    for e in pairs(t) do LISTEN[#LISTEN + 1] = e end
 end
+local listen = K.listener(onEvent, LISTEN)
 
 local finishRun
 
-local function safe(P, f)
-    return function(...)
-        local ok, err = pcall(f, ...)
-        if not ok then
-            add(P.R, "FEHLER", L["Ablauf"], cut(tostring(err)))
-            finishRun(P, true)
-        end
-    end
-end
+local safe = K.safeWith(function(P) finishRun(P, true) end)
 
 -- Waits for one of set (a table of events) for at most WP.WAIT seconds; then nextStep(event or nil)
 -- on the next frame. Set up before the call it waits for (the client may answer at once). Returns a

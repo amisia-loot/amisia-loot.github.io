@@ -167,7 +167,6 @@ T.NAVBAR = {
 -- 26 (head row and gap) + 20 + 6 x 64 + 4 + 22 + 4 + 16 = 478; 7 x 56 + 8 + 202 = 602.
 T.CALPAGE = {
     TITLE_W = 160,        -- the month's title between the arrows (T.FONT.big, gold, centred)
-    TODAY_W = 70,         -- "Heute" (at least; FitChip)
     GRID_Y = 26,          -- the grid below the page's top (under the head row)
     CELL_W = 56, CELL_H = 64,
     HEAD_H = 20,          -- the weekday bar (the client calendar's weekday art)
@@ -242,7 +241,7 @@ T.MEMBERS = {
 -- TEXT_X), then the list: 13 rows of 24 from the column heads (100) to the bottom row (420)
 T.MAPPAGE = {
     ROWS = 13, ROW_H = 24,
-    PICKER_W = 240, TARGETS_W = 60, WISHES_W = 70, QUESTS_W = 60, OPEN_W = 130, BACK_W = 130, CLEAR_W = 110, HIDDEN_W = 170,
+    PICKER_W = 240, OPEN_W = 130,
     CARD_LINES = 2, ARROW = 16, ARROW_X = 6, TEXT_X = 28, TEXT_Y = 2,
     CARD_SHADE = 0.045,
     ARROW_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow",
@@ -309,8 +308,7 @@ T.DBOSS = {
 }
 
 T.PROFPAGE = {
-    PICKER_W = 170, MODE_W = 56, SEARCH_W = 150, RANK_W = 120,
-    VENDOR_W = 70, TAB_W = 64,
+    PICKER_W = 170, SEARCH_W = 150, RANK_W = 120,
     STEP_ROWS = 9, STEP_H = 36, TICK = 14, MARK_X = 4, TEXT_X = 22, LINE1_Y = -4, LINE2_Y = -19, COST_W = 80,
     TICK_TEX = "Interface\\RaidFrame\\ReadyCheck-Ready",
     SHOP_ROWS = 14, SHOP_H = 22,
@@ -324,7 +322,6 @@ T.PROFPAGE = {
 -- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
 T.DUELS = {
     CLASS_W = 130, SEARCH_W = 140, RANGE_W = 110,  -- the second head row's class and time pickers, search box
-    SPEC_CHIP_W = 120,                             -- "Nach Spezialisierung" (view Klassen)
     -- the card under the client's duel request (UI/DuelInfo.lua): below the request window, without
     -- one that far from the screen's top; hidden after CARD_TIME seconds without a request window
     CARD_GAP = 6, CARD_Y = -140, CARD_TIME = 60,
@@ -362,12 +359,12 @@ T.SRIMPORT = {
 }
 
 -- an overview card
-T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_W = 110, BUTTON2_W = 90, BUTTON_Y = 8,
+T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_Y = 8,
     HOVER_ALPHA = 0.05 }   -- the card under the mouse lights up faintly (a click runs its first action, D-67)
 -- the card "Upgrades: <Slot>" beside the character window (UI/SlotCard.lua, F-125): the best ROWS
 -- items of a slot, each an icon with name and source over each other and the gain at the right
 T.SLOTCARD = { W = 300, PAD = 10, TITLE_H = 24, ROWS = 5, ROW_H = 34, ICON = 26, TEXT_X = 34, GAIN_W = 56,
-    BUTTON_W = 180, GAP = 6, CLOSE = 20, OFFSET_X = 4, ENCH_H = 18 }
+    GAP = 6, CLOSE = 20, OFFSET_X = 4, ENCH_H = 18 }
 -- the empty state of a page: a short title (no full stop) and a sentence of help; BUTTON_GAP: an
 -- action button under the help (the professions page's "Filter zurücksetzen")
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6, BUTTON_GAP = 10 }
@@ -459,7 +456,6 @@ T.GOALS = {
     MODEL_H = 316,        -- 8 slots and their gaps
     WEAPON_GAP = 8,       -- between the model and the weapon row
     SWITCH_GAP = 6,       -- between the weapon row and the switch Ziele / Angelegt
-    SWITCH_W = 80,        -- each chip of the switch (at least; FitChip)
     HINT_H = 24,          -- the model's hint under the switch (two lines at most)
     ROTATE = 0.012,       -- radians per pixel the mouse is dragged
     ZOOM_STEP = 0.1, ZOOM_MAX = 0.8,
@@ -478,7 +474,7 @@ T.GOALS = {
     -- list's bars with "Set anprobieren" and "Anprobe leeren" under them, the list of sets or hits
     -- right of them, its hint under it. 30 + 24 x 20 + 4 + 28 = 542 of the 552 under PROG_Y.
     CAT_W = 600,          -- the whole catalog: LIST_X to the right end of the slot panel
-    CAT_SEARCH_W = 220, CAT_LEVEL_W = 64, CAT_RANGE_W = 10, CAT_MINE_W = 90, CAT_ALL_W = 44,
+    CAT_SEARCH_W = 220, CAT_LEVEL_W = 64, CAT_RANGE_W = 10,
     CAT_LIST_Y = 30,      -- the list and the categories under the search row
     CAT_NAV_W = 150, CAT_NAV_H = 24, CAT_NAV_GAP = 4,
     CAT_BTN_GAP = 10,     -- between the last category and "Set anprobieren"
@@ -498,7 +494,6 @@ T.GOALS = {
     PICK_H = 30,          -- the own pick: name over source (or the line without a pick)
     TAKE_W = 76,          -- "Übernehmen" beside the hint "Überholt: ..."
     RANK_GAIN_W = 44,     -- the gain at a ranking row's right end
-    ALL_W = 90,           -- "Alle zeigen" (at least; FitChip)
     FIELD_W = 132,        -- "Item-Link oder ID"; "Hinzufügen" takes the rest
     MSG_H = 26,           -- what the field says (two lines)
     -- the score head under the doll (part B): "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4"
@@ -575,11 +570,9 @@ T.SIGNUP = {
     HINT_Y = 142,         -- "Für die Gilde lesbar." under the note
     GAP = 10,             -- between the note hint, the other characters, the calendar hint and the buttons
     LINE_GAP = 4,         -- between the note hint and the other characters
-    CAL_OPEN_W = 80,      -- "Raid-Kalender" (the raid calendar window) beside the date picker (at least; FitChip)
     LABEL_W = 70,         -- the labels "Rolle" and "Notiz"; the controls start LABEL_GAP after them
     LABEL_GAP = 8,
-    ROLE_W = 40,          -- a role chip
-    CAL_W = 130,          -- "Warum?" beside the calendar hint (at least; FitChip)
+    CAL_W = 130,          -- "Warum?" beside the calendar hint (the room the hint leaves it)
     BUTTON_W = 100,       -- Anmelden, Vorläufig, Abmelden (at least; FitChip)
     BOTTOM = 14,          -- the button row from the window's bottom edge
     LINE_H = 14,          -- one line of a hint (T.FONT.hint)
@@ -643,7 +636,7 @@ T.RAIDCAL = {
 -- on the right, the row "Fehler anhängen", "Deine Meldungen" with OUT_ROWS rows) and, on the author's
 -- characters, "Eingang" (the filter chips, a split list of IN_ROWS rows beside the detail inset)
 T.FEEDBACK = {
-    VIEW_W = 100, KIND_W = 70, SEND_W = 100, FILTER_W = 70, RETRY_W = 70, ACTION_W = 90,
+    SEND_W = 100, RETRY_W = 70, ACTION_W = 90,
     EDIT_H = 112, COUNT_W = 60, META_H = 32, ERR_W = 120, GAP = 4, TITLE_H = 16,
     OUT_ROWS = 7, ROW_H = 20, IN_ROWS = 19,
     -- { key, x, width } of "Deine Meldungen": date, kind, the text's start, state, the button "Nochmal"

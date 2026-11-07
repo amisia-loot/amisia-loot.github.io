@@ -98,9 +98,9 @@ q = C(VULO, "NS.CollectQuest(2001)")
 assert(q.fac == "H" and q.minlvl == 30 and q.ender == 4455 and q.qlevel == 34 and q.choices[1] == 5001, "own values stay at Vulo")
 q = C(FRAK, "NS.CollectQuest(2001)")
 assert(q.fac == "A" and q.minlvl == 28, "and at Fraktur")
-local w = C(KIM, "NS.CollectWorld(299)")
+local w = C(KIM, "NS.CollectParse('w', AmisiaDB.collect.w[299])")
 assert(w.items[7001] == 2 and w.items[7004] == 1 and w.class == "r" and w.name == "Wolf")
-w = C(VULO, "NS.CollectWorld(299)")
+w = C(VULO, "NS.CollectParse('w', AmisiaDB.collect.w[299])")
 assert(w.items[7001] == 1 and not w.items[7004] and w.pos == "1411:2500:7500", "Vulo's own loot list stays his")
 -- nothing from or to Pug
 for _, name in ipairs(MEMBERS) do assert(C(name, "AmisiaDB.collect.q[9999] == nil"), "Pug's record at " .. name) end

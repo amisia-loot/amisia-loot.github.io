@@ -3,7 +3,7 @@
 
 -- 1. a card that limits its second line does not pass the limit on to the next card in its slot
 NS.ShowPage("overview")
-local f = NS.OverviewPageFrame and NS.OverviewPageFrame()
+local f = NS.PageFrame("overview")
 assert(f and f.cards and f.cards[1], "the overview cards")
 for _, c in ipairs(f.cards) do c.line2:SetMaxLines(2) end
 NS.Refresh()

@@ -38,7 +38,7 @@ assert(F.helpBtn.points.TOPRIGHT and F.helpBtn.points.TOPRIGHT.rel == F.pageHead
 NS.ShowPage("rolls")
 F.settingsBtn:Click()
 assert(NS.CurrentPage() == "settings" and not F.settingsBtn:IsShown())
-local page = NS.SettingsPageFrame()
+local page = NS.PageFrame("settings")
 local chosen, set = NS.SettingsChosen()
 assert(chosen == nil and set.rolls and set.need and set.loot and set.lootrules and set.prio and set.rollwin, "the sections of Rolls")
 assert(page.back:IsShown() and page.back:GetText() == "Zurück zu Rolls", tostring(page.back:GetText()))

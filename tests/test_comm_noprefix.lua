@@ -26,6 +26,6 @@ _G.UnitLevel = function() return 24 end
 _G.UnitFactionGroup = function() return "Alliance" end
 _G.GetInventoryItemLink = function() return nil end
 NS.ShowPage("about")
-local f = NS.AboutPageFrame()
+local f = NS.PageFrame("about")
 assert(f.empty:IsShown() and f.empty:GetText() == "Addon-Nachrichten sind nicht verfügbar.")
 assert(not f.askRaid:IsEnabled() and not f.askGuild:IsEnabled())

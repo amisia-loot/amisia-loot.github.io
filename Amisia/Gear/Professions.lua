@@ -109,7 +109,6 @@ local NOTE_WORDS = { bs = "blacksmithing", vz = "enchanting", vzk = "enchanting"
     schnei = "tailoring", eh = "firstaid", bb = "mining", skin = "skinning" }
 -- Armour and weapon smiths name blacksmithing in the middle of the word.
 local NOTE_INSIDE = { { "schmied", "blacksmithing" } }
-local UPPER = { ["\195\132"] = "\195\164", ["\195\150"] = "\195\182", ["\195\156"] = "\195\188" } -- Ä Ö Ü
 
 local function noteKey(word)
     local k = NOTE_WORDS[word]
@@ -140,7 +139,7 @@ function Pr.FromNote(text)
         noteMemo, noteMemoN = {}, 0
     end
     noteMemo[text], noteMemoN = out, noteMemoN + 1
-    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("\195[\132\150\156]", UPPER):lower()
+    text = ns.Fold((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
     local tokens = {}
     for word, digits in text:gmatch("([%a\128-\255]*)(%d*)") do
         if word ~= "" then tokens[#tokens + 1] = word end

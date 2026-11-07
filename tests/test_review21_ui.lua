@@ -13,7 +13,7 @@ end
 local function settle() BUS.tick(8) end
 local function officer(name, code)
     return C(name, [[NS.ShowPage("awards"); NS.Refresh()
-        local f = NS.AwardsPageFrame(); local O = f.officer; local s = NS.Active()
+        local f = NS.PageFrame("awards"); local O = f.officer; local s = NS.Active()
         ]] .. code)
 end
 

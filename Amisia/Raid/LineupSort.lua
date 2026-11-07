@@ -88,16 +88,6 @@ function SO.Next(rows)
     return nil, nil, stuck
 end
 
--- How many listed raiders are not in their group yet.
-function ns.LineupSortWrong(night)
-    local rows = ns.LineupSortPlan(night)
-    local c = 0
-    for _, r in ipairs(rows) do
-        if r.target and r.target ~= r.sub then c = c + 1 end
-    end
-    return c
-end
-
 function ns.LineupSortPaused(night) return paused ~= nil and paused == (night or ns.LineupTonight()) end
 function ns.LineupSorting() return sort ~= nil and not sort.quiet end
 

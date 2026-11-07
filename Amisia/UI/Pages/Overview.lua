@@ -7,15 +7,10 @@ local W, T = ns.W, ns.Theme
 local GAP, SLOTS = 12, 8
 local CARD_W, CARD_H = (T.PAGE_W - GAP) / 2, 110
 
-local page
--- For tests: the page frame once built.
-function ns.OverviewPageFrame() return page end
-
 ns.RegisterPanel{ key = "overview", label = L["Übersicht"], sub = L["Was gerade ansteht: Raid, Anmeldung, Reservierungen und deine Ausrüstung."], icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
         -- the cards fill the page from its top; no head row (each card has its own button)
         local f = W.Page(parent)
-        page = f
         f.cards = {}
         for i = 1, SLOTS do
             local c = W.Card(f, CARD_W, CARD_H)

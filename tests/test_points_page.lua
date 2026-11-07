@@ -13,7 +13,7 @@ NS.Set("ui.view", "officer")
 assert(NS.Visible(NS.Panel("points")))
 NS.ShowPoints("list")
 assert(NS.CurrentPage() == "points", "the page opens")
-local f = NS.PointsPageFrame()
+local f = NS.PageFrame("points")
 assert(f.empty:IsShown() and has(f.empty.title:GetText(), "würfelt"), "the hint while the guild rolls")
 assert(not f.list:IsShown() and not f.book:IsShown())
 
@@ -125,7 +125,7 @@ STUB.item(30000, "Brustplatte", 4)
 local a = NS.AddAwardTo(s, { name = "Fraktur", item = 30000, kind = "MS", src = "Noth", t = time() })
 NS.SetAwardPoints(s, a.id, 30)
 NS.ShowPage("awards")
-local O = NS.AwardsPageFrame().officer
+local O = NS.PageFrame("awards").officer
 assert(O.plusHead:GetText() == "DKP", O.plusHead:GetText())
 local row = O.list.rows[1]
 assert(row.plus:GetText() == "30", tostring(row.plus:GetText()))
@@ -135,7 +135,7 @@ assert(E.pts:IsShown() and E.pts:GetText() == "30" and E.ptsLabel:GetText() == "
 E.pts:SetFocus(); E.pts:SetText("45"); E.pts.scripts.OnEnterPressed(E.pts)
 assert(NS.AwardPoints(s, a.id).n == 45 and NS.PointsOf("Fraktur").a == 80 - 20 - 45, "the correction of before and the new cost")
 do
-    local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(NS.AwardsPageFrame(), 602, 478)
+    local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(NS.PageFrame("awards"), 602, 478)
     Lay.row("award edit with cost", E.bank, E.de, E.del, E.ptsLabel, E.pts, E.status)
 end
 -- undo takes the award and its cost back

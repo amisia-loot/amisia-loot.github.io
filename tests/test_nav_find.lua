@@ -205,7 +205,7 @@ NS.Set("ui.view", "officer")
 -- the overview cards: navigation buttons say "Öffnen"
 ---------------------------------------------------------------------------
 NS.ShowPage("overview")
-local ov = NS.OverviewPageFrame()
+local ov = NS.PageFrame("overview")
 -- the cards of Gear.lua and SoftRes.lua (the others' files keep their own words for now)
 local seen = {}
 for _, c in ipairs(ov.cards) do

@@ -173,6 +173,19 @@ local function stackAt(bag, slot)
     return info and tonumber(ns.Plain(info.stackCount)) or 1
 end
 
+-- Every bag slot (bags 0 to NUM_BAG_SLOTS) for a generic for: bag, slot, the item id there or nil.
+local function eachSlot()
+    local last, bag, slot, n = tonumber(_G.NUM_BAG_SLOTS) or 4, 0, 0, nil
+    return function()
+        while bag <= last do
+            n = n or tonumber(ns.Plain(C_Container.GetContainerNumSlots(bag))) or 0
+            slot = slot + 1
+            if slot <= n then return bag, slot, tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot))) end
+            bag, slot, n = bag + 1, 0, nil
+        end
+    end
+end
+
 -- Every copy in the bags (0 to NUM_BAG_SLOTS) of the item ids in want: { bag, slot, id, link, guid,
 -- left, line, tradeable, readAt }. A copy is tradeable with the trade time line (and time left), or
 -- without it unless the client says it is bound (then the time is unknown); a bound copy without the
@@ -180,19 +193,15 @@ end
 local function bagCopies(want)
     local out = {}
     if not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemID) then return out end
-    for bag = 0, tonumber(_G.NUM_BAG_SLOTS) or 4 do
-        local n = tonumber(ns.Plain(C_Container.GetContainerNumSlots(bag))) or 0
-        for slot = 1, n do
-            local id = tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot)))
-            if id and want[id] then
-                local guid, bound = guidAt(bag, slot)
-                local left, line, read = tradeLeft(bag, slot)
-                local link = C_Container.GetContainerItemLink and ns.Plain(C_Container.GetContainerItemLink(bag, slot))
-                local tradeable = (line and not (left and left <= 0)) or (not line and bound ~= true)
-                out[#out + 1] = { bag = bag, slot = slot, id = id, link = type(link) == "string" and link or nil, guid = guid,
-                                  left = left, line = line, tradeable = tradeable and true or false, bound = bound, readAt = now(),
-                                  count = stackAt(bag, slot), unread = not read }
-            end
+    for bag, slot, id in eachSlot() do
+        if id and want[id] then
+            local guid, bound = guidAt(bag, slot)
+            local left, line, read = tradeLeft(bag, slot)
+            local link = C_Container.GetContainerItemLink and ns.Plain(C_Container.GetContainerItemLink(bag, slot))
+            local tradeable = (line and not (left and left <= 0)) or (not line and bound ~= true)
+            out[#out + 1] = { bag = bag, slot = slot, id = id, link = type(link) == "string" and link or nil, guid = guid,
+                              left = left, line = line, tradeable = tradeable and true or false, bound = bound, readAt = now(),
+                              count = stackAt(bag, slot), unread = not read }
         end
     end
     return out
@@ -611,12 +620,8 @@ local function locate(e)
     if c.guid then
         local g = guidAt(c.bag, c.slot)
         if g == c.guid then return c.bag, c.slot end
-        for bag = 0, tonumber(_G.NUM_BAG_SLOTS) or 4 do
-            for slot = 1, tonumber(ns.Plain(C_Container.GetContainerNumSlots(bag))) or 0 do
-                if tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot))) == e.item and guidAt(bag, slot) == c.guid then
-                    return bag, slot
-                end
-            end
+        for bag, slot, id in eachSlot() do
+            if id == e.item and guidAt(bag, slot) == c.guid then return bag, slot end
         end
         return nil
     end
@@ -804,14 +809,11 @@ local function verify(tr)
     for id, k in pairs(put) do inTrade[id] = math.max(inTrade[id] or 0, k) end
     -- the bags now: per GUID (else place and item) the stack size
     local present = {}
-    for bag = 0, tonumber(_G.NUM_BAG_SLOTS) or 4 do
-        for slot = 1, tonumber(ns.Plain(C_Container.GetContainerNumSlots(bag))) or 0 do
-            local id = tonumber(ns.Plain(C_Container.GetContainerItemID(bag, slot)))
-            if id then
-                local g = guidAt(bag, slot)
-                local k = g or (bag .. ":" .. slot .. ":" .. id)
-                present[k] = (present[k] or 0) + stackAt(bag, slot)
-            end
+    for bag, slot, id in eachSlot() do
+        if id then
+            local g = guidAt(bag, slot)
+            local k = g or (bag .. ":" .. slot .. ":" .. id)
+            present[k] = (present[k] or 0) + stackAt(bag, slot)
         end
     end
     local list = {}

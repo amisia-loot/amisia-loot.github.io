@@ -190,11 +190,6 @@ local function npc(idx, id)
     end
     return name or nil, idx.npcPts[id] or nil
 end
-function Q.Giver(qid)
-    local idx = ns.QuestIndex()
-    local r = idx and idx.byId[qid]
-    return r and (npc(idx, r[GIVER])) or nil
-end
 
 ---------------------------------------------------------------------------
 -- The character
@@ -203,19 +198,13 @@ end
 local optsCache, optsGen
 -- The own skill lines { [skill line] = rank }, or nil when the client tells none.
 local function readSkills()
-    local info = _G.C_SkillInfo
-    if not (type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function") then
-        return nil
-    end
+    local lines = Gear.SkillLines()
+    if not lines then return nil end
     local out = {}
-    local ok, n = pcall(info.GetNumSkillLines)
-    for i = 1, (ok and tonumber(n)) or 0 do
-        local ok2, s = pcall(info.GetSkillLineInfo, i)
-        if ok2 and type(s) == "table" and not s.isHeader then
-            local id = tonumber(s.skillID)
-            if not id or id == 0 then id = type(s.name) == "string" and SKILL_BY_NAME[s.name:lower()] or nil end
-            if id then out[id] = math.max(out[id] or 0, tonumber(s.rank) or 0) end
-        end
+    for _, s in ipairs(lines) do
+        local id = tonumber(s.skillID)
+        if not id or id == 0 then id = type(s.name) == "string" and SKILL_BY_NAME[s.name:lower()] or nil end
+        if id then out[id] = math.max(out[id] or 0, tonumber(s.rank) or 0) end
     end
     return out
 end

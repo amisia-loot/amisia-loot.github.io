@@ -21,7 +21,7 @@ assert(not panel.officer, "the page is for everyone (needs and pledges)")
 -- officer: Bestand first, the chips switch
 ---------------------------------------------------------------------------
 NS.ShowPage("bank")
-local f = NS.BankPageFrame()
+local f = NS.PageFrame("bank")
 assert(f.list:IsShown() and f.add.box:IsShown() and not f.need:IsShown(), "officers start on the stock")
 assert(f.list.rows[1].remove:GetText() == "Entfernen", "the stock's remove button says what it does")
 assert(f.views.bestand.on and not f.views.bedarf.on)
@@ -132,7 +132,7 @@ assert(has(f.text.area.box:GetText(), "Feuerkern: 12 von 60"), f.text.area.box:G
 ---------------------------------------------------------------------------
 NS.Set("ui.view", "raider")
 SlashCmdList.AMISIA("bank")
-f = NS.BankPageFrame()
+f = NS.PageFrame("bank")
 assert(NS.CurrentPage() == "bank", "raiders open the page")
 -- the chosen view stays (text); the slash word picks one
 SlashCmdList.AMISIA("bank bedarf")

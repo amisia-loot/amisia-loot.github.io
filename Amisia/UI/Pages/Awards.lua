@@ -18,8 +18,6 @@ local KIND_TIP = {
 local MAX_SUGGEST = 3
 local TO_TEXT = { bank = "Bank", de = L["Entzaubern"] }
 
-local GetItemInfo = C_Item.GetItemInfo
-
 local page
 local chosenRaid        -- session id, "all", or nil for the default
 local chosenId          -- id of the award in the edit panel
@@ -28,22 +26,7 @@ local query = ""
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
--- The raids newest first, the running recording in front.
-local function ordered()
-    local src, out, act = ns.Sessions(), {}, ns.Active()
-    if act then out[1] = act end
-    for i = #src, 1, -1 do
-        if src[i] ~= act then out[#out + 1] = src[i] end
-    end
-    return out
-end
-
-local function byId(id)
-    for _, s in ipairs(ns.Sessions()) do
-        if s.id == id then return s end
-    end
-    return nil
-end
+local byId, ordered = W.RaidById, W.RaidsNewestFirst
 
 -- "02.10." (English "Oct 2") from a raid's "2026-10-02".
 local shortDate = ns.SoftResShortDate
@@ -64,32 +47,7 @@ local function chosen()
     return s, false
 end
 
-local function quality(id)
-    local known = AmisiaDB and AmisiaDB.itemNames and AmisiaDB.itemNames[id]
-    local q = known and known.q
-    if not q or q == 0 then
-        local _, _, iq = GetItemInfo(id)
-        q = iq or q
-    end
-    return q or 0
-end
-
-local QCOLOR = T.QUALITY_HEX
-local function itemText(id)
-    return ("|c%s%s|r"):format(QCOLOR[quality(id)] or "ffffffff", ns.ItemName(id))
-end
-
-local function itemLink(id)
-    local _, link = GetItemInfo(id)
-    return link or ("item:" .. tostring(id))
-end
-
--- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
-local function insertLink(link)
-    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-        return ChatFrameUtil.InsertLink(link)
-    end
-end
+local itemText, itemLink, insertLink = W.ItemText, W.ItemLink, W.InsertLink
 
 -- The member record of a name: the exact spelling, else the same character by ns.SameName.
 -- known is true only for the exact (case-insensitive) spelling.
@@ -234,7 +192,7 @@ local function buildOfficer(parent)
         query = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
     end, L["Name oder Item"])
-    O.undo = W.Link(O, L["Rückgängig"], 100, function()
+    O.undo = W.Link(O, L["Rückgängig"], function()
         local text = ns.UndoAward()
         ns.msg(text and L["Rückgängig: %s."]:format(text) or L["Nichts rückgängig zu machen."])
         ns.Refresh()
@@ -258,7 +216,7 @@ local function buildOfficer(parent)
         end
     end)
     W.FitChip(O.add, 100)
-    W.FitChip(O.undo, 100)
+    W.FitChip(O.undo)
     O:Place(1, { O.raid, O.search }, { O.add, O.undo })
 
     -- the counts on the left (up to 330 px), the sync state right-aligned in the space the counts
@@ -348,8 +306,8 @@ local function buildOfficer(parent)
     -- the kind "-" (none given) shows a word; the chips as wide as their text, the note takes the rest
     local kindW = 0
     for i, k in ipairs(KINDS) do
-        local chip = W.Tab(E, KIND_LABEL[k] or k, 32, function() edit({ kind = k }) end)
-        kindW = kindW + W.FitChip(chip, 32) + (i == 1 and 4 or 3)
+        local chip = W.Tab(E, KIND_LABEL[k] or k, function() edit({ kind = k }) end)
+        kindW = kindW + W.FitChip(chip) + (i == 1 and 4 or 3)
         chip:SetPoint("LEFT", prev, "RIGHT", i == 1 and 4 or 3, 0)
         W.Tooltip(chip, KIND_TIP[k][1], KIND_TIP[k][2])
         E.kinds[k] = chip
@@ -436,7 +394,7 @@ local function buildOfficer(parent)
     B.text:SetPoint("TOPLEFT", 6, -5)
     B.mine = W.Text(B, T.FONT.text, 318)
     B.mine:SetPoint("BOTTOMLEFT", 6, 7)
-    B.drop = W.Link(B, L["Verwerfen"], 90, function(self)
+    B.drop = W.Link(B, L["Verwerfen"], function(self)
         local c = B.conflict
         if c then ns.SyncResolve(c.s, c.opid, false) end
         ns.Refresh()
@@ -784,10 +742,7 @@ end
 
 -- A winner for raiders: bank and disenchant grey, the own name gold, others in their class colour.
 local function raiderWinner(s, a)
-    if a.to == "bank" or a.to == "de" then
-        local who = (a.name and a.name ~= "-") and (" (" .. a.name .. ")") or ""
-        return GREY .. TO_TEXT[a.to] .. who .. "|r"
-    end
+    if a.to == "bank" or a.to == "de" then return winnerText(s, a) end
     local name = tostring(a.name or "?")
     if ns.SameName(name, ns.UnitFullName("player")) then return "|cffe2b857" .. name .. "|r" end
     return ("|c%s%s|r"):format(classColor((memberOf(s, name))), name)
@@ -868,10 +823,10 @@ local function buildRaider(parent)
     R:Bands({ "row" })
     R.title = W.Text(R, T.FONT.title, 160)
     R.title:SetText(L["Deine Items"])
-    R.mineChip = W.Tab(R, L["Deine Items"], 100, function() setRaiderView("mine") end)
-    R.allChip = W.Tab(R, L["Alle Vergaben"], 110, function() setRaiderView("all") end)
-    W.FitChip(R.mineChip, 100)
-    W.FitChip(R.allChip, 110)
+    R.mineChip = W.Tab(R, L["Deine Items"], function() setRaiderView("mine") end)
+    R.allChip = W.Tab(R, L["Alle Vergaben"], function() setRaiderView("all") end)
+    W.FitChip(R.mineChip)
+    W.FitChip(R.allChip)
     R:Place(1, { R.title, R.mineChip, R.allChip })
     -- "Deine Items": the own loot of every saved raid
     local M = W.Page(R, { view = true, top = R.top })
@@ -948,13 +903,13 @@ local function buildHandover(parent)
     H:Bands({ "row", "line" })
     H.title = W.Text(H, T.FONT.title, 300)
     H.title:SetText(L["Noch zu übergeben"])
-    H.back = W.Link(H, L["Zu den Vergaben"], 130, function()
+    H.back = W.Link(H, L["Zu den Vergaben"], function()
         handoverMode = false
         handoverSeen = {}
         for _, e in ipairs(ns.HandoverEntries and ns.HandoverEntries() or {}) do handoverSeen[e.key] = true end
         ns.Refresh()
     end)
-    W.FitChip(H.back, 130)
+    W.FitChip(H.back)
     H:Place(1, { H.title }, { H.back })
     H.hint = H:Line(2)
     H.hint:SetText(L["Kürzeste Restzeit zuerst. Handelt der Empfänger mit dir, legt ein Knopf am Handelsfenster die Items ein."])
@@ -1013,7 +968,6 @@ end
 ---------------------------------------------------------------------------
 -- The page, the card and the commands
 ---------------------------------------------------------------------------
-function ns.AwardsPageFrame() return page end
 
 -- Opens the page on "Noch zu übergeben" (/amisia uebergabe).
 function ns.ShowHandover()

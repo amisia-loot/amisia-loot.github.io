@@ -133,7 +133,7 @@ assert(table.concat(tn, ",") == "Rhahk'Zor,Edwin VanCleef,Somebody New" and trac
 AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "bosses"
 NS.ShowDungeon("deadmines")
-local B = NS.DungeonsPageFrame()
+local B = NS.PageFrame("dungeons")
 assert(B.detail:IsShown() and not B.grid:IsShown() and B.plan:GetText() == "Lauf planen", "ShowDungeon opens the detail view")
 B.plan:Click()
 local V = B.pathView

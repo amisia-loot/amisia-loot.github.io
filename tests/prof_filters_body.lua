@@ -30,7 +30,7 @@ local shared = {}
 Cr.Has = function(spell) return shared[spell] == true end
 
 NS.ShowProfessions("schmied")
-local f = NS.ProfessionsPageFrame()
+local f = NS.PageFrame("professions")
 NS.Refresh()
 
 -- 1. the dropdowns: the client's dropdown arrow, the field names the filter and the entry

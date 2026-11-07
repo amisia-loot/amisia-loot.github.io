@@ -40,7 +40,7 @@ D.cancel:Click()
 -- the page's shift-click goes the client's way
 NS.AddAwardTo(s, { name = "Fraktur", item = 32235, kind = "MS", src = "X" })
 NS.ShowPage("awards")
-local O = NS.AwardsPageFrame().officer
+local O = NS.PageFrame("awards").officer
 local insertVia
 local realInsert = ChatFrameUtil.InsertLink
 ChatFrameUtil.InsertLink = function(l) insertVia = "util"; return realInsert(l) end

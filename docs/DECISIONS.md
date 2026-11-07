@@ -1587,8 +1587,7 @@ Auktionshauses (TBC, Era) bleibt der Fallback der Rezeptliste (Leuchten und Hove
 
 **Datum:** 2026-11-07
 **Entscheidung:** Schritt 2 (F-142): Über jeder Seite steht im Hauptfenster ein Seitenkopf (`T.MAIN.PAGE_HEAD`, 38
-hoch): der Name der Seite (`T.FONT.big`, gold), darunter ihre eine Zeile (`sub` der Seite, `T.FONT.hint`; ein Text
-oder `fn(frame)`), darunter eine goldene Linie, die zu beiden Rändern ausläuft (`W.GoldRule`, die Verläufe des
+hoch): der Name der Seite (`T.FONT.big`, gold), darunter ihre eine Zeile (`sub` der Seite, `T.FONT.hint`; ein Text), darunter eine goldene Linie, die zu beiden Rändern ausläuft (`W.GoldRule`, die Verläufe des
 Clients; ohne `SetGradient` eine gleichmäßige Linie). Das "i" und das Zahnrad (D-49, D-67) sitzen rechts in diesem
 Kopf statt im Fensterkopf; der Fensterkopf hat nur noch den Raid-Status mit seinem Menü. Das Fenster wird um den
 Seitenkopf höher (598, ziehbar 598 bis 898, D-68), die Seite bleibt 602 x 478: keine Seite ändert ihr Layout.

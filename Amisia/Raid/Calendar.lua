@@ -136,6 +136,8 @@ local function call(name, ...)
     if not ok then return nil end
     return a
 end
+-- a C_Calendar function or nil, and a protected call of one (its first value, nil on an error); CalendarWrite uses them
+Cal.api, Cal.call = api, call
 
 -- The guild events loaded now, from tonight's raid night up to Cal.DAYS days ahead, by time:
 -- { { index, id (digits), title, at, type, raid, own = status code or nil, tex = the event's
@@ -182,19 +184,27 @@ Cal.IN = { [1] = true, [3] = true, [5] = true, [6] = true }
 Cal.TENT = { [8] = true }
 Cal.OUT = { [0] = true, [2] = true, [4] = true, [7] = true }
 
+-- ev (an entry of Cal.Events()) in the events loaded now, found by its id (else its time and title; the
+-- index may have moved since the list was read), and its GetGuildEventSelectionInfo; nil when gone.
+local function findEvent(ev)
+    for _, e in ipairs(Cal.Events()) do
+        if (ev.id and e.id == ev.id) or (not ev.id and e.at == ev.at and e.title == ev.title) then
+            local sel = call("GetGuildEventSelectionInfo", e.index)
+            if type(sel) ~= "table" then return nil end
+            return e, sel
+        end
+    end
+    return nil
+end
+
 -- An event of Cal.Events() as it stands now, found again by its id, with its day event (GetDayEvent,
 -- read only, nothing opened): { ev, offset, day, index, status (Enum.CalendarStatus, the own),
 -- signup (a guild event with sign-up), creator (true: the player created it, false: not, nil: the
 -- client did not say, a write treats it as unknown), modStatus, inviteType }; nil and "gone" when it
 -- is not in the calendar any more or the day event at its place is another one (its eventID).
 function Cal.Target(ev)
-    local now
-    for _, e in ipairs(Cal.Events()) do
-        if (ev.id and e.id == ev.id) or (not ev.id and e.at == ev.at and e.title == ev.title) then now = e break end
-    end
+    local now, sel = findEvent(ev)
     if not now then return nil, "gone" end
-    local sel = call("GetGuildEventSelectionInfo", now.index)
-    if type(sel) ~= "table" then return nil, "gone" end
     local offset, day, index = Cal.Offset(sel), plain(sel.monthDay), plain(sel.eventIndex)
     local d = call("GetDayEvent", offset, day, index)
     d = type(d) == "table" and d or {}
@@ -351,14 +361,8 @@ end
 -- shown: never opened then), "gone", "open", "timeout", "other" (see Cal.Read). The calendar write of
 -- part H3 (Raid/CalendarWrite.lua) has the event open this way for the client's buttons' calls.
 local function openFor(ev, use, fn)
-    -- the index may have moved since the list was read: find the event by its id (else its time)
-    local now
-    for _, e in ipairs(Cal.Events()) do
-        if (ev.id and e.id == ev.id) or (not ev.id and e.at == ev.at and e.title == ev.title) then now = e break end
-    end
+    local now, sel = findEvent(ev)
     if not now then return fn(nil, "gone") end
-    local sel = call("GetGuildEventSelectionInfo", now.index)
-    if type(sel) ~= "table" then return fn(nil, "gone") end
     busy, busyAt = true, GetTime()
     local function finish(result, extra, keep)
         if not keep then close() end

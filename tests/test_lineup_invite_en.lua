@@ -29,7 +29,7 @@ C_PartyInfo.InviteUnit = function(name) INV[#INV + 1] = name end
 local night = NS.SetLineupText("Anna Bergmann Healer\nBob Eisherz Tank")
 NS.LineupAutoAssign(night)
 NS.ShowLineup("invite", night)
-local f = NS.LineupPageFrame()
+local f = NS.PageFrame("lineup")
 assert(f.inviteAll:GetText() == "Invite all (2)", f.inviteAll:GetText())
 assert(f.again:GetText() == "Invite again (0)", f.again:GetText())
 assert(has(f.calLine:GetText(), "still to invite 2") and not german(f.calLine:GetText()), f.calLine:GetText())

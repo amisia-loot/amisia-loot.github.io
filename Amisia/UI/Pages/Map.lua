@@ -497,7 +497,6 @@ end
 -- The page
 ---------------------------------------------------------------------------
 
-function ns.MapPageFrame() return page end
 function Map.PageBuilds() return builds end
 
 -- The chosen zone: a uiMapID, "here", or nil for every zone.
@@ -663,12 +662,12 @@ local function create(parent)
         f.view = nil
         ns.Refresh()
     end)
-    f.targets = W.TabCheck(f, L["Ziele"], P.TARGETS_W, function() ns.Set("map.pinsTargets", not ns.Get("map.pinsTargets")); ns.Refresh() end)
-    f.wishes = W.TabCheck(f, L["Wünsche"], P.WISHES_W, function() ns.Set("map.pinsWishes", not ns.Get("map.pinsWishes")); ns.Refresh() end)
-    f.quests = W.TabCheck(f, TEXT.quests, P.QUESTS_W, function() ns.Set("map.pinsQuests", not ns.Get("map.pinsQuests")); ns.Refresh() end)
-    W.FitChip(f.targets, P.TARGETS_W)
-    W.FitChip(f.wishes, P.WISHES_W)
-    W.FitChip(f.quests, P.QUESTS_W)
+    f.targets = W.TabCheck(f, L["Ziele"], function() ns.Set("map.pinsTargets", not ns.Get("map.pinsTargets")); ns.Refresh() end)
+    f.wishes = W.TabCheck(f, L["Wünsche"], function() ns.Set("map.pinsWishes", not ns.Get("map.pinsWishes")); ns.Refresh() end)
+    f.quests = W.TabCheck(f, TEXT.quests, function() ns.Set("map.pinsQuests", not ns.Get("map.pinsQuests")); ns.Refresh() end)
+    W.FitChip(f.targets)
+    W.FitChip(f.wishes)
+    W.FitChip(f.quests)
     W.Tooltip(f.targets, L["Ziele"], L["Orte der Upgrades aus Ziele zeigen, hier und auf der Weltkarte."])
     W.Tooltip(f.wishes, L["Wünsche"], L["Orte der Wünsche zeigen, hier und auf der Weltkarte."])
     W.Tooltip(f.quests, TEXT.quests, TEXT.questsTip)
@@ -677,11 +676,11 @@ local function create(parent)
         if zone then ns.MapShowOnWorldMap({ map = zone, x = 0.5, y = 0.5 }) end
     end)
     W.FitChip(f.open, P.OPEN_W)
-    f.back = W.Link(f, TEXT.back, P.BACK_W, function()
+    f.back = W.Link(f, TEXT.back, function()
         f.view = nil
         ns.Refresh()
     end)
-    W.FitChip(f.back, P.BACK_W)
+    W.FitChip(f.back)
     f.back:Hide()
     f:Place(1, { f.zone, f.targets, f.wishes, f.quests }, { f.open })
     -- the counts and the link "N Items ohne Ort (...)" (a plain button in the gold of the heads)
@@ -714,15 +713,15 @@ local function create(parent)
     f.targetSub:SetPoint("BOTTOMLEFT", P.TEXT_X, P.TEXT_Y)
     f.targetSub:SetPoint("BOTTOMRIGHT", -P.TEXT_Y, P.TEXT_Y)
     f.targetSub:SetTextColor(0.75, 0.75, 0.75)
-    f.clear = W.Link(f, L["Ziel löschen"], P.CLEAR_W, function()
+    f.clear = W.Link(f, L["Ziel löschen"], function()
         ns.MapClearTarget()
         ns.Refresh()
     end)
-    W.FitChip(f.clear, P.CLEAR_W)
+    W.FitChip(f.clear)
     f:Place(3, { { f.card, fill = true } }, { f.clear })
     f:Footer({ { "hint", help = true }, { "data", help = true } })
     f.hint:SetText(TEXT.hint)
-    f.showHidden = W.Link(f, L["Ausgeblendete zeigen"], P.HIDDEN_W, function()
+    f.showHidden = W.Link(f, L["Ausgeblendete zeigen"], function()
         wipe(hiddenSet())
         ns.Fire("MAP_TARGET")
         ns.Refresh()
@@ -811,19 +810,7 @@ local function shown()
     return page ~= nil and page:IsShown() and ns.CurrentPage and ns.CurrentPage() == "map"
 end
 
-local due, lastAt = false, nil
-local function schedule()
-    if due or not shown() then return end
-    due = true
-    local now = GetTime and GetTime() or 0
-    local wait = lastAt and math.max(0, GAP - (now - lastAt)) or 0
-    C_Timer.After(wait, function()
-        due = false
-        if not shown() then return end
-        lastAt = GetTime and GetTime() or 0
-        ns.Refresh()
-    end)
-end
+local schedule = W.RefreshWhileShown(shown, GAP)
 
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("MAP_TARGET", function()
@@ -839,13 +826,4 @@ for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED" })
 
 -- Item names the client did not have at the last fill: once item data arrives the shown rows are
 -- filled again, once for a burst of answers.
-local namesDue = false
-ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
-    if not nameMissing or namesDue or not shown() then return end
-    namesDue = true
-    C_Timer.After(0.3, function()
-        namesDue = false
-        if not nameMissing or not shown() then return end
-        ns.Refresh()
-    end)
-end)
+W.RefreshOnItemNames(function() return nameMissing end, shown)

@@ -24,7 +24,7 @@ assert(NS.SettingsSection("rolls") == nil, "an officers' section is not named in
 NS.Set("ui.view", "officer")
 
 NS.Dispatch("einstellungen " .. first:lower())
-local page = NS.SettingsPageFrame()
+local page = NS.PageFrame("settings")
 assert(page and page:IsVisible(), "the settings page")
 assert(page.search:GetText() == "" and NS.SettingsChosen() == "map", "the section is chosen, not searched")
 assert(NS.SettingsRows()["map.pins"]:IsShown(), "the section's rows")

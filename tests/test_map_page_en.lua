@@ -7,7 +7,7 @@ dofile(ADDON_DIR .. "/../tests/map_steps_fixture.lua")
 assert(NS.WishAdd(803))
 
 NS.ShowMap("all")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 assert(f.zone.label:GetText():find("^All zones %(%d+%)$"), f.zone.label:GetText())
 assert(f.quests.label:GetText() == "Quests" and f.targets.label:GetText() == "Goals" and f.wishes.label:GetText() == "Wishes")
 assert(f.head.go:GetText() == "Map" and f.list.rows[2].go:GetText() == "Map", f.head.go:GetText())

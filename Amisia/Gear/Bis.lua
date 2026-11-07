@@ -299,19 +299,11 @@ end
 -- meine" then has no use). C_SkillInfo gives a table per line (SkillLineAttributes).
 function ns.BisSkills()
     if skills ~= nil then return skills or nil end
-    local out, readable = {}, false
-    local info = _G.C_SkillInfo
-    if type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function" then
-        readable = true
-        local ok, n = pcall(info.GetNumSkillLines)
-        for i = 1, (ok and tonumber(n)) or 0 do
-            local ok2, s = pcall(info.GetSkillLineInfo, i)
-            if ok2 and type(s) == "table" and not s.isHeader then
-                addSkill(out, PROF_BY_ID[s.skillID] or (type(s.name) == "string" and PROF_BY_NAME[s.name:lower()]), s.rank)
-            end
-        end
+    local out, lines = {}, Gear.SkillLines()
+    for _, s in ipairs(lines or {}) do
+        addSkill(out, PROF_BY_ID[s.skillID] or (type(s.name) == "string" and PROF_BY_NAME[s.name:lower()]), s.rank)
     end
-    skills = readable and out or false
+    skills = lines and out or false
     return skills or nil
 end
 
@@ -593,11 +585,8 @@ end)
 -- Scoring one item against what is worn
 ---------------------------------------------------------------------------
 
-local SLOT_OF = { HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", BACK = "BACK", CHEST = "CHEST", WRIST = "WRIST",
-    HANDS = "HANDS", WAIST = "WAIST", LEGS = "LEGS", FEET = "FEET", FINGER = "FINGER1", TRINKET = "TRINKET1",
-    ["2H"] = "MAINHAND", ["1H"] = "MAINHAND", MH = "MAINHAND", OHW = "OFFHAND", SHIELD = "OFFHAND", HELD = "OFFHAND",
-    RANGED = "RANGED" }
-local KIND_OF = { ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" }
+local SLOT_OF = Gear.CAP_ROW
+local KIND_OF = Gear.GROUP_PLACE
 local SLOT_NAME = {}
 local SLOT_INV = {}
 local SECOND_ROW_OF = { FINGER1 = "FINGER2", TRINKET1 = "TRINKET2" }   -- the rows one group fills twice
@@ -1361,8 +1350,7 @@ local function wishOf(c, id) return c and c.wish[id] ~= nil or false end
 local function ownEntry(slotKey, id, o, list)
     for _, e in ipairs(list or {}) do
         if e[1] == id then
-            local copy = {}
-            for k, v in pairs(e) do copy[k] = v end
+            local copy = Gear.Copy(e)
             copy.own, copy.pick = true, nil
             return copy
         end
@@ -1375,10 +1363,7 @@ local function ownEntry(slotKey, id, o, list)
         e.loading = true
         return e
     end
-    local place
-    if slotKey == "MAINHAND" then place = group == "2H" and "2H" or "MH"
-    elseif slotKey == "OFFHAND" then place = (group == "1H" or group == "OHW") and "OH" or nil
-    elseif slotKey == "RANGED" then place = "RANGED" end
+    local place = Gear.WeaponPlace(slotKey, group)
     local cap = o.cap and o.cap[Gear.CAP_ROW[group] or slotKey]
     local v = Gear.Score(s, w, o.level, place, o.class, cap)
     local variants = o.suffix ~= "base" and Gear.SuffixStats(id)
@@ -1542,8 +1527,7 @@ function ns.BisStyleHidden(o)
     o = o or ns.BisOpts()
     local none = { n = 0, list = {} }
     if not o.style or not o.class or not Gear.Available() then return none end
-    local plain = {}
-    for k, v in pairs(o) do plain[k] = v end
+    local plain = Gear.Copy(o)
     plain.style = nil
     local key = optsKey(plain, scoreStamp, true) .. "|" .. ns.PlayStyle.Key(o.style)
     if key == hiddenKey then return hiddenRes end
@@ -1900,8 +1884,7 @@ function ns.BisHere(placeKey, opts)
     if not o.class then return place, {} end
     -- a place picked by hand needs no zone switch (F-124): it would leave nothing there
     if placeKey and o.style and o.style.on.zone then
-        local copy = {}
-        for k, v in pairs(o) do copy[k] = v end
+        local copy = Gear.Copy(o)
         copy.style = ns.PlayStyle.Without(o.style, "zone")
         o = copy
     end

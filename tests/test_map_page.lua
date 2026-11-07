@@ -81,7 +81,7 @@ assert(not NS.Visible(panel), "no map data, no page")
 NS.MAP = saved
 NS.Dispatch("karte")
 assert(NS.CurrentPage() == "map", "/amisia karte opens the page")
-local f = NS.MapPageFrame()
+local f = NS.PageFrame("map")
 assert(f and f:IsShown(), "the page frame")
 
 ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ assert(Map.PageBuilds() == builds + 2, "built again when shown")
 -- the gear page: map buttons and menu entries only with a place
 ---------------------------------------------------------------------------
 NS.ShowGear("goals", "HEAD")
-local gp = NS.GearPageFrame()
+local gp = NS.PageFrame("gear")
 local O = gp.goals.opts
 assert(O[1].opt and O[1].opt.id == 201 and O[1].map:IsShown(), "the head option has a place")
 assert(O[1].map.icon.texture == "Interface\\Icons\\INV_Misc_Map_01" and O[1].map._w == 16 and O[1].map._h == 16, "16 px, the map icon")

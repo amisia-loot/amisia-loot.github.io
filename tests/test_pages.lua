@@ -22,7 +22,7 @@ NS.Set("ui.view", "raider")
 NS.ShowPage("raids"); assert(NS.CurrentPage() == "overview")
 NS.ShowPage("export"); assert(NS.CurrentPage() == "overview")
 NS.ShowPage("raidlog"); assert(NS.CurrentPage() == "raidlog", "the raid log is for everyone")
-assert(NS.RaidLogPageFrame() and NS.RaidLogPageFrame().log, "the raid log page builds")
+assert(NS.PageFrame("raidlog") and NS.PageFrame("raidlog").log, "the raid log page builds")
 NS.Reset("ui.view")
 
 -- the overview shows cards
@@ -31,7 +31,7 @@ local panelFrame = AmisiaFrame and true
 assert(panelFrame)
 
 -- 2.2 layout of the raid pages at 602 x 478: overview cards are insets that fill the width exactly
-local ov = NS.OverviewPageFrame()
+local ov = NS.PageFrame("overview")
 assert(ov.cards[1]:IsShown(), "a card is shown")
 do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(ov, 602, 478)
@@ -47,7 +47,7 @@ do
 end
 -- the raids page: the list leaves 12 px for its bar, the detail text's bar sits under it
 NS.ShowPage("raids")
-local rp = NS.RaidsPageFrame()
+local rp = NS.PageFrame("raids")
 do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(rp, 602, 478)
     L.row("raids list", rp.list, rp.list.bar)
@@ -98,7 +98,7 @@ assert(rp.all:GetText() == (nRaids == 1 and "Keine wählen" or "Alle wählen"), 
 if nRaids > 1 then rp.all:Click() end
 assert(rp.all:GetText() == "Keine wählen" and rp.del:GetText() == ("Löschen (%d)"):format(nRaids), rp.all:GetText())
 NS.ShowPage("export")
-local ep = NS.ExportPageFrame()
+local ep = NS.PageFrame("export")
 assert(ep.selBtn:GetText() == ("Angekreuzte (%d)"):format(nRaids) and ep.selBtn:IsEnabled(), ep.selBtn:GetText())
 NS.ShowPage("raids")
 rp.all:Click()
@@ -151,7 +151,7 @@ assert(NS.StartRoll(link, 5)); NS.StopRoll()
 assert(#NS.RollHistory() >= 1)
 NS.ShowPage("rolls")
 do
-    local rf = NS.RollsPageFrame()
+    local rf = NS.PageFrame("rolls")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(rf, 602, 478)
     L.row("rolls list", rf.list, rf.list.bar)
     L.inside("rolls list bar", rf.list.bar)
@@ -167,7 +167,7 @@ end
 -- export: the edit area with its thin bar inside the page
 NS.ShowPage("export")
 do
-    local ef = NS.ExportPageFrame()
+    local ef = NS.PageFrame("export")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(ef, 602, 478)
     L.row("export buttons", ef.newBtn, ef.selBtn, ef.state)
     -- the head row (buttons), the line under it, the text, the footer
@@ -181,7 +181,7 @@ end
 -- guild bank: the list ends 12 px before the edge, the count and the button move with it
 NS.ShowPage("bank")
 do
-    local bf = NS.BankPageFrame()
+    local bf = NS.PageFrame("bank")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(bf, 602, 478)
     L.row("bank editor", bf.add.box, bf.add.button, bf.add.hint)
     L.row("bank list", bf.list, bf.list.bar)
@@ -200,7 +200,7 @@ end
 NS.Set("ui.expert", true)
 NS.ShowPage("tools")
 do
-    local tf = NS.ToolsPageFrame()
+    local tf = NS.PageFrame("tools")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
     L.row("tools buttons", unpack(tf.buttons))
     L.column("tools page", tf.buttons[1], tf.state, tf.hint)
@@ -212,7 +212,7 @@ NS.Reset("ui.expert")
 -- search that finds rows of many sections; without one the page shows one section, D-49)
 NS.ShowSettings("e")
 do
-    local sp = NS.SettingsPageFrame()
+    local sp = NS.PageFrame("settings")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(sp, 602, 478)
     assert(sp.scroll.inherits == nil, "no old scroll frame template")
     assert(sp.bar and sp.bar.inherits.MinimalScrollBar and sp.scroll.bar == sp.bar)
@@ -249,7 +249,7 @@ end
 -- about: the list and the commands end 12 px before the edge, their bars inside the page
 NS.ShowPage("about")
 do
-    local af = NS.AboutPageFrame()
+    local af = NS.PageFrame("about")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(af, 602, 478)
     L.row("about head", af.title, af.askRaid, af.askGuild)
     L.row("about list", af.list, af.list.bar)
@@ -315,7 +315,7 @@ for _, view in ipairs({ "officer", "raider" }) do
     for _, e in ipairs(STUB.quickMenu()) do quick[#quick + 1] = e[1] end
     local flat = table.concat(quick, "|")
     assert(flat:find("Ausrüstung|Ausrüstungstabelle|", 1, true) and flat:find("|Karte|", 1, true), "the quick menu for " .. view)
-    local mf = NS.MapPageFrame()
+    local mf = NS.PageFrame("map")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(mf, 602, 478)
     L.row(view .. " map head", mf.zone, mf.targets, mf.wishes, mf.quests, mf.open)
     if mf.clear:IsShown() then L.row(view .. " map target", mf.card, mf.clear) else L.row(view .. " map target", mf.card) end
@@ -326,7 +326,7 @@ for _, view in ipairs({ "officer", "raider" }) do
     assert(mf.hint.isHelp and mf.data.isHelp); L.fits(mf.counts); L.fits(mf.target)
 end
 NS.Reset("ui.view")
-local gp = NS.GearPageFrame()
+local gp = NS.PageFrame("gear")
 assert(gp and gp.goals and #gp.goals.list.items == 17, "all slots on the real data")
 NS.ShowPage("overview")
 NS.Refresh()

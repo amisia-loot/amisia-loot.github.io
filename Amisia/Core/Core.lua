@@ -550,10 +550,6 @@ function ns.RemoveLastAward()
     return (ns.DeleteAward(active, active.awards[#active.awards].id))
 end
 
-function ns.AwardCount(s)
-    return #(s.awards or {})
-end
-
 -- Chat announcement for the group: raid warning for leader or assistant (unless rolls.channel says
 -- raid), else raid, else party. Goes through the chat queue (Chat.lua); ttl: seconds the line may
 -- wait there (a countdown is worthless later).
@@ -827,14 +823,6 @@ function ns.ItemCount(s)
     return n
 end
 
-function ns.DropCount(s)
-    local n = 0
-    for _, d in pairs(s.drops or {}) do
-        for _, c in pairs(d.items or {}) do n = n + c end
-    end
-    return n
-end
-
 function ns.MatCounts(s)
     local c = {}
     for _, l in ipairs(s.loot) do
@@ -865,6 +853,22 @@ local function oneLine(text)
     return (tostring(text or "?"):gsub("[%c|]", " "))
 end
 
+-- The lines of list summed per name and item: { name, item, count } in the order of "name\titem".
+local function sumByNameItem(list)
+    local sum, keys = {}, {}
+    for _, l in ipairs(list) do
+        local key = l.name .. "\t" .. l.item
+        if not sum[key] then
+            sum[key] = { name = l.name, item = l.item, count = 0 }
+            keys[#keys + 1] = key
+        end
+        sum[key].count = sum[key].count + (l.count or 1)
+    end
+    table.sort(keys)
+    for i, key in ipairs(keys) do keys[i] = sum[key] end
+    return keys
+end
+
 -- The S..E block of one session, appended to lines; used collects the item ids to name in N lines.
 -- legacy: the form of 1.4, every award as an A line and nothing else (the old export marks).
 local function sessionLines(s, lines, used, legacy)
@@ -878,34 +882,12 @@ local function sessionLines(s, lines, used, legacy)
         lines[#lines + 1] = ("M %s %s %d %d"):format(ns.ExportName(name), (m.class and m.class ~= "") and m.class or "UNKNOWN",
             m.first or 0, m.late and 1 or 0)
     end
-    local sum, keys = {}, {}
-    for _, l in ipairs(s.loot) do
-        local key = l.name .. "\t" .. l.item
-        if not sum[key] then
-            sum[key] = { name = l.name, item = l.item, count = 0 }
-            keys[#keys + 1] = key
-        end
-        sum[key].count = sum[key].count + (l.count or 1)
-    end
-    table.sort(keys)
-    for _, key in ipairs(keys) do
-        local e = sum[key]
+    for _, e in ipairs(sumByNameItem(s.loot)) do
         lines[#lines + 1] = ("L %s %d %d"):format(ns.ExportName(e.name), e.item, e.count)
         used[e.item] = true
     end
     -- I <name> <itemID> <count>: blue or better loot
-    local isum, ikeys = {}, {}
-    for _, l in ipairs(s.items or {}) do
-        local key = l.name .. "\t" .. l.item
-        if not isum[key] then
-            isum[key] = { name = l.name, item = l.item, count = 0 }
-            ikeys[#ikeys + 1] = key
-        end
-        isum[key].count = isum[key].count + (l.count or 1)
-    end
-    table.sort(ikeys)
-    for _, key in ipairs(ikeys) do
-        local e = isum[key]
+    for _, e in ipairs(sumByNameItem(s.items or {})) do
         lines[#lines + 1] = ("I %s %d %d"):format(ns.ExportName(e.name), e.item, e.count)
         used[e.item] = true
     end
@@ -1039,11 +1021,6 @@ function ns.ExportState(s, fresh)
         hashes[s] = { h = h, at = now, gen = hashGen }
     end
     return e.h == h and "done" or "changed"
-end
-
-function ns.ExportedAt(s)
-    local e = DB and DB.exported and DB.exported[s.id]
-    return e and e.at
 end
 
 -- Sessions to export when none is selected: everything new or changed since its last export (fresh:

@@ -121,8 +121,8 @@ local function choiceRow(parent, path)
     local r = newRow(parent, path)
     r.chips = {}
     for _, v in ipairs(item(path).values) do
-        local c = W.Tab(r, v[2], nil, function() set(path, v[1]) end)
-        W.FitChip(c, 60)
+        local c = W.Tab(r, v[2], function() set(path, v[1]) end)
+        W.FitChip(c)
         c.value = v[1]
         r.chips[#r.chips + 1] = c
     end
@@ -345,8 +345,8 @@ steps = {
           f.presetRow:Show()
           f.presets = {}
           for i, p in ipairs(PRESETS) do
-              local b = W.Link(f.presetRow, p.label, nil, function() addPreset(p) end, { height = T.ROW_BUTTON_H })
-              W.FitChip(b, 80)
+              local b = W.Link(f.presetRow, p.label, function() addPreset(p) end)
+              W.FitChip(b)
               f.presets[i] = b
           end
           -- the buttons in a row, a second row when they do not fit the width (the German texts)
@@ -387,8 +387,7 @@ steps = {
                       r:SetSize(CW, S.ROW_H)
                       r.text = W.Text(r, T.FONT.text, CW - S.CHANGE_W - T.LAYOUT.ITEM_GAP)
                       r.text:SetPoint("LEFT", 0, 0)
-                      r.change = W.Link(r, L["Ändern##Knopf"], nil, function(self) ns.ShowSetup(self:GetParent().step) end,
-                          { height = T.ROW_BUTTON_H })
+                      r.change = W.Link(r, L["Ändern##Knopf"], function(self) ns.ShowSetup(self:GetParent().step) end)
                       W.FitChip(r.change, S.CHANGE_W, S.CHANGE_W)
                       r.change:SetPoint("RIGHT", 0, 0)
                       f.lines[n] = r
@@ -465,8 +464,8 @@ local function build()
     F.status = W.Text(F, T.FONT.text, CW)
     F.status:SetPoint("BOTTOMLEFT", PAD, S.BOTTOM + T.BUTTON_H + S.STATUS_GAP)
     F.status:SetHeight(S.LINE_H)
-    F.back = W.Link(F, L["Zurück"], nil, function() goTo(step - 1) end)
-    F.skip = W.Link(F, L["Überspringen"], nil, function() goTo(step + 1) end)
+    F.back = W.Link(F, L["Zurück"], function() goTo(step - 1) end)
+    F.skip = W.Link(F, L["Überspringen"], function() goTo(step + 1) end)
     F.next = W.Button(F, L["Weiter"], nil, function() goTo(step + 1) end)
     F.done = W.Button(F, L["Fertig"], nil, finish)
     for _, b in ipairs({ F.back, F.skip, F.next, F.done }) do W.FitChip(b, S.NAV_W) end
@@ -502,14 +501,14 @@ local function buildOffer()
     o.text:SetPoint("TOPLEFT", PAD, -S.OFFER_TEXT_Y)
     o.text:SetText(L["Amisia einrichten? Ein paar Schritte vor dem ersten Raid."])
     o.go = W.Button(o, L["Los"], nil, function() ns.ShowSetup(1) end)
-    o.later = W.Link(o, L["Später"], nil, function() o:Hide() end)
-    o.never = W.Link(o, L["Nicht mehr fragen"], nil, function()
+    o.later = W.Link(o, L["Später"], function() o:Hide() end)
+    o.never = W.Link(o, L["Nicht mehr fragen"], function()
         if DB then DB.setup.never = math.floor(time()) end
         o:Hide()
         ns.msg(L["Amisia fragt nicht mehr. /amisia einrichten startet die Einrichtung jederzeit."])
     end)
     for _, b in ipairs({ o.go, o.later }) do W.FitChip(b, S.NAV_W) end
-    W.FitChip(o.never, S.NAV_W)
+    W.FitChip(o.never)
     W.Row(o, { o.go, o.later, o.never }, T.LAYOUT.ITEM_GAP, PAD, S.BOTTOM, { point = "BOTTOMLEFT" })
     return o
 end

@@ -19,7 +19,6 @@ ns.SearchIndex = Search
 
 Search.ITEM_MIN = 3        -- characters before the gear data may be built for the item names
 Search.KEEP = 60           -- seconds an index is kept before it is built again
-local SETTINGS_ICON = "Interface\\Icons\\Trade_Engineering"
 
 local function hit(text, q)
     return type(text) == "string" and ns.Fold(text):find(q, 1, true) ~= nil
@@ -95,7 +94,6 @@ local function itemHits(q)
         local e = found[i]
         local color = e.q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.q]
         out[i] = { text = e.name, label = color and color.hex and (color.hex .. e.name .. "|r") or e.name, item = e.id,
-            icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(e.id) or nil,
             run = function() linkToChat(e.id) end }
     end
     return out
@@ -145,8 +143,7 @@ local function playerHits(q)
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
         out[i] = { text = e.name, label = ns.ClassColored(e.name, e.class),
-            atlas = e.class and ("groupfinder-icon-class-" .. e.class:lower()) or nil,
-            icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", tip = L["Öffnet die Statistik dieses Spielers."],
+            tip = L["Öffnet die Statistik dieses Spielers."],
             run = function() if ns.ShowStats then ns.ShowStats("players", e.name) end end }
     end
     return out
@@ -198,8 +195,7 @@ local function recipeHits(q)
     local Pr, out = ns.Prof, {}
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
-        local key = Pr.Key(e.skill)
-        out[i] = { text = e.name, icon = key and Pr.ICONS[key] or nil,
+        out[i] = { text = e.name,
             tip = L["%s, ab Fertigkeit %d. Öffnet das Rezept auf der Seite Berufe."]:format(Pr.Name(e.skill), e.learn or 0),
             run = function() if ns.ShowRecipe then ns.ShowRecipe(e.skill, e.spell, e.name) end end }
     end
@@ -225,7 +221,7 @@ local function dungeonHits(q)
     local out = {}
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
-        out[i] = { text = e.name, icon = page.icon,
+        out[i] = { text = e.name,
             tip = e.kind == "raid" and L["Raid. Öffnet ihn auf der Seite Raids."] or L["Dungeon. Öffnet ihn auf der Seite Dungeons."],
             run = function() if ns.ShowDungeon then ns.ShowDungeon(e.key) end end }
     end
@@ -307,7 +303,7 @@ local function pageHits(q)
         for _, g in ipairs(ns.PANEL_GROUPS) do
             if g.key == tab then tab = g.label end
         end
-        out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite in der Gruppe %s."]:format(tab),
+        out[#out + 1] = { text = p.label, tip = L["Seite in der Gruppe %s."]:format(tab),
             run = function() ns.ShowPage(p.key) end }
     end
     for _, p in ipairs(ns.panels) do
@@ -332,7 +328,7 @@ local function settingHits(q)
         for _, section in ipairs(g.sections or {}) do
             if #out >= M.RES_MAX then return out end
             if tabHit or hit(section.label, q) or wordHit(Search.SECTION_WORDS[section.key], q) then
-                out[#out + 1] = { text = section.label, icon = SETTINGS_ICON,
+                out[#out + 1] = { text = section.label,
                     tip = L["Einstellungen, Reiter %s. Öffnet den Abschnitt."]:format(g.label),
                     run = function() if ns.ShowSettingsSection then ns.ShowSettingsSection(section.key) end end }
             end
@@ -343,7 +339,7 @@ local function settingHits(q)
             for _, it in ipairs(section.items) do
                 if #out >= M.RES_MAX then return out end
                 if it.key and it.label and it.type ~= "desc" and ns.Visible(it) and ns.SettingHits(it, q) then
-                    out[#out + 1] = { text = it.label, icon = SETTINGS_ICON, tip = section.label .. (it.tip and ("\n" .. it.tip) or ""),
+                    out[#out + 1] = { text = it.label, tip = section.label .. (it.tip and ("\n" .. it.tip) or ""),
                         run = function() if ns.ShowSettings then ns.ShowSettings(it.label) end end }
                 end
             end
@@ -390,7 +386,7 @@ local function commandHits(q)
     return out
 end
 
--- The hits of text: { { key, label, hits = { { text, label, icon or atlas, tip, item, run } } } },
+-- The hits of text: { { key, label, hits = { { text, label, tip, item, run } } } },
 -- the groups without a hit left out; nothing under SEARCH_MIN characters.
 function ns.Search(text)
     local q = ns.Fold(tostring(text or ""):match("^%s*(.-)%s*$") or "")

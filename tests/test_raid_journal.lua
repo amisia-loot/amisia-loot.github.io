@@ -33,7 +33,7 @@ end
 -- below the level cap: every raid, out of reach
 ---------------------------------------------------------------------------
 assert(NS.ShowPage("raidjournal") ~= false)
-local P = NS.RaidJournalPageFrame()
+local P = NS.PageFrame("raidjournal")
 assert(P and P:IsShown() and NS.CurrentPage() == "raidjournal", "the page Raids")
 assert(P.grid:IsShown() and not P.detail:IsShown() and not P.art:IsShown() and not P.back:IsShown(), "the cards first")
 local rows = rowsOf(P)
@@ -77,7 +77,7 @@ assert(not P.way:IsEnabled(), "no entrance known for the Barrow Deeps")
 
 -- the page Dungeons holds no raid, even at 60
 NS.ShowPage("dungeons")
-for _, x in ipairs(NS.DungeonsPageFrame().grid.entries) do assert(x.kind ~= "raid", "a raid on the page Dungeons: " .. x.key) end
+for _, x in ipairs(NS.PageFrame("dungeons").grid.entries) do assert(x.kind ~= "raid", "a raid on the page Dungeons: " .. x.key) end
 
 ---------------------------------------------------------------------------
 -- the own raid ID

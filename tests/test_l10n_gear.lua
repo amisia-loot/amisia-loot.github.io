@@ -76,7 +76,7 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 -- the gear page
 ---------------------------------------------------------------------------
 NS.ShowPage("gear")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(f and f:IsShown())
 assert(plain(f.spec.label:GetText()) == "Arms/Fury (guessed)", f.spec.label:GetText())
 assert(f.views.goals.label:GetText() == "Goals" and f.views.wish.label:GetText() == "Wishlist (0)", f.views.wish.label:GetText())
@@ -232,7 +232,7 @@ NS.QUEST_DATA = { built = "2026-10-06", source = "test", count = 3,
 NS.Quests._reset()
 NS.Dispatch("quests")
 assert(NS.CurrentPage() == "quests")
-local q = assert(NS.QuestPageFrame())
+local q = assert(NS.PageFrame("quests"))
 assert(q.show.open.label:GetText() == "Available" and q.show.active.label:GetText() == "In log" and q.mine.label:GetText() == "Only mine")
 assert(plain(q.counts:GetText()) == "0 in log · 1 available · 2 locked · 0 done", plain(q.counts:GetText()))
 assert(has(q.data:GetText(), "Quest data of Oct 6, 2026 · 3 quests"), q.data:GetText())

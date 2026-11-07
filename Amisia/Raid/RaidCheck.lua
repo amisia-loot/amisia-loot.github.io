@@ -87,9 +87,6 @@ local function lists()
     end
     return d
 end
--- for the tests: forget the lists read (a fixture put in their place)
-function RC.Reload() data, buffKey, groups = nil, nil, nil end
-
 -- What auras (RR.Auras(...).all) hold: { flask = info, elixirs = { info }, food = info, have = { [group]
 -- = info } }; info = { id, left, name }. Secret auras are skipped.
 function RC.Classify(all)

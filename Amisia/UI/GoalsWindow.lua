@@ -302,12 +302,12 @@ local function buildDoll(parent)
     d.noModel:SetText(L["Modell nicht verfügbar"])
     if d.model then d.noModel:Hide() end
     -- the switch Ziele / Angelegt and what the mouse does with the model
-    d.goals = W.Tab(d, L["Ziele"], G.SWITCH_W, function() winState().mode = "goals"; refresh() end)
-    d.worn = W.Tab(d, L["Angelegt"], G.SWITCH_W, function() winState().mode = "worn"; refresh() end)
+    d.goals = W.Tab(d, L["Ziele"], function() winState().mode = "goals"; refresh() end)
+    d.worn = W.Tab(d, L["Angelegt"], function() winState().mode = "worn"; refresh() end)
     -- the catalog (F-123): sets and every item in the place of the list and the slot panel
-    d.catalog = W.Tab(d, L["Katalog"], G.SWITCH_W, function() winState().mode = "catalog"; refresh() end)
+    d.catalog = W.Tab(d, L["Katalog"], function() winState().mode = "catalog"; refresh() end)
     W.Tooltip(d.catalog, L["Katalog"], L["Item-Sets nach Herkunft und die Suche über alle Items. Klick auf ein Item: am Modell anprobieren."])
-    local w1, w2, w3 = W.FitChip(d.goals, G.SWITCH_W), W.FitChip(d.worn, G.SWITCH_W), W.FitChip(d.catalog, G.SWITCH_W)
+    local w1, w2, w3 = W.FitChip(d.goals), W.FitChip(d.worn), W.FitChip(d.catalog)
     local sy = -(G.MODEL_H + G.WEAPON_GAP + G.SLOT + G.SWITCH_GAP)
     W.Row(d, { d.goals, d.worn, d.catalog }, T.TAB_GAP, math.floor((G.DOLL_W - w1 - w2 - w3 - 2 * T.TAB_GAP) / 2), sy)
     d.hint = W.Text(d, T.FONT.hint, G.DOLL_W, true)
@@ -454,7 +454,7 @@ local function buildProgress(f)
     P.bar:SetScript("OnLeave", K.hideTip)
     P.chips = {}
     for _, key in ipairs(FILTERS) do
-        P.chips[key] = W.Tab(P, FILTER_LABEL[key], 40, function()
+        P.chips[key] = W.Tab(P, FILTER_LABEL[key], function()
             winState().filter = key
             refresh()
         end)
@@ -482,14 +482,17 @@ local function buildProgress(f)
     end
 end
 
+local function pctText(gain, mine, up)
+    if type(gain) ~= "number" then return "" end
+    local color = up and GREEN or GREY
+    if type(mine) == "number" and mine > 0 then return color .. K.pctText(gain, mine) .. "|r" end
+    return color .. ("%+d"):format(math.floor(gain + 0.5)) .. "|r"
+end
+
 local function gainText(e)
     if e.worn or e.owned == "worn" then return GREEN .. L["angelegt"] .. "|r" end
     if e.switch then return L["Wechsel"] end
-    if type(e.gain) ~= "number" then return "" end
-    if type(e.mine) == "number" and e.mine > 0 then
-        return (e.upgrade and GREEN or GREY) .. K.pctText(e.gain, e.mine) .. "|r"
-    end
-    return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
+    return pctText(e.gain, e.mine, e.upgrade)
 end
 
 local ownMark   -- below: the star of an own pick
@@ -612,14 +615,6 @@ local function dropsFor(slotKey, n)
     for i = #out, (n or 3) + 1, -1 do out[i] = nil end
     return out
 end
-ns.GoalsDrops = dropsFor
-
-local function pctText(gain, mine, up)
-    if type(gain) ~= "number" then return "" end
-    local color = up and GREEN or GREY
-    if type(mine) == "number" and mine > 0 then return color .. K.pctText(gain, mine) .. "|r" end
-    return color .. ("%+d"):format(math.floor(gain + 0.5)) .. "|r"
-end
 
 local function sideTip(owner, id, extra)
     K.itemTooltip(owner, id)
@@ -642,6 +637,19 @@ local function addFromField(S)
     else
         say(S, why)
     end
+end
+
+-- A section of the side panel from y down: its head after the section gap, its list (if any) right
+-- under it. Returns the list's top.
+local function section(head, list, y)
+    head:ClearAllPoints()
+    head:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
+    y = y - G.SECTION_GAP - G.HEAD_H
+    if list then
+        list:ClearAllPoints()
+        list:SetPoint("TOPLEFT", 0, y)
+    end
+    return y
 end
 
 local function buildSide(f)
@@ -770,10 +778,10 @@ local function buildSide(f)
     S.drops:SetWidth(SW)
     S.dropEmpty = W.Text(S, T.FONT.hint, SW, true)
     S.dropEmpty:SetHeight(28)
-    S.all = W.Link(S, L["Alle zeigen"], G.ALL_W, function()
+    S.all = W.Link(S, L["Alle zeigen"], function()
         if ns.ShowGear then ns.ShowGear("dungeons") end
-    end, { height = T.ROW_BUTTON_H })
-    W.FitChip(S.all, G.ALL_W)
+    end)
+    W.FitChip(S.all)
     -- the enchantment of the worn item (F-128): what is on it, what brings more (the wheel scrolls)
     S.enchHead = W.Text(S, T.FONT.head, SW)
     S.enchHead:SetHeight(G.HEAD_H)
@@ -881,11 +889,7 @@ local function buildSide(f)
         -- the ranking
         local rank, total = ns.BisRanking(chosen, G.RANK_ROWS)
         P.rankHead:SetText(L["Rangliste für %s · %d"]:format(specName, o.level))
-        P.rankHead:ClearAllPoints()
-        P.rankHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
-        y = y - G.SECTION_GAP - G.HEAD_H
-        P.rank:ClearAllPoints()
-        P.rank:SetPoint("TOPLEFT", 0, y)
+        y = section(P.rankHead, P.rank, y)
         P.rank:SetItems(rank)
         P.rankEmpty:ClearAllPoints()
         P.rankEmpty:SetPoint("TOPLEFT", 0, y)
@@ -899,12 +903,8 @@ local function buildSide(f)
         P.rank.total = total
         y = y - G.RANK_ROWS * RH
         -- the dungeon drops
-        P.dropHead:ClearAllPoints()
-        P.dropHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
-        y = y - G.SECTION_GAP - G.HEAD_H
+        y = section(P.dropHead, P.drops, y)
         local drops = dropsFor(chosen, G.DROP_ROWS)
-        P.drops:ClearAllPoints()
-        P.drops:SetPoint("TOPLEFT", 0, y)
         P.drops:SetItems(drops)
         P.dropEmpty:ClearAllPoints()
         P.dropEmpty:SetPoint("TOPLEFT", 0, y)
@@ -919,11 +919,7 @@ local function buildSide(f)
         if ench then
             local now = ench.current and ench.current.name or (T.RED .. L["Keine"] .. "|r")
             P.enchHead:SetText(L["Verzauberung: %s"]:format(now))
-            P.enchHead:ClearAllPoints()
-            P.enchHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
-            y = y - G.SECTION_GAP - G.HEAD_H
-            P.ench:ClearAllPoints()
-            P.ench:SetPoint("TOPLEFT", 0, y)
+            y = section(P.enchHead, P.ench, y)
             -- nothing better than the one on it: only that (not the unscored effects)
             local items = (ench.current and not ench.better) and {} or ench.list
             P.ench:SetItems(items)
@@ -940,9 +936,7 @@ local function buildSide(f)
             P.enchEmpty:Hide()
         end
         -- the field
-        P.fieldHead:ClearAllPoints()
-        P.fieldHead:SetPoint("TOPLEFT", 0, y - G.SECTION_GAP)
-        y = y - G.SECTION_GAP - G.HEAD_H
+        y = section(P.fieldHead, nil, y)
         W.Row(P, { P.field, P.add }, T.LAYOUT.ITEM_GAP, 0, y)
         P.msg:ClearAllPoints()
         P.msg:SetPoint("TOPLEFT", 0, y - T.FIELD_H - 4)
@@ -1085,12 +1079,15 @@ local Cat = ns.Catalog
 local tries = {}        -- the catalog's items tried on the model (item ids, this session only)
 local query = ""        -- the search text (never saved)
 
+-- The own level, 1 to the data's cap.
+local function ownLevel() return math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())) end
+
 -- The catalog's choice: the category (default dungeon sets), the set shown open, the level range
 -- (default 1 to the own level, "Meine Stufe").
 local function catChoice()
     local st = winState()
     local cap = Gear.Cap()
-    local own = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, cap))
+    local own = ownLevel()
     if not Cat.ValidCat(st.cat) then st.cat = nil end
     local lo, hi = tonumber(st.lo), tonumber(st.hi)
     if not (lo and hi and lo >= 1 and hi <= cap and lo <= hi and lo % 1 == 0 and hi % 1 == 0) then
@@ -1219,13 +1216,13 @@ local function buildCatalog(f)
         setRange(math.min(lo, v), v)
     end)
     for _, st in ipairs({ C.lo, C.hi }) do st:Configure(1, Gear.Cap(), 1) end
-    C.mine = W.Tab(C, L["Meine Stufe"], G.CAT_MINE_W, function()
-        setRange(1, math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())))
+    C.mine = W.Tab(C, L["Meine Stufe"], function()
+        setRange(1, ownLevel())
     end)
     W.Tooltip(C.mine, L["Meine Stufe"], L["Stufe 1 bis deine Stufe: alles, was du jetzt tragen kannst."])
-    C.all = W.Tab(C, L["Alle"], G.CAT_ALL_W, function() setRange(1, Gear.Cap()) end)
-    W.FitChip(C.mine, G.CAT_MINE_W)
-    W.FitChip(C.all, G.CAT_ALL_W)
+    C.all = W.Tab(C, L["Alle"], function() setRange(1, Gear.Cap()) end)
+    W.FitChip(C.mine)
+    W.FitChip(C.all)
     W.Row(C, { C.search, { C.lo, gap = T.LAYOUT.ITEM_GAP * 2 }, C.dash, C.hi, { C.mine, gap = T.LAYOUT.ITEM_GAP * 2 }, C.all },
         T.CHIP_GAP, 0, 0)
     -- the categories left, as the page list's bars
@@ -1271,7 +1268,7 @@ local function buildCatalog(f)
         for _, id in ipairs(s.items) do tryItem(id) end
         refresh()
     end)
-    C.clear = W.Link(C, L["Anprobe leeren"], G.CAT_NAV_W, function()
+    C.clear = W.Link(C, L["Anprobe leeren"], function()
         tries = {}
         refresh()
     end)
@@ -1338,7 +1335,7 @@ local function fillCatalog(f, o)
     local cat, sid, lo, hi = catChoice()
     C.lo:SetValue(lo)
     C.hi:SetValue(hi)
-    local own = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap()))
+    local own = ownLevel()
     C.mine:SetOn(lo == 1 and hi == own)
     C.all:SetOn(lo == 1 and hi == Gear.Cap())
     local searching = query:find("%S") ~= nil
@@ -1384,8 +1381,8 @@ end
 local function buildHead(f)
     f.spec = K.specPicker(f)
     f.plan = W.Text(f, T.FONT.text, 200)
-    f.why = W.Link(f, L["Warum?"], 64, nil)
-    W.FitChip(f.why, 64)
+    f.why = W.Link(f, L["Warum?"], nil)
+    W.FitChip(f.why)
     f.why:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Warum diese Gewichte"])
@@ -1432,11 +1429,11 @@ refresh = function()
     dress(d, res, m, catalog and tries or nil)
     f.list:SetShown(not catalog)
     f.progress:SetShown(not catalog)
-    if f.side then f.side:SetShown(not catalog) end
+    f.side:SetShown(not catalog)
     f.catalog:SetShown(catalog)
     if catalog then
         fillCatalog(f, o)
-        if f.score and f.fillScore then f.fillScore(f, o, res) end
+        f.fillScore(f, o, res)
         return
     end
     local ench = unenchanted()
@@ -1446,8 +1443,8 @@ refresh = function()
     for _, e in ipairs(items) do e.chosen, e.o = chosen, o end
     f.list:SetItems(items)
     f.fillProgress(f, o, res, p, counts)
-    if f.side and f.fillSide then f.fillSide(f, o, res, chosen) end
-    if f.score and f.fillScore then f.fillScore(f, o, res) end
+    f.fillSide(f, o, res, chosen)
+    f.fillScore(f, o, res)
 end
 
 ---------------------------------------------------------------------------
@@ -1455,23 +1452,10 @@ end
 ---------------------------------------------------------------------------
 
 local function place()
-    if not win then return end
-    win:ClearAllPoints()
-    local st = winState()
-    if type(st.point) == "string" and tonumber(st.x) and tonumber(st.y) then
-        win:SetPoint(st.point, UIParent, st.point, tonumber(st.x), tonumber(st.y))
-    else
-        win:SetPoint("CENTER")
-    end
+    if win then W.PlaceWindow(win, winState(), "CENTER") end
 end
 
-local function savePlace(f)
-    local st = winState()
-    local point, _, _, x, y = f:GetPoint(1)
-    if type(point) == "string" and tonumber(x) and tonumber(y) then
-        st.point, st.x, st.y = point, math.floor(x + 0.5), math.floor(y + 0.5)
-    end
-end
+local function savePlace(f) W.SaveWindowPlace(f, winState()) end
 
 function ns.ResetGoalsWindowPosition()
     local st = winState()
@@ -1542,7 +1526,6 @@ end
 -- for the parts of the window and the tests
 function ns.GoalsFrameState() return winState() end
 ns.GoalsRefresh = function() refresh() end
-ns.GOALS_SECTIONS = SECTIONS
 
 -- What changes the targets, the own items or an item's name: show it while the window is open
 -- (once for a burst of item answers). The own items with the next frame: a bag sort or a gear set

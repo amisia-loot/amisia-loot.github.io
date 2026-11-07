@@ -56,7 +56,7 @@ assert(TT.BIG.ICON >= 44 and TT.BIG.TREE_W >= 270 and TT.BIG.ICON > TT.PAGE.ICON
 -- the page has the red button; it opens and closes the window
 ---------------------------------------------------------------------------
 NS.ShowTalents()
-local page = NS.TalentsPageFrame()
+local page = NS.PageFrame("talents")
 assert(page and page:IsShown() and page.bigBtn and page.bigBtn.vis ~= false, "the button on the page")
 assert(page.bigBtn:GetText() == "Talentrechner", tostring(page.bigBtn:GetText()))
 assert(page.bigBtn.layoutBand == page.bottomRow, "in the bottom row")

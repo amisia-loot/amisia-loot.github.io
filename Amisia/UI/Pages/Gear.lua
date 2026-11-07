@@ -26,7 +26,6 @@ local VIEWS = { goals = true, here = true, wish = true, guild = true, sim = true
 local CHIPS = { { "X", "Raids", 48 }, { "Q", "Quests", 50 }, { "D", "Dungeons", 64 }, { "C", L["Berufe: alle"], 86 },
                 { "V", L["Händler"], 56 }, { "W", L["Welt"], 40 }, { "A", "AH", 32 }, { "P", "PvP", 36 } }
 
-local page
 local groupOnly          -- the guild view's "Nur Gruppe"; nil: on while in a raid
 local exportOpen = false -- the wishlist shows the text for the website instead of the list
 local exportText = ""
@@ -153,12 +152,7 @@ local function wishCount()
     return n
 end
 
--- Puts a link into the chat the way the client does (ChatFrameUtil.InsertLink).
-local function insertLink(link)
-    if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-        return ChatFrameUtil.InsertLink(link)
-    end
-end
+local insertLink = W.InsertLink
 
 -- Shift or Ctrl on an item: the client's modified click (link into the chat, dressing room, as the
 -- player's key bindings say); Ctrl the client does not take opens the dressing room itself.
@@ -286,13 +280,7 @@ local function inInstance()
     return IsInInstance and ns.Plain(IsInInstance()) and true or false
 end
 
-local function lift(d)
-    -- the dialog strata is below the main window's; lift it so it is not hidden behind
-    if d and d.SetFrameStrata then
-        d:SetFrameStrata("FULLSCREEN_DIALOG")
-        if d.Raise then d:Raise() end
-    end
-end
+local lift = W.LiftDialog
 
 local function col(parent, x, w, label, template)
     local fs = W.Text(parent, template or T.FONT.head, w)
@@ -412,18 +400,18 @@ local function noOptionText(e)
 end
 
 local function styleChip(parent)
-    local chip = W.Tab(parent, L["Spielstil"], 72, nil)
+    local chip = W.Tab(parent, L["Spielstil"], nil)
     chip:SetScript("OnClick", function(self) W.Menu(self, styleEntries(self)) end)
     chip:HookScript("OnEnter", styleTooltip)
     chip:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    W.FitChip(chip, 72)
+    W.FitChip(chip)
     return chip
 end
 
 local function fillStyle(chip)
     local n = PS.Count()
     chip.label:SetText(n > 0 and L["Spielstil (%d)"]:format(n) or L["Spielstil"])
-    W.FitChip(chip, 72)
+    W.FitChip(chip)
     chip:SetOn(n > 0)
     chip:Show()
 end
@@ -483,7 +471,7 @@ local function fillHead(f, o, res, v)
     if guildVisible() then f.views.guild:Show() else f.views.guild:Hide() end
     f.views.wish.label:SetText(L["Wunschliste (%d)"]:format(wishCount()))
     -- the new label (a large count, the English text) widens the chip and moves the guild chip
-    W.FitChip(f.views.wish, 104)
+    W.FitChip(f.views.wish)
     if Gear.Available() then f.open:Show() else f.open:Hide() end
     f:Place(1, f.headRow, { f.open })
     f.counts:SetText(counts(o, res))
@@ -605,7 +593,7 @@ local function buildGoals(f)
         { height = T.ROW_BUTTON_H })
     W.FitChip(G.big, 110)
     W.Tooltip(G.big, L["Ausrüstungsziele"], L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."])
-    G.why = W.Link(G, L["Warum?"], 64, nil, { height = T.ROW_BUTTON_H })
+    G.why = W.Link(G, L["Warum?"], nil)
     G.why:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Warum diese Gewichte"])
@@ -613,7 +601,7 @@ local function buildGoals(f)
         GameTooltip:Show()
     end)
     G.why:HookScript("OnLeave", hideTip)
-    G.sim = W.Link(G, L["Simulation"], 88, function() setView("sim") end, { height = T.ROW_BUTTON_H })
+    G.sim = W.Link(G, L["Simulation"], function() setView("sim") end)
     W.Tooltip(G.sim, L["Simulation"], L["Beste Items für eine andere Klasse, Spezialisierung oder Stufe, ohne deinen Besitz."])
     local reach = W.Row(G, { G.big, G.why, G.sim }, T.CHIP_GAP, 0, -282, { right = true })
     G.title = W.Text(G, T.FONT.title, T.PAGE_W - reach - T.LAYOUT.ITEM_GAP - T.LAYOUT.TEXT_X)
@@ -991,17 +979,10 @@ local function buildWish(f)
         r:SetScript("OnLeave", hideTip)
     end, fillWishRow)
 
-    V.area = W.EditArea(V)
+    V.area = W.ReadOnlyArea(V, function() return exportText or "" end)
     V.area:SetPoint("TOPLEFT", 0, V.listTop)
     V.area:SetPoint("TOPRIGHT", 0, V.listTop)
     V.area:SetHeight(120)
-    -- read-only like the export box: typing puts the text back and marks it
-    V.area.box:SetScript("OnTextChanged", function(self, userInput)
-        if userInput then
-            self:SetText(exportText or "")
-            self:HighlightText()
-        end
-    end)
     V.area:Hide()
     V.areaHint = W.Text(V, T.FONT.hint, 590, true)
     V.areaHint:SetPoint("TOPLEFT", V.area, "BOTTOMLEFT", T.LAYOUT.TEXT_X, -T.LAYOUT.GAP)
@@ -1020,13 +1001,13 @@ local function buildWish(f)
         end
         ns.Refresh()
     end)
-    V.clean = W.Link(V, L["Erhaltene entfernen"], 140, function()
+    V.clean = W.Link(V, L["Erhaltene entfernen"], function()
         for _, e in ipairs(ns.Wishes()) do
             if e.owned then ns.WishRemove(e.id) end
         end
     end)
     W.FitChip(V.web, 120)
-    W.FitChip(V.clean, 140)
+    W.FitChip(V.clean)
     V:BottomRow({ V.web, V.clean })
     return V
 end
@@ -1132,11 +1113,11 @@ local function buildGuild(f)
     local U = W.Page(f, { view = true })
     U:Bands({ "row" })
     U.info = W.Text(U, T.FONT.text)
-    U.group = W.TabCheck(U, L["Nur Gruppe"], 100, function()
+    U.group = W.TabCheck(U, L["Nur Gruppe"], function()
         groupOnly = not onlyGroup()
         ns.Refresh()
     end)
-    W.FitChip(U.group, 100)
+    W.FitChip(U.group)
     U:Place(1, { { U.info, fill = true } }, { U.group })
     U.headFrame, U.head = U:Columns(GUILD_COLS)
     U.list = U:List(GUILD_ROWS, ROW_H, function(r)
@@ -1159,11 +1140,11 @@ local function buildGuild(f)
         guildResult = text
         ns.Refresh()
     end)
-    U.clearBtn = W.Link(U, L["Löschen##Gildenwünsche"], 80, function()
+    U.clearBtn = W.Link(U, L["Löschen##Gildenwünsche"], function()
         lift(StaticPopup_Show("AMISIA_GUILDWISH_CLEAR"))
     end)
     W.FitChip(U.importBtn, 100)
-    W.FitChip(U.clearBtn, 80)
+    W.FitChip(U.clearBtn)
     U.hint = W.Text(U, T.FONT.hint)
     -- the import, clear and what the last import said in the bottom row; the box between it and the list
     U.bottomList = { U.importBtn, U.clearBtn, { U.hint, fill = true } }
@@ -1265,8 +1246,8 @@ local function buildSim(f)
         simState().plan = v
         simChanged()
     end)
-    S.back = W.Link(S, L["Zurück"], 84, function() setView("goals") end)
-    W.FitChip(S.back, 84)
+    S.back = W.Link(S, L["Zurück"], function() setView("goals") end)
+    W.FitChip(S.back)
     S:Place(1, { S.class, S.spec, S.level, S.plan }, { S.back })
     S:Footer({ { "info", lines = 3 } })
     S.headFrame, S.head = S:Columns(SIM_COLS)
@@ -1325,8 +1306,6 @@ end
 -- The page
 ---------------------------------------------------------------------------
 
-function ns.GearPageFrame() return page end
-
 -- What the dungeons page (Pages/Dungeons.lua, loaded after this file) draws with: the same cache,
 -- item texts, marks, tooltips, clicks and menus as the gear page, and its spec picker.
 ns.GearPageKit = {
@@ -1334,10 +1313,10 @@ ns.GearPageKit = {
     itemTooltip = itemTooltip, hideTip = hideTip, modifiedClick = modifiedClick, menuEntries = menuEntries,
     say = say, col = col, specPicker = specPicker, fillSpec = fillSpec, styleChip = styleChip, fillStyle = fillStyle,
     noOptionText = noOptionText,
-    -- for the window "Ausrüstungsziele": the source text, the map button, the link, the notes, the
-    -- explanation of a slot's option and whether a shown row had no item name yet
-    sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, linkText = linkText, pctText = pctText,
-    noteParts = noteParts, insertLink = insertLink, explainText = explainText, OWNED_TEXT = OWNED_TEXT,
+    -- for the window "Ausrüstungsziele": the source text, the map button, the link and whether a shown
+    -- row had no item name yet
+    sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, pctText = pctText,
+    OWNED_TEXT = OWNED_TEXT,
     nameMissing = function() return nameMissing end,
     -- a refresh starts with no missing item name; GET_ITEM_INFO_RECEIVED fills its rows again
     namesFresh = function() nameMissing = false end,
@@ -1358,30 +1337,28 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Ite
     available = function() return Gear.Available() end,
     create = function(parent)
         local f = W.Page(parent)
-        page = f
         -- the head row: spec, views, the table; the counts with the reset of exclusions; the source
         -- chips with the weapon plan; the views under them
         f:Bands({ "row", "line", "row" })
         f.spec = specPicker(f)
         f.views = {}
-        f.views.goals = W.Tab(f, L["Ziele"], 52, function() setView("goals") end)
-        f.views.here = W.Tab(f, L["Hier"], 46, function() state().place = nil; setView("here") end)
-        f.views.wish = W.Tab(f, L["Wunschliste"], 104, function() setView("wish") end)
-        f.views.guild = W.Tab(f, L["Gilde"], 56, function() setView("guild") end)
+        f.views.goals = W.Tab(f, L["Ziele"], function() setView("goals") end)
+        f.views.here = W.Tab(f, L["Hier"], function() state().place = nil; setView("here") end)
+        f.views.wish = W.Tab(f, L["Wunschliste"], function() setView("wish") end)
+        f.views.guild = W.Tab(f, L["Gilde"], function() setView("guild") end)
         W.Tooltip(f.views.goals, L["Ziele"], L["Das beste erreichbare Item je Slot mit deinen Quellen."])
         W.Tooltip(f.views.here, L["Hier"], L["Items aus der Zone oder dem Dungeon, in dem du gerade bist."])
         W.Tooltip(f.views.wish, L["Wunschliste"], L["Die Items, die du dir gemerkt hast."])
         W.Tooltip(f.views.guild, L["Gilde"], L["Die Wunschlisten deiner Gilde von der Website."])
         -- 64 wide: the tooltip says what the table is
-        f.open = W.Link(f, L["Tabelle"], 64, function() ns.ToggleGearFrame() end)
+        f.open = W.Link(f, L["Tabelle"], function() ns.ToggleGearFrame() end)
         W.Tooltip(f.open, L["Ausrüstungstabelle"], L["Die besten Items aller Levelbereiche für jede Spezialisierung."])
         f.headRow = { f.spec, f.views.goals, f.views.here, f.views.wish, f.views.guild }
         f:Place(1, f.headRow, { f.open })
         f.counts = W.Text(f, T.FONT.hint)
         -- a row button (20 high): it stands in the counts' line, between the bands around it
-        f.reset = W.Link(f, L["zurücksetzen"], 104, function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end,
-            { height = T.ROW_BUTTON_H })
-        W.FitChip(f.reset, 104)
+        f.reset = W.Link(f, L["zurücksetzen"], function() lift(StaticPopup_Show("AMISIA_BIS_CLEAR_EX")) end)
+        W.FitChip(f.reset)
         f.style = styleChip(f)
         f:Place(2, { { f.counts, fill = true } }, { f.style, f.reset })
         -- the weapon plan of the own character, beside the source chips of the targets
@@ -1389,7 +1366,7 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Ite
         f.src = {}
         for _, def in ipairs(CHIPS) do
             local key = def[1]
-            f.src[key] = W.TabCheck(f, def[2], def[3], function()
+            f.src[key] = W.TabCheck(f, def[2], function()
                 if key == "C" then
                     profClick()
                 else

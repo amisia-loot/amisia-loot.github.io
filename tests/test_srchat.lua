@@ -296,7 +296,7 @@ assert(NS.CurrentPage() == "softres", "the page as before")
 ---------------------------------------------------------------------------
 -- the buttons on the page
 ---------------------------------------------------------------------------
-local f = NS.SoftResPageFrame()
+local f = NS.PageFrame("softres")
 NS.Refresh()
 assert(f.remind:IsShown() and f.post:IsShown())
 assert(f.remind:GetText() == "Erinnern (2)" and f.remind:IsEnabled(), f.remind:GetText())

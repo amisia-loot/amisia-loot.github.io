@@ -126,7 +126,6 @@ function ns.MapPoints(key)
     parsed[key] = list
     return list
 end
-Map.Points = ns.MapPoints
 
 -- uiMapIDs of the data the client did not know this session.
 function Map.UnknownMaps() return unknownMaps end

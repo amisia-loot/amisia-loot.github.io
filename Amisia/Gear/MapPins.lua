@@ -318,6 +318,19 @@ local function insertPlace(e)
     insert(("%s %s %s"):format(name, Map.ZoneName(e.point.map), Map.Coords(e.point)))
 end
 
+-- The menu entry that hides a place's pins or shows them again (AmisiaDB.map.hidden).
+local function hideEntry(e)
+    local m = AmisiaDB and AmisiaDB.map
+    local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
+    return { hidden and L["Wieder einblenden"] or L["Diesen Ort ausblenden"], function()
+        local mm = AmisiaDB and AmisiaDB.map
+        if mm and type(mm.hidden) == "table" then
+            mm.hidden[e.key] = (not hidden) or nil
+            ns.Fire("MAP_TARGET")
+        end
+    end }
+end
+
 -- The menu of a place (a pin, a row of the map page); a hidden place offers to show it again.
 local function placeMenu(e)
     if e.mark then
@@ -325,18 +338,10 @@ local function placeMenu(e)
             { TEXT.clearMarks, function() if ns.DungeonClearMarks then ns.DungeonClearMarks() end end } }
     end
     if e.step then
-        local m = AmisiaDB and AmisiaDB.map
-        local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
         local q = e.quests and e.quests[1]
         return { { TEXT.setTarget, function() setTarget(e) end },
             { TEXT.showPath, function() if q and ns.ShowDungeonQuest then ns.ShowDungeonQuest(q.dkey, q.qid) end end },
-            { hidden and L["Wieder einblenden"] or L["Diesen Ort ausblenden"], function()
-                local mm = AmisiaDB and AmisiaDB.map
-                if mm and type(mm.hidden) == "table" then
-                    mm.hidden[e.key] = (not hidden) or nil
-                    ns.Fire("MAP_TARGET")
-                end
-            end },
+            hideEntry(e),
             { TEXT.stepsOff, function() ns.Set("map.pinsQuests", false) end } }
     end
     local entries = {
@@ -346,17 +351,7 @@ local function placeMenu(e)
             if best and ns.ShowGear then ns.ShowGear(best.wish and "wish" or "goals", best.slot or best.wishSlot) end
         end },
     }
-    if e.key then
-        local m = AmisiaDB and AmisiaDB.map
-        local hidden = m and type(m.hidden) == "table" and m.hidden[e.key] or false
-        entries[#entries + 1] = { hidden and L["Wieder einblenden"] or L["Diesen Ort ausblenden"], function()
-            local mm = AmisiaDB and AmisiaDB.map
-            if mm and type(mm.hidden) == "table" then
-                mm.hidden[e.key] = (not hidden) or nil
-                ns.Fire("MAP_TARGET")
-            end
-        end }
-    end
+    if e.key then entries[#entries + 1] = hideEntry(e) end
     entries[#entries + 1] = { L["Alle Pins aus"], function() ns.Set("map.pins", false) end }
     return entries
 end

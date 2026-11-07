@@ -52,7 +52,6 @@ end
 local logOn, days = NS.SettingItem("bank.log"), NS.SettingItem("bank.logDays")
 assert(logOn and logOn.type == "toggle" and logOn.default == true, "bank.log")
 assert(days and days.type == "slider" and days.default == 90, "bank.logDays: 90 days by default")
-assert(NS.BANKLOG_CAP == 1000, "1000 entries at most")
 
 ---------------------------------------------------------------------------
 -- the merge rule on its own
@@ -188,5 +187,5 @@ assert(#NS.BankLog().list == 8, #NS.BankLog().list)
 local many = {}
 for i = 1, 1100 do many[i] = row("Masse" .. i, 61001, 1, 0) end
 NS.MergeBankLog(many, STUB.now)
-assert(#NS.BankLog().list == NS.BANKLOG_CAP, "capped: " .. #NS.BankLog().list)
+assert(#NS.BankLog().list == 1000, "capped: " .. #NS.BankLog().list)
 NS.Reset("bank.logDays")

@@ -677,7 +677,7 @@ local function build()
     end
     -- spec chips (placed in updateControls)
     for i = 1, 4 do
-        local b = W.Tab(F, "", nil, nil)   -- the specs as text tabs (D-67)
+        local b = W.Tab(F, "", nil)   -- the specs as text tabs (D-67)
         b:SetScript("OnClick", function(self)
             settings().specs[settings().class] = self.key
             ns.GearRefresh(true)
@@ -687,7 +687,7 @@ local function build()
 
     -- second row: weighting, faction, sources
     -- weighting and faction switch on a click: quiet links naming the value (D-67)
-    kindButton = W.Link(F, "", nil, function()
+    kindButton = W.Link(F, "", function()
         ns.Set("bis.kind", ns.Get("bis.kind") == "Speedrun" and "Hardcore" or "Speedrun")   -- l10n-ok: setting key
         ns.GearRefresh(true)
     end)
@@ -704,7 +704,7 @@ local function build()
         self:SetOver(false)
         GameTooltip:Hide()
     end)
-    factionButton = W.Link(F, "", nil, function()
+    factionButton = W.Link(F, "", function()
         local g = settings()
         g.faction = g.faction == "A" and "H" or g.faction == "H" and "both" or "A"
         ns.GearRefresh(true)
@@ -712,7 +712,7 @@ local function build()
     factionButton:SetPoint("LEFT", kindButton, "RIGHT", T.TAB_GAP, 0)
     local prev = factionButton
     for i, fdef in ipairs(FILTERS) do
-        local b = W.TabCheck(F, fdef.label, nil, function(self)
+        local b = W.TabCheck(F, fdef.label, function(self)
             local g = settings()
             g.sources[self.key] = not g.sources[self.key]
             ns.GearRefresh(true)
@@ -725,12 +725,12 @@ local function build()
     end
 
     -- third row: view, range, status
-    viewButtons.overview = W.Tab(F, L["Übersicht"], nil, function()
+    viewButtons.overview = W.Tab(F, L["Übersicht"], function()
         settings().view = "overview"
         ns.GearRefresh(true)
     end)
     viewButtons.overview:SetPoint("TOPLEFT", 14, -108)
-    viewButtons.list = W.Tab(F, L["Liste"], nil, function()
+    viewButtons.list = W.Tab(F, L["Liste"], function()
         settings().view = "list"
         ns.GearRefresh(true)
     end)
@@ -751,7 +751,7 @@ local function build()
         ns.GearRefresh(true)
     end)
     F.nextCol:SetPoint("LEFT", colLabel, "RIGHT", 6, 0)
-    local mine = W.Link(F, L["Mein Charakter"], nil, function()
+    local mine = W.Link(F, L["Mein Charakter"], function()
         local g = settings()
         local _, myClass = UnitClass("player")
         g.class = myClass or g.class
@@ -772,27 +772,6 @@ local function build()
     F.kindButton, F.factionButton, F.viewButtons, F.mine = kindButton, factionButton, viewButtons, mine
     F.colLabel, F.statusText, F.overview, F.listView = colLabel, statusText, overview, listView
     F.altPanel, F.colHeads, F.listRows = altPanel, colHeads, listRows
-end
-
--- The upgrades of the own character, best first: option 1 of every slot that beats what is worn,
--- from the targets of Bis.lua (its options, exclusions and cache). Returns the list, the targets and
--- the options they were made with.
-function ns.GearMyUpgrades()
-    if not Gear.Available() or not ns.BisTargets then return {}, nil, nil end
-    local o = ns.BisOpts()
-    local res = ns.BisTargets()
-    local out = {}
-    for _, slot in ipairs(Gear.SLOTS) do
-        local e = res[slot.key] and res[slot.key][1]
-        if e and e.upgrade then
-            out[#out + 1] = { slot = slot, id = e.id, score = e.score, gain = e.gain, mine = e.mine }
-        end
-    end
-    table.sort(out, function(a, b)
-        if a.gain ~= b.gain then return a.gain > b.gain end
-        return a.id < b.id
-    end)
-    return out, res, o
 end
 
 -- Test hook: the cells of the overview.
@@ -843,7 +822,7 @@ function ns.GearDebug(arg)
     local g = settings()
     local o = opts(g.col)
     local row = Gear.Item(id)
-    local kind = row and ({ ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" })[Gear.GROUP[row[1]]]
+    local kind = row and Gear.GROUP_PLACE[Gear.GROUP[row[1]]]
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
     ns.msg(L["Wertung %s/%s bei Level %d: %s%s"]:format(o.class, o.spec or "?", o.level, ns.Num(Gear.Score(s, w, o.level, kind, o.class), 1),
         row and "" or L[" (nicht in der Tabelle)"]))

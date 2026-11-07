@@ -48,7 +48,6 @@ local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC 
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
-local newerProto
 
 local function now() return GetTime() end
 
@@ -142,9 +141,6 @@ function ns.CommStats()
     for k, v in pairs(stats) do out[k] = v end
     return out
 end
-
--- The highest protocol number seen above the own one, or nil.
-function ns.CommNewerProto() return newerProto end
 
 ---------------------------------------------------------------------------
 -- Packing
@@ -483,10 +479,6 @@ local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL
 ---------------------------------------------------------------------------
 -- Who may be talked to
 ---------------------------------------------------------------------------
-local function withoutRealm(name)
-    return type(name) == "string" and name:match("^(.+)%-[^%-]*$") or nil
-end
-
 -- The own echo: exactly the own full name, also with the own realm ending. Never a first name
 -- alone (another character with that first name would be deaf to this client).
 local function isSelf(sender)
@@ -494,21 +486,14 @@ local function isSelf(sender)
     local name = ns.FullName(sender)
     if not me or not name then return false end
     if name:lower() == me:lower() then return true end
-    local base = ns.StripOwnRealm and ns.StripOwnRealm(name)
+    local base = ns.StripOwnRealm(name)
     return base ~= nil and base:lower() == me:lower()
 end
 
 -- A whisper target must be a name of the group or the guild (as the client gives it, a realm
 -- ending allowed).
 local function knownTarget(target)
-    if ns.TrustName then return ns.TrustName(target) ~= nil end
-    local roster = ns.GroupRoster()
-    for _, cand in ipairs({ target, withoutRealm(target) }) do
-        for _, n in ipairs(roster) do
-            if ns.SameNameIn(cand, n, roster) then return true end
-        end
-    end
-    return false
+    return ns.TrustName(target) ~= nil
 end
 
 local homeRaid, inGuild = ns.HomeRaid, ns.InGuild
@@ -948,7 +933,6 @@ local function finishSet(sender, name, set)
         end
         run(blobHandlers[set.art], sender, tbl, set.chan, set.key)
     end
-    if not ns.TrustWait then return unpack() end
     ns.TrustWait(name, "member", function(ok)
         if ok then unpack() else bad("Absender") end
     end)
@@ -1027,10 +1011,7 @@ local function onMessage(prefix, text, chan, sender)
     local proto, kind, rest = text:match("^(%d)(%u%u)(.*)$")
     proto = tonumber(proto)
     if not proto then return bad("Umschlag") end
-    if proto > ns.SYNC_PROTO then
-        if not newerProto or proto > newerProto then newerProto = proto end
-        return
-    end
+    if proto > ns.SYNC_PROTO then return end
     if proto < ns.SYNC_MIN_PROTO then return end
     if prefixOf(kind) ~= prefix then return bad("Präfix") end -- l10n-ok: a reason key, shown via BAD_REASONS
     local fields = {}
@@ -1075,8 +1056,8 @@ local function onMessage(prefix, text, chan, sender)
         -- data only from members of the own guild: an outsider's parts are dropped from the first
         -- one on, unread, for a minute
         if s.outsider and now() < s.outsider then return end
-        local name = ns.TrustName and ns.TrustName(sender) or sender
-        local member = (name and ns.IsVerifiedMember) and ns.IsVerifiedMember(name)
+        local name = ns.TrustName(sender) or sender
+        local member = name and ns.IsVerifiedMember(name)
         if not name or member == false then
             s.outsider, s.sets = now() + OUTSIDER_FOR, {}
             return bad("Absender")

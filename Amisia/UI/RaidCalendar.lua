@@ -118,24 +118,10 @@ local function windowState()
 end
 
 local function place()
-    if not F then return end
-    F:ClearAllPoints()
-    local st = windowState()
-    if st and type(st.point) == "string" and tonumber(st.x) and tonumber(st.y) then
-        F:SetPoint(st.point, UIParent, st.point, tonumber(st.x), tonumber(st.y))
-    else
-        F:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
-    end
+    if F then W.PlaceWindow(F, windowState(), "CENTER", UIParent, "CENTER", 0, 40) end
 end
 
-local function savePlace(f)
-    local st = windowState()
-    if not st then return end
-    local point, _, _, x, y = f:GetPoint(1)
-    if type(point) == "string" and tonumber(x) and tonumber(y) then
-        st.point, st.x, st.y = point, math.floor(x + 0.5), math.floor(y + 0.5)
-    end
-end
+local function savePlace(f) W.SaveWindowPlace(f, windowState()) end
 
 function ns.ResetRaidCalendarPosition()
     local st = windowState()
@@ -510,13 +496,13 @@ local function build()
     F.signup = W.Button(F, L["Anmelden ..."], R.BUTTON_W, function()
         if cur then ns.ShowSignup(cur) end
     end)
-    F.lineup = W.Link(F, L["Zur Aufstellung"], R.BUTTON_W, function()
+    F.lineup = W.Link(F, L["Zur Aufstellung"], function()
         if cur and ns.ShowLineup then ns.ShowLineup("match", cur) end
     end)
-    W.FitChip(F.lineup, R.BUTTON_W)
+    W.FitChip(F.lineup)
     W.Tooltip(F.lineup, L["Zur Aufstellung"], L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."])
     -- the main window's calendar page at this date; this window closes (the page shows the same)
-    F.page = W.Link(F, L["Im Kalender zeigen"], R.BUTTON_W, function()
+    F.page = W.Link(F, L["Im Kalender zeigen"], function()
         local night = cur
         if not night or not ns.ShowCalendar then return end
         F:Hide()
@@ -524,7 +510,7 @@ local function build()
         local main = _G.AmisiaFrame
         if main and main.Raise then main:Raise() end
     end)
-    W.FitChip(F.page, R.BUTTON_W)
+    W.FitChip(F.page)
     W.Tooltip(F.page, L["Im Kalender zeigen"], L["Öffnet im Hauptfenster die Seite Kalender bei diesem Tag; dieses Fenster schließt sich."])
     F.status = W.Text(F, T.FONT.hint, 200)
     F.status:SetHeight(T.BUTTON_H)

@@ -155,7 +155,7 @@ C("Vulo Sturmwind", [[_G.UnitClass = function() return "Priester", "PRIEST" end
 assert(C("Vulo Sturmwind", "NS.CurrentPage()") == "about")
 -- code with the page frame as f; an expression gives its value back
 local function page(name, code)
-    return C(name, "local f = NS.AboutPageFrame(); " .. (code:find("^local ") and "" or "return ") .. code)
+    return C(name, "local f = NS.PageFrame('about'); " .. (code:find("^local ") and "" or "return ") .. code)
 end
 assert(page("Vulo Sturmwind", "f.head:GetText()") == ("Amisia %s · Sync-Protokoll 1"):format(own))
 assert(page("Vulo Sturmwind", "f.title:GetText()") == "Amisia in Raid und Gilde")

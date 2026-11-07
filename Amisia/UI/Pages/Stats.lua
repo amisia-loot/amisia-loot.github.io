@@ -10,15 +10,12 @@ local WEEK = 7 * 86400
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t"
 local MAX_DOTS = 12
 
-local page
 local view = "players"          -- "players" or "fame"
 local range = "all"             -- "4w", "phase", "all"
 local classPick, rolePick = "all", "all"
 local sortCol, sortDesc = "items", true
 local chosen                    -- key of the player in the detail
 local wanted                    -- a player name to choose at the next refresh (ns.ShowStats, the search)
-
-function ns.StatsPageFrame() return page end
 
 -- The columns: key, x, width, head text. They end at 558 of the 590 the list has.
 local COLS = {
@@ -159,22 +156,21 @@ end
 
 local function build_page(parent)
     local f = W.Page(parent)
-    page = f
 
     -- the head row: view chips left, range chips right; under it class and role (officers) and the counts
     f:Bands({ "row", "row" })
     f.view = {
-        players = W.Tab(f, L["Spieler"], nil, function() view = "players" ns.Refresh() end),
-        fame = W.Tab(f, L["Ruhmeshalle"], nil, function() view = "fame" ns.Refresh() end),
+        players = W.Tab(f, L["Spieler"], function() view = "players" ns.Refresh() end),
+        fame = W.Tab(f, L["Ruhmeshalle"], function() view = "fame" ns.Refresh() end),
     }
     W.FitChip(f.view.players, 70)
     W.FitChip(f.view.fame, 70)
     f.range = {
-        w4 = W.Tab(f, L["4 Wochen"], nil, function() range = "4w" ns.Refresh() end),
-        phase = W.Tab(f, L["Phase"], nil, function() range = "phase" ns.Refresh() end),
-        all = W.Tab(f, L["Alle Raids"], nil, function() range = "all" ns.Refresh() end),
+        w4 = W.Tab(f, L["4 Wochen"], function() range = "4w" ns.Refresh() end),
+        phase = W.Tab(f, L["Phase"], function() range = "phase" ns.Refresh() end),
+        all = W.Tab(f, L["Alle Raids"], function() range = "all" ns.Refresh() end),
     }
-    for _, c in pairs(f.range) do W.FitChip(c, 60) end
+    for _, c in pairs(f.range) do W.FitChip(c) end
     f:Place(1, { f.view.players, f.view.fame }, { f.range.w4, f.range.phase, f.range.all })
     W.Tooltip(f.range.phase, L["Phase"], L["Die Raids, seit der neueste Raid zum ersten Mal aufgezeichnet wurde."])
 
@@ -293,10 +289,7 @@ local function refresh(f)
         f.fame:SetText(fameText(res))
         return
     end
-    for key, b in pairs(f.heads) do
-        local on = key == sortCol
-        b.label:SetTextColor(on and 1 or T.GOLD[1], on and 1 or T.GOLD[2], on and 1 or T.GOLD[3])
-    end
+    W.MarkSortHead(f.heads, sortCol)
     -- a player asked for by name (the search): his row, scrolled into view
     if wanted then
         local low = wanted:lower()

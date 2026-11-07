@@ -23,8 +23,6 @@ local view = "scrolls"   -- kept until logout
 local chosen = {}        -- view -> key of the chosen entry
 local nameMissing = false
 
-function ns.MageScrollsPageFrame() return page end
-
 local function color(c, text) return ("|c%s%s|r"):format(c, text) end
 
 -- "08.10.2026" (English "Oct 8, 2026") from the data's "2026-10-08".

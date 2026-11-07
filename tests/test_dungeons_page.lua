@@ -44,7 +44,7 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 assert(NS.WishAdd(503))
 
 NS.ShowGear("dungeons")
-local D = NS.DungeonsPageFrame()
+local D = NS.PageFrame("dungeons")
 assert(NS.CurrentPage() == "dungeons" and D:IsShown(), "the dungeons page")
 local nextE = NS.DungeonNext()
 assert(nextE and nextE.key == "thanes")
@@ -182,7 +182,7 @@ end
 NS.Reset("ui.view")
 -- the gear page keeps its chips
 NS.ShowGear("goals")
-local f = NS.GearPageFrame()
+local f = NS.PageFrame("gear")
 assert(f.src.Q:IsShown() and not D:IsShown() and f.goals:IsShown())
 
 -- without facts the view says so

@@ -41,13 +41,7 @@ local rows = {}
 local lootOpen = false
 local entryKind = "MS"
 
-local function text(parent, template, width)
-    local fs = parent:CreateFontString(nil, "OVERLAY", template or T.FONT.text)
-    if width then fs:SetWidth(width) end
-    fs:SetJustifyH("LEFT")
-    fs:SetWordWrap(false)
-    return fs
-end
+local text = W.Text
 
 local function classColor(class)
     local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
@@ -122,10 +116,7 @@ StaticPopupDialogs["AMISIA_GIVE"] = {
 -- The names to pick from: the group and the running recording, plain, sorted.
 local function entryNames()
     local set, out = {}, {}
-    for i = 1, GetNumGroupMembers() or 0 do
-        local n = ns.FullName(ns.Plain((GetRaidRosterInfo(i))))
-        if n then set[n] = true end
-    end
+    for _, n in ipairs(ns.GroupRoster()) do set[n] = true end
     local s = ns.Active and ns.Active()
     for n in pairs(s and s.members or {}) do
         n = ns.FullName(ns.Plain(n))
@@ -523,8 +514,8 @@ local function build()
         self:ClearFocus()
         addEntry()
     end)
-    F.msChip = W.Tab(F, "MS", nil, function() setKind("MS") end)
-    F.osChip = W.Tab(F, "OS", nil, function() setKind("OS") end)
+    F.msChip = W.Tab(F, "MS", function() setKind("MS") end)
+    F.osChip = W.Tab(F, "OS", function() setKind("OS") end)
     W.FitChip(F.msChip, 30)
     W.FitChip(F.osChip, 30)
     F.addBtn = W.Button(F, L["Eintragen"], 76, addEntry, { height = 20 })
@@ -535,15 +526,14 @@ local function build()
     hint:SetPoint("TOPLEFT", 12, HINT_Y)
     hint:SetWordWrap(true)
     F.lockHint = hint
-    F.note = hint
 
     stopBtn = W.Button(F, L["Stopp"], 80, function() ns.StopRoll() end)
     stopBtn:SetPoint("BOTTOMLEFT", 12, 10)
 
-    againBtn = W.Link(F, L["Nochmal"], nil, function() ns.RerollTie() end)
+    againBtn = W.Link(F, L["Nochmal"], function() ns.RerollTie() end)
     againBtn:SetPoint("LEFT", stopBtn, "RIGHT", 6, 0)
 
-    F.resultBtn = W.Link(F, L["Ergebnis ansagen"], nil, function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
+    F.resultBtn = W.Link(F, L["Ergebnis ansagen"], function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.resultBtn:SetPoint("BOTTOMRIGHT", -12, 10)
     F.rows = rows
     -- the parts the layout tests read

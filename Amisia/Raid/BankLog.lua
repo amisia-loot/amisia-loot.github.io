@@ -22,7 +22,6 @@ local ADDON, ns = ...
 local L = ns.L
 
 local CAP = 1000
-ns.BANKLOG_CAP = CAP
 local HOUR, DAY = 3600, 86400
 local SLACK = 60              -- seconds of clock slack when two windows are compared
 local FUZZ = 3 * DAY          -- either way, for entries older than a month

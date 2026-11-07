@@ -29,10 +29,6 @@ local function roundLine(r)
 end
 ns.RoundLine = roundLine
 
-local page
--- For tests: the page frame once built.
-function ns.RollsPageFrame() return page end
-
 -- the last rounds: one column of 578 px (the list is 590 wide, its scroll bar beside it)
 local COLS = { { "text", 6, 578, L["Letzte Runden"] } }
 
@@ -49,7 +45,6 @@ ns.RegisterPanel{ key = "rolls", label = "Rolls", sub = L["Die laufende Würfelr
         f.headFrame, f.heads = f:Columns(COLS)
         f.list = f:List(ROWS, ROW_H, function(r) W.Cells(r, COLS) end, function(r, round) r.text:SetText(roundLine(round)) end, { fill = true })
         f.empty = f:Empty()
-        page = f
         return f
     end,
     refresh = function(f)

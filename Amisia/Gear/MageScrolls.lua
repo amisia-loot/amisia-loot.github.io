@@ -56,14 +56,9 @@ function MS.Rank()
     local d = data()
     local skill = d and d.skill
     if not skill or skill == 0 then return nil end
-    local info = _G.C_SkillInfo
-    if type(info) == "table" and type(info.GetNumSkillLines) == "function" and type(info.GetSkillLineInfo) == "function" then
-        local n = tonumber(ns.Plain(call(info.GetNumSkillLines))) or 0
-        for i = 1, n do
-            local s = call(info.GetSkillLineInfo, i)
-            if type(s) == "table" and not s.isHeader and tonumber(ns.Plain(s.skillID)) == skill then
-                return tonumber(ns.Plain(s.rank)) or 0, tonumber(ns.Plain(s.maxRank)) or 0
-            end
+    for _, s in ipairs(ns.Gear.SkillLines() or {}) do
+        if tonumber(ns.Plain(s.skillID)) == skill then
+            return tonumber(ns.Plain(s.rank)) or 0, tonumber(ns.Plain(s.maxRank)) or 0
         end
     end
     if ns.Prof and ns.Prof.Rank then

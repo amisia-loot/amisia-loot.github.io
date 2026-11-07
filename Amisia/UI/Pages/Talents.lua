@@ -30,7 +30,6 @@ local S = { plan = nil, live = nil }
 local page, big, win
 local refreshView
 
-function ns.TalentsPageFrame() return page end
 -- the plan both views show (tests and the snapshot scene); nil opens the class's saved plan again
 function ns.TalentsPlan() return S.plan end
 function ns.TalentsSetPlan(plan) S.plan = plan end
@@ -480,7 +479,7 @@ local function buildView(parent, P, opts)
         refreshAll()
     end)
     W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
-    f.resetAll = W.Link(f, L["Alles zurücksetzen"], 128, function()
+    f.resetAll = W.Link(f, L["Alles zurücksetzen"], function()
         if not S.plan then return end
         T.Reset(S.plan)
         save()
@@ -488,11 +487,11 @@ local function buildView(parent, P, opts)
         refreshAll()
     end)
     W.FitChip(f.live, 104)
-    W.FitChip(f.resetAll, 128)
+    W.FitChip(f.resetAll)
     -- the plan slot: Primär | Sekundär as two text tabs (D-67), a click switches
     f.slots = {}
     for i, s in ipairs(SLOTS) do
-        f.slots[i] = W.Tab(f, s[2], nil, function() chooseSlot(s[1]) end)
+        f.slots[i] = W.Tab(f, s[2], function() chooseSlot(s[1]) end)
         W.Tooltip(f.slots[i], L["Zwei Pläne je Klasse"],
             L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
     end
@@ -502,8 +501,8 @@ local function buildView(parent, P, opts)
     local right
     if opts.bigButton then
         -- the window with the bigger trees (the side tab and /amisia talente gross open it too)
-        f.bigBtn = W.Link(f, L["Talentrechner"], 110, function() ns.ToggleTalentFrame() end)
-        W.FitChip(f.bigBtn, 110)
+        f.bigBtn = W.Link(f, L["Talentrechner"], function() ns.ToggleTalentFrame() end)
+        W.FitChip(f.bigBtn)
         W.Tooltip(f.bigBtn, L["Talentrechner"],
             L["Öffnet die Talente in einem eigenen, größeren Fenster (auch /amisia talente gross). Strg + Mausrad über dem Fenster ändert seine Größe."])
         right = { f.bigBtn }
@@ -608,24 +607,10 @@ local function winState()
 end
 
 local function place()
-    if not win then return end
-    win:ClearAllPoints()
-    local st = winState()
-    if st and type(st.point) == "string" and tonumber(st.x) and tonumber(st.y) then
-        win:SetPoint(st.point, UIParent, st.point, tonumber(st.x), tonumber(st.y))
-    else
-        win:SetPoint("CENTER")
-    end
+    if win then W.PlaceWindow(win, winState(), "CENTER") end
 end
 
-local function savePlace(f)
-    local st = winState()
-    if not st then return end
-    local point, _, _, x, y = f:GetPoint(1)
-    if type(point) == "string" and tonumber(x) and tonumber(y) then
-        st.point, st.x, st.y = point, math.floor(x + 0.5), math.floor(y + 0.5)
-    end
-end
+local function savePlace(f) W.SaveWindowPlace(f, winState()) end
 
 function ns.ResetTalentWindowPosition()
     local st = winState()
