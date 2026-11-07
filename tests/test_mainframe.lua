@@ -9,9 +9,9 @@ NS.RegisterPanel{ key = "tpbad", label = "Kaputt", order = 7, create = function(
 
 NS.ShowPage("tp1")
 assert(AmisiaFrame and AmisiaFrame:IsShown() and NS.CurrentPage() == "tp1")
--- Forever's frame: 806 x 560, the page area stays 602 x 478
-assert(AmisiaFrame._w == 806 and AmisiaFrame._h == 560, "806 x 560")
-local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(AmisiaFrame, 806, 560)
+-- Forever's frame: 806 x 598 (560 and the page head, D-69), the page area stays 602 x 478
+assert(AmisiaFrame._w == 806 and AmisiaFrame._h == 598, "806 x 598")
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(AmisiaFrame, 806, 598)
 local cl, cr = ML.span(AmisiaFrame.content)
 local ct, cb = ML.vspan(AmisiaFrame.content)
 assert(cr - cl == 602 and ct - cb == 478, ("the page area 602 x 478: %d x %d"):format(cr - cl, ct - cb))

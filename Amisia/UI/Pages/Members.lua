@@ -624,7 +624,7 @@ local function refresh(f)
     f.data:SetText(counts)
 end
 
-ns.RegisterPanel{ key = "members", label = L["Mitglieder"], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 65,
+ns.RegisterPanel{ key = "members", label = L["Mitglieder"], sub = L["Die Gilde: wer online ist, wo und mit welchen Berufen."], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 65,
     group = "guild", create = buildPage, refresh = refresh }
 
 -- Opens the page.

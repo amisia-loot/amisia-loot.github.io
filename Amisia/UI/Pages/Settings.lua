@@ -265,7 +265,7 @@ local function sectionNames(list)
     return table.concat(names, ", ")
 end
 
-ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
+ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], sub = L["Alles, was du an Amisia einstellen kannst."], icon = "Interface\\Icons\\Trade_Engineering", order = 900, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: the search, beside it how many settings it finds; on the right "Zurück zu

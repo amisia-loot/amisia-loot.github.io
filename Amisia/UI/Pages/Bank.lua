@@ -434,7 +434,7 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
-ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, group = "guild",
+ns.RegisterPanel{ key = "bank", label = L["Gildenbank"], sub = L["Bestand, Bedarf und Verlauf der Gildenbank."], icon = "Interface\\Icons\\INV_Misc_Coin_02", order = 70, group = "guild",
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: the four views; each view below is a view of the scaffold

@@ -77,12 +77,12 @@ assert(NS.CurrentPage() == "overview" and F:IsShown())
 NS.Dispatch("einstellungen")
 -- under "Einstellungen" its tabs and the chosen tab's sections (D-49): the first is Raid, Aufnahme
 assert(NS.CurrentPage() == "settings" and navShown():match("%-amisia settings raid record "), navShown())
--- more than fit: the side bar scrolls, the rest is under it
+-- all of it in the side bar's entries (what does not fit is scrolled to, test_style)
 local all = {}
 for _, e in ipairs(F.nav.items) do all[#all + 1] = e.key end
 all = table.concat(all, " ")
-assert(#F.nav.items > F.nav.rowCount and all:find(" char world guild amisia about feedback$"), all)
-assert(F.nav.items[F.nav.offset + 1].kind == "cat", "scrolled to show the group's bar over the open page")
+assert(all:find(" char world guild amisia about feedback$"), all)
+assert(F.nav.offset == 0 or F.nav.items[F.nav.offset + 1].kind == "cat", "scrolled to show the group's bar over the open page")
 assert(W.tab == "amisia" and W.pages.amisia == "settings")
 NS.Dispatch("kalender")   -- the raid calendar window (not in a guild here: a message), the page stays
 assert(NS.CurrentPage() == "settings")
@@ -113,6 +113,6 @@ NS.Refresh()
 assert(row("cat", "guild"), "the guild group is back")
 assert(exp.officer, "export stays an officer page")
 
--- the rows: the auction house's 21, 21 of them at the window's own height
-assert(F.nav.rowCount == 21 and F:GetHeight() == 560, F.nav.rowCount)
+-- the rows: the auction house's 21, 23 of them at the window's own height
+assert(F.nav.rowCount == 23 and F:GetHeight() == NS.Theme.MAIN.H, F.nav.rowCount)
 print("main side bar ok")

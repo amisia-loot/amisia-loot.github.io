@@ -20,6 +20,7 @@ local WINDOW_SIGN = "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up"
 local GRABBER = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 
 local F, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
+local pageHead, pageTitle, pageSub   -- the page head over the page (D-69)
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
 local openGroup     -- the group unfolded in the side bar (nil: all folded); a shown page unfolds its own
@@ -155,13 +156,26 @@ local function updateHeader()
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
     settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
-    -- the "?" sits left of the gear, or at the edge when the page has no settings
+    -- the "?" sits left of the gear, or at the head's end when the page has no settings
     helpBtn:ClearAllPoints()
     if settingsBtn:IsShown() then
         helpBtn:SetPoint("RIGHT", settingsBtn, "LEFT", -M.ICON_GAP, 0)
     else
-        helpBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
+        helpBtn:SetPoint("TOPRIGHT", pageHead, "TOPRIGHT", 0, -M.ICON_Y)
     end
+end
+
+-- The page head (D-69): the open page's name and its one line (sub: a text, or a function of the
+-- page's frame giving one; none: the name alone, a little lower).
+local function updatePageHead(p, frame)
+    pageTitle:SetText(p and p.label or "")
+    local sub = p and p.sub
+    if type(sub) == "function" then
+        local ok, text = pcall(sub, frame)
+        sub = ok and text or nil
+    end
+    pageSub:SetText(type(sub) == "string" and sub or "")
+    pageSub:SetShown(type(sub) == "string" and sub ~= "")
 end
 
 -- The "?" shows only when the open page has explanations (footer lines with help = true, D-67);
@@ -728,10 +742,11 @@ local function build()
     restorePosition()
     ns.ApplyScale()
 
-    -- the head (D-67): the recording state as plain text, centred between the portrait and the icons,
-    -- on the frame's own ground (a dark bar there did not fit the window's look); a click on it or on
-    -- its arrow opens the menu with the recording and the view. Right: "?" and the gear, no red buttons.
-    local BAR_W = WIDTH - M.HEAD_X - M.ICON_RIGHT - 2 * (M.ICON_SIZE + M.ICON_GAP)
+    -- the head (D-67): the recording state as plain text, centred right of the portrait, on the
+    -- frame's own ground (a dark bar there did not fit the window's look); a click on it or on its arrow
+    -- opens the menu with the recording and the view. No red buttons; "?" and the gear went to the page
+    -- head (D-69).
+    local BAR_W = WIDTH - M.HEAD_X - M.ICON_RIGHT
     local bar = CreateFrame("Button", nil, F)
     bar:SetSize(BAR_W, M.HEAD_H)
     bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
@@ -782,32 +797,6 @@ local function build()
         end)
         W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Bild öffnet die Übersicht, von jeder Seite aus."])
     end
-    -- the settings of the open page (D-49): the quest log's gear, shown only when it has some
-    settingsBtn = W.IconButton(F, M.ICON_SIZE, { atlas = "questlog-icon-setting" }, function() ns.ShowSettingsFor(current) end,
-        L["E##Einstellungen"])
-    settingsBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
-    settingsBtn:SetScript("OnEnter", function(self)
-        local names = {}
-        for _, sec in ipairs(ns.SettingsSectionsOf(current)) do names[#names + 1] = sec.label end
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(L["Einstellungen"], 1, 0.82, 0)
-        GameTooltip:AddLine(table.concat(names, ", "), 0.85, 0.85, 0.85, true)
-        GameTooltip:Show()
-    end)
-    settingsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    settingsBtn:Hide()
-    -- the open page's explanations (D-67): the client's help sign, as on its own windows
-    helpBtn = W.IconButton(F, M.ICON_SIZE, { file = "Interface\\common\\help-i" }, nil, "?")
-    helpBtn:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)
-    helpBtn:SetScript("OnEnter", function(self)
-        local p = ns.Panel(current)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(p and p.label or L["Hilfe"], 1, 0.82, 0)
-        for _, line in ipairs(W.HelpLines(content)) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
-        GameTooltip:Show()
-    end)
-    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    helpBtn:Hide()
 
     -- the side bar in an inset with the recipe list's ground, the page in an inset beside it
     local listInset = W.Inset(F)
@@ -851,10 +840,51 @@ local function build()
     searchHint = W.Text(listInset, T.FONT.hint, NAV_W - 2 * M.NAV_LABEL_X)
     searchHint:Hide()
 
+    -- the page head (D-69): name, one line, the gold line fading to both ends, "?" and the gear
+    pageHead = CreateFrame("Frame", nil, contentInset)
+    pageHead:SetPoint("TOPLEFT", M.PAGE_PAD, -M.PAGE_PAD)
+    pageHead:SetPoint("TOPRIGHT", -M.PAGE_PAD, -M.PAGE_PAD)
+    pageHead:SetHeight(M.PAGE_HEAD)
+    local textW = T.PAGE_W - 2 * (M.ICON_SIZE + M.ICON_GAP) - T.LAYOUT.TEXT_X
+    pageTitle = W.Text(pageHead, T.FONT.big, textW)
+    pageTitle:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -M.TITLE_Y)
+    if pageTitle.SetShadowOffset then pageTitle:SetShadowOffset(1, -1) end
+    pageSub = W.Text(pageHead, T.FONT.hint, textW)
+    pageSub:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -M.SUB_Y)
+    pageHead.rule = W.GoldRule(pageHead, M.RULE_ALPHA)
+    pageHead.rule:SetPoint("TOPLEFT", 0, -M.RULE_Y)
+    pageHead.rule:SetPoint("TOPRIGHT", 0, -M.RULE_Y)
+    -- the settings of the open page (D-49): the quest log's gear, shown only when it has some
+    settingsBtn = W.IconButton(pageHead, M.ICON_SIZE, { atlas = "questlog-icon-setting" }, function() ns.ShowSettingsFor(current) end,
+        L["E##Einstellungen"])
+    settingsBtn:SetPoint("TOPRIGHT", pageHead, "TOPRIGHT", 0, -M.ICON_Y)
+    settingsBtn:SetScript("OnEnter", function(self)
+        local names = {}
+        for _, sec in ipairs(ns.SettingsSectionsOf(current)) do names[#names + 1] = sec.label end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(L["Einstellungen"], 1, 0.82, 0)
+        GameTooltip:AddLine(table.concat(names, ", "), 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    settingsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    settingsBtn:Hide()
+    -- the open page's explanations (D-67): the client's help sign, as on its own windows
+    helpBtn = W.IconButton(pageHead, M.ICON_SIZE, { file = "Interface\\common\\help-i" }, nil, "?")
+    helpBtn:SetPoint("TOPRIGHT", pageHead, "TOPRIGHT", 0, -M.ICON_Y)
+    helpBtn:SetScript("OnEnter", function(self)
+        local p = ns.Panel(current)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(p and p.label or L["Hilfe"], 1, 0.82, 0)
+        for _, line in ipairs(W.HelpLines(content)) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    helpBtn:Hide()
+
     -- 602 x 478 at the window's own height, as before: the pages keep their layout; a taller window
     -- gives the pages' lists more rows (T.PAGE_H, W.FitLists)
     content = CreateFrame("Frame", nil, contentInset)
-    content:SetPoint("TOPLEFT", M.PAGE_PAD, -M.PAGE_PAD)
+    content:SetPoint("TOPLEFT", M.PAGE_PAD, -(M.PAGE_PAD + M.PAGE_HEAD))
     content:SetPoint("BOTTOMRIGHT", -M.PAGE_PAD, M.PAGE_PAD)
 
     grip = buildGrip()
@@ -862,6 +892,7 @@ local function build()
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.menuBtn, F.helpBtn, F.settingsBtn, F.headMenu = statusBar, statusText, menuBtn, helpBtn, settingsBtn, headMenu
     F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
+    F.pageHead, F.pageTitle, F.pageSub = pageHead, pageTitle, pageSub
     F.navOrder, F.grip, F.applyHeight, F.heightDone = {}, grip, applyHeight, heightDone
     F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
 end
@@ -920,6 +951,7 @@ function ns.Refresh()
         return
     end
     updateHeader()
+    updatePageHead(p, built[current])
     local byGroup = pagesByGroup()
     updateNav(byGroup)
     -- the hits again for the new data, at the same scroll place

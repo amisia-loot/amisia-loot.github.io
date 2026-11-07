@@ -683,7 +683,7 @@ local function previousNight()
     return nil
 end
 
-ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 12, group = "raid",
+ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Raid kommt, wer fehlt und wer eingeladen wird."], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 12, group = "raid",
     officer = true, available = function() return ns.LineupAllowed() end,
     create = function(parent)
         local f = W.Page(parent)

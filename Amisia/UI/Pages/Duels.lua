@@ -465,7 +465,7 @@ local function refresh(f)
     end
 end
 
-ns.RegisterPanel{ key = "duels", label = L["Duelle"], icon = "Interface\\Icons\\INV_Sword_04", order = 75,
+ns.RegisterPanel{ key = "duels", label = L["Duelle"], sub = L["Deine Duelle, die Rangliste und Turniere."], icon = "Interface\\Icons\\INV_Sword_04", order = 75,
     group = "guild", create = build, refresh = refresh }
 
 function ns.ShowDuels() ns.ShowPage("duels") end

@@ -360,7 +360,7 @@ local function refresh(f)
     if view == "inbox" then refreshInbox(f.inbox) else refreshWrite(f.write) end
 end
 
-ns.RegisterPanel{ key = "feedback", label = L["Feedback"], icon = "Interface\\Icons\\INV_Letter_15", order = 920, group = "amisia",
+ns.RegisterPanel{ key = "feedback", label = L["Feedback"], sub = L["Fehler melden und Wünsche schicken."], icon = "Interface\\Icons\\INV_Letter_15", order = 920, group = "amisia",
     create = build, refresh = refresh }
 
 -- Opens the page (/amisia feedback); view "write" or "inbox" (the author) when given.

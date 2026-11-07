@@ -709,7 +709,7 @@ function ns.ShowRaidLog(v, sessionId)
     ns.ShowPage("raidlog")
 end
 
-ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 24, group = "raid",
+ns.RegisterPanel{ key = "raidlog", label = L["Raid-Log"], sub = L["Bosse, Beute und Teilnehmer eines Raids."], icon = "Interface\\Icons\\INV_Misc_Note_01", order = 24, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         page = f

@@ -593,7 +593,7 @@ local function create(parent)
     return page
 end
 
-ns.RegisterPanel{ key = "talents", label = L["Talente"], icon = ICON, order = 53, group = "char",
+ns.RegisterPanel{ key = "talents", label = L["Talente"], sub = L["Talente planen und mit deinen vergleichen."], icon = ICON, order = 53, group = "char",
     available = function() return T.Available() end,
     create = create, refresh = refreshView }
 

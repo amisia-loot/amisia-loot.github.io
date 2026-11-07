@@ -81,7 +81,7 @@ T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 -- the width of the page area of the main window (the content inset less its 7 px margin; 478 high)
 T.PAGE_W = 602
 T.PAGE_H = 478   -- the page area under the window's head (MainFrame: content), for lists that fill it;
-                 -- the main window sets it to its dragged height less 82 (D-68), W.FitLists follows
+                 -- the main window sets it to its dragged height less 120 (D-68, D-69), W.FitLists follows
 
 -- The page scaffold (W.Page): every page is built of the same parts, top to bottom: bands (the head
 -- row first, then rows of controls or lines of text), the content (column heads, a list, a detail
@@ -104,35 +104,41 @@ T.LAYOUT = {
 -- the auction house's category bars, the open group's pages and side windows as its sub-category
 -- bars); the page in the content inset on the right. Nothing hangs under or beside the window.
 T.MAIN = {
-    W = 806, H = 560,
+    -- 560 until 2.62.0; the page head (PAGE_HEAD, D-69) made it taller, the page keeps its 478
+    W = 806, H = 598,
     -- the height the player can drag (the grip at the bottom right, the chat window's size grabber,
     -- GRIP square in the frame's corner (GRIP_OUT past it), over its border and clear of the page's controls
     -- in its bottom right corner): H_MIN to H_MAX, never taller than the screen; T.PAGE_H and the side
     -- bar follow
-    H_MIN = 560, H_MAX = 860, GRIP = 12, GRIP_OUT = 0,
+    H_MIN = 598, H_MAX = 898, GRIP = 12, GRIP_OUT = 0,
     -- the side bar (a W.List of NAV_ROW_H rows, one bar each, the client's list spacing 0, a scroll bar
     -- when the open group does not fit): a group as the category bar, gold from NAV_LABEL_X, its plus or
     -- minus (the quest log's, FOLD square) FOLD_R from the right; the open group's pages from NAV_SUB_X
     -- (gold), under the open page "Einstellungen" its tabs from NAV_SUB2_X (gold) and the chosen tab's
     -- sections from NAV_SUB3_X (white, D-49); a side window as a page with the chat window's
-    -- maximize sign in the place of the plus or minus. NAV_LIST_H: the bar's height at H_MIN
-    NAV_W = 164, NAV_LIST_H = 454, NAV_SUB_X = 18, NAV_SUB2_X = 30, NAV_SUB3_X = 42,
+    -- maximize sign in the place of the plus or minus. NAV_LIST_H: the bar's height at H
+    NAV_W = 164, NAV_LIST_H = 492, NAV_SUB_X = 18, NAV_SUB2_X = 30, NAV_SUB3_X = 42,
     NAV_ROW_H = 21, NAV_LABEL_X = 8, NAV_LABEL_W = 150, FOLD = 14, FOLD_R = 6,
     -- the search box at the top of the side bar (T.FIELD_H high), the list SEARCH_GAP under it;
     -- typing turns the list into the results (RES_ROW_H rows: a group as a category bar, its hits as
     -- the indented sub-category bars, RES_HIT_X the hit's text as the client's 18), at least
-    -- SEARCH_MIN characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 454
-    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 21, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
+    -- SEARCH_MIN characters, at most RES_MAX hits per group; 23 x 21 = 483 of the 492
+    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 23, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
     LIST_W = 176,         -- the side bar's inset
     CONTENT_X = 184,      -- the content inset's left edge
     INNER = 6,            -- the side bar inside its inset
     PAGE_PAD = 7,         -- the page inside the content inset
-    HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the icons
-    -- the head's right end (D-67): the page's help ("?", the client's help-i) and its settings (the
-    -- quest log's gear, D-49) as small icons, ICON_SIZE square, ICON_GAP apart, ICON_RIGHT from the
-    -- edge; recording and view sit in a menu behind the status line (its arrow MENU_SIZE)
+    -- the page head (D-69) at the top of the content inset, PAGE_HEAD high over the page: the page's
+    -- name (T.FONT.big, gold) at TITLE_Y, its one line (T.FONT.hint) at SUB_Y, the gold line fading to
+    -- both ends at RULE_Y (RULE_ALPHA at its middle); at its right end the page's help ("?", the
+    -- client's help-i) and its settings (the quest log's gear, D-49) as small icons, ICON_SIZE square,
+    -- ICON_GAP apart, ICON_Y from the head's top
+    PAGE_HEAD = 38, TITLE_Y = 2, SUB_Y = 21, RULE_Y = 35, RULE_ALPHA = 0.7, ICON_Y = 4,
+    HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line right of the portrait (D-67)
+    -- the recording and the view sit in a menu behind the status line (its arrow MENU_SIZE); the right
+    -- end of the window's head keeps ICON_RIGHT free (the close button's row)
     ICON_SIZE = 22, ICON_GAP = 6, ICON_RIGHT = 12, MENU_SIZE = 20,
 }
 

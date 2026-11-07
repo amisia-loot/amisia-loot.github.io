@@ -11,7 +11,7 @@ local page
 -- For tests: the page frame once built.
 function ns.OverviewPageFrame() return page end
 
-ns.RegisterPanel{ key = "overview", label = L["Übersicht"], icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
+ns.RegisterPanel{ key = "overview", label = L["Übersicht"], sub = L["Was gerade ansteht: Raid, Anmeldung, Reservierungen und deine Ausrüstung."], icon = "Interface\\Icons\\INV_Misc_Book_09", order = 10, group = "raid",
     create = function(parent)
         -- the cards fill the page from its top; no head row (each card has its own button)
         local f = W.Page(parent)

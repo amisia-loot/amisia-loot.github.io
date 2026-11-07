@@ -33,7 +33,8 @@ GameTooltip.AddLine = addLine
 assert(tip[1] == "Einstellungen" and tip[2] == "Karte und Wegpunkt", tostring(tip[1]) .. "/" .. tostring(tip[2]))
 NS.ShowPage("talents")
 assert(not F.settingsBtn:IsShown(), "the talents page has none")
-assert(F.helpBtn.points.TOPRIGHT and F.helpBtn.points.TOPRIGHT.x == -12, "without the gear the ? moves to the edge")
+assert(F.helpBtn.points.TOPRIGHT and F.helpBtn.points.TOPRIGHT.rel == F.pageHead and F.helpBtn.points.TOPRIGHT.x == 0,
+    "without the gear the ? moves to the page head's end")
 NS.ShowPage("rolls")
 F.settingsBtn:Click()
 assert(NS.CurrentPage() == "settings" and not F.settingsBtn:IsShown())

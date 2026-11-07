@@ -397,17 +397,17 @@ do
     assert(c and c[1] == 0 and c[2] == 0 and c[3] == 0 and c[4] == 1, "black")
     assert(back.allPoints == pic or (back.points and next(back.points)), "on the portrait")
 end
-assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 560)
+assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 598)
 assert(MF.strata == "FULLSCREEN")
 assert(MF.portraitAsset == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia", "the Amisia portrait")
 local mtitle = MF:GetTitleText():GetText()
 assert(mtitle:sub(1, 7) == "Amisia " and mtitle:find(NS.VERSION, 1, true), mtitle)
 assert(MF.Bg.atlas == "Profession-Background-Overview" and not MF.TopTileStreaks:IsShown())
-local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 560)
--- the head (D-67): the state as plain text from the portrait to the icons, level with them, no bar;
--- its arrow opens the menu; "?" and the gear at the right end, no red buttons
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 598)
+-- the head (D-67): the state as plain text right of the portrait, no bar; its arrow opens the menu;
+-- no red buttons ("?" and the gear went to the page head, D-69)
 local status = MF.statusBar
-assert(status._w == 806 - 66 - 12 - 2 * (22 + 6) and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
+assert(status._w == 806 - 66 - 12 and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
 assert(status.bgParts == nil and status.frameParts == nil and status.bg == nil, "no bar textures")
 assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons in the head")
 local sl = ML.span(status)
@@ -417,29 +417,38 @@ assert(MF.menuBtn.points.LEFT.rel == MF.statusText and MF.menuBtn._w == 20, "the
 assert(MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
 NS.ShowPage("map")
 local gear, help = MF.settingsBtn, MF.helpBtn
-assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.x == -12 and gear.points.TOPRIGHT.y == -26)
+assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.rel == MF.pageHead and gear.points.TOPRIGHT.x == 0
+    and gear.points.TOPRIGHT.y == -4, "the gear at the page head's right end")
 assert(gear.icon.atlas == "questlog-icon-setting", "the quest log's gear")
 assert(help:IsShown() and help.points.RIGHT.rel == gear and help.icon.texture == "Interface\\common\\help-i", "the ? left of the gear")
-ML.row("head", status, help, gear)
+ML.row("page head icons", help, gear)
+-- the page head (D-69): the page's name gold and large, its line grey under it, the gold line fading to
+-- both ends under them, all over the page area
+assert(MF.pageTitle:GetText() == "Karte" and MF.pageTitle.font == "GameFontNormalLarge", tostring(MF.pageTitle:GetText()))
+assert(MF.pageSub:IsShown() and MF.pageSub.font == "GameFontDisableSmall" and MF.pageSub:GetText() == NS.Panel("map").sub)
+assert(MF.pageHead._h == 38 and MF.pageHead.rule and MF.pageHead.rule.points.TOPLEFT.y == -35, "the line under them")
+local hl, hr = ML.span(MF.pageHead)
+local ht, hb = ML.vspan(MF.pageHead)
+assert(hl == 191 and hr == 793 and ht == -69 and hb == -107, ("the page head: %d..%d, %d..%d"):format(hl, hr, ht, hb))
 NS.ShowPage("dungeons")   -- the group Welt remembers its first page again (the group checks below)
 NS.ShowPage("overview")
 assert(not help:IsShown(), "the overview explains nothing: no ?")
 NS.SetEnabled(false); STUB.tick(0); assert(MF.statusText:GetText():find("pausiert", 1, true) and MF.headMenu()[1][1] == "Aufnahme fortsetzen")
 MF.headMenu()[1][2](); assert(NS.IsEnabled())
--- the side bar and the content field side by side, the page area exactly 602 x 478 at (191, -69)
+-- the side bar and the content field side by side, the page area exactly 602 x 478 at (191, -107)
 local listIn, contentIn = MF.listInset, MF.contentInset
 assert(listIn.border.atlas == "common-insideframe" and listIn.ground.atlas == "Professions-background-summarylist")
 assert(contentIn.border.atlas == "common-insideframe")
 ML.row("columns", listIn, contentIn)
 local ll, lr = ML.span(listIn)
 local lt, lb = ML.vspan(listIn)
-assert(ll == 6 and lr == 182 and lt == -62 and lb == -554, ("the list 176 x 492: %d..%d, %d..%d"):format(ll, lr, lt, lb))
+assert(ll == 6 and lr == 182 and lt == -62 and lb == -592, ("the list 176 x 530: %d..%d, %d..%d"):format(ll, lr, lt, lb))
 local il, ir = ML.span(contentIn)
 local it, ib = ML.vspan(contentIn)
-assert(il == 184 and ir == 800 and it == -62 and ib == -554, ("the field 616 x 492: %d..%d, %d..%d"):format(il, ir, it, ib))
+assert(il == 184 and ir == 800 and it == -62 and ib == -592, ("the field 616 x 530: %d..%d, %d..%d"):format(il, ir, it, ib))
 local cl, cr = ML.span(MF.content)
 local ct, cb = ML.vspan(MF.content)
-assert(cl == 191 and ct == -69 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
+assert(cl == 191 and ct == -107 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
 ML.inside("content", MF.content)
 
 -- the side bar (D-68): the page groups as the auction house's category bars, one unfolded at a time
@@ -471,7 +480,7 @@ NS.ShowTab("world")
 assert(navShown() == "+raid +char -world dungeons raidjournal quests map +guild +amisia" and NS.CurrentPage() == "dungeons", navShown())
 NS.ShowTab("guild"); assert(navShown() == "+raid +char +world -guild members calendar bank duels +amisia", navShown())
 -- (D-49: under the open settings page its tabs and the chosen tab's sections)
-NS.ShowTab("amisia"); assert(navShown():match("^%+raid %+char %+world %+guild %-amisia settings raid ") and navShown():find(" amisia about$"), navShown())
+NS.ShowTab("amisia"); assert(navShown():match("^%+raid %+char %+world %+guild %-amisia settings raid ") and navShown():find(" amisia about feedback$"), navShown())
 NS.Set("ui.view", "officer")
 NS.ShowTab("raid")
 -- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there; the roll
@@ -535,7 +544,7 @@ for i = 1, 15 do
 end
 NS.Refresh()
 assert(missingRows() == "", "23 pages, all with a row: " .. missingRows())
-assert(#MF.nav.items > MF.nav.rowCount and MF.nav.rowCount == 21 and #MF.navOrder == 21, "more than fit: " .. #MF.nav.items)
+assert(#MF.nav.items > MF.nav.rowCount and MF.nav.rowCount == 23 and #MF.navOrder == 23, "more than fit: " .. #MF.nav.items)
 assert(MF.navOrder[1].button._h == 20 and MF.navOrder[1].button.art.normal._h == 30, "the rows keep their height")
 NS.ShowPage("extra15")
 local seen = navRow("page", "extra15")

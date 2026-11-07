@@ -780,7 +780,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "map", label = L["Karte"], icon = ICON, order = 55, group = "world",
+ns.RegisterPanel{ key = "map", label = L["Karte"], sub = L["Deine Ziele, Wünsche und Quests auf der Weltkarte."], icon = ICON, order = 55, group = "world",
     available = function() return Gear.Available() and ns.HasData("MAP") end,
     create = create, refresh = refresh }
 

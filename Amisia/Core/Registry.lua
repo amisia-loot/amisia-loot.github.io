@@ -67,7 +67,8 @@ end
 ---------------------------------------------------------------------------
 -- Pages and overview cards
 ---------------------------------------------------------------------------
--- Page: { key, label, icon, order, group, officer, expert, available = fn, create = fn(parent) -> frame,
+-- Page: { key, label, sub = its one line in the page head (a text or fn(frame) -> text; D-69), icon, order,
+--         group, officer, expert, available = fn, create = fn(parent) -> frame,
 --         refresh = fn(frame) }. Built the first time it is opened, refreshed only while shown.
 -- group names the page's group in the side bar (ns.PANEL_GROUPS); bottom (the old sidebar) is still
 -- allowed but no longer read.

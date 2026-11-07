@@ -116,7 +116,7 @@ local COLS = { { "date", 30, 80, L["Datum"] }, { "zone", 112, 200, "Raid" }, { "
     { "mat1", MAT_X, MAT_W }, { "mat2", MAT_X + MAT_STEP, MAT_W }, { "mat3", MAT_X + 2 * MAT_STEP, MAT_W },
     { "gems", MAT_X + 2 * MAT_STEP, 90 } }
 
-ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 34, group = "raid", officer = true,
+ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], sub = L["Alle aufgezeichneten Raids, zum Ansehen, Ankreuzen und Löschen."], icon = "Interface\\Icons\\Ability_Warrior_BattleShout", order = 34, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
         page = f

@@ -69,7 +69,7 @@ function ns.ShowExport(latestOnly)
 end
 
 -- In the tab Raid after the Raid-Archiv it exports from (the bank and the loot prio come along).
-ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\INV_Scroll_05", order = 36, group = "raid", officer = true,
+ns.RegisterPanel{ key = "export", label = "Export", sub = L["Raids und Gildendaten als Text für die Website."], icon = "Interface\\Icons\\INV_Scroll_05", order = 36, group = "raid", officer = true,
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: what to export, and how much is new; under it what the text is for

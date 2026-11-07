@@ -333,7 +333,7 @@ local function fillRow(r, e)
     if raiderView and e.mine then r.sel:Show() else r.sel:Hide() end
 end
 
-ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], icon = "Interface\\Icons\\INV_Scroll_03", order = 14, group = "raid",
+ns.RegisterPanel{ key = "softres", label = L["Soft-Reserves"], sub = L["Die Reservierungen des Raids: wer welches Item will."], icon = "Interface\\Icons\\INV_Scroll_03", order = 14, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         page = f

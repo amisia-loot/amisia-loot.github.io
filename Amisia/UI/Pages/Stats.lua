@@ -340,7 +340,7 @@ function ns.ShowStats(which, name)
     ns.ShowPage("stats")
 end
 
-ns.RegisterPanel{ key = "stats", label = L["Statistik"], icon = "Interface\\Icons\\INV_Misc_Note_05", order = 32, group = "raid",
+ns.RegisterPanel{ key = "stats", label = L["Statistik"], sub = L["Teilnahme und Beute über alle aufgezeichneten Raids."], icon = "Interface\\Icons\\INV_Misc_Note_05", order = 32, group = "raid",
     create = function(parent) return build_page(parent) end,
     refresh = function(f) refresh(f) end }
 

@@ -387,7 +387,7 @@ local function refresh(f)
     end
 end
 
-ns.RegisterPanel{ key = "raidcheck", label = L["Raid-Check"], icon = "Interface\\Icons\\INV_Potion_97", order = 16, group = "raid",
+ns.RegisterPanel{ key = "raidcheck", label = L["Raid-Check"], sub = L["Fläschchen, Buffs, Ausrüstung und Raid-IDs der Gruppe."], icon = "Interface\\Icons\\INV_Potion_97", order = 16, group = "raid",
     officer = true, available = function() return ns.RaidCheckAllowed() end,
     create = build, refresh = refresh }
 

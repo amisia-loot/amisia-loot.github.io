@@ -998,6 +998,30 @@ function W.NavBar(b, sub)
     return bar
 end
 
+-- A thin gold line fading to both ends (the page head, D-69): two halves with the client's gradient,
+-- alpha at the middle; without SetGradient (an old client) one even line at half that. A frame 1 high:
+-- the caller anchors its left and right.
+function W.GoldRule(parent, alpha)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(1)
+    local g = GOLD
+    local function half(fromA, toA)
+        local t = r:CreateTexture(nil, "ARTWORK")
+        t:SetColorTexture(1, 1, 1, 1)
+        t:SetHeight(1)
+        local ok = t.SetGradient and CreateColor and pcall(t.SetGradient, t, "HORIZONTAL",
+            CreateColor(g[1], g[2], g[3], fromA), CreateColor(g[1], g[2], g[3], toA))
+        if not ok then t:SetColorTexture(g[1], g[2], g[3], alpha / 2) end
+        return t
+    end
+    r.left, r.right = half(0, alpha), half(alpha, 0)
+    r.left:SetPoint("LEFT")
+    r.left:SetPoint("RIGHT", r, "CENTER")
+    r.right:SetPoint("LEFT", r, "CENTER")
+    r.right:SetPoint("RIGHT")
+    return r
+end
+
 -- A section header as in the profession window's recipe list (ListHeaderVisualTemplate with
 -- ListHeaderCodeTemplate): gold text on the dark bar, 25 high, a minus to collapse when
 -- collapsible. A click turns the state and hands it to onToggle(collapsed); h:SetCollapsed(on)

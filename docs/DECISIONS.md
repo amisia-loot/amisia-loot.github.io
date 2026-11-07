@@ -1575,3 +1575,21 @@ kommt in `SIDE_WINDOWS` (MainFrame) mit Gruppe und Seite, und sein Fenster ruft 
 Auktionshauses (TBC, Era) bleibt der Fallback der Rezeptliste (Leuchten und Hover).
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua`, `tests/test_main_sidebar_review.lua`, `tests/test_nav_find.lua`,
 `tests/test_style.lua`, die Layoutregel "nav" (`tools/ui_layout.py`).
+
+## D-69 Seitenkopf, Startseiten mit Kacheln, aufklappbare Zeilen (Schritte 2 bis 4 der UI-Überholung)
+
+**Datum:** 2026-11-07
+**Entscheidung:** Schritt 2 (F-142): Über jeder Seite steht im Hauptfenster ein Seitenkopf (`T.MAIN.PAGE_HEAD`, 38
+hoch): der Name der Seite (`T.FONT.big`, gold), darunter ihre eine Zeile (`sub` der Seite, `T.FONT.hint`; ein Text
+oder `fn(frame)`), darunter eine goldene Linie, die zu beiden Rändern ausläuft (`W.GoldRule`, die Verläufe des
+Clients; ohne `SetGradient` eine gleichmäßige Linie). Das "i" und das Zahnrad (D-49, D-67) sitzen rechts in diesem
+Kopf statt im Fensterkopf; der Fensterkopf hat nur noch den Raid-Status mit seinem Menü. Das Fenster wird um den
+Seitenkopf höher (598, ziehbar 598 bis 898, D-68), die Seite bleibt 602 x 478: keine Seite ändert ihr Layout.
+**Grund:** Nutzer 2026-11-07: "mach die nächsten schritte" nach Schritt 1 (D-68); der Entwurf der UI-Überholung
+hatte als Schritt 2 "Titel, Unterzeile und eine goldene Linie" (wie die Hub-Seiten eines anderen Addons, im Look des
+Clients). Ohne Kopf war der Name der offenen Seite nur in der Seitenleiste zu sehen.
+**Folge:** Eine neue Seite bringt `sub` mit (deutsch in `L[]`, englisch in `Locales/enUS_core.lua`). Wer Höhen der
+Seite rechnet, nimmt weiter `T.PAGE_H` (478 bei 598).
+**Durchgesetzt durch:** `tests/test_style.lua` (Lage von Kopf, Linie, "i" und Zahnrad, Seite 602 x 478),
+`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`.
+

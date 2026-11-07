@@ -1035,7 +1035,7 @@ function ns.ShowAwards(sessionId)
     ns.ShowPage("awards")
 end
 
-ns.RegisterPanel{ key = "awards", label = L["Vergaben"], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 22, group = "raid",
+ns.RegisterPanel{ key = "awards", label = L["Vergaben"], sub = L["Wer welches Item bekommen hat, mit Mainspec und Offspec."], icon = "Interface\\Icons\\INV_Misc_Bag_08", order = 22, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         page = f

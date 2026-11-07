@@ -376,7 +376,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "scrolls", label = L["Schriftrollen"], icon = ICON, order = 57.5, group = "char",
+ns.RegisterPanel{ key = "scrolls", label = L["Schriftrollen"], sub = L["Die Schriftrollen der Magier und wo du sie findest."], icon = ICON, order = 57.5, group = "char",
     available = function() return MS.Shown() end, create = create, refresh = refresh }
 
 -- Opens the page (any class); what: a view ("ergebnisse", "bibliothek", ...).

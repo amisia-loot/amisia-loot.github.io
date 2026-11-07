@@ -81,7 +81,7 @@ end
 
 function ns.AboutPageFrame() return page end
 
-ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
+ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Version, Befehle und Selbsttest."], icon = "Interface\\Icons\\INV_Misc_QuestionMark", order = 910, group = "amisia",
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: the version and the self-test; the line under it, a newer version; then who

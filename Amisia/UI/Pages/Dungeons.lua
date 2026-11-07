@@ -1712,6 +1712,6 @@ end
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
     ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
 
-ns.RegisterPanel{ key = "dungeons", label = "Dungeons", icon = ICON, order = 51, group = "world",
+ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "world",
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }

@@ -994,7 +994,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "professions", label = L["Berufe"], icon = ICON, order = 57, group = "char",
+ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "char",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
 
 function ns.ProfessionsPageFrame() return page end

@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-142 Seitenkopf: Name, eine Zeile und goldene Linie über jeder Seite
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du eine Seite öffnest, dann steht über ihr groß und gold ihr Name, darunter grau eine Zeile, wozu sie da ist, und darunter eine dünne goldene Linie, die zu den Rändern hin ausläuft.
+- Prüfung: Wenn du auf Karte oder Quests bist, dann sitzen das "i" und das Zahnrad rechts in diesem Seitenkopf, nicht mehr oben im Fensterkopf.
+- Notiz: Schritt 2 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Layout (docs/specs/README). Das Fenster ist dafür 38 px höher (598), die Seite bleibt 602 x 478.
+
 ### F-141 Eine Seitenleiste: Gruppen wie im Auktionshaus, Seitenfenster darin, Höhe ziehbar
 - Version: -
 - Status: geplant

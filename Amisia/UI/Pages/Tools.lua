@@ -131,7 +131,7 @@ local function fillDrops(D)
     end
 end
 
-ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
+ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], sub = L["Daten teilen, einfügen und prüfen."], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = W.Page(parent)
         -- the head row: the scan's buttons; under it its state and what to do with it (two lines each)

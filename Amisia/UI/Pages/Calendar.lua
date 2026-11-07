@@ -516,7 +516,7 @@ local function refresh(f)
     fillRight(f, terms, raids)
 end
 
-ns.RegisterPanel{ key = "calendar", label = L["Kalender"], icon = "Interface\\Icons\\INV_Misc_Note_02", order = 66, group = "guild",
+ns.RegisterPanel{ key = "calendar", label = L["Kalender"], sub = L["Die Termine der Gilde und die aufgezeichneten Raids."], icon = "Interface\\Icons\\INV_Misc_Note_02", order = 66, group = "guild",
     create = function(parent)
         local f = build(parent)
         return f
