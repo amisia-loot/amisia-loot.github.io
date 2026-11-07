@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.62.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.62.0) (2026-11-07)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.61.0...v2.62.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(ui): boss rows fold into one line with their loot icons (F-144)
 
   On the detail pages of dungeons (part Bosses) and raids every boss is a row with the quest log's plus or
