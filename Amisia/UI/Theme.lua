@@ -294,6 +294,15 @@ T.DCARD = {
     EDGE = 0.35, CHOSEN = 0.95, GLOW = 0.06, DIM = { 0.56, 0.53, 0.64 },
 }
 
+-- the boss list of the detail views of Dungeons and Raids (F-144, D-69): a boss's head row with the
+-- quest log's plus or minus (SIGN square at SIGN_X), its name from NAME_X (NAME_W), its gain per run
+-- from RATE_X (RATE_W); folded, a strip of at most MAX_ICONS item icons (ICON square, ICON_GAP apart,
+-- an EDGE px frame in the item's quality colour) STRIP_R from the row's right end, "+N" (MORE_W) after them.
+T.DBOSS = {
+    SIGN = 14, SIGN_X = 4, NAME_X = 22, NAME_W = 202, RATE_X = 228, RATE_W = 200,
+    ICON = 18, ICON_GAP = 2, MAX_ICONS = 6, EDGE = 1, STRIP_R = 4, MORE_W = 26,
+}
+
 T.PROFPAGE = {
     PICKER_W = 170, MODE_W = 56, SEARCH_W = 150, RANK_W = 120,
     VENDOR_W = 70, TAB_W = 64,

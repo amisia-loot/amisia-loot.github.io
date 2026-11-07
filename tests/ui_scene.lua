@@ -418,6 +418,22 @@ S.STATES = {
     { page = "stats", name = "stats-fame", open = function() NS.ShowStats("fame") end },
     { page = "softres", name = "softres-raider", open = function() NS.ShowSoftRes("raider") end },
     { page = "softres", name = "softres-check", open = function() NS.ShowSoftRes("check") end },
+    -- the bosses of the Deadmines as a new dungeon shows them (F-144: the bosses with an upgrade
+    -- unfolded, the others folded to their loot icons), then all folded but the first
+    { page = "dungeons", name = "dungeons-bosses", open = function()
+        AmisiaDB.settings.bis.dpart = "bosses"
+        NS.ShowDungeon("deadmines")
+    end },
+    { page = "dungeons", name = "dungeons-bosses-folded", open = function()
+        AmisiaDB.settings.bis.dpart = "bosses"
+        NS.ShowDungeon("deadmines")
+        local D = NS.DungeonsPageFrame()
+        -- open all first (if not all are), then fold all
+        if D.foldAll:GetText() ~= NS.L["Alle zuklappen"] then D.foldAll:Click() end
+        D.foldAll:Click()
+        local first = D.detail.rows[1]
+        if first and first.item and first.item.kind == "boss" then first:Click() end
+    end },
     -- the dungeon quests of the Deadmines, then the quest path of "Red Silk Bandanas" (F-135): two
     -- steps done, the third in the log, the rest open
     { page = "dungeons", name = "dungeons-quests", open = function()

@@ -840,3 +840,9 @@ L["Zurück zu den Kacheln aller Dungeons."] = "Back to the cards of all dungeons
 L["Zurück zu den Kacheln aller Raids."] = "Back to the cards of all raids."
 L["Klick auf eine Kachel: Bild, Bosse, Beute und Quests des Dungeons. Grün markiert: der empfohlene."] = "Click a card: the dungeon's image, bosses, loot and quests. Tagged green: the recommended one."
 L["Klick auf eine Kachel: Bild, Bosse und Beute des Raids. Grün markiert: der empfohlene."] = "Click a card: the raid's image, bosses and loot. Tagged green: the recommended one."
+-- the bosses' fold (F-144)
+L["Alle aufklappen"] = "Expand all"
+L["Alle zuklappen"] = "Collapse all"
+L["Bosse auf- und zuklappen"] = "Expand and collapse bosses"
+L["Zeigt die Beute aller Bosse oder klappt jeden Boss zu einer Zeile mit seinen Beutesymbolen zu."] = "Shows every boss's loot, or folds each boss into one line with its loot icons."
+L["Klick auf einen Boss: seine Beute auf- oder zuklappen."] = "Click a boss: show or hide its loot."

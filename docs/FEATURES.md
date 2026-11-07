@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-144 Aufklappbare Bosszeilen mit Beutesymbolen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Detailseite eines Dungeons (Teil Bosse) oder eines Raids bist, dann ist jeder Boss eine Zeile mit dem Plus oder Minus des Questlogs vor dem Namen; Bosse mit einem Upgrade für dich sind aufgeklappt (ihre Items darunter wie bisher), die anderen zugeklappt mit bis zu sechs kleinen Itemsymbolen im Rahmen ihrer Qualität rechts in der Zeile und "+N", wenn es mehr sind.
+- Prüfung: Wenn du auf einen Boss oder eines seiner Symbole klickst, dann klappt er auf oder zu; die Maus auf einem Symbol zeigt den Tooltip des Items, Strg-Klick darauf die Anprobe, Shift-Klick den Link im Chat und Rechtsklick das Menü wie in der Itemzeile; das Bild oben zeigt dabei den Boss.
+- Prüfung: Wenn du rechts neben Bosse/Quests (Raids: links von Wegpunkt) auf "Alle aufklappen" klickst, dann klappen alle Bosse auf und der Link heißt "Alle zuklappen"; im Teil Quests und im Questjournal fehlt der Link.
+- Prüfung: Wenn du einen anderen Dungeon öffnest und zurückkommst oder das Fenster höher ziehst, dann bleibt jeder Boss so auf- oder zugeklappt, wie du ihn gelassen hast; nach einem /reload gilt wieder die Vorgabe.
+- Notiz: Schritt 4 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der Bossliste (docs/specs/README). Der Zustand liegt nur im Speicher, je Seite und Dungeon (Raid).
+
 ### F-143 Startseite mit Kacheln und Detailseite: Dungeons und Raids
 - Version: -
 - Status: geplant

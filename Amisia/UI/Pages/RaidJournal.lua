@@ -116,13 +116,17 @@ local function create(parent)
     B.way = W.Link(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
-    W.Row(B, { B.way }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
+    -- the bosses' fold (F-144) left of the waypoint; the header ends before both
+    B.foldAll = J.foldLink(B)
+    B.partRow = { B.foldAll, { B.way, gap = G.ITEM_GAP } }
+    function B:PlaceParts() J.placeParts(self, headerTop) end
+    B:PlaceParts()
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Raids."])
     B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     B.startParts = { B.next, B.why, B.grid }
-    B.detailParts = { B.back, B.header, B.way, B.detail }
+    B.detailParts = { B.back, B.header, B.foldAll, B.way, B.detail }
     return B
 end
 
@@ -164,20 +168,23 @@ local function refresh(B)
     B.detailEntry = e
     if e then
         B.header:SetHeaderText(e.name .. " · " .. L["Bosse"])
-        B.detail:SetItems(J.detailItems(e))
+        J.showBosses(B, e)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
         B.header:SetHeaderText("")
-        B.detail:SetItems({})
+        J.showBosses(B, nil)
         B.way:SetEnabled(false)
     end
+    -- the fold link only for a raid with a boss that has items (F-144)
+    B.foldAll:SetShown(detail and e ~= nil and select(2, J.foldState(B, e)) and true or false)
+    B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
     if not detail then
         B.hint:SetText(L["Klick auf eine Kachel: Bild, Bosse und Beute des Raids. Grün markiert: der empfohlene."] .. " " .. hint)
         return
     end
     if e and #B.detail.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end
-    B.hint:SetText(hint .. " " .. J.itemHint)
+    B.hint:SetText(hint .. " " .. J.foldHint .. " " .. J.itemHint)
 end
 
 ---------------------------------------------------------------------------

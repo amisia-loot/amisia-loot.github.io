@@ -1607,6 +1607,23 @@ Suche und die Eingänge auf der Karte öffnen die Detailseite. Die Spaltenköpfe
 Entwurf der Überholung (Startseiten mit Kacheln wie die Hub-Seiten eines anderen Addons, im Look des Clients); die
 Bossliste beginnt auf Dungeons rund 200 px, auf Raids rund 150 px höher. Das Zeichen "<" statt "‹": wie das
 "< Zurück zu den Dungeons" des Journals, und die Schrift des Clients hat das "‹" nicht sicher.
+**Nachtrag 2026-11-07 (Schritt 4, F-144):** Auf den Detailseiten von Dungeons (Teil Bosse) und Raids ist die
+Bossliste aufklappbar. Jeder Boss ist eine Kopfzeile (`T.DBOSS`): links das Plus oder Minus des Questlogs
+(`UI-PlusButton-Up`/`UI-MinusButton-Up`, wie die Seitenleiste, 14 px), der Name in Gold ab 22 px, "je Lauf +X" ab
+228 px; zugeklappt fehlen seine Itemzeilen, statt dessen steht rechts in der Zeile eine Leiste von höchstens sechs
+Itemsymbolen (18 px, 2 px Abstand, 1 px Rahmen in der Farbe der Qualität, in der Reihenfolge der Itemzeilen) und
+"+N" für den Rest. Ein Symbol zeigt den Tooltip seines Items; ein einfacher Klick darauf klappt den Boss auf, Strg-,
+Shift- und Rechtsklick tun, was sie auf seiner Zeile tun (Anprobe, Link, Menü); die Maus darauf zeigt den Boss im Bild. Ein Klick auf die Kopfzeile klappt
+auf oder zu; ein Boss ohne Items hat weder Zeichen noch Leiste. Vorgabe beim ersten Zeigen eines Dungeons (Raids):
+aufgeklappt sind die Bosse mit einem Upgrade (ein Item, das seine Zeile als "Upgrade" markiert: Schwelle der Ausrüstungsdaten, eigene Wahl nach D-55), die anderen
+zugeklappt. In der Zeile der Überschrift steht der ruhige Link "Alle aufklappen" ("Alle zuklappen", wenn alle offen
+sind), auf Dungeons rechts von Bosse/Quests, auf Raids links von Wegpunkt, nur im Teil Bosse und nur, wenn ein Boss
+Items hat; die Überschrift endet vor Reitern und Links (`placeParts`). Der Zustand liegt nur im Speicher (kein
+Schlüssel in `AmisiaDB`): je Seite und Dungeon (Raid) die Menge der aufgeklappten Bosse; ein anderer Dungeon hat seine
+eigene Vorgabe, Höhe des Fensters (`W.FitLists`) und Neuzeichnen behalten ihn, beim Zuklappen rückt die Liste nach
+oben, soweit sie kürzer wird. Grund: der Entwurf der Überholung (aufklappbare Zeilen wie in einem anderen Addon, im
+Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und Raids eine lange Rolle.
 **Durchgesetzt durch:** `tests/test_style.lua` (Lage von Kopf, Linie, "i" und Zahnrad, Seite 602 x 478),
-`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_cards.lua` (Schritt 3).
+`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_cards.lua` (Schritt 3),
+`tests/test_boss_fold.lua` (Schritt 4).
 

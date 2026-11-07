@@ -148,9 +148,14 @@ for _, view in ipairs({ "officer", "raider" }) do
     -- the detail view: the back link before the spec, the image, the header, the bosses
     assert(D.detail:IsShown(), "the view stays")
     Lay.row(view .. " detail head row", D.back, D.spec)
-    Lay.row(view .. " detail head", D.header, D.parts.bosses, D.parts.quests, D.way)
+    Lay.row(view .. " detail head", D.header, D.parts.bosses, D.parts.quests, D.foldAll, D.way)
+    -- a boss's head (F-144): its sign, name and gain per run; an item row its four cells
     local dr = D.detail.rows[1]
-    Lay.row(view .. " detail row", dr.name, dr.slot, dr.gain, dr.rate)
+    assert(dr.item.kind == "boss" and dr.item.open and dr.sign:IsShown(), "the thanes' first boss has an upgrade: unfolded")
+    Lay.row(view .. " detail boss row", dr.sign, dr.name, dr.rate)
+    local ir
+    for _, row in ipairs(D.detail.rows) do if not ir and row.item and row.item.kind == "item" then ir = row end end
+    Lay.row(view .. " detail row", ir.name, ir.slot, ir.gain, ir.rate)
     Lay.row(view .. " detail", D.detail, D.detail.bar)
     Lay.inside(view .. " detail bar", D.detail.bar)
     Lay.column(view .. " detail body", D.spec, D.art, D.header, D.detail)

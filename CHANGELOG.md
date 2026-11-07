@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): boss rows fold into one line with their loot icons (F-144)
+
+  On the detail pages of dungeons (part Bosses) and raids every boss is a row with the quest log's plus or
+  minus. A click folds or unfolds it: folded, its item rows are hidden and up to six small item icons in
+  their quality's colour stand at the row's right end, with "+N" for the rest; hovering an icon shows the
+  item's tooltip and clicking it works like clicking its row. Bosses with an upgrade for you start unfolded,
+  the others folded, and an "Expand all"/"Collapse all" link sits in the bosses' header line. The fold is
+  kept per dungeon until the next /reload.
+
 - feat(ui): start pages with cards and a detail page for dungeons and raids (F-143)
 
   The pages Dungeons and Raids now open on a start page with every dungeon or raid as a card, three side by

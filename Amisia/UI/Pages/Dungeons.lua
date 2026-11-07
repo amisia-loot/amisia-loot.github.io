@@ -17,6 +17,8 @@ local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local ICON = "Interface\\Icons\\INV_Misc_Book_11"
+-- the quest log's plus and minus before a boss that folds (F-144), as in the main window's side bar
+local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local ROW_H = 24
 -- at least 5 rows of the chosen one under its image (they fill the page down to its bottom)
 local DETAIL_ROWS = 5
@@ -41,6 +43,7 @@ local DTEXT = {
     marked = L["%d Questgeber auf der Weltkarte markiert."],
     unmarked = L["Markierung der Questgeber entfernt."],
     itemHint = L["Strg-Klick: Anprobe. Shift-Klick: in den Chat."],
+    foldHint = L["Klick auf einen Boss: seine Beute auf- oder zuklappen."],
     xpLine = L["EP: %s"],
     xpLog = L["laut Questlog"],
     xpSeen = L["gesehen bei Level %d"],
@@ -163,7 +166,25 @@ local function dungeonTip(self)
     GameTooltip:Show()
 end
 
--- The rows of the chosen dungeon: a row per boss with its items below it.
+-- The item's icon and quality (the client's, else the scan's or the gear data's).
+local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
+local function itemIcon(id)
+    local f = C_Item and C_Item.GetItemIconByID
+    local icon = type(f) == "function" and ns.Plain(f(id)) or nil
+    return icon or (ns.Gear.ScanIcon and ns.Gear.ScanIcon(id)) or QUESTION
+end
+local function itemQuality(id)
+    local f = C_Item and C_Item.GetItemInfo
+    local q = type(f) == "function" and select(3, f(id)) or nil
+    if not q and ns.Gear.Item then
+        local row = ns.Gear.Item(id)
+        q = row and row[5]
+    end
+    return tonumber(q)
+end
+
+-- The rows of the chosen dungeon: a row per boss with its items below it (the boss row keeps its
+-- item rows in .items, in the same order, for the folded strip).
 local function detailItems(e)
     local c = cached()
     c.detail = c.detail or {}
@@ -171,13 +192,120 @@ local function detailItems(e)
     if out then return out end
     out = {}
     for _, b in ipairs(e.bosses or {}) do
-        out[#out + 1] = { kind = "boss", text = b.name, b = b }
+        local head = { kind = "boss", text = b.name, b = b, items = {} }
+        out[#out + 1] = head
         for _, it in ipairs(b.items) do
-            out[#out + 1] = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
+            local row = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
+            out[#out + 1] = row
+            head.items[#head.items + 1] = row
         end
     end
     c.detail[e] = out
     return out
+end
+
+-- The fold of the boss list (F-144): per page and dungeon (raid) key the set of unfolded bosses, only
+-- in memory. A new dungeon starts with the bosses that have an upgrade for the player unfolded (an
+-- item marked "Upgrade" in its row).
+local function bossUpgrade(b)
+    -- the item's own mark (the gear data's threshold, an own pick of D-55), as its row shows it
+    for _, it in ipairs(b.items or {}) do
+        if it.upgrade then return true end
+    end
+    return false
+end
+local function foldSet(B, e)
+    B.folds = B.folds or {}
+    local open = B.folds[e.key]
+    if not open then
+        open = {}
+        for _, b in ipairs(e.bosses or {}) do
+            if bossUpgrade(b) then open[b.name] = true end
+        end
+        B.folds[e.key] = open
+    end
+    return open
+end
+
+-- The rows of e on page B with the fold applied: each boss a head row of its own (open: unfolded),
+-- the item rows only under an unfolded one.
+local function foldedItems(B, e)
+    local open = foldSet(B, e)
+    local out, shown = {}, false
+    for _, row in ipairs(detailItems(e)) do
+        if row.kind == "boss" then
+            shown = open[row.text] and true or false
+            out[#out + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, open = shown }
+        elseif shown then
+            out[#out + 1] = row
+        end
+    end
+    return out
+end
+
+-- Whether every boss with items of e is unfolded on B (false when none has items), and whether any has items.
+local function foldState(B, e)
+    local open = foldSet(B, e)
+    local all, any = true, false
+    for _, b in ipairs(e.bosses or {}) do
+        if #(b.items or {}) > 0 then
+            any = true
+            if not open[b.name] then all = false end
+        end
+    end
+    return any and all, any
+end
+
+-- The detail list of page B shows e's bosses again with the fold as it is now (the offset clamps in
+-- SetItems); the link "Alle aufklappen"/"Alle zuklappen" follows.
+local FOLD_TEXT = { open = L["Alle aufklappen"], close = L["Alle zuklappen"] }
+local function refold(B)
+    local e = B.foldEntry
+    if not e then return end
+    B.detail:SetItems(foldedItems(B, e))
+    if B.foldAll then
+        local all, any = foldState(B, e)
+        B.foldAll:SetText(all and FOLD_TEXT.close or FOLD_TEXT.open)
+        B.foldAll:SetEnabled(any)
+    end
+end
+
+-- Folds or unfolds boss name of the shown dungeon on B.
+local function toggleBoss(B, name)
+    local e = B.foldEntry
+    if not e then return end
+    local open = foldSet(B, e)
+    open[name] = not open[name] or nil
+    refold(B)
+end
+
+-- "Alle aufklappen" / "Alle zuklappen": all open folds every boss, else every boss with items opens.
+local function foldAll(B)
+    local e = B.foldEntry
+    if not e then return end
+    local all = foldState(B, e)
+    local open = foldSet(B, e)
+    for _, b in ipairs(e.bosses or {}) do
+        if all then open[b.name] = nil elseif #(b.items or {}) > 0 then open[b.name] = true end
+    end
+    refold(B)
+end
+
+-- Shows e's bosses on B with the fold (the page's refresh); nil clears the list.
+local function showBosses(B, e)
+    B.foldEntry = e
+    if not e then
+        B.detail:SetItems({})
+        return
+    end
+    refold(B)
+end
+
+-- The quiet link "Alle aufklappen"/"Alle zuklappen" of page B (in the bosses' header line).
+local function foldLink(B)
+    local link = W.Link(B, FOLD_TEXT.open, nil, function() foldAll(B) end)
+    W.Tooltip(link, L["Bosse auf- und zuklappen"], L["Zeigt die Beute aller Bosse oder klappt jeden Boss zu einer Zeile mit seinen Beutesymbolen zu."])
+    return link
 end
 
 -- The quest rows of a dungeon: one row per quest with its quest path (the pre-quests and rewards
@@ -233,8 +361,11 @@ local CELLS = {
     quest = { name = { 4, 178 }, slot = { 186, 48 }, way = { 236, 58 }, gain = { 298, 34 }, xp = { 336, 56 }, rate = { 398, 188 } },
     other = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 398, 188 } },
 }
+local BH = T.DBOSS
+CELLS.boss = { name = { BH.NAME_X, BH.NAME_W }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 },
+    rate = { BH.RATE_X, BH.RATE_W } }
 local function placeCells(r, kind)
-    kind = kind == "quest" and "quest" or "other"
+    kind = (kind == "quest" or kind == "boss") and kind or "other"
     if r.cellKind == kind then return end
     r.cellKind = kind
     for key, c in pairs(CELLS[kind]) do
@@ -244,10 +375,45 @@ local function placeCells(r, kind)
     end
 end
 
+-- The strip of a folded boss's head row: at most BH.MAX_ICONS icons of its items in the rows' order,
+-- "+N" for the rest; hidden on other rows and on an unfolded boss.
+local QUALITY = T.GOALS.QUALITY
+local function fillStrip(r, e)
+    local items = e.kind == "boss" and not e.open and e.items or nil
+    local n = items and #items or 0
+    local k = math.min(n, BH.MAX_ICONS)
+    local more = n - k
+    r.more:SetText(more > 0 and (GREY .. "+" .. more .. "|r") or "")
+    r.more:SetShown(more > 0)
+    local right = BH.STRIP_R + (more > 0 and BH.MORE_W or 0)
+    for j, b in ipairs(r.strip) do
+        local row = j <= k and items[j] or nil
+        b.row = row
+        if row then
+            b.icon:SetTexture(itemIcon(row.id))
+            b.quality = itemQuality(row.id) or 1
+            local c = QUALITY[b.quality] or QUALITY[1]
+            W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
+            b:ClearAllPoints()
+            b:SetPoint("RIGHT", r, "RIGHT", -(right + (k - j) * (BH.ICON + BH.ICON_GAP)), 0)
+            b:Show()
+        else
+            b:Hide()
+        end
+    end
+end
+
 local function fillDetailRow(r, e)
     placeCells(r, e.kind)
     r.xp:SetText("")
     r.way:SetText("")
+    fillStrip(r, e)
+    if e.kind == "boss" and #(e.items or {}) > 0 then
+        r.sign:SetTexture(e.open and MINUS or PLUS)
+        r.sign:Show()
+    else
+        r.sign:Hide()
+    end
     if e.kind == "boss" then
         r.name:SetText(GOLD_TEXT .. e.text .. "|r")
         r.slot:SetText("")
@@ -395,6 +561,58 @@ end
 -- top: where the list starts on B (a SetPoint offset); the list takes the rows that fit down to B's
 -- lower end, at least rows (the footer's room went to it when the hint moved behind the "i", D-67), and
 -- follows the main window's height (W.FillTo, D-68).
+-- What a click on an item row does (also a click on its icon in a folded boss's strip): the right
+-- button the item's menu, Shift or Ctrl the client's modified click.
+local function itemClick(owner, e, button)
+    if not (e and e.id) then return end
+    if button == "RightButton" then
+        if e.kind == "item" then W.Menu(owner, menuEntries(e, ns.BisOpts())) end
+        return
+    end
+    modifiedClick(e.id)
+end
+
+local function itemTip(owner, id)
+    itemTooltip(owner, id)
+    GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+-- An icon of a folded boss's strip (F-144): the item's icon in a frame of its quality's colour; its
+-- tooltip, its row's clicks, the boss stays in the image while the mouse is on it.
+local function stripIcon(B, r)
+    local b = CreateFrame("Button", nil, r)
+    b:SetSize(BH.ICON, BH.ICON)
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetPoint("TOPLEFT", BH.EDGE, -BH.EDGE)
+    b.icon:SetPoint("BOTTOMRIGHT", -BH.EDGE, BH.EDGE)
+    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b.edges = W.Border(b, 1, 1, 1, 1, BH.EDGE)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    -- a plain click unfolds the boss (as a click on its head); Shift, Ctrl and the right button are the
+    -- item's, as on its row
+    b:SetScript("OnClick", function(self, button)
+        local mod = (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown())
+        if button == "LeftButton" and not mod then
+            local head = r.item
+            if head and head.text then toggleBoss(B, head.text) end
+            return
+        end
+        itemClick(self, self.row, button)
+    end)
+    b:SetScript("OnEnter", function(self)
+        local head = r.item
+        if head and head.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, head.b)) end
+        if self.row then itemTip(self, self.row.id) end
+    end)
+    b:SetScript("OnLeave", function()
+        hideTip()
+        B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry))
+    end)
+    b:Hide()
+    return b
+end
+
 local function buildDetail(B, rows, top)
     local list = W.List(B, rows, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
@@ -406,6 +624,17 @@ local function buildDetail(B, rows, top)
         r.rate = col(r, 398, 188, nil, T.FONT.text)
         r.way = col(r, 236, 58, nil, T.FONT.text)
         r.way:SetJustifyH("RIGHT")
+        -- a boss's head (F-144): the plus or minus before its name, folded the strip of its items
+        r.sign = r:CreateTexture(nil, "OVERLAY")
+        r.sign:SetSize(BH.SIGN, BH.SIGN)
+        r.sign:SetPoint("LEFT", BH.SIGN_X, 0)
+        r.sign:Hide()
+        r.strip = {}
+        for j = 1, BH.MAX_ICONS do r.strip[j] = stripIcon(B, r) end
+        r.more = W.Text(r, T.FONT.text, BH.MORE_W)
+        r.more:SetJustifyH("LEFT")
+        r.more:SetPoint("RIGHT", -BH.STRIP_R, 0)
+        r.more:Hide()
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -415,21 +644,19 @@ local function buildDetail(B, rows, top)
                 if B.OpenPath then B:OpenPath(e) end
                 return
             end
-            if not e.id then return end
-            if button == "RightButton" then
-                if e.kind == "item" then W.Menu(self, menuEntries(e, ns.BisOpts())) end
+            if e.kind == "boss" then
+                -- a boss with items folds or unfolds (F-144)
+                if button ~= "RightButton" and #(e.items or {}) > 0 then toggleBoss(B, e.text) end
                 return
             end
-            modifiedClick(e.id)
+            itemClick(self, e, button)
         end)
         r:SetScript("OnEnter", function(self)
             local e = self.item
             if e and e.q then
                 questTip(self)
             elseif e and e.id then
-                itemTooltip(self, e.id)
-                GameTooltip:AddLine(DTEXT.itemHint, 0.6, 0.6, 0.6)
-                GameTooltip:Show()
+                itemTip(self, e.id)
             elseif e and e.kind == "boss" then
                 -- the hovered boss in the image
                 B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, e.b))
@@ -869,23 +1096,6 @@ local function buildPath(B)
     end
     V:Hide()
     return V
-end
-
--- The item's icon and quality (the client's, else the scan's or the gear data's).
-local QUESTION = "Interface\\Icons\\INV_Misc_QuestionMark"
-local function itemIcon(id)
-    local f = C_Item and C_Item.GetItemIconByID
-    local icon = type(f) == "function" and ns.Plain(f(id)) or nil
-    return icon or (ns.Gear.ScanIcon and ns.Gear.ScanIcon(id)) or QUESTION
-end
-local function itemQuality(id)
-    local f = C_Item and C_Item.GetItemInfo
-    local q = type(f) == "function" and select(3, f(id)) or nil
-    if not q and ns.Gear.Item then
-        local row = ns.Gear.Item(id)
-        q = row and row[5]
-    end
-    return tonumber(q)
 end
 
 -- A reward tile: the icon in its quality's frame, the name with the marks, under it slot and gain;
@@ -1581,6 +1791,17 @@ local function placeHead(B, mode)
     end
 end
 
+-- The tabs and links at the right end of the bosses' header line (B.partRow, the hidden ones passed
+-- over) and the header up to them; a tab or link whose word changes places them again.
+local function placeParts(B, headerTop)
+    local reach = W.Row(B, B.partRow, T.CHIP_GAP, 0, headerTop - 1, { right = true, shown = true })
+    for _, x in ipairs(B.partRow) do
+        local f = type(x) == "table" and x[1] or x
+        if f.isTab then f.replace = function() placeParts(B, headerTop) end end
+    end
+    B.header:SetPoint("TOPRIGHT", -(reach + T.LAYOUT.GAP), headerTop)
+end
+
 local function create(parent)
     -- the head row: the spec (the gear page's) with the order chips (start) or the link back to the
     -- cards (detail); the recommendation, why and the cards (start); the image, the bosses or quests
@@ -1666,8 +1887,13 @@ local function create(parent)
     B.way = W.Link(B, L["Wegpunkt"], 120, function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
-    -- the two chips and the waypoint button at the right end of the header's line
-    W.Row(B, { B.parts.bosses, B.parts.quests, { B.way, gap = G.ITEM_GAP } }, T.CHIP_GAP, 0, headerTop - 1, { right = true })
+    -- the bosses' fold (F-144): "Alle aufklappen"/"Alle zuklappen", only in the part Bosse
+    B.foldAll = foldLink(B)
+    -- the two tabs, the fold link and the waypoint link at the right end of the header's line; the
+    -- header ends before them (the fold link comes and goes with the part)
+    B.partRow = { B.parts.bosses, B.parts.quests, { B.foldAll, gap = G.ITEM_GAP }, { B.way, gap = G.ITEM_GAP } }
+    function B:PlaceParts() placeParts(self, headerTop) end
+    B:PlaceParts()
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
     B.detail = buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
@@ -1691,7 +1917,7 @@ local function create(parent)
     end
     -- the parts of the start and of the detail view; the quest journal covers them all (planParts)
     B.startParts = { B.next, B.why, B.grid }
-    B.detailParts = { B.back, B.art, B.header, B.parts.bosses, B.parts.quests, B.way, B.detail }
+    B.detailParts = { B.back, B.art, B.header, B.parts.bosses, B.parts.quests, B.foldAll, B.way, B.detail }
     B.planParts = {}
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
@@ -1808,6 +2034,11 @@ local function refresh(B)
         if not detail then
             for _, chip in ipairs(B.sortRow) do chip:Show() end
         end
+        -- the fold link only in the part Bosse of a dungeon with a boss that has items (F-144)
+        local anyItems = false
+        if detail and part == "bosses" then anyItems = select(2, foldState(B, e)) end
+        B.foldAll:SetShown(anyItems)
+        B:PlaceParts()
     else
         B.art:Hide()
     end
@@ -1830,15 +2061,16 @@ local function refresh(B)
         local rows
         rows, status = questItems(e.key)
         B.header:SetHeaderText(e.name .. " · Quests")
+        B.foldEntry = nil
         B.detail:SetItems(rows)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e then
         B.header:SetHeaderText(e.name .. " · " .. L["Bosse"])
-        B.detail:SetItems(detailItems(e))
+        showBosses(B, e)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
         B.header:SetHeaderText("")
-        B.detail:SetItems({})
+        showBosses(B, nil)
         B.way:SetEnabled(false)
     end
     local hint
@@ -1854,7 +2086,7 @@ local function refresh(B)
     else
         hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
         if e and e.computed and #B.detail.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
-        hint = hint .. " " .. DTEXT.itemHint
+        hint = hint .. " " .. DTEXT.foldHint .. " " .. DTEXT.itemHint
     end
     if not detail then
         hint = L["Klick auf eine Kachel: Bild, Bosse, Beute und Quests des Dungeons. Grün markiert: der empfohlene."] .. " " ..
@@ -1908,7 +2140,9 @@ end
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
-    buildGrid = buildGrid, ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
+    buildGrid = buildGrid, ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
+    -- the bosses' fold (F-144)
+    showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "world",
     available = function() return ns.Gear.Available() end,
