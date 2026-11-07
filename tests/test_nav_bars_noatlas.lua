@@ -2,8 +2,8 @@
 STUB.missingAtlases["auctionhouse-nav-button"] = true
 STUB.missingAtlases["auctionhouse-nav-button-secondary"] = true
 ]]
--- A client without the auction house's category bars (a patch renamed them): the page list keeps the
--- look of before (the recipe list's glow on the chosen row and its hover), the gold name, no icon;
+-- A client without the auction house's category bars (a patch renamed them): the side bar (D-68) keeps
+-- the look of before (the recipe list's glow on the chosen row and its hover), the gold name, no icon;
 -- the search results show a group as a section bar and a hit as a plain list row.
 local W = NS.W
 assert(W.NavBar(CreateFrame("Button"), false) == nil and W.NavBar(CreateFrame("Button"), true) == nil, "no bars without the art")
@@ -16,7 +16,10 @@ end
 assert(ov and ov.art == nil and ov.icon == nil, "the row without the bar, no icon")
 assert(ov.sel.atlas == "Professions_Recipe_Active" and ov.sel:IsShown(), "the chosen row glows")
 assert(ov.hover.atlas == "Professions_Recipe_Hover" and ov.hover.layer == "HIGHLIGHT")
-assert(ov.label.font == "GameFontNormal" and ov._h == 21, "the gold name, 21 high")
+-- the rows 21 apart (NAV_ROW_H, the auction house's), each 20 high with the list's 1 px between
+local r1, r2 = F.nav.rows[1], F.nav.rows[2]
+assert(ov.label.font == "GameFontNormal" and ov._h == NS.Theme.MAIN.NAV_ROW_H - 1 and NS.Theme.MAIN.NAV_ROW_H == 21
+    and r1.points.TOPLEFT.y - r2.points.TOPLEFT.y == 21, "the gold name, 21 high: " .. tostring(ov._h))
 -- the search results
 local box = F.search
 box:SetText("experten")

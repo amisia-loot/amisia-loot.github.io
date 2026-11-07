@@ -1276,6 +1276,13 @@ function _G.CreateFrame(kind, name, parent, template)
     f.GetHeight = function(self) return self._h or self.tplH or 300 end
     f.GetScale = function(self) return self._scale or 1 end
     f.SetScale = function(self, s) self._scale = s end
+    -- the screen place (a test sets _left, _top; nil like an unplaced frame in the client)
+    f.GetEffectiveScale = function(self)
+        local p = self.parent
+        return (self._scale or 1) * (p and p.GetEffectiveScale and p:GetEffectiveScale() or 1)
+    end
+    f.GetLeft = function(self) return self._left end
+    f.GetTop = function(self) return self._top end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetWidth = function(self, w) self._w = w end
     f.SetHeight = function(self, h) self._h = h end
@@ -1373,6 +1380,8 @@ end
 
 _G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, t) STUB.messages[#STUB.messages + 1] = t end }
 _G.UIParent = CreateFrame("Frame", "UIParent")
+_G.GetCursorPosition = function() return STUB.cursorX or 0, STUB.cursorY or 0 end
+UIParent:SetSize(1920, 1080)   -- a 1080p screen at scale 1 (the main window clamps its height to it)
 _G.GameTooltip = CreateFrame("GameTooltip", "GameTooltip")
 _G.ItemRefTooltip = CreateFrame("GameTooltip", "ItemRefTooltip")
 _G.UISpecialFrames = {}

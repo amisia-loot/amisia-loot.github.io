@@ -1,9 +1,10 @@
 -- The window "Ausrüstungsziele" (UI/GoalsWindow.lua, F-110): the self-test line "Charaktermodell";
 -- nothing built before it opens; the button "Ausrüstungsziele" on the gear page's view Ziele, the
--- side tab, /amisia bis gross; the doll (17 slots as on the character frame, the model dressed in
--- the targets or what is worn, drag, wheel, right click), the list by section with the gear page's
--- texts and clicks; the scale (ui.goalScale, Ctrl + mouse wheel), the place (saved, reset), the
--- switch kept; without the model "Modell nicht verfügbar"; without gear data a chat line.
+-- window's row in the side bar (D-68), /amisia bis gross; the doll (17 slots as on the character
+-- frame, the model dressed in the targets or what is worn, drag, wheel, right click), the list by
+-- section with the gear page's texts and clicks; the scale (ui.goalScale, Ctrl + mouse wheel), the
+-- place (saved, reset), the switch kept; without the model "Modell nicht verfügbar"; without gear
+-- data a chat line.
 local Gear = NS.Gear
 local G = NS.Theme.GOALS
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
@@ -65,15 +66,19 @@ local win = assert(_G.AmisiaGoalsFrame, "the window")
 assert(win:IsShown() and win:GetTitleText():GetText() == "Ausrüstungsziele")
 assert(win:GetWidth() == G.W and win:GetHeight() == G.H, "940 x 600 or so")
 assert(win.strata == "FULLSCREEN" and win.inherits and win.inherits.PortraitFrameTemplate, "the talent window's frame")
--- the side tab is marked while it is open
+-- its row in the side bar (group Charakter, D-68) is on while it is open
 NS.ShowPage("gear")
-local tab = AmisiaFrame.sideTabs.goals
-assert(tab and tab:IsShown() and tab.checked, "the side tab, marked")
+local function winRow()
+    for _, e in ipairs(AmisiaFrame.navOrder) do
+        if e.entry.kind == "win" and e.entry.key == "goals" then return e end
+    end
+end
+assert(winRow() and winRow().button:IsShown() and winRow().entry.on, "the window's row, on")
 big:Click()
 assert(not win:IsShown(), "the button closes it again")
-assert(not tab.checked, "and the tab is no longer marked")
-STUB.clickTab(tab)
-assert(win:IsShown(), "the side tab opens it")
+assert(not winRow().entry.on, "and the row is no longer on")
+winRow().button:Click()
+assert(win:IsShown() and winRow().entry.on, "the row opens it")
 win:Hide()
 NS.Dispatch("bis gross")
 assert(win:IsShown(), "/amisia bis gross")

@@ -69,21 +69,20 @@ end
 ---------------------------------------------------------------------------
 -- Page: { key, label, icon, order, group, officer, expert, available = fn, create = fn(parent) -> frame,
 --         refresh = fn(frame) }. Built the first time it is opened, refreshed only while shown.
--- group names the page's tab (ns.PANEL_GROUPS); bottom (the old sidebar) is still allowed but no
--- longer read.
+-- group names the page's group in the side bar (ns.PANEL_GROUPS); bottom (the old sidebar) is still
+-- allowed but no longer read.
 function ns.RegisterPanel(spec)
     assert(type(spec.key) == "string" and type(spec.create) == "function", "RegisterPanel needs key and create")
     upsert(ns.panels, spec, "key")
 end
 
--- The tabs under the main window, left to right (since 2.27.0, D-45; until then the collapsible
--- sections of the page list): the page list shows the pages of the chosen tab.
+-- The groups of the main window's side bar, top to bottom (D-68; until 2.62.0 the tabs under the
+-- window, D-45): each a category bar of the auction house's list with its pages under it.
 ns.PANEL_GROUPS = {
     { key = "raid", label = "Raid" },
-    { key = "gear", label = L["Ausrüstung"] },
+    { key = "char", label = L["Charakter"] },
+    { key = "world", label = L["Welt"] },
     { key = "guild", label = L["Gilde"] },
-    { key = "calendar", label = L["Kalender"] },
-    { key = "pvp", label = "PvP" },
     { key = "amisia", label = "Amisia" },
 }
 
@@ -94,7 +93,7 @@ function ns.PanelGroup(p)
         if g.key == p.group then return p.group end
     end
     local o = p.order or 99
-    if o < 50 then return "raid" elseif o < 60 then return "gear" elseif o < 900 then return "guild" end
+    if o < 50 then return "raid" elseif o < 60 then return "char" elseif o < 900 then return "guild" end
     return "amisia"
 end
 

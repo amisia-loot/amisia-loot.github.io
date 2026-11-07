@@ -1,4 +1,4 @@
--- The calendar page (tab "Kalender", UI/Pages/Calendar.lua; D-45): the month sheet in the client
+-- The calendar page (group "Gilde" of the side bar, UI/Pages/Calendar.lua; D-45, D-68): the month sheet in the client
 -- calendar's look. The week starts as the client's calendar does (German client: Monday), 42 days,
 -- the days of other months darker, today framed in gold; a day with a guild event shows its time and
 -- title and a dot in the own state's colour, a past day with a recorded raid its zone. Months go
@@ -7,6 +7,12 @@
 -- for officers "Zur Aufstellung". The read follows ns.Cal's rules (not while the client's calendar
 -- window is shown).
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
+-- a row of the main window's side bar (D-68)
+local function navRow(kind, key)
+    for _, e in ipairs(AmisiaFrame.navOrder) do
+        if e.entry.kind == kind and e.entry.key == key then return e end
+    end
+end
 RAID_CLASS_COLORS.DRUID = RAID_CLASS_COLORS.DRUID or { r = 1, g = 0.49, b = 0.04, colorStr = "ffff7d0a" }
 
 STUB.player, STUB.class, STUB.officer = "Vulo Pala", "PALADIN", false
@@ -54,7 +60,7 @@ NS.ShowPage("calendar")
 STUB.tick(1)
 local P = NS.CalendarPageFrame()
 local F = AmisiaFrame
-assert(P and P:IsShown() and F.tabs.calendar.selected, "the page in its tab")
+assert(P and P:IsShown() and navRow("cat", "guild").entry.open and navRow("page", "calendar").entry.on, "the page in its group")
 local now = os.date("*t", time())
 local MONTHS = { "Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember" }
 assert(P.title:GetText() == MONTHS[now.month] .. " " .. now.year, P.title:GetText())
@@ -146,9 +152,10 @@ rc:Click()
 assert(P.terms[1]:IsShown() and has(P.terms[1].text:GetText(), "Aufgezeichnet: Molten Core"))
 P.terms[1]:Click()
 assert(NS.CurrentPage() == "raidlog", "the recorded raid's Raid-Log: " .. NS.CurrentPage())
-assert(F.tabs.raid.selected)
+assert(navRow("cat", "raid").entry.open and navRow("page", "raidlog").entry.on, "its group unfolds")
 -- "Heute" goes back to today's month
-NS.ShowTab("calendar")
+NS.ShowTab("guild")
+assert(NS.CurrentPage() == "calendar", "the guild group opens its last page: " .. NS.CurrentPage())
 P.today:Click()
 assert(P.title:GetText() == MONTHS[now.month] .. " " .. now.year)
 

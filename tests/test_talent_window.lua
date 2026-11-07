@@ -1,6 +1,6 @@
 -- The window "Talentrechner" (AmisiaTalentFrame, Pages/Talents.lua): one builder makes the page's
 -- view and the window's (profiles TALENT.PAGE and TALENT.BIG), both show the one plan; the window's
--- red button on the page, the side tab, /amisia talente gross; its scale (setting ui.talentScale,
+-- red button on the page, its row in the side bar (D-68), /amisia talente gross; its scale (setting ui.talentScale,
 -- Ctrl + mouse wheel, bounds), its position (saved, reset with "Fensterposition zurücksetzen"),
 -- Escape; the margins of the outer buttons in both profiles.
 local T = NS.Talents
@@ -92,18 +92,24 @@ for view, P in pairs({ [page] = TT.PAGE, [big] = TT.BIG }) do
         assert(p.x + b._w + math.max(#TT.GLOW, P.PLATE_X) <= P.TREE_W - P.MARGIN, id .. " right")
     end
 end
--- the side tab of the main window is marked while the window shows
+-- its row in the main window's side bar (group Charakter, D-68) is on while the window shows
 local MF = AmisiaFrame
-local tab = MF.sideTabs.talents
-assert(tab and tab:IsShown() and tab.checked == true, "the tab shows and is marked")
-assert(tab.tooltipText == "Talentrechner" and tab.Icon.texture == "Interface\\Icons\\Ability_Marksmanship")
-assert(tab.points.TOPLEFT.rel == MF.sideTabs.gear, "under the gear table's tab")
+local function winRow()
+    for i, e in ipairs(MF.navOrder) do
+        if e.entry.kind == "win" and e.entry.key == "talents" then return e, i end
+    end
+end
+local row, at = winRow()
+assert(row and row.button:IsShown() and row.entry.on == true, "the row shows and is on")
+assert(row.entry.label == "Talentrechner" and row.button.label:GetText() == "Talentrechner" and row.button.sign:IsShown(),
+    "named, with the window sign")
+assert(MF.navOrder[at - 1].entry.kind == "page" and MF.navOrder[at - 1].entry.key == "talents", "right under the talents page")
 win:Hide()
-assert(tab.checked == false, "the tab follows the hide")
-STUB.clickTab(tab)
-assert(win:IsShown() and tab.checked == true, "a click on the tab opens it")
-STUB.clickTab(tab)
-assert(not win:IsShown() and tab.checked == false, "and closes it")
+assert(winRow().entry.on == false, "the row follows the hide")
+winRow().button:Click()
+assert(win:IsShown() and winRow().entry.on == true, "a click on the row opens it")
+winRow().button:Click()
+assert(not win:IsShown() and winRow().entry.on == false, "and closes it")
 -- Escape closes it
 local special = false
 for _, n in ipairs(UISpecialFrames) do if n == "AmisiaTalentFrame" then special = true end end
@@ -200,7 +206,7 @@ local found
 for _, line in ipairs(NS.SlashHelpLines(false)) do if has(line, "talente [Code|gross]") then found = line end end
 assert(found and has(found, "gross: großes Fenster"), tostring(found))
 
--- without talent data: a message, no window, no tab
+-- without talent data: a message, no window, no row
 local keep = NS.TALENTS
 win:Hide()
 NS.TALENTS = { classes = {} }
@@ -211,8 +217,10 @@ NS.msg = function(t) said = t end
 NS.Dispatch("talente gross")
 NS.msg = msg
 assert(not win:IsShown() and has(said, "nicht verfügbar"), tostring(said))
-NS.UpdateSideTabs()
-assert(not tab:IsShown(), "no tab without data")
+NS.ShowTab("char")
+local unfolded = false
+for _, e in ipairs(MF.navOrder) do if e.entry.kind == "cat" and e.entry.key == "char" then unfolded = e.entry.open end end
+assert(unfolded and not winRow(), "no row without data (its group unfolded)")
 NS.TALENTS = keep
 T._reset()
 print("test_talent_window ok")

@@ -944,9 +944,11 @@ ein Klick schreibt den Befehl nur in die Chatzeile), das Suchfeld sagt im Toolti
 findet, und unter 2 Zeichen "Noch 1 Zeichen für die Suche"; ein Auffrischen lässt die Treffer an ihrer
 Scrollstelle. Das Porträt öffnet die Übersicht. Das Schnellmenü der Minimap folgt den Reitern: je Reiter ein
 Eintrag, der dessen sichtbare Seiten im selben Menü zeigt (kein Untermenü-Fenster, kein fremdes Menü, D-06).
-**Durchgesetzt durch:** `tests/test_main_tabs.lua`, `tests/test_search.lua`, `tests/test_nav_find.lua`,
-`tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_tabs_review.lua`, `tests/test_style.lua`, `tests/test_search_more.lua`, die Layoutregeln (`tools/ui_layout.py`,
-Regel "nav": jede sichtbare Seite des offenen Reiters hat ihre Zeile).
+**Nachtrag 2026-11-07:** Die Reiter unter dem Fenster und die Seitenreiter rechts ersetzt D-68 (eine Seitenleiste
+mit Gruppen); Suche, Gedächtnis der Seiten (`settings.window.tab`, `pages`) und Kalender-Seite bleiben.
+**Durchgesetzt durch:** `tests/test_main_sidebar.lua`, `tests/test_search.lua`, `tests/test_nav_find.lua`,
+`tests/test_calendar_page.lua`, `tests/test_calendar_page_review.lua`, `tests/test_main_sidebar_review.lua`, `tests/test_style.lua`, `tests/test_search_more.lua`, die Layoutregeln (`tools/ui_layout.py`,
+Regel "nav": jede sichtbare Seite der offenen Gruppe hat ihre Zeile).
 
 ## D-46 Raid-Check und Raid-IDs: nur Offiziere sehen andere, Selbstauskunft, nichts im Kampf
 
@@ -1539,3 +1541,37 @@ Die Knöpfe "Pausieren", "Raider-Ansicht"/"Offiziersansicht" und "Einstellungen"
 statt dessen); `/amisia pause` und `/amisia ansicht` bleiben.
 **Durchgesetzt durch:** `tools/tests/test_ui_layout.py::test_rule_red_budget` (Regel "red" in `build.py check`),
 `tests/test_widgets.lua`, `tests/test_style.lua`, `tests/test_nav_find.lua`.
+
+## D-68 Eine Seitenleiste: Gruppen wie im Auktionshaus statt Reiter unten und Seitenreiter rechts
+
+**Datum:** 2026-11-07
+**Entscheidung:** Spec `docs/specs/2026-11-07-seitenleiste.md` (F-141), Schritt 1 von 4 der UI-Überholung. Das
+Hauptfenster hat nur noch einen Weg zu den Seiten: links die Seitenleiste unter dem Suchfeld. Jede Gruppe aus
+`ns.PANEL_GROUPS` (Raid, Charakter, Welt, Gilde, Amisia) ist ein Balken der obersten Ebene der Kategorienliste des
+Auktionshauses mit dem Plus oder Minus des Questlogs rechts; immer nur eine ist aufgeklappt (wie im Auktionshaus),
+darunter ihre Seiten als Balken der Unterkategorie, unter der offenen Seite "Einstellungen" deren Reiter und Abschnitte
+(D-49, dritte und vierte Ebene), und die Seitenfenster der Gruppe als eigene Zeile direkt unter ihrer Seite, mit dem
+Maximieren-Zeichen des Chatfensters (Ausrüstungstabelle, Ausrüstungsziele, Talentrechner unter Charakter;
+Würfelfenster und Soft-Reserve-Import unter Raid, nur Offiziersansicht); ein Klick öffnet oder schließt das Fenster,
+die Zeile ist weiß, solange es offen ist. Ein Klick auf eine zugeklappte Gruppe öffnet ihre zuletzt gewählte Seite,
+ein Klick auf die offene klappt sie zu (die Seite bleibt, die Gruppe leuchtet). Die Leiste rollt, statt Zeilen zu
+schrumpfen, und rollt die geöffnete Seite ins Bild. Die Reiter unter dem Fenster (`PanelTabButtonTemplate`) und die
+Seitenreiter rechts (`LargeSideTabButtonTemplate`) entfallen. Die Höhe lässt sich am Größengriff des Chatfensters
+unten rechts ziehen, `T.MAIN.H_MIN` bis `H_MAX` (560 bis 860), nie höher als der Bildschirm; `T.PAGE_H` folgt, Listen
+mit `fill` und die Bossliste der Dungeons wachsen mit (`W.FillTo`, `W.FitLists`, `list:Fit`); gemerkt in
+`settings.window.h`, "Fensterposition zurücksetzen" setzt sie zurück. Die Breite bleibt 806 (alle Seiten sind 602 breit).
+Kalender und Duelle ziehen in Gilde; die Gruppen "gear", "calendar" und "pvp" gibt es nicht mehr. Gespeicherte Werte
+ziehen einmal je Sitzung um: jede Seite in `settings.window.pages` unter ihre heutige Gruppe (bei zwei alten Gruppen in
+einer gewinnt die erste nach Namen), ein unbekannter `tab` wird die Gruppe seiner letzten Seite.
+**Grund:** Nutzer 2026-11-07: "ich brauche eine ui overhall ... aber ich will es im WoW Forever classic style", nach
+einem Vergleich mit einem anderen Addon (eine gruppierte Seitenleiste, Start- und Detailseiten, aufklappbare Zeilen) und
+einem Entwurf in vier Schritten; zur Spec "Passt" mit allen drei Vorschlägen (Gruppen, Seitenfenster als Zeilen, nur die
+Höhe ziehbar). Drei Wege gleichzeitig (Reiter unten, Liste links, Reiter rechts) waren der Hauptgrund für "keine klare
+Linie" (D-67).
+**Folge:** D-45 verliert die Reiter unten und die Seitenreiter, D-52 den Reiter PvP (Duelle in Gilde). Eine neue Seite
+braucht `group` aus `ns.PANEL_GROUPS`; eine neue Gruppe ist ein Balken mehr in der Leiste. Ein neues Seitenfenster
+kommt in `SIDE_WINDOWS` (MainFrame) mit Gruppe und Seite, und sein Fenster ruft bei Zeigen und Verstecken
+`ns.UpdateSideTabs`. Seiten, die Höhen aus `T.PAGE_H` rechnen, tun das nur über `fill`/`W.FillTo`. Ohne die Balken des
+Auktionshauses (TBC, Era) bleibt der Fallback der Rezeptliste (Leuchten und Hover).
+**Durchgesetzt durch:** `tests/test_main_sidebar.lua`, `tests/test_main_sidebar_review.lua`, `tests/test_nav_find.lua`,
+`tests/test_style.lua`, die Layoutregel "nav" (`tools/ui_layout.py`).

@@ -176,7 +176,7 @@ function ns.ShowRaid(key)
     return main ~= nil and main:IsShown() and true or false
 end
 
-ns.RegisterPanel{ key = "raidjournal", label = "Raids", icon = ICON, order = 52, group = "gear",
+ns.RegisterPanel{ key = "raidjournal", label = "Raids", icon = ICON, order = 52, group = "world",
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }
 

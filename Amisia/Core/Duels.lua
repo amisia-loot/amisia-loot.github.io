@@ -1059,7 +1059,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "duels", label = L["Duelle"], order = 70, group = "pvp", pages = { "duels" }, items = {
+ns.RegisterSettings{ key = "duels", label = L["Duelle"], order = 70, group = "guild", pages = { "duels" }, items = {
     { key = "duels.record", type = "toggle", label = L["Duelle mitschreiben"], default = true,
       tip = L["Amisia schreibt jedes Duell mit, das das Spiel im Chat meldet: Sieger, Verlierer, Zeit und Ort."] },
     { key = "duels.nearby", type = "toggle", label = L["Auch fremde Duelle in der Nähe"], default = true,

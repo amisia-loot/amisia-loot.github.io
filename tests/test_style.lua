@@ -384,7 +384,7 @@ assert(AmisiaMenu:GetFrameLevel() > 510, "the menu above the dialog's frame: " .
 AmisiaMenu:Hide()
 
 ---------------------------------------------------------------------------
--- the main window: Forever's frame, the status bar, the page list, the side tabs
+-- the main window: Forever's frame, the status bar, the side bar with the groups and side windows
 ---------------------------------------------------------------------------
 STUB.officer = true
 NS.ShowPage("overview")
@@ -421,12 +421,12 @@ assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.x == -12 and ge
 assert(gear.icon.atlas == "questlog-icon-setting", "the quest log's gear")
 assert(help:IsShown() and help.points.RIGHT.rel == gear and help.icon.texture == "Interface\\common\\help-i", "the ? left of the gear")
 ML.row("head", status, help, gear)
-NS.ShowPage("gear")   -- the gear tab remembers its first page again (the tab checks below)
+NS.ShowPage("dungeons")   -- the group Welt remembers its first page again (the group checks below)
 NS.ShowPage("overview")
 assert(not help:IsShown(), "the overview explains nothing: no ?")
 NS.SetEnabled(false); STUB.tick(0); assert(MF.statusText:GetText():find("pausiert", 1, true) and MF.headMenu()[1][1] == "Aufnahme fortsetzen")
 MF.headMenu()[1][2](); assert(NS.IsEnabled())
--- the page list and the content field side by side, the page area exactly 602 x 478 at (191, -69)
+-- the side bar and the content field side by side, the page area exactly 602 x 478 at (191, -69)
 local listIn, contentIn = MF.listInset, MF.contentInset
 assert(listIn.border.atlas == "common-insideframe" and listIn.ground.atlas == "Professions-background-summarylist")
 assert(contentIn.border.atlas == "common-insideframe")
@@ -442,72 +442,88 @@ local ct, cb = ML.vspan(MF.content)
 assert(cl == 191 and ct == -69 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
 ML.inside("content", MF.content)
 
--- the tabs under the window (D-45): one per page group, the page list shows the open tab's pages
+-- the side bar (D-68): the page groups as the auction house's category bars, one unfolded at a time
+-- with its pages and side windows under it; no tabs under the window, no side tabs right of it
 local function navShown()
     local out = {}
-    for _, e in ipairs(MF.navOrder) do out[#out + 1] = e.button.key end
+    for _, e in ipairs(MF.navOrder) do
+        out[#out + 1] = (e.entry.kind == "cat" and (e.entry.open and "-" or "+") or "") .. e.button.key
+    end
     return table.concat(out, " ")
 end
-local function tabOf(key) return MF.tabs[key] end
+local function navRow(kind, key)
+    for _, e in ipairs(MF.navOrder) do
+        if e.entry.kind == kind and e.entry.key == key then return e end
+    end
+end
+assert(MF.tabs == nil and MF.tabOrder == nil and MF.sideTabs == nil, "no tabs under or beside the window")
+assert(MF.clampInsets == nil, "nothing hangs out of the frame: no clamp insets")
 NS.Set("ui.view", "raider")
 NS.ShowPage("overview")
-assert(table.concat(MF.tabOrder, " ") == "raid gear guild calendar pvp amisia", table.concat(MF.tabOrder, " "))
 -- (2.10: the guild bank page is for everyone: its needs and pledges are for the raiders too)
-assert(navShown() == "overview softres awards raidlog stats", navShown())
-NS.ShowTab("gear"); assert(navShown() == "gear dungeons raidjournal map quests professions talents", navShown())
-NS.ShowTab("guild"); assert(navShown() == "members bank", navShown())
-NS.ShowTab("calendar"); assert(navShown() == "calendar" and NS.CurrentPage() == "calendar", navShown())
+assert(navShown() == "-raid overview softres awards raidlog stats +char +world +guild +amisia", navShown())
+local names = {}
+for _, e in ipairs(MF.navOrder) do if e.entry.kind == "cat" then names[#names + 1] = e.button.label:GetText() end end
+assert(table.concat(names, ",") == "Raid,Charakter,Welt,Gilde,Amisia", table.concat(names, ","))
+-- (the side windows right under their pages: the gear table and the goals under Ausrüstung)
+NS.ShowTab("char"); assert(navShown() == "+raid -char gear gear goals talents talents professions +world +guild +amisia", navShown())
+NS.ShowTab("world")
+assert(navShown() == "+raid +char -world dungeons raidjournal quests map +guild +amisia" and NS.CurrentPage() == "dungeons", navShown())
+NS.ShowTab("guild"); assert(navShown() == "+raid +char +world -guild members calendar bank duels +amisia", navShown())
 -- (D-49: under the open settings page its tabs and the chosen tab's sections)
-NS.ShowTab("amisia"); assert(navShown():match("^settings raid ") and navShown():find(" amisia about feedback$"), navShown())
+NS.ShowTab("amisia"); assert(navShown():match("^%+raid %+char %+world %+guild %-amisia settings raid ") and navShown():find(" amisia about$"), navShown())
 NS.Set("ui.view", "officer")
 NS.ShowTab("raid")
--- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there)
-assert(navShown() == "overview softres rolls awards raidlog points stats raids export", navShown())
-NS.ShowTab("guild"); assert(navShown() == "members bank", navShown())
+-- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there; the roll
+-- window and the soft-reserve import under their pages)
+assert(navShown() == "-raid overview softres softres rolls rolls awards raidlog points stats raids export +char +world +guild +amisia", navShown())
+NS.ShowTab("guild"); assert(navShown() == "+raid +char +world -guild members calendar bank duels +amisia", navShown())
 NS.Set("ui.expert", true)
 NS.Refresh()
-assert(navShown() == "members bank tools", navShown())
--- the client's panel tabs under the window: the first 11 px in, 2 px into the frame, the others 3 px
--- apart; the open page's tab selected (the client's active art), the others not
-local t1, t2 = tabOf("raid"), tabOf("gear")
-for _, k in ipairs(MF.tabOrder) do
-    local t = tabOf(k)
-    assert(t.inherits.PanelTabButtonTemplate and t:IsShown(), k)
-    assert(t._w >= 70 and t._w >= t.Text:GetStringWidth() + 20, "a tab fits its label: " .. k)
-end
-local p1 = t1.points.TOPLEFT
-assert(p1.rel == MF and p1.relPoint == "BOTTOMLEFT" and p1.x == 11 and p1.y == 2, "the first tab under the window's left edge")
-local p2 = t2.points.TOPLEFT
-assert(p2.rel == t1 and p2.relPoint == "TOPRIGHT" and p2.x == 3 and p2.y == 0, "the next 3 px right of it")
-assert(tabOf("guild").selected and not t1.selected and tabOf("guild").LeftActive:IsShown() and not t1.LeftActive:IsShown())
-assert(t1.Text:GetText() == "Raid" and t2.Text:GetText() == "Ausrüstung" and tabOf("calendar").Text:GetText() == "Kalender")
-assert(MF.clampInsets and MF.clampInsets[4] == -30, "the tabs below stay on the screen")
--- a click on a tab opens its last page; a page opened elsewhere switches the tab
-t2:Click(); assert(NS.CurrentPage() == "gear" and t2.selected, NS.CurrentPage())
+assert(navShown() == "+raid +char +world -guild members calendar bank duels tools +amisia", navShown())
+-- the open group has the minus, the others the plus; the open page the gold rim of its bar, its
+-- group's bar none (a folded group of the open page keeps it)
+assert(navRow("cat", "guild").button.sign.texture == "Interface\\Buttons\\UI-MinusButton-Up"
+    and navRow("cat", "raid").button.sign.texture == "Interface\\Buttons\\UI-PlusButton-Up", "plus and minus")
+assert(navRow("page", "members").entry.on and not navRow("cat", "guild").entry.on and not navRow("page", "bank").entry.on)
+-- a click on a group opens its last page and folds the open one; a page opened elsewhere unfolds its
+-- group; the group and its last page are remembered
+navRow("cat", "char").button:Click(); assert(NS.CurrentPage() == "gear" and navRow("cat", "char").entry.open and not navRow("cat", "guild").entry.open, NS.CurrentPage())
 NS.ShowPage("map")
-t1:Click(); assert(NS.CurrentPage() == "raids" or NS.CurrentPage() == "overview", NS.CurrentPage())
-t2:Click(); assert(NS.CurrentPage() == "map", "the tab remembers its last page: " .. NS.CurrentPage())
-assert(AmisiaDB.settings.window.tab == "gear" and AmisiaDB.settings.window.pages.gear == "map")
-NS.ShowPage("settings"); assert(tabOf("amisia").selected and not t2.selected and navShown():match("^settings raid ") and navShown():find(" about feedback$"))
-NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and t1.selected, NS.CurrentPage())
--- a tab whose group has no visible page is not shown; the next takes its place
-local bank, members = NS.Panel("bank"), NS.Panel("members")
-local keepAvail, keepMembers = bank.available, members.available
+assert(navRow("cat", "world").entry.open and navRow("page", "map").entry.on and not navRow("cat", "char").entry.open, navShown())
+navRow("cat", "raid").button:Click(); assert(NS.CurrentPage() == "raids" or NS.CurrentPage() == "overview", NS.CurrentPage())
+navRow("cat", "world").button:Click(); assert(NS.CurrentPage() == "map", "the group remembers its last page: " .. NS.CurrentPage())
+assert(AmisiaDB.settings.window.tab == "world" and AmisiaDB.settings.window.pages.world == "map")
+NS.ShowPage("settings")
+assert(navRow("cat", "amisia").entry.open and not navRow("cat", "world").entry.open and navShown():match("%-amisia settings raid "), navShown())
+NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and navRow("cat", "raid").entry.open and navRow("page", "stats").entry.on, NS.CurrentPage())
+-- a group without a visible page is not shown; the next takes its place
+local hide = { NS.Panel("bank"), NS.Panel("members"), NS.Panel("calendar"), NS.Panel("duels") }
+local keepAvail = {}
 NS.Set("ui.view", "raider")
 NS.Set("ui.expert", false)
-bank.available, members.available = function() return false end, function() return false end
+for i, p in ipairs(hide) do keepAvail[i] = p.available; p.available = function() return false end end
 NS.Refresh()
-assert(table.concat(MF.tabOrder, " ") == "raid gear calendar pvp amisia" and not tabOf("guild"):IsShown(), table.concat(MF.tabOrder, " "))
-assert(tabOf("calendar").points.TOPLEFT.rel == t2, "no gap for the hidden tab")
-bank.available, members.available = keepAvail, keepMembers
+assert(navShown() == "-raid overview softres awards raidlog stats +char +world +amisia", navShown())
+for i, p in ipairs(hide) do p.available = keepAvail[i] end
 NS.Set("ui.view", "officer")
 NS.Set("ui.expert", true)
 NS.ShowPage("overview")
--- many pages in one tab: every page keeps its row, the rows get lower and the list still fits its
--- 454 px under the search box
+-- the fullest group (the officer + expert view; with the other groups' bars) fits the side bar at the
+-- window's own height without scrolling; only the open settings page's tabs and sections may not
+do
+    for _, g in ipairs(NS.PANEL_GROUPS) do
+        NS.ShowTab(g.key)
+        if NS.CurrentPage() ~= "settings" then
+            assert(#MF.nav.items <= MF.nav.rowCount and MF.nav.offset == 0, ("the group %s fits: %d rows"):format(g.key, #MF.nav.items))
+        end
+    end
+    NS.ShowPage("overview")
+end
+-- many pages in one group: every page keeps its row of 21, the side bar scrolls, the open page stays in view
 local function missingRows()
     local rows, miss = {}, {}
-    for _, e in ipairs(MF.navOrder) do rows[e.button.key] = true end
+    for _, e in ipairs(MF.nav.items) do if e.kind == "page" then rows[e.key] = true end end
     for _, p in ipairs(NS.panels) do
         if NS.Visible(p) and NS.PanelGroup(p) == "raid" and not rows[p.key] then miss[#miss + 1] = p.key end
     end
@@ -519,70 +535,59 @@ for i = 1, 15 do
 end
 NS.Refresh()
 assert(missingRows() == "", "23 pages, all with a row: " .. missingRows())
-assert(MF.navRowH < 21 and MF.navRowH >= 16, "the rows got lower: " .. tostring(MF.navRowH))
-do  -- the bars' art follows the lower rows
-    local b = MF.navOrder[1].button
-    assert(b._h == MF.navRowH and b.art.normal._h == math.floor(MF.navRowH * 32 / 21 + 0.5), "the art fits the row")
-end
-do
-    local last = MF.navOrder[#MF.navOrder].button
-    local NL2 = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
-    local _, bottom = NL2.vspan(last)
-    assert(-bottom <= 454, "the pages fit the list: " .. bottom)
-end
+assert(#MF.nav.items > MF.nav.rowCount and MF.nav.rowCount == 21 and #MF.navOrder == 21, "more than fit: " .. #MF.nav.items)
+assert(MF.navOrder[1].button._h == 20 and MF.navOrder[1].button.art.normal._h == 30, "the rows keep their height")
+NS.ShowPage("extra15")
+local seen = navRow("page", "extra15")
+assert(seen and seen.entry.on and MF.nav.offset > 0, "scrolled to the open page: " .. MF.nav.offset)
+local before = MF.nav.offset
+MF.nav.scripts.OnMouseWheel(MF.nav, 1)
+assert(MF.nav.offset == before - 1, "the wheel scrolls one row back: " .. MF.nav.offset)
 for i = 1, 15 do
     for j, p in ipairs(NS.panels) do if p.key == "extra" .. i then table.remove(NS.panels, j) break end end
 end
-NS.Refresh()
-assert(missingRows() == "" and MF.navRowH == 21, "back to 21 high")
--- the worst case: the most pages a tab shows (the officer + expert Raid tab) keep the full 21 px
-do
-    local most, mostGroup = 0, nil
-    for _, g in ipairs(NS.PANEL_GROUPS) do
-        local n = 0
-        for _, p in ipairs(NS.panels) do
-            if NS.Visible(p) and NS.PanelGroup(p) == g.key then n = n + 1 end
-        end
-        if n > most then most, mostGroup = n, g.key end
-    end
-    assert(mostGroup == "raid" and most * 21 <= 454 and most <= 23, ("the fullest tab fits: %s %d"):format(tostring(mostGroup), most))
-    NS.ShowTab(mostGroup)
-    assert(#MF.navOrder == most and MF.navRowH == 21, "all of them at full height")
-    NS.ShowPage("overview")
-end
--- the rows packed from the list's top, 21 high, not indented; the list under the search box
+NS.ShowPage("overview")
+assert(missingRows() == "" and #MF.nav.items <= MF.nav.rowCount and MF.nav.offset == 0, "back without scrolling")
+-- the rows packed from the list's top, 21 apart (20 high, the list's 1 px between), not indented;
+-- the list under the search box
 local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
 local parts = {}
-for _, e in ipairs(MF.navOrder) do
+for i, e in ipairs(MF.navOrder) do
     parts[#parts + 1] = e.button
     NL.inside("nav part", e.button)
-    assert(e.button._h == 21 and e.button.points.TOPLEFT.x == 0, "rows 21 high, not indented")
+    assert(e.button._h == 20 and e.button.points.TOPLEFT.x == 0 and e.button.points.TOPLEFT.y == -(i - 1) * 21,
+        "rows 21 apart, not indented")
 end
 NL.column("nav", unpack(parts))
 local _, lastB = NL.vspan(parts[#parts])
-assert(lastB == -(#parts * 21), "packed without gaps: " .. lastB)
+assert(lastB == -(#parts * 21 - 1), "packed without gaps: " .. lastB)
 assert(MF.nav.points.TOPLEFT.y == -(6 + 20 + 6) and MF.search.points.TOPLEFT.y == -6, "the search box over the list")
 assert(MF.search._w == 164 and MF.search.inherits.SearchBoxTemplate)
--- a row: a bar of the auction house's category list (the dark bar 2 px wider on each side, 32/21 of
--- the row high, from its top), no icon, the gold name from x 8, 150 wide (white under the mouse); the
--- chosen row has the bright gold rim (added light), the hover its glow
-local ovRow, raidsRow
-for _, e in ipairs(MF.navOrder) do
-    if e.button.key == "overview" then ovRow = e.button end
-    if e.button.key == "raids" then raidsRow = e.button end
-end
-assert(ovRow.icon == nil, "no icon in the list")
-local art = ovRow.art
-assert(art.normal.atlas == "auctionhouse-nav-button" and art.normal.layer == "BACKGROUND" and art.normal._h == 32
-    and art.normal.points.TOPLEFT.x == -2 and art.normal.points.TOPRIGHT.x == 2, "the bar")
-assert(ovRow.label._w == 150 and ovRow.label.points.LEFT.x == 8 and ovRow.label.font == "GameFontNormal", "the gold name")
-assert(ovRow.sel == art.sel and art.sel.atlas == "auctionhouse-nav-button-select" and art.sel.blend == "ADD"
-    and art.sel.layer == "ARTWORK" and art.sel:IsShown(), "the shown page has the gold rim")
-assert(ovRow.hover == art.hover and art.hover.atlas == nil and art.hover.texture == nil, "no blue glow on hover")
+-- a group: the bar of the auction house's category list (the dark bar 2 px wider on each side, 32/21
+-- of the row high, from its top), the gold name from x 8, the quest log's plus or minus at the right;
+-- a page: the sub-category bar (1 px in), the gold name from x 18; no icons. The chosen page has the
+-- bright gold rim (added light), the hover no blue glow; the name white under the mouse
+local raidBar, ovRow, raidsRow = navRow("cat", "raid").button, navRow("page", "overview").button, navRow("page", "raids").button
+local art = raidBar.art
+assert(art.normal.atlas == "auctionhouse-nav-button" and art.normal.layer == "BACKGROUND" and art.normal._h == 30
+    and art.normal.points.TOPLEFT.x == -2 and art.normal.points.TOPRIGHT.x == 2 and art.normal:IsShown()
+    and not raidBar.subArt.normal:IsShown(), "the group's bar")
+assert(raidBar.label.points.LEFT.x == 8 and raidBar.label.font == "GameFontNormal" and raidBar.label._w == 152 - 8 - 6 - (14 + 6), "the gold name")
+assert(raidBar.sign:IsShown() and raidBar.sign._w == 14 and raidBar.sign.points.RIGHT.x == -6, "the sign at the right")
+local sub = ovRow.subArt
+assert(ovRow.icon == nil and raidBar.icon == nil, "no icon in the list")
+assert(sub.normal.atlas == "auctionhouse-nav-button-secondary" and sub.normal.points.TOPLEFT.x == 1 and sub.normal.points.TOPRIGHT.x == 1
+    and sub.normal:IsShown() and not ovRow.art.normal:IsShown() and not ovRow.sign:IsShown(), "the page's bar")
+assert(ovRow.label.points.LEFT.x == 18 and ovRow.label._w == 152 - 18 - 6 and ovRow.label.font == "GameFontNormal", "indented")
+assert(sub.sel.atlas == "auctionhouse-nav-button-secondary-select" and sub.sel.blend == "ADD"
+    and sub.sel.layer == "ARTWORK" and sub.sel:IsShown() and not raidsRow.subArt.sel:IsShown(), "the shown page has the gold rim")
+assert(sub.hover.atlas == nil and sub.hover.texture == nil and art.hover.atlas == nil, "no blue glow on hover")
 ovRow.scripts.OnEnter(ovRow); assert(ovRow.label.font == "GameFontHighlight", "white under the mouse")
 ovRow.scripts.OnLeave(ovRow); assert(ovRow.label.font == "GameFontNormal", "gold again")
 -- a click on a row shows its page
-raidsRow:Click(); assert(NS.CurrentPage() == "raids" and raidsRow.sel:IsShown() and not ovRow.sel:IsShown())
+raidsRow:Click()
+assert(NS.CurrentPage() == "raids" and navRow("page", "raids").button.subArt.sel:IsShown()
+    and not navRow("page", "overview").button.subArt.sel:IsShown())
 -- the collapsed sections of before 2.27.0 are dropped
 AmisiaDB.settings.window.collapsed = { raid = true }
 NS.ShowPage("overview")
@@ -590,84 +595,76 @@ assert(AmisiaDB.settings.window.collapsed == nil)
 NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
--- the side tabs: the gear table, the talent window, the rolls, the soft-reserve import, right outside the frame
-local tabs = MF.sideTabs
-assert(tabs.gear and tabs.talents and tabs.rolls and tabs.softres)
-for _, k in ipairs({ "gear", "talents", "rolls", "softres" }) do
-    assert(tabs[k].inherits.LargeSideTabButtonTemplate and tabs[k].fillToInterior == true, k)
-end
-assert(tabs.gear.tooltipText == "Ausrüstungstabelle" and tabs.rolls.tooltipText == "Rolls"
-    and tabs.softres.tooltipText == "Soft-Reserve-Import")
-assert(tabs.gear.Icon.texture == "Interface\\Icons\\INV_Chest_Chain_05"
-    and tabs.rolls.Icon.texture == "Interface\\Icons\\INV_Misc_Dice_01"
-    and tabs.softres.Icon.texture == "Interface\\Icons\\INV_Scroll_03")
--- the icon sits TAB_ICON_INSET inside the interior the client gives it, once, also after more refreshes
-local inset = NS.Theme.MAIN.TAB_ICON_INSET
-assert(inset and inset > 0, "an inset")
-for _ = 1, 3 do NS.UpdateSideTabs() end
-local tl, br = tabs.gear.Icon.points.TOPLEFT, tabs.gear.Icon.points.BOTTOMRIGHT
-assert(tl.x == 3 + inset and tl.y == -5 - inset and br.x == -5 - inset and br.y == 5 + inset,
-    ("icon inset: %s %s %s %s"):format(tl.x, tl.y, br.x, br.y))
--- a client that resolves the icon's size later does not pull it in again
-tabs.gear.Icon._w, tabs.gear.Icon._h = 30, 40
-NS.UpdateSideTabs()
-assert(tabs.gear.Icon.points.TOPLEFT.x == 3 + inset, "inset once: " .. tabs.gear.Icon.points.TOPLEFT.x)
-NS.Set("ui.view", "officer")
-local function tabsShown()
+-- the side windows (until 2.62.0 the side tabs right of the frame): a row of their group right under
+-- their page, the chat window's maximize sign at the right; the gear table, the goals and the talent
+-- window under Charakter, the roll window and the soft-reserve import under Raid (officers)
+local function winsShown()
     local out = {}
-    for _, k in ipairs({ "gear", "talents", "goals", "rolls", "softres" }) do if tabs[k]:IsShown() then out[#out + 1] = k end end
+    for _, g in ipairs({ "char", "raid" }) do
+        NS.ShowTab(g)
+        for _, e in ipairs(MF.navOrder) do if e.entry.kind == "win" then out[#out + 1] = e.entry.key end end
+    end
     return table.concat(out, " ")
 end
-assert(tabsShown() == "gear talents goals rolls softres", tabsShown())
--- one under the other, the first at the frame's top right, outside the frame
-local p1 = tabs.gear.points.TOPLEFT
-assert(p1.rel == MF and p1.relPoint == "TOPRIGHT" and p1.x == 0 and p1.y == -60, "the first at the top right")
-local p2 = tabs.talents.points.TOPLEFT
-assert(p2.rel == tabs.gear and p2.relPoint == "BOTTOMLEFT" and p2.y == -2)
-assert(tabs.goals.points.TOPLEFT.rel == tabs.talents and tabs.rolls.points.TOPLEFT.rel == tabs.goals, "the goals window's tab under the talents'")
-assert(MF.clampInsets and MF.clampInsets[2] == tabs.gear:GetWidth(), "the tabs stay on the screen")
--- a raider sees the gear and talent tabs; without gear data a raider sees the talents' only, an
--- officer three without gaps
+local function win(key)
+    NS.ShowTab((key == "rolls" or key == "softres") and "raid" or "char")
+    return navRow("win", key)
+end
+NS.Set("ui.view", "officer")
+assert(winsShown() == "gear goals talents softres rolls", winsShown())
+for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
+    local w = win(k)
+    assert(w.button.sign:IsShown() and w.button.sign.texture == "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up", "the window sign: " .. k)
+    assert(w.button.label.points.LEFT.x == 18 and w.button.subArt.normal:IsShown() and w.button.icon == nil, "on a page's bar: " .. k)
+end
+assert(win("gear").button.label:GetText() == "Ausrüstungstabelle" and win("rolls").button.label:GetText() == "Würfelfenster"
+    and win("softres").button.label:GetText() == "Importieren" and win("talents").button.label:GetText() == "Talentrechner")
+-- every row's name fits its bar (the sign takes the right end)
+for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
+    local l = win(k).button.label
+    assert(l:GetStringWidth() <= l:GetWidth(), k .. ": " .. l:GetStringWidth() .. " > " .. l:GetWidth())
+end
+-- right under their pages
+NS.ShowTab("char")
+assert(navShown():find("-char gear gear goals talents talents ", 1, true), navShown())
+NS.ShowTab("raid")
+assert(navShown():find(" softres softres rolls rolls ", 1, true), navShown())
+-- a raider sees the gear table, the goals and the talent window; without gear data the talents' only
 NS.Set("ui.view", "raider"); STUB.tick(0)
-assert(tabsShown() == "gear talents goals", tabsShown())
+assert(winsShown() == "gear goals talents", winsShown())
+NS.ShowPage("professions")   -- Charakter opens it below (not the talents page: its atlases are the calculator's)
 local keepGear = NS.GEAR
 NS.GEAR = nil
 NS.UpdateSideTabs()
-assert(tabsShown() == "talents", tabsShown())
-assert(tabs.talents.points.TOPLEFT.rel == MF and tabs.talents.points.TOPLEFT.y == -60, "no gap for the hidden gear tab")
--- without talent data either: none, and no inset on the right
+assert(winsShown() == "talents", winsShown())
+-- without talent data either: none
 local talentsAvailable = NS.Talents.Available
 NS.Talents.Available = function() return false end
 NS.UpdateSideTabs()
-assert(tabsShown() == "", tabsShown())
-assert(MF.clampInsets[2] == 0, "no tab shown: no inset on the right")
+assert(winsShown() == "", winsShown())
 NS.Talents.Available = talentsAvailable
 NS.Set("ui.view", "officer"); STUB.tick(0)
-assert(MF.clampInsets[2] == tabs.rolls:GetWidth(), "tabs shown again: the inset is back")
-assert(tabsShown() == "talents rolls softres", tabsShown())
-assert(tabs.rolls.points.TOPLEFT.rel == tabs.talents, "no gap for the hidden tab")
-assert(tabs.softres.points.TOPLEFT.rel == tabs.rolls)
+assert(winsShown() == "talents softres rolls", winsShown())
 NS.GEAR = keepGear
 NS.UpdateSideTabs()
--- a click opens and closes the window, the tab of an open window is marked
-assert(not tabs.rolls.checked)
-STUB.clickTab(tabs.rolls)
-assert(AmisiaRollFrame and AmisiaRollFrame:IsShown() and tabs.rolls.checked == true, "open and marked")
-STUB.clickTab(tabs.rolls)
-assert(not AmisiaRollFrame:IsShown() and tabs.rolls.checked == false, "closed and unmarked")
-STUB.clickTab(tabs.softres)
-assert(AmisiaSoftResFrame:IsShown() and tabs.softres.checked == true)
--- the marking follows the window when it is closed elsewhere
-AmisiaSoftResFrame:Hide(); assert(tabs.softres.checked == false, "unmarked on hide")
-AmisiaSoftResFrame:Show(); assert(tabs.softres.checked == true, "marked on show")
+-- a click opens and closes the window, the page stays; the row of an open window is on (white)
+NS.ShowPage("awards")
+assert(not win("rolls").entry.on)
+win("rolls").button:Click()
+assert(AmisiaRollFrame and AmisiaRollFrame:IsShown() and win("rolls").entry.on == true and NS.CurrentPage() == "awards", "open and on")
+assert(win("rolls").button.subArt.sel:IsShown(), "the open window's row has the rim")
+win("rolls").button:Click()
+assert(not AmisiaRollFrame:IsShown() and win("rolls").entry.on == false, "closed and off")
+win("softres").button:Click()
+assert(AmisiaSoftResFrame:IsShown() and win("softres").entry.on == true)
+-- the row follows the window when it is closed elsewhere
+AmisiaSoftResFrame:Hide(); assert(navRow("win", "softres").entry.on == false, "off on hide")
+AmisiaSoftResFrame:Show(); assert(navRow("win", "softres").entry.on == true, "on on show")
 AmisiaSoftResFrame:Hide()
-STUB.clickTab(tabs.gear)
-assert(AmisiaGearFrame:IsShown() and tabs.gear.checked == true)
-STUB.clickTab(tabs.gear)
-assert(not AmisiaGearFrame:IsShown() and not tabs.gear.checked)
--- only the left button
-tabs.rolls.scripts.OnMouseUp(tabs.rolls, "RightButton", true)
-assert(not AmisiaRollFrame:IsShown())
+win("gear").button:Click()
+assert(AmisiaGearFrame:IsShown() and win("gear").entry.on == true)
+win("gear").button:Click()
+assert(not AmisiaGearFrame:IsShown() and not win("gear").entry.on)
 NS.Reset("ui.view")
 
 -- the close button hides the main window in combat, without HideUIPanel
@@ -700,6 +697,19 @@ end
 local function special(name)
     for _, n in ipairs(UISpecialFrames) do if n == name then return true end end
     return false
+end
+-- the row of a side window in the main window's side bar (D-68): whether it is on; the main window is
+-- shown for it with the window's group unfolded and hidden again when it was hidden
+local function winRowOn(key)
+    local hidden = not MF:IsShown()
+    if hidden then MF:Show() end
+    NS.ShowTab((key == "rolls" or key == "softres") and "raid" or "char")
+    local on
+    for _, e in ipairs(MF.navOrder) do
+        if e.entry.kind == "win" and e.entry.key == key then on = e.entry.on end
+    end
+    if hidden then MF:Hide() end
+    return on
 end
 local function closesInCombat(label, win)
     win:Show()
@@ -778,9 +788,9 @@ do
     end
     assert(not gsrc:find("UIPanelCloseButton", 1, true), "the frame's own close button")
 end
-assert(MF.sideTabs.gear.checked == true, "the gear tab is marked while the table shows")
+assert(winRowOn("gear") == true, "the gear table's row is on while the table shows")
 closesInCombat("the gear table", GF)
-assert(MF.sideTabs.gear.checked == false, "the gear tab follows the hide")
+assert(winRowOn("gear") == false, "the gear table's row follows the hide")
 
 -- the roll window: a dialog, the time beside the item under the bar, red buttons
 NS.ToggleRollFrame()
@@ -800,9 +810,9 @@ RL.row("roll entry", RF.namePick, RF.valueEdit, RF.msChip, RF.osChip, RF.addBtn)
 assert(RF.stopBtn.inherits.SharedButtonSmallTemplate and RF.stopBtn._h == 22 and RF.againBtn.isLink and RF.resultBtn.isLink, "Stopp red, the rest links (D-67)")
 RL.row("roll buttons", RF.stopBtn, RF.againBtn, RF.resultBtn)
 RL.column("roll window", RF.header, rr1, RF.addBtn, RF.note, RF.stopBtn)
-assert(MF.sideTabs.rolls.checked == true, "the rolls tab is marked while the window shows")
+assert(winRowOn("rolls") == true, "the roll window's row is on while the window shows")
 closesInCombat("the roll window", RF)
-assert(MF.sideTabs.rolls.checked == false, "the rolls tab follows the hide")
+assert(winRowOn("rolls") == false, "the roll window's row follows the hide")
 
 -- the award dialog: a dialog, everything under the bar as before
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
@@ -844,9 +854,9 @@ SF.editBox.scripts.OnTextChanged(SF.editBox, true)
 STUB.tick(1)
 assert(SF.previewText:GetText():find("Vorschau", 1, true), "the preview follows the text: " .. tostring(SF.previewText:GetText()))
 SF.editBox:SetText("")
-assert(MF.sideTabs.softres.checked == true, "the soft-reserve tab is marked while the import shows")
+assert(winRowOn("softres") == true, "the soft-reserve import's row is on while the import shows")
 closesInCombat("the soft-reserve import", SF)
-assert(MF.sideTabs.softres.checked == false, "the soft-reserve tab follows the hide")
+assert(winRowOn("softres") == false, "the soft-reserve import's row follows the hide")
 
 -- the upgrade toast: without the template the flat ground of before
 STUB.missingTemplates.TooltipBackdropTemplate = true
@@ -874,11 +884,14 @@ local rfh = assert(io.open(ADDON_DIR .. "/Core/Registry.lua", "rb"))
 local rsrc = rfh:read("*a")
 rfh:close()
 for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Registry.lua") end
-assert(NS.PANEL_GROUPS[2].label == "Ausrüstung")
--- every page names its section
+-- the groups of the side bar (D-68)
+local groupKeys, groupNames = {}, {}
+for _, g in ipairs(NS.PANEL_GROUPS) do groupKeys[#groupKeys + 1], groupNames[#groupNames + 1] = g.key, g.label end
+assert(table.concat(groupKeys, " ") == "raid char world guild amisia" and table.concat(groupNames, ",") == "Raid,Charakter,Welt,Gilde,Amisia",
+    table.concat(groupNames, ","))
+-- every page names its group
 for _, p in ipairs(NS.panels) do
-    assert(p.group == "raid" or p.group == "gear" or p.group == "guild" or p.group == "calendar" or p.group == "pvp"
-        or p.group == "amisia",
+    assert(p.group == "raid" or p.group == "char" or p.group == "world" or p.group == "guild" or p.group == "amisia",
         "a group for " .. p.key)
 end
 
@@ -904,7 +917,7 @@ ALLOWED["common-dropdown-a-button-shadowless"] = true
 ALLOWED["auctionhouse-ui-filter-redx"] = true
 -- the head's gear (UIPanelIconDropdownButtonTemplate, D-67)
 ALLOWED["questlog-icon-setting"] = true
--- the auction house's category bars (W.NavBar: the page list, the search results)
+-- the auction house's category bars (W.NavBar: the side bar, the search results)
 for _, part in ipairs({ "", "-select", "-highlight", "-secondary", "-secondary-select", "-secondary-highlight" }) do
     ALLOWED["auctionhouse-nav-button" .. part] = true
 end

@@ -80,8 +80,8 @@ NS.ShowExport(false)
 assert(lastMsg():find("Nichts Neues", 1, true) == nil, "a selected session exports again")
 NS.RaidSelection[s.id] = nil
 
--- Raid-Archiv: the name (not the gear tab's "Raids"), the order of a raid night, Export beside it;
--- "Löschen (n)" and "Angekreuzte (n)" follow the ticks, "Alle wählen" turns into "Keine wählen"
+-- Raid-Archiv: the name (not the journal "Raids" of the group Welt), the order of a raid night, Export
+-- beside it; "Löschen (n)" and "Angekreuzte (n)" follow the ticks, "Alle wählen" turns into "Keine wählen"
 assert(NS.Panel("raids").label == "Raid-Archiv" and NS.Panel("raids").officer and NS.Panel("raidjournal").label == "Raids")
 assert(NS.Panel("export").group == "raid" and NS.Panel("export").officer and NS.Panel("export").order > NS.Panel("raids").order)
 local night = { "overview", "lineup", "softres", "raidcheck", "rolls", "awards", "raidlog", "points", "stats", "raids", "export" }
@@ -110,7 +110,7 @@ local keepAdd = GameTooltip.AddLine
 GameTooltip.AddLine = function(_, t) tipLines[#tipLines + 1] = t end
 ep.selBtn.scripts.OnEnter(ep.selBtn)
 GameTooltip.AddLine = keepAdd
-assert(table.concat(tipLines, " "):find("Raid-Archiv (Reiter Raid)", 1, true), table.concat(tipLines, " "))
+assert(table.concat(tipLines, " "):find("Raid-Archiv (Gruppe Raid)", 1, true), table.concat(tipLines, " "))
 -- the box shows the last export; empty, it says what the buttons fill in
 assert(not ep.empty:IsShown(), "the box holds the export of before")
 

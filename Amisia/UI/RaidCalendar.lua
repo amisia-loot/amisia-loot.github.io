@@ -519,7 +519,7 @@ local function build()
         if main and main.Raise then main:Raise() end
     end)
     W.FitChip(F.page, R.BUTTON_W)
-    W.Tooltip(F.page, L["Im Kalender zeigen"], L["Öffnet im Hauptfenster den Reiter Kalender bei diesem Tag; dieses Fenster schließt sich."])
+    W.Tooltip(F.page, L["Im Kalender zeigen"], L["Öffnet im Hauptfenster die Seite Kalender bei diesem Tag; dieses Fenster schließt sich."])
     F.status = W.Text(F, T.FONT.hint, 200)
     F.status:SetHeight(T.BUTTON_H)
     F.status:SetJustifyV("MIDDLE")

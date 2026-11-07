@@ -34,7 +34,7 @@ local F = AmisiaFrame
 assert(F and F:IsShown(), "the window opens")
 assert(F.headMenu()[1][1] == "Pause recording" and F.headMenu()[2][1] == "Switch to the raider view", F.headMenu()[2][1])
 assert(F.statusText:GetText():find("Not recording, starts in a raid", 1, true), F.statusText:GetText())
--- the page list shows the open tab's pages; the tabs under the window carry the English group names
+-- the side bar (D-68) shows the open group's pages; the group bars carry the English group names
 local function navText()
     local nav = {}
     for _, e in ipairs(F.navOrder) do
@@ -43,13 +43,19 @@ local function navText()
     return table.concat(nav, ", ")
 end
 assert(has(navText(), "Overview") and has(navText(), "Raid log"), navText())
-local tabs = {}
-for _, k in ipairs(F.tabOrder) do tabs[#tabs + 1] = F.tabs[k].Text:GetText() end
-assert(table.concat(tabs, ",") == "Raid,Gear,Guild,Calendar,PvP,Amisia", table.concat(tabs, ","))
+local groups = {}
+for _, e in ipairs(F.navOrder) do
+    if e.entry.kind == "cat" then groups[#groups + 1] = e.button.label:GetText() end
+end
+assert(table.concat(groups, ",") == "Raid,Character,World,Guild,Amisia", table.concat(groups, ","))
 NS.ShowTab("guild")
 assert(has(navText(), "Guild bank"), navText())
+-- under Settings its tabs and sections: more than fit, the rest of the group is under them (it scrolls)
 NS.ShowTab("amisia")
-assert(has(navText(), "Settings") and has(navText(), "About and commands"), navText())
+local all = {}
+for _, e in ipairs(F.nav.items) do all[#all + 1] = e.label end
+all = table.concat(all, ", ")
+assert(has(navText(), "Settings") and has(all, "About and commands"), all)
 NS.ShowPage("overview")
 NS.SetEnabled(false); STUB.tick(0)
 assert(F.headMenu()[1][1] == "Resume recording" and has(F.statusText:GetText(), "Recording paused"), F.statusText:GetText())

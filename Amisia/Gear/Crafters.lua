@@ -1241,7 +1241,7 @@ end
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------
-ns.CRAFTERS_SETTINGS = { key = "crafters", label = L["Hersteller der Gilde"], order = 51, group = "gear", pages = { "professions" }, items = {
+ns.CRAFTERS_SETTINGS = { key = "crafters", label = L["Hersteller der Gilde"], order = 51, group = "char", pages = { "professions" }, items = {
     { key = "crafters.share", type = "toggle", label = L["Rezepte mit der Gilde teilen"], default = true,
       tip = L["Welche Rezepte deine Charaktere dieser Gilde kennen; nur außerhalb von Instanzen und Kämpfen"] },
     { key = "crafters.tooltip", type = "toggle", label = L["Hersteller im Item-Tooltip"], default = true,

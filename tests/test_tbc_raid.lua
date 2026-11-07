@@ -1,7 +1,7 @@
 --[[game tbc]]
 -- The raid part alone on TBC Anniversary (F-126, D-57): only the files without the camelot load
 -- condition, WOW_PROJECT_ID 5, the classic tab template, the client's missing atlases and templates
--- (run.py). Amisia loads, the window shows the raid tabs only and inside its width, the settings, the
+-- (run.py). Amisia loads, the side bar shows the raid groups only and their names fit (D-68), the settings, the
 -- raid pages and the self-test run without an error, the Forever-only parts are hidden.
 local T = NS.Theme
 assert(NS.GAME == "tbc" and NS.FOREVER == false, "the client: " .. tostring(NS.GAME))
@@ -51,28 +51,42 @@ STUB.fire("READY_CHECK", "Vuloo", 30)
 STUB.fire("QUEST_LOG_UPDATE"); STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.fire("UPDATE_INSTANCE_INFO")
 STUB.tick(3600)
 
--- the window: Raid, Gilde, Kalender, Amisia under it, every tab inside the window's width
+-- the window: the groups Raid, Gilde (with the calendar) and Amisia in the side bar, Charakter and Welt
+-- (Forever pages only) left out
 NS.ToggleMain()
 local F = AmisiaFrame
 assert(F and F:IsShown(), "the window opens")
-assert(table.concat(F.tabOrder, " ") == "raid guild calendar amisia", table.concat(F.tabOrder, " "))
-local function tabsRight()
-    local x = T.MAIN.BTAB_X
-    for i, key in ipairs(F.tabOrder) do
-        local tab = F.tabs[key]
-        assert(tab:GetWidth() >= T.MAIN.BTAB_MIN_W, key .. " " .. tab:GetWidth())
-        assert(tab:GetWidth() <= math.max(T.MAIN.BTAB_MIN_W, tab.Text:GetStringWidth() + 20) + 0.5,
-            "a tab as wide as its text + 20, not the classic resize's: " .. key .. " " .. tab:GetWidth())
-        x = x + tab:GetWidth() + (i > 1 and T.MAIN.BTAB_GAP or 0)
+-- the side bar (D-68): a bar per group with a visible page; nothing under or beside the window
+local function groupBars()
+    local out = {}
+    for _, e in ipairs(F.nav.items) do
+        if e.kind == "cat" then out[#out + 1] = e.key end
     end
-    return x
+    return table.concat(out, " ")
 end
-assert(tabsRight() <= T.MAIN.W, "the tabs stay inside the window: " .. tabsRight())
--- the template's own resize on show and on a display change does not come back
-F.tabs.raid:Hide(); F.tabs.raid:Show()
+-- the group bars (in place of the tabs under the window) inside the side bar, their names fit
+local function barsFit()
+    assert(F.nav:GetWidth() <= T.MAIN.NAV_W, "the side bar inside its inset: " .. F.nav:GetWidth())
+    for _, e in ipairs(F.navOrder) do
+        local b = e.button
+        assert(b:IsShown(), e.entry.key)
+        assert(e.entry.kind ~= "cat" or b.label:GetStringWidth() <= b.label:GetWidth() + 0.5,
+            "the group's name fits its bar: " .. e.entry.key .. " " .. b.label:GetStringWidth() .. " > " .. b.label:GetWidth())
+    end
+end
+assert(F.tabs == nil and F.sideTabs == nil and F.tabOrder == nil, "no tabs under or beside the window")
+assert(groupBars() == "raid guild amisia", groupBars())
+-- the officer view: the roll window and the soft-reserve import under Raid
+NS.ShowTab("raid")
+local wins = {}
+for _, e in ipairs(F.navOrder) do if e.entry.kind == "win" then wins[#wins + 1] = e.entry.key end end
+assert(table.concat(wins, " ") == "softres rolls", table.concat(wins, " "))
 STUB.fire("DISPLAY_SIZE_CHANGED")
-assert(tabsRight() <= T.MAIN.W, "after a display change: " .. tabsRight())
-for _, key in ipairs(F.tabOrder) do NS.ShowTab(key) end
+for _, key in ipairs({ "raid", "guild", "amisia" }) do
+    NS.ShowTab(key)
+    barsFit()
+end
+assert(groupBars() == "raid guild amisia", "after a display change: " .. groupBars())
 
 -- every raid page opens
 for _, key in ipairs({ "overview", "raids", "lineup", "raidcheck", "raidlog", "rolls", "awards", "stats", "points",

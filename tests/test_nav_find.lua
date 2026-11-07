@@ -1,8 +1,9 @@
 -- Finding one's way in the main window: the search keeps its scroll place on a data refresh and
 -- resets it only for a new text; its tooltip and the "Noch 1 Zeichen" line; keywords find pages and
 -- settings sections ("dkp" the page Punkte); the group "Befehle" puts a command into the chat line;
--- the pause button's tooltip; the portrait opens the overview; the side tabs say what they are for;
--- the minimap's quick menu built from the tabs; the overview cards' one verb "Öffnen".
+-- the pause button's tooltip; the portrait opens the overview; the side windows' rows in the side bar
+-- say what the windows are for (D-68); the minimap's quick menu built from the side bar's groups; the
+-- overview cards' one verb "Öffnen".
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function group(groups, key)
     for _, g in ipairs(groups) do if g.key == key then return g end end
@@ -119,42 +120,59 @@ F.headMenu()[1][2]()
 assert(NS.IsEnabled(), "resumed from the menu")
 
 ---------------------------------------------------------------------------
--- the portrait opens the overview from any tab
+-- the portrait opens the overview from any group
 ---------------------------------------------------------------------------
+local function navRow(kind, key)
+    for _, e in ipairs(F.navOrder) do
+        if e.entry.kind == kind and e.entry.key == key then return e end
+    end
+end
 NS.ShowPage("talents")
 assert(NS.CurrentPage() == "talents")
 assert(F.homeBtn, "the portrait takes clicks")
 F.homeBtn:Click()
-assert(NS.CurrentPage() == "overview" and F.tabs.raid.selected, NS.CurrentPage())
+assert(NS.CurrentPage() == "overview" and navRow("cat", "raid").entry.open and navRow("page", "overview").entry.on
+    and not navRow("cat", "char").entry.open, NS.CurrentPage())
 F.homeBtn.scripts.OnEnter(F.homeBtn)
 assert(has(tipText(), "Übersicht"), tipText())
 
 ---------------------------------------------------------------------------
--- the side tabs: name and what the window is for
+-- the side windows' rows: name and what the window is for
 ---------------------------------------------------------------------------
-for key, tab in pairs(F.sideTabs) do
-    tab.scripts.OnEnter(tab)
-    assert(#tip >= 2 and tip[1] == tab.tooltipText and #tip[2] > 10, key .. ": " .. tipText())
+local wins = {}
+for _, g in ipairs(NS.PANEL_GROUPS) do
+    NS.ShowTab(g.key)
+    for _, e in ipairs(F.navOrder) do
+        if e.entry.kind == "win" then
+            local b = e.button
+            b.scripts.OnEnter(b)
+            -- the tooltip names the window in full (the row may carry a shorter name: "Importieren" under
+            -- "Soft-Reserves")
+            assert(#tip >= 2 and tip[1] == e.entry.def.label and e.entry.label == b.label:GetText() and #tip[2] > 10, e.entry.key .. ": " .. tipText())
+            wins[#wins + 1] = e.entry.key
+        end
+    end
 end
+assert(table.concat(wins, " ") == "softres rolls gear goals talents", "every side window has its row: " .. table.concat(wins, " "))
 
 ---------------------------------------------------------------------------
--- the quick menu: one entry per tab with its visible pages, then settings and the recording switch
+-- the quick menu: one entry per group of the side bar, then settings and the recording switch
 ---------------------------------------------------------------------------
 local top = NS.MinimapMenuEntries()
-local tabs, rest = {}, {}
+local groups, rest = {}, {}
 for _, e in ipairs(top) do
-    if e.sub then tabs[#tabs + 1] = e.sub else rest[#rest + 1] = e[1] end
+    if e.sub then groups[#groups + 1] = e.sub else rest[#rest + 1] = e[1] end
 end
-local shownTabs = {}
-for _, t in ipairs(F.tabOrder) do shownTabs[#shownTabs + 1] = t end
-assert(table.concat(tabs, " ") == table.concat(shownTabs, " "), table.concat(tabs, " ") .. " / " .. table.concat(shownTabs, " "))
+local shownGroups = {}
+for _, e in ipairs(F.nav.items) do if e.kind == "cat" then shownGroups[#shownGroups + 1] = e.key end end
+assert(table.concat(groups, " ") == table.concat(shownGroups, " "), table.concat(groups, " ") .. " / " .. table.concat(shownGroups, " "))
 assert(table.concat(rest, "|") == "Einstellungen|Aufnahme pausieren", table.concat(rest, "|"))
 local function sub(key)
     local out = {}
     for _, e in ipairs(NS.MinimapMenuEntries(key)) do out[#out + 1] = e[1] end
     return table.concat(out, "|")
 end
--- every visible page is in its tab's menu (Aufstellung too, once the officer rank allows the page)
+-- every visible page is in its group's menu (Aufstellung too, once the officer rank allows the page)
 for _, p in ipairs(NS.panels) do
     if NS.Visible(p) then
         assert(has("|" .. sub(NS.PanelGroup(p)) .. "|", "|" .. p.label .. "|"), "the quick menu reaches " .. p.key)
@@ -162,20 +180,22 @@ for _, p in ipairs(NS.panels) do
 end
 for _, key in ipairs({ "Kalender", "Berufe", "Quests", "Talente", "Dungeons" }) do
     local found = false
-    for _, t in ipairs(tabs) do if has(sub(t), key) then found = true end end
+    for _, t in ipairs(groups) do if has(sub(t), key) then found = true end end
     assert(found, "the quick menu reaches " .. key)
 end
--- "Zurück" and a tab entry open the menu again, with the other entries
+-- "Zurück" and a group entry open the menu again, with the other entries
 NS.W.Menu(UIParent, top)
-for i, e in ipairs(top) do if e.sub == "gear" then AmisiaMenu.buttons[i]:Click() end end
-local gearMenu = NS.MinimapMenuEntries("gear")
-assert(AmisiaMenu:IsShown() and AmisiaMenu.buttons[1].label:GetText() == gearMenu[1][1], "the tab's pages")
+local clicked = false
+for i, e in ipairs(top) do if e.sub == "char" then AmisiaMenu.buttons[i]:Click(); clicked = true end end
+assert(clicked, "the group Charakter in the menu")
+local gearMenu = NS.MinimapMenuEntries("char")
+assert(AmisiaMenu:IsShown() and AmisiaMenu.buttons[1].label:GetText() == gearMenu[1][1], "the group's pages")
 AmisiaMenu.buttons[#gearMenu]:Click()
-assert(AmisiaMenu:IsShown() and AmisiaMenu.buttons[1].label:GetText() == top[1][1], "back to the tabs")
+assert(AmisiaMenu:IsShown() and AmisiaMenu.buttons[1].label:GetText() == top[1][1], "back to the groups")
 AmisiaMenu:Hide()
-assert(has(sub("gear"), "Ausrüstungstabelle") and has(sub("gear"), "|Zurück"), sub("gear"))
--- a page entry opens the page; "Zurück" and a tab entry open the menu again
-for _, e in ipairs(NS.MinimapMenuEntries("gear")) do if e[1] == "Berufe" then e[2]() end end
+assert(has(sub("char"), "Ausrüstungstabelle") and has(sub("char"), "|Zurück"), sub("char"))
+-- a page entry opens the page; "Zurück" and a group entry open the menu again
+for _, e in ipairs(NS.MinimapMenuEntries("char")) do if e[1] == "Berufe" then e[2]() end end
 assert(NS.CurrentPage() == "professions", NS.CurrentPage())
 NS.Set("ui.view", "raider")
 assert(not has(sub("raid"), "Rolls") and not has(sub("raid"), "Aufstellung"), "raiders see no officer pages: " .. sub("raid"))

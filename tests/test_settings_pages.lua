@@ -1,6 +1,6 @@
 -- The settings by tabs (spec 2026-10-13-dungeons-einstellungen, part B, D-49): every section has its
--- tab and pages that exist; the page list shows the tabs and the chosen tab's sections under
--- "Einstellungen"; the head button "Einstellungen" of a page opens its sections with "Zurück zu
+-- tab (a group of the side bar, D-68) and pages that exist; the side bar shows the tabs and the chosen
+-- tab's sections under "Einstellungen"; the head button "Einstellungen" of a page opens its sections with "Zurück zu
 -- <Seite>"; "Zurücksetzen" sets the shown sections to their defaults after asking, "Alle Einstellungen
 -- zurücksetzen" every section; the raider view hides the officers' sections.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
@@ -50,13 +50,14 @@ NS.ShowSettingsSection("map")
 assert(NS.SettingsChosen() == "map" and not page.back:IsShown())
 assert(AmisiaDB.settings.window.section == "map", "remembered")
 
--- the page list under "Einstellungen": the tabs, the chosen one open
+-- the side bar under "Einstellungen": the tabs, the chosen one open (the map's section in Welt since D-68)
 local nav = navShown()
-assert(has(nav, "settings raid gear -bis -wishes -drops -map -quests -collect -crafters guild calendar pvp amisia about"), nav)
+assert(has(nav, "settings raid char world -drops -map -quests -collect guild amisia about"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end
-assert(NS.SettingsChosen() == "bank", "a tab opens its first section: " .. tostring(NS.SettingsChosen()))
+-- (Gilde starts with the sign-up since D-68 moved it there, before the bank)
+assert(NS.SettingsChosen() == "signup", "a tab opens its first section: " .. tostring(NS.SettingsChosen()))
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "section" and e.entry.key == "mats" then e.button:Click() break end
 end
@@ -71,12 +72,12 @@ local function navRow(kind, key)
 end
 navRow("group", "guild"):Click()
 assert(NS.SettingsChosen() == "mats", "folding keeps the section")
-assert(has(navShown(), "settings raid gear guild calendar") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
+assert(has(navShown(), "settings raid char world guild amisia") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
 navRow("group", "guild"):Click()
-assert(has(navShown(), "guild -bank") and has(navShown(), "-mats"), "unfolded: " .. navShown())
+assert(has(navShown(), "guild -signup") and has(navShown(), "-mats"), "unfolded: " .. navShown())
 navRow("group", "guild"):Click()
-navRow("group", "gear"):Click()
-assert(NS.SettingsChosen() == "bis" and has(navShown(), "gear -bis") and not has(navShown(), "-mats"), "another tab opens: " .. navShown())
+navRow("group", "char"):Click()
+assert(NS.SettingsChosen() == "bis" and has(navShown(), "char -bis") and not has(navShown(), "-mats"), "another tab opens: " .. navShown())
 navRow("page", "settings"):Click()
 assert(NS.SettingsChosen() == "bis" and not navRow("group", "raid") and not navRow("section", "bis"), "the tabs folded: " .. navShown())
 navRow("page", "settings"):Click()

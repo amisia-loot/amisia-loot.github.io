@@ -367,7 +367,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "quests", label = "Quests", icon = ICON, order = 56, group = "gear",
+ns.RegisterPanel{ key = "quests", label = "Quests", icon = ICON, order = 54, group = "world",
     available = function() return ns.Get("quests.enabled") ~= false end,
     create = create, refresh = refresh }
 

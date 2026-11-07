@@ -412,10 +412,10 @@ end
 -- The list of the chosen dungeon's or raid's rows on page B (rows high): bosses with their items, or
 -- quests; clicks, menus, tooltips, the hovered boss in B.art.
 -- top: where the list starts on B (a SetPoint offset); the list takes the rows that fit down to B's
--- lower end, at least rows (the footer's room went to it when the hint moved behind the "i", D-67).
+-- lower end, at least rows (the footer's room went to it when the hint moved behind the "i", D-67), and
+-- follows the main window's height (W.FillTo, D-68).
 local function buildDetail(B, rows, top)
-    if top then rows = math.max(rows, math.floor((T.PAGE_H + (B.offsetY or 0) + top - B:Bottom()) / ROW_H)) end
-    return W.List(B, rows, ROW_H, function(r)
+    local list = W.List(B, rows, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
         r.slot = col(r, 228, 62, nil, T.FONT.text)
         r.gain = col(r, 292, 40, nil, T.FONT.text)
@@ -460,6 +460,8 @@ local function buildDetail(B, rows, top)
             if e and e.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry)) end
         end)
     end, fillDetailRow)
+    if top then W.FillTo(list, B, top, rows, ROW_H) end
+    return list
 end
 
 ---------------------------------------------------------------------------
@@ -1710,6 +1712,6 @@ end
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
     ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
 
-ns.RegisterPanel{ key = "dungeons", label = "Dungeons", icon = ICON, order = 51, group = "gear",
+ns.RegisterPanel{ key = "dungeons", label = "Dungeons", icon = ICON, order = 51, group = "world",
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }

@@ -1135,9 +1135,10 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
         bar:SetScrollPercentage(span > 0 and self.offset / span or 0, true)
         self.syncing = false
     end
-    -- More rows can be added later (Grow); a list never gets shorter.
+    -- More rows can be added later (Grow); Fit sets how many show (the main window's height, D-68):
+    -- rows past it stay built but hidden.
     function f:Grow(n)
-        for i = self.rowCount + 1, n do
+        for i = #self.rows + 1, n do
             local r = CreateFrame("Button", nil, self)
             r:SetHeight(rowHeight - 1)
             r:SetPoint("TOPLEFT", 0, -(i - 1) * rowHeight)
@@ -1159,6 +1160,16 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
             self:SetHeight(n * rowHeight)
             syncBar(self)
         end
+    end
+    function f:Fit(n)
+        n = math.max(1, n)
+        if n == self.rowCount then return end
+        self:Grow(n)
+        self.rowCount = n
+        self:SetHeight(n * rowHeight)
+        self.offset = math.max(0, math.min(self.offset, #self.items - n))
+        if self.Redraw then self:Redraw() end
+        syncBar(self)
     end
     if not (opts and opts.bar == false) then
         local bar = inherit("EventFrame", nil, f, "MinimalScrollBar", function(b) return b.SetScrollPercentage and b.RegisterCallback end)
@@ -1184,7 +1195,7 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
     f:Grow(rowCount)
     function f:Redraw()
         for i, r in ipairs(self.rows) do
-            local item = self.items[i + self.offset]
+            local item = i <= self.rowCount and self.items[i + self.offset] or nil
             r.item = item
             if item ~= nil then
                 fill(r, item, i + self.offset)
@@ -1208,6 +1219,29 @@ function W.List(parent, rowCount, rowHeight, build, fill, opts)
     end)
     syncBar(f)
     return f
+end
+
+-- The lists that fill their page down to its lower end (Scaffold:List with fill, the dungeon page's
+-- detail): owner the page part they sit on (its Bottom() and offsetY), top where the list starts on
+-- it, at least min rows of rowH, below the room kept under it. W.FitLists fits them all again after
+-- the main window's height changed (T.PAGE_H, D-68); weak, a list gone with its page drops out.
+local fillers = setmetatable({}, { __mode = "k" })
+
+local function fitRows(e)
+    local o = e.owner
+    local room = T.PAGE_H + (o.offsetY or 0) + e.top - o:Bottom() - e.below
+    return math.max(e.min, math.floor(room / e.rowH))
+end
+
+function W.FillTo(list, owner, top, minRows, rowH, below)
+    local e = { owner = owner, top = top or 0, min = minRows or 1, rowH = rowH, below = below or 0 }
+    fillers[list] = e
+    list:Fit(fitRows(e))
+    return list
+end
+
+function W.FitLists()
+    for list, e in pairs(fillers) do list:Fit(fitRows(e)) end
 end
 
 -- An overview card: an inset with a gold title, two lines and at most two actions as quiet links (the
@@ -1914,12 +1948,11 @@ function Scaffold:List(rows, rowH, build, fill, opts)
     opts = opts or {}
     local top = opts.top or self.listTop or self.top or 0
     -- opts.fill: as many rows as fit down to the content's lower end (p:Bottom()), at least rows; the
-    -- room the footer's explanations left when they moved behind the "i" (D-67) goes to the list
-    if opts.fill and not self.pageW then
-        local room = T.PAGE_H + (self.offsetY or 0) + top - self:Bottom() - (opts.below or 0)
-        rows = math.max(rows, math.floor(room / rowH))
-    end
+    -- room the footer's explanations left when they moved behind the "i" (D-67) goes to the list, and
+    -- it follows the main window's height (W.FillTo, D-68)
+    local fillTo = opts.fill and not self.pageW
     local list = W.List(self, rows, rowH, build, fill, opts)
+    if fillTo then W.FillTo(list, self, top, rows, rowH, opts.below) end
     list:SetPoint("TOPLEFT", opts.x or 0, top)
     if opts.width then list:SetWidth(opts.width) else list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top) end
     list.layoutRole = "list"
@@ -2047,6 +2080,16 @@ function Scaffold:Detail(opts)
     d:SetPoint("TOPLEFT", LAY.SPLIT_X, top)
     d:SetPoint("TOPRIGHT", 0, top)
     d:SetHeight(opts.height or 200)
+    -- opts.follow: a list beside it whose height it keeps, also when the list fits the main window's
+    -- height again (W.FitLists, D-68)
+    if opts.follow then
+        local list, fit = opts.follow, opts.follow.Fit
+        d:SetHeight(list:GetHeight())
+        list.Fit = function(l, n)
+            fit(l, n)
+            d:SetHeight(l:GetHeight())
+        end
+    end
     d.layoutRole = "detail"
     local inner = T.PAGE_W - LAY.SPLIT_X - D.TITLE_X - D.PAD
     d.icon = d:CreateTexture(nil, "ARTWORK")

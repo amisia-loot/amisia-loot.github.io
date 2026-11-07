@@ -308,7 +308,7 @@ local function pageHits(q)
         for _, g in ipairs(ns.PANEL_GROUPS) do
             if g.key == tab then tab = g.label end
         end
-        out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite im Reiter %s."]:format(tab),
+        out[#out + 1] = { text = p.label, icon = p.icon, tip = L["Seite in der Gruppe %s."]:format(tab),
             run = function() ns.ShowPage(p.key) end }
     end
     for _, p in ipairs(ns.panels) do

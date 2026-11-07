@@ -294,7 +294,7 @@ assert(sroot.duels.spec.A == nil, "a tree out of 1-3")
 -- the page
 ---------------------------------------------------------------------------
 local panel = assert(NS.Panel("duels"))
-assert(panel.group == "pvp" and not panel.officer and not panel.expert, "tab PvP, everyone")
+assert(panel.group == "guild" and not panel.officer and not panel.expert, "group Gilde, everyone")
 NS.Set("ui.view", "raider")
 assert(NS.Visible(panel), "raiders see it")
 NS.ShowPage("duels")

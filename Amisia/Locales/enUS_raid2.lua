@@ -1112,7 +1112,7 @@ L["Zur Aufstellung"] = "To the lineup"
 L["Ändern ..."] = "Change ..."
 L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."] = "Opens the lineup page at this date's night (officers only)."
 L["Im Kalender zeigen"] = "Show in calendar"
-L["Öffnet im Hauptfenster den Reiter Kalender bei diesem Tag; dieses Fenster schließt sich."] = "Opens the main window's Calendar tab at this day; this window closes."
+L["Öffnet im Hauptfenster die Seite Kalender bei diesem Tag; dieses Fenster schließt sich."] = "Opens the main window's Calendar page at this day; this window closes."
 
 -- the calendar entry of a click (Raid/CalendarWrite.lua, part H3)
 L["Amisia hat dich nicht im Spielkalender eingetragen. Dort sehen es auch Spieler ohne Amisia."] = "Amisia did not sign you up in the game calendar. There players without Amisia see it too."

@@ -360,7 +360,7 @@ local function create(parent)
     end, fillRow, { fill = true, top = top, width = T.LAYOUT.SPLIT_LIST_W })
 
     -- the chosen entry in the inset beside the list, as high as the list
-    local d = f:Detail({ top = top, height = f.list.rowCount * ROW_H })
+    local d = f:Detail({ top = top, follow = f.list })
     f.detail = d
     d.go = W.Button(d, L["Wegpunkt"], 70, function()
         if d.point and ns.MapSetPoint then
@@ -376,7 +376,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "scrolls", label = L["Schriftrollen"], icon = ICON, order = 57.5, group = "gear",
+ns.RegisterPanel{ key = "scrolls", label = L["Schriftrollen"], icon = ICON, order = 57.5, group = "char",
     available = function() return MS.Shown() end, create = create, refresh = refresh }
 
 -- Opens the page (any class); what: a view ("ergebnisse", "bibliothek", ...).

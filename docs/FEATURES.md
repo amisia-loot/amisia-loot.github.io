@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-141 Eine Seitenleiste: Gruppen wie im Auktionshaus, Seitenfenster darin, Höhe ziehbar
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du das Fenster öffnest, dann hängen keine Reiter mehr unter dem Fenster und keine Seitenreiter rechts daneben, und links stehen die Gruppen Raid, Charakter, Welt, Gilde und Amisia als Balken mit Plus oder Minus.
+- Prüfung: Wenn du auf eine zugeklappte Gruppe klickst, dann klappt die vorher offene zu und die zuletzt gewählte Seite der neuen Gruppe öffnet sich; ein Klick auf die offene Gruppe klappt sie zu und die Seite bleibt.
+- Prüfung: Wenn du unter Charakter auf "Ausrüstungstabelle" klickst, dann öffnet sich das Fenster, die Zeile ist weiß, solange es offen ist, und ein zweiter Klick schließt es.
+- Prüfung: Wenn du das Fenster am Griff unten rechts höher ziehst und `/reload` machst, dann hat es dieselbe Höhe und lange Listen (Dungeons, Quests, Mitglieder) reichen bis zum unteren Rand.
+- Prüfung: Wenn du in die Suche "dead" tippst und einen Treffer anklickst, dann klappt dessen Gruppe auf und die Seite ist darin gewählt.
+- Notiz: Spec `docs/specs/2026-11-07-seitenleiste.md`, Schritt 1 von 4 der UI-Überholung; Wunsch des Nutzers 2026-11-07 ("ich brauche eine ui overhall ... im WoW Forever classic style", dann "Passt").
+
 ### F-140 Aufgeräumte Oberfläche: Fensterkopf, Hilfe, Textreiter, ein roter Knopf je Ansicht
 - Version: 2.61.0
 - Status: gebaut

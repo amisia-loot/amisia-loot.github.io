@@ -145,7 +145,8 @@ python3 tools/ui_layout.py red [--write]
   - **minwidth**: every button and chip is as wide as its text plus `ns.Theme.CHIP_PAD` (8 px) on
     both sides (`W.FitChip` sizes one so).
   - **atlas**: only atlases of `ns.Theme.ATLASES` (the style allow-list) are used.
-  - **nav**: every visible page opens and has its row inside the page list.
+  - **nav**: every visible page opens and has its row inside the side bar (a page of the open group scrolled
+    out of the bar is enough when it is listed; the open page needs its row, D-68).
   - **grid**: every page is built with the page scaffold `W.Page` (UI/Widgets.lua) and keeps its
     measures (`ns.Theme.LAYOUT`): the head row at the page's top and 22 high on every page; what a
     band (a row of controls, a line of text) holds sits centred on it; hint lines and footer lines

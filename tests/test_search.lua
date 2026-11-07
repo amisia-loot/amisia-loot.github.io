@@ -1,4 +1,4 @@
--- The search over the main window's page list (UI/Search.lua, UI/MainFrame.lua; D-45): from two
+-- The search over the main window's side bar (UI/Search.lua, UI/MainFrame.lua; D-45, D-68): from two
 -- characters the list turns into the hits, grouped "Seiten", "Einstellungen", "Items", "Spieler";
 -- pages by name (visible ones), settings by name, tip and choices (a click opens the settings with
 -- that text), items by the names the client holds (Amisia's item names, the cached gear items; a
@@ -49,18 +49,18 @@ assert(texts(group(g, "settings")) == "Expertenmodus", texts(group(g, "settings"
 g = NS.Search("automatisch")
 assert(has(texts(group(g, "settings")), "Ansicht"), "by a choice's name: " .. texts(group(g, "settings")))
 -- hidden pages are not found: the raider view has no officers' Raid-Archiv (the journal "Raids"
--- in Ausrüstung, F-122, is for everyone) and no players
+-- in the group Welt, F-122, D-68, is for everyone) and no players
 local tips = {}
 for _, h in ipairs(group(NS.Search("raids"), "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
-assert(table.concat(tips, "|") == "Seite im Reiter Ausrüstung.", table.concat(tips, "|"))
+assert(table.concat(tips, "|") == "Seite in der Gruppe Welt.", table.concat(tips, "|"))
 local archive = {}
 for _, h in ipairs(group(NS.Search("archiv"), "pages").hits) do if h.text == "Raid-Archiv" then archive[#archive + 1] = h.tip end end
-assert(table.concat(archive, "|") == "Seite im Reiter Raid.", table.concat(archive, "|"))
+assert(table.concat(archive, "|") == "Seite in der Gruppe Raid.", table.concat(archive, "|"))
 NS.Set("ui.view", "raider")
 g = NS.Search("raids")
 tips = {}
 for _, h in ipairs(group(g, "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
-assert(table.concat(tips, "|") == "Seite im Reiter Ausrüstung.", table.concat(tips, "|"))
+assert(table.concat(tips, "|") == "Seite in der Gruppe Welt.", table.concat(tips, "|"))
 assert(group(NS.Search("archiv"), "pages") == nil, "the raider view finds no Raid-Archiv")
 assert(group(NS.Search("frak"), "players") == nil, "players only in the officer view")
 NS.Set("ui.view", "officer")
@@ -97,7 +97,7 @@ local function type_(text)
     box.scripts.OnTextChanged(box, true)
 end
 type_("r")
-assert(F.nav:IsShown() and not F.results:IsShown(), "one character: the page list stays")
+assert(F.nav:IsShown() and not F.results:IsShown(), "one character: the side bar stays")
 type_("experten")
 assert(not F.nav:IsShown() and F.results:IsShown(), "the results in place of the list")
 local items = F.results.items
@@ -124,12 +124,17 @@ assert(F.results:IsShown() and #F.results.items == 0 and F.noHits:IsShown() and 
 -- Escape empties the box
 box.scripts.OnEscapePressed(box)
 assert(box:GetText() == "" and F.nav:IsShown() and not F.noHits:IsShown(), "Escape clears")
--- a page hit opens the page; its tab follows
+-- a page hit opens the page; its group unfolds in the side bar
 type_("talent")
 for i, it in ipairs(F.results.items) do
     if it.text == "Talente" then F.results.rows[i]:Click() break end
 end
-assert(NS.CurrentPage() == "talents" and F.tabs.gear.selected, NS.CurrentPage())
+local open, on = false, false
+for _, e in ipairs(F.navOrder) do
+    if e.entry.kind == "cat" and e.entry.key == "char" then open = e.entry.open end
+    if e.entry.kind == "page" and e.entry.key == "talents" then on = e.entry.on end
+end
+assert(NS.CurrentPage() == "talents" and open and on, NS.CurrentPage())
 -- a player hit opens Statistik with the player chosen
 type_("kimt")
 for i, it in ipairs(F.results.items) do

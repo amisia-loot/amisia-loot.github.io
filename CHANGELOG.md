@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): one side bar with groups instead of tabs under and beside the window (F-141)
+
+  The main window has one way to its pages: the side bar on the left, laid out like the auction house's
+  category list. The groups Raid, Character, World, Guild and Amisia are bars with a plus or minus, and one
+  is unfolded at a time with its pages under it; Calendar and Duels moved into Guild. The side windows (gear
+  table, gear goals, talent calculator, and for officers the roll window and the soft-reserve import) are
+  rows right under their page, and a click opens or closes them. The tabs under the window and the tabs on
+  its right edge are gone. The window's height can be dragged at the grip in the bottom right corner (560
+  to 860), long lists grow with it, and the height is kept.
+
 ## [v2.61.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.61.0) (2026-11-06)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.60.0...v2.61.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

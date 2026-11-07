@@ -893,7 +893,7 @@ local function create(parent)
     W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."])
 
     -- the chosen recipe in the inset beside the list, as high as the list
-    local d = f:Detail({ top = top, height = f.list.rowCount * ROW_H, sub = true })
+    local d = f:Detail({ top = top, follow = f.list, sub = true })
     f.detail = d
     d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
     d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -994,7 +994,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "professions", label = L["Berufe"], icon = ICON, order = 57, group = "gear",
+ns.RegisterPanel{ key = "professions", label = L["Berufe"], icon = ICON, order = 57, group = "char",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
 
 function ns.ProfessionsPageFrame() return page end

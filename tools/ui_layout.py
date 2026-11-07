@@ -88,7 +88,8 @@ if mode == "pages" then
         do
             if NS.ClearSearch then NS.ClearSearch() end
             p.open()
-            -- the page list shows the pages of the open page's tab (D-45)
+            -- the side bar lists the pages of the open page's group (D-68); rows scrolled out of
+            -- the bar are listed but have no button
             local visible = {}
             local tab = NS.Panel(NS.CurrentPage() or "") and NS.PanelGroup(NS.Panel(NS.CurrentPage()))
             for _, q in ipairs(panels) do
@@ -98,15 +99,18 @@ if mode == "pages" then
             for _, k in ipairs(F.content.kids or {}) do if k.shown then page = k end end
             local marks = { window = F, content = F.content, nav = F.nav, page = page }
             for _, e in ipairs(F.navOrder or {}) do
-                if e.button and e.button.shown then marks["nav:" .. e.button.key] = e.button end
+                if e.button and e.button.shown and e.entry and e.entry.kind == "page" then marks["nav:" .. e.button.key] = e.button end
             end
-            local keys = {}
+            local keys, listed = {}, {}
             for i, k in ipairs(visible) do keys[i] = ("%q"):format(k) end
+            for _, e in ipairs(F.nav and F.nav.items or {}) do
+                if e.kind == "page" then listed[#listed + 1] = ("%q"):format(e.key) end
+            end
             local G, FT = NS.Theme.LAYOUT, NS.Theme.FONT
             local grid = ('{"ROW_H":%s,"LINE_H":%s,"GAP":%s,"TEXT_X":%s,"COLHEAD_H":%s,"EMPTY_Y":%s,"hint":%q,"head":%q}'):format(
                 G.ROW_H, G.LINE_H, G.GAP, G.TEXT_X, G.COLHEAD_H, G.EMPTY_Y, FT.hint, FT.head)
-            shot(p.name, F, marks, ('{"page":%q,"current":%q,"visible":[%s],"grid":%s}'):format(p.key, NS.CurrentPage() or "",
-                table.concat(keys, ","), grid))
+            shot(p.name, F, marks, ('{"page":%q,"current":%q,"visible":[%s],"listed":[%s],"grid":%s}'):format(p.key,
+                NS.CurrentPage() or "", table.concat(keys, ","), table.concat(listed, ","), grid))
         end
     end
 else
@@ -543,9 +547,13 @@ def rule_nav(tree, shot):
         out.append(f'page {extra.get("page")} did not open (shows {extra.get("current")})')
     nav = tree.marks.get('nav')
     nr = tree.rect(nav) if nav else None
+    listed = extra.get('listed')
     for key in extra['visible']:
         b = tree.marks.get('nav:' + key)
         if b is None:
+            # scrolled out of the side bar (D-68): listed is enough, but the open page needs its row
+            if listed is not None and key in listed and key != extra.get('current'):
+                continue
             out.append(f'page {key} has no row in the page list')
             continue
         r = tree.rect(b)
@@ -811,7 +819,7 @@ def render(shot, path, scale=1, mono=False):
     tree = Tree(shot['nodes'], shot['marks'])
     root = tree.marks.get('window', 1)
     wr = tree.rect(root)
-    pad_l, pad_t, pad_r, pad_b = 10, 10, 60, 40   # room for the side tabs and the bottom tabs
+    pad_l, pad_t, pad_r, pad_b = 10, 10, 60, 40   # room around the window (side windows' tabs before D-68)
     W = int((wr[2] - wr[0] + pad_l + pad_r) * scale)
     H = int((wr[3] - wr[1] + pad_t + pad_b) * scale)
     img = Image.new('RGB', (W, H), (14, 12, 18))

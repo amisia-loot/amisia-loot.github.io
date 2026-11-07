@@ -1,5 +1,6 @@
 -- The dungeons page of its own (F-102, spec docs/specs/2026-10-13-dungeons-einstellungen.md, part A):
--- registered in the tab Ausrüstung right after the gear page, the gear page without its chip
+-- registered first in the group Welt of the side bar (D-68; before it the tab Ausrüstung right after
+-- the gear page), the gear page without its chip
 -- "Dungeons", /amisia dungeon and /amisia journal open the page, a saved view "dungeons" of the gear
 -- page opens it on "Ziele", the spec picked on the dungeons page is the gear page's.
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
@@ -16,15 +17,15 @@ NS.GEAR.I[501] = { "HEAD", 4, 2, 16, 3, 1, 20, 0, 0, 0, 1 }
 NS.Gear._reset()
 assert(NS.Gear.Available(), "gear data")
 
--- the page: in the tab Ausrüstung, right after the gear page, before the map
+-- the page: first in the group Welt, before the raids, the quests and the map
 local p = NS.Panel("dungeons")
-assert(p and p.label == "Dungeons" and NS.PanelGroup(p) == "gear", "registered in the tab Ausrüstung")
+assert(p and p.label == "Dungeons" and NS.PanelGroup(p) == "world", "registered in the group Welt")
 local after = {}
 for _, q in ipairs(NS.panels) do
-    if NS.PanelGroup(q) == "gear" and q.order then after[#after + 1] = q end
+    if NS.PanelGroup(q) == "world" and q.order then after[#after + 1] = q end
 end
 table.sort(after, function(a, b) return a.order < b.order end)
-assert(after[1].key == "gear" and after[2].key == "dungeons", "right after the gear page: " .. after[2].key)
+assert(after[1].key == "dungeons" and after[2].key == "raidjournal", "the group's first page: " .. after[1].key)
 assert(p.available(), "shown with gear data")
 
 -- the gear page has no chip "Dungeons" any more

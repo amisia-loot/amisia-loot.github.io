@@ -89,7 +89,7 @@ ns.RegisterPanel{ key = "export", label = "Export", icon = "Interface\\Icons\\IN
         W.FitChip(selBtn, 120)
         -- disabled without ticked raids; the tooltip says where to tick them
         if selBtn.SetMotionScriptsWhileDisabled then selBtn:SetMotionScriptsWhileDisabled(true) end
-        W.Tooltip(selBtn, L["Angekreuzte"], L["Exportiert die Raids, die auf der Seite Raid-Archiv (Reiter Raid) angekreuzt sind, auch schon exportierte."])
+        W.Tooltip(selBtn, L["Angekreuzte"], L["Exportiert die Raids, die auf der Seite Raid-Archiv (Gruppe Raid) angekreuzt sind, auch schon exportierte."])
         f.state = W.Text(f, T.FONT.hint)
         f:Place(1, { newBtn, selBtn, { f.state, fill = true } })
         local intro = f:Line(2)

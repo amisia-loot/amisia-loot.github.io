@@ -80,7 +80,8 @@ T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 
 -- the width of the page area of the main window (the content inset less its 7 px margin; 478 high)
 T.PAGE_W = 602
-T.PAGE_H = 478   -- the page area under the window's head (MainFrame: content), for lists that fill it
+T.PAGE_H = 478   -- the page area under the window's head (MainFrame: content), for lists that fill it;
+                 -- the main window sets it to its dragged height less 82 (D-68), W.FitLists follows
 
 -- The page scaffold (W.Page): every page is built of the same parts, top to bottom: bands (the head
 -- row first, then rows of controls or lines of text), the content (column heads, a list, a detail
@@ -99,44 +100,40 @@ T.LAYOUT = {
     DETAIL = { PAD = 8, ICON = 32, TITLE_X = 44, TITLE_H = 18, SUB_Y = 28, BODY_Y = 46, BUTTONS = 32 },
 }
 
--- the main window (MainFrame.lua): the page list of the chosen bottom tab on the left, under the
--- search box; the page in the content inset on the right; the client's panel tabs (one per page
--- group, ns.PANEL_GROUPS) hang under the window's bottom edge, the side tabs at its right edge.
+-- the main window (MainFrame.lua, D-68): the side bar on the left under the search box (the groups as
+-- the auction house's category bars, the open group's pages and side windows as its sub-category
+-- bars); the page in the content inset on the right. Nothing hangs under or beside the window.
 T.MAIN = {
     W = 806, H = 560,
-    -- the page list: only the pages of the chosen tab, one bar of the auction house's category list
-    -- each (T.NAVBAR, no icon), 21 high as there and packed without a gap (the client's list spacing
-    -- is 0); 16 at least when more pages than fit the 454 px under the search box are shown (21 pages
-    -- still fit at 21: the officer + expert Raid tab has 9). The gold name from
-    -- NAV_LABEL_X (the client's 8), NAV_LABEL_W wide (the bar less 8 on the left and 6 on the right)
-    -- 28 rows: under the open page "Einstellungen" the tabs and the chosen tab's sections come too
-    -- (D-49: two pages, five tabs, up to 16 sections of the Raid tab), as the category list's sub-category
-    -- bars from NAV_SUB_X (a tab, gold) and NAV_SUB2_X (a section, white)
-    NAV_W = 164, NAV_ROWS = 28, NAV_LIST_H = 454, NAV_ROW_MIN = 16, NAV_SUB_X = 18, NAV_SUB2_X = 30,
-    NAV_ROW_H = 21, NAV_INDENT = 0, NAV_LABEL_X = 8, NAV_LABEL_W = 150,
-    -- the search box at the top of the page list (T.FIELD_H high), the list SEARCH_GAP under it;
-    -- typing turns the list into the results (RES_ROWS rows of RES_ROW_H: a group as a category bar,
-    -- its hits as the indented sub-category bars, RES_HIT_X the hit's text as the client's 18),
-    -- at least SEARCH_MIN characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 454
+    -- the height the player can drag (the grip at the bottom right, the chat window's size grabber,
+    -- GRIP square in the frame's corner (GRIP_OUT past it), over its border and clear of the page's controls
+    -- in its bottom right corner): H_MIN to H_MAX, never taller than the screen; T.PAGE_H and the side
+    -- bar follow
+    H_MIN = 560, H_MAX = 860, GRIP = 12, GRIP_OUT = 0,
+    -- the side bar (a W.List of NAV_ROW_H rows, one bar each, the client's list spacing 0, a scroll bar
+    -- when the open group does not fit): a group as the category bar, gold from NAV_LABEL_X, its plus or
+    -- minus (the quest log's, FOLD square) FOLD_R from the right; the open group's pages from NAV_SUB_X
+    -- (gold), under the open page "Einstellungen" its tabs from NAV_SUB2_X (gold) and the chosen tab's
+    -- sections from NAV_SUB3_X (white, D-49); a side window as a page with the chat window's
+    -- maximize sign in the place of the plus or minus. NAV_LIST_H: the bar's height at H_MIN
+    NAV_W = 164, NAV_LIST_H = 454, NAV_SUB_X = 18, NAV_SUB2_X = 30, NAV_SUB3_X = 42,
+    NAV_ROW_H = 21, NAV_LABEL_X = 8, NAV_LABEL_W = 150, FOLD = 14, FOLD_R = 6,
+    -- the search box at the top of the side bar (T.FIELD_H high), the list SEARCH_GAP under it;
+    -- typing turns the list into the results (RES_ROW_H rows: a group as a category bar, its hits as
+    -- the indented sub-category bars, RES_HIT_X the hit's text as the client's 18), at least
+    -- SEARCH_MIN characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 454
     SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 21, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
-    LIST_W = 176,         -- the page list's inset
+    LIST_W = 176,         -- the side bar's inset
     CONTENT_X = 184,      -- the content inset's left edge
-    INNER = 6,            -- the page list inside its inset
+    INNER = 6,            -- the side bar inside its inset
     PAGE_PAD = 7,         -- the page inside the content inset
     HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line between the portrait and the icons
     -- the head's right end (D-67): the page's help ("?", the client's help-i) and its settings (the
     -- quest log's gear, D-49) as small icons, ICON_SIZE square, ICON_GAP apart, ICON_RIGHT from the
     -- edge; recording and view sit in a menu behind the status line (its arrow MENU_SIZE)
     ICON_SIZE = 22, ICON_GAP = 6, ICON_RIGHT = 12, MENU_SIZE = 20,
-    TAB_Y = 60, TAB_GAP = 2,                 -- the side tabs on the right edge
-    TAB_ICON_INSET = 4,                      -- the side tab icon, pulled in from the tab's interior
-    -- the bottom tabs (PanelTabButtonTemplate, as under the character window): the first BTAB_X from
-    -- the window's left edge, reaching BTAB_Y into the frame, BTAB_GAP apart (the client's
-    -- PanelTemplates_AnchorTabs), BTAB_H high (the template); each as wide as its text + 20, at least
-    -- BTAB_MIN_W
-    BTAB_X = 11, BTAB_Y = 2, BTAB_GAP = 3, BTAB_H = 32, BTAB_MIN_W = 70,
 }
 
 -- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
