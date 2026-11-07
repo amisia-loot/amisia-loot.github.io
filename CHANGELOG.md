@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.62.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.62.1) (2026-11-07)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.0...v2.62.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(raid): loot rules and other loot addons' roll lines read item links with the named colour form (F-074, F-092)
 
   Item links that carry their quality as a named colour (such as "|cnIQ4:") are now read correctly: a loot
