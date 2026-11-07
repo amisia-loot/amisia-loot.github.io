@@ -273,7 +273,11 @@ local function onCommand(chan, text, sender)
     -- "Name-Realm" on clients that add the realm; Trust.lua loads after this file, hence the guards
     local who = (ns.TrustName and ns.TrustName(sender)) or (ns.StripOwnRealm and ns.StripOwnRealm(sender))
         or ns.FullName(sender)
-    if not who or ns.SameName(who, ns.UnitFullName("player")) then return end
+    if not who then return end
+    -- the own echo: exactly the own full name (as Comm.lua's isSelf), never a first name alone, or a
+    -- guildmate sharing the first name would be ignored as this client's own line
+    local me = ns.UnitFullName("player")
+    if me and who:lower() == me:lower() then return end
     local ok, err = pcall(fn, sender, rest, chan, who)
     if not ok then
         local handler = geterrorhandler and geterrorhandler()

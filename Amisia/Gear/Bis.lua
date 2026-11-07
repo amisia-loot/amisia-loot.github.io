@@ -2070,7 +2070,9 @@ local function enchantOf(link)
     local v = enchantCache[link]
     if v ~= nil then return v or nil end
     v = false
-    local pattern = type(ENCHANTED_TOOLTIP_LINE) == "string" and ("^" .. ENCHANTED_TOOLTIP_LINE:gsub("%%s", "(.+)") .. "$")
+    -- the client's template with its magic characters escaped (a locale's "(", "-" or "." would
+    -- else break the match)
+    local pattern = ns.TemplatePattern(ENCHANTED_TOOLTIP_LINE)
     local ok, tip = pcall(function() return C_TooltipInfo and C_TooltipInfo.GetHyperlink and C_TooltipInfo.GetHyperlink(link) end)
     if pattern and ok and type(tip) == "table" then
         for _, line in ipairs(tip.lines or {}) do
@@ -2082,6 +2084,8 @@ local function enchantOf(link)
     enchantCache[link] = v
     return v or nil
 end
+-- Test hook: the enchantment reader.
+ns._bis = { enchantOf = enchantOf }
 
 -- The parts of the change on Shift: "Schaden +2,0 %, Überleben -0,4 %" or, for a tank, "Überleben +1,1
 -- %, Bedrohung +0,3 %".

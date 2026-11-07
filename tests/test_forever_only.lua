@@ -92,10 +92,14 @@ for _, name in ipairs(files) do
         local src = readFile(ADDON_DIR .. "/" .. name)
         -- a generated data file holds item and spell numbers: the TBC interface number may be part of one
         local generated = src:find("^%-%- GENERATED") ~= nil
-        -- OnTooltipSetItem: only Core.lua's item tooltip hook of TBC and Era (D-57)
+        -- OnTooltipSetItem: only Core.lua's item tooltip hook of TBC and Era (D-57); the classic loot
+        -- buttons: only Raid/SoftRes.lua's SR/HR marks in the loot window of TBC and Era (D-57)
         for _, word in ipairs({ "IsForever", "LootButton", "LootFrame_Update", "BANK_CONTAINER", "OnTooltipSetItem", "20506",
                                 "NUM_BANKBAGSLOTS", "LOOTFRAME_NUMBUTTONS", "AmisiaScanTip" }) do
-            if not (generated and word == "20506") and not (word == "OnTooltipSetItem" and name == "Core/Core.lua") then
+            local classicLoot = name == "Raid/SoftRes.lua" and (word == "LootButton" or word == "LootFrame_Update"
+                or word == "LOOTFRAME_NUMBUTTONS")
+            if not (generated and word == "20506") and not (word == "OnTooltipSetItem" and name == "Core/Core.lua")
+                and not classicLoot then
                 assert(not src:find(word, 1, true), name .. " still has " .. word)
             end
         end

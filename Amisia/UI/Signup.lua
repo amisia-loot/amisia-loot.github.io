@@ -204,7 +204,9 @@ refresh = function()
     local values = {}
     for _, t in ipairs(terms) do values[#values + 1] = { value = t.night, text = ns.SignupTermText(t) } end
     F.pick:SetValues(values)
-    if not termNow() then
+    -- only once the dates are read: before, the night ns.ShowSignup(night) was given stays chosen
+    -- (as in the raid calendar window)
+    if ns.SignupTerms() and not termNow() then
         local t = ns.SignupNextTerm()
         cur = t and t.night or nil
     end

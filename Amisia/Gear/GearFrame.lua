@@ -44,7 +44,13 @@ local function settings()
         local fac = UnitFactionGroup and UnitFactionGroup("player")
         g.faction = fac == "Horde" and "H" or "A"
     end
-    if not g.col then g.col = Gear.ColumnOf(UnitLevel and UnitLevel("player") or 1) end
+    -- a saved column outside the table (an edited file, an older table) would index nothing
+    local col = tonumber(g.col)
+    if not (col and col >= 1 and col <= #Gear.COLUMNS and col == math.floor(col)) then
+        g.col = Gear.ColumnOf(UnitLevel and UnitLevel("player") or 1)
+    else
+        g.col = col
+    end
     g.specs = g.specs or {}
     return g
 end
@@ -625,7 +631,7 @@ end
 local pagePending
 Gear.OnData(function()
     local cur = ns.CurrentPage and ns.CurrentPage()
-    if not pagePending and (cur == "gear" or cur == "dungeons") then
+    if not pagePending and (cur == "gear" or cur == "dungeons" or cur == "raidjournal") then
         pagePending = true
         C_Timer.After(1, function() pagePending = false; ns.Refresh() end)
     end

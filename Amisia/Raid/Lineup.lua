@@ -507,6 +507,12 @@ function ns.LineupNight(night, create)
     if not d then return nil end
     local n = d.nights[night]
     if not n and create then
+        -- a night older than the 8 kept would be trimmed at once: refused, so no caller reports a
+        -- list taken that is already gone (audit 2026-11-07)
+        local all = ns.LineupNights()
+        if #all >= MAX_NIGHTS and night < all[MAX_NIGHTS] then
+            return nil, L["Nur die neuesten %d Nächte werden gespeichert; diese ist älter."]:format(MAX_NIGHTS)
+        end
         n = { at = time(), by = ns.UnitFullName("player"), size = ns.Get("lineup.size") or 40, list = {} }
         d.nights[night] = n
         trim(d)
@@ -759,28 +765,39 @@ function ns.SetLineupText(text, night)
     local old = ns.LineupNight(night, false)
     local before = {}
     for _, e in ipairs(old and old.list or {}) do before[e.n:lower()] = e end
-    local list, kept = {}, {}
+    local list, kept, taken = {}, {}, {}
     for _, e in ipairs(res.list) do
         matchEntry(k, e)
         local low = e.n:lower()
-        -- the list's statement: absent, maybe or signed up; its role
-        e.f, e.lr = "L", e.r
-        e.d = e.a and "X" or (e.m and "V") or "A"
-        local was = before[low]
-        if was then
-            kept[low] = true
-            -- what the calendar and Amisia said, the note and the officer's role stay
-            for _, fld in ipairs({ "ks", "kt", "as", "ag", "au", "ar", "w", "h" }) do e[fld] = was[fld] end
-            if was.h then e.r = was.r end
-            e.f = withSrc(sourcesOf(was), "L", true)
-            if not e.b then e.g, e.k, e.v = was.g, was.k, was.v end
-            if not e.r and was.r and not was.q then e.r = was.r end
-            if was.b and not e.b and not e.g then e.b = was.b end
+        -- two sign-ups that match the same character (an alias, a first name, another spelling)
+        -- make one row, the first; its role from the second when it had none (audit 2026-11-07)
+        local first = taken[low]
+        if first then
+            if not first.lr and IS_ROLE[e.r] and not first.h and not first.ar then
+                first.r, first.lr, first.q = e.r, e.r, nil
+            end
+        else
+            -- the list's statement: absent, maybe or signed up; its role
+            e.f, e.lr = "L", e.r
+            e.d = e.a and "X" or (e.m and "V") or "A"
+            local was = before[low]
+            if was then
+                kept[low] = true
+                -- what the calendar and Amisia said, the note and the officer's role stay
+                for _, fld in ipairs({ "ks", "kt", "as", "ag", "au", "ar", "w", "h" }) do e[fld] = was[fld] end
+                if was.h then e.r = was.r end
+                e.f = withSrc(sourcesOf(was), "L", true)
+                if not e.b then e.g, e.k, e.v = was.g, was.k, was.v end
+                if not e.r and was.r and not was.q then e.r = was.r end
+                if was.b and not e.b and not e.g then e.b = was.b end
+            end
+            settle(e)
+            settleRole(e, night)
+            if e.a then e.g, e.b, e.v, e.k = nil, nil, nil, nil end
+            local c = cleanEntry(e)
+            list[#list + 1] = c
+            taken[low] = c
         end
-        settle(e)
-        settleRole(e, night)
-        if e.a then e.g, e.b, e.v, e.k = nil, nil, nil, nil end
-        list[#list + 1] = cleanEntry(e)
     end
     local pasted = #list
     -- rows of the calendar or Amisia the new list does not name stay, without the list's mark
@@ -793,7 +810,8 @@ function ns.SetLineupText(text, night)
             list[#list + 1] = cleanEntry(was)
         end
     end
-    local n = ns.LineupNight(night, true)
+    local n, full = ns.LineupNight(night, true)
+    if not n then return nil, full end
     n.list, n.at, n.by = list, time(), ns.UnitFullName("player")
     if res.title then n.title = res.title end
     local line = summary({ unpack(list, 1, pasted) }, res.over or 0, k.guild)
@@ -1033,7 +1051,9 @@ function ns.LineupCopy(from, night)
     if not src or from == night then return nil end
     local dst = ns.LineupNight(night, false)
     if dst and #dst.list > 0 then return nil, L["Diese Nacht hat schon eine Aufstellung."] end
-    dst = ns.LineupNight(night, true)
+    local full
+    dst, full = ns.LineupNight(night, true)
+    if not dst then return nil, full end
     dst.list = {}
     for _, e in ipairs(src.list) do
         local c = cleanEntry(e)
@@ -1293,6 +1313,7 @@ function ns.LineupSignup(night, name, rec, notify)
             local all = ns.LineupNights()
             if #all >= MAX_NIGHTS and all[#all] >= tonight() then return false end
             n = ns.LineupNight(night, true)
+            if not n then return false end
         end
         e = { n = name, f = "A" }
         n.list[#n.list + 1] = e
@@ -1354,7 +1375,8 @@ end
 -- chat line.
 function ns.LineupCalendar(ev, invites, quiet)
     local night = ev.night or ns.NightOf(ev.at)
-    local n = ns.LineupNight(night, true)
+    local n, full = ns.LineupNight(night, true)
+    if not n then return nil, full end
     local now = math.floor(time())
     if n.cal and not sameEvent(n.cal, ev) then
         local keep = {}

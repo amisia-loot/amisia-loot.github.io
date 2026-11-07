@@ -407,23 +407,29 @@ local function npDetail(n)
     if n.detail then return n.detail end
     local rec = n.rec
     local k = rec and rec[1]
-    local text
+    local text, partial
     if k == "C" then
         local skill, spell, name = recipeOf(n.id, rec[2])
         n.skill, n.spell, n.recipe = skill, spell, name
         local prof = Gear.PROFESSIONS[rec[2]] or tostring(rec[2])
         text = name and TEXT.craft:format(prof, name) or TEXT.craftPlain:format(Gear.SourceText(rec))
         local Cr = ns.Crafters
-        if Cr and Cr.ForItem and not (InCombatLockdown and InCombatLockdown()) then
-            local list = Cr.ForItem(n.id)
-            if #list > 0 then text = text .. " · " .. TEXT.crafters:format(Cr.Text(list, 3)) end
+        if Cr and Cr.ForItem then
+            if InCombatLockdown and InCombatLockdown() then
+                -- the crafters wait for the end of combat: this text is not kept, the next fill
+                -- out of combat makes it whole
+                partial = true
+            else
+                local list = Cr.ForItem(n.id)
+                if #list > 0 then text = text .. " · " .. TEXT.crafters:format(Cr.Text(list, 3)) end
+            end
         end
     elseif k == "A" or (k == "W" and not rec[2]) then
         text = Gear.SourceText(rec)
     else
         text = rec and (TEXT.noData .. ": " .. Gear.SourceText(rec, true)) or TEXT.noData
     end
-    n.detail = text
+    if not partial then n.detail = text end
     return text
 end
 

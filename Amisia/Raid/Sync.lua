@@ -220,6 +220,11 @@ local function revOf(s)
     local sync = type(s) == "table" and type(s.sync) == "table" and s.sync or nil
     return sync and whole(sync.rev, MAX_REV) and sync.rev or 0
 end
+-- Whether the own state was taken without the officer part (s.sync.pub, see apply).
+local function pubOnly(s) return type(s) == "table" and type(s.sync) == "table" and s.sync.pub == true end
+-- The revision a new keeper gathers against: one below the own when that lacks the officer part,
+-- so an officer holding the same revision whole sends it.
+local function gatherRev(s) return pubOnly(s) and math.max(0, revOf(s) - 1) or revOf(s) end
 
 -- (e1, r1) against (e2, r2): -1 older, 0 the same, 1 newer.
 local function order(e1, r1, e2, r2)
@@ -582,12 +587,22 @@ local function apply(s, sp, so, from)
     local known = {}
     for _, r in ipairs(sp.a) do known[r[1]] = true end
     for _, r in ipairs(sp.g) do known[r[1]] = true end
+    -- the swap: the award tables of the same id keep their identity
+    local pool = {}
+    for _, x in ipairs(s.awards or {}) do if x.id then pool[x.id] = x end end
+    for _, x in ipairs(s.gone or {}) do if x.id then pool[x.id] = x end end
     local function extra(x)
         local e = so and n[x.id]
         if e then
             x.note = e[1] ~= "" and e[1] or nil
             x.orig = e[2] ~= "" and e[2] or nil
             x.manual = e[3] == 1 or nil
+        elseif not so and pool[x.id] then
+            -- the public part alone knows no officer fields: what this client holds stays (an
+            -- officer in the raider view would else lose them and send them lost as the next
+            -- keeper; audit 2026-11-07)
+            local old = pool[x.id]
+            x.note, x.orig, x.manual = old.note, old.orig, old.manual
         end
     end
     local newA, newG = {}, {}
@@ -652,10 +667,6 @@ local function apply(s, sp, so, from)
             end
         end
     end
-    -- the swap: the award tables of the same id keep their identity
-    local pool = {}
-    for _, x in ipairs(s.awards or {}) do if x.id then pool[x.id] = x end end
-    for _, x in ipairs(s.gone or {}) do if x.id then pool[x.id] = x end end
     local function keep(list)
         for i, x in ipairs(list) do
             local old = known[x.id] and pool[x.id]
@@ -688,6 +699,9 @@ local function apply(s, sp, so, from)
     s.sync = type(s.sync) == "table" and s.sync or {}
     s.sync.key, s.sync.rev, s.sync.hash, s.sync.keeper, s.sync.at, s.sync.plus = sp.k, sp.r, sp.h, from, time(), plus
     s.sync.term = sp.e
+    -- a state taken without the officer part: the checksum is the keeper's, but this client lacks
+    -- the officer fields (officer view: asked for again; a new keeper gathers them first)
+    s.sync.pub = (not so) or nil
     if so then s.sync.lin = linFrom(so.l) end
     stats.applied = stats.applied + 1
     -- a former keeper: its changes the new keeper's state lacks go to him as wishes
@@ -732,6 +746,7 @@ local function broadcast(s)
     stamp(s)
     local sp, so = ns.SyncBuild(s)
     s.sync.key, s.sync.hash, s.sync.keeper, s.sync.at = key, sp.h, me(), time()
+    s.sync.pub = nil   -- the keeper's own state is the raid's
     local ok, why = ns.CommSendBlob("SP", key, sp, "RAID", nil, { key = "SP:" .. key, ttl = DATA_TTL })
     if not ok then
         if why == L["Daten zu groß."] and not warnedSize then   -- Comm's reason (translated)
@@ -791,7 +806,7 @@ local function finishTakeover()
     local ownRev = revOf(s)
     -- the newest state gathered, when it is newer than the own: taken like a follower takes it
     local best, from = t and t.key == key and t.best, nil
-    if best and order(best.sp.e, best.sp.r, termOf(s), revOf(s)) > 0 and ns.SyncCheck(best.sp, best.so, s) then
+    if best and order(best.sp.e, best.sp.r, termOf(s), gatherRev(s)) > 0 and ns.SyncCheck(best.sp, best.so, s) then
         apply(s, best.sp, best.so, best.from)
         from = best.from
     end
@@ -833,7 +848,7 @@ local function beginKeeper(s, key, old)
     sendToken, sendFirst = nil, nil
     local token = {}
     takeover = { key = key, token = token, deadline = now() + TAKEOVER_WAIT, cands = {} }
-    local fields = { key, tostring(revOf(s)), "PO", tostring(termOf(s)), "G" }
+    local fields = { key, tostring(gatherRev(s)), "PO", tostring(termOf(s)), "G" }
     ns.CommSend("RQ", fields, "RAID", nil, { key = "RQG:" .. key })
     local asked = {}
     local function whisper(name)
@@ -1767,7 +1782,7 @@ local function compare(s, key, e, rev, hash, sender)
     local o = sync and order(e, rev, termOf(s), revOf(s)) or 1
     if o < 0 then return notice(s, key, sender) end
     if officerSelf() then
-        if o > 0 or sync.hash ~= hash then request(key, "PO", sender, rev) end
+        if o > 0 or sync.hash ~= hash or pubOnly(s) then request(key, "PO", sender, rev) end
     elseif ns.Get("sync.raiderAwards") ~= false then
         if o > 0 then request(key, "P", sender, rev) end
     end
@@ -1784,7 +1799,7 @@ end
 local function newer(s, sp)
     if not hasState(s) then return 1 end
     local o = order(sp.e, sp.r, termOf(s), revOf(s))
-    if o == 0 and sp.h ~= s.sync.hash then return 1 end
+    if o == 0 and (sp.h ~= s.sync.hash or (pubOnly(s) and officerSelf())) then return 1 end
     return o
 end
 
@@ -1828,7 +1843,7 @@ local function gatherPart(name, part, tbl)
         debugOnce("refused", L["Ungültiges Abbild verworfen (%s)."]:format(whyText(why)))
     else
         noteSeen(t.key, c.sp.e, c.sp.r, name)
-        if order(c.sp.e, c.sp.r, termOf(s), revOf(s)) > 0 and (not t.best or order(c.sp.e, c.sp.r, t.best.sp.e, t.best.sp.r) > 0) then
+        if order(c.sp.e, c.sp.r, termOf(s), gatherRev(s)) > 0 and (not t.best or order(c.sp.e, c.sp.r, t.best.sp.e, t.best.sp.r) > 0) then
             t.best = { sp = c.sp, so = c.so, from = name }
         end
     end
@@ -1884,6 +1899,11 @@ local function onSO(name, sender, so, key)
         pend[key] = nil
         return combine(s, p.sp, so, name, sender)
     end
+    -- a late officer part of an older revision never pushes out a newer public part that waits for
+    -- its own (its timer asks for that one; audit 2026-11-07)
+    if p and p.sp and ns.SameName(p.from, name) and type(p.sp.r) == "number" and type(so.r) == "number" and p.sp.r > so.r then
+        return
+    end
     pend[key] = { so = so, from = name }
 end
 
@@ -1929,7 +1949,7 @@ ns.CommOn("NW", function(sender, f, chan)
         -- the answer of an asked officer that has nothing newer
         local s = sessionFor(key)
         if officer and takeover and takeover.key == key and s and whole(e, MAX_TERM) and whole(rev, MAX_REV)
-            and order(e, rev, termOf(s), revOf(s)) <= 0 then
+            and order(e, rev, termOf(s), gatherRev(s)) <= 0 then
             gatherAnswered(name)
         end
     end)
@@ -1993,6 +2013,9 @@ local function answerGather(name, sender, key, e, r)
     local s = sessionFor(key)
     if not s or not officerSelf() or ns.SameName(name, me()) or not whole(e, MAX_TERM) or not whole(r, MAX_REV) then return end
     officers[name:lower()] = name
+    -- a state taken without the officer part is offered too when it is newer than asked: its
+    -- public changes would else be lost; a new keeper that lacks only the officer part asks one
+    -- revision lower (gatherRev), so the same revision held whole comes (review 2026-11-07)
     if not hasState(s) or order(termOf(s), revOf(s), e, r) <= 0 then
         -- nothing newer here: said, so the new keeper need not wait for this client
         local sync = type(s.sync) == "table" and s.sync or {}
@@ -2145,6 +2168,12 @@ end
 
 ns.Listen("SETTING", function(path)
     if type(path) == "string" and (path:find("^sync%.") or path:find("^need%.") or path == "loot.lead" or path == "ui.view") then update() end
+    -- back in the officer view with a state taken without the officer part: asked for at once
+    -- (the keeper repeats its state only every 4 minutes)
+    if path == "ui.view" and role == "follower" and keeperName and officerSelf() then
+        local s, key = running()
+        if s and key == roleKey and pubOnly(s) then request(key, "PO", keeperName, nil) end
+    end
 end)
 
 ---------------------------------------------------------------------------

@@ -43,12 +43,14 @@ local function inInstance()
 end
 
 -- The client's stats of a weapon or armour piece, as "KEY=value;..." with the ITEM_MOD_ prefix cut
--- off: the gear planner's build reads them, so the planner needs no loading in game.
+-- off: the gear planner's build reads them, so the planner needs no loading in game. The second
+-- value: whether there is nothing more to ask (not gear, or the client gave its stats table, an empty
+-- one for a shirt or a tabard); false while the client has no stats for it yet.
 local function statText(id, classID)
     local getStats = C_Item.GetItemStats
-    if (classID ~= 2 and classID ~= 4) or not getStats then return "" end
+    if (classID ~= 2 and classID ~= 4) or not getStats then return "", true end
     local raw = getStats("item:" .. id)
-    if not raw then return "" end
+    if type(raw) ~= "table" then return "", false end
     local parts = {}
     for k, v in pairs(raw) do
         if type(v) == "number" and v ~= 0 then
@@ -56,7 +58,7 @@ local function statText(id, classID)
         end
     end
     table.sort(parts)
-    return table.concat(parts, ";")
+    return table.concat(parts, ";"), true
 end
 
 local function store(id)
@@ -75,10 +77,10 @@ local function store(id)
         tostring(classID or ""), tostring(subclassID or ""), tostring(equipLoc or ""), tostring(icon or ""), tostring(bindType or ""),
     }
     -- a tenth field with the stats, only for gear
-    local st = statText(id, tonumber(classID))
+    local st, settled = statText(id, tonumber(classID))
     if st ~= "" then fields[#fields + 1] = st end
     s.items[id] = table.concat(fields, "\t")
-    return true
+    return true, settled
 end
 ns.StoreItem = store
 ns.ScanDB = scanDB

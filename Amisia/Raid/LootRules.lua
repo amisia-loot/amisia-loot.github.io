@@ -43,6 +43,7 @@ local CORPSE_KEEP = 12 * 3600
 local NOTE_MARK = "Regel: "   -- l10n-ok: the fixed marker of a rule's award note (data, read on the site)
 local MASTER = (Enum and Enum.LootMethod and Enum.LootMethod.Masterlooter) or 2
 local KINDS = { q = true, m = true, i = true, p = true }
+local messages                -- the MR messages of a rule list (below, "Sharing between officers")
 local SPECIAL = { bank = true, de = true }
 
 local DB                      -- AmisiaDB
@@ -266,6 +267,15 @@ function ns.AddLootRule(spec)
     if not id then return nil, L["Ungültiger Wert."] end
     local r = cleanRule({ id = id, k = spec.k, q = spec.q, items = items, to = spec.to, by = me() })
     if not r then return nil, L["Ungültiger Wert."] end
+    -- the set must still go to the officers in its 4 MR parts (6 entries and PART_BYTES each): a
+    -- rule that would not fit is refused here, not later at "An Offiziere senden" (audit 2026-11-07)
+    local after = {}
+    for i, o in ipairs(lr.list) do after[i] = o end
+    after[#after + 1] = r
+    -- with the revision and sender touch() will give the set
+    if not messages(after, math.max(now(), (lr.rev or 0) + 1), me()) then
+        return nil, L["Die Regel passt nicht mehr in die Nachricht an die Offiziere (höchstens %d Teile)."]:format(MAX_PARTS)
+    end
     lr.list[#lr.list + 1] = r
     touch()
     return r
@@ -883,14 +893,16 @@ local function entries(list)
     return out
 end
 
--- The MR messages of the own set: a list of field lists, or nil when it needs more than 4.
-local function messages()
+-- The MR messages of the own set (or of list with rev and by, a set about to be): a list of field
+-- lists, or nil when it needs more than 4.
+messages = function(list, rev, by)
     local lr = ns.LootRules()
-    local by = ns.ExportName(lr.by or me()):gsub("[%s%c,:|]", "")
+    rev = rev or lr.rev
+    by = ns.ExportName(by or lr.by or me()):gsub("[%s%c,:|]", "")
     if by == "" then by = "?" end
     local groups, cur, size = {}, {}, 0
-    local head = #tostring(lr.rev) + #by + 16
-    for _, e in ipairs(entries(lr.list)) do
+    local head = #tostring(rev) + #by + 16
+    for _, e in ipairs(entries(list or lr.list)) do
         if #cur >= PER_PART or (#cur > 0 and head + size + #e + 1 > PART_BYTES) then
             groups[#groups + 1] = cur
             cur, size = {}, 0
@@ -902,7 +914,7 @@ local function messages()
     if #groups > MAX_PARTS then return nil end
     local out = {}
     for p, g in ipairs(groups) do
-        out[p] = { tostring(lr.rev), tostring(p), tostring(#groups), by, #g > 0 and table.concat(g, ",") or "-" }
+        out[p] = { tostring(rev), tostring(p), tostring(#groups), by, #g > 0 and table.concat(g, ",") or "-" }
     end
     return out
 end

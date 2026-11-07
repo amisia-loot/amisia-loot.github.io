@@ -803,7 +803,11 @@ function ns.CommSend(kind, fields, chan, target, opts)
     return true
 end
 
-local seq = 0
+-- The blob counter starts from the clock, not at 1: receivers remember a finished set (art:key:seq
+-- of a sender) for DONE_KEEP seconds, so after a quick /reload a counter from 1 would repeat a recent
+-- id and its first blob would be dropped as a late double. The clock moves ten steps a second, faster
+-- than any sender sends blobs.
+local seq = math.floor((GetTime() or 0) * 10) % 999999
 
 -- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK", "CK", "LC", "KS", "PK" or "SR"; key the raid
 -- key (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"; PK:

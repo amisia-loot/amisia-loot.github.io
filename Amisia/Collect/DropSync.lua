@@ -58,6 +58,12 @@ local partsLog = {}       -- { GetTime(), parts } of the blobs sent
 local originNew, senderNew = {}, {}
 local firstAt, announced, lastDV, addedAtDV, learnedAtDV, reannounced, emptyAtFirst
 local learned = 0         -- records new to this client from the exchange this session
+-- lower name -> when the last DQ or DR went to that sender. Its Comm takes one DQ per week and one DR
+-- per first bucket in 60 s from one asker and drops the rest silently; a pull cut off by combat or an
+-- instance and started again within that minute would ask unheard, wait out its answer and end with
+-- the announcement never pulled. So a sender is asked again only after the gap.
+local keyedAt = {}
+local KEY_GAP = 61
 
 local function now() return GetTime() end
 
@@ -334,7 +340,7 @@ startNext = function()
         local p = peers[i]
         if t - p.at > L.peerKeep then
             table.remove(peers, i)
-        elseif p.nb <= t then
+        elseif p.nb <= t and not (keyedAt[p.low] and t - keyedAt[p.low] < KEY_GAP) then
             ready[#ready + 1] = i
         end
     end
@@ -361,7 +367,11 @@ nextWeek = function()
         return startNext()
     end
     pull.w, pull.stage, pull.parts, pull.n, pull.got, pull.deadline = w, "DI", {}, nil, 0, now() + L.diWait
-    if not send("DQ", { tostring(w) }, "WHISPER", pull.name) then pull = nil end
+    if not send("DQ", { tostring(w) }, "WHISPER", pull.name) then
+        pull = nil
+        return
+    end
+    keyedAt[pull.low] = now()
 end
 
 local function hourCount()
@@ -417,6 +427,7 @@ nextDR = function()
         len, cnt, nb = len + add, cnt + dr.cnt, nb + 1
     end
     if not send("DR", fields, "WHISPER", pull.name) then return stopPull(false) end
+    keyedAt[pull.low] = now()
     drTimes[#drTimes + 1] = now()
     local akey = fields[1] .. "|" .. pull.low
     asked[akey] = { at = now(), keys = keys, blobs = 0, recs = 0, max = math.min(cnt, L.blobRecords) }
@@ -877,6 +888,9 @@ local function tick()
     serveOne()
     for k, a in pairs(asked) do
         if t - a.at > L.askKeep then asked[k] = nil end
+    end
+    for low, at in pairs(keyedAt) do
+        if t - at >= KEY_GAP then keyedAt[low] = nil end
     end
 end
 

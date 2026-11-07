@@ -145,7 +145,8 @@ function ns.StatsBuild(opts)
                 else
                     m[p] = "here"
                 end
-                if s.start >= from then charOf(p, full).raids = charOf(p, full).raids + 1 end
+                -- a session without its start (an old or hand-edited save) counts as the oldest
+                if (s.start or 0) >= from then charOf(p, full).raids = charOf(p, full).raids + 1 end
             end
         end
         for name, e in pairs(type(s.bench) == "table" and s.bench or {}) do

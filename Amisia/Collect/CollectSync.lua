@@ -72,6 +72,11 @@ local crTimes = {}
 local crFirst = {}        -- "<kind><bb>" of a request's first bucket -> when it was sent (Comm takes one per
                           -- 60 s for the same first field and drops the rest)
 local KEY_GAP = 61
+-- lower name -> when the last CQ went to that sender: Comm there takes one CQ per kind in 60 s from
+-- one asker and drops the rest silently, so a pull cut off by combat or an instance and started again
+-- within that minute would ask unheard and end without the announcement pulled. A sender is asked
+-- again only after the gap.
+local cqAt = {}
 local asked = {}          -- "<kind><first bb>|lower name" -> { at, kind, b (first bucket), bs = { [bucket] = true } }
 local peers = {}          -- { name, low, kinds, at, nb, retry }
 local pull                -- { name, low, kinds, at, retry, missed, wants, wi, kind, stage, parts, n, got, crs, akey, deadline }
@@ -323,7 +328,7 @@ startNext = function()
         local p = peers[i]
         if t - p.at > L.peerKeep then
             table.remove(peers, i)
-        elseif p.nb <= t then
+        elseif p.nb <= t and not (cqAt[p.low] and t - cqAt[p.low] < KEY_GAP) then
             ready[#ready + 1] = i
         end
     end
@@ -364,7 +369,11 @@ nextKind = function()
     end
     pull.kind, pull.stage, pull.parts, pull.n, pull.got, pull.deadline = kind, "CI", {}, nil, 0, now() + L.ciWait
     pull.diff, pull.hs = nil, nil
-    if not send("CQ", { kind }, "WHISPER", pull.name) then pull = nil end
+    if not send("CQ", { kind }, "WHISPER", pull.name) then
+        pull = nil
+        return
+    end
+    cqAt[pull.low] = now()
 end
 
 -- An answer that did not come (timeout, a bad blob): the next request, or after missMax misses the
@@ -864,6 +873,9 @@ local function tick()
     serveOne()
     for k, a in pairs(asked) do
         if t - a.at > L.askKeep then asked[k] = nil end
+    end
+    for low, at in pairs(cqAt) do
+        if t - at >= KEY_GAP then cqAt[low] = nil end
     end
 end
 

@@ -1169,7 +1169,10 @@ local function fillRewards(V, q, y)
         local slot = ns.BIS_SLOT_NAME[it.slotKey] or ""
         if slot ~= "" then parts[#parts + 1] = GREY .. slot .. "|r" end
         parts[#parts + 1] = it.upgrade and (GREEN .. signed(it.gain) .. "|r") or (GREY .. signed(it.gain) .. "|r")
-        local worn = it.upgrade and wornText(it.slotKey)
+        -- what it replaces only for an upgrade: for any other reward "upgrade" is false, which
+        -- must not read as an empty slot
+        local worn
+        if it.upgrade then worn = wornText(it.slotKey) end
         if worn then parts[#parts + 1] = GREY .. PTEXT.instead:format("|r" .. worn .. GREY) .. "|r"
         elseif worn == false then parts[#parts + 1] = GREY .. PTEXT.empty .. "|r" end
         b.sub:SetText(table.concat(parts, " · "))

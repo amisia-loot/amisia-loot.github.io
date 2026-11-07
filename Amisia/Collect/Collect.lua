@@ -96,19 +96,12 @@ end
 ns.NoteSuffix = noteSuffix
 
 -- Items stored complete this session: a bag update or a tooltip writes an item's line once, not on
--- every event (gear only once its stats came, so a line without them is written again).
+-- every event (gear only once the client gave its stats, so a line without them is written again;
+-- a shirt or a tabard has none and is complete with its empty stats table).
 local complete = {}
 -- Links noted without a source whose item is complete and whose suffix needs nothing: noting them
 -- again (every bag update) does nothing, so it is skipped. At most DONE_LINKS_MAX, then anew.
 local doneLinks, doneLinksN, DONE_LINKS_MAX = {}, 0, 2000
-
-local function isComplete(id)
-    local line = ns.ScanDB().items[id]
-    if type(line) ~= "string" then return false end
-    local _, tabs = line:gsub("\t", "")
-    local cls = tonumber(line:match("^[^\t]*\t[^\t]*\t[^\t]*\t[^\t]*\t([^\t]*)"))
-    return tabs >= 9 or (cls ~= 2 and cls ~= 4)
-end
 
 -- Records an item by id or link. Returns true when it is stored now, false when requested.
 function ns.NoteItem(idOrLink, source)
@@ -131,8 +124,9 @@ function ns.NoteItem(idOrLink, source)
         end
         return true
     end
-    if ns.StoreItem(id) then
-        if isComplete(id) then complete[id] = true end
+    local stored, statsIn = ns.StoreItem(id)
+    if stored then
+        if statsIn then complete[id] = true end
         return true
     end
     wanted[id] = source or false

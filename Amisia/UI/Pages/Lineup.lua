@@ -47,13 +47,32 @@ local POLL = 30            -- and every this many seconds (the client does not t
 local page
 local view = "match"      -- "match", "planner", "invite", "paste" or "calendar"
 local night               -- the night shown (nil: tonight)
-local selected            -- the index of the entry a click chose (swap and move)
+-- the entry a click chose (swap and move), by its lower-case name: a list index would point at
+-- another player once the list changes between the two clicks (a sync, a sign-up, a removal)
+local selName
 local calList             -- the guild events of the calendar view (ns.Cal.Events()), nil while read
 local calPick             -- the id (else the index) of the event chosen in the calendar view
 
 function ns.LineupPageFrame() return page end
 
 local function curNight() return night or ns.LineupTonight() end
+
+-- The lower-case name of entry i of the shown night, or nil.
+local function nameAt(i)
+    local n = ns.LineupNight(curNight(), false)
+    local e = n and n.list[i]
+    return e and e.n:lower() or nil
+end
+
+-- The current index of the chosen entry, or nil when it is gone.
+local function selIndex()
+    if not selName then return nil end
+    local n = ns.LineupNight(curNight(), false)
+    for i, e in ipairs(n and n.list or {}) do
+        if e.n:lower() == selName then return i end
+    end
+    return nil
+end
 
 local ROLE_SHORT = { T = L["T##Rolle"], H = L["H##Rolle"], M = L["N##Rolle"], R = L["F##Rolle"] }
 local ROLE_NAME = { T = L["Tank"], H = L["Heiler"], M = L["Nahkampf"], R = L["Fernkampf"] }
@@ -147,7 +166,7 @@ local function say(ok, why) if not ok and why then ns.msg(why) end end
 
 -- target: { i = entry } or { g = group } (a free place) or { to = "open" / "bench" } (a list head)
 local function act(from, target)
-    selected = nil
+    selName = nil
     if target.i then
         say(ns.LineupSwap(curNight(), from, target.i))
     elseif target.g then
@@ -161,18 +180,23 @@ local function act(from, target)
 end
 
 local function click(target)
+    local cur = selIndex()
     if target.i then
-        if not selected then
-            selected = target.i
-        elseif selected == target.i then
-            selected = nil
+        if not cur then
+            selName = nameAt(target.i)
+        elseif cur == target.i then
+            selName = nil
         else
-            act(selected, target)
+            act(cur, target)
             return
         end
         ns.Refresh()
-    elseif selected then
-        act(selected, target)
+    elseif cur then
+        act(cur, target)
+    elseif selName then
+        -- the chosen entry left the list meanwhile
+        selName = nil
+        ns.Refresh()
     end
 end
 
@@ -196,7 +220,7 @@ local function menuFor(owner, i)
         if e.g then entries[#entries + 1] = { L["Aus der Gruppe nehmen"], function() ns.LineupMove(key, i, nil) end } end
     end
     entries[#entries + 1] = { L["Entfernen"], function()
-        selected = nil
+        selName = nil
         ns.LineupRemove(key, i)
     end }
     return W.Menu(owner, entries)
@@ -351,6 +375,7 @@ local function fillGroups(f, n, counts)
     end
     local noHeal = {}
     for _, g in ipairs(counts.noHealer) do noHeal[g] = true end
+    local sel = selIndex()
     for g, box in ipairs(f.groups) do
         show(box, g <= G)
         box.count:SetText(("%d/5"):format(#members[g]))
@@ -369,7 +394,7 @@ local function fillGroups(f, n, counts)
                 b.name:SetText(GREY .. L["frei##Platz"] .. "|r")
                 b.lock:Hide()
             end
-            show(b.sel, i ~= nil and i == selected)
+            show(b.sel, i ~= nil and i == sel)
         end
     end
 end
@@ -388,16 +413,18 @@ local function fillSide(row, it)
     row.r:SetText(roleText(e))
     row.name:SetText(classColored(e.n, e.c, p ~= nil and not p.online, e.x) .. (e.k and (GREY .. L[" (fest)"] .. "|r") or ""))
     row.info:SetText(it.info or "")
-    show(row.sel, it.i == selected)
+    show(row.sel, selName ~= nil and it.i == selIndex())
 end
 
 -- the heads of the two lists take a chosen name: "Nicht eingeteilt" and "Ersatz"
 local function sideHeads(f, top)
     local _, a = f:Columns({ { "a", 6, LEFT_W - 12, "" } }, { top = top, x = 0, width = LEFT_W, sort = function()
-        if selected then act(selected, { to = "open" }) end
+        local cur = selIndex()
+        if cur then act(cur, { to = "open" }) end
     end })
     local _, b = f:Columns({ { "b", 6, RIGHT_W - 12, "" } }, { top = top, x = RIGHT_X, width = RIGHT_W, sort = function()
-        if selected then act(selected, { to = "bench" }) end
+        local cur = selIndex()
+        if cur then act(cur, { to = "bench" }) end
     end })
     -- with sort the heads are buttons; their labels carry the text
     f.openHead, f.benchHead = a.a.label, b.b.label
@@ -602,7 +629,7 @@ local function takeCalendar()
     if not ev then return end
     ns.LineupReadCalendar(ev, function(key, line)
         if key then
-            night, selected, view = key, nil, "match"
+            night, selName, view = key, nil, "match"
         end
         if line then ns.msg(line) end
         ns.Refresh()
@@ -666,7 +693,7 @@ local function apply(f)
         ns.msg(line)
         return
     end
-    night, selected, view = key, nil, "match"
+    night, selName, view = key, nil, "match"
     f.paste.box:SetText("")
     f.paste.box:ClearFocus()
     ns.msg(line)
@@ -694,7 +721,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         -- views with the view's action on the right
         local top = f:Bands({ "row", "line", "line", "row" })
         f.night = W.Picker(f, 150, function(v)
-            night, selected = v, nil
+            night, selName = v, nil
             ns.Refresh()
         end)
         f.pasteBtn = W.Link(f, L["Einfügen"], 90, function()
@@ -714,7 +741,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         W.Tooltip(f.calBtn, L["Aus Kalender"], L["Die Gildenereignisse der nächsten 14 Tage aus dem Spielkalender. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht (Amisia schreibt nichts in den Kalender)."])
         f.auto = W.Link(f, L["Automatisch einteilen"], 160, function()
             local placed, over = ns.LineupAutoAssign(curNight())
-            selected, view = nil, "planner"
+            selName, view = nil, "planner"
             local n = ns.LineupNight(curNight(), false)
             ns.msg(L["Eingeteilt: %d in %d Gruppen, %d auf Ersatz (überzählig)."]:format(placed, n and ns.LineupGroups(n) or 0, over))
             ns.Refresh()
@@ -726,9 +753,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.counts = f:Line(2)
         f.calLine = f:Line(3)
         f.views = {
-            match = W.Tab(f, L["Abgleich"], 70, function() view, selected = "match", nil ns.Refresh() end),
+            match = W.Tab(f, L["Abgleich"], 70, function() view, selName = "match", nil ns.Refresh() end),
             planner = W.Tab(f, L["Planer"], 70, function() view = "planner" ns.Refresh() end),
-            invite = W.Tab(f, L["Einladen"], 70, function() view, selected = "invite", nil ns.Refresh() end),
+            invite = W.Tab(f, L["Einladen"], 70, function() view, selName = "invite", nil ns.Refresh() end),
         }
         for _, c in pairs(f.views) do W.FitChip(c, 70) end
         -- the instance of the "ID" marks (raid IDs, F-099); shown when any ID is known
@@ -842,7 +869,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.plan.people = f.people
         f.list = n and n.list or {}
         f.calLost = n and n.cal and n.cal.lost or false
-        if selected and not f.list[selected] then selected = nil end
+        if selName and not selIndex() then selName = nil end
         -- the night picker: tonight, then the saved nights
         local values, seen = {}, {}
         local function add(k)

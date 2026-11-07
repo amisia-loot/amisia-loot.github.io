@@ -278,7 +278,12 @@ end
 
 local function isDone(qid)
     syncMemos()
-    if turnedIn[qid] then return true end
+    -- a repeatable quest stays open after it was turned in; checked here rather than at the
+    -- event, where the data may not be parsed yet (it loads on demand, D-28)
+    if turnedIn[qid] then
+        local r = index and index.byId[qid]
+        if not (r and r[FLAGS]:find("R", 1, true)) then return true end
+    end
     if doneSet then return doneSet[qid] == true end
     local v = doneMemo[qid]
     if v == nil then
@@ -857,9 +862,8 @@ end
 
 ns.OnEvent("QUEST_TURNED_IN", function(qid)
     qid = tonumber(plain(qid))
-    -- a repeatable quest stays open after it was turned in
-    local r = qid and index and index.byId[qid]
-    if qid and not (r and r[FLAGS]:find("R", 1, true)) then turnedIn[qid] = true end
+    -- every turn-in is kept; isDone leaves out the repeatable ones
+    if qid then turnedIn[qid] = true end
     bump()
 end)
 ns.OnEvent("QUEST_ACCEPTED", bump)

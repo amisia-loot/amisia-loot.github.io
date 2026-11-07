@@ -695,6 +695,11 @@ local queued = {}
 local ticker
 local clock = 0
 local REQUESTS_PER_TICK, MAX_PENDING, TIMEOUT, MAX_TRIES = 15, 100, 6, 2
+-- An item whose tries all timed out counts as failed, but a busy server may just have been slow:
+-- once RETRY_AFTER seconds have passed it is asked again when it is needed next, up to MAX_ROUNDS
+-- rounds in all (a failed answer by event is final).
+local RETRY_AFTER, MAX_ROUNDS = 60, 3
+local timedOut = {}   -- id -> { at = time of the last timeout, rounds = n }
 local CACHE_VERSION = "v3"
 local arrived = false   -- an answer came by event since the last tick
 local waits = 0         -- how often Gear.Stats answered without the item's final stats
@@ -785,6 +790,9 @@ local function tick()
             else
                 pending[id] = nil
                 finishItem(id, nil)
+                local f = timedOut[id] or { rounds = 0 }
+                f.at, f.rounds = t, f.rounds + 1
+                timedOut[id] = f
                 changed = true
             end
         end
@@ -832,7 +840,12 @@ function Gear.StatsWaits() return waits end
 -- computed for it (Gear.ComputedStats) still count then.
 function Gear.Stats(id)
     local s = stats[id]
-    if s == false then return Gear.ComputedStats(id), true end
+    if s == false then
+        local f = timedOut[id]
+        if not (f and f.rounds < MAX_ROUNDS and now() - f.at >= RETRY_AFTER) then return Gear.ComputedStats(id), true end
+        -- timed out a while ago: asked again below
+        stats[id], s = nil, nil
+    end
     if s ~= nil then return s end
     local g = cacheDB()
     if g and g.stats[id] then
@@ -1047,7 +1060,7 @@ end
 -- Test hook: run the loader once without waiting for the ticker.
 Gear._tick = tick
 function Gear._reset()
-    wipe(stats); wipe(pending); wipe(queue); wipe(queued); wipe(suffixCache)
+    wipe(stats); wipe(pending); wipe(queue); wipe(queued); wipe(suffixCache); wipe(timedOut)
     arrived = false
     waits = waits + 1
     memo, memoKey = {}, nil
@@ -1219,7 +1232,9 @@ local function setPlan(res, w, level, class)
     local B = ns.BIS
     local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
     if not S then return end
-    local used = {}
+    -- chosen: the sets already applied; without it the second pass could take the rest of the same
+    -- set and count its bonus twice
+    local used, chosen = {}, {}
     for _ = 1, 2 do
         local bestSet
         -- per free slot the first option of every set (one pass per list)
@@ -1237,7 +1252,9 @@ local function setPlan(res, w, level, class)
         for sid, set in pairs(S) do
             local bon = setBonuses(sid, set)
             local scored = false
-            for _, s in pairs(bon) do if s then scored = true break end end
+            if not chosen[sid] then
+                for _, s in pairs(bon) do if s then scored = true break end end
+            end
             if scored then
                 -- per free slot the best piece of the set among the options and its loss
                 local pieces = {}
@@ -1268,6 +1285,7 @@ local function setPlan(res, w, level, class)
             end
         end
         if not bestSet then return end
+        chosen[bestSet.sid] = true
         local info = { id = bestSet.sid, name = bestSet.set.name, have = bestSet.k, total = #bestSet.set.items,
             bonus = bestSet.bonus }
         local extra = bestSet.net / bestSet.k

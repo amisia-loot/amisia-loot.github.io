@@ -1101,7 +1101,7 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
         for _, e in ipairs(myItems()) do
             if e.s.date == last.date then n = n + 1 end
         end
-        c.line1:SetText(L["%d Items am %s"]:format(n, last.date))
+        c.line1:SetText(L["%d Items am %s"]:format(n, shortDate(last.date)))
         -- with a snapshot of the loot lead: the own plus-one as he counts it
         local me = ns.UnitFullName("player")
         for i = #night, 1, -1 do
@@ -1122,7 +1122,7 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
         end
         if ns.ExportState(s) ~= "done" then pending = true end
     end
-    c.line1:SetText(L["%d Items am %s"]:format(n, last.date))
+    c.line1:SetText(L["%d Items am %s"]:format(n, shortDate(last.date)))
     local parts = {}
     if bank > 0 then parts[#parts + 1] = L["%d Bank"]:format(bank) end
     if de > 0 then parts[#parts + 1] = L["%d Entzaubern"]:format(de) end

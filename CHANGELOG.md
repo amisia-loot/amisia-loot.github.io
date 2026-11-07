@@ -5,6 +5,37 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(raid): raid sync, loot rules, lineup and soft-reserve fixes from a code audit (F-025, F-019, F-074, F-078, F-083, F-084, F-098, F-015, F-030)
+
+  An officer whose view was set to raider no longer loses award notes, first winners and "by hand" marks:
+  they are kept, the officer part is asked for again on switching back, and a new keeper gathers them
+  before sending, so they are no longer wiped for the whole raid. A late officer part of an older state no
+  longer blocks a newer one. Soft-reserve marks now also show in the loot window of Classic Era and TBC
+  Anniversary. Two sign-ups of the same character make one lineup row, a night older than the eight kept
+  ones is refused with a message instead of vanishing, and a failed invite no longer uses up a try. A loot
+  rule that would make the set too big to send to the officers is refused when it is added. Raid-Check and
+  the award dialog no longer compare hidden boss-fight values, and the statistics no longer break on a raid
+  saved without a start time.
+
+- fix(gear): gear, quest and journal fixes from a code audit (F-039, F-038, F-048, F-049, F-047, F-122, F-003, F-045)
+
+  A set in the gear goals counts its bonus once instead of twice. A repeatable quest turned in early stays
+  open, the talent planner's class list sorts reliably, and an item the server answers too slowly is asked
+  again a minute later instead of having no stats all session. The enchant line also matches on clients
+  whose template has brackets or hyphens, and the level table opens even with an odd saved column. A quest
+  reward that is no upgrade no longer says the slot is empty, the Raids page redraws after a spec change
+  and when item data arrives, the overview cards show short dates, the map's "no place" view names the
+  guild's crafters again after combat, and two-click moves in the lineup act on the chosen player.
+
+- fix(guild): exchange, trust, chat and calendar fixes from a code audit (F-036, F-037, F-025, F-019, F-087, F-088)
+
+  A drop or source pull cut off by combat and restarted within a minute is still pulled, and the first data
+  sent after a /reload is no longer dropped as a repeat. A "!" command from a guildmate with your first
+  name is no longer taken for your own line, and former guildmates are no longer trusted after you leave the
+  guild. Gear without stats (shirts, tabards) is no longer stored again on every bag update. A busy game
+  calendar no longer makes the raid calendar read it more and more often, and the sign-up window keeps the
+  date it was opened at.
+
 ## [v2.62.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.62.0) (2026-11-07)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.61.0...v2.62.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

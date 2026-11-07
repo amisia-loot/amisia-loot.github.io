@@ -357,8 +357,9 @@ local function roster()
             local name, _, subgroup, level, _, file, _, online, dead = GetRaidRosterInfo(i)
             name = ns.FullName(ns.Plain(name))
             if name then
-                out[#out + 1] = { name = name, unit = "raid" .. i, g = tonumber(subgroup) or 1, c = ns.Plain(file), l = tonumber(level),
-                                  online = online ~= false, dead = dead == true }
+                out[#out + 1] = { name = name, unit = "raid" .. i, g = tonumber(ns.Plain(subgroup)) or 1, c = ns.Plain(file), l = tonumber(ns.Plain(level)),
+                                  -- secret flags (a boss fight) are never compared: online and alive then
+                                  online = ns.Plain(online) ~= false, dead = ns.Plain(dead) == true }
             end
         end
         return out

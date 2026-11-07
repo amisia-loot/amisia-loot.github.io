@@ -1440,9 +1440,10 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Ite
     end }
 
 -- A wish, an exclusion, the spec or the guild list changed: show it at once (a click's answer).
+-- The raid journal shows the gear page's spec picker and item texts, so it is one of them.
 local function onGearPage()
     local cur = ns.CurrentPage and ns.CurrentPage()
-    return cur == "gear" or cur == "dungeons" or cur == "overview"
+    return cur == "gear" or cur == "dungeons" or cur == "raidjournal" or cur == "overview"
 end
 local function refreshShown() if onGearPage() then ns.Refresh() end end
 -- the own items changed: with the next frame (a bag sort or a gear set swap changes many in one frame)
@@ -1466,7 +1467,7 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     C_Timer.After(0.3, function()
         namesDue = false
         local cur = ns.CurrentPage and ns.CurrentPage()
-        if not nameMissing or not (cur == "gear" or cur == "dungeons") then return end
+        if not nameMissing or not (cur == "gear" or cur == "dungeons" or cur == "raidjournal") then return end
         memo.wishes = nil
         guildKey = nil
         ns.Refresh()

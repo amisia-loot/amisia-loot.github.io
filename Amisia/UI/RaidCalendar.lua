@@ -162,6 +162,9 @@ local function Reader(opts)
     local lastRead, pending = 0, false
     local reading            -- { night, at }: a read of this view runs (its answer not yet back)
     local busySince          -- { night, at }: the calendar answered "busy" since then, without a break
+    local retrying           -- a read again after RC.BUSY_RETRY is scheduled (one per reader: the poll
+                             -- and the calendar's changes read too, and each busy answer starting its
+                             -- own retry would multiply the reads while the calendar stays busy)
 
     function rd.Read(force)
         if not opts.shown() then return end
@@ -176,7 +179,13 @@ local function Reader(opts)
             reading = nil
             if why == "busy" then
                 if not (busySince and busySince.night == night) then busySince = { night = night, at = GetTime() } end
-                C_Timer.After(RC.BUSY_RETRY, function() rd.Read(true) end)
+                if not retrying then
+                    retrying = true
+                    C_Timer.After(RC.BUSY_RETRY, function()
+                        retrying = false
+                        rd.Read(true)
+                    end)
+                end
             else
                 busySince = nil
             end

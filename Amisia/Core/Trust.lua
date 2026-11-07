@@ -194,7 +194,12 @@ local function readable(allowLocked, noAsk)
     else
         refresh(noAsk)
     end
-    if not inGuild() then return {} end
+    if not inGuild() then
+        -- out of the guild now: the former guild's roster (rebuilt only after REBUILD_GAP) must not
+        -- answer find() and ns.TrustName any more
+        if roster and #roster > 0 then setRoster({}) end
+        return {}
+    end
     if not roster or #roster == 0 then return nil end
     return roster
 end

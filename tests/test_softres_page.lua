@@ -182,7 +182,7 @@ for _, c in ipairs(NS.cards) do if c.key == "softres" then card = c end end
 local fake = { title = CreateFrame("Frame"), line1 = CreateFrame("Frame"), line2 = CreateFrame("Frame") }
 function fake:SetAction(label, fn) self.label, self.fn = label, fn end
 card.fill(fake)
-assert(fake.line1:GetText() == "3 Reservierungen, vom " .. date("%Y-%m-%d"), fake.line1:GetText())
+assert(fake.line1:GetText() == "3 Reservierungen, vom " .. NS.SoftResShortDate(date("%Y-%m-%d")), fake.line1:GetText())
 assert(has(fake.line2:GetText(), "2 von 3 im Raid reserviert") and has(fake.line2:GetText(), "1 Name unklar"), fake.line2:GetText())
 assert(fake.label == "Prüfen", "officers with unclear names check: " .. tostring(fake.label))
 NS.ShowPage("overview")

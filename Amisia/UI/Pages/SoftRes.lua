@@ -468,7 +468,7 @@ ns.RegisterCard{ key = "softres", order = 20, fill = function(c)
         if ns.IsOfficerView() then c:SetAction(L["Importieren"], function() ns.ToggleSoftResFrame() end) end
         return
     end
-    c.line1:SetText(L["%d Reservierungen, vom %s"]:format(sr.count or 0, sr.date))
+    c.line1:SetText(L["%d Reservierungen, vom %s"]:format(sr.count or 0, ns.SoftResShortDate(sr.date)))
     local roster, label, classes = ns.SoftResRoster()
     local chk = ns.SoftResCheck(sr, roster, classes)
     local unclear = chk and #chk.unclear or 0

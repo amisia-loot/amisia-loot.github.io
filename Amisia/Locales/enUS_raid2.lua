@@ -1325,3 +1325,9 @@ L["Ersetzt deine Liste durch die neuere, die ein anderer Offizier mit dem Raid g
 L["Neuere Liste von %s (%s, %d Reservierungen)"] = "Newer list from %s (%s, %d reserves)"
 L["Nichts eingefügt. Die geladene Liste bleibt; \"Leeren\" löscht sie."] = "Nothing pasted. The loaded list stays; \"Clear\" removes it."
 L["Soft-Reserves: diese Liste lässt sich nicht teilen (ungültige Einträge). Bitte neu einfügen."] = "Soft reserves: this list cannot be shared (invalid entries). Please paste it again."
+
+-- Raid/Lineup.lua (audit fixes 2026-11-07)
+L["Nur die neuesten %d Nächte werden gespeichert; diese ist älter."] = "Only the newest %d nights are kept; this one is older."
+
+-- Raid/LootRules.lua (audit fixes 2026-11-07)
+L["Die Regel passt nicht mehr in die Nachricht an die Offiziere (höchstens %d Teile)."] = "The rule no longer fits into the message to the officers (at most %d parts)."

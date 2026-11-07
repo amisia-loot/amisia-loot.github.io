@@ -287,7 +287,6 @@ local function invite(night, name, group)
     local api = _G.C_PartyInfo
     local fn = type(api) == "table" and api.InviteUnit or _G.InviteUnit
     if type(fn) ~= "function" then return false end
-    r.tries = r.tries + 1
     r.st, r.at, r.back, r.unclear = "I", GetTime(), nil, nil
     lastInvited, lastInvitedAt = r, GetTime()
     local ok = pcall(fn, name)
@@ -295,6 +294,8 @@ local function invite(night, name, group)
         r.st = "P"
         return false
     end
+    -- counted only once the client took the invite: a failed call used up none of the three tries
+    r.tries = r.tries + 1
     watchAnswers()
     -- the optional whisper: a fixed text, only the group changes; once per name and night
     if ns.Get("lineup.whisper") and not r.whispered and group then

@@ -288,6 +288,13 @@ Versionsmeldungen. Offiziersnotizen gehen nur per Flüstern an geprüfte Offizie
 Raid wird abgeglichen, Schlüssel `Datum:Instanz`.
 **Grund:** Schrittweiser Abgleich zwischen Offizieren ist in anderen Addons auseinandergelaufen.
 **Folge:** Was eine Nachricht über ihren Absender sagt, dient nur der Anzeige.
+**Nachtrag 2026-11-07 (Audit):** Ein Offizier, der in der Raider-Ansicht nur den öffentlichen Teil übernimmt,
+behält Notiz, Erstgewinner und "von Hand" seiner Vergaben (`sync.pub`); in der Offiziersansicht fragt er den Offiziersteil
+nach, und als neuer Hüter sammelt er eine Revision tiefer, damit ein Offizier mit dem ganzen Stand derselben Revision
+antwortet. Angenommenes Restrisiko: Antwortet beim Sammeln niemand mit dem ganzen Stand, kann ein solcher Hüter eine
+Notiz (oder Erstgewinner, "von Hand") zurückbringen, die ein Offizier in einer späteren Revision geändert hat; vorher
+gingen diese Felder dabei für den ganzen Raid verloren. Treffen sich zwei solche Offiziere derselben Revision, nimmt der
+neue Hüter den Teil des anderen und verliert nur die Felder, die er selbst mitgenommen hatte.
 **Durchgesetzt durch:** `tests/test_sync_raid.lua`, `tests/test_sync_terms.lua`, `tests/test_sync_ops.lua`,
 `tests/test_trust.lua`, `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`.
 

@@ -88,10 +88,16 @@ local function names(s, slot, item)
     end
     if slot then
         for i = 1, 40 do
-            -- the end of the list is the first nil; a secret name is skipped by add, the rest still come
+            -- the end of the list is the first nil; a secret name is skipped, the rest still come.
+            -- The raw answer is never compared, not even with nil (it may be secret in a boss fight):
+            -- ns.Plain and type() only
             local c = GetMasterLootCandidate(slot, i)
-            if c == nil then break end
-            add(c)
+            local plain = ns.Plain(c)
+            if plain ~= nil then
+                add(plain)
+            elseif type(c) == "nil" then
+                break
+            end
         end
     end
     table.sort(out)

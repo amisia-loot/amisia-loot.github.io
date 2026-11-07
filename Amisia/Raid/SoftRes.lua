@@ -805,13 +805,14 @@ end)
 ---------------------------------------------------------------------------
 -- Loot window marks
 ---------------------------------------------------------------------------
--- btn: an element of the scrolling loot window; the mark sits on its icon button, btn.Item.
-local function markButton(btn, slot)
+-- btn: an element of the scrolling loot window; the mark sits on its icon button, btn.Item. The
+-- classic loot window (Era, TBC Anniversary) passes its LootButton itself as icon.
+local function markButton(btn, slot, icon)
     if not ns.Get("softres.lootMark") then
         if marks[btn] then marks[btn]:Hide() end
         return
     end
-    local icon = btn.Item
+    icon = icon or btn.Item
     if type(icon) ~= "table" or type(icon.CreateFontString) ~= "function" then return end
     -- a secret link (the loot window in a boss fight on Forever) is never read: no mark then
     local link = slot and GetLootSlotLink and ns.Plain(GetLootSlotLink(slot))
@@ -840,6 +841,22 @@ function ns.SoftResMarkShown(btn)
     return (m and m:IsShown()) and true or false
 end
 
+-- The classic loot window (Era, TBC Anniversary): LootButton1..LOOTFRAME_NUMBUTTONS, paged; with
+-- more items than buttons the last one makes room for the page arrows. index's slot as the client's
+-- LootFrame_UpdateButton counts it. Only our own font string on the button, read from a hook: the
+-- buttons' scripts are never touched (no taint on looting).
+local function markClassic(index)
+    local frame = _G.LootFrame
+    local per = tonumber(_G.LOOTFRAME_NUMBUTTONS)
+    local btn = type(index) == "number" and _G["LootButton" .. index]
+    if type(frame) ~= "table" or not per or type(btn) ~= "table" then return end
+    if btn.IsShown and not btn:IsShown() then return end
+    local items = tonumber(frame.numLootItems) or 0
+    if items > per then per = per - 1 end
+    if index > per then return end
+    markButton(btn, per * ((tonumber(frame.page) or 1) - 1) + index, btn)
+end
+
 -- Marks every element the loot window shows now.
 function ns.MarkSoftResLoot()
     local box = LootFrame and LootFrame.ScrollBox
@@ -848,6 +865,7 @@ function ns.MarkSoftResLoot()
             if frame.GetSlotIndex then markButton(frame, frame:GetSlotIndex()) end
         end)
     end
+    for i = 1, tonumber(_G.LOOTFRAME_NUMBUTTONS) or 0 do markClassic(i) end
 end
 
 -- The loot window is a scroll box that hands its element frames to other slots while it scrolls:
@@ -871,8 +889,25 @@ local function hookLootScroll()
 end
 hookLootScroll()
 
+-- The classic loot window sets up each button in LootFrame_UpdateButton (every page turn, every
+-- open): each one is marked again right after it.
+local classicHooked
+local function hookLootButtons()
+    if classicHooked or type(_G.LootFrame_UpdateButton) ~= "function" then return end
+    classicHooked = true
+    hooksecurefunc("LootFrame_UpdateButton", function(index)
+        local ok, err = pcall(markClassic, index)
+        if not ok then
+            local handler = geterrorhandler and geterrorhandler()
+            if handler then handler(err) end
+        end
+    end)
+end
+hookLootButtons()
+
 ns.OnEvent("LOOT_OPENED", function()
     hookLootScroll()
+    hookLootButtons()
     C_Timer.After(0, ns.MarkSoftResLoot)
 end)
 ns.OnEvent("LOOT_SLOT_CLEARED", function() C_Timer.After(0, ns.MarkSoftResLoot) end)

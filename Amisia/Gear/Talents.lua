@@ -80,8 +80,9 @@ function T.Classes()
     for cls in pairs(d and d.classes or {}) do out[#out + 1] = cls end
     local mine = playerClass()
     table.sort(out, function(a, b)
-        if a == mine then return true end
-        if b == mine then return false end
+        -- the own class first; never "less than" itself (table.sort may compare an element with
+        -- itself and fails on an order function that says so)
+        if (a == mine) ~= (b == mine) then return a == mine end
         return (d.classes[a].id or 99) < (d.classes[b].id or 99)
     end)
     return out
