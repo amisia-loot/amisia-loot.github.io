@@ -458,6 +458,8 @@ S.STATES = {
         end
         if best then NS.ShowDungeonQuest(bestKey, best) end
     end },
+    -- the detail view of a raid (F-143): the link back, the image, the bosses
+    { page = "raidjournal", name = "raidjournal-detail", open = function() NS.ShowRaid("onyxia") end },
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },

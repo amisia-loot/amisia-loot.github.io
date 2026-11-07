@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-143 Startseite mit Kacheln und Detailseite: Dungeons und Raids
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du zum ersten Mal in der Sitzung die Seite Dungeons öffnest, dann siehst du unter dem nächsten Dungeon alle Dungeons als Kacheln, drei nebeneinander: oben ihr Bild mit dem Namen in Gold, darunter Level und Passung und "N Upgrades · +X je Lauf · Wert V"; der empfohlene trägt rechts oben ein grünes "Empfohlen", zu hohe oder zu leichte sind grau.
+- Prüfung: Wenn du auf eine Kachel klickst, dann steht oben links "< Alle Dungeons" vor der Spezialisierung, direkt darunter das Bild des Dungeons mit "Lauf planen" und "Alle auf Karte", darunter Bosse/Quests mit Wegpunkt und die Liste bis zum unteren Rand; "< Alle Dungeons" bringt dich zu den Kacheln zurück.
+- Prüfung: Wenn du einen Dungeon über die Suche oder seinen Eingang auf der Weltkarte öffnest, dann landest du direkt auf seiner Detailseite; ein Raid ebenso auf der Seite Raids, deren Kacheln Größe, Passung und deine Raid-ID zeigen.
+- Prüfung: Wenn du das Fenster am Griff höher ziehst, dann zeigt die Startseite mehr Reihen Kacheln.
+- Notiz: Schritt 3 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der zwei Seiten (docs/specs/README). Die Ansicht (Start oder Detail) merkt sich Amisia nur bis zum /reload.
+
 ### F-142 Seitenkopf: Name, eine Zeile und goldene Linie über jeder Seite
 - Version: -
 - Status: geplant

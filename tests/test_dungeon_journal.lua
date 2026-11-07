@@ -261,8 +261,9 @@ WorldMapFrame:Hide()
 ---------------------------------------------------------------------------
 NS.ShowPage("dungeons")
 local B = NS.DungeonsPageFrame()
-for _, row in ipairs(B.list.rows) do if row.item and row.item.key == "thanes" then row:Click() end end
-assert(B.chosen == "thanes")
+assert(B.grid:IsShown() and not B.art:IsShown(), "the cards first, the image in the detail view")
+B.grid:CardOf("thanes"):Click()
+assert(B.chosen == "thanes" and B.art:IsShown() and B.detail:IsShown())
 assert(B.art and B.art:IsShown() and B.art.tex.texture == A.D.thanes[1], "the thanes' screen")
 assert(B.art.tex.texCoord and #B.art.tex.texCoord == 4, "cropped")
 assert(B.art.title:GetText() == "Hall of Thanes", B.art.title:GetText())

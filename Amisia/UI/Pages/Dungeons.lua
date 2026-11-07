@@ -1,14 +1,16 @@
--- Dungeons page (tab Ausrüstung, right after the gear page): the dungeon planner. The spec of the
--- gear page in the head row with the order of the list (by level, the ranking, the chain); the next
--- dungeon with its reason; every dungeon's value; the chosen one's image with its boss model, its
--- bosses and upgrades or its quests (one row each: state, level, the quest path's progress "Weg 2/4",
--- start, XP); the waypoints to its entrance and quest givers and "Alle Questgeber auf der Karte". A
--- click on a quest opens its quest path (F-135) in place of the list, image and quests: the steps from
--- the first pre-quest to the quest, each with where it is taken and handed in ("Karte"), what it needs
--- and its objective, the next step highlighted ("Nächsten Schritt auf der Karte"). The values come
--- from Gear/Dungeons.lua; item texts, marks, tooltips, clicks, menus and the cache are the gear page's
--- (ns.GearPageKit). The state stays in settings.bis (dungeon, dsort, dpart); the open quest path only
--- in memory (after /reload the list shows).
+-- Dungeons page (group Welt): the dungeon planner in two views (F-143). The start: the spec of the
+-- gear page in the head row with the order of the cards (by level, the ranking, the chain); the next
+-- dungeon with its reason; every dungeon as a card (image, name, level and fit, upgrades, gain per run
+-- and value; the recommended one tagged). A click on a card opens the detail: a link back to the
+-- cards, the chosen one's image with its boss model, its bosses and upgrades or its quests (one row
+-- each: state, level, the quest path's progress "Weg 2/4", start, XP); the waypoints to its entrance
+-- and quest givers and "Alle Questgeber auf der Karte". A click on a quest opens its quest path
+-- (F-135) in place of the list, image and quests: the steps from the first pre-quest to the quest,
+-- each with where it is taken and handed in ("Karte"), what it needs and its objective, the next step
+-- highlighted ("Nächsten Schritt auf der Karte"). The values come from Gear/Dungeons.lua; item texts,
+-- marks, tooltips, clicks, menus and the cache are the gear page's (ns.GearPageKit). The state stays
+-- in settings.bis (dungeon, dsort, dpart); the view and the open quest path only in memory (the first
+-- open of a session shows the cards, a /reload starts there again).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -16,8 +18,8 @@ local K = ns.GearPageKit
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local ICON = "Interface\\Icons\\INV_Misc_Book_11"
 local ROW_H = 24
--- 5 dungeons and 5 rows of the chosen one between its image and the footer
-local DUNGEON_ROWS, DETAIL_ROWS = 5, 5
+-- at least 5 rows of the chosen one under its image (they fill the page down to its bottom)
+local DETAIL_ROWS = 5
 local state, cached, say, col, hideTip = K.state, K.cached, K.say, K.col, K.hideTip
 local itemText, marks, gainText = K.itemText, K.marks, K.gainText
 local itemTooltip, modifiedClick, menuEntries = K.itemTooltip, K.modifiedClick, K.menuEntries
@@ -139,27 +141,6 @@ local function chosenDungeon(list, nextE)
         if e then return e end
     end
     return nextE or list[1]
-end
-
-local function fillDungeonRow(r, e)
-    local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
-    local dim = e.fit == "high" or e.fit == "easy" or e.fit == "later"
-    r.name:SetText((e.rank and (e.rank .. ". ") or "") .. e.name .. raid)
-    if dim then r.name:SetTextColor(0.56, 0.53, 0.64) else r.name:SetTextColor(1, 1, 1) end
-    r.level:SetText(ns.Dungeons.RangeText(e))
-    r.fit:SetText(ns.Dungeons.FitText(e))
-    if e.fit == "fit" then r.fit:SetTextColor(0.31, 0.82, 0.42)
-    elseif e.fit == "soon" then r.fit:SetTextColor(1, 0.82, 0)
-    else r.fit:SetTextColor(0.56, 0.53, 0.64) end
-    if e.computed then
-        r.upgrades:SetText(tostring(e.upgrades))
-        r.run:SetText(e.perRun > 0 and signed(e.perRun) or "0")
-        r.quests:SetText(e.once > 0 and signed(e.once) or "0")
-        r.value:SetText(tostring(math.floor((e.chainValue or e.value) + 0.5)))
-    else
-        r.upgrades:SetText(""); r.run:SetText(""); r.quests:SetText(""); r.value:SetText("")
-    end
-    if r.owner and r.owner.chosen == e.key then r.sel:Show() else r.sel:Hide() end
 end
 
 local function dungeonTip(self)
@@ -1410,12 +1391,208 @@ local function fillRun(B, plan)
     if V.scroll.UpdateScrollChildRect then V.scroll:UpdateScrollChildRect() end
 end
 
+---------------------------------------------------------------------------
+-- The start view (F-143, D-69): every dungeon (or raid) as a card, three per row
+---------------------------------------------------------------------------
+
+local C = T.DCARD
+local CARD_TEXT = {
+    tag = L["Empfohlen"],
+    values = L["%d Upgrades · %s je Lauf · Wert %d"],
+    soon = "|cffffd100",
+}
+
+-- A card of the grid: the image at its top, darkened towards its bottom, the name on its lower
+-- left; two lines under it; the tag "Empfohlen" at the top right; a thin gold frame; the hover glow.
+-- ctx.pick(e) runs on a click, ctx.tip(card) on the mouse (it reads card.item).
+local function buildGridCard(row, ctx)
+    local c = CreateFrame("Button", nil, row)
+    c:SetSize(C.W, C.H)
+    c.ground = c:CreateTexture(nil, "BACKGROUND", nil, -1)
+    c.ground:SetAllPoints()
+    c.ground:SetColorTexture(C.GROUND[1], C.GROUND[2], C.GROUND[3], C.GROUND[4])
+    -- the image 1 px inside the frame, so its edges stay visible
+    c.tex = c:CreateTexture(nil, "BACKGROUND")
+    c.tex:SetPoint("TOPLEFT", 1, -1)
+    c.tex:SetPoint("TOPRIGHT", -1, -1)
+    c.tex:SetHeight(C.ART_H)
+    c.shade = c:CreateTexture(nil, "BORDER", nil, -1)
+    c.shade:SetAllPoints(c.tex)
+    c.shade:SetColorTexture(0, 0, 0, 1)
+    if c.shade.SetGradient and CreateColor then
+        c.shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, C.SHADE_BOTTOM), CreateColor(0, 0, 0, C.SHADE_TOP))
+    else
+        c.shade:SetAlpha(C.SHADE_ALPHA)
+    end
+    c.edges = W.Border(c, W.GOLD[1], W.GOLD[2], W.GOLD[3], C.EDGE)
+    c.name = W.Text(c, T.FONT.title, C.TEXT_W)
+    c.name:SetPoint("BOTTOMLEFT", c.tex, "BOTTOMLEFT", C.NAME_X - 1, C.NAME_Y)
+    c.line1 = W.Text(c, T.FONT.text, C.TEXT_W)
+    c.line1:SetPoint("TOPLEFT", C.TEXT_X, C.LINE1_Y)
+    c.line2 = W.Text(c, T.FONT.hint, C.TEXT_W)
+    c.line2:SetPoint("TOPLEFT", C.TEXT_X, C.LINE2_Y)
+    c.tag = CreateFrame("Frame", nil, c)
+    c.tag:SetHeight(C.TAG_H)
+    c.tag:SetPoint("TOPRIGHT", C.TAG_X, C.TAG_Y)
+    c.tag.bg = W.Flat(c.tag, C.TAG_BG[1], C.TAG_BG[2], C.TAG_BG[3], C.TAG_BG[4])
+    c.tag.text = W.Text(c.tag, T.FONT.text)
+    c.tag.text:SetPoint("CENTER")
+    c.tag.text:SetText(CARD_TEXT.tag)
+    c.tag.text:SetTextColor(C.TAG_COLOR[1], C.TAG_COLOR[2], C.TAG_COLOR[3])
+    c.tag:SetWidth(c.tag.text:GetStringWidth() + 2 * C.TAG_PAD)
+    c.tag:Hide()
+    c.glow = c:CreateTexture(nil, "HIGHLIGHT")
+    c.glow:SetAllPoints()
+    c.glow:SetColorTexture(1, 1, 1, C.GLOW)
+    c:SetScript("OnClick", function(self) if self.item then ctx.pick(self.item) end end)
+    c:SetScript("OnEnter", function(self) ctx.tip(self) end)
+    c:SetScript("OnLeave", hideTip)
+    return c
+end
+
+-- Fills card c with entry e: the image (none without art), ctx.texts(c, e) the name and the lines
+-- (it answers whether the card is dim: a desaturated image, a grey name), the frame brighter on the
+-- chosen one, the tag on the recommended one.
+local function fillGridCard(c, e, ctx)
+    local Dn = ns.Dungeons
+    local fid, kind = Dn.Art(e.key)
+    if fid then
+        c.tex:SetTexture(fid)
+        c.tex:SetTexCoord(Dn.ArtCoords(kind, C.W - 2, C.ART_H))
+        c.tex:Show()
+        c.shade:Show()
+    else
+        c.tex:Hide()
+        c.shade:Hide()
+    end
+    local dim = ctx.texts(c, e) and true or false
+    c.dim = dim
+    c.tex:SetDesaturated(dim)
+    if dim then c.name:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3]) else c.name:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3]) end
+    c.chosen = ctx.chosen == e.key
+    W.SetBorderColor(c.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], c.chosen and C.CHOSEN or C.EDGE)
+    c.tag:SetShown(ctx.recommended == e.key)
+end
+
+-- The grid on page B from top down to the page's bottom (it follows the window's height, W.FillTo):
+-- a W.List whose rows hold up to C.COLS cards (the row's own shade and hover hidden). ctx: texts,
+-- tip, pick (see buildGridCard, fillGridCard). grid:SetEntries(list, chosen, recommended) shows them,
+-- grid:CardOf(key) scrolls that card into view and returns it, grid:Cards() the cards shown.
+local function buildGrid(B, top, ctx)
+    local grid = B:List(C.MIN_ROWS, C.H + C.GAP, function(r)
+        r.bg:Hide()
+        r.hover:SetAlpha(0)
+        r.hover:Hide()
+        r:EnableMouse(false)
+        r.cards = {}
+        for i = 1, C.COLS do
+            local c = buildGridCard(r, ctx)
+            c:SetPoint("TOPLEFT", (i - 1) * (C.W + C.GAP), 0)
+            r.cards[i] = c
+        end
+    end, function(r, chunk)
+        for i, c in ipairs(r.cards) do
+            local e = chunk[i]
+            c.item = e
+            if e then
+                fillGridCard(c, e, ctx)
+                c:Show()
+            else
+                c:Hide()
+            end
+        end
+    end, { top = top, fill = true })
+    grid.ctx = ctx
+    grid.entries = {}
+    function grid:SetEntries(list, chosen, recommended)
+        ctx.chosen, ctx.recommended = chosen, recommended
+        self.entries = list or {}
+        local chunks = {}
+        for i, e in ipairs(self.entries) do
+            local k = math.floor((i - 1) / C.COLS) + 1
+            chunks[k] = chunks[k] or {}
+            chunks[k][#chunks[k] + 1] = e
+        end
+        self:SetItems(chunks)
+    end
+    function grid:CardOf(key)
+        for i, e in ipairs(self.entries) do
+            if e.key == key then
+                local row = math.floor((i - 1) / C.COLS) + 1
+                if row <= self.offset or row > self.offset + self.rowCount then
+                    self.offset = row - 1
+                    self:SetItems(self.items)
+                end
+                local r = self.rows[row - self.offset]
+                return r and r.cards[(i - 1) % C.COLS + 1]
+            end
+        end
+        return nil
+    end
+    function grid:Cards()
+        local out = {}
+        for i, r in ipairs(self.rows) do
+            if i <= self.rowCount and r.item then
+                for _, c in ipairs(r.cards) do
+                    if c.item then out[#out + 1] = c end
+                end
+            end
+        end
+        return out
+    end
+    return grid
+end
+
+-- A dungeon's card: its place in the order ("1. "), level range and fit, upgrades, gain per run and
+-- value; dim when too high, too easy or later (as the table's rows were).
+local function dungeonCardTexts(c, e)
+    local Dn = ns.Dungeons
+    local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
+    c.name:SetText((e.rank and (e.rank .. ". ") or "") .. e.name .. raid)
+    local range = Dn.RangeText(e)
+    local fitC = e.fit == "fit" and GREEN or e.fit == "soon" and CARD_TEXT.soon or GREY
+    local fit = fitC .. Dn.FitText(e) .. "|r"
+    c.line1:SetText(range ~= "" and (range .. " · " .. fit) or fit)
+    if e.computed then
+        c.line2:SetText(CARD_TEXT.values:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0",
+            math.floor((e.chainValue or e.value) + 0.5)))
+    else
+        c.line2:SetText("")
+    end
+    return e.fit == "high" or e.fit == "easy" or e.fit == "later"
+end
+
+-- The view of the page: "start" (the cards) until a card is clicked or a dungeon is asked for, then
+-- "detail" (the image, the bosses or quests); only in memory, the first open of a session starts.
+local view = "start"
+
+-- The head row by the view: the start's order tabs on the right, the detail's back link on the left.
+-- The head row by view: the order tabs at the start, the link back before the spec in the detail, the
+-- spec alone in the journal (the link is hidden there and would leave its room empty).
+local function placeHead(B, mode)
+    if B.headView == mode then return end
+    B.headView = mode
+    if mode == "detail" then
+        B:Place(1, { B.back, B.spec }, {})
+    elseif mode == "journal" then
+        B:Place(1, { B.spec }, {})
+    else
+        B:Place(1, { B.spec }, B.sortRow)
+    end
+end
+
 local function create(parent)
-    -- the head row: the spec (the gear page's) with the order chips; the recommendation, why, the
-    -- list, the image, the bosses or quests, the hint in the footer
+    -- the head row: the spec (the gear page's) with the order chips (start) or the link back to the
+    -- cards (detail); the recommendation, why and the cards (start); the image, the bosses or quests
+    -- (detail); the hint behind the "i"
     local B = W.Page(parent)
     page = B
     B:Bands({ "row", "row", { "line", lines = 2 } })
+    B.back = W.Link(B, L["< Alle Dungeons"], nil, function()
+        view = "start"
+        ns.Refresh()
+    end)
+    W.Tooltip(B.back, L["Alle Dungeons"], L["Zurück zu den Kacheln aller Dungeons."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
     B.why = B:Line(3)
@@ -1436,29 +1613,21 @@ local function create(parent)
     end
     -- the spec, the order chips at the right edge (in the order of sortDefs); the recommendation
     -- under them, as wide as the page
-    B:Place(1, { B.spec }, sortRow)
+    B.sortRow = sortRow
+    placeHead(B, "start")
     B:Place(2, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
-    -- the list is 590 wide (12 px for its scroll bar)
-    local cols = { { "name", 4, 170, "Dungeon" }, { "level", 178, 46, "Level" }, { "fit", 228, 56, L["Passung"] },
-        { "upgrades", 288, 56, "Upgrades", justify = "RIGHT" }, { "run", 348, 66, L["Je Lauf"], justify = "RIGHT" },
-        { "quests", 418, 66, "Quests", justify = "RIGHT" }, { "value", 488, 60, L["Wert"], justify = "RIGHT" } }
-    B.headFrame, B.head = B:Columns(cols)
-    B.list = B:List(DUNGEON_ROWS, ROW_H, function(r)
-        r.owner = B
-        r.sel = W.SelectBar(r)
-        W.Cells(r, cols)
-        r:SetScript("OnClick", function(self)
-            if not self.item then return end
-            state().dungeon = self.item.key
-            ns.Refresh()
-        end)
-        r:SetScript("OnEnter", dungeonTip)
-        r:SetScript("OnLeave", hideTip)
-    end, fillDungeonRow)
-    -- the image under the list, the bosses' or quests' header under it, then their list
+    -- the start: the cards under the recommendation, down to the page's bottom; a click chooses
+    -- the dungeon and opens its detail view
+    B.grid = buildGrid(B, B.top, { texts = dungeonCardTexts, tip = dungeonTip, pick = function(e)
+        state().dungeon = e.key
+        view = "detail"
+        ns.Refresh()
+    end })
+    -- the detail: the image right under the head row, the bosses' or quests' header under it, then
+    -- their list down to the page's bottom
     local G = T.LAYOUT
-    local artTop = B.listTop - DUNGEON_ROWS * ROW_H - G.GAP
+    local artTop = -(G.ROW_H + G.GAP)
     B.art = buildArt(B, artTop)
     local headerTop = artTop - ART_H - G.GAP
     B.mark = W.Link(B.art, DTEXT.mark, 110, function()
@@ -1516,10 +1685,17 @@ local function create(parent)
             self.pathFor = nil
         end
         self.detailKey = nil
+        -- the journal opens from the detail view and goes back to it
+        view = "detail"
         ns.Refresh()
     end
-    -- the parts of the planner the quest path covers
-    B.planParts = { B.next, B.why, B.headFrame, B.list, B.art, B.header, B.parts.bosses, B.parts.quests, B.way, B.detail }
+    -- the parts of the start and of the detail view; the quest journal covers them all (planParts)
+    B.startParts = { B.next, B.why, B.grid }
+    B.detailParts = { B.back, B.art, B.header, B.parts.bosses, B.parts.quests, B.way, B.detail }
+    B.planParts = {}
+    for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
+    for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
+    for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
     return B
 end
 
@@ -1570,10 +1746,14 @@ local function refresh(B)
     end
     local e = chosenDungeon(list, nextE)
     B.chosen = e and e.key or nil
-    B.list:SetItems(shown)
+    B.grid:SetEntries(shown, B.chosen, nextE and nextE.key or nil)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
     B.entry = e
-    fillArt(B, e)
+    local detail = view == "detail" and e ~= nil
+    -- back on the start: the chosen card in view
+    if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
+    B.wasDetail = detail
+    if detail then fillArt(B, e) else B.art:Hide() end
     local part = state().dpart == "quests" and "quests" or "bosses"
     for k, chip in pairs(B.parts) do chip:SetOn(k == part) end
     -- another dungeon or part starts at the top
@@ -1615,11 +1795,23 @@ local function refresh(B)
             if not path then B.pathFor = nil end
         end
     end
-    -- (the image shows by fillArt above, only for a dungeon)
+    -- the parts of the view (the image shows by fillArt above, only for a dungeon); the journal
+    -- covers both views
     local journal = path or run
     for _, f in ipairs(B.planParts) do
-        if journal then f:Hide() elseif f ~= B.art then f:Show() end
+        if f ~= B.art then f:Hide() end
     end
+    if not journal then
+        for _, f in ipairs(detail and B.detailParts or B.startParts) do
+            if f ~= B.art then f:Show() end
+        end
+        if not detail then
+            for _, chip in ipairs(B.sortRow) do chip:Show() end
+        end
+    else
+        B.art:Hide()
+    end
+    placeHead(B, journal and "journal" or detail and "detail" or "start")
     if journal then
         B.pathDungeon = e.key
         B.pathView:Show()
@@ -1664,6 +1856,10 @@ local function refresh(B)
         if e and e.computed and #B.detail.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
         hint = hint .. " " .. DTEXT.itemHint
     end
+    if not detail then
+        hint = L["Klick auf eine Kachel: Bild, Bosse, Beute und Quests des Dungeons. Grün markiert: der empfohlene."] .. " " ..
+            L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
+    end
     B.hint:SetText(hint)
 end
 
@@ -1682,6 +1878,7 @@ function ns.ShowDungeon(key)
     if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key) end
     state().dungeon = key
     asked = key
+    view = "detail"
     if ns.ShowPage then ns.ShowPage("dungeons") end
     local main, map = _G.AmisiaFrame, _G.WorldMapFrame
     if main and map and map.IsShown and map:IsShown() and ns.MapLowerMain then
@@ -1698,6 +1895,7 @@ function ns.ShowDungeonQuest(key, qid)
     state().dungeon = key
     state().dpart = "quests"
     asked = key
+    view = "detail"
     if ns.ShowPage then ns.ShowPage("dungeons") end
     if page then
         page.pathFor = { dungeon = key, key = qid, part = "quests" }
@@ -1710,7 +1908,7 @@ end
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail, detailItems = detailItems,
-    ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
+    buildGrid = buildGrid, ART_H = ART_H, ROW_H = ROW_H, itemHint = DTEXT.itemHint, signed = signed }
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "world",
     available = function() return ns.Gear.Available() end,

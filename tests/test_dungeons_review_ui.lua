@@ -41,14 +41,22 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 NS.ShowPage("dungeons")
 local D = NS.DungeonsPageFrame()
 assert(NS.DungeonNext().key == "thanes" and D.chosen == "thanes")
+-- since the detail view starts right under the head row (F-143) the list shows 15 rows on the
+-- smallest window: five here, so the thanes scroll as before
+D.detail:Fit(5)
 assert(#D.detail.items > D.detail.rowCount, "the thanes need the scroll bar: " .. #D.detail.items)
 
 -- scrolled down in the thanes, then the ruins: their first boss on top
 local wheel = D.detail:GetScript("OnMouseWheel")
 for _ = 1, 20 do wheel(D.detail, -1) end
 assert(D.detail.offset == #D.detail.items - D.detail.rowCount and D.detail.offset > 0, "scrolled down")
-local rows = {}
-for _, r in ipairs(D.list.rows) do if r.item then rows[r.item.key] = r end end
+-- a card of the start view (F-143); from the detail view through its link back
+local rows = setmetatable({}, { __index = function(_, key)
+    return { Click = function()
+        if D.back:IsShown() then D.back:Click() end
+        D.grid:CardOf(key):Click()
+    end }
+end })
 rows.lordaeron:Click()
 assert(D.chosen == "lordaeron")
 assert(#D.detail.items > D.detail.rowCount, "the ruins scroll too: " .. #D.detail.items)

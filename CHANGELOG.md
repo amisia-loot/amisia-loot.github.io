@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): start pages with cards and a detail page for dungeons and raids (F-143)
+
+  The pages Dungeons and Raids now open on a start page with every dungeon or raid as a card, three side by
+  side: its image with the name in gold, the level and how well it fits you, and the upgrades, the gain per
+  run and the value; the recommended one carries a green "Recommended" tag, ones out of reach are greyed.
+  A click on a card opens its detail page with a "< All dungeons" link back, the image right under the head
+  row and the boss or quest list reaching down to the bottom. The search, the map's entrances and the
+  quest pins open the detail page directly; raid cards also show the size and your raid ID.
+
 - feat(ui): a page head with the page's name, one line and a gold rule (F-142)
 
   Every page now starts with its name in large gold letters, one grey line on what the page is for, and a

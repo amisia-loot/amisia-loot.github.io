@@ -280,6 +280,20 @@ T.DJOURNAL = {
     PLAN_W = 96,               -- "Lauf planen" in the planner's image, left of "Alle auf Karte"
 }
 
+-- the start views of the pages Dungeons and Raids (F-143, D-69): a grid of cards, COLS per list row
+-- (W x H, GAP between them: 3 x 192 + 2 x 7 = 590, the list's width). A card: the image at its top
+-- (ART_H, darkened towards its bottom from SHADE_TOP to SHADE_BOTTOM; SHADE_ALPHA without gradients)
+-- with the name on its lower left (NAME_X, NAME_Y above the image's bottom), under it two lines
+-- (LINE1_Y, LINE2_Y below the card's top); the tag "Empfohlen" at the top right (TAG_*); a thin gold
+-- frame (EDGE, CHOSEN for the chosen one), the hover glow GLOW; a dim card's name in DIM.
+T.DCARD = {
+    W = 192, H = 84, GAP = 7, COLS = 3, MIN_ROWS = 2,
+    ART_H = 44, NAME_X = 6, NAME_Y = 4, TEXT_X = 6, TEXT_W = 180, LINE1_Y = -49, LINE2_Y = -66,
+    SHADE_TOP = 0.05, SHADE_BOTTOM = 0.85, SHADE_ALPHA = 0.45, GROUND = { 0, 0, 0, 0.35 },
+    TAG_X = -4, TAG_Y = -4, TAG_H = 14, TAG_PAD = 4, TAG_BG = { 0, 0, 0, 0.7 }, TAG_COLOR = { 0.31, 0.82, 0.42 },
+    EDGE = 0.35, CHOSEN = 0.95, GLOW = 0.06, DIM = { 0.56, 0.53, 0.64 },
+}
+
 T.PROFPAGE = {
     PICKER_W = 170, MODE_W = 56, SEARCH_W = 150, RANK_W = 120,
     VENDOR_W = 70, TAB_W = 64,

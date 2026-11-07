@@ -1590,6 +1590,23 @@ hatte als Schritt 2 "Titel, Unterzeile und eine goldene Linie" (wie die Hub-Seit
 Clients). Ohne Kopf war der Name der offenen Seite nur in der Seitenleiste zu sehen.
 **Folge:** Eine neue Seite bringt `sub` mit (deutsch in `L[]`, englisch in `Locales/enUS_core.lua`). Wer Höhen der
 Seite rechnet, nimmt weiter `T.PAGE_H` (478 bei 598).
+**Nachtrag 2026-11-07 (Schritt 3, F-143):** Die Seiten Dungeons und Raids haben zwei Ansichten statt "kleine
+Tabelle oben, Bild, Bosse unten". Die Startseite ("Alle Dungeons"/"Alle Raids"): Kopfzeile wie bisher (Spezialisierung,
+auf Dungeons die Reiter Level/Wert/Kette), der nächste Dungeon und warum, darunter jeder Dungeon (Raid) als Kachel
+(`T.DCARD`: 192 x 84, 7 px Abstand, drei je Zeile einer `W.List` mit `fill`, die mit der Fensterhöhe wächst): oben
+sein Bild, zum unteren Rand mit dem Verlauf des Clients abgedunkelt (ohne `SetGradient` gleichmäßig), der Name in Gold
+darauf, darunter Level und Passung (Raids: Größe, Passung, die eigene Raid-ID) und "N Upgrades · +X je Lauf · Wert V";
+der empfohlene mit einem grünen "Empfohlen" rechts oben, der gewählte mit hellerem Goldrahmen, unpassende entsättigt
+mit grauem Namen; die Maus zeigt den Tooltip der früheren Zeile. Ein Klick wählt und öffnet die Detailseite: links in
+der Kopfzeile der ruhige Link "< Alle Dungeons" ("< Alle Raids") vor der Spezialisierung, die Reiter und die Texte des
+nächsten Dungeons fehlen, direkt unter der Kopfzeile das Bild, darunter Bosse/Quests mit Wegpunkt und die Liste bis
+zum unteren Rand. Das Questjournal und der Laufplaner öffnen von dort wie bisher, ihr "Zurück" führt zur Detailseite.
+Die Ansicht liegt nur im Speicher (kein neuer Schlüssel in `AmisiaDB`): die erste Öffnung je Sitzung zeigt die
+Startseite, das Verlassen der Seite behält die Ansicht; `ns.ShowDungeon`, `ns.ShowDungeonQuest`, `ns.ShowRaid`, die
+Suche und die Eingänge auf der Karte öffnen die Detailseite. Die Spaltenköpfe und die Tabelle entfallen. Grund: der
+Entwurf der Überholung (Startseiten mit Kacheln wie die Hub-Seiten eines anderen Addons, im Look des Clients); die
+Bossliste beginnt auf Dungeons rund 200 px, auf Raids rund 150 px höher. Das Zeichen "<" statt "‹": wie das
+"< Zurück zu den Dungeons" des Journals, und die Schrift des Clients hat das "‹" nicht sicher.
 **Durchgesetzt durch:** `tests/test_style.lua` (Lage von Kopf, Linie, "i" und Zahnrad, Seite 602 x 478),
-`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`.
+`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_cards.lua` (Schritt 3).
 

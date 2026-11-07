@@ -1,20 +1,21 @@
--- Raids page (tab Ausrüstung, right after the page Dungeons; F-122): every raid at any level with
--- its size, when it opens, its value for the own character and the own raid ID; the chosen one's
--- image with its boss model, its bosses with their loot, the waypoint to its entrance. The values
--- come from Gear/Dungeons.lua (ns.RaidList, ns.RaidNext); the image and the boss list are the
--- page Dungeons' (ns.DungeonJournalKit), the item texts and the spec picker the gear page's
--- (ns.GearPageKit). The chosen raid stays in settings.bis.raid. Key "raidjournal": the officers'
--- page "raids" (the recorded raids, tab Raid) has the key "raids".
+-- Raids page (group Welt, right after the page Dungeons; F-122): two views as on the page Dungeons
+-- (F-143). The start: every raid at any level as a card with its size, when it opens, its value for
+-- the own character and the own raid ID (the recommended one tagged); a click opens the detail: a
+-- link back to the cards, the chosen one's image with its boss model, its bosses with their loot, the
+-- waypoint to its entrance. The values come from Gear/Dungeons.lua (ns.RaidList, ns.RaidNext); the
+-- cards, the image and the boss list are the page Dungeons' (ns.DungeonJournalKit), the item texts
+-- and the spec picker the gear page's (ns.GearPageKit). The chosen raid stays in settings.bis.raid,
+-- the view only in memory (the first open of a session shows the cards). Key "raidjournal": the
+-- officers' page "raids" (the recorded raids, group Raid) has the key "raids".
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
 local J = ns.DungeonJournalKit
 local ICON = "Interface\\Icons\\INV_Misc_Head_Dragon_Black"
-local ROW_H = J.ROW_H
--- 3 raids and 7 rows of the chosen one: as high as the page Dungeons (5 and 5)
-local RAID_ROWS, DETAIL_ROWS = 3, 7
-local state, say, hideTip = K.state, K.say, K.hideTip
+-- at least 5 rows of the chosen one under its image (they fill the page down to its bottom)
+local DETAIL_ROWS = 5
+local state, say = K.state, K.say
 local signed = J.signed
 
 local page
@@ -35,22 +36,24 @@ local function ownID(e)
     return nil
 end
 
-local function fillRaidRow(r, e)
-    r.name:SetText(e.name)
-    if e.fit == "fit" then r.name:SetTextColor(1, 1, 1) else r.name:SetTextColor(0.56, 0.53, 0.64) end
-    r.size:SetText(e.size and tostring(e.size) or "")
-    r.fit:SetText(fitText(e))
-    if e.fit == "fit" then r.fit:SetTextColor(0.31, 0.82, 0.42) else r.fit:SetTextColor(0.56, 0.53, 0.64) end
-    if e.computed then
-        r.upgrades:SetText(tostring(e.upgrades))
-        r.run:SetText(e.perRun > 0 and signed(e.perRun) or "0")
-        r.value:SetText(tostring(math.floor(e.value + 0.5)))
-    else
-        r.upgrades:SetText(""); r.run:SetText(""); r.value:SetText("")
-    end
+-- A raid's card: size, fit and the own raid ID; upgrades, gain per run and value; dim unless it fits
+-- now (as the table's rows were).
+local GREEN, GREY, ORANGE = "|cff4fd06a", T.GREY, T.ORANGE
+local VALUES = L["%d Upgrades · %s je Lauf · Wert %d"]
+local function raidCardTexts(c, e)
+    c.name:SetText(e.name)
+    local parts = {}
+    if e.size then parts[#parts + 1] = "Raid " .. e.size end
+    parts[#parts + 1] = (e.fit == "fit" and GREEN or GREY) .. fitText(e) .. "|r"
     local x = ownID(e)
-    r.id:SetText(x and L["bis %s"]:format(ns.Cal and ns.Cal.When(x.r) or date("%H:%M", x.r)) or "")
-    if r.owner and r.owner.chosen == e.key then r.sel:Show() else r.sel:Hide() end
+    if x then parts[#parts + 1] = ORANGE .. L["ID bis %s"]:format(ns.Cal and ns.Cal.When(x.r) or date("%H:%M", x.r)) .. "|r" end
+    c.line1:SetText(table.concat(parts, " · "))
+    if e.computed then
+        c.line2:SetText(VALUES:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0", math.floor(e.value + 0.5)))
+    else
+        c.line2:SetText("")
+    end
+    return e.fit ~= "fit"
 end
 
 local function raidTip(self)
@@ -68,38 +71,43 @@ local function raidTip(self)
     GameTooltip:Show()
 end
 
+-- The view: "start" (the cards) until a card is clicked or a raid is asked for, then "detail";
+-- only in memory.
+local view = "start"
+
+local function placeHead(B, detail)
+    if B.headView == detail then return end
+    B.headView = detail
+    B:Place(1, detail and { B.back, B.spec } or { B.spec })
+end
+
 local function create(parent)
-    -- the head row: the spec (the gear page's); the next raid, why, the list, the image, the
-    -- bosses, the hint in the footer
+    -- the head row: the spec (the gear page's), in the detail the link back to the cards before it;
+    -- the next raid, why and the cards (start); the image and the bosses (detail); the hint behind
+    -- the "i"
     local B = W.Page(parent)
     page = B
     B:Bands({ "row", "row", { "line", lines = 2 } })
+    B.back = W.Link(B, L["< Alle Raids"], nil, function()
+        view = "start"
+        ns.Refresh()
+    end)
+    W.Tooltip(B.back, L["Alle Raids"], L["Zurück zu den Kacheln aller Raids."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
     B.why = B:Line(3)
-    B:Place(1, { B.spec })
+    placeHead(B, false)
     B:Place(2, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
-    -- the list is 590 wide (12 px for its scroll bar)
-    local cols = { { "name", 4, 150, "Raid" }, { "size", 158, 44, L["Größe"], justify = "RIGHT" }, { "fit", 210, 78, L["Passung"] },
-        { "upgrades", 290, 56, "Upgrades", justify = "RIGHT" }, { "run", 350, 60, L["Je Lauf"], justify = "RIGHT" },
-        { "value", 414, 50, L["Wert"], justify = "RIGHT" }, { "id", 472, 114, "ID" } }
-    B.headFrame, B.head = B:Columns(cols)
-    B.list = B:List(RAID_ROWS, ROW_H, function(r)
-        r.owner = B
-        r.sel = W.SelectBar(r)
-        W.Cells(r, cols)
-        r:SetScript("OnClick", function(self)
-            if not self.item then return end
-            state().raid = self.item.key
-            ns.Refresh()
-        end)
-        r:SetScript("OnEnter", raidTip)
-        r:SetScript("OnLeave", hideTip)
-    end, fillRaidRow)
-    -- the image under the list, the bosses' header under it, then their list
+    -- the start: the cards down to the page's bottom; a click chooses the raid and opens its detail
+    B.grid = J.buildGrid(B, B.top, { texts = raidCardTexts, tip = raidTip, pick = function(e)
+        state().raid = e.key
+        view = "detail"
+        ns.Refresh()
+    end })
+    -- the detail: the image right under the head row, the bosses' header under it, then their list
     local G = T.LAYOUT
-    local artTop = B.listTop - RAID_ROWS * ROW_H - G.GAP
+    local artTop = -(G.ROW_H + G.GAP)
     B.art = J.buildArt(B, artTop)
     local headerTop = artTop - J.ART_H - G.GAP
     B.header = W.SectionHeader(B, "", false)
@@ -113,6 +121,8 @@ local function create(parent)
     B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    B.startParts = { B.next, B.why, B.grid }
+    B.detailParts = { B.back, B.header, B.way, B.detail }
     return B
 end
 
@@ -135,10 +145,21 @@ local function refresh(B)
     end
     e = e or nextE or list[1]
     B.chosen = e and e.key or nil
-    B.list:SetItems(list)
+    B.grid:SetEntries(list, B.chosen, nextE and nextE.key or nil)
     B.entry = e
-    J.fillArt(B, e)
-    if e then B.art.info:SetText(("Raid%s · %s"):format(e.size and (" " .. e.size) or "", fitText(e))) end
+    local detail = view == "detail" and e ~= nil
+    -- back on the start: the chosen card in view
+    if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
+    B.wasDetail = detail
+    for _, f in ipairs(B.startParts) do f:SetShown(not detail) end
+    for _, f in ipairs(B.detailParts) do f:SetShown(detail) end
+    placeHead(B, detail)
+    if detail then
+        J.fillArt(B, e)
+        B.art.info:SetText(("Raid%s · %s"):format(e.size and (" " .. e.size) or "", fitText(e)))
+    else
+        B.art:Hide()
+    end
     if e ~= B.detailEntry and (not e or not B.detailEntry or e.key ~= B.detailEntry.key) then B.detail.offset = 0 end
     B.detailEntry = e
     if e then
@@ -151,6 +172,10 @@ local function refresh(B)
         B.way:SetEnabled(false)
     end
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
+    if not detail then
+        B.hint:SetText(L["Klick auf eine Kachel: Bild, Bosse und Beute des Raids. Grün markiert: der empfohlene."] .. " " .. hint)
+        return
+    end
     if e and #B.detail.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end
     B.hint:SetText(hint .. " " .. J.itemHint)
 end
@@ -167,6 +192,7 @@ function ns.RaidJournalPageFrame() return page end
 function ns.ShowRaid(key)
     if type(key) ~= "string" then return false end
     state().raid = key
+    view = "detail"
     if ns.ShowPage then ns.ShowPage("raidjournal") end
     local main, map = _G.AmisiaFrame, _G.WorldMapFrame
     if main and map and map.IsShown and map:IsShown() and ns.MapLowerMain then
@@ -180,7 +206,7 @@ ns.RegisterPanel{ key = "raidjournal", label = "Raids", sub = L["Bosse und Beute
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }
 
--- the own raid IDs were read again: the ID column
+-- the own raid IDs were read again: the cards' ID
 ns.Listen("RAIDIDS", function()
     if page and page:IsShown() and ns.RefreshSoon then ns.RefreshSoon() end
 end)

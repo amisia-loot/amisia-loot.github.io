@@ -50,6 +50,13 @@ assert(c2.after:GetText() == "then")
 local goal
 for _, ln in ipairs(c4.lines) do if ln.label:GetText() == "Objective:" and ln.label:IsShown() then goal = ln.value:GetText() end end
 assert(goal == "Kill Van Cleef.", tostring(goal))
+-- the detail view's link back and the start view's cards in English (F-143)
+V.back:Click()
+assert(B.detail:IsShown() and B.back:GetText() == "< All dungeons", B.back:GetText())
+B.back:Click()
+local card = B.grid:CardOf("deadmines")
+assert(B.grid:IsShown() and card and card.tag.text:GetText() == "Recommended", "the cards in English")
+assert(card.line2:GetText() == "" or has(card.line2:GetText(), " per run · value "), card.line2:GetText())
 STUB.messages = {}
 NS.Dispatch("dungeon quests deadmines")
 local said = table.concat(STUB.messages, "\n")
