@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-144 Aufklappbare Bosszeilen mit Beutesymbolen
-- Version: -
-- Status: geplant
+- Version: 2.62.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Detailseite eines Dungeons (Teil Bosse) oder eines Raids bist, dann ist jeder Boss eine Zeile mit dem Plus oder Minus des Questlogs vor dem Namen; Bosse mit einem Upgrade für dich sind aufgeklappt (ihre Items darunter wie bisher), die anderen zugeklappt mit bis zu sechs kleinen Itemsymbolen im Rahmen ihrer Qualität rechts in der Zeile und "+N", wenn es mehr sind.
 - Prüfung: Wenn du auf einen Boss oder eines seiner Symbole klickst, dann klappt er auf oder zu; die Maus auf einem Symbol zeigt den Tooltip des Items, Strg-Klick darauf die Anprobe, Shift-Klick den Link im Chat und Rechtsklick das Menü wie in der Itemzeile; das Bild oben zeigt dabei den Boss.
 - Prüfung: Wenn du rechts neben Bosse/Quests (Raids: links von Wegpunkt) auf "Alle aufklappen" klickst, dann klappen alle Bosse auf und der Link heißt "Alle zuklappen"; im Teil Quests und im Questjournal fehlt der Link.
@@ -49,8 +49,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Schritt 4 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der Bossliste (docs/specs/README). Der Zustand liegt nur im Speicher, je Seite und Dungeon (Raid).
 
 ### F-143 Startseite mit Kacheln und Detailseite: Dungeons und Raids
-- Version: -
-- Status: geplant
+- Version: 2.62.0
+- Status: gebaut
 - Prüfung: Wenn du zum ersten Mal in der Sitzung die Seite Dungeons öffnest, dann siehst du unter dem nächsten Dungeon alle Dungeons als Kacheln, drei nebeneinander: oben ihr Bild mit dem Namen in Gold, darunter Level und Passung und "N Upgrades · +X je Lauf · Wert V"; der empfohlene trägt rechts oben ein grünes "Empfohlen", zu hohe oder zu leichte sind grau.
 - Prüfung: Wenn du auf eine Kachel klickst, dann steht oben links "< Alle Dungeons" vor der Spezialisierung, direkt darunter das Bild des Dungeons mit "Lauf planen" und "Alle auf Karte", darunter Bosse/Quests mit Wegpunkt und die Liste bis zum unteren Rand; "< Alle Dungeons" bringt dich zu den Kacheln zurück.
 - Prüfung: Wenn du einen Dungeon über die Suche oder seinen Eingang auf der Weltkarte öffnest, dann landest du direkt auf seiner Detailseite; ein Raid ebenso auf der Seite Raids, deren Kacheln Größe, Passung und deine Raid-ID zeigen.
@@ -58,15 +58,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Schritt 3 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der zwei Seiten (docs/specs/README). Die Ansicht (Start oder Detail) merkt sich Amisia nur bis zum /reload.
 
 ### F-142 Seitenkopf: Name, eine Zeile und goldene Linie über jeder Seite
-- Version: -
-- Status: geplant
+- Version: 2.62.0
+- Status: gebaut
 - Prüfung: Wenn du eine Seite öffnest, dann steht über ihr groß und gold ihr Name, darunter grau eine Zeile, wozu sie da ist, und darunter eine dünne goldene Linie, die zu den Rändern hin ausläuft.
 - Prüfung: Wenn du auf Karte oder Quests bist, dann sitzen das "i" und das Zahnrad rechts in diesem Seitenkopf, nicht mehr oben im Fensterkopf.
 - Notiz: Schritt 2 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Layout (docs/specs/README). Das Fenster ist dafür 38 px höher (598), die Seite bleibt 602 x 478.
 
 ### F-141 Eine Seitenleiste: Gruppen wie im Auktionshaus, Seitenfenster darin, Höhe ziehbar
-- Version: -
-- Status: geplant
+- Version: 2.62.0
+- Status: gebaut
 - Prüfung: Wenn du das Fenster öffnest, dann hängen keine Reiter mehr unter dem Fenster und keine Seitenreiter rechts daneben, und links stehen die Gruppen Raid, Charakter, Welt, Gilde und Amisia als Balken mit Plus oder Minus.
 - Prüfung: Wenn du auf eine zugeklappte Gruppe klickst, dann klappt die vorher offene zu und die zuletzt gewählte Seite der neuen Gruppe öffnet sich; ein Klick auf die offene Gruppe klappt sie zu und die Seite bleibt.
 - Prüfung: Wenn du unter Charakter auf "Ausrüstungstabelle" klickst, dann öffnet sich das Fenster, die Zeile ist weiß, solange es offen ist, und ein zweiter Klick schließt es.
