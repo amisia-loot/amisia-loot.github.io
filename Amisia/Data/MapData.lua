@@ -14,7 +14,7 @@ local _, ns = ...
 -- T: docks { uiMapID, x, y, kind Z (zeppelin) / S (ship), faction A/H/N, { { area id, English name }, ... } }.
 ns.LazyData("MAP", [=[
 return {
-game="forever",built="2026-11-05",source="2d7ad8025c",
+game="forever",built="2026-11-07",source="2d7ad8025c",
 P={
 ["I:129"]="1413:5091:9288",
 ["I:189"]="1420:8508:3138",
