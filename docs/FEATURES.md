@@ -307,15 +307,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia ansage` eingibst, dann wird das offene Lootfenster noch einmal angesagt.
 
 ### F-019 Soft-Reserves
-- Version: 2.57.0
+- Version: 2.62.1
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du auf der Seite Soft-Reserves eine softres.it-CSV einfügst und "Importieren" klickst, dann steht dort "N Reservierungen, vom <Datum>", und "Prüfen" zeigt, wer nicht im Raid oder ohne Reserve ist.
 - Prüfung: Wenn ein Raider `!sr` flüstert, dann antwortet die Lootleitung per Flüstern mit seinen Reservierungen.
 - Prüfung: Wenn du "Erinnern" klickst, dann bekommt jeder im Raid ohne Reservierung nach einer Rückfrage einmal ein Flüstern.
 - Prüfung: Wenn ein Raider von einem verbundenen Realm `!sr <Item>` flüstert, dann steht seine Reservierung auf der Seite Soft-Reserves (vorher verworfen, wenn das Spiel den Namen mit "-Realm" schrieb).
+- Prüfung: Wenn du auf TBC Anniversary oder Classic Era im Raid ein Lootfenster mit einem reservierten Item öffnest, dann trägt dessen Knopf die SR- oder HR-Markierung wie auf Forever.
 - Notiz: 2.25.2 (2026-10-11): die heutige softres.it-CSV hat den Namen in "Raider Name"; vorher kamen 0 Reservierungen an.
 - Notiz: Den Code von softres.it (Knopf "Gargul") liest F-091 (2.26.0).
+- Notiz: 2.62.1 (2026-11-07, Code-Audit): SR/HR-Markierungen auch an den klassischen Lootknöpfen (TBC, Era).
 
 ### F-020 Roll-Runden und Roll-Fenster
 - Version: 2.30.1
@@ -358,12 +360,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du ihn in Discord einfügst, dann pingt er niemanden (keine @-Erwähnung wird ausgelöst).
 
 ### F-025 Raid-Abgleich zwischen Offizieren (Hüter)
-- Version: 2.1.0
+- Version: 2.62.1
 - Status: gebaut
 - Braucht: Gilde, Raid
 - Prüfung: Wenn zwei Offiziere mit Amisia im selben Raid sind und die Lootleitung etwas vergibt, dann steht die Vergabe nach wenigen Sekunden auch beim anderen auf der Seite Vergaben.
 - Prüfung: Wenn der andere Offizier eine Vergabe ändert, dann geht die Änderung an den Hüter und kommt bei beiden gleich an; `/amisia sync` zeigt den gleichen Stand.
 - Prüfung: Wenn jemand außerhalb der Gilde Amisia-Nachrichten schickt, dann ändert das nichts.
+- Prüfung: Wenn ein Offizier in der Raider-Ansicht ist, während die Lootleitung eine Notiz an eine Vergabe schreibt, und danach zur Offiziersansicht wechselt, dann sieht er die Notiz nach wenigen Sekunden; übernimmt er später die Lootleitung, bleiben die Notizen bei allen erhalten.
+- Notiz: 2.62.1 (2026-11-07, Code-Audit): ein Offizier in der Raider-Ansicht löschte über den Abgleich Notizen, Erstgewinner und "von Hand" für den ganzen Raid (D-18 Nachtrag).
 
 ### F-026 Wer braucht das?
 - Version: 2.1.0
@@ -449,12 +453,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec-Frage 12 (Master Loot in Forever, GiveMasterLoot ohne Klick) ist erst mit der Gruppe ab 2026-11-04 prüfbar (D-32).
 
 ### F-078 Lootregeln an Offiziere senden
-- Version: 2.16.0
+- Version: 2.62.1
 - Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du unter Lootregeln "An Offiziere senden" klickst, dann sieht ein anderer Offizier mit Amisia "Neue Lootregeln von <Name> (N Regeln): ..." und unter Einstellungen, Lootregeln "Neue Lootregeln von <Name>: N neu, M geändert, K entfernt" mit "Übernehmen" und "Ablehnen"; seine eigenen Regeln bleiben, bis er "Übernehmen" klickt.
 - Prüfung: Wenn ein Offizier sich nach dem Senden erst einloggt, dann bekommt er den Vorschlag etwa eine Minute nach dem Login.
 - Prüfung: Wenn ein Raider ohne Offiziersrang Regeln sendet (z. B. mit einem veränderten Addon), dann erscheint bei niemandem ein Vorschlag.
+- Prüfung: Wenn du so viele Regeln anlegst, dass der Satz nicht mehr in die Nachricht an die Offiziere passt, dann lehnt Amisia die neue Regel gleich beim Anlegen mit einer Meldung ab, statt erst beim Senden zu scheitern.
+- Notiz: 2.62.1 (2026-11-07, Code-Audit): Regelsätze über 4 Nachrichtenteile werden beim Anlegen abgelehnt.
 
 ### F-075 Würfel-Fenster für Raider
 - Version: 2.17.0
