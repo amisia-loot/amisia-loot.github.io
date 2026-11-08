@@ -1,7 +1,8 @@
 -- Amisia main window in the look of Forever's profession window: the client's portrait frame, a
 -- status bar with the recording state, on the left the side bar (D-68, D-70: a head with the logo, a
 -- search box, every group as a heading with its pages and side windows as rows with their symbols),
--- the page itself in an inset on the right. The height can be dragged at the bottom right corner. Typing two
+-- the page itself in an inset on the right. The size can be dragged at the bottom right corner (D-68,
+-- D-71); the minimize button folds the window to a small bar (D-71). Typing two
 -- characters into the search box turns the side bar into the results (UI/Search.lua). Pages are built
 -- the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
@@ -13,12 +14,13 @@ local WIDTH, HEIGHT = M.W, M.H
 local NAV_W = M.NAV_W
 local ROW_H = M.NAV_ROW_H
 local PAGE_H0 = T.PAGE_H   -- the page area at the window's own height (HEIGHT)
+local PAGE_W0 = T.PAGE_W   -- and at its own width (WIDTH)
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 local WINDOW_SIGN = "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up"
 local GRABBER = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 
-local F, navHead, viewText, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
+local F, mini, minBtn, navHead, viewText, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
 local pageHead, pageTitle, pageSub   -- the page head over the page (D-69)
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
@@ -53,7 +55,8 @@ local SIDE_WINDOWS = {
       toggle = function() ns.ToggleSoftResFrame() end },
 }
 
--- settings.window: the place (point, rel, x, y), the dragged height (h, H_MIN to H_MAX; nil: HEIGHT),
+-- settings.window: the place (point, rel, x, y), the dragged height (h, H_MIN to H_MAX; nil: HEIGHT)
+-- and width (w, W_MIN to W_MAX; nil: WIDTH),
 -- the last group (tab: a group key) and the last page of each group (pages: { [group] = page key }); the
 -- collapsed sections of before 2.27.0 are dropped. Once per session the group and the pages are checked
 -- against today's groups (D-68 moved the pages of "gear", "calendar" and "pvp"): each page goes under its
@@ -86,6 +89,8 @@ local function windowState()
         w.pages = pages
         local h = tonumber(w.h)
         w.h = h and h >= M.H_MIN and h <= M.H_MAX and math.floor(h + 0.5) or nil
+        local wd = tonumber(w.w)
+        w.w = wd and wd >= M.W_MIN and wd <= M.W_MAX and math.floor(wd + 0.5) or nil
     end
     return w
 end
@@ -120,15 +125,16 @@ function ns.ApplyScale(v)
     if F then F:SetScale((v or ns.Get("ui.scale") or 100) / 100) end
 end
 
--- The remembered group and pages stay (settings.window.tab, pages), the position and the height go.
-local applyHeight
+-- The remembered group and pages stay (settings.window.tab, pages), the position and the size go.
+local applySize, applyHeight
 function ns.ResetPositions()
     local w = windowState()
-    w.point, w.h = nil, nil
+    w.point, w.h, w.w = nil, nil, nil
     if F then
-        applyHeight(HEIGHT)
+        applySize(WIDTH, HEIGHT)
         restorePosition()
         W.FitLists()
+        W.FitWidths()
         ns.Refresh()
     end
     if ns.ResetGearPosition then ns.ResetGearPosition() end
@@ -360,41 +366,55 @@ function ns.ShowTab(group)
 end
 
 ---------------------------------------------------------------------------
--- The window's height (D-68)
+-- The window's size (D-68: the height, D-71: the width)
 ---------------------------------------------------------------------------
--- The tallest the window may be: H_MAX, and never taller than the screen at its scale.
-local function heightRoom()
-    local top = M.H_MAX
-    local ui = UIParent and UIParent.GetHeight and UIParent:GetHeight() or 0
+-- The most room the screen gives at the window's scale along one axis (UIParent's GetHeight or
+-- GetWidth), never less than lo nor more than hi.
+local function screenRoom(lo, hi, side)
+    local top = hi
+    local ui = UIParent and UIParent[side] and UIParent[side](UIParent) or 0
     local mine = F and F.GetEffectiveScale and F:GetEffectiveScale() or 1
     local theirs = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
     if ui > 0 and mine > 0 then top = math.min(top, math.floor(ui * theirs / mine)) end
-    return math.max(M.H_MIN, top)
+    return math.max(lo, top)
 end
+local function heightRoom() return screenRoom(M.H_MIN, M.H_MAX, "GetHeight") end
+local function widthRoom() return screenRoom(M.W_MIN, M.W_MAX, "GetWidth") end
 
--- Sets the window's height (clamped), the page area (T.PAGE_H) and the side bar's rows; the pages'
--- lists follow with W.FitLists (at the end of a drag, not on every step). The height it got.
-applyHeight = function(h)
+-- Sets the window's size (clamped), the page area (T.PAGE_H, T.PAGE_W_NOW) and the side bar's rows;
+-- the pages' lists and bands follow with W.FitLists and W.FitWidths (at the end of a drag, not on
+-- every step). The width and the height it got.
+applySize = function(w, h)
+    w = math.floor(math.max(M.W_MIN, math.min(widthRoom(), tonumber(w) or WIDTH)) + 0.5)
     h = math.floor(math.max(M.H_MIN, math.min(heightRoom(), tonumber(h) or HEIGHT)) + 0.5)
-    F:SetHeight(h)
+    F:SetSize(w, h)
     T.PAGE_H = PAGE_H0 + h - HEIGHT
+    T.PAGE_W_NOW = PAGE_W0 + w - WIDTH
     local rows = math.floor((M.NAV_LIST_H + h - HEIGHT) / ROW_H)
     nav:Fit(rows)
     results:Fit(rows)
-    return h
+    return w, h
+end
+-- the height alone (the width kept)
+applyHeight = function(h)
+    local _, got = applySize(F:GetWidth(), h)
+    return got
 end
 
--- The end of a drag (or a new screen): remembered (nil at the window's own height), the pages fit.
-local function heightDone()
-    local h = math.floor(F:GetHeight() + 0.5)
-    windowState().h = h ~= HEIGHT and h or nil
+-- The end of a drag (or a new screen): remembered (nil at the window's own size), the pages fit.
+local function sizeDone()
+    local w, h = math.floor(F:GetWidth() + 0.5), math.floor(F:GetHeight() + 0.5)
+    local state = windowState()
+    state.h = h ~= HEIGHT and h or nil
+    state.w = w ~= WIDTH and w or nil
     savePosition()
     W.FitLists()
+    W.FitWidths()
     ns.Refresh()
 end
 
--- The grip at the bottom right corner: the chat window's size grabber. Dragging it sets the height
--- under the cursor; the window's top stays where it is (anchored at its top left for the drag).
+-- The grip at the bottom right corner: the chat window's size grabber. Dragging it sets the size
+-- under the cursor; the window's top left stays where it is (anchored there for the drag).
 local function buildGrip()
     local g = CreateFrame("Button", nil, F)
     g:SetSize(M.GRIP, M.GRIP)
@@ -403,11 +423,12 @@ local function buildGrip()
     g:SetNormalTexture(GRABBER .. "Up")
     g:SetPushedTexture(GRABBER .. "Down")
     g:SetHighlightTexture(GRABBER .. "Highlight")
-    local startY, startH
-    local function cursorY()
-        local _, y = GetCursorPosition()
+    local startX, startY, startW, startH
+    local function cursor()
+        local x, y = GetCursorPosition()
         local scale = F:GetEffectiveScale()
-        return (y or 0) / (scale > 0 and scale or 1)
+        scale = scale > 0 and scale or 1
+        return (x or 0) / scale, (y or 0) / scale
     end
     g:SetScript("OnMouseDown", function(self, button)
         if button ~= "LeftButton" then return end
@@ -416,25 +437,149 @@ local function buildGrip()
             F:ClearAllPoints()
             F:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
         end
-        startY, startH = cursorY(), F:GetHeight()
+        startX, startY = cursor()
+        startW, startH = F:GetWidth(), F:GetHeight()
         self:SetScript("OnUpdate", function()
-            applyHeight(startH + (startY - cursorY()))
+            local x, y = cursor()
+            applySize(startW + (x - startX), startH + (startY - y))
         end)
     end)
     local function stop(self)
         if not startY then return end
         self:SetScript("OnUpdate", nil)
-        startY = nil
-        heightDone()
+        startX, startY = nil, nil
+        sizeDone()
     end
     g:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" then stop(self) end
     end)
-    -- the window hidden mid-drag (Escape): no mouse up comes, the drag ends here
+    -- the window hidden mid-drag (Escape, minimize): no mouse up comes, the drag ends here
     g:SetScript("OnHide", stop)
-    W.Tooltip(g, L["Höhe ändern"], L["Ziehen: das Fenster höher oder niedriger. Lange Listen wachsen mit."])
+    W.Tooltip(g, L["Größe ändern"], L["Ziehen: das Fenster breiter oder schmaler, höher oder niedriger. Listen und Kacheln nutzen den Platz."])
     g:Show()
     return g
+end
+
+---------------------------------------------------------------------------
+-- Minimize (D-71): the window folds to a small bar in the tooltip's frame, at its top right corner
+---------------------------------------------------------------------------
+local function minimize()
+    if not F or not mini then return end
+    local p = ns.Panel(current)
+    mini.page:SetText(p and p.label or "")
+    mini:SetScale(F:GetScale())
+    mini:ClearAllPoints()
+    local right, top = F:GetRight(), F:GetTop()
+    if right and top then
+        mini:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", right, top)
+    else
+        mini:SetPoint("CENTER")
+    end
+    F:Hide()
+    mini:Show()
+end
+
+-- The bar's click: the window again, its top right corner where the bar's is.
+local function restore()
+    if not mini or not mini:IsShown() then return end
+    local right, top = mini:GetRight(), mini:GetTop()
+    mini:Hide()
+    if right and top then
+        F:ClearAllPoints()
+        F:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", right, top)
+        savePosition()
+    end
+    ns.ShowPage(current or "overview")
+end
+
+local function buildMini()
+    local B = M.MINI
+    local ok, bar = pcall(CreateFrame, "Button", "AmisiaMiniBar", UIParent, "TooltipBackdropTemplate")
+    if not ok or not bar then
+        bar = CreateFrame("Button", "AmisiaMiniBar", UIParent)
+        W.Flat(bar, 0.05, 0.05, 0.06, 0.95)
+    end
+    bar:SetSize(B.W, B.H)
+    bar:SetFrameStrata("FULLSCREEN")
+    bar:SetClampedToScreen(true)
+    bar:SetMovable(true)
+    bar:EnableMouse(true)
+    bar:RegisterForDrag("LeftButton")
+    -- a drag is no click: the client sends none after a drag, an old one may (moved, cleared at
+    -- every press)
+    bar:SetScript("OnMouseDown", function(self) self.moved = nil end)
+    bar:SetScript("OnDragStart", function(self) self.moved = true self:StartMoving() end)
+    bar:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    bar:SetScript("OnClick", function(self)
+        if self.moved then self.moved = nil return end
+        restore()
+    end)
+    bar.logo = bar:CreateTexture(nil, "ARTWORK")
+    bar.logo:SetSize(B.LOGO, B.LOGO)
+    bar.logo:SetPoint("LEFT", B.LOGO_X, 0)
+    bar.logo:SetTexture(PORTRAIT)
+    if bar.CreateMaskTexture and bar.logo.AddMaskTexture then
+        local mask = bar:CreateMaskTexture()
+        mask:SetAllPoints(bar.logo)
+        mask:SetTexture(W.DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        bar.logo:AddMaskTexture(mask)
+    end
+    bar.name = W.Text(bar, T.FONT.title, B.TEXT_W)
+    bar.name:SetPoint("LEFT", B.TEXT_X, B.NAME_Y)
+    bar.name:SetText("Amisia")
+    bar.page = W.Text(bar, T.FONT.hint, B.TEXT_W)
+    bar.page:SetPoint("LEFT", B.TEXT_X, B.PAGE_Y)
+    local okX, x = pcall(CreateFrame, "Button", nil, bar, "UIPanelCloseButtonNoScripts")
+    if not okX or not x then
+        x = CreateFrame("Button", nil, bar)
+        local t = W.Text(x, T.FONT.title)
+        t:SetPoint("CENTER")
+        t:SetText("x")
+    end
+    x:SetSize(B.X, B.X)
+    x:SetPoint("RIGHT", -B.X_R, 0)
+    x:SetScript("OnClick", function() bar:Hide() end)
+    W.Tooltip(x, L["Schließen"], L["Schließt die Leiste; /amisia öffnet das Fenster wieder."])
+    bar:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine("Amisia", 1, 0.82, 0)
+        GameTooltip:AddLine(L["Klick: das Fenster wieder öffnen. Ziehen: die Leiste verschieben."], 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    bar.close = x
+    bar:Hide()
+    return bar
+end
+
+-- The minimize button: the client's (UIPanelHideButtonNoScripts, the red "-"), left of the close
+-- button, the frame's corner art for two buttons as the client's own minimizable windows
+-- (PortraitFrameTemplateMinimizable); without the template the old client's smaller-window button.
+-- In the flat window of TBC and Era (no TitleContainer: the old 32 px close button) MIN_SIZE_OLD,
+-- centred on the close button and clear of the status line.
+local function buildMinButton()
+    local modern = F.TitleContainer ~= nil
+    local ok, b = pcall(CreateFrame, "Button", nil, F, "UIPanelHideButtonNoScripts")
+    if not ok or not b then
+        b = CreateFrame("Button", nil, F)
+        b:SetNormalTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Up")
+        b:SetPushedTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Down")
+        b:SetHighlightTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Highlight", "ADD")
+    end
+    local size = modern and M.MIN_SIZE or M.MIN_SIZE_OLD
+    b:SetSize(size, size)
+    if F.CloseButton and modern then
+        -- its top at the window's top (the close button's template hangs 1 px over it)
+        b:SetPoint("TOPRIGHT", F.CloseButton, "TOPLEFT", 0, -1)
+        if F.SetBorder then pcall(F.SetBorder, F, "PortraitFrameTemplateMinimizable") end
+    elseif F.CloseButton then
+        b:SetPoint("RIGHT", F.CloseButton, "LEFT", 0, 0)
+    else
+        b:SetPoint("TOPRIGHT", -M.MIN_SIZE, 0)
+    end
+    b:SetScript("OnClick", minimize)
+    W.Tooltip(b, L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."])
+    return b
 end
 
 ---------------------------------------------------------------------------
@@ -742,11 +887,14 @@ local function build()
         title = "Amisia", background = "Profession-Background-Overview",
         onShow = function(self)
             if self.Raise then self:Raise() end
-            -- another screen or scale since the last open: the height stays on it
-            if nav and math.floor(self:GetHeight() + 0.5) > heightRoom() then
-                applyHeight(self:GetHeight())
+            -- another screen or scale since the last open: the size stays on it
+            if nav and (math.floor(self:GetHeight() + 0.5) > heightRoom() or math.floor(self:GetWidth() + 0.5) > widthRoom()) then
+                applySize(self:GetWidth(), self:GetHeight())
                 W.FitLists()
+                W.FitWidths()
             end
+            -- opened again (/amisia, the minimap): the bar goes
+            if mini then mini:Hide() end
             ns.Refresh()
             -- the setup offer (Setup.lua) at the first open after a login
             ns.Fire("MAIN_SHOWN")
@@ -759,10 +907,10 @@ local function build()
     -- frame's own ground (a dark bar there did not fit the window's look); a click on it or on its arrow
     -- opens the menu with the recording and the view. No red buttons; "?" and the gear went to the page
     -- head (D-69).
-    local BAR_W = WIDTH - M.HEAD_X - M.ICON_RIGHT
     local bar = CreateFrame("Button", nil, F)
-    bar:SetSize(BAR_W, M.HEAD_H)
+    bar:SetHeight(M.HEAD_H)
     bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
+    bar:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)   -- as wide as the window (D-71)
     statusBar = bar
     statusText = W.Text(bar, T.FONT.body)
     statusText:SetPoint("CENTER", bar, "CENTER", -(M.MENU_SIZE + M.ICON_GAP) / 2, 0)
@@ -922,12 +1070,16 @@ local function build()
     content:SetPoint("BOTTOMRIGHT", -M.PAGE_PAD, M.PAGE_PAD)
 
     grip = buildGrip()
-    applyHeight(windowState().h or HEIGHT)
+    minBtn = buildMinButton()
+    mini = buildMini()
+    local state = windowState()
+    applySize(state.w or WIDTH, state.h or HEIGHT)
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.menuBtn, F.helpBtn, F.settingsBtn, F.headMenu = statusBar, statusText, menuBtn, helpBtn, settingsBtn, headMenu
     F.listInset, F.contentInset, F.nav, F.content, F.navHead = listInset, contentInset, nav, content, navHead
     F.pageHead, F.pageTitle, F.pageSub = pageHead, pageTitle, pageSub
-    F.navOrder, F.grip, F.applyHeight, F.heightDone = {}, grip, applyHeight, heightDone
+    F.navOrder, F.grip, F.applyHeight, F.applySize, F.heightDone = {}, grip, applyHeight, applySize, sizeDone
+    F.minBtn, F.mini, F.Minimize, F.Restore = minBtn, mini, minimize, restore
     F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
 end
 

@@ -4,7 +4,8 @@
     python3 tools/ui_layout.py snapshots [--out DIR] [--compare DIR] [--scale N] [--locale enUS]
     python3 tools/ui_layout.py red [--write]
 
-Every registered page is opened in the raider, officer and expert view of the scene
+Every registered page is opened in the raider, officer and expert view of the scene and in the
+expert view with the main window at its widest (wide, D-71)
 (tests/ui_scene.lua), and the side windows (roll window, award dialog, soft-reserve window,
 gear window, self-test) once each. tests/uidump.lua hands the stub's frame tree over as JSON
 (anchors, sizes, texts, font objects, atlases); this file solves the anchors, checks the layout rules
@@ -43,7 +44,8 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS = os.path.join(ROOT, 'tests')
 DEFAULT_OUT = '/tmp/amisia-snapshots'
-VIEWS = ('raider', 'officer', 'expert')
+# wide: the expert view with the main window dragged to its widest (D-71)
+VIEWS = ('raider', 'officer', 'expert', 'wide')
 
 # The client locales the rules run in and their width factor (1.0: the widths below as they are).
 # Every shot is taken in each locale: German (deDE) and English (enUS, every other client locale).
@@ -66,6 +68,10 @@ local S = dofile(ADDON_DIR .. "/../tests/ui_scene.lua")
 local dump = dofile(ADDON_DIR .. "/../tests/uidump.lua")
 S.setup()
 for k, v in pairs(S.VIEWS[view]) do NS.Set(k, v) end
+if view == "wide" then
+    AmisiaDB.settings.window = AmisiaDB.settings.window or {}
+    AmisiaDB.settings.window.w = NS.Theme.MAIN.W_MAX
+end
 local out = {}
 local function shot(name, root, marks, extra)
     out[#out + 1] = { name = name, json = dump(root, marks), extra = extra or "{}" }
@@ -676,7 +682,9 @@ def rule_red(tree, shot):
     n = red_count(tree)
     if n is None or n <= RED_TARGET:
         return []
-    key = f'{shot.get("view")}/{shot.get("name")}'
+    # the wide pass (D-71) is the expert view in a wider window: the expert view's budget
+    view = 'expert' if shot.get('view') == 'wide' else shot.get('view')
+    key = f'{view}/{shot.get("name")}'
     budget = red_budget().get(key)
     if budget is None:
         return [f'{n} red buttons and chips, no budget (target {RED_TARGET}; ui_layout.py red --write adds it)']
@@ -693,7 +701,7 @@ def red_report(write=False):
     budget = red_budget()
     counts = {}
     for s in shots:
-        if not s['nodes']:
+        if not s['nodes'] or s['view'] == 'wide':   # the wide pass counts against the expert view's budget
             continue
         n = red_count(Tree(s['nodes'], s['marks']))
         if n is not None:

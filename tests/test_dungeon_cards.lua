@@ -46,9 +46,11 @@ assert(B.grid.layoutRole == "list" and B.grid.bar, "the grid is a list of the sc
 local all = NS.DungeonList()
 assert(#B.grid.entries == #all and #all > 6, "every dungeon a card: " .. #all)
 local r1 = B.grid.rows[1]
-assert(#r1.item == 3 and #r1.cards == 3 and not r1.bg:IsShown() and r1.hover:GetAlpha() == 0, "one row, three cards")
+assert(#r1.item == 3 and #r1.cards == C.MAX_COLS and not r1.bg:IsShown() and r1.hover:GetAlpha() == 0, "one row, three cards")
+assert(B.grid.cols == 3 and not r1.cards[4]:IsShown(), "the cards for a wider window hidden (D-71)")
 assert(#B.grid.items == math.ceil(#all / 3), "the rows: " .. #B.grid.items)
-for i, c in ipairs(r1.cards) do
+for i = 1, 3 do
+    local c = r1.cards[i]
     local x = c.points.TOPLEFT.x
     assert(x == (i - 1) * (C.W + C.GAP) and c._w == C.W and c._h == C.H, "card " .. i .. " at " .. x)
 end
@@ -81,6 +83,17 @@ B.grid.offset = math.max(0, #B.grid.items - B.grid.rowCount)
 B.grid:Redraw()
 local lastRow = B.grid.rows[#B.grid.items - B.grid.offset]
 for i, c in ipairs(lastRow.cards) do assert(c:IsShown() == (i <= rest), "the last row's card " .. i) end
+-- the window dragged wide (D-71): more cards per row, the same cards; back: three again
+local F = AmisiaFrame
+F.applySize(NS.Theme.MAIN.W_MAX, F:GetHeight())
+F.heightDone()
+local wideCols = math.floor((T.PAGE_W_NOW - T.SCROLL_ROOM + C.GAP) / (C.W + C.GAP))
+assert(B.grid.cols == math.min(C.MAX_COLS, wideCols) and B.grid.cols > 3, "more per row: " .. B.grid.cols)
+assert(#B.grid.items == math.ceil(#all / B.grid.cols) and #B.grid.rows[1].item == B.grid.cols, "the rows: " .. #B.grid.items)
+assert(B.grid:CardOf("thanes") and B.grid:CardOf("thanes").item.key == "thanes", "a card is still found")
+F.applySize(NS.Theme.MAIN.W, F:GetHeight())
+F.heightDone()
+assert(B.grid.cols == 3 and #B.grid.items == math.ceil(#all / 3) and T.PAGE_W_NOW == T.PAGE_W, "three again")
 B.grid.offset = 0
 B.grid:Redraw()
 -- the tooltip reads the card's entry

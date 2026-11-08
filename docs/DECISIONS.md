@@ -1659,3 +1659,30 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Überschriften, Symbole, kein Aufklappen), `tests/test_style.lua` (jede Seite hat ein Symbol, keines aus `Interface\Icons`, Abstände und Zeilen), die Layoutregel `nav` (`tools/ui_layout.py`).
 
+## D-71 Hauptfenster in der Breite ziehbar und zu einer Leiste minimierbar
+
+**Datum:** 2026-11-08
+**Entscheidung:** Schritt 2 der Spec `docs/specs/2026-11-07-hauptfenster-journal.md` (F-145):
+- **Breite:**
+  - Der Griff unten rechts zieht Breite und Höhe. Die Breite reicht von `T.MAIN.W_MIN` 806 bis `W_MAX` 1440 und nie über den Bildschirm hinaus. Sie steht in `settings.window.w`, nil bei 806. "Positionen zurücksetzen" setzt sie zurück.
+  - `T.PAGE_W` bleibt 602, die Breite, für die jede Seite gebaut ist; `T.PAGE_W_NOW` ist die Breite, die die Seite jetzt hat.
+  - Was an den rechten Rand der Seite geankert ist, rückt mit: Bänder, Listen ohne feste Breite, die Detailfläche. Das füllende Element eines Bands nimmt den Platz (`W.FitWidths` platziert die Bänder am Ende des Ziehens neu).
+  - Feste Breiten aus `T.PAGE_W` bleiben. Was mehr will, meldet sich mit `W.FollowWidth(owner, fn)` an. Die Kacheln der Dungeons und Raids tun das: 3 bis 6 je Reihe (`T.DCARD.MAX_COLS`).
+  - Die Statuszeile ist so breit wie das Fenster.
+  - Die Layoutregeln laufen zusätzlich in der Ansicht `wide` (Experte, Fenster 1440 breit).
+- **Minimieren:**
+  - Links vom roten X sitzt der rote Knopf des Clients zum Verkleinern (`UIPanelHideButtonNoScripts`; ohne die Vorlage die alte Grafik `UI-Panel-SmallerButton`).
+  - Der Rahmen bekommt dazu die Ecke für zwei Knöpfe, wie die minimierbaren Fenster des Clients (`SetBorder("PortraitFrameTemplateMinimizable")`).
+  - Im flachen Fenster von TBC und Era ist der Knopf 20 px groß und mittig neben dem alten X.
+  - Ein Klick versteckt das Fenster und zeigt an seiner oberen rechten Ecke die Leiste `AmisiaMiniBar`: 214×36 im Tooltip-Rahmen, mit Logo, "Amisia", dem Namen der offenen Seite und einem kleinen X.
+  - Die Leiste lässt sich ziehen. Ein Klick auf sie öffnet das Fenster mit seiner oberen rechten Ecke dort, wo die Leiste ist, und merkt die Stelle. `/amisia` und das Minimap-Symbol öffnen das Fenster ebenso, die Leiste geht dabei weg. Das X der Leiste schließt sie.
+  - Die Leiste wird nicht gespeichert: Nach `/reload` ist sie zu.
+
+**Grund:** Nutzer 2026-11-07: Breite frei ziehbar und Minimieren zur Leiste wie beim Vorbild (Auswahl in der Rückfrage), Spec freigegeben 2026-11-08; "Committen, dann Schritt 2".
+
+**Folge:**
+- Eine neue Seite legt sich weiter auf 602 aus, ankert aber, was rechts sitzt, an den rechten Rand (Scaffold-Bänder tun das von selbst).
+- Wer die Breite für mehr nutzen will (Spalten, Kacheln), meldet sich mit `W.FollowWidth` an und liest `T.PAGE_W_NOW`.
+
+**Durchgesetzt durch:** `tests/test_main_size.lua` (Ziehen, Grenzen, Merken, Zurücksetzen, Bänder, Leiste), `tests/test_dungeon_cards.lua` (Kacheln je Breite), die Layoutregeln in der Ansicht `wide` (`tools/ui_layout.py`).
+

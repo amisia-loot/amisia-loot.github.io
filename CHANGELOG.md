@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the main window can be dragged wider and minimized to a small bar (F-145)
+
+  The grip at the bottom right corner now changes the width as well as the height, up to 1440 pixels.
+  Lists and rows use the extra room, and the dungeon and raid cards show up to six per row. A new red
+  button next to the close button folds the window into a small bar; a click on the bar brings the
+  window back at the same place.
+
 - feat(ui): the side bar gets a head with the logo, headings and a symbol on every row (F-145)
 
   The main window's side bar now starts with the Amisia logo, the version and the current view.

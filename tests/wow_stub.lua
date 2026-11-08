@@ -889,6 +889,15 @@ local function closeButton(f, kind, name)
     tplScript(f, "OnClick", UIPanelCloseButton_OnClick)
 end
 TEMPLATES.UIPanelCloseButton = closeButton
+TEMPLATES.UIPanelCloseButtonNoScripts = function(f)
+    f.tplW, f.tplH = 24, 24
+    f:SetFrameLevel(510)
+end
+-- the red "-" (Blizzard_SharedXML/Mainline: RedButton-MiniCondense), no scripts of its own
+TEMPLATES.UIPanelHideButtonNoScripts = function(f)
+    f.tplW, f.tplH = 24, 24
+    f:SetFrameLevel(510)
+end
 TEMPLATES.UIPanelCloseButtonDefaultAnchors = function(f, kind, name)
     closeButton(f, kind, name)
     f:SetPoint("TOPRIGHT", -2, 1)
@@ -1285,6 +1294,7 @@ function _G.CreateFrame(kind, name, parent, template)
     end
     f.GetLeft = function(self) return self._left end
     f.GetTop = function(self) return self._top end
+    f.GetRight = function(self) return self._right end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetWidth = function(self, w) self._w = w end
     f.SetHeight = function(self, h) self._h = h end

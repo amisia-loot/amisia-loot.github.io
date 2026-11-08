@@ -1384,6 +1384,24 @@ function W.FitLists()
     for list, e in pairs(fillers) do list:Fit(fitRows(e)) end
 end
 
+-- What follows the main window's width (D-71): the pages' bands (placed again, their filling item
+-- takes the new room) and the parts that asked with W.FollowWidth(owner, fn) (fn() after the change).
+-- Weak keys, but the values reach their keys (no ephemerons in Lua 5.1): pages live as long as the
+-- window does, so they stay; each band holds only its latest items.
+local widthFollowers = setmetatable({}, { __mode = "k" })
+-- The bands of the main window's pages (placed with width nil: the page's width now, T.PAGE_W_NOW)
+-- with how to place them again (placeIn below)
+local placedBands = setmetatable({}, { __mode = "k" })
+
+function W.FollowWidth(owner, fn)
+    widthFollowers[owner] = fn
+end
+
+function W.FitWidths()
+    for _, again in pairs(placedBands) do again() end
+    for _, fn in pairs(widthFollowers) do fn() end
+end
+
 -- An overview card: an inset with a gold title, two lines and at most two actions as quiet links (the
 -- second right of the first, c:SetAction2; c:SetAction(nil) hides both); a click on the card runs the
 -- first (D-67).
@@ -1950,6 +1968,8 @@ end
 
 local function placeIn(band, width, left, right, opts, role)
     local onlyShown = opts and opts.shown
+    local fixed = width
+    width = width or T.PAGE_W_NOW or T.PAGE_W
     local R, Lf = bandItems(right, onlyShown), bandItems(left, onlyShown)
     -- the right side, from the edge leftwards
     local at = 0
@@ -1983,8 +2003,10 @@ local function placeIn(band, width, left, right, opts, role)
     end
     for _, it in ipairs(R) do it.f.layoutRole, it.f.layoutBand = role, band end
     for _, it in ipairs(Lf) do it.f.layoutRole, it.f.layoutBand = role, band end
-    -- a text tab that changes its width later (W.Tab:Fit) places this band again
-    local function again() placeIn(band, width, left, right, opts, role) end
+    -- a text tab that changes its width later (W.Tab:Fit) places this band again, and so does a new
+    -- width of the main window's page
+    local function again() placeIn(band, fixed, left, right, opts, role) end
+    if not fixed then placedBands[band] = again end
     for _, it in ipairs(R) do if it.f.isTab then it.f.replace = again end end
     for _, it in ipairs(Lf) do if it.f.isTab then it.f.replace = again end end
 end
@@ -2013,7 +2035,7 @@ end
 
 function Scaffold:Place(i, left, right, opts)
     local band = assert(self.bands and self.bands[i], "no band " .. tostring(i))
-    placeIn(band, self.pageW or T.PAGE_W, left, right, opts, (i == 1 and not self.isView) and "head" or "band")
+    placeIn(band, self.pageW, left, right, opts, (i == 1 and not self.isView) and "head" or "band")
 end
 
 function Scaffold:Line(i, fs)
@@ -2210,7 +2232,7 @@ function Scaffold:BottomRow(left, right, opts)
     self.bottomRow = b
     if left or right then self.bottomItems = { left, right, opts } end
     local items = self.bottomItems
-    if items then placeIn(b, self.pageW or T.PAGE_W, items[1], items[2], items[3], "band") end
+    if items then placeIn(b, self.pageW, items[1], items[2], items[3], "band") end
     return b
 end
 

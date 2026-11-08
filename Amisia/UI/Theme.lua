@@ -83,8 +83,11 @@ T.ROW_ACTION_TICK = 0.05   -- how often the row actions (W.RowAction) follow the
 T.EDIT_W = 60         -- W.TimeBox without a width
 T.LINE_W = 150        -- W.LineEdit, W.SearchBox, W.Picker without a width
 
--- the width of the page area of the main window (the content inset less its 7 px margin; 478 high)
+-- the width of the page area of the main window (the content inset less its 7 px margin; 478 high):
+-- what a page is laid out for; PAGE_W_NOW the width it has now, the main window dragged wider (D-71:
+-- the page scaffold's bands fill it, W.FitWidths)
 T.PAGE_W = 602
+T.PAGE_W_NOW = 602
 T.PAGE_H = 478   -- the page area under the window's head (MainFrame: content), for lists that fill it;
                  -- the main window sets it to its dragged height less 120 (D-68, D-69), W.FitLists follows
 
@@ -111,11 +114,18 @@ T.LAYOUT = {
 T.MAIN = {
     -- 560 until 2.62.0; the page head (PAGE_HEAD, D-69) made it taller, the page keeps its 478
     W = 806, H = 598,
-    -- the height the player can drag (the grip at the bottom right, the chat window's size grabber,
+    -- the size the player can drag (the grip at the bottom right, the chat window's size grabber,
     -- GRIP square in the frame's corner (GRIP_OUT past it), over its border and clear of the page's controls
     -- in its bottom right corner): H_MIN to H_MAX, never taller than the screen; T.PAGE_H and the side
-    -- bar follow
+    -- bar follow (D-68)
     H_MIN = 598, H_MAX = 898, GRIP = 12, GRIP_OUT = 0,
+    -- and its width (D-71): W_MIN to W_MAX, never wider than the screen; T.PAGE_W_NOW follows
+    W_MIN = 806, W_MAX = 1440,
+    -- the minimize button (the client's UIPanelHideButtonNoScripts, 24 square) left of the close
+    -- button; the bar it leaves (MINI: in the tooltip's frame, the logo LOGO square from LOGO_X, the
+    -- name and under it the open page from TEXT_X, the close button X square X_R from the right)
+    MIN_SIZE = 24, MIN_SIZE_OLD = 20,
+    MINI = { W = 214, H = 36, LOGO = 22, LOGO_X = 9, TEXT_X = 38, NAME_Y = 7, PAGE_Y = -7, X = 20, X_R = 6, TEXT_W = 140 },
     -- the side bar (D-70, after the reference's hub): at its top the head (NAV_HEAD high: the logo
     -- LOGO square, the name in gold and under it the version and the view in grey, the gold line at
     -- its bottom), the search box under it, then a W.List of NAV_ROW_H rows, the client's list spacing
@@ -341,6 +351,7 @@ T.DJOURNAL = {
 -- frame (EDGE, CHOSEN for the chosen one), the hover glow GLOW; a dim card's name in DIM.
 T.DCARD = {
     W = 192, H = 84, GAP = 7, COLS = 3, MIN_ROWS = 2,
+    MAX_COLS = 6,              -- the window dragged wide (D-71): up to six per row
     ART_H = 44, NAME_X = 6, NAME_Y = 4, TEXT_X = 6, TEXT_W = 180, LINE1_Y = -49, LINE2_Y = -66,
     SHADE_TOP = 0.05, SHADE_BOTTOM = 0.85, SHADE_ALPHA = 0.45, GROUND = { 0, 0, 0, 0.35 },
     TAG_X = -4, TAG_Y = -4, TAG_H = 14, TAG_PAD = 4, TAG_BG = { 0, 0, 0, 0.7 }, TAG_COLOR = { 0.31, 0.82, 0.42 },

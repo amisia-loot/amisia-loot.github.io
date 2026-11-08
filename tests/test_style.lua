@@ -407,7 +407,8 @@ local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 598)
 -- the head (D-67): the state as plain text right of the portrait, no bar; its arrow opens the menu;
 -- no red buttons ("?" and the gear went to the page head, D-69)
 local status = MF.statusBar
-assert(status._w == 806 - 66 - 12 and status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26)
+assert(status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26
+    and status.points.TOPRIGHT.x == -12 and status.points.TOPRIGHT.y == -26, "as wide as the window (D-71)")
 assert(status.bgParts == nil and status.frameParts == nil and status.bg == nil, "no bar textures")
 assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons in the head")
 local sl = ML.span(status)

@@ -1697,8 +1697,16 @@ local function fillGridCard(c, e, ctx)
     c.tag:SetShown(ctx.recommended == e.key)
 end
 
--- The grid on page B from top down to the page's bottom (it follows the window's height, W.FillTo):
--- a W.List whose rows hold up to C.COLS cards (the row's own shade and hover hidden). ctx: texts,
+-- How many cards a row of the grid holds: C.COLS at the page's own width, more as the window is
+-- dragged wider (D-71), at most C.MAX_COLS.
+local function gridCols()
+    local room = (T.PAGE_W_NOW or T.PAGE_W) - T.SCROLL_ROOM + C.GAP
+    return math.max(C.COLS, math.min(C.MAX_COLS, math.floor(room / (C.W + C.GAP))))
+end
+
+-- The grid on page B from top down to the page's bottom (it follows the window's height, W.FillTo,
+-- and its width, W.FollowWidth): a W.List whose rows hold up to gridCols() cards (the row's own
+-- shade and hover hidden; C.MAX_COLS built per row). ctx: texts,
 -- tip, pick (see buildGridCard, fillGridCard). grid:SetEntries(list, chosen, recommended) shows them,
 -- grid:CardOf(key) scrolls that card into view and returns it, grid:Cards() the cards shown.
 local function buildGrid(B, top, ctx)
@@ -1708,7 +1716,7 @@ local function buildGrid(B, top, ctx)
         r.hover:Hide()
         r:EnableMouse(false)
         r.cards = {}
-        for i = 1, C.COLS do
+        for i = 1, C.MAX_COLS do
             local c = buildGridCard(r, ctx)
             c:SetPoint("TOPLEFT", (i - 1) * (C.W + C.GAP), 0)
             r.cards[i] = c
@@ -1727,12 +1735,14 @@ local function buildGrid(B, top, ctx)
     end, { top = top, fill = true })
     grid.ctx = ctx
     grid.entries = {}
+    grid.cols = gridCols()
     function grid:SetEntries(list, chosen, recommended)
         ctx.chosen, ctx.recommended = chosen, recommended
         self.entries = list or {}
+        self.cols = gridCols()
         local chunks = {}
         for i, e in ipairs(self.entries) do
-            local k = math.floor((i - 1) / C.COLS) + 1
+            local k = math.floor((i - 1) / self.cols) + 1
             chunks[k] = chunks[k] or {}
             chunks[k][#chunks[k] + 1] = e
         end
@@ -1741,17 +1751,21 @@ local function buildGrid(B, top, ctx)
     function grid:CardOf(key)
         for i, e in ipairs(self.entries) do
             if e.key == key then
-                local row = math.floor((i - 1) / C.COLS) + 1
+                local row = math.floor((i - 1) / self.cols) + 1
                 if row <= self.offset or row > self.offset + self.rowCount then
                     self.offset = row - 1
                     self:SetItems(self.items)
                 end
                 local r = self.rows[row - self.offset]
-                return r and r.cards[(i - 1) % C.COLS + 1]
+                return r and r.cards[(i - 1) % self.cols + 1]
             end
         end
         return nil
     end
+    -- a new width of the window: the same cards, as many per row as fit now
+    W.FollowWidth(grid, function()
+        if gridCols() ~= grid.cols then grid:SetEntries(grid.entries, ctx.chosen, ctx.recommended) end
+    end)
     function grid:Cards()
         local out = {}
         for i, r in ipairs(self.rows) do

@@ -10,6 +10,8 @@ S.VIEWS = {
     raider = { ["ui.view"] = "raider", ["ui.expert"] = false },
     officer = { ["ui.view"] = "officer", ["ui.expert"] = false },
     expert = { ["ui.view"] = "officer", ["ui.expert"] = true },
+    -- the expert view, the main window at its widest (tools/ui_layout.py sets the width, D-71)
+    wide = { ["ui.view"] = "officer", ["ui.expert"] = true },
 }
 
 local LINK, LINK2, LINK3
