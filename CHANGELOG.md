@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.68.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.68.0) (2026-11-08)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.67.0...v2.68.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(dungeons): bosses with portraits, their loot with icons (F-154)
 
   The overview of a dungeon or raid now has two columns: on the left the bosses, each with a round
