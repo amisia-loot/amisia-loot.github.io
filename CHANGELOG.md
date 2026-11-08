@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.63.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.63.0) (2026-11-08)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.1...v2.63.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(world): dungeons and raids as a table grouped by level range (F-148)
 
   The start of the Dungeons and Raids pages is now a table instead of tiles: each instance with its
