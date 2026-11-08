@@ -1633,3 +1633,29 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 `tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_cards.lua` (Schritt 3),
 `tests/test_boss_fold.lua` (Schritt 4).
 
+## D-70 Hauptfenster nach dem Hub eines anderen Addons: Kopf mit Logo, Überschriften, Symbolzeilen
+
+**Datum:** 2026-11-08
+**Entscheidung:** Schritt 1 der Spec `docs/specs/2026-11-07-hauptfenster-journal.md` (F-145):
+- Die Seitenleiste hat oben einen Kopf (`T.MAIN.NAV_HEAD`, 40 hoch):
+  - das Amisia-Logo rund auf einer schwarzen Scheibe;
+  - "Amisia" in Gold;
+  - darunter grau die Version und die Ansicht;
+  - darunter die goldene Linie (`W.GoldRule`).
+- Darunter stehen das Suchfeld und die Liste.
+- Jede Gruppe mit einer sichtbaren Seite ist eine goldene Überschrift in Großbuchstaben, ohne Balken. Ab der zweiten steht die goldene Linie darüber.
+- Die Gruppen stehen immer offen: Unter jeder Überschrift kommen alle ihre Seiten und Seitenfenster als Unterkategorie-Balken des Auktionshauses. Jede Zeile trägt ihr Symbol (`T.NAV_ICONS`, 14 px) vor dem Namen.
+- Das Auf- und Zuklappen der Gruppen von D-68 entfällt (kein `openGroup` mehr); ein Klick auf eine Überschrift tut nichts.
+- Was nicht passt, wird gescrollt. Die offene Seite wird wie bisher in Sicht gescrollt.
+- Die Version steht nicht mehr im Fenstertitel.
+
+**Grund:** Nutzer 2026-11-07: "genauso wie" das Hub-Fenster des Vorbilds, im Forever-Classic-Rahmen; freigegeben 2026-11-08 ("Passt, Schritt 1").
+
+**Folge:**
+- **Symbole:** Sie sind nur Marken aus dem Client: die Verfolgungssymbole der Minimap, Gossip-Symbole, Kartenmarken, Geld- und Würfelgrafik. Zauber- oder Gegenstandssymbole kommen nicht in Frage. Eine neue Seite trägt ihr Symbol in `T.NAV_ICONS` ein; ohne Eintrag bleibt die Zeile ohne Symbol.
+- **Zeilen:** Bei 598 Höhe passen 21 Zeilen (vorher 23), höhere Fenster zeigen mehr.
+- **`ns.ShowTab(group)`** öffnet weiter die letzte Seite der Gruppe. `settings.window.tab` und `pages` bleiben.
+- **Symbole nur, wo der Client sie hat:** Ein Atlas wird nur gesetzt, wenn ihn der Client kennt, eine Datei nur, wenn `GetFileIDFromPath` sie findet; sonst bleibt die Zeile ohne Symbol. Der Selbsttest (Abschnitt Atlanten) nennt fehlende Symbole.
+
+**Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Überschriften, Symbole, kein Aufklappen), `tests/test_style.lua` (jede Seite hat ein Symbol, keines aus `Interface\Icons`, Abstände und Zeilen), die Layoutregel `nav` (`tools/ui_layout.py`).
+

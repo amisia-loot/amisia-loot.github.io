@@ -53,7 +53,7 @@ assert(AmisiaDB.settings.window.section == "map", "remembered")
 
 -- the side bar under "Einstellungen": the tabs, the chosen one open (the map's section in Welt since D-68)
 local nav = navShown()
-assert(has(nav, "settings raid char world -drops -map -quests -collect guild amisia about"), nav)
+assert(has(nav, "settings raid char world -drops -map -quests -collect guild amisia"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end
@@ -95,7 +95,7 @@ NS.Set("map.pinScale", 150)
 NS.Set("rolls.seconds", 30); STUB.tick(0)
 assert(page.reset:IsEnabled())
 for _, e in ipairs(F.navOrder) do
-    if e.entry.key == "map" then assert(has(e.button.label:GetText(), "dot"), "the changed mark") end
+    if e.entry.kind == "section" and e.entry.key == "map" then assert(has(e.button.label:GetText(), "dot"), "the changed mark") end
 end
 page.reset:Click()
 local Q = AmisiaConfirmFrame

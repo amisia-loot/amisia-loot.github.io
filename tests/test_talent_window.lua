@@ -218,9 +218,9 @@ NS.Dispatch("talente gross")
 NS.msg = msg
 assert(not win:IsShown() and has(said, "nicht verfügbar"), tostring(said))
 NS.ShowTab("char")
-local unfolded = false
-for _, e in ipairs(MF.navOrder) do if e.entry.kind == "cat" and e.entry.key == "char" then unfolded = e.entry.open end end
-assert(unfolded and not winRow(), "no row without data (its group unfolded)")
+local listed = false
+for _, e in ipairs(MF.nav.items) do if e.kind == "cat" and e.key == "char" then listed = true end end
+assert(listed and not winRow(), "no row without data (its group listed)")
 NS.TALENTS = keep
 T._reset()
 print("test_talent_window ok")

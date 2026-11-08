@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the side bar gets a head with the logo, headings and a symbol on every row (F-145)
+
+  The main window's side bar now starts with the Amisia logo, the version and the current view.
+  Each group is a gold heading with all its pages listed under it, so nothing needs to be unfolded
+  any more. Every page and side window has a small game symbol in front of its name.
+
 ## [v2.62.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.62.1) (2026-11-07)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.0...v2.62.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

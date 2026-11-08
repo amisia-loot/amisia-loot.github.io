@@ -75,7 +75,8 @@ local function type_(text)
     box.scripts.OnTextChanged(box, true)
 end
 type_("e")
-assert(F.nav:IsShown() and F.searchHint:IsShown() and F.searchHint:GetText() == "Noch 1 Zeichen für die Suche",
+-- (D-70: the line in place of the side bar, which fills its room)
+assert(not F.nav:IsShown() and not F.results:IsShown() and F.searchHint:IsShown() and F.searchHint:GetText() == "Noch 1 Zeichen für die Suche",
     tostring(F.searchHint:GetText()))
 type_("")
 assert(not F.searchHint:IsShown(), "no line for an empty box")
@@ -131,8 +132,7 @@ NS.ShowPage("talents")
 assert(NS.CurrentPage() == "talents")
 assert(F.homeBtn, "the portrait takes clicks")
 F.homeBtn:Click()
-assert(NS.CurrentPage() == "overview" and navRow("cat", "raid").entry.open and navRow("page", "overview").entry.on
-    and not navRow("cat", "char").entry.open, NS.CurrentPage())
+assert(NS.CurrentPage() == "overview" and navRow("page", "overview").entry.on, NS.CurrentPage())
 F.homeBtn.scripts.OnEnter(F.homeBtn)
 assert(has(tipText(), "Übersicht"), tipText())
 
@@ -140,17 +140,21 @@ assert(has(tipText(), "Übersicht"), tipText())
 -- the side windows' rows: name and what the window is for
 ---------------------------------------------------------------------------
 local wins = {}
-for _, g in ipairs(NS.PANEL_GROUPS) do
-    NS.ShowTab(g.key)
-    for _, e in ipairs(F.navOrder) do
-        if e.entry.kind == "win" then
-            local b = e.button
-            b.scripts.OnEnter(b)
-            -- the tooltip names the window in full (the row may carry a shorter name: "Importieren" under
-            -- "Soft-Reserves")
-            assert(#tip >= 2 and tip[1] == e.entry.def.label and e.entry.label == b.label:GetText() and #tip[2] > 10, e.entry.key .. ": " .. tipText())
-            wins[#wins + 1] = e.entry.key
-        end
+local count = #F.nav.items
+for i = 1, count do
+    -- each side window's row scrolled into the side bar (D-70: all groups are listed)
+    local want = F.nav.items[i]
+    F.nav.offset = i - 1
+    NS.UpdateSideTabs()
+    local e
+    for _, o in ipairs(F.navOrder) do if o.entry.kind == want.kind and o.entry.key == want.key then e = o end end
+    if e and e.entry.kind == "win" then
+        local b = e.button
+        b.scripts.OnEnter(b)
+        -- the tooltip names the window in full (the row may carry a shorter name: "Importieren" under
+        -- "Soft-Reserves")
+        assert(#tip >= 2 and tip[1] == e.entry.def.label and e.entry.label == b.label:GetText() and #tip[2] > 10, e.entry.key .. ": " .. tipText())
+        wins[#wins + 1] = e.entry.key
     end
 end
 assert(table.concat(wins, " ") == "softres rolls gear goals talents", "every side window has its row: " .. table.concat(wins, " "))

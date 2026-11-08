@@ -622,8 +622,17 @@ local function sectionAtlases(R)
         add(R, FEHLT, "C_Texture.GetAtlasInfo", L["fehlt (alle Atlanten im Rückfall)"])
         return
     end
+    -- with the side bar's symbols (T.NAV_ICONS, D-70; the theme loads after this file)
+    local atlases, files, taken = {}, {}, {}
+    for _, a in ipairs(ATLASES) do atlases[#atlases + 1] = a end
+    for key, def in pairs(ns.Theme and ns.Theme.NAV_ICONS or {}) do
+        if def.atlas and not taken[def.atlas] then atlases[#atlases + 1] = def.atlas end
+        if def.file and not taken[def.file] then files[#files + 1] = def.file end
+        taken[def.atlas or def.file or key] = true
+    end
+    table.sort(files)
     local okCount = 0
-    for _, a in ipairs(ATLASES) do
+    for _, a in ipairs(atlases) do
         local ok, info = pcall(C_Texture.GetAtlasInfo, a)
         if not ok then
             add(R, "FEHLER", "Atlas " .. a, cut(info))
@@ -633,7 +642,18 @@ local function sectionAtlases(R)
             add(R, FEHLT, "Atlas " .. a, L["nicht im Client"])
         end
     end
-    add(R, okCount == #ATLASES and "OK" or "WERT", L["Atlanten"], L["%d von %d vorhanden"]:format(okCount, #ATLASES))
+    add(R, okCount == #atlases and "OK" or "WERT", L["Atlanten"], L["%d von %d vorhanden"]:format(okCount, #atlases))
+    -- the side bar's symbol files: a missing one leaves its row without a symbol
+    if fn("GetFileIDFromPath") then
+        local missing = {}
+        for _, file in ipairs(files) do
+            if GetFileIDFromPath(file) == nil then missing[#missing + 1] = file:match("[^\\]+$") or file end
+        end
+        add(R, #missing == 0 and "OK" or "WERT", L["Symbole der Seitenleiste"],
+            #missing == 0 and L["%d von %d vorhanden"]:format(#files, #files) or L["fehlen: %s"]:format(table.concat(missing, ", ")))
+    else
+        add(R, "WERT", L["Symbole der Seitenleiste"], L["GetFileIDFromPath fehlt, nicht prüfbar"])
+    end
     -- the sizes the layout scales from (dropdown arrow, head bar)
     local sizes = {}
     for _, name in ipairs({ "common-dropdown-a-button", "Professions-skillbar-bg", "Professions-skillbar-frame" }) do

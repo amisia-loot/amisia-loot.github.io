@@ -1,5 +1,5 @@
--- Review of the main window's side bar (D-68, before it the tabs of D-45): (1) a hit of the search
--- brings the side bar back with the hit's group unfolded; (2) a redirect to the overview (a view switch,
+-- Review of the main window's side bar (D-68, D-70, before it the tabs of D-45): (1) a hit of the search
+-- brings the side bar back with the hit's page in view; (2) a redirect to the overview (a view switch,
 -- a page no longer shown, a command for a hidden page) does not overwrite the remembered page of a
 -- group: only pages the player chose are remembered; (3) the dragged height: the page area, the side
 -- bar and the pages' lists follow, it is remembered, clamped to the screen and reset with the position.
@@ -28,15 +28,15 @@ end
 assert(hit, "the page is found")
 hit:Click()
 assert(F.search:GetText() == "" and F.nav:IsShown() and not F.results:IsShown(), "the side bar is back")
-assert(NS.CurrentPage() == "dungeons" and row("cat", "world").entry.open and row("page", "dungeons").entry.on)
+assert(NS.CurrentPage() == "dungeons" and row("page", "dungeons").entry.on, "the hit's page is chosen and in view")
 
 -- (2) the officer opens Export (group Raid since the raid-night order), then switches to the raider
 -- view: the page falls back
 NS.ShowPage("awards")
 NS.ShowPage("export")
-assert(W.pages.raid == "export" and row("cat", "raid").entry.open)
+assert(W.pages.raid == "export" and row("page", "export").entry.on)
 NS.Set("ui.view", "raider"); STUB.tick(0)
-assert(NS.CurrentPage() == "overview" and row("cat", "raid").entry.open, "the page fell back to the overview")
+assert(NS.CurrentPage() == "overview" and row("page", "overview").entry.on, "the page fell back to the overview")
 assert(W.pages.raid == "export", "the raid group keeps the page the player chose: " .. tostring(W.pages.raid))
 -- a command for a page the raider does not see: the overview, nothing remembered
 NS.ShowPage("stats")

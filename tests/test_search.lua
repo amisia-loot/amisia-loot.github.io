@@ -97,7 +97,7 @@ local function type_(text)
     box.scripts.OnTextChanged(box, true)
 end
 type_("r")
-assert(F.nav:IsShown() and not F.results:IsShown(), "one character: the side bar stays")
+assert(not F.nav:IsShown() and not F.results:IsShown() and F.searchHint:IsShown(), "one character: the line in place of the side bar")
 type_("experten")
 assert(not F.nav:IsShown() and F.results:IsShown(), "the results in place of the list")
 local items = F.results.items
@@ -113,7 +113,7 @@ assert(hitRow.hitArt.normal.atlas == "auctionhouse-nav-button-secondary" and hit
 assert(hitRow.hitArt.hover.atlas == nil and hitRow.hitArt.hover.texture == nil, "no blue glow on hover")
 assert(hitRow.label:GetText() == "Expertenmodus" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
 assert(hitRow.icon == nil and not row.bg:IsShown() and row.hover.alpha == 0, "no icon, no shade, the bars' own glow")
-assert(F.results.rowCount == 23 and F.results._h == 23 * 21 and hitRow._h == 20, "23 rows of 21")
+assert(F.results.rowCount == 21 and F.results._h == 21 * 21 and hitRow._h == 20, "21 rows of 21 under the head")
 F.results.rows[2]:Click()
 assert(NS.CurrentPage() == "settings" and box:GetText() == "" and F.nav:IsShown() and not F.results:IsShown(),
     "a click opens the settings and empties the box")
@@ -124,17 +124,16 @@ assert(F.results:IsShown() and #F.results.items == 0 and F.noHits:IsShown() and 
 -- Escape empties the box
 box.scripts.OnEscapePressed(box)
 assert(box:GetText() == "" and F.nav:IsShown() and not F.noHits:IsShown(), "Escape clears")
--- a page hit opens the page; its group unfolds in the side bar
+-- a page hit opens the page; its row is in view and chosen
 type_("talent")
 for i, it in ipairs(F.results.items) do
     if it.text == "Talente" then F.results.rows[i]:Click() break end
 end
-local open, on = false, false
+local on = false
 for _, e in ipairs(F.navOrder) do
-    if e.entry.kind == "cat" and e.entry.key == "char" then open = e.entry.open end
     if e.entry.kind == "page" and e.entry.key == "talents" then on = e.entry.on end
 end
-assert(NS.CurrentPage() == "talents" and open and on, NS.CurrentPage())
+assert(NS.CurrentPage() == "talents" and on, NS.CurrentPage())
 -- a player hit opens Statistik with the player chosen
 type_("kimt")
 for i, it in ipairs(F.results.items) do

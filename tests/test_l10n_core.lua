@@ -34,20 +34,22 @@ local F = AmisiaFrame
 assert(F and F:IsShown(), "the window opens")
 assert(F.headMenu()[1][1] == "Pause recording" and F.headMenu()[2][1] == "Switch to the raider view", F.headMenu()[2][1])
 assert(F.statusText:GetText():find("Not recording, starts in a raid", 1, true), F.statusText:GetText())
--- the side bar (D-68) shows the open group's pages; the group bars carry the English group names
+-- the side bar (D-68, D-70) lists every group's pages; the headings carry the English group names
 local function navText()
     local nav = {}
-    for _, e in ipairs(F.navOrder) do
-        if e.button then nav[#nav + 1] = e.button.label:GetText() end
-    end
+    for _, e in ipairs(F.nav.items) do nav[#nav + 1] = e.label end
     return table.concat(nav, ", ")
 end
 assert(has(navText(), "Overview") and has(navText(), "Raid log"), navText())
 local groups = {}
-for _, e in ipairs(F.navOrder) do
-    if e.entry.kind == "cat" then groups[#groups + 1] = e.button.label:GetText() end
+for _, e in ipairs(F.nav.items) do
+    if e.kind == "cat" then groups[#groups + 1] = e.label end
 end
 assert(table.concat(groups, ",") == "Raid,Character,World,Guild,Amisia", table.concat(groups, ","))
+-- the headings in capitals (D-70)
+for _, e in ipairs(F.navOrder) do
+    if e.entry.kind == "cat" then assert(e.button.label:GetText() == e.entry.label:upper(), e.button.label:GetText()) end
+end
 NS.ShowTab("guild")
 assert(has(navText(), "Guild bank"), navText())
 -- under Settings its tabs and sections: more than fit, the rest of the group is under them (it scrolls)

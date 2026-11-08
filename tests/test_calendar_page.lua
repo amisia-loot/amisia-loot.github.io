@@ -60,7 +60,7 @@ NS.ShowPage("calendar")
 STUB.tick(1)
 local P = NS.PageFrame("calendar")
 local F = AmisiaFrame
-assert(P and P:IsShown() and navRow("cat", "guild").entry.open and navRow("page", "calendar").entry.on, "the page in its group")
+assert(P and P:IsShown() and navRow("page", "calendar").entry.on, "the page in its group")
 local now = os.date("*t", time())
 local MONTHS = { "Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember" }
 assert(P.title:GetText() == MONTHS[now.month] .. " " .. now.year, P.title:GetText())
@@ -152,7 +152,7 @@ rc:Click()
 assert(P.terms[1]:IsShown() and has(P.terms[1].text:GetText(), "Aufgezeichnet: Molten Core"))
 P.terms[1]:Click()
 assert(NS.CurrentPage() == "raidlog", "the recorded raid's Raid-Log: " .. NS.CurrentPage())
-assert(navRow("cat", "raid").entry.open and navRow("page", "raidlog").entry.on, "its group unfolds")
+assert(navRow("page", "raidlog").entry.on, "its row in view and chosen")
 -- "Heute" goes back to today's month
 NS.ShowTab("guild")
 assert(NS.CurrentPage() == "calendar", "the guild group opens its last page: " .. NS.CurrentPage())

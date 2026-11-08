@@ -1,7 +1,7 @@
 -- Amisia main window in the look of Forever's profession window: the client's portrait frame, a
--- status bar with the recording state, on the left the side bar under a search box (the page groups as
--- the auction house's category bars, the open group's pages and side windows under it; D-68), the page
--- itself in an inset on the right. The height can be dragged at the bottom right corner. Typing two
+-- status bar with the recording state, on the left the side bar (D-68, D-70: a head with the logo, a
+-- search box, every group as a heading with its pages and side windows as rows with their symbols),
+-- the page itself in an inset on the right. The height can be dragged at the bottom right corner. Typing two
 -- characters into the search box turns the side bar into the results (UI/Search.lua). Pages are built
 -- the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
@@ -15,16 +15,14 @@ local ROW_H = M.NAV_ROW_H
 local PAGE_H0 = T.PAGE_H   -- the page area at the window's own height (HEIGHT)
 local DOT = "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:10:10:0:0|t "
 local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
-local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local WINDOW_SIGN = "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up"
 local GRABBER = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 
-local F, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
+local F, navHead, viewText, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
 local pageHead, pageTitle, pageSub   -- the page head over the page (D-69)
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
-local openGroup     -- the group unfolded in the side bar (nil: all folded); a shown page unfolds its own
-local navShownFor   -- the page the side bar last scrolled into view
+local navShownFor   -- the page (and what the settings show) the side bar last scrolled into view
 local query = ""          -- the search text, trimmed and lower case
 
 -- The side windows in the side bar (D-68; until 2.62.0 the side tabs on the right edge): each a row of
@@ -33,7 +31,7 @@ local query = ""          -- the search text, trimmed and lower case
 -- its page: "Importieren" under "Soft-Reserves"); tip: what the window is for (the row's tooltip under
 -- its full name).
 local SIDE_WINDOWS = {
-    { key = "gear", label = L["Ausrüstungstabelle"], group = "char", after = "gear", frame = "AmisiaGearFrame",
+    { key = "gear", label = L["Ausrüstungstabelle"], row = L["Tabelle"], group = "char", after = "gear", frame = "AmisiaGearFrame",
       tip = L["Das beste Item je Platz für jede Stufe, mit Quelle und Alternativen."],
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
@@ -162,6 +160,7 @@ local function updateHeader()
     else
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
+    viewText:SetText(("v%s · %s"):format(ns.VERSION or "?", ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"]))
     settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
     -- the "?" sits left of the gear, or at the head's end when the page has no settings
     helpBtn:ClearAllPoints()
@@ -209,11 +208,6 @@ function ns.ToggleView()
     ns.Refresh()
 end
 
-local function groupOf(key)
-    local p = ns.Panel(key)
-    return p and ns.PanelGroup(p) or nil
-end
-
 -- The visible pages of every group at once (group -> pages, in their order): one pass for a refresh.
 local function pagesByGroup()
     local out = {}
@@ -258,81 +252,83 @@ local function windowEntry(def)
     return { kind = "win", key = def.key, label = def.row or def.label, def = def, on = win ~= nil and win:IsShown() and true or false }
 end
 
--- What the side bar shows (D-68): every group with a visible page or side window as a category bar, the
--- open one (openGroup) unfolded: its pages, each side window right under its page (or at the end),
--- and while the settings page is open, under it its tabs and, under the tab of the chosen section,
--- that tab's sections (D-49), unless folded:
--- { kind = "cat"|"page"|"group"|"section"|"win", key, label, on = chosen, changed, open, has }.
+-- What the side bar shows (D-70): every group with a visible page or side window as a heading, under
+-- it its pages, each side window right under its page (or at the end), and while the settings page
+-- is open, under it its tabs and, under the tab of the chosen section, that tab's sections (D-49),
+-- unless folded: { kind = "cat"|"page"|"group"|"section"|"win", key, label, on = chosen, changed,
+-- open, has, first = the first heading }.
 local function navEntries(byGroup)
     local out = {}
-    local mine = groupOf(current)
     byGroup = byGroup or pagesByGroup()
     for _, g in ipairs(ns.PANEL_GROUPS) do
         local pages, wins = byGroup[g.key], windowsOf(g.key)
         if #pages + #wins > 0 then
-            local unfolded = openGroup == g.key
-            -- a folded group holding the open page keeps its glow: the page is still there
-            out[#out + 1] = { kind = "cat", key = g.key, label = g.label, open = unfolded, on = not unfolded and g.key == mine }
-            if unfolded then
-                local placed = {}
-                for _, p in ipairs(pages) do
-                    out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
-                    if p.key == "settings" and current == "settings" and ns.SettingsGroups and ns.SettingsChosen then
-                        local chosen, set = ns.SettingsChosen()
-                        local at = settingsShown(chosen, set)
-                        -- a fold ends once the settings show something else (and does not come back with it)
-                        if treeShut ~= at then treeShut = nil end
-                        if tabShut and tabShut.at ~= at then tabShut = nil end
-                        local tree = treeShut == nil
-                        out[#out].open, out[#out].at = tree, at
-                        for _, sg in ipairs(tree and ns.SettingsGroups() or {}) do
-                            local has = false
-                            for _, sec in ipairs(sg.sections) do
-                                if sec.key == chosen or (set and set[sec.key]) then has = true end
-                            end
-                            local open = has and not (tabShut and tabShut.key == sg.key and tabShut.at == at)
-                            out[#out + 1] = { kind = "group", key = sg.key, label = sg.label, first = sg.sections[1].key, open = open,
-                                has = has, at = at }
-                            if open then
-                                for _, sec in ipairs(sg.sections) do
-                                    out[#out + 1] = { kind = "section", key = sec.key, label = sec.label,
-                                        on = sec.key == chosen or (set and set[sec.key]) or false, changed = ns.SectionChanged(sec) }
-                                end
-                            end
+            out[#out + 1] = { kind = "cat", key = g.key, label = g.label, first = #out == 0 }
+            local placed = {}
+            for _, p in ipairs(pages) do
+                out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
+                if p.key == "settings" and current == "settings" and ns.SettingsGroups and ns.SettingsChosen then
+                    local chosen, set = ns.SettingsChosen()
+                    local at = settingsShown(chosen, set)
+                    -- a fold ends once the settings show something else (and does not come back with it)
+                    if treeShut ~= at then treeShut = nil end
+                    if tabShut and tabShut.at ~= at then tabShut = nil end
+                    local tree = treeShut == nil
+                    out[#out].open, out[#out].at = tree, at
+                    for _, sg in ipairs(tree and ns.SettingsGroups() or {}) do
+                        local has = false
+                        for _, sec in ipairs(sg.sections) do
+                            if sec.key == chosen or (set and set[sec.key]) then has = true end
                         end
-                    end
-                    for _, def in ipairs(wins) do
-                        if def.after == p.key then
-                            out[#out + 1] = windowEntry(def)
-                            placed[def.key] = true
+                        local open = has and not (tabShut and tabShut.key == sg.key and tabShut.at == at)
+                        out[#out + 1] = { kind = "group", key = sg.key, label = sg.label, first = sg.sections[1].key, open = open,
+                            has = has, at = at }
+                        if open then
+                            for _, sec in ipairs(sg.sections) do
+                                out[#out + 1] = { kind = "section", key = sec.key, label = sec.label,
+                                    on = sec.key == chosen or (set and set[sec.key]) or false, changed = ns.SectionChanged(sec) }
+                            end
                         end
                     end
                 end
                 for _, def in ipairs(wins) do
-                    if not placed[def.key] then out[#out + 1] = windowEntry(def) end
+                    if def.after == p.key then
+                        out[#out + 1] = windowEntry(def)
+                        placed[def.key] = true
+                    end
                 end
+            end
+            for _, def in ipairs(wins) do
+                if not placed[def.key] then out[#out + 1] = windowEntry(def) end
             end
         end
     end
     return out
 end
 
--- The side bar: one bar per row, packed as the auction house's category list, NAV_ROW_H high; it
--- scrolls (wheel, bar) when the open group does not fit, and scrolls the open page into view when it
--- changed. F.navOrder holds what is shown, top to bottom ({ button = row, entry = what it shows }).
+-- The side bar: one row each, packed as the auction house's category list, NAV_ROW_H high; it
+-- scrolls (wheel, bar) when not all fit, and scrolls the open page into view when it changed.
+-- F.navOrder holds what is shown, top to bottom ({ button = row, entry = what it shows }).
 local function updateNav(byGroup)
     local entries = navEntries(byGroup)
-    if navShownFor ~= current then
-        navShownFor = current
-        for i, e in ipairs(entries) do
-            if e.kind == "page" and e.key == current then
-                if i - 1 < nav.offset then
-                    nav.offset = math.max(0, i - 2)   -- its group's bar too, when it is right above
-                elseif i > nav.offset + nav.rowCount then
-                    nav.offset = i - nav.rowCount
+    for i, e in ipairs(entries) do
+        if e.kind == "page" and e.key == current then
+            -- once per page and view, and again when the settings show something else (their tree
+            -- changed; a view switch adds or drops rows above it):
+            -- what hangs under it (the settings' tabs and sections) comes into view with it; above
+            -- the view, its group's heading too when that is right above
+            local shown = current .. "\0" .. tostring(ns.IsOfficerView()) .. "\0" .. tostring(e.at or "")
+            if navShownFor ~= shown then
+                navShownFor = shown
+                local last = i
+                while entries[last + 1] and (entries[last + 1].kind == "group" or entries[last + 1].kind == "section") do
+                    last = last + 1
                 end
-                break
+                if i - 1 < nav.offset or last > nav.offset + nav.rowCount then
+                    nav.offset = math.max(0, math.min(i - 2, last - nav.rowCount))
+                end
             end
+            break
         end
     end
     nav:SetItems(entries)
@@ -357,15 +353,10 @@ local function tabPage(group)
     return pages[1] and pages[1].key or nil
 end
 
--- Unfolds the group and opens its last page; a group with side windows only just unfolds.
+-- Opens the group's last page (a group with side windows only: nothing to open).
 function ns.ShowTab(group)
     local key = tabPage(group)
-    if key then
-        ns.ShowPage(key)
-    else
-        openGroup = group
-        ns.Refresh()
-    end
+    if key then ns.ShowPage(key) end
 end
 
 ---------------------------------------------------------------------------
@@ -449,26 +440,25 @@ end
 ---------------------------------------------------------------------------
 -- The search over the page list (UI/Search.lua finds, this shows)
 ---------------------------------------------------------------------------
--- The line under the side bar while the box holds fewer than SEARCH_MIN characters ("Noch 1
--- Zeichen für die Suche"), under the last bar; left out when the list leaves no room for it.
+-- While the box holds fewer than SEARCH_MIN characters, the line "Noch 1 Zeichen für die Suche" in
+-- place of the side bar (D-70: the list fills the side bar, there is no room under it).
 local function updateSearchHint()
     local left = M.SEARCH_MIN - #query
     if #query == 0 or left <= 0 then
         searchHint:Hide()
         return
     end
-    local below = #(F.navOrder or {}) * ROW_H + M.SEARCH_GAP
     searchHint:ClearAllPoints()
-    searchHint:SetPoint("TOPLEFT", nav, "TOPLEFT", M.NAV_LABEL_X, -below)
+    searchHint:SetPoint("TOPLEFT", nav, "TOPLEFT", M.NAV_LABEL_X, -M.SEARCH_GAP)
     searchHint:SetText(left == 1 and L["Noch 1 Zeichen für die Suche"] or L["Noch %d Zeichen für die Suche"]:format(left))
-    searchHint:SetShown(below + ROW_H <= nav.rowCount * ROW_H)
+    searchHint:Show()
 end
 
 -- The hits of the search text in place of the page list. A refresh (data, a setting) keeps the
 -- scroll place (SetItems clamps it); only a new text starts at the top (setQuery).
 local function showResults()
     local searching = #query >= M.SEARCH_MIN
-    nav:SetShown(not searching)
+    nav:SetShown(#query == 0)
     results:SetShown(searching)
     if F then updateSearchHint() end
     if not searching then
@@ -586,32 +576,49 @@ function ns.UpdateSideTabs()
     if F and F:IsShown() then updateNav() end
 end
 
--- A row of the side bar (a row of the W.List nav, D-68): a group on the auction house's category bar,
--- gold from NAV_LABEL_X with the quest log's plus or minus at the right; a page, a side window and the
--- settings' tabs on its sub-category bar (gold, from NAV_SUB_X and NAV_SUB2_X), a section on it
--- white from NAV_SUB3_X (D-49); a side window with the chat window's maximize sign at the right. The
--- name white while the mouse is over it. Without the client's bars: the recipe list's glow when
--- chosen and its hover, the same names.
+-- A row of the side bar (a row of the W.List nav, D-70): a group as a heading (gold capitals from
+-- NAV_LABEL_X, no bar, the gold line over it from the second on); a page and a side window on the
+-- auction house's sub-category bar with its symbol (T.NAV_ICONS) and the name gold from NAV_SUB_X; the
+-- settings' tabs on that bar from NAV_SUB2_X (gold), a section white from NAV_SUB3_X (D-49); a side
+-- window with the chat window's maximize sign at the right. The name white while the mouse is over
+-- it. Without the client's bars: the recipe list's glow when chosen and its hover, the same names.
 local LABEL_X = { cat = M.NAV_LABEL_X, page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X }
+
+-- A heading in capitals (the umlauts too, which string.upper leaves).
+local function caps(text)
+    return (tostring(text):upper():gsub("ä", "Ä"):gsub("ö", "Ö"):gsub("ü", "Ü"))   -- l10n-ok: letters, not text
+end
+
+-- The symbol of a row: its page's or side window's (T.NAV_ICONS), else none; none either when the
+-- client lacks the atlas or (where it can tell, GetFileIDFromPath) the file. A pooled row's texture
+-- coordinates from an atlas are reset for a file.
+local function setSymbol(tex, key)
+    local def = key and T.NAV_ICONS[key]
+    if def and def.atlas and W.HasAtlas(def.atlas) then
+        tex:SetAtlas(def.atlas, false)
+        tex:Show()
+    elseif def and def.file and not (GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
+        tex:SetTexture(def.file)
+        tex:SetTexCoord(0, 1, 0, 1)
+        tex:Show()
+    else
+        tex:Hide()
+    end
+end
 
 local function navClick(self)
     local e = self.item
     if not e then return end
     if e.kind == "cat" then
-        if e.open then
-            openGroup = nil
-            ns.Refresh()
-        else
-            if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_TAB then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
-            navShownFor = nil   -- unfolded again on the open page: scroll it into view once more
-            ns.ShowTab(e.key)
-        end
+        return   -- a heading
     elseif e.kind == "win" then
         e.def.toggle()
         ns.UpdateSideTabs()
     elseif e.kind == "section" then
+        navShownFor = nil   -- the settings' tree may grow: into view again
         ns.ShowSettingsSection(e.key)
     elseif e.kind == "group" then
+        navShownFor = nil
         -- an open tab folds, a folded one with the chosen section unfolds, another opens its first
         if e.open then
             tabShut = { key = e.key, at = e.at }
@@ -623,6 +630,7 @@ local function navClick(self)
             ns.ShowSettingsSection(e.first)
         end
     elseif e.key == "settings" and current == "settings" and ns.ShowSettingsSection then
+        navShownFor = nil
         -- the chosen section with the tabs open, folds the tabs, unfolds them again
         local chosen = ns.SettingsChosen()
         if chosen then
@@ -639,18 +647,23 @@ end
 
 local function buildNav(b)
     local w = NAV_W - T.SCROLL_ROOM
-    b.art = W.NavBar(b, false)
-    b.subArt = b.art and W.NavBar(b, true)
-    if b.art and b.subArt then
-        b.art:Fit(ROW_H - 1)
+    b.subArt = W.NavBar(b, true)
+    if b.subArt then
         b.subArt:Fit(ROW_H - 1)
         b.bg:Hide()
         b.hover:SetAlpha(0)    -- the bars bring their own glow
     else
-        b.art, b.subArt = nil, nil
         b.bg:Hide()
         b.sel = W.SelectBar(b)
     end
+    b.symbol = b:CreateTexture(nil, "OVERLAY")
+    b.symbol:SetSize(M.NAV_ICON, M.NAV_ICON)
+    b.symbol:SetPoint("LEFT", M.NAV_ICON_X, 0)
+    b.symbol:Hide()
+    b.rule = W.GoldRule(b, M.RULE_ALPHA)
+    b.rule:SetPoint("TOPLEFT", M.NAV_LABEL_X, 0)
+    b.rule:SetPoint("TOPRIGHT", -M.NAV_LABEL_X, 0)
+    b.rule:Hide()
     b.sign = b:CreateTexture(nil, "OVERLAY")
     b.sign:SetSize(M.FOLD, M.FOLD)
     b.sign:SetPoint("RIGHT", -M.FOLD_R, 0)
@@ -661,35 +674,31 @@ local function buildNav(b)
     -- the bar, the indent, the font and the sign of what the row shows
     function b:SetKind(kind)
         self.kind = kind
-        local sub = kind ~= "cat"
-        if self.art then
-            self.art.normal:SetShown(not sub)
-            self.art.hover:SetShown(not sub)
-            self.subArt.normal:SetShown(sub)
-            self.subArt.hover:SetShown(sub)
+        local head = kind == "cat"
+        if self.subArt then
+            self.subArt.normal:SetShown(not head)
+            self.subArt.hover:SetShown(not head)
+        else
+            self.hover:SetShown(not head)
         end
         local x = LABEL_X[kind] or M.NAV_SUB_X
-        local signed = kind == "cat" or kind == "win"
+        local signed = kind == "win"
         self.label:ClearAllPoints()
         self.label:SetPoint("LEFT", x, 0)
         self.label:SetWidth(w - x - 6 - (signed and (M.FOLD + M.FOLD_R) or 0))
-        self.font = kind == "section" and T.FONT.text or T.FONT.title
+        self.font = (head and T.FONT.head) or (kind == "section" and T.FONT.text) or T.FONT.title
         self.label:SetFontObject(self.font)
     end
     function b:SetSelected(on)
-        on = on and true or false
-        if self.art then
-            self.art:SetSelected(self.kind == "cat" and on)
-            self.subArt:SetSelected(self.kind ~= "cat" and on)
-        else
-            self.sel:SetShown(on)
-        end
+        on = (on and self.kind ~= "cat") and true or false
+        if self.subArt then self.subArt:SetSelected(on) else self.sel:SetShown(on) end
     end
     b:SetScript("OnClick", navClick)
     b:SetScript("OnEnter", function(self)
-        self.label:SetFontObject(T.FONT.body)
         local e = self.item
-        if e and e.kind == "win" then
+        if not e or e.kind == "cat" then return end
+        self.label:SetFontObject(T.FONT.body)
+        if e.kind == "win" then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(e.def.label, 1, 0.82, 0)
             GameTooltip:AddLine(e.def.tip, 0.85, 0.85, 0.85, true)
@@ -706,11 +715,20 @@ end
 local function fillNav(b, e)
     b.key = e.key
     b:SetKind(e.kind)
-    b.label:SetText(e.kind == "section" and e.changed and (DOT .. e.label) or e.label)
     if e.kind == "cat" then
-        b.sign:SetTexture(e.open and MINUS or PLUS)
-        b.sign:Show()
+        b.label:SetText(caps(e.label))
+    else
+        b.label:SetText(e.kind == "section" and e.changed and (DOT .. e.label) or e.label)
+    end
+    b.rule:SetShown(e.kind == "cat" and not e.first)
+    if e.kind == "page" then
+        setSymbol(b.symbol, e.key)
     elseif e.kind == "win" then
+        setSymbol(b.symbol, "win:" .. e.key)
+    else
+        setSymbol(b.symbol, nil)
+    end
+    if e.kind == "win" then
         b.sign:SetTexture(WINDOW_SIGN)
         b.sign:Show()
     else
@@ -721,7 +739,7 @@ end
 
 local function build()
     F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { portrait = PORTRAIT, strata = "FULLSCREEN",
-        title = "Amisia |cff8f86a3" .. (ns.VERSION or "") .. "|r", background = "Profession-Background-Overview",
+        title = "Amisia", background = "Profession-Background-Overview",
         onShow = function(self)
             if self.Raise then self:Raise() end
             -- another screen or scale since the last open: the height stays on it
@@ -793,9 +811,40 @@ local function build()
     contentInset:SetPoint("TOPLEFT", M.CONTENT_X, -M.TOP)
     contentInset:SetPoint("BOTTOMRIGHT", -M.MARGIN, M.MARGIN)
 
-    -- the search box at the side bar's top, the groups and pages (or the results) under it
+    -- the side bar's head (D-70): the logo, the name, the version and the view, the gold line under it
+    navHead = CreateFrame("Frame", nil, listInset)
+    navHead:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    navHead:SetSize(NAV_W, M.NAV_HEAD)
+    local logo = navHead:CreateTexture(nil, "ARTWORK")
+    logo:SetSize(M.LOGO, M.LOGO)
+    logo:SetPoint("TOPLEFT", M.LOGO_X, -math.floor((M.HEAD_RULE_Y - M.LOGO) / 2))
+    -- round as the window's portrait (the client's template: the texture under a round mask), on a
+    -- black disc
+    logo:SetTexture(PORTRAIT)
+    if navHead.CreateMaskTexture and logo.AddMaskTexture then
+        local mask = navHead:CreateMaskTexture()
+        mask:SetAllPoints(logo)
+        mask:SetTexture(W.DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        logo:AddMaskTexture(mask)
+    end
+    local disc = navHead:CreateTexture(nil, "BORDER")
+    disc:SetTexture(W.DISC)
+    disc:SetVertexColor(0, 0, 0, 1)
+    disc:SetAllPoints(logo)
+    local name = W.Text(navHead, T.FONT.big, NAV_W - M.HEAD_TEXT_X)
+    name:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.HEAD_NAME_Y)
+    name:SetText("Amisia")
+    if name.SetShadowOffset then name:SetShadowOffset(1, -1) end
+    viewText = W.Text(navHead, T.FONT.hint, NAV_W - M.HEAD_TEXT_X)
+    viewText:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.HEAD_SUB_Y)
+    navHead.rule = W.GoldRule(navHead, M.RULE_ALPHA)
+    navHead.rule:SetPoint("TOPLEFT", 0, -M.HEAD_RULE_Y)
+    navHead.rule:SetPoint("TOPRIGHT", 0, -M.HEAD_RULE_Y)
+    navHead.logo, navHead.name, navHead.view = logo, name, viewText
+
+    -- the search box under the head, the groups and pages (or the results) under it
     search = W.SearchBox(listInset, NAV_W, nil)
-    search:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    search:SetPoint("TOPLEFT", M.INNER, -(M.INNER + M.NAV_HEAD))
     search:HookScript("OnTextChanged", function(self) setQuery(self:GetText()) end)
     search:SetScript("OnEscapePressed", function() ns.ClearSearch() end)
     if search.clearButton then search.clearButton:HookScript("OnClick", function() ns.ClearSearch() end) end
@@ -808,7 +857,7 @@ local function build()
         GameTooltip:Show()
     end)
     search:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    local listTop = M.INNER + T.FIELD_H + M.SEARCH_GAP
+    local listTop = M.INNER + M.NAV_HEAD + T.FIELD_H + M.SEARCH_GAP
     nav = W.List(listInset, math.floor(M.NAV_LIST_H / ROW_H), ROW_H, buildNav, fillNav)
     nav:SetPoint("TOPLEFT", M.INNER, -listTop)
     nav:SetWidth(NAV_W - T.SCROLL_ROOM)
@@ -876,7 +925,7 @@ local function build()
     applyHeight(windowState().h or HEIGHT)
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.menuBtn, F.helpBtn, F.settingsBtn, F.headMenu = statusBar, statusText, menuBtn, helpBtn, settingsBtn, headMenu
-    F.listInset, F.contentInset, F.nav, F.content = listInset, contentInset, nav, content
+    F.listInset, F.contentInset, F.nav, F.content, F.navHead = listInset, contentInset, nav, content, navHead
     F.pageHead, F.pageTitle, F.pageSub = pageHead, pageTitle, pageSub
     F.navOrder, F.grip, F.applyHeight, F.heightDone = {}, grip, applyHeight, heightDone
     F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
@@ -902,11 +951,9 @@ local function showPage(key, chosen)
     if not p then return end
     if current ~= p.key then previous = current end
     current = p.key
-    -- its group unfolds in the side bar; both are remembered for the next open, the page only when
-    -- asked for
+    -- its group and the page are remembered for the next open, the page only when asked for
     local w = windowState()
     w.tab = ns.PanelGroup(p)
-    openGroup = w.tab
     if chosen and p.key == key then w.pages[w.tab] = current end
     for k, frame in pairs(built) do
         if k ~= current then frame:Hide() end

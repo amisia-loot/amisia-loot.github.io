@@ -817,6 +817,8 @@ end
 STUB.atlases["QuestNormal"] = { 28, 28 }
 -- the dungeon and raid entrance marks of the world map (Forever has them under these names)
 STUB.atlases["Dungeon"], STUB.atlases["Raid"] = { 32, 32 }, { 32, 32 }
+-- the side bar's symbols (D-70): the favourite star (AuctionHouseSearchBar) and the gold coin (MoneyFrame), both on Forever
+STUB.atlases["auctionhouse-icon-favorite"], STUB.atlases["coin-gold"] = { 13, 13 }, { 12, 12 }
 -- the group finder's role and class icons (Blizzard_UIPanelTemplates/Camelot, Blizzard_GroupFinder_VanillaStyle)
 for _, r in ipairs({ "tank", "heal", "dps" }) do STUB.atlases["groupfinder-icon-role-large-" .. r] = { 18, 18 } end
 for _, cls in ipairs({ "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid" }) do

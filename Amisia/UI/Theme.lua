@@ -105,9 +105,9 @@ T.LAYOUT = {
     DETAIL = { PAD = 8, ICON = 32, TITLE_X = 44, TITLE_H = 18, SUB_Y = 28, BODY_Y = 46, BUTTONS = 32 },
 }
 
--- the main window (MainFrame.lua, D-68): the side bar on the left under the search box (the groups as
--- the auction house's category bars, the open group's pages and side windows as its sub-category
--- bars); the page in the content inset on the right. Nothing hangs under or beside the window.
+-- the main window (MainFrame.lua, D-68, D-70): the side bar on the left (the head with the logo, the
+-- search box, the groups as headings with their pages and side windows as the auction house's
+-- sub-category bars); the page in the content inset on the right. Nothing hangs under or beside it.
 T.MAIN = {
     -- 560 until 2.62.0; the page head (PAGE_HEAD, D-69) made it taller, the page keeps its 478
     W = 806, H = 598,
@@ -116,19 +116,23 @@ T.MAIN = {
     -- in its bottom right corner): H_MIN to H_MAX, never taller than the screen; T.PAGE_H and the side
     -- bar follow
     H_MIN = 598, H_MAX = 898, GRIP = 12, GRIP_OUT = 0,
-    -- the side bar (a W.List of NAV_ROW_H rows, one bar each, the client's list spacing 0, a scroll bar
-    -- when the open group does not fit): a group as the category bar, gold from NAV_LABEL_X, its plus or
-    -- minus (the quest log's, FOLD square) FOLD_R from the right; the open group's pages from NAV_SUB_X
-    -- (gold), under the open page "Einstellungen" its tabs from NAV_SUB2_X (gold) and the chosen tab's
-    -- sections from NAV_SUB3_X (white, D-49); a side window as a page with the chat window's
-    -- maximize sign in the place of the plus or minus. NAV_LIST_H: the bar's height at H
-    NAV_W = 164, NAV_LIST_H = 492, NAV_SUB_X = 18, NAV_SUB2_X = 30, NAV_SUB3_X = 42,
-    NAV_ROW_H = 21, NAV_LABEL_X = 8, NAV_LABEL_W = 150, FOLD = 14, FOLD_R = 6,
-    -- the search box at the top of the side bar (T.FIELD_H high), the list SEARCH_GAP under it;
-    -- typing turns the list into the results (RES_ROW_H rows: a group as a category bar, its hits as
-    -- the indented sub-category bars, RES_HIT_X the hit's text as the client's 18), at least
-    -- SEARCH_MIN characters, at most RES_MAX hits per group; 23 x 21 = 483 of the 492
-    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 23, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
+    -- the side bar (D-70, after the reference's hub): at its top the head (NAV_HEAD high: the logo
+    -- LOGO square, the name in gold and under it the version and the view in grey, the gold line at
+    -- its bottom), the search box under it, then a W.List of NAV_ROW_H rows, the client's list spacing
+    -- 0, a scroll bar when not all fit. Every group with a page is a heading (gold, capitals, from
+    -- NAV_LABEL_X; the gold line over it from the second on); each page and side window a
+    -- sub-category bar with its symbol (NAV_ICON square at NAV_ICON_X, T.NAV_ICONS) and its name from
+    -- NAV_SUB_X (gold); under the open page "Einstellungen" its tabs from NAV_SUB2_X (gold) and the
+    -- chosen tab's sections from NAV_SUB3_X (white, D-49); a side window with the chat window's
+    -- maximize sign (FOLD square) FOLD_R from the right. NAV_LIST_H: the list's height at H
+    NAV_HEAD = 40, LOGO = 30, LOGO_X = 2, HEAD_TEXT_X = 38, HEAD_NAME_Y = 4, HEAD_SUB_Y = 21, HEAD_RULE_Y = 38,
+    NAV_W = 164, NAV_LIST_H = 452, NAV_SUB_X = 29, NAV_SUB2_X = 34, NAV_SUB3_X = 46,
+    NAV_ROW_H = 21, NAV_LABEL_X = 8, NAV_LABEL_W = 150, NAV_ICON = 14, NAV_ICON_X = 11, FOLD = 14, FOLD_R = 6,
+    -- the search box under the head (T.FIELD_H high), the list SEARCH_GAP under it; typing turns the
+    -- list into the results (RES_ROW_H rows: a group as a category bar, its hits as the indented
+    -- sub-category bars, RES_HIT_X the hit's text as the client's 18), at least SEARCH_MIN
+    -- characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 452
+    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 21, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
     MARGIN = 6,           -- the insets from the window's edge
     TOP = 62,             -- the insets start this far below the top (title bar and status line)
     LIST_W = 176,         -- the side bar's inset
@@ -145,6 +149,51 @@ T.MAIN = {
     -- the recording and the view sit in a menu behind the status line (its arrow MENU_SIZE); the right
     -- end of the window's head keeps ICON_RIGHT free (the close button's row)
     ICON_SIZE = 22, ICON_GAP = 6, ICON_RIGHT = 12, MENU_SIZE = 20,
+}
+
+-- The symbol of each page and side window in the side bar (D-70): the client's own marks (the
+-- minimap's tracking icons, the gossip icons, the map's marks, the money and group loot art), never a
+-- spell or item icon in their place. { file = path } or { atlas = name }; a key not here: no symbol.
+local TRACK, GOSSIP = "Interface\\Minimap\\Tracking\\", "Interface\\GossipFrame\\"
+T.NAV_ICONS = {
+    -- Raid
+    overview = { file = TRACK .. "Innkeeper" },
+    lineup = { file = GOSSIP .. "GossipGossipIcon" },
+    raidcheck = { file = "Interface\\RaidFrame\\ReadyCheck-Ready" },
+    softres = { file = GOSSIP .. "PetitionGossipIcon" },
+    rolls = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
+    awards = { file = GOSSIP .. "VendorGossipIcon" },
+    raidlog = { file = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull" },
+    points = { atlas = "coin-gold" },
+    stats = { file = GOSSIP .. "TrainerGossipIcon" },
+    raids = { file = TRACK .. "None" },
+    export = { file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up" },
+    -- Charakter
+    gear = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest" },
+    talents = { file = TRACK .. "Class" },
+    professions = { file = TRACK .. "Profession" },
+    scrolls = { file = TRACK .. "Reagents" },
+    -- Welt
+    dungeons = { atlas = "Dungeon" },
+    raidjournal = { atlas = "Raid" },
+    quests = { file = GOSSIP .. "AvailableQuestIcon" },
+    map = { file = TRACK .. "FlightMaster" },
+    -- Gilde
+    members = { file = GOSSIP .. "TabardGossipIcon" },
+    calendar = { file = "Interface\\Calendar\\MeetingIcon" },
+    bank = { file = GOSSIP .. "BankerGossipIcon" },
+    duels = { file = GOSSIP .. "BattleMasterGossipIcon" },
+    tools = { file = TRACK .. "Repair" },
+    -- Amisia
+    settings = { atlas = "questlog-icon-setting" },
+    about = { file = "Interface\\common\\help-i" },
+    feedback = { file = TRACK .. "Mailbox" },
+    -- the side windows (key "win:" .. their key)
+    ["win:gear"] = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Head" },
+    ["win:goals"] = { atlas = "auctionhouse-icon-favorite" },
+    ["win:talents"] = { file = TRACK .. "Class" },
+    ["win:rolls"] = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
+    ["win:softres"] = { file = GOSSIP .. "PetitionGossipIcon" },
 }
 
 -- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
@@ -691,6 +740,8 @@ T.ATLASES = {
     "auctionhouse-icon-favorite",
     -- the map legend's quest giver mark, the dungeon and raid entrances (Gear/MapPlaces.lua)
     "QuestNormal", "Dungeon", "Raid",
+    -- the side bar's symbols (T.NAV_ICONS, D-70): the money frame's gold coin
+    "coin-gold",
     -- the raid calendar window: the group finder's role icons (Blizzard_UIPanelTemplates/Camelot,
     -- LFGVanilla) and its class icons (Blizzard_GroupFinder_VanillaStyle)
     "groupfinder-icon-role-large-tank", "groupfinder-icon-role-large-heal", "groupfinder-icon-role-large-dps",

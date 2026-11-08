@@ -39,6 +39,23 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-146 Dungeon- und Raid-Journal nach dem Vorbild: Filter, Reiter, Lauf, Karte
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du eine Instanz betrittst, dann öffnet die Seite Dungeons bzw. Raids deren Detailseite, und ein Boss-Kill setzt den Haken und zählt "x/y Bosse" hoch.
+- Prüfung: Wenn du auf der Startseite suchst oder Passend/Quests wählst, dann bleiben nur passende Kacheln.
+- Prüfung: Wenn ein Teil aus deiner Wunschliste fällt, dann kommt eine Meldung mit Ton.
+- Prüfung: Wenn der Client eine Karte für die Instanz hat, dann zeigt der Reiter Karte sie mit Ebenen und Zoom.
+- Notiz: Spec docs/specs/2026-11-07-hauptfenster-journal.md, Schritte 3 bis 5.
+
+### F-145 Hauptfenster nach dem Vorbild: Kopf mit Logo, Symbolzeilen, Breite, Minimieren
+- Version: -
+- Status: geplant
+- Prüfung: Wenn das Fenster offen ist, dann zeigt die Seitenleiste oben Logo und Version und jede Gruppe als goldene Überschrift mit ihren Seiten als Zeilen mit Symbol.
+- Prüfung: Wenn du am Griff unten rechts ziehst, dann ändern sich Breite und Höhe; nach einem /reload bleibt die Größe, und Listenseiten nutzen die Breite.
+- Prüfung: Wenn du auf Minimieren klickst, dann bleibt nur eine kleine Leiste; ein Klick darauf öffnet das Fenster an derselben Stelle wieder.
+- Notiz: Spec docs/specs/2026-11-07-hauptfenster-journal.md, Schritte 1 und 2.
+
 ### F-144 Aufklappbare Bosszeilen mit Beutesymbolen
 - Version: 2.62.0
 - Status: gebaut
