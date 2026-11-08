@@ -316,14 +316,16 @@ local function navEntries(byGroup)
             end
         end
     end
-    -- the open page's marks under its tab's pages (D-74: the level ranges of Dungeons), the gold line
-    -- over the first; a click shows that part of the page
+    -- the open page's marks under its tab's pages (D-74: the level ranges of Dungeons; D-75: a mark may
+    -- carry its symbol, be chosen and start a new block), the gold line over the first and over each
+    -- block; a click shows that part of the page or runs its action
     local p = current and ns.Panel(current)
     local frame = current and built[current]
     if p and p.jumps and frame then
         local ok, marks = pcall(p.jumps, frame)
         for i, m in ipairs(ok and type(marks) == "table" and marks or {}) do
-            out[#out + 1] = { kind = "jump", key = m.key, label = m.label, count = m.count, first = i == 1, page = p, frame = frame }
+            out[#out + 1] = { kind = "jump", key = m.key, label = m.label, count = m.count, icon = m.icon, on = m.on and true or false,
+                first = i == 1 or m.rule == true, page = p, frame = frame, tip = m.tip }
         end
     end
     return out
@@ -737,7 +739,7 @@ end
 -- Where a row's name starts, by what it shows.
 local LABEL_X = { page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X, jump = M.NAV_LABEL_X }
 
--- A symbol of the client (def: { atlas } or { file }, T.NAV_ICONS, T.TAB_ICONS) on tex, shown; none
+-- A symbol of the client (def: { atlas } or { file, coords }, T.NAV_ICONS, T.TAB_ICONS, a mark's icon) on tex, shown; none
 -- (hidden, false) without def or when the client lacks the atlas or (where it can tell,
 -- GetFileIDFromPath) the file. A pooled texture's coordinates from an atlas are reset for a file.
 setArt = function(tex, def)
@@ -745,9 +747,10 @@ setArt = function(tex, def)
         tex:SetAtlas(def.atlas, false)
         tex:Show()
         return true
-    elseif def and def.file and not (GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
+    elseif def and def.file and not (type(def.file) == "string" and GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
+        -- a path or a file data id (a profession's icon from the client); coords: a part of it
         tex:SetTexture(def.file)
-        tex:SetTexCoord(0, 1, 0, 1)
+        if def.coords then tex:SetTexCoord(unpack(def.coords)) else tex:SetTexCoord(0, 1, 0, 1) end
         tex:Show()
         return true
     end
@@ -855,7 +858,12 @@ local function buildNav(b)
         local e = self.item
         if not e then return end
         self.label:SetFontObject(T.FONT.body)
-        if e.kind == "win" then
+        if e.kind == "jump" and e.tip then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(e.label, 1, 0.82, 0)
+            GameTooltip:AddLine(e.tip, 0.85, 0.85, 0.85, true)
+            GameTooltip:Show()
+        elseif e.kind == "win" then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(e.def.label, 1, 0.82, 0)
             GameTooltip:AddLine(e.def.tip, 0.85, 0.85, 0.85, true)
@@ -889,6 +897,13 @@ local function fillNav(b, e)
     b.count:SetShown(e.kind == "jump")
     b.count:SetText(e.kind == "jump" and tostring(e.count or "") or "")
     b.rule:SetShown(e.kind == "jump" and e.first == true)
+    -- a mark with its symbol: the symbol where a page's is, the name where a page's starts (D-75)
+    if e.kind == "jump" and e.icon then
+        setArt(b.symbol, e.icon)
+        b.label:ClearAllPoints()
+        b.label:SetPoint("LEFT", M.NAV_SUB_X, 0)
+        b.label:SetWidth(NAV_W - T.SCROLL_ROOM - M.NAV_SUB_X - 6 - (M.FOLD + M.FOLD_R))
+    end
     b:SetSelected(e.on)
 end
 

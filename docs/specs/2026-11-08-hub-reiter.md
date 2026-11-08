@@ -1,7 +1,7 @@
 # Spec: Hub mit Reitern oben, Bildkopf und Tabellenlisten
 
 Stand: 2026-11-08 · Status: freigegeben ·
-Feature: F-147 (Fenster), F-148 (Dungeons & Raids als Tabelle), F-149 (Ausrüstung), F-150 (Talente)
+Feature: F-147 (Fenster), F-148 (Dungeons & Raids als Tabelle), F-149 (Ausrüstung), F-150 (Talente), F-151 (Berufe)
 
 Nutzer am 2026-11-08 mit einem Bildschirmfoto des Hubs eines anderen Addons: "mach das addon/ui genau so
 wie [das Vorbild], nur QoL, Hunter Pets und Library Books will ich nicht, aber dafür die Funktionen von
@@ -59,8 +59,42 @@ eigene Seitenleiste, Listen als Tabellen. Gelöst ist es, wenn das Fenster neben
 - Klick auf eine Zeile öffnet die Detailseite von F-146 (Reiter Übersicht, Karte, Quests, Wunschliste,
   Zugang); die Kacheln von F-143 entfallen. "Hier bist du" und "1/4 Bosse" stehen in der Zeile.
 
-**Ausrüstung (F-149) und Talente (F-150)** — "genau wie" das Vorbild; dafür brauche ich je ein Foto
-dieser Reiter des Vorbilds (Frage 4). Bis dahin: nur in den neuen Rahmen setzen, Inhalt wie heute.
+**Gemeinsam (D-75):** Eine Seite kann der Leiste Marken mit Symbol geben, eine gewählte Marke ist hervorgehoben,
+eine Marke kann einen neuen Block mit goldener Linie beginnen. So entstehen die Klassen-, Set- und Berufslisten der
+Fotos. Symbole der Marken dürfen die eigenen Symbole des Spiels für Klassen und Berufe sein (Klassenwappen,
+Berufssymbol des Clients), keine Ersatzsymbole.
+
+**Ausrüstung (F-149, D-77)** nach dem Foto des Reiters Armory:
+- Leiste: die neue Seite "Ausrüstungsplaner" zuerst, dann die bisherige Seite Ausrüstung und die Fenster Tabelle und
+  Ziele; darunter als Marken die Katalog-Kategorien Raid-Sets, Dungeon-Sets, PvP-Sets, Handwerks-Sets, Welt-Sets und
+  (eigener Block) Ruf. Reittiere und Legendäres entfallen (keine Daten).
+- Seite links: Kopf "Name Stufe N · Spezialisierung ˅" (der Spec-Wähler der Ausrüstung), das Modell zwischen den
+  Platzspalten wie das Charakterfenster, die Waffen darunter, je Platz das Item im Rahmen seiner Qualität (grün =
+  Ziel erreicht) und daneben die geplante Verzauberung (oder ein kleines "+", das die Verzauberungen des Platzes
+  zeigt); unten "Zurücksetzen" (die eigenen Wahlen).
+- Seite rechts: Reiter "Vorschläge | Wunschliste", ein Suchfeld über alle Items, der Name des gewählten Platzes,
+  "Stufe [1] - [33]" und "Meine Stufe | Alle"; die Liste: Symbol, Name in Qualitätsfarbe, "Stufe 31 · Quelle", der
+  Zuwachs "+89 %", das Symbol der Quelle (Dungeon, Beruf, Händler ...) und der Stern für die Wunschliste. Ein Klick
+  macht die Zeile zur eigenen Wahl. Eine Set-Marke zeigt rechts die Sets dieser Kategorie (der Katalog).
+- Die Daten kommen aus ns.BisTargets, ns.BisRanking, dem Katalog und den Verzauberungen; das Fenster
+  "Ausrüstungsziele" bleibt.
+
+**Talente (F-150, D-76)** nach dem Foto des Reiters Talent Trees:
+- Leiste: die Seite Talente und das Fenster Talentrechner, darunter als Marken die Klassen mit ihrem Wappen (die
+  gezeigte gewählt), ein Block "Plan 1"/"Plan 2" (Primär/Sekundär, der gezeigte gewählt) und ein Block mit den
+  Aktionen "Eigene laden", "Plan zurücksetzen", "Build importieren", "Build exportieren".
+- Seite: oben eine Zeile "Stufe: 9 · Verfügbar: 51 · Verteilt: 0 · Übrig: 51" über die Breite verteilt; die drei Bäume
+  nebeneinander, jeder mit dem Hintergrundbild seiner Klasse aus dem Client, Name in Gold und "0 Punkte" oben,
+  die Talente als Symbole mit "0/5" unten rechts, die Linien der Voraussetzungen; unten rechts "Linksklick + ·
+  Rechtsklick -". Die Klassenauswahl und die Plan-Reiter der Seite selbst entfallen (sie stehen in der Leiste).
+
+**Berufe (F-151, D-78)** nach dem Foto des Reiters Professions:
+- Leiste: die Seiten Berufe und Schriftrollen; als Marken "Übersicht", dann jeder Beruf mit seinem Symbol, ein Block
+  mit "Lager" und "Händlergunst" (die eigene Gunst als Zahl rechts).
+- Übersicht: eine Zeile Erklärung; "Deine Berufe" als Kacheln (Symbol, Name, "Skill 75/150 | 0 bekannt"); "Alle
+  Berufe" (Symbol, Name, "182 Rezepte | 0 bekannt"); "Weiteres" mit Lager und Händlergunst; "Nächste Lehrer" als
+  Tabelle in drei Spalten (Beruf, Lehrer und Zone, Kartenknopf), soweit Amisia Lehrer mit Ort kennt. Ein Klick auf
+  einen Beruf öffnet seine Rezepte wie bisher.
 
 **Amisia-Reiter Raid und Gilde:** Inhalt wie heute, nur im neuen Rahmen; Listen bekommen nach und nach
 die Tabellenköpfe von F-148.
@@ -139,6 +173,10 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
    4. Talente. Jeder Schritt einzeln getestet, mit Snapshots vorher/nachher.
 
 ## Entscheidungen
+
+- 2026-11-08, Nutzer schickt die Fotos der Reiter Armory, Talent Trees und Professions: "mach gear so wie bei
+  [dem Vorbild]", "Talente auch", "berufe auch". Damit gilt Frage 4; die Teile oben (D-75 bis D-78) sind danach
+  festgelegt. Neue Features F-149 Ausrüstung, F-150 Talente, F-151 Berufe.
 
 - 2026-11-08, Nutzer: "Passt, los". Damit gelten die Vorschläge zu den Fragen 1 bis 3 und 5; Frage 4 wartet auf
   die Fotos der Reiter Armory und Talent Trees. Die Journal-Schritte 3 bis 5 sind vorher committet (d4f752e).

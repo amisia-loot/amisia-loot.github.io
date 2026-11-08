@@ -163,4 +163,20 @@ assert(F:IsShown() and not F.mini:IsShown(), "back")
 F.head.close:Click()
 assert(not F:IsShown(), "closed")
 NS.ToggleMain()
+-- a page's marks (D-74, D-75): under the tab's pages, each may carry its symbol, be chosen and start a
+-- block with the gold line over it; a click runs the page's jump
+local jumped
+NS.RegisterPanel{ key = "tpmarks", label = "Marken", order = 5, group = "raid",
+    create = function(p) return CreateFrame("Frame", nil, p) end,
+    jumps = function() return { { key = "a", label = "Eins", icon = { file = "Interface\\Icons\\X" } , on = true },
+        { key = "b", label = "Zwei", count = 3 }, { key = "c", label = "Drei", rule = true, tip = "Mehr" } } end,
+    jump = function(_, key) jumped = key end }
+NS.ShowPage("tpmarks")
+local ma, mb, mc = row("jump", "a"), row("jump", "b"), row("jump", "c")
+assert(ma and mb and mc, "the marks under the pages")
+assert(ma.button.symbol:IsShown() and ma.button.label.points.LEFT.x == M.NAV_SUB_X and ma.button.bar:IsShown(), "symbol, indent, chosen")
+assert(ma.button.rule:IsShown() and not mb.button.rule:IsShown() and mc.button.rule:IsShown(), "the lines over the blocks")
+assert(not mb.button.symbol:IsShown() and mb.button.label.points.LEFT.x == M.NAV_LABEL_X and mb.button.count:GetText() == "3")
+mb.button:Click()
+assert(jumped == "b", "the page's jump")
 print("main hub ok")

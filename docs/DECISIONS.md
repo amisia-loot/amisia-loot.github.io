@@ -1780,3 +1780,19 @@ stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur 
 
 **Durchgesetzt durch:** `tests/test_dungeon_table.lua` (Spalten, Gruppen, Zeilen, Breite, Höhe, Raids), `tests/test_dungeons_page.lua` (Farben, Aufklappen, Sprungmarken, Sortieren), `tests/test_raid_journal.lua` (Größen), die Layoutregeln.
 
+## D-75 Marken der Leiste mit Symbol, Auswahl und Blöcken
+
+**Datum:** 2026-11-08
+**Entscheidung:** Die Marken einer Seite (`jumps`, D-74) können mehr:
+- `icon` (`{ file, coords }` oder `{ atlas }`, auch eine Datei-ID des Clients): das Symbol steht wie das einer Seite, der Name dahinter;
+- `on`: die Marke ist gewählt (heller mit goldenem Balken, wie eine offene Seite);
+- `rule`: die Marke beginnt einen neuen Block mit der goldenen Linie darüber;
+- `tip`: ein Tooltip; `count`: die Zahl rechts.
+Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenwappen) und Berufe (das Berufssymbol des Clients) sein, weil sie genau das zeigen; Ersatzsymbole bleiben verboten (D-70).
+
+**Grund:** Die Fotos der Reiter Talent Trees, Professions und Armory (Spec `docs/specs/2026-11-08-hub-reiter.md`): Klassen, Berufe und Sets stehen links mit Symbol.
+
+**Folge:** Talente (D-76), Ausrüstung (D-77) und Berufe (D-78) legen ihre Listen so in die Leiste.
+
+**Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Marken mit Symbol, Auswahl, Blöcken, Klick).
+

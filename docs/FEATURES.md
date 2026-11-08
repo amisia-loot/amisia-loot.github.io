@@ -39,17 +39,23 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
-### F-150 Talente im Aufbau des Vorbilds
+### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du den Reiter Talente öffnest, dann sieht er aus wie im Foto des Vorbilds, das der Nutzer schickt.
-- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 4; wartet auf ein Foto des Reiters Talent Trees.
+- Prüfung: Wenn du den Reiter Berufe öffnest, dann zeigt die Übersicht deine Berufe, alle Berufe, Lager und Händlergunst als Kacheln, und links stehen die Berufe mit ihrem Symbol.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-78.
 
-### F-149 Ausrüstung im Aufbau des Vorbilds
+### F-150 Talente mit Klassen und Plänen in der Leiste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann sieht er aus wie im Foto des Vorbilds, das der Nutzer schickt.
-- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 3; wartet auf ein Foto des Reiters Armory.
+- Prüfung: Wenn du den Reiter Talente öffnest, dann stehen links die Klassen mit Wappen, Plan 1/Plan 2 und Laden, Zurücksetzen, Import, Export, und rechts die drei Bäume mit ihrem Klassenbild und "0/5" an jedem Talent.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-76.
+
+### F-149 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du links dein Modell mit allen Plätzen und rechts die Vorschläge für den gewählten Platz mit Zuwachs, Quelle und Stern.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-77.
 
 ### F-148 Dungeons & Raids als Tabelle mit Stufenbereichen
 - Version: 2.63.0
