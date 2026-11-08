@@ -376,7 +376,7 @@ T.DJOURNAL = {
 }
 
 -- The loot toast (F-152, D-79): its lines W wide in a holder H high, CENTER of the screen moved by X, Y
--- (left of and above the character); the text in FONT at the set size (ui.lootToastSize, SIZE by
+-- (left of and above the character); the text in FONT at the set size (toast.size, SIZE by
 -- default, SIZE_MIN to SIZE_MAX), the icon that size + ICON_PAD square, GAP right of it the text, a
 -- line that size + LINE_PAD high, SPACE apart; shown SHOW seconds, in over FADE_IN, out over the last
 -- FADE_OUT, risen RISE px by then; at most MAX at once.
@@ -384,6 +384,13 @@ T.LOOTTOAST = {
     W = 360, H = 240, X = -120, Y = 110, SPACE = 2, GAP = 4, FONT = "GameFontNormalLarge",
     SIZE = 16, SIZE_MIN = 10, SIZE_MAX = 32, LINE_PAD = 6, ICON_PAD = 4,
     SHOW = 3, FADE_IN = 0.2, FADE_OUT = 0.8, RISE = 30, MAX = 6,
+    -- the settings of F-158: the time shown (s), the lines at once, the opacity (%)
+    SHOW_MIN = 1, SHOW_MAX = 10, MAX_MIN = 1, MAX_MAX = 12, ALPHA_MIN = 20,
+    -- the client's own fonts to choose ("default": the font object's)
+    FONTS = { friz = "Fonts\\FRIZQT__.TTF", arial = "Fonts\\ARIALN.TTF", skurri = "Fonts\\SKURRI.TTF",
+              morpheus = "Fonts\\MORPHEUS.TTF" },
+    -- while it is moved: a dark ground with a gold edge, the hint, "Fertig" (F-158)
+    MOVE_BG = { 0, 0, 0, 0.55 }, MOVE_EDGE = { 0.78, 0.6, 0.27, 0.9 }, DONE_W = 70,
 }
 
 -- The start of Dungeons and Raids as a table (F-148, D-74): rows ROW_H high (the list's 1 px between),

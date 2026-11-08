@@ -698,6 +698,10 @@ local function region(parent, kind, layer, template)
     f.GetAlpha = function(self) return self.alpha or 1 end
     f.SetPoint = setPoint
     f.SetAllPoints = setAllPoints
+    -- a font set by file is kept (the item display's font settings, F-158); the shadow's offset too
+    f.SetFont = function(self, file, size, flags) self.fontFile, self.fontSize, self.fontFlags = file, size, flags; return true end
+    f.GetFont = function(self) return self.fontFile, self.fontSize, self.fontFlags end
+    f.SetShadowOffset = function(self, x, y) self.shadowX, self.shadowY = x, y end
     f.GetNumPoints, f.GetPoint = getNumPoints, getPoint
     f.GetSize = function(self) return self._w, self._h end
     f.ClearAllPoints = function(self) self.points = {} end

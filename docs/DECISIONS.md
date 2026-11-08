@@ -2112,3 +2112,19 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** `ns.ShowRaid` nimmt einen Teil an (`part`). Annahme (nicht gefragt): Quest-Symbole öffnen nichts, weil der Nutzer nur Instanz und Beruf nannte.
 
 **Durchgesetzt durch:** `tests/test_source_jump.lua` (Schlüssel, Boss gewählt, Zeile markiert, Refresh, anderer Boss, anderer Dungeon, unbekanntes Item, Raid, Rezept), `tests/test_gear_planner.lua` (Tooltip und Klick des Symbols).
+
+## D-89 Item-Anzeige: eigener Abschnitt, verschiebbar, Schrift und Ablauf einstellbar
+
+**Datum:** 2026-11-09
+**Entscheidung:** Die Anzeige erhaltener Items und Gold (D-79, F-158) hat einen eigenen Einstellungsabschnitt "Item-Anzeige" (`toast`, Reiter Allgemein, vor Oberfläche). Schritt 5 von `Core/Migrate.lua` zieht die vier alten Einstellungen `ui.lootToast*` dorthin um.
+- **Verschieben:** "Anzeige verschieben" zeigt die Anzeige mit dunklem Grund, Goldrand, Hinweis und "Fertig" und mit Beispielzeilen, die stehen bleiben. Man zieht sie mit der Maus; der Platz steht in `settings.toast.point`. "Fertig" macht sie wieder fest. "Position zurücksetzen" und "Fensterposition zurücksetzen" (Oberfläche) stellen sie zurück.
+- **Schrift:** Schriftart (Standard = die große Schrift des Spiels, Friz Quadrata, Arial Narrow, Skurri, Morpheus: die Schriften des Clients), Größe (wie bisher), Umriss (Standard, keiner, dünn, dick), Schatten.
+- **Aussehen:** Symbol an/aus, Ausrichtung (links, Mitte, rechts), Deckkraft (20 bis 100 %).
+- **Ablauf:** Anzeigedauer (1 bis 10 s, Standard 3), Bewegung (steigt, sinkt, steht), neue Zeilen unten oder oben, Zeilen gleichzeitig (1 bis 12, Standard 6).
+- Was sich auf das Aussehen auswirkt, gilt sofort, auch für gerade gezeigte Zeilen.
+
+**Grund:** Nutzer 2026-11-09: "wo finde ich die einstellungen zu den loot scrolling sachen" und dann "ja ich möchte es verschieben und auch die schriftart usw und große und was es noch so alles zum einstellen gibt".
+
+**Folge:** Annahme (nicht gefragt): nur die Schriften des Clients, keine aus anderen Addons; die Vorgaben bleiben wie bisher, sodass ohne Änderung alles aussieht wie vorher.
+
+**Durchgesetzt durch:** `tests/test_loot_toast.lua` (Abschnitt, Schrift, Umriss, Schatten, Symbol, Deckkraft, Zeilen, Dauer, Bewegung, Reihenfolge, Ausrichtung, Verschieben, Fertig, zurücksetzen), `tests/test_migrate.lua` (Schritt 5).

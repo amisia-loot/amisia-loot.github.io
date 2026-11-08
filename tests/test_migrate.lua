@@ -59,3 +59,13 @@ STUB.fire("PLAYER_LOGIN")
 local said
 for _, m in ipairs(STUB.messages) do if has(m, "neueren Amisia-Version") then said = m end end
 assert(said and has(said, ("Stand %d"):format(N + 7)), tostring(said))
+
+-- step 5 (D-89): the item display's settings move from "Oberfläche" to "Item-Anzeige"
+local db = { schema = 4, settings = { ui = { lootToast = false, lootToastMoney = false, lootToastSize = 22,
+    lootToastQuality = "2", scale = 110 }, toast = { quality = "4" } } }
+NS.MIGRATIONS[5](db)
+local u, t = db.settings.ui, db.settings.toast
+assert(t.show == false and t.money == false and t.size == 22, "moved")
+assert(t.quality == "4", "a value already in the new place stays")
+assert(u.lootToast == nil and u.lootToastMoney == nil and u.lootToastSize == nil and u.lootToastQuality == nil, "the old ones go")
+assert(u.scale == 110, "the rest of Oberfläche stays")

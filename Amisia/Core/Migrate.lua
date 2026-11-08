@@ -68,6 +68,17 @@ ns.MIGRATIONS = {
         if type(m) ~= "table" then return end
         m.flights, m.transports = nil, nil
     end,
+    -- 5 (2.71.0): the item display ("+Item") has its own section "Item-Anzeige" (D-89)
+    function(db)
+        for _, m in ipairs({
+            { "ui.lootToast", "toast.show" },
+            { "ui.lootToastMoney", "toast.money" },
+            { "ui.lootToastSize", "toast.size" },
+            { "ui.lootToastQuality", "toast.quality" },
+        }) do
+            ns.MigrateMoveSetting(db, m[1], m[2])
+        end
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): move and style the item display (F-158)
+
+  The "+Item" display has its own settings section "Item display": move it with the mouse ("Move the
+  display", then "Done"), choose the font, its outline and shadow, show or hide the icon, align it left,
+  centered or right, set how long a line stays, whether it rises, sinks or stays still, whether new lines
+  come below or above, how many show at once and how transparent it is. Your earlier settings are kept.
+
 - fix(ui): the logo in the window's head without the black disc (F-147)
 
   The Amisia logo at the top left of the main window no longer sits on a black disc: only a thin gold
