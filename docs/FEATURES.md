@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-156 Offiziersansicht nur für Offiziere
-- Version: -
-- Status: geplant
+- Version: 2.69.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn ein Gildenmitglied ohne Offiziersrang /amisia öffnet, dann steht unten "Raider-Ansicht", im Menü der Statuszeile fehlt "Zur Offiziersansicht", unter Einstellungen, Oberfläche fehlt "Ansicht", und `/amisia ansicht offizier` meldet "Die Offiziersansicht haben nur Offiziere der Gilde."
 - Prüfung: Wenn ein Offizier (Rang Offizier oder höher) /amisia öffnet, dann steht unten "Offiziersansicht", und das Menü wechselt zur Raider-Ansicht und zurück.
