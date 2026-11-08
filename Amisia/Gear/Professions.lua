@@ -919,6 +919,45 @@ function Pr.KnownCount(skill)
     return n
 end
 
+-- The trainers of a skill line with a place (data TR, each an NPC of N) the own faction may use: its
+-- own and the neutral ones, those in the own capitals first, then the rest of the own faction, then
+-- the neutral ones (by id within each). Without a known faction all of them.
+local CAPITALS = { A = { [1453] = true, [1455] = true, [1457] = true }, H = { [1454] = true, [1456] = true, [1458] = true } }
+function Pr.Trainers(skill)
+    local d = data()
+    local ids = d and d.TR and d.TR[skill]
+    if type(ids) ~= "table" then return {} end
+    local fac = ns.OwnFaction()
+    local out = {}
+    for _, id in ipairs(ids) do
+        local n = Pr.Npc(id)
+        local side = n and n.faction ~= "" and n.faction or nil
+        if n and n.point and (not fac or not side or side == fac) then
+            n.order = (side and CAPITALS[side][n.point.map]) and 1 or side and 2 or 3
+            out[#out + 1] = n
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.id < b.id
+    end)
+    return out
+end
+
+-- The trainer of a skill line nearest to the player (ns.MapNearest: same continent), else the first
+-- of Pr.Trainers (the own capital's); nil without one.
+function Pr.NearestTrainer(skill)
+    local list = Pr.Trainers(skill)
+    if #list == 0 then return nil end
+    local points, owner = {}, {}
+    for _, n in ipairs(list) do
+        points[#points + 1] = n.point
+        owner[n.point] = n
+    end
+    local p = ns.MapNearest and ns.MapNearest(points) or nil
+    return p and owner[p] or list[1]
+end
+
 -- Whether a writ (crafting order) exists for the item a recipe makes.
 function Pr.HasWrit(r)
     local d = data()

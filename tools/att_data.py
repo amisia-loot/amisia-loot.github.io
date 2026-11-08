@@ -483,7 +483,7 @@ local function walk(v, ctx, depth)
             elseif ctx.inst and (ctx.hdr == nil or ctx.hdr == "COMMON_BOSS_DROPS") then nk = "boss"
             else nk = "npc" end
             emit("npcs", { id = npc, file = ctx.file, zone = ctx.zone, inst = ctx.inst, kind = nk, pts = points(t),
-                           races = c.races, encounter = kind == "e" and id or nil })
+                           races = c.races, encounter = kind == "e" and id or nil, prof = ctx.prof, hdr = ctx.hdr })
             c.npc, c.npcKind, c.enc = npc, nk, kind == "e" and id or nil
         elseif kind == "e" then
             c.npc, c.npcKind, c.enc = nil, "boss", id
@@ -813,7 +813,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
                      'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
                      'startItems' (the items that start it)}},
-     'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old'}},
+     'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old',
+                   'profs' (only a trainer: the set of ATT profession names it stands under, 'ALCHEMY')}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
      'sold': [(item, vendor id, old)], 'sold_cost': {(item, vendor id): copper or 'x' (another currency or
@@ -922,6 +923,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
         elif rec['old'] != old(r['file']):
             continue
         rec['kinds'].add(r['kind'])
+        # a trainer: an NPC under a profession in the header PROFESSIONS (ATT's zone files)
+        if r.get('hdr') == 'PROFESSIONS' and r.get('prof'):
+            rec.setdefault('profs', set()).add(r['prof'])
         for p in pts(r.get('pts')):
             if p not in rec['points']:
                 rec['points'].append(p)

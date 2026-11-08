@@ -1892,6 +1892,13 @@ gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reite
 
 **Durchgesetzt durch:** `tests/test_professions_page.lua` (Übersicht, Abschnitte, Kacheln, Spalten, Marken, Klicks, Zahl der bekannten Rezepte), die Layoutregeln (`tools/ui_layout.py`).
 
+**Nachtrag 2026-11-08** (Nutzer schickt das Foto noch einmal: "so wie" dort):
+- **Start:** Das erste Öffnen einer Sitzung über den Reiter oder die Zeile der Seite zeigt die Übersicht, auch wenn eine Ansicht gespeichert ist (nur im Speicher). Eine Marke, eine Kachel, der Berufswähler, `/amisia berufe <Ansicht>` und `ns.ShowRecipe` wählen eine Ansicht; die gespeicherte Ansicht bleibt dafür.
+- **Vier Kacheln je Zeile** bei 602 px (140 breit, 6 Abstand, Symbol 26, Name in `GameFontNormalSmall`), breiter bis sechs. Passt die zweite Zeile nicht, steht die Kurzform ("45/150 · 2 bekannt", "2/190 bekannt"), die ganze im Tooltip.
+- **"Nächste Lehrer"** kommt doch: AllTheThings listet die Lehrer in seinen Zonendateien unter `n(PROFESSIONS, { prof(ALCHEMY, { n(4611, …) }) })`. `tools/att_data.py` gibt solchen NPCs `profs`, `build_professions.py` schreibt sie als `TR = { [skill line] = { npc, … } }` (jeder in `N` mit Ort und Fraktion). Die Übersicht zeigt am Ende eine gerahmte Tabelle in drei Spalten: je Beruf mit einem Lehrer der eigenen Fraktion oder einem neutralen der nächste (`ns.MapNearest`, ohne eigene Position der erste in den eigenen Hauptstädten): Symbol, Name, "Name, Zone", Kartenknopf für den Wegpunkt (`ns.MapSetPoint`, D-62). Ohne passenden Lehrer fehlt die Zelle.
+- ATT kennt nicht für jeden Beruf Lehrer jeder Fraktion (Stand 2026-11-08: Kochkunst, Bergbau, Angeln nur je zwei); die Liste wächst mit den Daten.
+- Durchgesetzt durch `tests/test_professions_page.lua` (Start, vier Spalten, Kurzform, Lehrer, Wegpunkt) und `tools/tests/test_build_professions.py` (`TR`).
+
 ## D-79 Anzeige erhaltener Items ("+Item")
 
 **Datum:** 2026-11-08

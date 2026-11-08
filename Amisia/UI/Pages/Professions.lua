@@ -52,8 +52,15 @@ local function itemText(id, fallback)
     return color(QUALITY[q or 1] or QUALITY[1], name or fallback or ("Item " .. tostring(id)))
 end
 
+-- The first open of a session shows the overview, whatever view is saved (D-78): opened by the tab or
+-- the page's row; a mark, a card, the picker, a command with a view and ns.ShowRecipe choose a view
+-- (chosen()) and end it. Only in memory.
+local atStart = true
+local function chosen() atStart = false end
+
 -- The shown view: OVERVIEW, a skill line, CAMP or FAVOR (D-78). Default: the overview.
 local function view()
+    if atStart then return OVERVIEW end
     local v = state().view
     if v == CAMP or v == FAVOR or v == OVERVIEW then return v end
     v = tonumber(v)
@@ -665,6 +672,7 @@ end
 local function openView(v, recipes)
     local s = state()
     s.view = v
+    chosen()
     if recipes then s.mode = RECIPES end
     ns.Refresh()
 end
@@ -704,6 +712,7 @@ local function overviewSections()
             local skill, known = p.skill, Pr.KnownCount(p.skill)
             own[#own + 1] = { icon = profIcon(skill), name = Pr.Name(skill),
                 sub = known and L["Rang %d/%d · %d bekannt"]:format(p.rank, p.max, known) or L["Rang %d/%d"]:format(p.rank, p.max),
+                short = known and L["%d/%d · %d bekannt"]:format(p.rank, p.max, known) or nil,
                 open = function() openView(skill, true) end,
                 tip = known and L["Klick: die Rezepte des Berufs."]
                     or (L["Klick: die Rezepte des Berufs."] .. " " .. L["Für \"Bekannt\" das Berufsfenster einmal öffnen."]) }
@@ -714,6 +723,7 @@ local function overviewSections()
         local n, known = #Pr.Recipes(skill), Pr.KnownCount(skill)
         all[#all + 1] = { icon = profIcon(skill), name = Pr.Name(skill),
             sub = known and L["%s · %d bekannt"]:format(recipesText(n), known) or recipesText(n),
+            short = known and L["%d/%d bekannt"]:format(known, n) or nil,
             open = function() openView(skill, true) end, tip = L["Klick: die Rezepte des Berufs."] }
     end
     local more = {}
@@ -731,13 +741,24 @@ local function overviewSections()
     local secs = { { title = L["Deine Berufe"], cards = own, none = L["Noch kein Beruf erlernt."] },
         { title = L["Alle Berufe"], cards = all } }
     if #more > 0 then secs[#secs + 1] = { title = L["Weiteres"], cards = more, wide = true } end
+    -- the nearest trainer of each profession the own faction may use (the data's order: crafting,
+    -- cooking, first aid, fishing, then gathering); a profession without one is left out
+    local trainers = {}
+    for _, skill in ipairs(Pr.Skills()) do
+        local t = Pr.NearestTrainer(skill)
+        if t then trainers[#trainers + 1] = { skill = skill, npc = t } end
+    end
+    if #trainers > 0 then secs[#secs + 1] = { title = L["Nächste Lehrer"], cards = {}, trainers = trainers } end
     return secs
 end
 
+local trainerTable   -- the table of "Nächste Lehrer" (built below)
 local function cardTooltip(self)
     if not GameTooltip or not self.entry then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(self.entry.name, 1, 0.82, 0)
+    -- the whole line when the card shows its short form
+    if self.entry.short then GameTooltip:AddLine(self.entry.sub, 1, 1, 1) end
     if self.entry.tip then GameTooltip:AddLine(self.entry.tip, 0.85, 0.85, 0.85, true) end
     GameTooltip:Show()
 end
@@ -754,9 +775,9 @@ local function newCard(ov)
     c.icon = c:CreateTexture(nil, "ARTWORK")
     c.icon:SetSize(P.CARD_ICON, P.CARD_ICON)
     c.icon:SetPoint("LEFT", P.CARD_PAD, 0)
-    c.name = W.Text(c, T.FONT.title, 10)
+    c.name = W.Text(c, P.CARD_NAME_FONT, 10)
     c.name:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_NAME_Y)
-    c.sub = W.Text(c, T.FONT.text, 10)
+    c.sub = W.Text(c, P.CARD_SUB_FONT, 10)
     c.sub:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_SUB_Y)
     c:RegisterForClicks("LeftButtonUp")
     c:SetScript("OnClick", function(self) if self.entry and self.entry.open then self.entry.open() end end)
@@ -792,6 +813,7 @@ local function layoutOverview(ov)
     local width = (T.PAGE_W_NOW or T.PAGE_W) - T.SCROLL_ROOM
     ov.child:SetWidth(width)
     local y, nCards, nHeads = 0, 0, 0
+    local shownTrainers = false
     ov.none:Hide()
     for si, sec in ipairs(ov.secs or {}) do
         if si > 1 then y = y - P.SEC_GAP end
@@ -825,14 +847,105 @@ local function layoutOverview(ov)
             c.sub:SetWidth(tw)
             c.name:SetText(e.name)
             c.sub:SetText(e.sub)
+            -- a narrow card: the short form ("12/564 bekannt"), the whole line in the tooltip
+            if e.short and (c.sub:GetStringWidth() or 0) > tw then c.sub:SetText(e.short) end
             c:Show()
             items[#items + 1] = c
         end
         if #items > 0 then y = W.Grid(ov.child, items, cols, P.CARD_GAP, P.CARD_GAP, 0, y) end
+        if sec.trainers then
+            local tl, nCols = ov.trainers, P.TRAINER_COLS
+            local rows = {}
+            for i, e in ipairs(sec.trainers) do
+                local r = math.floor((i - 1) / nCols) + 1
+                rows[r] = rows[r] or {}
+                rows[r][#rows[r] + 1] = e
+            end
+            ov.trainerW = math.floor(width / nCols)
+            tl:ClearAllPoints()
+            tl:SetPoint("TOPLEFT", ov.child, "TOPLEFT", 0, y)
+            tl:SetWidth(width)
+            tl:Fit(#rows)
+            tl:SetItems(rows)
+            tl:Show()
+            shownTrainers = true
+            y = y - #rows * P.TRAINER_H
+        end
     end
+    if not shownTrainers then ov.trainers:Hide() end
     for i = nCards + 1, #ov.cards do ov.cards[i]:Hide() end
     for i = nHeads + 1, #ov.heads do ov.heads[i]:Hide() end
     ov.child:SetHeight(math.max(1, -y))
+end
+
+-- "Nächste Lehrer": a framed table of TRAINER_COLS cells a row (a list without its bar, so the cells
+-- may end in the client's ellipsis): the profession's icon and name, "Name, Zone" of its nearest
+-- trainer and the map button that sets the waypoint (ns.MapSetPoint: the client's only where D-62
+-- allows it).
+local function hasFile(path) return not (GetFileIDFromPath and GetFileIDFromPath(path) == nil) end
+
+local function trainerWhere(t)
+    return ("%s, %s"):format(t.name or ("NPC " .. tostring(t.id)), Pr.ZoneName(t.point.map) or "?")
+end
+
+local function fillTrainers(r, cells)
+    local cw = r.ov.trainerW or 190
+    local tw = cw - P.TRAINER_TEXT_X - P.TRAINER_BTN - 2 * P.TRAINER_PAD
+    for k, c in ipairs(r.cells) do
+        local e = cells[k]
+        c.entry = e
+        if e then
+            c:ClearAllPoints()
+            c:SetPoint("TOPLEFT", r, "TOPLEFT", (k - 1) * cw, 0)
+            c:SetSize(cw, P.TRAINER_H - 1)
+            setArt(c.icon, profIcon(e.skill))
+            c.name:SetWidth(tw)
+            c.who:SetWidth(tw)
+            c.name:SetText(Pr.Name(e.skill))
+            c.who:SetText(trainerWhere(e.npc))
+            c:Show()
+        else
+            c:Hide()
+        end
+    end
+end
+
+trainerTable = function(ov)
+    local tl = W.List(ov.child, 1, P.TRAINER_H, function(r)
+        r.ov = ov
+        r.cells = {}
+        for k = 1, P.TRAINER_COLS do
+            local c = CreateFrame("Frame", nil, r)
+            c.icon = c:CreateTexture(nil, "ARTWORK")
+            c.icon:SetSize(P.TRAINER_ICON, P.TRAINER_ICON)
+            c.icon:SetPoint("LEFT", P.TRAINER_PAD, 0)
+            c.name = W.Text(c, T.FONT.head, 10)
+            c.name:SetPoint("TOPLEFT", P.TRAINER_TEXT_X, P.TRAINER_NAME_Y)
+            c.who = W.Text(c, T.FONT.hint, 10)
+            c.who:SetPoint("TOPLEFT", P.TRAINER_TEXT_X, P.TRAINER_LINE_Y)
+            c.go = W.IconButton(c, P.TRAINER_BTN, hasFile(P.MAP_ART) and { file = P.MAP_ART } or {}, function(self)
+                local e = self:GetParent().entry
+                if not e or not ns.MapSetPoint then return end
+                local ok, why = ns.MapSetPoint(e.npc.point, e.npc.name or Pr.Name(e.skill))
+                if not ok and why then ns.msg(why) end
+            end, "»")
+            c.go:SetPoint("RIGHT", -P.TRAINER_PAD, 0)
+            W.Tooltip(c.go, L["Wegpunkt"], function(self)
+                local e = self:GetParent().entry
+                if not e then return "" end
+                local p = e.npc.point
+                return L["Setzt den Wegpunkt zu %s (%d, %d)."]:format(trainerWhere(e.npc), math.floor(p.x * 100 + 0.5),
+                    math.floor(p.y * 100 + 0.5))
+            end)
+            r.cells[k] = c
+        end
+    end, fillTrainers, { bar = false })
+    -- the overview's scroll frame takes the wheel; a thin frame round the table
+    tl:EnableMouseWheel(false)
+    local e = P.TRAINER_EDGE
+    W.Border(tl, e[1], e[2], e[3], e[4])
+    tl:Hide()
+    return tl
 end
 
 local function buildOverview(f)
@@ -850,6 +963,7 @@ local function buildOverview(f)
     ov.scroll:SetScrollChild(ov.child)
     W.Scroll(ov.scroll, ov)
     ov.cards, ov.heads = {}, {}
+    ov.trainers = trainerTable(ov)
     ov.none = W.Text(ov.child, T.FONT.hint)
     ov.none:Hide()
     W.FollowWidth(ov, function() if ov:IsShown() then layoutOverview(ov) end end)
@@ -1038,6 +1152,7 @@ local function create(parent)
     local top = f:Bands({ "row", "row" })
     f.prof = W.Picker(f, P.PICKER_W, function(v)
         state().view = (v == CAMP or v == FAVOR) and v or tonumber(v)
+        chosen()
         ns.Refresh()
     end)
     -- the switch "Rezepte | Route" (F-137)
@@ -1238,6 +1353,7 @@ ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, de
 function ns.ShowProfessions(what)
     if AmisiaDB and AmisiaDB.settings and type(what) == "string" and what ~= "" then
         local w = ns.Fold(what)
+        chosen()
         if w == "route" then
             state().mode = ROUTE
         elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
@@ -1265,6 +1381,7 @@ function ns.ShowRecipe(skill, spell, name)
     if AmisiaDB and AmisiaDB.settings and type(skill) == "number" then
         local s = state()
         s.view = skill
+        chosen()
         s.search = type(name) == "string" and name ~= "" and name or nil
         s.known, s.learnable, s.source, s.guild, s.mode = nil, nil, nil, nil, nil
         if type(spell) == "number" then s.sel[tostring(skill)] = spell end

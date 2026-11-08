@@ -160,6 +160,18 @@ def test_render_is_valid_deterministic_lua(data):
     assert P.CD[3321] == 1 and P.CD[2663] is None, 'CD: the cooldown recipes as a set'
 
 
+def test_trainers(data):
+    """TR: the NPCs a zone file lists under a profession in the header PROFESSIONS, with a place, by
+    skill line; each in N with its faction (D-78)."""
+    assert data['TR'] == {171: [80800, 80801], 164: [80803]}
+    assert data['N'][80800] == 'Lilyssia|1455:4180:6700|A'
+    assert data['N'][80801].endswith('|H') and data['N'][80803] == 'Brikk|1455:2000:2000|'
+    assert 80802 not in data['N'], 'a trainer without a place is left out'
+    P = lua_load(bp.render(data, '2026-10-06'))
+    assert P.TR[171][1] == 80800 and P.TR[171][2] == 80801 and P.TR[164][1] == 80803 and P.TR[185] is None
+    assert lua_load(bp.render(bp.empty(), '2026-10-06')).TR is not None
+
+
 def test_vendor_prices(data, plain):
     V = data['V']
     assert V[2880] == '100:80100', ('a reagent AllTheThings lists at a vendor; the barterer wants copper bars and '

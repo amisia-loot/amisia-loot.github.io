@@ -36,9 +36,12 @@ local function mark(key)
         if e.entry.kind == "jump" and e.entry.key == key then return e end
     end
 end
+-- the first open of a session shows the overview, a saved profession view stays saved (D-78)
+AmisiaDB.settings.professions = { view = 164 }
 NS.ShowPage("professions")
 local f = NS.PageFrame("professions")
 local ov = f.ovView
+assert(AmisiaDB.settings.professions.view == 164, "the saved view stays")
 assert(ov:IsShown() and not f.list:IsShown() and not f.prof:IsShown() and not f.detail:IsShown(), "the overview alone")
 assert(has(ov.intro:GetText(), "Wähle einen Beruf"), ov.intro:GetText())
 local function secTitles()
@@ -47,17 +50,32 @@ local function secTitles()
     return table.concat(out, ",")
 end
 -- own: blacksmithing and cooking (in the data); all: the data's three; more: camp and favor
-assert(secTitles() == "Deine Berufe=2,Alle Berufe=3,Weiteres=2", secTitles())
+assert(secTitles() == "Deine Berufe=2,Alle Berufe=3,Weiteres=2,Nächste Lehrer=0", secTitles())
+-- the nearest trainers: the own faction's or a neutral one (the Horde's alchemist is left out), cooking
+-- has none; a cell: icon, name, "Name, Zone", the map button sets the waypoint
+local tl = ov.trainers
+assert(tl:IsShown() and #tl.items == 1 and #tl.items[1] == 2, "one row of two cells")
+local cell = tl.rows[1].cells[1]
+assert(cell:IsShown() and cell.name:GetText() == "Alchimie" and cell.who:GetText() == "Lilyssia, Wald von Elwynn", cell.who:GetText())
+assert(tl.rows[1].cells[2].who:GetText() == "Brikk, Wald von Elwynn" and not tl.rows[1].cells[3]:IsShown(), "neutral, no third")
+cell.go:Click()
+assert(NS.MapTarget() and NS.MapTarget().map == 1429 and math.abs(NS.MapTarget().x - 0.418) < 1e-6, "the waypoint")
+NS.MapClearTarget()
+assert(NS.Prof.NearestTrainer(185) == nil and #NS.Prof.Trainers(171) == 1, "none for cooking, one for alchemy")
 local c1 = ov.cards[1]
 assert(c1:IsShown() and c1.name:GetText() == "Schmiedekunst" and c1.sub:GetText() == "Rang 45/150", c1.sub:GetText())
 assert(c1.icon.texture == "Interface\\Icons\\Trade_BlackSmithing", tostring(c1.icon.texture))
 assert(ov.cards[3].name:GetText() == "Alchimie" and ov.cards[3].sub:GetText() == "2 Rezepte", ov.cards[3].sub:GetText())
 assert(ov.cards[6].name:GetText() == "Lager" and ov.cards[7].sub:GetText() == "Du hast 120 Gunst · wie du sie bekommst",
     ov.cards[7].sub:GetText())
--- 3 cards a row at 602 px (less than 4 x CARD_MIN_W), the wide ones 2; every text fits its card
+-- 4 cards a row at 602 px, the wide ones 2; every text fits its card
 local P = NS.Theme.PROFPAGE
-assert(c1:GetWidth() * 3 + 2 * P.CARD_GAP <= 602 - NS.Theme.SCROLL_ROOM and ov.cards[6]:GetWidth() > c1:GetWidth() * 1.4,
+assert(c1:GetWidth() == math.floor((590 - 3 * P.CARD_GAP) / 4) and ov.cards[6]:GetWidth() > c1:GetWidth() * 1.4,
     c1:GetWidth() .. " / " .. ov.cards[6]:GetWidth())
+for i = 1, 7 do
+    local c = ov.cards[i]
+    assert(c.name:GetStringWidth() <= c.name:GetWidth() and c.sub:GetStringWidth() <= c.sub:GetWidth(), c.name:GetText())
+end
 assert(ov.cards[2].points.TOPLEFT.y == c1.points.TOPLEFT.y and ov.cards[2].points.TOPLEFT.x > c1.points.TOPLEFT.x, "side by side")
 assert(ov.child:GetHeight() > 0, "the scroll child holds the sections")
 -- the marks: Übersicht (chosen), the professions with their icons from the gold line on, then Lager
@@ -87,7 +105,7 @@ mark("overview").button:Click()
 local narrow = ov.cards[1]:GetWidth()
 NS.Theme.PAGE_W_NOW = 1000
 NS.W.FitWidths()
-assert(ov.child:GetWidth() == 1000 - NS.Theme.SCROLL_ROOM and ov.cards[1]:GetWidth() == math.floor((988 - 3 * P.CARD_GAP) / 4),
+assert(ov.child:GetWidth() == 1000 - NS.Theme.SCROLL_ROOM and ov.cards[1]:GetWidth() == math.floor((988 - 5 * P.CARD_GAP) / 6),
     ov.cards[1]:GetWidth())
 assert(ov.cards[1]:GetWidth() > narrow)
 NS.Theme.PAGE_W_NOW = 602
@@ -121,8 +139,14 @@ assert(table.concat(order, ",") == "2663,9999,1252229,3321,1301421", table.conca
 assert(not has(f.hint:GetText(), "Berufsfenster"), f.hint:GetText())
 -- the overview counts what the window showed as known
 NS.ShowProfessions("übersicht")
-assert(f.ovView:IsShown() and f.ovView.cards[1].sub:GetText() == "Rang 45/150 · 2 bekannt", f.ovView.cards[1].sub:GetText())
-assert(f.ovView.cards[4].sub:GetText() == "5 Rezepte · 2 bekannt", f.ovView.cards[4].sub:GetText())
+-- (narrow cards: the short form, the whole line in the tooltip)
+assert(f.ovView:IsShown() and f.ovView.cards[1].sub:GetText() == "45/150 · 2 bekannt", f.ovView.cards[1].sub:GetText())
+assert(f.ovView.cards[4].sub:GetText() == "2/5 bekannt", f.ovView.cards[4].sub:GetText())
+local tipLines, keepAdd = {}, GameTooltip.AddLine
+GameTooltip.AddLine = function(_, t) tipLines[#tipLines + 1] = t end
+f.ovView.cards[4].scripts.OnEnter(f.ovView.cards[4])
+GameTooltip.AddLine = keepAdd
+assert(tipLines[2] == "5 Rezepte · 2 bekannt", tostring(tipLines[2]))
 NS.ShowProfessions("schmied")
 
 -- the detail of the first row is shown; a click chooses another

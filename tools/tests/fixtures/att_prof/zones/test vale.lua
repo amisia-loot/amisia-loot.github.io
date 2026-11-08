@@ -10,6 +10,26 @@ root(ROOTS.Zones, m(MAP.TEST_VALE, {
 			},
 		}),
 	}),
+	n(PROFESSIONS, {
+		prof(ALCHEMY, {
+			n(80800, {	-- Lilyssia <Alchemy Trainer>
+				coord = { 41.8, 67.0, MAP.TEST_VALE },
+				races = ALLIANCE_ONLY,
+			}),
+			n(80801, {	-- Yelmak <Alchemy Trainer>
+				coord = { 42.0, 68.0, MAP.TEST_VALE },
+				races = HORDE_ONLY,
+			}),
+			n(80802, {	-- Nowhere <Alchemy Trainer> (no place: left out)
+				races = HORDE_ONLY,
+			}),
+		}),
+		prof(BLACKSMITHING, {
+			n(80803, {	-- Brikk <Blacksmithing Trainer>
+				coord = { 20.0, 20.0, MAP.TEST_VALE },
+			}),
+		}),
+	}),
 	n(VENDORS, {
 		n(80100, {	-- Suppla Smith <Blacksmithing Supplies>
 			coord = { 12.5, 33.0, MAP.TEST_VALE },

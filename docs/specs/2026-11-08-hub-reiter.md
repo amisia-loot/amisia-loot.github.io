@@ -174,6 +174,9 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
 
 ## Entscheidungen
 
+- 2026-11-08, Nutzer schickt das Foto der Berufe noch einmal ("so wie" dort), D-78 Nachtrag: das erste Öffnen
+  zeigt die Übersicht, vier Kacheln je Zeile, "Nächste Lehrer" aus den Lehrern der Zonendateien von AllTheThings.
+
 - 2026-11-08, beim Bauen der Berufe (D-78): Kacheln bei 602 px zu dritt (vier passen nicht), bei breitem Fenster
   bis zu vier; ohne gewählte Ansicht öffnet die Seite die Übersicht; "Nächste Lehrer" entfällt, weil Amisia keine
   Lehrer mit Ort kennt; der Berufswähler der Seite bleibt.

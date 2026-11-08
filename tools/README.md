@@ -365,7 +365,9 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   such as `ALLIANCE_PALADINS` from `.config/constants/races.lua`, run before the data files). A race
   without a race id (Skyborne) gives its faction and no race mask; a blacksmith or engineer
   specialization (`ARMORSMITH`, `GNOMISH_ENGINEERING`, ...) counts as its profession. `qs` is the item
-  that starts a quest; `qi`/`qis` are items it hands out (no start). Raids ATT keeps commented out
+  that starts a quest; `qi`/`qis` are items it hands out (no start). An NPC under a profession in the
+  header PROFESSIONS (`n(PROFESSIONS, { prof(ALCHEMY, { n(4611, ...) }) })`) is a trainer: its record gets
+  `profs`, the set of those professions (`build_professions.py` writes them as `TR`). Raids ATT keeps commented out
   (Molten Core, Blackwing Lair, Zul'Gurub, Ahn'Qiraj, Naxxramas in the 2026-11-05 data) are not read.
 - Client tables (wago.tools CSV downloads) are read as `<Table>.csv` or `<Table>.<build>.csv`, the name
   wago.tools gives them (`UiMapAssignment.1.60.1.70235.csv`); of several builds in one folder the newest

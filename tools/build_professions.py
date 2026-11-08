@@ -310,13 +310,23 @@ def read_att(base, db=None):
         npcs[nid] = (n['name'] or '', f'{pt[0]}:{pt[1]}:{pt[2]}' if pt else (str(n['zone']) if n.get('zone') else ''),
                      n['faction'] or '')
     quests = {qid: q['name'] or '' for qid, q in db['quests'].items()}
-    return {'commit': db.get('commit'), 'trainer': trainer, 'spec': spec, 'favor': favor,
+    # the trainers: the NPCs the zone files list under a profession in the header PROFESSIONS, with a
+    # place ({skill line: [npc ids]})
+    trainers = {}
+    for nid, n in sorted(db['npcs'].items()):
+        if not n['points']:
+            continue
+        for p in sorted(n.get('profs') or ()):
+            sl = ATT_PROF.get(p)
+            if sl:
+                trainers.setdefault(sl, []).append(nid)
+    return {'commit': db.get('commit'), 'trainer': trainer, 'spec': spec, 'favor': favor, 'trainers': trainers,
             'profdb': read_profession_db(base),
             'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold}
 
 
 def empty_att():
-    return {'commit': None, 'trainer': {}, 'spec': set(), 'favor': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
+    return {'commit': None, 'trainer': {}, 'spec': set(), 'favor': {}, 'trainers': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
             'npcs': {}, 'quests': {}, 'sold': {}}
 
 
@@ -382,7 +392,7 @@ def vendor_prices(client, att, seen, items):
 
 
 def combine(client, att, seen=None, cooldowns=None):
-    """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, CAMP, FAVOR, client, source,
+    """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, TR, CAMP, FAVOR, client, source,
     report. seen: read_seen_vendors()'s merchants (none when not given); cooldowns: the hand-kept
     cooldown recipes (read_cooldown_file()), used only without the client table SpellCooldowns."""
     teach = dict(att['profdb'])
@@ -480,13 +490,20 @@ def combine(client, att, seen=None, cooldowns=None):
     cd_all = client['cooldowns'] if client['cooldownTable'] else set(cooldowns or ())
     CD = sorted(cd_all & listed)
     report['cooldowns'] = {'from': 'table' if client['cooldownTable'] else 'file', 'recipes': len(CD)}
+    # the trainers of each skill line of P (their NPCs go into N)
+    TR = {}
+    for sl, _key in P:
+        ids = sorted(set((att.get('trainers') or {}).get(sl, [])))
+        if ids:
+            TR[sl] = ids
+            npcs_used.update(ids)
     N = {}
     for nid in sorted(npcs_used):
         name, where, fac = att['npcs'].get(nid, ('', '', ''))
         N[nid] = f'{name}|{where}|{fac}'
     Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'CAMP': camp_objects(client),
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'client': client['client'], 'source': (att.get('commit') or '')[:10],
             'report': report}
 
@@ -553,7 +570,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'client': '', 'source': '', 'report': {}}
 
@@ -612,6 +629,7 @@ def render(data, built):
            '-- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
            '-- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
+           '-- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings\' zone files), each in N.',
            'ns.PROFESSIONS = {',
            f'    built = {lua_str(built)}, client = {lua_str(data.get("client") or "")}, source = {lua_str(data.get("source") or "")},',
            '    P = { ' + ', '.join(f'{{ {s}, {lua_str(k)} }}' for s, k in data['P']) + ' },',
@@ -626,6 +644,8 @@ def render(data, built):
     out.append('    CD = ' + _num_map({sp: 1 for sp in data['CD']}, per_line=10) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')
     out.append('    Q = ' + _str_map(data['Q'], 3) + ',')
+    out.append('    TR = ' + _num_map({sl: '{ ' + ', '.join(str(n) for n in ids) + ' }' for sl, ids in (data.get('TR') or {}).items()},
+                                  per_line=1) + ',')
     out.append('    CAMP = ' + _str_list(data['CAMP'], 4) + ',')
     F = data['FAVOR']
     vend = ', '.join(f'{k} = {{ {", ".join(str(n) for n in F["vendor"].get(k, []))} }}' for k in ('A', 'H'))

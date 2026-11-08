@@ -435,9 +435,17 @@ T.PROFPAGE = {
     -- it fading to the right at SEC_LINE_A), SEC_GAP over each after the first; cards CARD_H high in
     -- columns of at least CARD_MIN_W (CARD_COLS_MIN to CARD_COLS_MAX of them, CARD_GAP apart; the wide
     -- cards of "Weiteres" WIDE_COLS per row): the dark ground (CARD_BG), a thin border (CARD_EDGE), the
-    -- profession's icon CARD_ICON square at CARD_PAD, the name (gold) and its line from CARD_TEXT_X
-    CARD_H = 48, CARD_MIN_W = 180, CARD_COLS_MIN = 3, CARD_COLS_MAX = 4, CARD_GAP = 8, WIDE_COLS = 2,
-    CARD_ICON = 32, CARD_PAD = 8, CARD_TEXT_X = 46, CARD_NAME_Y = -9, CARD_SUB_Y = -27,
+    -- profession's icon CARD_ICON square at CARD_PAD, the name (CARD_NAME_FONT, gold) and its line
+    -- (CARD_SUB_FONT) from CARD_TEXT_X, CARD_PAD from the right; four fit the page's 590 px (D-78)
+    CARD_H = 44, CARD_MIN_W = 140, CARD_COLS_MIN = 4, CARD_COLS_MAX = 6, CARD_GAP = 6, WIDE_COLS = 2,
+    CARD_ICON = 26, CARD_PAD = 6, CARD_TEXT_X = 38, CARD_NAME_Y = -9, CARD_SUB_Y = -24,
+    CARD_NAME_FONT = "GameFontNormalSmall", CARD_SUB_FONT = "GameFontHighlightSmall",
+    -- "Nächste Lehrer" (D-78): a framed table of TRAINER_COLS cells a row, TRAINER_H high: the icon
+    -- TRAINER_ICON square at TRAINER_PAD, the name (gold) and "Name, Zone" from TRAINER_TEXT_X, the map
+    -- button TRAINER_BTN square TRAINER_PAD from the cell's right; the frame TRAINER_EDGE
+    TRAINER_COLS = 3, TRAINER_H = 36, TRAINER_ICON = 24, TRAINER_PAD = 6, TRAINER_TEXT_X = 36, TRAINER_BTN = 18,
+    TRAINER_NAME_Y = -5, TRAINER_LINE_Y = -20, TRAINER_EDGE = { 0.85, 0.7, 0.35, 0.5 },
+    MAP_ART = "Interface\\WorldMap\\UI-World-Icon",
     ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without the client's icon frame
     CARD_BG = { 0, 0, 0, 0.45 }, CARD_EDGE = { 0.45, 0.4, 0.3, 0.6 }, CARD_HOVER = 0.08,
     SEC_H = 22, SEC_GAP = 10, SEC_LINE_GAP = 8, SEC_LINE_A = 0.6,

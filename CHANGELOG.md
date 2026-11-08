@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(prof): professions overview first, four cards a row and the nearest trainers (F-151)
+
+  The Professions tab now opens on the overview the first time in a session, even when a profession
+  was open before. Its cards are narrower, four to a row. At the bottom, "Nearest trainers" lists for
+  each profession the closest trainer of your faction with the zone and a map button that sets the
+  waypoint.
+
 ## [v2.64.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.64.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.63.0...v2.64.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
