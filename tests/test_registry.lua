@@ -73,8 +73,9 @@ STUB.officer = true
 assert(NS.IsOfficerView() and NS.Visible(NS.Panel("aa")))
 STUB.officer = false
 assert(not NS.IsOfficerView() and not NS.Visible(NS.Panel("aa")))
-NS.Set("ui.view", "officer"); assert(NS.IsOfficerView(), "forced officer view")
-NS.Set("ui.view", "raider"); STUB.officer = true; assert(not NS.IsOfficerView(), "forced raider view")
+NS.Set("ui.view", "officer"); assert(not NS.IsOfficerView(), "no officer view without an officer rank (D-87)")
+STUB.officer = true; assert(NS.IsOfficerView(), "an officer has it")
+NS.Set("ui.view", "raider"); assert(not NS.IsOfficerView(), "forced raider view")
 NS.Reset("ui.view")
 assert(not NS.Visible({ expert = true }) and NS.Set("ui.expert", true) and NS.Visible({ expert = true }))
 assert(not NS.Visible({ available = function() return false end }))

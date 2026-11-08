@@ -267,8 +267,10 @@ assert(pending(MARA) == 0)
 same({ FRAK, MARA, KIM }, "the first snapshot")
 
 ---------------------------------------------------------------------------
--- a raider with a forced officer view: DENIED, said once; a guest gets no answer
+-- a raider with a forced officer view (a changed client: Amisia itself gives a raider none, D-87):
+-- DENIED, said once; a guest gets no answer
 ---------------------------------------------------------------------------
+C(KIM, "NS.MayOfficerView = function() return true end")
 C(KIM, "NS.Set('ui.view', 'officer')")
 S(KIM, "NS.EditAward(s, '" .. a1 .. "', { note = 'Kim war hier' })")
 assert(pending(KIM) == 1)

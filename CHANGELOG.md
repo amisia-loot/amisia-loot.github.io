@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the officer view only for the guild's officers (F-156)
+
+  Only players with an officer rank in the guild (and the author's character) get the officer view.
+  Everyone else has the raider view: the switch in the menu, the setting and /amisia view officer are
+  gone for them. Officers can still switch to the raider view and back.
+
 ## [v2.68.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.68.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.67.0...v2.68.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -59,7 +59,7 @@ L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ä
 L["Fensterposition zurücksetzen"] = "Reset window position"
 L["Ansicht"] = "View"
 L["Offizier"] = "Officer"
-L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] = "Automatic: whoever may edit officer notes sees the officer part."
+L["Automatisch: Offiziere der Gilde sehen den Offiziersbereich. Wer keinen Offiziersrang hat, hat nur die Raider-Ansicht."] = "Automatic: the guild's officers see the officer part. Without an officer rank you have the raider view only."
 L["Expertenmodus"] = "Expert mode"
 L["Zeigt die Werkzeuge und seltene Einstellungen."] = "Shows the tools and rarely used settings."
 
@@ -403,6 +403,7 @@ L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch 
 L["[offizier|raider|auto]"] = "[officer|raider|auto]"
 L["Offiziers- oder Raider-Ansicht"] = "officer or raider view"
 L["Aufruf: /amisia ansicht [offizier|raider|auto]"] = "Usage: /amisia view [officer|raider|auto]"
+L["Die Offiziersansicht haben nur Offiziere der Gilde."] = "Only the guild's officers have the officer view."
 L["Ansicht: %s%s."] = "View: %s%s."
 L["Einstellung suchen"] = "Search settings"
 L["Nichts gefunden. Manches nur als Offizier oder im Expertenmodus."] = "Nothing found. Some settings are for officers or in expert mode only."

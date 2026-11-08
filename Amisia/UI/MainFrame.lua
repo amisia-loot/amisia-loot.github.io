@@ -197,21 +197,26 @@ end
 -- The menu behind the status line (D-67): the recording and the view, which were two red buttons in
 -- the head. Each entry says what a click does; its tip says more.
 local function headMenu()
-    return {
+    local menu = {
         { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
             ns.SetEnabled(not ns.IsEnabled())
             ns.Refresh()
         end, tip = ns.IsEnabled()
             and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du sie hier fortsetzt (oder im Schnellmenü der Minimap, /amisia pause)."]
             or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] },
-        { ns.IsOfficerView() and L["Zur Raider-Ansicht"] or L["Zur Offiziersansicht"], function() ns.ToggleView() end,
-          tip = L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] },
     }
+    -- the switch only for whoever may have the officer view (D-87)
+    if not ns.MayOfficerView() then return menu end
+    menu[#menu + 1] =
+        { ns.IsOfficerView() and L["Zur Raider-Ansicht"] or L["Zur Offiziersansicht"], function() ns.ToggleView() end,
+          tip = L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] }
+    return menu
 end
 
 -- The view switch in the head: a click shows the other view (and sets it, as the setting
 -- "Ansicht" does); "Automatisch" stays in the settings and in /amisia ansicht auto.
 function ns.ToggleView()
+    if not ns.MayOfficerView() then return end
     ns.Set("ui.view", ns.IsOfficerView() and "raider" or "officer")
     ns.Refresh()
 end
@@ -1430,6 +1435,10 @@ ns.RegisterSlash("ansicht", { en = "view", args = L["[offizier|raider|auto]"], d
         local view = VIEW_WORDS[word]
         if word ~= "" and not view then
             ns.msg(L["Aufruf: /amisia ansicht [offizier|raider|auto]"])
+            return
+        end
+        if view == "officer" and not ns.MayOfficerView() then
+            ns.msg(L["Die Offiziersansicht haben nur Offiziere der Gilde."])
             return
         end
         if view then

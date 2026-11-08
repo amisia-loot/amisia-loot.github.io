@@ -2081,3 +2081,17 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** `tools/trainer_archive.json` committen und pushen (die einzige Kopie, wie das Scan-Archiv, D-34). Ob Forever die Filterfunktionen des Lehrerfensters hat und die Angebote gleich beim Öffnen kennt, ist im Spiel zu prüfen (ohne Filterfunktionen liest Amisia nur die sichtbaren).
 
 **Durchgesetzt durch:** `tests/test_prof_trainers.lua` (Lesen, Filter zurück, Zuordnung, Prüfung beim Laden, Lernstufe, Quelle, Kürzen, Kampf, Befehl), `tools/tests/test_build_professions.py` (Prüfung wie im Addon, Archiv, `N`, `L`, `TD`).
+
+## D-87 Offiziersansicht nur für Offiziere der Gilde und den Autor
+
+**Datum:** 2026-11-08
+**Entscheidung:** Die Offiziersansicht (F-156) bekommt nur, wer sie haben darf (`ns.MayOfficerView`): ein Offiziersrang der Gilde nach der Rangregel der Rechte (`ns.SelfIsOfficer`: Rangrechte, Einstellung "Offiziersränge" oder Rückfall), wem der Client Offiziersnotizen erlaubt (`CanEditOfficerNote`, wie bisher "Automatisch"), und der Charakter des Autors Vulo Vultrox (`ns.Feedback.IsAuthor`, unabhängig vom Rang). Alle anderen haben nur die Raider-Ansicht.
+- Ein gespeichertes `ui.view = "officer"` zählt bei ihnen nicht mehr; für Erlaubte gilt "officer" wie "auto".
+- Der Umschalter im Menü der Statuszeile und die Einstellung "Ansicht" (Oberfläche) erscheinen nur bei Erlaubten; `/amisia ansicht offizier` antwortet sonst "Die Offiziersansicht haben nur Offiziere der Gilde." Die Raider-Ansicht kann jeder wählen, Offiziere wechseln wie bisher hin und zurück.
+- Vor dem ersten Lesen der Gildenliste gilt die Raider-Ansicht; ändert sich der eigene Rang beim Neuaufbau der Liste, zeichnet sich das Fenster neu (kein /reload).
+
+**Grund:** Nutzer 2026-11-08: "alle in der gilde die den rang Offizier oder höher und ich Vulo Vultrox die offiansicht haben alle anderen nur die raideransicht". Bisher konnte jeder die Offiziersansicht per Klick erzwingen.
+
+**Folge:** Die Rechte prüft Amisia weiter am Rang des Absenders (D-41); die Sperre ist nur die Oberfläche, ein veränderter Client bekommt weiterhin DENIED. Annahme (nicht gefragt): das Offiziersnotiz-Recht des Clients zählt wie ein Offiziersrang, weil es sofort bekannt ist und bisher "Automatisch" bestimmte.
+
+**Durchgesetzt durch:** `tests/test_officer_view.lua` (Raider, gespeichertes "officer", Umschalter, Befehl, Einstellung, Seite, Rang später gelesen, Raider-Ansicht hin und zurück, Rang verloren, Notizrecht, Autor ohne Gilde, anderer Vulo), `tests/test_registry.lua`, `tests/test_setup.lua`, `tests/test_trust.lua`, `tests/test_sync_ops.lua` (ein veränderter Client bekommt DENIED).

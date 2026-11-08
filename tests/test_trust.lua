@@ -118,8 +118,11 @@ assert(NS.IsVerifiedOfficer("Fraktur") == true)
 GUILD[2].rank = 4
 STUB.fire("CLUB_MEMBER_UPDATED", 77, 1002)
 STUB.tick(11)
+local mayView = NS.MayOfficerView
+NS.MayOfficerView = function() return true end   -- a changed client (Amisia gives a raider no officer view, D-87)
 NS.Set("ui.view", "officer")
 assert(NS.IsOfficerView() == true and NS.SelfIsOfficer() == false, "the own rank decides")
+NS.MayOfficerView = mayView
 NS.Set("ui.view", "auto")
 GUILD[2].rank = 2
 STUB.fire("CLUB_MEMBER_UPDATED", 77, 1002)

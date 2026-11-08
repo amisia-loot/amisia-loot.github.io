@@ -162,12 +162,19 @@ local function guildOfficer()
     return type(can) == "function" and can() and true or false
 end
 
--- Whether the officer parts are shown: whoever may edit officer notes, unless the view is forced.
+-- Who may have the officer view at all (D-87): an officer rank of the guild (the rank rule of
+-- the rights, ns.SelfIsOfficer), whoever the client lets edit officer notes, and the author's
+-- characters (ns.Feedback.IsAuthor). Everyone else has the raider view only.
+function ns.MayOfficerView()
+    if guildOfficer() then return true end
+    if ns.Feedback and ns.Feedback.IsAuthor() then return true end
+    return ns.SelfIsOfficer and ns.SelfIsOfficer(true) or false
+end
+
+-- Whether the officer parts are shown: whoever may have them, unless he chose the raider view.
 function ns.IsOfficerView()
-    local view = ns.Get("ui.view")
-    if view == "officer" then return true end
-    if view == "raider" then return false end
-    return guildOfficer()
+    if not ns.MayOfficerView() then return false end
+    return ns.Get("ui.view") ~= "raider"
 end
 
 -- Whether a page, card, settings section or item is shown right now.
@@ -547,7 +554,8 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
-      tip = L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] },
+      available = function() return ns.MayOfficerView() end,
+      tip = L["Automatisch: Offiziere der Gilde sehen den Offiziersbereich. Wer keinen Offiziersrang hat, hat nur die Raider-Ansicht."] },
     { key = "ui.expert", type = "toggle", label = L["Expertenmodus"], default = false,
       tip = L["Zeigt die Werkzeuge und seltene Einstellungen."] },
     { key = "ui.resetAll", type = "button", label = L["Alle Einstellungen zurücksetzen"],

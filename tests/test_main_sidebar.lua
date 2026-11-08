@@ -113,7 +113,9 @@ assert(NS.CurrentPage() == "gear" and row("page", "gear").entry.on)
 F.head.feedback:Click()
 assert(NS.CurrentPage() == "feedback" and F.tabs.amisia.on)
 
--- the view decides the tabs: the officer view adds the officer pages and windows
+-- the view decides the tabs: the officer view adds the officer pages and windows (only an officer
+-- has it, D-87: the officer note right without a guild rank)
+STUB.officer = true
 NS.Set("ui.view", "officer")
 NS.ShowTab("guild")
 assert(navAll():match("^members calendar bank duels"), navAll())

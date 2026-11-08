@@ -4,6 +4,7 @@
 -- group: only pages the player chose are remembered; (3) the dragged height: the page area, the side
 -- bar and the pages' lists follow, it is remembered, clamped to the screen and reset with the position.
 STUB.officer = false
+NS.MayOfficerView = function() return true end   -- the officer view without the guild rights (D-87: the author)
 NS.Set("ui.view", "officer")
 NS.ShowPage("awards")
 local F = AmisiaFrame

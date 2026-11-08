@@ -165,8 +165,22 @@ local function index(list)
     return idx
 end
 
+local selfRank            -- the own rank in roster (nil: not in it), found once per build
+local find                -- a member of the roster by name (below)
+
 local function setRoster(list)
     roster, rosterIdx = list, index(list)
+    local before = selfRank
+    selfRank = nil
+    for _, m in ipairs(list) do
+        if m.self then selfRank = m.rank break end
+    end
+    if not selfRank and #list > 0 then
+        local me = find(ns.UnitFullName("player"))
+        selfRank = me and me.rank or nil
+    end
+    -- the officer view hangs on the own rank (D-87): a new rank shows or hides it at once
+    if selfRank ~= before and ns.RefreshSoon then ns.RefreshSoon() end
 end
 
 -- Builds the roster when it is due: never in the lockdown (C_Club answers secret values there),
@@ -206,7 +220,7 @@ end
 
 -- A member of the roster: the same spelling (any case), else the one member whose first name
 -- matches when one side has no surname (ns.SameNameIn over the roster, through the index).
-local function find(name)
+find = function(name)
     name = ns.FullName(name)
     if not name or not rosterIdx then return nil end
     local low = name:lower()
@@ -265,6 +279,7 @@ end
 local function ownRank(noAsk)
     local list = readable(true, noAsk)
     if not list then return nil end
+    if list == roster then return selfRank end
     for _, m in ipairs(list) do
         if m.self then return m.rank end
     end

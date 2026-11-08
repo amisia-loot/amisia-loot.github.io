@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-156 Offiziersansicht nur für Offiziere
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn ein Gildenmitglied ohne Offiziersrang /amisia öffnet, dann steht unten "Raider-Ansicht", im Menü der Statuszeile fehlt "Zur Offiziersansicht", unter Einstellungen, Oberfläche fehlt "Ansicht", und `/amisia ansicht offizier` meldet "Die Offiziersansicht haben nur Offiziere der Gilde."
+- Prüfung: Wenn ein Offizier (Rang Offizier oder höher) /amisia öffnet, dann steht unten "Offiziersansicht", und das Menü wechselt zur Raider-Ansicht und zurück.
+- Prüfung: Wenn du mit Vulo Vultrox einloggst, dann hast du die Offiziersansicht, auch ohne Offiziersrang.
+- Notiz: Wunsch des Nutzers 2026-11-08; D-87. Die Rechte prüfte Amisia schon vorher am Rang, nur die Ansicht war frei wählbar.
+
 ### F-155 Berufslehrer lesen: echte Lernstufen
 - Version: 2.68.0
 - Status: gebaut
