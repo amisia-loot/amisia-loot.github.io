@@ -270,7 +270,7 @@ local function fillRow(r, e)
         if e.price then
             r.rank:SetText(GREY .. e.price .. "|r")
         else
-            r.rank:SetText(GREY .. (rec.learn > 1 and rec.learn or rec.yellow) .. "|r")
+            r.rank:SetText(GREY .. Pr.LearnRank(rec) .. "|r")
         end
         item, spell = rec.item, rec.spell
         r.dotMe:SetShown(e.known == true)
@@ -329,8 +329,11 @@ local COLOR_WORDS = { orange = L["orange"], yellow = L["gelb"], green = L["grün
 -- learned (with the recipe item and what it needs), the crafting order note. Second value: the sources.
 local function detailsText(r)
     local lines = {}
-    lines[#lines + 1] = L["Skill: lernbar ab %s"]:format(("%s  %s  %s  %s"):format(color(Pr.COLORS.orange, r.learn > 1 and r.learn or 1),
+    -- the learn rank: the game's own, an estimate with "?" (F-155), "(vom Lehrer)" when a trainer said it
+    local learn = tostring(Pr.LearnRank(r)) .. (Pr.LearnExact(r) and "" or "?")
+    lines[#lines + 1] = L["Skill: lernbar ab %s"]:format(("%s  %s  %s  %s"):format(color(Pr.COLORS.orange, learn),
         color(Pr.COLORS.yellow, r.yellow), color(Pr.COLORS.green, r.green), color(Pr.COLORS.grey, r.grey)))
+        .. (Pr.LearnFromTrainer(r) and (GREY .. " " .. L["(vom Lehrer)"] .. "|r") or "")
     local rank = Pr.Rank(r.skill)
     local known = Pr.Known(r.spell, r.skill)
     if rank then
@@ -1471,6 +1474,11 @@ local function fillHead(f, v, m, n)
             line = skill .. " · " .. recipes
             if rank and not Pr.HasSnapshot(v) then
                 note = L["Öffne einmal dein %s-Fenster, um bekannte Rezepte zu markieren."]:format(name)
+            else
+                -- the estimated learn ranks (F-155): a trainer of the profession tells the real ones
+                local guessed = 0
+                for _, r in ipairs(Pr.Recipes(v)) do if not Pr.LearnExact(r) then guessed = guessed + 1 end end
+                if guessed > 0 then note = L["%d Lernstufen geschätzt (?) - sprich einmal einen Lehrer an, Amisia liest sie dort."]:format(guessed) end
             end
         end
         legend = m ~= QUEUE

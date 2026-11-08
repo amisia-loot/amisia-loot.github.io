@@ -142,7 +142,7 @@ assert(rows[4].rank:GetText():find("10"), "the learn rank")
 assert(rows[1].bar.color and math.abs(rows[1].bar.color[1] - 0x40 / 255) < 1e-6, "the green bar")
 assert(rows[1].dotMe:IsShown() and not rows[4].dotMe:IsShown() and not rows[1].dotGuild:IsShown(), "the dots")
 assert(rows[4].iconFrame.icon.texture ~= nil and has(rows[3].mark:GetText(), "Lehrer"), rows[3].mark:GetText())
-assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte, 2 bekannt" and f.note:GetText() == "", f.rank:GetText())
+assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte, 2 bekannt" and has(f.note:GetText(), "Lernstufen geschätzt (?)"), f.note:GetText())
 -- sorted by the learn rank, then by when it turns yellow (the data had 3321 second)
 local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end

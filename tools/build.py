@@ -210,7 +210,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
         ('dungeon quests', 'build_dungeonquests.py', sv_args, None, None),
         ('quests', 'build_quests.py', [], None, None),
-        ('professions', 'build_professions.py', ['--wago', wago], ['ItemSparse', 'SkillLineAbility'], 'skip'),
+        ('professions', 'build_professions.py', ['--wago', wago] + sv_args, ['ItemSparse', 'SkillLineAbility'], 'skip'),
         ('talents', 'build_talents.py', ['--wago', wago], 'talents', 'skip'),
         # after the gear build's --refresh-att: the library books and world drops of the AllTheThings cache
         ('mage scrolls', 'build_magescrolls.py', ['--wago', wago], MAGESCROLL_TABLES, 'skip'),

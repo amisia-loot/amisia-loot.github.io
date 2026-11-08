@@ -6,7 +6,7 @@ local _, ns = ...
 -- P: { skill line, key } in display order. R: [skill line] = recipes
 -- "spell:item:count:learn:yellow:grey:src" (item 0: an enchant or other spell; src: A learned with
 -- the profession, T1-T4 trainer tier, T0 trainer without tier, S a specialisation's trainer, I<item>
--- recipe item, empty unknown).
+-- recipe item, N<npc> a trainer read in the game (then learn is that trainer's rank), empty unknown).
 -- I: [recipe item] = "spell:rank:faction:standing:sources" (F<price>@<standing><A|H> Merchant's Favor,
 -- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =
 -- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or
@@ -17,6 +17,7 @@ local _, ns = ...
 -- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).
 -- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".
 -- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings' zone files), each in N.
+-- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.
 ns.LazyData("PROFESSIONS", [=[
 return {
 built="2026-11-08",client="1.60.1.70862",source="35d1d5640e",
@@ -2110,6 +2111,8 @@ CAMP={
 "279947:182:300:1307387:1263070:0:279962","279960:186:20:1307254:1230161:0:0","279948:186:140:1307386:1262975:0:279960","279952:186:300:1307264:1263071:0:279960",
 "279979:393:20:1307229:1229517:0:0","279969:393:140:1307243:1262985:0:279979","279938:393:300:1307397:1262982:0:279979",
 },
+L={},
+TD={},
 FAVOR={currency=3402,vendor={A={256729,256730,256732,256733,256734,256735},H={248196,248197,248199,248200,248201,248202}},
 cert={
 [164]=271622,[165]=271626,[171]=271621,[197]=271627,[202]=271625,[333]=271624,

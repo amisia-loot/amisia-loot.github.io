@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-155 Berufslehrer lesen: echte Lernstufen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du einen Bergbaulehrer ansprichst und danach auf der Seite Berufe, Bergbau "Zinn verhütten" öffnest, dann steht in Details "lernbar ab <Wert des Lehrers> (vom Lehrer)" und "Gelernt bei" nennt den Lehrer mit Ort und Wegpunkt.
+- Prüfung: Wenn du einen Beruf öffnest, dessen Lehrer du noch nicht angesprochen hast, dann steht im Kopf "N Lernstufen geschätzt (?)" und in Details hinter der Lernstufe ein "?".
+- Prüfung: Wenn du im Lehrerfenster Filter (z. B. nur verfügbare) eingestellt hast und den Lehrer erneut ansprichst, dann sind die Filter danach wie vorher.
+- Prüfung: Wenn du `/amisia lehrer` eingibst, dann meldet der Chat "Lehrer: N gelesen, M Angebote (noch nicht in den Daten)".
+- Notiz: Spec docs/specs/2026-11-08-lehrer-lesen.md, D-86. Nach dem Besuch: `build.py data` übernimmt die Lesungen in tools/trainer_archive.json.
+
 ### F-153 Berufe: Favoriten und Herstellliste
 - Version: 2.66.0
 - Status: gebaut

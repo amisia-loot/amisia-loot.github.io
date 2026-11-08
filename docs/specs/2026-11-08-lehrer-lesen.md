@@ -1,7 +1,7 @@
 # Spec: Berufslehrer lesen (echte Lernstufen und Lehrer jedes Rezepts)
 
-Stand: 2026-11-08 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
-Feature: F-154
+Stand: 2026-11-08 · Status: freigegeben ·
+Feature: F-155
 
 ## Ziel
 
@@ -44,7 +44,7 @@ Lehrer-Lernstufe stimmt und kein Lehrer-Rezept mehr "Quelle unbekannt" zeigt.
   dann steht in Details "lernbar ab <Wert des Lehrers> (vom Lehrer)" und "Gelernt bei" nennt den Lehrer mit Wegpunkt.
 - Wenn du einen Rezept-Eintrag mit geschätzter Lernstufe öffnest, dann steht hinter der Zahl ein "?", und der Kopf nennt die Zahl der geschätzten.
 - Wenn du einen Lehrer mit eingestellten Filtern ansprichst, dann sind die Filter danach wie vorher.
-- Wenn du `/amisia lehrer` eingibst, dann meldet der Chat "N Lehrer, M Angebote gelesen".
+- Wenn du `/amisia lehrer` eingibst, dann meldet der Chat "Lehrer: N gelesen, M Angebote (noch nicht in den Daten)".
 
 ## Sonderfälle
 
@@ -62,8 +62,9 @@ je 400 Angebote); `ns.TrainersLoaded` prüft Feld für Feld (Zahlen, Längen).
 
 ## Daten
 
-- Neuer Schlüssel `AmisiaDB.trainers = { [npc] = { day, skill, s = { [spell] = "rank:copper:level" } } }`,
-  nach dem Übernehmen von `build.py data` (Markierung in `Data/ScanDone.lua` wie D-34) gekürzt.
+- Neuer Schlüssel `AmisiaDB.trainers = { [npc] = { t, n, p, s = { [spell] = "rank:copper:level" } } }`
+  (Zeit, Name, Ort des Spielers), nach dem Übernehmen von `build.py data` gekürzt: die Daten nennen in
+  `TD` die Lesungen, die sie halten (statt einer Markierung in `Data/ScanDone.lua`).
 - Neues Archiv `tools/trainer_archive.json` (committen und pushen: die einzige Kopie).
 - `ProfessionData.lua`: die Lernstufe `learn` aus dem Lehrer; neuer Quell-Token `N<npc>` (Lehrer),
   `L` (Lernkosten) aus den gelesenen Preisen; ein Zeichen für "geschätzt" je Rezept.
@@ -78,4 +79,5 @@ je 400 Angebote); `ns.TrainersLoaded` prüft Feld für Feld (Zahlen, Längen).
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-08: Nutzer "Passt, bauen" auf den Vorschlag "alle drei Fragen: ja" -> Frage 1: Filter kurz auf
+  "alle" und zurück; Frage 2: auch Klassenlehrer (nur Berufs-Rezepte); Frage 3: das "?" sofort. D-86.

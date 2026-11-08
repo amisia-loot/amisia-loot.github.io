@@ -24,7 +24,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
   folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
-  `build_map.py` (learned entrances), `build_dungeonquests.py` (the collector's own quest observations),
+  `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations),
   `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
   `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
@@ -745,7 +745,8 @@ route (F-137). Specs: `docs/superpowers/specs/2026-10-06-amisia-professions-desi
 `docs/specs/2026-11-06-berufsroute.md`.
 
 ```
-python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--scan-archive FILE] [--out FILE] [--empty]
+python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--scan-archive FILE] [--sv FILE...]
+                                  [--trainers tools/trainer_archive.json] [--out FILE] [--empty]
 ```
 
 - Client tables (`~/addons/_wago`): `SkillLineAbility`, `SpellEffect`, `ItemSparse`,
@@ -770,10 +771,18 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
   never the Merchant's Favor vendors. At most 6 per item, those with a record (they go into `N`,
   English name, place, faction), known place first, both factions in turn; an item whose vendors no
   record names keeps its price with an empty list. An item no vendor sells is not in `V` (the
-  addon says "farmen oder Auktionshaus"). Trainer costs and the rank limits are not in the data:
-  AllTheThings names no trainer costs, and the limits per tier need the client table `SkillTiers`
+  addon says "farmen oder Auktionshaus"). Trainer costs come only from the trainers read in the game
+  (`L`, below); the rank limits are not in the data: AllTheThings names no trainer costs, and the limits per tier need the client table `SkillTiers`
   (`SkillRaceClassInfo.SkillTierID` 41 for the crafting professions, 61 cooking), which
   `export_db2.ps1` lists since 2026-11-06 but the generator does not read yet.
+- Trainers read in the game (F-155, D-86): `AmisiaDB.trainers` of the SavedVariables (`--sv`, default as
+  `build_scan_archive.py`) join `tools/trainer_archive.json` (committed and pushed: the addon drops a
+  reading once the data holds it; a newer reading of a trainer replaces the older, nothing is dropped).
+  A recipe a trainer teaches (not one learned with the profession) gets the newest reading's rank as
+  its learn rank (with a recipe item the earlier of both) and up to 3 tokens `N<npc>`, newest first;
+  `L = { [spell] = copper }` what that trainer asks; `TD = { [npc] = epoch }` the readings the file
+  holds; a trainer AllTheThings lacks goes into `N` with the client's name and the reading's place.
+  Offers of recipes the data does not have are only counted ("offers not in the data").
 - `S = { [item] = copper }`: every reagent of `G` that is not in `V` and has a `SellPrice` in
   `ItemSparse` above 0: what a vendor pays for one. The route weighs such a material by it (times
   4, at least 20 copper; `Gear/ProfRoute.lua`), it is never shown as a cost.

@@ -2049,3 +2049,15 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Durchgesetzt durch:** `tests/test_style.lua` (Rahmen, Titel, X, Lagen), `tests/test_main_size.lua` (Minimieren), `tests/test_mainframe.lua` (Maße).
 
+## D-86 Berufslehrer lesen: echte Lernstufen aus dem Spiel, für immer im Archiv auf dem N100
+
+**Datum:** 2026-11-08
+**Entscheidung:** Spec `docs/specs/2026-11-08-lehrer-lesen.md` (F-155). Öffnet der Spieler einen Lehrer (Beruf oder Klasse), liest Amisia still jedes Angebot, das ein Rezept der Berufsdaten ist (über das hergestellte Item, sonst einen eindeutigen Zaubernamen): nötige Fertigkeit, Preis, Stufe, den Lehrer mit Name und Ort (`AmisiaDB.trainers`). Dafür stellt es die Filter des Lehrerfensters (verfügbar, nicht verfügbar, gelernt) kurz an und sofort zurück. Nicht im Kampf; nichts wird gelernt, gekauft oder gesendet.
+- Die Seite nutzt eine Lesung sofort (Lernstufe, "(vom Lehrer)", der Lehrer als Quelle mit Wegpunkt, die Lernkosten der Route). Eine geschätzte Lernstufe trägt "?", der Kopf nennt ihre Zahl.
+- `build.py data` übernimmt die Lesungen in `tools/trainer_archive.json` (neuere Lesung eines Lehrers ersetzt die ältere) und von dort in die Berufsdaten (`N<npc>`, `learn`, `L`, `TD`). Das Addon löscht eine Lesung, sobald die Daten sie halten (`TD`), erst wenn die Berufsdaten ohnehin geladen sind (D-28).
+
+**Grund:** Nutzer 2026-11-08: "hol dir so viel infos und datensätze wie möglich, damit es so genau wie möglich ist"; die Lernstufe der Lehrer-Rezepte und die Quelle von 84 Rezepten (Verhütten, Gifte, Kochen) stehen in keiner erlaubten Quelle (D-03), nur im Lehrerfenster. Spec freigegeben mit "Passt, bauen" (alle drei Fragen: ja).
+
+**Folge:** `tools/trainer_archive.json` committen und pushen (die einzige Kopie, wie das Scan-Archiv, D-34). Ob Forever die Filterfunktionen des Lehrerfensters hat und die Angebote gleich beim Öffnen kennt, ist im Spiel zu prüfen (ohne Filterfunktionen liest Amisia nur die sichtbaren).
+
+**Durchgesetzt durch:** `tests/test_prof_trainers.lua` (Lesen, Filter zurück, Zuordnung, Prüfung beim Laden, Lernstufe, Quelle, Kürzen, Kampf, Befehl), `tools/tests/test_build_professions.py` (Prüfung wie im Addon, Archiv, `N`, `L`, `TD`).

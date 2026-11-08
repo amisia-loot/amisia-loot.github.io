@@ -21,6 +21,8 @@ globals = {
 -- The client's API and FrameXML globals the addon reads (from a scan of every addon file; add a new
 -- one here when the addon starts to use it).
 read_globals = {
+    "GetNumTrainerServices", "GetTrainerServiceInfo", "GetTrainerServiceSkillReq", "GetTrainerServiceCost", "GetTrainerServiceLevelReq",
+    "GetTrainerServiceItemLink", "GetTrainerServiceTypeFilter", "SetTrainerServiceTypeFilter",
     "BaseScrollBoxEvents", "bit", "C_AddOns", "C_AuctionHouse", "C_Calendar", "ToggleCalendar", "C_ChatInfo", "C_ClassColor", "C_Club",
     "C_Container", "C_CurrencyInfo", "C_DateAndTime", "C_EncodingUtil", "C_GuildInfo", "C_Item", "C_Map", "C_MerchantFrame",
     "C_PartyInfo", "C_QuestLog", "C_RestrictedActions", "C_Spell", "C_SuperTrack", "C_Texture", "C_Timer",

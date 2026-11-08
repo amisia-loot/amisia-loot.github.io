@@ -128,11 +128,14 @@ function R.Price(item) return cached("items", item, false) end
 -- other faction's vendors only gives no price (an empty list counts, with no place).
 function R.RecipePrice(item) return cached("recipes", item, true) end
 
--- What the trainer asks for a recipe (copper), or nil when the data does not say.
+-- What the trainer asks for a recipe (copper): the data's (L), else an own reading; nil when unknown.
 function R.LearnCost(spell)
     local d = data()
-    local c = d and d.L and d.L[tonumber(spell)]
-    return tonumber(c)
+    local c = tonumber(d and d.L and d.L[tonumber(spell)])
+    if c then return c end
+    -- an own reading at a trainer the data does not hold yet (F-155)
+    local offer = Pr.TrainerOffer and Pr.TrainerOffer(spell)
+    return offer and offer.cost or nil
 end
 
 -- Whether a recipe has a cooldown (PROFESSIONS.CD): never a route step.
@@ -260,7 +263,8 @@ local function trainerTier(r)
             tier = tier and math.min(tier, t) or t
         end
     end
-    if not tier and Pr.PresumedTrainer(r) then return 0 end
+    -- a trainer read in the game (F-155) or presumed: no tier, its rank from Pr.LearnRank
+    if not tier and (Pr.HasTrainer(r) or Pr.PresumedTrainer(r)) then return 0 end
     return tier
 end
 

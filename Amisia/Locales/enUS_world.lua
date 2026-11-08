@@ -824,3 +824,11 @@ L["Setzt das Kartenziel auf den nächsten Eingang."] = "Sets the map target to t
 L["Stufe %d - %d"] = "Levels %d - %d"
 L["Zurück zur Liste aller Dungeons."] = "Back to the list of all dungeons."
 L["Zurück zur Liste aller Raids."] = "Back to the list of all raids."
+
+-- profession trainers read in the game (F-155)
+L["Lehrer: %s%s (ab %d, %s)"] = "Trainer: %s%s (from %d, %s)"
+L["Lehrer: %s%s"] = "Trainer: %s%s"
+L["(vom Lehrer)"] = "(from the trainer)"
+L["%d Lernstufen geschätzt (?) - sprich einmal einen Lehrer an, Amisia liest sie dort."] = "%d learn ranks estimated (?) - talk to a trainer once, Amisia reads them there."
+L["Stand der gelesenen Berufslehrer"] = "State of the profession trainers read"
+L["Lehrer: %d gelesen, %d Angebote (noch nicht in den Daten)."] = "Trainers: %d read, %d offers (not in the data yet)."
