@@ -1796,6 +1796,28 @@ Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenw
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Marken mit Symbol, Auswahl, Blöcken, Klick).
 
+## D-78 Berufe mit Übersicht und Berufsliste in der Leiste
+
+**Datum:** 2026-11-08
+**Entscheidung:** Teil Berufe der Spec `docs/specs/2026-11-08-hub-reiter.md` (F-151):
+- **Leiste:** Die Seite Berufe gibt Marken (D-75): "Übersicht", dann jeder Beruf der Berufsdaten mit seinem Symbol aus dem Client (ab der goldenen Linie), dann ein Block mit "Lager" und "Händlergunst" (die eigene Gunst als Zahl rechts). Die gezeigte Ansicht ist gewählt. Die Seite Schriftrollen bleibt eine Seite des Reiters.
+- **Übersicht** (neue Ansicht `settings.professions.view` = "overview"; ohne gewählte Ansicht die Vorgabe): eine Zeile Erklärung, darunter scrollbar die Abschnitte mit goldenem Kopf und auslaufender Goldlinie:
+  - "Deine Berufe": je eigener Beruf eine Kachel (Symbol, Name in Gold, "Rang 45/150 · 2 bekannt"; ohne gelesenes Berufsfenster nur der Rang);
+  - "Alle Berufe": jeder Beruf der Daten ("182 Rezepte · 2 bekannt");
+  - "Weiteres": zwei breite Kacheln Lager ("Lagerobjekte aller Berufe") und Händlergunst ("Du hast 25 Gunst · wie du sie bekommst").
+- **Kacheln** (`T.PROFPAGE`, 48 hoch): so viele Spalten zu mindestens 180 px, wie die Breite gibt, 3 bis 4 (bei 602 px drei, vier passen nicht); "Weiteres" zwei. Sie folgen der Fensterbreite (`W.FollowWidth`, D-71).
+- **Klicks:** Eine Berufskachel öffnet die Rezeptliste des Berufs (auch aus der Route heraus), Lager und Händlergunst ihre Ansichten; eine Marke zeigt ihre Ansicht und lässt "Rezepte | Route" wie es ist. `/amisia berufe übersicht` öffnet die Übersicht.
+- Der Berufswähler der Seite bleibt für die Ansichten der Berufe; in der Übersicht fehlen Kopfzeile, Filter, Liste und Route.
+- **"Nächste Lehrer" entfällt:** Die Berufsdaten kennen Lehrer nur als Stufe eines Rezepts (T1 bis T4), keine Lehrer mit Namen und Ort; die Kartendaten auch nicht.
+
+**Grund:** Nutzer 2026-11-08 mit dem Foto des Reiters Professions des Vorbilds: "berufe auch" (Spec, Frage 4).
+
+**Folge:**
+- Lehrer mit Ort bräuchten eine eigene Quelle (Tabelle des Clients über `tools/export_db2.ps1` oder AllTheThings); erst dann kommt die Tabelle "Nächste Lehrer" dazu.
+- Ob Forever die Symbole `TrainerGossipIcon` und `BinderGossipIcon` hat, ist im Spiel zu prüfen; ohne bleibt die Marke ohne Symbol.
+
+**Durchgesetzt durch:** `tests/test_professions_page.lua` (Übersicht, Abschnitte, Kacheln, Spalten, Marken, Klicks, Zahl der bekannten Rezepte), die Layoutregeln (`tools/ui_layout.py`).
+
 ## D-79 Anzeige erhaltener Items ("+Item")
 
 **Datum:** 2026-11-08
@@ -1810,4 +1832,3 @@ Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenw
 **Folge:** Nichts wird gesendet oder gespeichert. Gold zeigt die Anzeige nicht.
 
 **Durchgesetzt durch:** `tests/test_loot_toast.lua` (eigener Loot, Questbelohnung mit Anzahl, fremder Loot, Qualität, aus, höchstens 6, Ablauf, Beispiel).
-

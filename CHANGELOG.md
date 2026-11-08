@@ -11,6 +11,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
   item's icon in its quality colour; it rises and fades out. Switch it under Settings, Interface
   ("Show items you get"), choose the lowest quality shown, and try it with "Try the display".
 
+- feat(prof): professions overview with cards, professions in the side bar (F-151)
+
+  The Professions page opens on an overview: your professions with rank and known recipes, every
+  profession with its recipe count, and cards for the camp objects and the Merchant's Favor. Click a
+  card to open that profession's recipes. The side bar lists Overview, each profession with its icon,
+  Camp and Merchant's Favor (with your favor) to switch between them.
+
 ## [v2.63.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.63.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.1...v2.63.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -174,6 +174,10 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
 
 ## Entscheidungen
 
+- 2026-11-08, beim Bauen der Berufe (D-78): Kacheln bei 602 px zu dritt (vier passen nicht), bei breitem Fenster
+  bis zu vier; ohne gewählte Ansicht öffnet die Seite die Übersicht; "Nächste Lehrer" entfällt, weil Amisia keine
+  Lehrer mit Ort kennt; der Berufswähler der Seite bleibt.
+
 - 2026-11-08, Nutzer schickt die Fotos der Reiter Armory, Talent Trees und Professions: "mach gear so wie bei
   [dem Vorbild]", "Talente auch", "berufe auch". Damit gilt Frage 4; die Teile oben (D-75 bis D-78) sind danach
   festgelegt. Neue Features F-149 Ausrüstung, F-150 Talente, F-151 Berufe.

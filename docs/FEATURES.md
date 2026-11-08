@@ -49,8 +49,10 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du den Reiter Berufe öffnest, dann zeigt die Übersicht deine Berufe, alle Berufe, Lager und Händlergunst als Kacheln, und links stehen die Berufe mit ihrem Symbol.
-- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-78.
+- Prüfung: Wenn du im Reiter Berufe links auf "Übersicht" klickst (oder `/amisia berufe übersicht` eingibst), dann zeigt die Seite "Deine Berufe" mit Rang und bekannten Rezepten, "Alle Berufe" mit ihrer Rezeptzahl und "Weiteres" mit Lager und Händlergunst als Kacheln.
+- Prüfung: Wenn du links unter "Übersicht" schaust, dann stehen dort die Berufe mit ihrem Symbol, darunter Lager und Händlergunst mit deiner Gunst als Zahl; die gezeigte Ansicht ist hervorgehoben.
+- Prüfung: Wenn du auf eine Berufskachel oder links auf einen Beruf klickst, dann öffnet sich seine Rezeptliste mit Filtern und Route wie bisher.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-78. Ohne "Nächste Lehrer": Amisia kennt keine Lehrer mit Ort.
 
 ### F-150 Talente mit Klassen und Plänen in der Leiste
 - Version: -

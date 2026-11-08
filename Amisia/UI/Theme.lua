@@ -430,6 +430,20 @@ T.PROFPAGE = {
     SHOP_COLS = { { "name", 4, 170 }, { "need", 178, 40, justify = "RIGHT" }, { "have", 222, 40, justify = "RIGHT" },
                   { "twinks", 266, 44, justify = "RIGHT" }, { "miss", 314, 40, justify = "RIGHT" },
                   { "price", 358, 64, justify = "RIGHT" }, { "src", 430, 148 } },
+    -- the overview (F-151, D-78): section heads SEC_H high (gold text, a gold line SEC_LINE_GAP after
+    -- it fading to the right at SEC_LINE_A), SEC_GAP over each after the first; cards CARD_H high in
+    -- columns of at least CARD_MIN_W (CARD_COLS_MIN to CARD_COLS_MAX of them, CARD_GAP apart; the wide
+    -- cards of "Weiteres" WIDE_COLS per row): the dark ground (CARD_BG), a thin border (CARD_EDGE), the
+    -- profession's icon CARD_ICON square at CARD_PAD, the name (gold) and its line from CARD_TEXT_X
+    CARD_H = 48, CARD_MIN_W = 180, CARD_COLS_MIN = 3, CARD_COLS_MAX = 4, CARD_GAP = 8, WIDE_COLS = 2,
+    CARD_ICON = 32, CARD_PAD = 8, CARD_TEXT_X = 46, CARD_NAME_Y = -9, CARD_SUB_Y = -27,
+    ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without the client's icon frame
+    CARD_BG = { 0, 0, 0, 0.45 }, CARD_EDGE = { 0.45, 0.4, 0.3, 0.6 }, CARD_HOVER = 0.08,
+    SEC_H = 22, SEC_GAP = 10, SEC_LINE_GAP = 8, SEC_LINE_A = 0.6,
+    -- the marks of the side bar besides the professions (their own client icons, D-75): the overview,
+    -- the camp objects and the Merchant's Favor; the same art on the cards of "Weiteres"
+    MARK_ICONS = { overview = { file = "Interface\\GossipFrame\\TrainerGossipIcon" },
+        camp = { file = "Interface\\GossipFrame\\BinderGossipIcon" }, favor = { atlas = "coin-gold" } },
 }
 
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row

@@ -9,6 +9,9 @@
 -- back and offers "Filter zurücksetzen". Beside the profession the switch "Rezepte | Route" (F-137):
 -- the route of Gear/ProfRoute.lua as step cards (the current one marked, done ones ticked and
 -- short) or its shopping list ("Schritte | Einkauf"), recipes "nur Lehrer | auch Händler".
+-- The overview (F-151, D-78), the view when none is chosen: the own professions, all professions,
+-- camp and favor as cards; the side bar lists the same views as marks (Übersicht, each profession
+-- with its icon, Lager, Händlergunst with the own favor).
 local ADDON, ns = ...
 local L = ns.L
 local W, Pr, T, Cr, Route = ns.W, ns.Prof, ns.Theme, ns.Crafters, ns.ProfRoute
@@ -25,7 +28,8 @@ local SOURCES = { { value = "all", text = L["Alle Quellen"] }, { value = "T", te
 local KNOWN = { { value = "all", text = L["Alle"] }, { value = "known", text = L["Bekannt"] },
     { value = "unknown", text = L["Unbekannt"] } }
 local SHORT = { all = L["Alle"] }
-local CAMP, FAVOR = "camp", "favor"
+local CAMP, FAVOR, OVERVIEW = "camp", "favor", "overview"
+local MARKS = P.MARK_ICONS
 local RECIPES, ROUTE = "recipes", "route"   -- settings.professions.mode
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
 
@@ -48,13 +52,13 @@ local function itemText(id, fallback)
     return color(QUALITY[q or 1] or QUALITY[1], name or fallback or ("Item " .. tostring(id)))
 end
 
--- The shown view: a skill line, CAMP or FAVOR. Default: the first own profession, else the first.
+-- The shown view: OVERVIEW, a skill line, CAMP or FAVOR (D-78). Default: the overview.
 local function view()
     local v = state().view
-    if v == CAMP or v == FAVOR then return v end
+    if v == CAMP or v == FAVOR or v == OVERVIEW then return v end
     v = tonumber(v)
     if v and Pr.Key(v) then return v end
-    return Pr.Ordered()[1]
+    return OVERVIEW
 end
 
 local function wearable(id)
@@ -643,6 +647,217 @@ local function hintText(v)
 end
 
 ---------------------------------------------------------------------------
+-- The overview (F-151, D-78): the own professions, all professions, camp and favor as cards in
+-- sections; the side bar's marks name the same views
+---------------------------------------------------------------------------
+local function profIcon(skill)
+    return { file = Pr.ICONS[Pr.Key(skill) or ""] or Pr.ICON_UNKNOWN, coords = P.ICON_COORDS }
+end
+
+local function hasCamp() return #Pr.Camp() > 0 end
+local function hasFavor()
+    local d = ns.Data("PROFESSIONS")
+    return type(d) == "table" and type(d.FAVOR) == "table"
+end
+
+-- Shows a view of the page: OVERVIEW, a skill line, CAMP or FAVOR; recipes: the recipe list, not
+-- the route (a card of the overview).
+local function openView(v, recipes)
+    local s = state()
+    s.view = v
+    if recipes then s.mode = RECIPES end
+    ns.Refresh()
+end
+
+-- The marks of the side bar (D-75): Übersicht, each profession of the data with its icon, then a
+-- block with Lager and Händlergunst (the own favor at the right); the shown view is chosen.
+local function marks()
+    if not Pr.Available() then return {} end
+    local v = view()
+    local out = { { key = OVERVIEW, label = L["Übersicht"], icon = MARKS.overview, on = v == OVERVIEW } }
+    for i, skill in ipairs(Pr.Skills()) do
+        out[#out + 1] = { key = skill, label = Pr.Name(skill), icon = profIcon(skill), on = v == skill, rule = i == 1 }
+    end
+    local camp = hasCamp()
+    if camp then out[#out + 1] = { key = CAMP, label = L["Lager"], icon = MARKS.camp, on = v == CAMP, rule = true } end
+    if hasFavor() then
+        out[#out + 1] = { key = FAVOR, label = L["Händlergunst"], icon = MARKS.favor, on = v == FAVOR, rule = not camp,
+            count = Pr.FavorAmount() }
+    end
+    return out
+end
+
+local function setArt(tex, art)
+    if art.atlas and tex.SetAtlas then
+        tex:SetAtlas(art.atlas)
+    else
+        tex:SetTexture(art.file)
+        if art.coords then tex:SetTexCoord(unpack(art.coords)) else tex:SetTexCoord(0, 1, 0, 1) end
+    end
+end
+
+-- The sections: { title, cards = { { icon, name, sub, open, tip } }, wide, none }.
+local function overviewSections()
+    local own = {}
+    for _, p in ipairs(Pr.Own()) do
+        if Pr.Key(p.skill) then
+            local skill, known = p.skill, Pr.KnownCount(p.skill)
+            own[#own + 1] = { icon = profIcon(skill), name = Pr.Name(skill),
+                sub = known and L["Rang %d/%d · %d bekannt"]:format(p.rank, p.max, known) or L["Rang %d/%d"]:format(p.rank, p.max),
+                open = function() openView(skill, true) end,
+                tip = known and L["Klick: die Rezepte des Berufs."]
+                    or (L["Klick: die Rezepte des Berufs."] .. " " .. L["Für \"Bekannt\" das Berufsfenster einmal öffnen."]) }
+        end
+    end
+    local all = {}
+    for _, skill in ipairs(Pr.Skills()) do
+        local n, known = #Pr.Recipes(skill), Pr.KnownCount(skill)
+        all[#all + 1] = { icon = profIcon(skill), name = Pr.Name(skill),
+            sub = known and L["%s · %d bekannt"]:format(recipesText(n), known) or recipesText(n),
+            open = function() openView(skill, true) end, tip = L["Klick: die Rezepte des Berufs."] }
+    end
+    local more = {}
+    if hasCamp() then
+        more[#more + 1] = { icon = MARKS.camp, name = L["Lager"], sub = L["Lagerobjekte aller Berufe"],
+            open = function() openView(CAMP) end, tip = hintText(CAMP) }
+    end
+    if hasFavor() then
+        local amount = Pr.FavorAmount()
+        more[#more + 1] = { icon = MARKS.favor, name = L["Händlergunst"],
+            sub = amount and L["Du hast %d Gunst · wie du sie bekommst"]:format(amount) or L["Rezepte für Gunst und wie du sie bekommst"],
+            open = function() openView(FAVOR) end,
+            tip = L["Klick: die Rezepte für Händlergunst, ihre Händler und wie du Gunst bekommst."] }
+    end
+    local secs = { { title = L["Deine Berufe"], cards = own, none = L["Noch kein Beruf erlernt."] },
+        { title = L["Alle Berufe"], cards = all } }
+    if #more > 0 then secs[#secs + 1] = { title = L["Weiteres"], cards = more, wide = true } end
+    return secs
+end
+
+local function cardTooltip(self)
+    if not GameTooltip or not self.entry then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(self.entry.name, 1, 0.82, 0)
+    if self.entry.tip then GameTooltip:AddLine(self.entry.tip, 0.85, 0.85, 0.85, true) end
+    GameTooltip:Show()
+end
+
+local function newCard(ov)
+    local c = CreateFrame("Button", nil, ov.child)
+    c:SetHeight(P.CARD_H)
+    local bg, e = P.CARD_BG, P.CARD_EDGE
+    W.Flat(c, bg[1], bg[2], bg[3], bg[4])
+    W.Border(c, e[1], e[2], e[3], e[4])
+    c.hover = c:CreateTexture(nil, "HIGHLIGHT")
+    c.hover:SetAllPoints()
+    c.hover:SetColorTexture(1, 1, 1, P.CARD_HOVER)
+    c.icon = c:CreateTexture(nil, "ARTWORK")
+    c.icon:SetSize(P.CARD_ICON, P.CARD_ICON)
+    c.icon:SetPoint("LEFT", P.CARD_PAD, 0)
+    c.name = W.Text(c, T.FONT.title, 10)
+    c.name:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_NAME_Y)
+    c.sub = W.Text(c, T.FONT.text, 10)
+    c.sub:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_SUB_Y)
+    c:RegisterForClicks("LeftButtonUp")
+    c:SetScript("OnClick", function(self) if self.entry and self.entry.open then self.entry.open() end end)
+    c:SetScript("OnEnter", cardTooltip)
+    c:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    ov.cards[#ov.cards + 1] = c
+    return c
+end
+
+-- A section head: gold text and a thin gold line after it that fades out to the right.
+local function newHead(ov)
+    local h = CreateFrame("Frame", nil, ov.child)
+    h:SetHeight(P.SEC_H)
+    h.text = W.Text(h, T.FONT.title)
+    h.text:SetPoint("LEFT", T.LAYOUT.TEXT_X, 0)
+    local t = h:CreateTexture(nil, "ARTWORK")
+    t:SetHeight(1)
+    t:SetColorTexture(1, 1, 1, 1)
+    local g, a = W.GOLD, P.SEC_LINE_A
+    local ok = t.SetGradient and CreateColor and pcall(t.SetGradient, t, "HORIZONTAL",
+        CreateColor(g[1], g[2], g[3], a), CreateColor(g[1], g[2], g[3], 0))
+    if not ok then t:SetColorTexture(g[1], g[2], g[3], a / 2) end
+    t:SetPoint("LEFT", h.text, "RIGHT", P.SEC_LINE_GAP, 0)
+    t:SetPoint("RIGHT", h, "RIGHT", 0, 0)
+    h.line = t
+    ov.heads[#ov.heads + 1] = h
+    return h
+end
+
+-- Places the sections in the scroll child at the page's width now (D-71): the cards in as many
+-- columns of at least CARD_MIN_W as fit (CARD_COLS_MIN to CARD_COLS_MAX), the wide ones WIDE_COLS.
+local function layoutOverview(ov)
+    local width = (T.PAGE_W_NOW or T.PAGE_W) - T.SCROLL_ROOM
+    ov.child:SetWidth(width)
+    local y, nCards, nHeads = 0, 0, 0
+    ov.none:Hide()
+    for si, sec in ipairs(ov.secs or {}) do
+        if si > 1 then y = y - P.SEC_GAP end
+        nHeads = nHeads + 1
+        local h = ov.heads[nHeads] or newHead(ov)
+        h.text:SetText(sec.title)
+        h:ClearAllPoints()
+        h:SetPoint("TOPLEFT", ov.child, "TOPLEFT", 0, y)
+        h:SetPoint("TOPRIGHT", ov.child, "TOPRIGHT", 0, y)
+        h:Show()
+        y = y - P.SEC_H
+        if #sec.cards == 0 and sec.none then
+            ov.none:SetText(sec.none)
+            ov.none:ClearAllPoints()
+            ov.none:SetPoint("TOPLEFT", ov.child, "TOPLEFT", T.LAYOUT.TEXT_X, y)
+            ov.none:Show()
+            y = y - T.LAYOUT.LINE_H
+        end
+        local cols = sec.wide and P.WIDE_COLS or math.max(P.CARD_COLS_MIN,
+            math.min(P.CARD_COLS_MAX, math.floor((width + P.CARD_GAP) / (P.CARD_MIN_W + P.CARD_GAP))))
+        local cw = math.floor((width - (cols - 1) * P.CARD_GAP) / cols)
+        local items = {}
+        for _, e in ipairs(sec.cards) do
+            nCards = nCards + 1
+            local c = ov.cards[nCards] or newCard(ov)
+            c.entry = e
+            c:SetWidth(cw)
+            setArt(c.icon, e.icon)
+            local tw = cw - P.CARD_TEXT_X - P.CARD_PAD
+            c.name:SetWidth(tw)
+            c.sub:SetWidth(tw)
+            c.name:SetText(e.name)
+            c.sub:SetText(e.sub)
+            c:Show()
+            items[#items + 1] = c
+        end
+        if #items > 0 then y = W.Grid(ov.child, items, cols, P.CARD_GAP, P.CARD_GAP, 0, y) end
+    end
+    for i = nCards + 1, #ov.cards do ov.cards[i]:Hide() end
+    for i = nHeads + 1, #ov.heads do ov.heads[i]:Hide() end
+    ov.child:SetHeight(math.max(1, -y))
+end
+
+local function buildOverview(f)
+    -- under the page's top: the line of explanation, then the sections in a scroll frame with the
+    -- client's thin bar
+    local ov = W.Page(f, { view = true, top = 0 })
+    ov:Bands({ "line" })
+    ov.intro = ov:Line(1)
+    ov.intro:SetText(L["Wähle einen Beruf: seine Rezepte, wo du sie lernst, Reagenzien und wer in der Gilde sie kann."])
+    ov.scroll = CreateFrame("ScrollFrame", nil, ov)
+    ov.scroll:SetPoint("TOPLEFT", 0, ov.top)
+    ov.scroll:SetPoint("BOTTOMRIGHT", -T.SCROLL_ROOM, 0)
+    ov.child = CreateFrame("Frame", nil, ov.scroll)
+    ov.child:SetSize(T.PAGE_W - T.SCROLL_ROOM, 10)
+    ov.scroll:SetScrollChild(ov.child)
+    W.Scroll(ov.scroll, ov)
+    ov.cards, ov.heads = {}, {}
+    ov.none = W.Text(ov.child, T.FONT.hint)
+    ov.none:Hide()
+    W.FollowWidth(ov, function() if ov:IsShown() then layoutOverview(ov) end end)
+    ov:Hide()
+    return ov
+end
+
+---------------------------------------------------------------------------
 -- Refresh and build
 ---------------------------------------------------------------------------
 -- The line under the page: the profession data's date and client.
@@ -654,6 +869,20 @@ end
 local function refresh(f)
     local s = state()
     local v = view()
+    -- the overview (D-78): its cards instead of the head row, the filters, the list and the route
+    local over = v == OVERVIEW
+    f.ovView:SetShown(over)
+    if over then
+        for _, w in ipairs({ f.prof, f.modeRecipes, f.modeRoute, f.search, f.rank, f.known, f.source, f.learn, f.guild,
+            f.counts, f.list, f.detail, f.empty, f.reset, f.routeView }) do w:Hide() end
+        f.shownView = v
+        f.ovView.secs = overviewSections()
+        layoutOverview(f.ovView)
+        f.hint:SetText(L["Klick auf eine Kachel: die Rezepte des Berufs, das Lager oder die Händlergunst; links in der Leiste dasselbe."])
+        dataLine(f)
+        return
+    end
+    for _, w in ipairs({ f.prof, f.modeRecipes, f.modeRoute, f.rank }) do w:Show() end
     f.prof:SetValues(pickerValues())
     f.prof:SetValue(v)
     -- the switch "Rezepte | Route": the route only for the professions that have one
@@ -995,18 +1224,24 @@ local function create(parent)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, fillShop, { fill = true })
     rv:Hide()
+    f.ovView = buildOverview(f)
     return f
 end
 
 ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "prof",
-    available = function() return Pr.Available() end, create = create, refresh = refresh }
+    available = function() return Pr.Available() end, create = create, refresh = refresh,
+    -- the side bar (D-78): Übersicht, the professions, Lager and Händlergunst; a click shows that view
+    jumps = function() return marks() end, jump = function(_, key) openView(key) end }
 
--- Opens the page; what: a profession (German name or key, a prefix is enough), "lager" or "gunst".
+-- Opens the page; what: a profession (German name or key, a prefix is enough), "übersicht", "lager"
+-- or "gunst".
 function ns.ShowProfessions(what)
     if AmisiaDB and AmisiaDB.settings and type(what) == "string" and what ~= "" then
         local w = ns.Fold(what)
         if w == "route" then
             state().mode = ROUTE
+        elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
+            state().view = OVERVIEW
         elseif w:find("^lager") or w:find("^camp") then
             state().view = CAMP
         elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then   -- l10n-ok: German command words
