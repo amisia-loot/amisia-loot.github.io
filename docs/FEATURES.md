@@ -48,7 +48,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-150 Talente mit Klassen und Plänen in der Leiste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du den Reiter Talente öffnest, dann stehen links die Klassen mit Wappen, Plan 1/Plan 2 und Laden, Zurücksetzen, Import, Export, und rechts die drei Bäume mit ihrem Klassenbild und "0/5" an jedem Talent.
+- Prüfung: Wenn du den Reiter Talente öffnest, dann stehen links die neun Klassen mit Wappen (deine gewählt), darunter "Plan 1: Primär"/"Plan 2: Sekundär" und "Eigene laden", "Plan leeren", "Build importieren", "Build exportieren" mit Symbol.
+- Prüfung: Wenn du rechts schaust, dann steht oben "Stufe: 60 · Verfügbar: 51 · Verteilt: 0 · Übrig: 51" über die Breite verteilt, darunter die drei Bäume in goldbraunem Rahmen auf dem Bild der Klasse, unten rechts "Linksklick + · Rechtsklick -".
+- Prüfung: Wenn du links eine andere Klasse oder Plan 2 klickst, dann zeigt die Seite deren Plan und die Leiste wählt sie.
+- Prüfung: Wenn du "Build exportieren" klickst, dann ist der Code im Feld markiert und Strg+C kopiert ihn; "Build importieren" leert das Feld, ein eingefügter Code oder Link mit Enter wird übernommen.
+- Prüfung: Wenn du das Hauptfenster breiter oder höher ziehst, dann werden die Bäume breiter bzw. höher; der Talentrechner (Leistenzeile) hat weiter Klasse, Plan-Reiter und Knöpfe.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-76.
 
 ### F-149 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste

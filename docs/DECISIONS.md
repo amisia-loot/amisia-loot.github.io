@@ -1796,3 +1796,26 @@ Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenw
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Marken mit Symbol, Auswahl, Blöcken, Klick).
 
+
+## D-76 Talente: Klassen, Pläne und Aktionen in der Leiste, Bäume mit Klassenbild
+
+**Datum:** 2026-11-08
+**Entscheidung:** Der Reiter Talente nach dem Foto des Reiters Talent Trees (Spec `docs/specs/2026-11-08-hub-reiter.md`, F-150):
+- **Leiste:** Unter der Seite Talente und dem Fenster Talentrechner stehen als Marken (D-75):
+  - die Klassen mit ihrem Wappen (`UI-Classes-Circles`, `CLASS_ICON_TCOORDS`, sonst `T.CLASS_ICON.COORDS`), die gezeigte gewählt;
+  - ein Block "Plan 1: Primär" / "Plan 2: Sekundär", der gezeigte gewählt;
+  - ein Block mit den Aktionen "Eigene laden" (nur bei der eigenen Klasse), "Plan leeren", "Build importieren", "Build exportieren" mit Marken des Clients (`T.TALENT.MARKS`: Gossip-Symbole Lehrer und Verlernen, die Notizsymbole der Gilde).
+- **Importieren** leert das Feld Code und gibt ihm den Fokus (einfügen, Enter); leer verlassen bringt den Code des Plans ohne Fehler zurück. **Exportieren** setzt den Code des Plans ins Feld, gibt ihm den Fokus und markiert ihn für Strg+C (das Spiel gibt einem Addon keine Zwischenablage).
+- **Seite:** oben die Zeile "Stufe: 60 · Verfügbar: 51 · Verteilt: 0 · Übrig: 51", vier Teile über die Breite verteilt (Namen gold, Zahlen weiß; zu viele Punkte rot, dazu "(ab 16)" hinter der Stufe). Die Zeile ersetzt "N / M Punkte".
+- **Bäume:** jeder in einem dünnen goldbraunen Rahmen (`TREE_EDGE`) auf dunklem Grund mit seinem Drittel von `talent-background-<klasse>`, auf die Form des Baums zugeschnitten (`BG_ALPHA`); Name, Punkte, Raster, Ränge und Linien wie bisher.
+- **Unten:** Stufe und Talentiert, das Feld Code, rechts "Linksklick + · Rechtsklick -" (Shift steht im Tooltip). Klassenauswahl, Plan-Reiter, "Eigene laden", "Alles zurücksetzen" und der Knopf "Talentrechner" entfallen auf der Seite (die Leiste hat sie, das Fenster hat seine Zeile).
+- **Größe:** Die Seite wächst mit dem Hauptfenster (`T.PAGE_W_NOW`, `T.PAGE_H`, `W.FollowWidth`): die Bäume teilen die Breite, werden höher; das Raster bleibt mittig.
+- **Fenster Talentrechner:** Es hat keine Leiste und behält seine Bedienung: Kopfzeile mit Klasse, Stufe, Talentiert und den Plan-Reitern, darunter die Zeile der Punkte; unten "Eigene laden", "Alles zurücksetzen", Code; der lange Hinweis als Fußzeile.
+
+**Grund:** Nutzer 2026-11-08: "Talente auch" (wie im Foto des Vorbilds); D-75 hat die Marken dafür.
+
+**Folge:**
+- Ob Forever `UnlearnGossipIcon`, `UI-GuildButton-OfficerNote-Up` und `talent-background-<klasse>` hat, ist im Spiel zu prüfen; ohne sie bleibt die Marke ohne Symbol bzw. der Baum dunkel.
+- Ein neuer Weg zum Plan geht über `jump` der Seite (`class:<TOKEN>`, `slot:1`/`slot:2`, `live`, `reset`, `import`, `export`).
+
+**Durchgesetzt durch:** `tests/test_talents_page.lua` (Marken, Zeile der Punkte, Bäume mit Rahmen und Klassenbild, Import, Export, Wachsen, Layout), `tests/test_talent_window.lua` (Bedienung des Fensters, ein Plan in beiden), `tests/test_style.lua` (die Leiste des Reiters).

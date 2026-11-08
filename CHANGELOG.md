@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): talents with classes, plans and actions in the side bar (F-150)
+
+  The Talents tab lists the nine classes with their crests in the side bar, then the two plans
+  (Plan 1: Primary, Plan 2: Secondary) and the actions Load own, Clear plan, Import build and Export
+  build. The page shows "Level · Available · Spent · Remaining" across the top and the three trees,
+  each in a thin gold-brown frame on its part of the class's own art; the trees grow with the window.
+  Export marks the code for Ctrl+C, import empties the code box for a pasted code or build link.
+
 ## [v2.63.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.63.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.1...v2.63.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

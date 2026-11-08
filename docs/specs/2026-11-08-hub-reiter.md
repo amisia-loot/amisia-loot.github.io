@@ -191,4 +191,9 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
   - "Neu" für Forever-Instanzen und das Warnzeichen entfallen: unsere Daten kennen beides nicht.
   - Das Gebiet kommt aus einer Liste der Zonen von Allianz und Horde, weil der Client es nur für die eigene Zone nennt.
   - Die Raids sind nach Größe gruppiert; die Leiste nennt dort die Größen.
-
+- 2026-11-08, beim Bauen der Talente (D-76):
+  - Die Aktionen sind Marken der Leiste mit Gossip- und Notizsymbolen des Clients; "Eigene laden" steht nur bei der eigenen Klasse. "Plan zurücksetzen" heißt "Plan leeren": der längere Name passt neben dem Symbol nicht in die Leiste.
+  - "Build exportieren" markiert den Code im Feld für Strg+C (keine Zwischenablage für Addons); "Build importieren" leert das Feld für den Code oder Link.
+  - Der Knopf "Talentrechner" der Seite entfällt: die Leiste hat seine Zeile. Stufe und Talentiert stehen unten links, das Feld Code in der Mitte.
+  - Jeder Baum zeigt sein Drittel des Klassenbilds, auf seine Form zugeschnitten; die Seite wächst mit dem Fenster.
+  - Das Fenster Talentrechner behält seine Bedienung (es hat keine Leiste), dazu die Zeile der Punkte.
