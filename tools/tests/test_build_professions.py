@@ -258,3 +258,50 @@ def test_shipped_estimates_and_cooldowns():
     assert P.S[14047] and P.S[2840], 'Runecloth and Copper Bar: estimated'
     assert P.CD[11479] == 1 and P.CD[18560] == 1, 'Transmute: Iron to Gold and Mooncloth have a cooldown'
     assert P.CD[2963] is None, 'Bolt of Linen Cloth has none'
+
+
+# ---------------------------------------------------------------- trainers read in the game (F-155)
+SV_TRAINERS = {'trainers': {
+    80803: {'t': 2000, 'n': 'Brikk', 'p': '1455:2000:2000', 's': {1252229: '35:150:10', 2663: '1:10:5', 999999: '70:1:1'}},
+    90001: {'t': 1000, 'n': 'Neuer Lehrer', 'p': '1455:5000:5000', 's': {7418: '40:500:12', 1252229: '30:90:10'}},
+    'bad': {'t': 1, 's': {1: '1:1:1'}},
+    90002: {'t': 5, 'n': 'A|B', 'p': 'x', 's': {7418: 'nope', 'x': '1:1:1'}},
+}}
+
+
+def test_trainers_from_sv_checks_like_the_addon():
+    read = bp.trainers_from_sv(SV_TRAINERS)
+    assert sorted(read) == [80803, 90001], 'no npc id, no good offer: left out'
+    assert read[80803]['s'][1252229] == (35, 150, 10) and read[80803]['n'] == 'Brikk'
+    assert bp.trainers_from_sv({}) == {} and bp.trainers_from_sv({'trainers': 5}) == {}
+
+
+def test_trainer_archive_join_keeps_the_newest(tmp_path):
+    path = str(tmp_path / 'trainer_archive.json')
+    arch = bp.load_trainer_archive(path)
+    assert bp.join_trainers(arch, bp.trainers_from_sv(SV_TRAINERS)) == 2
+    assert bp.save_trainer_archive(arch, path, today='2026-11-08')
+    again = bp.load_trainer_archive(path)
+    assert again['updated'] == '2026-11-08' and again['trainers'] == arch['trainers']
+    older = {80803: dict(arch['trainers'][80803], t=10, s={2663: (5, 5, 5)})}
+    assert bp.join_trainers(again, older) == 0, 'an older reading changes nothing'
+    assert not bp.save_trainer_archive(again, path), 'unchanged: not written'
+
+
+def test_trainers_in_the_data():
+    trainers = bp.trainers_from_sv(SV_TRAINERS)
+    d = bp.combine(bp.read_client(WAGO), bp.read_att(ATT), trainers=trainers)
+    bs = lines(d, 164)
+    # the newest reading's rank is the learn rank, its trainers newest first
+    assert bs[1252229] == '1252229:251001:1:35:50:80:T1,N80803,N90001'
+    assert bs[2663] == '2663:2853:1:1:20:60:A', 'learned with the profession: no trainer'
+    assert lines(d, 333)[7418] == '7418:0:0:40:40:70:N90001', 'a recipe without a source gets its trainer'
+    assert d['L'] == {1252229: 150, 7418: 500}
+    assert d['TD'] == {80803: 2000, 90001: 1000}
+    assert d['N'][80803] == 'Brikk|1455:2000:2000|', "AllTheThings' entry wins"
+    assert d['N'][90001] == 'Neuer Lehrer|1455:5000:5000|', 'a trainer AllTheThings lacks: the reading'
+    assert d['report']['trainers'] == {'read': 2, 'recipes': 2, 'offers not in the data': 1}
+    P = lua_load(bp.render(d, '2026-11-08'))
+    assert P.L[1252229] == 150 and P.TD[90001] == 1000
+    E = lua_load(bp.render(bp.empty(), '2026-11-08'))
+    assert E.L is not None and E.TD is not None

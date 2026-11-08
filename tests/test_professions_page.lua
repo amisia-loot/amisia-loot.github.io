@@ -42,7 +42,7 @@ NS.ShowPage("professions")
 local f = NS.PageFrame("professions")
 local ov = f.ovView
 assert(AmisiaDB.settings.professions.view == 164, "the saved view stays")
-assert(ov:IsShown() and not f.list:IsShown() and not f.tabAll:IsShown() and not f.detail:IsShown() and not f.rd:IsShown(), "the overview alone")
+assert(ov:IsShown() and not f.list:IsShown() and not f.tabAll:IsShown() and not f.rd:IsShown(), "the overview alone")
 assert(has(ov.intro:GetText(), "Wähle einen Beruf"), ov.intro:GetText())
 local function secTitles()
     local out = {}
@@ -142,7 +142,7 @@ assert(rows[4].rank:GetText():find("10"), "the learn rank")
 assert(rows[1].bar.color and math.abs(rows[1].bar.color[1] - 0x40 / 255) < 1e-6, "the green bar")
 assert(rows[1].dotMe:IsShown() and not rows[4].dotMe:IsShown() and not rows[1].dotGuild:IsShown(), "the dots")
 assert(rows[4].iconFrame.icon.texture ~= nil and has(rows[3].mark:GetText(), "Lehrer"), rows[3].mark:GetText())
-assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte, 2 bekannt" and f.note:GetText() == "", f.rank:GetText())
+assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte, 2 bekannt" and has(f.note:GetText(), "Lernstufen geschätzt (?)"), f.note:GetText())
 -- sorted by the learn rank, then by when it turns yellow (the data had 3321 second)
 local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
@@ -162,7 +162,7 @@ NS.ShowProfessions("schmied")
 
 -- the detail of the first row is shown; a click chooses another
 assert(f.selected and f.selected.recipe.spell == 2663, "the first row is chosen")
-assert(f.rd:IsShown() and not f.detail:IsShown(), "a recipe in the boxes")
+assert(f.rd:IsShown(), "a recipe in the boxes")
 rows[4]:Click()
 assert(f.selected.recipe.spell == 3321 and AmisiaDB.settings.professions.sel["164"] == 3321, "chosen and kept")
 local rd = f.rd
@@ -260,10 +260,10 @@ assert(f.title:GetText() == "Alchimie - Alle Rezepte" and #f.list.items == 2 and
 NS.Dispatch("berufe lager")
 assert(f.title:GetText() == "Lager" and #f.list.items == 3 and not f.legend:IsShown(), f.title:GetText())
 assert(not f.known:IsShown() and not f.search:IsShown() and not f.filterBtn:IsShown(), "the recipe filters hide")
-assert(f.detail:IsShown() and not f.rd:IsShown(), "the text detail")
+assert(f.rd:IsShown(), "the camp object in the boxes too")
 assert(not f.tabAll.on and not f.tabFavor.on, "no tab for the camp")
 assert(has(rows[1].mark:GetText(), "3 Pl."), "a campfire's places")
-local d = f.detail
+local d = f.rd
 -- the description is not loaded yet on the first ask: a placeholder, the client is asked to load
 -- the spell (once), and SPELL_DATA_LOAD_RESULT fills the text in
 local loaded, asked, realDesc = false, {}, C_Spell.GetSpellDescription
@@ -271,28 +271,37 @@ C_Spell.GetSpellDescription = function(id) if id == 1307175 and not loaded then 
 C_Spell.IsSpellDataCached = function(id) return id ~= 1307175 or loaded end
 C_Spell.RequestLoadSpellData = function(id) asked[#asked + 1] = id end
 rows[3]:Click()
-body = d.body.fs:GetText()
+body = d.info:GetText()
 assert(has(body, "Beschreibung lädt") and #asked == 1 and asked[1] == 1307175, body)
 NS.Refresh()
 assert(#asked == 1, "asked once: " .. #asked)
 loaded = true
 STUB.fire("SPELL_DATA_LOAD_RESULT", 1307175, true)
 STUB.tick(1)
-body = d.body.fs:GetText()
+body = d.info:GetText()
 assert(has(body, "Stellt einen Amboss auf."), "the client's description once loaded: " .. body)
 C_Spell.GetSpellDescription, C_Spell.IsSpellDataCached, C_Spell.RequestLoadSpellData = realDesc, nil, nil
 assert(has(body, "Ersetzt Schleifrad und behält dessen Wirkung."), body)
 assert(has(body, "ab Rang 140 (dein Rang 45)"), body)
+-- without its recipe in the data: Details alone, no star, no "+ Liste", no reagents, no guild
+assert(has(d.sub:GetText(), "Lager") and not d.star:IsShown() and not d.add:IsShown() and not d.reag:IsShown()
+    and not d.guild:IsShown(), d.sub:GetText())
+-- with its recipe: the steps and the source under the camp lines, the reagents, the star, "+ Liste"
+rows[1]:Click()
+body = d.info:GetText()
+assert(d.star:IsShown() and d.add:IsShown() and d.reag:IsShown() and d.guild:IsShown(), "the camp recipe's boxes")
+assert(has(body, "Lagerfeuer mit 3 Plätzen") and has(body, "Gelernt bei:"), body)
 assert(has(f.counts:GetText(), "3 Lagerobjekte") and has(f.hint:GetText(), "Lagerfeuer"), f.counts:GetText())
 
--- the Merchant's Favor view: its tab, the text detail as before
+-- the Merchant's Favor view: its tab, the recipe in the boxes
 f.tabFavor:Click()
 assert(f.tabFavor.on and f.title:GetText() == "Händlergunst" and #f.list.items == 1, #f.list.items)
 assert(AmisiaDB.settings.professions.view == "favor" and AmisiaDB.settings.professions.skill == 171, "the profession kept")
 assert(has(f.counts:GetText(), "Händlergunst: 120") and has(f.counts:GetText(), "1 Zertifizierungen"), f.counts:GetText())
 assert(has(f.hint:GetText(), "Händler: Hilda"), f.hint:GetText())
 assert(has(rows[1].rank:GetText(), "45"), "the price")
-body = d.body.fs:GetText()
+assert(f.rd:IsShown() and d.star:IsShown() and d.reag:IsShown(), "the favor recipe in the boxes")
+body = d.info:GetText()
 assert(has(body, "Händlergunst: 45 Gunst, Neutral (Allianz)"), body)
 f.tabAll:Click()
 assert(AmisiaDB.settings.professions.view == 171 and f.tabAll.on, "back to the profession")

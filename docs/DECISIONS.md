@@ -2014,7 +2014,7 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 - **Detail:** Symbol, Name, Stern (Favorit, je Charakter), eine leise Zeile (Beruf, grün "In der Gilde bekannt"); die Kästen "Details" (Farbstufen, eigener Rang, bekannt, "Gelernt bei", Rezeptitem, Handwerksauftrag; Anzahl mit "+ Liste" und "Wegpunkt"), "Reagenzien" (Symbol, Name, hast/brauchst aus Taschen und Bank, grün, wenn genug) und "Gildenmitglieder, die es können" (grün getönt; "Offline zeigen", sonst nur die Zahl der Offline; "Fragen").
 - **Favoriten:** die gemerkten Rezepte aller Berufe, gleiche Liste und gleiches Detail. **Herstellliste:** die gemerkten Herstellungen (Anzahl, Entfernen, Klick öffnet das Rezept) und daneben alle Reagenzien zusammen (hast/brauchst, nächster Händler mit Preis oder die Quelle wie in der Route). Beides je Charakter in `AmisiaDB.prof.lists` (höchstens 500 Favoriten, 50 Einträge).
 - **Kein "Herstellen":** Herstellen aus einem Addon braucht das Berufsfenster und einen Tastendruck des Spielers (geschützte Funktion). Auch "Im Berufsfenster" (das eigene Fenster öffnen) fehlt: ob der Client das einem Addon außerhalb des Kampfes erlaubt, ist hier nicht prüfbar; ein Fehlversuch hinterließe "Aktion blockiert".
-- Lager und Händlergunst behalten das Textdetail von vorher.
+- Lager und Händlergunst behalten das Textdetail von vorher (bis zum Nachtrag unten).
 
 **Grund:** Nutzer 2026-11-08 mit dem Foto des Rezeptreiters: "Berufe genau so, auch mit den Icons aus WoW".
 
@@ -2023,6 +2023,8 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 - Ob `Interface\COMMON\Indicator-Yellow`/`-Green` in Forever da sind, ist im Spiel zu prüfen; ohne bleiben die Punkte leer.
 
 **Durchgesetzt durch:** `tests/test_professions_page.lua` (Reiter, Kopf, Trichter, Zeilen, Detail, Stern, Favoriten, Herstellliste), `tests/test_crafters_page.lua` (Gildenkasten, Offline zeigen, grüner Punkt), `tests/prof_filters_body.lua`, die Layoutregeln (Zustände `professions-fav`, `professions-queue`).
+
+**Nachtrag 2026-11-08:** Auch Lager und Händlergunst zeigen ihr Rezept in den Kästen; das Textdetail entfällt (Nutzer mit einem zweiten Foto: "alle Berufe so"). Ein Lagerobjekt hat oben in "Details" seine Zeilen (Beruf und Rang, Plätze, was es ersetzt, die Beschreibung des Clients), darunter die seines Rezepts; Stern, "+ Liste", Reagenzien und Gildenkasten nur, wenn die Daten sein Rezept kennen.
 
 ## D-83 Flugmeister, Zeppeline und Schiffe nicht mehr auf der Weltkarte
 
@@ -2066,3 +2068,16 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 - Ob Forever für jeden Boss ein Modell zeigt (`SetCreature` braucht den NPC im Cache des Clients), ist im Spiel zu prüfen; sonst bleibt der Totenkopf. Eine Stufe der Bosse kennt Amisia nicht, darum steht sie nicht da.
 
 **Durchgesetzt durch:** `tests/test_boss_view.lua` (Reihenfolge, Vorgabe, Porträt, Modell, Beute, Stern, Klicks, Lage, je Dungeon, Teile, leer, Raids), `tests/test_dungeons_page.lua`, `tests/test_journal_parts.lua`, die Layoutregeln (Aufnahmen `dungeons-bosses`, `dungeons-bosses-last`).
+
+## D-86 Berufslehrer lesen: echte Lernstufen aus dem Spiel, für immer im Archiv auf dem N100
+
+**Datum:** 2026-11-08
+**Entscheidung:** Spec `docs/specs/2026-11-08-lehrer-lesen.md` (F-155). Öffnet der Spieler einen Lehrer (Beruf oder Klasse), liest Amisia still jedes Angebot, das ein Rezept der Berufsdaten ist (über das hergestellte Item, sonst einen eindeutigen Zaubernamen): nötige Fertigkeit, Preis, Stufe, den Lehrer mit Name und Ort (`AmisiaDB.trainers`). Dafür stellt es die Filter des Lehrerfensters (verfügbar, nicht verfügbar, gelernt) kurz an und sofort zurück. Nicht im Kampf; nichts wird gelernt, gekauft oder gesendet.
+- Die Seite nutzt eine Lesung sofort (Lernstufe, "(vom Lehrer)", der Lehrer als Quelle mit Wegpunkt, die Lernkosten der Route). Eine geschätzte Lernstufe trägt "?", der Kopf nennt ihre Zahl.
+- `build.py data` übernimmt die Lesungen in `tools/trainer_archive.json` (neuere Lesung eines Lehrers ersetzt die ältere) und von dort in die Berufsdaten (`N<npc>`, `learn`, `L`, `TD`). Das Addon löscht eine Lesung, sobald die Daten sie halten (`TD`), erst wenn die Berufsdaten ohnehin geladen sind (D-28).
+
+**Grund:** Nutzer 2026-11-08: "hol dir so viel infos und datensätze wie möglich, damit es so genau wie möglich ist"; die Lernstufe der Lehrer-Rezepte und die Quelle von 84 Rezepten (Verhütten, Gifte, Kochen) stehen in keiner erlaubten Quelle (D-03), nur im Lehrerfenster. Spec freigegeben mit "Passt, bauen" (alle drei Fragen: ja).
+
+**Folge:** `tools/trainer_archive.json` committen und pushen (die einzige Kopie, wie das Scan-Archiv, D-34). Ob Forever die Filterfunktionen des Lehrerfensters hat und die Angebote gleich beim Öffnen kennt, ist im Spiel zu prüfen (ohne Filterfunktionen liest Amisia nur die sichtbaren).
+
+**Durchgesetzt durch:** `tests/test_prof_trainers.lua` (Lesen, Filter zurück, Zuordnung, Prüfung beim Laden, Lernstufe, Quelle, Kürzen, Kampf, Befehl), `tools/tests/test_build_professions.py` (Prüfung wie im Addon, Archiv, `N`, `L`, `TD`).

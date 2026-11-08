@@ -3,7 +3,8 @@ addon's professions page - what it makes, its difficulty, how it is learned (tra
 profession, a recipe item and where that item comes from), the reagents when the client table is
 there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (on the N100).
 
-    python tools/build_professions.py [--wago DIR] [--att DIR] [--scan-archive FILE] [--out FILE] [--empty]
+    python tools/build_professions.py [--wago DIR] [--att DIR] [--scan-archive FILE] [--sv FILE...] [--trainers FILE]
+                                      [--out FILE] [--empty]
 
 Inputs:
 
@@ -23,6 +24,10 @@ Inputs:
 - The scan archive (tools/scan_archive.json, the item collector's notes): the merchants the players
   saw selling a reagent or recipe item ("Haendler: Name [npc]"), for V beside AllTheThings, which
   lists only collectible vendor goods (no thread, dyes or vials).
+- The trainers the addon read in the game (AmisiaDB.trainers, F-155, D-86), joined from the
+  SavedVariables into tools/trainer_archive.json (kept for good; the addon drops a reading the data
+  holds, TD): the real learn rank of each recipe a trainer teaches, the trainer (N<npc>), the
+  learning cost (L).
 
 Names are not written for recipes and items: the addon asks the client (German). Only NPC and quest
 names (English, from AllTheThings' comments) go in, for sources the client cannot name.
@@ -45,6 +50,8 @@ import build_scan_archive  # noqa: E402  (the scan archive: those notes for good
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'ProfessionData.lua')
+TRAINERS = os.path.join(HERE, 'trainer_archive.json')
+MAX_TRAINER_TOKENS = 3   # trainers per recipe (N), the newest readings first
 WAGO = os.path.expanduser('~/addons/_wago')
 ATT_CACHE = att_data.ATT_CACHE
 
@@ -391,10 +398,107 @@ def vendor_prices(client, att, seen, items):
     return V
 
 
-def combine(client, att, seen=None, cooldowns=None):
-    """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, TR, CAMP, FAVOR, client, source,
-    report. seen: read_seen_vendors()'s merchants (none when not given); cooldowns: the hand-kept
-    cooldown recipes (read_cooldown_file()), used only without the client table SpellCooldowns."""
+# ---------------------------------------------------------------- trainers read in the game (F-155)
+def trainers_from_sv(db):
+    """{npc: {'t', 'n', 'p', 's': {spell: (rank, cost, level)}}} of a SavedVariables' AmisiaDB.trainers,
+    checked as the addon checks it (ns.TrainersLoaded)."""
+    out = {}
+    tr = db.get('trainers') if isinstance(db, dict) else None
+    if not isinstance(tr, dict):
+        return out
+    def whole(v, lo, hi):
+        return isinstance(v, int) and not isinstance(v, bool) and lo <= v <= hi
+    for npc, e in tr.items():
+        if not whole(npc, 1, 9999999) or not isinstance(e, dict) or not whole(e.get('t'), 1, 4 * 10**9):
+            continue
+        offers = {}
+        for sp, v in (e.get('s') or {}).items() if isinstance(e.get('s'), dict) else ():
+            m = re.match(r'^(\d+):(\d+):(\d+)$', v) if isinstance(v, str) else None
+            if whole(sp, 1, 99999999) and m:
+                offers[sp] = tuple(int(x) for x in m.groups())
+        if not offers:
+            continue
+        name = e.get('n') if isinstance(e.get('n'), str) and '|' not in e['n'] else ''
+        pos = e.get('p') if isinstance(e.get('p'), str) and re.match(r'^\d+:\d+:\d+$', e['p']) else ''
+        out[npc] = {'t': e['t'], 'n': name[:60], 'p': pos, 's': offers}
+    return out
+
+
+def load_trainer_archive(path=TRAINERS):
+    """{'updated', 'trainers': {npc: {'t', 'n', 'p', 's': {spell: (rank, cost, level)}}}}"""
+    if not os.path.exists(path):
+        return {'updated': None, 'trainers': {}}
+    with open(path, encoding='utf-8') as fh:
+        raw = json.load(fh)
+    out = {}
+    for k, e in (raw.get('trainers') or {}).items():
+        out[int(k)] = {'t': e['t'], 'n': e.get('n', ''), 'p': e.get('p', ''),
+                       's': {int(sp): tuple(int(x) for x in v.split(':')) for sp, v in e.get('s', {}).items()}}
+    return {'updated': raw.get('updated'), 'trainers': out}
+
+
+def join_trainers(arch, read):
+    """Joins readings into the archive: a newer reading of a trainer replaces the older, nothing is
+    dropped. Returns how many changed."""
+    n = 0
+    for npc, e in sorted(read.items()):
+        have = arch['trainers'].get(npc)
+        if (have is None or e['t'] > have['t']) and have != e:
+            arch['trainers'][npc] = e
+            n += 1
+    return n
+
+
+def _trainer_text(arch):
+    tr = {str(npc): {'t': e['t'], 'n': e['n'], 'p': e['p'],
+                     's': {str(sp): ':'.join(str(x) for x in v) for sp, v in sorted(e['s'].items())}}
+          for npc, e in sorted(arch['trainers'].items())}
+    return json.dumps({'updated': arch.get('updated'), 'trainers': tr}, ensure_ascii=False, indent=1) + '\n'
+
+
+def save_trainer_archive(arch, path=TRAINERS, today=None):
+    """Writes the archive when its trainers changed (then with today's date). True when it wrote."""
+    old = load_trainer_archive(path)
+    if old['trainers'] == arch['trainers'] and os.path.exists(path):
+        return False
+    arch['updated'] = today or time.strftime('%Y-%m-%d')
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(_trainer_text(arch))
+    return True
+
+
+def update_trainers(svs, path=TRAINERS):
+    """Joins the SavedVariables' trainer readings into the archive; returns its trainers."""
+    arch = load_trainer_archive(path)
+    for p in svs:
+        n = join_trainers(arch, trainers_from_sv(build_scan.load_sv(p)))
+        log(f'{p}: {n} trainers read new or newer')
+    if save_trainer_archive(arch, path):
+        log(f'{os.path.relpath(path, ROOT)}: {len(arch["trainers"])} trainers')
+    return arch['trainers']
+
+
+def trainer_offers(trainers):
+    """{spell: {'rank', 'cost', 'npcs'}}: the newest reading's rank and cost, and up to
+    MAX_TRAINER_TOKENS trainers that teach it (newest first)."""
+    by = {}
+    for npc, e in trainers.items():
+        for sp, (rank, cost, _level) in e['s'].items():
+            by.setdefault(sp, []).append((e['t'], npc, rank, cost))
+    out = {}
+    for sp, lst in by.items():
+        lst.sort(key=lambda x: (-x[0], x[1]))
+        out[sp] = {'rank': lst[0][2], 'cost': lst[0][3], 'npcs': [x[1] for x in lst[:MAX_TRAINER_TOKENS]]}
+    return out
+
+
+def combine(client, att, seen=None, cooldowns=None, trainers=None):
+    """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, TR, CAMP, FAVOR, L, TD, client,
+    source, report. seen: read_seen_vendors()'s merchants (none when not given); cooldowns: the
+    hand-kept cooldown recipes (read_cooldown_file()), used only without the client table
+    SpellCooldowns; trainers: the trainer archive's readings (load_trainer_archive()['trainers'])."""
+    trained = trainer_offers(trainers or {})
+    with_trainer = set()      # the recipes that got their trainer (N): their costs go into L
     teach = dict(att['profdb'])
     teach.update(client['teach'])          # the client's own link wins
     spec = att.get('spec') or set()
@@ -434,6 +538,14 @@ def combine(client, att, seen=None, cooldowns=None):
             if r:
                 ranks.append(r)
         learn = min(ranks) if ranks else max(1, a['min'])
+        # a trainer read in the game: its rank is the game's own (with a recipe item, the earlier)
+        offer = trained.get(sp)
+        if offer and a['acquire'] != 1:
+            rank = max(1, offer['rank'])
+            learn = min(ranks + [rank]) if ranks else rank
+            src += [f'N{n}' for n in offer['npcs']]
+            with_trainer.add(sp)
+            report['trainer recipes'] = report.get('trainer recipes', 0) + 1
         item, count = create if create else (0, 0)
         line = f'{sp}:{item}:{count}:{learn}:{a["yellow"]}:{a["grey"]}:{",".join(src)}'
         recipes.setdefault(sl, []).append((a['yellow'], a['grey'], sp, line))
@@ -497,15 +609,31 @@ def combine(client, att, seen=None, cooldowns=None):
         if ids:
             TR[sl] = ids
             npcs_used.update(ids)
+    # the trainers read in the game: their recipes' learning costs (L), each trainer in N, what the
+    # data holds (TD: the reading's time, the addon drops that reading)
+    listed = {int(l.split(':')[0]) for lst in R.values() for l in lst}
+    L = {sp: o['cost'] for sp, o in sorted(trained.items()) if sp in with_trainer and o['cost'] > 0}
+    TD = {}
+    for nid, e in sorted((trainers or {}).items()):
+        TD[nid] = e['t']
+        if any(sp in listed for sp in e['s']):
+            npcs_used.add(nid)
+    report['trainers'] = {'read': len(TD), 'recipes': report.get('trainer recipes', 0),
+                          'offers not in the data': len(set(trained) - listed)}
     N = {}
     for nid in sorted(npcs_used):
         name, where, fac = att['npcs'].get(nid, ('', '', ''))
+        e = (trainers or {}).get(nid)
+        if e and not name:
+            name = e.get('n') or ''
+        if e and not re.match(r'^\d+:\d+:\d+$', where or '') and e.get('p'):
+            where = e['p']
         N[nid] = f'{name}|{where}|{fac}'
     Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
     return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
-            'FAVOR': favor_info(client, att, R), 'client': client['client'], 'source': (att.get('commit') or '')[:10],
-            'report': report}
+            'FAVOR': favor_info(client, att, R), 'L': L, 'TD': TD, 'client': client['client'],
+            'source': (att.get('commit') or '')[:10], 'report': report}
 
 
 def camp_objects(client):
@@ -572,7 +700,7 @@ def favor_info(client, att, R):
 def empty():
     return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
-            'client': '', 'source': '', 'report': {}}
+            'L': {}, 'TD': {}, 'client': '', 'source': '', 'report': {}}
 
 
 # ---------------------------------------------------------------- writing
@@ -619,7 +747,7 @@ def render(data, built):
            '-- P: { skill line, key } in display order. R: [skill line] = recipes',
            '-- "spell:item:count:learn:yellow:grey:src" (item 0: an enchant or other spell; src: A learned with',
            '-- the profession, T1-T4 trainer tier, T0 trainer without tier, S a specialisation\'s trainer, I<item>',
-           '-- recipe item, empty unknown).',
+           '-- recipe item, N<npc> a trainer read in the game (then learn is that trainer\'s rank), empty unknown).',
            '-- I: [recipe item] = "spell:rank:faction:standing:sources" (F<price>@<standing><A|H> Merchant\'s Favor,',
            '-- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =',
            '-- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or',
@@ -630,6 +758,7 @@ def render(data, built):
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
            '-- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
            '-- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings\' zone files), each in N.',
+           '-- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.',
            'ns.PROFESSIONS = {',
            f'    built = {lua_str(built)}, client = {lua_str(data.get("client") or "")}, source = {lua_str(data.get("source") or "")},',
            '    P = { ' + ', '.join(f'{{ {s}, {lua_str(k)} }}' for s, k in data['P']) + ' },',
@@ -647,6 +776,8 @@ def render(data, built):
     out.append('    TR = ' + _num_map({sl: '{ ' + ', '.join(str(n) for n in ids) + ' }' for sl, ids in (data.get('TR') or {}).items()},
                                   per_line=1) + ',')
     out.append('    CAMP = ' + _str_list(data['CAMP'], 4) + ',')
+    out.append('    L = ' + _num_map(data.get('L') or {}, per_line=8) + ',')
+    out.append('    TD = ' + _num_map(data.get('TD') or {}, per_line=6) + ',')
     F = data['FAVOR']
     vend = ', '.join(f'{k} = {{ {", ".join(str(n) for n in F["vendor"].get(k, []))} }}' for k in ('A', 'H'))
     out.append(f'    FAVOR = {{ currency = {F["currency"]}, vendor = {{ {vend} }},')
@@ -664,6 +795,9 @@ def main(argv=None):
     ap.add_argument('--att', default=ATT_CACHE, help=f'AllTheThings download (default {ATT_CACHE})')
     ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
                     help='the scan archive whose merchant notes add vendors to V (default tools/scan_archive.json; "" for none)')
+    ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with trainers read in the game (default: '
+                    'those build_scan_archive finds)')
+    ap.add_argument('--trainers', default=TRAINERS, help='the trainer archive (default tools/trainer_archive.json)')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     args = ap.parse_args(argv)
@@ -677,7 +811,9 @@ def main(argv=None):
         if not client['sla']:
             raise SystemExit('no SkillLineAbility table: export it (export_db2.ps1 -Tables SkillLineAbility)')
         seen = read_seen_vendors(args.scan_archive) if args.scan_archive else {}
-        data = combine(client, att, seen, read_cooldown_file())
+        svs = build_scan_archive.default_svs() if args.sv is None else args.sv
+        trainers = update_trainers(svs, args.trainers)
+        data = combine(client, att, seen, read_cooldown_file(), trainers)
     text = render(data, time.strftime('%Y-%m-%d'))
     old = None
     if os.path.exists(args.out):
@@ -697,6 +833,9 @@ def main(argv=None):
     pr = rep.get('prices') or {}
     log(f'  vendor prices: {pr.get("items", 0)} items ({pr.get("reagents", 0)} reagents, {pr.get("recipe items", 0)} recipe items), '
         f'NPCs: {len(data["N"])}')
+    tr = rep.get('trainers') or {}
+    log(f'  trainers read in the game: {tr.get("read", 0)}, recipes with their rank: {tr.get("recipes", 0)}, '
+        f'offers not in the data: {tr.get("offers not in the data", 0)}')
     cd = rep.get('cooldowns') or {}
     log(f'  sell prices (estimate): {len(data["S"])} reagents; cooldown recipes: {cd.get("recipes", 0)} '
         f'(from the {cd.get("from", "-")})')

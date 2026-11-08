@@ -270,7 +270,7 @@ local function fillRow(r, e)
         if e.price then
             r.rank:SetText(GREY .. e.price .. "|r")
         else
-            r.rank:SetText(GREY .. (rec.learn > 1 and rec.learn or rec.yellow) .. "|r")
+            r.rank:SetText(GREY .. Pr.LearnRank(rec) .. "|r")
         end
         item, spell = rec.item, rec.spell
         r.dotMe:SetShown(e.known == true)
@@ -317,152 +317,9 @@ end
 ---------------------------------------------------------------------------
 -- The detail field
 ---------------------------------------------------------------------------
-local function steps(r)
-    return ("%s / %s / %s / %s"):format(color(Pr.COLORS.orange, r.learn > 1 and r.learn or 1), color(Pr.COLORS.yellow, r.yellow),
-        color(Pr.COLORS.green, r.green), color(Pr.COLORS.grey, r.grey))
-end
-
-local function reagentLines(r)
-    local list, from = Pr.Reagents(r.spell)
-    if not list then return { GREY .. L["Reagenzien: noch unbekannt (Client antwortet nicht)"] .. "|r" } end
-    local out = { L["Reagenzien:"] }
-    for _, e in ipairs(list) do
-        local have = Pr.Count(e[1])
-        local mark = have >= e[2] and GREEN or "|cffff6060"
-        out[#out + 1] = ("  %dx %s %s(%d)|r"):format(e[2], itemText(e[1]), mark, have)
-    end
-    if from == "client" then out[#out + 1] = GREY .. "  " .. L["(aus dem Client)"] .. "|r" end
-    return out
-end
-
 -- the colour of a recipe for a rank (Pr.Difficulty) in words
 local COLOR_WORDS = { orange = L["orange"], yellow = L["gelb"], green = L["grün"], grey = L["grau"],
     red = L["noch nicht lernbar"] }
-
-local function recipeDetail(r)
-    local lines = {}
-    local rank = Pr.Rank(r.skill)
-    local known = Pr.Known(r.spell, r.skill)
-    lines[#lines + 1] = L["%s · Fertigkeit %s"]:format(Pr.Name(r.skill), steps(r))
-    if rank then
-        local d = Pr.Difficulty(r, rank, known)
-        local word = COLOR_WORDS[d]
-        lines[#lines + 1] = L["Dein Rang %d%s"]:format(rank, word and (": " .. color(Pr.COLORS[d], word)) or "")
-    end
-    if known == true then
-        lines[#lines + 1] = GREEN .. L["Bekannt"] .. "|r"
-    elseif known == false then
-        local from = Pr.LearnRank(r)
-        lines[#lines + 1] = L["Nicht bekannt"] .. (from > 1 and L[" (lernbar ab %d)"]:format(from) or "")
-    elseif rank then
-        lines[#lines + 1] = GREY .. L["Ob bekannt: Berufsfenster einmal öffnen."] .. "|r"
-    end
-    local makers = Cr.ForSpell(r.spell)
-    lines[#lines + 1] = #makers > 0 and L["Hergestellt von: %s"]:format(Cr.Text(makers, 6, true))
-        or (GREY .. L["Hergestellt von: niemand aus der Gilde bekannt"] .. "|r")
-    if r.count > 1 then lines[#lines + 1] = L["Stellt %d Stück her."]:format(r.count) end
-    lines[#lines + 1] = ""
-    for _, l in ipairs(reagentLines(r)) do lines[#lines + 1] = l end
-    lines[#lines + 1] = ""
-    lines[#lines + 1] = L["Quelle:"]
-    local src = Pr.Sources(r)
-    for _, s in ipairs(src) do lines[#lines + 1] = "  " .. s.text end
-    for _, itemId in ipairs(r.items) do
-        local ri = Pr.RecipeItem(itemId)
-        if ri then
-            local need = {}
-            if ri.rank > 0 then need[#need + 1] = L["Rang %d"]:format(ri.rank) end
-            if ri.faction > 0 then need[#need + 1] = L["Ruf %s"]:format(Pr.STANDING[ri.standing] or "?") end
-            lines[#lines + 1] = L["  Rezept: %s%s"]:format(itemText(itemId), #need > 0 and (GREY .. " (" .. table.concat(need, ", ") .. ")|r") or "")
-        end
-    end
-    if Pr.HasWrit(r) then
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = L["Handwerksauftrag für dieses Item möglich (Händlergunst)."]
-    end
-    return table.concat(lines, "\n"), src
-end
-
-local function campDetail(c)
-    local lines = {}
-    if c.skill > 0 then
-        local rank = Pr.Rank(c.skill)
-        lines[#lines + 1] = L["%s · ab Rang %d%s"]:format(Pr.Name(c.skill), c.rank, rank and L[" (dein Rang %d)"]:format(rank) or "")
-    end
-    if c.slots > 0 then lines[#lines + 1] = L["Lagerfeuer mit %d Plätzen für weitere Lagerobjekte."]:format(c.slots) end
-    if c.over > 0 then
-        local other
-        for _, o in ipairs(Pr.Camp()) do if o.item == c.over then other = o end end
-        lines[#lines + 1] = L["Ersetzt %s und behält dessen Wirkung."]:format(other and campName(other) or ("Item " .. c.over))
-    end
-    lines[#lines + 1] = ""
-    local desc, loading = Pr.SpellDescription(c.use)
-    -- the text comes when the client has loaded the spell (PROF_SPELL_LOADED redraws the page)
-    lines[#lines + 1] = desc or (GREY .. (loading and L["Beschreibung lädt ..."] or L["Keine Beschreibung vom Client."]) .. "|r")
-    local r = c.recipe > 0 and Pr.Recipe(c.recipe)
-    local src = {}
-    if r then
-        lines[#lines + 1] = ""
-        lines[#lines + 1] = L["Herstellen: %s"]:format(steps(r))
-        for _, l in ipairs(reagentLines(r)) do lines[#lines + 1] = l end
-        lines[#lines + 1] = L["Quelle:"]
-        src = Pr.Sources(r)
-        for _, s in ipairs(src) do lines[#lines + 1] = "  " .. s.text end
-    end
-    return table.concat(lines, "\n"), src
-end
-
-local function showDetail(f, e)
-    local d = f.detail
-    d.entry = e
-    if not e then
-        d.icon:Hide()
-        d.title:SetText("")
-        d.sub:SetText("")
-        d.body:SetText(GREY .. L["Ein Rezept wählen."] .. "|r")
-        d.go:Disable()
-        d.ask:Disable()
-        return
-    end
-    local item, body, src, sub
-    if e.camp then
-        item = e.camp.item
-        d.title:SetText(itemText(item, campName(e.camp)))
-        body, src = campDetail(e.camp)
-        sub = ""
-    else
-        local r = e.recipe
-        item = r.item
-        if item > 0 then
-            d.title:SetText(itemText(item, e.name))
-        else
-            d.title:SetText(color(Pr.COLORS.none, e.name))
-        end
-        local mark, u = upgradeMark(item)
-        sub = mark and (L["Upgrade: %s"]:format(mark) .. (u and u.slotKey and (GREY .. " (" .. tostring(u.slotKey) .. ")|r") or "")) or ""
-        body, src = recipeDetail(r)
-    end
-    local icon = item and item > 0 and C_Item and C_Item.GetItemIconByID and ns.Plain(C_Item.GetItemIconByID(item)) or nil
-    if icon then
-        d.icon:SetTexture(icon)
-        d.icon:Show()
-    else
-        d.icon:Hide()
-    end
-    d.sub:SetText(sub)
-    d.body:SetText(body)
-    d.point = nil
-    for _, s in ipairs(src or {}) do
-        if s.point then
-            d.point, d.pointLabel = s.point, s.text
-            break
-        end
-    end
-    if d.point then d.go:Enable() else d.go:Disable() end
-    -- the crafter to ask: online first, never an own character
-    d.askWho = (not e.camp) and Cr.AskWhom(e.recipe.spell) or nil
-    if d.askWho then d.ask:Enable() else d.ask:Disable() end
-end
 
 ---------------------------------------------------------------------------
 -- The recipe's detail (D-82): icon, name and star, a quiet line, the boxes Details, Reagenzien and
@@ -472,8 +329,11 @@ end
 -- learned (with the recipe item and what it needs), the crafting order note. Second value: the sources.
 local function detailsText(r)
     local lines = {}
-    lines[#lines + 1] = L["Skill: lernbar ab %s"]:format(("%s  %s  %s  %s"):format(color(Pr.COLORS.orange, r.learn > 1 and r.learn or 1),
+    -- the learn rank: the game's own, an estimate with "?" (F-155), "(vom Lehrer)" when a trainer said it
+    local learn = tostring(Pr.LearnRank(r)) .. (Pr.LearnExact(r) and "" or "?")
+    lines[#lines + 1] = L["Skill: lernbar ab %s"]:format(("%s  %s  %s  %s"):format(color(Pr.COLORS.orange, learn),
         color(Pr.COLORS.yellow, r.yellow), color(Pr.COLORS.green, r.green), color(Pr.COLORS.grey, r.grey)))
+        .. (Pr.LearnFromTrainer(r) and (GREY .. " " .. L["(vom Lehrer)"] .. "|r") or "")
     local rank = Pr.Rank(r.skill)
     local known = Pr.Known(r.spell, r.skill)
     if rank then
@@ -504,6 +364,34 @@ local function detailsText(r)
     end
     if Pr.HasWrit(r) then lines[#lines + 1] = L["Handwerksauftrag für dieses Item möglich (Händlergunst)."] end
     return table.concat(lines, "\n"), src
+end
+
+-- The recipe of an entry: a recipe's own, a camp object's when the data has it, else nil.
+local function entryRecipe(e)
+    if not e then return nil end
+    if e.recipe then return e.recipe end
+    local c = e.camp
+    return c and c.recipe > 0 and Pr.Recipe(c.recipe) or nil
+end
+
+-- The camp lines over a camp object's Details: the profession and rank it needs, the slots, what it
+-- replaces, the client's description of its use.
+local function campText(c)
+    local lines = {}
+    if c.skill > 0 then
+        local rank = Pr.Rank(c.skill)
+        lines[#lines + 1] = L["%s · ab Rang %d%s"]:format(Pr.Name(c.skill), c.rank, rank and L[" (dein Rang %d)"]:format(rank) or "")
+    end
+    if c.slots > 0 then lines[#lines + 1] = L["Lagerfeuer mit %d Plätzen für weitere Lagerobjekte."]:format(c.slots) end
+    if c.over > 0 then
+        local other
+        for _, o in ipairs(Pr.Camp()) do if o.item == c.over then other = o end end
+        lines[#lines + 1] = L["Ersetzt %s und behält dessen Wirkung."]:format(other and campName(other) or ("Item " .. c.over))
+    end
+    local desc, loading = Pr.SpellDescription(c.use)
+    -- the text comes when the client has loaded the spell (PROF_SPELL_LOADED redraws the page)
+    lines[#lines + 1] = desc or (GREY .. (loading and L["Beschreibung lädt ..."] or L["Keine Beschreibung vom Client."]) .. "|r")
+    return table.concat(lines, "\n")
 end
 
 -- The guild's crafters of a recipe as text (online first and green; the offline ones only when
@@ -577,28 +465,37 @@ local function layoutRecipe(rd)
     end
     rd.info:SetWidth(inner)
     local infoH = textHeight(rd.info)
-    place(rd.details, P.RD_BOX_PAD + P.RD_HEAD_H + infoH + 4 + P.RD_CTRL_H + P.RD_BOX_PAD)
-    local n = 0
-    for _, row in ipairs(rd.reag.rows) do if row:IsShown() then n = n + 1 end end
-    rd.reag.note:SetWidth(inner)
-    local noteH = rd.reag.note:IsShown() and textHeight(rd.reag.note) or 0
-    for i, row in ipairs(rd.reag.rows) do
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", rd.reag, "TOPLEFT", P.RD_BOX_PAD, -(P.RD_BOX_PAD + P.RD_HEAD_H + (i - 1) * P.RD_REAG_H))
-        row:SetWidth(inner)
+    -- the controls' line only when it holds something (a camp object without recipe and place has none)
+    local ctrl = (rd.count:IsShown() or rd.go:IsShown()) and (4 + P.RD_CTRL_H) or 0
+    place(rd.details, P.RD_BOX_PAD + P.RD_HEAD_H + infoH + ctrl + P.RD_BOX_PAD)
+    if rd.reag:IsShown() then
+        local n = 0
+        for _, row in ipairs(rd.reag.rows) do if row:IsShown() then n = n + 1 end end
+        rd.reag.note:SetWidth(inner)
+        local noteH = rd.reag.note:IsShown() and textHeight(rd.reag.note) or 0
+        for i, row in ipairs(rd.reag.rows) do
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", rd.reag, "TOPLEFT", P.RD_BOX_PAD, -(P.RD_BOX_PAD + P.RD_HEAD_H + (i - 1) * P.RD_REAG_H))
+            row:SetWidth(inner)
+        end
+        place(rd.reag, P.RD_BOX_PAD + P.RD_HEAD_H + n * P.RD_REAG_H + noteH + P.RD_BOX_PAD)
     end
-    place(rd.reag, P.RD_BOX_PAD + P.RD_HEAD_H + n * P.RD_REAG_H + noteH + P.RD_BOX_PAD)
-    rd.who:SetWidth(inner)
-    local whoH = textHeight(rd.who)
-    place(rd.guild, P.RD_BOX_PAD + P.RD_HEAD_H + P.RD_CTRL_H + whoH + 4 + P.RD_CTRL_H + P.RD_BOX_PAD)
+    if rd.guild:IsShown() then
+        rd.who:SetWidth(inner)
+        local whoH = textHeight(rd.who)
+        place(rd.guild, P.RD_BOX_PAD + P.RD_HEAD_H + P.RD_CTRL_H + whoH + 4 + P.RD_CTRL_H + P.RD_BOX_PAD)
+    end
     rd.child:SetHeight(math.max(1, -y))
 end
 
+-- An entry in the detail (D-82): a recipe (also from the favourites and the favor view) or a camp
+-- object, whose recipe, when the data has it, fills the same boxes.
 local function showRecipe(f, e)
     local rd = f.rd
     rd.entry = e
-    local r = e and e.recipe
-    if not r then
+    local r = entryRecipe(e)
+    local camp = e and e.camp
+    if not r and not camp then
         rd.iconFrame.icon:SetTexture(Pr.ICON_UNKNOWN)
         rd.title:SetText("")
         rd.sub:SetText(GREY .. L["Ein Rezept wählen."] .. "|r")
@@ -607,19 +504,27 @@ local function showRecipe(f, e)
         return
     end
     rd.scroll:Show()
-    rd.star:Show()
-    rd.iconFrame.icon:SetTexture(entryIcon(r.item, r.spell))
-    ringColor(rd.iconFrame, r.item)
-    rd.title:SetText(r.item > 0 and itemText(r.item, e.name) or color(Pr.COLORS.none, e.name))
-    rd.star.icon:SetAlpha(Pr.IsFav(r.spell) and 1 or P.STAR_OFF)
-    -- the quiet line: the upgrade, known, the guild
+    rd.star:SetShown(r ~= nil)
+    local item = camp and camp.item or r.item
+    rd.iconFrame.icon:SetTexture(entryIcon(item, r and r.spell))
+    ringColor(rd.iconFrame, item)
+    if camp then
+        rd.title:SetText(itemText(item, campName(camp)))
+    else
+        rd.title:SetText(r.item > 0 and itemText(r.item, e.name) or color(Pr.COLORS.none, e.name))
+    end
+    if r then rd.star.icon:SetAlpha(Pr.IsFav(r.spell) and 1 or P.STAR_OFF) end
+    -- the quiet line: the upgrade, the profession (camp: Lager), the guild
     local parts = {}
-    local mark = upgradeMark(r.item)
+    local mark = upgradeMark(item)
     if mark then parts[#parts + 1] = L["Upgrade: %s"]:format(mark) end
-    parts[#parts + 1] = Pr.Name(r.skill)
-    if guildKnows(r.spell) then parts[#parts + 1] = GREEN .. L["In der Gilde bekannt"] .. "|r" end
+    if camp then parts[#parts + 1] = L["Lager"] end
+    if r then parts[#parts + 1] = Pr.Name(r.skill) end
+    if r and guildKnows(r.spell) then parts[#parts + 1] = GREEN .. L["In der Gilde bekannt"] .. "|r" end
     rd.sub:SetText(table.concat(parts, " · "))
-    local text, src = detailsText(r)
+    local text, src = "", {}
+    if r then text, src = detailsText(r) end
+    if camp then text = campText(camp) .. (r and ("\n\n" .. text) or "") end
     rd.info:SetText(text)
     rd.point = nil
     for _, s in ipairs(src or {}) do
@@ -629,6 +534,14 @@ local function showRecipe(f, e)
         end
     end
     rd.go:SetShown(rd.point ~= nil)
+    rd.count:SetShown(r ~= nil)
+    rd.add:SetShown(r ~= nil)
+    rd.reag:SetShown(r ~= nil)
+    rd.guild:SetShown(r ~= nil)
+    if not r then
+        layoutRecipe(rd)
+        return
+    end
     -- the reagents with the own count (bags and bank)
     local list = Pr.Reagents(r.spell)
     for i, g in ipairs(list or {}) do
@@ -668,9 +581,9 @@ local function buildRecipeDetail(f, top)
     rd.iconFrame:ClearAllPoints()
     rd.iconFrame:SetPoint("TOPLEFT", P.RD_PAD, -P.RD_PAD)
     rd.star = W.IconButton(rd, P.STAR, { file = P.STAR_ICON }, function()
-        local e = rd.entry
-        if not e or not e.recipe then return end
-        Pr.SetFav(e.recipe.spell, not Pr.IsFav(e.recipe.spell))
+        local r = entryRecipe(rd.entry)
+        if not r then return end
+        Pr.SetFav(r.spell, not Pr.IsFav(r.spell))
         ns.Refresh()
     end, "*")
     rd.star:SetPoint("TOPRIGHT", -P.RD_PAD, -P.RD_PAD)
@@ -702,10 +615,10 @@ local function buildRecipeDetail(f, top)
     rd.count:SetPoint("BOTTOMLEFT", P.RD_BOX_PAD, P.RD_BOX_PAD)
     W.Tooltip(rd.count, L["Anzahl"], L["Wie oft du es herstellen willst (Shift: zehn auf einmal)."])
     rd.add = W.Link(rd.details, L["+ Liste"], function()
-        local e = rd.entry
-        if not e or not e.recipe then return end
-        if Pr.QueueAdd(e.recipe.spell, rd.count.current or 1) then
-            ns.msg(L["%dx %s auf der Herstellliste."]:format(rd.count.current or 1, e.name or Pr.RecipeName(e.recipe)))
+        local r = entryRecipe(rd.entry)
+        if not r then return end
+        if Pr.QueueAdd(r.spell, rd.count.current or 1) then
+            ns.msg(L["%dx %s auf der Herstellliste."]:format(rd.count.current or 1, rd.entry.name or Pr.RecipeName(r)))
         else
             ns.msg(L["Die Herstellliste ist voll."])
         end
@@ -742,12 +655,11 @@ local function buildRecipeDetail(f, top)
     rd.who:SetJustifyV("TOP")
     rd.who:SetPoint("TOPLEFT", P.RD_BOX_PAD, -(P.RD_BOX_PAD + P.RD_HEAD_H + P.RD_CTRL_H))
     rd.ask = W.Link(rd.guild, L["Fragen"], function()
-        local e, who = rd.entry, rd.askWho
-        if not e or not who then return end
-        local r = e.recipe
+        local r, who = entryRecipe(rd.entry), rd.askWho
+        if not r or not who then return end
         local link
         if r.item > 0 then link = select(3, Pr.ItemInfo(r.item)) end
-        Cr.Whisper(who.name, link or e.name)
+        Cr.Whisper(who.name, link or rd.entry.name or Pr.RecipeName(r))
     end)
     W.FitChip(rd.ask)
     rd.ask:SetPoint("BOTTOMLEFT", P.RD_BOX_PAD - T.TAB_PAD, P.RD_BOX_PAD)
@@ -1372,7 +1284,7 @@ local function choose(e)
     state().sel[page.shownKey or tostring(page.shownView)] = k
     page.selected = e
     page.list:Redraw()
-    if page.rd:IsShown() then showRecipe(page, e) else showDetail(page, e) end
+    showRecipe(page, e)
 end
 
 local function linkOf(e)
@@ -1562,6 +1474,11 @@ local function fillHead(f, v, m, n)
             line = skill .. " · " .. recipes
             if rank and not Pr.HasSnapshot(v) then
                 note = L["Öffne einmal dein %s-Fenster, um bekannte Rezepte zu markieren."]:format(name)
+            else
+                -- the estimated learn ranks (F-155): a trainer of the profession tells the real ones
+                local guessed = 0
+                for _, r in ipairs(Pr.Recipes(v)) do if not Pr.LearnExact(r) then guessed = guessed + 1 end end
+                if guessed > 0 then note = L["%d Lernstufen geschätzt (?) - sprich einmal einen Lehrer an, Amisia liest sie dort."]:format(guessed) end
             end
         end
         legend = m ~= QUEUE
@@ -1615,7 +1532,7 @@ local function refresh(f)
     f.list:SetShown(listed)
     f.headBlock:SetShown(not onRoute)
     if onRoute then
-        for _, w in ipairs({ f.search, f.filterBtn, f.counts, f.empty, f.reset, f.detail, f.rd, f.clearQueue }) do w:Hide() end
+        for _, w in ipairs({ f.search, f.filterBtn, f.counts, f.empty, f.reset, f.rd, f.clearQueue }) do w:Hide() end
         f.filters:Hide()
         local rank, max = Pr.Rank(v)
         f.routeRank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (GREY .. L["Beruf nicht erlernt"] .. "|r"))
@@ -1630,7 +1547,7 @@ local function refresh(f)
     f.routeRank:Hide()
     f.counts:Show()
     if m == QUEUE then
-        for _, w in ipairs({ f.search, f.filterBtn, f.empty, f.reset, f.detail, f.rd }) do w:Hide() end
+        for _, w in ipairs({ f.search, f.filterBtn, f.empty, f.reset, f.rd }) do w:Hide() end
         f.filters:Hide()
         fillHead(f, v, m, 0)
         f:Place(3, { { f.counts, fill = true } }, { f.clearQueue }, { shown = true })
@@ -1692,11 +1609,9 @@ local function refresh(f)
         f.empty:Hide()
     end
     f.reset:SetShown(canReset and isRecipes)
-    -- recipes in the new detail, camp objects and the favor view in the text detail of before
-    local rich = isRecipes or isFav
-    f.rd:SetShown(rich)
-    f.detail:SetShown(not rich)
-    if rich then showRecipe(f, f.selected) else showDetail(f, f.selected) end
+    -- every view's entry in the detail with the boxes (D-82): recipes, favourites, favor, camp
+    f.rd:Show()
+    showRecipe(f, f.selected)
     f.counts:SetText(isFav and L["%d Favoriten"]:format(#list) or statusText(v, #list))
     f.hint:SetText(hintText(v))
     dataLine(f)
@@ -1856,37 +1771,7 @@ local function create(parent)
     f.reset:Hide()
     W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."])
 
-    -- the camp object or favor recipe in the text inset beside the list, as high as the list
-    local d = f:Detail({ top = top, follow = f.list, sub = true })
-    f.detail = d
-    d:ClearAllPoints()
-    d:SetPoint("TOPLEFT", P.DETAIL_X, top)
-    d:SetPoint("TOPRIGHT", 0, top)
-    local DT = T.LAYOUT.DETAIL
-    d.title:SetWidth(T.PAGE_W - P.DETAIL_X - DT.TITLE_X - DT.PAD)
-    d.sub:SetWidth(T.PAGE_W - P.DETAIL_X - DT.TITLE_X - DT.PAD)
-    d.head:SetScript("OnEnter", function(self) entryTooltip(self, d.entry) end)
-    d.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-    d.go = W.Button(d, L["Wegpunkt"], 70, function()
-        if d.point and ns.MapSetPoint then
-            local ok, why = ns.MapSetPoint(d.point, d.pointLabel)
-            if not ok and why then ns.msg(why) end
-        end
-    end, { height = T.ROW_BUTTON_H })
-    W.Tooltip(d.go, L["Wegpunkt"], L["Setzt den Wegpunkt auf die erste Quelle mit Ort."])
-    d.ask = W.Link(d, L["Fragen"], function()
-        local e, who = d.entry, d.askWho
-        if not e or not who or e.camp then return end
-        local r = e.recipe
-        local link
-        if r.item > 0 then link = select(3, Pr.ItemInfo(r.item)) end
-        Cr.Whisper(who.name, link or e.name)
-    end)
-    W.FitChip(d.go, 70)
-    W.FitChip(d.ask)
-    d:Buttons({ d.ask, d.go })
-    W.Tooltip(d.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
-    -- a recipe in the detail with the boxes (D-82)
+    -- every entry in the detail with the boxes (D-82)
     f.rd = buildRecipeDetail(f, top)
     f.rd.head:SetScript("OnEnter", function(self) entryTooltip(self, f.rd.entry) end)
     f.rd.head:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -1968,7 +1853,7 @@ local function create(parent)
     rv:Hide()
     f.ovView = buildOverview(f)
     f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.routeRank, f.headBlock, f.search, f.filterBtn,
-        f.counts, f.clearQueue, f.list, f.detail, f.rd, f.empty, f.reset, f.routeView, f.queueView }
+        f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView }
     return f
 end
 

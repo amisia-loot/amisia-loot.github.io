@@ -18,6 +18,21 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
   "Amisia", the red close button and the game's minimize button next to it. Inside, the hub stays as
   it is: the picture head, the tabs, the side bar and the footer.
 
+- feat(professions): camp objects and Merchant's Favor recipes in the same boxed detail as every recipe (F-151)
+
+  The views Lager and Händlergunst now show the chosen entry like a profession's recipes: the boxes
+  Details, Reagenzien with have/need from bags and bank, and the guild's crafters, with the star and
+  "+ Liste". A camp object lists its places, what it replaces and its description above its recipe.
+  The profession data is rebuilt from the newest AllTheThings Forever data (more vendors and prices).
+
+- feat(professions): read profession trainers for the real learn ranks (F-155)
+
+  When you talk to a profession trainer (or a rogue trainer for poisons), Amisia quietly reads what it
+  teaches: the skill each recipe needs, its price and the trainer. The recipe's Details then show the
+  real learn rank "(vom Lehrer)" and the trainer with a waypoint; estimated learn ranks carry a "?"
+  and the head counts them. `/amisia lehrer` tells how many trainers were read. Nothing is learned,
+  bought or sent; the readings go into the profession data with the next data build.
+
 ## [v2.67.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.67.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.66.0...v2.67.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

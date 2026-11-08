@@ -175,11 +175,14 @@ local function parse(line, skill)
     local spell, item, count, learn, yellow, grey, src = line:match("^(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(.*)$")
     if not spell then return nil end
     local r = { spell = num(spell), item = num(item), count = num(count), learn = num(learn), yellow = num(yellow),
-        grey = num(grey), skill = skill, src = {}, items = {} }
+        grey = num(grey), skill = skill, src = {}, items = {}, trainers = {} }
     r.green = math.floor((r.yellow + r.grey) / 2)
     for tok in src:gmatch("[^,]+") do
         local recipeItem = tok:match("^I(%d+)$")
-        if recipeItem then r.items[#r.items + 1] = num(recipeItem) else r.src[#r.src + 1] = tok end
+        local trainer = tok:match("^N(%d+)$")
+        if recipeItem then r.items[#r.items + 1] = num(recipeItem)
+        elseif trainer then r.trainers[#r.trainers + 1] = num(trainer)
+        else r.src[#r.src + 1] = tok end
     end
     return r
 end
@@ -517,8 +520,36 @@ end)
 -- is not known and later is the safe side (F-137 review). Not below what the tier's trainer asks
 -- (Journeyman 50, Expert 125, Artisan 200).
 local TIER_FLOOR = { [2] = 50, [3] = 125, [4] = 200 }
+
+-- The own newest reading of a recipe at a trainer (ProfTrainers.lua, F-155), or nil.
+function Pr.TrainerOffer(spell)
+    return ns.ProfTrainers and ns.ProfTrainers.Of(spell) or nil
+end
+
+-- Whether a trainer is known to teach a recipe: the data's trainers (N, read in the game and built
+-- in) or an own reading.
+function Pr.HasTrainer(r) return #r.trainers > 0 or Pr.TrainerOffer(r.spell) ~= nil end
+
+-- Whether the learn rank is the game's own (an own reading, a trainer of the data, a recipe item's
+-- requirement, learned with the profession), not the estimate of Pr.LearnRank ("?" on the page).
+function Pr.LearnExact(r)
+    if r.learn > 1 or #r.items > 0 or Pr.HasTrainer(r) then return true end
+    for _, tok in ipairs(r.src) do if tok == "A" then return true end end
+    return false
+end
+
+-- Where a recipe's learn rank comes from a trainer: "own" (an own reading), "data" (the data's
+-- trainers), else nil.
+function Pr.LearnFromTrainer(r)
+    if Pr.TrainerOffer(r.spell) then return "own" end
+    if #r.trainers > 0 then return "data" end
+    return nil
+end
+
 function Pr.LearnRank(r)
-    if r.learn > 1 then return r.learn end
+    local offer = Pr.TrainerOffer(r.spell)
+    if offer then return math.max(1, offer.rank) end
+    if r.learn > 1 or #r.trainers > 0 then return math.max(1, r.learn) end
     local tier
     for _, tok in ipairs(r.src) do
         if tok == "A" then return 1 end
@@ -666,6 +697,23 @@ function Pr.Sources(r)
             if tier then add("T", Pr.TIERS[num(tier)] or Pr.TIERS[0]) end
         end
     end
+    -- the trainers read in the game: the own newest reading, then the data's (F-155)
+    local offer = Pr.TrainerOffer(r.spell)
+    local shownNpc
+    if offer then
+        local pt, point = posText(offer.pos)
+        local name = offer.name or Pr.Npc(offer.npc) and Pr.Npc(offer.npc).name or ("NPC " .. offer.npc)
+        add("T", L["Lehrer: %s%s (ab %d, %s)"]:format(name, pt and (", " .. pt) or "", math.max(1, offer.rank), money(offer.cost)),
+            point, { npc = offer.npc, observed = true, own = true })
+        shownNpc = offer.npc
+    end
+    for _, id in ipairs(r.trainers) do
+        if id ~= shownNpc then
+            local npc = Pr.Npc(id)
+            local w = where(npc)
+            add("T", L["Lehrer: %s%s"]:format(npc and npc.name or ("NPC " .. id), w and (", " .. w) or ""), npc and npc.point, { npc = id })
+        end
+    end
     local myFaction = ns.OwnFaction()
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
@@ -733,7 +781,7 @@ end
 -- reputation, an instance or is new to Forever (F-137 review).
 local trainerLists
 function Pr.PresumedTrainer(r)
-    if #r.src > 0 or #r.items > 0 then return false end
+    if #r.src > 0 or #r.items > 0 or Pr.HasTrainer(r) then return false end
     fresh()
     if not trainerLists or trainerLists.data ~= data() then trainerLists = { data = data() } end
     local has = trainerLists[r.skill]
@@ -768,7 +816,7 @@ function Pr.SourceKinds(r)
         if obs and #obs.vendors > 0 then set.V = true end
         if obs and #obs.drops > 0 then set.D = true end
     end
-    if Pr.PresumedTrainer(r) then set.T = true end
+    if Pr.PresumedTrainer(r) or Pr.HasTrainer(r) then set.T = true end
     return set
 end
 

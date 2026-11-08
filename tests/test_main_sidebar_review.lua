@@ -78,11 +78,11 @@ F.applyHeight(M.H + 120)
 F.heightDone()
 NS.ShowPage("professions")
 local prof = NS.PageFrame("professions")
-assert(prof.detail:GetHeight() == prof.list:GetHeight(), "as high as the list when built")
+assert(prof.rd:GetHeight() == prof.list:GetHeight(), "as high as the list when built")
 F.applyHeight(M.H)
 F.heightDone()
-assert(prof.detail:GetHeight() == prof.list:GetHeight() and prof.list:GetHeight() < (M.H + 120 - 82),
-    "the detail shrinks with its list: " .. prof.detail:GetHeight() .. " / " .. prof.list:GetHeight())
+assert(prof.rd:GetHeight() == prof.list:GetHeight() and prof.list:GetHeight() < (M.H + 120 - 82),
+    "the detail shrinks with its list: " .. prof.rd:GetHeight() .. " / " .. prof.list:GetHeight())
 -- the window hidden mid-drag (Escape): the drag ends there and the height is kept
 local g = F.grip
 g.scripts.OnMouseDown(g, "LeftButton")

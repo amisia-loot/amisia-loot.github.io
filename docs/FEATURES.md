@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-155 Berufslehrer lesen: echte Lernstufen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du einen Bergbaulehrer ansprichst und danach auf der Seite Berufe, Bergbau "Zinn verhütten" öffnest, dann steht in Details "lernbar ab <Wert des Lehrers> (vom Lehrer)" und "Gelernt bei" nennt den Lehrer mit Ort und Wegpunkt.
+- Prüfung: Wenn du einen Beruf öffnest, dessen Lehrer du noch nicht angesprochen hast, dann steht im Kopf "N Lernstufen geschätzt (?)" und in Details hinter der Lernstufe ein "?".
+- Prüfung: Wenn du im Lehrerfenster Filter (z. B. nur verfügbare) eingestellt hast und den Lehrer erneut ansprichst, dann sind die Filter danach wie vorher.
+- Prüfung: Wenn du `/amisia lehrer` eingibst, dann meldet der Chat "Lehrer: N gelesen, M Angebote (noch nicht in den Daten)".
+- Notiz: Spec docs/specs/2026-11-08-lehrer-lesen.md, D-86. Nach dem Besuch: `build.py data` übernimmt die Lesungen in tools/trainer_archive.json.
+
 ### F-154 Dungeons und Raids: Bosse mit Porträt, Beute mit Symbolen
 - Version: -
 - Status: geplant
@@ -72,6 +81,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf eine Berufskachel oder links auf einen Beruf klickst, dann öffnet sich "Alle Rezepte": oben das Berufssymbol und "Schneiderei – Alle Rezepte", links die Rezepte mit Symbol, Farbbalken und Punkten, rechts die Kästen Details, Reagenzien und Gildenmitglieder; der Trichter neben der Suche öffnet die Filter.
 - Prüfung: Wenn du den Reiter Berufe zum ersten Mal nach einem /reload öffnest, dann steht die Übersicht da, mit vier Kacheln je Zeile und unten "Nächste Lehrer" (je Beruf ein Lehrer deiner Fraktion mit Zone und Kartenknopf, der den Wegpunkt setzt).
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-78 mit Nachtrag (Start, vier Spalten, Lehrer aus AllTheThings).
+- Prüfung: Wenn du links "Lager" oder oben "Händlergunst" wählst und ein Eintrag anklickst, dann steht er rechts in denselben Kästen wie ein Rezept (Details, Reagenzien mit hast/brauchst, Gildenmitglieder, Stern und "+ Liste"); ein Lagerobjekt nennt in Details zuerst Plätze, was es ersetzt und seine Beschreibung.
 
 ### F-150 Talente mit Klassen und Plänen in der Leiste
 - Version: 2.64.0
