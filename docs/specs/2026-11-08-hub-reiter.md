@@ -190,6 +190,10 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
   angelegt ist; der Filtertrichter des Fotos entfällt (die Quellen-Schalter stehen auf der Seite Ausrüstung); die
   Stufenfelder stehen ohne das Wort "Stufe" (ihr Tooltip nennt es) und der Reiter "Vorschläge" führt aus den Sets zurück,
   damit der Name des Platzes in 602 Breite passt.
+- 2026-11-08, Nutzer schickt das Foto des Reiters Armory noch einmal ("mach ausrüstung wie hier"), Nachtrag zu D-77: die
+  Teilung folgt der Fensterbreite (links 42 %), Plätze 40 px, Zeilen 52 hoch mit "Stufe · Dungeon - Boss", Beruf mit
+  Rang, Quest mit "!", "neu" ohne angelegtes Item, Berufssymbol; der Trichter wird das Menü "Quellen" (der Client hat
+  kein Trichtersymbol), "Stufe" steht wieder vor den Feldern; die Reiter bleiben Textreiter (D-67).
 
 - 2026-11-08, Nutzer: "Passt, los". Damit gelten die Vorschläge zu den Fragen 1 bis 3 und 5; Frage 4 wartet auf
   die Fotos der Reiter Armory und Talent Trees. Die Journal-Schritte 3 bis 5 sind vorher committet (d4f752e).

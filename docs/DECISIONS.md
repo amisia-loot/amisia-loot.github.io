@@ -1870,6 +1870,14 @@ eine neue erste Seite "Ausrüstungsplaner" (`UI/Pages/Planner.lua`, Schlüssel `
 Suche, Stufenbereich, Set-Marken, Zurücksetzen, Warnzeichen), `tests/test_goals_window.lua` (das Fenster mit dem
 gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reiter Ausrüstung), die Layoutregeln.
 
+**Nachtrag 2026-11-08** (Nutzer schickt das Foto noch einmal: "mach ausrüstung wie hier"):
+- **Teilung folgt der Breite:** die linke Fläche ist 42 % der Seite (`LEFT_RATIO`, 240 bis 520), bei 602 also 252; Modell, Kopf und Liste ziehen beim breiteren Fenster mit (`W.FollowWidth`, D-71; das Modell über `SetDollWidth` des gemeinsamen Bauers). Fehlt der Hintergrund der eigenen Rasse, nimmt die Fläche den einer anderen (`BG.RACES`).
+- **Modell:** Plätze 40 px, das Quadrat einer Waffe steht über ihr.
+- **Zeilen 52 hoch** wie im Foto: unter dem Namen "Stufe 25 · <Dungeon> - <Boss>" (Raid ebenso), "Stufe 32 · <Beruf> <Rang>", bei einer Questbelohnung "Quest: <Titel>" ohne Stufe und ein gelbes "!" hinter dem Namen; der Zuwachs in Prozent, ohne angelegtes Item "neu"; ein hergestelltes Item zeigt das Symbol seines Berufs (`ns.Prof.ICONS`, D-75).
+- **Kopf rechts:** dazu "Quellen" (statt des Trichters, den der Client nicht hat): ein Menü mit den Quellen-Schaltern der Seite Ausrüstung (dieselben gespeicherten Schalter, ein Klick gilt für alle Ziele). In der zweiten Zeile steht "Stufe" wieder vor den Feldern.
+- Die Reiter "Vorschläge | Wunschliste" bleiben Textreiter: rote Chips gingen über das Budget eines roten Knopfes je Ansicht (D-67).
+- Durchgesetzt durch `tests/test_gear_planner.lua` (Teilung bei 602 und breiter, 40-px-Plätze, Quadrat über der Waffe, Zeilentexte, Berufssymbol, "!", "neu", Menü "Quellen").
+
 ## D-78 Berufe mit Übersicht und Berufsliste in der Leiste
 
 **Datum:** 2026-11-08

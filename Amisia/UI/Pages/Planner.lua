@@ -25,7 +25,14 @@ local DK = ns.GoalsKit
 local Cat = ns.Catalog
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local NORM = { FINGER2 = "FINGER1", TRINKET2 = "TRINKET1" }
-local X0 = PL.LEFT_W + PL.GAP   -- the right half's left edge
+local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t "
+
+-- The panel's width: LEFT_RATIO of the page's width now (D-71), LEFT_MIN to LEFT_MAX; the right half
+-- starts GAP after it.
+local function leftW()
+    local w = math.floor((T.PAGE_W_NOW or T.PAGE_W) * PL.LEFT_RATIO)
+    return math.max(PL.LEFT_MIN, math.min(PL.LEFT_MAX, w))
+end
 
 local setCat, openSet   -- the set category of a side bar mark (nil: the tabs) and its open set
 local query = ""        -- the search text
@@ -199,7 +206,7 @@ local function setArt(tex, def)
         return true
     elseif def and def.file and not (GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
         tex:SetTexture(def.file)
-        tex:SetTexCoord(0, 1, 0, 1)
+        if def.coords then tex:SetTexCoord(unpack(def.coords)) else tex:SetTexCoord(0, 1, 0, 1) end
         tex:Show()
         return true
     end
@@ -220,26 +227,57 @@ local function setStar(b, on)
     b.on = on
 end
 
+-- The gain in percent of the worn item's score; with nothing worn in the slot "neu".
 local function gainOf(e)
     if e.owned == "worn" then return GREEN .. L["angelegt"] .. "|r" end
     if e.switch then return L["Wechsel"] end
+    if type(e.gain) == "number" and e.gain > 0 and not (type(e.mine) == "number" and e.mine > 0) then
+        return GREEN .. L["neu"] .. "|r"
+    end
     return DK.pctText(e.gain, e.mine, e.upgrade)
 end
 
-local function subOf(e, o)
+-- A source as the row's line names it: "<Dungeon> - <Boss>", "<Beruf> <Rang>", "Quest: <Titel>"
+-- (without its level and zone), else the gear page's short text.
+local function sourceLine(rec, e, o)
+    local k = rec and rec[1]
+    if k == "D" or k == "X" then
+        return ("%s - %s"):format(Gear.PlaceName(rec) or "?", rec[3] or "?")
+    elseif k == "C" then
+        return ("%s %d"):format(Gear.PROFESSIONS[rec[2]] or tostring(rec[2]), rec[3] or 0)
+    elseif k == "Q" then
+        local t = (Gear.SourceText(rec, true) or ""):gsub(" %(%d+%)", "", 1)
+        return t:match("^(.-), ") or t
+    end
+    return K.sourceText(e.id, o)
+end
+
+-- The grey line under the name: "Stufe 25 · Kral der Klingenhauer - Roogug", "Stufe 32 · Schneiderei
+-- 150", "Quest: Endlich frei" (a quest without the level); a wish its slot first.
+local function subOf(e, o, rec)
     local parts = {}
     if e.slotName then parts[#parts + 1] = e.slotName end
-    if (e.level or 0) > 0 then parts[#parts + 1] = L["Stufe %d"]:format(e.level) end
+    local quest = rec and rec[1] == "Q" and not e.owned and e.gain
+    if (e.level or 0) > 0 and not quest then parts[#parts + 1] = L["Stufe %d"]:format(e.level) end
     local src
     if e.owned then
         src = K.OWNED_TEXT[e.owned]
     elseif not e.gain and e.why then
         src = e.why
     else
-        src = K.sourceText(e.id, o)
+        src = sourceLine(rec, e, o)
     end
     if src and src ~= "" then parts[#parts + 1] = src end
     return GREY .. table.concat(parts, " · ") .. "|r"
+end
+
+-- The symbol of a source's kind; a crafted item the profession's own icon.
+local function srcArt(rec)
+    if not rec then return nil end
+    if rec[1] == "C" and ns.Prof and ns.Prof.ICONS and ns.Prof.ICONS[rec[2]] then
+        return { file = ns.Prof.ICONS[rec[2]], coords = PL.ICON_COORDS }
+    end
+    return PL.SRC_ICONS[rec[1]]
 end
 
 local function hideItemParts(r)
@@ -273,11 +311,12 @@ local function fillRow(r, e)
     local c = T.QUALITY_RGB[q or 1] or T.QUALITY_RGB[1]
     W.SetBorderColor(r.edges, c[1], c[2], c[3], 1)
     local own = e.pickSlot ~= nil and ns.BisPick(e.pickSlot) == e.id
-    r.name:SetText((own and DK.ownMark() or "") .. (e.piece and "  " or "") .. K.itemText(e.id))
-    r.sub:SetText(subOf(e, o))
-    r.gain:SetText(gainOf(e))
     local rec = firstSource(e.id, o)
-    setArt(r.src, rec and PL.SRC_ICONS[rec[1]])
+    local mark = rec and rec[1] == "Q" and (" " .. PL.QUEST_MARK) or ""
+    r.name:SetText((own and DK.ownMark() or "") .. (e.piece and "  " or "") .. K.itemText(e.id) .. mark)
+    r.sub:SetText(subOf(e, o, rec))
+    r.gain:SetText(gainOf(e))
+    setArt(r.src, srcArt(rec))
     setStar(r.star, wished(e.id))
     r.star:Show()
     if own then r.sel:Show() end
@@ -425,7 +464,7 @@ local function enchMenu(self)
     W.Menu(self, out)
 end
 
--- A square beside a slot of the doll (towards the model; right of a weapon); not for the shirt and
+-- A square beside a slot of the doll (towards the model; above a weapon); not for the shirt and
 -- the tabard.
 local function decorate(b, side)
     if not ns.BIS_SLOT_NAME[b.key] then return end
@@ -433,6 +472,8 @@ local function decorate(b, side)
     q:SetSize(PL.ENCH, PL.ENCH)
     if side == "right" then
         q:SetPoint("TOPRIGHT", b, "TOPLEFT", -PL.ENCH_GAP, 0)
+    elseif side == "bottom" then
+        q:SetPoint("BOTTOM", b, "TOP", 0, PL.ENCH_GAP)
     else
         q:SetPoint("TOPLEFT", b, "TOPRIGHT", PL.ENCH_GAP, 0)
     end
@@ -487,10 +528,9 @@ local function buildPanel(f)
     local p = CreateFrame("Frame", nil, f)
     p:SetPoint("TOPLEFT", 0, 0)
     p:SetPoint("BOTTOMLEFT", 0, 0)
-    p:SetWidth(PL.LEFT_W)
     p.ground = W.Flat(p, PL.GROUND[1], PL.GROUND[2], PL.GROUND[3], PL.GROUND[4], "BACKGROUND")
     local B = PL.BG
-    local lw = math.floor(PL.LEFT_W * B.W[1] / (B.W[1] + B.W[2]) + 0.5)
+    local lw = math.floor(leftW() * B.W[1] / (B.W[1] + B.W[2]) + 0.5)
     local th = math.floor(T.PAGE_H * B.H[1] / (B.H[1] + B.H[2]) + 0.5)
     p.parts = {}
     for i = 1, 4 do
@@ -513,17 +553,27 @@ local function buildPanel(f)
     p.shade:SetAllPoints()
     p.shade:SetColorTexture(PL.SHADE[1], PL.SHADE[2], PL.SHADE[3], PL.SHADE[4])
     p.edges = W.Border(p, T.HUB.LINE[1], T.HUB.LINE[2], T.HUB.LINE[3], T.HUB.LINE[4])
+    -- the width: the parts keep their share
+    function p.SetPanelWidth(w)
+        p:SetWidth(w)
+        local x = math.floor(w * B.W[1] / (B.W[1] + B.W[2]) + 0.5)
+        tl:SetWidth(x)
+        bl:SetWidth(x)
+    end
+    p.SetPanelWidth(leftW())
     return p
 end
 
--- The race's background: its file, else RACE's, else none (the ground stays).
+-- The race's background: its file, else another race's (RACES in turn), else none (the ground stays).
 local function fillPanel(p)
     local race = UnitRace and select(2, UnitRace("player"))
-    race = type(race) == "string" and race ~= "" and race or PL.BG.RACE
+    race = type(race) == "string" and race ~= "" and race or PL.BG.RACES[1]
     if p.race == race then return end
     p.race = race
     local base
-    for _, r in ipairs({ race, PL.BG.RACE }) do
+    local order = { race }
+    for _, r in ipairs(PL.BG.RACES) do order[#order + 1] = r end
+    for _, r in ipairs(order) do
         local path = PL.BG.PATH .. r
         if not (GetFileIDFromPath and GetFileIDFromPath(path .. 1) == nil) then
             base = path
@@ -568,16 +618,33 @@ local function warnTip(self)
     GameTooltip:Show()
 end
 
+-- The menu "Quellen": the gear page's source switches (ns.BisOpts().sources, saved), a click turns
+-- one on or off for every target.
+local SRC_LABEL = { X = "Raids", D = "Dungeons", Q = "Quests", C = L["Berufe"], V = L["Händler"], P = "PvP", W = L["Welt"], A = "AH" }
+local function srcMenu(self)
+    local src = ns.BisOpts().sources
+    local out = {}
+    for _, k in ipairs(PL.SOURCES) do
+        out[#out + 1] = { (src[k] and CHECK or "") .. (SRC_LABEL[k] or k), function()
+            local s = ns.BisOpts().sources
+            s[k] = not s[k]
+            ns.Fire("BIS_CHANGED")
+        end }
+    end
+    W.Menu(self, out)
+end
+
 local function fillHead(f, o, res)
     local name = ns.Plain(UnitName("player")) or "?"
     f.who:SetText(T.GOLD_TEXT .. name .. "|r  |cffffffff" .. L["Stufe %d"]:format(o.level) .. " ·|r")
     K.fillSpec(f.spec, o)
     -- name and picker centred in the panel's head
-    local maxW = PL.LEFT_W - 2 * PL.PAD - PL.SPEC_W - PL.WHO_GAP
+    local lw = leftW()
+    local maxW = lw - 2 * PL.PAD - PL.SPEC_W - PL.WHO_GAP
     local w = math.min(maxW, math.ceil((f.who:GetStringWidth() or 0) + 2))
     f.who:SetWidth(w)
     f.who:ClearAllPoints()
-    f.who:SetPoint("LEFT", f.headLeft, "LEFT", math.floor((PL.LEFT_W - w - PL.WHO_GAP - PL.SPEC_W) / 2), 0)
+    f.who:SetPoint("LEFT", f.headLeft, "LEFT", math.floor((lw - w - PL.WHO_GAP - PL.SPEC_W) / 2), 0)
     f.spec:ClearAllPoints()
     f.spec:SetPoint("LEFT", f.who, "RIGHT", PL.WHO_GAP, 0)
     local searching = query:find("%S") ~= nil
@@ -589,6 +656,7 @@ local function fillHead(f, o, res)
     f.warn:SetShown(warn)
     local row = { f.headLeft, { f.tabSuggest, gap = PL.GAP }, f.tabWish }
     if warn then row[#row + 1] = f.warn end
+    row[#row + 1] = f.srcLink
     row[#row + 1] = { f.search, fill = true }
     f:Place(1, row)
     if not f.search:HasFocus() and (f.search:GetText() or "") ~= query then f.search:SetText(query) end
@@ -600,7 +668,7 @@ local function fillRange(f, lo, hi, title)
     f.mine:SetOn(lo == 1 and hi == ownLevel())
     f.all:SetOn(lo == 1 and hi == Gear.Cap())
     f.title:SetText(title or "")
-    f:Place(2, { f.room, { f.title, gap = PL.GAP, fill = true } }, { f.lo, f.dash, f.hi, f.mine, f.all })
+    f:Place(2, { f.room, { f.title, gap = PL.GAP, fill = true } }, { f.lvl, f.lo, f.dash, f.hi, f.mine, f.all })
 end
 
 -- a level box: a whole number from 1 to the data's cap, the other end follows
@@ -629,7 +697,7 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         f.panel = buildPanel(f)
         f:Bands({ "row", "row" })
         f.headLeft = CreateFrame("Frame", nil, f.panel)
-        f.headLeft:SetSize(PL.LEFT_W, LAY.ROW_H)
+        f.headLeft:SetSize(leftW(), LAY.ROW_H)
         f.headLeft:Show()
         f.who = W.Text(f.headLeft, T.FONT.title, 100)
         f.spec = K.specPicker(f.headLeft)
@@ -659,6 +727,9 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
             end
         end)
         f.warn:Hide()
+        f.srcLink = W.Link(f, L["Quellen"], srcMenu)
+        W.FitChip(f.srcLink)
+        W.Tooltip(f.srcLink, L["Quellen"], L["Woher die Vorschläge kommen dürfen: dieselben Schalter wie auf der Seite Ausrüstung."])
         f.search = W.SearchBox(f, T.LINE_W, function(text)
             query = text or ""
             ns.Refresh()
@@ -676,9 +747,11 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         end)
         -- the second row: the slot's name (or the set category) and the level range
         f.room = CreateFrame("Frame", nil, f)
-        f.room:SetSize(PL.LEFT_W, 1)
+        f.room:SetSize(leftW(), 1)
         f.room:Show()
         f.title = W.Text(f, T.FONT.title)
+        f.lvl = W.Text(f, T.FONT.text)
+        f.lvl:SetText(L["Stufe"])
         f.lo = levelBox(f, true)
         f.dash = W.Text(f, T.FONT.text)
         f.dash:SetText("-")
@@ -689,10 +762,11 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         W.Tooltip(f.mine, L["Meine Stufe"], L["Stufe 1 bis deine Stufe: alles, was du jetzt tragen kannst."])
         f.all = W.Tab(f, L["Alle"], function() setRange(1, Gear.Cap()) end)
         for _, b in ipairs({ f.tabSuggest, f.tabWish, f.mine, f.all }) do W.FitChip(b) end
-        for _, fs in ipairs({ f.dash }) do fs:SetWidth(math.ceil((fs:GetStringWidth() or 0) + 2)) end
+        for _, fs in ipairs({ f.lvl, f.dash }) do fs:SetWidth(math.ceil((fs:GetStringWidth() or 0) + 2)) end
         -- the doll in the panel
         f.doll = DK.buildDoll(f.panel, PL.DOLL, { onChoose = choose, decorate = decorate })
         f.doll:SetPoint("TOPLEFT", PL.PAD, -PL.DOLL_Y)
+        f.doll.SetDollWidth(leftW() - 2 * PL.PAD)
         f.doll.doneEdge = true
         f.reset = W.Button(f.panel, L["Zurücksetzen"], PL.RESET_W, resetPicks)
         W.FitChip(f.reset, PL.RESET_W)
@@ -702,10 +776,22 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         f:Footer({ { "help", help = true } })
         f.help:SetText(L["Klick auf einen Platz: seine Vorschläge. Klick auf eine Zeile: deine Wahl für den Platz, nochmal: aufheben. Stern: Wunschliste. Das Quadrat neben einem Platz: die Verzauberung."])
         f.list = W.List(f, PL.MIN_ROWS, PL.ROW_H, buildRow, fillRow)
-        f.list:SetPoint("TOPLEFT", X0, f.top)
-        local function follow() f.list:SetWidth((T.PAGE_W_NOW or T.PAGE_W) - X0 - T.SCROLL_ROOM) end
-        follow()
-        W.FollowWidth(f, follow)
+        -- the split follows the page's width (D-71): the panel, the doll, the right half and its list
+        local function layout()
+            local lw = leftW()
+            f.panel.SetPanelWidth(lw)
+            f.headLeft:SetWidth(lw)
+            f.room:SetWidth(lw)
+            f.doll.SetDollWidth(lw - 2 * PL.PAD)
+            f.list:ClearAllPoints()
+            f.list:SetPoint("TOPLEFT", lw + PL.GAP, f.top)
+            f.list:SetWidth((T.PAGE_W_NOW or T.PAGE_W) - lw - PL.GAP - T.SCROLL_ROOM)
+        end
+        layout()
+        W.FollowWidth(f, function()
+            layout()
+            if f:IsShown() and ns.RefreshSoon then ns.RefreshSoon() end
+        end)
         W.FillTo(f.list, f, f.top, PL.MIN_ROWS, PL.ROW_H)
         return f
     end,

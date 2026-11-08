@@ -690,36 +690,40 @@ T.GOALS = {
     BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
 }
 
--- the page "Ausrüstungsplaner" (UI/Pages/Planner.lua, F-149, D-77): left a dark panel LEFT_W wide
--- over the page's height (the dressing room's background of the own race, darkened by SHADE): at its
+-- the page "Ausrüstungsplaner" (UI/Pages/Planner.lua, F-149, D-77): left a panel over the page's height
+-- (the dressing room's background of the own race, else of another race, darkened by SHADE), its
+-- width LEFT_RATIO of the page between LEFT_MIN and LEFT_MAX (it grows with the window, D-71): at its
 -- top in the head row "Name Stufe N ·" and the spec picker (SPEC_W), centred; the doll (DOLL, the
--- goals window's builder) DOLL_Y under the page's top, PAD from the panel's edges, each slot with its
--- enchant square (ENCH, ENCH_GAP beside it, towards the model; the weapons' right of them);
--- "Zurücksetzen" PAD from the panel's lower right corner. Right of it, GAP apart, the head row's tabs
--- Vorschläge | Wunschliste, the warning and the search box (filling), under them the slot's name with
--- the level boxes "[lo] - [hi]" (LEVEL_W) and Meine Stufe | Alle, then the list down to the page's bottom
--- (ROW_H rows: the icon ROW_ICON in its quality's frame, the name over "Stufe N · source" from TEXT_X,
--- at the right end the gain GAIN_W, the source's symbol and the wish star, SRC and STAR square, END
--- apart). 284 + 8 + 310 = 602; the doll 30 + 307 + 8 + 34 = 379 of 478.
+-- goals window's builder) DOLL_Y under the page's top, PAD from the panel's edges, as wide as the
+-- panel, each enchantable slot with its square (ENCH, ENCH_GAP beside it towards the model; above a
+-- weapon); "Zurücksetzen" PAD from the panel's lower right corner. Right of it, GAP apart, the head
+-- row's tabs Vorschläge | Wunschliste, the warning, "Quellen" (the source switches as a menu) and the
+-- search box (filling); under them the slot's name, "Stufe [lo] - [hi]" (LEVEL_W boxes) and Meine
+-- Stufe | Alle; the list down to the page's bottom (ROW_H rows: the icon ROW_ICON in its quality's
+-- frame, the name over "Stufe N · source" from TEXT_X, at the right end the gain GAIN_W, the source's
+-- symbol and the wish star, SRC and STAR square, END apart). At 602: 240 + 8 + 354; the doll 30 + 348
+-- + 22 + 40 = 440 of 478, "Zurücksetzen" from 448.
 T.PLANNER = {
-    LEFT_W = 284, GAP = 8, PAD = 8, DOLL_Y = 30,
-    SHADE = { 0, 0, 0, 0.5 },             -- over the race's background
+    LEFT_RATIO = 0.42, LEFT_MIN = 240, LEFT_MAX = 520,
+    GAP = 8, PAD = 8, DOLL_Y = 30,
+    SHADE = { 0, 0, 0, 0.45 },            -- over the race's background
     GROUND = { 0.03, 0.045, 0.03, 0.95 },  -- the panel's ground without the background (and under it)
     -- the client's dressing room background (FrameXML DressUpFrame: 4 parts, 256 + 62 wide, 255 + 128
-    -- high) of the own race: PATH .. race token .. 1 to 4; RACE when the client names none
-    BG = { PATH = "Interface\\DressUpFrame\\DressUpBackground-", RACE = "NightElf", W = { 256, 62 }, H = { 255, 128 },
+    -- high): PATH .. race token .. 1 to 4, the own race first, then RACES in turn
+    BG = { PATH = "Interface\\DressUpFrame\\DressUpBackground-", RACES = { "NightElf", "Human", "Dwarf", "Gnome", "Orc", "Tauren",
+        "Troll", "Scourge" }, W = { 256, 62 }, H = { 255, 128 },
         COORDS = { { 0, 1, 0, 255 / 256 }, { 0, 62 / 64, 0, 255 / 256 }, { 0, 1, 0, 1 }, { 0, 62 / 64, 0, 1 } } },
-    SPEC_W = 140, WHO_GAP = 6,
+    SPEC_W = 124, WHO_GAP = 6,
     -- the doll (UI/GoalsWindow.lua buildDoll): 8 slots left and right as on the character frame (the
-    -- shirt and the tabard only show what is worn), the model between, the weapons under it
+    -- shirt and the tabard only show what is worn), the model between, the weapons under it with their
+    -- enchant squares above them; DOLL_W at the narrowest panel (SetDollWidth follows the panel)
     DOLL = {
-        DOLL_W = 268, SLOT = 34, SLOT_GAP = 5, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 9,
+        DOLL_W = 224, SLOT = 40, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 10,
         MODEL_GAP = 20,       -- the enchant square and 4 px between a slot column and the model
-        MODEL_H = 307,        -- 8 slots and their gaps
-        MODEL_SHADE = 0.25,   -- the inset's ground under the model
-        WEAPON_GAP = 8,
-        BOTTOM_GAP = 20,      -- between two weapons: the enchant square of the left one and 4 px
-        BOTTOM_EXTRA = 16,    -- the last weapon's square: the row is centred with it
+        MODEL_H = 348,        -- 8 slots and their gaps
+        MODEL_SHADE = 0.2,    -- the inset's ground under the model
+        WEAPON_GAP = 22,      -- the weapons' enchant squares (ENCH + ENCH_GAP) and 6 px
+        BOTTOM_GAP = 8,       -- between two weapons
         ROTATE = 0.012, ZOOM_STEP = 0.1, ZOOM_MAX = 0.8,
         LEFT = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "SHIRT", "TABARD", "WRIST" },
         RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
@@ -728,21 +732,26 @@ T.PLANNER = {
     ENCH = 14, ENCH_GAP = 2,
     ENCH_ROWS = 8,        -- the enchantments in a square's menu
     RESET_W = 110,
-    LEVEL_W = 30,         -- "[1] - [33]": the two level boxes
-    ROW_H = 44, ROW_ICON = 34, ROW_EDGE = 1, ICON_X = 4, TEXT_X = 44, NAME_Y = -7, SUB_Y = -25,
-    GAIN_W = 48, SRC = 16, STAR = 16, END = 4,
+    LEVEL_W = 30,         -- "Stufe [1] - [33]": the two boxes
+    ROW_H = 52, ROW_ICON = 34, ROW_EDGE = 1, ICON_X = 6, TEXT_X = 48, NAME_Y = -9, SUB_Y = -29,
+    GAIN_W = 52, SRC = 18, STAR = 16, END = 6,
     MIN_ROWS = 4,
     RANK_N = 40,          -- the suggestions of a slot at most (the slot's ranking)
+    QUEST_MARK = "|cffffd100!|r",          -- after the name of a quest reward
     STAR_OFF = { 0.42, 0.42, 0.42 },       -- the star of an item not on the wish list
     STAR_ATLAS = "auctionhouse-icon-favorite", STAR_FILE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1",
     WARN = { file = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew" }, WARN_SIZE = 18,
-    -- the symbol of a source's kind (the gear data's letters): the client's marks
+    -- the source switches of the gear page in the menu "Quellen", in this order
+    SOURCES = { "X", "D", "Q", "C", "V", "P", "W", "A" },
+    -- the symbol of a source's kind (the gear data's letters): the client's marks; a crafted item the
+    -- profession's own icon (ns.Prof.ICONS, D-75)
     SRC_ICONS = {
         X = { atlas = "Raid" }, D = { atlas = "Dungeon" }, Q = { file = "Interface\\GossipFrame\\AvailableQuestIcon" },
         C = { file = "Interface\\Minimap\\Tracking\\Profession" }, V = { file = "Interface\\GossipFrame\\VendorGossipIcon" },
         A = { file = "Interface\\Minimap\\Tracking\\Auctioneer" }, P = { file = "Interface\\GossipFrame\\BattleMasterGossipIcon" },
         R = { file = "Interface\\GossipFrame\\TabardGossipIcon" }, W = { file = "Interface\\Minimap\\Tracking\\None" },
     },
+    ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without its frame
     -- the side bar's marks: the catalog's categories (Gear/Catalog.lua) with the client's marks
     MARKS = { "raid", "dungeon", "pvp", "craft", "world", "rep" },
     MARK_ICONS = {
@@ -751,6 +760,7 @@ T.PLANNER = {
         rep = { file = "Interface\\GossipFrame\\TabardGossipIcon" },
     },
 }
+
 -- the setup assistant (UI/Setup.lua, "Amisia einrichten"): one window, one step at a time. Its
 -- content keeps T.WINDOW_PAD from the left and right edge; the step line and the step's title at
 -- the top, the step's rows in the middle, a status line and the red buttons at the bottom.
