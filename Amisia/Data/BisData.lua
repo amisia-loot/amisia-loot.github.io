@@ -12,7 +12,7 @@
 local _, ns = ...
 
 ns.BIS = {
-    built = "2026-11-07", gamedata = "1.60.1.70862",
+    built = "2026-11-08", gamedata = "1.60.1.70862",
     SC = {
         [246164] = "DAMAGE_PER_SECOND=7",
         [246165] = "DAMAGE_PER_SECOND=8.9394;STAMINA=2",

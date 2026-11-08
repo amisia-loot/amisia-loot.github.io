@@ -1,6 +1,14 @@
 {
- "updated": "2026-11-05",
+ "updated": "2026-11-08",
  "entrances": {
+  "33": {
+   "map": 1421,
+   "x": 4475,
+   "y": 6780,
+   "name": "Burg Shadowfang",
+   "kind": "party",
+   "seen": 1794050773
+  },
   "389": {
    "map": 1454,
    "x": 5335,

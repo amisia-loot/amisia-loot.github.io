@@ -15,7 +15,7 @@ local _, ns = ...
 -- in the dungeon where the start item can lie ({ { German, English }, ... }, hand-kept hints, D-65) }.
 -- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.
 ns.DUNGEON_QUESTS = {
-    built = "2026-11-07", source = "2d7ad8025c",
+    built = "2026-11-08", source = "2d7ad8025c",
     D = {
         bfd = { 908, 971, 1198, 1199, 1200, 1275, 3765, 6561, 6562, 6563, 6564, 6565, 6921, 6922 },
         brd = { 3701, 3702, 3801, 3802, 3906, 3907, 3981, 3982, 4001, 4002, 4003, 4004, 4022, 4023, 4024, 4061, 4062, 4063, 4081, 4082, 4083, 4121, 4122, 4123, 4126, 4128, 4132, 4133, 4134, 4136, 4182, 4183, 4184, 4185, 4186, 4201, 4223, 4224, 4241, 4242, 4262, 4263, 4264, 4282, 4286, 4295, 4322, 4324, 4341, 4342, 4361, 4362, 4363, 6402, 6403, 6501, 6642, 6643, 6644, 6645, 6646, 7201 },
@@ -90,7 +90,7 @@ ns.DUNGEON_QUESTS = {
         [968] = { "The Powers Below", 10, 0, "A", 0, "X", nil, nil, nil, nil, nil, nil, nil, nil, { { 5352, "Twilight Thug", 1439, nil } }, nil, 0, 0 },
         [971] = { "Knowledge in the Deeps", 10, 0, "A", 0, "O", "Gerrig Bonegrip", "1455:5080:560", { 968 }, nil, "bfd", { 6743 }, nil, nil, nil, nil, 0, 0 },
         [1013] = { "The Book of Ur", 16, 26, "H", 0, "O", "Bewahrer Bel'dugur", "1458:5390:5461", nil, nil, "sfk", { 4534, 6335, 270030 }, nil, nil, nil, nil, 0, 0 },
-        [1014] = { "Arugal Must Die", 18, 27, "H", 0, "O", "Dalar Dawnweaver", "1421:4418:3986", nil, nil, "sfk", { 6414 }, nil, nil, nil, nil, 0, 0 },
+        [1014] = { "Arugal Must Die", 18, 27, "H", 0, "O", "Dalar Dawnweaver", "1421:4418:3986", nil, nil, "sfk", { 6414 }, nil, nil, nil, nil, 0, 0, "Dalar Dawnweaver", "1421:4418:3987" },
         [1048] = { "Into The Scarlet Monastery", 33, 0, "H", 0, "O", "Varimathras", "1458:5630:9220", nil, nil, "sm", { 6802, 6803, 10711 }, nil, nil, nil, nil, 0, 0 },
         [1049] = { "Compendium of the Fallen", 28, 0, "", 0, "O", "Sage Truthseeker", "1456:3460:4720", nil, nil, "sm", { 17508, 7749, 7747 }, nil, nil, nil, nil, 0, 0 },
         [1050] = { "Mythology of the Titans", 28, 0, "A", 0, "O", "Librarian Mae Paledust", "1455:7500:1250", nil, nil, "sm", { 7746 }, nil, nil, nil, nil, 0, 0 },
